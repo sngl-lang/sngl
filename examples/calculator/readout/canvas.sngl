@@ -25,7 +25,7 @@ const BACKING = color{r=10, g=26, b=24, a=255}
 // A segment. `on` picks the ink rather than deciding whether to paint: an
 // unlit segment is still there.
 component Bar(on = false, x = 0.0, y = 0.0, w = 0.0, h = 0.0) draw.shape {
-    draw.rect(x=x, y=y, w=w, h=h, style=draw.CanvasStyle{fill=on ? LIT : DARK})
+    draw.rect(x=x, y=y, w=w, h=h, style=draw.Style{fill=on ? LIT : DARK})
 }
 
 // One cell, with its top-left corner at x, y. The verticals stop short of the
@@ -44,12 +44,12 @@ component Cell(glyph Glyph, x = 0.0, y = 0.0) draw.shape {
 
 component SegmentReadout(entry = "0") ui.node {
     draw.canvas(
-        width=WIDTH_PX * 1px,
-        height=HEIGHT_PX * 1px,
-        scalingMode=draw.ScalingMode.fit,
-        style=draw.CanvasStyle{fill=BACKING},
+        width = WIDTH_PX * 1px,
+        height = HEIGHT_PX * 1px,
+        scalingMode = draw.ScalingMode.fit,
+        style = draw.Style{fill=BACKING},
     ) {
-        draw.rect(x=0.0, y=0.0, w=WIDTH_PX, h=HEIGHT_PX, style=draw.CanvasStyle{fill=BACKING})
+        draw.rect(x=0.0, y=0.0, w=WIDTH_PX, h=HEIGHT_PX, style=draw.Style{fill=BACKING})
         for var i, glyph = cells(entry) {
             Cell(glyph=glyph, x=PAD + float(i) * (CELL_W + CELL_GAP), y=PAD)
         }

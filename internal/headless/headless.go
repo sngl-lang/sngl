@@ -10,10 +10,13 @@
 package headless
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
+	"os/signal"
 	"path/filepath"
+	"syscall"
 )
 
 // ActiveEnv marks a process, and its descendants, as already running inside a
@@ -139,6 +142,9 @@ func CanStart(compositor string, env []string) bool {
 // the extra environment and a cleanup to call once the command has finished.
 // When cage is unavailable it returns the command unchanged, and GUI code is
 // expected to skip itself via SkipReason.
+//
+// cage runs this executable rather than the command, as a shim that execs it
+// (see RunShim), so a binary calling Wrap must call RunShim first thing.
 func Wrap(command string, args []string) (cmd string, wrapped []string, env []string, cleanup func()) {
 	compositor := Compositor()
 	if compositor == "" || Active() {
@@ -155,7 +161,14 @@ func Wrap(command string, args []string) (cmd string, wrapped []string, env []st
 		fmt.Fprintln(os.Stderr, "note: cage is installed but will not start here; GUI tests will skip.")
 		return command, args, nil, func() {}
 	}
-	wrapped = append([]string{"--", command}, args...)
+	self, err := os.Executable()
+	if err != nil {
+		cleanup()
+		fmt.Fprintln(os.Stderr, "note: cannot find this executable to shim cage's child; GUI tests will skip:", err)
+		return command, args, nil, func() {}
+	}
+	env = append(env, shimEnv+"=1")
+	wrapped = append([]string{"--", self, command}, args...)
 	if bus := sessionBus(); bus != "" {
 		conf, err := sessionBusConfig(dir)
 		if err != nil {
@@ -183,4 +196,61 @@ func SkipReason() string {
 		return "GUI test needs cage (no display, and cage is unavailable here)"
 	}
 	return "GUI test needs a headless compositor (cage) to avoid flashing; run via `go tool verify` or install cage"
+}
+
+// shimEnv marks a process started by cage as Wrap's shim.
+const shimEnv = "SNGL_CAGE_SHIM"
+
+// RunShim runs the wrapped command and exits with its status when this
+// process is Wrap's shim, and returns otherwise. Every binary that calls Wrap
+// calls it first thing.
+//
+// The shim exists because of how cage notices that its child has exited: it
+// reads EOF from a pipe whose write end the child inherits, and nothing marks
+// that end close-on-exec, so every descendant inherits it as well and cage
+// waits for the last of them. One left running outlives the command -- a test
+// binary killed by its timeout leaves behind the `sngl test` it started, and
+// that the Chromium it launched -- and so cage, the session bus around it and
+// `go tool verify` waiting on both never exit. The shim keeps cage's pipe
+// itself and starts the command with every descriptor past stderr marked
+// close-on-exec, so cage exits when the shim does, which is when the command
+// does.
+func RunShim() {
+	if os.Getenv(shimEnv) == "" {
+		return
+	}
+	os.Unsetenv(shimEnv)
+	if len(os.Args) < 2 {
+		fmt.Fprintln(os.Stderr, "headless shim: no command")
+		os.Exit(127)
+	}
+	closeInheritedOnExec()
+	cmd := exec.Command(os.Args[1], os.Args[2:]...)
+	cmd.Stdin, cmd.Stdout, cmd.Stderr = os.Stdin, os.Stdout, os.Stderr
+	if err := cmd.Start(); err != nil {
+		fmt.Fprintln(os.Stderr, "headless shim:", err)
+		os.Exit(127)
+	}
+	// cage passes on the termination it is asked for; the command should
+	// receive it rather than be orphaned by the shim's exit.
+	sigs := make(chan os.Signal, 1)
+	signal.Notify(sigs, os.Interrupt, syscall.SIGTERM, syscall.SIGHUP)
+	go func() {
+		for s := range sigs {
+			cmd.Process.Signal(s)
+		}
+	}()
+	err := cmd.Wait()
+	if ee, ok := errors.AsType[*exec.ExitError](err); ok {
+		code := ee.ExitCode()
+		if ws, ok := ee.Sys().(syscall.WaitStatus); ok && ws.Signaled() {
+			code = 128 + int(ws.Signal())
+		}
+		os.Exit(code)
+	}
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "headless shim:", err)
+		os.Exit(127)
+	}
+	os.Exit(0)
 }

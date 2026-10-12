@@ -40,7 +40,7 @@ func (w *pointsToWalker) walkPackage(pkg *ir.Package) {
 		for _, fn := range c.Funcs {
 			w.walkFunc(fn)
 		}
-		w.walkStmts(c.Body)
+		w.walkStmts(c.Stmts)
 	}
 	w.walkStmts(pkg.Body)
 }

@@ -23,7 +23,7 @@ ui.window #home(title="t") {
 
 // And the other way round: what a primitive renders is its own to say, so the
 // mark that says it belongs on an #[intrinsic] declaration and nowhere else.
-#[gen.renders(identity)] // ERROR(check) "belongs on an #[intrinsic] or #[wildcard] declaration"
+#[gen.renders(identity)] // ERROR(check) "belongs on an #[intrinsic], #[wildcard] or native declaration"
 component plain() ui.node {
     ui.text(value="hi")
 }

@@ -80,7 +80,7 @@ func refuseStateIntoBuildCalls(pkg *ir.Package) error {
 				syms[p.Sym] = p.Name
 			}
 		}
-		ir.Walk(c.Body, func(n ir.Node) error {
+		ir.Walk(c.Stmts, func(n ir.Node) error {
 			call, ok := n.(*ir.Call)
 			if !ok || !ir.IsBuildCall(call.Func, memo) {
 				return nil

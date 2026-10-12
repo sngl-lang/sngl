@@ -9,7 +9,7 @@ import markup "sngl:ui/markup"
 import math "sngl:math"
 import gen "sngl:x/gen"
 import nav "sngl:ui/nav"
-import tree "sngl:tree"
+import family "sngl:family"
 
 // Serves dir over HTTP at listen, ":0" when empty, printing the address, until
 // the process is stopped. What `sngl run` does with a site. Declared above the
@@ -45,29 +45,85 @@ func serve(dir string, listen string)
 #[gen.native("html")]
 component platform(
     // Render in preview mode (iframe-friendly; stable element IDs for live reload).
-    const preview bool,
+    const preview       bool,
     // Emit a test harness instead of the normal app bundle.
-    const test bool,
+    const test          bool,
     // Relative path to a CSS file included in every page.
-    const stylesheet string,
+    const stylesheet    string,
     // Absolute path to the project root. Set automatically by `sngl generate`; used to resolve relative asset paths.
-    const projectDir string,
+    const projectDir    string,
     // Route mode: target Go package name (default "ui", or "main" when main=true).
-    const package string,
+    const package       string,
     // Route mode: emit a main() that calls ListenAndServe.
-    const main bool,
+    const main          bool,
     // Route mode: HTTP framework (default "net/http").
-    const framework string,
+    const framework     string,
     // Route mode: host:port for `sngl run` to listen on.
-    const listen string,
+    const listen        string,
     // Minify emitted HTML and inline JS via esbuild.
-    const minify bool,
+    const minify        bool,
     // Disable content-hash filenames for emitted assets; produce stable paths.
-    const noCacheBust bool,
+    const noCacheBust   bool,
+    // Its page script is JavaScript whatever the language, so it reserves
+    // JavaScript's words, and beside them what the script introduces: the
+    // `state` object a page's vars live in, a factory's `props`, the `String`
+    // it redefines, and the browser globals it calls.
+    const reservedNames list<string> = [
+        ...js.words,
+        "state",
+        "props",
+        "String",
+        "document",
+        "window",
+        "globalThis",
+        "Object",
+        "Array",
+        "Map",
+        "Set",
+        "Number",
+        "Math",
+        "JSON",
+        "Event",
+        "Error",
+        "Promise",
+        "Date",
+        "Intl",
+        "location",
+        "history",
+        "console",
+        "parseInt",
+        "parseFloat",
+        "decodeURIComponent",
+        "encodeURIComponent",
+        "setTimeout",
+        "clearTimeout",
+        "setInterval",
+        "clearInterval",
+        "requestAnimationFrame",
+    ],
 ) build.platform {
     gen.run(@run(dir, args) {
         serve(dir, listen)
     })
+}
+
+// The browser's Event, as an element's handler is handed it. A handler on an
+// element is handed the DOM's own event, and an override reads what it reports
+// off it: `@change(e) { checked = e.currentTarget.checked }`. Only what an
+// override reads is declared; the DOM has more.
+#[js.native("Event")]
+struct Event {
+    // The element the handler was attached to.
+    currentTarget Target
+}
+
+// The element an event was dispatched to, as far as a control reports its
+// state through it: the text of an input, a textarea or a select, and whether
+// a checkbox is checked.
+#[js.native("HTMLInputElement")]
+struct Target {
+    value   string
+    checked bool
 }
 
 // The element every tag resolves to. The web's element set is open — a new
@@ -103,30 +159,30 @@ component element(
     // the element rather than describing it, so it is never an attribute.
     tag string,
 
-    style ui.Style,
-    class string,
-    id string,
+    style       ui.Style,
+    class       string,
+    id          string,
     textContent string,
-    innerText string,
-    innerHTML string,
+    innerText   string,
+    innerHTML   string,
 
     disabled bool,
-    checked bool,
+    checked  bool,
     readonly bool,
     selected bool,
-    hidden bool,
-    open bool,
+    hidden   bool,
+    open     bool,
 
     // An attribute is written as it is emitted, so a caller holding a number
     // converts: `component ui.progress` spells string(value). These were
     // declared `int` and so were written by two paths that disagreed -- the
     // static render rendered the literal and the server render had no string to
     // write, because there is no attribute type here to convert through.
-    rows string,
-    width string,
+    rows   string,
+    width  string,
     height string,
-    value string,
-    max string,
+    value  string,
+    max    string,
 
     // Every other attribute, keyed by the name it was written under -- an
     // attribute a standard adds after this file was written among them.
@@ -140,25 +196,26 @@ component element(
     #[wildcard("[a-z][a-z0-9]*")]
     attrs map<string, string>,
 
-    @click ui.ClickEvent,
-    @input ui.InputEvent,
-    @change ui.ChangeEvent,
-    @focus ui.FocusEvent,
-    @blur ui.FocusEvent,
-    @submit ui.SubmitEvent,
-    @scroll ui.ScrollEvent,
-    @load ui.LoadEvent,
-    @error error,
-    @close ui.DismissEvent,
-    @select ui.SelectEvent,
+    @click(),
+    @input(e Event),
+    @change(e Event),
+    @focus(),
+    @blur(),
+    @submit(),
+    @scroll(),
+    @load(),
+    @error(e error),
+    @close(),
+    @select(),
 
     // Every other DOM event. The event set is as open as the element set and
     // the attribute set, for the same reason: a standard adds to it. The
-    // events above are declared for their payload types, not as the whole
-    // list, so one that carries nothing SNGL can name reaches a handler here.
+    // events above are declared for what a handler is handed, not as the
+    // whole list, so one that hands nothing SNGL can name reaches a handler
+    // here.
     //
-    // Void, because a payload this cannot name is one a handler cannot read;
-    // an event whose payload matters is declared above.
+    // Void, because what this cannot name a handler cannot read; an event
+    // whose argument matters is declared above.
     //
     // Lowercase, because these are DOM event types and that is how the DOM
     // spells them. A stdlib component's SNGL name for an event -- `@scrollEnd`
@@ -221,17 +278,73 @@ const component ui.button[platform] {
     }
 }
 
+// An image is a frame around the `<img>` its source renders: the frame carries
+// the style, the click and the description, as an `img` role, so the
+// placeholder stands in the same box where there is no source. The page's
+// rules fill the frame with the picture and fit it by the frame's class.
 const component ui.image[platform] {
-    html.img(src=src, alt=alt, style={...style}) {}
+    html.span(
+        class = "sngl-image sngl-image-" + string(fit),
+        attrs = {"role"="img", "aria-label"=alt},
+        style = {display=inlineBlock, overflow=hidden, ...style},
+        @click { click() },
+    ) {
+        #[family.crosses]
+        src {
+            placeholder
+        }
+    }
+}
+
+// Where an image's pixels come from, each an `<img>` in the image's frame: a
+// URL the browser fetches, which is what a `file:` asset's path is too, or a
+// drawing painted in the page and handed over as a data URL. In a window's
+// favicon either is the page's `<link rel="icon">`.
+#[intrinsic("html:imageUrl")]
+component ImageUrl(url string) ui.imageSource
+
+#[intrinsic("html:imageDrawing")]
+component ImageDrawing(width float, height float, shapes ...component shapes.shape) ui.imageSource
+
+const component ui.file[platform] {
+    ImageUrl(url=path)
+}
+
+const component ui.remote[platform] {
+    ImageUrl(url=url)
+}
+
+const component shapes.image[platform] {
+    ImageDrawing(width=width, height=height) {
+        shapes
+    }
 }
 
 const component ui.input[platform] {
-    html.input(type=type, placeholder=placeholder, value=value, disabled=disabled, readonly=readonly, style={...style}, @input { input() }, @change { change() }) {}
+    html.input(
+        type = string(type),
+        placeholder = placeholder,
+        value = value,
+        disabled = disabled,
+        readonly = readonly,
+        style = {...style},
+        @input(e) {
+            value = e.currentTarget.value
+            input(value)
+        },
+        @change(e) {
+            value = e.currentTarget.value
+            change(value)
+        },
+    ) {}
 }
 
 const component ui.checkbox[platform] {
     html.label(style={display=inlineFlex, alignItems=center, gap=4px, ...style}) {
-        html.input(type="checkbox", checked=checked, disabled=disabled, @change { change() }) {}
+        html.input(type="checkbox", checked=checked, disabled=disabled, @change(e) {
+            checked = e.currentTarget.checked
+            change(checked)
+        }) {}
         html.span(textContent=label) {}
     }
 }
@@ -239,11 +352,14 @@ const component ui.checkbox[platform] {
 // --- Tier 1: Core Input ---
 
 const component ui.radio[platform] {
-    html.fieldset(style={display=flex, flexDirection=(direction == "horizontal" ? row : column), gap=8px, border="none", padding=0, ...style}) {
+    html.fieldset(style={display=flex, flexDirection=(direction == ui.Orientation.horizontal ? row : column), gap=8px, border="none", padding=0, ...style}) {
         for var opt = options {
             html.label(style={display=inlineFlex, alignItems=center, gap=4px}) {
-                html.input(type="radio", value=opt, checked=(opt == value), disabled=disabled, @change { change() })
-                html.span(textContent=opt)
+                html.input(type="radio", value=opt.label, checked=(opt.label == value), disabled=disabled, @change {
+                    value = opt.label
+                    change(opt.label)
+                })
+                html.span(textContent=opt.label)
             }
         }
     }
@@ -251,24 +367,44 @@ const component ui.radio[platform] {
 
 const component ui.toggle[platform] {
     html.label(style={display=inlineFlex, alignItems=center, gap=8px, ...style}) {
-        html.input(type="checkbox", role="switch", checked=checked, disabled=disabled, @change { change() }) {}
+        html.input(type="checkbox", role="switch", checked=checked, disabled=disabled, @change(e) {
+            checked = e.currentTarget.checked
+            change(checked)
+        }) {}
         html.span(textContent=label) {}
     }
 }
 
 const component ui.select[platform] {
-    html.select(disabled=disabled, style={...style}, @change { change() }) {
+    html.select(disabled=disabled, style={...style}, @change(e) {
+        value = e.currentTarget.value
+        change(value)
+    }) {
         if placeholder != "" {
             html.option(value="", disabled=true, selected=true, textContent=placeholder)
         }
         for var opt = options {
-            html.option(value=opt, selected=(opt == value), textContent=opt)
+            html.option(value=opt.label, selected=(opt.label == value), textContent=opt.label)
         }
     }
 }
 
 const component ui.textarea[platform] {
-    html.textarea(placeholder=placeholder, disabled=disabled, readonly=readonly, rows=string(rows), style={...style}, @input { input() }, @change { change() }) {
+    html.textarea(
+        placeholder = placeholder,
+        disabled = disabled,
+        readonly = readonly,
+        rows = string(rows),
+        style = {...style},
+        @input(e) {
+            value = e.currentTarget.value
+            input(value)
+        },
+        @change(e) {
+            value = e.currentTarget.value
+            change(value)
+        },
+    ) {
     }
 }
 
@@ -285,6 +421,47 @@ const component ui.progress[platform] {
     }
 }
 
+// badge, chip and avatar render as sngl:ui's own bodies do, and say what they
+// are in a class: `sngl-<name>`, and a modifier for each choice the props
+// make (`sngl-badge-success`, `sngl-avatar-large`, `sngl-chip-selected`), so
+// a page's stylesheet can restyle every one of them at once.
+const component ui.badge[platform] {
+    html.span(
+        class = variant != "" ? "sngl-badge sngl-badge-" + variant : "sngl-badge",
+        textContent = value,
+        style = {
+            display = inlineBlock,
+            paddingY = 2px,
+            paddingX = 8px,
+            borderRadius = 12px,
+            ...style,
+        },
+    ) {}
+}
+
+const component ui.chip[platform] {
+    html.span(
+        class = "sngl-chip" + (variant != "" ? " sngl-chip-" + variant : "") + (selected ? " sngl-chip-selected" : ""),
+        style = {
+            display = inlineFlex,
+            alignItems = center,
+            gap = 4px,
+            paddingY = 4px,
+            paddingX = 12px,
+            borderRadius = 16px,
+            borderWidth = 1px,
+            borderColor = selected ? #0066CC : #CCCCCC,
+            opacity = disabled ? 0.5 : 1.0,
+            ...style,
+        },
+    ) {
+        html.span(textContent=label, @click { click() }) {}
+        if removable {
+            html.button(class="sngl-chip-remove", textContent="×", disabled=disabled, @click { remove() }) {}
+        }
+    }
+}
+
 const component ui.spinner[platform] {
     html.span(style={display=inlineFlex, alignItems=center, gap=8px, ...style}) {
         html.span(class="sngl-spinner") {}
@@ -292,21 +469,40 @@ const component ui.spinner[platform] {
     }
 }
 
-const component ui.badge[platform] {
-    html.span(style={display=inlineBlock, paddingY=2px, paddingX=8px, borderRadius=12px, ...style}) {
-        html.span(textContent=value) {}
-    }
-}
-
+// A tablist of the tabs' labels and a tabpanel showing the selected one's
+// content. `underline` marks the selected tab with a rule under it, `pills`
+// with a filled background.
 const component ui.tabs[platform] {
     html.div(style={...style, display=flex, flexDirection=column}) {
         html.div(role="tablist", style={display=flex, gap=4px, borderBottom="1px solid #ccc"}) {
-            for var label = items {
-                html.button(role="tab", textContent=label, style={paddingY=8px, paddingX=16px, border="none", background=#00000000, cursor="pointer"})
+            for var k, t = items {
+                html.button(
+                    role = "tab",
+                    textContent = t.label,
+                    disabled = t.disabled,
+                    style = {
+                        paddingY = 8px,
+                        paddingX = 16px,
+                        border = "none",
+                        borderBottom = variant == ui.TabsVariant.underline && k == selected ? "2px solid currentColor" : "2px solid transparent",
+                        borderRadius = variant == ui.TabsVariant.pills ? 16px : 0px,
+                        background = variant == ui.TabsVariant.pills && k == selected ? #00000014 : #00000000,
+                        fontWeight = k == selected ? ui.FontWeight.bold : ui.FontWeight.normal,
+                        cursor = "pointer",
+                    },
+                    @click {
+                        selected = k
+                        change(k)
+                    },
+                )
             }
         }
         html.div(role="tabpanel") {
-            panels
+            for var k, t = items {
+                if k == selected {
+                    t.content
+                }
+            }
         }
     }
 }
@@ -336,25 +532,26 @@ const component ui.divider[platform] {
 #[gen.renders(surface)]
 #[intrinsic("html:window")]
 component Window(
-    title string,
-    favicon string,
+    title    string,
     :visible bool = true,
     @closed(),
-    content ...component ui.node,
+    content  ...component ui.node,
 ) root
 
 // The window's `@error` is the outermost boundary of what it renders, and
 // catches whether or not the call site handles one.
 const component ui.window[platform] {
-    Window(title=title, favicon=favicon, :visible=visible, @closed { closed() }) {
+    Window(title=title, :visible=visible, @closed { closed() }) {
         boundary(@error(e) { error(e) }) {
             content
         }
+        #[family.crosses]
+        favicon
     }
 }
 
 const component ui.modal[platform] {
-    html.div(class="modal-overlay", hidden=(open == false), style={...style, position=fixed, top=0, left=0, width=100pct, height=100pct, background=#00000080, display=flex, alignItems=center, justifyContent=center, zIndex=1000}) {
+    html.div(class="modal-overlay", hidden=(open == false), style={...style, position=fixed, top=0, left=0, right=0, bottom=0, background=#00000080, display=flex, alignItems=center, justifyContent=center, zIndex=1000}) {
         html.div(class="modal-content", style={background="#fff", borderRadius=8px, padding=24px}) {
             if title != "" {
                 html.h3(textContent=title, style={marginTop=0, marginX=0, marginBottom=16px})
@@ -391,7 +588,7 @@ const component ui.splitview[platform] {
 // --- Tier 4: Data & Desktop ---
 
 const component ui.table[platform] {
-    html.table(style={width=100pct, borderCollapse="collapse", ...style}) {
+    html.table(width="100%", style={borderCollapse="collapse", ...style}) {
         html.thead {
             html.tr {
                 for var col = columns {
@@ -402,7 +599,7 @@ const component ui.table[platform] {
         html.tbody {
             for var row = rows {
                 html.tr {
-                    for var cell = row {
+                    for var cell = row.cells {
                         html.td(textContent=cell, style={padding=8px, borderBottom="1px solid #eee"})
                     }
                 }
@@ -411,21 +608,50 @@ const component ui.table[platform] {
     }
 }
 
+// A tree's row: a node's label, and how far its depth indents it.
+struct _TreeRow {
+    label  string
+    indent ui.measurement
+}
+
+// A tree's rows, in traversal order, each node's below it and indented one
+// step further.
+const func _treeRows(items list<ui.treeItem>, indent ui.measurement) list<_TreeRow> {
+    var out list<_TreeRow> = []
+    for var it = items {
+        out = [...out, _TreeRow{label=it.label, indent=indent}, ..._treeRows(it.children, indent + 16px)]
+    }
+    return out
+}
+
 const component ui.tree[platform] {
     html.ul(style={listStyleType=none, paddingLeft=16px, ...style}) {
-        for var item = items {
-            html.li(textContent=item)
+        for var row = _treeRows(items, 0px) {
+            html.li(textContent=row.label, style={paddingLeft=row.indent})
         }
     }
 }
 
 const component ui.menu[platform] {
-    html.div(style={...style, position=absolute, background="#fff", border="1px solid #ddd", borderRadius=4px, padding=4px, zIndex=100}) {
+    if open {
+        html.div(role="menu", style={...style, position=absolute, display=flex, flexDirection=column, background="#fff", border="1px solid #ddd", borderRadius=4px, padding=4px, zIndex=100}) {
+            for var it = items {
+                html.button(role="menuitem", disabled=it.disabled, textContent=it.label, @click {
+                    it.select()
+                })
+            }
+        }
     }
 }
 
+// The top-level entries; a submenu is not drawn yet.
 const component ui.menubar[platform] {
-    html.nav(style={...style, display=flex, gap=4px}) {
+    html.nav(role="menubar", style={...style, display=flex, gap=4px}) {
+        for var it = items {
+            html.button(role="menuitem", disabled=it.disabled, textContent=it.label, @click {
+                it.select()
+            })
+        }
     }
 }
 
@@ -442,24 +668,19 @@ const component ui.toolbar[platform] {
 // rather than one with a ternary, for the reason progress gives: under a
 // language with no conditional expression the ternary becomes a temporary
 // before the fold that would have settled it.
+// The control reports the date as the text of a "YYYY-MM-DD" field, empty
+// when cleared, so the date is built from it here.
 const component ui.datepicker[platform] {
-    if value != null {
-        html.input(type="date", value=string(value), disabled=disabled, style={...style}, @change { change() }) {}
-    } else {
-        html.input(type="date", value="", disabled=disabled, style={...style}, @change { change() }) {}
-    }
-}
-
-const component ui.chip[platform] {
-    html.span(style={display=inlineFlex, alignItems=center, paddingY=4px, paddingX=12px, borderRadius=16px, border="1px solid #ccc", ...style}) {
-        html.span(textContent=label) {}
-    }
-}
-
-const component ui.avatar[platform] {
-    html.div(style={display=inlineFlex, alignItems=center, justifyContent=center, borderRadius=50pct, width=40px, height=40px, background="#ccc", overflow=hidden, ...style}) {
-        html.span(textContent=initials) {}
-    }
+    html.input(
+        type = "date",
+        value = (value != null ? string(value) : ""),
+        disabled = disabled,
+        style = {...style},
+        @change(e) {
+            value = e.currentTarget.value == "" ? null : time.date(e.currentTarget.value)
+            change(value)
+        },
+    ) {}
 }
 
 const component ui.card[platform] {
@@ -494,38 +715,37 @@ const component ui.card[platform] {
 // is a table of tags rather than a declaration per element.
 #[intrinsic("html:flow")]
 component flow(
-    tag string,
-    style ui.Style,
+    tag            string,
+    style          ui.Style,
     // The element's id, for an in-page link. Empty writes none: an id
     // attribute may not be empty.
-    id string,
-    class string,
+    id             string,
+    class          string,
     // The rule `class` stands for, as on `inline`.
-    classStyle ui.Style,
+    classStyle     ui.Style,
     classStyleDark ui.Style,
-    content ...component markup.span,
+    content        ...component markup.span,
 ) ui.node
 
 #[intrinsic("html:inline")]
 component inline(
-    tag string,
-    style ui.Style,
+    tag            string,
+    style          ui.Style,
     // What a `run` says about its own words. A `SpanStyle` and not a
     // `ui.Style`: its five typography fields lead with a state that means "the
     // span set nothing", and only a value carrying that distinction can be
     // turned into CSS that leaves the enclosing words alone. `spanStyleCSS`
     // is the half of this platform that reads it.
-    spanStyle markup.SpanStyle,
-    class string,
+    spanStyle      markup.SpanStyle,
+    class          string,
     // The rule `class` stands for, light and dark, written to the page's
     // stylesheet rather than onto the element. Read by `classRules`.
-    classStyle markup.SpanStyle,
+    classStyle     markup.SpanStyle,
     classStyleDark markup.SpanStyle,
-    href string,
-    src string,
-    alt string,
-    textContent string,
-    content ...component markup.span,
+    href           string,
+    alt            string,
+    textContent    string,
+    content        ...component markup.span,
 ) markup.span
 
 // The element a flow's role names. A heading announces as one, a quotation is
@@ -568,11 +788,11 @@ const component markup.richText[platform] {
 // a page's own `pre` rule can still restyle it.
 const component markup.codeBlock[platform] {
     flow(
-        tag="pre",
-        class="sngl-code",
-        classStyle={padding=12px, background=#F5F5F5, color=#1F2328, borderRadius=4px},
-        classStyleDark={background=#161B22, color=#E6EDF3},
-        style={margin=0px, whiteSpace=ui.WhiteSpace.preWrap},
+        tag = "pre",
+        class = "sngl-code",
+        classStyle = {padding=12px, background=#F5F5F5, color=#1F2328, borderRadius=4px},
+        classStyleDark = {background=#161B22, color=#E6EDF3},
+        style = {margin=0px, whiteSpace=ui.WhiteSpace.preWrap},
     ) {
         markup.monospace {
             content
@@ -620,10 +840,12 @@ const component markup.link[platform] {
     }
 }
 
-// `<img>` is a void element, so the description has nowhere to go but the
-// attribute it is already a string for.
+// A picture among the words is an image like any other, in a frame on the line.
 const component markup.image[platform] {
-    inline(tag="img", src=src, alt=alt) {}
+    #[family.crosses]
+    ui.image(alt=alt) {
+        src
+    }
 }
 
 // A class, so what a keyword looks like stays the page's to say: the default
@@ -632,11 +854,11 @@ const component markup.image[platform] {
 // the element instead, since it wins over everything.
 const component markup.token[platform] {
     inline(
-        tag="span",
-        class="sngl-tok-" + string(kind),
-        classStyle={color=markup.tokenColor(markup.lightPalette, kind)},
-        classStyleDark={color=markup.tokenColor(markup.darkPalette, kind)},
-        spanStyle={color=markup.tokenColor(markup.palette, kind)},
+        tag = "span",
+        class = "sngl-tok-" + string(kind),
+        classStyle = {color=markup.tokenColor(markup.lightPalette, kind)},
+        classStyleDark = {color=markup.tokenColor(markup.darkPalette, kind)},
+        spanStyle = {color=markup.tokenColor(markup.palette, kind)},
     ) {
         content
     }
@@ -728,7 +950,7 @@ const component time.timer[platform] {
 
     if enabled {
         effect(
-            on=interval,
+            on = interval,
             @mount(d) { handle = setInterval(tick, d) },
             @unmount(d) {
                 clearInterval(handle)
@@ -751,12 +973,12 @@ struct DrawContext {
     // Canvas2D sets style by property assignment rather than by method, so
     // these are fields. The SNGL names are the DOM names, so nothing has to
     // map them.
-    fillStyle string
+    fillStyle   string
     strokeStyle string
-    lineWidth float
-    lineCap string
-    lineJoin string
-    font string
+    lineWidth   float
+    lineCap     string
+    lineJoin    string
+    font        string
 }
 
 #[js.native("save", "", method)]
@@ -803,6 +1025,18 @@ func DrawContext.arcTo(x1 float, y1 float, x2 float, y2 float, r float)
 #[js.native("closePath", "", method)]
 func DrawContext.closePath()
 
+#[js.native("translate", "", method)]
+func DrawContext.translate(x float, y float)
+
+#[js.native("scale", "", method)]
+func DrawContext.scale(x float, y float)
+
+#[js.native("rect", "", method)]
+func DrawContext.rect(x float, y float, w float, h float)
+
+#[js.native("clip", "", method)]
+func DrawContext.clip()
+
 #[js.native("fillText", "", method)]
 func DrawContext.fillText(text string, x float, y float)
 
@@ -817,13 +1051,32 @@ func DrawContext.strokeText(text string, x float, y float)
 // coordinate space the shapes were placed in. The size is the canvas's own
 // declared width and height, so it arrives as a literal.
 struct DrawEvent {
-    ctx DrawContext
-    width int
+    ctx    DrawContext
+    width  int
     height int
 }
 
 #[intrinsic("html:draw")]
-component draw(@draw DrawEvent) shapes.shape
+component draw(@draw(e DrawEvent)) shapes.shape
+
+// What a `drawSource` paints a fetched or shipped image with: the context, and
+// the URL its source names.
+struct SourceEvent {
+    ctx DrawContext
+    url string
+}
+
+// The primitive a `canvasImage` paints its source through. `@url` paints an
+// image a URL names; a drawing is painted in place rather than as a picture,
+// its shapes between `@enter`, which maps the drawing's own space onto the box
+// and clips to it, and `@leave`. The size in their payload is the drawing's.
+#[intrinsic("html:drawSource")]
+component drawSource(
+    @url(e SourceEvent),
+    @enter(e DrawEvent),
+    @leave(e DrawEvent),
+    source ...component family.one<ui.imageSource>,
+) shapes.shape
 
 // `rgba(...)` as the DOM spells it. Written in SNGL rather than pointed at the
 // page's `_snglColor` helper, because being pure is what lets a constant style
@@ -839,7 +1092,7 @@ const func cssColor(c color) => "rgba({c.r},{c.g},{c.b},{float(c.a) / 255.0})"
 // The style a shape shares, as a helper rather than repeated per shape. A
 // shape that needs only part of it sets that part itself instead of calling
 // this -- `rect` and `line` below do.
-func paintStyle(ctx DrawContext, style shapes.CanvasStyle) {
+func paintStyle(ctx DrawContext, style shapes.Style) {
     ctx.fillStyle = cssColor(style.fill)
     ctx.strokeStyle = cssColor(style.stroke)
     ctx.lineWidth = style.strokeWidth
@@ -877,7 +1130,7 @@ const component shapes.rect[platform] {
             // A rectangle has corners, so lineJoin is its to honour. No
             // lineCap: the path closes, so there are no ends for one to shape
             // -- which is also why circle and ellipse set neither.
-            e.ctx.lineJoin = style.lineJoin
+            e.ctx.lineJoin = string(style.lineJoin)
             e.ctx.strokeRect(x, y, w, h)
         }
         e.ctx.restore()
@@ -908,8 +1161,8 @@ const component shapes.line[platform] {
         e.ctx.save()
         e.ctx.strokeStyle = cssColor(style.stroke)
         e.ctx.lineWidth = style.strokeWidth
-        e.ctx.lineCap = style.lineCap
-        e.ctx.lineJoin = style.lineJoin
+        e.ctx.lineCap = string(style.lineCap)
+        e.ctx.lineJoin = string(style.lineJoin)
         e.ctx.beginPath()
         e.ctx.moveTo(x1, y1)
         e.ctx.lineTo(x2, y2)
@@ -922,23 +1175,23 @@ const component shapes.path[platform] {
     html.draw(@draw(e) {
         e.ctx.save()
         paintStyle(e.ctx, style)
-        e.ctx.lineCap = style.lineCap
-        e.ctx.lineJoin = style.lineJoin
+        e.ctx.lineCap = string(style.lineCap)
+        e.ctx.lineJoin = string(style.lineJoin)
         e.ctx.beginPath()
-        for var c = cmds {
-            if c.op == "moveTo" {
+        for var c = steps {
+            if c.op == shapes.PathOp.moveTo {
                 e.ctx.moveTo(c.x, c.y)
             }
-            if c.op == "lineTo" {
+            if c.op == shapes.PathOp.lineTo {
                 e.ctx.lineTo(c.x, c.y)
             }
-            if c.op == "bezierTo" {
+            if c.op == shapes.PathOp.bezierTo {
                 e.ctx.bezierCurveTo(c.cx1, c.cy1, c.cx2, c.cy2, c.x, c.y)
             }
-            if c.op == "arcTo" {
+            if c.op == shapes.PathOp.arcTo {
                 e.ctx.arcTo(c.cx1, c.cy1, c.x, c.y, c.r)
             }
-            if c.op == "close" {
+            if c.op == shapes.PathOp.close {
                 e.ctx.closePath()
             }
         }
@@ -960,9 +1213,24 @@ const component shapes.path[platform] {
 func drawImage(ctx DrawContext, src string, x float, y float, w float, h float)
 
 const component shapes.canvasImage[platform] {
-    html.draw(@draw(e) {
-        drawImage(e.ctx, src, x, y, w, h)
-    })
+    drawSource(
+        @url(e) {
+            drawImage(e.ctx, e.url, x, y, w, h)
+        },
+        @enter(e) {
+            e.ctx.save()
+            e.ctx.translate(x, y)
+            e.ctx.scale(w / float(e.width), h / float(e.height))
+            e.ctx.beginPath()
+            e.ctx.rect(0.0, 0.0, float(e.width), float(e.height))
+            e.ctx.clip()
+        },
+        @leave(e) {
+            e.ctx.restore()
+        },
+    ) {
+        src
+    }
 }
 
 const component shapes.canvasText[platform] {
@@ -1009,7 +1277,7 @@ const component nav.stack[platform] {
 }
 
 const component nav.page[platform] {
-    #[tree.crosses]
+    #[family.crosses]
     Page {
         content(params)
     }

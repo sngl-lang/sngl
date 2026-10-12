@@ -16,7 +16,7 @@ import (
 // (int channels), so both string contexts (via Color.String()) and canvas
 // contexts (reading .R/.G/.B/.A) work off one type. colorImportPath is
 // registered on demand at the emit sites that actually reference the type:
-// StructLit (a color value) and the canvas emitters (CanvasStyle decls).
+// StructLit (a color value) and the canvas emitters (Style decls).
 const (
 	colorImportPath = "duckfam.us/sngl/pkg/go/snglcolor"
 	colorGoType     = "snglcolor.Color"
@@ -220,6 +220,22 @@ func (gc *GoIRContext) Binary(n *ir.Binary, left, right string) string {
 	if out, ok := goMultiBaseUnitBinary(n, left, right); ok {
 		return out
 	}
+	if out, ok := goScalarUnitScale(n, left, right); ok {
+		return out
+	}
+	// option<T> against a T: Go's option is *T, and comparing the pointer
+	// with a value does not compile. Each operand is evaluated once.
+	if optLeft, _, ok := OptionCompare(n); ok {
+		opt, val := left, right
+		if !optLeft {
+			opt, val = right, left
+		}
+		eq := "snglOptEq(" + opt + ", " + val + ")"
+		if n.Op == ast.BinNeq {
+			return "!" + eq
+		}
+		return eq
+	}
 	return "(" + left + " " + irBinaryOp(n.Op) + " " + right + ")"
 }
 
@@ -387,12 +403,6 @@ func (gc *GoIRContext) MapLit(n *ir.MapLitIR, keys, vals []string) string {
 func (gc *GoIRContext) StructLit(n *ir.StructLit, fieldStrs []string) string {
 	if isColorStructLit(n) {
 		gc.RequireImport(colorImportPath)
-	}
-	// A literal of a type the runtime defines is the only mention of it that
-	// need not be reached through a call to that runtime, so it is the one
-	// place the import can be missing.
-	if ir.IsRemoteHTTPResultStruct(n.Type) {
-		gc.RequireImport(remoteHTTPImportPath)
 	}
 	// A channel has no composite literal either, and for the same reason: the
 	// only one that reaches here is the zero the checker synthesizes for an
@@ -614,7 +624,7 @@ func lazyIter(e ir.Expr) bool {
 	t := e.ExprType()
 	// A channel ranges like a pull sequence and not like a slice: one variable,
 	// the element.
-	return t != nil && (t.Kind == ir.TypeIter || t.Kind == ir.TypeChan)
+	return t != nil && (t.Kind == ir.TypeIter || isChanType(t))
 }
 
 func (gc *GoIRContext) IfHead(_ *ir.If, cond string) string { return "if " + cond + " {" }
@@ -916,7 +926,7 @@ func (gc *GoIRContext) evalCall(n *ir.Call) string {
 		return gc.evalNamespaceCall(n)
 	}
 
-	if n.Func != nil && n.Func.Receiver != "" {
+	if n.Func != nil && n.Func.IsMethod() {
 		return gc.evalTypeMethodCall(n)
 	}
 
@@ -1115,7 +1125,7 @@ func (gc *GoIRContext) evalNamespaceCall(n *ir.Call) string {
 		// A package function called through its import has no receiver on the
 		// declaration — the namespace is the alias at the call site. Name it
 		// from there so a qualified call reads the same either way.
-		receiverName := n.Func.Receiver
+		receiverName := n.Func.RecvName()
 		if receiverName == "" {
 			if id, ok := n.Receiver.(*ir.Ident); ok {
 				receiverName = id.Name
@@ -1225,7 +1235,7 @@ func (gc *GoIRContext) snglNamespace(e ir.Expr) bool {
 
 func (gc *GoIRContext) evalTypeMethodCall(n *ir.Call) string {
 	method := n.Func.Name
-	receiverName := n.Func.Receiver
+	receiverName := n.Func.RecvName()
 	qualName := receiverName + "." + method
 
 	if receiverName == "Alert" {
@@ -1352,7 +1362,7 @@ func (gc *GoIRContext) uniqueStructWithField(field string) string {
 	}
 	find := func(own bool) (match *ir.StructDef, ambiguous bool) {
 		for _, sd := range gc.Ctx.Pkg.Structs {
-			if own && sd.Pkg != "" {
+			if own && sd.PkgPath() != "" {
 				continue
 			}
 			for _, f := range sd.Fields {
@@ -1610,6 +1620,17 @@ func (gc *GoIRContext) evalConversion(n *ir.Conversion) string {
 				return s
 			}
 		}
+		// And a computed string the same way: the helper is what reads one.
+		if src := n.Operand.ExprType(); src != nil && src.Kind == ir.TypeString {
+			switch {
+			case ir.IsDateStruct(n.Type):
+				return "mustParseDate(" + gc.EvalExpr(n.Operand) + ")"
+			case ir.IsTimeStruct(n.Type):
+				return "mustParseTime(" + gc.EvalExpr(n.Operand) + ")"
+			case ir.IsDateTimeStruct(n.Type):
+				return "mustParseDateTime(" + gc.EvalExpr(n.Operand) + ")"
+			}
+		}
 	}
 	// `null` into a nillable target takes Go's untyped nil directly: plain
 	// conversion would give `*string(nil)`, which is not valid Go.
@@ -1658,6 +1679,28 @@ func (gc *GoIRContext) evalConversion(n *ir.Conversion) string {
 	if n.Type != nil && n.Type.Kind == ir.TypeString {
 		if ud := UnitStringConversion(n); ud != nil {
 			return UnitStringFn(ud) + "(" + operand + ")"
+		}
+		// An enum value is the string of its member's name already.
+		if src := n.Operand.ExprType(); src != nil && src.Kind == ir.TypeEnum {
+			return operand
+		}
+		// A date, time or datetime is the literal it was written as on every
+		// other target, since each holds it as that string. Go holds a
+		// time.Time, so it writes the same spelling back: fmt.Sprint wrote
+		// "2024-03-05 00:00:00 +0000 UTC".
+		if src := n.Operand.ExprType(); src != nil {
+			switch {
+			case ir.IsDateStruct(src):
+				return operand + `.Format("2006-01-02")`
+			case ir.IsDateTimeStruct(src):
+				gc.RequireImport("time")
+				return operand + ".Format(time.RFC3339)"
+			case ir.IsTimeStruct(src):
+				// HH:MM, or HH:MM:SS where it has seconds: the two spellings
+				// a time literal takes.
+				gc.RequireImport("time")
+				return "func(t time.Time) string { if t.Second() == 0 { return t.Format(\"15:04\") }; return t.Format(\"15:04:05\") }(" + operand + ")"
+			}
 		}
 		gc.RequireImport("fmt")
 		return "fmt.Sprint(" + operand + ")"
@@ -1746,16 +1789,26 @@ func isChanLit(n *ir.StructLit) bool {
 	if n == nil {
 		return false
 	}
-	if n.Type != nil && n.Type.Kind == ir.TypeChan {
-		return true
-	}
 	def := n.Def
 	if def == nil && n.Type != nil {
 		if sd, ok := n.Type.Decl.(*ir.StructDef); ok {
 			def = sd
 		}
 	}
-	return def != nil && def.Builtin == ir.BuiltinChan
+	return def != nil && def.Intrinsic == chanIntrinsic
+}
+
+// chanIntrinsic is sngl:language/go's `chan<T>`: Go's `chan T`, which SNGL
+// declares as a struct it cannot describe.
+const chanIntrinsic = "go:chan"
+
+// isChanType reports whether t is a `chan<T>`.
+func isChanType(t *ir.Type) bool {
+	if t == nil || t.Kind != ir.TypeStruct {
+		return false
+	}
+	sd, _ := t.Decl.(*ir.StructDef)
+	return sd != nil && sd.Intrinsic == chanIntrinsic
 }
 
 // structLitTypeName picks the Go type prefix for a struct literal. An
@@ -1856,6 +1909,13 @@ func (gc *GoIRContext) evalLambda(n *ir.Lambda) string {
 	// a host callback field of that type. It used to read `func() any`, which
 	// Go rejected at the assignment and again for the missing return.
 	retType := goReturnType(n.Func.Return)
+
+	// The body reads its parameters as the locals they are: one sharing a
+	// field's name -- a platform override's `func(on bool)` inlined into a
+	// component with a `var on` -- read the field.
+	for _, p := range n.Func.Params {
+		gc = gc.WithLocal(p.Name)
+	}
 
 	if len(n.Func.Block) == 1 {
 		if ret, ok := n.Func.Block[0].(*ir.Return); ok && ret.Value != nil {
@@ -1960,30 +2020,21 @@ func IRTypeToGo(t *ir.Type) string {
 			return "*" + IRTypeToGo(t.Elems[0])
 		}
 		return "*any"
-	case ir.TypeRemote:
-		// A pointer: two readers of one key hold the same box, and a settle has
-		// to be visible to both.
-		if len(t.Elems) > 0 {
-			return "*" + remoteGoType + "[" + IRTypeToGo(t.Elems[0]) + "]"
-		}
-		return "*" + remoteGoType + "[any]"
 	case ir.TypeStruct:
+		// Bidirectional, because SNGL does not spell a direction. A host
+		// channel that is receive-only reaches a program as a field read and
+		// is selected on rather than bound, so no Go type is written for it;
+		// binding one to a var would spell this and not compile.
+		if isChanType(t) {
+			if len(t.Elems) == 1 {
+				return "chan " + IRTypeToGo(t.Elems[0])
+			}
+			return "chan any"
+		}
 		// date/time/datetime are stdlib structs mapping to time.Time; detect
 		// them by name before the generic struct path.
 		if ir.IsDateStruct(t) || ir.IsTimeStruct(t) || ir.IsDateTimeStruct(t) {
 			return "time.Time"
-		}
-		// The runtime defines the failure its boxes carry, so generated code
-		// spells that rather than emitting a struct of its own that no box
-		// could hold.
-		if ir.IsRemoteFailureStruct(t) {
-			return remoteFailureGo
-		}
-		// Likewise the value a request answers with: the transport returns it,
-		// so a Result declared beside it would be a second type `http.Get`
-		// could not hand back.
-		if ir.IsRemoteHTTPResultStruct(t) {
-			return remoteHTTPResultGo
 		}
 		if ir.IsColorStruct(t) {
 			return colorGoType
@@ -2050,15 +2101,6 @@ func IRTypeToGo(t *ir.Type) string {
 			return "func(func(" + IRTypeToGo(t.Elems[0]) + ") bool)"
 		}
 		return "func(func(any) bool)"
-	case ir.TypeChan:
-		// Bidirectional, because SNGL does not spell a direction. A host
-		// channel that is receive-only reaches a program as a field read and
-		// is selected on rather than bound, so no Go type is written for it;
-		// binding one to a var would spell this and not compile.
-		if len(t.Elems) == 1 {
-			return "chan " + IRTypeToGo(t.Elems[0])
-		}
-		return "chan any"
 	case ir.TypeInstance:
 		// A live instance of a component is the generated record every Go
 		// platform allocates for it. Decl carries which component; without one
@@ -2304,8 +2346,8 @@ func (gc *GoIRContext) ModelArg() string {
 // receiver as the first parameter (passNoImplicitRecv already put it there).
 func (gc *GoIRContext) EmitTypeMethodDef(fn *ir.Func) []string {
 	fnCopy := *fn
-	fnCopy.Name = ExportName(fn.Receiver) + ExportName(fn.Name)
-	fnCopy.Receiver = ""
+	fnCopy.Name = ExportName(fn.RecvName()) + ExportName(fn.Name)
+	fnCopy.Receiver = nil
 	sub := *gc
 	if gc.Ctx != nil && gc.Ctx.ModelParamFuncs[fn] {
 		sub.ExtraParam = gc.RecvName() + " *" + codegen.ModelTypeName
@@ -2331,7 +2373,7 @@ func (gc *GoIRContext) EmitFuncDef(fn *ir.Func) []string {
 		// to put a component's funcs on the per-request State, which is the
 		// only receiver that file has.
 		sig += "(" + gc.RecvName() + " *" + gc.MethodRecvType + ") "
-		if len(params) > 0 && fn.Receiver != "" {
+		if len(params) > 0 && fn.IsMethod() {
 			// The component receiver arrives as an ordinary first parameter
 			// (passNoImplicitRecv). As a Go method it is the receiver, so it
 			// is not also an argument.
@@ -2340,8 +2382,8 @@ func (gc *GoIRContext) EmitFuncDef(fn *ir.Func) []string {
 		sig += fn.Name + "(" + appendParam(params, extra) + ")" + retType + " {"
 		lines = append(lines, sig)
 		return gc.emitFuncBody(lines, fn, params)
-	case fn.Receiver != "":
-		sig += "(m *" + fn.Receiver + ") "
+	case fn.IsMethod():
+		sig += "(m *" + fn.RecvName() + ") "
 		// The synthetic receiver passNoImplicitRecv prepended is this method's
 		// Go receiver, so it is not also an argument. Emitting it as one gave
 		// `func (m *Model) press(this any, k Key)` against call sites that pass
@@ -2448,4 +2490,26 @@ func WithUnreadVarsDropped(n *ir.For) *ir.For {
 		cp.Value = "_"
 	}
 	return &cp
+}
+
+// OptionCompare reports whether n compares an option with a value of its
+// element type (== or !=), and whether the option is the left operand. A
+// comparison with null, or of two options, is the pointer comparison Go
+// already spells.
+func OptionCompare(n *ir.Binary) (optionLeft, valueRight, ok bool) {
+	if n == nil || (n.Op != ast.BinEq && n.Op != ast.BinNeq) {
+		return false, false, false
+	}
+	lt, rt := n.Left.ExprType(), n.Right.ExprType()
+	isOpt := func(t *ir.Type) bool { return t != nil && t.Kind == ir.TypeOption }
+	isVal := func(t *ir.Type) bool {
+		return t != nil && t.Kind != ir.TypeOption && t.Kind != ir.TypeNull && t.Kind != ir.TypeDyn
+	}
+	switch {
+	case isOpt(lt) && isVal(rt):
+		return true, true, true
+	case isOpt(rt) && isVal(lt):
+		return false, true, true
+	}
+	return false, false, false
 }

@@ -202,7 +202,7 @@ func TestContextConsumerBasic(t *testing.T) {
 	}
 	// theme appears as text(value=theme) — look into the NodeInst's Props.
 	var found *ir.ContextRead
-	for _, s := range toolbar.Body {
+	for _, s := range toolbar.Stmts {
 		ni, ok := s.(*ir.NodeInst)
 		if !ok {
 			continue

@@ -47,7 +47,7 @@ component bar(blocks ...component block) root
 
 // What one member contributes: its data, and the handler a click on it runs.
 struct Entry {
-    full string
+    full  string
     color string
     click func(button int)
 }
@@ -93,7 +93,7 @@ func readClicks(members func() list<Entry>) {
     var in = newScanner(stdin)
     for in.scan() {
         var fields = in.text().trim().split(" ")
-        async.post(func() {
+        async.do(func() {
             var ms = members()
             var i = int.parse(fields[0], 10)
             if i < ms.length {
@@ -101,17 +101,17 @@ func readClicks(members func() list<Entry>) {
             }
         })
     }
-    async.post(func() {
+    async.do(func() {
         exit(0)
     })
 }
 
 component block[go.language] {
     gen.emit(
-        render=encode,
+        render = encode,
         @start(members) {
             print("start\n")
-            async.spawn(func() {
+            async.start(func() {
                 readClicks(members)
             })
         },
@@ -174,7 +174,7 @@ type Entry struct {
 type Model struct {
 	n                   int
 	names               []string
-	visible__inst1      bool
+	visible__inst0      bool
 	__effect0_live      []bool
 	__effect0_desired   []bool
 	__effect1_key       string
@@ -194,7 +194,7 @@ func New() *Model {
 	m := &Model{}
 	m.n = 0
 	m.names = []string{"a", "b"}
-	m.visible__inst1 = true
+	m.visible__inst0 = true
 	m.__effect0_live = []bool{}
 	m.__effect0_desired = []bool{}
 	m.__effect1_key = ""
@@ -207,7 +207,7 @@ func New() *Model {
 }
 
 func Encode(members []Entry) string {
-	parts := []string{}
+	parts__r0 := []string{}
 	for _, e := range members {
 		var __lt0 string
 		if e.Color == "" {
@@ -215,9 +215,9 @@ func Encode(members []Entry) string {
 		} else {
 			__lt0 = ((e.Full + "#") + e.Color)
 		}
-		parts = append(parts, __lt0)
+		parts__r0 = append(parts__r0, __lt0)
 	}
-	return strings.Join(parts, "|")
+	return strings.Join(parts__r0, "|")
 }
 
 func ReadClicks(members func() []Entry) {
@@ -336,8 +336,8 @@ func (m *Model) __n0_closed_handler() {
 }
 
 func (m *Model) __n0_visible_handler(__visible bool) {
-	m.visible__inst1 = __visible
-	m.__n0.SetVisible(m.visible__inst1)
+	m.visible__inst0 = __visible
+	m.__n0.SetVisible(m.visible__inst0)
 }
 
 func (m *Model) N() int {
@@ -356,12 +356,12 @@ func (m *Model) SetNames(v []string) {
 	m.names = v
 }
 
-func (m *Model) Visible__inst1() bool {
-	return m.visible__inst1
+func (m *Model) Visible__inst0() bool {
+	return m.visible__inst0
 }
 
-func (m *Model) SetVisible__inst1(v bool) {
-	m.visible__inst1 = v
+func (m *Model) SetVisible__inst0(v bool) {
+	m.visible__inst0 = v
 }
 
 // BuildUI creates the widget tree and returns the first window's content.
@@ -371,7 +371,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	}
 	m.__built = true
 	m.__n0 = fynelayout.NewToplevel()
-	m.__n0.SetVisible(m.visible__inst1)
+	m.__n0.SetVisible(m.visible__inst0)
 	m.__n0.OnClosed = m.__n0_closed_handler
 	m.__n0.OnVisible = m.__n0_visible_handler
 	m.__n1 = widget.NewLabel("")
@@ -431,7 +431,7 @@ type Entry struct {
 type Model struct {
 	n                   int
 	names               []string
-	visible__inst1      bool
+	visible__inst0      bool
 	__effect0_live      []bool
 	__effect0_desired   []bool
 	__effect1_key       string
@@ -451,7 +451,7 @@ func New() *Model {
 	m := &Model{}
 	m.n = 0
 	m.names = []string{"a", "b"}
-	m.visible__inst1 = true
+	m.visible__inst0 = true
 	m.__effect0_live = []bool{}
 	m.__effect0_desired = []bool{}
 	m.__effect1_key = ""
@@ -593,8 +593,8 @@ func (m *Model) __n0_closed_handler() {
 }
 
 func (m *Model) __n0_visible_handler(__visible bool) {
-	m.visible__inst1 = __visible
-	gtk4rt.ToplevelSetVisible(m.__n0, m.visible__inst1)
+	m.visible__inst0 = __visible
+	gtk4rt.ToplevelSetVisible(m.__n0, m.visible__inst0)
 }
 
 func (m *Model) N() int {
@@ -613,12 +613,12 @@ func (m *Model) SetNames(v []string) {
 	m.names = v
 }
 
-func (m *Model) Visible__inst1() bool {
-	return m.visible__inst1
+func (m *Model) Visible__inst0() bool {
+	return m.visible__inst0
 }
 
-func (m *Model) SetVisible__inst1(v bool) {
-	m.visible__inst1 = v
+func (m *Model) SetVisible__inst0(v bool) {
+	m.visible__inst0 = v
 }
 
 func (m *Model) buildWidgetTree() {
@@ -627,7 +627,7 @@ func (m *Model) buildWidgetTree() {
 	}
 	m.__built = true
 	m.__n0 = gtk4rt.ToplevelNew()
-	gtk4rt.ToplevelSetVisible(m.__n0, m.visible__inst1)
+	gtk4rt.ToplevelSetVisible(m.__n0, m.visible__inst0)
 	gtk4rt.ToplevelOnClosed(m.__n0, m.__n0_closed_handler)
 	gtk4rt.ToplevelOnVisible(m.__n0, m.__n0_visible_handler)
 	m.__n1 = gtk4rt.LabelNew("")
@@ -644,6 +644,6 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return gtk4rt.ToplevelWindow(app, m.__n0)
 }
 -- run/go/fyne --
-pass sha256:42eff0831c2f97234d0ebe2c1f430e31
+pass sha256:27ac06e930c9ceaa931d322517a79c35
 -- run/go/gtk4 --
-pass sha256:2d4ab35ea025732dac65719ebce13fd4
+pass sha256:075695748d2aacd4f6dfab9349d0ff3e

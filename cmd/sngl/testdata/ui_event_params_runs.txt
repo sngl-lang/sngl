@@ -1,0 +1,222 @@
+# The library's form controls hand a handler the value their event declares,
+# run on every target a test can execute on.
+#
+# testdata/ui_event_params.txtar is the code; this is the answer. A checkbox's
+# trigger writes the var `:checked` bound before the handler reads it, a toggle
+# nobody binds reports its state, an input's text reaches the bound var and the
+# handler, a datepicker's day writes `:value`, and a click runs its handler.
+# A trigger's argument is bound as an emit's is, by position or by name.
+
+sngl test --platform=none app.sngl
+stdout 'ok   5 tests, 0 failures'
+
+sngl test --platform=html app.sngl
+stdout 'ok   5 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout 'ok   5 tests, 0 failures'
+
+sngl test --platform=fyne --language=go app.sngl
+stdout 'ok   5 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go app.sngl
+stdout 'ok   5 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin app.sngl
+stdout 'ok   5 tests, 0 failures'
+
+-- app.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+import time "sngl:time"
+
+component main node {
+    var on = false
+    var lit = false
+    var name = ""
+    var picked option<time.date> = null
+    var seen = "none"
+    var clicks = 0
+    vbox {
+        checkbox #box(:checked=on, label="a", @change(checked) { seen = "box {checked} {on}" })
+        toggle #sw(checked=lit, label="b", @change(checked) {
+            lit = checked
+            seen = "sw {checked}"
+        })
+        input #field(:value=name, @input(value) { seen = "input {value} {name}" })
+        datepicker #day(:value=picked, @change(value) { seen = value == null ? "no day" : "day" })
+        button #press(text="go", @click { clicks += 1 })
+        text(value=seen)
+    }
+}
+
+func testCheckbox(t Test, c main) {
+    c.box.change(true)
+    t.assert(c.seen == "box true true")
+    t.assert(c.on == true)
+    c.box.change(false)
+    t.assert(c.seen == "box false false")
+    t.assert(c.on == false)
+}
+
+func testToggle(t Test, c main) {
+    c.sw.change(true)
+    t.assert(c.seen == "sw true")
+    t.assert(c.lit == true)
+    c.sw.change(checked=false)
+    t.assert(c.seen == "sw false")
+    t.assert(c.lit == false)
+}
+
+func testInput(t Test, c main) {
+    c.field.input("ada")
+    t.assert(c.seen == "input ada ada")
+    t.assert(c.name == "ada")
+}
+
+func testDatepicker(t Test, c main) {
+    var d time.date = "2024-03-05"
+    c.day.change(d)
+    t.assert(c.picked == d)
+    t.assert(c.seen == "day")
+}
+
+func testButton(t Test, c main) {
+    c.press.click()
+    c.press.click()
+    t.assert(c.clicks == 2)
+}
+
+window {
+    main
+}
+-- testrun/android/kotlin/app.sngl/main/1 --
+sha256:0f95172df92f2607124f6512bcb24488
+{
+  "results": [
+    {
+      "Desc": "Button",
+      "Passed": true
+    },
+    {
+      "Desc": "Checkbox",
+      "Passed": true
+    },
+    {
+      "Desc": "Datepicker",
+      "Passed": true
+    },
+    {
+      "Desc": "Input",
+      "Passed": true
+    },
+    {
+      "Desc": "Toggle",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/main/1 --
+sha256:730a7552ef0035f442d95633a63dcb6b
+{
+  "results": [
+    {
+      "Desc": "Button",
+      "Passed": true
+    },
+    {
+      "Desc": "Checkbox",
+      "Passed": true
+    },
+    {
+      "Desc": "Datepicker",
+      "Passed": true
+    },
+    {
+      "Desc": "Input",
+      "Passed": true
+    },
+    {
+      "Desc": "Toggle",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/main/1 --
+sha256:ab05ac9769796e2214272f7f5da6b36e
+{
+  "results": [
+    {
+      "Desc": "Button",
+      "Passed": true
+    },
+    {
+      "Desc": "Checkbox",
+      "Passed": true
+    },
+    {
+      "Desc": "Datepicker",
+      "Passed": true
+    },
+    {
+      "Desc": "Input",
+      "Passed": true
+    },
+    {
+      "Desc": "Toggle",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/main/1 --
+sha256:b21aab9df458e68c362f09db3c0d5b55
+{
+  "results": [
+    {
+      "Desc": "Button",
+      "Passed": true
+    },
+    {
+      "Desc": "Checkbox",
+      "Passed": true
+    },
+    {
+      "Desc": "Datepicker",
+      "Passed": true
+    },
+    {
+      "Desc": "Input",
+      "Passed": true
+    },
+    {
+      "Desc": "Toggle",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/main/1 --
+sha256:f499e4ba1d01db4a63ef7a20ba3a6bee
+{
+  "results": [
+    {
+      "Desc": "Button",
+      "Passed": true
+    },
+    {
+      "Desc": "Checkbox",
+      "Passed": true
+    },
+    {
+      "Desc": "Datepicker",
+      "Passed": true
+    },
+    {
+      "Desc": "Input",
+      "Passed": true
+    },
+    {
+      "Desc": "Toggle",
+      "Passed": true
+    }
+  ]
+}

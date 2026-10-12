@@ -14,8 +14,13 @@ output {
 
 ui.window(title="table") {
     ui.vbox {
-        ui.table #t(columns=["name"], rows=[["a"], ["b"]])
-        ui.table(columns=["name"], rows=[["c"]])
+        ui.table #t(columns=["name"]) {
+            ui.tableRow(cells=["a"])
+            ui.tableRow(cells=["b"])
+        }
+        ui.table(columns=["name"]) {
+            ui.tableRow(cells=["c"])
+        }
         ui.text(value="{t.selected}")
     }
 }
@@ -33,11 +38,15 @@ import (
 	"os"
 )
 
+type TableRow__record struct {
+	Cells []string
+}
+
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
 	selected__inst0 int
 	selected__inst1 int
-	visible__inst2  bool
+	visible__inst0  bool
 	__focusID       int
 
 	widget0 table.Model
@@ -51,10 +60,22 @@ func New() Model {
 	m := Model{}
 	m.selected__inst0 = 0
 	m.selected__inst1 = 0
-	m.visible__inst2 = true
+	m.visible__inst0 = true
 	m.__focusID = 0
-	m.widget0 = tui.NewTable(tui.Columns([]string{"name"}), tui.Rows([][]string{[]string{"a"}, []string{"b"}}), 10)
-	m.widget1 = tui.NewTable(tui.Columns([]string{"name"}), tui.Rows([][]string{[]string{"c"}}), 10)
+	m.widget0 = tui.NewTable(tui.Columns([]string{"name"}), tui.Rows(func() [][]string {
+		__out := make([][]string, len([]TableRow__record{TableRow__record{Cells: []string{"a"}}, TableRow__record{Cells: []string{"b"}}}))
+		for __i, __item := range []TableRow__record{TableRow__record{Cells: []string{"a"}}, TableRow__record{Cells: []string{"b"}}} {
+			__out[__i] = func(r TableRow__record) []string { return r.Cells }(__item)
+		}
+		return __out
+	}()), 10)
+	m.widget1 = tui.NewTable(tui.Columns([]string{"name"}), tui.Rows(func() [][]string {
+		__out := make([][]string, len([]TableRow__record{TableRow__record{Cells: []string{"c"}}}))
+		for __i, __item := range []TableRow__record{TableRow__record{Cells: []string{"c"}}} {
+			__out[__i] = func(r TableRow__record) []string { return r.Cells }(__item)
+		}
+		return __out
+	}()), 10)
 	m.resizeWidgets()
 	return m
 }
@@ -122,19 +143,19 @@ func SetSelected__inst1Cmd(v int) tea.Cmd {
 	return func() tea.Msg { return setSelected__inst1Msg{value: v} }
 }
 
-func (m Model) Visible__inst2() bool {
-	return m.visible__inst2
+func (m Model) Visible__inst0() bool {
+	return m.visible__inst0
 }
 
-func (m Model) SetVisible__inst2(v bool) Model {
-	m.visible__inst2 = v
+func (m Model) SetVisible__inst0(v bool) Model {
+	m.visible__inst0 = v
 	return m
 }
 
-type setVisible__inst2Msg struct{ value bool }
+type setVisible__inst0Msg struct{ value bool }
 
-func SetVisible__inst2Cmd(v bool) tea.Cmd {
-	return func() tea.Msg { return setVisible__inst2Msg{value: v} }
+func SetVisible__inst0Cmd(v bool) tea.Cmd {
+	return func() tea.Msg { return setVisible__inst0Msg{value: v} }
 }
 
 func (m Model) Init() tea.Cmd {
@@ -150,8 +171,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m = m.SetSelected__inst0(msg.value)
 	case setSelected__inst1Msg:
 		m = m.SetSelected__inst1(msg.value)
-	case setVisible__inst2Msg:
-		m = m.SetVisible__inst2(msg.value)
+	case setVisible__inst0Msg:
+		m = m.SetVisible__inst0(msg.value)
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
@@ -159,10 +180,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyPressMsg:
 		switch {
 		case msg.Code == 'c' && msg.Mod == tea.ModCtrl:
-			if m.visible__inst2 {
-				m.visible__inst2 = false
+			if m.visible__inst0 {
+				m.visible__inst0 = false
 			}
-			if !(m.visible__inst2) {
+			if !(m.visible__inst0) {
 				return m, tea.Quit
 			}
 			return m, nil
@@ -187,7 +208,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m Model) View() tea.View {
 	var content string
-	if m.visible__inst2 {
+	if m.visible__inst0 {
 		var contentChildren []string
 		var content_0 string
 		content_0 = m.widget0.View()
@@ -214,4 +235,4 @@ func main() {
 	}
 }
 -- run/go/bubbletea --
-pass sha256:4d78d8e304ea27cc627b5b626beebd63
+pass sha256:0086c94a4a56a71d1609b5f60b9a876b

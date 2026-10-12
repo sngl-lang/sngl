@@ -22,6 +22,8 @@ import (
 // When it does re-exec, it runs the child to completion and exits with the
 // child's status — it does not return.
 func MaybeReexecUnderCage() {
+	// cage runs this binary as the shim around the re-exec'd one.
+	headless.RunShim()
 	if headless.Active() || shortMode() {
 		return
 	}

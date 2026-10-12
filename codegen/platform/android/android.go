@@ -79,6 +79,10 @@ func (g *Generator) Description() string {
 func (g *Generator) SupportedLangs() []string { return []string{"kotlin", "go"} }
 func (g *Generator) PreviewCSS() string       { return previewCSS }
 
+// RendersNative claims `#[kt.native]` components: a composable is called by the
+// name the mark gives, under either language, since the screen is Kotlin.
+func (g *Generator) RendersNative(scheme string) bool { return scheme == nativeScheme }
+
 // Generate writes android platform output directly into sink. This is
 // the sink-based path platforms migrate to during the codegen unification.
 func (g *Generator) Generate(req *codegen.Request, sink codegen.Sink) error {
@@ -130,7 +134,7 @@ func (c *compilation) BuildRenderModel(req *codegen.Request, analysis *codegen.C
 	}
 	var stmts []ir.Stmt
 	if main := c.ctx.RootDecl(); main != nil {
-		stmts = main.Body
+		stmts = main.Stmts
 	}
 	return c.ctx.BuildRender(stmts), nil
 }
@@ -197,9 +201,21 @@ func (c *compilation) emitKotlin(req *codegen.Request, sink codegen.Sink) error 
 		if err := writeAndroidSourceFile(sink, "MainScreen.kt", req.Lang, ktOpts, src); err != nil {
 			return err
 		}
+		if err := emitDateFieldFile(req, sink, "MainScreen.kt", cfg.Package); err != nil {
+			return err
+		}
+		if err := emitAssetsFile(req, sink, "MainScreen.kt", cfg.Package, ""); err != nil {
+			return err
+		}
 	} else if cfg.UseGradle() {
 		pkgPath := pkgToPath(cfg.Package)
 		if err := writeAndroidSourceFile(sink, "app/src/main/java/"+pkgPath+"/MainScreen.kt", req.Lang, ktOpts, src); err != nil {
+			return err
+		}
+		if err := emitDateFieldFile(req, sink, "app/src/main/java/"+pkgPath+"/MainScreen.kt", cfg.Package); err != nil {
+			return err
+		}
+		if err := emitAssetsFile(req, sink, "app/src/main/java/"+pkgPath+"/MainScreen.kt", cfg.Package, "app/src/main/assets"); err != nil {
 			return err
 		}
 		testAgentInc := ""
@@ -221,7 +237,7 @@ func (c *compilation) emitKotlin(req *codegen.Request, sink codegen.Sink) error 
 		// this since instrumented tests live in androidTest sourceset
 		// with a different dep set.
 		templateTestMode := robolectricAgent || (testMode && cfg.TestRunner != "device")
-		for _, f := range scaffoldFiles(cfg, usesI18n, deviceAgent, testAgentInc, templateTestMode) {
+		for _, f := range scaffoldFiles(cfg, usesI18n, usesAssets(req.Pkg), deviceAgent, testAgentInc, templateTestMode) {
 			if err := writeOutputFile(sink, f); err != nil {
 				return err
 			}
@@ -242,7 +258,13 @@ func (c *compilation) emitKotlin(req *codegen.Request, sink codegen.Sink) error 
 		if err := writeAndroidSourceFile(sink, "MainScreen.kt", req.Lang, ktOpts, src); err != nil {
 			return err
 		}
-		for _, f := range directBuildFiles(cfg, usesI18n, deviceAgent) {
+		if err := emitDateFieldFile(req, sink, "MainScreen.kt", cfg.Package); err != nil {
+			return err
+		}
+		if err := emitAssetsFile(req, sink, "MainScreen.kt", cfg.Package, ""); err != nil {
+			return err
+		}
+		for _, f := range directBuildFiles(cfg, usesI18n, usesAssets(req.Pkg), deviceAgent) {
 			if err := writeOutputFile(sink, f); err != nil {
 				return err
 			}

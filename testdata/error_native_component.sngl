@@ -1,0 +1,26 @@
+// A `#[kt.native]` component is the host's widget: the platform calls it by
+// the name the mark gives, so a body beside one would be emitted by nobody,
+// and a call flag says nothing of a component, whose props go by name.
+import ui "sngl:ui"
+import kt "sngl:language/kotlin"
+
+#[kt.native("Card", "androidx.compose.material3.Card")] // ERROR(check) "is the host's Card and has a body"
+component card(content ...component ui.node) ui.node {
+    content
+}
+
+#[kt.native("Chip", "androidx.compose.material3.Chip", named)] // ERROR(check) "a component is passed its props by name"
+component chip() ui.node
+// ERROR(check:12) "component \"chip\" has no body"
+
+output {
+    kotlin {
+        android
+    }
+}
+
+ui.window(title="t") {
+    card {
+        ui.text(value="x")
+    }
+}

@@ -56,23 +56,11 @@ func snglStrMeasurement(v Measurement) string {
 		}
 		s += fmt.Sprint(v.Em) + "em"
 	}
-	if v.Vw != 0 {
+	if v.Rem != 0 {
 		if s != "" {
 			s += " + "
 		}
-		s += fmt.Sprint(v.Vw) + "vw"
-	}
-	if v.Vh != 0 {
-		if s != "" {
-			s += " + "
-		}
-		s += fmt.Sprint(v.Vh) + "vh"
-	}
-	if v.Pct != 0 {
-		if s != "" {
-			s += " + "
-		}
-		s += fmt.Sprint(v.Pct) + "pct"
+		s += fmt.Sprint(v.Rem) + "rem"
 	}
 	if s == "" {
 		return "0px"
@@ -83,9 +71,7 @@ func snglStrMeasurement(v Measurement) string {
 type Measurement struct {
 	Px  float64
 	Em  float64
-	Vw  float64
-	Vh  float64
-	Pct float64
+	Rem float64
 }
 
 // Model is the Bubble Tea model for this SNGL UI.
@@ -182,7 +168,7 @@ func (m Model) View() tea.View {
 		contentPart_1 = lipgloss.NewStyle().Render(fmt.Sprint((("C " + snglStrMeasurement(m.held)) + " D")))
 		contentParts = append(contentParts, contentPart_1)
 		var contentPart_2 string
-		contentPart_2 = lipgloss.NewStyle().Render(fmt.Sprint("E 18em F"))
+		contentPart_2 = lipgloss.NewStyle().Render(fmt.Sprint("E 2em + 1rem F"))
 		contentParts = append(contentParts, contentPart_2)
 		var contentPart_3 string
 		contentPart_3 = lipgloss.NewStyle().Render(fmt.Sprint("G 0px H"))
@@ -218,22 +204,22 @@ body { font-family: system-ui, sans-serif; }
 <span>A 16px B</span>
 <span id="__n1" data-sngl-id="__n1">
 </span>
-<span>E 18em F</span>
+<span>E 2em + 1rem F</span>
 <span>G 0px H</span>
 
 <script>
 (() => {
   // sngl-entry.js
-  var state = { held: { px: 16, em: 0, vw: 0, vh: 0, pct: 0 }, visible__inst0: true };
+  var state = { held: { px: 16, em: 0, rem: 0 }, visible__inst0: true };
   var __n1 = document.querySelector('[data-sngl-id="__n1"]');
   function __sngl_init() {
-    __n1.textContent = "C " + ((__u) => [[__u.px, "px"], [__u.em, "em"], [__u.vw, "vw"], [__u.vh, "vh"], [__u.pct, "pct"]].filter((t) => t[0] !== 0).map((t) => String(t[0]) + t[1]).join(" + ") || "0px")(state.held) + " D";
+    __n1.textContent = "C " + ((__u) => [[__u.px, "px"], [__u.em, "em"], [__u.rem, "rem"]].filter((t) => t[0] !== 0).map((t) => String(t[0]) + t[1]).join(" + ") || "0px")(state.held) + " D";
   }
   __sngl_init();
 })();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:585cf5c9f639ab53c81e65bd479ea048
+pass sha256:e9fdbc8936bc444c728216f1e2bb9864
 -- run/none/html --
-pass sha256:78b2bd428697f6d4d3a3a390b7877770
+pass sha256:ee67021f405c0e02a1adeb7228b030b1

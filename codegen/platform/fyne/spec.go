@@ -45,13 +45,11 @@ type fyneArg struct {
 }
 
 // fyneHandler is the Fyne callback field one declared event is assigned to,
-// decoded from the SNGL `Handler` record. See that declaration for why
-// Signature is Fyne's shape rather than the SNGL event's, and what Param is
-// for.
+// decoded from the SNGL `Handler` record. Signature is Fyne's spelling of the
+// event's parameters.
 type fyneHandler struct {
 	Field     string
 	Signature string
-	Param     string
 }
 
 // fyneSpec is one widget's construction, decoded from the SNGL `Spec` record
@@ -69,9 +67,12 @@ type fyneNative struct {
 type fyneSpec struct {
 	// toplevel is the platform's own Toplevel (toplevelSpec).
 	toplevel bool
-	New      fyneNative
-	Args     []fyneArg
-	GoType   fyneNative
+	// slotBox is the field holding the *fyne.Container a render slot inside the
+	// widget renders into, for a widget that is not one itself.
+	slotBox string
+	New     fyneNative
+	Args    []fyneArg
+	GoType  fyneNative
 	// Add is the method a multi-child container attaches each child with;
 	// Content the field a single-child container assigns its child to. Which
 	// applies is decided by Content being set, because that is the case with
@@ -218,6 +219,9 @@ func specFromProps(tag string, props map[string]ir.Expr) (*fyneSpec, error) {
 	if tag == toplevelTag {
 		return toplevelSpec(props), nil
 	}
+	if sp := imageSpecFor(tag, props); sp != nil {
+		return sp, nil
+	}
 	raw := props[specPropName]
 	if raw == nil {
 		return nil, fmt.Errorf("fyne primitive %s was instantiated without a %s record", tag, specPropName)
@@ -268,7 +272,6 @@ func specFromProps(tag string, props map[string]ir.Expr) (*fyneSpec, error) {
 				var h fyneHandler
 				h.Field = specString(tag, "Handler.field", structField(sl, "field"))
 				h.Signature = specString(tag, "Handler.signature", structField(sl, "signature"))
-				h.Param = specString(tag, "Handler.param", structField(sl, "param"))
 				if _, err := signatureParams(tag, on, h.Signature); err != nil {
 					return nil, err
 				}
@@ -329,12 +332,15 @@ func styleFromProps(props map[string]ir.Expr) fyneStyle {
 		default:
 			continue
 		}
-		if v, ok := literalNumber(f.Value); ok {
+		if v, ok := codegen.MeasurementPx(f.Value, emPx); ok {
 			*into = v
 		}
 	}
 	return st
 }
+
+// emPx is an em on this platform: the default theme's text size.
+const emPx = 14
 
 // enumOrString reads an enum member, or a plain string, as its name.
 func enumOrString(e ir.Expr) string {
@@ -373,9 +379,8 @@ func colorFromExpr(e ir.Expr) *fyneColor {
 	return &c
 }
 
-// literalNumber reads a numeric literal, with or without a unit suffix: a
-// Style measurement is written `6` or `6px` and both mean the same number of
-// device-independent pixels to Fyne.
+// literalNumber reads a numeric literal: a colour's channel. A measurement is
+// codegen.MeasurementPx's.
 func literalNumber(e ir.Expr) (float64, bool) {
 	lit, ok := e.(*ir.Literal)
 	if !ok || lit == nil {

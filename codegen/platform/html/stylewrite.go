@@ -28,7 +28,7 @@ var styleHelperJS = map[string]string{
 `,
 	styleLengthHelper: `function _snglStyleLength(v) {
   if (typeof v === "number") return v + "px";
-  const t = Object.keys(v).filter(k => v[k] !== 0).map(k => v[k] + (k === "pct" ? "%" : k));
+  const t = Object.keys(v).filter(k => v[k] !== 0).map(k => v[k] + k);
   if (t.length === 0) return "0px";
   return t.length === 1 ? t[0] : "calc(" + t.join(" + ") + ")";
 }

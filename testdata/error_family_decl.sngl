@@ -17,7 +17,7 @@ component bound(:n int) build.family // ERROR(check) "component bound is a famil
 
 component fixed(const n int) build.family // ERROR(check) "component fixed is a family, which declares the props its members share and nothing else: \"n\" is const"
 
-component evented(@tick ui.ClickEvent) build.family // ERROR(check) "component evented is a family, which declares the props its members share and nothing else: @tick is an event"
+component evented(@tick(at int)) build.family // ERROR(check) "component evented is a family, which declares the props its members share and nothing else: @tick is an event"
 
 component slotted(content ...component) build.family // ERROR(check) "component slotted is a family, which declares the props its members share and nothing else: content is a slot"
 

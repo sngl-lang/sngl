@@ -122,7 +122,7 @@ component main node { text(value="x") }`)))
 // scope -- a fallback meant for stdlib bootstrap that also swallowed a missing
 // import in user source, typing the declaration as dyn and building anyway.
 func TestUnimportedTimeIsAnErrorNotDyn(t *testing.T) {
-	doc, err := parser.Parse("test.sngl", []byte("import tree \"sngl:tree\"\n\n#[tree.none]\ncomponent main {\n    var x time\n}\n"))
+	doc, err := parser.Parse("test.sngl", []byte("component main<F> F {\n    var x time\n}\n"))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}

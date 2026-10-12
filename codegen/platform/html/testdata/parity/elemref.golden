@@ -9,7 +9,7 @@ body { font-family: system-ui, sans-serif; }
 </head><body>
 
 <div style="display:flex;flex-direction:column">
-  <input id="__n1" data-sngl-id="__n1" placeholder="Type here" type=""/>
+  <input id="__n1" data-sngl-id="__n1" placeholder="Type here" type="text"/>
   <span id="__n2" data-sngl-id="__n2">
   </span>
   <button id="$1">
@@ -25,12 +25,12 @@ body { font-family: system-ui, sans-serif; }
   var __n1 = document.querySelector('[data-sngl-id="__n1"]');
   var __n2 = document.querySelector('[data-sngl-id="__n2"]');
   __n1.addEventListener("input", function(e) {
-    state.name = e.target.value;
+    state.name = e.currentTarget.value;
     __n1.value = state.name;
     __n2.textContent = "Hello, " + state.name + "!";
   });
   __n1.addEventListener("change", function(e) {
-    state.name = e.target.value;
+    state.name = e.currentTarget.value;
     __n1.value = state.name;
     __n2.textContent = "Hello, " + state.name + "!";
   });

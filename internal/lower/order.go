@@ -89,6 +89,8 @@ var orderConstraints = []orderConstraint{
 	{"DirectCalls", "NoReactivity",
 		"the same, for a render slot whose condition calls through a name"},
 
+	{"RecordArgs", "SpreadOnce",
+		"a computed record handed to an i18n entry point is read a field at a time under a spread site, which SpreadOnce binds once ahead of the statement; after it, the operand is evaluated once per placeholder"},
 	{"SpreadOnce", "NoAsyncCalls",
 		"the temp a spread's operand is bound to is a statement of its own, and a blocking call in it has to be in a statement by the time the offload splits a body around one"},
 

@@ -5,8 +5,6 @@
 // position is a line below, once for what it accepts and once for what it
 // refuses.
 
-import "sngl:tree"
-
 unit len { px, em }
 
 const func five() => 5
@@ -45,11 +43,9 @@ func assigned() {
 
 func paramDefault(n int = five, l len = 0) => n
 
-#[tree.none]
-component takes(n int, l len = 0) {}
+component takes<F>(n int, l len = 0) F {}
 
-#[tree.none]
-component user {
+component user<F> F {
     takes(n=five, l=0)
 }
 

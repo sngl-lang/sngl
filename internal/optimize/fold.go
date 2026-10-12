@@ -20,9 +20,13 @@ func foldExpr(e ir.Expr, ctx *evalCtx) ir.Expr {
 		defer func() { ctx.copyShared = true }()
 	}
 
-	if val, ok := evalExpr(e, ctx); ok && !ctx.keepsReference(e, val) {
-		if expr := irFromValue(val, e.ExprType()); expr != nil {
-			return expr
+	// A lambda on its own folds its body in place (below); as a value it is
+	// only itself.
+	if _, lambda := e.(*ir.Lambda); !lambda {
+		if val, ok := evalExpr(e, ctx); ok && !ctx.keepsReference(e, val) {
+			if expr := irFromValue(val, e.ExprType()); expr != nil {
+				return expr
+			}
 		}
 	}
 
@@ -91,6 +95,11 @@ func foldExpr(e ir.Expr, ctx *evalCtx) ir.Expr {
 	case *ir.Call:
 		if x.Receiver != nil {
 			x.Receiver = foldExpr(x.Receiver, ctx)
+		}
+		// A call through a value: a record's event field read off a loop
+		// variable the unroll bound is that copy's handler.
+		if x.Callee != nil {
+			x.Callee = foldExpr(x.Callee, ctx)
 		}
 		for i := range x.Args {
 			x.Args[i].Value = foldCallArg(x, i, ctx)
@@ -194,9 +203,8 @@ func foldExpr(e ir.Expr, ctx *evalCtx) ir.Expr {
 		// A lambda's body is statements, folded as any other block is. It used
 		// to be skipped here on the grounds that the enclosing func would fold
 		// it, which holds for a lambda the program wrote and not for one a
-		// lowering pass synthesized: passQuery builds the thunk after the
-		// optimizer has walked every declaration, so the calls inside it are
-		// calls nothing has looked at.
+		// lowering pass synthesized after the optimizer has walked every
+		// declaration, whose calls are calls nothing has looked at.
 		if x.Func != nil {
 			x.Func.Block = foldStmts(x.Func.Block, ctx)
 		}
@@ -318,6 +326,9 @@ func foldStmt(s ir.Stmt, ctx *evalCtx) ir.Stmt {
 		if n.Call != nil {
 			if n.Call.Receiver != nil {
 				n.Call.Receiver = foldExpr(n.Call.Receiver, ctx)
+			}
+			if n.Call.Callee != nil {
+				n.Call.Callee = foldExpr(n.Call.Callee, ctx)
 			}
 			for i := range n.Call.Args {
 				n.Call.Args[i].Value = foldCallArg(n.Call, i, ctx)
@@ -619,7 +630,7 @@ func scaledUnitLiteral(x *ir.Binary) *ir.Literal {
 // base": once folded, every backend emits one magnitude instead of a
 // per-base record built out of two.
 //
-// Two literals in *different* bases -- `1px + 2pct` -- have no single number
+// Two literals in *different* bases -- `1px + 2em` -- have no single number
 // and are deliberately left alone, for the backend's multi-base
 // representation to carry. That is the only case that reaches it.
 func combinedUnitLiteral(x *ir.Binary) *ir.Literal {

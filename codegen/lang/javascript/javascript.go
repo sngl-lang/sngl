@@ -2,6 +2,7 @@ package javascript
 
 import (
 	"strings"
+	"sync"
 
 	"duckfam.us/sngl/ast"
 	"duckfam.us/sngl/codegen"
@@ -82,32 +83,25 @@ func (t *Translator) ExportName(name string) string {
 }
 
 // SafeIdent is name as a JavaScript binding: suffixed when the language
-// reserves it.
+// reserves it. passReservedNames renames a declaration that took a reserved
+// word, so what reaches here is a name that is not the program's to change --
+// a struct field, bound as its constructor's parameter.
+//
+// The words are sngl:language/js's own reservedWords default.
 func SafeIdent(name string) string {
-	if jsReservedWords[name] {
+	if words()[name] {
 		return name + "_"
 	}
 	return name
 }
 
-// jsReservedWords lists JavaScript reserved words and contextually reserved
-// words that cannot be used as bare identifiers. SNGL identifiers that
-// collide get suffixed with `_`.
-var jsReservedWords = map[string]bool{
-	"break": true, "case": true, "catch": true, "class": true,
-	"const": true, "continue": true, "debugger": true, "default": true,
-	"delete": true, "do": true, "else": true, "enum": true,
-	"export": true, "extends": true, "false": true, "finally": true,
-	"for": true, "function": true, "if": true, "import": true,
-	"in": true, "instanceof": true, "new": true, "null": true,
-	"return": true, "super": true, "switch": true, "this": true,
-	"throw": true, "true": true, "try": true, "typeof": true,
-	"var": true, "void": true, "while": true, "with": true,
-	"yield": true, "let": true, "static": true, "implements": true,
-	"interface": true, "package": true, "private": true,
-	"protected": true, "public": true, "await": true, "async": true,
-	"of": true, "as": true,
-}
+var words = sync.OnceValue(func() map[string]bool {
+	set := map[string]bool{}
+	for _, w := range codegen.LanguageReserves("js") {
+		set[w] = true
+	}
+	return set
+})
 
 func binaryOpStr(op ast.BinaryOp) string {
 	switch op {

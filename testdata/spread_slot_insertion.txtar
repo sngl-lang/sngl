@@ -16,8 +16,8 @@ import . "sngl:ui"
 import . "sngl:test"
 
 struct Row {
-    title string
-    count int
+    title  string
+    count  int
     unused bool = false
 }
 
@@ -264,10 +264,10 @@ import (
 type Model struct {
 	seen string
 
-	w *fyne.Container
-	a *widget.Button
-	m *fyne.Container
-	b *widget.Button
+	w     *fyne.Container
+	a     *widget.Button
+	m__r0 *fyne.Container
+	b     *widget.Button
 }
 
 // New creates a Model with default values.
@@ -314,14 +314,14 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.a.SetText("row")
 	m.a.OnTapped = m.a_click_handler
 	m.w.Add(m.a)
-	m.m = container.NewVBox()
+	m.m__r0 = container.NewVBox()
 	m.b = widget.NewButton("", nil)
 	m.b.SetText("part")
 	m.b.OnTapped = m.b_click_handler
-	m.m.Add(m.b)
+	m.m__r0.Add(m.b)
 	var parts []fyne.CanvasObject
 	parts = append(parts, m.w)
-	parts = append(parts, m.m)
+	parts = append(parts, m.m__r0)
 	return container.NewVBox(parts...)
 }
 
@@ -384,7 +384,7 @@ type Model struct {
 	seen   string
 	w      gtk4rt.Handle
 	a      gtk4rt.Handle
-	m      gtk4rt.Handle
+	m__r0  gtk4rt.Handle
 	b      gtk4rt.Handle
 	__root gtk4rt.Handle
 }
@@ -425,15 +425,15 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ButtonSetLabel(m.a, "row")
 	gtk4rt.Connect(m.a, "clicked", m.a_clicked_handler)
 	gtk4rt.BoxAppend(m.w, m.a)
-	m.m = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
-	gtk4rt.OrientableSetOrientation(m.m, gtk4rt.OrientationVertical)
-	gtk4rt.BoxSetSpacing(m.m, 6)
+	m.m__r0 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
+	gtk4rt.OrientableSetOrientation(m.m__r0, gtk4rt.OrientationVertical)
+	gtk4rt.BoxSetSpacing(m.m__r0, 6)
 	m.b = gtk4rt.ButtonNew()
 	gtk4rt.ButtonSetLabel(m.b, "part")
 	gtk4rt.Connect(m.b, "clicked", m.b_clicked_handler)
-	gtk4rt.BoxAppend(m.m, m.b)
+	gtk4rt.BoxAppend(m.m__r0, m.b)
 	gtk4rt.BoxAppend(m.__root, m.w)
-	gtk4rt.BoxAppend(m.__root, m.m)
+	gtk4rt.BoxAppend(m.__root, m.m__r0)
 }
 
 // BuildUI constructs the widget tree and returns the top-level window.
@@ -459,27 +459,18 @@ func (m *Model) bClick() {
 
 package test.sngl.app
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.*
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
-import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.foundation.layout.Column
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color as ComposeColor
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.material3.Button
+import androidx.compose.material3.Text
 
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
@@ -540,8 +531,8 @@ class MainScreenTest {
         val c = MainScreenState()
         @Suppress("UNUSED_VARIABLE") val composeTestRule = composeRule
         composeRule.setContent { MainScreen(c) }
-        composeTestRule.onNodeWithTag("a").performClick(); composeTestRule.waitForIdle()
-        composeTestRule.onNodeWithTag("b").performClick(); composeTestRule.waitForIdle()
+        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("a")).performClick(); composeTestRule.waitForIdle()
+        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("b")).performClick(); composeTestRule.waitForIdle()
         org.junit.Assert.assertTrue("(c.seen == \"row3;part7;\")", (c.seen == "row3;part7;"))
     }
 
@@ -614,10 +605,10 @@ window.__sngl_boot();
 -- run/go/bubbletea --
 pass sha256:cd613dafad6bdb89e23de6f81cf0c78a
 -- run/go/fyne --
-pass sha256:0d9a9fa1ac7c614ccfcb369f70338219
+pass sha256:5af3a45fb14ec5a62ea2ef5e3c72d7f6
 -- run/go/gtk4 --
-pass sha256:77451bd1b2e4f8347daf7bdba1fea506
+pass sha256:951f40700fa3657a9a550efbd1bdaa81
 -- run/kotlin/android --
-pass sha256:4e89ce83d4f79c65c5f1b978cdf2f7fb
+pass sha256:6bb056e04ea7a71f58d3f9cb790647c5
 -- run/none/html --
 pass sha256:459a698e1cde1ca1e17da99c6c256cd3

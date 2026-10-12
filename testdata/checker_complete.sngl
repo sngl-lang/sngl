@@ -6,7 +6,7 @@ output {
 }
 
 struct Config {
-    name string = ""
+    name  string = ""
     count int = 0
 }
 

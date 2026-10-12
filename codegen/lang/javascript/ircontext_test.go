@@ -228,7 +228,7 @@ func TestJsNamespaceCall_CreateComponentWithProps(t *testing.T) {
 // legacy scope.FuncNames path (translate_ir.go:431-433), which joins the receiver
 // expression plus the call args.
 func TestJsNamespaceCall_UserFuncDispatch(t *testing.T) {
-	userFn := &ir.Func{Name: "fn", Receiver: "ns"}
+	userFn := &ir.Func{Name: "fn", Receiver: ir.ReceiverNamed("ns")}
 	pkg := &ir.Package{Funcs: []*ir.Func{userFn}}
 	ctx := codegen.NewExprCtx(pkg)
 	jc := NewIRContext(ctx)
@@ -249,7 +249,7 @@ func TestJsNamespaceCall_UserFuncDispatch(t *testing.T) {
 // TestJsNamespaceCall_UserFuncDispatchAsyncAwaits confirms the async wrapping on
 // the user-func dispatch path matches legacy (translate_ir.go:441-443).
 func TestJsNamespaceCall_UserFuncDispatchAsyncAwaits(t *testing.T) {
-	userFn := &ir.Func{Name: "load", Receiver: "ns", IsAsync: true}
+	userFn := &ir.Func{Name: "load", Receiver: ir.ReceiverNamed("ns"), IsAsync: true}
 	pkg := &ir.Package{Funcs: []*ir.Func{userFn}}
 	ctx := codegen.NewExprCtx(pkg)
 	jc := NewIRContext(ctx)
@@ -290,7 +290,7 @@ func TestJsNamespaceCall_AwaitsAsyncSNGLCallee(t *testing.T) {
 	ctx := codegen.NewExprCtx(&ir.Package{})
 	jc := NewIRContext(ctx)
 	call := &ir.Call{
-		Func:     &ir.Func{Name: "fetch", Receiver: "net", IsAsync: true},
+		Func:     &ir.Func{Name: "fetch", Receiver: ir.ReceiverNamed("net"), IsAsync: true},
 		Receiver: &ir.Ident{Name: "net"},
 	}
 	got := jc.EvalExpr(call)
@@ -303,7 +303,7 @@ func TestJsNamespaceCall_NoAwaitForSyncCallee(t *testing.T) {
 	ctx := codegen.NewExprCtx(&ir.Package{})
 	jc := NewIRContext(ctx)
 	call := &ir.Call{
-		Func:     &ir.Func{Name: "get", Receiver: "store"},
+		Func:     &ir.Func{Name: "get", Receiver: ir.ReceiverNamed("store")},
 		Receiver: &ir.Ident{Name: "store"},
 	}
 	got := jc.EvalExpr(call)
@@ -380,7 +380,7 @@ func TestJsEmitI18nTr(t *testing.T) {
 	ctx := codegen.NewExprCtx(&ir.Package{})
 	jc := NewIRContext(ctx)
 	call := &ir.Call{
-		Func: &ir.Func{Name: "tr", Receiver: "i18n"},
+		Func: &ir.Func{Name: "tr", Receiver: ir.ReceiverNamed("i18n")},
 		Args: []ir.CallArg{
 			{Value: &ir.Literal{Value: "Hello, {name}!", Type: ir.TypString}},
 			{Value: &ir.MapLitIR{}},
@@ -397,7 +397,7 @@ func TestJsEmitI18nPlural(t *testing.T) {
 	ctx := codegen.NewExprCtx(&ir.Package{})
 	jc := NewIRContext(ctx)
 	call := &ir.Call{
-		Func:     &ir.Func{Name: "plural", Receiver: "i18n"},
+		Func:     &ir.Func{Name: "plural", Receiver: ir.ReceiverNamed("i18n")},
 		Receiver: &ir.Ident{Name: "i18n"},
 		Args: []ir.CallArg{
 			{Value: &ir.Literal{Value: "3", Type: ir.TypInt}},
@@ -415,7 +415,7 @@ func TestJsEmitI18nExactly(t *testing.T) {
 	ctx := codegen.NewExprCtx(&ir.Package{})
 	jc := NewIRContext(ctx)
 	call := &ir.Call{
-		Func:     &ir.Func{Name: "exactly", Receiver: "i18n", Intrinsic: "i18n.exactly"},
+		Func:     &ir.Func{Name: "exactly", Receiver: ir.ReceiverNamed("i18n"), Intrinsic: "i18n.exactly"},
 		Receiver: &ir.Ident{Name: "i18n"},
 		Args: []ir.CallArg{
 			{Value: &ir.Literal{Value: "0", Type: ir.TypInt}},
@@ -507,7 +507,7 @@ func TestUnimplementedIntrinsicPanics(t *testing.T) {
 	}{
 		{"plain call", &ir.Call{Func: &ir.Func{Name: "nope", Intrinsic: "NoBackendHasThis"}}},
 		{"method call", &ir.Call{
-			Func: &ir.Func{Name: "nope", Receiver: "string", Intrinsic: "NoBackendHasThis"},
+			Func: &ir.Func{Name: "nope", Receiver: ir.ReceiverNamed("string"), Intrinsic: "NoBackendHasThis"},
 			Args: []ir.CallArg{{Value: &ir.Ident{Name: "s", Type: ir.TypString}}},
 		}},
 	} {

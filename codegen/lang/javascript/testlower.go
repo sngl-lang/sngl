@@ -162,7 +162,7 @@ func lowerTestAssert(s ir.Stmt, jc *JsIRContext) (string, bool) {
 	if !ok || cs.Call == nil || cs.Call.Func == nil {
 		return "", false
 	}
-	if cs.Call.Func.Receiver != "Test" || cs.Call.Func.Name != "assert" {
+	if !ir.IsTestCall(cs.Call, ir.TestAssertID) {
 		return "", false
 	}
 	if len(cs.Call.Args) != 2 {
@@ -183,7 +183,7 @@ func lowerTestSnapshot(s ir.Stmt, jc *JsIRContext) (string, bool) {
 	if !ok || cs.Call == nil || cs.Call.Func == nil {
 		return "", false
 	}
-	if cs.Call.Func.Receiver != "Test" || cs.Call.Func.Name != "snapshot" {
+	if !ir.IsTestCall(cs.Call, ir.TestSnapshotID) {
 		return "", false
 	}
 	if len(cs.Call.Args) != 2 {
@@ -196,7 +196,7 @@ func lowerTestSnapshot(s ir.Stmt, jc *JsIRContext) (string, bool) {
 // lowerEventTrigger matches the IR shape a test line like `c.inc.click()`
 // produces -- a CallStmt the checker tagged with an Event, whose callee is a
 // chain of SelectExprs ending in the event field -- and emits
-// `<recv>.<id><Event>(...)`.
+// `<recv>.<id><Event>({...})`.
 //
 // Without it the event was dropped and the call rendered as `c.inc()`, which
 // resolves to nothing: the assertion then failed on an unchanged value rather
@@ -211,15 +211,28 @@ func lowerEventTrigger(s ir.Stmt, jc *JsIRContext) (string, bool) {
 		return "", false
 	}
 	c := call.Call
-	recv, id, ok := codegen.EventTriggerTarget(c)
+	tt, ok := codegen.EventTriggerTarget(c)
 	if !ok {
 		return "", false
 	}
-	args := make([]string, len(c.Args))
-	for i, a := range c.Args {
-		args[i] = jc.EvalExpr(a.Value)
+	// The invoker is handed the event's arguments by their declared names,
+	// `{checked: true}`: it puts each on the element as the user's input would
+	// have, which is where the platform's handler reads it. One copy of a
+	// node a loop rendered is the `At` variant's, handed the index first.
+	name := tt.ID + exportEventName(c.Event)
+	var args []string
+	if tt.Index != nil {
+		name = codegen.InvokerAt(name)
+		args = append(args, jc.EvalExpr(tt.Index))
 	}
-	return fmt.Sprintf("%s.%s%s(%s);", recv, id, exportEventName(c.Event), strings.Join(args, ", ")), true
+	if len(c.Args) > 0 {
+		fields := make([]string, len(c.Args))
+		for i, a := range c.Args {
+			fields[i] = fmt.Sprintf("%s: %s", a.Name, jc.EvalExpr(a.Value))
+		}
+		args = append(args, "{"+strings.Join(fields, ", ")+"}")
+	}
+	return fmt.Sprintf("%s.%s(%s);", tt.Recv, name, strings.Join(args, ", ")), true
 }
 
 // exportEventName upper-cases the first letter, matching the name the platform

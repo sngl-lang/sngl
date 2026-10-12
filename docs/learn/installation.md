@@ -18,7 +18,7 @@ html.div(class="downloads", innerHTML="<!-- sngl:downloads -->")
 
 ## Install from Source
 
-Building from source requires Go 1.26 or later.
+Building from source requires Go 1.27 or later.
 
 ```bash
 go install duckfam.us/sngl/cmd/sngl@latest

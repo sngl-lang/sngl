@@ -26,6 +26,22 @@ const (
 	BuiltinInt    BuiltinKind = "int"
 	BuiltinFloat  BuiltinKind = "float"
 	BuiltinString BuiltinKind = "string"
+	BuiltinBool   BuiltinKind = "bool"
+	// Dyn is the type of a value the program says nothing about.
+	BuiltinDyn BuiltinKind = "dyn"
+
+	// The sized numerics, each a scalar of the width and signedness its name
+	// says (TypInt8 … TypFloat64).
+	BuiltinInt8    BuiltinKind = "int8"
+	BuiltinInt16   BuiltinKind = "int16"
+	BuiltinInt32   BuiltinKind = "int32"
+	BuiltinInt64   BuiltinKind = "int64"
+	BuiltinUint8   BuiltinKind = "uint8"
+	BuiltinUint16  BuiltinKind = "uint16"
+	BuiltinUint32  BuiltinKind = "uint32"
+	BuiltinUint64  BuiltinKind = "uint64"
+	BuiltinFloat32 BuiltinKind = "float32"
+	BuiltinFloat64 BuiltinKind = "float64"
 
 	// String-representable value types.
 	BuiltinColor    BuiltinKind = "color"
@@ -39,20 +55,13 @@ const (
 	BuiltinDuration BuiltinKind = "duration"
 
 	// Generic constructors.
-	BuiltinList BuiltinKind = "list"
-	BuiltinMap  BuiltinKind = "map"
-	BuiltinIter BuiltinKind = "iter"
-	// Chan is a host channel. It is declared by sngl:language/go rather than
-	// by lib/, because only a language with channels can answer it.
-	BuiltinChan   BuiltinKind = "chan"
+	BuiltinList   BuiltinKind = "list"
+	BuiltinMap    BuiltinKind = "map"
+	BuiltinIter   BuiltinKind = "iter"
 	BuiltinRef    BuiltinKind = "ref"
 	BuiltinOption BuiltinKind = "option"
-	// Remote is the box a data adapter returns: the last value that arrived,
-	// how the most recent attempt failed, and whether one is in flight. See
-	// sngl:remote.
-	BuiltinRemote BuiltinKind = "remote"
 	// TreeOne narrows a slot's content to exactly one member.
-	BuiltinTreeOne BuiltinKind = "treeOne"
+	BuiltinFamilyOne BuiltinKind = "familyOne"
 
 	// The families the compiler itself has to name, each marked on the
 	// component that declares it so no phase spells a package and a name.
@@ -60,24 +69,26 @@ const (
 	// TreeFamily is `sngl:build`'s `family`, the family of families: every
 	// family is a component that is a member of it, and it is the one member of
 	// itself. The mark is where that regress stops.
-	BuiltinTreeFamily BuiltinKind = "treeFamily"
+	BuiltinFamilyOfFamilies BuiltinKind = "familyOfFamilies"
 	// TreeRoot is the tree a package body accepts: the windows a program opens
 	// and the build directive saying what it compiles to. It is what makes
 	// those top-level without a syntactic rule naming them.
-	BuiltinTreeRoot BuiltinKind = "treeRoot"
-	// TreeNode is the widget family. It is the one tree whose members are
-	// ordinary components -- a button composes away into its caller the way
-	// any wrapper does -- so the passes asking "is this rendered rather than
-	// composed" have to tell it from a specialised family.
-	BuiltinTreeNode BuiltinKind = "treeNode"
+	BuiltinFamilyRoot BuiltinKind = "familyRoot"
+	// TreeSpan is the inline rich-text family. A node hosting its members is a
+	// flow, which passReactivity makes the render slot where a target cannot
+	// render one among spans (slotFlows).
+	BuiltinFamilySpan BuiltinKind = "familySpan"
 	// TreeShape is the drawing tree. A node hosting its members is a canvas,
 	// whose shapes passShapeDraw turns into the statements that paint them.
-	BuiltinTreeShape BuiltinKind = "treeShape"
+	BuiltinFamilyShape BuiltinKind = "familyShape"
+	// FamilyImageSource is where an image's pixels come from: a shape hosting
+	// one paints it (passShapeDraw).
+	BuiltinFamilyImageSource BuiltinKind = "familyImageSource"
 	// TreeLanguage and TreePlatform are `sngl:build`'s `language` and
 	// `platform`: the families a build-target node is a member of, which is
 	// what makes a component a target and says which tier it is.
-	BuiltinTreeLanguage BuiltinKind = "treeLanguage"
-	BuiltinTreePlatform BuiltinKind = "treePlatform"
+	BuiltinFamilyLanguage BuiltinKind = "familyLanguage"
+	BuiltinFamilyPlatform BuiltinKind = "familyPlatform"
 
 	// Built-in visual nodes. Unlike the type marks above, these annotate a
 	// component declaration: the checker dispatches a visual node to the
@@ -127,38 +138,24 @@ const (
 	// Package.CLinks rather than rendered.
 	BuiltinCLink BuiltinKind = "cLink"
 
-	// Target identities. An opaque value type each of whose values is one
-	// target's build-tree node read as a value -- html.platform,
-	// go.language. There is no literal, so a string cannot stand in for one,
-	// which is the reason the type exists rather than the name being a string.
-	BuiltinPlatform BuiltinKind = "platform"
-	BuiltinLanguage BuiltinKind = "language"
-
 	// Predeclared constants. These annotate a const declaration whose written
 	// value is a placeholder: the real one is not known until a build picks a
-	// target, so the compiler supplies it. The two target kinds are named for
-	// what they hold -- the target -- because the identity types above own the
-	// bare names.
+	// target, so the compiler supplies it. The two target kinds are typed by
+	// sngl:build's `platform` and `language` families, whose values a target's
+	// own build-tree node is (`html.platform`).
 	BuiltinNull           BuiltinKind = "null"
 	BuiltinTargetPlatform BuiltinKind = "targetPlatform"
 	BuiltinTargetLanguage BuiltinKind = "targetLanguage"
 )
 
-// IsTargetID reports whether the kind marks a target-identity type. Its values
-// are synthesized, one per registered target, so nothing declares them and no
-// literal spells one.
-func (b BuiltinKind) IsTargetID() bool {
-	switch b {
-	case BuiltinPlatform, BuiltinLanguage:
-		return true
-	}
-	return false
-}
-
-// IsPrimitive reports whether the kind is a scalar primitive (int/float/string).
+// IsPrimitive reports whether the kind is a scalar primitive: int, float and
+// string, and the sized numerics.
 func (b BuiltinKind) IsPrimitive() bool {
 	switch b {
-	case BuiltinInt, BuiltinFloat, BuiltinString:
+	case BuiltinInt, BuiltinFloat, BuiltinString, BuiltinBool, BuiltinDyn,
+		BuiltinInt8, BuiltinInt16, BuiltinInt32, BuiltinInt64,
+		BuiltinUint8, BuiltinUint16, BuiltinUint32, BuiltinUint64,
+		BuiltinFloat32, BuiltinFloat64:
 		return true
 	}
 	return false
@@ -183,28 +180,28 @@ func (b BuiltinKind) IsUnit() bool {
 // is resolved rather than constructed as a type. Nothing builds an ir.Type from
 // one, which is why it is not IsGeneric.
 func (b BuiltinKind) IsSlotBound() bool {
-	return b == BuiltinTreeOne
+	return b == BuiltinFamilyOne
 }
 
-// IsTreeRole reports whether the kind marks a family the compiler itself has
-// to name. Six do -- the family of families, the package body's, the widget
-// family, the drawing family and the two build-target tiers -- because a phase
+// IsFamilyRole reports whether the kind marks a family the compiler itself has
+// to name. Seven do -- the family of families, the package body's, the rich-text
+// family, the drawing family, the image source family and the two build-target tiers -- because a phase
 // asks after each by role rather than by declaration. Every other family is compared by declaration
 // and never spelled.
-func (b BuiltinKind) IsTreeRole() bool {
+func (b BuiltinKind) IsFamilyRole() bool {
 	switch b {
-	case BuiltinTreeFamily, BuiltinTreeRoot, BuiltinTreeNode, BuiltinTreeShape,
-		BuiltinTreeLanguage, BuiltinTreePlatform:
+	case BuiltinFamilyOfFamilies, BuiltinFamilyRoot, BuiltinFamilySpan, BuiltinFamilyShape, BuiltinFamilyImageSource,
+		BuiltinFamilyLanguage, BuiltinFamilyPlatform:
 		return true
 	}
 	return false
 }
 
 // IsGeneric reports whether the kind is a generic type constructor
-// (list/map/iter/ref/option/remote).
+// (list/map/iter/chan/ref/option).
 func (b BuiltinKind) IsGeneric() bool {
 	switch b {
-	case BuiltinList, BuiltinMap, BuiltinIter, BuiltinChan, BuiltinRef, BuiltinOption, BuiltinRemote:
+	case BuiltinList, BuiltinMap, BuiltinIter, BuiltinRef, BuiltinOption:
 		return true
 	}
 	return false
@@ -253,16 +250,18 @@ func (b BuiltinKind) IsConst() bool {
 // AllBuiltinKinds returns every valid kind, in declaration order.
 func AllBuiltinKinds() []BuiltinKind {
 	return []BuiltinKind{
-		BuiltinInt, BuiltinFloat, BuiltinString,
+		BuiltinInt, BuiltinFloat, BuiltinString, BuiltinBool, BuiltinDyn,
+		BuiltinInt8, BuiltinInt16, BuiltinInt32, BuiltinInt64,
+		BuiltinUint8, BuiltinUint16, BuiltinUint32, BuiltinUint64,
+		BuiltinFloat32, BuiltinFloat64,
 		BuiltinColor, BuiltinDate, BuiltinTime, BuiltinDateTime,
 		BuiltinDuration,
-		BuiltinList, BuiltinMap, BuiltinIter, BuiltinChan, BuiltinRef, BuiltinOption, BuiltinRemote,
-		BuiltinTreeOne, BuiltinTreeFamily, BuiltinTreeRoot, BuiltinTreeNode, BuiltinTreeShape,
-		BuiltinTreeLanguage, BuiltinTreePlatform,
+		BuiltinList, BuiltinMap, BuiltinIter, BuiltinRef, BuiltinOption,
+		BuiltinFamilyOne, BuiltinFamilyOfFamilies, BuiltinFamilyRoot, BuiltinFamilySpan, BuiltinFamilyShape, BuiltinFamilyImageSource,
+		BuiltinFamilyLanguage, BuiltinFamilyPlatform,
 		BuiltinErrorBoundary, BuiltinContext, BuiltinEffect,
 		BuiltinNavStack, BuiltinNavPage, BuiltinNavLink,
 		BuiltinOutput, BuiltinGenInputs, BuiltinGenScheme, BuiltinCLink, BuiltinGenEmit, BuiltinGenNode, BuiltinGenRun, BuiltinGenBuild,
-		BuiltinPlatform, BuiltinLanguage,
 		BuiltinNull, BuiltinTargetPlatform, BuiltinTargetLanguage,
 	}
 }
@@ -271,5 +270,5 @@ func AllBuiltinKinds() []BuiltinKind {
 // not an unrecognised string).
 func (b BuiltinKind) Valid() bool {
 	return b.IsPrimitive() || b.IsStringRepr() || b.IsUnit() || b.IsGeneric() ||
-		b.IsSlotBound() || b.IsTreeRole() || b.IsNode() || b.IsDirective() || b.IsEmitter() || b.IsCommand() || b.IsTargetID() || b.IsConst()
+		b.IsSlotBound() || b.IsFamilyRole() || b.IsNode() || b.IsDirective() || b.IsEmitter() || b.IsCommand() || b.IsConst()
 }

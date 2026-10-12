@@ -1,0 +1,23 @@
+import . "sngl:ui"
+import . "sngl:test"
+
+// t.setContext names the context it sets, so its first argument is a context
+// and nothing else: a string spelling the name named nothing, and was refused
+// only when the test ran.
+context #theme("light")
+
+component main node {
+    text(value=theme)
+}
+
+func testByName(t Test, c main) {
+    t.setContext("theme", "dark") // ERROR(check) "t.setContext sets a context"
+}
+
+func testWrongType(t Test, c main) {
+    t.setContext(theme, 5) // ERROR(check) "cannot pass int as string"
+}
+
+window {
+    main
+}

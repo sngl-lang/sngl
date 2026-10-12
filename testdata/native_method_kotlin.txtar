@@ -17,7 +17,6 @@ All three shapes matter to that:
 none, and neither does a function the enclosing scope supplies.
 
 deny out/kotlin/android/app/src/main/java/test/sngl/app/MainScreen.kt `\bhyp\(|\brep\(|\bplace\(` -- the SNGL names are not emitted; the call becomes a call to the Kotlin identifier
-broken out/kotlin/android -- the native method `shift` is called and never declared: `Unresolved reference 'shift'`
 -- app.sngl --
 import ui "sngl:ui"
 import kt "sngl:language/kotlin"
@@ -34,8 +33,8 @@ func hyp(a float, b float) float
 #[kt.native("String.repeat", "", method)]
 func rep(s string, n int) string
 
-#[kt.native("shift", "", named)]
-func place(x float, y float) float
+#[kt.native("kotlin.math.atan2", "", named)]
+func place(y float, x float) float
 
 component m() ui.node {
     var d = 0.0
@@ -51,31 +50,20 @@ ui.window {
 
 package test.sngl.app
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.*
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
-import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color as ComposeColor
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
-import androidx.activity.compose.BackHandler
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.platform.LocalContext
 import android.app.Activity
+import androidx.activity.compose.BackHandler
+import androidx.compose.material3.Button
 import kotlin.math.hypot
+import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.material3.Text
 
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
@@ -87,22 +75,22 @@ fun _snglSplit(s: String, sep: String): List<String> =
 @Composable
 fun MainScreen() {
     var d__inst0 by remember { mutableStateOf(0.0) }
-    var visible__inst1 by remember { mutableStateOf(true) }
+    var visible__inst0 by remember { mutableStateOf(true) }
 
-    if (visible__inst1) {
+    if (visible__inst0) {
         val __activity = LocalContext.current as? Activity
         BackHandler {
-            visible__inst1 = false
-            if (!(visible__inst1)) {
+            visible__inst0 = false
+            if (!(visible__inst0)) {
                 __activity?.finish()
             }
         }
         Button(onClick = {
-            d__inst0 = (kotlin.math.hypot(3.0, 4.0) + shift(x = 1.0, y = 2.0))
+            d__inst0 = (kotlin.math.hypot(3.0, 4.0) + kotlin.math.atan2(y = 1.0, x = 2.0))
         }, modifier = Modifier.safeDrawingPadding()) {
             Text(text = "ab".repeat(2), modifier = Modifier)
         }
     }
 }
 -- run/kotlin/android --
-broken sha256:6411670383508379a1ecd65cff4661f9
+pass sha256:9e4c9f238bd916562d133665853f018d

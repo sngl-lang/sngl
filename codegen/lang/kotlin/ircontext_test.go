@@ -18,7 +18,7 @@ func ktTestCtx() *KtIRContext {
 // ir.Call with no Receiver expression and Func.Receiver="i18n" for an i18n.tr
 // interpolation. This routes through the type-method call path.
 func TestKtIRContext_I18nTr(t *testing.T) {
-	fn := &ir.Func{Name: "tr", Receiver: "i18n"}
+	fn := &ir.Func{Name: "tr", Receiver: ir.ReceiverNamed("i18n")}
 	keyLit := &ir.Literal{Value: "Hello, {name}!", Type: ir.TypString}
 	argsMap := &ir.MapLitIR{}
 	call := &ir.Call{
@@ -37,7 +37,7 @@ func TestKtIRContext_I18nTr(t *testing.T) {
 // TestKtIRContext_I18nPlural ports TestEmitI18nPlural_Kotlin: i18n.plural is a
 // namespace call i18n.plural(count, forms).
 func TestKtIRContext_I18nPlural(t *testing.T) {
-	fn := &ir.Func{Name: "plural", Receiver: "i18n"}
+	fn := &ir.Func{Name: "plural", Receiver: ir.ReceiverNamed("i18n")}
 	receiverExpr := &ir.Ident{Name: "i18n"}
 	countLit := &ir.Literal{Value: "3", Type: ir.TypInt}
 	formsMap := &ir.MapLitIR{}
@@ -58,7 +58,7 @@ func TestKtIRContext_I18nPlural(t *testing.T) {
 // TestKtIRContext_I18nExactly ports TestEmitI18nExactly_Kotlin: i18n.exactly(n)
 // lowers to ("=" + (n)).
 func TestKtIRContext_I18nExactly(t *testing.T) {
-	fn := &ir.Func{Name: "exactly", Receiver: "i18n", Intrinsic: "i18n.exactly"}
+	fn := &ir.Func{Name: "exactly", Receiver: ir.ReceiverNamed("i18n"), Intrinsic: "i18n.exactly"}
 	receiverExpr := &ir.Ident{Name: "i18n"}
 	nLit := &ir.Literal{Value: "0", Type: ir.TypInt}
 	call := &ir.Call{
@@ -140,7 +140,7 @@ func TestUnimplementedIntrinsicPanics(t *testing.T) {
 	}{
 		{"plain call", &ir.Call{Func: &ir.Func{Name: "nope", Intrinsic: "NoBackendHasThis"}}},
 		{"method call", &ir.Call{
-			Func: &ir.Func{Name: "nope", Receiver: "string", Intrinsic: "NoBackendHasThis"},
+			Func: &ir.Func{Name: "nope", Receiver: ir.ReceiverNamed("string"), Intrinsic: "NoBackendHasThis"},
 			Args: []ir.CallArg{{Value: &ir.Ident{Name: "s", Type: ir.TypString}}},
 		}},
 	} {

@@ -122,8 +122,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case msg.Code == tea.KeyTab && msg.Mod == tea.ModShift:
 			m.__focusPrev()
 		case msg.Code == tea.KeySpace && m.__focusID == 0:
-			__bound_checked := !m.on
-			m.on = __bound_checked
+			m.on = !m.on
 		}
 	}
 	return m, tea.Batch(cmds...)
@@ -193,8 +192,8 @@ func New() *Model {
 	return m
 }
 
-func (m *Model) __n0_change_handler(b bool) {
-	m.on = b
+func (m *Model) __n0_toggle_handler(on__p0 bool) {
+	m.on = on__p0
 	m.__n0.SetChecked(m.on)
 }
 
@@ -211,7 +210,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n0 = widget.NewCheck("", nil)
 	m.__n0.SetText("Enable")
 	m.__n0.SetChecked(m.on)
-	m.__n0.OnChanged = m.__n0_change_handler
+	m.__n0.OnChanged = m.__n0_toggle_handler
 	content := fyne.CanvasObject(m.__n0)
 	return content
 }
@@ -325,27 +324,18 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 
 package test.sngl.app
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.*
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
-import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.foundation.layout.Row
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color as ComposeColor
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.ui.Alignment
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.Text
 
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
@@ -362,8 +352,8 @@ class MainScreenState {
 fun MainScreen(state: MainScreenState = remember { MainScreenState() }) {
 
     Row(modifier = Modifier.safeDrawingPadding(), verticalAlignment = Alignment.CenterVertically) {
-        Checkbox(checked = state.on, onCheckedChange = { on ->
-            state.on = on
+        Checkbox(checked = state.on, onCheckedChange = { on__p0 ->
+            state.on = on__p0
         })
         Text(text = "Enable", modifier = Modifier)
     }
@@ -455,7 +445,7 @@ window.__sngl_boot = () => {
   }
   var __n0 = document.querySelector('[data-sngl-id="__n0"]');
   __n0.addEventListener("change", function(e) {
-    state.on = e.target.checked;
+    state.on = e.currentTarget.checked;
     __n0.checked = state.on;
   });
   function __sngl_init() {
@@ -468,12 +458,12 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:4f80403ed8c761e6a4c0460ff20a82fa
+pass sha256:d6ed113c5ebc3f9a238bf2b53f60f9b1
 -- run/go/fyne --
-pass sha256:4ee3ad56ac885fdb6fc3d5d554cfaabd
+pass sha256:730b338d2b83fc8d84da400b942b487b
 -- run/go/gtk4 --
 pass sha256:9e1d7983270278c73310422f51a036d5
 -- run/kotlin/android --
-pass sha256:4d35de8fe2345e4d9bdc2f4dc0e0bde5
+pass sha256:bf380c48a11746ee4e1db5977e51f3de
 -- run/none/html --
-pass sha256:0d6b1fe2daba23fcaf9b8224d8aba8ac
+pass sha256:7dd3e4e2df2f55a744e6b7699b465a34

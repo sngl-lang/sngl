@@ -1,0 +1,99 @@
+# A platform override's parameter sharing a name with the program's state,
+# run on every target a test can execute on:
+# testdata/override_param_shadow.txtar is the code.
+
+sngl test --platform=none app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=html app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=fyne --language=go app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+-- app.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+
+component main node {
+    var on = false
+    var v = "x"
+    var seen = ""
+    vbox {
+        checkbox #box(@change { on = !on })
+        input #field(@input { v = v + "!" })
+        toggle #sw(@change(c) { seen = "{c} {on}" })
+    }
+}
+
+func testShadow(t Test, c main) {
+    c.box.change(true)
+    t.assert(c.on == true)
+    c.field.input("q")
+    t.assert(c.v == "x!")
+    c.sw.change(true)
+    t.assert(c.seen == "true true")
+}
+
+window {
+    main
+}
+-- testrun/android/kotlin/app.sngl/main/1 --
+sha256:57bac05e3bab697c47011940e979e447
+{
+  "results": [
+    {
+      "Desc": "Shadow",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/main/1 --
+sha256:db4a048d7152fdebd351e86f99b6123c
+{
+  "results": [
+    {
+      "Desc": "Shadow",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/main/1 --
+sha256:c98397a7d5e70fb0620cb2507787e2bf
+{
+  "results": [
+    {
+      "Desc": "Shadow",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/main/1 --
+sha256:018ea188cb791be5c6f0249282c4a461
+{
+  "results": [
+    {
+      "Desc": "Shadow",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/main/1 --
+sha256:c004497e0119235e611dacbc446c0ff9
+{
+  "results": [
+    {
+      "Desc": "Shadow",
+      "Passed": true
+    }
+  ]
+}

@@ -52,9 +52,7 @@ import (
 type Measurement struct {
 	Px  float64
 	Em  float64
-	Vw  float64
-	Vh  float64
-	Pct float64
+	Rem float64
 }
 
 type _Block struct {
@@ -109,10 +107,10 @@ type Color struct {
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
-	visible__inst1      bool
-	checked__inst5      map[string]bool
-	checked__inst9      map[string]bool
-	checked__inst12     map[string]bool
+	visible__inst0      bool
+	checked__inst0      map[string]bool
+	checked__inst1      map[string]bool
+	checked__inst2      map[string]bool
 	__focusID           int
 	__focusLoop0_cursor int
 
@@ -122,10 +120,10 @@ type Model struct {
 // New creates a Model with default bind values.
 func New() Model {
 	m := Model{}
-	m.visible__inst1 = true
-	m.checked__inst5 = map[string]bool{}
-	m.checked__inst9 = map[string]bool{}
-	m.checked__inst12 = map[string]bool{}
+	m.visible__inst0 = true
+	m.checked__inst0 = map[string]bool{}
+	m.checked__inst1 = map[string]bool{}
+	m.checked__inst2 = map[string]bool{}
 	m.__focusID = 0
 	m.__focusLoop0_cursor = 0
 	return m
@@ -230,64 +228,64 @@ func (m *Model) __focusPrev() {
 	}
 }
 
-func (m Model) Visible__inst1() bool {
-	return m.visible__inst1
+func (m Model) Visible__inst0() bool {
+	return m.visible__inst0
 }
 
-func (m Model) SetVisible__inst1(v bool) Model {
-	m.visible__inst1 = v
+func (m Model) SetVisible__inst0(v bool) Model {
+	m.visible__inst0 = v
 	return m
 }
 
-type setVisible__inst1Msg struct{ value bool }
+type setVisible__inst0Msg struct{ value bool }
 
-func SetVisible__inst1Cmd(v bool) tea.Cmd {
-	return func() tea.Msg { return setVisible__inst1Msg{value: v} }
+func SetVisible__inst0Cmd(v bool) tea.Cmd {
+	return func() tea.Msg { return setVisible__inst0Msg{value: v} }
 }
 
-func (m Model) Checked__inst5() map[string]bool {
-	return m.checked__inst5
+func (m Model) Checked__inst0() map[string]bool {
+	return m.checked__inst0
 }
 
-func (m Model) SetChecked__inst5(v map[string]bool) Model {
-	m.checked__inst5 = v
+func (m Model) SetChecked__inst0(v map[string]bool) Model {
+	m.checked__inst0 = v
 	return m
 }
 
-type setChecked__inst5Msg struct{ value map[string]bool }
+type setChecked__inst0Msg struct{ value map[string]bool }
 
-func SetChecked__inst5Cmd(v map[string]bool) tea.Cmd {
-	return func() tea.Msg { return setChecked__inst5Msg{value: v} }
+func SetChecked__inst0Cmd(v map[string]bool) tea.Cmd {
+	return func() tea.Msg { return setChecked__inst0Msg{value: v} }
 }
 
-func (m Model) Checked__inst9() map[string]bool {
-	return m.checked__inst9
+func (m Model) Checked__inst1() map[string]bool {
+	return m.checked__inst1
 }
 
-func (m Model) SetChecked__inst9(v map[string]bool) Model {
-	m.checked__inst9 = v
+func (m Model) SetChecked__inst1(v map[string]bool) Model {
+	m.checked__inst1 = v
 	return m
 }
 
-type setChecked__inst9Msg struct{ value map[string]bool }
+type setChecked__inst1Msg struct{ value map[string]bool }
 
-func SetChecked__inst9Cmd(v map[string]bool) tea.Cmd {
-	return func() tea.Msg { return setChecked__inst9Msg{value: v} }
+func SetChecked__inst1Cmd(v map[string]bool) tea.Cmd {
+	return func() tea.Msg { return setChecked__inst1Msg{value: v} }
 }
 
-func (m Model) Checked__inst12() map[string]bool {
-	return m.checked__inst12
+func (m Model) Checked__inst2() map[string]bool {
+	return m.checked__inst2
 }
 
-func (m Model) SetChecked__inst12(v map[string]bool) Model {
-	m.checked__inst12 = v
+func (m Model) SetChecked__inst2(v map[string]bool) Model {
+	m.checked__inst2 = v
 	return m
 }
 
-type setChecked__inst12Msg struct{ value map[string]bool }
+type setChecked__inst2Msg struct{ value map[string]bool }
 
-func SetChecked__inst12Cmd(v map[string]bool) tea.Cmd {
-	return func() tea.Msg { return setChecked__inst12Msg{value: v} }
+func SetChecked__inst2Cmd(v map[string]bool) tea.Cmd {
+	return func() tea.Msg { return setChecked__inst2Msg{value: v} }
 }
 
 func (m Model) Init() tea.Cmd {
@@ -299,24 +297,24 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	_ = cmd
 	switch msg := msg.(type) {
-	case setVisible__inst1Msg:
-		m = m.SetVisible__inst1(msg.value)
-	case setChecked__inst5Msg:
-		m = m.SetChecked__inst5(msg.value)
-	case setChecked__inst9Msg:
-		m = m.SetChecked__inst9(msg.value)
-	case setChecked__inst12Msg:
-		m = m.SetChecked__inst12(msg.value)
+	case setVisible__inst0Msg:
+		m = m.SetVisible__inst0(msg.value)
+	case setChecked__inst0Msg:
+		m = m.SetChecked__inst0(msg.value)
+	case setChecked__inst1Msg:
+		m = m.SetChecked__inst1(msg.value)
+	case setChecked__inst2Msg:
+		m = m.SetChecked__inst2(msg.value)
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
 	case tea.KeyPressMsg:
 		switch {
 		case msg.Code == 'c' && msg.Mod == tea.ModCtrl:
-			if m.visible__inst1 {
-				m.visible__inst1 = false
+			if m.visible__inst0 {
+				m.visible__inst0 = false
 			}
-			if !(m.visible__inst1) {
+			if !(m.visible__inst0) {
 				return m, tea.Quit
 			}
 			return m, nil
@@ -337,20 +335,19 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 							if it.Task == "none" {
 							} else {
 								if m.__focusLoop0_cursor == __focusPos0 {
-									__bound_checked := !func() bool {
-										if __v, __ok := m.checked__inst5[((fmt.Sprint(__copy0) + "/") + fmt.Sprint(__copy1))]; __ok {
+									__cell1_checked__inst0 := func() bool {
+										if __v, __ok := m.checked__inst0[((fmt.Sprint(__copy0) + "/") + fmt.Sprint(__copy1))]; __ok {
 											return __v
 										}
 										return (it.Task == "done")
 									}()
-									__cell1_checked__inst5 := func() bool {
-										if __v, __ok := m.checked__inst5[((fmt.Sprint(__copy0) + "/") + fmt.Sprint(__copy1))]; __ok {
+									__cell1_checked__inst0 = !func() bool {
+										if __v, __ok := m.checked__inst0[((fmt.Sprint(__copy0) + "/") + fmt.Sprint(__copy1))]; __ok {
 											return __v
 										}
 										return (it.Task == "done")
 									}()
-									__cell1_checked__inst5 = __bound_checked
-									m.checked__inst5[((fmt.Sprint(__copy0) + "/") + fmt.Sprint(__copy1))] = __cell1_checked__inst5
+									m.checked__inst0[((fmt.Sprint(__copy0) + "/") + fmt.Sprint(__copy1))] = __cell1_checked__inst0
 									return
 								}
 								__focusPos0++
@@ -365,20 +362,19 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 										if it.Task == "none" {
 										} else {
 											if m.__focusLoop0_cursor == __focusPos0 {
-												__bound_checked := !func() bool {
-													if __v, __ok := m.checked__inst9[((((((fmt.Sprint(__copy0) + "/") + fmt.Sprint(__copy1)) + "/") + fmt.Sprint(__copy2)) + "/") + fmt.Sprint(__copy3))]; __ok {
+												__cell1_checked__inst1 := func() bool {
+													if __v, __ok := m.checked__inst1[((((((fmt.Sprint(__copy0) + "/") + fmt.Sprint(__copy1)) + "/") + fmt.Sprint(__copy2)) + "/") + fmt.Sprint(__copy3))]; __ok {
 														return __v
 													}
 													return (it.Task == "done")
 												}()
-												__cell1_checked__inst9 := func() bool {
-													if __v, __ok := m.checked__inst9[((((((fmt.Sprint(__copy0) + "/") + fmt.Sprint(__copy1)) + "/") + fmt.Sprint(__copy2)) + "/") + fmt.Sprint(__copy3))]; __ok {
+												__cell1_checked__inst1 = !func() bool {
+													if __v, __ok := m.checked__inst1[((((((fmt.Sprint(__copy0) + "/") + fmt.Sprint(__copy1)) + "/") + fmt.Sprint(__copy2)) + "/") + fmt.Sprint(__copy3))]; __ok {
 														return __v
 													}
 													return (it.Task == "done")
 												}()
-												__cell1_checked__inst9 = __bound_checked
-												m.checked__inst9[((((((fmt.Sprint(__copy0) + "/") + fmt.Sprint(__copy1)) + "/") + fmt.Sprint(__copy2)) + "/") + fmt.Sprint(__copy3))] = __cell1_checked__inst9
+												m.checked__inst1[((((((fmt.Sprint(__copy0) + "/") + fmt.Sprint(__copy1)) + "/") + fmt.Sprint(__copy2)) + "/") + fmt.Sprint(__copy3))] = __cell1_checked__inst1
 												return
 											}
 											__focusPos0++
@@ -393,20 +389,19 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 													if it.Task == "none" {
 													} else {
 														if m.__focusLoop0_cursor == __focusPos0 {
-															__bound_checked := !func() bool {
-																if __v, __ok := m.checked__inst12[((((((((((fmt.Sprint(__copy0) + "/") + fmt.Sprint(__copy1)) + "/") + fmt.Sprint(__copy2)) + "/") + fmt.Sprint(__copy3)) + "/") + fmt.Sprint(__copy4)) + "/") + fmt.Sprint(__copy5))]; __ok {
+															__cell1_checked__inst2 := func() bool {
+																if __v, __ok := m.checked__inst2[((((((((((fmt.Sprint(__copy0) + "/") + fmt.Sprint(__copy1)) + "/") + fmt.Sprint(__copy2)) + "/") + fmt.Sprint(__copy3)) + "/") + fmt.Sprint(__copy4)) + "/") + fmt.Sprint(__copy5))]; __ok {
 																	return __v
 																}
 																return (it.Task == "done")
 															}()
-															__cell1_checked__inst12 := func() bool {
-																if __v, __ok := m.checked__inst12[((((((((((fmt.Sprint(__copy0) + "/") + fmt.Sprint(__copy1)) + "/") + fmt.Sprint(__copy2)) + "/") + fmt.Sprint(__copy3)) + "/") + fmt.Sprint(__copy4)) + "/") + fmt.Sprint(__copy5))]; __ok {
+															__cell1_checked__inst2 = !func() bool {
+																if __v, __ok := m.checked__inst2[((((((((((fmt.Sprint(__copy0) + "/") + fmt.Sprint(__copy1)) + "/") + fmt.Sprint(__copy2)) + "/") + fmt.Sprint(__copy3)) + "/") + fmt.Sprint(__copy4)) + "/") + fmt.Sprint(__copy5))]; __ok {
 																	return __v
 																}
 																return (it.Task == "done")
 															}()
-															__cell1_checked__inst12 = __bound_checked
-															m.checked__inst12[((((((((((fmt.Sprint(__copy0) + "/") + fmt.Sprint(__copy1)) + "/") + fmt.Sprint(__copy2)) + "/") + fmt.Sprint(__copy3)) + "/") + fmt.Sprint(__copy4)) + "/") + fmt.Sprint(__copy5))] = __cell1_checked__inst12
+															m.checked__inst2[((((((((((fmt.Sprint(__copy0) + "/") + fmt.Sprint(__copy1)) + "/") + fmt.Sprint(__copy2)) + "/") + fmt.Sprint(__copy3)) + "/") + fmt.Sprint(__copy4)) + "/") + fmt.Sprint(__copy5))] = __cell1_checked__inst2
 															return
 														}
 														__focusPos0++
@@ -428,7 +423,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m Model) View() tea.View {
 	var content string
-	if m.visible__inst1 {
+	if m.visible__inst0 {
 		var contentChildren []string
 		var content_0 string
 		__focusPos0 := 0
@@ -3952,9 +3947,7 @@ var _snglTheme8 = fynetheme.Theme{Theme: theme.DefaultTheme(), TextSize: 21, Bol
 type Measurement struct {
 	Px  float64
 	Em  float64
-	Vw  float64
-	Vh  float64
-	Pct float64
+	Rem float64
 }
 
 type _Block struct {
@@ -4005,10 +3998,6 @@ type Color struct {
 	G uint8
 	B uint8
 	A uint8
-}
-
-type ToggleEvent struct {
-	Checked bool
 }
 
 // Model holds the state for this SNGL UI.
@@ -4166,7 +4155,7 @@ func (m *Model) __renderSlot9(__parent *fyne.Container) {
 													} else {
 														__lt2 = ""
 													}
-													__n670.SetSpanStyle(__lt0, __lt1, __lt2, false, p.Strike, Measurement{Px: 0}.Px, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
+													__n670.SetSpanStyle(__lt0, __lt1, __lt2, false, p.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
 													__n671 := fynetext.NewSpan(fynetext.Style())
 													__n671.SetText(p.Text)
 													__n670.Add(__n671)
@@ -4231,7 +4220,7 @@ func (m *Model) __renderSlot9(__parent *fyne.Container) {
 												} else {
 													__lt5 = ""
 												}
-												__n681.SetSpanStyle(__lt3, __lt4, __lt5, false, r.Strike, Measurement{Px: 0}.Px, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
+												__n681.SetSpanStyle(__lt3, __lt4, __lt5, false, r.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
 												__n682 := fynetext.NewSpan(fynetext.Style())
 												__n682.SetText(r.Text)
 												__n681.Add(__n682)
@@ -4311,7 +4300,7 @@ func (m *Model) __renderSlot9(__parent *fyne.Container) {
 														} else {
 															__lt8 = ""
 														}
-														__n695.SetSpanStyle(__lt6, __lt7, __lt8, false, p.Strike, Measurement{Px: 0}.Px, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
+														__n695.SetSpanStyle(__lt6, __lt7, __lt8, false, p.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
 														__n696 := fynetext.NewSpan(fynetext.Style())
 														__n696.SetText(p.Text)
 														__n695.Add(__n696)
@@ -4376,7 +4365,7 @@ func (m *Model) __renderSlot9(__parent *fyne.Container) {
 													} else {
 														__lt11 = ""
 													}
-													__n706.SetSpanStyle(__lt9, __lt10, __lt11, false, r.Strike, Measurement{Px: 0}.Px, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
+													__n706.SetSpanStyle(__lt9, __lt10, __lt11, false, r.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
 													__n707 := fynetext.NewSpan(fynetext.Style())
 													__n707.SetText(r.Text)
 													__n706.Add(__n707)
@@ -4456,7 +4445,7 @@ func (m *Model) __renderSlot9(__parent *fyne.Container) {
 															} else {
 																__lt14 = ""
 															}
-															__n720.SetSpanStyle(__lt12, __lt13, __lt14, false, p.Strike, Measurement{Px: 0}.Px, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
+															__n720.SetSpanStyle(__lt12, __lt13, __lt14, false, p.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
 															__n721 := fynetext.NewSpan(fynetext.Style())
 															__n721.SetText(p.Text)
 															__n720.Add(__n721)
@@ -4521,7 +4510,7 @@ func (m *Model) __renderSlot9(__parent *fyne.Container) {
 														} else {
 															__lt17 = ""
 														}
-														__n731.SetSpanStyle(__lt15, __lt16, __lt17, false, r.Strike, Measurement{Px: 0}.Px, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
+														__n731.SetSpanStyle(__lt15, __lt16, __lt17, false, r.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
 														__n732 := fynetext.NewSpan(fynetext.Style())
 														__n732.SetText(r.Text)
 														__n731.Add(__n732)
@@ -4601,7 +4590,7 @@ func (m *Model) __renderSlot9(__parent *fyne.Container) {
 																} else {
 																	__lt20 = ""
 																}
-																__n745.SetSpanStyle(__lt18, __lt19, __lt20, false, p.Strike, Measurement{Px: 0}.Px, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
+																__n745.SetSpanStyle(__lt18, __lt19, __lt20, false, p.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
 																__n746 := fynetext.NewSpan(fynetext.Style())
 																__n746.SetText(p.Text)
 																__n745.Add(__n746)
@@ -4666,7 +4655,7 @@ func (m *Model) __renderSlot9(__parent *fyne.Container) {
 															} else {
 																__lt23 = ""
 															}
-															__n756.SetSpanStyle(__lt21, __lt22, __lt23, false, r.Strike, Measurement{Px: 0}.Px, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
+															__n756.SetSpanStyle(__lt21, __lt22, __lt23, false, r.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
 															__n757 := fynetext.NewSpan(fynetext.Style())
 															__n757.SetText(r.Text)
 															__n756.Add(__n757)
@@ -4746,7 +4735,7 @@ func (m *Model) __renderSlot9(__parent *fyne.Container) {
 																	} else {
 																		__lt26 = ""
 																	}
-																	__n770.SetSpanStyle(__lt24, __lt25, __lt26, false, p.Strike, Measurement{Px: 0}.Px, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
+																	__n770.SetSpanStyle(__lt24, __lt25, __lt26, false, p.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
 																	__n771 := fynetext.NewSpan(fynetext.Style())
 																	__n771.SetText(p.Text)
 																	__n770.Add(__n771)
@@ -4811,7 +4800,7 @@ func (m *Model) __renderSlot9(__parent *fyne.Container) {
 																} else {
 																	__lt29 = ""
 																}
-																__n781.SetSpanStyle(__lt27, __lt28, __lt29, false, r.Strike, Measurement{Px: 0}.Px, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
+																__n781.SetSpanStyle(__lt27, __lt28, __lt29, false, r.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
 																__n782 := fynetext.NewSpan(fynetext.Style())
 																__n782.SetText(r.Text)
 																__n781.Add(__n782)
@@ -4891,7 +4880,7 @@ func (m *Model) __renderSlot9(__parent *fyne.Container) {
 																		} else {
 																			__lt32 = ""
 																		}
-																		__n795.SetSpanStyle(__lt30, __lt31, __lt32, false, p.Strike, Measurement{Px: 0}.Px, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
+																		__n795.SetSpanStyle(__lt30, __lt31, __lt32, false, p.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
 																		__n796 := fynetext.NewSpan(fynetext.Style())
 																		__n796.SetText(p.Text)
 																		__n795.Add(__n796)
@@ -4956,7 +4945,7 @@ func (m *Model) __renderSlot9(__parent *fyne.Container) {
 																	} else {
 																		__lt35 = ""
 																	}
-																	__n806.SetSpanStyle(__lt33, __lt34, __lt35, false, r.Strike, Measurement{Px: 0}.Px, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
+																	__n806.SetSpanStyle(__lt33, __lt34, __lt35, false, r.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
 																	__n807 := fynetext.NewSpan(fynetext.Style())
 																	__n807.SetText(r.Text)
 																	__n806.Add(__n807)
@@ -5036,7 +5025,7 @@ func (m *Model) __renderSlot9(__parent *fyne.Container) {
 																			} else {
 																				__lt38 = ""
 																			}
-																			__n820.SetSpanStyle(__lt36, __lt37, __lt38, false, p.Strike, Measurement{Px: 0}.Px, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
+																			__n820.SetSpanStyle(__lt36, __lt37, __lt38, false, p.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
 																			__n821 := fynetext.NewSpan(fynetext.Style())
 																			__n821.SetText(p.Text)
 																			__n820.Add(__n821)
@@ -5101,7 +5090,7 @@ func (m *Model) __renderSlot9(__parent *fyne.Container) {
 																		} else {
 																			__lt41 = ""
 																		}
-																		__n831.SetSpanStyle(__lt39, __lt40, __lt41, false, r.Strike, Measurement{Px: 0}.Px, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
+																		__n831.SetSpanStyle(__lt39, __lt40, __lt41, false, r.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
 																		__n832 := fynetext.NewSpan(fynetext.Style())
 																		__n832.SetText(r.Text)
 																		__n831.Add(__n832)
@@ -5181,7 +5170,7 @@ func (m *Model) __renderSlot9(__parent *fyne.Container) {
 																				} else {
 																					__lt44 = ""
 																				}
-																				__n845.SetSpanStyle(__lt42, __lt43, __lt44, false, p.Strike, Measurement{Px: 0}.Px, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
+																				__n845.SetSpanStyle(__lt42, __lt43, __lt44, false, p.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
 																				__n846 := fynetext.NewSpan(fynetext.Style())
 																				__n846.SetText(p.Text)
 																				__n845.Add(__n846)
@@ -5246,7 +5235,7 @@ func (m *Model) __renderSlot9(__parent *fyne.Container) {
 																			} else {
 																				__lt47 = ""
 																			}
-																			__n856.SetSpanStyle(__lt45, __lt46, __lt47, false, r.Strike, Measurement{Px: 0}.Px, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
+																			__n856.SetSpanStyle(__lt45, __lt46, __lt47, false, r.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
 																			__n857 := fynetext.NewSpan(fynetext.Style())
 																			__n857.SetText(r.Text)
 																			__n856.Add(__n857)
@@ -5481,7 +5470,7 @@ type ListItem__slot2Instance struct {
 	__prop_task            string
 	__prop___ctx_listDepth int
 	__prop___p0            _Item
-	checked__inst2         bool
+	checked__inst0         bool
 	__root                 *fyne.Container
 	__slot0                []fyne.CanvasObject
 	__slot0_at             fyne.CanvasObject
@@ -5516,7 +5505,7 @@ func newListItem__slot2Instance(__model *Model, __a_marker string, __a_task stri
 	c.__prop_task = __a_task
 	c.__prop___ctx_listDepth = __a___ctx_listDepth
 	c.__prop___p0 = __a___p0
-	c.checked__inst2 = (c.__prop_task == "done")
+	c.checked__inst0 = (c.__prop_task == "done")
 	c.__root = container.NewVBox()
 	c.__slot0 = nil
 	c.__slot1 = nil
@@ -5595,21 +5584,21 @@ func (c *ListItem__slot2Instance) __renderSlot1(__parent *fyne.Container) {
 		var __n10 *__child1Instance
 		if len(c.__inst2_live) > __inst2_i {
 			__n10 = c.__inst2_live[__inst2_i]
-			__n10.Set__p0(c.checked__inst2)
-			__n10.Set__on0(func(__event ToggleEvent) {
-				c.checked__inst2 = __event.Checked
+			__n10.Set__p0(c.checked__inst0)
+			__n10.Set__on0(func(on bool) {
+				c.checked__inst0 = on
 				for __inst2_live_ui, _ := range c.__inst2_live {
-					c.__inst2_live[__inst2_live_ui].Set__p0(c.checked__inst2)
+					c.__inst2_live[__inst2_live_ui].Set__p0(c.checked__inst0)
 				}
 			})
 		} else {
 			if len(c.__inst2_live) > __inst2_i {
 				c.__inst2_live[__inst2_i].Destroy()
 			}
-			__n10__new := new__child1Instance(c.__model, c.checked__inst2, func(__event ToggleEvent) {
-				c.checked__inst2 = __event.Checked
+			__n10__new := new__child1Instance(c.__model, c.checked__inst0, func(on bool) {
+				c.checked__inst0 = on
 				for __inst2_live_ui, _ := range c.__inst2_live {
-					c.__inst2_live[__inst2_live_ui].Set__p0(c.checked__inst2)
+					c.__inst2_live[__inst2_live_ui].Set__p0(c.checked__inst0)
 				}
 			})
 			__n10 = __n10__new
@@ -5707,7 +5696,7 @@ func (c *ListItem__slot2Instance) __renderSlot2(__parent *fyne.Container) {
 												} else {
 													__lt50 = ""
 												}
-												__n23.SetSpanStyle(__lt48, __lt49, __lt50, false, p.Strike, Measurement{Px: 0}.Px, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
+												__n23.SetSpanStyle(__lt48, __lt49, __lt50, false, p.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
 												__n24 := fynetext.NewSpan(fynetext.Style())
 												__n24.SetText(p.Text)
 												__n23.Add(__n24)
@@ -5772,7 +5761,7 @@ func (c *ListItem__slot2Instance) __renderSlot2(__parent *fyne.Container) {
 											} else {
 												__lt53 = ""
 											}
-											__n34.SetSpanStyle(__lt51, __lt52, __lt53, false, r.Strike, Measurement{Px: 0}.Px, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
+											__n34.SetSpanStyle(__lt51, __lt52, __lt53, false, r.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
 											__n35 := fynetext.NewSpan(fynetext.Style())
 											__n35.SetText(r.Text)
 											__n34.Add(__n35)
@@ -5852,7 +5841,7 @@ func (c *ListItem__slot2Instance) __renderSlot2(__parent *fyne.Container) {
 													} else {
 														__lt56 = ""
 													}
-													__n48.SetSpanStyle(__lt54, __lt55, __lt56, false, p.Strike, Measurement{Px: 0}.Px, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
+													__n48.SetSpanStyle(__lt54, __lt55, __lt56, false, p.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
 													__n49 := fynetext.NewSpan(fynetext.Style())
 													__n49.SetText(p.Text)
 													__n48.Add(__n49)
@@ -5917,7 +5906,7 @@ func (c *ListItem__slot2Instance) __renderSlot2(__parent *fyne.Container) {
 												} else {
 													__lt59 = ""
 												}
-												__n59.SetSpanStyle(__lt57, __lt58, __lt59, false, r.Strike, Measurement{Px: 0}.Px, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
+												__n59.SetSpanStyle(__lt57, __lt58, __lt59, false, r.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
 												__n60 := fynetext.NewSpan(fynetext.Style())
 												__n60.SetText(r.Text)
 												__n59.Add(__n60)
@@ -5997,7 +5986,7 @@ func (c *ListItem__slot2Instance) __renderSlot2(__parent *fyne.Container) {
 														} else {
 															__lt62 = ""
 														}
-														__n73.SetSpanStyle(__lt60, __lt61, __lt62, false, p.Strike, Measurement{Px: 0}.Px, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
+														__n73.SetSpanStyle(__lt60, __lt61, __lt62, false, p.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
 														__n74 := fynetext.NewSpan(fynetext.Style())
 														__n74.SetText(p.Text)
 														__n73.Add(__n74)
@@ -6062,7 +6051,7 @@ func (c *ListItem__slot2Instance) __renderSlot2(__parent *fyne.Container) {
 													} else {
 														__lt65 = ""
 													}
-													__n84.SetSpanStyle(__lt63, __lt64, __lt65, false, r.Strike, Measurement{Px: 0}.Px, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
+													__n84.SetSpanStyle(__lt63, __lt64, __lt65, false, r.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
 													__n85 := fynetext.NewSpan(fynetext.Style())
 													__n85.SetText(r.Text)
 													__n84.Add(__n85)
@@ -6142,7 +6131,7 @@ func (c *ListItem__slot2Instance) __renderSlot2(__parent *fyne.Container) {
 															} else {
 																__lt68 = ""
 															}
-															__n98.SetSpanStyle(__lt66, __lt67, __lt68, false, p.Strike, Measurement{Px: 0}.Px, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
+															__n98.SetSpanStyle(__lt66, __lt67, __lt68, false, p.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
 															__n99 := fynetext.NewSpan(fynetext.Style())
 															__n99.SetText(p.Text)
 															__n98.Add(__n99)
@@ -6207,7 +6196,7 @@ func (c *ListItem__slot2Instance) __renderSlot2(__parent *fyne.Container) {
 														} else {
 															__lt71 = ""
 														}
-														__n109.SetSpanStyle(__lt69, __lt70, __lt71, false, r.Strike, Measurement{Px: 0}.Px, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
+														__n109.SetSpanStyle(__lt69, __lt70, __lt71, false, r.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
 														__n110 := fynetext.NewSpan(fynetext.Style())
 														__n110.SetText(r.Text)
 														__n109.Add(__n110)
@@ -6287,7 +6276,7 @@ func (c *ListItem__slot2Instance) __renderSlot2(__parent *fyne.Container) {
 																} else {
 																	__lt74 = ""
 																}
-																__n123.SetSpanStyle(__lt72, __lt73, __lt74, false, p.Strike, Measurement{Px: 0}.Px, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
+																__n123.SetSpanStyle(__lt72, __lt73, __lt74, false, p.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
 																__n124 := fynetext.NewSpan(fynetext.Style())
 																__n124.SetText(p.Text)
 																__n123.Add(__n124)
@@ -6352,7 +6341,7 @@ func (c *ListItem__slot2Instance) __renderSlot2(__parent *fyne.Container) {
 															} else {
 																__lt77 = ""
 															}
-															__n134.SetSpanStyle(__lt75, __lt76, __lt77, false, r.Strike, Measurement{Px: 0}.Px, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
+															__n134.SetSpanStyle(__lt75, __lt76, __lt77, false, r.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
 															__n135 := fynetext.NewSpan(fynetext.Style())
 															__n135.SetText(r.Text)
 															__n134.Add(__n135)
@@ -6432,7 +6421,7 @@ func (c *ListItem__slot2Instance) __renderSlot2(__parent *fyne.Container) {
 																	} else {
 																		__lt80 = ""
 																	}
-																	__n148.SetSpanStyle(__lt78, __lt79, __lt80, false, p.Strike, Measurement{Px: 0}.Px, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
+																	__n148.SetSpanStyle(__lt78, __lt79, __lt80, false, p.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
 																	__n149 := fynetext.NewSpan(fynetext.Style())
 																	__n149.SetText(p.Text)
 																	__n148.Add(__n149)
@@ -6497,7 +6486,7 @@ func (c *ListItem__slot2Instance) __renderSlot2(__parent *fyne.Container) {
 																} else {
 																	__lt83 = ""
 																}
-																__n159.SetSpanStyle(__lt81, __lt82, __lt83, false, r.Strike, Measurement{Px: 0}.Px, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
+																__n159.SetSpanStyle(__lt81, __lt82, __lt83, false, r.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
 																__n160 := fynetext.NewSpan(fynetext.Style())
 																__n160.SetText(r.Text)
 																__n159.Add(__n160)
@@ -6577,7 +6566,7 @@ func (c *ListItem__slot2Instance) __renderSlot2(__parent *fyne.Container) {
 																		} else {
 																			__lt86 = ""
 																		}
-																		__n173.SetSpanStyle(__lt84, __lt85, __lt86, false, p.Strike, Measurement{Px: 0}.Px, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
+																		__n173.SetSpanStyle(__lt84, __lt85, __lt86, false, p.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
 																		__n174 := fynetext.NewSpan(fynetext.Style())
 																		__n174.SetText(p.Text)
 																		__n173.Add(__n174)
@@ -6642,7 +6631,7 @@ func (c *ListItem__slot2Instance) __renderSlot2(__parent *fyne.Container) {
 																	} else {
 																		__lt89 = ""
 																	}
-																	__n184.SetSpanStyle(__lt87, __lt88, __lt89, false, r.Strike, Measurement{Px: 0}.Px, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
+																	__n184.SetSpanStyle(__lt87, __lt88, __lt89, false, r.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
 																	__n185 := fynetext.NewSpan(fynetext.Style())
 																	__n185.SetText(r.Text)
 																	__n184.Add(__n185)
@@ -6722,7 +6711,7 @@ func (c *ListItem__slot2Instance) __renderSlot2(__parent *fyne.Container) {
 																			} else {
 																				__lt92 = ""
 																			}
-																			__n198.SetSpanStyle(__lt90, __lt91, __lt92, false, p.Strike, Measurement{Px: 0}.Px, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
+																			__n198.SetSpanStyle(__lt90, __lt91, __lt92, false, p.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
 																			__n199 := fynetext.NewSpan(fynetext.Style())
 																			__n199.SetText(p.Text)
 																			__n198.Add(__n199)
@@ -6787,7 +6776,7 @@ func (c *ListItem__slot2Instance) __renderSlot2(__parent *fyne.Container) {
 																		} else {
 																			__lt95 = ""
 																		}
-																		__n209.SetSpanStyle(__lt93, __lt94, __lt95, false, r.Strike, Measurement{Px: 0}.Px, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
+																		__n209.SetSpanStyle(__lt93, __lt94, __lt95, false, r.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
 																		__n210 := fynetext.NewSpan(fynetext.Style())
 																		__n210.SetText(r.Text)
 																		__n209.Add(__n210)
@@ -6880,7 +6869,7 @@ type ListItem__slot1Instance struct {
 	__prop___ctx_listDepth int
 	__prop___p0            _Item
 	__prop___p1            int
-	checked__inst2         bool
+	checked__inst0         bool
 	__root                 *fyne.Container
 	__slot0                []fyne.CanvasObject
 	__slot0_at             fyne.CanvasObject
@@ -6917,7 +6906,7 @@ func newListItem__slot1Instance(__model *Model, __a_marker string, __a_task stri
 	c.__prop___ctx_listDepth = __a___ctx_listDepth
 	c.__prop___p0 = __a___p0
 	c.__prop___p1 = __a___p1
-	c.checked__inst2 = (c.__prop_task == "done")
+	c.checked__inst0 = (c.__prop_task == "done")
 	c.__root = container.NewVBox()
 	c.__slot0 = nil
 	c.__slot1 = nil
@@ -7004,21 +6993,21 @@ func (c *ListItem__slot1Instance) __renderSlot3(__parent *fyne.Container) {
 		var __n224 *__child3Instance
 		if len(c.__inst4_live) > __inst4_i {
 			__n224 = c.__inst4_live[__inst4_i]
-			__n224.Set__p0(c.checked__inst2)
-			__n224.Set__on0(func(__event ToggleEvent) {
-				c.checked__inst2 = __event.Checked
+			__n224.Set__p0(c.checked__inst0)
+			__n224.Set__on0(func(on bool) {
+				c.checked__inst0 = on
 				for __inst4_live_ui, _ := range c.__inst4_live {
-					c.__inst4_live[__inst4_live_ui].Set__p0(c.checked__inst2)
+					c.__inst4_live[__inst4_live_ui].Set__p0(c.checked__inst0)
 				}
 			})
 		} else {
 			if len(c.__inst4_live) > __inst4_i {
 				c.__inst4_live[__inst4_i].Destroy()
 			}
-			__n224__new := new__child3Instance(c.__model, c.checked__inst2, func(__event ToggleEvent) {
-				c.checked__inst2 = __event.Checked
+			__n224__new := new__child3Instance(c.__model, c.checked__inst0, func(on bool) {
+				c.checked__inst0 = on
 				for __inst4_live_ui, _ := range c.__inst4_live {
-					c.__inst4_live[__inst4_live_ui].Set__p0(c.checked__inst2)
+					c.__inst4_live[__inst4_live_ui].Set__p0(c.checked__inst0)
 				}
 			})
 			__n224 = __n224__new
@@ -7137,7 +7126,7 @@ func (c *ListItem__slot1Instance) __renderSlot4(__parent *fyne.Container) {
 													} else {
 														__lt98 = ""
 													}
-													__n238.SetSpanStyle(__lt96, __lt97, __lt98, false, p.Strike, Measurement{Px: 0}.Px, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
+													__n238.SetSpanStyle(__lt96, __lt97, __lt98, false, p.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
 													__n239 := fynetext.NewSpan(fynetext.Style())
 													__n239.SetText(p.Text)
 													__n238.Add(__n239)
@@ -7202,7 +7191,7 @@ func (c *ListItem__slot1Instance) __renderSlot4(__parent *fyne.Container) {
 												} else {
 													__lt101 = ""
 												}
-												__n249.SetSpanStyle(__lt99, __lt100, __lt101, false, r.Strike, Measurement{Px: 0}.Px, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
+												__n249.SetSpanStyle(__lt99, __lt100, __lt101, false, r.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
 												__n250 := fynetext.NewSpan(fynetext.Style())
 												__n250.SetText(r.Text)
 												__n249.Add(__n250)
@@ -7282,7 +7271,7 @@ func (c *ListItem__slot1Instance) __renderSlot4(__parent *fyne.Container) {
 														} else {
 															__lt104 = ""
 														}
-														__n263.SetSpanStyle(__lt102, __lt103, __lt104, false, p.Strike, Measurement{Px: 0}.Px, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
+														__n263.SetSpanStyle(__lt102, __lt103, __lt104, false, p.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
 														__n264 := fynetext.NewSpan(fynetext.Style())
 														__n264.SetText(p.Text)
 														__n263.Add(__n264)
@@ -7347,7 +7336,7 @@ func (c *ListItem__slot1Instance) __renderSlot4(__parent *fyne.Container) {
 													} else {
 														__lt107 = ""
 													}
-													__n274.SetSpanStyle(__lt105, __lt106, __lt107, false, r.Strike, Measurement{Px: 0}.Px, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
+													__n274.SetSpanStyle(__lt105, __lt106, __lt107, false, r.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
 													__n275 := fynetext.NewSpan(fynetext.Style())
 													__n275.SetText(r.Text)
 													__n274.Add(__n275)
@@ -7427,7 +7416,7 @@ func (c *ListItem__slot1Instance) __renderSlot4(__parent *fyne.Container) {
 															} else {
 																__lt110 = ""
 															}
-															__n288.SetSpanStyle(__lt108, __lt109, __lt110, false, p.Strike, Measurement{Px: 0}.Px, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
+															__n288.SetSpanStyle(__lt108, __lt109, __lt110, false, p.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
 															__n289 := fynetext.NewSpan(fynetext.Style())
 															__n289.SetText(p.Text)
 															__n288.Add(__n289)
@@ -7492,7 +7481,7 @@ func (c *ListItem__slot1Instance) __renderSlot4(__parent *fyne.Container) {
 														} else {
 															__lt113 = ""
 														}
-														__n299.SetSpanStyle(__lt111, __lt112, __lt113, false, r.Strike, Measurement{Px: 0}.Px, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
+														__n299.SetSpanStyle(__lt111, __lt112, __lt113, false, r.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
 														__n300 := fynetext.NewSpan(fynetext.Style())
 														__n300.SetText(r.Text)
 														__n299.Add(__n300)
@@ -7572,7 +7561,7 @@ func (c *ListItem__slot1Instance) __renderSlot4(__parent *fyne.Container) {
 																} else {
 																	__lt116 = ""
 																}
-																__n313.SetSpanStyle(__lt114, __lt115, __lt116, false, p.Strike, Measurement{Px: 0}.Px, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
+																__n313.SetSpanStyle(__lt114, __lt115, __lt116, false, p.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
 																__n314 := fynetext.NewSpan(fynetext.Style())
 																__n314.SetText(p.Text)
 																__n313.Add(__n314)
@@ -7637,7 +7626,7 @@ func (c *ListItem__slot1Instance) __renderSlot4(__parent *fyne.Container) {
 															} else {
 																__lt119 = ""
 															}
-															__n324.SetSpanStyle(__lt117, __lt118, __lt119, false, r.Strike, Measurement{Px: 0}.Px, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
+															__n324.SetSpanStyle(__lt117, __lt118, __lt119, false, r.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
 															__n325 := fynetext.NewSpan(fynetext.Style())
 															__n325.SetText(r.Text)
 															__n324.Add(__n325)
@@ -7717,7 +7706,7 @@ func (c *ListItem__slot1Instance) __renderSlot4(__parent *fyne.Container) {
 																	} else {
 																		__lt122 = ""
 																	}
-																	__n338.SetSpanStyle(__lt120, __lt121, __lt122, false, p.Strike, Measurement{Px: 0}.Px, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
+																	__n338.SetSpanStyle(__lt120, __lt121, __lt122, false, p.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
 																	__n339 := fynetext.NewSpan(fynetext.Style())
 																	__n339.SetText(p.Text)
 																	__n338.Add(__n339)
@@ -7782,7 +7771,7 @@ func (c *ListItem__slot1Instance) __renderSlot4(__parent *fyne.Container) {
 																} else {
 																	__lt125 = ""
 																}
-																__n349.SetSpanStyle(__lt123, __lt124, __lt125, false, r.Strike, Measurement{Px: 0}.Px, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
+																__n349.SetSpanStyle(__lt123, __lt124, __lt125, false, r.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
 																__n350 := fynetext.NewSpan(fynetext.Style())
 																__n350.SetText(r.Text)
 																__n349.Add(__n350)
@@ -7862,7 +7851,7 @@ func (c *ListItem__slot1Instance) __renderSlot4(__parent *fyne.Container) {
 																		} else {
 																			__lt128 = ""
 																		}
-																		__n363.SetSpanStyle(__lt126, __lt127, __lt128, false, p.Strike, Measurement{Px: 0}.Px, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
+																		__n363.SetSpanStyle(__lt126, __lt127, __lt128, false, p.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
 																		__n364 := fynetext.NewSpan(fynetext.Style())
 																		__n364.SetText(p.Text)
 																		__n363.Add(__n364)
@@ -7927,7 +7916,7 @@ func (c *ListItem__slot1Instance) __renderSlot4(__parent *fyne.Container) {
 																	} else {
 																		__lt131 = ""
 																	}
-																	__n374.SetSpanStyle(__lt129, __lt130, __lt131, false, r.Strike, Measurement{Px: 0}.Px, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
+																	__n374.SetSpanStyle(__lt129, __lt130, __lt131, false, r.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
 																	__n375 := fynetext.NewSpan(fynetext.Style())
 																	__n375.SetText(r.Text)
 																	__n374.Add(__n375)
@@ -8007,7 +7996,7 @@ func (c *ListItem__slot1Instance) __renderSlot4(__parent *fyne.Container) {
 																			} else {
 																				__lt134 = ""
 																			}
-																			__n388.SetSpanStyle(__lt132, __lt133, __lt134, false, p.Strike, Measurement{Px: 0}.Px, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
+																			__n388.SetSpanStyle(__lt132, __lt133, __lt134, false, p.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
 																			__n389 := fynetext.NewSpan(fynetext.Style())
 																			__n389.SetText(p.Text)
 																			__n388.Add(__n389)
@@ -8072,7 +8061,7 @@ func (c *ListItem__slot1Instance) __renderSlot4(__parent *fyne.Container) {
 																		} else {
 																			__lt137 = ""
 																		}
-																		__n399.SetSpanStyle(__lt135, __lt136, __lt137, false, r.Strike, Measurement{Px: 0}.Px, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
+																		__n399.SetSpanStyle(__lt135, __lt136, __lt137, false, r.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
 																		__n400 := fynetext.NewSpan(fynetext.Style())
 																		__n400.SetText(r.Text)
 																		__n399.Add(__n400)
@@ -8152,7 +8141,7 @@ func (c *ListItem__slot1Instance) __renderSlot4(__parent *fyne.Container) {
 																				} else {
 																					__lt140 = ""
 																				}
-																				__n413.SetSpanStyle(__lt138, __lt139, __lt140, false, p.Strike, Measurement{Px: 0}.Px, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
+																				__n413.SetSpanStyle(__lt138, __lt139, __lt140, false, p.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
 																				__n414 := fynetext.NewSpan(fynetext.Style())
 																				__n414.SetText(p.Text)
 																				__n413.Add(__n414)
@@ -8217,7 +8206,7 @@ func (c *ListItem__slot1Instance) __renderSlot4(__parent *fyne.Container) {
 																			} else {
 																				__lt143 = ""
 																			}
-																			__n424.SetSpanStyle(__lt141, __lt142, __lt143, false, r.Strike, Measurement{Px: 0}.Px, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
+																			__n424.SetSpanStyle(__lt141, __lt142, __lt143, false, r.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
 																			__n425 := fynetext.NewSpan(fynetext.Style())
 																			__n425.SetText(r.Text)
 																			__n424.Add(__n425)
@@ -8323,7 +8312,7 @@ type ListItem__slot0Instance struct {
 	__prop___ctx_listDepth int
 	__prop___p0            _Item
 	__prop___p1            int
-	checked__inst2         bool
+	checked__inst0         bool
 	__root                 *fyne.Container
 	__slot0                []fyne.CanvasObject
 	__slot0_at             fyne.CanvasObject
@@ -8360,7 +8349,7 @@ func newListItem__slot0Instance(__model *Model, __a_marker string, __a_task stri
 	c.__prop___ctx_listDepth = __a___ctx_listDepth
 	c.__prop___p0 = __a___p0
 	c.__prop___p1 = __a___p1
-	c.checked__inst2 = (c.__prop_task == "done")
+	c.checked__inst0 = (c.__prop_task == "done")
 	c.__root = container.NewVBox()
 	c.__slot0 = nil
 	c.__slot1 = nil
@@ -8447,21 +8436,21 @@ func (c *ListItem__slot0Instance) __renderSlot5(__parent *fyne.Container) {
 		var __n439 *__child5Instance
 		if len(c.__inst7_live) > __inst7_i {
 			__n439 = c.__inst7_live[__inst7_i]
-			__n439.Set__p0(c.checked__inst2)
-			__n439.Set__on0(func(__event ToggleEvent) {
-				c.checked__inst2 = __event.Checked
+			__n439.Set__p0(c.checked__inst0)
+			__n439.Set__on0(func(on bool) {
+				c.checked__inst0 = on
 				for __inst7_live_ui, _ := range c.__inst7_live {
-					c.__inst7_live[__inst7_live_ui].Set__p0(c.checked__inst2)
+					c.__inst7_live[__inst7_live_ui].Set__p0(c.checked__inst0)
 				}
 			})
 		} else {
 			if len(c.__inst7_live) > __inst7_i {
 				c.__inst7_live[__inst7_i].Destroy()
 			}
-			__n439__new := new__child5Instance(c.__model, c.checked__inst2, func(__event ToggleEvent) {
-				c.checked__inst2 = __event.Checked
+			__n439__new := new__child5Instance(c.__model, c.checked__inst0, func(on bool) {
+				c.checked__inst0 = on
 				for __inst7_live_ui, _ := range c.__inst7_live {
-					c.__inst7_live[__inst7_live_ui].Set__p0(c.checked__inst2)
+					c.__inst7_live[__inst7_live_ui].Set__p0(c.checked__inst0)
 				}
 			})
 			__n439 = __n439__new
@@ -8580,7 +8569,7 @@ func (c *ListItem__slot0Instance) __renderSlot6(__parent *fyne.Container) {
 													} else {
 														__lt146 = ""
 													}
-													__n453.SetSpanStyle(__lt144, __lt145, __lt146, false, p.Strike, Measurement{Px: 0}.Px, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
+													__n453.SetSpanStyle(__lt144, __lt145, __lt146, false, p.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
 													__n454 := fynetext.NewSpan(fynetext.Style())
 													__n454.SetText(p.Text)
 													__n453.Add(__n454)
@@ -8645,7 +8634,7 @@ func (c *ListItem__slot0Instance) __renderSlot6(__parent *fyne.Container) {
 												} else {
 													__lt149 = ""
 												}
-												__n464.SetSpanStyle(__lt147, __lt148, __lt149, false, r.Strike, Measurement{Px: 0}.Px, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
+												__n464.SetSpanStyle(__lt147, __lt148, __lt149, false, r.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
 												__n465 := fynetext.NewSpan(fynetext.Style())
 												__n465.SetText(r.Text)
 												__n464.Add(__n465)
@@ -8725,7 +8714,7 @@ func (c *ListItem__slot0Instance) __renderSlot6(__parent *fyne.Container) {
 														} else {
 															__lt152 = ""
 														}
-														__n478.SetSpanStyle(__lt150, __lt151, __lt152, false, p.Strike, Measurement{Px: 0}.Px, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
+														__n478.SetSpanStyle(__lt150, __lt151, __lt152, false, p.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
 														__n479 := fynetext.NewSpan(fynetext.Style())
 														__n479.SetText(p.Text)
 														__n478.Add(__n479)
@@ -8790,7 +8779,7 @@ func (c *ListItem__slot0Instance) __renderSlot6(__parent *fyne.Container) {
 													} else {
 														__lt155 = ""
 													}
-													__n489.SetSpanStyle(__lt153, __lt154, __lt155, false, r.Strike, Measurement{Px: 0}.Px, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
+													__n489.SetSpanStyle(__lt153, __lt154, __lt155, false, r.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
 													__n490 := fynetext.NewSpan(fynetext.Style())
 													__n490.SetText(r.Text)
 													__n489.Add(__n490)
@@ -8870,7 +8859,7 @@ func (c *ListItem__slot0Instance) __renderSlot6(__parent *fyne.Container) {
 															} else {
 																__lt158 = ""
 															}
-															__n503.SetSpanStyle(__lt156, __lt157, __lt158, false, p.Strike, Measurement{Px: 0}.Px, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
+															__n503.SetSpanStyle(__lt156, __lt157, __lt158, false, p.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
 															__n504 := fynetext.NewSpan(fynetext.Style())
 															__n504.SetText(p.Text)
 															__n503.Add(__n504)
@@ -8935,7 +8924,7 @@ func (c *ListItem__slot0Instance) __renderSlot6(__parent *fyne.Container) {
 														} else {
 															__lt161 = ""
 														}
-														__n514.SetSpanStyle(__lt159, __lt160, __lt161, false, r.Strike, Measurement{Px: 0}.Px, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
+														__n514.SetSpanStyle(__lt159, __lt160, __lt161, false, r.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
 														__n515 := fynetext.NewSpan(fynetext.Style())
 														__n515.SetText(r.Text)
 														__n514.Add(__n515)
@@ -9015,7 +9004,7 @@ func (c *ListItem__slot0Instance) __renderSlot6(__parent *fyne.Container) {
 																} else {
 																	__lt164 = ""
 																}
-																__n528.SetSpanStyle(__lt162, __lt163, __lt164, false, p.Strike, Measurement{Px: 0}.Px, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
+																__n528.SetSpanStyle(__lt162, __lt163, __lt164, false, p.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
 																__n529 := fynetext.NewSpan(fynetext.Style())
 																__n529.SetText(p.Text)
 																__n528.Add(__n529)
@@ -9080,7 +9069,7 @@ func (c *ListItem__slot0Instance) __renderSlot6(__parent *fyne.Container) {
 															} else {
 																__lt167 = ""
 															}
-															__n539.SetSpanStyle(__lt165, __lt166, __lt167, false, r.Strike, Measurement{Px: 0}.Px, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
+															__n539.SetSpanStyle(__lt165, __lt166, __lt167, false, r.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
 															__n540 := fynetext.NewSpan(fynetext.Style())
 															__n540.SetText(r.Text)
 															__n539.Add(__n540)
@@ -9160,7 +9149,7 @@ func (c *ListItem__slot0Instance) __renderSlot6(__parent *fyne.Container) {
 																	} else {
 																		__lt170 = ""
 																	}
-																	__n553.SetSpanStyle(__lt168, __lt169, __lt170, false, p.Strike, Measurement{Px: 0}.Px, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
+																	__n553.SetSpanStyle(__lt168, __lt169, __lt170, false, p.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
 																	__n554 := fynetext.NewSpan(fynetext.Style())
 																	__n554.SetText(p.Text)
 																	__n553.Add(__n554)
@@ -9225,7 +9214,7 @@ func (c *ListItem__slot0Instance) __renderSlot6(__parent *fyne.Container) {
 																} else {
 																	__lt173 = ""
 																}
-																__n564.SetSpanStyle(__lt171, __lt172, __lt173, false, r.Strike, Measurement{Px: 0}.Px, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
+																__n564.SetSpanStyle(__lt171, __lt172, __lt173, false, r.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
 																__n565 := fynetext.NewSpan(fynetext.Style())
 																__n565.SetText(r.Text)
 																__n564.Add(__n565)
@@ -9305,7 +9294,7 @@ func (c *ListItem__slot0Instance) __renderSlot6(__parent *fyne.Container) {
 																		} else {
 																			__lt176 = ""
 																		}
-																		__n578.SetSpanStyle(__lt174, __lt175, __lt176, false, p.Strike, Measurement{Px: 0}.Px, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
+																		__n578.SetSpanStyle(__lt174, __lt175, __lt176, false, p.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
 																		__n579 := fynetext.NewSpan(fynetext.Style())
 																		__n579.SetText(p.Text)
 																		__n578.Add(__n579)
@@ -9370,7 +9359,7 @@ func (c *ListItem__slot0Instance) __renderSlot6(__parent *fyne.Container) {
 																	} else {
 																		__lt179 = ""
 																	}
-																	__n589.SetSpanStyle(__lt177, __lt178, __lt179, false, r.Strike, Measurement{Px: 0}.Px, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
+																	__n589.SetSpanStyle(__lt177, __lt178, __lt179, false, r.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
 																	__n590 := fynetext.NewSpan(fynetext.Style())
 																	__n590.SetText(r.Text)
 																	__n589.Add(__n590)
@@ -9450,7 +9439,7 @@ func (c *ListItem__slot0Instance) __renderSlot6(__parent *fyne.Container) {
 																			} else {
 																				__lt182 = ""
 																			}
-																			__n603.SetSpanStyle(__lt180, __lt181, __lt182, false, p.Strike, Measurement{Px: 0}.Px, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
+																			__n603.SetSpanStyle(__lt180, __lt181, __lt182, false, p.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
 																			__n604 := fynetext.NewSpan(fynetext.Style())
 																			__n604.SetText(p.Text)
 																			__n603.Add(__n604)
@@ -9515,7 +9504,7 @@ func (c *ListItem__slot0Instance) __renderSlot6(__parent *fyne.Container) {
 																		} else {
 																			__lt185 = ""
 																		}
-																		__n614.SetSpanStyle(__lt183, __lt184, __lt185, false, r.Strike, Measurement{Px: 0}.Px, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
+																		__n614.SetSpanStyle(__lt183, __lt184, __lt185, false, r.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
 																		__n615 := fynetext.NewSpan(fynetext.Style())
 																		__n615.SetText(r.Text)
 																		__n614.Add(__n615)
@@ -9595,7 +9584,7 @@ func (c *ListItem__slot0Instance) __renderSlot6(__parent *fyne.Container) {
 																				} else {
 																					__lt188 = ""
 																				}
-																				__n628.SetSpanStyle(__lt186, __lt187, __lt188, false, p.Strike, Measurement{Px: 0}.Px, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
+																				__n628.SetSpanStyle(__lt186, __lt187, __lt188, false, p.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
 																				__n629 := fynetext.NewSpan(fynetext.Style())
 																				__n629.SetText(p.Text)
 																				__n628.Add(__n629)
@@ -9660,7 +9649,7 @@ func (c *ListItem__slot0Instance) __renderSlot6(__parent *fyne.Container) {
 																			} else {
 																				__lt191 = ""
 																			}
-																			__n639.SetSpanStyle(__lt189, __lt190, __lt191, false, r.Strike, Measurement{Px: 0}.Px, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
+																			__n639.SetSpanStyle(__lt189, __lt190, __lt191, false, r.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
 																			__n640 := fynetext.NewSpan(fynetext.Style())
 																			__n640.SetText(r.Text)
 																			__n639.Add(__n640)
@@ -10070,7 +10059,7 @@ type __child1Instance struct {
 	Root         fyne.CanvasObject
 	__model      *Model
 	__prop___p0  bool
-	__prop___on0 func(ToggleEvent)
+	__prop___on0 func(bool)
 	__root       *fyne.Container
 	__slot0      []fyne.CanvasObject
 	__slot0_at   fyne.CanvasObject
@@ -10095,7 +10084,7 @@ type __child1Instance struct {
 	__n1         *widget.Check
 }
 
-func new__child1Instance(__model *Model, __a___p0 bool, __a___on0 func(ToggleEvent)) *__child1Instance {
+func new__child1Instance(__model *Model, __a___p0 bool, __a___on0 func(bool)) *__child1Instance {
 	c := &__child1Instance{}
 	c.__model = __model
 	c.__prop___p0 = __a___p0
@@ -10114,8 +10103,8 @@ func new__child1Instance(__model *Model, __a___p0 bool, __a___on0 func(ToggleEve
 	c.__n1 = widget.NewCheck("", nil)
 	c.__n1.SetText("")
 	c.__n1.SetChecked(c.__prop___p0)
-	c.__n1.OnChanged = func(b bool) {
-		c.__prop___on0(ToggleEvent{Checked: b})
+	c.__n1.OnChanged = func(__on0_0 bool) {
+		c.__prop___on0(__on0_0)
 	}
 	c.Root = c.__n1
 	return c
@@ -10126,7 +10115,7 @@ func (c *__child1Instance) Set__p0(__v bool) {
 	c.__n1.SetChecked(c.__prop___p0)
 }
 
-func (c *__child1Instance) Set__on0(__v func(ToggleEvent)) {
+func (c *__child1Instance) Set__on0(__v func(bool)) {
 	c.__prop___on0 = __v
 }
 
@@ -10219,7 +10208,7 @@ type __child3Instance struct {
 	Root         fyne.CanvasObject
 	__model      *Model
 	__prop___p0  bool
-	__prop___on0 func(ToggleEvent)
+	__prop___on0 func(bool)
 	__root       *fyne.Container
 	__slot0      []fyne.CanvasObject
 	__slot0_at   fyne.CanvasObject
@@ -10244,7 +10233,7 @@ type __child3Instance struct {
 	__n3         *widget.Check
 }
 
-func new__child3Instance(__model *Model, __a___p0 bool, __a___on0 func(ToggleEvent)) *__child3Instance {
+func new__child3Instance(__model *Model, __a___p0 bool, __a___on0 func(bool)) *__child3Instance {
 	c := &__child3Instance{}
 	c.__model = __model
 	c.__prop___p0 = __a___p0
@@ -10263,8 +10252,8 @@ func new__child3Instance(__model *Model, __a___p0 bool, __a___on0 func(ToggleEve
 	c.__n3 = widget.NewCheck("", nil)
 	c.__n3.SetText("")
 	c.__n3.SetChecked(c.__prop___p0)
-	c.__n3.OnChanged = func(b bool) {
-		c.__prop___on0(ToggleEvent{Checked: b})
+	c.__n3.OnChanged = func(__on0_0 bool) {
+		c.__prop___on0(__on0_0)
 	}
 	c.Root = c.__n3
 	return c
@@ -10275,7 +10264,7 @@ func (c *__child3Instance) Set__p0(__v bool) {
 	c.__n3.SetChecked(c.__prop___p0)
 }
 
-func (c *__child3Instance) Set__on0(__v func(ToggleEvent)) {
+func (c *__child3Instance) Set__on0(__v func(bool)) {
 	c.__prop___on0 = __v
 }
 
@@ -10368,7 +10357,7 @@ type __child5Instance struct {
 	Root         fyne.CanvasObject
 	__model      *Model
 	__prop___p0  bool
-	__prop___on0 func(ToggleEvent)
+	__prop___on0 func(bool)
 	__root       *fyne.Container
 	__slot0      []fyne.CanvasObject
 	__slot0_at   fyne.CanvasObject
@@ -10393,7 +10382,7 @@ type __child5Instance struct {
 	__n5         *widget.Check
 }
 
-func new__child5Instance(__model *Model, __a___p0 bool, __a___on0 func(ToggleEvent)) *__child5Instance {
+func new__child5Instance(__model *Model, __a___p0 bool, __a___on0 func(bool)) *__child5Instance {
 	c := &__child5Instance{}
 	c.__model = __model
 	c.__prop___p0 = __a___p0
@@ -10412,8 +10401,8 @@ func new__child5Instance(__model *Model, __a___p0 bool, __a___on0 func(ToggleEve
 	c.__n5 = widget.NewCheck("", nil)
 	c.__n5.SetText("")
 	c.__n5.SetChecked(c.__prop___p0)
-	c.__n5.OnChanged = func(b bool) {
-		c.__prop___on0(ToggleEvent{Checked: b})
+	c.__n5.OnChanged = func(__on0_0 bool) {
+		c.__prop___on0(__on0_0)
 	}
 	c.Root = c.__n5
 	return c
@@ -10424,7 +10413,7 @@ func (c *__child5Instance) Set__p0(__v bool) {
 	c.__n5.SetChecked(c.__prop___p0)
 }
 
-func (c *__child5Instance) Set__on0(__v func(ToggleEvent)) {
+func (c *__child5Instance) Set__on0(__v func(bool)) {
 	c.__prop___on0 = __v
 }
 
@@ -10500,8 +10489,8 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:576692436d91f743e6af3f88ac85df78
+pass sha256:eaafd0483d9844e6a0b35c4883bfdd49
 -- run/go/fyne --
-pass sha256:cf32a4965ca9c4534b1aa4a3680c6272
+pass sha256:84bc28ed81119b0be9ebdd62419bb3d3
 -- run/none/html --
 pass sha256:53fea75bee1b71a439deb5ec23e8e4bd

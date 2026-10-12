@@ -39,7 +39,7 @@ func lowerNoImplicitRecv(pkg *ir.Package, _ Features, _ Options) error {
 	// callback's error (an injection failure) bubbles straight out of Inspect.
 	walk := func(stmts []ir.Stmt) error { return ir.Walk(stmts, recvVisit) }
 	for _, comp := range pkg.Components {
-		if err := walk(comp.Body); err != nil {
+		if err := walk(comp.Stmts); err != nil {
 			return err
 		}
 		for _, fn := range comp.Funcs {
@@ -80,7 +80,7 @@ func recvVisit(n ir.Node) error {
 // call that already carries its receiver (Args covers the params), a non-method
 // call, or a receiverless func is left unchanged.
 func injectRecv(c *ir.Call) error {
-	if c.Func == nil || c.Func.Receiver == "" {
+	if c.Func == nil || !c.Func.IsMethod() {
 		return nil
 	}
 	if len(c.Args) >= len(c.Func.Params) {
@@ -93,7 +93,7 @@ func injectRecv(c *ir.Call) error {
 	if recvType == nil {
 		return nil
 	}
-	recv, err := synthRecv(recvType, c.Func.Receiver)
+	recv, err := synthRecv(recvType, c.Func.RecvName())
 	if err != nil {
 		return err
 	}

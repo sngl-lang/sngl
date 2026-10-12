@@ -1,0 +1,110 @@
+// A component that names itself as its family is data: written in a slot of
+// its type it is a record of its props, never rendered, and the slot is a
+// list of them in the container's body -- read as a value, by the name the
+// slot declares.
+//
+// What the caller writes is the population, so a record may stand under an
+// `if` or a `for`, or inside a component that composes them, and the container
+// reads the list those render. A platform's widget that takes its choices as a
+// list (a dropdown) is handed one from records written as children.
+
+import . "sngl:test"
+import ui "sngl:ui"
+
+component fruit(name string, ripe bool = true) fruit
+
+// Composes records without being one: it is spliced where it is written, so
+// its members join the list in its place.
+component stoneFruit(prefix string) {
+    fruit(name=prefix + "cherry")
+    fruit(name=prefix + "plum", ripe=false)
+}
+
+// Names the family it composes, as a library declaration has to. Sharing a
+// prop's name with the record makes it no member: `name` is not asked of it.
+component unripe(label string, ripe bool = false) fruit {
+    fruit(name=label, ripe=ripe)
+}
+
+// The same, with the family read off the body.
+component greenFruit(label string, ripe bool = false) {
+    fruit(name=label + "!", ripe=ripe)
+}
+
+func names(fs list<fruit>) string {
+    return fs.map(func(f fruit) => f.name).join(",")
+}
+
+component basket(fruits ...component fruit) ui.node {
+    ui.text #all(value=names(fruits))
+    ui.text #ripe(value=names(fruits.filter(func(f) => f.ripe)))
+}
+
+// A container forwards its own population: a data slot inserted in another's
+// population is its list spread there.
+component crate(contents ...component fruit) ui.node {
+    basket #inner {
+        fruit(name="apple")
+        contents
+    }
+}
+
+component shop ui.node {
+    var more = false
+    var extra = ["date", "fig"]
+    basket #b {
+        fruit(name="apple")
+        fruit(name="banana", ripe=false)
+        if more {
+            fruit(name="elder")
+        }
+        for var e = extra {
+            fruit(name=e)
+        }
+        for var e = extra {
+            if e != "fig" {
+                fruit(name=e + "!")
+            }
+        }
+        stoneFruit(prefix="sour ")
+    }
+    crate #c {
+        fruit(name="kiwi")
+    }
+    basket #green {
+        unripe(label="lime")
+        for var e = extra {
+            unripe(label=e)
+        }
+        greenFruit(label="pear", ripe=true)
+    }
+    ui.button #add(text="more", @click {
+        more = true
+    })
+}
+
+func testMembersAreReadInOrder(t Test, c shop) {
+    t.assert(c.b.all.value == "apple,banana,date,fig,date!,sour cherry,sour plum")
+}
+
+func testAnOmittedPropHoldsTheFamilysDefault(t Test, c shop) {
+    t.assert(c.b.ripe.value == "apple,date,fig,date!,sour cherry")
+}
+
+func testTheListFollowsState(t Test, c shop) {
+    c.add.click()
+    t.assert(c.b.all.value == "apple,banana,elder,date,fig,date!,sour cherry,sour plum")
+}
+
+func testACompositionNamingTheFamilyIsSpliced(t Test, c shop) {
+    t.assert(c.green.all.value == "lime,date,fig,pear!")
+    t.assert(c.green.ripe.value == "pear!")
+}
+
+func testAForwardedSlotIsSpread(t Test, c shop) {
+    t.assert(c.c.inner.all.value == "apple,kiwi")
+}
+
+ui.window {
+    shop()
+}

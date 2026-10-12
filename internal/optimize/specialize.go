@@ -5,6 +5,7 @@ import (
 	"maps"
 	"slices"
 
+	"duckfam.us/sngl/internal/lower"
 	"duckfam.us/sngl/ir"
 )
 
@@ -101,8 +102,8 @@ func inlineComponentCall(n *ir.NodeInst, ctx *evalCtx) []ir.Stmt {
 	// it renders is decided here -- an `if` over what its call site handed it
 	// folds against the member it is about, which nothing after the splice can
 	// do.
-	composes := comp.Tree != nil && !ir.IsFamilyValue(comp)
-	if !composes && !bodyHasFoldableParamUse(comp.Body, propNames) {
+	composes := comp.Family != nil && !ir.IsFamilyValue(comp)
+	if !composes && !bodyHasFoldableParamUse(comp.Stmts, propNames) {
 		return nil
 	}
 
@@ -128,12 +129,12 @@ func inlineComponentCall(n *ir.NodeInst, ctx *evalCtx) []ir.Stmt {
 		return nil
 	}
 
-	paramSyms := findParamSyms(comp.Body, propNames)
+	paramSyms := findParamSyms(comp.Stmts, propNames)
 	if len(paramSyms) == 0 && !composes {
 		return nil
 	}
 
-	cloned := cloneStmts(comp.Body)
+	cloned := cloneStmts(comp.Stmts)
 
 	// When inlining a cross-package component, native-call resolution
 	// inside the body (e.g. `docs.Highlight(...)`) needs to consult the
@@ -147,7 +148,9 @@ func inlineComponentCall(n *ir.NodeInst, ctx *evalCtx) []ir.Stmt {
 
 	childCtx := ctx.childInPkg(bodyPkg)
 	childCtx.inlining[comp] = ctx.inlining[comp] + 1
-	if comp.Stdlib && !childCtx.site.IsValid() {
+	// A library body was written where the program cannot see it, so a
+	// diagnostic about what it became belongs at the node the program wrote.
+	if comp.PkgPath() != "" && !childCtx.site.IsValid() {
 		childCtx.site = ir.NodePos(n)
 	}
 	for name, val := range propValues {
@@ -205,6 +208,13 @@ func inlineComponentCall(n *ir.NodeInst, ctx *evalCtx) []ir.Stmt {
 	if !ok {
 		return nil
 	}
+	// Events before slots, as in the lowering's inliners: an emit in spliced
+	// slot content is the caller's own, and would otherwise be matched
+	// against the handlers this call site gave the callee. Left standing, an
+	// emit became one of the caller's events -- `emit("change", k)` in a
+	// root component that declares none, against nothing the Go targets
+	// define -- and a handler the call site did write was never run.
+	cloned = lower.SubstituteEvents(cloned, n.Handlers)
 	cloned = substituteSlots(cloned, site)
 	// Component-body platform override at inline time: optimize splices the
 	// (cloned) body into the parent tree here, before lower's

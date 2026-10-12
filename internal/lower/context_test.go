@@ -29,7 +29,7 @@ func makeContextRead(ctx *ir.Context) *ir.ContextRead {
 
 // makeComp creates a minimal component with the given name and body.
 func makeComp(name string, body ...ir.Stmt) *ir.Component {
-	return &ir.Component{Name: name, Body: body}
+	return &ir.Component{Name: name, Stmts: body}
 }
 
 // makeNodeInstComp creates a NodeInst for a user component call with given props.
@@ -345,12 +345,12 @@ func TestRewriteReads(t *testing.T) {
 	rewriteReads(pkg, reach, nil, hidden)
 
 	// No ContextRead should remain.
-	if n := countContextReads(consumer.Body, ctx); n != 0 {
+	if n := countContextReads(consumer.Stmts, ctx); n != 0 {
 		t.Errorf("after rewriteReads: still %d ContextRead nodes in Consumer.Body", n)
 	}
 
 	// The prop value should now be an Ident naming the hidden param.
-	ni := consumer.Body[0].(*ir.NodeInst)
+	ni := consumer.Stmts[0].(*ir.NodeInst)
 	if !identifiesHiddenParam(ni.Props[0].Value, ctx) {
 		t.Errorf("after rewriteReads: prop value = %T %v; want Ident(__ctx_theme)", ni.Props[0].Value, ni.Props[0].Value)
 	}
@@ -615,7 +615,7 @@ func TestApplyNoContext_FullPipeline(t *testing.T) {
 	}
 
 	// No ContextRead remains in Toolbar.
-	if n := countContextReads(toolbar.Body, ctx); n != 0 {
+	if n := countContextReads(toolbar.Stmts, ctx); n != 0 {
 		t.Errorf("Toolbar.Body still has %d ContextRead nodes", n)
 	}
 
@@ -753,10 +753,10 @@ func TestMultipleContexts(t *testing.T) {
 	if v := findHiddenVar(consumer, "__ctx_locale"); v == nil {
 		t.Error("Consumer missing __ctx_locale var")
 	}
-	if n := countContextReads(consumer.Body, ctxA); n != 0 {
+	if n := countContextReads(consumer.Stmts, ctxA); n != 0 {
 		t.Errorf("Consumer still has %d ContextRead(theme)", n)
 	}
-	if n := countContextReads(consumer.Body, ctxB); n != 0 {
+	if n := countContextReads(consumer.Stmts, ctxB); n != 0 {
 		t.Errorf("Consumer still has %d ContextRead(locale)", n)
 	}
 }

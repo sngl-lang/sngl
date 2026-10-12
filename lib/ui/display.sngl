@@ -1,13 +1,11 @@
-// Displays a text string. `value` is the content; set `selectable=true`
-// to allow the platform to offer copy. Typography (size, weight, color,
-// alignment, `maxLines` truncation) is driven entirely by `style`.
-// The `@click` event fires on tap/click for simple text-as-action use.
+// Displays a text string. Typography -- size, weight, color, alignment,
+// `maxLines` truncation -- is driven entirely by `style`.
 component text(
-    style Style,
-    value string,
-    selectable bool,
-    @click ClickEvent,
-) node {}
+    value      string,       // the text shown
+    selectable bool = false, // lets the platform offer copy
+    style      Style = Style{},
+    @click(), // a tap or click, for text used as an action
+) node
 
 component _example_text node {
     vbox(style={gap=8px, padding=16px}) {
@@ -17,37 +15,16 @@ component _example_text node {
     }
 }
 
-// Displays an image from a URL or asset path. `fit` controls how the
-// image is scaled into its frame (see `ObjectFit`). `alt` provides the
-// accessibility label. `@load` fires once decoding completes; `@error`
-// fires on fetch/decode failure with the ambient `error` describing it --
-// the same value `error.raise` throws and a `boundary` catches, because a
-// failure is a failure whoever noticed it.
-component image(
-    style Style,
-    src string,
-    alt string,
-    fit ObjectFit,
-    @click ClickEvent,
-    @load LoadEvent,
-    @error error,
-) node {}
-
-component _example_image node {
-    vbox(style={gap=8px, padding=16px}) {
-        image(src="https://placehold.co/200x100", alt="Placeholder image", fit=contain)
-    }
-}
-
 // Small status label — a compact chip showing a status, count, or
-// category tag. `variant` styles the color ("primary", "success",
-// "warning", "error", "neutral"); `size` is "small" or "medium".
+// category tag.
 component badge(
-    style Style,
-    value string,
-    variant string,
-    size string,
-) node {}
+    value   string,      // the text shown
+    variant string = "", // the color: "primary", "success", "warning", "error" or "neutral"
+    size    string = "", // "small" or "medium"
+    style   Style = Style{},
+) node {
+    text(value=value, style={display=inlineBlock, paddingY=2px, paddingX=8px, borderRadius=12px, ...style})
+}
 
 component _example_badge node {
     hbox(style={gap=8px, padding=16px, alignItems=center}) {
@@ -57,21 +34,35 @@ component _example_badge node {
     }
 }
 
-// Compact interactive tag. `label` is the displayed text. Set
-// `removable=true` to render a remove affordance that emits
-// `@remove`. `selected` styles the chip as active (two-way bound
-// when used as a filter). `variant` styles the chip color.
+// Compact interactive tag.
 component chip(
-    style Style,
-    label string,
-    variant string,
-    removable bool,
-    selected bool,
-    disabled bool,
+    label     string,       // the text shown
+    variant   string = "",  // the color
+    removable bool = false, // shows a remove affordance, which fires `@remove`
+    selected  bool = false, // styles the chip as active, as a filter that is on
+    disabled  bool = false,
     focusable bool = true,
-    @click ClickEvent,
-    @remove DismissEvent,
-) node {}
+    style     Style = Style{},
+    @click(),
+    @remove(), // the remove affordance was used
+) node {
+    hbox(style={
+        alignItems = center,
+        gap = 4px,
+        paddingY = 4px,
+        paddingX = 12px,
+        borderRadius = 16px,
+        borderWidth = 1px,
+        borderColor = selected ? #0066CC : #CCCCCC,
+        opacity = disabled ? 0.5 : 1.0,
+        ...style,
+    }) {
+        text(value=label, @click { click() })
+        if removable {
+            button(text="×", disabled=disabled, focusable=focusable, @click { remove() })
+        }
+    }
+}
 
 component _example_chip node {
     hbox(style={gap=8px, padding=16px}) {
@@ -81,49 +72,100 @@ component _example_chip node {
     }
 }
 
-// User profile image with fallback. Renders `src` when available;
-// otherwise displays `initials` in a styled placeholder. `size` is
-// a preset ("small", "medium", "large") or a length; `variant` is
-// "circle" (default) or "square".
+// A preset size for a component that offers three.
+enum SizePreset { small, medium, large }
+
+// The outline an avatar is clipped to.
+enum AvatarVariant { circle, square }
+
+// User profile image with fallback: the picture its source holds where it was
+// given one, and the initials in a styled placeholder where it was not.
 component avatar(
-    style Style,
-    src string,
-    alt string,
-    initials string,
-    size string,
-    variant string,
-    @click ClickEvent,
-) node {}
+    initials string = "",                          // shown when there is no source
+    size     SizePreset = medium,                  // a preset; `style.width` and `style.height` set any other size
+    variant  AvatarVariant = AvatarVariant.circle, // the outline it is clipped to
+    alt      string = "",                          // the image's accessibility label
+    style    Style = Style{},
+    @click(),
+    src      ...component option<imageSource>,
+) node {
+    image(
+        alt = alt,
+        fit = cover,
+        style = {
+            width = _avatarSide(size),
+            height = _avatarSide(size),
+            borderRadius = _avatarRadius(size, variant),
+            ...style,
+        },
+        @click { click() },
+    ) {
+        src
+        component placeholder {
+            text(
+                value = initials,
+                style = {
+                    display = inlineFlex,
+                    alignItems = center,
+                    justifyContent = center,
+                    width = _avatarSide(size),
+                    height = _avatarSide(size),
+                    textAlign = center,
+                    borderRadius = _avatarRadius(size, variant),
+                    background = #CCCCCC,
+                    ...style,
+                },
+                @click { click() },
+            )
+        }
+    }
+}
+
+// The side of an avatar of each preset size.
+const func _avatarSide(size SizePreset) measurement {
+    if size == SizePreset.small {
+        return 24px
+    }
+    if size == SizePreset.large {
+        return 64px
+    }
+    return 40px
+}
+
+// A circle's radius is half its side; a square keeps a small rounding.
+const func _avatarRadius(size SizePreset, variant AvatarVariant) measurement {
+    if variant == AvatarVariant.square {
+        return 4px
+    }
+    return _avatarSide(size) * 0.5
+}
 
 component _example_avatar node {
     hbox(style={gap=8px, padding=16px}) {
         avatar(initials="JD")
-        avatar(initials="AB", variant="square")
-        avatar(initials="XY", size="large")
+        avatar(initials="AB", variant=square)
+        avatar(initials="XY", size=large)
     }
 }
 
-// Progress indicator. Shows the fraction `value / max` filled. Set
-// `showValue=true` to render a numeric read-out alongside the bar. `variant`
-// styles the bar ("primary", "success", "warning", "error"); `label`
-// annotates the bar with a short description.
+// Progress indicator, showing the fraction `value / max` filled.
 //
 // Written with no `value` it is *indeterminate*: a bar that says work is
 // happening and not how much is left. That is why `value` is an `option` --
 // zero is a legitimate fraction and cannot double as "not known", and each
 // platform has its own shape for the indeterminate one.
 component progress(
-    style Style,
-    value option<float>,
+    style     Style = Style{},
+    value     option<float> = null, // how far along; none for work of unknown length
     // The value `value` is measured against. One rather than zero, because a
     // platform that wants a fraction divides by it and every platform that
     // does not still has to render something: `<progress max="0">` is invalid
     // HTML, and a GTK fraction of value/0 is not a number.
-    max float = 1,
-    label string,
-    variant string,
-    showValue bool,
-) node {}
+    max       float = 1,
+    label     string = "",  // a short description of the work
+    variant   string = "",  // the color: "primary", "success", "warning" or "error"
+    showValue bool = false, // shows a numeric read-out beside the bar
+) node
 
 component _example_progress node {
     vbox(style={gap=8px, padding=16px}) {
@@ -133,68 +175,88 @@ component _example_progress node {
     }
 }
 
-// Indeterminate loading indicator. Use when progress cannot be
-// measured. `variant` is "bar" or "circle"; `size` is "small",
-// "medium", or "large". `label` adds an accessible description
-// announced by screen readers.
+// The shape a spinner turns in.
+enum SpinnerVariant { circle, bar }
+
+// Indeterminate loading indicator. Use when progress cannot be measured.
 component spinner(
-    style Style,
-    label string,
-    variant string,
-    size string,
-) node {}
+    label   string = "",                            // an accessible description, announced by screen readers
+    variant SpinnerVariant = SpinnerVariant.circle, // the shape it turns in
+    size    SizePreset = medium,
+    style   Style = Style{},
+) node
 
 component _example_spinner node {
     hbox(style={gap=16px, padding=16px, alignItems=center}) {
         spinner(label="Loading...")
-        spinner(variant="circle", size="large")
+        spinner(variant=circle, size=large)
     }
 }
 
-// Tabular data display. `columns` is the list of column headers;
-// `rows` is the cell grid — one inner `list<string>` per row, each
-// cell aligned to its column by position (defaults to no rows).
-// Enable `selectable` for row selection with `selected` as
-// the 0-based row index (two-way bound). Enable `sortable` to let the
-// user re-order by column; `sortColumn` and `sortDirection` ("asc" or
-// "desc") reflect the current sort and are two-way bound. `@sort`
-// fires when the user changes sort, `@select` when the selection
-// changes.
+// Which way a table's sorted column runs, if it is sorted at all.
+enum SortDirection { none, asc, desc }
+
+// One of a table's rows: data, since it names itself as its family, so a
+// table reads its rows as a list rather than rendering them. Each cell is
+// aligned to its column by position.
+component tableRow(cells list<string>) tableRow
+
+// Tabular data display. Its rows are written as its children, each a `tableRow`,
+// under an `if` or a `for` where they depend on something.
 component table(
-    style Style,
-    columns list<string>,
-    rows list<list<string>> = [],
-    selectable bool,
-    :selected int,
-    sortable bool,
-    sortColumn string,
-    sortDirection string,
-    @select SelectEvent,
-    @sort ChangeEvent,
-) node {}
+    style         Style = Style{},
+    columns       list<string>,                       // the column headers
+    selectable    bool = false,                       // lets the user select a row
+    :selected     int,                                // the selected row's index from 0
+    sortable      bool = false,                       // lets the user re-order by a column
+    sortColumn    string = "",                        // the column the rows are sorted by
+    sortDirection SortDirection = SortDirection.none, // which way the sorted column runs
+    @select(),                                        // the selection changed
+    @sort(column string),                             // the user changed the sort
+    // The rows, in the order they are shown.
+    rows          ...component tableRow,
+) node
 
 component _example_table node {
     vbox(style={padding=16px}) {
-        table(columns=["Name", "Role", "Status"])
+        table(columns=["Name", "Role", "Status"]) {
+            tableRow(cells=["Ada", "Engineer", "Active"])
+            tableRow(cells=["Grace", "Admiral", "Retired"])
+        }
     }
 }
 
-// Hierarchical data display. `items` is the visible row labels in
-// traversal order. `selected` is the label of the current selection,
-// two-way bound. `expanded` is the list of expanded node indices,
-// also two-way bound. `@select` fires on row pick, `@expand` when the
-// user toggles a node.
+// One node of a tree: data, since it names itself as its family, so a tree
+// reads its nodes as a list rather than rendering them. The nodes under it
+// are written as its children, as a tree's own are.
+component treeItem(
+    label    string, // what the node's row shows
+    // The nodes under this one, in order.
+    children ...component treeItem,
+) treeItem
+
+// Hierarchical data display. Its top-level nodes are written as its
+// children, each a `treeItem`, under an `if` or a `for` where they depend on
+// something.
 component tree(
-    style Style,
-    items list<string>,
-    :selected string,
-    expanded list<int>,
-    @select SelectEvent,
-    @expand ExpandEvent,
-) node {}
+    style     Style = Style{},
+    :selected string,         // the label of the selected row
+    expanded  list<int> = [], // the indices of the expanded nodes, in traversal order
+    @select(),                // a row was picked
+    @expand(),                // the user expanded or collapsed a node
+    // The top-level nodes, in order.
+    items     ...component treeItem,
+) node
 
 component _example_tree node {
     vbox(style={padding=16px}) {
-        tree(items=["Documents", "Photos", "Music", "Videos"])
+        tree {
+            treeItem(label="Documents") {
+                treeItem(label="Taxes")
+                treeItem(label="Letters")
+            }
+            treeItem(label="Photos")
+            treeItem(label="Music")
+        }
     }
 }

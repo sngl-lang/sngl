@@ -55,8 +55,8 @@ unit length { px, em, rem = 16em, vw, vh, pct }
 // Named struct with defaults. Fields without defaults must be provided
 // at construction.
 struct User {
-    name string = ""
-    age int = 0
+    name  string = ""
+    age   int = 0
     admin bool = false
 }
 
@@ -109,7 +109,7 @@ func makeBadge(b struct {
 // ----- 9. Child component with prop + event sink -------------------
 // Components are declared at top level. Props live in the header.
 // `@event` props let the parent receive events emitted by the child.
-component LabeledCounter(label = "Clicks", start = 0, @changed int) ui.node {
+component LabeledCounter(label = "Clicks", start = 0, @changed(v int)) ui.node {
     var n = start
 
     ui.hbox(style={gap=8px, alignItems=center}) {
@@ -126,7 +126,7 @@ component LabeledCounter(label = "Clicks", start = 0, @changed int) ui.node {
 // `dyn` so the type can refer to itself.
 struct TreeNode {
     value int = 0
-    left dyn = null
+    left  dyn = null
     right dyn = null
 }
 
@@ -300,16 +300,16 @@ component Tour ui.node {
     //                    VISUAL TREE BELOW
     // ============================================================
     ui.vbox(
-        scroll=true,
-        refreshing=false,
+        scroll = true,
+        refreshing = false,
         @refresh { dialog.Alert.toast("Refreshed!", "info") },
-        style={gap=24px, maxWidth=900px, padding=24px},
+        style = {gap=24px, maxWidth=900px, padding=24px},
     ) {
         // --- Heading ---------------------------------------------
         ui.text(value=APP_NAME, style={fontSize=32px, fontWeight=bold})
         ui.text(
-            value="Every stdlib component + every language feature, one file.",
-            style={color=#666666},
+            value = "Every stdlib component + every language feature, one file.",
+            style = {color=#666666},
         )
         ui.divider
 
@@ -330,62 +330,69 @@ component Tour ui.node {
         ui.text(value="Input", style={fontSize=20px, fontWeight=bold})
         ui.hbox(style={gap=12px}) {
             ui.input(
-                placeholder="Enter your name",
-                value=name,
-                @input(e) { name = e.value },
+                placeholder = "Enter your name",
+                value = name,
+                @input(e) { name = e },
             )
-            ui.input(placeholder="Password", type="password")
-            ui.input(placeholder="Search...", type="search")
+            ui.input(placeholder="Password", type=password)
+            ui.input(placeholder="Search...", type=search)
         }
         ui.text(value="Textarea", style={fontSize=20px, fontWeight=bold})
         ui.textarea(
-            placeholder="Write some notes...",
-            rows=4,
-            value=notes,
-            @input(e) { notes = e.value },
+            placeholder = "Write some notes...",
+            rows = 4,
+            value = notes,
+            @input(e) { notes = e },
         )
         ui.divider
 
         // --- Checkbox / Toggle / Radio (§ — `!!` flips a bool) ---
         ui.text(
-            value="Checkbox, Toggle & Radio",
-            style={fontSize=20px, fontWeight=bold},
+            value = "Checkbox, Toggle & Radio",
+            style = {fontSize=20px, fontWeight=bold},
         )
         ui.hbox(style={gap=24px}) {
             ui.checkbox(
-                checked=darkMode,
-                label="Dark mode",
+                checked = darkMode,
+                label = "Dark mode",
                 @change { darkMode!! },
             )
             ui.toggle(:checked=toggleOn, label="Notifications")
-            ui.radio(
-                direction="horizontal",
-                options=["small", "medium", "large"],
-                value=selectedRadio,
-            )
+            ui.radio(direction=horizontal, value=selectedRadio) {
+                ui.choice(label="small")
+                ui.choice(label="medium")
+                ui.choice(label="large")
+            }
         }
         ui.text(value="Select", style={fontSize=20px, fontWeight=bold})
-        ui.select(
-            options=["Apple", "Banana", "Cherry", "Date"],
-            placeholder="Pick a fruit",
-            value=selectedOption,
-        )
+        ui.select(placeholder="Pick a fruit", value=selectedOption) {
+            ui.choice(label="Apple")
+            ui.choice(label="Banana")
+            ui.choice(label="Cherry")
+            ui.choice(label="Date")
+        }
         ui.divider
 
         // --- Progress / Spinner / Tabs ---------------------------
         ui.text(
-            value="Progress & Spinner",
-            style={fontSize=20px, fontWeight=bold},
+            value = "Progress & Spinner",
+            style = {fontSize=20px, fontWeight=bold},
         )
         ui.hbox(style={alignItems=center, gap=24px}) {
             ui.progress(max=1, value=sliderVal)
             ui.spinner(label="Loading...")
         }
         ui.text(value="Tabs", style={fontSize=20px, fontWeight=bold})
-        ui.tabs(items=["Overview", "Details", "Settings"], selected=selectedTab) {
-            ui.text(value="This is the overview content.")
-            ui.text(value="Here are the details.")
-            ui.text(value="Settings would go here.")
+        ui.tabs(:selected=selectedTab) {
+            ui.tab(label="Overview") {
+                ui.text(value="This is the overview content.")
+            }
+            ui.tab(label="Details") {
+                ui.text(value="Here are the details.")
+            }
+            ui.tab(label="Settings") {
+                ui.text(value="Settings would go here.")
+            }
         }
         ui.divider
 
@@ -400,7 +407,7 @@ component Tour ui.node {
         ui.text(value="Avatar", style={fontSize=20px, fontWeight=bold})
         ui.hbox(style={gap=8px}) {
             ui.avatar(initials="JD")
-            ui.avatar(initials="AB", variant="square")
+            ui.avatar(initials="AB", variant=square)
             ui.avatar(alt="User")
         }
         ui.divider
@@ -429,7 +436,7 @@ component Tour ui.node {
             ui.button(text="Open Modal", @click { showModal = true })
             ui.button(text="Open Drawer", @click { showDrawer = true })
             ui.button(
-                text="Show Toast",
+                text = "Show Toast",
                 @click { dialog.Alert.toast("Action completed!", "success") },
             )
         }
@@ -464,14 +471,32 @@ component Tour ui.node {
         }
         ui.divider
         ui.text(value="Table", style={fontSize=20px, fontWeight=bold})
-        ui.table(columns=["Name", "Role", "Status"])
+        ui.table(columns=["Name", "Role", "Status"]) {
+            ui.tableRow(cells=["Ada", "Engineer", "Active"])
+            ui.tableRow(cells=["Grace", "Admiral", "Retired"])
+        }
         ui.text(value="Tree", style={fontSize=20px, fontWeight=bold})
-        ui.tree(items=["Documents", "Photos", "Music", "Videos"])
+        ui.tree {
+            ui.treeItem(label="Documents") {
+                ui.treeItem(label="Taxes")
+                ui.treeItem(label="Letters")
+            }
+            ui.treeItem(label="Photos")
+            ui.treeItem(label="Music")
+        }
         ui.divider
 
         // --- Menubar / Toolbar / DatePicker ----------------------
         ui.text(value="Menubar", style={fontSize=20px, fontWeight=bold})
-        ui.menubar(items=["File", "Edit", "View", "Help"])
+        ui.menubar {
+            ui.menuItem(label="File") {
+                ui.menuItem(label="Open")
+                ui.menuItem(label="Save")
+            }
+            ui.menuItem(label="Edit")
+            ui.menuItem(label="View")
+            ui.menuItem(label="Help")
+        }
         ui.text(value="Toolbar", style={fontSize=20px, fontWeight=bold})
         ui.toolbar {
             ui.button(text="New")
@@ -487,12 +512,12 @@ component Tour ui.node {
 
         // --- Composition: child component + event sink (§9) -----
         ui.text(
-            value="Composition (child component emits event upward)",
-            style={fontSize=20px, fontWeight=bold},
+            value = "Composition (child component emits event upward)",
+            style = {fontSize=20px, fontWeight=bold},
         )
         LabeledCounter(
-            label="Clicks",
-            start=0,
+            label = "Clicks",
+            start = 0,
             @changed(n) { clicks = n },
         )
         ui.text(value="Parent saw clicks = {clicks}")
@@ -500,16 +525,16 @@ component Tour ui.node {
 
         // --- Recursive component (§10) --------------------------
         ui.text(
-            value="Recursive component (TreeView calls itself)",
-            style={fontSize=20px, fontWeight=bold},
+            value = "Recursive component (TreeView calls itself)",
+            style = {fontSize=20px, fontWeight=bold},
         )
         TreeView(node=tree)
         ui.divider
 
         // --- For-loops, if, list/map iteration ------------------
         ui.text(
-            value="For-loops & if",
-            style={fontSize=20px, fontWeight=bold},
+            value = "For-loops & if",
+            style = {fontSize=20px, fontWeight=bold},
         )
         ui.vbox(style={gap=4px}) {
             // for with index + nested if-else (loop var deps only,
@@ -538,8 +563,8 @@ component Tour ui.node {
 
         // --- Top-level if at component scope -------------------
         ui.text(
-            value="If statement",
-            style={fontSize=20px, fontWeight=bold},
+            value = "If statement",
+            style = {fontSize=20px, fontWeight=bold},
         )
         if count > 0 {
             ui.text(value="count is positive: {count}")
@@ -550,8 +575,8 @@ component Tour ui.node {
 
         // --- Computed values pulling list methods (§ — generics) ---
         ui.text(
-            value="Computed (filter/map/total)",
-            style={fontSize=20px, fontWeight=bold},
+            value = "Computed (filter/map/total)",
+            style = {fontSize=20px, fontWeight=bold},
         )
         ui.text(value="nums   = {nums}")
         ui.text(value="evens  = {evens}")

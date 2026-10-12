@@ -44,9 +44,14 @@ func wildcardProp(comp *ir.Component, name string) (*ir.Prop, bool, error) {
 // An event sits in the prop list, so the marks legal there are the same ones,
 // and applyMark is told so.
 func (c *checker) applyEventMarks(e ast.EventDecl, evt *ir.EventDecl) {
-	for _, attr := range e.MacroAttrs() {
-		c.applyMark(attr, e, evt, true)
+	if len(e.MacroAttrs()) == 0 {
+		return
 	}
+	c.afterMarks(func() {
+		for _, attr := range e.MacroAttrs() {
+			c.applyMark(attr, e, evt, true)
+		}
+	})
 }
 
 // wildcardEvent returns the event of comp whose pattern covers name. A

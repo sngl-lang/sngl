@@ -14,7 +14,7 @@ component main node {
 }
 -- expected.sngl --
 import . "sngl:ui"
-component Stepper(:count int = 0, @count int) node {
+component Stepper(:count int = 0, @count(count int)) node {
     button(text="+", @click {
         count(count + 1)
     })

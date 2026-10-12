@@ -71,7 +71,7 @@ from the command line.
 
 ## Install
 
-Requires Go 1.26+.
+Requires Go 1.27+.
 
 ```bash
 go install duckfam.us/sngl/cmd/sngl@latest

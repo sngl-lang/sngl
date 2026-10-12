@@ -102,46 +102,15 @@ func (c *checker) constructBuiltinGeneric(id ir.BuiltinKind, sd *ir.StructDef, t
 			return TypDyn
 		}
 		return IterOf(c.resolveType(t.TypeArgs[0]))
-	case ir.BuiltinChan:
-		if len(t.TypeArgs) != 1 {
-			c.error(t.Pos, "go.chan requires exactly 1 type argument, got %d", len(t.TypeArgs))
-			return TypDyn
-		}
-		return ir.ChanOf(c.resolveType(t.TypeArgs[0]))
 	case ir.BuiltinRef:
 		if len(t.TypeArgs) == 0 {
 			c.error(t.Pos, "ref requires a type argument, e.g. ref<int>")
 			return ir.RefOf(TypDyn)
 		}
 		return ir.RefOf(c.resolveType(t.TypeArgs[0]))
-	case ir.BuiltinRemote:
-		// The declaration travels with the type, unlike list's and map's, so a
-		// method on a Value resolves through ir.MemberOf rather than by looking
-		// the receiver's name up globally. Those two look up by name only
-		// because they have no declaration to ask; here the name is `Value`,
-		// which a user struct could plausibly also be called.
-		if len(t.TypeArgs) == 0 {
-			c.error(t.Pos, "%s requires a type argument, e.g. remote.Value<list<User>>", t.Name)
-			return ir.RemoteOf(TypDyn, sd)
-		}
-		return ir.RemoteOf(c.resolveType(t.TypeArgs[0]), sd)
 	}
 	// The macro validates the id set, so an unhandled kind is a compiler bug.
 	panic(fmt.Sprintf("sngl: builtin generic kind %v has no constructor", id))
-}
-
-// userShadowsBuiltin reports whether name resolves in scope to a user struct
-// declaration that shadows a built-in of the same name. The built-in's own
-// #[builtin]-marked decl is not a shadow, and non-struct bindings (the base
-// scope's scalar TypeSyms, the `duration` unit) are the built-in itself, not a
-// shadow.
-func (c *checker) userShadowsBuiltin(name string) bool {
-	sym, ok := c.scope.Lookup(name)
-	if !ok {
-		return false
-	}
-	sd, ok := sym.(*ir.StructDef)
-	return ok && sd.Builtin == ir.BuiltinNone
 }
 
 func (c *checker) resolveNamedType(t *ast.NamedType) *ir.Type {
@@ -150,14 +119,14 @@ func (c *checker) resolveNamedType(t *ast.NamedType) *ir.Type {
 		return c.resolveQualifiedType(t)
 	}
 
-	// Builtin scalar primitives — resolved from the shared registry
-	// (ir/builtins.go) so this site can't drift from the base scope /
-	// conversion switches. A user struct declaration of the same name shadows
-	// the built-in (D3); the built-in's own #[builtin] decl does not, and
-	// neither does the `duration` unit that shares the name. When shadowed, fall
-	// through to the user-type resolution below.
-	if b, ok := ir.LookupBuiltinScalar(t.Name); ok && !c.userShadowsBuiltin(t.Name) {
-		return b.Type
+	// A scalar is its declaration in sngl:builtin, or its name in the
+	// universe before that package is in scope; either stands for the type
+	// its kind does. A program's own declaration of the name is found first
+	// and shadows it, as any declaration does.
+	if sym, ok := c.scope.Lookup(t.Name); ok {
+		if typ, _, ok := scalarOf(sym); ok {
+			return typ
+		}
 	}
 
 	// Generic built-in constructors resolve through scope: a #[builtin]-marked
@@ -191,7 +160,7 @@ func (c *checker) resolveNamedType(t *ast.NamedType) *ir.Type {
 					return c.applyComponentTypeArgs(t.Pos, typ, comp, t.TypeArgs)
 				}
 			}
-			return typ
+			return c.dataRecord(typ)
 		}
 	}
 
@@ -281,14 +250,12 @@ func (c *checker) resolveQualifiedType(t *ast.NamedType) *ir.Type {
 			if sd, ok := typ.Decl.(*ir.StructDef); ok {
 				// A #[builtin] generic is the built-in however it was reached.
 				// Unqualified resolution dispatches on the kind a few lines up;
-				// without the same dispatch here, `remote.Value<T>` came back an
+				// without the same dispatch here, `go.chan<T>` would come back an
 				// ordinary generic struct that shared a declaration with the
-				// built-in but not a type — so it failed to unify with itself
-				// ("cannot return remote.Value<list<User>> as Value<list<User>>").
-				// remote.Value is likely the first generic built-in a program can
-				// reach qualified at all, which is why nothing found this sooner:
-				// list, map and option are ambient, and importing sngl:builtin
-				// explicitly is an error.
+				// built-in but not a type, and fail to unify with itself. list,
+				// map and option are ambient, and importing sngl:builtin
+				// explicitly is an error, so a generic built-in reached
+				// qualified is one a target package declares.
 				if sd.Builtin.IsGeneric() {
 					return c.constructBuiltinGeneric(sd.Builtin, sd, t)
 				}
@@ -314,7 +281,7 @@ func (c *checker) resolveQualifiedType(t *ast.NamedType) *ir.Type {
 			if len(f.TypeParams) > 0 {
 				return c.applyComponentTypeArgs(t.Pos, f.SymType(), f, args)
 			}
-			return f.SymType()
+			return c.dataRecord(f.SymType())
 		}
 	}
 	c.error(ast.Pos{}, "unknown type %q in namespace %q", name, pkg)
@@ -365,7 +332,7 @@ func (c *checker) buildStructDef(s *ast.StructDef) *ir.StructDef {
 	return &ir.StructDef{
 		AST:        s,
 		Name:       s.Name,
-		Pkg:        c.libPkgName,
+		Pkg:        c.declPkg(),
 		TypeParams: c.resolveTypeParams(s.TypeParams),
 		Fields:     c.resolveStructFields(s),
 	}
@@ -474,7 +441,7 @@ func (c *checker) buildEnumDef(e *ast.EnumDef) *ir.EnumDef {
 	return &ir.EnumDef{
 		AST:     e,
 		Name:    e.Name,
-		Pkg:     c.libPkgName,
+		Pkg:     c.declPkg(),
 		Members: members,
 	}
 }
@@ -507,7 +474,7 @@ func (c *checker) buildUnitDef(u *ast.UnitDef) *ir.UnitDef {
 	ud := &ir.UnitDef{
 		AST:      u,
 		Name:     u.Name,
-		Pkg:      c.libPkgName,
+		Pkg:      c.declPkg(),
 		Suffixes: suffixes,
 	}
 	// The member table, built here so it exists wherever a UnitDef does --
@@ -646,7 +613,23 @@ func (c *checker) buildParams(pl ast.ParamList) []*ir.Param {
 			c.error(p.Pos, "duplicate parameter %q", p.Name)
 		}
 		seen[p.Name] = struct{}{}
-		typ := c.resolveTypeRequired(p.Type, p.Pos, "parameter "+strconv.Quote(p.Name))
+		// `...T` on a function's parameter collects the arguments past the
+		// others. A slot is the other thing `...` bounds, and a component's
+		// parameters never reach here.
+		variadic := false
+		var typ *ir.Type
+		if vt, ok := p.Type.(*ast.VariadicType); ok {
+			if i != len(pl.Params)-1 {
+				c.error(vt.Pos, "`...` collects the arguments past the others, so only the last parameter may carry one")
+			}
+			if p.Default != nil {
+				c.error(vt.Pos, "parameter %q collects the arguments past the others, so it has no default: given none it is the empty list", p.Name)
+			}
+			variadic = true
+			typ = ir.ListOf(c.resolveTypeRequired(vt.Elem, p.Pos, "parameter "+strconv.Quote(p.Name)))
+		} else {
+			typ = c.resolveTypeRequired(p.Type, p.Pos, "parameter "+strconv.Quote(p.Name))
+		}
 		var def ir.Expr
 		if p.Default != nil {
 			// Use a placeholder to signal "has default" for arity checks.
@@ -654,10 +637,12 @@ func (c *checker) buildParams(pl ast.ParamList) []*ir.Param {
 			def = &ir.Literal{Type: typ}
 		}
 		params[i] = &ir.Param{
-			Name:    p.Name,
-			Type:    typ,
-			Default: def,
-			Const:   p.Const,
+			Name:     p.Name,
+			Type:     typ,
+			Default:  def,
+			Const:    p.Const,
+			Variadic: variadic,
+			Doc:      p.Doc(),
 		}
 	}
 	return params
@@ -687,7 +672,7 @@ func (c *checker) buildFunc(f *ast.FuncDef) *ir.Func {
 	fn := &ir.Func{
 		AST:            f,
 		Name:           f.Name,
-		Pkg:            c.libPkgName,
+		Pkg:            c.declPkg(),
 		TypeParams:     c.resolveTypeParams(f.TypeParams),
 		RecvTypeParams: c.resolveTypeParams(f.RecvTypeParams),
 		Params:         c.buildParams(f.Params),
@@ -705,7 +690,7 @@ func (c *checker) buildFunc(f *ast.FuncDef) *ir.Func {
 	c.refuseParamMarks(f.Params.Params)
 	popTypeParams()
 	if isMethod {
-		fn.Receiver = typeName
+		fn.Receiver = c.receiverType(typeName)
 		fn.Name = methodName
 		// The receiver convention: a method's first param is the receiver when
 		// it is named `this` — prepended synthetically for bare component
@@ -755,19 +740,21 @@ func isComparable(t *ir.Type) bool {
 // wrappers narrow it, and neither is a type the slot content ever has — they
 // say a count, so they are read here rather than constructed as types.
 func (c *checker) resolveSlotContent(t ast.TypeExpr) (*ir.Type, ir.SlotCard) {
+	c.familyPosition++
+	defer func() { c.familyPosition-- }()
 	nt, ok := t.(*ast.NamedType)
 	if !ok {
 		return c.resolveType(t), ir.SlotAny
 	}
 	if card, elem := c.slotWrapper(nt); card != ir.SlotAny {
-		return c.requireTree(nt.Pos, elem), card
+		return c.requireFamily(nt.Pos, elem), card
 	}
-	return c.requireTree(nt.Pos, c.resolveType(t)), ir.SlotAny
+	return c.requireFamily(nt.Pos, c.resolveType(t)), ir.SlotAny
 }
 
-// requireTree holds a slot's content to naming a tree. What lands in a slot is
+// requireFamily holds a slot's content to naming a tree. What lands in a slot is
 // components, so a value type there says nothing a caller could satisfy.
-func (c *checker) requireTree(pos ast.Pos, t *ir.Type) *ir.Type {
+func (c *checker) requireFamily(pos ast.Pos, t *ir.Type) *ir.Type {
 	if t == nil || t.Kind == ir.TypeDyn {
 		return t
 	}
@@ -819,7 +806,7 @@ func (c *checker) slotWrapper(nt *ast.NamedType) (ir.SlotCard, *ir.Type) {
 	}
 	var card ir.SlotCard
 	switch sd.Builtin {
-	case ir.BuiltinTreeOne:
+	case ir.BuiltinFamilyOne:
 		card = ir.SlotOne
 	case ir.BuiltinOption:
 		card = ir.SlotOptional
@@ -839,4 +826,18 @@ func (c *checker) slotWrapper(nt *ast.NamedType) (ir.SlotCard, *ir.Type) {
 	}
 	c.error(nt.Pos, "%s takes exactly one type argument", name)
 	return card, &ir.Type{Kind: ir.TypeComponent}
+}
+
+// dataRecord is the type a data component's name stands for in a value
+// position: its record (Component.Data). In a family position -- a return
+// position, a slot's content -- the name is the family, and typ is returned as
+// it is.
+func (c *checker) dataRecord(typ *ir.Type) *ir.Type {
+	if c.familyPosition > 0 || typ == nil || typ.Kind != ir.TypeComponent {
+		return typ
+	}
+	if f, ok := typ.Decl.(*ir.Component); ok && f.Data && f.Record != nil {
+		return &ir.Type{Kind: ir.TypeStruct, Decl: f.Record}
+	}
+	return typ
 }

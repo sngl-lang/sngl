@@ -1,0 +1,12 @@
+// An event declares its parameters as a function declares its own, so a list
+// of one is written as a function's is. `@change T`, the type with no parens
+// and no name, was a shorthand for that list, and is refused naming it.
+
+import . "sngl:ui"
+
+component picker(
+    @change string, // ERROR(parse) "event \"change\" declares its parameters as a function does: @change(v string)"
+) node {}
+
+window {
+}

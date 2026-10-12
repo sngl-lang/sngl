@@ -40,12 +40,12 @@ func flowSlot(n *ir.NodeInst) ir.Stmt {
 }
 
 func (st *reactivityState) hostsReactiveSpans(n *ir.NodeInst) bool {
-	return n.Component != nil && ir.IsUITree(n.Component.Tree) && !ir.IsShapeContainer(n) &&
+	return n.Component != nil && !ir.IsSpanFamily(n.Component.Family) && !ir.IsShapeContainer(n) &&
 		holdsSpan(n.Children) && st.reactiveAmongSpans(n.Children, false)
 }
 
 func isSpanNode(n *ir.NodeInst) bool {
-	return n.Component != nil && ir.IsSegmentedTree(n.Component.Tree) && !ir.IsDrawShapeTree(n.Component.Tree)
+	return n.Component != nil && ir.IsSpanFamily(n.Component.Family)
 }
 
 // reactiveAmongSpans reports whether stmts' own content -- not what a widget

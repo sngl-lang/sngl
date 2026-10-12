@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/codegen/lang/kotlin"
 	"duckfam.us/sngl/ir"
 )
 
@@ -57,9 +58,11 @@ func orBool(a, b string) string {
 
 // textDecoration renders the accumulated set as the Compose value, or "" for
 // no decoration at all.
-func (d decoration) textDecoration() string {
+// textDecoration is the set as Compose writes it; name is what the file calls
+// TextDecoration.
+func (d decoration) textDecoration(name string) string {
 	type line struct{ on, value string }
-	lines := []line{{d.underline, "TextDecoration.Underline"}, {d.strike, "TextDecoration.LineThrough"}}
+	lines := []line{{d.underline, name + ".Underline"}, {d.strike, name + ".LineThrough"}}
 	var fixed, terms []string
 	for _, l := range lines {
 		switch l.on {
@@ -75,11 +78,11 @@ func (d decoration) textDecoration() string {
 	case len(terms) == 0:
 		return ""
 	case len(terms) > len(fixed):
-		return "TextDecoration.combine(listOfNotNull(" + strings.Join(terms, ", ") + "))"
+		return name + ".combine(listOfNotNull(" + strings.Join(terms, ", ") + "))"
 	case len(fixed) == 1:
 		return fixed[0]
 	}
-	return "TextDecoration.combine(listOf(" + strings.Join(fixed, ", ") + "))"
+	return name + ".combine(listOf(" + strings.Join(fixed, ", ") + "))"
 }
 
 // renderFlow emits one flow of rich text as the single `Text` it is.
@@ -91,14 +94,14 @@ func (d decoration) textDecoration() string {
 // typography its words start from -- which is the seed every other target has
 // to apply itself and Compose inherits from the `Text`.
 func (cc *irComposeContext) renderFlow(n *ir.NodeInst, comp *ir.Component) {
-	cc.kc.RequireImport("androidx.compose.ui.text.buildAnnotatedString")
+	build := cc.kc.Name(ktBuildAnnotated)
 	body := cc.renderAnnotated(n.Children)
-	args := []string{"text = buildAnnotatedString {\n" + body + strings.Repeat("    ", cc.indent) + "}"}
+	args := []string{"text = " + build + " {\n" + body + strings.Repeat("    ", cc.indent) + "}"}
 	args = append(args, "modifier = "+cc.intrinsicModifier(n, comp))
 	if ts := cc.textStyleExpr(n, "style"); ts != "" {
 		args = append(args, "style = "+ts)
 	}
-	cc.line("Text(%s)", strings.Join(args, ", "))
+	cc.line("%s(%s)", cc.kc.Name(ktText), strings.Join(args, ", "))
 }
 
 // renderAnnotated renders the spans of a flow into a buffer of their own, one
@@ -170,18 +173,14 @@ func (cc *irComposeContext) renderSpanPrimitive(n *ir.NodeInst, dec decoration) 
 	closes := 0
 	if href := codegen.NodeProp(n, "href"); href != nil {
 		if h := cc.kc.EvalExpr(href); h != "" && h != `""` {
-			cc.kc.RequireImport("androidx.compose.ui.text.LinkAnnotation")
-			cc.kc.RequireImport("androidx.compose.ui.text.withLink")
-			cc.line("withLink(LinkAnnotation.Url(%s)) {", h)
+			cc.line("%s(%s.Url(%s)) {", cc.kc.Name(ktWithLink), cc.kc.Name(ktLinkAnnotation), h)
 			cc.indent++
 			closes++
 		}
 	}
 	style, dec := cc.spanStyleExpr(n, dec)
 	if style != "" {
-		cc.kc.RequireImport("androidx.compose.ui.text.SpanStyle")
-		cc.kc.RequireImport("androidx.compose.ui.text.withStyle")
-		cc.line("withStyle(%s) {", style)
+		cc.line("%s(%s) {", cc.kc.Name(ktWithStyle), style)
 		cc.indent++
 		closes++
 	}
@@ -232,7 +231,7 @@ func (cc *irComposeContext) spanStyleExpr(n *ir.NodeInst, dec decoration) (strin
 	themed := ""
 	if kind := enumMember(codegen.NodeProp(n, "kind")); kind != "" {
 		if role, ok := tokenColors[kind]; ok {
-			themed = "MaterialTheme.colorScheme." + role
+			themed = cc.kc.Name(ktMaterialTheme) + ".colorScheme." + role
 		}
 	}
 	// A palette the program set wins over the scheme's role, and the unset
@@ -246,10 +245,11 @@ func (cc *irComposeContext) spanStyleExpr(n *ir.NodeInst, dec decoration) (strin
 	case codegen.SpanStyleKnownColor(pal):
 		parts = append(parts, "color = "+cc.colorExpr(pal))
 	default:
+		color := composeColor(cc.kc)
 		if themed == "" {
-			themed = "ComposeColor.Unspecified"
+			themed = color + ".Unspecified"
 		}
-		parts = append(parts, fmt.Sprintf("color = (%s).let { if (it.a == 0) %s else ComposeColor(it.r, it.g, it.b, it.a) }", cc.kc.EvalExpr(pal), themed))
+		parts = append(parts, fmt.Sprintf("color = (%s).let { if (it.a == 0) %s else %s(it.r, it.g, it.b, it.a) }", cc.kc.EvalExpr(pal), themed, color))
 	}
 	own := decoration{}
 	sl, _ := codegen.NodeProp(n, "spanStyle").(*ir.StructLit)
@@ -265,24 +265,21 @@ func (cc *irComposeContext) spanStyleExpr(n *ir.NodeInst, dec decoration) (strin
 				if _, isLit := f.Value.(*ir.Literal); !isLit {
 					// 0px is the declaration's "unset", which a read of state can
 					// arrive at too, and 0.sp would draw the words at no size.
-					cc.kc.RequireImport("androidx.compose.ui.unit.TextUnit")
-					parts = append(parts, fmt.Sprintf("fontSize = (%s).let { if (it > 0) it.sp else TextUnit.Unspecified }", cc.styleValue(f.Value)))
+					parts = append(parts, fmt.Sprintf("fontSize = (%s).let { if (it > 0) %s else %s.Unspecified }", cc.styleValue(f.Value), sp(cc.kc, "it"), cc.kc.Name(ktTextUnit)))
 				} else if v := cc.styleValue(f.Value); v != "" && v != "0" && v != "0.0" {
-					parts = append(parts, "fontSize = "+v+".sp")
+					parts = append(parts, "fontSize = "+sp(cc.kc, v))
 				}
 			case "fontFamily":
 				if s, ok := codegen.IRLiteralString(f.Value); ok && s != "" {
-					parts = append(parts, "fontFamily = "+fontFamilyExpr(s))
-					cc.kc.RequireImport("androidx.compose.ui.text.font.FontFamily")
+					parts = append(parts, "fontFamily = "+fontFamilyExpr(cc.kc, s))
 				}
 			case "fontWeight":
-				if w := cc.composeEnum(f.Value, composeWeight); w != "" {
+				if w := cc.composeEnum(f.Value, ktFontWeight, composeWeight); w != "" {
 					parts = append(parts, "fontWeight = "+w)
 				}
 			case "fontStyle":
-				if st := cc.composeEnum(f.Value, composeSlant); st != "" {
+				if st := cc.composeEnum(f.Value, ktFontStyle, composeSlant); st != "" {
 					parts = append(parts, "fontStyle = "+st)
-					cc.kc.RequireImport("androidx.compose.ui.text.font.FontStyle")
 				}
 			case "underline":
 				own.underline = cc.boolFlag(f.Value)
@@ -297,45 +294,45 @@ func (cc *irComposeContext) spanStyleExpr(n *ir.NodeInst, dec decoration) (strin
 	if own.underline != "" || own.strike != "" {
 		dec.underline = orBool(dec.underline, own.underline)
 		dec.strike = orBool(dec.strike, own.strike)
-		parts = append(parts, "textDecoration = "+dec.textDecoration())
-		cc.kc.RequireImport("androidx.compose.ui.text.style.TextDecoration")
+		parts = append(parts, "textDecoration = "+dec.textDecoration(cc.kc.Name(ktTextDecoration)))
 	}
 	if len(parts) == 0 {
 		return "", dec
 	}
-	return "SpanStyle(" + strings.Join(parts, ", ") + ")", dec
+	return cc.kc.Name(ktSpanStyle) + "(" + strings.Join(parts, ", ") + ")", dec
 }
 
 // fontFamilyExpr is a face name as Compose spells one. Only the generic
 // families are names Compose has: anything else is a font resource an
 // application registers, which SNGL has no way to name yet, so it falls back
 // to the default rather than to a lookup that would not compile.
-func fontFamilyExpr(name string) string {
+func fontFamilyExpr(kc *kotlin.KtIRContext, name string) string {
+	member := "Default"
 	switch name {
 	case "monospace":
-		return "FontFamily.Monospace"
+		member = "Monospace"
 	case "serif":
-		return "FontFamily.Serif"
+		member = "Serif"
 	case "sans-serif":
-		return "FontFamily.SansSerif"
+		member = "SansSerif"
 	case "cursive":
-		return "FontFamily.Cursive"
+		member = "Cursive"
 	}
-	return "FontFamily.Default"
+	return kc.Name(ktFontFamily) + "." + member
 }
 
-// composeWeight maps a markup.Weight to the Compose value, or "" for the
+// composeWeight maps a markup.Weight to the FontWeight member, or "" for the
 // `inherit` that leaves the enclosing run's alone.
 func composeWeight(member string) string {
 	switch member {
 	case "normal":
-		return "FontWeight.Normal"
+		return "Normal"
 	case "bold":
-		return "FontWeight.Bold"
+		return "Bold"
 	case "lighter":
-		return "FontWeight.Light"
+		return "Light"
 	case "bolder":
-		return "FontWeight.ExtraBold"
+		return "ExtraBold"
 	}
 	return ""
 }
@@ -346,9 +343,9 @@ func composeWeight(member string) string {
 func composeSlant(member string) string {
 	switch member {
 	case "normal":
-		return "FontStyle.Normal"
+		return "Normal"
 	case "italic", "oblique":
-		return "FontStyle.Italic"
+		return "Italic"
 	}
 	return ""
 }
@@ -410,12 +407,15 @@ func (cc *irComposeContext) boolFlag(e ir.Expr) string {
 // declared on this target, and `FontWeight` is Compose's own name. A member
 // the mapping has no answer for is `null` inside a branch, which is what an
 // `inherit` means to a SpanStyle.
-func (cc *irComposeContext) composeEnum(e ir.Expr, toCompose func(string) string) string {
+func (cc *irComposeContext) composeEnum(e ir.Expr, typ string, toCompose func(string) string) string {
 	t, ok := e.(*ir.Ternary)
 	if !ok {
-		return toCompose(enumMember(e))
+		if m := toCompose(enumMember(e)); m != "" {
+			return cc.kc.Name(typ) + "." + m
+		}
+		return ""
 	}
-	then, els := cc.composeEnum(t.Then, toCompose), cc.composeEnum(t.Else, toCompose)
+	then, els := cc.composeEnum(t.Then, typ, toCompose), cc.composeEnum(t.Else, typ, toCompose)
 	if then == "" && els == "" {
 		return ""
 	}
@@ -435,7 +435,7 @@ func (cc *irComposeContext) spanColorExpr(e ir.Expr) string {
 		return fmt.Sprintf("(if (%s) %s else %s)", cc.kc.EvalExpr(t.Cond), cc.spanColorExpr(t.Then), cc.spanColorExpr(t.Else))
 	}
 	if codegen.SpanStyleUnsetColor(e) {
-		return "ComposeColor.Unspecified"
+		return composeColor(cc.kc) + ".Unspecified"
 	}
 	return cc.colorExpr(e)
 }

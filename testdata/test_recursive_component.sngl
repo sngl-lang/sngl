@@ -3,7 +3,7 @@ import . "sngl:test"
 
 struct TreeNode {
     value int = 0
-    left option<TreeNode> = null
+    left  option<TreeNode> = null
     right option<TreeNode> = null
 }
 

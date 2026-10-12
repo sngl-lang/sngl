@@ -126,6 +126,11 @@ func domPropForProp(comp *ir.Component, prop string) (string, bool) {
 	if comp != nil && comp.Intrinsic == windowIntrinsic && prop == "visible" {
 		return "open", true
 	}
+	// A URL source is an `<img>`, which takes its URL in `src`, and the icon
+	// `<link>` standing in for one answers a write of it (faviconInit).
+	if comp != nil && comp.Intrinsic == imageURLIntrinsic && prop == ir.ImageSourceURL {
+		return "src", true
+	}
 	if domOnlyProps[prop] {
 		return domName(prop), true
 	}
@@ -162,59 +167,6 @@ func domEventName(comp *ir.Component, event string) string {
 		return event
 	}
 	return ""
-}
-
-// eventPayloadBase reports the JS expression a handler's event parameter binds
-// to for one event: the DOM event object, or the element the event fired on.
-//
-// The payload declaration decides. A payload field that names a prop the
-// element also declares is that element's state read back — `InputEvent.value`
-// is the control's `value` — so the parameter stands for the target. A field
-// the element declares nothing of is the event's own data —
-// `error.message` — so it stands for the event. A payload with no fields
-// is read by nobody and takes the event.
-//
-// Binding every event to the target is what turned `e.message` into
-// `e.target.message`; binding every event to the event object would turn
-// `evt.value` into `e.value`, which is undefined on every DOM event.
-func eventPayloadBase(comp *ir.Component, event string) string {
-	if comp == nil {
-		// No declaration to read: the target is what a handler reached for
-		// before there was one, so an unresolved element keeps reaching it.
-		return "e.target"
-	}
-	for _, f := range eventPayloadFields(comp, event) {
-		if elementProp(comp, f) != nil {
-			return "e.target"
-		}
-	}
-	return "e"
-}
-
-// eventPayloadFields is the field names of an event's declared payload struct,
-// or nil for a void event or one the element does not declare by name (its
-// wildcard event carries no payload).
-func eventPayloadFields(comp *ir.Component, event string) []string {
-	if comp == nil {
-		return nil
-	}
-	for _, e := range comp.Events {
-		if e == nil || e.Name != event || e.Payload() == nil {
-			continue
-		}
-		sd, ok := e.Payload().Decl.(*ir.StructDef)
-		if !ok || sd == nil {
-			return nil
-		}
-		out := make([]string, 0, len(sd.Fields))
-		for _, f := range sd.Fields {
-			if f != nil {
-				out = append(out, f.Name)
-			}
-		}
-		return out
-	}
-	return nil
 }
 
 // wildcardPropNamed reports whether prop is the declaration's wildcard prop --

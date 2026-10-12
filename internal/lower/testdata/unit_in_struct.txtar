@@ -15,7 +15,7 @@ component main node {
 -- expected.sngl --
 import . "sngl:ui"
 struct Box {
-    width length
+    width  length
     height length
 }
 unit length {

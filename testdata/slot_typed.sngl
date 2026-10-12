@@ -1,15 +1,15 @@
 // A slot declares which family its content belongs to by naming that family's
 // type, and how many it takes by wrapping it. Bare is any number — the default,
-// and what a slot with no type at all means. `tr.one<T>` narrows it to exactly
+// and what a slot with no type at all means. `family.one<T>` narrows it to exactly
 // one and `option<T>` to none or one; those two are the only wrappers.
 //
 // A slot bounded to exactly one has no spelling for being absent, so it must be
 // populated.
 
 import . "sngl:ui"
-import tr "sngl:tree"
+import family "sngl:family"
 
-component frame(body component tr.one, badge component option<node>, rows component) node {
+component frame(body component family.one, badge component option<node>, rows component) node {
     vbox {
         body {}
         badge {}

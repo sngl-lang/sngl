@@ -36,7 +36,7 @@ func TestInlinedNativeCallReachesTheBatch(t *testing.T) {
 	comp := &ir.Component{
 		Name:  "wrapped",
 		Props: []*ir.Prop{{Name: "name", Type: ir.TypString, Sym: sym}},
-		Body:  []ir.Stmt{body},
+		Stmts: []ir.Stmt{body},
 	}
 	// wrapped(name="inlined")
 	site := &ir.NodeInst{

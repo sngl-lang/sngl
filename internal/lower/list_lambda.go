@@ -102,13 +102,11 @@ func (st *listLambdaState) transformStmt(s ir.Stmt) ([]ir.Stmt, ir.Stmt) {
 		n.Body = st.transformBlock(n.Body)
 		n.Else = st.transformBlock(n.Else)
 	case *ir.NodeInst:
-		for i := range n.Props {
-			if n.Props[i].Value != nil {
-				p, v := st.transformExpr(n.Props[i].Value)
-				pre = append(pre, p...)
-				n.Props[i].Value = v
-			}
-		}
+		// A prop is left for the emitter, which writes the call as an
+		// expression of its own: hoisted, the loop building it was a
+		// statement of the view, which reactivity made a render slot when the
+		// list read state -- and the temp it filled stayed declared where the
+		// node was built, out of the slot's reach.
 		n.Children = st.transformBlock(n.Children)
 		for i := range n.Handlers {
 			if n.Handlers[i].Func != nil {
@@ -295,7 +293,7 @@ func isListLambdaCall(n *ir.Call) bool {
 	if n == nil || n.Func == nil {
 		return false
 	}
-	if n.Func.Receiver != "list" && n.Func.Receiver != "*" {
+	if n.Func.RecvName() != "list" && n.Func.RecvName() != "*" {
 		return false
 	}
 	if n.Func.Name != "filter" && n.Func.Name != "map" {
@@ -364,10 +362,10 @@ func (st *listLambdaState) liftListLambda(n *ir.Call) ([]ir.Stmt, ir.Expr) {
 	if id, ok := fn.(*ir.Ident); ok {
 		if decl, ok := id.Sym.(*ir.Func); ok {
 			params := decl.Params
-			if decl.Receiver != "" && len(params) > 0 && params[0].Receiver {
+			if decl.IsMethod() && len(params) > 0 && params[0].Receiver {
 				params = params[1:]
 			}
-			if (decl.Receiver == "" || len(params) < len(decl.Params)) && len(params) > 0 {
+			if (!decl.IsMethod() || len(params) < len(decl.Params)) && len(params) > 0 {
 				lambdaCall.Callee = nil
 				lambdaCall.Func = decl
 				lambdaCall.Args[0].Name = params[0].Name
@@ -380,7 +378,7 @@ func (st *listLambdaState) liftListLambda(n *ir.Call) ([]ir.Stmt, ir.Expr) {
 	// built this way when push still returned a list, because every Go backend
 	// renders the intrinsic as the assignment itself and wrapping it in an
 	// Assign double-emitted the `=`.
-	pushFn := &ir.Func{Name: "push", Receiver: "list", Intrinsic: "list.push"}
+	pushFn := &ir.Func{Name: "push", Receiver: ir.ListOf(ir.TypDyn), Intrinsic: "list.push"}
 	tempIdent := &ir.Ident{Name: tempName, Type: outListT, Sym: tempSym, Synthesized: true}
 
 	pushStmt := func(pushed ir.Expr) ir.Stmt {

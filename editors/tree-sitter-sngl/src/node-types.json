@@ -654,32 +654,6 @@
     }
   },
   {
-    "type": "event_param",
-    "named": true,
-    "fields": {
-      "name": {
-        "multiple": false,
-        "required": false,
-        "types": [
-          {
-            "type": "identifier",
-            "named": true
-          }
-        ]
-      },
-      "type": {
-        "multiple": false,
-        "required": true,
-        "types": [
-          {
-            "type": "type_identifier",
-            "named": true
-          }
-        ]
-      }
-    }
-  },
-  {
     "type": "event_params",
     "named": true,
     "fields": {},
@@ -688,7 +662,7 @@
       "required": false,
       "types": [
         {
-          "type": "event_param",
+          "type": "func_param",
           "named": true
         }
       ]

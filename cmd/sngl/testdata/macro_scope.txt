@@ -3,13 +3,12 @@
 # this, so both halves could be reverted to the old ambient lookup with a green
 # suite.
 #
-# `tree.none` is the macro under test — sngl:ui/draw declares none now that
-# membership is the return position, and sngl:tree no longer declares `kind`
-# now that a family is a component.
+# `family.crosses` is the macro under test: it is written on a placement, so a
+# program can write it in a window's body.
 
 # A qualified macro needs its package imported.
 ! sngl check no_import.sngl
-stderr 'unknown macro package "tree": import it with import "sngl:tree"'
+stderr 'unknown macro package "family": import it with import "sngl:family"'
 
 sngl check qualified.sngl
 stdout 'qualified.sngl: ok'
@@ -19,7 +18,7 @@ stdout 'qualified.sngl: ok'
 stderr 'unknown macro "builtin": nothing in scope declares it'
 
 # A lib package carries its macros alongside its declarations, so importing
-# sngl:tree brings both the count wrappers and the mark beside them.
+# sngl:family brings both the count wrapper and the marks beside it.
 sngl check with_std.sngl
 stdout 'with_std.sngl: ok'
 
@@ -29,28 +28,24 @@ stdout 'aliased.sngl: ok'
 
 # A macro exists because a package declares it, so a mark naming one the
 # package does not declare says exactly that. sngl:i18n declares no macros at
-# all; tree, which does, is one import line away.
+# all; family, which does, is one import line away.
 ! sngl check no_macros.sngl
-stderr 'unknown macro "none": package "sngl:i18n" declares none of that name'
+stderr 'unknown macro "crosses": package "sngl:i18n" declares none of that name'
 
 -- no_import.sngl --
 import ui "sngl:ui"
 
-#[tree.none]
-component quiet() {}
-
 ui.window {
-    quiet()
+    #[family.crosses]
+    ui.text(value="x")
 }
 -- qualified.sngl --
-import "sngl:tree"
+import "sngl:family"
 import ui "sngl:ui"
 
-#[tree.none]
-component quiet() {}
-
 ui.window {
-    quiet()
+    #[family.crosses]
+    ui.text(value="x")
 }
 -- bare_builtin.sngl --
 import ui "sngl:ui"
@@ -64,38 +59,33 @@ ui.window {
 }
 -- with_std.sngl --
 import . "sngl:ui"
-import tr "sngl:tree"
+import family "sngl:family"
 
-#[tr.none]
-component quiet() {}
-
-component main node {
-    vbox() {
-        quiet()
-        text(value="beside a widget")
+component one(content ...component family.one) node {
+    vbox {
+        content
     }
 }
 
 window {
-    main
+    one {
+        #[family.crosses]
+        text(value="beside a widget")
+    }
 }
 -- aliased.sngl --
 import . "sngl:ui"
-import whatever "sngl:tree"
-
-#[whatever.none]
-component quiet() {}
+import whatever "sngl:family"
 
 window {
-    quiet()
+    #[whatever.crosses]
+    text(value="x")
 }
 -- no_macros.sngl --
 import b "sngl:i18n"
 import ui "sngl:ui"
 
-#[b.none]
-component quiet() {}
-
 ui.window {
-    quiet()
+    #[b.crosses]
+    ui.text(value="x")
 }

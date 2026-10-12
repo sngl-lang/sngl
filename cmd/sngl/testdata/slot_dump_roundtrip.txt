@@ -12,9 +12,9 @@
 # The check is the round trip, not the text: dump it, check the dump.
 
 sngl dump --stage checked --format sngl slots.sngl
-stdout 'header component tr.one'
-stdout 'children \.\.\.component,'
-stdout 'cell component\(row Row\)'
+stdout 'header +component family.one'
+stdout 'children +\.\.\.component,'
+stdout 'cell +component\(row Row\)'
 
 cp stdout out.sngl
 sngl check out.sngl
@@ -22,7 +22,7 @@ stdout 'out.sngl: ok'
 
 -- slots.sngl --
 import . "sngl:ui"
-import tr "sngl:tree"
+import family "sngl:family"
 
 struct Row {
     title string
@@ -31,7 +31,7 @@ struct Row {
 component table(
     rows list<Row>,
     children ...component,
-    header component tr.one,
+    header component family.one,
     cell component(row Row),
 ) node {
     vbox {

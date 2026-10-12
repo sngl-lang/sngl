@@ -1,8 +1,10 @@
 // A top-level window — a surface the user sees, which a program creates and
-// destroys with the tree. `title` names it; `favicon` is its icon. A window is
-// not a destination: the pages a user goes between are sngl:ui/nav's `page`s,
-// held by a `stack` the window shows, and the window around the stack is the
-// chrome every page shares -- `title="Docs - {pages.current.title}"`.
+// destroys with the tree. `title` names it; `favicon` is its icon, any image
+// source: the page's on html, the window's on fyne and gtk4, and nothing on
+// the targets with no icon of a window's own. A window is not a destination:
+// the pages a user goes between are sngl:ui/nav's `page`s, held by a `stack`
+// the window shows, and the window around the stack is the chrome every page
+// shares -- `title="Docs - {pages.current.title}"`.
 //
 // A window is an ordinary component and a member of `root`, which is what lets
 // it stand at the root of a file. It has no body: every platform implements it
@@ -31,12 +33,12 @@
 // hiding one without destroying it is `visible`. A close that leaves no window
 // on screen ends the program, unless it started with none.
 component window(
-    title string,
-    favicon string,
+    title    string = "",
     :visible bool = true,
-    @error error,
+    @error(e error),
     @closed(),
-    content ...component node,
+    content  ...component node,
+    favicon  component option<imageSource>,
 ) root
 
 // Puts the window on screen: `visible = true`, which is no change to a window

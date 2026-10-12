@@ -1,0 +1,30 @@
+// Families: component trees whose members are not interchangeable widgets,
+// where a container accepts only its own family's members.
+//
+// A canvas and its shapes are one; rich text (flows of inline runs) is
+// another. Nothing here knows what a shape is: the compiler compares
+// declarations.
+//
+// A family is declared in `sngl:build` -- `component shape build.family` --
+// and this package is the rest of the vocabulary. A component says which
+// family it belongs to by naming it in its return position, and a slot says
+// which one it accepts by naming it as the slot's type. How many children it
+// accepts is the wrapper: bare is any number, `family.one<T>` exactly one,
+// `option<T>` none or one -- counted as the nodes the population renders, so a
+// `for` in a slot of one is refused. How many times a body inserts the slot is
+// not bounded.
+//
+// Naming nothing asks: a component whose return position is empty joins the
+// family its body renders, and one whose body renders members of two families
+// or of none is asked to say which. A component that takes whatever family it
+// is placed in says so with a type parameter, `component effect<F>(…) F` -- a
+// lifetime bracket, which sits in a drawing as readily as in a layout -- and
+// its body may render only what is generic in F the same way: another such
+// component, or a slot of F. A wrapper's call site binds F from the children
+// it supplies, `component boundary<T>(content ...component T) T`.
+//
+// A placement that crosses a family says so where it is written:
+// `#[family.crosses]` on a node or a slot insertion lets that one stand where
+// its family is not the one accepted, and checks everything else about it as
+// ever. It is how a platform's primitive stands in for a node of another
+// family, and how a program's own family member shows a widget.

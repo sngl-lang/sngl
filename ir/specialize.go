@@ -80,9 +80,9 @@ func covers(recorded string, t target) bool {
 // language's. A reader that needs a target's body before or without the swap
 // asks here rather than ranging over the maps, which hold every target the
 // build names -- and, in a per-target clone (ClonePackageFor), only this one.
-func ComponentOverride(comp *Component, platform, language string) (Body, bool) {
+func ComponentOverride(comp *Component, platform, language string) (Override, bool) {
 	if comp == nil {
-		return Body{}, false
+		return Override{}, false
 	}
 	return pick(target{platform, language}, comp.PlatformOverrides, comp.LanguageOverrides)
 }
@@ -177,7 +177,7 @@ func specializePkgBodies(pkg *Package, t target, seen map[*Package]struct{}, bod
 	}
 	for _, comp := range pkg.Components {
 		if comp != nil {
-			walk(comp.Body)
+			walk(comp.Stmts)
 		}
 	}
 	walk(pkg.Body)
@@ -219,7 +219,7 @@ func specializeComp(comp *Component, t target, bodiedOnly bool) {
 	for _, fn := range comp.Funcs {
 		specializeFunc(fn, t, bodiedOnly)
 	}
-	if bodiedOnly && len(comp.Body) == 0 {
+	if bodiedOnly && len(comp.Stmts) == 0 {
 		return
 	}
 	body, ok := pick(t, comp.PlatformOverrides, comp.LanguageOverrides)
@@ -241,21 +241,20 @@ func specializeComp(comp *Component, t target, bodiedOnly bool) {
 		return
 	}
 	if comp.SpecializedFor == "" && comp.DeclaredBody == nil {
-		comp.DeclaredBody = comp.Body
+		comp.DeclaredBody = comp.Stmts
 	}
 	comp.SpecializedFor = t.key()
-	// The vars travel with the statements: the body reads them, and a var
+	// The body is swapped whole: the vars, funcs and body-scoped
+	// declarations travel with the statements that read them, and a var
 	// belonging to a target that is not this one must never reach codegen.
-	// So do the body-scoped declarations, which is what links a component
-	// nested in this override body back to the body that declared it.
-	comp.Body, comp.Vars, comp.BodyDecls = body.Stmts, body.Vars, body.BodyDecls
+	// An override that recorded no method set of its own keeps the
+	// declaration's.
+	funcs, methods := comp.Funcs, comp.Methods
+	comp.Body = body.Body
+	if body.Funcs == nil && body.Methods == nil {
+		comp.Funcs, comp.Methods = funcs, methods
+	}
 	// Const is the declaration's or the override's. Read off the declaration's
 	// AST rather than the field, which a previous target's swap has written.
 	comp.Const = body.Const || (comp.AST != nil && comp.AST.Const)
-	// And the methods, whose list this target's body is the only one that can
-	// call: a helper written in another target's override is not this one's to
-	// emit. Guarded because a func override records no method set of its own.
-	if body.Funcs != nil || body.Methods != nil {
-		comp.Funcs, comp.Methods = body.Funcs, body.Methods
-	}
 }

@@ -777,8 +777,10 @@ var name = ""
 
 ```sngl
 ui.button(text="Submit", disabled=count <= 0)
-ui.input(value=name, placeholder="Enter name", type="email")
-ui.image(src="photo.png", alt="Profile", fit=cover)
+ui.input(value=name, placeholder="Enter name", type=email)
+ui.image(alt="Profile", fit=cover) {
+    ui.remote(url="https://example.com/photo.png")
+}
 ```
 
 ### Events
@@ -791,7 +793,7 @@ Events use the `@` prefix and contain mutation statements:
 var count = 0
 var name = ""
 ui.button(text="+", @click { count += 1 })
-ui.input(value=name, @input(e) { name = e.value })
+ui.input(value=name, @input(text) { name = text })
 ```
 
 A handler body may hold several statements, one per line:
@@ -811,7 +813,7 @@ ui.button(text="Add", @click {
 })
 ```
 
-Available events depend on the component (check its declaration with `sngl doc`). A handler names its payload parameter to read it: `@input(e) { ... e.value }`. There is no ambient `event` identifier.
+Available events depend on the component (check its declaration with `sngl doc`). An event declares its parameters as a function does -- `@input(value string)` -- and a handler names the ones it reads, by position: `@input(text) { ... text }`. There is no ambient `event` identifier.
 
 ### Bidirectional Bindings
 
@@ -823,7 +825,7 @@ Instead of manually wiring an event:
 
 ```sngl
 var name = ""
-ui.input(value=name, @input(e) { name = e.value })
+ui.input(value=name, @input(text) { name = text })
 ```
 
 Use a bidirectional binding:
@@ -1236,7 +1238,7 @@ Hex literals accept three, four, six, or eight digits — `#fff`, `#fff8`, `#ff0
 
 ### Units in styles
 
-Lengths are `ui.measurement` values: `12px`, `1.5em`, `16rem`, `50pct`, `100vw`. Write the unit; it is what makes a length mean the same thing on every target.
+Lengths are `ui.measurement` values: `12px`, `1.5em`, `2rem`. Write the unit; it is what makes a length mean the same thing on every target. An `em` is a font size: html's cascade where there is one, and the platform's base text size everywhere else.
 
 ### Gotchas
 
@@ -1404,7 +1406,7 @@ The standard library's own components are lower camelCase (`ui.vbox`, `ui.datepi
 import ui "sngl:ui"
 
 struct Todo {
-    id int = 0
+    id   int = 0
     text string = ""
     done bool = false
 }
@@ -1446,7 +1448,7 @@ ui.window {
     var email = ""
     func valid() => email.contains("@") && email.length() > 3
     ui.vbox(style={padding=16px, gap=8px}) {
-        ui.input(:value=email, placeholder="Email", type="email")
+        ui.input(:value=email, placeholder="Email", type=ui.InputType.email)
         if !valid {
             ui.text(value="Enter a valid email", style={color=#CC0000, fontSize=12px})
         }
@@ -1507,7 +1509,7 @@ ui.window {
 import ui "sngl:ui"
 
 struct Todo {
-    id int = 0
+    id   int = 0
     text string = ""
     done bool = false
 }

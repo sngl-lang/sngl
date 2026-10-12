@@ -38,9 +38,9 @@ func checkedPkgWithTargets(t *testing.T, src string) *ir.Package {
 //
 // The consequence is where the import lands. One written at the top of a
 // target's library package is resolved by every program built for that
-// language — writing sngl:remote/http's Go transport as a plain `go:` import in
-// golang.sngl made three html server-action tests fail on a package they have
-// no interest in. A native declaration costs nothing until something calls it.
+// language — writing a Go transport as a plain `go:` import in golang.sngl
+// made three html server-action tests fail on a package they have no interest
+// in. A native declaration costs nothing until something calls it.
 func TestGoNativeIsAReferenceNotADeclaration(t *testing.T) {
 	src := `import . "sngl:macro"
 import go "sngl:language/go"

@@ -66,7 +66,7 @@ func lowerInstanceSlots(pkg *ir.Package, _ Features, _ Options) error {
 	}
 	for _, c := range pkg.Components {
 		if c != nil && c.RuntimeInstance && hasRealComponentBody(c) {
-			st.template[c] = deepCloneStmts(c.Body)
+			st.template[c] = deepCloneStmts(c.Stmts)
 			st.queue = append(st.queue, c)
 		}
 	}
@@ -81,9 +81,9 @@ func lowerInstanceSlots(pkg *ir.Package, _ Features, _ Options) error {
 		c := st.queue[0]
 		st.queue = st.queue[1:]
 		if _, original := st.template[c]; original {
-			c.Body = substituteSlots(c.Body, nil)
+			c.Stmts = substituteSlots(c.Stmts, nil)
 		}
-		if err := st.specializeIn(c.Body); err != nil {
+		if err := st.specializeIn(c.Stmts); err != nil {
 			return err
 		}
 	}
@@ -155,15 +155,15 @@ func (st *instanceSlots) specialize(n *ir.NodeInst) error {
 	}
 	body, ok := st.template[orig]
 	if !ok {
-		body = orig.Body
+		body = orig.Stmts
 	}
 	copyOf := cloneComponent(orig, orig.Name+"__slot"+strconv.Itoa(st.n), body)
 	st.n++
 	st.copies[key] = append(st.copies[key], slotVariant{shape, copyOf})
-	st.recordOrigins(body, copyOf.Body)
+	st.recordOrigins(body, copyOf.Stmts)
 	copyOf.Props = append(copyOf.Props, lifted.Props...)
 	copyOf.Events = append(copyOf.Events, lifted.Events...)
-	copyOf.Body = substituteSlotsCloning(copyOf.Body, n, st.cloneRecording)
+	copyOf.Stmts = substituteSlotsCloning(copyOf.Stmts, n, st.cloneRecording)
 	n.Children = nil
 	n.Slots = nil
 	n.Component = copyOf
@@ -346,8 +346,8 @@ func cloneComponent(comp *ir.Component, name string, body []ir.Stmt) *ir.Compone
 	for i, f := range comp.Funcs {
 		cf := cloneFuncShallow(f)
 		cf.Block = deepCloneStmts(f.Block)
-		if cf.Receiver == comp.Name {
-			cf.Receiver = name
+		if cf.RecvDecl() == ir.Symbol(comp) {
+			cf.Receiver = out.SymType()
 		}
 		out.Funcs[i] = cf
 		syms[f] = cf
@@ -380,7 +380,7 @@ func cloneComponent(comp *ir.Component, name string, body []ir.Stmt) *ir.Compone
 		f.Reads = renameVarList(f.Reads, syms)
 		f.Writes = renameVarList(f.Writes, syms)
 	}
-	out.Body = renameIdents(deepCloneStmts(body), nil, syms)
+	out.Stmts = renameIdents(deepCloneStmts(body), nil, syms)
 	return &out
 }
 
@@ -407,7 +407,7 @@ func (st *instanceSlots) dropUnreferenced() {
 	for len(queue) > 0 {
 		c := queue[0]
 		queue = queue[1:]
-		visit(c.Body)
+		visit(c.Stmts)
 	}
 	dead := map[*ir.Func]bool{}
 	st.pkg.Components = slices.DeleteFunc(st.pkg.Components, func(c *ir.Component) bool {

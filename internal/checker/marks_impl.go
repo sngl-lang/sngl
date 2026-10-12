@@ -16,25 +16,27 @@ import (
 var markImpls = map[markKey]markImpl{
 	{"internal/marks", "builtin"}:   markBuiltin,
 	{"internal/marks", "intrinsic"}: markIntrinsic,
-	{"tree", "none"}:                markTreeNone,
-	{"tree", "crosses"}:             markTreeCrosses,
-	{"tree", "eventless"}:           markTreeEventless,
-	{"macro", "wildcard"}:           markWildcard,
-	{"macro", "construct"}:          markConstruct,
-	{"macro", "foreign"}:            markForeign,
-	{"macro", "cnative"}:            markCNative,
-	{"macro", "unusable"}:           markUnusable,
-	{"language/kotlin", "native"}:   markKotlinNative,
-	{"language/go", "native"}:       markGoNative,
-	{"language/go", "async"}:        markGoAsync,
-	{"language/js", "native"}:       markJSNative,
-	{"x/gen", "can"}:                markGenCan,
-	{"x/gen", "cannot"}:             markGenCannot,
-	{"x/gen", "wants"}:              markGenWants,
-	{"x/gen", "renders"}:            markGenRenders,
-	{"x/gen", "name"}:               markGenName,
-	{"x/gen", "native"}:             markGenNative,
-	{"ui/markup/md", "order"}:       markMdOrder,
+	// sngl:builtin's private copies, which keep the package free of imports.
+	{"builtin", "_builtin"}:       markBuiltin,
+	{"builtin", "_intrinsic"}:     markIntrinsic,
+	{"family", "crosses"}:         markFamilyCrosses,
+	{"family", "eventless"}:       markFamilyEventless,
+	{"macro", "wildcard"}:         markWildcard,
+	{"macro", "construct"}:        markConstruct,
+	{"macro", "foreign"}:          markForeign,
+	{"macro", "cnative"}:          markCNative,
+	{"macro", "unusable"}:         markUnusable,
+	{"language/kotlin", "native"}: markKotlinNative,
+	{"language/go", "native"}:     markGoNative,
+	{"language/go", "async"}:      markGoAsync,
+	{"language/js", "native"}:     markJSNative,
+	{"x/gen", "can"}:              markGenCan,
+	{"x/gen", "cannot"}:           markGenCannot,
+	{"x/gen", "wants"}:            markGenWants,
+	{"x/gen", "renders"}:          markGenRenders,
+	{"x/gen", "name"}:             markGenName,
+	{"x/gen", "native"}:           markGenNative,
+	{"ui/markup/md", "order"}:     markMdOrder,
 }
 
 // markMdOrder implements #[md.order]. The md: importer reads it from source
@@ -183,6 +185,18 @@ func markKotlinNative(m *mark) error {
 		if err := claimForeign(&d.Foreign, fm, name); err != nil {
 			return err
 		}
+	case *ir.Component:
+		// A host's own widget -- a Compose composable, whose props are its
+		// arguments by name. A platform rendering Kotlin emits it from the
+		// declaration as it does one of its own #[intrinsic] primitives, which
+		// is what lets a program describe a composable the compiler never
+		// heard of. Arguments go by name already, so `named` says nothing.
+		if len(flags) > 0 {
+			return fmt.Errorf("#[native(%q)] carries %s, which describes a call; a component is passed its props by name", name, flags[0])
+		}
+		if err := claimForeign(&d.Foreign, fm, name); err != nil {
+			return err
+		}
 	case *ir.Var:
 		// A const or var names a host value: `math.Pi` is a constant, Kotlin's
 		// `StrokeCap.Round` a property, `os.Args` a package var. None has a
@@ -198,7 +212,7 @@ func markKotlinNative(m *mark) error {
 			return err
 		}
 	default:
-		return fmt.Errorf("#[kotlin.native] cannot mark %s; only a func, a struct, a const or a var names a Kotlin identifier", ast.DeclFormName(m.decl))
+		return fmt.Errorf("#[kotlin.native] cannot mark %s; only a func, a struct, a component, a const or a var names a Kotlin identifier", ast.DeclFormName(m.decl))
 	}
 	return nil
 }
@@ -299,16 +313,25 @@ func markJSNative(m *mark) error {
 // checked by bindBuiltinRole, where the compiler stores the reference, because
 // that is where the requirement comes from.
 func markBuiltin(m *mark) error {
+	// A string for sngl:internal/marks' `builtin("int")`, an enum member for
+	// sngl:builtin's own `_builtin(int)`.
 	raw := m.args.String("kind")
+	if raw == "" {
+		raw = m.args.Ident("kind")
+	}
 	kind := ir.BuiltinKind(raw)
 	if !kind.Valid() {
 		return fmt.Errorf("unknown builtin kind %q (valid: %s)", raw, strings.Join(builtinKindNames(), ", "))
 	}
 	switch d := m.sym.(type) {
 	case *ir.Component:
-		d.Builtin = kind
+		if err := checkStampedKind(d.Builtin, kind); err != nil {
+			return err
+		}
 	case *ir.StructDef:
-		d.Builtin = kind
+		if err := checkStampedKind(d.Builtin, kind); err != nil {
+			return err
+		}
 	case *ir.Var:
 		d.Builtin = kind
 	case *ir.UnitDef:
@@ -317,6 +340,18 @@ func markBuiltin(m *mark) error {
 		return fmt.Errorf("#[builtin(%q)] cannot mark %s", raw, ast.DeclFormName(m.decl))
 	}
 	m.c.bindBuiltinRole(kind, m.sym.(ir.Symbol))
+	return nil
+}
+
+// checkStampedKind holds a struct's or component's mark to the kind its
+// registration read off the source (writtenBuiltinKind). The kind is needed
+// before the mark runs, so a mark that registration could not read would
+// leave every type resolved against the declaration until now resolved as a
+// plain struct, silently.
+func checkStampedKind(stamped, kind ir.BuiltinKind) error {
+	if stamped != kind {
+		return fmt.Errorf("#[builtin(%q)] was not read as the declaration registered (read %q): write it #[_builtin(kind)] in sngl:builtin or #[marks.builtin(\"kind\")] under an import of sngl:%s", kind, stamped, marksPkg)
+	}
 	return nil
 }
 
@@ -366,6 +401,17 @@ func markIntrinsic(m *mark) error {
 			return fmt.Errorf("#[intrinsic(%q)]: already an intrinsic (%q)", id, comp.Intrinsic)
 		}
 		comp.Intrinsic = id
+		return nil
+	}
+	if sd, ok := m.sym.(*ir.StructDef); ok {
+		// A host type: no call for a flag to describe, as for a component.
+		if len(flags) > 0 {
+			return fmt.Errorf("#[intrinsic(%q)] carries %s, which describes a call; a struct has none", id, flags[0])
+		}
+		if sd.Intrinsic != "" {
+			return fmt.Errorf("#[intrinsic(%q)]: already an intrinsic (%q)", id, sd.Intrinsic)
+		}
+		sd.Intrinsic = id
 		return nil
 	}
 	fn, ok := m.sym.(*ir.Func)
@@ -568,36 +614,21 @@ func uniqueFlags(flags []string, mark string) ([]string, error) {
 	return flags, nil
 }
 
-// markTreeNone implements #[tree.none]: this component belongs to no family.
-//
-// It has to be written rather than left out, because leaving the return
-// position out is now the error that drove every declaration to name `ui`.
-// The mark is the difference between "renders nothing, so it goes anywhere"
-// and "somebody forgot".
-func markTreeNone(m *mark) error {
-	comp, ok := m.sym.(*ir.Component)
-	if !ok {
-		return fmt.Errorf("#[tree.none] cannot mark %s; only a component belongs to a tree", ast.DeclFormName(m.decl))
-	}
-	comp.Treeless = true
-	return nil
-}
-
-// markTreeEventless implements #[tree.eventless]: the members of this family
+// markFamilyEventless implements #[family.eventless]: the members of this family
 // raise no events (checkFamilyMember).
-func markTreeEventless(m *mark) error {
+func markFamilyEventless(m *mark) error {
 	comp, ok := m.sym.(*ir.Component)
 	if !ok {
-		return fmt.Errorf("#[tree.eventless] cannot mark %s; only a family has members", ast.DeclFormName(m.decl))
+		return fmt.Errorf("#[family.eventless] cannot mark %s; only a family has members", ast.DeclFormName(m.decl))
 	}
 	comp.Eventless = true
 	return nil
 }
 
-// markTreeCrosses implements #[tree.crosses]: this placement may stand where
+// markFamilyCrosses implements #[tree.crosses]: this placement may stand where
 // its family is not the one accepted. It marks the placement and never the
 // declaration, so a platform says exactly which use of a node it permits.
-func markTreeCrosses(m *mark) error {
+func markFamilyCrosses(m *mark) error {
 	switch s := m.sym.(type) {
 	case *ir.NodeInst:
 		s.Crosses = true
@@ -613,7 +644,7 @@ func markTreeCrosses(m *mark) error {
 	case *ir.ContextProvider:
 		form = "a context override"
 	}
-	return fmt.Errorf("#[tree.crosses] cannot mark %s; only a node or a slot insertion in a view is placed in a tree", form)
+	return fmt.Errorf("#[family.crosses] cannot mark %s; only a node or a slot insertion in a view is placed in a family", form)
 }
 
 // markWildcard implements #[macro.wildcard("pattern")], which says what a
@@ -637,10 +668,11 @@ func markWildcard(m *mark) error {
 		if d.Wildcard != "" {
 			return fmt.Errorf("#[wildcard(%q)]: already a wildcard for %q", pat, d.Wildcard)
 		}
-		d.Wildcard, d.WildcardInto = pat, m.args.String("into")
-		// The prop it names is checked by finishWildcardMarks: a component's
-		// marks run before its props are built, so there is nothing to look
-		// the name up in yet.
+		into := m.args.String("into")
+		if err := checkWildcardInto(d, into); err != nil {
+			return err
+		}
+		d.Wildcard, d.WildcardInto = pat, into
 	case *ir.Prop:
 		if d.Wildcard != "" {
 			return fmt.Errorf("#[wildcard(%q)]: already a wildcard for %q", pat, d.Wildcard)
@@ -685,23 +717,23 @@ func checkWildcardPropType(p *ir.Prop) error {
 	return nil
 }
 
-// finishWildcardMarks validates the `into` prop a component's wildcard mark
-// names, once its props exist. The matched name is a name, so the prop it
-// binds to holds a string.
-func (c *checker) finishWildcardMarks(pos ast.Pos, comp *ir.Component) {
-	if comp == nil || comp.WildcardInto == "" {
-		return
+// checkWildcardInto holds the `into` prop a component's wildcard mark names
+// to existing and holding a string: the matched name is a name. A component's
+// marks run once its props are built.
+func checkWildcardInto(comp *ir.Component, into string) error {
+	if into == "" {
+		return nil
 	}
 	for _, p := range comp.Props {
-		if p.Name != comp.WildcardInto {
+		if p.Name != into {
 			continue
 		}
 		if p.Type == nil || p.Type.Kind != ir.TypeString {
-			c.error(pos, "#[wildcard(..., %q)] on component %s: the matched name is a name, so %q holds a string", comp.WildcardInto, comp.Name, p.Name)
+			return fmt.Errorf("#[wildcard(..., %q)] on component %s: the matched name is a name, so %q holds a string", into, comp.Name, p.Name)
 		}
-		return
+		return nil
 	}
-	c.error(pos, "#[wildcard(..., %q)] on component %s: no prop %q to bind the matched name to", comp.WildcardInto, comp.Name, comp.WildcardInto)
+	return fmt.Errorf("#[wildcard(..., %q)] on component %s: no prop %q to bind the matched name to", into, comp.Name, into)
 }
 
 // markConstruct implements #[macro.construct], which says a prop is read while
@@ -720,10 +752,10 @@ func (c *checker) finishWildcardMarks(pos ast.Pos, comp *ir.Component) {
 // the mark exists to preserve. Refused where the mark is written rather than
 // lowered into a program whose instances live different lengths on each target.
 //
-// The judgement itself waits: a struct is comparable exactly when its fields
-// are, and pass1 registers components before it resolves struct bodies, so a
-// struct named here still has no fields to walk. The mark records where it was
-// written and checkConstructProps answers once every shell is filled.
+// The diagnostic mirrors checkEffectKey's, which is the same rule for the
+// same reason, down to naming the offending field of a struct rather than
+// the struct. A mark runs once its package is registered, every struct body
+// included, so a struct named here has its fields to walk.
 func markConstruct(m *mark) error {
 	p, ok := m.sym.(*ir.Prop)
 	if !ok {
@@ -732,38 +764,18 @@ func markConstruct(m *mark) error {
 	if p.Construct {
 		return fmt.Errorf("#[construct]: prop %q is already construct-only", p.Name)
 	}
-	p.Construct = true
-	m.c.pendingConstruct = append(m.c.pendingConstruct, constructMark{pos: m.attr.Pos, prop: p})
-	return nil
-}
-
-// constructMark is one #[construct] whose prop type is not yet complete enough
-// to judge: the position the mark was written at, and the prop it marked.
-type constructMark struct {
-	pos  ast.Pos
-	prop *ir.Prop
-}
-
-// checkConstructProps refuses a #[construct] prop whose type does not compare
-// alike everywhere. See markConstruct for why, and for why it is not answered
-// there; the diagnostic mirrors checkEffectKey's, which is the same rule for
-// the same reason, down to naming the offending field of a struct rather than
-// the struct.
-func (c *checker) checkConstructProps() {
-	pending := c.pendingConstruct
-	c.pendingConstruct = nil
-	for _, m := range pending {
-		why := ir.RebuildIncomparable(m.prop.Type)
-		if why == "" {
-			continue
-		}
-		// The mark is refused, so the prop is an ordinary one: leaving
-		// Construct set would have lowering build the memory and the
-		// comparison for a value it has just been told it cannot compare.
-		m.prop.Construct = false
-		c.error(m.pos, "#[construct] on prop %q: the instance is rebuilt when this value changes, "+
-			"so it must compare alike on every target, and %s does not", m.prop.Name, why)
+	if p.Const {
+		return fmt.Errorf("prop %q is const, which already says it is read once while the instance is built; drop #[construct]", p.Name)
 	}
+	// Refused, the prop is an ordinary one: leaving Construct set would have
+	// lowering build the memory and the comparison for a value it has just
+	// been told it cannot compare.
+	if why := ir.RebuildIncomparable(p.Type); why != "" {
+		return fmt.Errorf("#[construct] on prop %q: the instance is rebuilt when this value changes, "+
+			"so it must compare alike on every target, and %s does not", p.Name, why)
+	}
+	p.Construct = true
+	return nil
 }
 
 // claimForeign records fm on a declaration that has no host identity yet.
@@ -772,7 +784,7 @@ func (c *checker) checkConstructProps() {
 // holds one scheme and one name, so `#[go.native]` and `#[js.native]` written
 // on one declaration kept whichever ran last, silently, and the *Go* output
 // said `Math.PI`. A value each language spells differently is an
-// `#[marks.intrinsic]`, which is what `float.sin` already is.
+// `#[marks.intrinsic]`, which is what `math.sin` already is.
 func claimForeign(dst *ir.Foreign, fm ir.Foreign, name string) error {
 	if dst.Name != "" {
 		return fmt.Errorf("#[native(%q)] is a second host identity; %q already names this declaration's, and a declaration names one identifier", name, dst.Name)
@@ -845,9 +857,9 @@ func markGen(m *mark, kind string) error {
 	if !ok {
 		return fmt.Errorf("#[gen.%s] cannot mark %s; it belongs on the build-tree node a target package declares, or on an #[intrinsic] primitive", kind, ast.DeclFormName(m.decl))
 	}
-	// Which component it may be written on is checked in finishTreeMarks, not
-	// here: a mark applies as the declaration registers, and the return
-	// position it has to be measured against is read after that.
+	// Which component it may be written on is finishTreeMarks' question,
+	// asked of the return position bindTree read, beside the other rules
+	// about what a component's marks say of its tree.
 	arg := "caps"
 	switch kind {
 	case "wants":

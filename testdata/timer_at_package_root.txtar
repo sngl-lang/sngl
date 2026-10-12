@@ -219,7 +219,7 @@ type Model struct {
 	done__inst0         chan bool
 	live__inst0         bool
 	gen__inst0          int
-	visible__inst1      bool
+	visible__inst0      bool
 	__effect0_key       time.Duration
 	__effect0_live      []time.Duration
 	__effect0_desired   []time.Duration
@@ -240,7 +240,7 @@ func New() *Model {
 	m.done__inst0 = nil
 	m.live__inst0 = false
 	m.gen__inst0 = 0
-	m.visible__inst1 = true
+	m.visible__inst0 = true
 	m.__effect0_key = time.Duration(0) * time.Millisecond
 	m.__effect0_live = []time.Duration{}
 	m.__effect0_desired = []time.Duration{}
@@ -355,8 +355,8 @@ func (m *Model) w_closed_handler() {
 }
 
 func (m *Model) w_visible_handler(__visible bool) {
-	m.visible__inst1 = __visible
-	m.w.SetVisible(m.visible__inst1)
+	m.visible__inst0 = __visible
+	m.w.SetVisible(m.visible__inst0)
 }
 
 // wClosed invokes the OnClosed callback on the #w widget; for tests.
@@ -367,10 +367,10 @@ func (m *Model) wClosed() {
 }
 
 // wVisible invokes the OnVisible callback on the #w widget; for tests.
-func (m *Model) wVisible(__visible bool) {
+func (m *Model) wVisible(visible bool) {
 	if cb := m.w.OnVisible; cb != nil {
 		m.w.OnVisible = nil
-		cb(__visible)
+		cb(visible)
 		m.w.OnVisible = cb
 	}
 }
@@ -415,12 +415,12 @@ func (m *Model) SetGen__inst0(v int) {
 	m.gen__inst0 = v
 }
 
-func (m *Model) Visible__inst1() bool {
-	return m.visible__inst1
+func (m *Model) Visible__inst0() bool {
+	return m.visible__inst0
 }
 
-func (m *Model) SetVisible__inst1(v bool) {
-	m.visible__inst1 = v
+func (m *Model) SetVisible__inst0(v bool) {
+	m.visible__inst0 = v
 }
 
 // BuildUI creates the widget tree and returns the first window's content.
@@ -431,7 +431,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__built = true
 	m.w = fynelayout.NewToplevel()
 	m.w.SetTitle("t")
-	m.w.SetVisible(m.visible__inst1)
+	m.w.SetVisible(m.visible__inst0)
 	m.w.OnClosed = m.w_closed_handler
 	m.w.OnVisible = m.w_visible_handler
 	m.__n0 = widget.NewLabel("")
@@ -470,7 +470,7 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { ticks: 0, handle__inst0: 0, visible__inst1: true };
+  var state = { ticks: 0, handle__inst0: 0, visible__inst0: true };
   function __effect0_mount() {
     state.handle__inst0 = setInterval(() => {
       state.ticks = state.ticks + 1;
@@ -561,6 +561,6 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:e91f5b00ce8cc5058bfe1a9ee04e7b60
 -- run/go/fyne --
-pass sha256:0ed1d3e9fb4d80a27dec5bd655838200
+pass sha256:aa4642a1c5c018667459a983cd120759
 -- run/none/html --
-pass sha256:dd8d72f64b314c723e108ef72a6e1c1d
+pass sha256:827e543211a1e3a4ea051112a02fee80

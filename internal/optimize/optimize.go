@@ -11,8 +11,10 @@ import (
 	"duckfam.us/sngl/ast"
 	"duckfam.us/sngl/codegen"
 	"duckfam.us/sngl/internal/buildhost"
+	"duckfam.us/sngl/internal/checker"
 	"duckfam.us/sngl/internal/imports"
 	"duckfam.us/sngl/internal/interp"
+	"duckfam.us/sngl/internal/lower"
 	"duckfam.us/sngl/internal/trust"
 	"duckfam.us/sngl/ir"
 )
@@ -243,6 +245,20 @@ func Optimize(pkg *ir.Package, cfg *Config) error {
 	// place before anything folds or inlines against it. Lowering swaps the
 	// rest; this moves only what already has a body to replace.
 	ir.SpecializeOverriddenBodies(pkg, cfg.Platform, cfg.Language)
+	// A data family's slot is read as the list its call site's population
+	// renders, built before anything folds: the prop is otherwise unwritten,
+	// and would fold to its empty default. A second run finds no population
+	// left to read.
+	if err := lower.DataFamilies(pkg, func(owner *ir.Component, fn *ir.Func) {
+		checker.AnalyzeSynthesizedFunc(pkg, owner, fn)
+	}); err != nil {
+		return err
+	}
+	// A record an intrinsic reads by field name is the map its runtime takes,
+	// converted before the shake so its struct is declared by no target.
+	if err := lower.RecordArgs(pkg); err != nil {
+		return err
+	}
 	// A pure native call can only fold once a subprocess has computed it, and
 	// building that subprocess is worth doing once for the whole batch. Learn
 	// the batch from throwaway passes over a clone, then fold pkg itself with
@@ -538,7 +554,7 @@ func foldComponent(comp *ir.Component, ctx *evalCtx) {
 	for _, f := range comp.Funcs {
 		f.Block = foldStmts(f.Block, ctx)
 	}
-	comp.Body = foldStmts(comp.Body, ctx)
+	comp.Stmts = foldStmts(comp.Stmts, ctx)
 }
 
 // getNativeImports lazily builds the native imports map from the IR package.
@@ -618,7 +634,7 @@ func (ctx *evalCtx) nodeForHandle(v *ir.Var) *ir.NodeInst {
 		ctx.nodeHandlesSet = true
 		_ = ir.Walk(ctx.pkg, func(n ir.Node) error {
 			inst, ok := n.(*ir.NodeInst)
-			if !ok || inst.Handle == nil || inst.Component == nil || isPrimitiveDecl(inst.Component) || inst.Component.Tree == nil || !ir.IsAppRootTree(inst.Component.Tree) {
+			if !ok || inst.Handle == nil || inst.Component == nil || isPrimitiveDecl(inst.Component) || inst.Component.Family == nil || !ir.IsRootFamily(inst.Component.Family) {
 				return nil
 			}
 			if ctx.nodeHandles == nil {
@@ -636,7 +652,7 @@ func (ctx *evalCtx) nodeForHandle(v *ir.Var) *ir.NodeInst {
 // isPrimitiveDecl reports whether c is rendered by a target rather than
 // composed: an #[intrinsic] primitive, a wildcard element or a builtin node.
 func isPrimitiveDecl(c *ir.Component) bool {
-	return c.Intrinsic != "" || c.Wildcard != "" || c.Builtin != ""
+	return c.Primitive() || c.Builtin != ""
 }
 
 // oneWayProp reports whether c declares field as a one-way prop: a two-way

@@ -53,15 +53,15 @@ func init() {
 	reg("float.ceil", func(a []string) string { return "Math.ceil(" + a[0] + ")" })
 	// Math.round(Double) returns Long; float is Double.
 	reg("float.round", func(a []string) string { return "Math.round(" + a[0] + ").toDouble()" })
-	reg("float.sqrt", func(a []string) string { return "Math.sqrt(" + a[0] + ")" })
-	reg("float.pow", func(a []string) string { return "Math.pow(" + a[0] + ", " + a[1] + ")" })
-	reg("float.sin", func(a []string) string { return "Math.sin(" + a[0] + ")" })
-	reg("float.cos", func(a []string) string { return "Math.cos(" + a[0] + ")" })
-	reg("float.tan", func(a []string) string { return "Math.tan(" + a[0] + ")" })
-	reg("float.asin", func(a []string) string { return "Math.asin(" + a[0] + ")" })
-	reg("float.acos", func(a []string) string { return "Math.acos(" + a[0] + ")" })
-	reg("float.atan", func(a []string) string { return "Math.atan(" + a[0] + ")" })
-	reg("float.atan2", func(a []string) string { return "Math.atan2(" + a[0] + ", " + a[1] + ")" })
+	reg("math.sqrt", func(a []string) string { return "Math.sqrt(" + a[0] + ")" })
+	reg("math.pow", func(a []string) string { return "Math.pow(" + a[0] + ", " + a[1] + ")" })
+	reg("math.sin", func(a []string) string { return "Math.sin(" + a[0] + ")" })
+	reg("math.cos", func(a []string) string { return "Math.cos(" + a[0] + ")" })
+	reg("math.tan", func(a []string) string { return "Math.tan(" + a[0] + ")" })
+	reg("math.asin", func(a []string) string { return "Math.asin(" + a[0] + ")" })
+	reg("math.acos", func(a []string) string { return "Math.acos(" + a[0] + ")" })
+	reg("math.atan", func(a []string) string { return "Math.atan(" + a[0] + ")" })
+	reg("math.atan2", func(a []string) string { return "Math.atan2(" + a[0] + ", " + a[1] + ")" })
 
 	// --- list (in-place mutations) ---
 	reg("list.push", func(a []string) string { return a[0] + ".add(" + a[1] + ")" })
@@ -94,8 +94,8 @@ func init() {
 	reg("map.get", func(a []string) string { return a[0] + ".getOrDefault(" + a[1] + ", " + a[2] + ")" })
 
 	// --- numeric ---
-	reg("int.min", func(a []string) string { return "minOf(" + a[0] + ", " + a[1] + ")" })
-	reg("int.max", func(a []string) string { return "maxOf(" + a[0] + ", " + a[1] + ")" })
+	regVariadicMinMax("int.min", "min")
+	regVariadicMinMax("int.max", "max")
 	reg("int.abs", func(a []string) string { return "kotlin.math.abs(" + a[0] + ")" })
 	// max(lo, min(x, hi)): with a malformed range lo wins, which is what the
 	// declaration documents and its own body computes.
@@ -103,8 +103,8 @@ func init() {
 	reg("int.clamp", func(a []string) string {
 		return "maxOf(" + a[1] + ", minOf(" + a[0] + ", " + a[2] + "))"
 	})
-	reg("float.min", func(a []string) string { return "minOf(" + a[0] + ", " + a[1] + ")" })
-	reg("float.max", func(a []string) string { return "maxOf(" + a[0] + ", " + a[1] + ")" })
+	regVariadicMinMax("float.min", "min")
+	regVariadicMinMax("float.max", "max")
 	reg("float.abs", func(a []string) string { return "kotlin.math.abs(" + a[0] + ")" })
 	reg("float.clamp", func(a []string) string {
 		return "maxOf(" + a[1] + ", minOf(" + a[0] + ", " + a[2] + "))"
@@ -198,4 +198,16 @@ func init() {
 			return call + "(" + strings.Join(a, ", ") + ")"
 		})
 	}
+}
+
+// regVariadicMinMax emits `minOf(a, e1, e2)`, Kotlin's vararg form, when the
+// rest is a literal list, and the list's own min or max over it and the first
+// otherwise.
+func regVariadicMinMax(id, fn string) {
+	codegen.RegisterIntrinsic(langKt, id, func(args []ir.Expr, tr func(ir.Expr) string) (string, []string) {
+		if parts, ok := codegen.VariadicArgs(args, tr); ok {
+			return fn + "Of(" + strings.Join(parts, ", ") + ")", nil
+		}
+		return "(listOf(" + tr(args[0]) + ") + " + tr(codegen.VariadicRest(args[1])) + ")." + fn + "()", nil
+	})
 }

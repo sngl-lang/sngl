@@ -83,7 +83,35 @@ func IsErrorRaiseFunc(fn *Func) bool {
 	if fn.Intrinsic == "error.raise" {
 		return true
 	}
-	return fn.Receiver == "error" && fn.Name == "raise"
+	return fn.RecvName() == "error" && fn.Name == "raise"
+}
+
+// The ids sngl:test's methods are marked with. No language emits them as calls:
+// each test harness answers them where it lowers a test body.
+const (
+	TestAssertID     = "test.assert"
+	TestMustID       = "test.must"
+	TestSetLocaleID  = "test.setLocale"
+	TestSetContextID = "test.setContext"
+	TestWaitID       = "test.wait"
+	TestSnapshotID   = "test.snapshot"
+)
+
+// IsTestCall reports whether c calls the sngl:test method marked id.
+func IsTestCall(c *Call, id string) bool {
+	return c != nil && c.Func != nil && c.Func.Intrinsic == id
+}
+
+// IsTestMethodCall reports whether c calls any sngl:test method.
+func IsTestMethodCall(c *Call) bool {
+	if c == nil || c.Func == nil {
+		return false
+	}
+	switch c.Func.Intrinsic {
+	case TestAssertID, TestMustID, TestSetLocaleID, TestSetContextID, TestWaitID, TestSnapshotID:
+		return true
+	}
+	return false
 }
 
 // StmtPos returns the source position of an IR statement when one is available.
@@ -250,7 +278,7 @@ func ComponentSelfRefs(comp *Component) bool {
 		return false
 	}
 	found := false
-	Walk(comp.Body, func(n Node) error {
+	Walk(comp.Stmts, func(n Node) error {
 		if inst, ok := n.(*NodeInst); ok && inst.Component == comp {
 			found = true
 		}

@@ -26,6 +26,8 @@ func isConstExpr(e ir.Expr, ctx *evalCtx) bool {
 	switch x := e.(type) {
 	case *ir.Literal:
 		return true
+	case *ir.Lambda:
+		return lambdaIsConst(x, ctx)
 	case *ir.Ident:
 		if x.Member != "" {
 			return true // an enum member is written, not computed
@@ -160,6 +162,8 @@ func evalExpr(e ir.Expr, ctx *evalCtx) (any, bool) {
 		return nil, false
 	}
 	switch x := e.(type) {
+	case *ir.Lambda:
+		return heldLambda(x, ctx)
 	case *ir.Literal:
 		val := parseLiteral(x)
 		// parseLiteral returns nil for kinds it can't represent (units, etc.);
@@ -395,6 +399,9 @@ func evalCall(call *ir.Call, ctx *evalCtx) (any, bool) {
 		if v, ok := evalIntrinsic(call.Func.Intrinsic, args, ctx.unroll); ok {
 			return v, true
 		}
+		if v, ok := evalListLambda(call.Func.Intrinsic, args, ctx); ok {
+			return v, true
+		}
 	}
 
 	// Try the generic SNGL-body interpreter for pure user/stdlib funcs. A
@@ -413,9 +420,14 @@ func evalCall(call *ir.Call, ctx *evalCtx) (any, bool) {
 	// Resolved function call. Type-attached methods (including both
 	// "x.upper()" and "string.upper(x)" syntaxes) are normalized so that
 	// Func.Receiver is set and the receiver value is Args[0].
+	// An intrinsic is asked by its id, which is what a package function such
+	// as math.sin has in place of a receiver.
 	if call.Func != nil {
-		if call.Func.Receiver != "" {
-			qualName := call.Func.Receiver + "." + call.Func.Name
+		qualName := call.Func.Intrinsic
+		if qualName == "" && call.Func.IsMethod() {
+			qualName = call.Func.RecvName() + "." + call.Func.Name
+		}
+		if qualName != "" {
 			if v, ok := evalQualifiedMethod(qualName, args); ok {
 				return v, true
 			}
@@ -703,21 +715,23 @@ func parseLiteral(lit *ir.Literal) any {
 		// those anyway dropped the unit on the way back and every rem and vw
 		// in a style came out as a bare number.
 		ud := ir.UnitDeclOf(lit.Type)
-		if ud == nil || !ud.IsSingleBase() {
+		if ud == nil {
 			return nil
+		}
+		// A multi-base one is the interpreter's value, a magnitude per base,
+		// which irFromValue spells back base by base; it used to be
+		// unevaluable, and so was a struct or list holding one -- a constant
+		// view loop over rows carrying an indent unrolled to one copy with its
+		// variable bound to nothing (testdata/html_unroll_measurement.txtar).
+		if !ud.IsSingleBase() {
+			v, _ := interp.UnitLiteralValue(lit)
+			return v
 		}
 		mag, _, ok := ir.UnitMagnitude(lit)
 		if !ok {
 			return nil
 		}
 		return mag
-	case ir.TypeStruct:
-		// A target identity is opaque to the program but is a name to the
-		// compiler, so `PLATFORM == html.platform` folds the way the string
-		// comparison it replaced did.
-		if ir.TargetIDStruct(lit.Type) {
-			return lit.Value
-		}
 	}
 	return nil
 }
@@ -827,6 +841,9 @@ func numKindOf(t *ir.Type) opeval.NumKind {
 }
 
 func evalBinaryOp(op ast.BinaryOp, left, right any, kind opeval.NumKind) (any, bool) {
+	if v, ok, isUnit := interp.UnitBinary(op, left, right); isUnit {
+		return v, ok
+	}
 	switch op {
 	case ast.BinEq:
 		return numericOrNativeEq(left, right), true
@@ -935,23 +952,9 @@ func evalUnaryOp(op ast.UnaryOp, operand any, kind opeval.NumKind) (any, bool) {
 
 func evalQualifiedMethod(qualName string, args []any) (any, bool) {
 	switch qualName {
-	case "int.min":
-		a, aok := toInt(args[0])
-		b, bok := toInt(args[1])
-		if aok && bok {
-			if a < b {
-				return a, true
-			}
-			return b, true
-		}
-	case "int.max":
-		a, aok := toInt(args[0])
-		b, bok := toInt(args[1])
-		if aok && bok {
-			if a > b {
-				return a, true
-			}
-			return b, true
+	case "int.min", "int.max":
+		if m, ok := foldIntExtreme(args, qualName == "int.min"); ok {
+			return m, true
 		}
 	case "int.abs":
 		x, ok := toInt(args[0])
@@ -961,17 +964,9 @@ func evalQualifiedMethod(qualName string, args []any) (any, bool) {
 			}
 			return x, true
 		}
-	case "float.min":
-		a, aok := toFloat(args[0])
-		b, bok := toFloat(args[1])
-		if aok && bok {
-			return math.Min(a, b), true
-		}
-	case "float.max":
-		a, aok := toFloat(args[0])
-		b, bok := toFloat(args[1])
-		if aok && bok {
-			return math.Max(a, b), true
+	case "float.min", "float.max":
+		if m, ok := foldFloatExtreme(args, qualName == "float.min"); ok {
+			return m, true
 		}
 	case "float.abs":
 		x, ok := toFloat(args[0])
@@ -993,48 +988,48 @@ func evalQualifiedMethod(qualName string, args []any) (any, bool) {
 		if ok {
 			return int(math.Round(x)), true
 		}
-	case "float.sqrt":
+	case "math.sqrt":
 		x, ok := toFloat(args[0])
 		if ok {
 			return math.Sqrt(x), true
 		}
-	case "float.sin":
+	case "math.sin":
 		x, ok := toFloat(args[0])
 		if ok {
 			return math.Sin(x), true
 		}
-	case "float.cos":
+	case "math.cos":
 		x, ok := toFloat(args[0])
 		if ok {
 			return math.Cos(x), true
 		}
-	case "float.tan":
+	case "math.tan":
 		x, ok := toFloat(args[0])
 		if ok {
 			return math.Tan(x), true
 		}
-	case "float.asin":
+	case "math.asin":
 		x, ok := toFloat(args[0])
 		if ok {
 			return math.Asin(x), true
 		}
-	case "float.acos":
+	case "math.acos":
 		x, ok := toFloat(args[0])
 		if ok {
 			return math.Acos(x), true
 		}
-	case "float.atan":
+	case "math.atan":
 		x, ok := toFloat(args[0])
 		if ok {
 			return math.Atan(x), true
 		}
-	case "float.atan2":
+	case "math.atan2":
 		y, yok := toFloat(args[0])
 		x, xok := toFloat(args[1])
 		if yok && xok {
 			return math.Atan2(y, x), true
 		}
-	case "float.pow":
+	case "math.pow":
 		x, xok := toFloat(args[0])
 		y, yok := toFloat(args[1])
 		if xok && yok {
@@ -1379,4 +1374,157 @@ func foldNavHref(args []any) (any, bool) {
 		return "", false
 	})
 	return filled, ok
+}
+
+// variadicOperands is a min or max call's first argument followed by the
+// elements of the list its variadic rest arrived as. A call checked before
+// the rest was variadic -- or folded from IR that kept two arguments -- hands
+// the second operand bare, and that is an operand too.
+func variadicOperands(args []any) []any {
+	if len(args) == 0 {
+		return nil
+	}
+	out := []any{args[0]}
+	for _, a := range args[1:] {
+		if xs, ok := a.([]any); ok {
+			out = append(out, xs...)
+		} else {
+			out = append(out, a)
+		}
+	}
+	return out
+}
+
+func foldIntExtreme(args []any, least bool) (int, bool) {
+	ops := variadicOperands(args)
+	if len(ops) == 0 {
+		return 0, false
+	}
+	m, ok := toInt(ops[0])
+	if !ok {
+		return 0, false
+	}
+	for _, o := range ops[1:] {
+		x, ok := toInt(o)
+		if !ok {
+			return 0, false
+		}
+		if (least && x < m) || (!least && x > m) {
+			m = x
+		}
+	}
+	return m, true
+}
+
+func foldFloatExtreme(args []any, least bool) (float64, bool) {
+	ops := variadicOperands(args)
+	if len(ops) == 0 {
+		return 0, false
+	}
+	m, ok := toFloat(ops[0])
+	if !ok {
+		return 0, false
+	}
+	for _, o := range ops[1:] {
+		x, ok := toFloat(o)
+		if !ok {
+			return 0, false
+		}
+		if least {
+			m = math.Min(m, x)
+		} else {
+			m = math.Max(m, x)
+		}
+	}
+	return m, true
+}
+
+// constLambda is a function literal held as a value: the literal itself,
+// which irFromValue spells back where the value lands. A record a page holds
+// carries its handlers so -- a data component's event fields -- and a loop
+// over such records unrolls with each copy calling its own.
+type constLambda struct{ lam *ir.Lambda }
+
+// lambdaIsConst reports whether a function literal can stand as a value here:
+// only in a document's fold (evalCtx.unroll), where the program's own lambdas
+// were folded before lowering and what the value is needed for is unrolling a
+// loop over records holding one. Anywhere else a lambda is folded in place,
+// body and all.
+func lambdaIsConst(lam *ir.Lambda, ctx *evalCtx) bool {
+	return lam.Func != nil && ctx.unroll
+}
+
+// heldLambda is lam as a value: a copy in which every symbol the fold has
+// bound for this scope -- a loop variable being unrolled, a parameter being
+// substituted -- reads the value bound, which is what a closure made here
+// would have captured, and which the spelled-back literal would otherwise
+// name with nothing declaring it.
+func heldLambda(lam *ir.Lambda, ctx *evalCtx) (any, bool) {
+	cp, _ := ir.CloneExprSharingDecls(lam).(*ir.Lambda)
+	if cp == nil || cp.Func == nil {
+		return nil, false
+	}
+	ok := true
+	_ = ir.RewriteExprs(cp.Func, func(e ir.Expr) (ir.Expr, error) {
+		id, isIdent := e.(*ir.Ident)
+		if !isIdent || id.Sym == nil {
+			return e, nil
+		}
+		v, bound := ctx.values[id.Sym]
+		if !bound {
+			return e, nil
+		}
+		repl := irFromValue(v, id.Type)
+		if repl == nil {
+			ok = false
+			return e, ir.SkipAll
+		}
+		return repl, nil
+	})
+	if !ok {
+		return nil, false
+	}
+	return constLambda{cp}, true
+}
+
+// evalListLambda folds `list.map` and `list.filter` over a list with a held
+// function whose body is one expression, by evaluating it per element. A data
+// slot's list is written this way where its records stand under a `for`.
+func evalListLambda(id string, args []any, ctx *evalCtx) (any, bool) {
+	if (id != "list.map" && id != "list.filter") || len(args) != 2 {
+		return nil, false
+	}
+	// A nil is an absent list -- a Go value's empty slice -- not an
+	// unevaluable one, as loopItems reads it.
+	items, isList := args[0].([]any)
+	if args[0] == nil {
+		isList = true
+	}
+	fn, isFn := args[1].(constLambda)
+	if !isList || !isFn || len(fn.lam.Func.Params) != 1 || len(fn.lam.Func.Block) != 1 {
+		return nil, false
+	}
+	ret, isRet := fn.lam.Func.Block[0].(*ir.Return)
+	if !isRet || ret.Value == nil {
+		return nil, false
+	}
+	out := make([]any, 0, len(items))
+	for _, item := range items {
+		child := ctx.child()
+		child.values[fn.lam.Func.Params[0]] = item
+		v, ok := evalExpr(ret.Value, child)
+		if !ok {
+			return nil, false
+		}
+		if id == "list.map" {
+			out = append(out, v)
+			continue
+		}
+		if keep, isBool := v.(bool); !isBool {
+			return nil, false
+		} else if keep {
+			out = append(out, item)
+		}
+	}
+	return out, true
 }

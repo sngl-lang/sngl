@@ -19,7 +19,7 @@ component main node {
     )
 
     effect(
-        on={a, b},
+        on = {a, b},
         @mount {
             log.push("m")
         },

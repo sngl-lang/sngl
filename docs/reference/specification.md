@@ -30,7 +30,7 @@ The core language is deliberately small. Two bodies of functionality live
 *outside* this specification and are required to build complete programs:
 
 - **The standard library** — components (`ui.text`, `ui.button`, `ui.vbox`,
-  …), types (`color`, `ui.Style`, the event payload structs, the
+  …), types (`color`, `ui.Style`, the
   `ui.measurement` and `time.duration` units), and functions, all written in
   SNGL and distributed as source under `lib/<package>/*.sngl`, one directory
   per importable package. A conforming implementation parses and checks the
@@ -341,8 +341,8 @@ semicolon insertion so the decorated construct may begin on the following line.
 
 A macro is an ordinary declaration of a package, and none is ambient: the
 attribute names it through the file's import of that package, qualified by the
-import's alias like any other member — `#[tree.none]` after
-`import tree "sngl:tree"`, `#[macro.foreign(…)]` after
+import's alias like any other member — `#[family.crosses]` after
+`import family "sngl:family"`, `#[macro.foreign(…)]` after
 `import macro "sngl:macro"`. A macro name that does not resolve is an error.
 
 ### The slashdash prefix
@@ -756,16 +756,14 @@ under `lib/` is one package, `lib/<path>` being `sngl:<path>`:
 | `sngl:ui/draw`      | `canvas` and the 2D `shape` family it hosts                                                        |
 | `sngl:ui/markup`    | inline rich text: the `span` family, `richText`, and the block components a document is written in |
 | `sngl:ui/markup/md` | the vocabulary of the `md:` scheme, such as the `order` mark                                       |
-| `sngl:remote`       | `Value<T>`, the three-state box a data adapter returns                                             |
-| `sngl:remote/http`  | `fetch`: an HTTP request whose answer is a `remote.Value`                                          |
 | `sngl:build`        | the `language` and `platform` families an `output` directive holds                                 |
 | `sngl:x/gen`        | what a target package says about what it generates                                                 |
 | `sngl:x/gen/cache`  | what a generated file records it was generated from                                                |
 | `sngl:time`         | `date`, `time`, `datetime`, `duration`, `timer`                                                    |
 | `sngl:seq`          | `count`, `range`, `step`: the `iter<int>` sequences a counting loop walks                          |
-| `sngl:tree`         | the `kind` and `none` marks, and the `one<T>` slot count                                           |
+| `sngl:family`       | the `crosses` and `eventless` marks, and the `one<T>` slot count                                   |
 | `sngl:math`         | `pi`, `tau`                                                                                        |
-| `sngl:async`        | `spawn`, `post`                                                                                    |
+| `sngl:async`        | `start`, `do`                                                                                      |
 | `sngl:dialog`       | `Alert`, `File`                                                                                    |
 | `sngl:test`         | `Test`                                                                                             |
 | `sngl:i18n`         | the translation surface `$"…"` lowers to                                                           |
@@ -792,8 +790,8 @@ so a top-level declaration named like a library entity takes precedence over it
 within the package.
 
 A library package may carry macros next to the declarations they apply to:
-`import tree "sngl:tree"` brings the `#[tree.none]` mark beside the
-`tree.one` count it qualifies slots with (see
+`import family "sngl:family"` brings the `#[family.crosses]` mark beside the
+`family.one` count it qualifies slots with (see
 [Trees and families](#trees-and-families)).
 
 Packages under `sngl:internal/` are the compiler's own tier. They declare the
@@ -959,7 +957,7 @@ ParamList = Param { "," Param } [ "," ]
 
 Param = { MacroAttr } ( ":" IDENT [ Type ] | "@" IDENT [ EventParams | Type ] | "const" IDENT [ Type ] | IDENT [ Type ] ) [ "=" Expr ]
 
-EventParams = "(" [ FuncTypeParamList ] ")"
+EventParams = "(" [ ParamList ] ")"
 
 ```
 
@@ -987,6 +985,13 @@ function. A parameterless function is a *computed* value (see
 [Reactivity](#reactivity)); where it is read as a value in a node property, an
 interpolation, or a condition, it is called implicitly. Elsewhere it is a value
 of function type and is called explicitly.
+
+The last parameter may be **variadic**, written `...T`: it collects the
+positional arguments past the others, and the body reads it as a `list<T>`.
+`func sum(first int, rest ...int)` is called as `sum(1)`, `sum(1, 2, 3)` or
+`sum(1, ...xs)`, where a list spread contributes its elements. A spread of a
+struct keeps its meaning, naming parameters by its fields. A variadic parameter
+given no arguments is the empty list, so it takes no default.
 
 A **method** is a function whose name is qualified by a receiver type,
 `func Type.method(…)`. Type parameters may appear after the receiver type
@@ -1577,9 +1582,9 @@ A component parameter is one of four kinds:
   that way is an error, since what it shows is the expression the caller wrote;
 - an **event parameter** — `@name(a A, b B)` — an outgoing event the
   component fires by calling its name (`name(x, y)`) and the caller handles
-  with `@name(a, b) { … }`. The list is a func type's, names optional;
-  `@name T` is the one-parameter case written without the parens, `@name()`
-  passes nothing, and a bare `@name` carries one untyped value;
+  with `@name(a, b) { … }`. The list is a function's, each parameter named
+  and typed, and as with a function the parens may be left off when there is
+  none: `@name` and `@name()` both pass nothing;
 - a **slot** — `name component …` — a region of UI the caller supplies,
   described next.
 
@@ -1600,7 +1605,7 @@ and slots — is one parameter list:
 - `header component` — any number of nodes, of whatever family the component
   itself belongs to;
 - `shapes component draw.shape` — any number of that family's members;
-- `body component tree.one<ui.node>` — exactly one (bare `tree.one` is exactly
+- `body component family.one<ui.node>` — exactly one (bare `family.one` is exactly
   one of whatever the slot already accepts);
 - `badge component option<ui.node>` — zero or one;
 - `cell component(Row)` — a *scoped* slot: the insertion passes a `Row`, and
@@ -1661,7 +1666,7 @@ ui.window {
 ```
 
 A component declares at most one rest slot, and a component that declares none
-accepts no children at all. `...` composes with a count bound — `content ...component tree.one` is "the bare children, of which exactly one" — because
+accepts no children at all. `...` composes with a count bound — `content ...component family.one` is "the bare children, of which exactly one" — because
 the two say different things: `...` says which children arrive here, the
 wrapper how many. Populating a rest slot by name *and* writing bare children
 populates it twice.
@@ -1784,7 +1789,7 @@ ui.window {
     var log = ""
 
     effect(
-        on=room,
+        on = room,
         @mount(r) {
             log = "joined {r}"
         },
@@ -1936,15 +1941,140 @@ The rules:
   places, reached through any `if`, `for`, `boundary` or context provider
   around it. A body rendering members of two families, or of none, is an
   error. A library declaration always names its family.
-- **`#[tree.none]` says a component belongs to no family.** It may be placed in
-  any tree and may not render a member of any: `effect`, `context`, and
-  `time.timer` are such components.
+- **A type parameter in the return position takes the family a component is
+  placed in.** `component effect<T, F>(…) F` may be placed in any family, and
+  its body may render only what is generic in `F` the same way -- another such
+  component, or a slot typed `F` -- so a widget cannot reach a drawing through
+  it. `effect`, `context` and `time.timer` are such components.
 - **`if`, `for`, `boundary` and context providers are transparent**: they say
   when, how many, and under what conditions nodes appear, but put nothing in
   the tree themselves, so every membership rule looks through them.
 
 A component generic over the family it wraps writes a type parameter where a
 family goes — `component boundary<T>(…, content ...component T, failed component T) T` — and the children written in the slot bind `T`.
+
+A slot's count is what its population renders, not the statements written in
+it: `family.one` takes one node, so a `for` there is an error and an `if` must
+render one in each branch; `option<T>` takes none or one. How many times a
+body inserts a slot is not bounded.
+
+### Data components
+
+A component that names **itself** as its family is **data**: its own family
+and the only member of it. It has no body and is never rendered. Written in a
+slot of its type, it is a **record** of its props, and the slot's name in the
+container's body is the list of those records, in the order the population
+renders them. This is how a widget that takes its choices as a list has them
+written as children.
+
+```sngl
+import ui "sngl:ui"
+
+component fruit(name string, ripe bool = true) fruit
+
+component basket(fruits ...component fruit) ui.node {
+    for var f = fruits {
+        ui.text(value=f.ripe ? f.name : "{f.name} (unripe)")
+    }
+}
+
+component shop ui.node {
+    var more = false
+    var extra = ["date", "fig"]
+    basket {
+        fruit(name="apple")
+        if more {
+            fruit(name="elder", ripe=false)
+        }
+        for var e = extra {
+            fruit(name=e)
+        }
+    }
+    ui.button(text="more", @click {
+        more = true
+    })
+}
+
+ui.window {
+    shop()
+}
+```
+
+The rules:
+
+- **The list follows the population.** An `if` contributes its records when
+  its condition holds; a `for` over a list contributes one record per element,
+  and may hold an `if` around it. A `for` whose body renders more than one
+  record is an error. The list is an ordinary value, so it is recomputed when
+  state read by the population changes.
+- **A data slot is read, never inserted.** Writing the slot's name as a node
+  in the container's body is an error. Inserted in the population of another
+  slot of the same family, it **forwards**: its records are spread there.
+- **A data component declares props, events, slots of records and one rest
+  slot of content, and nothing else.** A prop the call site omits holds its
+  default in the record.
+- **An event is a field of the record**: a function taking the event's
+  parameters, which the container calls where it means the record was acted
+  on. The handler written at the call site is that function, closing over the
+  call site's scope, and an event nobody handled does nothing. A record never
+  emits one itself.
+- **A slot of records is a field too**, so a record may be a tree:
+  `component treeItem(label string, children ...component treeItem) treeItem`.
+- **Content is not a field.** A rest slot of anything other than records holds
+  what the call site wrote inside the record. The container shows it by
+  writing `r.content` as a node in its own body, `r` being a record and
+  `content` the slot's name, and it renders in the call site's scope.
+- **Its name is its record type in a value position.** `list<fruit>` is a list
+  of records. In a family position (a return position, a slot's content) the
+  name is the component.
+
+A component **with a body** may compose records: it names the data family in
+its return position, or leaves its family to be inferred from a body that
+renders records, and it is replaced by what its body renders wherever it is
+written among them. Such a component is not itself a record. A data family's
+props are its record's fields, not props shared by its members, so a composer
+may declare props of the same names under its own meaning and is not required
+to declare the rest. A composer keeps no state, and a bodyless component
+naming a data family is an error. This is how a library keeps a record private
+while programs write it: `sngl:ui/draw`'s `path` takes
+`steps ...component _step`, and `moveTo`, `lineTo`, `bezierTo`, `arcTo` and
+`close` each compose one `_step` with only their own fields set.
+
+```sngl
+import draw "sngl:ui/draw"
+import ui "sngl:ui"
+
+component unripe(name string) fruit {
+    fruit(name=name, ripe=false)
+}
+
+component fruit(name string, ripe bool = true) fruit
+
+component basket(fruits ...component fruit) ui.node {
+    for var f = fruits {
+        ui.text(value=f.name)
+    }
+}
+
+component art ui.node {
+    basket {
+        unripe(name="lime")
+        fruit(name="apple")
+    }
+    draw.canvas(width=40px, height=40px) {
+        draw.path(style={stroke=#336699}) {
+            draw.moveTo(x=4.0, y=4.0)
+            draw.lineTo(x=36.0, y=4.0)
+            draw.arcTo(cx=36.0, cy=36.0, x=4.0, y=36.0, r=8.0)
+            draw.close()
+        }
+    }
+}
+
+ui.window {
+    art()
+}
+```
 
 ## Programs
 
@@ -1986,8 +2116,8 @@ output {
 }
 ```
 
-A window's props are `title` and `favicon`; a window is a surface, not a
-destination. The destinations a user moves between are the pages of a
+A window's prop is its `title`, and its `favicon` slot takes an image source
+as a `ui.image` does; a window is a surface, not a destination. The destinations a user moves between are the pages of a
 `sngl:ui/nav` stack the window holds, each with an `href`. A page whose href
 has `{name}` placeholders is handed their values as one struct value in its
 `params` prop; the body that reads them is the population of the page's
@@ -2277,7 +2407,7 @@ ParamList = Param { "," Param } [ "," ]
 
 Param = { MacroAttr } ( ":" IDENT [ Type ] | "@" IDENT [ EventParams | Type ] | "const" IDENT [ Type ] | IDENT [ Type ] ) [ "=" Expr ]
 
-EventParams = "(" [ FuncTypeParamList ] ")"
+EventParams = "(" [ ParamList ] ")"
 
 ```
 

@@ -370,16 +370,16 @@ func (e *emitter) table(n *east.Table) {
 			columns = cells
 			continue
 		}
-		rows = append(rows, "["+strings.Join(cells, ", ")+"]")
+		rows = append(rows, "ui.tableRow(cells=["+strings.Join(cells, ", ")+"])")
 	}
 	// `ui.table`'s cells are plain strings, so a table's inline formatting
 	// flattens to its words. A table of prose wants a layout of `richText`
 	// runs, which is a document writing rows rather than an importer.
-	args := "columns=[" + strings.Join(columns, ", ") + "]"
-	if len(rows) > 0 {
-		args += ", rows=[" + strings.Join(rows, ", ") + "]"
-	}
-	e.line("ui.table(" + args + ")")
+	e.wrap("ui.table", "columns=["+strings.Join(columns, ", ")+"]", func(e *emitter) {
+		for _, r := range rows {
+			e.line(r)
+		}
+	})
 }
 
 // --- Inlines ---
@@ -437,7 +437,9 @@ func (e *emitter) inlines(n gast.Node) {
 			flush()
 			// The description flattens to its words: `alt` is a string on the
 			// declaration because a description is read aloud, not looked at.
-			e.linef("markup.image(src=%s, alt=%s)", str(string(c.Destination)), str(plainText(c, e.src)))
+			e.wrap("markup.image", "alt="+str(plainText(c, e.src)), func(e *emitter) {
+				e.line("ui.remote(url=" + str(string(c.Destination)) + ")")
+			})
 		case *gast.RawHTML:
 			// Dropped, for the reason an html block is.
 		case *east.TaskCheckBox:

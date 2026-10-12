@@ -1,6 +1,7 @@
 package checker_test
 
 import (
+	"slices"
 	"strings"
 	"testing"
 
@@ -142,13 +143,26 @@ func shout(s string) => s
 	wantMarkErr(t, errs, "repeats flag mutates")
 }
 
-// An id names a native implementation of a call, and a struct has no call.
-func TestIntrinsicMarkCannotMarkAStruct(t *testing.T) {
-	_, errs := checkMarkStub(t, markImports+`
-#[intrinsic("markstub.shout")]
+// On a struct the id names a host type one target spells: no call, so a flag
+// describing one has nothing to describe.
+func TestIntrinsicMarkOnAStruct(t *testing.T) {
+	pkg, errs := checkMarkStub(t, markImports+`
+#[intrinsic("stub:tiny")]
 struct Tiny {}
 `)
-	wantMarkErr(t, errs, `#[intrinsic("markstub.shout")] cannot mark`)
+	wantNoMarkErrs(t, errs)
+	i := slices.IndexFunc(pkg.Structs, func(sd *ir.StructDef) bool { return sd.Name == "Tiny" })
+	if i < 0 {
+		t.Fatal("Tiny not declared")
+	}
+	if got := pkg.Structs[i].Intrinsic; got != "stub:tiny" {
+		t.Errorf("Tiny.Intrinsic = %q, want %q", got, "stub:tiny")
+	}
+	_, errs = checkMarkStub(t, markImports+`
+#[intrinsic("stub:tiny", mutates)]
+struct Tiny {}
+`)
+	wantMarkErr(t, errs, "which describes a call; a struct has none")
 }
 
 // A family is named through the file's alias like any other qualified name,
@@ -173,17 +187,17 @@ component block b.family
 	if !family.IsFamily() {
 		t.Fatalf("block is not a family")
 	}
-	if para.Tree != family {
-		t.Errorf("para.Tree = %v, want the block declaration", para.Tree)
+	if para.Family != family {
+		t.Errorf("para.Tree = %v, want the block declaration", para.Family)
 	}
 }
 
 // A misspelled tree is an unresolved name where it is written, which is the
 // whole reason a tree is a declaration rather than a string.
 func TestAMisspelledTreeIsUnresolved(t *testing.T) {
-	_, errs := checkMarkStub(t, `import t "sngl:tree"
+	_, errs := checkMarkStub(t, `import t "sngl:family"
 
-#[t.kind]
+#[t.crosses]
 struct block {}
 
 component para() blcok {}
@@ -261,7 +275,7 @@ component App ui.node {
 	wantNoMarkErrs(t, errs)
 	var fn *ir.Func
 	for _, f := range pkg.Funcs {
-		if f.Receiver == "Row" {
+		if f.RecvName() == "Row" {
 			fn = f
 		}
 	}

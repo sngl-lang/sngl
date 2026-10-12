@@ -34,8 +34,12 @@ func testSpreadIntoSlot(t Test, c slotted) {
     t.assert(c.seen == "clicked")
 }
 
-component emitter(@fired ChangeEvent) node {
-    var ev = ChangeEvent{value="v"}
+struct Change {
+    value string
+}
+
+component emitter(@fired(e Change)) node {
+    var ev = Change{value="v"}
     button #go(text="go", @click { fired(ev) })
 }
 

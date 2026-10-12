@@ -36,8 +36,8 @@ func lowerLibFuncs(pkg *ir.Package, _ Features, _ Options) error {
 	// Pkg, so a non-empty one is exactly the library case.
 	wanted := func(fn *ir.Func) bool {
 		return fn != nil && !have[fn] && len(fn.Block) > 0 &&
-			fn.Receiver == "" && fn.Intrinsic == "" && fn.Foreign.Name == "" &&
-			fn.Pkg != ""
+			!fn.IsMethod() && fn.Intrinsic == "" && fn.Foreign.Name == "" &&
+			fn.PkgPath() != ""
 	}
 	// The package, rather than a list of roots assembled here: that list named
 	// component and window bodies and their funcs, so a helper called only

@@ -356,9 +356,9 @@ func TestEmitFuncDef_PlainFunc(t *testing.T) {
 func TestEmitFuncDef_ModelMethod(t *testing.T) {
 	gc := newMinimalIRCtx()
 	fn := &ir.Func{
-		Name:     "Click",
-		Receiver: "Model",
-		Block:    []ir.Stmt{},
+		Name:    "Click",
+		Lowered: ir.FuncLowering{HostReceiver: "Model"},
+		Block:   []ir.Stmt{},
 	}
 	got := strings.Join(gc.EmitFuncDef(fn), "\n")
 	want := "func (m *Model) Click() {\n}"
@@ -370,10 +370,10 @@ func TestEmitFuncDef_ModelMethod(t *testing.T) {
 func TestEmitFuncDef_NativeParam(t *testing.T) {
 	gc := newMinimalIRCtx()
 	fn := &ir.Func{
-		Name:     "__renderSlot0",
-		Receiver: "Model",
-		Params:   []*ir.Param{{Name: "container", Type: ir.NativePointerOf("GtkBox")}},
-		Return:   ir.TypVoid,
+		Name:    "__renderSlot0",
+		Lowered: ir.FuncLowering{HostReceiver: "Model"},
+		Params:  []*ir.Param{{Name: "container", Type: ir.NativePointerOf("GtkBox")}},
+		Return:  ir.TypVoid,
 	}
 	got := strings.Join(gc.EmitFuncDef(fn), "\n")
 	want := "func (m *Model) __renderSlot0(container *C.GtkBox) {\n}"

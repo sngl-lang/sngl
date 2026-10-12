@@ -32,7 +32,7 @@ func lowerRefLoop(pkg *ir.Package, _ Features, _ Options) error {
 	}
 	st := &refLoopState{}
 	for _, c := range pkg.Components {
-		st.stmts(c.Body)
+		st.stmts(c.Stmts)
 		for _, fn := range c.Funcs {
 			if fn != nil {
 				st.stmts(fn.Block)

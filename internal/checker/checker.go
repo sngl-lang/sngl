@@ -147,6 +147,13 @@ type libCache struct {
 	// the same one twice would report every override as a duplicate platform
 	// block.
 	extended map[string]bool
+	// rendersByName records the library components a target package marks
+	// with an empty parens form -- android's `component ui.select()` -- which
+	// say its own codegen renders the component by name rather than through
+	// an override body. Keyed by the target package's lib path, such as
+	// "platform/android". The marker is that target's implementation, and
+	// reportBodylessLibComponents reads it as one.
+	rendersByName map[string]map[*ir.Component]bool
 	// roles records the declaration each #[builtin] kind named in library
 	// source. A mark binds its declaration to the checker that registered it,
 	// but the packages are shared: a nested check reaches them from the cache
@@ -169,7 +176,7 @@ func (cfg *Config) libCache() *libCache {
 	if cfg != nil && cfg.libs != nil {
 		return cfg.libs
 	}
-	return &libCache{pkgs: map[string]*ir.Package{}, loading: map[string]bool{}, extended: map[string]bool{}, roles: map[ir.BuiltinKind]ir.Symbol{}, macroSigs: map[*ir.Func]bool{}, schemes: map[string]*ir.Scheme{}}
+	return &libCache{pkgs: map[string]*ir.Package{}, loading: map[string]bool{}, extended: map[string]bool{}, rendersByName: map[string]map[*ir.Component]bool{}, roles: map[ir.BuiltinKind]ir.Symbol{}, macroSigs: map[*ir.Func]bool{}, schemes: map[string]*ir.Scheme{}}
 }
 
 type ImportResolver interface {
@@ -271,6 +278,11 @@ func CheckPackage(docs []*ast.Document, cfg *Config) (*ir.Package, []ir.Diagnost
 }
 
 type checker struct {
+	// typeParamSyms holds one symbol per declared type parameter, by where it
+	// is written, so every push of a declaration's parameters binds the same
+	// one (typeParamSym).
+	typeParamSyms map[typeParamKey]*ir.TypeParamSym
+
 	// docs is the package being checked: every file of it, registered as one
 	// declaration set. doc is whichever one is being registered or checked
 	// right now.
@@ -293,10 +305,11 @@ type checker struct {
 	// installedOverride is the component whose body is an override's while
 	// that body is checked, user or library.
 	installedOverride *ir.Component
-	// shellMarks queues the marks on a struct shell, enum or unit while pass1
-	// is still registering declarations, so a package's own macro is in scope
-	// by the time one that names it runs. Non-nil only for that window.
-	shellMarks *[]pendingMark
+	// pendingMarks queues the marks pass1 meets while it is still
+	// registering declarations, and the checks that read them (afterMarks),
+	// so every macro a mark may name is registered by the time one runs.
+	// Non-nil only for that window.
+	pendingMarks *[]pendingMark
 
 	// curFileScope is the file whose imports are in scope, or nil outside any
 	// file (loading a library, checking synthesized IR).
@@ -336,6 +349,9 @@ type checker struct {
 	// bodyChecked is the components whose body pass2 has already walked. A
 	// body may register another as it is checked, so the walk is resumable.
 	bodyChecked map[*ir.Component]bool
+	// lateOverrides is a program's overrides of a declaration the program
+	// also wrote, which checkBodyOnce checks after that declaration's body.
+	lateOverrides map[*ir.Component][]pendingExtension
 
 	// bodyOwner is the body a body-local component was declared in, so its own
 	// body can be checked with its siblings in scope.
@@ -461,9 +477,9 @@ type checker struct {
 	synthTargets map[string]*ir.Component
 
 	// The two `sngl:build` tree kinds, resolved once.
-	langTree      *ir.Component
-	platformTree  *ir.Component
-	buildTreesSet bool
+	langFamily     *ir.Component
+	platformFamily *ir.Component
+	buildTreesSet  bool
 
 	// stdlibPkg is the loaded standard library, bound as a namespace by an
 	// `import <alias> "sngl:ui"` and flattened by the dot form.
@@ -525,9 +541,15 @@ type checker struct {
 	// keyed by its declaration. An enclosing body is checked more than once
 	// (preCheckComponentMethods, then checkComponentBody).
 	nestedFuncs map[*ast.FuncDef]*ir.Func
-	// nestedOrder is the ir.Func.Nested subset in declaration order, so
-	// renameNestedFuncs reads an enclosing name that is already renamed and
-	// two bodies never swap suffixes between runs.
+	// nested is the funcs written inside another function body and hoisted
+	// out of it (checkNestedFunc). A func at the root of a window body is
+	// hoisted too and is not one: it is the window's own. Which is which is
+	// only the checker's question -- a hoisted func is an ordinary member of
+	// what it joined -- so it is asked here rather than of the IR.
+	nested map[*ir.Func]bool
+	// nestedOrder is that set in declaration order, so renameNestedFuncs
+	// reads an enclosing name that is already renamed and two bodies never
+	// swap suffixes between runs.
 	nestedOrder []nestedFunc
 	// currentFunc is the function body being checked, and funcOuterScope the
 	// scope it was entered from. A nested func is checked against the latter:
@@ -543,13 +565,13 @@ type checker struct {
 	// of, so captureHint can tell a name the enclosing function declared from
 	// one nobody did.
 	nestedHidden *ir.Scope
-	// inferTrees are the declarations that named no family in their return
+	// inferFamilies are the declarations that named no family in their return
 	// position, awaiting the fixed point that reads one off their bodies.
 	// treeChecks are the membership checks that wait for it: a family a
 	// declaration has not settled on yet reads as none, and a check against
 	// none passes in silence.
-	inferTrees []*ir.Component
-	treeChecks []func()
+	inferFamilies []*ir.Component
+	treeChecks    []func()
 	// familyMembers are the members of a family that declares props, held to
 	// declaring each once the package's components are registered.
 	familyMembers []*ir.Component
@@ -581,28 +603,27 @@ type checker struct {
 	entryOrigin map[*ir.SlotDecl]*ir.SlotDecl
 	entrySpec   map[*ir.SlotInst]*ir.SlotDecl
 
-	// rootTree is the #[builtin("treeRoot")] tree, sngl:builtin's `root`. The
+	// rootFamily is the #[builtin("familyRoot")] tree, sngl:builtin's `root`. The
 	// package body is checked against it, which is the whole of what makes a
 	// window and an output directive top-level: no syntactic rule names them.
-	rootTree *ir.Component
+	rootFamily *ir.Component
+	// familyPosition is non-zero while a return position or a slot's content
+	// resolves, where a data family's name is the family rather than its
+	// record (dataRecord).
+	familyPosition int
+	// dataPopulation is non-zero while a data slot's population is checked,
+	// where inserting another data slot forwards it rather than rendering.
+	dataPopulation int
 
 	// durationUnit is the #[builtin("duration")] unit. Held so the type can be
 	// registered for phases that have no scope — see ir.DurationType.
 	durationUnit *ir.UnitDef
 
-	// The target-identity types. Held so PLATFORM and LANGUAGE can be typed
-	// and so a target's synthesized identity const has a type to carry; the
-	// declarations are in lib/builtin and are shadowable like any other.
-	platformType *ir.StructDef
-	languageType *ir.StructDef
 	// userOverrides and userFuncOverrides are the program's own
 	// `X[target]` declarations, merged after pass1 by collectUserOverrides.
 	userOverrides        []*ast.ComponentDecl
 	userFuncOverrides    []*ast.FuncDef
 	pendingFuncOverrides []pendingFuncOverride
-	// pendingConstruct is the #[construct] marks written in this package,
-	// waiting for a type complete enough to judge. See checkConstructProps.
-	pendingConstruct []constructMark
 
 	// The predeclared constants, bound by collectBuiltins. Held so a second
 	// declaration of the same kind is an error rather than a silent
@@ -647,6 +668,23 @@ type checker struct {
 	// sub-pass after every const shell (and func) is registered, so a const
 	// may forward-reference another const or use a bare enum member.
 	pendingConstInits []pendingConstInit
+
+	// pendingInits holds pass1's other initializers -- a package var's, a
+	// context's default -- in the order written, checked once every
+	// declaration is registered and marked (checkPendingInits). An
+	// initializer is an expression, and an expression reads what marks say
+	// about the declarations it names: that a struct is a host pointer no
+	// literal builds, that a func is unusable. Nil outside pass1's
+	// registration, where an initializer is checked as it is reached.
+	pendingInits *[]pendingInit
+}
+
+// pendingInit is one initializer pass1 registered and did not check: the
+// position it was written at, which says which file's imports it reads, and
+// the check.
+type pendingInit struct {
+	pos   ast.Pos
+	check func()
 }
 
 // constAssertion captures a const(expr) use site and the IR expression to
@@ -671,7 +709,7 @@ func newChecker(docs []*ast.Document, cfg *Config) *checker {
 		doc:     firstDoc(docs),
 		docs:    docs,
 		cfg:     cfg,
-		pkg:     &ir.Package{LiftedCaptures: map[*ir.Func]map[ir.Symbol]string{}, AddressedVars: map[*ir.Var]bool{}},
+		pkg:     &ir.Package{Library: cfg.byLibrary, LiftedCaptures: map[*ir.Func]map[ir.Symbol]string{}, AddressedVars: map[*ir.Var]bool{}},
 		symtab:  symtab,
 		scope:   symtab.Root,
 		visited: cfg.visitedStack(),
@@ -698,7 +736,6 @@ func newChecker(docs []*ast.Document, cfg *Config) *checker {
 		c.bindBuiltinRole(kind, sym)
 	}
 	c.stdlibScope = stdlibScope
-	c.typeTargetConsts()
 	symtab.Root.Parent = stdlibScope
 	c.scope = symtab.Root
 
@@ -1252,11 +1289,11 @@ func (c *checker) stmts() []ast.Stmt {
 func (c *checker) enterPackage(docs []*ast.Document) func() {
 	savedDocs, savedTopLevel := c.docs, c.topLevel
 	savedReplaces, savedPending := c.replaces, c.pendingPkgBody
-	savedPkgDecls := c.pkgDecls
-	// The queue pass1 holds its shell marks in. A lib package's own pass1 arms
-	// a fresh one, so the program's -- still filling, since the load happened
+	savedPkgDecls, savedInits := c.pkgDecls, c.pendingInits
+	// The queue pass1 holds its marks in. A lib package's own pass1 arms a
+	// fresh one, so the program's -- still filling, since the load happened
 	// from inside it -- has to come back.
-	savedShellMarks := c.shellMarks
+	savedMarks := c.pendingMarks
 	// A package loads lazily, so the load may interrupt a body of the
 	// program's: an import resolved from inside a function body leaves
 	// funcDepth set, and the loaded package's own component bodies are then
@@ -1288,12 +1325,13 @@ func (c *checker) enterPackage(docs []*ast.Document) func() {
 	// the program's. No lib package writes one today, which is the only reason
 	// that is a latent leak rather than a live one.
 	c.pendingPkgBody = nil
+	c.pendingInits = nil
 	return func() {
 		restoreFile()
 		c.docs, c.topLevel = savedDocs, savedTopLevel
 		c.replaces, c.pendingPkgBody = savedReplaces, savedPending
-		c.pkgDecls = savedPkgDecls
-		c.shellMarks = savedShellMarks
+		c.pkgDecls, c.pendingInits = savedPkgDecls, savedInits
+		c.pendingMarks = savedMarks
 		c.funcDepth, c.loopDepth = savedFuncDepth, savedLoopDepth
 		c.currentComponent = savedComp
 		c.expected, c.returnType, c.outputDepth = savedExpected, savedReturn, savedOutput
@@ -1361,7 +1399,8 @@ func (c *checker) pass1() {
 	}
 	var structShells []pendingShell
 	var pendingComponents []pendingComp
-	c.shellMarks = &[]pendingMark{}
+	c.pendingMarks = &[]pendingMark{}
+	c.pendingInits = &[]pendingInit{}
 	for _, d := range c.docs {
 		c.resumeFile(d)
 		for _, stmt := range d.Stmts {
@@ -1377,32 +1416,6 @@ func (c *checker) pass1() {
 			}
 		}
 	}
-	// A package's own macros, ahead of every mark that could name one. A mark
-	// resolves its macro through the scope, and a macro is an ordinary func,
-	// so one declared in this package would not be registered until long after
-	// the marks on this package's structs had already run -- which is why a
-	// language package could not write its own `native` on its own struct.
-	//
-	// Registered here rather than with the other funcs because this is the
-	// earliest point where a macro's signature resolves: the shells above
-	// cover the structs, enums and units its parameters name, and its return
-	// type comes from the package declaring `ir.Macro`, which is imported.
-	// Nothing else about a macro is special, so what makes one is still
-	// `macroFrom` asking the registered func what it returns.
-	macroDecls := map[*ast.FuncDef]bool{}
-	for _, d := range c.docs {
-		c.resumeFile(d)
-		for _, stmt := range d.Stmts {
-			f, ok := stmt.(*ast.FuncDef)
-			if !ok || !looksLikeMacroDecl(f) {
-				continue
-			}
-			macroDecls[f] = true
-			c.registerFunc(f)
-		}
-	}
-	c.runShellMarks()
-
 	membersMark := len(c.familyMembers)
 	for _, i := range familiesFirst(pendingComponents, func(p pendingComp) *ast.ComponentDecl { return p.decl }) {
 		p := pendingComponents[i]
@@ -1414,9 +1427,6 @@ func (c *checker) pass1() {
 		c.resumeFile(p.doc)
 		c.resolveStructBody(p.sd)
 	}
-	// Every shell is filled, so a struct a #[construct] prop names can now be
-	// walked field by field.
-	c.checkConstructProps()
 
 	for _, d := range c.docs {
 		c.resumeFile(d)
@@ -1429,9 +1439,6 @@ func (c *checker) pass1() {
 			case *ast.VarDecl:
 				c.registerVars(s)
 			case *ast.FuncDef:
-				if macroDecls[s] {
-					continue // registered above, ahead of the marks naming it
-				}
 				c.registerFunc(s)
 			case *ast.VisualNode:
 				c.registerRootVisualNode(s)
@@ -1469,7 +1476,14 @@ func (c *checker) pass1() {
 	// Check deferred top-level const values now that every const shell, type,
 	// and func is registered (enables forward references between consts and
 	// bare enum members in const initializers).
+	// Every declaration is registered, so every macro a mark may name is in
+	// scope, and every shell is filled: what a mark says about a struct can
+	// be judged by its fields. The initializers below read what the marks
+	// said.
+	c.runPendingMarks()
+
 	c.checkPendingConstInits()
+	c.checkPendingInits()
 }
 
 func (c *checker) registerImport(imp *ast.Import) {
@@ -1709,8 +1723,8 @@ func (c *checker) registerImport(imp *ast.Import) {
 	// one of its nodes: inlining will bring the nodes here, and the pass that
 	// lowers them runs on this package.
 	if irImport.Pkg != nil {
-		for kind := range irImport.Pkg.TreeKinds {
-			owner.NoteTreeKind(kind)
+		for kind := range irImport.Pkg.FamilyKinds {
+			owner.NoteFamilyKind(kind)
 		}
 	}
 
@@ -1844,8 +1858,8 @@ func (c *checker) mergePkgInto(dst, src *ir.Package) {
 	dst.Structs = append(dst.Structs, src.Structs...)
 	dst.Enums = append(dst.Enums, src.Enums...)
 	dst.Units = append(dst.Units, src.Units...)
-	for kind := range src.TreeKinds {
-		dst.NoteTreeKind(kind)
+	for kind := range src.FamilyKinds {
+		dst.NoteFamilyKind(kind)
 	}
 	dst.Funcs = append(dst.Funcs, src.Funcs...)
 	dst.Components = append(dst.Components, src.Components...)
@@ -1871,7 +1885,7 @@ func (c *checker) mergePkgInto(dst, src *ir.Package) {
 		// A method is reached through its receiver, not by a package-root
 		// name, so it never claims one — two types in one package may each
 		// declare a `get`.
-		if fn.Receiver != "" {
+		if fn.IsMethod() {
 			continue
 		}
 		c.mergeInto(declPos(fn), dst.Symbols.Root, fn)
@@ -1890,7 +1904,7 @@ func (c *checker) mergePkgInto(dst, src *ir.Package) {
 func (c *checker) registerEnum(e *ast.EnumDef) {
 	claimed := c.claimTopLevel(e.Name, e.Pos, bindDecl, "")
 	ed := c.buildEnumDef(e)
-	c.applyMarksOnShell(e, ed)
+	c.applyMarks(e, ed)
 	c.declPkg().Enums = append(c.declPkg().Enums, ed)
 	c.bindDeclared(claimed, ed)
 	c.registerNestedMethods(ed.Name, nil, e.Funcs())
@@ -1902,23 +1916,28 @@ func (c *checker) registerEnum(e *ast.EnumDef) {
 // methods) in a later pass1 sub-pass, once every type shell exists.
 func (c *checker) registerStructShell(s *ast.StructDef) *ir.StructDef {
 	claimed := c.claimTopLevel(s.Name, s.Pos, bindDecl, "")
-	sd := &ir.StructDef{AST: s, Name: s.Name, TypeParams: typeParamShells(s.TypeParams), Pkg: c.libPkgName}
-	c.applyMarksOnShell(s, sd)
-	c.declPkg().Structs = append(c.declPkg().Structs, sd)
-	c.bindDeclared(claimed, sd)
-	return sd
-}
-
-// publishBuiltinStruct hands a marked declaration to the phases that read it
-// where they have no scope to resolve a name in. Both cases key on the mark
-// the declaration carries, so neither is a property of the tier it sits in.
-func (c *checker) publishBuiltinStruct(sd *ir.StructDef) {
+	sd := &ir.StructDef{AST: s, Name: s.Name, TypeParams: typeParamShells(s.TypeParams), Pkg: c.declPkg(), Builtin: c.stampBuiltinKind(s.Attrs)}
 	// Macro carries no #[builtin] kind: a kind names the IR construct a
 	// declaration dispatches to, and this one dispatches to none. It is found
 	// by name within the compiler's own package, which no program can import.
 	if c.libPkgName == "sngl:"+irPkg && sd.Name == macroTypeName {
 		c.macroStruct = sd
 	}
+	// Published as it registers, which the kind stamped above is what makes
+	// possible: ListOf attaches the published `list` to every list type, and
+	// one resolved before this package's was published would attach the last
+	// build's, chaining each build's library to the one before it.
+	c.publishBuiltinStruct(sd)
+	c.applyMarks(s, sd)
+	c.declPkg().Structs = append(c.declPkg().Structs, sd)
+	c.bindDeclared(claimed, sd)
+	return sd
+}
+
+// publishBuiltinStruct hands a marked declaration to the phases that read it
+// where they have no scope to resolve a name in. Both cases key on the kind
+// the declaration carries, so neither is a property of the tier it sits in.
+func (c *checker) publishBuiltinStruct(sd *ir.StructDef) {
 	// The canonical datetime type, for the foreign-type importers that
 	// synthesize one without a scope of their own.
 	if sd.Builtin == ir.BuiltinDateTime {
@@ -1952,6 +1971,7 @@ func (c *checker) registerBodyDecl(stmt ast.Stmt, owner string) ir.Symbol {
 		return c.registerComponentDecl(s, true)
 	case *ast.StructDef:
 		sd := c.buildStructDef(s)
+		sd.Builtin = c.stampBuiltinKind(s.Attrs)
 		sd.BodyOwner = owner
 		c.applyMarks(s, sd)
 		c.declPkg().Structs = append(c.declPkg().Structs, sd)
@@ -1980,7 +2000,7 @@ func (c *checker) registerBodyDecl(stmt ast.Stmt, owner string) ir.Symbol {
 func (c *checker) registerUnit(u *ast.UnitDef) {
 	claimed := c.claimTopLevel(u.Name, u.Pos, bindDecl, "")
 	ud := c.buildUnitDef(u)
-	c.applyMarksOnShell(u, ud)
+	c.applyMarks(u, ud)
 	c.declPkg().Units = append(c.declPkg().Units, ud)
 	c.bindDeclared(claimed, ud)
 }
@@ -2007,13 +2027,7 @@ func (c *checker) registerConsts(decl *ast.ConstDecl) {
 			}
 			initExpr = c.checkExprExpecting(spec.Default, typ)
 			initExpr = c.coerce(spec.Default, initExpr, typ, initSlot(decl.Pos))
-			initType := exprType(initExpr)
-			// Infer type from init if not declared.
-			if initType.Kind == ir.TypeVoid {
-				// Don't propagate void into an inferred const type.
-			} else if typ.Kind == ir.TypeDyn {
-				typ = initType
-			}
+			typ = c.typeFromInit(typ, initExpr, *spec.Default.ExprPos())
 		}
 		for _, name := range spec.Names {
 			v := &ir.Var{
@@ -2061,9 +2075,15 @@ func (c *checker) registerConstShells(decl *ast.ConstDecl) {
 			// whole of why the initializer is optional. Without one it is a
 			// name with no value at all, and every read of it would compile
 			// to whatever the target's zero happens to be -- the counterpart
-			// of the rule checkFuncBody applies to a bodyless func.
-			if spec.Default == nil && !ir.IsHostValue(v) {
-				c.error(spec.Pos, "const %q has no value: give it one, or name the host value it is with a native mark", name)
+			// of the rule checkFuncBody applies to a bodyless func. A
+			// predeclared const is the other answer: the compiler supplies it.
+			if spec.Default == nil {
+				pos, name := spec.Pos, name
+				c.afterMarks(func() {
+					if !ir.IsHostValue(v) && !v.Builtin.IsConst() {
+						c.error(pos, "const %q has no value: give it one, or name the host value it is with a native mark", name)
+					}
+				})
 			}
 			c.declPkg().Consts = append(c.declPkg().Consts, v)
 			c.bindVar(decl.Pos, v)
@@ -2109,8 +2129,11 @@ func (c *checker) checkPendingConstInits() {
 		// A mark that supplied both the type and the value has already said
 		// what this const is -- a target identity is a string in the source
 		// and a target type in the IR, which is the one thing this pass cannot
-		// reconcile for it.
-		if len(p.vars) > 0 && p.vars[0].Synthesized && p.vars[0].Init != nil {
+		// reconcile for it. `null` is the other: written `= 0`, so the shell
+		// took int, and checked here it put int back over the type its mark
+		// gave it, for every library body checked before the next program
+		// re-bound the role.
+		if len(p.vars) > 0 && (p.vars[0].Synthesized || p.vars[0].Builtin.IsConst()) && p.vars[0].Init != nil {
 			continue
 		}
 		// Deferred out of the per-file loop, so each initializer says which
@@ -2139,13 +2162,7 @@ func (c *checker) checkPendingConstInits() {
 		}
 
 		initExpr = c.coerce(p.spec.Default, initExpr, typ, initSlot(p.decl.Pos))
-		initType := exprType(initExpr)
-		finalType := typ
-		if initType.Kind == ir.TypeVoid {
-			// Don't propagate void into an inferred const type.
-		} else if typ.Kind == ir.TypeDyn {
-			finalType = initType
-		}
+		finalType := c.typeFromInit(typ, initExpr, *p.spec.Default.ExprPos())
 		for _, v := range p.vars {
 			v.Init = initExpr
 			v.Type = finalType
@@ -2239,12 +2256,12 @@ func (c *checker) nonConstRef(e ast.Expr) string {
 // stdlib declaration. Resolving the mark through scope also makes the check
 // respect shadowing, so a user `struct color` is not a builtin conversion (D3).
 func (c *checker) isBuiltinTypeName(name string) bool {
-	if b, ok := ir.LookupBuiltinScalar(name); ok && b.Convertible {
-		return true
-	}
 	sym, ok := c.scope.Lookup(name)
 	if !ok {
 		return false
+	}
+	if _, kind, ok := scalarOf(sym); ok && kind.IsConvertibleScalar() {
+		return true
 	}
 	sd, ok := sym.(*ir.StructDef)
 	if !ok {
@@ -2298,33 +2315,7 @@ func (c *checker) nonConstCallRef(x *ast.CallExpr) string {
 func (c *checker) registerVars(decl *ast.VarDecl) {
 	for _, spec := range decl.Specs {
 		typ := c.resolveType(spec.Type)
-		var initExpr ir.Expr
-		if spec.Default != nil {
-			initExpr = c.checkExprExpecting(spec.Default, typ)
-			// Capturing a context into a var would freeze the value and miss
-			// reactive updates. Reject here; read the context at each use site.
-			if _, ok := initExpr.(*ir.ContextRead); ok {
-				c.error(decl.Pos, "context value cannot be captured into a local var (read at use site instead)")
-			}
-			initExpr = c.coerce(spec.Default, initExpr, typ, initSlot(decl.Pos))
-			initType := exprType(initExpr)
-			// Infer type from init if not declared.
-			if initType.Kind == ir.TypeVoid {
-				// Don't propagate void into an inferred type.
-			} else if typ.Kind == ir.TypeDyn {
-				typ = initType
-			}
-		} else if sd, ok := structDeclOf(typ); ok {
-			// A struct var with no initializer is that struct's zero value,
-			// which is its fields' defaults -- not an empty struct. Built here
-			// so every consumer sees what a written `Counter{}` already gives
-			// them: left empty, `var c Counter` read back undefined on the web
-			// and its declared defaults everywhere else.
-			lit := &ir.StructLit{Type: typ, Def: sd}
-			if c.fillOmittedFields(lit); len(lit.Fields) > 0 {
-				initExpr = lit
-			}
-		}
+		var vars []*ir.Var
 		for _, name := range spec.Names {
 			if _, exists := c.scope.LookupLocal(name); exists {
 				c.error(decl.Pos, "duplicate declaration of %q", name)
@@ -2334,7 +2325,6 @@ func (c *checker) registerVars(decl *ast.VarDecl) {
 				AST:  decl,
 				Name: name,
 				Type: typ,
-				Init: initExpr,
 			}
 			c.applyMarks(decl, v)
 			for i := range spec.Handlers {
@@ -2348,7 +2338,64 @@ func (c *checker) registerVars(decl *ast.VarDecl) {
 			}
 			c.declPkg().Vars = append(c.declPkg().Vars, v)
 			c.bindVar(decl.Pos, v)
+			vars = append(vars, v)
 		}
+		c.deferInit(decl.Pos, func() { c.checkVarInit(decl, spec, typ, vars) })
+	}
+}
+
+// checkVarInit checks a package var's initializer and settles the type of
+// every name the spec declares from it.
+func (c *checker) checkVarInit(decl *ast.VarDecl, spec ast.VarSpec, typ *ir.Type, vars []*ir.Var) {
+	var initExpr ir.Expr
+	if spec.Default != nil {
+		initExpr = c.checkExprExpecting(spec.Default, typ)
+		// Capturing a context into a var would freeze the value and miss
+		// reactive updates. Reject here; read the context at each use site.
+		if _, ok := initExpr.(*ir.ContextRead); ok {
+			c.error(decl.Pos, "context value cannot be captured into a local var (read at use site instead)")
+		}
+		initExpr = c.coerce(spec.Default, initExpr, typ, initSlot(decl.Pos))
+		typ = c.typeFromInit(typ, initExpr, *spec.Default.ExprPos())
+	} else if sd, ok := structDeclOf(typ); ok {
+		// A struct var with no initializer is that struct's zero value,
+		// which is its fields' defaults -- not an empty struct. Built here
+		// so every consumer sees what a written `Counter{}` already gives
+		// them: left empty, `var c Counter` read back undefined on the web
+		// and its declared defaults everywhere else.
+		lit := &ir.StructLit{Type: typ, Def: sd}
+		if c.fillOmittedFields(lit); len(lit.Fields) > 0 {
+			initExpr = lit
+		}
+	}
+	for _, v := range vars {
+		v.Type, v.Init = typ, initExpr
+	}
+}
+
+// deferInit holds an initializer's check for checkPendingInits during pass1's
+// registration, and runs it at once anywhere else.
+func (c *checker) deferInit(pos ast.Pos, check func()) {
+	if c.pendingInits == nil {
+		check()
+		return
+	}
+	*c.pendingInits = append(*c.pendingInits, pendingInit{pos, check})
+}
+
+// checkPendingInits checks what pass1 held back in pendingInits, each in the
+// file it was written in, in the order written: a var's inferred type is what
+// an initializer below it reads.
+func (c *checker) checkPendingInits() {
+	pending := c.pendingInits
+	c.pendingInits = nil
+	if pending == nil {
+		return
+	}
+	for _, p := range *pending {
+		restore := c.fileOf(p.pos)
+		p.check()
+		restore()
 	}
 }
 
@@ -2366,12 +2413,7 @@ func (c *checker) checkComponentVars(decl *ast.VarDecl, comp *ir.Component) {
 				c.error(decl.Pos, "context value cannot be captured into a local var (read at use site instead)")
 			}
 			initExpr = c.coerce(spec.Default, initExpr, typ, initSlot(decl.Pos))
-			initType := exprType(initExpr)
-			if initType.Kind == ir.TypeVoid {
-				// Don't propagate void into an inferred component var type.
-			} else if typ.Kind == ir.TypeDyn {
-				typ = initType
-			}
+			typ = c.typeFromInit(typ, initExpr, *spec.Default.ExprPos())
 		} else if sd, ok := structDeclOf(typ); ok {
 			// See registerVars: a struct var with no initializer is that
 			// struct's zero value, which is its fields' defaults.
@@ -2404,12 +2446,7 @@ func (c *checker) checkComponentConsts(decl *ast.ConstDecl, comp *ir.Component) 
 			}
 			initExpr = c.checkExprExpecting(spec.Default, typ)
 			initExpr = c.coerce(spec.Default, initExpr, typ, initSlot(decl.Pos))
-			initType := exprType(initExpr)
-			if initType.Kind == ir.TypeVoid {
-				// Don't propagate void into an inferred const type.
-			} else if typ.Kind == ir.TypeDyn {
-				typ = initType
-			}
+			typ = c.typeFromInit(typ, initExpr, *spec.Default.ExprPos())
 		}
 		for _, name := range spec.Names {
 			for _, v := range comp.Vars {
@@ -2465,7 +2502,6 @@ func (c *checker) registerFunc(f *ast.FuncDef) *ir.Func {
 	// buildFunc has already said -- nothing in the program says what a host
 	// does.
 	if c.inLibSource() {
-		fn.Stdlib = true
 		if fn.Return == nil && f.Body != nil {
 			fn.Return = dynFallback("library function %q has a body and no return annotation", fn.Name)
 		}
@@ -2478,24 +2514,26 @@ func (c *checker) registerFunc(f *ast.FuncDef) *ir.Func {
 	// what gets published. A mistyped id is not an error here -- there is no
 	// list for it to be absent from -- but RequireIntrinsicFallback catches one
 	// when a backend has neither an emitter nor a `usable` body.
-	if fn.Intrinsic != "" {
-		c.publishIntrinsic(fn)
-	}
+	c.afterMarks(func() {
+		if fn.Intrinsic != "" {
+			c.publishIntrinsic(fn)
+		}
+	})
 
 	// Only free functions bind a file-scope name; a method's name lives under
 	// its receiver, checked when it is attached there.
 	claimed := true
-	if fn.Receiver == "" {
+	if !fn.IsMethod() {
 		claimed = c.claimTopLevel(fn.Name, f.Pos, bindDecl, "")
 	}
 
-	if fn.Receiver != "" {
+	if fn.IsMethod() {
 		// Attaching is a declaration: it fails on a member of that name
 		// already there, unless this one shadows a standard-library member.
 		// A receiver naming a namespace rather than a type (i18n) has no
 		// declaration to host it, and declareMethod says so.
 		if prev := c.declareMethod(f.Pos, fn); prev != nil {
-			c.error(f.Pos, "duplicate declaration of %q on type %s", fn.Name, fn.Receiver)
+			c.error(f.Pos, "duplicate declaration of %q on type %s", fn.Name, fn.RecvName())
 			return nil
 		}
 		c.declPkg().Funcs = append(c.declPkg().Funcs, fn)
@@ -2755,7 +2793,7 @@ func collectElementRefIDs(stmts []ast.Stmt) []elementRef {
 // buildSlotDecl resolves one slot declaration: a parameter whose type is a
 // component type.
 func (c *checker) buildSlotDecl(pd ast.Param, ct *ast.ComponentType, rest bool) *ir.SlotDecl {
-	slot := &ir.SlotDecl{Name: pd.Name, Rest: rest, Const: pd.Const}
+	slot := &ir.SlotDecl{Name: pd.Name, Rest: rest, Const: pd.Const, Doc: pd.Doc()}
 	if ct.Tree != nil {
 		slot.Content, slot.Card = c.resolveSlotContent(ct.Tree)
 	}
@@ -2849,31 +2887,32 @@ func (c *checker) registerComponentDecl(comp *ast.ComponentDecl, bodyLocal bool)
 	popTypeParams := pushTypeParams(c, comp.TypeParams)
 
 	irComp := &ir.Component{
-		AST:  comp,
-		Name: comp.Name,
-		// A library plugin's output is library source in all but where it
-		// came from: gtk4's widgets were sngl:platform/gtk4's, and moving them
-		// to the gir: scheme changes nothing a call site can see -- a prop
-		// with no default stays optional, by platform convention.
-		Stdlib:     c.inLibSource() || c.cfg.byLibrary,
-		Pkg:        c.libPkgName,
+		AST:        comp,
+		Name:       comp.Name,
+		Pkg:        c.declPkg(),
 		Bodyless:   !comp.Body.IsDefined(),
 		Const:      comp.Const,
 		TypeParams: c.resolveTypeParams(comp.TypeParams),
-	}
-	c.applyMarks(comp, irComp)
-	// The converse of the rule reportBodylessComponents applies: #[intrinsic]
-	// answers where a bodyless component's render comes from, so a body
-	// beside one is emitted by nobody and read by nobody -- the platform
-	// renders the declaration, and isPrimitiveComponent exempts it from
-	// inlining precisely so that can happen. `{}` is refused along with the
-	// rest, because it says the component renders nothing, which is the one
-	// thing an intrinsic never does.
-	if irComp.Intrinsic != "" && !irComp.Bodyless {
-		c.error(comp.Pos, "component %q is #[intrinsic(%q)] and has a body: the platform renders it from the declaration, so the body would be emitted by nobody and read by nobody",
-			comp.Name, irComp.Intrinsic)
+		Builtin:    c.stampBuiltinKind(comp.Attrs),
 	}
 
+	// The declaration names itself in its own signature as a function's
+	// parameter may name its own struct: a GTK signal hands its handler the
+	// widget it fired on, `@toggled(self GtkCheckButton)`. It is bound for the
+	// signature only, for the reason the type parameters' scope closes below,
+	// and only where the name finds nothing else: a declaration shadowing one
+	// -- a component called `list` -- still means the one it shadows there.
+	c.pushScope()
+	if _, taken := c.scope.Lookup(comp.Name); !taken {
+		_ = c.scope.Declare(irComp)
+		// A component naming itself as its family is data, and is read off
+		// the source before its signature resolves: a slot of its own type,
+		// the tree a record may be, names a data family there (bindFamily).
+		// Where the name already finds something, that is what it means.
+		if nt, ok := comp.ChildrenType.(*ast.NamedType); ok && nt.Package == "" && nt.Name == comp.Name && len(nt.TypeArgs) == 0 {
+			irComp.Data = true
+		}
+	}
 	var restSlot *ast.Param
 	for _, p := range comp.Props.Props {
 		switch pd := p.(type) {
@@ -2891,10 +2930,12 @@ func (c *checker) registerComponentDecl(comp *ast.ComponentDecl, bodyLocal bool)
 				continue
 			}
 			prop := &ir.Prop{
-				Name:          pd.Name,
-				Type:          c.resolveType(pd.Type),
-				Bidirectional: pd.Bidirectional,
-				Const:         pd.Const,
+				Name:           pd.Name,
+				Type:           c.resolveType(pd.Type),
+				Bidirectional:  pd.Bidirectional,
+				Const:          pd.Const,
+				Doc:            pd.Doc(),
+				DefaultWritten: pd.Default != nil,
 			}
 			c.applyParamMarks(pd, prop)
 			c.checkConstProp(pd, prop)
@@ -2912,18 +2953,45 @@ func (c *checker) registerComponentDecl(comp *ast.ComponentDecl, bodyLocal bool)
 			evt := &ir.EventDecl{
 				Name:   pd.Name,
 				Params: c.eventParams(pd),
+				Doc:    pd.Doc(),
 			}
 			c.applyEventMarks(pd, evt)
 			irComp.Events = append(irComp.Events, evt)
 		}
 	}
 
-	c.finishWildcardMarks(comp.Pos, irComp)
+	// After the props, which a component's marks may name (#[wildcard]'s
+	// `into`).
+	c.applyMarks(comp, irComp)
 	if comp.ChildrenType != nil {
+		c.familyPosition++
 		irComp.ChildrenType = c.resolveType(comp.ChildrenType)
+		c.familyPosition--
 	}
-	c.finishTreeMarks(comp, irComp, c.declPkg())
+	named := c.bindFamily(comp, irComp, c.declPkg())
+	c.bindDataFamily(irComp)
+	c.afterMarks(func() {
+		// The converse of the rule reportBodylessComponents applies:
+		// #[intrinsic] answers where a bodyless component's render comes
+		// from, so a body beside one is emitted by nobody and read by nobody
+		// -- the platform renders the declaration, and isPrimitiveComponent
+		// exempts it from inlining precisely so that can happen. `{}` is
+		// refused along with the rest, because it says the component renders
+		// nothing, which is the one thing an intrinsic never does.
+		if irComp.Intrinsic != "" && !irComp.Bodyless {
+			c.error(comp.Pos, "component %q is #[intrinsic(%q)] and has a body: the platform renders it from the declaration, so the body would be emitted by nobody and read by nobody",
+				comp.Name, irComp.Intrinsic)
+		}
+		// A native mark says the same of a host's widget: the declaration is
+		// that identifier, and a body beside it would be a second render.
+		if irComp.IsNative() && !irComp.Bodyless {
+			c.error(comp.Pos, "component %q is the host's %s and has a body: the platform renders it from the declaration, so the body would be emitted by nobody and read by nobody",
+				comp.Name, irComp.Foreign.Name)
+		}
+		c.finishFamilyMarks(comp, irComp, named)
+	})
 	c.finishRestSlot(irComp)
+	c.popScope()
 	popTypeParams()
 
 	c.pushScope()
@@ -2932,11 +3000,18 @@ func (c *checker) registerComponentDecl(comp *ast.ComponentDecl, bodyLocal bool)
 	c.popScope()
 
 	c.declPkg().Components = append(c.declPkg().Components, irComp)
+	bound := true
 	if bodyLocal {
 		c.bodyComps = append(c.bodyComps, irComp)
 		c.declare(comp.Pos, irComp)
 	} else {
-		c.bindDeclared(c.claimTopLevel(irComp.Name, comp.Pos, bindDecl, ""), irComp)
+		bound = c.claimTopLevel(irComp.Name, comp.Pos, bindDecl, "")
+		c.bindDeclared(bound, irComp)
+	}
+	// A wildcard is noted in the scope a symbol binds in, and its mark may
+	// run after the binding: the scope is told again once it has.
+	if bindScope := c.scope; bound {
+		c.afterMarks(func() { bindScope.NoteWildcard(irComp) })
 	}
 
 	// The component's type parameters travel with its methods, which is what
@@ -3203,12 +3278,12 @@ func (c *checker) checkPackageBody() {
 	// what makes a window top-level: no rule names the construct, so a
 	// component whose own family is the root one renders windows
 	// conditionally and an `if` at the root goes on working.
-	if pos := firstStmtPos(c.pendingPkgBody); c.rootTree != nil {
+	if pos := firstStmtPos(c.pendingPkgBody); c.rootFamily != nil {
 		// No owner: the package body is the one position in a program that is
 		// not inside a component, so a slot insertion cannot be written there.
 		body := c.pkg.Body
-		c.deferTreeCheck(func() {
-			c.checkTreeMembership(nil, pos, body, c.rootTree, "at the root of a file")
+		c.deferFamilyCheck(func() {
+			c.checkFamilyMembership(nil, pos, body, c.rootFamily, "at the root of a file")
 		})
 	}
 }
@@ -3316,7 +3391,7 @@ func (c *checker) lookupTargetIn(name string, kind ir.BuiltinKind) pkgProvider {
 	if c.cfg == nil {
 		return nil
 	}
-	if kind == ir.BuiltinLanguage {
+	if kind == ir.BuiltinFamilyLanguage {
 		for _, l := range c.cfg.Languages {
 			if l.LanguageIdentifier() == name {
 				return l
@@ -3410,13 +3485,13 @@ func (c *checker) buildErrorBoundary(vn *ast.VisualNode, comp *ir.Component) *ir
 	// to take it from.
 	where := "in " + visualNodeTarget(vn)
 	owner, at := c.currentComponent, vn.Pos
-	c.deferTreeCheck(func() {
-		want := childrenTree(eb.Children)
+	c.deferFamilyCheck(func() {
+		want := childrenFamily(eb.Children)
 		if want == nil {
-			want = childrenTree(eb.Failed)
+			want = childrenFamily(eb.Failed)
 		}
-		c.checkTreeMembership(owner, at, eb.Children, want, where)
-		c.checkTreeMembership(owner, at, eb.Failed, want, where)
+		c.checkFamilyMembership(owner, at, eb.Children, want, where)
+		c.checkFamilyMembership(owner, at, eb.Failed, want, where)
 	})
 	return eb
 }
@@ -3487,12 +3562,18 @@ func (c *checker) pass2() {
 	c.hoistPackageBodyIDs()
 
 	owned := c.checkDeclarationBodies(c.pkg, c.pendingExtensionComps())
+	// Every program component's body has been read, so every override
+	// waiting on one has been too; one whose declaration no walk reached is
+	// still an override, and is checked rather than dropped.
+	for _, comp := range c.pkg.Components {
+		c.checkLateOverrides(comp)
+	}
 
 	// A test reads a component's vars through `c.<var>`, and an unannotated
 	// var has no type until the body declaring it has been checked; nothing
 	// calls a test, so nothing needs its body earlier.
 	for _, fn := range c.pkg.Funcs {
-		if fn.IsTest && !owned[fn] && !fn.Nested {
+		if fn.IsTest && !owned[fn] && !c.nested[fn] {
 			c.checkFuncBody(fn)
 		}
 	}
@@ -3503,11 +3584,12 @@ func (c *checker) pass2() {
 	c.checkGenInputs()
 	c.checkGenSchemes()
 	c.checkCLinks()
+	c.reportUnlinkedCNativeCalls()
 
 	// Every body has now been read, which is what a family read off one waits
 	// for -- and every membership check waits for that in turn. A library
 	// names its family, so only a program infers one.
-	c.inferComponentTrees()
+	c.inferComponentFamilies()
 
 	c.finishDeclarations(c.pkg)
 }
@@ -3566,7 +3648,7 @@ func (c *checker) checkDeclarationBodies(pkg *ir.Package, extra []*ir.Component)
 	owned := map[*ir.Func]bool{}
 	noteOwned := func(comp *ir.Component) {
 		for _, fn := range ir.BodyFuncs(comp) {
-			if fn.Receiver == "" || fn.Receiver == comp.Name {
+			if !fn.IsMethod() || fn.RecvName() == comp.Name {
 				owned[fn] = true
 			}
 		}
@@ -3578,7 +3660,7 @@ func (c *checker) checkDeclarationBodies(pkg *ir.Package, extra []*ir.Component)
 		noteOwned(comp)
 	}
 	for _, fn := range pkg.Funcs {
-		if owned[fn] || fn.Nested || fn.IsTest {
+		if owned[fn] || c.nested[fn] || fn.IsTest {
 			continue
 		}
 		c.checkFuncBody(fn)
@@ -3601,7 +3683,7 @@ func (c *checker) finishDeclarations(pkg *ir.Package) {
 	// and a hoisted func can take the name it is emitted under.
 	c.renameNestedFuncs(pkg)
 
-	c.runTreeChecks()
+	c.runFamilyChecks()
 
 	// Purity + access analysis, over the checked IR with resolved symbols,
 	// each function against the state its owner can reach (stateVars).
@@ -3686,8 +3768,8 @@ func (c *checker) finishDeclarations(pkg *ir.Package) {
 	c.runConstSlotChecks()
 	c.reportDeclarativeCycles(pkg)
 	for _, comp := range pkg.Components {
-		if comp.Const && !comp.Stdlib {
-			c.checkConstRender(constComponentLabel(comp.Name), comp.Body, compDeclPos(comp))
+		if comp.Const {
+			c.checkConstRender(constComponentLabel(comp.Name), comp.Stmts, compDeclPos(comp))
 		}
 	}
 }
@@ -3763,9 +3845,9 @@ func (c *checker) checkFuncBody(fn *ir.Func) {
 	// Only an expression body: the bodyless generic stubs never say `this`, and
 	// resolving the receiver here would trip the map-key comparability check
 	// on an abstract key type.
-	if fn.AST != nil && fn.AST.Body != nil && fn.Receiver != "" && len(fn.RecvTypeParams) > 0 &&
+	if fn.AST != nil && fn.AST.Body != nil && fn.IsMethod() && len(fn.RecvTypeParams) > 0 &&
 		!slices.ContainsFunc(fn.Params, func(p *ir.Param) bool { return p.Name == ir.ReceiverParam }) {
-		if thisType := c.resolveType(synthRecvTypeExpr(funcDeclPos(fn), fn.Receiver, fn.RecvTypeParams)); thisType != nil {
+		if thisType := c.resolveType(synthRecvTypeExpr(funcDeclPos(fn), fn.RecvName(), fn.RecvTypeParams)); thisType != nil {
 			recv := &ir.Param{Name: ir.ReceiverParam, Type: thisType, Receiver: true}
 			c.declare(funcDeclPos(fn), recv)
 			// Kept on the declaration as well as in the scope: the body names
@@ -3797,7 +3879,7 @@ func (c *checker) checkFuncBody(fn *ir.Func) {
 		// name, so inferring `color.rgb(...) => color{...}` as the struct
 		// makes it collide with the primitive in callers.
 		if fn.Return == nil {
-			fn.Return = bodyType
+			fn.Return = c.inferredType(bodyType, *body.ExprPos())
 		} else if c.inLibSource() && fn.Return.Kind == ir.TypeDyn &&
 			bodyType != nil && isPrimitiveTypeKind(bodyType.Kind) {
 			fn.Return = bodyType
@@ -3824,8 +3906,8 @@ func (c *checker) checkFuncBody(fn *ir.Func) {
 	} else if fn.AST != nil {
 		// No body at all: a signature. Something else has to supply the answer,
 		// and this is where that is required rather than assumed. Not of a
-		// library's: a target package implements one (`sngl:remote/http`'s
-		// `get`), and its overrides are attached after the library loads.
+		// library's: a target package implements one, and its overrides are
+		// attached after the library loads.
 		if !c.inLibSource() && !c.bodySuppliedElsewhere(fn) {
 			c.error(fn.AST.Pos, "%q has no body: give it one, or say where the answer comes from — #[intrinsic], #[foreign], or a per-target override",
 				fn.Name)
@@ -3955,7 +4037,7 @@ func (c *checker) preCheckComponentMethods(comp *ir.Component) {
 	defer c.fileOf(compDeclPos(comp))()
 	hasNested := false
 	for _, fn := range comp.Funcs {
-		if fn.Receiver == comp.Name {
+		if fn.RecvName() == comp.Name {
 			hasNested = true
 			break
 		}
@@ -3983,7 +4065,7 @@ func (c *checker) preCheckComponentMethods(comp *ir.Component) {
 		// A nested func's name belongs to the body that wrote it, not to the
 		// component it was hoisted onto, so it is bound by checkNestedFunc
 		// alone.
-		if fn.Receiver == "" && !fn.Nested {
+		if !fn.IsMethod() && !c.nested[fn] {
 			c.declare(funcDeclPos(fn), fn)
 		}
 	}
@@ -3992,7 +4074,7 @@ func (c *checker) preCheckComponentMethods(comp *ir.Component) {
 	// authoritative method-body check runs again in checkComponentBody.
 	diagMark, deferred, constMark, slotMark := len(c.diags), len(c.treeChecks), len(c.constArgs), len(c.constSlotNodes)
 	for _, fn := range comp.Funcs {
-		if fn.Receiver == comp.Name {
+		if fn.RecvName() == comp.Name {
 			c.checkFuncBody(fn)
 		}
 	}
@@ -4073,6 +4155,23 @@ func (c *checker) checkBodyOnce(comp *ir.Component) {
 		c.checkBodyOnce(owner)
 	}
 	c.checkComponentBody(comp)
+	c.checkLateOverrides(comp)
+}
+
+// checkLateOverrides checks the program's overrides of comp that waited on
+// comp's own body.
+func (c *checker) checkLateOverrides(comp *ir.Component) {
+	late := c.lateOverrides[comp]
+	if len(late) == 0 {
+		return
+	}
+	delete(c.lateOverrides, comp)
+	saved := c.scope
+	defer func() { c.scope = saved }()
+	defer c.saveFile()()
+	for _, pe := range late {
+		c.checkOverride(pe, nil)
+	}
 }
 
 // checkOverrideNestedBodies checks the bodies of the components an override
@@ -4124,7 +4223,7 @@ func (c *checker) declareEnclosingBody(comp *ir.Component) {
 		c.declare(varPos(v), v)
 	}
 	for _, fn := range owner.Funcs {
-		if fn.Receiver == "" && !fn.Nested {
+		if !fn.IsMethod() && !c.nested[fn] {
 			c.declare(funcDeclPos(fn), fn)
 		}
 	}
@@ -4196,7 +4295,7 @@ func (c *checker) checkComponentBody(comp *ir.Component) {
 					}
 					initType := exprType(prop.Default)
 					if pd.Type == nil && initType.Kind != ir.TypeDyn && initType.Kind != ir.TypeVoid {
-						prop.Type = initType
+						prop.Type = c.inferredType(initType, *pd.Default.ExprPos())
 					}
 				}
 				propIdx++
@@ -4216,8 +4315,8 @@ func (c *checker) checkComponentBody(comp *ir.Component) {
 		c.declare(varPos(v), v)
 	}
 	for _, fn := range comp.Funcs {
-		if fn.Receiver == "" {
-			if fn.Nested {
+		if !fn.IsMethod() {
+			if c.nested[fn] {
 				continue
 			}
 			c.declare(funcDeclPos(fn), fn)
@@ -4228,7 +4327,7 @@ func (c *checker) checkComponentBody(comp *ir.Component) {
 			// scope by bare name; component-body references resolve through
 			// the currentComponent-aware path in inferIdent / inferCall.
 			if prev := c.declareMethod(compDeclPos(comp), fn); prev != nil {
-				c.error(compDeclPos(comp), "duplicate declaration of %q on component %s", fn.Name, fn.Receiver)
+				c.error(compDeclPos(comp), "duplicate declaration of %q on component %s", fn.Name, fn.RecvName())
 			}
 		}
 	}
@@ -4263,13 +4362,13 @@ func (c *checker) checkComponentBody(comp *ir.Component) {
 		// Foreign-type methods nested inside a component body (e.g.
 		// `func int.double` inside `component main`) don't need component
 		// scope and are checked by pass2's pkg.Funcs loop.
-		if fn.Receiver != "" && fn.Receiver != comp.Name {
+		if fn.IsMethod() && fn.RecvName() != comp.Name {
 			continue
 		}
-		if fn.Nested {
+		if c.nested[fn] {
 			continue
 		}
-		if fn.Receiver == comp.Name && fn.AST != nil && fn.AST.ReturnType == nil {
+		if fn.RecvName() == comp.Name && fn.AST != nil && fn.AST.ReturnType == nil {
 			fn.Return = nil
 		}
 		c.checkFuncBody(fn)
@@ -4289,28 +4388,28 @@ func (c *checker) checkComponentBody(comp *ir.Component) {
 				continue // registered in pass1, rebound above
 			default:
 				if s := c.checkStmt(stmt); s != nil {
-					comp.Body = append(comp.Body, s)
+					comp.Stmts = append(comp.Stmts, s)
 				}
 			}
 		}
 	}
 
-	c.checkViewVarHandlers(comp.Body)
+	c.checkViewVarHandlers(comp.Stmts)
 
 	// The body is captured rather than re-read: checkPendingExtensions swaps an
 	// override's statements onto the declaration for the length of one check
 	// and restores the base body after, so a drain-time read would check the
 	// base body once per override and the override's body never.
-	body := comp.Body
-	c.deferTreeCheck(func() { c.checkTreelessBody(comp, body) })
+	body := comp.Stmts
+	c.deferFamilyCheck(func() { c.checkFamilyParamBody(comp, body) })
 	// What a body puts in the tree is held to the family the component is a
 	// member of, which is the one position nothing else asks about: the other
 	// five are a container asking about its children. A tree-less component
 	// has a nil Tree and falls out of checkTreeMembership, which is what keeps
 	// it to checkTreelessBody's rule alone rather than reporting it twice.
 	at := compDeclPos(comp)
-	c.deferTreeCheck(func() {
-		c.checkTreeMembership(comp, at, body, comp.Tree, "in the body of "+comp.Name)
+	c.deferFamilyCheck(func() {
+		c.checkFamilyMembership(comp, at, body, comp.Family, "in the body of "+comp.Name)
 	})
 }
 
@@ -4774,7 +4873,10 @@ func (c *checker) flattenDotImport(imp *ast.Import, irImport *ir.Import) {
 	}
 	// Methods need no lifting: they live on the receiver's declaration, so
 	// lifting the type lifts its members with it.
-	for _, sym := range pkg.Symbols.Root.Symbols {
+	// Sorted, so two dot imports colliding on several names report the same
+	// one every time.
+	for _, name := range slices.Sorted(maps.Keys(pkg.Symbols.Root.Symbols)) {
+		sym := pkg.Symbols.Root.Symbols[name]
 		if !exported(sym) {
 			continue
 		}
@@ -4809,70 +4911,6 @@ func (c *checker) finishRestSlot(comp *ir.Component) {
 	if slot := comp.RestSlot(); slot != nil {
 		comp.ChildrenType = childrenTypeFor(slot)
 	}
-}
-
-// pendingMark is one declaration's marks, held until the package's own macros
-// are registered.
-type pendingMark struct {
-	doc  *ast.Document
-	decl ast.Stmt
-	sym  any
-}
-
-// applyMarksOnShell is applyMarks for the three declaration kinds pass1
-// registers before a package's own macros: a struct shell, an enum and a unit.
-// Their marks are queued rather than run, because one of them may name a macro
-// this package declares and nothing has registered it yet. Outside that window
-// -- a body declaration, a sub-checker -- the queue is nil and marks run at
-// once.
-func (c *checker) applyMarksOnShell(decl ast.Stmt, sym any) {
-	if c.shellMarks == nil {
-		c.runShellMark(pendingMark{c.doc, decl, sym})
-		return
-	}
-	*c.shellMarks = append(*c.shellMarks, pendingMark{c.doc, decl, sym})
-}
-
-// runShellMark applies one queued declaration's marks and then hands it to the
-// phases that read the result. Publishing is tied to the mark rather than to
-// registration because it is the mark that decides it: `publishBuiltinStruct`
-// dispatches on `sd.Builtin`, which until the mark runs is empty.
-func (c *checker) runShellMark(m pendingMark) {
-	c.applyMarks(m.decl, m.sym)
-	if sd, ok := m.sym.(*ir.StructDef); ok {
-		c.publishBuiltinStruct(sd)
-	}
-}
-
-// runShellMarks applies what applyMarksOnShell queued and closes the queue, so
-// every later registrar marks as it goes. The file is restored per mark: a
-// mark resolves through the scope of the file it was written in, and the queue
-// spans every file of the package.
-func (c *checker) runShellMarks() {
-	q := c.shellMarks
-	c.shellMarks = nil
-	if q == nil {
-		return
-	}
-	for _, m := range *q {
-		if m.doc != nil {
-			c.resumeFile(m.doc)
-		}
-		c.runShellMark(m)
-	}
-}
-
-// looksLikeMacroDecl is the cheap syntactic gate on registering a func early,
-// before the declarations an ordinary signature may name are in place. It
-// answers on the written return type alone; whether that name resolves to
-// sngl:internal/ir's Macro is `macroFrom`'s question, asked when a mark
-// actually names the declaration.
-func looksLikeMacroDecl(f *ast.FuncDef) bool {
-	if f.Target != nil {
-		return false
-	}
-	nt, ok := f.ReturnType.(*ast.NamedType)
-	return ok && nt.Name == "Macro"
 }
 
 // nodeHandleSym is the binding declareNodeID made for a written `#id`, or nil

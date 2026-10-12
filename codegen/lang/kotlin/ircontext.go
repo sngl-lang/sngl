@@ -14,12 +14,25 @@ import (
 // ktImportSet is the shared import collector for a KtIRContext tree.
 // Shared by pointer across all derived contexts (WithLocal, ForComponent)
 // so any RequireImport call anywhere in the tree is visible to the root.
+//
+// Every import is explicit -- one name per line, never a star -- and each
+// claims the simple name it brings into scope. An explicit import outranks a
+// star import and a declaration of the file's own package, so a star leaves
+// which declaration a name reaches to whatever the libraries hold today, and
+// two explicit imports of one simple name do not compile. Claiming the name
+// is what lets Name alias the second instead.
 type ktImportSet struct {
 	paths map[string]struct{}
 	order []string
+	// names is the spelling each fully-qualified name was given; taken is the
+	// reverse, which simple names some import already brings into scope.
+	names map[string]string
+	taken map[string]string
 }
 
-func newKtImportSet() *ktImportSet { return &ktImportSet{paths: map[string]struct{}{}} }
+func newKtImportSet() *ktImportSet {
+	return &ktImportSet{paths: map[string]struct{}{}, names: map[string]string{}, taken: map[string]string{}}
+}
 
 func (s *ktImportSet) require(path string) {
 	if path == "" {
@@ -30,6 +43,68 @@ func (s *ktImportSet) require(path string) {
 	}
 	s.paths[path] = struct{}{}
 	s.order = append(s.order, path)
+	fqn, alias, aliased := strings.Cut(path, " as ")
+	if !aliased {
+		alias = simpleName(fqn)
+	}
+	// A caller that requires an import spells the name bare, so a second
+	// declaration claiming it would be read in its place -- or, two explicit
+	// imports of one name, not compile. Go's forced aliases refuse the same
+	// way; a caller that cannot know what is taken asks Name.
+	if prev, ok := s.taken[alias]; ok {
+		if prev == "" {
+			panic(fmt.Sprintf("kotlin: import %q is spelled %s, which the file declares; spell it through Name", path, alias))
+		}
+		if prev != fqn {
+			panic(fmt.Sprintf("kotlin: import %q is spelled %s, which %q already claims; spell it through Name", path, alias, prev))
+		}
+		return
+	}
+	s.taken[alias] = fqn
+	s.names[fqn] = alias
+}
+
+// name registers fqn and returns what code writes for it: the simple name
+// where no other import has claimed it, and otherwise the simple name
+// suffixed, imported under that alias.
+func (s *ktImportSet) name(fqn string) string {
+	if n, ok := s.names[fqn]; ok {
+		return n
+	}
+	simple := simpleName(fqn)
+	if _, ok := s.taken[simple]; !ok {
+		s.require(fqn)
+		return simple
+	}
+	for i := 2; ; i++ {
+		alias := fmt.Sprintf("%s_%d", simple, i)
+		if _, ok := s.taken[alias]; !ok {
+			s.require(fqn + " as " + alias)
+			return alias
+		}
+	}
+}
+
+// nameAs is name with the simple name replaced by alias.
+func (s *ktImportSet) nameAs(fqn, alias string) string {
+	if n, ok := s.names[fqn]; ok {
+		return n
+	}
+	for i := 1; ; i++ {
+		try := alias
+		if i > 1 {
+			try = fmt.Sprintf("%s_%d", alias, i)
+		}
+		if _, ok := s.taken[try]; !ok {
+			s.require(fqn + " as " + try)
+			return try
+		}
+	}
+}
+
+// simpleName is the last segment of a fully-qualified name.
+func simpleName(fqn string) string {
+	return fqn[strings.LastIndexByte(fqn, '.')+1:]
 }
 
 // KtIRContext translates IR expressions and statements into Kotlin code.
@@ -59,6 +134,73 @@ func NewIRContext(ctx *codegen.ExprCtx) *KtIRContext {
 func (kc *KtIRContext) RequireImport(path string) {
 	if kc.imports != nil {
 		kc.imports.require(path)
+	}
+}
+
+// Name registers the import of a fully-qualified name and returns what code
+// writes for it: `Card` for androidx.compose.material3.Card, or `Card_2`,
+// imported under that alias, where another import already brought a `Card`
+// into scope. The Kotlin counterpart of Go's AliasFor: a caller writing the
+// simple name itself could not know what another import already claimed.
+//
+// Assignment is in registration order, which is the walk order, so the result
+// is stable across runs of one build. An operator a convention finds by name
+// -- a `by` delegate's getValue -- cannot be renamed and goes through
+// RequireImport.
+func (kc *KtIRContext) Name(fqn string) string {
+	if kc.imports == nil {
+		return simpleName(fqn)
+	}
+	return kc.imports.name(fqn)
+}
+
+// NameAs is Name with the alias to prefer: the fqn is imported as alias
+// unless something else holds that name, and then as alias_2, alias_3 and so
+// on. For a name the file means to spell other than its simple name --
+// Compose's Color is ComposeColor here, beside the Color data class SNGL's
+// own color type becomes. A name already registered keeps its spelling.
+func (kc *KtIRContext) NameAs(fqn, alias string) string {
+	if kc.imports == nil {
+		return alias
+	}
+	return kc.imports.nameAs(fqn, alias)
+}
+
+// NativeName is what the file writes for the name a `#[kotlin.native(name,
+// path)]` declaration gives, importing what reaches it. Where the import names
+// the declaration itself (`Card` from androidx.compose.material3.Card), or the
+// name is reached through it (`Alignment.CenterVertically` beside an import of
+// androidx.compose.ui.Alignment), the import goes through Name, so it is
+// aliased around whatever else claims the simple name. Any other name is
+// written as the mark gave it, beside the import as it is. A declaration with
+// no path names a global or a fully-qualified name, and imports nothing.
+func (kc *KtIRContext) NativeName(path, name string) string {
+	if path == "" {
+		return name
+	}
+	simple := simpleName(path)
+	if name == simple {
+		return kc.Name(path)
+	}
+	if rest, ok := strings.CutPrefix(name, simple+"."); ok {
+		return kc.Name(path) + "." + rest
+	}
+	kc.RequireImport(path)
+	return name
+}
+
+// Reserve says the file declares name at its top level. An explicit import
+// outranks a declaration of the file's own package, so an import bringing the
+// same name into scope would take every reference to the declaration with it;
+// Name aliases around a reserved name instead. One an import already claimed
+// is left to the import -- passReservedNames is what keeps a program from
+// declaring the names a target imports unasked.
+func (kc *KtIRContext) Reserve(name string) {
+	if kc.imports == nil || name == "" {
+		return
+	}
+	if _, ok := kc.imports.taken[name]; !ok {
+		kc.imports.taken[name] = ""
 	}
 }
 
@@ -104,7 +246,7 @@ func (kc *KtIRContext) Select(n *ir.Select, operand string) string {
 	if s := snglI18n.PluralKeyConstString(n); s != "" {
 		return s
 	}
-	field := n.Field
+	field := SafeIdent(n.Field)
 	if field == "length" {
 		if t := n.Operand.ExprType(); t != nil && (t.Kind == ir.TypeList || t.Kind == ir.TypeMap) {
 			field = "size"
@@ -178,7 +320,7 @@ func (kc *KtIRContext) StructLit(n *ir.StructLit, fieldStrs []string) string {
 		if f.Spread {
 			panic("kotlin: struct spread must be lowered by flatten_struct_spread")
 		}
-		parts[i] = f.Name + " = " + fieldStrs[i]
+		parts[i] = SafeIdent(f.Name) + " = " + fieldStrs[i]
 	}
 	return name + "(" + strings.Join(parts, ", ") + ")"
 }
@@ -524,7 +666,7 @@ func (kc *KtIRContext) identRewrite(name string) (string, bool) {
 	}
 	return rewritten, true
 }
-func (kc *KtIRContext) MutTargetField(n *ir.Select) string { return n.Field }
+func (kc *KtIRContext) MutTargetField(n *ir.Select) string { return SafeIdent(n.Field) }
 
 func (kc *KtIRContext) StmtPrefix(_ ir.Stmt) []string { return nil }
 
@@ -647,10 +789,7 @@ func (kc *KtIRContext) nativeCall(n *ir.Call) (string, bool) {
 	if n.Func == nil || n.Func.Foreign.Name == "" || n.Func.Foreign.Scheme != "kotlin" {
 		return "", false
 	}
-	if n.Func.Foreign.Path != "" {
-		kc.RequireImport(n.Func.Foreign.Path)
-	}
-	name := n.Func.Foreign.Name
+	name := kc.NativeName(n.Func.Foreign.Path, n.Func.Foreign.Name)
 	args := kc.evalCallArgs(n.Args)
 	if n.Func.NativeMethod && len(args) > 0 {
 		return args[0] + "." + ktMethodTail(name) + "(" + strings.Join(args[1:], ", ") + ")", true
@@ -673,7 +812,7 @@ func ktNameArgs(params []*ir.Param, args []string) []string {
 		if i >= len(out) || p.Name == "" {
 			continue
 		}
-		out[i] = p.Name + " = " + out[i]
+		out[i] = SafeIdent(p.Name) + " = " + out[i]
 	}
 	return out
 }
@@ -718,7 +857,7 @@ func (kc *KtIRContext) evalCall(n *ir.Call) string {
 			return name + "(" + strings.Join(kc.evalCallArgs(n.Args), ", ") + ")"
 		}
 	}
-	if n.Func != nil && n.Func.Receiver != "" {
+	if n.Func != nil && n.Func.IsMethod() {
 		return kc.evalTypeMethodCall(n)
 	}
 	if n.Func != nil {
@@ -760,7 +899,7 @@ func (kc *KtIRContext) evalNamespaceCall(n *ir.Call) string {
 		// A package function called through its import has no receiver on the
 		// declaration — the namespace is the alias at the call site. Name it
 		// from there so a qualified call reads the same either way.
-		receiverName := n.Func.Receiver
+		receiverName := n.Func.RecvName()
 		if receiverName == "" {
 			if id, ok := n.Receiver.(*ir.Ident); ok {
 				receiverName = id.Name
@@ -800,7 +939,7 @@ func (kc *KtIRContext) evalNamespaceCall(n *ir.Call) string {
 		// and names nothing in the emitted Kotlin, where the function is a
 		// top-level `fun` of its own name. `readout.cells("1.5")` reached the
 		// android test runner verbatim, against a `cells` declared beside it.
-		if n.Func.Receiver == "" {
+		if !n.Func.IsMethod() {
 			name := fname
 			// Through IdentRewrites like every other bare call: test mode
 			// reaches a hoisted state member as `state.<name>`.
@@ -905,7 +1044,7 @@ func (kc *KtIRContext) emitHandlerInvoke(evt string, handler *ir.EventHandler) [
 
 func (kc *KtIRContext) evalTypeMethodCall(n *ir.Call) string {
 	method := n.Func.Name
-	receiverName := n.Func.Receiver
+	receiverName := n.Func.RecvName()
 	qualName := receiverName + "." + method
 
 	// Component-self method reference (the receiver names a component in this
@@ -977,7 +1116,7 @@ func (kc *KtIRContext) scopeFuncName(fn *ir.Func) (string, bool) {
 	// declaration spelled `fun Item.label()`. A component's method is the case
 	// this lookup exists for and is left alone -- there is no Kotlin type to
 	// extend, and the composable calls it by bare name.
-	if fn.Receiver != "" && ReceiverIsUserType(kc.pkg(), fn.Receiver) {
+	if fn.IsMethod() && ReceiverIsUserType(kc.pkg(), fn.RecvName()) {
 		return "", false
 	}
 	sym, kind := kc.Ctx.Resolve(fn.Name)
@@ -1124,6 +1263,19 @@ func ktZeroFor(t *ir.Type) string {
 		if ed, ok := t.Decl.(*ir.EnumDef); ok && len(ed.Members) > 0 {
 			return EnumName(ed) + "." + EnumEntry(ed.Members[0].Name)
 		}
+	case ir.TypeFunc:
+		// A function that does nothing, returning its result's zero.
+		if t.Sig != nil {
+			params := make([]string, len(t.Sig.Params))
+			for i, p := range t.Sig.Params {
+				params[i] = "_: " + IRTypeToKt(p.Type)
+			}
+			body := ""
+			if t.Sig.Return != nil && t.Sig.Return.Kind != ir.TypeVoid {
+				body = " " + ktZeroFor(t.Sig.Return)
+			}
+			return "{ " + strings.Join(params, ", ") + " ->" + body + " }"
+		}
 	}
 	return "null"
 }
@@ -1146,7 +1298,7 @@ func EnumName(decl ir.Symbol) string {
 	if !ok {
 		return exportName(decl.SymName())
 	}
-	if ed.Pkg != "" {
+	if ed.PkgPath() != "" {
 		return "Sngl" + exportName(ed.Name)
 	}
 	return exportName(ed.Name)
@@ -1330,7 +1482,21 @@ func IRTypeToKt(t *ir.Type) string {
 	case ir.TypeUnit:
 		return UnitKtType(ir.UnitDeclOf(t))
 	case ir.TypeFunc:
-		return "Any" // TODO: proper function types
+		// A function type is its parameters and its result, which is what a
+		// record's event field holds and what calling one needs: `Any` cannot
+		// be invoked.
+		if t.Sig == nil {
+			return "Any"
+		}
+		params := make([]string, len(t.Sig.Params))
+		for i, p := range t.Sig.Params {
+			params[i] = IRTypeToKt(p.Type)
+		}
+		ret := "Unit"
+		if t.Sig.Return != nil && t.Sig.Return.Kind != ir.TypeVoid {
+			ret = IRTypeToKt(t.Sig.Return)
+		}
+		return "(" + strings.Join(params, ", ") + ") -> " + ret
 	case ir.TypeNull, ir.TypeDyn:
 		// dyn holds anything including null (recursive structs like TreeNode
 		// use `dyn = null` for absent children).
@@ -1446,6 +1612,9 @@ func kotlinBuiltinMethodFromArgs(qualName string, argExprs []string) string {
 		}
 		return "null"
 	}
+	// An i18n style is an enum, which the runtime takes as the member's name:
+	// a Kotlin enum class's toString.
+	str := func(i int) string { return a(i) + ".toString()" }
 
 	switch qualName {
 	// Alert.* → Android Toast. The android backend gates the `Toast` import
@@ -1492,30 +1661,30 @@ func kotlinBuiltinMethodFromArgs(qualName string, argExprs []string) string {
 		return "I18n.getTranslator().format(" + a(0) + ", " + a(1) + ")"
 	case "i18n.numberInt":
 		if len(argExprs) >= 3 {
-			return "I18n.numberInt(" + a(2) + ", " + a(0) + ", " + a(1) + ")"
+			return "I18n.numberInt(" + a(2) + ", " + a(0) + ", " + str(1) + ")"
 		}
-		return "I18n.getTranslator().numberInt(" + a(0) + ", " + a(1) + ")"
+		return "I18n.getTranslator().numberInt(" + a(0) + ", " + str(1) + ")"
 	case "i18n.numberFloat":
 		if len(argExprs) >= 3 {
-			return "I18n.numberFloat(" + a(2) + ", " + a(0) + ", " + a(1) + ")"
+			return "I18n.numberFloat(" + a(2) + ", " + a(0) + ", " + str(1) + ")"
 		}
-		return "I18n.getTranslator().numberFloat(" + a(0) + ", " + a(1) + ")"
+		return "I18n.getTranslator().numberFloat(" + a(0) + ", " + str(1) + ")"
 	case "i18n.date":
 		if len(argExprs) >= 3 {
-			return "I18n.date(" + a(2) + ", " + a(0) + ", " + a(1) + ")"
+			return "I18n.date(" + a(2) + ", " + a(0) + ", " + str(1) + ")"
 		}
-		return "I18n.getTranslator().date(" + a(0) + ", " + a(1) + ")"
+		return "I18n.getTranslator().date(" + a(0) + ", " + str(1) + ")"
 	case "i18n.time":
 		if len(argExprs) >= 3 {
-			return "I18n.time(" + a(2) + ", " + a(0) + ", " + a(1) + ")"
+			return "I18n.time(" + a(2) + ", " + a(0) + ", " + str(1) + ")"
 		}
-		return "I18n.getTranslator().time(" + a(0) + ", " + a(1) + ")"
+		return "I18n.getTranslator().time(" + a(0) + ", " + str(1) + ")"
 	case "i18n.datetime":
 		// Wrapper params: (dt, dateStyle, timeStyle, __ctx_locale).
 		if len(argExprs) >= 4 {
-			return "I18n.datetime(" + a(3) + ", " + a(0) + ", " + a(1) + ", " + a(2) + ")"
+			return "I18n.datetime(" + a(3) + ", " + a(0) + ", " + str(1) + ", " + str(2) + ")"
 		}
-		return "I18n.getTranslator().datetime(" + a(0) + ", " + a(1) + ", " + a(2) + ")"
+		return "I18n.getTranslator().datetime(" + a(0) + ", " + str(1) + ", " + str(2) + ")"
 	case "i18n.select":
 		// Kotlin runtime exposes selectStr (avoiding the `select` keyword clash).
 		if len(argExprs) >= 3 {
@@ -1631,8 +1800,5 @@ func (kc *KtIRContext) hostValueIdent(n *ir.Ident) (string, bool) {
 	if !ok || !ir.IsHostValue(v) {
 		return "", false
 	}
-	if v.Foreign.Path != "" {
-		kc.RequireImport(v.Foreign.Path)
-	}
-	return v.Foreign.Name, true
+	return kc.NativeName(v.Foreign.Path, v.Foreign.Name), true
 }

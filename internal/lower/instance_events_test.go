@@ -21,7 +21,7 @@ func TestInstanceEventsRewritesAnEmitInSlotContent(t *testing.T) {
 		Name:            "picker",
 		RuntimeInstance: true,
 		Events:          []*ir.EventDecl{{Name: "pick"}},
-		Body: []ir.Stmt{
+		Stmts: []ir.Stmt{
 			&ir.NodeInst{Name: "panel", Slots: map[string]*ir.SlotContent{
 				"header": {Body: []ir.Stmt{&ir.NodeInst{
 					Name:     "button",

@@ -1,0 +1,75 @@
+# t.setContext sets a context of any type: the value is held to the context's
+# type, as a provider's is. It was declared over two strings, so an int or a
+# struct context could not be set from a test at all ("cannot pass int as
+# string").
+
+sngl test --platform none setctx.sngl
+stdout 'ok   2 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go setctx.sngl
+stdout 'ok   2 tests, 0 failures'
+
+sngl test --platform html setctx.sngl
+stdout 'ok   2 tests, 0 failures'
+
+-- setctx.sngl --
+import . "sngl:test"
+import . "sngl:ui"
+
+context #depth(1)
+
+struct Theme {
+    primary string
+}
+
+context #theme(Theme{primary="blue"})
+
+func show() => "{depth}:{theme.primary}"
+
+component main node {
+    func probe() => show()
+    text(value=probe())
+}
+
+func testSetInt(t Test, c main) {
+    t.assert(c.probe() == "1:blue")
+    t.setContext(depth, 5)
+    t.assert(c.probe() == "5:blue")
+}
+
+func testSetStruct(t Test, c main) {
+    t.setContext(theme, Theme{primary="red"})
+    t.assert(c.probe() == "1:red")
+}
+
+window {
+    main
+}
+-- testrun/bubbletea/go/setctx.sngl/main/1 --
+sha256:2a9488e0cdef81ca5a016ea740f9e4b2
+{
+  "results": [
+    {
+      "Desc": "SetInt",
+      "Passed": true
+    },
+    {
+      "Desc": "SetStruct",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/setctx.sngl/main/1 --
+sha256:2fc2ffa82adf4541fecdddd71d7fb6ea
+{
+  "results": [
+    {
+      "Desc": "SetInt",
+      "Passed": true
+    },
+    {
+      "Desc": "SetStruct",
+      "Passed": true
+    }
+  ]
+}

@@ -15,7 +15,7 @@ import (
 // Every fact the emitter needs is in the `Spec`: the constructor to call, what
 // to call it with, the Go type it returns, the import path — which is the one
 // no hardcoded table could ever have held — the setter behind the value prop,
-// and the callback field, Go signature and value parameter behind the event.
+// and the callback field and Go signature behind the event.
 //
 // It is deliberately written the way a user would write it, against the same
 // three primitives fyne.sngl's own widgets use, with no `#[intrinsic]` of its
@@ -26,17 +26,20 @@ import "sngl:platform/fyne"
 
 var reading int = 42
 
-component Gauge(:level int, @change ChangeEvent) node {
+component Gauge(:level int, @change(level int)) node {
     fyne.Widget(
         spec=fyne.Spec{
             new=fyne.Native{path="github.com/example/fyne-gauge/fynegauge", name="NewGauge"},
             args=[fyne.Arg{raw="0"}],
             goType=fyne.Native{path="github.com/example/fyne-gauge/fynegauge", name="*Gauge"},
             setters=[fyne.Setter{prop="number", call="SetValue"}],
-            handlers=[fyne.Handler{on="change", field="OnValueChanged", signature="func(v int)", param="v"}],
+            handlers=[fyne.Handler{on="adjust", field="OnValueChanged", signature="func(v int)"}],
         },
         number=level,
-        @change { change() },
+        @adjust(v) {
+            level = v
+            change(v)
+        },
     ) {}
 }
 
@@ -75,13 +78,13 @@ func TestThirdPartyWidgetIsWrappedInSNGLAlone(t *testing.T) {
 		// The callback's Go signature, which is the widget's and not the
 		// SNGL event's — the handler is promoted with the params the Spec
 		// named.
-		{"callback signature", "func (m *Model) __n1_change_handler(v int)"},
-		// The Spec's `param`, naming the value inside that signature: a
-		// `:level` binding writes back from the callback's own parameter, so
-		// a widget the compiler has never heard of takes part in two-way
-		// binding on the strength of its declaration alone. Matched with its
-		// following line so it cannot be satisfied by the generated
-		// SetReading accessor, whose body is the same assignment.
+		{"callback signature", "func (m *Model) __n1_adjust_handler(v int)"},
+		// The handler's parameter is the callback's: the body's write of
+		// `level` is a `:level` binding's write-back, so a widget the
+		// compiler has never heard of takes part in two-way binding on the
+		// strength of its declaration alone. Matched with its following line
+		// so it cannot be satisfied by the generated SetReading accessor,
+		// whose body is the same assignment.
 		{"two-way write-back", "\tm.reading = v\n\tm.__n1.SetValue(m.reading)"},
 	} {
 		if !strings.Contains(out, tc.want) {
@@ -159,17 +162,20 @@ import "sngl:platform/fyne"
 
 var reading int = 42
 
-component Gauge(:level int, @change ChangeEvent) node {
+component Gauge(:level int, @change(level int)) node {
     fyne.Widget(
         spec=fyne.Spec{
             new=fyne.Native{path="github.com/example/fyne-charts/v2", name="NewGauge"},
             args=[fyne.Arg{raw="0"}],
             goType=fyne.Native{path="github.com/example/fyne-charts/v2", name="*Gauge"},
             setters=[fyne.Setter{prop="number", call="SetValue"}],
-            handlers=[fyne.Handler{on="change", field="OnValueChanged", signature="func(v int)", param="v"}],
+            handlers=[fyne.Handler{on="adjust", field="OnValueChanged", signature="func(v int)"}],
         },
         number=level,
-        @change { change() },
+        @adjust(v) {
+            level = v
+            change(v)
+        },
     ) {}
 }
 
@@ -334,7 +340,7 @@ func TestSignatureParametersAreJudgedAsGo(t *testing.T) {
 				t.Errorf("%s was rejected: %v", tc.sig, err)
 			case !tc.wantErr:
 				// The handler must actually take the parameter its body names.
-				if !strings.Contains(out, "__n1_change_handler(v ") {
+				if !strings.Contains(out, "__n1_adjust_handler(v ") {
 					t.Errorf("%s: handler does not take v\n--- generated ---\n%s", tc.sig, out)
 				}
 			}

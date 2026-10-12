@@ -30,7 +30,10 @@ ui.window {
         ui.text(value=status, style={fontWeight=bold, fontSize=24px})
         ui.hbox(style={alignItems=center, gap=8px, textAlign=center}) {
             ui.input(placeholder="Buy eggs", :value=newTodo)
-            ui.button(text="Add", @click { todos.push(Todo{text=newTodo}); newTodo = "" })
+            ui.button(text="Add", @click {
+                todos.push(Todo{text=newTodo})
+                newTodo = ""
+            })
         }
         ui.vbox(style={gap=4px}) {
             for var index, item = todos {

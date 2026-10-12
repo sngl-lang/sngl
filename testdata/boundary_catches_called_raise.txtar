@@ -423,27 +423,19 @@ func main() {
 
 package test.sngl.app
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.*
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
-import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.foundation.layout.Column
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.material3.Button
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color as ComposeColor
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.material3.Text
 
 data class ErrorEvent(val message: String = "", val kind: String = "")
 
@@ -545,7 +537,7 @@ class MainScreenTest {
         val c = MainScreenState()
         @Suppress("UNUSED_VARIABLE") val composeTestRule = composeRule
         composeRule.setContent { MainScreen(c) }
-        composeTestRule.onNodeWithTag("stmt").performClick(); composeTestRule.waitForIdle()
+        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("stmt")).performClick(); composeTestRule.waitForIdle()
         org.junit.Assert.assertTrue("(c.caught == \"too big;too big;\")", (c.caught == "too big;too big;"))
         org.junit.Assert.assertTrue("(c.after == \"\")", (c.after == ""))
     }
@@ -554,7 +546,7 @@ class MainScreenTest {
         val c = MainScreenState()
         @Suppress("UNUSED_VARIABLE") val composeTestRule = composeRule
         composeRule.setContent { MainScreen(c) }
-        composeTestRule.onNodeWithTag("lam").performClick(); composeTestRule.waitForIdle()
+        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("lam")).performClick(); composeTestRule.waitForIdle()
         org.junit.Assert.assertTrue("(c.caught == \"too big;lam:lam;\")", (c.caught == "too big;lam:lam;"))
         org.junit.Assert.assertTrue("(c.after == \"l\")", (c.after == "l"))
     }
@@ -735,6 +727,6 @@ pass sha256:ec01d7ab5554ece5171ca821c1570e25
 -- run/go/html --
 pass sha256:5d17ebd74ca6061b4fd24638c7aefa33
 -- run/kotlin/android --
-pass sha256:5c11db9fd5a6ef5537149fbfe6cd8288
+pass sha256:08b6cc28b69638317960e710699c0ef0
 -- run/none/html --
 pass sha256:8ad76e3f0b688b38f83b70f96822c4e1

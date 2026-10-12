@@ -100,7 +100,7 @@ func optStubConfig(t *testing.T) *checker.Config {
 
 func checkOptStub(t *testing.T, output string) []string {
 	t.Helper()
-	src := withStd(output + "\ncomponent main node {\n    text(value=\"hi\")\n}\n")
+	src := withStd(output + "\ncomponent leaf node {}\n\ncomponent main node {\n    leaf()\n}\n")
 	doc, err := parser.Parse("main.sngl", []byte(src))
 	if err != nil {
 		t.Fatalf("parse: %v", err)

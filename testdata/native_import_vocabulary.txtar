@@ -27,7 +27,7 @@ const _pkg = "example.com/todo"
 #[go.native(_pkg, "todo.Todo")]
 struct Todo {
     #[go.native("ID")]
-    id int
+    id    int
     #[go.native("Title")]
     title string
 }
@@ -36,7 +36,7 @@ struct Todo {
 #[go.native(_pkg, "todo.Bag")]
 struct Bag {
     #[go.native("OK")]
-    ok string
+    ok  string
     #[go.native("Bad")]
     #[macro.unusable("field Bag.Bad has type not representable in SNGL")]
     bad dyn

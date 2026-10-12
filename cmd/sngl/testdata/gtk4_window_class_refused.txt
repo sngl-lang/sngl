@@ -1,0 +1,19 @@
+# A GTK window class written as a node is a toplevel inside a container, which
+# GTK refuses at run time -- and its constructor wants the application, which
+# no container has. A window is what ui.window is, and gtk4 makes the
+# GtkApplicationWindow there; naming one as a node is refused, naming the
+# class, rather than emitted with an `app` nothing declares.
+
+! sngl generate --lang go --platform gtk4 --opt gir=builtin --out out app.sngl
+stderr 'GtkApplicationWindow is a window'
+stderr 'write ui.window'
+
+-- app.sngl --
+import gtk "gir:Gtk-4.0"
+import ui "sngl:ui"
+
+ui.window(title="Outer") {
+    gtk.GtkApplicationWindow(title="Inner") {
+        gtk.GtkLabel(label="hello") {}
+    }
+}

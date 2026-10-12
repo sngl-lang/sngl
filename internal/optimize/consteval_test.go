@@ -194,9 +194,9 @@ func TestEvalQualifiedMethod_FloatRound(t *testing.T) {
 }
 
 func TestEvalQualifiedMethod_FloatSqrt(t *testing.T) {
-	v, ok := evalQualifiedMethod("float.sqrt", []any{9.0})
+	v, ok := evalQualifiedMethod("math.sqrt", []any{9.0})
 	if !ok || v != 3.0 {
-		t.Errorf("float.sqrt(9) = (%v, %v), want (3.0, true)", v, ok)
+		t.Errorf("math.sqrt(9) = (%v, %v), want (3.0, true)", v, ok)
 	}
 }
 

@@ -24,7 +24,6 @@ deny * `\bcount\b` -- the captured var is the owner's, so every target names the
 deny * `\bextra\b` -- the var the override body declares is captured the same way and gets the same clone
 deny * `\blabel\b` -- the captured prop is substituted by the instantiation's argument, so no target emits its name
 deny * `\bbump\b` -- the owner's method is cloned per owner instance, so every target calls the clone and never the declared name
-broken out/go/bubbletea -- interpolating an int into a string emits `"L " + m.count__inst2` with no conversion
 -- app.sngl --
 import . "sngl:ui"
 import "sngl:platform/html"
@@ -110,11 +109,11 @@ import (
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
-	count__inst2       int
-	extra__inst2       int
-	runs__inst0__inst2 int
-	runs__inst1__inst2 int
-	visible__inst3     bool
+	count__inst0       int
+	extra__inst0       int
+	runs__inst0__inst0 int
+	runs__inst1__inst0 int
+	visible__inst0     bool
 	__focusID          int
 
 	width, height int
@@ -123,11 +122,11 @@ type Model struct {
 // New creates a Model with default bind values.
 func New() Model {
 	m := Model{}
-	m.count__inst2 = 0
-	m.extra__inst2 = 5
-	m.runs__inst0__inst2 = 0
-	m.runs__inst1__inst2 = 0
-	m.visible__inst3 = true
+	m.count__inst0 = 0
+	m.extra__inst0 = 5
+	m.runs__inst0__inst0 = 0
+	m.runs__inst1__inst0 = 0
+	m.visible__inst0 = true
 	m.__focusID = 0
 	return m
 }
@@ -138,8 +137,8 @@ func (m *Model) SetTerminalSize(w, h int) {
 	m.height = h
 }
 
-func (m *Model) bump__inst2() {
-	m.count__inst2 = (m.count__inst2 + 100)
+func (m *Model) bump__inst0() {
+	m.count__inst0 = (m.count__inst0 + 100)
 }
 
 func (m *Model) __focusNext() {
@@ -162,79 +161,79 @@ func (m *Model) __focusPrev() {
 	}
 }
 
-func (m Model) Count__inst2() int {
-	return m.count__inst2
+func (m Model) Count__inst0() int {
+	return m.count__inst0
 }
 
-func (m Model) SetCount__inst2(v int) Model {
-	m.count__inst2 = v
+func (m Model) SetCount__inst0(v int) Model {
+	m.count__inst0 = v
 	return m
 }
 
-type setCount__inst2Msg struct{ value int }
+type setCount__inst0Msg struct{ value int }
 
-func SetCount__inst2Cmd(v int) tea.Cmd {
-	return func() tea.Msg { return setCount__inst2Msg{value: v} }
+func SetCount__inst0Cmd(v int) tea.Cmd {
+	return func() tea.Msg { return setCount__inst0Msg{value: v} }
 }
 
-func (m Model) Extra__inst2() int {
-	return m.extra__inst2
+func (m Model) Extra__inst0() int {
+	return m.extra__inst0
 }
 
-func (m Model) SetExtra__inst2(v int) Model {
-	m.extra__inst2 = v
+func (m Model) SetExtra__inst0(v int) Model {
+	m.extra__inst0 = v
 	return m
 }
 
-type setExtra__inst2Msg struct{ value int }
+type setExtra__inst0Msg struct{ value int }
 
-func SetExtra__inst2Cmd(v int) tea.Cmd {
-	return func() tea.Msg { return setExtra__inst2Msg{value: v} }
+func SetExtra__inst0Cmd(v int) tea.Cmd {
+	return func() tea.Msg { return setExtra__inst0Msg{value: v} }
 }
 
-func (m Model) Runs__inst0__inst2() int {
-	return m.runs__inst0__inst2
+func (m Model) Runs__inst0__inst0() int {
+	return m.runs__inst0__inst0
 }
 
-func (m Model) SetRuns__inst0__inst2(v int) Model {
-	m.runs__inst0__inst2 = v
+func (m Model) SetRuns__inst0__inst0(v int) Model {
+	m.runs__inst0__inst0 = v
 	return m
 }
 
-type setRuns__inst0__inst2Msg struct{ value int }
+type setRuns__inst0__inst0Msg struct{ value int }
 
-func SetRuns__inst0__inst2Cmd(v int) tea.Cmd {
-	return func() tea.Msg { return setRuns__inst0__inst2Msg{value: v} }
+func SetRuns__inst0__inst0Cmd(v int) tea.Cmd {
+	return func() tea.Msg { return setRuns__inst0__inst0Msg{value: v} }
 }
 
-func (m Model) Runs__inst1__inst2() int {
-	return m.runs__inst1__inst2
+func (m Model) Runs__inst1__inst0() int {
+	return m.runs__inst1__inst0
 }
 
-func (m Model) SetRuns__inst1__inst2(v int) Model {
-	m.runs__inst1__inst2 = v
+func (m Model) SetRuns__inst1__inst0(v int) Model {
+	m.runs__inst1__inst0 = v
 	return m
 }
 
-type setRuns__inst1__inst2Msg struct{ value int }
+type setRuns__inst1__inst0Msg struct{ value int }
 
-func SetRuns__inst1__inst2Cmd(v int) tea.Cmd {
-	return func() tea.Msg { return setRuns__inst1__inst2Msg{value: v} }
+func SetRuns__inst1__inst0Cmd(v int) tea.Cmd {
+	return func() tea.Msg { return setRuns__inst1__inst0Msg{value: v} }
 }
 
-func (m Model) Visible__inst3() bool {
-	return m.visible__inst3
+func (m Model) Visible__inst0() bool {
+	return m.visible__inst0
 }
 
-func (m Model) SetVisible__inst3(v bool) Model {
-	m.visible__inst3 = v
+func (m Model) SetVisible__inst0(v bool) Model {
+	m.visible__inst0 = v
 	return m
 }
 
-type setVisible__inst3Msg struct{ value bool }
+type setVisible__inst0Msg struct{ value bool }
 
-func SetVisible__inst3Cmd(v bool) tea.Cmd {
-	return func() tea.Msg { return setVisible__inst3Msg{value: v} }
+func SetVisible__inst0Cmd(v bool) tea.Cmd {
+	return func() tea.Msg { return setVisible__inst0Msg{value: v} }
 }
 
 func (m Model) Init() tea.Cmd {
@@ -246,26 +245,26 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	_ = cmd
 	switch msg := msg.(type) {
-	case setCount__inst2Msg:
-		m = m.SetCount__inst2(msg.value)
-	case setExtra__inst2Msg:
-		m = m.SetExtra__inst2(msg.value)
-	case setRuns__inst0__inst2Msg:
-		m = m.SetRuns__inst0__inst2(msg.value)
-	case setRuns__inst1__inst2Msg:
-		m = m.SetRuns__inst1__inst2(msg.value)
-	case setVisible__inst3Msg:
-		m = m.SetVisible__inst3(msg.value)
+	case setCount__inst0Msg:
+		m = m.SetCount__inst0(msg.value)
+	case setExtra__inst0Msg:
+		m = m.SetExtra__inst0(msg.value)
+	case setRuns__inst0__inst0Msg:
+		m = m.SetRuns__inst0__inst0(msg.value)
+	case setRuns__inst1__inst0Msg:
+		m = m.SetRuns__inst1__inst0(msg.value)
+	case setVisible__inst0Msg:
+		m = m.SetVisible__inst0(msg.value)
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
 	case tea.KeyPressMsg:
 		switch {
 		case msg.Code == 'c' && msg.Mod == tea.ModCtrl:
-			if m.visible__inst3 {
-				m.visible__inst3 = false
+			if m.visible__inst0 {
+				m.visible__inst0 = false
 			}
-			if !(m.visible__inst3) {
+			if !(m.visible__inst0) {
 				return m, tea.Quit
 			}
 			return m, nil
@@ -274,15 +273,15 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case msg.Code == tea.KeyTab && msg.Mod == tea.ModShift:
 			m.__focusPrev()
 		case msg.Code == tea.KeyEnter && m.__focusID == 0:
-			m.count__inst2 = (m.count__inst2 + 1)
-			m.extra__inst2 = (m.extra__inst2 + 1)
-			m.runs__inst0__inst2 = (m.runs__inst0__inst2 + 1)
-			m.bump__inst2()
+			m.count__inst0 = (m.count__inst0 + 1)
+			m.extra__inst0 = (m.extra__inst0 + 1)
+			m.runs__inst0__inst0 = (m.runs__inst0__inst0 + 1)
+			m.bump__inst0()
 		case msg.Code == tea.KeyEnter && m.__focusID == 1:
-			m.count__inst2 = (m.count__inst2 + 10)
-			m.extra__inst2 = (m.extra__inst2 + 1)
-			m.runs__inst1__inst2 = (m.runs__inst1__inst2 + 1)
-			m.bump__inst2()
+			m.count__inst0 = (m.count__inst0 + 10)
+			m.extra__inst0 = (m.extra__inst0 + 1)
+			m.runs__inst1__inst0 = (m.runs__inst1__inst0 + 1)
+			m.bump__inst0()
 		}
 	}
 	return m, tea.Batch(cmds...)
@@ -290,12 +289,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m Model) View() tea.View {
 	var content string
-	if m.visible__inst3 {
+	if m.visible__inst0 {
 		var contentChildren []string
 		var content_0 string
 		var content_0Children []string
 		var content_0_0 string
-		content_0_0 = lipgloss.NewStyle().Render(fmt.Sprint(((((("L " + m.count__inst2) + " ") + fmt.Sprint(m.extra__inst2)) + " ") + fmt.Sprint(m.runs__inst0__inst2))))
+		content_0_0 = lipgloss.NewStyle().Render(fmt.Sprint(((((("L " + fmt.Sprint(m.count__inst0)) + " ") + fmt.Sprint(m.extra__inst0)) + " ") + fmt.Sprint(m.runs__inst0__inst0))))
 		content_0Children = append(content_0Children, content_0_0)
 		var content_0_1 string
 		content_0_1Focused := (m.__focusID == 0)
@@ -310,7 +309,7 @@ func (m Model) View() tea.View {
 		var content_1 string
 		var content_1Children []string
 		var content_1_0 string
-		content_1_0 = lipgloss.NewStyle().Render(fmt.Sprint(((((("L " + m.count__inst2) + " ") + fmt.Sprint(m.extra__inst2)) + " ") + fmt.Sprint(m.runs__inst1__inst2))))
+		content_1_0 = lipgloss.NewStyle().Render(fmt.Sprint(((((("L " + fmt.Sprint(m.count__inst0)) + " ") + fmt.Sprint(m.extra__inst0)) + " ") + fmt.Sprint(m.runs__inst1__inst0))))
 		content_1Children = append(content_1Children, content_1_0)
 		var content_1_1 string
 		content_1_1Focused := (m.__focusID == 1)
@@ -370,11 +369,11 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { count__inst2: 0, extra__inst2: 5, runs__inst0__inst2: 0, runs__inst1__inst2: 0, visible__inst3: true };
-  function bump__inst2() {
-    state.count__inst2 = state.count__inst2 + 100;
-    __n1.textContent = "L " + state.count__inst2 + " " + String(state.extra__inst2) + " " + String(state.runs__inst0__inst2);
-    __n2.textContent = "L " + state.count__inst2 + " " + String(state.extra__inst2) + " " + String(state.runs__inst1__inst2);
+  var state = { count__inst0: 0, extra__inst0: 5, runs__inst0__inst0: 0, runs__inst1__inst0: 0, visible__inst0: true };
+  function bump__inst0() {
+    state.count__inst0 = state.count__inst0 + 100;
+    __n1.textContent = "L " + String(state.count__inst0) + " " + String(state.extra__inst0) + " " + String(state.runs__inst0__inst0);
+    __n2.textContent = "L " + String(state.count__inst0) + " " + String(state.extra__inst0) + " " + String(state.runs__inst1__inst0);
   }
   function String(v) {
     return "" + v;
@@ -384,36 +383,36 @@ body { font-family: system-ui, sans-serif; }
   var __n1 = document.querySelector('[data-sngl-id="__n1"]');
   var __n2 = document.querySelector('[data-sngl-id="__n2"]');
   $2.addEventListener("click", function() {
-    state.count__inst2 = state.count__inst2 + 1;
-    __n1.textContent = "L " + state.count__inst2 + " " + String(state.extra__inst2) + " " + String(state.runs__inst0__inst2);
-    __n2.textContent = "L " + state.count__inst2 + " " + String(state.extra__inst2) + " " + String(state.runs__inst1__inst2);
-    state.extra__inst2 = state.extra__inst2 + 1;
-    __n1.textContent = "L " + state.count__inst2 + " " + String(state.extra__inst2) + " " + String(state.runs__inst0__inst2);
-    __n2.textContent = "L " + state.count__inst2 + " " + String(state.extra__inst2) + " " + String(state.runs__inst1__inst2);
-    state.runs__inst0__inst2 = state.runs__inst0__inst2 + 1;
-    __n1.textContent = "L " + state.count__inst2 + " " + String(state.extra__inst2) + " " + String(state.runs__inst0__inst2);
-    bump__inst2();
+    state.count__inst0 = state.count__inst0 + 1;
+    __n1.textContent = "L " + String(state.count__inst0) + " " + String(state.extra__inst0) + " " + String(state.runs__inst0__inst0);
+    __n2.textContent = "L " + String(state.count__inst0) + " " + String(state.extra__inst0) + " " + String(state.runs__inst1__inst0);
+    state.extra__inst0 = state.extra__inst0 + 1;
+    __n1.textContent = "L " + String(state.count__inst0) + " " + String(state.extra__inst0) + " " + String(state.runs__inst0__inst0);
+    __n2.textContent = "L " + String(state.count__inst0) + " " + String(state.extra__inst0) + " " + String(state.runs__inst1__inst0);
+    state.runs__inst0__inst0 = state.runs__inst0__inst0 + 1;
+    __n1.textContent = "L " + String(state.count__inst0) + " " + String(state.extra__inst0) + " " + String(state.runs__inst0__inst0);
+    bump__inst0();
   });
   $4.addEventListener("click", function() {
-    state.count__inst2 = state.count__inst2 + 10;
-    __n1.textContent = "L " + state.count__inst2 + " " + String(state.extra__inst2) + " " + String(state.runs__inst0__inst2);
-    __n2.textContent = "L " + state.count__inst2 + " " + String(state.extra__inst2) + " " + String(state.runs__inst1__inst2);
-    state.extra__inst2 = state.extra__inst2 + 1;
-    __n1.textContent = "L " + state.count__inst2 + " " + String(state.extra__inst2) + " " + String(state.runs__inst0__inst2);
-    __n2.textContent = "L " + state.count__inst2 + " " + String(state.extra__inst2) + " " + String(state.runs__inst1__inst2);
-    state.runs__inst1__inst2 = state.runs__inst1__inst2 + 1;
-    __n2.textContent = "L " + state.count__inst2 + " " + String(state.extra__inst2) + " " + String(state.runs__inst1__inst2);
-    bump__inst2();
+    state.count__inst0 = state.count__inst0 + 10;
+    __n1.textContent = "L " + String(state.count__inst0) + " " + String(state.extra__inst0) + " " + String(state.runs__inst0__inst0);
+    __n2.textContent = "L " + String(state.count__inst0) + " " + String(state.extra__inst0) + " " + String(state.runs__inst1__inst0);
+    state.extra__inst0 = state.extra__inst0 + 1;
+    __n1.textContent = "L " + String(state.count__inst0) + " " + String(state.extra__inst0) + " " + String(state.runs__inst0__inst0);
+    __n2.textContent = "L " + String(state.count__inst0) + " " + String(state.extra__inst0) + " " + String(state.runs__inst1__inst0);
+    state.runs__inst1__inst0 = state.runs__inst1__inst0 + 1;
+    __n2.textContent = "L " + String(state.count__inst0) + " " + String(state.extra__inst0) + " " + String(state.runs__inst1__inst0);
+    bump__inst0();
   });
   function __sngl_init() {
-    __n1.textContent = "L " + state.count__inst2 + " " + String(state.extra__inst2) + " " + String(state.runs__inst0__inst2);
-    __n2.textContent = "L " + state.count__inst2 + " " + String(state.extra__inst2) + " " + String(state.runs__inst1__inst2);
+    __n1.textContent = "L " + String(state.count__inst0) + " " + String(state.extra__inst0) + " " + String(state.runs__inst0__inst0);
+    __n2.textContent = "L " + String(state.count__inst0) + " " + String(state.extra__inst0) + " " + String(state.runs__inst1__inst0);
   }
   __sngl_init();
 })();
 </script>
 </body></html>
 -- run/go/bubbletea --
-broken sha256:bd2cd4f962ba4f97dcdeefc3accc4610
+pass sha256:2f21bfc8295c4d2092ed45746f73f860
 -- run/none/html --
-pass sha256:09137e969751dc49fb576856c75af292
+pass sha256:c0e027384958b52ee1282ec734416397

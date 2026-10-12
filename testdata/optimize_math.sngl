@@ -1,16 +1,17 @@
 import . "sngl:ui"
 import . "sngl:test"
+import math "sngl:math"
 
 component mathfold node {
     // Trig functions
-    var fsin = float.sin(0.0)          // FOLD 0.0
-    var fcos = float.cos(0.0)          // FOLD 1.0
-    var ftan = float.tan(0.0)          // FOLD 0.0
-    var fasin = float.asin(0.0)        // FOLD 0.0
-    var facos = float.acos(1.0)        // FOLD 0.0
-    var fatan = float.atan(0.0)        // FOLD 0.0
-    var fatan2 = float.atan2(0.0, 1.0) // FOLD 0.0
-    var fpow = float.pow(2.0, 3.0)     // FOLD 8.0
+    var fsin = math.sin(0.0)          // FOLD 0.0
+    var fcos = math.cos(0.0)          // FOLD 1.0
+    var ftan = math.tan(0.0)          // FOLD 0.0
+    var fasin = math.asin(0.0)        // FOLD 0.0
+    var facos = math.acos(1.0)        // FOLD 0.0
+    var fatan = math.atan(0.0)        // FOLD 0.0
+    var fatan2 = math.atan2(0.0, 1.0) // FOLD 0.0
+    var fpow = math.pow(2.0, 3.0)     // FOLD 8.0
 
     // String-to-number conversions
     var si = int("42")    // FOLD 42

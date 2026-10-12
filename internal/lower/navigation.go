@@ -474,13 +474,13 @@ func (nv *navigation) index(v any, n *ir.NodeInst, o ir.Owner) {
 func (nv *navigation) familyOf(p *ir.NodeInst) *navFamily {
 	lit, ok := p.Record.(*ir.StructLit)
 	if !ok || lit.Def == nil {
-		return nv.family(p.Component.Tree, ir.FamilyArgs(p.Component, pageArgs(p)))
+		return nv.family(p.Component.Family, ir.FamilyArgs(p.Component, pageArgs(p)))
 	}
 	key := fmt.Sprintf("record:%p", lit.Def)
 	if fam := nv.families[key]; fam != nil {
 		return fam
 	}
-	fam := &navFamily{comp: p.Component.Tree, record: lit.Def, typ: &ir.Type{Kind: ir.TypeStruct, Decl: lit.Def}, copied: hasField(lit.Def, "copy")}
+	fam := &navFamily{comp: p.Component.Family, record: lit.Def, typ: &ir.Type{Kind: ir.TypeStruct, Decl: lit.Def}, copied: hasField(lit.Def, "copy")}
 	nv.families[key] = fam
 	return fam
 }
@@ -1040,7 +1040,7 @@ func (nv *navigation) lowerBack(n *ir.CallStmt) ([]ir.Stmt, error) {
 }
 
 func listLength(list ir.Expr) ir.Expr {
-	fn := &ir.Func{Name: "length", Receiver: "list", Intrinsic: "list.length", Return: ir.TypInt}
+	fn := &ir.Func{Name: "length", Receiver: ir.ListOf(ir.TypDyn), Intrinsic: "list.length", Return: ir.TypInt}
 	if def := ir.LookupIntrinsic("list.length"); def != nil {
 		fn.Params, fn.Return = def.Instantiate(elemOf(typeOf(list)))
 	}
@@ -1048,7 +1048,7 @@ func listLength(list ir.Expr) ir.Expr {
 }
 
 func callListRemove(list, index ir.Expr, elem *ir.Type) ir.Stmt {
-	fn := &ir.Func{Name: "remove", Receiver: "list", Intrinsic: "list.remove"}
+	fn := &ir.Func{Name: "remove", Receiver: ir.ListOf(ir.TypDyn), Intrinsic: "list.remove"}
 	if def := ir.LookupIntrinsic("list.remove"); def != nil {
 		fn.Params, fn.Return = def.Instantiate(elem)
 	}
@@ -1193,7 +1193,7 @@ func (nv *navigation) link(n *ir.NodeInst) (ir.Stmt, error) {
 	// left to it.
 	own := decl.DeclaredBody
 	if own == nil {
-		own = decl.Body
+		own = decl.Stmts
 	}
 	if len(own) == 0 {
 		return nil, fmt.Errorf("%s: nav.link has no body to render here", ir.NodePos(n))
@@ -1233,7 +1233,7 @@ func (nv *navigation) link(n *ir.NodeInst) (ir.Stmt, error) {
 	}
 	cp := *decl
 	cp.Builtin = ""
-	cp.Body = body
+	cp.Stmts = body
 	n.Component = &cp
 	if n.Handle != nil {
 		n.Handle.Type = cp.SymType()
@@ -1382,8 +1382,8 @@ func (nv *navigation) navFamilyOf(t *ir.Type) *navFamily {
 	if c.IsFamily() {
 		return nv.families[familyKey(c, familyArgs(c, t.Elems))]
 	}
-	if c.Tree != nil && c.Builtin == ir.BuiltinNavPage {
-		return nv.families[familyKey(c.Tree, familyArgs(c.Tree, ir.FamilyArgs(c, t.Elems)))]
+	if c.Family != nil && c.Builtin == ir.BuiltinNavPage {
+		return nv.families[familyKey(c.Family, familyArgs(c.Family, ir.FamilyArgs(c, t.Elems)))]
 	}
 	return nil
 }
@@ -1421,7 +1421,9 @@ func (nv *navigation) retype() {
 		}
 	}
 	for _, c := range nv.pkg.Components {
-		if c.Stdlib {
+		// A library declaration is shared by every build, so retyping it
+		// here would retype it for the next one.
+		if c.PkgPath() != "" {
 			continue
 		}
 		for _, v := range c.Vars {
@@ -1515,7 +1517,7 @@ func spliceComposedPages(pkg *ir.Package) error {
 						return out
 					}
 					spliced[c] = true
-					body := substituteParams(deepCloneStmts(c.Body), pageBindings(c, n))
+					body := substituteParams(deepCloneStmts(c.Stmts), pageBindings(c, n))
 					body = substituteSlots(body, n)
 					out = append(out, pages(body, depth+1)...)
 					continue
@@ -1554,15 +1556,15 @@ func spliceComposedPages(pkg *ir.Package) error {
 	used := map[*ir.Component]bool{}
 	_ = ir.Walk(pkg, func(n ir.Node) error {
 		if inst, ok := n.(*ir.NodeInst); ok && inst.Component != nil {
-			if isNavNode(inst, ir.BuiltinNavPage) && inst.Component.Tree != nil {
-				pageFamilies[inst.Component.Tree] = true
+			if isNavNode(inst, ir.BuiltinNavPage) && inst.Component.Family != nil {
+				pageFamilies[inst.Component.Family] = true
 			}
 			used[inst.Component] = true
 		}
 		return nil
 	})
 	pkg.Components = slices.DeleteFunc(pkg.Components, func(c *ir.Component) bool {
-		return c != nil && !used[c] && (spliced[c] || composesPages(c) && pageFamilies[c.Tree])
+		return c != nil && !used[c] && (spliced[c] || composesPages(c) && pageFamilies[c.Family])
 	})
 	return nil
 }
@@ -1572,7 +1574,7 @@ func spliceComposedPages(pkg *ir.Package) error {
 // program's with a body. The page builtin -- or a target's primitive standing
 // for it -- is what the composition comes down to.
 func composesPages(c *ir.Component) bool {
-	return c != nil && !isPrimitiveComponent(c) && !c.Bodyless && len(c.Body) > 0
+	return c != nil && !isPrimitiveComponent(c) && !c.Bodyless && len(c.Stmts) > 0
 }
 
 // maxInlinePagesDepth bounds a composition of pages that renders a

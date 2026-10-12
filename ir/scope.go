@@ -15,10 +15,15 @@ type Symbol interface {
 
 // TypeParamSym binds a type parameter's name in the scope its declaration
 // opens. Nothing else declares one, so a repeat is the ordinary redeclaration.
+// One parameter has one: the type it stands for carries it as its Decl, which
+// is how a parameter is told from another of the same name -- a callee's `T`
+// left in a call's result from the `T` of the generic it was called in.
 type TypeParamSym struct{ Name string }
 
 func (t *TypeParamSym) SymName() string { return t.Name }
-func (t *TypeParamSym) SymType() *Type  { return &Type{Kind: TypeTypeParam, ParamName: t.Name} }
+func (t *TypeParamSym) SymType() *Type {
+	return &Type{Kind: TypeTypeParam, ParamName: t.Name, Decl: t}
+}
 
 // LoopVar is a for-loop iteration variable.
 type LoopVar struct {
@@ -65,10 +70,14 @@ func NewScope(parent *Scope) *Scope {
 	return &Scope{Parent: parent, Symbols: make(map[string]Symbol)}
 }
 
-// noteWildcard records sym among the scope's wildcards when it is one. Binding
+// NoteWildcard records sym among the scope's wildcards when it is one. Binding
 // a wildcard symbol binds its own name too: `element` is a name like any
 // other, and is what a declaration of it in an inner scope shadows.
-func (s *Scope) noteWildcard(sym Symbol) {
+//
+// Declare and Replace note what they bind. A symbol bound before its pattern
+// was set is noted again by whoever set it: the checker runs a declaration's
+// marks once its package is registered.
+func (s *Scope) NoteWildcard(sym Symbol) {
 	w, ok := sym.(WildcardSymbol)
 	if !ok || w.WildcardPattern() == "" {
 		return
@@ -134,7 +143,7 @@ func (s *Scope) Declare(sym Symbol) error {
 		return &RedeclaredError{Name: name, Prev: prev}
 	}
 	s.Symbols[name] = sym
-	s.noteWildcard(sym)
+	s.NoteWildcard(sym)
 	return nil
 }
 
@@ -159,7 +168,7 @@ func (s *Scope) DeclareName(sym Symbol) error {
 // name, splicing a platform override over the stdlib declaration it extends.
 func (s *Scope) Replace(sym Symbol) {
 	s.Symbols[sym.SymName()] = sym
-	s.noteWildcard(sym)
+	s.NoteWildcard(sym)
 }
 
 // Lookup walks the parent chain for a name. Declared names only: it resolves
@@ -219,17 +228,12 @@ type TypeSym struct {
 func (t *TypeSym) SymName() string { return t.Name }
 func (t *TypeSym) SymType() *Type  { return t.Type }
 
-// NewBaseScope creates a scope pre-populated with builtin type names.
-// Fresh instances are created each call to avoid mutating shared state.
+// NewBaseScope creates a scope pre-populated with the bare generic
+// constructors. Fresh instances are created each call to avoid mutating
+// shared state. The scalars are the checker's to add (scalarUniverse), from
+// sngl:builtin's declarations.
 func NewBaseScope() *Scope {
 	s := &Scope{Symbols: make(map[string]Symbol)}
-	// Scalar universe names come from the shared built-in registry (builtins.go)
-	// so this table can't drift from the type resolver / conversion switches.
-	for _, b := range BuiltinScalars() {
-		if b.Universe {
-			s.Symbols[b.Name] = &TypeSym{Name: b.Name, Type: b.Type}
-		}
-	}
 	// The bare generic constructors are predeclared as dyn-parameterized
 	// defaults. "color", "date", "time", and "datetime" are intentionally
 	// absent — they are provided exclusively as stdlib StructDefs

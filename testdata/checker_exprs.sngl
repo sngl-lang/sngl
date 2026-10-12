@@ -1,7 +1,7 @@
 import . "sngl:ui"
 
 struct Config {
-    name string = ""
+    name  string = ""
     value int = 0
 }
 

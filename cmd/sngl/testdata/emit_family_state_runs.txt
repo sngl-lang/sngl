@@ -102,7 +102,7 @@ func readClicks(members func() list<Entry>) {
     var in = newScanner(stdin)
     for in.scan() {
         var fields = in.text().trim().split(" ")
-        async.post(func() {
+        async.do(func() {
             var ms = members()
             var i = int.parse(fields[0], 10)
             if i < ms.length {
@@ -110,7 +110,7 @@ func readClicks(members func() list<Entry>) {
             }
         })
     }
-    async.post(func() {
+    async.do(func() {
         exit(0)
     })
 }
@@ -120,7 +120,7 @@ component block[go.language] {
         render=encode,
         @start(members) {
             print("start\n")
-            async.spawn(func() {
+            async.start(func() {
                 readClicks(members)
             })
         },

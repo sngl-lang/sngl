@@ -64,7 +64,7 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { items__inst0: ["a", "b"], on__inst0: false, visible__inst1: true };
+  var state = { items__inst0: ["a", "b"], on__inst0: false, visible__inst0: true };
   function __cf___checkbox_state1(props) {
     const __root = document.createElement("div");
     __root.style.display = "contents";
@@ -87,8 +87,8 @@ body { font-family: system-ui, sans-serif; }
     __n0.checked = checked;
     __n0.disabled = false;
     __n0.setAttribute("type", "checkbox");
-    __n0.addEventListener("change", (__event) => {
-      checked = __event.checked;
+    __n0.addEventListener("change", (e) => {
+      checked = e.currentTarget.checked;
       __n0.checked = checked;
     });
     __n5.appendChild(__n0);
@@ -158,4 +158,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:bd13543d96248f950d1d321c440e3a48
+pass sha256:d2a26770f9d1dcd1cbffe89fcf170389

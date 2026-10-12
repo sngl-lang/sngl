@@ -16,10 +16,13 @@ unit tick {
     tk
 }
 
+unit width { cm, mm = 0.1cm, pt }
+
 component main ui.node {
     var m ui.measurement = 3px
     var t tick = 4tk
     var d time.duration = 500ms
+    var w width = 2cm
 
     ui.text(value="{m.value}") // ERROR(check) "no field \"value\" on unit measurement"
     ui.text(value="{t.value}") // ERROR(check) "no field \"value\" on unit tick"
@@ -29,9 +32,8 @@ component main ui.node {
     // every target -- so even its own suffix is not one of them. float(t) and
     // int(t) are how that magnitude is read.
     ui.text(value="{t.tk}") // ERROR(check) "no field \"tk\" on unit tick"
-    // A reduced suffix is not a base and so is not a field either: `rem` is
-    // 16em and a value carries no magnitude of its own for it.
-    ui.text(value="{m.rem}") // ERROR(check) "no field \"rem\" on unit measurement"
+    // A reduced suffix is not a base and so is not a field either.
+    ui.text(value="{w.mm}") // ERROR(check) "no field \"mm\" on unit width"
 }
 
 ui.window {

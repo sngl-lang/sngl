@@ -62,7 +62,7 @@ func dropDetachedHandlers(pkg *ir.Package) {
 	})
 	keep := func(fs []*ir.Func) []*ir.Func {
 		return slices.DeleteFunc(fs, func(f *ir.Func) bool {
-			return f != nil && f.LoweredFromNode != "" && !named[f]
+			return f != nil && f.Lowered.Node != "" && !named[f]
 		})
 	}
 	pkg.Funcs = keep(pkg.Funcs)
@@ -118,7 +118,7 @@ func promoteForeignStructs(pkg *ir.Package) error {
 		if t != nil && t.Kind == ir.TypeEnum {
 			// Kotlin emits an enum as a class of its own, so a helper taking
 			// `markup.Token` named a type the file never declared.
-			if ed, ok := t.Decl.(*ir.EnumDef); ok && ed != nil && !haveEnum[ed] && ed.Pkg != "" && ed.Foreign.Name == "" {
+			if ed, ok := t.Decl.(*ir.EnumDef); ok && ed != nil && !haveEnum[ed] && ed.PkgPath() != "" && ed.Foreign.Name == "" {
 				haveEnum[ed] = true
 				addedEnums = append(addedEnums, ed)
 			}
@@ -128,7 +128,7 @@ func promoteForeignStructs(pkg *ir.Package) error {
 			return
 		}
 		sd, ok := t.Decl.(*ir.StructDef)
-		if !ok || sd == nil || have[sd] || sd.Pkg == "" || sd.Foreign.Name != "" {
+		if !ok || sd == nil || have[sd] || sd.PkgPath() == "" || sd.Foreign.Name != "" {
 			return
 		}
 		have[sd] = true
@@ -146,16 +146,27 @@ func promoteForeignStructs(pkg *ir.Package) error {
 	// spells its type: `for b := range []_Block{…}` is md.document's on
 	// bubbletea. It used to be declared only because a helper's signature
 	// happened to name it.
-	for _, o := range ir.Owners(pkg) {
-		ir.WalkView(*o.Body, func(s ir.Stmt) bool {
-			if f, ok := s.(*ir.For); ok && f.Iter != nil {
-				want(f.Iter.ExprType())
+	// After lowering such a loop may stand in a render slot's func rather than
+	// a view, so every loop is asked.
+	_ = ir.Walk(pkg, func(n ir.Node) error {
+		if f, ok := n.(*ir.For); ok && f.Iter != nil && !namesBuiltinStruct(f.Iter.ExprType()) {
+			want(f.Iter.ExprType())
+		}
+		return nil
+	})
+	// A component built at run time takes what its body read as props, and its
+	// constructor spells each one's type as a signature does.
+	for _, c := range pkg.Components {
+		if c != nil && c.RuntimeInstance {
+			for _, p := range c.Props {
+				if !namesBuiltinStruct(p.Type) {
+					want(p.Type)
+				}
 			}
-			return true
-		})
+		}
 	}
 	for _, fn := range pkg.Funcs {
-		if fn == nil || fn.Pkg == "" {
+		if fn == nil || fn.PkgPath() == "" {
 			continue
 		}
 		for _, p := range fn.Params {
@@ -163,10 +174,18 @@ func promoteForeignStructs(pkg *ir.Package) error {
 		}
 		want(fn.Return)
 	}
+	// A data component's record (Component.Data) is built at each call site,
+	// where nothing else may name its type, and a literal spells it.
+	_ = ir.Walk(pkg, func(n ir.Node) error {
+		if lit, ok := n.(*ir.StructLit); ok && lit.Def != nil && lit.Def.RecordOf != nil {
+			want(&ir.Type{Kind: ir.TypeStruct, Decl: lit.Def})
+		}
+		return nil
+	})
 	for _, t := range handlerPayloadTypes(pkg) {
 		// sngl:builtin's `error`, an @error handler's, is each backend's own
 		// to spell.
-		if sd, ok := t.Decl.(*ir.StructDef); ok && sd != nil && sd.Builtin == ir.BuiltinNone && sd.Pkg != "sngl:builtin" {
+		if sd, ok := t.Decl.(*ir.StructDef); ok && sd != nil && sd.Builtin == ir.BuiltinNone && sd.PkgPath() != "sngl:builtin" {
 			want(t)
 		}
 	}
@@ -185,7 +204,7 @@ func promoteForeignStructs(pkg *ir.Package) error {
 		if other, clash := byName[sd.Name]; clash {
 			return fmt.Errorf("%s declares struct %q and so does %s, which a function this build emits names in its signature; "+
 				"every target emits a struct by its name, so the two cannot both be declared -- rename the local one",
-				pkgLabel(other.Pkg), sd.Name, pkgLabel(sd.Pkg))
+				pkgLabel(other.PkgPath()), sd.Name, pkgLabel(sd.PkgPath()))
 		}
 		byName[sd.Name] = sd
 	}
@@ -220,24 +239,23 @@ func namesBuiltinStruct(t *ir.Type) bool {
 	return false
 }
 
-// handlerPayloadTypes is the payload type of every event handler the program
-// writes and of every payload a test hands an event trigger. A backend that
-// keeps the handler's parameter declares it by that type, and a test's
-// `c.box.change({checked=true})` constructs one.
+// handlerPayloadTypes is the type of every parameter of an event handler the
+// program writes and of every argument a test hands an event trigger. A
+// backend that keeps the handler's parameter declares it by that type, and a
+// test's trigger constructs one -- a boundary's `@error(e error)` is the
+// library struct a handler is handed.
 func handlerPayloadTypes(pkg *ir.Package) []*ir.Type {
 	var out []*ir.Type
 	visit := func(n ir.Node) error {
 		switch v := n.(type) {
 		case *ir.NodeInst:
 			// A node a `#id` names gets a test invoker per event it
-			// declares, whether or not the program subscribes; and a node
-			// with a two-way prop, bound or not, has its value written back
-			// from the event's payload with no handler written anywhere. The
-			// emitters prune what nothing reads.
-			if v.Component != nil && (v.Handle != nil || hasTwoWayProp(v.Component)) {
+			// declares, whether or not the program subscribes. The emitters
+			// prune what nothing reads.
+			if v.Component != nil && v.Handle != nil {
 				for _, e := range v.Component.Events {
-					if t := e.Payload(); t != nil {
-						out = append(out, t)
+					for _, p := range e.Params {
+						out = append(out, p.Type)
 					}
 				}
 			}
@@ -287,15 +305,6 @@ func handlerPayloadTypes(pkg *ir.Package) []*ir.Type {
 		}
 	}
 	return out
-}
-
-func hasTwoWayProp(c *ir.Component) bool {
-	for _, p := range c.Props {
-		if p.Bidirectional {
-			return true
-		}
-	}
-	return false
 }
 
 // pkgLabel names a package in a diagnostic. `StructDef.Pkg` already carries
@@ -463,9 +472,9 @@ func collectUsedSymbols(pkg *ir.Package, documents bool) (used, build map[ir.Sym
 				walk(f)
 			}
 			if s.Name == pkg.RootComponent {
-				view(s.Body)
+				view(s.Stmts)
 			} else {
-				walkStmts(s.Body, used, walk)
+				walkStmts(s.Stmts, used, walk)
 			}
 		}
 	}
@@ -503,8 +512,8 @@ func collectUsedSymbols(pkg *ir.Package, documents bool) (used, build map[ir.Sym
 	// after Lower, which is where they are synthesized; before that they
 	// survived by sitting in a window's Funcs, and in pkg.Funcs they are
 	// filtered like anything else nothing names. Teardown was rooted on its
-	// own and the other two were not, so `__remoteSettled` was shaken while
-	// fyne's `OnSettle` subscription still named it.
+	// own and the others were not, so a settle handler was shaken while a
+	// platform's subscription still named it.
 	//
 	// Guarded rather than handed straight to walk: a nil *ir.Func in an
 	// ir.Symbol is not a nil interface, so the `sym == nil` gate at the top

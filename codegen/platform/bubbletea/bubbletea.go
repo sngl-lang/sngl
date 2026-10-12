@@ -51,6 +51,9 @@ func (g *Generator) Generate(req *codegen.Request, sink codegen.Sink) error {
 	if err := c.EmitFromRender(m, req, sink); err != nil {
 		return err
 	}
+	if err := golang.EmitAssetEmbed(sink, c.cfg.Package, req.FileAssets); err != nil {
+		return fmt.Errorf("bubbletea: assets: %w", err)
+	}
 	if golang.PackageUsesI18n(req.Pkg) {
 		if err := golang.EmitI18nManifestEmbed(sink, c.cfg.Package, req.ProjectFS, ""); err != nil {
 			return fmt.Errorf("bubbletea: i18n manifest embed: %w", err)
@@ -143,7 +146,7 @@ func (c *compilation) BuildRenderModel(req *codegen.Request, analysis *codegen.C
 
 	var stmts []ir.Stmt
 	if main := c.ctx.RootDecl(); main != nil {
-		stmts = main.Body
+		stmts = main.Stmts
 	}
 	return c.ctx.BuildRender(stmts), nil
 }

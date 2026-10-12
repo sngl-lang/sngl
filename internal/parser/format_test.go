@@ -98,7 +98,7 @@ func TestFormatConstExpr(t *testing.T) {
 func TestFormatStruct(t *testing.T) {
 	assertFormat(t,
 		"struct Todo {\n    title string\n    done bool\n}",
-		"struct Todo {\n    title string\n    done bool\n}")
+		"struct Todo {\n    title string\n    done  bool\n}")
 }
 
 func TestFormatEmptyStruct(t *testing.T) {
@@ -141,6 +141,24 @@ func TestFormatMethod(t *testing.T) {
 	assertFormat(t,
 		`func int.double(x int) => x + x`,
 		`func int.double(x int) => x + x`)
+}
+
+// An event's parameter list is a function's, and as a function may it leaves
+// the parens off when there are none; both spellings are kept.
+func TestFormatEventParams(t *testing.T) {
+	assertFormat(t,
+		"component c(@pick(index int, label string), @done(), @tick) {\n}",
+		"component c(@pick(index int, label string), @done(), @tick) {\n}")
+}
+
+// `@change T` was a list of one shortened to its type, which a function's
+// list has no form for; it is refused naming the list.
+func TestParseEventTypeShorthand(t *testing.T) {
+	_, err := Parse("test.sngl", []byte("component c(@change map<string, int>) {}"))
+	want := `event "change" declares its parameters as a function does: @change(v map<string, int>)`
+	if err == nil || !strings.Contains(err.Error(), want) {
+		t.Errorf("got %v, want %q", err, want)
+	}
 }
 
 func TestFormatComponent(t *testing.T) {

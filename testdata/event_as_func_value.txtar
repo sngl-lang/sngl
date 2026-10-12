@@ -59,7 +59,7 @@ component wrapped(@fired) node {
     })
 }
 
-component carries(@fired int) node {
+component carries(@fired(v int)) node {
     effect(@mount {
         runWith(fired)
     })
@@ -100,7 +100,7 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { a__inst0: 0, b__inst0: 0, seen__inst0: 0, visible__inst1: true };
+  var state = { a__inst0: 0, b__inst0: 0, seen__inst0: 0, visible__inst0: true };
   function run(f) {
     f();
   }
@@ -218,4 +218,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:4233688f36a825a704d0b91bab22e9ae
+pass sha256:6d5a996d0e4bdb80a1ca52030aac2a79

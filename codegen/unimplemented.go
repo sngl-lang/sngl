@@ -61,7 +61,7 @@ func UnimplementedNode(comp *ir.Component, src ast.Stmt, tag, platform string) *
 	}
 	if comp != nil {
 		e.Decl = comp.Name
-		e.DeclPkg = comp.Pkg
+		e.DeclPkg = comp.PkgPath()
 		e.Wildcard = comp.Wildcard != ""
 	}
 	return e
@@ -69,12 +69,14 @@ func UnimplementedNode(comp *ir.Component, src ast.Stmt, tag, platform string) *
 
 // DeclinesNode reports whether a node reaching platform's emitter under comp
 // is one it has no implementation for, by the rule every generator holds a
-// node to: a library declaration arriving under its own name was never lowered
-// to one of the platform's primitives, since an override would have been
-// inlined in its place. A user component is left to the caller; one reaching
+// node to: a bodyless declaration arriving under its own name was never
+// lowered to one of the platform's primitives, since an override would have
+// been inlined in its place, and a primitive or wildcard element arriving at
+// the generic path is another platform's -- a generator answers its own
+// before it asks. A component with a body is left to the caller; one reaching
 // a leaf has an empty body and draws nothing.
 func DeclinesNode(comp *ir.Component) bool {
-	return comp == nil || comp.Stdlib
+	return comp == nil || comp.Bodyless || comp.Primitive()
 }
 
 // nodeKind is the #[builtin] kind a built-in visual node lowers from, for the

@@ -317,7 +317,7 @@ Structs are values, not references, and a struct cannot be `null`: `var u User =
 import ui "sngl:ui"
 
 struct User {
-    name string = "anonymous"
+    name  string = "anonymous"
     score int = 0
 }
 
@@ -369,7 +369,7 @@ import ui "sngl:ui"
 
 struct Task {
     label string = ""
-    done bool = false
+    done  bool = false
 }
 
 ui.window {
@@ -424,7 +424,7 @@ ui.window {
 
 ## Colors and Units
 
-Colors have literal syntax (`#rgb`, `#rrggbb`, `#rrggbbaa`) and a built-in `color` type. Sizes and times are **units**: a number with a suffix, typed by the unit that declares the suffix. `sngl:ui` declares `measurement` (`16px`, `1.25em`, `50pct`), and `sngl:time` declares `duration` (`250ms`, `5s`).
+Colors have literal syntax (`#rgb`, `#rrggbb`, `#rrggbbaa`) and a built-in `color` type. Sizes and times are **units**: a number with a suffix, typed by the unit that declares the suffix. `sngl:ui` declares `measurement` (`16px`, `1.25em`, `2rem`), and `sngl:time` declares `duration` (`250ms`, `5s`).
 
 A suffix needs something to say which unit it belongs to — a typed `const`, a prop, a style field — so `const pad ui.measurement = 16px` names the type while `style={padding=16px}` gets it from `Style`. Units add and scale like numbers, and interpolating one prints its magnitude in the unit's base: `5s` displays as `5000ms`, the base of `duration`. Your own code can declare units with `unit` the same way the library does.
 
@@ -570,7 +570,7 @@ ui.window {
 
 ## Events
 
-Events use the `@name` prefix. The library's components declare `@click`, `@input`, `@change`, and friends; the handler is a statement block that can mutate `var`s and call functions. A handler that wants the event's payload names it: `@input(e) { query = e.value }` binds the `ui.InputEvent` to `e`.
+Events use the `@name` prefix. The library's components declare `@click`, `@input`, `@change`, and friends; the handler is a statement block that can mutate `var`s and call functions. An event declares the parameters its handlers receive, as a function does -- `input` declares `@input(value string)` -- and a handler that wants them names them: `@input(text) { query = text }` binds the field's text to `text`.
 
 ```sngl
 import ui "sngl:ui"
@@ -579,7 +579,7 @@ ui.window {
     var query = ""
     var results list<string>
     ui.vbox(style={gap=8px, padding=16px}) {
-        ui.input(@input(e) { query = e.value }, placeholder="Type to search")
+        ui.input(@input(text) { query = text }, placeholder="Type to search")
         ui.button(text="Add match", @click {
             if query.length > 0 {
                 results.push(query)
@@ -603,7 +603,7 @@ This is how state flows back up: the parent owns `quantity`, the stepper reports
 ```sngl
 import ui "sngl:ui"
 
-component Stepper(value = 0, @changed int, @reset()) ui.node {
+component Stepper(value = 0, @changed(v int), @reset()) ui.node {
     ui.hbox(style={gap=8px, alignItems=center}) {
         ui.button(text="-", @click { changed(value - 1) })
         ui.text(value="{value}", style={fontFamily="monospace"})
@@ -763,7 +763,7 @@ ui.window {
     var volume = 60
     ui.vbox(style={gap=10px, padding=16px}) {
         ui.text(value="Native browser widgets:", style={fontWeight=bold})
-        html.progress(value=string(volume), max="100", attrs={"aria-label"="Volume"}, style={width=100pct})
+        html.progress(value=string(volume), max="100", attrs={"aria-label"="Volume"}, style={width=240px})
         ui.hbox(style={gap=8px}) {
             ui.button(text="-10", @click { volume = volume - 10 })
             ui.button(text="+10", @click { volume = volume + 10 })
@@ -948,7 +948,7 @@ import ui "sngl:ui"
 component Cart(count = 0, price = 0) ui.node {
     ui.vbox(style={gap=4px, padding=8px}) {
         ui.text(value=$"Cart: {count, plural, =0{empty} one{1 item} other{# items}}")
-        ui.text(value="total: " + i18n.numberInt(price, "decimal"))
+        ui.text(value="total: " + i18n.numberInt(price, decimal))
     }
 }
 

@@ -10,21 +10,21 @@ func test() {
     // Translation entry points.
     var hello = i18n.tr("Hello, world!", {})
     var name = "Alice"
-    var formatted = i18n.format("Hello, {name}!", {name=name})
+    var formatted = i18n.format(`Hello, {name}!`, {name=name})
 
     // Direct number formatters.
     var n int = 1234
-    var price = i18n.numberInt(n, "currency")
-    var pct = i18n.numberFloat(0.42, "percent")
-    var decimal = i18n.numberInt(n, "decimal")
+    var price = i18n.numberInt(n, currency)
+    var pct = i18n.numberFloat(0.42, percent)
+    var decimal = i18n.numberInt(n, decimal)
 
     // Direct date/time formatters — using the clean names, not dateStr/timeStr.
     var d date
-    var dateLabel = i18n.date(d, "short")
+    var dateLabel = i18n.date(d, short)
     var t time
-    var timeLabel = i18n.time(t, "medium")
+    var timeLabel = i18n.time(t, medium)
     var dt datetime
-    var dtLabel = i18n.datetime(dt, "short", "short")
+    var dtLabel = i18n.datetime(dt, short, short)
 
     // Direct selectors.
     var count = 3

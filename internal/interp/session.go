@@ -3,6 +3,7 @@ package interp
 import (
 	"fmt"
 
+	"duckfam.us/sngl/internal/lower"
 	"duckfam.us/sngl/ir"
 )
 
@@ -34,7 +35,9 @@ func NewSession(pkg *ir.Package, comp string, clock Clock) (*Session, error) {
 	// from the pipeline: without it `sngl:time`'s `timer` is the empty stub
 	// every stdlib component is before a platform implements it, and schedules
 	// nothing.
-	ir.SpecializeForTarget(pkg, InterpreterPlatform, "")
+	if err := Prepare(pkg); err != nil {
+		return nil, err
+	}
 	env, err := sessionEnv(pkg, comp)
 	if err != nil {
 		return nil, err
@@ -152,22 +155,12 @@ func (s *Session) Invoke(key Key, event string, args ...any) ([]Patch, error) {
 	if !ok {
 		return nil, fmt.Errorf("no node at %s", key)
 	}
+	if d, name := forwardingDescendant(n, event); d != nil {
+		n, event = d, name
+	}
 	env := n.Env
 	if env == nil {
 		env = s.Env
-	}
-	if n.CompEnv.cellByEvent(n.Inst, event) && len(args) > 0 {
-		n.CompEnv.writeCells(n.Inst, event, []any{coerceEventArg(eventPayload(n.Inst, event), args[0])})
-		if !boundByEvent(n.Inst, event) && !hasHandler(n.Handlers, event) {
-			s.Env.RebindFrom(env)
-			return s.Sync()
-		}
-	}
-	bound := boundByEvent(n.Inst, event)
-	if bound && len(args) > 0 {
-		if err := env.writeBindings(n.Inst, event, []any{coerceEventArg(eventPayload(n.Inst, event), args[0])}); err != nil {
-			return nil, err
-		}
 	}
 	for _, h := range n.Handlers {
 		if h.Name != event {
@@ -183,20 +176,7 @@ func (s *Session) Invoke(key Key, event string, args ...any) ([]Patch, error) {
 		s.Env.RebindFrom(env)
 		return s.Sync()
 	}
-	if bound {
-		s.Env.RebindFrom(env)
-		return s.Sync()
-	}
 	return nil, fmt.Errorf("%s declares no @%s", key, event)
-}
-
-func hasHandler(hs []Handler, event string) bool {
-	for _, h := range hs {
-		if h.Name == event {
-			return true
-		}
-	}
-	return false
 }
 
 // Reload replaces the program with a freshly checked one and reports the
@@ -225,7 +205,9 @@ func (s *Session) Reload(pkg *ir.Package) ([]Patch, error) {
 	// The reloaded program is a program this target runs, so it takes this
 	// platform's bodies exactly as the first one did. Without it a reload
 	// silently dropped every timer: `timer` reverted to the empty stub.
-	ir.SpecializeForTarget(pkg, InterpreterPlatform, "")
+	if err := Prepare(pkg); err != nil {
+		return nil, err
+	}
 	env, err := sessionEnv(pkg, s.Comp)
 	if err != nil {
 		return nil, err
@@ -320,4 +302,14 @@ func sameType(a, b *ir.Type) bool {
 		return a == b
 	}
 	return a.String() == b.String()
+}
+
+// Prepare is what the interpreter takes from the pipeline before it runs a
+// checked package. A target gets the bodies its own platform package declares
+// (sngl:time's `timer` is an empty stub until a platform implements it), and a
+// data family's slot is the list its call site's population renders, which
+// lower.DataFamilies builds once the compositions in it are spliced.
+func Prepare(pkg *ir.Package) error {
+	ir.SpecializeForTarget(pkg, InterpreterPlatform, "")
+	return lower.DataFamilies(pkg, nil)
 }

@@ -6,7 +6,7 @@ component main node {
     var label string = ""
     var on bool = true
 
-    button(@click {
+    button(text="Go", @click {
         label = on ? "yes" : "no"
     })
 }
@@ -15,7 +15,7 @@ import . "sngl:ui"
 component main node {
     var label string = ""
     var on bool = true
-    button(@click {
+    button(text="Go", @click {
         var __lt0 string
         if on {
             __lt0 = "yes"

@@ -69,7 +69,7 @@ type ErrorEvent struct {
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
 	caught__inst0  string
-	visible__inst1 bool
+	visible__inst0 bool
 	__focusID      int
 
 	width, height int
@@ -79,7 +79,7 @@ type Model struct {
 func New() Model {
 	m := Model{}
 	m.caught__inst0 = ""
-	m.visible__inst1 = true
+	m.visible__inst0 = true
 	m.__focusID = 0
 	return m
 }
@@ -117,19 +117,19 @@ func SetCaught__inst0Cmd(v string) tea.Cmd {
 	return func() tea.Msg { return setCaught__inst0Msg{value: v} }
 }
 
-func (m Model) Visible__inst1() bool {
-	return m.visible__inst1
+func (m Model) Visible__inst0() bool {
+	return m.visible__inst0
 }
 
-func (m Model) SetVisible__inst1(v bool) Model {
-	m.visible__inst1 = v
+func (m Model) SetVisible__inst0(v bool) Model {
+	m.visible__inst0 = v
 	return m
 }
 
-type setVisible__inst1Msg struct{ value bool }
+type setVisible__inst0Msg struct{ value bool }
 
-func SetVisible__inst1Cmd(v bool) tea.Cmd {
-	return func() tea.Msg { return setVisible__inst1Msg{value: v} }
+func SetVisible__inst0Cmd(v bool) tea.Cmd {
+	return func() tea.Msg { return setVisible__inst0Msg{value: v} }
 }
 
 func (m Model) Init() tea.Cmd {
@@ -143,18 +143,18 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case setCaught__inst0Msg:
 		m = m.SetCaught__inst0(msg.value)
-	case setVisible__inst1Msg:
-		m = m.SetVisible__inst1(msg.value)
+	case setVisible__inst0Msg:
+		m = m.SetVisible__inst0(msg.value)
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
 	case tea.KeyPressMsg:
 		switch {
 		case msg.Code == 'c' && msg.Mod == tea.ModCtrl:
-			if m.visible__inst1 {
-				m.visible__inst1 = false
+			if m.visible__inst0 {
+				m.visible__inst0 = false
 			}
-			if !(m.visible__inst1) {
+			if !(m.visible__inst0) {
 				return m, tea.Quit
 			}
 			return m, nil
@@ -183,8 +183,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, tea.Batch(cmds...)
 }
 
-// goClick activates the #go widget the way a keypress does; for tests.
-func (m *Model) goClick() {
+// go__r0Click activates the #go__r0 widget the way a keypress does; for tests.
+func (m *Model) go__r0Click() {
 	prev := m.__focusID
 	m.__focusID = 0
 	nm, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
@@ -194,7 +194,7 @@ func (m *Model) goClick() {
 
 func (m Model) View() tea.View {
 	var content string
-	if m.visible__inst1 {
+	if m.visible__inst0 {
 		var contentParts []string
 		var contentPart_0 string
 		contentPart_0Focused := (m.__focusID == 0)
@@ -227,30 +227,21 @@ func main() {
 
 package test.sngl.app
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.*
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
-import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color as ComposeColor
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
-import androidx.activity.compose.BackHandler
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.platform.LocalContext
 import android.app.Activity
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.layout.Column
+import androidx.compose.material3.Button
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.material3.Text
 
 data class ErrorEvent(val message: String = "", val kind: String = "")
 
@@ -266,13 +257,13 @@ fun _snglSplit(s: String, sep: String): List<String> =
 @Composable
 fun MainScreen() {
     var caught__inst0 by remember { mutableStateOf("") }
-    var visible__inst1 by remember { mutableStateOf(true) }
+    var visible__inst0 by remember { mutableStateOf(true) }
 
-    if (visible__inst1) {
+    if (visible__inst0) {
         val __activity = LocalContext.current as? Activity
         BackHandler {
-            visible__inst1 = false
-            if (!(visible__inst1)) {
+            visible__inst0 = false
+            if (!(visible__inst0)) {
                 __activity?.finish()
             }
         }
@@ -313,7 +304,7 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { caught__inst0: "", visible__inst1: true };
+  var state = { caught__inst0: "", visible__inst0: true };
   var $0 = document.getElementById("$0");
   var __n1 = document.querySelector('[data-sngl-id="__n1"]');
   $0.addEventListener("click", function() {
@@ -339,8 +330,8 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:625fe1a5797e2872c631e6a7a47fe980
+pass sha256:dc1a7e9be5d9677e045ff25472929ae7
 -- run/kotlin/android --
-pass sha256:a0f24afab6fe5e6c58d67ef9ed994783
+pass sha256:e8f0293587c3abb1081c44c43659c2a2
 -- run/none/html --
-pass sha256:f26eb5bcbed9eca83452b0f3919837ab
+pass sha256:cf66c4520ada91fa1c4d32a15861ba18

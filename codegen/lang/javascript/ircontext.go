@@ -632,7 +632,7 @@ func (jc *JsIRContext) evalCall(n *ir.Call) string {
 	if n.Receiver != nil {
 		return jc.evalNamespaceCall(n)
 	}
-	if n.Func != nil && n.Func.Receiver != "" {
+	if n.Func != nil && n.Func.IsMethod() {
 		return jc.evalTypeMethodCall(n)
 	}
 	if n.Func != nil {
@@ -703,6 +703,13 @@ func jsMethodTail(name string) string {
 
 func (jc *JsIRContext) evalFuncvarCall(n *ir.Call) string {
 	calleeJS := jc.EvalExpr(n.Callee)
+	// A function literal called where it is written -- a slot's func argument
+	// substituted for the parameter its population calls -- is parenthesized:
+	// `function() {…}()` is a declaration followed by a stray `()`, and an
+	// arrow binds looser than a call.
+	if _, ok := n.Callee.(*ir.Lambda); ok {
+		calleeJS = "(" + calleeJS + ")"
+	}
 	args := jc.evalCallArgs(n.Args)
 	call := calleeJS + "(" + strings.Join(args, ", ") + ")"
 
@@ -758,7 +765,7 @@ func (jc *JsIRContext) evalNamespaceCall(n *ir.Call) string {
 		// A package function called through its import has no receiver on the
 		// declaration — the namespace is the alias at the call site. Name it
 		// from there so a qualified call reads the same either way.
-		receiverName := n.Func.Receiver
+		receiverName := n.Func.RecvName()
 		if receiverName == "" {
 			if id, ok := n.Receiver.(*ir.Ident); ok {
 				receiverName = id.Name
@@ -860,7 +867,7 @@ func (jc *JsIRContext) userFuncMatches(receiver, name string) bool {
 		return false
 	}
 	for _, f := range jc.Ctx.Pkg.Funcs {
-		if f.Receiver == receiver && f.Name == name {
+		if f.RecvName() == receiver && f.Name == name {
 			return true
 		}
 	}
@@ -869,7 +876,7 @@ func (jc *JsIRContext) userFuncMatches(receiver, name string) bool {
 
 func (jc *JsIRContext) evalTypeMethodCall(n *ir.Call) string {
 	method := n.Func.Name
-	receiverName := n.Func.Receiver
+	receiverName := n.Func.RecvName()
 	qualName := receiverName + "." + method
 
 	args := jc.evalCallArgs(n.Args)
@@ -1005,6 +1012,11 @@ func (jc *JsIRContext) evalLambda(n *ir.Lambda) string {
 	if len(n.Func.Block) == 1 {
 		if ret, ok := n.Func.Block[0].(*ir.Return); ok && ret.Value != nil {
 			body := bodyJC.EvalExpr(ret.Value)
+			// An arrow reads `{` as the start of a block, so a body that is an
+			// object literal -- a struct value -- is parenthesized.
+			if strings.HasPrefix(body, "{") {
+				body = "(" + body + ")"
+			}
 			if asyncPrefix == "" && len(params) == 1 {
 				return params[0] + " => " + body
 			}

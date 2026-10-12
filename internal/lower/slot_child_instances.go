@@ -77,7 +77,7 @@ func lowerSlotChildInstances(pkg *ir.Package, caps Features, opts Options) error
 	// each of their bodies is a view body with slots of its own.
 	for i := 0; i < len(pkg.Components); i++ {
 		if c := pkg.Components[i]; c != nil {
-			st.liftSlotBodies(c.Body)
+			st.liftSlotBodies(c.Stmts)
 		}
 	}
 	st.liftSlotBodies(pkg.Body)
@@ -92,7 +92,7 @@ func lowerSlotChildInstances(pkg *ir.Package, caps Features, opts Options) error
 	// nothing else.
 	for _, c := range pkg.Components {
 		if c != nil {
-			st.walk(c.Body)
+			st.walk(c.Stmts)
 		}
 	}
 	st.walk(pkg.Body)
@@ -180,12 +180,12 @@ func (st *slotChildSynth) synthesize(n *ir.NodeInst) *ir.NodeInst {
 	// subtree and the free-value scan should not then see what it reads.
 	l := newLift(comp, inst)
 	st.liftHandlers(n, l, nil)
-	st.liftValues(n, l, handlerParams(n, map[ir.Symbol]bool{}))
+	st.liftValues(n, l, handlerParams(n, boundWithin(n)))
 	for _, p := range comp.Props {
 		st.cells[p.Sym] = true
 	}
 
-	comp.Body = []ir.Stmt{n}
+	comp.Stmts = []ir.Stmt{n}
 	st.pkg.Components = append(st.pkg.Components, comp)
 	return inst
 }
@@ -218,7 +218,7 @@ func (st *slotChildSynth) liftHandlers(n any, l *lift, bound []*ir.Param) {
 // isDrawShape reports whether n is a shape, whose handlers are its canvas's
 // drawing rather than anything the program subscribes to.
 func isDrawShape(n *ir.NodeInst) bool {
-	return n.Component != nil && ir.IsDrawShapeTree(n.Component.Tree)
+	return n.Component != nil && ir.IsShapeFamily(n.Component.Family)
 }
 
 // handlerParams is the parameters of every handler under n, which no lifting

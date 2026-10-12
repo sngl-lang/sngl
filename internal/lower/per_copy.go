@@ -281,7 +281,7 @@ func cellGet(v *ir.Var, init, key ir.Expr) ir.Expr {
 	}
 	return &ir.Call{
 		Type: elem,
-		Func: &ir.Func{Name: "get", Receiver: "map", Intrinsic: "map.get", Return: elem, Params: params},
+		Func: &ir.Func{Name: "get", Receiver: ir.MapOf(ir.TypDyn, ir.TypDyn), Intrinsic: "map.get", Return: elem, Params: params},
 		Args: []ir.CallArg{{Value: cellIdent(v)}, {Value: key}, {Value: init}},
 	}
 }
@@ -315,7 +315,7 @@ func mutatesReceiver(fn *ir.Func) bool {
 		def, ok := ir.IntrinsicByName(fn.Intrinsic)
 		return ok && def.MutatesReceiver
 	}
-	return fn.Receiver != "" && fn.Purity == ir.PurityMutates
+	return fn.IsMethod() && fn.Purity == ir.PurityMutates
 }
 
 // exprRoot is the symbol an lvalue is rooted at: `x`, `x.f` and `x[i]` all

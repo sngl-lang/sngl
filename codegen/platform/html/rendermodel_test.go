@@ -23,7 +23,7 @@ import (
 func routeFixture() (*ir.Package, *codegen.ViewCtx) {
 	const importPath = "example.com/route-post/api"
 
-	persist := &ir.Func{Name: "Persist", Foreign: ir.Foreign{Path: importPath}}
+	persist := &ir.Func{Name: "Persist", Path: importPath}
 	pkg := &ir.Package{
 		Imports: []*ir.Import{{
 			Alias:  "api",
@@ -182,7 +182,7 @@ func TestCollectActionsLogicalMutations(t *testing.T) {
 // 0 while collectActions assigned the node handler index 1, a silent desync.
 func TestActionIndexSingleSourceOfTruth(t *testing.T) {
 	const importPath = "example.com/route-post/api"
-	persist := &ir.Func{Name: "Persist", Foreign: ir.Foreign{Path: importPath}}
+	persist := &ir.Func{Name: "Persist", Path: importPath}
 	pkg := &ir.Package{
 		Imports: []*ir.Import{{
 			Alias:  "api",

@@ -39,9 +39,9 @@ func OverriddenComponents(pkg *ir.Package) []*ir.Component {
 	return out
 }
 
-// BareStdlibComponents lists the stdlib components this platform gives no body
-// to, and should be empty: a component reaching this list is a widget nothing
-// here builds.
+// BareStdlibComponents lists the bodyless library components this platform
+// gives no body to, and should be empty: a component reaching this list is a
+// widget nothing here builds.
 //
 // A #[builtin] kind is not one of them. `context`, `effect` and `output` are declared
 // as components because that is the form their call site takes, but a visual
@@ -57,7 +57,12 @@ func BareStdlibComponents(pkg *ir.Package) []string {
 	var out []string
 	pkg.Symbols.EachSymbol(func(sym ir.Symbol) bool {
 		c, ok := sym.(*ir.Component)
-		if !ok || !c.Stdlib || c.Builtin != ir.BuiltinNone {
+		if !ok || c.PkgPath() == "" || c.Builtin != ir.BuiltinNone || c.IsFamily() || ir.IsDataMember(c) {
+			return true
+		}
+		// A body of its own is what every platform renders where it has
+		// nothing better: badge is a styled text.
+		if !c.Bodyless && len(c.Stmts) > 0 {
 			return true
 		}
 		if b, has := c.PlatformOverrides["fyne"]; !has || len(b.Stmts) == 0 {
@@ -211,7 +216,7 @@ func fynePrimitiveNodes(stmts []ir.Stmt) []*ir.NodeInst {
 			}
 			if !seen[n.Component] {
 				seen[n.Component] = true
-				walk(n.Component.Body)
+				walk(n.Component.Stmts)
 			}
 			return false
 		})

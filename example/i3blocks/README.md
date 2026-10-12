@@ -48,7 +48,7 @@ mode. The build rewrites the `bar` into SNGL before anything else sees it:
   `encode(members())`, which prints the line each time it differs.
 
 So a state write re-renders the bar because an effect's key read that state, and
-a click is a closure posted to the drawing thread with `async.post`. Neither host
+a click is a closure posted to the drawing thread with `async.do`. Neither host
 has any code for i3. The window is a node like any other: under `if details`
 it sits in a render slot, so it is created, widgets and effects with it, when
 `details` turns true, and destroyed when it turns false.

@@ -75,26 +75,13 @@ import (
 	"os"
 )
 
-type PathCmd struct {
-	Op  string
-	X   float64
-	Y   float64
-	Cx1 float64
-	Cy1 float64
-	Cx2 float64
-	Cy2 float64
-	R   float64
-}
-
 type Measurement struct {
 	Px  float64
 	Em  float64
-	Vw  float64
-	Vh  float64
-	Pct float64
+	Rem float64
 }
 
-type CanvasStyle struct {
+type Style struct {
 	Fill        snglcolor.Color
 	Stroke      snglcolor.Color
 	StrokeWidth float64
@@ -127,7 +114,7 @@ func New() *Model {
 	return m
 }
 
-func ApplyStyle(ctx *snglcanvas.Context, style CanvasStyle) {
+func ApplyStyle(ctx *snglcanvas.Context, style Style) {
 	ctx.SetFill(style.Fill.R, style.Fill.G, style.Fill.B, style.Fill.A)
 	ctx.SetStroke(style.Stroke.R, style.Stroke.G, style.Stroke.B, style.Stroke.A)
 	ctx.SetStrokeWidth(style.StrokeWidth)
@@ -254,7 +241,7 @@ func (c *Frame__slot0Instance) Set__p0(__v float64) {
 
 func (c *Frame__slot0Instance) _canvasDraw0(ctx *snglcanvas.Context) {
 	ctx.Save()
-	ApplyStyle(ctx, CanvasStyle{Fill: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, Stroke: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, StrokeWidth: 1.0, LineCap: "butt", LineJoin: "miter", FontSize: 16.0, FontFamily: "sans-serif"})
+	ApplyStyle(ctx, Style{Fill: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, Stroke: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, StrokeWidth: 1.0, LineCap: "butt", LineJoin: "miter", FontSize: 16.0, FontFamily: "sans-serif"})
 	ctx.Circle(20.0, 20.0, c.__prop___p0)
 	ctx.Restore()
 }
@@ -434,6 +421,18 @@ static void sngl_unref_pixbuf(GdkPixbuf *p) {
     if (p != NULL) g_object_unref(p);
 }
 
+// Selects a day the way a click on it does, for gtk4's datepicker override
+// (selectDay) and a test's invoker. select_day is the call every GTK 4 has;
+// 4.20 deprecates it for set_date, which the older ones lack.
+static void sngl_calendar_select(GtkCalendar *c, int y, int m, int d) {
+    GDateTime *dt = g_date_time_new_utc(y, m, d, 0, 0, 0);
+    if (dt == NULL) return;
+    G_GNUC_BEGIN_IGNORE_DEPRECATIONS
+    gtk_calendar_select_day(c, dt);
+    G_GNUC_END_IGNORE_DEPRECATIONS
+    g_date_time_unref(dt);
+}
+
 static GtkWidget *sngl_slot_anchor(GtkBox *box, GtkWidget *a) {
     if (a != NULL && gtk_widget_get_parent(a) == GTK_WIDGET(box)) return a;
     GtkWidget *w = gtk_label_new(NULL);
@@ -517,17 +516,6 @@ import (
 	"unsafe"
 )
 
-type PathCmd struct {
-	Op  string
-	X   float64
-	Y   float64
-	Cx1 float64
-	Cy1 float64
-	Cx2 float64
-	Cy2 float64
-	R   float64
-}
-
 // _snglCairoScale maps a drawing's own coordinate space onto the size GTK is
 // drawing at. An empty mode leaves the context alone, which is what a canvas
 // shown at its own size wants.
@@ -555,12 +543,10 @@ func _snglCairoScale(cr *C.cairo_t, pw, ph, w, h int, mode string) {
 type Measurement struct {
 	Px  float64
 	Em  float64
-	Vw  float64
-	Vh  float64
-	Pct float64
+	Rem float64
 }
 
-type CanvasStyle struct {
+type Style struct {
 	Fill        snglcolor.Color
 	Stroke      snglcolor.Color
 	StrokeWidth float64
@@ -600,7 +586,7 @@ func New() *Model {
 	return m
 }
 
-func Paint(ctx *C.cairo_t, style CanvasStyle) {
+func Paint(ctx *C.cairo_t, style Style) {
 	if style.Fill.A > 0 {
 		Source(ctx, style.Fill)
 		if style.Stroke.A > 0 {
@@ -618,25 +604,25 @@ func Paint(ctx *C.cairo_t, style CanvasStyle) {
 	}
 }
 
-func Source(ctx *C.cairo_t, c snglcolor.Color) {
-	C.cairo_set_source_rgba(ctx, C.double((float64(c.R) / 255.0)), C.double((float64(c.G) / 255.0)), C.double((float64(c.B) / 255.0)), C.double((float64(c.A) / 255.0)))
+func Source(ctx *C.cairo_t, c__r0 snglcolor.Color) {
+	C.cairo_set_source_rgba(ctx, C.double((float64(c__r0.R) / 255.0)), C.double((float64(c__r0.G) / 255.0)), C.double((float64(c__r0.B) / 255.0)), C.double((float64(c__r0.A) / 255.0)))
 }
 
-func LineCap(name string) C.cairo_line_cap_t {
-	if name == "round" {
+func LineCap(cap__r0 string) C.cairo_line_cap_t {
+	if cap__r0 == "round" {
 		return C.cairo_line_cap_t(C.int(1))
 	}
-	if name == "square" {
+	if cap__r0 == "square" {
 		return C.cairo_line_cap_t(C.int(2))
 	}
 	return C.cairo_line_cap_t(C.int(0))
 }
 
-func LineJoin(name string) C.cairo_line_join_t {
-	if name == "round" {
+func LineJoin(join string) C.cairo_line_join_t {
+	if join == "round" {
 		return C.cairo_line_join_t(C.int(1))
 	}
-	if name == "bevel" {
+	if join == "bevel" {
 		return C.cairo_line_join_t(C.int(2))
 	}
 	return C.cairo_line_join_t(C.int(0))
@@ -736,7 +722,7 @@ func (c *Frame__slot0Instance) _canvasDraw0(ctx *C.cairo_t) {
 	C.cairo_save(ctx)
 	C.cairo_new_sub_path(ctx)
 	C.cairo_arc(ctx, C.double(20.0), C.double(20.0), C.double(c.__prop___p0), C.double(0.0), C.double(6.283185307179586))
-	Paint(ctx, CanvasStyle{Fill: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, Stroke: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, StrokeWidth: 1.0, LineCap: "butt", LineJoin: "miter", FontSize: 16.0, FontFamily: "sans-serif"})
+	Paint(ctx, Style{Fill: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, Stroke: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, StrokeWidth: 1.0, LineCap: "butt", LineJoin: "miter", FontSize: 16.0, FontFamily: "sans-serif"})
 	C.cairo_restore(ctx)
 }
 
@@ -865,8 +851,8 @@ window.__sngl_boot = () => {
     __n0.textContent = "hits " + String(hits);
     __n3.appendChild(__n0);
     let __n4 = document.createElement("canvas");
-    __n4.setAttribute("width", { px: 40, em: 0, vw: 0, vh: 0, pct: 0 });
-    __n4.setAttribute("height", { px: 40, em: 0, vw: 0, vh: 0, pct: 0 });
+    __n4.setAttribute("width", 40);
+    __n4.setAttribute("height", 40);
     __n3.appendChild(__n4);
     let __n5 = document.createElement("button");
     __n5.disabled = false;
@@ -987,8 +973,8 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:10fdba57ac3f7991344135d42a9921ee
+pass sha256:8ed37467494ad7b0dbd337e9e5873bf0
 -- run/go/gtk4 --
-pass sha256:3d96a709e597769128bb3fc9e31fc42c
+pass sha256:77620ff558589187a74f92601bc6bae2
 -- run/none/html --
-pass sha256:ae0fd8ef9409f31c63dd5ac7753ae6cc
+pass sha256:ef7be1df5da1f132ae41442c079264f5

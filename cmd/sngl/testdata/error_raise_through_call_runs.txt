@@ -152,7 +152,7 @@ window {
     noRaise()
 }
 -- testrun/bubbletea/go/app.sngl/argument/1 --
-sha256:2213aeb5b02fb1cfa3631e60ce8bea5f
+sha256:4d3c7dd7ad8cd9153a174dfdaa0cc017
 {
   "results": [
     {
@@ -162,7 +162,7 @@ sha256:2213aeb5b02fb1cfa3631e60ce8bea5f
   ]
 }
 -- testrun/bubbletea/go/app.sngl/direct/1 --
-sha256:d6e9b914bee906882f01b44366975604
+sha256:8d9989255ff89f4b7637ff84b1019c02
 {
   "results": [
     {

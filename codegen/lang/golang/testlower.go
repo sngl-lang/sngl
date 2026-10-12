@@ -65,7 +65,7 @@ func lowerTestStmt(s ir.Stmt, gc *GoIRContext) []string {
 		if line, ok := lowerEventTrigger(call, gc); ok {
 			return []string{line}
 		}
-		if c := call.Call; c != nil && c.Func != nil && c.Func.Receiver == "Test" {
+		if c := call.Call; ir.IsTestMethodCall(c) {
 			if lines, ok := lowerTestSetContext(c, gc); ok {
 				return lines
 			}
@@ -241,58 +241,28 @@ func lowerTestSetContext(c *ir.Call, gc *GoIRContext) ([]string, bool) {
 // Event name (its callee is a chain of SelectExprs ending in the event
 // field). Lowers to `<receiver>.<id><Event>()`, which platform codegen
 // (gtk4 today) surfaces as a method on *Model that fires the matching
-// widget signal / event so the test exercises the real bridge.
+// widget signal / event so the test exercises the real bridge. One copy of a
+// node a loop rendered, `c.row[1].change(true)`, is its invoker's `At`
+// variant, handed the index first.
 func lowerEventTrigger(call *ir.CallStmt, gc *GoIRContext) (string, bool) {
 	c := call.Call
-	recv, id, ok := codegen.EventTriggerTarget(c)
+	tt, ok := codegen.EventTriggerTarget(c)
 	if !ok {
 		return "", false
 	}
-	methodName := id + ExportName(c.Event)
+	methodName := tt.ID + ExportName(c.Event)
+	// The event's own arguments, as the program would emit them: the invoker
+	// takes what the widget would have reported, which is what the event's
+	// parameters are.
 	var args []string
+	if tt.Index != nil {
+		methodName = codegen.InvokerAt(methodName)
+		args = append(args, gc.EvalExpr(tt.Index))
+	}
 	for _, a := range c.Args {
-		// A payload with no fields says nothing, and a test may leave it out,
-		// so an invoker takes none: `c.board.click()` and
-		// `c.board.click({})` are one call.
-		if emptyPayload(a.Value.ExprType()) {
-			continue
-		}
-		args = append(args, eventPayloadArg(a.Value, gc))
+		args = append(args, gc.EvalExpr(a.Value))
 	}
-	return fmt.Sprintf("%s.%s(%s)", recv, methodName, strings.Join(args, ", ")), true
-}
-
-// eventPayloadArg is what an invoker is handed for an event's payload: the
-// widget-level value, which for every payload a Go target's widget produces
-// is the payload's `value` -- fyne's OnChanged takes the entry's text, not an
-// InputEvent. The android lowerer reads the same field for
-// performTextReplacement.
-func eventPayloadArg(e ir.Expr, gc *GoIRContext) string {
-	if sl, ok := e.(*ir.StructLit); ok {
-		for _, f := range sl.Fields {
-			if f.Name == "value" {
-				return gc.EvalExpr(f.Value)
-			}
-		}
-	}
-	if t := e.ExprType(); t != nil && t.Kind == ir.TypeStruct {
-		if sd, ok := t.Decl.(*ir.StructDef); ok {
-			for _, f := range sd.Fields {
-				if f.Name == "value" {
-					return gc.EvalExpr(e) + ".Value"
-				}
-			}
-		}
-	}
-	return gc.EvalExpr(e)
-}
-
-func emptyPayload(t *ir.Type) bool {
-	if t == nil || t.Kind != ir.TypeStruct {
-		return false
-	}
-	sd, ok := t.Decl.(*ir.StructDef)
-	return ok && sd != nil && len(sd.Fields) == 0
+	return fmt.Sprintf("%s.%s(%s)", tt.Recv, methodName, strings.Join(args, ", ")), true
 }
 
 // lowerTestSnapshot recognises a `t.snapshot(name)` call and emits a
@@ -300,7 +270,7 @@ func emptyPayload(t *ir.Type) bool {
 // runtime exposed by *testing.T-style wrappers (testagent.T.Snapshot in
 // agent mode; native mode uses a small shim — see platform code).
 func lowerTestSnapshot(c *ir.Call, gc *GoIRContext) (string, bool) {
-	if c.Func == nil || c.Func.Receiver != "Test" || c.Func.Name != "snapshot" {
+	if !ir.IsTestCall(c, ir.TestSnapshotID) {
 		return "", false
 	}
 	// Args[0] is the t receiver; Args[1] is the snapshot name.
@@ -316,7 +286,7 @@ func lowerTestAssert(call *ir.CallStmt, gc *GoIRContext) (string, bool) {
 	if c == nil || c.Func == nil {
 		return "", false
 	}
-	if c.Func.Receiver != "Test" || c.Func.Name != "assert" {
+	if !ir.IsTestCall(c, ir.TestAssertID) {
 		return "", false
 	}
 	// Args[0] is the t receiver; assert expression is Args[1].
@@ -432,4 +402,10 @@ func wrapperHeader(suffix string, mode TestEmitMode) (funcName, paramType string
 		return "test" + suffix, "testagent.T"
 	}
 	return "Test" + suffix, "testing.T"
+}
+
+// A test body's sngl:test calls are answered here, where the body is lowered,
+// rather than by an emitter.
+func init() {
+	codegen.DeclareLangImplements(langGo, ir.TestAssertID, ir.TestSnapshotID, ir.TestSetContextID)
 }

@@ -23,7 +23,7 @@ component Search() ui.node {
     var typed = ""
 
     html.div {
-        html.input(type="search", @input(e) { typed = e.value })
+        html.input(type="search", @input(e) { typed = e.currentTarget.value })
         html.div(hidden=typed == "") {
             html.span(innerText=typed)
         }
@@ -68,12 +68,12 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { typed__inst0: "", typed__inst1: "", visible__inst2: true };
+  var state = { typed__inst0: "", typed__inst1: "", visible__inst0: true };
   var $0 = document.getElementById("$0");
   var __n3 = document.querySelector('[data-sngl-id="__n3"]');
   var __n4 = document.querySelector('[data-sngl-id="__n4"]');
   $0.addEventListener("input", function(e) {
-    state.typed__inst1 = e.target.value;
+    state.typed__inst1 = e.currentTarget.value;
     __n3.hidden = state.typed__inst1 === "";
     __n4.innerText = state.typed__inst1;
   });
@@ -111,12 +111,12 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { typed__inst0: "", typed__inst1: "", visible__inst2: true };
+  var state = { typed__inst0: "", typed__inst1: "", visible__inst0: true };
   var $0 = document.getElementById("$0");
   var __n1 = document.querySelector('[data-sngl-id="__n1"]');
   var __n2 = document.querySelector('[data-sngl-id="__n2"]');
   $0.addEventListener("input", function(e) {
-    state.typed__inst0 = e.target.value;
+    state.typed__inst0 = e.currentTarget.value;
     __n1.hidden = state.typed__inst0 === "";
     __n2.innerText = state.typed__inst0;
   });
@@ -129,4 +129,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:9743f2d2c01a4cc1b92864893c468569
+pass sha256:9dc2a8821adb55689f987c54496f81be

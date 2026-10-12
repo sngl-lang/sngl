@@ -2,7 +2,6 @@ import ui "sngl:ui"
 import time "sngl:time"
 import . "sngl:macro"
 import . "sngl:internal/marks"
-import tree "sngl:tree"
 import build "sngl:build"
 import shapes "sngl:ui/draw"
 import kt "sngl:language/kotlin"
@@ -23,32 +22,51 @@ import gen "sngl:x/gen"
 #[gen.native("android")]
 component platform(
     // Kotlin package / Android application ID.
-    const package string,
+    const package       string,
     // Display name used in AndroidManifest.xml.
-    const appName string,
+    const appName       string,
     // Path to a launcher icon asset.
-    const icon string,
+    const icon          string,
     // Emit a full Gradle project or just Compose sources.
-    const main bool,
+    const main          bool,
     // Include Gradle wrapper + build scripts (default: true; set "false" to skip).
-    const gradle bool,
+    const gradle        bool,
     // Theme accent color (hex).
-    const color string,
+    const color         string,
     // Absolute path to the project root. Set automatically by `sngl generate`; used to resolve relative asset paths.
-    const projectDir string,
+    const projectDir    string,
     // Which Android runtime to test against under `sngl test`.
     //   "robolectric": JVM simulation, fast, no emulator (default).
     //   "device":      APK on a real emulator/device via adb.
-    const testRunner string,
+    const testRunner    string,
     // Toolchain combo — a known-good set of Gradle/AGP/Kotlin/Compose/SDK
     // versions (see internal/androidtc). "stable" (default) or "next".
-    const toolchain string,
+    const toolchain     string,
     // Override compileSdk / targetSdk (0 = combo default).
-    const sdk int,
+    const sdk           int,
     // Override minSdk (0 = default 26).
-    const minSdk int,
+    const minSdk        int,
     // Override the Gradle distribution version (unset = combo default).
     const gradleVersion string,
+    // What its generated code introduces beside a program's names: the types,
+    // locals and parameters the screen itself declares, and `Toast`, which the
+    // language's Alert intrinsic writes as text. A Compose name the screen
+    // imports is not here: each is imported through the file's import set,
+    // which aliases it around a program's own declaration of that name.
+    const reservedNames list<string> = [
+        "toast",
+        "golib",
+        "mainScreen",
+        "mainScreenState",
+        "errorEvent",
+        "snglRaise",
+        "color",
+        "canvasStyle",
+        "pathCmd",
+        "state",
+        "context",
+        "slotContent",
+    ],
 ) build.platform {
     gen.run(@run(dir, args) {
         install(dir)
@@ -69,36 +87,102 @@ func buildApk(dir string, out string)
 #[intrinsic("android.install", build)]
 func install(dir string)
 
-// --- The intrinsics ---
+// --- The composables ---
+//
+// A composable is declared as what it is: `#[kt.native(name, import)]` on a
+// bodyless component names the Compose function, and the import that reaches
+// it. A program describes one the platform never heard of the same way, and
+// these are written in no other form than that, so they are also the examples.
 //
 // A prop's name is the Compose argument it is emitted as, in declaration
-// order. Three names are the emitter's own: `modifier` takes a Style and
-// becomes the `Modifier` chain built from it, `chain` appends further Modifier
-// calls verbatim after those, and `args` is arguments spelled in Kotlin, for a
-// value — `Alignment.CenterVertically`, a `MaterialTheme` shape — that SNGL
-// has no way to write.
+// order, and its value is written as any SNGL value is -- a host value
+// Compose takes there, `Alignment.CenterVertically` or a `MaterialTheme`
+// shape, is a `#[kt.native]` const declared below. Four names are the
+// emitter's own: `modifier` takes a Style and becomes the `Modifier` chain
+// built from it, `then` appends further Modifier values to that chain, and
+// `colors` and `shape`, given a Style, are rendered as the widget's own colour
+// set and outline.
+//
+// Nothing here is Kotlin written as text. Every name the screen writes is
+// imported through the file's import set, which aliases one a program's own
+// declaration already holds, and text could not be re-spelled to follow it.
 //
 // A func-typed prop is a Compose lambda argument, and the override supplies
 // the lambda: its body is emitted where the argument goes, so what the callback
 // does is ordinary code in this file rather than a case in the codegen. A
-// parameter typed as an event payload is the SNGL event, built from the value
-// Compose passes; one typed as that value is the value. A callback Compose
-// passes nothing to has neither, so the override names the value itself and
-// builds the event from the value it does have — `change({value = opt})`
-// in radio below. An event is handed its payload, never a value to build one
-// from: a shorthand for a single-field payload would stop checking the moment
-// that payload gained a second field.
+// callback's parameters are the values Compose passes, and the override writes
+// the prop the callback reports and hands the value on to the SNGL event:
+// `func(on) { checked = on; change(on) }`. A callback Compose passes nothing to
+// has no value to hand on, so the override names the value itself --
+// `value = opt` in radio below.
 //
 // A **slot** is the other kind of lambda Compose takes: content rather than a
 // callback. A named slot a call site populated is emitted as that argument,
 // and one whose body renders nothing is left out — an absent argument and one
 // given empty content are two different widgets.
 //
-// The id is `android:` plus the composable's name — namespaced by the
-// platform whose codegen answers to it, so a platform primitive can never
-// collide with a stdlib intrinsic or with another platform's. It names no
-// Kotlin package: the platform codegen emits the call, not the language
-// translator.
+// What this platform's codegen answers for itself rather than by a call --
+// the screen, a nav link, a markup flow, the date field it ships -- is an
+// `#[intrinsic("android:…")]`, namespaced by the platform so it can never
+// collide with a stdlib intrinsic or with another platform's.
+
+// --- Host values ---
+//
+// Compose's own values a composable's props take, declared so that each is
+// spelled through the import set rather than as text.
+
+// Compose's Modifier: what `then` takes, built from `modifier` -- the empty
+// chain -- and the Modifier calls below. Named in full, as a native type is:
+// a type is spelled where no import set is at hand.
+#[kt.native("androidx.compose.ui.Modifier")]
+struct Modifier {}
+
+// The empty chain every Modifier starts from: Compose's `Modifier` companion.
+#[kt.native("Modifier", "androidx.compose.ui.Modifier")]
+const modifier Modifier
+
+#[kt.native("fillMaxSize", "androidx.compose.foundation.layout.fillMaxSize", method)]
+const func Modifier.fillMaxSize() Modifier
+
+#[kt.native("fillMaxWidth", "androidx.compose.foundation.layout.fillMaxWidth", method)]
+const func Modifier.fillMaxWidth() Modifier
+
+#[kt.native("fillMaxHeight", "androidx.compose.foundation.layout.fillMaxHeight", method)]
+const func Modifier.fillMaxHeight() Modifier
+
+#[kt.native("androidx.compose.foundation.ScrollState")]
+struct ScrollState {}
+
+// A scroll position kept across recompositions. A composable call, so it is
+// read where a composable is drawn -- as a prop's value, which is where every
+// one of these lands.
+#[kt.native("rememberScrollState", "androidx.compose.foundation.rememberScrollState")]
+const func rememberScrollState() ScrollState
+
+#[kt.native("verticalScroll", "androidx.compose.foundation.verticalScroll", method)]
+const func Modifier.verticalScroll(state ScrollState) Modifier
+
+#[kt.native("androidx.compose.ui.Alignment.Vertical")]
+struct VerticalAlignment {}
+
+#[kt.native("Alignment.Top", "androidx.compose.ui.Alignment")]
+const alignTop VerticalAlignment
+
+#[kt.native("Alignment.CenterVertically", "androidx.compose.ui.Alignment")]
+const alignCenterVertically VerticalAlignment
+
+#[kt.native("Alignment.Bottom", "androidx.compose.ui.Alignment")]
+const alignBottom VerticalAlignment
+
+// The theme's accent, read off MaterialTheme where it is drawn.
+#[kt.native("MaterialTheme.colorScheme.primary", "androidx.compose.material3.MaterialTheme")]
+const primaryColor ComposeColor
+
+#[kt.native("androidx.compose.ui.graphics.Shape")]
+struct Shape {}
+
+#[kt.native("MaterialTheme.shapes.medium", "androidx.compose.material3.MaterialTheme")]
+const mediumShape Shape
 
 // The screen: what a `ui.window` is on android, which shows one. It is not
 // a composable: MainScreen draws its content, and a program declares one
@@ -110,62 +194,62 @@ func install(dir string)
 // activity finishes when no screen is drawn after it.
 #[intrinsic("android:Screen")]
 component Screen(
-    visible bool = true,
-    onBack func(),
+    visible  bool = true,
+    onBack   func(),
     children ...component ui.node,
 ) root
 
 #[gen.renders(identity)]
-#[intrinsic("android:Column")]
+#[kt.native("Column", "androidx.compose.foundation.layout.Column")]
 component Column(
     modifier ui.Style,
-    chain list<string>,
+    then     list<Modifier>,
     children ...component,
 ) ui.node
 
 #[gen.renders(identity)]
-#[intrinsic("android:Box")]
+#[kt.native("Box", "androidx.compose.foundation.layout.Box")]
 component Box(
     modifier ui.Style,
-    chain list<string>,
+    then     list<Modifier>,
     children ...component,
 ) ui.node
 
 #[gen.renders(identity)]
-#[intrinsic("android:Row")]
+#[kt.native("Row", "androidx.compose.foundation.layout.Row")]
 component Row(
-    modifier ui.Style,
-    chain list<string>,
-    args list<string>,
-    children ...component,
+    modifier          ui.Style,
+    then              list<Modifier>,
+    verticalAlignment VerticalAlignment,
+    children          ...component,
 ) ui.node
 
 #[gen.renders(identity)]
-#[intrinsic("android:Spacer")]
+#[kt.native("Spacer", "androidx.compose.foundation.layout.Spacer")]
 component Spacer(
     modifier ui.Style,
-    chain list<string>,
+    then     list<Modifier>,
 ) ui.node
 
 #[gen.renders(identity)]
-#[intrinsic("android:Text")]
+#[kt.native("Text", "androidx.compose.material3.Text")]
 component Text(
-    text string,
+    text     string,
     modifier ui.Style,
     // Typography, as Compose's own `style` argument: a TextStyle built from
     // the Style's font and colour fields.
-    style ui.Style,
-    args list<string>,
+    style    ui.Style,
+    color    ComposeColor,
 ) ui.node
 
 #[gen.renders(identity)]
-#[intrinsic("android:HorizontalDivider")]
+#[kt.native("HorizontalDivider", "androidx.compose.material3.HorizontalDivider")]
 component HorizontalDivider(
     modifier ui.Style,
 ) ui.node
 
 #[gen.renders(identity)]
-#[intrinsic("android:CircularProgressIndicator")]
+#[kt.native("CircularProgressIndicator", "androidx.compose.material3.CircularProgressIndicator")]
 component CircularProgressIndicator(
     modifier ui.Style,
 ) ui.node
@@ -176,7 +260,7 @@ component CircularProgressIndicator(
 // prop is a func returning `float32`: `float` is a Kotlin Double, and the
 // declaration is what says otherwise.
 #[gen.renders(identity)]
-#[intrinsic("android:LinearProgressIndicator")]
+#[kt.native("LinearProgressIndicator", "androidx.compose.material3.LinearProgressIndicator")]
 component LinearProgressIndicator(
     progress func() float32,
     modifier ui.Style,
@@ -186,55 +270,65 @@ component LinearProgressIndicator(
 // surface, so a background in the modifier lands behind the pill rather than
 // on it -- the colour has to go through the widget's own colour set.
 #[gen.renders(identity)]
-#[intrinsic("android:Button")]
+#[kt.native("Button", "androidx.compose.material3.Button")]
 component Button(
-    onClick func(),
+    onClick  func(),
     modifier ui.Style,
-    colors ui.Style,
-    shape ui.Style,
+    colors   ui.Style,
+    shape    ui.Style,
     children ...component,
 ) ui.node
 
 #[gen.renders(identity)]
-#[intrinsic("android:Badge")]
+#[kt.native("Badge", "androidx.compose.material3.Badge")]
 component Badge(
     modifier ui.Style,
     children ...component,
 ) ui.node
 
 #[gen.renders(identity)]
-#[intrinsic("android:Card")]
+#[kt.native("Card", "androidx.compose.material3.Card")]
 component Card(
     modifier ui.Style,
     children ...component,
 ) ui.node
 
 #[gen.renders(identity)]
-#[intrinsic("android:TabRow")]
+#[kt.native("TabRow", "androidx.compose.material3.TabRow")]
 component TabRow(
     selectedTabIndex int,
-    children ...component,
+    children         ...component,
+) ui.node
+
+// One tab of a TabRow; `text` is its label, which Compose takes as content.
+#[gen.renders(identity)]
+#[kt.native("Tab", "androidx.compose.material3.Tab")]
+component Tab(
+    selected bool,
+    enabled  bool,
+    onClick  func(),
+    text     component ui.node,
 ) ui.node
 
 #[gen.renders(identity)]
-#[intrinsic("android:Checkbox")]
+#[kt.native("Checkbox", "androidx.compose.material3.Checkbox")]
 component Checkbox(
-    checked bool,
+    checked         bool,
     onCheckedChange func(bool),
 ) ui.node
 
 #[gen.renders(identity)]
-#[intrinsic("android:Switch")]
+#[kt.native("Switch", "androidx.compose.material3.Switch")]
 component Switch(
-    checked bool,
+    checked         bool,
     onCheckedChange func(bool),
 ) ui.node
 
 #[gen.renders(identity)]
-#[intrinsic("android:RadioButton")]
+#[kt.native("RadioButton", "androidx.compose.material3.RadioButton")]
 component RadioButton(
     selected bool,
-    onClick func(),
+    onClick  func(),
 ) ui.node
 
 // `label` is the floating caption, and it is a slot rather than a prop
@@ -242,28 +336,43 @@ component RadioButton(
 // empty gets no `label` argument at all, which is not the same widget as one
 // labelled with nothing.
 #[gen.renders(identity)]
-#[intrinsic("android:OutlinedTextField")]
+#[kt.native("OutlinedTextField", "androidx.compose.material3.OutlinedTextField")]
 component OutlinedTextField(
-    value string,
-    minLines int,
-    readOnly bool,
-    modifier ui.Style,
-    // Compose passes the new text; the SNGL event a handler reads is built
-    // from it at the boundary, which is what declaring the payload says.
-    onValueChange func(e ui.InputEvent),
-    label component ui.node,
+    value         string,
+    minLines      int,
+    readOnly      bool,
+    modifier      ui.Style,
+    // Compose passes the new text.
+    onValueChange func(value string),
+    label         component ui.node,
+) ui.node
+
+// A field a date is typed into, with a button opening Material's date picker.
+// It is Kotlin the platform ships with the app (codegen/platform/android/
+// datefield.kt), since the half-typed text and whether the dialog is open are
+// state its render reads, and a const override has nowhere to hold that.
+// `onValueChange` is a date once one is typed or picked, or null when the
+// field is cleared.
+#[gen.renders(identity)]
+#[intrinsic("android:SnglDateField")]
+component SnglDateField(
+    value         option<time.date>,
+    label         string,
+    enabled       bool,
+    modifier      ui.Style,
+    onValueChange func(value option<time.date>),
 ) ui.node
 
 #[gen.renders(identity)]
-#[intrinsic("android:Dialog")]
+#[kt.native("Dialog", "androidx.compose.ui.window.Dialog")]
 component Dialog(
     onDismissRequest func(),
-    children ...component,
+    children         ...component,
 ) ui.node
 
 #[gen.renders(identity)]
-#[intrinsic("android:Surface")]
+#[kt.native("Surface", "androidx.compose.material3.Surface")]
 component Surface(
-    args list<string>,
+    shape    Shape,
     children ...component,
 ) ui.node

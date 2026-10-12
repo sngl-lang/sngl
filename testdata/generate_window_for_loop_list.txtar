@@ -20,7 +20,7 @@ import nav "sngl:ui/nav"
 output { none { html } }
 
 struct Item {
-    slug string = ""
+    slug  string = ""
     title string = ""
 }
 

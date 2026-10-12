@@ -86,7 +86,7 @@ func collectReactiveCallees(pkg *ir.Package) map[*ir.Func]bool {
 	out := make(map[*ir.Func]bool)
 	collectCalleesInStmts(out, pkg.Body)
 	for _, comp := range pkg.Components {
-		collectCalleesInStmts(out, comp.Body)
+		collectCalleesInStmts(out, comp.Stmts)
 	}
 	return out
 }

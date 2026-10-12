@@ -36,8 +36,8 @@ import . "sngl:internal/marks"
 #[intrinsic("android:Flow")]
 component Flow(
     modifier ui.Style,
-    style ui.Style,
-    content ...component markup.span,
+    style    ui.Style,
+    content  ...component markup.span,
 ) ui.node
 
 // One run of words. `text` is the literal a leaf carries, `spanStyle` what
@@ -50,12 +50,12 @@ component Flow(
 // a prop is opaque to the `if` that would ask it.
 #[intrinsic("android:Span")]
 component Span(
-    text string,
-    href string,
+    text      string,
+    href      string,
     spanStyle markup.SpanStyle,
-    kind markup.Token,
-    color color,
-    content ...component markup.span,
+    kind      markup.Token,
+    color     color,
+    content   ...component markup.span,
 ) markup.span
 
 const component markup.richText[platform] {

@@ -42,7 +42,7 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { scores__inst0: null, total__inst0: 0, visible__inst1: true };
+  var state = { scores__inst0: null, total__inst0: 0, visible__inst0: true };
   state.scores__inst0 = /* @__PURE__ */ new Map([["alice", 10], ["bob", 20]]);
   function String(v) {
     return "" + v;
@@ -65,4 +65,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:4cd090ad2d71696b19c8ecea031dc610
+pass sha256:e898b2b69ecdaf69fff5eeae7cd96ac1

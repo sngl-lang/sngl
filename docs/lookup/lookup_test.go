@@ -133,7 +133,7 @@ func TestLookupStdlibDottedLeaf(t *testing.T) {
 }
 
 func TestLookupStdlibField(t *testing.T) {
-	res, err := lookup.Lookup("sngl", "Style", "padding")
+	res, err := lookup.Lookup("sngl:ui", "Style", "padding")
 	if err != nil {
 		t.Fatal(err)
 	}

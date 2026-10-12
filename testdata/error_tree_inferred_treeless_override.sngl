@@ -5,17 +5,15 @@
 // when the answer arrives. Reading it late checks the base body once per
 // registered override, and the override's body never.
 
-import tree "sngl:tree"
 import ui "sngl:ui"
 import "sngl:platform/html"
 
-#[tree.none]
-component logger() {
-    ui.text(value="base") // ERROR(check) "component logger names no tree, so it may not contain the node component text"
+component logger<F>() F {
+    ui.text(value="base") // ERROR(check) "component logger takes the family it is placed in, so it may not contain the node component text"
 }
 
 component logger[html.platform] {
-    ui.text(value="ovr") // ERROR(check) "component logger names no tree, so it may not contain the node component text"
+    ui.text(value="ovr") // ERROR(check) "component logger takes the family it is placed in, so it may not contain the node component text"
 }
 
 ui.window {

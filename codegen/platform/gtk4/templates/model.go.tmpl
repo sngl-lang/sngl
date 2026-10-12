@@ -5,7 +5,7 @@ package {{.Package}}
 #cgo pkg-config: gtk4
 #include <gtk/gtk.h>
 #include <stdlib.h>
-
+{{.CLinks}}
 extern void snglGoDispatch(int idx);
 // g_signal_connect callbacks are invoked with the signal's signature
 // (self, ...args, user_data). This one is (instance, user_data), which
@@ -56,6 +56,18 @@ static void sngl_emit(gpointer instance, const char *signal) {
 // cast belongs -- it is C, which is what this preamble is.
 static void sngl_unref_pixbuf(GdkPixbuf *p) {
     if (p != NULL) g_object_unref(p);
+}
+
+// Selects a day the way a click on it does, for gtk4's datepicker override
+// (selectDay) and a test's invoker. select_day is the call every GTK 4 has;
+// 4.20 deprecates it for set_date, which the older ones lack.
+static void sngl_calendar_select(GtkCalendar *c, int y, int m, int d) {
+    GDateTime *dt = g_date_time_new_utc(y, m, d, 0, 0, 0);
+    if (dt == NULL) return;
+    G_GNUC_BEGIN_IGNORE_DEPRECATIONS
+    gtk_calendar_select_day(c, dt);
+    G_GNUC_END_IGNORE_DEPRECATIONS
+    g_date_time_unref(dt);
 }
 {{- if .NeedsSlotAnchor}}
 
@@ -201,6 +213,25 @@ import (
 )
 
 {{.LangHelpers}}
+{{- if .NeedsCalendarDate}}
+// snglCalendarDate is the day a GtkCalendar has selected, as the *time.Time an
+// option<date> is in Go. A calendar always has a day selected.
+func snglCalendarDate(c *C.GtkCalendar) *time.Time {
+	dt := C.gtk_calendar_get_date(c)
+	defer C.g_date_time_unref(dt)
+	t := time.Date(int(C.g_date_time_get_year(dt)), time.Month(C.g_date_time_get_month(dt)),
+		int(C.g_date_time_get_day_of_month(dt)), 0, 0, 0, 0, time.UTC)
+	return &t
+}
+
+// snglCalendarSelect selects t's day on a GtkCalendar; nil selects nothing.
+func snglCalendarSelect(c *C.GtkCalendar, t *time.Time) {
+	if t == nil {
+		return
+	}
+	C.sngl_calendar_select(c, C.int(t.Year()), C.int(t.Month()), C.int(t.Day()))
+}
+{{end}}
 {{- if .NeedsBoolToInt}}
 func boolToInt(b bool) int {
 	if b {

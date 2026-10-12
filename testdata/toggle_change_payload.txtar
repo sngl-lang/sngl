@@ -1,36 +1,36 @@
-A checkbox's and a toggle's `@change` carries a `ToggleEvent`, and its
-`checked` is the control's state after the flip, on every target.
+A checkbox's and a toggle's `@change(checked bool)` hands its handler the
+control's state after the flip, on every target.
 
-Both used to be declared with a `ChangeEvent`, whose `value` is a string no
-host has for an on/off control. So `e.value` was whatever each target happened
-to spell: `"on"` on html, a `bool` assigned to a string on fyne and gtk4
-(`box_change_handler(b bool) { got = b }`), an undefined `e` on bubbletea and
-on gtk4's toggle, `on.value` on android. The payload is now each host's own
-answer: `e.target.checked`, fyne's `OnChanged(b bool)`, gtk4's
-`gtk_check_button_get_active` and `gtk_switch_get_active`, Compose's
-`onCheckedChange` argument, and on bubbletea the override's own `!checked`.
+Both were once declared with a payload whose `value` is a string no host has
+for an on/off control, so `e.value` was whatever each target happened to
+spell. The parameter is now each host's own answer, which each override reads
+and hands on: `e.currentTarget.checked`, fyne's `OnChanged(b bool)`, gtk4's
+`gtk_check_button_get_active` and `gtk_switch_get_active` on the widget its
+signal fired on, Compose's `onCheckedChange` argument, and on bubbletea the
+override's own `!checked`.
 
-The bound `:checked` reads the same payload rather than toggling. A toggle
-assumed the event fires once per user flip, and fyne's `SetChecked` inside the
-box's own `OnChanged` fired it again, flipping the bound var back and forth
-until the stack ran out. bubbletea is the target with no host state to report,
-so its override computes the new state once and both the write-back and the
-payload read that one value: computed twice, the write-back flipped the var and
-the payload flipped it back.
+The override writes `checked` from that same value before it hands it on, and
+the write is the bound `:checked`'s write-back, so the binding reads what the
+host reported rather than toggling. A toggle assumed the event fires once per
+user flip, and fyne's `SetChecked` inside the box's own `OnChanged` fired it
+again, flipping the bound var back and forth until the stack ran out.
+bubbletea is the target with no host state to report, so its override flips
+`checked` once and hands on what it now holds: computed twice, the write-back
+flipped the var and the handler's value flipped it back.
 
 gtk4's switch reports a flip only through GObject's `notify::active`, whose
 callback is `(instance, pspec, user_data)`, so `sngl_connect` takes a second
 trampoline for a notification. Before it the toggle was wired to nothing.
 
-A test drives each through the platform's input path, handing the payload
-where the host would have it: onto the element on html, into the widget's
-state on gtk4 (setting it is what fires the signal), into the callback on fyne.
+A test drives each through the platform's input path, handing the state where
+the host would have it: onto the element on html, into the widget's state on
+gtk4 (setting it is what fires the signal), into the callback on fyne.
 bubbletea and android press the key and click the control, which flips it
-whatever the payload says, so the test flips from the state it is in.
+whatever the test passed, so the test flips from the state it is in.
 
-deny * `\bChangeEvent\b` -- neither control's payload is a ChangeEvent any more
+deny * `\bToggleEvent\b` -- the handler is handed the state itself, not a struct holding it
 deny out/go/gtk4/model.go `bool\(C\.` -- a gboolean is C.int, which Go converts to no bool
-deny out/go/bubbletea/model.go `\be\.` -- the payload is taken apart where it is built; no event reaches the key case
+deny out/go/bubbletea/model.go `\be\.` -- the state is read where the press is handled; no event reaches the key case
 -- app.sngl --
 import . "sngl:ui"
 import . "sngl:test"
@@ -55,29 +55,29 @@ component main node {
     var lit = false
     var seen = "none"
     vbox {
-        checkbox #box(:checked=on, label="a", @change(e) { seen = "box {e.checked} {on}" })
+        checkbox #box(:checked=on, label="a", @change(e) { seen = "box {e} {on}" })
         toggle #sw(checked=lit, label="b", @change(e) {
-            lit = e.checked
-            seen = "sw {e.checked}"
+            lit = e
+            seen = "sw {e}"
         })
         text(value=seen)
     }
 }
 
 func testCheckboxCarriesChecked(t Test, c main) {
-    c.box.change({checked=true})
+    c.box.change(true)
     t.assert(c.seen == "box true true")
     t.assert(c.on == true)
-    c.box.change({checked=false})
+    c.box.change(false)
     t.assert(c.seen == "box false false")
     t.assert(c.on == false)
 }
 
 func testToggleCarriesChecked(t Test, c main) {
-    c.sw.change({checked=true})
+    c.sw.change(true)
     t.assert(c.seen == "sw true")
     t.assert(c.lit == true)
-    c.sw.change({checked=false})
+    c.sw.change(false)
     t.assert(c.seen == "sw false")
     t.assert(c.lit == false)
 }
@@ -96,10 +96,6 @@ import (
 	"fmt"
 	"os"
 )
-
-type ToggleEvent struct {
-	Checked bool
-}
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
@@ -238,21 +234,19 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case msg.Code == tea.KeyTab && msg.Mod == tea.ModShift:
 			m.__focusPrev()
 		case msg.Code == tea.KeySpace && m.__focusID == 0:
-			__bound_checked := !m.on
-			m.on = __bound_checked
-			m.seen = ((("box " + fmt.Sprint(__bound_checked)) + " ") + fmt.Sprint(m.on))
+			m.on = !m.on
+			m.seen = ((("box " + fmt.Sprint(m.on)) + " ") + fmt.Sprint(m.on))
 		case msg.Code == tea.KeySpace && m.__focusID == 1:
-			__bound_checked := !m.checked__inst0
-			m.checked__inst0 = __bound_checked
-			m.lit = __bound_checked
-			m.seen = ("sw " + fmt.Sprint(__bound_checked))
+			m.checked__inst0 = !m.checked__inst0
+			m.lit = m.checked__inst0
+			m.seen = ("sw " + fmt.Sprint(m.checked__inst0))
 		}
 	}
 	return m, tea.Batch(cmds...)
 }
 
 // boxChange activates the #box widget the way a keypress does; for tests.
-func (m *Model) boxChange(_ ToggleEvent) {
+func (m *Model) boxChange(_ bool) {
 	prev := m.__focusID
 	m.__focusID = 0
 	nm, _ := m.Update(tea.KeyPressMsg{Code: tea.KeySpace})
@@ -261,7 +255,7 @@ func (m *Model) boxChange(_ ToggleEvent) {
 }
 
 // swChange activates the #sw widget the way a keypress does; for tests.
-func (m *Model) swChange(_ ToggleEvent) {
+func (m *Model) swChange(_ bool) {
 	prev := m.__focusID
 	m.__focusID = 1
 	nm, _ := m.Update(tea.KeyPressMsg{Code: tea.KeySpace})
@@ -313,10 +307,10 @@ import "testing"
 func TestCheckboxCarriesChecked(t *testing.T) {
 	c := newTestComponent()
 	_ = c
-	c.boxChange(ToggleEvent{Checked: true})
+	c.boxChange(true)
 	if !((c.seen == "box true true")) { t.Errorf("assert failed: %s", "(c.seen == \"box true true\")") }
 	if !((c.on == true)) { t.Errorf("assert failed: %s", "(c.on == true)") }
-	c.boxChange(ToggleEvent{Checked: false})
+	c.boxChange(false)
 	if !((c.seen == "box false false")) { t.Errorf("assert failed: %s", "(c.seen == \"box false false\")") }
 	if !((c.on == false)) { t.Errorf("assert failed: %s", "(c.on == false)") }
 }
@@ -324,10 +318,10 @@ func TestCheckboxCarriesChecked(t *testing.T) {
 func TestToggleCarriesChecked(t *testing.T) {
 	c := newTestComponent()
 	_ = c
-	c.swChange(ToggleEvent{Checked: true})
+	c.swChange(true)
 	if !((c.seen == "sw true")) { t.Errorf("assert failed: %s", "(c.seen == \"sw true\")") }
 	if !((c.lit == true)) { t.Errorf("assert failed: %s", "(c.lit == true)") }
-	c.swChange(ToggleEvent{Checked: false})
+	c.swChange(false)
 	if !((c.seen == "sw false")) { t.Errorf("assert failed: %s", "(c.seen == \"sw false\")") }
 	if !((c.lit == false)) { t.Errorf("assert failed: %s", "(c.lit == false)") }
 }
@@ -347,10 +341,6 @@ import (
 	"fyne.io/fyne/v2/widget"
 	"os"
 )
-
-type ToggleEvent struct {
-	Checked bool
-}
 
 // Model holds the state for this SNGL UI.
 type Model struct {
@@ -375,32 +365,36 @@ func New() *Model {
 	return m
 }
 
-func (m *Model) box_change_handler(b bool) {
-	m.on = b
+func (m *Model) box_toggle_handler(on__p0 bool) {
+	m.on = on__p0
 	m.box.SetChecked(m.on)
-	m.seen = ((("box " + fmt.Sprint(b)) + " ") + fmt.Sprint(m.on))
+	m.seen = ((("box " + fmt.Sprint(on__p0)) + " ") + fmt.Sprint(m.on))
 	m.__n0.SetText(m.seen)
 }
 
-func (m *Model) sw_change_handler(b bool) {
-	m.checked__inst0 = b
+func (m *Model) sw_toggle_handler(on bool) {
+	m.checked__inst0 = on
 	m.sw.SetChecked(m.checked__inst0)
-	m.lit = b
-	m.seen = ("sw " + fmt.Sprint(b))
+	m.lit = on
+	m.seen = ("sw " + fmt.Sprint(on))
 	m.__n0.SetText(m.seen)
 }
 
 // boxChange invokes the OnChanged callback on the #box widget; for tests.
-func (m *Model) boxChange(e ToggleEvent) {
-	if m.box.OnChanged != nil {
-		m.box.OnChanged(e.Checked)
+func (m *Model) boxChange(b bool) {
+	if cb := m.box.OnChanged; cb != nil {
+		m.box.OnChanged = nil
+		cb(b)
+		m.box.OnChanged = cb
 	}
 }
 
 // swChange invokes the OnChanged callback on the #sw widget; for tests.
-func (m *Model) swChange(e ToggleEvent) {
-	if m.sw.OnChanged != nil {
-		m.sw.OnChanged(e.Checked)
+func (m *Model) swChange(b bool) {
+	if cb := m.sw.OnChanged; cb != nil {
+		m.sw.OnChanged = nil
+		cb(b)
+		m.sw.OnChanged = cb
 	}
 }
 
@@ -442,12 +436,12 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.box = widget.NewCheck("", nil)
 	m.box.SetText("a")
 	m.box.SetChecked(m.on)
-	m.box.OnChanged = m.box_change_handler
+	m.box.OnChanged = m.box_toggle_handler
 	m.__n1.Add(m.box)
 	m.sw = widget.NewCheck("", nil)
 	m.sw.SetText("b")
 	m.sw.SetChecked(m.checked__inst0)
-	m.sw.OnChanged = m.sw_change_handler
+	m.sw.OnChanged = m.sw_toggle_handler
 	m.__n1.Add(m.sw)
 	m.__n0 = widget.NewLabel("")
 	m.__n0.SetText(m.seen)
@@ -473,10 +467,10 @@ import "testing"
 func TestCheckboxCarriesChecked(t *testing.T) {
 	c := newTestComponent()
 	_ = c
-	c.boxChange(ToggleEvent{Checked: true})
+	c.boxChange(true)
 	if !((c.seen == "box true true")) { t.Errorf("assert failed: %s", "(c.seen == \"box true true\")") }
 	if !((c.on == true)) { t.Errorf("assert failed: %s", "(c.on == true)") }
-	c.boxChange(ToggleEvent{Checked: false})
+	c.boxChange(false)
 	if !((c.seen == "box false false")) { t.Errorf("assert failed: %s", "(c.seen == \"box false false\")") }
 	if !((c.on == false)) { t.Errorf("assert failed: %s", "(c.on == false)") }
 }
@@ -484,10 +478,10 @@ func TestCheckboxCarriesChecked(t *testing.T) {
 func TestToggleCarriesChecked(t *testing.T) {
 	c := newTestComponent()
 	_ = c
-	c.swChange(ToggleEvent{Checked: true})
+	c.swChange(true)
 	if !((c.seen == "sw true")) { t.Errorf("assert failed: %s", "(c.seen == \"sw true\")") }
 	if !((c.lit == true)) { t.Errorf("assert failed: %s", "(c.lit == true)") }
-	c.swChange(ToggleEvent{Checked: false})
+	c.swChange(false)
 	if !((c.seen == "sw false")) { t.Errorf("assert failed: %s", "(c.seen == \"sw false\")") }
 	if !((c.lit == false)) { t.Errorf("assert failed: %s", "(c.lit == false)") }
 }
@@ -630,6 +624,18 @@ static void sngl_unref_pixbuf(GdkPixbuf *p) {
     if (p != NULL) g_object_unref(p);
 }
 
+// Selects a day the way a click on it does, for gtk4's datepicker override
+// (selectDay) and a test's invoker. select_day is the call every GTK 4 has;
+// 4.20 deprecates it for set_date, which the older ones lack.
+static void sngl_calendar_select(GtkCalendar *c, int y, int m, int d) {
+    GDateTime *dt = g_date_time_new_utc(y, m, d, 0, 0, 0);
+    if (dt == NULL) return;
+    G_GNUC_BEGIN_IGNORE_DEPRECATIONS
+    gtk_calendar_select_day(c, dt);
+    G_GNUC_END_IGNORE_DEPRECATIONS
+    g_date_time_unref(dt);
+}
+
 static void sngl_set_entry_text(GtkEditable *e, const char *t) {
     const char *cur = gtk_editable_get_text(e);
     if (t == NULL) t = "";
@@ -661,10 +667,6 @@ func boolToInt(b bool) int {
 	return 0
 }
 
-type ToggleEvent struct {
-	Checked bool
-}
-
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
 	on             bool
@@ -690,14 +692,14 @@ func New() *Model {
 
 func (m *Model) box_toggled_handler() {
 	m.on = (C.gtk_check_button_get_active((*C.GtkCheckButton)(unsafe.Pointer(m.box))) != 0)
-	m.seen = ((("box " + fmt.Sprint((C.gtk_check_button_get_active((*C.GtkCheckButton)(unsafe.Pointer(m.box))) != 0))) + " ") + fmt.Sprint(m.on))
+	m.seen = ((("box " + fmt.Sprint(m.on)) + " ") + fmt.Sprint(m.on))
 	C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(m.__n0)), C.CString(m.seen))
 }
 
 func (m *Model) sw_notifyActive_handler() {
 	m.checked__inst0 = (C.gtk_switch_get_active((*C.GtkSwitch)(unsafe.Pointer(m.sw))) != 0)
-	m.lit = (C.gtk_switch_get_active((*C.GtkSwitch)(unsafe.Pointer(m.sw))) != 0)
-	m.seen = ("sw " + fmt.Sprint((C.gtk_switch_get_active((*C.GtkSwitch)(unsafe.Pointer(m.sw))) != 0)))
+	m.lit = m.checked__inst0
+	m.seen = ("sw " + fmt.Sprint(m.checked__inst0))
 	C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(m.__n0)), C.CString(m.seen))
 }
 
@@ -769,13 +771,13 @@ func (m *Model) BuildUI(app *C.GtkApplication) *C.GtkWidget {
 }
 
 // boxChange fires the "toggled" signal on the #box widget; for tests.
-func (m *Model) boxChange(e ToggleEvent) {
-	if (C.gtk_check_button_get_active((*C.GtkCheckButton)(unsafe.Pointer(m.box))) != 0) != e.Checked {
-		v := C.gboolean(0)
-		if e.Checked {
-			v = 1
+func (m *Model) boxChange(v bool) {
+	if (C.gtk_check_button_get_active((*C.GtkCheckButton)(unsafe.Pointer(m.box))) != 0) != v {
+		on := C.gboolean(0)
+		if v {
+			on = 1
 		}
-		C.gtk_check_button_set_active((*C.GtkCheckButton)(unsafe.Pointer(m.box)), v)
+		C.gtk_check_button_set_active((*C.GtkCheckButton)(unsafe.Pointer(m.box)), on)
 		return
 	}
 	sig := C.CString("toggled")
@@ -784,13 +786,13 @@ func (m *Model) boxChange(e ToggleEvent) {
 }
 
 // swChange fires the "notify::active" signal on the #sw widget; for tests.
-func (m *Model) swChange(e ToggleEvent) {
-	if (C.gtk_switch_get_active((*C.GtkSwitch)(unsafe.Pointer(m.sw))) != 0) != e.Checked {
-		v := C.gboolean(0)
-		if e.Checked {
-			v = 1
+func (m *Model) swChange(v bool) {
+	if (C.gtk_switch_get_active((*C.GtkSwitch)(unsafe.Pointer(m.sw))) != 0) != v {
+		on := C.gboolean(0)
+		if v {
+			on = 1
 		}
-		C.gtk_switch_set_active((*C.GtkSwitch)(unsafe.Pointer(m.sw)), v)
+		C.gtk_switch_set_active((*C.GtkSwitch)(unsafe.Pointer(m.sw)), on)
 		return
 	}
 	prop := C.CString("active")
@@ -813,7 +815,7 @@ func Handler() http.Handler {
 
 func handleIndex(__w http.ResponseWriter, _ *http.Request) {
 	__w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	__w.Write([]byte("<!-- Code generated by sngl (html) from app.sngl; DO NOT EDIT. -->\n\n<!DOCTYPE html>\n<html><head>\n  <meta charset=\"utf-8\">\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n  <style>\n* { margin: 0; padding: 0; box-sizing: border-box; }\nbody { font-family: system-ui, sans-serif; }\n  </style>\n</head><body>\n\n<div style=\"display:flex;flex-direction:column\">\n  <label style=\"align-items:center;display:inline-flex;gap:4px\" data-sngl-id=\"box\">\n    <input id=\"__n0\" data-sngl-id=\"__n0\" type=\"checkbox\"/>\n    <span>a</span>\n  </label>\n  <label style=\"align-items:center;display:inline-flex;gap:8px\" data-sngl-id=\"sw\">\n    <input id=\"__n1\" data-sngl-id=\"__n1\" role=\"switch\" type=\"checkbox\"/>\n    <span>b</span>\n  </label>\n  <span id=\"__n2\" data-sngl-id=\"__n2\">\n  </span>\n</div>\n\n<script>\nwindow.__sngl_markup = Array.from(document.body.childNodes)\n  .filter((n) => n.nodeName !== \"SCRIPT\").map((n) => n.cloneNode(true));\nwindow.__sngl_reset = () => {\n  for (const n of Array.from(document.body.childNodes)) {\n    if (n.nodeName !== \"SCRIPT\") n.remove();\n  }\n  const first = document.body.firstChild;\n  for (const n of window.__sngl_markup) document.body.insertBefore(n.cloneNode(true), first);\n  window.__sngl_boot();\n};\nwindow.__sngl_boot = () => {\n(() => {\n  // sngl-entry.js\n  var state = { on: false, lit: false, seen: \"none\", checked__inst0: null };\n  state.checked__inst0 = state.lit;\n  state.boxChange = (p) => {\n    Object.assign(__n0, p);\n    __n0.dispatchEvent(new Event(\"change\"));\n  };\n  state.swChange = (p) => {\n    Object.assign(__n1, p);\n    __n1.dispatchEvent(new Event(\"change\"));\n  };\n  if (typeof window !== \"undefined\") {\n    window.__sngl_state = state;\n  }\n  function testCheckboxCarriesChecked(t, c) {\n    c.box({ checked: true });\n    t.assert(c.seen === \"box true true\");\n    t.assert(c.on === true);\n    c.box({ checked: false });\n    t.assert(c.seen === \"box false false\");\n    t.assert(c.on === false);\n  }\n  function testToggleCarriesChecked(t, c) {\n    c.sw({ checked: true });\n    t.assert(c.seen === \"sw true\");\n    t.assert(c.lit === true);\n    c.sw({ checked: false });\n    t.assert(c.seen === \"sw false\");\n    t.assert(c.lit === false);\n  }\n  if (typeof window !== \"undefined\") {\n    Object.assign(window, { testCheckboxCarriesChecked, testToggleCarriesChecked });\n  }\n  function String(v) {\n    return \"\" + v;\n  }\n  var __n0 = document.querySelector('[data-sngl-id=\"__n0\"]');\n  var __n1 = document.querySelector('[data-sngl-id=\"__n1\"]');\n  var __n2 = document.querySelector('[data-sngl-id=\"__n2\"]');\n  __n0.addEventListener(\"change\", function(e) {\n    state.on = e.target.checked;\n    __n0.checked = state.on;\n    state.seen = \"box \" + String(e.target.checked) + \" \" + String(state.on);\n    __n2.textContent = state.seen;\n  });\n  __n1.addEventListener(\"change\", function(e) {\n    state.checked__inst0 = e.target.checked;\n    __n1.checked = state.checked__inst0;\n    state.lit = e.target.checked;\n    state.seen = \"sw \" + String(e.target.checked);\n    __n2.textContent = state.seen;\n  });\n  function __sngl_init() {\n    __n0.checked = state.on;\n    __n1.checked = state.checked__inst0;\n    __n2.textContent = state.seen;\n  }\n  __sngl_init();\n})();\n};\nwindow.__sngl_boot();\n</script>\n</body></html>\n"))
+	__w.Write([]byte("<!-- Code generated by sngl (html) from app.sngl; DO NOT EDIT. -->\n\n<!DOCTYPE html>\n<html><head>\n  <meta charset=\"utf-8\">\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n  <style>\n* { margin: 0; padding: 0; box-sizing: border-box; }\nbody { font-family: system-ui, sans-serif; }\n  </style>\n</head><body>\n\n<div style=\"display:flex;flex-direction:column\">\n  <label style=\"align-items:center;display:inline-flex;gap:4px\" data-sngl-id=\"box\">\n    <input id=\"__n0\" data-sngl-id=\"__n0\" type=\"checkbox\"/>\n    <span>a</span>\n  </label>\n  <label style=\"align-items:center;display:inline-flex;gap:8px\" data-sngl-id=\"sw\">\n    <input id=\"__n1\" data-sngl-id=\"__n1\" role=\"switch\" type=\"checkbox\"/>\n    <span>b</span>\n  </label>\n  <span id=\"__n2\" data-sngl-id=\"__n2\">\n  </span>\n</div>\n\n<script>\nwindow.__sngl_markup = Array.from(document.body.childNodes)\n  .filter((n) => n.nodeName !== \"SCRIPT\").map((n) => n.cloneNode(true));\nwindow.__sngl_reset = () => {\n  for (const n of Array.from(document.body.childNodes)) {\n    if (n.nodeName !== \"SCRIPT\") n.remove();\n  }\n  const first = document.body.firstChild;\n  for (const n of window.__sngl_markup) document.body.insertBefore(n.cloneNode(true), first);\n  window.__sngl_boot();\n};\nwindow.__sngl_boot = () => {\n(() => {\n  // sngl-entry.js\n  var state = { on: false, lit: false, seen: \"none\", checked__inst0: null };\n  state.checked__inst0 = state.lit;\n  state.boxChange = (p) => {\n    Object.assign(__n0, p);\n    __n0.dispatchEvent(Object.assign(new Event(\"change\"), p));\n  };\n  state.swChange = (p) => {\n    Object.assign(__n1, p);\n    __n1.dispatchEvent(Object.assign(new Event(\"change\"), p));\n  };\n  if (typeof window !== \"undefined\") {\n    window.__sngl_state = state;\n  }\n  function testCheckboxCarriesChecked(t, c) {\n    c.box(true);\n    t.assert(c.seen === \"box true true\");\n    t.assert(c.on === true);\n    c.box(false);\n    t.assert(c.seen === \"box false false\");\n    t.assert(c.on === false);\n  }\n  function testToggleCarriesChecked(t, c) {\n    c.sw(true);\n    t.assert(c.seen === \"sw true\");\n    t.assert(c.lit === true);\n    c.sw(false);\n    t.assert(c.seen === \"sw false\");\n    t.assert(c.lit === false);\n  }\n  if (typeof window !== \"undefined\") {\n    Object.assign(window, { testCheckboxCarriesChecked, testToggleCarriesChecked });\n  }\n  function String(v) {\n    return \"\" + v;\n  }\n  var __n0 = document.querySelector('[data-sngl-id=\"__n0\"]');\n  var __n1 = document.querySelector('[data-sngl-id=\"__n1\"]');\n  var __n2 = document.querySelector('[data-sngl-id=\"__n2\"]');\n  __n0.addEventListener(\"change\", function(e) {\n    state.on = e.currentTarget.checked;\n    __n0.checked = state.on;\n    state.seen = \"box \" + String(state.on) + \" \" + String(state.on);\n    __n2.textContent = state.seen;\n  });\n  __n1.addEventListener(\"change\", function(e) {\n    state.checked__inst0 = e.currentTarget.checked;\n    __n1.checked = state.checked__inst0;\n    state.lit = state.checked__inst0;\n    state.seen = \"sw \" + String(state.checked__inst0);\n    __n2.textContent = state.seen;\n  });\n  function __sngl_init() {\n    __n0.checked = state.on;\n    __n1.checked = state.checked__inst0;\n    __n2.textContent = state.seen;\n  }\n  __sngl_init();\n})();\n};\nwindow.__sngl_boot();\n</script>\n</body></html>\n"))
 }
 
 func main() {
@@ -824,27 +826,21 @@ func main() {
 
 package test.sngl.app
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.*
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
-import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.foundation.layout.Column
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color as ComposeColor
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.Row
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.Alignment
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.Text
+import androidx.compose.material3.Switch
 
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
@@ -865,9 +861,9 @@ fun MainScreen(state: MainScreenState = remember { MainScreenState() }) {
 
     Column(modifier = Modifier.safeDrawingPadding()) {
         Row(modifier = Modifier.testTag("box"), verticalAlignment = Alignment.CenterVertically) {
-            Checkbox(checked = state.on, onCheckedChange = { on ->
-                state.on = on
-                state.seen = ((("box " + on.toString()) + " ") + on.toString())
+            Checkbox(checked = state.on, onCheckedChange = { on__p0 ->
+                state.on = on__p0
+                state.seen = ((("box " + on__p0.toString()) + " ") + state.on.toString())
             })
             Text(text = "a", modifier = Modifier)
         }
@@ -975,28 +971,28 @@ window.__sngl_boot = () => {
   state.checked__inst0 = state.lit;
   state.boxChange = (p) => {
     Object.assign(__n0, p);
-    __n0.dispatchEvent(new Event("change"));
+    __n0.dispatchEvent(Object.assign(new Event("change"), p));
   };
   state.swChange = (p) => {
     Object.assign(__n1, p);
-    __n1.dispatchEvent(new Event("change"));
+    __n1.dispatchEvent(Object.assign(new Event("change"), p));
   };
   if (typeof window !== "undefined") {
     window.__sngl_state = state;
   }
   function testCheckboxCarriesChecked(t, c) {
-    c.box({ checked: true });
+    c.box(true);
     t.assert(c.seen === "box true true");
     t.assert(c.on === true);
-    c.box({ checked: false });
+    c.box(false);
     t.assert(c.seen === "box false false");
     t.assert(c.on === false);
   }
   function testToggleCarriesChecked(t, c) {
-    c.sw({ checked: true });
+    c.sw(true);
     t.assert(c.seen === "sw true");
     t.assert(c.lit === true);
-    c.sw({ checked: false });
+    c.sw(false);
     t.assert(c.seen === "sw false");
     t.assert(c.lit === false);
   }
@@ -1010,16 +1006,16 @@ window.__sngl_boot = () => {
   var __n1 = document.querySelector('[data-sngl-id="__n1"]');
   var __n2 = document.querySelector('[data-sngl-id="__n2"]');
   __n0.addEventListener("change", function(e) {
-    state.on = e.target.checked;
+    state.on = e.currentTarget.checked;
     __n0.checked = state.on;
-    state.seen = "box " + String(e.target.checked) + " " + String(state.on);
+    state.seen = "box " + String(state.on) + " " + String(state.on);
     __n2.textContent = state.seen;
   });
   __n1.addEventListener("change", function(e) {
-    state.checked__inst0 = e.target.checked;
+    state.checked__inst0 = e.currentTarget.checked;
     __n1.checked = state.checked__inst0;
-    state.lit = e.target.checked;
-    state.seen = "sw " + String(e.target.checked);
+    state.lit = state.checked__inst0;
+    state.seen = "sw " + String(state.checked__inst0);
     __n2.textContent = state.seen;
   });
   function __sngl_init() {
@@ -1034,14 +1030,14 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:a95ccfe48037f74effd14f455bbb6fa4
+pass sha256:2d86eaa1517683f26175d11420b92024
 -- run/go/fyne --
-pass sha256:6c972b267cf8848a85edd2557f8d44cf
+pass sha256:40ebe27760c9a1ecb25870601de61d4f
 -- run/go/gtk4 --
-pass sha256:e7d86657e50611538d49848f1349f0c6
+pass sha256:2c7a1890ee177f43c6a877ff9c369780
 -- run/go/html --
-pass sha256:a95aaf38e62f3a6d4c469f8e6616cb8e
+pass sha256:d6275c7b73dad839f60db6ec1d16538c
 -- run/kotlin/android --
-pass sha256:1db00f164face6fbdd67e8ad10566ae1
+pass sha256:b8e5f21406466775c73bcd9a8f7076f8
 -- run/none/html --
-pass sha256:06c5e01143ca0779ff063e497516c0a9
+pass sha256:ae03431c0423727cf8d241be66ac3b69

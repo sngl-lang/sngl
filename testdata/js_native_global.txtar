@@ -60,7 +60,7 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { a__inst0: "unset", b__inst0: "unset", visible__inst1: true };
+  var state = { a__inst0: "unset", b__inst0: "unset", visible__inst0: true };
   var $0 = document.getElementById("$0");
   var __n1 = document.querySelector('[data-sngl-id="__n1"]');
   $0.addEventListener("click", function() {
@@ -77,4 +77,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:a0ffec84f6cadf9ff5527d808d80f757
+pass sha256:c6085146d24357820c98997d2986e517

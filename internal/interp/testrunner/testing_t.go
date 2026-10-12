@@ -305,7 +305,7 @@ func wrapChildComponent(childEnv *interp.Env, comp *ir.Component) *componentValu
 		Env:      childEnv,
 		comp:     comp,
 		compName: comp.Name,
-		body:     comp.Body,
+		body:     comp.Stmts,
 	}
 }
 
@@ -515,24 +515,34 @@ func (cv *componentValue) WriteBackList(field string, list []any) error {
 
 // childComponentByID returns the live componentValue wrapper for a user
 // component instantiated in the component's body with element id == id (e.g.
-// `main #m()` reached as `c.m`), or nil.
+// `main #m()` reached as `c.m`), a list of them where a loop rendered the id
+// more than once, or nil.
 //
 // It reads the mounted tree rather than walking the IR. The tree keeps a
 // component instantiation as a node carrying its own scope, which is exactly
 // what a wrapper needs -- and it reaches ids the old walk could not, since that
 // one descended `if` branches only and skipped loops, slots and boundaries.
-func (cv *componentValue) childComponentByID(id string) *componentValue {
+func (cv *componentValue) childComponentByID(id string) any {
 	view, err := interp.Mount(cv.Env)
 	if err != nil {
 		return nil
 	}
+	var found []any
 	for _, n := range view.FindAny(id) {
 		if n.Component == nil || n.CompEnv == nil || !isUserComponent(n.Component) {
 			continue
 		}
-		return wrapChildComponent(n.CompEnv, n.Component)
+		found = append(found, wrapChildComponent(n.CompEnv, n.Component))
 	}
-	return nil
+	switch len(found) {
+	case 0:
+		return nil
+	case 1:
+		return found[0]
+	}
+	// An id a loop renders more than once names each instance, in mount
+	// order: `c.row[1]` is the second.
+	return found
 }
 
 // stampOwner attaches __ownerComponent to element maps returned by
@@ -557,7 +567,7 @@ func isUserComponent(comp *ir.Component) bool {
 	if comp == nil {
 		return false
 	}
-	return len(comp.Body) > 0 || len(comp.Vars) > 0 || len(comp.Funcs) > 0
+	return len(comp.Stmts) > 0 || len(comp.Vars) > 0 || len(comp.Funcs) > 0
 }
 
 // InstanceEnv is the instance this wrapper stands for, which is what a
@@ -573,7 +583,7 @@ func (cv *componentValue) funcNamed(name string) *ir.Func {
 		return nil
 	}
 	for _, fn := range cv.comp.Funcs {
-		if fn.Name == name && fn.Receiver == "" {
+		if fn.Name == name && !fn.IsMethod() {
 			return fn
 		}
 	}
@@ -628,4 +638,12 @@ func (cv *componentValue) writableFieldSym(field string) (ir.Symbol, error) {
 		return nil, fmt.Errorf("cannot assign to const %q", field)
 	}
 	return sym, nil
+}
+
+// The interpreter is the none language's test harness, and the reference: it
+// answers every sngl:test method, the ones no compiled harness lowers yet
+// included.
+func init() {
+	codegen.DeclareLangImplements("none", ir.TestAssertID, ir.TestMustID, ir.TestSetLocaleID,
+		ir.TestSetContextID, ir.TestWaitID, ir.TestSnapshotID)
 }

@@ -448,7 +448,7 @@ func (v *irValidator) walkComponent(c *ir.Component) {
 		v.pop()
 	}
 	v.push("body")
-	v.walkStmts(c.Body)
+	v.walkStmts(c.Stmts)
 	v.pop()
 }
 

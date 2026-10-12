@@ -1,6 +1,9 @@
-// Layout length used throughout `Style`. Unit literals: `px`, `em`,
-// `rem` (= 16em), `vw`, `vh`, `pct`.
-unit measurement { px, em, rem = 16em, vw, vh, pct }
+// Layout length used throughout `Style`. `px` is a device-independent
+// pixel; `em` and `rem` are multiples of a font size. html reads them as
+// CSS does. Every other target has no cascade, so both are its base text
+// size: 16 on android, fyne's theme text size, GTK's default font size,
+// and two terminal cells on bubbletea.
+unit measurement { px, em, rem }
 
 // Main-axis direction for flex containers such as `vbox` and `hbox`.
 // `row` and `column` are the common cases; the `Reverse` variants
@@ -85,68 +88,68 @@ enum ListStyle { none, disc, circle, square, decimal }
 // `pct`); color-typed fields accept any `color` value.
 struct Style {
     // Spacing
-    padding measurement
-    paddingTop measurement
-    paddingRight measurement
+    padding       measurement
+    paddingTop    measurement
+    paddingRight  measurement
     paddingBottom measurement
-    paddingLeft measurement
-    paddingX measurement
-    paddingY measurement
-    margin measurement
-    marginTop measurement
-    marginRight measurement
-    marginBottom measurement
-    marginLeft measurement
-    marginX measurement
-    marginY measurement
-    gap measurement
+    paddingLeft   measurement
+    paddingX      measurement
+    paddingY      measurement
+    margin        measurement
+    marginTop     measurement
+    marginRight   measurement
+    marginBottom  measurement
+    marginLeft    measurement
+    marginX       measurement
+    marginY       measurement
+    gap           measurement
 
     // Size
-    width measurement
-    minWidth measurement
-    height measurement
-    maxWidth measurement
+    width     measurement
+    minWidth  measurement
+    height    measurement
+    maxWidth  measurement
     maxHeight measurement
 
     // Flex
-    flex float
-    flexDirection FlexDirection
-    alignItems Alignment
+    flex           float
+    flexDirection  FlexDirection
+    alignItems     Alignment
     justifyContent Justification
 
     // Position
     position Position
-    top measurement
-    bottom measurement
-    left measurement
-    right measurement
-    zIndex int
+    top      measurement
+    bottom   measurement
+    left     measurement
+    right    measurement
+    zIndex   int
 
     // Typography
-    color color
-    fontSize measurement
+    color      color
+    fontSize   measurement
     fontFamily string
     fontWeight FontWeight
-    fontStyle FontStyle
-    textAlign TextAlign
-    maxLines int
+    fontStyle  FontStyle
+    textAlign  TextAlign
+    maxLines   int
     whiteSpace WhiteSpace
 
     // Decoration
-    background color
-    borderRadius measurement
-    borderColor color
-    borderWidth measurement
-    border string
-    borderBottom string
-    borderLeft string
+    background     color
+    borderRadius   measurement
+    borderColor    color
+    borderWidth    measurement
+    border         string
+    borderBottom   string
+    borderLeft     string
     borderCollapse string
-    borderStyle BorderStyle
-    opacity float
-    cursor string
+    borderStyle    BorderStyle
+    opacity        float
+    cursor         string
 
     // Display
-    display Display
-    overflow Overflow
+    display       Display
+    overflow      Overflow
     listStyleType ListStyle
 }

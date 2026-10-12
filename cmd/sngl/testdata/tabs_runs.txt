@@ -1,0 +1,170 @@
+# ui.tabs, run on every target: a tab is a record written as a child, and the
+# panel is what the selected one was written with. The panel shown follows
+# `selected`, a panel's handler writes the caller's state, and a `var` written
+# in a panel is state of that panel.
+#
+# The test switches tabs through a button of the caller's, as a click on the
+# strip would: a test's write of a var is a raw field write on the mutation
+# targets, which re-renders nothing. The strip's own buttons are the
+# override's, with no `#id` a test can name.
+#
+# testdata/component_tabs.txtar is the code.
+
+sngl test --platform=none app.sngl
+stdout 'ok   3 tests, 0 failures'
+
+sngl test --platform=html app.sngl
+stdout 'ok   3 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout 'ok   3 tests, 0 failures'
+
+sngl test --platform=fyne --language=go app.sngl
+stdout 'ok   3 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go app.sngl
+stdout 'ok   3 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin app.sngl
+stdout 'ok   3 tests, 0 failures'
+
+-- app.sngl --
+import . "sngl:test"
+import ui "sngl:ui"
+
+component app ui.node {
+    var idx = 0
+    var hits = 0
+    var changed = -1
+    ui.button #second(text="second", @click {
+        idx = 1
+    })
+    ui.tabs(:selected=idx, @change(i) {
+        changed = i
+    }) {
+        ui.tab(label="One") {
+            ui.button #hit(text="hit", @click {
+                hits = hits + 1
+            })
+        }
+        ui.tab(label="Two") {
+            var local = 0
+            ui.button #twice(text="twice", @click {
+                local = local + 1
+                hits = local * 10
+            })
+        }
+    }
+}
+
+func testTheSelectedPanelIsShown(t Test, c app) {
+    c.hit.click()
+    t.assert(c.hits == 1)
+}
+
+func testSwitchingShowsAnotherPanel(t Test, c app) {
+    c.second.click()
+    c.twice.click()
+    t.assert(c.hits == 10)
+}
+
+func testAPanelKeepsStateOfItsOwn(t Test, c app) {
+    c.second.click()
+    c.twice.click()
+    c.twice.click()
+    t.assert(c.hits == 20)
+}
+
+ui.window {
+    app
+}
+-- testrun/android/kotlin/app.sngl/app/1 --
+sha256:c25dbc6da99912b80195e52f6462ee20
+{
+  "results": [
+    {
+      "Desc": "APanelKeepsStateOfItsOwn",
+      "Passed": true
+    },
+    {
+      "Desc": "SwitchingShowsAnotherPanel",
+      "Passed": true
+    },
+    {
+      "Desc": "TheSelectedPanelIsShown",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/app/1 --
+sha256:34ef9d5d139dc7ff25a22590722e9773
+{
+  "results": [
+    {
+      "Desc": "APanelKeepsStateOfItsOwn",
+      "Passed": true
+    },
+    {
+      "Desc": "SwitchingShowsAnotherPanel",
+      "Passed": true
+    },
+    {
+      "Desc": "TheSelectedPanelIsShown",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/app/1 --
+sha256:c71e5f3e65174349510565997dacd5b5
+{
+  "results": [
+    {
+      "Desc": "APanelKeepsStateOfItsOwn",
+      "Passed": true
+    },
+    {
+      "Desc": "SwitchingShowsAnotherPanel",
+      "Passed": true
+    },
+    {
+      "Desc": "TheSelectedPanelIsShown",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/app/1 --
+sha256:00614755dc3e5fa7e2475c2c2160c54e
+{
+  "results": [
+    {
+      "Desc": "APanelKeepsStateOfItsOwn",
+      "Passed": true
+    },
+    {
+      "Desc": "SwitchingShowsAnotherPanel",
+      "Passed": true
+    },
+    {
+      "Desc": "TheSelectedPanelIsShown",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/app/1 --
+sha256:a13f3a3504b344f2dd6e8c77184336be
+{
+  "results": [
+    {
+      "Desc": "APanelKeepsStateOfItsOwn",
+      "Passed": true
+    },
+    {
+      "Desc": "SwitchingShowsAnotherPanel",
+      "Passed": true
+    },
+    {
+      "Desc": "TheSelectedPanelIsShown",
+      "Passed": true
+    }
+  ]
+}

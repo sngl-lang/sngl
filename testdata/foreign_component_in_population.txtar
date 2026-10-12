@@ -88,7 +88,7 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { n__inst0: 1, n__inst1: 2, visible__inst2: true };
+  var state = { n__inst0: 1, n__inst1: 2, visible__inst0: true };
   function String(v) {
     return "" + v;
   }
@@ -103,4 +103,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:300235f0c555c87033496bbb832b21e8
+pass sha256:e618c4b655f56ed474feeccc247d9ca0

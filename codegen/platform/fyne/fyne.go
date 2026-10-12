@@ -69,6 +69,9 @@ func (g *Generator) Generate(req *codegen.Request, sink codegen.Sink) error {
 	if err := c.EmitFromMutation(m, req, sink); err != nil {
 		return err
 	}
+	if err := golang.EmitAssetEmbed(sink, c.cfg.Package, req.FileAssets); err != nil {
+		return fmt.Errorf("fyne: assets: %w", err)
+	}
 	if golang.PackageUsesI18n(req.Pkg) {
 		if err := golang.EmitI18nManifestEmbed(sink, c.cfg.Package, req.ProjectFS, ""); err != nil {
 			return fmt.Errorf("fyne: i18n manifest embed: %w", err)
@@ -190,7 +193,7 @@ func (c *compilation) BuildMutationModel(req *codegen.Request, analysis *codegen
 
 	var stmts []ir.Stmt
 	if main := c.ctx.RootDecl(); main != nil {
-		stmts = main.Body
+		stmts = main.Stmts
 	}
 	return c.ctx.BuildMutation(stmts), nil
 }
@@ -200,7 +203,7 @@ func (c *compilation) EmitFromMutation(_ *codegen.MutationModel, req *codegen.Re
 	if err != nil {
 		return err
 	}
-	body = golang.PruneStructDecls(body, golang.PayloadPruneCandidates(c.ctx.Pkg, codegen.TriggerPayloads(c.ctx.Pkg)))
+	body = golang.PruneStructDecls(body, golang.PayloadPruneCandidates(c.ctx.Pkg, codegen.TriggerArgs(c.ctx.Pkg)))
 	e := req.Lang.NewFileEmitter(sink, codegen.FileOptions{
 		Name:        "model.go",
 		Source:      req.Source,

@@ -202,8 +202,8 @@ func int.double(x int) => x + x
 		t.Fatalf("got %d funcs, want 1", len(pkg.Funcs))
 	}
 	f := pkg.Funcs[0]
-	if f.Receiver != "int" {
-		t.Errorf("receiver = %q, want int", f.Receiver)
+	if f.RecvName() != "int" {
+		t.Errorf("receiver = %q, want int", f.RecvName())
 	}
 	if f.Name != "double" {
 		t.Errorf("name = %q, want double", f.Name)
@@ -1087,14 +1087,14 @@ component main node {
 	if main == nil {
 		t.Fatal("main component not found")
 	}
-	if len(main.Body) == 0 {
+	if len(main.Stmts) == 0 {
 		t.Fatal("Body is empty")
 	}
 
 	// First statement: greeting() → NodeInst (component instantiation).
-	ni, ok := main.Body[0].(*ir.NodeInst)
+	ni, ok := main.Stmts[0].(*ir.NodeInst)
 	if !ok {
-		t.Fatalf("Body[0]: want *NodeInst, got %T", main.Body[0])
+		t.Fatalf("Body[0]: want *NodeInst, got %T", main.Stmts[0])
 	}
 	if ni.Name != "greeting" {
 		t.Errorf("NodeInst.Name = %q, want %q", ni.Name, "greeting")
@@ -1107,9 +1107,9 @@ component main node {
 	// disambiguation this test is about is between a component call and a
 	// function call; a function call is only a statement in a body that runs,
 	// so the function half of the pair is asserted in a handler.
-	btn, ok := main.Body[1].(*ir.NodeInst)
+	btn, ok := main.Stmts[1].(*ir.NodeInst)
 	if !ok {
-		t.Fatalf("Body[1]: want *NodeInst, got %T", main.Body[1])
+		t.Fatalf("Body[1]: want *NodeInst, got %T", main.Stmts[1])
 	}
 	if len(btn.Handlers) != 1 || btn.Handlers[0].Func == nil {
 		t.Fatalf("Body[1]: want one resolved handler, got %#v", btn.Handlers)
@@ -1125,9 +1125,9 @@ component main node {
 	}
 
 	// Third statement: if → If with nested NodeInst.
-	ifStmt, ok := main.Body[2].(*ir.If)
+	ifStmt, ok := main.Stmts[2].(*ir.If)
 	if !ok {
-		t.Fatalf("Body[2]: want *If, got %T", main.Body[2])
+		t.Fatalf("Body[2]: want *If, got %T", main.Stmts[2])
 	}
 	if len(ifStmt.Body) != 1 {
 		t.Fatalf("If.Body length = %d, want 1", len(ifStmt.Body))
@@ -1158,7 +1158,7 @@ component main node {
 
 	// Find the For statement (skip any non-For stmts).
 	var forStmt *ir.For
-	for _, s := range main.Body {
+	for _, s := range main.Stmts {
 		if f, ok := s.(*ir.For); ok {
 			forStmt = f
 			break
@@ -1317,12 +1317,12 @@ func TestAnonymousWindowHasEmptyName(t *testing.T) {
 func TestCheckShapeType(t *testing.T) {
 	expectNoErrors(t, `
 import . "sngl:ui"
-import . "sngl:ui/draw"
+import draw "sngl:ui/draw"
 
 component myWidget() node {
-    canvas(width=400px, height=300px) {
-        rect(x=10.0, y=10.0, w=100.0, h=50.0)
-        circle(cx=50.0, cy=50.0, r=30.0)
+    draw.canvas(width=400px, height=300px) {
+        draw.rect(x=10.0, y=10.0, w=100.0, h=50.0)
+        draw.circle(cx=50.0, cy=50.0, r=30.0)
     }
 }
 `)
@@ -1334,12 +1334,12 @@ component myWidget() node {
 func TestCheckShapeHostsOnlyThroughASlot(t *testing.T) {
 	expectError(t, `
 import . "sngl:ui"
-import . "sngl:ui/draw"
+import draw "sngl:ui/draw"
 
 component myWidget() node {
-    canvas(width=400px, height=300px) {
-        rect(x=10.0, y=10.0, w=100.0, h=50.0) {
-            circle(cx=50.0, cy=50.0, r=30.0)
+    draw.canvas(width=400px, height=300px) {
+        draw.rect(x=10.0, y=10.0, w=100.0, h=50.0) {
+            draw.circle(cx=50.0, cy=50.0, r=30.0)
         }
     }
 }
@@ -1347,14 +1347,14 @@ component myWidget() node {
 
 	expectNoErrors(t, `
 import . "sngl:ui"
-import . "sngl:ui/draw"
+import draw "sngl:ui/draw"
 
-component group(children ...component) shape {}
+component group(children ...component) draw.shape {}
 
 component myWidget() node {
-    canvas(width=400px, height=300px) {
+    draw.canvas(width=400px, height=300px) {
         group() {
-            circle(cx=50.0, cy=50.0, r=30.0)
+            draw.circle(cx=50.0, cy=50.0, r=30.0)
         }
     }
 }
@@ -1364,11 +1364,11 @@ component myWidget() node {
 func TestCheckShapeTypeRejectsNonShape(t *testing.T) {
 	expectError(t, `
 import . "sngl:ui"
-import . "sngl:ui/draw"
+import draw "sngl:ui/draw"
 
 component notAShape() node {}
 component myWidget() node {
-    canvas(width=400px, height=300px) {
+    draw.canvas(width=400px, height=300px) {
         notAShape() {}
     }
 }
@@ -1380,10 +1380,10 @@ component myWidget() node {
 func TestCheckShape_IsNotAValue(t *testing.T) {
 	expectError(t, `
 import . "sngl:ui"
-import . "sngl:ui/draw"
+import draw "sngl:ui/draw"
 
 component myWidget() node {
-    var bad = shape
+    var bad = draw.shape
 }
 `, "shape names a family, which is not a value")
 }
@@ -1393,13 +1393,13 @@ func TestCheckCanvasStdlib(t *testing.T) {
 	// surface is imported by a program that draws, not by every program.
 	expectNoErrors(t, `
 import . "sngl:ui"
-import . "sngl:ui/draw"
+import draw "sngl:ui/draw"
 
 component myWidget() node {
-    canvas(width=400px, height=300px) {
-        rect(x=10.0, y=10.0, w=100.0, h=50.0, style=CanvasStyle{}) {}
-        circle(cx=50.0, cy=50.0, r=30.0, style=CanvasStyle{}) {}
-        canvasText(x=10.0, y=10.0, content="hello", style=CanvasStyle{}) {}
+    draw.canvas(width=400px, height=300px) {
+        draw.rect(x=10.0, y=10.0, w=100.0, h=50.0, style=draw.Style{}) {}
+        draw.circle(cx=50.0, cy=50.0, r=30.0, style=draw.Style{}) {}
+        draw.canvasText(x=10.0, y=10.0, content="hello", style=draw.Style{}) {}
     }
 }
 `)

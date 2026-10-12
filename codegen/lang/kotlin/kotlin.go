@@ -2,6 +2,7 @@ package kotlin
 
 import (
 	"strings"
+	"sync"
 
 	"duckfam.us/sngl/codegen"
 	"duckfam.us/sngl/ir"
@@ -46,32 +47,30 @@ func (t *Translator) TranslateIRLiteral(e ir.Expr) string {
 func (t *Translator) ExportName(name string) string { return SafeIdent(name) }
 
 // SafeIdent renders a SNGL identifier as a Kotlin one, escaping a hard
-// keyword the way Kotlin does. A parameter or local named `object`, `is` or
-// `when` is ordinary SNGL and not a Kotlin identifier at all, so every site
-// that emits a declared name goes through here.
+// keyword the way Kotlin does. passReservedNames renames a declaration that
+// took one, so what reaches here is a name that is not the program's to
+// change: a struct field, which a serialized record and a constructor's named
+// arguments spell, and a native's parameter, which a host declared.
+//
+// The words are sngl:language/kotlin's own reservedWords default.
 func SafeIdent(name string) string {
-	if kotlinHardKeywords[name] {
+	if keywords()[name] {
 		return "`" + name + "`"
 	}
 	return name
 }
 
+var keywords = sync.OnceValue(func() map[string]bool {
+	set := map[string]bool{}
+	for _, w := range codegen.LanguageReserves("kotlin") {
+		set[w] = true
+	}
+	return set
+})
+
 // NewFileEmitter returns a Kotlin FileEmitter (see fileemit.go).
 func (t *Translator) NewFileEmitter(sink codegen.Sink, opts codegen.FileOptions) codegen.FileEmitter {
 	return newFileEmitter(sink, opts)
-}
-
-// kotlinHardKeywords lists Kotlin hard keywords that cannot be used as bare
-// identifiers. Colliding SNGL identifiers are wrapped in backticks (Kotlin's
-// escape syntax).
-var kotlinHardKeywords = map[string]bool{
-	"as": true, "break": true, "class": true, "continue": true,
-	"do": true, "else": true, "false": true, "for": true,
-	"fun": true, "if": true, "in": true, "interface": true,
-	"is": true, "null": true, "object": true, "package": true,
-	"return": true, "super": true, "this": true, "throw": true,
-	"true": true, "try": true, "typealias": true, "typeof": true,
-	"val": true, "var": true, "when": true, "while": true,
 }
 
 func exportName(s string) string {

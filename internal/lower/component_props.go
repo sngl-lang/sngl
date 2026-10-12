@@ -156,7 +156,7 @@ func contextProps(c *ir.Component) {
 	if len(renames) == 0 {
 		return
 	}
-	c.Body = renameIdents(c.Body, renames, symRenames)
+	c.Stmts = renameIdents(c.Stmts, renames, symRenames)
 	for _, f := range c.Funcs {
 		f.Block = renameIdents(f.Block, renames, symRenames)
 	}
@@ -211,7 +211,7 @@ func promoteProps(c *ir.Component) []*ir.Func {
 	// Every read of the parameter becomes a read of the var -- except the
 	// initializers just built, which are the one place the parameter is still
 	// meant to be read.
-	c.Body = renameIdents(c.Body, renames, symRenames)
+	c.Stmts = renameIdents(c.Stmts, renames, symRenames)
 	for _, f := range c.Funcs {
 		f.Block = renameIdents(f.Block, renames, symRenames)
 	}

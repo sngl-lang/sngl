@@ -218,13 +218,11 @@ func (ctx *CodegenCtx) collectTimers() []TimerHandler {
 			}
 		}
 		timers = append(timers, TimerHandler{
-			TimerInfo: TimerInfo{
-				Index:      i,
-				IntervalMs: IntervalToMs(t.Interval),
-				ActiveVar:  activeVar,
-				Body:       t.Handler.Block,
-			},
-			Mutated: mutated,
+			Index:      i,
+			IntervalMs: IntervalToMs(t.Interval),
+			ActiveVar:  activeVar,
+			Body:       t.Handler.Block,
+			Mutated:    mutated,
 		})
 	}
 	return timers

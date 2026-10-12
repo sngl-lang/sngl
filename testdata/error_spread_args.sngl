@@ -40,7 +40,7 @@ component unnamed(r Row, cell component(Row)) node {
     }
 }
 
-component emitter(@fired Row) node {
+component emitter(@fired(v Row)) node {
     var row = Row{title="a", count=1}
     button(text="spread", @click { fired(...row) }) // ERROR(check) "spread of Row names no parameter"
     button(text="named", @click { fired(r=row) })   // ERROR(check) "no parameter name"

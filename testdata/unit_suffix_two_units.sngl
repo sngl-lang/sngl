@@ -1,0 +1,27 @@
+// A unit literal is a value of the unit its type names, not of whichever
+// declaration its suffix reaches first. A program here declares a `length`
+// with the bases `measurement` has, so `px` names two units; the `16px` in a
+// measurement sum is a measurement all the same, and adds to a `rem`, which
+// only `measurement` declares.
+
+import . "sngl:test"
+import ui "sngl:ui"
+
+unit length { px, em }
+
+const func indent(m ui.measurement) ui.measurement {
+    return m + 16px
+}
+
+func far(l length) length {
+    return l + 2px
+}
+
+func testALibraryMeasurementIsAMeasurement(t Test) {
+    t.assert(indent(4px) == 20px)
+    t.assert(indent(1rem) == 1rem + 16px)
+}
+
+func testTheProgramsOwnUnitIsItsOwn(t Test) {
+    t.assert(far(1px) == 3px)
+}

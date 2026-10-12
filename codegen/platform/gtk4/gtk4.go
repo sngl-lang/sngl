@@ -62,6 +62,10 @@ func init() {
 	g := &Generator{}
 	codegen.RegisterNative(platformName, g)
 	registerGIRScheme(g)
+	// The widget reads gtk4.sngl declares (`checkActive` and its siblings)
+	// are answered where a handler body is translated (readWidgets), since
+	// which getter a read becomes depends on the mode the file is emitted in.
+	codegen.DeclarePlatformImplements(platformName, "sngl:platform/gtk4")
 }
 
 // Generator implements codegen.PlatformGenerator for GTK4.
@@ -253,6 +257,9 @@ func (g *Generator) Generate(req *codegen.Request, sink codegen.Sink) error {
 	if err := c.EmitFromMutation(m, req, sink); err != nil {
 		return err
 	}
+	if err := golang.EmitAssetEmbed(sink, c.cfg.Package, req.FileAssets); err != nil {
+		return fmt.Errorf("gtk4: assets: %w", err)
+	}
 	if golang.PackageUsesI18n(req.Pkg) {
 		if err := golang.EmitI18nManifestEmbed(sink, c.cfg.Package, req.ProjectFS, ""); err != nil {
 			return fmt.Errorf("gtk4: i18n manifest embed: %w", err)
@@ -321,7 +328,35 @@ import (
 
 func currentTestModel() *Model { return currentModel }
 
-var snapshotApp *C.GtkApplication
+// snglSnapshotApp is the application every snapshot in this test process
+// builds its window in. One, because a registered application stays exported
+// on the session bus while a window holds it, and a second registered at the
+// same path fails with "An object is already exported".
+var snglSnapshotApp *C.GtkApplication
+
+// snglSnapshotApplication registers snglSnapshotApp the first time, without
+// running its main loop, so BuildUI and the pump execute on the current
+// (locked) OS thread without re-entrancy.
+func snglSnapshotApplication() (*C.GtkApplication, error) {
+	if snglSnapshotApp != nil {
+		return snglSnapshotApp, nil
+	}
+	cAppID := C.CString("dev.sngl.test.snapshot")
+	defer C.free(unsafe.Pointer(cAppID))
+	app := C.gtk_application_new(cAppID, C.G_APPLICATION_NON_UNIQUE)
+	var gerr *C.GError
+	if C.g_application_register((*C.GApplication)(unsafe.Pointer(app)), nil, &gerr) == 0 {
+		msg := "no reason given"
+		if gerr != nil {
+			msg = C.GoString(gerr.message)
+			C.g_error_free(gerr)
+		}
+		C.g_object_unref(C.gpointer(unsafe.Pointer(app)))
+		return nil, fmt.Errorf("g_application_register failed: %s", msg)
+	}
+	snglSnapshotApp = app
+	return app, nil
+}
 
 func snapshotBytesGtk(m *Model) (string, []byte, error) {
 	runtime.LockOSThread()
@@ -338,33 +373,28 @@ func snapshotBytesGtk(m *Model) (string, []byte, error) {
 	f.Close()
 	defer os.Remove(f.Name())
 
-	// One application per process, as gtk4rt.SnapshotModelBytes: the window a
-	// snapshot presents keeps it exported on the session bus, and a second
-	// registration under the same path is refused.
-	if snapshotApp == nil {
-		cAppID := C.CString("dev.sngl.test.snapshot")
-		defer C.free(unsafe.Pointer(cAppID))
-		app := C.gtk_application_new(cAppID, C.G_APPLICATION_NON_UNIQUE)
-		// Register without running the main loop so BuildUI and the pump
-		// execute in the current (locked) OS thread without re-entrancy.
-		var gerr *C.GError
-		if C.g_application_register((*C.GApplication)(unsafe.Pointer(app)), nil, &gerr) == 0 {
-			msg := "unknown error"
-			if gerr != nil {
-				msg = C.GoString(gerr.message)
-				C.g_error_free(gerr)
-			}
-			C.g_object_unref(C.gpointer(unsafe.Pointer(app)))
-			return "", nil, fmt.Errorf("g_application_register failed: %s", msg)
-		}
-		snapshotApp = app
+	app, err := snglSnapshotApplication()
+	if err != nil {
+		return "", nil, err
 	}
-	app := snapshotApp
 
 	win := m.BuildUI(app)
 	if win == nil {
 		return "", nil, fmt.Errorf("BuildUI returned nil")
 	}
+	// The Model keeps its widget tree across snapshots and BuildUI hands the
+	// same root to a new window each time, so the root is taken back out of
+	// this one -- held, since the window was what kept it alive -- before the
+	// window goes. Left in it, the next window was given a widget that
+	// already had a parent and captured nothing.
+	defer func() {
+		w := (*C.GtkWindow)(unsafe.Pointer(win))
+		if child := C.gtk_window_get_child(w); child != nil {
+			C.g_object_ref(C.gpointer(unsafe.Pointer(child)))
+			C.gtk_window_set_child(w, nil)
+		}
+		C.gtk_window_destroy(w)
+	}()
 	C.gtk_window_set_default_size((*C.GtkWindow)(unsafe.Pointer(win)), 800, 600)
 	C.gtk_window_present((*C.GtkWindow)(unsafe.Pointer(win)))
 	C.sngl_pump_until_mapped(win, 1000)

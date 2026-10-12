@@ -78,20 +78,16 @@ func (c *checker) runConstArgChecksFrom(mark int) {
 	c.constArgs = c.constArgs[:mark]
 }
 
-// checkConstProp holds a `const` prop to the two forms it cannot share a
-// declaration with. A binding writes back to the caller's value, which a
-// compile-time value has none of; and #[construct] is what const already says
-// -- the instance reads the value once -- so writing both says it twice.
+// checkConstProp holds a `const` prop to not being a binding: a binding writes
+// back to the caller's value, which a compile-time value has none of. The
+// other form it cannot share a declaration with, #[construct], is
+// markConstruct's to refuse.
 func (c *checker) checkConstProp(pd ast.Param, prop *ir.Prop) {
 	if !prop.Const {
 		return
 	}
 	if prop.Bidirectional {
 		c.error(pd.Pos, "prop %q cannot be const and a binding: a binding writes back to the caller's value, and a compile-time value has none", pd.Name)
-	}
-	if prop.Construct {
-		c.error(pd.Pos, "prop %q is const, which already says it is read once while the instance is built; drop #[construct]", pd.Name)
-		prop.Construct = false
 	}
 }
 

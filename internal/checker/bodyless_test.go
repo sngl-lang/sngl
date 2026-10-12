@@ -211,8 +211,10 @@ component blip(x int) sngl.node
 import . "sngl:ui"
 import bk "sngl:platform/extstub"
 
+component leaf node {}
+
 component main node {
-    text(value="hi")
+    leaf()
 }
 `
 	doc, err := parser.Parse("main.sngl", []byte(withStd(userSource)))
@@ -245,8 +247,10 @@ component blip(x int) sngl.node
 import sngl "sngl:ui"
 import bk "sngl:blipkit"
 
+component label(value string) sngl.node {}
+
 const component bk.blip[extstub.platform](x) {
-    sngl.text(value="blip {x}")
+    label(value="blip {x}")
 }
 `
 	// Renders it, which the rule requires before it asks anything: this

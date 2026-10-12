@@ -150,10 +150,10 @@ func (m *Model) mainClosed() {
 }
 
 // mainVisible invokes the OnVisible callback on the #main widget; for tests.
-func (m *Model) mainVisible(__visible bool) {
+func (m *Model) mainVisible(visible bool) {
 	if cb := m.main.OnVisible; cb != nil {
 		m.main.OnVisible = nil
-		cb(__visible)
+		cb(visible)
 		m.main.OnVisible = cb
 	}
 }
@@ -166,10 +166,10 @@ func (m *Model) logClosed() {
 }
 
 // logVisible invokes the OnVisible callback on the #log widget; for tests.
-func (m *Model) logVisible(__visible bool) {
+func (m *Model) logVisible(visible bool) {
 	if cb := m.log.OnVisible; cb != nil {
 		m.log.OnVisible = nil
-		cb(__visible)
+		cb(visible)
 		m.log.OnVisible = cb
 	}
 }
@@ -504,7 +504,7 @@ dialog { margin: auto; padding: 1em; }
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:81c21a582423ea7c7324532763e5c233
+pass sha256:f48fe617691ff34d9841685e53df1e8f
 -- run/go/gtk4 --
 pass sha256:3e771afdd83b86a5f02a21b0450103d9
 -- run/none/html --

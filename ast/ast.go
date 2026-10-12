@@ -433,16 +433,15 @@ func (Param) paramOrEventDecl()     {}
 func (EventDecl) paramOrEventDecl() {}
 
 // EventDecl declares an event on a component and the parameters its handlers
-// receive: `@pick(index int, label string)`, `@change T`, `@done()`.
-//
-// Params is one list whichever way it was written. `@change T` is the
-// one-parameter case without the parens -- a single entry with no name -- and
-// HasParens is what tells the two spellings apart for the formatter, which
-// prints what the author wrote. A bare `@tick` has no entries and no parens.
+// receive, as a function declares its own: `@pick(index int, label string)`.
+// Params is the function's ParamList. A bare `@tick` declares none, as
+// `@tick()` does; HasParens tells the two apart for the formatter, which
+// prints what the author wrote, and for an override's prop list, where the
+// bare name selects one of the base's events and `@click()` is refused.
 type EventDecl struct {
 	Pos       Pos
 	Name      string
-	Params    []FuncTypeParam
+	Params    ParamList
 	HasParens bool
 	// Attrs are the #[...] macro attributes written before the event, read
 	// the same way a Param's are.

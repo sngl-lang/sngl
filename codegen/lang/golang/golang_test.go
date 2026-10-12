@@ -74,7 +74,7 @@ func TestEmitI18nPlural_GoIRContext(t *testing.T) {
 	// namespace-call path (GoIRContext.evalCall → evalNamespaceCall) must emit
 	// i18n.GetTranslator().Plural(count, forms) — NOT
 	// i18n.GetTranslator().Plural("i18n", count) which was the pre-fix output.
-	fn := &ir.Func{Name: "plural", Receiver: "i18n"}
+	fn := &ir.Func{Name: "plural", Receiver: ir.ReceiverNamed("i18n")}
 	receiverExpr := &ir.Ident{Name: "i18n"}
 	countLit := &ir.Literal{Value: "3", Type: ir.TypInt}
 	formsMap := &ir.MapLitIR{}
@@ -114,7 +114,7 @@ func TestEmitI18nExactly_GoIRContext(t *testing.T) {
 			DeclaredAs: "exactly",
 		})
 	}
-	fn := &ir.Func{Name: "exactly", Receiver: "i18n", Intrinsic: "i18n.exactly"}
+	fn := &ir.Func{Name: "exactly", Receiver: ir.ReceiverNamed("i18n"), Intrinsic: "i18n.exactly"}
 	receiverExpr := &ir.Ident{Name: "i18n"}
 	nLit := &ir.Literal{Value: "0", Type: ir.TypInt}
 	call := &ir.Call{
@@ -150,7 +150,7 @@ func TestUnimplementedIntrinsicPanics(t *testing.T) {
 	}{
 		{"plain call", &ir.Call{Func: &ir.Func{Name: "nope", Intrinsic: "NoBackendHasThis"}}},
 		{"namespace call", &ir.Call{
-			Func:     &ir.Func{Name: "nope", Receiver: "stdlib", Intrinsic: "NoBackendHasThis"},
+			Func:     &ir.Func{Name: "nope", Receiver: ir.ReceiverNamed("stdlib"), Intrinsic: "NoBackendHasThis"},
 			Receiver: &ir.Ident{Name: "stdlib"},
 		}},
 	} {
@@ -184,7 +184,7 @@ func TestIntrinsicWithBodyDoesNotPanic(t *testing.T) {
 // TestUnimplementedIntrinsicPanics do not reach.
 func TestUnimplementedIntrinsicPanicsOnMethodCall(t *testing.T) {
 	call := &ir.Call{
-		Func: &ir.Func{Name: "nope", Receiver: "string", Intrinsic: "NoBackendHasThis"},
+		Func: &ir.Func{Name: "nope", Receiver: ir.ReceiverNamed("string"), Intrinsic: "NoBackendHasThis"},
 		Args: []ir.CallArg{{Value: &ir.Ident{Name: "s", Type: ir.TypString}}},
 	}
 	defer func() {

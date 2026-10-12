@@ -63,7 +63,7 @@ import (
 // Model holds the state for this SNGL UI.
 type Model struct {
 	t__inst0       *time.Ticker
-	visible__inst1 bool
+	visible__inst0 bool
 
 	__n0    *fynelayout.Toplevel
 	__n1    *widget.Button
@@ -75,7 +75,7 @@ type Model struct {
 func New() *Model {
 	m := &Model{}
 	m.t__inst0 = nil
-	m.visible__inst1 = true
+	m.visible__inst0 = true
 	return m
 }
 
@@ -83,8 +83,8 @@ func (m *Model) __n0_closed_handler() {
 }
 
 func (m *Model) __n0_visible_handler(__visible bool) {
-	m.visible__inst1 = __visible
-	m.__n0.SetVisible(m.visible__inst1)
+	m.visible__inst0 = __visible
+	m.__n0.SetVisible(m.visible__inst0)
 }
 
 func (m *Model) __n1_click_handler() {
@@ -103,12 +103,12 @@ func (m *Model) SetT__inst0(v *time.Ticker) {
 	m.t__inst0 = v
 }
 
-func (m *Model) Visible__inst1() bool {
-	return m.visible__inst1
+func (m *Model) Visible__inst0() bool {
+	return m.visible__inst0
 }
 
-func (m *Model) SetVisible__inst1(v bool) {
-	m.visible__inst1 = v
+func (m *Model) SetVisible__inst0(v bool) {
+	m.visible__inst0 = v
 }
 
 // BuildUI creates the widget tree and returns the first window's content.
@@ -119,7 +119,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__built = true
 	m.__n0 = fynelayout.NewToplevel()
 	m.__n0.SetTitle("zero")
-	m.__n0.SetVisible(m.visible__inst1)
+	m.__n0.SetVisible(m.visible__inst0)
 	m.__n0.OnClosed = m.__n0_closed_handler
 	m.__n0.OnVisible = m.__n0_visible_handler
 	m.__n1 = widget.NewButton("", nil)
@@ -142,4 +142,4 @@ func main() {
 	_ = os.Stderr
 }
 -- run/go/fyne --
-pass sha256:4b1f627f228d69f276d6d7eb2408e148
+pass sha256:925e5e487238b9116fe4ffb026a0243b

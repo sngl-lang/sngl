@@ -52,7 +52,7 @@ func TestNodeEscape_RecursiveComponentRefsAreLocal(t *testing.T) {
 	// Recursive component body: creates __n2 (vbox) and __n3 (text),
 	// appends __n3 to __n2 — all internal temps, none referenced elsewhere.
 	tree := &ir.Component{Name: "TreeView"}
-	tree.Body = []ir.Stmt{
+	tree.Stmts = []ir.Stmt{
 		createNodeLV("__n2", "vbox"),
 		createNodeLV("__n3", "text"),
 		appendChildStmt("__n2", "__n3"),
@@ -61,7 +61,7 @@ func TestNodeEscape_RecursiveComponentRefsAreLocal(t *testing.T) {
 	// Main body: creates __n0 (vbox) and __n1 (text). __n1 is mutated by a
 	// reactive updater func below, so it must escape to a Model field.
 	main := &ir.Component{Name: "main"}
-	main.Body = []ir.Stmt{
+	main.Stmts = []ir.Stmt{
 		createNodeLV("__n0", "vbox"),
 		createNodeLV("__n1", "text"),
 		appendChildStmt("__n0", "__n1"),

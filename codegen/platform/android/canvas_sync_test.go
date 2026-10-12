@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/codegen/lang/kotlin"
 	"duckfam.us/sngl/internal/parser"
 	"duckfam.us/sngl/lib"
 )
@@ -12,7 +13,7 @@ import (
 // TestCanvasKotlinDeclsInSync guards against drift between the hand-written
 // Kotlin data class decls (canvasKotlinDecls, colorKotlinDecl) and the
 // source-of-truth SNGL struct declarations in lib/ui/draw/draw.sngl
-// (CanvasStyle, PathCmd) and lib/builtin/color.sngl (color → Color). These
+// (Style) and lib/builtin/color.sngl (color → Color). These
 // Kotlin decls are hand-written because
 // the canvas stdlib structs aren't carried on pkg.Structs for the Kotlin path
 // (mirrors what canvasutil_sync_test.go does for the Go-emitting platforms).
@@ -26,15 +27,13 @@ func TestCanvasKotlinDeclsInSync(t *testing.T) {
 	// SNGL struct name → lib source file. The Kotlin decl name is the
 	// SNGL name except `color` → `Color` (capitalized data class).
 	want := map[string]string{
-		"CanvasStyle": "ui/draw/draw.sngl",
-		"PathCmd":     "ui/draw/draw.sngl",
-		"color":       "builtin/color.sngl",
+		"Style": "ui/draw/draw.sngl",
+		"color": "builtin/color.sngl",
 	}
 	// SNGL struct name → Kotlin data class name as emitted.
 	kotlinName := map[string]string{
-		"CanvasStyle": "CanvasStyle",
-		"PathCmd":     "PathCmd",
-		"color":       "Color",
+		"Style": "Style",
+		"color": "Color",
 	}
 
 	files := map[string]struct{}{}
@@ -78,7 +77,7 @@ func TestCanvasKotlinDeclsInSync(t *testing.T) {
 	// Color is emitted by colorKotlinDecl rather than canvasKotlinDecls -- a
 	// canvas is one of two ways a program reaches the type -- so the guard
 	// reads both.
-	decls := canvasKotlinDecls(nil) + colorKotlinDecl(nil)
+	decls := canvasKotlinDecls(kotlin.NewIRContext(nil), nil) + colorKotlinDecl(nil)
 
 	// Split the emitted Kotlin into per-data-class bodies so a field present in
 	// one decl can't satisfy a check for another struct.
@@ -91,7 +90,7 @@ func TestCanvasKotlinDeclsInSync(t *testing.T) {
 		rest := after
 		// Each data class closes with a ")" at the start of
 		// its own line ("\n)"). Field defaults may contain inline "(...)"
-		// (e.g. CanvasStyle's `Color(a = 0)`), so match the line-leading close.
+		// (e.g. Style's `Color(a = 0)`), so match the line-leading close.
 		before, _, ok := strings.Cut(rest, "\n)")
 		if !ok {
 			return rest, true

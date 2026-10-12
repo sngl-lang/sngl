@@ -23,7 +23,7 @@ import (
 // every backend already agrees.
 //
 // The walk terminates because the checker gates both call sites -- an effect's
-// `on` at checkEffectKey, a #[construct] prop at checkConstructProps -- and a
+// `on` at checkEffectKey, a #[construct] prop at markConstruct -- and a
 // struct that contains itself is refused there. Reaching one here
 // would be a caller that skipped the gate.
 func rebuildDiffers(a, b ir.Expr, t *ir.Type) ir.Expr {

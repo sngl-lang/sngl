@@ -286,11 +286,13 @@ type ComponentSlot struct {
 	Name string
 	Type string
 	Rest bool
+	Doc  string
 }
 
 type ComponentEvent struct {
 	Name        string
 	PayloadType string
+	Doc         string
 }
 
 // LibraryComponents is every exported component of every public library
@@ -405,12 +407,14 @@ func packageComponents(uri string, snapshots []string) []Component {
 				Name: sl.Name,
 				Type: parser.FormatType(sl.Type),
 				Rest: sl.Rest,
+				Doc:  sl.Doc,
 			})
 		}
 		for ename, payload := range schema.Events {
 			c.Events = append(c.Events, ComponentEvent{
 				Name:        ename,
 				PayloadType: payload,
+				Doc:         schema.EventDocs[ename],
 			})
 		}
 		sort.Slice(c.Events, func(i, j int) bool { return c.Events[i].Name < c.Events[j].Name })
@@ -490,9 +494,9 @@ func compilePreview(source string) string {
 
 	// Unconditional. It used to run only when the target had capabilities to lower
 	// for, on the reading that a build lowering nothing had nothing new to fold --
-	// which stopped being true when passQuery became always-on: it synthesizes a
-	// thunk after the optimizer has walked every declaration, so the calls inside
-	// one are calls nothing has looked at.
+	// which is not so: an always-on lowering pass may synthesize code after the
+	// optimizer has walked every declaration, and the calls inside it are calls
+	// nothing has looked at.
 	if err := optimize.Optimize(pkg, optCfg); err != nil {
 		return ""
 	}

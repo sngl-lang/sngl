@@ -53,9 +53,9 @@ const (
 // Model field backing a canvas: *snglcanvas.Context.
 func canvasCtxType() *ir.Type { return ir.NativeGoPointerOf(snglCanvasAlias + ".Context") }
 
-// The canvas stdlib structs (lib/canvas.sngl: CanvasStyle, PathCmd;
+// The canvas stdlib structs (lib/ui/draw/draw.sngl: Style;
 // lib/types.sngl: color → Color) are referenced by the synthesized draw funcs
-// (e.g. style.Fill.R read by the ApplyStyle setters, _cmd.op in the path loop)
+// (e.g. style.Fill.R read by the ApplyStyle setters)
 // but are NOT carried in pkg.Structs (html emits JS object literals), so the
 // fyne Go path declares them here when any canvas is present. Field names/types
 // mirror the stdlib definitions; canvas_sync_test.go guards against drift.
@@ -68,7 +68,7 @@ func canvasStdlibDeclsExcluding(structs []structData) string {
 	declared := map[string]struct{}{}
 	for _, s := range structs {
 		switch s.Name {
-		case "Color", "CanvasStyle", "PathCmd":
+		case "Color", "Style":
 			declared[s.Name] = struct{}{}
 		}
 	}
@@ -97,6 +97,9 @@ func (t *fyneTranslator) translateCanvasRedraw(rs *ir.CanvasRedrawStmt) []ir.Stm
 	m := t.canvasMetaForNode(rs.Canvas)
 	if m == nil {
 		return nil
+	}
+	if isImageDrawing(m.Node) {
+		return t.paintImageDrawing(m)
 	}
 	// A Raster redraws by asking: Refresh re-runs the generator, at whatever
 	// size the widget is now.
@@ -177,7 +180,7 @@ func (t *fyneTranslator) emitCanvasCreate(id string) []ir.Stmt {
 	if t.importSink != nil {
 		t.importSink(snglCanvasImportPath)
 		t.importSink("fyne.io/fyne/v2/canvas")
-		// The emitted CanvasStyle struct decl references snglcolor.Color.
+		// The emitted Style struct decl references snglcolor.Color.
 		t.importSink(canvasutil.ColorImportPath)
 	}
 
@@ -279,10 +282,6 @@ func (t *fyneTranslator) attachCanvasClick(id, event string, handler ir.Expr) []
 	if t.invokerSink != nil && !strings.HasPrefix(id, "__n") {
 		t.invokerSink(fyneEventInvoker{IDLabel: id, SnglEvent: codegen.TriggerEventName(handler, event), Field: "OnTapped", Target: tap})
 	}
-	arg := ""
-	if pt, _ := codegen.HandlerPayload(handler); pt != nil {
-		arg = golang.IRTypeToGo(pt) + "{}"
-	}
 	tapRef := t.fieldRef(tap)
 	newTap := nativeCallAt("fynelayout.NewTap", fyneLayoutImportPath, []ir.Expr{t.fieldRef(id)}, ir.TypDyn)
 	return []ir.Stmt{
@@ -290,7 +289,7 @@ func (t *fyneTranslator) attachCanvasClick(id, event string, handler ir.Expr) []
 		&ir.Assign{
 			Target: &ir.Select{Operand: tapRef, Field: "OnTapped", Type: ir.TypDyn},
 			Op:     ast.AssignSet,
-			Value:  rawGoExpr(fmt.Sprintf("func() { %s(%s) }", t.gc.EvalExpr(t.qualifyHandlerFunc(handler)), arg)),
+			Value:  rawGoExpr(fmt.Sprintf("func() { %s() }", t.gc.EvalExpr(t.qualifyHandlerFunc(handler)))),
 		},
 	}
 }
@@ -323,11 +322,11 @@ func emitIRCanvasDraw(b *strings.Builder, cv *codegen.Canvas, gc *golang.GoIRCon
 	tr.canvasByNode = byNode
 	body := codegen.WalkLowered(context.Background(), cv.Draw, tr)
 	synthesized := &ir.Func{
-		Name:     cv.Name,
-		Receiver: "Model",
-		Params:   []*ir.Param{{Name: "ctx", Type: canvasCtxType()}},
-		Return:   ir.TypVoid,
-		Block:    body,
+		Name:    cv.Name,
+		Lowered: ir.FuncLowering{HostReceiver: "Model"},
+		Params:  []*ir.Param{{Name: "ctx", Type: canvasCtxType()}},
+		Return:  ir.TypVoid,
+		Block:   body,
 	}
 	for _, line := range gc.EmitFuncDef(synthesized) {
 		b.WriteString(line)

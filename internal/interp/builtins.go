@@ -54,31 +54,31 @@ var intrinsics = map[string]nativeFunc{
 	"float.round": func(args []any) (any, error) {
 		return math.Round(toFloat(args[0])), nil
 	},
-	"float.sqrt": func(args []any) (any, error) {
+	"math.sqrt": func(args []any) (any, error) {
 		return math.Sqrt(toFloat(args[0])), nil
 	},
-	"float.pow": func(args []any) (any, error) {
+	"math.pow": func(args []any) (any, error) {
 		return math.Pow(toFloat(args[0]), toFloat(args[1])), nil
 	},
-	"float.sin": func(args []any) (any, error) {
+	"math.sin": func(args []any) (any, error) {
 		return math.Sin(toFloat(args[0])), nil
 	},
-	"float.cos": func(args []any) (any, error) {
+	"math.cos": func(args []any) (any, error) {
 		return math.Cos(toFloat(args[0])), nil
 	},
-	"float.tan": func(args []any) (any, error) {
+	"math.tan": func(args []any) (any, error) {
 		return math.Tan(toFloat(args[0])), nil
 	},
-	"float.asin": func(args []any) (any, error) {
+	"math.asin": func(args []any) (any, error) {
 		return math.Asin(toFloat(args[0])), nil
 	},
-	"float.acos": func(args []any) (any, error) {
+	"math.acos": func(args []any) (any, error) {
 		return math.Acos(toFloat(args[0])), nil
 	},
-	"float.atan": func(args []any) (any, error) {
+	"math.atan": func(args []any) (any, error) {
 		return math.Atan(toFloat(args[0])), nil
 	},
-	"float.atan2": func(args []any) (any, error) {
+	"math.atan2": func(args []any) (any, error) {
 		return math.Atan2(toFloat(args[0]), toFloat(args[1])), nil
 	},
 
@@ -318,8 +318,8 @@ func init() {
 			return lv.Call(nil)
 		}
 	}
-	intrinsics["async.spawn"] = runClosure("spawn")
-	intrinsics["async.post"] = runClosure("post")
+	intrinsics["async.start"] = runClosure("start")
+	intrinsics["async.do"] = runClosure("do")
 
 	intrinsics["list.filter"] = func(args []any) (any, error) {
 		list, ok := args[0].([]any)

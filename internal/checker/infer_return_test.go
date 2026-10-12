@@ -9,8 +9,6 @@ import (
 // context wants. Without that, such a function is undeclarable rather than
 // merely awkward: there are no arguments to infer from, and SNGL has no syntax
 // for naming a type argument at a call site — `pending<int>()` does not parse.
-//
-// remote.pending is the case that forced this, but the rule is general.
 func TestReturnOnlyTypeParamBindsFromContext(t *testing.T) {
 	src := `func empty<T>() list<T> {
     return []

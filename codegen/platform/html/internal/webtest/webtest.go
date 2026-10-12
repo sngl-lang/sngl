@@ -5,15 +5,18 @@
 package webtest
 
 import (
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"sync"
+	"time"
 
 	"github.com/go-rod/rod"
 	"github.com/go-rod/rod/lib/launcher"
 	"github.com/go-rod/rod/lib/proto"
 )
+
+// launchTimeout bounds how long Chromium has to print its DevTools URL.
+const launchTimeout = 30 * time.Second
 
 // Engine manages a test HTTP server and a shared Chrome process.
 type Engine struct {
@@ -22,6 +25,7 @@ type Engine struct {
 	mu       sync.Mutex
 	server   *httptest.Server
 	browser  *rod.Browser
+	launcher *launcher.Launcher
 	startErr error
 	started  bool
 }
@@ -41,7 +45,9 @@ func (e *Engine) StartHeadless(width, height int) (*Browser, error) {
 		return nil, err
 	}
 
-	page, err := e.browser.Page(proto.TargetCreateTarget{URL: "about:blank"})
+	page, err := Within("open page", defaultTimeout, func() (*rod.Page, error) {
+		return e.browser.Page(proto.TargetCreateTarget{URL: "about:blank"})
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -51,7 +57,10 @@ func (e *Engine) StartHeadless(width, height int) (*Browser, error) {
 		return nil, err
 	}
 
-	page.MustSetViewport(width, height, 0, false)
+	if err := page.Timeout(defaultTimeout).SetViewport(&proto.EmulationSetDeviceMetricsOverride{Width: width, Height: height}); err != nil {
+		page.Close()
+		return nil, err
+	}
 
 	return &Browser{
 		page:    page,
@@ -75,8 +84,8 @@ func (e *Engine) Close() {
 	defer e.mu.Unlock()
 
 	if e.browser != nil {
-		e.browser.Close()
-		e.browser = nil
+		CloseBrowser(e.launcher, e.browser, defaultTimeout)
+		e.browser, e.launcher = nil, nil
 	}
 	if e.server != nil {
 		e.server.Close()
@@ -100,15 +109,19 @@ func (e *Engine) ensureStartedLocked() error {
 	if path, found := launcher.LookPath(); found {
 		l = l.Bin(path)
 	}
-	u, err := l.Launch()
+	u, err := Within("launch browser", launchTimeout, l.Launch)
 	if err != nil {
+		CloseBrowser(l, nil, defaultTimeout)
 		e.server.Close()
 		e.server = nil
-		e.startErr = fmt.Errorf("launching browser: %w", err)
+		e.startErr = err
 		return e.startErr
 	}
 	browser := rod.New().ControlURL(u)
-	if err := browser.Connect(); err != nil {
+	if _, err := Within("connect to browser", defaultTimeout, func() (struct{}, error) {
+		return struct{}{}, browser.Connect()
+	}); err != nil {
+		CloseBrowser(l, nil, defaultTimeout)
 		e.server.Close()
 		e.server = nil
 		e.startErr = err
@@ -116,5 +129,6 @@ func (e *Engine) ensureStartedLocked() error {
 	}
 
 	e.browser = browser
+	e.launcher = l
 	return nil
 }

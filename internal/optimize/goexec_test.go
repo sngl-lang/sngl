@@ -769,7 +769,7 @@ func TestNestedFoldErrorIsReported(t *testing.T) {
 			comp := &ir.Component{
 				Name:  "wrapped",
 				Props: []*ir.Prop{{Name: "name", Type: ir.TypString, Sym: sym}},
-				Body: []ir.Stmt{&ir.NodeInst{Name: "text", Props: []ir.Arg{{
+				Stmts: []ir.Stmt{&ir.NodeInst{Name: "text", Props: []ir.Arg{{
 					Name:  "value",
 					Value: boomWith(&ir.Ident{Name: "name", Sym: sym, Type: ir.TypString}),
 				}}}},
@@ -797,7 +797,7 @@ func TestNestedFoldErrorIsReported(t *testing.T) {
 				}}}},
 			}}
 		}
-		comps = append(comps, &ir.Component{Name: "main", Body: body})
+		comps = append(comps, &ir.Component{Name: "main", Stmts: body})
 		return &ir.Package{
 			Components: comps,
 			Imports: []*ir.Import{{
@@ -822,7 +822,7 @@ func TestNestedFoldErrorIsReported(t *testing.T) {
 			// runs.
 			pkg.RootComponent = "main"
 			f := NewFold(pkg, cfg).Child()
-			f.Stmts(f.Clone(pkg.RootDecl().Body))
+			f.Stmts(f.Clone(pkg.RootDecl().Stmts))
 			if err == nil {
 				err = f.Err()
 			}

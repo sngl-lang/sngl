@@ -23,7 +23,7 @@ component main node {
 
     for var it = items {
         effect(
-            on=it,
+            on = it,
             @mount(v) {
                 log.push("+{v}")
             },
@@ -34,7 +34,7 @@ component main node {
     }
 
     effect(
-        on=k,
+        on = k,
         @mount {
             pairLog.push("+A")
         },
@@ -43,7 +43,7 @@ component main node {
         },
     )
     effect(
-        on=k,
+        on = k,
         @mount {
             pairLog.push("+B")
         },

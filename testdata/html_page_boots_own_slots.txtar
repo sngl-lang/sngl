@@ -68,7 +68,7 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { on__inst0: false, visible__inst1: true };
+  var state = { on__inst0: false, visible__inst0: true };
   var __slot0 = [];
   function __renderSlot0(parent) {
     let __place0_prev = __slot0;
@@ -123,9 +123,9 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { on__inst0: false, visible__inst1: true };
+  var state = { on__inst0: false, visible__inst0: true };
 })();
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:faba769d61b8aef4ee3352a6d7da7b93
+pass sha256:7c37ffad776f1df6b227695904babda3

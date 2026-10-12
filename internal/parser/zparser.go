@@ -3353,7 +3353,7 @@ state6:
 
 // EventParams grammar:
 //
-//	EventParams = lparen [ FuncTypeParamList ] rparen .
+//	EventParams = lparen [ ParamList ] rparen .
 //
 //	State 0
 //		on  lparen
@@ -3361,8 +3361,8 @@ state6:
 //	State 1
 //		on  rparen
 //			shift and goto state 2
-//		on  ellipsis, ident, kw_component, kw_enum, kw_func, kw_struct, kw_unit
-//			call FuncTypeParamList and goto state 3
+//		on  at, attr_open, colon, ident, kw_const
+//			call ParamList and goto state 3
 //	State 2
 //		Accept
 //	State 3
@@ -3382,13 +3382,13 @@ func (p *Parser) EventParams() (r []int32) {
 	}
 	return p.stop(r, accept, errorSet)
 state1:
-	accept, errorSet = false, 42
+	accept, errorSet = false, 92
 	switch Symbol(p.tok.Ch) {
 	case rparen:
 		r = append(r, p.shift())
 		goto state2
-	case ellipsis, ident, kw_component, kw_enum, kw_func, kw_struct, kw_unit:
-		r = p.add(r, p.FuncTypeParamList())
+	case at, attr_open, colon, ident, kw_const:
+		r = p.add(r, p.ParamList())
 		goto state3
 	}
 	return p.stop(r, accept, errorSet)
@@ -5659,10 +5659,13 @@ state1:
 //	# both -- and so is whether a type is required, optional or forbidden there.
 //	# Attrs are hoisted ahead of the alternation so all three forms accept them.
 //	#
-//	# An event declares the parameters its handlers receive. The list is a func
-//	# type's, `@pick(index int, label string)`, and `@change T` is the
-//	# one-parameter case written without the parens; `lparen` cannot begin a Type,
-//	# so the two alternatives are LL(1).
+//	# An event declares the parameters its handlers receive, and its list is a
+//	# function's: `@pick(index int, label string)`, read by the same production
+//	# and the same code. As a function may, it may leave the parens off, and
+//	# `@tick` then declares none, as `@tick()` does. The Type alternative is not a
+//	# spelling: it is admitted so that `@change T`, which a list used to be
+//	# shortened to, is refused naming `@change(v T)` rather than reported as an
+//	# unexpected token. `lparen` cannot begin a Type, so the two are LL(1).
 //	#
 //	# kw_const → a parameter whose argument is constant at every call site. The
 //	# grammar admits it in every list; the checker refuses it where it means nothing

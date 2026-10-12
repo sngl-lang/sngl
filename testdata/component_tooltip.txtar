@@ -53,7 +53,7 @@ import (
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
-	msg       string
+	msg__r0   string
 	__focusID int
 
 	width, height int
@@ -62,7 +62,7 @@ type Model struct {
 // New creates a Model with default bind values.
 func New() Model {
 	m := Model{}
-	m.msg = "hello"
+	m.msg__r0 = "hello"
 	m.__focusID = 0
 	return m
 }
@@ -85,19 +85,19 @@ func (m *Model) __focusPrev() {
 	}
 }
 
-func (m Model) Msg() string {
-	return m.msg
+func (m Model) Msg__r0() string {
+	return m.msg__r0
 }
 
-func (m Model) SetMsg(v string) Model {
-	m.msg = v
+func (m Model) SetMsg__r0(v string) Model {
+	m.msg__r0 = v
 	return m
 }
 
-type setMsgMsg struct{ value string }
+type setMsg__r0Msg struct{ value string }
 
-func SetMsgCmd(v string) tea.Cmd {
-	return func() tea.Msg { return setMsgMsg{value: v} }
+func SetMsg__r0Cmd(v string) tea.Cmd {
+	return func() tea.Msg { return setMsg__r0Msg{value: v} }
 }
 
 func (m Model) Init() tea.Cmd {
@@ -109,8 +109,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	_ = cmd
 	switch msg := msg.(type) {
-	case setMsgMsg:
-		m = m.SetMsg(msg.value)
+	case setMsg__r0Msg:
+		m = m.SetMsg__r0(msg.value)
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
@@ -139,7 +139,7 @@ func (m Model) View() tea.View {
 	content_0 = lipgloss.NewStyle().Render(content_0Prefix + " " + fmt.Sprint("hover"))
 	contentChildren = append(contentChildren, content_0)
 	if m.__focusID == 0 {
-		contentChildren = append(contentChildren, lipgloss.NewStyle().Faint(true).Render(fmt.Sprint(m.msg)))
+		contentChildren = append(contentChildren, lipgloss.NewStyle().Faint(true).Render(fmt.Sprint(m.msg__r0)))
 	}
 	content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
 	v := tea.NewView(content)
@@ -163,9 +163,9 @@ import "testing"
 func TestTooltipTextMutates(t *testing.T) {
 	c := newTestComponent()
 	_ = c
-	if !((c.msg == "hello")) { t.Errorf("assert failed: %s", "(c.msg == \"hello\")") }
-	c.msg = "goodbye"
-	if !((c.msg == "goodbye")) { t.Errorf("assert failed: %s", "(c.msg == \"goodbye\")") }
+	if !((c.msg__r0 == "hello")) { t.Errorf("assert failed: %s", "(c.msg__r0 == \"hello\")") }
+	c.msg__r0 = "goodbye"
+	if !((c.msg__r0 == "goodbye")) { t.Errorf("assert failed: %s", "(c.msg__r0 == \"goodbye\")") }
 }
 
 
@@ -380,6 +380,18 @@ static void sngl_unref_pixbuf(GdkPixbuf *p) {
     if (p != NULL) g_object_unref(p);
 }
 
+// Selects a day the way a click on it does, for gtk4's datepicker override
+// (selectDay) and a test's invoker. select_day is the call every GTK 4 has;
+// 4.20 deprecates it for set_date, which the older ones lack.
+static void sngl_calendar_select(GtkCalendar *c, int y, int m, int d) {
+    GDateTime *dt = g_date_time_new_utc(y, m, d, 0, 0, 0);
+    if (dt == NULL) return;
+    G_GNUC_BEGIN_IGNORE_DEPRECATIONS
+    gtk_calendar_select_day(c, dt);
+    G_GNUC_END_IGNORE_DEPRECATIONS
+    g_date_time_unref(dt);
+}
+
 static void sngl_set_entry_text(GtkEditable *e, const char *t) {
     const char *cur = gtk_editable_get_text(e);
     if (t == NULL) t = "";
@@ -456,27 +468,17 @@ func (m *Model) BuildUI(app *C.GtkApplication) *C.GtkWidget {
 
 package test.sngl.app
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.*
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
-import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.foundation.layout.Column
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color as ComposeColor
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.material3.Button
+import androidx.compose.material3.Text
 
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
@@ -588,12 +590,12 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:ec77887264626a53d03db76d8a316f7e
+pass sha256:98e041102b0f6c8790bd5db263bb7f27
 -- run/go/fyne --
 pass sha256:ea851ea3fcebd9902e20f299e73843cf
 -- run/go/gtk4 --
-pass sha256:f9306c5fa1ebc0b1da0782d0b8a7f6ae
+pass sha256:210aff9c468ebd577aaf15958fdaece2
 -- run/kotlin/android --
-pass sha256:5ff1ebf6f747bb3dd9bcc8bc2a142ac0
+pass sha256:2e89414007758dd41fcc074e1dc48687
 -- run/none/html --
 pass sha256:e33d56136132efe232961537b71c133e

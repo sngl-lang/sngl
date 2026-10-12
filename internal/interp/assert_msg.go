@@ -231,7 +231,7 @@ func binOpSym(op ast.BinaryOp) string {
 // typed Dyn, so a static type guard would miss the most common case.
 func containsCallShape(c *ir.Call) (container, needle ir.Expr, ok bool) {
 	if c.Func != nil && c.Func.Name == "contains" &&
-		(c.Func.Receiver == "list" || c.Func.Receiver == "string") &&
+		(c.Func.RecvName() == "list" || c.Func.RecvName() == "string") &&
 		len(c.Args) == 2 {
 		return c.Args[0].Value, c.Args[1].Value, true
 	}

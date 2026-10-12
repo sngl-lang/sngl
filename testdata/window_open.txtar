@@ -83,7 +83,7 @@ type Model struct {
 	done__inst0         chan bool
 	live__inst0         bool
 	gen__inst0          int
-	visible__inst1      bool
+	visible__inst0      bool
 	__effect0_key       time.Duration
 	__effect0_live      []time.Duration
 	__effect0_desired   []time.Duration
@@ -106,7 +106,7 @@ func New() *Model {
 	m.done__inst0 = nil
 	m.live__inst0 = false
 	m.gen__inst0 = 0
-	m.visible__inst1 = true
+	m.visible__inst0 = true
 	m.__effect0_key = time.Duration(0) * time.Millisecond
 	m.__effect0_live = []time.Duration{}
 	m.__effect0_desired = []time.Duration{}
@@ -140,8 +140,8 @@ func (m *Model) __effect0_mount() {
 						m.ticks += 1
 						m.__n0.SetText(fmt.Sprint(m.ticks))
 						if (m.ticks == 1) && m.wanted {
-							m.visible__inst1 = true
-							m.details.SetVisible(m.visible__inst1)
+							m.visible__inst0 = true
+							m.details.SetVisible(m.visible__inst0)
 						}
 						if m.ticks == 2 {
 							os.Exit(0)
@@ -232,13 +232,13 @@ func (m *Model) details_closed_handler() {
 }
 
 func (m *Model) details_visible_handler(__visible bool) {
-	m.visible__inst1 = __visible
-	m.details.SetVisible(m.visible__inst1)
+	m.visible__inst0 = __visible
+	m.details.SetVisible(m.visible__inst0)
 }
 
 func (m *Model) __n1_click_handler() {
-	m.visible__inst1 = false
-	m.details.SetVisible(m.visible__inst1)
+	m.visible__inst0 = false
+	m.details.SetVisible(m.visible__inst0)
 }
 
 // detailsClosed invokes the OnClosed callback on the #details widget; for tests.
@@ -249,10 +249,10 @@ func (m *Model) detailsClosed() {
 }
 
 // detailsVisible invokes the OnVisible callback on the #details widget; for tests.
-func (m *Model) detailsVisible(__visible bool) {
+func (m *Model) detailsVisible(visible bool) {
 	if cb := m.details.OnVisible; cb != nil {
 		m.details.OnVisible = nil
-		cb(__visible)
+		cb(visible)
 		m.details.OnVisible = cb
 	}
 }
@@ -305,12 +305,12 @@ func (m *Model) SetGen__inst0(v int) {
 	m.gen__inst0 = v
 }
 
-func (m *Model) Visible__inst1() bool {
-	return m.visible__inst1
+func (m *Model) Visible__inst0() bool {
+	return m.visible__inst0
 }
 
-func (m *Model) SetVisible__inst1(v bool) {
-	m.visible__inst1 = v
+func (m *Model) SetVisible__inst0(v bool) {
+	m.visible__inst0 = v
 }
 
 // BuildUI creates the widget tree and returns the first window's content.
@@ -321,7 +321,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__built = true
 	m.details = fynelayout.NewToplevel()
 	m.details.SetTitle("Details")
-	m.details.SetVisible(m.visible__inst1)
+	m.details.SetVisible(m.visible__inst0)
 	m.details.OnClosed = m.details_closed_handler
 	m.details.OnVisible = m.details_visible_handler
 	m.__n0 = widget.NewLabel("")
@@ -395,7 +395,7 @@ type Model struct {
 	wanted              bool
 	ticks               int
 	handle__inst0       *gtk4rt.Schedule
-	visible__inst1      bool
+	visible__inst0      bool
 	__effect0_key       time.Duration
 	__effect0_live      []time.Duration
 	__effect0_desired   []time.Duration
@@ -415,7 +415,7 @@ func New() *Model {
 	m.wanted = false
 	m.ticks = 0
 	m.handle__inst0 = nil
-	m.visible__inst1 = true
+	m.visible__inst0 = true
 	m.__effect0_key = time.Duration(0) * time.Millisecond
 	m.__effect0_live = []time.Duration{}
 	m.__effect0_desired = []time.Duration{}
@@ -434,8 +434,8 @@ func (m *Model) __effect0_mount() {
 		m.ticks += 1
 		gtk4rt.LabelSetText(m.__n0, fmt.Sprint(m.ticks))
 		if (m.ticks == 1) && m.wanted {
-			m.visible__inst1 = true
-			gtk4rt.ToplevelSetVisible(m.details, m.visible__inst1)
+			m.visible__inst0 = true
+			gtk4rt.ToplevelSetVisible(m.details, m.visible__inst0)
 		}
 		if m.ticks == 2 {
 			os.Exit(0)
@@ -515,13 +515,13 @@ func (m *Model) details_closed_handler() {
 }
 
 func (m *Model) details_visible_handler(__visible bool) {
-	m.visible__inst1 = __visible
-	gtk4rt.ToplevelSetVisible(m.details, m.visible__inst1)
+	m.visible__inst0 = __visible
+	gtk4rt.ToplevelSetVisible(m.details, m.visible__inst0)
 }
 
 func (m *Model) __n1_clicked_handler() {
-	m.visible__inst1 = false
-	gtk4rt.ToplevelSetVisible(m.details, m.visible__inst1)
+	m.visible__inst0 = false
+	gtk4rt.ToplevelSetVisible(m.details, m.visible__inst0)
 }
 
 func (m *Model) Wanted() bool {
@@ -548,12 +548,12 @@ func (m *Model) SetHandle__inst0(v *gtk4rt.Schedule) {
 	m.handle__inst0 = v
 }
 
-func (m *Model) Visible__inst1() bool {
-	return m.visible__inst1
+func (m *Model) Visible__inst0() bool {
+	return m.visible__inst0
 }
 
-func (m *Model) SetVisible__inst1(v bool) {
-	m.visible__inst1 = v
+func (m *Model) SetVisible__inst0(v bool) {
+	m.visible__inst0 = v
 }
 
 func (m *Model) buildWidgetTree() {
@@ -563,7 +563,7 @@ func (m *Model) buildWidgetTree() {
 	m.__built = true
 	m.details = gtk4rt.ToplevelNew()
 	gtk4rt.ToplevelSetTitle(m.details, "Details")
-	gtk4rt.ToplevelSetVisible(m.details, m.visible__inst1)
+	gtk4rt.ToplevelSetVisible(m.details, m.visible__inst0)
 	gtk4rt.ToplevelOnClosed(m.details, m.details_closed_handler)
 	gtk4rt.ToplevelOnVisible(m.details, m.details_visible_handler)
 	m.__n0 = gtk4rt.LabelNew("")
@@ -584,6 +584,6 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return gtk4rt.ToplevelWindow(app, m.details)
 }
 -- run/go/fyne --
-pass sha256:a06aefecc0a4d0bcabdbaaa72c26e6a7
+pass sha256:1f532d00347d1933a6cdfc3667aa9a20
 -- run/go/gtk4 --
-pass sha256:f0068b54fc31a39a58926817288aa4f3
+pass sha256:47f8b4f372e2e50b7887b9af3b7ddc36

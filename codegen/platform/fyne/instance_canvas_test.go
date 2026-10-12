@@ -14,11 +14,11 @@ import (
 func instanceCanvasSrc(scaling string) string {
 	mode := ""
 	if scaling != "" {
-		mode = ", scalingMode=ScalingMode." + scaling
+		mode = ", scalingMode=draw.ScalingMode." + scaling
 	}
 	return fmt.Sprintf(`
 import . "sngl:ui"
-import . "sngl:ui/draw"
+import draw "sngl:ui/draw"
 
 struct Item {
     level float = 0.0
@@ -26,8 +26,8 @@ struct Item {
 
 component gauge(level = 0.0) node {
     var hits = 0
-    canvas(width=100px, height=100px%s) {
-        rect(x=0.0, y=0.0, w=level, h=10.0) {}
+    draw.canvas(width=100px, height=100px%s) {
+        draw.rect(x=0.0, y=0.0, w=level, h=10.0) {}
     }
 }
 

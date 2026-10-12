@@ -1,0 +1,22 @@
+// A data component's content is a rest slot that binds nothing, and
+// `r.content` inserts what a record was written with only in the body of a
+// component taking such records in a slot: anywhere else there is no
+// population to insert.
+
+import ui "sngl:ui"
+
+component card(label string, content ...component ui.node) card
+
+component scoped(label string, content ...component(n int) ui.node) scoped // ERROR(check) "component scoped: its content is inserted by its container with nothing to bind, so slot \"content\" takes no parameters"
+
+component deck(cards ...component card) ui.node {
+    for var c = cards {
+        c.content(1) // ERROR(check) "c.content takes no arguments: it is inserted as it was written"
+    }
+}
+
+component other(cards list<card>) ui.node {
+    for var c = cards {
+        c.content // ERROR(check) "c.content is what a card was written with, which only a component taking cards in a slot inserts, in its own body"
+    }
+}

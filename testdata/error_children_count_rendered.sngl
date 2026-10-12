@@ -1,0 +1,69 @@
+// A slot's count is the number of nodes its population renders, not the
+// number of statements written in it. A `for` is one statement and any number
+// of nodes, and an `if` with no `else` is one statement and none or one, so
+// each was taken as "exactly one" and a wrapper that assigns its one child to
+// a field was handed several, or none.
+//
+// An `if` whose branches each render one node renders one, which is what
+// `exactly` is still satisfied by.
+
+import ui "sngl:ui"
+import family "sngl:family"
+
+var items = ["a", "b"]
+var shown = true
+
+component one(content ...component family.one) ui.node {
+    ui.vbox {
+        content
+    }
+}
+
+component atMostOne(content ...component option<ui.node>) ui.node {
+    ui.vbox {
+        content
+    }
+}
+
+component named(body component family.one) ui.node {
+    ui.vbox {
+        body
+    }
+}
+
+ui.window {
+    one { // ERROR(check) "requires exactly one child"
+        for var it = items {
+            ui.text(value=it)
+        }
+    }
+    one { // ERROR(check) "requires exactly one child"
+        if shown {
+            ui.text(value="maybe")
+        }
+    }
+    one {
+        if shown {
+            ui.text(value="yes")
+        } else {
+            ui.text(value="no")
+        }
+    }
+    atMostOne { // ERROR(check) "accepts at most one child"
+        for var it = items {
+            ui.text(value=it)
+        }
+    }
+    atMostOne {
+        if shown {
+            ui.text(value="maybe")
+        }
+    }
+    named {
+        component body { // ERROR(check) "takes exactly one node"
+            for var it = items {
+                ui.text(value=it)
+            }
+        }
+    }
+}

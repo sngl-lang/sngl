@@ -109,7 +109,7 @@ body { font-family: system-ui, sans-serif; }
       </li>
     </ol>
     <pre class="sngl-code" style="margin:0px;white-space:pre-wrap"><code><span class="sngl-tok-keyword"><span>func</span></span><span class="sngl-tok-plain"><span> </span></span><span class="sngl-tok-variable"><span>twice</span></span><span class="sngl-tok-punctuation"><span>(</span></span><span class="sngl-tok-variable"><span>n</span></span><span class="sngl-tok-plain"><span> </span></span><span class="sngl-tok-type"><span>int</span></span><span class="sngl-tok-punctuation"><span>)</span></span><span class="sngl-tok-plain"><span> </span></span><span class="sngl-tok-type"><span>int</span></span><span class="sngl-tok-plain"><span> </span></span><span class="sngl-tok-punctuation"><span>{</span></span><span class="sngl-tok-plain"><span>&#10;    </span></span><span class="sngl-tok-variable"><span>return</span></span><span class="sngl-tok-plain"><span> </span></span><span class="sngl-tok-variable"><span>n</span></span><span class="sngl-tok-plain"><span> </span></span><span class="sngl-tok-operator"><span>*</span></span><span class="sngl-tok-plain"><span> </span></span><span class="sngl-tok-number"><span>2</span></span><span class="sngl-tok-plain"><span>&#10;</span></span><span class="sngl-tok-punctuation"><span>}</span></span></code></pre>
-    <table style="border-collapse:collapse;width:100%">
+    <table style="border-collapse:collapse;width:100%" width="100%">
       <thead>
         <tr>
           <th style="border-bottom:2px solid #ddd;padding:8px;text-align:left">Name</th>
@@ -124,7 +124,7 @@ body { font-family: system-ui, sans-serif; }
       </tbody>
     </table>
     <hr/>
-    <p style="margin:0px;white-space:pre-wrap"><img alt="a duck" src="duck.png"/></p>
+    <p style="margin:0px;white-space:pre-wrap"><span class="sngl-image sngl-image-contain" style="display:inline-block;overflow:hidden" aria-label="a duck" role="img"><img alt="" src="duck.png"/></span></p>
   </div>
 </div>
 <style>
@@ -136,6 +136,11 @@ body { font-family: system-ui, sans-serif; }
 @media (prefers-color-scheme: dark) { :where(.sngl-tok-type) { color:#ffa657 } }
 :where(.sngl-tok-number) { color:#0550ae }
 @media (prefers-color-scheme: dark) { :where(.sngl-tok-number) { color:#79c0ff } }
+.sngl-image img { display: block; width: 100%; height: 100%; object-fit: contain; }
+.sngl-image-cover img { object-fit: cover; }
+.sngl-image-fill img { object-fit: fill; }
+.sngl-image-none img { object-fit: none; }
+.sngl-image-scaleDown img { object-fit: scale-down; }
 </style>
 
 <script>
@@ -146,4 +151,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:b0dd1ffdcefd5a4ea03923da2620bf6f
+pass sha256:c556ac0000ceba26a916fbcdb7f52c74

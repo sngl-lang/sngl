@@ -25,7 +25,7 @@ that carried both a `go.native` and a `js.native` would keep whichever was
 applied last, silently, and the Go output said `Math.PI`. That is a
 pre-existing hole in the native marks -- it bites a func exactly as hard -- and
 is not this fixture's subject; a value several languages each spell
-differently is an `#[marks.intrinsic]`, which is how `float.sin` already does
+differently is an `#[marks.intrinsic]`, which is how `math.sin` already does
 it.
 
 deny out/go/bubbletea/model.go `func pi\(` -- a native is never emitted; the declaration is the host's

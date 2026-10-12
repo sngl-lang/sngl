@@ -24,7 +24,7 @@ component main node {
     )
 
     effect(
-        on=key,
+        on = key,
         @mount {
             log.push("m")
         },

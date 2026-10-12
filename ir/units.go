@@ -5,10 +5,9 @@ import (
 	"strings"
 )
 
-// A unit value is a magnitude per base. `unit measurement { px, em, rem =
-// 16em, vw, vh, pct }` declares five independent bases -- only `rem` reduces,
-// to `em` -- so `1px + 2pct` has no single number and must keep both
-// magnitudes. `unit duration { ms, s = 1000ms, m = 60s, h = 60m }` declares
+// A unit value is a magnitude per base. `unit measurement { px, em, rem }`
+// declares three independent bases, so `1px + 2em` has no single number and
+// must keep both magnitudes. `unit duration { ms, s = 1000ms, m = 60s, h = 60m }` declares
 // one, so every duration is a number of ms.
 //
 // The helpers here answer that for a UnitDef so no backend has to re-derive

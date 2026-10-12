@@ -21,8 +21,11 @@ type emitShared struct {
 	boolToInt  bool
 	gObjectSet bool
 	slotAnchor bool
-	errs       []error
-	seen       map[string]bool
+	// calendarDate: a handler reads a GtkCalendar's day through
+	// calendarDateHelper.
+	calendarDate bool
+	errs         []error
+	seen         map[string]bool
 
 	// The canvas metadata passDeclarative flattened out of the program, which every
 	// scope in the file reads: a `canvas` tag has no GIR widget behind it, so a
@@ -46,6 +49,11 @@ type emitShared struct {
 	// scaffold writes on the window BuildUI makes.
 	toplevels      map[string]bool
 	toplevelTitles map[string]ir.Expr
+	// images are every image primitive id the file creates, by tag.
+	images map[string]string
+	// toplevelIcons is each window's icon source in an inline-cgo build, by
+	// the window's id.
+	toplevelIcons map[string]string
 }
 
 func (s *emitShared) needBoolToInt() {
@@ -155,6 +163,33 @@ type gtk4Translator struct {
 	// no test surface -- a slot func, a canvas draw -- which is also why this
 	// is a sink rather than a field read back off the translator.
 	invokerSink func(gtkEventInvoker)
+	// indexed are the ids a test triggers one copy of (`c.row[1]`), whose
+	// widgets this Model scope lists in render order as it builds them
+	// (namedWidgetField), and slotNamed those of them this slot render func
+	// creates, which its reset empties.
+	indexed   map[string]bool
+	slotNamed []string
+}
+
+// namedWidgetField is the Model field listing every copy of an indexed id's
+// widget, in render order.
+func namedWidgetField(id string) string { return "__named_" + id }
+
+// withIndexed has this Model scope list the widgets of the ids a test
+// indexes; stmts is the scope's body, whose creates of them a slot's reset
+// empties.
+func (t *gtk4Translator) withIndexed(indexed map[string]bool, stmts []ir.Stmt) *gtk4Translator {
+	t.indexed = indexed
+	t.slotNamed = nil
+	_ = ir.Walk(stmts, func(n ir.Node) error {
+		if lv, ok := n.(*ir.LocalVar); ok && indexed[lv.Name] {
+			if c, ok := lv.Init.(*ir.Call); ok && c.Func != nil && c.Func.Intrinsic == ir.NodeOpCreateNode {
+				t.slotNamed = append(t.slotNamed, lv.Name)
+			}
+		}
+		return nil
+	})
+	return t
 }
 
 func newGtk4Translator(gc *golang.GoIRContext, fieldSink func(name, cType string)) *gtk4Translator {
@@ -300,7 +335,7 @@ func (t *gtk4Translator) unresolvedTagError(id, tag string) error {
 	if cType := widgetCType(comp); cType != "" {
 		return fmt.Errorf("gtk4: widget %q names C type %s, which the installed Gtk-4.0.gir does not declare", tag, cType)
 	}
-	if !comp.Stdlib {
+	if !codegen.DeclinesNode(comp) {
 		// Lowering drops such a node, so this is unreachable through a
 		// compile; answering here beats telling a user their own component
 		// has no gtk4 implementation.
@@ -390,6 +425,8 @@ func (t *gtk4Translator) OnCreateNode(ctx context.Context, id, tag string) []ir.
 	switch tag {
 	case toplevelTag:
 		return t.emitToplevelCreate(id)
+	case imageTag, imageURLTag, imageDrawingTag:
+		return t.emitImageCreate(id, tag)
 	case flowTag:
 		return t.emitFlowCreate(id)
 	case spanTag:
@@ -414,15 +451,15 @@ func (t *gtk4Translator) OnCreateNode(ctx context.Context, id, tag string) []ir.
 		t.skipped[id] = struct{}{}
 		return nil
 	}
-	ctorInfo := pickPrimaryConstructorInfo(info)
-	// gtk_application_window_new needs BuildUI's `app` parameter, not nil.
-	if ctorInfo.Name == "gtk_application_window_new" {
-		appRef := &ir.Ident{Name: "app", Type: ir.TypDyn}
-		if t.wrapped {
-			return t.emitConstructorAssign(id, cType, rtCall("ApplicationWindowNew", appRef))
-		}
-		return t.emitConstructorAssign(id, cType, nativeCall("gtk_application_window_new", appRef))
+	// A window is a toplevel, which GTK will not put inside a container, and
+	// the platform makes one where a program writes ui.window: its Toplevel
+	// is created with the application and attached to it.
+	if t.isWindowClass(info) {
+		t.shared.fail(fmt.Errorf("gtk4: %s is a window, which GTK places in no container; write ui.window, which this platform makes a GtkApplicationWindow of", cType))
+		t.skipped[id] = struct{}{}
+		return nil
 	}
+	ctorInfo := pickPrimaryConstructorInfo(info)
 	if t.wrapped {
 		if ctor, ok := rtCtorForCType(cType); ok {
 			return t.emitConstructorAssign(id, cType, ctor)
@@ -466,6 +503,10 @@ func (t *gtk4Translator) OnCreateNode(ctx context.Context, id, tag string) []ir.
 func ctorZeroArg(reg *gir.TypeRegistry, p gir.ConstructorParam) (ir.Expr, error) {
 	switch p.GIRType {
 	case "utf8", "filename", "gchararray":
+		// gtk_link_button_new refuses NULL and returns no widget at all.
+		if !p.Nullable {
+			return nativeCall("CString", &ir.Literal{Type: ir.TypString, Value: ""}), nil
+		}
 		return &ir.Literal{Type: ir.TypNull}, nil
 	case "gboolean", "gint", "gint32", "gint64", "guint", "guint32", "guint64", "gsize":
 		return nativeCall(ctorScalarCast(p), &ir.Literal{Type: ir.TypInt, Value: "0"}), nil
@@ -629,11 +670,21 @@ func (t *gtk4Translator) emitConstructorAssign(id, cType string, ctor ir.Expr) [
 		}}
 	}
 	t.fieldSink(id, cType)
-	return []ir.Stmt{&ir.Assign{
+	create := []ir.Stmt{&ir.Assign{
 		Target: t.fieldRef(id),
 		Op:     ast.AssignSet,
 		Value:  initVal,
 	}}
+	if t.indexed[id] {
+		list := namedWidgetField(id)
+		t.fieldSink(list, "[]"+cType)
+		create = append(create, &ir.Assign{
+			Target: t.fieldRef(list),
+			Op:     ast.AssignSet,
+			Value:  &ir.Call{Type: ir.TypDyn, Func: &ir.Func{Name: "append"}, Args: []ir.CallArg{{Value: t.fieldRef(list)}, {Value: t.fieldRef(id)}}},
+		})
+	}
+	return create
 }
 
 // childAdder is how a parent takes a child, read from the introspection data
@@ -645,6 +696,25 @@ func (t *gtk4Translator) emitConstructorAssign(id, cType string, ctor ir.Expr) [
 // guessed at, since a dropped child is silently reparented to the root by
 // emitBuildUI. What is derivable is the three shapes that take a widget and
 // nothing else; see gir.ChildAdder.
+// adderReceiver is the C type a child adder's receiver is cast to: the class
+// that declares it, or the container's own where GIR named none.
+func adderReceiver(adder gir.ChildAdder, cType string) string {
+	if adder.Owner != "" {
+		return adder.Owner
+	}
+	return cType
+}
+
+// isWindowClass reports whether a GIR class is GtkWindow or descends from it.
+func (t *gtk4Translator) isWindowClass(info *gir.ClassInfo) bool {
+	for c := info; c != nil; c = t.registry.Classes[c.Parent] {
+		if c.CType == "GtkWindow" {
+			return true
+		}
+	}
+	return false
+}
+
 func (t *gtk4Translator) childAdder(cType string) gir.ChildAdder {
 	if cls := t.classFor(cType); cls != nil {
 		return cls.ChildAdd
@@ -688,6 +758,9 @@ func (t *gtk4Translator) OnAppendChild(ctx context.Context, parent, child ir.Exp
 	if ir.IsAppParent(parent) {
 		return t.appAttach(child)
 	}
+	if t.windowIcon(parent, child) {
+		return nil
+	}
 	cType := t.parentCType(parent)
 	if cType == "" {
 		cType = "GtkBox"
@@ -725,7 +798,7 @@ func (t *gtk4Translator) OnAppendChild(ctx context.Context, parent, child ir.Exp
 		}
 		return []ir.Stmt{stmt}
 	}
-	parentArg := cgoCast(cType, t.qualifyNodeExpr(parent))
+	parentArg := cgoCast(adderReceiver(adder, cType), t.qualifyNodeExpr(parent))
 	childArg := cgoCast("GtkWidget", t.qualifyNodeExpr(child))
 	return []ir.Stmt{&ir.CallStmt{Call: nativeCall(fn, parentArg, childArg)}}
 }
@@ -806,11 +879,14 @@ func (t *gtk4Translator) OnPropAssign(ctx context.Context, node ir.Expr, prop st
 	// (GtkTextTag, GtkCellRendererText) do have a property of that name; the
 	// declaration reserves the name for style, so it is not theirs.
 	if prop == stylePropName {
-		return nil
+		return codegen.KeepLocalsRead(value)
 	}
 	bare := codegen.IdentBareName(node)
 	if t.isToplevel(bare) {
 		return t.toplevelPropAssign(node, prop, value)
+	}
+	if tag := t.imageTagOf(bare); tag != "" {
+		return t.imagePropAssign(node, tag, prop, value)
 	}
 	cType, ok := t.idCTypes[bare]
 	if !ok {
@@ -1081,78 +1157,27 @@ func (t *gtk4Translator) signalFor(nodeID, event string) string {
 
 // signalLambda gives a handler written in place -- in an instance record,
 // where nothing promotes it to a method -- the shape emitIRPromotedHandler
-// gives a promoted one: the trampoline passes no arguments, so the SNGL event
-// parameter goes, and a two-way bind opening the body reads the widget.
-func (t *gtk4Translator) signalLambda(lam *ir.Lambda, node ir.Expr, cType string) ir.Expr {
-	if lam.Func == nil || len(lam.Func.Params) == 0 {
+// gives a promoted one: the trampoline passes no arguments, so the signal's
+// instance is the node it is attached to, and what the body reads of a widget
+// is read off it.
+func (t *gtk4Translator) signalLambda(lam *ir.Lambda, self ir.Expr) ir.Expr {
+	if lam.Func == nil {
 		return lam
-	}
-	var getter ir.Expr
-	if t.wrapped {
-		getter = rtEventGetterExpr(cType, t.qualifyNodeExpr(node))
-	} else {
-		getter = cgoEventGetterExpr(cType, t.qualifyNodeExpr(node))
-	}
-	stmts := lam.Func.Block
-	if assign, ok := firstEventBind(stmts, lam.Func.Params); ok && getter != nil {
-		stmts = append([]ir.Stmt{&ir.Assign{Target: assign.Target, Op: ast.AssignSet, Value: getter}}, stmts[1:]...)
 	}
 	fn := *lam.Func
 	fn.Params = nil
-	fn.Block = substituteWidgetPayload(stmts, lam.Func.Params, cType, getter)
+	fn.Block = readWidgets(selfIsNode(lam.Func.Block, lam.Func.Params, self), t.widgetReader())
 	out := *lam
 	out.Func = &fn
 	return &out
 }
 
-// substituteWidgetPayload reads an event's value off the widget that fired it,
-// the trampoline handing the handler nothing: an entry's text is a payload's
-// string, and a check button's or a switch's state its bool.
-func substituteWidgetPayload(stmts []ir.Stmt, params []*ir.Param, cType string, getter ir.Expr) []ir.Stmt {
-	var kind ir.TypeKind
-	switch cType {
-	case "GtkEntry":
-		kind = ir.TypeString
-	case "GtkCheckButton", "GtkSwitch":
-		kind = ir.TypeBool
-	default:
-		return stmts
-	}
-	if getter == nil {
-		return stmts
-	}
-	return codegen.SubstituteEventPayload(stmts, params, func(f *ir.StructField) ir.Expr {
-		if f.Type == nil || f.Type.Kind != kind {
-			return nil
-		}
-		return getter
+// widgetReader is readWidgets' read for what this translator emits, which
+// spells a node the way it spells every other.
+func (t *gtk4Translator) widgetReader() func(cType string, ref ir.Expr) ir.Expr {
+	return widgetReader(t.wrapped, t.shared, func(name string) ir.Expr {
+		return t.qualifyNodeExpr(&ir.Ident{Name: name, IsElementRef: true})
 	})
-}
-
-// firstEventBind is the `x = e.<field>` a two-way bind opens a handler with,
-// e being one of params.
-func firstEventBind(stmts []ir.Stmt, params []*ir.Param) (*ir.Assign, bool) {
-	if len(stmts) == 0 {
-		return nil, false
-	}
-	assign, ok := stmts[0].(*ir.Assign)
-	if !ok || assign.Op != ast.AssignSet {
-		return nil, false
-	}
-	sel, ok := assign.Value.(*ir.Select)
-	if !ok {
-		return nil, false
-	}
-	op, ok := sel.Operand.(*ir.Ident)
-	if !ok {
-		return nil, false
-	}
-	for _, p := range params {
-		if p != nil && (op.Sym == ir.Symbol(p) || (op.Sym == nil && op.Name == p.Name)) {
-			return assign, true
-		}
-	}
-	return nil, false
 }
 
 func (t *gtk4Translator) OnAttachHandler(ctx context.Context, node ir.Expr, event string, handler ir.Expr) []ir.Stmt {
@@ -1162,6 +1187,9 @@ func (t *gtk4Translator) OnAttachHandler(ctx context.Context, node ir.Expr, even
 	bare := codegen.IdentBareName(node)
 	if t.isToplevel(bare) {
 		return t.toplevelAttachHandler(node, event, handler)
+	}
+	if tag := t.imageTagOf(bare); tag != "" {
+		return t.imageAttachHandler(node, tag, event, handler)
 	}
 	cType := t.idCTypes[bare]
 	if event == "click" && t.canvasMetaForID(bare) != nil {
@@ -1183,9 +1211,9 @@ func (t *gtk4Translator) OnAttachHandler(ctx context.Context, node ir.Expr, even
 	// program wrote, the SNGL event written on it, and the GTK signal that event
 	// maps to. The statements emitted below keep only the signal, which is why
 	// this is recorded rather than recovered.
-	t.recordInvoker(bare, codegen.TriggerEventName(handler, event), signal, cType, handler)
+	t.recordInvoker(bare, codegen.TriggerEventName(handler, event), signal, cType)
 	if lam, ok := handler.(*ir.Lambda); ok {
-		handler = t.signalLambda(lam, node, cType)
+		handler = t.signalLambda(lam, node)
 	}
 
 	// gtk4rt.Connect registers the handler and wires the signal in one call —
@@ -1244,7 +1272,13 @@ func (t *gtk4Translator) OnSlotReset(ctx context.Context, slot *ir.Var) []ir.Stm
 		t.shared.needSlotAnchor()
 		anchor = nativeCall("sngl_slot_anchor", cgoCast("GtkBox", &ir.Ident{Name: "parent"}), t.slotAnchor)
 	}
-	return []ir.Stmt{reset, &ir.Assign{Target: t.slotAnchor, Op: ast.AssignSet, Value: anchor}}
+	stmts := []ir.Stmt{reset, &ir.Assign{Target: t.slotAnchor, Op: ast.AssignSet, Value: anchor}}
+	// The render builds every copy again, in order, so the list of them
+	// starts over with it.
+	for _, id := range t.slotNamed {
+		stmts = append(stmts, &ir.Assign{Target: t.fieldRef(namedWidgetField(id)), Op: ast.AssignSet, Value: &ir.Literal{Type: ir.TypNull}})
+	}
+	return stmts
 }
 
 func (t *gtk4Translator) OnSlotAppend(ctx context.Context, slot *ir.Var, child ir.Expr) []ir.Stmt {
@@ -1311,7 +1345,7 @@ func (t *gtk4Translator) translateDefault(stmt ir.Stmt) []ir.Stmt {
 // several children through a call of its own is refused rather than handed to
 // gtk_box_append.
 func (t *gtk4Translator) boxedSlotRenderCall(cs *ir.CallStmt) ([]ir.Stmt, bool) {
-	if cs.Call == nil || cs.Call.Func == nil || !cs.Call.Func.SlotRender || len(cs.Call.Args) != 1 {
+	if cs.Call == nil || cs.Call.Func == nil || !cs.Call.Func.Lowered.SlotRender || len(cs.Call.Args) != 1 {
 		return nil, false
 	}
 	bare := codegen.IdentBareName(cs.Call.Args[0].Value)
@@ -1338,7 +1372,7 @@ func (t *gtk4Translator) boxedSlotRenderCall(cs *ir.CallStmt) ([]ir.Stmt, bool) 
 		slotBox, parentOf, parentArg = rtCall("SlotBox", box), rtCall("ParentOf", box), parent
 	} else {
 		t.shared.needSlotAnchor()
-		set = &ir.CallStmt{Call: nativeCall(adder.Func, cgoCast(cType, parent), cgoCast("GtkWidget", box))}
+		set = &ir.CallStmt{Call: nativeCall(adder.Func, cgoCast(adderReceiver(adder, cType), parent), cgoCast("GtkWidget", box))}
 		slotBox = nativeCall("sngl_slot_box", box)
 		parentOf = nativeCall("gtk_widget_get_parent", cgoCast("GtkWidget", box))
 		parentArg = cgoCast("GtkWidget", parent)
@@ -1359,7 +1393,7 @@ func (t *gtk4Translator) boxedSlotRenderCall(cs *ir.CallStmt) ([]ir.Stmt, bool) 
 // of this scope -- a slot nothing but the ctor renders -- to pass the local,
 // which the language context would otherwise spell as a field.
 func localSlotRenderCall(cs *ir.CallStmt, isLocal func(string) bool) *ir.CallStmt {
-	if cs.Call == nil || cs.Call.Func == nil || !cs.Call.Func.SlotRender || len(cs.Call.Args) != 1 {
+	if cs.Call == nil || cs.Call.Func == nil || !cs.Call.Func.Lowered.SlotRender || len(cs.Call.Args) != 1 {
 		return nil
 	}
 	id, ok := cs.Call.Args[0].Value.(*ir.Ident)
@@ -1377,7 +1411,7 @@ func localSlotRenderCall(cs *ir.CallStmt, isLocal func(string) bool) *ir.CallStm
 // A synthesized id is skipped: `c.__n0.click()` is not something a test can
 // write, so a method for it would be dead. A scope with no sink -- a slot func,
 // a canvas draw -- records nothing.
-func (t *gtk4Translator) recordInvoker(id, event, signal, cType string, handler ir.Expr) {
+func (t *gtk4Translator) recordInvoker(id, event, signal, cType string) {
 	if t.invokerSink == nil || id == "" || strings.HasPrefix(id, "__n") {
 		return
 	}
@@ -1387,20 +1421,15 @@ func (t *gtk4Translator) recordInvoker(id, event, signal, cType string, handler 
 		FieldName:  id,
 		GTKSignal:  signal,
 		WidgetType: cType,
+		State:      invokerStateSetter(cType, t.wrapped) != "",
 	}
-	if pt, sd := codegen.HandlerPayload(handler); sd != nil && invokerStateSetter(cType, t.wrapped) != "" {
-		for _, f := range sd.Fields {
-			if f != nil && f.Type != nil && f.Type.Kind == ir.TypeBool {
-				inv.Payload = golang.IRTypeToGo(pt)
-				inv.PayloadField = golang.ExportName(f.Name)
-				break
-			}
-		}
+	if t.indexed[id] {
+		inv.FieldName, inv.List = namedWidgetField(id), true
 	}
 	t.invokerSink(inv)
 }
 
-// invokerStateSetter is the call a test invoker writes a payload's state into
+// invokerStateSetter is the call a test invoker writes a test's state into
 // a widget with, "" for a widget it has none for. Setting the state is what
 // fires the signal, as a user's flip does.
 func invokerStateSetter(cType string, wrapped bool) string {

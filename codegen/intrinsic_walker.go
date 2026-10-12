@@ -213,7 +213,13 @@ func walkOne(ctx context.Context, s ir.Stmt, t IntrinsicTranslator) []ir.Stmt {
 			return []ir.Stmt{&cp}
 		}
 	case *ir.For:
-		iterExpr := t.OnIter(ctx, n.Iter)
+		// The iterable may hold callbacks: a data slot's list is records
+		// whose event fields are the call site's handlers.
+		iter := n.Iter
+		if v, changed := walkExprLambdas(ctx, iter, t); changed {
+			iter = v
+		}
+		iterExpr := t.OnIter(ctx, iter)
 		body := WalkLowered(ctx, n.Body, t)
 		cp := *n
 		cp.Iter = iterExpr
@@ -345,6 +351,28 @@ func walkExprLambdas(ctx context.Context, e ir.Expr, t IntrinsicTranslator) (ir.
 		if changed {
 			cp := *x
 			cp.Fields = fields
+			return &cp, true
+		}
+	case *ir.Spread:
+		// A data slot's list spreads what an `if` or a `for` among its records
+		// built, each a record holding the call site's handlers.
+		if v, moved := walkExprLambdas(ctx, x.Operand, t); moved {
+			cp := *x
+			cp.Operand = v
+			return &cp, true
+		}
+	case *ir.Ternary:
+		then, movedThen := walkExprLambdas(ctx, x.Then, t)
+		els, movedElse := walkExprLambdas(ctx, x.Else, t)
+		if movedThen || movedElse {
+			cp := *x
+			cp.Then, cp.Else = then, els
+			return &cp, true
+		}
+	case *ir.Conversion:
+		if v, moved := walkExprLambdas(ctx, x.Operand, t); moved {
+			cp := *x
+			cp.Operand = v
 			return &cp, true
 		}
 	case *ir.MapLitIR:

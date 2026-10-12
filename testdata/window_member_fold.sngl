@@ -3,12 +3,11 @@ import . "sngl:ui"
 // Window props are read off the window symbol and folded to their literals
 // by the optimizer. Each of the #[builtin("window")] component's props must
 // fold; a surviving Select would reach codegen as a dangling ref.
-window #home(title="Home", favicon="/favicon.ico") {
+window #home(title="Home") {
     text(value="Home")
 }
 
 component main node {
-    var t = home.title   // FOLD "Home"
-    var f = home.favicon // FOLD "/favicon.ico"
-    text(value=t + f)
+    var t = home.title // FOLD "Home"
+    text(value=t)
 }

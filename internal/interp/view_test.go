@@ -295,7 +295,7 @@ func allIDs(pkg *ir.Package) []string {
 		}
 	}
 	for _, c := range pkg.Components {
-		walk(c.Body)
+		walk(c.Stmts)
 	}
 	out := make([]string, 0, len(seen))
 	for id := range seen {

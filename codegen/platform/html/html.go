@@ -568,7 +568,8 @@ func (c *compilation) BuildMutationModel(req *codegen.Request, analysis *codegen
 		gen.wasmPkgs = wasmPkgs
 		gen.stylesheet = stylesheetURL
 		gen.shareConsts = shareConsts
-		gen.irBodyStmts = win.Body
+		content, icon := splitFavicon(win.Body)
+		gen.irBodyStmts = content
 		// Per document: a drawing is keyed by its node, and the document's nodes
 		// are its own clones rather than anything the package holds.
 		gen.canvasDraws = codegen.NewCanvasDrawsIn(req.Pkg, win.Body)
@@ -582,8 +583,10 @@ func (c *compilation) BuildMutationModel(req *codegen.Request, analysis *codegen
 		if s, ok := codegen.IRLiteralString(win.Surface.Prop(windowTitle)); ok {
 			gen.title = s
 		}
-		if s, ok := codegen.IRLiteralString(win.Surface.Prop(windowFavicon)); ok {
+		if s, ok := codegen.IRLiteralString(icon.Prop(ir.ImageSourceURL)); ok && !isImageDrawing(icon) {
 			gen.favicon = s
+		} else {
+			gen.faviconNode = icon
 		}
 		body, err := gen.generate()
 		if err != nil {
@@ -610,12 +613,9 @@ func (c *compilation) BuildMutationModel(req *codegen.Request, analysis *codegen
 	return ctx.BuildMutation(mainStmts), nil
 }
 
-// The props of html's Window a document reads: what its <title> and its icon
-// are. They are the primitive's own, declared in html.sngl.
-const (
-	windowTitle   = "title"
-	windowFavicon = "favicon"
-)
+// The prop of html's Window a document reads for its <title>, declared in
+// html.sngl.
+const windowTitle = "title"
 
 // documentView is what a page is generated from: the Window it is written
 // from. A harness rendering its root component has none, and takes the vars
@@ -671,7 +671,10 @@ type htmlGen struct {
 	lang codegen.LangTranslator
 
 	pkg *ir.Package
-	ctx *codegen.ExprCtx
+	// written is each element variable an element has been written under,
+	// so a second node carrying the same `#id` gets one of its own (nodeID).
+	written map[string]bool
+	ctx     *codegen.ExprCtx
 
 	// The Analysis is shared across windows; the Emission is per-window.
 	*codegen.CommonAnalysis
@@ -689,6 +692,9 @@ type htmlGen struct {
 	stylesheet string
 
 	favicon string
+	// faviconNode is the image source a document's icon is when no literal URL
+	// says it: a drawing, or a URL that reads state.
+	faviconNode *ir.NodeInst
 
 	wasmLoader string
 
@@ -815,10 +821,7 @@ type eventHandler struct {
 	// snglID is the id a test invokes this handler by: the element's own, or
 	// the nearest enclosing one.
 	snglID string
-	// payloadOnTarget says the payload's fields are the element's own state
-	// (eventPayloadBase answered e.target), so an invoker writes them there.
-	payloadOnTarget bool
-	body            string // JS statements
+	body   string // JS statements
 	// hasParam follows the handler's declared parameter, not the event name,
 	// because that is what translation binds `e` from. A declared parameter
 	// the body never reads still sets it.
@@ -893,7 +896,7 @@ func newHTMLGenFromCtx(ctx *codegen.CodegenCtx, lang codegen.LangTranslator, opt
 	helpers := g.ctx.Helpers
 	native := g.ctx.NativeImports
 	if main := ctx.RootDecl(); main != nil {
-		g.irBodyStmts = main.Body
+		g.irBodyStmts = main.Stmts
 		g.ctx = ctx.ExprCtx.ForComponent(main)
 	} else {
 		g.ctx = ctx.ExprCtx.Clone()
@@ -918,7 +921,7 @@ func (g *htmlGen) prewalkShared() {
 			if c == nil {
 				continue
 			}
-			comps = prewalkOrder(comps, c.Body)
+			comps = prewalkOrder(comps, c.Stmts)
 			for _, fn := range c.Funcs {
 				if fn != nil {
 					comps = prewalkOrder(comps, fn.Block)
@@ -1091,7 +1094,7 @@ func (g *htmlGen) rewriteSlotCallsToAnchors() {
 	// which the lowering already named, and a page anchor would point every
 	// instance at one node.
 	for _, c := range g.pageComponents() {
-		visit(c.Body)
+		visit(c.Stmts)
 		for _, fn := range c.Funcs {
 			if fn != nil {
 				visit(fn.Block)
@@ -1173,9 +1176,13 @@ func (g *htmlGen) nodeID(n *ir.NodeInst) string {
 	switch {
 	case n != nil && strings.HasPrefix(n.ID, "__n"):
 		id = n.ID
-	case n != nil && n.ID != "" && g.refToVar[n.ID] != "":
+	case n != nil && n.ID != "" && g.refToVar[n.ID] != "" && !g.written[g.refToVar[n.ID]]:
 		// The prewalk already allocated for this ref so that a handler
-		// translated before the element is emitted can still resolve it.
+		// translated before the element is emitted can still resolve it --
+		// until an element is written under it. A constant loop the fold
+		// unrolled writes a copy of the node per iteration under the one id,
+		// and each is an element of its own: sharing the first's variable,
+		// every copy's listener went onto the first button.
 		id = g.refToVar[n.ID]
 	default:
 		id = g.allocID()
@@ -1205,6 +1212,11 @@ func (g *htmlGen) generate() (string, error) {
 	g.rewriteSlotCallsOnce()
 	g.rewriteDocumentSlotCalls()
 
+	var icon strings.Builder
+	if g.faviconNode != nil {
+		g.renderIRNode(&icon, g.faviconNode, 1)
+	}
+
 	var b strings.Builder
 
 	b.WriteString("<!DOCTYPE html>\n<html><head>\n")
@@ -1216,6 +1228,7 @@ func (g *htmlGen) generate() (string, error) {
 	if g.favicon != "" {
 		fmt.Fprintf(&b, "  <link rel=\"icon\" href=\"%s\">\n", html.EscapeString(g.favicon))
 	}
+	b.WriteString(icon.String())
 	if g.stylesheet != "" {
 		fmt.Fprintf(&b, "  <link rel=\"stylesheet\" href=\"%s\">\n", html.EscapeString(g.stylesheet))
 	}
@@ -1299,6 +1312,12 @@ func (g *htmlGen) generate() (string, error) {
 		}
 		preamble.WriteString(snippet)
 		preamble.WriteString("\n")
+		// A test module is bundled beside the page, so a test body calling
+		// i18n itself -- an i18n call the optimizer inlined into it -- finds
+		// the runtime on window, as it finds the page's functions.
+		if g.testMode {
+			preamble.WriteString("if (typeof window !== 'undefined') { Object.assign(window, { i18n }); }\n")
+		}
 		script = preamble.String() + script
 	}
 
@@ -1532,8 +1551,8 @@ func (g *htmlGen) renderIRNode(b *strings.Builder, n *ir.NodeInst, depth int) {
 	g.renderRawElementIR(b, n, depth)
 }
 
-// isUserIRComponent reports whether a NodeInst resolves to a user-defined
-// component rather than a stdlib component or a raw element.
+// isUserIRComponent reports whether a NodeInst resolves to a component the
+// program declares rather than a library one or a raw element.
 func isUserIRComponent(n *ir.NodeInst) bool {
 	if n.Component == nil || n.Component.AST == nil {
 		return false
@@ -1543,10 +1562,7 @@ func isUserIRComponent(n *ir.NodeInst) bool {
 	if isElement(n.Component) {
 		return false
 	}
-	if n.Component.Stdlib {
-		return false
-	}
-	return true
+	return n.Component.PkgPath() == ""
 }
 
 // pts returns the funcvar points-to analysis results, or nil if not yet
@@ -1864,6 +1880,11 @@ func (g *htmlGen) renderRawElementIR(b *strings.Builder, n *ir.NodeInst, depth i
 	if t, ok := rawElementTag(n); ok {
 		tag = t
 	}
+	tag = elementTag(tag)
+	favicon := n == g.faviconNode
+	if favicon {
+		tag = "link"
+	}
 
 	id := ""
 	if g.nodeIsReactive(n) || g.preview || g.testMode {
@@ -1881,9 +1902,22 @@ func (g *htmlGen) renderRawElementIR(b *strings.Builder, n *ir.NodeInst, depth i
 			g.idToNode[id] = n
 		}
 	}
+	if favicon {
+		if id == "" {
+			id = g.nodeID(n)
+		}
+		g.initWrites = append(g.initWrites, updateFunc{
+			funcName: fmt.Sprintf("$u_%s_icon", id[1:]),
+			body:     faviconInit(id),
+			initOnly: true,
+		})
+	}
 	if drawing != nil {
 		cw, ch := canvasIntProp(n, "width"), canvasIntProp(n, "height")
-		cs := canvasSetup{id: id, node: n, drawName: drawing.Name, draw: drawing.Draw, w: cw, h: ch, scaling: canvasScalingMode(n)}
+		cs := canvasSetup{id: id, node: n, drawName: drawing.Name, draw: drawing.Draw, w: cw, h: ch, scaling: canvasScalingMode(n), image: isImageDrawing(n)}
+		if cs.image {
+			g.ctx.Helpers[imageDrawHelper] = true
+		}
 		g.canvasSetups = append(g.canvasSetups, cs)
 		// Init-only: reactive redraws come from the CanvasRedrawStmt
 		// passCanvasReactivity injects into handler/timer bodies. A scaled
@@ -1901,7 +1935,7 @@ func (g *htmlGen) renderRawElementIR(b *strings.Builder, n *ir.NodeInst, depth i
 		})
 	}
 	style := nodeInlineCSS(n)
-	if css := canvasScalingCSS(n, drawing != nil); css != "" {
+	if css := canvasScalingCSS(n, drawing != nil && !isImageDrawing(n)); css != "" {
 		if style != "" {
 			style += ";"
 		}
@@ -1910,6 +1944,14 @@ func (g *htmlGen) renderRawElementIR(b *strings.Builder, n *ir.NodeInst, depth i
 
 	// innerText and innerHTML render as element content, not attributes.
 	props := nodeProps(n)
+	if isImageSource(n) {
+		props, style = sourceAttrs(props, favicon), ""
+		if !favicon {
+			for _, r := range imageRules {
+				g.AddStyle(r)
+			}
+		}
+	}
 	// The tag names the element rather than being one of its attributes.
 	delete(props, tagProp)
 	var attrs strings.Builder
@@ -1966,6 +2008,10 @@ func (g *htmlGen) renderRawElementIR(b *strings.Builder, n *ir.NodeInst, depth i
 	}
 	fmt.Fprintf(b, "%s<%s", indent, tag)
 	if id != "" {
+		if g.written == nil {
+			g.written = map[string]bool{}
+		}
+		g.written[id] = true
 		fmt.Fprintf(b, " id=%q", id)
 		if strings.HasPrefix(id, "__n") {
 			fmt.Fprintf(b, " data-sngl-id=%q", id)
@@ -2079,7 +2125,7 @@ func (g *htmlGen) renderRawElementIR(b *strings.Builder, n *ir.NodeInst, depth i
 		if event == "" {
 			continue
 		}
-		g.addEventHandler(decl, id, event, h.Func)
+		g.addEventHandler(id, event, h.Func)
 	}
 }
 
@@ -2159,8 +2205,8 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 			if !codegen.IsComputed(fn) {
 				continue
 			}
-			if fn.Receiver != "" {
-				fmt.Fprintf(b, "state.%s = () => %s_%s(state);\n", fn.Name, fn.Receiver, fn.Name)
+			if fn.IsMethod() {
+				fmt.Fprintf(b, "state.%s = () => %s_%s(state);\n", fn.Name, fn.RecvName(), fn.Name)
 			} else {
 				fmt.Fprintf(b, "state.%s = () => %s();\n", fn.Name, fn.Name)
 			}
@@ -2208,8 +2254,8 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 			continue
 		}
 		body := g.exprToJS(ret.Value)
-		if fn.Receiver != "" {
-			fmt.Fprintf(b, "function %s_%s(state) { return %s; }\n", fn.Receiver, fn.Name, body)
+		if fn.IsMethod() {
+			fmt.Fprintf(b, "function %s_%s(state) { return %s; }\n", fn.RecvName(), fn.Name, body)
 		} else {
 			// Its own name, not a `$`-prefixed one: `$` is this platform's
 			// namespace for a helper it synthesized ($set_, $timer_, $compute_)
@@ -2241,7 +2287,7 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 		// A library function the view called may have been folded away in
 		// every document -- `md.document`'s helpers are -- so it is declared
 		// only where the script still names it.
-		lib := fn.Pkg != "" && fn.Receiver == ""
+		lib := fn.PkgPath() != "" && !fn.IsMethod()
 		if lib {
 			openDecl(b, fn.Name)
 		}
@@ -2492,7 +2538,7 @@ func (g *htmlGen) emitSynthesizedSlots(b *strings.Builder) {
 			// and a definition that lost it is an await in a sync function.
 			IsAsync: fn.IsAsync,
 		}
-		if fn.Receiver == "" {
+		if !fn.IsMethod() {
 			openDecl(b, fn.Name)
 		}
 		for _, line := range jc.EmitFuncDef(synthesized) {
@@ -2500,7 +2546,7 @@ func (g *htmlGen) emitSynthesizedSlots(b *strings.Builder) {
 			b.WriteByte('\n')
 		}
 		b.WriteByte('\n')
-		if fn.Receiver == "" {
+		if !fn.IsMethod() {
 			closeDecl(b)
 		}
 	}
@@ -2561,7 +2607,8 @@ func canvasScalingCSS(n *ir.NodeInst, isCanvas bool) string {
 
 // canvasScalingMode reads a canvas node's `scalingMode` prop.
 func canvasScalingMode(n *ir.NodeInst) string {
-	if v, ok := codegen.NodeProp(n, "scalingMode").(*ir.Ident); ok {
+	// `center` draws at the size given, which the runtime spells as no mode.
+	if v, ok := codegen.NodeProp(n, "scalingMode").(*ir.Ident); ok && v.Member != canvasutil.ScaleCenter {
 		return v.Member
 	}
 	return ""
@@ -2576,6 +2623,9 @@ func (g *htmlGen) emitCanvasSetups(b *strings.Builder) {
 	}
 	if g.ctx.Helpers["native:_snglDrawImage"] {
 		b.WriteString(snglDrawImageHelper)
+	}
+	if g.ctx.Helpers[imageDrawHelper] {
+		b.WriteString(snglImageDrawHelper)
 	}
 	b.WriteString(snglCanvasHelper)
 }
@@ -3190,17 +3240,16 @@ func (g *htmlGen) collectLoweredRefs(s ir.Stmt) {
 	}
 }
 
-// addEventHandler registers a handler for one DOM event. What its event-arg
-// param stands for is the event's declared payload to say (see
-// eventPayloadBase); whether it has one decides the listener's signature.
-func (g *htmlGen) addEventHandler(decl *ir.Component, elemID, event string, fn *ir.Func) {
+// addEventHandler registers a handler for one DOM event. Its parameter is the
+// DOM's event, which an element declares as `Event`; whether it has one
+// decides the listener's signature.
+func (g *htmlGen) addEventHandler(elemID, event string, fn *ir.Func) {
 	if fn == nil || len(fn.Block) == 0 {
 		return
 	}
 	savedEvent := g.ctx.EventVar
 	savedEventParam := g.ctx.EventParam
-	base := eventPayloadBase(decl, event)
-	g.ctx.EventVar = base
+	g.ctx.EventVar = "e"
 	if len(fn.Params) > 0 {
 		g.ctx.EventParam = fn.Params[0]
 	}
@@ -3230,11 +3279,10 @@ func (g *htmlGen) addEventHandler(decl *ir.Component, elemID, event string, fn *
 		delete(g.ctx.Locals, n)
 	}
 	g.handlers = append(g.handlers, eventHandler{
-		elemID:          elemID,
-		event:           event,
-		snglID:          g.enclosingSnglID,
-		payloadOnTarget: base == "e.target",
-		body:            strings.Join(lines, "\n  "),
+		elemID: elemID,
+		event:  event,
+		snglID: g.enclosingSnglID,
+		body:   strings.Join(lines, "\n  "),
 		// With no declared parameter nothing in the body can resolve to the
 		// event, so the listener takes none either.
 		hasParam: len(fn.Params) > 0,
@@ -3265,8 +3313,8 @@ func receiverParamName(fn *ir.Func) string {
 // jsFuncName is the JavaScript name a user func is emitted under. A desugared
 // method's dotted form lives in fn.Receiver.
 func jsFuncName(fn *ir.Func) string {
-	if fn.Receiver != "" {
-		return fn.Receiver + "_" + fn.Name
+	if fn.IsMethod() {
+		return fn.RecvName() + "_" + fn.Name
 	}
 	return strings.ReplaceAll(fn.Name, ".", "_")
 }
@@ -3285,7 +3333,7 @@ func (g *htmlGen) emitJSFunc(b *strings.Builder, fn *ir.Func) {
 		// so that it is a name JavaScript accepts at all. SNGL spells the
 		// receiver `this`, which is a parameter name JS rejects; the body's
 		// uses are renamed to match below.
-		if i == 0 && fn.Receiver != "" && p.Receiver {
+		if i == 0 && fn.IsMethod() && p.Receiver {
 			params[i] = "state"
 		} else {
 			params[i] = p.Name
@@ -3303,7 +3351,7 @@ func (g *htmlGen) emitJSFunc(b *strings.Builder, fn *ir.Func) {
 	if len(fn.Block) == 1 {
 		if ret, ok := fn.Block[0].(*ir.Return); ok && ret.Value != nil {
 			jc := g.scopedJC()
-			if fn.Receiver != "" {
+			if fn.IsMethod() {
 				jc = jc.WithRenamedLocal(receiverParamName(fn), "state")
 			}
 			for _, p := range fn.Params {
@@ -3321,7 +3369,7 @@ func (g *htmlGen) emitJSFunc(b *strings.Builder, fn *ir.Func) {
 	// Routed through the same pipeline as a handler body, so element-ref
 	// writes and intrinsic statements lower identically.
 	jc := g.scopedJC()
-	if fn.Receiver != "" {
+	if fn.IsMethod() {
 		jc = jc.WithRenamedLocal(receiverParamName(fn), "state")
 	}
 	for _, p := range fn.Params {
@@ -3529,89 +3577,167 @@ func (g *htmlGen) noteSnglID(elemVar string, n *ir.NodeInst) {
 // which is what makes `c.<id><Event>()` resolve. The computed accessors above
 // are attached the same way.
 //
-// A payload a test passes is written where the handler reads it: onto the
-// element when its fields are the element's state (`checked`, `value`), which
-// is what a user's input would have changed before the event fired, and onto
-// the event otherwise.
+// A test hands the event's arguments by their declared names, `{checked:
+// true}`, and they are written where a handler reads them: onto the element,
+// which is what a user's input would have changed before the event fired, and
+// onto the event, which is where the DOM puts what the event itself carries.
 func (g *htmlGen) emitEventInvokers(b *strings.Builder) {
 	seen := map[string]bool{}
-	emit := func(h eventHandler, snglID string) {
+	// Every element written under one id, in render order: an id a constant
+	// loop unrolled is one per copy, and the `At` variant names a copy by its
+	// index there as it does among elements built at run time.
+	copies := map[string][]string{}
+	event := map[string]string{}
+	var order []string
+	collect := func(h eventHandler, snglID string, own bool) {
 		if snglID == "" {
 			return
 		}
 		name := snglID + capitalizeFirst(h.event)
-		if seen[name] {
+		event[name] = h.event
+		if own && slices.Contains(copies[name], h.elemID) {
 			return
 		}
-		seen[name] = true
-		switch {
-		case h.event == "click":
-			fmt.Fprintf(b, "state.%s = () => %s.click();\n", name, h.elemID)
-		case h.payloadOnTarget:
-			fmt.Fprintf(b, "state.%s = (p) => { Object.assign(%s, p); %s.dispatchEvent(new Event(%q)); };\n", name, h.elemID, h.elemID, h.event)
-		default:
-			fmt.Fprintf(b, "state.%s = (p) => %s.dispatchEvent(Object.assign(new Event(%q), p));\n", name, h.elemID, h.event)
+		if _, ok := copies[name]; !ok {
+			order = append(order, name)
+		}
+		if own || len(copies[name]) == 0 {
+			copies[name] = append(copies[name], h.elemID)
 		}
 	}
 	// An element's own id outranks one it inherits, whichever was rendered
 	// first.
 	for _, h := range g.handlers {
-		emit(h, g.snglIDByElem[h.elemID])
+		collect(h, g.snglIDByElem[h.elemID], true)
 	}
 	for _, h := range g.handlers {
-		emit(h, h.snglID)
+		collect(h, h.snglID, false)
+	}
+	// Only an id a test indexes needs the variant, as on fyne and gtk4.
+	indexed := codegen.IndexedTriggerIDs(g.pkg)
+	for _, name := range order {
+		seen[name] = true
+		els := copies[name]
+		at := indexed[strings.TrimSuffix(name, capitalizeFirst(event[name]))]
+		all := "[" + strings.Join(els, ", ") + "]"
+		if event[name] == "click" {
+			fmt.Fprintf(b, "state.%s = () => %s.click();\n", name, els[0])
+			if at {
+				fmt.Fprintf(b, "state.%s = (i) => %s[i].click();\n", codegen.InvokerAt(name), all)
+			}
+			continue
+		}
+		fmt.Fprintf(b, "state.%s = (p) => { Object.assign(%s, p); %s.dispatchEvent(Object.assign(new Event(%q), p)); };\n", name, els[0], els[0], event[name])
+		if at {
+			fmt.Fprintf(b, "state.%s = (i, p) => { const el = %s[i]; Object.assign(el, p); el.dispatchEvent(Object.assign(new Event(%q), p)); };\n", codegen.InvokerAt(name), all, event[name])
+		}
 	}
 	// An element built at run time -- inside a component instance or a
 	// render slot -- does not exist when the page starts, so its invoker
-	// finds it when it is called, by the mark OnCreateNode gives it.
+	// finds it when it is called, by the mark OnCreateNode gives it. The
+	// listener may be on an element inside the one the program named -- a
+	// checkbox's `<input>` in the `<label>` its `#id` lands on -- which is
+	// found under it by tag. An id a loop rendered more than once names a
+	// copy through the `At` variant, by its index in document order.
 	for _, h := range g.runtimeHandlers() {
 		name := h.id + capitalizeFirst(h.event)
 		if seen[name] {
 			continue
 		}
 		seen[name] = true
-		lookup := fmt.Sprintf("document.querySelector('[data-sngl-id=%q]')", h.id)
+		sel := fmt.Sprintf("'[data-sngl-id=%q]'", h.id)
+		find := func(root string) string {
+			if h.inner == "" {
+				return root
+			}
+			return fmt.Sprintf("%s.querySelector(%q)", root, h.inner)
+		}
+		one := find(fmt.Sprintf("document.querySelector(%s)", sel))
+		nth := find(fmt.Sprintf("document.querySelectorAll(%s)[i]", sel))
 		if h.event == "click" {
-			fmt.Fprintf(b, "state.%s = () => %s.click();\n", name, lookup)
+			fmt.Fprintf(b, "state.%s = () => %s.click();\n", name, one)
+			fmt.Fprintf(b, "state.%s = (i) => %s.click();\n", codegen.InvokerAt(name), nth)
 			continue
 		}
-		fmt.Fprintf(b, "state.%s = (p) => { const el = %s; Object.assign(el, p); el.dispatchEvent(Object.assign(new Event(%q), p)); };\n", name, lookup, h.event)
+		fmt.Fprintf(b, "state.%s = (p) => { const el = %s; Object.assign(el, p); el.dispatchEvent(Object.assign(new Event(%q), p)); };\n", name, one, h.event)
+		fmt.Fprintf(b, "state.%s = (i, p) => { const el = %s; Object.assign(el, p); el.dispatchEvent(Object.assign(new Event(%q), p)); };\n", codegen.InvokerAt(name), nth, h.event)
 	}
 }
 
-// runtimeHandler is one listener the lowered IR attaches to an element a
-// program named, where the element is built by code rather than markup.
-type runtimeHandler struct{ id, event string }
+// runtimeHandler is one listener the lowered IR attaches to an element built
+// by code rather than markup, under an element a program named: id is that
+// name, and inner the tag of the element the listener is on when it is not
+// the named one itself.
+type runtimeHandler struct{ id, event, inner string }
 
 // runtimeHandlers is every such listener, in the order the package holds
-// them.
+// them. Which element is inside which is read off the lowered node ops: each
+// created element's tag, and the parent each is appended to.
 func (g *htmlGen) runtimeHandlers() []runtimeHandler {
 	if g.pkg == nil {
 		return nil
 	}
-	var out []runtimeHandler
+	tags := map[string]string{}
+	parents := map[string]string{}
+	var attached []*ir.CallStmt
+	identName := func(e ir.Expr) string {
+		if id, ok := e.(*ir.Ident); ok {
+			return id.Name
+		}
+		return ""
+	}
 	_ = walkThroughCatch(g.pkg, func(n ir.Node) error {
-		cs, ok := n.(*ir.CallStmt)
-		if !ok || cs.Call == nil || cs.Call.Func == nil || cs.Call.Func.Intrinsic != ir.NodeOpAttachHandler || len(cs.Call.Args) < 2 {
-			return nil
-		}
-		id, ok := cs.Call.Args[0].Value.(*ir.Ident)
-		if !ok || !isProgramID(id.Name) {
-			return nil
-		}
-		lit, ok := cs.Call.Args[1].Value.(*ir.Literal)
-		if !ok {
-			return nil
-		}
-		var decl *ir.Component
-		if node := g.idToNode[id.Name]; node != nil {
-			decl = node.Component
-		}
-		if ev := domEventName(decl, lit.Value); ev != "" {
-			out = append(out, runtimeHandler{id: id.Name, event: ev})
+		switch v := n.(type) {
+		case *ir.LocalVar:
+			if c, ok := v.Init.(*ir.Call); ok && c.Func != nil && c.Func.Intrinsic == ir.NodeOpCreateNode && len(c.Args) > 0 {
+				if lit, ok := c.Args[0].Value.(*ir.Literal); ok {
+					tags[v.Name] = lit.Value
+				}
+			}
+		case *ir.CallStmt:
+			c := v.Call
+			if c == nil || c.Func == nil {
+				return nil
+			}
+			switch {
+			case c.Func.Intrinsic == ir.NodeOpAppendChild && len(c.Args) >= 2:
+				if child := identName(c.Args[1].Value); child != "" {
+					parents[child] = identName(c.Args[0].Value)
+				}
+			case c.Func.Intrinsic == ir.NodeOpAttachHandler && len(c.Args) >= 2:
+				attached = append(attached, v)
+			}
 		}
 		return nil
 	})
+	var out []runtimeHandler
+	for _, cs := range attached {
+		on := identName(cs.Call.Args[0].Value)
+		lit, ok := cs.Call.Args[1].Value.(*ir.Literal)
+		if on == "" || !ok {
+			continue
+		}
+		named, inner := on, ""
+		for depth := 0; !isProgramID(named) && depth < 8; depth++ {
+			named = parents[named]
+			inner = tags[on]
+			if named == "" {
+				break
+			}
+		}
+		if named == "" || !isProgramID(named) {
+			continue
+		}
+		var decl *ir.Component
+		if node := g.idToNode[on]; node != nil {
+			decl = node.Component
+		} else if node := g.idToNode[named]; node != nil && inner == "" {
+			decl = node.Component
+		}
+		if ev := domEventName(decl, lit.Value); ev != "" {
+			out = append(out, runtimeHandler{id: named, event: ev, inner: inner})
+		}
+	}
 	return out
 }
 
@@ -3656,7 +3782,7 @@ func (g *htmlGen) bodyCalls() []string {
 		}
 	}
 	for _, c := range g.pageComponents() {
-		collect(c.Body)
+		collect(c.Stmts)
 	}
 	collect(pkg.Body)
 	return out
@@ -3706,6 +3832,9 @@ func (g *htmlGen) renderDialog(b *strings.Builder, n *ir.NodeInst, depth int) {
 	fmt.Fprintf(b, "%s  <header>\n%s    <span>%s</span>\n", indent, indent, escapeTextContent(title))
 	fmt.Fprintf(b, "%s    <button id=%q aria-label=\"Close\">\n%s      <span>×</span>\n%s    </button>\n%s  </header>\n", indent, close, indent, indent, indent)
 	for _, s := range ir.WidgetChildren(n) {
+		if c, ok := s.(*ir.NodeInst); ok && isImageSource(c) {
+			continue
+		}
 		g.renderIRStmt(b, s, depth+1)
 	}
 	fmt.Fprintf(b, "%s</dialog>\n", indent)
@@ -3747,7 +3876,7 @@ func (g *htmlGen) renderDialog(b *strings.Builder, n *ir.NodeInst, depth int) {
 	if closed != nil && closed.Func != nil {
 		block = append(block, closed.Func.Block...)
 	}
-	g.addEventHandler(nil, close, "click", &ir.Func{Block: block})
+	g.addEventHandler(close, "click", &ir.Func{Block: block})
 }
 
 // respellWindowWrites drops what the lowering wrote to the document's props

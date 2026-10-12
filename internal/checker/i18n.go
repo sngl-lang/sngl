@@ -271,20 +271,14 @@ func (c *checker) inferI18nInterp(x *ast.I18nInterpExpr) ir.Expr {
 		return &ir.Literal{Type: TypString, Value: ""}
 	}
 
-	// Build the args map<string, dyn>: placeholder name → checked value expression.
-	// Value is the decoded value; language codegen (e.g. evalLiteral) applies
-	// target-language quoting.
-	var entries []ir.MapEntry
+	// The arguments are a record, a field per placeholder holding its checked
+	// value, as a program writes them to i18n.tr; lower.RecordArgs makes the
+	// map the runtimes take of it.
+	var fields []ir.FieldInit
 	for _, a := range b.args {
-		entries = append(entries, ir.MapEntry{
-			Key:   &ir.Literal{Type: TypString, Value: a.name},
-			Value: c.checkExpr(a.expr),
-		})
+		fields = append(fields, ir.FieldInit{Name: a.name, Value: c.checkExpr(a.expr)})
 	}
-	argsMap := &ir.MapLitIR{
-		Type:    ir.MapOf(TypString, TypDyn),
-		Entries: entries,
-	}
+	argsMap := c.i18nArgsRecord(fields)
 
 	return &ir.Call{
 		Type: TypString,
@@ -423,4 +417,86 @@ func hasNonWhitespace(s string) bool {
 		}
 	}
 	return false
+}
+
+// i18nTemplates names, per sngl:i18n entry point a program calls, the
+// parameter holding the ICU template it formats.
+var i18nTemplates = map[string]string{
+	"i18n.tr":     "key",
+	"i18n.format": "template",
+}
+
+// checkI18nCall holds a call of i18n.tr or i18n.format to what its runtime
+// reads. The arguments are a struct, a field per placeholder, which every
+// runtime is handed as a map keyed by field name (lower.RecordArgs); a map or
+// a scalar bound to the type parameter would reach it as something else. And
+// the template is the one written: a double-quoted string is interpolated
+// where it is written, so its `{name}` was gone before i18n saw it and the
+// arguments were read by nothing.
+func (c *checker) checkI18nCall(x *ast.CallExpr, e ir.Expr) {
+	call, ok := e.(*ir.Call)
+	if !ok || call.Func == nil {
+		return
+	}
+	tmpl, ok := i18nTemplates[call.Func.Intrinsic]
+	if !ok {
+		return
+	}
+	name := call.Func.Intrinsic
+	for i, a := range x.Args.Args {
+		arg, ok := a.(ast.Arg)
+		if !ok {
+			continue
+		}
+		param := arg.Name
+		if param == "" && i < len(call.Func.Params) {
+			param = call.Func.Params[i].Name
+		}
+		if param != tmpl {
+			continue
+		}
+		if interp, ok := arg.Value.(*ast.InterpolationExpr); ok {
+			c.error(interp.Pos, "this template is interpolated before %s sees it, so its placeholders are gone: write it in backticks, or escape each brace as \\{", name)
+		}
+	}
+	if i := ir.RecordArg(call.Func); i >= 0 && i < len(call.Args) {
+		t := exprType(call.Args[i].Value)
+		if t == nil || t.Kind == ir.TypeDyn {
+			return
+		}
+		if t.Kind != ir.TypeStruct {
+			at := x.Pos
+			if n, ok := argAST(x, i, call.Func.Params[i].Name); ok {
+				at = n
+			}
+			c.error(at, "%s takes its arguments as a struct, a field per placeholder -- {name=…} -- not %s", name, t)
+		}
+	}
+}
+
+// argAST is the position of the argument x binds to parameter i, named name.
+func argAST(x *ast.CallExpr, i int, name string) (ast.Pos, bool) {
+	for j, a := range x.Args.Args {
+		arg, ok := a.(ast.Arg)
+		if !ok {
+			continue
+		}
+		if (arg.Name == "" && j == i) || arg.Name == name {
+			if p := arg.Value.ExprPos(); p != nil {
+				return *p, true
+			}
+		}
+	}
+	return ast.Pos{}, false
+}
+
+// i18nArgsRecord is the anonymous struct literal holding a translatable
+// string's placeholder values, typed as the literal `{name=…}` would be.
+func (c *checker) i18nArgsRecord(fields []ir.FieldInit) *ir.StructLit {
+	anonFields, ok := c.anonFieldsFromInits(fields)
+	if !ok {
+		return &ir.StructLit{Type: &ir.Type{Kind: ir.TypeStruct}, Fields: fields}
+	}
+	anon := c.internAnonStruct(anonFields)
+	return &ir.StructLit{Type: anon.SymType(), Def: anon, Fields: fields}
 }

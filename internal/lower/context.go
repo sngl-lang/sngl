@@ -165,7 +165,7 @@ func collectReachableExternalFuncs(pkg *ir.Package) []*ir.Func {
 	// vars. callsInBody alone misses comp.Vars / comp.Funcs because Vars
 	// aren't part of Body — they hang off the Component struct directly.
 	for _, comp := range pkg.Components {
-		seedFromStmts(comp.Body)
+		seedFromStmts(comp.Stmts)
 		for _, v := range comp.Vars {
 			seedFromVar(v)
 		}
@@ -286,7 +286,7 @@ func computeReachability(pkg *ir.Package, extraFuncs []*ir.Func) Reachable {
 		}
 	}
 	componentCalls := func(comp *ir.Component) []callEdge {
-		calls := callsInBody(comp.Body, nil)
+		calls := callsInBody(comp.Stmts, nil)
 		for _, v := range comp.Vars {
 			calls = append(calls, callsInExpr(v.Init, nil)...)
 			for _, h := range v.Handlers {
@@ -299,7 +299,7 @@ func computeReachability(pkg *ir.Package, extraFuncs []*ir.Func) Reachable {
 	}
 	for _, comp := range pkg.Components {
 		out := map[*ir.Context]bool{}
-		collectContextReads(comp.Body, out)
+		collectContextReads(comp.Stmts, out)
 		for _, v := range comp.Vars {
 			collectContextReads(v.Init, out)
 			for _, h := range v.Handlers {
@@ -574,7 +574,7 @@ func rewriteReads(pkg *ir.Package, reach Reachable, extraFuncs []*ir.Func, hidde
 				continue
 			}
 			w := readsOf(func() ir.Expr { return hiddenIdent(varSym, varSym.Name, varSym.Type) })
-			comp.Body = w.stmts(comp.Body)
+			comp.Stmts = w.stmts(comp.Stmts)
 			for _, v := range comp.Vars {
 				if v == varSym {
 					continue
@@ -639,7 +639,7 @@ func computeSlotEnvs(pkg *ir.Package) slotEnvs {
 	out := slotEnvs{}
 	for _, comp := range pkg.Components {
 		per := map[string]map[*ir.Context]ir.Expr{}
-		collectSlotEnv(comp.Body, map[*ir.Context]ir.Expr{}, per)
+		collectSlotEnv(comp.Stmts, map[*ir.Context]ir.Expr{}, per)
 		if len(per) > 0 {
 			out[comp] = per
 		}
@@ -766,14 +766,14 @@ func lowerProviders(pkg *ir.Package, reach Reachable, extraFuncs []*ir.Func, hid
 	// the field see the threaded value.
 	for _, comp := range pkg.Components {
 		compActive := hiddenActiveFor(pkg, hidden, comp, nil)
-		comp.Body = lowerInStmts(comp.Body, compActive, pc)
+		comp.Stmts = lowerInStmts(comp.Stmts, compActive, pc)
 		// Any LocalVar (`var x = ...` originating from inside a provider
 		// block, now spliced up to component-body level by the provider
 		// unwrap above) is promoted to a component-level *ir.Var so
 		// codegen treats it as Model state instead of leaving it as a
 		// dangling block-local in a context where there is no enclosing
 		// function body.
-		comp.Body, comp.Vars = promoteLocalVarsToVars(comp.Body, comp.Vars)
+		comp.Stmts, comp.Vars = promoteLocalVarsToVars(comp.Stmts, comp.Vars)
 		for _, v := range comp.Vars {
 			v.Init = lowerInExpr(v.Init, compActive, pc)
 			for _, h := range v.Handlers {
@@ -1074,7 +1074,7 @@ func lowerInExpr(e ir.Expr, active map[*ir.Context]ir.Expr, pc *provLower) ir.Ex
 		// codegen will surface this via its unhandled-IR panic if it
 		// matters.
 	case *ir.Ident:
-		if fn, ok := n.Sym.(*ir.Func); ok && len(pc.hidden.funcs[fn]) > 0 && fn.Receiver == "" {
+		if fn, ok := n.Sym.(*ir.Func); ok && len(pc.hidden.funcs[fn]) > 0 && !fn.IsMethod() {
 			return funcValueUnder(n, fn, active, pc)
 		}
 	case *ir.Literal:
@@ -1175,7 +1175,7 @@ func testSetContext(c *ir.Call) (*ir.Context, *ir.CallArg) {
 // setContextArg is the index of the argument naming the context
 // `t.setContext` sets, and that context.
 func setContextArg(c *ir.Call) (int, *ir.Context) {
-	if c == nil || c.Func == nil || c.Func.Receiver != "Test" || c.Func.Name != "setContext" {
+	if !ir.IsTestCall(c, ir.TestSetContextID) {
 		return 0, nil
 	}
 	for i := range c.Args {

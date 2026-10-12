@@ -1,0 +1,26 @@
+// An event's parameter list is a function's, read by the same code, so each
+// parameter is named and typed. What a function's parameter may carry and an
+// event's may not is refused: an emit supplies every parameter, so none has a
+// default or is const, and a handler binds them by position, so none collects
+// the rest. A bare `@tick` declares none, as a function written without its
+// parens does.
+
+import . "sngl:ui"
+
+component picker(
+    @change(ChangeEvent), // ERROR(check) "type annotation required for parameter \"ChangeEvent\""
+    @pick(index int = 0), // ERROR(check) "parameter \"index\" of event @pick takes no default value: the emit supplies it"
+    @keep(const n int),   // ERROR(check) "parameter \"n\" of event @keep cannot be const: a handler receives what the emit passed"
+    @many(xs ...int),     // ERROR(check) "parameter \"xs\" of event @many cannot collect the rest: a handler binds an event's parameters by position"
+    @tick,
+) node {
+    button(text="t", @click { tick() })
+}
+
+component main node {
+    picker(@tick(n) {}) // ERROR(check) "@tick binds 1 parameter, but the event passes none"
+}
+
+window {
+    main
+}

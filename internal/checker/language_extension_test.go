@@ -17,15 +17,28 @@ type extStubLang struct{ name string }
 func (l extStubLang) LanguageIdentifier() string { return l.name }
 func (extStubLang) Description() string          { return "language extension test stub" }
 
-// The transport sngl:remote/http declares and leaves open, implemented by a
-// language. The body reads the package's own declaration rather than one of
-// its imports, as a target package's override does: an override body resolves
-// in the package, and a package's imports are its files' own.
+// A library package that declares a function and leaves it open, as a
+// transport would: nothing below a target can say what a request does. There
+// is no lib/extlib directory either, so it too reaches the checker through
+// Config.LibSources.
+const langExtLib = `
+struct Result {
+    status int
+    body   string
+}
+
+func get(url string) Result
+`
+
+// The open function, implemented by a language. The body reads the package's
+// own declaration rather than one of its imports, as a target package's
+// override does: an override body resolves in the package, and a package's
+// imports are its files' own.
 const langExtSource = `
-import http "sngl:remote/http"
+import http "sngl:extlib"
 
 func stub() http.Result {
-    return http.Result{status = 200, body = "stub", headers = {}}
+    return http.Result{status = 200, body = "stub"}
 }
 
 func http.get[language]() {
@@ -34,7 +47,7 @@ func http.get[language]() {
 `
 
 const langExtProgram = `
-import http "sngl:remote/http"
+import http "sngl:extlib"
 
 func body(url string) string {
     return http.get(url).body
@@ -49,13 +62,17 @@ func checkWithLanguages(t *testing.T, src string, target string, langs ...string
 	if err != nil {
 		t.Fatalf("stub language package parse: %v", err)
 	}
+	lib, err := parser.Parse("extlib.sngl", []byte(langExtLib))
+	if err != nil {
+		t.Fatalf("stub library package parse: %v", err)
+	}
 	doc, err := parser.Parse("main.sngl", []byte(src))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
 	cfg := &checker.Config{
 		IsMain:     true,
-		LibSources: map[string][]*ast.Document{},
+		LibSources: map[string][]*ast.Document{"extlib": {lib}},
 		Targets:    []ir.StaticTarget{{Language: target}},
 	}
 	for _, name := range langs {
@@ -92,8 +109,8 @@ func libFunc(t *testing.T, pkg *ir.Package, ns, name string) *ir.Func {
 // target is an `import _ "sngl:language/<it>"` nobody wrote -- so an override
 // in it is merged into the declaration it names. That is what makes a language
 // able to implement a declaration the library leaves open, rather than only
-// describe types: sngl:remote/http declares `get` and no tier below a target
-// can say what it does.
+// describe types: extlib declares `get` and no tier below a target can say
+// what it does.
 func TestLanguagePackageOverrideMerges(t *testing.T) {
 	pkg, diags := checkWithLanguages(t, langExtProgram, "extlang", "extlang")
 	for _, d := range diags {

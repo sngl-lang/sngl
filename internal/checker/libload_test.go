@@ -92,9 +92,9 @@ component main node {
 	if label == nil {
 		t.Fatal("imported package contributed no Label component")
 	}
-	inst, ok := label.Body[0].(*ir.NodeInst)
+	inst, ok := label.Stmts[0].(*ir.NodeInst)
 	if !ok {
-		t.Fatalf("Label body[0] = %T; want *ir.NodeInst", label.Body[0])
+		t.Fatalf("Label body[0] = %T; want *ir.NodeInst", label.Stmts[0])
 	}
 	if inst.Component != text {
 		t.Errorf("text in the imported package is %p; the program holds %p — two identities", inst.Component, text)

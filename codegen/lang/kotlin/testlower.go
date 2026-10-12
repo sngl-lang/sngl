@@ -37,7 +37,7 @@ func lowerTestStmt(s ir.Stmt, surf TestSurface, compRecvs map[string]bool, ctxCo
 		if line, ok := lowerEventTrigger(n); ok {
 			return []string{line}
 		}
-		if c := n.Call; c != nil && c.Func != nil && c.Func.Receiver == "Test" {
+		if c := n.Call; ir.IsTestMethodCall(c) {
 			if lines, ok := lowerTestSetContext(c, ctxCounts); ok {
 				return lines
 			}
@@ -45,13 +45,13 @@ func lowerTestStmt(s ir.Stmt, surf TestSurface, compRecvs map[string]bool, ctxCo
 			// runtime's T.snapshot which invokes the platform-registered
 			// capture and posts a snapshotAssert RPC. Native mode has no
 			// snapshot story today, so it remains a TODO.
-			if c.Func.Name == "snapshot" && mode == TestEmitAgent && len(c.Args) >= 2 {
+			if ir.IsTestCall(c, ir.TestSnapshotID) && mode == TestEmitAgent && len(c.Args) >= 2 {
 				name := lowerTestExpr(c.Args[1].Value, TestSurface{}, nil)
 				return []string{fmt.Sprintf("t.snapshot(%s)", name)}
 			}
 			return []string{fmt.Sprintf("// TODO: lower t.%s — not implemented in android test runner", c.Func.Name)}
 		}
-		if c := n.Call; c != nil && c.Func != nil && c.Func.Receiver != "" && len(c.Args) > 0 {
+		if c := n.Call; c != nil && c.Func != nil && c.Func.IsMethod() && len(c.Args) > 0 {
 			if id, ok := c.Args[0].Value.(*ir.Ident); ok && compRecvs[id.Name] {
 				return []string{
 					"composeTestRule.runOnUiThread {",
@@ -157,7 +157,7 @@ func lowerTestSetContext(c *ir.Call, ctxCounts map[string]int) ([]string, bool) 
 
 func lowerTestAssert(call *ir.CallStmt, surf TestSurface, compRecvs map[string]bool, mode TestEmitMode) (string, bool) {
 	c := call.Call
-	if c == nil || c.Func == nil || c.Func.Receiver != "Test" || c.Func.Name != "assert" {
+	if !ir.IsTestCall(c, ir.TestAssertID) {
 		return "", false
 	}
 	if len(c.Args) != 2 {
@@ -175,20 +175,28 @@ func lowerTestAssert(call *ir.CallStmt, surf TestSurface, compRecvs map[string]b
 
 func lowerEventTrigger(call *ir.CallStmt) (string, bool) {
 	c := call.Call
-	_, id, ok := codegen.EventTriggerTarget(c)
+	tt, ok := codegen.EventTriggerTarget(c)
 	if !ok {
 		return "", false
 	}
-	event := c.Event
+	id, event := tt.ID, c.Event
+	// One copy of a node a loop rendered is that one of every node the tag
+	// finds, in composition order, which is render order.
+	nth := func(matcher string) string {
+		if tt.Index == nil {
+			return "composeTestRule.onNode(" + matcher + ")"
+		}
+		return fmt.Sprintf("composeTestRule.onAllNodes(%s)[%s]", matcher, lowerTestExpr(tt.Index, TestSurface{}, nil))
+	}
 	if carriesState(c.Args) {
 		// The tag sits on the override's root, the Row around the control and
 		// its label, so the click targets the toggleable inside it. It flips
-		// the control whatever the payload says: this is the input path, as
+		// the control whatever the test passed: this is the input path, as
 		// bubbletea's key press is.
 		tag := fmt.Sprintf("androidx.compose.ui.test.hasTestTag(%q)", id)
-		return fmt.Sprintf("composeTestRule.onNode(androidx.compose.ui.test.isToggleable() and (%s or androidx.compose.ui.test.hasAnyAncestor(%s))).performClick(); composeTestRule.waitForIdle()", tag, tag), true
+		return fmt.Sprintf("%s.performClick(); composeTestRule.waitForIdle()", nth(fmt.Sprintf("androidx.compose.ui.test.isToggleable() and (%s or androidx.compose.ui.test.hasAnyAncestor(%s))", tag, tag))), true
 	}
-	finder := fmt.Sprintf("composeTestRule.onNodeWithTag(%q)", id)
+	finder := nth(fmt.Sprintf("androidx.compose.ui.test.hasTestTag(%q)", id))
 	action := composeAction(event, c.Args)
 	if action == "" {
 		return fmt.Sprintf("// TODO: no Compose-test action mapped for @%s on #%s", event, id), true
@@ -207,11 +215,10 @@ const (
 )
 
 // composeAction maps a SNGL event name + invocation args to its
-// Compose-UI-test equivalent. Input/change events accept a single
-// stdlib event struct (InputEvent{value="x"}); composeAction pulls
-// the `value` field out and feeds it to performTextReplacement,
-// which clears the field first and then inserts — matching the
-// "test sets the value" semantic regardless of prior content.
+// Compose-UI-test equivalent. Input/change events take the text the field
+// now holds, which performTextReplacement puts there: it clears the field
+// first and then inserts, matching the "test sets the value" semantic
+// regardless of prior content.
 func composeAction(event string, args []ir.CallArg) string {
 	switch event {
 	case "click":
@@ -223,45 +230,24 @@ func composeAction(event string, args []ir.CallArg) string {
 	return ""
 }
 
-// carriesState reports whether a trigger's payload is a control's on/off
-// state -- a struct literal holding a bool, ToggleEvent's `checked`.
+// carriesState reports whether a trigger hands a control its on/off state --
+// a checkbox's or a toggle's `@change(checked bool)`.
 func carriesState(args []ir.CallArg) bool {
-	if len(args) != 1 {
+	if len(args) != 1 || args[0].Value == nil {
 		return false
 	}
-	sl, ok := args[0].Value.(*ir.StructLit)
-	if !ok {
-		return false
-	}
-	for _, f := range sl.Fields {
-		if f.Value == nil {
-			continue
-		}
-		if t := f.Value.ExprType(); t != nil && t.Kind == ir.TypeBool {
-			return true
-		}
-	}
-	return false
+	t := args[0].Value.ExprType()
+	return t != nil && t.Kind == ir.TypeBool
 }
 
-// extractEventValue pulls the `value` field expression out of a
-// single-arg InputEvent / ChangeEvent struct literal, returning a
-// Kotlin source string for the underlying value. Falls back to an
-// empty literal when the shape doesn't match.
+// extractEventValue is the Kotlin source for the value a trigger hands an
+// input or change event, its one argument, or an empty literal when it hands
+// none.
 func extractEventValue(args []ir.CallArg) string {
 	if len(args) != 1 {
 		return "\"\""
 	}
-	sl, ok := args[0].Value.(*ir.StructLit)
-	if !ok {
-		return lowerTestExpr(args[0].Value, TestSurface{}, nil)
-	}
-	for _, f := range sl.Fields {
-		if f.Name == "value" {
-			return lowerTestExpr(f.Value, TestSurface{}, nil)
-		}
-	}
-	return "\"\""
+	return lowerTestExpr(args[0].Value, TestSurface{}, nil)
 }
 
 // lowerTestExpr translates a SNGL test expression to Kotlin source.
@@ -352,9 +338,9 @@ func lowerTestExpr(e ir.Expr, surf TestSurface, compRecvs map[string]bool) strin
 			}
 		}
 		if id, ok := n.Operand.(*ir.Ident); ok && compRecvs[id.Name] {
-			return id.Name + "." + n.Field
+			return id.Name + "." + SafeIdent(n.Field)
 		}
-		return lowerTestExpr(n.Operand, surf, compRecvs) + "." + n.Field
+		return lowerTestExpr(n.Operand, surf, compRecvs) + "." + SafeIdent(n.Field)
 	case *ir.Index:
 		operand := lowerTestExpr(n.Operand, surf, compRecvs)
 		idx := lowerTestExpr(n.Idx, surf, compRecvs)
@@ -362,7 +348,7 @@ func lowerTestExpr(e ir.Expr, surf TestSurface, compRecvs map[string]bool) strin
 	case *ir.Call:
 		// `c.f(…)` on the instance: a method of the state object, or a
 		// `derivedStateOf` property when f is a computed.
-		if f := n.Func; f != nil && f.Receiver != "" && len(n.Args) > 0 {
+		if f := n.Func; f != nil && f.IsMethod() && len(n.Args) > 0 {
 			if id, ok := n.Args[0].Value.(*ir.Ident); ok && compRecvs[id.Name] {
 				if codegen.IsComputed(f) {
 					return id.Name + "." + f.Name
@@ -657,4 +643,10 @@ func (surf TestSurface) translator() *KtIRContext {
 		return surf.kt
 	}
 	return testIRContext()
+}
+
+// A test body's sngl:test calls are answered here, where the body is lowered,
+// rather than by an emitter.
+func init() {
+	codegen.DeclareLangImplements("kotlin", ir.TestAssertID, ir.TestSnapshotID, ir.TestSetContextID)
 }

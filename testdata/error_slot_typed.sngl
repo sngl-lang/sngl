@@ -1,9 +1,9 @@
 // What a slot's declared count refuses.
 
 import . "sngl:ui"
-import tr "sngl:tree"
+import family "sngl:family"
 
-component frame(body component tr.one, badge component option<node>) node {
+component frame(body component family.one, badge component option<node>) node {
     vbox {
         body {}
         badge {}
@@ -13,7 +13,7 @@ component frame(body component tr.one, badge component option<node>) node {
 // The rest slot's count binds a bodyless call too: that path builds its
 // NodeInst without going through the visual-node one, where a children count is
 // what gets read.
-component one(content ...component tr.one) node {
+component one(content ...component family.one) node {
     vbox {
         content
     }
@@ -29,11 +29,11 @@ component main node {
     frame() // ERROR(check) "requires slot \"body\" to be populated"
 
     frame() {
-        component body { // ERROR(check) "takes exactly one node, got 2"
+        component body { // ERROR(check) "takes exactly one node, and this renders 2"
             text(value="one")
             text(value="two")
         }
-        component badge { // ERROR(check) "takes at most one node, got 2"
+        component badge { // ERROR(check) "takes at most one node, and this renders 2"
             text(value="a")
             text(value="b")
         }

@@ -109,9 +109,9 @@ type Model struct {
 	pages__current      _page__value
 	pages__history      []Pages__entry
 	total__inst0        int
-	hits__inst1         int
-	visible__inst2      bool
-	n__inst3            map[string]int
+	hits__inst0         int
+	visible__inst0      bool
+	n__inst0            map[string]int
 	__focusID           int
 	__focusLoop1_cursor int
 	items               []string
@@ -127,9 +127,9 @@ func New() Model {
 	m.pages__current = _page__value{Id: 0, Href: "/", Title: "Home", Meta: __anon_e3b0c4{}}
 	m.pages__history = []Pages__entry{}
 	m.total__inst0 = 0
-	m.hits__inst1 = 0
-	m.visible__inst2 = true
-	m.n__inst3 = map[string]int{}
+	m.hits__inst0 = 0
+	m.visible__inst0 = true
+	m.n__inst0 = map[string]int{}
 	m.__focusID = 0
 	m.__focusLoop1_cursor = 0
 	m.items = []string{"a", "b"}
@@ -273,49 +273,49 @@ func SetTotal__inst0Cmd(v int) tea.Cmd {
 	return func() tea.Msg { return setTotal__inst0Msg{value: v} }
 }
 
-func (m Model) Hits__inst1() int {
-	return m.hits__inst1
+func (m Model) Hits__inst0() int {
+	return m.hits__inst0
 }
 
-func (m Model) SetHits__inst1(v int) Model {
-	m.hits__inst1 = v
+func (m Model) SetHits__inst0(v int) Model {
+	m.hits__inst0 = v
 	return m
 }
 
-type setHits__inst1Msg struct{ value int }
+type setHits__inst0Msg struct{ value int }
 
-func SetHits__inst1Cmd(v int) tea.Cmd {
-	return func() tea.Msg { return setHits__inst1Msg{value: v} }
+func SetHits__inst0Cmd(v int) tea.Cmd {
+	return func() tea.Msg { return setHits__inst0Msg{value: v} }
 }
 
-func (m Model) Visible__inst2() bool {
-	return m.visible__inst2
+func (m Model) Visible__inst0() bool {
+	return m.visible__inst0
 }
 
-func (m Model) SetVisible__inst2(v bool) Model {
-	m.visible__inst2 = v
+func (m Model) SetVisible__inst0(v bool) Model {
+	m.visible__inst0 = v
 	return m
 }
 
-type setVisible__inst2Msg struct{ value bool }
+type setVisible__inst0Msg struct{ value bool }
 
-func SetVisible__inst2Cmd(v bool) tea.Cmd {
-	return func() tea.Msg { return setVisible__inst2Msg{value: v} }
+func SetVisible__inst0Cmd(v bool) tea.Cmd {
+	return func() tea.Msg { return setVisible__inst0Msg{value: v} }
 }
 
-func (m Model) N__inst3() map[string]int {
-	return m.n__inst3
+func (m Model) N__inst0() map[string]int {
+	return m.n__inst0
 }
 
-func (m Model) SetN__inst3(v map[string]int) Model {
-	m.n__inst3 = v
+func (m Model) SetN__inst0(v map[string]int) Model {
+	m.n__inst0 = v
 	return m
 }
 
-type setN__inst3Msg struct{ value map[string]int }
+type setN__inst0Msg struct{ value map[string]int }
 
-func SetN__inst3Cmd(v map[string]int) tea.Cmd {
-	return func() tea.Msg { return setN__inst3Msg{value: v} }
+func SetN__inst0Cmd(v map[string]int) tea.Cmd {
+	return func() tea.Msg { return setN__inst0Msg{value: v} }
 }
 
 func (m Model) Init() tea.Cmd {
@@ -337,22 +337,22 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m = m.SetPages__history(msg.value)
 	case setTotal__inst0Msg:
 		m = m.SetTotal__inst0(msg.value)
-	case setHits__inst1Msg:
-		m = m.SetHits__inst1(msg.value)
-	case setVisible__inst2Msg:
-		m = m.SetVisible__inst2(msg.value)
-	case setN__inst3Msg:
-		m = m.SetN__inst3(msg.value)
+	case setHits__inst0Msg:
+		m = m.SetHits__inst0(msg.value)
+	case setVisible__inst0Msg:
+		m = m.SetVisible__inst0(msg.value)
+	case setN__inst0Msg:
+		m = m.SetN__inst0(msg.value)
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
 	case tea.KeyPressMsg:
 		switch {
 		case msg.Code == 'c' && msg.Mod == tea.ModCtrl:
-			if m.visible__inst2 {
-				m.visible__inst2 = false
+			if m.visible__inst0 {
+				m.visible__inst0 = false
 			}
-			if !(m.visible__inst2) {
+			if !(m.visible__inst0) {
 				return m, tea.Quit
 			}
 			return m, nil
@@ -369,14 +369,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					_ = __copy0
 					_ = it
 					if m.__focusLoop1_cursor == __focusPos1 {
-						var __cell1_n__inst3 int = func() int {
-							if __v, __ok := m.n__inst3[fmt.Sprint(__copy0)]; __ok {
+						var __cell1_n__inst0 int = func() int {
+							if __v, __ok := m.n__inst0[fmt.Sprint(__copy0)]; __ok {
 								return __v
 							}
 							return 0
 						}()
-						__cell1_n__inst3 += 1
-						m.n__inst3[fmt.Sprint(__copy0)] = __cell1_n__inst3
+						__cell1_n__inst0 += 1
+						m.n__inst0[fmt.Sprint(__copy0)] = __cell1_n__inst0
 						m.total__inst0 = (m.total__inst0 + 1)
 						return
 					}
@@ -384,7 +384,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}()
 		case msg.Code == tea.KeyEnter && m.__focusID == 2:
-			m.hits__inst1 += 1
+			m.hits__inst0 += 1
 			m.visits += 1
 		case msg.Code == tea.KeyEnter && m.__focusID == 3:
 			m.pages__history = append(m.pages__history, Pages__entry{Page: m.pages__current})
@@ -396,7 +396,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m Model) View() tea.View {
 	var content string
-	if m.visible__inst2 {
+	if m.visible__inst0 {
 		var contentChildren []string
 		var content_0 string
 		content_0Focused := (m.__focusID == 0)
@@ -429,7 +429,7 @@ func (m Model) View() tea.View {
 			content_2ItemChildren = append(content_2ItemChildren, content_2Item_0)
 			var content_2Item_1 string
 			content_2Item_1 = lipgloss.NewStyle().Render(fmt.Sprint(((it + " ") + fmt.Sprint(func() int {
-				if __v, __ok := m.n__inst3[fmt.Sprint(__copy0)]; __ok {
+				if __v, __ok := m.n__inst0[fmt.Sprint(__copy0)]; __ok {
 					return __v
 				}
 				return 0
@@ -457,7 +457,7 @@ func (m Model) View() tea.View {
 			content_4Part_0 = lipgloss.NewStyle().Render(content_4Part_0Prefix + " " + fmt.Sprint("hit"))
 			content_4Parts = append(content_4Parts, content_4Part_0)
 			var content_4Part_1 string
-			content_4Part_1 = lipgloss.NewStyle().Render(fmt.Sprint(("hits " + fmt.Sprint(m.hits__inst1))))
+			content_4Part_1 = lipgloss.NewStyle().Render(fmt.Sprint(("hits " + fmt.Sprint(m.hits__inst0))))
 			content_4Parts = append(content_4Parts, content_4Part_1)
 			content_4 = lipgloss.JoinVertical(lipgloss.Left, content_4Parts...)
 		} else {
@@ -527,7 +527,7 @@ type Model struct {
 	pages__current _page__value
 	pages__history []Pages__entry
 	total__inst0   int
-	visible__inst1 bool
+	visible__inst0 bool
 	__slot0        []fyne.CanvasObject
 	__slot0_at     fyne.CanvasObject
 	__inst0_live   []*__child0Instance
@@ -553,7 +553,7 @@ func New() *Model {
 	m.pages__current = _page__value{Id: 0, Href: "/", Title: "Home", Meta: __anon_e3b0c4{}}
 	m.pages__history = []Pages__entry{}
 	m.total__inst0 = 0
-	m.visible__inst1 = true
+	m.visible__inst0 = true
 	m.__slot0 = nil
 	m.__slot0_at = nil
 	m.__inst0_live = []*__child0Instance{}
@@ -658,8 +658,8 @@ func (m *Model) __n4_closed_handler() {
 }
 
 func (m *Model) __n4_visible_handler(__visible bool) {
-	m.visible__inst1 = __visible
-	m.__n4.SetVisible(m.visible__inst1)
+	m.visible__inst0 = __visible
+	m.__n4.SetVisible(m.visible__inst0)
 }
 
 func (m *Model) __n13_click_handler() {
@@ -714,12 +714,12 @@ func (m *Model) SetTotal__inst0(v int) {
 	m.total__inst0 = v
 }
 
-func (m *Model) Visible__inst1() bool {
-	return m.visible__inst1
+func (m *Model) Visible__inst0() bool {
+	return m.visible__inst0
 }
 
-func (m *Model) SetVisible__inst1(v bool) {
-	m.visible__inst1 = v
+func (m *Model) SetVisible__inst0(v bool) {
+	m.visible__inst0 = v
 }
 
 // BuildUI creates the widget tree and returns the first window's content.
@@ -730,7 +730,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__built = true
 	m.__n4 = fynelayout.NewToplevel()
 	m.__n4.SetTitle(m.pages__current.Title)
-	m.__n4.SetVisible(m.visible__inst1)
+	m.__n4.SetVisible(m.visible__inst0)
 	m.__n4.OnClosed = m.__n4_closed_handler
 	m.__n4.OnVisible = m.__n4_visible_handler
 	m.__n10 = container.NewVBox()
@@ -950,7 +950,7 @@ type Model struct {
 	pages__current _page__value
 	pages__history []Pages__entry
 	total__inst0   int
-	visible__inst1 bool
+	visible__inst0 bool
 	__slot0        []gtk4rt.Handle
 	__slot0_at     gtk4rt.Handle
 	__inst0_live   []*__child0Instance
@@ -976,7 +976,7 @@ func New() *Model {
 	m.pages__current = _page__value{Id: 0, Href: "/", Title: "Home", Meta: __anon_e3b0c4{}}
 	m.pages__history = []Pages__entry{}
 	m.total__inst0 = 0
-	m.visible__inst1 = true
+	m.visible__inst0 = true
 	m.__slot0 = nil
 	m.__slot0_at = nil
 	m.__inst0_live = []*__child0Instance{}
@@ -1079,8 +1079,8 @@ func (m *Model) __n4_closed_handler() {
 }
 
 func (m *Model) __n4_visible_handler(__visible bool) {
-	m.visible__inst1 = __visible
-	gtk4rt.ToplevelSetVisible(m.__n4, m.visible__inst1)
+	m.visible__inst0 = __visible
+	gtk4rt.ToplevelSetVisible(m.__n4, m.visible__inst0)
 }
 
 func (m *Model) __n13_clicked_handler() {
@@ -1326,12 +1326,12 @@ func (m *Model) SetTotal__inst0(v int) {
 	m.total__inst0 = v
 }
 
-func (m *Model) Visible__inst1() bool {
-	return m.visible__inst1
+func (m *Model) Visible__inst0() bool {
+	return m.visible__inst0
 }
 
-func (m *Model) SetVisible__inst1(v bool) {
-	m.visible__inst1 = v
+func (m *Model) SetVisible__inst0(v bool) {
+	m.visible__inst0 = v
 }
 
 func (m *Model) buildWidgetTree() {
@@ -1341,7 +1341,7 @@ func (m *Model) buildWidgetTree() {
 	m.__built = true
 	m.__n4 = gtk4rt.ToplevelNew()
 	gtk4rt.ToplevelSetTitle(m.__n4, m.pages__current.Title)
-	gtk4rt.ToplevelSetVisible(m.__n4, m.visible__inst1)
+	gtk4rt.ToplevelSetVisible(m.__n4, m.visible__inst0)
 	gtk4rt.ToplevelOnClosed(m.__n4, m.__n4_closed_handler)
 	gtk4rt.ToplevelOnVisible(m.__n4, m.__n4_visible_handler)
 	m.__n10 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
@@ -1378,38 +1378,30 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 
 package test.sngl.app
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.*
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
-import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color as ComposeColor
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
-import androidx.navigation.NavBackStackEntry
-import androidx.navigation.NavDestination.Companion.hasRoute
-import androidx.navigation.compose.NavHost
-import androidx.navigation.compose.composable
-import androidx.navigation.compose.currentBackStackEntryAsState
-import androidx.navigation.compose.rememberNavController
-import androidx.navigation.toRoute
 import kotlinx.serialization.Serializable
-import androidx.activity.compose.BackHandler
+import androidx.navigation.NavDestination.Companion.hasRoute
+import androidx.navigation.toRoute
+import androidx.navigation.NavBackStackEntry
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.navigation.compose.rememberNavController
+import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.compose.ui.platform.LocalContext
 import android.app.Activity
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.layout.Column
+import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.material3.Button
+import androidx.compose.material3.Text
+import androidx.compose.foundation.layout.Row
+import androidx.navigation.compose.NavHost
+import androidx.compose.ui.platform.testTag
+import androidx.navigation.compose.composable
 
 class __anon_e3b0c4 {
     override fun equals(other: Any?) = other is __anon_e3b0c4
@@ -1454,17 +1446,17 @@ var visits by mutableStateOf(0)
 fun MainScreen() {
     var opened by remember { mutableStateOf(0) }
     var total__inst0 by remember { mutableStateOf(0) }
-    var visible__inst1 by remember { mutableStateOf(true) }
+    var visible__inst0 by remember { mutableStateOf(true) }
 
     val pages__nav = rememberNavController()
     val pages__entry by pages__nav.currentBackStackEntryAsState()
     val pages__current = _page__valueOf(pages__entry) ?: _page__value(id = 0, href = "/", title = "Home", meta = __anon_e3b0c4())
 
-    if (visible__inst1) {
+    if (visible__inst0) {
         val __activity = LocalContext.current as? Activity
         BackHandler {
-            visible__inst1 = false
-            if (!(visible__inst1)) {
+            visible__inst0 = false
+            if (!(visible__inst0)) {
                 __activity?.finish()
             }
         }
@@ -1559,7 +1551,7 @@ body { font-family: system-ui, sans-serif; }
 (() => {
   // sngl-entry.js
   var items = globalThis.__snglShared.items;
-  var state = { visits: 0, opened: 0, total__inst0: 0, hits__inst1: 0, visible__inst2: true };
+  var state = { visits: 0, opened: 0, total__inst0: 0, hits__inst0: 0, visible__inst0: true };
   function __cf___block_state1(props) {
     const __root = document.createElement("div");
     __root.style.display = "contents";
@@ -1777,7 +1769,7 @@ body { font-family: system-ui, sans-serif; }
 (() => {
   // sngl-entry.js
   var items = globalThis.__snglShared.items;
-  var state = { visits: 0, opened: 0, total__inst0: 0, hits__inst1: 0, visible__inst2: true };
+  var state = { visits: 0, opened: 0, total__inst0: 0, hits__inst0: 0, visible__inst0: true };
   function __cf___block_state1(props) {
     const __root = document.createElement("div");
     __root.style.display = "contents";
@@ -1946,8 +1938,8 @@ body { font-family: system-ui, sans-serif; }
     __n4.textContent = "opened " + String(state.opened) + " visits " + String(state.visits);
   });
   $1.addEventListener("click", function() {
-    state.hits__inst1 += 1;
-    __n6.textContent = "hits " + String(state.hits__inst1);
+    state.hits__inst0 += 1;
+    __n6.textContent = "hits " + String(state.hits__inst0);
     state.visits += 1;
     __n4.textContent = "opened " + String(state.opened) + " visits " + String(state.visits);
   });
@@ -1957,19 +1949,19 @@ body { font-family: system-ui, sans-serif; }
   function __sngl_init() {
     __n4.textContent = "opened " + String(state.opened) + " visits " + String(state.visits);
     __n5.textContent = "total " + String(state.total__inst0);
-    __n6.textContent = "hits " + String(state.hits__inst1);
+    __n6.textContent = "hits " + String(state.hits__inst0);
   }
   __sngl_init();
 })();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:4c38c4be21b168534c8ce0a4965434bf
+pass sha256:f47273cdb6faf736d1ba99f8004fc208
 -- run/go/fyne --
-pass sha256:541849eff3f5b233eebc28a27ecfad5d
+pass sha256:b7cb56d4b752d7f932a6a4252fe69d42
 -- run/go/gtk4 --
-pass sha256:3d89d242cd0046f1b794be81a48c88e8
+pass sha256:803d9da4bafb52f310ceb82b5728f6ce
 -- run/kotlin/android --
-pass sha256:5e146188c588322174363fd4c7988abd
+pass sha256:5645bc9dfdb9b3914149281fb3e200e5
 -- run/none/html --
-pass sha256:074d136df235b3642b7873bc272fd9b2
+pass sha256:eef101e912ae0877c33c32cb93bd476c

@@ -1,0 +1,28 @@
+import . "sngl:ui"
+import . "sngl:test"
+import time "sngl:time"
+
+// A datepicker's value is a two-way prop: a pick writes the var it is bound to,
+// from the date the change event carries, and clearing it writes null.
+component picker node {
+    var picked option<time.date> = null
+    var changes = 0
+    vbox {
+        datepicker #d(:value=picked, @change { changes += 1 })
+        text(value=picked != null ? string(picked) : "none")
+    }
+}
+
+func testPickWritesTheBinding(t Test, c picker) {
+    var day time.date = "2024-03-05"
+    c.d.change(day)
+    t.assert(c.picked == day)
+    t.assert(c.changes == 1)
+    c.d.change(null)
+    t.assert(c.picked == null)
+    t.assert(c.changes == 2)
+}
+
+window {
+    picker()
+}

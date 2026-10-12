@@ -136,11 +136,14 @@ func formatComponentHoverWithDoc(c *ast.ComponentDecl, doc *ast.Document, opts H
 			if hint == "" {
 				hint = "dyn"
 			}
+			line := fmt.Sprintf("- `%s` %s", p.Name, hint)
 			if p.Default == nil {
-				fmt.Fprintf(&sb, "- `%s` %s (required)\n", p.Name, hint)
-			} else {
-				fmt.Fprintf(&sb, "- `%s` %s\n", p.Name, hint)
+				line += " (required)"
 			}
+			if d := p.Doc(); d != "" {
+				line += " — " + d
+			}
+			sb.WriteString(line + "\n")
 		}
 	}
 	if opts.ComponentImageURL != nil {

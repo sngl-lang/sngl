@@ -72,8 +72,8 @@ component main node {
 	if main == nil {
 		t.Fatal("no main")
 	}
-	if instancesOf(main.Body, "held") != 0 {
-		t.Errorf("the held node survived the inliner: %#v", main.Body)
+	if instancesOf(main.Stmts, "held") != 0 {
+		t.Errorf("the held node survived the inliner: %#v", main.Stmts)
 	}
 	// And its state came along, renamed per instance, rather than being
 	// dropped with the declaration.

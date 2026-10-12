@@ -55,7 +55,7 @@ func isComputed(f *ir.Func) bool {
 		return false
 	}
 	n := len(f.Params)
-	if n > 0 && f.Receiver != "" && f.Params[0].Receiver {
+	if n > 0 && f.IsMethod() && f.Params[0].Receiver {
 		n--
 	}
 	return n == 0

@@ -72,15 +72,15 @@ body { font-family: system-ui, sans-serif; }
   }
 
   // sngl-entry.js
-  var state = { running__inst1: true, last__inst1: "", handle__inst0__inst1: 0, visible__inst2: true };
+  var state = { running__inst0: true, last__inst0: "", handle__inst0__inst0: 0, visible__inst0: true };
   function __effect0_mount() {
-    state.handle__inst0__inst1 = setInterval(async () => {
-      state.last__inst1 = await fetchHello("poll");
-      __n1.textContent = state.last__inst1;
+    state.handle__inst0__inst0 = setInterval(async () => {
+      state.last__inst0 = await fetchHello("poll");
+      __n1.textContent = state.last__inst0;
     }, __effect0_key);
   }
   function __effect0_unmount() {
-    clearInterval(state.handle__inst0__inst1);
+    clearInterval(state.handle__inst0__inst0);
   }
   function __snglTeardown() {
     __effect0_teardown();
@@ -93,7 +93,7 @@ body { font-family: system-ui, sans-serif; }
   var __effects0_steps = 0;
   function __effect0_down() {
     __effect0_desired = [];
-    if (state.running__inst1) {
+    if (state.running__inst0) {
       __effect0_desired.push(500);
     }
     for (const [__effect0_i, _] of __effect0_live.entries()) {
@@ -151,7 +151,7 @@ body { font-family: system-ui, sans-serif; }
   }
   var __n1 = document.querySelector('[data-sngl-id="__n1"]');
   function __sngl_init() {
-    __n1.textContent = state.last__inst1;
+    __n1.textContent = state.last__inst0;
   }
   __sngl_init();
   __effects0_settle();
@@ -160,4 +160,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:ffe21b712cdc7523cf4745002115ec73
+pass sha256:f891fba3cf143474db10074e131cb9f3

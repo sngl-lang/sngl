@@ -5,16 +5,17 @@ import (
 	"testing"
 )
 
-// A Fyne callback receives the unwrapped value rather than the SNGL event
-// struct, so the emitter rewrites the synthesized `<var> = <event>.<field>`
-// two-way bind into a read of the callback's own parameter.
+// A Fyne callback hands its handler the value it reports, and the override's
+// handler names it: `Entry(@input(v) { value = v; input(v) })`. So the
+// promoted handler takes the callback's parameter under that name, and the
+// override's write of its prop is a bound var's write-back reading it.
 //
-// Recognising that statement by "the handler opens with an assignment" was too
-// loose: a handler that merely *began* with one had that line replaced by a
-// write-back nobody asked for. Both halves are asserted here, because a fix
-// that stopped rewriting altogether would pass the first alone.
-func TestPromotedHandlerRewritesOnlyTheSynthesizedBind(t *testing.T) {
-	t.Run("a bound prop still writes back from the callback parameter", func(t *testing.T) {
+// The second half is the bug a rewrite of the handler's first statement once
+// had: a handler that merely began with an assignment had that line replaced
+// by a write-back nobody asked for. Both halves are asserted here, because a
+// handler that read nothing would pass the second alone.
+func TestPromotedHandlerTakesTheCallbackParameter(t *testing.T) {
+	t.Run("a bound prop writes back from the callback parameter", func(t *testing.T) {
 		out := generateFyneGo(t, `
 import . "sngl:ui"
 var name string = ""
@@ -24,13 +25,8 @@ window {
     }
 }
 `)
-		if !strings.Contains(out, "m.name = s") {
-			t.Errorf("the two-way bind does not read the callback parameter\n--- generated ---\n%s", out)
-		}
-		// Reading it off an event struct the closure never receives would not
-		// compile.
-		if strings.Contains(out, ".value") {
-			t.Errorf("the bind still reads an event field\n--- generated ---\n%s", out)
+		if !strings.Contains(out, "_input_handler(v string) {\n\tm.name = v\n") {
+			t.Errorf("the write-back does not read the callback parameter\n--- generated ---\n%s", out)
 		}
 	})
 
@@ -49,7 +45,7 @@ window {
 		}
 		// The replacement was not merely lossy: `hits` is an int and the
 		// callback parameter is a string, so the emitted Go did not compile.
-		if strings.Contains(out, "m.hits = s") {
+		if strings.Contains(out, "_input_handler(v string) {\n\tm.hits = v") {
 			t.Errorf("a write-back was invented for a prop nothing bound\n--- generated ---\n%s", out)
 		}
 	})

@@ -2,8 +2,6 @@ package codegen
 
 import (
 	"fmt"
-	"strconv"
-	"strings"
 
 	"duckfam.us/sngl/ir"
 )
@@ -100,7 +98,7 @@ func canvasesOf(pkg *ir.Package, roots [][]ir.Stmt) []Canvas {
 	}
 	for _, comp := range pkg.Components {
 		if comp != nil {
-			owner(comp, comp.Body, comp.Funcs)
+			owner(comp, comp.Stmts, comp.Funcs)
 		}
 	}
 	for _, body := range roots {
@@ -113,7 +111,12 @@ func canvasesOf(pkg *ir.Package, roots [][]ir.Stmt) []Canvas {
 		c.Name = fmt.Sprintf("_canvasDraw%d", i)
 		c.Width = nodeIntProp(c.Node, "width")
 		c.Height = nodeIntProp(c.Node, "height")
-		c.Scaling = nodeEnumProp(c.Node, "scalingMode")
+		// `center` is the declaration's default and draws at the size given,
+		// which every runtime spells as no mode at all; handed on, it fell to
+		// their scale-to-fit branch.
+		if c.Scaling = nodeEnumProp(c.Node, "scalingMode"); c.Scaling == "center" {
+			c.Scaling = ""
+		}
 		if c.Local != nil {
 			c.ID = c.Local.Name
 		} else {
@@ -220,20 +223,17 @@ func nodeEnumProp(n *ir.NodeInst, name string) string {
 }
 
 // nodeIntProp is a numeric or measurement prop as an int, or 0 when absent.
+// A canvas's surface is pixels on every target, so an em there is CSS's
+// default of 16 of them (CanvasEmPx).
 func nodeIntProp(n *ir.NodeInst, name string) int {
 	for _, p := range n.Props {
-		if p.Name != name {
-			continue
-		}
-		if lit, ok := p.Value.(*ir.Literal); ok {
-			raw := strings.TrimSuffix(lit.Value, lit.Suffix)
-			if v, err := strconv.Atoi(raw); err == nil {
-				return v
-			}
-			if f, err := strconv.ParseFloat(raw, 64); err == nil {
-				return int(f)
-			}
+		if p.Name == name {
+			px, _ := MeasurementPx(p.Value, CanvasEmPx)
+			return int(px)
 		}
 	}
 	return 0
 }
+
+// CanvasEmPx is an em on a canvas's surface.
+const CanvasEmPx = 16

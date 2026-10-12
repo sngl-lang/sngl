@@ -9,11 +9,11 @@ component form(:draft string) node {
     vbox {
         // Name only: the type comes from the declaration.
         input(value=draft, @change(e) {
-            draft = e.value
+            draft = e
         })
         // The same position, said out loud.
-        input(value=draft, @change(e ChangeEvent) {
-            draft = e.value
+        input(value=draft, @change(e string) {
+            draft = e
         })
         // A handler that binds no name is unaffected.
         button(text="clear", @click {

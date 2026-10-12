@@ -182,7 +182,7 @@ func (w *irTokenWalker) component(c *ir.Component) {
 	for _, f := range c.Funcs {
 		w.fn_(f)
 	}
-	w.stmts(c.Body)
+	w.stmts(c.Stmts)
 }
 
 func (w *irTokenWalker) fn_(f *ir.Func) {
@@ -336,7 +336,7 @@ func (w *irTokenWalker) ident(x *ir.Ident) {
 	case *ir.Component:
 		tok = stClass
 	case *ir.Func:
-		if sym.Receiver != "" {
+		if sym.IsMethod() {
 			tok = stMethod
 		} else {
 			tok = stFunction

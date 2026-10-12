@@ -31,6 +31,16 @@ func isExportedName(name string) bool {
 
 // Package is the top-level IR for a checked .sngl package.
 type Package struct {
+	// Path is the package's global name -- "sngl:ui" for a library package --
+	// and empty for a program's, whose declarations mean nothing outside a
+	// build. A declaration's identity is this and its name (DeclInfo.Pkg).
+	Path string `json:",omitempty"`
+	// Library says the library wrote the package: a sngl: package, or what a
+	// library plugin generated (gtk4's `gir:` widgets, a `c:` link). Its
+	// declarations are the library's to vouch for -- a `#[cnative]` one names
+	// a header the target's own preamble includes -- where a program's must
+	// say so itself.
+	Library    bool `json:",omitempty"`
 	Imports    []*Import
 	Structs    []*StructDef
 	Enums      []*EnumDef
@@ -82,13 +92,13 @@ type Package struct {
 	// without a special case (#135).
 	Body []Stmt `json:",omitempty"`
 
-	// TreeKinds records the segmented trees whose members
+	// FamilyKinds records the segmented trees whose members
 	// this package declares or imports. The lowering pass for a tree gates on
 	// it: an import of sngl:ui/draw is neither necessary (a package may declare
 	// its own shapes) nor sufficient (inlining flattens a canvas out of the
 	// package that imported it), so the declarations are the only honest
 	// signal.
-	TreeKinds map[*Component]bool `json:"-"`
+	FamilyKinds map[*Component]bool `json:"-"`
 
 	// LiftedCaptures records, for every lifted closure Func produced by
 	// NoLambda, the mapping from each captured Symbol to the synthesized
@@ -150,19 +160,6 @@ type Package struct {
 	UsesI18n          bool
 	UsesAlert         bool
 	UsesErrorHandling bool
-	// UsesRemote says the program holds a query box. Such a box settles after
-	// the render that started it, and tells the store when it does, so an entry
-	// point that never asks shows the fetch starting and nothing after.
-	UsesRemote bool
-
-	// RemoteSettle is the handler the reactivity lowering left for a store to
-	// call, or nil where it left none -- a target with native reactivity has no
-	// updaters to re-run, and one that never fetches has nothing to re-run them
-	// for. An entry point subscribes what is here rather than looking a name up,
-	// because whether the handler exists is the lowering's answer and so is what
-	// it is called.
-	RemoteSettle *Func `json:"-"`
-
 	// Teardown is the handler a platform calls when the program is going away,
 	// or nil where no effect declared an @unmount. Nothing guarantees it runs
 	// -- a killed process and a closed tab both skip it -- so what belongs in
@@ -218,8 +215,8 @@ func (p *Package) EntryPoints() []*Func {
 	if p == nil {
 		return nil
 	}
-	out := make([]*Func, 0, 3+len(p.Mounts))
-	for _, fn := range append([]*Func{p.Teardown, p.RemoteSettle, p.Run}, p.Mounts...) {
+	out := make([]*Func, 0, 2+len(p.Mounts))
+	for _, fn := range append([]*Func{p.Teardown, p.Run}, p.Mounts...) {
 		if fn != nil {
 			out = append(out, fn)
 		}
@@ -270,31 +267,68 @@ func (p *Package) IsProgram() bool {
 	return found
 }
 
-// usesTreeRole reports whether a member of the tree carrying kind reaches this
+// usesFamilyRole reports whether a member of the tree carrying kind reaches this
 // package. Matched on the mark rather than on a name, because a tree is its
 // declaration: a program's own `struct shape` is not the one sngl:ui/draw
 // paints, and carries no mark saying it is.
-func (p *Package) usesTreeRole(kind BuiltinKind) bool {
+func (p *Package) usesFamilyRole(kind BuiltinKind) bool {
 	if p == nil {
 		return false
 	}
-	for f := range p.TreeKinds {
-		if isTreeRole(f, kind) {
+	for f := range p.FamilyKinds {
+		if isFamilyRole(f, kind) {
 			return true
 		}
 	}
 	return false
 }
 
-// NoteTreeKind records that a member of a family reaches this package.
-func (p *Package) NoteTreeKind(f *Component) {
+// NoteFamilyKind records that a member of a family reaches this package.
+func (p *Package) NoteFamilyKind(f *Component) {
 	if p == nil || f == nil {
 		return
 	}
-	if p.TreeKinds == nil {
-		p.TreeKinds = map[*Component]bool{}
+	if p.FamilyKinds == nil {
+		p.FamilyKinds = map[*Component]bool{}
 	}
-	p.TreeKinds[f] = true
+	p.FamilyKinds[f] = true
+}
+
+// DataSlotOf is the data slot p is the list of (SlotDecl.Values), or nil.
+func (c *Component) DataSlotOf(p *Prop) *SlotDecl {
+	for _, s := range c.Slots {
+		if s.Values != nil && s.Values == p {
+			return s
+		}
+	}
+	return nil
+}
+
+// ContentSlot is the rest slot a data component declares for content -- what
+// its call site writes in it, which the container renders where it inserts
+// `r.content` -- or nil.
+func (c *Component) ContentSlot() *SlotDecl {
+	if c == nil || !c.Data {
+		return nil
+	}
+	for _, s := range c.Slots {
+		if s.Rest && s.Values == nil {
+			return s
+		}
+	}
+	return nil
+}
+
+// EventFuncType is the function a data component's event is a field of its
+// record as: one taking the event's parameters and returning nothing.
+func EventFuncType(e *EventDecl) *Type {
+	return &Type{Kind: TypeFunc, Sig: &FuncSig{Params: e.Params}}
+}
+
+// IsDataMember reports whether c is a data component (Component.Data): a
+// record of its props, never rendered.
+func IsDataMember(c *Component) bool {
+	return c != nil && c.Data
 }
 
 // IsFamilyValue reports whether a handle to c, a member of a family, is a
@@ -306,13 +340,13 @@ func (p *Package) NoteTreeKind(f *Component) {
 // question: a member declaring the props may compose others too, and either
 // kind is inlined where its family's members are collected.
 func IsFamilyValue(c *Component) bool {
-	if c == nil || c.Tree == nil {
+	if c == nil || c.Family == nil {
 		return false
 	}
-	if len(c.Tree.Props) == 0 {
+	if len(c.Family.Props) == 0 {
 		return true
 	}
-	for _, fp := range c.Tree.Props {
+	for _, fp := range c.Family.Props {
 		for _, p := range c.Props {
 			if p.Name == fp.Name {
 				return true
@@ -324,38 +358,37 @@ func IsFamilyValue(c *Component) bool {
 
 // IsFamily reports whether c declares a family: a component that is itself a
 // member of `build.family`. The family of families is the one declaration that
-// is a member of itself, which is what its #[builtin("treeFamily")] mark says.
+// is a member of itself, which is what its #[builtin("familyOfFamilies")] mark says.
 func (c *Component) IsFamily() bool {
-	return c != nil && c.Tree != nil && c.Tree.Builtin == BuiltinTreeFamily
+	return c != nil && c.Family != nil && c.Family.Builtin == BuiltinFamilyOfFamilies
 }
 
-// isTreeRole reports whether f is the family carrying kind. The roles a phase
+// isFamilyRole reports whether f is the family carrying kind. The roles a phase
 // asks after are marked on their declarations (#[marks.builtin]), so nothing
 // here spells a package and a name: a family renamed or moved keeps its role,
 // and a program declaring a `shape` family of its own does not acquire one.
-func isTreeRole(f *Component, kind BuiltinKind) bool {
+func isFamilyRole(f *Component, kind BuiltinKind) bool {
 	return f.IsFamily() && f.Builtin == kind
 }
 
-// IsDrawShapeTree reports whether f is the drawing family.
-func IsDrawShapeTree(f *Component) bool { return isTreeRole(f, BuiltinTreeShape) }
+// IsShapeFamily reports whether f is the drawing family.
+func IsShapeFamily(f *Component) bool { return isFamilyRole(f, BuiltinFamilyShape) }
 
-// IsUITree reports whether f is the widget family.
-func IsUITree(f *Component) bool { return isTreeRole(f, BuiltinTreeNode) }
+// IsSpanFamily reports whether f is the inline rich-text family.
+func IsSpanFamily(f *Component) bool { return isFamilyRole(f, BuiltinFamilySpan) }
 
-// IsAppRootTree reports whether f is the family a package body accepts.
-func IsAppRootTree(f *Component) bool { return isTreeRole(f, BuiltinTreeRoot) }
+// IsImageSourceFamily reports whether f is the family an image's source belongs to.
+func IsImageSourceFamily(f *Component) bool { return isFamilyRole(f, BuiltinFamilyImageSource) }
 
-// IsSegmentedTree reports whether f is a family with its own rendering rules --
-// any family but the widget one.
-func IsSegmentedTree(f *Component) bool { return f.IsFamily() && !IsUITree(f) }
+// IsRootFamily reports whether f is the family a package body accepts.
+func IsRootFamily(f *Component) bool { return isFamilyRole(f, BuiltinFamilyRoot) }
 
 // TypeFamily is the family t names in a return position or a slot, or nil.
 // FamilyArgs is what a member's type, at the type arguments it carries, hands
 // its family's type parameters: `page<Pkg, Meta>` is a `_page<Meta>`. A
 // member written bare is its defaults, as a struct type is.
 func FamilyArgs(m *Component, args []*Type) []*Type {
-	if m == nil || len(m.TreeArgs) == 0 {
+	if m == nil || len(m.FamilyTypeArgs) == 0 {
 		return nil
 	}
 	bindings := map[string]*Type{}
@@ -367,8 +400,8 @@ func FamilyArgs(m *Component, args []*Type) []*Type {
 			bindings[tp.Name] = tp.Default
 		}
 	}
-	out := make([]*Type, len(m.TreeArgs))
-	for i, a := range m.TreeArgs {
+	out := make([]*Type, len(m.FamilyTypeArgs))
+	for i, a := range m.FamilyTypeArgs {
 		out[i] = a.Substitute(bindings)
 	}
 	return out
@@ -378,14 +411,14 @@ func TypeFamily(t *Type) *Component {
 	if t == nil || t.Kind != TypeComponent {
 		return nil
 	}
-	if f, ok := t.Decl.(*Component); ok && f.IsFamily() {
+	if f, ok := t.Decl.(*Component); ok && (f.IsFamily() || f.Data) {
 		return f
 	}
 	return nil
 }
 
 // UsesDrawShapes reports whether a member of the drawing tree reaches p.
-func (p *Package) UsesDrawShapes() bool { return p.usesTreeRole(BuiltinTreeShape) }
+func (p *Package) UsesDrawShapes() bool { return p.usesFamilyRole(BuiltinFamilyShape) }
 
 // Import records a resolved import.
 type Import struct {
@@ -513,6 +546,54 @@ func IndexNativeDecls(p *Package) NativeDecls {
 	return out
 }
 
+// DeclInfo is what every declaration carries whatever it declares -- a func,
+// a component, a struct, an enum, a unit or a var: the name it is declared
+// under, the package that declared it, its doc comment, and what the marks
+// written on it said. Embedded, so `fn.Name` and `sd.Pkg` read as before.
+type DeclInfo struct {
+	// Name is the declared name; empty for a lambda and an event handler.
+	Name string
+	// Pkg is the package that declared it. Its Path is what makes a
+	// declaration's identity global -- the embedded library's "sngl:ui",
+	// "sngl:builtin", "sngl:ui/draw" -- and is empty for a program's own,
+	// whose names are only meaningful relative to a build; PkgPath reads it.
+	// That path and Name are a named type's identity (sameDecl), and a mark
+	// is bound to the declaration it was written from by the pair.
+	//
+	// Not encoded: the package holds the declaration back.
+	Pkg *Package `json:"-"`
+	// Doc is the doc comment of a declaration a scheme imported; a SNGL
+	// declaration's own is read off its AST.
+	Doc string `json:",omitempty"`
+	// Builtin is the #[builtin] mark: which compiler construct the
+	// declaration dispatches to -- a scalar or generic constructor on a struct,
+	// a node kind or family on a component, a predeclared constant (null,
+	// PLATFORM, LANGUAGE) on a var. BuiltinNone otherwise.
+	Builtin BuiltinKind `json:",omitempty"`
+	// Intrinsic is the #[intrinsic] id. On a func it is a signature every
+	// backend implements (e.g. "string.indexOf"): with no body every backend
+	// must, and with one the body computes the same answer, so a backend
+	// without the id may emit it instead -- the body's presence is the whole
+	// of that distinction. On a component it is a widget one platform's
+	// codegen emits, which the inliner leaves standing; on a struct a host type
+	// one target spells and SNGL cannot describe (`go:chan`). Namespaced by
+	// that target in both of the latter.
+	Intrinsic string `json:",omitempty"`
+	// Foreign is what the declaration corresponds to outside SNGL. The tag is
+	// load-bearing: without it Foreign.Name and Name collide in the encoder
+	// and neither is written.
+	Foreign `json:"Foreign,omitzero"`
+}
+
+// PkgPath is the path of the package that declared d, empty for a program's
+// own declaration and for one nothing recorded a package for.
+func (d *DeclInfo) PkgPath() string {
+	if d.Pkg == nil {
+		return ""
+	}
+	return d.Pkg.Path
+}
+
 // Foreign records what a declaration corresponds to outside SNGL: the package
 // it lives in there, the name to emit for it, and whether SNGL can model it at
 // all. A declaration with an empty Foreign is SNGL's own.
@@ -551,15 +632,14 @@ type Foreign struct {
 // HasContextArg / HasErrorReturn describe shape adapter wrapping applied by
 // the importer (leading context.Context stripped; trailing error unwrapped).
 type Func struct {
-	AST  *ast.FuncDef // nil for lambdas and event handlers
-	Name string       // empty for lambdas and event handlers
-	// Pkg is the declaring package URI, as StructDef.Pkg is. Empty for a
-	// program's own declarations, whose names mean nothing outside a build.
-	//
-	// A macro needs it: a mark is bound to the declaration it was written from,
-	// and that binding is (package, name).
-	Pkg      string
-	Receiver string // "int" for int.abs (empty for plain funcs)
+	AST *ast.FuncDef // nil for lambdas and event handlers
+	DeclInfo
+	// Receiver is the type a method is declared on: its Decl is the
+	// declaration whose member table holds it -- a struct, enum, unit or
+	// component, or a namespace for a receiver naming a package (i18n). Nil
+	// for a plain function. Held as the declaration rather than its name, so
+	// a pass renaming the declaration renames the receiver with it.
+	Receiver *Type
 	// RecvParam is the implicit `this` of a method on a generic built-in whose
 	// body is an expression -- `func list<T>.push(item T) => …ListPush(this,
 	// item)`. The checker binds it into the body's scope without putting it in
@@ -578,10 +658,10 @@ type Func struct {
 	// function nobody overrides. A function has no state of its own, so the
 	// Body's Vars are always empty -- it shares the type so one collapse rule
 	// covers a component and a function alike.
-	PlatformOverrides map[string]Body `json:",omitempty"`
+	PlatformOverrides map[string]Override `json:",omitempty"`
 	// LanguageOverrides is the same, keyed by language. A declaration may be
 	// overridden on either axis; the platform's wins where both apply.
-	LanguageOverrides map[string]Body `json:",omitempty"`
+	LanguageOverrides map[string]Override `json:",omitempty"`
 	// SpecializedFor is the target whose override body was swapped into Block,
 	// so a second swap for the same target is a no-op rather than a reset of
 	// the block lowering has since rewritten.
@@ -590,21 +670,11 @@ type Func struct {
 	// the optimizer. Const is what the declaration says: `const func`, a
 	// contract the checker holds the body to and callers may rely on. Only
 	// Const makes a call a compile-time value (IsConst).
-	Purity Purity
-	Const  bool `json:",omitempty"`
-	IsTest bool
-	Reads  []*Var // vars read (directly or via called functions)
-	Writes []*Var // vars mutated (directly or via called functions)
-	// Intrinsic is the id a backend implements (e.g. "string.indexOf"). A
-	// declaration carrying one and no body is a signature every backend must
-	// implement; one carrying a body asserts that the body computes the same
-	// answer, so a backend without the id may emit it instead. The body's
-	// presence is the whole of that distinction — there is no flag, because a
-	// flag beside a body is two records of one fact and they drifted.
-	Intrinsic string
-	// The tag is load-bearing: without it Foreign.Name and Func.Name collide
-	// in the encoder and neither is written.
-	Foreign        `json:"Foreign,omitzero"`
+	Purity         Purity
+	Const          bool `json:",omitempty"`
+	IsTest         bool
+	Reads          []*Var // vars read (directly or via called functions)
+	Writes         []*Var // vars mutated (directly or via called functions)
 	HasContextArg  bool
 	HasErrorReturn bool
 	CanError       bool // set by effect analysis; true if body raises or calls a CanError func
@@ -627,29 +697,8 @@ type Func struct {
 	//
 	// Stated rather than inferred, for the reason a foreign declaration's body
 	// is never read: nothing about a call's shape says when the callee runs it.
-	NativeSchedules bool   `json:",omitempty"`
-	Doc             string // doc comment for scheme-imported decls
-	Synthesized     bool   `json:"-"` // true if generated by a lower pass (e.g. passReactivity __renderSlotN)
-	// SlotRender says this is a reactive slot's __renderSlot<N>: a body of
-	// node operations that renders into the `parent` its one parameter names.
-	// Synthesized does not answer that -- an effect's settle halves and the
-	// focus-order navigation funcs are synthesized too, and take no parameter
-	// at all -- and the platforms that give a slot render a host-typed
-	// container parameter were giving those one as well.
-	SlotRender bool `json:"-"`
-	// AsyncHoist says this is a computed passAsyncReactive synthesized for an
-	// async subexpression a view prop read: a zero-argument body returning it,
-	// lowered as a named async computed is. Said here rather than read off the
-	// `__hoist_` its name is spelled with.
-	AsyncHoist bool `json:"-"`
-	// Stdlib is true for functions declared in the SNGL standard library
-	// (lib/*.sngl). A user declaration may shadow a stdlib method of the same
-	// name on the same receiver; two user declarations of it may not.
-	Stdlib bool
-	// Nested says the declaration was written inside another *function* body
-	// and hoisted out of it. A func at the root of a window body is hoisted
-	// too and is not this: it is the window's own.
-	Nested bool `json:"-"`
+	NativeSchedules bool `json:",omitempty"`
+	Synthesized     bool `json:"-"` // true if generated by a lower pass (e.g. passReactivity __renderSlotN)
 	// MutatesReceiver says a call writes through its first argument in place,
 	// so reactivity treats a statement-level call as a write to the receiver's
 	// variable and a backend emits an in-place mutation.
@@ -657,34 +706,62 @@ type Func struct {
 	// BuildOnly says only the build's evaluator answers this intrinsic: no
 	// target emits a call to it, so a call left unfolded is a build error.
 	BuildOnly bool
-	// LoweredFromTag and LoweredFromEvent record the originating
+
+	// Lowered is what the lowering passes recorded about this function for
+	// codegen. Zero until lowering runs; nothing before it may read it.
+	Lowered FuncLowering `json:"-"`
+}
+
+// FuncLowering is what the lowering passes record on a function for codegen
+// to read: scratch space of the pipeline's back half, kept apart from what
+// the declaration and the checker say so that nothing earlier mistakes it for
+// either. A value rather than a pointer, so a Func copied to give it a
+// receiver carries its own.
+type FuncLowering struct {
+	// SlotRender says this is a reactive slot's __renderSlot<N>: a body of
+	// node operations that renders into the `parent` its one parameter names.
+	// Synthesized does not answer that -- an effect's settle halves and the
+	// focus-order navigation funcs are synthesized too, and take no parameter
+	// at all -- and the platforms that give a slot render a host-typed
+	// container parameter were giving those one as well.
+	SlotRender bool
+	// AsyncHoist says this is a computed passAsyncReactive synthesized for an
+	// async subexpression a view prop read: a zero-argument body returning it,
+	// lowered as a named async computed is. Said here rather than read off the
+	// `__hoist_` its name is spelled with.
+	AsyncHoist bool
+	// Tag and Event record the originating
 	// component tag and event name when passDeclarative promotes an
 	// inline node-attached handler into a top-level Func. Platforms
 	// consume these to rewrite the handler signature/body to match
 	// the host widget's callback shape (e.g. fyne's Entry.OnChanged
 	// takes a single string param rather than the SNGL InputEvent).
-	LoweredFromTag   string `json:"-"`
-	LoweredFromEvent string `json:"-"`
-	// LoweredFromComponentEvent is the event a *program* wrote, when this
+	Tag   string
+	Event string
+	// ComponentEvent is the event a *program* wrote, when this
 	// handler serves one. A platform override subscribes to its host widget's
 	// event and re-raises the component's -- gtk4's button is
 	// `@clicked { click() }` -- so by the time a handler is promoted its name
 	// is the host's ("clicked") and the name a test can write ("click") is
 	// gone. Recorded where the two are still both visible: the substitution
 	// that replaces the `click()` emit with the program's own block.
-	LoweredFromComponentEvent string `json:"-"`
-	// LoweredFromNode is the synthesized node id (`__nN`) the handler was
+	ComponentEvent string
+	// Node is the synthesized node id (`__nN`) the handler was
 	// attached to. A tag identifies the *kind* of node and no more, so a
 	// platform whose components all lower to a handful of primitives has to
 	// ask about the instance to learn anything about it.
-	LoweredFromNode string `json:"-"`
+	Node string
 	// LocalRefs is populated by lower's passNodeEscape (MutationModel
 	// platforms only): the set of synthesized widget ref ids (__nN)
 	// created in this function's Block that do NOT escape to any other
 	// scope. Codegen translators emit these as function-local variables
 	// rather than shared Model fields. nil when the pass did not run.
 	// See internal/lower/node_escape.go and Component.LocalRefs.
-	LocalRefs map[string]bool `json:"-"`
+	LocalRefs map[string]bool
+	// HostReceiver is the host type a generator made this function a method
+	// of when it rebuilt it -- fyne's and gtk4's `Model`, which no SNGL type
+	// is. Receiver stays what the declaration said.
+	HostReceiver string
 }
 
 func (f *Func) SymName() string { return f.Name }
@@ -692,8 +769,69 @@ func (f *Func) SymType() *Type  { return &Type{Kind: TypeFunc, Sig: f.FuncSig()}
 
 // IsExported reports whether the function is part of its package's public
 // API. Both the receiver (if any) and the method name must be exported.
+// IsMethod reports whether f is called on a receiver: one the declaration
+// names, or the host type a generator made it a method of.
+func (f *Func) IsMethod() bool { return f.Receiver != nil || f.Lowered.HostReceiver != "" }
+
+// RecvName is the name f's receiver is spelled by: the host type a generator
+// made it a method of where one did, and otherwise the declaration it was
+// declared on. Empty for a plain function.
+func (f *Func) RecvName() string {
+	if f.Lowered.HostReceiver != "" {
+		return f.Lowered.HostReceiver
+	}
+	return receiverName(f.Receiver)
+}
+
+// RecvDecl is the declaration f is a method of, nil for a plain function.
+func (f *Func) RecvDecl() Symbol {
+	if f.Receiver == nil {
+		return nil
+	}
+	return f.Receiver.Decl
+}
+
+// receiverName names a receiver type by its declaration, or by its kind for a
+// built-in constructor whose declaration was not to hand.
+func receiverName(t *Type) string {
+	if t == nil {
+		return ""
+	}
+	if t.Decl != nil {
+		return t.Decl.SymName()
+	}
+	switch t.Kind {
+	case TypeList:
+		return "list"
+	case TypeMap:
+		return "map"
+	case TypeIter:
+		return "iter"
+	case TypeOption:
+		return "option"
+	case TypeRef:
+		return "ref"
+	case TypeString:
+		return "string"
+	case TypeBool:
+		return "bool"
+	case TypeInt:
+		return "int"
+	case TypeFloat:
+		return "float"
+	}
+	return ""
+}
+
+// ReceiverNamed is a receiver for a function a pass synthesizes on a
+// declaration it holds no handle on: a namespace stand-in carrying the name,
+// which is all a backend reads off one.
+func ReceiverNamed(name string) *Type {
+	return &Type{Kind: TypeDyn, Decl: &Namespace{Name: name}}
+}
+
 func (f *Func) IsExported() bool {
-	if f.Receiver != "" && !isExportedName(f.Receiver) {
+	if f.IsMethod() && !isExportedName(f.RecvName()) {
 		return false
 	}
 	return isExportedName(f.Name)
@@ -714,19 +852,13 @@ func (f *Func) FuncSig() *FuncSig {
 //
 // Foreign is set when the var originates from a scheme import.
 type Var struct {
-	AST      ast.Stmt // original ConstDecl or VarDecl
-	Name     string
-	Type     *Type
-	Init     Expr // checked initializer (nil if none)
-	IsConst  bool
-	Handlers []*EventHandler
-	// Builtin is set by the #[builtin] macro on a predeclared constant
-	// (null, PLATFORM, LANGUAGE). The compiler supplies the type and value;
-	// the written ones are placeholders.
-	Builtin     BuiltinKind
-	Foreign     `json:"Foreign,omitzero"`
-	Doc         string // doc comment for scheme-imported decls
-	Synthesized bool   `json:"-"` // true if generated by a lower pass (e.g. passReactivity __slotN)
+	AST ast.Stmt // original ConstDecl or VarDecl
+	DeclInfo
+	Type        *Type
+	Init        Expr // checked initializer (nil if none)
+	IsConst     bool
+	Handlers    []*EventHandler
+	Synthesized bool `json:"-"` // true if generated by a lower pass (e.g. passReactivity __slotN)
 
 	// NodeHandle marks the binding a `#id` on a visual node declares: a handle
 	// to the rendered instance, which every target stores wherever it keeps the
@@ -769,10 +901,16 @@ type Body struct {
 	// The three below travel for the same reason Vars does. BodyDecls is what
 	// links a component nested in this body to its owner (ir.BodyOwners).
 	BodyDecls []Symbol `json:"-"`
-	Funcs     []*Func  `json:"-"`
+	Funcs     []*Func
 	// Methods is the receiver's member table, per body rather than merged, so
 	// two targets may each write a `func helper`.
 	Methods map[string]*Func `json:"-"`
+}
+
+// Override is the body one target implements a declaration with, and what the
+// override says beyond its body.
+type Override struct {
+	Body
 	// Const is the override's own `const` prefix. The component a target
 	// renders is const when its base declaration is or this is.
 	Const bool `json:",omitempty"`
@@ -785,39 +923,34 @@ type Body struct {
 
 // Component represents a resolved component declaration.
 type Component struct {
-	AST  *ast.ComponentDecl
-	Name string
-	// Stdlib is true for components declared in the SNGL standard library
-	// (lib/*.sngl). Stdlib component props without explicit defaults are
-	// optional (rendered as zero-values by the platform); only user-defined
-	// component props without defaults are required at call sites.
-	Stdlib bool
-	// Builtin carries the #[builtin("window")] mark from the declaration, so the
-	// checker can recognise a built-in visual node (window) by tag rather than
-	// by name. Copied from ComponentDecl.Builtin at registration.
-	Builtin BuiltinKind
-	// Tree is the family this component is a member of, named in its return
+	AST *ast.ComponentDecl
+	DeclInfo
+	// Family is the family this component is a member of, named in its return
 	// position: a component that is itself a member of `build.family`. Nil for
 	// a component that belongs to no family: it may be placed in any of them
 	// and may contain none of their members.
-	Tree *Component `json:"-"`
-	// TreeArgs are the type arguments the return position hands a generic
+	Family *Component `json:"-"`
+	// FamilyTypeArgs are the type arguments the return position hands a generic
 	// family, in terms of the member's own type parameters: `page<T, M>`
 	// returning `_page<M>` holds M here. Nil for a family that takes none.
-	TreeArgs []*Type `json:"-"`
-	// Treeless is the #[tree.none] mark: the declaration belongs to no family
-	// and says so. Nil Tree without it is a declaration that forgot to name
-	// one, which is an error, so the two states are told apart here rather
-	// than by the absence of a pointer.
-	Treeless bool `json:",omitempty"`
-	// Eventless is the #[tree.eventless] mark on a family: its members raise
+	FamilyTypeArgs []*Type `json:"-"`
+	// Eventless is the #[family.eventless] mark on a family: its members raise
 	// no events, an #[intrinsic] primitive's being the target calling in.
 	Eventless bool `json:",omitempty"`
-	// TreeParam is the component's own type parameter written in the return
-	// position, for a wrapper whose family is whatever it was handed. Nil Tree
-	// and a TreeParam is a third state: tree-less at the declaration, and a
-	// member of whatever its children turn out to be at each call site.
-	TreeParam string `json:",omitempty"`
+	// Data says the component names itself as its family: it is a record of
+	// its props, never rendered, and a slot of its type is a list of them its
+	// container reads (SlotDecl.Values). Family is then the component itself.
+	Data bool `json:",omitempty"`
+	// Record is the struct a data component's values are: a field per prop.
+	// Nil for any other component.
+	Record *StructDef `json:"-"`
+	// FamilyParam is the return position when it names one of the component's
+	// own type parameters, for a wrapper whose family is whatever it was
+	// handed: the TypeTypeParam it resolved to, as Tree is the family it
+	// resolved to otherwise. Nil Tree and a FamilyParam is a third state:
+	// tree-less at the declaration, and a member of whatever its children
+	// turn out to be at each call site.
+	FamilyParam *Type `json:",omitempty"`
 	// Bodyless is a declaration written with no block at all, as against one
 	// written `{}`, which renders nothing. The two are different declarations
 	// and only this says which: ast.StmtBlock.IsDefined() reports whether a
@@ -828,12 +961,6 @@ type Component struct {
 	// Const is the `const` prefix: the render depends only on the props. An
 	// override's is its base's or its own.
 	Const bool `json:",omitempty"`
-	// Intrinsic is the id from #[intrinsic] on a component: this component is
-	// emitted by the platform codegen that answers to the id, not by
-	// inlining a body. It is what tells the inliner to leave the component
-	// standing — a bodyless component the wrappers lower *to*, rather than a
-	// wrapper over one.
-	Intrinsic string `json:",omitempty"`
 	// Wildcard is the RE2 pattern from #[platforms.wildcard]: a name nobody
 	// declared in this component's package namespace resolves to this
 	// component when the pattern matches the whole name. Empty for an
@@ -868,8 +995,6 @@ type Component struct {
 	// and a platform primitive carries what its own rendered nodes support.
 	// Nil for the components that are neither, which is nearly all of them.
 	Gen *GenCaps `json:",omitempty"`
-	// Pkg is the declaring package URI; see StructDef.Pkg.
-	Pkg string
 	// TypeParams are the component's generic parameters, in declaration
 	// order -- ["T"] for `component effect<T>(on T)`. Bound at the call site
 	// from the props supplied there, the same way a func's are bound from its
@@ -880,9 +1005,10 @@ type Component struct {
 	Slots      []*SlotDecl `json:",omitempty"`
 
 	ChildrenType *Type
-	Vars         []*Var
-	Funcs        []*Func
-	Body         []Stmt // type-checked body statements
+	// Body is what the component renders: its statements and the vars,
+	// funcs, member table and body-scoped declarations they read. A target's
+	// override is swapped in whole (SpecializeForTarget).
+	Body
 	// PlatformOverrides holds the body each target implements this component
 	// with, keyed by platform, and LanguageOverrides the same keyed by
 	// language --
@@ -893,8 +1019,8 @@ type Component struct {
 	// know which one a build picks; ir.SpecializeForTarget swaps the chosen
 	// one into the declaration before the passes that read a body run. nil for
 	// a component nobody overrides.
-	PlatformOverrides map[string]Body `json:"-"`
-	LanguageOverrides map[string]Body `json:"-"`
+	PlatformOverrides map[string]Override `json:"-"`
+	LanguageOverrides map[string]Override `json:"-"`
 	// LocalRefs is populated by lower's passNodeEscape (MutationModel
 	// platforms only): the set of synthesized widget ref ids (__nN)
 	// created in this component's Body that do NOT escape to any other
@@ -902,13 +1028,7 @@ type Component struct {
 	// as function-local variables rather than shared Model fields, so a
 	// recursive component's render method gets fresh locals per frame.
 	// nil when the pass did not run. See internal/lower/node_escape.go.
-	LocalRefs map[string]bool  `json:"-"`
-	Methods   map[string]*Func `json:"-"`
-	// BodyDecls are the declarations written inside this component's body: a
-	// struct, enum, unit or component. Each is an ordinary member of the
-	// package collection its kind lands in; this records which body bound its
-	// name, so pass2 can rebind it in the scope pass1 declared it in.
-	BodyDecls []Symbol `json:"-"`
+	LocalRefs map[string]bool `json:"-"`
 }
 
 // RestSlot is the slot the children a caller writes bare go to, or nil for a
@@ -952,6 +1072,14 @@ type Prop struct {
 	// Const is the `const` prefix: the argument at every call site is a
 	// compile-time value, and so is the default. Sym.Const mirrors it.
 	Const bool `json:",omitempty"`
+	// Doc is the comment written on the prop in its declaration
+	// (ast.CommentDoc).
+	Doc string `json:",omitempty"`
+	// DefaultWritten records that the declaration gave this prop a default,
+	// from registration on. Default itself is checked with the declaring
+	// component's body, so a call checked first sees nil there; what makes
+	// the prop optional is that one was written.
+	DefaultWritten bool `json:",omitempty"`
 	// Sym is the Param that Idents referring to this prop inside the
 	// component body resolve to. A prop is declared into the body's scope as
 	// a parameter; the checker visits a component's bodies more than once, so
@@ -966,29 +1094,22 @@ type EventDecl struct {
 	// handler binds them by position, the way a func literal binds its
 	// parameters, and may stop short -- so unlike a slot's, the names here are
 	// documentation rather than contract, and an entry with none carries "".
-	// `@change T` is one unnamed entry and `@done()` is none. A bare `@tick`
-	// is one unnamed `dyn` entry, the loose payload it has always carried.
+	// They are declared as a function's are, so each written one is named;
+	// `@done()` and a bare `@tick` are none.
 	Params []*Param `json:",omitempty"`
 	// Wildcard is the pattern this event answers to beyond its own name, from
 	// #[wildcard]. Empty for an ordinary event.
 	Wildcard string `json:",omitempty"`
-}
-
-// Payload is the type of the event's only parameter, or nil when it does not
-// declare exactly one. A host widget's event -- a DOM click, a Fyne callback,
-// a boundary's error -- hands its handler one value, and this is what the code
-// dispatching one reads.
-func (e *EventDecl) Payload() *Type {
-	if e == nil || len(e.Params) != 1 {
-		return nil
-	}
-	return e.Params[0].Type
+	// Doc is the comment written on the event in its declaration.
+	Doc string `json:",omitempty"`
 }
 
 // SlotDecl is a resolved slot declaration: a parameter whose type is a
 // component type.
 type SlotDecl struct {
 	Name string
+	// Doc is the comment written on the slot in its declaration.
+	Doc string `json:",omitempty"`
 	// Params are what the slot is invoked with. They carry names as well as
 	// types, the way FuncSig.Params does, because a slot's structural match is
 	// by name -- so a name written in the type is part of the contract and
@@ -1012,7 +1133,27 @@ type SlotDecl struct {
 	// Const is the `const` prefix on the slot parameter: a population is held
 	// to a const component's render rule.
 	Const bool `json:",omitempty"`
+	// Values is the prop a slot of a data family is read through: a list of
+	// the family's records, which lower.DataFamilies builds from the
+	// population at each call site. The slot itself is never inserted.
+	Values *Prop `json:"-"`
+	// Shows is set on the slot a container is given for the content of a data
+	// family's records: the family's content slot (Component.ContentSlot),
+	// whose population each record was written with. `t.content` in the
+	// container's body inserts it, handed the record, and lower.DataFamilies
+	// populates it at each call site with the content of every record, chosen
+	// by the record's RecordID. Nil on every other slot.
+	Shows *SlotDecl `json:"-"`
 }
+
+// RecordID is the field a data family's record carries when the family
+// declares content: which of the records written at the call site it is, so
+// the container's content slot can show what that one was written with.
+const RecordID = "__id"
+
+// ContentSlotName is the hidden slot a container taking fam's records is given
+// for their content (SlotDecl.Shows).
+func ContentSlotName(fam *Component) string { return "__" + fam.Name + "_content" }
 
 // Arity is how many names a population of the slot binds.
 func (s *SlotDecl) Arity() int { return len(s.Params) + len(s.Slots) }
@@ -1049,8 +1190,12 @@ type EventHandler struct {
 	Func *Func
 	// ComponentEvent is the event a program wrote that this handler ends up
 	// serving, when it is a platform override's subscription to its host
-	// widget's event. See Func.LoweredFromComponentEvent, which it feeds.
+	// widget's event. See FuncLowering.ComponentEvent, which it feeds.
 	ComponentEvent string `json:"-"`
+	// WriteBack says passPropBindings synthesized this handler to write a
+	// two-way prop's report back to the var its `:prop` bound: no event a
+	// program wrote, so not one a test names.
+	WriteBack bool `json:"-"`
 	// CanError is set by effect analysis when the handler body may raise
 	// or calls a function that may raise. Codegen uses this to decide
 	// whether to emit error-propagation scaffolding for this handler.
@@ -1101,6 +1246,13 @@ type Param struct {
 	// Const is the `const` prefix: the argument is a compile-time value at
 	// every call site, so a read of the parameter is one too (IsConst).
 	Const bool `json:",omitempty"`
+	// Variadic is a function's last parameter written `...T`. Its Type is
+	// list<T>: the checker packs the positional arguments past the others
+	// into a list literal at each call, so nothing after it sees anything
+	// but an ordinary list argument.
+	Variadic bool `json:",omitempty"`
+	// Doc is the comment written on a declared function's parameter.
+	Doc string `json:",omitempty"`
 }
 
 func (p *Param) SymName() string { return p.Name }
@@ -1120,19 +1272,13 @@ func (p TypeParam) ParamPos() ast.Pos { return p.Pos }
 
 // StructDef is a resolved struct type declaration.
 type StructDef struct {
-	AST        *ast.StructDef
-	Name       string
+	AST *ast.StructDef
+	DeclInfo
 	TypeParams []TypeParam // generic parameters, e.g. ["T"] for list<T>, ["K","V"] for map<K,V>
 	Fields     []*StructField
-	Foreign    `json:"Foreign,omitzero"`
-	// Pkg is the URI of the package that declared this type, for a package
-	// whose identity is global — today the embedded library's "sngl:ui",
-	// "sngl:builtin", "sngl:ui/draw". Empty for a program's own
-	// declarations, whose names are only meaningful relative to a build.
-	// See sameDecl: Pkg and Name are a named type's identity.
-	Pkg     string
-	Doc     string      // doc comment for scheme-imported decls; empty for SNGL-sourced
-	Builtin BuiltinKind // compiler built-in marker (string-repr value type or generic constructor); BuiltinNone otherwise
+	// RecordOf is the data family this struct is the record of
+	// (Component.Record), nil for any other.
+	RecordOf *Component `json:"-"`
 	// Anon says the declaration was synthesized for an anonymous struct, one
 	// per canonical field signature. It is an ordinary declaration in every
 	// other respect — a backend emits it and a value names it — and this only
@@ -1187,12 +1333,9 @@ type StructField struct {
 
 // EnumDef is a resolved enum type declaration.
 type EnumDef struct {
-	AST       *ast.EnumDef
-	Name      string
+	AST *ast.EnumDef
+	DeclInfo
 	Members   []*EnumMember
-	Foreign   `json:"Foreign,omitzero"`
-	Pkg       string           // declaring package URI; see StructDef.Pkg
-	Doc       string           // doc comment for scheme-imported decls
 	BodyOwner string           `json:",omitempty"` // see StructDef.BodyOwner
 	Methods   map[string]*Func `json:"-"`
 }
@@ -1211,8 +1354,8 @@ type EnumMember struct {
 
 // UnitDef is a resolved unit type declaration with conversion table.
 type UnitDef struct {
-	AST      *ast.UnitDef
-	Name     string
+	AST *ast.UnitDef
+	DeclInfo
 	Suffixes []*UnitSuffix
 	// Fields are the unit's members, looked up the way a struct's are: one per
 	// base suffix, because a unit value is a magnitude per base and that is
@@ -1220,8 +1363,6 @@ type UnitDef struct {
 	// is a plain number on every target, with nothing to select -- and
 	// float(x)/int(x) is how the magnitude is read there.
 	Fields    []*StructField
-	Pkg       string           // declaring package URI; see StructDef.Pkg
-	Builtin   BuiltinKind      // compiler built-in marker; BuiltinNone otherwise
 	BodyOwner string           `json:",omitempty"` // see StructDef.BodyOwner
 	Methods   map[string]*Func `json:"-"`
 }

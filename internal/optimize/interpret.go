@@ -1,6 +1,7 @@
 package optimize
 
 import (
+	"duckfam.us/sngl/ast"
 	"duckfam.us/sngl/internal/interp"
 	"duckfam.us/sngl/ir"
 )
@@ -25,11 +26,37 @@ func irFromValue(val any, typ *ir.Type) ir.Expr {
 	if m := enumMemberIdent(val, typ); m != nil {
 		return m
 	}
+	if typ != nil && val != nil {
+		// A value in an option position is the element promoted, which the
+		// checker writes as a conversion around the element: Go's option is a
+		// pointer, and the bare value there does not compile.
+		if typ.Kind == ir.TypeOption && len(typ.Elems) == 1 && typ.Elems[0] != nil {
+			if inner := irFromValue(val, typ.Elems[0]); inner != nil {
+				return &ir.Conversion{Type: typ, Operand: inner}
+			}
+		}
+		// A date, time or datetime evaluates to the string it is written as,
+		// and goes back as a literal of its own type rather than a string's:
+		// a target holding a time.Time parses one where it is written, and a
+		// bare string there is a type error.
+		if s, ok := val.(string); ok && ir.StringReprStruct(typ) && !ir.IsColorStruct(typ) {
+			return &ir.Literal{Type: typ, Value: s}
+		}
+	}
+	if amounts, ok := interp.UnitAmounts(val); ok {
+		return unitValueExpr(amounts, typ)
+	}
+	if l, ok := val.(constLambda); ok {
+		return ir.CloneExprSharingDecls(l.lam)
+	}
 	switch v := val.(type) {
 	case nil:
 		return &ir.Literal{Type: ir.TypNull, Value: "null"}
 	case bool, int, uint64, float64, string:
-		return irLiteral(v, typ)
+		if lit := irLiteral(v, typ); lit != nil {
+			return lit
+		}
+		return nil
 	case *interp.Struct:
 		sd, t := v.Def, v.Type
 		if sd == nil {
@@ -408,4 +435,35 @@ func (ctx *evalCtx) interpEnv() (*interp.Env, error) {
 	}
 	ctx.interpEnvs[ctx.pkg] = env
 	return env, nil
+}
+
+// unitValueExpr spells a unit value back as the sum of a literal per base it
+// carries, in the order the unit declares them: `3px + 2em`. A value carrying
+// none is the zero in the first base. Nil when typ is no unit to spell it in.
+func unitValueExpr(amounts map[string]float64, typ *ir.Type) ir.Expr {
+	ud := ir.UnitDeclOf(typ)
+	if ud == nil {
+		return nil
+	}
+	var sum ir.Expr
+	for _, b := range ud.Bases() {
+		m, ok := amounts[b.Name]
+		if !ok || m == 0 {
+			continue
+		}
+		lit := &ir.Literal{Type: typ, Value: ir.FormatUnitMagnitude(m), Suffix: b.Name}
+		if sum == nil {
+			sum = lit
+		} else {
+			sum = &ir.Binary{Op: ast.BinAdd, Left: sum, Right: lit, Type: typ}
+		}
+	}
+	if sum == nil {
+		bases := ud.Bases()
+		if len(bases) == 0 {
+			return nil
+		}
+		return &ir.Literal{Type: typ, Value: "0", Suffix: bases[0].Name}
+	}
+	return sum
 }

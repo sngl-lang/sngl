@@ -34,7 +34,7 @@ func (b *Browser) WaitStable(d time.Duration) error {
 
 // ScreenshotRaw captures a full-page screenshot and returns the PNG bytes.
 func (b *Browser) ScreenshotRaw() ([]byte, error) {
-	return b.page.Screenshot(true, nil)
+	return b.tp().Screenshot(true, nil)
 }
 
 // Page returns the underlying rod page for direct CDP access.

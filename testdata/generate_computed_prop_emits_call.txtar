@@ -42,7 +42,7 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { count__inst0: 2, visible__inst1: true };
+  var state = { count__inst0: 2, visible__inst0: true };
   function doubled__inst0() {
     return state.count__inst0 * 2;
   }
@@ -58,4 +58,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:16a6a48c818a43274105e5b104780711
+pass sha256:b497e50f9b34908fd5c6f892bc48200d

@@ -1,5 +1,5 @@
 import . "sngl:ui"
-import . "sngl:ui/draw"
+import draw "sngl:ui/draw"
 
 // A macro is declared in lib/ as a func returning Macro, but the checker
 // registers no function for it: the only way to reach one is a `#[...]` mark.

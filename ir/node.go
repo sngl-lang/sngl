@@ -86,7 +86,23 @@ func TransparentBlocks(st Stmt) []*[]Stmt {
 // read of the id resolves to that binding, and separating them leaves a rename
 // with nothing to repoint and uniqueNodeIDs with nothing to key on.
 func AttachNodeID(body []Stmt, id string, handle *Var) bool {
-	return attachNode(body, func(ni *NodeInst) { ni.ID, ni.Handle = id, handle })
+	var own *Var
+	ok := attachNode(body, func(ni *NodeInst) {
+		own = ni.Handle
+		ni.ID, ni.Handle = id, handle
+	})
+	// A body that named the node itself -- an override's `#cal`, read by an
+	// effect beside it -- reads it through its own handle, which is now the
+	// call site's: left alone, the read named a field nothing builds.
+	if ok && own != nil && handle != nil && own != handle {
+		_ = Walk(body, func(n Node) error {
+			if id2, isIdent := n.(*Ident); isIdent && id2.Sym == Symbol(own) {
+				id2.Sym, id2.Name = handle, id
+			}
+			return nil
+		})
+	}
+	return ok
 }
 
 // AttachNodeSite records on the node AttachNodeID picks that it stands for

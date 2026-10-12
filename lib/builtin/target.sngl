@@ -1,33 +1,18 @@
-import marks "sngl:internal/marks"
-
-// The identity of a build target: one platform, named. A value of it is a
-// platform's build-target node read as a value -- `html.platform`, the
-// `component platform(…) build.platform` sngl:platform/html declares -- so the
-// node is the html target and there is no second way to name it.
-//
-// There is no literal, so a string is never mistaken for a platform. Compare
-// `PLATFORM` against a node rather than against `"html"`.
-#[marks.builtin("platform")]
-struct platform {}
-
-// The identity of a build target's output language, the `platform` type's
-// counterpart: `go.language`, `js.language`, each a language package's node.
-// Compare `LANGUAGE` against one.
-#[marks.builtin("language")]
-struct language {}
+import build "sngl:build"
 
 // The platform this build targets. Compare it against a platform's
 // build-target node — `PLATFORM == html.platform` — to gate code on the target;
 // the comparison folds at build time and the branch not taken is removed. The
 // compiler supplies the value.
 //
-// Its type is `platform`, not `string`: `PLATFORM == "html"` does not compile,
-// so a target name cannot be misspelled into a branch that is silently never
-// taken.
-#[marks.builtin("targetPlatform")]
-const PLATFORM = ""
+// It is a value of sngl:build's `platform` family, as `html.platform` is: the
+// node a platform package declares is the target, so there is no second way to
+// name it. There is no literal, so `PLATFORM == "html"` does not compile, and a
+// target name cannot be misspelled into a branch that is silently never taken.
+#[_builtin(targetPlatform)]
+const PLATFORM build.platform
 
-// The language this build emits: `LANGUAGE == go.language`. Behaves like
-// PLATFORM in every respect.
-#[marks.builtin("targetLanguage")]
-const LANGUAGE = ""
+// The language this build emits: `LANGUAGE == go.language`, a value of
+// sngl:build's `language` family. Behaves like PLATFORM in every respect.
+#[_builtin(targetLanguage)]
+const LANGUAGE build.language

@@ -59,7 +59,7 @@ func lowerInstanceBodies(pkg *ir.Package, caps Features, opts Options) error {
 		if comp == nil || comp == root || !comp.RuntimeInstance {
 			continue
 		}
-		comp.Body = st.processStmts(comp.Body, &comp.Funcs)
+		comp.Stmts = st.processStmts(comp.Stmts, &comp.Funcs)
 	}
 	return nil
 }

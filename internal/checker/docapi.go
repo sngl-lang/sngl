@@ -17,6 +17,9 @@ type ComponentSchema struct {
 	Doc    string
 	Props  map[string]PropSchema
 	Events map[string]string
+	// EventDocs is the comment written on each event that has one, keyed as
+	// Events is.
+	EventDocs map[string]string
 	// Slots are in declaration order, unlike Props and Events: a slot list
 	// reads as the author arranged it, and the rest slot conventionally ends it.
 	Slots    []SlotSchema
@@ -26,6 +29,8 @@ type ComponentSchema struct {
 // SlotSchema describes one slot of a component for documentation.
 type SlotSchema struct {
 	Name string
+	// Doc is the comment written on the slot.
+	Doc string
 	// Type is the declaration's own type expression rather than a rendering of
 	// the resolved ir.SlotDecl, so it documents what the author wrote: the
 	// `...` marking the slot bare children land in, and the names on its
@@ -186,19 +191,24 @@ func buildSchemaRegistry(pkg *ir.Package, docs []*ast.Document) SchemaRegistry {
 			continue
 		}
 		schema := &ComponentSchema{
-			Doc:      compDocs[comp.Name],
-			Props:    make(map[string]PropSchema),
-			Events:   make(map[string]string),
-			Slots:    slotSchemas(comp),
-			Children: comp.ChildrenType,
+			Doc:       compDocs[comp.Name],
+			Props:     make(map[string]PropSchema),
+			Events:    make(map[string]string),
+			EventDocs: make(map[string]string),
+			Slots:     slotSchemas(comp),
+			Children:  comp.ChildrenType,
 		}
 		for _, p := range comp.Props {
 			schema.Props[p.Name] = PropSchema{
 				Type: *p.Type,
+				Doc:  p.Doc,
 			}
 		}
 		for _, e := range comp.Events {
 			schema.Events[e.Name] = EventSignature(e)
+			if e.Doc != "" {
+				schema.EventDocs[e.Name] = e.Doc
+			}
 		}
 		reg[comp.Name] = schema
 	}
@@ -212,7 +222,7 @@ func slotSchemas(comp *ir.Component) []SlotSchema {
 	if comp.AST == nil {
 		out := make([]SlotSchema, 0, len(comp.Slots))
 		for _, s := range comp.Slots {
-			out = append(out, SlotSchema{Name: s.Name, Rest: s.Rest})
+			out = append(out, SlotSchema{Name: s.Name, Rest: s.Rest, Doc: s.Doc})
 		}
 		return out
 	}
@@ -223,7 +233,7 @@ func slotSchemas(comp *ir.Component) []SlotSchema {
 			continue
 		}
 		if _, rest, isSlot := ast.SlotType(pd.Type); isSlot {
-			out = append(out, SlotSchema{Name: pd.Name, Type: pd.Type, Rest: rest})
+			out = append(out, SlotSchema{Name: pd.Name, Type: pd.Type, Rest: rest, Doc: pd.Doc()})
 		}
 	}
 	return out
@@ -435,7 +445,11 @@ func ExtractPackageDocs(doc *ast.Document) *PackageDocs {
 			}
 		case *ast.FuncDef:
 			recv, method, _ := ast.SplitMethodName(s.Name)
-			if !(&ir.Func{Receiver: recv, Name: method}).IsExported() {
+			probe := &ir.Func{Name: method}
+			if recv != "" {
+				probe.Receiver = ir.ReceiverNamed(recv)
+			}
+			if !probe.IsExported() {
 				continue
 			}
 			pd.Functions = append(pd.Functions, DeclInfo{
@@ -457,9 +471,9 @@ func ExtractPackageDocs(doc *ast.Document) *PackageDocs {
 // PackageDocFile is the one file a package's prose is read from. Go's
 // semantics -- every file's package comment counts, concatenated in load
 // order -- cannot say which order, and the blank line that makes a comment run
-// package prose is easy to leave in by accident: three files in lib/remote
-// opened with a file header, and the package read as whichever the directory
-// listed first. A stored file is the same accident made by a program, since
+// package prose is easy to leave in by accident: three files of one lib/
+// package opened with a file header, and the package read as whichever the
+// directory listed first. A stored file is the same accident made by a program, since
 // every one opens with a "Code generated" header, the gir: scheme's widget
 // file included.
 const PackageDocFile = "doc.sngl"
@@ -538,15 +552,8 @@ func DeclDoc(stmts []ast.Stmt, declLine int) string {
 }
 
 // EventSignature is how an event's parameters read in documentation, hover
-// and completion: the type alone for the one-parameter `@change T`, nothing
-// for the loose bare `@tick`, and the parenthesised list otherwise.
+// and completion: the list it declares them with, `(e ChangeEvent)`.
 func EventSignature(e *ir.EventDecl) string {
-	if len(e.Params) == 1 && e.Params[0].Name == "" {
-		if t := e.Params[0].Type; t != nil && t.Kind != ir.TypeDyn {
-			return t.String()
-		}
-		return ""
-	}
 	parts := make([]string, len(e.Params))
 	for i, p := range e.Params {
 		parts[i] = p.Type.String()

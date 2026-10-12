@@ -13,7 +13,13 @@ import . "sngl:ui"
 component main node {
     var n int = 0
     text #__n0(value=string(n))
-    badge #__n1(value=string(n))
+    text #__n1(value=string(n), style=Style{
+        display = inlineBlock,
+        paddingY = 2px,
+        paddingX = 8px,
+        borderRadius = 12px,
+        ...Style{},
+    })
     button(text="+", @click {
         n = n + 1
         __n0.value = string(n)

@@ -19,22 +19,23 @@ func slotParamName(s *ir.SlotDecl) string {
 	return kotlin.SafeIdent(s.Name)
 }
 
-func slotParamType(s *ir.SlotDecl) string {
+// composable is what the file calls the @Composable annotation.
+func slotParamType(s *ir.SlotDecl, composable string) string {
 	params := make([]string, s.Arity())
 	for i := range params {
 		if entry, v := s.EntryAt(i); entry != nil {
-			params[i] = slotParamType(entry)
+			params[i] = slotParamType(entry, composable)
 		} else {
 			params[i] = kotlin.IRTypeToKt(s.Params[v].Type)
 		}
 	}
-	return "(@Composable (" + strings.Join(params, ", ") + ") -> Unit)?"
+	return "(@" + composable + " (" + strings.Join(params, ", ") + ") -> Unit)?"
 }
 
-func slotParams(comp *ir.Component) []string {
+func slotParams(comp *ir.Component, composable string) []string {
 	var out []string
 	for _, s := range comp.Slots {
-		out = append(out, slotParamName(s)+": "+slotParamType(s)+" = null")
+		out = append(out, slotParamName(s)+": "+slotParamType(s, composable)+" = null")
 	}
 	return out
 }

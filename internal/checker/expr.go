@@ -429,12 +429,11 @@ func (c *checker) eventAsFunc(x *ast.IdentExpr) ir.Expr {
 func (c *checker) inferIdent(x *ast.IdentExpr) ir.Expr {
 	sym, ok := c.scope.Lookup(x.Name)
 	if !ok {
-		// When expected type is an enum, resolve bare member names.
-		if c.expected != nil && c.expected.Kind == ir.TypeEnum {
-			if ed, ok := c.expected.Decl.(*ir.EnumDef); ok {
-				if c.enumMember(x.Pos, ed, x.Name) {
-					return &ir.Ident{AST: x, Type: c.expected, Name: x.Name, Member: x.Name}
-				}
+		// When expected type is an enum, resolve bare member names. An
+		// option of one wants a member as readily: the slot wraps it.
+		if want := optionElem(c.expected); want != nil {
+			if ed := expectedEnumDef(want); ed != nil && c.enumMember(x.Pos, ed, x.Name) {
+				return &ir.Ident{AST: x, Type: want, Name: x.Name, Member: x.Name}
 			}
 		}
 		// And an event where a function is expected.
@@ -657,11 +656,32 @@ func comparableEq(left, right *ir.Type) bool {
 // operand's type fits. A component method's synthesized `this` names the
 // declaration bare, which a handle carrying its call site's type arguments
 // does not equal, and is the receiver all the same.
+//
+// A parameter typed by a bare type parameter is the receiver only where it is
+// marked so: every operand fits one, so fitting says nothing, and
+// `Test.setContext<V>(ctx V, value V)` took `t` as its context.
 func receivesOperand(receiver *ir.Type, p *ir.Param) bool {
-	return p.Receiver || receiver.IsAssignableTo(p.Type)
+	if p.Receiver {
+		return true
+	}
+	return !bareTypeParam(p) && receiver.IsAssignableTo(p.Type)
+}
+
+// bareTypeParam reports whether p's type is a type parameter and nothing
+// else, which any operand fits.
+func bareTypeParam(p *ir.Param) bool {
+	return p.Type != nil && p.Type.Kind == ir.TypeTypeParam
 }
 
 func (c *checker) inferBinary(x *ast.BinaryExpr) ir.Expr {
+	if (x.Op == ast.BinEq || x.Op == ast.BinNeq) && c.bareMember(x.Left) && !c.bareMember(x.Right) {
+		rightExpr := c.checkExpr(x.Right)
+		leftExpected := c.expected
+		if rt := comparedEnum(exprType(rightExpr)); rt != nil {
+			leftExpected = rt
+		}
+		return c.finishBinary(x, c.checkExprExpecting(x.Left, leftExpected), rightExpr)
+	}
 	leftExpr := c.checkExpr(x.Left)
 	// `a && b` evaluates b only where a held, so a null test in a narrows what
 	// follows it; `a || b` evaluates b only where a failed, which is the same
@@ -685,8 +705,39 @@ func (c *checker) inferBinary(x *ast.BinaryExpr) ir.Expr {
 	if lt := exprType(leftExpr); ir.UnitDeclOf(lt) != nil {
 		rightExpected = lt
 	}
+	// An enum is what the other side of a comparison is expected to be, so
+	// a bare member resolves on either side of `==`: `x == bold`, and
+	// `bold == x`, where the member is checked once the right is known. An
+	// inline enum has no name to qualify a member with, so this is the
+	// only way to compare one against a member.
+	if x.Op == ast.BinEq || x.Op == ast.BinNeq {
+		if lt := comparedEnum(exprType(leftExpr)); lt != nil {
+			rightExpected = lt
+		}
+	}
 	rightExpr := c.checkExprExpecting(x.Right, rightExpected)
 	return c.finishBinary(x, leftExpr, rightExpr)
+}
+
+// comparedEnum is the enum a comparison operand of type t holds -- t itself,
+// or the element of an option of one -- or nil.
+func comparedEnum(t *ir.Type) *ir.Type {
+	if t = optionElem(t); expectedEnumDef(t) != nil {
+		return t
+	}
+	return nil
+}
+
+// bareMember reports whether e is a name nothing in scope binds, which a
+// comparison checks after its other operand so that it may be a member of
+// that operand's enum.
+func (c *checker) bareMember(e ast.Expr) bool {
+	id, ok := e.(*ast.IdentExpr)
+	if !ok {
+		return false
+	}
+	_, bound := c.scope.Lookup(id.Name)
+	return !bound
 }
 
 func (c *checker) finishBinary(x *ast.BinaryExpr, leftExpr, rightExpr ir.Expr) ir.Expr {
@@ -972,7 +1023,13 @@ func (c *checker) inferTernary(x *ast.TernaryExpr) ir.Expr {
 	return &ir.Ternary{AST: x, Type: typ, Cond: condExpr, Then: thenExpr, Else: elseExpr}
 }
 
-func (c *checker) inferCall(x *ast.CallExpr) ir.Expr {
+func (c *checker) inferCall(x *ast.CallExpr) (out ir.Expr) {
+	// What a call to one of these intrinsics is handed is held to rules its
+	// signature cannot state.
+	defer func() {
+		c.refuseSetContextName(out)
+		c.checkI18nCall(x, out)
+	}()
 	stmtCall := c.stmtCall
 	c.stmtCall = nil
 	if x != stmtCall {
@@ -987,12 +1044,13 @@ func (c *checker) inferCall(x *ast.CallExpr) ir.Expr {
 	// user method and be called as `x.string()` etc. — the cast form never
 	// dispatches to user methods.
 	if ident, ok := x.Func.(*ast.IdentExpr); ok {
-		// Scalar-primitive casts are dispatched from the shared registry
-		// (ir/builtins.go); struct-backed casts (color/date/time) follow.
-		if b, ok := ir.LookupBuiltinScalar(ident.Name); ok && b.Convertible {
-			return c.inferBuiltinConversion(x, b.Type, ident.Name)
-		}
+		// A scalar cast and a struct-backed one (color/date/time) are both
+		// found through scope, so a program's own declaration of the name is
+		// no cast.
 		if sym, ok := c.scope.Lookup(ident.Name); ok {
+			if typ, kind, ok := scalarOf(sym); ok && kind.IsConvertibleScalar() {
+				return c.inferBuiltinConversion(x, typ, ident.Name)
+			}
 			if target, ok := stringReprCast(sym); ok {
 				return c.inferBuiltinConversion(x, target, ident.Name)
 			}
@@ -1415,7 +1473,7 @@ func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) ir.Ex
 			// For instance calls using the old-style receiver-as-param convention,
 			// bind receiver to param[0] before inferring from explicit args so
 			// that e.g. list<int>.length() binds T=int.
-			if recvParamStyle && !isStatic && len(sig.Params) > 0 {
+			if recvParamStyle && !isStatic && len(sig.Params) > 0 && (sig.Params[0].Receiver || !bareTypeParam(sig.Params[0])) {
 				bindings := make(map[string]*ir.Type)
 				bindTypeParams(sig.Params[0].Type, receiver, bindings)
 				if len(bindings) > 0 {
@@ -1483,13 +1541,13 @@ func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) ir.Ex
 			// A native is excluded because it *is* a host identifier: its
 			// parameters are the host's, and the receiver arrives before the
 			// dot under `method` and as argument zero without it.
-			if fn.Pkg == "" && (fn.Foreign.Name == "" || fn.Foreign.Marked) {
+			if fn.PkgPath() == "" && (fn.Foreign.Name == "" || fn.Foreign.Marked) {
 				if len(sig.Params) == 0 {
 					c.error(sel.Pos, "%s.%s is static: it declares no parameters, so call it as %s.%s()",
-						fn.Receiver, fn.Name, fn.Receiver, fn.Name)
+						fn.RecvName(), fn.Name, fn.RecvName(), fn.Name)
 				} else {
 					c.error(sel.Pos, "%s.%s is static: its first parameter is not %s, so call it as %s.%s(…)",
-						fn.Receiver, fn.Name, fn.Receiver, fn.Receiver, fn.Name)
+						fn.RecvName(), fn.Name, fn.RecvName(), fn.RecvName(), fn.Name)
 				}
 			}
 			rest := c.checkCallArgs(call.Args, sig)
@@ -1525,25 +1583,20 @@ func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) ir.Ex
 		}
 	}
 
-	// Element-ref event invocation: `c.<id>.<event>(payload)`. When the
-	// field names a declared event on the addressed component, tag the
-	// call as an event trigger and type any payload arg against the
-	// event's declared type (so anonymous struct literals like
-	// InputEvent{value="x"} can be written {value="x"}).
+	// Element-ref event invocation: `c.<id>.<event>(args)`. When the field
+	// names a declared event on the addressed component, tag the call as an
+	// event trigger and bind its arguments as an emit's are: one per declared
+	// parameter, by position or by name -- `c.box.change(true)`,
+	// `c.f.input(value="x")`. A test fires the event as the program would.
 	var argSig *ir.FuncSig
 	event := ""
-	if evt := c.elementEvent(sel.Operand, sel.Field); evt != nil {
+	evt := c.elementEvent(sel.Operand, sel.Field)
+	if evt == nil {
+		evt = nestedElementEvent(sel.Operand, receiver, sel.Field)
+	}
+	if evt != nil {
 		event = evt.Name
-		if len(evt.Params) > 0 {
-			// Mark each param optional via a placeholder Default so
-			// `c.btn.click()` (zero args) and `c.entry.input({…})`
-			// (one struct arg) both pass arity, while each positional
-			// arg still gets its parameter's expected type.
-			argSig = &ir.FuncSig{Params: make([]*ir.Param, len(evt.Params))}
-			for i, p := range evt.Params {
-				argSig.Params[i] = &ir.Param{Name: p.Name, Type: p.Type, Default: &ir.Literal{Type: p.Type}}
-			}
-		}
+		argSig = &ir.FuncSig{Params: evt.Params}
 	}
 	args := c.checkCallArgs(call.Args, argSig)
 	if event == "" && isPrimitiveMethodReceiver(receiver) {
@@ -1577,11 +1630,43 @@ func (c *checker) elementEvent(operand ast.Expr, event string) *ir.EventDecl {
 	return nil
 }
 
+// nestedElementEvent is the event a trigger names through a component the
+// one it starts at renders -- `c.b.btn.click()`, or `c.opt[1].click()` for a
+// node a component `c` renders declares -- read off the type the receiver
+// checked as: the shapes elementHostComponent reads off the source stop at
+// the nodes `c`'s own body writes.
+func nestedElementEvent(operand ast.Expr, receiver *ir.Type, event string) *ir.EventDecl {
+	if ix, ok := operand.(*ast.IndexExpr); ok {
+		operand = ix.Operand
+	}
+	if _, ok := operand.(*ast.SelectExpr); !ok {
+		return nil
+	}
+	if receiver == nil || receiver.Kind != ir.TypeComponent {
+		return nil
+	}
+	comp, ok := receiver.Decl.(*ir.Component)
+	if !ok {
+		return nil
+	}
+	for _, e := range comp.Events {
+		if e.Name == event {
+			return e
+		}
+	}
+	return nil
+}
+
 // elementHostComponent resolves `operand` to the component instance
 // hosting the addressed widget. Handles `c.<id>` where c is a
 // component-typed param/var and <id> matches a NodeInst inside c's
 // body. Returns nil for shapes the resolver doesn't recognise.
 func (c *checker) elementHostComponent(operand ast.Expr) *ir.Component {
+	// `c.row[1]`: one of the nodes a loop rendered under one id, which is the
+	// same component as each of the others.
+	if ix, ok := operand.(*ast.IndexExpr); ok {
+		operand = ix.Operand
+	}
 	sel, ok := operand.(*ast.SelectExpr)
 	if !ok {
 		return nil
@@ -1741,7 +1826,7 @@ func (c *checker) findDescendantHost(comp *ir.Component, id string, visited map[
 	// Another package's body names things through that package's scope,
 	// which this checker does not hold; its IR is already checked.
 	if !slices.Contains(c.pkg.Components, comp) {
-		host, children := nodesInCheckedBody(comp.Body, id)
+		host, children := nodesInCheckedBody(comp.Stmts, id)
 		if host != nil {
 			return host
 		}
@@ -1843,7 +1928,7 @@ func isPrimitiveMethodReceiver(t *ir.Type) bool {
 	}
 	switch t.Kind {
 	case ir.TypeInt, ir.TypeFloat, ir.TypeBool, ir.TypeString,
-		ir.TypeList, ir.TypeOption, ir.TypeMap, ir.TypeRemote:
+		ir.TypeList, ir.TypeOption, ir.TypeMap:
 		return true
 	}
 	return false
@@ -1870,11 +1955,6 @@ func methodNamed(t *ir.Type, name string) bool {
 // (color.r, list.length, struct fields, component vars/props, enum members)
 // and everything carrying no shape information (dyn, generic params, anonymous
 // structs).
-//
-// remote.Value is one: it declares no fields and reaches its three facts
-// through methods alone, so `box.value` is `box.value()` with the call left
-// off — which degraded to dyn, passed every prop it was handed, and reached a
-// backend as a field read of a struct that has none.
 // selectDeclaredMember resolves x.Field against a declaration's own member
 // table -- fields first, then methods -- and reports a name in neither. Struct
 // and unit share it because they share the question, which is the same reason
@@ -1911,7 +1991,7 @@ func hasNoLegitimateFields(t *ir.Type) bool {
 		return false
 	}
 	switch t.Kind {
-	case ir.TypeInt, ir.TypeFloat, ir.TypeBool, ir.TypeRemote:
+	case ir.TypeInt, ir.TypeFloat, ir.TypeBool:
 		return true
 	}
 	return false
@@ -2001,6 +2081,10 @@ func (c *checker) inferSelect(x *ast.SelectExpr) ir.Expr {
 								return &ir.Select{AST: x, Type: TypDyn, Operand: operandExpr, Field: x.Field}
 							}
 							c.reportUnusable(x.Pos, ident.Name+"."+x.Field, fsym)
+							if f, isComp := fsym.(*ir.Component); isComp && f.IsFamily() {
+								c.error(x.Pos, "%s.%s names a family, which is not a value: a value of it is a handle to one of its members", ident.Name, x.Field)
+								return &ir.Select{AST: x, Type: TypDyn, Operand: operandExpr, Field: x.Field}
+							}
 							// A context reached through its package is the
 							// same context: `i18n.locale` reads what `locale`
 							// reads where the name is in scope unqualified.
@@ -2011,7 +2095,20 @@ func (c *checker) inferSelect(x *ast.SelectExpr) ir.Expr {
 								}
 								return &ir.ContextRead{Ref: ctx, Typ: typ}
 							}
+							// A family reached through its package is no
+							// more a value than it is in scope.
+							if f, ok := fsym.(*ir.Component); ok && f.IsFamily() {
+								c.error(x.Pos, "%s.%s names a family, which is not a value: a value of it is a handle to one of its members", ident.Name, f.Name)
+								return &ir.Select{AST: x, Type: TypDyn, Operand: operandExpr, Field: x.Field}
+							}
 							t := c.symType(fsym)
+							// A host value reached through its package is the
+							// host identifier it is unqualified: a backend
+							// spells it from the declaration, and a select of
+							// a namespace names nothing the host declares.
+							if v, ok := fsym.(*ir.Var); ok && ir.IsHostValue(v) {
+								return &ir.Ident{Type: t, Name: v.Name, Sym: v}
+							}
 							return &ir.Select{AST: x, Type: t, Operand: operandExpr, Field: x.Field}
 						}
 					}
@@ -2269,6 +2366,13 @@ func (c *checker) inferIndex(x *ast.IndexExpr) ir.Expr {
 		t := operand.Elems[0]
 		return &ir.Index{AST: x, Type: t, Operand: operandExpr, Idx: indexExpr}
 	}
+	// One copy of a node a loop rendered under one id, `c.row[1]`, is a node
+	// of the same component as the id names.
+	if operand.Kind == ir.TypeComponent && operand.Decl != nil {
+		if _, ok := operandExpr.(*ir.Select); ok {
+			return &ir.Index{AST: x, Type: operand, Operand: operandExpr, Idx: indexExpr}
+		}
+	}
 	switch operand.Kind {
 	case ir.TypeBool, ir.TypeInt, ir.TypeFloat, ir.TypeEnum, ir.TypeUnit, ir.TypeFunc:
 		c.error(x.Pos, "cannot index %s", operand)
@@ -2340,7 +2444,7 @@ func (c *checker) inferStructLit(x *ast.StructExpr) ir.Expr {
 				if len(x.Fields) > 0 {
 					c.error(x.Pos, "%s is a type parameter: its literal is its zero value, %s{}, and takes no fields", tp.Name, tp.Name)
 				}
-				return &ir.StructLit{AST: x, Type: &ir.Type{Kind: ir.TypeTypeParam, ParamName: tp.Name}}
+				return &ir.StructLit{AST: x, Type: tp.SymType()}
 			}
 		} else {
 			c.error(x.Pos, "undefined: %s%s", x.Name, c.stdlibHint(x.Name))
@@ -2806,7 +2910,7 @@ func (c *checker) inferLambda(x *ast.LambdaExpr) ir.Expr {
 			// that yields nothing gives it nothing to return, and the lowered
 			// `return xs.push(v)` is not something any target can spell.
 			c.requireValueType(exprType(bodyExpr), *x.Body.ExprPos())
-			fn.Return = exprType(bodyExpr)
+			fn.Return = c.inferredType(exprType(bodyExpr), *x.Body.ExprPos())
 			c.returnType = fn.Return
 		}
 		fn.Block = []ir.Stmt{&ir.Return{AST: &ast.ReturnStmt{Pos: *x.Body.ExprPos(), Value: x.Body}, Value: bodyExpr}}
@@ -2851,13 +2955,13 @@ func (c *checker) inferTypeParams(sig *ir.FuncSig, args ast.ArgList) *ir.FuncSig
 			continue
 		}
 		if pos < len(sig.Params) {
-			bind(sig.Params[pos], exprType(c.checkExpr(arg.Value)))
+			bind(sig.Params[pos], exprType(c.inferArgExpr(arg.Value, sig.Params[pos].Type, bindings)))
 		}
 		pos++
 	}
 	// A parameter the arguments could not pin is bound from the type the context
 	// wants, which is the only way to write one that appears in the return type
-	// alone: `remote.pending()` takes no arguments, and SNGL has no syntax for
+	// alone: `func empty<T>() list<T>` takes no arguments, and SNGL has no syntax for
 	// naming a type argument at a call site, so without this such a function is
 	// undeclarable rather than merely awkward.
 	//
@@ -2881,6 +2985,29 @@ func (c *checker) inferTypeParams(sig *ir.FuncSig, args ast.ArgList) *ir.FuncSig
 		return sig
 	}
 	return sig.Substitute(bindings)
+}
+
+// inferArgExpr checks an argument for inference. A lambda whose parameters
+// carry no annotation takes their types from the parameter it fills, with what
+// is bound so far substituted -- `ps.map(func(p) => p.name)` has its p from the
+// receiver -- and its return type from its body wherever the parameter's
+// still names a type parameter, which is what the body is binding.
+func (c *checker) inferArgExpr(e ast.Expr, want *ir.Type, bindings map[string]*ir.Type) ir.Expr {
+	lam, ok := e.(*ast.LambdaExpr)
+	if !ok || want == nil || want.Kind != ir.TypeFunc || want.Sig == nil {
+		return c.checkExpr(e)
+	}
+	sig := want.Sig.Substitute(bindings)
+	for _, p := range sig.Params {
+		if mentionsTypeParam(p.Type) {
+			return c.checkExpr(e)
+		}
+	}
+	exp := &ir.FuncSig{Params: sig.Params}
+	if lam.ReturnType == nil && sig.Return != nil && !mentionsTypeParam(sig.Return) {
+		exp.Return = sig.Return
+	}
+	return c.checkExprExpecting(e, &ir.Type{Kind: ir.TypeFunc, Sig: exp})
 }
 
 // bindTypeParams recursively matches a param type pattern against a concrete
@@ -2938,6 +3065,22 @@ func (c *checker) bindArgs(callPos ast.Pos, args []ast.ArgOrEventHandler, sig *i
 	seenNamed := false
 	ok := true
 
+	// A variadic last parameter takes the positional arguments past the
+	// others, and the elements of a list spread among them, as one list
+	// literal: written by hand, the caller would have built the same.
+	variadic := -1
+	var extras []ir.Expr
+	var extrasPos *ast.Pos
+	if n > 0 && sig.Params[n-1].Variadic {
+		variadic = n - 1
+	}
+	variadicElem := func() *ir.Type {
+		if t := sig.Params[variadic].Type; t != nil && t.Kind == ir.TypeList && len(t.Elems) == 1 {
+			return t.Elems[0]
+		}
+		return TypDyn
+	}
+
 	for _, a := range args {
 		arg, isArg := a.(ast.Arg)
 		if !isArg {
@@ -2948,8 +3091,31 @@ func (c *checker) bindArgs(callPos ast.Pos, args []ast.ArgOrEventHandler, sig *i
 		}
 
 		if sp, isSpr := arg.Value.(*ast.SpreadExpr); isSpr {
+			var operand ir.Expr
+			if variadic >= 0 && !seenNamed && positional >= variadic {
+				elem := variadicElem()
+				operand = c.checkExprExpecting(sp.Operand, ListOf(elem))
+				if t := exprType(operand); t != nil && (t.Kind == ir.TypeList || t.Kind == ir.TypeDyn) {
+					if t.Kind == ir.TypeList && len(t.Elems) == 1 && !t.Elems[0].IsAssignableTo(elem) {
+						c.error(sp.Pos, "cannot spread %s into ...%s", t, elem)
+						ok = false
+						continue
+					}
+					extras = append(extras, &ir.Spread{AST: sp, Type: t, Operand: operand})
+					if extrasPos == nil {
+						extrasPos = &sp.Pos
+					}
+					continue
+				}
+			}
 			seenNamed = true
-			spread, expanded := c.expandSpread(sp)
+			var spread *spreadArg
+			var expanded bool
+			if operand != nil {
+				spread, expanded = c.expandSpreadOf(sp, operand)
+			} else {
+				spread, expanded = c.expandSpread(sp)
+			}
 			if !expanded {
 				ok = false
 				continue
@@ -2994,6 +3160,15 @@ func (c *checker) bindArgs(callPos ast.Pos, args []ast.ArgOrEventHandler, sig *i
 				ok = false
 				// Still check the expression for side-effects (e.g. async detection).
 				c.checkExpr(arg.Value)
+				continue
+			}
+			if variadic >= 0 && positional >= variadic {
+				expr := c.checkArgExpr(arg.Value, &ir.Param{Type: variadicElem()})
+				extras = append(extras, expr)
+				if extrasPos == nil {
+					extrasPos = arg.Value.ExprPos()
+				}
+				positional++
 				continue
 			}
 			if positional >= n {
@@ -3049,6 +3224,18 @@ func (c *checker) bindArgs(callPos ast.Pos, args []ast.ArgOrEventHandler, sig *i
 			if p.Const {
 				c.deferConstArg(*arg.Value.ExprPos(), expr, constParamLabel(p.Name))
 			}
+		}
+	}
+
+	if variadic >= 0 {
+		switch {
+		case bound[variadic] == nil:
+			// Given nothing, it is the empty list.
+			lit := ir.Expr(&ir.ListLit{Type: sig.Params[variadic].Type, Elems: extras})
+			bound[variadic] = &lit
+		case extras != nil:
+			c.error(*extrasPos, "parameter %q already provided", sig.Params[variadic].Name)
+			ok = false
 		}
 	}
 
@@ -3244,7 +3431,7 @@ func (c *checker) checkCallArgs(args ast.ArgList, sig *ir.FuncSig) []ir.CallArg 
 		if _, isSpr := arg.Value.(*ast.SpreadExpr); isSpr {
 			continue
 		}
-		if positional >= len(sig.Params) {
+		if positional >= len(sig.Params) && !(len(sig.Params) > 0 && sig.Params[len(sig.Params)-1].Variadic) {
 			expr := c.checkExpr(arg.Value)
 			result = append(result, ir.CallArg{Value: expr})
 		}
@@ -3322,14 +3509,10 @@ func (c *checker) checkLocalVarDecl(decl *ast.VarDecl) []ir.Stmt {
 				c.error(decl.Pos, "context value cannot be captured into a local var (read at use site instead)")
 			}
 			initExpr = c.coerce(spec.Default, initExpr, typ, initSlot(decl.Pos))
-			initType := exprType(initExpr)
-			if initType.Kind == ir.TypeVoid {
-				// Prevent void propagation into an inferred var type.
-			} else if typ.Kind == ir.TypeDyn {
-				typ = initType
-			} else {
+			if exprType(initExpr).Kind != ir.TypeVoid && typ.Kind != ir.TypeDyn {
 				initExpr = wrapIfNeeded(initExpr, typ)
 			}
+			typ = c.typeFromInit(typ, initExpr, *spec.Default.ExprPos())
 		}
 		for _, name := range spec.Names {
 			sym := &ir.Var{
@@ -3457,12 +3640,7 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 				c.error(x.Pos, "context value cannot be captured into a local var (read at use site instead)")
 			}
 			initExpr = c.coerce(x.Init, initExpr, typ, initSlot(x.Pos))
-			initType := exprType(initExpr)
-			if initType.Kind == ir.TypeVoid {
-				// Avoid propagating void into an inferred var type.
-			} else if typ.Kind == ir.TypeDyn {
-				typ = initType
-			}
+			typ = c.typeFromInit(typ, initExpr, *x.Init.ExprPos())
 		}
 		sym := &ir.Var{
 			AST:  x,
@@ -3515,6 +3693,16 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 					Attrs:  x.Attrs,
 				}
 				return c.checkVisualNodeIR(vn)
+			}
+		}
+		// `r.content(…)`: what a record was written with, inserted with
+		// parentheses.
+		if sel, ok := x.Call.Func.(*ast.SelectExpr); ok && x.Call.ID == "" {
+			if id, ok := sel.Operand.(*ast.IdentExpr); ok {
+				vn := &ast.VisualNode{Pos: x.Pos, Target: sel, Args: x.Call.Args, Attrs: x.Attrs, HasParens: true}
+				if st, ok := c.recordContent(vn, id.Name+"."+sel.Field); ok {
+					return st
+				}
 			}
 		}
 		// A bare `event(args)` whose name matches an event declared on the
@@ -4105,8 +4293,8 @@ func (c *checker) errorEventType() *ir.Type {
 		return nil
 	}
 	for _, e := range c.boundaryComp.Events {
-		if e.Name == "error" {
-			return e.Payload()
+		if e.Name == "error" && len(e.Params) == 1 {
+			return e.Params[0].Type
 		}
 	}
 	return nil
@@ -4169,6 +4357,9 @@ func (c *checker) checkVisualNode(vn *ast.VisualNode) ir.Stmt {
 	}
 	if slot := c.enclosingSlot(name); slot != nil {
 		return c.checkSlotInsertion(vn, slot, name, false)
+	}
+	if st, ok := c.recordContent(vn, name); ok {
+		return st
 	}
 
 	// Look up component — supports bare ("Foo") and qualified ("pkg.Foo") names.
@@ -4311,32 +4502,47 @@ func (c *checker) checkVisualNode(vn *ast.VisualNode) ir.Stmt {
 	if vn == c.outputDecl || outerOutputDepth > 0 {
 		c.outputDepth = outerOutputDepth + 1
 	}
+	data := 0
+	if rest := spec.RestSlot(); rest != nil && rest.Values != nil {
+		data = 1
+	}
+	c.dataPopulation += data
 	children := c.checkBlockIR(&childBlock)
+	c.dataPopulation -= data
 	c.outputDepth = outerOutputDepth
 	if bound := c.bindFromChildren(comp, spec, children); bound != spec {
 		spec = bound
 		c.specializeHandle(vn.ID, comp, spec)
 	}
 	if spec != nil && spec.AST != nil {
-		ct := spec.ChildrenType
+		rest := spec.RestSlot()
 		n := len(children)
-		if rest := spec.RestSlot(); rest != nil && slotContent[rest.Name] != nil {
+		if rest != nil && slotContent[rest.Name] != nil {
 			// The rest slot was populated by name, and checkSlotContent has
 			// already held that content to the slot's count. Bare children
 			// alongside it are the double population, reported there.
-			ct, n = nil, 0
+			rest, n = nil, 0
 		}
 		switch {
-		case ct == nil && n > 0:
-			c.error(vn.Pos, "component %s does not accept children", spec.DisplayName())
-		case ct != nil && ct.Kind != ir.TypeList && ct.Kind != ir.TypeOption && n != 1:
-			c.error(vn.Pos, "component %s requires exactly one child", spec.Name)
-		case ct != nil && ct.Kind == ir.TypeOption && n > 1:
-			c.error(vn.Pos, "component %s accepts at most one child", spec.Name)
+		case rest == nil:
+			if n > 0 {
+				c.error(vn.Pos, "component %s does not accept children", spec.DisplayName())
+			}
+		default:
+			// The count is what the children render, not how many
+			// statements wrote them: a `for` is one statement.
+			if lo, hi := c.renderedRange(c.currentComponent, children); !fitsCard(rest.Card, lo, hi) {
+				switch rest.Card {
+				case ir.SlotOne:
+					c.error(vn.Pos, "component %s requires exactly one child, and this renders %s", spec.Name, rangeWords(lo, hi))
+				case ir.SlotOptional:
+					c.error(vn.Pos, "component %s accepts at most one child, and this renders %s", spec.Name, rangeWords(lo, hi))
+				}
+			}
 		}
 		owner, node, at := c.currentComponent, spec, vn.Pos
-		c.deferTreeCheck(func() {
-			c.checkTreeMembership(owner, at, children, slotWant(node, node.RestSlot(), children), "in "+node.DisplayName())
+		c.deferFamilyCheck(func() {
+			c.checkFamilyMembership(owner, at, children, slotWant(node, node.RestSlot(), children), "in "+node.DisplayName())
 		})
 	}
 	props, handlers, bindings := c.checkAndSplitArgs(vn.Args, spec)
@@ -4876,9 +5082,10 @@ func (c *checker) checkAndSplitArgs(args ast.ArgList, comp *ir.Component) ([]ir.
 	}
 
 	c.refuseInheritedProps(args.Pos, comp, boundProps)
-	// Arity: all required props must be bound (user-defined components only;
-	// stdlib component props without defaults are optional by platform convention).
-	if comp != nil && !comp.Stdlib {
+	// Arity: a prop with no default must be bound, whichever package declared
+	// the component -- unless a target renders it from its declaration, which
+	// reads a prop the call omitted as absent (RendersFromDeclaration).
+	if comp != nil {
 		for _, p := range comp.Props {
 			// A wildcard prop stands for names rather than being one, so
 			// there is nothing to require: its own name binds nothing.
@@ -4890,28 +5097,29 @@ func (c *checker) checkAndSplitArgs(args ast.ArgList, comp *ir.Component) ([]ir.
 			if p.Bidirectional {
 				continue
 			}
-			if !boundProps[p.Name] && p.Default == nil {
+			if !boundProps[p.Name] && p.Default == nil && !p.DefaultWritten && !comp.RendersFromDeclaration() {
 				c.error(args.Pos, "missing required prop %q on component %s", p.Name, comp.Name)
 			}
 		}
 		// A prop the call omits is supplied here, so every consumer reads one
 		// list of arguments rather than each evaluating the declaration's
 		// defaults for itself. This is what a struct literal does with its
-		// field defaults.
+		// field defaults. A component rendered from its declaration reads an
+		// omitted prop as absent, and a bodyless one is rendered by a target's
+		// override, which reads the declaration's defaults where it uses them;
+		// for either, only the zero of a type parameter is written, since that
+		// names a type only this call site has bound.
+		fromDecl := comp.RendersFromDeclaration() || comp.Bodyless
 		for _, p := range comp.Props {
-			if p.Default == nil || boundProps[p.Name] {
+			// A data slot's list is what lower.DataFamilies writes from the
+			// population, which is not written yet.
+			if p.Default == nil || boundProps[p.Name] || comp.DataSlotOf(p) != nil {
+				continue
+			}
+			if fromDecl && (!typeParamZero(p.Default) || mentionsTypeParam(p.Type)) {
 				continue
 			}
 			props = append(props, ir.Arg{Name: p.Name, Value: typeParamZeroFor(p.Default, p.Type)})
-		}
-	} else if comp != nil {
-		// A library's defaults are its targets' to read, except the zero of a
-		// type parameter, which names a type only this call site has bound.
-		for _, p := range comp.Props {
-			if boundProps[p.Name] || !typeParamZero(p.Default) || mentionsTypeParam(p.Type) {
-				continue
-			}
-			props = append(props, ir.Arg{Name: p.Name, Value: ir.DeclaredDefault(p.Type)})
 		}
 	}
 
@@ -5037,9 +5245,8 @@ func (c *checker) checkComponentCallArgs(call *ast.CallExpr, comp *ir.Component)
 	}
 
 	c.refuseInheritedProps(call.Args.Pos, comp, boundProps)
-	// Arity: required props must be bound (user-defined components only;
-	// stdlib component props without defaults are optional by platform convention).
-	if !comp.Stdlib {
+	// Arity: as checkAndSplitArgs.
+	if !comp.RendersFromDeclaration() {
 		for _, p := range comp.Props {
 			// A wildcard prop stands for names rather than being one, so
 			// there is nothing to require: its own name binds nothing.
@@ -5051,7 +5258,7 @@ func (c *checker) checkComponentCallArgs(call *ast.CallExpr, comp *ir.Component)
 			if p.Bidirectional {
 				continue
 			}
-			if !boundProps[p.Name] && p.Default == nil {
+			if !boundProps[p.Name] && p.Default == nil && !p.DefaultWritten {
 				c.error(call.Args.Pos, "missing required prop %q on component %s", p.Name, comp.Name)
 			}
 		}
@@ -5457,6 +5664,11 @@ func (c *checker) boundEntry(name string) *ir.SlotDecl {
 // entries, and the fallback block. written is the name the insertion was
 // written under, which for an entry is the population's and not the entry's.
 func (c *checker) checkSlotInsertion(vn *ast.VisualNode, slot *ir.SlotDecl, written string, entry bool) ir.Stmt {
+	// A data slot is a value, inserted only where it is forwarded: into
+	// another data slot's population, whose list it is spread into.
+	if c.dataPopulation == 0 && c.refuseDataSlotInsertion(vn.Pos, slot) {
+		return nil
+	}
 	inst := &ir.SlotInst{AST: vn, Name: written, Rest: slot.Rest}
 	if entry {
 		inst.Entry = slot
@@ -5590,12 +5802,15 @@ func (c *checker) checkRequiredSlots(pos ast.Pos, comp *ir.Component, content ma
 // matched by position against the declaration's types, and are ordinary
 // block-scoped bindings.
 func (c *checker) checkSlotContent(cd *ast.ComponentDecl, decl *ir.SlotDecl, owner *ir.Component) *ir.SlotContent {
+	// A population binds by position and may leave trailing parameters
+	// unbound, as a handler may: `component failed { … }` ignores the error
+	// the boundary hands it. Binding more than the slot passes is the error.
 	params := cd.Props.Props
-	if len(params) != decl.Arity() {
+	if len(params) > decl.Arity() {
 		c.error(cd.Pos, "slot %q binds %d parameter(s), but declares %d", cd.Name, len(params), decl.Arity())
 	}
 	if cd.ChildrenType != nil {
-		c.error(cd.Pos, "slot %q: a population names no tree; what it accepts is the declaration's", cd.Name)
+		c.error(cd.Pos, "slot %q: a population names no family; what it accepts is the declaration's", cd.Name)
 	}
 	sc := &ir.SlotContent{}
 	var entries map[string]*ir.SlotDecl
@@ -5648,10 +5863,10 @@ func (c *checker) checkSlotContent(cd *ast.ComponentDecl, decl *ir.SlotDecl, own
 	sc.Body = c.checkScopeBlockIR(&cd.Body, bound...)
 	c.entryScopes = c.entryScopes[:len(c.entryScopes)-1]
 	c.popScope()
-	c.checkSlotArity(cd.Pos, decl, len(sc.Body), "slot \""+cd.Name+"\"")
+	c.checkSlotArity(cd.Pos, decl, sc.Body, "slot \""+cd.Name+"\"")
 	written, at := c.currentComponent, cd.Pos
-	c.deferTreeCheck(func() {
-		c.checkTreeMembership(written, at, sc.Body, slotWant(owner, decl, sc.Body), "in slot \""+cd.Name+"\"")
+	c.deferFamilyCheck(func() {
+		c.checkFamilyMembership(written, at, sc.Body, slotWant(owner, decl, sc.Body), "in slot \""+cd.Name+"\"")
 	})
 	return sc
 }
@@ -5672,25 +5887,34 @@ func childrenTypeFor(slot *ir.SlotDecl) *ir.Type {
 	return ir.ListOf(elem)
 }
 
-func (c *checker) checkSlotArity(pos ast.Pos, slot *ir.SlotDecl, n int, what string) {
-	switch slot.Card {
-	case ir.SlotOne:
-		if n != 1 {
-			c.error(pos, "%s takes exactly one node, got %d", what, n)
-		}
-	case ir.SlotOptional:
-		if n > 1 {
-			c.error(pos, "%s takes at most one node, got %d", what, n)
+func (c *checker) checkSlotArity(pos ast.Pos, slot *ir.SlotDecl, body []ir.Stmt, what string) {
+	if lo, hi := c.renderedRange(c.currentComponent, body); !fitsCard(slot.Card, lo, hi) {
+		switch slot.Card {
+		case ir.SlotOne:
+			c.error(pos, "%s takes exactly one node, and this renders %s", what, rangeWords(lo, hi))
+		case ir.SlotOptional:
+			c.error(pos, "%s takes at most one node, and this renders %s", what, rangeWords(lo, hi))
 		}
 	}
 }
 
-// slotTree is the segmented tree a slot accepts, or nil where nothing pins one
+// rangeWords spells a renderedRange for a diagnostic.
+func rangeWords(lo, hi int) string {
+	switch {
+	case hi == unbounded:
+		return fmt.Sprintf("%d or more", lo)
+	case lo == hi:
+		return strconv.Itoa(lo)
+	}
+	return fmt.Sprintf("%d to %d", lo, hi)
+}
+
+// slotFamily is the segmented tree a slot accepts, or nil where nothing pins one
 // — a tree-less owner's bare slot, or a tree parameter no call site has bound.
 //
 // owner is the component the slot is declared on: a slot naming no tree accepts
 // the owner's.
-func slotTree(owner *ir.Component, slot *ir.SlotDecl) *ir.Component {
+func slotFamily(owner *ir.Component, slot *ir.SlotDecl) *ir.Component {
 	if slot == nil {
 		return nil
 	}
@@ -5698,7 +5922,7 @@ func slotTree(owner *ir.Component, slot *ir.SlotDecl) *ir.Component {
 		if owner == nil {
 			return nil
 		}
-		return owner.Tree
+		return owner.Family
 	}
 	return ir.TypeFamily(slot.Content)
 }
@@ -5711,19 +5935,16 @@ func slotTree(owner *ir.Component, slot *ir.SlotDecl) *ir.Component {
 // pinned is already substituted and only an unpinned one reaches the second
 // case.
 func slotWant(owner *ir.Component, slot *ir.SlotDecl, content []ir.Stmt) *ir.Component {
-	if sd := slotTree(owner, slot); sd != nil {
+	if sd := slotFamily(owner, slot); sd != nil {
 		return sd
 	}
-	if owner == nil || owner.TreeParam == "" || slot == nil || slot.Content == nil {
+	if owner == nil || owner.FamilyParam == nil || slot == nil || !slot.Content.Equal(owner.FamilyParam) {
 		return nil
 	}
-	if slot.Content.Kind != ir.TypeTypeParam || slot.Content.ParamName != owner.TreeParam {
-		return nil
-	}
-	return childrenTree(content)
+	return childrenFamily(content)
 }
 
-// childrenTree is the tree the nodes written in a block belong to, for a slot
+// childrenFamily is the tree the nodes written in a block belong to, for a slot
 // whose content type is the component's own tree parameter. Nothing at the
 // call site names a type argument, so the children are what binds it: the
 // first one that belongs to a family says which, and checkTreeMembership then
@@ -5736,18 +5957,18 @@ func slotWant(owner *ir.Component, slot *ir.SlotDecl, content []ir.Stmt) *ir.Com
 // treeTransparent's *binding* blocks, which is every block but a boundary's
 // fallback: that one stands where the content stood and is held to the
 // content's answer rather than supplying one.
-func childrenTree(content []ir.Stmt) *ir.Component {
+func childrenFamily(content []ir.Stmt) *ir.Component {
 	for _, st := range content {
-		if _, binds, ok := treeTransparent(st); ok {
+		if _, binds, ok := familyTransparent(st); ok {
 			for _, b := range binds {
-				if sd := childrenTree(b); sd != nil {
+				if sd := childrenFamily(b); sd != nil {
 					return sd
 				}
 			}
 			continue
 		}
-		if ni, ok := st.(*ir.NodeInst); ok && ni.Component != nil && ni.Component.Tree != nil {
-			return ni.Component.Tree
+		if ni, ok := st.(*ir.NodeInst); ok && ni.Component != nil && ni.Component.Family != nil {
+			return ni.Component.Family
 		}
 	}
 	return nil
@@ -5762,7 +5983,7 @@ func stmtPos(s ast.Stmt) *ast.Pos {
 	return s.StmtPos()
 }
 
-// checkTreeMembership holds every supplied node to the tree the position
+// checkFamilyMembership holds every supplied node to the tree the position
 // accepts. Compared by declaration, so two packages each declaring a tree of
 // the same name are two trees.
 //
@@ -5777,7 +5998,7 @@ func stmtPos(s ast.Stmt) *ast.Pos {
 // readily as in a layout. The compiler's own constructs -- an error boundary,
 // a context override -- say the same thing by not being a node instance at
 // all, and each holds its own children to a family of their own.
-func (c *checker) checkTreeMembership(owner *ir.Component, pos ast.Pos, content []ir.Stmt, want *ir.Component, where string) {
+func (c *checker) checkFamilyMembership(owner *ir.Component, pos ast.Pos, content []ir.Stmt, want *ir.Component, where string) {
 	if want == nil {
 		return
 	}
@@ -5788,9 +6009,9 @@ func (c *checker) checkTreeMembership(owner *ir.Component, pos ast.Pos, content 
 		// the subtle one: its own check binds T off its content, and reaching
 		// through it here is what holds that T to the family this position
 		// accepts.
-		if blocks, _, ok := treeTransparent(st); ok {
+		if blocks, _, ok := familyTransparent(st); ok {
 			for _, b := range blocks {
-				c.checkTreeMembership(owner, pos, b, want, where)
+				c.checkFamilyMembership(owner, pos, b, want, where)
 			}
 			continue
 		}
@@ -5802,7 +6023,7 @@ func (c *checker) checkTreeMembership(owner *ir.Component, pos ast.Pos, content 
 			if s.Crosses {
 				continue
 			}
-			if got := c.insertedTree(owner, s); got != nil && got != want {
+			if got := c.insertedFamily(owner, s); got != nil && got != want {
 				c.error(pos, "expected %s component %s, got the %s slot %s", want.Name, where, got.Name, s.Name)
 			}
 		// A window is the checker's own IR rather than a NodeInst, so it
@@ -5810,7 +6031,7 @@ func (c *checker) checkTreeMembership(owner *ir.Component, pos ast.Pos, content 
 		// reads the same two fields off the same kind of pointer, and the two
 		// collapse when a window becomes a marked NodeInst.
 		case *ir.NodeInst:
-			if s.Crosses || s.Component == nil || s.Component.Tree == nil || s.Component.Tree == want {
+			if s.Crosses || s.Component == nil || s.Component.Family == nil || s.Component.Family == want {
 				continue
 			}
 			// The offending child is a better place to point than the position
@@ -5824,9 +6045,9 @@ func (c *checker) checkTreeMembership(owner *ir.Component, pos ast.Pos, content 
 	}
 }
 
-// insertedTree is the family a slot insertion puts where it stands: the slot's
+// insertedFamily is the family a slot insertion puts where it stands: the slot's
 // own, read off the declaration the insertion names.
-func (c *checker) insertedTree(owner *ir.Component, s *ir.SlotInst) *ir.Component {
+func (c *checker) insertedFamily(owner *ir.Component, s *ir.SlotInst) *ir.Component {
 	decl := c.entrySpec[s]
 	if decl == nil {
 		decl = s.Entry
@@ -5834,7 +6055,7 @@ func (c *checker) insertedTree(owner *ir.Component, s *ir.SlotInst) *ir.Componen
 	if decl == nil {
 		decl = ownerSlot(owner, s.Name)
 	}
-	return slotTree(owner, decl)
+	return slotFamily(owner, decl)
 }
 
 // errorEventName spells the payload type for a diagnostic, falling back to the

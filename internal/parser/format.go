@@ -56,9 +56,9 @@ func FormatType(te ast.TypeExpr) string {
 }
 
 // FormatEventSignature formats what follows an event's name in its
-// declaration, for documentation and hover: `T` for `@change T`, the
-// parenthesised list for `@pick(index int, label string)`, and nothing for a
-// bare `@tick`.
+// declaration, for documentation and hover: the parameter list, as
+// `(index int, label string)` for `@pick(index int, label string)`, and
+// nothing for a bare `@tick`.
 func FormatEventSignature(e ast.EventDecl) string {
 	var buf strings.Builder
 	f := newFormatter(&buf)
@@ -375,12 +375,13 @@ func (f *formatter) writeStructDef(s *ast.StructDef) {
 	body := takeHeaderComment(f, s.Body)
 	f.newline()
 	f.indent++
+	widths := f.fieldWidths(body)
 	for i := 0; i < len(body); i++ {
 		f.blankBeforeBodyItem(i, bodyItemLine(body[i]))
 		if f.writeBodyComment(body[i]) {
 			continue
 		}
-		f.writeStructBodyItem(body[i])
+		f.writeStructBodyItemPadded(body[i], widths[i])
 		if i+1 < len(body) {
 			if c, ok := body[i+1].(*ast.Comment); ok && c.Inline {
 				f.writeTrailing(c)
@@ -450,15 +451,55 @@ func (f *formatter) writeBodyComment(item any) bool {
 	return true
 }
 
+// fieldWidths is columnWidths for a struct body: a field's head is its names,
+// and a method or a blank line ends a run.
+func (f *formatter) fieldWidths(body []ast.StructBodyItem) []int {
+	out := make([]int, len(body))
+	start := 0
+	flush := func(end int) {
+		w := 0
+		for _, item := range body[start:end] {
+			if fd, ok := item.(*ast.StructField); ok && fd.Type != nil {
+				w = max(w, len(strings.Join(fd.Names, ", ")))
+			}
+		}
+		for i := start; i < end; i++ {
+			if fd, ok := body[i].(*ast.StructField); ok && fd.Type != nil {
+				out[i] = w
+			}
+		}
+		start = end
+	}
+	for i := range body {
+		if _, isFunc := body[i].(*ast.FuncDef); isFunc {
+			flush(i)
+			start = i + 1
+			continue
+		}
+		if i > start {
+			if line := bodyItemLine(body[i]); line > 0 && f.doc != nil && f.doc.BlankBefore(line) {
+				flush(i)
+			}
+		}
+	}
+	flush(len(body))
+	return out
+}
+
 func (f *formatter) writeStructBodyItem(item ast.StructBodyItem) {
+	f.writeStructBodyItemPadded(item, 0)
+}
+
+func (f *formatter) writeStructBodyItemPadded(item ast.StructBodyItem, width int) {
 	if a, ok := item.(ast.Attributed); ok {
 		f.writeAttrs(a.MacroAttrs())
 	}
 	switch it := item.(type) {
 	case *ast.StructField:
-		f.write(strings.Join(it.Names, ", "))
+		names := strings.Join(it.Names, ", ")
+		f.write(names)
 		if it.Type != nil {
-			f.write(" ")
+			f.write(strings.Repeat(" ", max(1, width-len(names)+1)))
 			f.writeType(it.Type)
 		}
 		if it.Default != nil {
@@ -926,7 +967,7 @@ func (f *formatter) writeArgs(args ast.ArgList) {
 				f.write(",")
 				f.newline()
 			}
-			f.writeArgOrHandler(a)
+			f.writeArgOrHandlerSpaced(a, true)
 		}
 		f.write(",")
 		f.newline()
@@ -942,11 +983,22 @@ func (f *formatter) writeArgs(args ast.ArgList) {
 }
 
 func (f *formatter) writeArgOrHandler(a ast.ArgOrEventHandler) {
+	f.writeArgOrHandlerSpaced(a, false)
+}
+
+// writeArgOrHandlerSpaced writes one argument. An argument on a line of its
+// own names its parameter as a field of a struct literal written across lines
+// does, `name = value`, and one in a list on one line keeps `name=value`.
+func (f *formatter) writeArgOrHandlerSpaced(a ast.ArgOrEventHandler, spaced bool) {
 	switch v := a.(type) {
 	case ast.Arg:
 		if v.Name != "" {
 			f.write(v.Name)
-			f.write("=")
+			if spaced {
+				f.write(" = ")
+			} else {
+				f.write("=")
+			}
 		}
 		f.writeExpr(v.Value)
 	case ast.EventHandler:
@@ -972,9 +1024,16 @@ func (f *formatter) writeParams(pl ast.ParamList) {
 	if pl.IsMultiline {
 		f.newline()
 		f.indent++
+		heads := make([]string, len(pl.Params))
+		lines := make([]int, len(pl.Params))
 		for i, p := range pl.Params {
-			f.blankBeforeBodyItem(i, leadLine(p.Pos.Line, p.Leading, p.Attrs))
-			f.writeParam(p, true)
+			heads[i] = alignedHead(p)
+			lines[i] = leadLine(p.Pos.Line, p.Leading, p.Attrs)
+		}
+		widths := f.columnWidths(heads, lines)
+		for i, p := range pl.Params {
+			f.blankBeforeBodyItem(i, lines[i])
+			f.writeParamPadded(p, true, widths[i])
 			f.write(",")
 			f.writeTrailing(p.Trailing)
 			f.newline()
@@ -991,17 +1050,18 @@ func (f *formatter) writeParams(pl ast.ParamList) {
 }
 
 func (f *formatter) writeParam(p ast.Param, multiline bool) {
+	f.writeParamPadded(p, multiline, 0)
+}
+
+// writeParamPadded writes a parameter with its name padded to width, which is
+// how a list written across lines lines its types up in a column.
+func (f *formatter) writeParamPadded(p ast.Param, multiline bool, width int) {
 	f.writeLeadingComments(p.Leading)
 	f.writeParamAttrs(p.Attrs, p.Pos, multiline)
-	if p.Bidirectional {
-		f.write(":")
-	}
-	if p.Const {
-		f.write("const ")
-	}
-	f.write(p.Name)
+	head := paramHead(p)
+	f.write(head)
 	if p.Type != nil {
-		f.write(" ")
+		f.write(strings.Repeat(" ", max(1, width-len(head)+1)))
 		f.writeType(p.Type)
 	}
 	if p.Default != nil {
@@ -1023,6 +1083,78 @@ func propComment(p ast.ParamOrEventDecl) *ast.Comment {
 	return nil
 }
 
+// marksInline reports whether any of a declaration's marks is written on the
+// declaration's own line, which writeParamAttrs decides for a list written
+// across lines.
+func marksInline(attrs []ast.MacroAttr, declPos ast.Pos) bool {
+	for _, a := range attrs {
+		if a.Pos.IsSet() && declPos.IsSet() && a.Pos.Line >= declPos.Line {
+			return true
+		}
+	}
+	return false
+}
+
+// alignedHead is paramHead for an item of a list written across lines, or
+// empty for one whose head does not start the line -- a mark written before
+// it on its line -- since padding it would line nothing up.
+func alignedHead(p ast.Param) string {
+	if p.Type == nil || marksInline(p.Attrs, p.Pos) {
+		return ""
+	}
+	return paramHead(p)
+}
+
+// paramHead is what a parameter writes before its type: the binding colon, a
+// `const`, and the name.
+func paramHead(p ast.Param) string {
+	head := p.Name
+	if p.Const {
+		head = "const " + head
+	}
+	if p.Bidirectional {
+		head = ":" + head
+	}
+	return head
+}
+
+// propHead is paramHead for a component prop. It is empty for an event, whose
+// parameters follow its name in parens and so take no part in lining types up.
+func propHead(p ast.ParamOrEventDecl) string {
+	if v, ok := p.(ast.Param); ok {
+		return alignedHead(v)
+	}
+	return ""
+}
+
+// columnWidths is, for each item of a list written across lines, the width its
+// head is padded to so the types after the heads line up: the widest head in
+// its run, a run being the items between two blank lines, as gofmt lines up a
+// struct's fields. An item with no head is 0 and is written as it is.
+func (f *formatter) columnWidths(heads []string, lines []int) []int {
+	out := make([]int, len(heads))
+	start := 0
+	flush := func(end int) {
+		w := 0
+		for _, h := range heads[start:end] {
+			w = max(w, len(h))
+		}
+		for i := start; i < end; i++ {
+			if heads[i] != "" {
+				out[i] = w
+			}
+		}
+		start = end
+	}
+	for i := 1; i < len(heads); i++ {
+		if lines[i] > 0 && f.doc != nil && f.doc.BlankBefore(lines[i]) {
+			flush(i)
+		}
+	}
+	flush(len(heads))
+	return out
+}
+
 // writeLeadingComments writes comments above whatever follows, one per line.
 func (f *formatter) writeLeadingComments(comments []*ast.Comment) {
 	for _, c := range comments {
@@ -1035,9 +1167,16 @@ func (f *formatter) writeProps(pl ast.PropList) {
 	if pl.IsMultiline {
 		f.newline()
 		f.indent++
+		heads := make([]string, len(pl.Props))
+		lines := make([]int, len(pl.Props))
 		for i, p := range pl.Props {
-			f.blankBeforeBodyItem(i, propLeadLine(p))
-			f.writePropOrEvent(p, true)
+			heads[i] = propHead(p)
+			lines[i] = propLeadLine(p)
+		}
+		widths := f.columnWidths(heads, lines)
+		for i, p := range pl.Props {
+			f.blankBeforeBodyItem(i, lines[i])
+			f.writePropOrEventPadded(p, true, widths[i])
 			f.write(",")
 			f.writeTrailing(propComment(p))
 			f.newline()
@@ -1054,23 +1193,23 @@ func (f *formatter) writeProps(pl ast.PropList) {
 }
 
 func (f *formatter) writePropOrEvent(p ast.ParamOrEventDecl, multiline bool) {
+	f.writePropOrEventPadded(p, multiline, 0)
+}
+
+func (f *formatter) writePropOrEventPadded(p ast.ParamOrEventDecl, multiline bool, width int) {
 	switch v := p.(type) {
 	case ast.Param:
-		f.writeParam(v, multiline)
+		f.writeParamPadded(v, multiline, width)
 	case ast.EventDecl:
 		f.writeLeadingComments(v.Leading)
 		f.writeParamAttrs(v.Attrs, v.Pos, multiline)
 		f.write("@")
 		f.write(v.Name)
-		if !v.HasParens {
-			if len(v.Params) == 1 {
-				f.write(" ")
-				f.writeType(v.Params[0].Type)
-			}
+		if !v.HasParens && len(v.Params.Params) == 0 {
 			return
 		}
 		f.write("(")
-		f.writeFuncTypeParams(v.Params)
+		f.writeParams(v.Params)
 		f.write(")")
 	}
 }

@@ -11,7 +11,7 @@ func TestOwnersReportsEveryKind(t *testing.T) {
 	pkgConst := &Var{Name: "pkgConst", IsConst: true}
 	compVar := &Var{Name: "compVar"}
 
-	comp := &Component{Name: "counter", Vars: []*Var{compVar}, Body: []Stmt{&Return{}}}
+	comp := &Component{Name: "counter", Vars: []*Var{compVar}, Stmts: []Stmt{&Return{}}}
 	pkg := &Package{
 		Vars:       []*Var{pkgVar},
 		Consts:     []*Var{pkgConst},

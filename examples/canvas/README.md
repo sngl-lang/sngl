@@ -30,7 +30,7 @@ Everything below comes from `sngl:ui/draw`, which the app imports as
 - `draw.circle(cx, cy, r, style)` — filled/stroked circle
 - `draw.ellipse(cx, cy, rx, ry, style)` — filled/stroked ellipse
 - `draw.line(x1, y1, x2, y2, style)` — stroked line
-- `draw.path(cmds, style)` — a path built from a `list<draw.PathCmd>`
+- `draw.path(style) { steps }` — a path built from the steps written as its children: `draw.moveTo(x, y)`, `draw.lineTo(x, y)`, `draw.bezierTo(cx1, cy1, cx2, cy2, x, y)`, `draw.arcTo(cx, cy, x, y, r)` and `draw.close()`
 - `draw.canvasText(x, y, content, style)` — drawn text
-- `draw.canvasImage(x, y, w, h, src)` — a drawn image
-- `draw.CanvasStyle` — struct with `fill`, `stroke`, `strokeWidth`, `lineCap`, `lineJoin`, `fontSize`, `fontFamily`
+- `draw.canvasImage(x, y, w, h) { source }` — an image drawn from any source a `ui.image` takes
+- `draw.Style` — struct with `fill`, `stroke`, `strokeWidth`, `lineCap`, `lineJoin`, `fontSize`, `fontFamily`

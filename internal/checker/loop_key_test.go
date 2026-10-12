@@ -52,7 +52,7 @@ component main node {
 		}
 	}
 	for _, c := range pkg.Components {
-		walk(c.Body)
+		walk(c.Stmts)
 	}
 	for _, name := range []string{"button", "text", "vbox"} {
 		if !got[name] {

@@ -39,7 +39,7 @@ func ModelFreeFuncs(pkg *ir.Package) map[string]bool {
 	for _, fn := range pkg.Funcs {
 		// A promoted handler is always a Model method: it is wired to a widget
 		// by name, and nothing calls it, so it never had to be in the set.
-		if fn.IsTest || fn.Receiver != "" || fn.Synthesized || componentFuncs[fn] || fn.LoweredFromEvent != "" {
+		if fn.IsTest || fn.IsMethod() || fn.Synthesized || componentFuncs[fn] || fn.Lowered.Event != "" {
 			continue
 		}
 		if isComputedSig(fn) || stateFuncs[fn] {
@@ -90,7 +90,7 @@ func ModelStateFuncs(pkg *ir.Package) map[*ir.Func]bool {
 func ModelParamFuncs(pkg *ir.Package) map[*ir.Func]bool {
 	out := map[*ir.Func]bool{}
 	for fn := range ModelStateFuncs(pkg) {
-		if fn.Receiver != "" && LiftsToFreeFunc(pkg, fn.Receiver) {
+		if fn.IsMethod() && LiftsToFreeFunc(pkg, fn.RecvName()) {
 			out[fn] = true
 		}
 	}
@@ -293,7 +293,7 @@ func InstanceCtorParam(prop string) string { return "__a_" + prop }
 // component built at run time, less comp's own, since a synthesized name may
 // be spelled the same in both and in comp's scope means comp's.
 func PageNodes(pkg *ir.Package, comp *ir.Component) map[string]bool {
-	own := ownerNames(comp.Vars, comp.Body, comp.Funcs)
+	own := ownerNames(comp.Vars, comp.Stmts, comp.Funcs)
 	out := map[string]bool{}
 	for _, o := range ir.Owners(pkg) {
 		if o.Comp != nil && o.Comp.RuntimeInstance {

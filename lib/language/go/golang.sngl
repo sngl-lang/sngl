@@ -1,10 +1,130 @@
 import . "sngl:macro"
 import ir "sngl:internal/ir"
-import http "sngl:remote/http"
 import build "sngl:build"
 import marks "sngl:internal/marks"
 import shapes "sngl:ui/draw"
 import gen "sngl:x/gen"
+import ui "sngl:ui"
+import family "sngl:family"
+
+// Go's keywords.
+const keywords = [
+    "break",
+    "case",
+    "chan",
+    "const",
+    "continue",
+    "default",
+    "defer",
+    "else",
+    "fallthrough",
+    "for",
+    "func",
+    "go",
+    "goto",
+    "if",
+    "import",
+    "interface",
+    "map",
+    "package",
+    "range",
+    "return",
+    "select",
+    "struct",
+    "switch",
+    "type",
+    "var",
+]
+
+// Go's predeclared identifiers. Each is a name a declaration may shadow, and
+// the emitted code calls them -- a parameter named `len` hides the builtin
+// `xs.length` becomes -- so the spec, not the emitter, says which they are.
+const predeclared = [
+    "any",
+    "bool",
+    "byte",
+    "comparable",
+    "complex64",
+    "complex128",
+    "error",
+    "float32",
+    "float64",
+    "int",
+    "int8",
+    "int16",
+    "int32",
+    "int64",
+    "rune",
+    "string",
+    "uint",
+    "uint8",
+    "uint16",
+    "uint32",
+    "uint64",
+    "uintptr",
+    "true",
+    "false",
+    "iota",
+    "nil",
+    "append",
+    "cap",
+    "clear",
+    "close",
+    "complex",
+    "copy",
+    "delete",
+    "imag",
+    "len",
+    "make",
+    "max",
+    "min",
+    "new",
+    "panic",
+    "print",
+    "println",
+    "real",
+    "recover",
+]
+
+// The packages the translator imports.
+const imports = [
+    "fmt",
+    "os",
+    "time",
+    "strings",
+    "strconv",
+    "math",
+    "slices",
+    "utf8",
+    "url",
+    "unsafe",
+    "sort",
+    "rand",
+    "i18n",
+    "snglcolor",
+    "http",
+    "context",
+    "sync",
+    "testing",
+    "testagent",
+]
+
+// What every Go target's code declares beside a program's: `m`, the Model's
+// receiver; `model` and `errorEvent`, which it exports as `Model` and
+// `ErrorEvent`; and the helpers it writes.
+const emitted = [
+    "m",
+    "model",
+    "errorEvent",
+    "snglSeq",
+    "snglSome",
+    "snglOptEq",
+    "snglParseInt",
+    "snglParseFloat",
+    "mustParseDate",
+    "mustParseTime",
+    "mustParseDateTime",
+]
 
 // The `go` node of a build directive: `output { go { bubbletea() } }`. Its
 // props are the build options every Go target accepts, and its slot is the
@@ -13,7 +133,7 @@ import gen "sngl:x/gen"
 // the goroutine that made it -- which on a UI target is the one drawing the
 // screen. Nor can it hold a typed lambda behind an interface surface. What it
 // does have is the goroutine passAsyncOffload moves that call onto, which is
-// what makes `async.spawn` sayable here and nowhere else.
+// what makes `async.start` sayable here and nowhere else.
 #[gen.can(
     toggle,
     lambda,
@@ -34,14 +154,23 @@ import gen "sngl:x/gen"
 component language(
     // Go toolchain version emitted in generated go.mod files. Unset takes the
     // host's own go.mod line, and 1.23 where there is none.
-    const goVersion string,
+    const goVersion     string,
     // Extra text appended verbatim to temp module go.mod files written by
     // platform test runners. Typical use: a `replace
     // duckfam.us/sngl => /path/to/repo` directive so generated
     // code that imports SNGL runtime packages (pkg/go/i18n, …) resolves
     // locally instead of via the public proxy.
-    const goModExtra string,
-    const platforms ...component build.platform,
+    const goModExtra    string,
+    // Names a program's declaration is renamed away from in generated Go: Go's
+    // keywords and predeclared identifiers, and what every Go target's code
+    // declares beside a program's.
+    const reservedWords list<string> = [
+        ...keywords,
+        ...predeclared,
+        ...imports,
+        ...emitted,
+    ],
+    const platforms     ...component build.platform,
 ) build.language {
     gen.run(@run(dir, args) {
         var cmd = [buildModule(dir, dir + ".app", goVersion, goModExtra)]
@@ -66,11 +195,6 @@ component language(
 #[marks.intrinsic("go.buildModule", build)]
 func buildModule(dir string, out string, goVersion string, goModExtra string) string
 
-// --- sngl:remote/http ---
-
-// The Go transport. `native` rather than a `go:` import, so the request package
-// is pulled in only by a build that actually fetches: an import at the top of
-// this file is resolved by every program built for Go.
 // Names the Go package-level identifier a declaration *is*. A thin spelling of
 // #[foreign(..., native)] in the language it is about, which is where a Go path
 // and a Go identifier belong — and which a package can now use on its own
@@ -134,16 +258,6 @@ enum NativeFlag {
     // does not: it is stripped from the parameters and the call site supplies
     // one.
     context
-}
-
-#[native("duckfam.us/sngl/pkg/go/remote/http", "http.Get", fails)]
-func httpGet(url string) http.Result
-
-// What sngl:remote/http declares and leaves to each target. An override rather
-// than an intrinsic: there is no string for a code generator to build here,
-// only a call to name.
-func http.get[language]() {
-    return httpGet(url)
 }
 
 // --- Drawing ---
@@ -218,6 +332,15 @@ func DrawContext.closePath()
 #[native(_canvasPkg, "canvas.Context.PaintPath", method)]
 func DrawContext.paintPath()
 
+#[native(_canvasPkg, "canvas.Context.Translate", method)]
+func DrawContext.translate(x float, y float)
+
+#[native(_canvasPkg, "canvas.Context.Scale", method)]
+func DrawContext.scale(x float, y float)
+
+#[native(_canvasPkg, "canvas.Context.ClipRect", method)]
+func DrawContext.clipRect(x float, y float, w float, h float)
+
 #[native(_canvasPkg, "canvas.Context.Text", method)]
 func DrawContext.text(x float, y float, content string)
 
@@ -231,23 +354,42 @@ func DrawContext.image(x float, y float, w float, h float, src string)
 // What a `@draw` handler is handed: the context to paint through, and the
 // coordinate space the shapes were placed in.
 struct DrawEvent {
-    ctx DrawContext
-    width int
+    ctx    DrawContext
+    width  int
     height int
 }
 
 #[marks.intrinsic("go:draw")]
-component draw(@draw DrawEvent) shapes.shape
+component draw(@draw(e DrawEvent)) shapes.shape
+
+// What a `drawSource` paints a carried or fetched image with: the context, and
+// the URL its source names.
+struct SourceEvent {
+    ctx DrawContext
+    url string
+}
+
+// The primitive a `canvasImage` paints its source through. `@url` paints an
+// image a URL names; a drawing is painted in place rather than as a picture,
+// its shapes between `@enter`, which maps the drawing's own space onto the box
+// and clips to it, and `@leave`. The size in their payload is the drawing's.
+#[marks.intrinsic("go:drawSource")]
+component drawSource(
+    @url(e SourceEvent),
+    @enter(e DrawEvent),
+    @leave(e DrawEvent),
+    source ...component family.one<ui.imageSource>,
+) shapes.shape
 
 // The style setters, written once rather than per shape. The context keeps a
 // pending style that the next primitive consumes, so this is the whole of
 // "apply a style" and it is a plain call sequence an override can skip.
-func applyStyle(ctx DrawContext, style shapes.CanvasStyle) {
+func applyStyle(ctx DrawContext, style shapes.Style) {
     ctx.setFill(style.fill.r, style.fill.g, style.fill.b, style.fill.a)
     ctx.setStroke(style.stroke.r, style.stroke.g, style.stroke.b, style.stroke.a)
     ctx.setStrokeWidth(style.strokeWidth)
     ctx.setFont(style.fontSize, style.fontFamily)
-    ctx.setLineStyle(style.lineCap, style.lineJoin)
+    ctx.setLineStyle(string(style.lineCap), string(style.lineJoin))
 }
 
 // The shapes, on the language axis: every Go target that draws with pixels
@@ -300,20 +442,20 @@ const component shapes.path[language] {
     draw(@draw(e) {
         e.ctx.save()
         applyStyle(e.ctx, style)
-        for var c = cmds {
-            if c.op == "moveTo" {
+        for var c = steps {
+            if c.op == shapes.PathOp.moveTo {
                 e.ctx.moveTo(c.x, c.y)
             }
-            if c.op == "lineTo" {
+            if c.op == shapes.PathOp.lineTo {
                 e.ctx.lineTo(c.x, c.y)
             }
-            if c.op == "bezierTo" {
+            if c.op == shapes.PathOp.bezierTo {
                 e.ctx.cubicTo(c.cx1, c.cy1, c.cx2, c.cy2, c.x, c.y)
             }
-            if c.op == "arcTo" {
+            if c.op == shapes.PathOp.arcTo {
                 e.ctx.arcTo(c.cx1, c.cy1, c.x, c.y, c.r)
             }
-            if c.op == "close" {
+            if c.op == shapes.PathOp.close {
                 e.ctx.closePath()
             }
         }
@@ -332,11 +474,24 @@ const component shapes.canvasText[language] {
 }
 
 const component shapes.canvasImage[language] {
-    draw(@draw(e) {
-        e.ctx.save()
-        e.ctx.image(x, y, w, h, src)
-        e.ctx.restore()
-    })
+    drawSource(
+        @url(e) {
+            e.ctx.save()
+            e.ctx.image(x, y, w, h, e.url)
+            e.ctx.restore()
+        },
+        @enter(e) {
+            e.ctx.save()
+            e.ctx.translate(x, y)
+            e.ctx.scale(w / float(e.width), h / float(e.height))
+            e.ctx.clipRect(0.0, 0.0, float(e.width), float(e.height))
+        },
+        @leave(e) {
+            e.ctx.restore()
+        },
+    ) {
+        src
+    }
 }
 
 // --- Channels ---
@@ -352,7 +507,7 @@ const component shapes.canvasImage[language] {
 // emits the bidirectional `chan T`, which Go will not assign a `<-chan T` to.
 // Closing that means two types, or a direction on this one; nothing here needs
 // it yet, and the first API that hands a channel out to be *stored* will.
-#[marks.builtin("chan")]
+#[marks.intrinsic("go:chan")]
 struct chan<T> {}
 
 // The element type comes from the argument rather than from a type argument,

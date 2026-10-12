@@ -42,17 +42,59 @@ type mark struct {
 // applyMarks resolves and runs the marks written on decl. sym is the IR the
 // checker has just built for it; every mark writes what it has to say there.
 //
-// Called from each registration site rather than from a pass over the
-// document, so a mark applies once, at the moment the declaration exists and
-// before anything reads what the mark says about it.
+// Called from each registration site, so a mark applies once and to the
+// declaration it was written on -- but during pass1's registration it runs
+// later, once every declaration of the package is registered (afterMarks):
+// a mark resolves its macro through the scope, and the macro may be a func
+// of this package that registers further down.
 func (c *checker) applyMarks(decl ast.Stmt, sym any) {
 	a, ok := decl.(ast.Attributed)
-	if !ok {
+	if !ok || len(a.MacroAttrs()) == 0 {
 		return
 	}
-	for _, attr := range a.MacroAttrs() {
-		c.applyMark(attr, a, sym, false)
+	c.afterMarks(func() {
+		for _, attr := range a.MacroAttrs() {
+			c.applyMark(attr, a, sym, false)
+		}
+	})
+}
+
+// afterMarks runs f once the marks registered ahead of it have run: at the
+// end of pass1's registration while that is under way, in the order queued,
+// and at once anywhere else. A check reading what a mark said about a
+// declaration is queued after the declaration's marks, which is all the
+// ordering it needs.
+func (c *checker) afterMarks(f func()) {
+	if c.pendingMarks == nil {
+		f()
+		return
 	}
+	*c.pendingMarks = append(*c.pendingMarks, pendingMark{c.doc, f})
+}
+
+// runPendingMarks runs what afterMarks queued and closes the queue, so every
+// later registrar marks as it goes. The file is restored per entry: a mark
+// resolves through the scope of the file it was written in, and the queue
+// spans every file of the package.
+func (c *checker) runPendingMarks() {
+	q := c.pendingMarks
+	c.pendingMarks = nil
+	if q == nil {
+		return
+	}
+	for _, m := range *q {
+		if m.doc != nil {
+			c.resumeFile(m.doc)
+		}
+		m.run()
+	}
+}
+
+// pendingMark is one declaration's marks, or a check reading them, held
+// until the package is registered.
+type pendingMark struct {
+	doc *ast.Document
+	run func()
 }
 
 // paramMarks are the marks that may be written in a component's parameter
@@ -67,9 +109,14 @@ var paramMarks = map[markKey]bool{
 // prop is the ir.Prop the checker has just built for it, which is what a mark
 // legal here writes to.
 func (c *checker) applyParamMarks(p ast.Param, prop *ir.Prop) {
-	for _, attr := range p.MacroAttrs() {
-		c.applyMark(attr, p, prop, true)
+	if len(p.MacroAttrs()) == 0 {
+		return
 	}
+	c.afterMarks(func() {
+		for _, attr := range p.MacroAttrs() {
+			c.applyMark(attr, p, prop, true)
+		}
+	})
 }
 
 func (c *checker) applyMark(attr ast.MacroAttr, decl markTarget, sym any, inParam bool) {
@@ -162,7 +209,7 @@ func (c *checker) macroFrom(attr ast.MacroAttr, sym ir.Symbol) (string, *ir.Func
 	if pkg := c.macroHome(fn); pkg != nil && pkg.Symbols != nil {
 		c.resolveMacroSig(pkg, fn)
 	}
-	return strings.TrimPrefix(fn.Pkg, "sngl:"), fn, true
+	return strings.TrimPrefix(fn.PkgPath(), "sngl:"), fn, true
 }
 
 // refuseParamMarks reports the marks written on a function or lambda
@@ -228,6 +275,14 @@ func (a markArgs) Has(name string) bool {
 func (a markArgs) String(name string) string {
 	if i := a.index(name); i >= 0 {
 		return a.vals[i].str
+	}
+	return ""
+}
+
+// Ident is the enum member an enum-typed parameter was given.
+func (a markArgs) Ident(name string) string {
+	if i := a.index(name); i >= 0 {
+		return a.vals[i].ident
 	}
 	return ""
 }
@@ -414,18 +469,18 @@ func macroImportHint(alias string) string {
 func pkgURIOf(pkg *ir.Package, alias string) string {
 	if pkg != nil {
 		for _, sd := range pkg.Structs {
-			if sd.Pkg != "" {
-				return sd.Pkg
+			if sd.PkgPath() != "" {
+				return sd.PkgPath()
 			}
 		}
 		for _, fn := range pkg.Funcs {
-			if fn.Pkg != "" {
-				return fn.Pkg
+			if fn.PkgPath() != "" {
+				return fn.PkgPath()
 			}
 		}
 		for _, m := range pkg.Macros {
-			if m.Pkg != "" {
-				return m.Pkg
+			if m.PkgPath() != "" {
+				return m.PkgPath()
 			}
 		}
 	}
@@ -434,19 +489,19 @@ func pkgURIOf(pkg *ir.Package, alias string) string {
 
 // macroHome is the package a macro was declared in, without re-entering a load.
 func (c *checker) macroHome(fn *ir.Func) *ir.Package {
-	if fn.Pkg == "" || fn.Pkg == c.libPkgName {
+	if fn.Pkg == nil || fn.PkgPath() == "" {
 		return c.declPkg()
 	}
-	return c.libPkg(strings.TrimPrefix(fn.Pkg, "sngl:"))
+	return fn.Pkg
 }
 
 // markConstValue resolves a package-level `const NAME = <expr>` for a mark
 // argument.
 //
-// From the declarations rather than from a scope, because a mark runs before
-// there is one to ask: the marks on a struct shell are applied in pass1's
-// first half, and consts are not registered until its second. The same reason
-// `ast.EvalString` never consults scope.
+// From the declarations rather than from a scope: a const's value is checked
+// after the marks run (checkPendingConstInits), since what an initializer
+// reads may be what a mark said, so the registered const has no value yet to
+// hand over. The same reason `ast.EvalString` never consults scope.
 //
 // Package-level only, and the first spec of that name wins. A duplicate is
 // `claimTopLevel`'s to report, and reporting it here as well would name the

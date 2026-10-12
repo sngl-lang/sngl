@@ -78,13 +78,13 @@ func declID(sym ir.Symbol, exact bool) (string, bool) {
 	var pkg string
 	switch d := sym.(type) {
 	case *ir.StructDef:
-		pkg = d.Pkg
+		pkg = d.PkgPath()
 	case *ir.EnumDef:
-		pkg = d.Pkg
+		pkg = d.PkgPath()
 	case *ir.UnitDef:
-		pkg = d.Pkg
+		pkg = d.PkgPath()
 	case *ir.Component:
-		pkg = d.Pkg
+		pkg = d.PkgPath()
 	default:
 		return "", false
 	}
@@ -143,7 +143,7 @@ func (c *checker) internAnonStruct(fields []*ir.StructField) *ir.StructDef {
 	}
 	sd := &ir.StructDef{
 		Name:   c.anonStructName(pkg, canon, sig),
-		Pkg:    c.libPkgName,
+		Pkg:    c.declPkg(),
 		Fields: canon,
 		Anon:   true,
 	}

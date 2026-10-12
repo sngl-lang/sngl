@@ -45,7 +45,7 @@ type Model struct {
 	visible__inst0 bool
 	visible__inst1 bool
 
-	app      *fynelayout.Toplevel
+	app__r0  *fynelayout.Toplevel
 	__n0     *fyne.Container
 	__n1     *widget.Label
 	__n2     *widget.Hyperlink
@@ -63,12 +63,12 @@ func New() *Model {
 	return m
 }
 
-func (m *Model) app_closed_handler() {
+func (m *Model) app__r0_closed_handler() {
 }
 
-func (m *Model) app_visible_handler(__visible bool) {
+func (m *Model) app__r0_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
-	m.app.SetVisible(m.visible__inst0)
+	m.app__r0.SetVisible(m.visible__inst0)
 }
 
 func (m *Model) settings_closed_handler() {
@@ -79,19 +79,19 @@ func (m *Model) settings_visible_handler(__visible bool) {
 	m.settings.SetVisible(m.visible__inst1)
 }
 
-// appClosed invokes the OnClosed callback on the #app widget; for tests.
-func (m *Model) appClosed() {
-	if m.app.OnClosed != nil {
-		m.app.OnClosed()
+// app__r0Closed invokes the OnClosed callback on the #app__r0 widget; for tests.
+func (m *Model) app__r0Closed() {
+	if m.app__r0.OnClosed != nil {
+		m.app__r0.OnClosed()
 	}
 }
 
-// appVisible invokes the OnVisible callback on the #app widget; for tests.
-func (m *Model) appVisible(__visible bool) {
-	if cb := m.app.OnVisible; cb != nil {
-		m.app.OnVisible = nil
-		cb(__visible)
-		m.app.OnVisible = cb
+// app__r0Visible invokes the OnVisible callback on the #app__r0 widget; for tests.
+func (m *Model) app__r0Visible(visible bool) {
+	if cb := m.app__r0.OnVisible; cb != nil {
+		m.app__r0.OnVisible = nil
+		cb(visible)
+		m.app__r0.OnVisible = cb
 	}
 }
 
@@ -103,10 +103,10 @@ func (m *Model) settingsClosed() {
 }
 
 // settingsVisible invokes the OnVisible callback on the #settings widget; for tests.
-func (m *Model) settingsVisible(__visible bool) {
+func (m *Model) settingsVisible(visible bool) {
 	if cb := m.settings.OnVisible; cb != nil {
 		m.settings.OnVisible = nil
-		cb(__visible)
+		cb(visible)
 		m.settings.OnVisible = cb
 	}
 }
@@ -130,22 +130,22 @@ func (m *Model) SetVisible__inst1(v bool) {
 // BuildUI creates the widget tree and returns the first window's content.
 func (m *Model) BuildUI() fyne.CanvasObject {
 	if m.__built {
-		return m.app.Container
+		return m.app__r0.Container
 	}
 	m.__built = true
-	m.app = fynelayout.NewToplevel()
-	m.app.SetTitle("App")
-	m.app.SetVisible(m.visible__inst0)
-	m.app.OnClosed = m.app_closed_handler
-	m.app.OnVisible = m.app_visible_handler
+	m.app__r0 = fynelayout.NewToplevel()
+	m.app__r0.SetTitle("App")
+	m.app__r0.SetVisible(m.visible__inst0)
+	m.app__r0.OnClosed = m.app__r0_closed_handler
+	m.app__r0.OnVisible = m.app__r0_visible_handler
 	m.__n0 = container.NewVBox()
 	m.__n1 = widget.NewLabel("")
 	m.__n1.SetText("App page")
 	m.__n0.Add(m.__n1)
 	m.__n2 = widget.NewHyperlink("", nil)
 	m.__n0.Add(m.__n2)
-	m.app.Add(m.__n0)
-	fynelayout.AppAttach(m.app)
+	m.app__r0.Add(m.__n0)
+	fynelayout.AppAttach(m.app__r0)
 	m.settings = fynelayout.NewToplevel()
 	m.settings.SetTitle("Settings")
 	m.settings.SetVisible(m.visible__inst1)
@@ -157,7 +157,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n3.Add(m.__n4)
 	m.settings.Add(m.__n3)
 	fynelayout.AppAttach(m.settings)
-	return m.app.Container
+	return m.app__r0.Container
 }
 
 func main() {
@@ -168,4 +168,4 @@ func main() {
 	_ = os.Stderr
 }
 -- run/go/fyne --
-pass sha256:06f8c1a1d3953789928e6945b47e9bd7
+pass sha256:9ead94a53b59bcb63a17e4d44aa74e34

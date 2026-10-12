@@ -27,7 +27,13 @@ type spreadField struct {
 // reads one this way -- a call, a component's props, a slot insertion, an
 // emit -- so what a spread means does not depend on where it is written.
 func (c *checker) expandSpread(sp *ast.SpreadExpr) (*spreadArg, bool) {
-	operand := c.checkExpr(sp.Operand)
+	return c.expandSpreadOf(sp, c.checkExpr(sp.Operand))
+}
+
+// expandSpreadOf is expandSpread with the operand already checked, for an
+// argument list that has to look at the operand's type first: a list spread
+// into a variadic parameter is not a struct's fields.
+func (c *checker) expandSpreadOf(sp *ast.SpreadExpr, operand ir.Expr) (*spreadArg, bool) {
 	fields, ok := spreadFieldsOf(operand)
 	if !ok {
 		got := "(nil)"

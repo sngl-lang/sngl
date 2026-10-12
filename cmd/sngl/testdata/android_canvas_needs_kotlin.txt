@@ -27,7 +27,7 @@ import draw "sngl:ui/draw"
 
 ui.window {
     draw.canvas(width=40px, height=20px) {
-        draw.rect(x=0.0, y=0.0, w=8.0, h=4.0, style=draw.CanvasStyle{fill=color{r=255}})
+        draw.rect(x=0.0, y=0.0, w=8.0, h=4.0, style=draw.Style{fill=color{r=255}})
     }
 }
 -- plain.sngl --

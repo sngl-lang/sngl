@@ -996,7 +996,7 @@ func (st *effectState) buildGroups() {
 		// created -- which at the effect's own position it need not have been.
 		switch {
 		case g.comp != nil:
-			g.comp.Body = append(g.comp.Body, callOf(g.settle))
+			g.comp.Stmts = append(g.comp.Stmts, callOf(g.settle))
 		default:
 			st.pkg.Body = append(st.pkg.Body, callOf(g.settle))
 		}
@@ -1204,7 +1204,7 @@ func callListPush(dst ir.Expr, v ir.Expr, elem *ir.Type) ir.Stmt {
 		Type: ir.TypVoid,
 		Func: &ir.Func{
 			Name:      "push",
-			Receiver:  "list",
+			Receiver:  ir.ListOf(ir.TypDyn),
 			Intrinsic: "list.push",
 			Params:    params,
 			Return:    ret,

@@ -24,7 +24,7 @@ stderr 'undefined: htlm'
 stderr 'is not a target identity'
 
 # Two implementations of one declaration for one target are two answers to a
-# question with one. The html platform package already implements sngl.badge.
+# question with one. The html platform package already implements sngl.divider.
 ! sngl check duplicate.sngl
 stderr 'already has an implementation for "html"'
 
@@ -122,13 +122,13 @@ import sngl "sngl:ui"
 import . "sngl:ui"
 import "sngl:platform/html"
 
-component sngl.badge[html.platform] {
-    html.span(textContent=value)
+component sngl.divider[html.platform] {
+    html.span(textContent=label)
 }
 
 component main root {
     window #w(title="t") {
-        badge(value="7")
+        divider(label="7")
     }
 }
 

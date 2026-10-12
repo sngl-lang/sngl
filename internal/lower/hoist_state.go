@@ -54,7 +54,7 @@ func applyHoistState(pkg *ir.Package, _ Features, _ Options) error {
 	pkg.Body = st.walk(po, pkg.Body, false, true)
 	for _, comp := range pkg.Components {
 		if comp != nil {
-			comp.Body = st.walk(st.componentOwner(comp), comp.Body, false, true)
+			comp.Stmts = st.walk(st.componentOwner(comp), comp.Stmts, false, true)
 		}
 	}
 	pkg.Components = append(pkg.Components, st.made...)
@@ -205,13 +205,13 @@ func (st *blockState) promote(o *stateOwner, stmts []ir.Stmt) []ir.Stmt {
 // wrap is the instantiation of a component synthesized for a block rendered
 // other than once, with the block as its body and the block's vars its own.
 func (st *blockState) wrap(o *stateOwner, stmts []ir.Stmt) ir.Stmt {
-	w := &ir.Component{Name: "__block_state" + strconv.Itoa(len(st.made)), Tree: treeOfStmts(stmts)}
+	w := &ir.Component{Name: "__block_state" + strconv.Itoa(len(st.made)), Family: treeOfStmts(stmts)}
 	st.made = append(st.made, w)
-	w.Body, w.Vars = promoteLocalVarsToVars(stmts, nil)
-	w.Body = st.walk(st.componentOwner(w), w.Body, false, true)
+	w.Stmts, w.Vars = promoteLocalVarsToVars(stmts, nil)
+	w.Stmts = st.walk(st.componentOwner(w), w.Stmts, false, true)
 
 	site := &ir.NodeInst{Name: w.Name, Component: w}
-	inside := declaredWithin(w.Body)
+	inside := declaredWithin(w.Stmts)
 	for _, v := range w.Vars {
 		inside[v] = true
 	}
@@ -280,8 +280,8 @@ func (st *blockState) wrap(o *stateOwner, stmts []ir.Stmt) ir.Stmt {
 func treeOfStmts(stmts []ir.Stmt) *ir.Component {
 	var tree *ir.Component
 	_ = ir.WalkStmts(stmts, func(s ir.Stmt) error {
-		if n, ok := s.(*ir.NodeInst); ok && n.Component != nil && n.Component.Tree != nil {
-			tree = n.Component.Tree
+		if n, ok := s.(*ir.NodeInst); ok && n.Component != nil && n.Component.Family != nil {
+			tree = n.Component.Family
 			return ir.SkipAll
 		}
 		return nil

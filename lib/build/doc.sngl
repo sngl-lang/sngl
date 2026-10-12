@@ -5,7 +5,7 @@
 // `component shape build.family` declares one, and a component joins it by
 // naming it in its return position, `component circle(…) shape`. A slot says
 // which family it accepts by naming one as its type. Families are declared
-// here, rather than in `sngl:tree`, because a family is the build's business:
+// here, rather than in `sngl:family`, because a family is the build's business:
 // it is what a target renders, and a target's support for one is an override
 // of it.
 //

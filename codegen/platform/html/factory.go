@@ -136,7 +136,7 @@ func (g *htmlGen) adoptElemDecl(comp *ir.Component) {
 			}
 		}
 	}
-	scan(comp.Body)
+	scan(comp.Stmts)
 	for _, fn := range comp.Funcs {
 		if fn != nil {
 			scan(fn.Block)
@@ -167,7 +167,7 @@ func factorySlotAnchors(comp *ir.Component) map[string]bool {
 			}
 		}
 	}
-	scan(comp.Body)
+	scan(comp.Stmts)
 	if len(anchored) == 0 {
 		return anchored
 	}
@@ -183,7 +183,7 @@ func factorySlotAnchors(comp *ir.Component) map[string]bool {
 			return nil
 		})
 	}
-	retarget(comp.Body)
+	retarget(comp.Stmts)
 	for _, fn := range comp.Funcs {
 		if fn != nil {
 			retarget(fn.Block)
@@ -302,7 +302,7 @@ func (g *htmlGen) emitComponentFactory(b *strings.Builder, comp *ir.Component) {
 	}
 
 	tr := g.newHTMLTranslator(jc)
-	body := codegen.WalkLowered(context.Background(), comp.Body, tr)
+	body := codegen.WalkLowered(context.Background(), comp.Stmts, tr)
 	topLevel := make(map[string]bool, len(tr.topLevel))
 	for _, id := range tr.topLevel {
 		topLevel[id] = true

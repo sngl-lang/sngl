@@ -19,48 +19,27 @@ import (
 // its identity, so there is no second one to disagree with it.
 //
 // As a value it is the identity PLATFORM and LANGUAGE are compared against:
-// its type is sngl:builtin's `platform` or `language` (targetValueType), so
+// its type is sngl:build's `platform` or `language` family (targetValueType), so
 // `PLATFORM == "html"` still does not type-check, and a misspelled target is
 // an unresolved name rather than a branch nobody takes.
 
-// typeTargetConsts gives PLATFORM and LANGUAGE their types. It runs after the
-// whole of lib/builtin is registered: the consts and the types they carry are
-// in different files (consts.sngl, types.sngl) and load order is not
-// guaranteed, so neither mark can fill the other in as it is applied.
-func (c *checker) typeTargetConsts() {
-	if c.platformConst != nil && c.platformType != nil {
-		c.platformConst.Type = c.platformType.SymType()
-	}
-	if c.languageConst != nil && c.languageType != nil {
-		c.languageConst.Type = c.languageType.SymType()
-	}
-}
-
 // targetValueType is the type a reference to a build-target node has where it
-// is read as a value: sngl:builtin's `platform` or `language`, the types
-// PLATFORM and LANGUAGE carry. Nil for any other symbol.
+// is read as a value: the family it is a member of, sngl:build's `platform` or
+// `language`, which PLATFORM and LANGUAGE are declared as. Nil for any other
+// symbol.
 func (c *checker) targetValueType(sym ir.Symbol) *ir.Type {
 	node, _, ok := ir.TargetNode(sym)
-	if !ok {
+	if !ok || node.Family == nil {
 		return nil
 	}
-	if ir.TargetTier(node.Tree) == ir.BuiltinLanguage {
-		if c.languageType != nil {
-			return c.languageType.SymType()
-		}
-		return nil
-	}
-	if c.platformType != nil {
-		return c.platformType.SymType()
-	}
-	return nil
+	return node.Family.SymType()
 }
 
 // targetTierMember is the word for a tier: the segment of a target package's
 // URI (`sngl:platform/html`), and what a message calls one. Its node is
 // conventionally named the same, but is found by its family (ir.TargetNodeOf).
 func targetTierMember(kind ir.BuiltinKind) string {
-	if kind == ir.BuiltinLanguage {
+	if kind == ir.BuiltinFamilyLanguage {
 		return "language"
 	}
 	return "platform"
@@ -131,7 +110,7 @@ func (c *checker) targetIdentity(pos ast.Pos, sym ir.Symbol, spelling string) (s
 		c.error(pos, "%s is not a target identity: an override names a target's build node, e.g. html.platform", spelling)
 		return "", ir.BuiltinNone, false
 	}
-	return name, ir.TargetTier(node.Tree), true
+	return name, ir.TargetTier(node.Family), true
 }
 
 // collectUserOverrides merges each `component X[target] { ... }` a program
@@ -200,7 +179,7 @@ func (c *checker) overrideSelection(decl *ast.ComponentDecl, base *ir.Component)
 			}
 		case ast.EventDecl:
 			name, pos = "@"+pd.Name, pd.Pos
-			if len(pd.Params) > 0 || pd.HasParens {
+			if len(pd.Params.Params) > 0 || pd.HasParens {
 				c.error(pos, "override %q selects event %q; its type belongs to the declaration being overridden", decl.Name, name)
 				ok = false
 				continue
@@ -277,8 +256,14 @@ type pendingFuncOverride struct {
 
 // collectFuncOverrides merges each `func f[target] { ... }` a program declares
 // into the function it names.
+//
+// Each in the file it was written in, whose imports its target names: read in
+// whichever file pass1 ended on, `[html.platform]` was undefined unless that
+// file happened to import html too.
 func (c *checker) collectFuncOverrides() {
+	defer c.saveFile()()
 	for _, decl := range c.userFuncOverrides {
+		c.enterFileOf(decl.Pos)
 		c.mergeFuncOverride(decl, nil, "")
 	}
 }
@@ -322,11 +307,11 @@ func (c *checker) mergeFuncOverride(decl *ast.FuncDef, base *ir.Func, libURI str
 		}
 	}
 	overrides := &base.PlatformOverrides
-	if kind == ir.BuiltinLanguage {
+	if kind == ir.BuiltinFamilyLanguage {
 		overrides = &base.LanguageOverrides
 	}
 	if *overrides == nil {
-		*overrides = map[string]ir.Body{}
+		*overrides = map[string]ir.Override{}
 	}
 	if _, dup := (*overrides)[plat]; dup {
 		c.error(decl.Pos, "function %q already has an implementation for %q", decl.Name, plat)
@@ -334,7 +319,7 @@ func (c *checker) mergeFuncOverride(decl *ast.FuncDef, base *ir.Func, libURI str
 	}
 	// Reserve the key so a duplicate is caught even when the body check
 	// contributes nothing, as addOverrideBody does for a component.
-	(*overrides)[plat] = ir.Body{}
+	(*overrides)[plat] = ir.Override{}
 	c.pendingFuncOverrides = append(c.pendingFuncOverrides, pendingFuncOverride{fn: base, platform: plat, kind: kind, decl: decl, libURI: libURI})
 }
 
@@ -447,10 +432,10 @@ func (c *checker) checkPendingFuncOverrides() {
 		}
 		po.fn.Block = nil
 		c.checkFuncBody(po.fn)
-		if po.kind == ir.BuiltinLanguage {
-			po.fn.LanguageOverrides[po.platform] = ir.Body{Stmts: po.fn.Block}
+		if po.kind == ir.BuiltinFamilyLanguage {
+			po.fn.LanguageOverrides[po.platform] = ir.Override{Stmts: po.fn.Block}
 		} else {
-			po.fn.PlatformOverrides[po.platform] = ir.Body{Stmts: po.fn.Block}
+			po.fn.PlatformOverrides[po.platform] = ir.Override{Stmts: po.fn.Block}
 		}
 		po.fn.AST = saved
 		po.fn.Block = savedBlock
@@ -494,13 +479,13 @@ func (c *checker) reportTargetNames() {
 	// A library's nodes first: a program's node that takes a shipped
 	// target's name is the one that has to change, so it is the one reported.
 	slices.SortStableFunc(nodes, func(a, b *ir.Component) int {
-		if (a.Pkg == "") != (b.Pkg == "") {
-			if a.Pkg == "" {
+		if (a.PkgPath() == "") != (b.PkgPath() == "") {
+			if a.PkgPath() == "" {
 				return 1
 			}
 			return -1
 		}
-		if n := cmp.Compare(a.Pkg, b.Pkg); n != 0 {
+		if n := cmp.Compare(a.PkgPath(), b.PkgPath()); n != 0 {
 			return n
 		}
 		if n := cmp.Compare(a.AST.Pos.File, b.AST.Pos.File); n != 0 {
@@ -513,11 +498,11 @@ func (c *checker) reportTargetNames() {
 	})
 	first := map[string]*ir.Component{}
 	for _, n := range nodes {
-		tierKind, name := ir.TargetTier(n.Tree), n.Gen.TargetName
+		tierKind, name := ir.TargetTier(n.Family), n.Gen.TargetName
 		tier := targetTierMember(tierKind)
-		if owner, kind, ok := targetTierName(strings.TrimPrefix(n.Pkg, "sngl:")); ok &&
+		if owner, kind, ok := targetTierName(strings.TrimPrefix(n.PkgPath(), "sngl:")); ok &&
 			kind == tierKind && owner != name {
-			c.error(n.AST.Pos, "%s names its %s %q: a target package's node carries the package's own name, %q", n.Pkg, tier, name, owner)
+			c.error(n.AST.Pos, "%s names its %s %q: a target package's node carries the package's own name, %q", n.PkgPath(), tier, name, owner)
 			continue
 		}
 		key := tier + "/" + name
@@ -545,15 +530,15 @@ func (c *checker) reportEmitterPlacement() {
 	allowed := map[*ir.NodeInst]bool{}
 	var bodies [][]ir.Stmt
 	for _, comp := range c.pkg.Components {
-		bodies = append(bodies, comp.Body)
-		for _, overrides := range []map[string]ir.Body{comp.PlatformOverrides, comp.LanguageOverrides} {
+		bodies = append(bodies, comp.Stmts)
+		for _, overrides := range []map[string]ir.Override{comp.PlatformOverrides, comp.LanguageOverrides} {
 			for _, target := range slices.Sorted(maps.Keys(overrides)) {
 				body := overrides[target]
 				want := ir.BuiltinGenNode
 				if comp.IsFamily() {
 					want = ir.BuiltinGenEmit
 				}
-				if ni := soleEmitterNode(body, want); ni != nil {
+				if ni := soleEmitterNode(body.Body, want); ni != nil {
 					allowed[ni] = true
 				} else if comp.IsFamily() && comp.AST != nil {
 					c.error(comp.AST.Pos, "the %s family's override for %s is a gen.emit and nothing else: a family is never rendered, so nothing else in it would be read", comp.Name, target)

@@ -69,9 +69,9 @@ const func optionRows(opts list<docs.OptionDoc>) => opts.map(func(o docs.OptionD
 
 const func propRows(props list<docs.ComponentProp>) => props.map(func(p docs.ComponentProp) => [p.name, p.type, p.doc])
 
-const func slotRows(slots list<docs.ComponentSlot>) => slots.map(func(sl docs.ComponentSlot) => [sl.name, sl.type])
+const func slotRows(slots list<docs.ComponentSlot>) => slots.map(func(sl docs.ComponentSlot) => [sl.name, sl.type, sl.doc])
 
-const func eventRows(events list<docs.ComponentEvent>) => events.map(func(e docs.ComponentEvent) => [e.name, e.payloadType])
+const func eventRows(events list<docs.ComponentEvent>) => events.map(func(e docs.ComponentEvent) => [e.name, e.payloadType, e.doc])
 
 component NavSidebar(currentHref = "") ui.node {
     docui.Sidebar(homeHref="/index.html", logo=logo) {
@@ -105,45 +105,51 @@ component PlatformCarousel() ui.node {
     })
 
     ui.vbox(style={gap=16px, alignItems=center, paddingY=32px}) {
-        ui.stack {
-            if active == 0 {
-                ui.image(
-                    src=screenshotWeb,
-                    alt="SNGL Todo App on Web",
-                    fit=contain,
-                    style={maxWidth=800px, maxHeight=500px, borderRadius=8px, width=100pct},
-                )
-            }
-            if active == 1 {
-                ui.image(
-                    src=screenshotTerminal,
-                    alt="SNGL Todo App in Terminal",
-                    fit=contain,
-                    style={maxWidth=800px, maxHeight=500px, borderRadius=8px, width=100pct},
-                )
-            }
-            if active == 2 {
-                ui.image(
-                    src=screenshotDesktop,
-                    alt="SNGL Todo App on Desktop",
-                    fit=contain,
-                    style={maxWidth=800px, maxHeight=500px, borderRadius=8px, width=100pct},
-                )
-            }
-            if active == 3 {
-                ui.image(
-                    src=screenshotAndroid,
-                    alt="SNGL Todo App on Android",
-                    fit=contain,
-                    style={maxWidth=800px, maxHeight=500px, borderRadius=8px, width=100pct},
-                )
+        html.div(class="platform-carousel") {
+            ui.stack {
+                if active == 0 {
+                    ui.image(
+                        alt = "SNGL Todo App on Web",
+                        fit = contain,
+                        style = {maxWidth=800px, maxHeight=500px, borderRadius=8px},
+                    ) {
+                        ui.file(path=screenshotWeb)
+                    }
+                }
+                if active == 1 {
+                    ui.image(
+                        alt = "SNGL Todo App in Terminal",
+                        fit = contain,
+                        style = {maxWidth=800px, maxHeight=500px, borderRadius=8px},
+                    ) {
+                        ui.file(path=screenshotTerminal)
+                    }
+                }
+                if active == 2 {
+                    ui.image(
+                        alt = "SNGL Todo App on Desktop",
+                        fit = contain,
+                        style = {maxWidth=800px, maxHeight=500px, borderRadius=8px},
+                    ) {
+                        ui.file(path=screenshotDesktop)
+                    }
+                }
+                if active == 3 {
+                    ui.image(
+                        alt = "SNGL Todo App on Android",
+                        fit = contain,
+                        style = {maxWidth=800px, maxHeight=500px, borderRadius=8px},
+                    ) {
+                        ui.file(path=screenshotAndroid)
+                    }
+                }
             }
         }
         ui.hbox(style={gap=8px}) {
             ui.button(
-                text="Web",
+                text = "Web",
                 @click { active = 0 },
-                style={
+                style = {
                     paddingX = 20px,
                     borderRadius = 20px,
                     background = active == 0 ? #2196f3 : #f5f5f5,
@@ -151,9 +157,9 @@ component PlatformCarousel() ui.node {
                 },
             )
             ui.button(
-                text="Terminal",
+                text = "Terminal",
                 @click { active = 1 },
-                style={
+                style = {
                     paddingX = 20px,
                     borderRadius = 20px,
                     background = active == 1 ? #2196f3 : #f5f5f5,
@@ -161,9 +167,9 @@ component PlatformCarousel() ui.node {
                 },
             )
             ui.button(
-                text="Desktop",
+                text = "Desktop",
                 @click { active = 2 },
-                style={
+                style = {
                     paddingX = 20px,
                     borderRadius = 20px,
                     background = active == 2 ? #2196f3 : #f5f5f5,
@@ -171,9 +177,9 @@ component PlatformCarousel() ui.node {
                 },
             )
             ui.button(
-                text="Android",
+                text = "Android",
                 @click { active = 3 },
-                style={
+                style = {
                     paddingX = 20px,
                     borderRadius = 20px,
                     background = active == 3 ? #2196f3 : #f5f5f5,
@@ -197,8 +203,8 @@ component PageLayout(title = "", currentHref = "", children ...component) ui.nod
                 html.footer(class="site-footer") {
                     // docsgen replaces the year marker with the commit's year.
                     html.span(
-                        class="copyright",
-                        innerHTML="&copy; <!-- sngl:year --> Jonathan Duck. All rights reserved.",
+                        class = "copyright",
+                        innerHTML = "&copy; <!-- sngl:year --> Jonathan Duck. All rights reserved.",
                     )
                     html.span(class="footer-meta") {
                         html.a(href="https://github.com/sngl-lang/sngl", innerText="Source")
@@ -315,7 +321,10 @@ component TutorialContent() ui.node {
 // root family so they read as one declaration. Nothing renders it until
 // `site()` at the end of the file.
 component site() root {
-    ui.window(title=pages.current.title, favicon=logo) {
+    ui.window(title=pages.current.title) {
+        component favicon {
+            ui.file(path=logo)
+        }
         nav.stack #pages {
             // Components — the starter set, in reading order. Everything else is one
             // click on, in the package the component belongs to.
@@ -365,11 +374,23 @@ component site() root {
                         }
 
                         markup.heading2 { markup.text(value="Properties") }
-                        ui.table(columns=["Name", "Type", "Description"], rows=propRows(comp.props))
+                        ui.table(columns=["Name", "Type", "Description"]) {
+                            for var r = propRows(comp.props) {
+                                ui.tableRow(cells=r)
+                            }
+                        }
                         markup.heading2 { markup.text(value="Slots") }
-                        ui.table(columns=["Name", "Type"], rows=slotRows(comp.slots))
+                        ui.table(columns=["Name", "Type", "Description"]) {
+                            for var r = slotRows(comp.slots) {
+                                ui.tableRow(cells=r)
+                            }
+                        }
                         markup.heading2 { markup.text(value="Events") }
-                        ui.table(columns=["Name", "Payload Type"], rows=eventRows(comp.events))
+                        ui.table(columns=["Name", "Payload Type", "Description"]) {
+                            for var r = eventRows(comp.events) {
+                                ui.tableRow(cells=r)
+                            }
+                        }
                         markup.paragraph { markup.text(value="Children: " + comp.children) }
                     }
                 }
@@ -402,17 +423,29 @@ component site() root {
 
                     markup.heading2 { markup.text(value="Global Options") }
                     md.document(source="Declared by the standard library and set on `output` itself; accepted by every target.")
-                    ui.table(columns=["Name", "Type", "Description"], rows=optionRows(targets.globalOptions))
+                    ui.table(columns=["Name", "Type", "Description"]) {
+                        for var r = optionRows(targets.globalOptions) {
+                            ui.tableRow(cells=r)
+                        }
+                    }
 
                     markup.heading2 { markup.text(value="Capabilities") }
-                    ui.table(columns=targets.platformMatrix.columns, rows=targets.platformMatrix.rows)
+                    ui.table(columns=targets.platformMatrix.columns) {
+                        for var r = targets.platformMatrix.rows {
+                            ui.tableRow(cells=r)
+                        }
+                    }
 
                     for var p = targets.platforms {
                         markup.heading3 { markup.text(value=p.name) }
                         markup.paragraph { markup.text(value=p.doc) }
                         markup.paragraph { markup.text(value="Supported languages: " + p.languages.join(", ")) }
                         markup.heading4 { markup.text(value="Options") }
-                        ui.table(columns=["Name", "Type", "Description"], rows=optionRows(p.options))
+                        ui.table(columns=["Name", "Type", "Description"]) {
+                            for var r = optionRows(p.options) {
+                                ui.tableRow(cells=r)
+                            }
+                        }
                     }
                 }
             }
@@ -423,13 +456,21 @@ component site() root {
                     md.document(source="A language decides what code to emit. The matrix below shows which optional capabilities each language implements; each section documents its options, which a program sets as props on the target in its `output` block, or `--opt key=value` sets from the command line.")
 
                     markup.heading2 { markup.text(value="Capabilities") }
-                    ui.table(columns=targets.languageMatrix.columns, rows=targets.languageMatrix.rows)
+                    ui.table(columns=targets.languageMatrix.columns) {
+                        for var r = targets.languageMatrix.rows {
+                            ui.tableRow(cells=r)
+                        }
+                    }
 
                     for var l = targets.languages {
                         markup.heading3 { markup.text(value=l.name) }
                         markup.paragraph { markup.text(value=l.doc) }
                         markup.heading4 { markup.text(value="Options") }
-                        ui.table(columns=["Name", "Type", "Description"], rows=optionRows(l.options))
+                        ui.table(columns=["Name", "Type", "Description"]) {
+                            for var r = optionRows(l.options) {
+                                ui.tableRow(cells=r)
+                            }
+                        }
                     }
                 }
             }

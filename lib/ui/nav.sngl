@@ -1,96 +1,160 @@
+// Where a followed link opens: in place of the current view, or in a new
+// window.
+enum LinkTarget { self, blank }
+
 // Navigational hyperlink. `href` is the destination — an external
 // URL, an in-app route, or a file path depending on the platform.
-// `target` ("self" or "blank") controls whether navigation replaces
+// `target` controls whether navigation replaces
 // the current view or opens a new window. `@click` runs before
 // navigation and can short-circuit it by raising an error.
 component link(
-    style Style,
-    href string,
-    text string,
-    target string,
-    disabled bool,
+    text      string,
+    href      string,
+    target    LinkTarget = LinkTarget.self,
+    disabled  bool = false,
     focusable bool = true,
-    @click ClickEvent,
-) node {}
+    style     Style = Style{},
+    @click(),
+) node
 
 component _example_link node {
     hbox(style={gap=16px, padding=16px}) {
         link(href="https://example.com", text="Example Site")
-        link(href="https://example.com", text="New Tab", target="blank")
+        link(href="https://example.com", text="New Tab", target=blank)
     }
 }
 
-// Tabbed navigation. `items` labels each tab; `selected` is the
-// 0-based index of the active tab and is two-way bound. Children of
-// `tabs` are the panels: one per item, in the same order. `variant`
-// styles the tab strip ("underline", "pills"); `@change` fires with
-// the newly selected index.
-component tabs(
-    style Style,
-    items list<string>,
-    selected int,
-    variant string,
-    @change SelectEvent,
-    panels ...component,
-) node {}
+// How a tab strip marks the selected tab.
+enum TabsVariant { underline, pills }
 
-component _example_tabs node {
-    var selected = 0
-    vbox(style={padding=16px}) {
-        tabs(items=["Overview", "Details", "Settings"], selected=selected) {
-            text(value="Overview content")
-            text(value="Detail content")
-            text(value="Settings content")
+// One tab of a `tabs`: data, since it names itself as its family, so the tabs
+// read their tabs as a list rather than rendering them. What it is written
+// with is its panel, shown while it is the selected tab.
+component tab(
+    label    string,       // what the tab shows in the strip
+    disabled bool = false, // whether it can be chosen
+    // The panel: shown while this tab is selected.
+    content  ...component node,
+) tab
+
+// Tabbed navigation. Each tab is a `tab` written as a child -- under an `if`
+// or a `for` where the list depends on something -- and the panel shown is
+// what the selected one was written with. `selected` is the 0-based index of
+// the selected tab and is two-way bound; `@change` fires with the index the
+// user chose. `variant` styles the tab strip, where a target draws one of its
+// own.
+component tabs(
+    :selected int,
+    variant   TabsVariant = TabsVariant.underline,
+    style     Style = Style{},
+    @change(index int),
+    // The tabs, in the order the strip shows them.
+    items     ...component tab,
+) node {
+    vbox(style={...style}) {
+        hbox(style={gap=4px}) {
+            for var k, t = items {
+                button(
+                    text = t.label,
+                    disabled = t.disabled,
+                    style = {fontWeight=k == selected ? FontWeight.bold : FontWeight.normal},
+                    @click {
+                        selected = k
+                        change(k)
+                    },
+                )
+            }
+        }
+        for var k, t = items {
+            if k == selected {
+                t.content
+            }
         }
     }
 }
 
-// Context or dropdown menu. `items` is the list of entry labels;
-// `open` is two-way bound visibility. `@select` fires with the chosen
-// item, `@close` when the menu dismisses without selection (click
-// outside, Escape).
+component _example_tabs node {
+    var selected = 0
+    vbox(style={padding=16px}) {
+        tabs(:selected=selected) {
+            tab(label="Overview") {
+                text(value="Overview content")
+            }
+            tab(label="Details") {
+                text(value="Detail content")
+            }
+            tab(label="Settings", disabled=true) {
+                text(value="Settings content")
+            }
+        }
+    }
+}
+
+// One entry of a menu or a menu bar: data, since it names itself as its
+// family, so the menu reads its entries as a list rather than rendering them.
+// `@select` fires when the user picks it; the entries under it are its
+// submenu.
+component menuItem(
+    label    string,       // what the entry shows
+    disabled bool = false, // shown, but cannot be picked
+    @select(),             // the user picked this entry
+    // The entries of this one's submenu, in order.
+    children ...component menuItem,
+) menuItem
+
+// Context or dropdown menu. Its entries are written as its children, each a
+// `menuItem` carrying its own `@select`. `open` is its visibility. `@close`
+// fires when the menu dismisses without a selection (click outside, Escape).
 component menu(
-    style Style,
-    items list<string>,
-    open bool,
-    @select MenuEvent,
-    @close DismissEvent,
-) node {}
+    style Style = Style{},
+    open  bool = false,
+    @close(),
+    // The entries, in order.
+    items ...component menuItem,
+) node
 
 component _example_menu node {
     var showMenu = false
+    var picked = ""
     vbox(style={padding=16px}) {
         button(text="Show Menu", @click { showMenu = true })
-        menu(items=["Cut", "Copy", "Paste"], open=showMenu)
+        menu(open=showMenu) {
+            menuItem(label="Cut", @select { picked = "Cut" })
+            menuItem(label="Copy", @select { picked = "Copy" })
+            menuItem(label="Paste", disabled=true)
+        }
     }
 }
 
-// Horizontal menu bar — typically at the top of a window on desktop.
-// Each entry in `items` is rendered as a top-level menu title;
-// sub-menu items are provided by the host platform's menu
-// integration. `@select` fires with the activated menu path.
+// Horizontal menu bar — typically at the top of a window on desktop. Its
+// top-level entries are written as its children, each a `menuItem` whose own
+// children are its menu.
 component menubar(
-    style Style,
-    items list<string>,
-    @select MenuEvent,
-) node {}
+    style Style = Style{},
+    // The top-level entries, in order.
+    items ...component menuItem,
+) node
 
 component _example_menubar node {
     vbox(style={padding=16px}) {
-        menubar(items=["File", "Edit", "View", "Help"])
+        menubar {
+            menuItem(label="File") {
+                menuItem(label="Open")
+                menuItem(label="Save")
+            }
+            menuItem(label="Edit")
+            menuItem(label="View")
+            menuItem(label="Help")
+        }
     }
 }
 
-// Horizontal bar of action buttons. `items` populates the default
-// buttons; nesting children lets you build custom toolbar contents
-// (mix of buttons, separators, spacers). `@select` fires when an
-// item from `items` is activated.
+// Horizontal bar of controls: its children, a mix of buttons, separators and
+// spacers, each answering for itself.
 component toolbar(
-    style Style,
-    items list<string>,
-    @select MenuEvent,
+    style    Style = Style{},
     controls ...component,
-) node {}
+) node
 
 component _example_toolbar node {
     vbox(style={padding=16px}) {

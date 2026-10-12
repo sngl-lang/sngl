@@ -76,7 +76,7 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { d__inst0: 2, visible__inst1: true };
+  var state = { d__inst0: 2, visible__inst0: true };
   function __cf_chain(props) {
     const __root = document.createElement("div");
     __root.style.display = "contents";
@@ -183,4 +183,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:771e3b152db7fc4cd0f6ddbe0c9918d1
+pass sha256:1a9a7c3b57cc5307ee8679965d46b728

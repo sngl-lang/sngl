@@ -1,13 +1,13 @@
-# A build target is named by a value of its own type, not by a string:
-# `platform` and `language` are declared in lib/builtin, and each registered
-# target carries one const of that type in its own package. PLATFORM and
-# LANGUAGE are typed, so a target name cannot be misspelled into a branch that
-# is silently never taken.
+# A build target is named by a value of its family, not by a string: each
+# target package's node (`html.platform`) is a member of sngl:build's
+# `platform` or `language` family, and PLATFORM and LANGUAGE are declared as
+# values of those families, so a target name cannot be misspelled into a branch
+# that is silently never taken.
 
 # The comparison folds, and the branch not taken is removed. This needs a real
 # build target, which is why it is here and not a testdata fixture: the
-# optimize and parser harnesses register no platforms, so a target's identity
-# const does not exist for them to fold.
+# optimize and parser harnesses register no platforms, so a target's node
+# does not exist for them to fold.
 sngl generate --platform bubbletea --lang go -o out_bt gate.sngl
 grep 'always' out_bt/model.go
 ! grep 'html-only' out_bt/model.go
@@ -22,7 +22,7 @@ grep 'html-only' out_html/index.html
 ! sngl check string_compare.sngl
 stderr 'operator == not defined for platform and string'
 
-# An unregistered target has no package and so no identity const to name.
+# An unregistered target has no package and so no node to name.
 ! sngl check unknown_target.sngl
 stderr 'undefined: htlm'
 
@@ -40,9 +40,7 @@ stderr 'operator == not defined for platform and element'
 
 # A qualified lookup stops at the last package. It used to walk on into the
 # scope every ambient declaration lives in, so `html.color` answered with the
-# built-in color type -- and `html.platform` with the built-in platform type
-# rather than with html's own identity const, which is how the fold above
-# stopped happening.
+# built-in color type.
 ! sngl check ambient_leak.sngl
 stderr 'unknown type "color" in namespace "html"'
 

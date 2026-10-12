@@ -31,7 +31,7 @@ component Dot(r float) node {
 
     vbox {
         draw.canvas(width=16px, height=16px) {
-            draw.circle(cx=8, cy=8, r=big ? r * 2 : r, style=draw.CanvasStyle{fill=color{r=255, a=255}})
+            draw.circle(cx=8, cy=8, r=big ? r * 2 : r, style=draw.Style{fill=color{r=255, a=255}})
         }
         button(text="grow", @click { big = !big })
     }
@@ -66,12 +66,10 @@ import (
 type Measurement struct {
 	Px  float64
 	Em  float64
-	Vw  float64
-	Vh  float64
-	Pct float64
+	Rem float64
 }
 
-type CanvasStyle struct {
+type Style struct {
 	Fill        snglcolor.Color
 	Stroke      snglcolor.Color
 	StrokeWidth float64
@@ -81,22 +79,11 @@ type CanvasStyle struct {
 	FontFamily  string
 }
 
-type PathCmd struct {
-	Op  string
-	X   float64
-	Y   float64
-	Cx1 float64
-	Cy1 float64
-	Cx2 float64
-	Cy2 float64
-	R   float64
-}
-
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
 	sizes               []float64
 	big__inst0          map[string]bool
-	visible__inst1      bool
+	visible__inst0      bool
 	__focusID           int
 	__focusLoop0_cursor int
 
@@ -108,7 +95,7 @@ func New() Model {
 	m := Model{}
 	m.sizes = []float64{1.0, 6.0}
 	m.big__inst0 = map[string]bool{}
-	m.visible__inst1 = true
+	m.visible__inst0 = true
 	m.__focusID = 0
 	m.__focusLoop0_cursor = 0
 	return m
@@ -142,7 +129,7 @@ func (m Model) __canvasTransmit() tea.Cmd {
 		__canvasRaster0 := func() image.Image {
 			ctx := _canvasSurface0At(__canvasAt0).Begin(16, 16, 0, 0, "")
 			ctx.Save()
-			ApplyStyle(ctx, CanvasStyle{Fill: snglcolor.Color{R: 255, A: 255, G: 0, B: 0}, Stroke: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, StrokeWidth: 1.0, LineCap: "butt", LineJoin: "miter", FontSize: 16.0, FontFamily: "sans-serif"})
+			ApplyStyle(ctx, Style{Fill: snglcolor.Color{R: 255, A: 255, G: 0, B: 0}, Stroke: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, StrokeWidth: 1.0, LineCap: "butt", LineJoin: "miter", FontSize: 16.0, FontFamily: "sans-serif"})
 			var __lt0 float64
 			if func() bool {
 				if __v, __ok := m.big__inst0[fmt.Sprint(__copy0)]; __ok {
@@ -166,7 +153,7 @@ func (m Model) __canvasTransmit() tea.Cmd {
 	return tea.Raw(__ctb.String())
 }
 
-func ApplyStyle(ctx *snglcanvas.Context, style CanvasStyle) {
+func ApplyStyle(ctx *snglcanvas.Context, style Style) {
 	ctx.SetFill(style.Fill.R, style.Fill.G, style.Fill.B, style.Fill.A)
 	ctx.SetStroke(style.Stroke.R, style.Stroke.G, style.Stroke.B, style.Stroke.A)
 	ctx.SetStrokeWidth(style.StrokeWidth)
@@ -236,19 +223,19 @@ func SetBig__inst0Cmd(v map[string]bool) tea.Cmd {
 	return func() tea.Msg { return setBig__inst0Msg{value: v} }
 }
 
-func (m Model) Visible__inst1() bool {
-	return m.visible__inst1
+func (m Model) Visible__inst0() bool {
+	return m.visible__inst0
 }
 
-func (m Model) SetVisible__inst1(v bool) Model {
-	m.visible__inst1 = v
+func (m Model) SetVisible__inst0(v bool) Model {
+	m.visible__inst0 = v
 	return m
 }
 
-type setVisible__inst1Msg struct{ value bool }
+type setVisible__inst0Msg struct{ value bool }
 
-func SetVisible__inst1Cmd(v bool) tea.Cmd {
-	return func() tea.Msg { return setVisible__inst1Msg{value: v} }
+func SetVisible__inst0Cmd(v bool) tea.Cmd {
+	return func() tea.Msg { return setVisible__inst0Msg{value: v} }
 }
 
 func (m Model) Init() tea.Cmd {
@@ -264,18 +251,18 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m = m.SetSizes(msg.value)
 	case setBig__inst0Msg:
 		m = m.SetBig__inst0(msg.value)
-	case setVisible__inst1Msg:
-		m = m.SetVisible__inst1(msg.value)
+	case setVisible__inst0Msg:
+		m = m.SetVisible__inst0(msg.value)
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
 	case tea.KeyPressMsg:
 		switch {
 		case msg.Code == 'c' && msg.Mod == tea.ModCtrl:
-			if m.visible__inst1 {
-				m.visible__inst1 = false
+			if m.visible__inst0 {
+				m.visible__inst0 = false
 			}
-			if !(m.visible__inst1) {
+			if !(m.visible__inst0) {
 				return m, tea.Quit
 			}
 			return m, nil
@@ -316,7 +303,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m Model) View() tea.View {
 	var content string
-	if m.visible__inst1 {
+	if m.visible__inst0 {
 		var contentChildren []string
 		var content_0 string
 		__focusPos0 := 0
@@ -335,7 +322,7 @@ func (m Model) View() tea.View {
 			__canvasRaster0 := func() image.Image {
 				ctx := _canvasSurface0At(__canvasAt0).Begin(16, 16, 0, 0, "")
 				ctx.Save()
-				ApplyStyle(ctx, CanvasStyle{Fill: snglcolor.Color{R: 255, A: 255, G: 0, B: 0}, Stroke: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, StrokeWidth: 1.0, LineCap: "butt", LineJoin: "miter", FontSize: 16.0, FontFamily: "sans-serif"})
+				ApplyStyle(ctx, Style{Fill: snglcolor.Color{R: 255, A: 255, G: 0, B: 0}, Stroke: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, StrokeWidth: 1.0, LineCap: "butt", LineJoin: "miter", FontSize: 16.0, FontFamily: "sans-serif"})
 				var __lt0 float64
 				if func() bool {
 					if __v, __ok := m.big__inst0[fmt.Sprint(__copy0)]; __ok {
@@ -432,8 +419,8 @@ body { font-family: system-ui, sans-serif; }
     let __n3 = document.createElement("div");
     __n3.setAttribute("style", "display:flex;flex-direction:column");
     let __n4 = document.createElement("canvas");
-    __n4.setAttribute("width", { px: 16, em: 0, vw: 0, vh: 0, pct: 0 });
-    __n4.setAttribute("height", { px: 16, em: 0, vw: 0, vh: 0, pct: 0 });
+    __n4.setAttribute("width", 16);
+    __n4.setAttribute("height", 16);
     __n3.appendChild(__n4);
     let __n5 = document.createElement("button");
     __n5.disabled = false;
@@ -547,6 +534,6 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:9126b46b12a3458b3280d549203620bb
+pass sha256:7f34783a4ef137da2fa8edb11bf23748
 -- run/none/html --
-pass sha256:eadaa23b37f5799c29949d24b3dddad5
+pass sha256:ea39a50a9fa2f07c2daa74be7f09432c

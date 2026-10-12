@@ -234,14 +234,14 @@ func New() *Model {
 	return m
 }
 
-func (m *Model) __n0_input_handler(s string) {
-	m.name = s
+func (m *Model) __n0_input_handler(v string) {
+	m.name = v
 	m.__n0.SetText(m.name)
 	m.__n1.SetText((("Hello, " + m.name) + "!"))
 }
 
-func (m *Model) __n0_change_handler(s string) {
-	m.name = s
+func (m *Model) __n0_change_handler(v string) {
+	m.name = v
 	m.__n0.SetText(m.name)
 	m.__n1.SetText((("Hello, " + m.name) + "!"))
 }
@@ -394,29 +394,17 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 
 package test.sngl.app
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.*
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
-import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.foundation.layout.Column
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color as ComposeColor
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
 import androidx.compose.foundation.layout.safeDrawingPadding
-
-data class SnglInputEvent(val value: String)
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Text
 
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
@@ -433,9 +421,8 @@ class MainScreenState {
 fun MainScreen(state: MainScreenState = remember { MainScreenState() }) {
 
     Column(modifier = Modifier.safeDrawingPadding()) {
-        OutlinedTextField(value = state.name, readOnly = false, modifier = Modifier, onValueChange = { newValue ->
-            val e = SnglInputEvent(newValue)
-            state.name = e.value
+        OutlinedTextField(value = state.name, readOnly = false, modifier = Modifier, onValueChange = { v ->
+            state.name = v
         }, label = {
             Text(text = "Enter your name", modifier = Modifier)
         })
@@ -495,7 +482,7 @@ body { font-family: system-ui, sans-serif; }
 </head><body>
 
 <div style="display:flex;flex-direction:column">
-  <input id="__n0" data-sngl-id="__n0" placeholder="Enter your name" type=""/>
+  <input id="__n0" data-sngl-id="__n0" placeholder="Enter your name" type="text"/>
   <span id="__n1" data-sngl-id="__n1">
   </span>
 </div>
@@ -531,12 +518,12 @@ window.__sngl_boot = () => {
   var __n0 = document.querySelector('[data-sngl-id="__n0"]');
   var __n1 = document.querySelector('[data-sngl-id="__n1"]');
   __n0.addEventListener("input", function(e) {
-    state.name = e.target.value;
+    state.name = e.currentTarget.value;
     __n0.value = state.name;
     __n1.textContent = "Hello, " + state.name + "!";
   });
   __n0.addEventListener("change", function(e) {
-    state.name = e.target.value;
+    state.name = e.currentTarget.value;
     __n0.value = state.name;
     __n1.textContent = "Hello, " + state.name + "!";
   });
@@ -553,10 +540,10 @@ window.__sngl_boot();
 -- run/go/bubbletea --
 pass sha256:844dca6c3b8c9bea1dbe7c7262622a01
 -- run/go/fyne --
-pass sha256:9d524c211445bbafaff5f7f09f185cea
+pass sha256:cb21c479006b58ba5ac9d26a022b8cfc
 -- run/go/gtk4 --
 pass sha256:4d512fb2c1d669d4724aa8f30879e2c7
 -- run/kotlin/android --
-pass sha256:314c0c2a6d761f58033f63a883939e6c
+pass sha256:4262f40f0fbcb35b9448d273572e9bee
 -- run/none/html --
-pass sha256:07a44e6459c2826aeb628bea7e6d261f
+pass sha256:403ff51becc61b003c90cee6a3717eb6

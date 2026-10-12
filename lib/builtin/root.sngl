@@ -1,4 +1,3 @@
-import marks "sngl:internal/marks"
 import build "sngl:build"
 
 // The family whose members are written at the root of a file: the windows a
@@ -16,5 +15,5 @@ import build "sngl:build"
 // member declared anywhere names it without importing the package the
 // members happen to come from, and `output`, declared here, is one like any
 // other.
-#[marks.builtin("treeRoot")]
+#[_builtin(familyRoot)]
 component root build.family

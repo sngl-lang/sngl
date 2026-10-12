@@ -78,9 +78,7 @@ import (
 type Measurement struct {
 	Px  float64
 	Em  float64
-	Vw  float64
-	Vh  float64
-	Pct float64
+	Rem float64
 }
 
 // Model holds the state for this SNGL UI.
@@ -224,9 +222,7 @@ import (
 type Measurement struct {
 	Px  float64
 	Em  float64
-	Vw  float64
-	Vh  float64
-	Pct float64
+	Rem float64
 }
 
 // Model holds the state and widget references for this SNGL UI.
@@ -411,8 +407,8 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:f7344aeb557032c35d5862f6b5d4b505
+pass sha256:c8b70784c7b976fcb994df92ca2ee6fc
 -- run/go/gtk4 --
-pass sha256:6de9fcfc27a5de7b53d4de8debbff0e8
+pass sha256:869db807bb02e2ef31c289fa3ca81e4b
 -- run/none/html --
 pass sha256:3b316f120b369efe26324c63feffd012

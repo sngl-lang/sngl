@@ -196,11 +196,18 @@ import ui "sngl:ui"
 ui.window {
     var fruit = ""
     var size = "medium"
-    var dob date = date("2000-01-01")
+    var dob option<date> = date("2000-01-01")
     vbox {
-        select(options=["Apple", "Banana"], placeholder="File.pick", :value=fruit)
-        radio(direction="horizontal", options=["small", "medium", "large"], :value=size)
-        datepicker(placeholder="Birthday", value=dob)
+        select(placeholder="File.pick", :value=fruit) {
+            choice(label="Apple")
+            choice(label="Banana")
+        }
+        radio(direction=horizontal, :value=size) {
+            choice(label="small")
+            choice(label="medium")
+            choice(label="large")
+        }
+        datepicker(placeholder="Birthday", :value=dob)
     }
 }`
 	out := compileSrc(t, src, false)
@@ -214,14 +221,13 @@ ui.window {
 		}
 	}
 	// radio: a RadioButton per option, selected reflects the bound value.
-	if !strings.Contains(out, "RadioButton(selected = (size == opt)") {
+	if !strings.Contains(out, "RadioButton(selected = (size == opt.label)") {
 		t.Errorf("radio not rendered as RadioButton group:\n%s", out)
 	}
-	// datepicker: a field showing the value (not bare Text). `value` is an
-	// option<date>, so what the field shows is the date under a null test --
-	// a date nobody picked shows nothing rather than the zero date.
-	if !strings.Contains(out, "OutlinedTextField(") || !strings.Contains(out, "dob != null") {
-		t.Errorf("datepicker not rendered as a value-bound field:\n%s", out)
+	// datepicker: SnglDateField, the field a date is typed or picked in,
+	// handed the bound option<date> itself and writing a pick back to it.
+	if !strings.Contains(out, "SnglDateField(value = dob") || !strings.Contains(out, "dob = v") {
+		t.Errorf("datepicker not rendered as a value-bound SnglDateField:\n%s", out)
 	}
 }
 
@@ -229,6 +235,7 @@ ui.window {
 // whose android override is a declared #[intrinsic] rather than a Go switch
 // case. `tabs` also guards the bound `selected` index reaching TabRow: the
 // switch it replaced passed a literal 0, so a program could not select a tab.
+// Each `tab` is a Material Tab in the row.
 func TestFeedbackIntrinsicsFromDeclarations(t *testing.T) {
 	src := `import . "sngl:ui"
 import ui "sngl:ui"
@@ -240,9 +247,13 @@ ui.window {
         card(variant="outlined") {
             text(value="in a card")
         }
-        tabs(items=["One", "Two"], selected=idx) {
-            text(value="one")
-            text(value="two")
+        tabs(:selected=idx) {
+            tab(label="One") {
+                text(value="one")
+            }
+            tab(label="Two") {
+                text(value="two")
+            }
         }
     }
 }`
@@ -252,6 +263,7 @@ ui.window {
 		"CircularProgressIndicator(modifier = Modifier)",
 		"Card(modifier = Modifier) {",
 		"TabRow(selectedTabIndex = idx) {",
+		"Tab(selected = ",
 	} {
 		if !strings.Contains(out, want) {
 			t.Errorf("missing %q:\n%s", want, out)

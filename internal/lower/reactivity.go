@@ -198,14 +198,14 @@ func lowerReactivity(pkg *ir.Package, caps Features, opts Options) error {
 	}
 	if !caps.InlineSlots {
 		for _, comp := range pkg.Components {
-			comp.Body = st.slotFlows(comp.Body)
+			comp.Stmts = st.slotFlows(comp.Stmts)
 		}
 		pkg.Body = st.slotFlows(pkg.Body)
 	}
 	// Pass 1: collect reverse deps per owner scope.
 	for _, comp := range pkg.Components {
 		st.owner = compOwner{comp}
-		st.collectFromStmts(comp.Body)
+		st.collectFromStmts(comp.Stmts)
 	}
 	// The package body is a view like the others, and its parent is the
 	// application: a reactive `if` there -- a window under `if details` --
@@ -227,20 +227,9 @@ func lowerReactivity(pkg *ir.Package, caps Features, opts Options) error {
 			}
 		}
 	}
-	// After the injection walks, so every slot's GenFunc is wired and the
-	// props are the ones the build path settled on.
-	defer func() {
-		for _, comp := range pkg.Components {
-			st.owner = compOwner{comp}
-			st.synthesizeRemoteSettle()
-		}
-		st.owner = pkgOwner{pkg: pkg, root: ir.AppParent}
-		st.synthesizeRemoteSettle()
-	}()
-
 	for _, comp := range pkg.Components {
 		st.owner = compOwner{comp}
-		comp.Body = st.rewriteAndInject(comp.Body)
+		comp.Stmts = st.rewriteAndInject(comp.Stmts)
 		for _, f := range comp.Funcs {
 			if injected[f] {
 				continue
@@ -1340,7 +1329,7 @@ func (st *reactivityState) updatersFor(s ir.Stmt) []ir.Stmt {
 // isSlotRefire reports whether s is a call of a slot's render function.
 func isSlotRefire(s ir.Stmt) bool {
 	c, ok := s.(*ir.CallStmt)
-	return ok && c.Call != nil && c.Call.Func != nil && c.Call.Func.SlotRender
+	return ok && c.Call != nil && c.Call.Func != nil && c.Call.Func.Lowered.SlotRender
 }
 
 // updaterStmts is the body of an update: reassign every dependent prop from
@@ -1746,7 +1735,7 @@ func (st *reactivityState) synthesizeRenderSlotFunc(slotID string, cond ir.Expr,
 		Params:      []*ir.Param{parentParam},
 		Return:      ir.TypVoid,
 		Synthesized: true,
-		SlotRender:  true,
+		Lowered:     ir.FuncLowering{SlotRender: true},
 	}
 
 	// 1. Teardown: for var __entry = __slotN { lower.RemoveChild(parent, __entry) }
@@ -1824,7 +1813,7 @@ func (st *reactivityState) renderSlotBody(declSt *declarativeState, parentParam 
 	}
 	listPushFn := &ir.Func{
 		Name:      "push",
-		Receiver:  "list",
+		Receiver:  ir.ListOf(ir.TypDyn),
 		Intrinsic: "list.push",
 		Params:    pushParams,
 		Return:    pushReturn,

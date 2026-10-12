@@ -77,10 +77,8 @@ build-image:
   image:
     name: gcr.io/kaniko-project/executor:debug
     entrypoint: [""]
-  # A failed image build must not take the pipeline with it: `test` and
-  # `pages` fall back to the $IMAGE:latest already in the registry, and an
-  # `optional` need is only optional about the job *existing*.
-  allow_failure: true
+  # A failed build fails the pipeline: it only runs when an image input changed,
+  # and the jobs after it would otherwise test that change on the stale :latest.
   rules:
     # An MR pipeline's `changes` is already diffed against the target branch.
     # Must come first: CI_COMMIT_BEFORE_SHA is zeroed here too.
@@ -105,6 +103,8 @@ build-image:
         paths: *image-inputs
       when: always
     - when: never
+  # --compressed-caching=false and --snapshot-mode=redo keep kaniko under the
+  # runner's memory; without them the snapshot after the apt layer is OOM-killed.
   script:
     - mkdir -p /kaniko/.docker
     - >-
@@ -116,6 +116,8 @@ build-image:
       --dockerfile $CI_PROJECT_DIR/Dockerfile
       --destination $IMAGE:latest
       --cache=true
+      --compressed-caching=false
+      --snapshot-mode=redo
 
 # Compile the third-party dependency closure into a Go build cache the test
 # job restores.
@@ -150,6 +152,9 @@ warm-cache:
   stage: dependencies
   image: $IMAGE:latest
   allow_failure: true
+  needs:
+    - job: build-image
+      optional: true
   rules:
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
       when: always

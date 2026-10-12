@@ -91,12 +91,16 @@ func (c *checker) registerRootContextDecl(s *ast.CallStmt) {
 	if name != "" {
 		c.declare(s.Pos, ctx)
 	}
-	def := c.checkExpr(a.Value)
-	c.reportSelfReferentialDefault(s.Pos, ctx, def)
-	ctx.Default = def
-	if def != nil {
-		ctx.Typ = def.ExprType()
-	}
+	// Checked once every declaration is registered and marked, with the
+	// package's other initializers (checkPendingInits).
+	c.deferInit(s.Pos, func() {
+		def := c.checkExpr(a.Value)
+		c.reportSelfReferentialDefault(s.Pos, ctx, def)
+		ctx.Default = def
+		if def != nil {
+			ctx.Typ = c.inferredType(def.ExprType(), *a.Value.ExprPos())
+		}
+	})
 	// A context is program-global whichever tier declared it: the one sngl:i18n
 	// declares has to reach the program's own codegen, which reads
 	// c.pkg.Contexts.
@@ -121,4 +125,26 @@ func (c *checker) reportSelfReferentialDefault(pos ast.Pos, ctx *ir.Context, def
 		c.error(at, "#%s names the context this argument list declares, so its default cannot read it", ctx.Name)
 		return nil
 	})
+}
+
+// refuseSetContextName reports a `t.setContext` whose first argument is not a
+// context. The call names the context it sets, so the argument is a read of
+// one, which every later phase takes as the name; anything else -- a string
+// spelling the name -- named nothing, and failed only when the test ran.
+func (c *checker) refuseSetContextName(e ir.Expr) {
+	call, ok := e.(*ir.Call)
+	if !ok || !ir.IsTestCall(call, ir.TestSetContextID) || len(call.Args) < 2 {
+		return
+	}
+	arg := call.Args[len(call.Args)-2].Value
+	if _, ok := arg.(*ir.ContextRead); ok {
+		return
+	}
+	pos := call.AST.Pos
+	if args := call.AST.Args.Args; len(args) > 0 {
+		if a, ok := args[0].(ast.Arg); ok && a.Value.ExprPos() != nil {
+			pos = *a.Value.ExprPos()
+		}
+	}
+	c.error(pos, "t.setContext sets a context: name one declared with `context #name(default)`")
 }

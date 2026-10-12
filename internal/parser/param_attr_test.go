@@ -104,7 +104,7 @@ func TestParseParamAttrForms(t *testing.T) {
 		{"multiple", `component c(#[m] #[n("x")] a int) node {}`, false},
 		{"lambda", `func f() => func(#[m] a int) => a`, false},
 		{"event", `component c(#[m] @click) node {}`, false},
-		{"event typed", `component c(#[m] @click E) node {}`, false},
+		{"event typed", `component c(#[m] @click(v E)) node {}`, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -168,7 +168,7 @@ func TestFormatParamAttrsMultiline(t *testing.T) {
 	// without a body rather than inventing `{}`.
 	fn.Block = ast.StmtBlock{Pos: ast.Pos{Line: 1, Column: 1}}
 	doc := &ast.Document{Stmts: []ast.Stmt{fn}}
-	const want = "func f(\n    tag string,\n    #[mark(\"^data-\")]\n    attributes string,\n) {}\n"
+	const want = "func f(\n    tag        string,\n    #[mark(\"^data-\")]\n    attributes string,\n) {}\n"
 	if got := Format(doc); got != want {
 		t.Errorf("format:\ngot:  %q\nwant: %q", got, want)
 	}

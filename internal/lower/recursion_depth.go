@@ -227,15 +227,14 @@ func raiseStmt(msg, kind string, scope []*ir.EventHandler) ir.Stmt {
 		Type: ir.TypVoid,
 		Func: &ir.Func{
 			Name:     "raise",
-			Pkg:      "sngl:builtin",
-			Receiver: "error",
+			Pkg:      &ir.Package{Path: "sngl:builtin"},
+			Receiver: ir.ReceiverNamed("error"),
 			Params: []*ir.Param{
 				{Name: "message", Type: ir.TypString},
 				{Name: "kind", Type: ir.TypString},
 			},
 			Intrinsic: "error.raise",
 			Purity:    ir.PurityPure,
-			Stdlib:    true,
 		},
 		Args: []ir.CallArg{
 			{Name: "message", Value: &ir.Literal{Type: ir.TypString, Value: msg}},

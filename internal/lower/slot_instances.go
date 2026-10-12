@@ -387,7 +387,7 @@ func callMapGet(m, key, def ir.Expr, valueType *ir.Type) *ir.Call {
 	}
 	return &ir.Call{
 		Type:      valueType,
-		Func:      &ir.Func{Name: "get", Receiver: "map", Intrinsic: "map.get", Params: params, Return: ret},
+		Func:      &ir.Func{Name: "get", Receiver: ir.MapOf(ir.TypDyn, ir.TypDyn), Intrinsic: "map.get", Params: params, Return: ret},
 		Args:      []ir.CallArg{{Value: m}, {Value: key}, {Value: def}},
 		ErrorMode: ir.ErrorNone,
 	}
@@ -401,7 +401,7 @@ func callMapContains(m, key ir.Expr, valueType *ir.Type) *ir.Call {
 	}
 	return &ir.Call{
 		Type: ir.TypBool,
-		Func: &ir.Func{Name: "contains", Receiver: "map", Intrinsic: "map.contains", Params: params, Return: ir.TypBool},
+		Func: &ir.Func{Name: "contains", Receiver: ir.MapOf(ir.TypDyn, ir.TypDyn), Intrinsic: "map.contains", Params: params, Return: ir.TypBool},
 		Args: []ir.CallArg{{Value: m}, {Value: key}},
 	}
 }

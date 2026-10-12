@@ -1,0 +1,213 @@
+# A data component's events, run on every target a test can execute on: a
+# handler a record holds writes the caller's state when the container calls
+# it, and a raise in one reaches the caller's boundary rather than the
+# container's.
+#
+# testdata/family_data_events.txtar is the code; this is the answer.
+
+sngl test --platform=none app.sngl
+stdout 'ok   2 tests, 0 failures'
+
+sngl test --platform=html app.sngl
+stdout 'ok   2 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout 'ok   2 tests, 0 failures'
+
+sngl test --platform=fyne --language=go app.sngl
+stdout 'ok   2 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go app.sngl
+stdout 'ok   2 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin app.sngl
+stdout 'ok   2 tests, 0 failures'
+
+-- app.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+
+component action(label string, @run(), @pick(n int)) action
+
+// Runs every record's handlers: the container acting on what it was handed,
+// under a boundary of its own.
+component bar(actions ...component action, controls component(fire func()) node) node {
+    var inner = ""
+    vbox {
+        boundary(@error(e) {
+            inner = e.message
+        }) {
+            controls(func() {
+                for var a = actions {
+                    a.run()
+                    a.pick(a.label.length)
+                }
+            })
+        }
+        text(value=inner)
+    }
+}
+
+component main node {
+    var count = 0
+    var picked = 0
+    var names = ["x", "yy"]
+    vbox {
+        bar #b {
+            action(label="inc", @run {
+                count = count + 1
+            })
+            action(label="none")
+            for var n = names {
+                action(label=n, @pick(k) {
+                    picked = picked + k * 10 + n.length
+                })
+            }
+            component controls(fire) {
+                button #all(text="all", @click {
+                    fire()
+                })
+            }
+        }
+        text(value="{count} {picked}")
+    }
+}
+
+component failing node {
+    var caught = ""
+    var after = false
+    vbox {
+        boundary(@error(e) {
+            caught = e.message
+        }) {
+            bar #b {
+                action(label="boom", @run {
+                    error.raise("boom", "test")
+                    after = true
+                })
+                component controls(fire) {
+                    button #all(text="all", @click {
+                        fire()
+                    })
+                }
+            }
+        }
+    }
+}
+
+func testHandlersHeldByRecordsRun(t Test, c main) {
+    c.b.all.click()
+    t.assert(c.count == 1)
+    t.assert(c.picked == 33)
+}
+
+func testARaiseReachesTheCallersBoundary(t Test, c failing) {
+    c.b.all.click()
+    t.assert(c.caught == "boom")
+    t.assert(!c.after)
+}
+
+window {
+    main
+    failing
+}
+-- testrun/android/kotlin/app.sngl/failing/1 --
+sha256:96ebc1a787c1b803d19bc235d277796a
+{
+  "results": [
+    {
+      "Desc": "ARaiseReachesTheCallersBoundary",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/android/kotlin/app.sngl/main/1 --
+sha256:4272b0eaa5c60247667aa0db1a751412
+{
+  "results": [
+    {
+      "Desc": "HandlersHeldByRecordsRun",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/failing/1 --
+sha256:cd1a2c4c4ff0c4d48f7314da3b8bbd27
+{
+  "results": [
+    {
+      "Desc": "ARaiseReachesTheCallersBoundary",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/main/1 --
+sha256:96435e11243824bf1ebde3cce82efed2
+{
+  "results": [
+    {
+      "Desc": "HandlersHeldByRecordsRun",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/failing/1 --
+sha256:23cb13e08ef921ecc6d4af8782d5c7c8
+{
+  "results": [
+    {
+      "Desc": "ARaiseReachesTheCallersBoundary",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/main/1 --
+sha256:16d4bede2dc3c3f98b788e36597dba32
+{
+  "results": [
+    {
+      "Desc": "HandlersHeldByRecordsRun",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/failing/1 --
+sha256:27b14639321b6d2136c5a7616fb0a28b
+{
+  "results": [
+    {
+      "Desc": "ARaiseReachesTheCallersBoundary",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/main/1 --
+sha256:3cbd6c4a3231c8f2ca163128d1ef891f
+{
+  "results": [
+    {
+      "Desc": "HandlersHeldByRecordsRun",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/failing/1 --
+sha256:35fbd09d2621877394b6bf58d306419f
+{
+  "results": [
+    {
+      "Desc": "ARaiseReachesTheCallersBoundary",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/main/1 --
+sha256:1d0197a4793549dedd2b87b9a32baed3
+{
+  "results": [
+    {
+      "Desc": "HandlersHeldByRecordsRun",
+      "Passed": true
+    }
+  ]
+}

@@ -85,12 +85,44 @@ func targetTier(pkg string) bool {
 // so what tells them apart is the kind, not a separate code path.
 func targetTierName(pkg string) (string, ir.BuiltinKind, bool) {
 	if name, ok := strings.CutPrefix(pkg, "platform/"); ok {
-		return name, ir.BuiltinPlatform, true
+		return name, ir.BuiltinFamilyPlatform, true
 	}
 	if name, ok := strings.CutPrefix(pkg, "language/"); ok {
-		return name, ir.BuiltinLanguage, true
+		return name, ir.BuiltinFamilyLanguage, true
 	}
 	return "", ir.BuiltinNone, false
+}
+
+// recordRendersByName notes the library component a codegen marker names as
+// rendered by the target package holding the marker. A name that resolves to
+// nothing records nothing; the marker has never been checked further.
+func (c *checker) recordRendersByName(decl *ast.ComponentDecl, aliases map[string]string, targetPkg string) {
+	ns, local, ok := strings.Cut(decl.Name, ".")
+	if !ok {
+		return
+	}
+	libName, ok := aliases[ns]
+	if !ok {
+		return
+	}
+	lib := c.libPkg(libName)
+	if lib == nil {
+		return
+	}
+	sym, ok := lib.Symbols.LookupRootComponent(local)
+	if !ok {
+		return
+	}
+	comp, ok := sym.(*ir.Component)
+	if !ok {
+		return
+	}
+	m := c.libs.rendersByName[targetPkg]
+	if m == nil {
+		m = map[*ir.Component]bool{}
+		c.libs.rendersByName[targetPkg] = m
+	}
+	m[comp] = true
 }
 
 // parseStdlibDocs parses every .sngl file embedded in the lib package. File
@@ -311,7 +343,7 @@ func (c *checker) libPkg(name string) *ir.Package {
 	// Library source has its own file scopes, but loading is lazy: it happens
 	// part-way through the importing document's pass1, whose claims are still
 	// in c.topLevel. A lib file's import alias would otherwise collide with a
-	// name the user's dot imports lifted — `import tree "sngl:tree"`
+	// name the user's dot imports lifted — `import family "sngl:family"`
 	// against std's `tree` component.
 	savedTopLevel := c.topLevel
 	c.topLevel = nil
@@ -397,6 +429,8 @@ func (c *checker) loadStdlibPackage(pkgName string) *ir.Package {
 	defer func() { c.libDepth--; c.libPkgName = savedPkgName }()
 
 	stdlibPkg := &ir.Package{
+		Path:           c.libPkgName,
+		Library:        true,
 		Symbols:        NewSymbolTable(),
 		LiftedCaptures: map[*ir.Func]map[ir.Symbol]string{},
 		AddressedVars:  map[*ir.Var]bool{},
@@ -538,6 +572,9 @@ const timePkg = "time"
 const (
 	irPkg         = "internal/ir"
 	macroTypeName = "Macro"
+	// builtinMacroTypeName is sngl:builtin's private Macro, which its own
+	// marks return so the package imports no macros.
+	builtinMacroTypeName = "_Macro"
 )
 
 // macroPackage returns the URI of the package that declares a macro of this
@@ -564,7 +601,7 @@ func macroPackage(name string) string {
 // authority.
 func IsMacroDecl(f *ast.FuncDef) bool {
 	nt, ok := f.ReturnType.(*ast.NamedType)
-	return ok && nt.Name == macroTypeName
+	return ok && (nt.Name == macroTypeName || nt.Name == builtinMacroTypeName)
 }
 
 // isMacroSig reports whether a declared signature returns sngl:internal/ir's
@@ -582,7 +619,8 @@ func (c *checker) isMacroSig(t *ir.Type) bool {
 	// resolved is a different *StructDef from this checker's — equal in every
 	// way that matters and not the same pointer. Comparing the two made a mark
 	// in an imported package "not a macro".
-	return sd.Name == macroTypeName && sd.Pkg == "sngl:"+irPkg
+	return (sd.Name == macroTypeName && sd.PkgPath() == "sngl:"+irPkg) ||
+		(sd.Name == builtinMacroTypeName && sd.PkgPath() == "sngl:builtin")
 }
 
 // declarePluralKeyConstants registers the six CLDR plural categories on the
@@ -638,8 +676,8 @@ func (c *checker) publishIntrinsic(fn *ir.Func) {
 // funcDeclName is how a declaration is spelled: `list.push` for a method,
 // `tr` for a free function.
 func funcDeclName(fn *ir.Func) string {
-	if fn.Receiver != "" {
-		return fn.Receiver + "." + fn.Name
+	if fn.IsMethod() {
+		return fn.RecvName() + "." + fn.Name
 	}
 	return fn.Name
 }
@@ -861,13 +899,15 @@ func (c *checker) mergeTargetExtensions(pkgName string) {
 				}
 				// Parens with nothing in them are the marker for a
 				// component the platform's own codegen reads by name rather
-				// than from an override body -- android's `component ui.input()`
-				// and its three siblings, which #213 is deleting.
+				// than from an override body -- android's `component ui.select()`,
+				// which #213 is deleting. It is recorded as this target's
+				// implementation, since the declaration it names has no body.
 				//
 				// A parens form that *names* props is a prop selection, and
 				// testing HasParens alone dropped one here with no override
 				// registered and no diagnostic: the body simply vanished.
 				if decl.HasParens && len(decl.Props.Props) == 0 && decl.ChildrenType == nil {
+					c.recordRendersByName(decl, aliases, pkgName)
 					continue
 				}
 				dot := strings.IndexByte(decl.Name, '.')
@@ -946,11 +986,11 @@ func qualifiedComponentName(ns, local string) string {
 // two answers to a question with one.
 func (c *checker) addOverrideBody(pos ast.Pos, comp *ir.Component, kind ir.BuiltinKind, target, ns, local string, body ast.StmtBlock, user bool, selection []string, isConst bool) {
 	overrides := &comp.PlatformOverrides
-	if kind == ir.BuiltinLanguage {
+	if kind == ir.BuiltinFamilyLanguage {
 		overrides = &comp.LanguageOverrides
 	}
 	if *overrides == nil {
-		*overrides = map[string]ir.Body{}
+		*overrides = map[string]ir.Override{}
 	}
 	if _, dup := (*overrides)[target]; dup {
 		c.error(pos, "component %s already has an implementation for %q", qualifiedComponentName(ns, local), target)
@@ -958,7 +998,7 @@ func (c *checker) addOverrideBody(pos ast.Pos, comp *ir.Component, kind ir.Built
 	}
 	// Reserve the key first so duplicate detection works even when the body
 	// check appends nothing (an empty body).
-	(*overrides)[target] = ir.Body{}
+	(*overrides)[target] = ir.Override{}
 	// An override is the body a target renders, so there is nothing left for
 	// one with no body to be -- and it would satisfy the base declaration's
 	// own no-body rule while rendering nothing, which is the silence that rule
@@ -1176,95 +1216,100 @@ func (c *checker) checkPendingExtensions() {
 		c.pushScope()
 		libBodyScope := c.scope
 		for _, pe := range byTarget[uri] {
-			// A program's override resolves against the program: the names its
-			// body reaches are the ones its own file imported.
-			if pe.user {
-				c.scope = c.symtab.Root
-				c.enterFileOf(pe.pos)
-				c.pushScope()
-			} else {
-				c.scope = libBodyScope
+			// A program's override of a declaration it also wrote is read
+			// once the declaration's own body has been: that check is what
+			// gives an unannotated `var count = 0` its type, and an override
+			// reads the base's state. checkBodyOnce runs it there.
+			if pe.user && slices.Contains(c.pkg.Components, pe.comp) {
+				if c.lateOverrides == nil {
+					c.lateOverrides = map[*ir.Component][]pendingExtension{}
+				}
+				c.lateOverrides[pe.comp] = append(c.lateOverrides[pe.comp], pe)
+				continue
 			}
-			savedAST := pe.comp.AST.Body
-			savedBody := pe.comp.Body
-			savedVars := pe.comp.Vars
-			savedBodyDecls := pe.comp.BodyDecls
-			savedFuncs, savedMethods := pe.comp.Funcs, pe.comp.Methods
-			savedProps, savedEvents := pe.comp.Props, pe.comp.Events
-			// An override that listed the props it consumes reads those and no
-			// others: the list is what makes the names in its body traceable
-			// to a declaration rather than appearing from the surrounding
-			// component. One that listed none reads them all.
-			if pe.selection != nil {
-				pe.comp.Props, pe.comp.Events = selectProps(pe.comp, pe.selection)
-			}
-			pe.comp.AST.Body = pe.body
-			pe.comp.Body = nil
-			// pass1 only ever saw the component's parenless stub, so the
-			// override's own state has to be collected before the body check
-			// that declares it. Starting from the component's own keeps a var
-			// the stdlib declaration made visible to the override.
-			c.pushScope()
-			vars, bodyDecls, funcDefs := c.collectExtensionDecls(pe.comp, pe.body)
-			pe.comp.Vars = append(slices.Clip(savedVars), vars...)
-			pe.comp.BodyDecls = append(slices.Clip(savedBodyDecls), bodyDecls...)
-			// A method is attached by receiver, so the base's table is where
-			// an override's helper would land and stay -- visible to the base
-			// body and to every other target's override, and a redeclaration
-			// of the next target's helper of the same name. The clone is what
-			// keeps each override's helpers to itself; it starts from the
-			// base's so a method the declaration made stays callable.
-			pe.comp.Methods = maps.Clone(savedMethods)
-			// Registered inside the collect scope: a signature may name a type
-			// the override body declared, which is bound there and nowhere
-			// else.
-			funcDefs = c.reportOverrideFuncShadows(pe, savedMethods, funcDefs)
-			funcDefs = c.reportOverrideFuncUnreachableReceiver(pe, funcDefs)
-			overrideFuncs := c.registerNestedMethods(pe.comp.Name, pe.comp.AST.TypeParams, funcDefs)
-			pe.comp.Funcs = append(slices.Clip(savedFuncs), overrideFuncs...)
-			c.popScope()
-			// checkComponentBody checks comp.Funcs in the component's own
-			// scope, so the override's are checked with its vars and props
-			// visible by having been appended above.
-			if pe.user {
-				c.overrideFile = overrideFile{comp: pe.comp, pos: pe.pos}
-			}
-			c.installedOverride = pe.comp
-			c.checkComponentBody(pe.comp)
-			c.installedOverride = nil
-			c.overrideFile = overrideFile{}
-			// While the override's state is still installed, because that is
-			// the body a component nested in it was written in. Left to
-			// pass2's checkComponentBodies it runs after the restore below,
-			// where the owner is the base declaration again and the names the
-			// nested body captured are declared by nobody.
-			c.checkOverrideNestedBodies(bodyDecls)
-			c.checkOverrideConst(pe)
-			checked := ir.Body{
-				Vars:      pe.comp.Vars,
-				Stmts:     pe.comp.Body,
-				BodyDecls: pe.comp.BodyDecls,
-				Funcs:     pe.comp.Funcs,
-				Methods:   pe.comp.Methods,
-				Const:     pe.isConst,
-				Pkg:       pe.pkg,
-			}
-			if pe.kind == ir.BuiltinLanguage {
-				pe.comp.LanguageOverrides[pe.platform] = checked
-			} else {
-				pe.comp.PlatformOverrides[pe.platform] = checked
-			}
-			pe.comp.AST.Body = savedAST
-			pe.comp.Body = savedBody
-			pe.comp.Vars = savedVars
-			pe.comp.BodyDecls = savedBodyDecls
-			pe.comp.Funcs, pe.comp.Methods = savedFuncs, savedMethods
-			pe.comp.Props, pe.comp.Events = savedProps, savedEvents
-			if pe.user {
-				c.popScope()
-			}
+			c.checkOverride(pe, libBodyScope)
 		}
 		c.scope = libBodyScope
+		c.popScope()
+	}
+}
+
+// checkOverride checks one override's body installed on the declaration it
+// overrides, records it in the declaration's override map, and restores the
+// declaration. libBodyScope is the scope a target package's body resolves in;
+// a program's resolves in the program's own.
+func (c *checker) checkOverride(pe pendingExtension, libBodyScope *ir.Scope) {
+	// A program's override resolves against the program: the names its
+	// body reaches are the ones its own file imported.
+	if pe.user {
+		c.scope = c.symtab.Root
+		c.enterFileOf(pe.pos)
+		c.pushScope()
+	} else {
+		c.scope = libBodyScope
+	}
+	savedAST := pe.comp.AST.Body
+	saved := pe.comp.Body
+	savedProps, savedEvents := pe.comp.Props, pe.comp.Events
+	// An override that listed the props it consumes reads those and no
+	// others: the list is what makes the names in its body traceable
+	// to a declaration rather than appearing from the surrounding
+	// component. One that listed none reads them all.
+	if pe.selection != nil {
+		pe.comp.Props, pe.comp.Events = selectProps(pe.comp, pe.selection)
+	}
+	pe.comp.AST.Body = pe.body
+	pe.comp.Stmts = nil
+	// pass1 only ever saw the component's parenless stub, so the
+	// override's own state has to be collected before the body check
+	// that declares it. Starting from the component's own keeps a var
+	// the stdlib declaration made visible to the override.
+	c.pushScope()
+	vars, bodyDecls, funcDefs := c.collectExtensionDecls(pe.comp, pe.body)
+	pe.comp.Vars = append(slices.Clip(saved.Vars), vars...)
+	pe.comp.BodyDecls = append(slices.Clip(saved.BodyDecls), bodyDecls...)
+	// A method is attached by receiver, so the base's table is where
+	// an override's helper would land and stay -- visible to the base
+	// body and to every other target's override, and a redeclaration
+	// of the next target's helper of the same name. The clone is what
+	// keeps each override's helpers to itself; it starts from the
+	// base's so a method the declaration made stays callable.
+	pe.comp.Methods = maps.Clone(saved.Methods)
+	// Registered inside the collect scope: a signature may name a type
+	// the override body declared, which is bound there and nowhere
+	// else.
+	funcDefs = c.reportOverrideFuncShadows(pe, saved.Methods, funcDefs)
+	funcDefs = c.reportOverrideFuncUnreachableReceiver(pe, funcDefs)
+	overrideFuncs := c.registerNestedMethods(pe.comp.Name, pe.comp.AST.TypeParams, funcDefs)
+	pe.comp.Funcs = append(slices.Clip(saved.Funcs), overrideFuncs...)
+	c.popScope()
+	// checkComponentBody checks comp.Funcs in the component's own
+	// scope, so the override's are checked with its vars and props
+	// visible by having been appended above.
+	if pe.user {
+		c.overrideFile = overrideFile{comp: pe.comp, pos: pe.pos}
+	}
+	c.installedOverride = pe.comp
+	c.checkComponentBody(pe.comp)
+	c.installedOverride = nil
+	c.overrideFile = overrideFile{}
+	// While the override's state is still installed, because that is
+	// the body a component nested in it was written in. Left to
+	// pass2's checkComponentBodies it runs after the restore below,
+	// where the owner is the base declaration again and the names the
+	// nested body captured are declared by nobody.
+	c.checkOverrideNestedBodies(bodyDecls)
+	c.checkOverrideConst(pe)
+	checked := ir.Override{Body: pe.comp.Body, Const: pe.isConst, Pkg: pe.pkg}
+	if pe.kind == ir.BuiltinFamilyLanguage {
+		pe.comp.LanguageOverrides[pe.platform] = checked
+	} else {
+		pe.comp.PlatformOverrides[pe.platform] = checked
+	}
+	pe.comp.AST.Body = savedAST
+	pe.comp.Body = saved
+	pe.comp.Props, pe.comp.Events = savedProps, savedEvents
+	if pe.user {
 		c.popScope()
 	}
 }
@@ -1527,7 +1572,7 @@ func ownTarget(name string) []ir.StaticTarget {
 	if !ok {
 		return nil
 	}
-	if kind == ir.BuiltinLanguage {
+	if kind == ir.BuiltinFamilyLanguage {
 		return []ir.StaticTarget{{Language: target}}
 	}
 	return []ir.StaticTarget{{Platform: target}}

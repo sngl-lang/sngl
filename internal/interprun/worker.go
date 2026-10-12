@@ -119,6 +119,7 @@ var workerSources = []string{
 	"cmd/sngl-fyne-worker",
 	"pkg/go/fynehost",
 	"pkg/go/fynelayout",
+	"pkg/go/snglimage",
 	"pkg/go/fynetheme",
 	"pkg/go/snglhost",
 	"internal/testrpc",

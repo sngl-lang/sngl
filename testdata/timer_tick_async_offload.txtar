@@ -18,7 +18,7 @@ that *says* it schedules -- the `schedules` flag on its native mark -- because a
 host scheduler calls its callback from the loop it owns, which is the thread the
 target draws on.
 
-`async.post` is the second thing that is true of, and on fyne it is the one that
+`async.do` is the second thing that is true of, and on fyne it is the one that
 matters here: a self-rearming `AfterFunc` hands its whole body over with a post,
 so the tick is a lambda inside *that* lambda and the outer one's `schedules`
 flag does not reach it. The id has no declaration to carry a flag on, so the
@@ -97,12 +97,12 @@ type ErrorEvent struct {
 
 // Model holds the state for this SNGL UI.
 type Model struct {
-	name__inst1          string
-	handle__inst0__inst1 *time.Ticker
-	done__inst0__inst1   chan bool
-	live__inst0__inst1   bool
-	gen__inst0__inst1    int
-	visible__inst2       bool
+	name__inst0          string
+	handle__inst0__inst0 *time.Ticker
+	done__inst0__inst0   chan bool
+	live__inst0__inst0   bool
+	gen__inst0__inst0    int
+	visible__inst0       bool
 	__effect0_key        time.Duration
 	__effect0_live       []time.Duration
 	__effect0_desired    []time.Duration
@@ -118,12 +118,12 @@ type Model struct {
 // New creates a Model with default values.
 func New() *Model {
 	m := &Model{}
-	m.name__inst1 = "idle"
-	m.handle__inst0__inst1 = nil
-	m.done__inst0__inst1 = nil
-	m.live__inst0__inst1 = false
-	m.gen__inst0__inst1 = 0
-	m.visible__inst2 = true
+	m.name__inst0 = "idle"
+	m.handle__inst0__inst0 = nil
+	m.done__inst0__inst0 = nil
+	m.live__inst0__inst0 = false
+	m.gen__inst0__inst0 = 0
+	m.visible__inst0 = true
 	m.__effect0_key = time.Duration(0) * time.Millisecond
 	m.__effect0_live = []time.Duration{}
 	m.__effect0_desired = []time.Duration{}
@@ -135,19 +135,19 @@ func New() *Model {
 
 func (m *Model) __effect0_mount() {
 	if m.__effect0_key > time.Duration(0)*time.Millisecond {
-		m.live__inst0__inst1 = true
-		m.gen__inst0__inst1 = (m.gen__inst0__inst1 + 1)
-		var mine int = m.gen__inst0__inst1
-		m.handle__inst0__inst1 = time.NewTicker(m.__effect0_key)
-		m.done__inst0__inst1 = make(chan bool)
-		stopped := m.done__inst0__inst1
-		ticker := m.handle__inst0__inst1
+		m.live__inst0__inst0 = true
+		m.gen__inst0__inst0 = (m.gen__inst0__inst0 + 1)
+		var mine int = m.gen__inst0__inst0
+		m.handle__inst0__inst0 = time.NewTicker(m.__effect0_key)
+		m.done__inst0__inst0 = make(chan bool)
+		stopped := m.done__inst0__inst0
+		ticker := m.handle__inst0__inst0
 		go func() {
 			for {
 				select {
 				case <-ticker.C:
 					fyne.Do(func() {
-						if m.gen__inst0__inst1 != mine {
+						if m.gen__inst0__inst0 != mine {
 							return
 						}
 						go func() {
@@ -167,8 +167,8 @@ func (m *Model) __effect0_mount() {
 								}()
 								__async_off0 := func() string { v, _ := os.Hostname(); return v }()
 								fyne.Do(func() {
-									m.name__inst1 = __async_off0
-									m.__n0.SetText(m.name__inst1)
+									m.name__inst0 = __async_off0
+									m.__n0.SetText(m.name__inst0)
 								})
 							}()
 						}()
@@ -182,11 +182,11 @@ func (m *Model) __effect0_mount() {
 }
 
 func (m *Model) __effect0_unmount() {
-	if m.live__inst0__inst1 {
-		m.live__inst0__inst1 = false
-		m.gen__inst0__inst1 = (m.gen__inst0__inst1 + 1)
-		m.handle__inst0__inst1.Stop()
-		close(m.done__inst0__inst1)
+	if m.live__inst0__inst0 {
+		m.live__inst0__inst0 = false
+		m.gen__inst0__inst0 = (m.gen__inst0__inst0 + 1)
+		m.handle__inst0__inst0.Stop()
+		close(m.done__inst0__inst0)
 	}
 }
 
@@ -258,8 +258,8 @@ func (m *Model) main_closed_handler() {
 }
 
 func (m *Model) main_visible_handler(__visible bool) {
-	m.visible__inst2 = __visible
-	m.main.SetVisible(m.visible__inst2)
+	m.visible__inst0 = __visible
+	m.main.SetVisible(m.visible__inst0)
 }
 
 // mainClosed invokes the OnClosed callback on the #main widget; for tests.
@@ -270,60 +270,60 @@ func (m *Model) mainClosed() {
 }
 
 // mainVisible invokes the OnVisible callback on the #main widget; for tests.
-func (m *Model) mainVisible(__visible bool) {
+func (m *Model) mainVisible(visible bool) {
 	if cb := m.main.OnVisible; cb != nil {
 		m.main.OnVisible = nil
-		cb(__visible)
+		cb(visible)
 		m.main.OnVisible = cb
 	}
 }
 
-func (m *Model) Name__inst1() string {
-	return m.name__inst1
+func (m *Model) Name__inst0() string {
+	return m.name__inst0
 }
 
-func (m *Model) SetName__inst1(v string) {
-	m.name__inst1 = v
+func (m *Model) SetName__inst0(v string) {
+	m.name__inst0 = v
 }
 
-func (m *Model) Handle__inst0__inst1() *time.Ticker {
-	return m.handle__inst0__inst1
+func (m *Model) Handle__inst0__inst0() *time.Ticker {
+	return m.handle__inst0__inst0
 }
 
-func (m *Model) SetHandle__inst0__inst1(v *time.Ticker) {
-	m.handle__inst0__inst1 = v
+func (m *Model) SetHandle__inst0__inst0(v *time.Ticker) {
+	m.handle__inst0__inst0 = v
 }
 
-func (m *Model) Done__inst0__inst1() chan bool {
-	return m.done__inst0__inst1
+func (m *Model) Done__inst0__inst0() chan bool {
+	return m.done__inst0__inst0
 }
 
-func (m *Model) SetDone__inst0__inst1(v chan bool) {
-	m.done__inst0__inst1 = v
+func (m *Model) SetDone__inst0__inst0(v chan bool) {
+	m.done__inst0__inst0 = v
 }
 
-func (m *Model) Live__inst0__inst1() bool {
-	return m.live__inst0__inst1
+func (m *Model) Live__inst0__inst0() bool {
+	return m.live__inst0__inst0
 }
 
-func (m *Model) SetLive__inst0__inst1(v bool) {
-	m.live__inst0__inst1 = v
+func (m *Model) SetLive__inst0__inst0(v bool) {
+	m.live__inst0__inst0 = v
 }
 
-func (m *Model) Gen__inst0__inst1() int {
-	return m.gen__inst0__inst1
+func (m *Model) Gen__inst0__inst0() int {
+	return m.gen__inst0__inst0
 }
 
-func (m *Model) SetGen__inst0__inst1(v int) {
-	m.gen__inst0__inst1 = v
+func (m *Model) SetGen__inst0__inst0(v int) {
+	m.gen__inst0__inst0 = v
 }
 
-func (m *Model) Visible__inst2() bool {
-	return m.visible__inst2
+func (m *Model) Visible__inst0() bool {
+	return m.visible__inst0
 }
 
-func (m *Model) SetVisible__inst2(v bool) {
-	m.visible__inst2 = v
+func (m *Model) SetVisible__inst0(v bool) {
+	m.visible__inst0 = v
 }
 
 // BuildUI creates the widget tree and returns the first window's content.
@@ -334,11 +334,11 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__built = true
 	m.main = fynelayout.NewToplevel()
 	m.main.SetTitle("poll")
-	m.main.SetVisible(m.visible__inst2)
+	m.main.SetVisible(m.visible__inst0)
 	m.main.OnClosed = m.main_closed_handler
 	m.main.OnVisible = m.main_visible_handler
 	m.__n0 = widget.NewLabel("")
-	m.__n0.SetText(m.name__inst1)
+	m.__n0.SetText(m.name__inst0)
 	m.main.Add(m.__n0)
 	fynelayout.AppAttach(m.main)
 	m.__effects0_settle()
@@ -385,9 +385,9 @@ type ErrorEvent struct {
 
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
-	name__inst1          string
-	handle__inst0__inst1 *gtk4rt.Schedule
-	visible__inst2       bool
+	name__inst0          string
+	handle__inst0__inst0 *gtk4rt.Schedule
+	visible__inst0       bool
 	__effect0_key        time.Duration
 	__effect0_live       []time.Duration
 	__effect0_desired    []time.Duration
@@ -403,9 +403,9 @@ type Model struct {
 // sequentially so later inits can reference earlier `m.<name>` fields.
 func New() *Model {
 	m := &Model{}
-	m.name__inst1 = "idle"
-	m.handle__inst0__inst1 = nil
-	m.visible__inst2 = true
+	m.name__inst0 = "idle"
+	m.handle__inst0__inst0 = nil
+	m.visible__inst0 = true
 	m.__effect0_key = time.Duration(0) * time.Millisecond
 	m.__effect0_live = []time.Duration{}
 	m.__effect0_desired = []time.Duration{}
@@ -416,7 +416,7 @@ func New() *Model {
 }
 
 func (m *Model) __effect0_mount() {
-	m.handle__inst0__inst1 = gtk4rt.Every(int(m.__effect0_key/time.Millisecond), func() {
+	m.handle__inst0__inst0 = gtk4rt.Every(int(m.__effect0_key/time.Millisecond), func() {
 		go func() {
 			func() {
 				defer func() {
@@ -434,8 +434,8 @@ func (m *Model) __effect0_mount() {
 				}()
 				__async_off0 := func() string { v, _ := os.Hostname(); return v }()
 				gtk4rt.Post(func() {
-					m.name__inst1 = __async_off0
-					gtk4rt.LabelSetText(m.__n0, m.name__inst1)
+					m.name__inst0 = __async_off0
+					gtk4rt.LabelSetText(m.__n0, m.name__inst0)
 				})
 			}()
 		}()
@@ -443,7 +443,7 @@ func (m *Model) __effect0_mount() {
 }
 
 func (m *Model) __effect0_unmount() {
-	m.handle__inst0__inst1.Cancel()
+	m.handle__inst0__inst0.Cancel()
 }
 
 func (m *Model) __effect0_down() {
@@ -514,32 +514,32 @@ func (m *Model) main_closed_handler() {
 }
 
 func (m *Model) main_visible_handler(__visible bool) {
-	m.visible__inst2 = __visible
-	gtk4rt.ToplevelSetVisible(m.main, m.visible__inst2)
+	m.visible__inst0 = __visible
+	gtk4rt.ToplevelSetVisible(m.main, m.visible__inst0)
 }
 
-func (m *Model) Name__inst1() string {
-	return m.name__inst1
+func (m *Model) Name__inst0() string {
+	return m.name__inst0
 }
 
-func (m *Model) SetName__inst1(v string) {
-	m.name__inst1 = v
+func (m *Model) SetName__inst0(v string) {
+	m.name__inst0 = v
 }
 
-func (m *Model) Handle__inst0__inst1() *gtk4rt.Schedule {
-	return m.handle__inst0__inst1
+func (m *Model) Handle__inst0__inst0() *gtk4rt.Schedule {
+	return m.handle__inst0__inst0
 }
 
-func (m *Model) SetHandle__inst0__inst1(v *gtk4rt.Schedule) {
-	m.handle__inst0__inst1 = v
+func (m *Model) SetHandle__inst0__inst0(v *gtk4rt.Schedule) {
+	m.handle__inst0__inst0 = v
 }
 
-func (m *Model) Visible__inst2() bool {
-	return m.visible__inst2
+func (m *Model) Visible__inst0() bool {
+	return m.visible__inst0
 }
 
-func (m *Model) SetVisible__inst2(v bool) {
-	m.visible__inst2 = v
+func (m *Model) SetVisible__inst0(v bool) {
+	m.visible__inst0 = v
 }
 
 func (m *Model) buildWidgetTree() {
@@ -549,11 +549,11 @@ func (m *Model) buildWidgetTree() {
 	m.__built = true
 	m.main = gtk4rt.ToplevelNew()
 	gtk4rt.ToplevelSetTitle(m.main, "poll")
-	gtk4rt.ToplevelSetVisible(m.main, m.visible__inst2)
+	gtk4rt.ToplevelSetVisible(m.main, m.visible__inst0)
 	gtk4rt.ToplevelOnClosed(m.main, m.main_closed_handler)
 	gtk4rt.ToplevelOnVisible(m.main, m.main_visible_handler)
 	m.__n0 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.__n0, m.name__inst1)
+	gtk4rt.LabelSetText(m.__n0, m.name__inst0)
 	gtk4rt.BoxAppend(m.main, m.__n0)
 	gtk4rt.AppAttach(m.main)
 	m.__effects0_settle()
@@ -566,6 +566,6 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return gtk4rt.ToplevelWindow(app, m.main)
 }
 -- run/go/fyne --
-pass sha256:6d7ed591b29b4c6318c41a1c2d42bd51
+pass sha256:f70122775dc26b414d31ed03d7fcf009
 -- run/go/gtk4 --
-pass sha256:ad7d1383bd117d5cff51ca94be6e8a9c
+pass sha256:d296bcc3e6d7c8dacef9b249f380c651

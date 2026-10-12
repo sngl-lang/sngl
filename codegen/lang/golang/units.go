@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"strings"
 
+	"duckfam.us/sngl/ast"
 	"duckfam.us/sngl/ir"
 )
 
@@ -242,6 +243,68 @@ func LowerBindInit(t *ir.Type, init ir.Expr, gc *GoIRContext) string {
 
 	}
 	return IRLiteralToGo(v.Init)
+}
+
+// goScalarUnitScale writes a single-base unit or a duration scaled by a plain
+// number. Go multiplies two values of one type only, and a unit is a named
+// type -- `type Tick float64`, or time.Duration -- so the scalar has to become
+// the unit's type, which an untyped constant does by itself and a variable
+// does not: `m.one * m.n` is a time.Duration times an int, which no Go
+// compiler accepts. A float on a duration is the one case converting the
+// scalar cannot express, since time.Duration is an integer count of
+// nanoseconds and `time.Duration(0.5)` is zero; the product is taken in
+// float64 and converted back, which is what a fraction of a duration means.
+func goScalarUnitScale(n *ir.Binary, left, right string) (string, bool) {
+	if n.Op != ast.BinMul && n.Op != ast.BinDiv {
+		return "", false
+	}
+	ud, scalar, unitLeft := scaledUnit(n)
+	if ud == nil {
+		return "", false
+	}
+	kind := ClassifyUnit(ud)
+	goT := IRTypeToGo(n.ExprType())
+	scalarT := scalar.ExprType()
+	if kind == UnitDuration && scalarT.Kind == ir.TypeFloat {
+		if unitLeft {
+			left = "float64(" + left + ")"
+		} else {
+			right = "float64(" + right + ")"
+		}
+		return fmt.Sprintf("%s(%s %s %s)", goT, left, irBinaryOp(n.Op), right), true
+	}
+	if _, lit := scalar.(*ir.Literal); lit {
+		return "", false
+	}
+	if unitLeft {
+		right = goT + "(" + right + ")"
+	} else {
+		left = goT + "(" + left + ")"
+	}
+	return "(" + left + " " + irBinaryOp(n.Op) + " " + right + ")", true
+}
+
+// scaledUnit is the single-base unit or duration one operand of n holds when
+// the other is a plain number, that number, and whether the unit is on the
+// left.
+func scaledUnit(n *ir.Binary) (*ir.UnitDef, ir.Expr, bool) {
+	numeric := func(e ir.Expr) bool {
+		t := e.ExprType()
+		return t != nil && (t.Kind == ir.TypeInt || t.Kind == ir.TypeFloat)
+	}
+	single := func(e ir.Expr) *ir.UnitDef {
+		if ud := unitDeclOf(e.ExprType()); ud != nil && ClassifyUnit(ud) != UnitMultiBase {
+			return ud
+		}
+		return nil
+	}
+	if ud := single(n.Left); ud != nil && numeric(n.Right) {
+		return ud, n.Right, true
+	}
+	if ud := single(n.Right); ud != nil && numeric(n.Left) {
+		return ud, n.Left, false
+	}
+	return nil, nil, false
 }
 
 func isIntVar(e ir.Expr) bool {

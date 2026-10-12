@@ -80,7 +80,7 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { k__inst0: 10, visible__inst1: true };
+  var state = { k__inst0: 10, visible__inst0: true };
   function __cf_seeded(props) {
     const __root = document.createElement("div");
     __root.style.display = "contents";
@@ -211,4 +211,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:a82ff6268a89a1ea5e151c02377ff9eb
+pass sha256:839cd8396726ae5247f01a4c1eda4d7b

@@ -16,18 +16,14 @@ type InlayHintResult struct {
 	PaddingLeft bool
 }
 
-// Viewport assumptions for resolving relative units. Documented in
-// docs/superpowers/specs/2026-05-18-lsp-previews-design.md §F3.
-const (
-	rootFontPx     = 16.0
-	viewportWidth  = 1280.0
-	viewportHeight = 800.0
-)
+// rootFontPx resolves an em: CSS's default font size, which android shares.
+// fyne and gtk4 draw a smaller base text, so the hint is a typical answer
+// rather than every target's.
+const rootFontPx = 16.0
 
 // ComputeInlayHints returns inlay hints for measurement literals inside the
-// given range. Hints are emitted only for units whose resolved pixel value
-// is meaningful without parent context: em, rem, vw, vh. px and pct are
-// skipped.
+// given range. Hints are emitted only for the font-relative units, em and
+// rem; px needs none.
 func ComputeInlayHints(content string, doc *ast.Document, rng Range) []InlayHintResult {
 	var out []InlayHintResult
 	if doc == nil {
@@ -83,18 +79,13 @@ func parseUnitLiteral(raw string) (n float64, suffix string, ok bool) {
 	return num, strings.ToLower(raw[i:]), true
 }
 
-// resolvePx returns the resolved pixel value for the given (n, unit) under
-// the documented viewport assumptions. ok=false for units that don't get a
-// hint (px, pct, anything non-measurement).
+// resolvePx returns the resolved pixel value for the given (n, unit). ok=false
+// for units that don't get a hint (px, anything non-measurement).
 func resolvePx(n float64, suffix string) (int, bool) {
 	var px float64
 	switch suffix {
 	case "em", "rem":
 		px = n * rootFontPx
-	case "vw":
-		px = n / 100.0 * viewportWidth
-	case "vh":
-		px = n / 100.0 * viewportHeight
 	default:
 		return 0, false
 	}

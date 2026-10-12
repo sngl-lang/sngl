@@ -1,6 +1,7 @@
 package optimize
 
 import (
+	"strings"
 	"testing"
 
 	"duckfam.us/sngl/internal/checker"
@@ -295,7 +296,7 @@ func textValuesInMain(t *testing.T, pkg *ir.Package) []string {
 		t.Fatal("component main not found")
 	}
 	var vals []string
-	for _, s := range main.Body {
+	for _, s := range main.Stmts {
 		ni, ok := s.(*ir.NodeInst)
 		if !ok {
 			continue
@@ -312,4 +313,41 @@ func textValuesInMain(t *testing.T, pkg *ir.Package) []string {
 		}
 	}
 	return vals
+}
+
+// A const func returning a multi-base unit folds to the value it returned. The
+// interpreter hands back a magnitude per base, which no single literal holds,
+// and the fold used to turn it into an empty literal: `width=` with nothing
+// after it, which every target then dropped.
+func TestFoldUnitResult(t *testing.T) {
+	src := `
+import . "sngl:ui"
+
+enum S { a, b }
+
+const func side(s S) measurement {
+    if s == S.a {
+        return 24px
+    }
+    return 40px
+}
+
+const func mixed() measurement {
+    var m measurement = 3px
+    return m + 2em
+}
+
+component c node {
+    var w = side(S.b)
+    var m = mixed()
+    text(value="x", style={width=w, height=m})
+}
+`
+	_, doc := checkAndOptimize(t, src, "html", "none")
+	out := formatDoc(doc)
+	for _, want := range []string{"var w measurement = 40px", "var m measurement = 3px + 2em"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("missing %q in\n%s", want, out)
+		}
+	}
 }

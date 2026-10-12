@@ -162,7 +162,7 @@ func emitShape(ni *ir.NodeInst, body *[]ir.Stmt, env drawEnv) {
 	// stays a child the way it would under a vbox, and passEffect finds it
 	// there. A canvas that animates itself is exactly this case, and dropping
 	// these is what made one compile clean and never move.
-	if ir.IsTreelessNode(ni) {
+	if ir.IsFamilyGenericNode(ni) {
 		*body = append(*body, ni)
 		return
 	}
@@ -190,6 +190,10 @@ func emitShape(ni *ir.NodeInst, body *[]ir.Stmt, env drawEnv) {
 	// declaration that is a member of a segmented tree is a rendered
 	// primitive, and any handler it declares is the render. The same shape
 	// serves a markup or menu tree with no change here.
+	if ir.IsImageSourceHost(ni.Component) {
+		emitSource(ni, ni.Children, body, env)
+		return
+	}
 	if drawn, ok := primitiveDrawBody(ni, env); ok {
 		*body = append(*body, drawn...)
 		if len(ni.Children) > 0 {
@@ -214,7 +218,7 @@ func emitShape(ni *ir.NodeInst, body *[]ir.Stmt, env drawEnv) {
 	// reports. What used to stand here was a switch over the seven stdlib
 	// shape names, which rendered any shape it did not recognise as nothing at
 	// all, silently.
-	if ni.Component != nil && len(ni.Component.Body) > 0 {
+	if ni.Component != nil && len(ni.Component.Stmts) > 0 {
 		// A shape that renders itself has no finite drawing: expanding its body
 		// meets the same call again, and this pass has no depth to stop at the
 		// way an inliner does. Refused where it is written.
@@ -251,7 +255,7 @@ func primitiveDrawBody(ni *ir.NodeInst, env drawEnv) ([]ir.Stmt, bool) {
 	if ni.Component == nil || ni.Component.Intrinsic == "" {
 		return nil, false
 	}
-	if !ir.IsSegmentedTree(ni.Component.Tree) {
+	if !ir.IsShapeFamily(ni.Component.Family) {
 		return nil, false
 	}
 	var out []ir.Stmt
@@ -273,6 +277,51 @@ func primitiveDrawBody(ni *ir.NodeInst, env drawEnv) ([]ir.Stmt, bool) {
 	return out, true
 }
 
+// emitSource paints the image source a host primitive holds. A URL is one
+// handler, handed the URL; a drawing is painted in place rather than as a
+// picture -- its shapes between the two handlers bracketing them, which are
+// handed the drawing's own size to map onto the box -- so it needs no surface
+// of its own and repaints with the canvas around it.
+func emitSource(host *ir.NodeInst, stmts []ir.Stmt, body *[]ir.Stmt, env drawEnv) {
+	for _, s := range stmts {
+		switch v := s.(type) {
+		case *ir.If:
+			var then, otherwise []ir.Stmt
+			emitSource(host, v.Body, &then, env)
+			emitSource(host, v.Else, &otherwise, env)
+			*body = append(*body, &ir.If{AST: v.AST, Cond: v.Cond, Body: then, Else: otherwise})
+		case *ir.ErrorBoundary:
+			emitSource(host, v.Children, body, env)
+		case *ir.NodeInst:
+			if ir.IsShapeContainer(v) {
+				inner := env
+				inner.width, inner.height = nodeIntProp(v, "width"), nodeIntProp(v, "height")
+				*body = append(*body, handlerDrawBody(host, ir.DrawSourceEnter, inner, nil)...)
+				emitShapes(v.Children, body, inner)
+				*body = append(*body, handlerDrawBody(host, ir.DrawSourceLeave, inner, nil)...)
+			} else if url := v.Prop(ir.ImageSourceURL); url != nil {
+				*body = append(*body, handlerDrawBody(host, ir.DrawSourceURL, env, url)...)
+			}
+		}
+	}
+}
+
+// handlerDrawBody is the body of the primitive's handler of that name, rebound
+// as primitiveDrawBody rebinds one, with url the payload's URL.
+func handlerDrawBody(ni *ir.NodeInst, name string, env drawEnv, url ir.Expr) []ir.Stmt {
+	for _, h := range ni.Handlers {
+		if h.Name != name || h.Func == nil {
+			continue
+		}
+		bindings := map[string]ir.Expr{}
+		for _, p := range h.Func.Params {
+			bindings[p.Name] = drawPayloadWith(p.Type, env, url)
+		}
+		return foldPayloadReads(substituteParams(deepCloneStmts(h.Func.Block), bindings))
+	}
+	return nil
+}
+
 // shapeBody is a composed shape's declaration body with the call site's
 // arguments substituted for its props, ready to be emitted where the call
 // stands. A prop the call site leaves out takes its declared default.
@@ -280,7 +329,7 @@ func primitiveDrawBody(ni *ir.NodeInst, env drawEnv) ([]ir.Stmt, bool) {
 // The body is cloned: one declaration is drawn once per call site, and each
 // gets its own arguments.
 func shapeBody(ni *ir.NodeInst) []ir.Stmt {
-	if ni.Component == nil || len(ni.Component.Body) == 0 {
+	if ni.Component == nil || len(ni.Component.Stmts) == 0 {
 		return nil
 	}
 	bindings := map[string]ir.Expr{}
@@ -303,7 +352,7 @@ func shapeBody(ni *ir.NodeInst) []ir.Stmt {
 	for i := range ni.Props {
 		bindings[ni.Props[i].Name] = ni.Props[i].Value
 	}
-	return substituteParams(deepCloneStmts(ni.Component.Body), bindings)
+	return substituteParams(deepCloneStmts(ni.Component.Stmts), bindings)
 }
 
 // drawPayload is what a draw handler's parameter binds to.
@@ -313,6 +362,11 @@ func shapeBody(ni *ir.NodeInst) []ir.Stmt {
 // canvas's own declared size -- a compile-time property, so they arrive as
 // literals and no platform's draw-function signature has to grow.
 func drawPayload(t *ir.Type, env drawEnv) ir.Expr {
+	return drawPayloadWith(t, env, nil)
+}
+
+// drawPayloadWith is drawPayload with a `url` field holding url.
+func drawPayloadWith(t *ir.Type, env drawEnv, url ir.Expr) ir.Expr {
 	sd := payloadStruct(t)
 	if sd == nil {
 		return ctxExpr(env.ctx)
@@ -325,6 +379,11 @@ func drawPayload(t *ir.Type, env drawEnv) ir.Expr {
 			v = dimLit(env.width)
 		case "height":
 			v = dimLit(env.height)
+		case ir.ImageSourceURL:
+			v = url
+			if v == nil {
+				v = &ir.Literal{Type: ir.TypString, Value: ""}
+			}
 		default:
 			v = ctxExpr(env.ctx)
 		}

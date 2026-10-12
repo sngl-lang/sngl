@@ -1,0 +1,44 @@
+// What a mark says is judged against the rest of the declaration, so each of
+// these is reported however the checker orders running a mark against
+// registering what it marks: the props a component wildcard binds into, a
+// const prop's construct mark, and a const with neither a value nor a host
+// identity. And a mark is applied before a package-level initializer reads
+// what it marked.
+import go "sngl:language/go"
+import macro "sngl:macro"
+import ui "sngl:ui"
+
+#[macro.wildcard("x.+", "name")] // ERROR(check) "no prop \"name\" to bind the matched name to"
+component nowhere(label string) ui.node {
+    ui.text(value=label)
+}
+
+#[macro.wildcard("y.+", "name")] // ERROR(check) "the matched name is a name, so \"name\" holds a string"
+component notAName(name int) ui.node {
+    ui.text(value=string(name))
+}
+
+component seeded(
+    #[macro.construct] const start int, // ERROR(check) "drop #[construct]"
+) ui.node {
+    ui.text(value=string(start))
+}
+
+const pi float // ERROR(check) "const \"pi\" has no value"
+
+#[go.native("example.com/api", "*api.Entry")]
+struct Entry {
+    n int
+}
+
+#[go.native("example.com/api", "api.Pair")]
+#[macro.unusable("functions returning multiple values are not supported")]
+func Pair() int
+
+var entry = Entry{n=1} // ERROR(check) "which a program can name but not build"
+
+var pair = Pair() // ERROR(check) "cannot be used: functions returning multiple values"
+
+ui.window {
+    ui.text(value=string(entry.n + pair))
+}

@@ -60,14 +60,14 @@ func (c *checker) reportBodylessLibComponents() {
 			if comp == nil || comp.AST == nil || !comp.Bodyless {
 				continue
 			}
-			if comp.Intrinsic != "" || comp.Builtin != ir.BuiltinNone || isTargetNode(comp) {
+			if comp.Primitive() || comp.Builtin != ir.BuiltinNone || isTargetNode(comp) || ir.IsDataMember(comp) {
 				continue
 			}
 			if !used[comp] {
 				continue
 			}
 			for _, t := range c.targets {
-				if hasOverrideFor(comp, t) {
+				if !c.knowsTarget(t) || hasOverrideFor(comp, t) || c.rendersByName(comp, t) {
 					continue
 				}
 				c.error(comp.AST.Pos, "component %q in sngl:%s has no body and no implementation for %s: every target it can be built for needs one",
@@ -99,6 +99,28 @@ func hasOverrideFor(comp *ir.Component, t ir.StaticTarget) bool {
 	return false
 }
 
+// rendersByName reports whether a target package's codegen marker answers
+// for comp on t (see libCache.rendersByName).
+func (c *checker) rendersByName(comp *ir.Component, t ir.StaticTarget) bool {
+	return (t.Platform != "" && c.libs.rendersByName["platform/"+t.Platform][comp]) ||
+		(t.Language != "" && c.libs.rendersByName["language/"+t.Language][comp])
+}
+
+// knowsTarget reports whether every half of a target names a library package
+// this check can load. One that does not is a misspelling, reported where the
+// output block names it, or a target this check has no registry for; either
+// way there is no package to hold an implementation, so asking it for one
+// reports the same name a second time against every widget the program uses.
+func (c *checker) knowsTarget(t ir.StaticTarget) bool {
+	if t.Platform != "" && !c.hasLibPkg("platform/"+t.Platform) {
+		return false
+	}
+	if t.Language != "" && !c.hasLibPkg("language/"+t.Language) {
+		return false
+	}
+	return true
+}
+
 func describeTarget(t ir.StaticTarget) string {
 	switch {
 	case t.Platform != "" && t.Language != "":
@@ -118,7 +140,7 @@ func renderSuppliedElsewhere(comp *ir.Component) bool {
 	if f := ir.EmittedFamily(comp); f != nil && renderSuppliedElsewhere(f) {
 		return true
 	}
-	return comp.Intrinsic != "" || comp.Builtin != ir.BuiltinNone ||
+	return comp.Primitive() || comp.Builtin != ir.BuiltinNone || ir.IsDataMember(comp) ||
 		len(comp.PlatformOverrides) > 0 || len(comp.LanguageOverrides) > 0
 }
 
@@ -156,7 +178,7 @@ func (c *checker) reachedLibComponents() map[*ir.Component]bool {
 	// only reads library declarations -- but what it renders is.
 	if c.pkg != nil {
 		for _, comp := range c.pkg.Components {
-			reach(comp.Body)
+			reach(comp.Stmts)
 		}
 		reach(c.pkg.Body)
 	}
@@ -180,8 +202,8 @@ func (c *checker) reachedLibComponents() map[*ir.Component]bool {
 // reached.
 func bodiesBuiltFor(comp *ir.Component, targets []ir.StaticTarget) [][]ir.Stmt {
 	var out [][]ir.Stmt
-	if len(comp.Body) > 0 {
-		out = append(out, comp.Body)
+	if len(comp.Stmts) > 0 {
+		out = append(out, comp.Stmts)
 	}
 	for _, t := range targets {
 		if b, ok := comp.PlatformOverrides[t.Platform]; ok {
@@ -198,5 +220,5 @@ func bodiesBuiltFor(comp *ir.Component, targets []ir.StaticTarget) [][]ir.Stmt {
 // is its generator's, so with no command to write it has no body to give --
 // `{}` would say it renders nothing -- and is exempt as a family is.
 func isTargetNode(comp *ir.Component) bool {
-	return ir.TargetTier(comp.Tree) != ""
+	return ir.TargetTier(comp.Family) != ""
 }

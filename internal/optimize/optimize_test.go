@@ -172,7 +172,7 @@ component main node {
 		t.Fatal("expected at least one component")
 	}
 	comp := pkg.Components[0]
-	for _, s := range comp.Body {
+	for _, s := range comp.Stmts {
 		if ni, ok := s.(*ir.NodeInst); ok && ni.Name == "text" {
 			for _, p := range ni.Props {
 				if p.Name == "value" {
@@ -213,7 +213,7 @@ func TestOptimize_ShakeUnusedConst(t *testing.T) {
 const used = 1
 const unused = 2
 component main node {
-	text string(used)
+	text(value=string(used))
 }
 `
 	pkg, _ := checkAndOptimize(t, src, "html", "js")
@@ -381,7 +381,7 @@ func drainDocuments(t *testing.T, pkg *ir.Package, cfg *Config) []*codegen.Docum
 		return nil
 	}
 	f := NewFold(pkg, cfg).Child()
-	body := f.Stmts(f.Clone(root.Body))
+	body := f.Stmts(f.Clone(root.Stmts))
 	if err := f.Err(); err != nil {
 		t.Fatalf("documents: %v", err)
 	}
@@ -569,12 +569,12 @@ component List() node {
 	if list == nil {
 		t.Fatal("expected to find imported component List")
 	}
-	if len(list.Body) != 1 {
-		t.Fatalf("lib.List: got %d statements, want the loop", len(list.Body))
+	if len(list.Stmts) != 1 {
+		t.Fatalf("lib.List: got %d statements, want the loop", len(list.Stmts))
 	}
-	loop, ok := list.Body[0].(*ir.For)
+	loop, ok := list.Stmts[0].(*ir.For)
 	if !ok {
-		t.Fatalf("lib.List: got %T, want the loop", list.Body[0])
+		t.Fatalf("lib.List: got %T, want the loop", list.Stmts[0])
 	}
 	var values []string
 	if lit, ok := loop.Iter.(*ir.ListLit); ok {

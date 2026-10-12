@@ -38,6 +38,7 @@ func emitComponentInstance(
 	failSink func(error),
 	invokerSink func(fyneEventInvoker),
 	modelFieldSink func(name, goType string),
+	indexed map[string]bool,
 ) {
 	comp := cc.Component
 	typeName := golang.ComponentInstanceType(comp.Name)
@@ -66,10 +67,10 @@ func emitComponentInstance(
 	// it last, which is the one on screen.
 	var invokers []fyneEventInvoker
 	tr := newFyneTranslator(igc, nodeSpecs, sink, importSink, failSink).
-		withLocalRefs(comp.LocalRefs).withSlotRoot(instanceRootVar, comp.Body).
+		withLocalRefs(comp.LocalRefs).withSlotRoot(instanceRootVar, comp.Stmts).
 		withInvokerSink(func(inv fyneEventInvoker) { invokers = append(invokers, inv) })
 	tr.canvasByID, tr.canvasByNode = canvasByID, canvasByNode
-	bodyStmts := codegen.WalkLowered(context.Background(), comp.Body, tr)
+	bodyStmts := codegen.WalkLowered(context.Background(), comp.Stmts, tr)
 
 	var ctorBody strings.Builder
 	for _, v := range comp.Vars {
@@ -86,6 +87,7 @@ func emitComponentInstance(
 	}
 	fmt.Fprintf(&ctorBody, "\t%s.%s = %s\n", instanceReceiver, golang.ComponentRootField, root)
 	exposed := map[string]bool{}
+	var listed []string
 	for _, inv := range invokers {
 		widget := inv.IDLabel
 		if inv.Target != "" {
@@ -102,12 +104,24 @@ func emitComponentInstance(
 			continue
 		}
 		named := namedWidgetField(widget)
+		// An id a test indexes is every instance's copy, listed in the order
+		// the instances render, which is the order a slot built them in: it
+		// keeps an instance at its position, and one it builds goes at the end.
+		// The copy leaves the list when its instance is destroyed (unlist).
+		list := indexed[inv.IDLabel] && inv.Target == ""
 		if !exposed[widget] {
 			exposed[widget] = true
-			fmt.Fprintf(&ctorBody, "\t%s.%s.%s = %s.%s\n", instanceReceiver, golang.InstanceModelField, named, instanceReceiver, widget)
-			modelFieldSink(named, goType)
+			model := instanceReceiver + "." + golang.InstanceModelField + "." + named
+			if list {
+				fmt.Fprintf(&ctorBody, "\t%s = append(%s, %s.%s)\n", model, model, instanceReceiver, widget)
+				modelFieldSink(named, "[]"+goType)
+				listed = append(listed, widget)
+			} else {
+				fmt.Fprintf(&ctorBody, "\t%s = %s.%s\n", model, instanceReceiver, widget)
+				modelFieldSink(named, goType)
+			}
 		}
-		inv.Target = named
+		inv.Target, inv.List = named, list
 		invokerSink(inv)
 	}
 
@@ -120,13 +134,13 @@ func emitComponentInstance(
 		if fn == nil || len(fn.Block) == 0 {
 			continue
 		}
-		mtr := newFyneTranslator(igc, nodeSpecs, sink, importSink, failSink).withLocalRefs(fn.LocalRefs)
+		mtr := newFyneTranslator(igc, nodeSpecs, sink, importSink, failSink).withLocalRefs(fn.Lowered.LocalRefs)
 		mtr.canvasByNode = canvasByNode
 		params := fn.Params
 		if len(params) > 0 && params[0].Receiver {
 			params = params[1:]
 		}
-		if fn.SlotRender {
+		if fn.Lowered.SlotRender {
 			// A reactive slot's render func. Its body was written against the
 			// reactivity pass's `parent` name, which the translator rewrites
 			// to slotParentParam -- so the parameter has to be spelled the way
@@ -140,9 +154,12 @@ func emitComponentInstance(
 			Return: fn.Return,
 			Block:  codegen.WalkLowered(context.Background(), fn.Block, mtr),
 		}
-		for _, line := range igc.EmitFuncDef(emitted) {
+		for i, line := range igc.EmitFuncDef(emitted) {
 			methods.WriteString(line)
 			methods.WriteByte('\n')
+			if i == 0 && fn.Name == lower.TeardownFunc && len(listed) > 0 {
+				fmt.Fprintf(&methods, "\t%s.unlist()\n", instanceReceiver)
+			}
 		}
 		methods.WriteByte('\n')
 	}
@@ -209,8 +226,28 @@ func emitComponentInstance(
 	// destroy is emitted at every site a render stops describing a position,
 	// so the shape of a record cannot vary with what it happens to hold.
 	if !componentDeclaresFunc(comp, lower.TeardownFunc) {
-		fmt.Fprintf(b, "func (%s *%s) %s() {}\n\n", instanceReceiver, typeName, golang.ComponentDestroyMethod)
+		if len(listed) > 0 {
+			fmt.Fprintf(b, "func (%s *%s) %s() {\n\t%s.unlist()\n}\n\n", instanceReceiver, typeName, golang.ComponentDestroyMethod, instanceReceiver)
+		} else {
+			fmt.Fprintf(b, "func (%s *%s) %s() {}\n\n", instanceReceiver, typeName, golang.ComponentDestroyMethod)
+		}
 	}
+	if len(listed) > 0 {
+		emitUnlist(b, typeName, listed)
+	}
+}
+
+// emitUnlist writes the method taking a destroyed instance's widgets out of
+// the Model's lists of them (namedWidgetField), so a list holds the copies on
+// screen.
+func emitUnlist(b *strings.Builder, typeName string, widgets []string) {
+	fmt.Fprintf(b, "func (%s *%s) unlist() {\n", instanceReceiver, typeName)
+	for _, w := range widgets {
+		list := instanceReceiver + "." + golang.InstanceModelField + "." + namedWidgetField(w)
+		fmt.Fprintf(b, "\tfor i, w := range %s {\n\t\tif w == %s.%s {\n\t\t\t%s = append(%s[:i], %s[i+1:]...)\n\t\t\tbreak\n\t\t}\n\t}\n",
+			list, instanceReceiver, w, list, list, list)
+	}
+	b.WriteString("}\n\n")
 }
 
 // namedWidgetField is the Model field an instance's program-named widget is

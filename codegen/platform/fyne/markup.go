@@ -112,9 +112,20 @@ func spanStyleArgs(v ir.Expr) []ir.Expr {
 		field("fontFamily"),
 		field("underline"),
 		field("strike"),
-		&ir.Select{Operand: size, Field: "px", Type: ir.TypFloat},
+		sizePx(size),
 		field("color"),
 	}
+}
+
+// sizePx is a measurement as the float pixels Fyne takes.
+func sizePx(size ir.Expr) ir.Expr {
+	if px, ok := codegen.MeasurementPx(size, emPx); ok {
+		return &ir.Literal{Type: ir.TypFloat, Value: ir.FormatUnitMagnitude(px)}
+	}
+	if ud := ir.UnitDeclOf(size.ExprType()); ud != nil {
+		return codegen.MeasurementPxExpr(ud, size, emPx)
+	}
+	return size
 }
 
 // spanStyleChain is the builder call that follows `fynetext.Style`, written
@@ -152,7 +163,7 @@ func spanStyleChain(props map[string]ir.Expr) string {
 				fmt.Fprintf(&b, ".WithRGBA(%d, %d, %d, %d)", c.R, c.G, c.B, c.A)
 			}
 		case "fontSize":
-			if px, ok := literalNumber(f.Value); ok && px > 0 {
+			if px, ok := codegen.MeasurementPx(f.Value, emPx); ok && px > 0 {
 				fmt.Fprintf(&b, ".WithSize(%s)", float32Lit(px))
 			}
 		case "fontWeight":

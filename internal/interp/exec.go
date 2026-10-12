@@ -324,7 +324,7 @@ func (env *Env) execAssign(s *ir.Assign) error {
 		}
 		owner.vals[target.Sym] = nv
 		owner.noteAssigned(target.Sym)
-		return nil
+		return owner.writeBound(target.Sym, nv)
 	case *ir.Select:
 		obj, err := env.Eval(target.Operand)
 		if err != nil {
@@ -424,7 +424,7 @@ func (env *Env) execToggle(s *ir.Toggle) error {
 		}
 		owner.vals[target.Sym] = !b
 		owner.noteAssigned(target.Sym)
-		return nil
+		return owner.writeBound(target.Sym, !b)
 	case *ir.Select:
 		obj, err := env.Eval(target.Operand)
 		if err != nil {
@@ -704,6 +704,54 @@ func (env *Env) execCatch(s *ir.If) error {
 		}
 	}
 	return nil
+}
+
+// writeBound carries a write of one of this instance's two-way props out to
+// the var its call site bound it to, `:checked=on`: a component writing its
+// own prop -- an override reporting what its control now holds -- writes the
+// caller's state, as every compiled target's lowering makes it do. A prop the
+// call site left unbound is the instance's own cell, which the write already
+// was; the node's `#id` is bound to what the last mount showed (bindHandle),
+// and a handler about to run reads it before the next mount does, so it is
+// written there too.
+func (env *Env) writeBound(sym ir.Symbol, val any) error {
+	if env.inst == nil || env.Comp == nil || env.parent == nil {
+		return nil
+	}
+	var prop *ir.Prop
+	for _, p := range env.Comp.Props {
+		if p.Bidirectional && p.Sym != nil && ir.Symbol(p.Sym) == sym {
+			prop = p
+		}
+	}
+	if prop == nil {
+		return nil
+	}
+	for _, b := range env.inst.Bindings {
+		if b.PropName != prop.Name {
+			continue
+		}
+		tmp := &ir.Param{Name: "__bound"}
+		env.parent.Set(tmp, val)
+		err := env.parent.execAssign(&ir.Assign{Target: b.Target, Op: ast.AssignSet, Value: &ir.Ident{Name: tmp.Name, Sym: tmp}})
+		delete(env.parent.vals, tmp)
+		return err
+	}
+	if env.inst.Handle != nil {
+		if m, ok := env.parentValue(env.inst.Handle).(map[string]any); ok {
+			m[prop.Name] = val
+		}
+	}
+	return nil
+}
+
+// parentValue is sym's value in the scope env was mounted from, or nil.
+func (env *Env) parentValue(sym ir.Symbol) any {
+	if env.parent == nil {
+		return nil
+	}
+	v, _ := env.parent.Value(sym)
+	return v
 }
 
 // writeThroughHandle writes a two-way prop of the node m is a handle to --

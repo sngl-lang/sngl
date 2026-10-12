@@ -2,6 +2,7 @@ package lower
 
 import (
 	"fmt"
+	"slices"
 	"sort"
 	"strings"
 
@@ -75,6 +76,13 @@ func FeaturesFrom(lang, plat *ir.Component) (Features, error) {
 			return Features{}, err
 		}
 	}
+	// A union rather than an override: what a platform's code introduces is
+	// reserved beside the language's words, not instead of them. Read off
+	// the props' defaults; a program's output block may set either, which
+	// passReservedNames reads off the package.
+	f.Reserved = append(ir.TargetReserved(lang), ir.TargetReserved(plat)...)
+	slices.Sort(f.Reserved)
+	f.Reserved = slices.Compact(f.Reserved)
 	return f, nil
 }
 

@@ -41,7 +41,7 @@ func (ctx *CodegenCtx) Harness() *ViewCtx {
 	}
 	vars := append(append([]*ir.Var{}, ctx.Pkg.Vars...), root.Vars...)
 	funcs := append(append([]*ir.Func{}, ctx.Pkg.Funcs...), root.Funcs...)
-	return &ViewCtx{Body: root.Body, Vars: vars, Funcs: funcs, Name: root.Name}
+	return &ViewCtx{Body: root.Stmts, Vars: vars, Funcs: funcs, Name: root.Name}
 }
 
 // Components returns a ComponentCtx for each component in the package.
@@ -52,13 +52,19 @@ func (ctx *CodegenCtx) Components() []*ComponentCtx {
 func componentsFor(comps []*ir.Component) []*ComponentCtx {
 	out := make([]*ComponentCtx, 0, len(comps))
 	for _, c := range comps {
+		// A host's own widget is that widget: every node naming it is a call
+		// of the host identifier, so a declaration would be read by nobody --
+		// the rule AllFuncs applies to a native func.
+		if c.IsNative() {
+			continue
+		}
 		cc := &ComponentCtx{
 			Component: c,
 			Props:     c.Props,
 			Events:    c.Events,
 			Vars:      c.Vars,
 			Funcs:     c.Funcs,
-			Body:      c.Body,
+			Body:      c.Stmts,
 		}
 		for _, f := range c.Funcs {
 			if IsComputed(f) {

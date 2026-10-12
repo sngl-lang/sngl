@@ -19,7 +19,7 @@ func findCallStmt(stmts []ir.Stmt, funcName string) *ir.Call {
 				}
 				// Allow looking up error.raise by the sentinel "error.raise"
 				// even though the stdlib wrapper lacks Intrinsic set.
-				if funcName == "error.raise" && fn.Receiver == "error" && fn.Name == "raise" {
+				if funcName == "error.raise" && fn.RecvName() == "error" && fn.Name == "raise" {
 					return x.Call
 				}
 			}

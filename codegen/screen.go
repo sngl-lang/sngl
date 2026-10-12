@@ -96,11 +96,11 @@ func SoleScreen(stmts []ir.Stmt, intrinsic, platform string, pos func(*ir.NodeIn
 				}
 				// A primitive is marked as one too where it stands in a
 				// reactive position; only a body is followed.
-				if n.Component.RuntimeInstance && n.Component.Intrinsic == "" && !entered[n.Component] {
+				if n.Component.RuntimeInstance && !n.Component.Primitive() && !entered[n.Component] {
 					entered[n.Component] = true
 					outer := owner
 					owner = n.Component
-					err := walk(n.Component.Body, nil, inLoop)
+					err := walk(n.Component.Stmts, nil, inLoop)
 					owner = outer
 					if err != nil {
 						return err

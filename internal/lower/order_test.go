@@ -105,9 +105,15 @@ var alwaysOn = []string{
 	"NodePropReads",
 	"PlatformExtensionBody",
 	"PropBindings",
-	"Query",
+	// Every runtime takes an i18n call's arguments as a map, whatever the
+	// target.
+	"RecordArgs",
 	"RecursionDepth",
 	"RefLoop",
+	// What a target reserves is read off its marks, and a target reserving
+	// nothing renames nothing; there is no capability to hold.
+	"ReservedNames",
+	"ReservedNodeIDs",
 	"SpreadOnce",
 	"StampUsage",
 	// A context nothing provides is folded to its default on every target: the
@@ -245,6 +251,9 @@ func TestEachCapabilityGatesItsPasses(t *testing.T) {
 	rt := reflect.TypeFor[Features]()
 	for i := range rt.NumField() {
 		f := rt.Field(i)
+		if f.Type.Kind() != reflect.Bool {
+			continue // Reserved: a set of names, which gates nothing
+		}
 		want, ok := soleGate[f.Name]
 		if !ok {
 			t.Errorf("Features.%s gates no passes here; add a row to soleGate saying what it asks for", f.Name)

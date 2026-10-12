@@ -108,7 +108,9 @@ window(title="t") {
         button(text="b")
         input(value="c")
         checkbox(label="d", checked=true)
-        image(src="e")
+        image {
+            remote(url="e")
+        }
         progress(value=0.5, showValue=true)
         spinner(label="f")
         divider()

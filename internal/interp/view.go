@@ -124,7 +124,7 @@ func IsUserComponent(comp *ir.Component) bool {
 	if comp == nil {
 		return false
 	}
-	return len(comp.Body) > 0 || len(comp.Vars) > 0 || len(comp.Funcs) > 0
+	return len(comp.Stmts) > 0 || len(comp.Vars) > 0 || len(comp.Funcs) > 0
 }
 
 // Mount builds the retained tree for env's component body.
@@ -257,6 +257,73 @@ func (v *View) Handling(event string) *Node {
 	}
 	root := &Node{Children: v.Roots}
 	return handlingDescendant(root, event)
+}
+
+// forwardingDescendant is the node a host reports event through, when n is a
+// component whose body hands that event on: the first node under n, in mount
+// order, whose handler emits event from n's instance -- the primitive an
+// override renders, `Control(@change(on) { checked = on; change(on) })`. The
+// handler it carries is returned with it. A trigger enters there rather than
+// at n's call site, so the override writes the prop it reports as a host's
+// report would make it, and its emit runs the call site's handler.
+//
+// Only the nodes n's own body rendered are asked: another component's
+// instance below them emits that component's events, not n's.
+func forwardingDescendant(n *Node, event string) (*Node, string) {
+	if n == nil || !n.Expanded {
+		return nil, ""
+	}
+	var find func(ns []*Node) (*Node, string)
+	find = func(ns []*Node) (*Node, string) {
+		for _, k := range ns {
+			for _, h := range k.Handlers {
+				if fn, ok := h.Body.(*ir.Func); ok && emitsEvent(fn.Block, event) {
+					return k, h.Name
+				}
+			}
+			if k.Expanded {
+				continue
+			}
+			if d, name := find(k.Children); d != nil {
+				return d, name
+			}
+		}
+		return nil, ""
+	}
+	return find(n.Children)
+}
+
+// instanceBody is what the component instance a handle map names rendered: n
+// itself once its body is mounted beneath it, and otherwise a mount of the
+// instance's own scope. A map a test reads off a handle was taken when the
+// node was, before the body beneath it was, so the node it carries holds none
+// of it.
+func instanceBody(m map[string]any, n *Node) *Node {
+	if n != nil && n.Expanded {
+		return n
+	}
+	ce, _ := m["__compEnv"].(*Env)
+	if ce == nil || len(ce.BodyStmts) == 0 {
+		return n
+	}
+	view, err := Mount(ce)
+	if err != nil {
+		return n
+	}
+	return &Node{Children: view.Roots, Expanded: true}
+}
+
+// emitsEvent reports whether stmts emit event, at any depth of their blocks.
+func emitsEvent(stmts []ir.Stmt, event string) bool {
+	found := false
+	_ = ir.Walk(stmts, func(n ir.Node) error {
+		if e, ok := n.(*ir.Emit); ok && e.Name == event {
+			found = true
+			return ir.SkipDir
+		}
+		return nil
+	})
+	return found
 }
 
 // handlingDescendant is the first node under n, in mount order, carrying a
@@ -539,7 +606,7 @@ func (m *mounter) nodeInst(env *Env, inst *ir.NodeInst, path string) ([]*Node, e
 			Env:       env,
 			Inst:      inst,
 			Component: inst.Component,
-			Expanded:  len(inst.Component.Body) > 0,
+			Expanded:  len(inst.Component.Stmts) > 0,
 		}
 		node.Props, node.PropOrder = evalProps(env, inst.Props)
 		node.Handlers = handlersOf(inst)
@@ -656,7 +723,7 @@ func (m *mounter) callStmt(env *Env, cs *ir.CallStmt, name, id, path string) ([]
 			child := env.ComponentEnvFromCallStmt(comp, cs)
 			child.RenderDepth = env.RenderDepth + 1
 			node.CompEnv = child
-			node.Expanded = len(comp.Body) > 0
+			node.Expanded = len(comp.Stmts) > 0
 			if !node.Expanded {
 				return []*Node{node}, nil
 			}
@@ -701,8 +768,8 @@ func (m *mounter) callStmt(env *Env, cs *ir.CallStmt, name, id, path string) ([]
 }
 
 // slotInst mounts one insertion point: the content its call site supplied, or
-// the insertion's own block as the fallback. ir.SlotBody makes that choice, so
-// the rule is the splicer's and this does not decide it a second time.
+// the insertion's own block as the fallback where it supplied none or what it
+// supplied renders nothing -- the rule ir.WithFallback states for the splicer.
 //
 // Supplied content is mounted in the *caller's* scope with the caller's frame
 // current, because that content is written in the caller's body: a slot inside
@@ -750,10 +817,17 @@ func (m *mounter) slotInst(env *Env, si *ir.SlotInst, path string) ([]*Node, err
 		defer func() { m.entries = m.entries[:len(m.entries)-1] }()
 	}
 	m.pop()
-	defer m.push(frame)
 	// The path segment marks these nodes as having come from the call site,
 	// which is what distinguishes them from an insertion point's fallback.
-	return m.stmts(cenv, body, path+"/supplied:"+si.Name)
+	nodes, err := m.stmts(cenv, body, path+"/supplied:"+si.Name)
+	m.push(frame)
+	// Content that renders nothing is the fallback's place as much as no
+	// content is: the branch of an `if` that holds none, a forward of a slot
+	// its own caller left empty.
+	if err != nil || len(nodes) > 0 || len(si.Children) == 0 {
+		return nodes, err
+	}
+	return m.stmts(env, si.Children, path)
 }
 
 // entryInst mounts an insertion of a component entry: what the insertion

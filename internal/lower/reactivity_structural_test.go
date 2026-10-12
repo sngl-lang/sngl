@@ -27,7 +27,7 @@ component main node {
 		t.Fatal(err)
 	}
 	comp := pkg.Components[0]
-	for _, s := range comp.Body {
+	for _, s := range comp.Stmts {
 		if ifNode, ok := s.(*ir.If); ok {
 			if ifNode.LoweredSlotID != "" {
 				t.Errorf("expected non-reactive If to have empty LoweredSlotID; got %q", ifNode.LoweredSlotID)
@@ -210,7 +210,7 @@ component main node {
 	comp := pkg.Components[0]
 	// The outer If is replaced by a __renderSlotN CallStmt; no *ir.If remains
 	// at the top of the body (the inner If lives inside the slot func).
-	for _, s := range comp.Body {
+	for _, s := range comp.Stmts {
 		if _, ok := s.(*ir.If); ok {
 			t.Errorf("outer reactive If was not rewritten out of component body")
 		}
@@ -242,20 +242,20 @@ component main node {
 		t.Fatal(err)
 	}
 	comp := pkg.Components[0]
-	for _, s := range comp.Body {
+	for _, s := range comp.Stmts {
 		if _, ok := s.(*ir.If); ok {
 			t.Errorf("reactive If was not rewritten out of component body")
 			return
 		}
 	}
 	var found bool
-	for _, s := range comp.Body {
+	for _, s := range comp.Stmts {
 		if cs, ok := s.(*ir.CallStmt); ok && cs.Call != nil && cs.Call.Func != nil && cs.Call.Func.Name == "__renderSlot0" {
 			found = true
 		}
 	}
 	if !found {
-		t.Errorf("expected CallStmt __renderSlot0 in component body; got %d stmts", len(comp.Body))
+		t.Errorf("expected CallStmt __renderSlot0 in component body; got %d stmts", len(comp.Stmts))
 	}
 }
 
@@ -274,7 +274,7 @@ component main node {
 		t.Fatal(err)
 	}
 	comp := pkg.Components[0]
-	for _, s := range comp.Body {
+	for _, s := range comp.Stmts {
 		if _, ok := s.(*ir.For); ok {
 			t.Errorf("reactive For was not rewritten out of component body")
 			return
@@ -301,7 +301,7 @@ component main node {
 	// Walk the button's @click handler body and find a CallStmt __renderSlot0
 	// spliced after the visible = !visible assignment.
 	var found bool
-	for _, s := range comp.Body {
+	for _, s := range comp.Stmts {
 		nodeInst, ok := s.(*ir.NodeInst)
 		if !ok {
 			continue
@@ -342,7 +342,7 @@ component main node {
 	}
 	comp := pkg.Components[0]
 	var found bool
-	for _, s := range comp.Body {
+	for _, s := range comp.Stmts {
 		nodeInst, ok := s.(*ir.NodeInst)
 		if !ok {
 			continue
@@ -412,7 +412,7 @@ component main node {
 			}
 		}
 	}
-	walk(comp.Body)
+	walk(comp.Stmts)
 	if initialParent == "" || spliceParent == "" {
 		t.Fatalf("expected two __renderSlot0 call sites; found initial=%q splice=%q", initialParent, spliceParent)
 	}
@@ -439,7 +439,7 @@ component main node {
 	}
 	comp := pkg.Components[0]
 	var found bool
-	for _, s := range comp.Body {
+	for _, s := range comp.Stmts {
 		if _, ok := s.(*ir.If); ok {
 			found = true
 		}
@@ -466,7 +466,7 @@ component main node {
 	}
 	comp := pkg.Components[0]
 	var checked bool
-	for _, s := range comp.Body {
+	for _, s := range comp.Stmts {
 		cs, ok := s.(*ir.CallStmt)
 		if !ok || cs.Call == nil || cs.Call.Func == nil || cs.Call.Func.Name != "__renderSlot0" {
 			continue

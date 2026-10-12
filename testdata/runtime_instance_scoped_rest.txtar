@@ -881,27 +881,20 @@ func (m *Model) addClick() {
 
 package test.sngl.app
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.*
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
-import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.foundation.layout.Column
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color as ComposeColor
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.material3.Button
+import androidx.compose.ui.platform.testTag
+import androidx.compose.material3.Text
+import androidx.compose.runtime.DisposableEffect
 
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
@@ -979,7 +972,7 @@ class MainScreenTest {
         @Suppress("UNUSED_VARIABLE") val composeTestRule = composeRule
         composeRule.setContent { MainScreen(c) }
         org.junit.Assert.assertTrue("(c.mounted == \"1:10 2:20 \")", (c.mounted == "1:10 2:20 "))
-        composeTestRule.onNodeWithTag("add").performClick(); composeTestRule.waitForIdle()
+        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("add")).performClick(); composeTestRule.waitForIdle()
         org.junit.Assert.assertTrue("(c.mounted == \"1:10 2:20 3:30 \")", (c.mounted == "1:10 2:20 3:30 "))
     }
 
@@ -1195,6 +1188,6 @@ pass sha256:1a4121c6a530ca8032df27964d854f49
 -- run/go/gtk4 --
 pass sha256:574897b514b04935739884a49ba68a67
 -- run/kotlin/android --
-pass sha256:a39055ee90d4d0e248e1abd56df1628d
+pass sha256:a608b2af0f2e56dcd96e066b88b1301e
 -- run/none/html --
 pass sha256:65b31ab506c40bff2857b2402ce14e3e

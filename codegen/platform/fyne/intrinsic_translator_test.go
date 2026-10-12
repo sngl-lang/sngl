@@ -50,7 +50,7 @@ func entrySpec() *fyneSpec {
 		GoType:  fyneNative{Path: "fyne.io/fyne/v2/widget", Name: "*Entry"},
 		Setters: map[string]string{"text": "SetText"},
 		Handlers: map[string]fyneHandler{
-			"input": {Field: "OnChanged", Signature: "func(s string)", Param: "s"},
+			"input": {Field: "OnChanged", Signature: "func(s string)"},
 		},
 	}
 }

@@ -15,10 +15,10 @@ import go "sngl:language/go"
 // status line, and starts the reader before any click can be lost.
 component block[go.language] {
     gen.emit(
-        render=encode,
+        render = encode,
         @start(members) {
             print(header)
-            async.spawn(func() {
+            async.start(func() {
                 readClicks(members)
             })
         },
@@ -69,7 +69,7 @@ func readClicks(members func() list<Entry>) {
             var button = int.parse(clickField(line, "button"), 10)
             var x = int.parse(clickField(line, "relative_x"), 10)
             var y = int.parse(clickField(line, "relative_y"), 10)
-            async.post(func() {
+            async.do(func() {
                 var ms = members()
                 var i = int.parse(instance, 10)
                 if i >= 0 && i < ms.length {
@@ -78,7 +78,7 @@ func readClicks(members func() list<Entry>) {
             })
         }
     }
-    async.post(func() {
+    async.do(func() {
         exit(0)
     })
 }

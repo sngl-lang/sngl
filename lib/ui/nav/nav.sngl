@@ -27,10 +27,10 @@ component _page<M = struct {}>(href string, title string, meta M = M{}) build.fa
 // else; content written bare sees none.
 #[marks.builtin("navPage")]
 component page<T = struct {}, M = struct {}>(
-    href string,
-    title string,
-    meta M = M{},
-    params T = T{},
+    href    string,
+    title   string,
+    meta    M = M{},
+    params  T = T{},
     content ...component(v T) ui.node,
 ) _page<M>
 
@@ -93,11 +93,11 @@ func _follow<T, M>(to page<T, M>, params option<T> = null)
 // which body a link renders is decided per node.
 #[marks.builtin("navLink")]
 component link<T = struct {}, M = struct {}>(
-    to page<T, M>,
+    to     page<T, M>,
     params option<T> = null,
-    text string,
-    style ui.Style,
-    @click ui.ClickEvent,
+    text   string,
+    style  ui.Style = ui.Style{},
+    @click(),
 ) ui.node {
     ui.button(text=text, style=style, @click {
         click()

@@ -80,7 +80,7 @@ func (c *converter) convertPackage(pkg *Package) *ast.Document {
 		componentNames[comp.Name] = true
 	}
 	for _, f := range pkg.Funcs {
-		if f.Receiver != "" && componentNames[f.Receiver] {
+		if f.IsMethod() && componentNames[f.RecvName()] {
 			continue
 		}
 		stmts = append(stmts, c.convertFuncDef(f))
@@ -218,8 +218,8 @@ func (c *converter) convertVarDecl(v *Var) *ast.VarDecl {
 
 func (c *converter) convertFuncDef(f *Func) *ast.FuncDef {
 	name := f.Name
-	if f.Receiver != "" {
-		name = f.Receiver + "." + f.Name
+	if f.IsMethod() {
+		name = f.RecvName() + "." + f.Name
 	}
 	fd := &ast.FuncDef{
 		Name:       name,
@@ -285,12 +285,12 @@ func (c *converter) convertComponent(comp *Component) *ast.ComponentDecl {
 	// The return position is the tree the component is a member of. Its
 	// children type is derived from the default slot, which prints itself.
 	switch {
-	case comp.Tree != nil:
-		cd.ChildrenType = c.treeName(comp.Tree)
-	case comp.TreeParam != "":
+	case comp.Family != nil:
+		cd.ChildrenType = c.familyName(comp.Family)
+	case comp.FamilyParam != nil:
 		// A wrapper's family is whatever it was handed, and the parameter is
 		// the component's own -- so it is spelled bare, never qualified.
-		cd.ChildrenType = &ast.NamedType{Name: comp.TreeParam}
+		cd.ChildrenType = &ast.NamedType{Name: comp.FamilyParam.ParamName}
 	}
 
 	// Build body: vars, consts, funcs, then body stmts.
@@ -307,13 +307,13 @@ func (c *converter) convertComponent(comp *Component) *ast.ComponentDecl {
 		// Inside a component body the receiver is implicit; emitting it
 		// as `Comp.name` would re-route the decl as a free-standing
 		// method on type `Comp` rather than a component method.
-		if f.Receiver != "" && f.Receiver == comp.Name {
+		if f.IsMethod() && f.RecvName() == comp.Name {
 			fd.Name = f.Name
 		}
 		bodyStmts = append(bodyStmts, fd)
 	}
-	if len(comp.Body) > 0 {
-		bodyBlock := c.convertStmtBlock(comp.Body)
+	if len(comp.Stmts) > 0 {
+		bodyBlock := c.convertStmtBlock(comp.Stmts)
 		bodyStmts = append(bodyStmts, bodyBlock.Stmts...)
 	}
 	// A signature keeps no block; anything else gets one even when it is
@@ -605,7 +605,7 @@ func (c *converter) convertNodeInst(n *NodeInst) *ast.VisualNode {
 		ID:     n.ID,
 	}
 	if n.Crosses {
-		vn.Attrs = []ast.MacroAttr{c.attr("tree", "crosses")}
+		vn.Attrs = []ast.MacroAttr{c.attr("family", "crosses")}
 	}
 
 	var args []ast.ArgOrEventHandler
@@ -734,7 +734,7 @@ func (c *converter) convertSlotContent(s *SlotDecl) ast.TypeExpr {
 		// A count with no tree of its own: bare `tree.one` is one of whatever
 		// the slot already accepts, which is its owner's family.
 		if s.Card == SlotOne {
-			return &ast.NamedType{Package: c.treePkg(), Name: "one"}
+			return &ast.NamedType{Package: c.familyPkg(), Name: "one"}
 		}
 		return nil
 	}
@@ -742,21 +742,21 @@ func (c *converter) convertSlotContent(s *SlotDecl) ast.TypeExpr {
 	if f := TypeFamily(s.Content); f != nil {
 		// A family is spelled through whatever this file imported its package
 		// as; convertType reads the name off the declaration and loses that.
-		elem = c.treeName(f)
+		elem = c.familyName(f)
 	} else {
 		elem = c.convertType(s.Content)
 	}
 	switch s.Card {
 	case SlotOne:
-		return &ast.NamedType{Package: c.treePkg(), Name: "one", TypeArgs: []ast.TypeExpr{elem}}
+		return &ast.NamedType{Package: c.familyPkg(), Name: "one", TypeArgs: []ast.TypeExpr{elem}}
 	case SlotOptional:
 		return &ast.NamedType{Name: "option", TypeArgs: []ast.TypeExpr{elem}}
 	}
 	return elem
 }
 
-// treePkg is what this file imported sngl:tree as.
-func (c *converter) treePkg() string { return c.aliasFor("tree") }
+// familyPkg is what this file imported sngl:family as.
+func (c *converter) familyPkg() string { return c.aliasFor("family") }
 
 // aliasFor is what this file imported a library package as, defaulting to the
 // last segment of its URI — which is the alias an unaliased import binds.
@@ -776,12 +776,12 @@ func (c *converter) aliasFor(uri string) string {
 	return uri
 }
 
-// treeName spells a family the way the file that names it does: qualified when
+// familyName spells a family the way the file that names it does: qualified when
 // it was declared elsewhere, bare when it was declared here.
-func (c *converter) treeName(f *Component) *ast.NamedType {
+func (c *converter) familyName(f *Component) *ast.NamedType {
 	nt := &ast.NamedType{Name: f.Name}
-	if f.Pkg != "" {
-		nt.Package = c.aliasFor(f.Pkg)
+	if f.PkgPath() != "" {
+		nt.Package = c.aliasFor(f.PkgPath())
 	}
 	return nt
 }
@@ -795,7 +795,7 @@ func (c *converter) convertSlotInst(s *SlotInst) *ast.VisualNode {
 	// Every insertion is written by name now, the rest slot included.
 	vn := &ast.VisualNode{Target: &ast.IdentExpr{Name: s.Name}}
 	if s.Crosses {
-		vn.Attrs = []ast.MacroAttr{c.attr("tree", "crosses")}
+		vn.Attrs = []ast.MacroAttr{c.attr("family", "crosses")}
 	}
 	for _, a := range s.Args {
 		vn.Args.Args = append(vn.Args.Args, ast.Arg{Value: c.convertExpr(a)})
@@ -891,10 +891,8 @@ func (c *converter) convertLiteral(lit *Literal) ast.Expr {
 		// Raw is the spelling, and a unit literal's is its number followed by
 		// its suffix -- the two halves the IR holds apart.
 		return &ast.UnitLiteral{
-			LiteralExpr: ast.LiteralExpr{
-				Kind: ast.LiteralUnit,
-				Raw:  lit.Value + lit.Suffix,
-			},
+			Kind:   ast.LiteralUnit,
+			Raw:    lit.Value + lit.Suffix,
 			Suffix: lit.Suffix,
 		}
 	}
@@ -950,12 +948,12 @@ func (c *converter) convertCallExpr(call *Call) *ast.CallExpr {
 			funcExpr = c.convertExpr(call.Receiver)
 		}
 	} else if call.Func != nil {
-		if call.Func.Receiver != "" {
+		if call.Func.IsMethod() {
 			// Type-attached method: render as Type.method(args). After checker
 			// normalization Args[0] is the receiver value; both "x.method(...)"
 			// and "Type.method(...)" syntaxes collapse to this shape.
 			funcExpr = &ast.SelectExpr{
-				Operand: &ast.IdentExpr{Name: call.Func.Receiver},
+				Operand: &ast.IdentExpr{Name: call.Func.RecvName()},
 				Field:   call.Func.Name,
 			}
 		} else if id, ok := call.Receiver.(*Ident); ok && id.Name != "" {
@@ -1087,15 +1085,6 @@ func (c *converter) convertType(t *Type) ast.TypeExpr {
 			nt.TypeArgs = []ast.TypeExpr{c.convertType(t.Elems[0])}
 		}
 		return nt
-	case TypeRemote:
-		// Qualified, unlike list and option: the declaration lives in sngl:remote
-		// rather than being ambient, so `Value<T>` on its own would not resolve
-		// where the printed source is read back.
-		nt := &ast.NamedType{Package: "remote", Name: "Value"}
-		if len(t.Elems) > 0 {
-			nt.TypeArgs = []ast.TypeExpr{c.convertType(t.Elems[0])}
-		}
-		return nt
 	case TypeStruct, TypeEnum, TypeUnit, TypeComponent, TypeInstance:
 		// An anonymous struct's spelling is its fields: the synthesized name
 		// resolves to nothing where the printed source is read back.
@@ -1159,6 +1148,9 @@ func (c *converter) convertParamList(params []*Param) ast.ParamList {
 			Type:  c.convertType(p.Type),
 			Const: p.Const,
 		}
+		if p.Variadic && p.Type != nil && p.Type.Kind == TypeList && len(p.Type.Elems) == 1 {
+			ap.Type = &ast.VariadicType{Elem: c.convertType(p.Type.Elems[0])}
+		}
 		if p.Default != nil {
 			ap.Default = c.convertExpr(p.Default)
 		}
@@ -1167,21 +1159,16 @@ func (c *converter) convertParamList(params []*Param) ast.ParamList {
 	return pl
 }
 
-// convertEventDecl spells an event so it parses as the same declaration: the
-// bare `@change T` for one unnamed parameter, `@tick` for the loose `dyn` one
-// that spelling has always meant, and the parenthesised list otherwise --
-// `@done()` for none, since a bare `@done` would read back as the loose form.
+// convertEventDecl spells an event as a function's parameter list, `@done()`
+// for none. A parameter the IR carries without a name -- one a pass
+// synthesized -- is given one, since the list a declaration writes names
+// each.
 func (c *converter) convertEventDecl(e *EventDecl) ast.EventDecl {
-	ed := ast.EventDecl{Name: e.Name}
-	if len(e.Params) == 1 && e.Params[0].Name == "" {
-		if t := e.Params[0].Type; t != nil && t.Kind != TypeDyn {
-			ed.Params = []ast.FuncTypeParam{{Type: c.convertType(t)}}
+	ed := ast.EventDecl{Name: e.Name, HasParens: true, Params: c.convertParamList(e.Params)}
+	for i := range ed.Params.Params {
+		if ed.Params.Params[i].Name == "" {
+			ed.Params.Params[i].Name = fmt.Sprintf("v%d", i)
 		}
-		return ed
-	}
-	ed.HasParens = true
-	for _, p := range e.Params {
-		ed.Params = append(ed.Params, ast.FuncTypeParam{Name: p.Name, Type: c.convertType(p.Type)})
 	}
 	return ed
 }

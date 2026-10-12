@@ -3,7 +3,7 @@ import . "sngl:test"
 
 // Props print in the order they were written, which is the order the checker
 // recorded -- a positional arg is resolved to its name on the way in, so
-// `text({}, "x")` and `text(style={}, value="x")` are one thing by here.
+// `text("x")` and `text(value="x")` are one thing by here.
 // Handlers print after them as bare `@name` markers: a snapshot records that a
 // handler is attached, never what it would do.
 component card node {
@@ -11,7 +11,7 @@ component card node {
 
     vbox {
         text(value=label, selectable=true)
-        text({}, "resolved from positional")
+        text("resolved from positional")
         button(text="click me", @click { label = "clicked" })
         hbox {
             text(value="nested")

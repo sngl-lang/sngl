@@ -66,7 +66,7 @@ import (
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
-	m                   int
+	m__r0               int
 	xs                  []int
 	m__inst0            map[string]int
 	c__inst0            map[string]int
@@ -79,7 +79,7 @@ type Model struct {
 // New creates a Model with default bind values.
 func New() Model {
 	m := Model{}
-	m.m = 1
+	m.m__r0 = 1
 	m.xs = []int{1, 2}
 	m.m__inst0 = map[string]int{}
 	m.c__inst0 = map[string]int{}
@@ -134,19 +134,19 @@ func (m *Model) __focusPrev() {
 	}
 }
 
-func (m Model) M() int {
-	return m.m
+func (m Model) M__r0() int {
+	return m.m__r0
 }
 
-func (m Model) SetM(v int) Model {
-	m.m = v
+func (m Model) SetM__r0(v int) Model {
+	m.m__r0 = v
 	return m
 }
 
-type setMMsg struct{ value int }
+type setM__r0Msg struct{ value int }
 
-func SetMCmd(v int) tea.Cmd {
-	return func() tea.Msg { return setMMsg{value: v} }
+func SetM__r0Cmd(v int) tea.Cmd {
+	return func() tea.Msg { return setM__r0Msg{value: v} }
 }
 
 func (m Model) Xs() []int {
@@ -203,8 +203,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	_ = cmd
 	switch msg := msg.(type) {
-	case setMMsg:
-		m = m.SetM(msg.value)
+	case setM__r0Msg:
+		m = m.SetM__r0(msg.value)
 	case setXsMsg:
 		m = m.SetXs(msg.value)
 	case setM__inst0Msg:
@@ -223,7 +223,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case msg.Code == tea.KeyTab && msg.Mod == tea.ModShift:
 			m.__focusPrev()
 		case msg.Code == tea.KeyEnter && m.__focusID == 0:
-			m.m += 1
+			m.m__r0 += 1
 		case msg.Code == tea.KeyEnter && m.__focusID == 1:
 			func() {
 				__focusPos1 := 0
@@ -266,11 +266,49 @@ func (m *Model) bumpClick() {
 	m.__focusID = prev
 }
 
+// incClickAt activates the copy of #inc at index i, in render order, the way a keypress does; for tests.
+func (m *Model) incClickAt(i int) {
+	at := func() []int {
+		var __at []int
+		__focusPos1 := 0
+		for __copy0, x := range m.xs {
+			_ = __copy0
+			_ = x
+			__at = append(__at, __focusPos1)
+			__focusPos1++
+		}
+		return __at
+	}()
+	if i < 0 || i >= len(at) {
+		return
+	}
+	prev, prevAt := m.__focusID, m.__focusLoop1_cursor
+	m.__focusID, m.__focusLoop1_cursor = 1, at[i]
+	nm, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	*m = nm.(Model)
+	m.__focusID, m.__focusLoop1_cursor = prev, prevAt
+}
+
+// incClick activates the last copy of #inc the way a keypress does; for tests.
+func (m *Model) incClick() {
+	m.incClickAt(len(func() []int {
+		var __at []int
+		__focusPos1 := 0
+		for __copy0, x := range m.xs {
+			_ = __copy0
+			_ = x
+			__at = append(__at, __focusPos1)
+			__focusPos1++
+		}
+		return __at
+	}()) - 1)
+}
+
 func (m Model) View() tea.View {
 	var content string
 	var contentChildren []string
 	var content_0 string
-	content_0 = lipgloss.NewStyle().Render(fmt.Sprint(("page " + fmt.Sprint(m.m))))
+	content_0 = lipgloss.NewStyle().Render(fmt.Sprint(("page " + fmt.Sprint(m.m__r0))))
 	contentChildren = append(contentChildren, content_0)
 	var content_1 string
 	content_1Focused := (m.__focusID == 0)
@@ -341,7 +379,7 @@ func TestBump(t *testing.T) {
 	c := newTestComponent()
 	_ = c
 	c.bumpClick()
-	if !((c.m == 2)) { t.Errorf("assert failed: %s", "(c.m == 2)") }
+	if !((c.m__r0 == 2)) { t.Errorf("assert failed: %s", "(c.m__r0 == 2)") }
 }
 
 
@@ -363,7 +401,7 @@ import (
 
 // Model holds the state for this SNGL UI.
 type Model struct {
-	m            int
+	m__r1        int
 	xs           []int
 	__root       *fyne.Container
 	__slot0      []fyne.CanvasObject
@@ -379,7 +417,7 @@ type Model struct {
 // New creates a Model with default values.
 func New() *Model {
 	m := &Model{}
-	m.m = 1
+	m.m__r1 = 1
 	m.xs = []int{1, 2}
 	m.__root = container.NewVBox()
 	m.__slot0 = nil
@@ -424,8 +462,8 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 }
 
 func (m *Model) bump_click_handler() {
-	m.m += 1
-	m.__n1.SetText(("page " + fmt.Sprint(m.m)))
+	m.m__r1 += 1
+	m.__n1.SetText(("page " + fmt.Sprint(m.m__r1)))
 }
 
 // bumpClick invokes the OnTapped callback on the #bump widget; for tests.
@@ -442,12 +480,12 @@ func (m *Model) incClick() {
 	}
 }
 
-func (m *Model) M() int {
-	return m.m
+func (m *Model) M__r1() int {
+	return m.m__r1
 }
 
-func (m *Model) SetM(v int) {
-	m.m = v
+func (m *Model) SetM__r1(v int) {
+	m.m__r1 = v
 }
 
 func (m *Model) Xs() []int {
@@ -462,7 +500,7 @@ func (m *Model) SetXs(v []int) {
 func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n3 = container.NewVBox()
 	m.__n1 = widget.NewLabel("")
-	m.__n1.SetText(("page " + fmt.Sprint(m.m)))
+	m.__n1.SetText(("page " + fmt.Sprint(m.m__r1)))
 	m.__n3.Add(m.__n1)
 	m.bump = widget.NewButton("", nil)
 	m.bump.SetText("bump")
@@ -478,8 +516,8 @@ type CounterInstance struct {
 	Root         fyne.CanvasObject
 	__model      *Model
 	__prop_start int
-	m            int
-	c            int
+	m__r0        int
+	c__r0        int
 	__root       *fyne.Container
 	__slot0      []fyne.CanvasObject
 	__slot0_at   fyne.CanvasObject
@@ -491,21 +529,21 @@ func newCounterInstance(__model *Model, __a_start int) *CounterInstance {
 	c := &CounterInstance{}
 	c.__model = __model
 	c.__prop_start = __a_start
-	c.m = c.__prop_start
-	c.c = 0
+	c.m__r0 = c.__prop_start
+	c.c__r0 = 0
 	c.__root = container.NewVBox()
 	c.__slot0 = nil
 	__n4 := container.NewHBox()
 	c.__n0 = widget.NewLabel("")
-	c.__n0.SetText(((("m " + fmt.Sprint(c.m)) + " c ") + fmt.Sprint(c.c)))
+	c.__n0.SetText(((("m " + fmt.Sprint(c.m__r0)) + " c ") + fmt.Sprint(c.c__r0)))
 	__n4.Add(c.__n0)
 	c.inc = widget.NewButton("", nil)
 	c.inc.SetText("inc")
 	c.inc.OnTapped = func() {
-		c.m += 1
-		c.__n0.SetText(((("m " + fmt.Sprint(c.m)) + " c ") + fmt.Sprint(c.c)))
-		c.c += 1
-		c.__n0.SetText(((("m " + fmt.Sprint(c.m)) + " c ") + fmt.Sprint(c.c)))
+		c.m__r0 += 1
+		c.__n0.SetText(((("m " + fmt.Sprint(c.m__r0)) + " c ") + fmt.Sprint(c.c__r0)))
+		c.c__r0 += 1
+		c.__n0.SetText(((("m " + fmt.Sprint(c.m__r0)) + " c ") + fmt.Sprint(c.c__r0)))
 	}
 	__n4.Add(c.inc)
 	c.Root = __n4
@@ -537,7 +575,7 @@ func TestBump(t *testing.T) {
 	c := newTestComponent()
 	_ = c
 	c.bumpClick()
-	if !((c.m == 2)) { t.Errorf("assert failed: %s", "(c.m == 2)") }
+	if !((c.m__r1 == 2)) { t.Errorf("assert failed: %s", "(c.m__r1 == 2)") }
 }
 
 -- out/go/fyne/testcomponent_test.go --
@@ -575,7 +613,7 @@ import (
 
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
-	m            int
+	m__r1        int
 	xs           []int
 	__root       gtk4rt.Handle
 	__slot0      []gtk4rt.Handle
@@ -590,7 +628,7 @@ type Model struct {
 // sequentially so later inits can reference earlier `m.<name>` fields.
 func New() *Model {
 	m := &Model{}
-	m.m = 1
+	m.m__r1 = 1
 	m.xs = []int{1, 2}
 	m.__root = nil
 	m.__slot0 = nil
@@ -635,8 +673,8 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 }
 
 func (m *Model) bump_clicked_handler() {
-	m.m += 1
-	gtk4rt.LabelSetText(m.__n1, ("page " + fmt.Sprint(m.m)))
+	m.m__r1 += 1
+	gtk4rt.LabelSetText(m.__n1, ("page " + fmt.Sprint(m.m__r1)))
 }
 
 // CounterInstance is one live instance of the counter component.
@@ -644,8 +682,8 @@ type CounterInstance struct {
 	Root         gtk4rt.Handle
 	__model      *Model
 	__prop_start int
-	m            int
-	c            int
+	m__r0        int
+	c__r0        int
 	__root       gtk4rt.Handle
 	__slot0      []gtk4rt.Handle
 	__slot0_at   gtk4rt.Handle
@@ -657,23 +695,23 @@ func newCounterInstance(__model *Model, __a_start int) *CounterInstance {
 	c := &CounterInstance{}
 	c.__model = __model
 	c.__prop_start = __a_start
-	c.m = c.__prop_start
-	c.c = 0
+	c.m__r0 = c.__prop_start
+	c.c__r0 = 0
 	c.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
 	c.__slot0 = nil
 	__n4 := gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
 	gtk4rt.OrientableSetOrientation(__n4, gtk4rt.OrientationHorizontal)
 	gtk4rt.BoxSetSpacing(__n4, 6)
 	c.__n0 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(c.__n0, ((("m " + fmt.Sprint(c.m)) + " c ") + fmt.Sprint(c.c)))
+	gtk4rt.LabelSetText(c.__n0, ((("m " + fmt.Sprint(c.m__r0)) + " c ") + fmt.Sprint(c.c__r0)))
 	gtk4rt.BoxAppend(__n4, c.__n0)
 	c.inc = gtk4rt.ButtonNew()
 	gtk4rt.ButtonSetLabel(c.inc, "inc")
 	gtk4rt.Connect(c.inc, "clicked", func() {
-		c.m += 1
-		gtk4rt.LabelSetText(c.__n0, ((("m " + fmt.Sprint(c.m)) + " c ") + fmt.Sprint(c.c)))
-		c.c += 1
-		gtk4rt.LabelSetText(c.__n0, ((("m " + fmt.Sprint(c.m)) + " c ") + fmt.Sprint(c.c)))
+		c.m__r0 += 1
+		gtk4rt.LabelSetText(c.__n0, ((("m " + fmt.Sprint(c.m__r0)) + " c ") + fmt.Sprint(c.c__r0)))
+		c.c__r0 += 1
+		gtk4rt.LabelSetText(c.__n0, ((("m " + fmt.Sprint(c.m__r0)) + " c ") + fmt.Sprint(c.c__r0)))
 	})
 	gtk4rt.BoxAppend(__n4, c.inc)
 	c.Root = __n4
@@ -696,12 +734,12 @@ func (c *CounterInstance) Destroy() {
 	}
 }
 
-func (m *Model) M() int {
-	return m.m
+func (m *Model) M__r1() int {
+	return m.m__r1
 }
 
-func (m *Model) SetM(v int) {
-	m.m = v
+func (m *Model) SetM__r1(v int) {
+	m.m__r1 = v
 }
 
 func (m *Model) Xs() []int {
@@ -721,7 +759,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.OrientableSetOrientation(__n3, gtk4rt.OrientationVertical)
 	gtk4rt.BoxSetSpacing(__n3, 6)
 	m.__n1 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.__n1, ("page " + fmt.Sprint(m.m)))
+	gtk4rt.LabelSetText(m.__n1, ("page " + fmt.Sprint(m.m__r1)))
 	gtk4rt.BoxAppend(__n3, m.__n1)
 	m.bump = gtk4rt.ButtonNew()
 	gtk4rt.ButtonSetLabel(m.bump, "bump")
@@ -750,8 +788,8 @@ func (m *Model) incClick() {
 	gtk4rt.Emit(m.__named_inc, "clicked")
 }
 -- run/go/bubbletea --
-pass sha256:884f5f4e4d90b472ca618abd6b9bef81
+pass sha256:6cd3d98547afeb7fc55e20294033879a
 -- run/go/fyne --
-pass sha256:378bc294f4022935ded0299d90a6c8d3
+pass sha256:056a23bca0a9a8b3478f8d4ba0373c18
 -- run/go/gtk4 --
-pass sha256:b4a08411c269b895e6998f293fae1b8c
+pass sha256:1405bbcde263119fb0518cc7ab45ed2c

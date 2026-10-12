@@ -120,7 +120,7 @@ func markedPackage() *Package {
 		}},
 		Components: []*Component{{
 			Props: []*Prop{{Name: "p", Default: mark("Prop.Default")}},
-			Body: []Stmt{
+			Stmts: []Stmt{
 				&ContextProvider{
 					Value:    mark("ContextProvider.Value"),
 					Children: []Stmt{},

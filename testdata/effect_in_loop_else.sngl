@@ -23,7 +23,7 @@ component main node {
         text(value=it)
     } else {
         effect(
-            on="none",
+            on = "none",
             @mount(v) {
                 log.push("+{v}")
             },

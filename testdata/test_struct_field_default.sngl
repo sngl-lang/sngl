@@ -6,8 +6,8 @@ import . "sngl:test"
 // was written down and never read: `P{}` had no x at all, and two values that
 // differed only in a field one of them omitted compared unequal.
 struct P {
-    x int = 7
-    y int = 0
+    x   int = 7
+    y   int = 0
     tag string = "none"
 }
 

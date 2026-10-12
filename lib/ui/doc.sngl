@@ -23,7 +23,7 @@
 // their own because a window is where widgets go: what it hosts is `node`,
 // so any package holding it would import this one and be imported back.
 //
-// `Style`, the style enums and the event payloads sit here rather than in a
+// `Style`, the style enums and the units sit here rather than in a
 // package of their own because every component in every one of those
 // packages refers to them; they are the vocabulary, not a separate concern.
 //
@@ -32,3 +32,6 @@
 // overrides a component (`component <alias>.vbox`); it is the form this
 // repository writes. `import . "sngl:ui"` writes them unqualified and remains
 // supported.
+
+// Syntax highlighting broken. Comments/Props/Types/Macros look like normal text. Only keywords highlight.
+// Seems like LSP doesn't see sibling files, it complaints about definitions not found. It's also all janky on the stdlib because it doesn't see the internal imports while editing lib/ in the repo.

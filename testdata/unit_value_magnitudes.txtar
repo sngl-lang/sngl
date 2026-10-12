@@ -1,15 +1,15 @@
 A unit value is a magnitude per base, never its own spelling.
 
-`unit measurement { px, em, rem = 16em, vw, vh, pct }` declares five
-independent bases -- only `rem` reduces, to `em` -- so `1px + 2pct` keeps both
-magnitudes and every target represents it as a record with a field per base.
+`unit measurement { px, em, rem }` declares three independent bases, so
+`1px + 2em` keeps both magnitudes and every target represents it as a record
+with a field per base.
 `unit duration { ms, s = 1000ms, m = 60s, h = 60m }` declares one, so a
 duration is a plain number of ms: JS gets the number setInterval already
 wants, without any per-language table saying so.
 
 Terms that share a base fold to a single literal before codegen
 (combinedUnitLiteral), which is what keeps the common case cheap: `3px + 4px`
-is 7px and `1rem + 2em` is 18em in every backend, from one place. Only
+is 7px and `1s + 500ms` is 1500ms in every backend, from one place. Only
 genuinely mixed bases reach a backend as arithmetic over the record.
 
 Before this, a unit value WAS its source spelling, so `+` concatenated:
@@ -24,12 +24,10 @@ Every one of the five is read. A var nothing reads is shaken, and the two that
 carry this archive's explanations -- the reduction and the mixed record -- are
 exactly the two a program would have no other reason to keep.
 
-The suffix does not vanish where a host needs it: CSS still wants `7px`, and
-the base named `pct` is spelled `%` there because `%` is not a legal SNGL
-identifier. That rename is html's, not the language's.
+The suffix does not vanish where a host needs it: CSS still wants `7px`.
 
-deny out/none/html/index.html `"[0-9._]*[1-9][0-9._]*(px|em|rem|vw|vh|pct|ms|s)` -- a unit value is a number, never a quoted spelling: `3px + 4px` used to evaluate to "3pxpx4pxpx". A *zero* magnitude is exempt because the display rule spells one: `"0px"` is what a value carrying nothing renders as, and it is a constant rather than a value that was spelled
-deny out/kotlin/android/app/src/main/java/test/sngl/app/MainScreen.kt `[^"][0-9](px|pct|rem|em|ms)\b` -- Kotlin emitted the SNGL spelling verbatim (`(3px + 4px)`), which is not a Kotlin expression. Exempt after a quote for the same reason as above -- `"0px"` is the display rule's zero, not a magnitude carrying a suffix
+deny out/none/html/index.html `"[0-9._]*[1-9][0-9._]*(px|em|rem|ms|s)` -- a unit value is a number, never a quoted spelling: `3px + 4px` used to evaluate to "3pxpx4pxpx". A *zero* magnitude is exempt because the display rule spells one: `"0px"` is what a value carrying nothing renders as, and it is a constant rather than a value that was spelled
+deny out/kotlin/android/app/src/main/java/test/sngl/app/MainScreen.kt `[^"][0-9](px|rem|em|ms)\b` -- Kotlin emitted the SNGL spelling verbatim (`(3px + 4px)`), which is not a Kotlin expression. Exempt after a quote for the same reason as above -- `"0px"` is the display rule's zero, not a magnitude carrying a suffix
 
 -- app.sngl --
 import . "sngl:ui"
@@ -50,10 +48,10 @@ output {
 component main node {
     // Shares a base: folds to one magnitude in the shared base.
     var samebase measurement = 3px + 4px
-    // Reduces through `rem = 16em`: 18em, in em rather than in rem.
-    var reduced measurement = 1rem + 2em
+    // Reduces through `s = 1000ms`: 1500ms, in ms rather than in s.
+    var reduced time.duration = 1s + 500ms
     // Independent bases: no single number, so the record survives.
-    var mixed measurement = 1px + 2pct
+    var mixed measurement = 1px + 2em
 
     // One base, so a plain number -- of ms, which is duration's own base.
     var short time.duration = 100ms
@@ -93,23 +91,11 @@ func snglStrMeasurement(v Measurement) string {
 		}
 		s += fmt.Sprint(v.Em) + "em"
 	}
-	if v.Vw != 0 {
+	if v.Rem != 0 {
 		if s != "" {
 			s += " + "
 		}
-		s += fmt.Sprint(v.Vw) + "vw"
-	}
-	if v.Vh != 0 {
-		if s != "" {
-			s += " + "
-		}
-		s += fmt.Sprint(v.Vh) + "vh"
-	}
-	if v.Pct != 0 {
-		if s != "" {
-			s += " + "
-		}
-		s += fmt.Sprint(v.Pct) + "pct"
+		s += fmt.Sprint(v.Rem) + "rem"
 	}
 	if s == "" {
 		return "0px"
@@ -124,20 +110,18 @@ func snglStrDuration(v time.Duration) string {
 type Measurement struct {
 	Px  float64
 	Em  float64
-	Vw  float64
-	Vh  float64
-	Pct float64
+	Rem float64
 }
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
 	samebase__inst0 Measurement
-	reduced__inst0  Measurement
+	reduced__inst0  time.Duration
 	mixed__inst0    Measurement
 	short__inst0    time.Duration
 	long__inst0     time.Duration
 	total__inst0    time.Duration
-	visible__inst1  bool
+	visible__inst0  bool
 
 	width, height int
 }
@@ -146,12 +130,12 @@ type Model struct {
 func New() Model {
 	m := Model{}
 	m.samebase__inst0 = Measurement{Px: 7}
-	m.reduced__inst0 = Measurement{Em: 18}
-	m.mixed__inst0 = Measurement{Px: Measurement{Px: 1}.Px + Measurement{Pct: 2}.Px, Em: Measurement{Px: 1}.Em + Measurement{Pct: 2}.Em, Vw: Measurement{Px: 1}.Vw + Measurement{Pct: 2}.Vw, Vh: Measurement{Px: 1}.Vh + Measurement{Pct: 2}.Vh, Pct: Measurement{Px: 1}.Pct + Measurement{Pct: 2}.Pct}
+	m.reduced__inst0 = time.Duration(1500) * time.Millisecond
+	m.mixed__inst0 = Measurement{Px: Measurement{Px: 1}.Px + Measurement{Em: 2}.Px, Em: Measurement{Px: 1}.Em + Measurement{Em: 2}.Em, Rem: Measurement{Px: 1}.Rem + Measurement{Em: 2}.Rem}
 	m.short__inst0 = time.Duration(100) * time.Millisecond
 	m.long__inst0 = time.Duration(1000) * time.Millisecond
 	m.total__inst0 = (m.short__inst0 + m.long__inst0)
-	m.visible__inst1 = true
+	m.visible__inst0 = true
 	return m
 }
 
@@ -176,18 +160,18 @@ func SetSamebase__inst0Cmd(v Measurement) tea.Cmd {
 	return func() tea.Msg { return setSamebase__inst0Msg{value: v} }
 }
 
-func (m Model) Reduced__inst0() Measurement {
+func (m Model) Reduced__inst0() time.Duration {
 	return m.reduced__inst0
 }
 
-func (m Model) SetReduced__inst0(v Measurement) Model {
+func (m Model) SetReduced__inst0(v time.Duration) Model {
 	m.reduced__inst0 = v
 	return m
 }
 
-type setReduced__inst0Msg struct{ value Measurement }
+type setReduced__inst0Msg struct{ value time.Duration }
 
-func SetReduced__inst0Cmd(v Measurement) tea.Cmd {
+func SetReduced__inst0Cmd(v time.Duration) tea.Cmd {
 	return func() tea.Msg { return setReduced__inst0Msg{value: v} }
 }
 
@@ -251,19 +235,19 @@ func SetTotal__inst0Cmd(v time.Duration) tea.Cmd {
 	return func() tea.Msg { return setTotal__inst0Msg{value: v} }
 }
 
-func (m Model) Visible__inst1() bool {
-	return m.visible__inst1
+func (m Model) Visible__inst0() bool {
+	return m.visible__inst0
 }
 
-func (m Model) SetVisible__inst1(v bool) Model {
-	m.visible__inst1 = v
+func (m Model) SetVisible__inst0(v bool) Model {
+	m.visible__inst0 = v
 	return m
 }
 
-type setVisible__inst1Msg struct{ value bool }
+type setVisible__inst0Msg struct{ value bool }
 
-func SetVisible__inst1Cmd(v bool) tea.Cmd {
-	return func() tea.Msg { return setVisible__inst1Msg{value: v} }
+func SetVisible__inst0Cmd(v bool) tea.Cmd {
+	return func() tea.Msg { return setVisible__inst0Msg{value: v} }
 }
 
 func (m Model) Init() tea.Cmd {
@@ -287,18 +271,18 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m = m.SetLong__inst0(msg.value)
 	case setTotal__inst0Msg:
 		m = m.SetTotal__inst0(msg.value)
-	case setVisible__inst1Msg:
-		m = m.SetVisible__inst1(msg.value)
+	case setVisible__inst0Msg:
+		m = m.SetVisible__inst0(msg.value)
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
 	case tea.KeyPressMsg:
 		switch {
 		case msg.Code == 'c' && msg.Mod == tea.ModCtrl:
-			if m.visible__inst1 {
-				m.visible__inst1 = false
+			if m.visible__inst0 {
+				m.visible__inst0 = false
 			}
-			if !(m.visible__inst1) {
+			if !(m.visible__inst0) {
 				return m, tea.Quit
 			}
 			return m, nil
@@ -309,13 +293,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m Model) View() tea.View {
 	var content string
-	if m.visible__inst1 {
+	if m.visible__inst0 {
 		var contentParts []string
 		var contentPart_0 string
 		contentPart_0 = lipgloss.NewStyle().Render(fmt.Sprint(snglStrMeasurement(m.samebase__inst0)))
 		contentParts = append(contentParts, contentPart_0)
 		var contentPart_1 string
-		contentPart_1 = lipgloss.NewStyle().Render(fmt.Sprint(snglStrMeasurement(m.reduced__inst0)))
+		contentPart_1 = lipgloss.NewStyle().Render(fmt.Sprint(snglStrDuration(m.reduced__inst0)))
 		contentParts = append(contentParts, contentPart_1)
 		var contentPart_2 string
 		contentPart_2 = lipgloss.NewStyle().Render(fmt.Sprint(snglStrMeasurement(m.mixed__inst0)))
@@ -343,37 +327,24 @@ func main() {
 
 package test.sngl.app
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.*
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
-import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color as ComposeColor
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
-import androidx.activity.compose.BackHandler
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.platform.LocalContext
 import android.app.Activity
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.layout.Column
+import androidx.compose.material3.Text
+import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
 
 data class Measurement(
     val px: Double = 0.0,
     val em: Double = 0.0,
-    val vw: Double = 0.0,
-    val vh: Double = 0.0,
-    val pct: Double = 0.0
+    val rem: Double = 0.0
 )
 
 fun _snglFloatStr(v: Double): String =
@@ -386,25 +357,25 @@ fun _snglSplit(s: String, sep: String): List<String> =
 @Composable
 fun MainScreen() {
     var samebase__inst0 by remember { mutableStateOf(Measurement(px = 7.0)) }
-    var reduced__inst0 by remember { mutableStateOf(Measurement(em = 18.0)) }
-    var mixed__inst0 by remember { mutableStateOf(Measurement(px = (Measurement(px = 1.0)).px + (Measurement(pct = 2.0)).px, em = (Measurement(px = 1.0)).em + (Measurement(pct = 2.0)).em, vw = (Measurement(px = 1.0)).vw + (Measurement(pct = 2.0)).vw, vh = (Measurement(px = 1.0)).vh + (Measurement(pct = 2.0)).vh, pct = (Measurement(px = 1.0)).pct + (Measurement(pct = 2.0)).pct)) }
+    var reduced__inst0 by remember { mutableStateOf(1500L) }
+    var mixed__inst0 by remember { mutableStateOf(Measurement(px = (Measurement(px = 1.0)).px + (Measurement(em = 2.0)).px, em = (Measurement(px = 1.0)).em + (Measurement(em = 2.0)).em, rem = (Measurement(px = 1.0)).rem + (Measurement(em = 2.0)).rem)) }
     var short__inst0 by remember { mutableStateOf(100L) }
     var long__inst0 by remember { mutableStateOf(1000L) }
     var total__inst0 by remember { mutableStateOf((short__inst0 + long__inst0)) }
-    var visible__inst1 by remember { mutableStateOf(true) }
+    var visible__inst0 by remember { mutableStateOf(true) }
 
-    if (visible__inst1) {
+    if (visible__inst0) {
         val __activity = LocalContext.current as? Activity
         BackHandler {
-            visible__inst1 = false
-            if (!(visible__inst1)) {
+            visible__inst0 = false
+            if (!(visible__inst0)) {
                 __activity?.finish()
             }
         }
         Column {
-            Text(text = ((samebase__inst0).let { __u -> listOf(Pair(__u.px, "px"), Pair(__u.em, "em"), Pair(__u.vw, "vw"), Pair(__u.vh, "vh"), Pair(__u.pct, "pct")).filter { it.first != 0.0 }.joinToString(" + ") { _snglFloatStr(it.first) + it.second }.ifEmpty { "0px" } }), modifier = Modifier.safeDrawingPadding())
-            Text(text = ((reduced__inst0).let { __u -> listOf(Pair(__u.px, "px"), Pair(__u.em, "em"), Pair(__u.vw, "vw"), Pair(__u.vh, "vh"), Pair(__u.pct, "pct")).filter { it.first != 0.0 }.joinToString(" + ") { _snglFloatStr(it.first) + it.second }.ifEmpty { "0px" } }), modifier = Modifier.safeDrawingPadding())
-            Text(text = ((mixed__inst0).let { __u -> listOf(Pair(__u.px, "px"), Pair(__u.em, "em"), Pair(__u.vw, "vw"), Pair(__u.vh, "vh"), Pair(__u.pct, "pct")).filter { it.first != 0.0 }.joinToString(" + ") { _snglFloatStr(it.first) + it.second }.ifEmpty { "0px" } }), modifier = Modifier.safeDrawingPadding())
+            Text(text = ((samebase__inst0).let { __u -> listOf(Pair(__u.px, "px"), Pair(__u.em, "em"), Pair(__u.rem, "rem")).filter { it.first != 0.0 }.joinToString(" + ") { _snglFloatStr(it.first) + it.second }.ifEmpty { "0px" } }), modifier = Modifier.safeDrawingPadding())
+            Text(text = ((reduced__inst0).toString() + "ms"), modifier = Modifier.safeDrawingPadding())
+            Text(text = ((mixed__inst0).let { __u -> listOf(Pair(__u.px, "px"), Pair(__u.em, "em"), Pair(__u.rem, "rem")).filter { it.first != 0.0 }.joinToString(" + ") { _snglFloatStr(it.first) + it.second }.ifEmpty { "0px" } }), modifier = Modifier.safeDrawingPadding())
             Text(text = ((total__inst0).toString() + "ms"), modifier = Modifier.safeDrawingPadding())
         }
     }
@@ -434,17 +405,17 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { samebase__inst0: { px: 7, em: 0, vw: 0, vh: 0, pct: 0 }, reduced__inst0: { px: 0, em: 18, vw: 0, vh: 0, pct: 0 }, mixed__inst0: null, short__inst0: 100, long__inst0: 1e3, total__inst0: null, visible__inst1: true };
-  state.mixed__inst0 = { px: { px: 1, em: 0, vw: 0, vh: 0, pct: 0 }.px + { px: 0, em: 0, vw: 0, vh: 0, pct: 2 }.px, em: { px: 1, em: 0, vw: 0, vh: 0, pct: 0 }.em + { px: 0, em: 0, vw: 0, vh: 0, pct: 2 }.em, vw: { px: 1, em: 0, vw: 0, vh: 0, pct: 0 }.vw + { px: 0, em: 0, vw: 0, vh: 0, pct: 2 }.vw, vh: { px: 1, em: 0, vw: 0, vh: 0, pct: 0 }.vh + { px: 0, em: 0, vw: 0, vh: 0, pct: 2 }.vh, pct: { px: 1, em: 0, vw: 0, vh: 0, pct: 0 }.pct + { px: 0, em: 0, vw: 0, vh: 0, pct: 2 }.pct };
+  var state = { samebase__inst0: { px: 7, em: 0, rem: 0 }, reduced__inst0: 1500, mixed__inst0: null, short__inst0: 100, long__inst0: 1e3, total__inst0: null, visible__inst0: true };
+  state.mixed__inst0 = { px: { px: 1, em: 0, rem: 0 }.px + { px: 0, em: 2, rem: 0 }.px, em: { px: 1, em: 0, rem: 0 }.em + { px: 0, em: 2, rem: 0 }.em, rem: { px: 1, em: 0, rem: 0 }.rem + { px: 0, em: 2, rem: 0 }.rem };
   state.total__inst0 = state.short__inst0 + state.long__inst0;
   var __n1 = document.querySelector('[data-sngl-id="__n1"]');
   var __n2 = document.querySelector('[data-sngl-id="__n2"]');
   var __n3 = document.querySelector('[data-sngl-id="__n3"]');
   var __n4 = document.querySelector('[data-sngl-id="__n4"]');
   function __sngl_init() {
-    __n1.textContent = ((__u) => [[__u.px, "px"], [__u.em, "em"], [__u.vw, "vw"], [__u.vh, "vh"], [__u.pct, "pct"]].filter((t) => t[0] !== 0).map((t) => String(t[0]) + t[1]).join(" + ") || "0px")(state.samebase__inst0);
-    __n2.textContent = ((__u) => [[__u.px, "px"], [__u.em, "em"], [__u.vw, "vw"], [__u.vh, "vh"], [__u.pct, "pct"]].filter((t) => t[0] !== 0).map((t) => String(t[0]) + t[1]).join(" + ") || "0px")(state.reduced__inst0);
-    __n3.textContent = ((__u) => [[__u.px, "px"], [__u.em, "em"], [__u.vw, "vw"], [__u.vh, "vh"], [__u.pct, "pct"]].filter((t) => t[0] !== 0).map((t) => String(t[0]) + t[1]).join(" + ") || "0px")(state.mixed__inst0);
+    __n1.textContent = ((__u) => [[__u.px, "px"], [__u.em, "em"], [__u.rem, "rem"]].filter((t) => t[0] !== 0).map((t) => String(t[0]) + t[1]).join(" + ") || "0px")(state.samebase__inst0);
+    __n2.textContent = String(state.reduced__inst0) + "ms";
+    __n3.textContent = ((__u) => [[__u.px, "px"], [__u.em, "em"], [__u.rem, "rem"]].filter((t) => t[0] !== 0).map((t) => String(t[0]) + t[1]).join(" + ") || "0px")(state.mixed__inst0);
     __n4.textContent = String(state.total__inst0) + "ms";
   }
   __sngl_init();
@@ -452,8 +423,8 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:a3bac2465367a4eca1c22011cd296412
+pass sha256:5d310a702cb17b43b6d2d76dae17ff33
 -- run/kotlin/android --
-pass sha256:d85016d44ae97074afd3aa7444186d33
+pass sha256:730f52150e7206f71132093c834b7c8d
 -- run/none/html --
-pass sha256:16163cb76b2129a979d94e762c05a644
+pass sha256:8da9195ef7f59c65947c071e6c46de98

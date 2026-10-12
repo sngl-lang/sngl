@@ -1,6 +1,5 @@
 import ir "sngl:internal/ir"
 import marks "sngl:internal/marks"
-import tree "sngl:tree"
 
 // A SNGL construct a target may emit without help.
 //
@@ -147,7 +146,7 @@ func renders(these list<Rendered>) ir.Macro
 //     component block[go.language] {
 //         gen.emit(
 //             render=encode,
-//             @start(members) { async.spawn(func() { readClicks(members) }) },
+//             @start(members) { async.start(func() { readClicks(members) }) },
 //             @change(line) { print(line) },
 //         )
 //     }
@@ -176,22 +175,21 @@ func renders(these list<Rendered>) ir.Macro
 // A handler's annotation is what says what `T` is, as `render`'s does in code
 // mode.
 #[marks.builtin("genEmit")]
-#[tree.none]
-component emit<T = struct {}>(
-    file string = "",
-    open string = "",
-    close string = "",
+component emit<T = struct {}, F>(
+    file    string = "",
+    open    string = "",
+    close   string = "",
     // The defaults are never read: code mode needs a `render`, and the build
     // always supplies `members`. They are typed by T's default because a
     // default is checked against what T stands for in the declaration.
-    render func(members list<T>) string = func(members list<struct {}>) => "",
+    render  func(members list<T>) string = func(members list<struct {}>) => "",
     members func() list<T> = func() list<struct {}> {
         return []
     },
     @start(members func() list<T>),
     @change(text string),
     @generate(out Out, members list<Member<T>>),
-) {
+) F {
     effect(@mount {
         start(members)
     })
@@ -204,7 +202,7 @@ component emit<T = struct {}>(
 // read at build time with its props bound, and the members it holds, in the
 // order they are written.
 struct Member<T> {
-    value T
+    value    T
     children list<Member<T>>
 }
 
@@ -227,5 +225,4 @@ struct Member<T> {
 //         gen.node(value=Entry{full=full, click=click})
 //     }
 #[marks.builtin("genNode")]
-#[tree.none]
-component node<T = struct {}>(open string = "", close string = "", value T = {}) {}
+component node<T = struct {}, F>(open string = "", close string = "", value T = {}) F {}

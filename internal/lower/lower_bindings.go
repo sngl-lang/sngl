@@ -47,11 +47,11 @@ func lowerAllPropBindings(pkg *ir.Package, _ Features, _ Options) error {
 			}
 			c := inst.Component
 			seen[c] = true
-			if len(c.Body) == 0 {
+			if len(c.Stmts) == 0 {
 				return nil
 			}
-			c.Body = rewritePropBindingStmts(c.Body)
-			visit(c.Body)
+			c.Stmts = rewritePropBindingStmts(c.Stmts)
+			visit(c.Stmts)
 			return nil
 		})
 	}
@@ -77,10 +77,11 @@ func rewritePropBindingStmts(stmts []ir.Stmt) []ir.Stmt {
 // EventHandler pairs. For each PropBinding{PropName:"count", Target:steps}:
 //  1. Adds EventDecl{Name:"count", Params:[prop.Type]} to the child component (idempotent).
 //  2. Rewrites count+=1 / count=x / count!! in the component body/funcs to
-//     ir.Emit{Name:"count", Args:[newVal]}.
-//     2a. If step 2 found no mutations (e.g. for stdlib native components that
-//     delegate to DOM events), inject @count(...) into the matching native event
-//     handler in the component body so passInlinePure can route it through.
+//     ir.Emit{Name:"count", Args:[newVal]}. A platform override reports what
+//     its control holds the same way, by writing the prop in the handler of
+//     the host event that reported it -- `@change(e) { checked =
+//     e.currentTarget.checked }` -- so nothing here guesses which event that
+//     is. A primitive's own two-way prop is its platform's to write back.
 //  3. Synthesizes an EventHandler{Name:"count"} on inst that writes the
 //     event arg back to the binding target.
 //  4. Clears inst.Bindings.
@@ -101,7 +102,7 @@ func lowerPropBindings(inst *ir.NodeInst) {
 		if !hasBindingEvent(comp, b.PropName) {
 			comp.Events = append(comp.Events, &ir.EventDecl{
 				Name:   b.PropName,
-				Params: []*ir.Param{{Type: prop.Type}},
+				Params: []*ir.Param{{Name: b.PropName, Type: prop.Type}},
 			})
 			// 2. Rewrite prop assignments/toggles → emit in component. A body
 			// handing the prop on to what it renders -- an override's
@@ -109,25 +110,16 @@ func lowerPropBindings(inst *ir.NodeInst) {
 			// which is lowered first so the write it becomes is one of these:
 			// left for later, it was a second report of the prop beside the
 			// emit, and the node carried the handler twice.
-			comp.Body = rewritePropBindingStmts(comp.Body)
+			comp.Stmts = rewritePropBindingStmts(comp.Stmts)
 			rewritePropMutationsToEmit(comp, b.PropName, prop.Type)
-
-			// 2a. If the component body has no @propName emits after the
-			// rewrite (e.g. stdlib native components like html.input that
-			// fire DOM events rather than assigning to props directly),
-			// inject an emit into the matching native event handler body.
-			// This lets passInlinePure route the DOM event through the
-			// synthetic @propName event to the call-site handler.
-			if !bodyHasEmitFor(comp.Body, b.PropName) {
-				injectNativeEmit(comp, b.PropName, prop)
-			}
 		}
 
 		// 3. Synthesize handler on this NodeInst.
 		paramName := "__" + b.PropName
 		param := &ir.Param{Name: paramName, Type: prop.Type}
 		inst.Handlers = append(inst.Handlers, ir.EventHandler{
-			Name: b.PropName,
+			Name:      b.PropName,
+			WriteBack: true,
 			Func: &ir.Func{
 				Params: []*ir.Param{param},
 				Block: []ir.Stmt{&ir.Assign{
@@ -179,251 +171,6 @@ func bodyHasEmitFor(stmts []ir.Stmt, name string) bool {
 	return false
 }
 
-// injectNativeEmit adds an ir.Emit{Name:propName} to the first native event
-// handler in comp's body tree that matches a candidate event name. This bridges
-// stdlib components (e.g. sngl.input) that fire DOM events but have no SNGL
-// prop assignments: by injecting the emit into the existing @input/@change
-// handler, passInlinePure's substituteEvents can route the DOM event to the
-// synthetic @propName handler at the call site.
-//
-// The emit reads the new value from the event's payload, the field of it that
-// has the prop's type. A bool prop whose event carries no such field is
-// toggled instead: @propName(!propName).
-func injectNativeEmit(comp *ir.Component, propName string, prop *ir.Prop) {
-	// Choose candidate event names by prop type.
-	var candidates []string
-	if prop.Type != nil && prop.Type.Kind == ir.TypeBool {
-		// Boolean props (e.g. checked) are toggled via @change.
-		candidates = []string{"change"}
-	} else {
-		// String/other props: prefer @input (live updates), fallback to @change.
-		candidates = []string{"input", "change"}
-	}
-
-	// Toggling assumes the event fires once per user flip, and a host that
-	// reports its state reports it when the program set it too: fyne's
-	// SetChecked inside its own OnChanged flipped the bound var back and forth
-	// until the stack ran out.
-	var emitVal ir.Expr
-	evtType := eventPayloadType(comp, candidates)
-	if prop.Type != nil && prop.Type.Kind == ir.TypeBool && payloadFieldOf(evtType, prop.Type) == nil {
-		// !propName — toggle the prop's current value.
-		// After passInlinePure substitutes the prop param, this becomes !boundVar.
-		synthParam := &ir.Param{Name: propName, Type: prop.Type}
-		emitVal = &ir.Unary{
-			Op:      ast.UnaryNot,
-			Operand: &ir.Ident{Name: propName, Type: prop.Type, Sym: synthParam},
-			Type:    prop.Type,
-		}
-	}
-	// Otherwise which parameter the payload arrives in
-	// is only known once the receiving handler is found — emitFor builds it.
-
-	injectEmitIntoHandlers(comp.Body, candidates, propName, evtType, emitVal, prop.Type)
-}
-
-// eventPayloadType is the declared payload of whichever candidate event the
-// component declares, for a handler that has to be given a parameter.
-func eventPayloadType(comp *ir.Component, candidates []string) *ir.Type {
-	for _, ev := range comp.Events {
-		if slices.Contains(candidates, ev.Name) && ev.Payload() != nil {
-			return ev.Payload()
-		}
-	}
-	return ir.TypDyn
-}
-
-// handlerReportsValueChange reports whether h fires for one of the candidate
-// value-changing SNGL events. Native stdlib wrappers name their handler after
-// the DOM/framework signal (html `@input`, gtk4 `@changed`) but forward it by
-// emitting the SNGL event (`input()`) from the body — so both the handler name
-// and the emitted events count.
-func handlerReportsValueChange(h *ir.EventHandler, candidates []string) bool {
-	return slices.Contains(candidates, h.Name) || lambdaReportsValueChange(h.Func, candidates)
-}
-
-// lambdaReportsValueChange is the body half of the same question, for a
-// callback that has no name of its own to be recognised by.
-func lambdaReportsValueChange(f *ir.Func, candidates []string) bool {
-	for _, c := range candidates {
-		if bodyHasEmitFor(f.Block, c) {
-			return true
-		}
-	}
-	return false
-}
-
-// injectEmitIntoHandlers recursively searches stmts for the first NodeInst that
-// reports a value change — a handler whose own name is one of the candidate
-// SNGL events (html: `@input { input() }`), a handler whose body emits one of
-// them (gtk4: `@changed { input() }`, where the handler is named for the native
-// signal), or a callback passed as a func-typed prop, which has only its body
-// to say so with (android: `onValueChange=func(e) { input(e) }`). It prepends
-// emit there. Returns true if the injection was performed.
-// emitFor builds the statement to prepend to f, the handler or callback the
-// change arrives in. A nil value means the emit reads the new value from f's
-// own parameter: it was an ambient name once and is a declared parameter now,
-// so the reference names a declaration. A handler written without one
-// (`@input { }`) has nothing to name, and this is the pass that needs it, so
-// this is the pass that declares it.
-//
-// The parameter reaches the value either way: an event parameter carries it in
-// the field the event declares, and a callback parameter is the value.
-func emitFor(f *ir.Func, propName string, evtType *ir.Type, value ir.Expr, candidates []string, propType *ir.Type) *ir.Emit {
-	if value == nil {
-		// A callback with no parameter of its own already carries the new value
-		// in the event it emits -- android's radio writes
-		// `onClick=func() { change({value = opt}) }`, where the value is the
-		// option the loop is on. Declaring a parameter on it instead invented
-		// one the caller never passes: Compose's onClick is `() -> Unit`, so the
-		// emitted Kotlin did not compile, and `opt` -- the whole point of the
-		// loop -- never reached the write-back.
-		if len(f.Params) == 0 {
-			if v := emittedValue(f.Block, candidates); v != nil {
-				return &ir.Emit{Name: propName, Args: []ir.CallArg{{Value: v}}}
-			}
-			f.Params = []*ir.Param{{Name: "__event", Type: evtType}}
-		}
-		p := f.Params[0]
-		t := p.Type
-		if t == nil {
-			t = ir.TypDyn
-		}
-		ref := &ir.Ident{Name: p.Name, Type: t, Sym: p}
-		if f := payloadFieldOf(t, propType); f != nil {
-			value = &ir.Select{Operand: ref, Field: f.Name, Type: f.Type}
-		} else if t.Kind == ir.TypeStruct {
-			value = &ir.Select{Operand: ref, Field: "value", Type: ir.TypString}
-		} else {
-			value = ref
-		}
-	}
-	return &ir.Emit{Name: propName, Args: []ir.CallArg{{Value: value}}}
-}
-
-// payloadFieldOf is the field of the struct payload t that carries a value of
-// the bound prop's type -- ToggleEvent's `checked` for a bool -- or nil when t
-// is no struct or holds no such field.
-func payloadFieldOf(t, propType *ir.Type) *ir.StructField {
-	if t == nil || propType == nil || t.Kind != ir.TypeStruct || propType.Kind == ir.TypeStruct {
-		return nil
-	}
-	sd, ok := t.Decl.(*ir.StructDef)
-	if !ok || sd == nil {
-		return nil
-	}
-	for _, f := range sd.Fields {
-		if f != nil && f.Type != nil && f.Type.Kind == propType.Kind {
-			return f
-		}
-	}
-	return nil
-}
-
-// emittedValue is the value a body's emit of one of the candidate events
-// carries: the `value` field of a struct-literal payload, or the argument
-// itself. Nil when the body emits none of them, or emits one with no argument.
-func emittedValue(stmts []ir.Stmt, candidates []string) ir.Expr {
-	for _, st := range stmts {
-		e, ok := st.(*ir.Emit)
-		if !ok || !slices.Contains(candidates, e.Name) || len(e.Args) == 0 {
-			continue
-		}
-		arg := e.Args[0].Value
-		if sl, ok := arg.(*ir.StructLit); ok {
-			for _, f := range sl.Fields {
-				if f.Name == "value" {
-					return f.Value
-				}
-			}
-			continue
-		}
-		return arg
-	}
-	return nil
-}
-
-// injectBind writes the binding back in f. A payload the handler builds in
-// place already says what the new value is, and the write-back takes it from
-// there, just ahead of the emit. Anything but a name is evaluated once, into a
-// temp both read: bubbletea's checkbox builds `{checked = !checked}`, and a
-// write-back that flipped the bound var first had the payload flip it back.
-func injectBind(f *ir.Func, propName string, evtType *ir.Type, value ir.Expr, candidates []string, propType *ir.Type) {
-	for i, st := range f.Block {
-		e, ok := st.(*ir.Emit)
-		if !ok || !slices.Contains(candidates, e.Name) || len(e.Args) == 0 {
-			continue
-		}
-		lit, ok := e.Args[0].Value.(*ir.StructLit)
-		if !ok {
-			break
-		}
-		for j, fi := range lit.Fields {
-			if fi.Spread || fi.Value == nil || propType == nil {
-				continue
-			}
-			t := fi.Value.ExprType()
-			if t == nil || t.Kind != propType.Kind || t.Kind == ir.TypeStruct {
-				continue
-			}
-			var pre []ir.Stmt
-			v := fi.Value
-			if _, named := v.(*ir.Ident); !named {
-				sym := &ir.Var{Name: "__bound_" + propName, Type: t, Synthesized: true}
-				pre = append(pre, &ir.LocalVar{Name: sym.Name, Type: t, Init: v, Sym: sym})
-				v = &ir.Ident{Name: sym.Name, Type: t, Sym: sym}
-				lit.Fields[j].Value = deepCloneExpr(v)
-			}
-			pre = append(pre, &ir.Emit{Name: propName, Args: []ir.CallArg{{Value: deepCloneExpr(v)}}})
-			f.Block = slices.Insert(f.Block, i, pre...)
-			return
-		}
-		break
-	}
-	f.Block = append([]ir.Stmt{emitFor(f, propName, evtType, value, candidates, propType)}, f.Block...)
-}
-
-// injectEmitIntoHandlers injects into *every* handler that reports the change,
-// not the first. Stopping at the first put the write-back wherever the walk
-// reached it soonest, which for a platform body written as
-// `if direction == "horizontal" { ... } else { ... }` is the branch that is not
-// taken -- so the live one emitted `onClick = {}` and the binding did nothing.
-func injectEmitIntoHandlers(stmts []ir.Stmt, candidates []string, propName string, evtType *ir.Type, value ir.Expr, propType *ir.Type) bool {
-	injected := false
-	inject := func(f *ir.Func, reports bool) {
-		if f != nil && reports {
-			injectBind(f, propName, evtType, value, candidates, propType)
-			injected = true
-		}
-	}
-	for _, s := range stmts {
-		switch n := s.(type) {
-		case *ir.NodeInst:
-			for i := range n.Handlers {
-				h := &n.Handlers[i]
-				inject(h.Func, h.Func != nil && handlerReportsValueChange(h, candidates))
-			}
-			// A callback passed as a func-typed prop reports the change the
-			// same way a handler does — by emitting the SNGL event from its
-			// body — so the write-back belongs in it for the same reason.
-			for _, f := range propLambdas(n) {
-				inject(f, lambdaReportsValueChange(f, candidates))
-			}
-		case *ir.ErrorBoundary:
-			if h := n.Handler; h != nil {
-				inject(h.Func, h.Func != nil && handlerReportsValueChange(h, candidates))
-			}
-		}
-		// Children, populations, a fallback, a provider's content.
-		for _, b := range ir.ViewBlocks(s) {
-			if injectEmitIntoHandlers(*b, candidates, propName, evtType, value, propType) {
-				injected = true
-			}
-		}
-	}
-	return injected
-}
-
 // rewritePropMutationsToEmit rewrites every Assign/Toggle targeting propName
 // in comp.Body and comp.Funcs to emit the corresponding event instead.
 func rewritePropMutationsToEmit(comp *ir.Component, propName string, propType *ir.Type) {
@@ -435,7 +182,7 @@ func rewritePropMutationsToEmit(comp *ir.Component, propName string, propType *i
 		}
 		return out
 	}
-	comp.Body = walk(comp.Body)
+	comp.Stmts = walk(comp.Stmts)
 	for _, fn := range comp.Funcs {
 		fn.Block = walk(fn.Block)
 	}

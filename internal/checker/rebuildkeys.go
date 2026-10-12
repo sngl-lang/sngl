@@ -138,7 +138,7 @@ func (w *rebuildWalker) node(inst *ir.NodeInst, scope rebuildScope) {
 // wherever it is placed, and it was already walked as an owner.
 func (w *rebuildWalker) descend(inst *ir.NodeInst, args map[string]rebuildArg, scope rebuildScope) {
 	comp := inst.Component
-	if len(comp.TypeParams) == 0 || len(comp.Body) == 0 || scope.depth >= maxRebuildDepth {
+	if len(comp.TypeParams) == 0 || len(comp.Stmts) == 0 || scope.depth >= maxRebuildDepth {
 		return
 	}
 	env := w.bindings(comp, args, scope.env)
@@ -154,7 +154,7 @@ func (w *rebuildWalker) descend(inst *ir.NodeInst, args map[string]rebuildArg, s
 	if !scope.bound() {
 		site = ir.StmtPos(inst)
 	}
-	w.body(comp.Body, rebuildScope{holder: comp, env: env, site: site, depth: scope.depth + 1})
+	w.body(comp.Stmts, rebuildScope{holder: comp, env: env, site: site, depth: scope.depth + 1})
 }
 
 // bindings is what this call site pins comp's type parameters to, read from the
@@ -240,7 +240,7 @@ func (w *rebuildWalker) reportKey(inst *ir.NodeInst, a rebuildArg, t *ir.Type, s
 // alike on every target.
 //
 // The declaration answers this one only when it is written concretely, which
-// checkConstructProps does. `#[construct] seed T` is admitted where it is
+// markConstruct does. `#[construct] seed T` is admitted where it is
 // written -- judging a parameter there would make a generic component
 // undeclarable -- and the call is the only place T becomes a type. Unchecked,
 // bound to a list, the prop reached fyne's rebuild comparison as

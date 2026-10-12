@@ -71,6 +71,10 @@ func slotParentType(wrapped bool) *ir.Type {
 // widgetFieldGoType returns the Go type for a Model widget field: gtk4rt.Handle
 // in wrapped mode, else the per-widget cgo pointer type.
 func widgetFieldGoType(cType string, wrapped bool) string {
+	// A list of widgets (namedWidgetField) is a slice of what one is.
+	if rest, ok := strings.CutPrefix(cType, "[]"); ok {
+		return "[]" + widgetFieldGoType(rest, wrapped)
+	}
 	// A component instance's handle is a generated Go struct, not a GTK class,
 	// so it arrives already spelled as Go and is not a widget in either mode.
 	if strings.HasPrefix(cType, "*") {
@@ -194,7 +198,7 @@ func rtChildRemoveCall(parentCType string, parent, child ir.Expr) (ir.Stmt, bool
 	return nil, false
 }
 
-// rtEventGetterExpr is the wrapped-mode analogue of gtk4EventGetterExpr: it
+// rtEventGetterExpr is the wrapped-mode analogue of cgoEventGetterExpr: it
 // reads a widget's bound value through gtk4rt rather than cgo. Returns nil when
 // the widget's read-back isn't wrapped (→ fallback).
 func rtEventGetterExpr(cType string, widgetRef ir.Expr) ir.Expr {
@@ -203,6 +207,8 @@ func rtEventGetterExpr(cType string, widgetRef ir.Expr) ir.Expr {
 		return rtCall("EditableGetText", widgetRef)
 	case "GtkCheckButton":
 		return rtCall("CheckButtonGetActive", widgetRef)
+	case "GtkCalendar":
+		return rtCall("CalendarGetDate", widgetRef)
 	}
 	return nil
 }

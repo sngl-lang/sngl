@@ -33,7 +33,7 @@ func lowerDeclarative(pkg *ir.Package, caps Features, _ Options) error {
 	st := newDeclarativeState(pkg, caps)
 	st.seedCounter(pkg)
 	for _, comp := range pkg.Components {
-		comp.Body = st.processStmts(comp.Body, &comp.Funcs)
+		comp.Stmts = st.processStmts(comp.Stmts, &comp.Funcs)
 		destroyBuiltInstances(comp, st)
 	}
 	// The package body's parent is the application: each node there is
@@ -350,7 +350,7 @@ func (st *declarativeState) lowerNodeIntoStmts(n *ir.NodeInst, funcs *[]*ir.Func
 		var handlerArg ir.Expr
 		// Whichever form it takes: a closure is what a handler inside a
 		// component instance becomes, and a test names it by this too.
-		h.Func.LoweredFromComponentEvent = h.ComponentEvent
+		h.Func.Lowered.ComponentEvent = h.ComponentEvent
 		captures := analyzeCaptures(h.Func.Block, h.Func.Params)
 		switch {
 		case st.liftHandlers && len(captures) > 0:
@@ -371,9 +371,9 @@ func (st *declarativeState) lowerNodeIntoStmts(n *ir.NodeInst, funcs *[]*ir.Func
 			// on it reads by name. Promote to a named top-level Func.
 			handlerName := id + "_" + h.Name + "_handler"
 			h.Func.Name = handlerName
-			h.Func.LoweredFromTag = n.Name
-			h.Func.LoweredFromEvent = h.Name
-			h.Func.LoweredFromNode = id
+			h.Func.Lowered.Tag = n.Name
+			h.Func.Lowered.Event = h.Name
+			h.Func.Lowered.Node = id
 			*funcs = append(*funcs, h.Func)
 			handlerArg = &ir.Ident{Name: handlerName, Type: ir.TypDyn, Sym: h.Func}
 		}
@@ -429,7 +429,7 @@ func hasRealComponentBody(comp *ir.Component) bool {
 	if comp == nil {
 		return false
 	}
-	return len(comp.Body) > 0 || len(comp.Vars) > 0 || len(comp.Funcs) > 0
+	return len(comp.Stmts) > 0 || len(comp.Vars) > 0 || len(comp.Funcs) > 0
 }
 
 // lowerComponentNodeIntoStmts emits the flat sequence for a NodeInst whose
@@ -623,7 +623,7 @@ func destroyBuiltInstances(comp *ir.Component, st *declarativeState) {
 		}
 		return out
 	}
-	for _, s := range top(comp.Body) {
+	for _, s := range top(comp.Stmts) {
 		lv, ok := s.(*ir.LocalVar)
 		if !ok {
 			continue

@@ -30,6 +30,20 @@ func CapsFor(language, platform string) (lower.Features, error) {
 	return lower.FeaturesFrom(langComp, platComp)
 }
 
+// LanguageReserves is what the build-tree node of language reserves by
+// default in its reservedWords prop: the words a declaration of that language cannot take. A
+// translator escapes a name it is not free to rename with it -- a struct
+// field, a host's parameter -- which is the one use it has beside the rename
+// passReservedNames makes of the build's whole set. Nil when the language is
+// not registered.
+func LanguageReserves(language string) []string {
+	c, err := buildNode("language/"+language, language)
+	if err != nil {
+		return nil
+	}
+	return ir.TargetReserved(c)
+}
+
 // buildNode finds the component a target package declares for the build tree.
 // Its #[gen.name] is the identifier the plugin registered under, which is how
 // a build directive reaches it; the component itself is named for its tier.

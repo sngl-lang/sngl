@@ -225,6 +225,19 @@ relations from @child to @button.</doc>
       <property name="label" writable="1" setter="set_label">
         <type name="utf8" c:type="gchar*"/>
       </property>
+      <method name="set_xalign" c:identifier="gtk_label_set_xalign">
+        <parameters>
+          <instance-parameter name="self">
+            <type name="Label" c:type="GtkLabel*"/>
+          </instance-parameter>
+          <parameter name="xalign">
+            <type name="gfloat" c:type="float"/>
+          </parameter>
+        </parameters>
+      </method>
+      <property name="xalign" writable="1" setter="set_xalign">
+        <type name="gfloat" c:type="gfloat"/>
+      </property>
     </class>
     <class name="Box" c:type="GtkBox" parent="Widget">
       <implements name="Orientable"/>
@@ -251,7 +264,20 @@ relations from @child to @button.</doc>
       <property name="spacing" writable="1" setter="set_spacing">
         <type name="gint" c:type="int"/>
       </property>
-    
+      <method name="set_homogeneous" c:identifier="gtk_box_set_homogeneous">
+        <parameters>
+          <instance-parameter name="box">
+            <type name="Box" c:type="GtkBox*"/>
+          </instance-parameter>
+          <parameter name="homogeneous">
+            <type name="gboolean" c:type="gboolean"/>
+          </parameter>
+        </parameters>
+      </method>
+      <property name="homogeneous" writable="1" setter="set_homogeneous">
+        <type name="gboolean" c:type="gboolean"/>
+      </property>
+
       <method name="append" c:identifier="gtk_box_append">
         <doc xml:space="preserve"
              filename="gtk/gtkbox.c"

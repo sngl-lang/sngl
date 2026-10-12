@@ -19,7 +19,7 @@ type nestedFunc struct {
 //
 // Either way the declaration is hoisted -- it joins the enclosing component,
 // window or package, which is what a backend emits from. Inside a *function*
-// body that leaves two things to reconcile, and ir.Func.Nested is which
+// body that leaves two things to reconcile, and checker.nested is which
 // declarations they apply to:
 //
 //   - the name is the enclosing body's, the rule a body-local struct or
@@ -35,12 +35,15 @@ func (c *checker) checkNestedFunc(x *ast.FuncDef) {
 	fn, built := c.nestedFuncs[x]
 	if !built {
 		fn = c.buildFunc(x)
-		fn.Nested = c.currentFunc != nil
 		if c.nestedFuncs == nil {
 			c.nestedFuncs = map[*ast.FuncDef]*ir.Func{}
 		}
 		c.nestedFuncs[x] = fn
-		if fn.Nested {
+		if c.currentFunc != nil {
+			if c.nested == nil {
+				c.nested = map[*ir.Func]bool{}
+			}
+			c.nested[fn] = true
 			c.nestedOrder = append(c.nestedOrder, nestedFunc{fn: fn, in: c.currentFunc})
 		}
 
@@ -60,7 +63,7 @@ func (c *checker) checkNestedFunc(x *ast.FuncDef) {
 	// hoisted out of it, this one included: they share the flat namespace a
 	// backend emits into, so a sibling call and recursion resolve while the
 	// enclosing params and locals stay out of reach.
-	if outer := c.funcOuterScope; fn.Nested && outer != nil {
+	if outer := c.funcOuterScope; c.nested[fn] && outer != nil {
 		if c.nestedScope == nil {
 			c.nestedScope = ir.NewScope(outer)
 		}

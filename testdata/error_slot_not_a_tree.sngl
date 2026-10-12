@@ -2,7 +2,7 @@
 // there says nothing a caller could satisfy.
 
 import . "sngl:ui"
-import tr "sngl:tree"
+import family "sngl:family"
 
 component bare(children ...component int) node { // ERROR(check) "a slot accepts a family, and int is not one"
     vbox {
@@ -17,7 +17,7 @@ component wrapped(x component option<string>) node { // ERROR(check) "a slot acc
     }
 }
 
-component fine(ok component tr.one) node {
+component fine(ok component family.one) node {
     vbox {
         ok {}
     }

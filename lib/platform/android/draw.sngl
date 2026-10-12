@@ -1,10 +1,10 @@
 import ui "sngl:ui"
 import . "sngl:macro"
 import . "sngl:internal/marks"
-import tree "sngl:tree"
 import shapes "sngl:ui/draw"
 import math "sngl:math"
 import kt "sngl:language/kotlin"
+import family "sngl:family"
 
 // The drawing surface, implemented for this platform.
 //
@@ -55,7 +55,7 @@ const func composeColor(red int, green int, blue int, alpha int) ComposeColor
 
 // Compose's `Stroke` carries the cap and the join, so `strokeStyle` takes the
 // whole style rather than just the width -- android read `lineCap` and
-// `lineJoin` nowhere before this and the two reached its `CanvasStyle` data
+// `lineJoin` nowhere before this and the two reached its `Style` data
 // class to be ignored (#223).
 #[kt.native("Stroke", "androidx.compose.ui.graphics.drawscope.Stroke", named)]
 const func strokeOf(width float, cap StrokeCap, join StrokeJoin) DrawStyle
@@ -90,27 +90,27 @@ const joinBevel StrokeJoin
 
 // The names are SNGL's and the values Compose's, the same mapping gtk4 writes
 // for cairo's enums.
-const func strokeCap(name string) StrokeCap {
-    if name == "round" {
+const func strokeCap(cap shapes.LineCap) StrokeCap {
+    if cap == shapes.LineCap.round {
         return capRound
     }
-    if name == "square" {
+    if cap == shapes.LineCap.square {
         return capSquare
     }
     return capButt
 }
 
-const func strokeJoin(name string) StrokeJoin {
-    if name == "round" {
+const func strokeJoin(join shapes.LineJoin) StrokeJoin {
+    if join == shapes.LineJoin.round {
         return joinRound
     }
-    if name == "bevel" {
+    if join == shapes.LineJoin.bevel {
         return joinBevel
     }
     return joinMiter
 }
 
-const func strokeStyle(style shapes.CanvasStyle) DrawStyle {
+const func strokeStyle(style shapes.Style) DrawStyle {
     return strokeOf(f32(style.strokeWidth), strokeCap(style.lineCap), strokeJoin(style.lineJoin))
 }
 
@@ -187,10 +187,10 @@ struct ComposeRect {}
 const func degrees(radians float) => radians * 180.0 / math.pi
 
 #[intrinsic("android:draw")]
-component draw(@draw DrawEvent) shapes.shape
+component draw(@draw(e DrawEvent)) shapes.shape
 
 struct DrawEvent {
-    width int
+    width  int
     height int
 }
 
@@ -243,20 +243,20 @@ const component shapes.path[platform] {
         // will not hand back.
         var at = shapes.Point{x=0.0, y=0.0}
 
-        for var c = cmds {
-            if c.op == "moveTo" {
+        for var c = steps {
+            if c.op == shapes.PathOp.moveTo {
                 pathMoveTo(p, f32(c.x), f32(c.y))
                 at = shapes.Point{x=c.x, y=c.y}
             }
-            if c.op == "lineTo" {
+            if c.op == shapes.PathOp.lineTo {
                 pathLineTo(p, f32(c.x), f32(c.y))
                 at = shapes.Point{x=c.x, y=c.y}
             }
-            if c.op == "bezierTo" {
+            if c.op == shapes.PathOp.bezierTo {
                 pathCubicTo(p, f32(c.cx1), f32(c.cy1), f32(c.cx2), f32(c.cy2), f32(c.x), f32(c.y))
                 at = shapes.Point{x=c.x, y=c.y}
             }
-            if c.op == "arcTo" {
+            if c.op == shapes.PathOp.arcTo {
                 var a = shapes.tangentArc(at, shapes.Point{x=c.cx1, y=c.cy1}, shapes.Point{x=c.x, y=c.y}, c.r)
                 if a.degenerate {
                     pathLineTo(p, f32(c.cx1), f32(c.cy1))
@@ -266,7 +266,7 @@ const component shapes.path[platform] {
                 }
                 at = a.tangent2
             }
-            if c.op == "close" {
+            if c.op == shapes.PathOp.close {
                 pathClose(p)
             }
         }
@@ -298,8 +298,43 @@ const component shapes.canvasText[platform] {
     })
 }
 
+// What a `drawSource` paints an image a URL names with.
+struct SourceEvent {
+    url string
+}
+
+// The primitive a `canvasImage` paints its source through. `@url` paints an
+// image a URL names; a drawing is painted in place rather than as a picture,
+// its shapes between `@enter`, which maps the drawing's own space onto the box
+// and clips to it, and `@leave`. The size in their payload is the drawing's.
+#[intrinsic("android:drawSource")]
+component drawSource(
+    @url(e SourceEvent),
+    @enter(e DrawEvent),
+    @leave(e DrawEvent),
+    source ...component family.one<ui.imageSource>,
+) shapes.shape
+
+// The canvas's own transform, which a DrawScope otherwise only takes as a
+// block around what it applies to.
+#[kt.native("snglDrawEnter", "", named)]
+func drawEnter(x float, y float, sx float, sy float, w float, h float)
+
+#[kt.native("snglDrawLeave", "", named)]
+func drawLeave()
+
 const component shapes.canvasImage[platform] {
-    draw(@draw(e) {
-        drawImageShim(src, f32(x), f32(y), f32(w), f32(h))
-    })
+    drawSource(
+        @url(e) {
+            drawImageShim(e.url, f32(x), f32(y), f32(w), f32(h))
+        },
+        @enter(e) {
+            drawEnter(f32(x), f32(y), f32(w / float(e.width)), f32(h / float(e.height)), f32(float(e.width)), f32(float(e.height)))
+        },
+        @leave(e) {
+            drawLeave()
+        },
+    ) {
+        src
+    }
 }

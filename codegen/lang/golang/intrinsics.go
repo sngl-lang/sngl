@@ -42,15 +42,15 @@ func init() {
 	regImp("float.floor", []string{"math"}, func(a []string) string { return "math.Floor(" + a[0] + ")" })
 	regImp("float.ceil", []string{"math"}, func(a []string) string { return "math.Ceil(" + a[0] + ")" })
 	regImp("float.round", []string{"math"}, func(a []string) string { return "math.Round(" + a[0] + ")" })
-	regImp("float.sqrt", []string{"math"}, func(a []string) string { return "math.Sqrt(" + a[0] + ")" })
-	regImp("float.pow", []string{"math"}, func(a []string) string { return "math.Pow(" + a[0] + ", " + a[1] + ")" })
-	regImp("float.sin", []string{"math"}, func(a []string) string { return "math.Sin(" + a[0] + ")" })
-	regImp("float.cos", []string{"math"}, func(a []string) string { return "math.Cos(" + a[0] + ")" })
-	regImp("float.tan", []string{"math"}, func(a []string) string { return "math.Tan(" + a[0] + ")" })
-	regImp("float.asin", []string{"math"}, func(a []string) string { return "math.Asin(" + a[0] + ")" })
-	regImp("float.acos", []string{"math"}, func(a []string) string { return "math.Acos(" + a[0] + ")" })
-	regImp("float.atan", []string{"math"}, func(a []string) string { return "math.Atan(" + a[0] + ")" })
-	regImp("float.atan2", []string{"math"}, func(a []string) string { return "math.Atan2(" + a[0] + ", " + a[1] + ")" })
+	regImp("math.sqrt", []string{"math"}, func(a []string) string { return "math.Sqrt(" + a[0] + ")" })
+	regImp("math.pow", []string{"math"}, func(a []string) string { return "math.Pow(" + a[0] + ", " + a[1] + ")" })
+	regImp("math.sin", []string{"math"}, func(a []string) string { return "math.Sin(" + a[0] + ")" })
+	regImp("math.cos", []string{"math"}, func(a []string) string { return "math.Cos(" + a[0] + ")" })
+	regImp("math.tan", []string{"math"}, func(a []string) string { return "math.Tan(" + a[0] + ")" })
+	regImp("math.asin", []string{"math"}, func(a []string) string { return "math.Asin(" + a[0] + ")" })
+	regImp("math.acos", []string{"math"}, func(a []string) string { return "math.Acos(" + a[0] + ")" })
+	regImp("math.atan", []string{"math"}, func(a []string) string { return "math.Atan(" + a[0] + ")" })
+	regImp("math.atan2", []string{"math"}, func(a []string) string { return "math.Atan2(" + a[0] + ", " + a[1] + ")" })
 
 	// --- list ---
 	reg("list.length", func(a []string) string { return "len(" + a[0] + ")" })
@@ -74,8 +74,8 @@ func init() {
 	// Their SNGL bodies are correct but spell the answer as a ternary, which
 	// Go has no expression form for; these are the reason the `usable` flag
 	// distinguishes "a backend may substitute" from "a backend must".
-	reg("int.min", func(a []string) string { return "min(" + a[0] + ", " + a[1] + ")" })
-	reg("int.max", func(a []string) string { return "max(" + a[0] + ", " + a[1] + ")" })
+	regVariadicMinMax("int.min", "min")
+	regVariadicMinMax("int.max", "max")
 	reg("int.abs", func(a []string) string {
 		return "func(x int) int { if x < 0 { return -x }; return x }(" + a[0] + ")"
 	})
@@ -84,8 +84,8 @@ func init() {
 	reg("int.clamp", func(a []string) string {
 		return "max(" + a[1] + ", min(" + a[0] + ", " + a[2] + "))"
 	})
-	regImp("float.min", []string{"math"}, func(a []string) string { return "math.Min(" + a[0] + ", " + a[1] + ")" })
-	regImp("float.max", []string{"math"}, func(a []string) string { return "math.Max(" + a[0] + ", " + a[1] + ")" })
+	regVariadicMinMax("float.min", "min")
+	regVariadicMinMax("float.max", "max")
 	regImp("float.abs", []string{"math"}, func(a []string) string { return "math.Abs(" + a[0] + ")" })
 	regImp("float.clamp", []string{"math"}, func(a []string) string {
 		return "math.Max(" + a[1] + ", math.Min(" + a[0] + ", " + a[2] + "))"
@@ -275,5 +275,20 @@ func regImp(id string, imports []string, fn func(a []string) string) {
 			a[i] = tr(e)
 		}
 		return fn(a), imports
+	})
+}
+
+// regVariadicMinMax emits `min(a, rest...)` and its max twin as Go's builtin,
+// which takes any number of arguments of one ordered type -- float NaN
+// included, as math.Min did. A rest that is not a literal list folds over the
+// slice instead, since the builtin takes no slice.
+func regVariadicMinMax(id, builtin string) {
+	codegen.RegisterIntrinsic(langGo, id, func(args []ir.Expr, tr func(ir.Expr) string) (string, []string) {
+		if parts, ok := codegen.VariadicArgs(args, tr); ok {
+			return builtin + "(" + strings.Join(parts, ", ") + ")", nil
+		}
+		t := IRTypeToGo(args[0].ExprType())
+		return "func(__m " + t + ", __xs []" + t + ") " + t + " { for _, __x := range __xs { __m = " + builtin + "(__m, __x) }; return __m }(" +
+			tr(args[0]) + ", " + tr(codegen.VariadicRest(args[1])) + ")", nil
 	})
 }

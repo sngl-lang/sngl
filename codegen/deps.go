@@ -348,9 +348,9 @@ func (w *depExtractor) walkCall(c *ir.Call) {
 		sub.paramTypes[p.Name] = p.Type
 	}
 	// A component method's body resolves `this.x` against its own component.
-	if fn.Receiver != "" {
+	if fn.IsMethod() {
 		for _, comp := range w.tracker.Components {
-			if comp.Name == fn.Receiver {
+			if comp.Name == fn.RecvName() {
 				sub.implicitThis = comp
 				break
 			}

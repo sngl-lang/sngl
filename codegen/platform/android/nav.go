@@ -301,11 +301,11 @@ func (nav *androidNav) emitNavDecls(b *strings.Builder, kc *kotlin.KtIRContext) 
 	if nav == nil || len(nav.stacks) == 0 {
 		return
 	}
-	nav.requireImports(kc)
 	if nav.hasParams() {
-		b.WriteString(navTypeDecl)
+		decl := navNames(kc).Replace(navTypeDecl)
+		b.WriteString(decl)
 		if nav.hasLoopedParams() {
-			b.WriteString(strings.Replace(strings.Replace(navTypeDecl, "snglNavType", "snglNullableNavType", 1), "isNullableAllowed = false", "isNullableAllowed = true", 1))
+			b.WriteString(strings.Replace(strings.Replace(decl, "snglNavType", "snglNullableNavType", 1), "isNullableAllowed = false", "isNullableAllowed = true", 1))
 		}
 		// One per type, and declared once: a graph is compared with the one
 		// it replaces on every composition, and a NavType made afresh each
@@ -336,9 +336,10 @@ func (nav *androidNav) emitNavDecls(b *strings.Builder, kc *kotlin.KtIRContext) 
 			}
 		}
 	}
+	serializable := kc.Name("kotlinx.serialization.Serializable")
 	for _, def := range nav.records {
 		for _, pg := range nav.pages[def] {
-			b.WriteString("@Serializable\n")
+			fmt.Fprintf(b, "@%s\n", serializable)
 			switch {
 			case pg.looped() && pg.params == nil:
 				fmt.Fprintf(b, "data class %s(val copy: String = \"\")\n\n", pg.route())
@@ -351,16 +352,17 @@ func (nav *androidNav) emitNavDecls(b *strings.Builder, kc *kotlin.KtIRContext) 
 			}
 		}
 		rec := exportName(def.Name)
-		fmt.Fprintf(b, "fun %s(entry: NavBackStackEntry?): %s? {\n", recordFunc(def), rec)
+		hasRoute, toRoute := kc.Name(ktNav+"NavDestination.Companion.hasRoute"), kc.Name(ktNav+"toRoute")
+		fmt.Fprintf(b, "fun %s(entry: %s?): %s? {\n", recordFunc(def), kc.Name(ktNav+"NavBackStackEntry"), rec)
 		b.WriteString("    val destination = entry?.destination ?: return null\n")
 		b.WriteString("    return when {\n")
 		for _, pg := range nav.pages[def] {
 			if !pg.looped() {
-				fmt.Fprintf(b, "        destination.hasRoute<%s>() -> %s\n", pg.route(), kc.EvalExpr(pg.record))
+				fmt.Fprintf(b, "        destination.%s<%s>() -> %s\n", hasRoute, pg.route(), kc.EvalExpr(pg.record))
 				continue
 			}
-			fmt.Fprintf(b, "        destination.hasRoute<%s>() -> run {\n", pg.route())
-			fmt.Fprintf(b, "            val __r = entry.toRoute<%s>()\n", pg.route())
+			fmt.Fprintf(b, "        destination.%s<%s>() -> run {\n", hasRoute, pg.route())
+			fmt.Fprintf(b, "            val __r = entry.%s<%s>()\n", toRoute, pg.route())
 			bkc := pg.bindCopy("__r", kc, func(l string) { fmt.Fprintf(b, "            %s\n", l) })
 			fmt.Fprintf(b, "            %s\n", bkc.EvalExpr(pg.record))
 			b.WriteString("        }\n")
@@ -375,12 +377,12 @@ func (nav *androidNav) emitNavDecls(b *strings.Builder, kc *kotlin.KtIRContext) 
 // program's is no type Navigation knows how to put in a back-stack entry, so
 // each destination holding one names this for it in its typeMap, and it
 // carries the params as their JSON.
-const navTypeDecl = `inline fun <reified T> snglNavType(): NavType<T> = object : NavType<T>(isNullableAllowed = false) {
-    override fun get(bundle: Bundle, key: String): T? = bundle.getString(key)?.let { Json.decodeFromString<T>(it) }
-    override fun parseValue(value: String): T = Json.decodeFromString<T>(Uri.decode(value))
-    override fun serializeAsValue(value: T): String = Uri.encode(Json.encodeToString(value))
-    override fun put(bundle: Bundle, key: String, value: T) {
-        bundle.putString(key, Json.encodeToString(value))
+const navTypeDecl = `inline fun <reified T> snglNavType(): {NavType}<T> = object : {NavType}<T>(isNullableAllowed = false) {
+    override fun get(bundle: {Bundle}, key: String): T? = bundle.getString(key)?.let { {Json}.decodeFromString<T>(it) }
+    override fun parseValue(value: String): T = {Json}.decodeFromString<T>({Uri}.decode(value))
+    override fun serializeAsValue(value: T): String = {Uri}.encode({Json}.{encodeToString}(value))
+    override fun put(bundle: {Bundle}, key: String, value: T) {
+        bundle.putString(key, {Json}.{encodeToString}(value))
     }
 }
 
@@ -408,31 +410,16 @@ func (nav *androidNav) hasParams() bool {
 	return false
 }
 
-func (nav *androidNav) requireImports(kc *kotlin.KtIRContext) {
-	if nav.hasParams() {
-		for _, imp := range []string{
-			"android.net.Uri",
-			"android.os.Bundle",
-			"androidx.navigation.NavType",
-			"kotlin.reflect.typeOf",
-			"kotlinx.serialization.encodeToString",
-			"kotlinx.serialization.json.Json",
-		} {
-			kc.RequireImport(imp)
-		}
-	}
-	for _, imp := range []string{
-		"androidx.navigation.NavBackStackEntry",
-		"androidx.navigation.NavDestination.Companion.hasRoute",
-		"androidx.navigation.compose.NavHost",
-		"androidx.navigation.compose.composable",
-		"androidx.navigation.compose.currentBackStackEntryAsState",
-		"androidx.navigation.compose.rememberNavController",
-		"androidx.navigation.toRoute",
-		"kotlinx.serialization.Serializable",
-	} {
-		kc.RequireImport(imp)
-	}
+// navNames replaces each {Name} in Kotlin written as text with what the file
+// calls that name: navTypeDecl is one such text.
+func navNames(kc *kotlin.KtIRContext) *strings.Replacer {
+	return strings.NewReplacer(
+		"{NavType}", kc.Name(ktNav+"NavType"),
+		"{Bundle}", kc.Name("android.os.Bundle"),
+		"{Uri}", kc.Name("android.net.Uri"),
+		"{Json}", kc.Name("kotlinx.serialization.json.Json"),
+		"{encodeToString}", kc.Name("kotlinx.serialization.encodeToString"),
+	)
 }
 
 // stacksIn is the stacks a composable's view renders itself.
@@ -484,8 +471,8 @@ func (nav *androidNav) stacksIn(stmts []ir.Stmt) []*navStackK {
 // handed to the state class, which reads `current` off it for a test.
 func emitNavState(b *strings.Builder, stacks []*navStackK, kc *kotlin.KtIRContext, testMode bool) {
 	for _, st := range stacks {
-		fmt.Fprintf(b, "    val %s__nav = rememberNavController()\n", st.name)
-		fmt.Fprintf(b, "    val %s__entry by %s__nav.currentBackStackEntryAsState()\n", st.name, st.name)
+		fmt.Fprintf(b, "    val %s__nav = %s()\n", st.name, kc.Name(ktNav+"compose.rememberNavController"))
+		fmt.Fprintf(b, "    val %s__entry by %s__nav.%s()\n", st.name, st.name, kc.Name(ktNav+"compose.currentBackStackEntryAsState"))
 		if st.startSearch != nil {
 			fmt.Fprintf(b, "    val %s__start = %s\n", st.name, kc.EvalExpr(st.startSearch))
 		}
@@ -545,8 +532,9 @@ func (cc *irComposeContext) renderNavStack(n *ir.NodeInst) {
 	case st.start.looped() && st.startRecord != nil:
 		startRoute = fmt.Sprintf("%s(copy = %q)", st.start.route(), strings.Join(st.startCopy, "."))
 	}
-	cc.line("NavHost(navController = %s__nav, startDestination = %s, %s) {", st.name, startRoute, cc.buildModifier(n))
+	cc.line("%s(navController = %s__nav, startDestination = %s, %s) {", cc.kc.Name(ktNav+"compose.NavHost"), st.name, startRoute, cc.buildModifier(n))
 	cc.indent++
+	composable := cc.kc.Name(ktNav + "compose.composable")
 	for _, pg := range st.pages {
 		sc := pg.node.RestPopulation()
 		var param *ir.Param
@@ -555,20 +543,20 @@ func (cc *irComposeContext) renderNavStack(n *ir.NodeInst) {
 		}
 		switch {
 		case pg.params == nil && !pg.looped():
-			cc.line("composable<%s> {", pg.route())
+			cc.line("%s<%s> {", composable, pg.route())
 		case pg.params == nil:
-			cc.line("composable<%s> { __entry ->", pg.route())
+			cc.line("%s<%s> { __entry ->", composable, pg.route())
 		case param == nil && !pg.looped():
-			cc.line("composable<%s>(typeMap = %s) {", pg.route(), typeMapFor(pg))
+			cc.line("%s<%s>(typeMap = %s) {", composable, pg.route(), typeMapFor(cc.kc, pg))
 		default:
-			cc.line("composable<%s>(typeMap = %s) { __entry ->", pg.route(), typeMapFor(pg))
+			cc.line("%s<%s>(typeMap = %s) { __entry ->", composable, pg.route(), typeMapFor(cc.kc, pg))
 		}
 		cc.indent++
 		saved := cc.kc
 		if pg.looped() {
 			// The copy this destination shows: each loop's variables, read
 			// back from the route by index into the loop's iterable.
-			cc.line("val __r = __entry.toRoute<%s>()", pg.route())
+			cc.line("val __r = __entry.%s<%s>()", cc.kc.Name(ktNav+"toRoute"), pg.route())
 			cc.kc = pg.bindCopy("__r", cc.kc, func(l string) { cc.line("%s", l) })
 			if param != nil {
 				if pg.params == nil {
@@ -582,7 +570,7 @@ func (cc *irComposeContext) renderNavStack(n *ir.NodeInst) {
 			if pg.params == nil {
 				cc.line("val %s = %s", param.Name, kotlin.KtZeroFor(param.Type))
 			} else {
-				cc.line("val %s = __entry.toRoute<%s>().params", param.Name, pg.route())
+				cc.line("val %s = __entry.%s<%s>().params", param.Name, cc.kc.Name(ktNav+"toRoute"), pg.route())
 			}
 			cc.kc = cc.kc.WithLocal(param.Name)
 		}
@@ -590,7 +578,7 @@ func (cc *irComposeContext) renderNavStack(n *ir.NodeInst) {
 		cc.parentAxis, cc.atRoot = "", false
 		body := pageContent(pg.node)
 		if len(body) > 1 {
-			cc.line("Column {")
+			cc.line("%s {", cc.kc.Name(ktColumn))
 			cc.indent++
 			cc.parentAxis = "Column"
 		}
@@ -612,12 +600,12 @@ func (cc *irComposeContext) renderNavStack(n *ir.NodeInst) {
 
 // typeMapFor is the destination's typeMap: its params' type, as the NavType
 // that carries it.
-func typeMapFor(pg *navPageK) string {
+func typeMapFor(kc *kotlin.KtIRContext, pg *navPageK) string {
 	t := kotlin.IRTypeToKt(pg.params)
 	if pg.looped() {
 		t += "?"
 	}
-	return fmt.Sprintf("mapOf(typeOf<%s>() to %s)", t, navTypeVal(t))
+	return fmt.Sprintf("mapOf(%s<%s>() to %s)", kc.Name("kotlin.reflect.typeOf"), t, navTypeVal(t))
 }
 
 // navTypeVal names the NavType declared for a params type.
@@ -667,7 +655,7 @@ func (nav *androidNav) pageFor(e ir.Expr) (*navStackK, *navPageK) {
 // then navigates the controller of the stack its page is in.
 func (cc *irComposeContext) renderNavLink(n *ir.NodeInst) {
 	st, pg := cc.nav.pageFor(n.Prop(ir.NavLinkTo))
-	cc.line("Button(onClick = {")
+	cc.line("%s(onClick = {", cc.kc.Name(ktButton))
 	cc.indent++
 	if h := codegen.NodeHandler(n, ir.NavLinkClick); h != nil && h.Func != nil {
 		for _, stmt := range h.Func.Block {
@@ -690,7 +678,7 @@ func (cc *irComposeContext) renderNavLink(n *ir.NodeInst) {
 	if t := n.Prop(ir.NavLinkText); t != nil {
 		text = cc.kc.EvalExpr(t)
 	}
-	cc.line("Text(text = %s)", text)
+	cc.line("%s(text = %s)", cc.kc.Name(ktText), text)
 	cc.indent--
 	cc.line("}")
 }

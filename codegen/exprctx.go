@@ -4,7 +4,6 @@ import (
 	"maps"
 	"strings"
 
-	"duckfam.us/sngl/ast"
 	"duckfam.us/sngl/ir"
 )
 
@@ -319,7 +318,7 @@ func IsComputed(f *ir.Func) bool {
 		return false
 	}
 	n := len(f.Params)
-	if f.Receiver != "" {
+	if f.IsMethod() {
 		// A receiver-bearing func is a component computed only when it
 		// carries the synthetic receiver param (added by registerNestedMethods
 		// for bare `func name()` decls inside a component) typed as a
@@ -366,7 +365,7 @@ func TestComponentParam(fn *ir.Func) string {
 // argument names a context rather than reading one; unlowered it is still the
 // read.
 func TestSetContext(c *ir.Call) (name string, value ir.Expr, ok bool) {
-	if c == nil || c.Func == nil || c.Func.Receiver != "Test" || c.Func.Name != "setContext" || len(c.Args) < 2 {
+	if !ir.IsTestCall(c, ir.TestSetContextID) || len(c.Args) < 2 {
 		return "", nil, false
 	}
 	switch x := c.Args[len(c.Args)-2].Value.(type) {
@@ -402,33 +401,51 @@ func CollectTestFuncs(pkg *ir.Package) (fns []*ir.Func, suffixes []string, metho
 	return
 }
 
-// TriggerPayloads is the payload type each test trigger hands an event, keyed
-// "<id>.<event>" as the test wrote it -- `c.box.change({checked=true})` is
-// "box.change". It is for a platform whose invoker takes no payload of its
-// own and so has only the tests to say what one is.
-func TriggerPayloads(pkg *ir.Package) map[string]*ir.Type {
-	out := map[string]*ir.Type{}
+// TriggerArgs is the types of the arguments each test trigger hands an event,
+// keyed "<id>.<event>" as the test wrote it -- `c.box.change(true)` is
+// "box.change". It is for a platform whose invoker reads no argument of its
+// own and so has only the tests to say what its signature takes.
+func TriggerArgs(pkg *ir.Package) map[string][]*ir.Type {
+	out := map[string][]*ir.Type{}
 	fns, _, _ := CollectTestFuncs(pkg)
 	for _, fn := range fns {
 		_ = ir.Walk(fn.Block, func(n ir.Node) error {
 			c, ok := n.(*ir.Call)
-			if !ok || c.Event == "" || len(c.Args) == 0 || c.AST == nil {
+			if !ok || len(c.Args) == 0 {
 				return nil
 			}
-			outer, ok := c.AST.Func.(*ast.SelectExpr)
+			tt, ok := EventTriggerTarget(c)
 			if !ok {
 				return nil
 			}
-			inner, ok := outer.Operand.(*ast.SelectExpr)
-			if !ok {
-				return nil
+			types := make([]*ir.Type, 0, len(c.Args))
+			for _, a := range c.Args {
+				t := a.Value.ExprType()
+				if t == nil {
+					return nil
+				}
+				types = append(types, t)
 			}
-			t := c.Args[0].Value.ExprType()
-			if t == nil {
-				return nil
-			}
-			if sd, ok := t.Decl.(*ir.StructDef); ok && sd != nil && len(sd.Fields) > 0 {
-				out[inner.Field+"."+c.Event] = t
+			out[tt.ID+"."+c.Event] = types
+			return nil
+		})
+	}
+	return out
+}
+
+// IndexedTriggerIDs is every `#id` a test triggers one copy of --
+// `c.row[1].change(true)`. A target keeps the copies of such an id in render
+// order and gives it an `At` invoker (InvokerAt); one no test indexes costs a
+// program nothing.
+func IndexedTriggerIDs(pkg *ir.Package) map[string]bool {
+	out := map[string]bool{}
+	fns, _, _ := CollectTestFuncs(pkg)
+	for _, fn := range fns {
+		_ = ir.Walk(fn.Block, func(n ir.Node) error {
+			if c, ok := n.(*ir.Call); ok {
+				if tt, ok := EventTriggerTarget(c); ok && tt.Index != nil {
+					out[tt.ID] = true
+				}
 			}
 			return nil
 		})

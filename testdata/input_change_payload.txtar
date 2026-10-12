@@ -1,18 +1,16 @@
 An input's `@change` fires on commit on fyne and gtk4, with the committed text.
 
-`sngl:ui` declares `@change ChangeEvent` on input and textarea, fired on
-commit, and the interpreter fills the payload's first field with what the
-host reported. fyne's Entry wired `@input` and nothing else, so a handler for
-`@change` was a Model method taking a `ChangeEvent` no Go file declares; gtk4's
+`sngl:ui` declares `@change(value string)` on input and textarea, fired on
+commit. fyne's Entry wired `@input` and nothing else, so a handler for
+`@change` was a Model method taking a payload no Go file declared; gtk4's
 entry override did not connect a commit signal either. fyne now connects
-`OnSubmitted` and gtk4 `activate`, and each reads the payload's value off what
-the host hands over -- the callback's string on fyne, the entry's text on
-gtk4 -- wherever the handler reads it, not only in a leading two-way bind.
-codegen/platform/fyne/input_change_run_test.go fires the callback and reads
-the state it set.
+`OnSubmitted` and gtk4 `activate`, and the override hands on what the host
+reports -- the callback's string on fyne, the entry's text read off the widget
+on gtk4 -- as the event's parameter, which the handler reads wherever it
+likes. codegen/platform/fyne/input_change_run_test.go fires the callback and
+reads the state it set.
 
-deny * `ChangeEvent` -- no handler is handed the SNGL event
-deny * `\be\.Value\b` -- the payload is read off the host
+deny * `\be\.Value\b` -- the handler's parameter is the text, not a struct holding it
 -- app.sngl --
 import . "sngl:ui"
 import . "sngl:test"
@@ -28,8 +26,8 @@ component Row(label string) node {
     var committed = ""
 
     vbox {
-        input(@change(e) { committed = e.value })
-        textarea(@change(e) { committed = "{label}:{e.value}" })
+        input(@change(e) { committed = e })
+        textarea(@change(e) { committed = "{label}:{e}" })
         text(value=committed)
     }
 }
@@ -39,7 +37,7 @@ component main node {
     var items = ["a"]
 
     vbox {
-        input(@change(e) { last = "got " + e.value })
+        input(@change(e) { last = "got " + e })
         text(value=last)
         for var it = items {
             Row(label=it)
@@ -131,15 +129,15 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 	m.__inst0_live = __inst0_next
 }
 
-func (m *Model) __n3_input_handler(s string) {
-	m.value__inst0 = s
+func (m *Model) __n3_input_handler(v string) {
+	m.value__inst0 = v
 	m.__n3.SetText(m.value__inst0)
 }
 
-func (m *Model) __n3_change_handler(s string) {
-	m.value__inst0 = s
+func (m *Model) __n3_change_handler(v string) {
+	m.value__inst0 = v
 	m.__n3.SetText(m.value__inst0)
-	m.last = ("got " + s)
+	m.last = ("got " + v)
 	m.__n4.SetText(m.last)
 }
 
@@ -213,14 +211,14 @@ func newRowInstance(__model *Model, __a_label string) *RowInstance {
 	c.__n0 = widget.NewEntry()
 	c.__n0.SetText(c.value__inst1)
 	c.__n0.SetPlaceHolder("")
-	c.__n0.OnChanged = func(s string) {
-		c.value__inst1 = s
+	c.__n0.OnChanged = func(v string) {
+		c.value__inst1 = v
 		c.__n0.SetText(c.value__inst1)
 	}
-	c.__n0.OnSubmitted = func(s string) {
-		c.value__inst1 = s
+	c.__n0.OnSubmitted = func(v string) {
+		c.value__inst1 = v
 		c.__n0.SetText(c.value__inst1)
-		c.committed = s
+		c.committed = v
 		c.__n2.SetText(c.committed)
 	}
 	__n7.Add(c.__n0)
@@ -228,14 +226,14 @@ func newRowInstance(__model *Model, __a_label string) *RowInstance {
 	c.__n1.SetText(c.value__inst2)
 	c.__n1.SetPlaceHolder("")
 	c.__n1.SetMinRowsVisible(0)
-	c.__n1.OnChanged = func(s string) {
-		c.value__inst2 = s
+	c.__n1.OnChanged = func(v string) {
+		c.value__inst2 = v
 		c.__n1.SetText(c.value__inst2)
 	}
-	c.__n1.OnSubmitted = func(s string) {
-		c.value__inst2 = s
+	c.__n1.OnSubmitted = func(v string) {
+		c.value__inst2 = v
 		c.__n1.SetText(c.value__inst2)
-		c.committed = ((c.__prop_label + ":") + s)
+		c.committed = ((c.__prop_label + ":") + v)
 		c.__n2.SetText(c.committed)
 	}
 	__n7.Add(c.__n1)
@@ -374,7 +372,7 @@ func (m *Model) __n3_changed_handler() {
 func (m *Model) __n3_activate_handler() {
 	m.value__inst0 = gtk4rt.EditableGetText(m.__n3)
 	gtk4rt.EditableSetText(m.__n3, m.value__inst0)
-	m.last = ("got " + gtk4rt.EditableGetText(m.__n3))
+	m.last = ("got " + m.value__inst0)
 	gtk4rt.LabelSetText(m.__n4, m.last)
 }
 
@@ -415,7 +413,7 @@ func newRowInstance(__model *Model, __a_label string) *RowInstance {
 	gtk4rt.Connect(c.__n0, "activate", func() {
 		c.value__inst1 = gtk4rt.EditableGetText(c.__n0)
 		gtk4rt.EditableSetText(c.__n0, c.value__inst1)
-		c.committed = gtk4rt.EditableGetText(c.__n0)
+		c.committed = c.value__inst1
 		gtk4rt.LabelSetText(c.__n2, c.committed)
 	})
 	gtk4rt.BoxAppend(__n7, c.__n0)
@@ -428,7 +426,7 @@ func newRowInstance(__model *Model, __a_label string) *RowInstance {
 	gtk4rt.Connect(c.__n1, "activate", func() {
 		c.value__inst2 = gtk4rt.EditableGetText(c.__n1)
 		gtk4rt.EditableSetText(c.__n1, c.value__inst2)
-		c.committed = ((c.__prop_label + ":") + gtk4rt.EditableGetText(c.__n1))
+		c.committed = ((c.__prop_label + ":") + c.value__inst2)
 		gtk4rt.LabelSetText(c.__n2, c.committed)
 	})
 	gtk4rt.BoxAppend(__n7, c.__n1)
@@ -507,6 +505,6 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return win
 }
 -- run/go/fyne --
-pass sha256:0aad78e137434addc62f9d683ab2da5b
+pass sha256:ec52da820ad1c8d97f47160f021e680d
 -- run/go/gtk4 --
-pass sha256:8151070a358560fd057df7a9cc1f6cec
+pass sha256:f84e1e7cdb9facb96fc535e2b2e323ba
