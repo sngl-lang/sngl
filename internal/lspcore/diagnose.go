@@ -14,7 +14,22 @@ import (
 // Analyze parses and type-checks SNGL source, returning the document and diagnostics.
 // Pass dir="" and resolve=nil when no filesystem is available.
 func Analyze(content, filename string, fsys fs.FS, dir string, resolve checker.ImportResolver) (*ast.Document, []Diagnostic) {
-	return AnalyzePackage(content, filename, nil, &checker.Config{
+	a := AnalyzeChecked(content, filename, fsys, dir, resolve)
+	return a.Doc, a.Diags
+}
+
+// Analysis is what checking one file yields: its parse, the package it was
+// checked into -- held even where the check reported errors, since that is
+// most of the time an editor asks -- and the file's diagnostics.
+type Analysis struct {
+	Doc   *ast.Document
+	Pkg   *ir.Package
+	Diags []Diagnostic
+}
+
+// AnalyzeChecked is Analyze keeping the checked package.
+func AnalyzeChecked(content, filename string, fsys fs.FS, dir string, resolve checker.ImportResolver) Analysis {
+	return AnalyzePackageChecked(content, filename, nil, &checker.Config{
 		FS:       fsys,
 		Dir:      dir,
 		Resolver: resolve,
@@ -25,7 +40,14 @@ func Analyze(content, filename string, fsys fs.FS, dir string, resolve checker.I
 // AnalyzePackage is Analyze for a file checked beside the other files of its
 // package, under cfg. Only the file's own diagnostics are reported.
 func AnalyzePackage(content, filename string, siblings []*ast.Document, cfg *checker.Config) (*ast.Document, []Diagnostic) {
+	a := AnalyzePackageChecked(content, filename, siblings, cfg)
+	return a.Doc, a.Diags
+}
+
+// AnalyzePackageChecked is AnalyzePackage keeping the checked package.
+func AnalyzePackageChecked(content, filename string, siblings []*ast.Document, cfg *checker.Config) Analysis {
 	doc, parseErr := parser.Parse(filename, []byte(content))
+	var pkg *ir.Package
 
 	var diags []Diagnostic
 
@@ -34,7 +56,8 @@ func AnalyzePackage(content, filename string, siblings []*ast.Document, cfg *che
 	}
 
 	if doc != nil {
-		_, checkDiags := checker.CheckPackage(append([]*ast.Document{doc}, siblings...), cfg)
+		var checkDiags []ir.Diagnostic
+		pkg, checkDiags = checker.CheckPackage(append([]*ast.Document{doc}, siblings...), cfg)
 		for _, d := range checkDiags {
 			msg := d.Msg
 			rng := Range{Start: Position{}, End: Position{}}
@@ -57,7 +80,7 @@ func AnalyzePackage(content, filename string, siblings []*ast.Document, cfg *che
 		}
 	}
 
-	return doc, diags
+	return Analysis{Doc: doc, Pkg: pkg, Diags: diags}
 }
 
 // ParseErrorsToDiagnostics converts parse error strings into diagnostics.

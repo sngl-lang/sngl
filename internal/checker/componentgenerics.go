@@ -193,7 +193,7 @@ func (c *checker) bindFromChildren(comp, spec *ir.Component, children []ir.Stmt)
 			if !ok || n.Component == nil || n.Component.Family != fam || !ir.IsFamilyValue(n.Component) {
 				continue
 			}
-			got := &ir.Type{Kind: ir.TypeComponent, Decl: fam, Elems: ir.FamilyArgs(n.Component, c.nodeArgs[n])}
+			got := &ir.Type{Kind: ir.TypeComponent, Decl: fam, Elems: ir.FamilyArgs(n.Component, n.TypeArgs)}
 			if first == nil {
 				first = got
 				bindTypeParams(rest.Content, got, bindings)

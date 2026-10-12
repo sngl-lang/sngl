@@ -74,7 +74,12 @@ type NodeInst struct {
 	// printed tree re-declares the handle from the `#id` it prints.
 	Handle *Var `json:"-"`
 	Key    Expr // key expression for list diffing (nil → implicit index)
-	Ref    Expr // ref binding (nil if none)
+	// TypeArgs is what the call site bound the component's type parameters
+	// to, in declaration order, where it is generic: a handle to the node
+	// carries them, a generic family's slot reads them off its children, and
+	// Events types a handler's parameters by them.
+	TypeArgs []*Type `json:"-"`
+	Ref      Expr    // ref binding (nil if none)
 
 	// Params is the params cell of a nav.page: the parameter its content's
 	// population binds, one struct value holding what the page is shown with,

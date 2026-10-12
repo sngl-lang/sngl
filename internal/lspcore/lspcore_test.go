@@ -579,3 +579,42 @@ func TestNamespaceCompletions_AliasedLibraryPackage(t *testing.T) {
 		t.Error("d. offered button, which is sngl:ui's")
 	}
 }
+
+// An effect's events are offered as its call site typed them, from the package
+// last checked: the edit adding the `@` does not parse, which is when an editor
+// asks.
+func TestComplete_EffectEventsFromLastCheck(t *testing.T) {
+	checked := `import . "sngl:ui"
+
+struct Todo {
+    title string
+}
+
+component main node {
+    var todos list<Todo> = []
+
+    effect(
+        on = todos,
+        @update {},
+    )
+
+    text(value="x")
+}
+`
+	a := lspcore.AnalyzeChecked(checked, "test.sngl", nil, "", nil)
+	if a.Pkg == nil {
+		t.Fatal("no package checked")
+	}
+	editing := strings.Replace(checked, "        @update {},\n", "        @update {},\n        @\n", 1)
+	items := lspcore.CompleteChecked(editing, a.Doc, a.Pkg, 13, 10)
+	detail := map[string]string{}
+	for _, it := range items {
+		detail[it.Label] = it.Detail
+	}
+	if got := detail["@insert"]; got != "(at int, item Todo)" {
+		t.Errorf("@insert detail = %q, want (at int, item Todo); offered %v", got, detail)
+	}
+	if _, ok := detail["@mount"]; ok {
+		t.Errorf("@mount offered on a list key, which does not compare: %v", detail)
+	}
+}

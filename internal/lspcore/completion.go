@@ -15,6 +15,14 @@ import (
 
 // Complete returns completion items for the given position (1-based line and col).
 func Complete(content string, doc *ast.Document, line, col int) []CompletionItem {
+	return CompleteChecked(content, doc, nil, line, col)
+}
+
+// CompleteChecked is Complete with the package doc was last checked into, so a
+// node's events are offered as its call site typed them and as the checker
+// would accept them. pkg may be nil, and is consulted only where the node it
+// holds is the one the cursor is in.
+func CompleteChecked(content string, doc *ast.Document, pkg *ir.Package, line, col int) []CompletionItem {
 	// Check for namespace dot completion first (e.g., "html.|")
 	if items := NamespaceCompletions(content, doc, line, col); items != nil {
 		return items
@@ -30,11 +38,11 @@ func Complete(content string, doc *ast.Document, line, col int) []CompletionItem
 	case CtxVisualNode:
 		return ComponentNameCompletions(content, doc)
 	case CtxPropList:
-		return PropListCompletions(content, doc, line, col)
+		return propListCompletions(content, doc, pkg, line, col)
 	case CtxStyleProp:
 		return StylePropCompletions()
 	case CtxEventHandler:
-		return EventCompletions(content, doc, line)
+		return eventCompletions(content, doc, pkg, line, col)
 	case CtxOutputOpts:
 		return OutputOptsCompletions(content, line)
 	case CtxOutputTarget:
@@ -203,6 +211,13 @@ func ExpressionCompletions(doc *ast.Document) []CompletionItem {
 // EventCompletions offers the events of the node whose block the cursor is in,
 // which is the only component whose handlers can be written there.
 func EventCompletions(content string, doc *ast.Document, line int) []CompletionItem {
+	return eventCompletions(content, doc, nil, line, 1)
+}
+
+func eventCompletions(content string, doc *ast.Document, pkg *ir.Package, line, col int) []CompletionItem {
+	if n := nodeAt(pkg, content, line, col); n != nil {
+		return nodeEventItems(n, nil)
+	}
 	name := enclosingNodeName(content, line)
 	if name == "" {
 		return nil
@@ -325,6 +340,10 @@ func userComponent(doc *ast.Document, name string) *ast.ComponentDecl {
 // PropListCompletions returns props and events for the component whose
 // prop list the cursor is inside.
 func PropListCompletions(content string, doc *ast.Document, line, col int) []CompletionItem {
+	return propListCompletions(content, doc, nil, line, col)
+}
+
+func propListCompletions(content string, doc *ast.Document, pkg *ir.Package, line, col int) []CompletionItem {
 	lines := strings.Split(content, "\n")
 	if line < 1 || line > len(lines) {
 		return nil
@@ -415,7 +434,12 @@ func PropListCompletions(content string, doc *ast.Document, line, col int) []Com
 		})
 	}
 
-	// Events
+	// Events, as the checked node's call site typed them where there is one.
+	node := nodeAt(pkg, content, line, col)
+	if node != nil {
+		items = append(items, nodeEventItems(node, used)...)
+		events = nil
+	}
 	for _, e := range events {
 		if used[e.Name] {
 			continue
@@ -455,7 +479,7 @@ func PropListCompletions(content string, doc *ast.Document, line, col int) []Com
 		}
 		sort.Strings(enames)
 		for _, n := range enames {
-			if used[n] {
+			if used[n] || node != nil {
 				continue
 			}
 			items = append(items, eventItem(n, schema.Events[n]))

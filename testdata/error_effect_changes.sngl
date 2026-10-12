@@ -35,6 +35,8 @@ component main node {
 
     effect(@mount {}, @clear {}) // ERROR(check) "this effect has no `on`"
 
+    effect(@mount {}, @update {}) // ERROR(check) "reports a write to what `on` reads, and this effect has no `on`"
+
     effect(on=xs.filter(func(x int) => x > 0), @update {}, @remove {}) // ERROR(check) "`on` is computed from one"
 
     effect(on=xs, @insert {}) // ERROR(check) "an effect handling @insert must handle @update too"

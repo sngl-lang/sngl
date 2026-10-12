@@ -34,6 +34,11 @@ var (
 	cacheMu   sync.Mutex
 	cacheHash [32]byte
 	cacheDoc  *ast.Document
+	// cachePkg is the package the last diagnosed source was checked into,
+	// errors and all. Completion asks it for the node the cursor is in,
+	// which it finds by where that node was written, so a package one edit
+	// old still answers.
+	cachePkg *ir.Package
 )
 
 // optionsForTarget returns a clone of the platform options the user declared
@@ -423,7 +428,8 @@ func Generate(source, platform, lang string) string {
 func Diagnostics(source string) string {
 	main, fsys := parseSource(source)
 	siblings, sibErr := parseSiblings(fsys)
-	doc, diags := lspcore.AnalyzePackage(string(main), mainFile, siblings, newCheckerConfig(fsys, "html", "none"))
+	a := lspcore.AnalyzePackageChecked(string(main), mainFile, siblings, newCheckerConfig(fsys, "html", "none"))
+	doc, diags := a.Doc, a.Diags
 	if sibErr != nil {
 		diags = append(diags, lspcore.Diagnostic{Severity: lspcore.SeverityError, Source: "sngl", Message: sibErr.Error()})
 	}
@@ -432,6 +438,7 @@ func Diagnostics(source string) string {
 		cacheMu.Lock()
 		cacheHash = h
 		cacheDoc = doc
+		cachePkg = a.Pkg
 		cacheMu.Unlock()
 	}
 
@@ -454,7 +461,10 @@ func Diagnostics(source string) string {
 func Complete(source string, line, col int) string {
 	main, _ := parseSource(source)
 	doc, _ := cachedParse(string(main))
-	items := lspcore.Complete(string(main), doc, line, col)
+	cacheMu.Lock()
+	pkg := cachePkg
+	cacheMu.Unlock()
+	items := lspcore.CompleteChecked(string(main), doc, pkg, line, col)
 
 	var out []any
 	for _, item := range items {

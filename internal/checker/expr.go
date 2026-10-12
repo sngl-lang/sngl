@@ -4577,12 +4577,7 @@ func (c *checker) checkVisualNode(vn *ast.VisualNode) ir.Stmt {
 		Handle:    c.nodeHandleSym(vn.ID),
 		Key:       c.keyArgExpr(vn.Args),
 	}
-	if args := c.specArgs[spec]; len(args) > 0 {
-		if c.nodeArgs == nil {
-			c.nodeArgs = map[*ir.NodeInst][]*ir.Type{}
-		}
-		c.nodeArgs[node] = args
-	}
+	node.TypeArgs = c.specArgs[spec]
 	c.deferConstSlots(node)
 	return node
 }

@@ -14,7 +14,8 @@ func assertMarkers(t *testing.T, s testutil.Sample) {
 	content := s.Source
 	markers := parseMarkers(content)
 
-	doc, diags := lspcore.Analyze(content, s.Filename, s.FS, s.Dir, nil)
+	a := lspcore.AnalyzeChecked(content, s.Filename, s.FS, s.Dir, nil)
+	doc, diags := a.Doc, a.Diags
 
 	// Collect diag markers by line
 	diagExpected := map[int][]string{} // line (1-based) → expected substrings
@@ -135,7 +136,7 @@ func assertMarkers(t *testing.T, s testutil.Sample) {
 			col = idx + len(ctx) + 1 // end of context, 1-based
 		}
 
-		items := lspcore.Complete(content, doc, m.line, col)
+		items := lspcore.CompleteChecked(content, doc, a.Pkg, m.line, col)
 		labels := map[string]bool{}
 		for _, item := range items {
 			labels[item.Label] = true
