@@ -65,14 +65,8 @@ func TestBuildDocPlansCollision(t *testing.T) {
 // without involving adb / kotlinc. It's the closest we can get to an
 // end-to-end check without a connected device.
 func TestBatchCodegen(t *testing.T) {
-	const src1 = `import . "sngl:ui"
-output { android }
-` + "`" + `Hello A` + "`" + `
-`
-	const src2 = `import . "sngl:ui"
-output { android }
-` + "`" + `Hello B` + "`" + `
-`
+	const src1 = "import ui \"sngl:ui\"\n\nui.window(title=\"A\") {\n    ui.text(value=\"Hello A\")\n}\n"
+	const src2 = "import ui \"sngl:ui\"\n\nui.window(title=\"B\") {\n    ui.text(value=\"Hello B\")\n}\n"
 
 	check := func(name, body string) *codegen.BatchDoc {
 		t.Helper()
@@ -81,12 +75,9 @@ output { android }
 			t.Fatalf("parse %s: %v", name, err)
 		}
 		pkg, diags := checker.Check(doc, &checker.Config{IsMain: true, Platforms: androidTarget(), Languages: androidLangs(), Targets: []ir.StaticTarget{{Platform: "android", Language: "kotlin"}}})
-		for _, d := range diags {
-			if d.Error() != "" && d.Error()[0] != ' ' {
-				// only inspect on actual error
-			}
+		if len(diags) > 0 {
+			t.Fatalf("check %s: %s", name, diags[0].Error())
 		}
-		_ = diags
 		return &codegen.BatchDoc{
 			ID:   strings.TrimSuffix(name, ".sngl"),
 			Pkg:  pkg,

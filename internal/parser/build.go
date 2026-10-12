@@ -1426,7 +1426,7 @@ func (b *builder) buildVisualOrStmt(it nodeIter) ast.Stmt {
 			if !it.done() && it.isNonTerminal() {
 				val = b.buildExpr(it.enter())
 			}
-			if target, ok := base.(ast.TargetExpr); ok {
+			if target, ok := base.(ast.TargetExpr); ok && namesStorage(target) {
 				return &ast.AssignStmt{
 					Pos:    ast.Pos(*base.ExprPos()),
 					Target: target,
@@ -1434,15 +1434,17 @@ func (b *builder) buildVisualOrStmt(it nodeIter) ast.Stmt {
 					Value:  val,
 				}
 			}
+			return b.notAssignable(base)
 		}
 		if !it.done() && !it.isNonTerminal() && it.tokenType() == BANGBANG {
 			it.skip()
-			if target, ok := base.(ast.TargetExpr); ok {
+			if target, ok := base.(ast.TargetExpr); ok && namesStorage(target) {
 				return &ast.ToggleStmt{
 					Pos:    ast.Pos(*base.ExprPos()),
 					Target: target,
 				}
 			}
+			return b.notAssignable(base)
 		}
 		if !it.done() && it.isNonTerminal() && it.symbol() == IncDecOp {
 			inner := it.enter()
@@ -1453,13 +1455,14 @@ func (b *builder) buildVisualOrStmt(it nodeIter) ast.Stmt {
 					isDec = true
 				}
 			}
-			if target, ok := base.(ast.TargetExpr); ok {
+			if target, ok := base.(ast.TargetExpr); ok && namesStorage(target) {
 				return &ast.IncDecStmt{
 					Pos:    ast.Pos(*base.ExprPos()),
 					Target: target,
 					IsDec:  isDec,
 				}
 			}
+			return b.notAssignable(base)
 		}
 	}
 
@@ -1471,15 +1474,19 @@ func (b *builder) buildVisualOrStmt(it nodeIter) ast.Stmt {
 		// If base is a CallExpr, decompose: Target = Func, Args = call's args,
 		// and carry the element-ref id (`name #id(...)`) onto the node.
 		if call, ok := base.(*ast.CallExpr); ok {
-			if target, ok := call.Func.(ast.TargetExpr); ok {
+			if target, ok := call.Func.(ast.TargetExpr); ok && namesNode(target) {
 				vn.Target = target
+			} else {
+				b.errorf(ast.Pos(*call.Func.ExprPos()), "a node names its component: write name(…) or pkg.name(…)")
 			}
 			vn.Args = call.Args
 			vn.ID = call.ID
 			vn.HasParens = true
 		} else {
-			if target, ok := base.(ast.TargetExpr); ok {
+			if target, ok := base.(ast.TargetExpr); ok && namesNode(target) {
 				vn.Target = target
+			} else {
+				b.notAStatement(base)
 			}
 			if args != nil {
 				vn.Args = *args
@@ -1506,8 +1513,10 @@ func (b *builder) buildVisualOrStmt(it nodeIter) ast.Stmt {
 		Pos: ast.Pos(*base.ExprPos()),
 		ID:  elemID,
 	}
-	if target, ok := base.(ast.TargetExpr); ok {
+	if target, ok := base.(ast.TargetExpr); ok && namesNode(target) {
 		vn.Target = target
+	} else {
+		b.notAStatement(base)
 	}
 	return vn
 }
@@ -3395,3 +3404,47 @@ func extractUnitSuffix(raw string) string {
 }
 
 var _ = strings.Contains // keep import
+
+// notAStatement reports a value written where a statement is expected. SNGL
+// has no expression statements: such a value would be computed and dropped,
+// which in a view is text that silently never renders.
+func (b *builder) notAStatement(e ast.Expr) {
+	b.errorf(ast.Pos(*e.ExprPos()), "a value is not a statement: show it with a node, such as ui.text(value=…), or use it in one")
+}
+
+// notAssignable reports an assignment, toggle or increment of something that
+// names no storage, and stands in for the statement.
+func (b *builder) notAssignable(e ast.Expr) ast.Stmt {
+	pos := ast.Pos(*e.ExprPos())
+	b.errorf(pos, "only a name, a field or an element can be assigned to")
+	return &ast.VisualNode{Pos: pos}
+}
+
+// namesNode reports whether e can name a node's component: a name, qualified
+// by package or namespace as deep as it likes. Anything else is a value, as
+// `"a".length` and `xs[0]` are, though both parse as targets.
+func namesNode(e ast.Expr) bool {
+	switch e := e.(type) {
+	case *ast.IdentExpr:
+		return true
+	case *ast.SelectExpr:
+		return namesNode(e.Operand)
+	}
+	return false
+}
+
+// namesStorage reports whether e reaches storage through a name: a write to a
+// field or element of a literal or a call's result is a write to nothing.
+func namesStorage(e ast.Expr) bool {
+	switch e := e.(type) {
+	case *ast.IdentExpr:
+		return true
+	case *ast.SelectExpr:
+		return namesStorage(e.Operand)
+	case *ast.IndexExpr:
+		return namesStorage(e.Operand)
+	case *ast.UnaryExpr:
+		return namesStorage(e.Operand)
+	}
+	return false
+}
