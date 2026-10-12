@@ -1,0 +1,121 @@
+# testdata/raise_ends_handler.txtar's program, run on the targets its records
+# only compile: the interpreter, which runs the checked IR and answers a raise
+# itself (dispatchRaise), html in a real Chromium, and gtk4.
+#
+# A raise the boundary catches ends the click: the write ahead of it stays, and
+# the write after it, the callee's write after its own raise and the caller's
+# write after the call never happen.
+
+sngl test --platform=none app.sngl
+stdout '2 tests, 0 failures'
+
+sngl test --platform=html app.sngl
+stdout '2 tests, 0 failures'
+
+[!gtk4] skip 'gtk4 development libraries required'
+
+sngl test --platform=gtk4 --language=go app.sngl
+stdout '2 tests, 0 failures'
+
+-- app.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+
+func stop(why string) {
+    error.raise(why, "stop")
+}
+
+// The two cases keep disjoint state because html's test agent shares one
+// page's state across the tests of a component.
+component form node {
+    var caught = 0
+    var before = 0
+    var after = 0
+
+    var callCaught = ""
+    var callBefore = 0
+    var wrote = 0
+    var back = 0
+    var callAfter = 0
+
+    func check() {
+        wrote = wrote + 1
+        stop("from check")
+        wrote = wrote + 100
+    }
+
+    func submit() {
+        check()
+        back = back + 1
+    }
+
+    boundary(@error(e) {
+        caught = caught + 1
+    }) {
+        button #direct(text="Direct", @click {
+            before = before + 1
+            error.raise("stop", "stop")
+            after = after + 1
+        })
+    }
+
+    boundary(@error(e) {
+        callCaught = e.message
+    }) {
+        button #called(text="Called", @click {
+            callBefore = callBefore + 1
+            submit()
+            callAfter = callAfter + 1
+        })
+    }
+}
+
+func testDirectRaiseEndsHandler(t Test, c form) {
+    c.direct.click()
+    c.direct.click()
+    t.assert(c.caught == 2)
+    t.assert(c.before == 2)
+    t.assert(c.after == 0)
+}
+
+func testCalledRaiseEndsHandler(t Test, c form) {
+    c.called.click()
+    c.called.click()
+    t.assert(c.callCaught == "from check")
+    t.assert(c.callBefore == 2)
+    t.assert(c.wrote == 2)
+    t.assert(c.back == 0)
+    t.assert(c.callAfter == 0)
+}
+
+window {
+    form()
+}
+-- testrun/gtk4/go/app.sngl/form/1 --
+sha256:e26db0b0f5e601732e6f4bb51f2bfbbd
+{
+  "results": [
+    {
+      "Desc": "CalledRaiseEndsHandler",
+      "Passed": true
+    },
+    {
+      "Desc": "DirectRaiseEndsHandler",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/form/1 --
+sha256:3a1961616bccef49b0870336b1c568d0
+{
+  "results": [
+    {
+      "Desc": "CalledRaiseEndsHandler",
+      "Passed": true
+    },
+    {
+      "Desc": "DirectRaiseEndsHandler",
+      "Passed": true
+    }
+  ]
+}
