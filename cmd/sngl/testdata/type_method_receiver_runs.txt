@@ -1,0 +1,136 @@
+# A method on a type reads its receiver and the page's state, run on every
+# target. testdata/type_method_receiver.txtar is the compiled half: a golden
+# shows the parameter list, and only running it shows that `bonus` was read off
+# the page rather than the receiver, which has no such field.
+
+sngl test --platform=none app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=html app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=fyne --language=go app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin app.sngl
+stdout '1 tests, 0 failures'
+
+-- app.sngl --
+import . "sngl:test"
+import ui "sngl:ui"
+
+struct Pt {
+    x int
+    y int
+}
+
+var bonus = 1
+var n = 1
+
+func Pt.sum(q Pt) int {
+    return q.x + q.y + bonus
+}
+
+func list<T>.pick() => this[n]
+
+func list<T>.second() T {
+    var i = 0
+    for var x = this {
+        if i == 1 {
+            return x
+        }
+        i += 1
+    }
+    return this[0]
+}
+
+func Pt.flip(q Pt) Pt {
+    var r = Pt{x=q.y, y=q.x}
+    r.x += 1
+    return r
+}
+
+component main ui.node {
+    var p = Pt{x=1, y=2}
+    var xs = [10, 20, 30]
+    var sum = 0
+    var picked = 0
+    var second = 0
+    var flipped = 0
+
+    effect(@mount {
+        sum = p.sum()
+        picked = xs.pick()
+        second = xs.second()
+        flipped = p.flip().x
+    })
+
+    ui.text(value="{sum} {picked}")
+}
+
+func testTypeMethodsReadTheirReceiver(t Test, c main) {
+    t.assert(c.sum == 4)
+    t.assert(c.picked == 20)
+    t.assert(c.second == 20)
+    t.assert(c.flipped == 3)
+}
+
+ui.window {
+    main
+}
+-- testrun/android/kotlin/app.sngl/main/1 --
+sha256:ebf945446e326bb4e91bb8adc970221e
+{
+  "results": [
+    {
+      "Desc": "TypeMethodsReadTheirReceiver",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/main/1 --
+sha256:76edb65751f7795bacb6876af41f8027
+{
+  "results": [
+    {
+      "Desc": "TypeMethodsReadTheirReceiver",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/main/1 --
+sha256:6589ea74cb33423052244e70c92ede72
+{
+  "results": [
+    {
+      "Desc": "TypeMethodsReadTheirReceiver",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/main/1 --
+sha256:2609fba361023600d1ae6602942a4049
+{
+  "results": [
+    {
+      "Desc": "TypeMethodsReadTheirReceiver",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/main/1 --
+sha256:4407ea29628120948f6dd3a7e9db85fe
+{
+  "results": [
+    {
+      "Desc": "TypeMethodsReadTheirReceiver",
+      "Passed": true
+    }
+  ]
+}

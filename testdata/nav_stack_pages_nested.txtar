@@ -1451,7 +1451,7 @@ fun _page__valueOf(entry: NavBackStackEntry?): _page__value? {
             val c = (r.cols).elementAt(__copy1)
             _page__value(id = 0, href = (if ((c == "3")) "/" else ((("/" + r.name) + "/") + c)), title = (r.name + c), meta = __anon_e3b0c4(), copy = listOf(__copy, __copy1))
         }
-        destination.hasRoute<_page__valueRoute1>() -> _page__value(id = 1, href = "/about", title = "About", meta = __anon_e3b0c4(), copy = listOf())
+        destination.hasRoute<_page__valueRoute1>() -> _page__value(id = 1, href = "/about", title = "About", meta = __anon_e3b0c4(), copy = listOf<Int>())
         else -> null
     }
 }

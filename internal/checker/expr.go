@@ -1387,7 +1387,7 @@ func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) ir.Ex
 	// The receiver's declaration owns its members, so ask it directly. Only
 	// when the type has no declaration to ask — a builtin generic, whose
 	// members hang off the bare constructor name — does the name matter.
-	fn, ok := ir.MemberOf(receiver.Decl, sel.Field)
+	fn, ok := c.memberOf(receiver.Decl, sel.Field)
 	if !ok {
 		fn, ok = c.lookupMethod(typeName, sel.Field)
 	}
@@ -1408,7 +1408,7 @@ func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) ir.Ex
 	// `option`'s own members, so a name the option itself declares still wins.
 	if !ok && receiver.Kind == ir.TypeOption && len(receiver.Elems) == 1 &&
 		receiver.Elems[0] != nil && receiver.Elems[0].Kind == ir.TypeStruct {
-		if fn, ok = ir.MemberOf(receiver.Elems[0].Decl, sel.Field); ok {
+		if fn, ok = c.memberOf(receiver.Elems[0].Decl, sel.Field); ok {
 			receiver = receiver.Elems[0]
 			typeName = receiver.String()
 		}
@@ -1522,6 +1522,12 @@ func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) ir.Ex
 			}
 			rest := c.checkCallArgs(call.Args, shifted)
 			args = append([]ir.CallArg{{Value: receiverExpr}}, rest...)
+			// `this.add(1)` in a component's own body is `add(1)`: the
+			// instance is the one the call is made in, which a call of a
+			// component method leaves implicit for every target to supply.
+			if comp, ok := fn.RecvDecl().(*ir.Component); ok && isOwnReceiver(receiverExpr, comp) {
+				args = rest
+			}
 		} else if !recvParamStyle {
 			// New-style RecvTypeParams method: receiver is NOT a param.
 			// Check all call args against the full (substituted) sig.
@@ -1936,7 +1942,7 @@ func isPrimitiveMethodReceiver(t *ir.Type) bool {
 
 // methodNamed reports whether the type declares a method of this name, which
 // is what a field read of a type with no fields usually is: the call left off.
-func methodNamed(t *ir.Type, name string) bool {
+func (c *checker) methodNamed(t *ir.Type, name string) bool {
 	if t == nil {
 		return false
 	}
@@ -1944,7 +1950,7 @@ func methodNamed(t *ir.Type, name string) bool {
 	if !ok {
 		return false
 	}
-	_, found := decl.Methods[name]
+	_, found := ir.MethodOn(c.scope, decl, name)
 	return found
 }
 
@@ -1978,7 +1984,7 @@ func (c *checker) selectDeclaredMember(x *ast.SelectExpr, operandExpr ir.Expr, d
 		}
 		return &ir.Select{AST: x, Type: fieldType, Operand: operandExpr, Field: x.Field}
 	}
-	if _, isMethod := decl.MethodTable()[x.Field]; isMethod {
+	if _, isMethod := ir.MethodOn(c.scope, decl, x.Field); isMethod {
 		c.error(x.Pos, "%s.%s is a method; write %s() to call it", name, x.Field, x.Field)
 	} else {
 		c.error(x.Pos, "no field %q on %s %s", x.Field, noun, name)
@@ -2235,7 +2241,7 @@ func (c *checker) inferSelect(x *ast.SelectExpr) ir.Expr {
 					// A component another package declares is not in scope by
 					// its bare name: `pages.current` off a sngl:ui/nav stack.
 					// Its own table holds its methods.
-					if fn, ok = comp.Methods[x.Field]; ok {
+					if fn, ok = ir.MethodOn(c.scope, comp, x.Field); ok {
 						c.ensureReturnType(fn)
 					}
 				}
@@ -2310,7 +2316,7 @@ func (c *checker) inferSelect(x *ast.SelectExpr) ir.Expr {
 						}
 					}
 					if descendant != nil {
-						return &ir.Select{AST: x, Type: ir.ListOf(descendant.SymType()), Operand: operandExpr, Field: x.Field}
+						return &ir.Select{AST: x, Type: c.listOf(descendant.SymType()), Operand: operandExpr, Field: x.Field}
 					}
 				}
 				c.error(x.Pos, "no member %q on component %s", x.Field, comp.Name)
@@ -2321,7 +2327,7 @@ func (c *checker) inferSelect(x *ast.SelectExpr) ir.Expr {
 			return &ir.Select{AST: x, Type: TypInt, Operand: operandExpr, Field: x.Field}
 		}
 		if hasNoLegitimateFields(operand) {
-			if methodNamed(operand, x.Field) {
+			if c.methodNamed(operand, x.Field) {
 				c.error(x.Pos, "%s.%s is a method; write %s() to call it", operand, x.Field, x.Field)
 			} else {
 				c.error(x.Pos, "no field %q on type %s", x.Field, operand)
@@ -2622,7 +2628,7 @@ func (c *checker) inferListLit(x *ast.ListExpr) ir.Expr {
 			return &ir.ListLit{AST: x, Type: c.expected, Elems: nil}
 		}
 		c.error(x.Pos, "cannot infer element type of empty list literal; add a type annotation")
-		return &ir.ListLit{AST: x, Type: ListOf(TypDyn)}
+		return &ir.ListLit{AST: x, Type: c.listOf(TypDyn)}
 	}
 	var elemExpected *ir.Type
 	if c.expected != nil && c.expected.Kind == ir.TypeList && len(c.expected.Elems) > 0 {
@@ -2652,13 +2658,13 @@ func (c *checker) inferListLit(x *ast.ListExpr) ir.Expr {
 	}
 	for i, el := range elems {
 		if sp, ok := el.(*ir.Spread); ok {
-			sp.Operand = wrapIfNeeded(sp.Operand, ListOf(elemT))
+			sp.Operand = wrapIfNeeded(sp.Operand, c.listOf(elemT))
 			sp.Type = exprType(sp.Operand)
 		} else {
 			elems[i] = wrapIfNeeded(el, elemT)
 		}
 	}
-	return &ir.ListLit{AST: x, Type: ListOf(elemT), Elems: elems}
+	return &ir.ListLit{AST: x, Type: c.listOf(elemT), Elems: elems}
 }
 
 // checkListSpread checks `...operand` written as a list element, returning
@@ -2667,7 +2673,7 @@ func (c *checker) inferListLit(x *ast.ListExpr) ir.Expr {
 func (c *checker) checkListSpread(sp *ast.SpreadExpr, elemExpected *ir.Type) (*ir.Spread, *ir.Type) {
 	var want *ir.Type
 	if elemExpected != nil {
-		want = ListOf(elemExpected)
+		want = c.listOf(elemExpected)
 	}
 	operand := c.checkExprExpecting(sp.Operand, want)
 	t := exprType(operand)
@@ -2712,11 +2718,11 @@ func (c *checker) inferMapLit(x *ast.MapLit) ir.Expr {
 	// from its own entries. A struct expected type is always wrong.
 	if c.expected != nil && c.expected.Kind == ir.TypeStruct {
 		c.error(x.Pos, "map literal cannot be used where a struct is expected")
-		return &ir.MapLitIR{AST: x, Type: ir.MapOf(TypDyn, TypDyn), Entries: nil}
+		return &ir.MapLitIR{AST: x, Type: c.mapOf(TypDyn, TypDyn), Entries: nil}
 	}
 	if c.expected == nil || c.expected.Kind != ir.TypeMap {
 		c.error(x.Pos, "anonymous map literal requires an expected type from context")
-		return &ir.MapLitIR{AST: x, Type: ir.MapOf(TypDyn, TypDyn), Entries: nil}
+		return &ir.MapLitIR{AST: x, Type: c.mapOf(TypDyn, TypDyn), Entries: nil}
 	}
 	if len(x.Entries) == 0 {
 		return &ir.MapLitIR{AST: x, Type: c.expected, Entries: nil}
@@ -2748,7 +2754,7 @@ func (c *checker) inferMapLit(x *ast.MapLit) ir.Expr {
 	if !isComparable(keyT) {
 		c.error(x.Pos, "map key type %s is not comparable", keyT)
 	}
-	return &ir.MapLitIR{AST: x, Type: ir.MapOf(keyT, valT), Entries: entries}
+	return &ir.MapLitIR{AST: x, Type: c.mapOf(keyT, valT), Entries: entries}
 }
 
 // interpPartAlreadyString reports whether an interpolation part's type can be
@@ -2871,6 +2877,11 @@ func (c *checker) inferLambda(x *ast.LambdaExpr) ir.Expr {
 	}
 	c.refuseParamMarks(x.Params.Params)
 	c.refuseConstParams(x.Params.Params, "a lambda's")
+	for _, p := range x.Params.Params {
+		if p.Default != nil {
+			c.error(*p.Default.ExprPos(), "a lambda's parameter %q takes no default: a call through a function value passes every argument", p.Name)
+		}
+	}
 	params := c.buildLambdaParams(x.Params, expectedSig)
 	var ret *ir.Type
 	if x.ReturnType != nil {
@@ -3094,7 +3105,7 @@ func (c *checker) bindArgs(callPos ast.Pos, args []ast.ArgOrEventHandler, sig *i
 			var operand ir.Expr
 			if variadic >= 0 && !seenNamed && positional >= variadic {
 				elem := variadicElem()
-				operand = c.checkExprExpecting(sp.Operand, ListOf(elem))
+				operand = c.checkExprExpecting(sp.Operand, c.listOf(elem))
 				if t := exprType(operand); t != nil && (t.Kind == ir.TypeList || t.Kind == ir.TypeDyn) {
 					if t.Kind == ir.TypeList && len(t.Elems) == 1 && !t.Elems[0].IsAssignableTo(elem) {
 						c.error(sp.Pos, "cannot spread %s into ...%s", t, elem)
@@ -4020,7 +4031,7 @@ func (c *checker) targetPkgScope(uri string) *ir.Scope {
 	if c.platformScopeCache != nil {
 		if s, ok := c.platformScopeCache[uri]; ok {
 			// Clone so each insertion point gets its own parent chain.
-			clone := NewScope(nil)
+			clone := ir.NewScopeSize(nil, len(s.Symbols))
 			maps.Copy(clone.Symbols, s.Symbols)
 			clone.Wildcards = slices.Clone(s.Wildcards)
 			return clone
@@ -4042,7 +4053,7 @@ func (c *checker) targetPkgScope(uri string) *ir.Scope {
 	// `import "sngl:platform/x"` must name one declaration, not two.
 	pkg := c.libPkg(uri)
 
-	scope := NewScope(nil)
+	scope := ir.NewScopeSize(nil, len(pkg.Symbols.Root.Symbols))
 	maps.Copy(scope.Symbols, pkg.Symbols.Root.Symbols)
 	scope.Wildcards = slices.Clone(pkg.Symbols.Root.Wildcards)
 	// The package's own import aliases, which its root chains to and which
@@ -4079,7 +4090,7 @@ func (c *checker) targetPkgScope(uri string) *ir.Scope {
 	c.platformScopeCache[uri] = scope
 
 	// Return a clone for this usage.
-	clone := NewScope(nil)
+	clone := ir.NewScopeSize(nil, len(scope.Symbols))
 	maps.Copy(clone.Symbols, scope.Symbols)
 	clone.Wildcards = slices.Clone(scope.Wildcards)
 	return clone
@@ -5873,7 +5884,7 @@ func (c *checker) checkSlotContent(cd *ast.ComponentDecl, decl *ir.SlotDecl, own
 
 // childrenTypeFor is the children contract a rest slot stands for, in the shape
 // the existing arity checks read.
-func childrenTypeFor(slot *ir.SlotDecl) *ir.Type {
+func (c *checker) childrenTypeFor(slot *ir.SlotDecl) *ir.Type {
 	elem := slot.Content
 	if elem == nil {
 		elem = &ir.Type{Kind: ir.TypeComponent}
@@ -5884,7 +5895,7 @@ func childrenTypeFor(slot *ir.SlotDecl) *ir.Type {
 	case ir.SlotOptional:
 		return ir.OptionOf(elem)
 	}
-	return ir.ListOf(elem)
+	return c.listOf(elem)
 }
 
 func (c *checker) checkSlotArity(pos ast.Pos, slot *ir.SlotDecl, body []ir.Stmt, what string) {

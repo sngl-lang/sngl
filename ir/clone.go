@@ -32,7 +32,9 @@ func ClonePackage(pkg *Package) *Package {
 	if pkg == nil {
 		return nil
 	}
-	return newCloner().clone(reflect.ValueOf(pkg)).Interface().(*Package)
+	out := newCloner().clone(reflect.ValueOf(pkg)).Interface().(*Package)
+	InstallOverlay(out)
+	return out
 }
 
 // ClonePackageFor is ClonePackage for a clone that one target will build: of
@@ -49,7 +51,9 @@ func ClonePackageFor(pkg *Package, platform, language string) *Package {
 	}
 	c := newCloner()
 	c.only = &target{platform, language}
-	return c.clone(reflect.ValueOf(pkg)).Interface().(*Package)
+	out := c.clone(reflect.ValueOf(pkg)).Interface().(*Package)
+	InstallOverlay(out)
+	return out
 }
 
 // CloneExpr returns a deep, independent copy of one expression, on the same
@@ -112,7 +116,13 @@ type cloner struct {
 	// only, when set, is the target the clone is for: an override map keeps
 	// only the entry that target picks. See ClonePackageFor.
 	only *target
+	// subst and own are InstantiateFunc's: the bindings every type is
+	// rewritten under, and the declarations copied although shareDecls is set.
+	subst map[string]*Type
+	own   map[uintptr]bool
 }
+
+var typePtrType = reflect.TypeFor[*Type]()
 
 func (c *cloner) clone(v reflect.Value) reflect.Value {
 	switch v.Kind() {
@@ -126,7 +136,12 @@ func (c *cloner) clone(v reflect.Value) reflect.Value {
 		if cv, ok := c.seen[ptr]; ok {
 			return cv
 		}
-		if c.shareDecls && !deep && isDeclType(v.Type().Elem()) {
+		if c.subst != nil && v.Type() == typePtrType {
+			nv := reflect.ValueOf(v.Interface().(*Type).Substitute(c.subst))
+			c.seen[ptr] = nv
+			return nv
+		}
+		if c.shareDecls && !deep && !c.own[ptr] && isDeclType(v.Type().Elem()) {
 			return v
 		}
 		// Share anything that isn't one of our IR types (AST nodes,
@@ -137,17 +152,16 @@ func (c *cloner) clone(v reflect.Value) reflect.Value {
 		}
 		nv := reflect.New(v.Type().Elem())
 		c.seen[ptr] = nv // register before recursing to handle cycles
-		nv.Elem().Set(c.clone(v.Elem()))
+		c.cloneInto(nv.Elem(), v.Elem())
 		return nv
 
 	case reflect.Interface:
 		if v.IsNil() {
 			return v
 		}
-		cloned := c.clone(v.Elem())
-		out := reflect.New(v.Type()).Elem()
-		out.Set(cloned)
-		return out
+		// Every caller stores the result in a slot of the interface's type,
+		// which takes the concrete value as readily as a boxed one.
+		return c.clone(v.Elem())
 
 	case reflect.Struct:
 		// Only deep-copy our own struct types; share foreign structs
@@ -157,33 +171,7 @@ func (c *cloner) clone(v reflect.Value) reflect.Value {
 			return v
 		}
 		out := reflect.New(v.Type()).Elem()
-		for i := 0; i < v.NumField(); i++ {
-			// A lambda's Func is the expression's own body rather than a
-			// declaration it names, so it is copied even in share mode. One
-			// hop only: the declarations reached from inside that body are
-			// references like any other.
-			c.deepNext = carriesFuncBody(v.Type()) && v.Type().Field(i).Name == "Func"
-			// A declaration's package is where it came from, not part of it:
-			// the package being cloned maps to its clone, and any other -- a
-			// library package -- is shared rather than copied whole.
-			if v.Type() == declInfoType && v.Type().Field(i).Name == "Pkg" {
-				p := v.Field(i)
-				if cv, ok := c.seen[p.Pointer()]; ok && !p.IsNil() {
-					out.Field(i).Set(cv)
-				} else {
-					out.Field(i).Set(p)
-				}
-				continue
-			}
-			if c.only != nil && carriesOverrides(v.Type()) {
-				if key, ok := c.overrideKey(v.Type().Field(i).Name); ok {
-					out.Field(i).Set(c.cloneOverride(v.Field(i), key))
-					continue
-				}
-			}
-			out.Field(i).Set(c.clone(v.Field(i)))
-		}
-		c.deepNext = false
+		c.cloneStruct(out, v)
 		return out
 
 	case reflect.Slice:
@@ -192,7 +180,7 @@ func (c *cloner) clone(v reflect.Value) reflect.Value {
 		}
 		out := reflect.MakeSlice(v.Type(), v.Len(), v.Len())
 		for i := 0; i < v.Len(); i++ {
-			out.Index(i).Set(c.clone(v.Index(i)))
+			c.cloneInto(out.Index(i), v.Index(i))
 		}
 		return out
 
@@ -210,7 +198,7 @@ func (c *cloner) clone(v reflect.Value) reflect.Value {
 	case reflect.Array:
 		out := reflect.New(v.Type()).Elem()
 		for i := 0; i < v.Len(); i++ {
-			out.Index(i).Set(c.clone(v.Index(i)))
+			c.cloneInto(out.Index(i), v.Index(i))
 		}
 		return out
 
@@ -220,38 +208,85 @@ func (c *cloner) clone(v reflect.Value) reflect.Value {
 	}
 }
 
+// cloneInto clones v into dst, which is settable. An IR struct is copied where
+// it will live rather than built in a temporary and copied there.
+func (c *cloner) cloneInto(dst, v reflect.Value) {
+	if v.Kind() == reflect.Struct && isIRType(v.Type()) {
+		c.cloneStruct(dst, v)
+		return
+	}
+	dst.Set(c.clone(v))
+}
+
+func (c *cloner) cloneStruct(out, v reflect.Value) {
+	for i := 0; i < v.NumField(); i++ {
+		// A copy is a build's own, whatever the original says.
+		if v.Type().Field(i).Name == "Frozen" {
+			continue
+		}
+		// A lambda's Func is the expression's own body rather than a
+		// declaration it names, so it is copied even in share mode. One
+		// hop only: the declarations reached from inside that body are
+		// references like any other.
+		c.deepNext = carriesFuncBody(v.Type()) && v.Type().Field(i).Name == "Func"
+		// A declaration's package is where it came from, not part of it:
+		// the package being cloned maps to its clone, and any other -- a
+		// library package -- is shared rather than copied whole.
+		if v.Type() == declInfoType && v.Type().Field(i).Name == "Pkg" {
+			p := v.Field(i)
+			if cv, ok := c.seen[p.Pointer()]; ok && !p.IsNil() {
+				out.Field(i).Set(cv)
+			} else {
+				out.Field(i).Set(p)
+			}
+			continue
+		}
+		if c.only != nil && carriesOverrides(v.Type()) {
+			if key, ok := c.overrideKey(v.Type().Field(i).Name); ok {
+				out.Field(i).Set(c.cloneOverride(v.Field(i), key))
+				continue
+			}
+		}
+		c.cloneInto(out.Field(i), v.Field(i))
+	}
+	c.deepNext = false
+}
+
 // carriesOverrides reports whether t is a declaration with per-target
 // override maps.
 func carriesOverrides(t reflect.Type) bool {
-	return t == reflect.TypeFor[Component]() || t == reflect.TypeFor[Func]()
+	return t == reflect.TypeFor[Component]() || t == reflect.TypeFor[Func]() || t == reflect.TypeFor[Overrides]()
 }
 
 // overrideKey is the entry of the named override map this clone's target
 // picks, and whether the field is an override map at all.
 func (c *cloner) overrideKey(field string) (string, bool) {
 	switch field {
-	case "PlatformOverrides":
+	case "PlatformOverrides", "Platform":
 		return c.only.platform, true
-	case "LanguageOverrides":
+	case "LanguageOverrides", "Language":
 		return c.only.language, true
 	}
 	return "", false
 }
 
-// cloneOverride copies the one entry of an override map that key names, or
-// none: an empty key is an axis the target does not name, which pick never
-// reads.
+// cloneOverride copies the entry of an override map that key names, and every
+// other entry empty: pick reads only its own target's, and a build still asks
+// whether a declaration is overridden for some target -- a generated family is
+// refused on a target its emitter says nothing about.
 func (c *cloner) cloneOverride(m reflect.Value, key string) reflect.Value {
-	if m.IsNil() || key == "" {
-		return reflect.Zero(m.Type())
+	if m.IsNil() {
+		return m
 	}
-	k := reflect.ValueOf(key)
-	body := m.MapIndex(k)
-	if !body.IsValid() {
-		return reflect.Zero(m.Type())
+	out := reflect.MakeMapWithSize(m.Type(), m.Len())
+	iter := m.MapRange()
+	for iter.Next() {
+		if key != "" && iter.Key().String() == key {
+			out.SetMapIndex(iter.Key(), c.clone(iter.Value()))
+		} else {
+			out.SetMapIndex(iter.Key(), reflect.Zero(m.Type().Elem()))
+		}
 	}
-	out := reflect.MakeMapWithSize(m.Type(), 1)
-	out.SetMapIndex(k, c.clone(body))
 	return out
 }
 

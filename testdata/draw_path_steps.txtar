@@ -1166,7 +1166,7 @@ fun MainScreen() {
             Canvas(modifier = Modifier.size(60.dp, 40.dp)) {
                 var p = Path()
                 var at = Point(x = 0.0, y = 0.0)
-                for (c in listOf(_step__record(op = SnglPathOp.MOVETO, x = 4.0, y = 12.0, cx1 = 0.0, cy1 = 0.0, cx2 = 0.0, cy2 = 0.0, r = 0.0), *corners__inst0.map({ c: Point -> _step__record(op = SnglPathOp.LINETO, x = c.x, y = c.y, cx1 = 0.0, cy1 = 0.0, cx2 = 0.0, cy2 = 0.0, r = 0.0) }).toTypedArray(), _step__record(op = SnglPathOp.BEZIERTO, x = 56.0, y = 36.0, cx1 = 34.0, cy1 = 12.0, cx2 = 44.0, cy2 = 12.0, r = 0.0), _step__record(op = SnglPathOp.ARCTO, x = 40.0, y = 12.0, cx1 = 56.0, cy1 = 12.0, cx2 = 0.0, cy2 = 0.0, r = 4.0), *(if (closed__inst0) listOf(_step__record(op = SnglPathOp.CLOSE, x = 0.0, y = 0.0, cx1 = 0.0, cy1 = 0.0, cx2 = 0.0, cy2 = 0.0, r = 0.0)) else listOf()).toTypedArray())) {
+                for (c in listOf(_step__record(op = SnglPathOp.MOVETO, x = 4.0, y = 12.0, cx1 = 0.0, cy1 = 0.0, cx2 = 0.0, cy2 = 0.0, r = 0.0), *corners__inst0.map({ c: Point -> _step__record(op = SnglPathOp.LINETO, x = c.x, y = c.y, cx1 = 0.0, cy1 = 0.0, cx2 = 0.0, cy2 = 0.0, r = 0.0) }).toTypedArray(), _step__record(op = SnglPathOp.BEZIERTO, x = 56.0, y = 36.0, cx1 = 34.0, cy1 = 12.0, cx2 = 44.0, cy2 = 12.0, r = 0.0), _step__record(op = SnglPathOp.ARCTO, x = 40.0, y = 12.0, cx1 = 56.0, cy1 = 12.0, cx2 = 0.0, cy2 = 0.0, r = 4.0), *(if (closed__inst0) listOf(_step__record(op = SnglPathOp.CLOSE, x = 0.0, y = 0.0, cx1 = 0.0, cy1 = 0.0, cx2 = 0.0, cy2 = 0.0, r = 0.0)) else listOf<_step__record>()).toTypedArray())) {
                     if ((c.op == SnglPathOp.MOVETO)) {
                         p.moveTo(c.x.toFloat(), c.y.toFloat())
                     }

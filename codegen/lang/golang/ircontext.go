@@ -1285,7 +1285,7 @@ func (gc *GoIRContext) evalTypeMethodCall(n *ir.Call) string {
 	// nothing the package declares is the hoisted clone: the component it
 	// names is gone, and there is no Go type to attach the method to.
 	if gc.Ctx != nil && (gc.Ctx.Component != nil && gc.Ctx.Component.Name == receiverName ||
-		resolved && !LiftsToFreeFunc(pkg, receiverName)) {
+		resolved && !LiftsToFreeFunc(pkg, n.Func)) {
 		// A method-form call threads the receiver as args[0]; a zero-arg
 		// computed referenced by name carries none, and still dispatches
 		// through `m` rather than lifting to a free func.

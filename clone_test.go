@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	sngl "duckfam.us/sngl"
+	"duckfam.us/sngl/internal/checker"
 	"duckfam.us/sngl/ir"
 )
 
@@ -26,7 +27,9 @@ func checkedFixture(t *testing.T, path string) *ir.Package {
 	if err != nil {
 		t.Skipf("parse error: %v", err)
 	}
-	pkg, diags := sngl.Check(doc, "testdata")
+	// A library of its own: the test strips what it checked, and the library
+	// with it.
+	pkg, diags := checker.Check(doc, &checker.Config{FS: os.DirFS("testdata"), Dir: "testdata", IsMain: true, PrivateLibrary: true})
 	for _, d := range diags {
 		if d.Severity == ir.Error {
 			t.Skipf("check error: %v", d.Msg)

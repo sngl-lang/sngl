@@ -44,6 +44,7 @@ func compileLesson(source string) (string, error) {
 			return "", lessonErr(d.Msg)
 		}
 	}
+	pkg = ir.ClonePackageFor(pkg, "html", "none")
 	if err := optimize.Optimize(pkg, &optimize.Config{Platform: "html", Language: "none"}); err != nil {
 		return "", err
 	}

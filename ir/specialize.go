@@ -19,6 +19,7 @@ func SpecializeForTarget(pkg *Package, platform, language string) {
 	if pkg == nil || (platform == "" && language == "") {
 		return
 	}
+	InstallOverlay(pkg)
 	specializePkgBodies(pkg, target{platform, language}, map[*Package]struct{}{}, false)
 }
 
@@ -36,6 +37,7 @@ func SpecializeOverriddenBodies(pkg *Package, platform, language string) {
 	if pkg == nil || (platform == "" && language == "") {
 		return
 	}
+	InstallOverlay(pkg)
 	specializePkgBodies(pkg, target{platform, language}, map[*Package]struct{}{}, true)
 }
 
@@ -197,8 +199,12 @@ func specializeFunc(fn *Func, t target, bodiedOnly bool) {
 		return
 	}
 	if body, ok := pick(t, fn.PlatformOverrides, fn.LanguageOverrides); ok {
+		fn.mustWrite("specializing " + fn.Name)
 		fn.SpecializedFor = t.key()
 		fn.Block = body.Stmts
+		if body.RecvParam != nil {
+			fn.RecvParam = body.RecvParam
+		}
 	}
 }
 
@@ -240,6 +246,7 @@ func specializeComp(comp *Component, t target, bodiedOnly bool) {
 	if covers(comp.SpecializedFor, t) {
 		return
 	}
+	comp.mustWrite("specializing " + comp.Name)
 	if comp.SpecializedFor == "" && comp.DeclaredBody == nil {
 		comp.DeclaredBody = comp.Stmts
 	}

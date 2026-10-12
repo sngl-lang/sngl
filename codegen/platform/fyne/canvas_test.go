@@ -13,6 +13,7 @@ import (
 	"duckfam.us/sngl/codegen"
 	_ "duckfam.us/sngl/codegen/lang"
 	"duckfam.us/sngl/internal/lower"
+	"duckfam.us/sngl/ir"
 )
 
 // TestCanvas_EmitsGGDrawAndRedraw verifies the fyne platform renders a
@@ -41,6 +42,7 @@ window {
 		t.Fatal("go lang not registered")
 	}
 	caps := codegen.CapsOrNone(lang.LanguageIdentifier(), g.PlatformIdentifier())
+	pkg = ir.ClonePackage(pkg)
 	if err := lower.Lower(pkg, caps, lower.Options{Platform: "fyne", Language: "go"}); err != nil {
 		t.Fatalf("lower: %v", err)
 	}
@@ -145,6 +147,7 @@ window {
 	g := &Generator{}
 	lang := codegen.LookupLang("go")
 	caps := codegen.CapsOrNone(lang.LanguageIdentifier(), g.PlatformIdentifier())
+	pkg = ir.ClonePackage(pkg)
 	if err := lower.Lower(pkg, caps, lower.Options{Platform: "fyne", Language: "go"}); err != nil {
 		t.Fatalf("lower: %v", err)
 	}

@@ -83,6 +83,11 @@ func injectRecv(c *ir.Call) error {
 	if c.Func == nil || !c.Func.IsMethod() {
 		return nil
 	}
+	// A type method's receiver is always Args[0].
+	switch c.Func.RecvDecl().(type) {
+	case *ir.StructDef, *ir.EnumDef, *ir.UnitDef:
+		return nil
+	}
 	if len(c.Args) >= len(c.Func.Params) {
 		return nil
 	}

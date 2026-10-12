@@ -64,6 +64,8 @@ var alwaysOn = []string{
 	// Once every raise is resolved a boundary holds nothing, on any target.
 	"BoundaryPassthrough",
 	"CSE",
+	// Every emitted function takes every parameter it declares.
+	"CallDefaults",
 	// A call through a name the inliner bound to a declared function.
 	"DirectCalls",
 	// A raise is a raise on every target, and the catch it unwinds to is a block
@@ -105,6 +107,8 @@ var alwaysOn = []string{
 	"NodePropReads",
 	"PlatformExtensionBody",
 	"PropBindings",
+	// No target reaches a receiver no parameter names.
+	"ReceiverParam",
 	// Every runtime takes an i18n call's arguments as a map, whatever the
 	// target.
 	"RecordArgs",
@@ -180,6 +184,7 @@ var soleGate = map[string][]string{
 	"InlineComponents": {"NoInlineComponents"},
 	"ImplicitRecv":     {"NoImplicitRecv"},
 	"StructSpread":     {"NoStructSpread"},
+	"GenericFuncs":     {"Monomorphize"},
 	"FocusOrder":       {"FocusOrder"},
 	"Canvas":           {"Canvas"},
 

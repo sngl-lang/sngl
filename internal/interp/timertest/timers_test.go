@@ -60,6 +60,7 @@ func check(t *testing.T, src string) *ir.Package {
 func envFor(t *testing.T, src, comp string) *interp.Env {
 	t.Helper()
 	pkg := check(t, src)
+	pkg = ir.ClonePackage(pkg)
 	ir.SpecializeForTarget(pkg, interp.InterpreterPlatform, "")
 	env, err := interp.BuildEnv(pkg, comp)
 	if err != nil {

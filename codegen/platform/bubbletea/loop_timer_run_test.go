@@ -134,6 +134,7 @@ func runEmittedProgram(t *testing.T, src, driver string) {
 		}
 	}
 	optCfg := &optimize.Config{Platform: "bubbletea", Language: "go"}
+	pkg = ir.ClonePackage(pkg)
 	if err := optimize.Optimize(pkg, optCfg); err != nil {
 		t.Fatalf("optimize: %v", err)
 	}

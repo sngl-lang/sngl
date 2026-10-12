@@ -241,17 +241,24 @@ func (kc *KtIRContext) Unary(n *ir.Unary, operand string) string {
 func (kc *KtIRContext) Ternary(_ *ir.Ternary, cond, then_, else_ string) string {
 	return "(if (" + cond + ") " + then_ + " else " + else_ + ")"
 }
+
+// selectField spells the member n reads: a list's or a map's length is its
+// size.
+func selectField(n *ir.Select) string {
+	if n.Field == "length" {
+		if t := n.Operand.ExprType(); t != nil && (t.Kind == ir.TypeList || t.Kind == ir.TypeMap) {
+			return "size"
+		}
+	}
+	return SafeIdent(n.Field)
+}
+
 func (kc *KtIRContext) Select(n *ir.Select, operand string) string {
 	// The Kotlin i18n runtime keys plural forms by string category exclusively.
 	if s := snglI18n.PluralKeyConstString(n); s != "" {
 		return s
 	}
-	field := SafeIdent(n.Field)
-	if field == "length" {
-		if t := n.Operand.ExprType(); t != nil && (t.Kind == ir.TypeList || t.Kind == ir.TypeMap) {
-			field = "size"
-		}
-	}
+	field := selectField(n)
 	// Field access on a `dyn` operand: Kotlin's `Any` has no user fields.
 	// If exactly one package struct declares this field, emit a safe cast.
 	if t := n.Operand.ExprType(); t != nil && t.Kind == ir.TypeDyn {
@@ -293,7 +300,11 @@ func (kc *KtIRContext) Index(n *ir.Index, operand, idx string) string {
 	}
 	return operand + "[" + idx + "]"
 }
-func (kc *KtIRContext) ListLit(_ *ir.ListLit, elems []string) string {
+func (kc *KtIRContext) ListLit(n *ir.ListLit, elems []string) string {
+	// An empty literal says nothing Kotlin can infer its element from.
+	if len(elems) == 0 && n != nil && n.Type != nil && n.Type.Kind == ir.TypeList && len(n.Type.Elems) == 1 && n.Type.Elems[0].Kind != ir.TypeDyn && !n.Type.Elems[0].HasTypeParam() {
+		return "listOf<" + IRTypeToKt(n.Type.Elems[0]) + ">()"
+	}
 	return "listOf(" + strings.Join(elems, ", ") + ")"
 }
 func (kc *KtIRContext) MapLit(_ *ir.MapLitIR, keys, vals []string) string {
@@ -1047,14 +1058,14 @@ func (kc *KtIRContext) evalTypeMethodCall(n *ir.Call) string {
 	receiverName := n.Func.RecvName()
 	qualName := receiverName + "." + method
 
-	// Component-self method reference (the receiver names a component in this
-	// package) — e.g. a computed or 0-arg func referenced from the view. The
+	// Component-self method reference (a method on a component, by its
+	// declaration) — e.g. a computed or 0-arg func referenced from the view. The
 	// Compose backend emits a computed as a `val <name> by remember {
 	// derivedStateOf {...} }` property (read by bare name) and a plain func as
 	// `<name>()`. Resolve to the bare name here rather than falling through to
 	// the unresolved-method marker below. Routes through IdentRewrites so
 	// test-mode `state.` prefixing still applies.
-	if kc.receiverIsComponent(receiverName) {
+	if n.Func.OnComponent() {
 		name := method
 		if kc.IdentRewrites != nil {
 			if rw, ok := kc.IdentRewrites[name]; ok {
@@ -1109,14 +1120,14 @@ func (kc *KtIRContext) scopeFuncName(fn *ir.Func) (string, bool) {
 	if fn == nil || kc.Ctx == nil {
 		return "", false
 	}
-	// A method on a struct or an enum is emitted as an extension function and
+	// A method on a type is emitted as an extension function and
 	// is called as one, so the scope must not claim its bare name: the package
 	// scope answers for every func it holds and a method is one of them, so
 	// `func Item.label()` resolved here and came out as `label(it)` against a
 	// declaration spelled `fun Item.label()`. A component's method is the case
 	// this lookup exists for and is left alone -- there is no Kotlin type to
 	// extend, and the composable calls it by bare name.
-	if fn.IsMethod() && ReceiverIsUserType(kc.pkg(), fn.RecvName()) {
+	if fn.OnType() {
 		return "", false
 	}
 	sym, kind := kc.Ctx.Resolve(fn.Name)
@@ -1130,21 +1141,6 @@ func (kc *KtIRContext) scopeFuncName(fn *ir.Func) (string, bool) {
 		}
 	}
 	return name, true
-}
-
-// receiverIsComponent reports whether name matches a component declared in the
-// package — i.e. the call is a component-self method (computed/func), not a
-// real type method on some value.
-func (kc *KtIRContext) receiverIsComponent(name string) bool {
-	if kc.Ctx == nil || kc.Ctx.Pkg == nil {
-		return false
-	}
-	for _, comp := range kc.Ctx.Pkg.Components {
-		if comp.Name == name {
-			return true
-		}
-	}
-	return false
 }
 
 // ktIntConvMethod returns the Kotlin conversion method for an integer target
@@ -1765,28 +1761,6 @@ func (kc *KtIRContext) pkg() *ir.Package {
 		return nil
 	}
 	return kc.Ctx.Pkg
-}
-
-// ReceiverIsUserType reports whether name is a struct or enum the package
-// declares, as opposed to a component. It is what decides that a method is
-// emitted as a Kotlin extension function, and so has to be asked at the call
-// site too -- the declaration and the call disagreeing is what left
-// `fun Item.label()` beside a call to `label(it)`.
-func ReceiverIsUserType(pkg *ir.Package, name string) bool {
-	if pkg == nil || name == "" {
-		return false
-	}
-	for _, sd := range pkg.Structs {
-		if sd.Name == name {
-			return true
-		}
-	}
-	for _, ed := range pkg.Enums {
-		if ed.Name == name {
-			return true
-		}
-	}
-	return false
 }
 
 // hostValueIdent resolves a reference to a const or var that *is* a Kotlin

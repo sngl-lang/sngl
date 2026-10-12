@@ -2431,43 +2431,39 @@ func (env *Env) EvalUserFuncCallArgs(fn *ir.Func, callArgs []ir.CallArg) (any, e
 // evaluated, values[i] being callArgs[i]'s: a caller that had to read them
 // first must not evaluate them a second time.
 func (env *Env) callUserFuncArgValues(fn *ir.Func, callArgs []ir.CallArg, values []any) (any, error) {
-	hasNamed := false
-	for _, a := range callArgs {
-		if a.Name != "" {
-			hasNamed = true
-			break
-		}
+	params := fn.Params
+	// A method of a component called in its own body passes no receiver, and
+	// evalUserFuncCore binds it from the scope when the arguments are one short.
+	if fn.OnComponent() && len(params) > 0 && params[0].Receiver && (len(callArgs) == 0 || callArgs[0].Name != "") {
+		params = params[1:]
 	}
-	if !hasNamed {
-		return env.evalUserFuncCore(fn, values)
-	}
-
-	vals := make(map[string]any, len(fn.Params))
-	for _, p := range fn.Params {
-		if p.Default != nil {
-			v, err := env.Eval(p.Default)
-			if err != nil {
-				return nil, err
-			}
-			vals[p.Name] = v
-		}
-	}
+	vals := make(map[*ir.Param]any, len(params))
 	positional := 0
 	for i, a := range callArgs {
-		v := values[i]
-		if a.Name != "" {
-			vals[a.Name] = v
-		} else {
-			if positional < len(fn.Params) {
-				vals[fn.Params[positional].Name] = v
+		if a.Name == "" {
+			if positional < len(params) {
+				vals[params[positional]] = values[i]
 			}
 			positional++
+			continue
+		}
+		for _, p := range params {
+			if p.Name == a.Name {
+				vals[p] = values[i]
+				break
+			}
 		}
 	}
-	// Assemble positional slice in param order for evalUserFuncCore.
-	args := make([]any, len(fn.Params))
-	for i, p := range fn.Params {
-		args[i] = vals[p.Name]
+	args := make([]any, len(params))
+	for i, p := range params {
+		v, ok := vals[p]
+		if !ok && p.Default != nil {
+			var err error
+			if v, err = env.Eval(p.Default); err != nil {
+				return nil, err
+			}
+		}
+		args[i] = v
 	}
 	return env.evalUserFuncCore(fn, args)
 }

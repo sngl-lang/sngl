@@ -43,6 +43,7 @@ func compileAndVerify(t *testing.T, doc *ast.Document, pkg ...*ir.Package) []byt
 		p = pkg[0]
 	}
 	if p != nil {
+		p = ir.ClonePackage(p)
 		if err := optimize.Optimize(p, &optimize.Config{Platform: "bubbletea", Language: "go"}); err != nil {
 			t.Fatalf("optimize: %v", err)
 		}

@@ -16,7 +16,8 @@ func Run(pkg *ir.Package) ([]*codegen.TestResult, error) {
 	}
 	// See interp.Prepare: the test runner builds envs without going through a
 	// Session, so it takes what a Session takes from the pipeline itself.
-	if err := interp.Prepare(pkg); err != nil {
+	pkg, err := interp.Prepare(pkg)
+	if err != nil {
 		return nil, err
 	}
 	var results []*codegen.TestResult

@@ -984,12 +984,12 @@ func test() {
 
 func TestMethodStringReceiver(t *testing.T) {
 	expectNoErrors(t, `
-func string.upper(s string) string {
+func string.shout(s string) string {
 	return s
 }
 func test() {
-	var x = "hello".upper()
-	var y = string.upper("hello")
+	var x = "hello".shout()
+	var y = string.shout("hello")
 }
 `)
 }

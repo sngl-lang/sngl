@@ -160,6 +160,12 @@ type evalCtx struct {
 	// one gets its loops unrolled one document at a time, after lowering. For
 	// spliced see addSplicedNativeImports.
 	unroll, spliced bool
+	// copiedHandlers and copiedCanvases are what this fold's region has
+	// copied that a loop body it shares may name (ownCopy); redraws is
+	// whether the package redraws a canvas at all, which a Fold sets.
+	copiedHandlers map[*ir.EventHandler]*ir.EventHandler
+	copiedCanvases map[*ir.NodeInst]*ir.NodeInst
+	redraws        bool
 	// answers is what a call of an intrinsic folds to in this fold, by id:
 	// the record of the page a document is written for is `pages.current`
 	// there (Fold.Answer). Nil everywhere else.
@@ -238,6 +244,7 @@ const maxEvalRounds = 10
 // No loop is unrolled here, for any target; Documents does that for a static
 // one.
 func Optimize(pkg *ir.Package, cfg *Config) error {
+	ir.InstallOverlay(pkg)
 	if cfg.Cache == nil {
 		cfg.Cache = NewEvalCache()
 	}

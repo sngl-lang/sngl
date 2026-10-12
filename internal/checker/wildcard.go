@@ -47,9 +47,11 @@ func (c *checker) applyEventMarks(e ast.EventDecl, evt *ir.EventDecl) {
 	if len(e.MacroAttrs()) == 0 {
 		return
 	}
+	// Copied past the return so only a marked declaration moves to the heap.
+	marked := e
 	c.afterMarks(func() {
-		for _, attr := range e.MacroAttrs() {
-			c.applyMark(attr, e, evt, true)
+		for _, attr := range marked.MacroAttrs() {
+			c.applyMark(attr, marked, evt, true)
 		}
 	})
 }

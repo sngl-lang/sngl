@@ -32,6 +32,7 @@ ui.window {
 	}
 	g := &Generator{}
 	lang := codegen.LookupLang("go")
+	pkg = ir.ClonePackage(pkg)
 	if err := lower.Lower(pkg, codegen.CapsOrNone(lang.LanguageIdentifier(), g.PlatformIdentifier()), lower.Options{Platform: "bubbletea", Language: "go"}); err != nil {
 		t.Fatal(err)
 	}

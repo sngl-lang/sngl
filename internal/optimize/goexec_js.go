@@ -21,7 +21,11 @@ const (
 // nativeRequest is never constructed in WASM builds: nothing can be run.
 type nativeRequest struct{ nativeType string }
 
-type nativeEval struct{ order []*nativeRequest }
+// asked stays zero: no call is ever pending here.
+type nativeEval struct {
+	order []*nativeRequest
+	asked int
+}
 
 // requestPureNativeFunc always fails in WASM builds: there is no subprocess to
 // build or run, so a scheme-import const is unevaluable and the caller's

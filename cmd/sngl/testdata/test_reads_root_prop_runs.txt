@@ -1,0 +1,95 @@
+# A test reads the props of the component it takes, which is rendered with no
+# call site: each holds its default, on every target, as the interpreter's
+# mount binds it.
+
+sngl test --platform=none app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=html app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=fyne --language=go app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin app.sngl
+stdout '1 tests, 0 failures'
+
+-- app.sngl --
+import . "sngl:test"
+import ui "sngl:ui"
+
+component counter(inc int = 2, label string = "n", start int) ui.node {
+    var hits = inc
+    ui.text(value="{label} {hits}")
+    ui.button #b(text="go", @click {
+        hits += inc
+    })
+}
+
+func testReadsProps(t Test, c counter) {
+    t.assert(c.inc == 2)
+    t.assert(c.label == "n")
+    t.assert(c.start == 0)
+    c.b.click()
+    t.assert(c.hits == 4)
+}
+
+ui.window {
+    counter(inc=3, start=1)
+}
+-- testrun/android/kotlin/app.sngl/counter/1 --
+sha256:43dc2f5c9d0e2f2ae0cf51172ef9b56a
+{
+  "results": [
+    {
+      "Desc": "ReadsProps",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/counter/1 --
+sha256:751f3e443d6421d2e6e6de4d9d2af3b0
+{
+  "results": [
+    {
+      "Desc": "ReadsProps",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/counter/1 --
+sha256:7c0306a998afc78200afdd67c24be764
+{
+  "results": [
+    {
+      "Desc": "ReadsProps",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/counter/1 --
+sha256:d61dccbd2c09389a45d3b36d3e0608bd
+{
+  "results": [
+    {
+      "Desc": "ReadsProps",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/counter/1 --
+sha256:56dab8e610fabbf6a14f0a25ce29e872
+{
+  "results": [
+    {
+      "Desc": "ReadsProps",
+      "Passed": true
+    }
+  ]
+}

@@ -168,6 +168,7 @@ func ParsePackageFS(fsys fs.FS) (*ast.Document, error) {
 // what the file named on the command line had imported.
 func MergeInto(dst, src *ast.Document) {
 	dst.Stmts = append(dst.Stmts, src.Stmts...)
+	dst.Digest = ""
 }
 
 // NewResolver builds the resolver a check of dir uses. One is built per check,
@@ -245,7 +246,7 @@ func (r *Resolver) Resolve(fsys fs.FS, importPath string) ([]*ast.Document, erro
 		if err != nil {
 			return nil, fmt.Errorf("reading %s: %w", p, err)
 		}
-		doc, err := parser.Parse(e.Name(), data)
+		doc, err := parser.ParseShared(e.Name(), data)
 		if err != nil {
 			return nil, fmt.Errorf("parsing %s: %w", p, err)
 		}
@@ -269,7 +270,7 @@ func resolveImportFromDir(dir string) ([]*ast.Document, error) {
 		if err != nil {
 			return nil, fmt.Errorf("reading %s: %w", p, err)
 		}
-		doc, err := parser.Parse(e.Name(), data)
+		doc, err := parser.ParseShared(e.Name(), data)
 		if err != nil {
 			return nil, fmt.Errorf("parsing %s: %w", p, err)
 		}
@@ -371,7 +372,7 @@ func (r *Resolver) ResolveSchemeFS(scheme, uri, dir string) ([]*ast.Document, fs
 		if err != nil {
 			return nil, nil, fmt.Errorf("reading %s: %w", e.Name(), err)
 		}
-		doc, err := parser.Parse(e.Name(), data)
+		doc, err := parser.ParseShared(e.Name(), data)
 		if err != nil {
 			return nil, nil, fmt.Errorf("parsing %s: %w", e.Name(), err)
 		}

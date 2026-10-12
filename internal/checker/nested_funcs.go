@@ -40,10 +40,11 @@ func (c *checker) checkNestedFunc(x *ast.FuncDef) {
 		}
 		c.nestedFuncs[x] = fn
 		if c.currentFunc != nil {
-			if c.nested == nil {
-				c.nested = map[*ir.Func]bool{}
+			t := c.tables()
+			if t.nested == nil {
+				t.nested = map[*ir.Func]bool{}
 			}
-			c.nested[fn] = true
+			t.nested[fn] = true
 			c.nestedOrder = append(c.nestedOrder, nestedFunc{fn: fn, in: c.currentFunc})
 		}
 
@@ -63,7 +64,7 @@ func (c *checker) checkNestedFunc(x *ast.FuncDef) {
 	// hoisted out of it, this one included: they share the flat namespace a
 	// backend emits into, so a sibling call and recursion resolve while the
 	// enclosing params and locals stay out of reach.
-	if outer := c.funcOuterScope; c.nested[fn] && outer != nil {
+	if outer := c.funcOuterScope; c.isNested(fn) && outer != nil {
 		if c.nestedScope == nil {
 			c.nestedScope = ir.NewScope(outer)
 		}

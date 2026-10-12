@@ -115,6 +115,12 @@ type Features struct {
 	// a var holding the current page, a history list and an if-chain over the
 	// pages, which every target can render.
 	Navigation bool
+	// GenericFuncs says a function with type parameters can be emitted once
+	// and called at every type. Withheld, passMonomorphize gives each
+	// instantiation a copy of its own with the types written in: Go has no
+	// generic method to put a state-reading one on the Model, and no
+	// constraint to state what a body does with T.
+	GenericFuncs bool
 
 	// The six below are requests rather than capabilities, which is the split
 	// `sngl:x/gen` spells as `#[gen.wants]`: each asks for a pass the target
@@ -188,6 +194,7 @@ func NoLowering() Features {
 		InstanceState:    true,
 		Effects:          true,
 		Navigation:       true,
+		GenericFuncs:     true,
 	}
 }
 
@@ -241,6 +248,7 @@ func (f Features) String() string {
 		{"AsyncSpawn", f.AsyncSpawn},
 		{"Effects", f.Effects},
 		{"Navigation", f.Navigation},
+		{"GenericFuncs", f.GenericFuncs},
 		{"StructComponents", f.StructComponents},
 		{"StdlibContextParam", f.StdlibContextParam},
 		{"FocusOrder", f.FocusOrder},

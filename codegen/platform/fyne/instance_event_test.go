@@ -9,6 +9,7 @@ import (
 	"duckfam.us/sngl/codegen"
 	_ "duckfam.us/sngl/codegen/lang"
 	"duckfam.us/sngl/internal/lower"
+	"duckfam.us/sngl/ir"
 )
 
 // A row that reports upward, under a dynamic `for` so the build cannot inline
@@ -82,6 +83,7 @@ func TestInstanceEventReachesTheModelsWidget(t *testing.T) {
 	if lang == nil {
 		t.Fatal("go lang not registered")
 	}
+	pkg = ir.ClonePackage(pkg)
 	if err := lower.Lower(pkg, codegen.CapsOrNone(lang.LanguageIdentifier(), g.PlatformIdentifier()), lower.Options{Platform: "fyne", Language: "go"}); err != nil {
 		t.Fatalf("lower: %v", err)
 	}

@@ -42,7 +42,7 @@ func (c *checker) bindDataFamily(comp *ir.Component) {
 			c.error(comp.AST.Pos, "component %s: slot %q is read as a list of %s by its name, which a prop already declares", comp.Name, slot.Name, f.Name)
 			continue
 		}
-		list := ir.ListOf(&ir.Type{Kind: ir.TypeStruct, Decl: f.Record})
+		list := c.listOf(&ir.Type{Kind: ir.TypeStruct, Decl: f.Record})
 		slot.Values = &ir.Prop{
 			Name:           slot.Name,
 			Type:           list,

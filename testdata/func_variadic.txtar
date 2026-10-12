@@ -668,7 +668,7 @@ class MainScreenTest {
         org.junit.Assert.assertTrue("true", true)
         org.junit.Assert.assertTrue("true", true)
         var p = Point(first = 7)
-        org.junit.Assert.assertTrue("(sum(p.first, listOf()) == 7)", (sum(p.first, listOf()) == 7))
+        org.junit.Assert.assertTrue("(sum(p.first, listOf<Int>()) == 7)", (sum(p.first, listOf<Int>()) == 7))
     }
 
 }

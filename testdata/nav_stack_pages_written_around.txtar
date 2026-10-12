@@ -1147,10 +1147,10 @@ fun _page__valueOf(entry: NavBackStackEntry?): _page__value? {
             val it = (items).elementAt(__copy)
             _page__value(id = 0, href = ("/" + it.slug), title = it.title, meta = __anon_e3b0c4(), copy = listOf(__copy))
         }
-        destination.hasRoute<_page__valueRoute1>() -> _page__value(id = 1, href = "/about", title = "About", meta = __anon_e3b0c4(), copy = listOf())
-        destination.hasRoute<_page__valueRoute2>() -> _page__value(id = 2, href = "/faq", title = "FAQ", meta = __anon_e3b0c4(), copy = listOf())
-        destination.hasRoute<_page__valueRoute3>() -> _page__value(id = 3, href = "/framed", title = "Framed", meta = __anon_e3b0c4(), copy = listOf())
-        destination.hasRoute<_page__valueRoute4>() -> _page__value(id = 4, href = "/contact", title = "Contact", meta = __anon_e3b0c4(), copy = listOf())
+        destination.hasRoute<_page__valueRoute1>() -> _page__value(id = 1, href = "/about", title = "About", meta = __anon_e3b0c4(), copy = listOf<Int>())
+        destination.hasRoute<_page__valueRoute2>() -> _page__value(id = 2, href = "/faq", title = "FAQ", meta = __anon_e3b0c4(), copy = listOf<Int>())
+        destination.hasRoute<_page__valueRoute3>() -> _page__value(id = 3, href = "/framed", title = "Framed", meta = __anon_e3b0c4(), copy = listOf<Int>())
+        destination.hasRoute<_page__valueRoute4>() -> _page__value(id = 4, href = "/contact", title = "Contact", meta = __anon_e3b0c4(), copy = listOf<Int>())
         else -> null
     }
 }

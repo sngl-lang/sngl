@@ -10,15 +10,17 @@ import (
 )
 
 // checkedType resolves a named type out of a freshly checked package. Each call
-// is its own Check, which is the point: every check loads its own copy of the
-// embedded library, so two calls give two declarations of one library type.
+// checks against a library of its own, which is the point: two calls give two
+// declarations of one library type.
 func checkedType(t *testing.T, src, name string) *ir.Type {
 	t.Helper()
 	doc, err := parser.Parse("test.sngl", []byte(withStd(src)))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
-	pkg, diags := checker.Check(doc, &checker.Config{IsMain: true})
+	cfg := &checker.Config{IsMain: true}
+	checker.NewSharedLibrary().Use(cfg)
+	pkg, diags := checker.Check(doc, cfg)
 	for _, d := range diags {
 		if d.Severity == ir.Error {
 			t.Fatalf("check: %v", d.Error())

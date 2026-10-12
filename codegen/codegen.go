@@ -710,7 +710,8 @@ type Fold interface {
 	Expr(e ir.Expr) ir.Expr
 	Stmts(stmts []ir.Stmt) []ir.Stmt
 	// Clone copies statements so a fold may rewrite them, sharing every
-	// declaration they name.
+	// declaration they name and every loop body, which the fold copies when it
+	// reaches one. A caller that writes into a loop body copies it first.
 	Clone(stmts []ir.Stmt) []ir.Stmt
 	// Decide is a condition's value, where the build can know it.
 	Decide(cond ir.Expr) (value, ok bool)
@@ -735,6 +736,10 @@ type Fold interface {
 	// documents with the fold it is handed, and each round runs what it could
 	// not answer as one program.
 	SettleNatives(probe func(Fold) error) error
+	// NativesAsked counts the native calls a probe round has asked to run so
+	// far, across this fold and every fold it shares the round with; zero
+	// outside a probe.
+	NativesAsked() int
 	// HoldsNativeCall reports whether s holds a pure native call the fold
 	// could evaluate.
 	HoldsNativeCall(s ir.Stmt) bool

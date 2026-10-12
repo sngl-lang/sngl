@@ -606,7 +606,7 @@ Both start from `codegen.AnalyzeCommon(doc)` which extracts model fields, comput
 - **fyne** — generates Go desktop code; supports `golang` lang only. Its Go emitter knows three `#[intrinsic]` primitives, which differ only in the children contract a declaration cannot express as data: `Widget` (none), `Container` (a default slot, children attach through a method) and `Wrapper` (a default slot bounded to one, the child is assigned to a field). *Which* Fyne widget one becomes is a `Spec` record passed as a prop — Go constructor, its arguments, the Go type, the import paths, the setter behind each value prop, the callback field and Go signature behind each event. `codegen/platform/fyne/spec.go` decodes it and nothing else in the platform names a Fyne type. Label, Button, VBox and the other twelve are ordinary components in `fyne.sngl` carrying a Spec, so wrapping a widget from a Go module the compiler never heard of is writing a thirteenth — `codegen/platform/fyne/third_party_widget_test.go` is that, done in SNGL alone.
 
   A value has to reach the emitter through a *declared* prop, since that is what lowering turns into the `node.prop = expr` assignment the translator sees. `style` is the platform's own and renders nothing, as on gtk4; a temp its value reads -- a ternary passTernary hoisted -- is read into `_` (`codegen.KeepLocalsRead`, `testdata/style_ternary_unrendered.txtar`). So the primitives declare a vocabulary of value props by type (`text`, `placeholder`, `number`, `flag`, `options`) and `Setter` binds one to a Go method — the vocabulary grows with the types a setter takes, not with the widget count. Same for `@click`/`@change`/`@input` and `Handler`.
-- **android** — generates Android app code; supports `kotlin` and `golang`. Declares `navigation`: `sngl:ui/nav` is a Compose `NavHost` with typed routes (see *Navigation*), Kotlin only. A window's content that reaches its Screen through a slot -- a window under a reactive `if`, an instance of its own -- is wrapped in a `Column` carrying `safeDrawingPadding`, the inset the direct route puts on each root node (`testdata/android_window_slot_inset.txtar`).
+- **android** — generates Android app code; supports `kotlin` and `golang`. Declares `navigation`: `sngl:ui/nav` is a Compose `NavHost` with typed routes (see *Navigation*), Kotlin only. A window's content that reaches its Screen through a slot -- a window under a reactive `if`, an instance of its own -- is wrapped in a `Column` carrying `safeDrawingPadding`, the inset the direct route puts on each root node (`testdata/android_window_slot_inset.txtar`). A method on a type that reads the page's state is a function of the page taking its receiver first (`pageTypeMethods`, `Pt_sum(p)`), since that state is MainScreen's locals or its test state class's members; one that reads none is an extension (`testdata/type_method_receiver.txtar`).
 
   **The screen imports every name explicitly, and never a star**
   (`kotlin.KtIRContext.Name`, the counterpart of Go's `AliasFor`). In Kotlin
@@ -700,9 +700,25 @@ one symbol per declared parameter however often a declaration's parameters
 are pushed (`typeParamSym`), so `empty()` inside `func shadow<T>` is still
 refused.
 
+**A parameter's default is evaluated at the call**, as a component prop's
+is: `passCallDefaults` writes it into every call that omits it, since no
+emitted function declares one. So a default may not name a parameter of its
+function (`refuseDefaultReadingParams`), a call through a handle must pass
+any argument whose default reads the component's state, props or methods
+(`reportHandleCallDefaults`), and a lambda's parameter takes none
+(`error_func_default_reads_param.sngl`, `error_default_through_handle.sngl`).
+
+**A generic function is copied per instantiation** where the language does not
+claim `genericFuncs` (`passMonomorphize`), so Go and Kotlin see concrete types
+only: Go puts a function reading state on the Model, where no method may take
+a type parameter, and states no constraint for a body comparing two T's. Each
+copy is named for its type arguments (`at__string`), read off the call's
+arguments and its own type, so a parameter only the result names binds too
+(`testdata/generic_func_instances.txtar`).
+
 **A bodyless function's purity is its declaration's.** `analyzeEffects` and the fixpoint skip a func with no body (`hasDeclaredBody`): an empty block calls nothing, and read as a body it lifted an undeclared native from unknown to pure -- `error.raise` became foldable the moment library funcs joined the program's fixpoint. And **a write into a value the function built itself is no effect**: one field or element of a local initialized from a literal and never reassigned whole (`freshLocals`), which is how `color.lighten` fills its result. Deeper, or through a local that may share another value (a Go slice, a JavaScript object), stays a mutation.
 - **`internal/optimize/`** — constant folding, dead code elimination with platform/language awareness. The optimizer unrolls no loop, for any target: a language target emits the loop and its own compiler decides whether to unroll one whose bounds it can see — three copies of a Compose `RadioButton` were what the loop is. A target whose view is markup (html, which withholds `viewStatements`) has nowhere to run one, and a **`Fold`** (`optimize.NewFold`, handed to a platform as `codegen.Fold` on `Request.Fold`) unrolls its loops after lowering, one document at a time as the platform decides them -- html's `documentsOf`: each is a clone of the lowered window with the loops around it bound for its iteration and its constant view loops unrolled, so a site of a thousand pages holds one page's expanded tree at a time (the docs site peaked at 9 GB holding all of them). A loop in a handler or other script stays a JS loop. A const only such a view loop reads is a build value rather than the page's, and shake keeps it on `ir.Package.BuildConsts`, where the Fold evaluates it and no backend declares it. A static unroll is bounded (`maxStaticUnroll`) and reports rather than writing a page nobody asked for. A read of a root-package list or map const stays a reference to the declaration (`sharedAggregateConsts`) and folds through it where the value is needed; it is copied only where it becomes storage the program may write (`foldOwned`), so every backend must declare its package consts. html's static mode writes such a const once to `assets/consts/` when it emits more than one page. A body the optimizer splices into its caller (`inlineComponentCall`) answers its emits with the call site's handlers, as the lowering's inliners do (`lower.SubstituteEvents`): left standing, a handler the call site wrote never ran, and an event it did not handle became one of the caller's own -- `emit("change", k)` in a build rooted at a component declaring none (`cmd/sngl/testdata/optimizer_splice_events_runs.txt`).
-- **`internal/lower/`** — capability-driven IR→IR transformation passes, running between optimizer and codegen. Each pass is gated by a `lower.Features` flag. Languages declare their native capabilities via `Capabilities() lower.Features`; platforms combine that with their own restrictions. Passes include: PropBindings, RefLoop, NoTernary, NoLambda, NoReactivity, etc. Sixteen run always and are not capability-gated because they answer for every target: `HandleParams` (a program's write of a node's two-way prop lands where the host's report does: through the `#id`, `bound.checked = false` writes the var `:checked` bound, and a call handing the `#id` to a function that writes one through the parameter, `details.open()`, is inlined so its writes are such writes), `ImplicitState` (a two-way prop the call site left unbound, which is a cell of the instance), `DirectCalls` (a call through a name the inliner bound to a declared function -- a func-typed prop given `render=encode` -- becomes a call of that function, since every analysis following the call graph reads `Call.Func`, and an effect keyed on one was settled by no write), `RecordArgs` (an i18n call's struct of arguments, which every runtime takes as a string-keyed map; see *i18n*), `SpreadOnce` (a spread's computed operand, which every field read would otherwise evaluate again), `IndexedIter` (a two-variable loop over a pull sequence, which hands out no ordinal), `ForElse` (an imperative for-else, which no host loop expresses), `ViewForElse` (the same construct in a view body, which no platform emitter rendered), `BoundaryFailed` (a boundary's fallback slot, which no platform emitter rendered either), `CSE` (a pure call a statement makes twice), `HoistBodyTypes` (a body-local type whose name another body claims — a component body is not a function scope on any host, so Go and Kotlin need it as much as JavaScript does), `UnprovidedContext` (a context nothing provides, whose constant default is folded into every read — lowered as state instead it is a field nothing writes, and a platform override reading `markup.palette` handed each token a runtime value where a literal was there to be had), `ErrorScope` (a raise resolved against the render tree once each component is spliced where it is rendered) `ErrorCatch` (the catch block a handler body resolved to a boundary becomes, so the raise ends the handler), `NavigationValues` (a `nav.page` read as a value is its record whichever target shows it; see *Navigation*) and `Navigation` (the structure half, which on a target holding `navigation` lowers only the stacks in a surface other than the document). A seventeenth runs always and late: `BoundaryPassthrough`, which splices a boundary with no fallback into what it holds once every pass that reaches a handler through it has run -- a boundary's meaning does not turn on its `@error`, but one with no fallback has nothing left to say once each raise is a catch block, and spliced earlier a handler survived only as a catch block's alias, which no walk follows. `StampUsage` runs after it, so a boundary that only forwarded a raise declares no `ErrorEvent`; `ReservedNames` runs after that, last of all, renaming what every pass above declared (see *A target reserves names*), and its node-ID half `ReservedNodeIDs` right after `NoInlineComponents`. After it a catch block is the only route to the boundary's handler, so an edit codegen makes in every handler walks one (html's `walkThroughCatch`): its slot retargets missed it, and a fallback a runtime instance's mount raised into rendered at the wrong parent. `CSE` is statement-local and imperative-only on purpose — the temp it binds has to be a statement the target can hold, and a view body on `--lang none` cannot hold one. Entry point: `lower.Lower(pkg, caps, opts)`.
+- **`internal/lower/`** — capability-driven IR→IR transformation passes, running between optimizer and codegen. Each pass is gated by a `lower.Features` flag. Languages declare their native capabilities via `Capabilities() lower.Features`; platforms combine that with their own restrictions. Passes include: PropBindings, RefLoop, NoTernary, NoLambda, NoReactivity, etc. Eighteen run always and are not capability-gated because they answer for every target: `HandleParams` (a program's write of a node's two-way prop lands where the host's report does: through the `#id`, `bound.checked = false` writes the var `:checked` bound, and a call handing the `#id` to a function that writes one through the parameter, `details.open()`, is inlined so its writes are such writes), `ImplicitState` (a two-way prop the call site left unbound, which is a cell of the instance), `DirectCalls` (a call through a name the inliner bound to a declared function -- a func-typed prop given `render=encode` -- becomes a call of that function, since every analysis following the call graph reads `Call.Func`, and an effect keyed on one was settled by no write), `RecordArgs` (an i18n call's struct of arguments, which every runtime takes as a string-keyed map; see *i18n*), `SpreadOnce` (a spread's computed operand, which every field read would otherwise evaluate again), `IndexedIter` (a two-variable loop over a pull sequence, which hands out no ordinal), `ReceiverParam` (the implicit `this` of a method on a generic built-in, which the checker keeps off the parameters for the inliner and which every call already passes first), `CallDefaults` (an omitted argument, whose default no emitted function declares), `ForElse` (an imperative for-else, which no host loop expresses), `ViewForElse` (the same construct in a view body, which no platform emitter rendered), `BoundaryFailed` (a boundary's fallback slot, which no platform emitter rendered either), `CSE` (a pure call a statement makes twice), `HoistBodyTypes` (a body-local type whose name another body claims — a component body is not a function scope on any host, so Go and Kotlin need it as much as JavaScript does), `UnprovidedContext` (a context nothing provides, whose constant default is folded into every read — lowered as state instead it is a field nothing writes, and a platform override reading `markup.palette` handed each token a runtime value where a literal was there to be had), `ErrorScope` (a raise resolved against the render tree once each component is spliced where it is rendered) `ErrorCatch` (the catch block a handler body resolved to a boundary becomes, so the raise ends the handler), `NavigationValues` (a `nav.page` read as a value is its record whichever target shows it; see *Navigation*) and `Navigation` (the structure half, which on a target holding `navigation` lowers only the stacks in a surface other than the document). A nineteenth runs always and late: `BoundaryPassthrough`, which splices a boundary with no fallback into what it holds once every pass that reaches a handler through it has run -- a boundary's meaning does not turn on its `@error`, but one with no fallback has nothing left to say once each raise is a catch block, and spliced earlier a handler survived only as a catch block's alias, which no walk follows. `StampUsage` runs after it, so a boundary that only forwarded a raise declares no `ErrorEvent`; `ReservedNames` runs after that, last of all, renaming what every pass above declared (see *A target reserves names*), and its node-ID half `ReservedNodeIDs` right after `NoInlineComponents`. After it a catch block is the only route to the boundary's handler, so an edit codegen makes in every handler walks one (html's `walkThroughCatch`): its slot retargets missed it, and a fallback a runtime instance's mount raised into rendered at the wrong parent. `CSE` is statement-local and imperative-only on purpose — the temp it binds has to be a statement the target can hold, and a view body on `--lang none` cannot hold one. Entry point: `lower.Lower(pkg, caps, opts)`.
 - **`internal/lsp/`** + **`internal/lspcore/`** — Language Server Protocol implementation (hover, completion, diagnostics)
 
 ### Stdlib
@@ -778,6 +794,100 @@ file is an ordinary comment about that file. Target packages
 follow the same rule, each with a `doc.sngl` beside its source.
 
 Packages import each other — `lib/ui/draw` is written against `lib/ui`, and `lib/ui` in turn against `sngl:time` and `sngl:family` — so they load lazily and memoized (`libPkg`), not in directory order. A lib package qualifies its dependencies rather than dot-importing them: lib source is registered into the checker's own symbol table, so a name it lifted would be indistinguishable from one it declared and would be re-lifted by a dot import of it. User packages do not re-export a dot import; lib packages must not either.
+
+**A library load owns what it records.** Each `libCache` carries the
+`ir.Builtins` its loads registered -- sngl:builtin's `list` and `map`, the
+datetime and duration types, every intrinsic -- and the `declTables` its loads
+wrote (type parameter symbols, body owners, nested funcs, interned anonymous
+structs, inherited family props), and a check reads its own library's.
+`ir.Published` is the process-wide copy every load also writes, for the phases
+that hold no checker. A target package's own overrides are checked as part of
+loading it (`mergeTargetExtensions`), so what one declares is the target
+package's, and they are merged as the package loads, whoever loaded it, so
+nothing writes a package another check can reach; what the merge reports is
+a check's only where it builds for the target or imports it. What a load made
+is frozen as the load lets go of the cache:
+`ir.Freeze` sets `Frozen` on its packages, their root scopes and their
+declarations, and the known writers -- a package root's bindings,
+`AttachMethod`, `specializeComp`, an overlay install, a `Builtins`
+registration -- panic on one (`ir.MustWriteDecl`). They ask the declaration
+rather than its package, since a build's copy of a library declaration names
+the package it came from; the cloner leaves the flag behind.
+
+**The library is checked once per process** (`libhold.go`). A check finds
+the cache for its targets in `processLibs`, keyed by each registered target,
+whether it is available, and its `LibraryState` -- gtk4's GIR setting, which
+decides the widgets it declares. A check substituting library source
+(`LibSources`) or asking for a library of its own (`PrivateLibrary`, which a
+test that strips what it checked takes) gets a fresh one, and
+`EjectLibraries` drops the lot. A check holds its cache for reading from the
+moment its checker is built, a nested check sharing the hold (`libHold`), so
+the cache's tables need no lock of their own; a load trades that for the
+write lock, looks again for what it was about to load, and before it lets go
+resolves every macro's signature and mints every prop's symbol, which a
+later check would otherwise write. A load that panics drops the cache from
+the process, since it is half-written, and a check that panics lets go of its
+hold (`TestCheckAfterAPanickingLoadFinishes`). What a load reported is replayed to each later check that reaches the
+package (`replayLoad`), and a context a library declares is on that package
+and adopted by the program (`adoptLibContexts`), as each check that loaded
+its own library used to report and append them.
+`TestConcurrentChecksAndBuildsShareTheLibrary` runs checks and builds at once
+from a cold cache under `-race`; the writes it found were a program's check
+storing a library macro's signature and an override's check re-storing a
+library prop's type. A library loaded part-way through a program's pass2 --
+an output block naming a target the build is not for -- is loaded with no
+file of the program's current, or a file switch inside the load set the
+package's import scope to the program's file
+(`TestTargetLoadedByAnOutputBlockKeepsItsImports`).
+
+**A directory import and a scheme's package are kept beside the library**
+(`dircache.go`), keyed by the import root, the path or URI, the replace map
+and the targets, and holding the digest of the source they were checked from
+(`ast.Document.Digest`, which `parser.Parse` records). A later check reusing
+one asks that its source is unchanged and that each directory package it
+imported is still the one kept, read again and recursively; storing a new
+version drops the old one and every kept package checked against it, which is
+how an edit reaches the LSP's next check (`TestImportedPackagesAreKept`). Only
+a package whose check is a function of those things is kept: one importing a
+`go:` package, a plugin's output, a fetch or a directory under a scheme's FS
+is checked every time, and so is one whose check reported anything of its
+own. A hit does for the build what checking each package it reaches would
+have: it memoizes them, adopts their contexts and replays the library loads
+they reached (`useEntry`), since the build that kept one may have done all
+three through another import. And a directory this build has already checked
+into a package of its own -- under another replace map, so another key --
+fails every kept package that imported a different one, or two versions of a
+type meet in the program (`TestKeptPackageAgreesWithTheBuildsOwn`). A kept
+package is settled and frozen as a library load is, which is why two imports
+under one alias no longer chain the first package's scope onto the second's:
+that wrote into whatever package the first import found. The resolvers parse with `parser.ParseShared`, which hands two reads of
+the same bytes one tree while either is held: a hit still resolves the
+package's source, and the `md:` site's was most of what a warm check of the
+docs site parsed.
+
+**An override belongs to the package that declares it.** A target package's
+override of `sngl:ui`'s `text` goes in that package's `Overlay`, as a
+program's does (`overrideMap`), and the cache publishes every library
+overlay as one merged overlay it replaces rather than writes
+(`libCache.targets`, `ir.Overlay.Merged`). A check reads it through
+`overridesOf`, and records the one it saw on its package as `Targets`, which
+`ir.InstallOverlay` installs on a build's copy ahead of the program's own and
+`ir.Package.OverridesOf` reads off a checked package. So a later check may
+load a target an earlier one never did without writing the declaration both
+read, and the earlier check does not see it
+(`TestFrozenLibraryTakesANewTarget`).
+
+**Every phase after the check works on a copy** (`ir.ClonePackage`,
+`ClonePackageFor`), since the checked package and the library it reaches are
+what every later build reads: `build.Emit` copies for every target, the last
+included, `interp.Prepare` returns the copy a session or a test run uses, and
+the CLI's `dump` stages, the playground's compile and generate, the docs
+preview, every snapshot path, the LSP's color fold and the fixture fold each
+copy before the first phase that writes. A phase handed the checked package itself panics at the first library
+write. TestGolden fingerprints the checked package, and the library it
+reaches, around `Emit`. A target's copy keeps other targets' override entries
+emptied, since a build still asks whether a declaration is overridden for
+*some* target (`cmd/sngl/testdata/emit_family_refused.txt`).
 
 A `#[builtin("kind")]` mark says which IR construct a declaration dispatches to, **not** which tier it lives in nor what the declaration is called — the builtin visual nodes are spread across tiers, `sngl:ui/nav`'s three in `ui/nav`, and `effect`, `context`, `output` and `boundary` in `builtin`. `boundary` is the case that makes the second half plain: it carries the `errorBoundary` kind, because the kind names the role and `ir.ErrorBoundary` is the construct it dispatches to, while the name a program writes is the declaration's own.
 
@@ -1300,11 +1410,10 @@ is the whole of what it does. Its fallback is walked under that same handler,
 since `passBoundaryFailed` puts the fallback exactly where the content was.
 `cmd/sngl/testdata/error_under_wrappers.txt` covers both halves on the interpreter. A `testdata/*.sngl` fixture's test functions are run as well, on the interpreter only, by `TestRunFixtures` (`internal/interp/testrunner`): every fixture that declares one is executed unless it asserts a failure before the run.
 
-Two of those deferrals are subtler than the rest. The family-parameter check captures
-the body it was asked about instead of re-reading `comp.Stmts`, because
-`checkPendingExtensions` swaps an override's statements onto the declaration
-and restores the base body after: read late, it checks the base body once per
-registered override and the override's body never. And a library package
+Two of those deferrals are subtler than the rest. The family-parameter check is
+handed the component it was asked about, which for an override is the copy of
+its declaration the override was checked on (`checkPendingExtensions`): the
+declaration itself never holds an override's body. And a library package
 drains its own, in the `finishDeclarations` its load runs -- left for the
 program's pass2, nothing checked a library body's membership when no program
 loaded it: `sngl doc`, the LSP's lib path and `sngl check sngl:platform/fyne`
@@ -2089,7 +2198,10 @@ declaration itself. Two things about the name that are easy to get wrong:
   receiver and the copy carries no `Foreign`. Only a native with a *return
   type* ever showed: the checker synthesizes `return <zero>` for a bodyless
   func, and a void one got an empty block that every Go emitter's
-  `len(fn.Block) == 0` guard already skipped.
+  `len(fn.Block) == 0` guard already skipped. Nor is one overridden: no target
+  emits its declaration, so `func ToUpper[bubbletea.platform]` over
+  `go:strings` is refused where it is written rather than checked and never
+  run.
 - **`method` says the identifier is invoked *on* its first argument** rather
   than handed it: `c.Circle(1, 2)` where the default is
   `gfx.Context.Circle(c, 1, 2)`. Both are valid Go for the same method, and
@@ -2517,11 +2629,12 @@ is one where android's accidental answer is the better of the two.
 **A platform override body is a body like any other** (#230): an override *is*
 the body its target renders, so "the body it was written in" is well defined
 there and every word above applies unchanged. Two things make it work, and both
-are about *when* the override is installed. `checkPendingExtensions` swaps the
-override's vars, props and body decls onto the declaration and restores the
-base after, so the nested bodies are checked while it still holds
-(`checkOverrideNestedBodies`) rather than in pass2, which runs after the
-restore. And the owner link has to survive to lowering, so `ir.Body` carries
+are about *where* the override is installed. `checkPendingExtensions` checks it
+on a copy of the declaration carrying the override's vars, props, body decls,
+funcs and method table -- the declaration is usually another package's, which
+every check sharing it reads, so it is never written -- and checks the nested
+bodies while that copy is installed (`checkOverrideNestedBodies`) rather than
+in pass2, which never sees it. And the owner link has to survive to lowering, so `ir.Body` carries
 `BodyDecls` beside `Vars` and `Stmts`. A component embeds its `ir.Body`, an
 override is an `ir.Override` holding one, and `specializeComp` swaps the body
 whole — without the body decls in it
@@ -2546,8 +2659,8 @@ by `collectExtensionDecls` and desugared onto the component by the same
 `registerNestedMethods` an ordinary body uses, so the override's body calls its
 own helper and a nested body reaches it through `lookupBodyMethod` — the route
 a method takes, since a component-body func is a method on its owner rather
-than a name in scope. `ir.Body` carries `Funcs` and `Methods` for it, swapped
-with the rest; without that swap bubbletea emitted
+than a name in scope. `ir.Body` carries `Funcs` and `Methods` for it, with the
+rest; without them bubbletea emitted
 `func (m *outer) Bump()` against a type it never declares, which
 `component_override_body_func.txtar` denies.
 
@@ -2568,13 +2681,13 @@ under one host identifier. The hoist-and-rename `passHoistBodyTypes` does for
 types is where it lifts, and the diagnostic says so
 (`error_component_override_body_func_shadows.sngl`).
 
-`ir.BodyFuncs` is what pass2's `compOwnedFuncs` set reads, because by then the
-base declaration is restored and the live `Component.Funcs` no longer names the
-override's helper — checked at package scope instead, it reported the
+`ir.BodyFuncs` is what pass2's `compOwnedFuncs` set reads, because the live
+`Component.Funcs` is the base declaration's and never names the override's
+helper — checked at package scope instead, it reported the
 component's own vars as undefined. That set is asked of `c.pendingExtensions`
-as well as `pkg.Components`: an override's base is usually *not* this package's
-declaration, and every override in `lib/` and in a target package has a stdlib
-one.
+as well as `pkg.Components`: the base of a program's override of a library
+component is not the program's declaration. A target package's overrides are
+checked in its load and never reach pass2.
 
 **A helper needs the base reachable by its bare name**, which an override
 written through a qualified alias does not have: a component-body func is a
@@ -4057,6 +4170,27 @@ question per kind rather than one line.
 
 Stdlib collection types support generic methods: `func list<T>.filter(f func(T) bool) list<T>`, `func list<T>.map<U>(f func(T) U) list<U>`, `func map<K, V>.keys() list<K>`, etc. The receiver's type parameters are bound at the call site from the operand's concrete type (e.g. `xs : list<int>` binds `T=int`). Method-level type parameters (the `<U>` after the method name) are inferred from the call's actual argument types — typically from a lambda's return type.
 
+**A program may add a method to a library type, and may not redefine one it
+has.** `func int.twice` is an addition; `func int.abs` collides with the
+`sngl:builtin` declaration and is the duplicate two declarations in one
+package are (`reportDuplicateMethod`,
+`testdata/error_method_redefines_library.sngl`). It used to replace the
+library's member, which made what `x.abs()` means depend on the program
+that checked first once the library is shared between checks.
+
+**What a program adds to a library declaration is held on the program**
+(`ir.Overlay`, `internal/checker`'s `overrideMap` and `attachMethod`): an
+override of a library component or function goes in `ir.Package.Overlay`, a
+method on a library type in the program's root `ir.Scope.Added`, so a check
+leaves the library as it found it -- `TestLibraryShared` holds every fixture to
+that. The checker reads both through `overridesOf` and `ir.MethodOn`, an
+import adopts what the imported package added (`adoptAdditions`), and every
+phase after the check finds the overrides where a target package's are because
+`ir.InstallOverlay` writes them there first: `ClonePackage(For)`, the two
+`Specialize` entries, `optimize.Optimize`, `lower.Lower`, `build.Emit` and
+`interp.BuildProgramEnv` each call it, on the build's copy (see *Every phase
+after the check works on a copy*).
+
 ### AST
 
 - **`ast/ast.go`** — top-level declarations and structural types: `Document`, `ComponentDecl`, `VisualNode`, `FuncDef`, `VarDecl`, `ConstDecl`, `StructDef`, `EnumDef`, `UnitDef`, `Param`, `Import`, `IfStmt`, `ForStmt`
@@ -4139,7 +4273,7 @@ to exercise: generated output is identical either way. Confirm a new fixture
 **A test body is lowered by each language's own test emitter**
 (`codegen/lang/{golang,javascript,kotlin}/testlower.go`), and the interpreter
 is the reference every target is held to — `cmd/sngl/testdata/test_component_surface*.txt`
-runs one program through every form of access a test body has on all six. Three
+runs one program through every form of access a test body has on all six. Four
 rules keep them agreeing:
 
 - **Test bodies are checked last**, after every component and window body:
@@ -4150,6 +4284,10 @@ rules keep them agreeing:
   on Go and JS; on android the state members MainScreen spells as `state.<x>`,
   rebound to the instance). Each test starts from a fresh one — a new Model on
   the Go targets, a remounted page on html.
+- **The component a test takes is rendered with no call site**, so each of its
+  props holds its default, or its type's zero where it has none: a var of the
+  component on a compiled target (`bindRootProps`), bound ahead of its own vars
+  in the interpreter (`cmd/sngl/testdata/test_reads_root_prop_runs.txt`).
 - **An event invoker takes the event's arguments**: `c.f.input("v")` hands
   the invoker `"v"`, which it puts in the widget before firing the one event,
   as android's `performTextReplacement` does.
@@ -4270,9 +4408,8 @@ targets in parallel) is not a saving.
   *wrote* names -- what a process it ran read, which no recorder sees -- with
   any digest or value left out filled in by `Store.Complete` as it is stored.
 - **Cloning is the largest remaining cost.** `build.Emit` clones the checked
-  package for every target but the last, and `ir.ClonePackage` copies by
-  reflection everything reachable — library IR included, since per-target
-  override bodies are written onto the shared library declarations.
+  package for every target, and `ir.ClonePackage` copies by reflection
+  everything reachable, library IR included.
 
 ### Trust
 

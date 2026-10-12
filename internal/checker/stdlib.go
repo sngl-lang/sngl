@@ -213,6 +213,11 @@ func (c *checker) resolveMacroSig(pkg *ir.Package, fn *ir.Func) {
 	if c.libs.macroSigs[fn] || fn.AST == nil || len(fn.Params) != len(fn.AST.Params.Params) {
 		return
 	}
+	// It writes a library declaration, which every check on the cache reads.
+	defer c.loadHold()()
+	if c.libs.macroSigs[fn] {
+		return
+	}
 	c.libs.macroSigs[fn] = true
 	// The package's own root, whose parent is the scope its imports bound
 	// their namespaces in — the scope the declaration was written in.
@@ -322,9 +327,17 @@ func targetUnavailable(t any) error {
 // and the import has to resolve to the same instance the user sees.
 func (c *checker) libPkg(name string) *ir.Package {
 	if pkg, ok := c.libs.pkgs[name]; ok {
+		c.replayLoad("pkg:" + name)
 		c.adoptLib(name, pkg)
 		return pkg
 	}
+	defer c.loadHold()()
+	if pkg, ok := c.libs.pkgs[name]; ok {
+		c.replayLoad("pkg:" + name)
+		c.adoptLib(name, pkg)
+		return pkg
+	}
+	start := len(c.diags)
 	if c.libs.loading[name] {
 		// An import cycle inside lib/ is a compiler bug, not user input.
 		panic("sngl: import cycle in embedded library at sngl:" + name)
@@ -354,6 +367,11 @@ func (c *checker) libPkg(name string) *ir.Package {
 	savedConstInits := c.pendingConstInits
 	c.pendingConstInits = nil
 	defer func() { c.pendingConstInits = savedConstInits }()
+	// What this package declares of another's is its own, not the overrides
+	// of a target being merged around its load.
+	savedOwner := c.overrideOwner
+	c.overrideOwner = nil
+	defer func() { c.overrideOwner = savedOwner }()
 	// pass1 builds the replace map from the documents it is given, so the
 	// enclosing package's is put back: a library package loads part-way
 	// through it, and its own `=>` redirects are not the program's.
@@ -365,7 +383,19 @@ func (c *checker) libPkg(name string) *ir.Package {
 	}
 	delete(c.libs.loading, name)
 	c.libs.pkgs[name] = pkg
+	c.libs.publish(pkg)
 	c.adoptLib(name, pkg)
+	c.recordLoad("pkg:"+name, start)
+	// A target package's overrides are merged as it loads, so nothing writes
+	// it once another check can reach it. What the merge reports is a check's
+	// only where it builds for the target or imports its package
+	// (mergeTargetExtensions replays it).
+	if _, _, isTarget := targetTierName(name); isTarget && !c.cfg.noTargets {
+		mark := len(c.diags)
+		c.mergeTargetExtensions(name)
+		c.diags = c.diags[:mark]
+		delete(c.hold.replayed, "merge:"+name)
+	}
 	return pkg
 }
 
@@ -375,6 +405,7 @@ func (c *checker) libPkg(name string) *ir.Package {
 // an outer one, which is the point — the declaration a platform extension is
 // attached to has to be the declaration user code resolves.
 func (c *checker) adoptLib(name string, pkg *ir.Package) {
+	c.adoptLibContexts(pkg)
 	if name == irPkg && c.macroStruct == nil {
 		if sym, ok := pkg.Symbols.Root.LookupLocal(macroTypeName); ok {
 			if sd, isStruct := sym.(*ir.StructDef); isStruct {
@@ -449,9 +480,14 @@ func (c *checker) loadStdlibPackage(pkgName string) *ir.Package {
 		c.bindLib(ast.Pos{}, c.libImportScope, &ir.Namespace{Name: nsName, Pkg: stdlibPkg})
 	}
 	stdlibPkg.Symbols.Root.Parent = c.libImportScope
+	// No file of the program's is current while the package loads, or a file
+	// switch inside the load restores it as the parent of the package's root.
+	savedFile := c.saveFile()
+	c.curFileScope = nil
 	c.symtab, c.scope = stdlibPkg.Symbols, stdlibPkg.Symbols.Root
 	defer func() {
 		c.symtab, c.scope, c.libImportScope = savedSymtab, savedScope, savedImportScope
+		savedFile()
 	}()
 	savedLoadPkg := c.libLoadPkg
 	c.libLoadPkg = stdlibPkg
@@ -511,7 +547,7 @@ func (c *checker) loadStdlibPackage(pkgName string) *ir.Package {
 	// at which point a default like `i18n.defaultLocale()` still types as dyn.
 	// Once the bodies are checked the wrapper has its concrete return type,
 	// so re-pull ctx.Typ from the default expression's Call.Func.Return.
-	for _, ctx := range c.pkg.Contexts {
+	for _, ctx := range stdlibPkg.Contexts {
 		if ctx.Typ != nil && ctx.Typ.Kind != ir.TypeDyn {
 			continue
 		}
@@ -648,7 +684,7 @@ func (c *checker) declarePluralKeyConstants(pkg *ir.Package) {
 }
 
 // publishIntrinsic records what a #[intrinsic] declaration says, for the passes
-// that need a signature with no declaration in hand (see ir.RegisterIntrinsic).
+// that need a signature with no declaration in hand (see ir.Builtins.RegisterIntrinsic).
 // The purity is the mark's, already applied by markIntrinsic.
 func (c *checker) publishIntrinsic(fn *ir.Func) {
 	// Only a library package publishes, which is what lets RegisterIntrinsic
@@ -656,11 +692,16 @@ func (c *checker) publishIntrinsic(fn *ir.Func) {
 	// sngl:internal/marks is refused, but a refusal is a diagnostic and
 	// checking continues, so the mark still stamps -- see
 	// cmd/sngl/testdata/check_internal_import.txt, which exists because this
-	// reaching codegen used to panic.
-	if !c.inLibSource() {
+	// reaching codegen used to panic. A library plugin is the library's own
+	// source, checked as a package of its own on the library's cache.
+	if !c.inLibSource() && c.cfg.libraryScheme == "" {
 		return
 	}
-	ir.RegisterIntrinsic(ir.IntrinsicDef{
+	pkg := c.libPkgName
+	if pkg == "" {
+		pkg = "sngl:" + SchemeTier + c.cfg.libraryScheme
+	}
+	def := ir.IntrinsicDef{
 		Name:            fn.Intrinsic,
 		Params:          fn.Params,
 		Return:          fn.Return,
@@ -668,9 +709,13 @@ func (c *checker) publishIntrinsic(fn *ir.Func) {
 		Purity:          fn.Purity,
 		MutatesReceiver: fn.MutatesReceiver,
 		BuildOnly:       fn.BuildOnly,
-		Pkg:             c.libPkgName,
+		Pkg:             pkg,
 		DeclaredAs:      funcDeclName(fn),
-	})
+	}
+	ir.MustWriteDecl(fn, "registering "+def.Name)
+	for _, b := range c.libraryRecords() {
+		b.RegisterIntrinsic(def)
+	}
 }
 
 // funcDeclName is how a declaration is spelled: `list.push` for a method,
@@ -842,10 +887,20 @@ func (c *checker) resolvedTargets() []ir.StaticTarget {
 // error. Only the parenless form is an extension; `component sngl.X() { body }`
 // (android) is ignored here, because that platform reads such a body itself.
 func (c *checker) mergeTargetExtensions(pkgName string) {
+	// A target nothing declares -- a misspelled one in an output block -- has
+	// no package to load, and loading one anyway caches it empty for every
+	// check that finds the library loaded.
+	if c.libs.extended[pkgName] || !c.hasLibPkg(pkgName) {
+		c.replayLoad("merge:" + pkgName)
+		return
+	}
+	defer c.loadHold()()
 	if c.libs.extended[pkgName] {
+		c.replayLoad("merge:" + pkgName)
 		return
 	}
 	c.libs.extended[pkgName] = true
+	defer c.recordLoad("merge:"+pkgName, len(c.diags))
 	name, tier, ok := targetTierName(pkgName)
 	if !ok {
 		return
@@ -855,7 +910,15 @@ func (c *checker) mergeTargetExtensions(pkgName string) {
 		// it cannot provide.
 		return
 	}
-	{
+	owner := c.libPkg(pkgName)
+	savedOwner := c.overrideOwner
+	c.overrideOwner = owner
+	defer func() {
+		c.overrideOwner = savedOwner
+		c.libs.publish(owner)
+	}()
+	ext, funcs := len(c.pendingExtensions), len(c.pendingFuncOverrides)
+	func() {
 		// An override names its target, and a target package's own source is
 		// no exception -- but it reaches its namespace the way its bodies do,
 		// from the package itself, not from the program's scope, which is
@@ -967,7 +1030,30 @@ func (c *checker) mergeTargetExtensions(pkgName string) {
 				c.addOverrideBody(decl.Pos, stdComp, kind, plat, ns, local, decl.Body, false, selection, decl.Const)
 			}
 		}
-	}
+	}()
+	// The package's own overrides are the package's, so they are checked as
+	// part of loading it: what one declares -- a body struct, an anonymous
+	// struct it interns -- belongs to this package and not to the program
+	// that happened to load it.
+	own, ownFuncs := c.pendingExtensions[ext:], c.pendingFuncOverrides[funcs:]
+	c.pendingExtensions, c.pendingFuncOverrides = c.pendingExtensions[:ext:ext], c.pendingFuncOverrides[:funcs:funcs]
+	c.inTargetLoad(pkgName, func() {
+		c.checkExtensions(own)
+		c.checkFuncOverrides(ownFuncs)
+	})
+}
+
+// inTargetLoad runs check as part of loading the target package pkgName:
+// library source, declaring into that package.
+func (c *checker) inTargetLoad(pkgName string, check func()) {
+	c.libDepth++
+	savedName, savedLoad := c.libPkgName, c.libLoadPkg
+	c.libPkgName, c.libLoadPkg = "sngl:"+pkgName, c.libPkg(pkgName)
+	defer func() {
+		c.libDepth--
+		c.libPkgName, c.libLoadPkg = savedName, savedLoad
+	}()
+	check()
 }
 
 // qualifiedComponentName is how an override names what it overrides: qualified
@@ -985,14 +1071,12 @@ func qualifiedComponentName(ns, local string) string {
 // silent overwrite: two implementations of one component for one target are
 // two answers to a question with one.
 func (c *checker) addOverrideBody(pos ast.Pos, comp *ir.Component, kind ir.BuiltinKind, target, ns, local string, body ast.StmtBlock, user bool, selection []string, isConst bool) {
-	overrides := &comp.PlatformOverrides
-	if kind == ir.BuiltinFamilyLanguage {
-		overrides = &comp.LanguageOverrides
-	}
+	overrides := c.overrideMap(comp, user, kind)
 	if *overrides == nil {
 		*overrides = map[string]ir.Override{}
 	}
-	if _, dup := (*overrides)[target]; dup {
+	all := c.overridesOf(comp)
+	if _, dup := (*all.Of(kind))[target]; dup {
 		c.error(pos, "component %s already has an implementation for %q", qualifiedComponentName(ns, local), target)
 		return
 	}
@@ -1168,13 +1252,17 @@ type pendingExtension struct {
 	pkg *ir.Package
 }
 
-// Runs after user pass1, so user-declared symbols are in scope. Each extension
-// body is checked with the platform block temporarily installed as the stdlib
-// component's AST.Body, then the slot is restored: the component is left with
-// an empty Body, and lower's passPlatformExtensionBody swaps the active
-// platform's in.
+// checkPendingExtensions checks the program's own overrides, after its pass1
+// so its declarations are in scope. Each body is checked on a copy of the
+// declaration it overrides, and recorded as that declaration's override for
+// its target; the declaration itself is never written.
 func (c *checker) checkPendingExtensions() {
-	if len(c.pendingExtensions) == 0 {
+	c.checkExtensions(c.pendingExtensions)
+}
+
+// checkExtensions checks each of pending as checkPendingExtensions describes.
+func (c *checker) checkExtensions(pending []pendingExtension) {
+	if len(pending) == 0 {
 		return
 	}
 	// Group by target package so each target's own is in scope while its
@@ -1184,7 +1272,7 @@ func (c *checker) checkPendingExtensions() {
 	// language of some name is not the platform of it.
 	var order []string
 	byTarget := map[string][]pendingExtension{}
-	for _, pe := range c.pendingExtensions {
+	for _, pe := range pending {
 		uri := targetTierMember(pe.kind) + "/" + pe.platform
 		if _, seen := byTarget[uri]; !seen {
 			order = append(order, uri)
@@ -1234,9 +1322,8 @@ func (c *checker) checkPendingExtensions() {
 	}
 }
 
-// checkOverride checks one override's body installed on the declaration it
-// overrides, records it in the declaration's override map, and restores the
-// declaration. libBodyScope is the scope a target package's body resolves in;
+// checkOverride checks one override's body on a copy of the declaration it
+// overrides and records it in the declaration's override map. libBodyScope is the scope a target package's body resolves in;
 // a program's resolves in the program's own.
 func (c *checker) checkOverride(pe pendingExtension, libBodyScope *ir.Scope) {
 	// A program's override resolves against the program: the names its
@@ -1248,68 +1335,83 @@ func (c *checker) checkOverride(pe pendingExtension, libBodyScope *ir.Scope) {
 	} else {
 		c.scope = libBodyScope
 	}
-	savedAST := pe.comp.AST.Body
-	saved := pe.comp.Body
-	savedProps, savedEvents := pe.comp.Props, pe.comp.Events
+	// The override is checked on a copy of the declaration carrying
+	// its body, so the declaration -- often another package's, which
+	// every check sharing it reads -- is never written.
+	base := pe.comp
+	ov := new(ir.Component)
+	*ov = *base
 	// An override that listed the props it consumes reads those and no
 	// others: the list is what makes the names in its body traceable
 	// to a declaration rather than appearing from the surrounding
 	// component. One that listed none reads them all.
 	if pe.selection != nil {
-		pe.comp.Props, pe.comp.Events = selectProps(pe.comp, pe.selection)
+		ov.Props, ov.Events = selectProps(base, pe.selection)
 	}
-	pe.comp.AST.Body = pe.body
-	pe.comp.Stmts = nil
+	// The declaration is the library's parsed source, which every check
+	// shares, so the copy is handed a copy of it carrying the
+	// override's body.
+	decl := *base.AST
+	decl.Body = pe.body
+	ov.AST = &decl
+	ov.Stmts = nil
 	// pass1 only ever saw the component's parenless stub, so the
 	// override's own state has to be collected before the body check
 	// that declares it. Starting from the component's own keeps a var
 	// the stdlib declaration made visible to the override.
 	c.pushScope()
-	vars, bodyDecls, funcDefs := c.collectExtensionDecls(pe.comp, pe.body)
-	pe.comp.Vars = append(slices.Clip(saved.Vars), vars...)
-	pe.comp.BodyDecls = append(slices.Clip(saved.BodyDecls), bodyDecls...)
+	vars, bodyDecls, funcDefs := c.collectExtensionDecls(ov, pe.body)
+	ov.Vars = append(slices.Clip(base.Vars), vars...)
+	ov.BodyDecls = append(slices.Clip(base.BodyDecls), bodyDecls...)
 	// A method is attached by receiver, so the base's table is where
 	// an override's helper would land and stay -- visible to the base
 	// body and to every other target's override, and a redeclaration
 	// of the next target's helper of the same name. The clone is what
 	// keeps each override's helpers to itself; it starts from the
 	// base's so a method the declaration made stays callable.
-	pe.comp.Methods = maps.Clone(saved.Methods)
+	ov.Methods = maps.Clone(base.Methods)
 	// Registered inside the collect scope: a signature may name a type
 	// the override body declared, which is bound there and nowhere
 	// else.
-	funcDefs = c.reportOverrideFuncShadows(pe, saved.Methods, funcDefs)
+	// A program's own additions to the component are its methods as much
+	// as the declaration's are, and a helper of one's name would be
+	// shadowed by it at every call.
+	known := base.Methods
+	if added := c.symtab.Root.Added[base]; len(added) > 0 {
+		known = maps.Clone(base.Methods)
+		if known == nil {
+			known = map[string]*ir.Func{}
+		}
+		maps.Copy(known, added)
+	}
+	funcDefs = c.reportOverrideFuncShadows(pe, known, funcDefs)
 	funcDefs = c.reportOverrideFuncUnreachableReceiver(pe, funcDefs)
-	overrideFuncs := c.registerNestedMethods(pe.comp.Name, pe.comp.AST.TypeParams, funcDefs)
-	pe.comp.Funcs = append(slices.Clip(saved.Funcs), overrideFuncs...)
+	c.overriddenBase, c.installedOverride = base, ov
+	overrideFuncs := c.registerNestedMethods(base.Name, ov.AST.TypeParams, funcDefs)
+	ov.Funcs = append(slices.Clip(base.Funcs), overrideFuncs...)
 	c.popScope()
 	// checkComponentBody checks comp.Funcs in the component's own
 	// scope, so the override's are checked with its vars and props
 	// visible by having been appended above.
 	if pe.user {
-		c.overrideFile = overrideFile{comp: pe.comp, pos: pe.pos}
+		c.overrideFile = overrideFile{comp: ov, pos: pe.pos}
 	}
-	c.installedOverride = pe.comp
-	c.checkComponentBody(pe.comp)
-	c.installedOverride = nil
+	c.checkComponentBody(ov)
 	c.overrideFile = overrideFile{}
-	// While the override's state is still installed, because that is
-	// the body a component nested in it was written in. Left to
-	// pass2's checkComponentBodies it runs after the restore below,
-	// where the owner is the base declaration again and the names the
-	// nested body captured are declared by nobody.
+	// While the override is still installed, because that is the body
+	// a component nested in it was written in.
 	c.checkOverrideNestedBodies(bodyDecls)
-	c.checkOverrideConst(pe)
-	checked := ir.Override{Body: pe.comp.Body, Const: pe.isConst, Pkg: pe.pkg}
-	if pe.kind == ir.BuiltinFamilyLanguage {
-		pe.comp.LanguageOverrides[pe.platform] = checked
-	} else {
-		pe.comp.PlatformOverrides[pe.platform] = checked
-	}
-	pe.comp.AST.Body = savedAST
-	pe.comp.Body = saved
-	pe.comp.Props, pe.comp.Events = savedProps, savedEvents
+	c.overriddenBase, c.installedOverride = nil, nil
+	checkedPE := pe
+	checkedPE.comp = ov
+	c.checkOverrideConst(checkedPE)
+	checked := ir.Override{Body: ov.Body, Const: pe.isConst, Pkg: pe.pkg}
+	(*c.overrideMap(base, pe.user, pe.kind))[pe.platform] = checked
 	if pe.user {
+		if c.addedOverrideAt == nil {
+			c.addedOverrideAt = map[addedOverride]ast.Pos{}
+		}
+		c.addedOverrideAt[addedOverride{base, pe.kind, pe.platform}] = pe.pos
 		c.popScope()
 	}
 }
@@ -1555,7 +1657,13 @@ func CheckLibPackage(name string) (*ir.Package, []ir.Diagnostic) {
 		Targets:    ownTarget(name),
 	}
 	c := newChecker(nil, cfg)
+	endLoad := c.loadHold()
 	pkg := c.libPkg(name)
+	if pkg != nil {
+		pkg.Targets = c.libs.targets
+	}
+	endLoad()
+	c.endHold()
 	libPkgCache[name] = libPkgEntry{pkg: pkg, diags: c.diags}
 	return pkg, c.diags
 }
@@ -1593,4 +1701,63 @@ func Packages() []string {
 	}
 	slices.Sort(out)
 	return out
+}
+
+// packages is every package the cache holds: those it holds by path, each
+// library plugin's, what they import, and the package each declaration they
+// hold says declared it. The last two are how the gir: widgets
+// sngl:platform/gtk4 imports are reached, which name a package of their own.
+func (l *libCache) packages() []*ir.Package {
+	var pkgs []*ir.Package
+	seen := map[*ir.Package]bool{}
+	add := func(p *ir.Package) {
+		if p != nil && !seen[p] {
+			seen[p] = true
+			pkgs = append(pkgs, p)
+		}
+	}
+	for _, path := range slices.Sorted(maps.Keys(l.pkgs)) {
+		add(l.pkgs[path])
+	}
+	for _, name := range slices.Sorted(maps.Keys(l.schemes)) {
+		if scheme := l.schemes[name]; scheme != nil {
+			add(scheme.Pkg)
+		}
+	}
+	for i := 0; i < len(pkgs); i++ {
+		p := pkgs[i]
+		for _, imp := range p.Imports {
+			add(imp.Pkg)
+		}
+		for _, d := range p.Components {
+			add(d.Pkg)
+		}
+		for _, d := range p.Funcs {
+			add(d.Pkg)
+		}
+		for _, d := range p.Structs {
+			add(d.Pkg)
+		}
+		for _, d := range p.Enums {
+			add(d.Pkg)
+		}
+		for _, d := range p.Units {
+			add(d.Pkg)
+		}
+		for _, d := range p.Consts {
+			add(d.Pkg)
+		}
+		for _, d := range p.Vars {
+			add(d.Pkg)
+		}
+	}
+	return pkgs
+}
+
+// publish adds the overrides pkg declares of other packages' declarations to
+// what every check on the cache reads (libCache.targets).
+func (l *libCache) publish(pkg *ir.Package) {
+	if pkg != nil {
+		l.targets = l.targets.Merged(pkg.Overlay)
+	}
 }

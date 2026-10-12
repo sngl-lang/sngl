@@ -394,7 +394,7 @@ func (c *compilation) emitIRMode(wrapped bool) (modelSrc []byte, callbacksSrc []
 			continue
 		}
 		// golang.LiftsToFreeFunc is the one answer the call site uses too.
-		if fn.IsMethod() && golang.LiftsToFreeFunc(c.ctx.Pkg, fn.RecvName()) {
+		if fn.IsMethod() && golang.LiftsToFreeFunc(c.ctx.Pkg, fn) {
 			emitGTK4TypeMethod(&funcBuf, fn, gc)
 			continue
 		}
