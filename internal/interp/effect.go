@@ -174,9 +174,9 @@ func (fx *Effects) Reconcile(v *View, root *Env) (Key, bool, error) {
 		}
 	}
 
-	// Reports first: a write was made while the lifetime it reaches was
-	// running, so it is reported before that lifetime ends or rekeys -- and a
-	// teardown then reads the state the reports already saw.
+	// Reports first, to every bracket the tree still holds: a write was made
+	// while the lifetime it reaches was running, so it is reported before that
+	// lifetime rekeys.
 	if ran, err := fx.deliver(next, root); ran || err != nil {
 		return Key{}, ran, err
 	}

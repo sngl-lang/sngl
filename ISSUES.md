@@ -24,10 +24,12 @@ reports.
   cell also reports `@insert`, `@set`, `@remove` and `@clear`, and a key that
   does not compare may not handle `@mount`/`@unmount`
   (`lib/builtin/effect.sngl`, `testdata/effect_update.sngl`,
-  `testdata/error_effect_changes.sngl`). The interpreter runs it; every
-  compiled target refuses it until the lowering lands
-  (`cmd/sngl/testdata/effect_update_refused.txt`). Left: lower it on each
-  target, then rewrite the three pages and remove `var … @change`.
+  `testdata/error_effect_changes.sngl`). `@update` is lowered by passEffect on
+  every target but android (`testdata/effect_update.txtar`,
+  `cmd/sngl/testdata/effect_update_runs.txt`); refused, with a position, are
+  the change events everywhere, `@update` under a `for`, and `@update` on
+  android (`cmd/sngl/testdata/effect_update_refused.txt`). Left: those three,
+  then rewrite the three pages and remove `var … @change`.
 - **Clone URL.** `installation.md` says
   `git clone https://github.com/sngl-lang/sngl.git`, but the module is
   `duckfam.us/sngl` and origin is `git.duckfam.us`. Which is canonical?
@@ -162,6 +164,8 @@ reports.
 - Generated Go exports internal names (`Visible__inst0`, `SetVisible__inst0`,
   `Measurement`).
 - html emits `<input type="">`.
+- html: a component method named `replace`, called from a test, comes out as
+  `c.replaceAll(void 0, void 0)` -- the string method's spelling.
 
 ## Docs gaps still open
 

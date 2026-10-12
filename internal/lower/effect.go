@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"slices"
 	"strconv"
+	"strings"
 
 	"duckfam.us/sngl/ast"
 	"duckfam.us/sngl/ir"
@@ -51,7 +52,7 @@ func lowerEffects(pkg *ir.Package, _ Features, _ Options) error {
 	if pkg == nil {
 		return nil
 	}
-	st := &effectState{pkg: pkg, reactive: collectReactiveVars(pkg), byVar: map[*ir.Var][]*loweredEffect{}}
+	st := &effectState{pkg: pkg, reactive: collectReactiveVars(pkg), byVar: map[*ir.Var][]*loweredEffect{}, dirtyBy: map[*ir.Var][]*loweredEffect{}}
 	for _, o := range ir.Owners(pkg) {
 		if err := st.owner(o); err != nil {
 			return err
@@ -73,6 +74,9 @@ type effectState struct {
 	// byVar is the settle each state var triggers: writing it may change the
 	// list of keys some position describes.
 	byVar map[*ir.Var][]*loweredEffect
+	// dirtyBy is the brackets with an `@update` a write to each state var
+	// marks owed one: those whose `on` reads it.
+	dirtyBy map[*ir.Var][]*loweredEffect
 	// groups is one settle entry point per scope holding effects, in the
 	// order the scopes were walked.
 	groups []*effectGroup
@@ -142,8 +146,23 @@ type loweredEffect struct {
 	desired *ir.Var
 	mount   *ir.Func
 	unmount *ir.Func
-	down    *ir.Func
-	up      *ir.Func
+	// update is the `@update` handler, and dirty the flag every write to what
+	// `on` reads sets and the settle clears as it runs the handler: a report
+	// of writes, so one of the value the key already held counts, and any
+	// number before a settle are one report. key and frames are what the
+	// settle evaluates the key and the position from when it does.
+	update *ir.Func
+	dirty  *ir.Var
+	// mark sets dirty, for a test body: a test reaches the instance's state
+	// through the instance, and html keeps a synthesized var where only the
+	// page's script can name it. Built the first time a test needs it.
+	mark   *ir.Func
+	key    ir.Expr
+	frames []effectFrame
+	// down and up are nil for a bracket with neither @mount nor @unmount,
+	// which reports writes and holds no lifetime.
+	down *ir.Func
+	up   *ir.Func
 	// group is the scope's settle entry point, which calls this bracket's two
 	// halves in their place among the others.
 	group *effectGroup
@@ -275,13 +294,38 @@ func (st *effectState) lowerOne(n *ir.NodeInst, o *ir.Owner, frames []effectFram
 	if err := st.checkHandlerScope(n, frames); err != nil {
 		return err
 	}
-	fx.mount = st.handlerFunc(n, "mount", prefix+"_mount", o, fx)
-	fx.unmount = st.handlerFunc(n, "unmount", prefix+"_unmount", o, fx)
-	if fx.mount == nil && fx.unmount == nil {
+	fx.mount = st.handlerFunc(n, ir.EffectMount, prefix+"_mount", o, fx)
+	fx.unmount = st.handlerFunc(n, ir.EffectUnmount, prefix+"_unmount", o, fx)
+	fx.update = st.handlerFunc(n, ir.EffectUpdate, prefix+"_update", o, fx)
+	if fx.mount == nil && fx.unmount == nil && fx.update == nil {
 		return nil
 	}
 	if fx.keyVar != nil {
 		st.addVar(o, fx.keyVar)
+	}
+	if fx.update != nil {
+		if err := st.reportable(n, frames); err != nil {
+			return err
+		}
+		fx.key, fx.frames = key, frames
+		fx.dirty = &ir.Var{
+			Name:        prefix + "_dirty",
+			Type:        ir.TypBool,
+			Init:        &ir.Literal{Type: ir.TypBool, Value: "false"},
+			Synthesized: true,
+		}
+		st.addVar(o, fx.dirty)
+		for _, v := range st.reactiveVarsIn(key) {
+			st.dirtyBy[v] = append(st.dirtyBy[v], fx)
+		}
+	}
+	if fx.mount == nil && fx.unmount == nil {
+		// Reports only: no lifetime to hold, so nothing to keep the keys of.
+		st.effects = append(st.effects, fx)
+		for _, v := range st.positionVars(key, frames) {
+			st.byVar[v] = append(st.byVar[v], fx)
+		}
+		return nil
 	}
 	fx.live = &ir.Var{
 		Name:        prefix + "_live",
@@ -585,6 +629,44 @@ func (st *effectState) emptyLoopBlock(name string, loop *ir.For, leaf []ir.Stmt)
 			}},
 		},
 		&ir.If{Cond: &ir.Unary{Type: ir.TypBool, Op: ast.UnaryNot, Operand: ref()}, Body: leaf},
+	}
+}
+
+// reportable refuses an `@update` under a `for`, which the settle has no way to
+// report per copy yet: a flag per bracket says that some copy's key was
+// written, not which, and the interpreter reports to each copy whose key it
+// was. An `else` is one position, and so is every `if`.
+func (st *effectState) reportable(n *ir.NodeInst, frames []effectFrame) error {
+	for _, f := range frames {
+		if f.loop != nil && !f.loopElse {
+			pos := nodePos(n)
+			for _, h := range n.Handlers {
+				if h.Name == ir.EffectUpdate && h.AST != nil {
+					pos = h.AST.Pos.String()
+				}
+			}
+			return fmt.Errorf("%s: an effect's @update under a `for` is not implemented on a compiled target yet; `sngl test` runs it on the interpreter", pos)
+		}
+	}
+	return nil
+}
+
+// reportBlock is what a settle pass runs for one bracket's `@update` before any
+// lifetime moves: the handler, once, if a write has reached the key since the
+// last pass and the position still describes the bracket.
+//
+//	if __effectN_dirty {
+//	    __effectN_dirty = false
+//	    <the if chain> { __effectN_key = <on>; __effectN_update() }
+//	}
+func (st *effectState) reportBlock(prefix string, fx *loweredEffect) ir.Stmt {
+	run := []ir.Stmt{
+		&ir.Assign{Target: st.varIdent(fx.keyVar), Op: ast.AssignSet, Value: deepCloneExpr(fx.key)},
+		callOf(fx.update),
+	}
+	return &ir.If{
+		Cond: st.varIdent(fx.dirty),
+		Body: append([]ir.Stmt{st.setFlag(fx.dirty, false)}, st.positionBlock(prefix, fx.frames, run)...),
 	}
 }
 
@@ -932,11 +1014,22 @@ func (st *effectState) buildGroups() {
 			Target: st.varIdent(g.steps), Op: ast.AssignSet,
 			Value: &ir.Binary{Type: ir.TypInt, Op: ast.BinAdd, Left: st.varIdent(g.steps), Right: intLiteralLit(1)},
 		})
+		// Reports before any lifetime moves, in the order the scope wrote
+		// them: a write was made while the bracket it reaches was running.
+		for j, fx := range g.fxs {
+			if fx.update != nil {
+				pass = append(pass, st.reportBlock(prefix+"_"+strconv.Itoa(j), fx))
+			}
+		}
 		for _, fx := range slices.Backward(g.fxs) {
-			pass = append(pass, callOf(fx.down))
+			if fx.down != nil {
+				pass = append(pass, callOf(fx.down))
+			}
 		}
 		for _, fx := range g.fxs {
-			pass = append(pass, callOf(fx.up))
+			if fx.up != nil {
+				pass = append(pass, callOf(fx.up))
+			}
 		}
 		g.settle = &ir.Func{
 			Name:        prefix + "_settle",
@@ -1033,31 +1126,33 @@ func (st *effectState) groupFor(comp *ir.Component) *effectGroup {
 	return g
 }
 
-// injectSettles puts a settle call after every write to a cell some position
-// reads.
+// injectSettles settles every scope a block's writes may have moved, once,
+// where the block is left: at its end and before each `return` in it. A write
+// itself only marks what it reached -- an `@update` owed a report -- so a
+// handler that pushes twice reports once, as the interpreter does by settling
+// after the handler rather than inside it, and a bracket rekeyed twice in one
+// handler moves once.
 //
 // allBlocks rather than a descent of its own: the walk this used to do reached
 // an owner's funcs and its view body and nothing else, so a write in a timer
 // handler, a var handler, a lifted lambda or a window declared inside a
 // component settled nothing at all.
 //
-// Every block, this pass's own synthesized funcs included. Those used to be
-// skipped, on the argument that a mount writing the cell its own key reads
-// would re-enter itself -- but the settling/pending flags are what stop
-// re-entrancy, and the skip stopped something else: a mount writing ANOTHER
-// bracket's key, which is legal and which the interpreter settles to a
-// fixpoint. Two effects rekeying each other ran one pass compiled and looped to
-// the bound interpreted. The self-rekey the comment described is now a check
-// error, so the skip guarded nothing it claimed to and broke what it did not
-// mention.
+// Every block, this pass's own synthesized funcs included. A mount writing
+// ANOTHER bracket's key is legal and the interpreter settles it to a fixpoint;
+// the settling/pending flags are what stop a settle re-entering itself, and a
+// bracket writing its own key is a check error.
+//
+// A call to an ordinary function needs nothing at the call: its body is a
+// block of its own, and settles before it returns.
 func (st *effectState) injectSettles() {
-	if len(st.byVar) == 0 {
+	if len(st.byVar) == 0 && len(st.dirtyBy) == 0 {
 		return
 	}
 	blocks := allBlocks(st.pkg)
 	// A nested `if`/`for` body inside an *imperative* block is not one of
 	// these: allBlocks descends control flow in a view body and adds each
-	// branch, but an imperative block arrives as one pointer. So the recursion
+	// branch, but an imperative block arrives as one pointer. So the walk
 	// below skips a body that is already on the list, and reaches the ones that
 	// never were -- `@click { if n > 0 { running = !running } }` settled
 	// nothing at all, one brace deeper than the fixture that covers this.
@@ -1065,42 +1160,175 @@ func (st *effectState) injectSettles() {
 	for _, b := range blocks {
 		own[b] = true
 	}
+	tests := map[*[]ir.Stmt]bool{}
+	for _, fn := range st.pkg.Funcs {
+		if fn.IsTest {
+			tests[&fn.Block] = true
+		}
+	}
 	for _, block := range blocks {
-		*block = st.injectInto(*block, own)
+		hit := map[*effectGroup]bool{}
+		st.collectSettled(*block, own, hit)
+		if len(hit) == 0 {
+			*block = st.markInto(*block, own)
+			continue
+		}
+		var groups []*effectGroup
+		for _, g := range st.groups {
+			if hit[g] {
+				groups = append(groups, g)
+			}
+		}
+		if tests[block] {
+			// A test body marks and settles after each write, by calls: each
+			// test emitter spells the instance's own functions through the
+			// instance it holds.
+			*block = st.settleAfterWrites(*block, own, func(_ *effectGroup, f *ir.Func) ir.Stmt { return callOf(f) })
+			continue
+		}
+		*block = st.settleInto(st.markInto(*block, own), own, groups, true, func(g *effectGroup) ir.Stmt { return callOf(g.settle) })
 	}
 }
 
-func (st *effectState) injectInto(stmts []ir.Stmt, own map[*[]ir.Stmt]bool) []ir.Stmt {
+// markFunc is fx's mark, built on first use.
+func (st *effectState) markFunc(fx *loweredEffect) *ir.Func {
+	if fx.mark == nil {
+		fx.mark = &ir.Func{
+			Name:        strings.TrimSuffix(fx.dirty.Name, "_dirty") + "_mark",
+			Return:      ir.TypVoid,
+			Purity:      ir.PurityMutates,
+			Synthesized: true,
+			Block:       []ir.Stmt{st.setFlag(fx.dirty, true)},
+		}
+		st.addFunc(&ir.Owner{Comp: fx.comp}, fx.mark)
+	}
+	return fx.mark
+}
+
+// settleAfterWrites settles after each statement of a test body that writes:
+// a test reads the instance between statements, and the interpreter settles
+// before every read, so each write is a handler of its own.
+func (st *effectState) settleAfterWrites(stmts []ir.Stmt, own map[*[]ir.Stmt]bool, call func(*effectGroup, *ir.Func) ir.Stmt) []ir.Stmt {
 	out := make([]ir.Stmt, 0, len(stmts))
 	for _, s := range stmts {
-		st.injectNested(s, own)
+		for _, b := range nestedBodies(s) {
+			if !own[b] {
+				*b = st.markInto(*b, own)
+			}
+		}
 		out = append(out, s)
-		for _, g := range st.settledBy(s) {
-			out = append(out, callOf(g.settle))
+		seen := map[*loweredEffect]bool{}
+		for _, v := range st.writtenVars(s) {
+			for _, fx := range st.dirtyBy[v] {
+				if !seen[fx] {
+					seen[fx] = true
+					out = append(out, call(fx.group, st.markFunc(fx)))
+				}
+			}
+		}
+		hit := map[*effectGroup]bool{}
+		st.collectSettled([]ir.Stmt{s}, own, hit)
+		for _, g := range st.groups {
+			if hit[g] {
+				out = append(out, call(g, g.settle))
+			}
 		}
 	}
 	return out
 }
 
-// injectNested descends the control flow a statement holds. A lambda is not
-// descended: allBlocks lists every lambda body in the package, so one is
-// reached on its own iteration.
-func (st *effectState) injectNested(s ir.Stmt, own map[*[]ir.Stmt]bool) {
-	var bodies []*[]ir.Stmt
+// collectSettled is the scopes a block's writes may move, nested control flow
+// included.
+func (st *effectState) collectSettled(stmts []ir.Stmt, own map[*[]ir.Stmt]bool, hit map[*effectGroup]bool) {
+	for _, s := range stmts {
+		for _, g := range st.settledBy(s) {
+			hit[g] = true
+		}
+		for _, b := range nestedBodies(s) {
+			if !own[b] {
+				st.collectSettled(*b, own, hit)
+			}
+		}
+	}
+}
+
+// markInto sets each `@update`'s flag after the writes that reach its key.
+func (st *effectState) markInto(stmts []ir.Stmt, own map[*[]ir.Stmt]bool) []ir.Stmt {
+	out := make([]ir.Stmt, 0, len(stmts))
+	for _, s := range stmts {
+		for _, b := range nestedBodies(s) {
+			if !own[b] {
+				*b = st.markInto(*b, own)
+			}
+		}
+		out = append(out, s)
+		out = append(out, st.marksDirty(s)...)
+	}
+	return out
+}
+
+// settleInto settles groups before every `return` in a block, and at its end
+// when top is set and the block does not end in one.
+func (st *effectState) settleInto(stmts []ir.Stmt, own map[*[]ir.Stmt]bool, groups []*effectGroup, top bool, call func(*effectGroup) ir.Stmt) []ir.Stmt {
+	settles := func() []ir.Stmt {
+		out := make([]ir.Stmt, len(groups))
+		for i, g := range groups {
+			out[i] = call(g)
+		}
+		return out
+	}
+	out := make([]ir.Stmt, 0, len(stmts)+len(groups))
+	for _, s := range stmts {
+		for _, b := range nestedBodies(s) {
+			if !own[b] {
+				*b = st.settleInto(*b, own, groups, false, call)
+			}
+		}
+		if _, isReturn := s.(*ir.Return); isReturn {
+			out = append(out, settles()...)
+		}
+		out = append(out, s)
+	}
+	if top {
+		if n := len(out); n == 0 || !isReturnStmt(out[n-1]) {
+			out = append(out, settles()...)
+		}
+	}
+	return out
+}
+
+func isReturnStmt(s ir.Stmt) bool {
+	_, ok := s.(*ir.Return)
+	return ok
+}
+
+// nestedBodies is the imperative control flow a statement holds. A lambda is
+// not one: allBlocks lists every lambda body in the package, so one is reached
+// on its own iteration.
+func nestedBodies(s ir.Stmt) []*[]ir.Stmt {
 	switch n := s.(type) {
 	case *ir.If:
-		bodies = []*[]ir.Stmt{&n.Body, &n.Else}
+		return []*[]ir.Stmt{&n.Body, &n.Else}
 	case *ir.For:
-		bodies = []*[]ir.Stmt{&n.Body, &n.Else}
-	default:
-		return
+		return []*[]ir.Stmt{&n.Body, &n.Else}
 	}
-	for _, b := range bodies {
-		if own[b] {
-			continue
+	return nil
+}
+
+// marksDirty is the flags a statement's write sets: every `@update` whose key
+// reads what it wrote is owed a report, whatever value it wrote.
+func (st *effectState) marksDirty(s ir.Stmt) []ir.Stmt {
+	var out []ir.Stmt
+	seen := map[*loweredEffect]bool{}
+	for _, v := range st.writtenVars(s) {
+		for _, fx := range st.dirtyBy[v] {
+			if !seen[fx] {
+				seen[fx] = true
+				out = append(out, st.setFlag(fx.dirty, true))
+			}
 		}
-		*b = st.injectInto(*b, own)
 	}
+	return out
 }
 
 // settledBy is the scopes whose brackets a statement may have moved, in a
@@ -1142,6 +1370,8 @@ func (st *effectState) writtenVars(s ir.Stmt) []*ir.Var {
 	add := func(e ir.Expr) {
 		if v, _ := mutatedVar(st.pkg, st.reactive, e); v != nil {
 			out = append(out, v)
+		} else if v := testMemberVar(e); v != nil {
+			out = append(out, v)
 		}
 	}
 	switch n := s.(type) {
@@ -1153,6 +1383,35 @@ func (st *effectState) writtenVars(s ir.Stmt) []*ir.Var {
 		add(mutatingCallReceiver(n.Call))
 	}
 	return out
+}
+
+// testMemberVar is the component var a test writes through the instance it was
+// handed -- `c.n = 1`, `c.todos.push(x)` -- or nil. The harness writes the
+// instance's state directly, so the write is the program's as much as one in
+// a handler, and moves the brackets keyed on it.
+func testMemberVar(target ir.Expr) *ir.Var {
+	for {
+		switch n := target.(type) {
+		case *ir.Select:
+			if id, isIdent := n.Operand.(*ir.Ident); isIdent {
+				if _, isParam := id.Sym.(*ir.Param); isParam {
+					if comp := componentOf(id); comp != nil {
+						for _, v := range comp.Vars {
+							if v.Name == n.Field {
+								return v
+							}
+						}
+						return nil
+					}
+				}
+			}
+			target = n.Operand
+		case *ir.Index:
+			target = n.Operand
+		default:
+			return nil
+		}
+	}
 }
 
 // cloneStmts is a fresh copy of a statement list, so two branches of one `if`

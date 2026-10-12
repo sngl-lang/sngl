@@ -51,11 +51,15 @@ func (fx *Effects) deliver(next map[Key]MountedEffect, root *Env) (bool, error) 
 	sort.Slice(keys, func(i, j int) bool { return fx.live[keys[i]].seq < fx.live[keys[j]].seq })
 	for _, k := range keys {
 		w := fx.watch[k]
-		// The freshest mount's scope and key, where the node is still there:
-		// the live entry's are as old as the mount that began the lifetime.
+		// A bracket the write took out of the tree reports nothing: what it
+		// would report is a list nothing holds any more, and a compiled settle
+		// asks the position before it reports. The freshest mount's scope and
+		// key otherwise, since the live entry's are as old as the mount that
+		// began the lifetime.
 		e, still := next[k]
 		if !still {
-			e = fx.live[k]
+			w.pending, w.cursor = nil, log.end()
+			continue
 		}
 		if len(w.pending) == 0 {
 			w.pending = reportsFor(e, w, log.since(w.cursor))

@@ -1232,7 +1232,6 @@ func (m *Model) field_activate_handler() {
 
 func (m *Model) day_daySelected_handler() {
 	m.picked = snglCalendarDate((*C.GtkCalendar)(unsafe.Pointer(m.day)))
-	m.__effects0_settle()
 	var __lt0 string
 	if m.picked == nil {
 		__lt0 = "no day"
@@ -1241,6 +1240,7 @@ func (m *Model) day_daySelected_handler() {
 	}
 	m.seen = __lt0
 	C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(m.__n0)), C.CString(m.seen))
+	m.__effects0_settle()
 }
 
 func (m *Model) press_clicked_handler() {
@@ -1827,7 +1827,7 @@ pass sha256:783486e3fc718606e69d1a438b710c67
 -- run/go/fyne --
 pass sha256:31c6429b45c92c7adad3d96e703355d5
 -- run/go/gtk4 --
-pass sha256:89b4996e35f39fa6d18e9373e6394063
+pass sha256:337b97c76f7c83e15ff02381d8e2b265
 -- run/kotlin/android --
 pass sha256:d69bfa67c70d57a41bcc8085bb585140
 -- run/none/html --

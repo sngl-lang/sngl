@@ -2555,7 +2555,39 @@ func (g *htmlGen) emitSynthesizedSlots(b *strings.Builder) {
 			closeDecl(b)
 		}
 	}
+	g.exportTestCalled(b, synthFuncs)
 
+}
+
+// exportTestCalled publishes, in test mode, the synthesized functions a test
+// calls, as the page's own are published: the test module is bundled beside
+// the page and finds what it calls on window. A lowering may have a test call
+// one -- passEffect settles after a test writes an effect's key.
+func (g *htmlGen) exportTestCalled(b *strings.Builder, synth []*ir.Func) {
+	if !g.testMode {
+		return
+	}
+	called := map[*ir.Func]bool{}
+	for _, fn := range g.pkg.Funcs {
+		if !fn.IsTest {
+			continue
+		}
+		_ = ir.Walk(fn.Block, func(n ir.Node) error {
+			if c, ok := n.(*ir.Call); ok && c.Func != nil {
+				called[c.Func] = true
+			}
+			return nil
+		})
+	}
+	var names []string
+	for _, fn := range synth {
+		if called[fn] && !fn.IsMethod() {
+			names = append(names, jsFuncName(fn))
+		}
+	}
+	if len(names) > 0 {
+		fmt.Fprintf(b, "if (typeof window !== 'undefined') { Object.assign(window, { %s }); }\n\n", strings.Join(names, ", "))
+	}
 }
 
 // emitSlotBoots renders each of the page's slots into its anchor. After the

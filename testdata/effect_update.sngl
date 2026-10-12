@@ -1,4 +1,4 @@
-// SKIP(codegen) "an effect's @update and a list's change events are lowered on no compiled target yet"
+// SKIP(codegen) "a list's change events are lowered on no compiled target yet, and the fixture handles them"
 // An effect reports writes to what `on` reads. `@update` is handed the value
 // after them; a list held in a cell may also say how it changed, and a write no
 // change handler describes still reaches `@update`. Each test's log pins the
