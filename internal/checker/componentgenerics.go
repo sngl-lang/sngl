@@ -42,8 +42,27 @@ func (c *checker) bindComponentTypeParams(comp *ir.Component, args ast.ArgList) 
 		}
 		bindTypeParams(p.Type, argType, bindings)
 	}
+	bindEffectChanges(comp, bindings)
 	c.bindFromHandlers(comp, args, bindings)
 	return c.specializeWith(comp, bindings)
+}
+
+// bindEffectChanges binds an effect's change parameters from its key: a list's
+// changes are reported by index and element. Nothing a call site writes says
+// what an element type is but the key, and a handler annotating `item` should
+// be held to it rather than bind it, so this runs before bindFromHandlers.
+// A key that is not a list leaves them at their defaults, and the checker
+// refuses a change handler on one (checkEffectChanges).
+func bindEffectChanges(comp *ir.Component, bindings map[string]*ir.Type) {
+	if comp.Builtin != ir.BuiltinEffect || len(comp.TypeParams) <= ir.EffectElemParam {
+		return
+	}
+	key := bindings[comp.TypeParams[ir.EffectKeyParam].Name]
+	if key == nil || key.Kind != ir.TypeList || len(key.Elems) != 1 {
+		return
+	}
+	bindings[comp.TypeParams[ir.EffectIndexParam].Name] = ir.TypInt
+	bindings[comp.TypeParams[ir.EffectElemParam].Name] = key.Elems[0]
 }
 
 // bindFromHandlers binds what the props left unbound from the types a handler
@@ -458,7 +477,7 @@ func substituteParams(params []*ir.Param, bindings map[string]*ir.Type) []*ir.Pa
 	return out
 }
 
-// checkEffectHandlers reports an effect that brackets nothing.
+// checkEffectHandlers reports an effect that handles nothing.
 //
 // Either handler alone is a whole bracket -- a subscription with nothing to
 // give back, or a teardown for something the tree itself set up -- so the rule
@@ -466,13 +485,11 @@ func substituteParams(params []*ir.Param, bindings map[string]*ir.Type) []*ir.Pa
 // holds no state, which is a program that meant to say something else.
 func (c *checker) checkEffectHandlers(vn *ast.VisualNode) {
 	for _, a := range vn.Args.Args {
-		if h, isHandler := a.(ast.EventHandler); isHandler {
-			if h.Name == "mount" || h.Name == "unmount" {
-				return
-			}
+		if _, isHandler := a.(ast.EventHandler); isHandler {
+			return
 		}
 	}
-	c.error(vn.Pos, "effect declares neither @mount nor @unmount, so it brackets nothing")
+	c.error(vn.Pos, "effect handles none of its events, so it brackets nothing and reports nothing")
 }
 
 // declTypeBindings is what a component's type parameters stand for where the

@@ -29,9 +29,37 @@
 // It belongs to no tree, which is what lets one bracket a lifetime inside a
 // drawing or a menu as readily as inside a layout: an effect renders nothing,
 // so it is no more a widget than it is a shape.
+//
+// **A key that does not compare is watched rather than identified.** A list, a
+// map, or a struct holding one has no equality every target agrees on, so it
+// cannot say when a lifetime ends: an effect keyed on one lives as long as its
+// node, and it may not handle `@mount` or `@unmount`, which would run once and
+// read as though they ran on every change. What it reports instead is each write
+// to what `on` reads, which the compiler knows without comparing anything.
+//
+// `@update` is handed the value after a write. A list keyed on by its own cell
+// -- a var, a prop, a field of either, never a computed list -- may also report
+// how it changed: `@insert` for a push or an insert, `@remove` with the item
+// removed, `@set` for an index assignment or a write inside an element, and
+// `@clear`. A write no such handler describes, replacing the list whole among
+// them, still reaches `@update`, so a program handling the changes has to handle
+// `@update` too. They run after the handler that wrote, in the order the writes
+// were made, each index read against the list as it stood at that write.
+//
+// For a key that does compare, `@update` runs on every write, including one of
+// the value it already held, and before the bracket rekeys. No handler may write
+// what `on` reads.
+//
+// `I` and `E` are what a list's changes are reported in -- its index and its
+// element type -- and are bound from `T` rather than written.
 #[_builtin(effect)]
-component effect<T = struct {}, F>(
+component effect<T = struct {}, I = int, E = dyn, F>(
     on T,
     @mount(key T),
     @unmount(key T),
+    @update(value T),
+    @insert(at I, item E),
+    @set(at I, item E),
+    @remove(at I, item E),
+    @clear(),
 ) F {}

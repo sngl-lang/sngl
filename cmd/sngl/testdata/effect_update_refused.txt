@@ -1,0 +1,39 @@
+# An effect's @update and a list's change events run on the interpreter and
+# are lowered on no compiled target yet. A target refuses one where it is
+# written rather than emitting a bracket that never reports.
+
+! sngl generate --platform html --lang js -o out app.sngl
+stderr 'app.sngl:7:22: an effect''s @update is not implemented on any compiled target yet'
+
+! sngl generate --platform fyne --lang go -o out app.sngl
+stderr 'app.sngl:7:22: an effect''s @update is not implemented on any compiled target yet'
+
+sngl test app.sngl
+stdout 'ok'
+
+-- app.sngl --
+import ui "sngl:ui"
+import "sngl:test"
+
+component saver ui.node {
+    var xs list<int> = []
+    var saved = 0
+    effect(on = xs, @update {
+        saved += 1
+    })
+
+    func add() {
+        xs.push(1)
+    }
+
+    ui.text #out(value = "{saved}")
+}
+
+func testSaves(t test.Test, c saver) {
+    c.add()
+    t.assert(c.out.value == "1")
+}
+
+ui.window(title = "Saver") {
+    saver
+}

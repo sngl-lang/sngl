@@ -480,6 +480,9 @@ type Env struct {
 	nav       *navState
 	navStack  *Env
 	navParams *navParams
+	// wlog is the program's write log, held by the outermost scope and
+	// reached by every other through writes().
+	wlog *writeLog
 }
 
 func NewEnv() *Env {
@@ -487,6 +490,7 @@ func NewEnv() *Env {
 		vals:      map[ir.Symbol]any{},
 		childEnvs: map[childKey]*Env{},
 		handling:  new(int),
+		wlog:      &writeLog{},
 	}
 }
 
@@ -636,6 +640,7 @@ func (env *Env) Snapshot() *Env {
 		origin:     env,
 		spreadVals: env.spreadVals,
 		handling:   env.handling,
+		wlog:       env.writes(),
 		build:      env.build,
 	}
 	maps.Copy(cp.vals, env.vals)
@@ -1798,6 +1803,10 @@ func (env *Env) evalUnary(e *ir.Unary) (any, error) {
 type listRef struct {
 	list []any
 	idx  int
+	// iter is the loop's iterable and at the scope it was evaluated in, which
+	// is where a write through the element lands (listRef.cell).
+	iter ir.Expr
+	at   *Env
 }
 
 func (r *listRef) get() any  { return r.list[r.idx] }
@@ -1979,7 +1988,7 @@ func (env *Env) evalTypeMethodCall(call *ir.Call) (any, error) {
 
 	// List mutation (push/remove) needs writeback; evaluate before user funcs
 	// since stdlib push/remove delegate to untranslated intrinsics.
-	if receiverName == "list" && (method == "push" || method == "remove") && len(call.Args) >= 1 {
+	if receiverName == "list" && isListMutation(method) && len(call.Args) >= 1 {
 		return env.evalBuiltinMethod(call, method, evalArgs)
 	}
 
@@ -2101,7 +2110,7 @@ func (env *Env) evalNamespaceCall(call *ir.Call) (any, error) {
 			}
 			// Mutation methods on lists need a writeback; dispatch before
 			// user-defined stdlib bodies that delegate to intrinsics.
-			if method == "push" || method == "remove" || method == "filter" || method == "map" {
+			if isListMutation(method) || method == "filter" || method == "map" {
 				return env.evalBuiltinMethodFromRecv(call.Receiver, method, recv, evalArgs[1:])
 			}
 			if fn := recvFn; recvOK && len(fn.Block) > 0 {
@@ -2207,7 +2216,7 @@ func (env *Env) evalBuiltinMethodFromRecv(recvExpr ir.Expr, method string, recv 
 	case "push":
 		if list, ok := recv.([]any); ok && len(rest) == 1 {
 			newList := append(list, rest[0])
-			return env.writeBackList(recvExpr, newList)
+			return env.writeBackList(recvExpr, newList, writeInsert, len(list), rest[0])
 		}
 	case "remove":
 		if list, ok := recv.([]any); ok && len(rest) == 1 {
@@ -2215,8 +2224,21 @@ func (env *Env) evalBuiltinMethodFromRecv(recvExpr ir.Expr, method string, recv 
 			if idx < 0 || idx >= len(list) {
 				return list, nil // documented: out of range leaves the list unchanged
 			}
+			removed := list[idx]
 			newList := append(list[:idx], list[idx+1:]...)
-			return env.writeBackList(recvExpr, newList)
+			return env.writeBackList(recvExpr, newList, writeRemove, idx, removed)
+		}
+	case "insert":
+		if list, ok := recv.([]any); ok && len(rest) == 2 {
+			idx := ToInt(rest[0])
+			if idx < 0 || idx > len(list) {
+				return list, nil // documented: out of range leaves the list unchanged
+			}
+			return env.writeBackList(recvExpr, slices.Insert(slices.Clone(list), idx, rest[1]), writeInsert, idx, rest[1])
+		}
+	case "clear":
+		if _, ok := recv.([]any); ok && len(rest) == 0 {
+			return env.writeBackList(recvExpr, []any{}, writeClear, 0, nil)
 		}
 	case "contains":
 		if s, ok := recv.(string); ok && len(rest) == 1 {
@@ -2228,6 +2250,16 @@ func (env *Env) evalBuiltinMethodFromRecv(recvExpr ir.Expr, method string, recv 
 		return mapMethodResult(method, m, rest)
 	}
 	return nil, fmt.Errorf("unsupported method %q on %T", method, recv)
+}
+
+// isListMutation is whether method is one of list's in-place mutations, which
+// write their receiver back rather than returning a new list.
+func isListMutation(method string) bool {
+	switch method {
+	case "push", "remove", "insert", "clear":
+		return true
+	}
+	return false
 }
 
 // methodNameFromCall recovers the method name for a Receiver-bearing call from
@@ -2296,7 +2328,7 @@ func (env *Env) evalBuiltinMethod(call *ir.Call, method string, evalArgs []any) 
 	case "push":
 		if list, ok := recv.([]any); ok && len(rest) == 1 {
 			newList := append(list, rest[0])
-			return env.writeBackList(call.Args[0].Value, newList)
+			return env.writeBackList(call.Args[0].Value, newList, writeInsert, len(list), rest[0])
 		}
 	case "remove":
 		if list, ok := recv.([]any); ok && len(rest) == 1 {
@@ -2304,8 +2336,21 @@ func (env *Env) evalBuiltinMethod(call *ir.Call, method string, evalArgs []any) 
 			if idx < 0 || idx >= len(list) {
 				return list, nil // documented: out of range leaves the list unchanged
 			}
+			removed := list[idx]
 			newList := append(list[:idx], list[idx+1:]...)
-			return env.writeBackList(call.Args[0].Value, newList)
+			return env.writeBackList(call.Args[0].Value, newList, writeRemove, idx, removed)
+		}
+	case "insert":
+		if list, ok := recv.([]any); ok && len(rest) == 2 {
+			idx := ToInt(rest[0])
+			if idx < 0 || idx > len(list) {
+				return list, nil // documented: out of range leaves the list unchanged
+			}
+			return env.writeBackList(call.Args[0].Value, slices.Insert(slices.Clone(list), idx, rest[1]), writeInsert, idx, rest[1])
+		}
+	case "clear":
+		if _, ok := recv.([]any); ok && len(rest) == 0 {
+			return env.writeBackList(call.Args[0].Value, []any{}, writeClear, 0, nil)
 		}
 	case "contains":
 		if s, ok := recv.(string); ok && len(rest) == 1 {
@@ -2320,7 +2365,8 @@ func (env *Env) evalBuiltinMethod(call *ir.Call, method string, evalArgs []any) 
 }
 
 // writeBackList applies a mutated list back to its originating variable.
-func (env *Env) writeBackList(target ir.Expr, newList []any) (any, error) {
+func (env *Env) writeBackList(target ir.Expr, newList []any, kind writeKind, index int, item any) (any, error) {
+	defer env.noteWrite(target, kind, index, item)
 	switch t := target.(type) {
 	case *ir.Ident:
 		if owner := env.findVarOwner(t.Sym); owner != nil {
@@ -2345,6 +2391,12 @@ func (env *Env) writeBackList(target ir.Expr, newList []any) (any, error) {
 			if err := cv.WriteBackList(t.Field, newList); err != nil {
 				return nil, err
 			}
+		}
+		// A list in a struct's field: the struct is shared, so writing the
+		// field is the write. Without it `h.items.push(2)` grew a slice
+		// nothing held.
+		if st, ok := obj.(*Struct); ok {
+			st.Set(t.Field, newList)
 		}
 	default:
 		return nil, fmt.Errorf("testrunner.writeBackList: unhandled target ir.Expr %T", target)

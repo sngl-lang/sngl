@@ -78,6 +78,13 @@ func init() {
 		return "if __i := " + a[1] + "; __i >= 0 && __i < len(" + a[0] + ") { " +
 			a[0] + " = append(" + a[0] + "[:__i], " + a[0] + "[__i+1:]...) }"
 	})
+	// slices.Insert panics outside [0, len]; the declaration leaves the list
+	// unchanged there instead.
+	regImp("list.insert", []string{"slices"}, func(a []string) string {
+		return "if __i := " + a[1] + "; __i >= 0 && __i <= len(" + a[0] + ") { " +
+			a[0] + " = slices.Insert(" + a[0] + ", __i, " + a[2] + ") }"
+	})
+	reg("list.clear", func(a []string) string { return a[0] + " = " + a[0] + "[:0]" })
 
 	// --- int/float min, max, abs, clamp ---
 	// Their SNGL bodies are correct but spell the answer as a ternary, which

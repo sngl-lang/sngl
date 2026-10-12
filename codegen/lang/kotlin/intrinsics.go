@@ -91,6 +91,11 @@ func init() {
 		return "run { val __l = " + a[0] + "; val __i = " + a[1] + "; " +
 			"if (__i >= 0 && __i < __l.size) __l.removeAt(__i) }"
 	})
+	reg("list.insert", func(a []string) string {
+		return "run { val __l = " + a[0] + "; val __i = " + a[1] + "; " +
+			"if (__i >= 0 && __i <= __l.size) __l.add(__i, " + a[2] + ") }"
+	})
+	reg("list.clear", func(a []string) string { return a[0] + ".clear()" })
 
 	// --- list and map (non-mutating) ---
 	reg("list.length", func(a []string) string { return a[0] + ".size" })

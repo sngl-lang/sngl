@@ -18,6 +18,9 @@ import (
 // inlined in the handler body lands in a function passEffect synthesized and no
 // settle is injected there. Two shapes of one program, three answers.
 //
+// Every handler: `@update` and the list's changes report a write to the key,
+// so one writing it would report itself.
+//
 // Only the effect's OWN handlers, and only its OWN key. A click handler, a
 // timer or any other code writing the key is the ordinary way to rekey a
 // bracket and stays legal -- that write is not inside the lifetime it ends.
@@ -81,7 +84,7 @@ func (c *checker) reportSelfRekey(pkg *ir.Package, inst *ir.NodeInst, scope map[
 		return
 	}
 	for _, h := range inst.Handlers {
-		if h.Func == nil || (h.Name != "mount" && h.Name != "unmount") {
+		if h.Func == nil {
 			continue
 		}
 		writes := map[*ir.Var]bool{}
@@ -107,6 +110,10 @@ func (c *checker) reportRekey(inst *ir.NodeInst, h ir.EventHandler, name string)
 	pos := ir.StmtPos(inst)
 	if h.AST != nil {
 		pos = h.AST.Pos
+	}
+	if h.Name != ir.EffectMount && h.Name != ir.EffectUnmount {
+		c.error(pos, "an effect's @%s writes %q, which the same effect's `on` reads, so it would report its own write; write it from a click handler, a timer, or any other code the effect does not run", h.Name, name)
+		return
 	}
 	c.error(pos, "an effect's @%s writes %q, which the same effect's `on` reads, so the bracket rekeys itself; write the key from a click handler, a timer, or any other code outside the lifetime it ends", h.Name, name)
 }

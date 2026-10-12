@@ -1,0 +1,68 @@
+// An effect's change events -- @insert, @set, @remove, @clear -- describe a
+// write to a list held in a cell. Each shape below asks one of them of a key
+// that cannot answer it, so the handler would never run, and each is refused
+// rather than left in place looking as though it did.
+
+import . "sngl:ui"
+
+struct Holder {
+    items list<int>
+}
+
+component main node {
+    var (
+        n = 0
+        xs list<int> = [1]
+        h = Holder{items=[1]}
+        m map<string, int> = {"a"=1}
+        log list<string> = []
+    )
+
+    // The forms that work: a list in a var, and a list in a field of one.
+    effect(on=xs, @update {}, @insert(at, item) {}, @remove(at, item) {}, @set(at, item) {}, @clear {})
+
+    effect(on=h.items, @update {}, @insert {})
+
+    // A list's element type is bound from the key, so an annotation is held to
+    // it.
+    effect(on=xs, @update {}, @insert(at int, item int) {})
+
+    effect(on=xs, @update {}, @insert(at int, item string) {}) // ERROR(check) "string"
+
+    effect(on=n, @update {}, @insert {}) // ERROR(check) "reports a change to a list, and `on` is int"
+
+    effect(on=m, @update {}, @set {}) // ERROR(check) "reports a change to a list, and `on` is map<string, int>"
+
+    effect(@mount {}, @clear {}) // ERROR(check) "this effect has no `on`"
+
+    effect(on=xs.filter(func(x int) => x > 0), @update {}, @remove {}) // ERROR(check) "`on` is computed from one"
+
+    effect(on=xs, @insert {}) // ERROR(check) "an effect handling @insert must handle @update too"
+
+    // A key that does not compare identifies no lifetime, so a bracket on one
+    // would run once while reading as though it ran on every change.
+    effect(on=xs, @mount {}, @update {}) // ERROR(check) "to react to a write to the list, handle @update instead"
+
+    // A handler writing what its own key reads would report its own write.
+    effect(
+        on = xs,
+        @update { // ERROR(check) "so it would report its own write"
+            xs.push(2)
+        },
+    )
+
+    effect(
+        on = n,
+        @update {
+            log.push("n")
+        },
+    )
+
+    effect(on=n) // ERROR(check) "effect handles none of its events"
+
+    text(value=log.join(","))
+}
+
+window {
+    main
+}

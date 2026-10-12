@@ -385,6 +385,7 @@ func (cv *componentValue) SetField(op ast.AssignOp, field string, val any) error
 		return err
 	}
 	cv.Env.Set(sym, nv)
+	cv.Env.NoteReplace(sym)
 	// After the write, not before: the assignment is what the new lifetimes are
 	// keyed on, so settling first would reconcile against the old value and
 	// leave the change to whatever read came next.
@@ -500,6 +501,7 @@ func (cv *componentValue) Toggle(field string) error {
 		return fmt.Errorf("cannot toggle non-bool field %q", field)
 	}
 	cv.Env.Set(sym, !b)
+	cv.Env.NoteReplace(sym)
 	return nil
 }
 
@@ -513,6 +515,16 @@ func (cv *componentValue) WriteBackList(field string, list []any) error {
 	}
 	cv.Env.Set(sym, list)
 	return nil
+}
+
+// FieldCell is the binding field names in the instance's scope.
+func (cv *componentValue) FieldCell(field string) (*interp.Env, ir.Symbol, bool) {
+	sym, err := cv.writableFieldSym(field)
+	if err != nil || sym == nil {
+		return nil, nil, false
+	}
+	owner, ok := cv.Env.CellOf(sym)
+	return owner, sym, ok
 }
 
 // childComponentByID returns the live componentValue wrapper for a user

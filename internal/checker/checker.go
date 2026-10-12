@@ -3922,6 +3922,7 @@ func (c *checker) finishDeclarations(pkg *ir.Package) {
 	// After the fixpoint, because the rule reads what a handler writes through
 	// the functions it calls and those sets are only complete now.
 	c.checkEffectSelfRekey(pkg)
+	c.checkEffectChanges(pkg)
 
 	// Every body is checked, so every instance is built and every type
 	// parameter a call site pinned can be followed to what it pinned it to.

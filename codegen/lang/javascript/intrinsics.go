@@ -181,6 +181,11 @@ func init() {
 		return "((__l, __i) => { if (__i >= 0 && __i < __l.length) __l.splice(__i, 1) })(" +
 			a[0] + ", " + a[1] + ")"
 	})
+	reg("list.insert", func(a []string) string {
+		return "((__l, __i, __x) => { if (__i >= 0 && __i <= __l.length) __l.splice(__i, 0, __x) })(" +
+			a[0] + ", " + a[1] + ", " + a[2] + ")"
+	})
+	reg("list.clear", func(a []string) string { return a[0] + ".length = 0" })
 
 	// --- html placement directives (GitLab #27) ---
 	// html.frontend(v)/html.backend(v) are identity directives consumed by the
