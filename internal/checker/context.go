@@ -64,18 +64,18 @@ func (c *checker) registerRootContextDecl(s *ast.CallStmt) {
 	args := s.Call.Args.Args
 	if len(args) == 0 {
 		c.error(s.Pos, "context decl requires a default value")
-		c.pkg.Contexts = append(c.pkg.Contexts, ctx)
+		c.declPkg().Contexts = append(c.declPkg().Contexts, ctx)
 		return
 	}
 	if len(args) > 1 {
 		c.error(s.Pos, "context decl takes exactly one default value")
-		c.pkg.Contexts = append(c.pkg.Contexts, ctx)
+		c.declPkg().Contexts = append(c.declPkg().Contexts, ctx)
 		return
 	}
 	a, isArg := args[0].(ast.Arg)
 	if !isArg || a.Name != "" {
 		c.error(s.Pos, "context default must be positional, not named")
-		c.pkg.Contexts = append(c.pkg.Contexts, ctx)
+		c.declPkg().Contexts = append(c.declPkg().Contexts, ctx)
 		return
 	}
 	// The default is an initializer expression, evaluated once when the
@@ -102,9 +102,9 @@ func (c *checker) registerRootContextDecl(s *ast.CallStmt) {
 		}
 	})
 	// A context is program-global whichever tier declared it: the one sngl:i18n
-	// declares has to reach the program's own codegen, which reads
-	// c.pkg.Contexts.
-	c.pkg.Contexts = append(c.pkg.Contexts, ctx)
+	// declares reaches the program's own codegen, which reads its
+	// Contexts, when the program adopts the library's (adoptLibContexts).
+	c.declPkg().Contexts = append(c.declPkg().Contexts, ctx)
 }
 
 // reportSelfReferentialDefault reports a context default that reads the
@@ -147,4 +147,24 @@ func (c *checker) refuseSetContextName(e ir.Expr) {
 		}
 	}
 	c.error(pos, "t.setContext sets a context: name one declared with `context #name(default)`")
+}
+
+// adoptLibContexts puts the contexts a library package and what it imports
+// declare on the program's list, in the order they were declared: a context is
+// program-global whichever package declared it, and the library is loaded once
+// for every check that reaches it.
+func (c *checker) adoptLibContexts(pkg *ir.Package) {
+	if pkg == nil || c.adoptedContexts[pkg] {
+		return
+	}
+	if c.adoptedContexts == nil {
+		c.adoptedContexts = map[*ir.Package]bool{}
+	}
+	c.adoptedContexts[pkg] = true
+	for _, imp := range pkg.Imports {
+		c.adoptLibContexts(imp.Pkg)
+	}
+	if pkg != c.pkg {
+		c.adoptContexts(pkg)
+	}
 }

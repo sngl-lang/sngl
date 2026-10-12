@@ -84,7 +84,7 @@ func (r *Runner) Emit(e Emit) (map[string][]byte, error) {
 	if pkg == nil {
 		pkg = e.Program
 	}
-	env, err := interp.BuildEnv(pkg, "")
+	env, err := interp.BuildEnv(pkg, "", nil)
 	if err != nil {
 		return nil, err
 	}

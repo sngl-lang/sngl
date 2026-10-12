@@ -166,6 +166,7 @@ func runDump(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
+		pkg = ir.ClonePackageFor(pkg, target.Platform, target.Lang)
 		start := time.Now()
 		if err := optimize.Optimize(pkg, &optimize.Config{
 			Trust:    cliTrust,
@@ -198,6 +199,7 @@ func runDump(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
+		pkg = ir.ClonePackageFor(pkg, target.Platform, target.Lang)
 		start := time.Now()
 		if err := optimize.Optimize(pkg, &optimize.Config{
 			Trust:    cliTrust,
@@ -239,6 +241,7 @@ func runDumpLowered(cmd *cobra.Command, args []string, f dumpFormat, inp dumpInp
 	if err != nil {
 		return err
 	}
+	pkg = ir.ClonePackageFor(pkg, target.Platform, target.Lang)
 
 	plat := codegen.LookupPlatform(target.Platform)
 	lang := codegen.LookupLang(target.Lang)
@@ -295,6 +298,7 @@ func runDumpCodegen(cmd *cobra.Command, args []string, inp dumpInput) error {
 	if err != nil {
 		return err
 	}
+	pkg = ir.ClonePackageFor(pkg, target.Platform, target.Lang)
 
 	plat := codegen.LookupPlatform(target.Platform)
 	lang := codegen.LookupLang(target.Lang)

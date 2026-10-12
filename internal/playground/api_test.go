@@ -208,3 +208,27 @@ ui.window {
 		t.Errorf("html %q, error %q", result.HTML, result.Error)
 	}
 }
+
+// A program importing a directory checks it in a nested check, which shares
+// the outer check's library and must leave it writable until the outer check
+// returns; the build after it works on a copy.
+func TestGenerateWithDirectoryImport(t *testing.T) {
+	const source = `import ui "sngl:ui"
+import sub "./sub"
+
+var n = 2
+
+ui.window(title="t") {
+    ui.text(value="{sub.twice(n)}")
+}
+-- sub/sub.sngl --
+func twice(x int) => x * 2
+`
+	var result map[string]any
+	if err := json.Unmarshal([]byte(Generate(source, "bubbletea", "go")), &result); err != nil {
+		t.Fatal(err)
+	}
+	if msg, _ := result["error"].(string); msg != "" {
+		t.Fatalf("generate: %s", msg)
+	}
+}

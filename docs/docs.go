@@ -18,6 +18,7 @@ import (
 	"duckfam.us/sngl/internal/lower"
 	"duckfam.us/sngl/internal/optimize"
 	"duckfam.us/sngl/internal/parser"
+	"duckfam.us/sngl/ir"
 	"duckfam.us/sngl/lib"
 
 	_ "duckfam.us/sngl/codegen/lang/javascript"
@@ -479,6 +480,7 @@ func compilePreview(source string) string {
 		return ""
 	}
 
+	pkg = ir.ClonePackageFor(pkg, "html", "none")
 	optCfg := &optimize.Config{Platform: "html", Language: "none"}
 	if err := optimize.Optimize(pkg, optCfg); err != nil {
 		return ""

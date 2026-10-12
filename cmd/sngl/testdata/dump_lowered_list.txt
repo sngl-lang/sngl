@@ -52,15 +52,17 @@ cmp stdout fyne.txt
 # html emits HTML and JS; the language emits only the server half of route
 # mode. So a restriction that exists because the language lacks a construct is
 # not html's -- Ternary and ListLambdas are *held* here for the same reason
-# they are held under --lang none, even though Go withholds both. html+go and
-# html+none lower identically, which is again the cmp and not a repeated chain.
+# they are held under --lang none, even though Go withholds both. GenericFuncs
+# is the one the server half needs: its functions are Go, which emits no type
+# parameter, while a page script is JavaScript, which does.
 sngl dump --stage lowered --lang go --platform html --list main.sngl
 stdout '^caps: Toggle,Ternary,Lambda,Ref,Unit,Enum,AsyncCalls,Computed,ListLambdas,Declarative,InstanceState,InsertBefore,InlineSlots,Navigation,StructComponents,StdlibContextParam,Canvas,ReactiveCanvas,NavigationHrefs$'
 stdout ' → SlotChildInstances → '
-cp stdout htmlgo.txt
+stdout ' → CallDefaults → Monomorphize → '
 
 sngl dump --stage lowered --lang none --platform html --list main.sngl
-cmp stdout htmlgo.txt
+stdout ' → SlotChildInstances → '
+stdout ' → CallDefaults → Navigation → '
 
 # android is the one target with no Effect pass: Compose brackets a keyed
 # lifetime itself, so it holds Effects and gets the node rather than the

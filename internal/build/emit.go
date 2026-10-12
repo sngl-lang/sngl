@@ -150,7 +150,7 @@ func (e *familyEmission) host(ni *ir.NodeInst, family *ir.Component, owner *ir.C
 		return nil, true
 	}
 	if e.env == nil {
-		e.env = interp.BuildProgramEnv(e.pkg)
+		e.env = interp.BuildProgramEnv(e.pkg, nil)
 	}
 	// A file is written once, at build time, so whether it is written has to
 	// be known then.

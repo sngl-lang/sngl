@@ -99,7 +99,7 @@ func declID(sym ir.Symbol, exact bool) (string, bool) {
 // and underscore to build it from. Two declarations can share a base name --
 // a local `Style` and an imported one spell one signature -- so a taken name
 // gets a counter rather than a second `type` of that name in the output.
-func (c *checker) anonStructName(pkg *ir.Package, canon []*ir.StructField, sig string) string {
+func (t *declTables) anonStructName(pkg *ir.Package, canon []*ir.StructField, sig string) string {
 	var b strings.Builder
 	b.WriteString(anonStructPrefix)
 	for _, f := range canon {
@@ -109,14 +109,14 @@ func (c *checker) anonStructName(pkg *ir.Package, canon []*ir.StructField, sig s
 	sum := sha256.Sum256([]byte(sig))
 	b.WriteString(hex.EncodeToString(sum[:])[:6])
 	base := b.String()
-	if c.anonNames[pkg] == nil {
-		c.anonNames[pkg] = map[string]bool{}
+	if t.anonNames[pkg] == nil {
+		t.anonNames[pkg] = map[string]bool{}
 	}
 	name := base
-	for n := 2; c.anonNames[pkg][name]; n++ {
+	for n := 2; t.anonNames[pkg][name]; n++ {
 		name = base + "_" + strconv.Itoa(n)
 	}
-	c.anonNames[pkg][name] = true
+	t.anonNames[pkg][name] = true
 	return name
 }
 
@@ -131,23 +131,24 @@ func (c *checker) internAnonStruct(fields []*ir.StructField) *ir.StructDef {
 	})
 	sig, key := anonSignature(canon)
 	pkg := c.declPkg()
-	if c.anonStructs == nil {
-		c.anonStructs = map[*ir.Package]map[string]*ir.StructDef{}
-		c.anonNames = map[*ir.Package]map[string]bool{}
+	t := c.tables()
+	if t.anonStructs == nil {
+		t.anonStructs = map[*ir.Package]map[string]*ir.StructDef{}
+		t.anonNames = map[*ir.Package]map[string]bool{}
 	}
-	if c.anonStructs[pkg] == nil {
-		c.anonStructs[pkg] = map[string]*ir.StructDef{}
+	if t.anonStructs[pkg] == nil {
+		t.anonStructs[pkg] = map[string]*ir.StructDef{}
 	}
-	if sd, ok := c.anonStructs[pkg][key]; ok {
+	if sd, ok := t.anonStructs[pkg][key]; ok {
 		return sd
 	}
 	sd := &ir.StructDef{
-		Name:   c.anonStructName(pkg, canon, sig),
+		Name:   t.anonStructName(pkg, canon, sig),
 		Pkg:    c.declPkg(),
 		Fields: canon,
 		Anon:   true,
 	}
-	c.anonStructs[pkg][key] = sd
+	t.anonStructs[pkg][key] = sd
 	pkg.Structs = append(pkg.Structs, sd)
 	return sd
 }

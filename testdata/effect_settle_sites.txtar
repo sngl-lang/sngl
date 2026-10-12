@@ -403,7 +403,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.__timer0[msg.key] == msg.gen && true {
 			m.k__inst0 = (m.k__inst0 + 1)
 			m.__effects0_settle()
-			cmds = append(cmds, tea.Tick(time.Duration(1000)*time.Millisecond, func(time.Time) tea.Msg { return timerTickMsg0{msg.key, msg.gen} }))
+			cmds = append(cmds, tea.Tick((time.Duration(1000)*time.Millisecond), func(time.Time) tea.Msg { return timerTickMsg0{msg.key, msg.gen} }))
 		}
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
@@ -441,7 +441,7 @@ func (m *Model) __timer0Sync() []tea.Cmd {
 			m.__timer0Seq[key]++
 			gen := m.__timer0Seq[key]
 			m.__timer0[key] = gen
-			cmds = append(cmds, tea.Tick(time.Duration(1000)*time.Millisecond, func(time.Time) tea.Msg { return timerTickMsg0{key, gen} }))
+			cmds = append(cmds, tea.Tick((time.Duration(1000)*time.Millisecond), func(time.Time) tea.Msg { return timerTickMsg0{key, gen} }))
 		}
 	}
 	for key := range m.__timer0 {
@@ -489,4 +489,4 @@ func main() {
 	}
 }
 -- run/go/bubbletea --
-pass sha256:04a6681b3e2763c2b6e758514323446c
+pass sha256:c09540634437d4f9c6a81ed28d698fb0

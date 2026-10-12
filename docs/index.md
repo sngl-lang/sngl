@@ -6,18 +6,20 @@ description: A purpose-built language for reactive, cross-platform UIs
 
 ## What is SNGL?
 
-SNGL (pronounced "snuggle") is a purpose-built language for describing reactive user interfaces that compile to multiple languages and platforms. Write your UI once, and SNGL compiles it to Web, Desktop, Mobile, and TUI targets.
+SNGL (pronounced "snuggle") is a purpose-built language for describing reactive declarative structures, especially user interfaces that compile to multiple languages and platforms. Write your UI once, and SNGL compiles it to Web, Desktop, Mobile, and TUI targets. Include canvas, rich text, and data fetching for rich interactive applications.
 
-It combines the reactivity of Svelte, the ergonomics of Vue, with a language and platform agnostic code generator. Tooling inspired by and built in Go.
+It combines the reactivity of Svelte, the ergonomics of Vue, with a statically-typed language and platform agnostic code generators. Tooling inspired by and built in Go.
 
 ## Design Philosophy
 
 - **Declarative UI** — describe what your interface looks like, not how to build it
 - **Reactive by default** — state changes automatically propagate to the UI
-- **Cross-platform** — one source file targets Web, Desktop, Mobile, and Terminal
+- **Batteries included** - standard library contains what you need for most applications. Using it allows you to switch platforms effortlessly.
+- **Cross-platform** — one source file targets Web, Desktop, Mobile, and Terminal. Overrides allow easily customizing behavior where needed.
 - **First-class expressions** — Go-like expressions appear directly in the view and compile to native logic in the target language
 - **Compile-time analysis** — types, dependencies, and bindings are verified before code generation
 - **No runtime of its own** — the generated code uses each host's own toolkit; on the web it patches exactly the nodes a change touches, with no virtual DOM
+- **Accessible Native Code** - Anything not provided by the standard library may be accessed through the code generation primitives, so you can seamlessly access the full ecosystem of the target platforms. Native code is generated for each platform, so there's no translation boundary to deal with.
 
 ## Quick Example
 

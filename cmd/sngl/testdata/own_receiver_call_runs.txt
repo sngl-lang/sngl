@@ -1,0 +1,100 @@
+# A component's method calls another through `this` as it calls one bare, on
+# every target. testdata/own_receiver_call.txtar is the code.
+
+sngl test --platform=none app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=html app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=fyne --language=go app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin app.sngl
+stdout '1 tests, 0 failures'
+
+-- app.sngl --
+import . "sngl:test"
+import ui "sngl:ui"
+
+component counter ui.node {
+    var hits = 0
+
+    func add(by int) {
+        hits += by
+    }
+
+    func twice() {
+        this.add(1)
+        add(2)
+    }
+
+    ui.button #b(text="{hits}", @click {
+        twice()
+    })
+}
+
+func testThroughThis(t Test, c counter) {
+    c.b.click()
+    t.assert(c.hits == 3)
+}
+
+ui.window {
+    counter()
+}
+-- testrun/android/kotlin/app.sngl/counter/1 --
+sha256:e0479b0735cca6d621e940da12bf1cb4
+{
+  "results": [
+    {
+      "Desc": "ThroughThis",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/counter/1 --
+sha256:c19ccf3ba1bc86997a02d95761fb49ef
+{
+  "results": [
+    {
+      "Desc": "ThroughThis",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/counter/1 --
+sha256:ecd20781adf1371c922a971430cad1f7
+{
+  "results": [
+    {
+      "Desc": "ThroughThis",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/counter/1 --
+sha256:3adbc8f4d6043dc50eff32f855bac18e
+{
+  "results": [
+    {
+      "Desc": "ThroughThis",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/counter/1 --
+sha256:314fb6ee33618188320f9ef7276d6262
+{
+  "results": [
+    {
+      "Desc": "ThroughThis",
+      "Passed": true
+    }
+  ]
+}

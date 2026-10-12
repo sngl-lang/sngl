@@ -46,6 +46,7 @@ window {
 		t.Fatal("go lang not registered")
 	}
 	caps := codegen.CapsOrNone(lang.LanguageIdentifier(), g.PlatformIdentifier())
+	pkg = ir.ClonePackage(pkg)
 	if err := lower.Lower(pkg, caps, lower.Options{Platform: "gtk4", Language: "go"}); err != nil {
 		t.Fatalf("lower: %v", err)
 	}
@@ -142,6 +143,7 @@ window {
 	g := &Generator{}
 	lang := codegen.LookupLang("go")
 	caps := codegen.CapsOrNone(lang.LanguageIdentifier(), g.PlatformIdentifier())
+	pkg = ir.ClonePackage(pkg)
 	if err := lower.Lower(pkg, caps, lower.Options{Platform: "gtk4", Language: "go"}); err != nil {
 		t.Fatalf("lower: %v", err)
 	}

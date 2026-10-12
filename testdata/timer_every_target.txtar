@@ -255,12 +255,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case timerTickMsg0:
 		if m.__timer0[msg.key] == msg.gen && m.running__inst0 {
 			m.seconds__inst0 += 1
-			cmds = append(cmds, tea.Tick(time.Duration(1000)*time.Millisecond, func(time.Time) tea.Msg { return timerTickMsg0{msg.key, msg.gen} }))
+			cmds = append(cmds, tea.Tick((time.Duration(1000)*time.Millisecond), func(time.Time) tea.Msg { return timerTickMsg0{msg.key, msg.gen} }))
 		}
 	case timerTickMsg1:
 		if m.__timer1[msg.key] == msg.gen && true {
 			m.beats__inst0 += 1
-			cmds = append(cmds, tea.Tick(time.Duration(250)*time.Millisecond, func(time.Time) tea.Msg { return timerTickMsg1{msg.key, msg.gen} }))
+			cmds = append(cmds, tea.Tick((time.Duration(250)*time.Millisecond), func(time.Time) tea.Msg { return timerTickMsg1{msg.key, msg.gen} }))
 		}
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
@@ -292,7 +292,7 @@ func (m *Model) __timer0Sync() []tea.Cmd {
 			m.__timer0Seq[key]++
 			gen := m.__timer0Seq[key]
 			m.__timer0[key] = gen
-			cmds = append(cmds, tea.Tick(time.Duration(1000)*time.Millisecond, func(time.Time) tea.Msg { return timerTickMsg0{key, gen} }))
+			cmds = append(cmds, tea.Tick((time.Duration(1000)*time.Millisecond), func(time.Time) tea.Msg { return timerTickMsg0{key, gen} }))
 		}
 	}
 	for key := range m.__timer0 {
@@ -313,7 +313,7 @@ func (m *Model) __timer1Sync() []tea.Cmd {
 			m.__timer1Seq[key]++
 			gen := m.__timer1Seq[key]
 			m.__timer1[key] = gen
-			cmds = append(cmds, tea.Tick(time.Duration(250)*time.Millisecond, func(time.Time) tea.Msg { return timerTickMsg1{key, gen} }))
+			cmds = append(cmds, tea.Tick((time.Duration(250)*time.Millisecond), func(time.Time) tea.Msg { return timerTickMsg1{key, gen} }))
 		}
 	}
 	for key := range m.__timer1 {
@@ -414,10 +414,10 @@ func New() *Model {
 	m.done__inst0__inst0 = nil
 	m.live__inst0__inst0 = false
 	m.gen__inst0__inst0 = 0
-	m.__effect0_key = time.Duration(0) * time.Millisecond
+	m.__effect0_key = (time.Duration(0) * time.Millisecond)
 	m.__effect0_live = []time.Duration{}
 	m.__effect0_desired = []time.Duration{}
-	m.__effect1_key = time.Duration(0) * time.Millisecond
+	m.__effect1_key = (time.Duration(0) * time.Millisecond)
 	m.__effect1_live = []time.Duration{}
 	m.__effect1_desired = []time.Duration{}
 	m.__effects0_settling = false
@@ -427,7 +427,7 @@ func New() *Model {
 }
 
 func (m *Model) __effect0_mount() {
-	if m.__effect0_key > time.Duration(0)*time.Millisecond {
+	if m.__effect0_key > (time.Duration(0) * time.Millisecond) {
 		m.live__inst1__inst0 = true
 		m.gen__inst1__inst0 = (m.gen__inst1__inst0 + 1)
 		var mine int = m.gen__inst1__inst0
@@ -466,7 +466,7 @@ func (m *Model) __effect0_unmount() {
 func (m *Model) __effect0_down() {
 	m.__effect0_desired = []time.Duration{}
 	if m.running__inst0 {
-		m.__effect0_desired = append(m.__effect0_desired, time.Duration(1000)*time.Millisecond)
+		m.__effect0_desired = append(m.__effect0_desired, (time.Duration(1000) * time.Millisecond))
 	}
 	for __effect0_i, _ := range m.__effect0_live {
 		var __effect0_j int = ((len(m.__effect0_live) - 1) - __effect0_i)
@@ -506,7 +506,7 @@ func (m *Model) __effect0_teardown() {
 }
 
 func (m *Model) __effect1_mount() {
-	if m.__effect1_key > time.Duration(0)*time.Millisecond {
+	if m.__effect1_key > (time.Duration(0) * time.Millisecond) {
 		m.live__inst0__inst0 = true
 		m.gen__inst0__inst0 = (m.gen__inst0__inst0 + 1)
 		var mine int = m.gen__inst0__inst0
@@ -544,7 +544,7 @@ func (m *Model) __effect1_unmount() {
 
 func (m *Model) __effect1_down() {
 	m.__effect1_desired = []time.Duration{}
-	m.__effect1_desired = append(m.__effect1_desired, time.Duration(250)*time.Millisecond)
+	m.__effect1_desired = append(m.__effect1_desired, (time.Duration(250) * time.Millisecond))
 	for __effect1_i, _ := range m.__effect1_live {
 		var __effect1_j int = ((len(m.__effect1_live) - 1) - __effect1_i)
 		if __effect1_j >= len(m.__effect1_desired) {
@@ -805,10 +805,10 @@ func New() *Model {
 	m.visible__inst0 = true
 	m.beats__inst0 = 0
 	m.handle__inst0__inst0 = nil
-	m.__effect0_key = time.Duration(0) * time.Millisecond
+	m.__effect0_key = (time.Duration(0) * time.Millisecond)
 	m.__effect0_live = []time.Duration{}
 	m.__effect0_desired = []time.Duration{}
-	m.__effect1_key = time.Duration(0) * time.Millisecond
+	m.__effect1_key = (time.Duration(0) * time.Millisecond)
 	m.__effect1_live = []time.Duration{}
 	m.__effect1_desired = []time.Duration{}
 	m.__effects0_settling = false
@@ -831,7 +831,7 @@ func (m *Model) __effect0_unmount() {
 func (m *Model) __effect0_down() {
 	m.__effect0_desired = []time.Duration{}
 	if m.running__inst0 {
-		m.__effect0_desired = append(m.__effect0_desired, time.Duration(1000)*time.Millisecond)
+		m.__effect0_desired = append(m.__effect0_desired, (time.Duration(1000) * time.Millisecond))
 	}
 	for __effect0_i, _ := range m.__effect0_live {
 		var __effect0_j int = ((len(m.__effect0_live) - 1) - __effect0_i)
@@ -883,7 +883,7 @@ func (m *Model) __effect1_unmount() {
 
 func (m *Model) __effect1_down() {
 	m.__effect1_desired = []time.Duration{}
-	m.__effect1_desired = append(m.__effect1_desired, time.Duration(250)*time.Millisecond)
+	m.__effect1_desired = append(m.__effect1_desired, (time.Duration(250) * time.Millisecond))
 	for __effect1_i, _ := range m.__effect1_live {
 		var __effect1_j int = ((len(m.__effect1_live) - 1) - __effect1_i)
 		if __effect1_j >= len(m.__effect1_desired) {
@@ -1258,11 +1258,11 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:b79f855d7bc6fd8a8bbd719815312b98
+pass sha256:a25b5824189399732bc98d61137e517a
 -- run/go/fyne --
-pass sha256:0e33fcdb187e0923fdb79fae63840127
+pass sha256:c995c1f8d1c4d966c48849a255c61ef7
 -- run/go/gtk4 --
-pass sha256:705225a698fd8e2795dc39c2fd942d20
+pass sha256:7512549b629b383fb372091c88c51672
 -- run/kotlin/android --
 pass sha256:54ca5f925ab84991f68c22842f14acca
 -- run/none/html --

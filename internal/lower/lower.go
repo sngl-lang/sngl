@@ -42,6 +42,12 @@ var passes = []pass{
 	passNavigationValues,
 	passNavigationHrefs,
 	passPlatformExtensionBody,
+	// Before anything inlines a body or appends an argument of its own: a
+	// default is written where the call is, and names what the callee's
+	// declaration does.
+	passReceiverParam,
+	passCallDefaults,
+	passMonomorphize,
 	passNavigation,
 	passHandleParams,
 	passImplicitState,
@@ -210,6 +216,7 @@ func namesOrOwn(r renamer) renamer {
 // Returns an error wrapping the failing pass's name when any pass fails or
 // when opts.StopAfter names a pass that does not exist.
 func Lower(pkg *ir.Package, feats Features, opts Options) error {
+	ir.InstallOverlay(pkg)
 	if opts.StopAfter == "none" {
 		return nil
 	}

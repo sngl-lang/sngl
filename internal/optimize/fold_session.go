@@ -2,6 +2,7 @@ package optimize
 
 import (
 	"fmt"
+	"log/slog"
 	"maps"
 	"strings"
 
@@ -50,6 +51,7 @@ func NewFold(pkg *ir.Package, cfg *Config) *Fold {
 	}
 	ctx := run.newCtx(pkg)
 	ctx.unroll, ctx.spliced = true, true
+	ctx.redraws = holdsRedraw(pkg)
 	// Built here so every child shares the one map rather than each building
 	// its own.
 	ctx.getNativeImports()
@@ -78,7 +80,7 @@ func (f *Fold) Expr(e ir.Expr) ir.Expr { return foldExpr(e, f.ctx) }
 
 func (f *Fold) Stmts(stmts []ir.Stmt) []ir.Stmt { return foldStmts(stmts, f.ctx) }
 
-func (f *Fold) Clone(stmts []ir.Stmt) []ir.Stmt { return cloneStmts(stmts) }
+func (f *Fold) Clone(stmts []ir.Stmt) []ir.Stmt { return f.ctx.ownCopy(stmts) }
 
 func (f *Fold) Decide(cond ir.Expr) (value, ok bool) {
 	lit, isLit := foldExpr(cloneExpr(cond), f.ctx).(*ir.Literal)
@@ -125,10 +127,10 @@ func (f *Fold) TakeFileAssets() []codegen.FileAsset {
 
 // SettleNatives is evalNativeRounds for the calls a loop variable makes
 // constant, which the first Optimize could not see: `lookup.PackageIndex(p.path)`
-// in a page per package. Each round probes every document that holds a pure
-// native call and discards it, and hands the calls it could not answer to one
-// generated program -- answered one at a time instead, a site of a hundred
-// such pages built a hundred programs.
+// in a page per package. Each round probes the documents that may still hold
+// an unanswered pure native call and discards them, and hands the calls it
+// could not answer to one generated program -- answered one at a time
+// instead, a site of a hundred such pages built a hundred programs.
 func (f *Fold) SettleNatives(probe func(codegen.Fold) error) error {
 	ctx := f.ctx
 	cfg := ctx.cfg
@@ -147,6 +149,7 @@ func (f *Fold) SettleNatives(probe func(codegen.Fold) error) error {
 			return nil
 		}
 		pending = ne.order
+		slog.Info("consteval round", "calls", len(pending))
 		if errs := runNativeRequests(cfg.Cache, cfg.Trust, cfg.Dir, ir.IndexNativeDecls(ctx.pkg), pending); len(errs) > 0 {
 			cfg.nativeErr, ctx.nativeErr = errs, errs
 			return nil
@@ -158,6 +161,13 @@ func (f *Fold) SettleNatives(probe func(codegen.Fold) error) error {
 	}
 	return fmt.Errorf("compile-time evaluation did not settle after %d rounds; still pending: %s",
 		maxEvalRounds, strings.Join(names, ", "))
+}
+
+func (f *Fold) NativesAsked() int {
+	if f.ctx.native == nil {
+		return 0
+	}
+	return f.ctx.native.asked
 }
 
 func (f *Fold) HoldsNativeCall(s ir.Stmt) bool {

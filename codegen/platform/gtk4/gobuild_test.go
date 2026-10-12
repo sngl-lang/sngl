@@ -40,6 +40,7 @@ func generateGTK4ModelBuilt(t *testing.T, src string) string {
 			t.Fatalf("check diag: %s: %s", d.Pos, d.Msg)
 		}
 	}
+	pkg = ir.ClonePackageFor(pkg, "gtk4", "go")
 	optCfg := &optimize.Config{Platform: "gtk4", Language: "go"}
 	if err := optimize.Optimize(pkg, optCfg); err != nil {
 		t.Fatalf("optimize: %v", err)
@@ -86,6 +87,7 @@ func generateGTK4FilesBuilt(t *testing.T, src string) map[string]string {
 			t.Fatalf("check diag: %s: %s", d.Pos, d.Msg)
 		}
 	}
+	pkg = ir.ClonePackageFor(pkg, "gtk4", "go")
 	optCfg := &optimize.Config{Platform: "gtk4", Language: "go"}
 	if err := optimize.Optimize(pkg, optCfg); err != nil {
 		t.Fatalf("optimize: %v", err)

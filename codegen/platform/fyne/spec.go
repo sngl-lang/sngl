@@ -118,6 +118,13 @@ type fyneSpec struct {
 	// ThemeVar is the generated theme this node's paint styles resolved to,
 	// empty when it asked for none. See theme.go.
 	ThemeVar string
+	// RuntimeTheme is set when a paint field of the style reads state: the
+	// theme is then built where the program runs and held in an override the
+	// node is created with, so a write to `style` can replace it.
+	RuntimeTheme bool
+	// StyleValue is set when the style is a whole value rather than a literal
+	// -- a Style held in state -- so the theme is read off it field by field.
+	StyleValue bool
 }
 
 // fyneStyle is the part of sngl.Style this platform can answer, in the
@@ -285,6 +292,13 @@ func specFromProps(tag string, props map[string]ir.Expr) (*fyneSpec, error) {
 		return nil, fmt.Errorf("fyne primitive %s: Spec needs both `new` and `goType`", tag)
 	}
 	sp.Style = styleFromProps(props)
+	switch v := props[stylePropName].(type) {
+	case nil:
+	case *ir.StructLit:
+		sp.RuntimeTheme = readsRuntimePaint(v)
+	default:
+		sp.RuntimeTheme, sp.StyleValue = true, true
+	}
 	return sp, nil
 }
 

@@ -10,8 +10,12 @@ import (
 // package and optional component. When compName is empty, only package-level
 // consts/funcs are populated; when set, the named component's vars/consts/
 // props/funcs are also seeded and env.Comp/BodyStmts are wired up.
-func BuildEnv(pkg *ir.Package, compName string) (*Env, error) {
+// clock is what `time.now()` answers with, all the way down: a var initializer
+// is evaluated here, before BuildEnv returns, so a caller that assigned the
+// field afterwards had already read the wall clock. Nil is the wall clock.
+func BuildEnv(pkg *ir.Package, compName string, clock Clock) (*Env, error) {
 	env := newPackageEnv(pkg)
+	env.Clock = clock
 	if compName == "" {
 		seedPackageState(env, pkg)
 		return env, nil
@@ -28,11 +32,17 @@ func BuildEnv(pkg *ir.Package, compName string) (*Env, error) {
 	// separately rather than overwriting.
 	seedPackageState(env, pkg)
 
+	// Rendered with no call site, so a prop nothing supplies starts from its
+	// type's zero, as an unbound two-way prop's cell does.
+	for _, p := range comp.Props {
+		init := p.Default
+		if init == nil {
+			init = ir.DeclaredDefault(p.Type)
+		}
+		env.Set(p.Sym, evalInit(env, init))
+	}
 	for _, v := range comp.Vars {
 		env.Set(v, evalInit(env, v.Init))
-	}
-	for _, p := range comp.Props {
-		env.Set(p.Sym, evalInit(env, p.Default))
 	}
 	env.Comp = comp
 	env.BodyStmts = comp.Stmts
@@ -41,8 +51,10 @@ func BuildEnv(pkg *ir.Package, compName string) (*Env, error) {
 
 // BuildProgramEnv creates an Env for running pkg as a program: its package
 // state seeded, and its package body as what mounts.
-func BuildProgramEnv(pkg *ir.Package) *Env {
+func BuildProgramEnv(pkg *ir.Package, clock Clock) *Env {
+	ir.InstallOverlay(pkg)
 	env := newPackageEnv(pkg)
+	env.Clock = clock
 	seedPackageState(env, pkg)
 	env.BodyStmts = pkg.Body
 	return env

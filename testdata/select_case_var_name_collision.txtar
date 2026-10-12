@@ -78,7 +78,7 @@ func New() *Model {
 	m.live__inst0 = false
 	m.gen__inst0 = 0
 	m.visible__inst0 = true
-	m.__effect0_key = time.Duration(0) * time.Millisecond
+	m.__effect0_key = (time.Duration(0) * time.Millisecond)
 	m.__effect0_live = []time.Duration{}
 	m.__effect0_desired = []time.Duration{}
 	m.__effects0_settling = false
@@ -88,7 +88,7 @@ func New() *Model {
 }
 
 func (m *Model) __effect0_mount() {
-	if m.__effect0_key > time.Duration(0)*time.Millisecond {
+	if m.__effect0_key > (time.Duration(0) * time.Millisecond) {
 		m.live__inst0 = true
 		m.gen__inst0 = (m.gen__inst0 + 1)
 		var mine int = m.gen__inst0
@@ -126,7 +126,7 @@ func (m *Model) __effect0_unmount() {
 
 func (m *Model) __effect0_down() {
 	m.__effect0_desired = []time.Duration{}
-	m.__effect0_desired = append(m.__effect0_desired, time.Duration(1000)*time.Millisecond)
+	m.__effect0_desired = append(m.__effect0_desired, (time.Duration(1000) * time.Millisecond))
 	for __effect0_i, _ := range m.__effect0_live {
 		var __effect0_j int = ((len(m.__effect0_live) - 1) - __effect0_i)
 		if __effect0_j >= len(m.__effect0_desired) {
@@ -272,4 +272,4 @@ func main() {
 	_ = os.Stderr
 }
 -- run/go/fyne --
-pass sha256:c58dcc581fd166fe9d4f260b42f9965e
+pass sha256:704330ae95e94153aa5bf20e8f9fe14c

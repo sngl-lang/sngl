@@ -220,6 +220,9 @@ func (gc *GoIRContext) Binary(n *ir.Binary, left, right string) string {
 	if out, ok := goMultiBaseUnitBinary(n, left, right); ok {
 		return out
 	}
+	if out, ok := goUnitRatio(n, left, right); ok {
+		return out
+	}
 	if out, ok := goScalarUnitScale(n, left, right); ok {
 		return out
 	}
@@ -237,6 +240,21 @@ func (gc *GoIRContext) Binary(n *ir.Binary, left, right string) string {
 		return eq
 	}
 	return "(" + left + " " + irBinaryOp(n.Op) + " " + right + ")"
+}
+
+// goUnitRatio emits `unit / unit`, which the checker types as the
+// dimensionless float the two magnitudes divide to. Both operands are the
+// unit's host representation -- an integer time.Duration for a duration -- so
+// the bare `/` is Go's integer division and the func returning it does not
+// compile against its float64 result. Widening before the divide is also what
+// keeps a sub-millisecond ratio from truncating to zero.
+//
+// No conversion out of the representation is needed: it cancels.
+func goUnitRatio(n *ir.Binary, left, right string) (string, bool) {
+	if !ir.IsUnitRatio(n) {
+		return "", false
+	}
+	return "(float64(" + left + ") / float64(" + right + "))", true
 }
 
 // goMultiBaseUnitBinary expands a binary op over each base field of a
@@ -1285,7 +1303,7 @@ func (gc *GoIRContext) evalTypeMethodCall(n *ir.Call) string {
 	// nothing the package declares is the hoisted clone: the component it
 	// names is gone, and there is no Go type to attach the method to.
 	if gc.Ctx != nil && (gc.Ctx.Component != nil && gc.Ctx.Component.Name == receiverName ||
-		resolved && !LiftsToFreeFunc(pkg, receiverName)) {
+		resolved && !LiftsToFreeFunc(pkg, n.Func)) {
 		// A method-form call threads the receiver as args[0]; a zero-arg
 		// computed referenced by name carries none, and still dispatches
 		// through `m` rather than lifting to a free func.

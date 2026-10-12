@@ -1107,11 +1107,11 @@ class __anon_e3b0c4 {
 }
 
 data class _page__value(
-    var id: Int,
-    var href: String,
-    var title: String,
-    var meta: __anon_e3b0c4,
-    var copy: List<Int>
+    var id: Int = 0,
+    var href: String = "",
+    var title: String = "",
+    var meta: __anon_e3b0c4 = __anon_e3b0c4(),
+    var copy: List<Int> = listOf()
 )
 
 fun _snglFloatStr(v: Double): String =
@@ -1147,10 +1147,10 @@ fun _page__valueOf(entry: NavBackStackEntry?): _page__value? {
             val it = (items).elementAt(__copy)
             _page__value(id = 0, href = ("/" + it.slug), title = it.title, meta = __anon_e3b0c4(), copy = listOf(__copy))
         }
-        destination.hasRoute<_page__valueRoute1>() -> _page__value(id = 1, href = "/about", title = "About", meta = __anon_e3b0c4(), copy = listOf())
-        destination.hasRoute<_page__valueRoute2>() -> _page__value(id = 2, href = "/faq", title = "FAQ", meta = __anon_e3b0c4(), copy = listOf())
-        destination.hasRoute<_page__valueRoute3>() -> _page__value(id = 3, href = "/framed", title = "Framed", meta = __anon_e3b0c4(), copy = listOf())
-        destination.hasRoute<_page__valueRoute4>() -> _page__value(id = 4, href = "/contact", title = "Contact", meta = __anon_e3b0c4(), copy = listOf())
+        destination.hasRoute<_page__valueRoute1>() -> _page__value(id = 1, href = "/about", title = "About", meta = __anon_e3b0c4(), copy = listOf<Int>())
+        destination.hasRoute<_page__valueRoute2>() -> _page__value(id = 2, href = "/faq", title = "FAQ", meta = __anon_e3b0c4(), copy = listOf<Int>())
+        destination.hasRoute<_page__valueRoute3>() -> _page__value(id = 3, href = "/framed", title = "Framed", meta = __anon_e3b0c4(), copy = listOf<Int>())
+        destination.hasRoute<_page__valueRoute4>() -> _page__value(id = 4, href = "/contact", title = "Contact", meta = __anon_e3b0c4(), copy = listOf<Int>())
         else -> null
     }
 }
@@ -1465,6 +1465,6 @@ pass sha256:d16910a1934607744a725b42acad041a
 -- run/go/gtk4 --
 pass sha256:5604ae7acf2823f9c7aa5691c8fb849c
 -- run/kotlin/android --
-pass sha256:9f7263c194f4f5d24d0b13ebba4b4967
+pass sha256:dc9fbcbe4e3c45e7d4bf3462c3b0d232
 -- run/none/html --
 pass sha256:70a05d3dccf1e4d4bb3022d0b37088b7

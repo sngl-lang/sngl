@@ -306,9 +306,11 @@ package main
 
 import (
 	"duckfam.us/sngl/pkg/go/fynelayout"
+	"duckfam.us/sngl/pkg/go/fynetheme"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
+	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 	"os"
 )
@@ -479,6 +481,7 @@ type __child0Instance struct {
 	__slot1      []fyne.CanvasObject
 	__slot1_at   fyne.CanvasObject
 	__n0         *widget.Button
+	__n0__theme  *container.ThemeOverride
 }
 
 func new__child0Instance(__model *Model, __a___p0 Tab__record, __a___p1 int, __a___p2 int, __a___on0 func()) *__child0Instance {
@@ -498,12 +501,14 @@ func new__child0Instance(__model *Model, __a___p0 Tab__record, __a___p1 int, __a
 		__lt2 = "normal"
 	}
 	c.__n0 = widget.NewButton("", nil)
+	c.__n0__theme = container.NewThemeOverride(c.__n0, fynetheme.New(theme.DefaultTheme()))
 	c.__n0.SetText(c.__prop___p0.Label)
-	_ = __lt2
+	c.__n0__theme.Theme = fynetheme.New(theme.DefaultTheme()).WithWeight(__lt2)
+	c.__n0__theme.Refresh()
 	c.__n0.OnTapped = func() {
 		c.__prop___on0()
 	}
-	c.Root = c.__n0
+	c.Root = c.__n0__theme
 	return c
 }
 
@@ -520,7 +525,8 @@ func (c *__child0Instance) Set__p1(__v int) {
 	} else {
 		__lt0 = "normal"
 	}
-	_ = __lt0
+	c.__n0__theme.Theme = fynetheme.New(theme.DefaultTheme()).WithWeight(__lt0)
+	c.__n0__theme.Refresh()
 }
 
 func (c *__child0Instance) Set__p2(__v int) {
@@ -531,7 +537,8 @@ func (c *__child0Instance) Set__p2(__v int) {
 	} else {
 		__lt1 = "normal"
 	}
-	_ = __lt1
+	c.__n0__theme.Theme = fynetheme.New(theme.DefaultTheme()).WithWeight(__lt1)
+	c.__n0__theme.Refresh()
 }
 
 func (c *__child0Instance) Set__on0(__v func()) {
@@ -861,9 +868,9 @@ import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 
 data class Tab__record(
-    var label: String,
-    var disabled: Boolean,
-    var __id: Int
+    var label: String = "",
+    var disabled: Boolean = false,
+    var __id: Int = 0
 )
 
 fun _snglFloatStr(v: Double): String =
@@ -1203,10 +1210,10 @@ window.__sngl_boot();
 -- run/go/bubbletea --
 pass sha256:af7b9e3b6c84b1cb2b6f28bed74dfaab
 -- run/go/fyne --
-pass sha256:81f7b6f861c476e16e3c25894f7a03bc
+pass sha256:1dfc6033a56c43fa2e732b715b4cf180
 -- run/go/gtk4 --
 pass sha256:103dcac124b54cd5bafd2bceb0d3b41a
 -- run/kotlin/android --
-pass sha256:77ffd28b091ef08da57d0a18a0233af7
+pass sha256:225a36a54547a35ba9dcf3b85ffb4903
 -- run/none/html --
 pass sha256:5462306a55a5206695fca38b35d8914c

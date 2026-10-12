@@ -1398,11 +1398,11 @@ class __anon_e3b0c4 {
 }
 
 data class _page__value(
-    var id: Int,
-    var href: String,
-    var title: String,
-    var meta: __anon_e3b0c4,
-    var copy: List<Int>
+    var id: Int = 0,
+    var href: String = "",
+    var title: String = "",
+    var meta: __anon_e3b0c4 = __anon_e3b0c4(),
+    var copy: List<Int> = listOf()
 )
 
 fun _snglFloatStr(v: Double): String =
@@ -1451,7 +1451,7 @@ fun _page__valueOf(entry: NavBackStackEntry?): _page__value? {
             val c = (r.cols).elementAt(__copy1)
             _page__value(id = 0, href = (if ((c == "3")) "/" else ((("/" + r.name) + "/") + c)), title = (r.name + c), meta = __anon_e3b0c4(), copy = listOf(__copy, __copy1))
         }
-        destination.hasRoute<_page__valueRoute1>() -> _page__value(id = 1, href = "/about", title = "About", meta = __anon_e3b0c4(), copy = listOf())
+        destination.hasRoute<_page__valueRoute1>() -> _page__value(id = 1, href = "/about", title = "About", meta = __anon_e3b0c4(), copy = listOf<Int>())
         else -> null
     }
 }
@@ -1518,4 +1518,4 @@ pass sha256:40bfc012a6f372829050151f6aa7812d
 -- run/go/gtk4 --
 pass sha256:5539452db21961c44f0109adcfc0cbb2
 -- run/kotlin/android --
-pass sha256:925d6eac137323c97ffc2fe2e4b39165
+pass sha256:ed0cadf815db293c1bc45576c4eec4d0

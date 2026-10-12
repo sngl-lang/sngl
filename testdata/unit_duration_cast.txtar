@@ -87,8 +87,8 @@ type Model struct {
 // New creates a Model with default bind values.
 func New() Model {
 	m := Model{}
-	m.d__inst0 = time.Duration(500) * time.Millisecond
-	m.one__inst0 = time.Duration(1) * time.Millisecond
+	m.d__inst0 = (time.Duration(500) * time.Millisecond)
+	m.one__inst0 = (time.Duration(1) * time.Millisecond)
 	m.n__inst0 = 3
 	m.half__inst0 = 0.5
 	m.visible__inst0 = true
@@ -224,10 +224,10 @@ func (m Model) View() tea.View {
 		contentPart_1 = lipgloss.NewStyle().Render(fmt.Sprint(("f " + fmt.Sprint(float64(m.d__inst0)/float64(time.Millisecond)))))
 		contentParts = append(contentParts, contentPart_1)
 		var contentPart_2 string
-		contentPart_2 = lipgloss.NewStyle().Render(fmt.Sprint(("sum " + fmt.Sprint(int((m.d__inst0+time.Duration(100)*time.Millisecond)/time.Millisecond)))))
+		contentPart_2 = lipgloss.NewStyle().Render(fmt.Sprint(("sum " + fmt.Sprint(int((m.d__inst0+(time.Duration(100)*time.Millisecond))/time.Millisecond)))))
 		contentParts = append(contentParts, contentPart_2)
 		var contentPart_3 string
-		contentPart_3 = lipgloss.NewStyle().Render(fmt.Sprint(("secs " + fmt.Sprint(int((m.d__inst0+time.Duration(1000)*time.Millisecond)/time.Millisecond)))))
+		contentPart_3 = lipgloss.NewStyle().Render(fmt.Sprint(("secs " + fmt.Sprint(int((m.d__inst0+(time.Duration(1000)*time.Millisecond))/time.Millisecond)))))
 		contentParts = append(contentParts, contentPart_3)
 		var contentPart_4 string
 		contentPart_4 = lipgloss.NewStyle().Render(fmt.Sprint(("scaled " + fmt.Sprint(int((m.d__inst0*2)/time.Millisecond)))))
@@ -362,7 +362,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:be730800b7e64ceff37d6c353f887563
+pass sha256:5bd7dfeeda624dbfff464e533c7dd693
 -- run/kotlin/android --
 pass sha256:c7111a495177893e4cf271a0c7def0f0
 -- run/none/html --

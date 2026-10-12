@@ -361,6 +361,12 @@ func (u unitValue) firstBase() string {
 	return u.countedIn()
 }
 
+// singleBase reports whether the unit declares one base, which is what makes
+// magnitude() the whole of the value rather than one component of it.
+func (u unitValue) singleBase() bool {
+	return u.Table != nil && len(u.Table.Bases) == 1
+}
+
 func (u unitValue) sameFamily(other unitValue) bool {
 	return u.Table != nil && u.sameUnit(other)
 }
@@ -414,6 +420,11 @@ type Env struct {
 	Log           []string
 	// Locale is the active BCP-47 locale for i18n calls (default "en").
 	Locale string
+	// Clock is what `time.now()` reads, set on the scope a run is rooted at
+	// and found from the rest through the owner chain (Env.clock). A test
+	// hands in the Virtual one its timers are scheduled against, so the two
+	// cannot disagree; nil anywhere on the chain is the wall clock.
+	Clock Clock
 	// ContextVals holds runtime overrides for context values keyed by *ir.Context.
 	// Set by t.setContext(); read by Eval(*ir.ContextRead).
 	ContextVals map[*ir.Context]any
@@ -607,6 +618,7 @@ func (env *Env) Snapshot() *Env {
 		RenderDepth:   env.RenderDepth,
 		maxIterations: env.maxIterations,
 		Locale:        env.Locale,
+		Clock:         env.Clock,
 		ContextVals:   env.ContextVals, // shared reference — overrides visible in child envs
 		// Shared reference: a click handler runs against a snapshot, and the
 		// boundary it trips is the one the original scope renders.
@@ -1678,7 +1690,19 @@ func (env *Env) evalBinary(e *ir.Binary) (any, error) {
 				}
 				return lu.Scale(1 / r), nil
 			}
-			return nil, fmt.Errorf("cannot divide by a unit value")
+			// unit / unit is the dimensionless ratio the checker types as
+			// float. Only for a single-base unit: a multi-base value is a
+			// magnitude per base, so a ratio would need one answer per base
+			// and there is none to pick -- the same premise that refuses
+			// ordering two of them.
+			if lu.sameFamily(ru) && lu.singleBase() && ru.singleBase() {
+				d := ru.magnitude()
+				if d == 0 {
+					return nil, fmt.Errorf("division by zero")
+				}
+				return lu.magnitude() / d, nil
+			}
+			return nil, fmt.Errorf("cannot divide %s by %s", lu.Suffix, ru.Suffix)
 		}
 	}
 
@@ -1822,13 +1846,23 @@ func (env *Env) evalCallSite(call *ir.Call) (any, error) {
 		// An intrinsic this interpreter implements answers a bare call too,
 		// as it does a qualified one: `follow(to, params)` in the package that
 		// declares it. The declaration's body is a placeholder.
-		if _, ok := intrinsics[call.Func.Intrinsic]; ok && call.Func.Intrinsic != "" {
-			args, err := env.evalCallArgs(call.Args)
+		if call.Func.Intrinsic != "" {
+			values, err := env.evalCallArgs(call.Args)
 			if err != nil {
 				return nil, err
 			}
-			result, _, err := runIntrinsic(call.Func.Intrinsic, args)
-			return result, err
+			args, err := env.boundArgValues(call.Func, call.Args, values)
+			if err != nil {
+				return nil, err
+			}
+			if result, handled, err := env.runClockIntrinsic(call.Func, args); handled {
+				return result, err
+			}
+			if _, ok := intrinsics[call.Func.Intrinsic]; ok {
+				result, _, err := runIntrinsic(call.Func.Intrinsic, args)
+				return result, err
+			}
+			return env.callUserFuncArgValues(call.Func, call.Args, values)
 		}
 		return env.EvalUserFuncCallArgs(call.Func, call.Args)
 	}
@@ -1933,6 +1967,10 @@ func (env *Env) evalTypeMethodCall(call *ir.Call) (any, error) {
 			}
 		}
 		evalArgs = append([]any{recv}, rest...)
+	}
+
+	if result, handled, err := env.runClockIntrinsic(call.Func, evalArgs); handled {
+		return result, err
 	}
 
 	if result, handled, err := runIntrinsic(call.Func.Intrinsic, evalArgs); handled {
@@ -2431,45 +2469,51 @@ func (env *Env) EvalUserFuncCallArgs(fn *ir.Func, callArgs []ir.CallArg) (any, e
 // evaluated, values[i] being callArgs[i]'s: a caller that had to read them
 // first must not evaluate them a second time.
 func (env *Env) callUserFuncArgValues(fn *ir.Func, callArgs []ir.CallArg, values []any) (any, error) {
-	hasNamed := false
-	for _, a := range callArgs {
-		if a.Name != "" {
-			hasNamed = true
-			break
-		}
-	}
-	if !hasNamed {
-		return env.evalUserFuncCore(fn, values)
-	}
-
-	vals := make(map[string]any, len(fn.Params))
-	for _, p := range fn.Params {
-		if p.Default != nil {
-			v, err := env.Eval(p.Default)
-			if err != nil {
-				return nil, err
-			}
-			vals[p.Name] = v
-		}
-	}
-	positional := 0
-	for i, a := range callArgs {
-		v := values[i]
-		if a.Name != "" {
-			vals[a.Name] = v
-		} else {
-			if positional < len(fn.Params) {
-				vals[fn.Params[positional].Name] = v
-			}
-			positional++
-		}
-	}
-	// Assemble positional slice in param order for evalUserFuncCore.
-	args := make([]any, len(fn.Params))
-	for i, p := range fn.Params {
-		args[i] = vals[p.Name]
+	args, err := env.boundArgValues(fn, callArgs, values)
+	if err != nil {
+		return nil, err
 	}
 	return env.evalUserFuncCore(fn, args)
+}
+
+// boundArgValues puts already-evaluated arguments in fn's parameter order,
+// by name where one was written and from the default where none was given.
+func (env *Env) boundArgValues(fn *ir.Func, callArgs []ir.CallArg, values []any) ([]any, error) {
+	params := fn.Params
+	// A method of a component called in its own body passes no receiver, and
+	// evalUserFuncCore binds it from the scope when the arguments are one short.
+	if fn.OnComponent() && len(params) > 0 && params[0].Receiver && (len(callArgs) == 0 || callArgs[0].Name != "") {
+		params = params[1:]
+	}
+	vals := make(map[*ir.Param]any, len(params))
+	positional := 0
+	for i, a := range callArgs {
+		if a.Name == "" {
+			if positional < len(params) {
+				vals[params[positional]] = values[i]
+			}
+			positional++
+			continue
+		}
+		for _, p := range params {
+			if p.Name == a.Name {
+				vals[p] = values[i]
+				break
+			}
+		}
+	}
+	args := make([]any, len(params))
+	for i, p := range params {
+		v, ok := vals[p]
+		if !ok && p.Default != nil {
+			var err error
+			if v, err = env.Eval(p.Default); err != nil {
+				return nil, err
+			}
+		}
+		args[i] = v
+	}
+	return args, nil
 }
 
 func (env *Env) evalUserFuncCore(fn *ir.Func, args []any) (any, error) {

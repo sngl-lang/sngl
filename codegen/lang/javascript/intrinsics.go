@@ -52,6 +52,23 @@ func init() {
 	reg("string.replace", func(a []string) string { return a[0] + ".replaceAll(" + a[1] + ", " + a[2] + ")" })
 	reg("string.split", func(a []string) string { return a[0] + ".split(" + a[1] + ")" })
 
+	// --- sngl:time ---
+	// ES reads an offsetless date-time as *local* time, and a SNGL datetime
+	// literal may be written without one -- so the parse supplies Z, and only
+	// where no offset is there: appending it unconditionally makes `...+05:00`
+	// a string Date.parse answers NaN for. One evaluation of the operand,
+	// because the replacement is a function of what matched.
+	utc := func(x string) string {
+		return x + `.replace(/(?:Z|[+-]\d\d:?\d\d)?$/, (m) => m || "Z")`
+	}
+	reg("time.now", func(a []string) string { return "new Date().toISOString()" })
+	reg("datetime.add", func(a []string) string {
+		return "new Date(Date.parse(" + utc(a[0]) + ") + (" + a[1] + ")).toISOString()"
+	})
+	reg("time.between", func(a []string) string {
+		return "(Date.parse(" + utc(a[1]) + ") - Date.parse(" + utc(a[0]) + "))"
+	})
+
 	// --- float math ---
 	reg("float.floor", func(a []string) string { return "Math.floor(" + a[0] + ")" })
 	reg("float.ceil", func(a []string) string { return "Math.ceil(" + a[0] + ")" })

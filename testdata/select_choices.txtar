@@ -433,7 +433,7 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Button
 
 data class Choice__record(
-    var label: String
+    var label: String = ""
 )
 
 fun _snglFloatStr(v: Double): String =
@@ -610,6 +610,6 @@ pass sha256:9aa4afa2f1f5a8e3bd614d1c9987f77b
 -- run/go/fyne --
 pass sha256:5c9f1f4c66647146331e5d05cde19f28
 -- run/kotlin/android --
-pass sha256:786f407a04fb1efa573b7bdeeebc2e97
+pass sha256:93436ec393ed74ecb21faec12cb87d0a
 -- run/none/html --
 pass sha256:7b1306314f2816bf12b2bd530628a21a

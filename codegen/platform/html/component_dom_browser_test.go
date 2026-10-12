@@ -156,6 +156,7 @@ func renderComponentHTML(t *testing.T, src string) string {
 	// real path), instead of the legacy renderStaticX helpers — so this test
 	// reflects what `sngl generate` actually emits.
 	optCfg := &optimize.Config{Platform: gen.PlatformIdentifier(), Language: lang.LanguageIdentifier(), Dir: "."}
+	pkg = ir.ClonePackage(pkg)
 	if err := optimize.Optimize(pkg, optCfg); err != nil {
 		t.Fatalf("optimize: %v", err)
 	}

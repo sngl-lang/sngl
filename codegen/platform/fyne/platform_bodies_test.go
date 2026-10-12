@@ -56,7 +56,7 @@ func TestEveryFyneBodyLowersToADeclaredWidget(t *testing.T) {
 
 	used := map[string]bool{}
 	for _, comp := range OverriddenComponents(pkg) {
-		prims := fynePrimitiveNodes(comp.PlatformOverrides["fyne"].Stmts)
+		prims := fynePrimitiveNodes(pkg.OverridesOf(comp).Platform["fyne"].Stmts)
 		if len(prims) == 0 {
 			t.Errorf("%s: fyne body reaches no fyne primitive", comp.Name)
 			continue

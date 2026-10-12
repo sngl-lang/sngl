@@ -1,0 +1,444 @@
+The clock and instant arithmetic `sngl:time` declares, on every target.
+
+`datetime` is the instant and not a type of its own: it already maps to the
+host's date type, and a second one would be two SNGL types over one host
+representation. What that costs is visible in the three columns -- Go carries a
+datetime as `time.Time` and a duration as `time.Duration`, so the operators
+line up and nothing is converted, while JavaScript and Kotlin carry one as an
+RFC3339 string and pay a parse per operation.
+
+`time.Now().UTC()` rather than `time.Now()` so the four runners agree on what
+the clock *displays*: every other one produces UTC and a bare reading carries
+the machine's zone. It drops Go's monotonic reading, which costs nothing here
+and is noted in the package doc: this is wall-clock time and not a scheduling
+primitive.
+
+Those two produce RFC3339 and read something wider, and both halves are
+deliberate. `toISOString` and `Instant.toString` write the offset; a SNGL
+datetime *literal* may be written without one, and an offsetless date-time is
+read as **local** time by `Date.parse` and refused outright by `Instant.parse`.
+So the parse normalises first, and normalises by supplying Z *only when no
+offset is there* -- which is what `offsetGap` is here to hold. Appending one
+unconditionally is the shorter spelling and turns `...+05:00` into a string
+`Date.parse` answers `NaN` for, propagating into rendered output with nothing
+raised, while Kotlin throws and Go reads it correctly: three targets, three
+answers, for a literal the checker accepts.
+
+What the four agree on is the offsetless forms, `Z`, and `+HH:MM`. They do
+**not** agree beyond that, and the reason is upstream of anything here:
+`checkStringReprLiteral` validates a datetime with an unanchored *prefix*
+match, so `"2024-01-15T10:30:00+0500"` and `"2024-01-15T10:30garbage"` are both
+accepted declarations. The first parses on JavaScript and on nothing else; the
+second is `NaN` there, a panic on Go and an error in the interpreter. Anchoring
+that pattern means settling what a datetime literal's grammar actually is,
+which is a language decision and not this change's to make.
+
+Each normaliser evaluates its operand once -- a replacement function in
+JavaScript, index tests in Kotlin, both inside a `let`/callback -- because the
+operand is an arbitrary expression. Kotlin avoids a `Regex` because these land
+inside `derivedStateOf`, which re-runs on recomposition.
+
+`between` is a package function rather than a `datetime` method because a
+method's first parameter *is* its receiver when it carries the receiver's own
+type, so no `datetime` method can take a second instant.
+
+`since` and `until` have SNGL bodies rather than marks of their own, which is
+how the rule below reaches them: purity propagates through the fixed point, so
+neither restates what `now` already says.
+
+**What keeps a clock out of the artifact is the mark `now` does not carry.** A
+library function with no body is typed pure, and `ir.IsConst` calls a pure call
+constant -- so without `readonly` the build machine's reading is a constant a
+program may put anywhere one is demanded. `error_time_now_is_not_constant.sngl`
+is where that is refused; this is the artifact it would otherwise appear in,
+and the first `deny` is that claim made across every target rather than on the
+one whose spelling happens to be checked below it. It names the shape a folded
+reading is *written* in -- RFC3339 to the second, with an optional fraction and
+a Z -- which is why the offset-bearing literal in the source does not trip it.
+
+deny * `\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z` -- no target may carry a clock reading as a literal; a folded one is written in exactly this form, and the offset-bearing literal below is not
+deny out/go/bubbletea/model.go `(?m)^\tm\.deadline__inst0 = time\.Now\(\)$` -- the clock reads UTC, so that the four runners display one instant the same way
+deny out/go/bubbletea/model.go `Sub\(m\.deadline__inst0\) / ` -- unit / unit is a float ratio, so both operands widen before the divide
+deny out/kotlin/android/app/src/main/java/test/sngl/app/MainScreen.kt `toMillis\(\) / period` -- the same for Kotlin, where a duration is a Long and a bare divide truncates
+deny out/none/html/index.html `replace\(/Z\?\$/` -- Z is supplied only when no offset is there; unconditional turns an offset-bearing literal into NaN
+deny out/kotlin/android/app/src/main/java/test/sngl/app/MainScreen.kt `removeSuffix\("Z"\)` -- the same for Kotlin, where stripping the offset instead throws
+
+-- app.sngl --
+import ui "sngl:ui"
+import time "sngl:time"
+
+output {
+    go {
+        bubbletea
+    }
+    none {
+        html
+    }
+    kotlin {
+        android
+    }
+}
+
+component main ui.node {
+    var deadline = time.now()
+    var period time.duration = 250ms
+    var offset time.datetime = "2024-01-15T10:30:00+05:00"
+
+    func left() => int(time.until(deadline) / 1s)
+
+    func elapsed() => int(time.since(deadline) / 1s)
+
+    func caughtUp() float {
+        return time.between(deadline, time.now()) / period
+    }
+
+    func half() => period / 2
+
+    ui.button(text="arm", @click {
+        deadline = time.now().add(90s)
+    })
+
+    func offsetGap() => int(time.between(offset, offset.add(60s)) / 1s)
+
+    ui.text(value=string(left()) + "/" + string(elapsed()) + "/" + string(caughtUp()) + "/" + string(half()) + "/" + string(offsetGap()))
+}
+
+ui.window {
+    main
+}
+-- out/go/bubbletea/model.go --
+// Code generated by sngl (bubbletea) from app.sngl; DO NOT EDIT.
+
+package main
+
+import (
+	"charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
+	"fmt"
+	"os"
+	"time"
+)
+
+func mustParseDateTime(s string) time.Time {
+	for _, layout := range []string{time.RFC3339, "2006-01-02T15:04:05", "2006-01-02T15:04"} {
+		if t, err := time.Parse(layout, s); err == nil {
+			return t
+		}
+	}
+	panic("not a datetime: " + s)
+}
+
+func snglStrDuration(v time.Duration) string {
+	return fmt.Sprint(float64(v)/float64(time.Millisecond)) + "ms"
+}
+
+// Model is the Bubble Tea model for this SNGL UI.
+type Model struct {
+	deadline__inst0 time.Time
+	period__inst0   time.Duration
+	offset__inst0   time.Time
+	visible__inst0  bool
+	__focusID       int
+
+	width, height int
+}
+
+// New creates a Model with default bind values.
+func New() Model {
+	m := Model{}
+	m.deadline__inst0 = time.Now().UTC()
+	m.period__inst0 = (time.Duration(250) * time.Millisecond)
+	m.offset__inst0 = mustParseDateTime("2024-01-15T10:30:00+05:00")
+	m.visible__inst0 = true
+	m.__focusID = 0
+	return m
+}
+
+// SetTerminalSize sets the terminal dimensions and resizes widgets.
+func (m *Model) SetTerminalSize(w, h int) {
+	m.width = w
+	m.height = h
+}
+
+func (m Model) left__inst0() int {
+	return int((float64((m.deadline__inst0).Sub(time.Now().UTC())) / float64((time.Duration(1000) * time.Millisecond))))
+}
+
+func (m Model) elapsed__inst0() int {
+	return int((float64((time.Now().UTC()).Sub(m.deadline__inst0)) / float64((time.Duration(1000) * time.Millisecond))))
+}
+
+func (m Model) caughtUp__inst0() float64 {
+	return (float64((time.Now().UTC()).Sub(m.deadline__inst0)) / float64(m.period__inst0))
+}
+
+func (m Model) half__inst0() time.Duration {
+	return (m.period__inst0 / 2)
+}
+
+func (m Model) offsetGap__inst0() int {
+	return int((float64(((m.offset__inst0).Add((time.Duration(60000) * time.Millisecond))).Sub(m.offset__inst0)) / float64((time.Duration(1000) * time.Millisecond))))
+}
+
+func (m *Model) __focusNext() {
+	if m.__focusID == 0 {
+		m.__focusID = 0
+	}
+}
+
+func (m *Model) __focusPrev() {
+	if m.__focusID == 0 {
+		m.__focusID = 0
+	}
+}
+
+func (m Model) Deadline__inst0() time.Time {
+	return m.deadline__inst0
+}
+
+func (m Model) SetDeadline__inst0(v time.Time) Model {
+	m.deadline__inst0 = v
+	return m
+}
+
+type setDeadline__inst0Msg struct{ value time.Time }
+
+func SetDeadline__inst0Cmd(v time.Time) tea.Cmd {
+	return func() tea.Msg { return setDeadline__inst0Msg{value: v} }
+}
+
+func (m Model) Period__inst0() time.Duration {
+	return m.period__inst0
+}
+
+func (m Model) SetPeriod__inst0(v time.Duration) Model {
+	m.period__inst0 = v
+	return m
+}
+
+type setPeriod__inst0Msg struct{ value time.Duration }
+
+func SetPeriod__inst0Cmd(v time.Duration) tea.Cmd {
+	return func() tea.Msg { return setPeriod__inst0Msg{value: v} }
+}
+
+func (m Model) Offset__inst0() time.Time {
+	return m.offset__inst0
+}
+
+func (m Model) SetOffset__inst0(v time.Time) Model {
+	m.offset__inst0 = v
+	return m
+}
+
+type setOffset__inst0Msg struct{ value time.Time }
+
+func SetOffset__inst0Cmd(v time.Time) tea.Cmd {
+	return func() tea.Msg { return setOffset__inst0Msg{value: v} }
+}
+
+func (m Model) Visible__inst0() bool {
+	return m.visible__inst0
+}
+
+func (m Model) SetVisible__inst0(v bool) Model {
+	m.visible__inst0 = v
+	return m
+}
+
+type setVisible__inst0Msg struct{ value bool }
+
+func SetVisible__inst0Cmd(v bool) tea.Cmd {
+	return func() tea.Msg { return setVisible__inst0Msg{value: v} }
+}
+
+func (m Model) Init() tea.Cmd {
+	return nil
+}
+
+func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	var cmds []tea.Cmd
+	var cmd tea.Cmd
+	_ = cmd
+	switch msg := msg.(type) {
+	case setDeadline__inst0Msg:
+		m = m.SetDeadline__inst0(msg.value)
+	case setPeriod__inst0Msg:
+		m = m.SetPeriod__inst0(msg.value)
+	case setOffset__inst0Msg:
+		m = m.SetOffset__inst0(msg.value)
+	case setVisible__inst0Msg:
+		m = m.SetVisible__inst0(msg.value)
+	case tea.WindowSizeMsg:
+		m.width = msg.Width
+		m.height = msg.Height
+	case tea.KeyPressMsg:
+		switch {
+		case msg.Code == 'c' && msg.Mod == tea.ModCtrl:
+			if m.visible__inst0 {
+				m.visible__inst0 = false
+			}
+			if !(m.visible__inst0) {
+				return m, tea.Quit
+			}
+			return m, nil
+		case msg.Code == tea.KeyTab && msg.Mod == 0:
+			m.__focusNext()
+		case msg.Code == tea.KeyTab && msg.Mod == tea.ModShift:
+			m.__focusPrev()
+		case msg.Code == tea.KeyEnter && m.__focusID == 0:
+			m.deadline__inst0 = (time.Now().UTC()).Add((time.Duration(90000) * time.Millisecond))
+		}
+	}
+	return m, tea.Batch(cmds...)
+}
+
+func (m Model) View() tea.View {
+	var content string
+	if m.visible__inst0 {
+		var contentParts []string
+		var contentPart_0 string
+		contentPart_0Focused := (m.__focusID == 0)
+		contentPart_0Prefix := " "
+		if contentPart_0Focused {
+			contentPart_0Prefix = ">"
+		}
+		contentPart_0 = lipgloss.NewStyle().Render(contentPart_0Prefix + " " + fmt.Sprint("arm"))
+		contentParts = append(contentParts, contentPart_0)
+		var contentPart_1 string
+		contentPart_1 = lipgloss.NewStyle().Render(fmt.Sprint(((((((((fmt.Sprint(m.left__inst0()) + "/") + fmt.Sprint(m.elapsed__inst0())) + "/") + fmt.Sprint(m.caughtUp__inst0())) + "/") + snglStrDuration(m.half__inst0())) + "/") + fmt.Sprint(m.offsetGap__inst0()))))
+		contentParts = append(contentParts, contentPart_1)
+		content = lipgloss.JoinVertical(lipgloss.Left, contentParts...)
+	}
+	v := tea.NewView(content)
+	v.AltScreen = true
+	return v
+}
+
+func main() {
+	p := tea.NewProgram(New())
+	_, err := p.Run()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		os.Exit(1)
+	}
+}
+-- out/kotlin/android/app/src/main/java/test/sngl/app/MainScreen.kt --
+// Code generated by sngl (android) from app.sngl; DO NOT EDIT.
+
+package test.sngl.app
+
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.ui.platform.LocalContext
+import android.app.Activity
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.layout.Column
+import androidx.compose.material3.Button
+import androidx.compose.ui.Modifier
+import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.material3.Text
+
+fun _snglFloatStr(v: Double): String =
+    if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
+
+fun _snglSplit(s: String, sep: String): List<String> =
+    if (sep.isEmpty()) s.map { it.toString() } else s.split(sep)
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun MainScreen() {
+    var deadline__inst0 by remember { mutableStateOf(java.time.Instant.now().toString()) }
+    var period__inst0 by remember { mutableStateOf(250L) }
+    var offset__inst0 by remember { mutableStateOf("2024-01-15T10:30:00+05:00") }
+    var visible__inst0 by remember { mutableStateOf(true) }
+    val left__inst0 by remember { derivedStateOf { (java.time.Duration.between(java.time.OffsetDateTime.parse(java.time.Instant.now().toString().let { if (it.endsWith("Z") || it.length > 16 && (it[it.length - 6] == '+' || it[it.length - 6] == '-')) it else it + "Z" }).toInstant(), java.time.OffsetDateTime.parse(deadline__inst0.let { if (it.endsWith("Z") || it.length > 16 && (it[it.length - 6] == '+' || it[it.length - 6] == '-')) it else it + "Z" }).toInstant()).toMillis().toDouble() / 1000L.toDouble()).toInt() } }
+    val elapsed__inst0 by remember { derivedStateOf { (java.time.Duration.between(java.time.OffsetDateTime.parse(deadline__inst0.let { if (it.endsWith("Z") || it.length > 16 && (it[it.length - 6] == '+' || it[it.length - 6] == '-')) it else it + "Z" }).toInstant(), java.time.OffsetDateTime.parse(java.time.Instant.now().toString().let { if (it.endsWith("Z") || it.length > 16 && (it[it.length - 6] == '+' || it[it.length - 6] == '-')) it else it + "Z" }).toInstant()).toMillis().toDouble() / 1000L.toDouble()).toInt() } }
+    val caughtUp__inst0 by remember { derivedStateOf { (java.time.Duration.between(java.time.OffsetDateTime.parse(deadline__inst0.let { if (it.endsWith("Z") || it.length > 16 && (it[it.length - 6] == '+' || it[it.length - 6] == '-')) it else it + "Z" }).toInstant(), java.time.OffsetDateTime.parse(java.time.Instant.now().toString().let { if (it.endsWith("Z") || it.length > 16 && (it[it.length - 6] == '+' || it[it.length - 6] == '-')) it else it + "Z" }).toInstant()).toMillis().toDouble() / period__inst0.toDouble()) } }
+    val half__inst0 by remember { derivedStateOf { (period__inst0 / 2) } }
+    val offsetGap__inst0 by remember { derivedStateOf { (java.time.Duration.between(java.time.OffsetDateTime.parse(offset__inst0.let { if (it.endsWith("Z") || it.length > 16 && (it[it.length - 6] == '+' || it[it.length - 6] == '-')) it else it + "Z" }).toInstant(), java.time.OffsetDateTime.parse(java.time.OffsetDateTime.parse(offset__inst0.let { if (it.endsWith("Z") || it.length > 16 && (it[it.length - 6] == '+' || it[it.length - 6] == '-')) it else it + "Z" }).toInstant().plusMillis(60000L).toString().let { if (it.endsWith("Z") || it.length > 16 && (it[it.length - 6] == '+' || it[it.length - 6] == '-')) it else it + "Z" }).toInstant()).toMillis().toDouble() / 1000L.toDouble()).toInt() } }
+
+    if (visible__inst0) {
+        val __activity = LocalContext.current as? Activity
+        BackHandler {
+            visible__inst0 = false
+            if (!(visible__inst0)) {
+                __activity?.finish()
+            }
+        }
+        Column {
+            Button(onClick = {
+                deadline__inst0 = java.time.OffsetDateTime.parse(java.time.Instant.now().toString().let { if (it.endsWith("Z") || it.length > 16 && (it[it.length - 6] == '+' || it[it.length - 6] == '-')) it else it + "Z" }).toInstant().plusMillis(90000L).toString()
+            }, modifier = Modifier.safeDrawingPadding()) {
+                Text(text = "arm", modifier = Modifier)
+            }
+            Text(text = ((((((((left__inst0.toString() + "/") + elapsed__inst0.toString()) + "/") + _snglFloatStr(caughtUp__inst0)) + "/") + ((half__inst0).toString() + "ms")) + "/") + offsetGap__inst0.toString()), modifier = Modifier.safeDrawingPadding())
+        }
+    }
+}
+-- out/none/html/index.html --
+<!-- Code generated by sngl (html) from app.sngl; DO NOT EDIT. -->
+
+<!DOCTYPE html>
+<html><head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: system-ui, sans-serif; }
+  </style>
+</head><body>
+
+<button id="$0">
+  <span>arm</span>
+</button>
+<span id="__n1" data-sngl-id="__n1">
+</span>
+
+<script>
+(() => {
+  // sngl-entry.js
+  var state = { deadline__inst0: null, period__inst0: 250, offset__inst0: "2024-01-15T10:30:00+05:00", visible__inst0: true };
+  state.deadline__inst0 = (/* @__PURE__ */ new Date()).toISOString();
+  function left__inst0() {
+    return Math.trunc((Date.parse(state.deadline__inst0.replace(/(?:Z|[+-]\d\d:?\d\d)?$/, (m) => m || "Z")) - Date.parse((/* @__PURE__ */ new Date()).toISOString().replace(/(?:Z|[+-]\d\d:?\d\d)?$/, (m) => m || "Z"))) / 1e3);
+  }
+  function elapsed__inst0() {
+    return Math.trunc((Date.parse((/* @__PURE__ */ new Date()).toISOString().replace(/(?:Z|[+-]\d\d:?\d\d)?$/, (m) => m || "Z")) - Date.parse(state.deadline__inst0.replace(/(?:Z|[+-]\d\d:?\d\d)?$/, (m) => m || "Z"))) / 1e3);
+  }
+  function caughtUp__inst0() {
+    return (Date.parse((/* @__PURE__ */ new Date()).toISOString().replace(/(?:Z|[+-]\d\d:?\d\d)?$/, (m) => m || "Z")) - Date.parse(state.deadline__inst0.replace(/(?:Z|[+-]\d\d:?\d\d)?$/, (m) => m || "Z"))) / state.period__inst0;
+  }
+  function half__inst0() {
+    return state.period__inst0 / 2;
+  }
+  function offsetGap__inst0() {
+    return Math.trunc((Date.parse(new Date(Date.parse(state.offset__inst0.replace(/(?:Z|[+-]\d\d:?\d\d)?$/, (m) => m || "Z")) + 6e4).toISOString().replace(/(?:Z|[+-]\d\d:?\d\d)?$/, (m) => m || "Z")) - Date.parse(state.offset__inst0.replace(/(?:Z|[+-]\d\d:?\d\d)?$/, (m) => m || "Z"))) / 1e3);
+  }
+  function String(v) {
+    return "" + v;
+  }
+  var $0 = document.getElementById("$0");
+  var __n1 = document.querySelector('[data-sngl-id="__n1"]');
+  $0.addEventListener("click", function() {
+    state.deadline__inst0 = new Date(Date.parse((/* @__PURE__ */ new Date()).toISOString().replace(/(?:Z|[+-]\d\d:?\d\d)?$/, (m) => m || "Z")) + 9e4).toISOString();
+    __n1.textContent = String(left__inst0()) + "/" + String(elapsed__inst0()) + "/" + String(caughtUp__inst0()) + "/" + (String(half__inst0()) + "ms") + "/" + String(offsetGap__inst0());
+  });
+  function __sngl_init() {
+    __n1.textContent = String(left__inst0()) + "/" + String(elapsed__inst0()) + "/" + String(caughtUp__inst0()) + "/" + (String(half__inst0()) + "ms") + "/" + String(offsetGap__inst0());
+  }
+  __sngl_init();
+})();
+</script>
+</body></html>
+-- run/go/bubbletea --
+pass sha256:9a66b4a38343013b622f5d26b7acf2d0
+-- run/kotlin/android --
+pass sha256:1de1042cd06080083e9168fe66ab09bf
+-- run/none/html --
+pass sha256:d836f83e12335df047c9cc7fdb4969cb

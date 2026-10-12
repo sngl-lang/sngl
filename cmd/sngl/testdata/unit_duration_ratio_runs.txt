@@ -1,0 +1,83 @@
+# Dividing one duration by another, compiled and run as Go, then run again on
+# the interpreter.
+#
+# testdata/unit_duration_ratio.txtar says what each target generates; this says
+# the answers agree, and it is the claim that matters because the four runners
+# carry a duration differently -- an integer time.Duration on Go, a Long on
+# Kotlin, a number on JavaScript, a magnitude per base in the interpreter.
+#
+# Go and Kotlin emitted the host's integer division into a float, which does
+# not compile; the interpreter refused the operation outright with "cannot
+# divide by a unit value", so `--platform=none` reported an error rather than a
+# wrong number. Both are why a golden alone is not enough here.
+#
+# `fraction` is the one that separates widening before the divide from
+# converting after it: 250ms over 1500ms is a sixth, and an integer division
+# reports zero.
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout 'PASS'
+! stdout 'FAIL'
+
+sngl test --platform=none app.sngl
+stdout 'PASS'
+! stdout 'FAIL'
+
+-- app.sngl --
+import . "sngl:test"
+import ui "sngl:ui"
+import time "sngl:time"
+
+component main ui.node {
+    var span time.duration = 1500ms
+    var period time.duration = 250ms
+    var ratio = 0.0
+    var fraction = 0.0
+    var halved = 0
+
+    effect(@mount {
+        ratio = span / period
+        fraction = period / span
+        halved = int(span / 2)
+    })
+
+    ui.text(value="{ratio}")
+}
+
+// unit / unit is the dimensionless ratio of the two magnitudes.
+func testTheRatioOfTwoDurationsIsAFloat(t Test, c main) {
+    t.assert(c.ratio == 6.0)
+}
+
+// And a float rather than a truncating divide, which is the half no target got
+// right by accident.
+func testARatioBelowOneIsNotTruncated(t Test, c main) {
+    t.assert(c.fraction > 0.16 && c.fraction < 0.17)
+}
+
+// unit / number is still that unit, the other half of the rule.
+func testADurationOverANumberIsADuration(t Test, c main) {
+    t.assert(c.halved == 750)
+}
+
+ui.window {
+    main
+}
+-- testrun/bubbletea/go/app.sngl/main/1 --
+sha256:4eda2a1426fa7d7dc50e625ef79a6c9e
+{
+  "results": [
+    {
+      "Desc": "ADurationOverANumberIsADuration",
+      "Passed": true
+    },
+    {
+      "Desc": "ARatioBelowOneIsNotTruncated",
+      "Passed": true
+    },
+    {
+      "Desc": "TheRatioOfTwoDurationsIsAFloat",
+      "Passed": true
+    }
+  ]
+}

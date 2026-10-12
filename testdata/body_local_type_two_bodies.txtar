@@ -564,13 +564,13 @@ body { font-family: system-ui, sans-serif; }
   state.p__inst0 = "done";
   state.here__inst1 = { bField: "two" };
   state.p__inst1 = "ready";
-  function Local__second_shout(state2, n) {
+  function Local__second_shout(this__r0, n) {
     if (n <= 0) {
       ;
-      return state2.bField;
+      return this__r0.bField;
     }
     ;
-    return Local__second_shout(state2, n - 1);
+    return Local__second_shout(this__r0, n - 1);
   }
   function pick(n) {
     let v = { c: n };
@@ -656,4 +656,4 @@ pass sha256:622abc11dbee993d5a8b88f77fecad4d
 -- run/kotlin/android --
 pass sha256:0aa467548ed12b06265cbc7a0fc89336
 -- run/none/html --
-pass sha256:1eddbf403e6007ad8c14e231e7c4524b
+pass sha256:527dc24582c4772e2b371ba4b7717eb5

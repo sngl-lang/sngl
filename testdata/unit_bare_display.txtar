@@ -160,8 +160,8 @@ func New() Model {
 	m.mix__inst0 = Measurement{Px: Measurement{Px: 3}.Px + Measurement{Em: 2}.Px, Em: Measurement{Px: 3}.Em + Measurement{Em: 2}.Em, Rem: Measurement{Px: 3}.Rem + Measurement{Em: 2}.Rem}
 	m.reduced__inst0 = Measurement{Rem: 2}
 	m.ticks__inst0 = Tick(4)
-	m.half__inst0 = time.Duration(500) * time.Millisecond
-	m.over__inst0 = time.Duration(1100) * time.Millisecond
+	m.half__inst0 = (time.Duration(500) * time.Millisecond)
+	m.over__inst0 = (time.Duration(1100) * time.Millisecond)
 	m.visible__inst0 = true
 	return m
 }
@@ -444,7 +444,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:31d8be00036a3e22dd182beea4ab14df
+pass sha256:541c994f742dd3e117be32fa95358c90
 -- run/kotlin/android --
 pass sha256:fbffce3ac153d9f3baf73859640ea887
 -- run/none/html --

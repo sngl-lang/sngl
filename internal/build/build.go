@@ -80,14 +80,9 @@ type Result struct {
 	Warnings []ir.Diagnostic
 }
 
-// Emit builds pkg for every resolved target.
-//
-// optimize and lower work in place, so every target but the last starts from
-// a clone of the pristine checked IR, and the last -- the only one, in a
-// single-target build -- works on pkg itself and leaves it optimized and
-// lowered. A clone copies the whole reachable graph, library IR included, so
-// the one nothing reads afterwards is not made. A caller that needs the
-// checked IR afterwards has to clone before calling.
+// Emit builds pkg for every resolved target, each from a copy of its own:
+// optimize and lower work in place, and the checked package and the library
+// it reaches are read by every build after this one.
 func Emit(pkg *ir.Package, o Options) ([]Result, error) {
 	// A build's rule and not the language's, which is why it is asked here
 	// rather than in the checker: `component c { … }` on its own is a
@@ -116,8 +111,8 @@ func Emit(pkg *ir.Package, o Options) ([]Result, error) {
 	evalCache := optimize.NewEvalCache()
 
 	results := make([]Result, 0, len(targets))
-	for i, target := range targets {
-		res, err := emitTarget(pkg, target, i < len(targets)-1, evalCache, o)
+	for _, target := range targets {
+		res, err := emitTarget(pkg, target, evalCache, o)
 		if err != nil {
 			return nil, err
 		}
@@ -126,11 +121,8 @@ func Emit(pkg *ir.Package, o Options) ([]Result, error) {
 	return results, nil
 }
 
-func emitTarget(pkg *ir.Package, target Target, clone bool, evalCache *optimize.EvalCache, o Options) (Result, error) {
-	tpkg := pkg
-	if clone {
-		tpkg = ir.ClonePackageFor(pkg, target.Platform, target.Lang)
-	}
+func emitTarget(pkg *ir.Package, target Target, evalCache *optimize.EvalCache, o Options) (Result, error) {
+	tpkg := ir.ClonePackageFor(pkg, target.Platform, target.Lang)
 
 	if target.Options == nil {
 		target.Options = &ir.StructLit{}
@@ -308,4 +300,83 @@ func IsolateRootComponent(pkg *ir.Package, comp string) {
 	// only thing left that says which declaration the program renders, and
 	// AnalyzeCommon runs from the package alone.
 	pkg.RootComponent = comp
+	for _, c := range pkg.Components {
+		if c.Name == comp {
+			bindRootProps(c)
+		}
+	}
+}
+
+// bindRootProps makes each prop of a component rendered with no call site a
+// var of it holding the prop's default, or its type's zero where nothing
+// supplies one, as the interpreter's mount binds it. One that renders itself
+// is left alone: its own call sites bind the props, and a var there is state
+// a recursion has nowhere to keep.
+func bindRootProps(comp *ir.Component) {
+	if rendersItself(comp) {
+		return
+	}
+	vars := map[ir.Symbol]*ir.Var{}
+	var bound []*ir.Var
+	for _, p := range comp.Props {
+		if p.Sym == nil {
+			continue
+		}
+		init := p.Default
+		if init == nil {
+			init = ir.DeclaredDefault(p.Type)
+		} else {
+			init = ir.CloneExprSharingDecls(init)
+		}
+		v := &ir.Var{Type: p.Type, Init: init, IsConst: p.Const}
+		v.Name = p.Name
+		v.Pkg = comp.Pkg
+		vars[p.Sym] = v
+		bound = append(bound, v)
+	}
+	if len(vars) == 0 {
+		return
+	}
+	// Ahead of the component's own, whose initializers may read them.
+	comp.Vars = append(bound, comp.Vars...)
+	comp.Props = nil
+	_ = ir.Walk(comp, func(n ir.Node) error {
+		if id, ok := n.(*ir.Ident); ok && id.Sym != nil {
+			if v, ok := vars[id.Sym]; ok {
+				id.Sym = v
+			}
+		}
+		return nil
+	})
+}
+
+// rendersItself reports whether comp renders an instance of itself, directly
+// or through the components it renders.
+func rendersItself(comp *ir.Component) bool {
+	seen := map[*ir.Component]bool{}
+	work := []*ir.Component{comp}
+	for len(work) > 0 {
+		c := work[len(work)-1]
+		work = work[:len(work)-1]
+		found := false
+		_ = ir.Walk(c, func(n ir.Node) error {
+			inst, ok := n.(*ir.NodeInst)
+			if !ok || inst.Component == nil {
+				return nil
+			}
+			if inst.Component == comp {
+				found = true
+				return ir.SkipAll
+			}
+			if !seen[inst.Component] {
+				seen[inst.Component] = true
+				work = append(work, inst.Component)
+			}
+			return nil
+		})
+		if found {
+			return true
+		}
+	}
+	return false
 }

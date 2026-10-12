@@ -112,9 +112,11 @@ func (c *checker) applyParamMarks(p ast.Param, prop *ir.Prop) {
 	if len(p.MacroAttrs()) == 0 {
 		return
 	}
+	// Copied past the return so only a marked declaration moves to the heap.
+	marked := p
 	c.afterMarks(func() {
-		for _, attr := range p.MacroAttrs() {
-			c.applyMark(attr, p, prop, true)
+		for _, attr := range marked.MacroAttrs() {
+			c.applyMark(attr, marked, prop, true)
 		}
 	})
 }

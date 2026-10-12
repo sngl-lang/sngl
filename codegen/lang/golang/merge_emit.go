@@ -27,7 +27,7 @@ func EmitMergeFuncs(structs []*ir.StructDef) string {
 
 // goZeroComparand returns the Go expression a field is compared against to
 // decide "unset". Option/pointer/reference types compare to nil; scalars to
-// their zero literal.
+// their Go zero value.
 func goZeroComparand(t *ir.Type) string {
 	if t == nil {
 		return "nil"
@@ -35,11 +35,16 @@ func goZeroComparand(t *ir.Type) string {
 	switch t.Kind {
 	case ir.TypeOption, ir.TypeList, ir.TypeMap, ir.TypeRef, ir.TypeFunc:
 		return "nil"
-	case ir.TypeString:
+	case ir.TypeString, ir.TypeEnum:
 		return `""`
 	case ir.TypeBool:
 		return "false"
-	default:
+	case ir.TypeInt, ir.TypeFloat:
 		return "0"
 	}
+	z := ZeroValueGo(IRTypeToGo(t))
+	if strings.HasSuffix(z, "}") {
+		return "(" + z + ")"
+	}
+	return z
 }

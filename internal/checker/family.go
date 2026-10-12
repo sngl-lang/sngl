@@ -222,10 +222,11 @@ func (c *checker) checkFamilyMember(comp *ir.Component) {
 		case mp == nil && familyPropDefaulted(f, fp):
 			inherited := &ir.Prop{Name: fp.Name, Type: familyPropType(f, comp, fp), Default: fp.Default}
 			comp.Props = append(comp.Props, inherited)
-			if c.inheritedProps == nil {
-				c.inheritedProps = map[*ir.Prop]*ir.Prop{}
+			t := c.tables()
+			if t.inheritedProps == nil {
+				t.inheritedProps = map[*ir.Prop]*ir.Prop{}
 			}
-			c.inheritedProps[inherited] = fp
+			t.inheritedProps[inherited] = fp
 		case mp == nil:
 			c.error(comp.AST.Pos, "component %s is a member of %s, which declares prop %q: declare %s %s",
 				comp.Name, f.Name, fp.Name, fp.Name, fp.Type)
@@ -399,11 +400,11 @@ func (c *checker) checkFamilyParamBody(comp *ir.Component, body []ir.Stmt) {
 // refuseInheritedProps reports a call site setting a prop its component took
 // from its family's default rather than declaring.
 func (c *checker) refuseInheritedProps(pos ast.Pos, comp *ir.Component, bound map[string]bool) {
-	if comp == nil || len(c.inheritedProps) == 0 {
+	if comp == nil {
 		return
 	}
 	for _, p := range comp.Props {
-		if fp, ok := c.inheritedProps[p]; ok && bound[p.Name] {
+		if fp := c.inheritedFrom(p); fp != nil && bound[p.Name] {
 			c.error(pos, "component %s takes %q from its family %s, which gives it a default and no call site a say: declare %s %s on %s to set it",
 				comp.Name, p.Name, comp.Family.Name, fp.Name, fp.Type, comp.Name)
 		}
@@ -413,7 +414,7 @@ func (c *checker) refuseInheritedProps(pos ast.Pos, comp *ir.Component, bound ma
 // inheritDefault hands a family prop's checked default to every member that
 // omitted the prop, which until now held what pass1 had.
 func (c *checker) inheritDefault(fp *ir.Prop) {
-	for inherited, from := range c.inheritedProps {
+	for inherited, from := range c.tables().inheritedProps {
 		if from == fp {
 			inherited.Default = fp.Default
 		}

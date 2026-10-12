@@ -213,6 +213,11 @@ func (c *checker) specializeHandle(id string, comp, spec *ir.Component) {
 	}
 	v.Type = withComponentArgs(v.Type, comp, args)
 	if owner := c.currentComponent; owner != nil {
+		// Read from outside through the declaration, never the copy an
+		// override is checked on.
+		if owner == c.installedOverride {
+			owner = c.overriddenBase
+		}
 		if c.handleArgs == nil {
 			c.handleArgs = map[handleKey][]*ir.Type{}
 		}

@@ -110,8 +110,15 @@ func (c *checker) libraryScheme(name string) *ir.Scheme {
 	}
 	libs := c.libs
 	if s, ok := libs.schemes[name]; ok {
+		c.replayLoad("scheme:" + name)
 		return s
 	}
+	defer c.loadHold()()
+	if s, ok := libs.schemes[name]; ok {
+		c.replayLoad("scheme:" + name)
+		return s
+	}
+	defer c.recordLoad("scheme:"+name, len(c.diags))
 	libs.schemes[name] = nil // a plugin reaching its own scheme finds none
 	uri := "sngl:" + SchemeTier + name
 	docs := PackageDocsFor(SchemeTier + name)
@@ -123,6 +130,7 @@ func (c *checker) libraryScheme(name string) *ir.Scheme {
 		Targets:       c.targets,
 		LibSources:    c.cfg.LibSources,
 		libs:          libs,
+		hold:          c.hold,
 		generating:    c.generating,
 		libraryScheme: name,
 		noTargets:     true,

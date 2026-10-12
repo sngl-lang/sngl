@@ -74,7 +74,7 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.LinearProgressIndicator
 
 data class Choice__record(
-    var label: String
+    var label: String = ""
 )
 
 fun _snglFloatStr(v: Double): String =
@@ -229,4 +229,4 @@ private fun parseDate(s: String): String? =
         null
     }
 -- run/kotlin/android --
-pass sha256:6cff3d660e70b82ec2dd6e0923287b8a
+pass sha256:36c483c5459425fee0ccf486d124a701

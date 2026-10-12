@@ -67,6 +67,14 @@ type Package struct {
 	RootComponent string `json:",omitempty"`
 	Contexts      []*Context
 	Symbols       *SymbolTable
+	Overlay       Overlay `json:"-"`
+	// Targets are the overrides the library packages a check loaded declare
+	// of declarations they do not own -- a target package's of sngl:ui --
+	// as the check found them. Each package owns its overrides, so a build
+	// installs these on its copy beside the program's own (InstallOverlay).
+	Targets Overlay `json:"-"`
+	// Frozen says the check that loaded the package has ended (Freeze).
+	Frozen bool `json:"-"`
 	// Origin is where a package the program reads by path came from: the
 	// program's own, a directory import, a fetched one. Nil for a library
 	// package and a native scheme's shell. A build-time function asks it who
@@ -562,6 +570,8 @@ type DeclInfo struct {
 	//
 	// Not encoded: the package holds the declaration back.
 	Pkg *Package `json:"-"`
+	// Frozen says the check that declared it has ended (Freeze). A copy is not.
+	Frozen bool `json:"-"`
 	// Doc is the doc comment of a declaration a scheme imported; a SNGL
 	// declaration's own is read off its AST.
 	Doc string `json:",omitempty"`
@@ -791,6 +801,18 @@ func (f *Func) RecvDecl() Symbol {
 	return f.Receiver.Decl
 }
 
+// OnComponent reports whether f is a method of a component, whose receiver is
+// the instance's state, rather than of a type, whose receiver is a value the
+// caller passes.
+func (f *Func) OnComponent() bool {
+	_, ok := f.RecvDecl().(*Component)
+	return ok
+}
+
+// OnType reports whether f is a method of a type: a struct, an enum, a unit
+// or a built-in such as list, called on a value it is handed first.
+func (f *Func) OnType() bool { return f.IsMethod() && !f.OnComponent() }
+
 // receiverName names a receiver type by its declaration, or by its kind for a
 // built-in constructor whose declaration was not to hand.
 func receiverName(t *Type) string {
@@ -919,6 +941,9 @@ type Override struct {
 	// @generate. Nil for a target package's override, which is library
 	// source and trusted.
 	Pkg *Package `json:"-"`
+	// RecvParam is the `this` a function override's body names where the
+	// declaration it overrides bound none, installed with the body.
+	RecvParam *Param `json:"-"`
 }
 
 // Component represents a resolved component declaration.

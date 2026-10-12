@@ -51,11 +51,18 @@ type Scope struct {
 	// can tell a package boundary from the ambient scope every package's root
 	// eventually chains into. See SymbolTable.LookupMember.
 	IsPackageRoot bool
+	// Frozen marks a package root no check may bind in any more (Freeze).
+	Frozen bool `json:"-"`
 	// Wildcards are the symbols in this scope that answer to names nobody
 	// declared. A declared name always wins, and a wildcard is consulted only
 	// when there is no name to find — and only by a caller resolving a
 	// position a wildcard stands in (WildcardMatches), never by Lookup.
 	Wildcards []Symbol
+	// Added holds, on a package-root scope, the methods the package adds to
+	// declarations another package owns, by declaration. A method is found
+	// by a lookup through the scope, so a lookup from inside the package
+	// finds them and the declaration's own table stays its package's.
+	Added map[Symbol]map[string]*Func
 }
 
 // WildcardSymbol is a symbol that also answers to every name its pattern
@@ -65,9 +72,15 @@ type WildcardSymbol interface {
 	WildcardPattern() string
 }
 
-// NewScope creates a child scope.
+// NewScope creates a child scope. Its map is made by the first binding: most
+// scopes a checker pushes bind nothing.
 func NewScope(parent *Scope) *Scope {
-	return &Scope{Parent: parent, Symbols: make(map[string]Symbol)}
+	return &Scope{Parent: parent}
+}
+
+// NewScopeSize is NewScope for a scope about to bind n names.
+func NewScopeSize(parent *Scope, n int) *Scope {
+	return &Scope{Parent: parent, Symbols: make(map[string]Symbol, n)}
 }
 
 // NoteWildcard records sym among the scope's wildcards when it is one. Binding
@@ -142,7 +155,7 @@ func (s *Scope) Declare(sym Symbol) error {
 	if prev, ok := s.Symbols[name]; ok && prev != sym {
 		return &RedeclaredError{Name: name, Prev: prev}
 	}
-	s.Symbols[name] = sym
+	s.bind(name, sym)
 	s.NoteWildcard(sym)
 	return nil
 }
@@ -159,7 +172,7 @@ func (s *Scope) DeclareName(sym Symbol) error {
 	if prev, ok := s.Symbols[name]; ok && prev != sym {
 		return &RedeclaredError{Name: name, Prev: prev}
 	}
-	s.Symbols[name] = sym
+	s.bind(name, sym)
 	return nil
 }
 
@@ -167,8 +180,19 @@ func (s *Scope) DeclareName(sym Symbol) error {
 // For the places where rebinding is the intent — shadowing a dot-imported
 // name, splicing a platform override over the stdlib declaration it extends.
 func (s *Scope) Replace(sym Symbol) {
-	s.Symbols[sym.SymName()] = sym
+	s.bind(sym.SymName(), sym)
 	s.NoteWildcard(sym)
+}
+
+func (s *Scope) bind(name string, sym Symbol) {
+	if s.Symbols[name] == sym {
+		return
+	}
+	s.mustWrite(name)
+	if s.Symbols == nil {
+		s.Symbols = make(map[string]Symbol)
+	}
+	s.Symbols[name] = sym
 }
 
 // Lookup walks the parent chain for a name. Declared names only: it resolves
@@ -244,9 +268,11 @@ func NewBaseScope() *Scope {
 		name string
 		typ  *Type
 	}{
-		{"list", ListOf(TypDyn)},
+		// No declaration attached: a library load attaches its own `list` where
+		// sngl:builtin declares it, and what loads before that attaches none.
+		{"list", &Type{Kind: TypeList, Elems: []*Type{TypDyn}}},
 		{"option", OptionOf(TypDyn)},
-		{"map", MapOf(TypDyn, TypDyn)},
+		{"map", &Type{Kind: TypeMap, Elems: []*Type{TypDyn, TypDyn}}},
 	} {
 		s.Symbols[entry.name] = &TypeSym{Name: entry.name, Type: entry.typ}
 	}
@@ -298,13 +324,17 @@ func NewSymbolTable() *SymbolTable {
 // with. Used by the passes that need every declaration in the build, including
 // the stdlib's, which lives in a scope outside the package's own root.
 func (st *SymbolTable) EachSymbol(f func(Symbol) bool) {
-	seen := make(map[string]bool)
+	n := 0
+	for sc := st.Root; sc != nil; sc = sc.Parent {
+		n += len(sc.Symbols)
+	}
+	seen := make(map[string]struct{}, n)
 	for sc := st.Root; sc != nil; sc = sc.Parent {
 		for name, sym := range sc.Symbols {
-			if seen[name] {
+			if _, dup := seen[name]; dup {
 				continue
 			}
-			seen[name] = true
+			seen[name] = struct{}{}
 			if !f(sym) {
 				return
 			}
@@ -429,11 +459,70 @@ func LookupMethodIn(scope *Scope, recv, method string) (*Func, bool) {
 		fn, isFunc := member.(*Func)
 		return fn, isFunc
 	}
-	if tbl := methodTable(sym); tbl != nil {
+	return MethodOn(scope, sym, method)
+}
+
+// MethodOn finds the method named method on decl, as a lookup through scope
+// sees it: one a package on the chain added, or one decl declares.
+func MethodOn(scope *Scope, decl Symbol, method string) (*Func, bool) {
+	if f, found := addedMethod(scope, decl, method); found {
+		return f, true
+	}
+	if tbl := methodTable(decl); tbl != nil {
 		f, found := (*tbl)[method]
 		return f, found
 	}
 	return nil, false
+}
+
+// DeclaringPackage is the package that declared sym, for a declaration a
+// method or an override can be written for; nil for anything else.
+func DeclaringPackage(sym Symbol) *Package {
+	switch d := sym.(type) {
+	case *StructDef:
+		return d.Pkg
+	case *EnumDef:
+		return d.Pkg
+	case *UnitDef:
+		return d.Pkg
+	case *Component:
+		return d.Pkg
+	case *Func:
+		return d.Pkg
+	}
+	return nil
+}
+
+// addedMethod is the method named method a package whose root is on scope's
+// chain added to decl.
+func addedMethod(scope *Scope, decl Symbol, method string) (*Func, bool) {
+	for sc := scope; sc != nil; sc = sc.Parent {
+		if f, ok := sc.Added[decl][method]; ok {
+			return f, true
+		}
+	}
+	return nil, false
+}
+
+// AddMethod makes f a method root's package adds to decl, which another
+// package owns, refusing a name decl or an earlier addition already has.
+func AddMethod(root *Scope, decl Symbol, f *Func) error {
+	if tbl := methodTable(decl); tbl == nil {
+		return ErrNoMethodHost
+	} else if prev, exists := (*tbl)[f.Name]; exists && prev != f {
+		return &RedeclaredError{Name: f.Name, Prev: prev}
+	}
+	if prev, exists := addedMethod(root, decl, f.Name); exists && prev != f {
+		return &RedeclaredError{Name: f.Name, Prev: prev}
+	}
+	if root.Added == nil {
+		root.Added = map[Symbol]map[string]*Func{}
+	}
+	if root.Added[decl] == nil {
+		root.Added[decl] = map[string]*Func{}
+	}
+	root.Added[decl][f.Name] = f
+	return nil
 }
 
 var (
@@ -450,32 +539,26 @@ var (
 // refusing to overwrite a member already there. Attaching is a declaration
 // like any other: a silent overwrite would make which of two declarations a
 // member name refers to depend on the order the checker visited them in.
-// ReplaceMethod is the explicit rebind.
 //
 // It takes the scope rather than a SymbolTable because a declaration is
 // registered before it is reachable from the package root — the stdlib loads
 // into a scope that only later becomes the root's parent.
 func AttachMethod(scope *Scope, recv string, f *Func) error {
-	tbl, err := memberList(scope, recv)
+	tbl, sym, err := memberList(scope, recv)
 	if err != nil {
 		return err
 	}
 	// Re-registering the same declaration is not a redeclaration. The checker
 	// reaches a component's methods from more than one pass.
-	if prev, exists := (*tbl)[f.Name]; exists && prev != f {
-		return &RedeclaredError{Name: f.Name, Prev: prev}
+	if prev, exists := (*tbl)[f.Name]; exists {
+		if prev != f {
+			return &RedeclaredError{Name: f.Name, Prev: prev}
+		}
+		return nil
 	}
-	(*tbl)[f.Name] = f
-	return nil
-}
-
-// ReplaceMethod makes f a member of the declaration recv names, overwriting
-// any member of the same name. For the one case where rebinding is the intent:
-// a declaration that shadows one the standard library made.
-func ReplaceMethod(scope *Scope, recv string, f *Func) error {
-	tbl, err := memberList(scope, recv)
-	if err != nil {
-		return err
+	MustWriteDecl(sym, "a method on "+recv)
+	if *tbl == nil {
+		*tbl = make(map[string]*Func)
 	}
 	(*tbl)[f.Name] = f
 	return nil
@@ -483,19 +566,16 @@ func ReplaceMethod(scope *Scope, recv string, f *Func) error {
 
 // memberList returns the member table of the declaration recv names, creating
 // it on first use.
-func memberList(scope *Scope, recv string) (*map[string]*Func, error) {
+func memberList(scope *Scope, recv string) (*map[string]*Func, Symbol, error) {
 	sym, ok := scope.Lookup(recv)
 	if !ok {
-		return nil, ErrUnknownReceiver
+		return nil, nil, ErrUnknownReceiver
 	}
 	tbl := methodTable(sym)
 	if tbl == nil {
-		return nil, ErrNoMethodHost
+		return nil, nil, ErrNoMethodHost
 	}
-	if *tbl == nil {
-		*tbl = make(map[string]*Func)
-	}
-	return tbl, nil
+	return tbl, sym, nil
 }
 
 // MemberOf returns the method named name declared on decl — the Decl carried

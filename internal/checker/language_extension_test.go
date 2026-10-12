@@ -107,7 +107,7 @@ func libFunc(t *testing.T, pkg *ir.Package, ns, name string) *ir.Func {
 
 // A language's package is loaded the way a platform's is -- building for a
 // target is an `import _ "sngl:language/<it>"` nobody wrote -- so an override
-// in it is merged into the declaration it names. That is what makes a language
+// in it implements the declaration it names. That is what makes a language
 // able to implement a declaration the library leaves open, rather than only
 // describe types: extlib declares `get` and no tier below a target can say
 // what it does.
@@ -119,9 +119,10 @@ func TestLanguagePackageOverrideMerges(t *testing.T) {
 		}
 	}
 	get := libFunc(t, pkg, "http", "get")
-	body, ok := get.LanguageOverrides["extlang"]
+	overrides := pkg.OverridesOf(get).Language
+	body, ok := overrides["extlang"]
 	if !ok {
-		t.Fatalf("no implementation of http.get for extlang; have %v", keys(get.LanguageOverrides))
+		t.Fatalf("no implementation of http.get for extlang; have %v", keys(overrides))
 	}
 	if len(body.Stmts) == 0 {
 		t.Error("the override merged as an empty body: the body was reserved but never checked")
@@ -145,7 +146,7 @@ func TestUntargetedLanguagePackageDoesNotMerge(t *testing.T) {
 		}
 	}
 	get := libFunc(t, pkg, "http", "get")
-	if _, ok := get.LanguageOverrides["extlang"]; ok {
+	if _, ok := pkg.OverridesOf(get).Language["extlang"]; ok {
 		t.Error("a build targeting `other` merged extlang's override")
 	}
 }

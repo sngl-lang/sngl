@@ -8,9 +8,12 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime/debug"
 	"strings"
 
 	"golang.org/x/mod/modfile"
+	"golang.org/x/mod/module"
+	"golang.org/x/mod/semver"
 )
 
 const snglModulePath = "duckfam.us/sngl"
@@ -128,7 +131,8 @@ func findGoMod(start string) string {
 // WriteGoMod synthesises go.mod (and go.sum) for a temporary module in dir
 // that builds SNGL-generated Go code.
 //
-// It seeds the module with the host module's full require list and go.sum
+// It seeds the module with the host module's full require list and go.sum,
+// or with the running binary's own build info when there is no host go.mod,
 // rather than leaving resolution to `go mod tidy`. Two reasons:
 //
 //   - Correctness: tidy resolves each dependency at its latest version, so
@@ -140,41 +144,24 @@ func findGoMod(start string) string {
 //     round-trip (~0.3s per invocation) disappears from every generate,
 //     run, build and test.
 //
-// needTidy reports that the go.mod written is the bare minimum `go mod tidy`
-// needs to start from, because no host go.mod was found to align with. When a
+// needTidy reports that the module graph written is known to be incomplete,
+// because no host go.mod was found to align with. When a
 // host go.mod *was* found the module graph is usually complete, but not
 // always — see NeedsModuleTidy, which is how a caller finds out for certain.
 func WriteGoMod(dir, goVersion, extraDirectives string) (needTidy bool, err error) {
 	mf := hostModFile()
 	if mf == nil {
-		detVer, detExtra := DetectHostGoMod()
-		if goVersion == "" {
-			goVersion = detVer
-		}
-		if goVersion == "" {
-			goVersion = "1.23"
-		}
-		if extraDirectives == "" {
-			extraDirectives = detExtra
-		}
-		mod := fmt.Sprintf("module tmp\n\ngo %s\n", goVersion)
-		if extraDirectives != "" {
-			mod += "\n" + strings.TrimRight(extraDirectives, "\n") + "\n"
-		}
-		return true, os.WriteFile(filepath.Join(dir, "go.mod"), []byte(mod), 0o644)
+		return writeBuildInfoGoMod(dir, goVersion, extraDirectives)
 	}
 
 	if goVersion == "" && mf.Go != nil {
 		goVersion = mf.Go.Version
 	}
-	if goVersion == "" {
-		goVersion = "1.23"
-	}
 
 	modRoot := filepath.Dir(mf.Syntax.Name)
 	// Caller-supplied directives win over the host-derived ones for the
 	// same replaced module, so `--opt goModExtra=...` stays authoritative.
-	extraLines, overridden := splitDirectives(extraDirectives)
+	extraLines, overridden, _ := splitDirectives(extraDirectives)
 	var replaces []string
 	for _, line := range hostReplaceLines(mf, modRoot) {
 		if overridden[replaceOldPath(line)] {
@@ -184,12 +171,107 @@ func WriteGoMod(dir, goVersion, extraDirectives string) (needTidy bool, err erro
 	}
 	replaces = append(replaces, extraLines...)
 
-	required := map[string]bool{}
-	type req struct{ path, version string }
-	requires := make([]req, 0, len(mf.Require)+1)
+	requires := make([]modRequire, 0, len(mf.Require))
 	for _, r := range mf.Require {
-		required[r.Mod.Path] = true
-		requires = append(requires, req{r.Mod.Path, r.Mod.Version})
+		requires = append(requires, modRequire{r.Mod.Path, r.Mod.Version})
+	}
+
+	if err := writeModFile(dir, goVersion, requires, replaces); err != nil {
+		return true, err
+	}
+	// go.sum must cover the copied requires, otherwise every build fails
+	// with "missing go.sum entry".
+	sum, err := os.ReadFile(filepath.Join(modRoot, "go.sum"))
+	if err == nil {
+		if err := os.WriteFile(filepath.Join(dir, "go.sum"), sum, 0o644); err != nil {
+			return true, err
+		}
+	}
+
+	return false, nil
+}
+
+// readBuildInfo is where writeBuildInfoGoMod learns what the running binary
+// was built from; a test substitutes its own.
+var readBuildInfo = debug.ReadBuildInfo
+
+// writeBuildInfoGoMod seeds the temp module from the running binary's build
+// info when there is no host go.mod to align with: the binary was built
+// against one sngl and one set of dependencies, and the generated code was
+// written for that runtime, not for whatever is newest.
+//
+// It still reports needTidy: build info carries a module's zip hash but not
+// its go.mod hash, and only the modules linked into the compiler, so the
+// module graph is incomplete until tidy fills it in. Tidy keeps a version a
+// require already names, so the pins survive it.
+func writeBuildInfoGoMod(dir, goVersion, extraDirectives string) (needTidy bool, err error) {
+	extraLines, replaced, required := splitDirectives(extraDirectives)
+	var requires []modRequire
+	var replaces []string
+	var sum strings.Builder
+	if bi, ok := readBuildInfo(); ok {
+		if v := bi.Main.Version; bi.Main.Path == snglModulePath && !required[snglModulePath] && !replaced[snglModulePath] {
+			if fetchable(v) {
+				requires = append(requires, modRequire{snglModulePath, v})
+				if bi.Main.Sum != "" {
+					fmt.Fprintf(&sum, "%s %s %s\n", snglModulePath, v, bi.Main.Sum)
+				}
+			} else {
+				slog.Warn("this sngl was built from a version the module proxy cannot serve; the generated program builds against the latest sngl runtime instead", "version", v)
+			}
+		}
+		for _, d := range bi.Deps {
+			if required[d.Path] {
+				continue
+			}
+			if r := d.Replace; r != nil {
+				if replaced[d.Path] {
+					continue
+				}
+				// A filesystem replace is relative to a go.mod this
+				// process cannot see, so it cannot be carried over.
+				if r.Version == "" && !filepath.IsAbs(r.Path) {
+					continue
+				}
+				replaces = append(replaces, fmt.Sprintf("replace %s %s => %s", d.Path, d.Version, strings.TrimSpace(r.Path+" "+r.Version)))
+				if r.Sum != "" {
+					fmt.Fprintf(&sum, "%s %s %s\n", r.Path, r.Version, r.Sum)
+				}
+			} else if d.Sum != "" {
+				fmt.Fprintf(&sum, "%s %s %s\n", d.Path, d.Version, d.Sum)
+			}
+			requires = append(requires, modRequire{d.Path, d.Version})
+		}
+	}
+	replaces = append(replaces, extraLines...)
+
+	if err := writeModFile(dir, goVersion, requires, replaces); err != nil {
+		return true, err
+	}
+	if sum.Len() > 0 {
+		if err := os.WriteFile(filepath.Join(dir, "go.sum"), []byte(sum.String()), 0o644); err != nil {
+			return true, err
+		}
+	}
+	return true, nil
+}
+
+// fetchable reports whether v is a version the module proxy could serve.
+// "(devel)" is what a build with no VCS information reports, and a
+// "+dirty" pseudo-version names a commit the binary was not built from.
+func fetchable(v string) bool {
+	return module.Check(snglModulePath, v) == nil && semver.Build(v) == ""
+}
+
+type modRequire struct{ path, version string }
+
+func writeModFile(dir, goVersion string, requires []modRequire, replaces []string) error {
+	if goVersion == "" {
+		goVersion = "1.23"
+	}
+	required := map[string]bool{}
+	for _, r := range requires {
+		required[r.path] = true
 	}
 	// A replace only takes effect for a module the main module also
 	// requires; the host go.mod may replace modules it reaches only
@@ -200,7 +282,7 @@ func WriteGoMod(dir, goVersion, extraDirectives string) (needTidy bool, err erro
 			continue
 		}
 		required[p] = true
-		requires = append(requires, req{p, "v0.0.0"})
+		requires = append(requires, modRequire{p, "v0.0.0"})
 	}
 
 	var b strings.Builder
@@ -216,20 +298,7 @@ func WriteGoMod(dir, goVersion, extraDirectives string) (needTidy bool, err erro
 	for _, line := range replaces {
 		b.WriteString("\n" + line + "\n")
 	}
-
-	if err := os.WriteFile(filepath.Join(dir, "go.mod"), []byte(b.String()), 0o644); err != nil {
-		return true, err
-	}
-	// go.sum must cover the copied requires, otherwise every build fails
-	// with "missing go.sum entry".
-	sum, err := os.ReadFile(filepath.Join(modRoot, "go.sum"))
-	if err == nil {
-		if err := os.WriteFile(filepath.Join(dir, "go.sum"), sum, 0o644); err != nil {
-			return true, err
-		}
-	}
-
-	return false, nil
+	return os.WriteFile(filepath.Join(dir, "go.mod"), []byte(b.String()), 0o644)
 }
 
 // NeedsModuleTidy reports whether a failed `go` command failed because of the
@@ -317,10 +386,11 @@ func hostReplaceLines(mf *modfile.File, modRoot string) []string {
 }
 
 // splitDirectives breaks caller-supplied go.mod text into individual
-// non-empty lines and reports which module paths its replace directives
-// target.
-func splitDirectives(extra string) (lines []string, replaced map[string]bool) {
+// non-empty lines and reports which module paths its replace and single-line
+// require directives target.
+func splitDirectives(extra string) (lines []string, replaced, required map[string]bool) {
 	replaced = map[string]bool{}
+	required = map[string]bool{}
 	for line := range strings.SplitSeq(extra, "\n") {
 		line = strings.TrimSpace(line)
 		if line == "" {
@@ -330,8 +400,11 @@ func splitDirectives(extra string) (lines []string, replaced map[string]bool) {
 		if p := replaceOldPath(line); p != "" {
 			replaced[p] = true
 		}
+		if f := strings.Fields(line); len(f) == 3 && f[0] == "require" {
+			required[f[1]] = true
+		}
 	}
-	return lines, replaced
+	return lines, replaced, required
 }
 
 // replaceOldPath returns the replaced module path of a `replace X => Y`

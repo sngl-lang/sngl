@@ -35,10 +35,11 @@ func NewSession(pkg *ir.Package, comp string, clock Clock) (*Session, error) {
 	// from the pipeline: without it `sngl:time`'s `timer` is the empty stub
 	// every stdlib component is before a platform implements it, and schedules
 	// nothing.
-	if err := Prepare(pkg); err != nil {
+	pkg, err := Prepare(pkg)
+	if err != nil {
 		return nil, err
 	}
-	env, err := sessionEnv(pkg, comp)
+	env, err := sessionEnv(pkg, comp, clock)
 	if err != nil {
 		return nil, err
 	}
@@ -58,11 +59,11 @@ func NewSession(pkg *ir.Package, comp string, clock Clock) (*Session, error) {
 }
 
 // sessionEnv scopes a session to comp, or to the program when comp is empty.
-func sessionEnv(pkg *ir.Package, comp string) (*Env, error) {
+func sessionEnv(pkg *ir.Package, comp string, clock Clock) (*Env, error) {
 	if comp == "" {
-		return BuildProgramEnv(pkg), nil
+		return BuildProgramEnv(pkg, clock), nil
 	}
-	return BuildEnv(pkg, comp)
+	return BuildEnv(pkg, comp, clock)
 }
 
 // View is the tree as the session currently holds it -- what a host has
@@ -205,10 +206,11 @@ func (s *Session) Reload(pkg *ir.Package) ([]Patch, error) {
 	// The reloaded program is a program this target runs, so it takes this
 	// platform's bodies exactly as the first one did. Without it a reload
 	// silently dropped every timer: `timer` reverted to the empty stub.
-	if err := Prepare(pkg); err != nil {
+	pkg, err := Prepare(pkg)
+	if err != nil {
 		return nil, err
 	}
-	env, err := sessionEnv(pkg, s.Comp)
+	env, err := sessionEnv(pkg, s.Comp, s.Clock)
 	if err != nil {
 		return nil, err
 	}
@@ -305,11 +307,14 @@ func sameType(a, b *ir.Type) bool {
 }
 
 // Prepare is what the interpreter takes from the pipeline before it runs a
-// checked package. A target gets the bodies its own platform package declares
-// (sngl:time's `timer` is an empty stub until a platform implements it), and a
-// data family's slot is the list its call site's population renders, which
-// lower.DataFamilies builds once the compositions in it are spliced.
-func Prepare(pkg *ir.Package) error {
+// checked package, done to a copy, since the checked package and the library
+// it reaches are read by every run after this one. A target gets the bodies
+// its own platform package declares (sngl:time's `timer` is an empty stub
+// until a platform implements it), and a data family's slot is the list its
+// call site's population renders, which lower.DataFamilies builds once the
+// compositions in it are spliced.
+func Prepare(pkg *ir.Package) (*ir.Package, error) {
+	pkg = ir.ClonePackage(pkg)
 	ir.SpecializeForTarget(pkg, InterpreterPlatform, "")
-	return lower.DataFamilies(pkg, nil)
+	return pkg, lower.DataFamilies(pkg, nil)
 }

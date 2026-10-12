@@ -55,27 +55,84 @@ func (c *checker) lookupMethod(recv, method string) (*ir.Func, bool) {
 // lookupBodyMethod finds a component-body method by bare name: on the
 // component being checked, then on each body that declared it.
 func (c *checker) lookupBodyMethod(name string) (*ir.Func, bool) {
-	for comp := c.currentComponent; comp != nil; comp = c.bodyOwner[comp] {
+	for comp := c.currentComponent; comp != nil; comp = c.bodyOwnerOf(comp) {
 		if fn, ok := c.lookupMethod(comp.Name, name); ok {
+			return fn, true
+		}
+		// An override's helper is in its own copy of the table, which its
+		// name does not reach.
+		if fn, ok := comp.Methods[name]; ok && comp == c.installedOverride {
+			c.ensureReturnType(fn)
 			return fn, true
 		}
 	}
 	return nil, false
 }
 
+// memberOf is the method named name on decl, a program's additions to it
+// included.
+func (c *checker) memberOf(decl any, name string) (*ir.Func, bool) {
+	sym, ok := decl.(ir.Symbol)
+	if !ok {
+		return nil, false
+	}
+	return ir.MethodOn(c.scope, sym, name)
+}
+
+// attachMethod makes fn a member of the declaration name resolves to. A
+// program's method on one another package declared is held on the program's
+// root scope (ir.Scope.Added) rather than in that declaration's table, which
+// every check reading the declaration's package shares -- except an override's
+// helper, which belongs to that override's own copy of the table.
+func (c *checker) attachMethod(name string, fn *ir.Func) error {
+	sym, found := c.scope.Lookup(name)
+	if ov := c.installedOverride; found && ov != nil && (sym == c.overriddenBase || sym == ov) {
+		if prev, ok := ov.Methods[fn.Name]; ok {
+			if prev != fn {
+				return &ir.RedeclaredError{Name: fn.Name, Prev: prev}
+			}
+			return nil
+		}
+		if ov.Methods == nil {
+			ov.Methods = map[string]*ir.Func{}
+		}
+		ov.Methods[fn.Name] = fn
+		return nil
+	}
+	if found && !c.inLibSource() {
+		if owner := ir.DeclaringPackage(sym); owner != nil && owner != c.declPkg() {
+			return ir.AddMethod(c.symtab.Root, sym, fn)
+		}
+	}
+	return ir.AttachMethod(c.scope, name, fn)
+}
+
+// reportDuplicateMethod reports fn colliding with prev on the declaration its
+// receiver names, described by on, naming the package that declared prev
+// when it is another's.
+func (c *checker) reportDuplicateMethod(pos ast.Pos, fn, prev *ir.Func, on string) {
+	if other := prev.PkgPath(); other != fn.PkgPath() && other != "" {
+		c.error(pos, "duplicate declaration of %q on %s: %s declares it", fn.Name, on, other)
+		return
+	}
+	c.error(pos, "duplicate declaration of %q on %s", fn.Name, on)
+}
+
 // declareMethod makes fn a member of the declaration its receiver names,
-// reporting an unknown receiver at pos. Returns the member it collides with
-// when the caller must report a duplicate, and nil when the attach stands:
-// because it succeeded, because it deliberately shadows a standard-library
-// member (which user code may do), or because the receiver carries no member
-// list — a namespace, whose members are the declarations of its package.
+// reporting an unknown receiver at pos. Returns the member it collides with,
+// for the caller to report as a duplicate, and nil when the attach stands:
+// because it succeeded, or because the receiver carries no member list -- a
+// namespace, whose members are the declarations of its package. A method
+// another package declared collides too: a program may add to a library
+// type but not redefine what it has, so a library declaration means one
+// thing in every program that reads it.
 func (c *checker) declareMethod(pos ast.Pos, fn *ir.Func) *ir.Func {
 	// The member table is the declaration's, so the receiver is the one the
 	// table is found on -- in this scope, which a body-local type's method
 	// is attached in.
 	name := fn.RecvName()
 	fn.Receiver = c.receiverType(name)
-	err := ir.AttachMethod(c.scope, name, fn)
+	err := c.attachMethod(name, fn)
 	switch {
 	case err == nil, errors.Is(err, ir.ErrNoMethodHost):
 		return nil
@@ -89,15 +146,7 @@ func (c *checker) declareMethod(pos ast.Pos, fn *ir.Func) *ir.Func {
 	if !errors.As(err, &red) {
 		return nil
 	}
-	prev, isFunc := red.Prev.(*ir.Func)
-	// A package may shadow a method another package declared on the same
-	// receiver; two in one package are a redeclaration.
-	if isFunc && prev.PkgPath() != fn.PkgPath() {
-		if err := ir.ReplaceMethod(c.scope, fn.RecvName(), fn); err != nil {
-			return nil
-		}
-		return nil
-	}
+	prev, _ := red.Prev.(*ir.Func)
 	return prev
 }
 
@@ -221,14 +270,18 @@ func (c *checker) typeParamSym(name string, pos ast.Pos) *ir.TypeParamSym {
 		return &ir.TypeParamSym{Name: name}
 	}
 	key := typeParamKey{pos: pos, name: name}
-	if sym, ok := c.typeParamSyms[key]; ok {
+	if sym, ok := c.decls.typeParamSyms[key]; ok {
 		return sym
 	}
-	if c.typeParamSyms == nil {
-		c.typeParamSyms = map[typeParamKey]*ir.TypeParamSym{}
+	if sym, ok := c.libs.decls.typeParamSyms[key]; ok {
+		return sym
+	}
+	t := c.tables()
+	if t.typeParamSyms == nil {
+		t.typeParamSyms = map[typeParamKey]*ir.TypeParamSym{}
 	}
 	sym := &ir.TypeParamSym{Name: name}
-	c.typeParamSyms[key] = sym
+	t.typeParamSyms[key] = sym
 	return sym
 }
 

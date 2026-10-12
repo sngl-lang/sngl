@@ -131,6 +131,7 @@ func pkgToPath(pkg string) string {
 // CompileIR generates a Kotlin source file from IR using CodegenCtx.
 func CompileIR(ctx *codegen.CodegenCtx, cfg Config) ([]byte, error) {
 	cfg = cfg.withDefaults()
+	pageTypeMethods(ctx, cfg)
 	info := analyzeIR(ctx)
 	src, _ := emitIR(info, ctx, cfg, false)
 	return src, ctx.Err()
@@ -155,6 +156,7 @@ func CompileTestIR(ctx *codegen.CodegenCtx, cfg Config) ([]byte, error) {
 // instance a test holds.
 func compileTestIR(ctx *codegen.CodegenCtx, cfg Config) ([]byte, map[string]string, error) {
 	cfg = cfg.withDefaults()
+	pageTypeMethods(ctx, cfg)
 	info := analyzeIR(ctx)
 	src, members := emitIR(info, ctx, cfg, true)
 	return src, members, ctx.Err()
@@ -207,6 +209,9 @@ func stateTypeArg(bind irAndroidBind, initVal string) string {
 // listStateInitKt renders the right-hand side of a list-typed state
 // declaration: a SnapshotStateList built from the var's initializer.
 func listStateInitKt(kc *kotlin.KtIRContext, bind irAndroidBind, initVal string) string {
+	if ll, ok := bind.initEx.(*ir.ListLit); ok && len(ll.Elems) == 0 {
+		return kc.Name(ktMutableStateListOf) + "<" + listElementTypeKt(bind.ktType) + ">()"
+	}
 	elems := initVal
 	if strings.HasPrefix(elems, "listOf(") && strings.HasSuffix(elems, ")") {
 		elems = elems[len("listOf(") : len(elems)-1]
@@ -451,7 +456,7 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 			// class holds: its state is the class's fields. Excluding both
 			// left a component's func emitted by nobody in test mode, which
 			// is what `press__inst0` was.
-			if fn.IsMethod() && kotlin.ReceiverIsUserType(ctx.Pkg, fn.RecvName()) {
+			if fn.OnType() {
 				continue
 			}
 			if !scoped[fn] {
@@ -563,7 +568,7 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 		fmt.Fprintf(&body, "data class %s(\n", exportName(sd.Name))
 		for i, f := range sd.Fields {
 			ktType := kotlin.IRTypeToKt(f.Type)
-			def := ""
+			def := " = " + kotlin.KtFieldZero(f.Type)
 			if f.Default != nil {
 				// A literal default is emitted as written, and so is a struct
 				// literal of them -- `fill color = color{a=0}` is the one
@@ -572,7 +577,7 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 				// cannot hold — `false` is a constant declaration whose own
 				// initializer is `0 != 0` — so the field takes the type's
 				// Kotlin zero.
-				lit := kotlin.KtZeroFor(f.Type)
+				lit := kotlin.KtFieldZero(f.Type)
 				switch d := f.Default.(type) {
 				case *ir.Literal:
 					if s := kotlin.IRLiteralToKt(f.Default); s != "" {
@@ -875,7 +880,7 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 			// put in front of the parameters is Kotlin's own `this`. A
 			// component's own func is not that: it is called by bare name from
 			// the composable, and the component is no Kotlin type to extend.
-			if fn.IsMethod() && kotlin.ReceiverIsUserType(ctx.Pkg, fn.RecvName()) {
+			if fn.OnType() {
 				emitIRKtMethod(&body, fn, kc)
 				continue
 			}
@@ -898,6 +903,7 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 
 	// Assemble final output: package clause + imports (collected during
 	// pass 1 and dynamically during pass 2) + body.
+	body.WriteString(heldStyleDecls(kc, body.String(), info.Structs))
 	var out strings.Builder
 	fmt.Fprintf(&out, "package %s\n\n", cfg.Package)
 	for _, imp := range kc.Imports() {
@@ -1052,22 +1058,13 @@ func emitIRKtMemberFunc(b *strings.Builder, fn *ir.Func, kc *kotlin.KtIRContext)
 	}
 }
 
-// isReceiverParam reports whether p is the receiver passNoImplicitRecv put in
-// front of a method's parameters. It is usually named `this`, but the name is
-// the declaration's to choose -- `func Op.symbol(o Op)` calls it `o`, and
-// matching on the name alone left it in the signature of an extension whose
-// receiver it already was.
+// isReceiverParam reports whether p is fn's receiver, which the checker marks
+// whatever the declaration called it.
 func isReceiverParam(fn *ir.Func, p *ir.Param) bool {
-	if !fn.IsMethod() {
-		return false
-	}
-	if p.Name == "this" {
-		return true
-	}
-	return p.Type != nil && p.Type.Decl != nil && p.Type.Decl.SymName() == fn.RecvName()
+	return fn.IsMethod() && p.Receiver
 }
 
-// emitIRKtMethod emits a method on a user type as a Kotlin extension
+// emitIRKtMethod emits a method on a type as a Kotlin extension
 // function. The explicit receiver parameter is dropped: the body already
 // names it `this`, which is what an extension's receiver is called.
 //
@@ -1075,6 +1072,9 @@ func isReceiverParam(fn *ir.Func, p *ir.Param) bool {
 // `state.pending()` was emitted at two call sites.
 func emitIRKtMethod(b *strings.Builder, fn *ir.Func, kc *kotlin.KtIRContext) {
 	recv := exportName(fn.RecvName())
+	if len(fn.Params) > 0 && isReceiverParam(fn, fn.Params[0]) {
+		recv = kotlin.IRTypeToKt(fn.Params[0].Type)
+	}
 	fnCopy := *fn
 	fnCopy.Name = recv + "." + fn.Name
 	// Dropped here rather than left to emitIRKtFunc, which decides by asking
@@ -1270,7 +1270,7 @@ func stateScopedFuncs(ctx *codegen.CodegenCtx, state map[string]struct{}, reache
 	funcs := ctx.AllFuncs()
 	scoped := map[*ir.Func]bool{}
 	for _, fn := range funcs {
-		if fn.IsMethod() && kotlin.ReceiverIsUserType(ctx.Pkg, fn.RecvName()) {
+		if fn.OnType() {
 			continue
 		}
 		if needsStateScope(fn, state, reaches) {
@@ -1280,7 +1280,7 @@ func stateScopedFuncs(ctx *codegen.CodegenCtx, state map[string]struct{}, reache
 	for changed := true; changed; {
 		changed = false
 		for _, fn := range funcs {
-			if scoped[fn] || fn.IsMethod() && kotlin.ReceiverIsUserType(ctx.Pkg, fn.RecvName()) {
+			if scoped[fn] || fn.OnType() {
 				continue
 			}
 			_ = ir.WalkExprs(fn.Block, func(e ir.Expr) error {
@@ -1298,7 +1298,7 @@ func stateScopedFuncs(ctx *codegen.CodegenCtx, state map[string]struct{}, reache
 }
 
 func needsStateScope(fn *ir.Func, state map[string]struct{}, reaches map[*ir.Func]bool) bool {
-	if fn.IsMethod() || reaches[fn] {
+	if fn.OnComponent() || reaches[fn] {
 		return true
 	}
 	found := false
@@ -1356,4 +1356,45 @@ func sharedPageState(ctx *codegen.CodegenCtx) map[string]bool {
 		}
 	}
 	return out
+}
+
+// pageTypeMethods makes each method on a type that reaches the page's state a
+// function of the page, taking its receiver first, and points every call and
+// reference at it. MainScreen holds that state as remembered locals, and the
+// test build as members of its state class, so the method is declared in
+// whichever holds it and called as the page's other functions are, where an
+// extension is declared at top level.
+func pageTypeMethods(ctx *codegen.CodegenCtx, cfg Config) {
+	if cfg.GoLib {
+		return
+	}
+	moved := map[*ir.Func]*ir.Func{}
+	reaching := codegen.PackageStateFuncs(ctx.Pkg)
+	for i, fn := range ctx.Pkg.Funcs {
+		if !fn.OnType() || !reaching[fn] {
+			continue
+		}
+		page := *fn
+		page.Name = fn.RecvName() + "_" + fn.Name
+		page.Receiver = nil
+		moved[fn] = &page
+		ctx.Pkg.Funcs[i] = &page
+	}
+	if len(moved) == 0 {
+		return
+	}
+	_ = ir.Walk(ctx.Pkg, func(n ir.Node) error {
+		switch x := n.(type) {
+		case *ir.Call:
+			if page, ok := moved[x.Func]; ok {
+				x.Func = page
+			}
+		case *ir.Ident:
+			if fn, ok := x.Sym.(*ir.Func); ok && moved[fn] != nil {
+				x.Sym = moved[fn]
+				x.Name = moved[fn].Name
+			}
+		}
+		return nil
+	})
 }

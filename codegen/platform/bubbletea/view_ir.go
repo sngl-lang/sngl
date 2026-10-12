@@ -543,13 +543,12 @@ func tooltipFocusExpr(stmts []ir.Stmt, gc *golang.GoIRContext) string {
 // component's bubbletea override body is inlined (see bubbletea.sngl).
 func (vc *irViewContext) renderBlueprint(n *ir.NodeInst, resultVar string) {
 	bp := extractBlueprint(n)
-	styleFields := codegen.NodeStyleFields(n)
 	var style string
 	switch bp.Kind {
 	case bpOverlay, bpLayout, bpStyled:
-		style = vc.styleExpr(styleFields)
+		style = vc.nodeStyle(n)
 	case bpSpan, bpWidget:
-		vc.discardStyle(styleFields)
+		vc.discardStyle(codegen.NodeStyleFields(n))
 	}
 
 	switch bp.Kind {
@@ -704,8 +703,7 @@ func (vc *irViewContext) renderUserComponent(n *ir.NodeInst, resultVar string) {
 }
 
 func (vc *irViewContext) renderRawTerminal(n *ir.NodeInst, resultVar string) {
-	styleFields := codegen.NodeStyleFields(n)
-	style := vc.styleExpr(styleFields)
+	style := vc.nodeStyle(n)
 
 	// Join layout
 	if joinExpr := codegen.NodeProp(n, "join"); joinExpr != nil {

@@ -115,7 +115,7 @@ func New() Model {
 	m.r__inst0 = Measurement{Rem: 2}
 	m.sum__inst0 = Measurement{Px: m.m__inst0.Px + m.r__inst0.Px, Em: m.m__inst0.Em + m.r__inst0.Em, Rem: m.m__inst0.Rem + m.r__inst0.Rem}
 	m.t__inst0 = Tick(4)
-	m.d__inst0 = time.Duration(500) * time.Millisecond
+	m.d__inst0 = (time.Duration(500) * time.Millisecond)
 	m.w__inst0 = 2.5
 	m.visible__inst0 = true
 	return m
@@ -431,7 +431,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:9dc4d9574069b551ac96f163856b0932
+pass sha256:98e7f608fa7c3a4d4561b4fbda8e8a58
 -- run/kotlin/android --
 pass sha256:2c377567faae36e5f2dbe0117120f745
 -- run/none/html --

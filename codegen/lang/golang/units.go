@@ -117,12 +117,16 @@ func LowerUnitLiteralGo(lit *ir.Literal) (string, bool) {
 // num expressed in suffix suf. Picks the closest standard time.* constant
 // (Millisecond/Second/Minute/Hour) so the source `1s` reads as
 // `1*time.Second` instead of `1000*time.Millisecond`.
+//
+// Parenthesised because the form is a product: unbracketed, `d / 1s` came out
+// as `d / time.Duration(1000) * time.Millisecond`, which Go groups as
+// `(d / 1000) * time.Millisecond` and is off by a factor of a million.
 func durationLiteralGo(lit *ir.Literal, mag float64) string {
 	if unitExpr, ok := goTimeConst[lit.Suffix]; ok {
 		num, _ := parseUnitNumber(lit.Value)
-		return fmt.Sprintf("time.Duration(%s) * %s", ir.FormatUnitMagnitude(num), unitExpr)
+		return fmt.Sprintf("(time.Duration(%s) * %s)", ir.FormatUnitMagnitude(num), unitExpr)
 	}
-	return fmt.Sprintf("time.Duration(%s) * time.Millisecond", ir.FormatUnitMagnitude(mag))
+	return fmt.Sprintf("(time.Duration(%s) * time.Millisecond)", ir.FormatUnitMagnitude(mag))
 }
 
 // goTimeConst maps duration's declared suffixes onto the time package's own

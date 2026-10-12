@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"strings"
 
+	"duckfam.us/sngl/ast"
 	"duckfam.us/sngl/codegen"
 	"duckfam.us/sngl/internal/htmlutil"
 	"duckfam.us/sngl/ir"
@@ -156,6 +157,17 @@ func (t *htmlTranslator) styleWriteStmts(node ir.Expr, writes []styleWrite) []ir
 func (g *htmlGen) styleWriteUpdaters(id string, style ir.Expr, lowered bool) {
 	sl, ok := style.(*ir.StructLit)
 	if !ok {
+		if sd := styleValueDecl(style); sd != nil {
+			g.useStyleValue(sd)
+			js, requires := g.exprToJSReactiveCollect(style)
+			g.initWrites = append(g.initWrites, updateFunc{
+				funcName: fmt.Sprintf("$u_%s_style", id[1:]),
+				body:     fmt.Sprintf(`%s.style.cssText = %s(%s);`, id, styleValueHelper, js),
+				deps:     g.exprDeps(style),
+				initOnly: lowered,
+				requires: requires,
+			})
+		}
 		return
 	}
 	byField := map[string][]styleWrite{}
@@ -192,4 +204,74 @@ func (g *htmlGen) styleWriteUpdaters(id string, style ir.Expr, lowered bool) {
 			requires: requires,
 		})
 	}
+}
+
+// styleValueHelper is the page's function from a whole Style value -- one held
+// in state rather than written as a literal -- to the CSS text for it.
+const styleValueHelper = "_snglStyleCSS"
+
+func styleValueDecl(e ir.Expr) *ir.StructDef {
+	t := e.ExprType()
+	if t == nil || t.Kind != ir.TypeStruct {
+		return nil
+	}
+	sd, _ := t.Decl.(*ir.StructDef)
+	return sd
+}
+
+// styleValueWrite sets the node's inline style from a whole Style value.
+// Through cssText rather than the attribute, so the browser parses the text
+// and drops a declaration it refuses instead of keeping it verbatim.
+func styleValueWrite(node, v ir.Expr) ir.Stmt {
+	return &ir.Assign{
+		Target: &ir.Select{Operand: &ir.Select{Operand: node, Field: "style", Type: ir.TypDyn}, Field: "cssText", Type: ir.TypString},
+		Op:     ast.AssignSet,
+		Value:  &ir.Call{Type: ir.TypString, Func: &ir.Func{Name: styleValueHelper}, Args: []ir.CallArg{{Value: v}}},
+	}
+}
+
+func (g *htmlGen) useStyleValue(sd *ir.StructDef) {
+	g.styleValueDef = sd
+	g.ctx.Helpers[styleValueHelper] = true
+}
+
+// styleValueJS writes styleValueHelper for sd, one declaration per field the
+// value sets. A field is unset when the object lacks it, which is how a
+// literal the page builds leaves one, and a fixed declaration yields to a
+// field naming the same property as dynamicStyleWrites' does.
+func styleValueJS(sd *ir.StructDef, helpers map[string]bool) string {
+	named := map[string]string{}
+	for _, f := range sd.Fields {
+		for _, d := range htmlutil.StylePropDecls(f.Name) {
+			if d.Dynamic {
+				named[d.Name] = f.Name
+			}
+		}
+	}
+	var b strings.Builder
+	fmt.Fprintf(&b, "function %s(s) {\n  const d = [];\n", styleValueHelper)
+	for _, f := range sd.Fields {
+		for _, d := range htmlutil.StylePropDecls(f.Name) {
+			cond := "s." + f.Name + " != null"
+			var val string
+			switch {
+			case d.Dynamic:
+				val = strconv.Quote(d.Name+":") + " + "
+				if h := styleHelperFor(f.Type, d.Name); h != "" {
+					helpers[h] = true
+					val += h + "(s." + f.Name + ")"
+				} else {
+					val += "s." + f.Name
+				}
+			case named[d.Name] != "":
+				cond += " && s." + named[d.Name] + " == null"
+				val = strconv.Quote(d.Name + ":" + d.Value)
+			default:
+				val = strconv.Quote(d.Name + ":" + d.Value)
+			}
+			fmt.Fprintf(&b, "  if (%s) d.push(%s);\n", cond, val)
+		}
+	}
+	b.WriteString("  return d.join(\";\");\n}\n")
+	return b.String()
 }

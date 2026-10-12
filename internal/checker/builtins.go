@@ -19,6 +19,9 @@ import (
 // declared with a placeholder value because the real one is not known until a
 // build picks a target, and this is where the compiler supplies it.
 func (c *checker) bindBuiltinRole(kind ir.BuiltinKind, sym ir.Symbol) {
+	// A later check rebinding a role from libCache.roles finds the placeholders
+	// already replaced, and replacing them again would write the shared library.
+	fromSource := c.inLibSource()
 	bound := false
 	switch kind {
 	case ir.BuiltinContext:
@@ -31,15 +34,19 @@ func (c *checker) bindBuiltinRole(kind ir.BuiltinKind, sym ir.Symbol) {
 		if v := bindBuiltin(c, &c.nullConst, kind, sym); v != nil {
 			// Neither the type nor the value can be spelled, so the written
 			// ones are placeholders the compiler replaces.
-			v.Type = TypNull
-			v.Init = &ir.Literal{Type: TypNull, Value: "null"}
+			if fromSource {
+				v.Type = TypNull
+				v.Init = &ir.Literal{Type: TypNull, Value: "null"}
+			}
 			bound = true
 		}
 	case ir.BuiltinDuration:
 		if u := bindBuiltin(c, &c.durationUnit, kind, sym); u != nil {
-			// Handed to phases with no scope of their own; the Go importer
-			// maps time.Duration through it.
-			ir.RegisterDurationUnit(u.SymType())
+			if c.inLibSource() {
+				for _, b := range c.libraryRecords() {
+					b.RegisterDuration(u.SymType())
+				}
+			}
 			bound = true
 		}
 	case ir.BuiltinTargetPlatform:
@@ -47,16 +54,20 @@ func (c *checker) bindBuiltinRole(kind ir.BuiltinKind, sym ir.Symbol) {
 			// No initializer: the value arrives when a build picks a target,
 			// and the optimizer reads it off the mark. The type is the one
 			// written, sngl:build's `platform` family.
-			v.Init = nil
+			if fromSource {
+				v.Init = nil
+			}
 			bound = true
 		}
 	case ir.BuiltinTargetLanguage:
 		if v := bindBuiltin(c, &c.languageConst, kind, sym); v != nil {
-			v.Init = nil
+			if fromSource {
+				v.Init = nil
+			}
 			bound = true
 		}
 	}
-	if bound && c.inLibSource() {
+	if bound && fromSource {
 		// Library packages are shared across the checks one build runs, and a
 		// check that reached one from the cache registered nothing: it takes
 		// the reference from here instead.

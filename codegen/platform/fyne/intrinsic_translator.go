@@ -332,13 +332,13 @@ func (t *fyneTranslator) OnCreateNode(ctx context.Context, id, tag string) []ir.
 		// Non-escaping: declare a function-local `__nN := <ctor>` so each
 		// call frame (notably a recursive render method) keeps its own
 		// widget temp rather than clobbering a shared Model field.
-		return []ir.Stmt{&ir.LocalVar{Name: id, Init: ctor}}
+		return t.withThemeOverride(id, sp, &ir.LocalVar{Name: id, Init: ctor})
 	}
-	create := []ir.Stmt{&ir.Assign{
+	create := t.withThemeOverride(id, sp, &ir.Assign{
 		Target: t.fieldRef(id),
 		Op:     ast.AssignSet,
 		Value:  ctor,
-	}}
+	})
 	if t.indexed[id] {
 		list := namedWidgetField(id)
 		t.fieldSink(list, "[]"+goType)
@@ -349,6 +349,13 @@ func (t *fyneTranslator) OnCreateNode(ctx context.Context, id, tag string) []ir.
 		})
 	}
 	return create
+}
+
+func (t *fyneTranslator) withThemeOverride(id string, sp *fyneSpec, create ir.Stmt) []ir.Stmt {
+	if !sp.RuntimeTheme {
+		return []ir.Stmt{create}
+	}
+	return []ir.Stmt{create, t.createThemeOverride(id, t.nodeRefFor(id))}
 }
 
 // OnCreateComponent binds a name to a live instance of a non-inlinable user
@@ -457,10 +464,10 @@ func (t *fyneTranslator) OnAppendChild(ctx context.Context, parent, child ir.Exp
 	childSpec := t.specs[codegen.IdentBareName(child)]
 	if id, ok := parent.(*ir.Ident); ok && id.Name == "parent" && t.slotAnchor != nil {
 		return []ir.Stmt{&ir.CallStmt{Call: nativeCallAt("fynelayout.InsertBefore", fyneLayoutImportPath,
-			[]ir.Expr{t.qualifyParentExpr(parent), t.slotAnchor, t.themed(t.qualifyChildExpr(child), childSpec)}, ir.TypVoid)}}
+			[]ir.Expr{t.qualifyParentExpr(parent), t.slotAnchor, t.themed(t.qualifyChildExpr(child), childSpec, codegen.IdentBareName(child))}, ir.TypVoid)}}
 	}
 	parent = t.qualifyParentExpr(parent)
-	child = t.themed(t.qualifyChildExpr(child), childSpec)
+	child = t.themed(t.qualifyChildExpr(child), childSpec, codegen.IdentBareName(child))
 	if sp != nil && sp.isSingleChild() {
 		return []ir.Stmt{&ir.Assign{
 			Target: &ir.Select{Operand: parent, Field: sp.Content, Type: ir.TypDyn},
@@ -670,6 +677,12 @@ func (t *fyneTranslator) OnPropAssign(ctx context.Context, node ir.Expr, prop st
 		// translator owns. Nothing to say about it here.
 		return nil
 	}
+	if prop == stylePropName && sp.RuntimeTheme {
+		if lit, ok := value.(*ir.StructLit); ok {
+			return t.setRuntimeTheme(bareID, lit)
+		}
+		return t.setRuntimeThemeFrom(bareID, value)
+	}
 	if structuralProp(prop) {
 		// This platform's own props, not the widget's: `spec` is the record
 		// that says which Fyne widget to build, and `style` is forwarded onto
@@ -746,7 +759,11 @@ func (t *fyneTranslator) OnSlotReset(ctx context.Context, slot *ir.Var) []ir.Stm
 
 func (t *fyneTranslator) OnSlotAppend(ctx context.Context, slot *ir.Var, child ir.Expr) []ir.Stmt {
 	slotRef := t.fieldRef(slot.Name)
-	child = t.qualifyChildExpr(child)
+	if sp := t.specs[codegen.IdentBareName(child)]; sp != nil && sp.RuntimeTheme {
+		child = t.themeOverrideRef(codegen.IdentBareName(child))
+	} else {
+		child = t.qualifyChildExpr(child)
+	}
 	appendExpr := nativeCall("append", []ir.Expr{slotRef, child}, slot.Type)
 	return []ir.Stmt{&ir.Assign{
 		Target: t.fieldRef(slot.Name),

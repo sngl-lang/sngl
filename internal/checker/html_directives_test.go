@@ -58,6 +58,7 @@ func checkOptimizeLower(t *testing.T, src string) *ir.Package {
 	if pkg == nil {
 		t.Fatal("nil pkg")
 	}
+	pkg = ir.ClonePackage(pkg)
 	if err := optimize.Optimize(pkg, &optimize.Config{}); err != nil {
 		t.Fatalf("optimize: %v", err)
 	}

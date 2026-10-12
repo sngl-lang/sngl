@@ -96,14 +96,7 @@ func FormatUnitMagnitude(v float64) string {
 type Fielded interface {
 	Symbol
 	FieldList() []*StructField
-	MethodTable() map[string]*Func
 }
-
-// MethodTable completes Fielded for a struct.
-func (s *StructDef) MethodTable() map[string]*Func { return s.Methods }
-
-// MethodTable completes Fielded for a unit.
-func (u *UnitDef) MethodTable() map[string]*Func { return u.Methods }
 
 // UnitFields is the member table a UnitDef carries: one float field per base
 // suffix, in declaration order, and none at all for a single-base unit.

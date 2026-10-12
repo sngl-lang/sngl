@@ -720,8 +720,8 @@ inner scope **shadows** the same name in an outer scope; package declarations
 shadow built-in and imported declarations of the same name, which is how user
 code overrides a library entity. Declaring the same name twice in one scope is an
 error. Methods attached to a type (`func Type.m`) occupy that type's method set
-rather than a value scope, so a user method may override a standard-library
-method of the same name on the same type.
+rather than a value scope, and are not shadowed: a program may add a method to a
+library type, but one the library already declares is a duplicate declaration.
 
 ### Predeclared identifiers and the library tiers
 
@@ -1754,10 +1754,10 @@ functions are re-evaluated because of what they read.
 A `var` may carry one or more handlers that run after each assignment to it:
 
 ```
-var count = 0 @change(old) { … }
+var count = 0 @change(v) { … }
 ```
 
-The optional parameter binds the previous value. The handler body executes
+The optional parameter binds the new value. The handler body executes
 after the new value is in place; it may itself assign to other reactive
 variables.
 

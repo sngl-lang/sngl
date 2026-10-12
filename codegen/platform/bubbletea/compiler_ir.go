@@ -418,6 +418,12 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 		b.WriteString("}\n\n")
 	}
 
+	if usesStyleValue(ctx.Pkg) {
+		gc.RequireImport("charm.land/lipgloss/v2")
+		gc.RequireImport("duckfam.us/sngl/pkg/go/snglcolor")
+		b.WriteString(styleValueDecl(cfg.ScaleFactor))
+	}
+
 	// The canvas stdlib structs are read by the synthesized draw funcs but are
 	// not carried on pkg.Structs for the Go path. Skip a name a user struct
 	// already declares.
@@ -609,7 +615,7 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 			continue
 		}
 		// golang.LiftsToFreeFunc is the one answer the call site uses too.
-		if fn.IsMethod() && golang.LiftsToFreeFunc(ctx.Pkg, fn.RecvName()) {
+		if fn.IsMethod() && golang.LiftsToFreeFunc(ctx.Pkg, fn) {
 			emitIRTypeMethod(&b, fn, gc)
 			continue
 		}

@@ -685,6 +685,8 @@ type htmlGen struct {
 
 	initWrites []updateFunc
 
+	styleValueDef *ir.StructDef
+
 	handlers []eventHandler
 
 	title string
@@ -2372,6 +2374,9 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 	if g.ctx.Helpers[spanColorHelper] {
 		b.WriteString(spanColorHelperJS + "\n")
 	}
+	if g.ctx.Helpers[styleValueHelper] && g.styleValueDef != nil {
+		b.WriteString(styleValueJS(g.styleValueDef, g.ctx.Helpers) + "\n")
+	}
 	for _, h := range []string{styleColorHelper, styleLengthHelper, styleKeywordHelper} {
 		if g.ctx.Helpers[h] {
 			b.WriteString(styleHelperJS[h] + "\n")
@@ -3298,11 +3303,9 @@ func (g *htmlGen) buildCSSStyle(n *ir.NodeInst) string {
 	return htmlutil.BuildCSSStyleIR(n.Props)
 }
 
-// receiverParamName is what the method's receiver is called in its own body.
-// A nested method's is the implicit `this`; a top-level `func Op.symbol(o Op)`
-// names its own. Both are emitted as `state`, so both have to be renamed —
-// renaming only `this` left `func Op_symbol(state) { return o === "add" … }`,
-// which reads a name the function does not have.
+// receiverParamName is what a component method's receiver is called in its
+// own body: the implicit `this` of a nested method, or the name one written
+// out carries. Either is emitted as `state`, so either has to be renamed.
 func receiverParamName(fn *ir.Func) string {
 	if len(fn.Params) > 0 && fn.Params[0].Receiver {
 		return fn.Params[0].Name
@@ -3328,12 +3331,11 @@ func (g *htmlGen) emitJSFunc(b *strings.Builder, fn *ir.Func) {
 	}
 	params := make([]string, len(fn.Params))
 	for i, p := range fn.Params {
-		// Emitted as `state` so the param name matches the body's
-		// component-self translation -- and, for a struct or enum receiver,
-		// so that it is a name JavaScript accepts at all. SNGL spells the
-		// receiver `this`, which is a parameter name JS rejects; the body's
-		// uses are renamed to match below.
-		if i == 0 && fn.IsMethod() && p.Receiver {
+		// A component method's receiver is the instance's state, which the
+		// body's component-self translation spells `state`. A type method's
+		// is a value the caller passes, and keeps its name: `state` there
+		// is the page's, which the body may read too.
+		if i == 0 && fn.OnComponent() && p.Receiver {
 			params[i] = "state"
 		} else {
 			params[i] = p.Name
@@ -3351,7 +3353,7 @@ func (g *htmlGen) emitJSFunc(b *strings.Builder, fn *ir.Func) {
 	if len(fn.Block) == 1 {
 		if ret, ok := fn.Block[0].(*ir.Return); ok && ret.Value != nil {
 			jc := g.scopedJC()
-			if fn.IsMethod() {
+			if fn.OnComponent() {
 				jc = jc.WithRenamedLocal(receiverParamName(fn), "state")
 			}
 			for _, p := range fn.Params {
@@ -3369,7 +3371,7 @@ func (g *htmlGen) emitJSFunc(b *strings.Builder, fn *ir.Func) {
 	// Routed through the same pipeline as a handler body, so element-ref
 	// writes and intrinsic statements lower identically.
 	jc := g.scopedJC()
-	if fn.IsMethod() {
+	if fn.OnComponent() {
 		jc = jc.WithRenamedLocal(receiverParamName(fn), "state")
 	}
 	for _, p := range fn.Params {

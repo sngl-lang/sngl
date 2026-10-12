@@ -102,11 +102,12 @@ func mustParseTime(s string) time.Time {
 }
 
 func mustParseDateTime(s string) time.Time {
-	t, err := time.Parse(time.RFC3339, s)
-	if err != nil {
-		panic(err)
+	for _, layout := range []string{time.RFC3339, "2006-01-02T15:04:05", "2006-01-02T15:04"} {
+		if t, err := time.Parse(layout, s); err == nil {
+			return t
+		}
 	}
-	return t
+	panic("not a datetime: " + s)
 }
 
 // Model is the Bubble Tea model for this SNGL UI.
@@ -440,7 +441,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:246cc354a51f1365c863e3892d2fd204
+pass sha256:81bb956c3dad5c63ddcc2151fea84059
 -- run/kotlin/android --
 pass sha256:fc06a9dfbda7f3415d93d93eca91f6c2
 -- run/none/html --

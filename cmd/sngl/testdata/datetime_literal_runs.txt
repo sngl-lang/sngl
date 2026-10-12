@@ -1,0 +1,60 @@
+# A datetime literal with no offset, compiled and run as Go, then run again on
+# the interpreter.
+#
+# The checker accepts `YYYY-MM-DDTHH:MM` with the seconds and the offset each
+# optional (`checkStringReprLiteral`), and Go's emitted `mustParseDateTime`
+# read RFC3339 alone -- which requires an offset. So the two most ordinary
+# spellings of a datetime literal compiled fine and panicked the moment the
+# program ran:
+#
+#     panic: parsing time "2024-01-15T10:30:00" as "2006-01-02T15:04:05Z07:00"
+#
+# A script rather than a golden, because the helper's text was never the
+# question: it is one line either way and only running it says which.
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout 'PASS'
+! stdout 'FAIL'
+
+sngl test --platform=none app.sngl
+stdout 'PASS'
+! stdout 'FAIL'
+
+-- app.sngl --
+import . "sngl:test"
+import ui "sngl:ui"
+import time "sngl:time"
+
+component main ui.node {
+    var minutes time.datetime = "2024-01-15T10:30"
+    var seconds time.datetime = "2024-01-15T10:30:00"
+    var offset time.datetime = "2024-01-15T10:30:00Z"
+    var shown = ""
+
+    effect(@mount {
+        shown = string(seconds)
+    })
+
+    ui.text(value="{minutes}")
+}
+
+// Reaching the value at all is the assertion: each of the three spellings is
+// parsed where the program starts, so a layout the helper does not know takes
+// the whole run down before any test body is entered.
+func testEveryLiteralSpellingSurvivesTheHelper(t Test, c main) {
+    t.assert(c.shown != "")
+}
+
+ui.window {
+    main
+}
+-- testrun/bubbletea/go/app.sngl/main/1 --
+sha256:20faf45f9bba2439f20cfcc6df239102
+{
+  "results": [
+    {
+      "Desc": "EveryLiteralSpellingSurvivesTheHelper",
+      "Passed": true
+    }
+  ]
+}

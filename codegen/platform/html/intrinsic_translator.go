@@ -69,6 +69,9 @@ type htmlTranslator struct {
 	// sources are the image sources this scope created, by the primitive's
 	// name: an element built at run time has no declaration to ask.
 	sources map[string]string
+	// useStyleValue records that a node takes a whole Style value, whose CSS
+	// the page then builds with styleValueHelper.
+	useStyleValue func(*ir.StructDef)
 	// windows are the names a lowering creates a Window under, each a
 	// `<dialog>` built by _snglDialog (htmlGen.windowIDs).
 	windows map[string]bool
@@ -78,7 +81,7 @@ func (g *htmlGen) newHTMLTranslator(jc *javascript.JsIRContext) *htmlTranslator 
 	return &htmlTranslator{
 		jc: jc, idTags: map[string]string{}, creates: map[string]*ir.Call{}, idToNode: g.idToNode, refToVar: g.refToVar, elem: g.elemDecl,
 		canvasByID: g.canvasByID, canvasByNode: g.canvasByNode, pageCanvas: g.pageCanvas,
-		classProps: map[string][]ir.Arg{}, addStyle: g.AddStyle,
+		classProps: map[string][]ir.Arg{}, addStyle: g.AddStyle, useStyleValue: g.useStyleValue,
 		sources: map[string]string{},
 		windows: g.windowIDs(),
 	}
@@ -420,6 +423,10 @@ func (t *htmlTranslator) OnPropAssign(ctx context.Context, node ir.Expr, prop st
 				out = setAttr(prop, &ir.Literal{Type: ir.TypString, Value: css})
 			}
 			return append(out, t.styleWriteStmts(node, dynamicStyleWrites(sl))...)
+		}
+		if sd := styleValueDecl(value); sd != nil && t.useStyleValue != nil {
+			t.useStyleValue(sd)
+			return []ir.Stmt{styleValueWrite(node, value)}
 		}
 	}
 	if prop == spanStyleProp {

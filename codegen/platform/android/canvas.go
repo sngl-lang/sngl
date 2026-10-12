@@ -2,6 +2,7 @@ package android
 
 import (
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -312,13 +313,28 @@ func colorKotlinDecl(declared map[string]struct{}) string {
 
 // namesColor reports whether the built-in color type reached this package's
 // struct list -- promoteForeignStructs puts it there when a function this
-// build emits names it in its signature, which is the one way a program
-// reaches the type without drawing.
+// build emits names it in its signature -- or a field of a struct on it names
+// the type, since that data class is emitted and spells Color too.
 func namesColor(structs []*ir.StructDef) bool {
 	for _, sd := range structs {
 		if sd.Builtin == ir.BuiltinColor {
 			return true
 		}
+		for _, f := range sd.Fields {
+			if typeNamesColor(f.Type) {
+				return true
+			}
+		}
 	}
 	return false
+}
+
+func typeNamesColor(t *ir.Type) bool {
+	if t == nil {
+		return false
+	}
+	if ir.IsColorStruct(t) {
+		return true
+	}
+	return slices.ContainsFunc(t.Elems, typeNamesColor)
 }

@@ -64,7 +64,7 @@ import (
 	"time"
 )
 
-var periods []time.Duration = []time.Duration{time.Duration(100) * time.Millisecond, time.Duration(250) * time.Millisecond}
+var periods []time.Duration = []time.Duration{(time.Duration(100) * time.Millisecond), (time.Duration(250) * time.Millisecond)}
 
 type timerTickMsg0 struct {
 	key string
@@ -102,7 +102,7 @@ func New() Model {
 	m.shown = true
 	m.visible__inst0 = true
 	m.__focusID = 0
-	m.periods = []time.Duration{time.Duration(100) * time.Millisecond, time.Duration(250) * time.Millisecond}
+	m.periods = []time.Duration{(time.Duration(100) * time.Millisecond), (time.Duration(250) * time.Millisecond)}
 	return m
 }
 
@@ -383,7 +383,7 @@ func New() *Model {
 	m.__slot1_at = nil
 	m.__inst1_live = []*TimerInstance{}
 	m.__inst1_was_interval = []time.Duration{}
-	m.periods = []time.Duration{time.Duration(100) * time.Millisecond, time.Duration(250) * time.Millisecond}
+	m.periods = []time.Duration{(time.Duration(100) * time.Millisecond), (time.Duration(250) * time.Millisecond)}
 	return m
 }
 
@@ -572,7 +572,7 @@ func newTimerInstance(__model *Model, __a_interval time.Duration, __a_enabled bo
 	c.done = nil
 	c.live = false
 	c.gen = 0
-	c.__effect0_key = time.Duration(0) * time.Millisecond
+	c.__effect0_key = (time.Duration(0) * time.Millisecond)
 	c.__effect0_live = []time.Duration{}
 	c.__effect0_desired = []time.Duration{}
 	c.__effects0_settling = false
@@ -587,7 +587,7 @@ func newTimerInstance(__model *Model, __a_interval time.Duration, __a_enabled bo
 }
 
 func (c *TimerInstance) __effect0_mount() {
-	if c.__effect0_key > time.Duration(0)*time.Millisecond {
+	if c.__effect0_key > (time.Duration(0) * time.Millisecond) {
 		c.live = true
 		c.gen = (c.gen + 1)
 		var mine int = c.gen
@@ -764,7 +764,7 @@ func New() *Model {
 	m.__slot1_at = nil
 	m.__inst1_live = []*TimerInstance{}
 	m.__inst1_was_interval = []time.Duration{}
-	m.periods = []time.Duration{time.Duration(100) * time.Millisecond, time.Duration(250) * time.Millisecond}
+	m.periods = []time.Duration{(time.Duration(100) * time.Millisecond), (time.Duration(250) * time.Millisecond)}
 	return m
 }
 
@@ -895,7 +895,7 @@ func newTimerInstance(__model *Model, __a_interval time.Duration, __a_enabled bo
 	c.__prop_enabled = __a_enabled
 	c.__prop_tick = __a_tick
 	c.handle = nil
-	c.__effect0_key = time.Duration(0) * time.Millisecond
+	c.__effect0_key = (time.Duration(0) * time.Millisecond)
 	c.__effect0_live = []time.Duration{}
 	c.__effect0_desired = []time.Duration{}
 	c.__effects0_settling = false
@@ -1321,10 +1321,10 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:e89484b9e3f9e9556e9c213f5a028b25
+pass sha256:1175eb003e4c2d53bf835e1ed3c765a0
 -- run/go/fyne --
-pass sha256:c13b9fdc378938f0fb105b56d64b8ca2
+pass sha256:c6f9d83cdd6909da1c861baad716e40e
 -- run/go/gtk4 --
-pass sha256:aeab8fb6575990f4521fca563d8d69e2
+pass sha256:595788b2a4fee455aa1b62bca087f8d1
 -- run/none/html --
 pass sha256:03ad4bb55fb81ad8aff2e52855b3cac1

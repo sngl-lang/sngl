@@ -12,8 +12,19 @@ import (
 // AST builder are converted into errors so callers don't crash on malformed
 // input.
 func Parse(filename string, src []byte) (*ast.Document, error) {
+	return parse(filename, src, "")
+}
+
+// parse is Parse given the source's Digest, or "" to compute it.
+func parse(filename string, src []byte, digest string) (*ast.Document, error) {
 	stream, filtered, comments, lexErrs := scanEncoded(newLexer(string(src)), nil)
 	doc, _, err := parseTokens(filename, stream, filtered, comments, lexErrs)
+	if err == nil {
+		if digest == "" {
+			digest = Digest(filename, src)
+		}
+		doc.Digest = digest
+	}
 	return doc, err
 }
 
