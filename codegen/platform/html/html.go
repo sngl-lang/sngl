@@ -685,6 +685,8 @@ type htmlGen struct {
 
 	initWrites []updateFunc
 
+	styleValueDef *ir.StructDef
+
 	handlers []eventHandler
 
 	title string
@@ -2371,6 +2373,9 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 	}
 	if g.ctx.Helpers[spanColorHelper] {
 		b.WriteString(spanColorHelperJS + "\n")
+	}
+	if g.ctx.Helpers[styleValueHelper] && g.styleValueDef != nil {
+		b.WriteString(styleValueJS(g.styleValueDef, g.ctx.Helpers) + "\n")
 	}
 	for _, h := range []string{styleColorHelper, styleLengthHelper, styleKeywordHelper} {
 		if g.ctx.Helpers[h] {

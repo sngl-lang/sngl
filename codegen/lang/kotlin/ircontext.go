@@ -362,7 +362,52 @@ func (kc *KtIRContext) AssignText(n *ir.Assign, target, value string) string {
 	if n.Op == ast.AssignSet && kc.isStateList(n.Target) {
 		return "(" + value + ").let { __v -> " + target + ".clear(); " + target + ".addAll(__v) }"
 	}
+	// A struct held by a `mutableStateOf` is a data class, and writing one of
+	// its fields in place changes nothing the snapshot sees, so the view never
+	// recomposed. The write rebuilds the path with copy() and reassigns the
+	// state, as the map write above does.
+	if sel, ok := n.Target.(*ir.Select); ok && kc.isStateStructField(sel) {
+		if n.Op != ast.AssignSet {
+			value = target + " " + strings.TrimSuffix(n.Op.String(), "=") + " (" + value + ")"
+		}
+		var e ir.Expr = sel
+		for {
+			s, ok := e.(*ir.Select)
+			if !ok {
+				break
+			}
+			value = irwalk.EvalMutTarget(kc, s.Operand) + ".copy(" + kc.MutTargetField(s) + " = " + value + ")"
+			e = s.Operand
+		}
+		return irwalk.EvalMutTarget(kc, e) + " = " + value
+	}
 	return target + " " + n.Op.String() + " " + value
+}
+
+// isStateStructField reports whether sel is a field path through emitted data
+// classes down from a state var.
+func (kc *KtIRContext) isStateStructField(sel *ir.Select) bool {
+	var e ir.Expr = sel
+	for {
+		s, ok := e.(*ir.Select)
+		if !ok {
+			break
+		}
+		t := s.Operand.ExprType()
+		if t == nil || t.Kind != ir.TypeStruct || ir.StringReprStruct(t) {
+			return false
+		}
+		if sd, ok := t.Decl.(*ir.StructDef); !ok || sd.Foreign.Name != "" {
+			return false
+		}
+		e = s.Operand
+	}
+	id, ok := e.(*ir.Ident)
+	if !ok || kc.Ctx == nil {
+		return false
+	}
+	_, kind := kc.Ctx.Resolve(id.Name)
+	return kind == codegen.NameStateVar
 }
 
 func isMapExpr(e ir.Expr) bool {

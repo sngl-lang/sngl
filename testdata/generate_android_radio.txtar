@@ -85,7 +85,7 @@ data class Measurement(
 )
 
 data class Choice__record(
-    var label: String
+    var label: String = ""
 )
 
 fun _snglFloatStr(v: Double): String =
@@ -149,4 +149,4 @@ fun MainScreen() {
     }
 }
 -- run/kotlin/android --
-pass sha256:e7d1a2721d53a902e96fe06fe4258b82
+pass sha256:732c85733620494c646e946c2c9b362f

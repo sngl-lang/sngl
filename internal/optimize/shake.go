@@ -74,7 +74,8 @@ func dropDetachedHandlers(pkg *ir.Package) {
 }
 
 // promoteForeignStructs adds a library package's struct to this package's list
-// when a surviving function's signature names it.
+// when a surviving function's signature names it, or a value the program
+// stores is one (storedStructTypes).
 //
 // Every backend emits its type declarations from pkg.Structs, which holds the
 // program's own -- so a struct another package declares has no declaration in
@@ -86,9 +87,10 @@ func dropDetachedHandlers(pkg *ir.Package) {
 // inlined into its caller and then shaken leaves a signature nobody writes,
 // and promoting its types added a declaration nothing referenced.
 //
-// Signatures only. A struct a body merely *builds* needs no declaration in a
-// language whose literals carry none, and reaching wider pulled in `ui.Style`
-// -- named by every program -- which html then emitted a constructor for.
+// Not every literal. A struct a body merely *builds* needs no declaration in a
+// language whose literals carry none, and reaching every literal pulled in
+// `ui.Style` -- named by every program -- which html then emitted a
+// constructor for.
 //
 // A foreign struct is skipped: it *is* a host type, and a declaration for it
 // would shadow the thing it names.
@@ -182,6 +184,9 @@ func promoteForeignStructs(pkg *ir.Package) error {
 		}
 		return nil
 	})
+	for _, t := range storedStructTypes(pkg) {
+		want(t)
+	}
 	for _, t := range handlerPayloadTypes(pkg) {
 		// sngl:builtin's `error`, an @error handler's, is each backend's own
 		// to spell.
@@ -202,7 +207,7 @@ func promoteForeignStructs(pkg *ir.Package) error {
 	// type.
 	for _, sd := range added {
 		if other, clash := byName[sd.Name]; clash {
-			return fmt.Errorf("%s declares struct %q and so does %s, which a function this build emits names in its signature; "+
+			return fmt.Errorf("%s declares struct %q and so does %s, which this build has to declare; "+
 				"every target emits a struct by its name, so the two cannot both be declared -- rename the local one",
 				pkgLabel(other.PkgPath()), sd.Name, pkgLabel(sd.PkgPath()))
 		}
@@ -237,6 +242,54 @@ func namesBuiltinStruct(t *ir.Type) bool {
 		return false
 	}
 	return false
+}
+
+// storedStructTypes is every library struct a value the program holds is
+// declared by: the type of each var and local -- the temp NoTernary makes of a
+// ternary is one -- with the structs its fields and elements hold. A literal alone needs no declaration, since each target consumes it
+// where it is written. sngl:builtin's structs and the builtin kinds are each
+// backend's own to spell, and an enum is left out because Kotlin names
+// Compose's own FontWeight and TextAlign where SNGL's would collide.
+func storedStructTypes(pkg *ir.Package) []*ir.Type {
+	var out []*ir.Type
+	seen := map[*ir.StructDef]bool{}
+	var add func(t *ir.Type)
+	add = func(t *ir.Type) {
+		if t == nil {
+			return
+		}
+		for _, e := range t.Elems {
+			add(e)
+		}
+		sd, ok := t.Decl.(*ir.StructDef)
+		if t.Kind != ir.TypeStruct || !ok || sd == nil || sd.PkgPath() == "" || sd.PkgPath() == "sngl:builtin" || sd.Builtin != ir.BuiltinNone || seen[sd] {
+			return
+		}
+		seen[sd] = true
+		out = append(out, t)
+		for _, f := range sd.Fields {
+			add(f.Type)
+		}
+	}
+	visit := func(n ir.Node) error {
+		if lv, ok := n.(*ir.LocalVar); ok {
+			add(lv.Type)
+		}
+		return nil
+	}
+	for _, v := range pkg.Vars {
+		add(v.Type)
+	}
+	for _, o := range ir.Owners(pkg) {
+		for _, v := range o.Vars {
+			add(v.Type)
+		}
+		_ = ir.Walk(*o.Body, visit)
+		for _, f := range o.Funcs {
+			_ = ir.Walk(f.Block, visit)
+		}
+	}
+	return out
 }
 
 // handlerPayloadTypes is the type of every parameter of an event handler the

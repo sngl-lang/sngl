@@ -712,7 +712,7 @@ func newTestComponent() *Model {
 
 package main
 
-import "git.duckfam.us/jonathan/sngl/pkg/go/gtk4rt"
+import "duckfam.us/sngl/pkg/go/gtk4rt"
 
 func main() {
 	gtk4rt.Run(func(app gtk4rt.Handle) gtk4rt.Handle {
@@ -725,7 +725,7 @@ func main() {
 package main
 
 import (
-	"git.duckfam.us/jonathan/sngl/pkg/go/gtk4rt"
+	"duckfam.us/sngl/pkg/go/gtk4rt"
 )
 
 type ErrorEvent struct {
@@ -942,27 +942,18 @@ func main() {
 
 package test.sngl.app
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.*
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
-import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.foundation.layout.Column
+import androidx.compose.material3.Button
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color as ComposeColor
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.material3.Text
 
 data class ErrorEvent(val message: String = "", val kind: String = "")
 
@@ -1057,8 +1048,8 @@ class MainScreenTest {
         val c = MainScreenState()
         @Suppress("UNUSED_VARIABLE") val composeTestRule = composeRule
         composeRule.setContent { MainScreen(c) }
-        composeTestRule.onNodeWithTag("direct").performClick(); composeTestRule.waitForIdle()
-        composeTestRule.onNodeWithTag("direct").performClick(); composeTestRule.waitForIdle()
+        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("direct")).performClick(); composeTestRule.waitForIdle()
+        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("direct")).performClick(); composeTestRule.waitForIdle()
         org.junit.Assert.assertTrue("(c.caught == 2)", (c.caught == 2))
         org.junit.Assert.assertTrue("(c.before == 2)", (c.before == 2))
         org.junit.Assert.assertTrue("(c.after == 0)", (c.after == 0))
@@ -1068,8 +1059,8 @@ class MainScreenTest {
         val c = MainScreenState()
         @Suppress("UNUSED_VARIABLE") val composeTestRule = composeRule
         composeRule.setContent { MainScreen(c) }
-        composeTestRule.onNodeWithTag("called").performClick(); composeTestRule.waitForIdle()
-        composeTestRule.onNodeWithTag("called").performClick(); composeTestRule.waitForIdle()
+        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("called")).performClick(); composeTestRule.waitForIdle()
+        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("called")).performClick(); composeTestRule.waitForIdle()
         org.junit.Assert.assertTrue("(c.callCaught == \"from check\")", (c.callCaught == "from check"))
         org.junit.Assert.assertTrue("(c.callBefore == 2)", (c.callBefore == 2))
         org.junit.Assert.assertTrue("(c.wrote == 2)", (c.wrote == 2))
@@ -1193,10 +1184,10 @@ pass sha256:c464da4ec909e5b9b82c4e6313d51d83
 -- run/go/fyne --
 pass sha256:7cf6ae210c084f9c66b3062cdb71cc7f
 -- run/go/gtk4 --
-pass sha256:b6556c3ffe0a4b4dc064f916a97aa864
+pass sha256:32150185c336a7ec2174a4df8b69cc2f
 -- run/go/html --
 pass sha256:f61d0b346c139ea64301c030fbc326f3
 -- run/kotlin/android --
-pass sha256:5826a456048080d64738ec8711d8dd62
+pass sha256:6fbe79275d3b8e1c443da5da303b4ba7
 -- run/none/html --
 pass sha256:77411e39cc0a65d290be7e9b48f9f8af

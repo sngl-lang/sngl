@@ -62,7 +62,7 @@ import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
 
 data class Choice__record(
-    var label: String
+    var label: String = ""
 )
 
 fun _snglFloatStr(v: Double): String =
@@ -101,4 +101,4 @@ fun MainScreen() {
     }
 }
 -- run/kotlin/android --
-pass sha256:e2fe534b30d3aafbe28105c2d4889852
+pass sha256:097238c7f92bff3488f043b8e295c2cb

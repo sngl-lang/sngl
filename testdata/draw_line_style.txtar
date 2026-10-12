@@ -849,14 +849,14 @@ data class Measurement(
 )
 
 data class _step__record(
-    var op: SnglPathOp,
-    var x: Double,
-    var y: Double,
-    var cx1: Double,
-    var cy1: Double,
-    var cx2: Double,
-    var cy2: Double,
-    var r: Double
+    var op: SnglPathOp = SnglPathOp.MOVETO,
+    var x: Double = 0.0,
+    var y: Double = 0.0,
+    var cx1: Double = 0.0,
+    var cy1: Double = 0.0,
+    var cx2: Double = 0.0,
+    var cy2: Double = 0.0,
+    var r: Double = 0.0
 )
 
 data class Point(
@@ -1195,6 +1195,6 @@ pass sha256:9ed6653bc2c74513345c5f750d86a689
 -- run/go/gtk4 --
 pass sha256:9ff42a482aa40808de4d62f5cbdfe2c0
 -- run/kotlin/android --
-pass sha256:19afa928c9095b75d33340bd3191bdb0
+pass sha256:717d677a5939dab574481c37404038fa
 -- run/none/html --
 pass sha256:db768984fd227ac56783d7a933a47519

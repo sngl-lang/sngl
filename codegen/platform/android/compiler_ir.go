@@ -568,7 +568,7 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 		fmt.Fprintf(&body, "data class %s(\n", exportName(sd.Name))
 		for i, f := range sd.Fields {
 			ktType := kotlin.IRTypeToKt(f.Type)
-			def := ""
+			def := " = " + kotlin.KtFieldZero(f.Type)
 			if f.Default != nil {
 				// A literal default is emitted as written, and so is a struct
 				// literal of them -- `fill color = color{a=0}` is the one
@@ -577,7 +577,7 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 				// cannot hold — `false` is a constant declaration whose own
 				// initializer is `0 != 0` — so the field takes the type's
 				// Kotlin zero.
-				lit := kotlin.KtZeroFor(f.Type)
+				lit := kotlin.KtFieldZero(f.Type)
 				switch d := f.Default.(type) {
 				case *ir.Literal:
 					if s := kotlin.IRLiteralToKt(f.Default); s != "" {
@@ -903,6 +903,7 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 
 	// Assemble final output: package clause + imports (collected during
 	// pass 1 and dynamically during pass 2) + body.
+	body.WriteString(heldStyleDecls(kc, body.String(), info.Structs))
 	var out strings.Builder
 	fmt.Fprintf(&out, "package %s\n\n", cfg.Package)
 	for _, imp := range kc.Imports() {

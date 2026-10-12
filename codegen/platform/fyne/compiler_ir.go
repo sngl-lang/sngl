@@ -428,6 +428,12 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 			gc.RequireImport(path)
 		}
 	}
+	if fn := styleValueTheme(nodeSpecs); fn != "" {
+		td.LangHelpers += fn
+		for _, path := range []string{"fyne.io/fyne/v2/theme", ThemeImportPath, "duckfam.us/sngl/pkg/go/snglcolor"} {
+			gc.RequireImport(path)
+		}
+	}
 	if err != nil {
 		return "", nil, nil, "", err
 	}
@@ -882,6 +888,9 @@ func elementRef(name string) *ir.Ident {
 // bare local for non-escaping ids (declared as `__nN := ...` in the same
 // scope), else the m.<name> element ref.
 func topRef(tr *fyneTranslator, name string) ir.Expr {
+	if sp := tr.specs[name]; sp != nil && sp.RuntimeTheme {
+		return tr.themeOverrideRef(name)
+	}
 	if tr.isLocalRef(name) {
 		return localElementRef(name)
 	}
@@ -1089,7 +1098,14 @@ func harvestSpec(specs map[string]*fyneSpec, lv *ir.LocalVar, tag string, rest [
 		return nil
 	}
 	props := map[string]ir.Expr{}
+	temps := map[string]bool{}
 	for _, s := range rest {
+		if valueTemp(s) {
+			if v, ok := s.(*ir.LocalVar); ok {
+				temps[v.Name] = true
+			}
+			continue
+		}
 		asn, ok := s.(*ir.Assign)
 		if !ok {
 			break
@@ -1102,6 +1118,12 @@ func harvestSpec(specs map[string]*fyneSpec, lv *ir.LocalVar, tag string, rest [
 		if !ok || !id.IsElementRef || id.Name != lv.Name {
 			break
 		}
+		// A value read from a temp computed after the create is no
+		// constructor's to say, so its write goes through the setter; only
+		// the style is still read here, for the theme it needs.
+		if sel.Field != stylePropName && readsAny(asn.Value, temps) {
+			continue
+		}
 		props[sel.Field] = asn.Value
 	}
 	sp, err := specFromProps(tag, props)
@@ -1110,6 +1132,43 @@ func harvestSpec(specs map[string]*fyneSpec, lv *ir.LocalVar, tag string, rest [
 	}
 	specs[lv.Name] = sp
 	return nil
+}
+
+func readsAny(e ir.Expr, names map[string]bool) bool {
+	found := false
+	_ = ir.WalkExprs(e, func(x ir.Expr) error {
+		if id, ok := x.(*ir.Ident); ok && names[id.Name] {
+			found = true
+		}
+		return nil
+	})
+	return found
+}
+
+// valueTemp reports a statement that only computes a value into a temp: the
+// `var __ltN` and value-only `if` NoTernary hoists a prop's ternary into. In a
+// render slot the pass runs after the node's props are written, so they sit
+// between the prop assignments rather than ahead of the create.
+func valueTemp(s ir.Stmt) bool {
+	switch n := s.(type) {
+	case *ir.LocalVar:
+		return n.Init == nil && (n.Type == nil || n.Type.Kind != ir.TypeComponent)
+	case *ir.If:
+		for _, b := range [][]ir.Stmt{n.Body, n.Else} {
+			for _, st := range b {
+				if asn, ok := st.(*ir.Assign); ok {
+					if _, plain := asn.Target.(*ir.Ident); plain {
+						continue
+					}
+				}
+				if !valueTemp(st) {
+					return false
+				}
+			}
+		}
+		return true
+	}
+	return false
 }
 
 // emitIRPromotedHandler emits a node-attached event handler that the

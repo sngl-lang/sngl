@@ -188,7 +188,7 @@ window {
 }
 
 -- testrun/fyne/go/boundary.sngl/main/1 --
-sha256:f73acdf2be367a9a31fe7ecb60267bed
+sha256:7d38a698caedc1757c59d826cb720961
 {
   "results": [
     {
@@ -208,7 +208,7 @@ sha256:5fd9c0b6f79c4ed84a1d91279d8356d5
   ]
 }
 -- testrun/gtk4/go/boundary.sngl/main/1 --
-sha256:e9527c5d971d550b68be98839f053dbb
+sha256:64a7304e464afa5c6c566363199c0ab0
 {
   "results": [
     {
