@@ -207,6 +207,11 @@ var soleGate = map[string][]string{
 	// spliced with a cell per copy.
 	"InstanceState": nil,
 
+	// Gates no pass: passNoInlineComponents asks it whether a generic
+	// component built at run time may name an anonymous struct over its type
+	// parameters, and refuses one where it may not.
+	"GenericComponents": nil,
+
 	// The pass and the field are named for opposite sides of the same fact:
 	// ReactiveCanvas is the redraw the platform wants, CanvasReactivity is the
 	// pass that injects it. Effects is the same shape inverted -- withholding

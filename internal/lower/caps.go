@@ -123,6 +123,15 @@ type Features struct {
 	// generic method to put a state-reading one on the Model, and no
 	// constraint to state what a body does with T.
 	GenericFuncs bool
+	// GenericComponents says a component with type parameters can be emitted
+	// once and built at every type, which is how a component built at run
+	// time reaches its host. Nothing copies a component per instantiation, so
+	// withheld, one whose prop, event or state names an anonymous struct over
+	// a type parameter is refused where it is built: its one declaration
+	// erases T and cannot spell that struct. A platform holds it apart from
+	// its language: html builds an instance in the page's JavaScript under
+	// any --lang.
+	GenericComponents bool
 
 	// The six below are requests rather than capabilities, which is the split
 	// `sngl:x/gen` spells as `#[gen.wants]`: each asks for a pass the target
@@ -177,26 +186,27 @@ func (f Features) LowersNothing() bool {
 // and the one place a build wants this shape is the interpreted path below.
 func NoLowering() Features {
 	return Features{
-		Toggle:           true,
-		Ternary:          true,
-		Lambda:           true,
-		Ref:              true,
-		Unit:             true,
-		Enum:             true,
-		AsyncReactive:    true,
-		AsyncCalls:       true,
-		Computed:         true,
-		ListLambdas:      true,
-		Reactivity:       true,
-		Declarative:      true,
-		InlineComponents: true,
-		ImplicitRecv:     true,
-		StructSpread:     true,
-		ViewStatements:   true,
-		InstanceState:    true,
-		Effects:          true,
-		Navigation:       true,
-		GenericFuncs:     true,
+		Toggle:            true,
+		Ternary:           true,
+		Lambda:            true,
+		Ref:               true,
+		Unit:              true,
+		Enum:              true,
+		AsyncReactive:     true,
+		AsyncCalls:        true,
+		Computed:          true,
+		ListLambdas:       true,
+		Reactivity:        true,
+		Declarative:       true,
+		InlineComponents:  true,
+		ImplicitRecv:      true,
+		StructSpread:      true,
+		ViewStatements:    true,
+		InstanceState:     true,
+		Effects:           true,
+		Navigation:        true,
+		GenericFuncs:      true,
+		GenericComponents: true,
 	}
 }
 
@@ -251,6 +261,7 @@ func (f Features) String() string {
 		{"Effects", f.Effects},
 		{"Navigation", f.Navigation},
 		{"GenericFuncs", f.GenericFuncs},
+		{"GenericComponents", f.GenericComponents},
 		{"StructComponents", f.StructComponents},
 		{"StdlibContextParam", f.StdlibContextParam},
 		{"FocusOrder", f.FocusOrder},

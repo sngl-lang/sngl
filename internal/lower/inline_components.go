@@ -39,7 +39,7 @@ func lowerInlineComponents(pkg *ir.Package, feats Features, opts Options) error 
 	for _, c := range pkg.Components {
 		onList[c] = true
 	}
-	st := &inlineCompState{pkg: pkg, main: main, cycles: cycles, reactive: reactive, platform: opts.Platform, instanceState: feats.InstanceState, genericFuncs: feats.GenericFuncs, onList: onList, names: namesOrOwn(opts.names), demoted: map[*ir.Func]bool{}, cells: map[*ir.Var][]*ir.Var{}, methods: map[*ir.Var]map[*ir.Func][]*ir.Func{}}
+	st := &inlineCompState{pkg: pkg, main: main, cycles: cycles, reactive: reactive, platform: opts.Platform, instanceState: feats.InstanceState, genericComponents: feats.GenericComponents, onList: onList, names: namesOrOwn(opts.names), demoted: map[*ir.Func]bool{}, cells: map[*ir.Var][]*ir.Var{}, methods: map[*ir.Var]map[*ir.Func][]*ir.Func{}}
 	cellOwners := implicitCellOwners(pkg)
 	st.reach = testReachRoots(pkg, main, opts)
 	if err := st.run(); err != nil {
@@ -344,9 +344,9 @@ type inlineCompState struct {
 	// instanceState is Features.InstanceState: whether a component built at run
 	// time keeps its own state on this target.
 	instanceState bool
-	// genericFuncs is Features.GenericFuncs: whether the target emits a
-	// generic declaration once for every instantiation.
-	genericFuncs bool
+	// genericComponents is Features.GenericComponents: whether the target
+	// emits a generic component once for every instantiation.
+	genericComponents bool
 	// names is passInlinePure's as well; see Options.names.
 	names renamer
 	// demoted is the clones dropReceiver made receiverless, so the call sites
@@ -497,20 +497,43 @@ func (st *inlineCompState) run() error {
 	return nil
 }
 
-// refuseGenericAnonProps refuses a component built at run time whose prop is
-// an anonymous struct naming one of its type parameters, on a target that
-// copies a generic per instantiation: nothing copies a component, so its one
-// declaration erases T, and the struct an instantiation hands it -- the
-// package's `struct { v int }` -- is a different host type from the erased
-// one. Spliced, the component's body is the instantiation's and needs no
-// declaration.
+// refuseGenericAnonProps refuses a component built at run time whose props,
+// events, slots or state name an anonymous struct over one of its type
+// parameters, on a target that does not emit a generic component: nothing
+// copies a component per instantiation, so its one declaration erases T, and
+// the struct an instantiation hands it -- the package's `struct { v int }` --
+// is a different host type from the erased one. Spliced, the component's body
+// is the instantiation's and needs no declaration.
 func (st *inlineCompState) refuseGenericAnonProps(n *ir.NodeInst) error {
-	if st.genericFuncs || n.Component == nil || len(n.Component.TypeParams) == 0 {
+	c := n.Component
+	if st.genericComponents || c == nil || len(c.TypeParams) == 0 {
 		return nil
 	}
-	for _, p := range n.Component.Props {
+	refuse := func(what string, t *ir.Type) error {
+		return fmt.Errorf("%s: %q is built while the program runs here, and its %s is %s, an anonymous struct naming a type parameter; this target emits such a component once with its type parameters erased, which cannot spell that struct -- give it a concrete type, or render %q where it is spliced", nodePos(n), c.Name, what, t, c.Name)
+	}
+	for _, p := range c.Props {
 		if p != nil && namesGenericAnon(p.Type) {
-			return fmt.Errorf("%s: %q is built while the program runs here, and its prop %q is %s, an anonymous struct naming a type parameter; this target emits such a component once with its type parameters erased, which cannot spell that struct -- give the prop a concrete type, or render %q where it is spliced (outside a loop, with no state of its own)", nodePos(n), n.Component.Name, p.Name, p.Type, n.Component.Name)
+			return refuse(fmt.Sprintf("prop %q", p.Name), p.Type)
+		}
+	}
+	for _, e := range c.Events {
+		for _, p := range e.Params {
+			if p != nil && namesGenericAnon(p.Type) {
+				return refuse(fmt.Sprintf("event @%s's parameter", e.Name), p.Type)
+			}
+		}
+	}
+	for _, sl := range c.Slots {
+		for _, p := range sl.Params {
+			if p != nil && namesGenericAnon(p.Type) {
+				return refuse(fmt.Sprintf("slot %q's parameter", sl.Name), p.Type)
+			}
+		}
+	}
+	for _, v := range c.Vars {
+		if v != nil && namesGenericAnon(v.Type) {
+			return refuse(fmt.Sprintf("state %q", v.Name), v.Type)
 		}
 	}
 	return nil

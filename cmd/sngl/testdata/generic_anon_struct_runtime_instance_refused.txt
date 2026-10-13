@@ -7,7 +7,8 @@
 # `struct { v int }`, a different host type: Kotlin wrote `fun Show(w: )`,
 # and fyne's literal did not compile against the erased field.
 #
-# html keeps the generic, and bubbletea splices a stateful component per copy,
+# Its events' parameters and its state are refused the same way. html keeps
+# the generic, and bubbletea splices a stateful component per copy,
 # so neither builds the component at run time and both generate it.
 
 ! sngl generate --lang go --platform fyne --out out app.sngl
@@ -18,6 +19,18 @@ stderr 'app.sngl:14:13: "show" is built while the program runs here'
 
 sngl generate --platform html --out out3 app.sngl
 sngl generate --lang go --platform bubbletea --out out4 app.sngl
+
+# html builds an instance in the page's JavaScript whatever the language, so
+# it holds genericComponents under --lang go too.
+sngl generate --lang go --platform html --out out5 app.sngl
+
+# An event's parameters and the component's own state are refused the same
+# way: each is spelled in the one erased declaration.
+! sngl generate --lang go --platform fyne --out out6 event.sngl
+stderr 'event.sngl:18:13: "pick" is built while the program runs here, and its event @chose.s parameter is struct \{ v T \}'
+
+! sngl generate --lang kotlin --platform android --out out7 state.sngl
+stderr 'state.sngl:12:13: "keep" is built while the program runs here, and its state "w" is struct \{ v T \}'
 
 -- app.sngl --
 import ui "sngl:ui"
@@ -34,5 +47,41 @@ var items = [1, 2]
 ui.window(title="x") {
     for var i = items {
         show(w={v=i})
+    }
+}
+-- event.sngl --
+import ui "sngl:ui"
+
+component pick[T any](x T, @chose(w struct {
+    v T
+})) {
+    var hits = 0
+    ui.button(text="{hits}", @click {
+        hits = hits + 1
+        chose({v=x})
+    })
+}
+
+var items = [1, 2]
+var got = 0
+
+ui.window(title="x") {
+    for var i = items {
+        pick(x=i, @chose(w) { got = w.v })
+    }
+}
+-- state.sngl --
+import ui "sngl:ui"
+
+component keep[T any](x T) {
+    var w = {v=x}
+    ui.button(text="b", @click { w = {v=x} })
+}
+
+var items = [1, 2]
+
+ui.window(title="x") {
+    for var i = items {
+        keep(x=i)
     }
 }

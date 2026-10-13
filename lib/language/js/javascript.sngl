@@ -86,6 +86,7 @@ const words = [
     structSpread,
     viewStatements,
     genericFuncs,
+    genericComponents,
 )]
 #[gen.name("js")]
 #[gen.native("js")]
