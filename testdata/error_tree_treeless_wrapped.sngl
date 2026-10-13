@@ -14,13 +14,13 @@ import ui "sngl:ui"
 
 context #theme("light")
 
-component guarded<F>() F {
+component guarded<F any>() F {
     boundary(@error(e) {}) {
         ui.text(value="x") // ERROR(check) "component guarded takes the family it is placed in, so it may not contain the node component text"
     }
 }
 
-component scoped<F>() F {
+component scoped<F any>() F {
     theme("dark") {
         ui.text(value="y") // ERROR(check) "component scoped takes the family it is placed in, so it may not contain the node component text"
     }

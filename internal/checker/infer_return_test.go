@@ -10,7 +10,7 @@ import (
 // merely awkward: there are no arguments to infer from, and SNGL has no syntax
 // for naming a type argument at a call site — `pending<int>()` does not parse.
 func TestReturnOnlyTypeParamBindsFromContext(t *testing.T) {
-	src := `func empty<T>() list<T> {
+	src := `func empty<T any>() list<T> {
     return []
 }
 
@@ -30,7 +30,7 @@ component c() node {
 // so binding from the context here would silently make T float and accept a
 // list<float> where the argument said int.
 func TestArgumentsBindBeforeTheContext(t *testing.T) {
-	src := `func pair<T>(a T) list<T> {
+	src := `func pair<T any>(a T) list<T> {
     return [a]
 }
 
@@ -50,7 +50,7 @@ component c() node {
 // With nothing to bind from, the parameter is still unresolved and the call is
 // reported rather than silently passing as dyn.
 func TestReturnOnlyTypeParamWithNoContextIsReported(t *testing.T) {
-	src := `func empty<T>() list<T> {
+	src := `func empty<T any>() list<T> {
     return []
 }
 

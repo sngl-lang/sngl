@@ -28,7 +28,7 @@ stderr 'operator < not defined'
 -- box/box.sngl --
 import ui "sngl:ui"
 
-struct Holder<T> {
+struct Holder<T any> {
     item T
 }
 
@@ -52,7 +52,7 @@ window {
 -- lit/box/box.sngl --
 import ui "sngl:ui"
 
-struct Holder<T> {
+struct Holder<T any> {
     item T
 }
 

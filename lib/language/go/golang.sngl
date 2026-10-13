@@ -508,17 +508,17 @@ const component shapes.canvasImage[language] {
 // Closing that means two types, or a direction on this one; nothing here needs
 // it yet, and the first API that hands a channel out to be *stored* will.
 #[marks.intrinsic("go:chan")]
-struct chan<T> {}
+struct chan<T any> {}
 
 // The element type comes from the argument rather than from a type argument,
 // which a call site has no syntax for: `makeChan(false)` is a `chan<bool>`. The
 // value itself is not used -- a channel has no initial contents -- so writing
 // the zero of the type reads as what it is.
 #[marks.intrinsic("go.makechan")]
-func makeChan<T>(zero T) chan<T>
+func makeChan<T any>(zero T) chan<T>
 
 #[marks.intrinsic("go.close")]
-func closeChan<T>(c chan<T>)
+func closeChan<T any>(c chan<T>)
 
 // One arm of a `select`: a receive from c, and what to run with the value.
 //
@@ -531,7 +531,7 @@ struct Case {}
 // emitter has no case to put it in, and the failure is the positionless parse
 // error described on `select`.
 #[marks.intrinsic("go.recv")]
-func recv<T>(c chan<T>, body func(T)) Case
+func recv<T any>(c chan<T>, body func(T)) Case
 
 // Blocks until one arm is ready and runs exactly that one. Real `select`
 // syntax, which is what makes it a choice rather than a sequence of receives:

@@ -18,17 +18,17 @@
 import . "sngl:test"
 import . "sngl:ui"
 
-component box<T>(item T, label string) node {
+component box<T any>(item T, label string) node {
     text #out(value=label)
 }
 
 // The payload of an event follows the parameter, so a handler's argument is
 // typed by the prop the caller passed.
-component job<T>(seed T, @done(v T)) node {
+component job<T any>(seed T, @done(v T)) node {
     text(value="job")
 }
 
-component bracket<T = int>(on T = 0) node {
+component bracket<T any = int>(on T = 0) node {
     text #b(value="bracket")
 }
 
@@ -36,7 +36,7 @@ component bracket<T = int>(on T = 0) node {
 // specialization like the props are. `slot cell(T)` hands the population what
 // the call bound T to; against the declaration it handed out a parameter still
 // named T, and `v + 1` was "operator + not defined for T and int".
-component grid<T>(seed T, cell component(T)) node {
+component grid<T any>(seed T, cell component(T)) node {
     vbox {
         cell(seed)
     }
@@ -47,7 +47,7 @@ component grid<T>(seed T, cell component(T)) node {
 // before the body's declarations were collected, so `var last T` resolved
 // against a scope that no longer had T in it: `unknown type "T"`, on a name the
 // declaration two lines above introduces.
-component holder<T>(on T, shown component(T)) node {
+component holder<T any>(on T, shown component(T)) node {
     var last T = on
 
     // A method names them too, in its signature and in its own body, which is

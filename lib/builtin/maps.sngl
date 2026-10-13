@@ -1,6 +1,6 @@
 // K is the key type (must be comparable); V is the value type.
 #[_builtin(map)]
-struct map<K, V> {}
+struct map<K any, V any> {}
 
 // Number of entries currently in m.
 #[_intrinsic("map.length")]

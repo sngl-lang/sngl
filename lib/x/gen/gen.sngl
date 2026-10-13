@@ -175,7 +175,7 @@ func renders(these list<Rendered>) ir.Macro
 // A handler's annotation is what says what `T` is, as `render`'s does in code
 // mode.
 #[marks.builtin("genEmit")]
-component emit<T = struct {}, F>(
+component emit<T any = struct {}, F any>(
     file    string = "",
     open    string = "",
     close   string = "",
@@ -201,7 +201,7 @@ component emit<T = struct {}, F>(
 // One member as a `@generate` handler is handed it: the value its `node` gives,
 // read at build time with its props bound, and the members it holds, in the
 // order they are written.
-struct Member<T> {
+struct Member<T any> {
     value    T
     children list<Member<T>>
 }
@@ -225,4 +225,4 @@ struct Member<T> {
 //         gen.node(value=Entry{full=full, click=click})
 //     }
 #[marks.builtin("genNode")]
-component node<T = struct {}, F>(open string = "", close string = "", value T = {}) F {}
+component node<T any = struct {}, F any>(open string = "", close string = "", value T = {}) F {}

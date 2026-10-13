@@ -19,11 +19,11 @@ struct Pair {
     y int
 }
 
-struct Box<T> {
+struct Box<T any> {
     value T
 }
 
-func first<T>(x T, y int) => x
+func first<T any>(x T, y int) => x
 
 func unbox(value int) => value
 

@@ -7,7 +7,7 @@ struct T {
     n int
 }
 
-struct box<T> {
+struct box<T any> {
     v T
 }
 

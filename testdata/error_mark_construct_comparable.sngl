@@ -82,7 +82,7 @@ component seededStruct(
 // type is the call. Unchecked, a list bound to one reached fyne's rebuild
 // comparison as `m.__inst0_was_seed[i] == m.xs` over a []any holding a []int,
 // which panics at runtime rather than reporting anything.
-component seeded<T>(#[construct] seed T) node {
+component seeded<T any>(#[construct] seed T) node {
     text(value="seeded")
 }
 
@@ -101,7 +101,7 @@ component holder node {
 // is a walk down the instances rather than a check on the call that writes the
 // prop. Unchecked, the marked prop reached html as
 // `__inst1_was_seed[__inst1_i] === seed` over an array, which is identity.
-component pass<T>(x T) node {
+component pass<T any>(x T) node {
     seeded(seed=x)
 }
 

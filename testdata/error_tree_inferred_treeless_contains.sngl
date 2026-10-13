@@ -6,7 +6,7 @@
 
 import ui "sngl:ui"
 
-component logger<F>(label string) F {
+component logger<F any>(label string) F {
     badge(label=label) // ERROR(check) "component logger takes the family it is placed in, so it may not contain the node component badge"
 }
 

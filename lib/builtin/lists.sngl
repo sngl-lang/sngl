@@ -4,7 +4,7 @@
 // are all pure — they return new lists rather than mutating in place.
 // T is the element type.
 #[_builtin(list)]
-struct list<T> {}
+struct list<T any> {}
 
 // Number of items in l.
 #[_intrinsic("list.length")]
@@ -73,7 +73,7 @@ const func list<T>.filter(pred func(T) bool) list<T>
 // Returns a new list built by applying fn to each item of l. The
 // result's length equals the input's.
 #[_intrinsic("list.map")]
-const func list<T>.map<U>(fn func(T) U) list<U>
+const func list<T>.map<U any>(fn func(T) U) list<U>
 
 // True if item appears in l (by equality). Equivalent to
 // `list.indexOf(l, item) >= 0`.
@@ -84,4 +84,4 @@ const func list<T>.contains(item T) => this.indexOf(item) >= 0
 // bind elements when iterating over an iter<T>. The type is opaque —
 // no methods, no fields.
 #[_builtin(iter)]
-struct iter<T> {}
+struct iter<T any> {}

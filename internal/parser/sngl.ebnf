@@ -347,24 +347,34 @@ FuncBodyTail =
 # keeping the grammar LL(1).
 #
 # Supported forms:
-#   func name(...)                  → ident
-#   func name<T>(...)               → ident TypeParamList
-#   func recv.method(...)           → ident dot ident
-#   func recv.method<T>(...)        → ident dot ident TypeParamList
-#   func recv<T>.method(...)        → ident TypeParamList dot ident
-#   func recv<T>.method<U>(...)     → ident TypeParamList dot ident TypeParamList
+#   func name(...)                    → ident
+#   func name<T any>(...)             → ident lt ident TypeParamRest
+#   func recv.method(...)             → ident dot ident
+#   func recv.method<T any>(...)      → ident dot ident TypeParamList
+#   func recv<T>.method(...)          → ident lt ident ReceiverTypeParams dot ident
+#   func recv<T>.method<U any>(...)   → ident lt ident ReceiverTypeParams dot ident TypeParamList
 #
-# LL(1) disambiguation after leading ident:
-#   lt  → TypeParamList branch; if dot follows it is receiver-level, else function-level
-#   dot → method branch; trailing TypeParamList (if lt present) is method-level
-#   else → bare function name
-FuncName = ident [ TypeParamList [ dot ident [ TypeParamList ] ] | dot ident [ TypeParamList ] ] .
+# A receiver's list restates the receiver's names and no constraints, as Go's
+# does, while a function's own list names one for each. So both open `lt
+# ident`, and the token after that ident decides: `comma` or `gt` is a
+# receiver's list, which a `dot` must then follow, and anything in FIRST(Type)
+# is the function's own. Neither `comma` nor `gt` begins a Type.
+FuncName = ident [ lt ident FuncNameParams | dot ident [ TypeParamList ] ] .
+
+FuncNameParams = ReceiverTypeParams dot ident [ TypeParamList ] | TypeParamRest .
+
+ReceiverTypeParams = { comma ident } gt .
+
+# The rest of a function's own list, its first parameter's name already read.
+TypeParamRest = Type [ assign Type ] { comma TypeParam } gt .
 
 TypeParamList = lt TypeParam { comma TypeParam } gt .
 
-# A type parameter may carry a default, the way a value parameter does: an
-# argument list that stops short falls back to them, right to left.
-TypeParam = ident [ assign Type ] .
+# A type parameter names its constraint, `any` when it says nothing, and may
+# carry a default the way a value parameter does: an argument list that stops
+# short falls back to them, right to left. The constraint is what will tell a
+# type parameter list from an override's target once both are in brackets.
+TypeParam = ident Type [ assign Type ] .
 
 ParamList = Param { comma Param } [ comma ] .
 

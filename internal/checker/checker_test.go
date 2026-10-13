@@ -899,8 +899,8 @@ func test() {
 
 func TestGenericTypeInference(t *testing.T) {
 	pkg := parse(t, `
-func identity<T>(x T) => x
-func first<T>(items list<T>) T {
+func identity<T any>(x T) => x
+func first<T any>(items list<T>) T {
 	return items[0]
 }
 func test() {

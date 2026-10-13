@@ -39,6 +39,11 @@ const (
 	// unwraps it to T, and the loop erases it from its variables once its body
 	// is checked -- so nothing after the check meets one.
 	TypeReadonly
+	// TypeAny is `any`, the constraint that says nothing about a type
+	// parameter. It is a constraint only -- the checker refuses it where a
+	// value's type is written -- so it is met on a TypeParamSym's Constraint
+	// and nowhere else.
+	TypeAny
 )
 
 // Type is the unified representation of all SNGL types.
@@ -69,6 +74,7 @@ var (
 	TypString = &Type{Kind: TypeString}
 	TypNull   = &Type{Kind: TypeNull}
 	TypVoid   = &Type{Kind: TypeVoid}
+	TypAny    = &Type{Kind: TypeAny}
 )
 
 // Sized numeric singletons. Plain int/float (TypInt/TypFloat) keep Bits==0.
@@ -145,6 +151,8 @@ func (t *Type) String() string {
 		return "<invalid>"
 	case TypeDyn:
 		return "dyn"
+	case TypeAny:
+		return "any"
 	case TypeBool:
 		return "bool"
 	case TypeInt:

@@ -8,7 +8,7 @@
 import ui "sngl:ui"
 import "sngl:platform/html"
 
-component logger<F>() F {
+component logger<F any>() F {
     ui.text(value="base") // ERROR(check) "component logger takes the family it is placed in, so it may not contain the node component text"
 }
 

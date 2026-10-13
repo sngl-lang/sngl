@@ -370,8 +370,8 @@ func TestFormatFuncTypeNamedQualified(t *testing.T) {
 
 func TestFormatGenericFunc(t *testing.T) {
 	assertFormat(t,
-		`func identity<T>(x T) => x`,
-		`func identity<T>(x T) => x`)
+		`func identity<T any>(x T) => x`,
+		`func identity<T any>(x T) => x`)
 }
 
 func TestFormatReturn(t *testing.T) {

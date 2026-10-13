@@ -35,4 +35,4 @@ func crosses() ir.Macro
 // whatever this slot already accepts", which is the family the component
 // declaring it belongs to.
 #[marks.builtin("familyOne")]
-struct one<T> {}
+struct one<T any> {}

@@ -5,7 +5,7 @@ import . "sngl:ui"
 // `null` is assignable to -- a context no provider could set, a var no write
 // could change. Refused where the type is inferred, as an empty list is;
 // annotated, the same values are fine.
-func show<A>(a A) A {
+func show<A any>(a A) A {
     return a
 }
 

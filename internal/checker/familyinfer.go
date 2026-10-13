@@ -47,7 +47,7 @@ func (c *checker) inferComponentFamilies() {
 			continue
 		}
 		c.error(compDeclPos(comp),
-			"component %s: the body names no family, so name the family it belongs to in the return position, or return a type parameter, `<F>(…) F`, to take the family it is placed in",
+			"component %s: the body names no family, so name the family it belongs to in the return position, or return a type parameter, `<F any>(…) F`, to take the family it is placed in",
 			comp.Name)
 	}
 	// A call site's specialization is a copy of the declaration, and one taken

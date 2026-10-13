@@ -12,7 +12,7 @@ import (
 // RecvTypeParams has its return type substituted with the caller's concrete type.
 func TestRecvTypeParamSubstitutionInReturn(t *testing.T) {
 	src := `
-struct Box<T> {
+struct Box<T any> {
     value T
 }
 func Box<T>.identity(b Box<T>) Box<T> { return b }
@@ -35,7 +35,7 @@ var b2 Box<int> = b.identity()
 // generic method call resolves to the concrete (substituted) type.
 func TestRecvTypeParamFieldAccess(t *testing.T) {
 	src := `
-struct Box<T> {
+struct Box<T any> {
     value T
 }
 func Box<T>.identity(b Box<T>) Box<T> { return b }
@@ -58,7 +58,7 @@ var n int = b.identity().value
 // generic method to an incompatible type produces a type error.
 func TestRecvTypeParamWrongReturnType(t *testing.T) {
 	src := `
-struct Box<T> {
+struct Box<T any> {
     value T
 }
 func Box<T>.identity(b Box<T>) Box<T> { return b }
@@ -85,7 +85,7 @@ var b2 Box<string> = b.identity()
 // non-generic type (e.g. int) work correctly regardless of T.
 func TestRecvTypeParamNonGenericReturn(t *testing.T) {
 	src := `
-struct Box<T> {
+struct Box<T any> {
     value T
 }
 func Box<T>.size(b Box<T>) int { return 0 }
@@ -108,7 +108,7 @@ var n int = b.size()
 // generic struct.
 func TestRecvTypeParamTwoTypeArgs(t *testing.T) {
 	src := `
-struct Pair<A, B> {
+struct Pair<A any, B any> {
     first A
     second B
 }
@@ -190,7 +190,7 @@ var ys list<int> = xs.map(func(x int) => "{x}")`
 // on a generic struct instance resolves to the concrete field type.
 func TestRecvTypeParamFieldDirectAccess(t *testing.T) {
 	src := `
-struct Box<T> {
+struct Box<T any> {
     value T
 }
 var b Box<int>

@@ -1,11 +1,11 @@
 import . "sngl:ui"
 import . "sngl:test"
 
-func first<T>(items list<T>) T {
+func first<T any>(items list<T>) T {
     return items[0]
 }
 
-func pair<A, B>(a A, b B) list<A> {
+func pair<A any, B any>(a A, b B) list<A> {
     return [a]
 }
 

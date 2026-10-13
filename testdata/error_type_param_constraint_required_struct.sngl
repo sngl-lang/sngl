@@ -1,0 +1,6 @@
+// A struct's type parameter names a constraint as a function's does, and one
+// with a default still does: a constraint is never a default.
+
+struct Box<T = int> { // ERROR(parse) "type parameter T names no constraint: write `T any`"
+    value T
+}

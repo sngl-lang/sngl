@@ -5,7 +5,7 @@ import . "sngl:test"
 // method is attached to, whatever the parameter is called. The convention used
 // to be the name `this`, which meant a method written the other way could only
 // be called through its type.
-struct Box<T> {
+struct Box<T any> {
     value T
 }
 

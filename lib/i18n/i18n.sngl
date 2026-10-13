@@ -19,20 +19,20 @@ context #locale(defaultLocale())
 // backticks, or escape its braces: a double-quoted string is interpolated
 // where it is written, before tr could read its placeholders.
 #[marks.intrinsic("i18n.tr")]
-func tr<A>(key string, args A) string { return _translate(locale, key, "", args) }
+func tr<A any>(key string, args A) string { return _translate(locale, key, "", args) }
 
 // Internal: target of $"..." string interpolation lowering. Carries both
 // the canonical key and the synthesized ICU template at the call site so
 // the runtime can fall back to the inlined template when the manifest
 // lookup misses.
 #[marks.intrinsic("i18n.trInline")]
-func trInline<A>(key string, inlinedTemplate string, args A) string { return _translate(locale, key, inlinedTemplate, args) }
+func trInline<A any>(key string, inlinedTemplate string, args A) string { return _translate(locale, key, inlinedTemplate, args) }
 
 // Format an ICU template directly, no manifest lookup. `args` is a struct
 // with a field per placeholder, and the template is written in backticks, as
 // tr's key is.
 #[marks.intrinsic("i18n.format")]
-func format<A>(template string, args A) string { return _format(locale, template, args) }
+func format<A any>(template string, args A) string { return _format(locale, template, args) }
 
 // --- Direct formatters ---
 
@@ -128,10 +128,10 @@ func selectordinal(count int, forms map<PluralKey, string>) string { return _sel
 func _defaultLocale() string
 
 #[marks.intrinsic("i18n._translate")]
-const func _translate<A>(locale string, key string, inlinedTemplate string, args A) string
+const func _translate<A any>(locale string, key string, inlinedTemplate string, args A) string
 
 #[marks.intrinsic("i18n._format")]
-const func _format<A>(locale string, template string, args A) string
+const func _format<A any>(locale string, template string, args A) string
 
 #[marks.intrinsic("i18n._numberInt")]
 const func _numberInt(locale string, n int, style string) string

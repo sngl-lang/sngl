@@ -1,0 +1,8 @@
+// Every type parameter names a constraint, `any` when it says nothing. The
+// constraint is what tells a type parameter list from an override's target
+// once both are written in brackets, so a function's list without one is a
+// parse error naming the spelling that says nothing.
+
+func first<T>(xs list<T>) T { // ERROR(parse) "type parameter T names no constraint: write `T any`"
+    return xs[0]
+}

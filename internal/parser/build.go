@@ -1032,37 +1032,49 @@ func (b *builder) buildTargetIndex(it nodeIter) ast.Expr {
 }
 
 func (b *builder) buildFuncName(it nodeIter, f *ast.FuncDef) {
-	// FuncName = ident [ TypeParamList [ dot ident [ TypeParamList ] ] | dot ident [ TypeParamList ] ] .
+	// FuncName = ident [ lt ident FuncNameParams | dot ident [ TypeParamList ] ] .
 	//
 	// All cases after the leading ident:
-	//   TypeParamList dot ident [TypeParamList] → recv<T>.method[<U>]
+	//   lt ident ReceiverTypeParams dot ident [TypeParamList] → recv<T>.method[<U any>]
 	//     RecvTypeParams=[T], TypeParams=[U], Name="recv.method"
-	//   TypeParamList (no dot)                  → name<T>
+	//   lt ident TypeParamRest                                → name<T any>
 	//     TypeParams=[T], Name="name"
-	//   dot ident [TypeParamList]               → recv.method[<T>]
+	//   dot ident [TypeParamList]                             → recv.method[<T any>]
 	//     TypeParams=[T], Name="recv.method"
-	//   (nothing)                               → name
+	//   (nothing)                                             → name
 	//     Name="name"
 	first := it.shift().Literal
 	if it.done() {
 		f.Name = first
 		return
 	}
-	if it.isNonTerminal() && it.symbol() == TypeParamList {
-		params := b.buildTypeParams(it.enter())
-		if !it.done() && !it.isNonTerminal() && it.tokenType() == DOT {
-			// recv<T>.method[<U>] — receiver-level type params
-			it.skip() // dot
-			f.RecvTypeParams = params
-			f.Name = first + "." + it.shift().Literal
-			// optional method-level type params after the method name
-			if !it.done() && it.isNonTerminal() && it.symbol() == TypeParamList {
-				f.TypeParams = b.buildTypeParams(it.enter())
-			}
-		} else {
-			// name<T> — function-level type params only
-			f.TypeParams = params
+	if !it.isNonTerminal() && it.tokenType() == LT {
+		it.skip() // lt
+		tok := it.shift()
+		head := ast.TypeParam{Pos: b.posFromToken(tok), Name: tok.Literal}
+		if it.done() || !it.isNonTerminal() || it.symbol() != FuncNameParams {
 			f.Name = first
+			return
+		}
+		pit := it.enter()
+		if pit.done() || !pit.isNonTerminal() {
+			f.Name = first
+			return
+		}
+		if pit.symbol() == TypeParamRest {
+			// name<T any> — function-level type params only
+			f.TypeParams = b.buildTypeParamRest(pit.enter(), head)
+			f.Name = first
+			return
+		}
+		// recv<T>.method[<U any>] — receiver-level type params
+		f.RecvTypeParams = append([]ast.TypeParam{head}, b.buildReceiverTypeParams(pit.enter())...)
+		if !pit.done() && !pit.isNonTerminal() && pit.tokenType() == DOT {
+			pit.skip() // dot
+			f.Name = first + "." + pit.shift().Literal
+		}
+		if !pit.done() && pit.isNonTerminal() && pit.symbol() == TypeParamList {
+			f.TypeParams = b.buildTypeParams(pit.enter())
 		}
 		return
 	}
@@ -1077,6 +1089,52 @@ func (b *builder) buildFuncName(it nodeIter, f *ast.FuncDef) {
 	}
 	// plain function name, no type params, no dot
 	f.Name = first
+}
+
+// buildReceiverTypeParams reads the names after a receiver's first, which
+// buildFuncName has already taken.
+func (b *builder) buildReceiverTypeParams(it nodeIter) []ast.TypeParam {
+	// ReceiverTypeParams = { comma ident } gt .
+	var out []ast.TypeParam
+	for !it.done() {
+		if !it.isNonTerminal() && it.tokenType() == IDENT {
+			tok := it.shift()
+			out = append(out, ast.TypeParam{Pos: b.posFromToken(tok), Name: tok.Literal})
+			continue
+		}
+		it.skip() // comma, gt
+	}
+	return out
+}
+
+// buildTypeParamRest finishes a function's own list, whose first parameter's
+// name buildFuncName has already read as head.
+func (b *builder) buildTypeParamRest(it nodeIter, head ast.TypeParam) []ast.TypeParam {
+	// TypeParamRest = Type [ assign Type ] { comma TypeParam } gt .
+	b.buildTypeParamTypes(&it, &head)
+	out := []ast.TypeParam{head}
+	for !it.done() {
+		if it.isNonTerminal() && it.symbol() == TypeParam {
+			out = append(out, b.buildTypeParam(it.enter()))
+			continue
+		}
+		it.skip() // comma, gt
+	}
+	return out
+}
+
+// buildTypeParamTypes reads a parameter's constraint and its default, if it
+// has one: `Type [ assign Type ]`.
+func (b *builder) buildTypeParamTypes(it *nodeIter, tp *ast.TypeParam) {
+	if !it.done() && it.isNonTerminal() && it.symbol() == Type {
+		tp.Constraint = b.buildType(it.enter())
+	}
+	if !it.done() && !it.isNonTerminal() && it.tokenType() == ASSIGN {
+		it.skip() // assign
+		if !it.done() && it.isNonTerminal() && it.symbol() == Type {
+			tp.Default = b.buildType(it.enter())
+		}
+	}
 }
 
 func (b *builder) buildFuncTail(it nodeIter, f *ast.FuncDef) {
@@ -1126,24 +1184,13 @@ func (b *builder) buildTypeParams(it nodeIter) []ast.TypeParam {
 }
 
 func (b *builder) buildTypeParam(it nodeIter) ast.TypeParam {
-	// TypeParam = ident [ assign Type ] .
+	// TypeParam = ident Type [ assign Type ] .
 	var tp ast.TypeParam
-	for !it.done() {
-		if it.isNonTerminal() {
-			if it.symbol() == Type {
-				tp.Default = b.buildType(it.enter())
-				continue
-			}
-			it.skip()
-			continue
-		}
-		if it.tokenType() == IDENT && tp.Name == "" {
-			tok := it.shift()
-			tp.Pos, tp.Name = b.posFromToken(tok), tok.Literal
-			continue
-		}
-		it.skip() // assign
+	if !it.done() && !it.isNonTerminal() && it.tokenType() == IDENT {
+		tok := it.shift()
+		tp.Pos, tp.Name = b.posFromToken(tok), tok.Literal
 	}
+	b.buildTypeParamTypes(&it, &tp)
 	return tp
 }
 

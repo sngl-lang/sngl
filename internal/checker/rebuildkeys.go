@@ -10,7 +10,7 @@ import (
 )
 
 // maxRebuildDepth bounds the descent into generic bodies. A generic component
-// may place itself under a wider type -- `r(x=[x])` inside `r<T>(x T)` -- and
+// may place itself under a wider type -- `r(x=[x])` inside `r<T any>(x T)` -- and
 // each round is a type the walk has not seen, so the frame set alone does not
 // terminate it. The bound is far past any real nesting; a program that reaches
 // it has a rebuild key nobody can write down either.

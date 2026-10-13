@@ -7,9 +7,9 @@
 import . "sngl:test"
 import build "sngl:build"
 
-component tagged<M = struct {}>(name string, meta M) build.family
+component tagged<M any = struct {}>(name string, meta M) build.family
 
-component labelled<M = struct {}>(name string, meta M = M{}) tagged<M> {}
+component labelled<M any = struct {}>(name string, meta M = M{}) tagged<M> {}
 
 struct Note {
     text string

@@ -124,7 +124,7 @@ func (c *checker) finishFamilyMarks(decl *ast.ComponentDecl, comp *ir.Component,
 			// should not be quietly restating -- and a bodyless one, the common
 			// case in lib/, has nothing to read an answer off. Every tier says
 			// it.
-			c.error(decl.Pos, "component %s: name the family it belongs to in the return position, or return a type parameter, `<F>(…) F`, to take the family it is placed in",
+			c.error(decl.Pos, "component %s: name the family it belongs to in the return position, or return a type parameter, `<F any>(…) F`, to take the family it is placed in",
 				comp.Name)
 			return
 		}

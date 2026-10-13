@@ -85,7 +85,7 @@ func factorial(n int) int {
 // is reserved for func *type* expressions (e.g. `func(int) int`).
 
 // Generic function. Type params after the name, inferred at call sites.
-func identity<T>(x T) => x
+func identity<T any>(x T) => x
 
 // Generic with constraints come from operand: `xs.map(f)` binds T from
 // xs's element type and U from f's return type.

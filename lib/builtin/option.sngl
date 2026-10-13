@@ -1,7 +1,7 @@
 // Optional value: `option<T>` is either a `T` or absent. Constructed by the
 // compiler; T is the wrapped type.
 #[_builtin(option)]
-struct option<T> {}
+struct option<T any> {}
 
 // Mutable reference cell: `ref<T>` is a handle to a `T` rather than a copy of
 // one, so what holds it goes on seeing what that cell becomes. T is the referent
@@ -16,7 +16,7 @@ struct option<T> {}
 // NoLambda's lowering uses one for a mutable capture, which is where the type
 // came from.
 #[_builtin(ref)]
-struct ref<T> {}
+struct ref<T any> {}
 
 // Read-only value: `readonly<T>` is a `T` that may be read and not written --
 // neither assigned, nor toggled, nor written through a field or an element,
@@ -28,7 +28,7 @@ struct ref<T> {}
 //
 // The compiler gives the type; a program may not write it.
 #[_builtin(readonly)]
-struct readonly<T> {}
+struct readonly<T any> {}
 
 // The absence of a value. Assignable to any `option<T>`, and what a bare
 // `option<T>` holds until one is given.

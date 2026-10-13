@@ -156,7 +156,7 @@ func (c *checker) specializeWith(comp *ir.Component, pinned map[string]*ir.Type)
 
 // bindFromChildren binds the type parameters a generic family names in the
 // rest slot's type from the children written there, where no prop pinned
-// them: `stack<M>(pages ...component _page<M>)` holds pages each of which is
+// them: `stack<M any>(pages ...component _page<M>)` holds pages each of which is
 // a `_page<Meta>`, so the stack is a `stack<Meta>`. The first child that is a
 // member says what they are, and every other is held to it, since one slot
 // holds one type. Returns spec, or the specialization the children bound.

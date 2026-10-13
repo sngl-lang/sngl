@@ -57,7 +57,7 @@ func TestStdlibMapHasTypeParams(t *testing.T) {
 // be declared and instantiated with a concrete type argument.
 func TestUserDefinedGenericStruct(t *testing.T) {
 	src := `
-struct Box<T> {
+struct Box<T any> {
     value T
 }
 var b Box<int>
@@ -75,7 +75,7 @@ var b Box<int>
 // user struct, so its declared field is accessible. Under the old hardcoded
 // switch this errored (built-in list has no fields).
 func TestBuiltinGenericShadowable(t *testing.T) {
-	src := `struct list<T> { first T }
+	src := `struct list<T any> { first T }
 var xs list<int>
 var y int = xs.first`
 	doc, err := parser.Parse("test.sngl", []byte(withStd(src)))
@@ -118,7 +118,7 @@ var d int = n.abs()`
 // TestUserDefinedGenericStructTwoParams verifies a two-parameter generic struct.
 func TestUserDefinedGenericStructTwoParams(t *testing.T) {
 	src := `
-struct Pair<A, B> {
+struct Pair<A any, B any> {
     first A
     second B
 }
@@ -136,7 +136,7 @@ var p Pair<int, string>
 // without type arguments produces a type error.
 func TestUserDefinedGenericStructMissingArgs(t *testing.T) {
 	src := `
-struct Box<T> {
+struct Box<T any> {
     value T
 }
 var b Box

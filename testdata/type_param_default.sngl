@@ -5,19 +5,19 @@
 import . "sngl:ui"
 import family "sngl:family"
 
-struct Pair<A, B = string> {
+struct Pair<A any, B any = string> {
     left  A
     right B
 }
 
-struct Boxed<T = int> {
+struct Boxed<T any = int> {
     v T
 }
 
 // A default is a type reference, so it may name a declaration further down the
 // file the way a field may. Resolving it when the shell is registered reported
 // this as unknown.
-struct Forward<T = Later> {
+struct Forward<T any = Later> {
     v T
 }
 
@@ -28,12 +28,12 @@ struct Later {
 // A default may name a parameter declared beside it, since the whole list is in
 // scope while any of it resolves. The function form always could; the struct
 // form resolved its defaults outside that scope and reported A as unknown.
-struct Sibling<A, B = A> {
+struct Sibling<A any, B any = A> {
     left  A
     right B
 }
 
-func idr<T, U = T>(a T, b U) => a
+func idr<T any, U any = T>(a T, b U) => a
 
 // `Pair<int>` fills B from its default; `Boxed` fills its only parameter and
 // needs no argument list at all.
@@ -56,11 +56,11 @@ component show(
 // A function's parameters take defaults the same way, and from the same struct:
 // `empty` has no argument to infer T from, so it falls back rather than staying
 // unbound.
-func empty<T = string>() list<T> {
+func empty<T any = string>() list<T> {
     return []
 }
 
-func pick<T = string>(v T) T {
+func pick<T any = string>(v T) T {
     return v
 }
 

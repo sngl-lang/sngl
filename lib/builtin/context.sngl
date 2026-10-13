@@ -13,4 +13,4 @@
 // does (`context[option<User>] #who(null)`), which would state the type in
 // place; `<…>` there is not LL(1) against a comparison.
 #[_builtin(context)]
-component context<V, F>(default V) F {}
+component context<V any, F any>(default V) F {}

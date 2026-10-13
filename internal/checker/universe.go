@@ -42,7 +42,7 @@ func scalarUniverse() map[string]*ir.Type {
 //
 // A kind is needed before marks run. A type is resolved as its declaration
 // registers -- `func list<T>.filter(…) list<T>` in the package declaring
-// `list`, `func makeChan<T>(zero T) chan<T>` in the one declaring `chan` --
+// `list`, `func makeChan<T any>(zero T) chan<T>` in the one declaring `chan` --
 // and what `list<T>` resolves to is the kind's constructor, and what a
 // family's members are measured against is the family of families'. So the
 // kind is stamped as the declaration registers (stampBuiltinKind) and the

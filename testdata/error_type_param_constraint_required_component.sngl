@@ -1,0 +1,6 @@
+// A component's type parameter names a constraint as a function's does.
+
+import ui "sngl:ui"
+
+component box<T, F any>(value T) F { // ERROR(parse) "type parameter T names no constraint: write `T any`"
+}

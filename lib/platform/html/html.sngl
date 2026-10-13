@@ -920,12 +920,12 @@ const component markup.listItem[platform] {
 // server call. No effect for static-site builds. Build fails if the logic cannot
 // run in the browser or depends on server-side values.
 #[intrinsic("html.frontend")]
-const func frontend<T>(v T) T
+const func frontend<T any>(v T) T
 
 // Force v to run server-side (back-end). A func value is generated as an HTTP
 // route; a constant expression is generated as a lazy-loaded static file.
 #[intrinsic("html.backend")]
-const func backend<T>(v T) T
+const func backend<T any>(v T) T
 
 // --- The timer ---
 //
@@ -1268,7 +1268,7 @@ component Page(content ...component ui.node) ui.node
 // The pages' family is sngl:ui/nav's and unexported, so the slot takes it as a
 // type parameter, bound by the pages written there.
 #[intrinsic("html:stack")]
-component Stack<F>(pages ...component F) ui.node
+component Stack<F any>(pages ...component F) ui.node
 
 const component nav.stack[platform] {
     Stack {

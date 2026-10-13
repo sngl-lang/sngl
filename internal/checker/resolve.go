@@ -133,6 +133,10 @@ func (c *checker) resolveNamedType(t *ast.NamedType) *ir.Type {
 	// and shadows it, as any declaration does.
 	if sym, ok := c.scope.Lookup(t.Name); ok {
 		if typ, _, ok := scalarOf(sym); ok {
+			if typ == ir.TypAny {
+				c.error(t.Pos, "`any` is a constraint, not a type: a value of any type is a dyn")
+				return TypDyn
+			}
 			return typ
 		}
 	}
@@ -373,7 +377,10 @@ func typeParamShells(ps []ast.TypeParam) []ir.TypeParam {
 	return out
 }
 
-// resolveTypeParams resolves each parameter's written default, if it has one.
+// resolveTypeParams resolves each parameter's constraint and its written
+// default, if it has one. A receiver's list restates names and carries no
+// constraint; every other list carries one per parameter, which the grammar
+// requires.
 func (c *checker) resolveTypeParams(ps []ast.TypeParam) []ir.TypeParam {
 	if len(ps) == 0 {
 		return nil
@@ -381,11 +388,32 @@ func (c *checker) resolveTypeParams(ps []ast.TypeParam) []ir.TypeParam {
 	out := make([]ir.TypeParam, len(ps))
 	for i, p := range ps {
 		out[i] = ir.TypeParam{Pos: p.Pos, Name: p.Name}
+		if p.Constraint != nil {
+			out[i].Constraint = c.resolveConstraint(p.Constraint)
+			if sym := c.typeParamSym(p.Name, p.Pos); sym.Constraint == nil {
+				sym.Constraint = out[i].Constraint
+			}
+		}
 		if p.Default != nil {
 			out[i].Default = c.resolveType(p.Default)
 		}
 	}
 	return out
+}
+
+// resolveConstraint resolves what a type parameter's constraint names. `any`,
+// which says nothing, is the only one there is yet; it is found in scope as a
+// scalar is, so a program's own `any` shadows it.
+func (c *checker) resolveConstraint(te ast.TypeExpr) *ir.Type {
+	if nt, ok := te.(*ast.NamedType); ok && nt.Package == "" && len(nt.TypeArgs) == 0 {
+		if sym, ok := c.scope.Lookup(nt.Name); ok {
+			if typ, _, ok := scalarOf(sym); ok && typ == ir.TypAny {
+				return typ
+			}
+		}
+	}
+	c.error(*te.ExprPos(), "a type parameter's constraint is `any`, which says nothing about the type")
+	return ir.TypAny
 }
 
 // resolveStructFields resolves a struct's field types. Split out from

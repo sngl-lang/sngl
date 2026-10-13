@@ -24,8 +24,8 @@ func FormatTo(doc *ast.Document, w io.Writer) (int, error) {
 	return io.WriteString(w, alignTrailingComments(buf.String(), f.trailing))
 }
 
-// FormatTypeParams formats a parameter list as it is written, defaults
-// included. Empty when there are none, so it appends to a name unconditionally.
+// FormatTypeParams formats a parameter list as it is written, constraints and
+// defaults included. Empty when there are none, so it appends to a name unconditionally.
 func FormatTypeParams(ps []ast.TypeParam) string {
 	if len(ps) == 0 {
 		return ""
@@ -723,6 +723,10 @@ func (f *formatter) writeTypeParams(ps []ast.TypeParam) {
 			f.write(", ")
 		}
 		f.write(p.Name)
+		if p.Constraint != nil {
+			f.write(" ")
+			f.writeType(p.Constraint)
+		}
 		if p.Default != nil {
 			f.write(" = ")
 			f.writeType(p.Default)

@@ -588,7 +588,7 @@ const component ui.toolbar[platform] {
 // The gate is a prop rather than the position the node is written at, because
 // arming happens in Init and Update, outside the view the position describes.
 #[intrinsic("bubbletea:Timer")]
-component Timer<F>(
+component Timer<F any>(
     interval time.duration,
     enabled  bool,
     @tick,

@@ -43,9 +43,9 @@ func assigned() {
 
 func paramDefault(n int = five, l len = 0) => n
 
-component takes<F>(n int, l len = 0) F {}
+component takes<F any>(n int, l len = 0) F {}
 
-component user<F> F {
+component user<F any> F {
     takes(n=five, l=0)
 }
 

@@ -374,7 +374,7 @@ const component ui.toolbar[platform] {
 // `LaunchedEffect() { while () {`, which is not Kotlin, and no golden covered
 // an android timer to say so.
 #[intrinsic("android:Timer")]
-component Timer<F>(
+component Timer<F any>(
     interval time.duration,
     enabled  bool,
     @tick,

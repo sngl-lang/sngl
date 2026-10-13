@@ -93,7 +93,7 @@ unit duration { ms, s = 1000ms, m = 60s, h = 60m }
 //
 // A timer belongs to no tree: it schedules and renders nothing, so it sits
 // wherever the work it drives belongs.
-component timer<F>(
+component timer<F any>(
     #[macro.construct] interval duration,
     #[macro.construct] enabled bool = true,
     @tick,

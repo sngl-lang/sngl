@@ -1,0 +1,6 @@
+// A method's own type parameters name constraints. Its receiver's list only
+// restates the receiver's names, so it carries none.
+
+func list<T>.pairWith<U>(u U) list<U> { // ERROR(parse) "type parameter U names no constraint: write `U any`"
+    return [u]
+}

@@ -21,7 +21,7 @@ struct S {
     l len = 0px
 }
 
-struct Box<T> {
+struct Box<T any> {
     v  T
     o  option<T>
     xs list<T>

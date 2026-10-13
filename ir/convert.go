@@ -243,8 +243,9 @@ func (c *converter) convertFuncDef(f *Func) *ast.FuncDef {
 
 func (c *converter) convertComponent(comp *Component) *ast.ComponentDecl {
 	cd := &ast.ComponentDecl{
-		Name:  comp.Name,
-		Const: comp.Const,
+		Name:       comp.Name,
+		Const:      comp.Const,
+		TypeParams: c.convertTypeParams(comp.TypeParams),
 	}
 
 	// Build prop list.
@@ -648,7 +649,14 @@ func (c *converter) convertTypeParams(ps []TypeParam) []ast.TypeParam {
 	}
 	out := make([]ast.TypeParam, len(ps))
 	for i, p := range ps {
-		out[i] = ast.TypeParam{Pos: p.Pos, Name: p.Name, Default: c.convertType(p.Default)}
+		// A declaration's own list names a constraint for every parameter,
+		// so one the IR holds none for -- an intrinsic's, synthesized -- is
+		// printed with the constraint that says nothing.
+		constraint := p.Constraint
+		if constraint == nil {
+			constraint = TypAny
+		}
+		out[i] = ast.TypeParam{Pos: p.Pos, Name: p.Name, Constraint: c.convertType(constraint), Default: c.convertType(p.Default)}
 	}
 	return out
 }

@@ -9,11 +9,11 @@
 import . "sngl:test"
 import . "sngl:ui"
 
-component box<T = int>(item T) node {
+component box<T any = int>(item T) node {
     text(value="box")
 }
 
-func same<T>(b box<T>, v T) => v
+func same<T any>(b box<T>, v T) => v
 
 component pair node {
     box #words(item="a")

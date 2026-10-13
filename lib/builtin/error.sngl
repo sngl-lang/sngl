@@ -25,7 +25,7 @@ func error.raise(message string, kind string)
 // replaces catches an error and does nothing with it.
 //
 #[_builtin(errorBoundary)]
-component boundary<T>(
+component boundary<T any>(
     @error(e error),
     content ...component T,
     failed  component(error error) T,

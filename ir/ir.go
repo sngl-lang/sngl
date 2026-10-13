@@ -1020,7 +1020,7 @@ type Component struct {
 	// Nil for the components that are neither, which is nearly all of them.
 	Gen *GenCaps `json:",omitempty"`
 	// TypeParams are the component's generic parameters, in declaration
-	// order -- ["T"] for `component effect<T>(on T)`. Bound at the call site
+	// order -- ["T"] for `component effect<T any>(on T)`. Bound at the call site
 	// from the props supplied there, the same way a func's are bound from its
 	// arguments.
 	TypeParams []TypeParam `json:",omitempty"`
@@ -1285,9 +1285,13 @@ func (p *Param) SymType() *Type  { return p.Type }
 // TypeParam is one generic parameter of a declaration. Default is what an
 // argument list that stops short falls back to.
 type TypeParam struct {
-	Pos     ast.Pos `json:"-"`
-	Name    string
-	Default *Type `json:"-"`
+	Pos  ast.Pos `json:"-"`
+	Name string
+	// Constraint is what the declaration says a type bound to the parameter
+	// must be (ir.TypAny says nothing). Nil on a receiver's list, which
+	// restates names only.
+	Constraint *Type `json:"-"`
+	Default    *Type `json:"-"`
 }
 
 // ParamName and ParamPos mirror ast.TypeParam's; see the note there.

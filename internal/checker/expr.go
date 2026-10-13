@@ -659,7 +659,7 @@ func comparableEq(left, right *ir.Type) bool {
 //
 // A parameter typed by a bare type parameter is the receiver only where it is
 // marked so: every operand fits one, so fitting says nothing, and
-// `Test.setContext<V>(ctx V, value V)` took `t` as its context.
+// `Test.setContext<V any>(ctx V, value V)` took `t` as its context.
 func receivesOperand(receiver *ir.Type, p *ir.Param) bool {
 	if p.Receiver {
 		return true
@@ -2978,7 +2978,7 @@ func (c *checker) inferTypeParams(sig *ir.FuncSig, args ast.ArgList) *ir.FuncSig
 	}
 	// A parameter the arguments could not pin is bound from the type the context
 	// wants, which is the only way to write one that appears in the return type
-	// alone: `func empty<T>() list<T>` takes no arguments, and SNGL has no syntax for
+	// alone: `func empty<T any>() list<T>` takes no arguments, and SNGL has no syntax for
 	// naming a type argument at a call site, so without this such a function is
 	// undeclarable rather than merely awkward.
 	//
