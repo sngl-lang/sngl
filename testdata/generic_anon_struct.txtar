@@ -6,8 +6,8 @@ property. A literal inlined out of `held` into another literal is typed by its
 values, and the struct holding it is the one `{o={v=1}}` has, so assigning one
 to the other compiles.
 
-deny out/go/bubbletea/model.go `\bany\b` -- every copy's struct is concrete
-deny out/go/bubbletea/model.go `\bT\b` -- no struct field names a type parameter
+deny out/go/bubbletea/model.go `(?m)^\t[A-Z]\w*\s+(\*|\[\])?(any|T)$` -- every copy's struct field is concrete
+deny out/go/bubbletea/model.go `struct\{ [A-Z]\w* (\*|\[\])?(any|T)\b` -- no struct is spelled inline with T erased
 deny out/kotlin/android/app/src/main/java/test/sngl/app/MainScreen.kt `\bAny\b` -- every copy's struct is concrete
 deny out/kotlin/android/app/src/main/java/test/sngl/app/MainScreen.kt `: T\b` -- no struct field names a type parameter
 deny out/none/html/index.html `unwrap__` -- JavaScript keeps the one generic function
@@ -69,13 +69,22 @@ var box = Box[int]{inner={v=5}, all=[{v=6}]}
 func held[T any](x T) => {v=x}
 
 var outer = {o=held(1)}
+// Folded at the type the call binds, not at the value's own: an option holding
+// a converted int, a null, and a list.
+var opt struct {
+    v option[int]
+} = held[option[int]](3)
+var absent = held[option[int]](null)
+var nums = held([1, 2])
 var plain = {o={v=1}}
 
 ui.window(title="t") {
-    ui.text(value="{unwrap({v=1}) + 1} {unwrap(wrap("w"))} {box.get()} {box.all[0].v} {outer.o.v}")
+    ui.text(value="{unwrap({v=1}) + 1} {unwrap(wrap("w"))} {box.get()} {box.all[0].v} {outer.o.v} {opt.v == 3} {absent.v == null} {nums.v.length}")
     ui.button(text="go", @click {
         box = Box[int]{inner={...wrap(n)}, all=[]}
         outer = plain
+        absent = held[option[int]](n)
+        nums.v.push(n)
         n = n + 1
     })
 }
@@ -91,6 +100,14 @@ import (
 	"os"
 )
 
+func snglSome[T any](v T) *T {
+	return &v
+}
+
+func snglOptEq[T comparable](p *T, v T) bool {
+	return p != nil && *p == v
+}
+
 func __merge___anon_v_853006(base, ov __anon_v_853006) __anon_v_853006 {
 	if ov.V != 0 {
 		base.V = ov.V
@@ -103,12 +120,20 @@ type Box__int struct {
 	All   []__anon_v_853006
 }
 
+type __anon_v_10e6ee struct {
+	V *int
+}
+
 type __anon_o_0931c3 struct {
 	O __anon_v_853006
 }
 
 type __anon_v_853006 struct {
 	V int
+}
+
+type __anon_v_142b07 struct {
+	V []int
 }
 
 type __anon_v_ba918a struct {
@@ -120,6 +145,9 @@ type Model struct {
 	n              int
 	box            Box__int
 	outer          __anon_o_0931c3
+	opt            __anon_v_10e6ee
+	absent         __anon_v_10e6ee
+	nums           __anon_v_142b07
 	plain          __anon_o_0931c3
 	visible__inst0 bool
 	__focusID      int
@@ -133,6 +161,9 @@ func New() Model {
 	m.n = 1
 	m.box = Box__int{Inner: __anon_v_853006{V: 5}, All: []__anon_v_853006{__anon_v_853006{V: 6}}}
 	m.outer = __anon_o_0931c3{O: __anon_v_853006{V: 1}}
+	m.opt = __anon_v_10e6ee{V: snglSome(3)}
+	m.absent = __anon_v_10e6ee{V: nil}
+	m.nums = __anon_v_142b07{V: []int{1, 2}}
 	m.plain = __anon_o_0931c3{O: __anon_v_853006{V: 1}}
 	m.visible__inst0 = true
 	m.__focusID = 0
@@ -237,6 +268,51 @@ func SetOuterCmd(v __anon_o_0931c3) tea.Cmd {
 	return func() tea.Msg { return setOuterMsg{value: v} }
 }
 
+func (m Model) Opt() __anon_v_10e6ee {
+	return m.opt
+}
+
+func (m Model) SetOpt(v __anon_v_10e6ee) Model {
+	m.opt = v
+	return m
+}
+
+type setOptMsg struct{ value __anon_v_10e6ee }
+
+func SetOptCmd(v __anon_v_10e6ee) tea.Cmd {
+	return func() tea.Msg { return setOptMsg{value: v} }
+}
+
+func (m Model) Absent() __anon_v_10e6ee {
+	return m.absent
+}
+
+func (m Model) SetAbsent(v __anon_v_10e6ee) Model {
+	m.absent = v
+	return m
+}
+
+type setAbsentMsg struct{ value __anon_v_10e6ee }
+
+func SetAbsentCmd(v __anon_v_10e6ee) tea.Cmd {
+	return func() tea.Msg { return setAbsentMsg{value: v} }
+}
+
+func (m Model) Nums() __anon_v_142b07 {
+	return m.nums
+}
+
+func (m Model) SetNums(v __anon_v_142b07) Model {
+	m.nums = v
+	return m
+}
+
+type setNumsMsg struct{ value __anon_v_142b07 }
+
+func SetNumsCmd(v __anon_v_142b07) tea.Cmd {
+	return func() tea.Msg { return setNumsMsg{value: v} }
+}
+
 func (m Model) Plain() __anon_o_0931c3 {
 	return m.plain
 }
@@ -282,6 +358,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m = m.SetBox(msg.value)
 	case setOuterMsg:
 		m = m.SetOuter(msg.value)
+	case setOptMsg:
+		m = m.SetOpt(msg.value)
+	case setAbsentMsg:
+		m = m.SetAbsent(msg.value)
+	case setNumsMsg:
+		m = m.SetNums(msg.value)
 	case setPlainMsg:
 		m = m.SetPlain(msg.value)
 	case setVisible__inst0Msg:
@@ -306,6 +388,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case msg.Code == tea.KeyEnter && m.__focusID == 0:
 			m.box = Box__int{Inner: __merge___anon_v_853006(__anon_v_853006{}, m.wrap__int(m.n)), All: []__anon_v_853006{}}
 			m.outer = m.plain
+			m.absent = __anon_v_10e6ee{V: snglSome(m.n)}
+			m.nums.V = append(m.nums.V, m.n)
 			m.n = (m.n + 1)
 		}
 	}
@@ -317,7 +401,7 @@ func (m Model) View() tea.View {
 	if m.visible__inst0 {
 		var contentParts []string
 		var contentPart_0 string
-		contentPart_0 = lipgloss.NewStyle().Render(fmt.Sprint(((((((((fmt.Sprint((m.unwrap__int(__anon_v_853006{V: 1}) + 1)) + " ") + m.unwrap__string(m.wrap__string("w"))) + " ") + fmt.Sprint(Box__intGet__int(m.box, &m))) + " ") + fmt.Sprint(m.box.All[0].V)) + " ") + fmt.Sprint(m.outer.O.V))))
+		contentPart_0 = lipgloss.NewStyle().Render(fmt.Sprint(((((((((((((((fmt.Sprint((m.unwrap__int(__anon_v_853006{V: 1}) + 1)) + " ") + m.unwrap__string(m.wrap__string("w"))) + " ") + fmt.Sprint(Box__intGet__int(m.box, &m))) + " ") + fmt.Sprint(m.box.All[0].V)) + " ") + fmt.Sprint(m.outer.O.V)) + " ") + fmt.Sprint(snglOptEq(m.opt.V, 3))) + " ") + fmt.Sprint((m.absent.V == nil))) + " ") + fmt.Sprint(len(m.nums.V)))))
 		contentParts = append(contentParts, contentPart_0)
 		var contentPart_1 string
 		contentPart_1Focused := (m.__focusID == 0)
@@ -367,12 +451,20 @@ data class Box__int(
     var all: List<__anon_v_853006> = listOf()
 )
 
+data class __anon_v_10e6ee(
+    var v: Int? = null
+)
+
 data class __anon_o_0931c3(
     var o: __anon_v_853006 = __anon_v_853006()
 )
 
 data class __anon_v_853006(
     var v: Int = 0
+)
+
+data class __anon_v_142b07(
+    var v: List<Int> = listOf()
 )
 
 data class __anon_v_ba918a(
@@ -396,6 +488,9 @@ fun MainScreen() {
     var n by remember { mutableStateOf(1) }
     var box by remember { mutableStateOf(Box__int(inner = __anon_v_853006(v = 5), all = listOf(__anon_v_853006(v = 6)))) }
     var outer by remember { mutableStateOf(__anon_o_0931c3(o = __anon_v_853006(v = 1))) }
+    var opt by remember { mutableStateOf(__anon_v_10e6ee(v = 3)) }
+    var absent by remember { mutableStateOf(__anon_v_10e6ee(v = null)) }
+    var nums by remember { mutableStateOf(__anon_v_142b07(v = listOf(1, 2))) }
     var plain by remember { mutableStateOf(__anon_o_0931c3(o = __anon_v_853006(v = 1))) }
     var visible__inst0 by remember { mutableStateOf(true) }
 
@@ -448,10 +543,12 @@ fun MainScreen() {
             }
         }
         Column {
-            Text(text = (((((((((unwrap__int(__anon_v_853006(v = 1)) + 1).toString() + " ") + unwrap__string(wrap__string("w"))) + " ") + Box__int_get__int(box).toString()) + " ") + box.all[0].v.toString()) + " ") + outer.o.v.toString()), modifier = Modifier.safeDrawingPadding())
+            Text(text = (((((((((((((((unwrap__int(__anon_v_853006(v = 1)) + 1).toString() + " ") + unwrap__string(wrap__string("w"))) + " ") + Box__int_get__int(box).toString()) + " ") + box.all[0].v.toString()) + " ") + outer.o.v.toString()) + " ") + (opt.v == 3).toString()) + " ") + (absent.v == null).toString()) + " ") + nums.v.size.toString()), modifier = Modifier.safeDrawingPadding())
             Button(onClick = {
                 box = Box__int(inner = __merge___anon_v_853006(__anon_v_853006(), (wrap__int(n)).copy()), all = listOf<__anon_v_853006>())
                 outer = plain.let { _s1 -> _s1.copy(o = _s1.o.copy()) }
+                absent = (__anon_v_10e6ee(v = n)).copy()
+                nums = nums.copy(v = nums.v.toMutableList().also { it.add(n) })
                 n = (n + 1)
             }, modifier = Modifier.safeDrawingPadding()) {
                 Text(text = "go", modifier = Modifier)
@@ -482,9 +579,12 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { n: 1, box: null, outer: null, plain: null, visible__inst0: true };
+  var state = { n: 1, box: null, outer: null, opt: null, absent: null, nums: null, plain: null, visible__inst0: true };
   state.box = { inner: { v: 5 }, all: [{ v: 6 }] };
   state.outer = { o: { v: 1 } };
+  state.opt = { v: 3 };
+  state.absent = { v: null };
+  state.nums = { v: [1, 2] };
   state.plain = { o: { v: 1 } };
   function __merge___anon_v_853006(base, ov) {
     const r = { ...base };
@@ -515,6 +615,9 @@ body { font-family: system-ui, sans-serif; }
     ;
     return this__r0.inner.v;
   }
+  function held(x) {
+    return { v: x };
+  }
   function String(v) {
     return "" + v;
   }
@@ -522,22 +625,26 @@ body { font-family: system-ui, sans-serif; }
   var __n1 = document.querySelector('[data-sngl-id="__n1"]');
   $0.addEventListener("click", function() {
     state.box = { inner: __merge___anon_v_853006({}, { ...wrap(state.n) }), all: [] };
-    __n1.textContent = String(unwrap({ v: 1 }) + 1) + " " + unwrap(wrap("w")) + " " + String(Box_get(state.box)) + " " + String(state.box.all[0].v) + " " + String(state.outer.o.v);
+    __n1.textContent = String(unwrap({ v: 1 }) + 1) + " " + unwrap(wrap("w")) + " " + String(Box_get(state.box)) + " " + String(state.box.all[0].v) + " " + String(state.outer.o.v) + " " + String(state.opt.v === 3) + " " + String(state.absent.v === null) + " " + String(state.nums.v.length);
     state.outer = ((_s1) => ({ ..._s1, o: { ..._s1.o } }))(state.plain);
-    __n1.textContent = String(unwrap({ v: 1 }) + 1) + " " + unwrap(wrap("w")) + " " + String(Box_get(state.box)) + " " + String(state.box.all[0].v) + " " + String(state.outer.o.v);
+    __n1.textContent = String(unwrap({ v: 1 }) + 1) + " " + unwrap(wrap("w")) + " " + String(Box_get(state.box)) + " " + String(state.box.all[0].v) + " " + String(state.outer.o.v) + " " + String(state.opt.v === 3) + " " + String(state.absent.v === null) + " " + String(state.nums.v.length);
+    state.absent = { ...held(state.n) };
+    __n1.textContent = String(unwrap({ v: 1 }) + 1) + " " + unwrap(wrap("w")) + " " + String(Box_get(state.box)) + " " + String(state.box.all[0].v) + " " + String(state.outer.o.v) + " " + String(state.opt.v === 3) + " " + String(state.absent.v === null) + " " + String(state.nums.v.length);
+    state.nums.v.push(state.n);
+    __n1.textContent = String(unwrap({ v: 1 }) + 1) + " " + unwrap(wrap("w")) + " " + String(Box_get(state.box)) + " " + String(state.box.all[0].v) + " " + String(state.outer.o.v) + " " + String(state.opt.v === 3) + " " + String(state.absent.v === null) + " " + String(state.nums.v.length);
     state.n = state.n + 1;
-    __n1.textContent = String(unwrap({ v: 1 }) + 1) + " " + unwrap(wrap("w")) + " " + String(Box_get(state.box)) + " " + String(state.box.all[0].v) + " " + String(state.outer.o.v);
+    __n1.textContent = String(unwrap({ v: 1 }) + 1) + " " + unwrap(wrap("w")) + " " + String(Box_get(state.box)) + " " + String(state.box.all[0].v) + " " + String(state.outer.o.v) + " " + String(state.opt.v === 3) + " " + String(state.absent.v === null) + " " + String(state.nums.v.length);
   });
   function __sngl_init() {
-    __n1.textContent = String(unwrap({ v: 1 }) + 1) + " " + unwrap(wrap("w")) + " " + String(Box_get(state.box)) + " " + String(state.box.all[0].v) + " " + String(state.outer.o.v);
+    __n1.textContent = String(unwrap({ v: 1 }) + 1) + " " + unwrap(wrap("w")) + " " + String(Box_get(state.box)) + " " + String(state.box.all[0].v) + " " + String(state.outer.o.v) + " " + String(state.opt.v === 3) + " " + String(state.absent.v === null) + " " + String(state.nums.v.length);
   }
   __sngl_init();
 })();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:c7f23f54c7809305481a7867e2904cb8
+pass sha256:20d166b16bbfce6cf6ece98bcb7aa1d6
 -- run/kotlin/android --
-pass sha256:208e7f3ee34780726ebc8494126d3335
+pass sha256:4edd589666371d3281da38139d599ae9
 -- run/none/html --
-pass sha256:c2d00a34bca2af09f783925befe051c2
+pass sha256:c7b963783e15166e136198ba5ae7f55b

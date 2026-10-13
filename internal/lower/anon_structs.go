@@ -45,16 +45,6 @@ func lowerAnonStructs(pkg *ir.Package, _ Features, _ Options) error {
 			a.interned = append(a.interned, sd)
 		}
 	}
-	// A literal the optimizer inlined out of a generic body keeps the type it
-	// was checked at there, `struct { v T }`, though its values are concrete
-	// now: an anonymous struct's type is its fields', so it is retyped from
-	// them, innermost first.
-	_ = ir.Walk(pkg, func(n ir.Node) error {
-		if lit, ok := n.(*ir.StructLit); ok {
-			retypeLiteral(lit)
-		}
-		return nil
-	})
 	ir.RewriteTypes(pkg, a.rewrite)
 	// A literal names its declaration as well as its type.
 	_ = ir.Walk(pkg, func(n ir.Node) error {
@@ -144,40 +134,4 @@ func (a *anonStructs) declared(fields []*ir.StructField) *ir.StructDef {
 	a.interned = append(a.interned, sd)
 	a.pkg.Structs = append(a.pkg.Structs, sd)
 	return sd
-}
-
-// retypeLiteral types an anonymous struct literal whose type names a type
-// parameter by its own values, where every value's type is concrete. One
-// still reading a T -- in a generic body kept whole -- is left as it is.
-func retypeLiteral(lit *ir.StructLit) {
-	sd := ir.AnonStructDef(lit.Type)
-	if sd == nil || !ir.IsUninternedAnon(sd) || !lit.Type.HasTypeParam() {
-		return
-	}
-	for _, fi := range lit.Fields {
-		if fi.Value != nil {
-			if inner, ok := fi.Value.(*ir.StructLit); ok {
-				retypeLiteral(inner)
-			}
-		}
-	}
-	fields := make([]*ir.StructField, 0, len(sd.Fields))
-	for _, f := range sd.Fields {
-		var got *ir.Type
-		for _, fi := range lit.Fields {
-			if fi.Spread {
-				return
-			}
-			if fi.Name == f.Name && fi.Value != nil {
-				got = fi.Value.ExprType()
-			}
-		}
-		// A null says nothing about what it is the absence of.
-		if got == nil || got.HasTypeParam() || got.Kind == ir.TypeDyn || got.Kind == ir.TypeInvalid || got.Kind == ir.TypeNull {
-			return
-		}
-		fields = append(fields, &ir.StructField{Name: f.Name, Type: got})
-	}
-	lit.Def = &ir.StructDef{Pkg: sd.Pkg, Fields: fields, Anon: true}
-	lit.Type = lit.Def.SymType()
 }

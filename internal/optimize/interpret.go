@@ -59,17 +59,30 @@ func irFromValue(val any, typ *ir.Type) ir.Expr {
 		return nil
 	case *interp.Struct:
 		sd, t := v.Def, v.Type
+		// A value a generic body built carries the type its literal was
+		// checked at there, `struct { v T }`; where it lands, the call's own
+		// type says what T was, and that is the type the literal is.
+		if t != nil && t.HasTypeParam() && typ != nil && typ.Kind == ir.TypeStruct && !typ.HasTypeParam() {
+			sd, t = nil, typ
+		}
 		if sd == nil {
 			sd = expectedStructDef(typ)
 		}
 		if t == nil {
 			t = typ
 		}
+		declared, _ := ir.FieldsOf(t)
 		fields := make([]ir.FieldInit, 0, len(v.Fields))
 		for _, f := range v.Fields {
+			ft := structFieldType(sd, f.Name)
+			for _, d := range declared {
+				if d.Name == f.Name {
+					ft = d.Type
+				}
+			}
 			fields = append(fields, ir.FieldInit{
 				Name:  f.Name,
-				Value: irFromValue(f.Value, structFieldType(sd, f.Name)),
+				Value: irFromValue(f.Value, ft),
 			})
 		}
 		return &ir.StructLit{Type: t, Def: sd, Fields: fields}
