@@ -320,12 +320,13 @@ VarHandler = at ident [ lparen [ ParamList ] rparen ] StmtBlock .
 #
 # LL(1) after params: fat_arrow → expr body; ident|kw_func → Type; lbrace → StmtBlock.
 
-FuncDecl = kw_func FuncName [ TargetIndex ] FuncTail .
+FuncDecl = kw_func FuncName FuncTail .
 
 # The target a declaration overrides, indexed off the name it overrides:
-# `component sngl.button[html.platform](text) { ... }`. The expression must
-# fold to a target identity, which only a target's own package can supply.
-TargetIndex = lbracket Expr rbracket .
+# `component sngl.button[html.platform](text) { ... }`. A target is a build
+# node, named bare inside its own package and through it outside, so the
+# index is a name or a qualified one and nothing else.
+TargetIndex = lbracket ident [ dot ident ] rbracket .
 
 FuncTail =
       lparen [ ParamList ] rparen FuncBodyTail
@@ -342,33 +343,54 @@ FuncBodyTail =
     | [ Type ] [ StmtBlock ]
     .
 
-# FuncName encodes all name/type-param combinations inside a single non-terminal.
-# Moving all TypeParamLists inside FuncName ensures `lt` is never in FOLLOW(FuncName),
-# keeping the grammar LL(1).
+# FuncName encodes all name/type-param/target combinations inside a single
+# non-terminal, so `lbracket` is never in FOLLOW(FuncName) and the grammar
+# stays LL(1).
 #
 # Supported forms:
-#   func name(...)                    → ident
-#   func name<T any>(...)             → ident lt ident TypeParamRest
-#   func recv.method(...)             → ident dot ident
-#   func recv.method<T any>(...)      → ident dot ident TypeParamList
-#   func recv<T>.method(...)          → ident lt ident ReceiverTypeParams dot ident
-#   func recv<T>.method<U any>(...)   → ident lt ident ReceiverTypeParams dot ident TypeParamList
+#   func name(...)                        → ident
+#   func name[T any](...)                 → ident lbracket ident TypeParamRest
+#   func name[html.platform](...)         → ident lbracket ident dot ident rbracket
+#   func name[platform](...)              → ident lbracket ident rbracket
+#   func recv.method(...)                 → ident dot ident
+#   func recv.method[T any](...)          → ident dot ident NameBracket
+#   func recv[T].method[U any](...)       → ident lbracket ident rbracket dot ident NameBracket
 #
 # A receiver's list restates the receiver's names and no constraints, as Go's
-# does, while a function's own list names one for each. So both open `lt
-# ident`, and the token after that ident decides: `comma` or `gt` is a
-# receiver's list, which a `dot` must then follow, and anything in FIRST(Type)
-# is the function's own. Neither `comma` nor `gt` begins a Type.
-FuncName = ident [ lt ident FuncNameParams | dot ident [ TypeParamList ] ] .
+# does, while a function's own list names one for each. A target is a name or
+# a qualified one. So all three open `lbracket ident`, and the token after
+# that ident decides: `comma` is a receiver's list, a Type is the function's
+# own, `dot` is a qualified target, and `rbracket` is a bare target or a
+# receiver's single name -- a `dot` after the bracket says which. Neither
+# `comma`, `dot` nor `rbracket` begins a Type.
+FuncName = ident [ lbracket ident FuncNameBracket | lt ident FuncNameParams | dot ident [ NameBracket ] ] .
 
-FuncNameParams = ReceiverTypeParams dot ident [ TypeParamList ] | TypeParamRest .
+FuncNameBracket =
+      rbracket [ dot ident [ NameBracket ] ]
+    | comma ident { comma ident } rbracket dot ident [ NameBracket ]
+    | dot ident rbracket
+    | TypeParamRest [ TargetIndex ]
+    .
+
+FuncNameParams = ReceiverTypeParams dot ident [ NameBracket ] | TypeParamRestAngle [ TargetIndex ] .
 
 ReceiverTypeParams = { comma ident } gt .
 
 # The rest of a function's own list, its first parameter's name already read.
-TypeParamRest = Type [ assign Type ] { comma TypeParam } gt .
+TypeParamRest = Type [ assign Type ] { comma TypeParam } rbracket .
 
-TypeParamList = lt TypeParam { comma TypeParam } gt .
+TypeParamRestAngle = Type [ assign Type ] { comma TypeParam } gt .
+
+# What may follow a declaration's name: its own type parameters, the target it
+# overrides, or both, in that order. Both open `lbracket ident`, and the token
+# after the ident decides, as in FuncName: `dot` or `rbracket` is a target and
+# a Type is a type parameter's constraint.
+NameBracket =
+      lbracket ident ( [ dot ident ] rbracket | TypeParamRest [ TargetIndex ] )
+    | lt TypeParam { comma TypeParam } gt [ TargetIndex ]
+    .
+
+TypeParamList = lbracket TypeParam { comma TypeParam } rbracket | lt TypeParam { comma TypeParam } gt .
 
 # A type parameter names its constraint, `any` when it says nothing, and may
 # carry a default the way a value parameter does: an argument list that stops
@@ -407,7 +429,7 @@ EventParams = lparen [ ParamList ] rparen .
 
 # The block is optional, as FuncBodyTail's is. `{}` and no block at all are
 # different declarations, so the formatter must not print one for the other.
-ComponentDecl = kw_component ident [ dot ident ] [ TypeParamList ] [ TargetIndex ] [ lparen [ ParamList ] rparen ] [ Type ] [ StmtBlock ] .
+ComponentDecl = kw_component ident [ dot ident ] [ NameBracket ] [ lparen [ ParamList ] rparen ] [ Type ] [ StmtBlock ] .
 
 # ── Visual nodes + expression statements ──────────────────────────────────────
 #
@@ -707,7 +729,7 @@ NonIdentPrimary =
 # only bound a slot: both parse wherever a type does, and the checker rejects
 # the rest with a message naming the rule.
 Type =
-      ident [ dot ident [ lt TypeList gt ] | lt TypeList gt ]
+      ident [ dot ident [ TypeArgs ] | TypeArgs ]
     | kw_func      [ lparen [ FuncTypeParamList ] rparen ] [ Type ]
     | kw_component [ lparen [ FuncTypeParamList ] rparen ] [ Type ]
     | ellipsis Type
@@ -716,12 +738,14 @@ Type =
     | UnitDecl
     .
 
+TypeArgs = lbracket TypeList rbracket | lt TypeList gt .
+
 TypeList = Type { comma Type } .
 
 FuncTypeParamList = FuncTypeParam { comma FuncTypeParam } .
 
 FuncTypeParam =
-      ident [ dot ident [ lt TypeList gt ] | lt TypeList gt | Type ]
+      ident [ dot ident [ TypeArgs ] | TypeArgs | Type ]
     | kw_func      [ lparen [ FuncTypeParamList ] rparen ] [ Type ]
     | kw_component [ lparen [ FuncTypeParamList ] rparen ] [ Type ]
     | ellipsis Type

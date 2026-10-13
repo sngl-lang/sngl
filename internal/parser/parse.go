@@ -134,41 +134,52 @@ func loopVarNeedsVar(filtered []Token, idx int) bool {
 // that may begin a type -- or, in a function's list, the `.` a receiver's list
 // of bare names wants after it -- and not the `any` that is missing.
 func typeParamWithoutConstraint(filtered []Token, idx int) (string, bool) {
+	for _, pair := range [][2]TokenType{{LBRACKET, RBRACKET}, {LT, GT}} {
+		if name, ok := typeParamWithoutConstraintIn(filtered, idx, pair[0], pair[1]); ok {
+			return name, true
+		}
+	}
+	return "", false
+}
+
+// typeParamWithoutConstraintIn is typeParamWithoutConstraint for a list
+// written between open and close.
+func typeParamWithoutConstraintIn(filtered []Token, idx int, open, close TokenType) (string, bool) {
 	if idx <= 0 || idx >= len(filtered) {
 		return "", false
 	}
-	// Back to the `<` opening the list the failure is in. A failure just past
-	// its `>` -- `func f<T>(`, where a receiver's list wanted a `.` -- is in it
-	// too.
+	// Back to the bracket opening the list the failure is in. A failure just
+	// past its close -- `func f[T, U](`, where a receiver's list wanted a `.`
+	// -- is in it too.
 	i := idx - 1
-	if filtered[i].Type == GT {
+	if filtered[i].Type == close {
 		i--
 	}
-	depth, lt := 0, -1
-	for ; i >= 0 && lt < 0; i-- {
+	depth, opened := 0, -1
+	for ; i >= 0 && opened < 0; i-- {
 		switch filtered[i].Type {
-		case GT:
+		case close:
 			depth++
-		case LT:
+		case open:
 			if depth == 0 {
-				lt = i
+				opened = i
 			}
 			depth--
 		case LBRACE, RBRACE, SEMICOLON, KW_FUNC, KW_COMPONENT, KW_STRUCT:
 			return "", false
 		}
 	}
-	if lt < 1 || filtered[lt-1].Type != IDENT {
+	if opened < 1 || filtered[opened-1].Type != IDENT {
 		return "", false
 	}
 	// The list belongs to a declaration's name: a keyword ahead of it, past a
 	// receiver and its own list where it is a method's.
 	decl := false
-	for j := lt - 2; j >= 0 && !decl; j-- {
+	for j := opened - 2; j >= 0 && !decl; j-- {
 		switch filtered[j].Type {
 		case KW_FUNC, KW_COMPONENT, KW_STRUCT:
 			decl = true
-		case IDENT, DOT, LT, GT, COMMA:
+		case IDENT, DOT, COMMA, open, close:
 		default:
 			return "", false
 		}
@@ -179,11 +190,11 @@ func typeParamWithoutConstraint(filtered []Token, idx int) (string, bool) {
 	// The first parameter whose name is followed by what ends it.
 	depth = 0
 	start := true
-	for j := lt + 1; j <= idx && j+1 < len(filtered); j++ {
+	for j := opened + 1; j <= idx && j+1 < len(filtered); j++ {
 		switch filtered[j].Type {
-		case LT:
+		case open:
 			depth++
-		case GT:
+		case close:
 			if depth == 0 {
 				return "", false
 			}
@@ -196,7 +207,7 @@ func typeParamWithoutConstraint(filtered []Token, idx int) (string, bool) {
 		case IDENT:
 			if start && depth == 0 {
 				switch filtered[j+1].Type {
-				case COMMA, GT, ASSIGN:
+				case COMMA, close, ASSIGN:
 					return filtered[j].Literal, true
 				}
 			}

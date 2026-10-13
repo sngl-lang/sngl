@@ -973,7 +973,7 @@ already implies.
 <!-- BEGIN GENERATED: grammar-functions -->
 
 ```ebnf
-FuncDecl = "func" FuncName [ TargetIndex ] FuncTail
+FuncDecl = "func" FuncName FuncTail
 
 FuncTail = 
     "(" [ ParamList ] ")" FuncBodyTail
@@ -983,9 +983,9 @@ FuncBodyTail =
     "=>" Expr
     | [ Type ] [ StmtBlock ]
 
-FuncName = IDENT [ "<" IDENT FuncNameParams | "." IDENT [ TypeParamList ] ]
+FuncName = IDENT [ "[" IDENT FuncNameBracket | "<" IDENT FuncNameParams | "." IDENT [ NameBracket ] ]
 
-TypeParamList = "<" TypeParam { "," TypeParam } ">"
+TypeParamList = "[" TypeParam { "," TypeParam } "]" | "<" TypeParam { "," TypeParam } ">"
 
 TypeParam = IDENT Type [ "=" Type ]
 
@@ -1551,7 +1551,7 @@ A **component** is a reusable, parameterized fragment of user interface.
 <!-- BEGIN GENERATED: grammar-components -->
 
 ```ebnf
-ComponentDecl = "component" IDENT [ "." IDENT ] [ TypeParamList ] [ TargetIndex ] [ "(" [ ParamList ] ")" ] [ Type ] [ StmtBlock ]
+ComponentDecl = "component" IDENT [ "." IDENT ] [ NameBracket ] [ "(" [ ParamList ] ")" ] [ Type ] [ StmtBlock ]
 
 ```
 
@@ -2452,7 +2452,7 @@ VarHandler = "@" IDENT [ "(" [ ParamList ] ")" ] StmtBlock
 ```
 
 ```ebnf
-FuncDecl = "func" FuncName [ TargetIndex ] FuncTail
+FuncDecl = "func" FuncName FuncTail
 
 FuncTail = 
     "(" [ ParamList ] ")" FuncBodyTail
@@ -2462,9 +2462,9 @@ FuncBodyTail =
     "=>" Expr
     | [ Type ] [ StmtBlock ]
 
-FuncName = IDENT [ "<" IDENT FuncNameParams | "." IDENT [ TypeParamList ] ]
+FuncName = IDENT [ "[" IDENT FuncNameBracket | "<" IDENT FuncNameParams | "." IDENT [ NameBracket ] ]
 
-TypeParamList = "<" TypeParam { "," TypeParam } ">"
+TypeParamList = "[" TypeParam { "," TypeParam } "]" | "<" TypeParam { "," TypeParam } ">"
 
 TypeParam = IDENT Type [ "=" Type ]
 
@@ -2477,7 +2477,7 @@ EventParams = "(" [ ParamList ] ")"
 ```
 
 ```ebnf
-ComponentDecl = "component" IDENT [ "." IDENT ] [ TypeParamList ] [ TargetIndex ] [ "(" [ ParamList ] ")" ] [ Type ] [ StmtBlock ]
+ComponentDecl = "component" IDENT [ "." IDENT ] [ NameBracket ] [ "(" [ ParamList ] ")" ] [ Type ] [ StmtBlock ]
 
 ```
 
@@ -2617,7 +2617,7 @@ I18nPlaceholder = Expr [ "," IDENT [ "," I18nThirdArg ] ]
 
 ```ebnf
 Type = 
-    IDENT [ "." IDENT [ "<" TypeList ">" ] | "<" TypeList ">" ]
+    IDENT [ "." IDENT [ TypeArgs ] | TypeArgs ]
     | "func"      [ "(" [ FuncTypeParamList ] ")" ] [ Type ]
     | "component" [ "(" [ FuncTypeParamList ] ")" ] [ Type ]
     | "..." Type
@@ -2630,7 +2630,7 @@ TypeList = Type { "," Type }
 FuncTypeParamList = FuncTypeParam { "," FuncTypeParam }
 
 FuncTypeParam = 
-    IDENT [ "." IDENT [ "<" TypeList ">" ] | "<" TypeList ">" | Type ]
+    IDENT [ "." IDENT [ TypeArgs ] | TypeArgs | Type ]
     | "func"      [ "(" [ FuncTypeParamList ] ")" ] [ Type ]
     | "component" [ "(" [ FuncTypeParamList ] ")" ] [ Type ]
     | "..." Type
