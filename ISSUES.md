@@ -175,6 +175,11 @@ reports.
 - Generated Go exports internal names (`Visible__inst0`, `SetVisible__inst0`,
   `Measurement`).
 - html emits `<input type="">`.
+- android: an empty map literal as a state var's initializer, `var mm map<string, Row> = {}`, comes
+  out as `mutableStateOf(mapOf())`, which Kotlin cannot type.
+- android: a field written through a list held in a state struct,
+  `t.kids[0].label = "z"`, is written in place on a read-only `List` element
+  and does not compile ("actual type is 'kotlin.Unit'").
 
 ## Docs gaps still open
 
