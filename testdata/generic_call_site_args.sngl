@@ -25,6 +25,10 @@ func empty[T any]() list[T] {
 
 func pair[A any, B any](a A, b B) => b
 
+func count[F any](fs list[F]) => fs.length
+
+func isEven(n int) => n % 2 == 0
+
 func wrap[T any, U any = string](v T) option[T] {
     return v
 }
@@ -72,6 +76,16 @@ func testCallSiteTypeArgs(t Test, c main) {
     // A struct literal.
     var b = Box[string]{value="v"}
     t.assert(b.value == "v")
+
+    // A bracket holds any type: one no expression otherwise spells -- a func
+    // type, an anonymous struct -- and a list it binds settles the type of
+    // an argument nothing else would, the empty list here.
+    t.assert(count[func(int) bool]([isEven]) == 1)
+    t.assert(count[func(n int, xs list[int]) option[string]]([]) == 0)
+    var e = Box[struct {
+        n int
+    }]{value={n=2}}
+    t.assert(e.value.n == 2)
 
     // An ordinary index is still one.
     var ys = [10, 20]

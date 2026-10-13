@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/internal/parser"
 	"duckfam.us/sngl/ir"
 	"maps"
 	"slices"
@@ -101,6 +102,12 @@ func isAddressableListExpr(e ir.Expr) bool {
 }
 
 func (c *checker) inferExpr(e ast.Expr) ir.Expr {
+	// A type written where a value goes: what a bracket after a value holds,
+	// `xs[func(int) bool]`, or a func literal with no body.
+	if t, ok := e.(ast.TypeExpr); ok {
+		c.error(*t.ExprPos(), "%s is a type, not a value", parser.FormatType(t))
+		return &ir.Literal{Type: TypDyn}
+	}
 	switch x := e.(type) {
 	case *ast.LiteralExpr:
 		return c.inferLiteral(x)
@@ -3003,6 +3010,13 @@ func (c *checker) inferTypeParams(sig *ir.FuncSig, args ast.ArgList, written map
 			bindTypeParams(p.Type, t, bindings)
 		}
 	}
+	// A parameter whose type the written arguments already settle has
+	// nothing to bind, and its argument is checked against that type when the
+	// call is: checked here with nothing expected, `apply[F]([])` met an
+	// empty list it could not type.
+	settled := func(p *ir.Param) bool {
+		return p == nil || len(written) > 0 && !mentionsTypeParam(p.Type.Substitute(bindings))
+	}
 	pos := 0
 	for _, a := range args.Args {
 		arg, ok := a.(ast.Arg)
@@ -3019,10 +3033,12 @@ func (c *checker) inferTypeParams(sig *ir.FuncSig, args ast.ArgList, written map
 			continue
 		}
 		if arg.Name != "" {
-			bind(paramNamed(sig, arg.Name), exprType(c.checkExpr(arg.Value)))
+			if p := paramNamed(sig, arg.Name); !settled(p) {
+				bind(p, exprType(c.checkExpr(arg.Value)))
+			}
 			continue
 		}
-		if pos < len(sig.Params) {
+		if pos < len(sig.Params) && !settled(sig.Params[pos]) {
 			bind(sig.Params[pos], exprType(c.inferArgExpr(arg.Value, sig.Params[pos].Type, bindings)))
 		}
 		pos++

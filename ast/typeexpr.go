@@ -1,11 +1,16 @@
 package ast
 
 // TypeFromExpr reads an expression written where a type argument goes as the
-// type it spells: a name, a qualified name, or either with arguments of its
-// own, `option[User]`. A call site cannot tell a type from a value until the
-// checker knows what the bracket is on, so a type argument is parsed as the
-// expression its name already is. False for anything a type is not written as.
+// type it spells: a name, a qualified name, either with arguments of its own,
+// `option[User]`, or a type the bracket held as one -- `func(int) bool`,
+// `struct {}`, which an expression position reads as types. A call site
+// cannot tell a type from a value until the checker knows what the bracket is
+// on, so a name-led type argument is parsed as the expression it already is.
+// False for anything a type is not written as.
 func TypeFromExpr(e Expr) (TypeExpr, bool) {
+	if t, ok := e.(TypeExpr); ok {
+		return t, true
+	}
 	switch x := e.(type) {
 	case *IdentExpr:
 		return &NamedType{Pos: x.Pos, Name: x.Name}, true
@@ -37,11 +42,12 @@ func TypeFromExpr(e Expr) (TypeExpr, bool) {
 }
 
 // ExprFromType is TypeFromExpr's inverse, for a printer writing a type where
-// an expression goes. False for a type no expression spells.
+// an expression goes: a name-led type as the expression it is spelled as, and
+// any other as itself, which a bracket holds as readily.
 func ExprFromType(t TypeExpr) (Expr, bool) {
 	nt, ok := t.(*NamedType)
 	if !ok {
-		return nil, false
+		return t, t != nil
 	}
 	var e Expr = &IdentExpr{Pos: nt.Pos, Name: nt.Name}
 	if nt.Package != "" {

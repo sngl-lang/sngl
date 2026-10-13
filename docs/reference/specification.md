@@ -712,9 +712,11 @@ A bracket after a name is an index too, and which it is depends on what the
 name is: on a declaration it holds type arguments, and on a value it holds one
 index. The written arguments bind a prefix of the declaration's own type
 parameters -- a method's own, after its receiver's -- inference binds the rest,
-and a default fills what neither reaches. A type argument is written as the
-expression its name already is, so a type no expression spells, such as
-`func(int) bool`, cannot be written there yet.
+and a default fills what neither reaches. A bracket holds a type or an
+expression, so any type may be written there: `apply[func(int) bool](fs)`,
+`Box[struct { n int }]{…}`. A func literal with no body is the func type it
+spells, and a struct declaration with no literal after it the struct type,
+wherever an expression goes; a value that is a type is an error.
 
 Where nothing is written, a type parameter is bound by inference:
 
@@ -1009,7 +1011,7 @@ TypeParam = IDENT Type [ "=" Type ]
 
 ParamList = Param { "," Param } [ "," ]
 
-Param = { MacroAttr } ( ":" IDENT [ Type ] | "@" IDENT [ EventParams | Type ] | "const" IDENT [ Type ] | IDENT [ Type ] ) [ "=" Expr ]
+Param = { MacroAttr } ( ":" IDENT [ Type ] | "@" IDENT [ EventParams | Type ] | "const" IDENT [ Type ] | IDENT [ Type | "." IDENT [ TypeArgs ] | TypeArgs ] | KeywordType ) [ "=" Expr ]
 
 EventParams = "(" [ ParamList ] ")"
 
@@ -1164,7 +1166,7 @@ PrimaryExpr =
     | "[" ListBody "]"
     | AnonStructLit
     | FuncLit
-    | StructDecl StructLitBody
+    | StructDecl [ StructLitBody ]
     | ImportExpr StructLitBody
     | IDENT [ StructLitBody ]
 
@@ -2499,7 +2501,7 @@ TypeParam = IDENT Type [ "=" Type ]
 
 ParamList = Param { "," Param } [ "," ]
 
-Param = { MacroAttr } ( ":" IDENT [ Type ] | "@" IDENT [ EventParams | Type ] | "const" IDENT [ Type ] | IDENT [ Type ] ) [ "=" Expr ]
+Param = { MacroAttr } ( ":" IDENT [ Type ] | "@" IDENT [ EventParams | Type ] | "const" IDENT [ Type ] | IDENT [ Type | "." IDENT [ TypeArgs ] | TypeArgs ] | KeywordType ) [ "=" Expr ]
 
 EventParams = "(" [ ParamList ] ")"
 
@@ -2563,7 +2565,7 @@ PrimaryExpr =
     | "[" ListBody "]"
     | AnonStructLit
     | FuncLit
-    | StructDecl StructLitBody
+    | StructDecl [ StructLitBody ]
     | ImportExpr StructLitBody
     | IDENT [ StructLitBody ]
 

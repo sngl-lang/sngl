@@ -1,0 +1,4 @@
+// A func literal with a body is a function, and its parameters are named:
+// one written as a type alone, which only a func type may list, is refused.
+
+func f() => func(list[int]) => 1 // ERROR(parse) "a func literal's parameter is named: write name list[int]"

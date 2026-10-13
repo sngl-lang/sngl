@@ -742,9 +742,19 @@ the callee (`takeCallTypeArgs`), which seeds `inferTypeParams` with them: they
 bind a prefix of the callee's own parameters, inference the rest, a default
 what neither reaches. A component's go to `bindComponentTypeParams`, a node
 written with them is split by the builder (`ast.VisualNode.TypeArgs`), and a
-struct literal after the bracket is `ast.StructExpr.TypeArgs`. A type argument
-is an expression read as a type (`ast.TypeFromExpr`), so `func(int) bool` is
-refused there. Nothing after the checker sees them: they reach the IR as the
+struct literal after the bracket is `ast.StructExpr.TypeArgs`. **The bracket
+holds a type or an expression** (`IndexElem`): a name-led type is parsed as the
+expression it is spelled as and read back by `ast.TypeFromExpr`; a func literal
+with no body is the `ast.FuncType` it spells, a struct declaration with no
+literal after it the `ast.StructDef`, wherever an expression goes, and the
+keyword-led types no expression begins with (`component …`, `...T`, `enum`,
+`unit`) are the bracket's own alternatives -- each an `ast.TypeExpr` standing
+where an `ast.Expr` does, which the formatter prints as a type and the checker
+refuses as a value. So a func literal's list admits a parameter that is a type
+and no name (`KeywordType`, a qualified or bracketed name), which a func type
+lists and the builder refuses everywhere else. A written argument settles the
+type of the argument it binds, which is then checked against it rather than
+inferred from: `count[func(int) bool]([])`. Nothing after the checker sees them: they reach the IR as the
 bindings inference produces, and are kept only so `ir.Convert` prints them
 back (`ir.Call.TypeArgs`, `NodeInst.WrittenTypeArgs`, `ir.Context.TypeArgs`; a
 generic struct literal always prints its arguments). A method whose receiver

@@ -2356,7 +2356,7 @@
                     "name": "type_argument",
                     "content": {
                       "type": "SYMBOL",
-                      "name": "_expression"
+                      "name": "_index_element"
                     }
                   },
                   {
@@ -2373,7 +2373,7 @@
                           "name": "type_argument",
                           "content": {
                             "type": "SYMBOL",
-                            "name": "_expression"
+                            "name": "_index_element"
                           }
                         }
                       ]
@@ -3423,7 +3423,7 @@
             "name": "index",
             "content": {
               "type": "SYMBOL",
-              "name": "_expression"
+              "name": "_index_element"
             }
           },
           {
@@ -3440,7 +3440,7 @@
                   "name": "index",
                   "content": {
                     "type": "SYMBOL",
-                    "name": "_expression"
+                    "name": "_index_element"
                   }
                 }
               ]
@@ -3469,6 +3469,93 @@
           "value": ")"
         }
       ]
+    },
+    "_index_element": {
+      "type": "CHOICE",
+      "members": [
+        {
+          "type": "SYMBOL",
+          "name": "_expression"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "func_type"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "struct_declaration"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "component_type"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "variadic_type"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "enum_declaration"
+        }
+      ]
+    },
+    "func_type": {
+      "type": "PREC_RIGHT",
+      "value": 0,
+      "content": {
+        "type": "SEQ",
+        "members": [
+          {
+            "type": "STRING",
+            "value": "func"
+          },
+          {
+            "type": "CHOICE",
+            "members": [
+              {
+                "type": "SEQ",
+                "members": [
+                  {
+                    "type": "STRING",
+                    "value": "("
+                  },
+                  {
+                    "type": "CHOICE",
+                    "members": [
+                      {
+                        "type": "SYMBOL",
+                        "name": "_type_list"
+                      },
+                      {
+                        "type": "BLANK"
+                      }
+                    ]
+                  },
+                  {
+                    "type": "STRING",
+                    "value": ")"
+                  }
+                ]
+              },
+              {
+                "type": "BLANK"
+              }
+            ]
+          },
+          {
+            "type": "CHOICE",
+            "members": [
+              {
+                "type": "SYMBOL",
+                "name": "type_identifier"
+              },
+              {
+                "type": "BLANK"
+              }
+            ]
+          }
+        ]
+      }
     },
     "struct_literal": {
       "type": "SEQ",
@@ -3505,7 +3592,7 @@
                   "name": "type_argument",
                   "content": {
                     "type": "SYMBOL",
-                    "name": "_expression"
+                    "name": "_index_element"
                   }
                 },
                 {
@@ -3522,7 +3609,7 @@
                         "name": "type_argument",
                         "content": {
                           "type": "SYMBOL",
-                          "name": "_expression"
+                          "name": "_index_element"
                         }
                       }
                     ]
@@ -3932,6 +4019,10 @@
     ],
     [
       "func_name"
+    ],
+    [
+      "func_param",
+      "type_identifier"
     ],
     [
       "statement_block",

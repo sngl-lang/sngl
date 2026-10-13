@@ -1240,6 +1240,12 @@ func (f *formatter) writeExpr(e ast.Expr) {
 	if e == nil {
 		return
 	}
+	// A type a bracket holds, `func(int) bool`, `struct {}`: nothing else
+	// puts one where an expression goes.
+	if t, ok := e.(ast.TypeExpr); ok {
+		f.writeType(t)
+		return
+	}
 	switch x := e.(type) {
 	case *ast.LiteralExpr:
 		f.writeLiteral(x)

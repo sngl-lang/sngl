@@ -10,9 +10,12 @@ import (
 
 // builder converts an egg parse tree ([]int32) into AST nodes.
 type builder struct {
-	file     string
-	filtered []Token
-	comments []Token
+	// unnamedParams admits a parameter that is a type and no name, which only
+	// a func literal's list may hold: one with no body is a func type.
+	unnamedParams bool
+	file          string
+	filtered      []Token
+	comments      []Token
 	// firstCodeCol maps a line to the column its leftmost code token starts
 	// at, which is how a trailing comment is told from one on its own line.
 	firstCodeCol map[int]int
@@ -1315,6 +1318,11 @@ func (b *builder) buildParam(it nodeIter) ast.ParamOrEventDecl {
 	if it.done() {
 		return ast.Param{Attrs: attrs}
 	}
+	// A type with no name: `func(int) bool`, `struct {}` as a parameter.
+	if it.isNonTerminal() && it.symbol() == KeywordType {
+		t := b.buildType(it.enter())
+		return b.unnamedParam(&it, ast.Param{Pos: *t.ExprPos(), Type: t, Attrs: attrs})
+	}
 	bidi, event, isConst := false, false, false
 	switch it.tokenType() {
 	case COLON:
@@ -1334,6 +1342,22 @@ func (b *builder) buildParam(it nodeIter) ast.ParamOrEventDecl {
 		Bidirectional: bidi,
 		Const:         isConst,
 		Attrs:         attrs,
+	}
+	// A name-led type with no name: `ui.Style`, `list[int]`.
+	if !it.done() && !it.isNonTerminal() && it.tokenType() == DOT {
+		it.skip() // dot
+		nt := &ast.NamedType{Pos: p.Pos, Package: p.Name}
+		if !it.done() && !it.isNonTerminal() && it.tokenType() == IDENT {
+			nt.Name = it.shift().Literal
+		}
+		if !it.done() && it.isNonTerminal() && it.symbol() == TypeArgs {
+			nt.TypeArgs = b.buildTypeArgs(it.enter())
+		}
+		return b.unnamedParam(&it, ast.Param{Pos: p.Pos, Type: nt, Attrs: attrs})
+	}
+	if !it.done() && it.isNonTerminal() && it.symbol() == TypeArgs {
+		nt := &ast.NamedType{Pos: p.Pos, Name: p.Name, TypeArgs: b.buildTypeArgs(it.enter())}
+		return b.unnamedParam(&it, ast.Param{Pos: p.Pos, Type: nt, Attrs: attrs})
 	}
 	var evParams ast.ParamList
 	evParens := false
@@ -1367,6 +1391,21 @@ func (b *builder) buildParam(it nodeIter) ast.ParamOrEventDecl {
 		b.errorf(p.Pos, "event %q declares its parameters as a function does: @%s(v %s)", p.Name, p.Name, FormatType(p.Type))
 	}
 	return ast.EventDecl{Pos: b.posFromToken(nameTok), Name: p.Name, Params: evParams, HasParens: evParens, Attrs: attrs}
+}
+
+// unnamedParam finishes a parameter that is a type and no name, which only a
+// func literal's list admits.
+func (b *builder) unnamedParam(it *nodeIter, p ast.Param) ast.Param {
+	if !it.done() && !it.isNonTerminal() && it.tokenType() == ASSIGN {
+		it.skip() // assign
+		if !it.done() && it.isNonTerminal() {
+			p.Default = b.buildExpr(it.enter())
+		}
+	}
+	if !b.unnamedParams {
+		b.errorf(p.Pos, "a parameter is named: write name %s", FormatType(p.Type))
+	}
+	return p
 }
 
 // --- Components ---
@@ -2291,8 +2330,9 @@ func (b *builder) buildExprPostfixOp(it nodeIter, base ast.Expr) ast.Expr {
 	return base
 }
 
-// buildIndexList reads the expressions in a bracket, `IndexList`, leaving the
-// closing bracket for the caller.
+// buildIndexList reads what a bracket holds, `IndexList`, leaving the closing
+// bracket for the caller: each an expression or a type no expression spells,
+// which is an ast.TypeExpr in the list.
 func (b *builder) buildIndexList(it *nodeIter) []ast.Expr {
 	if it.done() || !it.isNonTerminal() || it.symbol() != IndexList {
 		return nil
@@ -2300,8 +2340,14 @@ func (b *builder) buildIndexList(it *nodeIter) []ast.Expr {
 	lit := it.enter()
 	var out []ast.Expr
 	for !lit.done() {
-		if lit.isNonTerminal() && lit.symbol() == Expr {
-			out = append(out, b.buildExpr(lit.enter()))
+		if lit.isNonTerminal() && lit.symbol() == IndexElem {
+			// IndexElem = Expr | kw_component … | ellipsis Type | EnumDecl | UnitDecl .
+			el := lit.enter()
+			if !el.done() && el.isNonTerminal() && el.symbol() == Expr {
+				out = append(out, b.buildExpr(el.enter()))
+			} else if t := b.buildType(el); t != nil {
+				out = append(out, t)
+			}
 			continue
 		}
 		lit.skip() // comma
@@ -2362,10 +2408,13 @@ func (b *builder) buildPrimaryInner(it nodeIter, exprContext bool) ast.Expr {
 			le.Elements = b.buildListBody(it.enter(), &le.IsMultiline)
 			return le
 		case StructDecl:
-			// `struct { … }{ … }`: the value of an inline anonymous type. The
-			// literal body is mandatory in the grammar, so a bare type
-			// expression never reaches expression position.
+			// `struct { … }{ … }`: the value of an inline anonymous type.
+			// With no literal after it the declaration is the type itself,
+			// which is what a type argument is, `Box[struct {}]`.
 			anon := b.buildStructDecl(it.enter())
+			if it.done() || !it.isNonTerminal() || it.symbol() != StructLitBody {
+				return anon
+			}
 			x := &ast.StructExpr{Anon: anon}
 			if anon != nil {
 				x.Pos = anon.Pos
@@ -3478,14 +3527,17 @@ func (b *builder) buildFuncTypeParam(it nodeIter) ast.FuncTypeParam {
 
 // --- Lambda ---
 
-func (b *builder) buildFuncLit(it nodeIter) *ast.LambdaExpr {
+func (b *builder) buildFuncLit(it nodeIter) ast.Expr {
 	// FuncLit = kw_func [ lparen [ ParamList ] rparen ] FuncBodyTail .
 	pos := b.posFromToken(it.shift()) // kw_func
 	lam := &ast.LambdaExpr{Pos: ast.Pos(pos)}
 	if !it.done() && !it.isNonTerminal() && it.tokenType() == LPAREN {
 		open := it.shift() // lparen
 		if !it.done() && it.isNonTerminal() && it.symbol() == ParamList {
+			outer := b.unnamedParams
+			b.unnamedParams = true
 			lam.Params = b.buildParamList(it.enter(), open.Line)
+			b.unnamedParams = outer
 		}
 		if !it.done() && !it.isNonTerminal() && it.tokenType() == RPAREN {
 			it.skip() // rparen
@@ -3507,7 +3559,36 @@ func (b *builder) buildFuncLit(it nodeIter) *ast.LambdaExpr {
 			}
 		}
 	}
+	// No body: a func type written where an expression goes, which is what
+	// a type argument is, `apply[func(int) bool](fs)`.
+	if lam.Body == nil && !lam.Block.IsDefined() {
+		return b.funcTypeOf(lam)
+	}
+	for _, p := range lam.Params.Params {
+		if p.Name == "" {
+			b.errorf(p.Pos, "a func literal's parameter is named: write name %s", FormatType(p.Type))
+		}
+	}
 	return lam
+}
+
+// funcTypeOf is a func literal with no body read as the func type it spells.
+// A parameter written as a bare name is a type there, as it is in any func
+// type, and one written as a name and a type keeps the name.
+func (b *builder) funcTypeOf(lam *ast.LambdaExpr) *ast.FuncType {
+	ft := &ast.FuncType{Pos: lam.Pos, Return: lam.ReturnType}
+	for _, p := range lam.Params.Params {
+		if p.Default != nil {
+			b.errorf(p.Pos, "a func type's parameter takes no default")
+		}
+		switch {
+		case p.Name != "" && p.Type == nil:
+			ft.Params = append(ft.Params, ast.FuncTypeParam{Type: &ast.NamedType{Pos: p.Pos, Name: p.Name}})
+		default:
+			ft.Params = append(ft.Params, ast.FuncTypeParam{Name: p.Name, Type: p.Type})
+		}
+	}
+	return ft
 }
 
 // --- AssignOp ---

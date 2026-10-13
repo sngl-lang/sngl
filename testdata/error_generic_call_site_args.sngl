@@ -23,9 +23,9 @@ component main node {
     // A type argument must be a type.
     var d = first[1]([1]) // ERROR(check) "a type argument is a type"
 
-    // A type no expression spells is not written here yet: a func type reads
-    // as a func literal, which is no type.
-    var e = Box[func(int) bool {}]{} // ERROR(check) "a type argument is a type"
+    // A type is no value: a func literal with no body is a func type, which a
+    // bracket holds and a var cannot.
+    var e = func(int) bool // ERROR(check) "func(int) bool is a type, not a value"
 
     // Several indices on a value.
     var xs = [1, 2]

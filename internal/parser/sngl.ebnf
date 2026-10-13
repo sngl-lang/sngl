@@ -412,7 +412,22 @@ ParamList = Param { comma Param } [ comma ] .
 # kw_const → a parameter whose argument is constant at every call site. The
 # grammar admits it in every list; the checker refuses it where it means nothing
 # (a lambda, a handler, a slot population).
-Param = { MacroAttr } ( colon ident [ Type ] | at ident [ EventParams | Type ] | kw_const ident [ Type ] | ident [ Type ] ) [ assign Expr ] .
+Param = { MacroAttr } ( colon ident [ Type ] | at ident [ EventParams | Type ] | kw_const ident [ Type ] | ident [ Type | dot ident [ TypeArgs ] | TypeArgs ] | KeywordType ) [ assign Expr ] .
+
+# A parameter that is a type and no name -- `list[int]`, `ui.Style`,
+# `func(int) bool`, `struct {}` -- is what a func literal with no body lists,
+# which is a func *type* written where an expression goes, `apply[func(int)
+# bool](fs)`. Every other list names its parameters, and the builder says so.
+# The keyword-led half of Type, written out because a name-led type is the
+# ident alternative above.
+KeywordType =
+      kw_func      [ lparen [ FuncTypeParamList ] rparen ] [ Type ]
+    | kw_component [ lparen [ FuncTypeParamList ] rparen ] [ Type ]
+    | ellipsis Type
+    | StructDecl
+    | EnumDecl
+    | UnitDecl
+    .
 
 EventParams = lparen [ ParamList ] rparen .
 
@@ -584,9 +599,21 @@ StmtPostfixOp =
 # A bracket after a name is an index or a list of type arguments, and the
 # checker says which: on a generic declaration -- `first[int](xs)`,
 # `Box[int]{v=1}`, `context[option[User]] #who(null)` -- it instantiates it,
-# and anywhere else it takes one value. A type argument is written as the
-# expression a type's name already is, so `func(int) bool` is not yet one.
-IndexList = Expr { comma Expr } .
+# and anywhere else it takes one value. What it holds is a type or an
+# expression (IndexElem).
+IndexList = IndexElem { comma IndexElem } .
+
+# A type argument is a type or an expression. An expression already spells a
+# name-led type, a func type (a func literal with no body) and a struct type (a
+# struct declaration with no literal after it); what no expression begins with
+# is written here.
+IndexElem =
+      Expr
+    | kw_component [ lparen [ FuncTypeParamList ] rparen ] [ Type ]
+    | ellipsis Type
+    | EnumDecl
+    | UnitDecl
+    .
 
 PrimaryExpr =
       int_lit
@@ -606,7 +633,7 @@ PrimaryExpr =
     | lbracket ListBody rbracket
     | AnonStructLit
     | FuncLit
-    | StructDecl StructLitBody
+    | StructDecl [ StructLitBody ]
     | ImportExpr StructLitBody
     | ident [ StructLitBody ]
     .

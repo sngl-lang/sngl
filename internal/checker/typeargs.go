@@ -26,10 +26,10 @@ type writtenTypeArgs struct {
 	types []*ir.Type
 }
 
-// resolveTypeArgs reads each expression in a bracket as the type it spells. A
-// type argument is written as the expression its name already is, so one no
-// expression spells -- `func(int) bool`, `struct {}` -- is not yet writable
-// here, and is refused where it is written.
+// resolveTypeArgs reads each thing in a bracket as the type it spells: a
+// name-led type parsed as the expression it is spelled as, and any other --
+// `func(int) bool`, `struct {}` -- as the type the parser read. A value that
+// spells no type, `first[1]`, is refused where it is written.
 func (c *checker) resolveTypeArgs(exprs []ast.Expr) []*ir.Type {
 	out := make([]*ir.Type, len(exprs))
 	for i, e := range exprs {

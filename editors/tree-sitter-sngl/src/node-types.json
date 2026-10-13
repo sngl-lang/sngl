@@ -853,6 +853,21 @@
     }
   },
   {
+    "type": "func_type",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": true,
+      "required": false,
+      "types": [
+        {
+          "type": "type_identifier",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
     "type": "identifier_list",
     "named": true,
     "fields": {},
@@ -922,6 +937,26 @@
         "types": [
           {
             "type": "_expression",
+            "named": true
+          },
+          {
+            "type": "component_type",
+            "named": true
+          },
+          {
+            "type": "enum_declaration",
+            "named": true
+          },
+          {
+            "type": "func_type",
+            "named": true
+          },
+          {
+            "type": "struct_declaration",
+            "named": true
+          },
+          {
+            "type": "variadic_type",
             "named": true
           }
         ]
@@ -1273,6 +1308,26 @@
         "types": [
           {
             "type": "_expression",
+            "named": true
+          },
+          {
+            "type": "component_type",
+            "named": true
+          },
+          {
+            "type": "enum_declaration",
+            "named": true
+          },
+          {
+            "type": "func_type",
+            "named": true
+          },
+          {
+            "type": "struct_declaration",
+            "named": true
+          },
+          {
+            "type": "variadic_type",
             "named": true
           }
         ]
@@ -1632,6 +1687,26 @@
         "types": [
           {
             "type": "_expression",
+            "named": true
+          },
+          {
+            "type": "component_type",
+            "named": true
+          },
+          {
+            "type": "enum_declaration",
+            "named": true
+          },
+          {
+            "type": "func_type",
+            "named": true
+          },
+          {
+            "type": "struct_declaration",
+            "named": true
+          },
+          {
+            "type": "variadic_type",
             "named": true
           }
         ]

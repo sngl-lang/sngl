@@ -36,6 +36,9 @@ module.exports = grammar({
     [$._expression, $.visual_node, $.struct_literal],
     [$.func_name, $.type_identifier],
     [$.func_name],
+    // `func(` in a bracket opens a func literal or a func type, and only the
+    // body after the list tells them apart.
+    [$.func_param, $.type_identifier],
     [$.statement_block, $.struct_literal],
     [$.statement_block, $.anon_struct_literal],
     [$.method_expression, $.field_expression],
@@ -433,7 +436,7 @@ module.exports = grammar({
         seq(
           field("component", choice($.qualified_name, $.identifier)),
           // A component's type arguments, `context[option[User]] #who(null)`.
-          optional(seq("[", field("type_argument", $._expression), repeat(seq(",", field("type_argument", $._expression))), "]")),
+          optional(seq("[", field("type_argument", $._index_element), repeat(seq(",", field("type_argument", $._index_element))), "]")),
           optional(field("element_id", $.element_ref)),
           optional(seq("(", optional($._arg_list), ")")),
           optional($.statement_block),
@@ -607,18 +610,38 @@ module.exports = grammar({
           "[",
           // An index, or a generic declaration's type arguments,
           // `first[int]`, `pair[int, string]`: the compiler decides which.
-          field("index", $._expression),
-          repeat(seq(",", field("index", $._expression))),
+          field("index", $._index_element),
+          repeat(seq(",", field("index", $._index_element))),
           "]",
         ),
       ),
 
     parenthesized_expression: ($) => seq("(", $._expression, ")"),
 
+    // What a bracket holds: an index, or a type argument, which may be any
+    // type -- `func(int) bool`, `struct {}` -- as well as the name-led ones an
+    // expression already spells.
+    _index_element: ($) =>
+      choice(
+        $._expression,
+        $.func_type,
+        $.struct_declaration,
+        $.component_type,
+        $.variadic_type,
+        $.enum_declaration,
+      ),
+
+    func_type: ($) =>
+      prec.right(seq(
+        "func",
+        optional(seq("(", optional($._type_list), ")")),
+        optional($.type_identifier)
+      )),
+
     struct_literal: ($) =>
       seq(
         field("name", choice($.qualified_name, $.identifier)),
-        optional(seq("[", field("type_argument", $._expression), repeat(seq(",", field("type_argument", $._expression))), "]")),
+        optional(seq("[", field("type_argument", $._index_element), repeat(seq(",", field("type_argument", $._index_element))), "]")),
         "{",
         commaSep(choice($.anon_struct_field, $.spread_expression)),
         optional(","),
