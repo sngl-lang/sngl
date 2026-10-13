@@ -116,29 +116,29 @@ inferred) and `testdata/error_generic_call_site_args.sngl` (too many, an index
 on a non-generic name reaching the type rule, a type that is not an
 expression).
 
-- [ ] Index takes a list: `lbracket Expr { comma Expr } rbracket` in
+- [X] Index takes a list: `lbracket Expr { comma Expr } rbracket` in
   `ExprPostfixOp`, `CondPostfixOp` and `StmtPostfixOp`.
   `ast.IndexExpr.Index` becomes a list (or an `Indices` beside it).
-- [ ] Checker: an index whose operand resolves to a generic declaration --
+- [X] Checker: an index whose operand resolves to a generic declaration --
   func, method, component, struct -- is an instantiation. Each index
   expression is read as a type (ident, qualified ident, a nested index for
   `option[User]`). Explicit arguments bind a prefix of the parameters and
   inference fills the rest, as Go does; a default fills what neither
   reaches. Anything else is an ordinary index.
-- [ ] A type that is not an expression -- `func(int) bool`, `struct {}`,
+- [X] A type that is not an expression -- `func(int) bool`, `struct {}`,
   `component …` -- is refused with a position in this phase. A
   type-or-expression production inside the brackets is the follow-up if
   one is needed.
-- [ ] A node: `context[option[User]] #who(null)`. `StmtPostfixOp`'s index then
+- [X] A node: `context[option[User]] #who(null)`. `StmtPostfixOp`'s index then
   `hash` must reach the builder as a node with type arguments.
-- [ ] A struct literal: `Box[int]{v=1}` needs `[ StructLitBody ]` after the
+- [X] A struct literal: `Box[int]{v=1}` needs `[ StructLitBody ]` after the
   index in `ExprPostfixOp` (not the condition context, whose `{` is the
   body's).
-- [ ] The instantiation reaches IR as the bindings inference already
+- [X] The instantiation reaches IR as the bindings inference already
   produces, so nothing after the checker changes. Confirm on the
   interpreter and one monomorphizing target (`passMonomorphize`).
-- [ ] LSP: hover and completion inside the brackets.
-- [ ] Remove the TODO in `lib/builtin/context.sngl` and rewrite the
+- [X] LSP: hover and completion inside the brackets.
+- [X] Remove the TODO in `lib/builtin/context.sngl` and rewrite the
   "A context's type is its default's" paragraph in CLAUDE.md and the spec.
 
 ## Type parameter constraints

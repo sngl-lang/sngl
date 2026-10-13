@@ -705,8 +705,18 @@ since the type's declaration already constrains them:
 what makes it a receiver's.
 
 In a type position the arguments are written in brackets (`Box[int]`,
-`map[string, int]`); at a call site they are bound by inference rather than
-written:
+`map[string, int]`). At a call site they may be written the same way, after
+the name of the func, method, component or struct being instantiated:
+`empty[int]()`, `xs.map[string](f)`, `tagged[int](v=1)`, `Box[int]{value=3}`.
+A bracket after a name is an index too, and which it is depends on what the
+name is: on a declaration it holds type arguments, and on a value it holds one
+index. The written arguments bind a prefix of the declaration's own type
+parameters -- a method's own, after its receiver's -- inference binds the rest,
+and a default fills what neither reaches. A type argument is written as the
+expression its name already is, so a type no expression spells, such as
+`func(int) bool`, cannot be written there yet.
+
+Where nothing is written, a type parameter is bound by inference:
 
 - A **receiver type parameter** of a method on a generic type is bound from the
   receiver's concrete type. For `func list[T].first() T`, a call on a
@@ -1160,13 +1170,13 @@ PrimaryExpr =
 
 ExprPostfixOp = 
     "." IDENT [ StructLitBody ]
-    | "[" Expr "]"
+    | "[" IndexList "]" [ StructLitBody ]
     | "(" [ ArgList ] ")"
 
 StmtPostfixOp = 
     "." IDENT
     | HASH
-    | "[" Expr "]"
+    | "[" IndexList "]"
     | "(" [ ArgList ] ")"
     | [ "(" [ ArgList ] ")" ] StmtBlock
 
@@ -1904,6 +1914,10 @@ ui.window {
 }
 ```
 
+A default whose type says too little -- `null`, an empty list -- states the
+context's type in brackets, and the default is held to it:
+`context[option[User]] #who(null)`.
+
 A context may not be assigned, and may not be captured into a `var`, which
 would freeze the value and miss later changes; read it where it is used.
 
@@ -2555,13 +2569,13 @@ PrimaryExpr =
 
 ExprPostfixOp = 
     "." IDENT [ StructLitBody ]
-    | "[" Expr "]"
+    | "[" IndexList "]" [ StructLitBody ]
     | "(" [ ArgList ] ")"
 
 StmtPostfixOp = 
     "." IDENT
     | HASH
-    | "[" Expr "]"
+    | "[" IndexList "]"
     | "(" [ ArgList ] ")"
     | [ "(" [ ArgList ] ")" ] StmtBlock
 

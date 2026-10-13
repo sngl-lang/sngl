@@ -612,8 +612,8 @@ func list[T].filter(pred func(T) bool) list[T]
 func list[T].map[U any](fn func(T) U) list[U]
 ```
 
-Type parameters are inferred at call sites -- you never write `[T]` explicitly
-when calling a generic method. A method-level parameter such as `map`'s `U`
+Type parameters are inferred at call sites, so you rarely write `[T]` when
+calling a generic method. A method-level parameter such as `map`'s `U`
 is inferred from the lambda's return type, and the lambda's own parameter type
 is inferred from the receiver's element type:
 
@@ -646,6 +646,12 @@ func firstOr[T any](xs list[T], fallback T) T {
     return xs[0]
 }
 ```
+
+Write the arguments where nothing else says them: a function whose type
+parameter appears only in its result, called where nothing expects a type,
+`var xs = empty[int]()`, or a literal of a generic struct, `Box[int]{value=3}`.
+They go in brackets after the name, bind the leading parameters, and leave the
+rest to inference.
 
 `any` is only a constraint. A value whose type you say nothing about is a
 `dyn`, and `var x any` is an error. Nor is the constraint optional: a bracket

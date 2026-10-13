@@ -523,9 +523,9 @@ mount: a mounted node and an effect keep the values they were mounted under
 `component context[V any, F any](default V) F`. The checker reads the default itself
 (`registerRootContextDecl`) rather than binding the declaration's parameters,
 and holds every provider's value to it. A default whose type says too little
--- `null`, `[]` -- is written as a typed const, `const nobody option[User] = null` then `context #who(nobody)`; stating the type in place would need type
-arguments at a call site, which the language does not have (a TODO in
-`lib/builtin/context.sngl` names brackets, `<…>` not being LL(1) there).
+-- `null`, `[]` -- states it in brackets, `context[option[User]] #who(null)`:
+the written argument is the context's type and the default is held to it
+(`ir.Context.TypeArgs`, which `ir.Convert` prints back).
 `t.setContext[V any](ctx V, value V)` takes any context and a value of its type,
 and a first argument that is not a context is a positioned error
 (`refuseSetContextName`), where it used to fail only when the test ran
@@ -723,7 +723,30 @@ names, a default -- is a parse error naming `T any`
 restates names only, as Go's does -- `func list[T].map[U any]` -- and in
 `FuncName` it is the `.` after the bracket that says so (`FuncNameBracket`);
 the target index lives inside `FuncName` too, which keeps `lbracket` out of its
-FOLLOW set. `any` is `#[_builtin(any)] struct any {}` in sngl:builtin, read like a scalar (`ir.TypAny`, in
+FOLLOW set.
+
+**A call site may write type arguments**, in the same brackets:
+`empty[int]()`, `xs.map[string](f)`, `tagged[int](v=1)`, `Box[int]{v=1}`,
+`context[option[User]] #who(null)`. A bracket after a name is a postfix index
+to the parser (`IndexList`, so `ast.IndexExpr.Indices` is a list), and the
+checker says which it is (`internal/checker/typeargs.go`): on a name that
+reads as a declaration -- a func, a component, a struct named as a type, a
+method -- it holds type arguments, and on a value one index. A func that
+takes nothing and binds nothing reads as its result (`counts[0]` for
+`counts()`), which `namesItself` holds to. `instantiatedCall` checks the call
+without the bracket and leaves the written types for whichever path resolves
+the callee (`takeCallTypeArgs`), which seeds `inferTypeParams` with them: they
+bind a prefix of the callee's own parameters, inference the rest, a default
+what neither reaches. A component's go to `bindComponentTypeParams`, a node
+written with them is split by the builder (`ast.VisualNode.TypeArgs`), and a
+struct literal after the bracket is `ast.StructExpr.TypeArgs`. A type argument
+is an expression read as a type (`ast.TypeFromExpr`), so `func(int) bool` is
+refused there. Nothing after the checker sees them: they reach the IR as the
+bindings inference produces, and are kept only so `ir.Convert` prints them
+back (`ir.Call.TypeArgs`, `NodeInst.WrittenTypeArgs`, `ir.Context.TypeArgs`; a
+generic struct literal always prints its arguments).
+`testdata/generic_call_site_args.sngl`, `error_generic_call_site_args.sngl`
+and `generic_call_site_args.txtar` are the three halves. `any` is `#[_builtin(any)] struct any {}` in sngl:builtin, read like a scalar (`ir.TypAny`, in
 `scalarUniverse`, since sngl:family's `one[T any]` is checked before
 sngl:builtin is in scope), and it is a constraint only: written where a
 value's type goes it is refused naming `dyn` (`error_any_outside_constraint.sngl`).
@@ -2326,8 +2349,9 @@ declaration itself. Two things about the name that are easy to get wrong:
   bound only where the body reads it, Go rejecting an unused one.
 
   `go.makechan` takes a witness value rather than a type argument --
-  `makeChan(false)` is a `chan[bool]` -- because a call site has no syntax for
-  the latter and a zero-argument generic leaves the element type unrecoverable.
+  `makeChan(false)` is a `chan[bool]` -- because it was declared before a call
+  site could write one, and the emitter reads the element type off the
+  argument.
   `make` and `close` are Go *builtins*, carrying no import path, so a
   `#[go.native]` cannot name them at all and both are intrinsics for that
   reason.
