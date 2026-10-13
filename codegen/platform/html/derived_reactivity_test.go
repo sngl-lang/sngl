@@ -149,7 +149,7 @@ struct Task {
     label string = ""
 }
 window {
-    var tasks list<Task> = [Task{label = "A"}]
+    var tasks list[Task] = [Task{label = "A"}]
     text(value="{tasks.length} tasks")
     for var t = tasks {
         text(value=t.label)

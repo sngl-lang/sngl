@@ -18,16 +18,16 @@ struct pair {
 }
 
 struct hasList {
-    tags list<string>
+    tags list[string]
 }
 
 component main node {
     var (
         x = 0
         y = "s"
-        xs list<int> = [1]
-        m map<string, int> = {"a"=1}
-        o option<int> = 1
+        xs list[int] = [1]
+        m map[string, int] = {"a"=1}
+        o option[int] = 1
     )
 
     // The forms that do work, here so the rule is not read as "no key at all".
@@ -43,15 +43,15 @@ component main node {
 
     effect(on=m, @mount {}) // ERROR(check) "a key over several values is a struct of them, not a map"
 
-    effect(on=o, @mount {}) // ERROR(check) "option<int> does not"
+    effect(on=o, @mount {}) // ERROR(check) "option[int] does not"
 
-    effect(on=hasList{tags=["a"]}, @mount {}) // ERROR(check) "list<string> (field tags of struct hasList)"
+    effect(on=hasList{tags=["a"]}, @mount {}) // ERROR(check) "list[string] (field tags of struct hasList)"
 
     // A bodyless node carrying a #id parses as a call rather than a visual
     // node. That is one more spelling, not one more rule, and the rule is
     // stated over the instances a package holds rather than over the paths
     // that build one.
-    effect #tagged(on=xs, @mount {}) // ERROR(check) "list<int> does not"
+    effect #tagged(on=xs, @mount {}) // ERROR(check) "list[int] does not"
 }
 
 // The rule's other half is at the call site. An `on` typed by the component's
@@ -60,7 +60,7 @@ component main node {
 // becomes a type is the call that binds it. Unchecked, the bracket reached
 // bubbletea as `m.__effect0_live[i] != k` over a []int, which Go does not
 // compile, and html as `!==` over an array, which is identity.
-component keyed<T any>(k T) node {
+component keyed[T any](k T) node {
     effect(on=k, @mount {})
 
     text(value="keyed")
@@ -68,11 +68,11 @@ component keyed<T any>(k T) node {
 
 component keys node {
     var n = 0
-    var xs list<int> = [1]
+    var xs list[int] = [1]
 
     keyed(k=n)
 
-    keyed(k=xs) // ERROR(check) "component keyed keys an effect on a value this call binds to list<int>"
+    keyed(k=xs) // ERROR(check) "component keyed keys an effect on a value this call binds to list[int]"
 }
 
 window {

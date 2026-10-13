@@ -9,7 +9,7 @@ import (
 )
 
 func TestMapTypeResolves(t *testing.T) {
-	src := `var m map<string, int>`
+	src := `var m map[string, int]`
 	doc, err := parser.Parse("test.sngl", []byte(withStd(src)))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
@@ -23,7 +23,7 @@ func TestMapTypeResolves(t *testing.T) {
 }
 
 func TestMapWrongArity(t *testing.T) {
-	src := `var m map<string>`
+	src := `var m map[string]`
 	doc, err := parser.Parse("test.sngl", []byte(withStd(src)))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
@@ -36,12 +36,12 @@ func TestMapWrongArity(t *testing.T) {
 		}
 	}
 	if !found {
-		t.Error("expected error for map<string> (1 type arg)")
+		t.Error("expected error for map[string] (1 type arg)")
 	}
 }
 
 func TestMapIncomparableKey(t *testing.T) {
-	src := `var m map<list<int>, string>`
+	src := `var m map[list[int], string]`
 	doc, err := parser.Parse("test.sngl", []byte(withStd(src)))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
@@ -54,13 +54,13 @@ func TestMapIncomparableKey(t *testing.T) {
 		}
 	}
 	if !found {
-		t.Error("expected error for map<list<int>, string> (list key not comparable)")
+		t.Error("expected error for map[list[int], string] (list key not comparable)")
 	}
 }
 
 func TestMapLiteralInfersTypes(t *testing.T) {
 	// String-literal keys → MapLit at parse; expected type provided via annotation.
-	src := `var m map<string, int> = {"a" = 1, "b" = 2}`
+	src := `var m map[string, int] = {"a" = 1, "b" = 2}`
 	doc, err := parser.Parse("test.sngl", []byte(withStd(src)))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
@@ -74,7 +74,7 @@ func TestMapLiteralInfersTypes(t *testing.T) {
 }
 
 func TestMapIndexReturnsValueType(t *testing.T) {
-	src := `var m map<string, int> = {"a" = 1, "b" = 2}; var x int = m["a"]`
+	src := `var m map[string, int] = {"a" = 1, "b" = 2}; var x int = m["a"]`
 	doc, err := parser.Parse("test.sngl", []byte(withStd(src)))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
@@ -88,7 +88,7 @@ func TestMapIndexReturnsValueType(t *testing.T) {
 }
 
 func TestMapIndexWrongKeyTypeError(t *testing.T) {
-	src := `var m map<string, int> = {"a" = 1}; var x = m[42]`
+	src := `var m map[string, int] = {"a" = 1}; var x = m[42]`
 	doc, err := parser.Parse("test.sngl", []byte(withStd(src)))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
@@ -127,7 +127,7 @@ func TestMapLiteralMixedKeyTypesError(t *testing.T) {
 
 func TestMapLiteralRequiresExpectedType(t *testing.T) {
 	// With map type annotation: ok.
-	src := `var m map<string, int> = {a = 1, b = 2}`
+	src := `var m map[string, int] = {a = 1, b = 2}`
 	doc, err := parser.Parse("t.sngl", []byte(withStd(src)))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
@@ -160,7 +160,7 @@ func TestMapLiteralWithoutContextErrors(t *testing.T) {
 
 func TestStructLiteralReinterpretedAsMap(t *testing.T) {
 	// Ident keys + string-K map → ident names become string keys.
-	src := `var m map<string, int> = {apple = 1, pear = 2}`
+	src := `var m map[string, int] = {apple = 1, pear = 2}`
 	doc, err := parser.Parse("t.sngl", []byte(withStd(src)))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
@@ -174,8 +174,8 @@ func TestStructLiteralReinterpretedAsMap(t *testing.T) {
 }
 
 func TestStructLiteralIntoNonStringMapErrors(t *testing.T) {
-	// Ident keys can't satisfy map<int, V>.
-	src := `var m map<int, string> = {a = "x"}`
+	// Ident keys can't satisfy map[int, V].
+	src := `var m map[int, string] = {a = "x"}`
 	doc, err := parser.Parse("t.sngl", []byte(withStd(src)))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
@@ -193,7 +193,7 @@ func TestStructLiteralIntoNonStringMapErrors(t *testing.T) {
 }
 
 func TestMapIntKeysWithExpectedType(t *testing.T) {
-	src := `var m map<int, string> = {1 = "one", 2 = "two"}`
+	src := `var m map[int, string] = {1 = "one", 2 = "two"}`
 	doc, err := parser.Parse("t.sngl", []byte(withStd(src)))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
@@ -207,7 +207,7 @@ func TestMapIntKeysWithExpectedType(t *testing.T) {
 }
 
 func TestMapLengthMethod(t *testing.T) {
-	src := `var m map<string, int> = {a = 1}; var n = m.length()`
+	src := `var m map[string, int] = {a = 1}; var n = m.length()`
 	doc, err := parser.Parse("test.sngl", []byte(withStd(src)))
 	if err != nil {
 		t.Fatalf("parse: %v", err)

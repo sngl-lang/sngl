@@ -30,7 +30,7 @@ import . "sngl:macro"
 
 component badge(
     label string = "",
-    #[wildcard("data[A-Za-z0-9]*")] data map<string, string>,
+    #[wildcard("data[A-Za-z0-9]*")] data map[string, string],
 ) node {
     text(value = label)
     for var v = data.values() {

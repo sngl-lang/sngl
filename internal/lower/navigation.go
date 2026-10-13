@@ -25,7 +25,7 @@ import (
 //
 //	var pages__current _page__value = _page__value{id=0, href="/", title="Home", meta=…}
 //	var pkg__params Pkg = Pkg{}
-//	var pages__history list<pages__entry> = []
+//	var pages__history list[pages__entry] = []
 //	if pages__current.id == 0 { … } else if pages__current.id == 1 { …p is pkg__params… }
 //
 // The record is the page family's: one struct per instantiation of it -- the
@@ -1646,7 +1646,7 @@ func (nv *navigation) copiesEqual(a, b ir.Expr) ir.Expr {
 	return &ir.Call{Type: ir.TypBool, Func: nv.copyEq(), Args: []ir.CallArg{{Value: nv.copyOfExpr(a)}, {Value: nv.copyOfExpr(b)}}}
 }
 
-// copyEq is the package's `__nav_copy_eq(a, b list<int>) bool`, made the
+// copyEq is the package's `__nav_copy_eq(a, b list[int]) bool`, made the
 // first time two copies neither of which is known are compared.
 func (nv *navigation) copyEq() *ir.Func {
 	for _, f := range nv.pkg.Funcs {

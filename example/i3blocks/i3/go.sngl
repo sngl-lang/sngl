@@ -60,7 +60,7 @@ component gap[go.language] {
 // now are the ones the line i3bar last showed was built from. When stdin
 // closes i3bar has gone, and so does the program -- posted, so every click
 // read before it runs first.
-func readClicks(members func() list<Entry>) {
+func readClicks(members func() list[Entry]) {
     var in = newScanner(stdin)
     for in.scan() {
         var line = in.text()

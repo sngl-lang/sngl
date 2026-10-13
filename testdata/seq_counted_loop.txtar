@@ -1,6 +1,6 @@
 A sngl:seq sequence compiles to a loop and never to a list. Written directly
 in a loop head it is the host's counting loop; held in a variable or passed to
-a function it is the pull sequence iter<int> is, which the consumer drives one
+a function it is the pull sequence iter[int] is, which the consumer drives one
 value at a time -- a range func in Go, a generator in JS, an IntProgression in
 Kotlin.
 
@@ -32,7 +32,7 @@ output {
     }
 }
 
-func total(xs iter<int>) int {
+func total(xs iter[int]) int {
     var sum = 0
     for var x = xs {
         sum = sum + x
@@ -51,14 +51,14 @@ component main node {
         for var d = seq.step(n, 0, -2) {
             total2 = total2 + d
         }
-        var held iter<int> = seq.count(n)
+        var held iter[int] = seq.count(n)
         for var h = held {
             total2 = total2 + h
         }
         for var h2 = seq.count(n) {
             total2 = total2 + h2
         }
-        var ys list<int> = [1, 2, 3]
+        var ys list[int] = [1, 2, 3]
         total2 = total2 + total(ys)
     })
     text(value=string(total2))

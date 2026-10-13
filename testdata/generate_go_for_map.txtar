@@ -1,4 +1,4 @@
-Go codegen for a `for` over `map<K, V>`: the two-variable loop in the handler
+Go codegen for a `for` over `map[K, V]`: the two-variable loop in the handler
 becomes Go's own `for k, v := range`, with nothing between it and the map
 field.
 -- app.sngl --
@@ -7,7 +7,7 @@ import . "sngl:ui"
 output { go { bubbletea } }
 
 component main node {
-    var scores map<string, int> = {alice=10, bob=20}
+    var scores map[string, int] = {alice=10, bob=20}
     var total = 0
     button(text="sum", @click {
         for var k, v = scores {

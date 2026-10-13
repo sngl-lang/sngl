@@ -20,7 +20,7 @@ func Name.upper(n Name) => "<{n.first}>"
 
 component box ui.node {
     var (
-        xs list<int> = [1, 2]
+        xs list[int] = [1, 2]
         n = Name{first="ada"}
     )
 

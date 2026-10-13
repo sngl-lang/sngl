@@ -1,10 +1,10 @@
-// Map methods preserve K and V through their signatures, not list<dyn>.
+// Map methods preserve K and V through their signatures, not list[dyn].
 
 import . "sngl:ui"
 import . "sngl:test"
 
 component mapMethods node {
-    var scores map<string, int> = {alice=10, bob=20, charlie=30}
+    var scores map[string, int] = {alice=10, bob=20, charlie=30}
     text(value="{scores.length()}")
 }
 
@@ -27,7 +27,7 @@ func testMapGet(t Test, c mapMethods) {
 }
 
 func testMapKeysContainsAll(t Test, c mapMethods) {
-    var ks list<string> = c.scores.keys()
+    var ks list[string] = c.scores.keys()
     t.assert(ks.length() == 3)
     // Order is unspecified; contains-style assertions only.
     t.assert(ks.contains("alice"))
@@ -36,7 +36,7 @@ func testMapKeysContainsAll(t Test, c mapMethods) {
 }
 
 func testMapValuesContainsAll(t Test, c mapMethods) {
-    var vs list<int> = c.scores.values()
+    var vs list[int] = c.scores.values()
     t.assert(vs.length() == 3)
     t.assert(vs.contains(10))
     t.assert(vs.contains(20))

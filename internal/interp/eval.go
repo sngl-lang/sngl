@@ -1049,7 +1049,7 @@ func toStringStringMap(v any) map[string]string {
 	return m
 }
 
-// evalPluralKeyMap evaluates a map<PluralKey, string> literal expr, converting
+// evalPluralKeyMap evaluates a map[PluralKey, string] literal expr, converting
 // keys to goi18n.PluralKey values. It handles ir.MapLitIR (the normal form after
 // checking) and falls back to a generic eval for other expr kinds.
 func (env *Env) evalPluralKeyMap(expr ir.Expr) (map[goi18n.PluralKey]string, error) {
@@ -2115,7 +2115,7 @@ func (env *Env) evalNamespaceCall(call *ir.Call) (any, error) {
 				return env.evalBuiltinMethodFromRecv(call.Receiver, method, recv, evalArgs[1:])
 			}
 			if fn := recvFn; recvOK && len(fn.Block) > 0 {
-				// A method on a generic receiver (list<T>, map<K,V>) declares
+				// A method on a generic receiver (list[T], map[K,V]) declares
 				// no receiver parameter and names the value `this`, so there
 				// is nothing in the argument list to bind it to. Supply it the
 				// way a component method gets its receiver, in a scope of its

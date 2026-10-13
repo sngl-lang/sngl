@@ -6,7 +6,7 @@ carries.
 // A wrapper whose family is whatever it was handed says so with a type
 // parameter:
 //
-//     component boundary<T any>(@error error, content ...component T) T
+//     component boundary[T any](@error error, content ...component T) T
 //
 // Nothing at a call site names a type argument, and nothing needs to: a
 // slot's content *is* an argument. The children bind T — the first one that

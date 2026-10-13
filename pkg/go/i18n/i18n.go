@@ -982,7 +982,7 @@ func Select(locale, value string, cases map[string]string) string {
 }
 
 // Plural picks a message by CLDR cardinal plural form for count. forms is
-// what sngl:i18n declares, a map<PluralKey, string>.
+// what sngl:i18n declares, a map[PluralKey, string].
 func Plural(locale string, count int, forms map[PluralKey]string) string {
 	return translatorFor(locale).Plural(count, forms)
 }

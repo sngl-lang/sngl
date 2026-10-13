@@ -34,7 +34,7 @@ type Features struct {
 	Toggle        bool // can emit x!! natively
 	Ternary       bool // can emit a ? b : c natively
 	Lambda        bool // can emit closures natively
-	Ref           bool // can emit ref<T> natively
+	Ref           bool // can emit ref[T] natively
 	Unit          bool // can emit unit types natively
 	Enum          bool // can emit enum types natively
 	AsyncReactive bool // can handle async in reactive contexts natively

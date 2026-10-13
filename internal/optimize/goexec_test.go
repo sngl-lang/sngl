@@ -643,7 +643,7 @@ func TestOneBadValueDoesNotBlankTheBatch(t *testing.T) {
 	if got[1].err == nil {
 		t.Errorf("Huge() = %v; want an error: %v does not fit %v", got[1].expr, "math.MaxUint64", huge.Return)
 	}
-	// []byte is list<int> on the import side, so the elements are what checks.
+	// []byte is list[int] on the import side, so the elements are what checks.
 	list, ok := got[2].expr.(*ir.ListLit)
 	if !ok {
 		t.Fatalf("Bytes() = %T (%v), want a list literal", got[2].expr, got[2].err)

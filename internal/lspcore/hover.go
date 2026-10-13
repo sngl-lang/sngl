@@ -255,7 +255,7 @@ func typeExprString(te ast.TypeExpr) string {
 			for _, arg := range t.TypeArgs {
 				parts = append(parts, typeExprString(arg))
 			}
-			s += "<" + strings.Join(parts, ", ") + ">"
+			s += "[" + strings.Join(parts, ", ") + "]"
 		}
 		return s
 	case *ast.FuncType:

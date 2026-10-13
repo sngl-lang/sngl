@@ -10,7 +10,7 @@ component counter node {
 -- expected.sngl --
 import . "sngl:ui"
 struct __lambda0_caps {
-    count ref<int>
+    count ref[int]
 }
 func __lambda0(state __lambda0_caps) {
     *state.count = *state.count + 1

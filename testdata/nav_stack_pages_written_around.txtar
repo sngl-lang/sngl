@@ -47,7 +47,7 @@ struct Item {
     title string
 }
 
-const items list<Item> = [
+const items list[Item] = [
     {slug="one", title="One"},
     {slug="", title="Two"},
 ]

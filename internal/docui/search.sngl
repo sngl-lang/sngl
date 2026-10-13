@@ -4,7 +4,7 @@ import "sngl:platform/html"
 
 // SearchBox renders a docs-search input with a results list over a
 // compile-time const list of entries.
-component SearchBox(entries list<docs.SearchEntry> = []) node {
+component SearchBox(entries list[docs.SearchEntry] = []) node {
     var query = ""
 
     vbox(style={gap=4px, padding=4px}) {
@@ -47,7 +47,7 @@ component SearchBox[html.platform] {
     }
 }
 
-func searchHits(entries list<docs.SearchEntry>, query string) list<docs.SearchEntry> {
+func searchHits(entries list[docs.SearchEntry], query string) list[docs.SearchEntry] {
     var q = string.lower(query)
     if q == "" {
         return []

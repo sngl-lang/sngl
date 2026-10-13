@@ -31,7 +31,7 @@ window {
 -- widgets/row.sngl --
 import . "sngl:ui"
 
-component Row(entries list<string> = []) node {
+component Row(entries list[string] = []) node {
     for var x = entries {
         text(value=x)
     }

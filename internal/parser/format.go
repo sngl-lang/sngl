@@ -717,7 +717,7 @@ func (f *formatter) writeTypeParams(ps []ast.TypeParam) {
 	if len(ps) == 0 {
 		return
 	}
-	f.write("<")
+	f.write("[")
 	for i, p := range ps {
 		if i > 0 {
 			f.write(", ")
@@ -732,7 +732,7 @@ func (f *formatter) writeTypeParams(ps []ast.TypeParam) {
 			f.writeType(p.Default)
 		}
 	}
-	f.write(">")
+	f.write("]")
 }
 
 func (f *formatter) writeFuncDef(fn *ast.FuncDef) {
@@ -741,7 +741,7 @@ func (f *formatter) writeFuncDef(fn *ast.FuncDef) {
 	}
 	f.write("func ")
 	if len(fn.RecvTypeParams) > 0 {
-		// recv<T>.method form: Name is "recv.method", split and insert type params.
+		// recv[T].method form: Name is "recv.method", split and insert type params.
 		dot := strings.IndexByte(fn.Name, '.')
 		f.write(fn.Name[:dot])
 		f.writeTypeParams(fn.RecvTypeParams)
@@ -1596,14 +1596,14 @@ func (f *formatter) writeType(te ast.TypeExpr) {
 		}
 		f.write(t.Name)
 		if len(t.TypeArgs) > 0 {
-			f.write("<")
+			f.write("[")
 			for i, arg := range t.TypeArgs {
 				if i > 0 {
 					f.write(", ")
 				}
 				f.writeType(arg)
 			}
-			f.write(">")
+			f.write("]")
 		}
 	case *ast.FuncType:
 		f.write("func(")
@@ -1714,7 +1714,7 @@ func (f *formatter) writeAttr(attr ast.MacroAttr) {
 
 // writeParamAttrs places a parameter's marks where the source put them: on
 // their own line above the parameter, or inline ahead of it. A multiline list
-// is not the question — `#[wildcard(...)] data map<string, string>` reads as
+// is not the question — `#[wildcard(...)] data map[string, string]` reads as
 // one parameter whichever way the list is written.
 func (f *formatter) writeParamAttrs(attrs []ast.MacroAttr, declPos ast.Pos, multiline bool) {
 	for _, attr := range attrs {

@@ -7,11 +7,11 @@ struct T {
     n int
 }
 
-struct box<T any> {
+struct box[T any] {
     v T
 }
 
-func unwrap(b box<int>) => b.v
+func unwrap(b box[int]) => b.v
 
 func size(t T) => t.n
 

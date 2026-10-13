@@ -11,11 +11,11 @@ import ui "sngl:ui"
 
 var loud = true
 
-component logger<F any>(label string) F {
+component logger[F any](label string) F {
     ui.text(value=label) // ERROR(check) "component logger takes the family it is placed in, so it may not contain the node component text"
 }
 
-component branching<F any>(label string) F {
+component branching[F any](label string) F {
     if loud {
         ui.text(value=label) // ERROR(check) "component branching takes the family it is placed in, so it may not contain the node component text"
     }

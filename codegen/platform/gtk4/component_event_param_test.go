@@ -6,7 +6,7 @@ import (
 )
 
 // TestAComponentEventHandlerKeepsItsPayloadParameter compiles the Go emitted
-// for testdata/type_params_on_components.sngl, whose `job<T any>(seed T, @done T)`
+// for testdata/type_params_on_components.sngl, whose `job[T any](seed T, @done T)`
 // is subscribed to as `@done(v) { got = v }`.
 //
 // emitIRPromotedHandler declared every promoted handler with no parameters,

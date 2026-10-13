@@ -67,7 +67,7 @@ func bindEffectChanges(comp *ir.Component, bindings map[string]*ir.Type) {
 
 // bindFromHandlers binds what the props left unbound from the types a handler
 // writes on its parameters, the way a lambda's annotation binds a func's:
-// `gen.emit(@generate(out, members list<gen.Member<Entry>>) { … })` says T is
+// `gen.emit(@generate(out, members list[gen.Member[Entry]]) { … })` says T is
 // Entry, and nothing else at that call site could. A written type is resolved
 // quietly here, since bindParams resolves it again and reports it there.
 func (c *checker) bindFromHandlers(comp *ir.Component, args ast.ArgList, bindings map[string]*ir.Type) {
@@ -156,8 +156,8 @@ func (c *checker) specializeWith(comp *ir.Component, pinned map[string]*ir.Type)
 
 // bindFromChildren binds the type parameters a generic family names in the
 // rest slot's type from the children written there, where no prop pinned
-// them: `stack<M any>(pages ...component _page<M>)` holds pages each of which is
-// a `_page<Meta>`, so the stack is a `stack<Meta>`. The first child that is a
+// them: `stack[M any](pages ...component _page[M])` holds pages each of which is
+// a `_page[Meta]`, so the stack is a `stack[Meta]`. The first child that is a
 // member says what they are, and every other is held to it, since one slot
 // holds one type. Returns spec, or the specialization the children bound.
 func (c *checker) bindFromChildren(comp, spec *ir.Component, children []ir.Stmt) *ir.Component {
@@ -217,7 +217,7 @@ func (c *checker) bindFromChildren(comp, spec *ir.Component, children []ir.Stmt)
 }
 
 // specializeHandle gives the handle a node's `#id` declared the type
-// arguments its call site bound, so `box #counts(item=1)` is a `box<int>`
+// arguments its call site bound, so `box #counts(item=1)` is a `box[int]`
 // wherever it is read. The id is hoisted before any node is checked, when the
 // arguments are not known, so the var is completed here -- the count it was
 // hoisted through, an option or a list, is kept around it.
@@ -252,7 +252,7 @@ type handleKey struct {
 }
 
 // componentArgBindings is what a component type's arguments bind its
-// declaration's type parameters to: `page<Pkg>` binds T to Pkg, so a select
+// declaration's type parameters to: `page[Pkg]` binds T to Pkg, so a select
 // through it reads `params` as a Pkg.
 func componentArgBindings(t *ir.Type, comp *ir.Component) map[string]*ir.Type {
 	if t == nil || len(t.Elems) != len(comp.TypeParams) || len(comp.TypeParams) == 0 {

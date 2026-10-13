@@ -432,18 +432,18 @@ core types — they are defined in SNGL under `lib/`.
 
 | Type        | Description                                                           |
 |-------------|-----------------------------------------------------------------------|
-| `list<T>`   | An ordered sequence of `T`. Literal: `[a, b, c]`.                     |
-| `option<T>` | Either a `T` or absent (`null`).                                      |
-| `map<K, V>` | A mapping from comparable keys `K` to values `V`. Literal: `{k = v}`. |
-| `iter<T>`   | An opaque pull sequence yielding `T`; no methods and no fields.       |
-| `ref<T>`    | A mutable reference to a `T` (see [References](#references)).         |
+| `list[T]`   | An ordered sequence of `T`. Literal: `[a, b, c]`.                     |
+| `option[T]` | Either a `T` or absent (`null`).                                      |
+| `map[K, V]` | A mapping from comparable keys `K` to values `V`. Literal: `{k = v}`. |
+| `iter[T]`   | An opaque pull sequence yielding `T`; no methods and no fields.       |
+| `ref[T]`    | A mutable reference to a `T` (see [References](#references)).         |
 
 All five are declarations in `sngl:builtin`, marked as the construct they
-stand for; `list<T>` and `map<K, V>` carry methods there (`length`, `map`,
-`filter`, `keys`, `contains`, `get`, …). A `list<T>` converts implicitly to
-`iter<T>`; a `map<K, V>` does not, so a map never reaches an `iter` position
+stand for; `list[T]` and `map[K, V]` carry methods there (`length`, `map`,
+`filter`, `keys`, `contains`, `get`, …). A `list[T]` converts implicitly to
+`iter[T]`; a `map[K, V]` does not, so a map never reaches an `iter` position
 with its map-ness erased. The integer sequences a counting loop walks are
-`iter<int>` values produced by `sngl:seq` — `seq.count(n)`,
+`iter[int]` values produced by `sngl:seq` — `seq.count(n)`,
 `seq.range(start, end)` and `seq.step(start, end, by)`.
 
 A `map` literal is written `{k1 = v1, k2 = v2}` and is distinguished from a
@@ -481,11 +481,11 @@ named parameter is passed by value the same way: a function that writes it
 writes its own copy and not the caller's. Two parameters are passed by
 reference instead -- a method's ambient `this`, so a method declared in a
 struct's body that writes `this` writes the value it was called on, and a
-parameter declared `ref<T>` (see [References](#references)). A struct may be
+parameter declared `ref[T]` (see [References](#references)). A struct may be
 generic over type parameters:
 
 ```
-struct Box<T any> { value T }
+struct Box[T any] { value T }
 ```
 
 A struct may carry methods declared as `func StructName.method(…)` (see
@@ -547,11 +547,11 @@ initialized with, it holds later uses to that type.
 
 ### References
 
-`ref<T>` is a mutable reference to a value of type `T`: what holds one goes on
+`ref[T]` is a mutable reference to a value of type `T`: what holds one goes on
 seeing what the referenced cell becomes. `&x` makes one and `*r` reads through
 it. References arise chiefly from reference loop variables (`for var &x = xs`),
 which make writes to the loop variable flow back to the underlying list element
-(see [The for statement](#the-for-statement)). A parameter declared `ref<T>`
+(see [The for statement](#the-for-statement)). A parameter declared `ref[T]`
 is the caller's cell: `f(&x)` hands it `x`, a field of it is read and written
 as one of the value is (`p.n = 5`), a method of it is called through it, and
 the whole value is written with `*p = v`. What the function writes is `x`'s
@@ -588,14 +588,14 @@ following holds:
 4. `A` is `int` and `B` is `float`.
 5. one of `A` and `B` is `string` and the other is a string-representable type
    (a standard-library type such as `color`, `date`, `time`, or `datetime`).
-6. `A` is `list<S>`, `B` is `list<T>`, and `S` is assignable to `T` (lists are
+6. `A` is `list[S]`, `B` is `list[T]`, and `S` is assignable to `T` (lists are
    covariant in their element type).
-7. `A` is `list<S>` and `B` is `iter<T>` with `S` assignable to `T` (the
+7. `A` is `list[S]` and `B` is `iter[T]` with `S` assignable to `T` (the
    conversion that underlies `for` over a list).
-8. `A` is `map<K, S>` and `B` is `map<K, T>` (or `B`'s key type is `dyn`) with
+8. `A` is `map[K, S]` and `B` is `map[K, T]` (or `B`'s key type is `dyn`) with
    `S` assignable to `T`.
-9. `A` is `option<S>` and `B` is `option<T>` with `S` assignable to `T`, or `A`
-   is `T` and `B` is `option<T>` (a bare value auto-wraps into an option).
+9. `A` is `option[S]` and `B` is `option[T]` with `S` assignable to `T`, or `A`
+   is `T` and `B` is `option[T]` (a bare value auto-wraps into an option).
 
 The auto-wrap stores the value, not a reference to where it was read from: a
 struct is a value in SNGL, so a later write to what was wrapped does not reach
@@ -607,7 +607,7 @@ struct box {
 }
 
 struct holder {
-    inner option<box> = null
+    inner option[box] = null
 }
 
 func wrapped() int {
@@ -642,10 +642,10 @@ unit (see [Unit types](#unit-types)).
 ### Narrowing an option
 
 A comparison against `null` says what a value is in the branch where the
-comparison holds. Within that branch an `option<T>` reads as a `T`:
+comparison holds. Within that branch an `option[T]` reads as a `T`:
 
 ```sngl
-func doubled(maybe option<int>) int {
+func doubled(maybe option[int]) int {
     if maybe != null {
         return maybe * 2 // maybe is an int here
     }
@@ -666,7 +666,7 @@ The forms that narrow are:
   guards. `a || b` is the same fact negated: a `== null` test in `a` narrows
   `b`.
 
-Every other form leaves the value an `option<T>`, so reading it as a `T` is
+Every other form leaves the value an `option[T]`, so reading it as a `T` is
 the ordinary type error rather than a silent wrong type.
 
 A narrowing does not survive anything that could make the value absent again.
@@ -693,7 +693,7 @@ default, so a parameter with no default has none.
 
 A method on a generic type restates its receiver's parameters by name alone,
 since the type's declaration already constrains them:
-`func list<T>.map<U any>(f func(T) U) list<U>`. So a list whose first
+`func list[T].map[U any](f func(T) U) list[U]`. So a list whose first
 parameter is followed by `,` or `>` is a receiver's, and one whose first
 parameter is followed by a type is a declaration's own.
 
@@ -701,13 +701,13 @@ In a type position the arguments are written (`Box<int>`); at a call site they
 are bound by inference rather than written:
 
 - A **receiver type parameter** of a method on a generic type is bound from the
-  receiver's concrete type. For `func list<T>.first() T`, a call on a
-  `list<int>` binds `T = int`, so the result type is `int`.
+  receiver's concrete type. For `func list[T].first() T`, a call on a
+  `list[int]` binds `T = int`, so the result type is `int`.
 - A **method type parameter** is bound from the call's argument types,
   typically through a function argument's result type. For
-  `func list<T>.map<U any>(f func(T) U) list<U>`, calling `xs.map(g)` on a
-  `list<int>` with `g : func(int) string` binds `T = int` and `U = string`,
-  yielding a `list<string>`.
+  `func list[T].map[U any](f func(T) U) list[U]`, calling `xs.map(g)` on a
+  `list[int]` with `g : func(int) string` binds `T = int` and `U = string`,
+  yielding a `list[string]`.
 
 Inference walks parameter and argument types structurally, recursing through
 function signatures and type arguments, and substitutes the bound types into the
@@ -796,8 +796,8 @@ under `lib/` is one package, `lib/<path>` being `sngl:<path>`:
 | `sngl:x/gen`        | what a target package says about what it generates                                                 |
 | `sngl:x/gen/cache`  | what a generated file records it was generated from                                                |
 | `sngl:time`         | `date`, `time`, `datetime`, `duration`, `timer`                                                    |
-| `sngl:seq`          | `count`, `range`, `step`: the `iter<int>` sequences a counting loop walks                          |
-| `sngl:family`       | the `crosses` and `eventless` marks, and the `one<T>` slot count                                   |
+| `sngl:seq`          | `count`, `range`, `step`: the `iter[int]` sequences a counting loop walks                          |
+| `sngl:family`       | the `crosses` and `eventless` marks, and the `one[T]` slot count                                   |
 | `sngl:math`         | `pi`, `tau`                                                                                        |
 | `sngl:async`        | `start`, `do`                                                                                      |
 | `sngl:dialog`       | `Alert`, `File`                                                                                    |
@@ -1023,7 +1023,7 @@ interpolation, or a condition, it is called implicitly. Elsewhere it is a value
 of function type and is called explicitly.
 
 The last parameter may be **variadic**, written `...T`: it collects the
-positional arguments past the others, and the body reads it as a `list<T>`.
+positional arguments past the others, and the body reads it as a `list[T]`.
 `func sum(first int, rest ...int)` is called as `sum(1)`, `sum(1, 2, 3)` or
 `sum(1, ...xs)`, where a list spread contributes its elements. A spread of a
 struct keeps its meaning, naming parameters by its fields. A variadic parameter
@@ -1471,13 +1471,13 @@ does everywhere else a name is introduced. It is also what tells the two forms
 apart: without it, the head is the iterable alone.
 
 The loop variables are scoped to the loop body. Prefixing the element variable
-with `&` (`for var &x = xs`, `for var i, &x = xs`) binds it as a `ref<T>`, so that
+with `&` (`for var &x = xs`, `for var i, &x = xs`) binds it as a `ref[T]`, so that
 assigning to `x` — or to a field of `x` — writes through to the underlying list
 element by index. The index variable may not be taken by reference.
 
-Every other loop variable is read-only, of type `readonly<T>`: a plain element
+Every other loop variable is read-only, of type `readonly[T]`: a plain element
 variable is a copy of the element, and the index, a map's key and value, and an
-iterator's element are values. `readonly<T>` is the compiler's to give; a
+iterator's element are values. `readonly[T]` is the compiler's to give; a
 program may not write it. Assigning to one, toggling it, or calling a mutating method such as
 `push` on it or on a field of it is an error, which for the element of a list
 names the `&` form that writes the element.
@@ -1516,7 +1516,7 @@ A loop's `else` block runs when **the body never ran**:
 <!-- SNGL-component -->
 
 ```sngl
-var items list<string> = []
+var items list[string] = []
 for var item = items {
     ui.text(value=item)
 } else {
@@ -1535,7 +1535,7 @@ so the block would be unreachable rather than an empty case.
 In a view body the emptiness is asked of the iterable on every render, so the
 head of a view loop with an `else` must be **measurable** — a list, a map, or a
 `sngl:seq` range, whose emptiness is known without consuming an element; a
-general `iter<T>` is an error there — and must be safe to evaluate twice.
+general `iter[T]` is an error there — and must be safe to evaluate twice.
 
 ### The emit statement
 
@@ -1649,9 +1649,9 @@ and slots — is one parameter list:
 - `header component` — any number of nodes, of whatever family the component
   itself belongs to;
 - `shapes component draw.shape` — any number of that family's members;
-- `body component family.one<ui.node>` — exactly one (bare `family.one` is exactly
+- `body component family.one[ui.node]` — exactly one (bare `family.one` is exactly
   one of whatever the slot already accepts);
-- `badge component option<ui.node>` — zero or one;
+- `badge component option[ui.node]` — zero or one;
 - `cell component(Row)` — a *scoped* slot: the insertion passes a `Row`, and
   the population binds a name for it.
 
@@ -1669,8 +1669,8 @@ directly in the instantiation's block:
 
 <!-- SNGL-component
 struct Row { title string }
-component table(rows list<Row>, cell component(Row)) ui.node { ui.vbox { for var r = rows { cell(r) } } }
-var rs list<Row> = []
+component table(rows list[Row], cell component(Row)) ui.node { ui.vbox { for var r = rows { cell(r) } } }
+var rs list[Row] = []
 -->
 
 ```sngl
@@ -1852,7 +1852,7 @@ loop variable bound by copy is refused: nothing writes it.
 import ui "sngl:ui"
 
 ui.window {
-    var todos list<string> = []
+    var todos list[string] = []
     var saved = 0
 
     effect(
@@ -2006,7 +2006,7 @@ The rules:
   around it. A body rendering members of two families, or of none, is an
   error. A library declaration always names its family.
 - **A type parameter in the return position takes the family a component is
-  placed in.** `component effect<T any, F any>(…) F` may be placed in any
+  placed in.** `component effect[T any, F any](…) F` may be placed in any
   family, and
   its body may render only what is generic in `F` the same way -- another such
   component, or a slot typed `F` -- so a widget cannot reach a drawing through
@@ -2016,11 +2016,11 @@ The rules:
   the tree themselves, so every membership rule looks through them.
 
 A component generic over the family it wraps writes a type parameter where a
-family goes — `component boundary<T any>(…, content ...component T, failed component T) T` — and the children written in the slot bind `T`.
+family goes — `component boundary[T any](…, content ...component T, failed component T) T` — and the children written in the slot bind `T`.
 
 A slot's count is what its population renders, not the statements written in
 it: `family.one` takes one node, so a `for` there is an error and an `if` must
-render one in each branch; `option<T>` takes none or one. How many times a
+render one in each branch; `option[T]` takes none or one. How many times a
 body inserts a slot is not bounded.
 
 ### Data components
@@ -2089,7 +2089,7 @@ The rules:
   what the call site wrote inside the record. The container shows it by
   writing `r.content` as a node in its own body, `r` being a record and
   `content` the slot's name, and it renders in the call site's scope.
-- **Its name is its record type in a value position.** `list<fruit>` is a list
+- **Its name is its record type in a value position.** `list[fruit]` is a list
   of records. In a family position (a return position, a slot's content) the
   name is the component.
 

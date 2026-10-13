@@ -54,7 +54,7 @@ func TestComputedOperandPositionsResolve(t *testing.T) {
     func plain() => key + "!"
     text(value = "{plain.length()}")`,
 		"index operand": `
-    var xs list<int> = [1, 2, 3]
+    var xs list[int] = [1, 2, 3]
     func doubled() => xs.map(func(x int) => x * 2)
     text(value = "{doubled[0]}")`,
 		"field operand": `

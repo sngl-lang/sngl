@@ -4,7 +4,7 @@
 
 import . "sngl:ui"
 
-func takesMap(m map<string, int>) int {
+func takesMap(m map[string, int]) int {
     return m.length()
 }
 

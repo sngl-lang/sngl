@@ -46,7 +46,7 @@ output {
 
 component board ui.node {
     var n = 0
-    var periods list<time.duration> = [100ms, 250ms]
+    var periods list[time.duration] = [100ms, 250ms]
 
     for var p = periods {
         time.timer(interval=p, enabled=true, @tick {

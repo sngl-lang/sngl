@@ -5,18 +5,18 @@ import . "sngl:ui"
 import . "sngl:test"
 
 component mapStringKeys node {
-    var prices map<string, int> = {
+    var prices map[string, int] = {
         apple = 1,
         pear = 2,
         cherry = 5,
     }
 
-    var translations map<string, string> = {
+    var translations map[string, string] = {
         "hello" = "hola",
         "goodbye" = "adios",
     }
 
-    var empty map<string, int> = {}
+    var empty map[string, int] = {}
 
     text(value="{prices.length()}")
 }

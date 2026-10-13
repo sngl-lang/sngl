@@ -52,7 +52,7 @@ window {
     }
 
     func boxed() string {
-        var xs list<dyn> = [2.0, "a"]
+        var xs list[dyn] = [2.0, "a"]
         var f float = 2.0
         if scale < 0.0 {
             return "neg"

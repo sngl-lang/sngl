@@ -112,7 +112,7 @@ ui.window(title="t") {
 import gen "sngl:x/gen"
 
 // Runs cmd, declaring prefix and banFlags, and returns what it printed.
-const func run(cmd list<string>, prefix list<string>, banFlags list<string>) string {
+const func run(cmd list[string], prefix list[string], banFlags list[string]) string {
     var out = ""
     var p = gen.exec(cmd=cmd, prefix=prefix, banFlags=banFlags)
     for var line = p.stdout {

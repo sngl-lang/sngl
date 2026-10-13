@@ -36,7 +36,7 @@ window {
     var msg string = ""
     var txt string = ""
     var hits int = 0
-    var rows list<string> = ["a"]
+    var rows list[string] = ["a"]
 
     html.img(src="x.png", @error(e) { msg = e.message })
     html.input(@input(e) { txt = e.currentTarget.value })

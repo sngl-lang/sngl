@@ -42,7 +42,7 @@ component Row(label string) ui.node {
     ui.button(text="{label} {n}", @click { n += 1 })
 }
 
-component Card(xs list<string>) ui.node {
+component Card(xs list[string]) ui.node {
     var open = true
     ui.text(value="[")
     for var x = xs {

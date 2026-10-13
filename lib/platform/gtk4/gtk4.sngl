@@ -35,7 +35,7 @@ component platform(
     // that never calls it gets a process whose loop still runs -- timers,
     // effects, posted work -- with no window on screen. `args` is the command
     // line after the program's name.
-    @run(args list<string>, run func()),
+    @run(args list[string], run func()),
     // Which introspection data to read the widget vocabulary from: "builtin"
     // for the bundled subset, a path to a `Gtk-4.0.gir`, or unset to probe the
     // system locations and fall back to the bundled subset.
@@ -44,7 +44,7 @@ component platform(
     // it imports -- `C` is cgo's, which a Go export of `c` would be -- an
     // instance record's receiver, the Model's own members, and the locals and
     // helpers its application code declares.
-    const reservedNames list<string> = [
+    const reservedNames list[string] = [
         "gtk4rt",
         "c",
         "app",
@@ -108,7 +108,7 @@ func entryText(e gtk.GtkEntry) string
 // The day a calendar has selected. A calendar always has one, so this is null
 // only where GTK reports no date at all.
 #[marks.intrinsic("gtk4.calendarDate")]
-func calendarDate(c gtk.GtkCalendar) option<time.date>
+func calendarDate(c gtk.GtkCalendar) option[time.date]
 
 const component ui.text[platform] {
     gtk.GtkLabel(label=value, style={...style}) {}
@@ -357,8 +357,8 @@ struct _TreeRow {
 
 // A tree's rows in traversal order, each node's below it and indented one step
 // further.
-const func _treeRows(items list<ui.treeItem>, indent string) list<_TreeRow> {
-    var out list<_TreeRow> = []
+const func _treeRows(items list[ui.treeItem], indent string) list[_TreeRow] {
+    var out list[_TreeRow] = []
     for var it = items {
         out = [...out, _TreeRow{label=it.label, indent=indent}, ..._treeRows(it.children, indent + "    ")]
     }
@@ -898,7 +898,7 @@ component drawSource(
     @url(e SourceEvent),
     @enter(e DrawEvent),
     @leave(e DrawEvent),
-    source ...component family.one<ui.imageSource>,
+    source ...component family.one[ui.imageSource],
 ) shapes.shape
 
 const component shapes.canvasImage[platform] {

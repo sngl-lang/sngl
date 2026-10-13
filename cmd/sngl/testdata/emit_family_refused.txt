@@ -80,7 +80,7 @@ component gap() block
 
 component bar(blocks ...component block) root
 
-func encode(xs list<string>) => xs.join(" ")
+func encode(xs list[string]) => xs.join(" ")
 
 component block[go.language] {
     gen.emit(render=encode)
@@ -126,7 +126,7 @@ component pair(a string, @click()) block {
 
 component bar(blocks ...component block) root
 
-func encode(xs list<string>) => xs.join(" ")
+func encode(xs list[string]) => xs.join(" ")
 
 component block[go.language] {
     gen.emit(render=encode)

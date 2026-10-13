@@ -10,7 +10,7 @@ deny out/go/gtk4/model.go `LabelSetText\(\w+, msg\)` -- likewise
 -- app.sngl --
 import ui "sngl:ui"
 
-component lister(items list<string>, msg string) ui.node {
+component lister(items list[string], msg string) ui.node {
     ui.vbox {
         for var x = items {
             ui.text(value=x)

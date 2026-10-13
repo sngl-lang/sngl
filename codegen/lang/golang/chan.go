@@ -33,7 +33,7 @@ func init() {
 }
 
 // MakeChanText is make's emission. It needs the type the call was declared to
-// return rather than the types of its arguments -- `makeChan<T any>()` has none --
+// return rather than the types of its arguments -- `makeChan[T any]()` has none --
 // so it is answered from the call site instead of from a registered emitter.
 func (gc *GoIRContext) MakeChanText(n *ir.Call) (string, bool) {
 	if n == nil || n.Func == nil || n.Func.Intrinsic != chanMakeIntrinsic {

@@ -10,7 +10,7 @@
 import ui "sngl:ui"
 import draw "sngl:ui/draw"
 
-component sneak<F any>(content ...component ui.node) F {
+component sneak[F any](content ...component ui.node) F {
     content // ERROR(check) "component sneak takes the family it is placed in, so it may not contain the node slot content"
 }
 

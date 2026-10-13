@@ -213,7 +213,7 @@ func TestParseFuncMethod(t *testing.T) {
 }
 
 func TestParseFuncGeneric(t *testing.T) {
-	doc := mustParse(t, `func identity<T any>(x T) => x`)
+	doc := mustParse(t, `func identity[T any](x T) => x`)
 	fd := doc.Stmts[0].(*ast.FuncDef)
 	if len(fd.TypeParams) != 1 || fd.TypeParams[0].Name != "T" {
 		t.Errorf("expected type param T, got %v", fd.TypeParams)
@@ -596,7 +596,7 @@ func TestParseMarkedDeclNestedBrackets(t *testing.T) {
 }
 
 func TestParseType(t *testing.T) {
-	doc := mustParse(t, `const x List<int> = [1]`)
+	doc := mustParse(t, `const x List[int] = [1]`)
 	cd := doc.Stmts[0].(*ast.ConstDecl)
 	nt, ok := cd.Specs[0].Type.(*ast.NamedType)
 	if !ok {
@@ -705,7 +705,7 @@ func TestParseTrailingInputErrors(t *testing.T) {
 }
 
 func TestParseGenericStruct(t *testing.T) {
-	src := "struct list<T any> {}"
+	src := "struct list[T any] {}"
 	doc, err := Parse("test.sngl", []byte(src))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
@@ -720,7 +720,7 @@ func TestParseGenericStruct(t *testing.T) {
 }
 
 func TestParseGenericStructTwoParams(t *testing.T) {
-	src := "struct map<K any, V any> {}"
+	src := "struct map[K any, V any] {}"
 	doc, err := Parse("test.sngl", []byte(src))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
@@ -757,7 +757,7 @@ func firstFuncDef(t *testing.T, doc *ast.Document) *ast.FuncDef {
 }
 
 func TestParseGenericReceiverMethod(t *testing.T) {
-	src := "struct list<T any> {}\nfunc list<T>.length() int {}"
+	src := "struct list[T any] {}\nfunc list[T].length() int {}"
 	doc, err := Parse("test.sngl", []byte(src))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
@@ -772,7 +772,7 @@ func TestParseGenericReceiverMethod(t *testing.T) {
 }
 
 func TestParseGenericReceiverWithTwoParams(t *testing.T) {
-	src := "struct map<K any, V any> {}\nfunc map<K, V>.keys() list<K> {}"
+	src := "struct map[K any, V any] {}\nfunc map[K, V].keys() list[K] {}"
 	doc, err := Parse("test.sngl", []byte(src))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
@@ -796,7 +796,7 @@ func TestParsePlainMethodStillWorks(t *testing.T) {
 }
 
 func TestParseGenericFunctionStillWorks(t *testing.T) {
-	src := "func id<T any>(x T) T { return x }"
+	src := "func id[T any](x T) T { return x }"
 	doc, err := Parse("test.sngl", []byte(src))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
@@ -811,7 +811,7 @@ func TestParseGenericFunctionStillWorks(t *testing.T) {
 }
 
 func TestParseGenericReceiverWithMethodTypeParam(t *testing.T) {
-	src := "struct list<T any> {}\nfunc list<T>.map<U any>(f func(T) U) list<U> {}"
+	src := "struct list[T any] {}\nfunc list[T].map[U any](f func(T) U) list[U] {}"
 	doc, err := Parse("test.sngl", []byte(src))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
@@ -837,7 +837,7 @@ func TestParseGenericReceiverWithMethodTypeParam(t *testing.T) {
 // A declaration's own list names a constraint for each parameter and a
 // receiver's restates names only, so the two lists of one method differ.
 func TestParseTypeParamConstraints(t *testing.T) {
-	doc := mustParse(t, "func map<K, V>.pick<A any, B any = int>(a A) B {}\nfunc first<T any>(x T) => x")
+	doc := mustParse(t, "func map[K, V].pick[A any, B any = int](a A) B {}\nfunc first[T any](x T) => x")
 	var fns []*ast.FuncDef
 	for _, s := range doc.Stmts {
 		if f, ok := s.(*ast.FuncDef); ok {
@@ -865,7 +865,7 @@ func TestParseTypeParamConstraints(t *testing.T) {
 	if fns[0].TypeParams[1].Default == nil {
 		t.Errorf("B lost its default")
 	}
-	if got := Format(doc); !strings.Contains(got, "func map<K, V>.pick<A any, B any = int>(a A) B") || !strings.Contains(got, "func first<T any>(x T) => x") {
+	if got := Format(doc); !strings.Contains(got, "func map[K, V].pick[A any, B any = int](a A) B") || !strings.Contains(got, "func first[T any](x T) => x") {
 		t.Errorf("formatted:\n%s", got)
 	}
 }

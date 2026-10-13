@@ -39,7 +39,7 @@ component PackageIndex(path = "", hrefPrefix = "", activeName = "") node {
 // (e.g. "/docs/sngl/types/"). Internal helper — not callable across .sngl
 // files because struct identity (lookup.Summary) doesn't cross checker
 // boundaries; use PackageSections / StdlibSections as the public entry.
-component KindSection(title = "", items list<lookup.Summary>, hrefPrefix = "") node {
+component KindSection(title = "", items list[lookup.Summary], hrefPrefix = "") node {
     if items.length() > 0 {
         text(value=title, style={fontWeight=bold, paddingTop=8px})
         for var it = items {

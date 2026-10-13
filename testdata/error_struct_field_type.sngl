@@ -17,18 +17,18 @@ struct S {
     w W
     n int
     f float = 0.0
-    o option<int>
+    o option[int]
     l len = 0px
 }
 
-struct Box<T any> {
+struct Box[T any] {
     v  T
-    o  option<T>
-    xs list<T>
+    o  option[T]
+    xs list[T]
 }
 
 struct Out {
-    items list<S>
+    items list[S]
 }
 
 struct Wait {
@@ -41,11 +41,11 @@ const bare = S{w=a, n=1, l=4}                        // ERROR(check) "cannot use
 const named = S{w="bold", n=1}                       // ERROR(check) "cannot use string as W for field \"w\" of S"
 const count = S{w=a, n="x"}                          // ERROR(check) "cannot use string as int for field \"n\" of S"
 const anon S = {w=a, n=true}                         // ERROR(check) "cannot use bool as int for field \"n\" of S"
-const opt = S{w=a, n=1, o="x"}                       // ERROR(check) "cannot use string as option<int> for field \"o\" of S"
+const opt = S{w=a, n=1, o="x"}                       // ERROR(check) "cannot use string as option[int] for field \"o\" of S"
 const nested = Out{items=[{w=a, n=1}, {w=a, n="y"}]} // ERROR(check) "cannot use string as int for field \"n\" of S"
 const wait = Wait{d=5}                               // ERROR(check) "cannot use int as duration for field \"d\" of Wait"
-const box Box<int> = {v=1, o=3, xs=[1]}
-const badBox Box<int> = {v=1, o=3, xs=["a"]} // ERROR(check) "cannot use list<string> as list<int> for field \"xs\" of Box"
+const box Box[int] = {v=1, o=3, xs=[1]}
+const badBox Box[int] = {v=1, o=3, xs=["a"]} // ERROR(check) "cannot use list[string] as list[int] for field \"xs\" of Box"
 
 var x = 3
 var held = S{w=a, n=1, l=x} // ERROR(check) "cannot use int as len for field \"l\" of S"

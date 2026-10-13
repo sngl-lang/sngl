@@ -220,7 +220,7 @@ func (m *monomorph) fresh(name string) string {
 	return out
 }
 
-// typeKey spells t as an identifier fragment: `list<int>` is `list_int`.
+// typeKey spells t as an identifier fragment: `list[int]` is `list_int`.
 func typeKey(t *ir.Type) string {
 	var b strings.Builder
 	under := false

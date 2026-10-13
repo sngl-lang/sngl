@@ -17,7 +17,7 @@ import (
 //
 // Each lifted call hoists three statements before the using statement:
 //
-//	var __list<N> list<T> = []
+//	var __list<N> list[T] = []
 //	for item<N> = xs {
 //	    // filter: if (f)(item<N>) { __list<N> = ListPush(__list<N>, item<N>) }
 //	    // map:    __list<N> = ListPush(__list<N>, (f)(item<N>))
@@ -324,7 +324,7 @@ func (st *listLambdaState) liftListLambda(n *ir.Call) ([]ir.Stmt, ir.Expr) {
 	case "filter":
 		outElemT = elemT
 	case "map":
-		// map's result type is list<U>; pick U from n.Type.
+		// map's result type is list[U]; pick U from n.Type.
 		if n.Type != nil && n.Type.Kind == ir.TypeList && len(n.Type.Elems) > 0 {
 			outElemT = n.Type.Elems[0]
 		} else {
@@ -336,7 +336,7 @@ func (st *listLambdaState) liftListLambda(n *ir.Call) ([]ir.Stmt, ir.Expr) {
 	tempName := st.freshList()
 	itemName := st.freshItem()
 
-	// var __list<N> list<T> = []
+	// var __list<N> list[T] = []
 	tempSym := &ir.Var{Name: tempName, Type: outListT, Synthesized: true}
 	declStmt := &ir.LocalVar{
 		Name: tempName,

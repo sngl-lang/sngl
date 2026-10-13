@@ -5,7 +5,7 @@ import . "sngl:ui"
 // `null` is assignable to -- a context no provider could set, a var no write
 // could change. Refused where the type is inferred, as an empty list is;
 // annotated, the same values are fine.
-func show<A any>(a A) A {
+func show[A any](a A) A {
     return a
 }
 
@@ -15,7 +15,7 @@ const c = null // ERROR(check) "cannot infer a type from null"
 
 context #who(null) // ERROR(check) "cannot infer a type from null"
 
-const nobody option<string> = null
+const nobody option[string] = null
 
 context #someone(nobody)
 
@@ -25,8 +25,8 @@ component C(label = null) node { // ERROR(check) "cannot infer a type from null"
     var s = {a=null}             // ERROR(check) "cannot infer a type from null"
     var t = true ? null : null   // ERROR(check) "cannot infer a type from null"
     var g = show(null)           // ERROR(check) "cannot infer a type from null"
-    var ok option<string> = null
-    var ok2 option<string> = show(null)
+    var ok option[string] = null
+    var ok2 option[string] = show(null)
     var f = func() => null // ERROR(check) "cannot infer a type from null"
 
     func local() {

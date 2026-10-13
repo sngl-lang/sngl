@@ -347,7 +347,7 @@ func TestCheckRefAndDeref(t *testing.T) {
 	expectNoErrors(t, `
 component main node {
     var x int = 0
-    var p ref<int> = &x
+    var p ref[int] = &x
     var y int = *p
 }`)
 }
@@ -355,17 +355,17 @@ component main node {
 func TestCheckAddrOfNonLvalue(t *testing.T) {
 	expectError(t, `
 component main node {
-    var p ref<int> = &(1 + 2)
+    var p ref[int] = &(1 + 2)
 }`, "non-lvalue")
 }
 
-// A ref<T> parameter takes a plain T, and the value is what the callee gets.
+// A ref[T] parameter takes a plain T, and the value is what the callee gets.
 // One declaration then serves the caller who wants the handle and the caller who
 // wants the contents, which is the whole point: `&` is the difference, written
 // where the choice belongs.
 func TestCheckValueForARefParam(t *testing.T) {
 	expectNoErrors(t, `
-func peek(r ref<int>) => *r
+func peek(r ref[int]) => *r
 
 component main node {
     var n int = 1
@@ -379,7 +379,7 @@ component main node {
 // that hands the ref on has to be given a real one.
 func TestCheckValueForAnEscapingRefParam(t *testing.T) {
 	expectError(t, `
-func keep(r ref<int>) ref<int> {
+func keep(r ref[int]) ref[int] {
     return r
 }
 
@@ -398,7 +398,7 @@ component main node {
     var a int = *keep(n)
 }
 
-func keep(r ref<int>) ref<int> {
+func keep(r ref[int]) ref[int] {
     return r
 }`, "lets it escape")
 }
@@ -418,7 +418,7 @@ struct Node {
 }
 component main node {
     var n Node = Node{value=0}
-    var p ref<Node> = &n
+    var p ref[Node] = &n
     var v int = p.value
     func bump() { p.value = p.value + 1 }
 }`)
@@ -768,7 +768,7 @@ func foo() {
 func TestForIteratorListOk(t *testing.T) {
 	expectNoErrors(t, `
 func foo() {
-	var items list<int>
+	var items list[int]
 	for var item = items {
 	}
 }`)
@@ -899,14 +899,14 @@ func test() {
 
 func TestGenericTypeInference(t *testing.T) {
 	pkg := parse(t, `
-func identity<T any>(x T) => x
-func first<T any>(items list<T>) T {
+func identity[T any](x T) => x
+func first[T any](items list[T]) T {
 	return items[0]
 }
 func test() {
 	var a = identity(42)
 	var b = identity("hello")
-	var items list<int>
+	var items list[int]
 	var c = first(items)
 }
 `)

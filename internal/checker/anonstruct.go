@@ -123,7 +123,7 @@ func (t *declTables) anonStructName(pkg *ir.Package, canon []*ir.StructField, si
 // internAnonStruct returns the one *ir.StructDef this package uses for an
 // anonymous struct with these fields, registering it in pkg.Structs the first
 // time. Keyed by package as well as signature: `sngl:builtin` interns
-// `struct {}` for `effect<T = struct {}>` before a program is parsed, and
+// `struct {}` for `effect[T = struct {}]` before a program is parsed, and
 // sharing that would hand the program a decl its own codegen never emits.
 func (c *checker) internAnonStruct(fields []*ir.StructField) *ir.StructDef {
 	canon := slices.SortedStableFunc(slices.Values(fields), func(a, b *ir.StructField) int {

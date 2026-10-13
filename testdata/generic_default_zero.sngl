@@ -10,7 +10,7 @@ struct P {
     name string = "none"
 }
 
-func pick<T any>(seed T, v T = T{}) => v
+func pick[T any](seed T, v T = T{}) => v
 
 component shows node {
     text #given(value=pick(P{}, P{name="given"}).name)

@@ -54,14 +54,14 @@ func (c *checker) resolveTypeRequired(te ast.TypeExpr, pos ast.Pos, what string)
 }
 
 // namesType reports whether t is the type called name, ignoring any type
-// arguments: the receiver of a `list<T>` method is a `list<T>`, and of a
-// `Box<T>` method a `Box<T>`, whichever element types they carry.
+// arguments: the receiver of a `list[T]` method is a `list[T]`, and of a
+// `Box[T]` method a `Box[T]`, whichever element types they carry.
 func namesType(t *ir.Type, name string) bool {
 	if t == nil || name == "" {
 		return false
 	}
 	s := t.String()
-	if i := strings.IndexByte(s, '<'); i >= 0 {
+	if i := strings.IndexByte(s, '['); i >= 0 {
 		s = s[:i]
 	}
 	return s == name
@@ -74,13 +74,13 @@ func (c *checker) constructBuiltinGeneric(id ir.BuiltinKind, sd *ir.StructDef, t
 	switch id {
 	case ir.BuiltinList:
 		if len(t.TypeArgs) == 0 {
-			c.error(t.Pos, "list requires a type argument, e.g. list<int>")
+			c.error(t.Pos, "list requires a type argument, e.g. list[int]")
 			return c.listOf(TypDyn)
 		}
 		return c.listOf(c.resolveType(t.TypeArgs[0]))
 	case ir.BuiltinOption:
 		if len(t.TypeArgs) == 0 {
-			c.error(t.Pos, "option requires a type argument, e.g. option<int>")
+			c.error(t.Pos, "option requires a type argument, e.g. option[int]")
 			return OptionOf(TypDyn)
 		}
 		return OptionOf(c.resolveType(t.TypeArgs[0]))
@@ -104,14 +104,14 @@ func (c *checker) constructBuiltinGeneric(id ir.BuiltinKind, sd *ir.StructDef, t
 		return IterOf(c.resolveType(t.TypeArgs[0]))
 	case ir.BuiltinRef:
 		if len(t.TypeArgs) == 0 {
-			c.error(t.Pos, "ref requires a type argument, e.g. ref<int>")
+			c.error(t.Pos, "ref requires a type argument, e.g. ref[int]")
 			return ir.RefOf(TypDyn)
 		}
 		return ir.RefOf(c.resolveType(t.TypeArgs[0]))
 	case ir.BuiltinReadonly:
 		// The checker's own: what it gives a loop variable bound by copy. The
 		// argument is what the program meant, so it stands in after the error.
-		c.error(t.Pos, "readonly<T> is the type of a loop variable bound by copy, and a program may not write it")
+		c.error(t.Pos, "readonly[T] is the type of a loop variable bound by copy, and a program may not write it")
 		if len(t.TypeArgs) == 1 {
 			return c.resolveType(t.TypeArgs[0])
 		}
@@ -181,10 +181,10 @@ func (c *checker) resolveNamedType(t *ast.NamedType) *ir.Type {
 }
 
 // applyComponentTypeArgs is a component type carrying the type arguments it
-// was written with, `page<P>`: the instances whose call sites bound the
+// was written with, `page[P]`: the instances whose call sites bound the
 // declaration's parameters that way. An argument list stopping short fills
 // from each parameter's default, as a struct type's does, so a bare `page` is
-// `page<struct {}>` -- and one with no default has to be written.
+// `page[struct {}]` -- and one with no default has to be written.
 func (c *checker) applyComponentTypeArgs(pos ast.Pos, base *ir.Type, comp *ir.Component, args []ast.TypeExpr) *ir.Type {
 	if len(args) > len(comp.TypeParams) {
 		c.error(pos, "%s takes %d type argument(s), got %d", comp.Name, len(comp.TypeParams), len(args))
@@ -262,7 +262,7 @@ func (c *checker) resolveQualifiedType(t *ast.NamedType) *ir.Type {
 			if sd, ok := typ.Decl.(*ir.StructDef); ok {
 				// A #[builtin] generic is the built-in however it was reached.
 				// Unqualified resolution dispatches on the kind a few lines up;
-				// without the same dispatch here, `go.chan<T>` would come back an
+				// without the same dispatch here, `go.chan[T]` would come back an
 				// ordinary generic struct that shared a declaration with the
 				// built-in but not a type, and fail to unify with itself. list,
 				// map and option are ambient, and importing sngl:builtin
@@ -695,8 +695,8 @@ func (c *checker) buildFunc(f *ast.FuncDef) *ir.Func {
 
 	// Set type params so T resolves during param/return type resolution.
 	// Include both method-level TypeParams and receiver-level RecvTypeParams so
-	// that e.g. `func list<T>.filter(f func(T) bool) list<T>` resolves T correctly.
-	// Receiver parameters come first so the receiver type `list<T>` resolves.
+	// that e.g. `func list[T].filter(f func(T) bool) list[T]` resolves T correctly.
+	// Receiver parameters come first so the receiver type `list[T]` resolves.
 	popTypeParams := pushTypeParams(c, f.RecvTypeParams, f.TypeParams)
 	// nil ReturnType means void (block body) or pending-inference (expression body);
 	// leave Return nil here so checkFuncBody can infer from a `=>` body without
@@ -764,7 +764,7 @@ func isComparable(t *ir.Type) bool {
 	case ir.TypeTypeParam:
 		// An unbound type parameter is not judgeable here; whether the key is
 		// comparable is decided where the parameter is bound to a concrete
-		// type. Rejecting it would make `map<K, V>` undeclarable as a
+		// type. Rejecting it would make `map[K, V]` undeclarable as a
 		// parameter, which the map intrinsics need.
 		return true
 	}

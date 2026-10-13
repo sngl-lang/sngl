@@ -5,7 +5,7 @@
 
 import . "sngl:ui"
 
-component pair<T any>(a T, b T) node {
+component pair[T any](a T, b T) node {
     text(value="pair")
 }
 
@@ -14,7 +14,7 @@ component pair<T any>(a T, b T) node {
 // checker strips it before it matches a prop -- so a parameter has to be bound
 // from a binding exactly as it is from a plain arg. Matched raw, `:a=1` pinned
 // nothing, and `b` then accepted anything.
-component bound<T any>(:a T, b T) node {
+component bound[T any](:a T, b T) node {
     text(value="bound")
 }
 

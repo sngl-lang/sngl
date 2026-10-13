@@ -28,7 +28,7 @@ output {
     }
 }
 
-const packages list<string> = ["alpha", "beta", "gamma"]
+const packages list[string] = ["alpha", "beta", "gamma"]
 
 ui.window #home(title="Docs") {
     html.nav {

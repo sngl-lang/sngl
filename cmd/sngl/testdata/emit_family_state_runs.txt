@@ -87,8 +87,8 @@ func print(s string)
 
 // The status line: a pure function of the members, so it is what the build
 // keys the re-render on.
-func encode(members list<Entry>) string {
-    var parts list<string> = []
+func encode(members list[Entry]) string {
+    var parts list[string] = []
     for var e = members {
         parts.push(e.color == "" ? e.full : "{e.full}#{e.color}")
     }
@@ -98,7 +98,7 @@ func encode(members list<Entry>) string {
 // A click arrives as "<index> <button>" on a line of stdin. When stdin closes
 // the bar is gone, and so is the program -- posted, so every click read before
 // it has run.
-func readClicks(members func() list<Entry>) {
+func readClicks(members func() list[Entry]) {
     var in = newScanner(stdin)
     for in.scan() {
         var fields = in.text().trim().split(" ")

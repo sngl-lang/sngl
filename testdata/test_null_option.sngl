@@ -2,8 +2,8 @@ import . "sngl:ui"
 import . "sngl:test"
 
 component box node {
-    var maybe option<int> = null
-    var set option<int> = 42
+    var maybe option[int] = null
+    var set option[int] = 42
     text(value="hi")
 }
 

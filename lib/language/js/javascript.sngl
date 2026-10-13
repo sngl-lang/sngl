@@ -92,7 +92,7 @@ const words = [
 component language(
     // Names a program's declaration is renamed away from in generated
     // JavaScript.
-    const reservedWords list<string> = words,
+    const reservedWords list[string] = words,
     const platforms     ...component build.platform,
 ) build.language
 
@@ -109,7 +109,7 @@ component language(
 // A declaration marked here is not emitted. The identifier already exists, and
 // a call becomes a call to it — which is why the declaration carries no body,
 // and why naming one costs nothing until something calls it.
-func native(name string, module string = "", flags list<NativeFlag> = []) ir.Macro
+func native(name string, module string = "", flags list[NativeFlag] = []) ir.Macro
 
 // What a JavaScript declaration's shape says beyond its name.
 //

@@ -1,4 +1,4 @@
-Go codegen for `map<K, V>`: literal, index and method dispatch. The field is
+Go codegen for `map[K, V]`: literal, index and method dispatch. The field is
 declared on the Model as map[string]int, New() initialises it from the map
 literal, and `scores.length()` dispatches to len(m.scores).
 
@@ -12,7 +12,7 @@ import . "sngl:ui"
 output { go { bubbletea } }
 
 component main node {
-    var scores map<string, int> = {alice=10, bob=20}
+    var scores map[string, int] = {alice=10, bob=20}
     var size = 0
     button(text="count", @click {
         size = scores.length()

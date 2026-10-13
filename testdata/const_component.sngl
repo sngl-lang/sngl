@@ -15,7 +15,7 @@ component counter(start int) ui.node {
     ui.button(text="{n}", @click { n += 1 })
 }
 
-const component badge(const label string, n int, items list<string>) ui.node {
+const component badge(const label string, n int, items list[string]) ui.node {
     var clicks = 0
     ui.vbox {
         ui.text(value="{label} {tag(n)} {accent}")
@@ -27,7 +27,7 @@ const component badge(const label string, n int, items list<string>) ui.node {
     }
 }
 
-const component list(items list<string>, const row component(item string) ui.node) ui.node {
+const component list(items list[string], const row component(item string) ui.node) ui.node {
     ui.vbox {
         for var it = items {
             row(it)

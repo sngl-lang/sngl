@@ -475,7 +475,7 @@ StatementPrimary =
     .
 
 # `star StatementPrimary` is a write through a reference, `*x = 9`: what a
-# `ref<T>` parameter holding a scalar, or a whole struct, is assigned with. A
+# `ref[T]` parameter holding a scalar, or a whole struct, is assigned with. A
 # field of one is written without it (`p.n = 5`). No statement can otherwise
 # begin with `*`, which has no left operand there.
 

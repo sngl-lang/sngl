@@ -10,7 +10,7 @@
 import d "sngl:ui/draw"
 import . "sngl:ui"
 
-component each<T any>(v T, item component(content component(x T) node) node) node {
+component each[T any](v T, item component(content component(x T) node) node) node {
     vbox {
         item() {
             component content(x) {
@@ -20,7 +20,7 @@ component each<T any>(v T, item component(content component(x T) node) node) nod
     }
 }
 
-component shapes<T any = d.shape>(item component(content component T) node) node {
+component shapes[T any = d.shape](item component(content component T) node) node {
     vbox {
         item() {
             component content {

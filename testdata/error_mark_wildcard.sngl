@@ -6,33 +6,33 @@ import . "sngl:ui"
 import . "sngl:macro"
 
 component attrs(
-    #[wildcard("data[A-Za-z0-9]+")] data map<string, string>,
+    #[wildcard("data[A-Za-z0-9]+")] data map[string, string],
 ) node {
     text(value="x")
 }
 
 component styled(
-    #[wildcard("theme[A-Za-z]+")] theme map<string, Style>,
+    #[wildcard("theme[A-Za-z]+")] theme map[string, Style],
 ) node {
     text(value="x")
 }
 
 component twice(
-    #[wildcard("ax+")] a map<string, string>,
-    #[wildcard("a+x")] b map<string, string>,
+    #[wildcard("ax+")] a map[string, string],
+    #[wildcard("a+x")] b map[string, string],
 ) node {
     text(value="x")
 }
 
 component badPattern(
-    #[wildcard("data(")] c map<string, string>, // ERROR(check) "#[wildcard(\"data(\")]"
+    #[wildcard("data(")] c map[string, string], // ERROR(check) "#[wildcard(\"data(\")]"
 ) node {
     text(value="x")
 }
 
 component doubled(
     #[wildcard("p.*")]
-    #[wildcard("q.*")] d map<string, string>, // ERROR(check) "already a wildcard"
+    #[wildcard("q.*")] d map[string, string], // ERROR(check) "already a wildcard"
 ) node {
     text(value="x")
 }
@@ -40,7 +40,7 @@ component doubled(
 // A wildcard prop stands for many names, so one call site can bind it many
 // times. A scalar has room for one of them.
 component scalar(
-    #[wildcard("z.*")] e string = "", // ERROR(check) "declare it map<string, V>"
+    #[wildcard("z.*")] e string = "", // ERROR(check) "declare it map[string, V]"
 ) node {
     text(value=e)
 }

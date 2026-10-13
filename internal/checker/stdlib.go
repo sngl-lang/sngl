@@ -208,7 +208,7 @@ func (c *checker) loadStdlib() (builtinPkg, stdPkg *ir.Package) {
 // resolveMacroSig resolves a macro's declared parameter types, once, the
 // first time a mark of it is applied. Not as the package loads: the mark
 // package loads from inside sngl:builtin's own imports, where `list` names
-// nothing yet and `list<ir.IntrinsicFlag>` would degrade to `list<dyn>`.
+// nothing yet and `list[ir.IntrinsicFlag]` would degrade to `list[dyn]`.
 func (c *checker) resolveMacroSig(pkg *ir.Package, fn *ir.Func) {
 	if c.libs.macroSigs[fn] || fn.AST == nil || len(fn.Params) != len(fn.AST.Params.Params) {
 		return
@@ -728,7 +728,7 @@ func funcDeclName(fn *ir.Func) string {
 }
 
 // intrinsicTypeParamNames is the order Instantiate binds in: the receiver's
-// parameters first, then the method's own -- T then U for `list<T>.map<U>`.
+// parameters first, then the method's own -- T then U for `list[T].map[U]`.
 func intrinsicTypeParamNames(fn *ir.Func) []string {
 	if len(fn.RecvTypeParams) == 0 && len(fn.TypeParams) == 0 {
 		return nil

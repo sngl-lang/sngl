@@ -34,11 +34,11 @@ component platform(
     // that never calls it gets a process whose loop still runs -- timers,
     // effects, posted work -- with no window on screen. `args` is the command
     // line after the program's name.
-    @run(args list<string>, run func()),
+    @run(args list[string], run func()),
     // What its generated code introduces beside a program's names: the packages
     // it imports, an instance record's receiver, the Model's own members, and
     // the locals BuildUI declares around the nodes a program names.
-    const reservedNames list<string> = [
+    const reservedNames list[string] = [
         "fyne",
         "app",
         "canvas",
@@ -166,12 +166,12 @@ struct Native {
 
 struct Spec {
     new      Native
-    args     list<Arg>
+    args     list[Arg]
     goType   Native
     add      string
     content  string
-    setters  list<Setter>
-    handlers list<Handler>
+    setters  list[Setter]
+    handlers list[Handler]
     axis     string
 }
 
@@ -189,15 +189,15 @@ component Widget(
     placeholder string,
     number      int,
     flag        bool,
-    options     list<string>,
-    date        option<time.date>,
+    options     list[string],
+    date        option[time.date],
     style       ui.Style,
     @click(),
     @change(text string),
     @input(text string),
     @toggle(flag bool),
     @adjust(number int),
-    @pick(date option<time.date>),
+    @pick(date option[time.date]),
 ) ui.node
 
 #[gen.renders(identity)]
@@ -208,7 +208,7 @@ component Container(
     placeholder string,
     number      int,
     flag        bool,
-    options     list<string>,
+    options     list[string],
     style       ui.Style,
     @click(),
     @change(text string),
@@ -224,12 +224,12 @@ component Wrapper(
     placeholder string,
     number      int,
     flag        bool,
-    options     list<string>,
+    options     list[string],
     style       ui.Style,
     @click(),
     @change(text string),
     @input(text string),
-    content     ...component option<ui.node>,
+    content     ...component option[ui.node],
 ) ui.node
 
 // --- The Fyne widgets ---
@@ -346,7 +346,7 @@ const component Check(text string = "", checked bool = false, style ui.Style = u
 // choices.
 const component Select(
     selected string = "",
-    options  list<string> = [],
+    options  list[string] = [],
     style    ui.Style = ui.Style{},
     @change(value string),
 ) ui.node {
@@ -420,7 +420,7 @@ const component HBox(style ui.Style = ui.Style{}, children ...component) ui.node
     }
 }
 
-const component VScroll(style ui.Style = ui.Style{}, content ...component option<ui.node>) ui.node {
+const component VScroll(style ui.Style = ui.Style{}, content ...component option[ui.node]) ui.node {
     Wrapper(
         spec = Spec{
             new = Native{path="fyne.io/fyne/v2/container", name="NewVScroll"},
@@ -582,12 +582,12 @@ const component ui.progress[platform] {
 // so the Label is a stub standing in for one rather than a picker whose value
 // has nowhere to go.
 // Fyne's DateEntry takes a typed date or one picked from its calendar button,
-// and reports it as the *time.Time an option<date> is in Go, nil when cleared.
+// and reports it as the *time.Time an option[date] is in Go, nil when cleared.
 const component DateEntry(
-    value       option<time.date> = null,
+    value       option[time.date] = null,
     placeholder string = "",
     style       ui.Style = ui.Style{},
-    @change(date option<time.date>),
+    @change(date option[time.date]),
 ) ui.node {
     Widget(
         spec = Spec{
@@ -752,7 +752,7 @@ const component ui.textarea[platform] {
 // before any of this could be written down.
 #[go.native("time", "*time.Ticker")]
 struct Schedule {
-    C go.chan<time.datetime>
+    C go.chan[time.datetime]
 }
 
 #[go.native("time", "time.NewTicker")]
@@ -781,7 +781,7 @@ func Schedule.stop()
 // two receives in a row would take the tick before ever looking at `done`.
 const component time.timer[platform] {
     var handle Schedule
-    var done go.chan<bool>
+    var done go.chan[bool]
     var live = false
     var gen = 0
 

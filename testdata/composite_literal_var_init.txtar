@@ -53,8 +53,8 @@ component main node {
         a = 1
         b = 2
         pair P = {a=a, b=b}
-        xs list<int> = [a, b]
-        tally map<string, int> = {one=a, two=b}
+        xs list[int] = [a, b]
+        tally map[string, int] = {one=a, two=b}
         constPair P = {a=1, b=2}
     )
 

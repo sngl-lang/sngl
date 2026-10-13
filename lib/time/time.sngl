@@ -18,10 +18,10 @@ const func date.day(d date) => int.parse(string(d).substring(8, 10), 10)
 // 12, or a day past the last of its month, is no date. Text a program did not
 // write -- what a user typed -- is read this way, since converting it with
 // `date(s)` takes it on trust.
-const func parseDate(s string) option<date> {
+const func parseDate(s string) option[date] {
     // An option nothing set holds no date. `null` is sngl:builtin's, and
     // this package loads before that one is in scope.
-    var unset option<date>
+    var unset option[date]
     if s.length() != 10 || s.substring(4, 5) != "-" || s.substring(7, 8) != "-" {
         return unset
     }
@@ -93,7 +93,7 @@ unit duration { ms, s = 1000ms, m = 60s, h = 60m }
 //
 // A timer belongs to no tree: it schedules and renders nothing, so it sits
 // wherever the work it drives belongs.
-component timer<F any>(
+component timer[F any](
     #[macro.construct] interval duration,
     #[macro.construct] enabled bool = true,
     @tick,

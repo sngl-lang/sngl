@@ -31,7 +31,7 @@ output {
 }
 
 window {
-    var rows list<string> = ["a"]
+    var rows list[string] = ["a"]
 
     html.div(style={
         display = Display.inlineBlock,

@@ -34,7 +34,7 @@ output {
 
 var start = 0
 var total = start
-var labels list<string> = ["a", "b"]
+var labels list[string] = ["a", "b"]
 
 component row(name = "") node {
     var label = name + ":"

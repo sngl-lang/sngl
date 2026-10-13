@@ -14,7 +14,7 @@ import ui "sngl:ui"
 
 context #theme("light")
 
-component rows(items list<string>) ui.node {
+component rows(items list[string]) ui.node {
     theme("dark") {
         ui.vbox {
             for var x = items {

@@ -5,15 +5,15 @@ import . "sngl:ui"
 // nothing declares. Refused where the type is inferred; annotated, or bound
 // by an argument, the same calls are fine. Inside a generic function its own
 // parameters are in scope and are types like any other.
-const func empty<T any>() list<T> {
+const func empty[T any]() list[T] {
     return []
 }
 
-func same<T any>(x T) T {
+func same[T any](x T) T {
     return x
 }
 
-func keep<U any>(u U) U {
+func keep[U any](u U) U {
     var held = u
     var copy = same(held)
     return copy
@@ -21,7 +21,7 @@ func keep<U any>(u U) U {
 
 // The callee's T is not the T of the generic calling it, though it is
 // spelled the same.
-func shadow<T any>(t T) T {
+func shadow[T any](t T) T {
     var mine = t
     var leaked = empty() // ERROR(check) "cannot infer T"
     return mine
@@ -33,7 +33,7 @@ func make() => empty() // ERROR(check) "cannot infer T"
 
 component C node {
     var xs = empty() // ERROR(check) "cannot infer T"
-    var ys list<int> = empty()
+    var ys list[int] = empty()
     var n = same(3)
     var f = func() => empty() // ERROR(check) "cannot infer T"
 

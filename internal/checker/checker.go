@@ -394,7 +394,7 @@ type checker struct {
 	scope  *ir.Scope
 	symtab *ir.SymbolTable
 
-	// refCoercions are the call sites that handed a plain T to a ref<T>
+	// refCoercions are the call sites that handed a plain T to a ref[T]
 	// parameter; see verifyRefCoercions for why the callee is held to its half
 	// of the bargain only once every body has been checked.
 	refCoercions []refCoercion
@@ -660,7 +660,7 @@ type checker struct {
 	specPinned map[*ir.Component]map[string]*ir.Type
 	// handleArgs is the type arguments each handle a component body declares
 	// was bound, for a select reaching it from outside: `c.pkg` is the
-	// `page<Pkg>` its call site made it.
+	// `page[Pkg]` its call site made it.
 	handleArgs map[handleKey][]*ir.Type
 	// entryOrigin is the declared entry each specialized slot entry was
 	// copied from, and entrySpec the specialization an insertion of one was
@@ -708,7 +708,7 @@ type checker struct {
 	// stdComp.PlatformOverrides[platformName] = checkedIRBody mapping.
 	pendingExtensions []pendingExtension
 
-	// Flow narrowing of option<T> after a null test. narrowed holds the facts
+	// Flow narrowing of option[T] after a null test. narrowed holds the facts
 	// current at the statement being checked, narrowUsed says which of them a
 	// read actually went through, and narrowChecks defers the soundness
 	// question to after the purity fixed point. noNarrow suspends the rewrite
@@ -2095,10 +2095,10 @@ func (c *checker) libraryRecords() [2]*ir.Builtins {
 	return [2]*ir.Builtins{c.libs.builtins, ir.Published()}
 }
 
-// listOf is list<elem> as this check's library declares it.
+// listOf is list[elem] as this check's library declares it.
 func (c *checker) listOf(elem *ir.Type) *ir.Type { return c.libs.builtins.ListOf(elem) }
 
-// mapOf is map<k, v> as this check's library declares it.
+// mapOf is map[k, v] as this check's library declares it.
 func (c *checker) mapOf(k, v *ir.Type) *ir.Type { return c.libs.builtins.MapOf(k, v) }
 
 func (c *checker) resolveStructBody(sd *ir.StructDef) {
@@ -2825,7 +2825,7 @@ func (c *checker) isLibraryNamespace(name string) bool {
 // claims its name, since a slot is resolved as a tag from anywhere in the body.
 //
 // An id declared inside a *descendant* component is deliberately absent. It is
-// reachable from here as list<host>, but the parent did not declare it -- were
+// reachable from here as list[host], but the parent did not declare it -- were
 // it a claim, renaming a var in a child would break its parent, and a library
 // component's internal ids would land in every caller's namespace.
 func (c *checker) claimComponentAPI(decl *ast.ComponentDecl, comp *ir.Component) {
@@ -3627,7 +3627,7 @@ func (c *checker) buildErrorBoundary(vn *ast.VisualNode, comp *ir.Component) *ir
 		eb.Children = append(eb.Children, named...)
 	}
 	// A boundary belongs to no family and hosts whatever it was handed --
-	// `component boundary<T any>(content ...component T, failed component T) T`.
+	// `component boundary[T any](content ...component T, failed component T) T`.
 	// Nothing at the call site names T, so the content binds it: the first
 	// child that belongs to a family says which, and the rest are held to
 	// that. An empty boundary binds nothing, and has nothing to check.
@@ -4003,7 +4003,7 @@ func (c *checker) checkFuncBody(fn *ir.Func) {
 
 	// A method on a generic receiver may carry no receiver parameter -- saying
 	// `this` instead -- so bind it for a body that names it,
-	// `func list<T>.push(item T) => stdlib.ListPush(this, item)` or a block.
+	// `func list[T].push(item T) => stdlib.ListPush(this, item)` or a block.
 	// A concrete receiver names itself a parameter and needs none, and so does
 	// a nested method, whose `this` is synthesized into its parameter list.
 	// Only a written body: the bodyless generic stubs never say `this`, and
@@ -4634,7 +4634,7 @@ func withCount(counts []nodeCount, k nodeCount) []nodeCount {
 // declareNodeIDsIn hoists the node ids in block. counts is the chain of scopes
 // crossed to reach it, outermost first, and is what the handle's type is
 // wrapped in: a node written inside a `for` inside an `if` reads from outside
-// both as `option<list<T>>`.
+// both as `option[list[T]]`.
 //
 // Each block's own ids are hoisted again, at their own depth, into the scope
 // checkBlockIR pushes for it — so a read from *inside* the scope is the plain

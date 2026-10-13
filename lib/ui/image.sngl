@@ -39,8 +39,8 @@ component image(
     // the value `error.raise` throws and a `boundary` catches, because a
     // failure is a failure whoever noticed it.
     @error(e error),
-    src         ...component option<imageSource>,
-    placeholder component option<node>,
+    src         ...component option[imageSource],
+    placeholder component option[node],
 ) node
 
 component _example_image node {

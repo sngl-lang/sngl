@@ -404,7 +404,7 @@ type For struct {
 	LoweredSlotID string `json:"-"`
 	// RefElem is true when the element loop variable was &-bound
 	// (`for var &t = list` / `for var i, &t = list`): the element var has type
-	// ref<T> and writes through it must update the original list element.
+	// ref[T] and writes through it must update the original list element.
 	// Set by the checker for addressable mutable list iterables. It is a
 	// transient marker: the RefLoop lowering pass consumes it — rewriting
 	// element uses to indexed list access and desugaring the loop into an
@@ -432,14 +432,14 @@ func (*For) stmtNode() {}
 type IterKind int
 
 const (
-	// IterElement is single-var iteration over a list/iter<T>: bind each
+	// IterElement is single-var iteration over a list/iter[T]: bind each
 	// element to Key.
 	IterElement IterKind = iota
 	// IterCounted is iteration over an integer sequence, from the bounds in
 	// Counted: the number binds to Key, or to Value with its ordinal in Key
 	// when a second variable is written. The sequence is never built.
 	IterCounted
-	// IterIndexed is two-var iteration over a list/iter<T>: bind (index,
+	// IterIndexed is two-var iteration over a list/iter[T]: bind (index,
 	// element) to (Key, Value).
 	IterIndexed
 	// IterMapEntries is iteration over a map: bind (key, value) to

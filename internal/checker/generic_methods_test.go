@@ -12,12 +12,12 @@ import (
 // RecvTypeParams has its return type substituted with the caller's concrete type.
 func TestRecvTypeParamSubstitutionInReturn(t *testing.T) {
 	src := `
-struct Box<T any> {
+struct Box[T any] {
     value T
 }
-func Box<T>.identity(b Box<T>) Box<T> { return b }
-var b Box<int>
-var b2 Box<int> = b.identity()
+func Box[T].identity(b Box[T]) Box[T] { return b }
+var b Box[int]
+var b2 Box[int] = b.identity()
 `
 	doc, err := parser.Parse("test.sngl", []byte(withStd(src)))
 	if err != nil {
@@ -35,11 +35,11 @@ var b2 Box<int> = b.identity()
 // generic method call resolves to the concrete (substituted) type.
 func TestRecvTypeParamFieldAccess(t *testing.T) {
 	src := `
-struct Box<T any> {
+struct Box[T any] {
     value T
 }
-func Box<T>.identity(b Box<T>) Box<T> { return b }
-var b Box<int>
+func Box[T].identity(b Box[T]) Box[T] { return b }
+var b Box[int]
 var n int = b.identity().value
 `
 	doc, err := parser.Parse("test.sngl", []byte(withStd(src)))
@@ -58,12 +58,12 @@ var n int = b.identity().value
 // generic method to an incompatible type produces a type error.
 func TestRecvTypeParamWrongReturnType(t *testing.T) {
 	src := `
-struct Box<T any> {
+struct Box[T any] {
     value T
 }
-func Box<T>.identity(b Box<T>) Box<T> { return b }
-var b Box<int>
-var b2 Box<string> = b.identity()
+func Box[T].identity(b Box[T]) Box[T] { return b }
+var b Box[int]
+var b2 Box[string] = b.identity()
 `
 	doc, err := parser.Parse("test.sngl", []byte(withStd(src)))
 	if err != nil {
@@ -77,7 +77,7 @@ var b2 Box<string> = b.identity()
 		}
 	}
 	if !found {
-		t.Error("expected type error: Box<int> result not assignable to Box<string>")
+		t.Error("expected type error: Box[int] result not assignable to Box[string]")
 	}
 }
 
@@ -85,11 +85,11 @@ var b2 Box<string> = b.identity()
 // non-generic type (e.g. int) work correctly regardless of T.
 func TestRecvTypeParamNonGenericReturn(t *testing.T) {
 	src := `
-struct Box<T any> {
+struct Box[T any] {
     value T
 }
-func Box<T>.size(b Box<T>) int { return 0 }
-var b Box<string>
+func Box[T].size(b Box[T]) int { return 0 }
+var b Box[string]
 var n int = b.size()
 `
 	doc, err := parser.Parse("test.sngl", []byte(withStd(src)))
@@ -108,13 +108,13 @@ var n int = b.size()
 // generic struct.
 func TestRecvTypeParamTwoTypeArgs(t *testing.T) {
 	src := `
-struct Pair<A any, B any> {
+struct Pair[A any, B any] {
     first A
     second B
 }
-func Pair<A, B>.swap(p Pair<A, B>) Pair<B, A> { return {first = p.second, second = p.first} }
-var p Pair<int, string>
-var q Pair<string, int> = p.swap()
+func Pair[A, B].swap(p Pair[A, B]) Pair[B, A] { return {first = p.second, second = p.first} }
+var p Pair[int, string]
+var q Pair[string, int] = p.swap()
 `
 	doc, err := parser.Parse("test.sngl", []byte(withStd(src)))
 	if err != nil {
@@ -128,12 +128,12 @@ var q Pair<string, int> = p.swap()
 	}
 }
 
-// TestListMapSameType verifies that list<T>.map<U> infers U=T when the lambda
+// TestListMapSameType verifies that list[T].map[U] infers U=T when the lambda
 // returns the same type as the input.
 func TestListMapSameType(t *testing.T) {
 	src := `
-var xs list<int> = [1, 2, 3]
-var ys list<int> = xs.map(func(x int) => x * 2)`
+var xs list[int] = [1, 2, 3]
+var ys list[int] = xs.map(func(x int) => x * 2)`
 	doc, err := parser.Parse("test.sngl", []byte(withStd(src)))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
@@ -146,12 +146,12 @@ var ys list<int> = xs.map(func(x int) => x * 2)`
 	}
 }
 
-// TestListMapDifferentType verifies that list<T>.map<U> correctly infers U
+// TestListMapDifferentType verifies that list[T].map[U] correctly infers U
 // when the lambda returns a different type than the input.
 func TestListMapDifferentType(t *testing.T) {
 	src := `
-var xs list<int> = [1, 2, 3]
-var ys list<string> = xs.map(func(x int) => "{x}")`
+var xs list[int] = [1, 2, 3]
+var ys list[string] = xs.map(func(x int) => "{x}")`
 	doc, err := parser.Parse("test.sngl", []byte(withStd(src)))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
@@ -164,12 +164,12 @@ var ys list<string> = xs.map(func(x int) => "{x}")`
 	}
 }
 
-// TestListMapTypeMismatch verifies that list<T>.map<U> produces a type error
+// TestListMapTypeMismatch verifies that list[T].map[U] produces a type error
 // when the inferred result type doesn't match the declared variable type.
 func TestListMapTypeMismatch(t *testing.T) {
 	src := `
-var xs list<int> = [1, 2, 3]
-var ys list<int> = xs.map(func(x int) => "{x}")`
+var xs list[int] = [1, 2, 3]
+var ys list[int] = xs.map(func(x int) => "{x}")`
 	doc, err := parser.Parse("test.sngl", []byte(withStd(src)))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
@@ -182,7 +182,7 @@ var ys list<int> = xs.map(func(x int) => "{x}")`
 		}
 	}
 	if !found {
-		t.Error("expected error: list<string> not assignable to list<int>")
+		t.Error("expected error: list[string] not assignable to list[int]")
 	}
 }
 
@@ -190,10 +190,10 @@ var ys list<int> = xs.map(func(x int) => "{x}")`
 // on a generic struct instance resolves to the concrete field type.
 func TestRecvTypeParamFieldDirectAccess(t *testing.T) {
 	src := `
-struct Box<T any> {
+struct Box[T any] {
     value T
 }
-var b Box<int>
+var b Box[int]
 var n int = b.value
 `
 	doc, err := parser.Parse("test.sngl", []byte(withStd(src)))

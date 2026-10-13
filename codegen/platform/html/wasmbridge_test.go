@@ -33,7 +33,7 @@ func TestContainsRef(t *testing.T) {
 
 func TestWASMTypeHint_RefRejected(t *testing.T) {
 	if got := wasmTypeHint(ir.RefOf(ir.TypString)); got != "" {
-		t.Errorf("ref<string> should produce empty hint (raw passthrough disabled), got %q", got)
+		t.Errorf("ref[string] should produce empty hint (raw passthrough disabled), got %q", got)
 	}
 }
 

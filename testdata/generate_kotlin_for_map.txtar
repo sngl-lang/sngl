@@ -1,4 +1,4 @@
-Kotlin codegen for a for-loop over map<K, V>: the loop's two variables become
+Kotlin codegen for a for-loop over map[K, V]: the loop's two variables become
 Kotlin's own destructuring form, `for ((k, v) in scores)`.
 -- app.sngl --
 import . "sngl:ui"
@@ -6,7 +6,7 @@ import . "sngl:ui"
 output { kotlin { android } }
 
 component main node {
-    var scores map<string, int> = {alice=10, bob=20}
+    var scores map[string, int] = {alice=10, bob=20}
     var total = 0
     button(text="sum", @click {
         for var k, v = scores {

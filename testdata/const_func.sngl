@@ -7,7 +7,7 @@ const scale = 2
 
 const func area(w int, h int) => w * h * scale
 
-const func sum(xs list<int>) int {
+const func sum(xs list[int]) int {
     var total = 0
     for var x = xs {
         total += x

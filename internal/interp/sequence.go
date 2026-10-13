@@ -1,6 +1,6 @@
 package interp
 
-// A sequence is what sngl:seq's count/range/step produce: an iter<int> that
+// A sequence is what sngl:seq's count/range/step produce: an iter[int] that
 // computes its elements from three ints instead of holding them. A program
 // can hold one, pass it to a function and iterate it, and none of that
 // builds a list -- which is the whole point, since the interpreter used to
@@ -31,7 +31,7 @@ func (s sequence) At(i int) int { return s.start + i*s.step }
 
 // asIterable reports how to walk a runtime iterable by index: a list, or a
 // sequence. The two loop sites share it so neither has to know that an
-// iter<int> is not a []any.
+// iter[int] is not a []any.
 func asIterable(v any) (n int, at func(int) any, ok bool) {
 	switch t := v.(type) {
 	case []any:

@@ -26,7 +26,7 @@ import . "sngl:time"
 component App() node {
     var fast = 0
     var slow = 0
-    var periods list<duration> = [20ms, 500ms]
+    var periods list[duration] = [20ms, 500ms]
 
     for var p = periods {
         timer(interval=p, enabled=true, @tick {

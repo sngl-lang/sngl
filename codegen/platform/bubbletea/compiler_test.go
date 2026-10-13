@@ -102,7 +102,7 @@ struct Todo {
 ui.window {
     var (
         count = 0
-        todos list<Todo>
+        todos list[Todo]
     )
 }
 `

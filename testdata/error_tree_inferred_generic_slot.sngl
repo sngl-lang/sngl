@@ -7,7 +7,7 @@
 import d "sngl:ui/draw"
 import ui "sngl:ui"
 
-component tagged<T any>(value T, content ...component) {
+component tagged[T any](value T, content ...component) {
     ui.text(value="x")
     content
 }

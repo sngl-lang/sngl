@@ -24,7 +24,7 @@ component row(label = "", @pick) node {
 }
 
 window {
-    var items list<string> = ["a", "b"]
+    var items list[string] = ["a", "b"]
     var picked = ""
 
     vbox {

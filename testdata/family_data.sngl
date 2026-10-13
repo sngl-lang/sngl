@@ -31,7 +31,7 @@ component greenFruit(label string, ripe bool = false) {
     fruit(name=label + "!", ripe=ripe)
 }
 
-func names(fs list<fruit>) string {
+func names(fs list[fruit]) string {
     return fs.map(func(f fruit) => f.name).join(",")
 }
 

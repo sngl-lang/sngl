@@ -1,15 +1,15 @@
 import . "sngl:ui"
 
-func identity<T any>(x T) => x
+func identity[T any](x T) => x
 
-func first<T any>(items list<T>) T {
+func first[T any](items list[T]) T {
     return items[0]
 }
 
 func test() {
     var a = identity(42)
     var b = identity("hello")
-    var items list<int> = [1, 2]
+    var items list[int] = [1, 2]
     var c = first(items)
 }
 

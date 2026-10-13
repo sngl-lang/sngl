@@ -46,7 +46,7 @@ struct Todo {
 }
 
 component saver ui.node {
-    var todos list<Todo> = []
+    var todos list[Todo] = []
     var saved = 0
     var last = 0
 
@@ -107,7 +107,7 @@ func testReplace(t test.Test, c saver) {
 
 component scalar ui.node {
     var n = 0
-    var log list<string> = []
+    var log list[string] = []
 
     effect(
         on = n,
@@ -135,7 +135,7 @@ func testEqualWrite(t test.Test, c scalar) {
 
 component gated ui.node {
     var on = true
-    var xs list<int> = []
+    var xs list[int] = []
     var n = 0
 
     if on {

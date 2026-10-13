@@ -27,7 +27,7 @@ import gen "sngl:x/gen"
 component language(
     // Kotlin's hard keywords, which no declaration may take. A field or a
     // host's parameter keeps its name and is written in backticks.
-    const reservedWords list<string> = [
+    const reservedWords list[string] = [
         "as",
         "break",
         "class",
@@ -75,7 +75,7 @@ component language(
 // lambda: `#[kt.native("Card", "androidx.compose.material3.Card")]`. That is
 // how a program reaches a Compose widget the platform never heard of, and it
 // is how the platform declares its own.
-func native(name string, module string = "", flags list<NativeFlag> = []) ir.Macro
+func native(name string, module string = "", flags list[NativeFlag] = []) ir.Macro
 
 // What a Kotlin declaration's shape says beyond its name.
 //

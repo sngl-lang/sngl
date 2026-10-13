@@ -18,7 +18,7 @@ stderr 'override.sngl:9:7: this loop is written into the page, and what it itera
 -- own.sngl --
 import ui "sngl:ui"
 
-func names() list<string> {
+func names() list[string] {
     error.raise("no names", "test")
     return ["File"]
 }
@@ -33,7 +33,7 @@ ui.window {
 -- override.sngl --
 import ui "sngl:ui"
 
-func names() list<string> {
+func names() list[string] {
     error.raise("no names", "test")
     return ["File"]
 }

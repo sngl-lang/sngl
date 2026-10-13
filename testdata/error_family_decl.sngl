@@ -21,7 +21,7 @@ component evented(@tick(at int)) build.family // ERROR(check) "component evented
 
 component slotted(content ...component) build.family // ERROR(check) "component slotted is a family, which declares the props its members share and nothing else: content is a slot"
 
-component generic<T any = int>(v T) build.family
+component generic[T any = int](v T) build.family
 
 component bodied build.family { // ERROR(check) "component bodied is a family, and a family has no body yet"
 }

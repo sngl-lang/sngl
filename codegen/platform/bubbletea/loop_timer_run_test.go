@@ -29,7 +29,7 @@ component ticker(period duration = 10ms) node {
 }
 
 window {
-    var periods list<duration> = [10ms, 20ms]
+    var periods list[duration] = [10ms, 20ms]
     for var p = periods {
         ticker(period=p)
     }

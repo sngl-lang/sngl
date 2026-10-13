@@ -19,12 +19,12 @@ import marks "sngl:internal/marks"
 // wins over both. A target that writes none cannot be run. A command is the
 // target package's to write: one in a program is refused.
 #[marks.builtin("genRun")]
-component run<F any>(@run(dir string, args list<string>)) F
+component run[F any](@run(dir string, args list[string])) F
 
 // What `sngl build` does with a target's output: build what `dir` holds into
 // the artifact at `out`. Found as `run` is.
 #[marks.builtin("genBuild")]
-component build<F any>(@build(dir string, out string)) F
+component build[F any](@build(dir string, out string)) F
 
 // Runs cmd -- the program, then its arguments -- in dir, the current directory
 // when empty, with the terminal's standard input, output and error, and
@@ -32,4 +32,4 @@ component build<F any>(@build(dir string, out string)) F
 // build input, so nothing is recorded; it answers only in a `run` or `build`
 // handler.
 #[marks.intrinsic("gen.shell", build)]
-func shell(cmd list<string>, dir string = "") int
+func shell(cmd list[string], dir string = "") int

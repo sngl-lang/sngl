@@ -11,8 +11,8 @@ import (
 // one-variable loop with its own counter.
 //
 // `for var i, x = xs` over a list is a construct every backend already has:
-// Go's range, JS's entries(), Kotlin's withIndex(). Over an iter<T> it is
-// not. An iter<T> is a sequence something pulls from -- a range func in Go, a
+// Go's range, JS's entries(), Kotlin's withIndex(). Over an iter[T] it is
+// not. An iter[T] is a sequence something pulls from -- a range func in Go, a
 // generator in JS -- and neither hands out an ordinal; Go rejects the second
 // variable outright. Building the sequence into a list to get one is the
 // allocation sngl:seq exists to avoid, so the ordinal becomes what it always

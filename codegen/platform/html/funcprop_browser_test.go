@@ -16,7 +16,7 @@ component row(label string, onpick func(string)) node {
     button(text="pick " + label + ":" + string(hits), @click { onpick(label) })
 }
 component App() node {
-    var items list<string> = ["a", "b"]
+    var items list[string] = ["a", "b"]
     var picked string = ""
     text(value="picked=" + picked)
     for var item = items {

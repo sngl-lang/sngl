@@ -1879,7 +1879,7 @@ func (b *builder) buildForNode(it nodeIter) *ast.ForStmt {
 	if declares {
 		it.skip() // kw_var
 		if !it.done() && !it.isNonTerminal() && it.tokenType() == AMP {
-			it.skip() // & — bind the element var as ref<T>
+			it.skip() // & — bind the element var as ref[T]
 			stmt.KeyRef = true
 		}
 		stmt.Key = it.shift().Literal // ident

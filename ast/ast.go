@@ -193,7 +193,7 @@ func (p TypeParam) ParamPos() Pos     { return p.Pos }
 type StructDef struct {
 	Pos         Pos
 	Name        string
-	TypeParams  []TypeParam // generic parameters: ["T"] for `struct list<T any> {}`
+	TypeParams  []TypeParam // generic parameters: ["T"] for `struct list[T any] {}`
 	Body        []StructBodyItem
 	IsMultiline bool
 	Attrs       []MacroAttr `json:",omitempty"` // the #[...] marks written on the declaration
@@ -360,7 +360,7 @@ type FuncDef struct {
 	Pos            Pos
 	Name           string
 	TypeParams     []TypeParam // method-level generic parameters, e.g. ["T", "U"]
-	RecvTypeParams []TypeParam // receiver-level: ["T"] for func list<T>.length()
+	RecvTypeParams []TypeParam // receiver-level: ["T"] for func list[T].length()
 	Params         ParamList
 	// Target is the `[expr]` index on the declaration name: the build target
 	// this declaration implements, written by whoever overrides one. nil on an
@@ -411,7 +411,7 @@ type ComponentDecl struct {
 	// nothing ever selects.
 	Target Expr
 	// TypeParams are the generic parameters written after the name --
-	// ["T"] for `component effect<T any>(on T)`. Bound at the call site from the
+	// ["T"] for `component effect[T any](on T)`. Bound at the call site from the
 	// props supplied there, the same way a func's are bound from its
 	// arguments.
 	TypeParams   []TypeParam `json:",omitempty"`
@@ -523,7 +523,7 @@ type IfStmt struct {
 type ForStmt struct {
 	Pos      Pos
 	Key      string // iterator variable
-	KeyRef   bool   // Key was &-prefixed: `for var &t = ...` (ref<T> element binding)
+	KeyRef   bool   // Key was &-prefixed: `for var &t = ...` (ref[T] element binding)
 	Value    string // optional second variable (empty if single-var form)
 	ValueRef bool   // Value was &-prefixed: `for var i, &t = ...`
 	Iter     Expr

@@ -11,7 +11,7 @@ component suit(name string, color string = "black") build.family
 
 component plain(name string) suit {}
 
-component ranked<T any = int>(name string, rank T, color string) suit {}
+component ranked[T any = int](name string, rank T, color string) suit {}
 
 component hand(name string) suit {
     plain #spades(name="spades")

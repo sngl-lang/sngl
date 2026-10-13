@@ -30,11 +30,11 @@ const (
 	TypeNull      // type of null literal
 	TypeTypeParam // unresolved generic param; ParamName set
 	TypeVoid      // void — a call that yields no value; not usable as an expression
-	TypeRef       // Elem set — ref<T>, used by NoLambda for mutable captures
-	TypeIter      // Elems = [T] for iter<T>
+	TypeRef       // Elem set — ref[T], used by NoLambda for mutable captures
+	TypeIter      // Elems = [T] for iter[T]
 	TypeNative    // platform-provided foreign type; Meta carries the platform-specific descriptor
 	TypeInstance  // Decl set — a live instance in the rendered tree
-	// TypeReadonly is readonly<T> (Elems set): a loop variable bound by copy,
+	// TypeReadonly is readonly[T] (Elems set): a loop variable bound by copy,
 	// which a program reads and may not write. The checker's own -- a read
 	// unwraps it to T, and the loop erases it from its variables once its body
 	// is checked -- so nothing after the check meets one.
@@ -50,7 +50,7 @@ const (
 // Zero value is TypeInvalid.
 type Type struct {
 	Kind      TypeKind
-	Elems     []*Type  // type arguments: List<T>, Option<T>, Map<K,V>, etc.
+	Elems     []*Type  // type arguments: list[T], option[T], map[K, V], etc.
 	Decl      Symbol   // struct, enum, unit, component declaration
 	Sig       *FuncSig // function types
 	ParamName string   // generic type param name ("T")
@@ -101,17 +101,17 @@ func OptionOf(inner *Type) *Type {
 	return &Type{Kind: TypeOption, Elems: []*Type{inner}}
 }
 
-// ReadonlyOf builds a readonly<elem> Type.
+// ReadonlyOf builds a readonly[elem] Type.
 func ReadonlyOf(elem *Type) *Type {
 	return &Type{Kind: TypeReadonly, Elems: []*Type{elem}}
 }
 
-// IsReadonly reports whether t is readonly<T>.
+// IsReadonly reports whether t is readonly[T].
 func (t *Type) IsReadonly() bool {
 	return t != nil && t.Kind == TypeReadonly && len(t.Elems) == 1
 }
 
-// RefOf builds a ref<elem> Type.
+// RefOf builds a ref[elem] Type.
 func RefOf(elem *Type) *Type {
 	return &Type{Kind: TypeRef, Elems: []*Type{elem}}
 }
@@ -121,7 +121,7 @@ func FuncOf(params []*Param, ret *Type) *Type {
 	return &Type{Kind: TypeFunc, Sig: &FuncSig{Params: params, Return: ret}}
 }
 
-// IterOf returns an iter<T> type.
+// IterOf returns an iter[T] type.
 func IterOf(elem *Type) *Type {
 	return &Type{Kind: TypeIter, Elems: []*Type{elem}}
 }
@@ -172,34 +172,34 @@ func (t *Type) String() string {
 		return "string"
 	case TypeList:
 		if len(t.Elems) > 0 {
-			return fmt.Sprintf("list<%s>", t.Elems[0])
+			return fmt.Sprintf("list[%s]", t.Elems[0])
 		}
 		return "list"
 	case TypeMap:
 		if len(t.Elems) == 2 {
-			return fmt.Sprintf("map<%s, %s>", t.Elems[0], t.Elems[1])
+			return fmt.Sprintf("map[%s, %s]", t.Elems[0], t.Elems[1])
 		}
-		return "map<?>"
+		return "map[?]"
 	case TypeOption:
 		if len(t.Elems) > 0 {
-			return fmt.Sprintf("option<%s>", t.Elems[0])
+			return fmt.Sprintf("option[%s]", t.Elems[0])
 		}
 		return "option"
 	case TypeRef:
 		if len(t.Elems) > 0 {
-			return fmt.Sprintf("ref<%s>", t.Elems[0])
+			return fmt.Sprintf("ref[%s]", t.Elems[0])
 		}
 		return "ref"
 	case TypeReadonly:
 		if len(t.Elems) > 0 {
-			return fmt.Sprintf("readonly<%s>", t.Elems[0])
+			return fmt.Sprintf("readonly[%s]", t.Elems[0])
 		}
 		return "readonly"
 	case TypeIter:
 		if len(t.Elems) == 1 {
-			return fmt.Sprintf("iter<%s>", t.Elems[0])
+			return fmt.Sprintf("iter[%s]", t.Elems[0])
 		}
-		return "iter<?>"
+		return "iter[?]"
 	case TypeStruct:
 		name := "struct"
 		// A diagnostic says what the program wrote, never the synthesized name.
@@ -217,7 +217,7 @@ func (t *Type) String() string {
 			for i, e := range t.Elems {
 				args[i] = e.String()
 			}
-			return name + "<" + strings.Join(args, ", ") + ">"
+			return name + "[" + strings.Join(args, ", ") + "]"
 		}
 		return name
 	case TypeEnum:
@@ -257,10 +257,10 @@ func (t *Type) String() string {
 		for i, e := range t.Elems {
 			args[i] = e.String()
 		}
-		return t.Decl.SymName() + "<" + strings.Join(args, ", ") + ">"
+		return t.Decl.SymName() + "[" + strings.Join(args, ", ") + "]"
 	case TypeInstance:
 		if t.Decl != nil {
-			return "instance<" + t.Decl.SymName() + ">"
+			return "instance[" + t.Decl.SymName() + "]"
 		}
 		return "instance"
 	case TypeNative:
@@ -470,7 +470,7 @@ func (t *Type) Substitute(bindings map[string]*Type) *Type {
 		}
 		return &Type{Kind: t.Kind, Elems: elems, Decl: t.Decl}
 	case TypeComponent:
-		// `page<T>` in a generic signature: its type arguments are the
+		// `page[T]` in a generic signature: its type arguments are the
 		// signature's, bound at the call like any other element type.
 		if len(t.Elems) == 0 {
 			return t
@@ -558,8 +558,8 @@ func (t *Type) Equal(other *Type) bool {
 		}
 		// Two struct types are equal when they share the same declaration AND
 		// their type arguments (if any) are pairwise equal. This covers both
-		// non-generic structs (no Elems) and generic instantiations like Box<int>
-		// vs Box<string>.
+		// non-generic structs (no Elems) and generic instantiations like Box[int]
+		// vs Box[string].
 		if !sameDecl(t, other) {
 			return false
 		}
@@ -573,7 +573,7 @@ func (t *Type) Equal(other *Type) bool {
 		}
 		return true
 	case TypeComponent:
-		// `page<P>` is the instances whose call site bound the declaration's
+		// `page[P]` is the instances whose call site bound the declaration's
 		// type parameters that way, and a handle carries what its call site
 		// bound. A bare `component` names no declaration and carries none.
 		if !sameDecl(t, other) {
@@ -648,15 +648,15 @@ func (t *Type) IsAssignableTo(target *Type) bool {
 	if t.Kind == TypeList && target.Kind == TypeList {
 		return t.Elems[0].IsAssignableTo(target.Elems[0])
 	}
-	// list<T> implicitly converts to iter<T>.
+	// list[T] implicitly converts to iter[T].
 	if t.Kind == TypeList && target.Kind == TypeIter && len(t.Elems) == 1 && len(target.Elems) == 1 {
 		return t.Elems[0].IsAssignableTo(target.Elems[0])
 	}
-	// map<K, V> → map<K', V'> where V is assignable to V' and K is
+	// map[K, V] → map<K', V'> where V is assignable to V' and K is
 	// assignable to K' under the same rules (Equal, or K' is dyn).
 	// Allowing K → dyn lets stdlib wrappers forward typed maps to
 	// intrinsics whose key types are deliberately erased (e.g. i18n's
-	// PluralKey-keyed maps → map<dyn, string> at the runtime boundary).
+	// PluralKey-keyed maps → map[dyn, string] at the runtime boundary).
 	// Concrete-key conversions (like int → string) are still rejected.
 	if t.Kind == TypeMap && target.Kind == TypeMap && len(t.Elems) == 2 && len(target.Elems) == 2 {
 		keyOK := t.Elems[0].Equal(target.Elems[0]) || target.Elems[0].Kind == TypeDyn

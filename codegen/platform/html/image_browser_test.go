@@ -27,7 +27,7 @@ component dot(r float) ui.node {
 component App() ui.node {
     var w = 5.0
     var url = "https://example.com/a.png"
-    var sizes list<float> = [4.0]
+    var sizes list[float] = [4.0]
     ui.vbox {
         dot(r=w)
         ui.image(alt="remote") {

@@ -15,9 +15,9 @@ output {
     }
 }
 
-func list<T>.second() => this[1]
+func list[T].second() => this[1]
 
-func list<T>.second[html.platform]() => this[0]
+func list[T].second[html.platform]() => this[0]
 
 var xs = [1, 2, 3]
 

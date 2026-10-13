@@ -7,7 +7,7 @@ struct Item {
 }
 
 component main node {
-    var items list<Item> = [
+    var items list[Item] = [
         {id=1, name="a"},
         {id=2, name="b"},
         {id=3, name="c"},

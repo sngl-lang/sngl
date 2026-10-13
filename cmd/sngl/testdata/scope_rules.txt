@@ -399,7 +399,7 @@ window {
 import . "sngl:ui"
 
 component main node {
-    var xs list<string> = []
+    var xs list[string] = []
     for var k, k = xs {
         text(value=k)
     }

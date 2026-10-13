@@ -154,8 +154,8 @@ func TestFormatEventParams(t *testing.T) {
 // `@change T` was a list of one shortened to its type, which a function's
 // list has no form for; it is refused naming the list.
 func TestParseEventTypeShorthand(t *testing.T) {
-	_, err := Parse("test.sngl", []byte("component c(@change map<string, int>) {}"))
-	want := `event "change" declares its parameters as a function does: @change(v map<string, int>)`
+	_, err := Parse("test.sngl", []byte("component c(@change map[string, int]) {}"))
+	want := `event "change" declares its parameters as a function does: @change(v map[string, int])`
 	if err == nil || !strings.Contains(err.Error(), want) {
 		t.Errorf("got %v, want %q", err, want)
 	}
@@ -279,28 +279,28 @@ func TestFormatLambda(t *testing.T) {
 
 func TestFormatTypeAnnotations(t *testing.T) {
 	assertFormat(t,
-		`var items list<int>`,
-		`var items list<int>`)
+		`var items list[int]`,
+		`var items list[int]`)
 }
 
 func TestFormatRefType(t *testing.T) {
-	// ref<T> reuses the generic-type grammar (NamedType{Name:"ref", TypeArgs:...}),
-	// so it should round-trip identically to list<T> / option<T>.
+	// ref[T] reuses the generic-type grammar (NamedType{Name:"ref", TypeArgs:...}),
+	// so it should round-trip identically to list[T] / option[T].
 	assertFormat(t,
-		`var counter ref<int>`,
-		`var counter ref<int>`)
+		`var counter ref[int]`,
+		`var counter ref[int]`)
 
 	assertFormat(t,
-		`var label ref<string>`,
-		`var label ref<string>`)
+		`var label ref[string]`,
+		`var label ref[string]`)
 
 	assertFormat(t,
-		`func bump(r ref<int>) => r`,
-		`func bump(r ref<int>) => r`)
+		`func bump(r ref[int]) => r`,
+		`func bump(r ref[int]) => r`)
 
 	assertFormat(t,
-		"func makeCounter() ref<int> {\n    return null\n}",
-		"func makeCounter() ref<int> {\n    return null\n}")
+		"func makeCounter() ref[int] {\n    return null\n}",
+		"func makeCounter() ref[int] {\n    return null\n}")
 }
 
 func TestFormatUnaryAddrDeref(t *testing.T) {
@@ -328,8 +328,8 @@ func TestFormatUnaryAddrDeref(t *testing.T) {
 		`const a = f(&x, *p)`)
 
 	assertFormat(t,
-		`func bump(r ref<int>) => &r`,
-		`func bump(r ref<int>) => &r`)
+		`func bump(r ref[int]) => &r`,
+		`func bump(r ref[int]) => &r`)
 }
 
 func TestFormatFuncType(t *testing.T) {
@@ -352,14 +352,14 @@ func TestFormatFuncTypeMixedParams(t *testing.T) {
 
 func TestFormatFuncTypeAnonymousGeneric(t *testing.T) {
 	assertFormat(t,
-		`var f func(list<int>) bool`,
-		`var f func(list<int>) bool`)
+		`var f func(list[int]) bool`,
+		`var f func(list[int]) bool`)
 }
 
 func TestFormatFuncTypeNamedGeneric(t *testing.T) {
 	assertFormat(t,
-		`var f func(items list<int>) bool`,
-		`var f func(items list<int>) bool`)
+		`var f func(items list[int]) bool`,
+		`var f func(items list[int]) bool`)
 }
 
 func TestFormatFuncTypeNamedQualified(t *testing.T) {
@@ -370,8 +370,8 @@ func TestFormatFuncTypeNamedQualified(t *testing.T) {
 
 func TestFormatGenericFunc(t *testing.T) {
 	assertFormat(t,
-		`func identity<T any>(x T) => x`,
-		`func identity<T any>(x T) => x`)
+		`func identity[T any](x T) => x`,
+		`func identity[T any](x T) => x`)
 }
 
 func TestFormatReturn(t *testing.T) {

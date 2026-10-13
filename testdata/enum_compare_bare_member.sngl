@@ -14,7 +14,7 @@ struct Look {
 component panel node {
     var status Status = pending
     var look = Look{weight=bold}
-    var maybe option<Status> = active
+    var maybe option[Status] = active
 
     text(value=status == pending ? "waiting" : "done")
     text(value=look.weight == bold ? "heavy" : "light")

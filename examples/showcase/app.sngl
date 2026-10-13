@@ -85,7 +85,7 @@ func factorial(n int) int {
 // is reserved for func *type* expressions (e.g. `func(int) int`).
 
 // Generic function. Type params after the name, inferred at call sites.
-func identity<T any>(x T) => x
+func identity[T any](x T) => x
 
 // Generic with constraints come from operand: `xs.map(f)` binds T from
 // xs's element type and U from f's return type.
@@ -238,19 +238,19 @@ component Tour ui.node {
     )
 
     // --- Option / null (§4) --------------------------------------
-    // `option<T>` allows null. Compare with `== null` / `!= null`.
-    var nickname option<string> = null
-    var pickedUser option<User> = null
+    // `option[T]` allows null. Compare with `== null` / `!= null`.
+    var nickname option[string] = null
+    var pickedUser option[User] = null
 
     // --- Constants inside a component ----------------------------
     const PAGE_TITLE = "Component Showcase"
 
     // --- Lists & list methods (§ — generic methods) --------------
-    var nums list<int> = [1, 2, 3, 4, 5]
-    var labels list<string> = ["alpha", "beta", "gamma"]
+    var nums list[int] = [1, 2, 3, 4, 5]
+    var labels list[string] = ["alpha", "beta", "gamma"]
 
     // --- Maps (literal disambiguated from struct by context) ----
-    var scores map<string, int> = {alice=10, bob=20, carol=30}
+    var scores map[string, int] = {alice=10, bob=20, carol=30}
 
     // --- Computed funcs: zero-arg funcs are reactive properties --
     // Reference them WITHOUT parens from interpolation or events:
@@ -269,8 +269,8 @@ component Tour ui.node {
 
     // A map has no defined iteration order, so a view body may not loop one.
     // Walk it here instead and render the list that comes back.
-    func scoreLines() list<string> {
-        var lines list<string> = []
+    func scoreLines() list[string] {
+        var lines list[string] = []
         for var k, v = scores {
             lines.push("{k} = {v}")
         }

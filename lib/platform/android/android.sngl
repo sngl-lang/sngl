@@ -53,7 +53,7 @@ component platform(
     // language's Alert intrinsic writes as text. A Compose name the screen
     // imports is not here: each is imported through the file's import set,
     // which aliases it around a program's own declaration of that name.
-    const reservedNames list<string> = [
+    const reservedNames list[string] = [
         "toast",
         "golib",
         "mainScreen",
@@ -203,7 +203,7 @@ component Screen(
 #[kt.native("Column", "androidx.compose.foundation.layout.Column")]
 component Column(
     modifier ui.Style,
-    then     list<Modifier>,
+    then     list[Modifier],
     children ...component,
 ) ui.node
 
@@ -211,7 +211,7 @@ component Column(
 #[kt.native("Box", "androidx.compose.foundation.layout.Box")]
 component Box(
     modifier ui.Style,
-    then     list<Modifier>,
+    then     list[Modifier],
     children ...component,
 ) ui.node
 
@@ -219,7 +219,7 @@ component Box(
 #[kt.native("Row", "androidx.compose.foundation.layout.Row")]
 component Row(
     modifier          ui.Style,
-    then              list<Modifier>,
+    then              list[Modifier],
     verticalAlignment VerticalAlignment,
     children          ...component,
 ) ui.node
@@ -228,7 +228,7 @@ component Row(
 #[kt.native("Spacer", "androidx.compose.foundation.layout.Spacer")]
 component Spacer(
     modifier ui.Style,
-    then     list<Modifier>,
+    then     list[Modifier],
 ) ui.node
 
 #[gen.renders(identity)]
@@ -356,11 +356,11 @@ component OutlinedTextField(
 #[gen.renders(identity)]
 #[intrinsic("android:SnglDateField")]
 component SnglDateField(
-    value         option<time.date>,
+    value         option[time.date],
     label         string,
     enabled       bool,
     modifier      ui.Style,
-    onValueChange func(value option<time.date>),
+    onValueChange func(value option[time.date]),
 ) ui.node
 
 #[gen.renders(identity)]

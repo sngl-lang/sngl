@@ -26,7 +26,7 @@ component card(#[construct] seed int, name = "") node {
 
 window {
     var (
-        names list<string> = ["a", "b"]
+        names list[string] = ["a", "b"]
         base = 0
     )
     for var nm = names {

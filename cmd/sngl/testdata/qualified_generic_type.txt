@@ -1,9 +1,9 @@
-# A qualified generic type. `Type` allowed `pkg.Name` or `Name<Args>` and never
+# A qualified generic type. `Type` allowed `pkg.Name` or `Name[Args]` and never
 # both, so a generic reached through a namespace could not be written at all —
 # and resolveQualifiedType discarded the type arguments it was handed, because
 # nothing could supply any.
 #
-# Both halves are fixed: the production admits `pkg.Name<Args>`, the builder
+# Both halves are fixed: the production admits `pkg.Name[Args]`, the builder
 # reads the arguments after the dot-ident rather than returning, and the
 # qualified path applies them the way the unqualified one does.
 #
@@ -14,21 +14,22 @@ sngl check main.sngl
 stdout 'main.sngl: ok'
 
 # A qualified type that is not generic takes no arguments. The Type production
-# only started admitting `pkg.Name<Args>` here, and resolveQualifiedType
+# only started admitting `pkg.Name[Args]` here, and resolveQualifiedType
 # discarded whatever it was handed.
 ! sngl check arity/main.sngl
 stderr 'takes no type arguments'
 
 # Still out of reach: a qualified generic in *expression* position.
-# ExprPostfixOp is `dot ident [ StructLitBody ]` with no type arguments, so
-# `b.Holder<int>{…}` reads `<` as less-than. Unrelated to the Type production.
+# ExprPostfixOp takes no struct literal after an index, so `b.Holder[int]{…}`
+# reads as an index followed by a struct literal standing as a statement of
+# its own. Unrelated to the Type production.
 ! sngl check lit/main.sngl
-stderr 'operator < not defined'
+stderr 'a value is not a statement'
 
 -- box/box.sngl --
 import ui "sngl:ui"
 
-struct Holder<T any> {
+struct Holder[T any] {
     item T
 }
 
@@ -38,7 +39,7 @@ ui.window {
 import . "sngl:ui"
 import b "box"
 
-component show(h b.Holder<int>) node {
+component show(h b.Holder[int]) node {
     text(value="holding {h.item}")
 }
 
@@ -52,7 +53,7 @@ window {
 -- lit/box/box.sngl --
 import ui "sngl:ui"
 
-struct Holder<T any> {
+struct Holder[T any] {
     item T
 }
 
@@ -63,7 +64,7 @@ import . "sngl:ui"
 import b "box"
 
 component main node {
-    var h b.Holder<int> = b.Holder<int>{item = 3}
+    var h b.Holder[int] = b.Holder[int]{item = 3}
     text(value="{h.item}")
 }
 
@@ -83,7 +84,7 @@ ui.window {
 import . "sngl:ui"
 import b "box"
 
-component show(p b.Plain<int>) node {
+component show(p b.Plain[int]) node {
     text(value="{p.n}")
 }
 

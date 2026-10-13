@@ -712,7 +712,7 @@ func checkWildcardPropType(p *ir.Prop) error {
 		if t != nil {
 			got = t.String()
 		}
-		return fmt.Errorf("a wildcard prop collects every name it matches, so it is a map keyed by that name; declare it map<string, V> rather than %s", got)
+		return fmt.Errorf("a wildcard prop collects every name it matches, so it is a map keyed by that name; declare it map[string, V] rather than %s", got)
 	}
 	return nil
 }

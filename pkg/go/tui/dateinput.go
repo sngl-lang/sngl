@@ -12,7 +12,7 @@ import (
 const dateLayout = "2006-01-02"
 
 // DateInput is sngl:ui's datepicker in a terminal: a text field a date is
-// typed into, read as the *time.Time an option<date> is in Go.
+// typed into, read as the *time.Time an option[date] is in Go.
 type DateInput struct {
 	textinput.Model
 }

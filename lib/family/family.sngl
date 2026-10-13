@@ -27,7 +27,7 @@ func eventless() ir.Macro
 func crosses() ir.Macro
 
 // Exactly one member of the family T, as a slot's content type. Bare `T`
-// accepts any number, so this is what narrows it; `option<T>` is the other
+// accepts any number, so this is what narrows it; `option[T]` is the other
 // narrowing. The count is what the population renders: an `if` with an `else`
 // rendering one node in each branch is one, and a `for` is any number.
 //
@@ -35,4 +35,4 @@ func crosses() ir.Macro
 // whatever this slot already accepts", which is the family the component
 // declaring it belongs to.
 #[marks.builtin("familyOne")]
-struct one<T any> {}
+struct one[T any] {}

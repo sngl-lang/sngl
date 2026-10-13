@@ -208,7 +208,7 @@ var orderConstraints = []orderConstraint{
 	{"NoDeclarative", "NodeEscape",
 		"the escape analysis runs over the flat `var __nN = CreateNode(...)` + `#__nN` sequence NoDeclarative emits, and there is nothing to analyse before it"},
 	{"NoDeclarative", "NoRef",
-		"NoDeclarative's handler lifter emits fresh ref<T> shapes, and NoRef is what boxes them"},
+		"NoDeclarative's handler lifter emits fresh ref[T] shapes, and NoRef is what boxes them"},
 	{"NoLambda", "NoRef",
-		"NoLambda's lifter is the other producer of ref<T>, and it seeds pkg.AddressedVars for NoRef to read"},
+		"NoLambda's lifter is the other producer of ref[T], and it seeds pkg.AddressedVars for NoRef to read"},
 }

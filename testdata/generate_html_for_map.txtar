@@ -1,4 +1,4 @@
-JS codegen for a `for` over `map<K, V>`: a map is a JS Map, so the handler's
+JS codegen for a `for` over `map[K, V]`: a map is a JS Map, so the handler's
 two-variable loop becomes a destructuring for-of over its entries().
 
 -- app.sngl --
@@ -7,7 +7,7 @@ import . "sngl:ui"
 output { none { html } }
 
 component main node {
-    var scores map<string, int> = {alice=10, bob=20}
+    var scores map[string, int] = {alice=10, bob=20}
     var total = 0
     button(text="sum", @click {
         for var k, v = scores {

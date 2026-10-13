@@ -377,7 +377,7 @@ func evalCall(call *ir.Call, ctx *evalCtx) (any, bool) {
 		}
 	}
 	// Collect argument values. An argument is consumed as a value and never
-	// rebuilt into an expression, so a T promoted to option<T> is its
+	// rebuilt into an expression, so a T promoted to option[T] is its
 	// operand's: the wrap evalConversion declines changes nothing here.
 	args := make([]any, 0, len(call.Args))
 	for _, a := range call.Args {
@@ -614,7 +614,7 @@ func evalPureGoCall(call *ir.Call, name string, ns *ir.NativeImport, args []any,
 }
 
 func evalConversion(conv *ir.Conversion, ctx *evalCtx) (any, bool) {
-	// A T promoted to option<T> is not a value change, so folding it produces
+	// A T promoted to option[T] is not a value change, so folding it produces
 	// the operand's value and the rebuilt expression is typed T again -- the
 	// wrap vanishes, and Go's *T field is assigned a T. There is nothing to
 	// gain by folding it either: the operand folds on its own.
@@ -1144,7 +1144,7 @@ func evalFileFunc(funcName, dirPath, filename string, ctx *evalCtx) (any, bool) 
 }
 
 // fileNames is file:'s names(pattern): the names in dirPath that pattern
-// matches, sorted, as the list<string> the declaration returns. A pattern
+// matches, sorted, as the list[string] the declaration returns. A pattern
 // reaching outside the directory matches nothing rather than listing a
 // directory the import was not allowed to name.
 func fileNames(dirPath, pattern string) (any, bool) {

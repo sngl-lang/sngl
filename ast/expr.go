@@ -97,12 +97,12 @@ const (
 
 // --- Type expressions ---
 
-// NamedType is a type reference: int, pkg.Type, List<int>.
+// NamedType is a type reference: int, pkg.Type, list[int].
 type NamedType struct {
 	Pos      Pos
 	Name     string     // type name
 	Package  string     // qualifier in pkg.Type (empty if unqualified)
-	TypeArgs []TypeExpr // generic arguments: List<int>, Map<string, int> (nil if not generic)
+	TypeArgs []TypeExpr // generic arguments: list[int], map[string, int] (nil if not generic)
 }
 
 // FuncTypeParam is one parameter in a func-type expression.

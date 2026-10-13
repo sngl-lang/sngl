@@ -1,6 +1,6 @@
 `progress` written with no `value` is indeterminate: a bar that says work is
 happening and not how much is left. Zero is a legitimate fraction and cannot
-double as "not known", so `value` is an `option<float>` and the absence is in
+double as "not known", so `value` is an `option[float]` and the absence is in
 the type -- which is also the only way an override can ask whether a call site
 supplied it at all.
 
@@ -25,7 +25,7 @@ takes `() -> Float`, so the intrinsic declares a func prop returning `float32`
 and the emitter writes Kotlin's anonymous-function literal -- `fun(): Float`
 states both the return type inference would have got wrong and the `return`
 a lambda cannot carry. And the fraction still folds to a constant through the
-option: `float(option<float>(2.0)) / 10.0` is 0.2 before any target sees it.
+option: `float(option[float](2.0)) / 10.0` is 0.2 before any target sees it.
 
 deny out/none/html/index.html `value=""` -- an absent value leaves the attribute off; it is not an empty one
 deny out/kotlin/android/app/src/main/java/test/sngl/app/MainScreen.kt `null` -- both call sites are settled at build time, so no null test and no nullable Double survive into Kotlin

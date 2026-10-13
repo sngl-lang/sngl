@@ -35,7 +35,7 @@ output {
 
 // Before `run` is before the loop; after it, after the loop has exited. A
 // write here is state the tree is built from, not an update to one.
-func start(args list<string>, run func()) {
+func start(args list[string], run func()) {
     print("before {args.length}\n")
     n = args.length
     if args.contains("--window") {

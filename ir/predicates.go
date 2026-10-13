@@ -25,12 +25,12 @@ func IsNullToFuncConv(n *Conversion) bool {
 }
 
 // IsOptionUnwrap reports whether a conversion is the unwrap a null test
-// earns: an option<T> read in the branch where it cannot be null, typed T.
+// earns: an option[T] read in the branch where it cannot be null, typed T.
 //
 // It is a conversion rather than a Unary{UnaryDeref} because a deref means
-// ref<T> to everything that already reads one -- passNoRef rewrites it to
+// ref[T] to everything that already reads one -- passNoRef rewrites it to
 // `.value` on a box, and the folder drops it outright when the operand is not
-// a ref. What each language emits for it differs: Go's option<T> is *T and
+// a ref. What each language emits for it differs: Go's option[T] is *T and
 // needs the star, Kotlin's is T? and needs `!!`, and JavaScript's is the value
 // itself and needs nothing.
 func IsOptionUnwrap(n *Conversion) bool {
@@ -45,7 +45,7 @@ func IsOptionUnwrap(n *Conversion) bool {
 }
 
 // IsOptionWrap reports whether a conversion is the promotion of a bare T into
-// the option<T> a declaration asked for -- the inverse of IsOptionUnwrap.
+// the option[T] a declaration asked for -- the inverse of IsOptionUnwrap.
 //
 // A null operand is not one: `null` already IS the empty option on every
 // target, and each language answers it before it reaches here. Neither is an
@@ -53,7 +53,7 @@ func IsOptionUnwrap(n *Conversion) bool {
 // promotion.
 //
 // The wrap has to survive folding and reach codegen because it is not a no-op
-// everywhere: Go's option<T> is *T, so the T needs a box. Kotlin's is T? and
+// everywhere: Go's option[T] is *T, so the T needs a box. Kotlin's is T? and
 // JavaScript's is the value itself, and both emit the operand unchanged.
 func IsOptionWrap(n *Conversion) bool {
 	if n == nil || n.Type == nil || n.Operand == nil {
@@ -192,11 +192,11 @@ func StmtPos(s Stmt) ast.Pos {
 // comparison is emitted from this same walk: a struct compares field by field,
 // so a struct whose fields all compare alike does too, and one with no fields
 // is always equal to another -- which is exactly what a bracket with no `on`
-// wants of `effect<T = struct {}>`.
+// wants of `effect[T = struct {}]`.
 //
 // A phrase rather than a bool because a struct's answer is about something the
 // type's name does not show. "struct changed is not comparable" sends a reader
-// to the wrong declaration; "list<string> (field tags of struct changed)" names
+// to the wrong declaration; "list[string] (field tags of struct changed)" names
 // the line to change.
 func RebuildIncomparable(t *Type) string {
 	bad, path := rebuildIncomparable(t, nil)
@@ -300,7 +300,7 @@ func IsHostValue(v *Var) bool {
 }
 
 // NumericListConversion reports whether a conversion re-types a list's
-// numeric elements, as widening a list<int> into a list<float> does, and
+// numeric elements, as widening a list[int] into a list[float] does, and
 // returns the two list types. A host holding each element in its own
 // representation converts element by element rather than casting the list.
 func NumericListConversion(n *Conversion) (src, dst *Type, ok bool) {

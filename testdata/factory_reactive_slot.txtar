@@ -46,7 +46,7 @@ component card(name = "") node {
 }
 
 component main node {
-    var items list<string> = ["a", "b"]
+    var items list[string] = ["a", "b"]
     for var it = items {
         card(name=it)
     }

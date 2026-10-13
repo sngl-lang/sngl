@@ -62,7 +62,7 @@ component main node {
 	if found == nil {
 		t.Fatalf("expected synthesized __slot0 var on component; got vars: %v", varSliceNames(comp.Vars))
 	}
-	// Verify the type is list<dyn>.
+	// Verify the type is list[dyn].
 	if found.Type == nil {
 		t.Errorf("__slot0 has nil Type")
 	}
@@ -121,7 +121,7 @@ func funcSliceNames(fs []*ir.Func) []string {
 func TestSynthesizeRenderSlotFunc_ForVariant(t *testing.T) {
 	src := `
 component main node {
-    var items list<int> = [1, 2, 3]
+    var items list[int] = [1, 2, 3]
     for var item = items {
         text(value=string(item))
     }
@@ -262,7 +262,7 @@ component main node {
 func TestReactiveForReplacedByCallStmt(t *testing.T) {
 	src := `
 component main node {
-    var items list<int> = [1, 2, 3]
+    var items list[int] = [1, 2, 3]
     for var item = items {
         text(value=string(item))
     }
@@ -548,7 +548,7 @@ func TestNestedReactiveCompilesCleanly(t *testing.T) {
 	src := `
 component main node {
     var visible bool = true
-    var items list<int> = [1, 2, 3]
+    var items list[int] = [1, 2, 3]
     if visible {
         for var x = items {
             text(value=x)

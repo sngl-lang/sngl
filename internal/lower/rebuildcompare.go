@@ -65,7 +65,7 @@ func rebuildCompare(a, b ir.Expr, t *ir.Type, same bool) ir.Expr {
 			}
 			if out == nil {
 				// No fields, so there is nothing two values can differ in and
-				// the bracket never restarts. `effect<T = struct {}>`'s
+				// the bracket never restarts. `effect[T = struct {}]`'s
 				// default is such a struct, though a bracket written with no
 				// `on` at all does not arrive here -- it has no key to compare
 				// and lowers over a bool instead.

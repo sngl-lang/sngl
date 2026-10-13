@@ -12,7 +12,7 @@ import (
 
 // passRefParams lowers the two parameters a call passes by reference: a
 // method's ambient `this`, which is the receiver's own value, and a
-// parameter declared `ref<T>`, which `&x` hands the caller's cell. A named
+// parameter declared `ref[T]`, which `&x` hands the caller's cell. A named
 // parameter of any other type is a value (passValueCopy).
 //
 // It is copy-in, copy-out, which no host needs telling about. A function that
@@ -107,7 +107,7 @@ func (rp *refParams) funcs() []*ir.Func {
 }
 
 // byRef reports whether a call passes p by reference: a method's ambient
-// `this`, or a `ref<T>`. A component's `this` is its instance and no value.
+// `this`, or a `ref[T]`. A component's `this` is its instance and no value.
 func byRef(p *ir.Param) bool {
 	if p == nil || p.Type == nil {
 		return false
@@ -304,7 +304,7 @@ func resultName(f *ir.Func) string {
 	return f.Name + "__result"
 }
 
-// valueType is t with a `ref<T>` taken off.
+// valueType is t with a `ref[T]` taken off.
 func valueType(t *ir.Type) *ir.Type {
 	if t != nil && t.Kind == ir.TypeRef && len(t.Elems) > 0 {
 		return t.Elems[0]

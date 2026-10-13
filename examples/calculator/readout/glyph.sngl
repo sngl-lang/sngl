@@ -90,8 +90,8 @@ func cellsWide(entry string) int {
 
 // The entry as `calc.WIDTH` cells, right-aligned the way a calculator's
 // readout is, with each point folded onto the cell to its left.
-func cells(entry string) list<Glyph> {
-    var out list<Glyph> = []
+func cells(entry string) list[Glyph] {
+    var out list[Glyph] = []
     for var ch = string.split(repeat(" ", calc.WIDTH - cellsWide(entry)) + entry, "") {
         if ch == "." && out.length() > 0 {
             out[out.length() - 1].point = true

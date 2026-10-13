@@ -31,7 +31,7 @@ const (
 	BuiltinDyn BuiltinKind = "dyn"
 	// Any is the constraint that says nothing about a type parameter. It is
 	// read like a scalar -- its name is in the universe before sngl:builtin is
-	// in scope, since sngl:family's `one<T any>` is checked first -- and is no
+	// in scope, since sngl:family's `one[T any]` is checked first -- and is no
 	// type a value may have.
 	BuiltinAny BuiltinKind = "any"
 

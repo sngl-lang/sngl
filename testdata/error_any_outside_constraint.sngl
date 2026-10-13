@@ -13,17 +13,17 @@ struct Holder {
 func keep(x any) { // ERROR(check) "`any` is a constraint, not a type: a value of any type is a dyn"
 }
 
-func wrap<T any = any>(x T) list<T> { // ERROR(check) "`any` is a constraint, not a type: a value of any type is a dyn"
+func wrap[T any = any](x T) list[T] { // ERROR(check) "`any` is a constraint, not a type: a value of any type is a dyn"
     return [x]
 }
 
-var many list<any> = [] // ERROR(check) "`any` is a constraint, not a type: a value of any type is a dyn"
+var many list[any] = [] // ERROR(check) "`any` is a constraint, not a type: a value of any type is a dyn"
 
-func only<T int>(x T) T { // ERROR(check) "a type parameter's constraint is `any`"
+func only[T int](x T) T { // ERROR(check) "a type parameter's constraint is `any`"
     return x
 }
 
-func fine<T any>(x T) T {
+func fine[T any](x T) T {
     return x
 }
 

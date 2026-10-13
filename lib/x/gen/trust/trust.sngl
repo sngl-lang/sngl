@@ -23,7 +23,7 @@ component eval() grant {}
 
 // Run a command whose arguments begin with `prefix`, where the call banned at
 // least `banFlags`.
-component command(const prefix list<string>, const banFlags list<string> = []) grant {}
+component command(const prefix list[string], const banFlags list[string] = []) grant {}
 
 // Read the environment variable `name`.
 component env(const name string) grant {}
