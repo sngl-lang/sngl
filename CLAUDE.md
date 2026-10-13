@@ -4154,6 +4154,23 @@ instantiation a generic declaration's `Elems` instead would have made
 Kotlin cannot assign between (`testdata/generic_anon_struct.sngl`,
 `error_generic_anon_struct.sngl`, `generic_anon_struct.txtar`).
 
+Four things follow from a struct having no one declaration. Its identity is
+its fields everywhere, so the intern key spells an anonymous struct inside a
+field by *its* fields rather than its address (`ir.AnonTypeKey`), or
+`{o=wrap(1)}` and `{o={v=1}}` interned two Go types, and a spread's source is
+measured with `Type.Equal` rather than by declaration. A literal the optimizer
+inlined out of a generic body keeps the type it was checked at,
+`struct { v T }`, so `passAnonStructs` retypes one whose values are concrete
+from them (`retypeLiteral`). And nothing copies a *component* per
+instantiation: one built at run time is emitted once with T erased, which
+cannot spell such a struct, so on a target without `GenericFuncs` a generic
+component elected a runtime instance with a prop naming one is refused at the
+instantiation (`refuseGenericAnonProps`,
+`cmd/sngl/testdata/generic_anon_struct_runtime_instance_refused.txt`). The
+same erasure already breaks a `list[T]` prop on fyne, whose `[]any` field
+takes no `[]int`; copying a component per instantiation is what would answer
+both.
+
 **A unit's members are its bases, and they are registered like any other
 declaration's.** A unit value is a magnitude per base (`ir/units.go`): `unit measurement { px, em, rem }` declares three bases, so a
 value carries three numbers and every backend emits it as a record of them.

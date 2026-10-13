@@ -2551,8 +2551,12 @@ func (c *checker) inferStructLit(x *ast.StructExpr) ir.Expr {
 			if sd != nil {
 				srcType := exprType(val)
 				if srcType != nil && srcType.Kind != ir.TypeDyn && srcType.Kind != ir.TypeInvalid {
+					// An anonymous struct is its fields, not its declaration: each
+					// `struct { v T }` written, and each substitution of one, is a
+					// declaration of its own.
 					srcDecl, _ := srcType.Decl.(*ir.StructDef)
-					if srcType.Kind != ir.TypeStruct || srcDecl != sd {
+					same := srcDecl == sd || sd.Anon && srcType.Equal(sd.SymType())
+					if srcType.Kind != ir.TypeStruct || !same {
 						c.error(x.Pos, "cannot spread %s into %s", srcType, structLabel(sd))
 					}
 				}

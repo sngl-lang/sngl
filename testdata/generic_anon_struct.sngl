@@ -73,6 +73,16 @@ func swap[A any, B any](p struct {
     return {a=p.b, b=p.a}
 }
 
+// A spread of one into another: the two are one type whichever declaration
+// each was written with.
+func copyOf[T any](w struct {
+    v T
+}) struct {
+    v T
+} {
+    return {...w}
+}
+
 func testAnonStruct(t Test) {
     t.assert(unwrap({v=1}) + 1 == 2)
     t.assert(unwrap({v="s"}) == "s")
@@ -92,4 +102,15 @@ func testAnonStruct(t Test) {
     var s = swap({a=1, b="one"})
     t.assert(s.a == "one")
     t.assert(s.b == 1)
+    t.assert(copyOf({v=8}).v == 8)
+    var spread struct {
+        v int
+    } = {...wrap(9)}
+    t.assert(spread.v == 9)
+    // A substituted struct inside another literal is the interned one.
+    var outer = {o=wrap(1)}
+    var plain = {o={v=1}}
+    outer = plain
+    t.assert(outer.o.v == 1)
+    t.assert(wrap(1) == {v=1})
 }

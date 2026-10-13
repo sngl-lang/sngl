@@ -23,6 +23,17 @@ var a = unwrap[int]({v="s"}) // ERROR(check) "cannot use string as int for field
 // A missing field.
 var b = unwrap({w=1}) // ERROR(check) "unknown field \"w\" on struct { v T }"
 
+// A spread of a struct with other fields.
+func wrap[T any](x T) struct {
+    v T
+} {
+    return {v=x}
+}
+
+var d struct {
+    w int
+} = {...wrap(1)} // ERROR(check) "cannot spread struct { v int } into struct { w int }"
+
 // Two arguments binding T two ways.
 var c = pair({v=1}, {v="s"}) // ERROR(check) "cannot use"
 

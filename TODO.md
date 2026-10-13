@@ -286,3 +286,15 @@ The callers, against that choice:
 - [X] `sngl dump --stage checked` round-trips it
   (`cmd/sngl/testdata/type_param_constraint_roundtrip.txt`).
 - [X] Spec, effective-sngl, CLAUDE.md.
+
+Found in review, each with a fixture that fails without its fix:
+
+- [X] The intern key spelled a substituted struct inside a field by its
+  address, so `{o=wrap(1)}` and `{o={v=1}}` interned two types.
+- [X] A literal inlined out of a generic body kept `struct { v T }`.
+- [X] A spread compared declarations, which `struct { v T }` no longer shares.
+- [X] A generic component built at run time with such a prop emitted an empty
+  type on Kotlin and an erased one on fyne; refused with a position.
+- [X] `==` folded two equal struct literals to false (pointer identity), and
+  now compares structs and lists field by field
+  (`testdata/optimize_struct_eq_fold.sngl`).

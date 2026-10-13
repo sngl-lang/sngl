@@ -2,13 +2,16 @@ An anonymous struct naming a type parameter is substituted with the parameter:
 Go and Kotlin copy each generic function and struct per instantiation, and each
 copy's `struct { v T }` is the package's one `struct { v int }`, declared once
 beside the literal's. JavaScript keeps the generic function and reads a
-property.
+property. A literal inlined out of `held` into another literal is typed by its
+values, and the struct holding it is the one `{o={v=1}}` has, so assigning one
+to the other compiles.
 
 deny out/go/bubbletea/model.go `\bany\b` -- every copy's struct is concrete
 deny out/go/bubbletea/model.go `\bT\b` -- no struct field names a type parameter
 deny out/kotlin/android/app/src/main/java/test/sngl/app/MainScreen.kt `\bAny\b` -- every copy's struct is concrete
 deny out/kotlin/android/app/src/main/java/test/sngl/app/MainScreen.kt `: T\b` -- no struct field names a type parameter
 deny out/none/html/index.html `unwrap__` -- JavaScript keeps the one generic function
+deny out/go/bubbletea/model.go `__anon_o_\w+_2` -- a struct holding a substituted one is the package's one declaration
 
 -- app.sngl --
 import ui "sngl:ui"
@@ -62,11 +65,17 @@ func Box[T].get() T {
 }
 
 var box = Box[int]{inner={v=5}, all=[{v=6}]}
+// A call inlined into another literal, and that literal's interned twin.
+func held[T any](x T) => {v=x}
+
+var outer = {o=held(1)}
+var plain = {o={v=1}}
 
 ui.window(title="t") {
-    ui.text(value="{unwrap({v=1}) + 1} {unwrap(wrap("w"))} {box.get()} {box.all[0].v}")
+    ui.text(value="{unwrap({v=1}) + 1} {unwrap(wrap("w"))} {box.get()} {box.all[0].v} {outer.o.v}")
     ui.button(text="go", @click {
-        box = Box[int]{inner=wrap(n), all=[]}
+        box = Box[int]{inner={...wrap(n)}, all=[]}
+        outer = plain
         n = n + 1
     })
 }
@@ -82,9 +91,20 @@ import (
 	"os"
 )
 
+func __merge___anon_v_853006(base, ov __anon_v_853006) __anon_v_853006 {
+	if ov.V != 0 {
+		base.V = ov.V
+	}
+	return base
+}
+
 type Box__int struct {
 	Inner __anon_v_853006
 	All   []__anon_v_853006
+}
+
+type __anon_o_0931c3 struct {
+	O __anon_v_853006
 }
 
 type __anon_v_853006 struct {
@@ -99,6 +119,8 @@ type __anon_v_ba918a struct {
 type Model struct {
 	n              int
 	box            Box__int
+	outer          __anon_o_0931c3
+	plain          __anon_o_0931c3
 	visible__inst0 bool
 	__focusID      int
 
@@ -110,6 +132,8 @@ func New() Model {
 	m := Model{}
 	m.n = 1
 	m.box = Box__int{Inner: __anon_v_853006{V: 5}, All: []__anon_v_853006{__anon_v_853006{V: 6}}}
+	m.outer = __anon_o_0931c3{O: __anon_v_853006{V: 1}}
+	m.plain = __anon_o_0931c3{O: __anon_v_853006{V: 1}}
 	m.visible__inst0 = true
 	m.__focusID = 0
 	return m
@@ -198,6 +222,36 @@ func SetBoxCmd(v Box__int) tea.Cmd {
 	return func() tea.Msg { return setBoxMsg{value: v} }
 }
 
+func (m Model) Outer() __anon_o_0931c3 {
+	return m.outer
+}
+
+func (m Model) SetOuter(v __anon_o_0931c3) Model {
+	m.outer = v
+	return m
+}
+
+type setOuterMsg struct{ value __anon_o_0931c3 }
+
+func SetOuterCmd(v __anon_o_0931c3) tea.Cmd {
+	return func() tea.Msg { return setOuterMsg{value: v} }
+}
+
+func (m Model) Plain() __anon_o_0931c3 {
+	return m.plain
+}
+
+func (m Model) SetPlain(v __anon_o_0931c3) Model {
+	m.plain = v
+	return m
+}
+
+type setPlainMsg struct{ value __anon_o_0931c3 }
+
+func SetPlainCmd(v __anon_o_0931c3) tea.Cmd {
+	return func() tea.Msg { return setPlainMsg{value: v} }
+}
+
 func (m Model) Visible__inst0() bool {
 	return m.visible__inst0
 }
@@ -226,6 +280,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m = m.SetN(msg.value)
 	case setBoxMsg:
 		m = m.SetBox(msg.value)
+	case setOuterMsg:
+		m = m.SetOuter(msg.value)
+	case setPlainMsg:
+		m = m.SetPlain(msg.value)
 	case setVisible__inst0Msg:
 		m = m.SetVisible__inst0(msg.value)
 	case tea.WindowSizeMsg:
@@ -246,7 +304,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case msg.Code == tea.KeyTab && msg.Mod == tea.ModShift:
 			m.__focusPrev()
 		case msg.Code == tea.KeyEnter && m.__focusID == 0:
-			m.box = Box__int{Inner: m.wrap__int(m.n), All: []__anon_v_853006{}}
+			m.box = Box__int{Inner: __merge___anon_v_853006(__anon_v_853006{}, m.wrap__int(m.n)), All: []__anon_v_853006{}}
+			m.outer = m.plain
 			m.n = (m.n + 1)
 		}
 	}
@@ -258,7 +317,7 @@ func (m Model) View() tea.View {
 	if m.visible__inst0 {
 		var contentParts []string
 		var contentPart_0 string
-		contentPart_0 = lipgloss.NewStyle().Render(fmt.Sprint(((((((fmt.Sprint((m.unwrap__int(__anon_v_853006{V: 1}) + 1)) + " ") + m.unwrap__string(m.wrap__string("w"))) + " ") + fmt.Sprint(Box__intGet__int(m.box, &m))) + " ") + fmt.Sprint(m.box.All[0].V))))
+		contentPart_0 = lipgloss.NewStyle().Render(fmt.Sprint(((((((((fmt.Sprint((m.unwrap__int(__anon_v_853006{V: 1}) + 1)) + " ") + m.unwrap__string(m.wrap__string("w"))) + " ") + fmt.Sprint(Box__intGet__int(m.box, &m))) + " ") + fmt.Sprint(m.box.All[0].V)) + " ") + fmt.Sprint(m.outer.O.V))))
 		contentParts = append(contentParts, contentPart_0)
 		var contentPart_1 string
 		contentPart_1Focused := (m.__focusID == 0)
@@ -308,6 +367,10 @@ data class Box__int(
     var all: List<__anon_v_853006> = listOf()
 )
 
+data class __anon_o_0931c3(
+    var o: __anon_v_853006 = __anon_v_853006()
+)
+
 data class __anon_v_853006(
     var v: Int = 0
 )
@@ -322,11 +385,18 @@ fun _snglFloatStr(v: Double): String =
 fun _snglSplit(s: String, sep: String): List<String> =
     if (sep.isEmpty()) s.map { it.toString() } else s.split(sep)
 
+fun __merge___anon_v_853006(base: __anon_v_853006, ov: __anon_v_853006): __anon_v_853006 =
+    base.copy(
+        v = if (ov.v != 0) ov.v else base.v,
+    )
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen() {
     var n by remember { mutableStateOf(1) }
     var box by remember { mutableStateOf(Box__int(inner = __anon_v_853006(v = 5), all = listOf(__anon_v_853006(v = 6)))) }
+    var outer by remember { mutableStateOf(__anon_o_0931c3(o = __anon_v_853006(v = 1))) }
+    var plain by remember { mutableStateOf(__anon_o_0931c3(o = __anon_v_853006(v = 1))) }
     var visible__inst0 by remember { mutableStateOf(true) }
 
 
@@ -378,9 +448,10 @@ fun MainScreen() {
             }
         }
         Column {
-            Text(text = (((((((unwrap__int(__anon_v_853006(v = 1)) + 1).toString() + " ") + unwrap__string(wrap__string("w"))) + " ") + Box__int_get__int(box).toString()) + " ") + box.all[0].v.toString()), modifier = Modifier.safeDrawingPadding())
+            Text(text = (((((((((unwrap__int(__anon_v_853006(v = 1)) + 1).toString() + " ") + unwrap__string(wrap__string("w"))) + " ") + Box__int_get__int(box).toString()) + " ") + box.all[0].v.toString()) + " ") + outer.o.v.toString()), modifier = Modifier.safeDrawingPadding())
             Button(onClick = {
-                box = Box__int(inner = (wrap__int(n)).copy(), all = listOf<__anon_v_853006>())
+                box = Box__int(inner = __merge___anon_v_853006(__anon_v_853006(), (wrap__int(n)).copy()), all = listOf<__anon_v_853006>())
+                outer = plain.let { _s1 -> _s1.copy(o = _s1.o.copy()) }
                 n = (n + 1)
             }, modifier = Modifier.safeDrawingPadding()) {
                 Text(text = "go", modifier = Modifier)
@@ -411,8 +482,15 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { n: 1, box: null, visible__inst0: true };
+  var state = { n: 1, box: null, outer: null, plain: null, visible__inst0: true };
   state.box = { inner: { v: 5 }, all: [{ v: 6 }] };
+  state.outer = { o: { v: 1 } };
+  state.plain = { o: { v: 1 } };
+  function __merge___anon_v_853006(base, ov) {
+    const r = { ...base };
+    if (ov.v != null) r.v = ov.v;
+    return r;
+  }
   function unwrap(w) {
     if (state.n < 0) {
       ;
@@ -443,21 +521,23 @@ body { font-family: system-ui, sans-serif; }
   var $0 = document.getElementById("$0");
   var __n1 = document.querySelector('[data-sngl-id="__n1"]');
   $0.addEventListener("click", function() {
-    state.box = { inner: { ...wrap(state.n) }, all: [] };
-    __n1.textContent = String(unwrap({ v: 1 }) + 1) + " " + unwrap(wrap("w")) + " " + String(Box_get(state.box)) + " " + String(state.box.all[0].v);
+    state.box = { inner: __merge___anon_v_853006({}, { ...wrap(state.n) }), all: [] };
+    __n1.textContent = String(unwrap({ v: 1 }) + 1) + " " + unwrap(wrap("w")) + " " + String(Box_get(state.box)) + " " + String(state.box.all[0].v) + " " + String(state.outer.o.v);
+    state.outer = ((_s1) => ({ ..._s1, o: { ..._s1.o } }))(state.plain);
+    __n1.textContent = String(unwrap({ v: 1 }) + 1) + " " + unwrap(wrap("w")) + " " + String(Box_get(state.box)) + " " + String(state.box.all[0].v) + " " + String(state.outer.o.v);
     state.n = state.n + 1;
-    __n1.textContent = String(unwrap({ v: 1 }) + 1) + " " + unwrap(wrap("w")) + " " + String(Box_get(state.box)) + " " + String(state.box.all[0].v);
+    __n1.textContent = String(unwrap({ v: 1 }) + 1) + " " + unwrap(wrap("w")) + " " + String(Box_get(state.box)) + " " + String(state.box.all[0].v) + " " + String(state.outer.o.v);
   });
   function __sngl_init() {
-    __n1.textContent = String(unwrap({ v: 1 }) + 1) + " " + unwrap(wrap("w")) + " " + String(Box_get(state.box)) + " " + String(state.box.all[0].v);
+    __n1.textContent = String(unwrap({ v: 1 }) + 1) + " " + unwrap(wrap("w")) + " " + String(Box_get(state.box)) + " " + String(state.box.all[0].v) + " " + String(state.outer.o.v);
   }
   __sngl_init();
 })();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:d0a96c6cb7af71abfc95b7282dabf0b3
+pass sha256:c7f23f54c7809305481a7867e2904cb8
 -- run/kotlin/android --
-pass sha256:c47caef961990f24dee506eea338e0c0
+pass sha256:208e7f3ee34780726ebc8494126d3335
 -- run/none/html --
-pass sha256:ef8f9c1152fccf6954da61c4183113ef
+pass sha256:c2d00a34bca2af09f783925befe051c2

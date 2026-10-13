@@ -39,7 +39,7 @@ func lowerInlineComponents(pkg *ir.Package, feats Features, opts Options) error 
 	for _, c := range pkg.Components {
 		onList[c] = true
 	}
-	st := &inlineCompState{pkg: pkg, main: main, cycles: cycles, reactive: reactive, platform: opts.Platform, instanceState: feats.InstanceState, onList: onList, names: namesOrOwn(opts.names), demoted: map[*ir.Func]bool{}, cells: map[*ir.Var][]*ir.Var{}, methods: map[*ir.Var]map[*ir.Func][]*ir.Func{}}
+	st := &inlineCompState{pkg: pkg, main: main, cycles: cycles, reactive: reactive, platform: opts.Platform, instanceState: feats.InstanceState, genericFuncs: feats.GenericFuncs, onList: onList, names: namesOrOwn(opts.names), demoted: map[*ir.Func]bool{}, cells: map[*ir.Var][]*ir.Var{}, methods: map[*ir.Var]map[*ir.Func][]*ir.Func{}}
 	cellOwners := implicitCellOwners(pkg)
 	st.reach = testReachRoots(pkg, main, opts)
 	if err := st.run(); err != nil {
@@ -344,6 +344,9 @@ type inlineCompState struct {
 	// instanceState is Features.InstanceState: whether a component built at run
 	// time keeps its own state on this target.
 	instanceState bool
+	// genericFuncs is Features.GenericFuncs: whether the target emits a
+	// generic declaration once for every instantiation.
+	genericFuncs bool
 	// names is passInlinePure's as well; see Options.names.
 	names renamer
 	// demoted is the clones dropReceiver made receiverless, so the call sites
@@ -492,6 +495,48 @@ func (st *inlineCompState) run() error {
 		return st.refuseCanvasInCycles()
 	}
 	return nil
+}
+
+// refuseGenericAnonProps refuses a component built at run time whose prop is
+// an anonymous struct naming one of its type parameters, on a target that
+// copies a generic per instantiation: nothing copies a component, so its one
+// declaration erases T, and the struct an instantiation hands it -- the
+// package's `struct { v int }` -- is a different host type from the erased
+// one. Spliced, the component's body is the instantiation's and needs no
+// declaration.
+func (st *inlineCompState) refuseGenericAnonProps(n *ir.NodeInst) error {
+	if st.genericFuncs || n.Component == nil || len(n.Component.TypeParams) == 0 {
+		return nil
+	}
+	for _, p := range n.Component.Props {
+		if p != nil && namesGenericAnon(p.Type) {
+			return fmt.Errorf("%s: %q is built while the program runs here, and its prop %q is %s, an anonymous struct naming a type parameter; this target emits such a component once with its type parameters erased, which cannot spell that struct -- give the prop a concrete type, or render %q where it is spliced (outside a loop, with no state of its own)", nodePos(n), n.Component.Name, p.Name, p.Type, n.Component.Name)
+		}
+	}
+	return nil
+}
+
+// namesGenericAnon reports whether t holds an anonymous struct that names a
+// type parameter.
+func namesGenericAnon(t *ir.Type) bool {
+	if t == nil {
+		return false
+	}
+	if sd := ir.AnonStructDef(t); sd != nil && ir.IsUninternedAnon(sd) && t.HasTypeParam() {
+		return true
+	}
+	if slices.ContainsFunc(t.Elems, namesGenericAnon) {
+		return true
+	}
+	if t.Sig != nil {
+		for _, p := range t.Sig.Params {
+			if namesGenericAnon(p.Type) {
+				return true
+			}
+		}
+		return namesGenericAnon(t.Sig.Return)
+	}
+	return false
 }
 
 // refuseCanvasInCycles: a canvas's surface and kitty image are kept per copy
@@ -969,6 +1014,9 @@ func (st *inlineCompState) inlineStmtCtx(s ir.Stmt, rc reactiveCtx) ([]ir.Stmt, 
 		// const iterable cannot change says how many copies there are, not
 		// that they may share state.
 		if st.captureOnly == nil && n.Component != nil && (rc.perCopy(n.Component) || st.cycles[n.Component]) {
+			if err := st.refuseGenericAnonProps(n); err != nil {
+				return nil, false, err
+			}
 			st.keep[n.Component] = true
 			// The one place that knows: this instantiation is built while the
 			// program runs, so the declaration needs a runtime of its own.

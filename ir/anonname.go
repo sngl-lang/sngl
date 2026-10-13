@@ -45,6 +45,19 @@ func writeDeclIDs(b *strings.Builder, t *Type, exact bool) {
 	if t == nil {
 		return
 	}
+	// An anonymous struct is its fields: keyed by its address, the
+	// `struct { v int }` a substitution made and the one `{v=1}` interned
+	// would key two declarations of one type. Its fields' own declarations
+	// are what tell it apart, and String() has already spelled the rest.
+	if sd := AnonStructDef(t); sd != nil && exact {
+		b.WriteString("@{")
+		for _, f := range sd.Fields {
+			writeDeclIDs(b, f.Type, exact)
+			b.WriteString(";")
+		}
+		b.WriteString("}")
+		return
+	}
 	if id, ok := declID(t.Decl, exact); ok {
 		b.WriteString("@")
 		b.WriteString(id)

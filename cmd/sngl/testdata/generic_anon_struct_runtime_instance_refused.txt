@@ -1,0 +1,38 @@
+# A component built at run time whose prop is an anonymous struct naming one
+# of its type parameters is refused, with a position, on a target that copies
+# a generic per instantiation.
+#
+# Nothing copies a component, so fyne and android emit the one declaration
+# with T erased, and the struct each instantiation hands it is the package's
+# `struct { v int }`, a different host type: Kotlin wrote `fun Show(w: )`,
+# and fyne's literal did not compile against the erased field.
+#
+# html keeps the generic, and bubbletea splices a stateful component per copy,
+# so neither builds the component at run time and both generate it.
+
+! sngl generate --lang go --platform fyne --out out app.sngl
+stderr 'app.sngl:14:13: "show" is built while the program runs here, and its prop "w" is struct \{ v T \}'
+
+! sngl generate --lang kotlin --platform android --out out2 app.sngl
+stderr 'app.sngl:14:13: "show" is built while the program runs here'
+
+sngl generate --platform html --out out3 app.sngl
+sngl generate --lang go --platform bubbletea --out out4 app.sngl
+
+-- app.sngl --
+import ui "sngl:ui"
+
+component show[T any](w struct {
+    v T
+}) {
+    var hits = 0
+    ui.button(text="{hits}", @click { hits = hits + 1 })
+}
+
+var items = [1, 2]
+
+ui.window(title="x") {
+    for var i = items {
+        show(w={v=i})
+    }
+}
