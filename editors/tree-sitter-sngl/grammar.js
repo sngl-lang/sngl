@@ -36,7 +36,6 @@ module.exports = grammar({
     [$._expression, $.visual_node, $.struct_literal],
     [$.func_name, $.type_identifier],
     [$.func_name],
-    [$.receiver_type_params, $.type_identifier],
     [$.statement_block, $.struct_literal],
     [$.statement_block, $.anon_struct_literal],
     [$.method_expression, $.field_expression],
@@ -134,7 +133,7 @@ module.exports = grammar({
     ),
 
     func_declaration: ($) =>
-      seq(optional("const"), "func", $.func_name, optional($.type_param_list), $._func_tail),
+      seq(optional("const"), "func", $.func_name, optional($.type_param_list), optional($.override_target), $._func_tail),
 
     _func_tail: ($) =>
       choice(
@@ -155,12 +154,18 @@ module.exports = grammar({
     ),
 
     // A receiver's list restates the receiver's names, with no constraints:
-    // `func list<T>.map<U any>`.
+    // `func list[T].map[U any]`.
     receiver_type_params: ($) =>
-      seq("<", $.identifier, repeat(seq(",", $.identifier)), ">"),
+      seq("[", $.identifier, repeat(seq(",", $.identifier)), "]"),
 
     type_param_list: ($) =>
-      seq("<", $.type_param, repeat(seq(",", $.type_param)), ">"),
+      seq("[", $.type_param, repeat(seq(",", $.type_param)), "]"),
+
+    // The target an override implements, in the bracket after the name it
+    // overrides: `component ui.vbox[platform]`, `func f[html.platform]`. A
+    // type parameter names a constraint, which is what tells the two apart.
+    override_target: ($) =>
+      seq("[", field("target", $.identifier), optional(seq(".", field("target", $.identifier))), "]"),
 
     // Every declared type parameter names a constraint, `any` when it says
     // nothing, and may carry a default.
@@ -206,8 +211,10 @@ module.exports = grammar({
       prec.right(seq(
       optional("const"),
       "component",
+      optional(seq(field("namespace", $.identifier), ".")),
       field("name", $.identifier),
       optional($.type_param_list),
+      optional($.override_target),
       optional(seq("(", optional($._param_list), ")")),
       optional($.type_identifier),
       optional($.statement_block)
@@ -331,13 +338,15 @@ module.exports = grammar({
 
     type_identifier: ($) =>
       choice(
-      seq(
+      // A bracket right after a type is read as its arguments, as the
+      // compiler's grammar reads it.
+      prec.right(seq(
         $.identifier,
         optional(choice(
-        seq(".", $.identifier),
-        seq("<", $._type_list, ">")
+        seq(".", $.identifier, optional($.type_arguments)),
+        $.type_arguments
       ))
-      ),
+      )),
       // A slot's type. The parenthesised list is what the slot is invoked
       // with; the trailing type is the tree it accepts. Parens are optional on
       // both keyword forms, which is unambiguous because "(" cannot begin a
@@ -362,6 +371,9 @@ module.exports = grammar({
     // `...T` — a count bound written as a type prefix. On a slot it is the
     // children a caller writes bare.
     variadic_type: ($) => prec.right(seq("...", $.type_identifier)),
+
+    type_arguments: ($) =>
+      seq("[", $._type_list, "]"),
 
     _type_list: ($) =>
       seq($.type_identifier, repeat(seq(",", $.type_identifier))),

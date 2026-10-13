@@ -260,19 +260,19 @@ const component badge(const tag string) {
 Type parameters name a constraint
 ================
 
-struct Box<T any = int> {
+struct Box[T any = int] {
     value T
 }
 
-func first<T any>(xs list<T>) T {
+func first[T any](xs list[T]) T {
     return xs[0]
 }
 
-func map<K, V>.pick<A any>(a A) A {
+func map[K, V].pick[A any](a A) A {
     return a
 }
 
-component pair<T any, F any>(a T, b T) F {
+component pair[T any, F any](a T, b T) F {
 }
 
 ---
@@ -303,8 +303,9 @@ component pair<T any, F any>(a T, b T) F {
       (identifier)
       (type_identifier
         (identifier)
-        (type_identifier
-          (identifier))))
+        (type_arguments
+          (type_identifier
+            (identifier)))))
     (type_identifier
       (identifier))
     (statement_block
@@ -353,5 +354,45 @@ component pair<T any, F any>(a T, b T) F {
       (type_identifier
         (identifier)))
     (type_identifier
+      (identifier))
+    (statement_block)))
+
+================
+An override names its target in the bracket after the name
+================
+
+component ui.vbox[platform] {
+}
+
+func f[html.platform]() {
+}
+
+func list[T].second[html.platform]() {
+}
+
+---
+
+(source_file
+  (component_declaration
+    (identifier)
+    (identifier)
+    (override_target
+      (identifier))
+    (statement_block))
+  (func_declaration
+    (func_name
+      (identifier))
+    (override_target
+      (identifier)
+      (identifier))
+    (statement_block))
+  (func_declaration
+    (func_name
+      (identifier)
+      (receiver_type_params
+        (identifier))
+      (identifier))
+    (override_target
+      (identifier)
       (identifier))
     (statement_block)))

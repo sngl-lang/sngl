@@ -496,6 +496,16 @@
             "named": true
           }
         ]
+      },
+      "namespace": {
+        "multiple": false,
+        "required": false,
+        "types": [
+          {
+            "type": "identifier",
+            "named": true
+          }
+        ]
       }
     },
     "children": {
@@ -504,6 +514,10 @@
       "types": [
         {
           "type": "func_param",
+          "named": true
+        },
+        {
+          "type": "override_target",
           "named": true
         },
         {
@@ -735,6 +749,10 @@
         },
         {
           "type": "func_param",
+          "named": true
+        },
+        {
+          "type": "override_target",
           "named": true
         },
         {
@@ -1007,6 +1025,22 @@
         "types": [
           {
             "type": "_expression",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "override_target",
+    "named": true,
+    "fields": {
+      "target": {
+        "multiple": true,
+        "required": true,
+        "types": [
+          {
+            "type": "identifier",
             "named": true
           }
         ]
@@ -1302,6 +1336,21 @@
     }
   },
   {
+    "type": "type_arguments",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": true,
+      "required": true,
+      "types": [
+        {
+          "type": "type_identifier",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
     "type": "type_identifier",
     "named": true,
     "fields": {},
@@ -1319,6 +1368,10 @@
         },
         {
           "type": "identifier",
+          "named": true
+        },
+        {
+          "type": "type_arguments",
           "named": true
         },
         {

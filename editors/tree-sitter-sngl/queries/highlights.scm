@@ -41,6 +41,11 @@
 (type_param name: (identifier) @type.parameter)
 (receiver_type_params (identifier) @type.parameter)
 
+; The target an override implements, and the namespace an override's name is
+; read through.
+(override_target target: (identifier) @module)
+(component_declaration namespace: (identifier) @module)
+
 ; Struct fields: use name: field label for the field name.
 (struct_field name: (identifier) @property)
 

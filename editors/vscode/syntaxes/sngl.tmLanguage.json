@@ -51,8 +51,8 @@
       }
     },
     "type-parameters": {
-      "comment": "A declared type parameter names its constraint: <T any>, <T any = int>.",
-      "match": "(?<=[<,])\\s*([A-Za-z_][A-Za-z0-9_]*)\\s+(any)\\b(?=\\s*[,>=])",
+      "comment": "A declared type parameter names its constraint: [T any], [T any = int].",
+      "match": "(?<=[\\[,])\\s*([A-Za-z_][A-Za-z0-9_]*)\\s+(any)\\b(?=\\s*[,\\]=])",
       "captures": {
         "1": { "name": "entity.name.type.parameter.sngl" },
         "2": { "name": "support.type.constraint.sngl" }
