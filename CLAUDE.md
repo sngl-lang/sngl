@@ -939,7 +939,7 @@ leaving every reader finding nothing. A method is found by its intrinsic id
 declaration (`NodeInst.RestPopulation`), never by the name either is written
 under.
 
-`internal/checker/stdlib.go` parses the library at startup. User declarations shadow stdlib ones. Platform-specific component implementations live in that platform's own package; its source imports the stdlib under an alias and overrides through it (`import ui "sngl:ui"` + `component ui.vbox`), and the prefix is that alias, not a fixed name. The override names the target it implements by the package's own build-target node, unqualified — `component ui.vbox[platform]`, not `[android.platform]`: inside the package that declares it, saying the package name would say it twice. A program outside the package writes the qualified form, `[html.platform]`, because that is how the node reaches it.
+`internal/checker/stdlib.go` parses the library at startup. User declarations shadow stdlib ones. Platform-specific component implementations live in that platform's own package; its source imports the stdlib under an alias and overrides through it (`import ui "sngl:ui"` + `component ui.vbox`), and the prefix is that alias, not a fixed name. The override names the target it implements by the package's own build-target node, unqualified — `component[platform] ui.vbox`, not `[android.platform]`: inside the package that declares it, saying the package name would say it twice. A program outside the package writes the qualified form, `[html.platform]`, because that is how the node reaches it. The target is written between the keyword and the name -- `component[platform] ui.vbox`, `func[html.platform] greeting`, `const component[language] shapes.rect` -- where `lbracket` can mean nothing else, so a bracket after a declaration's name is left free for a type parameter list.
 
 **A target is its build-target node.** A platform package declares `#[gen.name("html")] component platform(…) build.platform`, a language package `component language(…) build.language`: the node is named for its tier by convention only -- it is found by its family and its mark (`ir.TargetNodeOf`) -- and `#[gen.name]` is the string the CLI, the Go registry and an `output` block's bare `html` match on (`ir.TargetNode`, `GenCaps.TargetName`). The same declaration is the option schema, carries the `#[gen.can]` marks and is the identity: `[platform]` and `[html.platform]` resolve to it (`resolveTargetIndex`), and read as a value it is a value of its family, `build.platform` -- the type `PLATFORM` is declared with (`targetValueType`) -- folding to its name in the optimizer and the interpreter, so `PLATFORM == html.platform` is unchanged. There used to be a generated `const platform = "html"` mounted into every target package (`identityDoc`, `#[macro.identity]`), a second declaration that could disagree with the first. A build-target node without the mark is an error, as is the mark anywhere else, and so is a name another node of the same tier carries (`reportTargetNames`, run last over every loaded package, library nodes ahead of the program's so the program's is the one reported) or a target package's node naming anything but its own package: `none` may be both a language and a platform, and nothing else may be two things. Diagnostics name a node by `Component.DisplayName`, its target name, since every platform's node is called `platform`.
 
@@ -1267,7 +1267,7 @@ enums and units.
 
 **A family may be generated rather than rendered.** A target overrides the
 family itself with a `gen.emit` as the override's whole body --
-`component block[go.language] { gen.emit(file="blocks.txt", open=…, close=…) }`
+`component[go.language] block { gen.emit(file="blocks.txt", open=…, close=…) }`
 -- and each bodyless member it reaches overrides itself with a `gen.node`
 (`open`/`close` templates, evaluated with the member's props bound). A bodyless
 *host*, a component whose rest slot takes the family (`ir.EmittedFamily`), is
@@ -2237,7 +2237,7 @@ declaration itself. Two things about the name that are easy to get wrong:
   type* ever showed: the checker synthesizes `return <zero>` for a bodyless
   func, and a void one got an empty block that every Go emitter's
   `len(fn.Block) == 0` guard already skipped. Nor is one overridden: no target
-  emits its declaration, so `func ToUpper[bubbletea.platform]` over
+  emits its declaration, so `func[bubbletea.platform] ToUpper` over
   `go:strings` is refused where it is written rather than checked and never
   run.
 - **`method` says the identifier is invoked *on* its first argument** rather

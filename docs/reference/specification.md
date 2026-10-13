@@ -955,7 +955,7 @@ already implies.
 <!-- BEGIN GENERATED: grammar-functions -->
 
 ```ebnf
-FuncDecl = "func" FuncName [ TargetIndex ] FuncTail
+FuncDecl = "func" [ TargetIndex ] FuncName [ TargetIndex ] FuncTail
 
 FuncTail = 
     "(" [ ParamList ] ")" FuncBodyTail
@@ -1532,7 +1532,7 @@ A **component** is a reusable, parameterized fragment of user interface.
 <!-- BEGIN GENERATED: grammar-components -->
 
 ```ebnf
-ComponentDecl = "component" IDENT [ "." IDENT ] [ TypeParamList ] [ TargetIndex ] [ "(" [ ParamList ] ")" ] [ Type ] [ StmtBlock ]
+ComponentDecl = "component" [ TargetIndex ] IDENT [ "." IDENT ] [ TypeParamList ] [ TargetIndex ] [ "(" [ ParamList ] ")" ] [ Type ] [ StmtBlock ]
 
 ```
 
@@ -1559,10 +1559,10 @@ per-target override (see [Target-dependent code](#target-dependent-code));
 it. An override may not itself be bodyless, since an override *is* the body a
 target renders.
 
-The dotted name and the bracketed index, `component ui.text[html.platform](…)`,
-are the override form: the name is the declaration being overridden, reached
-through an import alias when it lives in another package, and the index is
-the target the override is for.
+The bracketed target and the dotted name, `component[html.platform] ui.text(…)`,
+are the override form: the bracket after the keyword is the target the
+override is for, and the name is the declaration being overridden, reached
+through an import alias when it lives in another package.
 
 A component written in another component's body is scoped to that body, and
 its body sees the enclosing body's props, variables and functions; a write it
@@ -2284,9 +2284,10 @@ if PLATFORM == html.platform {
 }
 ```
 
-**A per-target override.** A function or component declaration indexed by a
-target identity is that target's body for the declaration of the same name,
-used in place of the unindexed one when building for that target:
+**A per-target override.** A function or component declaration naming a
+target identity in brackets after its keyword is that target's body for the
+declaration of the same name, used in place of the one naming none when
+building for that target:
 
 ```sngl
 import html "sngl:platform/html"
@@ -2294,11 +2295,11 @@ import ui "sngl:ui"
 
 func greeting() => "hello"
 
-func greeting[html.platform]() => "hello, web"
+func[html.platform] greeting() => "hello, web"
 
 component badge(label string) ui.node
 
-component badge[html.platform](label) {
+component[html.platform] badge(label) {
     html.span {
         ui.text(value=label)
     }
@@ -2432,7 +2433,7 @@ VarHandler = "@" IDENT [ "(" [ ParamList ] ")" ] StmtBlock
 ```
 
 ```ebnf
-FuncDecl = "func" FuncName [ TargetIndex ] FuncTail
+FuncDecl = "func" [ TargetIndex ] FuncName [ TargetIndex ] FuncTail
 
 FuncTail = 
     "(" [ ParamList ] ")" FuncBodyTail
@@ -2457,7 +2458,7 @@ EventParams = "(" [ ParamList ] ")"
 ```
 
 ```ebnf
-ComponentDecl = "component" IDENT [ "." IDENT ] [ TypeParamList ] [ TargetIndex ] [ "(" [ ParamList ] ")" ] [ Type ] [ StmtBlock ]
+ComponentDecl = "component" [ TargetIndex ] IDENT [ "." IDENT ] [ TypeParamList ] [ TargetIndex ] [ "(" [ ParamList ] ")" ] [ Type ] [ StmtBlock ]
 
 ```
 
