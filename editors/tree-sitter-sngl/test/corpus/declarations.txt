@@ -255,3 +255,103 @@ const component badge(const tag string) {
       (type_identifier
         (identifier)))
     (statement_block)))
+
+================
+Type parameters name a constraint
+================
+
+struct Box<T any = int> {
+    value T
+}
+
+func first<T any>(xs list<T>) T {
+    return xs[0]
+}
+
+func map<K, V>.pick<A any>(a A) A {
+    return a
+}
+
+component pair<T any, F any>(a T, b T) F {
+}
+
+---
+
+(source_file
+  (struct_declaration
+    (identifier)
+    (type_param_list
+      (type_param
+        (identifier)
+        (type_identifier
+          (identifier))
+        (type_identifier
+          (identifier))))
+    (struct_field
+      (identifier)
+      (type_identifier
+        (identifier))))
+  (func_declaration
+    (func_name
+      (identifier))
+    (type_param_list
+      (type_param
+        (identifier)
+        (type_identifier
+          (identifier))))
+    (func_param
+      (identifier)
+      (type_identifier
+        (identifier)
+        (type_identifier
+          (identifier))))
+    (type_identifier
+      (identifier))
+    (statement_block
+      (return_statement
+        (index_expression
+          (identifier)
+          (integer_literal)))))
+  (func_declaration
+    (func_name
+      (identifier)
+      (receiver_type_params
+        (identifier)
+        (identifier))
+      (identifier))
+    (type_param_list
+      (type_param
+        (identifier)
+        (type_identifier
+          (identifier))))
+    (func_param
+      (identifier)
+      (type_identifier
+        (identifier)))
+    (type_identifier
+      (identifier))
+    (statement_block
+      (return_statement
+        (identifier))))
+  (component_declaration
+    (identifier)
+    (type_param_list
+      (type_param
+        (identifier)
+        (type_identifier
+          (identifier)))
+      (type_param
+        (identifier)
+        (type_identifier
+          (identifier))))
+    (func_param
+      (identifier)
+      (type_identifier
+        (identifier)))
+    (func_param
+      (identifier)
+      (type_identifier
+        (identifier)))
+    (type_identifier
+      (identifier))
+    (statement_block)))

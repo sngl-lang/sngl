@@ -513,6 +513,10 @@
         {
           "type": "type_identifier",
           "named": true
+        },
+        {
+          "type": "type_param_list",
+          "named": true
         }
       ]
     }
@@ -772,6 +776,16 @@
           }
         ]
       }
+    },
+    "children": {
+      "multiple": false,
+      "required": false,
+      "types": [
+        {
+          "type": "receiver_type_params",
+          "named": true
+        }
+      ]
     }
   },
   {
@@ -1030,6 +1044,21 @@
     }
   },
   {
+    "type": "receiver_type_params",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": true,
+      "required": true,
+      "types": [
+        {
+          "type": "identifier",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
     "type": "return_statement",
     "named": true,
     "fields": {},
@@ -1141,6 +1170,10 @@
       "types": [
         {
           "type": "struct_field",
+          "named": true
+        },
+        {
+          "type": "type_param_list",
           "named": true
         }
       ]
@@ -1300,6 +1333,42 @@
     }
   },
   {
+    "type": "type_param",
+    "named": true,
+    "fields": {
+      "constraint": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "type_identifier",
+            "named": true
+          }
+        ]
+      },
+      "default": {
+        "multiple": false,
+        "required": false,
+        "types": [
+          {
+            "type": "type_identifier",
+            "named": true
+          }
+        ]
+      },
+      "name": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "identifier",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
     "type": "type_param_list",
     "named": true,
     "fields": {},
@@ -1308,7 +1377,7 @@
       "required": true,
       "types": [
         {
-          "type": "identifier",
+          "type": "type_param",
           "named": true
         }
       ]

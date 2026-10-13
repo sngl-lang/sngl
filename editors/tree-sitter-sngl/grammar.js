@@ -35,6 +35,8 @@ module.exports = grammar({
     [$._expression, $.visual_node],
     [$._expression, $.visual_node, $.struct_literal],
     [$.func_name, $.type_identifier],
+    [$.func_name],
+    [$.receiver_type_params, $.type_identifier],
     [$.statement_block, $.struct_literal],
     [$.statement_block, $.anon_struct_literal],
     [$.method_expression, $.field_expression],
@@ -65,7 +67,7 @@ module.exports = grammar({
       seq("import", optional(seq(field("alias", $.identifier), "=>")), $.string_literal),
 
     struct_declaration: ($) =>
-      seq("struct", optional(field("name", $.identifier)), "{", repeat($.struct_field), "}"),
+      seq("struct", optional(field("name", $.identifier)), optional($.type_param_list), "{", repeat($.struct_field), "}"),
 
     struct_field: ($) =>
       seq(
@@ -148,12 +150,26 @@ module.exports = grammar({
 
     func_name: ($) =>
       choice(
-      seq(field("receiver", $.identifier), ".", field("name", $.identifier)),
+      seq(field("receiver", $.identifier), optional($.receiver_type_params), ".", field("name", $.identifier)),
       field("name", $.identifier)
     ),
 
-    type_param_list: ($) =>
+    // A receiver's list restates the receiver's names, with no constraints:
+    // `func list<T>.map<U any>`.
+    receiver_type_params: ($) =>
       seq("<", $.identifier, repeat(seq(",", $.identifier)), ">"),
+
+    type_param_list: ($) =>
+      seq("<", $.type_param, repeat(seq(",", $.type_param)), ">"),
+
+    // Every declared type parameter names a constraint, `any` when it says
+    // nothing, and may carry a default.
+    type_param: ($) =>
+      seq(
+      field("name", $.identifier),
+      field("constraint", $.type_identifier),
+      optional(seq("=", field("default", $.type_identifier)))
+    ),
 
     // One list for every param-like site: a function's parameters, a lambda's,
     // a handler's, a component's props, and the names a slot population binds.
@@ -191,6 +207,7 @@ module.exports = grammar({
       optional("const"),
       "component",
       field("name", $.identifier),
+      optional($.type_param_list),
       optional(seq("(", optional($._param_list), ")")),
       optional($.type_identifier),
       optional($.statement_block)
@@ -318,7 +335,7 @@ module.exports = grammar({
         $.identifier,
         optional(choice(
         seq(".", $.identifier),
-        seq("<", $.type_identifier, ">")
+        seq("<", $._type_list, ">")
       ))
       ),
       // A slot's type. The parenthesised list is what the slot is invoked

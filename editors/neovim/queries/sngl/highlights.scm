@@ -37,6 +37,10 @@
 (unit_declaration name: (identifier) @type.definition)
 (component_declaration name: (identifier) @type.definition)
 
+; Type parameters, and the names a receiver's list restates.
+(type_param name: (identifier) @type.parameter)
+(receiver_type_params (identifier) @type.parameter)
+
 ; Struct fields: use name: field label for the field name.
 (struct_field name: (identifier) @property)
 
