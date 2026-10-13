@@ -473,9 +473,12 @@ value. Structs, like lists and maps, are **value types**: storing one -- an
 assignment, a variable's initializer, a `push` or `insert`, an element, field or
 entry of a literal -- stores a copy, as deep as the value holds structs, lists
 and maps, so a later write to either place leaves the other as it was. A
-parameter is passed by value the same way: a function that writes its
-parameter, a method its receiver included, writes its own copy and not the
-caller's. A struct may be generic over type parameters:
+named parameter is passed by value the same way: a function that writes it
+writes its own copy and not the caller's. Two parameters are passed by
+reference instead -- a method's ambient `this`, so a method declared in a
+struct's body that writes `this` writes the value it was called on, and a
+parameter declared `ref<T>` (see [References](#references)). A struct may be
+generic over type parameters:
 
 ```
 struct Box<T> { value T }
@@ -545,8 +548,18 @@ seeing what the referenced cell becomes. `&x` makes one and `*r` reads through
 it. References arise chiefly from reference loop variables (`for var &x = xs`),
 which make writes to the loop variable flow back to the underlying list element
 (see [The for statement](#the-for-statement)). A parameter declared `ref<T>`
-also accepts a plain `T`, which is then an ordinary value — permitted only
-where the callee does nothing with the parameter but read through it.
+is the caller's cell: `f(&x)` hands it `x`, a field of it is read and written
+as one of the value is (`p.n = 5`), a method of it is called through it, and
+the whole value is written with `*p = v`. What the function writes is `x`'s
+when the call returns. It also accepts a plain `T`, which is then an ordinary
+value — permitted only where the callee does nothing with the parameter but
+read through it.
+
+A call writing back through a parameter is made in a statement of its own or
+an expression the statement always evaluates once; one under `&&`, `||` or a
+ternary's branch, in a loop's condition, or outside any statement is an error.
+So is taking such a function as a value, since what calls a value cannot know
+where its argument came from.
 
 ### Type identity
 

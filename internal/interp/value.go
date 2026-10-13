@@ -55,6 +55,20 @@ func CopyValue(v any) any {
 	return cp
 }
 
+// bindArg is v as parameter p receives it: a copy, since a parameter is
+// passed by value, except a method's ambient `this`, which is the receiver's
+// own value. A program the interpreter prepares has that written back by the
+// call (lower.RefParams); one it folds unlowered relies on the sharing.
+func bindArg(v any, p *ir.Param) any {
+	if p != nil && p.Receiver && p.Name == ir.ReceiverParam {
+		return v
+	}
+	if p == nil {
+		return v
+	}
+	return copyOf(v, p.Type)
+}
+
 // copyOf is v as a store takes it: a struct, a list or a map is a value
 // (ir/valuecopy.go), so what is stored is a copy, as deep as t holds one. A
 // handle is a map too, which is why the copy goes by the type and not by the

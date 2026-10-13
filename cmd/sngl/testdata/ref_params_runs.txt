@@ -1,0 +1,252 @@
+# A method's ambient `this` and a `ref<T>` parameter are passed by reference,
+# and a named parameter is a value, on every target: testdata/ref_params.sngl
+# is the program, and testdata/ref_params.txtar the code.
+
+sngl test --platform=none app.sngl
+stdout '4 tests, 0 failures'
+
+sngl test --platform=html app.sngl
+stdout '4 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout '4 tests, 0 failures'
+
+sngl test --platform=fyne --language=go app.sngl
+stdout '4 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go app.sngl
+stdout '4 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin app.sngl
+stdout '4 tests, 0 failures'
+
+-- app.sngl --
+// A call passes two parameters by reference: a method's ambient `this`, the
+// receiver's own value, and a parameter declared `ref<T>`, the cell `&x`
+// hands it. A named parameter of any other type is a value. A function
+// writing one by reference hands back what it wrote and the call writes it to
+// the place it passed (passRefParams), so the program reads the same on every
+// target.
+
+import . "sngl:test"
+import ui "sngl:ui"
+
+struct Stack {
+    items  list<int> = []
+    pushes int = 0
+
+    // The ambient `this` is the receiver's own value: a method writing it
+    // writes the caller's.
+    func add(x int) {
+        this.items.push(x)
+        this.pushes += 1
+    }
+
+    // A method handing `this` to another that writes it writes it too.
+    func addTwice(x int) {
+        add(x)
+        add(x)
+    }
+
+    // A method that writes `this` and returns a value of its own.
+    func pop() int {
+        var top = this.items[this.items.length() - 1]
+        this.items.remove(this.items.length() - 1)
+        return top
+    }
+
+    // One that only reads `this` writes nothing back.
+    func size() => this.items.length()
+}
+
+// A named parameter is a value; `ref<T>` is the caller's cell.
+func fill(s ref<Stack>) {
+    s.add(7)
+}
+
+func reset(s ref<Stack>) {
+    *s = Stack{}
+}
+
+func peek(s ref<Stack>) int {
+    return s.items.length()
+}
+
+// A whole value is written through a reference with `*`.
+func setTo(x ref<int>, v int) {
+    *x = v
+}
+
+func touch(s Stack) int {
+    s.add(1)
+    return s.items.length()
+}
+
+component box ui.node {
+    var (
+        st = Stack{}
+        all list<Stack> = [Stack{}, Stack{}]
+        k = 0
+        out = ""
+    )
+
+    func methods() {
+        st.add(1)
+        st.addTwice(2)
+        var top = st.pop()
+        out = "{st.items.length()} {st.pushes} {top} {st.size()}"
+    }
+
+    func refs() {
+        fill(&st)
+        var n = peek(&st)
+        setTo(&k, 4)
+        reset(&all[1])
+        all[0].add(3)
+        for var &s = all {
+            s.add(5)
+        }
+        out = "{st.items.length()} {n} {k} {all[0].items.length()} {all[1].items.length()}"
+    }
+
+    func values() {
+        var n = touch(st)
+        out = "{st.items.length()} {n}"
+    }
+
+    ui.text #o(value=out)
+}
+
+func testThisIsTheReceiver(t Test, c box) {
+    c.methods()
+    t.assert(c.o.value == "2 3 2 2")
+}
+
+func testRefParamIsTheCallersCell(t Test, c box) {
+    c.refs()
+    t.assert(c.o.value == "1 1 4 2 1")
+}
+
+func testNamedParamIsAValue(t Test, c box) {
+    c.values()
+    t.assert(c.o.value == "0 1")
+}
+
+func testATestCallsAMethod(t Test, c box) {
+    c.st.add(9)
+    t.assert(c.st.items.length() == 1)
+}
+
+ui.window {
+    box
+}
+-- testrun/android/kotlin/app.sngl/box/1 --
+sha256:ec1c22e7c7d8ee8f53c6b7e4be204f6c
+{
+  "results": [
+    {
+      "Desc": "ATestCallsAMethod",
+      "Passed": true
+    },
+    {
+      "Desc": "NamedParamIsAValue",
+      "Passed": true
+    },
+    {
+      "Desc": "RefParamIsTheCallersCell",
+      "Passed": true
+    },
+    {
+      "Desc": "ThisIsTheReceiver",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/box/1 --
+sha256:2fceda558259e8925483e2c340e87713
+{
+  "results": [
+    {
+      "Desc": "ATestCallsAMethod",
+      "Passed": true
+    },
+    {
+      "Desc": "NamedParamIsAValue",
+      "Passed": true
+    },
+    {
+      "Desc": "RefParamIsTheCallersCell",
+      "Passed": true
+    },
+    {
+      "Desc": "ThisIsTheReceiver",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/box/1 --
+sha256:3dd13da873f2eef6fbc55ac1cf853458
+{
+  "results": [
+    {
+      "Desc": "ATestCallsAMethod",
+      "Passed": true
+    },
+    {
+      "Desc": "NamedParamIsAValue",
+      "Passed": true
+    },
+    {
+      "Desc": "RefParamIsTheCallersCell",
+      "Passed": true
+    },
+    {
+      "Desc": "ThisIsTheReceiver",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/box/1 --
+sha256:a0dc186d22887a5f3a8ff74f3ae9101e
+{
+  "results": [
+    {
+      "Desc": "ATestCallsAMethod",
+      "Passed": true
+    },
+    {
+      "Desc": "NamedParamIsAValue",
+      "Passed": true
+    },
+    {
+      "Desc": "RefParamIsTheCallersCell",
+      "Passed": true
+    },
+    {
+      "Desc": "ThisIsTheReceiver",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/box/1 --
+sha256:2a780745c986387fb71d24b06b135c7d
+{
+  "results": [
+    {
+      "Desc": "ATestCallsAMethod",
+      "Passed": true
+    },
+    {
+      "Desc": "NamedParamIsAValue",
+      "Passed": true
+    },
+    {
+      "Desc": "RefParamIsTheCallersCell",
+      "Passed": true
+    },
+    {
+      "Desc": "ThisIsTheReceiver",
+      "Passed": true
+    }
+  ]
+}

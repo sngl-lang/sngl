@@ -6,9 +6,10 @@ import "duckfam.us/sngl/ir"
 // ir/valuecopy.go): the value an assignment, a local's initializer, a var's
 // initializer, a push or an insert stores, and an element or field a literal
 // is built from, is wrapped in ir.ValueCopy unless nothing else can hold it.
-// A parameter is passed by value too, and a function whose body modifies one
-// takes its own copy at entry (ownModifiedParams); one that only reads it
-// copies nothing.
+// A named parameter is passed by value too, and a function whose body
+// modifies one takes its own copy at entry (ownModifiedParams); one that only
+// reads it copies nothing. A method's ambient `this` and a `ref<T>` are
+// passed by reference instead (passRefParams).
 //
 // Before every other pass that writes a store, so what is copied is what the
 // program wrote. An element bound with `&` is copied where it is stored
@@ -96,7 +97,8 @@ const (
 func ownModifiedParams(f *ir.Func) {
 	var prelude []ir.Stmt
 	for _, p := range f.Params {
-		if p == nil || p.Variadic || !ir.HoldsValue(p.Type) {
+		// A by-reference parameter is passRefParams'.
+		if p == nil || p.Variadic || !ir.HoldsValue(p.Type) || byRef(p) {
 			continue
 		}
 		w := writesTo(f.Block, p)

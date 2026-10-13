@@ -1376,6 +1376,12 @@ func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) ir.Ex
 	}
 
 	receiverExpr, receiver = callComputedOperand(receiverExpr, receiver)
+	// A method of what a reference refers to is called through it, as a
+	// field of it is read: `s.add(7)` with s a `ref<Stack>` is (*s).add(7).
+	if receiver != nil && receiver.Kind == ir.TypeRef && len(receiver.Elems) > 0 {
+		receiver = receiver.Elems[0]
+		receiverExpr = &ir.Unary{Type: receiver, Op: ast.UnaryDeref, Operand: receiverExpr}
+	}
 
 	typeName := receiver.String()
 	if receiver.Decl != nil {

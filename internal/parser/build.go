@@ -2233,6 +2233,14 @@ func (b *builder) buildPrimaryInner(it nodeIter, exprContext bool) ast.Expr {
 
 	tok := it.token()
 	switch tok.Type {
+	case STAR:
+		// `*x = 9`: a statement writing through a reference.
+		pos := b.posFromToken(it.shift())
+		var operand ast.Expr
+		if !it.done() && it.isNonTerminal() && it.symbol() == StatementPrimary {
+			operand = b.buildStatementPrimary(it.enter())
+		}
+		return &ast.UnaryExpr{Pos: ast.Pos(pos), Op: ast.UnaryDeref, Operand: operand}
 	case LPAREN:
 		it.skip() // lparen
 		var inner ast.Expr

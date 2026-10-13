@@ -1,0 +1,53 @@
+# A call that writes back is a statement's: made where it may not run, or may
+# run again, there is no one place to write what it hands back. And a function
+# that writes back is not a value, since what calls a value cannot know where
+# its argument came from.
+
+! sngl generate --platform html --lang none -o out conditional.sngl
+stderr 'conditional.sngl:17:26: pop writes "this" back where this call passed it, and it is made where it may not run, or may run again: call it in a statement of its own'
+
+! sngl generate --platform html --lang none -o out value.sngl
+stderr 'value.sngl:17:13: fill writes "s", which a call hands back to the place it passed; taken as a value, nothing knows that place'
+
+-- conditional.sngl --
+import ui "sngl:ui"
+
+struct Stack {
+    items list<int> = []
+
+    func pop() int {
+        var top = this.items[0]
+        this.items.remove(0)
+        return top
+    }
+}
+
+ui.window {
+    var st = Stack{items=[1, 2]}
+    var ok = false
+    ui.button(text="x", @click {
+        ok = ok && st.pop() > 0
+    })
+}
+-- value.sngl --
+import ui "sngl:ui"
+
+struct Stack {
+    items list<int> = []
+
+    func add(x int) {
+        this.items.push(x)
+    }
+}
+
+func fill(s ref<Stack>) {
+    s.add(1)
+}
+
+ui.window {
+    var st = Stack{}
+    var f = fill
+    ui.button(text="x", @click {
+        f(&st)
+    })
+}

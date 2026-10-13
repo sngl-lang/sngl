@@ -73,7 +73,7 @@ func (lv *LambdaValue) Call(args []any) (any, error) {
 	defer func() { child.ended = true }()
 	for i, p := range lv.params(args) {
 		if i < len(args) {
-			child.Set(p, copyOf(args[i], p.Type))
+			child.Set(p, bindArg(args[i], p))
 		}
 	}
 	defer child.enterFrame(lv.site)()
@@ -89,7 +89,7 @@ func (lv *LambdaValue) Call(args []any) (any, error) {
 func (lv *LambdaValue) CallWithEnv(env *Env, args []any) (any, error) {
 	for i, p := range lv.params(args) {
 		if i < len(args) {
-			env.Set(p, copyOf(args[i], p.Type))
+			env.Set(p, bindArg(args[i], p))
 		}
 	}
 	defer env.enterFrame(lv.site)()
@@ -2168,7 +2168,7 @@ func (env *Env) runEventHandlerValues(fn *ir.Func, vals []any) (any, error) {
 		if i >= len(vals) {
 			break
 		}
-		env.Set(p, copyOf(vals[i], p.Type))
+		env.Set(p, bindArg(vals[i], p))
 	}
 	return env.execBlockForResult(fn.Block)
 }
@@ -2507,7 +2507,7 @@ func (env *Env) CallUserFuncValues(fn *ir.Func, args []any) (any, error) {
 	child := env.Snapshot()
 	for i, p := range fn.Params {
 		if i < len(args) {
-			child.Set(p, copyOf(args[i], p.Type))
+			child.Set(p, bindArg(args[i], p))
 		}
 	}
 	return child.execBlockForResult(fn.Block)
@@ -2639,7 +2639,7 @@ func (env *Env) evalUserFuncCore(fn *ir.Func, args []any) (any, error) {
 			}
 			argIdx := i - argOffset
 			if argIdx >= 0 && argIdx < len(args) {
-				execEnv.Set(p, copyOf(args[argIdx], p.Type))
+				execEnv.Set(p, bindArg(args[argIdx], p))
 			}
 		}
 		var localVars []ir.Symbol
@@ -3173,7 +3173,7 @@ func (env *Env) InvokeElementEvent(m map[string]any, event string, args func() (
 	res, err := handlerEnv.underHandler(provided, func() (any, error) {
 		for i, p := range h.Params {
 			if i < len(vals) {
-				handlerEnv.Set(p, copyOf(vals[i], p.Type))
+				handlerEnv.Set(p, bindArg(vals[i], p))
 			}
 		}
 		return handlerEnv.execBlockForResult(h.Block)

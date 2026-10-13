@@ -117,6 +117,8 @@ var alwaysOn = []string{
 	"RecordArgs",
 	"RecursionDepth",
 	"RefLoop",
+	// A by-reference parameter is copy-in, copy-out on every target.
+	"RefParams",
 	// What a target reserves is read off its marks, and a target reserving
 	// nothing renames nothing; there is no capability to hold.
 	"ReservedNames",

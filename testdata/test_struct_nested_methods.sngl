@@ -4,8 +4,8 @@ import . "sngl:test"
 struct Point {
     x, y int
     func magnitude2() => this.x * this.x + this.y * this.y
-    // A receiver is passed by value, as any parameter is: a write to it is
-    // the method's own copy, so a method that moves a point returns it.
+    // The ambient `this` is the receiver's own value: a method writing it
+    // moves the caller's point. moved returns a moved copy instead.
     func translate(dx int, dy int) {
         this.x += dx
         this.y += dy
@@ -29,13 +29,13 @@ func testNestedMethodFieldAccess(t Test, c main) {
     t.assert(c.p.magnitude2() == 25)
 }
 
-func testNestedMethodReceiverIsAValue(t Test, c main) {
+func testNestedMethodMutation(t Test, c main) {
     c.p.translate(1, 2)
-    t.assert(c.p.x == 3)
-    t.assert(c.p.y == 4)
-    c.p = c.p.moved(1, 2)
     t.assert(c.p.x == 4)
     t.assert(c.p.y == 6)
+    var q = c.p.moved(1, 1)
+    t.assert(q.x == 5)
+    t.assert(c.p.x == 4)
 }
 
 func testNestedMethodBareSiblingCall(t Test, c main) {

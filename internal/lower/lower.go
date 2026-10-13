@@ -62,6 +62,8 @@ var passes = []pass{
 	passNodePropReads,
 	passPropBindings,
 	passRefLoop,
+	// After passRefLoop, so an element bound with `&` is a place by now.
+	passRefParams,
 	passRecordArgs,
 	passSpreadOnce,
 	passViewForElse,
