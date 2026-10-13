@@ -14,49 +14,54 @@ the typed-const workaround it documents
 `context[option[User]] #who(null)`.
 
 Three phases, in this order. Phase 1 cannot start until phase 0 is finished,
-because a suffix bracket on a declaration name is the override target today.
+because a suffix bracket on a declaration name is the override target today,
+and phase 0 is what tells the two apart.
 
-### Phase 0: the override target moves in front of the name
+### Phase 0: every type parameter names a constraint
 
-`TargetIndex` sits where `TypeParamList` would go:
+`component ui.vbox[platform]` and `component box[T]` would be the same tokens.
+A target is only ever `ident` or `ident.ident` -- `resolveTargetIndex` refuses
+every other shape -- so if a type parameter must name a constraint, a type
+parameter list always opens `ident Type`, and the token after `[ ident`
+decides it: `rbracket` or `dot` is a target, anything in `FIRST(Type)` is a
+type parameter. Neither `dot` nor `rbracket` is in `FIRST(Type)`. The parser
+decides, as Go's does for `type A[N]int` against `type A[P any]int`, and the
+target stays where it is.
+
+`any` is the constraint that says nothing. Done in `<…>` first, so the tree is
+converted while the brackets still mean one thing:
 
 ```
-ComponentDecl = kw_component ident [ dot ident ] [ TypeParamList ] [ TargetIndex ] …
-FuncDecl      = kw_func FuncName [ TargetIndex ] FuncTail .
+TypeParam = ident Type [ assign Type ] .
 ```
-
-`component ui.vbox[platform]` and `component box[T]` are the same tokens. An
-override never restates type parameters and a base never names a target, so a
-declaration has at most one list, but telling them apart would take the
-checker (does the entry resolve to a build-target node?), and a type parameter
-named `platform` would then be ambiguous. Move the target instead:
 
 ```sngl
-component[platform] ui.vbox(gap) { … }
-component[html.platform] gap(w) { … }
-func[bubbletea.platform] ToUpper(s string) string { … }
+func first<T any>(xs list<T>) T { … }
+component effect<T any, F any>(…) F
+component page<T any = struct {}, M any = struct {}>(…) _page<M>
 ```
 
-`lbracket` directly after `kw_component`/`kw_func` is unambiguous, so the
-grammar stays LL(1). `kw_const FuncDecl` and `kw_const ComponentDecl` follow
-for free.
+A receiver's list restates names and no constraints, as Go's does:
+`func list<T>.map<U any>(f func(T) U) list<U>`. It is told apart by the `dot`
+after it (see phase 1), so it keeps `TypeParam`'s old shape as its own
+production, `ReceiverTypeParams`.
 
-- [ ] Grammar: `ComponentDecl = kw_component [ TargetIndex ] ident …`,
-  `FuncDecl = kw_func [ TargetIndex ] FuncName FuncTail`. Accept both
-  positions for one commit.
-- [ ] Builder (`buildTargetIndex` callers in `internal/parser/build.go`) and
-  formatter: the formatter prints the prefix form.
-- [ ] `ir.Convert` prints the prefix form.
-- [ ] `sngl fmt` over `lib/` (~300 `[platform]`/`[language]` overrides),
-  `testdata/`, `examples/`; hand-convert SNGL embedded in `.txtar`,
-  `cmd/sngl/testdata/*.txt` and `docs/**/*.md` (a script in `tmp/`).
-- [ ] Diagnostics that spell an override (`[html.platform]` in messages and in
-  `// ERROR` text).
-- [ ] Tree-sitter grammar, vscode and neovim syntax.
-- [ ] `docs/reference/specification.md`, effective-sngl, CLAUDE.md (the
-  override sections write `component ui.vbox[platform]` throughout).
-- [ ] Drop the suffix position from the grammar. `TestTestdataIsFormatted`
-  and the goldens are green with no `-update` beyond printed SNGL.
+- [ ] Fixtures first: a constraint required in a declaration, a component and a
+  struct; `any` refused anywhere but a constraint
+  (`testdata/error_type_param_constraint_required.sngl`).
+- [ ] `any` declared in `sngl:builtin`, marked like the scalars, and accepted
+  by the checker only in a constraint position (`dyn` is the type that holds
+  anything). A constraint other than `any` is the constraints section's.
+- [ ] Grammar: `TypeParam = ident Type [ assign Type ]`; `FuncName`'s
+  receiver list takes names only. Builder and formatter.
+- [ ] `ast.TypeParam.Constraint`, `ir.TypeParamSym.Constraint`; `ir.Convert`
+  prints it.
+- [ ] `sngl fmt` cannot add what the source does not say: a script in `tmp/`
+  writes `any` into every type parameter in `lib/`, `testdata/`, examples,
+  and the SNGL embedded in `.txtar`, `.txt`, `.md` files and Go test strings.
+- [ ] Diagnostics and `// ERROR` text that print a type parameter list.
+- [ ] Tree-sitter, vscode, neovim.
+- [ ] Spec, effective-sngl, the tour, CLAUDE.md.
 
 ### Phase 1: declarations and types in brackets
 
@@ -65,6 +70,21 @@ TypeParamList = lbracket TypeParam { comma TypeParam } rbracket .
 Type          = ident [ dot ident [ TypeArgs ] | TypeArgs ] | … .
 TypeArgs      = lbracket TypeList rbracket .
 ```
+
+`TypeParamList` and `TargetIndex` both open `lbracket ident` after a
+declaration's name, so they are one production, left-factored on what follows
+the first ident, and the builder sorts it by shape:
+
+```
+NameBracket = lbracket ident ( [ dot ident ] rbracket
+                             | Type [ assign Type ] { comma TypeParam } rbracket ) .
+```
+
+In `FuncName` a bracket after the receiver is followed by `dot` and is the
+receiver's names, `func list[T].map[U any]`; `func list[T].second[html.platform]`
+is an override of a generic method. So `func f[T]` -- one bare name and no
+`dot` after the bracket -- is a target, and an undefined one: the factoring
+reads the bracket first and decides on the token after `rbracket`.
 
 Also `FuncTypeParam`'s two `lt TypeList gt` branches and `FuncName`'s comment
 block. No production that can follow a `Type` begins with `lbracket`, and
@@ -120,16 +140,16 @@ expression).
 
 ## Type parameter constraints
 
-A type parameter may name a constraint between its name and its default:
+Every type parameter names a constraint between its name and its default
+(phase 0 above):
 
 ```
-TypeParam = ident [ Type ] [ assign Type ] .
+TypeParam = ident Type [ assign Type ] .
 ```
 
-`assign`, `comma` and `rbracket` are not in `FIRST(Type)`, so this stays LL(1)
-and needs no production of its own. The grammar admits any type; the checker
-accepts only an **anonymous struct** for now, which leaves the position open
-for `comparable`, a family or an interface later.
+The grammar admits any type; the checker accepts `any` and an **anonymous
+struct** for now, which leaves the position open for `comparable`, a family or
+an interface later.
 
 **An anonymous struct constraint is a struct with at least these fields.**
 `[T struct {}]` is any struct; `[T struct { name string }]` is any struct
@@ -140,9 +160,9 @@ anonymous one: the constraint is about fields, not identity. A field default
 on the struct being checked is ignored; only the constraint's own fields may
 not carry one.
 
-There is no `any`. Go needs one because its syntax requires every type
-parameter to name a constraint; here the constraint is optional, and leaving
-it off already means any type.
+`any` says nothing about the type, and is required where nothing else is
+said: the constraint is what tells a type parameter list from an override's
+target (phase 0), as Go requires one to tell a generic from an array.
 
 Write the fixtures first: `testdata/type_param_constraint.sngl` (a named struct
 with field defaults and an anonymous one satisfying it, a field read and a spread in the generic
@@ -153,9 +173,9 @@ struct, a constraint field with a default, a default that does not satisfy the
 constraint). Then a golden on Go and Kotlin, which monomorphize, and
 JavaScript, which keeps the generic.
 
-- [ ] AST: `ast.TypeParam.Constraint`; builder and formatter.
-- [ ] `ir.TypeParamSym.Constraint`; `ir.Convert` prints it.
-- [ ] Refuse anything but an anonymous struct as a constraint, and a field
+- [ ] AST and IR carry the constraint from phase 0; this section adds only
+  the anonymous struct.
+- [ ] Refuse anything but `any` or an anonymous struct as a constraint, and a field
   of that anonymous struct carrying a default: a constraint says what a type
   has, not what it starts with. A satisfying struct's own defaults, named or
   anonymous, play no part in the match.
@@ -181,4 +201,4 @@ JavaScript, which keeps the generic.
 - [ ] Spec, effective-sngl and CLAUDE.md.
 
 A constraint is never a default: `[T struct {} = struct {}]` writes both, and
-a constrained parameter with no default has none.
+a parameter with no default has none, `[T any]` included.
