@@ -46,22 +46,25 @@ A receiver's list restates names and no constraints, as Go's does:
 after it (see phase 1), so it keeps `TypeParam`'s old shape as its own
 production, `ReceiverTypeParams`.
 
-- [ ] Fixtures first: a constraint required in a declaration, a component and a
-  struct; `any` refused anywhere but a constraint
-  (`testdata/error_type_param_constraint_required.sngl`).
-- [ ] `any` declared in `sngl:builtin`, marked like the scalars, and accepted
+- [X] Fixtures first: a constraint required in a declaration, a component and a
+  struct; `any` refused anywhere but a constraint. The parser stops at its
+  first error, so a missing constraint is one fixture per declaration
+  (`testdata/error_type_param_constraint_required_{func,method,component,struct}.sngl`)
+  and `any` is `testdata/error_any_outside_constraint.sngl`.
+- [X] `any` declared in `sngl:builtin`, marked like the scalars, and accepted
   by the checker only in a constraint position (`dyn` is the type that holds
   anything). A constraint other than `any` is the constraints section's.
-- [ ] Grammar: `TypeParam = ident Type [ assign Type ]`; `FuncName`'s
+- [X] Grammar: `TypeParam = ident Type [ assign Type ]`; `FuncName`'s
   receiver list takes names only. Builder and formatter.
-- [ ] `ast.TypeParam.Constraint`, `ir.TypeParamSym.Constraint`; `ir.Convert`
+- [X] `ast.TypeParam.Constraint`, `ir.TypeParamSym.Constraint`; `ir.Convert`
   prints it.
-- [ ] `sngl fmt` cannot add what the source does not say: a script in `tmp/`
+- [X] `sngl fmt` cannot add what the source does not say: a script in `tmp/`
   writes `any` into every type parameter in `lib/`, `testdata/`, examples,
   and the SNGL embedded in `.txtar`, `.txt`, `.md` files and Go test strings.
-- [ ] Diagnostics and `// ERROR` text that print a type parameter list.
-- [ ] Tree-sitter, vscode, neovim.
-- [ ] Spec, effective-sngl, the tour, CLAUDE.md.
+- [X] Diagnostics and `// ERROR` text that print a type parameter list.
+- [X] Tree-sitter, vscode, neovim.
+- [X] Spec, effective-sngl, the tour, CLAUDE.md. The tour declares no
+  generic, so it needed no change.
 
 ### Phase 1: declarations and types in brackets
 

@@ -520,13 +520,13 @@ mount: a mounted node and an effect keep the values they were mounted under
 `cmd/sngl/testdata/context_read_in_user_func.txt` are the two halves.
 
 **A context's type is its default's**, and `sngl:builtin` says so:
-`component context<V, F>(default V) F`. The checker reads the default itself
+`component context<V any, F any>(default V) F`. The checker reads the default itself
 (`registerRootContextDecl`) rather than binding the declaration's parameters,
 and holds every provider's value to it. A default whose type says too little
 -- `null`, `[]` -- is written as a typed const, `const nobody option<User> = null` then `context #who(nobody)`; stating the type in place would need type
 arguments at a call site, which the language does not have (a TODO in
 `lib/builtin/context.sngl` names brackets, `<…>` not being LL(1) there).
-`t.setContext<V>(ctx V, value V)` takes any context and a value of its type,
+`t.setContext<V any>(ctx V, value V)` takes any context and a value of its type,
 and a first argument that is not a context is a positioned error
 (`refuseSetContextName`), where it used to fail only when the test ran
 (`error_test_set_context_not_a_context.sngl`,
@@ -695,7 +695,7 @@ scope and is a type like any other, and it is told from a callee's by
 reference rather than by name: a type parameter's type carries the
 `ir.TypeParamSym` that declared it as its `Decl`, and `pushTypeParams` binds
 one symbol per declared parameter however often a declaration's parameters
-are pushed (`typeParamSym`), so `empty()` inside `func shadow<T>` is still
+are pushed (`typeParamSym`), so `empty()` inside `func shadow<T any>` is still
 refused.
 
 **A parameter's default is evaluated at the call**, as a component prop's
@@ -705,6 +705,24 @@ function (`refuseDefaultReadingParams`), a call through a handle must pass
 any argument whose default reads the component's state, props or methods
 (`reportHandleCallDefaults`), and a lambda's parameter takes none
 (`error_func_default_reads_param.sngl`, `error_default_through_handle.sngl`).
+
+**Every type parameter names a constraint**, `any` when it says nothing:
+`func first<T any>(xs list<T>) T`, `component page<T any = struct {}, M any = struct {}>`. The grammar requires it (`TypeParam = ident Type [ assign Type ]`),
+because once type parameters are written in brackets the constraint is what
+tells `component box[T any]` from an override's target,
+`component ui.vbox[platform]`, and the parser has to decide that. A missing
+one is a parse error naming `T any` (`typeParamWithoutConstraint` in
+`internal/parser/parse.go`, `testdata/error_type_param_constraint_required_*.sngl`).
+A **receiver's** list restates names only, as Go's does --
+`func list<T>.map<U any>` -- so `FuncName` reads the token after `< ident`:
+`,` or `>` is a receiver's list (`ReceiverTypeParams`), anything beginning a
+type the function's own (`TypeParamRest`). `any` is `#[_builtin(any)] struct any {}` in sngl:builtin, read like a scalar (`ir.TypAny`, in
+`scalarUniverse`, since sngl:family's `one<T any>` is checked before
+sngl:builtin is in scope), and it is a constraint only: written where a
+value's type goes it is refused naming `dyn` (`error_any_outside_constraint.sngl`).
+It is the only constraint yet (`resolveConstraint`); the constraint lands on
+`ir.TypeParam.Constraint` and `ir.TypeParamSym.Constraint`, and `ir.Convert`
+prints one for every parameter of a declaration's own list.
 
 **A generic function is copied per instantiation** where the language does not
 claim `genericFuncs` (`passMonomorphize`), so Go and Kotlin see concrete types
@@ -1463,13 +1481,13 @@ package's declarations are a published contract, which a body should not be
 quietly restating.
 
 **A type parameter in the return position takes the family a component is
-placed in** -- `component effect<T, F>(…) F` -- which is what a component that
+placed in** -- `component effect<T any, F any>(…) F` -- which is what a component that
 renders nothing wants: `effect`, `timer`, `context`, `gen.emit`, `gen.node`,
 and each platform's `Timer` primitive. Nothing binds `F` at a call site with
 no children, so such a node has a nil `Family` and `ir.IsFamilyGenericNode` is
 the question a pass asks of it. `#[tree.none]` said this until the generic form
 could, and the generic form could only once its body was held to `F`: before,
-`component sneak<F>(…) F { ui.text(…) }` placed in a canvas checked clean.
+`component sneak<F any>(…) F { ui.text(…) }` placed in a canvas checked clean.
 
 **A canvas keeps them and draws the rest.** `passShapeDraw` replaces a
 canvas's shape children with the statements that paint them, in place, and
@@ -1494,7 +1512,7 @@ Two rules follow from the type parameter, and they are each other's halves:
   everything `familyTransparent` lists, so a widget wrapped in a boundary or a
   context override is still a widget this component renders -- and it counts
   a slot insertion, which puts what the slot takes where it stands. Passed
-  over, `component sneak<F>(content ...component ui.node) F { content }`
+  over, `component sneak<F any>(content ...component ui.node) F { content }`
   carried a button into a canvas, where html painted nothing for it
   (`error_tree_treeless_slot.sngl`).
 
@@ -1514,7 +1532,7 @@ as a `VisualNode` does. `testdata/tree_crosses.sngl` and
 `error_tree_crosses_target.sngl`.
 
 **A wrapper whose family is whatever it was handed says so with a type
-parameter** — `component boundary<T>(@error error, content ...component T, failed component T) T`. Nothing at a call site names a type argument and nothing
+parameter** — `component boundary<T any>(@error error, content ...component T, failed component T) T`. Nothing at a call site names a type argument and nothing
 needs to: a slot's content *is* an argument, so the children bind `T` — the
 first one that belongs to a family says which, and the rest are held to it
 (`slotWant`, `childrenFamily`). An empty body binds nothing and leaves `T`
@@ -2273,7 +2291,7 @@ declaration itself. Two things about the name that are easy to get wrong:
   `*time.Ticker` consumed on a goroutine, and `fyne.sngl` holds all of it.
 
   **`go.chan<T>` is an intrinsic struct declared by `sngl:language/go`**
-  (`#[marks.intrinsic("go:chan")] struct chan<T> {}`, `StructDef.Intrinsic`),
+  (`#[marks.intrinsic("go:chan")] struct chan<T any> {}`, `StructDef.Intrinsic`),
   not a type kind: to the checker it is an ordinary generic struct, and only
   the Go emitter, which answers the id, gives it a host spelling. It is
   declared there rather than in `lib/` because only a language with channels
@@ -4206,7 +4224,7 @@ elements, which `testdata/test_slot_element_ref.sngl` depends on
 (`c.body.value` where `c.body` is `list<text>`) — so closing the rest is a
 question per kind rather than one line.
 
-Stdlib collection types support generic methods: `func list<T>.filter(f func(T) bool) list<T>`, `func list<T>.map<U>(f func(T) U) list<U>`, `func map<K, V>.keys() list<K>`, etc. The receiver's type parameters are bound at the call site from the operand's concrete type (e.g. `xs : list<int>` binds `T=int`). Method-level type parameters (the `<U>` after the method name) are inferred from the call's actual argument types — typically from a lambda's return type.
+Stdlib collection types support generic methods: `func list<T>.filter(f func(T) bool) list<T>`, `func list<T>.map<U any>(f func(T) U) list<U>`, `func map<K, V>.keys() list<K>`, etc. The receiver's type parameters are bound at the call site from the operand's concrete type (e.g. `xs : list<int>` binds `T=int`). Method-level type parameters (the `<U>` after the method name) are inferred from the call's actual argument types — typically from a lambda's return type.
 
 **A program may add a method to a library type, and may not redefine one it
 has.** `func int.twice` is an addition; `func int.abs` collides with the

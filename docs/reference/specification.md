@@ -415,6 +415,10 @@ user-defined types.
 | `string` | Immutable UTF-8 text.                                        |
 | `dyn`    | The dynamic type; see [The dynamic type](#the-dynamic-type). |
 
+`any` is predeclared beside them and is no type a value may have: it is the
+constraint that says nothing about a type parameter (see
+[Generic type parameters](#generic-type-parameters)).
+
 A type may be designated *string-representable*: it has a canonical textual
 form and converts implicitly to and from `string` in both directions (a literal
 such as `"2026-03-12"` is therefore a valid value for one). This is a property a
@@ -481,7 +485,7 @@ parameter declared `ref<T>` (see [References](#references)). A struct may be
 generic over type parameters:
 
 ```
-struct Box<T> { value T }
+struct Box<T any> { value T }
 ```
 
 A struct may carry methods declared as `func StructName.method(…)` (see
@@ -677,9 +681,22 @@ called, which may be after the test has stopped holding.
 
 ### Generic type parameters
 
-Type parameters are introduced by a type-parameter list (`<T>`, `<K, V>`) on a
-struct, a function, a method's receiver or name, or a component. A type
-parameter may carry a default (`<T = struct {}>`), used when nothing binds it.
+Type parameters are introduced by a type-parameter list (`<T any>`,
+`<K any, V any>`) on a struct, a function, a method's name, or a component.
+Every type parameter names a **constraint** after its name: what a type bound
+to it must be. `any` is the constraint that says nothing, and it is the only
+one there is yet. A constraint is a constraint only: `any` written where a
+value's type goes is an error, and the type of a value the program says nothing
+about is `dyn`. A type parameter may also carry a default after its constraint
+(`<T any = struct {}>`), used when nothing binds it; a constraint is never a
+default, so a parameter with no default has none.
+
+A method on a generic type restates its receiver's parameters by name alone,
+since the type's declaration already constrains them:
+`func list<T>.map<U any>(f func(T) U) list<U>`. So a list whose first
+parameter is followed by `,` or `>` is a receiver's, and one whose first
+parameter is followed by a type is a declaration's own.
+
 In a type position the arguments are written (`Box<int>`); at a call site they
 are bound by inference rather than written:
 
@@ -688,7 +705,7 @@ are bound by inference rather than written:
   `list<int>` binds `T = int`, so the result type is `int`.
 - A **method type parameter** is bound from the call's argument types,
   typically through a function argument's result type. For
-  `func list<T>.map<U>(f func(T) U) list<U>`, calling `xs.map(g)` on a
+  `func list<T>.map<U any>(f func(T) U) list<U>`, calling `xs.map(g)` on a
   `list<int>` with `g : func(int) string` binds `T = int` and `U = string`,
   yielding a `list<string>`.
 
@@ -745,7 +762,8 @@ library type, but one the library already declares is a duplicate declaration.
 
 Apart from `bool` and `dyn`, everything predeclared is an ordinary declaration
 in `sngl:builtin`: the scalar and collection types (`int`, `float`, `string`,
-`color`, `list`, `map`, `option`, `ref`, `iter`) with their methods; the constants
+`color`, `list`, `map`, `option`, `ref`, `iter`) with their methods; the
+constraint `any`; the constants
 `true`, `false`, `null`, `PLATFORM` and `LANGUAGE`; the `platform` and
 `language` target-identity types; the `error` type; and the compiler's node
 constructs `output`, `effect`, `context` and `boundary`. That package is in
@@ -965,11 +983,11 @@ FuncBodyTail =
     "=>" Expr
     | [ Type ] [ StmtBlock ]
 
-FuncName = IDENT [ TypeParamList [ "." IDENT [ TypeParamList ] ] | "." IDENT [ TypeParamList ] ]
+FuncName = IDENT [ "<" IDENT FuncNameParams | "." IDENT [ TypeParamList ] ]
 
 TypeParamList = "<" TypeParam { "," TypeParam } ">"
 
-TypeParam = IDENT [ "=" Type ]
+TypeParam = IDENT Type [ "=" Type ]
 
 ParamList = Param { "," Param } [ "," ]
 
@@ -1013,7 +1031,8 @@ given no arguments is the empty list, so it takes no default.
 
 A **method** is a function whose name is qualified by a receiver type,
 `func Type.method(…)`. Type parameters may appear after the receiver type
-(receiver-level) and after the method name (method-level); see
+(receiver-level, names only) and after the method name (method-level, each
+naming its constraint); see
 [Generic type parameters](#generic-type-parameters). A method is dispatched on
 the type of the receiver expression. A `func` written inside a `struct` or
 `enum` body is a method of that type, and its body reads the receiver's fields
@@ -1987,7 +2006,8 @@ The rules:
   around it. A body rendering members of two families, or of none, is an
   error. A library declaration always names its family.
 - **A type parameter in the return position takes the family a component is
-  placed in.** `component effect<T, F>(…) F` may be placed in any family, and
+  placed in.** `component effect<T any, F any>(…) F` may be placed in any
+  family, and
   its body may render only what is generic in `F` the same way -- another such
   component, or a slot typed `F` -- so a widget cannot reach a drawing through
   it. `effect`, `context` and `time.timer` are such components.
@@ -1996,7 +2016,7 @@ The rules:
   the tree themselves, so every membership rule looks through them.
 
 A component generic over the family it wraps writes a type parameter where a
-family goes — `component boundary<T>(…, content ...component T, failed component T) T` — and the children written in the slot bind `T`.
+family goes — `component boundary<T any>(…, content ...component T, failed component T) T` — and the children written in the slot bind `T`.
 
 A slot's count is what its population renders, not the statements written in
 it: `family.one` takes one node, so a `for` there is an error and an `if` must
@@ -2442,11 +2462,11 @@ FuncBodyTail =
     "=>" Expr
     | [ Type ] [ StmtBlock ]
 
-FuncName = IDENT [ TypeParamList [ "." IDENT [ TypeParamList ] ] | "." IDENT [ TypeParamList ] ]
+FuncName = IDENT [ "<" IDENT FuncNameParams | "." IDENT [ TypeParamList ] ]
 
 TypeParamList = "<" TypeParam { "," TypeParam } ">"
 
-TypeParam = IDENT [ "=" Type ]
+TypeParam = IDENT Type [ "=" Type ]
 
 ParamList = Param { "," Param } [ "," ]
 

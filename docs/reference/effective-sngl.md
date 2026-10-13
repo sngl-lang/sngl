@@ -609,7 +609,7 @@ func list<T>.push(item T)
 func list<T>.reverse() list<T>
 func list<T>.indexOf(item T) int
 func list<T>.filter(pred func(T) bool) list<T>
-func list<T>.map<U>(fn func(T) U) list<U>
+func list<T>.map<U any>(fn func(T) U) list<U>
 ```
 
 Type parameters are inferred at call sites -- you never write `<T>` explicitly
@@ -626,6 +626,29 @@ var todos = [Todo{text="a", done=true}, Todo{text="b", done=false}]
 func active() => todos.filter(func(t) => !t.done)
 func labels() => todos.map(func(t) => t.text)
 ```
+
+A generic declaration of your own names a constraint for each type parameter,
+`any` when it says nothing about the type. A method restates its receiver's
+parameters by name alone, since the type already constrains them:
+
+```sngl
+struct Pair<A any, B any> {
+    first  A
+    second B
+}
+
+func Pair<A, B>.left() => this.first
+
+func firstOr<T any>(xs list<T>, fallback T) T {
+    if xs.length == 0 {
+        return fallback
+    }
+    return xs[0]
+}
+```
+
+`any` is only a constraint. A value whose type you say nothing about is a
+`dyn`, and `var x any` is an error.
 
 ### Lambdas
 
