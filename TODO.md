@@ -298,3 +298,19 @@ Found in review, each with a fixture that fails without its fix:
 - [X] `==` folded two equal struct literals to false (pointer identity), and
   now compares structs and lists field by field
   (`testdata/optimize_struct_eq_fold.sngl`).
+
+Found in a second review:
+
+- [X] Retyping a folded literal from its values gave `wrap[option[int]](3)`
+  the int field, and gave up on a null or a list, leaving `struct { v T }`
+  for a backend to erase. `irFromValue` takes the call's checked type instead,
+  and `retypeLiteral` is gone.
+- [X] The run-time component refusal looked at props only; it now reads event
+  and slot parameters and state too.
+- [X] It read the language's `GenericFuncs`, which refused html under
+  `--lang go`; it reads the new `genericComponents` capability, which html
+  holds itself.
+
+Not this work's: a directory-imported package and the program importing it
+each declare an interned `struct { v int }` under one name, and Go reports it
+redeclared.
