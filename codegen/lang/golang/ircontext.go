@@ -1974,8 +1974,8 @@ func (gc *GoIRContext) WithLocal(name string) *GoIRContext {
 	}
 }
 
-// WithRenamedLocal binds name as a local that renders as `as` — what a var
-// handler's parameter needs, the setter having named the value already.
+// WithRenamedLocal binds name as a local that renders as `as` -- what a
+// parameter needs where the emitted code holds its value under another name.
 func (gc *GoIRContext) WithRenamedLocal(name, as string) *GoIRContext {
 	c := gc.WithLocal(name)
 	c.Ctx = gc.Ctx.WithRenamedLocal(name, as)

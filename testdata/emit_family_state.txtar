@@ -155,6 +155,7 @@ import (
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/widget"
 	"os"
+	"slices"
 	"strconv"
 	"strings"
 )
@@ -225,7 +226,7 @@ func ReadClicks(members func() []Entry) {
 	for in.Scan() {
 		fields := strings.Split(strings.TrimSpace(in.Text()), " ")
 		fyne.Do(func() {
-			ms := members()
+			ms := slices.Clone(members())
 			var i int = func() int { __v, _ := strconv.ParseInt(fields[0], 10, 64); return int(__v) }()
 			if i < len(ms) {
 				ms[i].Click(func() int { __v, _ := strconv.ParseInt(fields[1], 10, 64); return int(__v) }())
@@ -412,6 +413,7 @@ import (
 	"duckfam.us/sngl/pkg/go/gtk4rt"
 	"fmt"
 	"os"
+	"slices"
 	"strconv"
 	"strings"
 )
@@ -482,7 +484,7 @@ func ReadClicks(members func() []Entry) {
 	for in.Scan() {
 		fields := strings.Split(strings.TrimSpace(in.Text()), " ")
 		gtk4rt.Post(func() {
-			ms := members()
+			ms := slices.Clone(members())
 			var i int = func() int { __v, _ := strconv.ParseInt(fields[0], 10, 64); return int(__v) }()
 			if i < len(ms) {
 				ms[i].Click(func() int { __v, _ := strconv.ParseInt(fields[1], 10, 64); return int(__v) }())
@@ -644,6 +646,6 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return gtk4rt.ToplevelWindow(app, m.__n0)
 }
 -- run/go/fyne --
-pass sha256:27ac06e930c9ceaa931d322517a79c35
+pass sha256:d66a704f6cde0aa8be09e206885d61e7
 -- run/go/gtk4 --
-pass sha256:075695748d2aacd4f6dfab9349d0ff3e
+pass sha256:22a0a83e5fd71095a07d4b1dc2200dd3

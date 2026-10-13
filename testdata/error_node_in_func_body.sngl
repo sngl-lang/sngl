@@ -27,9 +27,10 @@ func placeWidget() {
 }
 
 component main node {
-    var touched = 0 @change {
+    var touched = 0
+    effect(on=touched, @update {
         text(value="dropped") // ERROR(check) "cannot be written in a function body"
-    }
+    })
 
     func nested() {
         vbox { // ERROR(check) "cannot be written in a function body"

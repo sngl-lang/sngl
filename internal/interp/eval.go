@@ -73,7 +73,7 @@ func (lv *LambdaValue) Call(args []any) (any, error) {
 	defer func() { child.ended = true }()
 	for i, p := range lv.params(args) {
 		if i < len(args) {
-			child.Set(p, args[i])
+			child.Set(p, bindArg(args[i], p))
 		}
 	}
 	defer child.enterFrame(lv.site)()
@@ -89,7 +89,7 @@ func (lv *LambdaValue) Call(args []any) (any, error) {
 func (lv *LambdaValue) CallWithEnv(env *Env, args []any) (any, error) {
 	for i, p := range lv.params(args) {
 		if i < len(args) {
-			env.Set(p, args[i])
+			env.Set(p, bindArg(args[i], p))
 		}
 	}
 	defer env.enterFrame(lv.site)()
@@ -480,6 +480,9 @@ type Env struct {
 	nav       *navState
 	navStack  *Env
 	navParams *navParams
+	// wlog is the program's write log, held by the outermost scope and
+	// reached by every other through writes().
+	wlog *writeLog
 }
 
 func NewEnv() *Env {
@@ -487,6 +490,7 @@ func NewEnv() *Env {
 		vals:      map[ir.Symbol]any{},
 		childEnvs: map[childKey]*Env{},
 		handling:  new(int),
+		wlog:      &writeLog{},
 	}
 }
 
@@ -636,6 +640,7 @@ func (env *Env) Snapshot() *Env {
 		origin:     env,
 		spreadVals: env.spreadVals,
 		handling:   env.handling,
+		wlog:       env.writes(),
 		build:      env.build,
 	}
 	maps.Copy(cp.vals, env.vals)
@@ -1579,7 +1584,7 @@ func (env *Env) evalListLit(e *ir.ListLit) (any, error) {
 			if err != nil {
 				return nil, err
 			}
-			if items, ok := v.([]any); ok {
+			if items, ok := copyOf(v, sp.Operand.ExprType()).([]any); ok {
 				list = append(list, items...)
 			} else {
 				list = append(list, v)
@@ -1590,7 +1595,7 @@ func (env *Env) evalListLit(e *ir.ListLit) (any, error) {
 		if err != nil {
 			return nil, err
 		}
-		list = append(list, v)
+		list = append(list, copyOf(v, el.ExprType()))
 	}
 	if list == nil {
 		list = []any{}
@@ -1605,6 +1610,7 @@ func (env *Env) evalStructLit(e *ir.StructLit) (any, error) {
 		if err != nil {
 			return nil, err
 		}
+		v = copyOf(v, f.Value.ExprType())
 		if f.Spread {
 			if src, ok := v.(*Struct); ok {
 				s.Merge(src)
@@ -1630,7 +1636,7 @@ func (env *Env) evalMapLitIR(e *ir.MapLitIR) (any, error) {
 		// Keys may be PluralKey values (from i18n.exactly/i18n.one etc.) or
 		// plain strings. Store them as formatted strings so the map is
 		// map[string]any; toPluralKeyStringMap will re-interpret them.
-		m[fmt.Sprintf("%v", k)] = v
+		m[fmt.Sprintf("%v", k)] = copyOf(v, entry.Value.ExprType())
 	}
 	return m, nil
 }
@@ -1798,6 +1804,10 @@ func (env *Env) evalUnary(e *ir.Unary) (any, error) {
 type listRef struct {
 	list []any
 	idx  int
+	// iter is the loop's iterable and at the scope it was evaluated in, which
+	// is where a write through the element lands (listRef.cell).
+	iter ir.Expr
+	at   *Env
 }
 
 func (r *listRef) get() any  { return r.list[r.idx] }
@@ -1979,7 +1989,7 @@ func (env *Env) evalTypeMethodCall(call *ir.Call) (any, error) {
 
 	// List mutation (push/remove) needs writeback; evaluate before user funcs
 	// since stdlib push/remove delegate to untranslated intrinsics.
-	if receiverName == "list" && (method == "push" || method == "remove") && len(call.Args) >= 1 {
+	if receiverName == "list" && isListMutation(method) && len(call.Args) >= 1 {
 		return env.evalBuiltinMethod(call, method, evalArgs)
 	}
 
@@ -2101,7 +2111,7 @@ func (env *Env) evalNamespaceCall(call *ir.Call) (any, error) {
 			}
 			// Mutation methods on lists need a writeback; dispatch before
 			// user-defined stdlib bodies that delegate to intrinsics.
-			if method == "push" || method == "remove" || method == "filter" || method == "map" {
+			if isListMutation(method) || method == "filter" || method == "map" {
 				return env.evalBuiltinMethodFromRecv(call.Receiver, method, recv, evalArgs[1:])
 			}
 			if fn := recvFn; recvOK && len(fn.Block) > 0 {
@@ -2158,7 +2168,7 @@ func (env *Env) runEventHandlerValues(fn *ir.Func, vals []any) (any, error) {
 		if i >= len(vals) {
 			break
 		}
-		env.Set(p, vals[i])
+		env.Set(p, bindArg(vals[i], p))
 	}
 	return env.execBlockForResult(fn.Block)
 }
@@ -2166,6 +2176,10 @@ func (env *Env) runEventHandlerValues(fn *ir.Func, vals []any) (any, error) {
 // evalBuiltinMethodFromRecv dispatches list/string built-in methods when the
 // receiver expression is known separately from the rest of the args.
 func (env *Env) evalBuiltinMethodFromRecv(recvExpr ir.Expr, method string, recv any, rest []any) (any, error) {
+	var recvType *ir.Type
+	if recvExpr != nil {
+		recvType = recvExpr.ExprType()
+	}
 	switch method {
 	case "filter":
 		if list, ok := recv.([]any); ok && len(rest) == 1 {
@@ -2206,8 +2220,9 @@ func (env *Env) evalBuiltinMethodFromRecv(recvExpr ir.Expr, method string, recv 
 		}
 	case "push":
 		if list, ok := recv.([]any); ok && len(rest) == 1 {
+			rest[0] = copyOf(rest[0], elemType(recvType))
 			newList := append(list, rest[0])
-			return env.writeBackList(recvExpr, newList)
+			return env.writeBackList(recvExpr, newList, writeInsert, len(list), rest[0])
 		}
 	case "remove":
 		if list, ok := recv.([]any); ok && len(rest) == 1 {
@@ -2215,8 +2230,22 @@ func (env *Env) evalBuiltinMethodFromRecv(recvExpr ir.Expr, method string, recv 
 			if idx < 0 || idx >= len(list) {
 				return list, nil // documented: out of range leaves the list unchanged
 			}
+			removed := list[idx]
 			newList := append(list[:idx], list[idx+1:]...)
-			return env.writeBackList(recvExpr, newList)
+			return env.writeBackList(recvExpr, newList, writeRemove, idx, removed)
+		}
+	case "insert":
+		if list, ok := recv.([]any); ok && len(rest) == 2 {
+			rest[1] = copyOf(rest[1], elemType(recvType))
+			idx := ToInt(rest[0])
+			if idx < 0 || idx > len(list) {
+				return list, nil // documented: out of range leaves the list unchanged
+			}
+			return env.writeBackList(recvExpr, slices.Insert(slices.Clone(list), idx, rest[1]), writeInsert, idx, rest[1])
+		}
+	case "clear":
+		if _, ok := recv.([]any); ok && len(rest) == 0 {
+			return env.writeBackList(recvExpr, []any{}, writeClear, 0, nil)
 		}
 	case "contains":
 		if s, ok := recv.(string); ok && len(rest) == 1 {
@@ -2228,6 +2257,16 @@ func (env *Env) evalBuiltinMethodFromRecv(recvExpr ir.Expr, method string, recv 
 		return mapMethodResult(method, m, rest)
 	}
 	return nil, fmt.Errorf("unsupported method %q on %T", method, recv)
+}
+
+// isListMutation is whether method is one of list's in-place mutations, which
+// write their receiver back rather than returning a new list.
+func isListMutation(method string) bool {
+	switch method {
+	case "push", "remove", "insert", "clear":
+		return true
+	}
+	return false
 }
 
 // methodNameFromCall recovers the method name for a Receiver-bearing call from
@@ -2255,6 +2294,10 @@ func methodNameFromCall(call *ir.Call) string {
 func (env *Env) evalBuiltinMethod(call *ir.Call, method string, evalArgs []any) (any, error) {
 	recv := evalArgs[0]
 	rest := evalArgs[1:]
+	var recvType *ir.Type
+	if len(call.Args) > 0 && call.Args[0].Value != nil {
+		recvType = call.Args[0].Value.ExprType()
+	}
 	switch method {
 	case "filter":
 		if list, ok := recv.([]any); ok && len(rest) == 1 {
@@ -2295,8 +2338,9 @@ func (env *Env) evalBuiltinMethod(call *ir.Call, method string, evalArgs []any) 
 		}
 	case "push":
 		if list, ok := recv.([]any); ok && len(rest) == 1 {
+			rest[0] = copyOf(rest[0], elemType(recvType))
 			newList := append(list, rest[0])
-			return env.writeBackList(call.Args[0].Value, newList)
+			return env.writeBackList(call.Args[0].Value, newList, writeInsert, len(list), rest[0])
 		}
 	case "remove":
 		if list, ok := recv.([]any); ok && len(rest) == 1 {
@@ -2304,8 +2348,22 @@ func (env *Env) evalBuiltinMethod(call *ir.Call, method string, evalArgs []any) 
 			if idx < 0 || idx >= len(list) {
 				return list, nil // documented: out of range leaves the list unchanged
 			}
+			removed := list[idx]
 			newList := append(list[:idx], list[idx+1:]...)
-			return env.writeBackList(call.Args[0].Value, newList)
+			return env.writeBackList(call.Args[0].Value, newList, writeRemove, idx, removed)
+		}
+	case "insert":
+		if list, ok := recv.([]any); ok && len(rest) == 2 {
+			rest[1] = copyOf(rest[1], elemType(recvType))
+			idx := ToInt(rest[0])
+			if idx < 0 || idx > len(list) {
+				return list, nil // documented: out of range leaves the list unchanged
+			}
+			return env.writeBackList(call.Args[0].Value, slices.Insert(slices.Clone(list), idx, rest[1]), writeInsert, idx, rest[1])
+		}
+	case "clear":
+		if _, ok := recv.([]any); ok && len(rest) == 0 {
+			return env.writeBackList(call.Args[0].Value, []any{}, writeClear, 0, nil)
 		}
 	case "contains":
 		if s, ok := recv.(string); ok && len(rest) == 1 {
@@ -2320,7 +2378,8 @@ func (env *Env) evalBuiltinMethod(call *ir.Call, method string, evalArgs []any) 
 }
 
 // writeBackList applies a mutated list back to its originating variable.
-func (env *Env) writeBackList(target ir.Expr, newList []any) (any, error) {
+func (env *Env) writeBackList(target ir.Expr, newList []any, kind writeKind, index int, item any) (any, error) {
+	defer env.noteWrite(target, kind, index, item)
 	switch t := target.(type) {
 	case *ir.Ident:
 		if owner := env.findVarOwner(t.Sym); owner != nil {
@@ -2345,6 +2404,35 @@ func (env *Env) writeBackList(target ir.Expr, newList []any) (any, error) {
 			if err := cv.WriteBackList(t.Field, newList); err != nil {
 				return nil, err
 			}
+		}
+		// A list in a struct's field: the struct is shared, so writing the
+		// field is the write. Without it `h.items.push(2)` grew a slice
+		// nothing held.
+		if st, ok := obj.(*Struct); ok {
+			st.Set(t.Field, newList)
+		}
+	case *ir.Index:
+		// A list held in an element or an entry: `xs[0].push(5)`. The holder
+		// is shared, as a struct is, so writing its slot is the write.
+		obj, err := env.Eval(t.Operand)
+		if err != nil {
+			return nil, err
+		}
+		idx, err := env.Eval(t.Idx)
+		if err != nil {
+			return nil, err
+		}
+		switch o := obj.(type) {
+		case []any:
+			i := ToInt(idx)
+			if i < 0 || i >= len(o) {
+				return nil, fmt.Errorf("index %d out of range [0:%d]", i, len(o))
+			}
+			o[i] = newList
+		case map[string]any:
+			o[fmt.Sprintf("%v", idx)] = newList
+		default:
+			return nil, fmt.Errorf("testrunner.writeBackList: cannot index %T", obj)
 		}
 	default:
 		return nil, fmt.Errorf("testrunner.writeBackList: unhandled target ir.Expr %T", target)
@@ -2419,7 +2507,7 @@ func (env *Env) CallUserFuncValues(fn *ir.Func, args []any) (any, error) {
 	child := env.Snapshot()
 	for i, p := range fn.Params {
 		if i < len(args) {
-			child.Set(p, args[i])
+			child.Set(p, bindArg(args[i], p))
 		}
 	}
 	return child.execBlockForResult(fn.Block)
@@ -2551,7 +2639,7 @@ func (env *Env) evalUserFuncCore(fn *ir.Func, args []any) (any, error) {
 			}
 			argIdx := i - argOffset
 			if argIdx >= 0 && argIdx < len(args) {
-				execEnv.Set(p, args[argIdx])
+				execEnv.Set(p, bindArg(args[argIdx], p))
 			}
 		}
 		var localVars []ir.Symbol
@@ -2600,7 +2688,10 @@ func (env *Env) evalUserFuncCore(fn *ir.Func, args []any) (any, error) {
 						return nil, err
 					}
 				}
-				execEnv.Set(lv.Sym, CopyValue(v))
+				if lv.Init != nil {
+					v = copyOf(v, lv.Init.ExprType())
+				}
+				execEnv.Set(lv.Sym, v)
 				localVars = append(localVars, lv.Sym)
 				continue
 			}
@@ -3082,11 +3173,19 @@ func (env *Env) InvokeElementEvent(m map[string]any, event string, args func() (
 	res, err := handlerEnv.underHandler(provided, func() (any, error) {
 		for i, p := range h.Params {
 			if i < len(vals) {
-				handlerEnv.Set(p, vals[i])
+				handlerEnv.Set(p, bindArg(vals[i], p))
 			}
 		}
 		return handlerEnv.execBlockForResult(h.Block)
 	})
 	handlerEnv.writeBack()
 	return res, true, err
+}
+
+// elemType is the element type of a list type, nil for anything else.
+func elemType(t *ir.Type) *ir.Type {
+	if t == nil || t.Kind != ir.TypeList || len(t.Elems) == 0 {
+		return nil
+	}
+	return t.Elems[0]
 }

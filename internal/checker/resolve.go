@@ -108,6 +108,14 @@ func (c *checker) constructBuiltinGeneric(id ir.BuiltinKind, sd *ir.StructDef, t
 			return ir.RefOf(TypDyn)
 		}
 		return ir.RefOf(c.resolveType(t.TypeArgs[0]))
+	case ir.BuiltinReadonly:
+		// The checker's own: what it gives a loop variable bound by copy. The
+		// argument is what the program meant, so it stands in after the error.
+		c.error(t.Pos, "readonly<T> is the type of a loop variable bound by copy, and a program may not write it")
+		if len(t.TypeArgs) == 1 {
+			return c.resolveType(t.TypeArgs[0])
+		}
+		return TypDyn
 	}
 	// The macro validates the id set, so an unhandled kind is a compiler bug.
 	panic(fmt.Sprintf("sngl: builtin generic kind %v has no constructor", id))

@@ -19,9 +19,10 @@ func (s *Server) analyze(fs *fileState) []Diagnostic {
 	// under the server's grants, never prompting.
 	resolver := build.NewResolver(dir)
 	resolver.Trust = s.trust
-	doc, coreDiags := lspcore.Analyze(fs.Content, filename, build.ProjectFS(dir), dir, resolver)
-	if doc != nil {
-		fs.Doc = doc
+	a := lspcore.AnalyzeChecked(fs.Content, filename, build.ProjectFS(dir), dir, resolver)
+	coreDiags := a.Diags
+	if a.Doc != nil {
+		fs.Doc, fs.Pkg = a.Doc, a.Pkg
 	}
 
 	diags := make([]Diagnostic, len(coreDiags))

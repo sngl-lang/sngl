@@ -64,9 +64,10 @@ component pair ui.node {
 
 component pair[html.platform] {
     counter #inner
-    var v = 0 @change {
+    var v = 0
+    effect(on=v, @update {
         inner.add(1) // ERROR(check) "the default of \"by\" reads \"step\" of counter"
-    }
+    })
     ui.button(text="go", @click {
         inner.add(1)  // ERROR(check) "the default of \"by\" reads \"step\" of counter"
         inner.shown() // ERROR(check) "the default of \"s\" reads \"lbl\" of counter"

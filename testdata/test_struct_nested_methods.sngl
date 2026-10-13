@@ -4,9 +4,17 @@ import . "sngl:test"
 struct Point {
     x, y int
     func magnitude2() => this.x * this.x + this.y * this.y
+    // The ambient `this` is the receiver's own value: a method writing it
+    // moves the caller's point. moved returns a moved copy instead.
     func translate(dx int, dy int) {
         this.x += dx
         this.y += dy
+    }
+    func moved(dx int, dy int) Point {
+        var q = this
+        q.x += dx
+        q.y += dy
+        return q
     }
     // `this.`-elision: bare field, bare sibling call
     func describe() => "({x},{y}) m2={magnitude2()}"
@@ -25,6 +33,9 @@ func testNestedMethodMutation(t Test, c main) {
     c.p.translate(1, 2)
     t.assert(c.p.x == 4)
     t.assert(c.p.y == 6)
+    var q = c.p.moved(1, 1)
+    t.assert(q.x == 5)
+    t.assert(c.p.x == 4)
 }
 
 func testNestedMethodBareSiblingCall(t Test, c main) {

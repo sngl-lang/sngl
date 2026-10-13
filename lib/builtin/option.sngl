@@ -18,6 +18,18 @@ struct option<T> {}
 #[_builtin(ref)]
 struct ref<T> {}
 
+// Read-only value: `readonly<T>` is a `T` that may be read and not written --
+// neither assigned, nor toggled, nor written through a field or an element,
+// nor handed to a mutating method such as `push`. It is the type of a loop
+// variable bound by copy: `for var x = xs` gives `x` a `readonly<T>`, since
+// a write to a copy would change nothing read again, and `for var &x = xs` is
+// the binding that writes the element. The index of a loop, and a map's key and
+// value, are read-only too.
+//
+// The compiler gives the type; a program may not write it.
+#[_builtin(readonly)]
+struct readonly<T> {}
+
 // The absence of a value. Assignable to any `option<T>`, and what a bare
 // `option<T>` holds until one is given.
 //

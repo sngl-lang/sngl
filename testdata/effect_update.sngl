@@ -1,0 +1,388 @@
+// An effect reports writes to what `on` reads. `@update` is handed the value
+// after them; a list held in a cell may also say how it changed, and a write no
+// change handler describes still reaches `@update`. Each test's log pins the
+// order: the changes in the order they were made, then `@update`.
+
+import . "sngl:test"
+import . "sngl:ui"
+
+struct Holder {
+    items list<int>
+}
+
+struct Todo {
+    title string
+    done  bool = false
+}
+
+// Only @update: one report per settle, whatever was written. A test settles
+// when it reads, so two calls with no read between are one settle.
+component saver node {
+    var (
+        todos list<Todo> = []
+        saved = 0
+        last = 0
+    )
+
+    effect(
+        on = todos,
+        @update(t) {
+            saved += 1
+            last = t.length()
+        },
+    )
+
+    func add(title string) {
+        todos.push(Todo{title=title})
+    }
+
+    func addTwo() {
+        todos.push(Todo{title="a"})
+        todos.push(Todo{title="b"})
+    }
+
+    func toggle(i int) {
+        for var k, &todo = todos {
+            if k == i {
+                todo.done = !todo.done
+            }
+        }
+    }
+
+    text #out(value="{saved}:{last}")
+}
+
+func testUpdateIsNotRunOnMount(t Test, c saver) {
+    t.assert(c.out.value == "0:0")
+}
+
+func testUpdateRunsOnAPush(t Test, c saver) {
+    c.add("a")
+    t.assert(c.out.value == "1:1")
+}
+
+func testUpdateRunsOncePerSettle(t Test, c saver) {
+    c.addTwo()
+    t.assert(c.out.value == "1:2")
+}
+
+func testUpdateRunsOnAWriteInsideAnElement(t Test, c saver) {
+    c.add("a")
+    t.assert(c.out.value == "1:1")
+    c.toggle(0)
+    t.assert(c.out.value == "2:1")
+}
+
+func testUpdateRunsWhenTheListIsReplaced(t Test, c saver) {
+    c.todos = [Todo{title="x"}, Todo{title="y"}, Todo{title="z"}]
+    t.assert(c.out.value == "1:3")
+}
+
+// Every change handler, and the order they report in.
+component changes node {
+    var (
+        xs list<int> = [10, 20]
+        log list<string> = []
+    )
+
+    effect(
+        on = xs,
+        @update(v) {
+            log.push("update {v.length()}")
+        },
+        @insert(at, item) {
+            log.push("insert {at} {item}")
+        },
+        @remove(at, item) {
+            log.push("remove {at} {item}")
+        },
+        @set(at, item) {
+            log.push("set {at} {item}")
+        },
+        @clear {
+            log.push("clear")
+        },
+    )
+
+    func pushRemoveSet() {
+        xs.push(30)
+        xs.remove(0)
+        xs[1] = 99
+    }
+
+    func insertAt(i int, x int) {
+        xs.insert(i, x)
+    }
+
+    func clearAll() {
+        xs.clear()
+    }
+
+    func replace() {
+        xs.push(1)
+        xs = [7]
+    }
+
+    text #out(value=log.join(","))
+}
+
+func testChangesInTheOrderMade(t Test, c changes) {
+    c.pushRemoveSet()
+    t.assert(c.out.value == "insert 2 30,remove 0 10,set 1 99")
+}
+
+func testInsert(t Test, c changes) {
+    c.insertAt(1, 15)
+    t.assert(c.out.value == "insert 1 15")
+}
+
+func testClear(t Test, c changes) {
+    c.clearAll()
+    t.assert(c.out.value == "clear")
+}
+
+// The push is a change; replacing the list whole is one no change event
+// describes, so @update follows the changes.
+func testReplacementReachesUpdate(t Test, c changes) {
+    c.replace()
+    t.assert(c.out.value == "insert 2 1,update 1")
+}
+
+// A change the program does not handle is reported by @update.
+component partial node {
+    var (
+        xs list<int> = [1]
+        log list<string> = []
+    )
+
+    effect(
+        on = xs,
+        @update(v) {
+            log.push("update {v.length()}")
+        },
+        @insert(at, item) {
+            log.push("insert {at}")
+        },
+    )
+
+    func pushThenRemove() {
+        xs.push(2)
+        xs.remove(0)
+    }
+
+    text #out(value=log.join(","))
+}
+
+func testUnhandledChangeReachesUpdate(t Test, c partial) {
+    c.pushThenRemove()
+    t.assert(c.out.value == "insert 1,update 1")
+}
+
+// A key that compares still reports every write, one of the value it already
+// held included, and before the bracket rekeys.
+component scalar node {
+    var (
+        n = 0
+        log list<string> = []
+    )
+
+    effect(
+        on = n,
+        @mount(k) {
+            log.push("mount {k}")
+        },
+        @unmount(k) {
+            log.push("unmount {k}")
+        },
+        @update(k) {
+            log.push("update {k}")
+        },
+    )
+
+    text #out(value=log.join(","))
+}
+
+func testUpdateRunsBeforeTheRekey(t Test, c scalar) {
+    c.n = 1
+    t.assert(c.out.value == "mount 0,update 1,unmount 0,mount 1")
+}
+
+func testUpdateRunsOnAnEqualWrite(t Test, c scalar) {
+    c.n = 0
+    t.assert(c.out.value == "mount 0,update 0")
+}
+
+// A key computed from state, and a struct holding a list, report @update.
+component computed node {
+    var (
+        xs list<int> = [1, 2, 3]
+        n = 0
+    )
+
+    effect(
+        on = {items=xs, count=xs.length()},
+        @update {
+            n += 1
+        },
+    )
+
+    func add() {
+        xs.push(4)
+    }
+
+    text #out(value="{n}")
+}
+
+func testComputedKeyReportsAWrite(t Test, c computed) {
+    c.add()
+    t.assert(c.out.value == "1")
+}
+
+// A list in a struct's field is a cell too, and replacing the struct
+// replaces the list.
+component field node {
+    var (
+        h = Holder{items=[1]}
+        log list<string> = []
+    )
+
+    effect(
+        on = h.items,
+        @update {
+            log.push("update")
+        },
+        @insert(at, item) {
+            log.push("insert {at} {item}")
+        },
+        @set(at, item) {
+            log.push("set {at} {item}")
+        },
+    )
+
+    func add() {
+        h.items.push(2)
+    }
+
+    func poke() {
+        h.items[0] = 7
+    }
+
+    func swap() {
+        h = Holder{items=[5]}
+    }
+
+    text #out(value="{h.items.length()} {log.join(",")}")
+}
+
+func testFieldKey(t Test, c field) {
+    c.add()
+    t.assert(c.out.value == "2 insert 1 2")
+    c.poke()
+    t.assert(c.out.value == "2 insert 1 2,set 0 7")
+    c.swap()
+    t.assert(c.out.value == "1 insert 1 2,set 0 7,update")
+}
+
+struct Row {
+    items list<int> = []
+    n     int = 0
+}
+
+// Under a loop, an element the loop binds with `&` is a cell, and each copy
+// reports the writes that reached its own: a list mutation of what the loop
+// walks reaches the copies it moved, a push none.
+component rows node {
+    var (
+        xs list<Row> = [Row{items=[1]}, Row{items=[2]}]
+        log list<string> = []
+    )
+
+    vbox {
+        for var &x = xs {
+            effect(
+                on = x.items,
+                @update(v) {
+                    log.push("update {v.length()}")
+                },
+                @insert(at, item) {
+                    log.push("insert {at} {item}")
+                },
+            )
+        }
+    }
+
+    func grow() {
+        xs[1].items.push(5)
+    }
+
+    func same() {
+        xs[1].items = [2]
+    }
+
+    func sibling() {
+        xs[0].n = 3
+    }
+
+    func append() {
+        xs.push(Row{})
+    }
+
+    func insertFirst() {
+        xs.insert(0, Row{items=[9, 9]})
+    }
+
+    func dropFirst() {
+        xs.remove(0)
+    }
+
+    func swapAll() {
+        xs = [Row{items=[7]}]
+    }
+
+    text #out(value=log.join(","))
+}
+
+func testPerCopyChange(t Test, c rows) {
+    c.grow()
+    t.assert(c.out.value == "insert 1 5")
+}
+
+func testPerCopyEqualWrite(t Test, c rows) {
+    c.same()
+    t.assert(c.out.value == "update 1")
+}
+
+func testPerCopySibling(t Test, c rows) {
+    c.sibling()
+    t.assert(c.out.value == "")
+}
+
+func testPerCopyPush(t Test, c rows) {
+    c.append()
+    t.assert(c.out.value == "")
+}
+
+func testPerCopyInsertShifts(t Test, c rows) {
+    c.insertFirst()
+    t.assert(c.out.value == "update 2,update 1")
+}
+
+func testPerCopyRemoveShifts(t Test, c rows) {
+    c.dropFirst()
+    t.assert(c.out.value == "update 1")
+}
+
+func testPerCopyReplace(t Test, c rows) {
+    c.swapAll()
+    t.assert(c.out.value == "update 1")
+}
+
+window {
+    saver
+    changes
+    partial
+    scalar
+    computed
+    field
+    rows
+}

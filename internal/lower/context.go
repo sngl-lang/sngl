@@ -152,11 +152,6 @@ func collectReachableExternalFuncs(pkg *ir.Package) []*ir.Func {
 	}
 	seedFromVar := func(v *ir.Var) {
 		seedFromExpr(v.Init)
-		for _, h := range v.Handlers {
-			if h.Func != nil {
-				seedFromStmts(h.Func.Block)
-			}
-		}
 	}
 
 	// Seed from user package: walk every place an expression or stmt can
@@ -289,11 +284,6 @@ func computeReachability(pkg *ir.Package, extraFuncs []*ir.Func) Reachable {
 		calls := callsInBody(comp.Stmts, nil)
 		for _, v := range comp.Vars {
 			calls = append(calls, callsInExpr(v.Init, nil)...)
-			for _, h := range v.Handlers {
-				if h.Func != nil {
-					calls = append(calls, callsInBody(h.Func.Block, nil)...)
-				}
-			}
 		}
 		return calls
 	}
@@ -302,11 +292,6 @@ func computeReachability(pkg *ir.Package, extraFuncs []*ir.Func) Reachable {
 		collectContextReads(comp.Stmts, out)
 		for _, v := range comp.Vars {
 			collectContextReads(v.Init, out)
-			for _, h := range v.Handlers {
-				if h.Func != nil {
-					collectContextReads(h.Func.Block, out)
-				}
-			}
 		}
 		for ctx := range out {
 			reach.Components[ctx][comp] = true
@@ -580,11 +565,6 @@ func rewriteReads(pkg *ir.Package, reach Reachable, extraFuncs []*ir.Func, hidde
 					continue
 				}
 				v.Init = w.expr(v.Init)
-				for _, h := range v.Handlers {
-					if h.Func != nil {
-						h.Func.Block = w.stmts(h.Func.Block)
-					}
-				}
 			}
 		}
 		for _, fn := range contextFuncs(pkg, extraFuncs) {
@@ -752,11 +732,6 @@ func lowerProviders(pkg *ir.Package, reach Reachable, extraFuncs []*ir.Func, hid
 	for _, v := range pkg.Vars {
 		pkgActive := copyExprMap(defaults)
 		v.Init = lowerInExpr(v.Init, pkgActive, pc)
-		for _, h := range v.Handlers {
-			if h.Func != nil {
-				h.Func.Block = lowerInStmts(h.Func.Block, pkgActive, pc)
-			}
-		}
 	}
 
 	// For component bodies: the active value for each ctx is a read of
@@ -776,11 +751,6 @@ func lowerProviders(pkg *ir.Package, reach Reachable, extraFuncs []*ir.Func, hid
 		comp.Stmts, comp.Vars = promoteLocalVarsToVars(comp.Stmts, comp.Vars)
 		for _, v := range comp.Vars {
 			v.Init = lowerInExpr(v.Init, compActive, pc)
-			for _, h := range v.Handlers {
-				if h.Func != nil {
-					h.Func.Block = lowerInStmts(h.Func.Block, compActive, pc)
-				}
-			}
 		}
 	}
 

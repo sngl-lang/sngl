@@ -309,36 +309,11 @@ func (jc *JsIRContext) EmitText(n *ir.Emit, argStrs []string) string {
 }
 func (jc *JsIRContext) LocalVarText(n *ir.LocalVar, initStr string) string {
 	if n.Init != nil {
-		return "let " + n.Name + " = " + jsValueCopy(n.Init, n.Type, initStr)
+		return "let " + n.Name + " = " + initStr
 	}
 	return "let " + n.Name
 }
 
-// jsValueCopy binds a struct value the way SNGL binds one: by copy. A SNGL
-// struct is a value, so `var next = this` gives you your own -- Go's
-// assignment does that and JavaScript's does not, so mutating `next` wrote
-// through to whatever else held the object.
-//
-// It has not shown as a wrong pixel here, because the html updaters run after
-// every handler whether anything changed or not. It is still the wrong
-// semantics, and a program comparing a value it kept against the current one
-// sees them both move. The same lowering on Compose, whose recomposition is
-// decided by equality, meant no button did anything.
-//
-// A literal needs no copy: it is already nobody else's.
-func jsValueCopy(init ir.Expr, t *ir.Type, rendered string) string {
-	if t == nil || t.Kind != ir.TypeStruct || t.Decl == nil {
-		return rendered
-	}
-	if ir.StringReprStruct(t) {
-		return rendered
-	}
-	switch init.(type) {
-	case *ir.StructLit, *ir.Literal, nil:
-		return rendered
-	}
-	return "{ ..." + rendered + " }"
-}
 func (jc *JsIRContext) ReturnText(n *ir.Return, valueStr string) string {
 	if n.Value != nil {
 		return "return " + valueStr
@@ -822,7 +797,7 @@ func (jc *JsIRContext) evalNamespaceCall(n *ir.Call) string {
 		// Only for a receiver whose type the checker could not resolve. With an id
 		// in hand the registry is the answer, and its absence has to reach
 		// RequireIntrinsicFallback rather than be hidden by a name match.
-		if n.Func == nil || n.Func.Intrinsic == "" {
+		if nameMatchable(n.Func) {
 			if result := jsBuiltinMethodFromArgs("*."+fname, allArgs); result != "" {
 				return result
 			}
@@ -856,6 +831,20 @@ func (jc *JsIRContext) evalNamespaceCall(n *ir.Call) string {
 		return "void 0 /* unresolved namespace call */"
 	}
 	return receiver + "(" + strings.Join(args, ", ") + ")"
+}
+
+// nameMatchable reports whether a call of f may be answered by a builtin
+// method's name: f carries no intrinsic id, and is not a function someone
+// wrote a body for. A program's method is emitted as itself, so a component's
+// `replace` is no string's.
+func nameMatchable(f *ir.Func) bool {
+	if f == nil {
+		return true
+	}
+	if f.Intrinsic != "" {
+		return false
+	}
+	return f.AST == nil || (f.AST.Body == nil && !f.AST.Block.IsDefined())
 }
 
 // userFuncMatches reports whether Pkg.Funcs holds a user-defined function with
@@ -894,7 +883,7 @@ func (jc *JsIRContext) evalTypeMethodCall(n *ir.Call) string {
 	// Only for a receiver whose type the checker could not resolve. With an id
 	// in hand the registry is the answer, and its absence has to reach
 	// RequireIntrinsicFallback rather than be hidden by a name match.
-	if n.Func == nil || n.Func.Intrinsic == "" {
+	if nameMatchable(n.Func) {
 		if result := jsBuiltinMethodFromArgs("*."+method, args); result != "" {
 			return result
 		}

@@ -21,7 +21,7 @@ func (s *Server) handleCompletion(id json.RawMessage, params json.RawMessage) {
 
 	line := p.Position.Line + 1
 	col := p.Position.Character + 1
-	coreItems := lspcore.Complete(fs.Content, fs.Doc, line, col)
+	coreItems := lspcore.CompleteChecked(fs.Content, fs.Doc, fs.Pkg, line, col)
 
 	items := make([]CompletionItem, len(coreItems))
 	for i, ci := range coreItems {

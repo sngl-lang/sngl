@@ -38,6 +38,10 @@ type pass struct {
 var passes = []pass{
 	passHoistBodyTypes,
 	passHoistState,
+	// Before every pass that writes a store of its own: what it copies is
+	// what the program wrote. After passHoistState, which turns a view block's
+	// local into a var whose initializer it reaches.
+	passValueCopy,
 	passForeignPrimitive,
 	passNavigationValues,
 	passNavigationHrefs,
@@ -58,6 +62,8 @@ var passes = []pass{
 	passNodePropReads,
 	passPropBindings,
 	passRefLoop,
+	// After passRefLoop, so an element bound with `&` is a place by now.
+	passRefParams,
 	passRecordArgs,
 	passSpreadOnce,
 	passViewForElse,

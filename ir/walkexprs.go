@@ -344,11 +344,6 @@ func (w *rewriter) varDecl(v *Var) {
 		return
 	}
 	v.Init = w.expr(v.Init)
-	for _, h := range v.Handlers {
-		if h.Func != nil {
-			w.fn(h.Func)
-		}
-	}
 }
 
 func (w *rewriter) pkg(pkg *Package) {

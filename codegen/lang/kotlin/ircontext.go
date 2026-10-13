@@ -376,18 +376,57 @@ func (kc *KtIRContext) AssignText(n *ir.Assign, target, value string) string {
 		if n.Op != ast.AssignSet {
 			value = target + " " + strings.TrimSuffix(n.Op.String(), "=") + " (" + value + ")"
 		}
-		var e ir.Expr = sel
-		for {
-			s, ok := e.(*ir.Select)
-			if !ok {
-				break
-			}
-			value = irwalk.EvalMutTarget(kc, s.Operand) + ".copy(" + kc.MutTargetField(s) + " = " + value + ")"
-			e = s.Operand
+		return kc.rebuildStructPath(sel, value)
+	}
+	// An element of a list in such a field: the list is a read-only `List`, so
+	// it is rebuilt with the element written and the path copied back.
+	if idx, ok := n.Target.(*ir.Index); ok && !isMapExpr(idx.Operand) {
+		if sel, ok := idx.Operand.(*ir.Select); ok && kc.isListFieldPath(sel) {
+			key := kc.WithLocal("it").EvalExpr(idx.Idx)
+			return kc.rebuildStructPath(sel, irwalk.EvalMutTarget(kc, sel)+".toMutableList().also { it["+key+"] "+n.Op.String()+" "+value+" }")
 		}
-		return irwalk.EvalMutTarget(kc, e) + " = " + value
 	}
 	return target + " " + n.Op.String() + " " + value
+}
+
+// rebuildStructPath writes value at a field path through data classes held by
+// a state var: each level is copied with the level below it replaced, and the
+// var reassigned, which is the write Compose's snapshot sees.
+func (kc *KtIRContext) rebuildStructPath(sel *ir.Select, value string) string {
+	var e ir.Expr = sel
+	for {
+		s, ok := e.(*ir.Select)
+		if !ok {
+			break
+		}
+		value = irwalk.EvalMutTarget(kc, s.Operand) + ".copy(" + kc.MutTargetField(s) + " = " + value + ")"
+		e = s.Operand
+	}
+	return irwalk.EvalMutTarget(kc, e) + " = " + value
+}
+
+// fieldListMutation is a list mutation whose receiver is a list held in such a
+// field -- `h.items.push(2)` -- written as a rebuild of the list with the
+// mutation applied to a copy, or "" for any other call. A data class's field
+// is a read-only `List`, which has no `add`.
+func (kc *KtIRContext) fieldListMutation(call *ir.Call) string {
+	if call == nil || call.Func == nil || call.Func.Intrinsic == "" || len(call.Args) == 0 {
+		return ""
+	}
+	if def, ok := ir.IntrinsicByName(call.Func.Intrinsic); !ok || !def.MutatesReceiver {
+		return ""
+	}
+	sel, ok := call.Args[0].Value.(*ir.Select)
+	if !ok || !kc.isListFieldPath(sel) {
+		return ""
+	}
+	t := sel.ExprType()
+	if t == nil || t.Kind != ir.TypeList {
+		return ""
+	}
+	onCopy := *call
+	onCopy.Args = append([]ir.CallArg{{Value: &ir.Ident{Name: "it", Type: t}}}, call.Args[1:]...)
+	return kc.rebuildStructPath(sel, irwalk.EvalMutTarget(kc, sel)+".toMutableList().also { "+kc.WithLocal("it").EvalExpr(&onCopy)+" }")
 }
 
 // isStateStructField reports whether sel is a field path through emitted data
@@ -408,12 +447,50 @@ func (kc *KtIRContext) isStateStructField(sel *ir.Select) bool {
 		}
 		e = s.Operand
 	}
+	// An element of a state list is a root too: the list is a
+	// SnapshotStateList, whose `set` is the write the snapshot sees.
+	if idx, ok := e.(*ir.Index); ok && !isMapExpr(idx.Operand) {
+		return kc.isStateList(idx.Operand)
+	}
 	id, ok := e.(*ir.Ident)
 	if !ok || kc.Ctx == nil {
 		return false
 	}
 	_, kind := kc.Ctx.Resolve(id.Name)
 	return kind == codegen.NameStateVar
+}
+
+// isListFieldPath is isStateStructField, or a field path down from a local:
+// a list in a data class's field is a read-only `List` wherever the struct is
+// held, so writing it rebuilds the path, and a local is a Kotlin `var` that
+// can be reassigned. A parameter is a `val` and cannot. A scalar field of a
+// local's struct is written in place.
+func (kc *KtIRContext) isListFieldPath(sel *ir.Select) bool {
+	if kc.isStateStructField(sel) {
+		return true
+	}
+	var e ir.Expr = sel
+	for {
+		s, ok := e.(*ir.Select)
+		if !ok {
+			break
+		}
+		t := s.Operand.ExprType()
+		if t == nil || t.Kind != ir.TypeStruct || ir.StringReprStruct(t) {
+			return false
+		}
+		if sd, ok := t.Decl.(*ir.StructDef); !ok || sd.Foreign.Name != "" {
+			return false
+		}
+		e = s.Operand
+	}
+	id, ok := e.(*ir.Ident)
+	if !ok || kc.Ctx == nil {
+		return false
+	}
+	_, kind := kc.Ctx.Resolve(id.Name)
+	v, ok := id.Sym.(*ir.Var)
+	return ok && !v.IsConst && (kind == codegen.NameLocal || kind == codegen.NameUnknown)
 }
 
 func isMapExpr(e ir.Expr) bool {
@@ -442,56 +519,21 @@ func (kc *KtIRContext) isStateList(e ir.Expr) bool {
 	return false
 }
 
-// valueCopy binds a struct value the way SNGL binds one: by copy.
-//
-// A SNGL struct is a value, so `var next = this` gives you your own; Go's
-// assignment already does that and Kotlin's does not -- `next` is the same
-// object, and mutating it writes through to whatever else holds it. On
-// Compose that is fatal rather than merely wrong: the state a handler
-// reassigns is the object it just mutated, structural equality says nothing
-// changed, and the screen never recomposes. Every button animated and none of
-// them did anything.
-//
-// A literal needs no copy: it is already nobody else's. Neither does an
-// assignment -- copying on binding is what makes every mutable name one this
-// scope owns, and copying again on the way out would only defeat the
-// structural-equality check Compose uses to decide whether to recompose.
-// valueCopyFor is valueCopy for a local binding, skipping the copy when
-// nothing writes the binding.
-//
-// The copy exists so a mutation cannot reach whoever else holds the value; a
-// binding that is only read has no mutation to contain, and `passMutatedVars`
-// is what says which is which. Absent the annotation -- a pipeline that did
-// not lower -- every struct is copied, which is the old behaviour and the safe
-// direction.
+// valueCopyFor is a local's initializer as Kotlin binds it. passValueCopy has
+// already made the copy a store needs (ir/valuecopy.go), which matters here
+// more than anywhere: Compose decides whether to recompose by structural
+// equality, so a state value mutated through a binding that shared it looked
+// unchanged and no button did anything. A binding nothing writes needs no copy
+// to contain a mutation, and passMutatedVars says which those are, so its
+// copy is dropped and it reads the value it was given.
 func (kc *KtIRContext) valueCopyFor(n *ir.LocalVar, rendered string) string {
-	if n.Sym != nil && kc.Ctx != nil && kc.Ctx.Pkg != nil && kc.Ctx.Pkg.MutatedVars != nil {
-		if !kc.Ctx.Pkg.MutatedVars[n.Sym] {
-			return rendered
-		}
-	}
-	return valueCopy(n.Init, n.Type, rendered)
-}
-
-func valueCopy(init ir.Expr, t *ir.Type, rendered string) string {
-	if t == nil || t.Kind != ir.TypeStruct || t.Decl == nil {
+	if n.Sym == nil || kc.Ctx == nil || kc.Ctx.Pkg == nil || kc.Ctx.Pkg.MutatedVars == nil || kc.Ctx.Pkg.MutatedVars[n.Sym] {
 		return rendered
 	}
-	if ir.StringReprStruct(t) {
-		return rendered
+	if c, ok := n.Init.(*ir.Call); ok && ir.IsValueCopy(c) && len(c.Args) == 1 {
+		return kc.EvalExpr(c.Args[0].Value)
 	}
-	// A native struct names a Kotlin class this build does not emit, so there
-	// is no generated data class and no `copy()` to call -- Compose's `Path`
-	// has none. It is a reference the host owns, which is also why copying it
-	// would be wrong even if the method existed.
-	if sd, ok := t.Decl.(*ir.StructDef); ok && sd.Foreign.Name != "" {
-		return rendered
-	}
-	switch init.(type) {
-	case *ir.StructLit, *ir.Literal, nil:
-		return rendered
-	}
-	return rendered + ".copy()"
+	return rendered
 }
 
 func (kc *KtIRContext) ToggleText(_ *ir.Toggle, target string) string {
@@ -508,6 +550,9 @@ func (kc *KtIRContext) CallStmtLines(n *ir.CallStmt) []string {
 		if lines := kc.raiseFailure(n.Call); lines != nil {
 			return lines
 		}
+	}
+	if line := kc.fieldListMutation(n.Call); line != "" {
+		return []string{line}
 	}
 	return []string{kc.EvalExpr(n.Call)}
 }

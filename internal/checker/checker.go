@@ -342,6 +342,9 @@ func CheckPackage(docs []*ast.Document, cfg *Config) (*ir.Package, []ir.Diagnost
 }
 
 type checker struct {
+	// refBindable is the plain element variables of loops over an addressable
+	// list, which `&` could have bound to write the element.
+	refBindable map[*ir.LoopVar]bool
 	// decls is what this check records about the program's declarations; a
 	// library's are on its libCache (tables).
 	decls declTables
@@ -653,11 +656,8 @@ type checker struct {
 	// to that node carries.
 	specArgs map[*ir.Component][]*ir.Type
 	// specPinned is what a specialization's props pinned, before defaults:
-	// what bindFromChildren leaves as it is. nodeArgs is the type arguments
-	// each node's call site bound, which a generic family's slot reads off
-	// the children written in it.
+	// what bindFromChildren leaves as it is.
 	specPinned map[*ir.Component]map[string]*ir.Type
-	nodeArgs   map[*ir.NodeInst][]*ir.Type
 	// handleArgs is the type arguments each handle a component body declares
 	// was bound, for a select reaching it from outside: `c.pkg` is the
 	// `page<Pkg>` its call site made it.
@@ -944,6 +944,11 @@ func (c *checker) symType(sym ir.Symbol) *ir.Type {
 	// what PLATFORM and LANGUAGE are compared against.
 	if t := c.targetValueType(sym); t != nil {
 		return t
+	}
+	// A read-only variable is read as its value; refuseReadonlyWrite asks the
+	// symbol itself whether a write may land in it.
+	if t := sym.SymType(); t.IsReadonly() {
+		return t.Elems[0]
 	}
 	return sym.SymType()
 }
@@ -2476,15 +2481,7 @@ func (c *checker) registerVars(decl *ast.VarDecl) {
 				Type: typ,
 			}
 			c.applyMarks(decl, v)
-			for i := range spec.Handlers {
-				h := &spec.Handlers[i]
-				handler := &ir.EventHandler{
-					AST:  h,
-					Name: h.Name,
-					Func: &ir.Func{},
-				}
-				v.Handlers = append(v.Handlers, handler)
-			}
+			c.refuseVarHandlers(spec, name)
 			c.declPkg().Vars = append(c.declPkg().Vars, v)
 			c.bindVar(decl.Pos, v)
 			vars = append(vars, v)
@@ -3254,14 +3251,7 @@ func (c *checker) collectComponentVarDecl(stmt ast.Stmt) []*ir.Var {
 				// var did nothing and said nothing, while the same mark on the
 				// same form at top level was an error.
 				c.applyMarks(s, v)
-				for i := range spec.Handlers {
-					h := &spec.Handlers[i]
-					v.Handlers = append(v.Handlers, &ir.EventHandler{
-						AST:  h,
-						Name: h.Name,
-						Func: &ir.Func{},
-					})
-				}
+				c.refuseVarHandlers(spec, name)
 				out = append(out, v)
 			}
 		}
@@ -3438,7 +3428,6 @@ func (c *checker) checkPackageBody() {
 			}
 		})
 	}
-	c.checkViewVarHandlers(c.pkg.Body)
 	// The package body is a slot like any other, and the tree it accepts is
 	// what makes a window top-level: no rule names the construct, so a
 	// component whose own family is the root one renders windows
@@ -3779,8 +3768,8 @@ func (c *checker) pendingExtensionComps() []*ir.Component {
 	return out
 }
 
-// checkDeclarationBodies checks the body of every function, component and
-// var handler pkg declares, and returns the funcs whose body a component's
+// checkDeclarationBodies checks the body of every function and component pkg
+// declares, and returns the funcs whose body a component's
 // check owns. extra names components outside pkg whose funcs are owned the
 // same way.
 func (c *checker) checkDeclarationBodies(pkg *ir.Package, extra []*ir.Component) map[*ir.Func]bool {
@@ -3845,8 +3834,6 @@ func (c *checker) checkDeclarationBodies(pkg *ir.Package, extra []*ir.Component)
 	c.reportBodyComponentCollisions(pkg)
 	c.reportBodyComponentCapture(pkg)
 
-	c.checkVarHandlerBodies(pkg.Vars)
-	// Component var handlers are checked inside checkComponentBody.
 	return owned
 }
 
@@ -3922,6 +3909,7 @@ func (c *checker) finishDeclarations(pkg *ir.Package) {
 	// After the fixpoint, because the rule reads what a handler writes through
 	// the functions it calls and those sets are only complete now.
 	c.checkEffectSelfRekey(pkg)
+	c.checkEffectChanges(pkg)
 
 	// Every body is checked, so every instance is built and every type
 	// parameter a call site pinned can be followed to what it pinned it to.
@@ -3950,7 +3938,7 @@ func (c *checker) finishDeclarations(pkg *ir.Package) {
 }
 
 // enterFuncBody marks the start of an imperative body -- a function, an event
-// handler, a timer or var handler -- and returns the restore.
+// handler or a timer -- and returns the restore.
 //
 // It is the one place loopDepth resets. A `break` inside a lambda written in a
 // loop body acts on a loop in that lambda, not on the one the lambda sits
@@ -4562,9 +4550,6 @@ func (c *checker) checkComponentBody(comp *ir.Component) {
 		c.checkFuncBody(fn)
 	}
 
-	// Check var handler bodies within component scope so handlers can reference component vars.
-	c.checkVarHandlerBodies(comp.Vars)
-
 	if comp.AST != nil && comp.AST.Body.IsDefined() {
 		for _, stmt := range comp.AST.Body.Stmts {
 			switch stmt.(type) {
@@ -4582,8 +4567,6 @@ func (c *checker) checkComponentBody(comp *ir.Component) {
 		}
 	}
 
-	c.checkViewVarHandlers(comp.Stmts)
-
 	body := comp.Stmts
 	c.deferFamilyCheck(func() { c.checkFamilyParamBody(comp, body) })
 	// What a body puts in the tree is held to the family the component is a
@@ -4595,29 +4578,6 @@ func (c *checker) checkComponentBody(comp *ir.Component) {
 	c.deferFamilyCheck(func() {
 		c.checkFamilyMembership(comp, at, body, comp.Family, "in the body of "+comp.Name)
 	})
-}
-
-// checkViewVarHandlers checks the handlers written on the vars a view's blocks
-// declare -- a `var x @change { … }` in a window's body, or a vbox's. They are
-// declared together in a scope of their own because checkBlockIR has already
-// popped the one each was bound in, and a handler body reads its siblings.
-func (c *checker) checkViewVarHandlers(stmts []ir.Stmt) {
-	state := viewStateVars(stmts)
-	var vars []*ir.Var
-	for _, v := range state {
-		if len(v.Handlers) > 0 {
-			vars = append(vars, v)
-		}
-	}
-	if len(vars) == 0 {
-		return
-	}
-	c.pushScope()
-	defer c.popScope()
-	for _, v := range state {
-		c.declare(varPos(v), v)
-	}
-	c.checkVarHandlerBodies(vars)
 }
 
 // declareNodeIDs declares every named visual node's #id within block as a
@@ -5009,27 +4969,6 @@ func isValidColor(s string) bool {
 	return false
 }
 
-func (c *checker) checkVarHandlerBodies(vars []*ir.Var) {
-	for _, v := range vars {
-		for _, h := range v.Handlers {
-			if h.AST == nil || !h.AST.Body.IsDefined() {
-				continue
-			}
-			restore := c.fileOf(varPos(v))
-			h.Func.Params = c.bindParams(h.AST.Params, []*ir.Param{{Type: v.Type}}, "@"+h.Name, "the assignment")
-			c.pushScope()
-			for _, p := range h.Func.Params {
-				c.declare(varPos(v), p)
-			}
-			restoreBody := c.enterFuncBody()
-			h.Func.Block = c.checkBlockIR(&h.AST.Body)
-			restoreBody()
-			c.popScope()
-			restore()
-		}
-	}
-}
-
 // flattenDotImport lifts an imported package's exported declarations into the
 // current scope, so `import . "p"` makes them available unqualified — the same
 // shape loadStdlib gives the stdlib, reached by an explicit import instead.
@@ -5303,7 +5242,6 @@ func (c *checker) overrideBodies() []any {
 				if !mine(ov) {
 					continue
 				}
-				// Walked as a component is, so a var's handlers are reached.
 				out = append(out, &ir.Component{Body: ov.Body})
 			}
 		}
@@ -5367,4 +5305,15 @@ func isOwnReceiver(e ir.Expr, comp *ir.Component) bool {
 	}
 	p, ok := id.Sym.(*ir.Param)
 	return ok && p.Receiver && p.Type != nil && p.Type.Decl == ir.Symbol(comp)
+}
+
+// refuseVarHandlers reports a handler written on a var. `var x = 0 @change {
+// … }` ran its block after each assignment to x; an effect keyed on x reports
+// every write to it, a list's push and an element's field included, which an
+// assignment hook could not see, so it is the one way to say this. The grammar
+// still reads the handler so that the error can name its replacement.
+func (c *checker) refuseVarHandlers(spec ast.VarSpec, name string) {
+	for _, h := range spec.Handlers {
+		c.error(h.Pos, "a var takes no handler; to run code after a write to %s, write effect(on=%s, @update(v) { … })", name, name)
+	}
 }

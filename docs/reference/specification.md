@@ -469,8 +469,16 @@ bodies each declaring `struct Local` declare two distinct types.
 #### Struct types
 
 A struct is a record of named, typed fields, each optionally with a default
-value. Structs are **value types**: assignment and parameter passing copy the
-struct. A struct may be generic over type parameters:
+value. Structs, like lists and maps, are **value types**: storing one -- an
+assignment, a variable's initializer, a `push` or `insert`, an element, field or
+entry of a literal -- stores a copy, as deep as the value holds structs, lists
+and maps, so a later write to either place leaves the other as it was. A
+named parameter is passed by value the same way: a function that writes it
+writes its own copy and not the caller's. Two parameters are passed by
+reference instead -- a method's ambient `this`, so a method declared in a
+struct's body that writes `this` writes the value it was called on, and a
+parameter declared `ref<T>` (see [References](#references)). A struct may be
+generic over type parameters:
 
 ```
 struct Box<T> { value T }
@@ -540,8 +548,18 @@ seeing what the referenced cell becomes. `&x` makes one and `*r` reads through
 it. References arise chiefly from reference loop variables (`for var &x = xs`),
 which make writes to the loop variable flow back to the underlying list element
 (see [The for statement](#the-for-statement)). A parameter declared `ref<T>`
-also accepts a plain `T`, which is then an ordinary value — permitted only
-where the callee does nothing with the parameter but read through it.
+is the caller's cell: `f(&x)` hands it `x`, a field of it is read and written
+as one of the value is (`p.n = 5`), a method of it is called through it, and
+the whole value is written with `*p = v`. What the function writes is `x`'s
+when the call returns. It also accepts a plain `T`, which is then an ordinary
+value — permitted only where the callee does nothing with the parameter but
+read through it.
+
+A call writing back through a parameter is made in a statement of its own or
+an expression the statement always evaluates once; one under `&&`, `||` or a
+ternary's branch, in a loop's condition, or outside any statement is an error.
+So is taking such a function as a value, since what calls a value cannot know
+where its argument came from.
 
 ### Type identity
 
@@ -907,8 +925,8 @@ recompute when its inputs change must be a function, not a variable (see
 [Reactivity](#reactivity)).
 
 Both forms have a grouped variant — `const ( … )` and `var ( … )` — that lists
-several specifications inside parentheses. A `var` declaration may carry
-[handlers](#variable-handlers).
+several specifications inside parentheses. A `var` takes no handler: code that
+runs after a write to one is an [effect](#effects) keyed on it.
 
 ### The const prefix
 
@@ -1438,6 +1456,13 @@ with `&` (`for var &x = xs`, `for var i, &x = xs`) binds it as a `ref<T>`, so th
 assigning to `x` — or to a field of `x` — writes through to the underlying list
 element by index. The index variable may not be taken by reference.
 
+Every other loop variable is read-only, of type `readonly<T>`: a plain element
+variable is a copy of the element, and the index, a map's key and value, and an
+iterator's element are values. `readonly<T>` is the compiler's to give; a
+program may not write it. Assigning to one, toggling it, or calling a mutating method such as
+`push` on it or on a field of it is an error, which for the element of a list
+names the `&` form that writes the element.
+
 Iterating on a condition, or on nothing:
 
 - `for x < n` runs its body while the head is `true`, testing it before each
@@ -1749,18 +1774,6 @@ A handler runs when its event fires. What a handler reads does not subscribe
 it to anything; only node properties, conditions, loop heads and computed
 functions are re-evaluated because of what they read.
 
-### Variable handlers
-
-A `var` may carry one or more handlers that run after each assignment to it:
-
-```
-var count = 0 @change(v) { … }
-```
-
-The optional parameter binds the new value. The handler body executes
-after the new value is in place; it may itself assign to other reactive
-variables.
-
 ### References in loops
 
 A reference loop variable (`for var &x = xs`) makes assignments to the element — and
@@ -1801,6 +1814,38 @@ ui.window {
     ui.button(text="Next room", @click {
         room = "hall"
     })
+}
+```
+
+An effect also **reports writes** to what `on` reads. `@update(v)` runs after
+each settle in which something wrote it -- an assignment, a list mutation, a
+write to a field or an element below it -- and is handed the value `on` then
+has; it does not run on mount. When `on` reads a list held in a cell (a var, a
+field of one, an element bound with `&`), `@insert(at, item)`,
+`@set(at, item)`, `@remove(at, item)` and `@clear` report that list's changes
+one by one, in the order made and before `@update`. A write none of them
+describes, or one whose handler the effect does not declare, reaches `@update`.
+Writes reported in one settle run before the bracket rekeys. A key whose type
+does not compare may not declare `@mount` or `@unmount`, and a key reading a
+loop variable bound by copy is refused: nothing writes it.
+
+```sngl
+import ui "sngl:ui"
+
+ui.window {
+    var todos list<string> = []
+    var saved = 0
+
+    effect(
+        on = todos,
+        @update(t) {
+            saved = t.length()
+        },
+    )
+    ui.button(text="Add", @click {
+        todos.push("x")
+    })
+    ui.text(value="{saved}")
 }
 ```
 

@@ -1,0 +1,43 @@
+# An effect keyed on a loop's element bound by copy is refused where it is
+# written, on every target: the element is a value nothing writes, so a report
+# of writes to it would never run. `for var &x` binds the element itself, and
+# each copy then reports the writes that reached its own
+# (effect_changes_runs.txt).
+
+! sngl check loop.sngl
+stderr 'loop.sngl:8:29: an effect''s @update reports a write to what `on` reads, and `on` reads the loop variable "x", a copy nothing writes; bind the element with `for var &x` to report writes to it'
+
+sngl check ref.sngl
+
+-- loop.sngl --
+import ui "sngl:ui"
+
+component rows ui.node {
+    var xs list<list<int>> = [[1], [2]]
+    var n = 0
+    ui.vbox {
+        for var x = xs {
+            effect(on = x, @update { n += 1 })
+        }
+    }
+}
+
+ui.window(title = "Rows") {
+    rows
+}
+-- ref.sngl --
+import ui "sngl:ui"
+
+component rows ui.node {
+    var xs list<list<int>> = [[1], [2]]
+    var n = 0
+    ui.vbox {
+        for var &x = xs {
+            effect(on = x, @update { n += 1 })
+        }
+    }
+}
+
+ui.window(title = "Rows") {
+    rows
+}

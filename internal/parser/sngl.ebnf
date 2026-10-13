@@ -304,6 +304,8 @@ VarDecl =
 
 VarSpec = IdentList [ Type ] [ assign Expr ] { VarHandler } .
 
+# A var takes no handler: the checker refuses one at its position and names the
+# effect that replaces it, which is why the grammar still reads it.
 # Left-factored: both forms start with 'at ident'; lparen vs lbrace disambiguates.
 # The params are a ParamList, the same production a function's are: a handler
 # binds a name and may annotate its type, and the checker refuses the default
@@ -437,7 +439,13 @@ StatementPrimary =
     | lbracket ListBody rbracket
     | AnonStructLit
     | ident
+    | star StatementPrimary
     .
+
+# `star StatementPrimary` is a write through a reference, `*x = 9`: what a
+# `ref<T>` parameter holding a scalar, or a whole struct, is assigned with. A
+# field of one is written without it (`p.n = 5`). No statement can otherwise
+# begin with `*`, which has no left operand there.
 
 
 # ── Control flow ──────────────────────────────────────────────────────────────

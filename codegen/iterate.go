@@ -27,8 +27,7 @@ type ComponentCtx struct {
 	Vars      []*ir.Var
 	Funcs     []*ir.Func
 	Body      []ir.Stmt
-	Computeds []*ir.Func         // zero-param expression-body funcs
-	Handlers  []*ir.EventHandler // var-level event handlers
+	Computeds []*ir.Func // zero-param expression-body funcs
 }
 
 // Harness is the view a test harness isolated, nil for an ordinary build: the
@@ -70,9 +69,6 @@ func componentsFor(comps []*ir.Component) []*ComponentCtx {
 			if IsComputed(f) {
 				cc.Computeds = append(cc.Computeds, f)
 			}
-		}
-		for _, v := range c.Vars {
-			cc.Handlers = append(cc.Handlers, v.Handlers...)
 		}
 		out = append(out, cc)
 	}

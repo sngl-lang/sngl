@@ -263,7 +263,7 @@ func (env *Env) exec(s ir.Stmt) error {
 		if err != nil {
 			return err
 		}
-		env.Set(n.Sym, CopyValue(v))
+		env.Set(n.Sym, copyOf(v, n.Init.ExprType()))
 		return nil
 	case *ir.If:
 		return env.execIf(n)
@@ -312,6 +312,7 @@ func (env *Env) execAssign(s *ir.Assign) error {
 	if err != nil {
 		return err
 	}
+	val = copyOf(val, s.Value.ExprType())
 	switch target := s.Target.(type) {
 	case *ir.Ident:
 		owner := env.findVarOwner(target.Sym)
@@ -324,6 +325,7 @@ func (env *Env) execAssign(s *ir.Assign) error {
 		}
 		owner.vals[target.Sym] = nv
 		owner.noteAssigned(target.Sym)
+		env.noteWrite(target, writeReplace, 0, nil)
 		return owner.writeBound(target.Sym, nv)
 	case *ir.Select:
 		obj, err := env.Eval(target.Operand)
@@ -331,6 +333,8 @@ func (env *Env) execAssign(s *ir.Assign) error {
 			return err
 		}
 		if cv, ok := obj.(ComponentValue); ok {
+			// The harness records the write itself, since it settles before
+			// returning.
 			return cv.SetField(s.Op, target.Field, val)
 		}
 		if st, ok := obj.(*Struct); ok {
@@ -340,6 +344,7 @@ func (env *Env) execAssign(s *ir.Assign) error {
 				return err
 			}
 			st.Set(target.Field, nv)
+			env.noteWrite(target, writeReplace, 0, nil)
 			return nil
 		}
 		if m, ok := obj.(map[string]any); ok {
@@ -373,6 +378,7 @@ func (env *Env) execAssign(s *ir.Assign) error {
 				return err
 			}
 			list[i] = nv
+			env.noteWrite(target, writeReplace, 0, nil)
 			return nil
 		}
 		if m, ok := obj.(map[string]any); ok {
@@ -386,6 +392,7 @@ func (env *Env) execAssign(s *ir.Assign) error {
 				return err
 			}
 			m[key] = nv
+			env.noteWrite(target, writeReplace, 0, nil)
 			return nil
 		}
 		return fmt.Errorf("cannot index-assign to %T", obj)
@@ -403,6 +410,7 @@ func (env *Env) execAssign(s *ir.Assign) error {
 					return err
 				}
 				ref.set(nv)
+				env.noteWrite(target, writeReplace, 0, nil)
 				return nil
 			}
 			return fmt.Errorf("cannot deref-assign to %T", obj)
@@ -424,6 +432,7 @@ func (env *Env) execToggle(s *ir.Toggle) error {
 		}
 		owner.vals[target.Sym] = !b
 		owner.noteAssigned(target.Sym)
+		env.noteWrite(target, writeReplace, 0, nil)
 		return owner.writeBound(target.Sym, !b)
 	case *ir.Select:
 		obj, err := env.Eval(target.Operand)
@@ -432,6 +441,16 @@ func (env *Env) execToggle(s *ir.Toggle) error {
 		}
 		if cv, ok := obj.(ComponentValue); ok {
 			return cv.Toggle(target.Field)
+		}
+		if st, ok := obj.(*Struct); ok {
+			cur, _ := st.Get(target.Field)
+			b, ok := cur.(bool)
+			if !ok {
+				return fmt.Errorf("cannot toggle non-bool %s", target.Field)
+			}
+			st.Set(target.Field, !b)
+			env.noteWrite(target, writeReplace, 0, nil)
+			return nil
 		}
 		// A two-way prop through a node's handle: what it holds now, written
 		// back negated the way an assignment through the handle is.
@@ -630,7 +649,7 @@ func bindLoopElem(env *Env, s *ir.For, i int, item any, list []any) {
 	if s.RefElem && list != nil {
 		// &-bound element: bind a listRef so field/whole-element writes
 		// (through the checker's Unary{Deref}) update the list in place.
-		env.Set(elemSym, &listRef{list: list, idx: i})
+		env.Set(elemSym, &listRef{list: list, idx: i, iter: s.Iter, at: env})
 	} else {
 		env.Set(elemSym, item)
 	}

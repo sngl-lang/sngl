@@ -34,6 +34,18 @@ func list<T>.push(item T)
 #[_intrinsic("list.remove", mutates, mutatesReceiver)]
 func list<T>.remove(index int)
 
+// Inserts item at index in the receiver list, in place, shifting what was at
+// index and after it one place along. An index equal to the length appends; an
+// index outside [0, length] leaves the list unchanged, as remove's does.
+#[_intrinsic("list.insert", mutates, mutatesReceiver)]
+func list<T>.insert(index int, item T)
+
+// Removes every item from the receiver list, in place. Not `l = []`: that
+// replaces the list, and an effect keyed on it is told so with `@update`
+// rather than `@clear`.
+#[_intrinsic("list.clear", mutates, mutatesReceiver)]
+func list<T>.clear()
+
 // Index of the first occurrence of item in l (by equality), or -1 if
 // absent.
 #[_intrinsic("list.indexOf")]

@@ -162,11 +162,6 @@ func (r *reservedRenamer) variable(v *ir.Var, owner *ir.Component) {
 	}
 	old := v.Name
 	r.member(owner, old, r.sym(v, old, func(n string) { v.Name = n }))
-	for _, h := range v.Handlers {
-		if h != nil {
-			r.fn(h.Func, nil)
-		}
-	}
 }
 
 // hostOwned reports whether fn's name and parameters are a host's: a native
@@ -325,11 +320,6 @@ func (r *reservedRenamer) collect(pkg *ir.Package) {
 	}
 	for _, v := range append(append([]*ir.Var{}, pkg.Consts...), pkg.Vars...) {
 		_ = ir.Walk(v.Init, visit)
-		for _, h := range v.Handlers {
-			if h != nil {
-				_ = ir.Walk(h.Func, visit)
-			}
-		}
 	}
 	_ = ir.Walk(pkg.Body, visit)
 	for _, comp := range pkg.Components {

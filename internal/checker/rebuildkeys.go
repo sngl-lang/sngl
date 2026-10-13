@@ -122,7 +122,7 @@ func (w *rebuildWalker) node(inst *ir.NodeInst, scope rebuildScope) {
 			continue
 		}
 		switch {
-		case comp.Builtin == ir.BuiltinEffect && p.Name == "on":
+		case comp.Builtin == ir.BuiltinEffect && p.Name == ir.EffectOn && effectBrackets(inst):
 			w.reportKey(inst, a, t, scope)
 		case p.Construct && t != nil:
 			w.reportConstruct(inst, comp, p, a, t, scope)
@@ -340,9 +340,9 @@ func effectKeyHint(t *ir.Type) string {
 	}
 	switch t.Kind {
 	case ir.TypeList:
-		return "; a key over several values is a struct of them, not a list"
+		return "; to react to a write to the list, handle @update instead, and a key over several values is a struct of them, not a list"
 	case ir.TypeMap:
-		return "; a key over several values is a struct of them, not a map"
+		return "; to react to a write to the map, handle @update instead, and a key over several values is a struct of them, not a map"
 	case ir.TypeDyn:
 		return "; a key over several values is a struct of them, and the struct has to be declared"
 	case ir.TypeStruct:

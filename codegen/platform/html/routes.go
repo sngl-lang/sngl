@@ -177,8 +177,8 @@ func reactiveSlotFunc(pkg *ir.Package) *ir.Func {
 	return nil
 }
 
-// backendHandlerWindow scans the package's event handlers (node handlers and
-// var handlers) for a Backend placement, and names the window holding the
+// backendHandlerWindow scans the package's node handlers for a Backend
+// placement, and names the window holding the
 // first: its Window's `#id`, "" for one written outside any. False if every
 // handler is client-side. Used by the static-mode (non-HTTPCompiler) guard: a
 // build with no server cannot run a backend handler.
@@ -188,11 +188,6 @@ func backendHandlerWindow(pkg *ir.Package) (string, bool) {
 	}
 	backend := func(h *ir.EventHandler) bool {
 		return h != nil && h.Func != nil && handlerPlacement(pkg, h.Func) == Backend
-	}
-	for _, v := range pkg.Vars {
-		if slices.ContainsFunc(v.Handlers, backend) {
-			return "", true
-		}
 	}
 	name, found := "", false
 	var walk func(stmts []ir.Stmt, win string)
@@ -540,14 +535,9 @@ func collectActions(pkg *ir.Package, win *codegen.ViewCtx, targets map[*ir.Func]
 			LogicalMutations: codegen.LogicalMutations(h.Func.Block),
 		})
 	}
-	// Vars first, and the order is the contract: an action's index is the
-	// POST switch case that runs it, so moving a handler in this walk moves
-	// the case a form's hidden `_action` has to name.
-	for _, v := range routeVars(pkg, win) {
-		for _, h := range v.Handlers {
-			add(h)
-		}
-	}
+	// The order is the contract: an action's index is the POST switch case
+	// that runs it, so moving a handler in this walk moves the case a form's
+	// hidden `_action` has to name.
 	walkInstances(win.Body, func(n *ir.NodeInst) {
 		for i := range n.Handlers {
 			add(&n.Handlers[i])

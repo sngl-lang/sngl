@@ -147,7 +147,7 @@ func (c *checker) recordContent(vn *ast.VisualNode, name string) (ir.Stmt, bool)
 	case *ir.Namespace, *ir.Component:
 		return nil, false
 	}
-	t := sym.SymType()
+	t := c.symType(sym)
 	if t == nil || t.Kind != ir.TypeStruct {
 		return nil, false
 	}

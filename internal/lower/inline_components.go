@@ -109,13 +109,6 @@ func unreachedCycles(pkg *ir.Package, main *ir.Component, cycles map[*ir.Compone
 				visit(f.Block)
 			}
 		}
-		for _, v := range o.Vars {
-			for _, h := range v.Handlers {
-				if h.Func != nil {
-					visit(h.Func.Block)
-				}
-			}
-		}
 	}
 	for _, o := range roots {
 		walkOwner(o)
@@ -1207,20 +1200,6 @@ func (st *inlineCompState) expandCall(n *ir.NodeInst) ([]ir.Stmt, error) {
 			(*hoist.vars)[i].Init = substituteVarsExpr((*hoist.vars)[i].Init, provided)
 			(*hoist.vars)[i].Init = renameInExpr((*hoist.vars)[i].Init, renames, symRenames)
 		}
-		for _, h := range (*hoist.vars)[i].Handlers {
-			if h.Func != nil {
-				h.Func.Block = substituteVars(h.Func.Block, provided)
-			}
-		}
-		// A var handler's body reads and writes the instance's state like any
-		// other block the callee wrote. Left unrenamed it kept pointing at the
-		// pre-inlining name, which every instance shares -- a silent
-		// wrong-variable write, since the emitters splice it verbatim.
-		for _, h := range (*hoist.vars)[i].Handlers {
-			if h.Func != nil {
-				h.Func.Block = renameIdents(h.Func.Block, renames, symRenames)
-			}
-		}
 	}
 	for i := funcStart; i < len(*hoist.funcs); i++ {
 		fn := (*hoist.funcs)[i]
@@ -1262,11 +1241,6 @@ func (st *inlineCompState) expandCall(n *ir.NodeInst) ([]ir.Stmt, error) {
 	// Prop refs may appear in the hoisted callee-scope Vars/Funcs too.
 	for i := varStart; i < len(*hoist.vars); i++ {
 		(*hoist.vars)[i].Init = substituteParamsExpr((*hoist.vars)[i].Init, bindings)
-		for _, h := range (*hoist.vars)[i].Handlers {
-			if h.Func != nil {
-				h.Func.Block = substituteParams(h.Func.Block, bindings)
-			}
-		}
 	}
 	for i := funcStart; i < len(*hoist.funcs); i++ {
 		(*hoist.funcs)[i].Block = substituteParams((*hoist.funcs)[i].Block, bindings)
@@ -1315,16 +1289,6 @@ func carryPointsTo(pkg *ir.Package, from, to ir.PointsToKey) {
 
 func cloneVarShallow(v *ir.Var) *ir.Var {
 	c := *v
-	c.Handlers = nil
-	for _, h := range v.Handlers {
-		hc := *h
-		if h.Func != nil {
-			fc := *h.Func
-			fc.Block = deepCloneStmts(h.Func.Block)
-			hc.Func = &fc
-		}
-		c.Handlers = append(c.Handlers, &hc)
-	}
 	return &c
 }
 

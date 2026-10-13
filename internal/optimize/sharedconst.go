@@ -333,9 +333,6 @@ func (w *writesAnalysis) escapes(body ir.Body, match func(ir.Symbol) bool) bool 
 			found = found || bare(v.Init)
 			_ = ir.Walk(v.Init, visit)
 		}
-		for _, h := range v.Handlers {
-			_ = ir.Walk(h.Func, visit)
-		}
 	}
 	for _, f := range body.Funcs {
 		_ = ir.Walk(f, visit)

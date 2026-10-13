@@ -1376,6 +1376,12 @@ func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) ir.Ex
 	}
 
 	receiverExpr, receiver = callComputedOperand(receiverExpr, receiver)
+	// A method of what a reference refers to is called through it, as a
+	// field of it is read: `s.add(7)` with s a `ref<Stack>` is (*s).add(7).
+	if receiver != nil && receiver.Kind == ir.TypeRef && len(receiver.Elems) > 0 {
+		receiver = receiver.Elems[0]
+		receiverExpr = &ir.Unary{Type: receiver, Op: ast.UnaryDeref, Operand: receiverExpr}
+	}
 
 	typeName := receiver.String()
 	if receiver.Decl != nil {
@@ -3531,18 +3537,7 @@ func (c *checker) checkLocalVarDecl(decl *ast.VarDecl) []ir.Stmt {
 				Name: name,
 				Type: typ,
 			}
-			// A `var` at the top of a window body is that window's state and
-			// this path is what builds it, so a handler written on one travels
-			// with the symbol -- the way collectComponentVarDecl does for a
-			// component's.
-			for i := range spec.Handlers {
-				h := &spec.Handlers[i]
-				sym.Handlers = append(sym.Handlers, &ir.EventHandler{
-					AST:  h,
-					Name: h.Name,
-					Func: &ir.Func{},
-				})
-			}
+			c.refuseVarHandlers(spec, name)
 			c.declare(decl.Pos, sym)
 			out = append(out, &ir.LocalVar{
 				Name: name,
@@ -3579,6 +3574,7 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 			}
 		}
 		c.refuseNodePropAssign(targetExpr, x.Pos, "assign to")
+		c.refuseReadonlyWrite(targetExpr, x.Pos, "assign to")
 		if x.Op == ast.AssignSet {
 			valueExpr = c.coerce(x.Value, valueExpr, targetType, slot{pos: x.Pos, mismatch: func(want, got string) string {
 				return "cannot assign " + got + " to " + want
@@ -3612,6 +3608,7 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 			c.error(x.Pos, "toggle target must be bool, got %s", t)
 		}
 		c.refuseNodePropAssign(targetExpr, x.Pos, "toggle")
+		c.refuseReadonlyWrite(targetExpr, x.Pos, "toggle")
 		if c.rejectStmtInViewBody(x.Pos, targetDescription("a toggle", "of", x.Target)) {
 			return nil
 		}
@@ -3873,10 +3870,8 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 		// over a mutable addressable list. The element is Key in single-var
 		// form and Value in two-var form. `&` on the index (two-var Key) is an
 		// error. An invalid `&` is reported and downgraded to a value binding.
-		// TODO(lint): a plain (non-&) element loop var is a value copy, so
-		// writing through its fields (`for var t = list { t.done!! }`) silently
-		// updates a throwaway copy. Surface that as a lint error suggesting
-		// `&t`; for now it compiles as a no-op.
+		// A plain loop variable is read-only (refuseReadonlyWrite): it is a copy
+		// of the element, and a write to it would change nothing read again.
 		elemRef := x.KeyRef
 		// A loop that declares nothing (`for seq.count(3) { }`) has no
 		// variable to bind, to ref-bind, or to complain about: only the
@@ -3910,17 +3905,26 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 		// Declare loop variables based on iterator type, keeping the symbols
 		// so the For statement carries what its body's Idents resolve to.
 		var keySym, valueSym *ir.LoopVar
+		// Every loop variable but an &-bound element is readonly<T>: a copy, or
+		// an index, which a write would change nothing by writing.
+		readonly := func(t *ir.Type) *ir.Type {
+			if t != nil && t.Kind == ir.TypeRef {
+				return t
+			}
+			return ir.ReadonlyOf(t)
+		}
 		declKey := func(t *ir.Type) {
 			if !declares {
 				return
 			}
-			keySym = &ir.LoopVar{Name: x.Key, Type: t}
+			keySym = &ir.LoopVar{Name: x.Key, Type: readonly(t)}
 			c.declare(x.Pos, keySym)
 		}
 		declValue := func(t *ir.Type) {
-			valueSym = &ir.LoopVar{Name: x.Value, Type: t}
+			valueSym = &ir.LoopVar{Name: x.Value, Type: readonly(t)}
 			c.declare(x.Pos, valueSym)
 		}
+
 		elemType := TypDyn
 		switch iter.Kind {
 		case ir.TypeList:
@@ -3973,6 +3977,20 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 			}
 		}
 		c.loopDepth++
+		// An element of an addressable list is what `&` can bind instead,
+		// which a refused write through the plain binding suggests.
+		if !elemRef && iter.Kind == ir.TypeList && isAddressableListExpr(iterExpr) {
+			elem := keySym
+			if x.Value != "" {
+				elem = valueSym
+			}
+			if elem != nil {
+				if c.refBindable == nil {
+					c.refBindable = map[*ir.LoopVar]bool{}
+				}
+				c.refBindable[elem] = true
+			}
+		}
 		body := c.checkScopeBlockIR(&x.Body, x.Key, x.Value)
 		c.loopDepth--
 		var elseBody []ir.Stmt
@@ -3984,6 +4002,13 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 			elseBody = c.checkScopeBlockIR(&x.Else, x.Key, x.Value)
 		}
 		c.popScope()
+		// readonly<T> is the checker's: every read and write of the variables
+		// has been checked, so nothing after the check meets one.
+		for _, lv := range []*ir.LoopVar{keySym, valueSym} {
+			if lv != nil && lv.Type.IsReadonly() {
+				lv.Type = lv.Type.Elems[0]
+			}
+		}
 		loop := &ir.For{AST: x, Key: x.Key, Value: x.Value, KeySym: keySym, ValueSym: valueSym, Iter: iterExpr, ElemType: elemType, Body: body, Else: elseBody, RefElem: elemRef}
 		c.checkViewForElse(x.Pos, loop, iter)
 		return loop
@@ -4222,7 +4247,42 @@ func (c *checker) resolveCallStmt(x *ast.CallStmt, callExpr ir.Expr) ir.Stmt {
 	if c.rejectCallInViewBody(x.Pos, call.Func) {
 		return nil
 	}
+	if call.Func != nil && call.Func.Intrinsic != "" && len(call.Args) > 0 {
+		if def, ok := c.libs.builtins.IntrinsicByName(call.Func.Intrinsic); ok && def.MutatesReceiver {
+			c.refuseReadonlyWrite(call.Args[0].Value, x.Pos, call.Func.Name)
+		}
+	}
 	return &ir.CallStmt{AST: x, Call: call}
+}
+
+// refuseReadonlyWrite reports a write whose root is a readonly<T> variable:
+// a loop's variable the loop did not bind by reference. `for var x = xs` hands
+// the body each element to read; a write to it, or to a field or element of
+// it, would change a copy nothing reads again, so it is refused rather than
+// dropped. `for var &x = xs` is the spelling that writes the element, and the
+// index of either form is read-only.
+func (c *checker) refuseReadonlyWrite(target ir.Expr, pos ast.Pos, verb string) {
+	for {
+		switch n := target.(type) {
+		case *ir.Select:
+			target = n.Operand
+			continue
+		case *ir.Index:
+			target = n.Operand
+			continue
+		case *ir.Ident:
+			lv, isLoop := n.Sym.(*ir.LoopVar)
+			if !isLoop || !lv.Type.IsReadonly() {
+				return
+			}
+			if c.refBindable[lv] {
+				c.error(pos, "cannot %s the loop variable %q, which holds a copy of the element; bind it with `for var &%s` to write the element", verb, n.Name, n.Name)
+			} else {
+				c.error(pos, "cannot %s the loop variable %q; a loop's variables are read-only", verb, n.Name)
+			}
+		}
+		return
+	}
 }
 
 // refuseExprErrorHandler reports an @error on a call whose value is used.
@@ -4577,12 +4637,7 @@ func (c *checker) checkVisualNode(vn *ast.VisualNode) ir.Stmt {
 		Handle:    c.nodeHandleSym(vn.ID),
 		Key:       c.keyArgExpr(vn.Args),
 	}
-	if args := c.specArgs[spec]; len(args) > 0 {
-		if c.nodeArgs == nil {
-			c.nodeArgs = map[*ir.NodeInst][]*ir.Type{}
-		}
-		c.nodeArgs[node] = args
-	}
+	node.TypeArgs = c.specArgs[spec]
 	c.deferConstSlots(node)
 	return node
 }
@@ -5383,7 +5438,7 @@ func bindWildcardName(comp *ir.Component, name string, props []ir.Arg) []ir.Arg 
 }
 
 // rejectNodeInFuncBody reports a visual node written in an imperative body --
-// a function, an event handler, a timer, a var handler or a lambda -- and says
+// a function, an event handler, a timer or a lambda -- and says
 // whether it did.
 //
 // A node is a piece of a rendered tree: it is placed once, where it is

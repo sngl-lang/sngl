@@ -55,11 +55,14 @@ const (
 	BuiltinDuration BuiltinKind = "duration"
 
 	// Generic constructors.
-	BuiltinList   BuiltinKind = "list"
-	BuiltinMap    BuiltinKind = "map"
-	BuiltinIter   BuiltinKind = "iter"
-	BuiltinRef    BuiltinKind = "ref"
-	BuiltinOption BuiltinKind = "option"
+	BuiltinList BuiltinKind = "list"
+	BuiltinMap  BuiltinKind = "map"
+	BuiltinIter BuiltinKind = "iter"
+	BuiltinRef  BuiltinKind = "ref"
+	// BuiltinReadonly is the type of a loop variable bound by copy. Declared so
+	// the documentation shows it; a program may not write it.
+	BuiltinReadonly BuiltinKind = "readonly"
+	BuiltinOption   BuiltinKind = "option"
 	// TreeOne narrows a slot's content to exactly one member.
 	BuiltinFamilyOne BuiltinKind = "familyOne"
 
@@ -201,7 +204,7 @@ func (b BuiltinKind) IsFamilyRole() bool {
 // (list/map/iter/chan/ref/option).
 func (b BuiltinKind) IsGeneric() bool {
 	switch b {
-	case BuiltinList, BuiltinMap, BuiltinIter, BuiltinRef, BuiltinOption:
+	case BuiltinList, BuiltinMap, BuiltinIter, BuiltinRef, BuiltinReadonly, BuiltinOption:
 		return true
 	}
 	return false
@@ -256,7 +259,7 @@ func AllBuiltinKinds() []BuiltinKind {
 		BuiltinFloat32, BuiltinFloat64,
 		BuiltinColor, BuiltinDate, BuiltinTime, BuiltinDateTime,
 		BuiltinDuration,
-		BuiltinList, BuiltinMap, BuiltinIter, BuiltinRef, BuiltinOption,
+		BuiltinList, BuiltinMap, BuiltinIter, BuiltinRef, BuiltinReadonly, BuiltinOption,
 		BuiltinFamilyOne, BuiltinFamilyOfFamilies, BuiltinFamilyRoot, BuiltinFamilySpan, BuiltinFamilyShape, BuiltinFamilyImageSource,
 		BuiltinFamilyLanguage, BuiltinFamilyPlatform,
 		BuiltinErrorBoundary, BuiltinContext, BuiltinEffect,

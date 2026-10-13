@@ -29,4 +29,7 @@ type ComponentValue interface {
 	Toggle(field string) error
 	// WriteBackList sets a list field after in-place list mutation.
 	WriteBackList(field string, list []any) error
+	// FieldCell is the binding a field names and the scope that owns it, or
+	// false for a field that is no binding.
+	FieldCell(field string) (owner *Env, sym ir.Symbol, ok bool)
 }

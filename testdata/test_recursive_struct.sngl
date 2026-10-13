@@ -60,11 +60,16 @@ func testTreeContains(t Test, c main) {
     t.assert(c.treeContains(null, 1) == false)
 }
 
+// A struct is a value: root was built from a copy of node8, so a write to
+// node8 is node8's alone until it is stored in root again.
 func testTreeMutation(t Test, c main) {
     c.node8.left = TreeNode{value=7}
+    t.assert(c.treeSum(c.node8) == 15)
+    t.assert(c.treeSum(c.root) == 21)
+    t.assert(c.treeContains(c.root, 7) == false)
+    c.root.right = c.node8
     t.assert(c.treeSum(c.root) == 28)
     t.assert(c.treeDepth(c.root) == 3)
-    t.assert(c.treeContains(c.root, 7) == true)
 }
 
 window {

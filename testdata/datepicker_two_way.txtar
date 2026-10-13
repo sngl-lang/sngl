@@ -686,8 +686,8 @@ func (m *Model) d_daySelected_handler() {
 		__lt0 = "none"
 	}
 	C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(m.__n1)), C.CString(__lt0))
-	m.__effects0_settle()
 	m.changes__inst0 += 1
+	m.__effects0_settle()
 }
 
 func (m *Model) Picked__inst0() *time.Time {
@@ -943,7 +943,7 @@ pass sha256:0fc901e6c103a94133bfee7711ab7fad
 -- run/go/fyne --
 pass sha256:fe601aba4571496d0b2b8851461872f4
 -- run/go/gtk4 --
-pass sha256:6e03bfa10f60ef42a560d872617de357
+pass sha256:95e0885a06dec0b62744afd0054fe032
 -- run/kotlin/android --
 pass sha256:55d388f0330aff011e985b915c03281c
 -- run/none/html --

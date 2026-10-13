@@ -100,9 +100,8 @@ func markedPackage() *Package {
 
 	return &Package{
 		Consts: []*Var{{
-			Name:     "c",
-			Init:     mark("Var.Init"),
-			Handlers: []*EventHandler{{Func: fn("Var.Handlers")}},
+			Name: "c",
+			Init: mark("Var.Init"),
 		}},
 		Structs: []*StructDef{{
 			Fields: []*StructField{{Name: "f", Default: mark("StructField.Default")}},
@@ -156,8 +155,8 @@ func TestRewriteVisitsEveryExprSlot(t *testing.T) {
 		// through an owned Func or StructLit rather than by holding an Expr.
 		indirect := map[string]bool{
 			"Lambda.Func":       true,
-			"EventHandler.Func": true, "Var.Handlers": true,
-			"Output.Options": true,
+			"EventHandler.Func": true,
+			"Output.Options":    true,
 		}
 
 		for _, slot := range exprSlots() {

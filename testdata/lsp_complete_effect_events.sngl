@@ -1,0 +1,42 @@
+// An effect's events are offered by what its key can report, which is the
+// checker's rule asked of the checked node: a list held in a var offers its
+// changes and no bracket, since it does not compare; an int offers the bracket
+// and no changes; a list computed from one offers neither change.
+
+import . "sngl:ui"
+
+component main node {
+    var (
+        xs list<int> = []
+        n = 0
+    )
+
+    effect(
+        on = xs,
+        @update { //@ complete("@", "@update", "@insert", "@set", "@remove", "@clear", "!@mount", "!@unmount")
+        },
+    )
+
+    effect(
+        on = n,
+        @update { //@ complete("@", "@mount", "@unmount", "@update", "!@insert", "!@clear")
+        },
+    )
+
+    effect(
+        on = xs.filter(func(x int) => x > 0),
+        @update { //@ complete("@", "@update", "!@insert", "!@set", "!@mount")
+        },
+    )
+
+    effect(
+        @mount { //@ complete("@", "@mount", "@unmount", "!@update", "!@insert")
+        },
+    )
+
+    text(value="{n}")
+}
+
+window {
+    main
+}

@@ -182,11 +182,6 @@ func normalizeVar(v *Var) {
 	} else {
 		normalizeExpr(v.Init)
 	}
-	for _, h := range v.Handlers {
-		if h != nil && h.Func != nil {
-			normalizeFunc(h.Func)
-		}
-	}
 }
 
 func normalizeFunc(f *Func) {

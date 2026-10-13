@@ -189,13 +189,6 @@ func factorySlotAnchors(comp *ir.Component) map[string]bool {
 			retarget(fn.Block)
 		}
 	}
-	for _, v := range comp.Vars {
-		for _, h := range v.Handlers {
-			if h.Func != nil {
-				retarget(h.Func.Block)
-			}
-		}
-	}
 	return anchored
 }
 

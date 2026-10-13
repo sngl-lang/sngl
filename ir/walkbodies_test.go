@@ -150,7 +150,7 @@ func bodiedPackage() *Package {
 
 	return &Package{
 		Body: body("Package.Body"),
-		Vars: []*Var{{Handlers: []*EventHandler{h("Var.Handlers")}}},
+		Vars: []*Var{{}},
 		Funcs: []*Func{{
 			Block: []Stmt{
 				&If{Body: body("If.Body"), Else: body("If.Else")},
@@ -174,7 +174,7 @@ func bodiedPackage() *Package {
 		Components: []*Component{{
 			Stmts: body("Component.Body"),
 			Funcs: []*Func{fn("Component.Funcs")},
-			Vars:  []*Var{{Handlers: []*EventHandler{h("Var.Handlers")}}},
+			Vars:  []*Var{{}},
 		}},
 	}
 }

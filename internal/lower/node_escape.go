@@ -141,17 +141,6 @@ func appendNested(scopes *[]*scopeRefInfo, s *scopeRefInfo) {
 }
 
 func addVarHandlerScopes(v *ir.Var, scopes *[]*scopeRefInfo) {
-	for _, h := range v.Handlers {
-		if h.Func == nil {
-			continue
-		}
-		s := newScopeRefInfo(&h.Func.Lowered.LocalRefs)
-		collectScopeRefs(h.Func.Block, s)
-		*scopes = append(*scopes, s)
-		for _, n := range s.nested {
-			appendNested(scopes, n)
-		}
-	}
 }
 
 // isSynthNodeID reports whether id is a synthesized widget ref name (__nN).

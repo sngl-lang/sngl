@@ -13,11 +13,10 @@ import (
 
 type irAnalysis struct {
 	*codegen.CommonAnalysis
-	binds      []irBind
-	externs    []irExtern
-	computeds  []irComputed
-	dataEvents map[string][]*ir.EventHandler
-	gc         *golang.GoIRContext
+	binds     []irBind
+	externs   []irExtern
+	computeds []irComputed
+	gc        *golang.GoIRContext
 }
 
 type irBind struct {
@@ -50,7 +49,6 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 	gc := golang.NewIRContext(exprCtx)
 	info := &irAnalysis{
 		CommonAnalysis: ctx.Analysis,
-		dataEvents:     make(map[string][]*ir.EventHandler),
 		gc:             gc,
 	}
 
@@ -149,10 +147,6 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 			// rule, written before there was a second var it applied to.
 			noAccessors: golang.ExportName(ov.Name()) == ov.Name(),
 		})
-		// A parameter carries no @change: nothing in the page assigns it.
-		if v != nil && len(v.Handlers) > 0 {
-			info.dataEvents[v.Name] = v.Handlers
-		}
 	}
 
 	allFuncs := ctx.AllFuncs()
@@ -387,33 +381,9 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 		emitIRCanvasDraw(&funcBuf, &all[i], gc, canvasByNode, nodeSpecs, addWidgetImport, failProp)
 	}
 
-	// A var handler's body carries reactivity-injected widget updates like an
-	// event handler's, so it goes through WalkLowered for the same reason. The
-	// value being assigned is the setter's own `v`.
-	varHandlerCode := map[string]string{}
-	for name, handlers := range info.dataEvents {
-		var hb strings.Builder
-		for _, h := range handlers {
-			if h.Name != "change" || h.Func == nil {
-				continue
-			}
-			tr := newFyneTranslator(gc, nodeSpecs, func(name, goType string) {
-				widgetFields = append(widgetFields, irWidgetField{name: name, goType: goType})
-			}, addWidgetImport, failProp)
-			tr.canvasByID, tr.canvasByNode = canvasByID, canvasByNode
-			hgc := codegen.BindVarHandlerValue(gc, h, "v")
-			for _, stmt := range codegen.WalkLowered(context.Background(), h.Func.Block, tr) {
-				for _, line := range hgc.EvalStmt(stmt) {
-					fmt.Fprintf(&hb, "\t%s\n", line)
-				}
-			}
-		}
-		varHandlerCode[name] = hb.String()
-	}
-
 	emitFyneEventInvokers(&funcBuf, eventInvokers)
 
-	td, err := newIRTemplateData(info, cfg, widgetFields, entrySync, widgetImports, funcBuf.String(), varHandlerCode, gc, ctx, lang)
+	td, err := newIRTemplateData(info, cfg, widgetFields, entrySync, widgetImports, funcBuf.String(), gc, ctx, lang)
 	if hasCanvas {
 		// Skip any struct the user already declared, to avoid a duplicate
 		// type decl.
@@ -481,7 +451,7 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 	return b.String(), imports, assignedAliases(gc), td.CgoPreamble, nil
 }
 
-func newIRTemplateData(info *irAnalysis, cfg Config, widgetFields []irWidgetField, entrySync []entrySyncRec, widgetImports map[string]bool, functionCode string, varHandlerCode map[string]string, gc *golang.GoIRContext, ctx *codegen.CodegenCtx, lang codegen.LangTranslator) (templateData, error) {
+func newIRTemplateData(info *irAnalysis, cfg Config, widgetFields []irWidgetField, entrySync []entrySyncRec, widgetImports map[string]bool, functionCode string, gc *golang.GoIRContext, ctx *codegen.CodegenCtx, lang codegen.LangTranslator) (templateData, error) {
 	td := templateData{
 		Package:      cfg.Package,
 		Main:         cfg.Main,
@@ -557,7 +527,6 @@ func newIRTemplateData(info *irAnalysis, cfg Config, widgetFields []irWidgetFiel
 				fmt.Fprintf(&extra, "\tm.%s%s(v)\n", sync.fieldName, sync.target)
 			}
 		}
-		extra.WriteString(varHandlerCode[bind.name])
 		bd.SetterExtra = extra.String()
 		td.Binds = append(td.Binds, bd)
 	}

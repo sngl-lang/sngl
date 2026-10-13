@@ -271,11 +271,6 @@ func (w *walker) varDecl(v *Var) {
 		return
 	}
 	w.expr(v.Init)
-	for _, h := range v.Handlers {
-		if h.Func != nil {
-			w.fn(h.Func)
-		}
-	}
 }
 
 func (w *walker) pkg(pkg *Package) {

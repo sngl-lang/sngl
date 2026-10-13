@@ -60,6 +60,7 @@ import (
 	"charm.land/lipgloss/v2"
 	"fmt"
 	"os"
+	"slices"
 )
 
 var xs []int = []int{1, 2}
@@ -93,7 +94,8 @@ func (m *Model) SetTerminalSize(w, h int) {
 }
 
 func Grow(ys []int) {
-	ys = append(ys, 3)
+	ys__own := slices.Clone(ys)
+	ys__own = append(ys__own, 3)
 }
 
 func SumFrom(ys []int, start int) int {
@@ -257,7 +259,8 @@ body { font-family: system-ui, sans-serif; }
   var xs = [1, 2];
   var state = { a: [1, 2], n: 0, visible__inst0: true };
   function grow(ys) {
-    ys.push(3);
+    let ys__own = [...ys];
+    ys__own.push(3);
   }
   function sumFrom(ys, start) {
     let s = start;
@@ -288,6 +291,6 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:a6d7704ec2305dc8f9f342bc7e4e3ce2
+pass sha256:426dc8b6d4419899c974191f72764a92
 -- run/none/html --
-pass sha256:5906ba0ad47127ba2a37638408e234a9
+pass sha256:d327cc6b8b6e8512bbedd84a74ee4dd3

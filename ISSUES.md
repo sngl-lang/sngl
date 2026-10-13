@@ -17,11 +17,22 @@ reports.
   so it must compare alike on every target, and list<string> does not".
   Wrapping it in an anonymous struct literal, `on={todos=todos}`, is refused
   the same way, naming the field: `list<string> (field todos of struct __anon_todos_fc0e38) does not`. A key like `{n=todos.length}` would
-  check but misses a toggle that changes no length. Either
-  the docs say to call `store.Save(todos)` from each handler that writes the
-  list, or the language needs a way to react to a list changing. The three
-  pages need rewriting either way, and the spec edit in this change (the
-  handler parameter is the new value) describes the form being removed.
+  check but misses a toggle that changes no length.
+
+  *Decided:* an effect reports writes. `effect(on=todos, @update(t) { … })`
+  runs after a write to what `on` reads, whatever its type; a list held in a
+  cell also reports `@insert`, `@set`, `@remove` and `@clear`, and a key that
+  does not compare may not handle `@mount`/`@unmount`
+  (`lib/builtin/effect.sngl`, `testdata/effect_update.sngl`,
+  `testdata/error_effect_changes.sngl`). Both are lowered by passEffect on
+  every compiled target, android included, where DisposableEffect keeps
+  `@mount`/`@unmount` (`testdata/effect_update.txtar`,
+  `testdata/effect_changes.txtar`, `cmd/sngl/testdata/effect_update_runs.txt`,
+  `cmd/sngl/testdata/effect_changes_runs.txt`). Under a loop, an element bound
+  with `&` is a cell per copy (`testdata/effect_per_copy.txtar`); one bound by
+  copy is refused as a key, since nothing writes it. getting-started,
+  effective-sngl and the spec teach it, and `var … @change` is refused naming
+  the effect that replaces it (`testdata/error_var_handler.sngl`).
 - **Clone URL.** `installation.md` says
   `git clone https://github.com/sngl-lang/sngl.git`, but the module is
   `duckfam.us/sngl` and origin is `git.duckfam.us`. Which is canonical?
@@ -156,6 +167,13 @@ reports.
 - Generated Go exports internal names (`Visible__inst0`, `SetVisible__inst0`,
   `Measurement`).
 - html emits `<input type="">`.
+- html: a local named like a var of its component reads the var: `var b = bumped(p)` in a method of a component declaring `b` emits `state2.b` for the
+  local. CLAUDE.md records the same gap on the Go mutation targets.
+- android: an empty map literal as a state var's initializer, `var mm map<string, Row> = {}`, comes
+  out as `mutableStateOf(mapOf())`, which Kotlin cannot type.
+- android: a field written through a list held in a state struct,
+  `t.kids[0].label = "z"`, is written in place on a read-only `List` element
+  and does not compile ("actual type is 'kotlin.Unit'").
 
 ## Docs gaps still open
 

@@ -1372,7 +1372,7 @@ body { font-family: system-ui, sans-serif; }
     return i18n.getTranslator().format("{name}:{count}", /* @__PURE__ */ new Map([["name", state.who__inst0.name], ["count", state.who__inst0.count]]));
   }
   function computed__inst0(__ctx_locale) {
-    let __spread0 = { ...next__inst0() };
+    let __spread0 = next__inst0();
     return i18n.getTranslator().format("{name}:{count}", /* @__PURE__ */ new Map([["name", __spread0.name], ["count", __spread0.count]]));
   }
   var __ctx_locale__inst0 = i18n.defaultLocale();
@@ -1397,4 +1397,4 @@ pass sha256:2a61e7291245a9752637e4da0f50e823
 -- run/kotlin/android --
 pass sha256:5c30849522dce4670f06a49617ce972c
 -- run/none/html --
-pass sha256:62719464eeea320cedcf0c34b6a7d385
+pass sha256:15a873d3d6c3eb6e930606c57bea5dbb
