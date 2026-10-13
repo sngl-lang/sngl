@@ -472,8 +472,10 @@ A struct is a record of named, typed fields, each optionally with a default
 value. Structs, like lists and maps, are **value types**: storing one -- an
 assignment, a variable's initializer, a `push` or `insert`, an element, field or
 entry of a literal -- stores a copy, as deep as the value holds structs, lists
-and maps, so a later write to either place leaves the other as it was. A struct
-may be generic over type parameters:
+and maps, so a later write to either place leaves the other as it was. A
+parameter is passed by value the same way: a function that writes its
+parameter, a method its receiver included, writes its own copy and not the
+caller's. A struct may be generic over type parameters:
 
 ```
 struct Box<T> { value T }

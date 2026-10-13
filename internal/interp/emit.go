@@ -62,7 +62,7 @@ func (env *Env) runHandler(fn *ir.Func, argEnv *Env, args []ir.CallArg) error {
 		if err != nil {
 			return err
 		}
-		env.Set(p, v)
+		env.Set(p, copyOf(v, p.Type))
 	}
 	// A raise a boundary caught ends the handler that emitted too, as it does on
 	// a compiled target, where this body is inlined into that one.

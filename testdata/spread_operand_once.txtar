@@ -729,7 +729,7 @@ window.__sngl_boot = () => {
   var $2 = document.getElementById("$2");
   var __n0 = document.querySelector('[data-sngl-id="__n0"]');
   $0.addEventListener("click", function() {
-    let __spread0 = { ...panel_next(state) };
+    let __spread0 = panel_next(state);
     state.got = __spread0.x + __spread0.y;
     __n0.textContent = String(state.got);
   });
@@ -738,7 +738,7 @@ window.__sngl_boot = () => {
     __n0.textContent = String(state.got);
   });
   $2.addEventListener("click", function() {
-    let __spread1 = { ...panel_next(state) };
+    let __spread1 = panel_next(state);
     let __spread2 = { x: __spread1.y, y: __spread1.x };
     state.got = __spread2.x + __spread2.y;
     __n0.textContent = String(state.got);
@@ -759,4 +759,4 @@ pass sha256:3fde783984f22b8cde5f10b6d288701e
 -- run/kotlin/android --
 pass sha256:4298f1fc04a3e7cbefbb8f7943002e7e
 -- run/none/html --
-pass sha256:8ed3bf8f7c777b0a02be7a059ac563f1
+pass sha256:cec341245a6737058f45e23704f027fd

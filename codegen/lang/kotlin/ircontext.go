@@ -519,64 +519,21 @@ func (kc *KtIRContext) isStateList(e ir.Expr) bool {
 	return false
 }
 
-// valueCopy binds a struct value the way SNGL binds one: by copy.
-//
-// A SNGL struct is a value, so `var next = this` gives you your own; Go's
-// assignment already does that and Kotlin's does not -- `next` is the same
-// object, and mutating it writes through to whatever else holds it. On
-// Compose that is fatal rather than merely wrong: the state a handler
-// reassigns is the object it just mutated, structural equality says nothing
-// changed, and the screen never recomposes. Every button animated and none of
-// them did anything.
-//
-// A literal needs no copy: it is already nobody else's. Neither does an
-// assignment -- copying on binding is what makes every mutable name one this
-// scope owns, and copying again on the way out would only defeat the
-// structural-equality check Compose uses to decide whether to recompose.
-// valueCopyFor is valueCopy for a local binding, skipping the copy when
-// nothing writes the binding.
-//
-// The copy exists so a mutation cannot reach whoever else holds the value; a
-// binding that is only read has no mutation to contain, and `passMutatedVars`
-// is what says which is which. Absent the annotation -- a pipeline that did
-// not lower -- every struct is copied, which is the old behaviour and the safe
-// direction.
+// valueCopyFor is a local's initializer as Kotlin binds it. passValueCopy has
+// already made the copy a store needs (ir/valuecopy.go), which matters here
+// more than anywhere: Compose decides whether to recompose by structural
+// equality, so a state value mutated through a binding that shared it looked
+// unchanged and no button did anything. A binding nothing writes needs no copy
+// to contain a mutation, and passMutatedVars says which those are, so its
+// copy is dropped and it reads the value it was given.
 func (kc *KtIRContext) valueCopyFor(n *ir.LocalVar, rendered string) string {
-	if n.Sym != nil && kc.Ctx != nil && kc.Ctx.Pkg != nil && kc.Ctx.Pkg.MutatedVars != nil {
-		if !kc.Ctx.Pkg.MutatedVars[n.Sym] {
-			// The store's copy (passValueCopy) contains a mutation too, and
-			// with none to contain the local is the value it was given.
-			if c, ok := n.Init.(*ir.Call); ok && ir.IsValueCopy(c) && len(c.Args) == 1 {
-				return kc.EvalExpr(c.Args[0].Value)
-			}
-			return rendered
-		}
-	}
-	return valueCopy(n.Init, n.Type, rendered)
-}
-
-func valueCopy(init ir.Expr, t *ir.Type, rendered string) string {
-	if t == nil || t.Kind != ir.TypeStruct || t.Decl == nil {
+	if n.Sym == nil || kc.Ctx == nil || kc.Ctx.Pkg == nil || kc.Ctx.Pkg.MutatedVars == nil || kc.Ctx.Pkg.MutatedVars[n.Sym] {
 		return rendered
 	}
-	if ir.StringReprStruct(t) {
-		return rendered
+	if c, ok := n.Init.(*ir.Call); ok && ir.IsValueCopy(c) && len(c.Args) == 1 {
+		return kc.EvalExpr(c.Args[0].Value)
 	}
-	// A native struct names a Kotlin class this build does not emit, so there
-	// is no generated data class and no `copy()` to call -- Compose's `Path`
-	// has none. It is a reference the host owns, which is also why copying it
-	// would be wrong even if the method existed.
-	if sd, ok := t.Decl.(*ir.StructDef); ok && sd.Foreign.Name != "" {
-		return rendered
-	}
-	switch init.(type) {
-	case *ir.StructLit, *ir.Literal, nil:
-		return rendered
-	}
-	if ir.IsValueCopy(init) {
-		return rendered
-	}
-	return rendered + ".copy()"
+	return rendered
 }
 
 func (kc *KtIRContext) ToggleText(_ *ir.Toggle, target string) string {

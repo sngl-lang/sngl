@@ -4,25 +4,26 @@
 # with `&` is written in place and copied where it is stored elsewhere. Go
 # shares a slice's storage and JavaScript and Kotlin every object, so each
 # language writes the copy out from the value's type; the interpreter copies
-# at the store.
+# at the store. A parameter is passed by value: a function that modifies one
+# takes its own copy, and one that only reads it copies nothing.
 
 sngl test --platform=none app.sngl
-stdout '7 tests, 0 failures'
+stdout '8 tests, 0 failures'
 
 sngl test --platform=html app.sngl
-stdout '7 tests, 0 failures'
+stdout '8 tests, 0 failures'
 
 sngl test --platform=bubbletea --language=go app.sngl
-stdout '7 tests, 0 failures'
+stdout '8 tests, 0 failures'
 
 sngl test --platform=fyne --language=go app.sngl
-stdout '7 tests, 0 failures'
+stdout '8 tests, 0 failures'
 
 sngl test --platform=gtk4 --language=go app.sngl
-stdout '7 tests, 0 failures'
+stdout '8 tests, 0 failures'
 
 sngl test --platform=android --language=kotlin app.sngl
-stdout '7 tests, 0 failures'
+stdout '8 tests, 0 failures'
 
 -- app.sngl --
 import . "sngl:test"
@@ -36,6 +37,30 @@ struct Row {
 struct Tree {
     label string
     kids  list<Tree> = []
+}
+
+func bumped(r Row) int {
+    r.n = 5
+    r.items.push(1)
+    return r.n
+}
+
+func Row.grow(r Row) {
+    r.n += 1
+}
+
+func size(r Row) int {
+    return r.n + r.items.length()
+}
+
+func replaced(r Row) int {
+    r = Row{n=9}
+    return r.n
+}
+
+func pushedTo(xs list<int>) int {
+    xs.push(3)
+    return xs.length()
 }
 
 component box ui.node {
@@ -101,6 +126,15 @@ component box ui.node {
         out = "{mm.get("a", Row{}).n}"
     }
 
+    func params() {
+        var bv = bumped(p)
+        p.grow()
+        var sv = size(p)
+        var rv = replaced(p)
+        var lv = pushedTo(a)
+        out = "{p.n} {p.items.length()} {bv} {sv} {rv} {lv} {a.length()}"
+    }
+
     ui.text #o(value=out)
 }
 
@@ -139,11 +173,16 @@ func testMapCopies(t Test, c box) {
     t.assert(c.o.value == "1")
 }
 
+func testParametersArePassedByValue(t Test, c box) {
+    c.params()
+    t.assert(c.o.value == "1 1 5 2 9 3 2")
+}
+
 ui.window {
     box
 }
 -- testrun/android/kotlin/app.sngl/box/1 --
-sha256:00319a291c192a11fd23d562c384f44b
+sha256:1163ffd304d20ca6404ecce4566b64a4
 {
   "results": [
     {
@@ -160,6 +199,10 @@ sha256:00319a291c192a11fd23d562c384f44b
     },
     {
       "Desc": "MapCopies",
+      "Passed": true
+    },
+    {
+      "Desc": "ParametersArePassedByValue",
       "Passed": true
     },
     {
@@ -177,7 +220,7 @@ sha256:00319a291c192a11fd23d562c384f44b
   ]
 }
 -- testrun/bubbletea/go/app.sngl/box/1 --
-sha256:2fc90a827367a314e1a762694da07ca2
+sha256:7a73cd4e33879d6a2779d23ba6272f86
 {
   "results": [
     {
@@ -194,6 +237,10 @@ sha256:2fc90a827367a314e1a762694da07ca2
     },
     {
       "Desc": "MapCopies",
+      "Passed": true
+    },
+    {
+      "Desc": "ParametersArePassedByValue",
       "Passed": true
     },
     {
@@ -211,7 +258,7 @@ sha256:2fc90a827367a314e1a762694da07ca2
   ]
 }
 -- testrun/fyne/go/app.sngl/box/1 --
-sha256:11178eb67ad8e86e1d8d258eedec5fdc
+sha256:15671792dcd04480b6c16973e9c5dba5
 {
   "results": [
     {
@@ -228,6 +275,10 @@ sha256:11178eb67ad8e86e1d8d258eedec5fdc
     },
     {
       "Desc": "MapCopies",
+      "Passed": true
+    },
+    {
+      "Desc": "ParametersArePassedByValue",
       "Passed": true
     },
     {
@@ -245,7 +296,7 @@ sha256:11178eb67ad8e86e1d8d258eedec5fdc
   ]
 }
 -- testrun/gtk4/go/app.sngl/box/1 --
-sha256:80e144f29075dc1de246cdd80aad5b5f
+sha256:e377aebacaf6864153ec0da7f0568860
 {
   "results": [
     {
@@ -262,6 +313,10 @@ sha256:80e144f29075dc1de246cdd80aad5b5f
     },
     {
       "Desc": "MapCopies",
+      "Passed": true
+    },
+    {
+      "Desc": "ParametersArePassedByValue",
       "Passed": true
     },
     {
@@ -279,7 +334,7 @@ sha256:80e144f29075dc1de246cdd80aad5b5f
   ]
 }
 -- testrun/html/none/app.sngl/box/1 --
-sha256:c0ef338bab021524ba7ed16432633816
+sha256:693483cff5adaf7ea19902db674f9b47
 {
   "results": [
     {
@@ -296,6 +351,10 @@ sha256:c0ef338bab021524ba7ed16432633816
     },
     {
       "Desc": "MapCopies",
+      "Passed": true
+    },
+    {
+      "Desc": "ParametersArePassedByValue",
       "Passed": true
     },
     {

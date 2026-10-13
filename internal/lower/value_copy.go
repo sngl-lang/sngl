@@ -6,6 +6,9 @@ import "duckfam.us/sngl/ir"
 // ir/valuecopy.go): the value an assignment, a local's initializer, a var's
 // initializer, a push or an insert stores, and an element or field a literal
 // is built from, is wrapped in ir.ValueCopy unless nothing else can hold it.
+// A parameter is passed by value too, and a function whose body modifies one
+// takes its own copy at entry (ownModifiedParams); one that only reads it
+// copies nothing.
 //
 // Before every other pass that writes a store, so what is copied is what the
 // program wrote. An element bound with `&` is copied where it is stored
@@ -38,7 +41,139 @@ func lowerValueCopy(pkg *ir.Package, _ Features, _ Options) error {
 			}
 		}
 	}
+	for _, f := range paramOwners(pkg) {
+		ownModifiedParams(f)
+	}
 	return nil
+}
+
+// paramOwners is every function whose parameters a call binds: the package's
+// and each component's, a lambda's, and each handler's.
+func paramOwners(pkg *ir.Package) []*ir.Func {
+	var out []*ir.Func
+	seen := map[*ir.Func]bool{}
+	add := func(f *ir.Func) {
+		if f != nil && !seen[f] {
+			seen[f] = true
+			out = append(out, f)
+		}
+	}
+	for _, o := range ir.Owners(pkg) {
+		for _, f := range o.Funcs {
+			add(f)
+		}
+	}
+	_ = ir.Walk(pkg, func(n ir.Node) error {
+		switch x := n.(type) {
+		case *ir.Lambda:
+			add(x.Func)
+		case *ir.NodeInst:
+			for i := range x.Handlers {
+				add(x.Handlers[i].Func)
+			}
+		}
+		return nil
+	})
+	return out
+}
+
+// paramWrite is what a body does to a parameter: nothing, replaces it whole,
+// or writes inside it.
+type paramWrite int
+
+const (
+	paramUnwritten paramWrite = iota
+	paramReplaced
+	paramModified
+)
+
+// ownModifiedParams gives f its own copy of each struct, list or map
+// parameter its body modifies, since a parameter is passed by value: a local
+// bound at entry, which every read and write in the body names instead. A
+// parameter the body only reads is the caller's value, uncopied, and one it
+// only replaces whole needs the local and no copy -- Kotlin's parameters
+// cannot be assigned.
+func ownModifiedParams(f *ir.Func) {
+	var prelude []ir.Stmt
+	for _, p := range f.Params {
+		if p == nil || p.Variadic || !ir.HoldsValue(p.Type) {
+			continue
+		}
+		w := writesTo(f.Block, p)
+		if w == paramUnwritten {
+			continue
+		}
+		own := &ir.Var{Type: p.Type}
+		own.Name = p.Name + "__own"
+		var init ir.Expr = &ir.Ident{Name: p.Name, Sym: p, Type: p.Type}
+		if w == paramModified {
+			init = ir.ValueCopy(init)
+		}
+		_ = ir.RewriteExprs(f.Block, func(e ir.Expr) (ir.Expr, error) {
+			if id, ok := e.(*ir.Ident); ok && id.Sym == p {
+				return &ir.Ident{Name: own.Name, Sym: own, Type: id.Type}, nil
+			}
+			return e, nil
+		})
+		prelude = append(prelude, &ir.LocalVar{Name: own.Name, Type: p.Type, Init: init, Sym: own})
+	}
+	if len(prelude) > 0 {
+		f.Block = append(prelude, f.Block...)
+	}
+}
+
+// writesTo is the most a body does to p: an assignment or toggle rooted at
+// it, a mutating builtin called on it or on a part of it, or a loop binding
+// its elements with `&`, whose writes land in it.
+func writesTo(body []ir.Stmt, p *ir.Param) paramWrite {
+	most := paramUnwritten
+	note := func(w paramWrite) {
+		if w > most {
+			most = w
+		}
+	}
+	_ = ir.Walk(body, func(n ir.Node) error {
+		switch x := n.(type) {
+		case *ir.Assign:
+			if id, ok := x.Target.(*ir.Ident); ok && id.Sym == p {
+				note(paramReplaced)
+			} else if rootedAt(x.Target, p) {
+				note(paramModified)
+			}
+		case *ir.Toggle:
+			if rootedAt(x.Target, p) {
+				note(paramModified)
+			}
+		case *ir.Call:
+			if x.Func != nil && x.Func.Intrinsic != "" && len(x.Args) > 0 && rootedAt(x.Args[0].Value, p) {
+				if def, ok := ir.IntrinsicByName(x.Func.Intrinsic); ok && def.MutatesReceiver {
+					note(paramModified)
+				}
+			}
+		case *ir.For:
+			if x.RefElem && rootedAt(x.Iter, p) {
+				note(paramModified)
+			}
+		}
+		return nil
+	})
+	return most
+}
+
+// rootedAt reports whether e is p or a field or element path down from it.
+func rootedAt(e ir.Expr, p *ir.Param) bool {
+	for {
+		switch x := e.(type) {
+		case *ir.Select:
+			e = x.Operand
+		case *ir.Index:
+			e = x.Operand
+		case *ir.Ident:
+			return x.Sym == p
+		default:
+			return false
+		}
+	}
 }
 
 // copyStores is the rewrite over an imperative statement: each store it

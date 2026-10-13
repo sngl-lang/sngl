@@ -33,14 +33,6 @@ reports.
   copy is refused as a key, since nothing writes it. getting-started,
   effective-sngl and the spec teach it, and `var … @change` is refused naming
   the effect that replaces it (`testdata/error_var_handler.sngl`).
-- **A write to a struct parameter.** A store copies a struct, list or map
-  (`passValueCopy`, `cmd/sngl/testdata/value_copy_runs.txt`), but passing one
-  to a function does not say: `func bump(p P) { p.n = 5 }` leaves the
-  caller's value alone on the Go targets, which pass a struct by value, and
-  writes it on the interpreter, html and android. The interpreter's
-  `CopyValue` comment calls that deliberate -- a method edits its receiver --
-  and the spec said parameters copy. Copy at the call, or refuse a write to a
-  parameter as a loop variable's is refused?
 - **Clone URL.** `installation.md` says
   `git clone https://github.com/sngl-lang/sngl.git`, but the module is
   `duckfam.us/sngl` and origin is `git.duckfam.us`. Which is canonical?
@@ -175,6 +167,8 @@ reports.
 - Generated Go exports internal names (`Visible__inst0`, `SetVisible__inst0`,
   `Measurement`).
 - html emits `<input type="">`.
+- html: a local named like a var of its component reads the var: `var b = bumped(p)` in a method of a component declaring `b` emits `state2.b` for the
+  local. CLAUDE.md records the same gap on the Go mutation targets.
 - android: an empty map literal as a state var's initializer, `var mm map<string, Row> = {}`, comes
   out as `mutableStateOf(mapOf())`, which Kotlin cannot type.
 - android: a field written through a list held in a state struct,

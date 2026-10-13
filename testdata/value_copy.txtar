@@ -3,12 +3,17 @@ A struct, a list and a map are values, and a store copies one
 value's type: Go clones a slice or map and copies a struct's fields that share
 storage, JavaScript spreads an object and maps an array, Kotlin copies a data
 class and makes a new mutable list. A struct that can hold itself is a function
-calling itself. A literal is nobody else's and is not copied.
+calling itself. A literal is nobody else's and is not copied. A parameter
+is passed by value: a function that modifies one binds its own copy at entry,
+one that replaces it whole binds it uncopied, and one that only reads it
+binds nothing.
 
 deny out/go/bubbletea/model.go `m\.ys__inst0 = append\(m\.ys__inst0, m\.xs__inst0\[0\]\)` -- a pushed element is a copy
 deny out/none/html/index.html `\.push\(state\.xs__inst0\[0\]\)` -- a pushed element is a copy
 deny out/kotlin/android/app/src/main/java/test/sngl/app/MainScreen.kt `ys__inst0\.add\(xs__inst0\[0\]\)` -- a pushed element is a copy
 deny * `copy\(Row\{|Clone\(\[\]int\{` -- a literal is nobody else's and is not copied
+deny out/go/bubbletea/model.go `r__own := func[^\n]*\n\tr__own = Row` -- a parameter replaced whole is not copied
+deny out/none/html/index.html `let r__own = \(\([^\n]*\n\s*r__own = \{` -- a parameter replaced whole is not copied
 
 -- app.sngl --
 import ui "sngl:ui"
@@ -33,6 +38,30 @@ struct Row {
 struct Tree {
     label string
     kids  list<Tree> = []
+}
+
+func bumped(r Row) int {
+    r.n = 5
+    r.items.push(1)
+    return r.n
+}
+
+func Row.grow(r Row) {
+    r.n += 1
+}
+
+func size(r Row) int {
+    return r.n + r.items.length()
+}
+
+func replaced(r Row) int {
+    r = Row{n=9}
+    return r.n
+}
+
+func pushedTo(xs list<int>) int {
+    xs.push(3)
+    return xs.length()
 }
 
 component box ui.node {
@@ -98,6 +127,15 @@ component box ui.node {
         out = "{mm.get("a", Row{}).n}"
     }
 
+    func params() {
+        var bv = bumped(p)
+        p.grow()
+        var sv = size(p)
+        var rv = replaced(p)
+        var lv = pushedTo(a)
+        out = "{p.n} {p.items.length()} {bv} {sv} {rv} {lv} {a.length()}"
+    }
+
     ui.text #o(value=out)
     ui.button(text="pushed", @click { pushed() })
     ui.button(text="assigned", @click { assigned() })
@@ -106,6 +144,7 @@ component box ui.node {
     ui.button(text="referenced", @click { referenced() })
     ui.button(text="tree", @click { tree() })
     ui.button(text="maps", @click { maps() })
+    ui.button(text="params", @click { params() })
 }
 
 ui.window {
@@ -176,6 +215,30 @@ func New() Model {
 func (m *Model) SetTerminalSize(w, h int) {
 	m.width = w
 	m.height = h
+}
+
+func Bumped(r Row) int {
+	r__own := func(_s1 Row) Row { _s1.Items = slices.Clone(_s1.Items); return _s1 }(r)
+	r__own.N = 5
+	r__own.Items = append(r__own.Items, 1)
+	return r__own.N
+}
+
+func RowGrow(r Row) {
+	r__own := func(_s1 Row) Row { _s1.Items = slices.Clone(_s1.Items); return _s1 }(r)
+	r__own.N += 1
+}
+
+func Replaced(r Row) int {
+	r__own := r
+	r__own = Row{N: 9, Items: []int{}}
+	return r__own.N
+}
+
+func PushedTo(xs []int) int {
+	xs__own := slices.Clone(xs)
+	xs__own = append(xs__own, 3)
+	return len(xs__own)
 }
 
 func (m *Model) pushed__inst0() {
@@ -256,6 +319,15 @@ func (m *Model) maps__inst0() {
 	}().N)
 }
 
+func (m *Model) params__inst0() {
+	var bv int = Bumped(m.p__inst0)
+	RowGrow(m.p__inst0)
+	var sv int = (m.p__inst0.N + len(m.p__inst0.Items))
+	var rv int = Replaced(m.p__inst0)
+	var lv int = PushedTo(m.a__inst0)
+	m.out__inst0 = ((((((((((((fmt.Sprint(m.p__inst0.N) + " ") + fmt.Sprint(len(m.p__inst0.Items))) + " ") + fmt.Sprint(bv)) + " ") + fmt.Sprint(sv)) + " ") + fmt.Sprint(rv)) + " ") + fmt.Sprint(lv)) + " ") + fmt.Sprint(len(m.a__inst0)))
+}
+
 func (m *Model) __focusNext() {
 	if m.__focusID == 0 {
 		m.__focusID = 1
@@ -276,7 +348,11 @@ func (m *Model) __focusNext() {
 							m.__focusID = 6
 						} else {
 							if m.__focusID == 6 {
-								m.__focusID = 0
+								m.__focusID = 7
+							} else {
+								if m.__focusID == 7 {
+									m.__focusID = 0
+								}
 							}
 						}
 					}
@@ -288,7 +364,7 @@ func (m *Model) __focusNext() {
 
 func (m *Model) __focusPrev() {
 	if m.__focusID == 0 {
-		m.__focusID = 6
+		m.__focusID = 7
 	} else {
 		if m.__focusID == 1 {
 			m.__focusID = 0
@@ -307,6 +383,10 @@ func (m *Model) __focusPrev() {
 						} else {
 							if m.__focusID == 6 {
 								m.__focusID = 5
+							} else {
+								if m.__focusID == 7 {
+									m.__focusID = 6
+								}
 							}
 						}
 					}
@@ -560,6 +640,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.tree__inst0()
 		case msg.Code == tea.KeyEnter && m.__focusID == 6:
 			m.maps__inst0()
+		case msg.Code == tea.KeyEnter && m.__focusID == 7:
+			m.params__inst0()
 		}
 	}
 	return m, tea.Batch(cmds...)
@@ -628,6 +710,14 @@ func (m Model) View() tea.View {
 		}
 		contentPart_7 = lipgloss.NewStyle().Render(contentPart_7Prefix + " " + fmt.Sprint("maps"))
 		contentParts = append(contentParts, contentPart_7)
+		var contentPart_8 string
+		contentPart_8Focused := (m.__focusID == 7)
+		contentPart_8Prefix := " "
+		if contentPart_8Focused {
+			contentPart_8Prefix = ">"
+		}
+		contentPart_8 = lipgloss.NewStyle().Render(contentPart_8Prefix + " " + fmt.Sprint("params"))
+		contentParts = append(contentParts, contentPart_8)
 		content = lipgloss.JoinVertical(lipgloss.Left, contentParts...)
 	}
 	v := tea.NewView(content)
@@ -752,6 +842,16 @@ fun MainScreen() {
         out__inst0 = mm__inst0.getOrDefault("a", Row(n = 0, items = listOf<Int>())).n.toString()
     }
 
+
+    fun params__inst0() {
+        var bv = bumped(p__inst0)
+        p__inst0.grow()
+        var sv = (p__inst0.n + p__inst0.items.size)
+        var rv = replaced(p__inst0)
+        var lv = pushedTo(a__inst0)
+        out__inst0 = ((((((((((((p__inst0.n.toString() + " ") + p__inst0.items.size.toString()) + " ") + bv.toString()) + " ") + sv.toString()) + " ") + rv.toString()) + " ") + lv.toString()) + " ") + a__inst0.size.toString())
+    }
+
     if (visible__inst0) {
         val __activity = LocalContext.current as? Activity
         BackHandler {
@@ -797,8 +897,37 @@ fun MainScreen() {
             }, modifier = Modifier.safeDrawingPadding()) {
                 Text(text = "maps", modifier = Modifier)
             }
+            Button(onClick = {
+                params__inst0()
+            }, modifier = Modifier.safeDrawingPadding()) {
+                Text(text = "params", modifier = Modifier)
+            }
         }
     }
+}
+
+fun bumped(r: Row): Int {
+    var r__own = r.let { _s1 -> _s1.copy(items = _s1.items.toMutableList()) }
+    r__own.n = 5
+    r__own = r__own.copy(items = r__own.items.toMutableList().also { it.add(1) })
+    return r__own.n
+}
+
+fun Row.grow() {
+    var r__own = this.let { _s1 -> _s1.copy(items = _s1.items.toMutableList()) }
+    r__own.n += 1
+}
+
+fun replaced(r: Row): Int {
+    var r__own = r
+    r__own = Row(n = 9, items = listOf<Int>())
+    return r__own.n
+}
+
+fun pushedTo(xs: List<Int>): Int {
+    var xs__own = xs.toMutableList()
+    xs__own.add(3)
+    return xs__own.size
 }
 -- out/none/html/index.html --
 <!-- Code generated by sngl (html) from app.sngl; DO NOT EDIT. -->
@@ -836,6 +965,9 @@ body { font-family: system-ui, sans-serif; }
 <button id="$7">
   <span>maps</span>
 </button>
+<button id="$8">
+  <span>params</span>
+</button>
 
 <script>
 (() => {
@@ -848,6 +980,26 @@ body { font-family: system-ui, sans-serif; }
   state.u__inst0 = { label: "x", kids: [] };
   state.m__inst0 = /* @__PURE__ */ new Map([["a", { n: 1, items: [] }]]);
   state.mm__inst0 = /* @__PURE__ */ new Map([["b", { n: 0, items: [] }]]);
+  function bumped(r) {
+    let r__own = ((_s1) => ({ ..._s1, items: [..._s1.items] }))(r);
+    r__own.n = 5;
+    r__own.items.push(1);
+    return r__own.n;
+  }
+  function Row_grow(r) {
+    let r__own = ((_s1) => ({ ..._s1, items: [..._s1.items] }))(r);
+    r__own.n += 1;
+  }
+  function replaced(r) {
+    let r__own = r;
+    r__own = { n: 9, items: [] };
+    return r__own.n;
+  }
+  function pushedTo(xs) {
+    let xs__own = [...xs];
+    xs__own.push(3);
+    return xs__own.length;
+  }
   function pushed__inst0() {
     state.ys__inst0.push(((_s1) => ({ ..._s1, items: [..._s1.items] }))(state.xs__inst0[0]));
     state.xs__inst0[0].n = 5;
@@ -900,6 +1052,15 @@ body { font-family: system-ui, sans-serif; }
     state.out__inst0 = String((state.mm__inst0.has("a") ? state.mm__inst0.get("a") : { n: 0, items: [] }).n);
     $0.textContent = state.out__inst0;
   }
+  function params__inst0() {
+    let bv = bumped(state.p__inst0);
+    Row_grow(state.p__inst0);
+    let sv = state.p__inst0.n + state.p__inst0.items.length;
+    let rv = replaced(state.p__inst0);
+    let lv = pushedTo(state.a__inst0);
+    state.out__inst0 = String(state.p__inst0.n) + " " + String(state.p__inst0.items.length) + " " + String(bv) + " " + String(sv) + " " + String(rv) + " " + String(lv) + " " + String(state.a__inst0.length);
+    $0.textContent = state.out__inst0;
+  }
   function String(v) {
     return "" + v;
   }
@@ -911,6 +1072,7 @@ body { font-family: system-ui, sans-serif; }
   var $5 = document.getElementById("$5");
   var $6 = document.getElementById("$6");
   var $7 = document.getElementById("$7");
+  var $8 = document.getElementById("$8");
   $1.addEventListener("click", function() {
     pushed__inst0();
     $0.textContent = state.out__inst0;
@@ -939,6 +1101,10 @@ body { font-family: system-ui, sans-serif; }
     maps__inst0();
     $0.textContent = state.out__inst0;
   });
+  $8.addEventListener("click", function() {
+    params__inst0();
+    $0.textContent = state.out__inst0;
+  });
   function __sngl_init() {
     $0.textContent = state.out__inst0;
   }
@@ -947,8 +1113,8 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:418710396a0e4799461535d959edc7a8
+pass sha256:c9e7016ad3936000cdb30f0a1bc88bf4
 -- run/kotlin/android --
-pass sha256:6c7727e7e6067f0779daf2ba0c892bda
+pass sha256:d937839d6b9260676bc7746bf4ec991f
 -- run/none/html --
-pass sha256:ad47834f383dc92ef6aa5c00feb3edf7
+pass sha256:73de198f7ca2b6785969bb52967a94a4
