@@ -1438,6 +1438,12 @@ with `&` (`for var &x = xs`, `for var i, &x = xs`) binds it as a `ref<T>`, so th
 assigning to `x` — or to a field of `x` — writes through to the underlying list
 element by index. The index variable may not be taken by reference.
 
+Every other loop variable is read-only: a plain element variable is a copy of
+the element, and the index, a map's key and value, and an iterator's element
+are values. Assigning to one, toggling it, or calling a mutating method such as
+`push` on it or on a field of it is an error, which for the element of a list
+names the `&` form that writes the element.
+
 Iterating on a condition, or on nothing:
 
 - `for x < n` runs its body while the head is `true`, testing it before each

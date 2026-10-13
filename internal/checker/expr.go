@@ -3579,6 +3579,7 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 			}
 		}
 		c.refuseNodePropAssign(targetExpr, x.Pos, "assign to")
+		c.refuseLoopVarWrite(targetExpr, x.Pos, "assign to")
 		if x.Op == ast.AssignSet {
 			valueExpr = c.coerce(x.Value, valueExpr, targetType, slot{pos: x.Pos, mismatch: func(want, got string) string {
 				return "cannot assign " + got + " to " + want
@@ -3612,6 +3613,7 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 			c.error(x.Pos, "toggle target must be bool, got %s", t)
 		}
 		c.refuseNodePropAssign(targetExpr, x.Pos, "toggle")
+		c.refuseLoopVarWrite(targetExpr, x.Pos, "toggle")
 		if c.rejectStmtInViewBody(x.Pos, targetDescription("a toggle", "of", x.Target)) {
 			return nil
 		}
@@ -3873,10 +3875,8 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 		// over a mutable addressable list. The element is Key in single-var
 		// form and Value in two-var form. `&` on the index (two-var Key) is an
 		// error. An invalid `&` is reported and downgraded to a value binding.
-		// TODO(lint): a plain (non-&) element loop var is a value copy, so
-		// writing through its fields (`for var t = list { t.done!! }`) silently
-		// updates a throwaway copy. Surface that as a lint error suggesting
-		// `&t`; for now it compiles as a no-op.
+		// A plain loop variable is read-only (refuseLoopVarWrite): it is a copy
+		// of the element, and a write to it would change nothing read again.
 		elemRef := x.KeyRef
 		// A loop that declares nothing (`for seq.count(3) { }`) has no
 		// variable to bind, to ref-bind, or to complain about: only the
@@ -3921,6 +3921,7 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 			valueSym = &ir.LoopVar{Name: x.Value, Type: t}
 			c.declare(x.Pos, valueSym)
 		}
+
 		elemType := TypDyn
 		switch iter.Kind {
 		case ir.TypeList:
@@ -3973,6 +3974,20 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 			}
 		}
 		c.loopDepth++
+		// An element of an addressable list is what `&` can bind instead,
+		// which a refused write through the plain binding suggests.
+		if !elemRef && iter.Kind == ir.TypeList && isAddressableListExpr(iterExpr) {
+			elem := keySym
+			if x.Value != "" {
+				elem = valueSym
+			}
+			if elem != nil {
+				if c.refBindable == nil {
+					c.refBindable = map[*ir.LoopVar]bool{}
+				}
+				c.refBindable[elem] = true
+			}
+		}
 		body := c.checkScopeBlockIR(&x.Body, x.Key, x.Value)
 		c.loopDepth--
 		var elseBody []ir.Stmt
@@ -4222,7 +4237,42 @@ func (c *checker) resolveCallStmt(x *ast.CallStmt, callExpr ir.Expr) ir.Stmt {
 	if c.rejectCallInViewBody(x.Pos, call.Func) {
 		return nil
 	}
+	if call.Func != nil && call.Func.Intrinsic != "" && len(call.Args) > 0 {
+		if def, ok := c.libs.builtins.IntrinsicByName(call.Func.Intrinsic); ok && def.MutatesReceiver {
+			c.refuseLoopVarWrite(call.Args[0].Value, x.Pos, call.Func.Name)
+		}
+	}
 	return &ir.CallStmt{AST: x, Call: call}
+}
+
+// refuseLoopVarWrite reports a write through a loop's variable that the loop
+// did not bind by reference. `for var x = xs` hands the body each element to
+// read; a write to it, or to a field or element of it, would change a copy
+// nothing reads again, so it is refused rather than dropped. `for var &x = xs`
+// is the spelling that writes the element, and the index of either form is
+// read-only.
+func (c *checker) refuseLoopVarWrite(target ir.Expr, pos ast.Pos, verb string) {
+	for {
+		switch n := target.(type) {
+		case *ir.Select:
+			target = n.Operand
+			continue
+		case *ir.Index:
+			target = n.Operand
+			continue
+		case *ir.Ident:
+			lv, isLoop := n.Sym.(*ir.LoopVar)
+			if !isLoop || (lv.Type != nil && lv.Type.Kind == ir.TypeRef) {
+				return
+			}
+			if c.refBindable[lv] {
+				c.error(pos, "cannot %s the loop variable %q, which holds a copy of the element; bind it with `for var &%s` to write the element", verb, n.Name, n.Name)
+			} else {
+				c.error(pos, "cannot %s the loop variable %q; a loop's variables are read-only", verb, n.Name)
+			}
+		}
+		return
+	}
 }
 
 // refuseExprErrorHandler reports an @error on a call whose value is used.

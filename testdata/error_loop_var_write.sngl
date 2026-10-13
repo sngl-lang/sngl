@@ -1,0 +1,45 @@
+// A loop's variables are read-only. `for var x = xs` hands the body a copy of
+// each element, so a write to it -- or to a field or an element of it -- would
+// change nothing read again; `for var &x = xs` is the binding that writes the
+// element. The index of a list and the key and value of a map are read-only
+// whatever the form.
+
+struct Todo {
+    done bool = false
+    tags list<int> = []
+}
+
+var todos list<Todo> = [Todo{}]
+var ns list<int> = [1]
+var m map<string, int> = {"a"=1}
+
+func copies() {
+    for var t = todos {
+        t.done = true  // ERROR(check) "cannot assign to the loop variable \"t\", which holds a copy of the element; bind it with `for var &t` to write the element"
+        t.done!!       // ERROR(check) "cannot toggle the loop variable \"t\""
+        t.tags.push(1) // ERROR(check) "cannot push the loop variable \"t\""
+        t.tags[0] = 2  // ERROR(check) "cannot assign to the loop variable \"t\""
+    }
+    for var i, n = ns {
+        n = 3  // ERROR(check) "cannot assign to the loop variable \"n\", which holds a copy"
+        n += 1 // ERROR(check) "cannot assign to the loop variable \"n\""
+        i = 0  // ERROR(check) "cannot assign to the loop variable \"i\"; a loop's variables are read-only"
+    }
+    for var k, v = m {
+        v = 1 // ERROR(check) "cannot assign to the loop variable \"v\"; a loop's variables are read-only"
+    }
+    for var x = [1, 2] {
+        x = 3 // ERROR(check) "cannot assign to the loop variable \"x\"; a loop's variables are read-only"
+    }
+}
+
+// The reference form writes the element.
+func references() {
+    for var &t = todos {
+        t.done = true
+        t.tags.push(1)
+    }
+    for var i, &n = ns {
+        n += i
+    }
+}

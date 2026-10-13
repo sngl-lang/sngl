@@ -342,6 +342,9 @@ func CheckPackage(docs []*ast.Document, cfg *Config) (*ir.Package, []ir.Diagnost
 }
 
 type checker struct {
+	// refBindable is the plain element variables of loops over an addressable
+	// list, which `&` could have bound to write the element.
+	refBindable map[*ir.LoopVar]bool
 	// decls is what this check records about the program's declarations; a
 	// library's are on its libCache (tables).
 	decls declTables
