@@ -4448,6 +4448,13 @@ func (c *checker) checkVisualNode(vn *ast.VisualNode) ir.Stmt {
 	// Only a component takes type arguments; a slot, a provider or a
 	// function written where a node goes takes none.
 	if len(vn.TypeArgs) > 0 && c.componentNamed(vn.TargetName()) == nil {
+		// Written bare, the bracket was an index: `xs[0]` on a line of its
+		// own, which the parser reads as a node because it cannot tell a
+		// value from a component.
+		if !vn.HasParens && !vn.Block.IsDefined() && vn.ID == "" && len(vn.Args.Args) == 0 {
+			c.error(vn.Pos, "a value is not a statement: show it with a node, such as ui.text(value=…), or use it in one")
+			return nil
+		}
 		c.resolveTypeArgs(vn.TypeArgs)
 		c.error(vn.Pos, "%s takes no type arguments", name)
 	}

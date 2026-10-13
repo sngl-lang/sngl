@@ -7,7 +7,6 @@ var xs = [1, 2]
 func f() {
     "in a function" // ERROR(parse) "a value is not a statement"
     42 // ERROR(parse) "a value is not a statement"
-    xs[0] // ERROR(parse) "a value is not a statement"
     "a".length // ERROR(parse) "a value is not a statement"
     "n" = 2 // ERROR(parse) "only a name, a field or an element can be assigned to"
     "a".length = 3 // ERROR(parse) "only a name, a field or an element can be assigned to"

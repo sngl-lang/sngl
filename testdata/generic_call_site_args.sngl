@@ -37,12 +37,19 @@ component tagged[T any](v T) node {
     text(value="tagged")
 }
 
+// A node written bare takes its type arguments as readily, which only the
+// name tells from an index: `marker[string]` on a line of its own.
+component marker[T any](v option[T] = null) node {
+    text(value="marker")
+}
+
 component main node {
     var count = empty[int]().length
     var box = Box[int]{value=3}
 
     vbox {
         tagged[int](v=1)
+        marker[string]
         text(value="{count} {box.value}")
     }
 }

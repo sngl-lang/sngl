@@ -1614,12 +1614,10 @@ func (b *builder) buildVisualOrStmt(it nodeIter) ast.Stmt {
 		Pos: ast.Pos(*base.ExprPos()),
 		ID:  elemID,
 	}
-	// A bracket on a bare name is an index, `xs[0]`, which is no statement;
-	// only a node written with an id, `spacer[int] #s`, says otherwise.
-	fn, typeArgs := base, []ast.Expr(nil)
-	if elemID != "" {
-		fn, typeArgs = splitTypeArgs(base)
-	}
+	// A bracket on a bare name is a node's type arguments, `spacer[int]`, or
+	// an index, `xs[0]`, which is no statement; only the checker knows what
+	// the name is, so it is the one that says.
+	fn, typeArgs := splitTypeArgs(base)
 	if target, ok := fn.(ast.TargetExpr); ok && namesNode(target) {
 		vn.Target, vn.TypeArgs = target, typeArgs
 	} else {

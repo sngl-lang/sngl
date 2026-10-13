@@ -733,7 +733,10 @@ checker says which it is (`internal/checker/typeargs.go`): on a name that
 reads as a declaration -- a func, a component, a struct named as a type, a
 method -- it holds type arguments, and on a value one index. A func that
 takes nothing and binds nothing reads as its result (`counts[0]` for
-`counts()`), which `namesItself` holds to. `instantiatedCall` checks the call
+`counts()`), which `namesItself` holds to. A bracket on a bare name on a line
+of its own is split onto the node by the builder too, since `marker[string]`
+and `xs[0]` are the same tokens, and the checker refuses the second as a value
+that is no statement (`error_expression_statement_index.sngl`). `instantiatedCall` checks the call
 without the bracket and leaves the written types for whichever path resolves
 the callee (`takeCallTypeArgs`), which seeds `inferTypeParams` with them: they
 bind a prefix of the callee's own parameters, inference the rest, a default
@@ -744,7 +747,12 @@ is an expression read as a type (`ast.TypeFromExpr`), so `func(int) bool` is
 refused there. Nothing after the checker sees them: they reach the IR as the
 bindings inference produces, and are kept only so `ir.Convert` prints them
 back (`ir.Call.TypeArgs`, `NodeInst.WrittenTypeArgs`, `ir.Context.TypeArgs`; a
-generic struct literal always prints its arguments).
+generic struct literal always prints its arguments). A method whose receiver
+its parameters do not list -- a `sngl:` method's, one on a generic type --
+prints as it was written, `xs.map(f)`, which `ir.Call.ReceiverArg` says;
+printed `list.map(xs, f)` the receiver went to the first parameter, and no
+dump holding a `t.assert` checked again
+(`cmd/sngl/testdata/generic_call_roundtrip.txt`).
 `testdata/generic_call_site_args.sngl`, `error_generic_call_site_args.sngl`
 and `generic_call_site_args.txtar` are the three halves. `any` is `#[_builtin(any)] struct any {}` in sngl:builtin, read like a scalar (`ir.TypAny`, in
 `scalarUniverse`, since sngl:family's `one[T any]` is checked before
@@ -760,7 +768,14 @@ only: Go puts a function reading state on the Model, where no method may take
 a type parameter, and states no constraint for a body comparing two T's. Each
 copy is named for its type arguments (`at__string`), read off the call's
 arguments and its own type, so a parameter only the result names binds too
-(`testdata/generic_func_instances.txtar`).
+(`testdata/generic_func_instances.txtar`). **A generic struct is copied the
+same way** (`monomorphizeStructs`): `Box[int]` is a declaration `Box__int` with
+its fields at the bound types, a method's copy is reattached to the copy its
+receiver parameter was bound to, and every `*ir.Type` naming the instantiation
+is repointed by `ir.RewriteTypes`, a reflective walk that reaches whatever
+holds a type and leaves a frozen library declaration alone. Before it Go
+erased the field to `any`, so `box.value + 1` did not compile, and Kotlin
+declared it `Any = null` (`testdata/generic_struct_instances.txtar`).
 
 **A bodyless function's purity is its declaration's.** `analyzeEffects` and the fixpoint skip a func with no body (`hasDeclaredBody`): an empty block calls nothing, and read as a body it lifted an undeclared native from unknown to pure -- `error.raise` became foldable the moment library funcs joined the program's fixpoint. And **a write into a value the function built itself is no effect**: one field or element of a local initialized from a literal and never reassigned whole (`freshLocals`), which is how `color.lighten` fills its result. Deeper, or through a local that may share another value (a Go slice, a JavaScript object), stays a mutation.
 - **`internal/optimize/`** — constant folding, dead code elimination with platform/language awareness. The optimizer unrolls no loop, for any target: a language target emits the loop and its own compiler decides whether to unroll one whose bounds it can see — three copies of a Compose `RadioButton` were what the loop is. A target whose view is markup (html, which withholds `viewStatements`) has nowhere to run one, and a **`Fold`** (`optimize.NewFold`, handed to a platform as `codegen.Fold` on `Request.Fold`) unrolls its loops after lowering, one document at a time as the platform decides them -- html's `documentsOf`: each is a clone of the lowered window with the loops around it bound for its iteration and its constant view loops unrolled, so a site of a thousand pages holds one page's expanded tree at a time (the docs site peaked at 9 GB holding all of them). A loop in a handler or other script stays a JS loop. A const only such a view loop reads is a build value rather than the page's, and shake keeps it on `ir.Package.BuildConsts`, where the Fold evaluates it and no backend declares it. A static unroll is bounded (`maxStaticUnroll`) and reports rather than writing a page nobody asked for. A read of a root-package list or map const stays a reference to the declaration (`sharedAggregateConsts`) and folds through it where the value is needed; it is copied only where it becomes storage the program may write (`foldOwned`), so every backend must declare its package consts. html's static mode writes such a const once to `assets/consts/` when it emits more than one page. A body the optimizer splices into its caller (`inlineComponentCall`) answers its emits with the call site's handlers, as the lowering's inliners do (`lower.SubstituteEvents`): left standing, a handler the call site wrote never ran, and an event it did not handle became one of the caller's own -- `emit("change", k)` in a build rooted at a component declaring none (`cmd/sngl/testdata/optimizer_splice_events_runs.txt`).
