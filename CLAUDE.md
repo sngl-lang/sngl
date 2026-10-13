@@ -768,9 +768,35 @@ and `generic_call_site_args.txtar` are the three halves. `any` is `#[_builtin(an
 `scalarUniverse`, since sngl:family's `one[T any]` is checked before
 sngl:builtin is in scope), and it is a constraint only: written where a
 value's type goes it is refused naming `dyn` (`error_any_outside_constraint.sngl`).
-It is the only constraint yet (`resolveConstraint`); the constraint lands on
-`ir.TypeParam.Constraint` and `ir.TypeParamSym.Constraint`, and `ir.Convert`
-prints one for every parameter of a declaration's own list.
+The constraint lands on `ir.TypeParam.Constraint` and
+`ir.TypeParamSym.Constraint`, and `ir.Convert` prints one for every parameter
+of a declaration's own list.
+
+**A constraint is `any` or an anonymous struct** (`resolveConstraint`,
+`internal/checker/constraints.go`): `[T struct { name string }]` is any
+struct with at least a `name` that is a `string`, matched by name at equal
+types (`Type.Equal`), a named struct as readily as an anonymous one. A
+constraint's field takes no default, and a satisfying struct's own defaults
+play no part. **Every binding is held to it by one function**,
+`checkConstraint`: call inference (`inferTypeParams`, which written type
+arguments flow into), a struct's or a component type's own arguments
+(`applyStructTypeArgs`, `applyComponentTypeArgs` -- the latter is also a
+family's arguments in a member's return position), a component's props
+(`bindComponentTypeParams`), what the children bind (`bindFromChildren`, for
+what the props left), and a default against its own constraint
+(`resolveTypeParams`). A T bound to another type parameter is measured by that
+parameter's constraint. In a generic body a select of a `T` reads the
+constraint's fields (`paramConstraint`) and a spread binds them
+(`spreadFieldsOf`); a receiver's restated names take their declaration's
+constraints (`inheritReceiverConstraints`), before the signature is resolved,
+since `func stack[M].current() _page[M]` hands M on. Nothing after the checker
+learns of a constraint: Go and Kotlin read the field off each copy
+`passMonomorphize` made, and JavaScript and the interpreter off the value. So
+i18n's `tr`, `trInline` and `format` take `[A struct {}]`, which is what
+refuses a map of arguments, and nav's page, link, `go`, `href` and `_follow`
+constrain their params and meta the same way
+(`testdata/type_param_constraint.sngl`, `error_type_param_constraint.sngl`,
+`type_param_constraint.txtar`).
 
 **A generic function is copied per instantiation** where the language does not
 claim `genericFuncs` (`passMonomorphize`), so Go and Kotlin see concrete types
@@ -3360,8 +3386,9 @@ Notable stdlib packages:
 
   **A translation's arguments are a struct**, a field per placeholder:
   `i18n.format(t, {name=n})`. `tr`, `trInline` and `format`
-  take them as a type parameter, which an anonymous struct literal binds, and
-  the checker refuses anything but a struct (`checkI18nCall`); `$"..."` builds
+  take them as a type parameter constrained to a struct, `[A struct {}]`,
+  which an anonymous struct literal binds and which refuses anything else;
+  `$"..."` builds
   the same literal. Every runtime still takes a string-keyed map, so
   `lower.RecordArgs` -- at the start of `optimize.Optimize`, before the shake
   can see the record's struct -- rewrites the argument of each intrinsic

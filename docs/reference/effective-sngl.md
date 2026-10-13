@@ -653,6 +653,27 @@ parameter appears only in its result, called where nothing expects a type,
 They go in brackets after the name, bind the leading parameters, and leave the
 rest to inference.
 
+When a generic body needs to read a field, say which: an anonymous struct as
+the constraint is any struct with at least those fields, at those types, so a
+named struct satisfies it as readily as a literal does.
+
+<!-- SNGL-component
+struct User { name string; age int = 0 }
+-->
+
+```sngl
+func nameOf[T struct {
+    name string
+}](v T) => v.name
+
+func names() => [nameOf(User{name="ann"}), nameOf({name="anon"})]
+```
+
+`[T struct {}]` takes any struct and says nothing about its fields, which is
+what a function handing its argument to something that reads fields by name
+wants: `i18n.format` takes its arguments that way. A constraint's field takes
+no default -- a constraint says what a type has, not what it starts with.
+
 `any` is only a constraint. A value whose type you say nothing about is a
 `dyn`, and `var x any` is an error. Nor is the constraint optional: a bracket
 holding a bare name after a declaration's name is the target an override is

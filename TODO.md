@@ -176,32 +176,32 @@ struct, a constraint field with a default, a default that does not satisfy the
 constraint). Then a golden on Go and Kotlin, which monomorphize, and
 JavaScript, which keeps the generic.
 
-- [ ] AST and IR carry the constraint from phase 0; this section adds only
+- [X] AST and IR carry the constraint from phase 0; this section adds only
   the anonymous struct.
-- [ ] Refuse anything but `any` or an anonymous struct as a constraint, and a field
+- [X] Refuse anything but `any` or an anonymous struct as a constraint, and a field
   of that anonymous struct carrying a default: a constraint says what a type
   has, not what it starts with. A satisfying struct's own defaults, named or
   anonymous, play no part in the match.
-- [ ] Check every binding against the constraint, wherever a type parameter
+- [X] Check every binding against the constraint, wherever a type parameter
   is bound: call inference (`bindArgs`), explicit type arguments (phase 2
   above), a type's own arguments in `resolveType`, `bindFromChildren`, family
   arguments, and a default (`M struct {} = struct {}` must satisfy its own
   constraint).
-- [ ] In a generic body, a select on a `T` reads the constraint's fields, typed
+- [X] In a generic body, a select on a `T` reads the constraint's fields, typed
   from the constraint; anything else is an unknown member, as it is on an
   unconstrained `T` today.
-- [ ] A spread of a `T` binds the constraint's fields by name, under
+- [X] A spread of a `T` binds the constraint's fields by name, under
   `expandSpread`'s existing rule; fields beyond them are not visible to it.
-- [ ] Codegen: Go and Kotlin need nothing (`passMonomorphize` copies per
+- [X] Codegen: Go and Kotlin need nothing (`passMonomorphize` copies per
   instantiation, so the select is concrete); JavaScript reads a property;
   the interpreter reads the field off the value. Confirm each with the golden.
-- [ ] Stdlib: `i18n.tr`, `trInline`, `format` and the private `_translate` and
+- [X] Stdlib: `i18n.tr`, `trInline`, `format` and the private `_translate` and
   `_format` take `[A struct {}]`, and the struct check in `checkI18nCall`
   (`internal/checker/i18n.go`) goes -- the interpolated-template check and
   `ir.RecordArg` stay. `nav.page`, `stack.go`, `href`, `_follow` and `link`
   take `[T struct {} = struct {}]`; `_page` and `stack` probably constrain
   `M` the same way. `effect` and `gen.node` stay unconstrained.
-- [ ] Spec, effective-sngl and CLAUDE.md.
+- [X] Spec, effective-sngl and CLAUDE.md.
 
 A constraint is never a default: `[T struct {} = struct {}]` writes both, and
 a parameter with no default has none, `[T any]` included.

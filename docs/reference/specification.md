@@ -684,12 +684,40 @@ called, which may be after the test has stopped holding.
 Type parameters are introduced by a type-parameter list in brackets
 (`[T any]`, `[K any, V any]`) on a struct, a function, a method's name, or a
 component. Every type parameter names a **constraint** after its name: what a
-type bound to it must be. `any` is the constraint that says nothing, and it is
-the only one there is yet. A constraint is a constraint only: `any` written
-where a value's type goes is an error, and the type of a value the program says
-nothing about is `dyn`. A type parameter may also carry a default after its
-constraint (`[T any = struct {}]`), used when nothing binds it; a constraint is
-never a default, so a parameter with no default has none.
+type bound to it must be. A constraint is `any` or an anonymous struct. `any`
+is the constraint that says nothing. A constraint is a constraint only: `any`
+written where a value's type goes is an error, and the type of a value the
+program says nothing about is `dyn`. A type parameter may also carry a default
+after its constraint (`[T any = struct {}]`), used when nothing binds it; a
+constraint is never a default, so a parameter with no default has none, and
+`[T struct {} = struct {}]` writes both.
+
+An anonymous struct constraint says the type is a struct with **at least**
+those fields, each at an equal type: `[T struct {}]` is any struct, and
+`[T struct { name string }]` any struct with a `name` field that is a
+`string`. Fields are matched by name and at equal types, not assignable ones,
+and a named struct satisfies the constraint as readily as an anonymous one,
+since the constraint is about fields, not identity. A constraint's field may
+not carry a default -- a constraint says what a type has, not what it starts
+with -- and the defaults of a struct being measured play no part. Every type
+bound to a parameter is held to its constraint: one an argument binds, one
+written in brackets, a type's own argument, one the children of a slot bind, a
+family's argument in a member's return position, and a default. A type
+parameter bound to another is measured by the other's own constraint.
+
+In a generic body a value of a constrained `T` has the constraint's fields,
+typed from the constraint, and nothing else: `v.name` reads one, and any other
+member is unknown. A spread of a `T` binds those fields by name, as a struct's
+spread binds its own.
+
+```sngl
+func nameOf[T struct {
+    name string
+}](v T) => v.name
+
+var a = nameOf(User{name="ann"}) // User may have other fields
+var b = nameOf({name="anon"})    // an anonymous struct
+```
 
 The bracket after a declaration's name is also where an override names the
 target it implements (`component ui.vbox[platform]`, see
@@ -700,7 +728,8 @@ followed by a type is a type-parameter list. `func first[T]` is therefore an
 override of a target named `T`, not a generic function.
 
 A method on a generic type restates its receiver's parameters by name alone,
-since the type's declaration already constrains them:
+since the type's declaration already constrains them, and in its body each is
+what that declaration says it is:
 `func list[T].map[U any](f func(T) U) list[U]`. The `.` after the bracket is
 what makes it a receiver's.
 
