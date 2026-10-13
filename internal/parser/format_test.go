@@ -414,3 +414,16 @@ func TestFormatOverrideTarget(t *testing.T) {
 		`const func[language] f() => 1`,
 		`const func[language] f() => 1`)
 }
+
+// The suffix form is gone: a bracket after a declaration's name is left for a
+// type parameter list.
+func TestOverrideTargetSuffixRefused(t *testing.T) {
+	for _, src := range []string{
+		`component ui.vbox[platform](gap int) {}`,
+		`func f[html.platform]() {}`,
+	} {
+		if _, err := Parse("test.sngl", []byte(src)); err == nil {
+			t.Errorf("%s: parsed, want an error", src)
+		}
+	}
+}

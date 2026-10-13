@@ -1004,7 +1004,7 @@ func (b *builder) buildIdentListWithPos(it nodeIter) ([]string, []ast.Pos) {
 // --- Functions ---
 
 func (b *builder) buildFuncDecl(it nodeIter) *ast.FuncDef {
-	// FuncDecl = kw_func [ TargetIndex ] FuncName [ TargetIndex ] FuncTail .
+	// FuncDecl = kw_func [ TargetIndex ] FuncName FuncTail .
 	pos := b.posFromToken(it.shift()) // kw_func
 	f := &ast.FuncDef{Pos: pos}
 	if !it.done() && it.isNonTerminal() && it.symbol() == TargetIndex {
@@ -1012,9 +1012,6 @@ func (b *builder) buildFuncDecl(it nodeIter) *ast.FuncDef {
 	}
 	if !it.done() && it.isNonTerminal() && it.symbol() == FuncName {
 		b.buildFuncName(it.enter(), f)
-	}
-	if !it.done() && it.isNonTerminal() && it.symbol() == TargetIndex {
-		f.Target = b.buildTargetIndex(it.enter())
 	}
 	if !it.done() && it.isNonTerminal() && it.symbol() == FuncTail {
 		b.buildFuncTail(it.enter(), f)
@@ -1272,7 +1269,7 @@ func (b *builder) buildParam(it nodeIter) ast.ParamOrEventDecl {
 // --- Components ---
 
 func (b *builder) buildComponentDecl(it nodeIter) *ast.ComponentDecl {
-	// ComponentDecl = kw_component [ TargetIndex ] ident [ dot ident ] [ TypeParamList ] [ TargetIndex ] [ lparen [ ParamList ] rparen ] [ Type ] StmtBlock .
+	// ComponentDecl = kw_component [ TargetIndex ] ident [ dot ident ] [ TypeParamList ] [ lparen [ ParamList ] rparen ] [ Type ] StmtBlock .
 	pos := b.posFromToken(it.shift()) // kw_component
 	c := &ast.ComponentDecl{Pos: pos}
 	if !it.done() && it.isNonTerminal() && it.symbol() == TargetIndex {
@@ -1285,13 +1282,10 @@ func (b *builder) buildComponentDecl(it nodeIter) *ast.ComponentDecl {
 		c.Name = c.Name + "." + it.shift().Literal
 	}
 	// After the (possibly qualified) name, `lt` can only open a type parameter
-	// list -- a target index opens with `lbracket` and a prop list with
-	// `lparen` -- so the three optionals stay LL(1) in this order.
+	// list and `lparen` a prop list. The target an override names was written
+	// after the keyword, so nothing here begins with `lbracket`.
 	if !it.done() && it.isNonTerminal() && it.symbol() == TypeParamList {
 		c.TypeParams = b.buildTypeParams(it.enter())
-	}
-	if !it.done() && it.isNonTerminal() && it.symbol() == TargetIndex {
-		c.Target = b.buildTargetIndex(it.enter())
 	}
 
 	if !it.done() && !it.isNonTerminal() && it.tokenType() == LPAREN {

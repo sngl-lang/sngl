@@ -955,7 +955,7 @@ already implies.
 <!-- BEGIN GENERATED: grammar-functions -->
 
 ```ebnf
-FuncDecl = "func" [ TargetIndex ] FuncName [ TargetIndex ] FuncTail
+FuncDecl = "func" [ TargetIndex ] FuncName FuncTail
 
 FuncTail = 
     "(" [ ParamList ] ")" FuncBodyTail
@@ -1532,7 +1532,7 @@ A **component** is a reusable, parameterized fragment of user interface.
 <!-- BEGIN GENERATED: grammar-components -->
 
 ```ebnf
-ComponentDecl = "component" [ TargetIndex ] IDENT [ "." IDENT ] [ TypeParamList ] [ TargetIndex ] [ "(" [ ParamList ] ")" ] [ Type ] [ StmtBlock ]
+ComponentDecl = "component" [ TargetIndex ] IDENT [ "." IDENT ] [ TypeParamList ] [ "(" [ ParamList ] ")" ] [ Type ] [ StmtBlock ]
 
 ```
 
@@ -2433,7 +2433,7 @@ VarHandler = "@" IDENT [ "(" [ ParamList ] ")" ] StmtBlock
 ```
 
 ```ebnf
-FuncDecl = "func" [ TargetIndex ] FuncName [ TargetIndex ] FuncTail
+FuncDecl = "func" [ TargetIndex ] FuncName FuncTail
 
 FuncTail = 
     "(" [ ParamList ] ")" FuncBodyTail
@@ -2458,7 +2458,7 @@ EventParams = "(" [ ParamList ] ")"
 ```
 
 ```ebnf
-ComponentDecl = "component" [ TargetIndex ] IDENT [ "." IDENT ] [ TypeParamList ] [ TargetIndex ] [ "(" [ ParamList ] ")" ] [ Type ] [ StmtBlock ]
+ComponentDecl = "component" [ TargetIndex ] IDENT [ "." IDENT ] [ TypeParamList ] [ "(" [ ParamList ] ")" ] [ Type ] [ StmtBlock ]
 
 ```
 
