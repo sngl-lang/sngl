@@ -705,12 +705,26 @@ written in brackets, a type's own argument, one the children of a slot bind, a
 family's argument in a member's return position, and a default. A type
 parameter bound to another is measured by the other's own constraint.
 
+A constraint's field may name another type parameter of the same list, or
+the one it constrains: `[T any, U struct { value T }]` is a `U` whose `value`
+is whatever `T` is, and `[T struct { next option[T] }]` a struct whose `next`
+holds one of its own type. The field is measured with the list's other
+parameters bound, and where one is not -- nothing written or passed binds it
+-- the field of the type bound to the parameter it constrains does, so
+`valueOf(Cell{value=1})` binds `T` to `int`. A default binds its list the
+same way where its declaration is checked.
+
 In a generic body a value of a constrained `T` has the constraint's fields,
 typed from the constraint, and nothing else: `v.name` reads one, and any other
 member is unknown. A spread of a `T` binds those fields by name, as a struct's
 spread binds its own.
 
 ```sngl
+struct User {
+    name string
+    age  int
+}
+
 func nameOf[T struct {
     name string
 }](v T) => v.name

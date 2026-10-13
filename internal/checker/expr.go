@@ -3055,6 +3055,9 @@ func (c *checker) inferTypeParams(at ast.Pos, sig *ir.FuncSig, args ast.ArgList,
 		}
 		pos++
 	}
+	// What the arguments bound binds what its constraint names:
+	// `[T any, U struct { value T }]` handed a U binds T.
+	inferFromConstraints(sig.TypeParams, bindings)
 	// A parameter neither written nor pinned by the arguments is bound from
 	// the type the context wants: `func empty[T any]() list[T]` takes no
 	// arguments, and `var xs list[int] = empty()` says what T is without

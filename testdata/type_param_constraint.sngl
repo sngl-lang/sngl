@@ -52,6 +52,51 @@ func relay[T struct {
     name string
 }](v T) => nameOf(v)
 
+// A constraint's field may name another parameter of its list: what the
+// argument's field is binds it, or a written argument settles it.
+struct Cell {
+    value int
+    label string
+}
+
+func valueOf[T any, U struct {
+    value T
+}](u U) => u.value
+
+// A T bound to a parameter is measured by that parameter's constraint, with
+// what the field names carried across.
+func relayValue[A any, B struct {
+    value A
+}](b B) => valueOf(b)
+
+// Or the parameter it constrains: a list of itself.
+struct Link {
+    name string
+    next option[Link]
+}
+
+func hasNext[T struct {
+    next option[T]
+}](v T) => v.next != null
+
+// A default binds what its constraint names, as an argument does.
+func defaulted[T any, U struct {
+    value T
+} = Cell](u option[U] = null) => u == null
+
+struct Keyed[K any, V struct {
+    key K
+}] {
+    item V
+}
+
+struct Entry {
+    key string
+}
+
+// A receiver may spell the parameters differently.
+func Keyed[A, B].keyOf() => this.item.key
+
 component badge[T struct {
     name string
 }](item T) node {
@@ -80,6 +125,14 @@ func testConstraint(t Test, c main) {
     t.assert(nameOf(h.item) == "p")
     t.assert(h.label() == "<p>")
     t.assert(relay(User{name="dee"}) == "dee")
+    var cell = Cell{value=7, label="seven"}
+    t.assert(valueOf(cell) + 1 == 8)
+    t.assert(valueOf[int](cell) == 7)
+    t.assert(relayValue(cell) == 7)
+    t.assert(hasNext(Link{name="a", next=Link{name="b", next=null}}))
+    t.assert(defaulted())
+    var k = Keyed[string, Entry]{item=Entry{key="k"}}
+    t.assert(k.keyOf() == "k")
 }
 
 window {

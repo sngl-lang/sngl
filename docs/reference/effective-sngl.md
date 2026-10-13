@@ -669,6 +669,16 @@ func nameOf[T struct {
 func names() => [nameOf(User{name="ann"}), nameOf({name="anon"})]
 ```
 
+A field of a constraint may name another type parameter, and the argument's
+own field is what binds it, so a function can say "a struct whose `value` is
+some T" and return that T:
+
+```sngl
+func valueOf[T any, U struct {
+    value T
+}](u U) => u.value
+```
+
 `[T struct {}]` takes any struct and says nothing about its fields, which is
 what a function handing its argument to something that reads fields by name
 wants: `i18n.format` takes its arguments that way. A constraint's field takes

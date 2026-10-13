@@ -222,10 +222,11 @@ func (c *checker) bindFromChildren(comp, spec *ir.Component, children []ir.Stmt)
 		return spec
 	}
 	// What the props pinned was measured where they bound it.
+	inferFromConstraints(comp.TypeParams, bindings)
 	for _, tp := range comp.TypeParams {
 		if _, was := pinned[tp.Name]; !was {
 			if t, ok := bindings[tp.Name]; ok {
-				c.checkConstraint(firstAt, tp, t)
+				c.checkConstraint(firstAt, tp, t, bindings)
 			}
 		}
 	}

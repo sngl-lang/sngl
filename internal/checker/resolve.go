@@ -195,7 +195,6 @@ func (c *checker) applyComponentTypeArgs(pos ast.Pos, base *ir.Type, comp *ir.Co
 		switch {
 		case i < len(args):
 			elems[i] = c.resolveType(args[i])
-			c.checkConstraint(*args[i].ExprPos(), tp, elems[i])
 		case tp.Default != nil:
 			elems[i] = tp.Default
 		default:
@@ -203,6 +202,7 @@ func (c *checker) applyComponentTypeArgs(pos ast.Pos, base *ir.Type, comp *ir.Co
 			return base
 		}
 	}
+	c.checkWrittenArgs(comp.TypeParams, elems, args)
 	cp := *base
 	cp.Elems = elems
 	return &cp
@@ -217,11 +217,7 @@ func (c *checker) applyStructTypeArgs(pos ast.Pos, base *ir.Type, sd *ir.StructD
 	for i := range sd.TypeParams {
 		switch {
 		case i < len(args):
-			t := c.resolveType(args[i])
-			tp := sd.TypeParams[i]
-			tp.Constraint = c.typeParamConstraint(sd, i)
-			c.checkConstraint(*args[i].ExprPos(), tp, t)
-			elems = append(elems, t)
+			elems = append(elems, c.resolveType(args[i]))
 		default:
 			def := c.typeParamDefault(sd, i)
 			if def == nil {
@@ -239,7 +235,29 @@ func (c *checker) applyStructTypeArgs(pos ast.Pos, base *ir.Type, sd *ir.StructD
 			sd.Name, len(sd.TypeParams), len(args))
 		return base
 	}
+	params := make([]ir.TypeParam, len(sd.TypeParams))
+	for i, tp := range sd.TypeParams {
+		params[i] = tp
+		params[i].Constraint = c.typeParamConstraint(sd, i)
+	}
+	c.checkWrittenArgs(params, elems, args)
 	return &ir.Type{Kind: ir.TypeStruct, Decl: sd, Elems: elems}
+}
+
+// checkWrittenArgs holds each type argument a type was written with to its
+// parameter's constraint, measured with every parameter bound -- the rest by
+// their defaults -- and reports it where it is written. A default is checked
+// where it is declared.
+func (c *checker) checkWrittenArgs(params []ir.TypeParam, elems []*ir.Type, args []ast.TypeExpr) {
+	bindings := make(map[string]*ir.Type, len(params))
+	for i, tp := range params {
+		bindings[tp.Name] = elems[i]
+	}
+	for i, a := range args {
+		if i < len(params) {
+			c.checkConstraint(*a.ExprPos(), params[i], elems[i], bindings)
+		}
+	}
 }
 
 func (c *checker) resolveQualifiedType(t *ast.NamedType) *ir.Type {
@@ -380,7 +398,9 @@ func (c *checker) typeParamConstraint(sd *ir.StructDef, i int) *ir.Type {
 		return nil
 	}
 	n := len(c.diags)
+	pop := pushTypeParams(c, sd.AST.TypeParams)
 	t := c.resolveConstraint(sd.AST.TypeParams[i].Constraint)
+	pop()
 	c.diags = c.diags[:n]
 	return t
 }
@@ -396,22 +416,28 @@ func (c *checker) inheritReceiverConstraints(recv *ir.Type, written []ast.TypePa
 		return
 	}
 	var constraint func(i int) *ir.Type
+	var declared []ir.TypeParam
 	switch d := recv.Decl.(type) {
 	case *ir.StructDef:
-		if len(d.TypeParams) != len(written) {
-			return
-		}
+		declared = d.TypeParams
 		constraint = func(i int) *ir.Type { return c.typeParamConstraint(d, i) }
 	case *ir.Component:
-		if len(d.TypeParams) != len(written) {
-			return
-		}
+		declared = d.TypeParams
 		constraint = func(i int) *ir.Type { return d.TypeParams[i].Constraint }
 	default:
 		return
 	}
+	if len(declared) != len(written) {
+		return
+	}
+	// A constraint naming the declaration's parameters names the receiver's
+	// here, which may be spelled differently: `func Pair[X, Y].left()`.
+	renamed := make(map[string]*ir.Type, len(written))
 	for i, p := range written {
-		if con := constraint(i); con != nil {
+		renamed[declared[i].Name] = c.typeParamSym(p.Name, p.Pos).SymType()
+	}
+	for i, p := range written {
+		if con := substituteConstraint(constraint(i), renamed); con != nil {
 			if sym := c.typeParamSym(p.Name, p.Pos); sym.Constraint == nil {
 				sym.Constraint = con
 			}
@@ -452,9 +478,17 @@ func (c *checker) resolveTypeParams(ps []ast.TypeParam) []ir.TypeParam {
 		}
 		if p.Default != nil {
 			out[i].Default = c.resolveType(p.Default)
-			// A default is a binding like any other, and is held to the
-			// constraint written beside it.
-			c.checkConstraint(*p.Default.ExprPos(), out[i], out[i].Default)
+		}
+	}
+	// A default is a binding like any other, and is held to the constraint
+	// written beside it. What that constraint names of the list is bound from
+	// the default's own fields, since nothing else is bound where a
+	// declaration is checked.
+	for i, p := range ps {
+		if p.Default != nil {
+			bindings := map[string]*ir.Type{p.Name: out[i].Default}
+			inferFromConstraints(out, bindings)
+			c.checkConstraint(*p.Default.ExprPos(), out[i], out[i].Default, bindings)
 		}
 	}
 	return out

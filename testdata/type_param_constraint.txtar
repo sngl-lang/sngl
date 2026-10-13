@@ -2,7 +2,8 @@ A type parameter constrained by an anonymous struct reads the constraint's
 fields in a generic body. Go and Kotlin copy the function per instantiation,
 so the field read is a concrete struct's; JavaScript keeps the one generic
 function and reads a property. A spread of a T binds only the constraint's
-fields.
+fields. A field may name another parameter, which the argument's own field
+binds: `valueOf(cell)` is an int.
 
 deny out/go/bubbletea/model.go `\bany\b` -- each copy reads a concrete struct
 deny out/kotlin/android/app/src/main/java/test/sngl/app/MainScreen.kt `\bAny\b` -- each copy reads a concrete struct
@@ -55,6 +56,20 @@ func greetAll[T struct {
     return greet(...v)
 }
 
+struct Cell {
+    value int
+    label string
+}
+
+func valueOf[T any, U struct {
+    value T
+}](u U) T {
+    if n < 0 {
+        return u.value
+    }
+    return u.value
+}
+
 struct Holder[T struct {
     name string
 }] {
@@ -71,9 +86,10 @@ func Holder[T].label() string {
 var user = User{name="ann"}
 var pet = Pet{name="rex", legs=4}
 var held = Holder[Pet]{item=pet}
+var cell = Cell{value=7, label="seven"}
 
 ui.window(title="t") {
-    ui.text(value="{nameOf(user)} {nameOf(pet)} {greetAll(user)} {held.label()}")
+    ui.text(value="{nameOf(user)} {nameOf(pet)} {greetAll(user)} {held.label()} {valueOf(cell) + 1}")
     ui.button(text="go", @click {
         user = User{name=nameOf(pet)}
         n = n + 1
@@ -101,6 +117,11 @@ type Pet struct {
 	Legs int
 }
 
+type Cell struct {
+	Value int
+	Label string
+}
+
 type Holder__Pet struct {
 	Item Pet
 }
@@ -111,6 +132,7 @@ type Model struct {
 	user           User
 	pet            Pet
 	held           Holder__Pet
+	cell           Cell
 	visible__inst0 bool
 	__focusID      int
 
@@ -124,6 +146,7 @@ func New() Model {
 	m.user = User{Name: "ann", Age: 30}
 	m.pet = Pet{Name: "rex", Legs: 4}
 	m.held = Holder__Pet{Item: m.pet}
+	m.cell = Cell{Value: 7, Label: "seven"}
 	m.visible__inst0 = true
 	m.__focusID = 0
 	return m
@@ -154,6 +177,13 @@ func (m *Model) greetAll__User(v__r2 User) string {
 		return ""
 	}
 	return ("hi " + v__r2.Name)
+}
+
+func (m *Model) valueOf__int_Cell(u Cell) int {
+	if m.n < 0 {
+		return u.Value
+	}
+	return u.Value
 }
 
 func Holder__PetLabel__Pet(this Holder__Pet, m *Model) string {
@@ -235,6 +265,21 @@ func SetHeldCmd(v Holder__Pet) tea.Cmd {
 	return func() tea.Msg { return setHeldMsg{value: v} }
 }
 
+func (m Model) Cell() Cell {
+	return m.cell
+}
+
+func (m Model) SetCell(v Cell) Model {
+	m.cell = v
+	return m
+}
+
+type setCellMsg struct{ value Cell }
+
+func SetCellCmd(v Cell) tea.Cmd {
+	return func() tea.Msg { return setCellMsg{value: v} }
+}
+
 func (m Model) Visible__inst0() bool {
 	return m.visible__inst0
 }
@@ -267,6 +312,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m = m.SetPet(msg.value)
 	case setHeldMsg:
 		m = m.SetHeld(msg.value)
+	case setCellMsg:
+		m = m.SetCell(msg.value)
 	case setVisible__inst0Msg:
 		m = m.SetVisible__inst0(msg.value)
 	case tea.WindowSizeMsg:
@@ -299,7 +346,7 @@ func (m Model) View() tea.View {
 	if m.visible__inst0 {
 		var contentParts []string
 		var contentPart_0 string
-		contentPart_0 = lipgloss.NewStyle().Render(fmt.Sprint(((((((m.nameOf__User(m.user) + " ") + m.nameOf__Pet(m.pet)) + " ") + m.greetAll__User(m.user)) + " ") + Holder__PetLabel__Pet(m.held, &m))))
+		contentPart_0 = lipgloss.NewStyle().Render(fmt.Sprint(((((((((m.nameOf__User(m.user) + " ") + m.nameOf__Pet(m.pet)) + " ") + m.greetAll__User(m.user)) + " ") + Holder__PetLabel__Pet(m.held, &m)) + " ") + fmt.Sprint((m.valueOf__int_Cell(m.cell) + 1)))))
 		contentParts = append(contentParts, contentPart_0)
 		var contentPart_1 string
 		contentPart_1Focused := (m.__focusID == 0)
@@ -354,6 +401,11 @@ data class Pet(
     var legs: Int = 0
 )
 
+data class Cell(
+    var value: Int = 0,
+    var label: String = ""
+)
+
 data class Holder__Pet(
     var item: Pet = Pet()
 )
@@ -371,6 +423,7 @@ fun MainScreen() {
     var user by remember { mutableStateOf(User(name = "ann", age = 30)) }
     var pet by remember { mutableStateOf(Pet(name = "rex", legs = 4)) }
     var held by remember { mutableStateOf(Holder__Pet(item = pet.copy())) }
+    var cell by remember { mutableStateOf(Cell(value = 7, label = "seven")) }
     var visible__inst0 by remember { mutableStateOf(true) }
 
 
@@ -398,6 +451,14 @@ fun MainScreen() {
     }
 
 
+    fun valueOf__int_Cell(u: Cell): Int {
+        if ((n < 0)) {
+        	return u.value
+        }
+        return u.value
+    }
+
+
     fun Holder__Pet_label__Pet(this__r0: Holder__Pet): String {
         if ((n < 0)) {
         	return ""
@@ -414,7 +475,7 @@ fun MainScreen() {
             }
         }
         Column {
-            Text(text = ((((((nameOf__User(user) + " ") + nameOf__Pet(pet)) + " ") + greetAll__User(user)) + " ") + Holder__Pet_label__Pet(held)), modifier = Modifier.safeDrawingPadding())
+            Text(text = ((((((((nameOf__User(user) + " ") + nameOf__Pet(pet)) + " ") + greetAll__User(user)) + " ") + Holder__Pet_label__Pet(held)) + " ") + (valueOf__int_Cell(cell) + 1).toString()), modifier = Modifier.safeDrawingPadding())
             Button(onClick = {
                 user = User(name = nameOf__Pet(pet), age = 30)
                 n = (n + 1)
@@ -447,10 +508,11 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { n: 1, user: null, pet: null, held: null, visible__inst0: true };
+  var state = { n: 1, user: null, pet: null, held: null, cell: null, visible__inst0: true };
   state.user = { name: "ann", age: 30 };
   state.pet = { name: "rex", legs: 4 };
   state.held = { item: { ...state.pet } };
+  state.cell = { value: 7, label: "seven" };
   function nameOf(v) {
     if (state.n < 0) {
       ;
@@ -467,6 +529,14 @@ body { font-family: system-ui, sans-serif; }
     ;
     return "hi " + v.name;
   }
+  function valueOf(u) {
+    if (state.n < 0) {
+      ;
+      return u.value;
+    }
+    ;
+    return u.value;
+  }
   function Holder_label(this__r0) {
     if (state.n < 0) {
       ;
@@ -475,24 +545,27 @@ body { font-family: system-ui, sans-serif; }
     ;
     return this__r0.item.name;
   }
+  function String(v) {
+    return "" + v;
+  }
   var $0 = document.getElementById("$0");
   var __n1 = document.querySelector('[data-sngl-id="__n1"]');
   $0.addEventListener("click", function() {
     state.user = { name: nameOf(state.pet), age: 30 };
-    __n1.textContent = nameOf(state.user) + " " + nameOf(state.pet) + " " + greetAll(state.user) + " " + Holder_label(state.held);
+    __n1.textContent = nameOf(state.user) + " " + nameOf(state.pet) + " " + greetAll(state.user) + " " + Holder_label(state.held) + " " + String(valueOf(state.cell) + 1);
     state.n = state.n + 1;
-    __n1.textContent = nameOf(state.user) + " " + nameOf(state.pet) + " " + greetAll(state.user) + " " + Holder_label(state.held);
+    __n1.textContent = nameOf(state.user) + " " + nameOf(state.pet) + " " + greetAll(state.user) + " " + Holder_label(state.held) + " " + String(valueOf(state.cell) + 1);
   });
   function __sngl_init() {
-    __n1.textContent = nameOf(state.user) + " " + nameOf(state.pet) + " " + greetAll(state.user) + " " + Holder_label(state.held);
+    __n1.textContent = nameOf(state.user) + " " + nameOf(state.pet) + " " + greetAll(state.user) + " " + Holder_label(state.held) + " " + String(valueOf(state.cell) + 1);
   }
   __sngl_init();
 })();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:422a385134c43c20d2e01f063aae740d
+pass sha256:e88f477a55b937a2135c6f3c834a6b39
 -- run/kotlin/android --
-pass sha256:0433cec5fb836f4d2c8d8412da8528e8
+pass sha256:9ef6320585f1cbd9efe9fd52e1e85b6b
 -- run/none/html --
-pass sha256:43480f0ba54740ca98ab3101ff0f960a
+pass sha256:b316a89fb34066b2bada2a3f67d6f4d5

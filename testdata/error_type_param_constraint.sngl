@@ -64,6 +64,26 @@ component shelf[M struct {
     name  string
 }](items ...component tagged[M]) node {}
 
+// A field naming another parameter is measured with what that one is bound
+// to.
+func valueOf[T any, U struct {
+    value T
+}](u U) => u.value
+
+struct Cell {
+    value int
+}
+
+struct Keyed[K any, V struct {
+    key K
+}] {
+    item V
+}
+
+struct Entry {
+    key string
+}
+
 component main node {
     // A type that is no struct.
     var a = nameOf(1) // ERROR(check) "int does not satisfy struct"
@@ -79,6 +99,12 @@ component main node {
 
     // A type's own argument.
     var e Holder[int] = {item=1} // ERROR(check) "int does not satisfy struct"
+
+    // A written argument the field's type contradicts.
+    var f = valueOf[string](Cell{value=1}) // ERROR(check) "Cell does not satisfy struct { value string }"
+
+    // A type's own arguments, one naming the other.
+    var g Keyed[int, Entry] = {item={key="k"}} // ERROR(check) "Entry does not satisfy struct { key int }"
 
     vbox {
         // A component's prop.
