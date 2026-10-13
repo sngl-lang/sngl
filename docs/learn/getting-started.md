@@ -441,9 +441,11 @@ import "sngl:ui"
 
 ui.window(title="Todos") {
     var newTodo = ""
-    var todos list<store.Todo> = store.Load() @change {
-        store.Save(todos)
-    }
+    var todos list<store.Todo> = store.Load()
+
+    effect(on=todos, @update(t) {
+        store.Save(t)
+    })
 
     ui.vbox(style={gap=12px, padding=16px}) {
         ui.hbox(style={gap=8px, alignItems=center}) {
@@ -460,10 +462,12 @@ ui.window(title="Todos") {
 }
 ```
 
-`@change` on a `var` is a data event: it runs whenever `todos` changes, so
-`store.Load` and `store.Save` are ordinary calls at the two ends of its life. A
-`go:` import compiles only for a Go target; on another target, use a
-persistence package for that platform.
+An `effect` keyed on `todos` reports every write to it: `@update` runs after
+the handler that wrote it -- the push, a checkbox toggling an item, a
+replacement -- and is handed the list as it now is. So `store.Load` and
+`store.Save` are ordinary calls at the two ends of its life. A `go:` import
+compiles only for a Go target; on another target, use a persistence package for
+that platform.
 
 ## Embed generated code in a host app
 

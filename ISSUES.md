@@ -30,8 +30,9 @@ reports.
   `testdata/effect_changes.txtar`, `cmd/sngl/testdata/effect_update_runs.txt`,
   `cmd/sngl/testdata/effect_changes_runs.txt`). Under a loop, an element bound
   with `&` is a cell per copy (`testdata/effect_per_copy.txtar`); one bound by
-  copy is refused as a key, since nothing writes it. Left: rewrite the three
-  pages and remove `var … @change`.
+  copy is refused as a key, since nothing writes it. getting-started,
+  effective-sngl and the spec teach it, and `var … @change` is refused naming
+  the effect that replaces it (`testdata/error_var_handler.sngl`).
 - **A write to a struct parameter.** A store copies a struct, list or map
   (`passValueCopy`, `cmd/sngl/testdata/value_copy_runs.txt`), but passing one
   to a function does not say: `func bump(p P) { p.n = 5 }` leaves the

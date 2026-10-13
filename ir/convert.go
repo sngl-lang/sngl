@@ -210,9 +210,6 @@ func (c *converter) convertVarDecl(v *Var) *ast.VarDecl {
 	if v.Init != nil {
 		spec.Default = c.convertExpr(v.Init)
 	}
-	for _, h := range v.Handlers {
-		spec.Handlers = append(spec.Handlers, c.convertEventHandler(h))
-	}
 	return &ast.VarDecl{Specs: []ast.VarSpec{spec}, Attrs: c.foreignAttrs(v.Foreign, nil)}
 }
 

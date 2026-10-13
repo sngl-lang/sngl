@@ -479,9 +479,6 @@ func collectUsedSymbols(pkg *ir.Package, documents bool) (used, build map[ir.Sym
 			// the type reference → "undefined: User".
 			walkType(s.Type, used, walk)
 			walkExpr(s.Init, used, walk)
-			for _, h := range s.Handlers {
-				walkFunc(h.Func, used, walk)
-			}
 		case *ir.Func:
 			walkStmts(s.Block, used, walk)
 			for _, p := range s.Params {
@@ -546,12 +543,6 @@ func collectUsedSymbols(pkg *ir.Package, documents bool) (used, build map[ir.Sym
 	for _, f := range pkg.Funcs {
 		if f.IsTest || f.Synthesized {
 			walk(f)
-		}
-	}
-	// Vars with handlers are roots (reactive state).
-	for _, v := range pkg.Vars {
-		if len(v.Handlers) > 0 {
-			walk(v)
 		}
 	}
 	// The entry points the lowering left for a platform to call. Nothing in

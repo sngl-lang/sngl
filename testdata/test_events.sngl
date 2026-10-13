@@ -29,13 +29,6 @@ component main node {
         steps = 0
     )
 
-    // The body is deliberately inert: the fixture asserts that a `var`
-    // handler still parses, and this component has no test function to
-    // observe a state change with.
-    var touched = 0 @change {
-        score += 0
-    }
-
     // Use event handler
     Counter(label="Score", @save(e) { score = e })
     // Use bidirectional binding

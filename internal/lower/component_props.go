@@ -162,11 +162,6 @@ func contextProps(c *ir.Component) {
 	}
 	for _, v := range c.Vars {
 		v.Init = renameInExpr(v.Init, renames, symRenames)
-		for _, h := range v.Handlers {
-			if h.Func != nil {
-				h.Func.Block = renameIdents(h.Func.Block, renames, symRenames)
-			}
-		}
 	}
 }
 
@@ -217,11 +212,6 @@ func promoteProps(c *ir.Component) []*ir.Func {
 	}
 	for _, v := range c.Vars {
 		v.Init = renameInExpr(v.Init, renames, symRenames)
-		for _, h := range v.Handlers {
-			if h.Func != nil {
-				h.Func.Block = renameIdents(h.Func.Block, renames, symRenames)
-			}
-		}
 	}
 
 	// Ahead of the component's own vars, because a var initializer may read a

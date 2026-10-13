@@ -1336,11 +1336,6 @@ func sharedPageState(ctx *codegen.CodegenCtx) map[string]bool {
 				visit(fn.Block)
 			}
 		}
-		for _, h := range cc.Handlers {
-			if h != nil && h.Func != nil {
-				visit(h.Func.Block)
-			}
-		}
 	}
 	// A file-level declaration is initialized at file level, so what its
 	// initializer reads has to be declared there too.

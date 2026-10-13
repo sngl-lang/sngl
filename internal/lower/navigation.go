@@ -1740,11 +1740,6 @@ func signedFuncs(pkg *ir.Package) []*ir.Func {
 		for _, f := range o.Funcs {
 			add(f)
 		}
-		for _, v := range o.Vars {
-			for _, h := range v.Handlers {
-				add(h.Func)
-			}
-		}
 	}
 	_ = ir.Walk(pkg, func(n ir.Node) error {
 		switch x := n.(type) {

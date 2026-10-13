@@ -220,13 +220,6 @@ func lowerReactivity(pkg *ir.Package, caps Features, opts Options) error {
 	// package's rather than that owner's -- so a second pass over it appends a
 	// second copy of the same patches.
 	injected := map[*ir.Func]bool{}
-	for _, v := range pkg.Vars {
-		for _, h := range v.Handlers {
-			if h.Func != nil {
-				h.Func.Block = st.injectIntoStmts(h.Func.Block)
-			}
-		}
-	}
 	for _, comp := range pkg.Components {
 		st.owner = compOwner{comp}
 		comp.Stmts = st.rewriteAndInject(comp.Stmts)
@@ -236,13 +229,6 @@ func lowerReactivity(pkg *ir.Package, caps Features, opts Options) error {
 			}
 			injected[f] = true
 			f.Block = st.rewriteAndInject(f.Block)
-		}
-		for _, v := range comp.Vars {
-			for _, h := range v.Handlers {
-				if h.Func != nil {
-					h.Func.Block = st.rewriteAndInject(h.Func.Block)
-				}
-			}
 		}
 	}
 	// The package body, whose parent is the application.

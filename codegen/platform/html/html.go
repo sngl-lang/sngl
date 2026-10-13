@@ -1083,15 +1083,6 @@ func (g *htmlGen) rewriteSlotCallsToAnchors() {
 		return
 	}
 	visit := retargetSlotCalls
-	visitHandlers := func(vars []*ir.Var) {
-		for _, v := range vars {
-			for _, h := range v.Handlers {
-				if h.Func != nil {
-					visit(h.Func.Block)
-				}
-			}
-		}
-	}
 	// Not into a factory: a slot there renders into the instance's own root,
 	// which the lowering already named, and a page anchor would point every
 	// instance at one node.
@@ -1102,14 +1093,12 @@ func (g *htmlGen) rewriteSlotCallsToAnchors() {
 				visit(fn.Block)
 			}
 		}
-		visitHandlers(c.Vars)
 	}
 	for _, fn := range g.pkg.Funcs {
 		if fn != nil {
 			visit(fn.Block)
 		}
 	}
-	visitHandlers(g.pkg.Vars)
 }
 
 // rewriteDocumentSlotCalls retargets the calls in the page's own document,
@@ -2341,12 +2330,6 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 			continue
 		}
 		needsSetter := g.preview
-		for _, h := range v.Handlers {
-			if h.Name == "change" {
-				needsSetter = true
-				break
-			}
-		}
 		if !needsSetter && g.pkg != nil {
 			for _, k := range g.pkg.AsyncKickers {
 				if slices.Contains(k.Deps, v.Name) {
@@ -2711,27 +2694,8 @@ func (g *htmlGen) emitHandlers(b *strings.Builder) {
 }
 
 func (g *htmlGen) emitSetter(b *strings.Builder, dv *ir.Var) {
-	setterAsync := false
-	for _, h := range dv.Handlers {
-		if h.Name == "change" && h.Func != nil && ir.BlockHasFuncvarAsyncCall(h.Func.Block, g.pts()) {
-			setterAsync = true
-			break
-		}
-	}
-	keyword := "function"
-	if setterAsync {
-		keyword = "async function"
-	}
-	fmt.Fprintf(b, "%s $set_%s(v) {\n", keyword, dv.Name)
+	fmt.Fprintf(b, "function $set_%s(v) {\n", dv.Name)
 	fmt.Fprintf(b, "  state.%s = v;\n", dv.Name)
-	for _, h := range dv.Handlers {
-		if h.Name == "change" && h.Func != nil {
-			hjc := codegen.BindVarHandlerValue(g.scopedJC(), h, "v")
-			for _, line := range g.translateBlockWithJC(hjc, h.Func.Block) {
-				fmt.Fprintf(b, "  %s\n", line)
-			}
-		}
-	}
 	if g.pkg != nil {
 		for _, k := range g.pkg.AsyncKickers {
 			if slices.Contains(k.Deps, dv.Name) {
@@ -3977,11 +3941,6 @@ func respellWindowWrites(pkg *ir.Package, doc *ir.NodeInst, body []ir.Stmt) {
 			}
 			return nil
 		})
-	}
-	for _, v := range pkg.Vars {
-		for _, h := range v.Handlers {
-			add(h.Func)
-		}
 	}
 	for f := range funcs {
 		f.Block = filter(f.Block)

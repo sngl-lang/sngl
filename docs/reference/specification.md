@@ -910,8 +910,8 @@ recompute when its inputs change must be a function, not a variable (see
 [Reactivity](#reactivity)).
 
 Both forms have a grouped variant — `const ( … )` and `var ( … )` — that lists
-several specifications inside parentheses. A `var` declaration may carry
-[handlers](#variable-handlers).
+several specifications inside parentheses. A `var` takes no handler: code that
+runs after a write to one is an [effect](#effects) keyed on it.
 
 ### The const prefix
 
@@ -1759,18 +1759,6 @@ A handler runs when its event fires. What a handler reads does not subscribe
 it to anything; only node properties, conditions, loop heads and computed
 functions are re-evaluated because of what they read.
 
-### Variable handlers
-
-A `var` may carry one or more handlers that run after each assignment to it:
-
-```
-var count = 0 @change(v) { … }
-```
-
-The optional parameter binds the new value. The handler body executes
-after the new value is in place; it may itself assign to other reactive
-variables.
-
 ### References in loops
 
 A reference loop variable (`for var &x = xs`) makes assignments to the element — and
@@ -1811,6 +1799,38 @@ ui.window {
     ui.button(text="Next room", @click {
         room = "hall"
     })
+}
+```
+
+An effect also **reports writes** to what `on` reads. `@update(v)` runs after
+each settle in which something wrote it -- an assignment, a list mutation, a
+write to a field or an element below it -- and is handed the value `on` then
+has; it does not run on mount. When `on` reads a list held in a cell (a var, a
+field of one, an element bound with `&`), `@insert(at, item)`,
+`@set(at, item)`, `@remove(at, item)` and `@clear` report that list's changes
+one by one, in the order made and before `@update`. A write none of them
+describes, or one whose handler the effect does not declare, reaches `@update`.
+Writes reported in one settle run before the bracket rekeys. A key whose type
+does not compare may not declare `@mount` or `@unmount`, and a key reading a
+loop variable bound by copy is refused: nothing writes it.
+
+```sngl
+import ui "sngl:ui"
+
+ui.window {
+    var todos list<string> = []
+    var saved = 0
+
+    effect(
+        on = todos,
+        @update(t) {
+            saved = t.length()
+        },
+    )
+    ui.button(text="Add", @click {
+        todos.push("x")
+    })
+    ui.text(value="{saved}")
 }
 ```
 

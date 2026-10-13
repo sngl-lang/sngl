@@ -27,9 +27,6 @@ import (
 func perCopyCells(at string, body []ir.Stmt, vars []*ir.Var, funcs []*ir.Func, loops []*ir.For) ([]ir.Stmt, error) {
 	cells := map[*ir.Var]ir.Expr{}
 	for _, v := range vars {
-		if len(v.Handlers) > 0 {
-			return nil, fmt.Errorf("%s: %q has a handler, and this target keeps a var of a component under a `for` as one cell per copy, which a handler has no copy to run for", at, v.Name)
-		}
 		init := v.Init
 		if init == nil {
 			init = ir.DeclaredDefault(v.Type)

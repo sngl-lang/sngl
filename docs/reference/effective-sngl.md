@@ -476,7 +476,7 @@ Zero-arg functions are auto-invoked when referenced without `()`: `ui.text(value
 
 ### Reacting to a change
 
-`@change` on a `var` runs a statement block whenever the variable is assigned. Name a parameter to receive the new value:
+An `effect` keyed on a value reports each write to what `on` reads. `@update` runs after the handler that wrote it, once however many writes it made, and is handed the value as it now is:
 
 <!-- SNGL-component
 struct Todo { text string = ""; done bool = false }
@@ -484,15 +484,31 @@ func saveTodos(items list<Todo>) {}
 -->
 
 ```sngl
-var todos list<Todo> @change {
-    saveTodos(todos)
-}
-var query = "" @change(q) {
-    todos = []
-}
+var todos list<Todo> = []
+effect(on=todos, @update(t) {
+    saveTodos(t)
+})
 ```
 
-Prefer derived state to `@change` wherever the answer is a function of other state: a zero-arg function cannot fall out of date, while a handler copying one var into another can. Keep `@change` for side effects -- saving, logging, starting a request. For work that belongs to a lifetime rather than to an assignment, use an `effect` (see Lifetimes).
+A write is a write wherever it lands: a push, a field of an element written through `for var &todo = todos`, a replacement of the whole list. `@update` does not run when the effect mounts -- the value it would be handed is the one the program started with.
+
+A list says how it changed, too: `@insert(at, item)`, `@set(at, item)`, `@remove(at, item)` and `@clear` each run for their own change, in the order the changes were made and before `@update`. A write none of them describes -- a replacement, or a change the effect has no handler for -- reaches `@update`, so an effect handling every change event and `@update` sees every write exactly once:
+
+<!-- SNGL-component
+func send(at int, item string) {}
+func resync(xs list<string>) {}
+-->
+
+```sngl
+var lines list<string> = []
+effect(
+    on = lines,
+    @insert(at, item) { send(at, item) },
+    @update(xs) { resync(xs) },
+)
+```
+
+Prefer derived state to an effect wherever the answer is a function of other state: a zero-arg function cannot fall out of date, while a handler copying one var into another can. Keep `@update` for side effects -- saving, logging, starting a request.
 
 ### Gotchas
 
@@ -1091,9 +1107,9 @@ ui.button(text="Evens", @click { items = items.filter(func(x) => x % 2 == 0) })
 
 A component notifies its parent through an event. The event is declared on the
 component with `@name` and the parameters it passes -- `@save()` passes none,
-`@moved(x int, y int)` two, and `@changed int` is the one-parameter case --
-and firing it is an ordinary call on that name. The handler binds what the
-event passes by position, `@moved(x, y) { … }`:
+`@moved(x int, y int)` two, `@changed(v int)` one, each named and typed as a
+function's parameters are -- and firing it is an ordinary call on that name.
+The handler binds what the event passes by position, `@moved(x, y) { … }`:
 
 ```sngl
 import ui "sngl:ui"
@@ -1159,6 +1175,8 @@ ui.window {
 ```
 
 What a handler reads does not subscribe it: an effect runs again only when `on` changes. If it should restart when some value changes, put that value in `on`.
+
+An effect that should run on every write rather than when its key changes handles `@update` (see Reacting to a change). A key that does not compare -- a list, a struct holding one -- may only report: `@mount` and `@unmount` need a key that says when it is a different one.
 
 ### Error boundaries
 

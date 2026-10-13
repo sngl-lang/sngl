@@ -544,9 +544,6 @@ func foldVar(v *ir.Var, ctx *evalCtx) {
 	if v.Init != nil {
 		v.Init = foldOwned(v.Init, ctx)
 	}
-	for _, h := range v.Handlers {
-		h.Func.Block = foldStmts(h.Func.Block, ctx)
-	}
 }
 
 func foldComponent(comp *ir.Component, ctx *evalCtx) {

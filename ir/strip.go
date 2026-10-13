@@ -188,10 +188,6 @@ func (s *stripper) stripVar(v *Var) {
 	v.AST = nil
 	s.stripExpr(v.Init)
 	v.Type = nil
-	for _, h := range v.Handlers {
-		h.AST = nil
-		s.stripFunc(h.Func)
-	}
 }
 
 func (s *stripper) stripFunc(f *Func) {

@@ -596,7 +596,7 @@ ui.window {
 
 ## Custom Events
 
-A component declares its own events in its parameter list, each with the parameters it passes: `@moved(x int, y int)` passes two, `@changed int` is the one-parameter case written without parens, and `@reset()` passes nothing. Inside the component, firing one is calling it — `changed(value + 1)` — and the parent's handler binds what it passes by position.
+A component declares its own events in its parameter list, each with the parameters it passes: `@moved(x int, y int)` passes two, `@changed(v int)` one, and `@reset()` passes nothing -- each parameter named and typed, as a function's are. Inside the component, firing one is calling it — `changed(value + 1)` — and the parent's handler binds what it passes by position.
 
 This is how state flows back up: the parent owns `quantity`, the stepper reports changes, and the parent decides what to do with them.
 

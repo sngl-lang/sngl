@@ -875,16 +875,6 @@ func emitIRGettersSetters(b *strings.Builder, info *irAnalysis, ctx *codegen.Cod
 			if v == nil || v.Name != bind.name {
 				continue
 			}
-			for _, h := range v.Handlers {
-				if h.Name == "change" && h.Func != nil {
-					hgc := codegen.BindVarHandlerValue(gc, h, "v")
-					for _, stmt := range h.Func.Block {
-						for _, line := range hgc.EvalStmt(stmt) {
-							fmt.Fprintf(b, "\t%s\n", line)
-						}
-					}
-				}
-			}
 		}
 		b.WriteString("\treturn m\n")
 		b.WriteString("}\n\n")

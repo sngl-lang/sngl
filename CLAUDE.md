@@ -421,12 +421,10 @@ window arm beside the owners loop, and `blocks.go`'s passed nil timers and
 skipped the window's `@error` outright.
 
 What *was* reachable is the case neither copy had: **the handlers on a package
-var.** Both files named the package's funcs and its body and stopped, while a
-component's vars were walked in both — so a `for … else` in the
-`@change` of a top-level `var` reached `passForElse` not at all and every
-backend dropped the else in silence. Nothing moves a package's vars off the
-package, so the shape survives the whole pipeline;
-`testdata/for_else_package_var_handler.txtar` is it.
+var**, which a component's vars had in both and the package's in neither, so a
+`for … else` in the `@change` of a top-level `var` reached `passForElse` not at
+all. A var takes no handler any more (`testdata/error_var_handler.sngl`); an
+effect's `@update` is a node's handler and is reached where every node's is.
 
 Both orders are load-bearing and neither is this file's any more.
 `passCSE` and `passForElse` name their temps `__cseN`/`__ranN` off `blocks.go`'s
@@ -1632,7 +1630,7 @@ starting outside the handler that let it out
 rendered in a callee's slot is resolved by the checker against the *caller's*
 boundaries, so where the caller has one it wins over a nearer boundary the
 callee wraps the slot in; only where the caller has none does the render tree
-answer. And a raise in a `var`'s `@change` is resolved by neither.
+answer.
 
 A call in **expression position** that carries its own `@error`
 (`v = risky(7, @error(e) { … })`) is refused (`refuseExprErrorHandler`): the

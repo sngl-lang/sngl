@@ -366,11 +366,6 @@ func cloneComponent(comp *ir.Component, name string, body []ir.Stmt) *ir.Compone
 
 	for _, v := range out.Vars {
 		v.Init = renameInExpr(v.Init, nil, syms)
-		for _, h := range v.Handlers {
-			if h.Func != nil {
-				h.Func.Block = renameIdents(h.Func.Block, nil, syms)
-			}
-		}
 	}
 	for _, p := range out.Props {
 		p.Default = renameInExpr(p.Default, nil, syms)

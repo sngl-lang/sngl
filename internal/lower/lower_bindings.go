@@ -186,14 +186,6 @@ func rewritePropMutationsToEmit(comp *ir.Component, propName string, propType *i
 	for _, fn := range comp.Funcs {
 		fn.Block = walk(fn.Block)
 	}
-	// Also walk any event handler blocks already present on the component's vars.
-	for _, v := range comp.Vars {
-		for _, h := range v.Handlers {
-			if h.Func != nil {
-				h.Func.Block = walk(h.Func.Block)
-			}
-		}
-	}
 	// Walk timer handler blocks.
 }
 

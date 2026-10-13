@@ -3531,18 +3531,7 @@ func (c *checker) checkLocalVarDecl(decl *ast.VarDecl) []ir.Stmt {
 				Name: name,
 				Type: typ,
 			}
-			// A `var` at the top of a window body is that window's state and
-			// this path is what builds it, so a handler written on one travels
-			// with the symbol -- the way collectComponentVarDecl does for a
-			// component's.
-			for i := range spec.Handlers {
-				h := &spec.Handlers[i]
-				sym.Handlers = append(sym.Handlers, &ir.EventHandler{
-					AST:  h,
-					Name: h.Name,
-					Func: &ir.Func{},
-				})
-			}
+			c.refuseVarHandlers(spec, name)
 			c.declare(decl.Pos, sym)
 			out = append(out, &ir.LocalVar{
 				Name: name,
@@ -5443,7 +5432,7 @@ func bindWildcardName(comp *ir.Component, name string, props []ir.Arg) []ir.Arg 
 }
 
 // rejectNodeInFuncBody reports a visual node written in an imperative body --
-// a function, an event handler, a timer, a var handler or a lambda -- and says
+// a function, an event handler, a timer or a lambda -- and says
 // whether it did.
 //
 // A node is a piece of a rendered tree: it is placed once, where it is

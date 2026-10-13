@@ -109,7 +109,7 @@ func rewriteSlotExprs(slots map[string]*ir.SlotContent, rewrite func(ir.Expr) ir
 type walkFuncs struct {
 	// stmts is invoked for every Stmt slice in the package (component
 	// bodies, function blocks, window bodies, handler blocks, timer
-	// handler blocks, var handler blocks, etc.). The callback receives the
+	// handler blocks, etc.). The callback receives the
 	// slice and returns a possibly-rewritten slice.
 	stmts func([]ir.Stmt) []ir.Stmt
 
@@ -158,11 +158,6 @@ func walkPackage(pkg *ir.Package, fns walkFuncs) {
 func walkVar(v *ir.Var, fns walkFuncs) {
 	if fns.expr != nil && v.Init != nil {
 		v.Init = fns.expr(v.Init)
-	}
-	for _, h := range v.Handlers {
-		if h.Func != nil && fns.stmts != nil {
-			h.Func.Block = fns.stmts(h.Func.Block)
-		}
 	}
 }
 

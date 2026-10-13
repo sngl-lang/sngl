@@ -226,11 +226,6 @@ func offloadableFuncs(pkg *ir.Package) []*ir.Func {
 		}
 	}
 	for _, o := range owners {
-		for _, v := range o.Vars {
-			for _, h := range v.Handlers {
-				add(h.Func)
-			}
-		}
 		collectHandlerFuncs(o.Stmts(), add)
 	}
 	// Last, for the numbering reason above: a callback is reached through an

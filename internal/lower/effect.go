@@ -1200,7 +1200,7 @@ func (st *effectState) groupFor(comp *ir.Component) *effectGroup {
 //
 // allBlocks rather than a descent of its own: the walk this used to do reached
 // an owner's funcs and its view body and nothing else, so a write in a timer
-// handler, a var handler, a lifted lambda or a window declared inside a
+// handler, a lifted lambda or a window declared inside a
 // component settled nothing at all.
 //
 // Every block, this pass's own synthesized funcs included. A mount writing

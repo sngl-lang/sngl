@@ -59,11 +59,6 @@ func pkgHasNativeCall(pkg *ir.Package, cfg *Config) bool {
 	}
 	scanVar := func(v *ir.Var) {
 		scanExprs(v.Init)
-		for _, h := range v.Handlers {
-			if h.Func != nil {
-				scanStmts(h.Func.Block, visit)
-			}
-		}
 	}
 
 	for _, c := range pkg.Consts {

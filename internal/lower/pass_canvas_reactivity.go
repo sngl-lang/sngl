@@ -66,21 +66,6 @@ func injectCanvasRedraws(stmts []ir.Stmt, vars []*ir.Var, stateVars map[*ir.Var]
 		return
 	}
 
-	// Handlers on state vars (e.g. var x @change { ... }).
-	for _, v := range vars {
-		for _, h := range v.Handlers {
-			if h.Func == nil {
-				continue
-			}
-			mutated := handlerMutatedVars(h.Func, stateVars)
-			for _, e := range canvases {
-				if varsOverlap(mutated, e.deps) {
-					h.Func.Block = append(h.Func.Block, &ir.CanvasRedrawStmt{Canvas: e.canvas})
-				}
-			}
-		}
-	}
-
 	// Handlers on NodeInsts in the visual tree (e.g. button @click).
 	injectIntoNodeHandlers(stmts, stateVars, canvases)
 

@@ -38,7 +38,6 @@ func lowerRefLoop(pkg *ir.Package, _ Features, _ Options) error {
 				st.stmts(fn.Block)
 			}
 		}
-		st.varHandlers(c.Vars)
 	}
 	st.stmts(pkg.Body)
 	for _, fn := range pkg.Funcs {
@@ -46,22 +45,11 @@ func lowerRefLoop(pkg *ir.Package, _ Features, _ Options) error {
 			st.stmts(fn.Block)
 		}
 	}
-	st.varHandlers(pkg.Vars)
 	return nil
 }
 
 type refLoopState struct {
 	idxCounter int
-}
-
-func (st *refLoopState) varHandlers(vars []*ir.Var) {
-	for _, v := range vars {
-		for _, h := range v.Handlers {
-			if h.Func != nil {
-				st.stmts(h.Func.Block)
-			}
-		}
-	}
 }
 
 // stmts walks statements, lowering any RefElem For it finds (depth-first so a
