@@ -132,7 +132,12 @@ module.exports = grammar({
     ),
 
     func_declaration: ($) =>
-      seq(optional("const"), "func", $.func_name, optional($.type_param_list), $._func_tail),
+      seq(optional("const"), "func", optional($.target_index), $.func_name, optional($.type_param_list), $._func_tail),
+
+    // The target an override implements, written between the keyword and the
+    // name it overrides: `component[html.platform] ui.button(…) { … }`.
+    target_index: ($) =>
+      seq("[", field("target", $._expression), "]"),
 
     _func_tail: ($) =>
       choice(
@@ -190,7 +195,8 @@ module.exports = grammar({
       prec.right(seq(
       optional("const"),
       "component",
-      field("name", $.identifier),
+      optional($.target_index),
+      field("name", choice($.identifier, $.qualified_name)),
       optional(seq("(", optional($._param_list), ")")),
       optional($.type_identifier),
       optional($.statement_block)

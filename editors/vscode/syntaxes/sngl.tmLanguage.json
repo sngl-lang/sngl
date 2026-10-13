@@ -43,10 +43,13 @@
       }
     },
     "component-declaration": {
-      "match": "\\b(component)\\s+([A-Za-z_][A-Za-z0-9_]*)",
+      "match": "\\b(component)(?:(\\[)([^\\]]*)(\\]))?\\s+([A-Za-z_][A-Za-z0-9_]*(?:\\.[A-Za-z_][A-Za-z0-9_]*)?)",
       "captures": {
         "1": { "name": "keyword.declaration.component.sngl" },
-        "2": { "name": "entity.name.type.component.sngl" }
+        "2": { "name": "punctuation.section.brackets.begin.sngl" },
+        "3": { "name": "entity.name.namespace.target.sngl" },
+        "4": { "name": "punctuation.section.brackets.end.sngl" },
+        "5": { "name": "entity.name.type.component.sngl" }
       }
     },
     "struct-declaration": {
