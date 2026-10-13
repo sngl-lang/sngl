@@ -299,7 +299,7 @@ func familyName(f, member *ir.Component) string {
 // familyOptional reports the declarations an omitted return position is still
 // read as "no tree" for, rather than as the missing annotation it now is.
 //
-// An extension body (`component[platform] ui.vbox`) restates no part of the
+// An extension body (`component ui.vbox[platform]`) restates no part of the
 // declaration it merges into, so it names no tree either. That is the only
 // one: the directives -- `output`, `cache.inputs` -- used to be let off too,
 // while the root family lived in `sngl:ui` and `sngl:builtin` could not import

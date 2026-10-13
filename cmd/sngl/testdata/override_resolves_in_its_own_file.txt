@@ -34,7 +34,7 @@ component Box() node {
     text(value="base")
 }
 
-component[html.platform] Box {
+component Box[html.platform] {
     var d t.duration = 5ms
     text(value="{d}")
 }

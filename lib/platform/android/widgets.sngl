@@ -13,7 +13,7 @@ import . "sngl:internal/marks"
 
 // The window's `@error` is the outermost boundary of what it renders, and
 // catches whether or not the call site handles one.
-const component[platform] ui.window {
+const component ui.window[platform] {
     Screen(visible=visible, onBack=func() {
         visible = false
         closed()
@@ -26,29 +26,29 @@ const component[platform] ui.window {
 
 // --- Core Layout ---
 
-const component[platform] ui.vbox {
+const component ui.vbox[platform] {
     Column(modifier={...style}) {
         children
     }
 }
 
-const component[platform] ui.hbox {
+const component ui.hbox[platform] {
     Row(modifier={...style}) {
         children
     }
 }
 
-const component[platform] ui.stack {
+const component ui.stack[platform] {
     Box(modifier={...style}) {
         layers
     }
 }
 
-const component[platform] ui.spacer {
+const component ui.spacer[platform] {
     Spacer(modifier={...style}) {}
 }
 
-const component[platform] ui.scroll {
+const component ui.scroll[platform] {
     Column(
         modifier = {...style},
         then = [modifier.verticalScroll(rememberScrollState())],
@@ -59,11 +59,11 @@ const component[platform] ui.scroll {
 
 // --- Core Text & Media ---
 
-const component[platform] ui.text {
+const component ui.text[platform] {
     Text(text=value, modifier={...style}, style={...style}) {}
 }
 
-const component[platform] ui.button {
+const component ui.button[platform] {
     Button(onClick=func() { click() }, modifier={...style}, colors={...style}, shape={...style}) {
         Text(text=text) {}
     }
@@ -74,7 +74,7 @@ const component[platform] ui.button {
 // platform ships with the app, which reads the picture out of the app's
 // assets; a drawing is a Canvas. Compose has no image loader in the box, so a
 // picture a URL names draws nothing.
-const component[platform] ui.image {
+const component ui.image[platform] {
     Box(modifier={...style}) {
         #[family.crosses]
         src {
@@ -89,15 +89,15 @@ component SnglAssetImage(url string) ui.imageSource
 #[intrinsic("android:ImageDrawing")]
 component ImageDrawing(width float, height float, shapes ...component shapes.shape) ui.imageSource
 
-const component[platform] ui.file {
+const component ui.file[platform] {
     SnglAssetImage(url=path)
 }
 
-const component[platform] ui.remote {
+const component ui.remote[platform] {
     SnglAssetImage(url=url)
 }
 
-const component[platform] shapes.image {
+const component shapes.image[platform] {
     ImageDrawing(width=width, height=height) {
         shapes
     }
@@ -109,7 +109,7 @@ const component[platform] shapes.image {
 // renders nothing is not passed. A placeholder only known at run time cannot
 // be answered that way and keeps the argument, so an empty one shows as the
 // notched, uncaptioned field the fold exists to avoid.
-const component[platform] ui.input {
+const component ui.input[platform] {
     OutlinedTextField(
         value = value,
         readOnly = readonly,
@@ -128,7 +128,7 @@ const component[platform] ui.input {
     }
 }
 
-const component[platform] ui.checkbox {
+const component ui.checkbox[platform] {
     Row(modifier={...style}, verticalAlignment=alignCenterVertically) {
         Checkbox(checked=checked, onCheckedChange=func(on) {
             checked = on
@@ -146,7 +146,7 @@ const component[platform] ui.checkbox {
 // container is the direction the prop asks for and each option is a button
 // beside its label. onClick is passed nothing, so the override reports the
 // option it looped over.
-const component[platform] ui.radio {
+const component ui.radio[platform] {
     if direction == ui.Orientation.horizontal {
         Row(modifier={...style}) {
             for var opt = options {
@@ -174,7 +174,7 @@ const component[platform] ui.radio {
     }
 }
 
-const component[platform] ui.toggle {
+const component ui.toggle[platform] {
     Row(modifier={...style}, verticalAlignment=alignCenterVertically) {
         Switch(checked=checked, onCheckedChange=func(on) {
             checked = on
@@ -199,7 +199,7 @@ const component ui.select() {
     OutlinedTextField(value=value, readOnly=true) {}
 }
 
-const component[platform] ui.textarea {
+const component ui.textarea[platform] {
     OutlinedTextField(
         value = value,
         minLines = 3,
@@ -218,7 +218,7 @@ const component[platform] ui.textarea {
 // state its render reads (see select). An
 // unpicked date shows nothing -- the `option` is what distinguishes that from
 // the zero date, the first day of year one.
-const component[platform] ui.datepicker {
+const component ui.datepicker[platform] {
     SnglDateField(
         value = value,
         label = placeholder,
@@ -236,7 +236,7 @@ const component[platform] ui.datepicker {
 // Compose's determinate/indeterminate split is by *presence* of the `progress`
 // argument, which is the shape `value` being an `option` gives the override:
 // the null test picks the call, and neither branch invents a fraction.
-const component[platform] ui.progress {
+const component ui.progress[platform] {
     if value != null {
         // The null test is repeated inside the lambda because narrowing does
         // not cross into one: a lambda runs later, and the checker will not
@@ -251,27 +251,27 @@ const component[platform] ui.progress {
     }
 }
 
-const component[platform] ui.spinner {
+const component ui.spinner[platform] {
     CircularProgressIndicator(modifier={...style}) {}
 }
 
-const component[platform] ui.badge {
+const component ui.badge[platform] {
     Badge(modifier={...style}) {
         Text(text=value) {}
     }
 }
 
-const component[platform] ui.divider {
+const component ui.divider[platform] {
     HorizontalDivider(modifier={...style}) {}
 }
 
-const component[platform] ui.card {
+const component ui.card[platform] {
     Card(modifier={...style}) {
         content
     }
 }
 
-const component[platform] ui.link {
+const component ui.link[platform] {
     Text(
         text = text,
         style = {...style},
@@ -280,7 +280,7 @@ const component[platform] ui.link {
 }
 
 // Material's TabRow of a Tab per tab, and the selected one's content under it.
-const component[platform] ui.tabs {
+const component ui.tabs[platform] {
     Column(modifier={...style}) {
         TabRow(selectedTabIndex=selected) {
             for var k, t = items {
@@ -302,7 +302,7 @@ const component[platform] ui.tabs {
     }
 }
 
-const component[platform] ui.modal {
+const component ui.modal[platform] {
     if open {
         Dialog(onDismissRequest=func() { close() }) {
             Surface(shape=mediumShape) {
@@ -317,47 +317,47 @@ const component[platform] ui.modal {
     }
 }
 
-const component[platform] ui.drawer {
+const component ui.drawer[platform] {
     Column(modifier={...style}) {
         content
     }
 }
 
-const component[platform] ui.tooltip {
+const component ui.tooltip[platform] {
     Column(modifier={...style}) {
         trigger
     }
 }
 
-const component[platform] ui.popover {
+const component ui.popover[platform] {
     Column(modifier={...style}) {
         content
     }
 }
 
-const component[platform] ui.splitview {
+const component ui.splitview[platform] {
     Column(modifier={...style}) {
         panes
     }
 }
 
-const component[platform] ui.table {
+const component ui.table[platform] {
     Text(text="") {}
 }
 
-const component[platform] ui.tree {
+const component ui.tree[platform] {
     Text(text="") {}
 }
 
-const component[platform] ui.menu {
+const component ui.menu[platform] {
     Text(text="") {}
 }
 
-const component[platform] ui.menubar {
+const component ui.menubar[platform] {
     Text(text="") {}
 }
 
-const component[platform] ui.toolbar {
+const component ui.toolbar[platform] {
     Column(modifier={...style}) {
         controls
     }
@@ -380,6 +380,6 @@ component Timer<F>(
     @tick,
 ) F
 
-const component[platform] time.timer {
+const component time.timer[platform] {
     Timer(interval=interval, enabled=enabled, @tick { tick() }) {}
 }

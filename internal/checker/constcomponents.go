@@ -227,11 +227,11 @@ func (c *checker) checkOverrideConst(pe pendingExtension) {
 	baseConst := pe.comp.AST != nil && pe.comp.AST.Const
 	if !baseConst && !pe.isConst {
 		if !pe.user {
-			c.error(pe.pos, "override component[%s] %s in a target package must be const: a target's render depends only on its props; write `const component[%s] %s`", pe.platform, pe.name, pe.platform, pe.name)
+			c.error(pe.pos, "override %s[%s] in a target package must be const: a target's render depends only on its props; write `const component %s[%s]`", pe.name, pe.platform, pe.name, pe.platform)
 		}
 		return
 	}
-	c.checkConstRender("const component["+pe.platform+"] "+pe.name, pe.comp.Stmts, pe.pos)
+	c.checkConstRender(constComponentLabel(pe.name+"["+pe.platform+"]"), pe.comp.Stmts, pe.pos)
 }
 
 // checkTargetComponentsConst holds a target package's own bodied components to

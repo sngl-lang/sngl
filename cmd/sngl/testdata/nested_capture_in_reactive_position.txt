@@ -164,7 +164,7 @@ component outer() node {
     text(value="base")
 }
 
-component[bubbletea.platform] outer {
+component outer[bubbletea.platform] {
     var count = 0
     var items = [1, 2, 3]
 

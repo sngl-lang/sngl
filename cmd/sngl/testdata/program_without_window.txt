@@ -40,13 +40,13 @@ func encode(members list<Entry>) string {
     return parts.join("|")
 }
 
-component[go.language] block {
+component block[go.language] {
     gen.emit(render=encode, @change(line) {
         print(line + "\n")
     })
 }
 
-component[go.language] text {
+component text[go.language] {
     gen.node(value=Entry{full=full})
 }
 

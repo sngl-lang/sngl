@@ -260,7 +260,7 @@ import s "sngl:ui"
 import d "sngl:ui/draw"
 import "sngl:platform/html"
 
-component[html.platform] d.canvas {
+component d.canvas[html.platform] {
     s.text(value="styled")
 }
 

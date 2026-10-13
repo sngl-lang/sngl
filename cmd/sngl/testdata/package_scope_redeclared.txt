@@ -125,11 +125,11 @@ window {
 import . "sngl:ui"
 import html "sngl:platform/html"
 
-component[html.platform] mybox {
+component mybox[html.platform] {
     button(text=label)
 }
 
-func[html.platform] caption {
+func caption[html.platform] {
     return "html n=" + string(n)
 }
 

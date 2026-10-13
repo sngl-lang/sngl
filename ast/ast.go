@@ -400,7 +400,7 @@ type ComponentDecl struct {
 	Pos  Pos
 	Name string
 	// Target is the `[expr]` index on the declaration name --
-	// `component[html.platform] sngl.button(text) { ... }`. It names the build
+	// `component sngl.button[html.platform](text) { ... }`. It names the build
 	// target this declaration implements, and is nil on an ordinary one. The
 	// expression must fold to a target identity, which only a target's own
 	// package supplies, so the target cannot be misspelled into an override

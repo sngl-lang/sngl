@@ -15,7 +15,7 @@ component outer() ui.node {
     ui.text(value="base")
 }
 
-component[html.platform] outer {
+component outer[html.platform] {
     var count = 0
     var limit = 2
 

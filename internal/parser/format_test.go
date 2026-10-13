@@ -397,33 +397,3 @@ func TestFormatDecrement(t *testing.T) {
 		"func foo() {\n    x--\n}",
 		"func foo() {\n    x--\n}")
 }
-
-// An override names its target in front of the declared name, where a type
-// parameter list cannot stand.
-func TestFormatOverrideTarget(t *testing.T) {
-	assertFormat(t,
-		`component[platform] ui.vbox(gap int) {}`,
-		`component[platform] ui.vbox(gap int) {}`)
-	assertFormat(t,
-		`component[html.platform] gap(w int) {}`,
-		`component[html.platform] gap(w int) {}`)
-	assertFormat(t,
-		`func[bubbletea.platform] ToUpper(s string) string {}`,
-		`func[bubbletea.platform] ToUpper(s string) string {}`)
-	assertFormat(t,
-		`const func[language] f() => 1`,
-		`const func[language] f() => 1`)
-}
-
-// The suffix form is gone: a bracket after a declaration's name is left for a
-// type parameter list.
-func TestOverrideTargetSuffixRefused(t *testing.T) {
-	for _, src := range []string{
-		`component ui.vbox[platform](gap int) {}`,
-		`func f[html.platform]() {}`,
-	} {
-		if _, err := Parse("test.sngl", []byte(src)); err == nil {
-			t.Errorf("%s: parsed, want an error", src)
-		}
-	}
-}

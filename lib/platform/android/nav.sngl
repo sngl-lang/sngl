@@ -16,7 +16,7 @@ import . "sngl:internal/marks"
 #[intrinsic("android:Link")]
 component Link<P, Q>(to P, params Q, text string, style ui.Style, @click()) ui.node
 
-const component[platform] nav.link {
+const component nav.link[platform] {
     Link(to=to, params=params, text=text, style=style, @click {
         click()
     })

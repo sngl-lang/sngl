@@ -15,8 +15,8 @@ import (
 func TestTwoPackagesEmptyFuncOverridesCollide(t *testing.T) {
 	r := &mockResolver{pkgs: map[string]string{
 		"base": "func ping() {}\n",
-		"a":    "import base \"base\"\nimport \"sngl:platform/html\"\n\nfunc[html.platform] base.ping {}\n",
-		"b":    "import base \"base\"\nimport \"sngl:platform/html\"\n\nfunc[html.platform] base.ping {}\n",
+		"a":    "import base \"base\"\nimport \"sngl:platform/html\"\n\nfunc base.ping[html.platform] {}\n",
+		"b":    "import base \"base\"\nimport \"sngl:platform/html\"\n\nfunc base.ping[html.platform] {}\n",
 		"both": "import a \"a\"\n",
 	}}
 	langs, plats := testtargets.Targets()

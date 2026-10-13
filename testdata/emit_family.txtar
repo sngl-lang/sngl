@@ -41,27 +41,27 @@ component workspace(label string) block {
     text(name="ws", full=label)
 }
 
-component[go.language] block {
+component block[go.language] {
     gen.emit(file="blocks.txt", open="[\n", close="]\n")
 }
 
-component[go.language] text {
+component text[go.language] {
     gen.node(open="  {name}: {full} {color}\n")
 }
 
-component[go.language] group {
+component group[go.language] {
     gen.node(open="  <{label}>\n", close="  </{label}>\n")
 }
 
-component[html.platform] block {
+component block[html.platform] {
     gen.emit(file="blocks.html", open="<ul>\n", close="</ul>\n")
 }
 
-component[html.platform] text {
+component text[html.platform] {
     gen.node(open="<li class=\"{name}\">{full}</li>\n")
 }
 
-component[html.platform] group {
+component group[html.platform] {
     gen.node(open="<li>{label}<ul>\n", close="</ul></li>\n")
 }
 

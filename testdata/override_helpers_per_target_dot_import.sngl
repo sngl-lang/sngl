@@ -5,12 +5,12 @@ import . "sngl:ui"
 import "sngl:platform/html"
 import "sngl:platform/bubbletea"
 
-component[html.platform] avatar(initials) {
+component avatar[html.platform](initials) {
     func shout() => "{initials}!"
     text(value=shout())
 }
 
-component[bubbletea.platform] avatar(initials) {
+component avatar[bubbletea.platform](initials) {
     func shout() => "{initials}?"
     text(value=shout())
 }

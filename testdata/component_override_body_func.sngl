@@ -16,7 +16,7 @@ component thing(label string) ui.node {
     ui.text(value="base {label} {fromBase()}")
 }
 
-component[html.platform] thing {
+component thing[html.platform] {
     var m = 3
 
     func scaled() => m * fromBase()

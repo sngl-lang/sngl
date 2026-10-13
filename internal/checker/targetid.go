@@ -45,9 +45,9 @@ func targetTierMember(kind ir.BuiltinKind) string {
 	return "platform"
 }
 
-// resolveTargetIndex resolves the `[expr]` a declaration writes after its
-// keyword to the target it implements: the registered name, and whether the
-// identity is a platform or a language.
+// resolveTargetIndex resolves the `[expr]` index on a declaration name to the
+// target it implements: the registered name, and whether the identity is a
+// platform or a language.
 //
 // The index is resolved rather than read as text, so it can only name a target
 // whose package this build actually loaded. A misspelling is an unresolved
@@ -113,7 +113,7 @@ func (c *checker) targetIdentity(pos ast.Pos, sym ir.Symbol, spelling string) (s
 	return name, ir.TargetTier(node.Family), true
 }
 
-// collectUserOverrides merges each `component[target] X { ... }` a program
+// collectUserOverrides merges each `component X[target] { ... }` a program
 // declares into the component it names, the way a platform package's overrides
 // are merged. It runs after pass1: an override may be written above the
 // declaration it overrides.
@@ -239,7 +239,7 @@ func (c *checker) overrideBase(decl *ast.ComponentDecl) (base *ir.Component, ns,
 	return comp, ns, local
 }
 
-// pendingFuncOverride is one `func[target] f { ... }` body, checked after
+// pendingFuncOverride is one `func f[target] { ... }` body, checked after
 // pass1 the way a component override's is and for the same reason: it may be
 // written above the declaration it overrides.
 type pendingFuncOverride struct {
@@ -257,7 +257,7 @@ type pendingFuncOverride struct {
 	pkg *ir.Package
 }
 
-// collectFuncOverrides merges each `func[target] f { ... }` a program declares
+// collectFuncOverrides merges each `func f[target] { ... }` a program declares
 // into the function it names.
 //
 // Each in the file it was written in, whose imports its target names: read in
@@ -271,7 +271,7 @@ func (c *checker) collectFuncOverrides() {
 	}
 }
 
-// mergeFuncOverride records one `func[target] f { ... }` as the body target
+// mergeFuncOverride records one `func f[target] { ... }` as the body target
 // implements f with. The body is checked against the *base* declaration's
 // signature -- an override inherits the params and the return type, and
 // declaring either is what it means to declare a different function.

@@ -14,7 +14,7 @@ import (
 // reaching it, once or through two paths, reports nothing more about it.
 func TestImportedOverridePlacementReportedOnce(t *testing.T) {
 	r := &mockResolver{pkgs: map[string]string{
-		"a": "import gen \"sngl:x/gen\"\nimport go \"sngl:language/go\"\nimport ui \"sngl:ui\"\n\ncomponent[go.language] ui.button {\n    gen.emit(file=\"a.txt\")\n}\n",
+		"a": "import gen \"sngl:x/gen\"\nimport go \"sngl:language/go\"\nimport ui \"sngl:ui\"\n\ncomponent ui.button[go.language] {\n    gen.emit(file=\"a.txt\")\n}\n",
 		"b": "import a \"a\"\n",
 	}}
 	langs, plats := testtargets.Targets()

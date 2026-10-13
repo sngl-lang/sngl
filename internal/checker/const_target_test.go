@@ -22,11 +22,11 @@ func TestTargetPackageComponentsAreConst(t *testing.T) {
 		name: "override not const",
 		src: `import sngl "sngl:ui"
 
-component[tgtstub.platform] sngl.text {
+component sngl.text[tgtstub.platform] {
     sngl.vbox {}
 }
 `,
-		want: "override component[tgtstub] sngl.text in a target package must be const",
+		want: "override sngl.text[tgtstub] in a target package must be const",
 	}, {
 		name: "component not const",
 		src: `import sngl "sngl:ui"
@@ -54,7 +54,7 @@ const component Wrap(value string) sngl.node {
     sngl.text(value=value)
 }
 
-const component[tgtstub.platform] sngl.text {
+const component sngl.text[tgtstub.platform] {
     sngl.vbox {}
 }
 `,

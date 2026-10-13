@@ -125,7 +125,7 @@ func renders(these list<Rendered>) ir.Macro
 // **A file**, named `file`: `open`, then what each member's `node` writes,
 // then `close`, all at build time.
 //
-//     component[go.language] block {
+//     component block[go.language] {
 //         gen.emit(file="blocks.txt", open="[\n", close="]\n")
 //     }
 //
@@ -143,7 +143,7 @@ func renders(these list<Rendered>) ir.Macro
 // members to read again later -- which is how a handler a member carries is
 // reached, from a click the program learns of some other way.
 //
-//     component[go.language] block {
+//     component block[go.language] {
 //         gen.emit(
 //             render=encode,
 //             @start(members) { async.start(func() { readClicks(members) }) },
@@ -166,7 +166,7 @@ func renders(these list<Rendered>) ir.Macro
 // it writes is stored and replayed until the members, its code or anything it
 // read changes. A raise that leaves it is the build's error.
 //
-//     component[go.language] block {
+//     component block[go.language] {
 //         gen.emit(@generate(out, members list<gen.Member<Entry>>) {
 //             out.write("blocks.json", encode(members))
 //         })
@@ -213,7 +213,7 @@ struct Member<T> {
 // children write, then `close`; both are evaluated with the member's props in
 // scope, which is how a member says what it holds:
 //
-//     component[go.language] text {
+//     component text[go.language] {
 //         gen.node(open="{name}: {full}\n")
 //     }
 //
@@ -221,7 +221,7 @@ struct Member<T> {
 // in scope -- and its events, each a func running the handler the call site
 // wrote for it, or nothing where it wrote none:
 //
-//     component[go.language] text {
+//     component text[go.language] {
 //         gen.node(value=Entry{full=full, click=click})
 //     }
 #[marks.builtin("genNode")]

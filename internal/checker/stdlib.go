@@ -862,7 +862,7 @@ func (c *checker) resolvedTargets() []ir.StaticTarget {
 }
 
 // mergeTargetExtensions collects the overrides one target's package declares --
-// `component sngl.X` and `func[target] pkg.f` alike -- into the declaration
+// `component sngl.X` and `func pkg.f[target]` alike -- into the declaration
 // each names, under the target it implements. ir.Specialize swaps the entry
 // for the target being built into the declaration's own body before any other
 // pass runs.
@@ -871,7 +871,7 @@ func (c *checker) resolvedTargets() []ir.StaticTarget {
 // same reason: building for a target is an `import _ "sngl:platform/<it>"`
 // nobody wrote, and a language's package is one of those imports too -- which
 // is what makes a language able to implement a declaration the library leaves
-// open (`func[language] http.get`) rather than only describe types. So this
+// open (`func http.get[language]`) rather than only describe types. So this
 // runs for the build target, and for any target package the program imported
 // itself -- which is how a program asks to be held to a target's rules without
 // naming one of its declarations.
@@ -1005,7 +1005,7 @@ func (c *checker) mergeTargetExtensions(pkgName string) {
 				// everywhere: a platform package is not an exception, so the
 				// one rule covers a package's own overrides and a program's.
 				if decl.Target == nil {
-					c.error(decl.Pos, "override %q must name the target it implements: component[%s.%s] %s", decl.Name, name, targetTierMember(tier), decl.Name)
+					c.error(decl.Pos, "override %q must name the target it implements: component %s[%s.%s]", decl.Name, decl.Name, name, targetTierMember(tier))
 					continue
 				}
 				plat, kind, ok := c.resolveTargetIndex(decl.Target)

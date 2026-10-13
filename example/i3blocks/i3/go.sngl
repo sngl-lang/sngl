@@ -13,7 +13,7 @@ import go "sngl:language/go"
 //
 // `@start` writes the header, which has to reach stdout before the first
 // status line, and starts the reader before any click can be lost.
-component[go.language] block {
+component block[go.language] {
     gen.emit(
         render = encode,
         @start(members) {
@@ -30,7 +30,7 @@ component[go.language] block {
 
 // A member says what it contributes, with its props in scope -- and its
 // events, each a func running the handler the call site wrote.
-component[go.language] text {
+component text[go.language] {
     gen.node(value=Entry{
         name = name,
         full = full,
@@ -45,7 +45,7 @@ component[go.language] text {
     })
 }
 
-component[go.language] gap {
+component gap[go.language] {
     gen.node(value=Entry{
         full = "",
         separator = false,

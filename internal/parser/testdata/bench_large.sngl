@@ -7581,48 +7581,48 @@ struct Options {
 
 // --- Leaf widgets ---
 
-component[platform] ui.text {
+component ui.text[platform] {
     gtk4.GtkLabel(label=value, style={...style}) {}
 }
 
-component[platform] ui.button {
+component ui.button[platform] {
     gtk4.GtkButton(label=text, style={...style}, @clicked { click() }) {}
 }
 
-component[platform] ui.checkbox {
+component ui.checkbox[platform] {
     gtk4.GtkCheckButton(label=label, active=checked, style={...style}, @toggled { change() }) {}
 }
 
-component[platform] ui.image {
+component ui.image[platform] {
     gtk4.GtkImage(file=src, style={...style}) {}
 }
 
-component[platform] ui.input {
+component ui.input[platform] {
     gtk4.GtkEntry(text=value, style={...style}, @changed { input() }) {}
 }
 
 // gtk4 has no lightweight multi-line entry; map textarea to GtkEntry so
 // the value binding + changed handler compile and round-trip. (Rich
 // multi-line GtkTextView support is a future enhancement.)
-component[platform] ui.textarea {
+component ui.textarea[platform] {
     gtk4.GtkEntry(text=value, style={...style}, @changed { input() }) {}
 }
 
 // --- Container widgets ---
 
-component[platform] ui.vbox {
+component ui.vbox[platform] {
     gtk4.GtkBox(orientation="vertical", spacing=6, style={...style}) {
         children
     }
 }
 
-component[platform] ui.hbox {
+component ui.hbox[platform] {
     gtk4.GtkBox(orientation="horizontal", spacing=6, style={...style}) {
         children
     }
 }
 
-component[platform] ui.scroll {
+component ui.scroll[platform] {
     gtk4.GtkScrolledWindow(style={...style}) {
         content
     }
@@ -7634,13 +7634,13 @@ component[platform] ui.scroll {
 // `value` carries when `max` is left at its default. A `max` other than 1
 // would need `value/max`, and a division nothing guards against a zero
 // denominator is worse than the scale being wrong.
-component[platform] ui.progress {
+component ui.progress[platform] {
     // GTK's fraction is 0..1, so the value is measured against max here
     // rather than passed through as if it already were one.
     gtk4.GtkProgressBar(fraction=value / max, text=label, showText=showValue, style={...style}) {}
 }
 
-component[platform] ui.spinner {
+component ui.spinner[platform] {
     gtk4.GtkSpinner(spinning=true, tooltipText=label, style={...style}) {}
 }
 
@@ -7649,11 +7649,11 @@ component[platform] ui.spinner {
 // its members (see enumValueArg) — a prop reference has no compile-time
 // member to name. A separator is therefore horizontal, which is what
 // `direction` defaults to.
-component[platform] ui.divider {
+component ui.divider[platform] {
     gtk4.GtkSeparator(style={...style}) {}
 }
 
-component[platform] ui.link {
+component ui.link[platform] {
     gtk4.GtkLinkButton(uri=href, label=text, sensitive=(disabled == false), style={...style}, @clicked { click() }) {}
 }
 
@@ -7662,7 +7662,7 @@ component[platform] ui.link {
 // (instance, user_data) → void trampoline can carry. So `active` is bound
 // one way and `@change` is not connected; a toggle renders and follows the
 // model, and a user flip does not reach it.
-component[platform] ui.toggle {
+component ui.toggle[platform] {
     gtk4.GtkSwitch(active=checked, sensitive=(disabled == false), style={...style}) {}
 }
 
@@ -7671,31 +7671,31 @@ component[platform] ui.toggle {
 // `date` property is a GLib.DateTime, which no SNGL expression produces).
 // So the calendar is shown and its selection reported, and the bound value
 // does not reach it.
-component[platform] ui.datepicker {
+component ui.datepicker[platform] {
     gtk4.GtkCalendar(sensitive=(disabled == false), style={...style}, @daySelected { change() }) {}
 }
 
 // --- Layout ---
 
-component[platform] ui.spacer {
+component ui.spacer[platform] {
     gtk4.GtkBox(hexpand=true, vexpand=true, style={...style}) {}
 }
 
 // The same shape html uses: a wrapper carrying the tooltip text, with the
 // wrapped content inside it.
-component[platform] ui.tooltip {
+component ui.tooltip[platform] {
     gtk4.GtkBox(tooltipText=text, style={...style}) {
         trigger
     }
 }
 
-component[platform] ui.card {
+component ui.card[platform] {
     gtk4.GtkFrame(style={...style}) {
         content
     }
 }
 
-component[platform] ui.stack {
+component ui.stack[platform] {
     gtk4.GtkStack(style={...style}) {
         layers
     }
@@ -7706,7 +7706,7 @@ component[platform] ui.stack {
 // popup/popdown is a pair of calls chosen by the value. `position` is a
 // GtkPositionType, so it is unreachable for the same reason as divider's
 // orientation.
-component[platform] ui.popover {
+component ui.popover[platform] {
     gtk4.GtkPopover(visible=open, autohide=true, style={...style}, @closed { close() }) {
         content
     }

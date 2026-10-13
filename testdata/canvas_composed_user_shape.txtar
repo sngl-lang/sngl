@@ -2,7 +2,7 @@ A shape the *program* declares, composed out of the stdlib's. What this
 records is that such a declaration never reaches passCanvas at all: the
 `Chip` and `Panel` NodeInsts are gone before `emitShape` is asked anything,
 so the three brackets below are the three `rect`s' own -- each written in
-`component[language] shapes.rect`, which saves, applies its style and restores.
+`shapes.rect[language]`, which saves, applies its style and restores.
 
 That is worth pinning because it is not where one would look for it.
 `isPrimitiveComponent` exempts a segmented tree's members from passInlinePure,

@@ -51,7 +51,7 @@ func TestExtensionMergeBasic(t *testing.T) {
 	const extSource = `
 import sngl "sngl:ui"
 
-const component[extstub.platform] sngl.text {
+const component sngl.text[extstub.platform] {
     image(alt=value)
 }
 `
@@ -138,7 +138,7 @@ func TestExtensionBodyVars(t *testing.T) {
 	const extA = `
 import sngl "sngl:ui"
 
-const component[stubA.platform] sngl.text {
+const component sngl.text[stubA.platform] {
     const label string = "L"
     var flip bool = false
     vbox {
@@ -149,7 +149,7 @@ const component[stubA.platform] sngl.text {
 	const extB = `
 import sngl "sngl:ui"
 
-const component[stubB.platform] sngl.text {
+const component sngl.text[stubB.platform] {
     var other int = 7
     vbox {
         button(text="b", @click { other += 1 })

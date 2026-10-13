@@ -12,7 +12,7 @@ output {
     }
 }
 
-component[go.language] draw.shape {
+component draw.shape[go.language] {
     gen.emit(file="shapes.txt", open="[\n", close="]\n")
 }
 

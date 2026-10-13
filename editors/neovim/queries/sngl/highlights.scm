@@ -36,7 +36,6 @@
 (enum_declaration name: (identifier) @type.definition)
 (unit_declaration name: (identifier) @type.definition)
 (component_declaration name: (identifier) @type.definition)
-(component_declaration name: (qualified_name) @type.definition)
 
 ; Struct fields: use name: field label for the field name.
 (struct_field name: (identifier) @property)

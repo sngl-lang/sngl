@@ -169,7 +169,7 @@ func WidgetSpecsFrom(pkg *ir.Package) ([]WidgetSpec, error) {
 		// A Spec's setters are keyed by the *primitive's* prop vocabulary --
 		// `text`, `placeholder`, `flag` -- while a host is handed the stdlib
 		// component's own prop names. The override is what bridges them:
-		// `component[platform] ui.text { Label(text=value) }` says this
+		// `component ui.text[platform] { Label(text=value) }` says this
 		// component's `value` is that widget's `text`. Without following it a
 		// registry looks right and sets nothing.
 		rename := propRenames(comp, overrideNode(pkg, comp))

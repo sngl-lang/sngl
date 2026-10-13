@@ -735,9 +735,7 @@ func (f *formatter) writeFuncDef(fn *ast.FuncDef) {
 	if fn.Const {
 		f.write("const ")
 	}
-	f.write("func")
-	f.writeTargetIndex(fn.Target)
-	f.write(" ")
+	f.write("func ")
 	if len(fn.RecvTypeParams) > 0 {
 		// recv<T>.method form: Name is "recv.method", split and insert type params.
 		dot := strings.IndexByte(fn.Name, '.')
@@ -748,6 +746,7 @@ func (f *formatter) writeFuncDef(fn *ast.FuncDef) {
 		f.write(fn.Name)
 	}
 	f.writeTypeParams(fn.TypeParams)
+	f.writeTargetIndex(fn.Target)
 	f.write("(")
 	f.writeParams(fn.Params)
 	f.write(")")
@@ -775,7 +774,7 @@ func (f *formatter) writeFuncDef(fn *ast.FuncDef) {
 
 // --- component ---
 
-// writeTargetIndex writes the `[target]` prefix naming what a declaration
+// writeTargetIndex writes the `[target]` index naming what a declaration
 // overrides. Nothing when the declaration overrides nothing.
 func (f *formatter) writeTargetIndex(target ast.Expr) {
 	if target == nil {
@@ -790,11 +789,10 @@ func (f *formatter) writeComponentDecl(c *ast.ComponentDecl) {
 	if c.Const {
 		f.write("const ")
 	}
-	f.write("component")
-	f.writeTargetIndex(c.Target)
-	f.write(" ")
+	f.write("component ")
 	f.write(c.Name)
 	f.writeTypeParams(c.TypeParams)
+	f.writeTargetIndex(c.Target)
 	// An empty prop list is written when the source wrote one: `component X()`
 	// and `component X` are the same declaration, and the parens are the
 	// author's.

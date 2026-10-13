@@ -11,7 +11,7 @@ component thing ui.node {
     ui.text(value="base")
 }
 
-component[html.platform] thing {
+component thing[html.platform] {
     struct Row {
         a int
     }
@@ -26,7 +26,7 @@ component tagged ui.node {
     ui.text(value="base")
 }
 
-component[html.platform] tagged {
+component tagged[html.platform] {
     enum Phase {
         start
         done

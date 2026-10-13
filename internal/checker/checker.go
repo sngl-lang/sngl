@@ -3002,7 +3002,7 @@ func (c *checker) registerComponent(comp *ast.ComponentDecl) {
 // registerComponentDecl builds and registers one component declaration.
 func (c *checker) registerComponentDecl(comp *ast.ComponentDecl, bodyLocal bool) *ir.Component {
 	// An override implements one declaration for one target, and says which
-	// target on its own name: `component[platform] ui.button { ... }`.
+	// target on its own name: `component ui.button[platform] { ... }`.
 	// It is not a declaration of its own, so it registers nothing here --
 	// collectUserOverrides merges it into the declaration it names, after
 	// pass1 has registered everything it might name.
@@ -3036,7 +3036,7 @@ func (c *checker) registerComponentDecl(comp *ast.ComponentDecl, bodyLocal bool)
 		}
 		// Naming another package's declaration is only meaningful as an
 		// override of it, and an override names its target.
-		c.error(comp.Pos, "override %q must name the target it implements, e.g. component[html.platform] %s", comp.Name, comp.Name)
+		c.error(comp.Pos, "override %q must name the target it implements, e.g. component %s[html.platform]", comp.Name, comp.Name)
 		return nil
 	}
 

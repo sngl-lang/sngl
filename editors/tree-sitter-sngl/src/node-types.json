@@ -494,10 +494,6 @@
           {
             "type": "identifier",
             "named": true
-          },
-          {
-            "type": "qualified_name",
-            "named": true
           }
         ]
       }
@@ -512,10 +508,6 @@
         },
         {
           "type": "statement_block",
-          "named": true
-        },
-        {
-          "type": "target_index",
           "named": true
         },
         {
@@ -743,10 +735,6 @@
         },
         {
           "type": "statement_block",
-          "named": true
-        },
-        {
-          "type": "target_index",
           "named": true
         },
         {
@@ -1226,22 +1214,6 @@
           "named": true
         }
       ]
-    }
-  },
-  {
-    "type": "target_index",
-    "named": true,
-    "fields": {
-      "target": {
-        "multiple": false,
-        "required": true,
-        "types": [
-          {
-            "type": "_expression",
-            "named": true
-          }
-        ]
-      }
     }
   },
   {

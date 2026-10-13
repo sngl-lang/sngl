@@ -41,21 +41,21 @@ func[bubbletea.platform] ToUpper(s string) string { … }
 grammar stays LL(1). `kw_const FuncDecl` and `kw_const ComponentDecl` follow
 for free.
 
-- [X] Grammar: `ComponentDecl = kw_component [ TargetIndex ] ident …`,
+- [ ] Grammar: `ComponentDecl = kw_component [ TargetIndex ] ident …`,
   `FuncDecl = kw_func [ TargetIndex ] FuncName FuncTail`. Accept both
   positions for one commit.
-- [X] Builder (`buildTargetIndex` callers in `internal/parser/build.go`) and
+- [ ] Builder (`buildTargetIndex` callers in `internal/parser/build.go`) and
   formatter: the formatter prints the prefix form.
-- [X] `ir.Convert` prints the prefix form.
-- [X] `sngl fmt` over `lib/` (~300 `[platform]`/`[language]` overrides),
+- [ ] `ir.Convert` prints the prefix form.
+- [ ] `sngl fmt` over `lib/` (~300 `[platform]`/`[language]` overrides),
   `testdata/`, `examples/`; hand-convert SNGL embedded in `.txtar`,
   `cmd/sngl/testdata/*.txt` and `docs/**/*.md` (a script in `tmp/`).
-- [X] Diagnostics that spell an override (`[html.platform]` in messages and in
+- [ ] Diagnostics that spell an override (`[html.platform]` in messages and in
   `// ERROR` text).
-- [X] Tree-sitter grammar, vscode and neovim syntax.
-- [X] `docs/reference/specification.md`, effective-sngl, CLAUDE.md (the
+- [ ] Tree-sitter grammar, vscode and neovim syntax.
+- [ ] `docs/reference/specification.md`, effective-sngl, CLAUDE.md (the
   override sections write `component ui.vbox[platform]` throughout).
-- [X] Drop the suffix position from the grammar. `TestTestdataIsFormatted`
+- [ ] Drop the suffix position from the grammar. `TestTestdataIsFormatted`
   and the goldens are green with no `-update` beyond printed SNGL.
 
 ### Phase 1: declarations and types in brackets

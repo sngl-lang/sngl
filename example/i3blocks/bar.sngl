@@ -12,7 +12,7 @@ import i3 "./i3"
 import time "sngl:time"
 import ui "sngl:ui"
 
-// One binary per host. Both are Go, so both pick `component[go.language] i3.block`.
+// One binary per host. Both are Go, so both pick `i3.block[go.language]`.
 //
 // Launched by i3 the program is the bar alone: `@run` never calls `run`, so
 // the loop runs -- the timer, the clicks -- with no window on screen, and
