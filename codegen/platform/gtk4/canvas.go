@@ -19,7 +19,7 @@ import (
 // with the statements that paint them -- nothing is synthesized, and the
 // `_canvasDrawN` name is codegen's own. Every one of those statements is what a
 // shape override's own `@draw` handler was written as -- for gtk4, cairo natives,
-// since `component shapes.circle[platform]` here paints with them directly.
+// since `component[platform] shapes.circle` here paints with them directly.
 // The lowering contributes nothing of its own: there is no canvas intrinsic
 // left for this package to translate.
 //
@@ -35,8 +35,8 @@ import (
 // gtk_widget_queue_draw on the drawing area.
 //
 // There are no canvas intrinsics left to translate. cairo's 2D API is still
-// gtk4-specific, but it is named from SNGL now -- `component
-// shapes.circle[platform]` calls `#[cnative]` declarations directly -- so the
+// gtk4-specific, but it is named from SNGL now -- `component[platform]
+// shapes.circle` calls `#[cnative]` declarations directly -- so the
 // translator rewrites them the way it rewrites any other widget call.
 
 // canvasMeta aliases the shared platform-neutral canvas metadata type.

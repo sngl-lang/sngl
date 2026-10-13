@@ -58,17 +58,17 @@ component Span(
     content   ...component markup.span,
 ) markup.span
 
-const component markup.richText[platform] {
+const component[platform] markup.richText {
     Flow(modifier={...style}, style={...style}) {
         content
     }
 }
 
-const component markup.text[platform] {
+const component[platform] markup.text {
     Span(text=value) {}
 }
 
-const component markup.run[platform] {
+const component[platform] markup.run {
     Span(spanStyle=style) {
         content
     }
@@ -79,13 +79,13 @@ const component markup.run[platform] {
 // `LinkAnnotation.Url` with no `TextLinkStyles` looks like the words around
 // it -- so the underline is said here, in the family's own vocabulary, rather
 // than being a second thing the emitter decides.
-const component markup.link[platform] {
+const component[platform] markup.link {
     Span(href=href, spanStyle={underline=true}) {
         content
     }
 }
 
-const component markup.token[platform] {
+const component[platform] markup.token {
     Span(kind=kind, color=markup.tokenColor(markup.palette, kind)) {
         content
     }
@@ -96,6 +96,6 @@ const component markup.token[platform] {
 // for on this platform. So the description is what an image is here, in the
 // brackets that say a picture stood where they are, as it is on bubbletea,
 // fyne and gtk4.
-const component markup.image[platform] {
+const component[platform] markup.image {
     Span(text="[{alt}]") {}
 }

@@ -50,7 +50,7 @@ func encode(members list<Entry>) string {
     return parts.join("|")
 }
 
-component block[go.language] {
+component[go.language] block {
     gen.emit(
         render=encode,
         @start(members) {
@@ -62,7 +62,7 @@ component block[go.language] {
     )
 }
 
-component text[go.language] {
+component[go.language] text {
     gen.node(value=Entry{full=full})
 }
 -- app.sngl --

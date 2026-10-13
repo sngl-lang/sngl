@@ -167,7 +167,7 @@ func emitShape(ni *ir.NodeInst, body *[]ir.Stmt, env drawEnv) {
 		return
 	}
 	// Nothing is bracketed here. Every shape that draws brackets itself, in
-	// the override that draws it -- `shapes.circle[language]` saves, applies
+	// the override that draws it -- `component[language] shapes.circle` saves, applies
 	// its style and restores -- and that is the bracket a hand-written
 	// override has to be able to leave out to match native performance.
 	//

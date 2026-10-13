@@ -29,7 +29,7 @@ output {
 
 component gap(w int) ui.node
 
-component gap[html.platform](w) {
+component[html.platform] gap(w) {
     ui.text(value="gap {w}")
 }
 

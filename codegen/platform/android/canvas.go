@@ -18,7 +18,7 @@ import (
 // with the statements that paint them -- nothing is synthesized, and the
 // `_canvasDrawN` name is codegen's own. Every one of those statements is what a
 // shape override's own `@draw` handler was written as -- for android, Compose draw
-// calls from `component shapes.circle[platform]`. The lowering contributes
+// calls from `component[platform] shapes.circle`. The lowering contributes
 // nothing of its own: the CanvasSave/CanvasRestore bracket it used to put
 // around a composed shape is gone, and was a pair of no-ops here anyway, a
 // DrawScope managing its state per primitive.

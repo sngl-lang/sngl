@@ -62,7 +62,7 @@ component pair ui.node {
     ui.text(value="plain")
 }
 
-component pair[html.platform] {
+component[html.platform] pair {
     counter #inner
     var v = 0
     effect(on=v, @update {

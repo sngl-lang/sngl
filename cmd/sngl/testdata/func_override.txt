@@ -43,7 +43,7 @@ func label(n int) string {
     return "tui n=" + string(n)
 }
 
-func label[html.platform] {
+func[html.platform] label {
     return "web n=" + string(n)
 }
 
@@ -59,7 +59,7 @@ func int.describe(n int) string {
     return "tui " + string(n)
 }
 
-func int.describe[html.platform] {
+func[html.platform] int.describe {
     return "web " + string(n)
 }
 
@@ -73,7 +73,7 @@ import "sngl:platform/html"
 
 func label(n int) string { return "base" }
 
-func label[html.platform](n int) { return "x" }
+func[html.platform] label(n int) { return "x" }
 
 window #w(title="t") {
     text(value=label(1))
@@ -85,7 +85,7 @@ import "sngl:platform/html"
 
 func label(n int) string { return "base" }
 
-func label[html.platform] string { return "x" }
+func[html.platform] label string { return "x" }
 
 window #w(title="t") {
     text(value=label(1))
@@ -97,9 +97,9 @@ import "sngl:platform/html"
 
 func label(n int) string { return "base" }
 
-func label[html.platform] { return "a" }
+func[html.platform] label { return "a" }
 
-func label[html.platform] { return "b" }
+func[html.platform] label { return "b" }
 
 window #w(title="t") {
     text(value=label(1))
@@ -109,7 +109,7 @@ window #w(title="t") {
 import . "sngl:ui"
 import "sngl:platform/html"
 
-func nope[html.platform] { return "x" }
+func[html.platform] nope { return "x" }
 
 window #w(title="t") {
     text(value="hi")

@@ -7,7 +7,7 @@ import "sngl:platform/html"
 
 func avatar.shout(a avatar) => "TOP"
 
-component avatar[html.platform](initials) {
+component[html.platform] avatar(initials) {
     func shout() => "{initials}!" // ERROR(check) "is declared in component avatar and again in its override"
     text(value=shout())
 }

@@ -1,5 +1,5 @@
 # An override implements one declaration for one target, and names the target
-# on its own declaration line: `component X[html.platform] { ... }`. The rule
+# on its own declaration line: `component[html.platform] X { ... }`. The rule
 # is the same wherever the override is written -- a platform package's own
 # overrides in codegen/platform/*/*.sngl say it the same way.
 
@@ -60,7 +60,7 @@ component Avatar(url string, size int) node {
     text(value="avatar fallback: " + url)
 }
 
-component Avatar[html.platform] {
+component[html.platform] Avatar {
     html.img(src=url, alt="avatar")
 }
 
@@ -75,7 +75,7 @@ component Avatar(url string) node {
     text(value=url)
 }
 
-component Avatar[htlm.platform] {
+component[htlm.platform] Avatar {
     text(value=url)
 }
 
@@ -91,7 +91,7 @@ component Avatar(url string) node {
     text(value=url)
 }
 
-component Avatar[html.element] {
+component[html.element] Avatar {
     text(value=url)
 }
 
@@ -105,11 +105,11 @@ import "sngl:platform/html"
 
 component gap(w int) ui.node
 
-component gap[html.platform](w) {
+component[html.platform] gap(w) {
     ui.text(value="a")
 }
 
-component gap[html.platform](w) {
+component[html.platform] gap(w) {
     ui.text(value="b")
 }
 
@@ -122,7 +122,7 @@ import sngl "sngl:ui"
 import . "sngl:ui"
 import "sngl:platform/html"
 
-component sngl.divider[html.platform] {
+component[html.platform] sngl.divider {
     html.span(textContent=label)
 }
 
@@ -140,7 +140,7 @@ component Avatar(url string) node {
     text(value=url)
 }
 
-component Avatar[html.platform](url string) {
+component[html.platform] Avatar(url string) {
     text(value=url)
 }
 
@@ -156,7 +156,7 @@ component Avatar(url string) node {
     text(value=url)
 }
 
-component Avatar[html.platform](url, bogus) {
+component[html.platform] Avatar(url, bogus) {
     html.img(src=url)
 }
 
@@ -172,7 +172,7 @@ component Avatar(url string, size int) node {
     text(value=url)
 }
 
-component Avatar[html.platform](url) {
+component[html.platform] Avatar(url) {
     html.img(src=url, width=size)
 }
 
@@ -188,7 +188,7 @@ component Avatar(url string, size int) node {
     text(value=url)
 }
 
-component Avatar[html.platform] {
+component[html.platform] Avatar {
     html.img(src=url, alt=string(size))
 }
 

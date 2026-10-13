@@ -402,7 +402,7 @@ func applyStyle(ctx DrawContext, style shapes.Style) {
 // alpha, so a fill-only shape does not stroke and a line does not read `fill`
 // at all.
 
-const component shapes.rect[language] {
+const component[language] shapes.rect {
     draw(@draw(e) {
         e.ctx.save()
         applyStyle(e.ctx, style)
@@ -411,7 +411,7 @@ const component shapes.rect[language] {
     })
 }
 
-const component shapes.circle[language] {
+const component[language] shapes.circle {
     draw(@draw(e) {
         e.ctx.save()
         applyStyle(e.ctx, style)
@@ -420,7 +420,7 @@ const component shapes.circle[language] {
     })
 }
 
-const component shapes.ellipse[language] {
+const component[language] shapes.ellipse {
     draw(@draw(e) {
         e.ctx.save()
         applyStyle(e.ctx, style)
@@ -429,7 +429,7 @@ const component shapes.ellipse[language] {
     })
 }
 
-const component shapes.line[language] {
+const component[language] shapes.line {
     draw(@draw(e) {
         e.ctx.save()
         applyStyle(e.ctx, style)
@@ -438,7 +438,7 @@ const component shapes.line[language] {
     })
 }
 
-const component shapes.path[language] {
+const component[language] shapes.path {
     draw(@draw(e) {
         e.ctx.save()
         applyStyle(e.ctx, style)
@@ -464,7 +464,7 @@ const component shapes.path[language] {
     })
 }
 
-const component shapes.canvasText[language] {
+const component[language] shapes.canvasText {
     draw(@draw(e) {
         e.ctx.save()
         applyStyle(e.ctx, style)
@@ -473,7 +473,7 @@ const component shapes.canvasText[language] {
     })
 }
 
-const component shapes.canvasImage[language] {
+const component[language] shapes.canvasImage {
     drawSource(
         @url(e) {
             e.ctx.save()

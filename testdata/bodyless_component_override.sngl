@@ -8,7 +8,7 @@ import html "sngl:platform/html"
 
 component gap(w int) ui.node
 
-component gap[html.platform](w) {
+component[html.platform] gap(w) {
     ui.text(value="{w}")
 }
 

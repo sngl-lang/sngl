@@ -1,7 +1,7 @@
 import sngl "sngl:ui"
 import "sngl:platform/html"
 
-component sngl.text[html.platform] list<dyn> { // ERROR(check) "may not declare children type"
+component[html.platform] sngl.text list<dyn> { // ERROR(check) "may not declare children type"
     span(textContent=value) {}
 }
 

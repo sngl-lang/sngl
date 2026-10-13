@@ -397,3 +397,20 @@ func TestFormatDecrement(t *testing.T) {
 		"func foo() {\n    x--\n}",
 		"func foo() {\n    x--\n}")
 }
+
+// An override names its target in front of the declared name, where a type
+// parameter list cannot stand.
+func TestFormatOverrideTarget(t *testing.T) {
+	assertFormat(t,
+		`component[platform] ui.vbox(gap int) {}`,
+		`component[platform] ui.vbox(gap int) {}`)
+	assertFormat(t,
+		`component[html.platform] gap(w int) {}`,
+		`component[html.platform] gap(w int) {}`)
+	assertFormat(t,
+		`func[bubbletea.platform] ToUpper(s string) string {}`,
+		`func[bubbletea.platform] ToUpper(s string) string {}`)
+	assertFormat(t,
+		`const func[language] f() => 1`,
+		`const func[language] f() => 1`)
+}

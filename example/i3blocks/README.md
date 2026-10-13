@@ -27,7 +27,7 @@ It lives under `example/` rather than `examples/` because `docsgen` loads every
 - `i3/protocol.sngl` is the i3bar protocol in SNGL: the `Entry` each block
   contributes, `encode` from the entries to one status line, and `clickField`
   reading a click object.
-- `i3/go.sngl` is `block[go.language]`, the family's generator for Go, and each
+- `i3/go.sngl` is `component[go.language] block`, the family's generator for Go, and each
   member's `gen.node`. Its natives are the whole of the Go it names:
   `bufio.Scanner` over stdin, `fmt.Print`, `os.Exit`.
 

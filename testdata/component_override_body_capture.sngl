@@ -16,7 +16,7 @@ component thing(label string) ui.node {
     ui.text(value="base {label} {n} {doubled()}")
 }
 
-component thing[html.platform] {
+component[html.platform] thing {
     var m = 3
 
     struct Pair {

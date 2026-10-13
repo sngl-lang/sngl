@@ -5,10 +5,10 @@ import gen "sngl:x/gen"
 import go "sngl:language/go"
 import ui "sngl:ui"
 
-component ui.node[go.language] { // ERROR(check) "the node family's override for go is a gen.emit and nothing else"
+component[go.language] ui.node { // ERROR(check) "the node family's override for go is a gen.emit and nothing else"
     gen.node(open="x")           // ERROR(check) "gen.node is written as the whole body of a member's override"
 }
 
-component ui.button[go.language] {
+component[go.language] ui.button {
     gen.emit(file="a.txt") // ERROR(check) "gen.emit is written as the whole body of a family's override"
 }

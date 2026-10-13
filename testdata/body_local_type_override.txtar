@@ -35,7 +35,7 @@ component thing ui.node {
     ui.text(value="base")
 }
 
-component thing[html.platform] {
+component[html.platform] thing {
     struct Row {
         a int
     }

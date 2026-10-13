@@ -28,15 +28,15 @@ import ui "sngl:ui"
 
 func enc(xs list<string>) => xs.join(",")
 
-component block[go.language] {
+component[go.language] block {
     gen.emit(render=enc)
 }
 
-component text[go.language] {
+component[go.language] text {
     gen.node(value=full)
 }
 
 // The same for an override of an ordinary component.
-component badge[go.language] {
+component[go.language] badge {
     ui.text(value="[" + label + "]")
 }

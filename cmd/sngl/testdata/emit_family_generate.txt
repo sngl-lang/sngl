@@ -107,17 +107,17 @@ func lines(members list<gen.Member<Entry>>, indent string) string {
     return s
 }
 
-component block[go.language] {
+component[go.language] block {
     gen.emit(@generate(out, members list<gen.Member<Entry>>) {
         out.write("blocks.txt", lines(members, ""))
     })
 }
 
-component text[go.language] {
+component[go.language] text {
     gen.node(value=Entry{text=full})
 }
 
-component group[go.language] {
+component[go.language] group {
     gen.node(value=Entry{text=name})
 }
 -- up.sngl --
@@ -146,7 +146,7 @@ component word(text string) loud
 
 component shout(words ...component loud) root
 
-component loud[go.language] {
+component[go.language] loud {
     gen.emit(@generate(out, members list<gen.Member<string>>) {
         var input = ""
         for var m = members {
@@ -160,7 +160,7 @@ component loud[go.language] {
     })
 }
 
-component word[go.language] {
+component[go.language] word {
     gen.node(value=text)
 }
 -- raise.sngl --
@@ -185,13 +185,13 @@ component item() fam
 
 component host(items ...component fam) root
 
-component fam[go.language] {
+component[go.language] fam {
     gen.emit(@generate(out, members list<gen.Member<string>>) {
         error.raise("nothing to say", "quiet")
     })
 }
 
-component item[go.language] {
+component[go.language] item {
     gen.node(value="x")
 }
 -- escape.sngl --
@@ -216,12 +216,12 @@ component item() fam
 
 component host(items ...component fam) root
 
-component fam[go.language] {
+component[go.language] fam {
     gen.emit(@generate(out, members list<gen.Member<string>>) {
         out.write("../x.txt", "x")
     })
 }
 
-component item[go.language] {
+component[go.language] item {
     gen.node(value="x")
 }

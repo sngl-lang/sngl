@@ -181,7 +181,7 @@ component Screen(
 
 // The window's `@error` is the outermost boundary of what it renders, and
 // catches whether or not the call site handles one.
-const component ui.window[platform] {
+const component[platform] ui.window {
     Screen(visible=visible, @closed {
         visible = false
         closed()
@@ -194,29 +194,29 @@ const component ui.window[platform] {
 
 // --- Core Layout ---
 
-const component ui.vbox[platform] {
+const component[platform] ui.vbox {
     Layout(join=JoinDir.vertical, style={...style}) {
         children
     }
 }
 
-const component ui.hbox[platform] {
+const component[platform] ui.hbox {
     Layout(join=JoinDir.horizontal, style={...style}) {
         children
     }
 }
 
-const component ui.stack[platform] {
+const component[platform] ui.stack {
     Layout(join=JoinDir.vertical, style={...style}) {
         layers
     }
 }
 
-const component ui.spacer[platform] {
+const component[platform] ui.spacer {
     Styled(content="", style={...style}) {}
 }
 
-const component ui.scroll[platform] {
+const component[platform] ui.scroll {
     Layout(join=JoinDir.vertical, style={...style}) {
         content
     }
@@ -224,11 +224,11 @@ const component ui.scroll[platform] {
 
 // --- Core Text & Media ---
 
-const component ui.text[platform] {
+const component[platform] ui.text {
     Styled(content=value, style={...style}) {}
 }
 
-const component ui.button[platform] {
+const component[platform] ui.button {
     Styled(
         content = text,
         focus = Focus{enabled=true},
@@ -241,7 +241,7 @@ const component ui.button[platform] {
 // holds none. A drawing is a canvas, as one is anywhere in a terminal; a
 // picture a URL names is drawn in half-block cells fitted into a box of
 // `Picture`'s choosing, since a terminal has no size a pixel has.
-const component ui.image[platform] {
+const component[platform] ui.image {
     Layout(join=JoinDir.vertical, style={...style}) {
         #[family.crosses]
         src {
@@ -256,21 +256,21 @@ component Picture(url string) ui.imageSource
 #[intrinsic("bubbletea:ImageDrawing")]
 component ImageDrawing(width float, height float, shapes ...component shapes.shape) ui.imageSource
 
-const component ui.file[platform] {
+const component[platform] ui.file {
     Picture(url=path)
 }
 
-const component ui.remote[platform] {
+const component[platform] ui.remote {
     Picture(url=url)
 }
 
-const component shapes.image[platform] {
+const component[platform] shapes.image {
     ImageDrawing(width=width, height=height) {
         shapes
     }
 }
 
-const component ui.input[platform] {
+const component[platform] ui.input {
     Widget(
         model = Model{
             type = "textinput.Model",
@@ -288,7 +288,7 @@ const component ui.input[platform] {
     ) {}
 }
 
-const component ui.checkbox[platform] {
+const component[platform] ui.checkbox {
     Styled(
         content = label,
         focus = Focus{enabled=true},
@@ -303,12 +303,12 @@ const component ui.checkbox[platform] {
 
 // --- Tier 1: Core Input ---
 
-const component ui.radio[platform] {
+const component[platform] ui.radio {
     Layout(join=JoinDir.vertical, style={...style}) {
     }
 }
 
-const component ui.toggle[platform] {
+const component[platform] ui.toggle {
     Styled(
         content = label,
         focus = Focus{enabled=true},
@@ -321,7 +321,7 @@ const component ui.toggle[platform] {
     ) {}
 }
 
-const component ui.select[platform] {
+const component[platform] ui.select {
     Widget(
         model = Model{
             type = "list.Model",
@@ -338,7 +338,7 @@ const component ui.select[platform] {
     ) {}
 }
 
-const component ui.textarea[platform] {
+const component[platform] ui.textarea {
     Widget(
         model = Model{
             type = "textarea.Model",
@@ -356,7 +356,7 @@ const component ui.textarea[platform] {
 
 // A date is typed, as YYYY-MM-DD, into tui.DateInput: a text field read as
 // the *time.Time an option<date> is in Go, nil until what is typed is a date.
-const component ui.datepicker[platform] {
+const component[platform] ui.datepicker {
     Widget(
         model = Model{
             type = "tui.DateInput",
@@ -382,7 +382,7 @@ const component ui.datepicker[platform] {
 // conditional expression, so a ternary is lowered to a temporary, and that
 // happens before the fold that would have settled it -- leaving `${value}` to
 // interpolate a name the blueprint extractor cannot read a number off.
-const component ui.progress[platform] {
+const component[platform] ui.progress {
     if value != null {
         Widget(
             model = Model{
@@ -412,7 +412,7 @@ const component ui.progress[platform] {
     }
 }
 
-const component ui.spinner[platform] {
+const component[platform] ui.spinner {
     Widget(
         model = Model{
             type = "spinner.Model",
@@ -426,17 +426,17 @@ const component ui.spinner[platform] {
     ) {}
 }
 
-const component ui.divider[platform] {
+const component[platform] ui.divider {
     Styled(content="─", style={...style}) {}
 }
 
-const component ui.card[platform] {
+const component[platform] ui.card {
     Layout(join=JoinDir.vertical, style={...style}) {
         content
     }
 }
 
-const component ui.chip[platform] {
+const component[platform] ui.chip {
     Styled(
         content = label,
         focus = Focus{enabled=true},
@@ -445,11 +445,11 @@ const component ui.chip[platform] {
     ) {}
 }
 
-const component ui.link[platform] {
+const component[platform] ui.link {
     Styled(content=text, style={...style}) {}
 }
 
-const component ui.modal[platform] {
+const component[platform] ui.modal {
     if open {
         Overlay(placement="center", dim=true, style={...style}) {
             content
@@ -457,7 +457,7 @@ const component ui.modal[platform] {
     }
 }
 
-const component ui.drawer[platform] {
+const component[platform] ui.drawer {
     if open {
         Overlay(placement=side, dim=true, style={...style}) {
             content
@@ -465,7 +465,7 @@ const component ui.drawer[platform] {
     }
 }
 
-const component ui.tooltip[platform] {
+const component[platform] ui.tooltip {
     // Render the trigger child, then reveal `text` (dim, below) only while
     // the wrapped trigger is focused. The `tooltip` prop carries the body
     // text to the Layout renderer, which appends it gated on the focusable
@@ -475,19 +475,19 @@ const component ui.tooltip[platform] {
     }
 }
 
-const component ui.popover[platform] {
+const component[platform] ui.popover {
     Layout(join=JoinDir.vertical, style={...style}) {
         content
     }
 }
 
-const component ui.splitview[platform] {
+const component[platform] ui.splitview {
     Layout(join=JoinDir.horizontal, style={...style}) {
         panes
     }
 }
 
-const component ui.table[platform] {
+const component[platform] ui.table {
     Widget(
         model = Model{
             type = "table.Model",
@@ -516,7 +516,7 @@ const func _treeLabels(items list<ui.treeItem>) list<string> {
     return out
 }
 
-const component ui.tree[platform] {
+const component[platform] ui.tree {
     Widget(
         model = Model{
             type = "list.Model",
@@ -533,7 +533,7 @@ const component ui.tree[platform] {
     ) {}
 }
 
-const component ui.menu[platform] {
+const component[platform] ui.menu {
     if open {
         // menu surfaces selection via @select only — its stdlib signature
         // has no `selected` prop, so there's no two-way selection var to
@@ -554,12 +554,12 @@ const component ui.menu[platform] {
     }
 }
 
-const component ui.menubar[platform] {
+const component[platform] ui.menubar {
     Layout(join=JoinDir.horizontal, style={...style}) {
     }
 }
 
-const component ui.toolbar[platform] {
+const component[platform] ui.toolbar {
     Layout(join=JoinDir.horizontal, style={...style}) {
         controls
     }
@@ -594,7 +594,7 @@ component Timer<F>(
     @tick,
 ) F
 
-const component time.timer[platform] {
+const component[platform] time.timer {
     Timer(interval=interval, enabled=enabled, @tick { tick() }) {}
 }
 
@@ -641,17 +641,17 @@ component Span(
     content   ...component markup.span,
 ) markup.span
 
-const component markup.richText[platform] {
+const component[platform] markup.richText {
     Flow(style={...style}) {
         content
     }
 }
 
-const component markup.text[platform] {
+const component[platform] markup.text {
     Span(text=value) {}
 }
 
-const component markup.run[platform] {
+const component[platform] markup.run {
     Span(spanStyle=style) {
         content
     }
@@ -661,13 +661,13 @@ const component markup.run[platform] {
 // underlined -- which is how a link reads in one, and is the same trade
 // `ui.link` above already makes. Written as a style rather than as a prop the
 // emitter reads, because the family's own vocabulary already says it.
-const component markup.link[platform] {
+const component[platform] markup.link {
     Span(spanStyle={underline=true}) {
         content
     }
 }
 
-const component markup.token[platform] {
+const component[platform] markup.token {
     Span(kind=kind, color=markup.tokenColor(markup.palette, kind)) {
         content
     }
@@ -676,6 +676,6 @@ const component markup.token[platform] {
 // Nothing here can draw, so the description is what an image is: the words
 // between the brackets, in brackets, which is the form `ui.image` renders its
 // own placeholder in.
-const component markup.image[platform] {
+const component[platform] markup.image {
     Span(text="[{alt}]") {}
 }

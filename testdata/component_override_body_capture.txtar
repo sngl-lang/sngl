@@ -46,7 +46,7 @@ component outer(label = "") node {
     text(value="base {label} {count}")
 }
 
-component outer[html.platform] {
+component[html.platform] outer {
     var extra = 5
 
     component inner(step = 1) node {
@@ -69,7 +69,7 @@ component outer[html.platform] {
     }
 }
 
-component outer[bubbletea.platform] {
+component[bubbletea.platform] outer {
     var extra = 5
 
     component inner(step = 1) node {

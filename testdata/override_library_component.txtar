@@ -12,7 +12,7 @@ import ui "sngl:ui"
 
 func int.twice(x int) => x * 2
 
-component ui.avatar[html.platform](initials) {
+component[html.platform] ui.avatar(initials) {
     html.span(class="program-avatar", innerText=initials)
 }
 

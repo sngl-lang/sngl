@@ -24,6 +24,6 @@ import ui "sngl:ui"
 
 func int.thrice(x int) => x * 3
 
-component ui.avatar[html.platform](initials) {
+component[html.platform] ui.avatar(initials) {
     html.span(class="dir-avatar", innerText=initials)
 }

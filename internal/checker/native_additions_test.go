@@ -64,7 +64,7 @@ func TestNativeFuncOverrideRefused(t *testing.T) {
 	_, diags := checkNative(t, `import . "go:api"
 import "sngl:platform/html"
 
-func Square[html.platform] {
+func[html.platform] Square {
     return x
 }
 

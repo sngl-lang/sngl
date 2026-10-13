@@ -41,7 +41,7 @@ func stub() http.Result {
     return http.Result{status = 200, body = "stub"}
 }
 
-func http.get[language]() {
+func[language] http.get() {
     return stub()
 }
 `
