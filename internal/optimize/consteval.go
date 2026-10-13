@@ -8,6 +8,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"reflect"
 	"strconv"
 	"strings"
 	"unicode/utf8"
@@ -829,6 +830,11 @@ func numericOrNativeEq(left, right any) bool {
 	return left == right
 }
 
+// comparableValue reports whether Go's == may be asked of v.
+func comparableValue(v any) bool {
+	return v == nil || reflect.TypeOf(v).Comparable()
+}
+
 // --- Arithmetic and comparison helpers (operate on Go values) ---
 
 // numKindOf maps a result type to the opeval width descriptor. A nil or
@@ -845,10 +851,13 @@ func evalBinaryOp(op ast.BinaryOp, left, right any, kind opeval.NumKind) (any, b
 		return v, ok
 	}
 	switch op {
-	case ast.BinEq:
-		return numericOrNativeEq(left, right), true
-	case ast.BinNeq:
-		return !numericOrNativeEq(left, right), true
+	case ast.BinEq, ast.BinNeq:
+		// A folded list or map is a Go slice or map, which == panics on:
+		// left to run, where each target compares it element by element.
+		if !comparableValue(left) || !comparableValue(right) {
+			return nil, false
+		}
+		return numericOrNativeEq(left, right) == (op == ast.BinEq), true
 	case ast.BinAnd:
 		lb, lok := left.(bool)
 		rb, rok := right.(bool)
