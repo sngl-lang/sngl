@@ -822,7 +822,7 @@ func (jc *JsIRContext) evalNamespaceCall(n *ir.Call) string {
 		// Only for a receiver whose type the checker could not resolve. With an id
 		// in hand the registry is the answer, and its absence has to reach
 		// RequireIntrinsicFallback rather than be hidden by a name match.
-		if n.Func == nil || n.Func.Intrinsic == "" {
+		if nameMatchable(n.Func) {
 			if result := jsBuiltinMethodFromArgs("*."+fname, allArgs); result != "" {
 				return result
 			}
@@ -856,6 +856,20 @@ func (jc *JsIRContext) evalNamespaceCall(n *ir.Call) string {
 		return "void 0 /* unresolved namespace call */"
 	}
 	return receiver + "(" + strings.Join(args, ", ") + ")"
+}
+
+// nameMatchable reports whether a call of f may be answered by a builtin
+// method's name: f carries no intrinsic id, and is not a function someone
+// wrote a body for. A program's method is emitted as itself, so a component's
+// `replace` is no string's.
+func nameMatchable(f *ir.Func) bool {
+	if f == nil {
+		return true
+	}
+	if f.Intrinsic != "" {
+		return false
+	}
+	return f.AST == nil || (f.AST.Body == nil && !f.AST.Block.IsDefined())
 }
 
 // userFuncMatches reports whether Pkg.Funcs holds a user-defined function with
@@ -894,7 +908,7 @@ func (jc *JsIRContext) evalTypeMethodCall(n *ir.Call) string {
 	// Only for a receiver whose type the checker could not resolve. With an id
 	// in hand the registry is the answer, and its absence has to reach
 	// RequireIntrinsicFallback rather than be hidden by a name match.
-	if n.Func == nil || n.Func.Intrinsic == "" {
+	if nameMatchable(n.Func) {
 		if result := jsBuiltinMethodFromArgs("*."+method, args); result != "" {
 			return result
 		}

@@ -166,8 +166,6 @@ reports.
 - Generated Go exports internal names (`Visible__inst0`, `SetVisible__inst0`,
   `Measurement`).
 - html emits `<input type="">`.
-- html: a component method named `replace`, called from a test, comes out as
-  `c.replaceAll(void 0, void 0)` -- the string method's spelling.
 - A struct read out of a list is shared on the interpreter and html, and
   copied on the Go targets: after `ys.push(xs[0]); xs[0].n = 5`, `ys[0].n` is
   5 on `none` and html and 0 on bubbletea. JavaScript holds an object by
