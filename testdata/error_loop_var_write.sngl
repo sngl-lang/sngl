@@ -4,6 +4,8 @@
 // element. The index of a list and the key and value of a map are read-only
 // whatever the form.
 
+import ui "sngl:ui"
+
 struct Todo {
     done bool = false
     tags list<int> = []
@@ -41,5 +43,18 @@ func references() {
     }
     for var i, &n = ns {
         n += i
+    }
+}
+
+// A view body's loop is the same loop, and a handler written in it writes
+// the same variable.
+component checklist ui.node {
+    ui.vbox {
+        for var t = todos {
+            ui.button(text="done", @click { t.done = true }) // ERROR(check) "cannot assign to the loop variable \"t\", which holds a copy of the element"
+        }
+        for var &t = todos {
+            ui.button(text="done", @click { t.done = true })
+        }
     }
 }
