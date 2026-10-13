@@ -830,9 +830,58 @@ func numericOrNativeEq(left, right any) bool {
 	return left == right
 }
 
-// comparableValue reports whether Go's == may be asked of v.
-func comparableValue(v any) bool {
-	return v == nil || reflect.TypeOf(v).Comparable()
+// foldedEq compares two folded values as every target compares them: a
+// struct field by field, by name, and a list element by element. ok is false
+// for a value it cannot say that of -- a map, a host value -- which is left
+// to run. Go's == is right only for a scalar: on a slice or a map it panics,
+// and a struct is held as a pointer, whose == is identity, so two equal
+// literals compared unequal.
+func foldedEq(left, right any) (eq, ok bool) {
+	switch l := left.(type) {
+	case *interp.Struct:
+		r, isStruct := right.(*interp.Struct)
+		if !isStruct || len(l.Fields) != len(r.Fields) {
+			return false, isStruct
+		}
+		for _, f := range l.Fields {
+			other, found := r.Get(f.Name)
+			if !found {
+				return false, true
+			}
+			if eq, ok := foldedEq(f.Value, other); !ok || !eq {
+				return false, ok
+			}
+		}
+		return true, true
+	case []any:
+		r, isList := right.([]any)
+		if !isList || len(l) != len(r) {
+			return false, isList
+		}
+		for i := range l {
+			if eq, ok := foldedEq(l[i], r[i]); !ok || !eq {
+				return false, ok
+			}
+		}
+		return true, true
+	}
+	if !scalarValue(left) || !scalarValue(right) {
+		return false, false
+	}
+	return numericOrNativeEq(left, right), true
+}
+
+// scalarValue reports whether v is a value Go's == compares as SNGL does.
+func scalarValue(v any) bool {
+	if v == nil {
+		return true
+	}
+	switch reflect.TypeOf(v).Kind() {
+	case reflect.Bool, reflect.String, reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
+		reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Float32, reflect.Float64:
+		return true
+	}
+	return false
 }
 
 // --- Arithmetic and comparison helpers (operate on Go values) ---
@@ -852,12 +901,11 @@ func evalBinaryOp(op ast.BinaryOp, left, right any, kind opeval.NumKind) (any, b
 	}
 	switch op {
 	case ast.BinEq, ast.BinNeq:
-		// A folded list or map is a Go slice or map, which == panics on:
-		// left to run, where each target compares it element by element.
-		if !comparableValue(left) || !comparableValue(right) {
+		eq, ok := foldedEq(left, right)
+		if !ok {
 			return nil, false
 		}
-		return numericOrNativeEq(left, right) == (op == ast.BinEq), true
+		return eq == (op == ast.BinEq), true
 	case ast.BinAnd:
 		lb, lok := left.(bool)
 		rb, rok := right.(bool)
