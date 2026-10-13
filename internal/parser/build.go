@@ -1004,9 +1004,12 @@ func (b *builder) buildIdentListWithPos(it nodeIter) ([]string, []ast.Pos) {
 // --- Functions ---
 
 func (b *builder) buildFuncDecl(it nodeIter) *ast.FuncDef {
-	// FuncDecl = kw_func FuncName [ TargetIndex ] FuncTail .
+	// FuncDecl = kw_func [ TargetIndex ] FuncName [ TargetIndex ] FuncTail .
 	pos := b.posFromToken(it.shift()) // kw_func
 	f := &ast.FuncDef{Pos: pos}
+	if !it.done() && it.isNonTerminal() && it.symbol() == TargetIndex {
+		f.Target = b.buildTargetIndex(it.enter())
+	}
 	if !it.done() && it.isNonTerminal() && it.symbol() == FuncName {
 		b.buildFuncName(it.enter(), f)
 	}
@@ -1269,9 +1272,12 @@ func (b *builder) buildParam(it nodeIter) ast.ParamOrEventDecl {
 // --- Components ---
 
 func (b *builder) buildComponentDecl(it nodeIter) *ast.ComponentDecl {
-	// ComponentDecl = kw_component ident [ dot ident ] [ TypeParamList ] [ TargetIndex ] [ lparen [ ParamList ] rparen ] [ Type ] StmtBlock .
+	// ComponentDecl = kw_component [ TargetIndex ] ident [ dot ident ] [ TypeParamList ] [ TargetIndex ] [ lparen [ ParamList ] rparen ] [ Type ] StmtBlock .
 	pos := b.posFromToken(it.shift()) // kw_component
 	c := &ast.ComponentDecl{Pos: pos}
+	if !it.done() && it.isNonTerminal() && it.symbol() == TargetIndex {
+		c.Target = b.buildTargetIndex(it.enter())
+	}
 	c.Name = it.shift().Literal // ident
 	// Optional .ident for qualified component decls (e.g. component sngl.vbox).
 	if !it.done() && !it.isNonTerminal() && it.tokenType() == DOT {

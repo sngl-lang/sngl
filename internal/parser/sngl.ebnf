@@ -320,11 +320,13 @@ VarHandler = at ident [ lparen [ ParamList ] rparen ] StmtBlock .
 #
 # LL(1) after params: fat_arrow → expr body; ident|kw_func → Type; lbrace → StmtBlock.
 
-FuncDecl = kw_func FuncName [ TargetIndex ] FuncTail .
+FuncDecl = kw_func [ TargetIndex ] FuncName [ TargetIndex ] FuncTail .
 
-# The target a declaration overrides, indexed off the name it overrides:
-# `component sngl.button[html.platform](text) { ... }`. The expression must
-# fold to a target identity, which only a target's own package can supply.
+# The target a declaration overrides, written between the keyword and the name
+# it overrides: `component[html.platform] ui.button(text) { ... }`. The
+# expression must fold to a target identity, which only a target's own package
+# can supply. In front of the name, where `lbracket` is unambiguous, so a
+# bracket after the name is free to be a type parameter list.
 TargetIndex = lbracket Expr rbracket .
 
 FuncTail =
@@ -397,7 +399,7 @@ EventParams = lparen [ ParamList ] rparen .
 
 # The block is optional, as FuncBodyTail's is. `{}` and no block at all are
 # different declarations, so the formatter must not print one for the other.
-ComponentDecl = kw_component ident [ dot ident ] [ TypeParamList ] [ TargetIndex ] [ lparen [ ParamList ] rparen ] [ Type ] [ StmtBlock ] .
+ComponentDecl = kw_component [ TargetIndex ] ident [ dot ident ] [ TypeParamList ] [ TargetIndex ] [ lparen [ ParamList ] rparen ] [ Type ] [ StmtBlock ] .
 
 # ── Visual nodes + expression statements ──────────────────────────────────────
 #
