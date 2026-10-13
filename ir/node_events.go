@@ -100,8 +100,10 @@ func EffectEventRefusal(event string, key Expr) string {
 }
 
 // copiedLoopVar is the first loop variable key reads that the loop bound by
-// copy, or "". Nothing writes one -- a loop's variables are read-only unless
-// bound with `&` -- so a report of writes to it would never run.
+// copy, or "". Nothing writes one -- it is readonly<T>, as every loop variable
+// is unless bound with `&` -- so a report of writes to it would never run.
+// Asked as "not ref<T>" rather than "readonly<T>" because the checker erases
+// readonly<T> once the loop is checked, and an editor asks of checked IR.
 func copiedLoopVar(key Expr) string {
 	name := ""
 	_ = WalkExprs(key, func(e Expr) error {

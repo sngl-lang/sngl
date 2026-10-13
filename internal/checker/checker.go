@@ -945,6 +945,11 @@ func (c *checker) symType(sym ir.Symbol) *ir.Type {
 	if t := c.targetValueType(sym); t != nil {
 		return t
 	}
+	// A read-only variable is read as its value; refuseReadonlyWrite asks the
+	// symbol itself whether a write may land in it.
+	if t := sym.SymType(); t.IsReadonly() {
+		return t.Elems[0]
+	}
 	return sym.SymType()
 }
 

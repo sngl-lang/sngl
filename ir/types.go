@@ -34,6 +34,11 @@ const (
 	TypeIter      // Elems = [T] for iter<T>
 	TypeNative    // platform-provided foreign type; Meta carries the platform-specific descriptor
 	TypeInstance  // Decl set — a live instance in the rendered tree
+	// TypeReadonly is readonly<T> (Elems set): a loop variable bound by copy,
+	// which a program reads and may not write. The checker's own -- a read
+	// unwraps it to T, and the loop erases it from its variables once its body
+	// is checked -- so nothing after the check meets one.
+	TypeReadonly
 )
 
 // Type is the unified representation of all SNGL types.
@@ -88,6 +93,16 @@ func (t *Type) IsSized() bool {
 // OptionOf returns an option type wrapping the given type.
 func OptionOf(inner *Type) *Type {
 	return &Type{Kind: TypeOption, Elems: []*Type{inner}}
+}
+
+// ReadonlyOf builds a readonly<elem> Type.
+func ReadonlyOf(elem *Type) *Type {
+	return &Type{Kind: TypeReadonly, Elems: []*Type{elem}}
+}
+
+// IsReadonly reports whether t is readonly<T>.
+func (t *Type) IsReadonly() bool {
+	return t != nil && t.Kind == TypeReadonly && len(t.Elems) == 1
 }
 
 // RefOf builds a ref<elem> Type.
@@ -167,6 +182,11 @@ func (t *Type) String() string {
 			return fmt.Sprintf("ref<%s>", t.Elems[0])
 		}
 		return "ref"
+	case TypeReadonly:
+		if len(t.Elems) > 0 {
+			return fmt.Sprintf("readonly<%s>", t.Elems[0])
+		}
+		return "readonly"
 	case TypeIter:
 		if len(t.Elems) == 1 {
 			return fmt.Sprintf("iter<%s>", t.Elems[0])

@@ -3579,7 +3579,7 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 			}
 		}
 		c.refuseNodePropAssign(targetExpr, x.Pos, "assign to")
-		c.refuseLoopVarWrite(targetExpr, x.Pos, "assign to")
+		c.refuseReadonlyWrite(targetExpr, x.Pos, "assign to")
 		if x.Op == ast.AssignSet {
 			valueExpr = c.coerce(x.Value, valueExpr, targetType, slot{pos: x.Pos, mismatch: func(want, got string) string {
 				return "cannot assign " + got + " to " + want
@@ -3613,7 +3613,7 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 			c.error(x.Pos, "toggle target must be bool, got %s", t)
 		}
 		c.refuseNodePropAssign(targetExpr, x.Pos, "toggle")
-		c.refuseLoopVarWrite(targetExpr, x.Pos, "toggle")
+		c.refuseReadonlyWrite(targetExpr, x.Pos, "toggle")
 		if c.rejectStmtInViewBody(x.Pos, targetDescription("a toggle", "of", x.Target)) {
 			return nil
 		}
@@ -3875,7 +3875,7 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 		// over a mutable addressable list. The element is Key in single-var
 		// form and Value in two-var form. `&` on the index (two-var Key) is an
 		// error. An invalid `&` is reported and downgraded to a value binding.
-		// A plain loop variable is read-only (refuseLoopVarWrite): it is a copy
+		// A plain loop variable is read-only (refuseReadonlyWrite): it is a copy
 		// of the element, and a write to it would change nothing read again.
 		elemRef := x.KeyRef
 		// A loop that declares nothing (`for seq.count(3) { }`) has no
@@ -3910,15 +3910,23 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 		// Declare loop variables based on iterator type, keeping the symbols
 		// so the For statement carries what its body's Idents resolve to.
 		var keySym, valueSym *ir.LoopVar
+		// Every loop variable but an &-bound element is readonly<T>: a copy, or
+		// an index, which a write would change nothing by writing.
+		readonly := func(t *ir.Type) *ir.Type {
+			if t != nil && t.Kind == ir.TypeRef {
+				return t
+			}
+			return ir.ReadonlyOf(t)
+		}
 		declKey := func(t *ir.Type) {
 			if !declares {
 				return
 			}
-			keySym = &ir.LoopVar{Name: x.Key, Type: t}
+			keySym = &ir.LoopVar{Name: x.Key, Type: readonly(t)}
 			c.declare(x.Pos, keySym)
 		}
 		declValue := func(t *ir.Type) {
-			valueSym = &ir.LoopVar{Name: x.Value, Type: t}
+			valueSym = &ir.LoopVar{Name: x.Value, Type: readonly(t)}
 			c.declare(x.Pos, valueSym)
 		}
 
@@ -3999,6 +4007,13 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 			elseBody = c.checkScopeBlockIR(&x.Else, x.Key, x.Value)
 		}
 		c.popScope()
+		// readonly<T> is the checker's: every read and write of the variables
+		// has been checked, so nothing after the check meets one.
+		for _, lv := range []*ir.LoopVar{keySym, valueSym} {
+			if lv != nil && lv.Type.IsReadonly() {
+				lv.Type = lv.Type.Elems[0]
+			}
+		}
 		loop := &ir.For{AST: x, Key: x.Key, Value: x.Value, KeySym: keySym, ValueSym: valueSym, Iter: iterExpr, ElemType: elemType, Body: body, Else: elseBody, RefElem: elemRef}
 		c.checkViewForElse(x.Pos, loop, iter)
 		return loop
@@ -4239,19 +4254,19 @@ func (c *checker) resolveCallStmt(x *ast.CallStmt, callExpr ir.Expr) ir.Stmt {
 	}
 	if call.Func != nil && call.Func.Intrinsic != "" && len(call.Args) > 0 {
 		if def, ok := c.libs.builtins.IntrinsicByName(call.Func.Intrinsic); ok && def.MutatesReceiver {
-			c.refuseLoopVarWrite(call.Args[0].Value, x.Pos, call.Func.Name)
+			c.refuseReadonlyWrite(call.Args[0].Value, x.Pos, call.Func.Name)
 		}
 	}
 	return &ir.CallStmt{AST: x, Call: call}
 }
 
-// refuseLoopVarWrite reports a write through a loop's variable that the loop
-// did not bind by reference. `for var x = xs` hands the body each element to
-// read; a write to it, or to a field or element of it, would change a copy
-// nothing reads again, so it is refused rather than dropped. `for var &x = xs`
-// is the spelling that writes the element, and the index of either form is
-// read-only.
-func (c *checker) refuseLoopVarWrite(target ir.Expr, pos ast.Pos, verb string) {
+// refuseReadonlyWrite reports a write whose root is a readonly<T> variable:
+// a loop's variable the loop did not bind by reference. `for var x = xs` hands
+// the body each element to read; a write to it, or to a field or element of
+// it, would change a copy nothing reads again, so it is refused rather than
+// dropped. `for var &x = xs` is the spelling that writes the element, and the
+// index of either form is read-only.
+func (c *checker) refuseReadonlyWrite(target ir.Expr, pos ast.Pos, verb string) {
 	for {
 		switch n := target.(type) {
 		case *ir.Select:
@@ -4262,7 +4277,7 @@ func (c *checker) refuseLoopVarWrite(target ir.Expr, pos ast.Pos, verb string) {
 			continue
 		case *ir.Ident:
 			lv, isLoop := n.Sym.(*ir.LoopVar)
-			if !isLoop || (lv.Type != nil && lv.Type.Kind == ir.TypeRef) {
+			if !isLoop || !lv.Type.IsReadonly() {
 				return
 			}
 			if c.refBindable[lv] {
