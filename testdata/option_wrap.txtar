@@ -94,7 +94,13 @@ type Model struct {
 func New() Model {
 	m := Model{}
 	m.b__inst0 = Box{Value: 3}
-	m.h__inst0 = Holder{Inner: snglSome(m.b__inst0)}
+	m.h__inst0 = Holder{Inner: func(_p1 *Box) *Box {
+		if _p1 == nil {
+			return nil
+		}
+		_v2 := *_p1
+		return &_v2
+	}(snglSome(m.b__inst0))}
 	m.seen__inst0 = 0
 	m.visible__inst0 = true
 	m.__focusID = 0
@@ -290,7 +296,7 @@ fun _snglSplit(s: String, sep: String): List<String> =
 @Composable
 fun MainScreen() {
     var b__inst0 by remember { mutableStateOf(Box(value = 3)) }
-    var h__inst0 by remember { mutableStateOf(Holder(inner = b__inst0)) }
+    var h__inst0 by remember { mutableStateOf(Holder(inner = b__inst0?.let { _o1 -> _o1.copy() })) }
     var seen__inst0 by remember { mutableStateOf(0) }
     var visible__inst0 by remember { mutableStateOf(true) }
 
@@ -338,7 +344,7 @@ body { font-family: system-ui, sans-serif; }
   // sngl-entry.js
   var state = { b__inst0: null, h__inst0: null, seen__inst0: 0, visible__inst0: true };
   state.b__inst0 = { value: 3 };
-  state.h__inst0 = { inner: state.b__inst0 };
+  state.h__inst0 = { inner: ((_o1) => _o1 == null ? _o1 : { ..._o1 })(state.b__inst0) };
   function String(v) {
     return "" + v;
   }
@@ -360,8 +366,8 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:4fdf206412700dc1cbf96df4a7bf3c27
+pass sha256:b3a1d5ca3ba9b4984866740f1b34c332
 -- run/kotlin/android --
-pass sha256:cdb4096c2e58975f70ef2391e34818c9
+pass sha256:8990d8d40fd0ae0a22b383ae540bc7e3
 -- run/none/html --
-pass sha256:8fb188b7821b0e433444f29905b96dab
+pass sha256:7cc66f2a6361180dc33077bae8ddf3b6

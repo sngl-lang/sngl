@@ -337,6 +337,10 @@ func jsValueCopy(init ir.Expr, t *ir.Type, rendered string) string {
 	case *ir.StructLit, *ir.Literal, nil:
 		return rendered
 	}
+	// passValueCopy has made the copy already, as deep as the value goes.
+	if ir.IsValueCopy(init) {
+		return rendered
+	}
 	return "{ ..." + rendered + " }"
 }
 func (jc *JsIRContext) ReturnText(n *ir.Return, valueStr string) string {

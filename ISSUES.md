@@ -32,6 +32,14 @@ reports.
   with `&` is a cell per copy (`testdata/effect_per_copy.txtar`); one bound by
   copy is refused as a key, since nothing writes it. Left: rewrite the three
   pages and remove `var … @change`.
+- **A write to a struct parameter.** A store copies a struct, list or map
+  (`passValueCopy`, `cmd/sngl/testdata/value_copy_runs.txt`), but passing one
+  to a function does not say: `func bump(p P) { p.n = 5 }` leaves the
+  caller's value alone on the Go targets, which pass a struct by value, and
+  writes it on the interpreter, html and android. The interpreter's
+  `CopyValue` comment calls that deliberate -- a method edits its receiver --
+  and the spec said parameters copy. Copy at the call, or refuse a write to a
+  parameter as a loop variable's is refused?
 - **Clone URL.** `installation.md` says
   `git clone https://github.com/sngl-lang/sngl.git`, but the module is
   `duckfam.us/sngl` and origin is `git.duckfam.us`. Which is canonical?
@@ -166,13 +174,6 @@ reports.
 - Generated Go exports internal names (`Visible__inst0`, `SetVisible__inst0`,
   `Measurement`).
 - html emits `<input type="">`.
-- A struct read out of a list is shared on the interpreter and html, and
-  copied on the Go targets: after `ys.push(xs[0]); xs[0].n = 5`, `ys[0].n` is
-  5 on `none` and html and 0 on bubbletea. JavaScript holds an object by
-  reference and the interpreter a `*Struct`, and neither copies on a read.
-  An effect's queued change items copy (`copiedValue` in
-  `internal/lower/effect_writes.go`, `CopyValue` in the interpreter's write
-  log), so `@set` is unaffected.
 
 ## Docs gaps still open
 

@@ -1,0 +1,314 @@
+# A struct, a list and a map are values: storing one -- a push, an
+# assignment, a local, a literal's element, a map's entry -- stores a copy, so
+# a later write to either place leaves the other as it was. An element bound
+# with `&` is written in place and copied where it is stored elsewhere. Go
+# shares a slice's storage and JavaScript and Kotlin every object, so each
+# language writes the copy out from the value's type; the interpreter copies
+# at the store.
+
+sngl test --platform=none app.sngl
+stdout '7 tests, 0 failures'
+
+sngl test --platform=html app.sngl
+stdout '7 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout '7 tests, 0 failures'
+
+sngl test --platform=fyne --language=go app.sngl
+stdout '7 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go app.sngl
+stdout '7 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin app.sngl
+stdout '7 tests, 0 failures'
+
+-- app.sngl --
+import . "sngl:test"
+import ui "sngl:ui"
+
+struct Row {
+    n     int = 0
+    items list<int> = []
+}
+
+struct Tree {
+    label string
+    kids  list<Tree> = []
+}
+
+component box ui.node {
+    var (
+        xs list<Row> = [Row{n=1, items=[1]}]
+        ys list<Row> = []
+        a list<int> = [1, 2]
+        b list<int> = []
+        p = Row{n=1, items=[1]}
+        q = Row{}
+        t = Tree{label="a", kids=[Tree{label="b"}]}
+        u = Tree{label="x"}
+        m map<string, Row> = {"a"=Row{n=1}}
+        mm map<string, Row> = {"b"=Row{}}
+        out = ""
+    )
+
+    func pushed() {
+        ys.push(xs[0])
+        xs[0].n = 5
+        xs[0].items.push(2)
+        out = "{ys[0].n} {ys[0].items.length()}"
+    }
+
+    func assigned() {
+        q = p
+        b = a
+        p.items[0] = 9
+        a[0] = 9
+        out = "{q.items[0]} {b[0]}"
+    }
+
+    func local() {
+        var l = xs[0]
+        xs[0].n = 7
+        l.items.push(4)
+        out = "{l.n} {xs[0].items.length()}"
+    }
+
+    func literal() {
+        ys = [p]
+        p.n = 4
+        out = "{ys[0].n}"
+    }
+
+    func referenced() {
+        for var &x = xs {
+            ys.push(x)
+            x.n = 9
+        }
+        out = "{ys[0].n} {xs[0].n}"
+    }
+
+    func tree() {
+        u = t
+        t.kids.push(Tree{label="c"})
+        out = "{u.kids.length()} {t.kids.length()}"
+    }
+
+    func maps() {
+        mm = m
+        m["a"] = Row{n=7}
+        out = "{mm.get("a", Row{}).n}"
+    }
+
+    ui.text #o(value=out)
+}
+
+func testPushedElementIsACopy(t Test, c box) {
+    c.pushed()
+    t.assert(c.o.value == "1 1")
+}
+
+func testAssignmentCopies(t Test, c box) {
+    c.assigned()
+    t.assert(c.o.value == "1 1")
+}
+
+func testLocalIsACopy(t Test, c box) {
+    c.local()
+    t.assert(c.o.value == "1 1")
+}
+
+func testLiteralElementIsACopy(t Test, c box) {
+    c.literal()
+    t.assert(c.o.value == "1")
+}
+
+func testReferencedElementStoredIsACopy(t Test, c box) {
+    c.referenced()
+    t.assert(c.o.value == "1 9")
+}
+
+func testRecursiveStructCopies(t Test, c box) {
+    c.tree()
+    t.assert(c.o.value == "1 2")
+}
+
+func testMapCopies(t Test, c box) {
+    c.maps()
+    t.assert(c.o.value == "1")
+}
+
+ui.window {
+    box
+}
+-- testrun/android/kotlin/app.sngl/box/1 --
+sha256:00319a291c192a11fd23d562c384f44b
+{
+  "results": [
+    {
+      "Desc": "AssignmentCopies",
+      "Passed": true
+    },
+    {
+      "Desc": "LiteralElementIsACopy",
+      "Passed": true
+    },
+    {
+      "Desc": "LocalIsACopy",
+      "Passed": true
+    },
+    {
+      "Desc": "MapCopies",
+      "Passed": true
+    },
+    {
+      "Desc": "PushedElementIsACopy",
+      "Passed": true
+    },
+    {
+      "Desc": "RecursiveStructCopies",
+      "Passed": true
+    },
+    {
+      "Desc": "ReferencedElementStoredIsACopy",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/box/1 --
+sha256:2fc90a827367a314e1a762694da07ca2
+{
+  "results": [
+    {
+      "Desc": "AssignmentCopies",
+      "Passed": true
+    },
+    {
+      "Desc": "LiteralElementIsACopy",
+      "Passed": true
+    },
+    {
+      "Desc": "LocalIsACopy",
+      "Passed": true
+    },
+    {
+      "Desc": "MapCopies",
+      "Passed": true
+    },
+    {
+      "Desc": "PushedElementIsACopy",
+      "Passed": true
+    },
+    {
+      "Desc": "RecursiveStructCopies",
+      "Passed": true
+    },
+    {
+      "Desc": "ReferencedElementStoredIsACopy",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/box/1 --
+sha256:11178eb67ad8e86e1d8d258eedec5fdc
+{
+  "results": [
+    {
+      "Desc": "AssignmentCopies",
+      "Passed": true
+    },
+    {
+      "Desc": "LiteralElementIsACopy",
+      "Passed": true
+    },
+    {
+      "Desc": "LocalIsACopy",
+      "Passed": true
+    },
+    {
+      "Desc": "MapCopies",
+      "Passed": true
+    },
+    {
+      "Desc": "PushedElementIsACopy",
+      "Passed": true
+    },
+    {
+      "Desc": "RecursiveStructCopies",
+      "Passed": true
+    },
+    {
+      "Desc": "ReferencedElementStoredIsACopy",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/box/1 --
+sha256:80e144f29075dc1de246cdd80aad5b5f
+{
+  "results": [
+    {
+      "Desc": "AssignmentCopies",
+      "Passed": true
+    },
+    {
+      "Desc": "LiteralElementIsACopy",
+      "Passed": true
+    },
+    {
+      "Desc": "LocalIsACopy",
+      "Passed": true
+    },
+    {
+      "Desc": "MapCopies",
+      "Passed": true
+    },
+    {
+      "Desc": "PushedElementIsACopy",
+      "Passed": true
+    },
+    {
+      "Desc": "RecursiveStructCopies",
+      "Passed": true
+    },
+    {
+      "Desc": "ReferencedElementStoredIsACopy",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/box/1 --
+sha256:c0ef338bab021524ba7ed16432633816
+{
+  "results": [
+    {
+      "Desc": "AssignmentCopies",
+      "Passed": true
+    },
+    {
+      "Desc": "LiteralElementIsACopy",
+      "Passed": true
+    },
+    {
+      "Desc": "LocalIsACopy",
+      "Passed": true
+    },
+    {
+      "Desc": "MapCopies",
+      "Passed": true
+    },
+    {
+      "Desc": "PushedElementIsACopy",
+      "Passed": true
+    },
+    {
+      "Desc": "RecursiveStructCopies",
+      "Passed": true
+    },
+    {
+      "Desc": "ReferencedElementStoredIsACopy",
+      "Passed": true
+    }
+  ]
+}

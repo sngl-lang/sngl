@@ -1040,6 +1040,10 @@ func evalQualifiedMethod(qualName string, args []any) (any, bool) {
 			// Rune count, not byte count — SNGL strings are runes (bugs.md #16).
 			return utf8.RuneCountInString(s), true
 		}
+	case ir.ValueCopyIntrinsic:
+		if len(args) == 1 {
+			return interp.DeepCopy(args[0]), true
+		}
 	case "list.length":
 		if l, ok := args[0].([]any); ok {
 			return len(l), true

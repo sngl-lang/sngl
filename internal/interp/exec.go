@@ -263,7 +263,7 @@ func (env *Env) exec(s ir.Stmt) error {
 		if err != nil {
 			return err
 		}
-		env.Set(n.Sym, CopyValue(v))
+		env.Set(n.Sym, copyOf(v, n.Init.ExprType()))
 		return nil
 	case *ir.If:
 		return env.execIf(n)
@@ -312,6 +312,7 @@ func (env *Env) execAssign(s *ir.Assign) error {
 	if err != nil {
 		return err
 	}
+	val = copyOf(val, s.Value.ExprType())
 	switch target := s.Target.(type) {
 	case *ir.Ident:
 		owner := env.findVarOwner(target.Sym)

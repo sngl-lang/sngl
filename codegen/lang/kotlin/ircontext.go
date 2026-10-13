@@ -381,7 +381,7 @@ func (kc *KtIRContext) AssignText(n *ir.Assign, target, value string) string {
 	// An element of a list in such a field: the list is a read-only `List`, so
 	// it is rebuilt with the element written and the path copied back.
 	if idx, ok := n.Target.(*ir.Index); ok && !isMapExpr(idx.Operand) {
-		if sel, ok := idx.Operand.(*ir.Select); ok && kc.isStateStructField(sel) {
+		if sel, ok := idx.Operand.(*ir.Select); ok && kc.isListFieldPath(sel) {
 			key := kc.WithLocal("it").EvalExpr(idx.Idx)
 			return kc.rebuildStructPath(sel, irwalk.EvalMutTarget(kc, sel)+".toMutableList().also { it["+key+"] "+n.Op.String()+" "+value+" }")
 		}
@@ -417,7 +417,7 @@ func (kc *KtIRContext) fieldListMutation(call *ir.Call) string {
 		return ""
 	}
 	sel, ok := call.Args[0].Value.(*ir.Select)
-	if !ok || !kc.isStateStructField(sel) {
+	if !ok || !kc.isListFieldPath(sel) {
 		return ""
 	}
 	t := sel.ExprType()
@@ -458,6 +458,39 @@ func (kc *KtIRContext) isStateStructField(sel *ir.Select) bool {
 	}
 	_, kind := kc.Ctx.Resolve(id.Name)
 	return kind == codegen.NameStateVar
+}
+
+// isListFieldPath is isStateStructField, or a field path down from a local:
+// a list in a data class's field is a read-only `List` wherever the struct is
+// held, so writing it rebuilds the path, and a local is a Kotlin `var` that
+// can be reassigned. A parameter is a `val` and cannot. A scalar field of a
+// local's struct is written in place.
+func (kc *KtIRContext) isListFieldPath(sel *ir.Select) bool {
+	if kc.isStateStructField(sel) {
+		return true
+	}
+	var e ir.Expr = sel
+	for {
+		s, ok := e.(*ir.Select)
+		if !ok {
+			break
+		}
+		t := s.Operand.ExprType()
+		if t == nil || t.Kind != ir.TypeStruct || ir.StringReprStruct(t) {
+			return false
+		}
+		if sd, ok := t.Decl.(*ir.StructDef); !ok || sd.Foreign.Name != "" {
+			return false
+		}
+		e = s.Operand
+	}
+	id, ok := e.(*ir.Ident)
+	if !ok || kc.Ctx == nil {
+		return false
+	}
+	_, kind := kc.Ctx.Resolve(id.Name)
+	v, ok := id.Sym.(*ir.Var)
+	return ok && !v.IsConst && (kind == codegen.NameLocal || kind == codegen.NameUnknown)
 }
 
 func isMapExpr(e ir.Expr) bool {
@@ -511,6 +544,11 @@ func (kc *KtIRContext) isStateList(e ir.Expr) bool {
 func (kc *KtIRContext) valueCopyFor(n *ir.LocalVar, rendered string) string {
 	if n.Sym != nil && kc.Ctx != nil && kc.Ctx.Pkg != nil && kc.Ctx.Pkg.MutatedVars != nil {
 		if !kc.Ctx.Pkg.MutatedVars[n.Sym] {
+			// The store's copy (passValueCopy) contains a mutation too, and
+			// with none to contain the local is the value it was given.
+			if c, ok := n.Init.(*ir.Call); ok && ir.IsValueCopy(c) && len(c.Args) == 1 {
+				return kc.EvalExpr(c.Args[0].Value)
+			}
 			return rendered
 		}
 	}
@@ -533,6 +571,9 @@ func valueCopy(init ir.Expr, t *ir.Type, rendered string) string {
 	}
 	switch init.(type) {
 	case *ir.StructLit, *ir.Literal, nil:
+		return rendered
+	}
+	if ir.IsValueCopy(init) {
 		return rendered
 	}
 	return rendered + ".copy()"

@@ -43,8 +43,12 @@ func testRecursiveComponentRendersChildren(t Test, c main) {
     t.assert(c.val[3].value == "8")
 }
 
+// A struct is a value: root holds a copy of node3, so a write to node3 reaches
+// what root renders once it is stored there again.
 func testRecursiveComponentMutation(t Test, c main) {
     c.node3.right = TreeNode{value=4}
+    t.assert(c.val.length() == 4)
+    c.root.left = c.node3
     t.assert(c.val[3].value == "4")
     t.assert(c.val[4].value == "8")
 }

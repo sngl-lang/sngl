@@ -34,6 +34,12 @@ type nativeFunc func(args []any) (any, error)
 // An id with no entry is one the interpreter cannot evaluate; whether that is
 // an error depends on whether the declaration carries a usable body.
 var intrinsics = map[string]nativeFunc{
+	"value.copy": func(args []any) (any, error) {
+		if len(args) != 1 {
+			return nil, fmt.Errorf("value.copy: want one argument, got %d", len(args))
+		}
+		return DeepCopy(args[0]), nil
+	},
 	// --- int ---
 	"int.parse": func(args []any) (any, error) {
 		s := fmt.Sprintf("%v", args[0])

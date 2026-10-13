@@ -126,7 +126,7 @@ func evalInit(env *Env, expr ir.Expr) any {
 	}
 	v, err := env.Eval(expr)
 	if err == nil {
-		return v
+		return copyOf(v, expr.ExprType())
 	}
 	return nil
 }

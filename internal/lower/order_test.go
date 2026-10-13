@@ -126,6 +126,9 @@ var alwaysOn = []string{
 	// A context nothing provides is folded to its default on every target: the
 	// ones that lower contexts to state, and the ones that keep them.
 	"UnprovidedContext",
+	// A struct, list or map is a value on every target, and no host copies
+	// all three on a store.
+	"ValueCopy",
 	"ViewForElse",
 }
 

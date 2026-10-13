@@ -1584,7 +1584,7 @@ func (env *Env) evalListLit(e *ir.ListLit) (any, error) {
 			if err != nil {
 				return nil, err
 			}
-			if items, ok := v.([]any); ok {
+			if items, ok := copyOf(v, sp.Operand.ExprType()).([]any); ok {
 				list = append(list, items...)
 			} else {
 				list = append(list, v)
@@ -1595,7 +1595,7 @@ func (env *Env) evalListLit(e *ir.ListLit) (any, error) {
 		if err != nil {
 			return nil, err
 		}
-		list = append(list, v)
+		list = append(list, copyOf(v, el.ExprType()))
 	}
 	if list == nil {
 		list = []any{}
@@ -1610,6 +1610,7 @@ func (env *Env) evalStructLit(e *ir.StructLit) (any, error) {
 		if err != nil {
 			return nil, err
 		}
+		v = copyOf(v, f.Value.ExprType())
 		if f.Spread {
 			if src, ok := v.(*Struct); ok {
 				s.Merge(src)
@@ -1635,7 +1636,7 @@ func (env *Env) evalMapLitIR(e *ir.MapLitIR) (any, error) {
 		// Keys may be PluralKey values (from i18n.exactly/i18n.one etc.) or
 		// plain strings. Store them as formatted strings so the map is
 		// map[string]any; toPluralKeyStringMap will re-interpret them.
-		m[fmt.Sprintf("%v", k)] = v
+		m[fmt.Sprintf("%v", k)] = copyOf(v, entry.Value.ExprType())
 	}
 	return m, nil
 }
@@ -2175,6 +2176,10 @@ func (env *Env) runEventHandlerValues(fn *ir.Func, vals []any) (any, error) {
 // evalBuiltinMethodFromRecv dispatches list/string built-in methods when the
 // receiver expression is known separately from the rest of the args.
 func (env *Env) evalBuiltinMethodFromRecv(recvExpr ir.Expr, method string, recv any, rest []any) (any, error) {
+	var recvType *ir.Type
+	if recvExpr != nil {
+		recvType = recvExpr.ExprType()
+	}
 	switch method {
 	case "filter":
 		if list, ok := recv.([]any); ok && len(rest) == 1 {
@@ -2215,6 +2220,7 @@ func (env *Env) evalBuiltinMethodFromRecv(recvExpr ir.Expr, method string, recv 
 		}
 	case "push":
 		if list, ok := recv.([]any); ok && len(rest) == 1 {
+			rest[0] = copyOf(rest[0], elemType(recvType))
 			newList := append(list, rest[0])
 			return env.writeBackList(recvExpr, newList, writeInsert, len(list), rest[0])
 		}
@@ -2230,6 +2236,7 @@ func (env *Env) evalBuiltinMethodFromRecv(recvExpr ir.Expr, method string, recv 
 		}
 	case "insert":
 		if list, ok := recv.([]any); ok && len(rest) == 2 {
+			rest[1] = copyOf(rest[1], elemType(recvType))
 			idx := ToInt(rest[0])
 			if idx < 0 || idx > len(list) {
 				return list, nil // documented: out of range leaves the list unchanged
@@ -2287,6 +2294,10 @@ func methodNameFromCall(call *ir.Call) string {
 func (env *Env) evalBuiltinMethod(call *ir.Call, method string, evalArgs []any) (any, error) {
 	recv := evalArgs[0]
 	rest := evalArgs[1:]
+	var recvType *ir.Type
+	if len(call.Args) > 0 && call.Args[0].Value != nil {
+		recvType = call.Args[0].Value.ExprType()
+	}
 	switch method {
 	case "filter":
 		if list, ok := recv.([]any); ok && len(rest) == 1 {
@@ -2327,6 +2338,7 @@ func (env *Env) evalBuiltinMethod(call *ir.Call, method string, evalArgs []any) 
 		}
 	case "push":
 		if list, ok := recv.([]any); ok && len(rest) == 1 {
+			rest[0] = copyOf(rest[0], elemType(recvType))
 			newList := append(list, rest[0])
 			return env.writeBackList(call.Args[0].Value, newList, writeInsert, len(list), rest[0])
 		}
@@ -2342,6 +2354,7 @@ func (env *Env) evalBuiltinMethod(call *ir.Call, method string, evalArgs []any) 
 		}
 	case "insert":
 		if list, ok := recv.([]any); ok && len(rest) == 2 {
+			rest[1] = copyOf(rest[1], elemType(recvType))
 			idx := ToInt(rest[0])
 			if idx < 0 || idx > len(list) {
 				return list, nil // documented: out of range leaves the list unchanged
@@ -2675,7 +2688,10 @@ func (env *Env) evalUserFuncCore(fn *ir.Func, args []any) (any, error) {
 						return nil, err
 					}
 				}
-				execEnv.Set(lv.Sym, CopyValue(v))
+				if lv.Init != nil {
+					v = copyOf(v, lv.Init.ExprType())
+				}
+				execEnv.Set(lv.Sym, v)
 				localVars = append(localVars, lv.Sym)
 				continue
 			}
@@ -3164,4 +3180,12 @@ func (env *Env) InvokeElementEvent(m map[string]any, event string, args func() (
 	})
 	handlerEnv.writeBack()
 	return res, true, err
+}
+
+// elemType is the element type of a list type, nil for anything else.
+func elemType(t *ir.Type) *ir.Type {
+	if t == nil || t.Kind != ir.TypeList || len(t.Elems) == 0 {
+		return nil
+	}
+	return t.Elems[0]
 }
