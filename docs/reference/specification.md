@@ -733,6 +733,33 @@ var a = nameOf(User{name="ann"}) // User may have other fields
 var b = nameOf({name="anon"})    // an anonymous struct
 ```
 
+An anonymous struct type may name a type parameter wherever a type is
+written -- a parameter, a result, a field, a variable, a list's element, an
+option: `struct { v T }` is the anonymous struct whose `v` is whatever `T` is
+bound to. A call binds `T` from the field of that name in the argument, as it
+binds one from a list's element, and once `T` is bound the type is the
+anonymous struct written with that type, since two anonymous structs with the
+same fields at equal types are one type. Its `T` is the parameter in scope
+where it is written, so two declarations each writing `struct { v T }` name
+two parameters.
+
+```sngl
+func unwrap[T any](w struct {
+    v T
+}) T {
+    return w.v
+}
+
+func wrap[T any](x T) struct {
+    v T
+} {
+    return {v=x}
+}
+
+var one = unwrap({v=1}) + 1 // T is int
+var two = unwrap(wrap("w")) // T is string
+```
+
 The bracket after a declaration's name is also where an override names the
 target it implements (`component ui.vbox[platform]`, see
 [Target-dependent code](#target-dependent-code)), and the constraint is what tells

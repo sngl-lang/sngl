@@ -285,4 +285,4 @@ The callers, against that choice:
 - [X] The constraint path on the general representation.
 - [X] `sngl dump --stage checked` round-trips it
   (`cmd/sngl/testdata/type_param_constraint_roundtrip.txt`).
-- [ ] Spec, effective-sngl, CLAUDE.md.
+- [X] Spec, effective-sngl, CLAUDE.md.

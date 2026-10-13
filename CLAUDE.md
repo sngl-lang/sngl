@@ -4133,6 +4133,27 @@ same fields at equal types, whichever package spelled them (`Type.Equal`):
 program declaring the prop writes the program's. Compared by declaration
 instead, the two never matched.
 
+**An anonymous struct may name a type parameter**, wherever a type is written:
+`func unwrap[T any](w struct { v T }) T`. Such a struct is declared and
+interned nowhere (`anonStructType`, `ir.IsUninternedAnon`, which is an
+anonymous `StructDef` with no name), since its fields mean the parameters in
+scope where it was written: two declarations each writing `struct { v T }`
+name two `T`s, where interning by the field signature had handed the second
+the first one's, constraint and all. `Type.Substitute` substitutes it field
+by field into another un-interned declaration, `bindTypeParams` and
+`ir.UnifyTypeParams` bind `T` from the argument's field by name (`ir.FieldsOf`,
+so `{v=1}` and a named struct with a `v` bind alike), and `HasTypeParam`
+reads its fields; `Type.Equal` needed nothing, comparing anonymous structs by
+fields already. A constraint naming a type parameter is this same struct. A
+substitution that makes one concrete names a declaration no package declares,
+so the always-on `passAnonStructs` points it, after `passMonomorphize`, at the
+package's interned struct with those fields, declaring one under the name the
+checker would have given it (`ir.AnonStructBaseName`) -- giving the
+instantiation a generic declaration's `Elems` instead would have made
+`Box__int`-style copies, a second host type beside the literal's that Go and
+Kotlin cannot assign between (`testdata/generic_anon_struct.sngl`,
+`error_generic_anon_struct.sngl`, `generic_anon_struct.txtar`).
+
 **A unit's members are its bases, and they are registered like any other
 declaration's.** A unit value is a magnitude per base (`ir/units.go`): `unit measurement { px, em, rem }` declares three bases, so a
 value carries three numbers and every backend emits it as a record of them.

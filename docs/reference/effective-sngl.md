@@ -679,6 +679,25 @@ func valueOf[T any, U struct {
 }](u U) => u.value
 ```
 
+An anonymous struct in a signature may name a type parameter too, which is how
+a function takes or returns a record of some `T` without declaring a generic
+struct for it. The argument's field binds `T`, and the result is the same type
+as an anonymous struct written with the bound type:
+
+```sngl
+func pairOf[T any](a T, b T) struct {
+    first  T
+    second T
+} {
+    return {first=a, second=b}
+}
+
+func firstOf[T any](p struct {
+    first  T
+    second T
+}) => p.first
+```
+
 `[T struct {}]` takes any struct and says nothing about its fields, which is
 what a function handing its argument to something that reads fields by name
 wants: `i18n.format` takes its arguments that way. A constraint's field takes
