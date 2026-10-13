@@ -45,7 +45,7 @@ func targetTierMember(kind ir.BuiltinKind) string {
 	return "platform"
 }
 
-// resolveTargetIndex resolves the `[expr]` index on a declaration name to the
+// resolveTargetIndex resolves the `[target]` index on a declaration name to the
 // target it implements: the registered name, and whether the identity is a
 // platform or a language.
 //
@@ -62,7 +62,10 @@ func (c *checker) resolveTargetIndex(e ast.Expr) (name string, kind ir.BuiltinKi
 		// program outside the package writes.
 		sym, found := c.scope.Lookup(t.Name)
 		if !found {
-			c.error(t.Pos, "undefined: %s", t.Name)
+			// A bracket holding one bare name is a target, so a type
+			// parameter written with no constraint reads as one, and an
+			// undefined one: say what the author more likely meant.
+			c.error(t.Pos, "undefined: %s (a type parameter names its constraint: write `%s any`)", t.Name, t.Name)
 			return "", ir.BuiltinNone, false
 		}
 		return c.targetIdentity(t.Pos, sym, t.Name)

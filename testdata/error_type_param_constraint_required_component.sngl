@@ -1,6 +1,8 @@
-// A component's type parameter names a constraint as a function's does.
+// A component's type parameter names a constraint as a function's does, and a
+// bracket of one bare name after a component's name is the target it
+// overrides.
 
 import ui "sngl:ui"
 
-component box<T, F any>(value T) F { // ERROR(parse) "type parameter T names no constraint: write `T any`"
+component box[T](value T) ui.node { // ERROR(check) "undefined: T (a type parameter names its constraint: write `T any`)"
 }
