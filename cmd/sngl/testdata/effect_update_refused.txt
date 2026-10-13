@@ -1,12 +1,13 @@
-# What no target lowers yet is refused where it is written rather than emitted
-# as a bracket that never reports: @update under a `for`, where one flag cannot
-# say which copy's key was written. The interpreter runs it.
+# An effect keyed on a loop's element bound by copy is refused where it is
+# written, on every target: the element is a value nothing writes, so a report
+# of writes to it would never run. `for var &x` binds the element itself, and
+# each copy then reports the writes that reached its own
+# (effect_changes_runs.txt).
 
-! sngl generate --platform fyne --lang go -o out loop.sngl
-stderr 'loop.sngl:8:29: an effect''s @update under a `for` is not implemented on a compiled target yet'
+! sngl check loop.sngl
+stderr 'loop.sngl:8:29: an effect''s @update reports a write to what `on` reads, and `on` reads the loop variable "x", a copy nothing writes; bind the element with `for var &x` to report writes to it'
 
-! sngl generate --platform android --lang kotlin -o out loop.sngl
-stderr 'loop.sngl:8:29: an effect''s @update under a `for` is not implemented on a compiled target yet'
+sngl check ref.sngl
 
 -- loop.sngl --
 import ui "sngl:ui"
@@ -16,6 +17,22 @@ component rows ui.node {
     var n = 0
     ui.vbox {
         for var x = xs {
+            effect(on = x, @update { n += 1 })
+        }
+    }
+}
+
+ui.window(title = "Rows") {
+    rows
+}
+-- ref.sngl --
+import ui "sngl:ui"
+
+component rows ui.node {
+    var xs list<list<int>> = [[1], [2]]
+    var n = 0
+    ui.vbox {
+        for var &x = xs {
             effect(on = x, @update { n += 1 })
         }
     }

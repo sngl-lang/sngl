@@ -181,12 +181,16 @@ type loweredEffect struct {
 	// itemVar what a handler's parameters read; length the list's length
 	// before an insert, which its note compares; notes the note functions
 	// built so far.
-	changes        map[string]*ir.Func
-	kinds, ats     *ir.Var
-	items          *ir.Var
-	atVar, itemVar *ir.Var
-	length         *ir.Var
-	notes          map[string]*ir.Func
+	changes map[string]*ir.Func
+	// copies is the queue's fourth column under a loop that steps into the
+	// key -- which copy each write reached -- and dirtyAt the copies owed an
+	// `@update`, dirty then meaning every copy.
+	copies, dirtyAt *ir.Var
+	kinds, ats      *ir.Var
+	items           *ir.Var
+	atVar, itemVar  *ir.Var
+	length          *ir.Var
+	notes           map[string]*ir.Func
 	// down and up are nil for a bracket with neither @mount nor @unmount,
 	// which reports writes and holds no lifetime.
 	down *ir.Func
@@ -334,7 +338,7 @@ func (st *effectState) lowerOne(n *ir.NodeInst, o *ir.Owner, frames []effectFram
 		return nil
 	}
 	if key != nil {
-		fx.cell = cellOfKey(key)
+		fx.cell = cellOfKey(key, frames)
 	}
 	if err := st.lowerChanges(n, o, fx, key); err != nil {
 		return err
@@ -343,9 +347,6 @@ func (st *effectState) lowerOne(n *ir.NodeInst, o *ir.Owner, frames []effectFram
 		st.addVar(o, fx.keyVar)
 	}
 	if fx.update != nil {
-		if err := st.reportable(n, frames); err != nil {
-			return err
-		}
 		fx.key, fx.frames = key, frames
 		fx.dirty = &ir.Var{
 			Name:        prefix + "_dirty",
@@ -354,6 +355,10 @@ func (st *effectState) lowerOne(n *ir.NodeInst, o *ir.Owner, frames []effectFram
 			Synthesized: true,
 		}
 		st.addVar(o, fx.dirty)
+		if fx.cell != nil && fx.cell.loop != nil {
+			fx.dirtyAt = &ir.Var{Name: prefix + "_dirtyAt", Type: ir.ListOf(ir.TypInt), Init: &ir.ListLit{Type: ir.ListOf(ir.TypInt)}, Synthesized: true}
+			st.addVar(o, fx.dirtyAt)
+		}
 		if fx.cell != nil {
 			st.cellBy[fx.cell.root] = append(st.cellBy[fx.cell.root], fx)
 		} else {
@@ -695,25 +700,6 @@ func (st *effectState) emptyLoopBlock(name string, loop *ir.For, leaf []ir.Stmt)
 	}
 }
 
-// reportable refuses an `@update` under a `for`, which the settle has no way to
-// report per copy yet: a flag per bracket says that some copy's key was
-// written, not which, and the interpreter reports to each copy whose key it
-// was. An `else` is one position, and so is every `if`.
-func (st *effectState) reportable(n *ir.NodeInst, frames []effectFrame) error {
-	for _, f := range frames {
-		if f.loop != nil && !f.loopElse {
-			pos := nodePos(n)
-			for _, h := range n.Handlers {
-				if h.Name == ir.EffectUpdate && h.AST != nil {
-					pos = h.AST.Pos.String()
-				}
-			}
-			return fmt.Errorf("%s: an effect's @update under a `for` is not implemented on a compiled target yet; `sngl test` runs it on the interpreter", pos)
-		}
-	}
-	return nil
-}
-
 // reportBlock is what a settle pass runs for one bracket's `@update` before any
 // lifetime moves: the handler, once, if a write has reached the key since the
 // last pass and the position still describes the bracket.
@@ -723,6 +709,9 @@ func (st *effectState) reportable(n *ir.NodeInst, frames []effectFrame) error {
 //	    <the if chain> { __effectN_key = <on>; __effectN_update() }
 //	}
 func (st *effectState) reportBlock(prefix string, fx *loweredEffect) []ir.Stmt {
+	if fx.dirtyAt != nil {
+		return st.copyReportBlock(prefix, fx)
+	}
 	var out []ir.Stmt
 	if fx.kinds != nil {
 		out = st.drainBlock(fx)

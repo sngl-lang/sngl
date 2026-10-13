@@ -2398,6 +2398,29 @@ func (env *Env) writeBackList(target ir.Expr, newList []any, kind writeKind, ind
 		if st, ok := obj.(*Struct); ok {
 			st.Set(t.Field, newList)
 		}
+	case *ir.Index:
+		// A list held in an element or an entry: `xs[0].push(5)`. The holder
+		// is shared, as a struct is, so writing its slot is the write.
+		obj, err := env.Eval(t.Operand)
+		if err != nil {
+			return nil, err
+		}
+		idx, err := env.Eval(t.Idx)
+		if err != nil {
+			return nil, err
+		}
+		switch o := obj.(type) {
+		case []any:
+			i := ToInt(idx)
+			if i < 0 || i >= len(o) {
+				return nil, fmt.Errorf("index %d out of range [0:%d]", i, len(o))
+			}
+			o[i] = newList
+		case map[string]any:
+			o[fmt.Sprintf("%v", idx)] = newList
+		default:
+			return nil, fmt.Errorf("testrunner.writeBackList: cannot index %T", obj)
+		}
 	default:
 		return nil, fmt.Errorf("testrunner.writeBackList: unhandled target ir.Expr %T", target)
 	}

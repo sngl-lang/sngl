@@ -447,6 +447,11 @@ func (kc *KtIRContext) isStateStructField(sel *ir.Select) bool {
 		}
 		e = s.Operand
 	}
+	// An element of a state list is a root too: the list is a
+	// SnapshotStateList, whose `set` is the write the snapshot sees.
+	if idx, ok := e.(*ir.Index); ok && !isMapExpr(idx.Operand) {
+		return kc.isStateList(idx.Operand)
+	}
 	id, ok := e.(*ir.Ident)
 	if !ok || kc.Ctx == nil {
 		return false

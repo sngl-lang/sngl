@@ -1,6 +1,10 @@
 package ir
 
-import "slices"
+import (
+	"slices"
+
+	"duckfam.us/sngl/ast"
+)
 
 // Events is the events n's component declares, each parameter typed by what
 // n's call site bound the component's type parameters to: an effect keyed on a
@@ -76,11 +80,16 @@ func EffectEventRefusal(event string, key Expr) string {
 		if key == nil {
 			return "reports a write to what `on` reads, and this effect has no `on`"
 		}
+		if name := copiedLoopVar(key); name != "" {
+			return copiedLoopVarRefusal(name)
+		}
 		return ""
 	case slices.Contains(EffectDeltas, event):
 		switch {
 		case key == nil:
 			return "reports a change to the list `on` holds, and this effect has no `on`"
+		case copiedLoopVar(key) != "":
+			return copiedLoopVarRefusal(copiedLoopVar(key))
 		case key.ExprType() == nil || key.ExprType().Kind != TypeList:
 			return "reports a change to a list, and `on` is " + key.ExprType().String() + "; handle @update to react to a write"
 		case !IsCellPath(key):
@@ -90,15 +99,40 @@ func EffectEventRefusal(event string, key Expr) string {
 	return ""
 }
 
+// copiedLoopVar is the first loop variable key reads that the loop bound by
+// copy, or "". Nothing writes one -- a loop's variables are read-only unless
+// bound with `&` -- so a report of writes to it would never run.
+func copiedLoopVar(key Expr) string {
+	name := ""
+	_ = WalkExprs(key, func(e Expr) error {
+		if id, ok := e.(*Ident); ok && name == "" {
+			if lv, ok := id.Sym.(*LoopVar); ok && (lv.Type == nil || lv.Type.Kind != TypeRef) {
+				name = id.Name
+			}
+		}
+		return nil
+	})
+	return name
+}
+
+func copiedLoopVarRefusal(name string) string {
+	return "reports a write to what `on` reads, and `on` reads the loop variable \"" + name + "\", a copy nothing writes; bind the element with `for var &" + name + "` to report writes to it"
+}
+
 // IsCellPath is whether e names storage a write lands in -- a var, a prop or a
-// parameter, or a field of one -- rather than a value computed from it.
+// parameter, a list element a loop bound with `&`, or a field of one -- rather
+// than a value computed from it.
 func IsCellPath(e Expr) bool {
 	switch x := e.(type) {
 	case *Ident:
-		switch x.Sym.(type) {
+		switch s := x.Sym.(type) {
 		case *Var, *Param:
 			return true
+		case *LoopVar:
+			return s.Type != nil && s.Type.Kind == TypeRef
 		}
+	case *Unary:
+		return x.Op == ast.UnaryDeref && IsCellPath(x.Operand)
 	case *Select:
 		if t := x.Operand.ExprType(); t == nil || t.Kind != TypeStruct {
 			return false

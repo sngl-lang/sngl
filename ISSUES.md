@@ -28,9 +28,10 @@ reports.
   every compiled target, android included, where DisposableEffect keeps
   `@mount`/`@unmount` (`testdata/effect_update.txtar`,
   `testdata/effect_changes.txtar`, `cmd/sngl/testdata/effect_update_runs.txt`,
-  `cmd/sngl/testdata/effect_changes_runs.txt`); refused, with a position, is
-  either under a `for` (`cmd/sngl/testdata/effect_update_refused.txt`). Left:
-  that, then rewrite the three pages and remove `var … @change`.
+  `cmd/sngl/testdata/effect_changes_runs.txt`). Under a loop, an element bound
+  with `&` is a cell per copy (`testdata/effect_per_copy.txtar`); one bound by
+  copy is refused as a key, since nothing writes it. Left: rewrite the three
+  pages and remove `var … @change`.
 - **Clone URL.** `installation.md` says
   `git clone https://github.com/sngl-lang/sngl.git`, but the module is
   `duckfam.us/sngl` and origin is `git.duckfam.us`. Which is canonical?

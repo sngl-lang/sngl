@@ -96,6 +96,9 @@ func reportsFor(e MountedEffect, w *watchState, writes []cellWrite) []changeRepo
 	unanswered := false
 	for _, wr := range writes {
 		if e.HasCell && wr.at.sameBinding(e.Cell) {
+			if shiftsNoCopy(wr, e.Cell.path) {
+				continue
+			}
 			r, answered := changeOf(e, wr)
 			if answered {
 				out = append(out, r)
@@ -151,6 +154,27 @@ func changeOf(e MountedEffect, wr cellWrite) (changeReport, bool) {
 	return r, e.Changes[r.event] != nil
 }
 
+// shiftsNoCopy is whether wr is a list's own mutation of a list holding the
+// watched cell at an element below it -- `xs.push(r)` for a key `&x` bound
+// over xs -- that leaves that element where it was. An insert or a removal at
+// j moves every element from j on, which then holds another value, so those
+// copies are written; one before j is untouched, and so is every copy by a
+// push, which only adds one.
+func shiftsNoCopy(wr cellWrite, watched []any) bool {
+	if wr.kind != writeInsert && wr.kind != writeRemove {
+		return false
+	}
+	n := len(wr.at.path)
+	if n >= len(watched) {
+		return false
+	}
+	if _, _, above, ok := relate(wr.at.path, watched); !ok || !above {
+		return false
+	}
+	i, isIndex := watched[n].(int)
+	return isIndex && i < wr.index
+}
+
 func related(a, b cell) bool {
 	_, _, _, ok := relate(a.path, b.path)
 	return ok
@@ -166,6 +190,13 @@ func (env *Env) readCells(e ir.Expr) (out []cell, untracked bool) {
 		}
 		owner := env.findVarOwner(id.Sym)
 		if owner == nil {
+			return nil
+		}
+		// A &-bound element is the list it was bound over, at its index.
+		if ref, isRef := owner.vals[id.Sym].(*listRef); isRef {
+			if at, ok := ref.cell(); ok {
+				out = append(out, at)
+			}
 			return nil
 		}
 		if _, isVar := id.Sym.(*ir.Var); !isVar {

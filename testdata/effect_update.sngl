@@ -283,6 +283,100 @@ func testFieldKey(t Test, c field) {
     t.assert(c.out.value == "1 insert 1 2,set 0 7,update")
 }
 
+struct Row {
+    items list<int> = []
+    n     int = 0
+}
+
+// Under a loop, an element the loop binds with `&` is a cell, and each copy
+// reports the writes that reached its own: a list mutation of what the loop
+// walks reaches the copies it moved, a push none.
+component rows node {
+    var (
+        xs list<Row> = [Row{items=[1]}, Row{items=[2]}]
+        log list<string> = []
+    )
+
+    vbox {
+        for var &x = xs {
+            effect(
+                on = x.items,
+                @update(v) {
+                    log.push("update {v.length()}")
+                },
+                @insert(at, item) {
+                    log.push("insert {at} {item}")
+                },
+            )
+        }
+    }
+
+    func grow() {
+        xs[1].items.push(5)
+    }
+
+    func same() {
+        xs[1].items = [2]
+    }
+
+    func sibling() {
+        xs[0].n = 3
+    }
+
+    func append() {
+        xs.push(Row{})
+    }
+
+    func insertFirst() {
+        xs.insert(0, Row{items=[9, 9]})
+    }
+
+    func dropFirst() {
+        xs.remove(0)
+    }
+
+    func swapAll() {
+        xs = [Row{items=[7]}]
+    }
+
+    text #out(value=log.join(","))
+}
+
+func testPerCopyChange(t Test, c rows) {
+    c.grow()
+    t.assert(c.out.value == "insert 1 5")
+}
+
+func testPerCopyEqualWrite(t Test, c rows) {
+    c.same()
+    t.assert(c.out.value == "update 1")
+}
+
+func testPerCopySibling(t Test, c rows) {
+    c.sibling()
+    t.assert(c.out.value == "")
+}
+
+func testPerCopyPush(t Test, c rows) {
+    c.append()
+    t.assert(c.out.value == "")
+}
+
+func testPerCopyInsertShifts(t Test, c rows) {
+    c.insertFirst()
+    t.assert(c.out.value == "update 2,update 1")
+}
+
+func testPerCopyRemoveShifts(t Test, c rows) {
+    c.dropFirst()
+    t.assert(c.out.value == "update 1")
+}
+
+func testPerCopyReplace(t Test, c rows) {
+    c.swapAll()
+    t.assert(c.out.value == "update 1")
+}
+
 window {
     saver
     changes
@@ -290,4 +384,5 @@ window {
     scalar
     computed
     field
+    rows
 }

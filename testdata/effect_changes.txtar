@@ -1574,7 +1574,7 @@ fun MainScreen() {
     fun toggle__inst0(i: Int) {
         for ((k, _) in todos__inst0.withIndex()) {
         	if ((k == i)) {
-        		todos__inst0[k].done = !todos__inst0[k].done
+        		todos__inst0[k] = todos__inst0[k].copy(done = !todos__inst0[k].done)
         		__effect0_note_set(k)
         	}
         }
@@ -1913,6 +1913,6 @@ pass sha256:ae3a6e0d1b90fad975fe80d48ffb1dd4
 -- run/go/gtk4 --
 pass sha256:c5d9daeb560df5a7c8210eae85affe85
 -- run/kotlin/android --
-pass sha256:dbbd78fe5fe3bc8e2cf17b1a1a96aff9
+pass sha256:4235a22f594a7e427b604999a184bd1b
 -- run/none/html --
 pass sha256:3ea5352d2692327874fbaa65efba0989

@@ -38,25 +38,61 @@ var changeKinds = map[string]int{
 	ir.EffectClear:  changeClear,
 }
 
-// effectCell is the cell a key names: a var and the fields below it.
+// effectCell is the cell a key names: a var and the steps below it, each a
+// field or -- once -- the element an enclosing loop's index names, which is
+// what `for var i, &x = xs` keyed `on = x` becomes once passRefLoop has made
+// the element `xs[i]`.
 type effectCell struct {
-	root   *ir.Var
-	fields []string
+	root  *ir.Var
+	steps []cellStep
+	// loop is the index the loop step reads, nil for a cell outside a loop.
+	// Every copy the loop makes is a cell of its own, and a write names the
+	// one it reached by the index it wrote at.
+	loop *ir.LoopVar
+	// iterable is the list the loop step indexes -- the key up to that step.
+	iterable ir.Expr
+}
+
+type cellStep struct {
+	field string
+	loop  *ir.LoopVar
 }
 
 // cellOfKey is the cell `on` names, or nil where it names none -- a computed
 // key, or a prop the inliner left standing, which is written by whoever bound
-// it and so at no write site this program shows.
-func cellOfKey(key ir.Expr) *effectCell {
-	var fields []string
+// it and so at no write site this program shows. frames are the enclosing
+// position, whose loops' indices may step into a list.
+func cellOfKey(key ir.Expr, frames []effectFrame) *effectCell {
+	loopIndex := func(e ir.Expr) *ir.LoopVar {
+		id, isIdent := e.(*ir.Ident)
+		if !isIdent {
+			return nil
+		}
+		for _, f := range frames {
+			if f.loop != nil && !f.loopElse && f.loop.KeySym != nil && ir.Symbol(f.loop.KeySym) == id.Sym {
+				return f.loop.KeySym
+			}
+		}
+		return nil
+	}
+	c := &effectCell{}
 	for {
 		switch n := key.(type) {
 		case *ir.Select:
-			fields = append([]string{n.Field}, fields...)
+			c.steps = append([]cellStep{{field: n.Field}}, c.steps...)
+			key = n.Operand
+		case *ir.Index:
+			lv := loopIndex(n.Idx)
+			if lv == nil || c.loop != nil {
+				return nil
+			}
+			c.loop, c.iterable = lv, n.Operand
+			c.steps = append([]cellStep{{loop: lv}}, c.steps...)
 			key = n.Operand
 		case *ir.Ident:
 			if v, isVar := n.Sym.(*ir.Var); isVar {
-				return &effectCell{root: v, fields: fields}
+				c.root = v
+				return c
 			}
 			return nil
 		default:
@@ -116,24 +152,34 @@ const (
 	relElem
 )
 
-// relate is how steps, below the cell's var, stand to the cell's fields, and
-// for relElem the slot holding the element's index.
-func (c *effectCell) relate(steps []pathStep) (relation, *ir.Expr) {
-	for i, f := range c.fields {
+// relate is how steps, below the cell's var, stand to the cell's own, and for
+// relElem the slot holding the element's index. copy is the slot holding the
+// index the write took at the cell's loop step, which says which copy's cell
+// it reached; atIterable says a write above the cell landed on the list that
+// step indexes.
+func (c *effectCell) relate(steps []pathStep) (rel relation, idx, copy *ir.Expr, atIterable bool) {
+	for i, cs := range c.steps {
 		if i == len(steps) {
-			return relAbove, nil
+			return relAbove, nil, nil, cs.loop != nil
 		}
-		if steps[i].idx != nil || steps[i].field != f {
-			return relApart, nil
+		if cs.loop != nil {
+			if steps[i].idx == nil {
+				return relApart, nil, nil, false
+			}
+			copy = steps[i].idx
+			continue
+		}
+		if steps[i].idx != nil || steps[i].field != cs.field {
+			return relApart, nil, nil, false
 		}
 	}
-	if len(steps) == len(c.fields) {
-		return relAt, nil
+	if len(steps) == len(c.steps) {
+		return relAt, nil, copy, false
 	}
-	if s := steps[len(c.fields)]; s.idx != nil {
-		return relElem, s.idx
+	if s := steps[len(c.steps)]; s.idx != nil {
+		return relElem, s.idx, copy, false
 	}
-	return relAbove, nil
+	return relAbove, nil, copy, false
 }
 
 // notesFor is what one statement owes the cell-keyed brackets: the statements
@@ -170,7 +216,34 @@ func (st *effectState) notesFor(s ir.Stmt) (before, after []ir.Stmt, dirty []*lo
 		return nil, nil, dirty
 	}
 	for _, fx := range st.cellBy[root] {
-		rel, idx := fx.cell.relate(steps)
+		rel, idx, copySlot, atIterable := fx.cell.relate(steps)
+		perCopy := fx.cell.loop != nil
+		if perCopy && rel == relAbove {
+			// A list's own mutation of the list the loop walks moves the
+			// elements from where it inserts or removes, so those copies'
+			// cells hold another value; a push only adds a copy, which is
+			// reported nothing, and a clear leaves none. Anything else above
+			// the cell writes every copy.
+			if atIterable {
+				switch method {
+				case "list.push", "list.clear":
+					continue
+				case "list.insert", "list.remove":
+					call := s.(*ir.CallStmt).Call
+					before = append(before, st.callNote(fx, "shift", st.siteIndex(&call.Args[1].Value, &before)))
+					continue
+				}
+			}
+			dirty = append(dirty, fx)
+			continue
+		}
+		var copyArg []ir.Expr
+		if perCopy && rel != relApart {
+			copyArg = []ir.Expr{st.siteIndex(copySlot, &before)}
+		}
+		note := func(which string, args ...ir.Expr) ir.Stmt {
+			return st.callNote(fx, which, append(slices.Clone(copyArg), args...)...)
+		}
 		kind := ""
 		switch {
 		case rel == relApart:
@@ -188,26 +261,31 @@ func (st *effectState) notesFor(s ir.Stmt) (before, after []ir.Stmt, dirty []*lo
 			}
 		}
 		if kind == "" || fx.changes[kind] == nil {
+			if perCopy {
+				// Owed to the one copy the write reached.
+				after = append(after, note("mark"))
+				continue
+			}
 			dirty = append(dirty, fx)
 			continue
 		}
 		switch kind {
 		case ir.EffectSet:
-			after = append(after, st.callNote(fx, "set", st.siteIndex(idx, &before)))
+			after = append(after, note("set", st.siteIndex(idx, &before)))
 		case ir.EffectClear:
-			after = append(after, st.callNote(fx, "clear"))
+			after = append(after, note("clear"))
 		case ir.EffectRemove:
 			call := s.(*ir.CallStmt).Call
-			before = append(before, st.callNote(fx, "remove", st.siteIndex(&call.Args[1].Value, &before)))
+			before = append(before, note("remove", st.siteIndex(&call.Args[1].Value, &before)))
 		case ir.EffectInsert:
 			if method == "list.push" {
-				after = append(after, st.callNote(fx, "append"))
+				after = append(after, note("append"))
 				continue
 			}
 			call := s.(*ir.CallStmt).Call
 			at := st.siteIndex(&call.Args[1].Value, &before)
-			before = append(before, st.callNote(fx, "length"))
-			after = append(after, st.callNote(fx, "insert", at))
+			before = append(before, note("length"))
+			after = append(after, note("insert", at))
 		}
 	}
 	return before, after, dirty
@@ -260,14 +338,34 @@ func (st *effectState) noteFunc(fx *loweredEffect, which string) *ir.Func {
 	if fn := fx.notes[which]; fn != nil {
 		return fn
 	}
-	cell := func() ir.Expr { return deepCloneExpr(fx.key) }
-	length := func() ir.Expr { return callListLength(cell()) }
 	var params []*ir.Param
+	param := func(name string) func() ir.Expr {
+		p := &ir.Param{Name: name, Type: ir.TypInt}
+		params = append(params, p)
+		return func() ir.Expr { return &ir.Ident{Name: p.Name, Type: ir.TypInt, Sym: p, Synthesized: true} }
+	}
+	// A copy's cell is the key with the loop's index read from the note's
+	// `copy`, since the note runs outside the loop.
+	var copyRef func() ir.Expr
+	cell := func() ir.Expr { return deepCloneExpr(fx.key) }
+	if loop := fx.cell.loop; loop != nil && which != "shift" {
+		copyRef = param("copy")
+		cell = func() ir.Expr {
+			return newExprWalker(func(e ir.Expr) ir.Expr {
+				if id, isIdent := e.(*ir.Ident); isIdent && id.Sym == ir.Symbol(loop) {
+					return copyRef()
+				}
+				return e
+			}).expr(deepCloneExpr(fx.key))
+		}
+	}
+	length := func() ir.Expr { return callListLength(cell()) }
 	var at func() ir.Expr
-	if which == "set" || which == "insert" || which == "remove" {
-		p := &ir.Param{Name: "at", Type: ir.TypInt}
-		params = []*ir.Param{p}
-		at = func() ir.Expr { return &ir.Ident{Name: p.Name, Type: ir.TypInt, Sym: p, Synthesized: true} }
+	switch which {
+	case "set", "insert", "remove":
+		at = param("at")
+	case "shift":
+		at = param("from")
 	}
 	last := func() ir.Expr {
 		return &ir.Binary{Type: ir.TypInt, Op: ast.BinSub, Left: length(), Right: intLiteralLit(1)}
@@ -276,14 +374,36 @@ func (st *effectState) noteFunc(fx *loweredEffect, which string) *ir.Func {
 		return copiedValue(func() ir.Expr { return &ir.Index{Type: fx.itemVar.Type, Operand: cell(), Idx: i} }, fx.itemVar.Type)
 	}
 	record := func(kind int, i, item ir.Expr) []ir.Stmt {
-		return []ir.Stmt{
+		out := []ir.Stmt{
 			callListPush(st.varIdent(fx.kinds), intLiteralLit(kind), ir.TypInt),
 			callListPush(st.varIdent(fx.ats), i, ir.TypInt),
 			callListPush(st.varIdent(fx.items), item, fx.itemVar.Type),
 		}
+		if copyRef != nil {
+			out = append(out, callListPush(st.varIdent(fx.copies), copyRef(), ir.TypInt))
+		}
+		return out
 	}
 	var block []ir.Stmt
 	switch which {
+	case "mark":
+		block = []ir.Stmt{callListPush(st.varIdent(fx.dirtyAt), copyRef(), ir.TypInt)}
+	case "shift":
+		// Every copy from `from` on holds another element after the write.
+		pos := &ir.LoopVar{Name: fx.prefix + "_sp", Type: ir.TypInt}
+		posRef := func() ir.Expr { return &ir.Ident{Name: pos.Name, Type: ir.TypInt, Sym: pos, Synthesized: true} }
+		elemT := listElem(fx.cell.iterable)
+		block = []ir.Stmt{&ir.For{
+			Key:      pos.Name,
+			KeySym:   pos,
+			Value:    "_",
+			Iter:     deepCloneExpr(fx.cell.iterable),
+			ElemType: elemT,
+			Body: []ir.Stmt{&ir.If{
+				Cond: &ir.Binary{Type: ir.TypBool, Op: ast.BinGte, Left: posRef(), Right: at()},
+				Body: []ir.Stmt{callListPush(st.varIdent(fx.dirtyAt), posRef(), ir.TypInt)},
+			}},
+		}}
 	case "set":
 		block = record(changeSet, at(), elem(at()))
 	case "append":
@@ -342,6 +462,13 @@ func (st *effectState) noteFunc(fx *loweredEffect, which string) *ir.Func {
 // Nothing a handler runs can extend it -- no handler may write what `on`
 // reads -- and one writing another bracket's key extends that bracket's.
 func (st *effectState) drainBlock(fx *loweredEffect) []ir.Stmt {
+	return append(st.positionBlock(fx.prefix, fx.frames, []ir.Stmt{st.drainLoop(fx)}), st.clearQueue(fx)...)
+}
+
+// drainLoop runs the queue's records for the bracket the position describes
+// where it stands -- under a loop stepping into the key, the one copy that
+// loop's index names.
+func (st *effectState) drainLoop(fx *loweredEffect) ir.Stmt {
 	idx := &ir.LoopVar{Name: fx.prefix + "_ci", Type: ir.TypInt}
 	kind := &ir.LoopVar{Name: fx.prefix + "_ck", Type: ir.TypInt}
 	idxRef := func() ir.Expr { return &ir.Ident{Name: idx.Name, Type: ir.TypInt, Sym: idx, Synthesized: true} }
@@ -364,6 +491,18 @@ func (st *effectState) drainBlock(fx *loweredEffect) []ir.Stmt {
 		&ir.Assign{Target: st.varIdent(fx.itemVar), Op: ast.AssignSet, Value: &ir.Index{Type: fx.itemVar.Type, Operand: st.varIdent(fx.items), Idx: idxRef()}},
 	}
 	body = append(body, dispatch...)
+	if fx.copies != nil {
+		// Only this copy's records: the loop the position rebuilds binds the
+		// index the key steps through.
+		body = []ir.Stmt{&ir.If{
+			Cond: &ir.Binary{
+				Type: ir.TypBool, Op: ast.BinEq,
+				Left:  &ir.Index{Type: ir.TypInt, Operand: st.varIdent(fx.copies), Idx: idxRef()},
+				Right: &ir.Ident{Name: fx.cell.loop.Name, Type: ir.TypInt, Sym: fx.cell.loop, Synthesized: true},
+			},
+			Body: body,
+		}}
+	}
 	loop := &ir.For{
 		Key:      idx.Name,
 		KeySym:   idx,
@@ -373,11 +512,67 @@ func (st *effectState) drainBlock(fx *loweredEffect) []ir.Stmt {
 		ElemType: ir.TypInt,
 		Body:     body,
 	}
-	out := st.positionBlock(fx.prefix, fx.frames, []ir.Stmt{loop})
-	for _, q := range []*ir.Var{fx.kinds, fx.ats, fx.items} {
-		out = append(out, &ir.Assign{Target: st.varIdent(q), Op: ast.AssignSet, Value: &ir.ListLit{Type: q.Type}})
+	return loop
+}
+
+// clearQueue empties a bracket's queue.
+func (st *effectState) clearQueue(fx *loweredEffect) []ir.Stmt {
+	var out []ir.Stmt
+	for _, q := range []*ir.Var{fx.kinds, fx.ats, fx.items, fx.copies} {
+		if q != nil {
+			out = append(out, &ir.Assign{Target: st.varIdent(q), Op: ast.AssignSet, Value: &ir.ListLit{Type: q.Type}})
+		}
 	}
 	return out
+}
+
+// copyReportBlock is reportBlock for a bracket under a loop that steps into
+// its key, where each copy is a cell of its own: in the position the loop
+// rebuilds, a copy runs the records of the writes that reached it, then its
+// `@update` if one was owed to it or to every copy.
+//
+//	<the position> {
+//	    <this copy's records>
+//	    __effectN_hit := __effectN_dirty
+//	    for _, __p = __effectN_dirtyAt { if __p == <index> { __effectN_hit = true } }
+//	    if __effectN_hit { __effectN_key = <on>; __effectN_update() }
+//	}
+//	__effectN_dirty = false; __effectN_dirtyAt = []; <the queue emptied>
+func (st *effectState) copyReportBlock(prefix string, fx *loweredEffect) []ir.Stmt {
+	var leaf []ir.Stmt
+	if fx.kinds != nil {
+		leaf = append(leaf, st.drainLoop(fx))
+	}
+	hit := &ir.Var{Name: fx.prefix + "_hit", Type: ir.TypBool, Synthesized: true}
+	hitRef := func() ir.Expr { return &ir.Ident{Name: hit.Name, Type: ir.TypBool, Sym: hit} }
+	p := &ir.LoopVar{Name: fx.prefix + "_p", Type: ir.TypInt}
+	index := func() ir.Expr {
+		return &ir.Ident{Name: fx.cell.loop.Name, Type: ir.TypInt, Sym: fx.cell.loop, Synthesized: true}
+	}
+	run := []ir.Stmt{
+		&ir.Assign{Target: st.varIdent(fx.keyVar), Op: ast.AssignSet, Value: deepCloneExpr(fx.key)},
+	}
+	run = append(run, callHandler(fx.update)...)
+	leaf = append(leaf,
+		&ir.LocalVar{Name: hit.Name, Type: ir.TypBool, Sym: hit, Init: st.varIdent(fx.dirty)},
+		&ir.For{
+			Key:      p.Name,
+			KeySym:   p,
+			Iter:     st.varIdent(fx.dirtyAt),
+			ElemType: ir.TypInt,
+			Body: []ir.Stmt{&ir.If{
+				Cond: &ir.Binary{Type: ir.TypBool, Op: ast.BinEq, Left: &ir.Ident{Name: p.Name, Type: ir.TypInt, Sym: p, Synthesized: true}, Right: index()},
+				Body: []ir.Stmt{&ir.Assign{Target: hitRef(), Op: ast.AssignSet, Value: &ir.Literal{Type: ir.TypBool, Value: "true"}}},
+			}},
+		},
+		&ir.If{Cond: hitRef(), Body: run},
+	)
+	out := st.positionBlock(prefix, fx.frames, leaf)
+	out = append(out,
+		st.setFlag(fx.dirty, false),
+		&ir.Assign{Target: st.varIdent(fx.dirtyAt), Op: ast.AssignSet, Value: &ir.ListLit{Type: fx.dirtyAt.Type}},
+	)
+	return append(out, st.clearQueue(fx)...)
 }
 
 // lowerChanges lifts a bracket's list change handlers and gives it the queue
@@ -414,6 +609,9 @@ func (st *effectState) lowerChanges(n *ir.NodeInst, o *ir.Owner, fx *loweredEffe
 	fx.kinds = newVar("_kinds", ir.ListOf(ir.TypInt), &ir.ListLit{Type: ir.ListOf(ir.TypInt)})
 	fx.ats = newVar("_ats", ir.ListOf(ir.TypInt), &ir.ListLit{Type: ir.ListOf(ir.TypInt)})
 	fx.items = newVar("_items", ir.ListOf(elem), &ir.ListLit{Type: ir.ListOf(elem)})
+	if fx.cell.loop != nil {
+		fx.copies = newVar("_copies", ir.ListOf(ir.TypInt), &ir.ListLit{Type: ir.ListOf(ir.TypInt)})
+	}
 	fx.changes = map[string]*ir.Func{}
 	for _, h := range handlers {
 		subst := map[ir.Symbol]*ir.Var{}

@@ -187,7 +187,7 @@ sha256:3c729f0e9de57c695ba74c154e6e4fa9
   ]
 }
 -- testrun/android/kotlin/app.sngl/saver/1 --
-sha256:f21c2f9905db6c0ef59c22a58058936b
+sha256:f38230553b60e47e357b94ac4e6d6d76
 {
   "results": [
     {
