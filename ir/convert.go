@@ -957,6 +957,27 @@ func (c *converter) convertCallExpr(call *Call) *ast.CallExpr {
 			funcExpr = c.convertExpr(call.Receiver)
 		}
 	} else if call.Func != nil {
+		if call.ReceiverArg && len(call.Args) > 0 {
+			// The receiver is no parameter, so it goes before the dot.
+			recv := c.convertExpr(call.Args[0].Value)
+			// A brace may not open an `if` or `for` head, so a literal
+			// before the dot is parenthesized wherever it stands.
+			switch r := recv.(type) {
+			case *ast.MapLit:
+				recv = &ast.ParenExpr{Inner: r}
+			case *ast.StructExpr:
+				if r.Name == "" {
+					recv = &ast.ParenExpr{Inner: r}
+				}
+			}
+			return &ast.CallExpr{
+				Func: c.typeArgCallee(&ast.SelectExpr{
+					Operand: recv,
+					Field:   call.Func.Name,
+				}, call),
+				Args: c.convertCallArgList(call.Args[1:]),
+			}
+		}
 		if call.Func.IsMethod() {
 			// Type-attached method: render as Type.method(args). After checker
 			// normalization Args[0] is the receiver value; both "x.method(...)"
@@ -981,13 +1002,18 @@ func (c *converter) convertCallExpr(call *Call) *ast.CallExpr {
 	} else {
 		funcExpr = &ast.IdentExpr{Name: "_"}
 	}
-	if written := c.typeArgExprs(call.TypeArgs); len(written) > 0 {
-		funcExpr = &ast.IndexExpr{Operand: funcExpr, Indices: written}
-	}
 	return &ast.CallExpr{
-		Func: funcExpr,
+		Func: c.typeArgCallee(funcExpr, call),
 		Args: c.convertCallArgList(call.Args),
 	}
+}
+
+// typeArgCallee is callee with the type arguments call was written with.
+func (c *converter) typeArgCallee(callee ast.Expr, call *Call) ast.Expr {
+	if written := c.typeArgExprs(call.TypeArgs); len(written) > 0 {
+		return &ast.IndexExpr{Operand: callee, Indices: written}
+	}
+	return callee
 }
 
 // typeArgExprs spells the type arguments a call site wrote as the

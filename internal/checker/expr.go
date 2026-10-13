@@ -1529,6 +1529,7 @@ func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) ir.Ex
 			}
 		}
 		var args []ir.CallArg
+		receiverArg := false
 		if isStatic {
 			// Static call: Type.method(args...) — all args explicit.
 			// Type ident is only a namespace marker; drop it.
@@ -1556,6 +1557,7 @@ func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) ir.Ex
 			// Prepend receiver so IR shape is consistent with static call convention.
 			rest := c.checkCallArgs(call.Args, sig)
 			args = append([]ir.CallArg{{Value: receiverExpr}}, rest...)
+			receiverArg = true
 		} else {
 			// The receiver-as-param form with no parameter the receiver fits:
 			// the method is static in its type's namespace (`S.helper(5)`),
@@ -1580,9 +1582,10 @@ func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) ir.Ex
 			}
 			rest := c.checkCallArgs(call.Args, sig)
 			args = append([]ir.CallArg{{Value: receiverExpr}}, rest...)
+			receiverArg = true
 		}
 		retType := callRetType(sig)
-		return &ir.Call{AST: call, Type: retType, Func: fn, Args: args}
+		return &ir.Call{AST: call, Type: retType, Func: fn, Args: args, ReceiverArg: receiverArg}
 	}
 
 	// Struct field funcvar call: h.run() where h is a struct and run is a

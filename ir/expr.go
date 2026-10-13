@@ -77,6 +77,12 @@ type Call struct {
 	Callee   Expr      // callee expression when Func is nil (e.g. func-typed var)
 	Receiver Expr      // non-nil only for namespace/component/element-ref calls
 	Args     []CallArg // resolved arguments (for type-methods, Args[0] is the receiver)
+	// ReceiverArg says Args[0] is the value the method was called on, which
+	// its parameters do not list: a method whose receiver is implicit, as a
+	// `sngl:` one's and one on a generic type's are. ir.Convert prints such a
+	// call in the form it was written, `xs.map(f)`, since `list.map(xs, f)`
+	// would hand xs to the first parameter.
+	ReceiverArg bool `json:",omitempty"`
 	// TypeArgs are the type arguments the call site wrote, `first[int](xs)`.
 	// What they bind is already in Type and the arguments' types; they are
 	// kept so the call prints back as written.

@@ -11,8 +11,8 @@
 # themselves, under the canvas the flattening left behind.
 sngl dump --stage lowered --lang go --platform gtk4 app.sngl
 stdout 'lower.CreateNode\("canvas"\)'
-stdout 'CairoContext.save'
-stdout 'CairoContext.rectangle'
+stdout 'ctx\.save\(\)'
+stdout 'ctx\.rectangle\('
 
 -- app.sngl --
 import . "sngl:ui"
