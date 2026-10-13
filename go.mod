@@ -166,4 +166,4 @@ tool (
 	modernc.org/egg
 )
 
-replace modernc.org/egg => gitlab.com/duckbrain/egg v1.4.2-0.20261013214027-0c5544ec9df2
+replace modernc.org/egg => gitlab.com/duckbrain/egg v1.4.2-0.20261013225253-e774f1de7b2e
