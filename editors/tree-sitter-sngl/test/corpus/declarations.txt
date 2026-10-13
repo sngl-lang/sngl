@@ -396,3 +396,20 @@ func list[T].second[html.platform]() {
       (identifier)
       (identifier))
     (statement_block)))
+
+================
+A context states its type in brackets
+================
+
+context[option[User]] #who(null)
+
+---
+
+(source_file
+  (visual_node
+    (identifier)
+    (index_expression
+      (identifier)
+      (identifier))
+    (element_ref)
+    (null)))

@@ -1,0 +1,20 @@
+import . "sngl:ui"
+
+// A name inside a call site's type arguments hovers as the type it names.
+// HOVER(@17:27) "struct User"
+// HOVER(@18:20) "struct User"
+// A user account.
+struct User {
+    name string
+}
+
+func empty[T any]() list[T] {
+    var out list[T] = []
+    return out
+}
+
+component main node {
+    var xs = empty[option[User]]()
+    var ys = empty[User]()
+    text(value="{xs.length} {ys.length}")
+}

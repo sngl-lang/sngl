@@ -432,6 +432,8 @@ module.exports = grammar({
       prec.right(
         seq(
           field("component", choice($.qualified_name, $.identifier)),
+          // A component's type arguments, `context[option[User]] #who(null)`.
+          optional(seq("[", field("type_argument", $._expression), repeat(seq(",", field("type_argument", $._expression))), "]")),
           optional(field("element_id", $.element_ref)),
           optional(seq("(", optional($._arg_list), ")")),
           optional($.statement_block),
@@ -603,7 +605,10 @@ module.exports = grammar({
         seq(
           field("operand", $._expression),
           "[",
+          // An index, or a generic declaration's type arguments,
+          // `first[int]`, `pair[int, string]`: the compiler decides which.
           field("index", $._expression),
+          repeat(seq(",", field("index", $._expression))),
           "]",
         ),
       ),
@@ -613,6 +618,7 @@ module.exports = grammar({
     struct_literal: ($) =>
       seq(
         field("name", choice($.qualified_name, $.identifier)),
+        optional(seq("[", field("type_argument", $._expression), repeat(seq(",", field("type_argument", $._expression))), "]")),
         "{",
         commaSep(choice($.anon_struct_field, $.spread_expression)),
         optional(","),

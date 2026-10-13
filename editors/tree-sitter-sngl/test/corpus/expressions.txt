@@ -497,3 +497,44 @@ component App {
         (named_arg
           name: (identifier)
           value: (string_literal))))))
+
+================
+Type arguments at a call site
+================
+
+var xs = empty[int]()
+var p = pair[int, string](1, "s")
+var b = Box[int]{value = 3}
+
+---
+
+(source_file
+  (var_declaration
+    (var_spec
+      (identifier_list
+        (identifier))
+      (call_expression
+        (index_expression
+          (identifier)
+          (identifier)))))
+  (var_declaration
+    (var_spec
+      (identifier_list
+        (identifier))
+      (call_expression
+        (index_expression
+          (identifier)
+          (identifier)
+          (identifier))
+        (integer_literal)
+        (string_literal))))
+  (var_declaration
+    (var_spec
+      (identifier_list
+        (identifier))
+      (struct_literal
+        (identifier)
+        (identifier)
+        (anon_struct_field
+          (identifier)
+          (integer_literal))))))

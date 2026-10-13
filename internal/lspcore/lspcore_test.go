@@ -618,3 +618,26 @@ component main node {
 		t.Errorf("@mount offered on a list key, which does not compare: %v", detail)
 	}
 }
+
+// Inside the brackets after a name the names a type is spelled with are
+// offered, the document's own struct among them, and an index into a value
+// written inside a call's parens is still one.
+func TestComplete_TypeArgs(t *testing.T) {
+	src := "struct User {\n    name string\n}\n\ncomponent main node {\n    var xs = empty[option[Us\n}\n"
+	doc := &ast.Document{Stmts: []ast.Stmt{&ast.StructDef{Name: "User"}}}
+	items := lspcore.Complete(src, doc, 6, 29)
+	for _, want := range []string{"User", "int", "option"} {
+		found := false
+		for _, it := range items {
+			if it.Label == want {
+				found = true
+			}
+		}
+		if !found {
+			t.Errorf("expected %q among type-argument completions, got %v", want, items)
+		}
+	}
+	if ctx := lspcore.CompletionContext("    text(value=f(x[0], ", 1, 24); ctx != lspcore.CtxPropList {
+		t.Errorf("a closed index inside parens: context %v, want the prop list", ctx)
+	}
+}

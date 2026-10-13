@@ -49,6 +49,8 @@ func CompleteChecked(content string, doc *ast.Document, pkg *ir.Package, line, c
 		return OutputTargetCompletions(content, line)
 	case CtxImportPath:
 		return ImportPathCompletions(content, line)
+	case CtxTypeArgs:
+		return TypeArgCompletions(doc)
 	default:
 		return ExpressionCompletions(doc)
 	}
@@ -66,6 +68,7 @@ const (
 	CtxOutputOpts
 	CtxOutputTarget
 	CtxImportPath // inside the quotes of an import path
+	CtxTypeArgs   // inside the brackets after a name: `first[|]`
 )
 
 var outputShadowed = regexp.MustCompile(`(?m)^[ \t]*component[ \t]+output\b`)
@@ -110,6 +113,11 @@ func CompletionContext(content string, line, col int) CompletionCtx {
 	if strings.Contains(l, "style={") || strings.Contains(prefix, "style=") {
 		return CtxStyleProp
 	}
+	// Type arguments: the innermost thing open is a bracket written right
+	// after a name, `empty[opt|`, which holds types.
+	if inTypeArgs(prefix) {
+		return CtxTypeArgs
+	}
 	// Prop list: cursor is after an opening ( with no closing ) before it,
 	// and NOT on an output line
 	if strings.Contains(prefix, "(") && !strings.Contains(prefix, ")") {
@@ -128,6 +136,42 @@ func CompletionContext(content string, line, col int) CompletionCtx {
 		return CtxComponent
 	}
 	return CtxVisualNode
+}
+
+// inTypeArgs reports whether the innermost bracket open in prefix is one
+// written right after a name: a bracket there holds type arguments, or an
+// index, and both are offered the names a type is spelled with.
+func inTypeArgs(prefix string) bool {
+	depth := 0
+	for i := len(prefix) - 1; i >= 0; i-- {
+		switch prefix[i] {
+		case ']', ')', '}':
+			depth++
+		case '(', '{':
+			if depth == 0 {
+				return false
+			}
+			depth--
+		case '[':
+			if depth == 0 {
+				return i > 0 && isIdentChar(prefix[i-1])
+			}
+			depth--
+		}
+	}
+	return false
+}
+
+// TypeArgCompletions offers what a bracket after a name holds: the names a
+// type argument is written with -- the scalars and the generic builtins --
+// and, since the same bracket indexes a value, what an expression may name,
+// the document's structs and enums among it.
+func TypeArgCompletions(doc *ast.Document) []CompletionItem {
+	var items []CompletionItem
+	for _, name := range []string{"int", "float", "string", "bool", "list", "map", "option", "iter"} {
+		items = append(items, CompletionItem{Label: name, Kind: CIKStruct})
+	}
+	return append(items, ExpressionCompletions(doc)...)
 }
 
 func TopLevelKeywords() []CompletionItem {
