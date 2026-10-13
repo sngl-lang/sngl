@@ -1052,26 +1052,9 @@ func (b *builder) buildTargetSelect(it *nodeIter, head *ast.IdentExpr) ast.Expr 
 // token after the first name says which: a Type is a constraint, and a `dot`
 // or the closing bracket a target.
 func (b *builder) buildNameBracket(it nodeIter) (params []ast.TypeParam, target ast.Expr) {
-	// NameBracket = lbracket ident ( [ dot ident ] rbracket | TypeParamRest [ TargetIndex ] )
-	//             | lt TypeParam { comma TypeParam } gt [ TargetIndex ] .
+	// NameBracket = lbracket ident ( [ dot ident ] rbracket | TypeParamRest [ TargetIndex ] ) .
 	if it.done() || it.isNonTerminal() {
 		return nil, nil
-	}
-	if it.tokenType() == LT {
-		for !it.done() {
-			if it.isNonTerminal() {
-				switch it.symbol() {
-				case TypeParam:
-					params = append(params, b.buildTypeParam(it.enter()))
-					continue
-				case TargetIndex:
-					target = b.buildTargetIndex(it.enter())
-					continue
-				}
-			}
-			it.skip() // lt, comma, gt
-		}
-		return params, target
 	}
 	it.skip() // lbracket
 	if it.done() || it.isNonTerminal() || it.tokenType() != IDENT {
@@ -1089,7 +1072,7 @@ func (b *builder) buildNameBracket(it nodeIter) (params []ast.TypeParam, target 
 }
 
 func (b *builder) buildFuncName(it nodeIter, f *ast.FuncDef) {
-	// FuncName = ident [ lbracket ident FuncNameBracket | lt ident FuncNameParams | dot ident [ NameBracket ] ] .
+	// FuncName = ident [ lbracket ident FuncNameBracket | dot ident [ NameBracket ] ] .
 	//
 	// All cases after the leading ident:
 	//   [T].method[NameBracket]     → RecvTypeParams=[T], Name="recv.method"
@@ -1115,29 +1098,6 @@ func (b *builder) buildFuncName(it nodeIter, f *ast.FuncDef) {
 			return
 		}
 		b.buildFuncNameBracket(it.enter(), f, head)
-	case LT:
-		it.skip() // lt
-		if it.done() || it.isNonTerminal() || it.tokenType() != IDENT {
-			return
-		}
-		tok := it.shift()
-		head := ast.TypeParam{Pos: b.posFromToken(tok), Name: tok.Literal}
-		if it.done() || !it.isNonTerminal() || it.symbol() != FuncNameParams {
-			return
-		}
-		pit := it.enter()
-		if pit.done() || !pit.isNonTerminal() {
-			return
-		}
-		if pit.symbol() == TypeParamRestAngle {
-			f.TypeParams = b.buildTypeParamRest(pit.enter(), head)
-			if !pit.done() && pit.isNonTerminal() && pit.symbol() == TargetIndex {
-				f.Target = b.buildTargetIndex(pit.enter())
-			}
-			return
-		}
-		f.RecvTypeParams = append([]ast.TypeParam{head}, b.buildReceiverTypeParams(pit.enter())...)
-		b.buildMethodName(&pit, f, first)
 	case DOT:
 		b.buildMethodName(&it, f, first)
 	}
@@ -1201,22 +1161,6 @@ func (b *builder) buildMethodName(it *nodeIter, f *ast.FuncDef, recv string) {
 	if !it.done() && it.isNonTerminal() && it.symbol() == NameBracket {
 		f.TypeParams, f.Target = b.buildNameBracket(it.enter())
 	}
-}
-
-// buildReceiverTypeParams reads the names after a receiver's first, which
-// buildFuncName has already taken.
-func (b *builder) buildReceiverTypeParams(it nodeIter) []ast.TypeParam {
-	// ReceiverTypeParams = { comma ident } gt .
-	var out []ast.TypeParam
-	for !it.done() {
-		if !it.isNonTerminal() && it.tokenType() == IDENT {
-			tok := it.shift()
-			out = append(out, ast.TypeParam{Pos: b.posFromToken(tok), Name: tok.Literal})
-			continue
-		}
-		it.skip() // comma, gt
-	}
-	return out
 }
 
 // buildTypeParamRest finishes a function's own list, whose first parameter's
@@ -3377,12 +3321,12 @@ func (b *builder) buildType(it nodeIter) ast.TypeExpr {
 
 // buildTypeArgs reads a type's arguments, `[int]` or `[K, V]`.
 func (b *builder) buildTypeArgs(it nodeIter) []ast.TypeExpr {
-	// TypeArgs = lbracket TypeList rbracket | lt TypeList gt .
+	// TypeArgs = lbracket TypeList rbracket .
 	for !it.done() {
 		if it.isNonTerminal() && it.symbol() == TypeList {
 			return b.buildTypeList(it.enter())
 		}
-		it.skip() // lbracket, lt
+		it.skip() // lbracket
 	}
 	return nil
 }

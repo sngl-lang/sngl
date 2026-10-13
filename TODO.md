@@ -94,19 +94,19 @@ block. No production that can follow a `Type` begins with `lbracket`, and
 `lbracket` is not in `FIRST(Type)`, so `list[int]`, `func(x list[int])` and
 `[T = list[int]]` stay LL(1). There is no `>>` token to retire.
 
-- [ ] Grammar accepts both `<…>` and `[…]` for one commit; builder
+- [X] Grammar accepts both `<…>` and `[…]` for one commit; builder
   (`buildTypeParams`, `buildType`) builds the same AST from either.
-- [ ] Formatter prints brackets; `ir.Type.String()` and `ir.Convert` print
+- [X] Formatter prints brackets; `ir.Type.String()` and `ir.Convert` print
   brackets.
-- [ ] `sngl fmt` over the tree; script the embedded SNGL in `.txtar`, `.txt`
+- [X] `sngl fmt` over the tree; script the embedded SNGL in `.txtar`, `.txt`
   and `.md` files (about 450 files mention a `<T>` form today).
-- [ ] The ~20 fixtures whose `// ERROR` text prints a type; goldens
+- [X] The ~20 fixtures whose `// ERROR` text prints a type; goldens
   `-update` where a type is printed back as SNGL.
-- [ ] Tree-sitter (`grammar.js:156`, `:321`), vscode, neovim; any LSP
+- [X] Tree-sitter (`grammar.js:156`, `:321`), vscode, neovim; any LSP
   completion or signature-help trigger on `<`.
-- [ ] Spec, effective-sngl, the tour, CLAUDE.md, and Go comments quoting
+- [X] Spec, effective-sngl, the tour, CLAUDE.md, and Go comments quoting
   SNGL (`list<T>`, `page<T, M>`, `func list<T>.map<U>` …).
-- [ ] Drop `<…>` from the grammar.
+- [X] Drop `<…>` from the grammar.
 
 ### Phase 2: type arguments at a call site
 

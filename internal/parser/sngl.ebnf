@@ -315,8 +315,8 @@ VarHandler = at ident [ lparen [ ParamList ] rparen ] StmtBlock .
 # ── Functions ─────────────────────────────────────────────────────────────────
 #
 # Two forms:
-#   func name [<T>] [params] => Expr          (expression body)
-#   func name [<T>] [params] [Type] { }   (statement body, optional return type)
+#   func name [[T any]] [params] => Expr          (expression body)
+#   func name [[T any]] [params] [Type] { }   (statement body, optional return type)
 #
 # LL(1) after params: fat_arrow → expr body; ident|kw_func → Type; lbrace → StmtBlock.
 
@@ -363,7 +363,7 @@ FuncBodyTail =
 # own, `dot` is a qualified target, and `rbracket` is a bare target or a
 # receiver's single name -- a `dot` after the bracket says which. Neither
 # `comma`, `dot` nor `rbracket` begins a Type.
-FuncName = ident [ lbracket ident FuncNameBracket | lt ident FuncNameParams | dot ident [ NameBracket ] ] .
+FuncName = ident [ lbracket ident FuncNameBracket | dot ident [ NameBracket ] ] .
 
 FuncNameBracket =
       rbracket [ dot ident [ NameBracket ] ]
@@ -372,30 +372,21 @@ FuncNameBracket =
     | TypeParamRest [ TargetIndex ]
     .
 
-FuncNameParams = ReceiverTypeParams dot ident [ NameBracket ] | TypeParamRestAngle [ TargetIndex ] .
-
-ReceiverTypeParams = { comma ident } gt .
-
 # The rest of a function's own list, its first parameter's name already read.
 TypeParamRest = Type [ assign Type ] { comma TypeParam } rbracket .
-
-TypeParamRestAngle = Type [ assign Type ] { comma TypeParam } gt .
 
 # What may follow a declaration's name: its own type parameters, the target it
 # overrides, or both, in that order. Both open `lbracket ident`, and the token
 # after the ident decides, as in FuncName: `dot` or `rbracket` is a target and
 # a Type is a type parameter's constraint.
-NameBracket =
-      lbracket ident ( [ dot ident ] rbracket | TypeParamRest [ TargetIndex ] )
-    | lt TypeParam { comma TypeParam } gt [ TargetIndex ]
-    .
+NameBracket = lbracket ident ( [ dot ident ] rbracket | TypeParamRest [ TargetIndex ] ) .
 
-TypeParamList = lbracket TypeParam { comma TypeParam } rbracket | lt TypeParam { comma TypeParam } gt .
+TypeParamList = lbracket TypeParam { comma TypeParam } rbracket .
 
 # A type parameter names its constraint, `any` when it says nothing, and may
 # carry a default the way a value parameter does: an argument list that stops
-# short falls back to them, right to left. The constraint is what will tell a
-# type parameter list from an override's target once both are in brackets.
+# short falls back to them, right to left. The constraint is what tells a type
+# parameter list from an override's target, which shares its bracket.
 TypeParam = ident Type [ assign Type ] .
 
 ParamList = Param { comma Param } [ comma ] .
@@ -738,7 +729,7 @@ Type =
     | UnitDecl
     .
 
-TypeArgs = lbracket TypeList rbracket | lt TypeList gt .
+TypeArgs = lbracket TypeList rbracket .
 
 TypeList = Type { comma Type } .
 

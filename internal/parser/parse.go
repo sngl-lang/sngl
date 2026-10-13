@@ -134,17 +134,7 @@ func loopVarNeedsVar(filtered []Token, idx int) bool {
 // that may begin a type -- or, in a function's list, the `.` a receiver's list
 // of bare names wants after it -- and not the `any` that is missing.
 func typeParamWithoutConstraint(filtered []Token, idx int) (string, bool) {
-	for _, pair := range [][2]TokenType{{LBRACKET, RBRACKET}, {LT, GT}} {
-		if name, ok := typeParamWithoutConstraintIn(filtered, idx, pair[0], pair[1]); ok {
-			return name, true
-		}
-	}
-	return "", false
-}
-
-// typeParamWithoutConstraintIn is typeParamWithoutConstraint for a list
-// written between open and close.
-func typeParamWithoutConstraintIn(filtered []Token, idx int, open, close TokenType) (string, bool) {
+	const opener, closer = LBRACKET, RBRACKET
 	if idx <= 0 || idx >= len(filtered) {
 		return "", false
 	}
@@ -152,15 +142,15 @@ func typeParamWithoutConstraintIn(filtered []Token, idx int, open, close TokenTy
 	// past its close -- `func f[T, U](`, where a receiver's list wanted a `.`
 	// -- is in it too.
 	i := idx - 1
-	if filtered[i].Type == close {
+	if filtered[i].Type == closer {
 		i--
 	}
 	depth, opened := 0, -1
 	for ; i >= 0 && opened < 0; i-- {
 		switch filtered[i].Type {
-		case close:
+		case closer:
 			depth++
-		case open:
+		case opener:
 			if depth == 0 {
 				opened = i
 			}
@@ -179,7 +169,7 @@ func typeParamWithoutConstraintIn(filtered []Token, idx int, open, close TokenTy
 		switch filtered[j].Type {
 		case KW_FUNC, KW_COMPONENT, KW_STRUCT:
 			decl = true
-		case IDENT, DOT, COMMA, open, close:
+		case IDENT, DOT, COMMA, opener, closer:
 		default:
 			return "", false
 		}
@@ -192,9 +182,9 @@ func typeParamWithoutConstraintIn(filtered []Token, idx int, open, close TokenTy
 	start := true
 	for j := opened + 1; j <= idx && j+1 < len(filtered); j++ {
 		switch filtered[j].Type {
-		case open:
+		case opener:
 			depth++
-		case close:
+		case closer:
 			if depth == 0 {
 				return "", false
 			}
@@ -207,7 +197,7 @@ func typeParamWithoutConstraintIn(filtered []Token, idx int, open, close TokenTy
 		case IDENT:
 			if start && depth == 0 {
 				switch filtered[j+1].Type {
-				case COMMA, close, ASSIGN:
+				case COMMA, closer, ASSIGN:
 					return filtered[j].Literal, true
 				}
 			}

@@ -991,9 +991,9 @@ FuncBodyTail =
     "=>" Expr
     | [ Type ] [ StmtBlock ]
 
-FuncName = IDENT [ "[" IDENT FuncNameBracket | "<" IDENT FuncNameParams | "." IDENT [ NameBracket ] ]
+FuncName = IDENT [ "[" IDENT FuncNameBracket | "." IDENT [ NameBracket ] ]
 
-TypeParamList = "[" TypeParam { "," TypeParam } "]" | "<" TypeParam { "," TypeParam } ">"
+TypeParamList = "[" TypeParam { "," TypeParam } "]"
 
 TypeParam = IDENT Type [ "=" Type ]
 
@@ -2477,9 +2477,9 @@ FuncBodyTail =
     "=>" Expr
     | [ Type ] [ StmtBlock ]
 
-FuncName = IDENT [ "[" IDENT FuncNameBracket | "<" IDENT FuncNameParams | "." IDENT [ NameBracket ] ]
+FuncName = IDENT [ "[" IDENT FuncNameBracket | "." IDENT [ NameBracket ] ]
 
-TypeParamList = "[" TypeParam { "," TypeParam } "]" | "<" TypeParam { "," TypeParam } ">"
+TypeParamList = "[" TypeParam { "," TypeParam } "]"
 
 TypeParam = IDENT Type [ "=" Type ]
 
