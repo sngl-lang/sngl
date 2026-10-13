@@ -8,7 +8,7 @@ import "sngl:i18n"
 func greet(name string, byName map[string, string]) {
     var a = i18n.format("Hello, {name}!", {name=name}) // ERROR(check) "interpolated before i18n.format sees it"
     var b = i18n.tr("Hi {name}", {name=name})          // ERROR(check) "interpolated before i18n.tr sees it"
-    var c = i18n.format(`Hello, {name}!`, byName)      // ERROR(check) "i18n.format takes its arguments as a struct"
+    var c = i18n.format(`Hello, {name}!`, byName)      // ERROR(check) "map[string, string] does not satisfy struct {}"
     var d = i18n.format(`Hello, {name}!`, {name=name})
     var e = i18n.format("Hello, \{name}!", {name=name})
 }
