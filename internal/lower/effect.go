@@ -19,12 +19,15 @@ import (
 // assignment would be invisible and every backend would need telling that the
 // value had changed.
 //
-// Skipped by a platform that emits the node itself. Compose brackets a keyed
-// lifetime natively, and DisposableEffect says what an effect means more
-// directly than the calls this pass builds; Features.Effects is how it asks.
+// A platform that emits the node itself gets only the reports. Compose
+// brackets a keyed lifetime natively, and DisposableEffect says what @mount and
+// @unmount mean more directly than the calls this pass builds; Features.Effects
+// is how it asks. It knows nothing of writes, so `@update` and a list's change
+// events are lowered here on every target, and the node is left standing with
+// the two handlers the platform answers.
 var passEffect = pass{
 	name:    "Effect",
-	enabled: func(c Features) bool { return !c.Effects },
+	enabled: func(Features) bool { return true },
 	apply:   lowerEffects,
 }
 
@@ -48,11 +51,11 @@ const TeardownFunc = "__snglTeardown"
 // there is no case here for "an effect inside reactive control flow": the
 // position is read off the enclosing `if`/`for` when the settle function is
 // built, and never asked about again.
-func lowerEffects(pkg *ir.Package, _ Features, _ Options) error {
+func lowerEffects(pkg *ir.Package, feats Features, _ Options) error {
 	if pkg == nil {
 		return nil
 	}
-	st := &effectState{pkg: pkg, reactive: collectReactiveVars(pkg), byVar: map[*ir.Var][]*loweredEffect{}, dirtyBy: map[*ir.Var][]*loweredEffect{}, cellBy: map[*ir.Var][]*loweredEffect{}}
+	st := &effectState{pkg: pkg, native: feats.Effects, reactive: collectReactiveVars(pkg), byVar: map[*ir.Var][]*loweredEffect{}, dirtyBy: map[*ir.Var][]*loweredEffect{}, cellBy: map[*ir.Var][]*loweredEffect{}}
 	for _, o := range ir.Owners(pkg) {
 		if err := st.owner(o); err != nil {
 			return err
@@ -65,7 +68,10 @@ func lowerEffects(pkg *ir.Package, _ Features, _ Options) error {
 }
 
 type effectState struct {
-	pkg      *ir.Package
+	pkg *ir.Package
+	// native is a platform that brackets a lifetime itself: only the reports
+	// are lowered, and the node keeps @mount and @unmount.
+	native   bool
 	reactive map[*ir.Var]bool
 	counter  int
 	// effects is every bracket the program placed, in the order it wrote
@@ -236,6 +242,9 @@ func (st *effectState) stmts(stmts []ir.Stmt, o *ir.Owner, frames []effectFrame)
 				if err := st.lowerOne(n, o, frames); err != nil {
 					return nil, err
 				}
+				if kept := st.nativeHalf(n); kept != nil {
+					out = append(out, kept)
+				}
 				continue
 			}
 			kids, err := st.stmts(n.Children, o, frames)
@@ -316,8 +325,10 @@ func (st *effectState) lowerOne(n *ir.NodeInst, o *ir.Owner, frames []effectFram
 	if err := st.checkHandlerScope(n, frames); err != nil {
 		return err
 	}
-	fx.mount = st.handlerFunc(n, ir.EffectMount, prefix+"_mount", o, fx)
-	fx.unmount = st.handlerFunc(n, ir.EffectUnmount, prefix+"_unmount", o, fx)
+	if !st.native {
+		fx.mount = st.handlerFunc(n, ir.EffectMount, prefix+"_mount", o, fx)
+		fx.unmount = st.handlerFunc(n, ir.EffectUnmount, prefix+"_unmount", o, fx)
+	}
 	fx.update = st.handlerFunc(n, ir.EffectUpdate, prefix+"_update", o, fx)
 	if fx.mount == nil && fx.unmount == nil && fx.update == nil {
 		return nil
@@ -392,6 +403,26 @@ func (st *effectState) lowerOne(n *ir.NodeInst, o *ir.Owner, frames []effectFram
 		st.byVar[v] = append(st.byVar[v], fx)
 	}
 	return nil
+}
+
+// nativeHalf is what a platform bracketing a lifetime itself is left of an
+// effect node: the node with its @mount and @unmount, or nil where it has
+// neither or the platform brackets nothing.
+func (st *effectState) nativeHalf(n *ir.NodeInst) *ir.NodeInst {
+	if !st.native {
+		return nil
+	}
+	var kept []ir.EventHandler
+	for _, h := range n.Handlers {
+		if h.Name == ir.EffectMount || h.Name == ir.EffectUnmount {
+			kept = append(kept, h)
+		}
+	}
+	if len(kept) == 0 {
+		return nil
+	}
+	n.Handlers = kept
+	return n
 }
 
 // downFunc builds the first half of a settle: what the position describes now,
@@ -734,6 +765,10 @@ func (st *effectState) checkHandlerScope(n *ir.NodeInst, frames []effectFrame) e
 	}
 	for _, h := range n.Handlers {
 		if h.Func == nil {
+			continue
+		}
+		// The platform's own bracket runs these where the node stands.
+		if st.native && (h.Name == ir.EffectMount || h.Name == ir.EffectUnmount) {
 			continue
 		}
 		var found string
@@ -1119,6 +1154,11 @@ func (st *effectState) buildGroups() {
 		}
 		st.addFunc(o, g.settle)
 
+		// A scope whose brackets only report has nothing for a first settle
+		// to do: nothing has been written, and no lifetime begins.
+		if !slices.ContainsFunc(g.fxs, func(fx *loweredEffect) bool { return fx.down != nil }) {
+			continue
+		}
 		// The first settle runs after the body, not where the node was written.
 		// A mount handler writes state, passReactivity turns that into a patch
 		// of whatever reads it, and the node that patch names has to have been

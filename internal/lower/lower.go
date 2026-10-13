@@ -221,9 +221,6 @@ func Lower(pkg *ir.Package, feats Features, opts Options) error {
 		return nil
 	}
 	opts.names = renamer{}
-	if err := refuseEffectChanges(pkg, feats); err != nil {
-		return err
-	}
 	if opts.StopAfter != "" {
 		known := false
 		for _, p := range passes {

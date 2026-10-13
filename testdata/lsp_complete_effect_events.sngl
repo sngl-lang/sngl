@@ -1,4 +1,3 @@
-// SKIP(codegen) "android brackets a lifetime natively and lowers neither @update nor a list's change events; every passEffect target runs them in effect_changes_runs.txt"
 // An effect's events are offered by what its key can report, which is the
 // checker's rule asked of the checked node: a list held in a var offers its
 // changes and no bracket, since it does not compare; an int offers the bracket

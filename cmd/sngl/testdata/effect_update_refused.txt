@@ -1,45 +1,13 @@
 # What no target lowers yet is refused where it is written rather than emitted
-# as a bracket that never reports: @update under a `for` (one flag cannot say
-# which copy's key was written), and @update or a list's change events on
-# android, which brackets a lifetime natively. The interpreter runs them.
+# as a bracket that never reports: @update under a `for`, where one flag cannot
+# say which copy's key was written. The interpreter runs it.
 
 ! sngl generate --platform fyne --lang go -o out loop.sngl
 stderr 'loop.sngl:8:29: an effect''s @update under a `for` is not implemented on a compiled target yet'
 
-! sngl generate --platform android --lang kotlin -o out update.sngl
-stderr 'update.sngl:6:22: an effect''s @update is not implemented on a target that brackets a lifetime natively yet'
+! sngl generate --platform android --lang kotlin -o out loop.sngl
+stderr 'loop.sngl:8:29: an effect''s @update under a `for` is not implemented on a compiled target yet'
 
-! sngl generate --platform android --lang kotlin -o out changes.sngl
-stderr 'changes.sngl:7:22: an effect''s @insert is not implemented on a target that brackets a lifetime natively yet'
-
-sngl test changes.sngl
-stdout 'ok'
-
--- changes.sngl --
-import ui "sngl:ui"
-import "sngl:test"
-
-component saver ui.node {
-    var xs list<int> = []
-    var log list<string> = []
-    effect(on = xs, @insert(at, x) { log.push("insert {at}") },
-        @update {})
-
-    func add() {
-        xs.push(1)
-    }
-
-    ui.text #out(value = log.join(","))
-}
-
-func testInsert(t test.Test, c saver) {
-    c.add()
-    t.assert(c.out.value == "insert 0")
-}
-
-ui.window(title = "Saver") {
-    saver
-}
 -- loop.sngl --
 import ui "sngl:ui"
 
@@ -55,17 +23,4 @@ component rows ui.node {
 
 ui.window(title = "Rows") {
     rows
-}
--- update.sngl --
-import ui "sngl:ui"
-
-component saver ui.node {
-    var xs list<int> = []
-    var n = 0
-    effect(on = xs, @update { n += 1 })
-    ui.text(value = "{n}")
-}
-
-ui.window(title = "Saver") {
-    saver
 }

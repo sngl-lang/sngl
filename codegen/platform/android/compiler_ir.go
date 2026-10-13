@@ -768,7 +768,7 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 	// declared just above. In test mode they are members of MainScreenState
 	// instead, and the call sites are rewritten to reach them there.
 	if !testMode && !cfg.GoLib {
-		for _, fn := range ctx.AllFuncs() {
+		for _, fn := range calleesFirst(ctx.AllFuncs()) {
 			if !mainOwnFuncs[fn] || fn.IsTest || codegen.IsComputed(fn) {
 				continue
 			}
@@ -966,7 +966,7 @@ func emitIRComponentComposable(b *strings.Builder, cc *codegen.ComponentCtx, ctx
 		fmt.Fprintf(b, "    val %s by %s { %s }\n", comp.name, kc.Name(ktRemember), computedCalcKt(comp, cfg, compKC, "    "))
 		decls++
 	}
-	for _, fn := range cc.Funcs {
+	for _, fn := range calleesFirst(cc.Funcs) {
 		if fn.IsTest || codegen.IsComputed(fn) {
 			continue
 		}
@@ -1030,7 +1030,7 @@ func emitIRKtMemberFunc(b *strings.Builder, fn *ir.Func, kc *kotlin.KtIRContext)
 	paramStr := strings.Join(params, ", ")
 
 	retType := ""
-	if fn.Return != nil && fn.Return.Kind != ir.TypeDyn {
+	if fn.Return != nil && fn.Return.Kind != ir.TypeDyn && fn.Return.Kind != ir.TypeVoid {
 		retType = ": " + kotlin.IRTypeToKt(fn.Return)
 	}
 
@@ -1115,7 +1115,7 @@ func emitIRKtFunc(b *strings.Builder, fn *ir.Func, kc *kotlin.KtIRContext) {
 	paramStr := strings.Join(params, ", ")
 
 	retType := ""
-	if fn.Return != nil && fn.Return.Kind != ir.TypeDyn {
+	if fn.Return != nil && fn.Return.Kind != ir.TypeDyn && fn.Return.Kind != ir.TypeVoid {
 		retType = ": " + kotlin.IRTypeToKt(fn.Return)
 	}
 
@@ -1397,4 +1397,38 @@ func pageTypeMethods(ctx *codegen.CodegenCtx, cfg Config) {
 		}
 		return nil
 	})
+}
+
+// calleesFirst orders a composable's local funs so each is declared ahead of
+// those that call it, keeping the written order otherwise: a local function
+// may not be referenced above its declaration, and a lowering appends what it
+// synthesizes -- passEffect's settle and notes, which a handler calls -- after
+// the funcs that call it. A cycle cannot be declared locally either way, and
+// is left in the order it was met.
+func calleesFirst(fns []*ir.Func) []*ir.Func {
+	in := make(map[*ir.Func]bool, len(fns))
+	for _, fn := range fns {
+		in[fn] = true
+	}
+	out := make([]*ir.Func, 0, len(fns))
+	state := map[*ir.Func]int{} // 1 visiting, 2 done
+	var visit func(fn *ir.Func)
+	visit = func(fn *ir.Func) {
+		if state[fn] != 0 {
+			return
+		}
+		state[fn] = 1
+		_ = ir.Walk(fn.Block, func(n ir.Node) error {
+			if c, ok := n.(*ir.Call); ok && c.Func != nil && in[c.Func] && c.Func != fn {
+				visit(c.Func)
+			}
+			return nil
+		})
+		state[fn] = 2
+		out = append(out, fn)
+	}
+	for _, fn := range fns {
+		visit(fn)
+	}
+	return out
 }

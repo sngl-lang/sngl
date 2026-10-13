@@ -376,18 +376,57 @@ func (kc *KtIRContext) AssignText(n *ir.Assign, target, value string) string {
 		if n.Op != ast.AssignSet {
 			value = target + " " + strings.TrimSuffix(n.Op.String(), "=") + " (" + value + ")"
 		}
-		var e ir.Expr = sel
-		for {
-			s, ok := e.(*ir.Select)
-			if !ok {
-				break
-			}
-			value = irwalk.EvalMutTarget(kc, s.Operand) + ".copy(" + kc.MutTargetField(s) + " = " + value + ")"
-			e = s.Operand
+		return kc.rebuildStructPath(sel, value)
+	}
+	// An element of a list in such a field: the list is a read-only `List`, so
+	// it is rebuilt with the element written and the path copied back.
+	if idx, ok := n.Target.(*ir.Index); ok && !isMapExpr(idx.Operand) {
+		if sel, ok := idx.Operand.(*ir.Select); ok && kc.isStateStructField(sel) {
+			key := kc.WithLocal("it").EvalExpr(idx.Idx)
+			return kc.rebuildStructPath(sel, irwalk.EvalMutTarget(kc, sel)+".toMutableList().also { it["+key+"] "+n.Op.String()+" "+value+" }")
 		}
-		return irwalk.EvalMutTarget(kc, e) + " = " + value
 	}
 	return target + " " + n.Op.String() + " " + value
+}
+
+// rebuildStructPath writes value at a field path through data classes held by
+// a state var: each level is copied with the level below it replaced, and the
+// var reassigned, which is the write Compose's snapshot sees.
+func (kc *KtIRContext) rebuildStructPath(sel *ir.Select, value string) string {
+	var e ir.Expr = sel
+	for {
+		s, ok := e.(*ir.Select)
+		if !ok {
+			break
+		}
+		value = irwalk.EvalMutTarget(kc, s.Operand) + ".copy(" + kc.MutTargetField(s) + " = " + value + ")"
+		e = s.Operand
+	}
+	return irwalk.EvalMutTarget(kc, e) + " = " + value
+}
+
+// fieldListMutation is a list mutation whose receiver is a list held in such a
+// field -- `h.items.push(2)` -- written as a rebuild of the list with the
+// mutation applied to a copy, or "" for any other call. A data class's field
+// is a read-only `List`, which has no `add`.
+func (kc *KtIRContext) fieldListMutation(call *ir.Call) string {
+	if call == nil || call.Func == nil || call.Func.Intrinsic == "" || len(call.Args) == 0 {
+		return ""
+	}
+	if def, ok := ir.IntrinsicByName(call.Func.Intrinsic); !ok || !def.MutatesReceiver {
+		return ""
+	}
+	sel, ok := call.Args[0].Value.(*ir.Select)
+	if !ok || !kc.isStateStructField(sel) {
+		return ""
+	}
+	t := sel.ExprType()
+	if t == nil || t.Kind != ir.TypeList {
+		return ""
+	}
+	onCopy := *call
+	onCopy.Args = append([]ir.CallArg{{Value: &ir.Ident{Name: "it", Type: t}}}, call.Args[1:]...)
+	return kc.rebuildStructPath(sel, irwalk.EvalMutTarget(kc, sel)+".toMutableList().also { "+kc.WithLocal("it").EvalExpr(&onCopy)+" }")
 }
 
 // isStateStructField reports whether sel is a field path through emitted data
@@ -508,6 +547,9 @@ func (kc *KtIRContext) CallStmtLines(n *ir.CallStmt) []string {
 		if lines := kc.raiseFailure(n.Call); lines != nil {
 			return lines
 		}
+	}
+	if line := kc.fieldListMutation(n.Call); line != "" {
+		return []string{line}
 	}
 	return []string{kc.EvalExpr(n.Call)}
 }

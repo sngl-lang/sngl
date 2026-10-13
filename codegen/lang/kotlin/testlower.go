@@ -28,6 +28,52 @@ func testIRContext() *KtIRContext {
 	return testFallbackCtx
 }
 
+// lowerTestBody lowers a test body's statements, keeping a write and the
+// synthesized calls a lowering placed after it -- passEffect's mark and settle
+// -- on the UI thread together, with one wait for idle after them: waiting
+// between the two let Compose recompose, rekeying a DisposableEffect, before
+// the `@update` the write owed had run.
+func lowerTestBody(block []ir.Stmt, surf TestSurface, compRecvs map[string]bool, ctxCounts map[string]int, mode TestEmitMode) []string {
+	var out []string
+	for _, s := range block {
+		lines := lowerTestStmt(s, surf, compRecvs, ctxCounts, mode)
+		if synthesizedCall(s) {
+			if n := len(out); n >= 2 && out[n-2] == "}" && out[n-1] == testIdleLine {
+				inner, wrapped := uiThreadBody(lines)
+				if !wrapped {
+					inner = lines
+				}
+				for i, l := range inner {
+					if !wrapped {
+						inner[i] = "    " + l
+					}
+				}
+				out = append(append(out[:n-2], inner...), "}", testIdleLine)
+				continue
+			}
+		}
+		out = append(out, lines...)
+	}
+	return out
+}
+
+const testIdleLine = "composeTestRule.waitForIdle()"
+
+// uiThreadBody is the statements lines runs on the UI thread, when lines is
+// one runOnUiThread block followed by a wait for idle.
+func uiThreadBody(lines []string) ([]string, bool) {
+	n := len(lines)
+	if n < 3 || lines[0] != "composeTestRule.runOnUiThread {" || lines[n-2] != "}" || lines[n-1] != testIdleLine {
+		return nil, false
+	}
+	return lines[1 : n-2], true
+}
+
+func synthesizedCall(s ir.Stmt) bool {
+	cs, ok := s.(*ir.CallStmt)
+	return ok && cs.Call != nil && cs.Call.Func != nil && cs.Call.Func.Synthesized
+}
+
 func lowerTestStmt(s ir.Stmt, surf TestSurface, compRecvs map[string]bool, ctxCounts map[string]int, mode TestEmitMode) []string {
 	switch n := s.(type) {
 	case *ir.CallStmt:
@@ -511,10 +557,8 @@ func LowerTestFile(pkg string, fns []*ir.Func, suffixes []string, surf TestSurfa
 			// other so those per-stmt lowerings resolve.
 			b.WriteString("        @Suppress(\"UNUSED_VARIABLE\") val composeTestRule = composeRule\n")
 			fmt.Fprintf(&b, "        composeRule.setContent { MainScreen(%s) }\n", recv)
-			for _, s := range fn.Block {
-				for _, line := range lowerTestStmt(s, surf.forInstance(recv, fn), compRecvs, ctxCounts, TestEmitNative) {
-					fmt.Fprintf(&b, "        %s\n", line)
-				}
+			for _, line := range lowerTestBody(fn.Block, surf.forInstance(recv, fn), compRecvs, ctxCounts, TestEmitNative) {
+				fmt.Fprintf(&b, "        %s\n", line)
 			}
 			b.WriteString("    }\n\n")
 		case TestEmitAgent:
@@ -526,10 +570,8 @@ func LowerTestFile(pkg string, fns []*ir.Func, suffixes []string, surf TestSurfa
 			if recv := codegen.TestComponentParam(fn); recv != "" {
 				fmt.Fprintf(&b, "    val %s = %s\n", recv, testInstanceVar)
 			}
-			for _, s := range fn.Block {
-				for _, line := range lowerTestStmt(s, surf.forInstance(testInstanceVar, fn), compRecvs, ctxCounts, TestEmitAgent) {
-					fmt.Fprintf(&b, "    %s\n", line)
-				}
+			for _, line := range lowerTestBody(fn.Block, surf.forInstance(testInstanceVar, fn), compRecvs, ctxCounts, TestEmitAgent) {
+				fmt.Fprintf(&b, "    %s\n", line)
 			}
 			b.WriteString("}\n\n")
 		}

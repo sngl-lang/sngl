@@ -103,11 +103,13 @@ type Features struct {
 	// the platform's, because starting work is a property of the host language
 	// and getting back to the drawing thread is a property of the surface.
 	AsyncSpawn bool
-	// Effects says the platform emits an `effect` node itself and wants it
-	// left standing. A framework whose own model already brackets a lifetime
-	// keyed on a value -- Compose's DisposableEffect is one -- expresses the
-	// construct better than the calls passEffect lowers it to, and gets the
-	// node instead: its two handlers and its key are all the declaration says.
+	// Effects says the platform brackets an `effect`'s lifetime itself and
+	// wants the node left standing. A framework whose own model already
+	// brackets a lifetime keyed on a value -- Compose's DisposableEffect is one
+	// -- expresses @mount and @unmount better than the calls passEffect lowers
+	// them to, and gets the node with those two handlers and its key. It knows
+	// nothing of writes, so passEffect still lowers `@update` and a list's
+	// change events there.
 	Effects bool
 	// Navigation says the platform answers sngl:ui/nav's stack, page and link
 	// in its own codegen -- a document or a route per page, a Compose NavHost

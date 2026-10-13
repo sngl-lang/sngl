@@ -68,6 +68,9 @@ var alwaysOn = []string{
 	"CallDefaults",
 	// A call through a name the inliner bound to a declared function.
 	"DirectCalls",
+	// An effect's reports are lowered on every target; one that brackets a
+	// lifetime itself keeps the node with its @mount and @unmount.
+	"Effect",
 	// A raise is a raise on every target, and the catch it unwinds to is a block
 	// every language renders.
 	"ErrorCatch",
@@ -202,7 +205,9 @@ var soleGate = map[string][]string{
 	// pass that injects it. Effects is the same shape inverted -- withholding
 	// it is what asks for the pass.
 	"ReactiveCanvas": {"CanvasReactivity"},
-	"Effects":        {"Effect"},
+	// Read by passEffect rather than gating it: with it, only the reports are
+	// lowered and the node is left for the platform's own bracket.
+	"Effects": {},
 	// Read by passNavigation and the composition rather than gating either:
 	// with it, only the stacks in a surface other than the document are
 	// lowered.

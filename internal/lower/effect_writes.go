@@ -329,38 +329,19 @@ func (st *effectState) noteFunc(fx *loweredEffect, which string) *ir.Func {
 // made, while the position still describes the bracket, and empties it either
 // way: a bracket the tree no longer holds is reported nothing.
 //
-//	__effectN_qk = __effectN_kinds; __effectN_qa = …; __effectN_qi = …
-//	__effectN_kinds = []; …
 //	<the if chain> {
-//	    for __i, __k = __effectN_qk {
-//	        __effectN_at = __effectN_qa[__i]; __effectN_item = __effectN_qi[__i]
+//	    for __i, __k = __effectN_kinds {
+//	        __effectN_at = __effectN_ats[__i]; __effectN_item = __effectN_items[__i]
 //	        if __k == 0 { __effectN_insert() } else if …
 //	    }
 //	}
+//	__effectN_kinds = []; __effectN_ats = []; __effectN_items = []
 //
-// Taken into locals first, so a handler that writes another bracket's key --
-// legal, and settled by the next pass -- never extends the list being walked.
+// Walked where it stands rather than taken into locals first: Kotlin assigns
+// a list in place, so a local would be the queue the next statement empties.
+// Nothing a handler runs can extend it -- no handler may write what `on`
+// reads -- and one writing another bracket's key extends that bracket's.
 func (st *effectState) drainBlock(fx *loweredEffect) []ir.Stmt {
-	type q struct {
-		from *ir.Var
-		sym  *ir.Var
-	}
-	take := func(from *ir.Var, suffix string) q {
-		return q{from: from, sym: &ir.Var{Name: fx.prefix + suffix, Type: from.Type, Synthesized: true}}
-	}
-	qs := []q{take(fx.kinds, "_qk"), take(fx.ats, "_qa"), take(fx.items, "_qi")}
-	// Not marked Synthesized: fyne spells a synthesized iterable as a field
-	// of the Model, and these are locals.
-	local := func(x q) ir.Expr {
-		return &ir.Ident{Name: x.sym.Name, Type: x.sym.Type, Sym: x.sym}
-	}
-	var out []ir.Stmt
-	for _, x := range qs {
-		out = append(out, &ir.LocalVar{Name: x.sym.Name, Type: x.sym.Type, Sym: x.sym, Init: st.varIdent(x.from)})
-	}
-	for _, x := range qs {
-		out = append(out, &ir.Assign{Target: st.varIdent(x.from), Op: ast.AssignSet, Value: &ir.ListLit{Type: x.from.Type}})
-	}
 	idx := &ir.LoopVar{Name: fx.prefix + "_ci", Type: ir.TypInt}
 	kind := &ir.LoopVar{Name: fx.prefix + "_ck", Type: ir.TypInt}
 	idxRef := func() ir.Expr { return &ir.Ident{Name: idx.Name, Type: ir.TypInt, Sym: idx, Synthesized: true} }
@@ -379,8 +360,8 @@ func (st *effectState) drainBlock(fx *loweredEffect) []ir.Stmt {
 		dispatch = []ir.Stmt{branch}
 	}
 	body := []ir.Stmt{
-		&ir.Assign{Target: st.varIdent(fx.atVar), Op: ast.AssignSet, Value: &ir.Index{Type: ir.TypInt, Operand: local(qs[1]), Idx: idxRef()}},
-		&ir.Assign{Target: st.varIdent(fx.itemVar), Op: ast.AssignSet, Value: &ir.Index{Type: fx.itemVar.Type, Operand: local(qs[2]), Idx: idxRef()}},
+		&ir.Assign{Target: st.varIdent(fx.atVar), Op: ast.AssignSet, Value: &ir.Index{Type: ir.TypInt, Operand: st.varIdent(fx.ats), Idx: idxRef()}},
+		&ir.Assign{Target: st.varIdent(fx.itemVar), Op: ast.AssignSet, Value: &ir.Index{Type: fx.itemVar.Type, Operand: st.varIdent(fx.items), Idx: idxRef()}},
 	}
 	body = append(body, dispatch...)
 	loop := &ir.For{
@@ -388,11 +369,15 @@ func (st *effectState) drainBlock(fx *loweredEffect) []ir.Stmt {
 		KeySym:   idx,
 		Value:    kind.Name,
 		ValueSym: kind,
-		Iter:     local(qs[0]),
+		Iter:     st.varIdent(fx.kinds),
 		ElemType: ir.TypInt,
 		Body:     body,
 	}
-	return append(out, st.positionBlock(fx.prefix, fx.frames, []ir.Stmt{loop})...)
+	out := st.positionBlock(fx.prefix, fx.frames, []ir.Stmt{loop})
+	for _, q := range []*ir.Var{fx.kinds, fx.ats, fx.items} {
+		out = append(out, &ir.Assign{Target: st.varIdent(q), Op: ast.AssignSet, Value: &ir.ListLit{Type: q.Type}})
+	}
+	return out
 }
 
 // lowerChanges lifts a bracket's list change handlers and gives it the queue

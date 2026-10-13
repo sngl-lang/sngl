@@ -25,12 +25,12 @@ reports.
   does not compare may not handle `@mount`/`@unmount`
   (`lib/builtin/effect.sngl`, `testdata/effect_update.sngl`,
   `testdata/error_effect_changes.sngl`). Both are lowered by passEffect on
-  every target but android (`testdata/effect_update.txtar`,
+  every compiled target, android included, where DisposableEffect keeps
+  `@mount`/`@unmount` (`testdata/effect_update.txtar`,
   `testdata/effect_changes.txtar`, `cmd/sngl/testdata/effect_update_runs.txt`,
-  `cmd/sngl/testdata/effect_changes_runs.txt`); refused, with a position, are
-  `@update` and the change events under a `for`, and both on android
-  (`cmd/sngl/testdata/effect_update_refused.txt`). Left: those two, then
-  rewrite the three pages and remove `var … @change`.
+  `cmd/sngl/testdata/effect_changes_runs.txt`); refused, with a position, is
+  either under a `for` (`cmd/sngl/testdata/effect_update_refused.txt`). Left:
+  that, then rewrite the three pages and remove `var … @change`.
 - **Clone URL.** `installation.md` says
   `git clone https://github.com/sngl-lang/sngl.git`, but the module is
   `duckfam.us/sngl` and origin is `git.duckfam.us`. Which is canonical?
