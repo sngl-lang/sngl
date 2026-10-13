@@ -1,0 +1,57 @@
+# `dump --stage checked` prints a struct constraint, one naming another
+# parameter of its list, and a method on a generic struct back so the dump
+# checks again and is a fixed point.
+#
+# A method's receiver list was dropped, `func Box.get()`, which named no type
+# and left `this` undefined in the dump.
+
+sngl dump --stage checked app.sngl
+cp stdout first.sngl
+sngl check first.sngl
+sngl dump --stage checked first.sngl
+cp stdout second.sngl
+cmp first.sngl second.sngl
+
+grep 'func Box\[T\]\.get\(\)' first.sngl
+grep 'func Keyed\[A, B\]\.keyOf\(\)' first.sngl
+grep 'func valueOf\[T any, U struct \{' first.sngl
+
+-- app.sngl --
+import . "sngl:test"
+import . "sngl:ui"
+
+struct Box[T any] {
+    value T
+}
+
+func Box[T].get() => this.value
+
+struct Cell {
+    value int
+}
+
+func valueOf[T any, U struct {
+    value T
+}](u U) => u.value
+
+struct Entry {
+    key string
+}
+
+struct Keyed[K any, V struct {
+    key K
+}] {
+    item V
+}
+
+func Keyed[A, B].keyOf() => this.item.key
+
+func testRoundTrip(t Test) {
+    var b = Box[int]{value=3}
+    var k = Keyed[string, Entry]{item=Entry{key="k"}}
+    t.assert(b.get() == 3 && valueOf(Cell{value=1}) == 1 && k.keyOf() == "k")
+}
+
+window {
+    text(value="x")
+}

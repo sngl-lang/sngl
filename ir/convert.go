@@ -219,11 +219,12 @@ func (c *converter) convertFuncDef(f *Func) *ast.FuncDef {
 		name = f.RecvName() + "." + f.Name
 	}
 	fd := &ast.FuncDef{
-		Name:       name,
-		TypeParams: c.convertTypeParams(f.TypeParams),
-		Params:     c.convertParamList(f.Params),
-		Attrs:      c.foreignAttrs(f.Foreign, f),
-		Const:      f.Const,
+		Name:           name,
+		RecvTypeParams: receiverTypeParams(f.RecvTypeParams),
+		TypeParams:     c.convertTypeParams(f.TypeParams),
+		Params:         c.convertParamList(f.Params),
+		Attrs:          c.foreignAttrs(f.Foreign, f),
+		Const:          f.Const,
 	}
 	if f.Return != nil {
 		fd.ReturnType = c.convertType(f.Return)
@@ -645,6 +646,20 @@ func (c *converter) convertNodeInst(n *NodeInst) *ast.VisualNode {
 		}}
 	}
 	return vn
+}
+
+// receiverTypeParams is a method's receiver list as it is written: the names
+// alone, `func Box[T].get()`, since the type's declaration constrains them.
+// Printed without it, the receiver named no type and `this` nothing.
+func receiverTypeParams(ps []TypeParam) []ast.TypeParam {
+	if len(ps) == 0 {
+		return nil
+	}
+	out := make([]ast.TypeParam, len(ps))
+	for i, p := range ps {
+		out[i] = ast.TypeParam{Pos: p.Pos, Name: p.Name}
+	}
+	return out
 }
 
 func (c *converter) convertTypeParams(ps []TypeParam) []ast.TypeParam {

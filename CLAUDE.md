@@ -770,7 +770,9 @@ sngl:builtin is in scope), and it is a constraint only: written where a
 value's type goes it is refused naming `dyn` (`error_any_outside_constraint.sngl`).
 The constraint lands on `ir.TypeParam.Constraint` and
 `ir.TypeParamSym.Constraint`, and `ir.Convert` prints one for every parameter
-of a declaration's own list.
+of a declaration's own list, and a method's receiver list as names alone
+(`receiverTypeParams`), without which `func Box.get()` named no type
+(`cmd/sngl/testdata/type_param_constraint_roundtrip.txt`).
 
 **A constraint is `any` or an anonymous struct** (`resolveConstraint`,
 `internal/checker/constraints.go`): `[T struct { name string }]` is any
@@ -785,7 +787,16 @@ family's arguments in a member's return position), a component's props
 (`bindComponentTypeParams`), what the children bind (`bindFromChildren`, for
 what the props left), and a default against its own constraint
 (`resolveTypeParams`). A T bound to another type parameter is measured by that
-parameter's constraint. In a generic body a select of a `T` reads the
+parameter's constraint. **A constraint's field may name a parameter of its
+list**, `[T any, U struct { value T }]`, or the one it constrains: such a
+constraint is never interned, its fields meaning that list's parameters and
+no other. It is measured against the bindings substituted in
+(`substituteConstraint`), and a parameter nothing else bound is bound from
+the field of the type bound to the one it constrains (`inferFromConstraints`,
+which `checkConstraints` runs first and `inferTypeParams` runs before the
+expected type binds); a default binds its list that way where it is declared,
+and a receiver's renamed list renames what the constraint names. In a generic
+body a select of a `T` reads the
 constraint's fields (`paramConstraint`) and a spread binds them
 (`spreadFieldsOf`); a receiver's restated names take their declaration's
 constraints (`inheritReceiverConstraints`), before the signature is resolved,
@@ -4474,6 +4485,11 @@ types it — and nothing in the compiler forces them to agree.
 is wrong. It is a test helper, not a runtime package, which is why it sits
 beside `sngl.go` rather than under `pkg/go/`: `pkg/<lang>/` is what generated
 code imports, and the compiler must not be in that graph.
+
+`TestFixtures` refuses a diagnostic reported twice: a declaration read twice
+-- a component's var registered before its body and checked with it, a body's
+declarations bound again for every body in their scope -- reports once, the
+other read resolving quietly (`resolveTypeQuietly`, `declareBodyDecls`).
 
 When adding a fixture or directive, confirm it *fails* when the behaviour is reverted. Several directives in this repo assert conditions that no test actually evaluates.
 
