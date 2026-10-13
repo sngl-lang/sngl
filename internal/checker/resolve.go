@@ -349,7 +349,7 @@ func (c *checker) resolveAnonStruct(s *ast.StructDef) *ir.Type {
 	if len(sd.TypeParams) > 0 {
 		return sd.SymType()
 	}
-	return c.internAnonStruct(sd.Fields).SymType()
+	return c.anonStructType(sd.Fields)
 }
 
 func (c *checker) resolveAnonEnum(e *ast.EnumDef) *ir.Type {
@@ -437,7 +437,7 @@ func (c *checker) inheritReceiverConstraints(recv *ir.Type, written []ast.TypePa
 		renamed[declared[i].Name] = c.typeParamSym(p.Name, p.Pos).SymType()
 	}
 	for i, p := range written {
-		if con := substituteConstraint(constraint(i), renamed); con != nil {
+		if con := constraint(i).Substitute(renamed); con != nil {
 			if sym := c.typeParamSym(p.Name, p.Pos); sym.Constraint == nil {
 				sym.Constraint = con
 			}

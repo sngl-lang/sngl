@@ -19,20 +19,20 @@ func TestAnonSignatureSeparatesSameNamedPackagelessDecls(t *testing.T) {
 	fieldsOf := func(sd *ir.StructDef) []*ir.StructField {
 		return []*ir.StructField{{Name: "s", Type: sd.SymType()}}
 	}
-	sigA, keyA := anonSignature(fieldsOf(a))
-	sigB, keyB := anonSignature(fieldsOf(b))
+	sigA, keyA := ir.AnonStructBaseName(fieldsOf(a)), anonKey(fieldsOf(a))
+	sigB, keyB := ir.AnonStructBaseName(fieldsOf(b)), anonKey(fieldsOf(b))
 
 	if keyA == keyB {
 		t.Errorf("intern keys collide for two Style declarations: %q", keyA)
 	}
-	// The generated name is hashed from the stable spelling, so that one must
-	// carry no address. Equal here is the point: it is why a name can collide
-	// and why anonStructName counts.
+	// The generated name is hashed from the stable spelling, so it carries no
+	// address. Equal here is the point: it is why a name can collide and why
+	// anonStructName counts.
 	if sigA != sigB {
-		t.Errorf("stable signatures differ (%q vs %q); the generated name would depend on an address", sigA, sigB)
+		t.Errorf("generated names differ (%q vs %q); the name would depend on an address", sigA, sigB)
 	}
-	if strings.Contains(sigA, "@0x") {
-		t.Errorf("stable signature carries an address: %q", sigA)
+	if strings.Contains(ir.AnonTypeKey(fieldsOf(a)[0].Type, false), "@0x") {
+		t.Errorf("stable spelling carries an address: %q", ir.AnonTypeKey(fieldsOf(a)[0].Type, false))
 	}
 }
 
@@ -68,8 +68,8 @@ func TestAnonSignatureSeparatesByPackage(t *testing.T) {
 	fieldsOf := func(sd *ir.StructDef) []*ir.StructField {
 		return []*ir.StructField{{Name: "s", Type: sd.SymType()}}
 	}
-	sigMine, _ := anonSignature(fieldsOf(mine))
-	sigTheirs, _ := anonSignature(fieldsOf(theirs))
+	sigMine := ir.AnonStructBaseName(fieldsOf(mine))
+	sigTheirs := ir.AnonStructBaseName(fieldsOf(theirs))
 	if sigMine == sigTheirs {
 		t.Errorf("stable signatures collide across packages: %q", sigMine)
 	}

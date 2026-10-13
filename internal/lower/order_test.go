@@ -57,6 +57,8 @@ func TestPassRegistryIsWellFormed(t *testing.T) {
 // them. It is a set and not an order: what it states is that a pass cannot
 // quietly acquire a gate, or quietly lose one, without someone saying so.
 var alwaysOn = []string{
+	// A substitution's anonymous struct names no declaration on any target.
+	"AnonStructs",
 	// A program naming sngl:async is refused on a target with no answer for
 	// it, and every target is asked -- what differs is the answer.
 	"AsyncCapable",

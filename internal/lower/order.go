@@ -49,6 +49,8 @@ var orderConstraints = []orderConstraint{
 		"a component method called in its own body has no receiver argument until NoImplicitRecv writes one, and the defaults are matched with the receiver still implicit"},
 	{"CallDefaults", "Monomorphize",
 		"an instantiation is read off the call's arguments, and an omitted one with a default binds nothing until it is written"},
+	{"Monomorphize", "AnonStructs",
+		"a copy's `struct { v T }` is concrete only once the copy is made, and names a declaration no package declares until AnonStructs points it at one"},
 	{"Monomorphize", "NoInlineComponents",
 		"a component's generic method is copied per instantiation into the component, and the splice renames the copies with the rest of its methods"},
 	{"HoistBodyTypes", "NoRef",

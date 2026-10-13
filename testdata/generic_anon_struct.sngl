@@ -1,0 +1,95 @@
+// An anonymous struct may name a type parameter: `struct { v T }` is the
+// anonymous struct whose v is whatever T is bound to. It binds T from an
+// argument's field, substitutes like any other type, and once T is bound it is
+// the same type as the anonymous struct written with that type.
+
+import . "sngl:test"
+
+// A parameter: T binds from the argument's field.
+func unwrap[T any](w struct {
+    v T
+}) T {
+    return w.v
+}
+
+// A return: the literal is checked against it.
+func wrap[T any](x T) struct {
+    v T
+} {
+    return {v=x}
+}
+
+// A field of a generic struct.
+struct Box[T any] {
+    inner struct {
+        v T
+    }
+}
+
+func Box[T].get() T {
+    return this.inner.v
+}
+
+// A list of them.
+func firsts[T any](ws list[struct {
+    v T
+}]) list[T] {
+    return ws.map(func(w struct {
+        v T
+    }) => w.v)
+}
+
+// A lambda's result: the literal is typed by its own fields.
+func wrapAll[T any](xs list[T]) list[struct {
+    v T
+}] {
+    return xs.map(func(x T) => {v=x})
+}
+
+// An option of one, and a var annotated with one.
+func orElse[T any](
+    w option[struct {
+        v T
+    }],
+    d T,
+) T {
+    var got struct {
+        v T
+    } = {v=d}
+    if w != null {
+        got = w
+    }
+    return got.v
+}
+
+// Two parameters in one struct.
+func swap[A any, B any](p struct {
+    a A
+    b B
+}) struct {
+    a B
+    b A
+} {
+    return {a=p.b, b=p.a}
+}
+
+func testAnonStruct(t Test) {
+    t.assert(unwrap({v=1}) + 1 == 2)
+    t.assert(unwrap({v="s"}) == "s")
+    t.assert(unwrap[int]({v=3}) == 3)
+    var w struct {
+        v int
+    } = wrap(4)
+    t.assert(w.v == 4)
+    t.assert(unwrap(wrap("x")) == "x")
+    var b = Box[int]{inner={v=5}}
+    t.assert(b.get() == 5)
+    t.assert(b.inner.v == 5)
+    t.assert(firsts([{v=1}, {v=2}]) == [1, 2])
+    t.assert(firsts(wrapAll(["a", "b"])) == ["a", "b"])
+    t.assert(orElse(null, 6) == 6)
+    t.assert(orElse({v=7}, 6) == 7)
+    var s = swap({a=1, b="one"})
+    t.assert(s.a == "one")
+    t.assert(s.b == 1)
+}

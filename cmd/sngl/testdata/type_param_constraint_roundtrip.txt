@@ -1,6 +1,6 @@
 # `dump --stage checked` prints a struct constraint, one naming another
-# parameter of its list, and a method on a generic struct back so the dump
-# checks again and is a fixed point.
+# parameter of its list, a method on a generic struct, and an anonymous struct
+# naming a type parameter back so the dump checks again and is a fixed point.
 #
 # A method's receiver list was dropped, `func Box.get()`, which named no type
 # and left `this` undefined in the dump.
@@ -15,6 +15,8 @@ cmp first.sngl second.sngl
 grep 'func Box\[T\]\.get\(\)' first.sngl
 grep 'func Keyed\[A, B\]\.keyOf\(\)' first.sngl
 grep 'func valueOf\[T any, U struct \{' first.sngl
+grep 'func unwrap\[T any\]\(w struct \{' first.sngl
+grep 'inner struct \{' first.sngl
 
 -- app.sngl --
 import . "sngl:test"
@@ -46,7 +48,27 @@ struct Keyed[K any, V struct {
 
 func Keyed[A, B].keyOf() => this.item.key
 
+func unwrap[T any](w struct {
+    v T
+}) T {
+    return w.v
+}
+
+func wrap[T any](x T) struct {
+    v T
+} {
+    return {v=x}
+}
+
+struct Holder[T any] {
+    inner struct {
+        v T
+    }
+}
+
 func testRoundTrip(t Test) {
+    var h = Holder[int]{inner=wrap(2)}
+    t.assert(unwrap(h.inner) == 2 && unwrap({v="s"}) == "s")
     var b = Box[int]{value=3}
     var k = Keyed[string, Entry]{item=Entry{key="k"}}
     t.assert(b.get() == 3 && valueOf(Cell{value=1}) == 1 && k.keyOf() == "k")

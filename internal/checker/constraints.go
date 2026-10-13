@@ -21,8 +21,9 @@ import (
 // resolveConstraint resolves what a type parameter's constraint names: `any`,
 // found in scope as a scalar is so a program's own `any` shadows it, or an
 // anonymous struct. The list's parameters are in scope, so a field may name
-// one; such a constraint is no type any value has and is not interned, since
-// its fields mean this list's parameters and no other.
+// one, which makes it an anonymous struct like any other naming a type
+// parameter: declared un-interned (anonStructType), its fields meaning this
+// list's parameters and no other.
 func (c *checker) resolveConstraint(te ast.TypeExpr) *ir.Type {
 	switch t := te.(type) {
 	case *ast.NamedType:
@@ -40,14 +41,7 @@ func (c *checker) resolveConstraint(te ast.TypeExpr) *ir.Type {
 					c.error(f.Pos, "a constraint's field takes no default: a constraint says what a type has, not what it starts with")
 				}
 			}
-			sd := c.buildStructDef(t)
-			for _, f := range sd.Fields {
-				if hasTypeParam(f.Type) {
-					sd.Anon = true
-					return sd.SymType()
-				}
-			}
-			return c.internAnonStruct(sd.Fields).SymType()
+			return c.anonStructType(c.buildStructDef(t).Fields)
 		}
 	}
 	c.error(*te.ExprPos(), "a type parameter's constraint is `any` or an anonymous struct, `struct { name string }`")
@@ -62,26 +56,6 @@ func constraintStruct(constraint *ir.Type) *ir.StructDef {
 	}
 	sd, _ := constraint.Decl.(*ir.StructDef)
 	return sd
-}
-
-// substituteConstraint is constraint with the type parameters its fields
-// name bound as bindings says, the constraint itself where none is.
-func substituteConstraint(constraint *ir.Type, bindings map[string]*ir.Type) *ir.Type {
-	sd := constraintStruct(constraint)
-	if sd == nil || len(bindings) == 0 {
-		return constraint
-	}
-	fields := make([]*ir.StructField, len(sd.Fields))
-	changed := false
-	for i, f := range sd.Fields {
-		ft := f.Type.Substitute(bindings)
-		changed = changed || ft != f.Type
-		fields[i] = &ir.StructField{Name: f.Name, Type: ft}
-	}
-	if !changed {
-		return constraint
-	}
-	return (&ir.StructDef{Name: sd.Name, Pkg: sd.Pkg, Fields: fields, Anon: true}).SymType()
 }
 
 // paramConstraint is the struct constraint of the type parameter t is, nil
@@ -104,22 +78,7 @@ func paramConstraint(t *ir.Type) *ir.StructDef {
 func fieldsOf(t *ir.Type) (fields []*ir.StructField, ok bool) {
 	switch t.Kind {
 	case ir.TypeStruct:
-		sd, _ := t.Decl.(*ir.StructDef)
-		if sd == nil {
-			return nil, false
-		}
-		if len(sd.TypeParams) == 0 || len(t.Elems) != len(sd.TypeParams) {
-			return sd.Fields, true
-		}
-		bindings := make(map[string]*ir.Type, len(sd.TypeParams))
-		for i, tp := range sd.TypeParams {
-			bindings[tp.Name] = t.Elems[i]
-		}
-		out := make([]*ir.StructField, len(sd.Fields))
-		for i, f := range sd.Fields {
-			out[i] = &ir.StructField{Name: f.Name, Type: f.Type.Substitute(bindings)}
-		}
-		return out, true
+		return ir.FieldsOf(t)
 	case ir.TypeTypeParam:
 		if sd := paramConstraint(t); sd != nil {
 			return sd.Fields, true
@@ -205,7 +164,7 @@ func inferFromConstraints(params []ir.TypeParam, bindings map[string]*ir.Type) {
 			}
 			for _, w := range want.Fields {
 				got := fieldNamed(fields, w.Name)
-				if got == nil || !hasTypeParam(w.Type) {
+				if got == nil || !w.Type.HasTypeParam() {
 					continue
 				}
 				found := map[string]*ir.Type{}
@@ -225,7 +184,7 @@ func inferFromConstraints(params []ir.TypeParam, bindings map[string]*ir.Type) {
 // constraint, measured with the list's other parameters bound as bindings
 // says. Every place a type parameter is bound asks this.
 func (c *checker) checkConstraint(pos ast.Pos, tp ir.TypeParam, t *ir.Type, bindings map[string]*ir.Type) {
-	con := substituteConstraint(tp.Constraint, bindings)
+	con := tp.Constraint.Substitute(bindings)
 	if why := unsatisfied(t, con); why != "" {
 		c.error(pos, "%s does not satisfy %s, the constraint on %s: %s", t, con, tp.Name, why)
 	}

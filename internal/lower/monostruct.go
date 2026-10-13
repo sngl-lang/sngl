@@ -99,6 +99,25 @@ func (ms *monoStructs) rewrite(t *ir.Type) *ir.Type {
 	if t == nil {
 		return t
 	}
+	// An anonymous struct's fields are part of its type, and nothing else
+	// reaches them: `struct { inner Box[int] }` names Box__int.
+	if sd := ir.AnonStructDef(t); sd != nil && ir.IsUninternedAnon(sd) {
+		var fields []*ir.StructField
+		for i, f := range sd.Fields {
+			ft := ms.rewrite(f.Type)
+			if ft == f.Type && fields == nil {
+				continue
+			}
+			if fields == nil {
+				fields = slices.Clone(sd.Fields[:i])
+			}
+			fields = append(fields, &ir.StructField{Name: f.Name, Type: ft})
+		}
+		if fields == nil {
+			return t
+		}
+		return (&ir.StructDef{Pkg: sd.Pkg, Fields: fields, Anon: true}).SymType()
+	}
 	elems, changed := ms.rewriteAll(t.Elems)
 	if sd, ok := t.Decl.(*ir.StructDef); ok && t.Kind == ir.TypeStruct && ms.generic[sd] &&
 		len(elems) == len(sd.TypeParams) && !slices.ContainsFunc(elems, (*ir.Type).HasTypeParam) {

@@ -2553,7 +2553,7 @@ func (c *checker) inferStructLit(x *ast.StructExpr) ir.Expr {
 				if srcType != nil && srcType.Kind != ir.TypeDyn && srcType.Kind != ir.TypeInvalid {
 					srcDecl, _ := srcType.Decl.(*ir.StructDef)
 					if srcType.Kind != ir.TypeStruct || srcDecl != sd {
-						c.error(x.Pos, "cannot spread %s into struct %s", srcType, sd.Name)
+						c.error(x.Pos, "cannot spread %s into %s", srcType, structLabel(sd))
 					}
 				}
 			}
@@ -2564,7 +2564,7 @@ func (c *checker) inferStructLit(x *ast.StructExpr) ir.Expr {
 		name := f.Name
 		field := c.structField(f.NamePos, sd, f.Name)
 		if field != nil {
-			expected = field.Type
+			expected = c.boundFieldType(field, sd)
 			// Identical to f.Name for SNGL source, where the field was found
 			// by that name; under nativeValues it is the SNGL name of a field
 			// written with its foreign one.
@@ -2577,7 +2577,7 @@ func (c *checker) inferStructLit(x *ast.StructExpr) ir.Expr {
 		// Validate field exists on struct. An unexported field of another
 		// package is already reported by structField.
 		if sd != nil && field == nil && isExportedMemberName(f.Name) {
-			c.error(x.Pos, "unknown field %q on struct %s", f.Name, sd.Name)
+			c.error(x.Pos, "unknown field %q on %s", f.Name, structLabel(sd))
 		}
 		// A spread carries no name, so `{...base, x = 2}` is an override
 		// rather than a duplicate; only two written fields are one.
@@ -2614,8 +2614,8 @@ func (c *checker) inferStructLit(x *ast.StructExpr) ir.Expr {
 	if !ok {
 		return &ir.StructLit{AST: x, Type: &ir.Type{Kind: ir.TypeStruct}, Fields: fields}
 	}
-	anon := c.internAnonStruct(anonFields)
-	return &ir.StructLit{AST: x, Type: anon.SymType(), Def: anon, Fields: fields}
+	typ := c.anonStructType(anonFields)
+	return &ir.StructLit{AST: x, Type: typ, Def: typ.Decl.(*ir.StructDef), Fields: fields}
 }
 
 // checkFieldValue holds a struct literal's field value to the rule every
@@ -2632,9 +2632,26 @@ func (c *checker) checkFieldValue(written ast.Expr, val ir.Expr, field *ir.Struc
 			return c.nativeValues && got.Kind == ir.TypeNull && (want.Kind == ir.TypeList || want.Kind == ir.TypeMap)
 		},
 		mismatch: func(want, got string) string {
-			return fmt.Sprintf("cannot use %s as %s for field %q of %s", got, want, field.Name, sd.Name)
+			return fmt.Sprintf("cannot use %s as %s for field %q of %s", got, want, field.Name, structSpelling(sd))
 		},
 	})
+}
+
+// structSpelling is how a diagnostic names sd: its name, or for an anonymous
+// struct the fields it was written with, never the name the compiler gave it.
+func structSpelling(sd *ir.StructDef) string {
+	if sd.Anon {
+		return sd.SymType().String()
+	}
+	return sd.Name
+}
+
+// structLabel is structSpelling with the word a named struct reads with.
+func structLabel(sd *ir.StructDef) string {
+	if sd.Anon {
+		return structSpelling(sd)
+	}
+	return "struct " + sd.Name
 }
 
 // boundFieldType is the field's type with the literal's type arguments
@@ -3130,6 +3147,18 @@ func bindTypeParams(param, arg *ir.Type, bindings map[string]*ir.Type) {
 			}
 		}
 		bindTypeParams(param.Sig.Return, arg.Sig.Return, bindings)
+		return
+	}
+	// An anonymous struct binds by field name, from whatever fields the
+	// argument has: `{v=1}`, a named struct with a v, a T constrained to one.
+	if sd := ir.AnonStructDef(param); sd != nil {
+		if fields, ok := fieldsOf(arg); ok {
+			for _, f := range sd.Fields {
+				if g := fieldNamed(fields, f.Name); g != nil {
+					bindTypeParams(f.Type, g.Type, bindings)
+				}
+			}
+		}
 		return
 	}
 	// Recurse into type arguments (list[T], option[T], etc.).

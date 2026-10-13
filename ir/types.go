@@ -2,6 +2,7 @@ package ir
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 
 	"duckfam.us/sngl/ast"
@@ -457,6 +458,9 @@ func (t *Type) Substitute(bindings map[string]*Type) *Type {
 		}
 		return t
 	case TypeList, TypeMap, TypeOption, TypeRef, TypeIter, TypeStruct:
+		if sd := anonStructDef(t); sd != nil {
+			return substituteAnon(t, sd, bindings)
+		}
 		elems := make([]*Type, len(t.Elems))
 		changed := false
 		for i, e := range t.Elems {
@@ -821,6 +825,70 @@ func anonStructDef(t *Type) *StructDef {
 		return nil
 	}
 	return sd
+}
+
+// substituteAnon is the anonymous struct t with each field's type
+// substituted, t itself where no field names a bound parameter. The result is
+// a declaration nobody interned: `struct { v T }` at T = int is no package's,
+// and the lowering points it at the package's own `struct { v int }`
+// (passAnonStructs) before a backend spells it.
+func substituteAnon(t *Type, sd *StructDef, bindings map[string]*Type) *Type {
+	var fields []*StructField
+	for i, f := range sd.Fields {
+		ft := f.Type.Substitute(bindings)
+		if ft == f.Type && fields == nil {
+			continue
+		}
+		if fields == nil {
+			fields = slices.Clone(sd.Fields[:i])
+		}
+		fields = append(fields, &StructField{Name: f.Name, Type: ft})
+	}
+	if fields == nil {
+		return t
+	}
+	return (&StructDef{Name: sd.Name, Pkg: sd.Pkg, Fields: fields, Anon: true}).SymType()
+}
+
+// AnonStructDef is t's declaration when t is an anonymous struct, nil
+// otherwise.
+func AnonStructDef(t *Type) *StructDef {
+	if t == nil {
+		return nil
+	}
+	return anonStructDef(t)
+}
+
+// IsUninternedAnon reports whether sd is an anonymous struct the checker
+// declared without interning it: one whose fields name a type parameter, or
+// what substituting one made. Only an interned declaration is named, so the
+// missing name is what says so.
+func IsUninternedAnon(sd *StructDef) bool {
+	return sd != nil && sd.Anon && sd.Name == ""
+}
+
+// FieldsOf is the fields a struct type t has, each at its type with t's type
+// arguments bound; ok is false for any other type.
+func FieldsOf(t *Type) (fields []*StructField, ok bool) {
+	if t == nil || t.Kind != TypeStruct {
+		return nil, false
+	}
+	sd, _ := t.Decl.(*StructDef)
+	if sd == nil {
+		return nil, false
+	}
+	if len(sd.TypeParams) == 0 || len(t.Elems) != len(sd.TypeParams) {
+		return sd.Fields, true
+	}
+	bindings := make(map[string]*Type, len(sd.TypeParams))
+	for i, tp := range sd.TypeParams {
+		bindings[tp.Name] = t.Elems[i]
+	}
+	out := make([]*StructField, len(sd.Fields))
+	for i, f := range sd.Fields {
+		out[i] = &StructField{Name: f.Name, Type: f.Type.Substitute(bindings)}
+	}
+	return out, true
 }
 
 // sameFields reports whether two field lists, each in the name order an

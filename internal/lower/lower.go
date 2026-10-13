@@ -52,6 +52,7 @@ var passes = []pass{
 	passReceiverParam,
 	passCallDefaults,
 	passMonomorphize,
+	passAnonStructs,
 	passNavigation,
 	passHandleParams,
 	passImplicitState,

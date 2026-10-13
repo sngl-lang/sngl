@@ -97,6 +97,20 @@ func UnifyTypeParams(pattern, concrete *Type, bindings map[string]*Type) {
 	if pattern.Kind != concrete.Kind {
 		return
 	}
+	// An anonymous struct binds by field name: `{v=1}` is no instantiation
+	// of `struct { v T }`, only a struct with a v.
+	if sd := AnonStructDef(pattern); sd != nil {
+		if fields, ok := FieldsOf(concrete); ok {
+			for _, f := range sd.Fields {
+				for _, g := range fields {
+					if g.Name == f.Name {
+						UnifyTypeParams(f.Type, g.Type, bindings)
+					}
+				}
+			}
+		}
+		return
+	}
 	if len(pattern.Elems) == len(concrete.Elems) {
 		for i := range pattern.Elems {
 			UnifyTypeParams(pattern.Elems[i], concrete.Elems[i], bindings)
@@ -121,6 +135,15 @@ func (t *Type) HasTypeParam() bool {
 	for _, e := range t.Elems {
 		if e.HasTypeParam() {
 			return true
+		}
+	}
+	// A field of an anonymous struct is part of its type: no cycle, since a
+	// field cannot name a type that has no name.
+	if sd := AnonStructDef(t); sd != nil {
+		for _, f := range sd.Fields {
+			if f.Type.HasTypeParam() {
+				return true
+			}
 		}
 	}
 	if t.Sig != nil {

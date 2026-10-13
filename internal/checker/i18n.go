@@ -466,6 +466,6 @@ func (c *checker) i18nArgsRecord(fields []ir.FieldInit) *ir.StructLit {
 	if !ok {
 		return &ir.StructLit{Type: &ir.Type{Kind: ir.TypeStruct}, Fields: fields}
 	}
-	anon := c.internAnonStruct(anonFields)
-	return &ir.StructLit{Type: anon.SymType(), Def: anon, Fields: fields}
+	typ := c.anonStructType(anonFields)
+	return &ir.StructLit{Type: typ, Def: typ.Decl.(*ir.StructDef), Fields: fields}
 }

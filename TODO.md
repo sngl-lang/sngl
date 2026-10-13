@@ -205,3 +205,84 @@ JavaScript, which keeps the generic.
 
 A constraint is never a default: `[T struct {} = struct {}]` writes both, and
 a parameter with no default has none, `[T any]` included.
+
+## Anonymous structs naming a type parameter
+
+`struct { v T }` written anywhere a type goes -- a parameter, a return, a
+field, a var annotation, a list element, an option -- means the anonymous
+struct whose `v` is whatever `T` is bound to:
+
+```sngl
+func wrap[T any](x T) struct { v T } { return {v=x} }
+func unwrap[T any](w struct { v T }) T { return w.v }
+```
+
+At a call it binds `T` from the argument's field, it substitutes like any other
+type, and once `T` is bound it is the same type as the interned
+`struct { v int }`. After monomorphization no backend sees a type parameter in
+a struct field.
+
+**Representation: an un-interned declaration, substituted field by field.**
+An anonymous struct whose fields mention a type parameter is built as a
+`StructDef` with `Anon` set and is not interned and not in `pkg.Structs`: its
+fields mean the parameters in scope where it was written and no other, so two
+declarations each writing `struct { v T }` get one each. That is what a
+constraint naming a type parameter already is (`resolveConstraint`), so the
+constraint path stops being a special case rather than staying a second one.
+
+The alternative was an interned *generic* declaration whose `Elems` carry the
+parameters it mentions, `__anon_v[P0]` applied to `[T]`, which substitutes
+through `Elems` for free. Rejected, because it buys nothing the rest of the
+work does not have to do anyway:
+
+- `Type.Equal` compares anonymous structs by fields only where `Elems` is
+  empty (`anonStructDef`). With `Elems` it would compare by declaration, so
+  `__anon_v[int]` and the interned `struct { v int }` -- what `{v=1}` is --
+  would differ, and Equal would have to substitute the fields to compare them.
+  Un-interned, Equal is already right: it compares fields.
+- `bindTypeParams` cannot match `Elems`: the argument `{v=1}` is the interned
+  `struct { v int }`, which carries none. Either way it matches fields by name.
+- `monomorphizeStructs` would copy `__anon_v[int]` into `__anon_v__int`, a
+  second Go and Kotlin type beside the interned one, and an assignment between
+  the two does not compile. Either way the concrete instantiation has to be
+  pointed at the interned declaration.
+
+So the cost of the choice is one thing: a substitution that makes the fields
+concrete produces a declaration nobody interned, which a backend would spell
+and never declare. That is settled once, after monomorphization, by an
+always-on pass that points every such type (and a literal's `Def`) at the
+package's interned declaration with those fields, declaring one where there is
+none (`passAnonStructs`).
+
+The callers, against that choice:
+
+- `Type.Substitute` (ir/types.go): a TypeStruct with no `Elems` whose
+  declaration is anonymous and names a parameter builds a new un-interned
+  declaration with each field substituted, itself where nothing changed. Every
+  caller -- the checker's call and component binding, `fieldsOf`,
+  `InstantiateFunc` and `SubstituteExprTypes` through the cloner,
+  `monomorphizeStructs.instance` -- gets it through the one method.
+- `HasTypeParam` / the checker's `hasTypeParam`: descend into an anonymous
+  declaration's fields. One function, the checker's goes.
+- `bindTypeParams` and `ir.UnifyTypeParams`: a parameter type that is an
+  anonymous struct binds from the argument's fields by name (`fieldsOf`, so a
+  named struct and a generic struct's instantiation bind as readily).
+- `Type.Equal`: unchanged; anonymous structs already compare by fields.
+- `RewriteTypes`: does not descend into a `*Type`, so it never reaches an
+  un-interned declaration's fields; `monoStructs.rewrite` has to, so
+  `struct { inner Box[int] }` points at `Box__int`, and `passAnonStructs` is a
+  `RewriteTypes` over the package.
+- `substituteConstraint` becomes `Type.Substitute`.
+
+- [X] Fixtures: `testdata/generic_anon_struct.sngl`,
+  `testdata/error_generic_anon_struct.sngl`, and a golden
+  `testdata/generic_anon_struct.txtar` on Go, Kotlin and html (`--lang none`)
+  with `deny` lines that no `T` and no Go `any` reaches a generated struct.
+  Each fails before the change.
+- [X] Checker and ir: resolve, substitute, bind, a literal's type in a generic
+  body.
+- [X] `passAnonStructs`, and whatever the golden shows.
+- [X] The constraint path on the general representation.
+- [X] `sngl dump --stage checked` round-trips it
+  (`cmd/sngl/testdata/type_param_constraint_roundtrip.txt`).
+- [ ] Spec, effective-sngl, CLAUDE.md.
