@@ -1573,8 +1573,9 @@ func (b *builder) buildVisualOrStmt(it nodeIter) ast.Stmt {
 		// If base is a CallExpr, decompose: Target = Func, Args = call's args,
 		// and carry the element-ref id (`name #id(...)`) onto the node.
 		if call, ok := base.(*ast.CallExpr); ok {
-			if target, ok := call.Func.(ast.TargetExpr); ok && namesNode(target) {
-				vn.Target = target
+			fn, typeArgs := splitTypeArgs(call.Func)
+			if target, ok := fn.(ast.TargetExpr); ok && namesNode(target) {
+				vn.Target, vn.TypeArgs = target, typeArgs
 			} else {
 				b.errorf(ast.Pos(*call.Func.ExprPos()), "a node names its component: write name(…) or pkg.name(…)")
 			}
@@ -1582,8 +1583,9 @@ func (b *builder) buildVisualOrStmt(it nodeIter) ast.Stmt {
 			vn.ID = call.ID
 			vn.HasParens = true
 		} else {
-			if target, ok := base.(ast.TargetExpr); ok && namesNode(target) {
-				vn.Target = target
+			fn, typeArgs := splitTypeArgs(base)
+			if target, ok := fn.(ast.TargetExpr); ok && namesNode(target) {
+				vn.Target, vn.TypeArgs = target, typeArgs
 			} else {
 				b.notAStatement(base)
 			}
@@ -1612,12 +1614,32 @@ func (b *builder) buildVisualOrStmt(it nodeIter) ast.Stmt {
 		Pos: ast.Pos(*base.ExprPos()),
 		ID:  elemID,
 	}
-	if target, ok := base.(ast.TargetExpr); ok && namesNode(target) {
-		vn.Target = target
+	// A bracket on a bare name is an index, `xs[0]`, which is no statement;
+	// only a node written with an id, `spacer[int] #s`, says otherwise.
+	fn, typeArgs := base, []ast.Expr(nil)
+	if elemID != "" {
+		fn, typeArgs = splitTypeArgs(base)
+	}
+	if target, ok := fn.(ast.TargetExpr); ok && namesNode(target) {
+		vn.Target, vn.TypeArgs = target, typeArgs
 	} else {
 		b.notAStatement(base)
 	}
 	return vn
+}
+
+// splitTypeArgs reads a node's name off a bracket after it, `context[V]`: a
+// node names its component, so a bracket there can only be the component's
+// type arguments. Anything else is handed back whole.
+func splitTypeArgs(e ast.Expr) (ast.Expr, []ast.Expr) {
+	ix, ok := e.(*ast.IndexExpr)
+	if !ok {
+		return e, nil
+	}
+	if target, ok := ix.Operand.(ast.TargetExpr); ok && namesNode(target) {
+		return ix.Operand, ix.Indices
+	}
+	return e, nil
 }
 
 func (b *builder) applyStmtPostfixOp(it nodeIter, base ast.Expr, lastBlock *ast.StmtBlock, lastArgs *ast.ArgList) (ast.Expr, *ast.StmtBlock, *ast.ArgList, string) {
@@ -1666,15 +1688,10 @@ func (b *builder) applyStmtPostfixOp(it nodeIter, base ast.Expr, lastBlock *ast.
 		return base, lastBlock, lastArgs, ref.Literal
 	case LBRACKET:
 		it.skip() // lbracket
-		var idx ast.Expr
-		if !it.done() && it.isNonTerminal() {
-			idx = b.buildExpr(it.enter())
-		}
-		// rbracket
 		return &ast.IndexExpr{
 			Pos:     b.posFromToken(tok),
 			Operand: base,
-			Index:   idx,
+			Indices: b.buildIndexList(&it),
 		}, nil, nil, ""
 	case LPAREN:
 		it.skip() // lparen
@@ -2243,16 +2260,26 @@ func (b *builder) buildExprPostfixOp(it nodeIter, base ast.Expr) ast.Expr {
 		}
 	case LBRACKET:
 		it.skip() // lbracket
-		var idx ast.Expr
-		if !it.done() && it.isNonTerminal() {
-			idx = b.buildExpr(it.enter())
-		}
-		// rbracket
-		return &ast.IndexExpr{
+		ix := &ast.IndexExpr{
 			Pos:     b.posFromToken(tok),
 			Operand: base,
-			Index:   idx,
+			Indices: b.buildIndexList(&it),
 		}
+		if !it.done() && !it.isNonTerminal() && it.tokenType() == RBRACKET {
+			it.skip() // rbracket
+		}
+		// `Box[int]{v=1}` and `pkg.Box[int]{v=1}`: a struct literal of a
+		// generic type, its arguments written after the name.
+		if !it.done() && it.isNonTerminal() && it.symbol() == StructLitBody {
+			if pkg, name, ok := structLitName(base); ok {
+				s := &ast.StructExpr{Pos: ast.Pos(*base.ExprPos()), Package: pkg, Name: name, TypeArgs: ix.Indices}
+				s.Fields = b.buildStructLitFields(it.enter(), &s.Multiline)
+				return s
+			}
+			b.errorf(ast.Pos(*base.ExprPos()), "a struct literal names its type: write Name[…]{…} or pkg.Name[…]{…}")
+			it.skip()
+		}
+		return ix
 	case LPAREN:
 		it.skip() // lparen
 		call := &ast.CallExpr{Pos: ast.Pos(b.posFromToken(tok)), Func: base}
@@ -2264,6 +2291,38 @@ func (b *builder) buildExprPostfixOp(it nodeIter, base ast.Expr) ast.Expr {
 	}
 	it.skip()
 	return base
+}
+
+// buildIndexList reads the expressions in a bracket, `IndexList`, leaving the
+// closing bracket for the caller.
+func (b *builder) buildIndexList(it *nodeIter) []ast.Expr {
+	if it.done() || !it.isNonTerminal() || it.symbol() != IndexList {
+		return nil
+	}
+	lit := it.enter()
+	var out []ast.Expr
+	for !lit.done() {
+		if lit.isNonTerminal() && lit.symbol() == Expr {
+			out = append(out, b.buildExpr(lit.enter()))
+			continue
+		}
+		lit.skip() // comma
+	}
+	return out
+}
+
+// structLitName is the type a struct literal written after an index names: a
+// bare name or a name qualified by a package.
+func structLitName(e ast.Expr) (pkg, name string, ok bool) {
+	switch x := e.(type) {
+	case *ast.IdentExpr:
+		return "", x.Name, true
+	case *ast.SelectExpr:
+		if id, isID := x.Operand.(*ast.IdentExpr); isID {
+			return id.Name, x.Field, true
+		}
+	}
+	return "", "", false
 }
 
 func (b *builder) buildPrimaryExpr(it nodeIter) ast.Expr {

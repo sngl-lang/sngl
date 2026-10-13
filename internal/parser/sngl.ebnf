@@ -557,16 +557,16 @@ CondPrimary =
 # no StmtBlock (not a statement).
 CondPostfixOp =
       dot ident
-    | lbracket Expr rbracket
+    | lbracket IndexList rbracket
     | lparen [ ArgList ] rparen
     .
 
-# Expression context: struct lit available via dot-ident, NO StmtBlock.
+# Expression context: struct lit available via dot-ident or an index, NO StmtBlock.
 # lbrace never appears in ExprPostfixOp FIRST set, so ident [ StructLitBody ]
 # in PrimaryExpr is LL(1) conflict-free.
 ExprPostfixOp =
       dot ident [ StructLitBody ]
-    | lbracket Expr rbracket
+    | lbracket IndexList rbracket [ StructLitBody ]
     | lparen [ ArgList ] rparen
     .
 
@@ -576,10 +576,17 @@ ExprPostfixOp =
 StmtPostfixOp =
       dot ident
     | hash
-    | lbracket Expr rbracket
+    | lbracket IndexList rbracket
     | lparen [ ArgList ] rparen
     | [ lparen [ ArgList ] rparen ] StmtBlock
     .
+
+# A bracket after a name is an index or a list of type arguments, and the
+# checker says which: on a generic declaration -- `first[int](xs)`,
+# `Box[int]{v=1}`, `context[option[User]] #who(null)` -- it instantiates it,
+# and anywhere else it takes one value. A type argument is written as the
+# expression a type's name already is, so `func(int) bool` is not yet one.
+IndexList = Expr { comma Expr } .
 
 PrimaryExpr =
       int_lit

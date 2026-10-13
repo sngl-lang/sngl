@@ -75,7 +75,9 @@ func stmtBlocks(s ast.Stmt) (blocks []*ast.StmtBlock, commit func()) {
 			}
 		case *ast.IndexExpr:
 			walkExpr(x.Operand)
-			walkExpr(x.Index)
+			for _, ix := range x.Indices {
+				walkExpr(ix)
+			}
 		case *ast.SelectExpr:
 			walkExpr(x.Operand)
 		case *ast.SpreadExpr:

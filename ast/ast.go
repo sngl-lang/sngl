@@ -472,9 +472,13 @@ type EventHandler struct {
 type VisualNode struct {
 	Pos    Pos
 	Target TargetExpr
-	Args   ArgList
-	ID     string // element ID from #id syntax
-	Block  StmtBlock
+	// TypeArgs are the type arguments written after the target,
+	// `context[option[User]] #who(null)`, as the expressions a type's name is
+	// spelled with.
+	TypeArgs []Expr `json:",omitempty"`
+	Args     ArgList
+	ID       string // element ID from #id syntax
+	Block    StmtBlock
 	// HasParens records that the node was written with `()`, which an empty
 	// argument list cannot say on its own — `vbox()` and `vbox` are the same
 	// node, and the parens are the author's.

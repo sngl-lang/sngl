@@ -658,6 +658,11 @@ type checker struct {
 	// specPinned is what a specialization's props pinned, before defaults:
 	// what bindFromChildren leaves as it is.
 	specPinned map[*ir.Component]map[string]*ir.Type
+
+	// callTypeArgs holds the type arguments written at a call,
+	// `first[int](xs)`, for the generic declaration the call reaches to bind
+	// (instantiatedCall).
+	callTypeArgs map[*ast.CallExpr]*writtenTypeArgs
 	// handleArgs is the type arguments each handle a component body declares
 	// was bound, for a select reaching it from outside: `c.pkg` is the
 	// `page[Pkg]` its call site made it.

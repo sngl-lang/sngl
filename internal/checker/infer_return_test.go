@@ -6,9 +6,9 @@ import (
 )
 
 // A type parameter appearing only in the return type is bound from the type the
-// context wants. Without that, such a function is undeclarable rather than
-// merely awkward: there are no arguments to infer from, and SNGL has no syntax
-// for naming a type argument at a call site — `pending[int]()` does not parse.
+// context wants, where the call site wrote no type argument: there are no
+// arguments to infer from, and `var xs list[int] = empty()` should not need
+// `empty[int]()` to say what the declaration already does.
 func TestReturnOnlyTypeParamBindsFromContext(t *testing.T) {
 	src := `func empty[T any]() list[T] {
     return []

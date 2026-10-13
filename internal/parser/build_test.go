@@ -512,8 +512,26 @@ func TestParseIndexExpr(t *testing.T) {
 	if !ok {
 		t.Fatalf("expected IndexExpr, got %T", cd.Specs[0].Default)
 	}
-	if idx.Index == nil {
-		t.Error("expected index expression")
+	if len(idx.Indices) != 1 {
+		t.Errorf("expected one index expression, got %d", len(idx.Indices))
+	}
+}
+
+// A bracket after a name holds a list, which an index or a list of type
+// arguments both are; a struct literal may follow one, and a node's name may
+// carry one.
+func TestParseTypeArgsAtACallSite(t *testing.T) {
+	doc := mustParse(t, "const x = pair[int, string](1, \"s\")\nconst y = pkg.Box[option[int]]{v=1}\ncomponent c node {\n    tagged[int](v=1)\n}")
+	call := doc.Stmts[0].(*ast.ConstDecl).Specs[0].Default.(*ast.CallExpr)
+	if ix, ok := call.Func.(*ast.IndexExpr); !ok || len(ix.Indices) != 2 {
+		t.Errorf("pair[int, string]: got %#v", call.Func)
+	}
+	lit := doc.Stmts[1].(*ast.ConstDecl).Specs[0].Default.(*ast.StructExpr)
+	if lit.Package != "pkg" || lit.Name != "Box" || len(lit.TypeArgs) != 1 {
+		t.Errorf("pkg.Box[option[int]]{…}: got %#v", lit)
+	}
+	if got := Format(doc); !strings.Contains(got, "pkg.Box[option[int]]{v=1}") || !strings.Contains(got, "tagged[int](v=1)") {
+		t.Errorf("formatted:\n%s", got)
 	}
 }
 

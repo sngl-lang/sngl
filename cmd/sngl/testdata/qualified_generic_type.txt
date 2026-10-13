@@ -19,12 +19,11 @@ stdout 'main.sngl: ok'
 ! sngl check arity/main.sngl
 stderr 'takes no type arguments'
 
-# Still out of reach: a qualified generic in *expression* position.
-# ExprPostfixOp takes no struct literal after an index, so `b.Holder[int]{…}`
-# reads as an index followed by a struct literal standing as a statement of
-# its own. Unrelated to the Type production.
-! sngl check lit/main.sngl
-stderr 'a value is not a statement'
+# A qualified generic in *expression* position: a struct literal may follow
+# the bracket after a name, so `b.Holder[int]{…}` is a literal of the
+# instance, as a bare `Holder[int]{…}` is.
+sngl check lit/main.sngl
+stdout 'lit/main.sngl: ok'
 
 -- box/box.sngl --
 import ui "sngl:ui"

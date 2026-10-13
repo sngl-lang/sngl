@@ -40,6 +40,10 @@ func SlotNames(slots map[string]*SlotContent) []string {
 // Component is non-nil when instantiating a user-defined component.
 type NodeInst struct {
 	AST ast.Stmt // original *ast.VisualNode (or *ast.CallStmt for Foo() that's a component)
+	// WrittenTypeArgs are the type arguments the node was written with,
+	// `tagged[int](v=1)`, kept so the node prints back as written: TypeArgs
+	// is what they and the props bound.
+	WrittenTypeArgs []*Type `json:",omitempty"`
 	// Site is the node a program wrote that this one stands for, where a
 	// platform override's body was substituted for it: AST is then the
 	// override's node, in the platform package, and a diagnostic about what

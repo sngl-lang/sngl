@@ -13,22 +13,25 @@ import (
 // against the props one call site supplies, and returns the specialization
 // those props are checked against.
 //
-// A component's parameters are bound from its props for the same reason a
-// func's are bound from its arguments: there is no syntax for naming a type
-// argument at a call site, so the values written there are the only statement
-// of what the parameters are. `effect(on=page)` binds T from `page`, which is
-// what then types the `@mount(v)` payload.
+// A component's parameters are bound from its props as a func's are bound from
+// its arguments, after any the call site wrote, `tagged[int](v=1)`.
+// `effect(on=page)` binds T from `page`, which is what then types the
+// `@mount(v)` payload.
 //
 // The result is for checking the call site and nothing else. NodeInst.Component
 // keeps the generic declaration, because that is the identity every later pass
 // compares against -- the inliner's cycle set, the local-component set, the
 // method table keyed by name. A specialization put there would be a component
 // nothing else in the program has heard of.
-func (c *checker) bindComponentTypeParams(comp *ir.Component, args ast.ArgList) *ir.Component {
+func (c *checker) bindComponentTypeParams(comp *ir.Component, args ast.ArgList, written map[string]*ir.Type) *ir.Component {
 	if comp == nil || len(comp.TypeParams) == 0 {
 		return comp
 	}
-	bindings := map[string]*ir.Type{}
+	// What the call site wrote binds first, and the props are held to it.
+	bindings := maps.Clone(written)
+	if bindings == nil {
+		bindings = map[string]*ir.Type{}
+	}
 	for _, p := range comp.Props {
 		if p.Type == nil || !mentionsTypeParam(p.Type) {
 			continue

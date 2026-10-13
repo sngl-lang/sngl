@@ -345,6 +345,9 @@ func (c *converter) convertContext(ctx *Context) *ast.CallStmt {
 		Func: &ast.IdentExpr{Name: "context"},
 		ID:   ctx.Name,
 	}
+	if written := c.typeArgExprs(ctx.TypeArgs); len(written) > 0 {
+		call.Func = &ast.IndexExpr{Operand: call.Func, Indices: written}
+	}
 	if ctx.Default != nil {
 		call.Args = ast.ArgList{
 			Args: []ast.ArgOrEventHandler{
@@ -599,8 +602,9 @@ func (c *converter) convertNodeInst(n *NodeInst) *ast.VisualNode {
 		target = &ast.IdentExpr{Name: n.Name}
 	}
 	vn := &ast.VisualNode{
-		Target: target,
-		ID:     n.ID,
+		Target:   target,
+		TypeArgs: c.typeArgExprs(n.WrittenTypeArgs),
+		ID:       n.ID,
 	}
 	if n.Crosses {
 		vn.Attrs = []ast.MacroAttr{c.attr("family", "crosses")}
@@ -853,7 +857,7 @@ func (c *converter) convertExpr(e Expr) ast.Expr {
 	case *Index:
 		return &ast.IndexExpr{
 			Operand: c.convertExpr(e.Operand),
-			Index:   c.convertExpr(e.Idx),
+			Indices: []ast.Expr{c.convertExpr(e.Idx)},
 		}
 	case *StructLit:
 		return c.convertStructLit(e)
@@ -977,10 +981,31 @@ func (c *converter) convertCallExpr(call *Call) *ast.CallExpr {
 	} else {
 		funcExpr = &ast.IdentExpr{Name: "_"}
 	}
+	if written := c.typeArgExprs(call.TypeArgs); len(written) > 0 {
+		funcExpr = &ast.IndexExpr{Operand: funcExpr, Indices: written}
+	}
 	return &ast.CallExpr{
 		Func: funcExpr,
 		Args: c.convertCallArgList(call.Args),
 	}
+}
+
+// typeArgExprs spells the type arguments a call site wrote as the
+// expressions a bracket holds. Nil where none were written, or where one is a
+// type no expression spells, which the call could not have been written with.
+func (c *converter) typeArgExprs(types []*Type) []ast.Expr {
+	var out []ast.Expr
+	for _, t := range types {
+		if t == nil {
+			return nil
+		}
+		e, ok := ast.ExprFromType(c.convertType(t))
+		if !ok {
+			return nil
+		}
+		out = append(out, e)
+	}
+	return out
 }
 
 func (c *converter) convertConversion(conv *Conversion) ast.Expr {
@@ -1014,6 +1039,11 @@ func (c *converter) convertStructLit(sl *StructLit) *ast.StructExpr {
 		se.Name = sl.Def.Name
 		if sl.Type != nil && sl.Type.Package != "" {
 			se.Package = sl.Type.Package
+		}
+		// A generic struct's literal says what it is an instance of, which
+		// no expected type need then supply when it is read back.
+		if len(sl.Def.TypeParams) > 0 && sl.Type != nil && len(sl.Type.Elems) == len(sl.Def.TypeParams) {
+			se.TypeArgs = c.typeArgExprs(sl.Type.Elems)
 		}
 	} else if sl.Type != nil && sl.Type.Decl != nil {
 		se.Name = sl.Type.Decl.SymName()

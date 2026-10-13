@@ -510,8 +510,8 @@ const component shapes.canvasImage[language] {
 #[marks.intrinsic("go:chan")]
 struct chan[T any] {}
 
-// The element type comes from the argument rather than from a type argument,
-// which a call site has no syntax for: `makeChan(false)` is a `chan[bool]`. The
+// The element type comes from the argument, a witness declared before a call
+// site could write a type argument: `makeChan(false)` is a `chan[bool]`. The
 // value itself is not used -- a channel has no initial contents -- so writing
 // the zero of the type reads as what it is.
 #[marks.intrinsic("go.makechan")]

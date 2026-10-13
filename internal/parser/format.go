@@ -821,6 +821,7 @@ func (f *formatter) writeComponentDecl(c *ast.ComponentDecl) {
 
 func (f *formatter) writeVisualNode(vn *ast.VisualNode) {
 	f.writeExpr(vn.Target)
+	f.writeIndices(vn.TypeArgs)
 	if vn.ID != "" {
 		f.write(" #")
 		f.write(vn.ID)
@@ -1266,9 +1267,7 @@ func (f *formatter) writeExpr(e ast.Expr) {
 		f.writeSelectExpr(x)
 	case *ast.IndexExpr:
 		f.writeExpr(x.Operand)
-		f.write("[")
-		f.writeExpr(x.Index)
-		f.write("]")
+		f.writeIndices(x.Indices)
 	case *ast.CallExpr:
 		f.writeExpr(x.Func)
 		if x.ID != "" {
@@ -1346,6 +1345,7 @@ func (f *formatter) writeStructExpr(x *ast.StructExpr) {
 	if x.Name != "" {
 		f.write(x.Name)
 	}
+	f.writeIndices(x.TypeArgs)
 	if x.Anon != nil {
 		f.writeStructDef(x.Anon)
 	}
@@ -1731,4 +1731,20 @@ func (f *formatter) writeParamAttrs(attrs []ast.MacroAttr, declPos ast.Pos, mult
 			f.write(" ")
 		}
 	}
+}
+
+// writeIndices writes a bracket's contents: an index, or a list of type
+// arguments. Nothing when there are none.
+func (f *formatter) writeIndices(xs []ast.Expr) {
+	if len(xs) == 0 {
+		return
+	}
+	f.write("[")
+	for i, x := range xs {
+		if i > 0 {
+			f.write(", ")
+		}
+		f.writeExpr(x)
+	}
+	f.write("]")
 }

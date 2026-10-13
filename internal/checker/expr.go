@@ -1035,6 +1035,9 @@ func (c *checker) inferCall(x *ast.CallExpr) (out ir.Expr) {
 	if x != stmtCall {
 		c.refuseExprErrorHandler(x)
 	}
+	if out, ok := c.instantiatedCall(x); ok {
+		return out
+	}
 	if sel, ok := x.Func.(*ast.SelectExpr); ok {
 		return c.inferMethodCall(sel, x)
 	}
@@ -1098,6 +1101,7 @@ func (c *checker) inferCall(x *ast.CallExpr) (out ir.Expr) {
 	// Component instantiation in expression position: text(value="hi")
 	if calleeType.Kind == ir.TypeComponent {
 		if comp, ok := calleeType.Decl.(*ir.Component); ok {
+			c.takeCallTypeArgs(x, comp.TypeParams)
 			args := c.checkComponentCallArgs(x, comp)
 			return &ir.Call{AST: x, Type: calleeType, Args: args}
 		}
@@ -1125,8 +1129,12 @@ func (c *checker) inferCall(x *ast.CallExpr) (out ir.Expr) {
 		return &ir.Call{AST: x, Type: TypDyn, Args: c.checkCallArgs(x.Args, nil)}
 	}
 
+	var written map[string]*ir.Type
+	if sig != nil {
+		written = c.takeCallTypeArgs(x, sig.TypeParams)
+	}
 	if sig != nil && len(sig.TypeParams) > 0 {
-		sig = c.inferTypeParams(sig, x.Args)
+		sig = c.inferTypeParams(sig, x.Args, written)
 	}
 
 	args := c.checkCallArgs(x.Args, sig)
@@ -1321,6 +1329,7 @@ func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) ir.Ex
 								c.error(sel.Pos, "unknown component %q in package %s", sel.Field, ident.Name)
 								return &ir.Call{AST: call, Type: TypDyn, Args: c.checkCallArgs(call.Args, nil)}
 							}
+							c.takeCallTypeArgs(call, comp.TypeParams)
 							args := c.checkComponentCallArgs(call, comp)
 							c.validateCallStmtComponentArgs(call, comp)
 							return &ir.Call{AST: call, Type: comp.SymType(), Receiver: receiverExpr, Args: args}
@@ -1343,8 +1352,12 @@ func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) ir.Ex
 						// Infer generic type params from arguments (e.g. the
 						// html.frontend[T]/html.backend[T] placement directives),
 						// mirroring the bare-call path above.
+						var written map[string]*ir.Type
+						if sig != nil {
+							written = c.takeCallTypeArgs(call, sig.TypeParams)
+						}
 						if sig != nil && len(sig.TypeParams) > 0 {
-							sig = c.inferTypeParams(sig, call.Args)
+							sig = c.inferTypeParams(sig, call.Args, written)
 						}
 						args := c.checkCallArgs(call.Args, sig)
 						var resolvedFunc *ir.Func
@@ -1421,6 +1434,9 @@ func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) ir.Ex
 	}
 	if ok {
 		sig := fn.FuncSig()
+		// The written type arguments are the method's own, after its
+		// receiver's, which the receiver binds.
+		written := c.takeCallTypeArgs(call, sig.TypeParams)
 		// recvParamStyle tracks whether the receiver is passed as the first
 		// explicit param (old-style "dyn receiver" convention) vs. a new-style
 		// RecvTypeParams method where the receiver is implicit (not a param).
@@ -1502,7 +1518,7 @@ func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) ir.Ex
 				shifted.Params = sig.Params[1:]
 				inferSig = &shifted
 			}
-			inferred := c.inferTypeParams(inferSig, call.Args)
+			inferred := c.inferTypeParams(inferSig, call.Args, written)
 			if inferSig != sig {
 				merged := *sig
 				merged.Params = append([]*ir.Param{sig.Params[0]}, inferred.Params...)
@@ -2350,8 +2366,21 @@ func (c *checker) inferSelect(x *ast.SelectExpr) ir.Expr {
 }
 
 func (c *checker) inferIndex(x *ast.IndexExpr) ir.Expr {
+	// A bracket on a declaration rather than a value is its type arguments,
+	// which are written where it is called or built, and nowhere else yet.
+	if name, ok := c.namesDeclaration(x.Operand); ok {
+		c.resolveTypeArgs(x.Indices)
+		c.error(x.Pos, "type arguments are written where %s is called: %s[…](…)", name, name)
+		return &ir.Literal{Type: TypDyn}
+	}
 	operandExpr := c.checkExpr(x.Operand)
-	indexExpr := c.checkExpr(x.Index)
+	if len(x.Indices) != 1 {
+		c.error(x.Pos, "an index takes one value")
+	}
+	var indexExpr ir.Expr = &ir.Literal{Type: TypDyn}
+	if len(x.Indices) > 0 {
+		indexExpr = c.checkExpr(x.Indices[0])
+	}
 	operand := exprType(operandExpr)
 	operandExpr, operand = callComputedOperand(operandExpr, operand)
 
@@ -2399,6 +2428,22 @@ func (c *checker) inferIndex(x *ast.IndexExpr) ir.Expr {
 }
 
 func (c *checker) inferStructLit(x *ast.StructExpr) ir.Expr {
+	// `Box[int]{…}` states its type, arguments and all, which wins over
+	// whatever was expected, as `struct { … }{ … }` does.
+	if len(x.TypeArgs) > 0 {
+		nt := &ast.NamedType{Pos: x.Pos, Package: x.Package, Name: x.Name}
+		for _, a := range x.TypeArgs {
+			te, ok := ast.TypeFromExpr(a)
+			if !ok {
+				c.error(*a.ExprPos(), "a type argument is a type: write a name, such as int or option[User]")
+				te = &ast.NamedType{Pos: *a.ExprPos(), Name: "dyn"}
+			}
+			nt.TypeArgs = append(nt.TypeArgs, te)
+		}
+		saved := c.expected
+		c.expected = c.resolveType(nt)
+		defer func() { c.expected = saved }()
+	}
 	var sd *ir.StructDef
 	if c.nativeValues {
 		// The declaration is the one the importer built: named by the value
@@ -2945,8 +2990,11 @@ func (c *checker) inferLambda(x *ast.LambdaExpr) ir.Expr {
 
 // inferTypeParams infers concrete types for generic type params by matching
 // argument types against parameter types, then returns a substituted FuncSig.
-func (c *checker) inferTypeParams(sig *ir.FuncSig, args ast.ArgList) *ir.FuncSig {
-	bindings := make(map[string]*ir.Type)
+func (c *checker) inferTypeParams(sig *ir.FuncSig, args ast.ArgList, written map[string]*ir.Type) *ir.FuncSig {
+	// What the call site wrote binds first, so an argument is held to it
+	// rather than binding the parameter itself.
+	bindings := make(map[string]*ir.Type, len(written))
+	maps.Copy(bindings, written)
 	bind := func(p *ir.Param, t *ir.Type) {
 		if p != nil && t != nil && t.Kind != ir.TypeDyn {
 			bindTypeParams(p.Type, t, bindings)
@@ -2976,11 +3024,10 @@ func (c *checker) inferTypeParams(sig *ir.FuncSig, args ast.ArgList) *ir.FuncSig
 		}
 		pos++
 	}
-	// A parameter the arguments could not pin is bound from the type the context
-	// wants, which is the only way to write one that appears in the return type
-	// alone: `func empty[T any]() list[T]` takes no arguments, and SNGL has no syntax for
-	// naming a type argument at a call site, so without this such a function is
-	// undeclarable rather than merely awkward.
+	// A parameter neither written nor pinned by the arguments is bound from
+	// the type the context wants: `func empty[T any]() list[T]` takes no
+	// arguments, and `var xs list[int] = empty()` says what T is without
+	// `empty[int]()` saying it again.
 	//
 	// Arguments come first on purpose. An argument states the type directly,
 	// while the expected type states what the result has to be assignable to,
@@ -3677,6 +3724,16 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 		if c.isContextDeclCallStmt(x) {
 			c.error(x.Pos, "context decl only permitted at file top level")
 			return nil
+		}
+		// `tagged[int](v=1)`: a node written with its component's type
+		// arguments is a node like any other.
+		if ix, ok := x.Call.Func.(*ast.IndexExpr); ok {
+			if target, ok := ix.Operand.(ast.TargetExpr); ok {
+				vn := &ast.VisualNode{Pos: x.Pos, Target: target, TypeArgs: ix.Indices, ID: x.Call.ID, Args: x.Call.Args, HasParens: true, Attrs: x.Attrs}
+				if c.componentNamed(vn.TargetName()) != nil {
+					return c.checkVisualNodeIR(vn)
+				}
+			}
 		}
 		// Bodyless forms of root-ish visual nodes (e.g. `timer(...)` with
 		// the tick handler inside the parens) parse as CallStmt but must
@@ -4385,6 +4442,12 @@ func (c *checker) checkVisualNodeIR(vn *ast.VisualNode) ir.Stmt {
 
 func (c *checker) checkVisualNode(vn *ast.VisualNode) ir.Stmt {
 	name := visualNodeTarget(vn)
+	// Only a component takes type arguments; a slot, a provider or a
+	// function written where a node goes takes none.
+	if len(vn.TypeArgs) > 0 && c.componentNamed(vn.TargetName()) == nil {
+		c.resolveTypeArgs(vn.TypeArgs)
+		c.error(vn.Pos, "%s takes no type arguments", name)
+	}
 
 	// Built-in nodes — the compiler's own constructs, dispatched on the
 	// #[builtin] mark of whatever the target resolves to rather than on the
@@ -4559,7 +4622,12 @@ func (c *checker) checkVisualNode(vn *ast.VisualNode) ir.Stmt {
 	// the population a parameter named T. Once, not once per user: binding
 	// walks the argument expressions, and a second walk reports each of their
 	// diagnostics twice.
-	spec := c.bindComponentTypeParams(comp, vn.Args)
+	var written map[string]*ir.Type
+	var writtenTypes []*ir.Type
+	if comp != nil {
+		written, writtenTypes = c.bindWritten(vn.Pos, name, vn.TypeArgs, comp.TypeParams)
+	}
+	spec := c.bindComponentTypeParams(comp, vn.Args, written)
 	if spec != comp {
 		c.specializeHandle(vn.ID, comp, spec)
 	}
@@ -4638,6 +4706,7 @@ func (c *checker) checkVisualNode(vn *ast.VisualNode) ir.Stmt {
 		Key:       c.keyArgExpr(vn.Args),
 	}
 	node.TypeArgs = c.specArgs[spec]
+	node.WrittenTypeArgs = writtenTypes
 	c.deferConstSlots(node)
 	return node
 }

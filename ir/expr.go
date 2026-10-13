@@ -77,6 +77,10 @@ type Call struct {
 	Callee   Expr      // callee expression when Func is nil (e.g. func-typed var)
 	Receiver Expr      // non-nil only for namespace/component/element-ref calls
 	Args     []CallArg // resolved arguments (for type-methods, Args[0] is the receiver)
+	// TypeArgs are the type arguments the call site wrote, `first[int](xs)`.
+	// What they bind is already in Type and the arguments' types; they are
+	// kept so the call prints back as written.
+	TypeArgs []*Type `json:",omitempty"`
 
 	// Event is the event name when this call is an element-ref event
 	// trigger (`c.inc.click()`), set by the checker after resolving the

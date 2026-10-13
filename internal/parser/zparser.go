@@ -175,30 +175,31 @@ const (
 	CondPostfixOp     = Symbol(153) // CondPostfixOp
 	ExprPostfixOp     = Symbol(154) // ExprPostfixOp
 	StmtPostfixOp     = Symbol(155) // StmtPostfixOp
-	PrimaryExpr       = Symbol(156) // PrimaryExpr
-	ImportExpr        = Symbol(157) // ImportExpr
-	ListBody          = Symbol(158) // ListBody
-	ListElem          = Symbol(159) // ListElem
-	StructLitBody     = Symbol(160) // StructLitBody
-	AnonStructLit     = Symbol(161) // AnonStructLit
-	AnonField         = Symbol(162) // AnonField
-	FuncLit           = Symbol(163) // FuncLit
-	ArgList           = Symbol(164) // ArgList
-	Arg               = Symbol(165) // Arg
-	EventArg          = Symbol(166) // EventArg
-	IdentArgCont      = Symbol(167) // IdentArgCont
-	ArgExprCont       = Symbol(168) // ArgExprCont
-	NonIdentPrimary   = Symbol(169) // NonIdentPrimary
-	Type              = Symbol(170) // Type
-	TypeArgs          = Symbol(171) // TypeArgs
-	TypeList          = Symbol(172) // TypeList
-	FuncTypeParamList = Symbol(173) // FuncTypeParamList
-	FuncTypeParam     = Symbol(174) // FuncTypeParam
+	IndexList         = Symbol(156) // IndexList
+	PrimaryExpr       = Symbol(157) // PrimaryExpr
+	ImportExpr        = Symbol(158) // ImportExpr
+	ListBody          = Symbol(159) // ListBody
+	ListElem          = Symbol(160) // ListElem
+	StructLitBody     = Symbol(161) // StructLitBody
+	AnonStructLit     = Symbol(162) // AnonStructLit
+	AnonField         = Symbol(163) // AnonField
+	FuncLit           = Symbol(164) // FuncLit
+	ArgList           = Symbol(165) // ArgList
+	Arg               = Symbol(166) // Arg
+	EventArg          = Symbol(167) // EventArg
+	IdentArgCont      = Symbol(168) // IdentArgCont
+	ArgExprCont       = Symbol(169) // ArgExprCont
+	NonIdentPrimary   = Symbol(170) // NonIdentPrimary
+	Type              = Symbol(171) // Type
+	TypeArgs          = Symbol(172) // TypeArgs
+	TypeList          = Symbol(173) // TypeList
+	FuncTypeParamList = Symbol(174) // FuncTypeParamList
+	FuncTypeParam     = Symbol(175) // FuncTypeParam
 )
 
-const SymbolNames = "EOFampassignatattr_openbangbangbangcoloncommadotellipsiseqfat_arrowfloat_litgtgtehashi18n_case_endi18n_case_fulli18n_case_starti18n_str_endi18n_str_fulli18n_str_resumei18n_str_starti18n_triple_endi18n_triple_fulli18n_triple_startidentint_litkw_breakkw_componentkw_constkw_continuekw_elsekw_enumkw_forkw_funckw_ifkw_importkw_returnkw_structkw_unitkw_varlandlbracelbracketlorlparenltlteminusminus_assignminus_minusnative_valueneqpct_assignpercentplusplus_assignplus_plusquestionraw_strrbracerbracketrparensemislashslash_assignslashdashstarstar_assignstr_endstr_fullstr_resumestr_starttriple_endtriple_fulltriple_startunit_litwhite_spaceInterpStrTripleInterpI18nInterpStrI18nTripleI18nPlaceholderI18nThirdArgMsgBodyTailMsgCaseSelectorMsgBodyMacroAttrDocumentStmtStmtBlockImportDeclStructDeclStructBodyItemStructBodyDeclStructFieldEnumDeclEnumBodyItemEnumMemberUnitDeclConstDeclConstSpecIdentListVarDeclVarSpecVarHandlerFuncDeclTargetIndexFuncTailFuncBodyTailFuncNameFuncNameBracketTypeParamRestNameBracketTypeParamListTypeParamParamListParamEventParamsComponentDeclVisualOrStmtIncDecOpStatementPrimaryIfNodeForNodeAssignOpExprTernaryExprOrExprAndExprEqExprCmpExprAddExprMulExprEqOpCmpOpAddOpMulOpUnaryExprPostfixExprCondExprCondOrExprCondAndExprCondEqExprCondCmpExprCondAddExprCondMulExprCondUnaryExprCondPostfixExprCondPrimaryCondPostfixOpExprPostfixOpStmtPostfixOpPrimaryExprImportExprListBodyListElemStructLitBodyAnonStructLitAnonFieldFuncLitArgListArgEventArgIdentArgContArgExprContNonIdentPrimaryTypeTypeArgsTypeListFuncTypeParamListFuncTypeParam"
+const SymbolNames = "EOFampassignatattr_openbangbangbangcoloncommadotellipsiseqfat_arrowfloat_litgtgtehashi18n_case_endi18n_case_fulli18n_case_starti18n_str_endi18n_str_fulli18n_str_resumei18n_str_starti18n_triple_endi18n_triple_fulli18n_triple_startidentint_litkw_breakkw_componentkw_constkw_continuekw_elsekw_enumkw_forkw_funckw_ifkw_importkw_returnkw_structkw_unitkw_varlandlbracelbracketlorlparenltlteminusminus_assignminus_minusnative_valueneqpct_assignpercentplusplus_assignplus_plusquestionraw_strrbracerbracketrparensemislashslash_assignslashdashstarstar_assignstr_endstr_fullstr_resumestr_starttriple_endtriple_fulltriple_startunit_litwhite_spaceInterpStrTripleInterpI18nInterpStrI18nTripleI18nPlaceholderI18nThirdArgMsgBodyTailMsgCaseSelectorMsgBodyMacroAttrDocumentStmtStmtBlockImportDeclStructDeclStructBodyItemStructBodyDeclStructFieldEnumDeclEnumBodyItemEnumMemberUnitDeclConstDeclConstSpecIdentListVarDeclVarSpecVarHandlerFuncDeclTargetIndexFuncTailFuncBodyTailFuncNameFuncNameBracketTypeParamRestNameBracketTypeParamListTypeParamParamListParamEventParamsComponentDeclVisualOrStmtIncDecOpStatementPrimaryIfNodeForNodeAssignOpExprTernaryExprOrExprAndExprEqExprCmpExprAddExprMulExprEqOpCmpOpAddOpMulOpUnaryExprPostfixExprCondExprCondOrExprCondAndExprCondEqExprCondCmpExprCondAddExprCondMulExprCondUnaryExprCondPostfixExprCondPrimaryCondPostfixOpExprPostfixOpStmtPostfixOpIndexListPrimaryExprImportExprListBodyListElemStructLitBodyAnonStructLitAnonFieldFuncLitArgListArgEventArgIdentArgContArgExprContNonIdentPrimaryTypeTypeArgsTypeListFuncTypeParamListFuncTypeParam"
 
-var SymbolIndex = [...]uint16{0, 3, 6, 12, 14, 23, 27, 35, 40, 45, 48, 56, 58, 67, 76, 78, 81, 85, 98, 112, 127, 139, 152, 167, 181, 196, 212, 229, 234, 241, 249, 261, 269, 280, 287, 294, 300, 307, 312, 321, 330, 339, 346, 352, 356, 362, 370, 373, 379, 381, 384, 389, 401, 412, 424, 427, 437, 444, 448, 459, 468, 476, 483, 489, 497, 503, 507, 512, 524, 533, 537, 548, 555, 563, 573, 582, 592, 603, 615, 623, 634, 643, 655, 668, 678, 693, 705, 716, 723, 731, 738, 747, 755, 759, 768, 778, 788, 802, 816, 827, 835, 847, 857, 865, 874, 883, 892, 899, 906, 916, 924, 935, 943, 955, 963, 978, 991, 1002, 1015, 1024, 1033, 1038, 1049, 1062, 1074, 1082, 1098, 1104, 1111, 1119, 1123, 1134, 1140, 1147, 1153, 1160, 1167, 1174, 1178, 1183, 1188, 1193, 1202, 1213, 1221, 1231, 1242, 1252, 1263, 1274, 1285, 1298, 1313, 1324, 1337, 1350, 1363, 1374, 1384, 1392, 1400, 1413, 1426, 1435, 1442, 1449, 1452, 1460, 1472, 1483, 1498, 1502, 1510, 1518, 1535, 1548}
+var SymbolIndex = [...]uint16{0, 3, 6, 12, 14, 23, 27, 35, 40, 45, 48, 56, 58, 67, 76, 78, 81, 85, 98, 112, 127, 139, 152, 167, 181, 196, 212, 229, 234, 241, 249, 261, 269, 280, 287, 294, 300, 307, 312, 321, 330, 339, 346, 352, 356, 362, 370, 373, 379, 381, 384, 389, 401, 412, 424, 427, 437, 444, 448, 459, 468, 476, 483, 489, 497, 503, 507, 512, 524, 533, 537, 548, 555, 563, 573, 582, 592, 603, 615, 623, 634, 643, 655, 668, 678, 693, 705, 716, 723, 731, 738, 747, 755, 759, 768, 778, 788, 802, 816, 827, 835, 847, 857, 865, 874, 883, 892, 899, 906, 916, 924, 935, 943, 955, 963, 978, 991, 1002, 1015, 1024, 1033, 1038, 1049, 1062, 1074, 1082, 1098, 1104, 1111, 1119, 1123, 1134, 1140, 1147, 1153, 1160, 1167, 1174, 1178, 1183, 1188, 1193, 1202, 1213, 1221, 1231, 1242, 1252, 1263, 1274, 1285, 1298, 1313, 1324, 1337, 1350, 1363, 1372, 1383, 1393, 1401, 1409, 1422, 1435, 1444, 1451, 1458, 1461, 1469, 1481, 1492, 1507, 1511, 1519, 1527, 1544, 1557}
 
 func (s Symbol) String() string {
 	idx := int(s) - 0
@@ -2399,7 +2400,7 @@ state1:
 //	# no StmtBlock (not a statement).
 //	CondPostfixOp =
 //	      dot ident
-//	    | lbracket Expr rbracket
+//	    | lbracket IndexList rbracket
 //	    | lparen [ ArgList ] rparen
 //	    .
 //
@@ -2417,7 +2418,7 @@ state1:
 //		Accept
 //	State 3
 //		on  amp, bang, float_lit, hash, i18n_str_full, i18n_str_start, i18n_triple_full, i18n_triple_start, ident, int_lit, kw_const, kw_func, kw_import, kw_struct, lbrace, lbracket, lparen, minus, raw_str, star, str_full, str_start, triple_full, triple_start, unit_lit
-//			call Expr and goto state 4
+//			call IndexList and goto state 4
 //	State 4
 //		on  rbracket
 //			shift and goto state 2
@@ -2460,10 +2461,10 @@ state2:
 	accept, errorSet = true, 0
 	return p.stop(r, accept, errorSet)
 state3:
-	accept, errorSet = false, 12
+	accept, errorSet = false, 11
 	switch Symbol(p.tok.Ch) {
 	case amp, bang, float_lit, hash, i18n_str_full, i18n_str_start, i18n_triple_full, i18n_triple_start, ident, int_lit, kw_const, kw_func, kw_import, kw_struct, lbrace, lbracket, lparen, minus, raw_str, star, str_full, str_start, triple_full, triple_start, unit_lit:
-		r = p.add(r, p.Expr())
+		r = p.add(r, p.IndexList())
 		goto state4
 	}
 	return p.stop(r, accept, errorSet)
@@ -3404,12 +3405,12 @@ state1:
 
 // ExprPostfixOp grammar:
 //
-//	# Expression context: struct lit available via dot-ident, NO StmtBlock.
+//	# Expression context: struct lit available via dot-ident or an index, NO StmtBlock.
 //	# lbrace never appears in ExprPostfixOp FIRST set, so ident [ StructLitBody ]
 //	# in PrimaryExpr is LL(1) conflict-free.
 //	ExprPostfixOp =
 //	      dot ident [ StructLitBody ]
-//	    | lbracket Expr rbracket
+//	    | lbracket IndexList rbracket [ StructLitBody ]
 //	    | lparen [ ArgList ] rparen
 //	    .
 //
@@ -3431,10 +3432,10 @@ state1:
 //		Accept
 //	State 4
 //		on  amp, bang, float_lit, hash, i18n_str_full, i18n_str_start, i18n_triple_full, i18n_triple_start, ident, int_lit, kw_const, kw_func, kw_import, kw_struct, lbrace, lbracket, lparen, minus, raw_str, star, str_full, str_start, triple_full, triple_start, unit_lit
-//			call Expr and goto state 5
+//			call IndexList and goto state 5
 //	State 5
 //		on  rbracket
-//			shift and goto state 3
+//			shift and goto state 2
 //	State 6
 //		on  rparen
 //			shift and goto state 3
@@ -3482,10 +3483,10 @@ state3:
 	accept, errorSet = true, 0
 	return p.stop(r, accept, errorSet)
 state4:
-	accept, errorSet = false, 12
+	accept, errorSet = false, 11
 	switch Symbol(p.tok.Ch) {
 	case amp, bang, float_lit, hash, i18n_str_full, i18n_str_start, i18n_triple_full, i18n_triple_start, ident, int_lit, kw_const, kw_func, kw_import, kw_struct, lbrace, lbracket, lparen, minus, raw_str, star, str_full, str_start, triple_full, triple_start, unit_lit:
-		r = p.add(r, p.Expr())
+		r = p.add(r, p.IndexList())
 		goto state5
 	}
 	return p.stop(r, accept, errorSet)
@@ -3494,7 +3495,7 @@ state5:
 	switch Symbol(p.tok.Ch) {
 	case rbracket:
 		r = append(r, p.shift())
-		goto state3
+		goto state2
 	}
 	return p.stop(r, accept, errorSet)
 state6:
@@ -5109,6 +5110,45 @@ state1:
 	return p.stop(r, accept, errorSet)
 }
 
+// IndexList grammar:
+//
+//	# A bracket after a name is an index or a list of type arguments, and the
+//	# checker says which: on a generic declaration -- `first[int](xs)`,
+//	# `Box[int]{v=1}`, `context[option[User]] #who(null)` -- it instantiates it,
+//	# and anywhere else it takes one value. A type argument is written as the
+//	# expression a type's name already is, so `func(int) bool` is not yet one.
+//	IndexList = Expr { comma Expr } .
+//
+//	State 0
+//		on  amp, bang, float_lit, hash, i18n_str_full, i18n_str_start, i18n_triple_full, i18n_triple_start, ident, int_lit, kw_const, kw_func, kw_import, kw_struct, lbrace, lbracket, lparen, minus, raw_str, star, str_full, str_start, triple_full, triple_start, unit_lit
+//			call Expr and goto state 1
+//	State 1
+//		Accept
+//		on  comma
+//			shift and goto state 0
+//
+// IndexList is used internally from Parse.
+func (p *Parser) IndexList() (r []int32) {
+	accept, errorSet := false, 0
+	r = append(p.get(), -int32(IndexList), 0)
+state0:
+	accept, errorSet = false, 12
+	switch Symbol(p.tok.Ch) {
+	case amp, bang, float_lit, hash, i18n_str_full, i18n_str_start, i18n_triple_full, i18n_triple_start, ident, int_lit, kw_const, kw_func, kw_import, kw_struct, lbrace, lbracket, lparen, minus, raw_str, star, str_full, str_start, triple_full, triple_start, unit_lit:
+		r = p.add(r, p.Expr())
+		goto state1
+	}
+	return p.stop(r, accept, errorSet)
+state1:
+	accept, errorSet = true, 147
+	switch Symbol(p.tok.Ch) {
+	case comma:
+		r = append(r, p.shift())
+		goto state0
+	}
+	return p.stop(r, accept, errorSet)
+}
+
 // InterpStr grammar:
 //
 //	# ── String interpolation ────────────────────────────────────────────────────
@@ -6708,7 +6748,7 @@ state4:
 //	StmtPostfixOp =
 //	      dot ident
 //	    | hash
-//	    | lbracket Expr rbracket
+//	    | lbracket IndexList rbracket
 //	    | lparen [ ArgList ] rparen
 //	    | [ lparen [ ArgList ] rparen ] StmtBlock
 //	    .
@@ -6731,7 +6771,7 @@ state4:
 //		Accept
 //	State 3
 //		on  amp, bang, float_lit, hash, i18n_str_full, i18n_str_start, i18n_triple_full, i18n_triple_start, ident, int_lit, kw_const, kw_func, kw_import, kw_struct, lbrace, lbracket, lparen, minus, raw_str, star, str_full, str_start, triple_full, triple_start, unit_lit
-//			call Expr and goto state 4
+//			call IndexList and goto state 4
 //	State 4
 //		on  rbracket
 //			shift and goto state 2
@@ -6784,10 +6824,10 @@ state2:
 	accept, errorSet = true, 0
 	return p.stop(r, accept, errorSet)
 state3:
-	accept, errorSet = false, 12
+	accept, errorSet = false, 11
 	switch Symbol(p.tok.Ch) {
 	case amp, bang, float_lit, hash, i18n_str_full, i18n_str_start, i18n_triple_full, i18n_triple_start, ident, int_lit, kw_const, kw_func, kw_import, kw_struct, lbrace, lbracket, lparen, minus, raw_str, star, str_full, str_start, triple_full, triple_start, unit_lit:
-		r = p.add(r, p.Expr())
+		r = p.add(r, p.IndexList())
 		goto state4
 	}
 	return p.stop(r, accept, errorSet)

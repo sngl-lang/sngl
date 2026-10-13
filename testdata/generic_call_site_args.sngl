@@ -1,0 +1,81 @@
+// Type arguments may be written at a call site, in brackets after the name, as
+// Go writes them. A bracket after a name is already a postfix index, so the
+// checker decides what one means: on a generic declaration -- a func, a method,
+// a component, a struct -- it is an instantiation, and anywhere else an index.
+// Written arguments bind a prefix of the parameters, inference fills the rest,
+// and a default fills what neither reaches.
+
+import . "sngl:test"
+import . "sngl:ui"
+
+struct User {
+    name string
+}
+
+struct Box[T any] {
+    value T
+}
+
+// Nothing at a call site but the type argument says what T is: no argument
+// names it, and `var xs = empty()` would hold a list of nothing.
+func empty[T any]() list[T] {
+    var xs list[T] = []
+    return xs
+}
+
+func pair[A any, B any](a A, b B) => b
+
+func wrap[T any, U any = string](v T) option[T] {
+    return v
+}
+
+// A context's type is its default's, unless the declaration says otherwise:
+// `null` says nothing about what it is the absence of.
+context[option[User]] #who(null)
+
+component tagged[T any](v T) node {
+    text(value="tagged")
+}
+
+component main node {
+    var count = empty[int]().length
+    var box = Box[int]{value=3}
+
+    vbox {
+        tagged[int](v=1)
+        text(value="{count} {box.value}")
+    }
+}
+
+func testCallSiteTypeArgs(t Test, c main) {
+    // A func, with nothing else to bind from.
+    var xs = empty[string]()
+    t.assert(xs.length == 0)
+
+    // A partial list: A is written, B is inferred from its argument.
+    t.assert(pair[int](1, "s") == "s")
+
+    // A default fills what neither the list nor the arguments reach.
+    t.assert(wrap[int](4) == 4)
+
+    // A method's own parameters, after its receiver's.
+    var names = [1, 2].map[string](func(n) => "{n}")
+    t.assert(names[1] == "2")
+
+    // A struct literal.
+    var b = Box[string]{value="v"}
+    t.assert(b.value == "v")
+
+    // An ordinary index is still one.
+    var ys = [10, 20]
+    t.assert(ys[1] == 20)
+
+    t.assert(who == null)
+    t.assert(c.count == 0)
+}
+
+window {
+    who(User{name="ann"}) {
+        main
+    }
+}
