@@ -211,6 +211,25 @@ test:
   script: go tool verify -dry
   coverage: '/total coverage: (\d+\.\d+)% of statements/'
 
+# A branch built over several sessions carries its plan in TODO.md, and the
+# plan is the branch's, not the repository's: fail until it is deleted, so it
+# cannot be merged along with the work. Never on main, where a stray TODO.md
+# should not turn every pipeline red.
+no-todo:
+  stage: test
+  image: alpine:latest
+  needs: []
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+      when: never
+    - when: on_success
+  script:
+    - |
+      if [ -e TODO.md ]; then
+        echo "TODO.md is still present: delete it before merging"
+        exit 1
+      fi
+
 pages:
   stage: pages
   image: $IMAGE:latest
