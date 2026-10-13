@@ -681,24 +681,32 @@ called, which may be after the test has stopped holding.
 
 ### Generic type parameters
 
-Type parameters are introduced by a type-parameter list (`<T any>`,
-`<K any, V any>`) on a struct, a function, a method's name, or a component.
-Every type parameter names a **constraint** after its name: what a type bound
-to it must be. `any` is the constraint that says nothing, and it is the only
-one there is yet. A constraint is a constraint only: `any` written where a
-value's type goes is an error, and the type of a value the program says nothing
-about is `dyn`. A type parameter may also carry a default after its constraint
-(`<T any = struct {}>`), used when nothing binds it; a constraint is never a
-default, so a parameter with no default has none.
+Type parameters are introduced by a type-parameter list in brackets
+(`[T any]`, `[K any, V any]`) on a struct, a function, a method's name, or a
+component. Every type parameter names a **constraint** after its name: what a
+type bound to it must be. `any` is the constraint that says nothing, and it is
+the only one there is yet. A constraint is a constraint only: `any` written
+where a value's type goes is an error, and the type of a value the program says
+nothing about is `dyn`. A type parameter may also carry a default after its
+constraint (`[T any = struct {}]`), used when nothing binds it; a constraint is
+never a default, so a parameter with no default has none.
+
+The bracket after a declaration's name is also where an override names the
+target it implements (`component ui.vbox[platform]`, see
+[Target-dependent code](#target-dependent-code)), and the constraint is what tells
+the two apart: a target is a name or a qualified name alone, so a bracket whose
+first name is followed by `]` or `.` is a target and one whose first name is
+followed by a type is a type-parameter list. `func first[T]` is therefore an
+override of a target named `T`, not a generic function.
 
 A method on a generic type restates its receiver's parameters by name alone,
 since the type's declaration already constrains them:
-`func list[T].map[U any](f func(T) U) list[U]`. So a list whose first
-parameter is followed by `,` or `>` is a receiver's, and one whose first
-parameter is followed by a type is a declaration's own.
+`func list[T].map[U any](f func(T) U) list[U]`. The `.` after the bracket is
+what makes it a receiver's.
 
-In a type position the arguments are written (`Box<int>`); at a call site they
-are bound by inference rather than written:
+In a type position the arguments are written in brackets (`Box[int]`,
+`map[string, int]`); at a call site they are bound by inference rather than
+written:
 
 - A **receiver type parameter** of a method on a generic type is bound from the
   receiver's concrete type. For `func list[T].first() T`, a call on a
@@ -2335,6 +2343,13 @@ body, as `badge` is here; an override satisfies it for every target, so a
 target with no override renders nothing for it. An override may itself not be
 bodyless. A target's raw elements, such as `html.span`, are reached through an
 import of its package like any other name.
+
+The index shares its bracket with a type-parameter list, and is told from one
+by its shape: a target is a name or a qualified name alone, while every type
+parameter names a constraint. An override of a method on a generic type writes
+the index after the method's name, `func list[T].second[html.platform]()`, and a
+declaration with type parameters of its own writes its list first,
+`func f[T any][html.platform]()`.
 
 ## Platform and language plugins
 

@@ -612,8 +612,8 @@ func list[T].filter(pred func(T) bool) list[T]
 func list[T].map[U any](fn func(T) U) list[U]
 ```
 
-Type parameters are inferred at call sites -- you never write `<T>` explicitly
-when calling a generic method. A method-level parameter such as `map`'s `<U>`
+Type parameters are inferred at call sites -- you never write `[T]` explicitly
+when calling a generic method. A method-level parameter such as `map`'s `U`
 is inferred from the lambda's return type, and the lambda's own parameter type
 is inferred from the receiver's element type:
 
@@ -648,7 +648,10 @@ func firstOr[T any](xs list[T], fallback T) T {
 ```
 
 `any` is only a constraint. A value whose type you say nothing about is a
-`dyn`, and `var x any` is an error.
+`dyn`, and `var x any` is an error. Nor is the constraint optional: a bracket
+holding a bare name after a declaration's name is the target an override is
+for, so `func firstOr[T]` is an override for a target called `T`, and the
+error says to write `T any`.
 
 ### Lambdas
 

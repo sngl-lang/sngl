@@ -706,17 +706,24 @@ any argument whose default reads the component's state, props or methods
 (`reportHandleCallDefaults`), and a lambda's parameter takes none
 (`error_func_default_reads_param.sngl`, `error_default_through_handle.sngl`).
 
-**Every type parameter names a constraint**, `any` when it says nothing:
-`func first[T any](xs list[T]) T`, `component page[T any = struct {}, M any = struct {}]`. The grammar requires it (`TypeParam = ident Type [ assign Type ]`),
-because once type parameters are written in brackets the constraint is what
-tells `component box[T any]` from an override's target,
-`component ui.vbox[platform]`, and the parser has to decide that. A missing
-one is a parse error naming `T any` (`typeParamWithoutConstraint` in
-`internal/parser/parse.go`, `testdata/error_type_param_constraint_required_*.sngl`).
-A **receiver's** list restates names only, as Go's does --
-`func list[T].map[U any]` -- so `FuncName` reads the token after `< ident`:
-`,` or `>` is a receiver's list (`ReceiverTypeParams`), anything beginning a
-type the function's own (`TypeParamRest`). `any` is `#[_builtin(any)] struct any {}` in sngl:builtin, read like a scalar (`ir.TypAny`, in
+**Every type parameter names a constraint**, `any` when it says nothing, and
+type parameters and arguments are written in brackets, as Go writes them:
+`func first[T any](xs list[T]) T`, `component page[T any = struct {}, M any = struct {}]`, `map[string, int]`. The grammar requires the constraint
+(`TypeParam = ident Type [ assign Type ]`), because the bracket after a
+declaration's name is also an override's target, and the constraint is what
+tells `component box[T any]` from `component ui.vbox[platform]`. A target is
+a name or a qualified one and nothing else (`TargetIndex`), so after
+`[ ident` the next token decides: `.` or `]` is a target, a type is a type
+parameter's constraint (`NameBracket`). So `func f[T]` and `component box[T]`
+are overrides of an undefined target, and that error suggests `T any`
+(`resolveTargetIndex`); a list the parser can tell is no target -- several
+names, a default -- is a parse error naming `T any`
+(`typeParamWithoutConstraint` in `internal/parser/parse.go`). Both are
+`testdata/error_type_param_constraint_required_*.sngl`. A **receiver's** list
+restates names only, as Go's does -- `func list[T].map[U any]` -- and in
+`FuncName` it is the `.` after the bracket that says so (`FuncNameBracket`);
+the target index lives inside `FuncName` too, which keeps `lbracket` out of its
+FOLLOW set. `any` is `#[_builtin(any)] struct any {}` in sngl:builtin, read like a scalar (`ir.TypAny`, in
 `scalarUniverse`, since sngl:family's `one[T any]` is checked before
 sngl:builtin is in scope), and it is a constraint only: written where a
 value's type goes it is refused naming `dyn` (`error_any_outside_constraint.sngl`).
@@ -4224,7 +4231,7 @@ elements, which `testdata/test_slot_element_ref.sngl` depends on
 (`c.body.value` where `c.body` is `list[text]`) — so closing the rest is a
 question per kind rather than one line.
 
-Stdlib collection types support generic methods: `func list[T].filter(f func(T) bool) list[T]`, `func list[T].map[U any](f func(T) U) list[U]`, `func map[K, V].keys() list[K]`, etc. The receiver's type parameters are bound at the call site from the operand's concrete type (e.g. `xs : list[int]` binds `T=int`). Method-level type parameters (the `<U>` after the method name) are inferred from the call's actual argument types — typically from a lambda's return type.
+Stdlib collection types support generic methods: `func list[T].filter(f func(T) bool) list[T]`, `func list[T].map[U any](f func(T) U) list[U]`, `func map[K, V].keys() list[K]`, etc. The receiver's type parameters are bound at the call site from the operand's concrete type (e.g. `xs : list[int]` binds `T=int`). Method-level type parameters (the `[U any]` after the method name) are inferred from the call's actual argument types — typically from a lambda's return type.
 
 **A program may add a method to a library type, and may not redefine one it
 has.** `func int.twice` is an addition; `func int.abs` collides with the
