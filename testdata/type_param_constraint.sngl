@@ -1,0 +1,87 @@
+// A type parameter's constraint is `any`, which says nothing, or an anonymous
+// struct, which says the type is a struct with at least those fields, each at
+// an equal type. A named struct satisfies one as readily as an anonymous
+// struct: the constraint is about fields, not identity, and a field default on
+// the satisfying struct plays no part.
+
+import . "sngl:test"
+import . "sngl:ui"
+
+struct User {
+    name string
+    age  int = 30
+}
+
+struct Pet {
+    name string
+    legs int
+}
+
+// A select on a T reads the constraint's field, typed from the constraint.
+func nameOf[T struct {
+    name string
+}](v T) => v.name
+
+func greet(name string) => "hi {name}"
+
+// A spread of a T binds the constraint's fields and nothing beyond them: a
+// User's age reaches no parameter here.
+func greetAll[T struct {
+    name string
+}](v T) => greet(...v)
+
+// Any struct at all.
+func same[T struct {}](v T) => v
+
+// A default satisfies its own constraint.
+func named[T struct {
+    name string
+} = User](v option[T] = null) => v == null
+
+struct Holder[T struct {
+    name string
+}] {
+    item T
+}
+
+// A method's receiver list restates names, and its T is what the struct says.
+func Holder[T].label() => "<{this.item.name}>"
+
+// A T handed on is measured by its own constraint.
+func relay[T struct {
+    name string
+}](v T) => nameOf(v)
+
+component badge[T struct {
+    name string
+}](item T) node {
+    text(value=item.name)
+}
+
+component main node {
+    var u = User{name="ann"}
+
+    vbox {
+        badge(item=u)
+        badge(item={name="anon"})
+        text(value=nameOf(Pet{name="rex", legs=4}))
+    }
+}
+
+func testConstraint(t Test, c main) {
+    t.assert(nameOf(User{name="ann"}) == "ann")
+    t.assert(nameOf(Pet{name="rex", legs=4}) == "rex")
+    t.assert(nameOf({name="anon", extra=1}) == "anon")
+    t.assert(nameOf[User]({name="bob"}) == "bob")
+    t.assert(greetAll(User{name="cy"}) == "hi cy")
+    t.assert(same(Pet{name="a", legs=2}).legs == 2)
+    t.assert(named())
+    var h = Holder[Pet]{item=Pet{name="p", legs=3}}
+    t.assert(nameOf(h.item) == "p")
+    t.assert(h.label() == "<p>")
+    t.assert(relay(User{name="dee"}) == "dee")
+}
+
+window {
+    main
+}

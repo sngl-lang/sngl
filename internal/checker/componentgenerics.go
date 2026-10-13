@@ -23,7 +23,7 @@ import (
 // compares against -- the inliner's cycle set, the local-component set, the
 // method table keyed by name. A specialization put there would be a component
 // nothing else in the program has heard of.
-func (c *checker) bindComponentTypeParams(comp *ir.Component, args ast.ArgList, written map[string]*ir.Type) *ir.Component {
+func (c *checker) bindComponentTypeParams(pos ast.Pos, comp *ir.Component, args ast.ArgList, written map[string]*ir.Type) *ir.Component {
 	if comp == nil || len(comp.TypeParams) == 0 {
 		return comp
 	}
@@ -47,6 +47,7 @@ func (c *checker) bindComponentTypeParams(comp *ir.Component, args ast.ArgList, 
 	}
 	bindEffectChanges(comp, bindings)
 	c.bindFromHandlers(comp, args, bindings)
+	c.checkConstraints(pos, comp.TypeParams, bindings)
 	return c.specializeWith(comp, bindings)
 }
 
@@ -181,6 +182,7 @@ func (c *checker) bindFromChildren(comp, spec *ir.Component, children []ir.Stmt)
 		bindings = map[string]*ir.Type{}
 	}
 	var first *ir.Type
+	var firstAt ast.Pos
 	var walk func([]ir.Stmt)
 	walk = func(stmts []ir.Stmt) {
 		for _, st := range stmts {
@@ -199,6 +201,9 @@ func (c *checker) bindFromChildren(comp, spec *ir.Component, children []ir.Stmt)
 			got := &ir.Type{Kind: ir.TypeComponent, Decl: fam, Elems: ir.FamilyArgs(n.Component, n.TypeArgs)}
 			if first == nil {
 				first = got
+				if at := stmtPos(n.AST); at != nil {
+					firstAt = *at
+				}
 				bindTypeParams(rest.Content, got, bindings)
 				continue
 			}
@@ -215,6 +220,14 @@ func (c *checker) bindFromChildren(comp, spec *ir.Component, children []ir.Stmt)
 	walk(children)
 	if first == nil {
 		return spec
+	}
+	// What the props pinned was measured where they bound it.
+	for _, tp := range comp.TypeParams {
+		if _, was := pinned[tp.Name]; !was {
+			if t, ok := bindings[tp.Name]; ok {
+				c.checkConstraint(firstAt, tp, t)
+			}
+		}
 	}
 	return c.specializeWith(comp, bindings)
 }

@@ -195,6 +195,7 @@ func (c *checker) applyComponentTypeArgs(pos ast.Pos, base *ir.Type, comp *ir.Co
 		switch {
 		case i < len(args):
 			elems[i] = c.resolveType(args[i])
+			c.checkConstraint(*args[i].ExprPos(), tp, elems[i])
 		case tp.Default != nil:
 			elems[i] = tp.Default
 		default:
@@ -216,7 +217,11 @@ func (c *checker) applyStructTypeArgs(pos ast.Pos, base *ir.Type, sd *ir.StructD
 	for i := range sd.TypeParams {
 		switch {
 		case i < len(args):
-			elems = append(elems, c.resolveType(args[i]))
+			t := c.resolveType(args[i])
+			tp := sd.TypeParams[i]
+			tp.Constraint = c.typeParamConstraint(sd, i)
+			c.checkConstraint(*args[i].ExprPos(), tp, t)
+			elems = append(elems, t)
 		default:
 			def := c.typeParamDefault(sd, i)
 			if def == nil {
@@ -363,6 +368,57 @@ func (c *checker) typeParamDefault(sd *ir.StructDef, i int) *ir.Type {
 	return c.resolveType(sd.AST.TypeParams[i].Default)
 }
 
+// typeParamConstraint is the constraint on a struct's i-th type parameter.
+// A struct shell exists before its constraints are resolved, as before its
+// defaults, so a use site that comes first resolves the written one quietly:
+// the declaration reports it.
+func (c *checker) typeParamConstraint(sd *ir.StructDef, i int) *ir.Type {
+	if i < len(sd.TypeParams) && sd.TypeParams[i].Constraint != nil {
+		return sd.TypeParams[i].Constraint
+	}
+	if sd.AST == nil || i >= len(sd.AST.TypeParams) || sd.AST.TypeParams[i].Constraint == nil {
+		return nil
+	}
+	n := len(c.diags)
+	t := c.resolveConstraint(sd.AST.TypeParams[i].Constraint)
+	c.diags = c.diags[:n]
+	return t
+}
+
+// inheritReceiverConstraints gives a method's receiver parameters the
+// constraints of the declaration they restate, `func Holder[T].label()` or
+// `func stack[M].current()`: a receiver's list writes names only, and in the
+// body a T is what the declaration says it is.
+// It runs before the signature is resolved, which may hand a T on to the
+// declaration's own type, `_page[M]`.
+func (c *checker) inheritReceiverConstraints(recv *ir.Type, written []ast.TypeParam) {
+	if recv == nil || len(written) == 0 {
+		return
+	}
+	var constraint func(i int) *ir.Type
+	switch d := recv.Decl.(type) {
+	case *ir.StructDef:
+		if len(d.TypeParams) != len(written) {
+			return
+		}
+		constraint = func(i int) *ir.Type { return c.typeParamConstraint(d, i) }
+	case *ir.Component:
+		if len(d.TypeParams) != len(written) {
+			return
+		}
+		constraint = func(i int) *ir.Type { return d.TypeParams[i].Constraint }
+	default:
+		return
+	}
+	for i, p := range written {
+		if con := constraint(i); con != nil {
+			if sym := c.typeParamSym(p.Name, p.Pos); sym.Constraint == nil {
+				sym.Constraint = con
+			}
+		}
+	}
+}
+
 // typeParamShells records the names before any other declaration exists. A
 // default may name a type declared further down the file, so it is left to
 // resolveStructBody the way a field is.
@@ -396,24 +452,12 @@ func (c *checker) resolveTypeParams(ps []ast.TypeParam) []ir.TypeParam {
 		}
 		if p.Default != nil {
 			out[i].Default = c.resolveType(p.Default)
+			// A default is a binding like any other, and is held to the
+			// constraint written beside it.
+			c.checkConstraint(*p.Default.ExprPos(), out[i], out[i].Default)
 		}
 	}
 	return out
-}
-
-// resolveConstraint resolves what a type parameter's constraint names. `any`,
-// which says nothing, is the only one there is yet; it is found in scope as a
-// scalar is, so a program's own `any` shadows it.
-func (c *checker) resolveConstraint(te ast.TypeExpr) *ir.Type {
-	if nt, ok := te.(*ast.NamedType); ok && nt.Package == "" && len(nt.TypeArgs) == 0 {
-		if sym, ok := c.scope.Lookup(nt.Name); ok {
-			if typ, _, ok := scalarOf(sym); ok && typ == ir.TypAny {
-				return typ
-			}
-		}
-	}
-	c.error(*te.ExprPos(), "a type parameter's constraint is `any`, which says nothing about the type")
-	return ir.TypAny
 }
 
 // resolveStructFields resolves a struct's field types. Split out from
@@ -697,6 +741,9 @@ func (c *checker) buildFunc(f *ast.FuncDef) *ir.Func {
 	// Include both method-level TypeParams and receiver-level RecvTypeParams so
 	// that e.g. `func list[T].filter(f func(T) bool) list[T]` resolves T correctly.
 	// Receiver parameters come first so the receiver type `list[T]` resolves.
+	if isMethod {
+		c.inheritReceiverConstraints(c.receiverType(typeName), f.RecvTypeParams)
+	}
 	popTypeParams := pushTypeParams(c, f.RecvTypeParams, f.TypeParams)
 	// nil ReturnType means void (block body) or pending-inference (expression body);
 	// leave Return nil here so checkFuncBody can infer from a `=>` body without
@@ -715,6 +762,9 @@ func (c *checker) buildFunc(f *ast.FuncDef) *ir.Func {
 		Return:         ret,
 		IsTest:         f.IsTest(),
 		Const:          f.Const,
+	}
+	for i, p := range f.RecvTypeParams {
+		fn.RecvTypeParams[i].Constraint = c.typeParamSym(p.Name, p.Pos).Constraint
 	}
 	// A bodyless `const func` is trusted: it is a host's identifier, an
 	// intrinsic or an import, and nothing in the program says what the host

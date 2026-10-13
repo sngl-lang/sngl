@@ -1141,7 +1141,7 @@ func (c *checker) inferCall(x *ast.CallExpr) (out ir.Expr) {
 		written = c.takeCallTypeArgs(x, sig.TypeParams)
 	}
 	if sig != nil && len(sig.TypeParams) > 0 {
-		sig = c.inferTypeParams(sig, x.Args, written)
+		sig = c.inferTypeParams(x.Pos, sig, x.Args, written)
 	}
 
 	args := c.checkCallArgs(x.Args, sig)
@@ -1364,7 +1364,7 @@ func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) ir.Ex
 							written = c.takeCallTypeArgs(call, sig.TypeParams)
 						}
 						if sig != nil && len(sig.TypeParams) > 0 {
-							sig = c.inferTypeParams(sig, call.Args, written)
+							sig = c.inferTypeParams(call.Pos, sig, call.Args, written)
 						}
 						args := c.checkCallArgs(call.Args, sig)
 						var resolvedFunc *ir.Func
@@ -1525,7 +1525,7 @@ func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) ir.Ex
 				shifted.Params = sig.Params[1:]
 				inferSig = &shifted
 			}
-			inferred := c.inferTypeParams(inferSig, call.Args, written)
+			inferred := c.inferTypeParams(call.Pos, inferSig, call.Args, written)
 			if inferSig != sig {
 				merged := *sig
 				merged.Params = append([]*ir.Param{sig.Params[0]}, inferred.Params...)
@@ -2184,6 +2184,18 @@ func (c *checker) inferSelect(x *ast.SelectExpr) ir.Expr {
 					c.error(x.Pos, "no member %q on enum %s", x.Field, ed.Name)
 				}
 			}
+		}
+
+		// A T a struct constrains has the constraint's fields, typed from
+		// it, and nothing else a generic body can name.
+		if sd := paramConstraint(operand); sd != nil {
+			for _, f := range sd.Fields {
+				if f.Name == x.Field {
+					return &ir.Select{AST: x, Type: f.Type, Operand: operandExpr, Field: x.Field}
+				}
+			}
+			c.error(x.Pos, "no field %q on %s, whose constraint is %s", x.Field, operand, sd.SymType())
+			return &ir.Select{AST: x, Type: TypDyn, Operand: operandExpr, Field: x.Field}
 		}
 
 		if operand.Kind == ir.TypeStruct && operand.Decl != nil {
@@ -3000,7 +3012,7 @@ func (c *checker) inferLambda(x *ast.LambdaExpr) ir.Expr {
 
 // inferTypeParams infers concrete types for generic type params by matching
 // argument types against parameter types, then returns a substituted FuncSig.
-func (c *checker) inferTypeParams(sig *ir.FuncSig, args ast.ArgList, written map[string]*ir.Type) *ir.FuncSig {
+func (c *checker) inferTypeParams(at ast.Pos, sig *ir.FuncSig, args ast.ArgList, written map[string]*ir.Type) *ir.FuncSig {
 	// What the call site wrote binds first, so an argument is held to it
 	// rather than binding the parameter itself.
 	bindings := make(map[string]*ir.Type, len(written))
@@ -3054,6 +3066,7 @@ func (c *checker) inferTypeParams(sig *ir.FuncSig, args ast.ArgList, written map
 	if c.expected != nil && c.expected.Kind != ir.TypeDyn {
 		bindTypeParams(sig.Return, c.expected, bindings)
 	}
+	c.checkConstraints(at, sig.TypeParams, bindings)
 	// A parameter neither pinned nor implied falls back to its default, the way
 	// a struct's does when the type-argument list stops short.
 	for _, tp := range sig.TypeParams {
@@ -4653,7 +4666,7 @@ func (c *checker) checkVisualNode(vn *ast.VisualNode) ir.Stmt {
 	if comp != nil {
 		written, writtenTypes = c.bindWritten(vn.Pos, name, vn.TypeArgs, comp.TypeParams)
 	}
-	spec := c.bindComponentTypeParams(comp, vn.Args, written)
+	spec := c.bindComponentTypeParams(vn.Pos, comp, vn.Args, written)
 	if spec != comp {
 		c.specializeHandle(vn.ID, comp, spec)
 	}

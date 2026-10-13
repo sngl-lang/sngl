@@ -1,0 +1,94 @@
+// What a type parameter's constraint refuses.
+
+import build "sngl:build"
+import . "sngl:ui"
+
+struct User {
+    name string
+}
+
+struct Tag {
+    name int
+}
+
+func nameOf[T struct {
+    name string
+}](v T) => v.name
+
+// A constraint is `any` or an anonymous struct.
+func f1[T int](v T) => v // ERROR(check) "a type parameter's constraint is `any` or an anonymous struct"
+
+func f2[T User](v T) => v // ERROR(check) "a type parameter's constraint is `any` or an anonymous struct"
+
+// A constraint says what a type has, not what it starts with.
+func f3[T struct {
+    name string = "x" // ERROR(check) "a constraint's field takes no default"
+}](v T) => v
+
+// A default satisfies its own constraint.
+func f4[T struct {
+    name string
+} = Tag](v option[T] = null) => v // ERROR(check) "Tag does not satisfy struct"
+
+// Only the constraint's fields are visible.
+func f5[T struct {
+    name string
+}](v T) => v.age // ERROR(check) "age"
+
+struct Holder[T struct {
+    name string
+}] {
+    item T
+}
+
+component badge[T struct {
+    name string
+}](item T) node {
+    text(value=item.name)
+}
+
+// A family's arguments, written in a member's return position.
+component tagged[M struct {
+    name string
+}](meta M) build.family
+
+component plain(meta int) tagged[int] {} // ERROR(check) "int does not satisfy struct"
+
+component item[M struct {
+    name string
+}](meta M) tagged[M] {}
+
+// A family's arguments, bound by the children a slot holds.
+component shelf[M struct {
+    label string
+    name  string
+}](items ...component tagged[M]) node {}
+
+component main node {
+    // A type that is no struct.
+    var a = nameOf(1) // ERROR(check) "int does not satisfy struct"
+
+    // A struct missing the field.
+    var b = nameOf({other=1}) // ERROR(check) "does not satisfy struct"
+
+    // The field at another type.
+    var c = nameOf(Tag{name=1}) // ERROR(check) "Tag does not satisfy struct"
+
+    // A written type argument.
+    var d = nameOf[int](1) // ERROR(check) "int does not satisfy struct"
+
+    // A type's own argument.
+    var e Holder[int] = {item=1} // ERROR(check) "int does not satisfy struct"
+
+    vbox {
+        // A component's prop.
+        badge(item=Tag{name=2}) // ERROR(check) "Tag does not satisfy struct"
+        shelf {
+            item(meta=User{name="u"}) // ERROR(check) "User does not satisfy struct"
+        }
+    }
+}
+
+window {
+    main
+}
