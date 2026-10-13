@@ -3227,6 +3227,17 @@ func (c *checker) collectComponentDecls(comp *ast.ComponentDecl, irComp *ir.Comp
 	return nestedFuncs
 }
 
+// resolveTypeQuietly resolves te and reports nothing: for a declaration whose
+// annotation is resolved again, and reported, where it is checked. A
+// component's var is registered before its body is read and checked with it,
+// and resolving it loudly in both said everything wrong with its type twice.
+func (c *checker) resolveTypeQuietly(te ast.TypeExpr) *ir.Type {
+	n := len(c.diags)
+	t := c.resolveType(te)
+	c.diags = c.diags[:n]
+	return t
+}
+
 // collectComponentVarDecl builds the pre-registered ir.Vars for one component
 // body var/const declaration. Split out of collectComponentDecls because a
 // platform extension body is collected on its own (checkPendingExtensions),
@@ -3239,7 +3250,7 @@ func (c *checker) collectComponentVarDecl(stmt ast.Stmt) []*ir.Var {
 	switch s := stmt.(type) {
 	case *ast.ConstDecl:
 		for _, spec := range s.Specs {
-			typ := c.resolveType(spec.Type)
+			typ := c.resolveTypeQuietly(spec.Type)
 			for _, name := range spec.Names {
 				v := &ir.Var{AST: s, Name: name, Type: typ, IsConst: true}
 				c.applyMarks(s, v)
@@ -3248,7 +3259,7 @@ func (c *checker) collectComponentVarDecl(stmt ast.Stmt) []*ir.Var {
 		}
 	case *ast.VarDecl:
 		for _, spec := range s.Specs {
-			typ := c.resolveType(spec.Type)
+			typ := c.resolveTypeQuietly(spec.Type)
 			for _, name := range spec.Names {
 				v := &ir.Var{AST: s, Name: name, Type: typ}
 				// A mark means the same thing wherever the declaration sits.
@@ -4378,9 +4389,14 @@ func (c *checker) checkOverrideNestedBodies(decls []ir.Symbol) {
 // declareBodyDecls rebinds what comp's body declares: a scope cannot span the
 // two passes, so pass2 declares them again from the symbols.
 func (c *checker) declareBodyDecls(comp *ir.Component) {
+	// The symbols were declared, and a duplicate among them reported, when
+	// pass1 collected the body; this binds them again for every body read in
+	// that scope, and reporting again said it once a read.
+	n := len(c.diags)
 	for _, sym := range comp.BodyDecls {
 		c.declare(declPos(sym), sym)
 	}
+	c.diags = c.diags[:n]
 }
 
 // declareEnclosingBody declares, into comp's body scope, what the body comp
