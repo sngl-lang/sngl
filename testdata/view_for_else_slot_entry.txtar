@@ -9,7 +9,7 @@ itself, which is why it alone kept it.
 import . "sngl:ui"
 
 component each(item component(content component(x int) node) node) node {
-    var xs list<int> = []
+    var xs list[int] = []
 
     vbox {
         item() {

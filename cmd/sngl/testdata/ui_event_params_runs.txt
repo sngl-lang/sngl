@@ -34,7 +34,7 @@ component main node {
     var on = false
     var lit = false
     var name = ""
-    var picked option<time.date> = null
+    var picked option[time.date] = null
     var seen = "none"
     var clicks = 0
     vbox {
@@ -169,7 +169,7 @@ sha256:ab05ac9769796e2214272f7f5da6b36e
   ]
 }
 -- testrun/gtk4/go/app.sngl/main/1 --
-sha256:7eafd53956fb82c0a08461065f92270f
+sha256:c79f07fd5118fad44083eebf3ce56c72
 {
   "results": [
     {

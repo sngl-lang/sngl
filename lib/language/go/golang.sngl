@@ -164,7 +164,7 @@ component language(
     // Names a program's declaration is renamed away from in generated Go: Go's
     // keywords and predeclared identifiers, and what every Go target's code
     // declares beside a program's.
-    const reservedWords list<string> = [
+    const reservedWords list[string] = [
         ...keywords,
         ...predeclared,
         ...imports,
@@ -204,7 +204,7 @@ func buildModule(dir string, out string, goVersion string, goModExtra string) st
 // a field has no package of its own, and what it records is the Go spelling of
 // a name SNGL writes differently — `#[go.native("ID")] id int`. The two-argument
 // form is everything else, where the path is what the call site has to import.
-func native(path string, name string = "", flags list<NativeFlag> = []) ir.Macro
+func native(path string, name string = "", flags list[NativeFlag] = []) ir.Macro
 
 // Says a call to this function blocks, so a target that draws on one thread
 // must not make the call there.
@@ -378,7 +378,7 @@ component drawSource(
     @url(e SourceEvent),
     @enter(e DrawEvent),
     @leave(e DrawEvent),
-    source ...component family.one<ui.imageSource>,
+    source ...component family.one[ui.imageSource],
 ) shapes.shape
 
 // The style setters, written once rather than per shape. The context keeps a
@@ -508,17 +508,17 @@ const component shapes.canvasImage[language] {
 // Closing that means two types, or a direction on this one; nothing here needs
 // it yet, and the first API that hands a channel out to be *stored* will.
 #[marks.intrinsic("go:chan")]
-struct chan<T> {}
+struct chan[T any] {}
 
-// The element type comes from the argument rather than from a type argument,
-// which a call site has no syntax for: `makeChan(false)` is a `chan<bool>`. The
+// The element type comes from the argument, a witness declared before a call
+// site could write a type argument: `makeChan(false)` is a `chan[bool]`. The
 // value itself is not used -- a channel has no initial contents -- so writing
 // the zero of the type reads as what it is.
 #[marks.intrinsic("go.makechan")]
-func makeChan<T>(zero T) chan<T>
+func makeChan[T any](zero T) chan[T]
 
 #[marks.intrinsic("go.close")]
-func closeChan<T>(c chan<T>)
+func closeChan[T any](c chan[T])
 
 // One arm of a `select`: a receive from c, and what to run with the value.
 //
@@ -531,7 +531,7 @@ struct Case {}
 // emitter has no case to put it in, and the failure is the positionless parse
 // error described on `select`.
 #[marks.intrinsic("go.recv")]
-func recv<T>(c chan<T>, body func(T)) Case
+func recv[T any](c chan[T], body func(T)) Case
 
 // Blocks until one arm is ready and runs exactly that one. Real `select`
 // syntax, which is what makes it a choice rather than a sequence of receives:
@@ -545,7 +545,7 @@ func recv<T>(c chan<T>, body func(T)) Case
 //     That is the idiom rather than the hazard: closing a `done` channel is how
 //     a loop is told to stop, and its arm is chosen on the very next pass.
 //   - A **nil** channel is never ready, so its arm is never chosen. The zero
-//     value of `chan<T>` is nil, so a select over arms that were never made
+//     value of `chan[T]` is nil, so a select over arms that were never made
 //     blocks for the life of the process.
 // The arms are written at the call, as a list literal: the emitter takes each
 // one apart to write a case, so a list it cannot read is a list it cannot turn
@@ -571,4 +571,4 @@ func recv<T>(c chan<T>, body func(T)) Case
 // diagnostic while every other positionless emitter failure stays as it is,
 // which is a choice worth making deliberately rather than here.
 #[marks.intrinsic("go.select")]
-func select(cases list<Case>)
+func select(cases list[Case])

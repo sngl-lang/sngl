@@ -40,7 +40,7 @@ func bump(m int, fmt int, class int) int {
     return msg
 }
 
-func longest(len int, xs list<int>) int {
+func longest(len int, xs list[int]) int {
     return len + xs.length
 }
 

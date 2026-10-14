@@ -62,7 +62,7 @@ struct Box {
 
 component main ui.node {
     var t Ticker
-    var boxes list<Box> = []
+    var boxes list[Box] = []
     var armed = 0
 
     effect(on=t, @mount(v) { armed = armed + 1 })

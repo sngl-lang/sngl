@@ -24,8 +24,8 @@ func FormatTo(doc *ast.Document, w io.Writer) (int, error) {
 	return io.WriteString(w, alignTrailingComments(buf.String(), f.trailing))
 }
 
-// FormatTypeParams formats a parameter list as it is written, defaults
-// included. Empty when there are none, so it appends to a name unconditionally.
+// FormatTypeParams formats a parameter list as it is written, constraints and
+// defaults included. Empty when there are none, so it appends to a name unconditionally.
 func FormatTypeParams(ps []ast.TypeParam) string {
 	if len(ps) == 0 {
 		return ""
@@ -717,18 +717,22 @@ func (f *formatter) writeTypeParams(ps []ast.TypeParam) {
 	if len(ps) == 0 {
 		return
 	}
-	f.write("<")
+	f.write("[")
 	for i, p := range ps {
 		if i > 0 {
 			f.write(", ")
 		}
 		f.write(p.Name)
+		if p.Constraint != nil {
+			f.write(" ")
+			f.writeType(p.Constraint)
+		}
 		if p.Default != nil {
 			f.write(" = ")
 			f.writeType(p.Default)
 		}
 	}
-	f.write(">")
+	f.write("]")
 }
 
 func (f *formatter) writeFuncDef(fn *ast.FuncDef) {
@@ -737,7 +741,7 @@ func (f *formatter) writeFuncDef(fn *ast.FuncDef) {
 	}
 	f.write("func ")
 	if len(fn.RecvTypeParams) > 0 {
-		// recv<T>.method form: Name is "recv.method", split and insert type params.
+		// recv[T].method form: Name is "recv.method", split and insert type params.
 		dot := strings.IndexByte(fn.Name, '.')
 		f.write(fn.Name[:dot])
 		f.writeTypeParams(fn.RecvTypeParams)
@@ -817,6 +821,7 @@ func (f *formatter) writeComponentDecl(c *ast.ComponentDecl) {
 
 func (f *formatter) writeVisualNode(vn *ast.VisualNode) {
 	f.writeExpr(vn.Target)
+	f.writeIndices(vn.TypeArgs)
 	if vn.ID != "" {
 		f.write(" #")
 		f.write(vn.ID)
@@ -1032,7 +1037,9 @@ func (f *formatter) writeParams(pl ast.ParamList) {
 		}
 		widths := f.columnWidths(heads, lines)
 		for i, p := range pl.Params {
-			f.blankBeforeBodyItem(i, lines[i])
+			if f.blankBeforeListItem(lines, i) {
+				f.blankLine()
+			}
 			f.writeParamPadded(p, true, widths[i])
 			f.write(",")
 			f.writeTrailing(p.Trailing)
@@ -1147,12 +1154,21 @@ func (f *formatter) columnWidths(heads []string, lines []int) []int {
 		start = end
 	}
 	for i := 1; i < len(heads); i++ {
-		if lines[i] > 0 && f.doc != nil && f.doc.BlankBefore(lines[i]) {
+		if f.blankBeforeListItem(lines, i) {
 			flush(i)
 		}
 	}
 	flush(len(heads))
 	return out
+}
+
+// blankBeforeListItem reports whether the source left a blank line between
+// item i of a list and the one before it, lines being where each starts. An
+// item on its predecessor's line has none: the blank above that line is above
+// the list -- the one before a declaration whose parameters begin on its own
+// line -- and read as one, the list was split and its run of types ended.
+func (f *formatter) blankBeforeListItem(lines []int, i int) bool {
+	return i > 0 && lines[i] > lines[i-1] && f.doc != nil && f.doc.BlankBefore(lines[i])
 }
 
 // writeLeadingComments writes comments above whatever follows, one per line.
@@ -1175,7 +1191,9 @@ func (f *formatter) writeProps(pl ast.PropList) {
 		}
 		widths := f.columnWidths(heads, lines)
 		for i, p := range pl.Props {
-			f.blankBeforeBodyItem(i, lines[i])
+			if f.blankBeforeListItem(lines, i) {
+				f.blankLine()
+			}
 			f.writePropOrEventPadded(p, true, widths[i])
 			f.write(",")
 			f.writeTrailing(propComment(p))
@@ -1235,6 +1253,12 @@ func (f *formatter) writeExpr(e ast.Expr) {
 	if e == nil {
 		return
 	}
+	// A type a bracket holds, `func(int) bool`, `struct {}`: nothing else
+	// puts one where an expression goes.
+	if t, ok := e.(ast.TypeExpr); ok {
+		f.writeType(t)
+		return
+	}
 	switch x := e.(type) {
 	case *ast.LiteralExpr:
 		f.writeLiteral(x)
@@ -1262,9 +1286,7 @@ func (f *formatter) writeExpr(e ast.Expr) {
 		f.writeSelectExpr(x)
 	case *ast.IndexExpr:
 		f.writeExpr(x.Operand)
-		f.write("[")
-		f.writeExpr(x.Index)
-		f.write("]")
+		f.writeIndices(x.Indices)
 	case *ast.CallExpr:
 		f.writeExpr(x.Func)
 		if x.ID != "" {
@@ -1342,6 +1364,7 @@ func (f *formatter) writeStructExpr(x *ast.StructExpr) {
 	if x.Name != "" {
 		f.write(x.Name)
 	}
+	f.writeIndices(x.TypeArgs)
 	if x.Anon != nil {
 		f.writeStructDef(x.Anon)
 	}
@@ -1592,14 +1615,14 @@ func (f *formatter) writeType(te ast.TypeExpr) {
 		}
 		f.write(t.Name)
 		if len(t.TypeArgs) > 0 {
-			f.write("<")
+			f.write("[")
 			for i, arg := range t.TypeArgs {
 				if i > 0 {
 					f.write(", ")
 				}
 				f.writeType(arg)
 			}
-			f.write(">")
+			f.write("]")
 		}
 	case *ast.FuncType:
 		f.write("func(")
@@ -1710,7 +1733,7 @@ func (f *formatter) writeAttr(attr ast.MacroAttr) {
 
 // writeParamAttrs places a parameter's marks where the source put them: on
 // their own line above the parameter, or inline ahead of it. A multiline list
-// is not the question — `#[wildcard(...)] data map<string, string>` reads as
+// is not the question — `#[wildcard(...)] data map[string, string]` reads as
 // one parameter whichever way the list is written.
 func (f *formatter) writeParamAttrs(attrs []ast.MacroAttr, declPos ast.Pos, multiline bool) {
 	for _, attr := range attrs {
@@ -1727,4 +1750,20 @@ func (f *formatter) writeParamAttrs(attrs []ast.MacroAttr, declPos ast.Pos, mult
 			f.write(" ")
 		}
 	}
+}
+
+// writeIndices writes a bracket's contents: an index, or a list of type
+// arguments. Nothing when there are none.
+func (f *formatter) writeIndices(xs []ast.Expr) {
+	if len(xs) == 0 {
+		return
+	}
+	f.write("[")
+	for i, x := range xs {
+		if i > 0 {
+			f.write(", ")
+		}
+		f.writeExpr(x)
+	}
+	f.write("]")
 }

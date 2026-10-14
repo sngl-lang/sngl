@@ -15,10 +15,10 @@ import (
 // having it.
 func TestCollectionTypesCarryTheirDeclaration(t *testing.T) {
 	const src = `component main node {
-    var annotated list<int> = [1]
+    var annotated list[int] = [1]
     var inferred = [1, 2]
-    var nested list<list<string>> = [["a"]]
-    var m map<string, int> = {}
+    var nested list[list[string]] = [["a"]]
+    var m map[string, int] = {}
     var mapped = inferred.map(func(x int) => x * 2)
     text(value=string(annotated.length))
 }

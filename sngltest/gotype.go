@@ -45,7 +45,7 @@ func resolve(rt reflect.Type) (*mapping, error) {
 	want, usable := m.Type(wrap(gt))
 	// The base's own SNGL type is what a MarshalSNGL on it has to write: for
 	// []Blob the value is a list of whatever Blob writes, so pointing the
-	// reader at list<list<int>> would name a form no marshaller can produce.
+	// reader at list[list[int]] would name a form no marshaller can produce.
 	baseWant, _ := m.Type(gt)
 	out := &mapping{rt: rt, base: base, want: want, baseWant: baseWant}
 	if !usable {

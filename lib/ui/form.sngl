@@ -209,12 +209,12 @@ component _example_select node {
 // one, which is a date a picker would happily show.
 component datepicker(
     placeholder string = "",
-    min         option<time.date> = null,
-    max         option<time.date> = null,
-    :value      option<time.date>,
+    min         option[time.date] = null,
+    max         option[time.date] = null,
+    :value      option[time.date],
     disabled    bool = false,
     style       Style = Style{},
-    @change(value option<time.date>),
+    @change(value option[time.date]),
     @focus(),
     @blur(),
 ) node

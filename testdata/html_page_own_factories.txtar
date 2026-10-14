@@ -30,14 +30,14 @@ struct Page {
     title string = ""
 }
 
-const pages list<Page> = [
+const pages list[Page] = [
     {slug="one", title="One"},
     {slug="two", title="Two"},
     {slug="three", title="Three"},
 ]
 
 component Log(label = "") node {
-    var lines list<string> = []
+    var lines list[string] = []
     button(text=label, @click { lines.push(label) })
     for var line = lines {
         text(value=line)

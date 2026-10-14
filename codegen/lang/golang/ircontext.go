@@ -226,7 +226,7 @@ func (gc *GoIRContext) Binary(n *ir.Binary, left, right string) string {
 	if out, ok := goScalarUnitScale(n, left, right); ok {
 		return out
 	}
-	// option<T> against a T: Go's option is *T, and comparing the pointer
+	// option[T] against a T: Go's option is *T, and comparing the pointer
 	// with a value does not compile. Each operand is evaluated once.
 	if optLeft, _, ok := OptionCompare(n); ok {
 		opt, val := left, right
@@ -424,7 +424,7 @@ func (gc *GoIRContext) StructLit(n *ir.StructLit, fieldStrs []string) string {
 	}
 	// A channel has no composite literal either, and for the same reason: the
 	// only one that reaches here is the zero the checker synthesizes for an
-	// uninitialised `var done go.chan<bool>`, and a channel's zero is nil.
+	// uninitialised `var done go.chan[bool]`, and a channel's zero is nil.
 	// `make` is what produces a usable one, which is go.makechan.
 	if isChanLit(n) {
 		return "nil"
@@ -613,7 +613,7 @@ func (gc *GoIRContext) ForHead(n *ir.For, iter string) string {
 		}
 		return fmt.Sprintf("for %s, %s := range %s {", n.Key, n.Value, iter)
 	default:
-		// An iter<T> is a func, and `range` over one yields the element
+		// An iter[T] is a func, and `range` over one yields the element
 		// alone; a slice yields (index, element). Which of the two the
 		// iterable is, is a Go representation question rather than a shape
 		// question, so IterKind does not classify it -- IRTypeToGo makes the
@@ -632,8 +632,8 @@ func (gc *GoIRContext) ForHead(n *ir.For, iter string) string {
 }
 
 // lazyIter reports whether e is spelled as a pull sequence in Go -- an
-// iter<T>, which IRTypeToGo renders as func(func(T) bool). A list or map
-// reaching an iter<T> position carries an ir.Conversion, so this reads the
+// iter[T], which IRTypeToGo renders as func(func(T) bool). A list or map
+// reaching an iter[T] position carries an ir.Conversion, so this reads the
 // expression's own type and not the loop's element type.
 func lazyIter(e ir.Expr) bool {
 	if e == nil {
@@ -1660,7 +1660,7 @@ func (gc *GoIRContext) evalConversion(n *ir.Conversion) string {
 			}
 		}
 	}
-	// A list flowing into an iter<T> position becomes the pull sequence that
+	// A list flowing into an iter[T] position becomes the pull sequence that
 	// type is. slices.Values is that, in the standard library: it yields the
 	// slice's elements one at a time and copies nothing.
 	if n.Type != nil && n.Type.Kind == ir.TypeIter && len(n.Type.Elems) == 1 {
@@ -1669,7 +1669,7 @@ func (gc *GoIRContext) evalConversion(n *ir.Conversion) string {
 			return "slices.Values(" + gc.EvalExpr(n.Operand) + ")"
 		}
 	}
-	// A narrowed option: Go's option<T> is *T, so reading it as the T a null
+	// A narrowed option: Go's option[T] is *T, so reading it as the T a null
 	// test proved it to be is the star.
 	// The whole deref is parenthesised, not just its operand: `*` binds looser
 	// than a selector, so `*(m.h.Inner).Value` is a deref OF the field and Go
@@ -1816,11 +1816,11 @@ func isChanLit(n *ir.StructLit) bool {
 	return def != nil && def.Intrinsic == chanIntrinsic
 }
 
-// chanIntrinsic is sngl:language/go's `chan<T>`: Go's `chan T`, which SNGL
+// chanIntrinsic is sngl:language/go's `chan[T]`: Go's `chan T`, which SNGL
 // declares as a struct it cannot describe.
 const chanIntrinsic = "go:chan"
 
-// isChanType reports whether t is a `chan<T>`.
+// isChanType reports whether t is a `chan[T]`.
 func isChanType(t *ir.Type) bool {
 	if t == nil || t.Kind != ir.TypeStruct {
 		return false
@@ -2110,9 +2110,9 @@ func IRTypeToGo(t *ir.Type) string {
 		// `func name(params)`.
 		return ""
 	case ir.TypeIter:
-		// An iter<T> is a pull sequence, never a materialised one: the shape
+		// An iter[T] is a pull sequence, never a materialised one: the shape
 		// `range` accepts over a function (Go 1.23), spelled structurally so
-		// nothing has to import "iter" to name it. A list reaching an iter<T>
+		// nothing has to import "iter" to name it. A list reaching an iter[T]
 		// position is wrapped by evalConversion, and the wrapper yields the
 		// elements one at a time -- so no list is ever built to be iterated.
 		if len(t.Elems) == 1 {

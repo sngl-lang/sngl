@@ -25,7 +25,7 @@ component gauge(level = 0.0) node {
 }
 
 component App() node {
-    var levels list<float> = [10.0, 20.0]
+    var levels list[float] = [10.0, 20.0]
     for var l = levels {
         gauge(level=l)
     }

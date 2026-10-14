@@ -6,17 +6,17 @@
 import . "sngl:ui"
 
 struct Holder {
-    items list<int>
+    items list[int]
 }
 
 component main node {
     var (
         n = 0
-        xs list<int> = [1]
+        xs list[int] = [1]
         h = Holder{items=[1]}
-        hs list<Holder> = [Holder{items=[1]}]
-        m map<string, int> = {"a"=1}
-        log list<string> = []
+        hs list[Holder] = [Holder{items=[1]}]
+        m map[string, int] = {"a"=1}
+        log list[string] = []
     )
 
     // The forms that work: a list in a var, and a list in a field of one.
@@ -32,7 +32,7 @@ component main node {
 
     effect(on=n, @update {}, @insert {}) // ERROR(check) "reports a change to a list, and `on` is int"
 
-    effect(on=m, @update {}, @set {}) // ERROR(check) "reports a change to a list, and `on` is map<string, int>"
+    effect(on=m, @update {}, @set {}) // ERROR(check) "reports a change to a list, and `on` is map[string, int]"
 
     effect(@mount {}, @clear {}) // ERROR(check) "this effect has no `on`"
 

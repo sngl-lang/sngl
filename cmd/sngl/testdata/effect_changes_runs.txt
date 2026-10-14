@@ -43,7 +43,7 @@ import ui "sngl:ui"
 import "sngl:test"
 
 struct Holder {
-    items list<int>
+    items list[int]
     other int = 0
 }
 
@@ -52,8 +52,8 @@ struct Item {
 }
 
 component changes ui.node {
-    var xs list<int> = [10, 20]
-    var log list<string> = []
+    var xs list[int] = [10, 20]
+    var log list[string] = []
 
     effect(
         on = xs,
@@ -148,8 +148,8 @@ func testHarness(t test.Test, c changes) {
 }
 
 component partial ui.node {
-    var xs list<int> = [1]
-    var log list<string> = []
+    var xs list[int] = [1]
+    var log list[string] = []
 
     effect(
         on = xs,
@@ -176,7 +176,7 @@ func testPartial(t test.Test, c partial) {
 
 component field ui.node {
     var h = Holder{items=[1]}
-    var log list<string> = []
+    var log list[string] = []
 
     effect(
         on = h.items,
@@ -222,8 +222,8 @@ func testField(t test.Test, c field) {
 }
 
 component twice ui.node {
-    var xs list<Item> = [Item{}]
-    var log list<string> = []
+    var xs list[Item] = [Item{}]
+    var log list[string] = []
 
     effect(
         on = xs,
@@ -248,8 +248,8 @@ func testSetTwice(t test.Test, c twice) {
 
 component gated ui.node {
     var on = true
-    var xs list<int> = []
-    var log list<string> = []
+    var xs list[int] = []
+    var log list[string] = []
 
     if on {
         effect(
@@ -281,13 +281,13 @@ func testGated(t test.Test, c gated) {
 }
 
 struct Row {
-    items list<int> = []
+    items list[int] = []
     n int = 0
 }
 
 component rows ui.node {
-    var xs list<Row> = [Row{items=[1]}, Row{items=[2]}]
-    var log list<string> = []
+    var xs list[Row] = [Row{items=[1]}, Row{items=[2]}]
+    var log list[string] = []
 
     ui.vbox {
         for var &x = xs {

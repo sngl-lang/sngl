@@ -28,7 +28,7 @@ output {
     go { bubbletea }
 }
 
-func chars(s string) list<string> {
+func chars(s string) list[string] {
     return string.split(s, "")
 }
 

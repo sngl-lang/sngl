@@ -145,7 +145,7 @@ component canvasImage(
     y   float,
     w   float,
     h   float,
-    src ...component family.one<ui.imageSource>,
+    src ...component family.one[ui.imageSource],
 ) shape
 
 // A drawing as an image source: the shapes it holds, painted into a picture

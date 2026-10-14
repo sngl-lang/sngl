@@ -46,7 +46,7 @@ func TestParseParamAttrs(t *testing.T) {
 
 component element(
     tag string,
-    #[some.mark("^data-")] attributes map<string, string>,
+    #[some.mark("^data-")] attributes map[string, string],
 ) node {}
 `
 	doc, err := Parse("test.sngl", []byte(src))
@@ -131,12 +131,12 @@ func TestFormatParamAttrs(t *testing.T) {
 		`func f(#[some.mark("x")] a string, b int) {}`)
 
 	assertFormat(t,
-		"component element(\n    tag string,\n    #[some.mark(\"^data-\")] attributes map<string, string>,\n) {}",
-		"component element(\n    tag string,\n    #[some.mark(\"^data-\")] attributes map<string, string>,\n) {}")
+		"component element(\n    tag string,\n    #[some.mark(\"^data-\")] attributes map[string, string],\n) {}",
+		"component element(\n    tag string,\n    #[some.mark(\"^data-\")] attributes map[string, string],\n) {}")
 
 	assertFormat(t,
-		"component element(\n    #[some.mark(\"^data-\")]\n    attributes map<string, string>,\n) {}",
-		"component element(\n    #[some.mark(\"^data-\")]\n    attributes map<string, string>,\n) {}")
+		"component element(\n    #[some.mark(\"^data-\")]\n    attributes map[string, string],\n) {}",
+		"component element(\n    #[some.mark(\"^data-\")]\n    attributes map[string, string],\n) {}")
 
 	assertFormat(t,
 		`component c(#[m] #[n(1)] :a int = 2) node {}`,

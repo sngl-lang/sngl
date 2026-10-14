@@ -28,7 +28,7 @@ import (
 // One flag rather than a per-kind test. "The iterable was empty" is what the
 // else case means for a loop that walks one, but the general statement of it
 // is that the body never ran: a condition loop has no iterable to measure, and
-// `len(xs) == 0` cannot be asked of an iter<T> without consuming it. Setting
+// `len(xs) == 0` cannot be asked of an iter[T] without consuming it. Setting
 // the flag as the body's first statement also settles `break`, which leaves a
 // loop whose body did run.
 //

@@ -1,0 +1,57 @@
+# `dump --stage checked` prints a method call and a call site's type
+# arguments back so the dump checks again.
+#
+# A method whose receiver its parameters do not list -- a `sngl:` method's,
+# one on a generic type -- was printed in the static form,
+# `list.map(xs, fn=…)` and `Test.assert(t, b=…)`, which hands the receiver to
+# the first parameter: "cannot pass list[int] as func(int) string". It prints
+# as it was written now (ir.Call.ReceiverArg). Type arguments a call wrote
+# print with it, and a generic struct's literal says its arguments, so a
+# return-only parameter and a context's stated type survive the round trip.
+
+sngl dump --stage checked app.sngl
+cp stdout first.sngl
+sngl check first.sngl
+sngl dump --stage checked first.sngl
+cp stdout second.sngl
+cmp first.sngl second.sngl
+
+grep '\[1, 2\]\.map\[string\]\(' first.sngl
+grep 't\.assert\(b=' first.sngl
+grep 'empty\[string\]\(\)' first.sngl
+grep 'Box\[int\]\{value=3\}' first.sngl
+grep 'context\[option\[User\]\] #who\(null\)' first.sngl
+
+-- app.sngl --
+import . "sngl:test"
+import . "sngl:ui"
+
+struct User {
+    name string
+}
+
+struct Box[T any] {
+    value T
+}
+
+func empty[T any]() list[T] {
+    var xs list[T] = []
+    return xs
+}
+
+context[option[User]] #who(null)
+
+component main node {
+    var box = Box[int]{value=3}
+    text(value="{box.value}")
+}
+
+func testRoundTrip(t Test, c main) {
+    var names = [1, 2].map[string](func(n) => "{n}")
+    var xs = empty[string]()
+    t.assert(names.length == 2 && xs.length == 0)
+}
+
+window {
+    main
+}

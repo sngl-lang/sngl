@@ -10,7 +10,7 @@ import . "sngl:ui"
 window {
     var (
         n = 0
-        log list<string> = []
+        log list[string] = []
     )
 
     effect(
@@ -63,7 +63,7 @@ import . "sngl:ui"
 component row(name = "") node {
     var (
         n = 0
-        log list<string> = []
+        log list[string] = []
     )
 
     effect(
@@ -76,7 +76,7 @@ component row(name = "") node {
 }
 
 window {
-    var names list<string> = ["a", "b"]
+    var names list[string] = ["a", "b"]
     for var nm = names {
         row(name=nm)
     }

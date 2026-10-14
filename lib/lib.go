@@ -11,7 +11,7 @@
 //	            they belong to, the `window` they are placed on, and the Style
 //	            and event vocabulary every one of them refers to
 //	ui/draw/    the 2D canvas and its shapes, one specialised surface under ui
-//	seq/        integer sequences: the iter<int> a counting loop iterates
+//	seq/        integer sequences: the iter[int] a counting loop iterates
 //	time/       dates and the clock: `date`, `time`, `datetime`, the
 //	            `duration` between two of them and the `timer` that fires
 //	            every duration -- none of it ambient

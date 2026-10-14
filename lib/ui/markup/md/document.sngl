@@ -46,19 +46,19 @@ enum _Kind { paragraph, heading1, heading2, heading3, heading4, heading5, headin
 struct _Block {
     kind    _Kind = _Kind.paragraph
     anchor  string = ""
-    runs    list<_Run> = []
+    runs    list[_Run] = []
     ordered bool = false
     start   int = 1
-    items   list<_Item> = []
-    columns list<string> = []
-    rows    list<list<string>> = []
+    items   list[_Item] = []
+    columns list[string] = []
+    rows    list[list[string]] = []
 }
 
 // One item of a list, holding blocks of its own.
 struct _Item {
     marker string = ""
     task   markup.Task = markup.Task.none
-    blocks list<_Block> = []
+    blocks list[_Block] = []
 }
 
 // A run of words and what is true of them. A link is a run whose `parts` are
@@ -73,15 +73,15 @@ struct _Run {
     href   string = ""
     image  string = ""
     token  markup.Token = markup.Token.plain
-    parts  list<_Run> = []
+    parts  list[_Run] = []
 }
 
 #[marks.intrinsic("md.parse", build)]
-const func _parseMarkdown(source string) list<_Block>
+const func _parseMarkdown(source string) list[_Block]
 
 // The blocks of source. A const func of its own, because that is what the
 // build folds: the intrinsic is the parser, and this is the call it answers.
-const func _parse(source string) list<_Block> {
+const func _parse(source string) list[_Block] {
     return _parseMarkdown(source)
 }
 
@@ -206,7 +206,7 @@ component _list3(b _Block) ui.node {
 }
 
 // The runs of one flow.
-component _runs(runs list<_Run>) markup.span {
+component _runs(runs list[_Run]) markup.span {
     for var r = runs {
         if r.image != "" {
             markup.image(alt=r.text) {

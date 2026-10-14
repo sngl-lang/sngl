@@ -49,7 +49,7 @@ output {
 }
 
 component main node {
-    var rows list<string> = []
+    var rows list[string] = []
     var n = 0
 
     vbox {

@@ -106,11 +106,17 @@ func spreadFieldsOf(operand ir.Expr) ([]spreadField, bool) {
 	if t != nil && t.Kind == ir.TypeStruct {
 		sd, _ = t.Decl.(*ir.StructDef)
 	}
+	// A T a struct constrains spreads the constraint's fields: they are all
+	// a generic body knows the value has.
+	if sd == nil {
+		sd = paramConstraint(t)
+		t = nil
+	}
 	if sd == nil {
 		return nil, false
 	}
 	var bindings map[string]*ir.Type
-	if len(sd.TypeParams) > 0 && len(t.Elems) == len(sd.TypeParams) {
+	if t != nil && len(sd.TypeParams) > 0 && len(t.Elems) == len(sd.TypeParams) {
 		bindings = make(map[string]*ir.Type, len(sd.TypeParams))
 		for i, tp := range sd.TypeParams {
 			bindings[tp.Name] = t.Elems[i]

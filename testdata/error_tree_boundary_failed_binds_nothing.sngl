@@ -18,7 +18,7 @@
 import d "sngl:ui/draw"
 import ui "sngl:ui"
 
-component gbox<T>(content ...component T) T {
+component gbox[T any](content ...component T) T {
     content
 }
 

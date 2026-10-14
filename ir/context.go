@@ -10,10 +10,13 @@ import "duckfam.us/sngl/ast"
 // At source level, `context #name(default)` without a trailing body parses
 // as *ast.CallStmt (not *ast.VisualNode) — see Phase 1 parser note.
 type Context struct {
-	AST     *ast.CallStmt
-	Name    string
-	Typ     *Type
-	Default Expr
+	AST  *ast.CallStmt
+	Name string
+	Typ  *Type
+	// TypeArgs are the type arguments the declaration wrote,
+	// `context[option[User]] #who(null)`: the first is Typ.
+	TypeArgs []*Type `json:",omitempty"`
+	Default  Expr
 	// Stdlib marks a context declared by the standard library rather than by
 	// the package's own source. Convert omits these: an importer gets them
 	// back from the import, and emitting them would redeclare the name.

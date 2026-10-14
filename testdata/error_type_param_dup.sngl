@@ -3,7 +3,7 @@
 
 import ui "sngl:ui"
 
-struct box<T, T> { // ERROR(check) "T is already declared in this scope"
+struct box[T any, T any] { // ERROR(check) "T is already declared in this scope"
     v T
 }
 

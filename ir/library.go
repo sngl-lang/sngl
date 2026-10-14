@@ -58,7 +58,7 @@ func (b *Builtins) RegisterStruct(sd *StructDef) {
 	}
 }
 
-// ListOf is list<elem>, carrying this library's `list` once it has
+// ListOf is list[elem], carrying this library's `list` once it has
 // registered one.
 //
 // Not `Decl: b.list.Load()` unconditionally: that stores a non-nil Symbol
@@ -72,7 +72,7 @@ func (b *Builtins) ListOf(elem *Type) *Type {
 	return t
 }
 
-// MapOf is map<k, v>, carrying this library's `map` once it has registered
+// MapOf is map[k, v], carrying this library's `map` once it has registered
 // one.
 func (b *Builtins) MapOf(k, v *Type) *Type {
 	t := &Type{Kind: TypeMap, Elems: []*Type{k, v}}
@@ -177,10 +177,10 @@ func (b *Builtins) AllIntrinsics() iter.Seq[*IntrinsicDef] {
 	return slices.Values(out)
 }
 
-// ListOf returns a list<elem> type, carrying the published `list`.
+// ListOf returns a list[elem] type, carrying the published `list`.
 func ListOf(elem *Type) *Type { return Published().ListOf(elem) }
 
-// MapOf returns a map<K, V> type, carrying the published `map`.
+// MapOf returns a map[K, V] type, carrying the published `map`.
 func MapOf(k, v *Type) *Type { return Published().MapOf(k, v) }
 
 // DateTimeType is the published datetime struct, for the foreign-type

@@ -96,7 +96,7 @@ func bindReadBack(field, get string) string {
 var widgetSyncGoTypes = map[string]struct{}{
 	"string": {},
 	"int":    {},
-	// An option<date>, which tui.DateInput reads and writes.
+	// An option[date], which tui.DateInput reads and writes.
 	"*time.Time": {},
 }
 
@@ -1323,7 +1323,7 @@ type widgetValue struct {
 }
 
 // widgetValues are the binds a widget's events carry the value of: a text
-// field's text, and tui.DateInput's date as the *time.Time an option<date>
+// field's text, and tui.DateInput's date as the *time.Time an option[date]
 // is in Go.
 var widgetValues = []widgetValue{
 	{get: ".Value()", set: ".SetValue", goType: "string"},

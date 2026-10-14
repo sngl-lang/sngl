@@ -24,7 +24,7 @@ output {
 }
 
 ui.window {
-    var stock map<string, int> = {"a"=1}
+    var stock map[string, int] = {"a"=1}
 
     ui.text(value="{stock.length}")
 }

@@ -6,7 +6,7 @@
 import . "sngl:ui"
 
 func f() {
-    var xs list<int> = [1]
+    var xs list[int] = [1]
     for x = xs { // ERROR(parse) "a loop variable is declared with var"
     }
 }

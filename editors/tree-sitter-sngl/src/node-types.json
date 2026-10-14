@@ -496,6 +496,16 @@
             "named": true
           }
         ]
+      },
+      "namespace": {
+        "multiple": false,
+        "required": false,
+        "types": [
+          {
+            "type": "identifier",
+            "named": true
+          }
+        ]
       }
     },
     "children": {
@@ -507,11 +517,19 @@
           "named": true
         },
         {
+          "type": "override_target",
+          "named": true
+        },
+        {
           "type": "statement_block",
           "named": true
         },
         {
           "type": "type_identifier",
+          "named": true
+        },
+        {
+          "type": "type_param_list",
           "named": true
         }
       ]
@@ -734,6 +752,10 @@
           "named": true
         },
         {
+          "type": "override_target",
+          "named": true
+        },
+        {
           "type": "statement_block",
           "named": true
         },
@@ -772,6 +794,16 @@
           }
         ]
       }
+    },
+    "children": {
+      "multiple": false,
+      "required": false,
+      "types": [
+        {
+          "type": "receiver_type_params",
+          "named": true
+        }
+      ]
     }
   },
   {
@@ -818,6 +850,21 @@
           }
         ]
       }
+    }
+  },
+  {
+    "type": "func_type",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": true,
+      "required": false,
+      "types": [
+        {
+          "type": "type_identifier",
+          "named": true
+        }
+      ]
     }
   },
   {
@@ -885,11 +932,31 @@
     "named": true,
     "fields": {
       "index": {
-        "multiple": false,
+        "multiple": true,
         "required": true,
         "types": [
           {
             "type": "_expression",
+            "named": true
+          },
+          {
+            "type": "component_type",
+            "named": true
+          },
+          {
+            "type": "enum_declaration",
+            "named": true
+          },
+          {
+            "type": "func_type",
+            "named": true
+          },
+          {
+            "type": "struct_declaration",
+            "named": true
+          },
+          {
+            "type": "variadic_type",
             "named": true
           }
         ]
@@ -1000,6 +1067,22 @@
     }
   },
   {
+    "type": "override_target",
+    "named": true,
+    "fields": {
+      "target": {
+        "multiple": true,
+        "required": true,
+        "types": [
+          {
+            "type": "identifier",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
     "type": "parenthesized_expression",
     "named": true,
     "fields": {},
@@ -1016,6 +1099,21 @@
   },
   {
     "type": "qualified_name",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": true,
+      "required": true,
+      "types": [
+        {
+          "type": "identifier",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "receiver_type_params",
     "named": true,
     "fields": {},
     "children": {
@@ -1142,6 +1240,10 @@
         {
           "type": "struct_field",
           "named": true
+        },
+        {
+          "type": "type_param_list",
+          "named": true
         }
       ]
     }
@@ -1196,6 +1298,36 @@
           },
           {
             "type": "qualified_name",
+            "named": true
+          }
+        ]
+      },
+      "type_argument": {
+        "multiple": true,
+        "required": false,
+        "types": [
+          {
+            "type": "_expression",
+            "named": true
+          },
+          {
+            "type": "component_type",
+            "named": true
+          },
+          {
+            "type": "enum_declaration",
+            "named": true
+          },
+          {
+            "type": "func_type",
+            "named": true
+          },
+          {
+            "type": "struct_declaration",
+            "named": true
+          },
+          {
+            "type": "variadic_type",
             "named": true
           }
         ]
@@ -1269,6 +1401,21 @@
     }
   },
   {
+    "type": "type_arguments",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": true,
+      "required": true,
+      "types": [
+        {
+          "type": "type_identifier",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
     "type": "type_identifier",
     "named": true,
     "fields": {},
@@ -1289,6 +1436,10 @@
           "named": true
         },
         {
+          "type": "type_arguments",
+          "named": true
+        },
+        {
           "type": "type_identifier",
           "named": true
         },
@@ -1300,6 +1451,42 @@
     }
   },
   {
+    "type": "type_param",
+    "named": true,
+    "fields": {
+      "constraint": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "type_identifier",
+            "named": true
+          }
+        ]
+      },
+      "default": {
+        "multiple": false,
+        "required": false,
+        "types": [
+          {
+            "type": "type_identifier",
+            "named": true
+          }
+        ]
+      },
+      "name": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "identifier",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
     "type": "type_param_list",
     "named": true,
     "fields": {},
@@ -1308,7 +1495,7 @@
       "required": true,
       "types": [
         {
-          "type": "identifier",
+          "type": "type_param",
           "named": true
         }
       ]
@@ -1490,6 +1677,36 @@
         "types": [
           {
             "type": "element_ref",
+            "named": true
+          }
+        ]
+      },
+      "type_argument": {
+        "multiple": true,
+        "required": false,
+        "types": [
+          {
+            "type": "_expression",
+            "named": true
+          },
+          {
+            "type": "component_type",
+            "named": true
+          },
+          {
+            "type": "enum_declaration",
+            "named": true
+          },
+          {
+            "type": "func_type",
+            "named": true
+          },
+          {
+            "type": "struct_declaration",
+            "named": true
+          },
+          {
+            "type": "variadic_type",
             "named": true
           }
         ]

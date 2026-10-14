@@ -60,7 +60,7 @@ func testIndexed(t Test) {
 }
 
 func testMapEntries(t Test) {
-    var m map<string, int> = {"a" = 1, "b" = 5}
+    var m map[string, int] = {"a" = 1, "b" = 5}
     var n = 0
     for var k, v = m {
         n = n + v + k.length() - 1

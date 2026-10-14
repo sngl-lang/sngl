@@ -13,14 +13,14 @@ import ui "sngl:ui"
 
 struct Row {
     name string
-    cols list<string>
+    cols list[string]
 }
 
 struct Sel {
     pick string
 }
 
-const rows list<Row> = [
+const rows list[Row] = [
     {name="a", cols=["1", "2"]},
     {name="b", cols=["3"]},
 ]

@@ -12,7 +12,7 @@ import (
 const slotChildSrc = `
 import . "sngl:ui"
 component App() node {
-    var rows list<string> = ["a", "b", "c"]
+    var rows list[string] = ["a", "b", "c"]
     var picked string = ""
     text(value="picked=" + picked)
     for var r = rows {
@@ -94,7 +94,7 @@ func TestSlotChildInstance_ARowReadingStateThroughACallRepaints(t *testing.T) {
 	src := `
 import . "sngl:ui"
 window {
-    var items list<string> = ["a", "b"]
+    var items list[string] = ["a", "b"]
     var suffix string = "!"
     func decorate() => suffix
     button(text="bang", @click { suffix = "?" })

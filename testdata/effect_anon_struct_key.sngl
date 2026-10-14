@@ -15,7 +15,7 @@ component main node {
     var (
         a int = 1
         b string = "x"
-        log list<string> = []
+        log list[string] = []
     )
 
     effect(

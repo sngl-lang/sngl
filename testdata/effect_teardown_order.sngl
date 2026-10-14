@@ -15,10 +15,10 @@ import . "sngl:ui"
 
 component main node {
     var (
-        items list<string> = ["a", "b", "c"]
-        log list<string> = []
+        items list[string] = ["a", "b", "c"]
+        log list[string] = []
         k = 0
-        pairLog list<string> = []
+        pairLog list[string] = []
     )
 
     for var it = items {

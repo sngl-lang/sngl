@@ -312,7 +312,7 @@ component drawSource(
     @url(e SourceEvent),
     @enter(e DrawEvent),
     @leave(e DrawEvent),
-    source ...component family.one<ui.imageSource>,
+    source ...component family.one[ui.imageSource],
 ) shapes.shape
 
 // The canvas's own transform, which a DrawScope otherwise only takes as a

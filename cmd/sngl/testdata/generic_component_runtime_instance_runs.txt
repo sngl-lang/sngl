@@ -1,0 +1,546 @@
+# A generic component built at run time -- stateful, under a `for` or in a
+# recursion -- is copied per instantiation on a target that does not emit a
+# generic component, so Go and Kotlin hold each copy's props, events, state
+# and methods at the types its call site bound: a `list[T]` prop, and an
+# anonymous struct naming T as a prop, an event's parameter, state, what a
+# method returns, and a value a handler builds.
+# testdata/generic_component_runtime_instance.txtar is the code.
+#
+# bubbletea splices a stateful component per copy rather than building it, so
+# it is not this path: it refuses state in a recursion, a copy's included, and
+# the loops' effects reading the loop variable whether or not the component
+# is generic.
+
+sngl test --platform=none app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=html app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=fyne --language=go app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=none list.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=html list.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=fyne --language=go list.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go list.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin list.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=none recursive.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=html recursive.sngl
+stdout '1 tests, 0 failures'
+
+! sngl test --platform=bubbletea --language=go recursive.sngl
+stderr 'the recursive component "nest" declares state of its own'
+
+sngl test --platform=fyne --language=go recursive.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go recursive.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin recursive.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=none event.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=fyne --language=go event.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin event.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=none state.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=fyne --language=go state.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin state.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=none method.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=fyne --language=go method.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin method.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=none local.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=fyne --language=go local.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin local.sngl
+stdout '1 tests, 0 failures'
+
+# A recursion instantiating itself at a deeper type would need a copy per
+# depth, which no build can write down.
+! sngl generate --lang go --platform fyne --out out deeper.sngl
+stderr 'deeper.sngl:8:\d+: "nest" instantiates itself'
+
+! sngl generate --lang kotlin --platform android --out out2 deeper.sngl
+stderr 'deeper.sngl:8:\d+: "nest" instantiates itself'
+
+-- app.sngl --
+import . "sngl:test"
+import ui "sngl:ui"
+
+component show[T any](
+    w struct {
+        v T
+    },
+    @seen(v T),
+) {
+    var hits = 0
+    effect(@mount { seen(w.v) })
+    ui.button(text="{hits}", @click { hits = hits + 1 })
+}
+
+component main ui.node {
+    var items = [1, 2]
+    var sum = 0
+    ui.vbox {
+        for var i = items {
+            show(w={v=i}, @seen(v) { sum = sum + v })
+        }
+    }
+}
+
+func testEachCopyHoldsItsStruct(t Test, c main) {
+    t.assert(c.sum == 3)
+}
+
+ui.window(title="x") {
+    main
+}
+-- list.sngl --
+import . "sngl:test"
+import ui "sngl:ui"
+
+component show[T any](xs list[T], @seen(n int)) {
+    var hits = 0
+    effect(@mount { seen(xs.length) })
+    ui.button(text="{hits}", @click { hits = hits + 1 })
+}
+
+component main ui.node {
+    var items = [1, 2]
+    var sum = 0
+    ui.vbox {
+        for var i = items {
+            show(xs=[i, i], @seen(n) { sum = sum + n })
+        }
+    }
+}
+
+func testEachCopyHoldsItsList(t Test, c main) {
+    t.assert(c.sum == 4)
+}
+
+ui.window(title="x") {
+    main
+}
+-- recursive.sngl --
+import . "sngl:test"
+import ui "sngl:ui"
+
+component nest[T any](x T, d int, @seen(w struct {
+    v T
+})) {
+    var hits = 0
+    effect(@mount { seen({v=x}) })
+    ui.vbox {
+        ui.button(text="{hits}", @click { hits = hits + 1 })
+        if d > 0 {
+            nest(x=x, d=d - 1, @seen(w) { seen(w) })
+        }
+    }
+}
+
+component main ui.node {
+    var count = 0
+    var said = ""
+    ui.vbox {
+        nest(x=1, d=2, @seen(w) { count = count + w.v })
+        nest(x="a", d=1, @seen(w) { said = said + w.v })
+    }
+}
+
+func testEachLevelHoldsItsStruct(t Test, c main) {
+    t.assert(c.count == 3)
+    t.assert(c.said == "aa")
+}
+
+ui.window(title="x") {
+    main
+}
+-- event.sngl --
+import . "sngl:test"
+import ui "sngl:ui"
+
+component pick[T any](x T, @chose(w struct {
+    v T
+})) {
+    var hits = 0
+    effect(@mount { chose({v=x}) })
+    ui.button(text="{hits}", @click {
+        hits = hits + 1
+        chose({v=x})
+    })
+}
+
+component main ui.node {
+    var items = ["a", "b"]
+    var got = ""
+    ui.vbox {
+        for var i = items {
+            pick(x=i, @chose(w) { got = got + w.v })
+        }
+    }
+}
+
+func testEachCopyHandsOnItsStruct(t Test, c main) {
+    t.assert(c.got == "ab")
+}
+
+ui.window(title="x") {
+    main
+}
+-- state.sngl --
+import . "sngl:test"
+import ui "sngl:ui"
+
+component keep[T any](x T, @seen(v T)) {
+    var w = {v=x}
+    effect(@mount { seen(w.v) })
+    ui.button(text="b", @click { w = {v=x} })
+}
+
+component main ui.node {
+    var items = [1, 2]
+    var sum = 0
+    ui.vbox {
+        for var i = items {
+            keep(x=i, @seen(v) { sum = sum + v })
+        }
+    }
+}
+
+func testEachCopyKeepsItsStruct(t Test, c main) {
+    t.assert(c.sum == 3)
+}
+
+ui.window(title="x") {
+    main
+}
+-- method.sngl --
+import . "sngl:test"
+import ui "sngl:ui"
+
+component pick[T any](x T, @chose(v T)) {
+    var hits = 0
+    func boxed() struct {
+        v T
+    } {
+        return {v=x}
+    }
+    effect(@mount {
+        var w = boxed()
+        chose(w.v)
+    })
+    ui.button(text="{hits}", @click {
+        hits = hits + 1
+        var w = boxed()
+        chose(w.v)
+    })
+}
+
+component main ui.node {
+    var items = [1, 2]
+    var got = 0
+    ui.vbox {
+        for var i = items {
+            pick(x=i, @chose(w) { got = got + w })
+        }
+    }
+}
+
+func testEachCopyReturnsItsStruct(t Test, c main) {
+    t.assert(c.got == 3)
+}
+
+ui.window(title="x") {
+    main
+}
+-- local.sngl --
+import . "sngl:test"
+import ui "sngl:ui"
+
+component pick[T any](x T, @chose(v T)) {
+    var hits = 0
+    effect(@mount {
+        var w = {v=x}
+        chose(w.v)
+    })
+    ui.button(text="{hits}", @click {
+        hits = hits + 1
+        var w = {v=x}
+        chose(w.v)
+    })
+}
+
+component main ui.node {
+    var items = [1, 2]
+    var got = 0
+    ui.vbox {
+        for var i = items {
+            pick(x=i, @chose(w) { got = got + w })
+        }
+    }
+}
+
+func testEachCopyBuildsItsStruct(t Test, c main) {
+    t.assert(c.got == 3)
+}
+
+ui.window(title="x") {
+    main
+}
+-- deeper.sngl --
+import ui "sngl:ui"
+
+component nest[T any](x T, d int) {
+    var hits = 0
+    ui.vbox {
+        ui.button(text="{hits}", @click { hits = hits + 1 })
+        if d > 0 {
+            nest(x=[x], d=d - 1)
+        }
+    }
+}
+
+ui.window(title="x") {
+    nest(x=1, d=2)
+}
+-- testrun/android/kotlin/app.sngl/main/1 --
+sha256:e9f60340c974498b1384c6d81f04dd08
+{
+  "results": [
+    {
+      "Desc": "EachCopyHoldsItsStruct",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/android/kotlin/event.sngl/main/1 --
+sha256:e5422e3b05abf695a90acf6470dee2d0
+{
+  "results": [
+    {
+      "Desc": "EachCopyHandsOnItsStruct",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/android/kotlin/list.sngl/main/1 --
+sha256:9fce00a4fd342d32be9c038205e70a85
+{
+  "results": [
+    {
+      "Desc": "EachCopyHoldsItsList",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/android/kotlin/local.sngl/main/1 --
+sha256:d0883de4b372db2b34761c395393756b
+{
+  "results": [
+    {
+      "Desc": "EachCopyBuildsItsStruct",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/android/kotlin/method.sngl/main/1 --
+sha256:6671f564200916b473a3a876fed1fcb3
+{
+  "results": [
+    {
+      "Desc": "EachCopyReturnsItsStruct",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/android/kotlin/recursive.sngl/main/1 --
+sha256:c322ccf4bdd0409213f52584b75c7605
+{
+  "results": [
+    {
+      "Desc": "EachLevelHoldsItsStruct",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/android/kotlin/state.sngl/main/1 --
+sha256:d407b6c8a8f457312e678f647e17d723
+{
+  "results": [
+    {
+      "Desc": "EachCopyKeepsItsStruct",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/main/1 --
+sha256:0e5cdb5c95ef8288d6d6a5a27e4c0b49
+{
+  "results": [
+    {
+      "Desc": "EachCopyHoldsItsStruct",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/event.sngl/main/1 --
+sha256:78d02439826a57e47a48e19b2b2c4cff
+{
+  "results": [
+    {
+      "Desc": "EachCopyHandsOnItsStruct",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/list.sngl/main/1 --
+sha256:adabeaf77145baf367c4b129329755b6
+{
+  "results": [
+    {
+      "Desc": "EachCopyHoldsItsList",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/local.sngl/main/1 --
+sha256:b01d5c37a236d9f8a3bee988beb1a6ad
+{
+  "results": [
+    {
+      "Desc": "EachCopyBuildsItsStruct",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/method.sngl/main/1 --
+sha256:1b242806a5f60579c990c35be76304b6
+{
+  "results": [
+    {
+      "Desc": "EachCopyReturnsItsStruct",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/recursive.sngl/main/1 --
+sha256:a3f26ddaceb5dc8bb3e149ac3b6cc3fe
+{
+  "results": [
+    {
+      "Desc": "EachLevelHoldsItsStruct",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/state.sngl/main/1 --
+sha256:f2cfc0c24eb3603599bf40e743614113
+{
+  "results": [
+    {
+      "Desc": "EachCopyKeepsItsStruct",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/main/1 --
+sha256:b69fbf3744efe35e46d1d886aca43f94
+{
+  "results": [
+    {
+      "Desc": "EachCopyHoldsItsStruct",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/list.sngl/main/1 --
+sha256:f1ae15e901f22daf68e4b8c8f75ac603
+{
+  "results": [
+    {
+      "Desc": "EachCopyHoldsItsList",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/recursive.sngl/main/1 --
+sha256:c6e614e92b9625dc165a8454c45bc1c8
+{
+  "results": [
+    {
+      "Desc": "EachLevelHoldsItsStruct",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/main/1 --
+sha256:d8bcfd8745331ca09f4d943c514daf3b
+{
+  "results": [
+    {
+      "Desc": "EachCopyHoldsItsStruct",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/list.sngl/main/1 --
+sha256:d3c798d973ef42a34331767435aa1a8c
+{
+  "results": [
+    {
+      "Desc": "EachCopyHoldsItsList",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/recursive.sngl/main/1 --
+sha256:69e7d9e03cb889386854e837362af4af
+{
+  "results": [
+    {
+      "Desc": "EachLevelHoldsItsStruct",
+      "Passed": true
+    }
+  ]
+}

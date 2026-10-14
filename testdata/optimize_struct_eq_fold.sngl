@@ -1,0 +1,25 @@
+// `==` folds as every target compares: a struct field by field, by name, and a
+// list element by element. A folded struct is held as a pointer, and Go's ==
+// on one is identity, so two equal literals folded to false; on a list Go's ==
+// panics.
+
+import . "sngl:ui"
+
+struct P {
+    a int
+    b string
+}
+
+func wrap[T any](x T) struct {
+    v T
+} {
+    return {v=x}
+}
+
+component structeq node {
+    var same = P{a=1, b="x"} == P{b="x", a=1}    // FOLD true
+    var differs = P{a=1, b="x"} != P{a=2, b="x"} // FOLD true
+    var lists = [1, 2] == [1, 2]                 // FOLD true
+    var longer = [1, 2] == [1, 2, 3]             // FOLD false
+    var anon = wrap(1) == {v=1}                  // FOLD true
+}

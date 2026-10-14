@@ -36,7 +36,7 @@ output {
 
 var n = 0
 var shown = true
-const periods list<time.duration> = [100ms, 250ms]
+const periods list[time.duration] = [100ms, 250ms]
 
 ui.window(title="t") {
     for var p = periods {

@@ -44,7 +44,7 @@ output {
     }
 }
 
-const periods list<duration> = [20ms, 400ms]
+const periods list[duration] = [20ms, 400ms]
 
 component main node {
     for var i, p = periods {

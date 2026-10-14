@@ -19,7 +19,7 @@ stderr 'group.sngl:16:9: extras renders pages, and what a stack''s pages are com
 import nav "sngl:ui/nav"
 import ui "sngl:ui"
 
-var items list<string> = ["a"]
+var items list[string] = ["a"]
 
 ui.window(title="State") {
     ui.vbox {

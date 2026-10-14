@@ -34,7 +34,7 @@ output {
     }
 }
 
-const rows list<string> = ["alpha", "beta", "gamma"]
+const rows list[string] = ["alpha", "beta", "gamma"]
 
 window {
     vbox {

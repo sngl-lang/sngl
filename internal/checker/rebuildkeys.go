@@ -10,7 +10,7 @@ import (
 )
 
 // maxRebuildDepth bounds the descent into generic bodies. A generic component
-// may place itself under a wider type -- `r(x=[x])` inside `r<T>(x T)` -- and
+// may place itself under a wider type -- `r(x=[x])` inside `r[T any](x T)` -- and
 // each round is a type the walk has not seen, so the frame set alone does not
 // terminate it. The bound is far past any real nesting; a program that reaches
 // it has a rebuild key nobody can write down either.
@@ -116,7 +116,7 @@ func (w *rebuildWalker) node(inst *ir.NodeInst, scope rebuildScope) {
 		if a.value != nil {
 			t = a.value.ExprType().Substitute(scope.env)
 		}
-		if mentionsTypeParam(t) {
+		if t.HasTypeParam() {
 			// Still a parameter, so this body is being read on its own terms
 			// and the call sites owe the answer.
 			continue
@@ -165,7 +165,7 @@ func (w *rebuildWalker) descend(inst *ir.NodeInst, args map[string]rebuildArg, s
 func (w *rebuildWalker) bindings(comp *ir.Component, args map[string]rebuildArg, env map[string]*ir.Type) map[string]*ir.Type {
 	out := map[string]*ir.Type{}
 	for _, p := range comp.Props {
-		if !mentionsTypeParam(p.Type) {
+		if !p.Type.HasTypeParam() {
 			continue
 		}
 		a, supplied := args[p.Name]
@@ -175,10 +175,10 @@ func (w *rebuildWalker) bindings(comp *ir.Component, args map[string]rebuildArg,
 		t := a.value.ExprType().Substitute(env)
 		// A dyn argument states nothing, and one still typed by a parameter
 		// states only that this call did not pin it either.
-		if t == nil || t.Kind == ir.TypeDyn || mentionsTypeParam(t) {
+		if t == nil || t.Kind == ir.TypeDyn || t.HasTypeParam() {
 			continue
 		}
-		bindTypeParams(p.Type, t, out)
+		ir.BindTypeParams(p.Type, t, out)
 	}
 	for _, tp := range comp.TypeParams {
 		if tp.Default == nil {

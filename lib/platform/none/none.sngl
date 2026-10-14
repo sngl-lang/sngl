@@ -35,7 +35,7 @@ component platform() build.platform
 // stopped being a compiler concept -- a schedule hoisted onto the component had
 // neither.
 #[intrinsic("none:Timer")]
-component Timer<F>(
+component Timer[F any](
     interval time.duration,
     enabled  bool,
     @tick,
@@ -81,7 +81,7 @@ const component shapes.image[platform] {}
 // the control shows. A snapshot prints the sngl:ui component rendering one,
 // as the widget a compiled target's snapshot would show.
 #[intrinsic("none:Control")]
-component Control<T>(
+component Control[T any](
     value T,
     @input(value T),
     @change(value T),
@@ -318,7 +318,7 @@ const component ui.window[platform] {
 }
 
 #[intrinsic("none:Stack")]
-component Stack<F>(pages ...component F) ui.node
+component Stack[F any](pages ...component F) ui.node
 
 // A page as the interpreter mounts it: its content, when its stack is showing
 // this page, and nothing otherwise -- a page not showing is not mounted. It is

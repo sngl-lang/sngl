@@ -6,7 +6,7 @@
 
 import . "sngl:ui"
 
-const labels list<string> = ["one", "two", "three"]
+const labels list[string] = ["one", "two", "three"]
 
 component focusLoop node {
     vbox {

@@ -29,7 +29,7 @@ struct Row {
 }
 
 component table(
-    rows list<Row>,
+    rows list[Row],
     children ...component,
     header component family.one,
     cell component(row Row),

@@ -11,7 +11,7 @@ struct Row {
     title string
 }
 
-component table(rows list<Row>, cell component(Row)) node {
+component table(rows list[Row], cell component(Row)) node {
     vbox {
         for var r = rows {
             cell(r)

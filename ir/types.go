@@ -30,22 +30,27 @@ const (
 	TypeNull      // type of null literal
 	TypeTypeParam // unresolved generic param; ParamName set
 	TypeVoid      // void — a call that yields no value; not usable as an expression
-	TypeRef       // Elem set — ref<T>, used by NoLambda for mutable captures
-	TypeIter      // Elems = [T] for iter<T>
+	TypeRef       // Elem set — ref[T], used by NoLambda for mutable captures
+	TypeIter      // Elems = [T] for iter[T]
 	TypeNative    // platform-provided foreign type; Meta carries the platform-specific descriptor
 	TypeInstance  // Decl set — a live instance in the rendered tree
-	// TypeReadonly is readonly<T> (Elems set): a loop variable bound by copy,
+	// TypeReadonly is readonly[T] (Elems set): a loop variable bound by copy,
 	// which a program reads and may not write. The checker's own -- a read
 	// unwraps it to T, and the loop erases it from its variables once its body
 	// is checked -- so nothing after the check meets one.
 	TypeReadonly
+	// TypeAny is `any`, the constraint that says nothing about a type
+	// parameter. It is a constraint only -- the checker refuses it where a
+	// value's type is written -- so it is met on a TypeParamSym's Constraint
+	// and nowhere else.
+	TypeAny
 )
 
 // Type is the unified representation of all SNGL types.
 // Zero value is TypeInvalid.
 type Type struct {
 	Kind      TypeKind
-	Elems     []*Type  // type arguments: List<T>, Option<T>, Map<K,V>, etc.
+	Elems     []*Type  // type arguments: list[T], option[T], map[K, V], etc.
 	Decl      Symbol   // struct, enum, unit, component declaration
 	Sig       *FuncSig // function types
 	ParamName string   // generic type param name ("T")
@@ -69,6 +74,7 @@ var (
 	TypString = &Type{Kind: TypeString}
 	TypNull   = &Type{Kind: TypeNull}
 	TypVoid   = &Type{Kind: TypeVoid}
+	TypAny    = &Type{Kind: TypeAny}
 )
 
 // Sized numeric singletons. Plain int/float (TypInt/TypFloat) keep Bits==0.
@@ -95,17 +101,17 @@ func OptionOf(inner *Type) *Type {
 	return &Type{Kind: TypeOption, Elems: []*Type{inner}}
 }
 
-// ReadonlyOf builds a readonly<elem> Type.
+// ReadonlyOf builds a readonly[elem] Type.
 func ReadonlyOf(elem *Type) *Type {
 	return &Type{Kind: TypeReadonly, Elems: []*Type{elem}}
 }
 
-// IsReadonly reports whether t is readonly<T>.
+// IsReadonly reports whether t is readonly[T].
 func (t *Type) IsReadonly() bool {
 	return t != nil && t.Kind == TypeReadonly && len(t.Elems) == 1
 }
 
-// RefOf builds a ref<elem> Type.
+// RefOf builds a ref[elem] Type.
 func RefOf(elem *Type) *Type {
 	return &Type{Kind: TypeRef, Elems: []*Type{elem}}
 }
@@ -115,7 +121,7 @@ func FuncOf(params []*Param, ret *Type) *Type {
 	return &Type{Kind: TypeFunc, Sig: &FuncSig{Params: params, Return: ret}}
 }
 
-// IterOf returns an iter<T> type.
+// IterOf returns an iter[T] type.
 func IterOf(elem *Type) *Type {
 	return &Type{Kind: TypeIter, Elems: []*Type{elem}}
 }
@@ -145,6 +151,8 @@ func (t *Type) String() string {
 		return "<invalid>"
 	case TypeDyn:
 		return "dyn"
+	case TypeAny:
+		return "any"
 	case TypeBool:
 		return "bool"
 	case TypeInt:
@@ -164,34 +172,34 @@ func (t *Type) String() string {
 		return "string"
 	case TypeList:
 		if len(t.Elems) > 0 {
-			return fmt.Sprintf("list<%s>", t.Elems[0])
+			return fmt.Sprintf("list[%s]", t.Elems[0])
 		}
 		return "list"
 	case TypeMap:
 		if len(t.Elems) == 2 {
-			return fmt.Sprintf("map<%s, %s>", t.Elems[0], t.Elems[1])
+			return fmt.Sprintf("map[%s, %s]", t.Elems[0], t.Elems[1])
 		}
-		return "map<?>"
+		return "map[?]"
 	case TypeOption:
 		if len(t.Elems) > 0 {
-			return fmt.Sprintf("option<%s>", t.Elems[0])
+			return fmt.Sprintf("option[%s]", t.Elems[0])
 		}
 		return "option"
 	case TypeRef:
 		if len(t.Elems) > 0 {
-			return fmt.Sprintf("ref<%s>", t.Elems[0])
+			return fmt.Sprintf("ref[%s]", t.Elems[0])
 		}
 		return "ref"
 	case TypeReadonly:
 		if len(t.Elems) > 0 {
-			return fmt.Sprintf("readonly<%s>", t.Elems[0])
+			return fmt.Sprintf("readonly[%s]", t.Elems[0])
 		}
 		return "readonly"
 	case TypeIter:
 		if len(t.Elems) == 1 {
-			return fmt.Sprintf("iter<%s>", t.Elems[0])
+			return fmt.Sprintf("iter[%s]", t.Elems[0])
 		}
-		return "iter<?>"
+		return "iter[?]"
 	case TypeStruct:
 		name := "struct"
 		// A diagnostic says what the program wrote, never the synthesized name.
@@ -209,7 +217,7 @@ func (t *Type) String() string {
 			for i, e := range t.Elems {
 				args[i] = e.String()
 			}
-			return name + "<" + strings.Join(args, ", ") + ">"
+			return name + "[" + strings.Join(args, ", ") + "]"
 		}
 		return name
 	case TypeEnum:
@@ -249,10 +257,10 @@ func (t *Type) String() string {
 		for i, e := range t.Elems {
 			args[i] = e.String()
 		}
-		return t.Decl.SymName() + "<" + strings.Join(args, ", ") + ">"
+		return t.Decl.SymName() + "[" + strings.Join(args, ", ") + "]"
 	case TypeInstance:
 		if t.Decl != nil {
-			return "instance<" + t.Decl.SymName() + ">"
+			return "instance[" + t.Decl.SymName() + "]"
 		}
 		return "instance"
 	case TypeNative:
@@ -442,75 +450,21 @@ func (t *Type) Substitute(bindings map[string]*Type) *Type {
 	if t == nil {
 		return nil
 	}
-	switch t.Kind {
-	case TypeTypeParam:
+	if t.Kind == TypeTypeParam {
 		if bound, ok := bindings[t.ParamName]; ok {
 			return bound
 		}
 		return t
-	case TypeList, TypeMap, TypeOption, TypeRef, TypeIter, TypeStruct:
-		elems := make([]*Type, len(t.Elems))
-		changed := false
-		for i, e := range t.Elems {
-			elems[i] = e.Substitute(bindings)
-			if elems[i] != e {
-				changed = true
-			}
-		}
-		if !changed {
-			return t
-		}
-		return &Type{Kind: t.Kind, Elems: elems, Decl: t.Decl}
-	case TypeComponent:
-		// `page<T>` in a generic signature: its type arguments are the
-		// signature's, bound at the call like any other element type.
-		if len(t.Elems) == 0 {
-			return t
-		}
-		elems := make([]*Type, len(t.Elems))
-		for i, e := range t.Elems {
-			elems[i] = e.Substitute(bindings)
-		}
-		cp := *t
-		cp.Elems = elems
-		return &cp
-	case TypeFunc:
-		if t.Sig == nil {
-			return t
-		}
-		sig := t.Sig.Substitute(bindings)
-		if sig == t.Sig {
-			return t
-		}
-		return &Type{Kind: TypeFunc, Sig: sig}
 	}
-	return t
+	return t.MapChildren(func(c *Type) *Type { return c.Substitute(bindings) })
 }
 
 // Substitute replaces TypeTypeParam in params and return type.
 func (s *FuncSig) Substitute(bindings map[string]*Type) *FuncSig {
-	if s == nil || len(bindings) == 0 {
+	if len(bindings) == 0 {
 		return s
 	}
-	params := make([]*Param, len(s.Params))
-	changed := false
-	for i, p := range s.Params {
-		nt := p.Type.Substitute(bindings)
-		if nt != p.Type {
-			changed = true
-			params[i] = &Param{Name: p.Name, Type: nt, Default: p.Default, Receiver: p.Receiver, Const: p.Const}
-		} else {
-			params[i] = p
-		}
-	}
-	ret := s.Return.Substitute(bindings)
-	if ret != s.Return {
-		changed = true
-	}
-	if !changed {
-		return s
-	}
-	return &FuncSig{Params: params, Return: ret, TypeParams: s.TypeParams, RecvTypeParams: s.RecvTypeParams, Purity: s.Purity, Color: s.Color, PolyParam: s.PolyParam}
+	return s.mapTypes(func(c *Type) *Type { return c.Substitute(bindings) })
 }
 
 // Equal reports structural type equality.
@@ -550,8 +504,8 @@ func (t *Type) Equal(other *Type) bool {
 		}
 		// Two struct types are equal when they share the same declaration AND
 		// their type arguments (if any) are pairwise equal. This covers both
-		// non-generic structs (no Elems) and generic instantiations like Box<int>
-		// vs Box<string>.
+		// non-generic structs (no Elems) and generic instantiations like Box[int]
+		// vs Box[string].
 		if !sameDecl(t, other) {
 			return false
 		}
@@ -565,7 +519,7 @@ func (t *Type) Equal(other *Type) bool {
 		}
 		return true
 	case TypeComponent:
-		// `page<P>` is the instances whose call site bound the declaration's
+		// `page[P]` is the instances whose call site bound the declaration's
 		// type parameters that way, and a handle carries what its call site
 		// bound. A bare `component` names no declaration and carries none.
 		if !sameDecl(t, other) {
@@ -640,15 +594,15 @@ func (t *Type) IsAssignableTo(target *Type) bool {
 	if t.Kind == TypeList && target.Kind == TypeList {
 		return t.Elems[0].IsAssignableTo(target.Elems[0])
 	}
-	// list<T> implicitly converts to iter<T>.
+	// list[T] implicitly converts to iter[T].
 	if t.Kind == TypeList && target.Kind == TypeIter && len(t.Elems) == 1 && len(target.Elems) == 1 {
 		return t.Elems[0].IsAssignableTo(target.Elems[0])
 	}
-	// map<K, V> → map<K', V'> where V is assignable to V' and K is
+	// map[K, V] → map<K', V'> where V is assignable to V' and K is
 	// assignable to K' under the same rules (Equal, or K' is dyn).
 	// Allowing K → dyn lets stdlib wrappers forward typed maps to
 	// intrinsics whose key types are deliberately erased (e.g. i18n's
-	// PluralKey-keyed maps → map<dyn, string> at the runtime boundary).
+	// PluralKey-keyed maps → map[dyn, string] at the runtime boundary).
 	// Concrete-key conversions (like int → string) are still rejected.
 	if t.Kind == TypeMap && target.Kind == TypeMap && len(t.Elems) == 2 && len(target.Elems) == 2 {
 		keyOK := t.Elems[0].Equal(target.Elems[0]) || target.Elems[0].Kind == TypeDyn
@@ -813,6 +767,67 @@ func anonStructDef(t *Type) *StructDef {
 		return nil
 	}
 	return sd
+}
+
+// AnonStructDef is t's declaration when t is an anonymous struct, nil
+// otherwise.
+func AnonStructDef(t *Type) *StructDef {
+	if t == nil {
+		return nil
+	}
+	return anonStructDef(t)
+}
+
+// FieldNamed is the field of fields called name, nil for none.
+func FieldNamed(fields []*StructField, name string) *StructField {
+	for _, f := range fields {
+		if f.Name == name {
+			return f
+		}
+	}
+	return nil
+}
+
+// IsUninternedAnon reports whether sd is an anonymous struct the checker
+// declared without interning it: one whose fields name a type parameter, or
+// what substituting one made. Only an interned declaration is named, so the
+// missing name is what says so.
+func IsUninternedAnon(sd *StructDef) bool {
+	return sd != nil && sd.Anon && sd.Name == ""
+}
+
+// FieldsOf is the fields a value of type t is known to have, each at its
+// type: a struct's own with t's type arguments bound, or a type parameter's
+// struct constraint's. ok is false for a type that has no fields to measure.
+func FieldsOf(t *Type) (fields []*StructField, ok bool) {
+	if t == nil {
+		return nil, false
+	}
+	if t.Kind == TypeTypeParam {
+		if sym, _ := t.Decl.(*TypeParamSym); sym != nil && sym.Constraint != nil && sym.Constraint.Kind == TypeStruct {
+			return FieldsOf(sym.Constraint)
+		}
+		return nil, false
+	}
+	if t.Kind != TypeStruct {
+		return nil, false
+	}
+	sd, _ := t.Decl.(*StructDef)
+	if sd == nil {
+		return nil, false
+	}
+	if len(sd.TypeParams) == 0 || len(t.Elems) != len(sd.TypeParams) {
+		return sd.Fields, true
+	}
+	bindings := make(map[string]*Type, len(sd.TypeParams))
+	for i, tp := range sd.TypeParams {
+		bindings[tp.Name] = t.Elems[i]
+	}
+	out := make([]*StructField, len(sd.Fields))
+	for i, f := range sd.Fields {
+		out[i] = &StructField{Name: f.Name, Type: f.Type.Substitute(bindings)}
+	}
+	return out, true
 }
 
 // sameFields reports whether two field lists, each in the name order an

@@ -7,7 +7,7 @@ import . "sngl:test"
 import . "sngl:ui"
 
 struct Holder {
-    items list<int>
+    items list[int]
 }
 
 struct Todo {
@@ -19,7 +19,7 @@ struct Todo {
 // when it reads, so two calls with no read between are one settle.
 component saver node {
     var (
-        todos list<Todo> = []
+        todos list[Todo] = []
         saved = 0
         last = 0
     )
@@ -81,8 +81,8 @@ func testUpdateRunsWhenTheListIsReplaced(t Test, c saver) {
 // Every change handler, and the order they report in.
 component changes node {
     var (
-        xs list<int> = [10, 20]
-        log list<string> = []
+        xs list[int] = [10, 20]
+        log list[string] = []
     )
 
     effect(
@@ -151,8 +151,8 @@ func testReplacementReachesUpdate(t Test, c changes) {
 // A change the program does not handle is reported by @update.
 component partial node {
     var (
-        xs list<int> = [1]
-        log list<string> = []
+        xs list[int] = [1]
+        log list[string] = []
     )
 
     effect(
@@ -183,7 +183,7 @@ func testUnhandledChangeReachesUpdate(t Test, c partial) {
 component scalar node {
     var (
         n = 0
-        log list<string> = []
+        log list[string] = []
     )
 
     effect(
@@ -215,7 +215,7 @@ func testUpdateRunsOnAnEqualWrite(t Test, c scalar) {
 // A key computed from state, and a struct holding a list, report @update.
 component computed node {
     var (
-        xs list<int> = [1, 2, 3]
+        xs list[int] = [1, 2, 3]
         n = 0
     )
 
@@ -243,7 +243,7 @@ func testComputedKeyReportsAWrite(t Test, c computed) {
 component field node {
     var (
         h = Holder{items=[1]}
-        log list<string> = []
+        log list[string] = []
     )
 
     effect(
@@ -284,7 +284,7 @@ func testFieldKey(t Test, c field) {
 }
 
 struct Row {
-    items list<int> = []
+    items list[int] = []
     n     int = 0
 }
 
@@ -293,8 +293,8 @@ struct Row {
 // walks reaches the copies it moved, a push none.
 component rows node {
     var (
-        xs list<Row> = [Row{items=[1]}, Row{items=[2]}]
-        log list<string> = []
+        xs list[Row] = [Row{items=[1]}, Row{items=[2]}]
+        log list[string] = []
     )
 
     vbox {

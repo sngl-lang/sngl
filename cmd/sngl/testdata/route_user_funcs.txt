@@ -47,7 +47,7 @@ import "go:routefuncs/srv"
 import "sngl:platform/html"
 
 component main root {
-    var nums list<int> = [1, 2, 3]
+    var nums list[int] = [1, 2, 3]
     var total = 0
 
     func keep(n int) bool { return n > 1 }

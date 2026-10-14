@@ -30,7 +30,7 @@ func serve(dir string, listen string)
 // withdrawn again: what html spawns work onto is the browser, which has none. And
 // a DOM parent can put a child at a position, so a keyed run moves one child
 // rather than rebuilding from the first change.
-#[gen.can(ternary, listLambdas, asyncCalls, insertBefore, inlineSlots, instanceState, navigation)]
+#[gen.can(ternary, listLambdas, asyncCalls, insertBefore, inlineSlots, instanceState, navigation, genericComponents)]
 #[gen.cannot(
     viewStatements,
     asyncSpawn,
@@ -68,7 +68,7 @@ component platform(
     // JavaScript's words, and beside them what the script introduces: the
     // `state` object a page's vars live in, a factory's `props`, the `String`
     // it redefines, and the browser globals it calls.
-    const reservedNames list<string> = [
+    const reservedNames list[string] = [
         ...js.words,
         "state",
         "props",
@@ -194,7 +194,7 @@ component element(
     // name there is a DOM property or a misspelling of one, and the properties
     // an element takes are declared above.
     #[wildcard("[a-z][a-z0-9]*")]
-    attrs map<string, string>,
+    attrs map[string, string],
 
     @click(),
     @input(e Event),
@@ -616,8 +616,8 @@ struct _TreeRow {
 
 // A tree's rows, in traversal order, each node's below it and indented one
 // step further.
-const func _treeRows(items list<ui.treeItem>, indent ui.measurement) list<_TreeRow> {
-    var out list<_TreeRow> = []
+const func _treeRows(items list[ui.treeItem], indent ui.measurement) list[_TreeRow] {
+    var out list[_TreeRow] = []
     for var it = items {
         out = [...out, _TreeRow{label=it.label, indent=indent}, ..._treeRows(it.children, indent + 16px)]
     }
@@ -920,12 +920,12 @@ const component markup.listItem[platform] {
 // server call. No effect for static-site builds. Build fails if the logic cannot
 // run in the browser or depends on server-side values.
 #[intrinsic("html.frontend")]
-const func frontend<T>(v T) T
+const func frontend[T any](v T) T
 
 // Force v to run server-side (back-end). A func value is generated as an HTTP
 // route; a constant expression is generated as a lazy-loaded static file.
 #[intrinsic("html.backend")]
-const func backend<T>(v T) T
+const func backend[T any](v T) T
 
 // --- The timer ---
 //
@@ -1075,7 +1075,7 @@ component drawSource(
     @url(e SourceEvent),
     @enter(e DrawEvent),
     @leave(e DrawEvent),
-    source ...component family.one<ui.imageSource>,
+    source ...component family.one[ui.imageSource],
 ) shapes.shape
 
 // `rgba(...)` as the DOM spells it. Written in SNGL rather than pointed at the
@@ -1268,7 +1268,7 @@ component Page(content ...component ui.node) ui.node
 // The pages' family is sngl:ui/nav's and unexported, so the slot takes it as a
 // type parameter, bound by the pages written there.
 #[intrinsic("html:stack")]
-component Stack<F>(pages ...component F) ui.node
+component Stack[F any](pages ...component F) ui.node
 
 const component nav.stack[platform] {
     Stack {

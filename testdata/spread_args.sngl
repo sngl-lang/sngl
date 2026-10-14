@@ -19,11 +19,11 @@ struct Pair {
     y int
 }
 
-struct Box<T> {
+struct Box[T any] {
     value T
 }
 
-func first<T>(x T, y int) => x
+func first[T any](x T, y int) => x
 
 func unbox(value int) => value
 
@@ -45,7 +45,7 @@ component main node {
     var byName = first(y=2, x="s")
     var bySpread = first(...pair)
     // A generic struct's fields are typed by its type arguments.
-    var box Box<int> = {value=4}
+    var box Box[int] = {value=4}
     var unboxed int = unbox(...box)
     table(r=Row{title="hello", count=3}) {
         component cell(t, n) {

@@ -71,7 +71,7 @@ func foldExpr(e ir.Expr, ctx *evalCtx) ir.Expr {
 		// valid emission. Leave the operand untouched so the codegen still
 		// sees the original lvalue identifier.
 		if x.Op == ast.UnaryDeref && !isRef(x.Operand) {
-			// A plain T that stood in for a ref<T> parameter: the coercion
+			// A plain T that stood in for a ref[T] parameter: the coercion
 			// leaves the value as it is, so what the body wrote as `*p` is now
 			// a deref of something that was never a reference. Reading it is
 			// the value itself.
@@ -108,7 +108,7 @@ func foldExpr(e ir.Expr, ctx *evalCtx) ir.Expr {
 		x.Operand = foldExpr(x.Operand, ctx)
 		// An unwrap of a value put into an option is that value. The pair
 		// appears where a call site supplied a plain T for a declared
-		// option<T> and the body read it in a branch a null test had settled
+		// option[T] and the body read it in a branch a null test had settled
 		// -- two authors' halves, meeting only after inlining. Left standing,
 		// Go boxes and immediately dereferences, Kotlin asserts `2.0!!`, and
 		// the static html renderer cannot see a constant where there is one.
@@ -221,7 +221,7 @@ func foldExpr(e ir.Expr, ctx *evalCtx) ir.Expr {
 	// only during the walk above and the evaluation at the top saw the shape
 	// before that. An option unwrap is what makes this necessary rather than
 	// merely tidy: evalConversion refuses an option *wrap* outright, so
-	// `float(option<float>(2.0)) / 10.0` evaluated to nothing whole while both
+	// `float(option[float](2.0)) / 10.0` evaluated to nothing whole while both
 	// its operands folded -- and gtk4 emitted the division for cgo to do.
 	if val, ok := evalExpr(e, ctx); ok && !ctx.keepsReference(e, val) {
 		if expr := irFromValue(val, e.ExprType()); expr != nil {
@@ -453,8 +453,8 @@ func foldNodeInst(n *ir.NodeInst, ctx *evalCtx) ir.Stmt {
 // option -- which is to say that what comes out of it is not null.
 //
 // Deliberately wider than ir.IsOptionWrap, which is the promotion of a bare T
-// into option<T> and nothing else: an argument crossing two coercions at once
-// arrives as the single conversion `option<float>(2)`, an int operand under a
+// into option[T] and nothing else: an argument crossing two coercions at once
+// arrives as the single conversion `option[float](2)`, an int operand under a
 // float option, and that is a value in an option too.
 func putsValueInOption(conv *ir.Conversion) bool {
 	if conv == nil || conv.Type == nil || conv.Type.Kind != ir.TypeOption || conv.Operand == nil {
@@ -467,7 +467,7 @@ func putsValueInOption(conv *ir.Conversion) bool {
 	return src.Kind != ir.TypeNull && src.Kind != ir.TypeOption && src.Kind != ir.TypeDyn
 }
 
-// unwrappedOptionOperand answers `float(option<float>(2))` with `float(2)`,
+// unwrappedOptionOperand answers `float(option[float](2))` with `float(2)`,
 // and nil for anything that is not an unwrap of a value known to be there.
 //
 // The conversion is rebuilt rather than dropped because the inner operand may
@@ -495,7 +495,7 @@ func isNullOperand(e ir.Expr) bool {
 }
 
 // settledNullTest folds `x != null` and `x == null` where the type of x says
-// the answer: everything in SNGL is non-nullable but `option<T>`, the `null`
+// the answer: everything in SNGL is non-nullable but `option[T]`, the `null`
 // literal itself, and `dyn`, which says nothing about what it holds.
 //
 // The test is written by whoever declared the option and answered by whoever

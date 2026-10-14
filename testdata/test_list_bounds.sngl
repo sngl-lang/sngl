@@ -8,7 +8,7 @@ import . "sngl:test"
 component main node { text(value="x") }
 
 func testSliceClampsBothBounds(t Test, c main) {
-    var xs list<int> = [1, 2, 3]
+    var xs list[int] = [1, 2, 3]
 
     // Bounds are clamped to [0, length], never an error.
     t.assert(xs.slice(0, 99).length() == 3)
@@ -21,8 +21,8 @@ func testSliceClampsBothBounds(t Test, c main) {
 }
 
 func testSliceReturnsACopy(t Test, c main) {
-    var xs list<int> = [1, 2, 3]
-    var head list<int> = xs.slice(0, 2)
+    var xs list[int] = [1, 2, 3]
+    var head list[int] = xs.slice(0, 2)
 
     // Growing the copy must not write into the list it came from. A Go slice
     // expression shares the backing array, so this wrote 9 over xs[2].
@@ -32,7 +32,7 @@ func testSliceReturnsACopy(t Test, c main) {
 }
 
 func testRemoveIgnoresAnOutOfRangeIndex(t Test, c main) {
-    var xs list<int> = [1, 2, 3]
+    var xs list[int] = [1, 2, 3]
 
     xs.remove(99)
     t.assert(xs.length() == 3)
@@ -47,10 +47,10 @@ func testRemoveIgnoresAnOutOfRangeIndex(t Test, c main) {
 }
 
 func testJoinCoercesNonStringElements(t Test, c main) {
-    var ns list<int> = [1, 2, 3]
+    var ns list[int] = [1, 2, 3]
     t.assert(ns.join(",") == "1,2,3")
 
-    var ss list<string> = ["a", "b"]
+    var ss list[string] = ["a", "b"]
     t.assert(ss.join("-") == "a-b")
 }
 

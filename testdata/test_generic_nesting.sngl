@@ -1,17 +1,17 @@
 import . "sngl:ui"
 import . "sngl:test"
 
-func first<T>(items list<T>) T {
+func first[T any](items list[T]) T {
     return items[0]
 }
 
-func pair<A, B>(a A, b B) list<A> {
+func pair[A any, B any](a A, b B) list[A] {
     return [a]
 }
 
 component main node {
-    var matrix list<list<int>> = [[1, 2], [3, 4], [5, 6]]
-    var maybes list<option<int>> = [1, null, 3]
+    var matrix list[list[int]] = [[1, 2], [3, 4], [5, 6]]
+    var maybes list[option[int]] = [1, null, 3]
 
     text(value=string(matrix[0][1]))
 }

@@ -134,7 +134,9 @@ func inlineComponentCall(n *ir.NodeInst, ctx *evalCtx) []ir.Stmt {
 		return nil
 	}
 
-	cloned := cloneStmts(comp.Stmts)
+	// At the types the call site bound: a generic body's `struct { v T }`
+	// left as written reached a backend that erases T.
+	cloned := cloneStmts(ir.InstantiateStmts(comp.Stmts, ir.ComponentBindings(n)))
 
 	// When inlining a cross-package component, native-call resolution
 	// inside the body (e.g. `docs.Highlight(...)`) needs to consult the

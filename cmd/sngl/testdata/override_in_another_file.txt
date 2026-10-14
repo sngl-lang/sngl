@@ -26,7 +26,7 @@ import gen "sngl:x/gen"
 import go "sngl:language/go"
 import ui "sngl:ui"
 
-func enc(xs list<string>) => xs.join(",")
+func enc(xs list[string]) => xs.join(",")
 
 component block[go.language] {
     gen.emit(render=enc)

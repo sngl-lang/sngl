@@ -12,7 +12,7 @@ import . "sngl:ui"
 component main node {
     var (
         shown = true
-        log list<string> = []
+        log list[string] = []
     )
 
     if shown {

@@ -21,7 +21,7 @@
 stderr 'page "a"''s href /p/\{slug\} names \{slug\}, but its params have no field "slug"'
 
 ! sngl generate --lang go --platform html -o out-unparseable unparseable.sngl
-stderr 'page "b"''s href /t/\{tags\} names \{tags\}, which arrives as text, and field "tags" is list<string>, which a path cannot carry'
+stderr 'page "b"''s href /t/\{tags\} names \{tags\}, which arrives as text, and field "tags" is list\[string\], which a path cannot carry'
 
 # A path naming every field, each of a type it can carry, is served.
 sngl generate --lang go --platform html -o out-ok ok.sngl
@@ -40,7 +40,7 @@ output {
 struct PageParams {
     pkg string
     page int
-    tags list<string>
+    tags list[string]
 }
 
 ui.window(title=pages.current.title) {
@@ -67,7 +67,7 @@ output {
 struct PageParams {
     pkg string
     page int
-    tags list<string>
+    tags list[string]
 }
 
 ui.window(title=pages.current.title) {

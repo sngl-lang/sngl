@@ -10,9 +10,9 @@ component main node {
 }
 
 func narrowingEscapesIntoALambda(t Test) {
-    var maybe option<int> = 3
+    var maybe option[int] = 3
     if maybe != null {
-        var later = func() => double(maybe) // ERROR(check) "cannot pass option<int> as int"
+        var later = func() => double(maybe) // ERROR(check) "cannot pass option[int] as int"
         t.assert(later() == 6)
     }
 }

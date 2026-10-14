@@ -27,7 +27,7 @@ stdout 'ok   2 tests, 0 failures'
 import ui "sngl:ui"
 import . "sngl:test"
 
-component pick(items list<string>, @chose(s string)) ui.node {
+component pick(items list[string], @chose(s string)) ui.node {
     for var x = items {
         ui.button #opt(text=x, @click {
             chose(x)

@@ -27,7 +27,7 @@ component platform(
     // named `view`, `update`, `init` or `terminalSize` would collide with, and
     // the locals Update and View declare around the handler and view code they
     // hold.
-    const reservedNames list<string> = [
+    const reservedNames list[string] = [
         "tea",
         "lipgloss",
         "textinput",
@@ -123,7 +123,7 @@ component Layout(
 component Styled(
     content      string,
     focus        Focus,
-    const events list<Event>,
+    const events list[Event],
     style        ui.Style,
     // Fired by the key an `events` record maps "change" to. A key press
     // carries nothing, so the override says here what the press reports.
@@ -135,17 +135,17 @@ component Styled(
 component Widget(
     const model Model,
     focus       Focus,
-    const binds list<Bind>,
+    const binds list[Bind],
     placeholder string,
     style       ui.Style,
 
     // Operands for the `$\{name\}` tokens in this widget's Model strings. A
     // token names one of these props, so the set grows with the templates
     // rather than with the widget count.
-    options list<string>,
-    items   list<string>,
-    columns list<string>,
-    rows    list<list<string>>,
+    options list[string],
+    items   list[string],
+    columns list[string],
+    rows    list[list[string]],
     value   float,
     max     float,
 ) ui.node
@@ -355,7 +355,7 @@ const component ui.textarea[platform] {
 }
 
 // A date is typed, as YYYY-MM-DD, into tui.DateInput: a text field read as
-// the *time.Time an option<date> is in Go, nil until what is typed is a date.
+// the *time.Time an option[date] is in Go, nil until what is typed is a date.
 const component ui.datepicker[platform] {
     Widget(
         model = Model{
@@ -508,8 +508,8 @@ const component ui.table[platform] {
 // A tree's labels in traversal order, each node's below it. bubbles' list
 // reports its selection as the item's text, which is what `selected` holds, so
 // a label is not indented: the depth would be read back as part of it.
-const func _treeLabels(items list<ui.treeItem>) list<string> {
-    var out list<string> = []
+const func _treeLabels(items list[ui.treeItem]) list[string] {
+    var out list[string] = []
     for var it = items {
         out = [...out, it.label, ..._treeLabels(it.children)]
     }
@@ -588,7 +588,7 @@ const component ui.toolbar[platform] {
 // The gate is a prop rather than the position the node is written at, because
 // arming happens in Init and Update, outside the view the position describes.
 #[intrinsic("bubbletea:Timer")]
-component Timer<F>(
+component Timer[F any](
     interval time.duration,
     enabled  bool,
     @tick,

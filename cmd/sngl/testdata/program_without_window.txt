@@ -32,8 +32,8 @@ struct Entry {
 #[go.native("fmt", "fmt.Print")]
 func print(s string)
 
-func encode(members list<Entry>) string {
-    var parts list<string> = []
+func encode(members list[Entry]) string {
+    var parts list[string] = []
     for var e = members {
         parts.push(e.full)
     }

@@ -153,7 +153,7 @@ func AnythingNested() []any {
 //sngl:pure
 func Stamp0() time.Time { return time.Date(2026, 8, 24, 9, 30, 0, 0, time.UTC) }
 
-// Bytes returns a byte slice. The importer types []byte as list<int>, so the
+// Bytes returns a byte slice. The importer types []byte as list[int], so the
 // encoder has to write the elements rather than a base64 string.
 //
 //sngl:pure

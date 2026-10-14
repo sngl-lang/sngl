@@ -22,7 +22,7 @@ output {
     }
 }
 
-component each<T>(v T, item component(content component(x T) node) node) node {
+component each[T any](v T, item component(content component(x T) node) node) node {
     vbox {
         item() {
             component content(x) {

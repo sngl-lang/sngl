@@ -136,7 +136,7 @@ func promoteForeignStructs(pkg *ir.Package) error {
 		have[sd] = true
 		added = append(added, sd)
 		// A promoted struct's declaration names its fields' types, which
-		// have to be declared beside it: `_Item` holds `list<_Block>`. A
+		// have to be declared beside it: `_Item` holds `list[_Block]`. A
 		// builtin kind's (`color`) is each backend's own to spell.
 		for _, f := range sd.Fields {
 			if !namesBuiltinStruct(f.Type) {
@@ -474,7 +474,7 @@ func collectUsedSymbols(pkg *ir.Package, documents bool) (used, build map[ir.Sym
 		switch s := sym.(type) {
 		case *ir.Var:
 			// Walk the declared type: a struct/enum referenced only as a
-			// type (e.g. `var x option<User> = null`) must stay reachable,
+			// type (e.g. `var x option[User] = null`) must stay reachable,
 			// or the shaker prunes its definition while codegen still emits
 			// the type reference → "undefined: User".
 			walkType(s.Type, used, walk)

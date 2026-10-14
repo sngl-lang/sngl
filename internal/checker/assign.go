@@ -26,7 +26,7 @@ type slot struct {
 	// that binds it, and an unresolved type parameter on either side is the
 	// tail of an earlier error.
 	later bool
-	// keepShape mints no conversion but the T -> option<T> promotion: a
+	// keepShape mints no conversion but the T -> option[T] promotion: a
 	// struct literal's field is read by pattern (see wrapOptionIfNeeded).
 	keepShape bool
 	// accept admits a value no general rule does, and says so by returning
@@ -67,7 +67,7 @@ func (c *checker) coerce(written ast.Expr, val ir.Expr, want *ir.Type, s slot) i
 	if got.Kind == ir.TypeDyn || want.Kind == ir.TypeDyn {
 		return val
 	}
-	if s.later && (mentionsTypeParam(want) || got.Kind == ir.TypeTypeParam) {
+	if s.later && (want.HasTypeParam() || got.Kind == ir.TypeTypeParam) {
 		return val
 	}
 	if !got.IsAssignableTo(want) {

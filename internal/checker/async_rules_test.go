@@ -114,7 +114,7 @@ import api "js:app/api"
 
 func greet(name string) => api.fetchHello(name)
 
-var names list<string> = []
+var names list[string] = []
 
 window #main(title="Main") {
     text(value=list.map(names, func(x string) => greet(x))[0])

@@ -350,7 +350,7 @@ struct Todo {
 ui.window(title="Todos") {
     var (
         newTodo = ""
-        todos list<Todo> = []
+        todos list[Todo] = []
     )
     func status() => "Todo List ({todos.length} items)"
 
@@ -374,7 +374,7 @@ ui.window(title="Todos") {
 }
 ```
 
-`struct Todo` is the data shape. `var todos list<Todo> = []` starts empty and
+`struct Todo` is the data shape. `var todos list[Todo] = []` starts empty and
 is what the UI iterates. `func status()` is derived — the count updates
 whenever `todos` changes. The state is scoped to the window's body; nothing
 outside it can touch it.
@@ -441,7 +441,7 @@ import "sngl:ui"
 
 ui.window(title="Todos") {
     var newTodo = ""
-    var todos list<store.Todo> = store.Load()
+    var todos list[store.Todo] = store.Load()
 
     effect(on=todos, @update(t) {
         store.Save(t)

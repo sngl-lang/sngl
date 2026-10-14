@@ -19,7 +19,7 @@ component one(content ...component family.one) ui.node {
     }
 }
 
-component atMostOne(content ...component option<ui.node>) ui.node {
+component atMostOne(content ...component option[ui.node]) ui.node {
     ui.vbox {
         content
     }

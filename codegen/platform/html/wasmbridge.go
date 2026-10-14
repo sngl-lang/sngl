@@ -81,7 +81,7 @@ func collectWASMPackages(pkg *ir.Package, frontend map[nativeFuncKey]bool, fsys 
 			if f.Foreign.Unusable != "" {
 				continue
 			}
-			// ref<T> is a SNGL-internal mutable-capture handle; it has no
+			// ref[T] is a SNGL-internal mutable-capture handle; it has no
 			// stable JSON representation and the bridge has no way to keep
 			// the Go and JS sides aliased to the same backing storage.
 			// Refuse to expose any func whose signature touches one.
@@ -121,7 +121,7 @@ func collectWASMPackages(pkg *ir.Package, frontend map[nativeFuncKey]bool, fsys 
 	return out
 }
 
-// containsRef reports whether t is, or transitively contains, a ref<T>.
+// containsRef reports whether t is, or transitively contains, a ref[T].
 func containsRef(t *ir.Type) bool {
 	if t == nil {
 		return false

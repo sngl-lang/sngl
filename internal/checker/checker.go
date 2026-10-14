@@ -394,7 +394,7 @@ type checker struct {
 	scope  *ir.Scope
 	symtab *ir.SymbolTable
 
-	// refCoercions are the call sites that handed a plain T to a ref<T>
+	// refCoercions are the call sites that handed a plain T to a ref[T]
 	// parameter; see verifyRefCoercions for why the callee is held to its half
 	// of the bargain only once every body has been checked.
 	refCoercions []refCoercion
@@ -658,9 +658,14 @@ type checker struct {
 	// specPinned is what a specialization's props pinned, before defaults:
 	// what bindFromChildren leaves as it is.
 	specPinned map[*ir.Component]map[string]*ir.Type
+
+	// callTypeArgs holds the type arguments written at a call,
+	// `first[int](xs)`, for the generic declaration the call reaches to bind
+	// (instantiatedCall).
+	callTypeArgs map[*ast.CallExpr]*writtenTypeArgs
 	// handleArgs is the type arguments each handle a component body declares
 	// was bound, for a select reaching it from outside: `c.pkg` is the
-	// `page<Pkg>` its call site made it.
+	// `page[Pkg]` its call site made it.
 	handleArgs map[handleKey][]*ir.Type
 	// entryOrigin is the declared entry each specialized slot entry was
 	// copied from, and entrySpec the specialization an insertion of one was
@@ -708,7 +713,7 @@ type checker struct {
 	// stdComp.PlatformOverrides[platformName] = checkedIRBody mapping.
 	pendingExtensions []pendingExtension
 
-	// Flow narrowing of option<T> after a null test. narrowed holds the facts
+	// Flow narrowing of option[T] after a null test. narrowed holds the facts
 	// current at the statement being checked, narrowUsed says which of them a
 	// read actually went through, and narrowChecks defers the soundness
 	// question to after the purity fixed point. noNarrow suspends the rewrite
@@ -2095,10 +2100,10 @@ func (c *checker) libraryRecords() [2]*ir.Builtins {
 	return [2]*ir.Builtins{c.libs.builtins, ir.Published()}
 }
 
-// listOf is list<elem> as this check's library declares it.
+// listOf is list[elem] as this check's library declares it.
 func (c *checker) listOf(elem *ir.Type) *ir.Type { return c.libs.builtins.ListOf(elem) }
 
-// mapOf is map<k, v> as this check's library declares it.
+// mapOf is map[k, v] as this check's library declares it.
 func (c *checker) mapOf(k, v *ir.Type) *ir.Type { return c.libs.builtins.MapOf(k, v) }
 
 func (c *checker) resolveStructBody(sd *ir.StructDef) {
@@ -2825,7 +2830,7 @@ func (c *checker) isLibraryNamespace(name string) bool {
 // claims its name, since a slot is resolved as a tag from anywhere in the body.
 //
 // An id declared inside a *descendant* component is deliberately absent. It is
-// reachable from here as list<host>, but the parent did not declare it -- were
+// reachable from here as list[host], but the parent did not declare it -- were
 // it a claim, renaming a var in a child would break its parent, and a library
 // component's internal ids would land in every caller's namespace.
 func (c *checker) claimComponentAPI(decl *ast.ComponentDecl, comp *ir.Component) {
@@ -3222,6 +3227,17 @@ func (c *checker) collectComponentDecls(comp *ast.ComponentDecl, irComp *ir.Comp
 	return nestedFuncs
 }
 
+// resolveTypeQuietly resolves te and reports nothing: for a declaration whose
+// annotation is resolved again, and reported, where it is checked. A
+// component's var is registered before its body is read and checked with it,
+// and resolving it loudly in both said everything wrong with its type twice.
+func (c *checker) resolveTypeQuietly(te ast.TypeExpr) *ir.Type {
+	n := len(c.diags)
+	t := c.resolveType(te)
+	c.diags = c.diags[:n]
+	return t
+}
+
 // collectComponentVarDecl builds the pre-registered ir.Vars for one component
 // body var/const declaration. Split out of collectComponentDecls because a
 // platform extension body is collected on its own (checkPendingExtensions),
@@ -3234,7 +3250,7 @@ func (c *checker) collectComponentVarDecl(stmt ast.Stmt) []*ir.Var {
 	switch s := stmt.(type) {
 	case *ast.ConstDecl:
 		for _, spec := range s.Specs {
-			typ := c.resolveType(spec.Type)
+			typ := c.resolveTypeQuietly(spec.Type)
 			for _, name := range spec.Names {
 				v := &ir.Var{AST: s, Name: name, Type: typ, IsConst: true}
 				c.applyMarks(s, v)
@@ -3243,7 +3259,7 @@ func (c *checker) collectComponentVarDecl(stmt ast.Stmt) []*ir.Var {
 		}
 	case *ast.VarDecl:
 		for _, spec := range s.Specs {
-			typ := c.resolveType(spec.Type)
+			typ := c.resolveTypeQuietly(spec.Type)
 			for _, name := range spec.Names {
 				v := &ir.Var{AST: s, Name: name, Type: typ}
 				// A mark means the same thing wherever the declaration sits.
@@ -3627,7 +3643,7 @@ func (c *checker) buildErrorBoundary(vn *ast.VisualNode, comp *ir.Component) *ir
 		eb.Children = append(eb.Children, named...)
 	}
 	// A boundary belongs to no family and hosts whatever it was handed --
-	// `component boundary<T>(content ...component T, failed component T) T`.
+	// `component boundary[T any](content ...component T, failed component T) T`.
 	// Nothing at the call site names T, so the content binds it: the first
 	// child that belongs to a family says which, and the rest are held to
 	// that. An empty boundary binds nothing, and has nothing to check.
@@ -4003,7 +4019,7 @@ func (c *checker) checkFuncBody(fn *ir.Func) {
 
 	// A method on a generic receiver may carry no receiver parameter -- saying
 	// `this` instead -- so bind it for a body that names it,
-	// `func list<T>.push(item T) => stdlib.ListPush(this, item)` or a block.
+	// `func list[T].push(item T) => stdlib.ListPush(this, item)` or a block.
 	// A concrete receiver names itself a parameter and needs none, and so does
 	// a nested method, whose `this` is synthesized into its parameter list.
 	// Only a written body: the bodyless generic stubs never say `this`, and
@@ -4373,9 +4389,14 @@ func (c *checker) checkOverrideNestedBodies(decls []ir.Symbol) {
 // declareBodyDecls rebinds what comp's body declares: a scope cannot span the
 // two passes, so pass2 declares them again from the symbols.
 func (c *checker) declareBodyDecls(comp *ir.Component) {
+	// The symbols were declared, and a duplicate among them reported, when
+	// pass1 collected the body; this binds them again for every body read in
+	// that scope, and reporting again said it once a read.
+	n := len(c.diags)
 	for _, sym := range comp.BodyDecls {
 		c.declare(declPos(sym), sym)
 	}
+	c.diags = c.diags[:n]
 }
 
 // declareEnclosingBody declares, into comp's body scope, what the body comp
@@ -4634,7 +4655,7 @@ func withCount(counts []nodeCount, k nodeCount) []nodeCount {
 // declareNodeIDsIn hoists the node ids in block. counts is the chain of scopes
 // crossed to reach it, outermost first, and is what the handle's type is
 // wrapped in: a node written inside a `for` inside an `if` reads from outside
-// both as `option<list<T>>`.
+// both as `option[list[T]]`.
 //
 // Each block's own ids are hoisted again, at their own depth, into the scope
 // checkBlockIR pushes for it — so a read from *inside* the scope is the plain

@@ -16,7 +16,7 @@ component c ui.node {
 
 // A crossing node says it is not of the family its body is, so it is no
 // evidence of which family that is: a body of nothing else names none.
-component bare() { // ERROR(check) "component bare: the body names no family, so name the family it belongs to in the return position, or return a type parameter, `<F>(…) F`, to take the family it is placed in"
+component bare() { // ERROR(check) "component bare: the body names no family, so name the family it belongs to in the return position, or return a type parameter, `<F any>(…) F`, to take the family it is placed in"
     #[family.crosses]
     ui.text(value="bare")
 }

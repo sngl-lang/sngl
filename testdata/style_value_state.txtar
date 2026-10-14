@@ -56,7 +56,7 @@ output {
 ui.window {
     var s ui.Style = {color=#ff0000, fontSize=14px}
     var on = false
-    var kept list<ui.Style> = [{background=#00ffff}]
+    var kept list[ui.Style] = [{background=#00ffff}]
     var rows = ["a"]
 
     ui.button(text="swap", @click {

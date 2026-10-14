@@ -8,11 +8,11 @@
 
 import . "sngl:ui"
 
-struct option<T> {
+struct option[T any] {
     v T
 }
 
-component frame(badge component option<int>) node { // ERROR(check) "a slot accepts a family, and option<int> is not one"
+component frame(badge component option[int]) node { // ERROR(check) "a slot accepts a family, and option[int] is not one"
     vbox {
         badge {}
     }

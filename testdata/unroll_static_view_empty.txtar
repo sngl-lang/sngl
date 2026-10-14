@@ -21,7 +21,7 @@ output {
     }
 }
 
-const packages list<string> = []
+const packages list[string] = []
 
 ui.window #home(title="Docs") {
     html.nav {

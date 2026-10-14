@@ -30,13 +30,13 @@ output {
 }
 
 struct Row {
-    items list<int> = []
+    items list[int] = []
     n     int = 0
 }
 
 component rows ui.node {
-    var xs list<Row> = [Row{items=[1]}, Row{items=[2]}]
-    var log list<string> = []
+    var xs list[Row] = [Row{items=[1]}, Row{items=[2]}]
+    var log list[string] = []
 
     ui.vbox {
         for var &x = xs {

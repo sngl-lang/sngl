@@ -598,7 +598,8 @@ func (st *inlinePureState) substitute(comp *ir.Component, callsite *ir.NodeInst)
 	// Deep-clone the wrapper body so substitution mutations don't leak
 	// across call sites.
 	provided := providedContextVars(comp, callsite.Props)
-	body := substituteVars(deepCloneStmts(comp.Stmts), provided)
+	typeArgs := spliceTypeArgs(comp, callsite)
+	body := substituteVars(splicedBody(comp, typeArgs), provided)
 
 	// Hoist the callee's own vars onto the owner being walked, one copy per
 	// call site. isPure let them through because nothing rendered reads them,
@@ -615,9 +616,7 @@ func (st *inlinePureState) substitute(comp *ir.Component, callsite *ir.NodeInst)
 			if _, ok := provided[v]; ok {
 				continue
 			}
-			clone := cloneVarShallow(v)
-			clone.Name = st.names.next(v.Name, "inst")
-			clone.Init = deepCloneExpr(v.Init)
+			clone := cloneHoistedVar(v, st.names.next(v.Name, "inst"), typeArgs)
 			renames[v] = clone.Name
 			symRenames[v] = clone
 			*st.hoist = append(*st.hoist, clone)

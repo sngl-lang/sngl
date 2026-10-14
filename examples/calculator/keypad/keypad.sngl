@@ -25,7 +25,7 @@ func bgOf(tone string) color {
 
 // The rows, top to bottom. Written as data so that the layout below is five
 // lines long however many keys there turn out to be.
-func rows() list<list<Key>> {
+func rows() list[list[Key]] {
     return [
         [
             Key{label="C", action=Action.clear},

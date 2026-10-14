@@ -98,7 +98,7 @@ func TestGoImporter_Resolve(t *testing.T) {
 		t.Errorf("SaveTodo.Params[0] type should point to Todo struct, got %+v", st.Params[0].Type)
 	}
 
-	// FetchAll: list<Todo>.
+	// FetchAll: list[Todo].
 	fa, ok := funcs["FetchAll"]
 	if !ok {
 		t.Fatal("missing func FetchAll")

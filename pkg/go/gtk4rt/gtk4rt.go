@@ -423,7 +423,7 @@ func CheckButtonGetActive(button Handle) bool {
 // ---- Calendar ----
 
 // CalendarGetDate is the day a GtkCalendar has selected, as the *time.Time an
-// option<date> is in Go. A calendar always has a day selected, so it is never
+// option[date] is in Go. A calendar always has a day selected, so it is never
 // nil.
 func CalendarGetDate(calendar Handle) *time.Time {
 	dt := C.gtk_calendar_get_date((*C.GtkCalendar)(p(calendar)))

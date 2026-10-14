@@ -23,7 +23,7 @@ output {
 }
 
 var xs = [1, 2, 3]
-var mp map<string, int> = {"a"=1}
+var mp map[string, int] = {"a"=1}
 
 window {
     text(value="{xs.length()} {mp.length()}")

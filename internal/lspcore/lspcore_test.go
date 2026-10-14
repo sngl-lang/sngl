@@ -473,7 +473,7 @@ func TestExtractOutputPlatform(t *testing.T) {
 // completion cannot tell the two cases apart — it has one parsed document and
 // no checker — so it must not offer the name at all.
 func TestPropListCompletions_OmitsWildcardProp(t *testing.T) {
-	content := "component attrs(\n  label string = \"\",\n  #[wildcard(\"data[A-Za-z0-9]+\")] data map<string, string>,\n) {\n  text(value = label)\n}\ncomponent main node {\n  window {\n    attrs()\n  }\n}\n"
+	content := "component attrs(\n  label string = \"\",\n  #[wildcard(\"data[A-Za-z0-9]+\")] data map[string, string],\n) {\n  text(value = label)\n}\ncomponent main node {\n  window {\n    attrs()\n  }\n}\n"
 	doc, _ := lspcore.Analyze(content, "test.sngl", nil, "", nil)
 	items := lspcore.PropListCompletions(content, doc, 9, 11)
 	var labels []string
@@ -591,7 +591,7 @@ struct Todo {
 }
 
 component main node {
-    var todos list<Todo> = []
+    var todos list[Todo] = []
 
     effect(
         on = todos,
@@ -616,5 +616,28 @@ component main node {
 	}
 	if _, ok := detail["@mount"]; ok {
 		t.Errorf("@mount offered on a list key, which does not compare: %v", detail)
+	}
+}
+
+// Inside the brackets after a name the names a type is spelled with are
+// offered, the document's own struct among them, and an index into a value
+// written inside a call's parens is still one.
+func TestComplete_TypeArgs(t *testing.T) {
+	src := "struct User {\n    name string\n}\n\ncomponent main node {\n    var xs = empty[option[Us\n}\n"
+	doc := &ast.Document{Stmts: []ast.Stmt{&ast.StructDef{Name: "User"}}}
+	items := lspcore.Complete(src, doc, 6, 29)
+	for _, want := range []string{"User", "int", "option"} {
+		found := false
+		for _, it := range items {
+			if it.Label == want {
+				found = true
+			}
+		}
+		if !found {
+			t.Errorf("expected %q among type-argument completions, got %v", want, items)
+		}
+	}
+	if ctx := lspcore.CompletionContext("    text(value=f(x[0], ", 1, 24); ctx != lspcore.CtxPropList {
+		t.Errorf("a closed index inside parens: context %v, want the prop list", ctx)
 	}
 }

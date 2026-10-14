@@ -39,7 +39,7 @@ const screenshotAndroid = public.path("snapshots/todo/todo_android.png")
 
 // A component's live preview: its example compiled to a page shown in an
 // iframe, beside the snapshots the other platforms took of it, one at a time.
-component Preview(name string, doc string, tabs list<docs.PreviewTab>) ui.node {
+component Preview(name string, doc string, tabs list[docs.PreviewTab]) ui.node {
     var active = 0
 
     html.div(class="platform-tabs") {
@@ -65,13 +65,13 @@ component Preview(name string, doc string, tabs list<docs.PreviewTab>) ui.node {
 const func fenced(language string, source string) => "````" + language + "\n" + source + "\n````"
 
 // The rows of a table of options: name, type, description.
-const func optionRows(opts list<docs.OptionDoc>) => opts.map(func(o docs.OptionDoc) => [o.name, o.type, o.doc])
+const func optionRows(opts list[docs.OptionDoc]) => opts.map(func(o docs.OptionDoc) => [o.name, o.type, o.doc])
 
-const func propRows(props list<docs.ComponentProp>) => props.map(func(p docs.ComponentProp) => [p.name, p.type, p.doc])
+const func propRows(props list[docs.ComponentProp]) => props.map(func(p docs.ComponentProp) => [p.name, p.type, p.doc])
 
-const func slotRows(slots list<docs.ComponentSlot>) => slots.map(func(sl docs.ComponentSlot) => [sl.name, sl.type, sl.doc])
+const func slotRows(slots list[docs.ComponentSlot]) => slots.map(func(sl docs.ComponentSlot) => [sl.name, sl.type, sl.doc])
 
-const func eventRows(events list<docs.ComponentEvent>) => events.map(func(e docs.ComponentEvent) => [e.name, e.payloadType, e.doc])
+const func eventRows(events list[docs.ComponentEvent]) => events.map(func(e docs.ComponentEvent) => [e.name, e.payloadType, e.doc])
 
 component NavSidebar(currentHref = "") ui.node {
     docui.Sidebar(homeHref="/index.html", logo=logo) {

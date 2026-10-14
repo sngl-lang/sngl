@@ -33,10 +33,10 @@ component main node {
         n = 0
         other = 0
         b box = box{n=0}
-        items list<string> = []
+        items list[string] = []
         x = 0
         y = 0
-        log list<string> = []
+        log list[string] = []
     )
 
     // Legal: the write is from a click, outside the lifetime it ends.

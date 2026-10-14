@@ -67,7 +67,7 @@ window #home(title="Home") {
 // body's `page.title` reads that window's handle.
 func TestLoopWindowIDNamesItsIteration(t *testing.T) {
 	src := `
-const items list<string> = ["a", "b"]
+const items list[string] = ["a", "b"]
 
 for var it = items {
     window #page(title=it) {

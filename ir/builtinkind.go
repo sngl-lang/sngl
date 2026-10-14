@@ -29,6 +29,11 @@ const (
 	BuiltinBool   BuiltinKind = "bool"
 	// Dyn is the type of a value the program says nothing about.
 	BuiltinDyn BuiltinKind = "dyn"
+	// Any is the constraint that says nothing about a type parameter. It is
+	// read like a scalar -- its name is in the universe before sngl:builtin is
+	// in scope, since sngl:family's `one[T any]` is checked first -- and is no
+	// type a value may have.
+	BuiltinAny BuiltinKind = "any"
 
 	// The sized numerics, each a scalar of the width and signedness its name
 	// says (TypInt8 … TypFloat64).
@@ -253,7 +258,7 @@ func (b BuiltinKind) IsConst() bool {
 // AllBuiltinKinds returns every valid kind, in declaration order.
 func AllBuiltinKinds() []BuiltinKind {
 	return []BuiltinKind{
-		BuiltinInt, BuiltinFloat, BuiltinString, BuiltinBool, BuiltinDyn,
+		BuiltinInt, BuiltinFloat, BuiltinString, BuiltinBool, BuiltinDyn, BuiltinAny,
 		BuiltinInt8, BuiltinInt16, BuiltinInt32, BuiltinInt64,
 		BuiltinUint8, BuiltinUint16, BuiltinUint32, BuiltinUint64,
 		BuiltinFloat32, BuiltinFloat64,
@@ -272,6 +277,6 @@ func AllBuiltinKinds() []BuiltinKind {
 // Valid reports whether the kind names a built-in (i.e. is not BuiltinNone and
 // not an unrecognised string).
 func (b BuiltinKind) Valid() bool {
-	return b.IsPrimitive() || b.IsStringRepr() || b.IsUnit() || b.IsGeneric() ||
+	return b == BuiltinAny || b.IsPrimitive() || b.IsStringRepr() || b.IsUnit() || b.IsGeneric() ||
 		b.IsSlotBound() || b.IsFamilyRole() || b.IsNode() || b.IsDirective() || b.IsEmitter() || b.IsCommand() || b.IsConst()
 }

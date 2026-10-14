@@ -14,7 +14,7 @@ func TestKeyOnEveryNodeForm(t *testing.T) {
 	src := `import . "sngl:ui"
 
 component main node {
-    var items list<int> = [1, 2]
+    var items list[int] = [1, 2]
     vbox() {
         for var item, i = items {
             button(text="b", key=string(i), @click { })

@@ -5,7 +5,7 @@ struct Config {
     value int = 0
 }
 
-component Widget(title = "default", count = 0, active = true, items list<int> = [], config Config) node {
+component Widget(title = "default", count = 0, active = true, items list[int] = [], config Config) node {
     func label() => title + ": " + string(count)
     func doubled() => count * 2
     func negated() => -count

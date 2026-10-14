@@ -11,7 +11,7 @@ output {
 // leaf components it renders itself -- a composition delivered nothing here
 // while delivering correctly on every compiled target, which reaches the
 // handler through the inliner's substitution instead.
-var log list<string> = []
+var log list[string] = []
 
 func testAnEmitReachesTheCallSiteHandler(t Test, c main) {
     t.assert(c.pressed == 1)

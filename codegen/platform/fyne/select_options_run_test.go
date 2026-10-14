@@ -9,7 +9,7 @@ const selectOptionsSrc = `
 import . "sngl:ui"
 
 window {
-    var opts list<string> = ["a", "b"]
+    var opts list[string] = ["a", "b"]
     var pick = "b"
     vbox {
         select(value=pick) {

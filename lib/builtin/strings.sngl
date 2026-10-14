@@ -43,7 +43,7 @@ const func string.replace(s string, old string, new string) string
 // empty s returns a list with a single empty string; consecutive
 // separators produce empty pieces.
 #[_intrinsic("string.split")]
-const func string.split(s string, sep string) list<string>
+const func string.split(s string, sep string) list[string]
 
 // True if sub appears anywhere in s. Equivalent to
 // `string.indexOf(s, sub) >= 0`.

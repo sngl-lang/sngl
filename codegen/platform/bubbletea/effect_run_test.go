@@ -23,7 +23,7 @@ import . "sngl:ui"
 window {
     var (
         n = 0
-        log list<string> = []
+        log list[string] = []
     )
 
     effect(

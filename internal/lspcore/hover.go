@@ -255,7 +255,7 @@ func typeExprString(te ast.TypeExpr) string {
 			for _, arg := range t.TypeArgs {
 				parts = append(parts, typeExprString(arg))
 			}
-			s += "<" + strings.Join(parts, ", ") + ">"
+			s += "[" + strings.Join(parts, ", ") + "]"
 		}
 		return s
 	case *ast.FuncType:
@@ -543,7 +543,9 @@ func walkStructExprs(doc *ast.Document, fn func(*ast.StructExpr)) {
 			walkE(x.Operand)
 		case *ast.IndexExpr:
 			walkE(x.Operand)
-			walkE(x.Index)
+			for _, ix := range x.Indices {
+				walkE(ix)
+			}
 		case *ast.TernaryExpr:
 			walkE(x.Cond)
 			walkE(x.Then)

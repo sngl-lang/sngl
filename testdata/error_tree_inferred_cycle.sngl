@@ -5,11 +5,11 @@
 
 import ui "sngl:ui"
 
-component ping() { // ERROR(check) "component ping: the body names no family, so name the family it belongs to in the return position, or return a type parameter, `<F>(…) F`, to take the family it is placed in"
+component ping() { // ERROR(check) "component ping: the body names no family, so name the family it belongs to in the return position, or return a type parameter, `<F any>(…) F`, to take the family it is placed in"
     pong()
 }
 
-component pong() { // ERROR(check) "component pong: the body names no family, so name the family it belongs to in the return position, or return a type parameter, `<F>(…) F`, to take the family it is placed in"
+component pong() { // ERROR(check) "component pong: the body names no family, so name the family it belongs to in the return position, or return a type parameter, `<F any>(…) F`, to take the family it is placed in"
     ping()
 }
 

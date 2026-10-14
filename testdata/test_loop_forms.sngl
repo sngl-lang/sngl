@@ -55,7 +55,7 @@ func describe(n int) string {
 }
 
 // A break leaves the loop, so the body did run and the else does not.
-func breakSkipsElse(xs list<int>) string {
+func breakSkipsElse(xs list[int]) string {
     for var x = xs {
         break
     } else {

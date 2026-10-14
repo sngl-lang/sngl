@@ -1,0 +1,7 @@
+// A list of several type parameters is no target, so one written with no
+// constraint is a parse error naming the spelling that says nothing.
+
+import ui "sngl:ui"
+
+component box[T, F any](value T) F { // ERROR(parse) "type parameter T names no constraint: write `T any`"
+}
