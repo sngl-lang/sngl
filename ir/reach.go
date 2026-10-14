@@ -12,11 +12,12 @@ type Reached struct {
 	decls map[Symbol]struct{}
 	queue []Symbol
 	t     target
+	root  *Package
 }
 
 // ReachedFrom walks pkg for the target named by platform and language.
 func ReachedFrom(pkg *Package, platform, language string) *Reached {
-	r := &Reached{decls: map[Symbol]struct{}{}, t: target{platform, language}}
+	r := &Reached{decls: map[Symbol]struct{}{}, t: target{platform, language}, root: pkg}
 	for _, v := range pkg.Consts {
 		r.add(v)
 	}
@@ -106,12 +107,12 @@ func (r *Reached) decl(sym Symbol) {
 		}
 		r.body(d.Body)
 		r.stmts(d.DeclaredBody)
-		if o, ok := pick(r.t, d.PlatformOverrides, d.LanguageOverrides); ok {
+		if o, ok := r.override(d, d.PlatformOverrides, d.LanguageOverrides); ok {
 			r.body(o.Body)
 		}
 	case *Func:
 		r.fn(d)
-		if o, ok := pick(r.t, d.PlatformOverrides, d.LanguageOverrides); ok {
+		if o, ok := r.override(d, d.PlatformOverrides, d.LanguageOverrides); ok {
 			r.body(o.Body)
 			if o.RecvParam != nil {
 				r.typ(o.RecvParam.Type)
@@ -257,4 +258,37 @@ func (r *Reached) visit(n Node) error {
 		}
 	}
 	return nil
+}
+
+// override is the body the target picks for sym, as the installed maps of a
+// build's copy would hold it: on a checked package the library's and the
+// program's overrides are still in its overlays, the program's winning.
+func (r *Reached) override(sym Symbol, platform, language map[string]Override) (Override, bool) {
+	var added []*Overrides
+	for _, o := range []Overlay{r.root.Overlay, r.root.Targets} {
+		if ov := o.Overrides[sym]; ov != nil {
+			added = append(added, ov)
+		}
+	}
+	if k := r.t.platform; k != "" {
+		for _, ov := range added {
+			if b, ok := ov.Platform[k]; ok {
+				return b, true
+			}
+		}
+		if b, ok := platform[k]; ok {
+			return b, true
+		}
+	}
+	if k := r.t.language; k != "" {
+		for _, ov := range added {
+			if b, ok := ov.Language[k]; ok {
+				return b, true
+			}
+		}
+		if b, ok := language[k]; ok {
+			return b, true
+		}
+	}
+	return Override{}, false
 }

@@ -121,6 +121,10 @@ Re-measure the affected workload after each step and note the number here.
      clone shared) and this one.
    - [ ] (2) The clone copies the program and the library declarations it
      reaches, sharing the rest frozen.
+     - [X] `ClonePackageFor`: `build.Emit`, dump, the playground, the docs
+       preview and the snapshot compile paths.
+     - [ ] `interp.Prepare`, the batch snapshot paths, the LSP color fold, the
+       fixture fold, `sngl test`'s per-group copy (`ClonePackage` today).
 
 7. [ ] **passInlinePure clones slot content into both branches.**
    `ir.SlotSplicer.Substitute` / `lower.deepCloneStmts`: 2.8 GB (22%) of the
@@ -230,3 +234,18 @@ Re-measure the affected workload after each step and note the number here.
    user; no golden moved; docs site byte-identical (1187 files).
    `TestSpecializationReadsTheCopysRecord` fails with the symbol-table walk
    back.
+
+   (2) **`ClonePackageFor` shares what the build does not reach** -- each
+   declaration a library package lists that `ir.ReachedFrom` does not hold is
+   left as the checked one, frozen, in the copy's lists and scopes, and the
+   copy's overlays drop its overrides. `ReachedFrom` finds an override through
+   the checked package's overlays, as the copy's installed maps would hold it.
+   No further writer turned up: after (1) and (1b) nothing in a build touches
+   such a declaration. TestGolden 5.21 -> 4.25 GB allocated; two unprofiled
+   pairs 20.95 -> 17.66 and 20.57 -> 17.72 s user; the clone 2.25 GB / 2.7 s
+   -> 1.31 GB / 1.6 s (-42%, what `tmp/sharecost` predicted). Docs site
+   byte-identical (1187 files), 25.3 s CPU, 11.6 GB. `go test ./...` green
+   (the TestGolden fingerprint of the checked package and its library
+   included). `TestCopySharesWhatTheBuildDoesNotReach` fails with the share
+   off, and with the overlay drop off `InstallOverlay` panics on a frozen
+   `ui.checkbox`.

@@ -51,12 +51,17 @@ func ClonePackage(pkg *Package) *Package {
 //
 // The copy records each declaration it carries an override of for that target
 // (Package.Overridden), whether the override is its own or the overlay's.
+//
+// A library declaration the program does not reach (ReachedFrom) is not
+// copied: the copy's lists and scopes name the checked one, frozen, and the
+// overlays drop its overrides, so nothing in the build specializes it.
 func ClonePackageFor(pkg *Package, platform, language string) *Package {
 	if pkg == nil {
 		return nil
 	}
 	c := newCloner()
 	c.only = &target{platform, language}
+	c.share = unreachedLibrary(pkg, ReachedFrom(pkg, platform, language))
 	c.overridden = map[Symbol]bool{}
 	out := c.clone(reflect.ValueOf(pkg)).Interface().(*Package)
 	InstallOverlay(out)
@@ -146,9 +151,13 @@ type cloner struct {
 	// override for only.
 	overridden     map[Symbol]bool
 	overriddenList []Symbol
+	// share holds the declarations ClonePackageFor leaves shared.
+	share map[Symbol]bool
 }
 
 var typePtrType = reflect.TypeFor[*Type]()
+
+var overlayMapType = reflect.TypeFor[map[Symbol]*Overrides]()
 
 func (c *cloner) clone(v reflect.Value) reflect.Value {
 	switch v.Kind() {
@@ -169,6 +178,11 @@ func (c *cloner) clone(v reflect.Value) reflect.Value {
 		}
 		if c.shareDecls && !deep && !c.own[ptr] && isDeclType(v.Type().Elem()) {
 			return v
+		}
+		if c.share != nil && isDeclType(v.Type().Elem()) {
+			if s, ok := v.Interface().(Symbol); ok && c.share[s] {
+				return v
+			}
 		}
 		// Share anything that isn't one of our IR types (AST nodes,
 		// foreign structs). Returning the original pointer preserves its
@@ -217,6 +231,9 @@ func (c *cloner) clone(v reflect.Value) reflect.Value {
 		out := reflect.MakeMapWithSize(v.Type(), v.Len())
 		iter := v.MapRange()
 		for iter.Next() {
+			if c.share != nil && v.Type() == overlayMapType && c.share[iter.Key().Interface().(Symbol)] {
+				continue
+			}
 			out.SetMapIndex(c.clone(iter.Key()), c.clone(iter.Value()))
 		}
 		return out
@@ -397,4 +414,56 @@ func CloneStmtsSharingDecls(stmts []Stmt) []Stmt {
 	c := newCloner()
 	c.shareDecls = true
 	return c.clone(reflect.ValueOf(stmts)).Interface().([]Stmt)
+}
+
+// unreachedLibrary is each declaration a package pkg imports lists that
+// reach does not hold.
+func unreachedLibrary(pkg *Package, reach *Reached) map[Symbol]bool {
+	out := map[Symbol]bool{}
+	note := func(s Symbol) {
+		if !reach.Has(s) {
+			out[s] = true
+		}
+	}
+	seen := map[*Package]bool{pkg: true}
+	var walk func(p *Package)
+	walk = func(p *Package) {
+		for _, imp := range p.Imports {
+			q := imp.Pkg
+			if q == nil || seen[q] {
+				continue
+			}
+			seen[q] = true
+			for _, v := range q.Consts {
+				note(v)
+			}
+			for _, v := range q.BuildConsts {
+				note(v)
+			}
+			for _, v := range q.Vars {
+				note(v)
+			}
+			for _, f := range q.Funcs {
+				note(f)
+			}
+			for _, s := range q.Structs {
+				note(s)
+			}
+			for _, e := range q.Enums {
+				note(e)
+			}
+			for _, u := range q.Units {
+				note(u)
+			}
+			for _, x := range q.Contexts {
+				note(x)
+			}
+			for _, comp := range q.Components {
+				note(comp)
+			}
+			walk(q)
+		}
+	}
+	walk(pkg)
+	return out
 }

@@ -157,3 +157,47 @@ ui.window {
 		t.Error("ui.text, on the record, was not specialized")
 	}
 }
+
+// TestCopySharesWhatTheBuildDoesNotReach holds a build's copy to copying the
+// library declarations its program reaches: one it does not reach is the
+// checked declaration, frozen, in the copy's own list and in no overlay.
+func TestCopySharesWhatTheBuildDoesNotReach(t *testing.T) {
+	fsys := fstest.MapFS{"main.sngl": &fstest.MapFile{Data: []byte(`import ui "sngl:ui"
+
+ui.window {
+    ui.text(value="hi")
+}
+`)}}
+	doc, err := build.ParsePackageFS(fsys)
+	if err != nil {
+		t.Fatal(err)
+	}
+	checked, err := build.Check(doc, build.CheckConfig{FS: fsys, IsMain: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ui := func(pkg *ir.Package) map[string]*ir.Component {
+		out := map[string]*ir.Component{}
+		for _, imp := range pkg.Imports {
+			if imp.Pkg != nil && imp.Pkg.Path == "sngl:ui" {
+				for _, c := range imp.Pkg.Components {
+					out[c.Name] = c
+				}
+			}
+		}
+		return out
+	}
+	was, now := ui(checked), ui(ir.ClonePackageFor(checked, "html", "js"))
+	if now["text"] == nil || now["text"] == was["text"] {
+		t.Error("ui.text, which the program renders, was not copied")
+	}
+	if now["tabs"] == nil || now["tabs"] != was["tabs"] || !now["tabs"].Frozen {
+		t.Error("ui.tabs, which the program never names, was copied")
+	}
+	cp := ir.ClonePackageFor(checked, "html", "js")
+	for sym := range cp.Targets.Overrides {
+		if c, ok := sym.(*ir.Component); ok && c == was["tabs"] {
+			t.Error("the copy's overlay still overrides ui.tabs")
+		}
+	}
+}
