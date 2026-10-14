@@ -285,3 +285,10 @@ Re-measure the affected workload after each step and note the number here.
    site byte-identical (1187 files), unchanged in cost. Left as it is: the
    native-eval probe's `ClonePackage` of a build's copy, which folds the whole
    library on a copy it throws away.
+
+   Writers found by the review before the MR, each raised and fixed in turn:
+   - `interp.Prepare` ran `DataFamilies` with no reach, so it rewrote the
+     populations of every shared `sngl:ui` body: 189 objects of the checked
+     library for `ui.window { ui.text }`. It passes the interpreter's reach;
+     `TestPrepareLeavesTheCheckedLibraryAlone` fingerprints the checked
+     imports around `Prepare` and fails without it.
