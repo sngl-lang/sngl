@@ -119,9 +119,18 @@ Re-measure the affected workload after each step and note the number here.
      call site is replaced by the splice and nothing else holds it. Content
      inserted more than once, or beside a fallback or population that inserts
      slots of its own (spliced once per use), is still copied.
-   - [ ] b. What is left on the docs build: the callee body copied per call
-     site (541 MB), content inserted more than once -- the two branches --
-     (337 MB) and fallbacks (247 MB).
+   - [ ] b. What is left on the docs build after (a), 1.12 GB of
+     `deepCloneStmts`: passInlinePure copying the callee's body per call site
+     (541 MB, most of it md's `site`, whose body is one `nav.page` per file
+     and has one call site), content inserted more than once -- the two
+     branches of `markup.list` and `markup.listItem` -- (337 MB), and
+     passNoInlineComponents' slot splice (247 MB). The last cannot move as (a)
+     does: its call site's content is still read after the splice
+     (`markdown_document`'s golden changes, `Set__ctx_listDepth(… + 1)`
+     becoming `Set__p1(…)`), and 174 statements are already reachable twice
+     after that pass on TestGolden before any change. The first two need
+     either sharing IR (with the declaration, or between branches) or
+     changing html's overrides; owner's call.
 
 8. [ ] **`ExprCtx.WithLocal` clones its maps per local**
    (`codegen/exprctx.go:284`): 1.2 GB on the docs build. A parent-chained
