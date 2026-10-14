@@ -75,10 +75,10 @@ func lowerSlotChildInstances(pkg *ir.Package, caps Features, opts Options) error
 	//
 	// By index, because lifting appends the components it synthesizes and
 	// each of their bodies is a view body with slots of its own.
-	// What lifting synthesizes already holds its #[construct] props as its own.
 	written := len(pkg.Components)
 	for i := 0; i < len(pkg.Components); i++ {
 		if c := pkg.Components[i]; c != nil {
+			// What lifting synthesizes holds its #[construct] props as its own.
 			if i < written {
 				c.Stmts = st.constructSlots(c.Stmts)
 			}
@@ -255,16 +255,18 @@ func handlerParams(n ir.Node, into map[ir.Symbol]bool) map[ir.Symbol]bool {
 	return into
 }
 
-// liftConstructProps makes each #[construct] prop under n that reads a value
-// from outside it a #[construct] prop of the component, the expression lifted whole so the prop
-// keeps the type the checker vetted for comparison. The primitive cannot be
-// handed a new value once built, so neither can the instance holding it: a
-// change rebuilds the instance (reuseOrCreate) where any other prop is
-// patched. One reading what n binds itself is left to liftValues.
+// liftConstructProps makes each #[construct] prop of a primitive under n that
+// reads a value from outside n a #[construct] prop of the component, the
+// expression lifted whole so the prop keeps the type the checker vetted for
+// comparison. The primitive cannot be handed a new value once built, so
+// neither can the instance holding it: a change rebuilds the instance
+// (reuseOrCreate) where any other prop is patched. A component instance under
+// n rebuilds itself where it stands, and a prop reading what n binds is left
+// to liftValues.
 func (st *slotChildSynth) liftConstructProps(n *ir.NodeInst, l *lift, local map[ir.Symbol]bool) {
 	_ = ir.Walk(n, func(node ir.Node) error {
 		x, ok := node.(*ir.NodeInst)
-		if !ok {
+		if !ok || isInstanceNode(x) {
 			return nil
 		}
 		for i, a := range x.Props {
