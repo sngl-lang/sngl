@@ -21,11 +21,10 @@ var passShapeDraw = pass{
 	apply:   lowerShapeDraw,
 }
 
-// canvasCtxParam is the drawing context every spliced statement is written
-// against. One shared *ir.Param rather than one per canvas: codegen binds the
-// name once per drawing it emits, and two canvases in one program name the
-// same context in their own scopes.
-var canvasCtxParam = &ir.Param{Name: "ctx", Type: ir.TypDyn}
+// canvasCtxName is the drawing context every spliced statement is written
+// against: codegen binds the name once per drawing it emits, and two canvases
+// in one program name the same context in their own scopes.
+const canvasCtxName = "ctx"
 
 func lowerShapeDraw(pkg *ir.Package, _ Features, _ Options) error {
 	if pkg == nil || !pkg.UsesDrawShapes() {
@@ -81,8 +80,10 @@ func walkCanvases(stmts []ir.Stmt, failed *error) {
 // drawRect on android.
 func spliceCanvas(canvas *ir.NodeInst, failed *error) {
 	var body []ir.Stmt
+	// Typed by the first shape that is handed it: the platform's context,
+	// which its draw payload declares (drawPayloadWith).
 	emitShapes(canvas.Children, &body, drawEnv{
-		ctx:      canvasCtxParam,
+		ctx:      &ir.Param{Name: canvasCtxName},
 		width:    nodeIntProp(canvas, "width"),
 		height:   nodeIntProp(canvas, "height"),
 		inFlight: map[*ir.Component]bool{},
@@ -369,7 +370,7 @@ func drawPayload(t *ir.Type, env drawEnv) ir.Expr {
 func drawPayloadWith(t *ir.Type, env drawEnv, url ir.Expr) ir.Expr {
 	sd := payloadStruct(t)
 	if sd == nil {
-		return ctxExpr(env.ctx)
+		return ctxExprAs(env.ctx, t)
 	}
 	lit := &ir.StructLit{Type: t, Def: sd}
 	for _, f := range sd.Fields {
@@ -385,7 +386,7 @@ func drawPayloadWith(t *ir.Type, env drawEnv, url ir.Expr) ir.Expr {
 				v = &ir.Literal{Type: ir.TypString, Value: ""}
 			}
 		default:
-			v = ctxExpr(env.ctx)
+			v = ctxExprAs(env.ctx, f.Type)
 		}
 		lit.Fields = append(lit.Fields, ir.FieldInit{Name: f.Name, Value: v})
 	}
@@ -441,6 +442,16 @@ func foldPayloadReads(stmts []ir.Stmt) []ir.Stmt {
 // ctxExpr returns an Ident for the ctx draw-function parameter.
 func ctxExpr(ctx *ir.Param) *ir.Ident {
 	return &ir.Ident{Name: ctx.Name, Type: ctx.Type, Sym: ctx, Synthesized: true}
+}
+
+// ctxExprAs is the context where a payload declares it as t: the platform's
+// own context type, which the context is typed as from the first payload that
+// names it.
+func ctxExprAs(ctx *ir.Param, t *ir.Type) *ir.Ident {
+	if ctx.Type == nil {
+		ctx.Type = t
+	}
+	return ctxExpr(ctx)
 }
 
 // dimLit is a canvas dimension as the literal a handler parameter binds to.

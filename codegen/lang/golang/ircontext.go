@@ -347,13 +347,6 @@ func (gc *GoIRContext) Select(n *ir.Select, operand string) string {
 			}
 		}
 	}
-	// Go's `any` has no fields, so a bare `.<F>` on a `dyn` operand will not
-	// compile; when exactly one user struct declares the field, assert to it.
-	if t := n.Operand.ExprType(); t != nil && t.Kind == ir.TypeDyn {
-		if name := gc.uniqueStructWithField(n.Field); name != "" {
-			return "(" + operand + ").(" + name + ")." + ExportName(n.Field)
-		}
-	}
 	if field, ok := gc.modelField(n); ok {
 		return operand + "." + field
 	}
@@ -1354,41 +1347,6 @@ func (gc *GoIRContext) methodField(field string) bool {
 	return gc.Ctx != nil && gc.Ctx.MethodFields != nil && gc.Ctx.MethodFields[field]
 }
 
-// uniqueStructWithField returns the Go type name of the sole package struct
-// declaring this field, or "" if zero or several do. The program's own
-// structs are asked first: a library payload a handler names joins
-// Pkg.Structs too, and `ChangeEvent.value` made every dyn `.value` ambiguous.
-func (gc *GoIRContext) uniqueStructWithField(field string) string {
-	if gc.Ctx == nil || gc.Ctx.Pkg == nil {
-		return ""
-	}
-	find := func(own bool) (match *ir.StructDef, ambiguous bool) {
-		for _, sd := range gc.Ctx.Pkg.Structs {
-			if own && sd.PkgPath() != "" {
-				continue
-			}
-			for _, f := range sd.Fields {
-				if f.Name == field {
-					if match != nil {
-						return nil, true
-					}
-					match = sd
-					break
-				}
-			}
-		}
-		return match, false
-	}
-	match, ambiguous := find(true)
-	if match == nil && !ambiguous {
-		match, _ = find(false)
-	}
-	if match == nil {
-		return ""
-	}
-	return ExportName(match.Name)
-}
-
 // isPrimitiveTypeName reports whether a SNGL receiver type name refers to a
 // primitive type whose Go representation cannot host methods directly.
 func isPrimitiveTypeName(name string) bool {
@@ -1764,7 +1722,7 @@ func nullFuncStubGo(t *ir.Type) string {
 	}
 	ret := ""
 	body := ""
-	if sig.Return != nil && sig.Return.Kind != ir.TypeDyn && sig.Return.Kind != ir.TypeInvalid {
+	if sig.Return != nil && sig.Return.Kind != ir.TypeInvalid {
 		retGo := IRTypeToGo(sig.Return)
 		ret = " " + retGo
 		body = " return " + ZeroValueGo(retGo) + " "
@@ -1881,14 +1839,9 @@ func structLitTypeName(n *ir.StructLit) string {
 // goReturnType is the result clause of a Go signature, leading space
 // included, or "" for a function that returns nothing.
 //
-// Nothing is the answer for a nil or void return, and also for a TypeDyn: that
-// has no first-class Go representation, so the signature reads `func foo()`
-// rather than `func foo() any`.
+// Nothing is the answer for a nil or void return.
 func goReturnType(ret *ir.Type) string {
 	if ret == nil || ret.Kind == ir.TypeVoid {
-		return ""
-	}
-	if ret.Kind == ir.TypeDyn {
 		return ""
 	}
 	return " " + IRTypeToGo(ret)
@@ -2230,7 +2183,7 @@ func irLambdaLiteralToGo(n *ir.Lambda) string {
 		params[i] = "_ " + goType
 	}
 	retType := ""
-	if n.Func.Return != nil && n.Func.Return.Kind != ir.TypeDyn && n.Func.Return.Kind != ir.TypeInvalid {
+	if n.Func.Return != nil && n.Func.Return.Kind != ir.TypeInvalid {
 		retType = " " + IRTypeToGo(n.Func.Return)
 	}
 	body := ""
@@ -2323,6 +2276,33 @@ func (gc *GoIRContext) NodeRecv(name string) string {
 		return gc.Ctx.OuterReceiver
 	}
 	return gc.RecvName()
+}
+
+// NodeRecvRef is NodeRecv as an expression, typed as the struct it is: the
+// Model, or the component instance record a ctor fills.
+func (gc *GoIRContext) NodeRecvRef(name string) *ir.Ident {
+	recv := gc.NodeRecv(name)
+	if recv == "" {
+		recv = codegen.ModelReceiver
+	}
+	return codegen.ReceiverRef(recv, gc.recvType(recv))
+}
+
+// RecvRef is RecvName as an expression, typed as NodeRecvRef's is.
+func (gc *GoIRContext) RecvRef() *ir.Ident {
+	return codegen.ReceiverRef(gc.RecvName(), gc.recvType(gc.RecvName()))
+}
+
+// recvType is the struct the receiver named recv is: a component instance's
+// record for the scope's own receiver inside one, and the Model otherwise.
+func (gc *GoIRContext) recvType(recv string) *ir.Type {
+	if gc.Ctx != nil && gc.Ctx.Component != nil && gc.Ctx.StateReceiver != "" && recv == gc.Ctx.StateReceiver {
+		return ir.NativeGoPointerOf(ComponentInstanceType(gc.Ctx.Component.Name))
+	}
+	if gc.ModelIsValue && recv == codegen.ModelReceiver {
+		return ir.NativeGoNamed(codegen.ModelTypeName)
+	}
+	return codegen.ModelType()
 }
 
 // ModelRef is the Model this scope belongs to, as a `*Model`: the one a
@@ -2505,7 +2485,7 @@ func OptionCompare(n *ir.Binary) (optionLeft, valueRight, ok bool) {
 	lt, rt := n.Left.ExprType(), n.Right.ExprType()
 	isOpt := func(t *ir.Type) bool { return t != nil && t.Kind == ir.TypeOption }
 	isVal := func(t *ir.Type) bool {
-		return t != nil && t.Kind != ir.TypeOption && t.Kind != ir.TypeNull && t.Kind != ir.TypeDyn
+		return t != nil && t.Kind != ir.TypeOption && t.Kind != ir.TypeNull
 	}
 	switch {
 	case isOpt(lt) && isVal(rt):

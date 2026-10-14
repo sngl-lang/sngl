@@ -1291,7 +1291,9 @@ func (m *Model) __n16_clicked_handler() {
 	m.radius__inst0 = (m.radius__inst0 + 1.0)
 	m.hasPhoto__inst0 = !m.hasPhoto__inst0
 	m.__renderSlot1(m.__n6)
-	gtk4rt.ImagePaint(gtk4rt.Handle(unsafe.Pointer(m.__n11)), 16, 16, func(cr unsafe.Pointer) { m._canvasDraw0((*C.cairo_t)(cr)) })
+	gtk4rt.ImagePaint(gtk4rt.Handle(unsafe.Pointer(m.__n11)), 16, 16, func(cr unsafe.Pointer) {
+		m._canvasDraw0((*C.cairo_t)(unsafe.Pointer(cr)))
+	})
 }
 
 func (m *Model) _canvasDraw0(ctx *C.cairo_t) {
@@ -1477,14 +1479,19 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ImageFrameOnLoad(gtk4rt.Handle(unsafe.Pointer(m.__n10)), m.__n10_load_handler)
 	gtk4rt.ImageFrameOnError(gtk4rt.Handle(unsafe.Pointer(m.__n10)), m.__n10_failed_handler)
 	m.__n11 = (*C.GtkPicture)(unsafe.Pointer(gtk4rt.ImageSourceNew()))
-	gtk4rt.ImagePaint(gtk4rt.Handle(unsafe.Pointer(m.__n11)), 16, 16, func(cr unsafe.Pointer) { m._canvasDraw0((*C.cairo_t)(cr)) })
+	gtk4rt.ImagePaint(gtk4rt.Handle(unsafe.Pointer(m.__n11)), 16, 16, func(cr unsafe.Pointer) {
+		m._canvasDraw0((*C.cairo_t)(unsafe.Pointer(cr)))
+	})
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n10)), (*C.GtkWidget)(unsafe.Pointer(m.__n11)))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n6)), (*C.GtkWidget)(unsafe.Pointer(m.__n10)))
 	m.__renderSlot1(m.__n6)
 	m.__n12 = (*C.GtkDrawingArea)(unsafe.Pointer(C.gtk_drawing_area_new()))
 	C.gtk_drawing_area_set_content_width(m.__n12, C.int(32))
 	C.gtk_drawing_area_set_content_height(m.__n12, C.int(32))
-	snglDrawFuncs = append(snglDrawFuncs, func(cr *C.cairo_t, pw, ph int) { _snglCairoScale(cr, pw, ph, 32, 32, ""); m._canvasDraw1(cr) })
+	snglDrawFuncs = append(snglDrawFuncs, func(cr *C.cairo_t, pw int, ph int) {
+		_snglCairoScale(cr, pw, ph, 32, 32, "")
+		m._canvasDraw1(cr)
+	})
 	C.sngl_drawing_area_set_draw(unsafe.Pointer(m.__n12), C.int((len(snglDrawFuncs) - 1)))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n6)), (*C.GtkWidget)(unsafe.Pointer(m.__n12)))
 	m.__n13 = (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
@@ -1499,7 +1506,9 @@ func (m *Model) buildWidgetTree() {
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n6)), (*C.GtkWidget)(unsafe.Pointer(m.__n16)))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n0)), (*C.GtkWidget)(unsafe.Pointer(m.__n6)))
 	m.__n17 = (*C.GtkPicture)(unsafe.Pointer(gtk4rt.ImageSourceNew()))
-	gtk4rt.ImagePaint(gtk4rt.Handle(unsafe.Pointer(m.__n17)), 16, 16, func(cr unsafe.Pointer) { m._canvasDraw2((*C.cairo_t)(cr)) })
+	gtk4rt.ImagePaint(gtk4rt.Handle(unsafe.Pointer(m.__n17)), 16, 16, func(cr unsafe.Pointer) {
+		m._canvasDraw2((*C.cairo_t)(unsafe.Pointer(cr)))
+	})
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__root)), (*C.GtkWidget)(unsafe.Pointer(m.__n17)))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__root)), (*C.GtkWidget)(unsafe.Pointer(m.__n0)))
 }
@@ -2036,7 +2045,7 @@ pass sha256:66b5ea655cebdb9a44aa2c200edbefd3
 -- run/go/fyne --
 pass sha256:14793d5bfd1c6d64b6f880f5eb76ec14
 -- run/go/gtk4 --
-pass sha256:6ff55e605c22dc33ac800c622d661b16
+pass sha256:c4d48dc6f95de5f34281902d85095458
 -- run/kotlin/android --
 pass sha256:a9f41c50f197408490a7fc019ef70d13
 -- run/none/html --

@@ -178,7 +178,8 @@ func factorySlotAnchors(comp *ir.Component) map[string]bool {
 				return nil
 			}
 			if n := slotIndexFromRenderFunc(call.Func.Name); anchored[n] {
-				call.Args[0].Value = &ir.Ident{Name: slotAnchorVar(n), Type: ir.TypDyn, IsElementRef: true, Synthesized: true}
+				// The anchor stands for the container the slot was handed.
+				call.Args[0].Value = &ir.Ident{Name: slotAnchorVar(n), Type: call.Args[0].Value.ExprType(), IsElementRef: true, Synthesized: true}
 			}
 			return nil
 		})
@@ -286,7 +287,7 @@ func (g *htmlGen) emitComponentFactory(b *strings.Builder, comp *ir.Component) {
 		dtr := g.newHTMLTranslator(jc)
 		drawn := &ir.Func{
 			Name:   cv.Name,
-			Params: []*ir.Param{{Name: "ctx", Type: ir.TypDyn}},
+			Params: []*ir.Param{{Name: "ctx", Type: drawCtxType(cv.Draw)}},
 			Block:  codegen.WalkLowered(context.Background(), cv.Draw, dtr),
 		}
 		for _, line := range jc.EmitFuncDef(drawn) {

@@ -260,41 +260,9 @@ func selectField(n *ir.Select) string {
 }
 
 func (kc *KtIRContext) Select(n *ir.Select, operand string) string {
-	field := selectField(n)
-	// Field access on a `dyn` operand: Kotlin's `Any` has no user fields.
-	// If exactly one package struct declares this field, emit a safe cast.
-	if t := n.Operand.ExprType(); t != nil && t.Kind == ir.TypeDyn {
-		if name := kc.uniqueStructWithField(n.Field); name != "" {
-			return "(" + operand + " as " + name + ")." + field
-		}
-	}
-	return operand + "." + field
+	return operand + "." + selectField(n)
 }
 
-// uniqueStructWithField returns the Kotlin type name of the sole package
-// struct declaring a field with this SNGL field name, or "" if zero or
-// multiple structs match. Mirrors the Go IRContext equivalent.
-func (kc *KtIRContext) uniqueStructWithField(field string) string {
-	if kc.Ctx == nil || kc.Ctx.Pkg == nil {
-		return ""
-	}
-	var match *ir.StructDef
-	for _, sd := range kc.Ctx.Pkg.Structs {
-		for _, f := range sd.Fields {
-			if f.Name == field {
-				if match != nil {
-					return ""
-				}
-				match = sd
-				break
-			}
-		}
-	}
-	if match == nil {
-		return ""
-	}
-	return exportName(match.Name)
-}
 func (kc *KtIRContext) Index(n *ir.Index, operand, idx string) string {
 	if t := n.Operand.ExprType(); t != nil && t.Kind == ir.TypeMap {
 		valZero := ktMapValZero(t)
@@ -304,7 +272,7 @@ func (kc *KtIRContext) Index(n *ir.Index, operand, idx string) string {
 }
 func (kc *KtIRContext) ListLit(n *ir.ListLit, elems []string) string {
 	// An empty literal says nothing Kotlin can infer its element from.
-	if len(elems) == 0 && n != nil && n.Type != nil && n.Type.Kind == ir.TypeList && len(n.Type.Elems) == 1 && n.Type.Elems[0].Kind != ir.TypeDyn && !n.Type.Elems[0].HasTypeParam() {
+	if len(elems) == 0 && n != nil && n.Type != nil && n.Type.Kind == ir.TypeList && len(n.Type.Elems) == 1 && !n.Type.Elems[0].HasTypeParam() {
 		return "listOf<" + IRTypeToKt(n.Type.Elems[0]) + ">()"
 	}
 	return "listOf(" + strings.Join(elems, ", ") + ")"
@@ -1399,7 +1367,7 @@ func (kc *KtIRContext) evalLambda(n *ir.Lambda) string {
 	params := make([]string, len(n.Func.Params))
 	for i, p := range n.Func.Params {
 		params[i] = p.Name
-		if p.Type != nil && p.Type.Kind != ir.TypeDyn {
+		if p.Type != nil {
 			params[i] += ": " + IRTypeToKt(p.Type)
 		}
 	}

@@ -1126,9 +1126,10 @@ func retargetSlotCalls(root any) {
 		if n == "" || len(call.Args) != 1 {
 			return nil
 		}
+		// The anchor stands for the container the slot was handed.
 		call.Args[0].Value = &ir.Ident{
 			Name:         slotAnchorVar(n),
-			Type:         ir.TypDyn,
+			Type:         call.Args[0].Value.ExprType(),
 			IsElementRef: true,
 			Synthesized:  true,
 		}
@@ -2496,7 +2497,7 @@ func (g *htmlGen) emitSynthesizedSlots(b *strings.Builder) {
 		tr := g.newHTMLTranslator(jc)
 		drawn := &ir.Func{
 			Name:   cv.Name,
-			Params: []*ir.Param{{Name: "ctx", Type: ir.TypDyn}},
+			Params: []*ir.Param{{Name: "ctx", Type: drawCtxType(cv.Draw)}},
 			Block:  codegen.WalkLowered(context.Background(), cv.Draw, tr),
 		}
 		for _, line := range jc.EmitFuncDef(drawn) {

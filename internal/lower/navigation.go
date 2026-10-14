@@ -571,7 +571,7 @@ func pageArgs(n *ir.NodeInst) []*ir.Type {
 			if p.Type == nil || p.Type.Kind != ir.TypeTypeParam || p.Type.ParamName != tp.Name {
 				continue
 			}
-			if t := typeOf(n.Prop(p.Name)); t != nil && t.Kind != ir.TypeDyn {
+			if t := typeOf(n.Prop(p.Name)); t != nil {
 				out[i] = t
 			}
 		}

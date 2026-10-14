@@ -464,7 +464,7 @@ func putsValueInOption(conv *ir.Conversion) bool {
 	if src == nil {
 		return false
 	}
-	return src.Kind != ir.TypeNull && src.Kind != ir.TypeOption && src.Kind != ir.TypeDyn
+	return src.Kind != ir.TypeNull && src.Kind != ir.TypeOption
 }
 
 // unwrappedOptionOperand answers `float(option[float](2))` with `float(2)`,

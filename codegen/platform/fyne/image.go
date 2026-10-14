@@ -53,8 +53,8 @@ func (t *fyneTranslator) emitImageDrawingCreate(id string) []ir.Stmt {
 	m := t.canvasByID[id]
 	t.topLevel = append(t.topLevel, id)
 	t.fieldIDs[id] = true
-	t.fieldSink(id, "*fynelayout.ImageSource")
-	t.fieldSink(canvasCtxField(id), "*"+snglCanvasAlias+".Context")
+	t.sinkField(id, "*fynelayout.ImageSource")
+	t.sinkField(canvasCtxField(id), "*"+snglCanvasAlias+".Context")
 	if t.importSink != nil {
 		t.importSink(snglCanvasImportPath)
 		t.importSink(fyneLayoutImportPath)
@@ -62,14 +62,14 @@ func (t *fyneTranslator) emitImageDrawingCreate(id string) []ir.Stmt {
 	create := &ir.Assign{
 		Target: t.fieldRef(id),
 		Op:     ast.AssignSet,
-		Value:  nativeCallAt("fynelayout.NewImageSource", fyneLayoutImportPath, nil, ir.TypDyn),
+		Value:  nativeCallAt("fynelayout.NewImageSource", fyneLayoutImportPath, nil, ir.NativeGoPointerOf("fynelayout.ImageSource")),
 	}
 	return append([]ir.Stmt{create}, t.paintImageDrawing(m)...)
 }
 
 // paintImageDrawing paints a drawn source's picture afresh and hands it over.
 func (t *fyneTranslator) paintImageDrawing(m *canvasMeta) []ir.Stmt {
-	dcField := t.fieldRef(canvasCtxField(m.ID))
+	dcField := t.canvasCtxRef(m)
 	w, h := canvasDims(m)
 	return []ir.Stmt{
 		&ir.Assign{Target: dcField, Op: ast.AssignSet, Value: newCanvasContextCall(w, h)},
@@ -79,6 +79,6 @@ func (t *fyneTranslator) paintImageDrawing(m *canvasMeta) []ir.Stmt {
 			Func:     &ir.Func{Name: m.DrawName},
 			Args:     []ir.CallArg{{Value: dcField}},
 		}},
-		&ir.CallStmt{Call: methodCall(t.fieldRef(m.ID), "SetImage", []ir.Expr{methodCall(dcField, "Result", nil, ir.TypDyn)}, ir.TypVoid)},
+		&ir.CallStmt{Call: methodCall(t.canvasFieldRef(m), "SetImage", []ir.Expr{methodCall(dcField, "Result", nil, goImage())}, ir.TypVoid)},
 	}
 }

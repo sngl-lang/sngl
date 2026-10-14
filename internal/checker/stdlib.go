@@ -709,6 +709,7 @@ func (c *checker) publishIntrinsic(fn *ir.Func) {
 		BuildOnly:       fn.BuildOnly,
 		Pkg:             pkg,
 		DeclaredAs:      funcDeclName(fn),
+		Receiver:        fn.Receiver,
 	}
 	ir.MustWriteDecl(fn, "registering "+def.Name)
 	for _, b := range c.libraryRecords() {

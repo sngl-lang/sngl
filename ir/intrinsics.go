@@ -34,6 +34,9 @@ type IntrinsicDef struct {
 	// with Pkg identifies it: RegisterIntrinsic panics on a second declaration
 	// of one id, and this is what tells that from the same one re-registered.
 	DeclaredAs string
+	// Receiver is the type a method declaration is attached to, nil for a
+	// free function: what a pass synthesizing a call of it names.
+	Receiver *Type
 }
 
 // Instantiate binds d's type parameters, in TypeParams order. An unbound one

@@ -121,3 +121,24 @@ func StructDeclsExcluding(declared map[string]struct{}) string {
 	}
 	return b.String()
 }
+
+// CtxType is the type of the drawing context a canvas's draw statements are
+// written against: the platform's own context, which passShapeDraw types from
+// the payload its shapes declare. A drawing with no shapes names none, and is
+// handed the host's.
+func CtxType(draw []ir.Stmt, host *ir.Type) *ir.Type {
+	var t *ir.Type
+	_ = ir.WalkExprs(draw, func(e ir.Expr) error {
+		if id, ok := e.(*ir.Ident); ok {
+			if p, ok := id.Sym.(*ir.Param); ok && p.Name == "ctx" && p.Type != nil {
+				t = p.Type
+				return ir.SkipAll
+			}
+		}
+		return nil
+	})
+	if t == nil {
+		return host
+	}
+	return t
+}

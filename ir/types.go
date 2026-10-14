@@ -757,6 +757,12 @@ func NativeGoPointerOf(name string) *Type {
 	return &Type{Kind: TypeNative, Meta: NativeTypeRef{CgoC: false, Name: name}}
 }
 
+// NativeNamed is a host type spelled name in the target's own language --
+// `HTMLElement` on JavaScript -- for a value only emitted code holds.
+func NativeNamed(name string) *Type {
+	return &Type{Kind: TypeNative, Meta: NativeTypeRef{Name: name, Bare: true}}
+}
+
 // NativeGoNamed returns an *ir.Type that renders as the bare Go type name
 // (no leading "*"), for already-pointer-like named types such as an opaque
 // handle (e.g. "gtk4rt.Handle").

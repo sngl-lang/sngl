@@ -161,7 +161,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.w.SetVisible(m.visible__inst0)
 	m.w.OnClosed = m.w_closed_handler
 	m.w.OnVisible = m.w_visible_handler
-	m.__n0 = canvas.NewRaster(func(pw, ph int) image.Image {
+	m.__n0 = canvas.NewRaster(func(pw int, ph int) image.Image {
 		ctx := m.__n0Surface.Begin(pw, ph, 200, 100, "fit")
 		m._canvasDraw0(ctx)
 		return ctx.Result()
@@ -528,7 +528,10 @@ func (m *Model) buildWidgetTree() {
 	C.gtk_drawing_area_set_content_height(m.__n0, C.int(100))
 	C.gtk_widget_set_hexpand((*C.GtkWidget)(unsafe.Pointer(m.__n0)), 1)
 	C.gtk_widget_set_vexpand((*C.GtkWidget)(unsafe.Pointer(m.__n0)), 1)
-	snglDrawFuncs = append(snglDrawFuncs, func(cr *C.cairo_t, pw, ph int) { _snglCairoScale(cr, pw, ph, 200, 100, "fit"); m._canvasDraw0(cr) })
+	snglDrawFuncs = append(snglDrawFuncs, func(cr *C.cairo_t, pw int, ph int) {
+		_snglCairoScale(cr, pw, ph, 200, 100, "fit")
+		m._canvasDraw0(cr)
+	})
 	C.sngl_drawing_area_set_draw(unsafe.Pointer(m.__n0), C.int((len(snglDrawFuncs) - 1)))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.w)), (*C.GtkWidget)(unsafe.Pointer(m.__n0)))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__root)), (*C.GtkWidget)(unsafe.Pointer(m.w)))
@@ -773,9 +776,9 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:4380c72a3d1c8b1e79c28748d36f3cd5
+pass sha256:18039fa20319a4ace37209075dc26c8e
 -- run/go/gtk4 --
-pass sha256:a6b86625f103b6aa6e147da7bc44facc
+pass sha256:0bec55661aee69c2d20495806e253023
 -- run/kotlin/android --
 pass sha256:dde3c6f398e6bc1816c3abbe37fdb06a
 -- run/none/html --

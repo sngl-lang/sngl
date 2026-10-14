@@ -462,9 +462,6 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 			if !scoped[fn] {
 				continue
 			}
-			if fn.Return != nil && fn.Return.Kind == ir.TypeDyn {
-				continue
-			}
 			stateFuncs = append(stateFuncs, fn)
 		}
 	}
@@ -511,7 +508,7 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 			if fn.IsTest || fn.IsMethod() || codegen.IsComputed(fn) {
 				continue
 			}
-			if fn.Return == nil || fn.Return.Kind == ir.TypeDyn {
+			if fn.Return == nil {
 				continue
 			}
 			kc.IdentRewrites[fn.Name] = "golib.Golib." + exportName(fn.Name)
@@ -775,9 +772,6 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 			if !scoped[fn] {
 				continue
 			}
-			if fn.Return != nil && fn.Return.Kind == ir.TypeDyn {
-				continue
-			}
 			var local strings.Builder
 			emitIRKtFunc(&local, fn, kc)
 			for line := range strings.SplitSeq(strings.TrimRight(local.String(), "\n"), "\n") {
@@ -870,9 +864,6 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 				continue
 			}
 			if testMode && stateMembers[fn] {
-				continue
-			}
-			if fn.Return != nil && fn.Return.Kind == ir.TypeDyn {
 				continue
 			}
 			// A method on a user type is called as one -- `state.pending()` --
@@ -970,9 +961,6 @@ func emitIRComponentComposable(b *strings.Builder, cc *codegen.ComponentCtx, ctx
 		if fn.IsTest || codegen.IsComputed(fn) {
 			continue
 		}
-		if fn.Return != nil && fn.Return.Kind == ir.TypeDyn {
-			continue
-		}
 		var local strings.Builder
 		emitIRKtFunc(&local, fn, compKC)
 		for line := range strings.SplitSeq(strings.TrimRight(local.String(), "\n"), "\n") {
@@ -1030,7 +1018,7 @@ func emitIRKtMemberFunc(b *strings.Builder, fn *ir.Func, kc *kotlin.KtIRContext)
 	paramStr := strings.Join(params, ", ")
 
 	retType := ""
-	if fn.Return != nil && fn.Return.Kind != ir.TypeDyn && fn.Return.Kind != ir.TypeVoid {
+	if fn.Return != nil && fn.Return.Kind != ir.TypeVoid {
 		retType = ": " + kotlin.IRTypeToKt(fn.Return)
 	}
 
@@ -1115,7 +1103,7 @@ func emitIRKtFunc(b *strings.Builder, fn *ir.Func, kc *kotlin.KtIRContext) {
 	paramStr := strings.Join(params, ", ")
 
 	retType := ""
-	if fn.Return != nil && fn.Return.Kind != ir.TypeDyn && fn.Return.Kind != ir.TypeVoid {
+	if fn.Return != nil && fn.Return.Kind != ir.TypeVoid {
 		retType = ": " + kotlin.IRTypeToKt(fn.Return)
 	}
 
@@ -1155,7 +1143,7 @@ func irBindInitKt(typ *ir.Type, init ir.Expr) string {
 }
 
 func irFuncReturnKt(f *ir.Func) string {
-	if f.Return != nil && f.Return.Kind != ir.TypeDyn {
+	if f.Return != nil {
 		return kotlin.IRTypeToKt(f.Return)
 	}
 	if len(f.Block) == 1 {

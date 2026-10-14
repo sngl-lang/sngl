@@ -879,7 +879,10 @@ func new__canvas0Instance(__model *Model, __a___p0 float64, __a___p1 float64, __
 	c.__n3 = (*C.GtkDrawingArea)(unsafe.Pointer(C.gtk_drawing_area_new()))
 	C.gtk_drawing_area_set_content_width(c.__n3, C.int(40))
 	C.gtk_drawing_area_set_content_height(c.__n3, C.int(40))
-	snglDrawFuncs = append(snglDrawFuncs, func(cr *C.cairo_t, pw, ph int) { _snglCairoScale(cr, pw, ph, 40, 40, ""); c._canvasDraw0(cr) })
+	snglDrawFuncs = append(snglDrawFuncs, func(cr *C.cairo_t, pw int, ph int) {
+		_snglCairoScale(cr, pw, ph, 40, 40, "")
+		c._canvasDraw0(cr)
+	})
 	C.sngl_drawing_area_set_draw(unsafe.Pointer(c.__n3), C.int((len(snglDrawFuncs) - 1)))
 	snglCallbacks = append(snglCallbacks, func() {
 		func() {
@@ -950,7 +953,10 @@ func new__canvas1Instance(__model *Model, __a___p0 float64) *__canvas1Instance {
 	c.__n4 = (*C.GtkDrawingArea)(unsafe.Pointer(C.gtk_drawing_area_new()))
 	C.gtk_drawing_area_set_content_width(c.__n4, C.int(40))
 	C.gtk_drawing_area_set_content_height(c.__n4, C.int(40))
-	snglDrawFuncs = append(snglDrawFuncs, func(cr *C.cairo_t, pw, ph int) { _snglCairoScale(cr, pw, ph, 40, 40, ""); c._canvasDraw1(cr) })
+	snglDrawFuncs = append(snglDrawFuncs, func(cr *C.cairo_t, pw int, ph int) {
+		_snglCairoScale(cr, pw, ph, 40, 40, "")
+		c._canvasDraw1(cr)
+	})
 	C.sngl_drawing_area_set_draw(unsafe.Pointer(c.__n4), C.int((len(snglDrawFuncs) - 1)))
 	c.Root = (*C.GtkWidget)(unsafe.Pointer(c.__n4))
 	C.g_object_ref_sink(C.gpointer(unsafe.Pointer(c.Root)))
@@ -1332,6 +1338,6 @@ window.__sngl_boot();
 -- run/go/fyne --
 pass sha256:ed375d7d1b6d0482f640ae132b4c6bfc
 -- run/go/gtk4 --
-pass sha256:37c8ce4ed9cde0760cb0d29adc85e08e
+pass sha256:cf8d66d206dbca7292b6c2f8df9cd94c
 -- run/none/html --
 pass sha256:3a1a766f6f1e8c12f5c245a7ca740121
