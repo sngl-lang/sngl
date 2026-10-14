@@ -130,7 +130,7 @@ component block[go.language] {
     )
 }
 
-component text[go.language] {
+component text[go.language](full, color, @click) {
     gen.node(value=Entry{full=full, color=color, click=click})
 }
 

@@ -41,7 +41,7 @@ component Timer[F any](
     @tick,
 ) F
 
-const component time.timer[platform] {
+const component time.timer[platform](interval, enabled, @tick) {
     if enabled {
         Timer(interval=interval, enabled=true, @tick { tick() })
     }
@@ -119,7 +119,7 @@ const component ui.text[platform] {}
 #[intrinsic("none:image")]
 component image(alt string, fit ui.ObjectFit, @click(), content ...component ui.node) ui.node
 
-const component ui.image[platform] {
+const component ui.image[platform](alt, fit, @click, src, placeholder) {
     image(alt=alt, fit=fit, @click { click() }) {
         #[family.crosses]
         src {
@@ -142,7 +142,7 @@ const component ui.tree[platform] {}
 
 const component ui.button[platform] {}
 
-const component ui.input[platform] {
+const component ui.input[platform](value, @input, @change) {
     Control(
         value = value,
         @input(v) {
@@ -156,7 +156,7 @@ const component ui.input[platform] {
     )
 }
 
-const component ui.textarea[platform] {
+const component ui.textarea[platform](value, @input, @change) {
     Control(
         value = value,
         @input(v) {
@@ -170,35 +170,35 @@ const component ui.textarea[platform] {
     )
 }
 
-const component ui.checkbox[platform] {
+const component ui.checkbox[platform](checked, @change) {
     Control(value=checked, @change(on) {
         checked = on
         change(on)
     })
 }
 
-const component ui.radio[platform] {
+const component ui.radio[platform](value, @change) {
     Control(value=value, @change(v) {
         value = v
         change(v)
     })
 }
 
-const component ui.toggle[platform] {
+const component ui.toggle[platform](checked, @change) {
     Control(value=checked, @change(on) {
         checked = on
         change(on)
     })
 }
 
-const component ui.select[platform] {
+const component ui.select[platform](value, @change) {
     Control(value=value, @change(v) {
         value = v
         change(v)
     })
 }
 
-const component ui.datepicker[platform] {
+const component ui.datepicker[platform](value, @change) {
     Control(value=value, @change(v) {
         value = v
         change(v)
@@ -263,7 +263,7 @@ component inline(
     content ...component markup.span,
 ) markup.span
 
-const component markup.richText[platform] {
+const component markup.richText[platform](role, content) {
     flow(role=role) {
         content
     }
@@ -273,19 +273,19 @@ const component markup.text[platform] {}
 
 const component markup.image[platform] {}
 
-const component markup.run[platform] {
+const component markup.run[platform](style, content) {
     inline(style=style) {
         content
     }
 }
 
-const component markup.link[platform] {
+const component markup.link[platform](href, content) {
     inline(href=href) {
         content
     }
 }
 
-const component markup.token[platform] {
+const component markup.token[platform](kind, content) {
     inline(kind=kind) {
         content
     }
@@ -309,7 +309,7 @@ const component markup.token[platform] {
 #[intrinsic("none:Window")]
 component Window(content ...component ui.node) root
 
-const component ui.window[platform] {
+const component ui.window[platform](@error, content) {
     Window {
         boundary(@error(e) { error(e) }) {
             content
@@ -327,13 +327,13 @@ component Stack[F any](pages ...component F) ui.node
 #[intrinsic("none:Page")]
 component Page(href string, title string, content ...component ui.node) ui.node
 
-const component nav.stack[platform] {
+const component nav.stack[platform](pages) {
     Stack {
         pages
     }
 }
 
-const component nav.page[platform] {
+const component nav.page[platform](href, title, params, content) {
     #[family.crosses]
     Page(href=href, title=title) {
         content(params)

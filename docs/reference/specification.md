@@ -2423,8 +2423,12 @@ ui.window {
 }
 ```
 
-An override's parameter list selects the props of the declaration it overrides
-by name and carries no types of its own. The base may be a signature with no
+An override's parameter list selects by name the parameters of the declaration it overrides — props,
+slots and `@events` of a component, parameters of a function — so every name
+the body reads is written in its header; a body that reads none writes no list,
+or `()`, which is the same. An entry may restate a parameter's
+type only where it matches the declaration's, and takes no default, `const` or
+mark of its own: those are the declaration's. The base may be a signature with no
 body, as `badge` is here; an override satisfies it for every target, so a
 target with no override renders nothing for it. An override may itself not be
 bodyless. A target's raw elements, such as `html.span`, are reached through an

@@ -3007,21 +3007,23 @@ func (c *checker) registerComponent(comp *ast.ComponentDecl) {
 // registerComponentDecl builds and registers one component declaration.
 func (c *checker) registerComponentDecl(comp *ast.ComponentDecl, bodyLocal bool) *ir.Component {
 	// An override implements one declaration for one target, and says which
-	// target on its own name: `component ui.button[platform] { ... }`.
+	// target on its own name: `component ui.button[platform](…) { ... }`.
 	// It is not a declaration of its own, so it registers nothing here --
 	// collectUserOverrides merges it into the declaration it names, after
 	// pass1 has registered everything it might name.
 	//
-	// A parens form with nothing in them is neither: android.sngl writes
-	// `component ui.X() { body }`, whose body the platform reads itself.
-	bare := comp.HasParens && len(comp.Props.Props) == 0 && comp.ChildrenType == nil
+	// A parens form with nothing in them and no target is neither:
+	// android.sngl writes `component ui.X() { body }`, whose body the
+	// platform reads itself. An override may write `()` too, and names
+	// its target.
+	bare := comp.Target == nil && comp.HasParens && len(comp.Props.Props) == 0 && comp.ChildrenType == nil
 	// An override merges into a declaration registered elsewhere in the
 	// package, so there is nothing body-scoped for one to land on.
 	if bodyLocal && (comp.Target != nil || strings.IndexByte(comp.Name, '.') > 0) {
 		c.error(comp.Pos, "an override may only be written at the root of a file")
 		return nil
 	}
-	if comp.Target != nil && !bare {
+	if comp.Target != nil {
 		if c.inLibSource() {
 			// A library package's overrides belong to mergeTargetExtensions,
 			// which resolves each one in that package's own scope -- where the
@@ -3111,7 +3113,7 @@ func (c *checker) registerComponentDecl(comp *ast.ComponentDecl, bodyLocal bool)
 			// the prop takes anything, which is what `context(default dyn)`
 			// means and what a caller reads at the call site.
 			if prop.Type.Kind == ir.TypeDyn && pd.Type == nil && pd.Default == nil {
-				c.error(comp.Pos, "param %q must have a type hint or a default value", pd.Name)
+				c.error(pd.Pos, "type annotation or default required for parameter %q", pd.Name)
 			}
 			// Default is checked later in checkComponentBody when scope is
 			// ready.
@@ -4458,18 +4460,21 @@ func (c *checker) checkComponentBody(comp *ir.Component) {
 	// that an unannotated prop's type can be inferred from its default and the
 	// param entry we declare below picks up the inferred type.
 	if comp.AST != nil {
-		propIdx := 0
+		// Matched by name: an override's copy holds only the props its list
+		// selected, and a slot is a Param too without being a prop.
+		byName := make(map[string]*ir.Prop, len(comp.Props))
+		for _, p := range comp.Props {
+			byName[p.Name] = p
+		}
 		for _, p := range comp.AST.Props.Props {
-			// A slot is a Param too, and is not in comp.Props -- counting one
-			// here walks propIdx off the end of the props it is indexing.
 			if pd, ok := p.(ast.Param); ok && !pd.IsSlot() {
 				// A default is the declaration's, written in its file against
 				// its imports. An override installed on the declaration has
 				// no business reading it again from the override's file, where
 				// `task Task = Task.none` names a type nothing there imports;
 				// once the declaration's own check has set it, it stands.
-				if propIdx < len(comp.Props) && pd.Default != nil && !(c.installedOverride == comp && comp.Props[propIdx].Default != nil) {
-					prop := comp.Props[propIdx]
+				prop := byName[pd.Name]
+				if prop != nil && pd.Default != nil && !(c.installedOverride == comp && prop.Default != nil) {
 					// A default states a value of what the prop takes here,
 					// which for `on T = 0` under `<T = int>` is an int. A
 					// parameter with no default of its own leaves the prop type
@@ -4495,7 +4500,6 @@ func (c *checker) checkComponentBody(comp *ir.Component) {
 						prop.Type = c.inferredType(initType, *pd.Default.ExprPos())
 					}
 				}
-				propIdx++
 			}
 		}
 	}

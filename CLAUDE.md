@@ -171,10 +171,13 @@ Two consequences worth knowing before touching `lib/`:
 - A bodyless `lib/` component the program renders, with no implementation for
   the target being built, is a **build failure**, which is the mechanism that
   stops an implementation gap being skipped in a switch.
-- A platform package's override may carry a **prop selection**, read by the
-  same `overrideSelection` a program's override gets. Only
-  parens-with-nothing-in-them is skipped, and that form is android's marker for
-  a component its own codegen reads by name.
+- An override's **parameter list** selects what its body reads, and no list
+  is `()`, as for any other parameter list. It is read by `overrideSelection` for a component and `selectFuncParams`
+  for a function, both through `selectEntry`: each entry names one of the
+  base's props, slots or `@events` (a function's parameters), once, and may
+  restate a type only where it matches. What it does not list is not in the
+  body's scope. Parens with nothing in them *and no target index* are
+  android's marker for a component its own codegen reads by name.
 
 The distinction has to survive the checker, so it is `ir.Component.Bodyless`
 rather than `AST.Body.IsDefined()` — that reports whether a block came from

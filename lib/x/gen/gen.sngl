@@ -216,7 +216,7 @@ struct Member[T any] {
 // children write, then `close`; both are evaluated with the member's props in
 // scope, which is how a member says what it holds:
 //
-//     component text[go.language] {
+//     component text[go.language](name, full) {
 //         gen.node(open="{name}: {full}\n")
 //     }
 //
@@ -224,7 +224,7 @@ struct Member[T any] {
 // in scope -- and its events, each a func running the handler the call site
 // wrote for it, or nothing where it wrote none:
 //
-//     component text[go.language] {
+//     component text[go.language](full, @click) {
 //         gen.node(value=Entry{full=full, click=click})
 //     }
 #[marks.builtin("genNode")]

@@ -4,6 +4,7 @@ import (
 	"cmp"
 	"maps"
 	"slices"
+	"strconv"
 	"strings"
 
 	"duckfam.us/sngl/ast"
@@ -116,7 +117,7 @@ func (c *checker) targetIdentity(pos ast.Pos, sym ir.Symbol, spelling string) (s
 	return name, ir.TargetTier(node.Family), true
 }
 
-// collectUserOverrides merges each `component X[target] { ... }` a program
+// collectUserOverrides merges each `component X[target](…) { ... }` a program
 // declares into the component it names, the way a platform package's overrides
 // are merged. It runs after pass1: an override may be written above the
 // declaration it overrides.
@@ -140,64 +141,130 @@ func (c *checker) collectUserOverrides() {
 		if base == nil {
 			continue
 		}
-		selection, ok := c.overrideSelection(decl, base)
-		if !ok {
-			continue
-		}
+		selection := c.overrideSelection(decl, base)
 		c.addOverrideBody(decl.Pos, base, kind, plat, ns, local, decl.Body, true, selection, decl.Const)
 	}
 }
 
-// overrideSelection reads an override's prop list: the props of the
-// declaration it overrides that its body consumes. The list is a selection,
-// not a declaration -- the base owns the types, and restating one is a thing
-// that can drift -- so each entry is a bare name, and `@name` selects an event.
+// overrideSelection reads an override's parameter list: the props, slots and
+// events of the declaration it overrides that its body reads. The list is a
+// selection, not a declaration -- the base owns each type, so an entry names
+// one of the base's parameters and may restate its type only where it
+// matches (selectEntry). `@name` selects an event.
 //
-// The list is optional. Without one the override reads every prop the base
-// declares, which is what an override written before this could do and all a
-// platform package's do today.
-func (c *checker) overrideSelection(decl *ast.ComponentDecl, base *ir.Component) ([]string, bool) {
-	if !decl.HasParens {
-		return nil, true
-	}
-	declared := map[string]bool{}
+// No list is the empty one, as for any other parameter list: what the body
+// reads it names in its header, so every name in the body is traceable to the
+// declaration rather than appearing from it unannounced.
+func (c *checker) overrideSelection(decl *ast.ComponentDecl, base *ir.Component) []string {
+	props := map[string]*ir.Prop{}
 	for _, p := range base.Props {
-		declared[p.Name] = true
+		props[p.Name] = p
 	}
+	slots := map[string]bool{}
+	for _, s := range base.Slots {
+		slots[s.Name] = true
+	}
+	events := map[string]bool{}
 	for _, e := range base.Events {
-		declared["@"+e.Name] = true
+		events[e.Name] = true
 	}
 	out := make([]string, 0, len(decl.Props.Props))
-	ok := true
+	seen := map[string]bool{}
 	for _, p := range decl.Props.Props {
-		var name string
-		var pos ast.Pos
 		switch pd := p.(type) {
 		case ast.Param:
-			name, pos = pd.Name, pd.Pos
-			if pd.Type != nil || pd.Default != nil {
-				c.error(pos, "override %q selects prop %q; its type belongs to the declaration being overridden", decl.Name, name)
-				ok = false
+			var want *ir.Type
+			found := false
+			switch prop := props[pd.Name]; {
+			case prop != nil:
+				want, found = prop.Type, true
+				if pd.Bidirectional && !prop.Bidirectional {
+					c.error(pd.Pos, "override %q selects %q as two-way, but %s declares it one-way", decl.Name, pd.Name, decl.Name)
+				}
+			case slots[pd.Name]:
+				found = true
+				if pd.Type != nil {
+					c.error(pd.Pos, "override %q selects slot %q; a slot's type belongs to the declaration, so write its name alone", decl.Name, pd.Name)
+				}
+				pd.Type = nil
+			}
+			if !c.selectEntry(decl.Name, pd, want, found, seen) {
 				continue
 			}
+			out = append(out, pd.Name)
 		case ast.EventDecl:
-			name, pos = "@"+pd.Name, pd.Pos
+			name := "@" + pd.Name
 			if len(pd.Params.Params) > 0 || pd.HasParens {
-				c.error(pos, "override %q selects event %q; its type belongs to the declaration being overridden", decl.Name, name)
-				ok = false
+				c.error(pd.Pos, "override %q selects event %q; its parameters belong to the declaration, so write its name alone", decl.Name, name)
 				continue
 			}
-		default:
-			continue
+			if c.selectEntry(decl.Name, ast.Param{Pos: pd.Pos, Name: name}, nil, events[pd.Name], seen) {
+				out = append(out, name)
+			}
 		}
-		if !declared[name] {
-			c.error(pos, "override %q selects %q, which %s does not declare", decl.Name, name, decl.Name)
-			ok = false
-			continue
-		}
-		out = append(out, name)
 	}
-	return out, ok
+	return out
+}
+
+// selectEntry holds one entry of an override's parameter list to the
+// declaration it overrides, for a component's and a function's alike: it
+// names a parameter the declaration has, once, and restates nothing but a
+// matching type. want is that parameter's type and found whether there is
+// one; seen collects the names already selected.
+func (c *checker) selectEntry(over string, p ast.Param, want *ir.Type, found bool, seen map[string]bool) bool {
+	switch {
+	case !found:
+		c.error(p.Pos, "override %q selects %q, which %s does not declare", over, p.Name, over)
+		return false
+	case seen[p.Name]:
+		c.error(p.Pos, "override %q selects %q twice", over, p.Name)
+		return false
+	case p.Default != nil:
+		c.error(p.Pos, "override %q selects %q, which takes no default here: the declaration's is the one a call omitting it gets", over, p.Name)
+		return false
+	case p.Const:
+		c.error(p.Pos, "override %q selects %q, which takes no `const` here: whether it is constant is the declaration's to say", over, p.Name)
+		return false
+	case len(p.Attrs) > 0:
+		c.error(p.Pos, "override %q selects %q, which takes no mark here: its marks are the declaration's", over, p.Name)
+		return false
+	}
+	seen[p.Name] = true
+	if p.Type != nil {
+		c.bindParamType(p.Type, want, bindParamWhat(p.Name, "override "+strconv.Quote(over)))
+	}
+	return true
+}
+
+// selectFuncParams reads a function override's parameter list, the same
+// selection a component override's is: each entry names a parameter of the
+// function it overrides, and those are the only ones its body reads. The
+// parameters themselves stay the declaration's, in its order, since that is
+// what every call passes. An entry it refuses is reported and left out, so
+// the body is still checked.
+func (c *checker) selectFuncParams(decl *ast.FuncDef, base *ir.Func) []*ir.Param {
+	byName := map[string]*ir.Param{}
+	for _, p := range base.Params {
+		byName[p.Name] = p
+	}
+	seen := map[string]bool{}
+	for _, p := range decl.Params.Params {
+		bp := byName[p.Name]
+		var want *ir.Type
+		if bp != nil {
+			want = bp.Type
+		}
+		c.selectEntry(decl.Name, p, want, bp != nil, seen)
+	}
+	var out []*ir.Param
+	for _, p := range base.Params {
+		// The receiver a method on a generic built-in carries as a parameter
+		// is no parameter a call writes, and is read as the method's own.
+		if seen[p.Name] || p.Name == ir.ReceiverParam {
+			out = append(out, p)
+		}
+	}
+	return out
 }
 
 // overrideBase resolves the declaration an override names, qualified
@@ -246,7 +313,10 @@ func (c *checker) overrideBase(decl *ast.ComponentDecl) (base *ir.Component, ns,
 // pass1 the way a component override's is and for the same reason: it may be
 // written above the declaration it overrides.
 type pendingFuncOverride struct {
-	fn       *ir.Func
+	fn *ir.Func
+	// params are the parameters of fn its override listed, and so the only
+	// ones in scope for its body.
+	params   []*ir.Param
 	platform string
 	kind     ir.BuiltinKind
 	decl     *ast.FuncDef
@@ -299,10 +369,6 @@ func (c *checker) mergeFuncOverride(decl *ast.FuncDef, base *ir.Func, libURI str
 		c.error(decl.Pos, "package for %q may not declare an override for %q", owner, plat)
 		return
 	}
-	if len(decl.Params.Params) > 0 {
-		c.error(decl.Pos, "override %q may not declare params (inherited from the declaration it overrides)", decl.Name)
-		return
-	}
 	if decl.ReturnType != nil {
 		c.error(decl.Pos, "override %q may not declare a return type (inherited from the declaration it overrides)", decl.Name)
 		return
@@ -330,7 +396,7 @@ func (c *checker) mergeFuncOverride(decl *ast.FuncDef, base *ir.Func, libURI str
 	// Reserve the key so a duplicate is caught even when the body check
 	// contributes nothing, as addOverrideBody does for a component.
 	(*overrides)[plat] = ir.Override{}
-	po := pendingFuncOverride{fn: base, platform: plat, kind: kind, decl: decl, libURI: libURI}
+	po := pendingFuncOverride{fn: base, params: c.selectFuncParams(decl, base), platform: plat, kind: kind, decl: decl, libURI: libURI}
 	if libURI == "" {
 		po.pkg = c.declPkg()
 	}
@@ -454,6 +520,7 @@ func (c *checker) checkFuncOverrides(pending []pendingFuncOverride) {
 			ov.AST = &swapped
 		}
 		ov.Block = nil
+		ov.Params = po.params
 		c.checkFuncBody(ov)
 		checked := ir.Override{Stmts: ov.Block, Pkg: po.pkg}
 		if po.fn.RecvParam == nil {
