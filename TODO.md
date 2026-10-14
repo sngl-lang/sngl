@@ -68,14 +68,34 @@ Re-measure the affected workload after each step and note the number here.
    `reflect.Type` (frozen-skip, lambda body, DeclInfo.Pkg, override key).
    Consider the same plan for `internal/testutil` `walker.write`.
 
-5. [ ] **Share the frozen library; copy a declaration on its first write.**
-   ~94% of what `ClonePackageFor` copies is library IR (1.8 MB for
-   `examples/hello`); it is 2.2 GB (34%) of TestGolden. Clone the program,
-   share frozen library declarations, and have each writer call an
-   `own(decl)` that copies on first write into a per-build map.
-   `ir.MustWriteDecl` panics find the unlisted writers; the TestGolden
-   fingerprint confirms nothing leaked. Largest step; agree the design before
-   starting.
+5. [ ] **Narrow the library passes, then share what no build reaches.**
+   Measured before starting (TestGolden after step 4): the clone is 2.14 GB
+   and 5.1 s CPU, library IR 64-91% of it. But every build *writes* most of
+   the library it copies: on `examples/todo` 85 of 142 library declarations
+   (~90% by weight) change between the clone and codegen, nearly all in the
+   first `optimize.Optimize` -- `foldPkg` folds every imported package
+   (0.84 GB, 1.46 s; it rewrites `ui.tabs` and `time.parseDate` for a program
+   using neither), and `SpecializeOverriddenBodies`, `DataFamilies` and
+   `InstallOverlay` write every declaration they touch. A program reaches
+   about two thirds of the library (`tmp/reachscan`), and that two thirds is
+   what specialization and folding write by design, so the shareable part is
+   the unreached third: ~0.5-0.9 GB and 2-3.5 s, not the 34% first assumed.
+   Owner's decisions:
+   - Two parts. (1) `foldPkg`, `SpecializeOverriddenBodies` and
+     `DataFamilies` touch only the library declarations the program reaches;
+     a win alone, and the goldens show whether output moves. (2) The clone
+     copies the program and the library declarations it reaches, sharing the
+     rest frozen; library packages copied shallowly so their lists name the
+     copies.
+   - Every further writer of an unreached declaration (a `MustWriteDecl`
+     panic, the fingerprint, `tmp/writescan`) is raised with the owner, one at
+     a time.
+   - `build.Emit` first; then `interp.Prepare`, dump, the playground, docs
+     preview, snapshots, the LSP color fold and the fixture fold.
+   - Its own MR, on a branch stacked on this one; this MR carries the other
+     steps.
+     `tmp/writescan` is the probe: the file and a patch to `emitTarget` that
+     reports, per phase, which library declarations a build wrote.
 
 6. [ ] **passInlinePure clones slot content into both branches.**
    `ir.SlotSplicer.Substitute` / `lower.deepCloneStmts`: 2.8 GB (22%) of the
