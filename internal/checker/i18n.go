@@ -161,7 +161,7 @@ func (c *checker) checkI18nPlaceholder(ph *ast.I18nPlaceholderExpr) {
 		if ph.Style != "" {
 			c.error(ph.Pos, "%s placeholder cannot take a style argument", ph.Type)
 		}
-		// Allow string, dyn, or any enum type. For enums we also validate
+		// Allow string, or any enum type. For enums we also validate
 		// that case selectors correspond to declared members and that the
 		// match is exhaustive (or carries an `other` fallback).
 		var enumDecl *ir.EnumDef

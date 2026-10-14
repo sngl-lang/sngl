@@ -37,7 +37,7 @@ func TestKtIRContext_I18nTr(t *testing.T) {
 // TestKtIRContext_I18nPlural ports TestEmitI18nPlural_Kotlin: i18n.plural is a
 // namespace call i18n.plural(count, forms).
 func TestKtIRContext_I18nPlural(t *testing.T) {
-	fn := &ir.Func{Name: "plural"}
+	fn := &ir.Func{Name: "plural", Intrinsic: "i18n.plural"}
 	countLit := &ir.Literal{Value: "3", Type: ir.TypInt}
 	formsMap := &ir.MapLitIR{}
 	call := &ir.Call{

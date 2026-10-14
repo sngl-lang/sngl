@@ -270,7 +270,7 @@ func populateStructFields(sd *ir.StructDef, tn *types.TypeName, homePkg string, 
 //   - A trailing error return is stripped and HasErrorReturn is recorded so
 //     codegen can adapt the call (check + unwrap).
 //   - Shapes SNGL cannot model precisely (multi-value returns beyond (T, error),
-//     parameter or return types that would otherwise collapse to dyn) produce
+//     parameter or return types SNGL cannot spell) produce
 //     a declaration with Unusable set. The declaration is retained so
 //     namespace lookup succeeds, but the checker rejects references.
 func goFuncToFunc(fn *types.Func, pkgPath, pkgName string, structs map[string]*ir.StructDef) *ir.Func {

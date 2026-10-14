@@ -273,7 +273,8 @@ func (c *checker) resolveQualifiedType(t *ast.NamedType) *ir.Type {
 		return TypInvalid
 	}
 	if ns.Pkg == nil {
-		// Native import — accept as dyn.
+		// An import that resolved to no package -- a check with no resolver
+		// -- has no members, and the import is where that is the problem.
 		return TypInvalid
 	}
 	if tsym, ok := ns.Pkg.Symbols.LookupMemberType(name); ok {

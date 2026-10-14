@@ -74,7 +74,7 @@ func TestEmitI18nPlural_GoIRContext(t *testing.T) {
 	// namespace-call path (GoIRContext.evalCall → evalNamespaceCall) must emit
 	// i18n.GetTranslator().Plural(count, forms) — NOT
 	// i18n.GetTranslator().Plural("i18n", count) which was the pre-fix output.
-	fn := &ir.Func{Name: "plural"}
+	fn := &ir.Func{Name: "plural", Intrinsic: "i18n.plural"}
 	countLit := &ir.Literal{Value: "3", Type: ir.TypInt}
 	formsMap := &ir.MapLitIR{}
 	call := &ir.Call{

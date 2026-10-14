@@ -19,8 +19,8 @@ func (c *checker) varSpecType(pos ast.Pos, names []string, te ast.TypeExpr, init
 }
 
 // typeFromInit is the type a var or const declaration holds: the one it was
-// annotated with, or with none, its initializer's. An annotation is read as
-// dyn by the time this runs, which is how the absence of one arrives. An
+// annotated with, or with none, its initializer's. A missing annotation is
+// read as invalid by the time this runs, which is how its absence arrives. An
 // initializer yielding nothing leaves the annotation, since there is no type
 // to take; what it is held to otherwise is coerce's, which ran first.
 func (c *checker) typeFromInit(declared *ir.Type, init ir.Expr, at ast.Pos) *ir.Type {
@@ -34,7 +34,7 @@ func (c *checker) typeFromInit(declared *ir.Type, init ir.Expr, at ast.Pos) *ir.
 // inferredType is t, taken by a declaration that named no type of its own --
 // a var, a const, a context, a prop default, a function's result. Two types
 // say nothing a declaration could hold, and are refused where the type is
-// inferred, as an empty list is; dyn stands for them after.
+// inferred, as an empty list is; invalid stands for them after.
 //
 // `null` says nothing about what it is the absence of, so a type that is or
 // holds it would be a declaration only `null` is assignable to: a context no

@@ -36,7 +36,7 @@ func (c *checker) bindComponentTypeParams(pos ast.Pos, comp *ir.Component, args 
 			continue
 		}
 		argType := c.propArgType(args, comp, p)
-		// A dyn argument states nothing: binding T to it would make every
+		// An invalid argument states nothing: binding T to it would make every
 		// other prop typed T accept anything, which is the opposite of what
 		// the annotation asked for. Same rule as inferTypeParams.
 		if argType == nil || argType.Kind == ir.TypeInvalid {

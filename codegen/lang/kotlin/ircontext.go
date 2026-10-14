@@ -982,9 +982,8 @@ func (kc *KtIRContext) evalCall(n *ir.Call) string {
 // runner verbatim, against a `cells` declared beside it.
 func (kc *KtIRContext) evalQualifiedCall(n *ir.Call) (string, bool) {
 	// An i18n.* entry point maps to the runtime's I18n object.
-	if n.Qualifier.Name == "i18n" {
-		qualName := n.Qualifier.Name + "." + n.Func.Name
-		if result := kotlinBuiltinMethodFromArgs(qualName, kc.evalCallArgs(n.Args)); result != "" {
+	if ir.IsI18nCall(n) {
+		if result := kotlinBuiltinMethodFromArgs("i18n."+n.Func.Name, kc.evalCallArgs(n.Args)); result != "" {
 			kc.RequireImport(SnglI18nKotlinPackage + ".I18n")
 			return result, true
 		}

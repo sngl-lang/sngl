@@ -2206,8 +2206,11 @@ nothing** (`ir.SlotEmpty`, `internal/checker/slotempty.go`), so a body puts
 something of its own in the content's place rather than inside it -- an
 avatar's initials, which are no image source. It is answered where the body
 is spliced, from the content (`ir.RendersNothing`, written in by
-`SlotSplicer.Substitute`): none at all is true, a node false, an `if` its
-condition, a counted or measurable `for` its emptiness test, and a forward
+`SlotSplicer.Substitute`, and in the initializer of a var the splice hoists),
+matched to its slot by declaration rather than name, since a caller's own
+`.empty` may arrive in a prop argument: none at all is true, a node false, an `if` its
+condition, a counted or measurable `for` its emptiness test (or, where its body
+renders nothing, the else's answer when it runs no copy), and a forward
 the forwarded slot's own `.empty`, answered at the next splice. So it is as
 reactive as the content -- under `if shown` it is `!shown`. A component built
 at run time is handed it as a prop (`passSlotEmptyProps`), and the
@@ -4262,16 +4265,10 @@ nothing to select, and `float(x)`/`int(x)` is how that magnitude is read. So
 in `unit width { cm, mm = 0.1cm }`, `mm` is a tenth of a cm and no value
 carries a magnitude for it.
 
-Before the table existed, nothing looked a unit member up: `inferSelect`
-reports an unknown member only for the kinds `hasNoLegitimateFields` lists, and
-`ir.TypeUnit` was not one, so **every** select on a unit went untyped.
-That is one defect with two faces. The invented `.value` was accepted in
-silence and spelled blindly by each backend — `Measurement.Value` and
-`Tick.Value` in Go, neither of which compiles, `Double.value` in Kotlin,
-`undefined` in JavaScript. And the *valid* `m.px` was untyped too, which
-`interpPartAlreadyString` answers yes to, so the string conversion every other
-numeric operand gets was skipped and Go emitted `"px is " + m.m.Px`. Typing the
-select fixed the second everywhere at once; no backend grew a case.
+`inferSelect` looks a unit member up in that table, so a member the unit does
+not declare (`m.value`) is an error, and a base (`m.px`) is a `float`, which
+takes the string conversion every other numeric operand gets in an
+interpolation.
 
 **A cast reads the magnitude, and it reads it in the unit's base.** `int(x)`
 and `float(x)` are the whole of how a single-base unit's value is got at, so

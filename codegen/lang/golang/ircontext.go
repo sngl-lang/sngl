@@ -1185,7 +1185,7 @@ func (gc *GoIRContext) evalCreateComponent(n *ir.Call) (string, bool) {
 // nativeCall answers before this.
 func (gc *GoIRContext) evalQualifiedCall(n *ir.Call) (string, bool) {
 	// An i18n.* entry point is the runtime package's.
-	if n.Qualifier.Name == "i18n" {
+	if ir.IsI18nCall(n) {
 		if result := goBuiltinMethodFromArgs("i18n."+n.Func.Name, gc.evalCallArgs(n.Args)); result != "" {
 			return result, true
 		}

@@ -762,8 +762,8 @@ func (jc *JsIRContext) evalQualifiedCall(n *ir.Call) (string, bool) {
 	qualName := n.Qualifier.Name + "." + fname
 	args := jc.evalCallArgs(n.Args)
 	// An i18n.* entry point maps to the runtime's module object.
-	if n.Qualifier.Name == "i18n" {
-		if result := jsBuiltinMethodFromArgs(qualName, args); result != "" {
+	if ir.IsI18nCall(n) {
+		if result := jsBuiltinMethodFromArgs("i18n."+fname, args); result != "" {
 			return result, true
 		}
 	}

@@ -173,7 +173,7 @@ func (w *rebuildWalker) bindings(comp *ir.Component, args map[string]rebuildArg,
 			continue
 		}
 		t := a.value.ExprType().Substitute(env)
-		// A dyn argument states nothing, and one still typed by a parameter
+		// An invalid argument states nothing, and one still typed by a parameter
 		// states only that this call did not pin it either.
 		if t == nil || t.Kind == ir.TypeInvalid || t.HasTypeParam() {
 			continue

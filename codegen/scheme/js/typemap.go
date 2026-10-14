@@ -61,8 +61,8 @@ func (w *walker) tsTypeToIR(n *snglts.Node) (*ir.Type, string) {
 		return ir.TypInvalid, "function-typed values not supported"
 
 	case snglts.KindTypeLiteral:
-		// Inline object type — could synth anonymous struct, but v1 keeps
-		// it dyn until we have a clean way to anchor it for LSP.
+		// Inline object type — could synth anonymous struct, but v1 makes
+		// it unusable until we have a clean way to anchor it for LSP.
 		return ir.TypInvalid, "inline object types not supported"
 
 	case snglts.KindTypeReference:
@@ -72,7 +72,7 @@ func (w *walker) tsTypeToIR(n *snglts.Node) (*ir.Type, string) {
 }
 
 // unionToIR maps `T | null`, `T | undefined`, `T | null | undefined` to
-// OptionOf(T). Anything else is dyn-with-unusable.
+// OptionOf(T). Anything else is unusable.
 func (w *walker) unionToIR(n *snglts.Node) (*ir.Type, string) {
 	var nonNullables []*snglts.Node
 	hasNullable := false
@@ -95,7 +95,7 @@ func (w *walker) unionToIR(n *snglts.Node) (*ir.Type, string) {
 
 // typeRefToIR resolves a TypeReference (named type with optional type args)
 // to an SNGL IR type. Recognises Promise<T>, Array<T>, Date; defers to
-// pre-registered struct/enum names; otherwise dyn.
+// pre-registered struct/enum names; otherwise unusable.
 func (w *walker) typeRefToIR(n *snglts.Node) (*ir.Type, string) {
 	name := typeRefName(n)
 	args := n.TypeArguments()
@@ -109,7 +109,7 @@ func (w *walker) typeRefToIR(n *snglts.Node) (*ir.Type, string) {
 			return ir.ListOf(elem), ""
 		}
 	case "Promise":
-		// Plain Promise<T> in non-return position: leave as dyn since
+		// Plain Promise<T> in non-return position: unusable, since
 		// SNGL has no top-level promise type. The function-decl path
 		// handles return-position promises separately.
 		return ir.TypInvalid, "Promise type only supported as a function return"

@@ -542,7 +542,7 @@ func (c *checker) loadStdlibPackage(pkgName string) *ir.Package {
 
 	// Refine stdlib context types from their default expressions. Context
 	// decls run BEFORE wrapper body checks (so wrapper bodies can read them),
-	// at which point a default like `i18n.defaultLocale()` still types as dyn.
+	// at which point a default like `i18n.defaultLocale()` has no type yet.
 	// Once the bodies are checked the wrapper has its concrete return type,
 	// so re-pull ctx.Typ from the default expression's Call.Func.Return.
 	for _, ctx := range stdlibPkg.Contexts {

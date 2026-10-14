@@ -32,16 +32,30 @@ func (sp SlotSplicer) Substitute(stmts []Stmt, callsite *NodeInst) []Stmt {
 }
 
 // answerEmpty replaces each SlotEmpty in a body about to be spliced for
-// callsite with what callsite supplied says (RendersNothing), on a copy of the
-// content of its own, since the content itself is spliced in elsewhere. It
-// runs before any content is spliced, so every SlotEmpty it meets is the
-// body's own and asks about one of callsite's slots: one in a population a
-// caller forwards asks about the caller's, and is answered where the caller's
-// body is spliced.
+// callsite that asks about one of callsite's slots with what callsite
+// supplied says (RendersNothing), on a copy of the content of its own, since
+// the content itself is spliced in elsewhere. Which slot is asked is the
+// declaration, never the name: a caller's own `.empty` handed in as a prop
+// argument may already stand in this body, and asks about the caller's slot,
+// to be answered where the caller's body is spliced.
+// AnswerEmptyIn is answerEmpty for an expression the body holds outside its
+// statements: the initializer of a var the splice hoists out of it.
+func (sp SlotSplicer) AnswerEmptyIn(e Expr, callsite *NodeInst) Expr {
+	if e == nil {
+		return nil
+	}
+	holder := []Stmt{&Return{Value: e}}
+	sp.answerEmpty(holder, callsite)
+	return holder[0].(*Return).Value
+}
+
 func (sp SlotSplicer) answerEmpty(stmts []Stmt, callsite *NodeInst) {
+	if callsite == nil || callsite.Component == nil {
+		return
+	}
 	_ = RewriteExprs(stmts, func(e Expr) (Expr, error) {
 		se, ok := e.(*SlotEmpty)
-		if !ok {
+		if !ok || !slices.Contains(callsite.Component.Slots, se.Slot) {
 			return e, nil
 		}
 		body, _, supplied := SlotBody(&SlotInst{Name: se.Slot.Name, Rest: se.Slot.Rest}, callsite)
@@ -340,15 +354,19 @@ func stmtRendersNothing(s Stmt) (Expr, bool) {
 		if !isLit {
 			return nil, false
 		}
+		// A loop that runs renders its copies, and one that does not renders
+		// its else: so it renders nothing when it runs and the copies render
+		// nothing, or when it does not and the else renders nothing.
 		if lit.Value == "true" {
-			return els, true
+			if el, ok := els.(*Literal); ok && el.Value == "true" {
+				return els, true
+			}
 		}
-		// Each copy renders something, so the loop does exactly when it runs.
 		empty := EmptyTest(n, nil)
 		if empty == nil {
 			return nil, false
 		}
-		return foldTernary(empty, els, boolLit(false)), true
+		return foldTernary(empty, els, body), true
 	case *SlotInst:
 		var own Expr = &SlotEmpty{Slot: n.Decl}
 		if n.Entry != nil {
