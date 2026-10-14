@@ -1448,7 +1448,7 @@ func testTicks(t test.Test, c Ticker) {
 
 ### Subtests
 
-`t.test(name, func(t, c) { ... })` runs a subtest on its own snapshot of the state. Changes in the subtest do not affect the enclosing test:
+`t.test(name, func(t test.Test, c Box) { ... })` runs a subtest on its own snapshot of the state. Its function takes the subtest's own `Test` and the component the enclosing test took, annotated as a lambda's parameters are when nothing else says their types. Changes in the subtest do not affect the enclosing test:
 
 ```sngl
 import ui "sngl:ui"
@@ -1465,7 +1465,7 @@ ui.window {
 
 func testNesting(t test.Test, c Box) {
     c.x = 1
-    t.test("inner", func(t, c) {
+    t.test("inner", func(t test.Test, c Box) {
         c.x = 5
         t.assert(c.x == 5)
     })

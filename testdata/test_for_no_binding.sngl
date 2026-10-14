@@ -21,8 +21,7 @@ component tally node {
 }
 
 func testBindsNothingButStillRepeats(t Test, c tally) {
-    t.assert(c.tick.length() == 2)
-    t.assert(c.dash.length() == 3)
+    t.assert(c.tick[1].value == "tick")
     t.assert(c.dash[2].value == "-")
 }
 

@@ -2,6 +2,8 @@ package fixtures
 
 import (
 	"bytes"
+	"fmt"
+	"reflect"
 	"regexp"
 	"testing"
 
@@ -10,43 +12,36 @@ import (
 	"duckfam.us/sngl/ir"
 )
 
-var (
-	dynKeyword = regexp.MustCompile(`\bdyn\b`)
-	// Calls through these stdlib receivers produce TypDyn today because the
-	// stdlib's `=>` funcs omit explicit return annotations (see
-	// registerStdlibFunc). Fixtures that use these methods inherit inferred
-	// dyn through no fault of the user-code checker paths, so the backstop
-	// skips them. Tightening this list should come together with adding
-	// return-type annotations to the stdlib.
-	stdlibDynMethod = regexp.MustCompile(`\b(?:int|float|string|list|option|color|Alert|File|stdlib|alert|file)\.[a-zA-Z]|\.(?:length|upper|lower|trim|contains|startsWith|endsWith|indexOf|substring|replace|split|join|push|pop|slice|parse|hex|rgb|rgba|opacity|lighten|darken|abs|min|max|clamp|floor|ceil|round|sqrt|pow|sin|cos|tan|asin|acos|atan|atan2)\(`)
-)
+var dynKeyword = regexp.MustCompile(`\bdyn\b`)
 
-// assertNoSilentDyn guards the "dyn only when explicit" invariant: a fixture
-// whose source never mentions `dyn` must not check to IR carrying TypeDyn.
+// assertNoSilentDyn guards strict typing: a fixture that checks clean holds no
+// TypeDyn anywhere -- not on a declaration, and not on any expression, a type
+// argument or element type included. A dyn the checker reached without
+// reporting is a type it gave up on, which nothing downstream can tell from a
+// type the program wrote.
 //
-// The package is the one the runner already checked. This used to glob and
-// check testdata a third time with a Config naming no targets; sharing the
-// runner's package means the targets are registered, which can only resolve
-// more names, never fewer.
+// The package is the one the runner already checked.
 func assertNoSilentDyn(t *testing.T, s testutil.Sample, pkg *ir.Package) {
 	if pkg == nil {
 		return
 	}
 	// Strip comments before scanning so a directive mentioning `dyn` in its
 	// expected message does not count as explicit use.
-	stripped := stripLineComments([]byte(s.Source))
-	if dynKeyword.Match(stripped) || stdlibDynMethod.Match(stripped) {
+	if dynKeyword.Match(stripLineComments([]byte(s.Source))) {
 		return
 	}
 	if s.ExpectsError("parse") || s.ExpectsError("check") {
 		return // TypDyn during error recovery is expected
 	}
+	hasDyn := func(t *ir.Type) bool {
+		return t != nil && t.Any(func(t *ir.Type) bool { return t.Kind == ir.TypeDyn })
+	}
 	report := func(where string, pos ast.Pos) {
-		t.Errorf("inferred TypeDyn at %s (%s:%d:%d) — expected explicit annotation or an error",
+		t.Errorf("TypeDyn at %s (%s:%d:%d) -- expected a type or an error",
 			where, s.Filename, pos.Line, pos.Column)
 	}
 	visit := func(label string, pos ast.Pos, typ *ir.Type) {
-		if typ != nil && typ.Kind == ir.TypeDyn {
+		if hasDyn(typ) {
 			report(label, pos)
 		}
 	}
@@ -56,16 +51,19 @@ func assertNoSilentDyn(t *testing.T, s testutil.Sample, pkg *ir.Package) {
 	for _, v := range pkg.Consts {
 		visit("package const "+v.Name, stmtPos(v.AST), v.Type)
 	}
-	for _, fn := range pkg.Funcs {
-		pos := ast.Pos{}
-		if fn.AST != nil {
-			pos = fn.AST.Pos
+	funcs := func(owner string, fns []*ir.Func, fallback ast.Pos) {
+		for _, fn := range fns {
+			pos := fallback
+			if fn.AST != nil {
+				pos = fn.AST.Pos
+			}
+			for _, p := range fn.Params {
+				visit(owner+"func "+fn.Name+" param "+p.Name, pos, p.Type)
+			}
+			visit(owner+"func "+fn.Name+" return", pos, fn.Return)
 		}
-		for _, p := range fn.Params {
-			visit("func "+fn.Name+" param "+p.Name, pos, p.Type)
-		}
-		visit("func "+fn.Name+" return", pos, fn.Return)
 	}
+	funcs("", pkg.Funcs, ast.Pos{})
 	for _, comp := range pkg.Components {
 		pos := ast.Pos{}
 		if comp.AST != nil {
@@ -81,12 +79,7 @@ func assertNoSilentDyn(t *testing.T, s testutil.Sample, pkg *ir.Package) {
 			}
 			visit("component "+comp.Name+" var "+v.Name, vpos, v.Type)
 		}
-		for _, fn := range comp.Funcs {
-			for _, p := range fn.Params {
-				visit("component "+comp.Name+" func "+fn.Name+" param "+p.Name, pos, p.Type)
-			}
-			visit("component "+comp.Name+" func "+fn.Name+" return", pos, fn.Return)
-		}
+		funcs("component "+comp.Name+" ", comp.Funcs, pos)
 	}
 	for _, sd := range pkg.Structs {
 		pos := ast.Pos{}
@@ -97,6 +90,29 @@ func assertNoSilentDyn(t *testing.T, s testutil.Sample, pkg *ir.Package) {
 			visit("struct "+sd.Name+" field "+f.Name, pos, f.Type)
 		}
 	}
+	_ = ir.Walk(pkg, func(n ir.Node) error {
+		e, ok := n.(ir.Expr)
+		if !ok || !hasDyn(e.ExprType()) {
+			return nil
+		}
+		if id, ok := e.(*ir.Ident); ok {
+			if _, ns := id.Sym.(*ir.Namespace); ns {
+				return nil // a package, not a value
+			}
+		}
+		report(fmt.Sprintf("%T", e), exprPos(e))
+		return nil
+	})
+}
+
+// exprPos is where the source wrote e, read off the AST node it carries.
+func exprPos(e ir.Expr) ast.Pos {
+	if v := reflect.ValueOf(e).Elem().FieldByName("AST"); v.IsValid() && !v.IsNil() {
+		if ep, ok := v.Interface().(interface{ ExprPos() *ast.Pos }); ok && ep.ExprPos() != nil {
+			return *ep.ExprPos()
+		}
+	}
+	return ast.Pos{}
 }
 
 // stmtPos extracts the Pos from an ast.Stmt that wraps a decl with a Pos field.

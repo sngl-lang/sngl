@@ -704,7 +704,8 @@ func (c *checker) buildLambdaParams(pl ast.ParamList, expected *ir.FuncSig) []*i
 		case expected != nil && i < len(expected.Params):
 			typ = expected.Params[i].Type
 		default:
-			typ = dynFallback("lambda parameter %q has no annotation and no expected signature", p.Name)
+			c.error(p.Pos, "lambda parameter %q needs a type: nothing it is handed to says what it takes", p.Name)
+			typ = TypDyn
 		}
 		var def ir.Expr
 		if p.Default != nil {

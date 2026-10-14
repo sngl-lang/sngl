@@ -4235,14 +4235,7 @@ func lastStmtMayDiverge(stmts []ir.Stmt) bool {
 // checkComponentBody.
 func (c *checker) preCheckComponentMethods(comp *ir.Component) {
 	defer c.fileOf(compDeclPos(comp))()
-	hasNested := false
-	for _, fn := range comp.Funcs {
-		if fn.RecvName() == comp.Name {
-			hasNested = true
-			break
-		}
-	}
-	if !hasNested {
+	if comp.AST == nil {
 		return
 	}
 
@@ -4253,6 +4246,10 @@ func (c *checker) preCheckComponentMethods(comp *ir.Component) {
 	c.currentComponent = comp
 	defer func() { c.currentComponent = prevComp }()
 
+	// Snapshot diagnostics; discard whatever the pre-pass produces, its
+	// declarations included. The authoritative check runs again in
+	// checkComponentBody.
+	diagMark, deferred, constMark, slotMark := len(c.diags), len(c.treeChecks), len(c.constArgs), len(c.constSlotNodes)
 	for _, p := range comp.Props {
 		c.declare(compDeclPos(comp), propParam(p))
 	}
@@ -4270,9 +4267,18 @@ func (c *checker) preCheckComponentMethods(comp *ir.Component) {
 		}
 	}
 
-	// Snapshot diagnostics; discard whatever the pre-pass produces. The
-	// authoritative method-body check runs again in checkComponentBody.
-	diagMark, deferred, constMark, slotMark := len(c.diags), len(c.treeChecks), len(c.constArgs), len(c.constSlotNodes)
+	// The state's types first, from its initializers: a function checked
+	// before this body -- a method written outside the component's block, a
+	// test -- reads a var through a handle, and an unannotated one has no
+	// type until its initializer is read.
+	for _, stmt := range comp.AST.Body.Stmts {
+		switch d := stmt.(type) {
+		case *ast.VarDecl:
+			c.checkComponentVars(d, comp)
+		case *ast.ConstDecl:
+			c.checkComponentConsts(d, comp)
+		}
+	}
 	for _, fn := range comp.Funcs {
 		if fn.RecvName() == comp.Name {
 			c.checkFuncBody(fn)

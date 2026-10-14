@@ -35,7 +35,7 @@ func init() {
 	// A test body is lowered by testlower.go, which answers these first. A
 	// test function emitted into a page as an ordinary function calls the
 	// method on the harness's t object instead.
-	for _, id := range []string{ir.TestAssertID, ir.TestMustID, ir.TestSetLocaleID, ir.TestSetContextID, ir.TestWaitID, ir.TestSnapshotID} {
+	for _, id := range []string{ir.TestAssertID, ir.TestMustID, ir.TestSetLocaleID, ir.TestSetContextID, ir.TestWaitID, ir.TestSnapshotID, ir.TestTickID, ir.TestSubtestID} {
 		method := strings.TrimPrefix(id, "test.")
 		reg(id, func(a []string) string { return a[0] + "." + method + "(" + strings.Join(a[1:], ", ") + ")" })
 	}

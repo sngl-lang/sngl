@@ -1638,12 +1638,19 @@ func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) ir.Ex
 		argSig = &ir.FuncSig{Params: evt.Params}
 	}
 	args := c.checkCallArgs(call.Args, argSig)
-	if event == "" && isPrimitiveMethodReceiver(receiver) {
-		c.error(sel.Pos, "no method %q on type %s", sel.Field, receiver)
+	// A trigger fires the event and yields nothing. Anything else names no
+	// method the receiver has, which is said here rather than left for a
+	// later phase to find unresolved.
+	typ := TypVoid
+	if event == "" {
+		if receiver.Kind != ir.TypeDyn && receiver.Kind != ir.TypeInvalid {
+			c.error(sel.Pos, "no method %q on type %s", sel.Field, receiver)
+		}
+		typ = TypDyn
 	}
 	return &ir.Call{
 		AST:      call,
-		Type:     dynSpread(receiver, "no method %q on %s", sel.Field, receiver),
+		Type:     typ,
 		Receiver: receiverExpr,
 		Args:     args,
 		Event:    event,

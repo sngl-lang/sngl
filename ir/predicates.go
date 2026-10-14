@@ -95,6 +95,8 @@ const (
 	TestSetContextID = "test.setContext"
 	TestWaitID       = "test.wait"
 	TestSnapshotID   = "test.snapshot"
+	TestTickID       = "test.tick"
+	TestSubtestID    = "test.test"
 )
 
 // IsTestCall reports whether c calls the sngl:test method marked id.
@@ -108,7 +110,7 @@ func IsTestMethodCall(c *Call) bool {
 		return false
 	}
 	switch c.Func.Intrinsic {
-	case TestAssertID, TestMustID, TestSetLocaleID, TestSetContextID, TestWaitID, TestSnapshotID:
+	case TestAssertID, TestMustID, TestSetLocaleID, TestSetContextID, TestWaitID, TestSnapshotID, TestTickID, TestSubtestID:
 		return true
 	}
 	return false
