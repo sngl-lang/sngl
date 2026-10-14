@@ -75,7 +75,7 @@ Re-measure the affected workload after each step and note the number here.
    into the program by passLibFuncs, which the second fold reaches. Remember
    on the `Config` what an earlier `Optimize` folded and skip it.
 
-6. [ ] **Narrow the library passes, then share what no build reaches.**
+6. [X] **Narrow the library passes, then share what no build reaches.**
    Every build *writes* most of the library it copies: on `examples/todo` 85
    of 142 library declarations (~90% by weight) change between the clone and
    codegen, 83 of them in the first `optimize.Optimize` -- `foldPkg` folds
@@ -277,3 +277,11 @@ Re-measure the affected workload after each step and note the number here.
    group is launched on, not every target: in `cmd/sngl`'s `TestScript` that
    copy is 1.42 -> 0.35 GB and the whole run 4.81 -> 3.70 GB allocated. The
    scripts that launch tests are its test.
+
+   Step 6 in all, from e6e1a36e2: TestGolden 5.56 -> 4.18 GB allocated, two
+   unprofiled pairs 22.0 -> 17.9 and 22.3 -> 17.9 s user; the clone 2.19 GB /
+   2.9 s -> 1.33 GB / 1.8 s; `optimize.Optimize` 729 MB / 1.53 s -> 270 MB /
+   0.52 s. `TestScript` 4.81 -> 3.70 GB from the `sngl test` copy alone. Docs
+   site byte-identical (1187 files), unchanged in cost. Left as it is: the
+   native-eval probe's `ClonePackage` of a build's copy, which folds the whole
+   library on a copy it throws away.
