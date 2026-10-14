@@ -95,11 +95,6 @@ func assertNoSilentDyn(t *testing.T, s testutil.Sample, pkg *ir.Package) {
 		if !ok || !hasDyn(e.ExprType()) {
 			return nil
 		}
-		if id, ok := e.(*ir.Ident); ok {
-			if _, ns := id.Sym.(*ir.Namespace); ns {
-				return nil // a package, not a value
-			}
-		}
 		report(fmt.Sprintf("%T", e), exprPos(e))
 		return nil
 	})

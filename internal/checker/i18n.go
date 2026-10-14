@@ -286,7 +286,7 @@ func (c *checker) inferI18nInterp(x *ast.I18nInterpExpr) ir.Expr {
 		// The namespace the call was reached through. trInline is a package
 		// function, so the alias at the call site is what names it — and a
 		// synthesized call has to carry what a written one would.
-		Receiver: i18nReceiver(c, trNS),
+		Qualifier: c.i18nQualifier(trNS),
 		Args: []ir.CallArg{
 			{Value: &ir.Literal{Type: TypString, Value: template}},
 			{Value: &ir.Literal{Type: TypString, Value: template}},
@@ -301,20 +301,15 @@ const i18nNamespace = "i18n"
 // i18nImportPath is the package $"..." lowers into a call on.
 const i18nImportPath = "sngl:i18n"
 
-// i18nReceiver names the namespace the call was reached through, or nil when
-// a dot import put the function in scope unqualified.
-func i18nReceiver(c *checker, ns string) ir.Expr {
-	if ns == "" {
+// i18nQualifier is the import the call was reached through, or nil when a
+// dot import put the function in scope unqualified.
+func (c *checker) i18nQualifier(name string) *ir.Namespace {
+	if name == "" {
 		return nil
 	}
-	return &ir.Ident{Name: ns, Sym: c.namespaceNamed(ns)}
-}
-
-func (c *checker) namespaceNamed(name string) ir.Symbol {
-	if sym, ok := c.scope.Lookup(name); ok {
-		return sym
-	}
-	return nil
+	sym, _ := c.scope.Lookup(name)
+	ns, _ := sym.(*ir.Namespace)
+	return ns
 }
 
 // lookupI18nTrInline resolves the i18n.trInline stdlib function — the

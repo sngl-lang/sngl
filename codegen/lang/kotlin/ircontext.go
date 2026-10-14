@@ -260,10 +260,6 @@ func selectField(n *ir.Select) string {
 }
 
 func (kc *KtIRContext) Select(n *ir.Select, operand string) string {
-	// The Kotlin i18n runtime keys plural forms by string category exclusively.
-	if s := snglI18n.PluralKeyConstString(n); s != "" {
-		return s
-	}
 	field := selectField(n)
 	// Field access on a `dyn` operand: Kotlin's `Any` has no user fields.
 	// If exactly one package struct declares this field, emit a safe cast.
@@ -825,6 +821,10 @@ func ktLiteral(n *ir.Literal) string {
 }
 
 func (kc *KtIRContext) evalIdent(n *ir.Ident) string {
+	// The Kotlin i18n runtime keys plural forms by string category exclusively.
+	if s := snglI18n.PluralKeyConstString(n); s != "" {
+		return s
+	}
 	if n.Member != "" {
 		// Enum member: emit qualified Kotlin enum value (Gender.female)
 		// so the value matches the declared enum type at the use site.
@@ -950,6 +950,16 @@ func (kc *KtIRContext) evalCall(n *ir.Call) string {
 	if out, ok := kc.nativeCall(n); ok {
 		return out
 	}
+	if n.Qualifier != nil && n.Func != nil {
+		if out, ok := kc.evalQualifiedCall(n); ok {
+			return out
+		}
+	}
+	// A member nothing declares -- an import that resolved to no package --
+	// is named as the call site wrote it.
+	if n.Qualifier != nil && n.Func == nil {
+		return n.QualifiedName() + "(" + strings.Join(kc.evalCallArgs(n.Args), ", ") + ")"
+	}
 	if n.Receiver != nil {
 		return kc.evalNamespaceCall(n)
 	}
@@ -997,69 +1007,40 @@ func (kc *KtIRContext) evalCall(n *ir.Call) string {
 	return "(" + strings.Join(args, ", ") + ")"
 }
 
+// evalQualifiedCall is a call named through an import, where the import still
+// means something in Kotlin. A SNGL package's declarations are top-level funs
+// of this build, so for one of those the alias names nothing and the call is
+// an ordinary one: false. `readout.cells("1.5")` reached the android test
+// runner verbatim, against a `cells` declared beside it.
+func (kc *KtIRContext) evalQualifiedCall(n *ir.Call) (string, bool) {
+	// An i18n.* entry point maps to the runtime's I18n object.
+	if n.Qualifier.Name == "i18n" {
+		qualName := n.Qualifier.Name + "." + n.Func.Name
+		if result := kotlinBuiltinMethodFromArgs(qualName, kc.evalCallArgs(n.Args)); result != "" {
+			kc.RequireImport(SnglI18nKotlinPackage + ".I18n")
+			return result, true
+		}
+	}
+	return "", false
+}
+
 func (kc *KtIRContext) evalNamespaceCall(n *ir.Call) string {
 	receiver := kc.EvalExpr(n.Receiver)
 	args := kc.evalCallArgs(n.Args)
 
 	if n.Func != nil {
 		fname := n.Func.Name
-		// A package function called through its import has no receiver on the
-		// declaration — the namespace is the alias at the call site. Name it
-		// from there so a qualified call reads the same either way.
-		receiverName := n.Func.RecvName()
-		if receiverName == "" {
-			if id, ok := n.Receiver.(*ir.Ident); ok {
-				receiverName = id.Name
-			}
-		}
-		qualName := receiverName + "." + fname
-
-		// Intrinsic dispatch: stdlib intrinsics that map to per-locale
-		// runtime entry points. After NoContext + InlinePure, i18n.*
-		// wrapper calls have been lowered to direct intl.* intrinsic
-		// calls with the locale threaded as the first arg.
-
-		// For i18n.* calls the namespace receiver is the module object, not a
-		// value argument. Pass only the real call args to the builtin dispatcher
-		// so that a(0) is the first semantic argument (matches type-method path).
-		if receiverName == "i18n" {
-			if result := kotlinBuiltinMethodFromArgs(qualName, args); result != "" {
-				kc.RequireImport(SnglI18nKotlinPackage + ".I18n")
-				return result
-			}
-		}
-
 		allArgs := append([]string{receiver}, args...)
-		if result := kotlinBuiltinMethodFromArgs(qualName, allArgs); result != "" {
+		if result := kotlinBuiltinMethodFromArgs(n.Func.RecvName()+"."+fname, allArgs); result != "" {
 			return result
 		}
 		// Only for a receiver whose type the checker could not resolve. With an id
 		// in hand the registry is the answer, and its absence has to reach
 		// RequireIntrinsicFallback rather than be hidden by a name match.
-		if n.Func == nil || n.Func.Intrinsic == "" {
+		if n.Func.Intrinsic == "" {
 			if result := kotlinBuiltinMethodFromArgs("*."+fname, allArgs); result != "" {
 				return result
 			}
-		}
-		// The receiver is an import alias when the declaration carries no
-		// receiver of its own: a directory import qualifies the call in SNGL
-		// and names nothing in the emitted Kotlin, where the function is a
-		// top-level `fun` of its own name. `readout.cells("1.5")` reached the
-		// android test runner verbatim, against a `cells` declared beside it.
-		if !n.Func.IsMethod() {
-			name := fname
-			// Through IdentRewrites like every other bare call: test mode
-			// reaches a hoisted state member as `state.<name>`.
-			if kc.IdentRewrites != nil {
-				if rw, ok := kc.IdentRewrites[name]; ok {
-					name = rw
-				}
-			}
-			if kc.isScopeComputed(fname, n.Func) {
-				return name
-			}
-			codegen.RequireIntrinsicFallback(langKt, n.Func)
-			return name + "(" + strings.Join(args, ", ") + ")"
 		}
 		return receiver + "." + fname + "(" + strings.Join(args, ", ") + ")"
 	}

@@ -107,9 +107,8 @@ func (st *reactivityState) place(sp *slotPlacement, name string) []ir.Stmt {
 				Value:  &ir.Binary{Type: ir.TypInt, Op: ast.BinAdd, Left: varRef(sp.idx), Right: intLiteralLit(1)},
 			}},
 			Else: []ir.Stmt{&ir.CallStmt{Call: &ir.Call{
-				Type:     ir.TypVoid,
-				Receiver: lowerNSIdent(),
-				Func:     st.intrinsics[ir.NodeOpInsertBefore],
+				Type: ir.TypVoid,
+				Func: st.intrinsics[ir.NodeOpInsertBefore],
 				Args: []ir.CallArg{
 					{Value: sp.parent},
 					{Value: node()},
@@ -138,10 +137,9 @@ func (st *reactivityState) closeSlotPlacement(sp *slotPlacement) []ir.Stmt {
 				Right: intLiteralLit(0),
 			},
 			Body: []ir.Stmt{&ir.CallStmt{Call: &ir.Call{
-				Type:     ir.TypVoid,
-				Receiver: lowerNSIdent(),
-				Func:     st.intrinsics[ir.NodeOpRemoveChild],
-				Args:     []ir.CallArg{{Value: sp.parent}, {Value: eRef()}},
+				Type: ir.TypVoid,
+				Func: st.intrinsics[ir.NodeOpRemoveChild],
+				Args: []ir.CallArg{{Value: sp.parent}, {Value: eRef()}},
 			}}},
 		}},
 	}}

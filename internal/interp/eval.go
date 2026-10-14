@@ -1209,6 +1209,12 @@ func (env *Env) evalIdent(e *ir.Ident) (any, error) {
 	if e.Member != "" {
 		return e.Member, nil
 	}
+	// i18n's predeclared PluralKey constants, whose value is the runtime's.
+	if ir.IsI18nPluralKey(e) {
+		if pk, ok := i18nPluralConst(e.Name); ok {
+			return pk, nil
+		}
+	}
 	// A build-target node read as a value, bare inside its own package.
 	if _, name, ok := ir.TargetNode(e.Sym); ok {
 		return name, nil
@@ -1356,34 +1362,15 @@ func (env *Env) lookup(sym ir.Symbol) (any, error) {
 		return funcValue(fn, env), nil
 	}
 	// A declaration the environment never bound but that carries its own
-	// value: a constant from a library package, which is in no list this
-	// program walks. The symbol has the initializer, so evaluate it.
-	if v, ok := sym.(*ir.Var); ok && v.IsConst && v.Init != nil {
+	// value: a constant or a var of another package, which is in no list
+	// this program walks. The symbol has the initializer, so evaluate it.
+	if v, ok := sym.(*ir.Var); ok && v.Init != nil {
 		return env.Eval(v.Init)
 	}
 	return nil, fmt.Errorf("undefined variable %q", sym.SymName())
 }
 
 func (env *Env) evalSelect(e *ir.Select) (any, error) {
-	// i18n namespace field access: i18n.zero, i18n.one, etc.
-	// These are predeclared PluralKey constants; resolve them before
-	// attempting a general object lookup.
-	if ident, ok := e.Operand.(*ir.Ident); ok && ident.Name == "i18n" {
-		if pk, ok := i18nPluralConst(e.Field); ok {
-			return pk, nil
-		}
-	}
-
-	// `pkg.NAME` where pkg is an import's namespace. A namespace is not a
-	// value, so evaluating the operand would report the alias as an undefined
-	// variable -- which is what a const named through one used to do wherever
-	// the optimizer had not already folded it away.
-	if ident, ok := e.Operand.(*ir.Ident); ok {
-		if ns, ok := ident.Sym.(*ir.Namespace); ok {
-			return env.namespaceMember(ns, e.Field)
-		}
-	}
-
 	obj, cached := env.spreadVals[e.Spread]
 	if e.Spread == 0 || !cached {
 		var err error
@@ -1441,36 +1428,6 @@ func intrinsicMethod(t *ir.Type, field string) func([]any) (any, error) {
 		return nil
 	}
 	return intrinsics[fn.Intrinsic]
-}
-
-// namespaceMember evaluates `alias.member` where alias names an imported
-// package. A const is the only member a select can produce a value for: a
-// type, a component or a function reached this way is a call or a literal, and
-// arrives as one of those rather than here.
-func (env *Env) namespaceMember(ns *ir.Namespace, field string) (any, error) {
-	if ns.Pkg == nil || ns.Pkg.Symbols == nil {
-		return nil, fmt.Errorf("package %q has no declarations", ns.Name)
-	}
-	sym, ok := ns.Pkg.Symbols.LookupMember(field)
-	if !ok {
-		return nil, fmt.Errorf("undefined: %s.%s", ns.Name, field)
-	}
-	// A build-target node read as a value is the target's identity: its
-	// registered name, which is what PLATFORM holds.
-	if _, name, ok := ir.TargetNode(sym); ok {
-		return name, nil
-	}
-	v, isVar := sym.(*ir.Var)
-	if !isVar {
-		return nil, fmt.Errorf("cannot read %s.%s as a value", ns.Name, field)
-	}
-	if val, bound := env.Value(v); bound {
-		return val, nil
-	}
-	if v.Init == nil {
-		return nil, nil
-	}
-	return env.Eval(v.Init)
 }
 
 // i18nPluralConst maps the predeclared i18n PluralKey field names to their

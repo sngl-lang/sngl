@@ -945,20 +945,40 @@ func (c *converter) convertIdent(id *Ident) ast.Expr {
 		}
 		return &ast.IdentExpr{Name: id.Member}
 	}
+	if id.Qualifier != nil {
+		return &ast.SelectExpr{Operand: &ast.IdentExpr{Name: id.Qualifier.Name}, Field: id.Name}
+	}
 	return &ast.IdentExpr{Name: id.Name}
 }
 
 func (c *converter) convertCallExpr(call *Call) *ast.CallExpr {
 	var funcExpr ast.Expr
-	if call.Receiver != nil && call.Func != nil {
+	if call.Qualifier != nil {
+		// Named through an import: `math.sqrt(x)`, `html.div(…)`. A member
+		// the package does not declare -- one a wildcard answers to -- is
+		// named by what the call site wrote.
+		name := ""
+		if call.Func != nil {
+			name = call.Func.Name
+		} else if call.AST != nil {
+			if sel, ok := call.AST.Func.(*ast.SelectExpr); ok {
+				name = sel.Field
+			}
+		}
+		funcExpr = &ast.SelectExpr{Operand: &ast.IdentExpr{Name: call.Qualifier.Name}, Field: name}
+	} else if IsNodeOpCall(call) {
+		// A node operation a lowering pass emitted, which no package
+		// declares: printed under the lowering's own name for it.
+		funcExpr = &ast.SelectExpr{Operand: &ast.IdentExpr{Name: "lower"}, Field: call.Func.Name}
+	} else if call.Receiver != nil && call.Func != nil {
 		// Method call: receiver.method(args)
 		funcExpr = &ast.SelectExpr{
 			Operand: c.convertExpr(call.Receiver),
 			Field:   call.Func.Name,
 		}
 	} else if call.Receiver != nil {
-		// Namespaced component/element (html.div, docui.Foo) — preserve the
-		// "ns.Field" select form.
+		// A host call on a value -- `c.label()` on a component-typed param
+		// the checker bound to no func -- preserves the "x.Field" form.
 		if call.AST != nil {
 			if sel, ok := call.AST.Func.(*ast.SelectExpr); ok {
 				funcExpr = &ast.SelectExpr{
@@ -999,13 +1019,6 @@ func (c *converter) convertCallExpr(call *Call) *ast.CallExpr {
 			// and "Type.method(...)" syntaxes collapse to this shape.
 			funcExpr = &ast.SelectExpr{
 				Operand: &ast.IdentExpr{Name: call.Func.RecvName()},
-				Field:   call.Func.Name,
-			}
-		} else if id, ok := call.Receiver.(*Ident); ok && id.Name != "" {
-			// A package function called through its import: the namespace is
-			// the alias at the call site, not a receiver on the declaration.
-			funcExpr = &ast.SelectExpr{
-				Operand: &ast.IdentExpr{Name: id.Name},
 				Field:   call.Func.Name,
 			}
 		} else {

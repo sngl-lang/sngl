@@ -52,7 +52,7 @@ func scanUsage(pkg *ir.Package) usage {
 					u.alert = true
 				}
 			}
-		case *ir.Select:
+		case *ir.Ident:
 			if ir.IsI18nPluralKey(n) {
 				u.i18n = true
 			}

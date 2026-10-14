@@ -74,13 +74,12 @@ func TestEmitI18nPlural_GoIRContext(t *testing.T) {
 	// namespace-call path (GoIRContext.evalCall → evalNamespaceCall) must emit
 	// i18n.GetTranslator().Plural(count, forms) — NOT
 	// i18n.GetTranslator().Plural("i18n", count) which was the pre-fix output.
-	fn := &ir.Func{Name: "plural", Receiver: ir.ReceiverNamed("i18n")}
-	receiverExpr := &ir.Ident{Name: "i18n"}
+	fn := &ir.Func{Name: "plural"}
 	countLit := &ir.Literal{Value: "3", Type: ir.TypInt}
 	formsMap := &ir.MapLitIR{}
 	call := &ir.Call{
-		Func:     fn,
-		Receiver: receiverExpr,
+		Func:      fn,
+		Qualifier: &ir.Namespace{Name: "i18n"},
 		Args: []ir.CallArg{
 			{Value: countLit},
 			{Value: formsMap},
@@ -114,12 +113,11 @@ func TestEmitI18nExactly_GoIRContext(t *testing.T) {
 			DeclaredAs: "exactly",
 		})
 	}
-	fn := &ir.Func{Name: "exactly", Receiver: ir.ReceiverNamed("i18n"), Intrinsic: "i18n.exactly"}
-	receiverExpr := &ir.Ident{Name: "i18n"}
+	fn := &ir.Func{Name: "exactly", Intrinsic: "i18n.exactly"}
 	nLit := &ir.Literal{Value: "0", Type: ir.TypInt}
 	call := &ir.Call{
-		Func:     fn,
-		Receiver: receiverExpr,
+		Func:      fn,
+		Qualifier: &ir.Namespace{Name: "i18n"},
 		Args: []ir.CallArg{
 			{Value: nLit},
 		},

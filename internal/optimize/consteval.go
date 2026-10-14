@@ -32,14 +32,13 @@ func isConstExpr(e ir.Expr, ctx *evalCtx) bool {
 		if x.Member != "" {
 			return true // an enum member is written, not computed
 		}
-		if v, ok := x.Sym.(*ir.Var); ok && v.IsConst {
+		// A const the compiler supplies no value for -- i18n's plural keys,
+		// whose value is the runtime's -- does not fold.
+		if v, ok := x.Sym.(*ir.Var); ok && v.IsConst && (v.Init != nil || v.Builtin.IsConst()) {
 			return true
 		}
 		if _, _, ok := ir.TargetNode(x.Sym); ok {
 			return true // a target's identity is its name
-		}
-		if _, ok := x.Sym.(*ir.Namespace); ok {
-			return true // namespace refs are compile-time resolvable
 		}
 		// Any symbol bound by a parent context (loop vars during expansion,
 		// component params during call-site inlining) becomes a const for
@@ -100,12 +99,6 @@ func isConstExpr(e ir.Expr, ctx *evalCtx) bool {
 		}
 		return true
 	case *ir.Select:
-		if v, ok := nsConst(x); ok {
-			return v.Init != nil || v.Builtin.IsConst()
-		}
-		if _, ok := nsTarget(x); ok {
-			return true
-		}
 		return isConstExpr(x.Operand, ctx)
 	case *ir.Index:
 		return isConstExpr(x.Operand, ctx) && isConstExpr(x.Idx, ctx)
@@ -250,16 +243,6 @@ func evalExpr(e ir.Expr, ctx *evalCtx) (any, bool) {
 		}
 		return result, true
 	case *ir.Select:
-		// A package member is a name, not a field of a value: the operand is a
-		// namespace and evaluating it yields nothing. A const behind one folds
-		// like any other — which is what makes `PLATFORM == html.platform`
-		// fold, since a target identity is reached only through its package.
-		if v, ok := nsConst(x); ok {
-			return evalIdent(&ir.Ident{Name: x.Field, Sym: v}, ctx)
-		}
-		if name, ok := nsTarget(x); ok {
-			return name, true
-		}
 		recv, ok := evalExpr(x.Operand, ctx)
 		if !ok {
 			return nil, false
@@ -1202,49 +1185,6 @@ func intToStr(v int) string {
 
 func floatToStr(v float64) string {
 	return fmt.Sprintf("%v", v)
-}
-
-// nsConst resolves a `pkg.name` selector to the const it names, or reports
-// false. The operand of such a selector is a namespace rather than a value, so
-// the member has to be looked up in the package's own symbols; a var is not a
-// const and does not fold.
-func nsConst(x *ir.Select) (*ir.Var, bool) {
-	id, ok := x.Operand.(*ir.Ident)
-	if !ok {
-		return nil, false
-	}
-	ns, ok := id.Sym.(*ir.Namespace)
-	if !ok || ns.Pkg == nil || ns.Pkg.Symbols == nil {
-		return nil, false
-	}
-	sym, ok := ns.Pkg.Symbols.LookupMember(x.Field)
-	if !ok {
-		return nil, false
-	}
-	v, ok := sym.(*ir.Var)
-	if !ok || !v.IsConst {
-		return nil, false
-	}
-	return v, true
-}
-
-// nsTarget is the registered name of the build-target node a package member
-// select names, as in `html.platform`.
-func nsTarget(x *ir.Select) (string, bool) {
-	id, ok := x.Operand.(*ir.Ident)
-	if !ok {
-		return "", false
-	}
-	ns, ok := id.Sym.(*ir.Namespace)
-	if !ok || ns.Pkg == nil || ns.Pkg.Symbols == nil {
-		return "", false
-	}
-	sym, ok := ns.Pkg.Symbols.LookupMember(x.Field)
-	if !ok {
-		return "", false
-	}
-	_, name, ok := ir.TargetNode(sym)
-	return name, ok
 }
 
 // unitConversionString spells a folded unit value the way every target

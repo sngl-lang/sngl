@@ -14,10 +14,9 @@ func createNodeLV(id, tag string) *ir.LocalVar {
 		Name: id,
 		Type: ir.TypDyn,
 		Init: &ir.Call{
-			Type:     ir.TypDyn,
-			Receiver: &ir.Ident{Name: "lower"},
-			Func:     &ir.Func{Name: "CreateNode"},
-			Args:     []ir.CallArg{{Value: &ir.Literal{Type: ir.TypString, Value: tag}}},
+			Type: ir.TypDyn,
+			Func: &ir.Func{Name: "CreateNode"},
+			Args: []ir.CallArg{{Value: &ir.Literal{Type: ir.TypString, Value: tag}}},
 		},
 	}
 }
@@ -32,9 +31,8 @@ func elemRef(id string) *ir.Ident {
 // passDeclarative emits.
 func appendChildStmt(parent, child string) *ir.CallStmt {
 	return &ir.CallStmt{Call: &ir.Call{
-		Type:     ir.TypVoid,
-		Receiver: &ir.Ident{Name: "lower"},
-		Func:     &ir.Func{Name: "AppendChild"},
+		Type: ir.TypVoid,
+		Func: &ir.Func{Name: "AppendChild"},
 		Args: []ir.CallArg{
 			{Value: elemRef(parent)},
 			{Value: elemRef(child)},

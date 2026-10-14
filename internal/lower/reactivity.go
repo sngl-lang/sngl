@@ -870,9 +870,8 @@ func (st *reactivityState) liveUpdaters(props []liveProp, slots []reactiveSlot, 
 			var body []ir.Stmt
 			for _, p := range bySite[n] {
 				body = append(body, &ir.CallStmt{Call: &ir.Call{
-					Type:     ir.TypVoid,
-					Receiver: lowerNSIdent(),
-					Func:     st.intrinsics[ir.NodeOpUpdateComponent],
+					Type: ir.TypVoid,
+					Func: st.intrinsics[ir.NodeOpUpdateComponent],
 					Args: []ir.CallArg{
 						{Value: inst},
 						{Value: &ir.Literal{Type: ir.TypString, Value: p.key}},
@@ -1369,9 +1368,8 @@ func (st *reactivityState) updaterStmts(props []reactiveProp, slots []reactiveSl
 				continue
 			}
 			out = append(out, &ir.CallStmt{Call: &ir.Call{
-				Type:     ir.TypVoid,
-				Receiver: lowerNSIdent(),
-				Func:     st.intrinsics[ir.NodeOpUpdateComponent],
+				Type: ir.TypVoid,
+				Func: st.intrinsics[ir.NodeOpUpdateComponent],
 				Args: []ir.CallArg{
 					{Value: nodeRef()},
 					{Value: &ir.Literal{Type: ir.TypString, Value: p.Key}},
@@ -1733,9 +1731,8 @@ func (st *reactivityState) synthesizeRenderSlotFunc(slotID string, cond ir.Expr,
 		Iter:   st.slotIdent(slotID),
 		Body: []ir.Stmt{
 			&ir.CallStmt{Call: &ir.Call{
-				Type:     ir.TypVoid,
-				Receiver: lowerNSIdent(),
-				Func:     st.intrinsics["RemoveChild"],
+				Type: ir.TypVoid,
+				Func: st.intrinsics["RemoveChild"],
 				Args: []ir.CallArg{
 					{Value: &ir.Ident{Name: parentParam.Name, Type: ir.TypDyn, Sym: parentParam, IsElementRef: true}},
 					{Value: &ir.Ident{Name: entryVar, Type: ir.TypDyn, Sym: entrySym, Synthesized: true}},

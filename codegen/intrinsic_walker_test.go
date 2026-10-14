@@ -80,9 +80,8 @@ func TestWalkLoweredDispatchesCreate(t *testing.T) {
 			Name: "__n0",
 			Type: ir.TypDyn,
 			Init: &ir.Call{
-				Receiver: &ir.Ident{Name: "lower"},
-				Func:     createFunc,
-				Args:     []ir.CallArg{{Value: &ir.Literal{Type: ir.TypString, Value: "vbox"}}},
+				Func: createFunc,
+				Args: []ir.CallArg{{Value: &ir.Literal{Type: ir.TypString, Value: "vbox"}}},
 			},
 		},
 	}
@@ -226,7 +225,7 @@ func nodeOpShapes() map[string]struct {
 } {
 	inst := func() ir.Expr { return &ir.Ident{Name: "__i0", Synthesized: true} }
 	lower := func(op string, args ...ir.Expr) *ir.Call {
-		c := &ir.Call{Receiver: &ir.Ident{Name: "lower"}, Func: &ir.Func{Name: op, Intrinsic: op}}
+		c := &ir.Call{Func: &ir.Func{Name: op, Intrinsic: op}}
 		for _, a := range args {
 			c.Args = append(c.Args, ir.CallArg{Value: a})
 		}

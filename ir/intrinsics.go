@@ -180,24 +180,28 @@ func IsI18nIntrinsic(name string) bool {
 
 const I18nPkg = "sngl:i18n"
 
-// IsI18nPluralKey reports whether sel reads one of i18n's predeclared
+// IsI18nPluralKey reports whether id reads one of i18n's predeclared
 // PluralKey constants — a CLDR category (zero, one, two, few, many, other).
-// Plural-map literals carry these as bare Selects that survive lowering, so
-// both usage detection and the JS/Kotlin backends have to recognize them.
+// Plural-map literals carry these as reads that survive lowering, so both
+// usage detection and the JS/Kotlin backends have to recognize them.
 //
-// The select's *type* is what identifies it. Matching the operand's spelling
-// instead read `i18n.one` and missed `t.one` under `import t "sngl:i18n"`,
-// which then emitted the alias as a bare identifier.
-func IsI18nPluralKey(sel *Select) bool {
-	if sel == nil {
+// The read's *type* is what identifies it, never the alias it was named
+// through: `t.one` under `import t "sngl:i18n"` is one, and so is a bare
+// `one` under a dot import.
+func IsI18nPluralKey(id *Ident) bool {
+	if id == nil {
 		return false
 	}
-	switch sel.Field {
+	v, ok := id.Sym.(*Var)
+	if !ok || !v.IsConst || v.Init != nil {
+		return false
+	}
+	switch v.Name {
 	case "zero", "one", "two", "few", "many", "other":
 	default:
 		return false
 	}
-	return isPluralKeyType(sel.Type)
+	return isPluralKeyType(v.Type)
 }
 
 func isPluralKeyType(t *Type) bool {

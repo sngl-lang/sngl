@@ -500,6 +500,12 @@ func (c *checker) inferIdent(x *ast.IdentExpr) ir.Expr {
 		c.error(x.Pos, "%s names a family, which is not a value: a value of it is a handle to one of its members", f.Name)
 		return &ir.Ident{AST: x, Type: TypDyn, Name: x.Name}
 	}
+	// An import names a package, and a package is not a value: a member of
+	// it is named through it, `math.pi`, which inferSelect reads.
+	if _, ok := sym.(*ir.Namespace); ok {
+		c.error(x.Pos, "%s names a package, which is not a value: name one of its members, %s.<name>", x.Name, x.Name)
+		return &ir.Ident{AST: x, Type: TypDyn, Name: x.Name}
+	}
 	if ctx, ok := sym.(*ir.Context); ok {
 		typ := ctx.Typ
 		if typ == nil {
@@ -511,7 +517,7 @@ func (c *checker) inferIdent(x *ast.IdentExpr) ir.Expr {
 	}
 	t := c.symType(sym)
 	if t == nil {
-		t = dynNoSymType(sym, "symbol %q (%T) has no type", x.Name, sym)
+		t = dynFallback("symbol %q (%T) has no type", x.Name, sym)
 	}
 	c.reportCountedHandleRead(x, sym, t)
 	ident := &ir.Ident{AST: x, Type: t, Name: x.Name, Sym: sym}
@@ -1308,7 +1314,96 @@ func isTypeSym(sym ir.Symbol) bool {
 	return false
 }
 
+// inferQualifiedCall is a call of another package's member named through
+// the import, `math.sqrt(x)` or `ui.vbox(…)`: the call is qualified by the
+// import, which is not a value and so is no receiver.
+func (c *checker) inferQualifiedCall(sel *ast.SelectExpr, call *ast.CallExpr, ns *ir.Namespace, ident *ast.IdentExpr) ir.Expr {
+	// An import that resolved to no package -- a check with no resolver --
+	// has no members to call, and the import is where that is the problem.
+	if ns.Pkg == nil {
+		return &ir.Call{AST: call, Type: TypDyn, Qualifier: ns, Args: c.checkCallArgs(call.Args, nil)}
+	}
+	if ns.Pkg != nil {
+		if fsym, ok := ns.Pkg.Symbols.LookupMember(sel.Field); ok {
+			if c.rejectUnexported(sel.Pos, fsym) {
+				return &ir.Call{AST: call, Type: TypDyn, Args: c.checkCallArgs(call.Args, nil)}
+			}
+			// Component in namespace — validate visibility and props.
+			if comp, ok := fsym.(*ir.Component); ok {
+				// Private component filter: only for imported user
+				// packages. Identity, not name — the stdlib is
+				// bound under whatever alias the file chose.
+				if ns.Pkg != c.stdlibPkg && len(sel.Field) > 0 && sel.Field[0] >= 'a' && sel.Field[0] <= 'z' {
+					c.error(sel.Pos, "unknown component %q in package %s", sel.Field, ident.Name)
+					return &ir.Call{AST: call, Type: TypDyn, Args: c.checkCallArgs(call.Args, nil)}
+				}
+				c.takeCallTypeArgs(call, comp.TypeParams)
+				args := c.checkComponentCallArgs(call, comp)
+				c.validateCallStmtComponentArgs(call, comp)
+				return &ir.Call{AST: call, Type: comp.SymType(), Qualifier: ns, Args: args}
+			}
+			// A qualified unit names a type, and naming one is the
+			// point of the cast: `time.duration(1m)` is the same
+			// expected-type provider the bare `duration(1m)` is.
+			if ud, ok := fsym.(*ir.UnitDef); ok {
+				return c.inferUnitConversion(call, ud.SymType())
+			}
+			// An ir.Call is not what the optimizer folds.
+			if target, ok := stringReprCast(fsym); ok {
+				return c.inferBuiltinConversion(call, target, ident.Name+"."+sel.Field)
+			}
+			t := c.symType(fsym)
+			var sig *ir.FuncSig
+			if t != nil && t.Kind == ir.TypeFunc && t.Sig != nil {
+				sig = t.Sig
+			}
+			// Infer generic type params from arguments (e.g. the
+			// html.frontend[T]/html.backend[T] placement directives),
+			// mirroring the bare-call path above.
+			var written map[string]*ir.Type
+			if sig != nil {
+				written = c.takeCallTypeArgs(call, sig.TypeParams)
+			}
+			if sig != nil && len(sig.TypeParams) > 0 {
+				sig = c.inferTypeParams(call.Pos, sig, call.Args, written)
+			}
+			args := c.checkCallArgs(call.Args, sig)
+			var resolvedFunc *ir.Func
+			if f, ok := fsym.(*ir.Func); ok {
+				resolvedFunc = f
+			}
+			var retType *ir.Type
+			if sig != nil {
+				retType = callRetType(sig)
+			} else {
+				retType = t
+			}
+			// A func value the package holds is called through what it
+			// holds: the callee is the qualified read of it.
+			if v, ok := fsym.(*ir.Var); ok && resolvedFunc == nil {
+				callee := &ir.Ident{Type: t, Name: v.Name, Sym: v, Qualifier: ns, SelAST: sel}
+				return &ir.Call{AST: call, Type: retType, Callee: callee, Args: args}
+			}
+			return &ir.Call{AST: call, Type: retType, Func: resolvedFunc, Qualifier: ns, Args: args}
+		}
+	}
+	// A name the package does not declare (e.g. html.code).
+	if resolved := c.nsMember(sel.Pos, ns, sel.Field); resolved != nil {
+		t := resolved.SymType()
+		if t == nil {
+			t = dynFallback("member %s.%s (%T) has no type", ident.Name, sel.Field, resolved)
+		}
+		args := c.checkCallArgs(call.Args, nil)
+		return &ir.Call{AST: call, Type: t, Qualifier: ns, Args: args}
+	}
+	c.error(sel.Pos, "unknown component %q in package %s", sel.Field, ident.Name)
+	return &ir.Call{AST: call, Type: TypDyn, Args: c.checkCallArgs(call.Args, nil)}
+}
+
 func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) ir.Expr {
+	if ns, ident := c.namespaceOperand(sel.Operand); ns != nil {
+		return c.inferQualifiedCall(sel, call, ns, ident)
+	}
 	// Determine if operand is a type name (static call) vs a value (instance call).
 	isStatic := isTypeSym(c.staticReceiverSym(sel.Operand))
 
@@ -1317,83 +1412,6 @@ func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) ir.Ex
 
 	if c.rejectVoidReceiver(receiver, sel.Operand) {
 		return &ir.Call{AST: call, Type: TypDyn, Args: c.checkCallArgs(call.Args, nil)}
-	}
-
-	// Namespace function or component call: ns.func() or ns.Component().
-	if ident, ok := sel.Operand.(*ast.IdentExpr); ok {
-		if sym, ok := c.scope.Lookup(ident.Name); ok {
-			if ns, ok := sym.(*ir.Namespace); ok && ns.Pkg != nil {
-				if ns.Pkg != nil {
-					if fsym, ok := ns.Pkg.Symbols.LookupMember(sel.Field); ok {
-						if c.rejectUnexported(sel.Pos, fsym) {
-							return &ir.Call{AST: call, Type: TypDyn, Args: c.checkCallArgs(call.Args, nil)}
-						}
-						// Component in namespace — validate visibility and props.
-						if comp, ok := fsym.(*ir.Component); ok {
-							// Private component filter: only for imported user
-							// packages. Identity, not name — the stdlib is
-							// bound under whatever alias the file chose.
-							if ns.Pkg != c.stdlibPkg && len(sel.Field) > 0 && sel.Field[0] >= 'a' && sel.Field[0] <= 'z' {
-								c.error(sel.Pos, "unknown component %q in package %s", sel.Field, ident.Name)
-								return &ir.Call{AST: call, Type: TypDyn, Args: c.checkCallArgs(call.Args, nil)}
-							}
-							c.takeCallTypeArgs(call, comp.TypeParams)
-							args := c.checkComponentCallArgs(call, comp)
-							c.validateCallStmtComponentArgs(call, comp)
-							return &ir.Call{AST: call, Type: comp.SymType(), Receiver: receiverExpr, Args: args}
-						}
-						// A qualified unit names a type, and naming one is the
-						// point of the cast: `time.duration(1m)` is the same
-						// expected-type provider the bare `duration(1m)` is.
-						if ud, ok := fsym.(*ir.UnitDef); ok {
-							return c.inferUnitConversion(call, ud.SymType())
-						}
-						// An ir.Call is not what the optimizer folds.
-						if target, ok := stringReprCast(fsym); ok {
-							return c.inferBuiltinConversion(call, target, ident.Name+"."+sel.Field)
-						}
-						t := c.symType(fsym)
-						var sig *ir.FuncSig
-						if t != nil && t.Kind == ir.TypeFunc && t.Sig != nil {
-							sig = t.Sig
-						}
-						// Infer generic type params from arguments (e.g. the
-						// html.frontend[T]/html.backend[T] placement directives),
-						// mirroring the bare-call path above.
-						var written map[string]*ir.Type
-						if sig != nil {
-							written = c.takeCallTypeArgs(call, sig.TypeParams)
-						}
-						if sig != nil && len(sig.TypeParams) > 0 {
-							sig = c.inferTypeParams(call.Pos, sig, call.Args, written)
-						}
-						args := c.checkCallArgs(call.Args, sig)
-						var resolvedFunc *ir.Func
-						if f, ok := fsym.(*ir.Func); ok {
-							resolvedFunc = f
-						}
-						var retType *ir.Type
-						if sig != nil {
-							retType = callRetType(sig)
-						} else {
-							retType = t
-						}
-						return &ir.Call{AST: call, Type: retType, Func: resolvedFunc, Receiver: receiverExpr, Args: args}
-					}
-				}
-				// A name the package does not declare (e.g. html.code).
-				if resolved := c.nsMember(sel.Pos, ns, sel.Field); resolved != nil {
-					t := resolved.SymType()
-					if t == nil {
-						t = dynFallback("member %s.%s (%T) has no type", ident.Name, sel.Field, resolved)
-					}
-					args := c.checkCallArgs(call.Args, nil)
-					return &ir.Call{AST: call, Type: t, Receiver: receiverExpr, Args: args}
-				}
-				c.error(sel.Pos, "unknown component %q in package %s", sel.Field, ident.Name)
-				return &ir.Call{AST: call, Type: TypDyn, Args: c.checkCallArgs(call.Args, nil)}
-			}
-		}
 	}
 
 	receiverExpr, receiver = callComputedOperand(receiverExpr, receiver)
@@ -2077,7 +2095,97 @@ func (c *checker) rejectVoidReceiver(t *ir.Type, operand ast.Expr) bool {
 	return true
 }
 
+// namespaceOperand is the import an operand names, when it is a bare name
+// bound to one. A namespace is not a value, so a select or call through one
+// is read here rather than by checking the operand.
+func (c *checker) namespaceOperand(e ast.Expr) (*ir.Namespace, *ast.IdentExpr) {
+	ident, ok := e.(*ast.IdentExpr)
+	if !ok {
+		return nil, nil
+	}
+	sym, ok := c.scope.Lookup(ident.Name)
+	if !ok {
+		return nil, nil
+	}
+	ns, ok := sym.(*ir.Namespace)
+	if !ok {
+		return nil, nil
+	}
+	return ns, ident
+}
+
+// inferQualified is a member of another package read through the import
+// it was named by, `math.pi`: the member's Ident, qualified by the import.
+func (c *checker) inferQualified(x *ast.SelectExpr, ns *ir.Namespace, ident *ast.IdentExpr) ir.Expr {
+	bad := func() ir.Expr {
+		return &ir.Ident{Type: TypDyn, Name: x.Field, Qualifier: ns, SelAST: x}
+	}
+	// An import that resolved to no package -- a check with no resolver --
+	// has no members to read, and the import is where that is the problem.
+	if ns.Pkg == nil {
+		return bad()
+	}
+	if ns.Pkg != nil {
+		if fsym, ok := ns.Pkg.Symbols.LookupMember(x.Field); ok {
+			if c.rejectUnexported(x.Pos, fsym) {
+				return bad()
+			}
+			c.reportUnusable(x.Pos, ident.Name+"."+x.Field, fsym)
+			// A family reached through its package is no more a value than
+			// it is in scope.
+			if f, isComp := fsym.(*ir.Component); isComp && f.IsFamily() {
+				c.error(x.Pos, "%s.%s names a family, which is not a value: a value of it is a handle to one of its members", ident.Name, x.Field)
+				return bad()
+			}
+			// A context reached through its package is the same context:
+			// `i18n.locale` reads what `locale` reads where the name is in
+			// scope unqualified.
+			if ctx, isCtx := fsym.(*ir.Context); isCtx {
+				typ := ctx.Typ
+				if typ == nil {
+					typ = ir.TypDyn // already reported, as in inferIdent
+				}
+				return &ir.ContextRead{Ref: ctx, Typ: typ}
+			}
+			if _, isNS := fsym.(*ir.Namespace); isNS {
+				c.error(x.Pos, "%s.%s names a package, which is not a value", ident.Name, x.Field)
+				return bad()
+			}
+			t := c.symType(fsym)
+			if t == nil {
+				t = dynFallback("member %s.%s (%T) has no type", ident.Name, x.Field, fsym)
+			}
+			// A host value reached through its package is the host
+			// identifier it is unqualified: a backend spells it from the
+			// declaration, and the import names nothing the host declares.
+			if v, ok := fsym.(*ir.Var); ok && ir.IsHostValue(v) {
+				return &ir.Ident{Type: t, Name: v.Name, Sym: v}
+			}
+			return &ir.Ident{Type: t, Name: x.Field, Sym: fsym, Qualifier: ns, SelAST: x}
+		}
+	}
+	// A name the package does not declare. A wildcard may still answer to
+	// it -- html's element set is open, so `html.div` is a name nobody
+	// declared and still resolves.
+	if resolved := c.nsMember(x.Pos, ns, x.Field); resolved != nil {
+		t := resolved.SymType()
+		if t == nil {
+			t = dynFallback("member %s.%s (%T) has no type", ident.Name, x.Field, resolved)
+		}
+		return &ir.Ident{Type: t, Name: x.Field, Sym: resolved, Qualifier: ns, SelAST: x}
+	}
+	// Nothing declares it and no wildcard covers it. A package's members
+	// are a closed set unless it says otherwise.
+	if isExportedMemberName(x.Field) {
+		c.error(x.Pos, "undefined: %s.%s", ident.Name, x.Field)
+	}
+	return bad()
+}
+
 func (c *checker) inferSelect(x *ast.SelectExpr) ir.Expr {
+	if ns, ident := c.namespaceOperand(x.Operand); ns != nil {
+		return c.inferQualified(x, ns, ident)
+	}
 	// What the select is expected to be says nothing of what it reads off:
 	// an option expected of `node.left` is no reason to leave `node` wrapped.
 	operandExpr := c.checkExprExpecting(x.Operand, nil)
@@ -2116,69 +2224,6 @@ func (c *checker) inferSelect(x *ast.SelectExpr) ir.Expr {
 	operandExpr, operand = callComputedOperand(operandExpr, operand)
 
 	{
-		// Namespace member access: ns.field.
-		if ident, ok := x.Operand.(*ast.IdentExpr); ok {
-			if sym, ok := c.scope.Lookup(ident.Name); ok {
-				if ns, ok := sym.(*ir.Namespace); ok {
-					if ns.Pkg != nil {
-						if fsym, ok := ns.Pkg.Symbols.LookupMember(x.Field); ok {
-							if c.rejectUnexported(x.Pos, fsym) {
-								return &ir.Select{AST: x, Type: TypDyn, Operand: operandExpr, Field: x.Field}
-							}
-							c.reportUnusable(x.Pos, ident.Name+"."+x.Field, fsym)
-							if f, isComp := fsym.(*ir.Component); isComp && f.IsFamily() {
-								c.error(x.Pos, "%s.%s names a family, which is not a value: a value of it is a handle to one of its members", ident.Name, x.Field)
-								return &ir.Select{AST: x, Type: TypDyn, Operand: operandExpr, Field: x.Field}
-							}
-							// A context reached through its package is the
-							// same context: `i18n.locale` reads what `locale`
-							// reads where the name is in scope unqualified.
-							if ctx, isCtx := fsym.(*ir.Context); isCtx {
-								typ := ctx.Typ
-								if typ == nil {
-									typ = ir.TypDyn // already reported, as above
-								}
-								return &ir.ContextRead{Ref: ctx, Typ: typ}
-							}
-							// A family reached through its package is no
-							// more a value than it is in scope.
-							if f, ok := fsym.(*ir.Component); ok && f.IsFamily() {
-								c.error(x.Pos, "%s.%s names a family, which is not a value: a value of it is a handle to one of its members", ident.Name, f.Name)
-								return &ir.Select{AST: x, Type: TypDyn, Operand: operandExpr, Field: x.Field}
-							}
-							t := c.symType(fsym)
-							// A host value reached through its package is the
-							// host identifier it is unqualified: a backend
-							// spells it from the declaration, and a select of
-							// a namespace names nothing the host declares.
-							if v, ok := fsym.(*ir.Var); ok && ir.IsHostValue(v) {
-								return &ir.Ident{Type: t, Name: v.Name, Sym: v}
-							}
-							return &ir.Select{AST: x, Type: t, Operand: operandExpr, Field: x.Field}
-						}
-					}
-					// A name the package does not declare. A wildcard may still
-					// answer to it -- html's element set is open, so `html.div`
-					// is a name nobody declared and still resolves.
-					if resolved := c.nsMember(x.Pos, ns, x.Field); resolved != nil {
-						t := resolved.SymType()
-						if t == nil {
-							t = dynFallback("member %s.%s (%T) has no type", ident.Name, x.Field, resolved)
-						}
-						return &ir.Select{AST: x, Type: t, Operand: operandExpr, Field: x.Field}
-					}
-					// Nothing declares it and no wildcard covers it. Reported
-					// rather than typed dyn: a package's members are a closed
-					// set unless it says otherwise, and a dyn here made every
-					// misspelled member of every target package compile.
-					if isExportedMemberName(x.Field) {
-						c.error(x.Pos, "undefined: %s.%s", ident.Name, x.Field)
-					}
-					return &ir.Select{AST: x, Type: TypDyn, Operand: operandExpr, Field: x.Field}
-				}
-			}
-		}
-
 		// Enum member access: EnumType.member. Normalize to the same IR shape
 		// as a bare enum member reference so codegen never sees a dangling
 		// EnumType.member select that the target language doesn't define.

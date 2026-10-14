@@ -238,12 +238,8 @@ func EmitIntrinsicCall(lang, platform string, c *ir.Call, translate func(ir.Expr
 	// Prepend the receiver only when it's a value operand filling the
 	// intrinsic's first param — i.e. a method-style call like canvas
 	// `ctx.fillRect(x,y,w,h)` (params [ctx,x,y,w,h], explicit args [x,y,w,h]).
-	// A namespace-qualified call like `stdlib.StrLength(s)` (the inlined body
-	// of `string.length`) carries the namespace as Receiver but passes every
-	// operand as an explicit arg, so the explicit args already fill all params;
-	// prepending would shift the `stdlib` namespace ident into a[0] and emit
-	// e.g. `len(stdlib)`. Gate on the param count so both shapes land their
-	// operands at the right indices.
+	// A call whose explicit args already fill every param has no receiver
+	// slot to fill.
 	def := ir.LookupIntrinsic(c.Func.Intrinsic)
 	prependReceiver := c.Receiver != nil && (def == nil || len(c.Args) < len(def.Params))
 	if prependReceiver {

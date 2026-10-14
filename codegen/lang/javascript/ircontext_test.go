@@ -45,11 +45,7 @@ func TestJsBinary_IntDivisionTruncates(t *testing.T) {
 func TestJsSelect_I18nPluralKeyConst(t *testing.T) {
 	ctx := codegen.NewExprCtx(&ir.Package{})
 	jc := NewIRContext(ctx)
-	expr := &ir.Select{
-		Operand: &ir.Ident{Name: "i18n"},
-		Field:   "other",
-		Type:    pluralKeyType(),
-	}
+	expr := pluralKeyRef("other", pluralKeyType())
 	got := jc.EvalExpr(expr)
 	if got != `"other"` {
 		t.Errorf("got %q, want \"other\"", got)
@@ -92,11 +88,7 @@ func TestJsMapLit_PluralKeyPlainObject(t *testing.T) {
 	jc := NewIRContext(ctx)
 	keyType := pluralKeyType()
 	mapType := ir.MapOf(keyType, ir.TypString)
-	keyExpr := &ir.Select{
-		Operand: &ir.Ident{Name: "i18n"},
-		Field:   "one",
-		Type:    keyType,
-	}
+	keyExpr := pluralKeyRef("one", keyType)
 	valExpr := &ir.Literal{Value: "# item", Type: ir.TypString}
 	m := &ir.MapLitIR{
 		Type: mapType,
@@ -183,9 +175,8 @@ func TestJsNamespaceCall_CreateComponent(t *testing.T) {
 	ctx := codegen.NewExprCtx(pkg)
 	jc := NewIRContext(ctx)
 	call := &ir.Call{
-		Type:     ir.TypDyn,
-		Receiver: &ir.Ident{Name: "lower", Type: ir.TypDyn},
-		Func:     &ir.Func{Name: "CreateComponent", Intrinsic: "CreateComponent"},
+		Type: ir.TypDyn,
+		Func: &ir.Func{Name: "CreateComponent", Intrinsic: "CreateComponent"},
 		Args: []ir.CallArg{
 			{Value: &ir.Ident{Name: "Card", Sym: comp}},
 			{Value: &ir.StructLit{}},
@@ -206,9 +197,8 @@ func TestJsNamespaceCall_CreateComponentWithProps(t *testing.T) {
 	ctx := codegen.NewExprCtx(pkg)
 	jc := NewIRContext(ctx)
 	call := &ir.Call{
-		Type:     ir.TypDyn,
-		Receiver: &ir.Ident{Name: "lower", Type: ir.TypDyn},
-		Func:     &ir.Func{Name: "CreateComponent", Intrinsic: "CreateComponent"},
+		Type: ir.TypDyn,
+		Func: &ir.Func{Name: "CreateComponent", Intrinsic: "CreateComponent"},
 		Args: []ir.CallArg{
 			{Value: &ir.Ident{Name: "Badge", Sym: comp}},
 			{Value: &ir.StructLit{Fields: []ir.FieldInit{
@@ -530,4 +520,15 @@ func TestUnimplementedIntrinsicPanics(t *testing.T) {
 // a hand-built one has to carry it.
 func pluralKeyType() *ir.Type {
 	return &ir.Type{Kind: ir.TypeStruct, Decl: &ir.StructDef{Name: "PluralKey"}}
+}
+
+// pluralKeyRef is a read of one of i18n's predeclared PluralKey constants
+// through the import, as the checker builds it.
+func pluralKeyRef(name string, t *ir.Type) *ir.Ident {
+	return &ir.Ident{
+		Name:      name,
+		Type:      t,
+		Sym:       &ir.Var{Name: name, Type: t, IsConst: true},
+		Qualifier: &ir.Namespace{Name: "i18n"},
+	}
 }

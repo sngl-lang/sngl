@@ -315,13 +315,6 @@ func (gc *GoIRContext) Select(n *ir.Select, operand string) string {
 	if n.Field == "length" {
 		return "len(" + operand + ")"
 	}
-	// i18n plural-category constants: map SNGL names (zero/one/…/other) to
-	// the qualified Go runtime names (i18n.PluralZero/PluralOne/…/PluralOther).
-	if operand == "i18n" {
-		if goName := i18nPluralKeyGoName(n.Field); goName != "" {
-			return "i18n." + goName
-		}
-	}
 	// A Select on a RawFieldAccess ident reads the unexported field directly,
 	// so a generated `_test.go` in the same package can touch Model fields.
 	if gc.rawFieldAccess(n.Operand) {
@@ -820,6 +813,13 @@ func (gc *GoIRContext) evalIdent(n *ir.Ident) string {
 	if n.Member != "" {
 		return fmt.Sprintf("%q", n.Member)
 	}
+	// i18n plural-category constants: map SNGL names (zero/one/…/other) to
+	// the qualified Go runtime names (i18n.PluralZero/PluralOne/…/PluralOther).
+	if ir.IsI18nPluralKey(n) {
+		if goName := i18nPluralKeyGoName(n.Name); goName != "" {
+			return "i18n." + goName
+		}
+	}
 
 	// passNoImplicitRecv's synthesized receiver renders as the Model's `m`.
 	if _, ok := n.Sym.(*ir.Component); ok {
@@ -940,6 +940,19 @@ func (gc *GoIRContext) evalCall(n *ir.Call) string {
 		return out
 	}
 
+	if out, ok := gc.evalCreateComponent(n); ok {
+		return out
+	}
+	if n.Qualifier != nil && n.Func != nil {
+		if out, ok := gc.evalQualifiedCall(n); ok {
+			return out
+		}
+	}
+	// A member nothing declares -- an import that resolved to no package --
+	// is named as the call site wrote it.
+	if n.Qualifier != nil && n.Func == nil {
+		return n.QualifiedName() + "(" + strings.Join(gc.evalCallArgs(n.Args), ", ") + ")"
+	}
 	if n.Receiver != nil {
 		return gc.evalNamespaceCall(n)
 	}
@@ -1133,84 +1146,67 @@ func methodTail(name string) string {
 	return name
 }
 
+// evalCreateComponent is lower.CreateComponent(comp, props), which builds a
+// component instance: m.render<Comp>(propArgs...), with the prop literal's
+// fields reordered to the component's declared prop order.
+func (gc *GoIRContext) evalCreateComponent(n *ir.Call) (string, bool) {
+	comp := CreateComponentTarget(n)
+	if comp == nil || !ir.IsNodeOpCall(n) || len(n.Args) != 2 {
+		return "", false
+	}
+	var pargs []string
+	lit, _ := n.Args[1].Value.(*ir.StructLit)
+	for _, p := range comp.Props {
+		var val ir.Expr
+		if lit != nil {
+			for _, f := range lit.Fields {
+				if f.Name == p.Name {
+					val = f.Value
+					break
+				}
+			}
+		}
+		switch {
+		case val != nil:
+			pargs = append(pargs, gc.EvalExpr(val))
+		case p.Default != nil:
+			pargs = append(pargs, gc.EvalExpr(p.Default))
+		default:
+			pargs = append(pargs, "nil")
+		}
+	}
+	// A host that builds the component as a record calls the record's ctor,
+	// which is a free function: there is no receiver to reach it through, and
+	// the instance it returns is what the caller holds.
+	if gc.InstanceRecords && comp.RuntimeInstance {
+		pargs = append([]string{gc.ModelRef()}, pargs...)
+		return ComponentInstanceCtor(comp.Name) + "(" + strings.Join(pargs, ", ") + ")", true
+	}
+	return gc.RecvName() + "." + ComponentRenderMethod(comp.Name) + "(" + strings.Join(pargs, ", ") + ")", true
+}
+
+// evalQualifiedCall is a call named through an import, where the import still
+// means something in Go. A SNGL package's declarations are emitted into this
+// very Go package, so the alias names nothing Go has, and the call is an
+// ordinary one: false. The alias survives only for a native import, which
+// nativeCall answers before this.
+func (gc *GoIRContext) evalQualifiedCall(n *ir.Call) (string, bool) {
+	// An i18n.* entry point is the runtime package's.
+	if n.Qualifier.Name == "i18n" {
+		if result := goBuiltinMethodFromArgs("i18n."+n.Func.Name, gc.evalCallArgs(n.Args)); result != "" {
+			return result, true
+		}
+	}
+	return "", false
+}
+
 func (gc *GoIRContext) evalNamespaceCall(n *ir.Call) string {
 	receiver := gc.EvalExpr(n.Receiver)
 	args := gc.evalCallArgs(n.Args)
 
 	if n.Func != nil {
-
 		fname := n.Func.Name
-		// A package function called through its import has no receiver on the
-		// declaration — the namespace is the alias at the call site. Name it
-		// from there so a qualified call reads the same either way.
-		receiverName := n.Func.RecvName()
-		if receiverName == "" {
-			if id, ok := n.Receiver.(*ir.Ident); ok {
-				receiverName = id.Name
-			}
-		}
-
-		qualName := receiverName + "." + fname
-
-		// lower.CreateComponent(comp, props) → m.render<Comp>(propArgs...),
-		// with the prop literal's fields reordered to the component's
-		// declared prop order.
-		if fname == "CreateComponent" && len(n.Args) == 2 {
-			if compIdent, ok := n.Args[0].Value.(*ir.Ident); ok {
-				if comp, ok := compIdent.Sym.(*ir.Component); ok {
-					var pargs []string
-					lit, _ := n.Args[1].Value.(*ir.StructLit)
-					for _, p := range comp.Props {
-						var val ir.Expr
-						if lit != nil {
-							for _, f := range lit.Fields {
-								if f.Name == p.Name {
-									val = f.Value
-									break
-								}
-							}
-						}
-						switch {
-						case val != nil:
-							pargs = append(pargs, gc.EvalExpr(val))
-						case p.Default != nil:
-							pargs = append(pargs, gc.EvalExpr(p.Default))
-						default:
-							pargs = append(pargs, "nil")
-						}
-					}
-					// A host that builds the component as a record calls
-					// the record's ctor, which is a free function: there is
-					// no receiver to reach it through, and the instance it
-					// returns is what the caller holds.
-					if gc.InstanceRecords && comp.RuntimeInstance {
-						pargs = append([]string{gc.ModelRef()}, pargs...)
-						return ComponentInstanceCtor(comp.Name) + "(" + strings.Join(pargs, ", ") + ")"
-					}
-					return gc.RecvName() + "." + ComponentRenderMethod(comp.Name) + "(" + strings.Join(pargs, ", ") + ")"
-				}
-			}
-		}
-
-		// A SNGL package's declarations are emitted into this very Go package,
-		// so the alias at the call site names nothing Go has: `readout.cells(…)`
-		// is `Cells(…)` or `m.cells(…)`, whichever the emitter chose for it.
-		// The alias only survives for a native import, handled above.
-		if gc.snglNamespace(n.Receiver) {
-			if gc.Ctx != nil && gc.Ctx.FreeFuncs[fname] {
-				return ExportName(fname) + "(" + strings.Join(args, ", ") + ")"
-			}
-			return gc.RecvName() + "." + fname + "(" + strings.Join(args, ", ") + ")"
-		}
-
-		// An i18n.* namespace receiver is the module object, not a value
-		// argument, so a(0) must be the first semantic argument.
-		if receiverName == "i18n" {
-			if result := goBuiltinMethodFromArgs(qualName, args); result != "" {
-				return result
-			}
-		}
-
+		qualName := n.Func.RecvName() + "." + fname
 		allArgs := append([]string{receiver}, args...)
 		if result := goBuiltinMethodFromArgs(qualName, allArgs); result != "" {
 			return result
@@ -1237,18 +1233,6 @@ func isStructExpr(e ir.Expr) bool {
 	}
 	sd, ok := t.Decl.(*ir.StructDef)
 	return ok && sd.Builtin == ir.BuiltinNone
-}
-
-// snglNamespace reports whether an expression is the alias of an imported
-// SNGL package — one whose declarations this build emits itself, as opposed to
-// a scheme import naming a real Go package.
-func (gc *GoIRContext) snglNamespace(e ir.Expr) bool {
-	id, ok := e.(*ir.Ident)
-	if !ok {
-		return false
-	}
-	ns, ok := id.Sym.(*ir.Namespace)
-	return ok && ns.Pkg != nil
 }
 
 func (gc *GoIRContext) evalTypeMethodCall(n *ir.Call) string {

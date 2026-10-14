@@ -106,18 +106,6 @@ func nodeOpFunc(op string) *ir.Func {
 	return &ir.Func{Name: op, Intrinsic: op}
 }
 
-// lowerNS is the namespace symbol the intrinsic-call receivers
-// lowering emits resolve to. Lowering carries its own rather than reading the
-// checker's: a pass emits an intrinsic call whether or not the source package
-// ever named the namespace, so there is not always one to borrow.
-var lowerNS = &ir.Namespace{Name: "lower"}
-
-// lowerNSIdent returns a fresh Ident referring to the `lower` namespace.
-// Used as Call.Receiver so ir.Convert emits SelectExpr{Operand: Ident("lower"), Field: name}.
-func lowerNSIdent() *ir.Ident {
-	return &ir.Ident{Name: "lower", Type: ir.TypDyn, Sym: lowerNS, Synthesized: true}
-}
-
 // seedCounter scans every NodeInst.ID matching __n<digits> and starts the
 // counter past the max. Lets NoDeclarative coexist with NoReactivity's
 // pre-assigned IDs without clashing.
@@ -211,9 +199,8 @@ func (st *declarativeState) processStmtsForParent(stmts []ir.Stmt, funcs *[]*ir.
 			if parentID != "" {
 				out = append(out, &ir.CallStmt{
 					Call: &ir.Call{
-						Type:     ir.TypVoid,
-						Receiver: lowerNSIdent(),
-						Func:     st.intrinsics["AppendChild"],
+						Type: ir.TypVoid,
+						Func: st.intrinsics["AppendChild"],
 						Args: []ir.CallArg{
 							{Value: &ir.Ident{Name: parentID, Type: ir.TypDyn, IsElementRef: true, Synthesized: true}},
 							{Value: &ir.Ident{Name: st.attachName(n), Type: ir.TypDyn, IsElementRef: true, Synthesized: true}},
@@ -311,9 +298,8 @@ func (st *declarativeState) lowerNodeIntoStmts(n *ir.NodeInst, funcs *[]*ir.Func
 		Type:    varType,
 		NodeAST: n.AST,
 		Init: &ir.Call{
-			Type:     ir.TypDyn,
-			Receiver: lowerNSIdent(),
-			Func:     st.intrinsics["CreateNode"],
+			Type: ir.TypDyn,
+			Func: st.intrinsics["CreateNode"],
 			Args: []ir.CallArg{
 				{Value: &ir.Literal{Type: ir.TypString, Value: n.Name}},
 			},
@@ -380,9 +366,8 @@ func (st *declarativeState) lowerNodeIntoStmts(n *ir.NodeInst, funcs *[]*ir.Func
 
 		stmts = append(stmts, &ir.CallStmt{
 			Call: &ir.Call{
-				Type:     ir.TypVoid,
-				Receiver: lowerNSIdent(),
-				Func:     st.intrinsics["AttachHandler"],
+				Type: ir.TypVoid,
+				Func: st.intrinsics["AttachHandler"],
 				Args: []ir.CallArg{
 					{Value: &ir.Ident{Name: id, Type: ir.TypDyn, IsElementRef: true, Synthesized: true}},
 					{Value: &ir.Literal{Type: ir.TypString, Value: h.Name}},
@@ -401,9 +386,8 @@ func (st *declarativeState) lowerNodeIntoStmts(n *ir.NodeInst, funcs *[]*ir.Func
 			stmts = append(stmts, st.lowerNodeIntoStmts(cn, funcs)...)
 			stmts = append(stmts, &ir.CallStmt{
 				Call: &ir.Call{
-					Type:     ir.TypVoid,
-					Receiver: lowerNSIdent(),
-					Func:     st.intrinsics["AppendChild"],
+					Type: ir.TypVoid,
+					Func: st.intrinsics["AppendChild"],
 					Args: []ir.CallArg{
 						{Value: &ir.Ident{Name: id, Type: ir.TypDyn, IsElementRef: true, Synthesized: true}},
 						{Value: &ir.Ident{Name: st.attachName(cn), Type: ir.TypDyn, IsElementRef: true, Synthesized: true}},
@@ -461,9 +445,8 @@ func (st *declarativeState) componentCreateCall(n *ir.NodeInst) *ir.Call {
 		})
 	}
 	return &ir.Call{
-		Type:     ir.TypDyn,
-		Receiver: lowerNSIdent(),
-		Func:     st.intrinsics[ir.NodeOpCreateComponent],
+		Type: ir.TypDyn,
+		Func: st.intrinsics[ir.NodeOpCreateComponent],
 		Args: []ir.CallArg{
 			{Value: compIdent},
 			{Value: &ir.StructLit{Type: ir.TypDyn, Fields: fields}},
@@ -481,9 +464,8 @@ func (st *declarativeState) componentRootBinding(n *ir.NodeInst) []ir.Stmt {
 		Name: st.attachName(n),
 		Type: ir.TypDyn,
 		Init: &ir.Call{
-			Type:     ir.TypDyn,
-			Receiver: lowerNSIdent(),
-			Func:     st.intrinsics[ir.NodeOpComponentRoot],
+			Type: ir.TypDyn,
+			Func: st.intrinsics[ir.NodeOpComponentRoot],
 			Args: []ir.CallArg{
 				{Value: &ir.Ident{Name: n.ID, Type: ir.TypDyn, IsElementRef: true, Synthesized: true}},
 			},
@@ -494,9 +476,8 @@ func (st *declarativeState) componentRootBinding(n *ir.NodeInst) []ir.Stmt {
 // appendChildStmt attaches a node, named, to a parent expression.
 func (st *declarativeState) appendChildStmt(parent ir.Expr, child string) ir.Stmt {
 	return &ir.CallStmt{Call: &ir.Call{
-		Type:     ir.TypVoid,
-		Receiver: lowerNSIdent(),
-		Func:     st.intrinsics[ir.NodeOpAppendChild],
+		Type: ir.TypVoid,
+		Func: st.intrinsics[ir.NodeOpAppendChild],
 		Args: []ir.CallArg{
 			{Value: parent},
 			{Value: &ir.Ident{Name: child, Type: ir.TypDyn, IsElementRef: true, Synthesized: true}},
@@ -527,9 +508,8 @@ func (st *declarativeState) lowerComponentNodeIntoStmts(n *ir.NodeInst, id strin
 			Name: st.attachName(n),
 			Type: ir.TypDyn,
 			Init: &ir.Call{
-				Type:     ir.TypDyn,
-				Receiver: lowerNSIdent(),
-				Func:     st.intrinsics[ir.NodeOpComponentRoot],
+				Type: ir.TypDyn,
+				Func: st.intrinsics[ir.NodeOpComponentRoot],
 				Args: []ir.CallArg{
 					{Value: &ir.Ident{Name: id, Type: ir.TypDyn, IsElementRef: true, Synthesized: true}},
 				},
@@ -562,9 +542,8 @@ func lowerNodeForSlot(st *declarativeState, n *ir.NodeInst, parentRef ir.Expr, f
 	if parentRef != nil {
 		stmts = append(stmts, &ir.CallStmt{
 			Call: &ir.Call{
-				Type:     ir.TypVoid,
-				Receiver: lowerNSIdent(),
-				Func:     st.intrinsics["AppendChild"],
+				Type: ir.TypVoid,
+				Func: st.intrinsics["AppendChild"],
 				Args: []ir.CallArg{
 					{Value: parentRef},
 					{Value: &ir.Ident{Name: st.attachName(n), Type: ir.TypDyn, IsElementRef: true, Synthesized: true}},
@@ -633,10 +612,9 @@ func destroyBuiltInstances(comp *ir.Component, st *declarativeState) {
 			continue
 		}
 		destroys = append([]ir.Stmt{&ir.CallStmt{Call: &ir.Call{
-			Type:     ir.TypVoid,
-			Receiver: lowerNSIdent(),
-			Func:     st.intrinsics[ir.NodeOpDestroyComponent],
-			Args:     []ir.CallArg{{Value: &ir.Ident{Name: lv.Name, Type: ir.TypDyn, IsElementRef: true, Synthesized: true}}},
+			Type: ir.TypVoid,
+			Func: st.intrinsics[ir.NodeOpDestroyComponent],
+			Args: []ir.CallArg{{Value: &ir.Ident{Name: lv.Name, Type: ir.TypDyn, IsElementRef: true, Synthesized: true}}},
 		}}}, destroys...)
 	}
 	if len(destroys) == 0 {

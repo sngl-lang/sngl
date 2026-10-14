@@ -14,7 +14,6 @@ import (
 	"strconv"
 	"strings"
 
-	"duckfam.us/sngl/ast"
 	"duckfam.us/sngl/codegen"
 	"duckfam.us/sngl/codegen/canvasutil"
 	snglI18n "duckfam.us/sngl/codegen/i18n"
@@ -1502,8 +1501,8 @@ func nodeFromIRCallStmt(n *ir.CallStmt) *ir.NodeInst {
 }
 
 // irCallName extracts the bare or namespace-qualified name from an IR Call.
-// A namespace-resolved element call leaves Call.Func nil and Call.Receiver set
-// to the namespace ident, so "ns.Foo" is reassembled from the AST back-ref.
+// A namespace-resolved element call leaves Call.Func nil and Call.Qualifier
+// set, so "ns.Foo" is reassembled from the AST back-ref.
 func irCallName(call *ir.Call) string {
 	if call == nil {
 		return ""
@@ -1511,14 +1510,7 @@ func irCallName(call *ir.Call) string {
 	if call.Func != nil {
 		return call.Func.Name
 	}
-	if call.Receiver != nil && call.AST != nil {
-		if sel, ok := call.AST.Func.(*ast.SelectExpr); ok {
-			if id, ok := sel.Operand.(*ast.IdentExpr); ok {
-				return id.Name + "." + sel.Field
-			}
-		}
-	}
-	return ""
+	return call.QualifiedName()
 }
 
 // renderIRNode dispatches a NodeInst to the appropriate renderer: a user

@@ -46,23 +46,6 @@ func dynSpread(from *ir.Type, format string, args ...any) *ir.Type {
 	return dynAt(2, format, args...)
 }
 
-// dynNoSymType is the type of a symbol that has none by design: *ir.Namespace
-// and *ir.Import name a package rather than a value, so their SymType is nil
-// and the Select around them discards the operand's type anyway. Reported
-// under its own tag so the category stays visible without counting as the
-// checker giving up. Every other symbol kind carries a type field, so a nil
-// from one of those is a genuine fallback.
-func dynNoSymType(sym ir.Symbol, format string, args ...any) *ir.Type {
-	switch sym.(type) {
-	case *ir.Namespace, *ir.Import:
-		if reportOnDyn {
-			reportSite("DYNBYDESIGN", 1, format, args...)
-		}
-		return ir.TypDyn
-	}
-	return dynAt(2, format, args...)
-}
-
 // dynDeferred is a shell a named later pass replaces. The argument is there to
 // name that pass at the call site; nothing reads it.
 func dynDeferred(pass string) *ir.Type {

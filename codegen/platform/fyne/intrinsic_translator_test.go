@@ -177,8 +177,7 @@ func TestFyneStmtDispatch_SlotTeardownFor(t *testing.T) {
 		Iter: &ir.Ident{Name: "__slot0", Type: ir.ListOf(ir.TypDyn), Synthesized: true, Sym: slotVar},
 		Body: []ir.Stmt{
 			&ir.CallStmt{Call: &ir.Call{
-				Receiver: &ir.Ident{Name: "lower"},
-				Func:     removeChild,
+				Func: removeChild,
 				Args: []ir.CallArg{
 					{Value: &ir.Ident{Name: "parent", IsElementRef: true}},
 					{Value: &ir.Ident{Name: "__entry"}},
@@ -282,14 +281,12 @@ func TestFyneStmtDispatch_ReactiveForRecurses(t *testing.T) {
 				Name: "__n5",
 				Type: ir.TypDyn,
 				Init: &ir.Call{
-					Receiver: &ir.Ident{Name: "lower"},
-					Func:     createNode,
-					Args:     []ir.CallArg{{Value: &ir.Literal{Type: ir.TypString, Value: "Label"}}},
+					Func: createNode,
+					Args: []ir.CallArg{{Value: &ir.Literal{Type: ir.TypString, Value: "Label"}}},
 				},
 			},
 			&ir.CallStmt{Call: &ir.Call{
-				Receiver: &ir.Ident{Name: "lower"},
-				Func:     appendChild,
+				Func: appendChild,
 				Args: []ir.CallArg{
 					{Value: &ir.Ident{Name: "parent", IsElementRef: true}},
 					{Value: &ir.Ident{Name: "__n5", IsElementRef: true, Synthesized: true}},
