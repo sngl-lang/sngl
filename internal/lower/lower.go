@@ -87,6 +87,8 @@ var passes = []pass{
 	passErrorScope,
 	passRecursionDepth,
 	passInstanceSlots,
+	// After it, which splices a copy per content and so answers its own.
+	passSlotEmptyProps,
 	passCanvasInstances,
 	// After every pass that copies a body at bound types, and before any that
 	// names a struct by its declaration's name: a copy's structs are no

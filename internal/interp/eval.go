@@ -1154,6 +1154,8 @@ func (env *Env) Eval(e ir.Expr) (any, error) {
 		return newLambda(n.Func, env), nil
 	case *ir.ContextRead:
 		return env.ContextVal(n.Ref), nil
+	case *ir.SlotEmpty:
+		return env.slotEmpty(n)
 	case *ir.Closure:
 		return newLambda(n.Func, env), nil
 	}
@@ -3197,4 +3199,31 @@ func elemType(t *ir.Type) *ir.Type {
 		return nil
 	}
 	return t.Elems[0]
+}
+
+// slotEmpty answers `src.empty` in a component's body: whether what the call
+// site the nearest component scope was entered through supplied for the slot
+// renders nothing, asked of that content in the caller's scope -- the answer
+// the splicer writes in for a compiled target (ir.RendersNothing), evaluated
+// rather than spliced.
+func (env *Env) slotEmpty(x *ir.SlotEmpty) (any, error) {
+	for e := env; e != nil; e = e.parent {
+		if e.inst == nil {
+			continue
+		}
+		body, _, supplied := ir.SlotBody(&ir.SlotInst{Name: x.Slot.Name, Rest: x.Slot.Rest}, e.inst)
+		if !supplied {
+			return true, nil
+		}
+		answer, ok := ir.RendersNothing(body)
+		if !ok {
+			return nil, fmt.Errorf("%s.%s: what the call site supplied cannot say whether it renders anything", x.Slot.Name, ir.SlotEmptyMember)
+		}
+		caller := e.parent
+		if caller == nil {
+			caller = e
+		}
+		return caller.Eval(answer)
+	}
+	return true, nil
 }

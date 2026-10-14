@@ -241,12 +241,10 @@ const component ui.button[platform](text, style) {
 // holds none. A drawing is a canvas, as one is anywhere in a terminal; a
 // picture a URL names is drawn in half-block cells fitted into a box of
 // `Picture`'s choosing, since a terminal has no size a pixel has.
-const component ui.image[platform](style, src, placeholder) {
+const component ui.image[platform](style, src) {
     Layout(join=JoinDir.vertical, style={...style}) {
         #[family.crosses]
-        src {
-            placeholder
-        }
+        src
     }
 }
 

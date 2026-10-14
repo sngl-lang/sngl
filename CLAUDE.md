@@ -2193,11 +2193,32 @@ entry would be filled by exactly the block that is already the fallback.
 
 **A fallback renders wherever the supplied content renders nothing**
 (Jonathan's call), not only where none was supplied: the branch of an `if`
-that holds none, and a forward of a slot its own caller left empty -- an
-avatar forwarding its `src` to its image, which an image's placeholder needs.
+that holds none, and a forward of a slot its own caller left empty.
 The splicer states it statically (`ir.WithFallback`: an empty list, an `if`'s
 branches, a forward's own fallback) and the interpreter at mount
 (`slotInst`, which mounts the fallback when the content mounted no node).
+
+**A fallback is held to the family of the slot it falls back for**, not to the
+position's (`checkFamilyMembership`'s `SlotInst` arm): it stands where the
+content would have, so one insertion renders one family whichever of the two
+it shows, and `#[family.crosses]` lifts the position's check and never this
+one (`error_slot_fallback_family.sngl`).
+
+**`name.empty` asks whether what the call site supplied for a slot renders
+nothing** (`ir.SlotEmpty`, `internal/checker/slotempty.go`), so a body puts
+something of its own in the content's place rather than inside it -- an
+avatar's initials, which are no image source. It is answered where the body
+is spliced, from the content (`ir.RendersNothing`, written in by
+`SlotSplicer.Substitute`): none at all is true, a node false, an `if` its
+condition, a counted or measurable `for` its emptiness test, and a forward
+the forwarded slot's own `.empty`, answered at the next splice. So it is as
+reactive as the content -- under `if shown` it is `!shown`. A component built
+at run time is handed it as a prop (`passSlotEmptyProps`), and the
+interpreter asks the content it mounted (`Env.slotEmpty`). A scoped slot is
+refused, since what its content renders may turn on the arguments an
+insertion hands it, and so is content whose answer turns on what one copy of
+a loop renders (`checkSlotEmptyAnswers`, at the call site;
+`slot_empty.sngl`, `error_slot_empty.sngl`).
 The fallback is spliced against the callee's call site, which it always
 should have been: a slot insertion inside a fallback used to be left
 unsubstituted. `testdata/slot_fallback_where_content_renders_nothing.sngl`.
@@ -3650,8 +3671,8 @@ would need. Its members are `ui.file(path)` -- a `file:` asset the build
 copies, which a Go target embeds (`golang.EmitAssetEmbed`, `assets.go`) and
 android ships in the app's assets -- `ui.remote(url)`, fetched while the
 program runs, and `draw.image(width, height) { shapes }`. Every container
-takes a source through a slot: `ui.image`'s `src` (`option`, with a
-`placeholder` slot shown where it holds none), `avatar`'s, `markup.image`'s,
+takes a source through a slot: `ui.image`'s `src` (`option`; an image with
+none shows nothing, as html's `<picture>` does), `avatar`'s, `markup.image`'s,
 `draw.canvasImage`'s, and a window's `favicon`. There is no `src=` string:
 one spelling (Jonathan's call). `draw.image` and `ui.image` collide under a
 double dot import, and dot imports are an anti-pattern, so that is the cost
@@ -3674,7 +3695,7 @@ does with it is each target's:
   of `src` with its `href`.
 - fyne: `fynelayout.Image`, a widget whose `Box` holds the source -- an
   `ImageSource` showing the picture itself and reporting `@load`/`@error` to
-  the image it lands in -- or the placeholder. A drawn source is rasterised
+  the image it lands in. A drawn source is rasterised
   and handed over (`SetImage`). A window takes a source as its icon
   (`Toplevel.Add`). The specs are written in Go as `Toplevel`'s are
   (`codegen/platform/fyne/image.go`), with `slotBox` naming the box a slot
@@ -3691,7 +3712,15 @@ does with it is each target's:
   (`snglimage.OnArrive`).
 - android: a file is `SnglAssetImage`, shipped Kotlin reading the app's
   assets; a drawing is a `Canvas`; a URL draws nothing, no loader shipping.
-- none: the image holds its source or placeholder, which a snapshot prints.
+- none: the image holds its source, which a snapshot prints.
+
+**An avatar is a wrapper on `ui.image` that does the fallback**: its
+`fallback` slot -- the initials in a styled box unless the call site writes
+its own -- stands in where `src.empty` or the image reported `@error`. A
+failed load is remembered until the avatar renders again, since the image
+that would say a later source loaded is no longer on screen. html, bubbletea,
+android and none do not yet report an image's `@error`, so there only an empty
+source shows the fallback.
 
 `canvasImage` paints its source through a shape primitive whose rest slot is
 the source family (`ir.IsImageSourceHost`): `passShapeDraw` runs its `@url`

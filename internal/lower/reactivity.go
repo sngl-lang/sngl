@@ -1160,7 +1160,7 @@ func (st *reactivityState) gatherDeps(e ir.Expr, out map[*ir.Var]bool) {
 		}
 	case *ir.Spread:
 		st.gatherDeps(x.Operand, out)
-	case *ir.Literal, *ir.ContextRead:
+	case *ir.Literal, *ir.ContextRead, *ir.SlotEmpty:
 		// Terminal — no reactive reads.
 	case *ir.Lambda, *ir.Closure:
 		// Lambda/Closure: existing reactivity model treats reactive deps
@@ -1690,7 +1690,7 @@ func rewriteIdentsToCaptures(e ir.Expr, rewrite map[ir.Symbol]ir.Expr) ir.Expr {
 		cp := *x
 		cp.Operand = rewriteIdentsToCaptures(x.Operand, rewrite)
 		return &cp
-	case *ir.Literal, *ir.ContextRead:
+	case *ir.Literal, *ir.ContextRead, *ir.SlotEmpty:
 		// Terminal — no Idents to rewrite.
 		return e
 	case *ir.Lambda, *ir.Closure:

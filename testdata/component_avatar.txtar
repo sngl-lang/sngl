@@ -54,6 +54,9 @@ type Measurement struct {
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
+	failed__inst0  bool
+	failed__inst1  bool
+	failed__inst2  bool
 	visible__inst0 bool
 
 	width, height int
@@ -62,6 +65,9 @@ type Model struct {
 // New creates a Model with default bind values.
 func New() Model {
 	m := Model{}
+	m.failed__inst0 = false
+	m.failed__inst1 = false
+	m.failed__inst2 = false
 	m.visible__inst0 = true
 	return m
 }
@@ -70,6 +76,51 @@ func New() Model {
 func (m *Model) SetTerminalSize(w, h int) {
 	m.width = w
 	m.height = h
+}
+
+func (m Model) Failed__inst0() bool {
+	return m.failed__inst0
+}
+
+func (m Model) SetFailed__inst0(v bool) Model {
+	m.failed__inst0 = v
+	return m
+}
+
+type setFailed__inst0Msg struct{ value bool }
+
+func SetFailed__inst0Cmd(v bool) tea.Cmd {
+	return func() tea.Msg { return setFailed__inst0Msg{value: v} }
+}
+
+func (m Model) Failed__inst1() bool {
+	return m.failed__inst1
+}
+
+func (m Model) SetFailed__inst1(v bool) Model {
+	m.failed__inst1 = v
+	return m
+}
+
+type setFailed__inst1Msg struct{ value bool }
+
+func SetFailed__inst1Cmd(v bool) tea.Cmd {
+	return func() tea.Msg { return setFailed__inst1Msg{value: v} }
+}
+
+func (m Model) Failed__inst2() bool {
+	return m.failed__inst2
+}
+
+func (m Model) SetFailed__inst2(v bool) Model {
+	m.failed__inst2 = v
+	return m
+}
+
+type setFailed__inst2Msg struct{ value bool }
+
+func SetFailed__inst2Cmd(v bool) tea.Cmd {
+	return func() tea.Msg { return setFailed__inst2Msg{value: v} }
 }
 
 func (m Model) Visible__inst0() bool {
@@ -96,6 +147,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	_ = cmd
 	switch msg := msg.(type) {
+	case setFailed__inst0Msg:
+		m = m.SetFailed__inst0(msg.value)
+	case setFailed__inst1Msg:
+		m = m.SetFailed__inst1(msg.value)
+	case setFailed__inst2Msg:
+		m = m.SetFailed__inst2(msg.value)
 	case setVisible__inst0Msg:
 		m = m.SetVisible__inst0(msg.value)
 	case tea.WindowSizeMsg:
@@ -121,43 +178,59 @@ func (m Model) View() tea.View {
 	if m.visible__inst0 {
 		var contentChildren []string
 		var content_0 string
-		var content_0Children []string
-		var content_0_0 string
-		content_0_0 = lipgloss.NewStyle().
-			Background(lipgloss.Color("#cccccc")).
-			Height(5).
-			AlignHorizontal(lipgloss.Center).
-			Width(5).Render(fmt.Sprint("JD"))
-		content_0Children = append(content_0Children, content_0_0)
-		content_0 = lipgloss.JoinVertical(lipgloss.Left, content_0Children...)
-		content_0 = lipgloss.NewStyle().
-			Height(5).
-			Width(5).Render(content_0)
-		contentChildren = append(contentChildren, content_0)
+		if m.failed__inst0 || true {
+			content_0 = lipgloss.NewStyle().
+				Background(lipgloss.Color("#cccccc")).
+				Height(5).
+				AlignHorizontal(lipgloss.Center).
+				Width(5).Render(fmt.Sprint("JD"))
+		} else {
+			var content_0Children []string
+			content_0 = lipgloss.JoinVertical(lipgloss.Left, content_0Children...)
+			content_0 = lipgloss.NewStyle().
+				Height(5).
+				Width(5).Render(content_0)
+		}
+		if content_0 != "" {
+			contentChildren = append(contentChildren, content_0)
+		}
 		var content_1 string
-		var content_1Children []string
-		var content_1_0 string
-		content_1_0 = tui.Picture("https://example.com/a.png", 24, 12)
-		content_1Children = append(content_1Children, content_1_0)
-		content_1 = lipgloss.JoinVertical(lipgloss.Left, content_1Children...)
-		content_1 = lipgloss.NewStyle().
-			Height(5).
-			Width(5).Render(content_1)
-		contentChildren = append(contentChildren, content_1)
+		if m.failed__inst1 || false {
+			content_1 = lipgloss.NewStyle().
+				Background(lipgloss.Color("#cccccc")).
+				Height(5).
+				AlignHorizontal(lipgloss.Center).
+				Width(5).Render(fmt.Sprint("AB"))
+		} else {
+			var content_1Children []string
+			var content_1_0 string
+			content_1_0 = tui.Picture("https://example.com/a.png", 24, 12)
+			content_1Children = append(content_1Children, content_1_0)
+			content_1 = lipgloss.JoinVertical(lipgloss.Left, content_1Children...)
+			content_1 = lipgloss.NewStyle().
+				Height(5).
+				Width(5).Render(content_1)
+		}
+		if content_1 != "" {
+			contentChildren = append(contentChildren, content_1)
+		}
 		var content_2 string
-		var content_2Children []string
-		var content_2_0 string
-		content_2_0 = lipgloss.NewStyle().
-			Background(lipgloss.Color("#cccccc")).
-			Height(8).
-			AlignHorizontal(lipgloss.Center).
-			Width(8).Render(fmt.Sprint("XY"))
-		content_2Children = append(content_2Children, content_2_0)
-		content_2 = lipgloss.JoinVertical(lipgloss.Left, content_2Children...)
-		content_2 = lipgloss.NewStyle().
-			Height(8).
-			Width(8).Render(content_2)
-		contentChildren = append(contentChildren, content_2)
+		if m.failed__inst2 || true {
+			content_2 = lipgloss.NewStyle().
+				Background(lipgloss.Color("#cccccc")).
+				Height(8).
+				AlignHorizontal(lipgloss.Center).
+				Width(8).Render(fmt.Sprint("XY"))
+		} else {
+			var content_2Children []string
+			content_2 = lipgloss.JoinVertical(lipgloss.Left, content_2Children...)
+			content_2 = lipgloss.NewStyle().
+				Height(8).
+				Width(8).Render(content_2)
+		}
+		if content_2 != "" {
+			contentChildren = append(contentChildren, content_2)
+		}
 		content = lipgloss.JoinHorizontal(lipgloss.Top, contentChildren...)
 	}
 	v := tea.NewView(content)
@@ -192,7 +265,8 @@ import (
 )
 
 var _snglTheme0 = fynetheme.Theme{Theme: theme.DefaultTheme(), Background: color.NRGBA{R: 204, G: 204, B: 204, A: 255}, Radius: 20}
-var _snglTheme1 = fynetheme.Theme{Theme: theme.DefaultTheme(), Background: color.NRGBA{R: 204, G: 204, B: 204, A: 255}, Radius: 32}
+var _snglTheme1 = fynetheme.Theme{Theme: theme.DefaultTheme(), Background: color.NRGBA{R: 204, G: 204, B: 204, A: 255}, Radius: 4}
+var _snglTheme2 = fynetheme.Theme{Theme: theme.DefaultTheme(), Background: color.NRGBA{R: 204, G: 204, B: 204, A: 255}, Radius: 32}
 
 type Measurement struct {
 	Px  float64
@@ -202,24 +276,120 @@ type Measurement struct {
 
 // Model holds the state for this SNGL UI.
 type Model struct {
+	failed__inst0  bool
+	failed__inst1  bool
+	failed__inst2  bool
 	visible__inst0 bool
+	__slot0        []fyne.CanvasObject
+	__slot0_at     fyne.CanvasObject
+	__slot1        []fyne.CanvasObject
+	__slot1_at     fyne.CanvasObject
+	__slot2        []fyne.CanvasObject
+	__slot2_at     fyne.CanvasObject
 
 	__n0    *fynelayout.Toplevel
-	__n1    *fyne.Container
-	__n2    *fynelayout.Image
-	__n3    *widget.Label
-	__n4    *fynelayout.Image
-	__n5    *fynelayout.ImageSource
-	__n6    *fynelayout.Image
-	__n7    *widget.Label
+	__n8    *fyne.Container
 	__built bool
 }
 
 // New creates a Model with default values.
 func New() *Model {
 	m := &Model{}
+	m.failed__inst0 = false
+	m.failed__inst1 = false
+	m.failed__inst2 = false
 	m.visible__inst0 = true
+	m.__slot0 = nil
+	m.__slot0_at = nil
+	m.__slot1 = nil
+	m.__slot1_at = nil
+	m.__slot2 = nil
+	m.__slot2_at = nil
 	return m
+}
+
+func (m *Model) __renderSlot0(__parent *fyne.Container) {
+	for _, __entry := range m.__slot0 {
+		fynelayout.Remove(__parent, __entry)
+	}
+	m.__slot0 = nil
+	m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
+	if m.failed__inst0 || true {
+		__n1 := widget.NewLabel("")
+		__n1.SetText("JD")
+		fynelayout.InsertBefore(__parent, m.__slot0_at, container.NewThemeOverride(__n1, _snglTheme0))
+		m.__slot0 = append(m.__slot0, __n1)
+	} else {
+		__n2 := fynelayout.NewImage()
+		__n2.SetFit("cover")
+		__n2.OnTapped = func() {
+		}
+		__n2.OnLoad = func() {
+		}
+		__n2.OnError = func(m__r0 string) {
+			m.failed__inst0 = true
+			m.__renderSlot0(m.__n8)
+		}
+		fynelayout.InsertBefore(__parent, m.__slot0_at, __n2)
+		m.__slot0 = append(m.__slot0, __n2)
+	}
+}
+
+func (m *Model) __renderSlot1(__parent *fyne.Container) {
+	for _, __entry := range m.__slot1 {
+		fynelayout.Remove(__parent, __entry)
+	}
+	m.__slot1 = nil
+	m.__slot1_at = fynelayout.SlotAnchor(__parent, m.__slot1_at)
+	if m.failed__inst1 || false {
+		__n3 := widget.NewLabel("")
+		__n3.SetText("AB")
+		fynelayout.InsertBefore(__parent, m.__slot1_at, container.NewThemeOverride(__n3, _snglTheme1))
+		m.__slot1 = append(m.__slot1, __n3)
+	} else {
+		__n4 := fynelayout.NewImage()
+		__n4.SetFit("cover")
+		__n4.OnTapped = func() {
+		}
+		__n4.OnLoad = func() {
+		}
+		__n4.OnError = func(m__r0 string) {
+			m.failed__inst1 = true
+			m.__renderSlot1(m.__n8)
+		}
+		__n5 := fynelayout.NewImageSource()
+		__n5.SetURL("https://example.com/a.png")
+		__n4.Add(__n5)
+		fynelayout.InsertBefore(__parent, m.__slot1_at, __n4)
+		m.__slot1 = append(m.__slot1, __n4)
+	}
+}
+
+func (m *Model) __renderSlot2(__parent *fyne.Container) {
+	for _, __entry := range m.__slot2 {
+		fynelayout.Remove(__parent, __entry)
+	}
+	m.__slot2 = nil
+	m.__slot2_at = fynelayout.SlotAnchor(__parent, m.__slot2_at)
+	if m.failed__inst2 || true {
+		__n6 := widget.NewLabel("")
+		__n6.SetText("XY")
+		fynelayout.InsertBefore(__parent, m.__slot2_at, container.NewThemeOverride(__n6, _snglTheme2))
+		m.__slot2 = append(m.__slot2, __n6)
+	} else {
+		__n7 := fynelayout.NewImage()
+		__n7.SetFit("cover")
+		__n7.OnTapped = func() {
+		}
+		__n7.OnLoad = func() {
+		}
+		__n7.OnError = func(m__r0 string) {
+			m.failed__inst2 = true
+			m.__renderSlot2(m.__n8)
+		}
+		fynelayout.InsertBefore(__parent, m.__slot2_at, __n7)
+		m.__slot2 = append(m.__slot2, __n7)
+	}
 }
 
 func (m *Model) __n0_closed_handler() {
@@ -230,37 +400,28 @@ func (m *Model) __n0_visible_handler(__visible bool) {
 	m.__n0.SetVisible(m.visible__inst0)
 }
 
-func (m *Model) __n2_click_handler() {
+func (m *Model) Failed__inst0() bool {
+	return m.failed__inst0
 }
 
-func (m *Model) __n2_load_handler() {
+func (m *Model) SetFailed__inst0(v bool) {
+	m.failed__inst0 = v
 }
 
-func (m *Model) __n2_failed_handler(m__r0 string) {
+func (m *Model) Failed__inst1() bool {
+	return m.failed__inst1
 }
 
-func (m *Model) __n3_click_handler() {
+func (m *Model) SetFailed__inst1(v bool) {
+	m.failed__inst1 = v
 }
 
-func (m *Model) __n4_click_handler() {
+func (m *Model) Failed__inst2() bool {
+	return m.failed__inst2
 }
 
-func (m *Model) __n4_load_handler() {
-}
-
-func (m *Model) __n4_failed_handler(m__r0 string) {
-}
-
-func (m *Model) __n6_click_handler() {
-}
-
-func (m *Model) __n6_load_handler() {
-}
-
-func (m *Model) __n6_failed_handler(m__r0 string) {
-}
-
-func (m *Model) __n7_click_handler() {
+func (m *Model) SetFailed__inst2(v bool) {
+	m.failed__inst2 = v
 }
 
 func (m *Model) Visible__inst0() bool {
@@ -281,35 +442,11 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n0.SetVisible(m.visible__inst0)
 	m.__n0.OnClosed = m.__n0_closed_handler
 	m.__n0.OnVisible = m.__n0_visible_handler
-	m.__n1 = container.NewHBox()
-	m.__n2 = fynelayout.NewImage()
-	m.__n2.SetFit("cover")
-	m.__n2.OnTapped = m.__n2_click_handler
-	m.__n2.OnLoad = m.__n2_load_handler
-	m.__n2.OnError = m.__n2_failed_handler
-	m.__n3 = widget.NewLabel("")
-	m.__n3.SetText("JD")
-	m.__n2.Add(container.NewThemeOverride(m.__n3, _snglTheme0))
-	m.__n1.Add(m.__n2)
-	m.__n4 = fynelayout.NewImage()
-	m.__n4.SetFit("cover")
-	m.__n4.OnTapped = m.__n4_click_handler
-	m.__n4.OnLoad = m.__n4_load_handler
-	m.__n4.OnError = m.__n4_failed_handler
-	m.__n5 = fynelayout.NewImageSource()
-	m.__n5.SetURL("https://example.com/a.png")
-	m.__n4.Add(m.__n5)
-	m.__n1.Add(m.__n4)
-	m.__n6 = fynelayout.NewImage()
-	m.__n6.SetFit("cover")
-	m.__n6.OnTapped = m.__n6_click_handler
-	m.__n6.OnLoad = m.__n6_load_handler
-	m.__n6.OnError = m.__n6_failed_handler
-	m.__n7 = widget.NewLabel("")
-	m.__n7.SetText("XY")
-	m.__n6.Add(container.NewThemeOverride(m.__n7, _snglTheme1))
-	m.__n1.Add(m.__n6)
-	m.__n0.Add(m.__n1)
+	m.__n8 = container.NewHBox()
+	m.__renderSlot0(m.__n8)
+	m.__renderSlot1(m.__n8)
+	m.__renderSlot2(m.__n8)
+	m.__n0.Add(m.__n8)
 	fynelayout.AppAttach(m.__n0)
 	return m.__n0.Container
 }
@@ -338,15 +475,15 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Row
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
-import androidx.compose.foundation.layout.Box
+import androidx.compose.material3.Text
 import androidx.compose.foundation.layout.width
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.layout.height
-import androidx.compose.material3.Text
 import androidx.compose.foundation.background
 import androidx.compose.ui.graphics.Color as ComposeColor
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.foundation.layout.Box
 
 data class Measurement(
     val px: Double = 0.0,
@@ -363,6 +500,9 @@ fun _snglSplit(s: String, sep: String): List<String> =
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen() {
+    var failed__inst0 by remember { mutableStateOf(false) }
+    var failed__inst1 by remember { mutableStateOf(false) }
+    var failed__inst2 by remember { mutableStateOf(false) }
     var visible__inst0 by remember { mutableStateOf(true) }
 
     if (visible__inst0) {
@@ -374,14 +514,24 @@ fun MainScreen() {
             }
         }
         Row(modifier = Modifier.safeDrawingPadding()) {
-            Box(modifier = Modifier.width(40.dp).height(40.dp)) {
+            if ((failed__inst0 || true)) {
                 Text(text = "JD", modifier = Modifier.width(40.dp).height(40.dp).background(ComposeColor(red = 204, green = 204, blue = 204, alpha = 255)), style = TextStyle(textAlign = TextAlign.Center))
+            } else {
+                Box(modifier = Modifier.width(40.dp).height(40.dp)) {
+                }
             }
-            Box(modifier = Modifier.width(40.dp).height(40.dp)) {
-                SnglAssetImage(url = "https://example.com/a.png")
+            if ((failed__inst1 || false)) {
+                Text(text = "AB", modifier = Modifier.width(40.dp).height(40.dp).background(ComposeColor(red = 204, green = 204, blue = 204, alpha = 255)), style = TextStyle(textAlign = TextAlign.Center))
+            } else {
+                Box(modifier = Modifier.width(40.dp).height(40.dp)) {
+                    SnglAssetImage(url = "https://example.com/a.png")
+                }
             }
-            Box(modifier = Modifier.width(64.dp).height(64.dp)) {
+            if ((failed__inst2 || true)) {
                 Text(text = "XY", modifier = Modifier.width(64.dp).height(64.dp).background(ComposeColor(red = 204, green = 204, blue = 204, alpha = 255)), style = TextStyle(textAlign = TextAlign.Center))
+            } else {
+                Box(modifier = Modifier.width(64.dp).height(64.dp)) {
+                }
             }
         }
     }
@@ -441,16 +591,10 @@ body { font-family: system-ui, sans-serif; }
   </style>
 </head><body>
 
-<div style="display:flex;flex-direction:row">
-  <span class="sngl-image sngl-image-cover" style="border-radius:20px;display:inline-block;height:40px;overflow:hidden;width:40px" aria-label="" role="img">
-    <span style="align-items:center;background-color:#cccccc;border-radius:20px;display:inline-flex;height:40px;justify-content:center;text-align:center;width:40px">JD</span>
-  </span>
-  <span class="sngl-image sngl-image-cover" style="border-radius:4px;display:inline-block;height:40px;overflow:hidden;width:40px" aria-label="" role="img">
-    <img alt="" src="https://example.com/a.png"/>
-  </span>
-  <span class="sngl-image sngl-image-cover" style="border-radius:32px;display:inline-block;height:64px;overflow:hidden;width:64px" aria-label="" role="img">
-    <span style="align-items:center;background-color:#cccccc;border-radius:32px;display:inline-flex;height:64px;justify-content:center;text-align:center;width:64px">XY</span>
-  </span>
+<div id="__n8" data-sngl-id="__n8" style="display:flex;flex-direction:row">
+  <span data-sngl-slot="0" style="display:contents"></span>
+  <span data-sngl-slot="1" style="display:contents"></span>
+  <span data-sngl-slot="2" style="display:contents"></span>
 </div>
 <style>
 .sngl-image img { display: block; width: 100%; height: 100%; object-fit: contain; }
@@ -463,15 +607,175 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { visible__inst0: true };
+  var state = { failed__inst0: false, failed__inst1: false, failed__inst2: false, visible__inst0: true };
+  var __slot0 = [];
+  var __slot1 = [];
+  var __slot2 = [];
+  function __renderSlot0(parent) {
+    let __place0_prev = __slot0;
+    let __place0_i = 0;
+    __slot0 = [];
+    if (state.failed__inst0 || true) {
+      let __n1 = document.createElement("span");
+      __n1.textContent = "JD";
+      __n1.setAttribute("style", "align-items:center;background-color:#cccccc;border-radius:20px;display:inline-flex;height:40px;justify-content:center;text-align:center;width:40px");
+      __n1.addEventListener("click", () => {
+      });
+      let __place0_i_ref0 = null;
+      if (__place0_i < __place0_prev.length) {
+        __place0_i_ref0 = __place0_prev[__place0_i];
+      }
+      if (__place0_i_ref0 === __n1) {
+        __place0_i = __place0_i + 1;
+      } else {
+        parent.insertBefore(__n1, __place0_i_ref0);
+      }
+      __slot0.push(__n1);
+    } else {
+      let __n2 = document.createElement("span");
+      __n2.setAttribute("class", "sngl-image sngl-image-cover");
+      __n2.setAttribute("role", "img");
+      __n2.setAttribute("aria-label", "");
+      __n2.setAttribute("style", "border-radius:20px;display:inline-block;height:40px;overflow:hidden;width:40px");
+      __n2.addEventListener("click", () => {
+      });
+      __n2.addEventListener("error", (e) => {
+        state.failed__inst0 = true;
+        __renderSlot0(__slotAnchor_0);
+      });
+      let __place0_i_ref1 = null;
+      if (__place0_i < __place0_prev.length) {
+        __place0_i_ref1 = __place0_prev[__place0_i];
+      }
+      if (__place0_i_ref1 === __n2) {
+        __place0_i = __place0_i + 1;
+      } else {
+        parent.insertBefore(__n2, __place0_i_ref1);
+      }
+      __slot0.push(__n2);
+    }
+    for (const __place0_prev_e of __place0_prev) {
+      if (__slot0.indexOf(__place0_prev_e) < 0) {
+        parent.removeChild(__place0_prev_e);
+      }
+    }
+  }
+  function __renderSlot1(parent) {
+    let __place1_prev = __slot1;
+    let __place1_i = 0;
+    __slot1 = [];
+    if (state.failed__inst1 || false) {
+      let __n3 = document.createElement("span");
+      __n3.textContent = "AB";
+      __n3.setAttribute("style", "align-items:center;background-color:#cccccc;border-radius:4px;display:inline-flex;height:40px;justify-content:center;text-align:center;width:40px");
+      __n3.addEventListener("click", () => {
+      });
+      let __place1_i_ref0 = null;
+      if (__place1_i < __place1_prev.length) {
+        __place1_i_ref0 = __place1_prev[__place1_i];
+      }
+      if (__place1_i_ref0 === __n3) {
+        __place1_i = __place1_i + 1;
+      } else {
+        parent.insertBefore(__n3, __place1_i_ref0);
+      }
+      __slot1.push(__n3);
+    } else {
+      let __n4 = document.createElement("span");
+      __n4.setAttribute("class", "sngl-image sngl-image-cover");
+      __n4.setAttribute("role", "img");
+      __n4.setAttribute("aria-label", "");
+      __n4.setAttribute("style", "border-radius:4px;display:inline-block;height:40px;overflow:hidden;width:40px");
+      __n4.addEventListener("click", () => {
+      });
+      __n4.addEventListener("error", (e) => {
+        state.failed__inst1 = true;
+        __renderSlot1(__slotAnchor_1);
+      });
+      let __n5 = document.createElement("img");
+      __n5.setAttribute("alt", "");
+      __n5.src = "https://example.com/a.png";
+      __n4.appendChild(__n5);
+      let __place1_i_ref1 = null;
+      if (__place1_i < __place1_prev.length) {
+        __place1_i_ref1 = __place1_prev[__place1_i];
+      }
+      if (__place1_i_ref1 === __n4) {
+        __place1_i = __place1_i + 1;
+      } else {
+        parent.insertBefore(__n4, __place1_i_ref1);
+      }
+      __slot1.push(__n4);
+    }
+    for (const __place1_prev_e of __place1_prev) {
+      if (__slot1.indexOf(__place1_prev_e) < 0) {
+        parent.removeChild(__place1_prev_e);
+      }
+    }
+  }
+  function __renderSlot2(parent) {
+    let __place2_prev = __slot2;
+    let __place2_i = 0;
+    __slot2 = [];
+    if (state.failed__inst2 || true) {
+      let __n6 = document.createElement("span");
+      __n6.textContent = "XY";
+      __n6.setAttribute("style", "align-items:center;background-color:#cccccc;border-radius:32px;display:inline-flex;height:64px;justify-content:center;text-align:center;width:64px");
+      __n6.addEventListener("click", () => {
+      });
+      let __place2_i_ref0 = null;
+      if (__place2_i < __place2_prev.length) {
+        __place2_i_ref0 = __place2_prev[__place2_i];
+      }
+      if (__place2_i_ref0 === __n6) {
+        __place2_i = __place2_i + 1;
+      } else {
+        parent.insertBefore(__n6, __place2_i_ref0);
+      }
+      __slot2.push(__n6);
+    } else {
+      let __n7 = document.createElement("span");
+      __n7.setAttribute("class", "sngl-image sngl-image-cover");
+      __n7.setAttribute("role", "img");
+      __n7.setAttribute("aria-label", "");
+      __n7.setAttribute("style", "border-radius:32px;display:inline-block;height:64px;overflow:hidden;width:64px");
+      __n7.addEventListener("click", () => {
+      });
+      __n7.addEventListener("error", (e) => {
+        state.failed__inst2 = true;
+        __renderSlot2(__slotAnchor_2);
+      });
+      let __place2_i_ref1 = null;
+      if (__place2_i < __place2_prev.length) {
+        __place2_i_ref1 = __place2_prev[__place2_i];
+      }
+      if (__place2_i_ref1 === __n7) {
+        __place2_i = __place2_i + 1;
+      } else {
+        parent.insertBefore(__n7, __place2_i_ref1);
+      }
+      __slot2.push(__n7);
+    }
+    for (const __place2_prev_e of __place2_prev) {
+      if (__slot2.indexOf(__place2_prev_e) < 0) {
+        parent.removeChild(__place2_prev_e);
+      }
+    }
+  }
+  var __slotAnchor_0 = document.querySelector('[data-sngl-slot="0"]');
+  __renderSlot0(__slotAnchor_0);
+  var __slotAnchor_1 = document.querySelector('[data-sngl-slot="1"]');
+  __renderSlot1(__slotAnchor_1);
+  var __slotAnchor_2 = document.querySelector('[data-sngl-slot="2"]');
+  __renderSlot2(__slotAnchor_2);
 })();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:0f5f4e057803a044f3a08d9b5643733a
+pass sha256:2c5a975ff5906119b363aac9a7e58a6c
 -- run/go/fyne --
-pass sha256:c1a3e695f9bf153b2169d671537d4f1c
+pass sha256:0b79497c1a3865497d58ca5c5f840f1e
 -- run/kotlin/android --
-pass sha256:a63c4457a422817f0b60e037420ddf4a
+pass sha256:66a574d8dded179e33fcda4c666fa054
 -- run/none/html --
-pass sha256:40596b63ad1b677e83fe571bf7af9203
+pass sha256:e06544c67f9fc8c043b3f4619691e859

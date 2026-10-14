@@ -2186,6 +2186,9 @@ func (c *checker) inferSelect(x *ast.SelectExpr) ir.Expr {
 	if ns, ident := c.namespaceOperand(x.Operand); ns != nil {
 		return c.inferQualified(x, ns, ident)
 	}
+	if e := c.inferSlotEmpty(x); e != nil {
+		return e
+	}
 	// What the select is expected to be says nothing of what it reads off:
 	// an option expected of `node.left` is no reason to leave `node` wrapped.
 	operandExpr := c.checkExprExpecting(x.Operand, nil)
@@ -4825,6 +4828,7 @@ func (c *checker) checkVisualNode(vn *ast.VisualNode) ir.Stmt {
 	node.TypeArgs = c.specArgs[spec]
 	node.WrittenTypeArgs = writtenTypes
 	c.deferConstSlots(node)
+	c.deferFamilyCheck(func() { c.checkSlotEmptyAnswers(node) })
 	return node
 }
 
@@ -6258,10 +6262,22 @@ func (c *checker) checkFamilyMembership(owner *ir.Component, pos ast.Pos, conten
 		// is whatever the caller supplies, so the slot's own tree is what has
 		// to match, and the population is where the content is checked.
 		case *ir.SlotInst:
+			got := c.insertedFamily(owner, s)
+			// The fallback stands where the content would have, so it is
+			// held to the slot's family rather than the position's: an
+			// insertion renders one family whichever of the two it shows.
+			// Crossing lifts the position's check, never that one.
+			if len(s.Children) > 0 {
+				hold := got
+				if hold == nil {
+					hold = want
+				}
+				c.checkFamilyMembership(owner, pos, s.Children, hold, "in the fallback of the slot "+s.Name)
+			}
 			if s.Crosses {
 				continue
 			}
-			if got := c.insertedFamily(owner, s); got != nil && got != want {
+			if got != nil && got != want {
 				c.error(pos, "expected %s component %s, got the %s slot %s", want.Name, where, got.Name, s.Name)
 			}
 		// A window is the checker's own IR rather than a NodeInst, so it

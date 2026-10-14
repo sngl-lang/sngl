@@ -25,6 +25,7 @@ func (*Spread) irNode()      {}
 func (*Lambda) irNode()      {}
 func (*Closure) irNode()     {}
 func (*ContextRead) irNode() {}
+func (*SlotEmpty) irNode()   {}
 
 // Statements.
 func (*NodeInst) irNode()         {}

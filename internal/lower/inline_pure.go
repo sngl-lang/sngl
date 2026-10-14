@@ -1314,6 +1314,9 @@ func deepCloneExpr(e ir.Expr) ir.Expr {
 	case *ir.ContextRead:
 		clone := *n
 		return &clone
+	case *ir.SlotEmpty:
+		clone := *n
+		return &clone
 	case *ir.Lambda:
 		clone := *n
 		if n.Func != nil {

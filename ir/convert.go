@@ -888,6 +888,8 @@ func (c *converter) convertExpr(e Expr) ast.Expr {
 		return c.convertLambda(e)
 	case *ContextRead:
 		return &ast.IdentExpr{Name: e.Ref.Name}
+	case *SlotEmpty:
+		return &ast.SelectExpr{Operand: &ast.IdentExpr{Name: e.Slot.Name}, Field: SlotEmptyMember}
 	case *Closure:
 		// Render as a synthetic call: __closure(funcRef, structLit). Debug-only —
 		// not parseable as user syntax; provides readability for `dump lowered`.

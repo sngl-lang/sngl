@@ -277,7 +277,7 @@ func (st *listLambdaState) transformExpr(e ir.Expr) ([]ir.Stmt, ir.Expr) {
 			x.Func.Block = st.transformBlock(x.Func.Block)
 		}
 		return nil, x
-	case *ir.Literal, *ir.Ident, *ir.ContextRead:
+	case *ir.Literal, *ir.Ident, *ir.ContextRead, *ir.SlotEmpty:
 		// Terminal — no list-lambda call to lift.
 		return nil, e
 	default:

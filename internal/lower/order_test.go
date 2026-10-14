@@ -125,6 +125,8 @@ var alwaysOn = []string{
 	// nothing renames nothing; there is no capability to hold.
 	"ReservedNames",
 	"ReservedNodeIDs",
+	// A slot's `.empty` has no spelling on any target, spliced or not.
+	"SlotEmptyProps",
 	"SpreadOnce",
 	"StampUsage",
 	// A context nothing provides is folded to its default on every target: the

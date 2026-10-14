@@ -1,0 +1,46 @@
+// A slot is no value, so its name is read through only to ask `.empty`; a
+// scoped slot's content may turn on the arguments an insertion hands it,
+// which asking hands none; and content whose answer turns on what one copy of
+// a loop renders has no answer at the position.
+
+import . "sngl:ui"
+
+component asks(content ...component option[node]) node {
+    if content.length > 0 { // ERROR(check) "content is a slot, which is not a value"
+        content
+    }
+}
+
+component scoped(cell component(n int) node) node {
+    if cell.empty { // ERROR(check) "cell is handed arguments where it is inserted"
+        text(value="none")
+    }
+}
+
+component boxed(content ...component node) node {
+    if content.empty {
+        text(value="nothing")
+    } else {
+        content
+    }
+}
+
+component main node {
+    var xs = [1, 2, 3]
+    boxed { // ERROR(check) "boxed asks whether its content renders anything"
+        for var x = xs {
+            if x > 1 {
+                text(value="{x}")
+            }
+        }
+    }
+    boxed {
+        for var x = xs {
+            text(value="{x}")
+        }
+    }
+}
+
+window {
+    main
+}

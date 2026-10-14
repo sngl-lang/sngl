@@ -144,7 +144,7 @@ func walkAllExprs(e ir.Expr, visit func(ir.Expr)) {
 		// Lambda/closure bodies are opaque to this walker; for-loop
 		// expansion only inspects expressions at the lexical scope of
 		// the for body, not inside nested lambda bodies.
-	case *ir.Literal, *ir.Ident, *ir.ContextRead:
+	case *ir.Literal, *ir.Ident, *ir.ContextRead, *ir.SlotEmpty:
 		// No subexpressions.
 	default:
 		panic(fmt.Sprintf("walkAllExprs: unhandled expr %T", x))

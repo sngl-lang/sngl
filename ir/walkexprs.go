@@ -217,7 +217,7 @@ func (w *rewriter) expr(e Expr) Expr {
 				x.State = st
 			}
 		}
-	case *Literal, *Ident, *ContextRead:
+	case *Literal, *Ident, *ContextRead, *SlotEmpty:
 		// Leaf — no sub-expressions.
 	default:
 		panic(fmt.Sprintf("ir.Rewrite: unhandled ir.Expr %T", x))

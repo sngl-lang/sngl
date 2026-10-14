@@ -2923,7 +2923,7 @@ func exprUsesI18n(expr ir.Expr) bool {
 					walkStmtExprs(s, walk)
 				}
 			}
-		case *ir.Literal, *ir.Ident, *ir.ContextRead:
+		case *ir.Literal, *ir.Ident, *ir.ContextRead, *ir.SlotEmpty:
 		default:
 			panic(fmt.Sprintf("html.exprUsesI18n: unhandled ir.Expr %T", x))
 		}
@@ -3175,7 +3175,7 @@ func (g *htmlGen) collectLoweredRefs(s ir.Stmt) {
 		case *ir.Spread:
 			walkExpr(x.Operand)
 		case *ir.Lambda, *ir.Closure:
-		case *ir.Literal, *ir.ContextRead:
+		case *ir.Literal, *ir.ContextRead, *ir.SlotEmpty:
 		default:
 			panic(fmt.Sprintf("html.collectLoweredRefs.walkExpr: unhandled ir.Expr %T", x))
 		}

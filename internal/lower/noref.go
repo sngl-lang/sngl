@@ -512,7 +512,7 @@ func seedAddressedVarsInExpr(e ir.Expr, set map[*ir.Var]bool) {
 			seedAddressedVarsInExpr(en.Key, set)
 			seedAddressedVarsInExpr(en.Value, set)
 		}
-	case *ir.Ident, *ir.Literal, *ir.ContextRead:
+	case *ir.Ident, *ir.Literal, *ir.ContextRead, *ir.SlotEmpty:
 		// Terminal — no UnaryAddr to seed.
 	default:
 		panic(fmt.Sprintf("seedAddressedVarsInExpr: unhandled %T", x))

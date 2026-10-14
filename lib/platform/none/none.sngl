@@ -117,14 +117,11 @@ const component ui.text[platform] {}
 // which is what a snapshot prints beneath the description. A source stands as
 // itself, with its URL or its shapes.
 #[intrinsic("none:image")]
-component image(alt string, fit ui.ObjectFit, @click(), content ...component ui.node) ui.node
+component image(alt string, fit ui.ObjectFit, @click(), content ...component option[ui.imageSource]) ui.node
 
-const component ui.image[platform](alt, fit, @click, src, placeholder) {
+const component ui.image[platform](alt, fit, @click, src) {
     image(alt=alt, fit=fit, @click { click() }) {
-        #[family.crosses]
-        src {
-            placeholder
-        }
+        src
     }
 }
 

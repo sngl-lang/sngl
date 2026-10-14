@@ -212,7 +212,7 @@ func foldExpr(e ir.Expr, ctx *evalCtx) ir.Expr {
 		if x.Func != nil {
 			x.Func.Block = foldStmts(x.Func.Block, ctx)
 		}
-	case *ir.ContextRead:
+	case *ir.ContextRead, *ir.SlotEmpty:
 		// No subexpressions.
 	default:
 		panic(fmt.Sprintf("foldExpr: unhandled expr %T", x))
