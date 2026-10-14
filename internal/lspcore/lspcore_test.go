@@ -641,3 +641,40 @@ func TestComplete_TypeArgs(t *testing.T) {
 		t.Errorf("a closed index inside parens: context %v, want the prop list", ctx)
 	}
 }
+
+// An override's parameter list selects from the declaration it overrides, so
+// completion there offers the base's parameters by their bare names -- not the
+// `name=` of a call site, and not the override's own, which names nothing yet.
+func TestOverrideHeaderCompletions(t *testing.T) {
+	content := "import . \"sngl:ui\"\nimport html \"sngl:platform/html\"\n\ncomponent Avatar(url string, size int, @pick(i int), content ...component node) node\n\ncomponent Avatar[html.platform](url, \n\nfunc label(n int, suffix string) string\n\nfunc label[html.platform](\n\ncomponent text[html.platform](value, \n"
+	doc, _ := lspcore.Analyze(content, "test.sngl", nil, "", nil)
+	labels := func(line, col int) map[string]lspcore.CompletionItem {
+		out := map[string]lspcore.CompletionItem{}
+		for _, it := range lspcore.Complete(content, doc, line, col) {
+			out[it.Label] = it
+		}
+		return out
+	}
+	got := labels(6, 38)
+	for _, want := range []string{"size", "@pick", "content"} {
+		if _, ok := got[want]; !ok {
+			t.Errorf("component header: missing %q in %v", want, got)
+		}
+	}
+	if _, ok := got["url"]; ok {
+		t.Error("component header offered url, which the list already selects")
+	}
+	if it := got["size"]; it.InsertText != "size" {
+		t.Errorf("size inserts %q, want the bare name", it.InsertText)
+	}
+	got = labels(10, 27)
+	if _, ok := got["suffix"]; !ok || len(got) != 2 {
+		t.Errorf("func header: want n and suffix, got %v", got)
+	}
+	got = labels(12, 37)
+	for _, want := range []string{"selectable", "style", "@click"} {
+		if _, ok := got[want]; !ok {
+			t.Errorf("library header: missing %q in %v", want, got)
+		}
+	}
+}
