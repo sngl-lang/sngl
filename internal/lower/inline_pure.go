@@ -653,7 +653,7 @@ func (st *inlinePureState) substitute(comp *ir.Component, callsite *ir.NodeInst)
 	// Apply slot substitution: replace each *ir.SlotInst with what the call
 	// site supplied for it -- its ordinary children for the anonymous slot,
 	// the matching `slot name { ... }` block for a named one.
-	body = substituteSlots(body, callsite)
+	body = spliceSlots(body, callsite)
 
 	// ID preservation: transfer callsite.ID to the first top-level
 	// NodeInst of the substituted body.
@@ -777,6 +777,58 @@ func substituteParams(stmts []ir.Stmt, bindings map[string]ir.Expr) []ir.Stmt {
 // it splices has been deep-cloned away from the *ir.Param the populator wrote.
 func substituteSlots(stmts []ir.Stmt, callsite *ir.NodeInst) []ir.Stmt {
 	return substituteSlotsCloning(stmts, callsite, deepCloneStmts)
+}
+
+// spliceSlots is substituteSlots for a call site the splice replaces: content
+// the body inserts once is moved there rather than copied, since nothing holds
+// the call site afterwards.
+func spliceSlots(stmts []ir.Stmt, callsite *ir.NodeInst) []ir.Stmt {
+	movable := movableContent(stmts, callsite)
+	return substituteSlotsCloning(stmts, callsite, func(body []ir.Stmt) []ir.Stmt {
+		if len(body) > 0 && movable[body[0]] {
+			delete(movable, body[0])
+			return body
+		}
+		return deepCloneStmts(body)
+	})
+}
+
+// movableContent is the first statement of each body callsite supplies that
+// stmts inserts exactly once, keyed so the splicer's Clone recognizes it. An
+// insertion whose fallback or populations hold another insertion is spliced
+// once per use of those, so with one anywhere nothing moves.
+func movableContent(stmts []ir.Stmt, callsite *ir.NodeInst) map[ir.Stmt]bool {
+	uses := map[ir.Stmt]int{}
+	nested := false
+	ir.WalkView(stmts, func(s ir.Stmt) bool {
+		si, ok := s.(*ir.SlotInst)
+		if !ok {
+			return true
+		}
+		if si.Entry == nil {
+			if body, _, supplied := ir.SlotBody(si, callsite); supplied && len(body) > 0 {
+				uses[body[0]]++
+			}
+		}
+		for _, b := range ir.ViewBlocks(si) {
+			ir.WalkView(*b, func(s ir.Stmt) bool {
+				_, isSlot := s.(*ir.SlotInst)
+				nested = nested || isSlot
+				return !nested
+			})
+		}
+		return false
+	})
+	if nested {
+		return nil
+	}
+	movable := map[ir.Stmt]bool{}
+	for first, n := range uses {
+		if n == 1 {
+			movable[first] = true
+		}
+	}
+	return movable
 }
 
 func substituteSlotsCloning(stmts []ir.Stmt, callsite *ir.NodeInst, clone func([]ir.Stmt) []ir.Stmt) []ir.Stmt {

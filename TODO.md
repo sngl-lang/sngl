@@ -107,8 +107,21 @@ Re-measure the affected workload after each step and note the number here.
      reports, per phase, which library declarations a build wrote.
 
 7. [ ] **passInlinePure clones slot content into both branches.**
-   `ir.SlotSplicer.Substitute` / `lower.deepCloneStmts`: 2.8 GB (22%) of the
-   docs build, 0.6 GB of TestGolden.
+   Re-measured after step 5 (e6e1a36e2): on the docs build passInlinePure is
+   2.65 GB of 11.7 GB and 1.46 s of 26.8 s CPU, `ir.SlotSplicer.Substitute`
+   2.26 GB, `lower.deepCloneStmts` 2.82 GB; on TestGolden 555 MB, 509 MB and
+   614 MB of 5.59 GB. The two branches are no longer the largest part: counting
+   statements cloned per callee, `markup.list` and `markup.listItem` copy
+   ~0.41M, while the single-insertion wrappers every page passes through
+   (`md` `site`, `nav.stack`, `nav.page`, `PageLayout`, `ui.vbox`) copy the
+   whole page content again at each level, ~1.1M.
+   - [X] a. Move content a body inserts once instead of copying it: the
+     call site is replaced by the splice and nothing else holds it. Content
+     inserted more than once, or beside a fallback or population that inserts
+     slots of its own (spliced once per use), is still copied.
+   - [ ] b. What is left on the docs build: the callee body copied per call
+     site (541 MB), content inserted more than once -- the two branches --
+     (337 MB) and fallbacks (247 MB).
 
 8. [ ] **`ExprCtx.WithLocal` clones its maps per local**
    (`codegen/exprctx.go:284`): 1.2 GB on the docs build. A parent-chained
@@ -180,3 +193,16 @@ Re-measure the affected workload after each step and note the number here.
    `internal/interp/...`, `internal/playground/...` and `internal/lsp/...`
    green; `TestImportedPackageIsFoldedOncePerConfig` fails with the skip
    removed.
+
+7a. **Slot content inserted once is moved** -- docs site 11.67 -> 9.94 GB
+allocated, passInlinePure 2.65 -> 0.97 GB, `SlotSplicer.Substitute` 2.26 ->
+0.59 GB, `deepCloneStmts` 2.82 -> 1.12 GB; two unprofiled pairs 29.4 ->
+24.2 and 26.4 -> 24.5 s user. TestGolden 5.59 -> 5.49 GB, passInlinePure
+555 -> 370 MB; pairs 23.7 -> 23.0 and 23.5 -> 22.9 s user. No call site is
+spliced twice (108k splices over the root, internal, codegen and docs
+tests, 9.1k over `TestScript`) and no statement is reachable twice after
+the pass (TestGolden, `TestScript`, the docs build), checked with a probe
+not committed. Docs site byte-identical (1187 files); `go test ./...`
+green. Each case of `TestInlinePureMovesContentInsertedOnce` fails under
+its own revert: the call cloning again, the use count dropped, and the
+fallback check dropped.
