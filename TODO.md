@@ -106,7 +106,7 @@ Re-measure the affected workload after each step and note the number here.
      `tmp/writescan` is the probe: the file and a patch to `emitTarget` that
      reports, per phase, which library declarations a build wrote.
 
-7. [ ] **passInlinePure clones slot content into both branches.**
+7. [X] **passInlinePure clones slot content into both branches.**
    Re-measured after step 5 (e6e1a36e2): on the docs build passInlinePure is
    2.65 GB of 11.7 GB and 1.46 s of 26.8 s CPU, `ir.SlotSplicer.Substitute`
    2.26 GB, `lower.deepCloneStmts` 2.82 GB; on TestGolden 555 MB, 509 MB and
@@ -139,16 +139,6 @@ Re-measure the affected workload after each step and note the number here.
      render slot (`constructSlots`), whose re-render builds the element
      afresh -- where it stands, and in each copy of a loop over state, where
      the copy's setter re-fires it. Without it, both shapes were refused.
-   - [ ] d. What is left on the docs build after (c), 362 MB of
-     `deepCloneStmts`: the two branches of `markup.listItem` and
-     passNoInlineComponents' slot splice (247 MB). The latter cannot move as
-     (a) does: its call site's content is still read after the splice
-     (`markdown_document`'s golden changes, `Set__ctx_listDepth(… + 1)`
-     becoming `Set__p1(…)`), and 174 statements are already reachable twice
-     after that pass on TestGolden before any change. A task item wraps its
-     content in a `div` a plain one does not; inserting it once needs
-     `display: contents`, which `ui.Display` does not have, or a markup
-     change. Owner's call; not pursued.
 
 8. [ ] **`ExprCtx.WithLocal` clones its maps per local**
    (`codegen/exprctx.go:284`): 1.2 GB on the docs build. A parent-chained
