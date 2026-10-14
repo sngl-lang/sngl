@@ -81,6 +81,12 @@ type Config struct {
 	// starts clean and retries.
 	nativeErr map[string]error
 
+	// folded holds the imported packages an earlier Optimize with this Config
+	// folded. Lowering writes nothing into one that a backend emits as it
+	// stands: what the program calls of it, passLibFuncs moves into the
+	// program's own lists, where the next fold reaches it.
+	folded map[*ir.Package]bool
+
 	// nativeSettled records that compile-time evaluation of this build's
 	// native calls has already run. Every caller optimizes twice with one
 	// Config (before and after lowering), and by the second call every value
@@ -425,10 +431,16 @@ func optimizeIR(pkg *ir.Package, cfg *Config, native *nativeEval) error {
 // pkg's evalCtx (so the caller can run downstream phases against it), or nil
 // when pkg has already been folded by this run.
 func (r *optimizerRun) foldPkg(pkg *ir.Package) *evalCtx {
-	if pkg == nil || r.done[pkg] {
+	if pkg == nil || r.done[pkg] || pkg != r.root && r.cfg.folded[pkg] {
 		return nil
 	}
 	r.done[pkg] = true
+	if pkg != r.root && r.native == nil {
+		if r.cfg.folded == nil {
+			r.cfg.folded = map[*ir.Package]bool{}
+		}
+		r.cfg.folded[pkg] = true
+	}
 
 	// Recurse imports first so their consts/components are folded by the
 	// time we fold this pkg's bodies (which may inline component calls

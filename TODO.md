@@ -68,7 +68,14 @@ Re-measure the affected workload after each step and note the number here.
    `reflect.Type` (frozen-skip, lambda body, DeclInfo.Pkg, override key).
    Consider the same plan for `internal/testutil` `walker.write`.
 
-5. [ ] **Narrow the library passes, then share what no build reaches.**
+5. [X] **The second optimize folds every imported package again.**
+   `foldPkg` memoizes per run, so the optimize after lowering refolded the whole
+   library the first had folded: 0.94 s and 380 MB of TestGolden, more than
+   half of that optimize. What lowering adds that the program calls is moved
+   into the program by passLibFuncs, which the second fold reaches. Remember
+   on the `Config` what an earlier `Optimize` folded and skip it.
+
+6. [ ] **Narrow the library passes, then share what no build reaches.**
    Measured before starting (TestGolden after step 4): the clone is 2.14 GB
    and 5.1 s CPU, library IR 64-91% of it. But every build *writes* most of
    the library it copies: on `examples/todo` 85 of 142 library declarations
@@ -80,6 +87,8 @@ Re-measure the affected workload after each step and note the number here.
    about two thirds of the library (`tmp/reachscan`), and that two thirds is
    what specialization and folding write by design, so the shareable part is
    the unreached third: ~0.5-0.9 GB and 2-3.5 s, not the 34% first assumed.
+   `foldPkg`'s 0.84 GB counted both optimizes; step 5 took the second's
+   0.38 GB, so re-measure before starting.
    Owner's decisions:
    - Two parts. (1) `foldPkg`, `SpecializeOverriddenBodies` and
      `DataFamilies` touch only the library declarations the program reaches;
@@ -97,15 +106,15 @@ Re-measure the affected workload after each step and note the number here.
      `tmp/writescan` is the probe: the file and a patch to `emitTarget` that
      reports, per phase, which library declarations a build wrote.
 
-6. [ ] **passInlinePure clones slot content into both branches.**
+7. [ ] **passInlinePure clones slot content into both branches.**
    `ir.SlotSplicer.Substitute` / `lower.deepCloneStmts`: 2.8 GB (22%) of the
    docs build, 0.6 GB of TestGolden.
 
-7. [ ] **`ExprCtx.WithLocal` clones its maps per local**
+8. [ ] **`ExprCtx.WithLocal` clones its maps per local**
    (`codegen/exprctx.go:284`): 1.2 GB on the docs build. A parent-chained
    scope instead of a copy.
 
-8. [ ] **Test-only guards (owner's call).** TestGolden fingerprints the checked
+9. [ ] **Test-only guards (owner's call).** TestGolden fingerprints the checked
    package and its library around every build: 7.2 s of 28.5 s CPU and
    0.6 GB; `walkDivergence` adds 0.23 GB. With `Frozen`/`MustWriteDecl`
    catching the known writers, fingerprinting only the program's package (or
@@ -114,7 +123,7 @@ Re-measure the affected workload after each step and note the number here.
 ## Deferred
 
 - **Slice-backed IR regions.** Cheap clones and serializable checked IR, but a
-  rewrite of every pass. Revisit after step 5; where it would pay is the LSP
+  rewrite of every pass. Revisit after step 6; where it would pay is the LSP
   cold start and the WASM playground loading a checked library from a blob.
 - Parser buffer pool: 7641e47ca on `perf/parser-one-buffer` never reached
   main. `Parser.open` is 74 MB of a cold check.
@@ -157,4 +166,17 @@ Re-measure the affected workload after each step and note the number here.
    when their field kind's case is removed from the plan.
    `internal/testutil`'s `walker.write` reads no field metadata (none of
    `rtype.Field`'s samples are its), so a plan has nothing to save there; its
-   5.6 s is hashing and the seen map, which is step 8's question.
+   5.6 s is hashing and the seen map, which is step 9's question.
+
+5. **Each imported package folded once per target** -- TestGolden 5.91 ->
+   5.52 GB allocated, 24.2 -> 22.7 s CPU in the profiled run (two unprofiled
+   pairs: 23.3 -> 21.8 and 22.9 -> 21.8 s user). A one-core probe put the
+   second optimize at 1.55 s / 595 MB before and 0.62 s / 221 MB after. The
+   first optimize stays: `DataFamilies` and the override bodies have to be in
+   place before anything folds, and its fold and shake are what lowering
+   works on. Docs site byte-identical (1187 files) at 25.8 s CPU warm.
+   TestGolden, TestFixtures, `cmd/sngl`, `internal/optimize`, `internal/build`,
+   `internal/lower`, `internal/snapshot`, `docs`, `codegen/...`,
+   `internal/interp/...`, `internal/playground/...` and `internal/lsp/...`
+   green; `TestImportedPackageIsFoldedOncePerConfig` fails with the skip
+   removed.
