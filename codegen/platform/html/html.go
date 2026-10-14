@@ -687,6 +687,9 @@ type htmlGen struct {
 	// scriptErr is the first element the script was asked to build that it
 	// cannot (htmlTranslator.refuse).
 	scriptErr *scriptRefusal
+	// translators are every translator the script was written with, asked after
+	// it for what they could not refuse as they went (refuseUntagged).
+	translators []*htmlTranslator
 	// nodeSites is where each element the script creates was written, shared
 	// by every scope's translator: an updater writes an element another
 	// scope created.
@@ -1272,6 +1275,7 @@ func (g *htmlGen) generate() (string, error) {
 	// class's rule as it is translated.
 	var scriptBuf strings.Builder
 	g.emitScript(&scriptBuf)
+	g.refuseUntagged()
 	if r := g.scriptErr; r != nil {
 		return "", fmt.Errorf("%s: %s", g.scriptNodePos(r.node), r.msg)
 	}

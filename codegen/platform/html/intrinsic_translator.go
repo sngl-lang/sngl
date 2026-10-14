@@ -3,6 +3,7 @@ package html
 import (
 	"context"
 	"fmt"
+	"maps"
 	"slices"
 	"strings"
 
@@ -79,6 +80,9 @@ type htmlTranslator struct {
 	windows map[string]bool
 	refuse  func(node ir.Expr, msg string)
 	sites   map[string]ast.Stmt // htmlGen.nodeSites
+	// untagged are the elements created under the wildcard's own name that no
+	// tag has been assigned, refused once the script is written (refuseUntagged).
+	untagged map[string]bool
 }
 
 func (t *htmlTranslator) NodeSite(id string, at ast.Stmt) {
@@ -95,7 +99,7 @@ func (g *htmlGen) nodeSitesMap() map[string]ast.Stmt {
 }
 
 func (g *htmlGen) newHTMLTranslator(jc *javascript.JsIRContext) *htmlTranslator {
-	return &htmlTranslator{
+	tr := &htmlTranslator{
 		jc: jc, idTags: map[string]string{}, creates: map[string]*ir.Call{}, idToNode: g.idToNode, refToVar: g.refToVar, elem: g.elemDecl,
 		canvasByID: g.canvasByID, canvasByNode: g.canvasByNode, pageCanvas: g.pageCanvas,
 		classProps: map[string][]ir.Arg{}, addStyle: g.AddStyle, useStyleValue: g.useStyleValue,
@@ -110,6 +114,19 @@ func (g *htmlGen) newHTMLTranslator(jc *javascript.JsIRContext) *htmlTranslator 
 				}
 			}
 		},
+		untagged: map[string]bool{},
+	}
+	g.translators = append(g.translators, tr)
+	return tr
+}
+
+// refuseUntagged refuses each element a script created and named no tag,
+// which would otherwise be created as `<element>`.
+func (g *htmlGen) refuseUntagged() {
+	for _, tr := range g.translators {
+		for _, id := range slices.Sorted(maps.Keys(tr.untagged)) {
+			tr.refuse(&ir.Ident{Name: id}, fmt.Sprintf("a raw element needs its %q prop to name a tag", tagProp))
+		}
 	}
 }
 
@@ -187,6 +204,9 @@ func (t *htmlTranslator) OnCreateNode(ctx context.Context, id, tag string) []ir.
 	source := tag == imageURLElement || tag == imageDrawingElement
 	if source {
 		t.sources[id] = tag
+	}
+	if tag == elementName {
+		t.untagged[id] = true
 	}
 	tag = elementTag(tag)
 	t.idTags[id] = tag
@@ -417,6 +437,9 @@ func (t *htmlTranslator) OnPropAssign(ctx context.Context, node ir.Expr, prop st
 			create = t.creates[id.Name]
 		}
 		s, literal := codegen.IRLiteralString(value)
+		if id != nil && (!literal || s != "" && s != elementName) {
+			delete(t.untagged, id.Name)
+		}
 		switch {
 		case literal && s != "" && create != nil:
 			create.Args[0].Value = &ir.Literal{Type: ir.TypString, Value: s}

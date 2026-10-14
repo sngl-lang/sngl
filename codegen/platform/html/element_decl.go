@@ -41,6 +41,10 @@ const tagProp = "tag"
 // unpacks it back into the names it was written under.
 const attrsProp = "attrs"
 
+// elementName is what html.sngl declares `element` under, the tag a raw element
+// is created with until its `tag` names one.
+const elementName = "element"
+
 // isElement reports whether a component is html's `element`. It is recognised
 // by the two props html gave it, for the reason their names are constants
 // here: they are html's own, and nothing else html renders declares them.
