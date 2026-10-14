@@ -3,6 +3,7 @@ package html
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strings"
 
 	"duckfam.us/sngl/ast"
@@ -505,26 +506,60 @@ func (t *htmlTranslator) OnPropAssign(ctx context.Context, node ir.Expr, prop st
 }
 
 // assignAttrs writes each attribute a wildcard map names, under the condition
-// that chose it where the map is a choice between maps.
+// that chose it where the map is a choice between maps. A branch removes what
+// another one writes, since the same statements patch the element when the
+// condition changes.
 func (t *htmlTranslator) assignAttrs(ctx context.Context, written, node, value ir.Expr) []ir.Stmt {
+	var names []string
+	if !attrNames(value, &names) {
+		t.refuse(written, fmt.Sprintf("%q must be a map literal, or a choice between map literals: each attribute is written by name, and these names are not known until it runs", attrsProp))
+		return nil
+	}
+	return t.assignAttrChoice(ctx, node, value, names)
+}
+
+func attrNames(value ir.Expr, names *[]string) bool {
 	switch v := value.(type) {
 	case *ir.MapLitIR:
-		var out []ir.Stmt
 		for _, e := range v.Entries {
-			if k, ok := e.Key.(*ir.Literal); ok {
-				out = append(out, t.OnPropAssign(ctx, node, k.Value, e.Value)...)
+			if k, ok := e.Key.(*ir.Literal); ok && !slices.Contains(*names, k.Value) {
+				*names = append(*names, k.Value)
 			}
 		}
-		return out
+		return true
 	case *ir.Ternary:
+		return attrNames(v.Then, names) && attrNames(v.Else, names)
+	}
+	return false
+}
+
+func (t *htmlTranslator) assignAttrChoice(ctx context.Context, node, value ir.Expr, names []string) []ir.Stmt {
+	if v, ok := value.(*ir.Ternary); ok {
 		return []ir.Stmt{&ir.If{
 			Cond: v.Cond,
-			Body: t.assignAttrs(ctx, written, node, v.Then),
-			Else: t.assignAttrs(ctx, written, node, v.Else),
+			Body: t.assignAttrChoice(ctx, node, v.Then, names),
+			Else: t.assignAttrChoice(ctx, node, v.Else, names),
 		}}
 	}
-	t.refuse(written, fmt.Sprintf("%q must be a map literal, or a choice between map literals: each attribute is written by name, and these names are not known until it runs", attrsProp))
-	return nil
+	var out []ir.Stmt
+	set := map[string]bool{}
+	for _, e := range value.(*ir.MapLitIR).Entries {
+		if k, ok := e.Key.(*ir.Literal); ok {
+			out = append(out, t.OnPropAssign(ctx, node, k.Value, e.Value)...)
+			set[k.Value] = true
+		}
+	}
+	for _, name := range names {
+		if !set[name] {
+			out = append(out, &ir.CallStmt{Call: &ir.Call{
+				Type:     ir.TypVoid,
+				Receiver: t.nodeRef(node),
+				Func:     &ir.Func{Name: "removeAttribute"},
+				Args:     []ir.CallArg{{Value: &ir.Literal{Type: ir.TypString, Value: name}}},
+			}})
+		}
+	}
+	return out
 }
 
 func (t *htmlTranslator) OnSlotReset(ctx context.Context, slot *ir.Var) []ir.Stmt {
