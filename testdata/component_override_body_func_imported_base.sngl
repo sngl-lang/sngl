@@ -8,7 +8,7 @@ import "sngl:platform/bubbletea"
 // holds only what this package declared -- so a helper in an override of an
 // imported component was checked a second time at package scope, where the
 // body it belongs to is not in scope and `m` is undefined.
-component circle[bubbletea.platform] {
+component circle[bubbletea.platform]() {
     var m = 3.0
 
     func scaled() => m * 2.0

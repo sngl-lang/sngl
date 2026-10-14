@@ -230,32 +230,32 @@ component element(
 
 // --- Core Layout ---
 
-const component ui.vbox[platform] {
+const component ui.vbox[platform](style, children) {
     html.div(style={...style, display=flex, flexDirection=column}) {
         children
     }
 }
 
-const component ui.hbox[platform] {
+const component ui.hbox[platform](style, children) {
     html.div(style={...style, display=flex, flexDirection=row}) {
         children
     }
 }
 
-const component ui.stack[platform] {
+const component ui.stack[platform](style, layers) {
     html.div(style={...style, position=relative}) {
         layers
     }
 }
 
-const component ui.spacer[platform] {
+const component ui.spacer[platform](style) {
     html.div(style={...style, flex=1}) {}
 }
 
 // `@scrollEnd` is the standard library's name for the event the DOM calls
 // `scrollend`. The names differ, so the override maps them: that is the half of
 // wrapping an element that a wildcard cannot do for itself.
-const component ui.scroll[platform] {
+const component ui.scroll[platform](style, @scroll, @scrollEnd, content) {
     html.div(style={...style, overflow=auto}, @scroll { scroll() }, @scrollend { scrollEnd() }) {
         content
     }
@@ -263,7 +263,7 @@ const component ui.scroll[platform] {
 
 // --- Core Text & Media ---
 
-const component ui.text[platform] {
+const component ui.text[platform](value, style) {
     html.span(textContent=value, style={...style}) {}
 }
 
@@ -271,7 +271,7 @@ const component ui.text[platform] {
 // fires -- and a right-click, which is not the same gesture. It stands in until
 // html synthesizes the real one from pointerdown and a timer; the alternative
 // was a declared event that reached nothing.
-const component ui.button[platform] {
+const component ui.button[platform](text, disabled, style, @click, @longPress, content) {
     html.button(disabled=disabled, style={...style}, @click { click() }, @contextmenu { longPress() }) {
         html.span(textContent=text) {}
         content
@@ -282,7 +282,7 @@ const component ui.button[platform] {
 // the style, the click and the description, as an `img` role, so the
 // placeholder stands in the same box where there is no source. The page's
 // rules fill the frame with the picture and fit it by the frame's class.
-const component ui.image[platform] {
+const component ui.image[platform](alt, fit, style, @click, src, placeholder) {
     html.span(
         class = "sngl-image sngl-image-" + string(fit),
         attrs = {"role"="img", "aria-label"=alt},
@@ -306,21 +306,21 @@ component ImageUrl(url string) ui.imageSource
 #[intrinsic("html:imageDrawing")]
 component ImageDrawing(width float, height float, shapes ...component shapes.shape) ui.imageSource
 
-const component ui.file[platform] {
+const component ui.file[platform](path) {
     ImageUrl(url=path)
 }
 
-const component ui.remote[platform] {
+const component ui.remote[platform](url) {
     ImageUrl(url=url)
 }
 
-const component shapes.image[platform] {
+const component shapes.image[platform](width, height, shapes) {
     ImageDrawing(width=width, height=height) {
         shapes
     }
 }
 
-const component ui.input[platform] {
+const component ui.input[platform](placeholder, readonly, value, disabled, type, style, @input, @change) {
     html.input(
         type = string(type),
         placeholder = placeholder,
@@ -339,7 +339,7 @@ const component ui.input[platform] {
     ) {}
 }
 
-const component ui.checkbox[platform] {
+const component ui.checkbox[platform](label, checked, disabled, style, @change) {
     html.label(style={display=inlineFlex, alignItems=center, gap=4px, ...style}) {
         html.input(type="checkbox", checked=checked, disabled=disabled, @change(e) {
             checked = e.currentTarget.checked
@@ -351,7 +351,7 @@ const component ui.checkbox[platform] {
 
 // --- Tier 1: Core Input ---
 
-const component ui.radio[platform] {
+const component ui.radio[platform](value, disabled, direction, style, @change, options) {
     html.fieldset(style={display=flex, flexDirection=(direction == ui.Orientation.horizontal ? row : column), gap=8px, border="none", padding=0, ...style}) {
         for var opt = options {
             html.label(style={display=inlineFlex, alignItems=center, gap=4px}) {
@@ -365,7 +365,7 @@ const component ui.radio[platform] {
     }
 }
 
-const component ui.toggle[platform] {
+const component ui.toggle[platform](label, checked, disabled, style, @change) {
     html.label(style={display=inlineFlex, alignItems=center, gap=8px, ...style}) {
         html.input(type="checkbox", role="switch", checked=checked, disabled=disabled, @change(e) {
             checked = e.currentTarget.checked
@@ -375,7 +375,7 @@ const component ui.toggle[platform] {
     }
 }
 
-const component ui.select[platform] {
+const component ui.select[platform](placeholder, value, disabled, style, @change, options) {
     html.select(disabled=disabled, style={...style}, @change(e) {
         value = e.currentTarget.value
         change(value)
@@ -389,7 +389,7 @@ const component ui.select[platform] {
     }
 }
 
-const component ui.textarea[platform] {
+const component ui.textarea[platform](placeholder, readonly, value, disabled, rows, style, @input, @change) {
     html.textarea(
         placeholder = placeholder,
         disabled = disabled,
@@ -413,7 +413,7 @@ const component ui.textarea[platform] {
 // `<progress>` with no `value` attribute is HTML's own indeterminate bar, so
 // the absent value is spelled by leaving the attribute off rather than by
 // choosing a number to stand for "unknown".
-const component ui.progress[platform] {
+const component ui.progress[platform](style, value, max) {
     if value != null {
         html.progress(value=string(value), max=string(max), style={...style}) {}
     } else {
@@ -425,7 +425,7 @@ const component ui.progress[platform] {
 // are in a class: `sngl-<name>`, and a modifier for each choice the props
 // make (`sngl-badge-success`, `sngl-avatar-large`, `sngl-chip-selected`), so
 // a page's stylesheet can restyle every one of them at once.
-const component ui.badge[platform] {
+const component ui.badge[platform](value, variant, style) {
     html.span(
         class = variant != "" ? "sngl-badge sngl-badge-" + variant : "sngl-badge",
         textContent = value,
@@ -439,7 +439,7 @@ const component ui.badge[platform] {
     ) {}
 }
 
-const component ui.chip[platform] {
+const component ui.chip[platform](label, variant, removable, selected, disabled, style, @click, @remove) {
     html.span(
         class = "sngl-chip" + (variant != "" ? " sngl-chip-" + variant : "") + (selected ? " sngl-chip-selected" : ""),
         style = {
@@ -462,7 +462,7 @@ const component ui.chip[platform] {
     }
 }
 
-const component ui.spinner[platform] {
+const component ui.spinner[platform](label, style) {
     html.span(style={display=inlineFlex, alignItems=center, gap=8px, ...style}) {
         html.span(class="sngl-spinner") {}
         html.span(textContent=label) {}
@@ -472,7 +472,7 @@ const component ui.spinner[platform] {
 // A tablist of the tabs' labels and a tabpanel showing the selected one's
 // content. `underline` marks the selected tab with a rule under it, `pills`
 // with a filled background.
-const component ui.tabs[platform] {
+const component ui.tabs[platform](selected, variant, style, @change, items) {
     html.div(style={...style, display=flex, flexDirection=column}) {
         html.div(role="tablist", style={display=flex, gap=4px, borderBottom="1px solid #ccc"}) {
             for var k, t = items {
@@ -507,13 +507,13 @@ const component ui.tabs[platform] {
     }
 }
 
-const component ui.link[platform] {
+const component ui.link[platform](text, href, style, @click) {
     html.a(href=href, style={...style}, @click { click() }) {
         html.span(textContent=text) {}
     }
 }
 
-const component ui.divider[platform] {
+const component ui.divider[platform](style) {
     html.hr(style={...style}) {}
 }
 
@@ -540,7 +540,7 @@ component Window(
 
 // The window's `@error` is the outermost boundary of what it renders, and
 // catches whether or not the call site handles one.
-const component ui.window[platform] {
+const component ui.window[platform](title, visible, @error, @closed, content, favicon) {
     Window(title=title, :visible=visible, @closed { closed() }) {
         boundary(@error(e) { error(e) }) {
             content
@@ -550,7 +550,7 @@ const component ui.window[platform] {
     }
 }
 
-const component ui.modal[platform] {
+const component ui.modal[platform](style, open, title, content) {
     html.div(class="modal-overlay", hidden=(open == false), style={...style, position=fixed, top=0, left=0, right=0, bottom=0, background=#00000080, display=flex, alignItems=center, justifyContent=center, zIndex=1000}) {
         html.div(class="modal-content", style={background="#fff", borderRadius=8px, padding=24px}) {
             if title != "" {
@@ -561,25 +561,25 @@ const component ui.modal[platform] {
     }
 }
 
-const component ui.drawer[platform] {
+const component ui.drawer[platform](style, content) {
     html.div(style={...style, position=fixed, top=0, bottom=0, background="#fff", zIndex=1000}) {
         content
     }
 }
 
-const component ui.tooltip[platform] {
+const component ui.tooltip[platform](style, text, trigger) {
     html.div(title=text, style={...style}) {
         trigger
     }
 }
 
-const component ui.popover[platform] {
+const component ui.popover[platform](style, content) {
     html.div(style={...style, position=relative}) {
         content
     }
 }
 
-const component ui.splitview[platform] {
+const component ui.splitview[platform](style, panes) {
     html.div(style={...style, display=flex}) {
         panes
     }
@@ -587,7 +587,7 @@ const component ui.splitview[platform] {
 
 // --- Tier 4: Data & Desktop ---
 
-const component ui.table[platform] {
+const component ui.table[platform](style, columns, rows) {
     html.table(width="100%", style={borderCollapse="collapse", ...style}) {
         html.thead {
             html.tr {
@@ -624,7 +624,7 @@ const func _treeRows(items list[ui.treeItem], indent ui.measurement) list[_TreeR
     return out
 }
 
-const component ui.tree[platform] {
+const component ui.tree[platform](style, items) {
     html.ul(style={listStyleType=none, paddingLeft=16px, ...style}) {
         for var row = _treeRows(items, 0px) {
             html.li(textContent=row.label, style={paddingLeft=row.indent})
@@ -632,7 +632,7 @@ const component ui.tree[platform] {
     }
 }
 
-const component ui.menu[platform] {
+const component ui.menu[platform](style, open, items) {
     if open {
         html.div(role="menu", style={...style, position=absolute, display=flex, flexDirection=column, background="#fff", border="1px solid #ddd", borderRadius=4px, padding=4px, zIndex=100}) {
             for var it = items {
@@ -645,7 +645,7 @@ const component ui.menu[platform] {
 }
 
 // The top-level entries; a submenu is not drawn yet.
-const component ui.menubar[platform] {
+const component ui.menubar[platform](style, items) {
     html.nav(role="menubar", style={...style, display=flex, gap=4px}) {
         for var it = items {
             html.button(role="menuitem", disabled=it.disabled, textContent=it.label, @click {
@@ -655,7 +655,7 @@ const component ui.menubar[platform] {
     }
 }
 
-const component ui.toolbar[platform] {
+const component ui.toolbar[platform](style, controls) {
     html.div(style={...style, display=flex, gap=4px, alignItems=center}) {
         controls
     }
@@ -670,7 +670,7 @@ const component ui.toolbar[platform] {
 // before the fold that would have settled it.
 // The control reports the date as the text of a "YYYY-MM-DD" field, empty
 // when cleared, so the date is built from it here.
-const component ui.datepicker[platform] {
+const component ui.datepicker[platform](value, disabled, style, @change) {
     html.input(
         type = "date",
         value = (value != null ? string(value) : ""),
@@ -683,7 +683,7 @@ const component ui.datepicker[platform] {
     ) {}
 }
 
-const component ui.card[platform] {
+const component ui.card[platform](style, content) {
     html.div(style={borderRadius=8px, padding=16px, ...style}) {
         content
     }
@@ -778,7 +778,7 @@ const func roleTag(role markup.Role) string {
 // that would otherwise collapse what the author wrote. It is written first so
 // a caller's own style wins, which is also how every other override here
 // orders its defaults.
-const component markup.richText[platform] {
+const component markup.richText[platform](style, role, anchor, content) {
     flow(tag=roleTag(role), id=anchor, style={margin=0px, whiteSpace=ui.WhiteSpace.preWrap, ...style}) {
         content
     }
@@ -786,7 +786,7 @@ const component markup.richText[platform] {
 
 // A class rather than the base's inline style, so the box has a dark half and
 // a page's own `pre` rule can still restyle it.
-const component markup.codeBlock[platform] {
+const component markup.codeBlock[platform](content) {
     flow(
         tag = "pre",
         class = "sngl-code",
@@ -800,48 +800,48 @@ const component markup.codeBlock[platform] {
     }
 }
 
-const component markup.text[platform] {
+const component markup.text[platform](value) {
     inline(tag="span", textContent=value) {}
 }
 
-const component markup.bold[platform] {
+const component markup.bold[platform](content) {
     inline(tag="strong") {
         content
     }
 }
 
-const component markup.italic[platform] {
+const component markup.italic[platform](content) {
     inline(tag="em") {
         content
     }
 }
 
-const component markup.underline[platform] {
+const component markup.underline[platform](content) {
     inline(tag="u") {
         content
     }
 }
 
-const component markup.strike[platform] {
+const component markup.strike[platform](content) {
     inline(tag="s") {
         content
     }
 }
 
-const component markup.monospace[platform] {
+const component markup.monospace[platform](content) {
     inline(tag="code") {
         content
     }
 }
 
-const component markup.link[platform] {
+const component markup.link[platform](href, content) {
     inline(tag="a", href=href) {
         content
     }
 }
 
 // A picture among the words is an image like any other, in a frame on the line.
-const component markup.image[platform] {
+const component markup.image[platform](alt, src) {
     #[family.crosses]
     ui.image(alt=alt) {
         src
@@ -852,7 +852,7 @@ const component markup.image[platform] {
 // palette is the class's rule in the stylesheet, light and dark, and a page's
 // own CSS for `sngl-tok-<kind>` wins over it. A palette the program sets is on
 // the element instead, since it wins over everything.
-const component markup.token[platform] {
+const component markup.token[platform](kind, content) {
     inline(
         tag = "span",
         class = "sngl-tok-" + string(kind),
@@ -872,7 +872,7 @@ const component markup.token[platform] {
 // over whole and `spanStyleCSS` decides, rather than a chain of components
 // here asking field by field: a prop is opaque to the `if` that would ask,
 // so every branch survived folding and the words came out once per branch.
-const component markup.run[platform] {
+const component markup.run[platform](style, content) {
     inline(tag="span", spanStyle=style) {
         content
     }
@@ -885,7 +885,7 @@ const component markup.run[platform] {
 //
 // The page's reset takes the indent the markers hang in, so the list gives it
 // back, and the gap between items is the default body's.
-const component markup.list[platform] {
+const component markup.list[platform](ordered, start, items) {
     if ordered {
         html.ol(start=string(start), style={display=flex, flexDirection=column, gap=4px, paddingLeft=2em}) {
             items
@@ -900,7 +900,7 @@ const component markup.list[platform] {
 // A task item is a checkbox in place of the bullet: a real one, so it reads as
 // a checkbox, and disabled, since a document describes state rather than
 // holding it. Its row is a flex box, which is also what drops the marker.
-const component markup.listItem[platform] {
+const component markup.listItem[platform](task, content) {
     if task == markup.Task.none {
         html.li {
             content
@@ -945,7 +945,7 @@ func clearInterval(handle int)
 // long as the branch it is written in, so `if enabled` is what makes toggling
 // the gate a mount and an unmount. `on=interval` is the key, because a running
 // schedule is the same schedule for as long as its period is unchanged.
-const component time.timer[platform] {
+const component time.timer[platform](interval, enabled, @tick) {
     var handle = 0
 
     if enabled {
@@ -1098,7 +1098,7 @@ func paintStyle(ctx DrawContext, style shapes.Style) {
     ctx.lineWidth = style.strokeWidth
 }
 
-const component shapes.circle[platform] {
+const component shapes.circle[platform](cx, cy, r, style) {
     html.draw(@draw(e) {
         e.ctx.save()
         paintStyle(e.ctx, style)
@@ -1117,7 +1117,7 @@ const component shapes.circle[platform] {
 // Each shape sets only the style it uses, which is the point of writing these
 // in SNGL: the translation they replace applied all six properties to every
 // shape, including a font to a rectangle.
-const component shapes.rect[platform] {
+const component shapes.rect[platform](x, y, w, h, style) {
     html.draw(@draw(e) {
         e.ctx.save()
         if style.fill.a > 0 {
@@ -1137,7 +1137,7 @@ const component shapes.rect[platform] {
     })
 }
 
-const component shapes.ellipse[platform] {
+const component shapes.ellipse[platform](cx, cy, rx, ry, style) {
     html.draw(@draw(e) {
         e.ctx.save()
         paintStyle(e.ctx, style)
@@ -1156,7 +1156,7 @@ const component shapes.ellipse[platform] {
 // A line has no interior, so `fill` is not read here at all rather than being
 // set and ignored. That is the declaration's documented behaviour, stated once
 // in the override instead of as a special case in five emitters.
-const component shapes.line[platform] {
+const component shapes.line[platform](x1, y1, x2, y2, style) {
     html.draw(@draw(e) {
         e.ctx.save()
         e.ctx.strokeStyle = cssColor(style.stroke)
@@ -1171,7 +1171,7 @@ const component shapes.line[platform] {
     })
 }
 
-const component shapes.path[platform] {
+const component shapes.path[platform](style, steps) {
     html.draw(@draw(e) {
         e.ctx.save()
         paintStyle(e.ctx, style)
@@ -1212,7 +1212,7 @@ const component shapes.path[platform] {
 #[js.native("_snglDrawImage")]
 func drawImage(ctx DrawContext, src string, x float, y float, w float, h float)
 
-const component shapes.canvasImage[platform] {
+const component shapes.canvasImage[platform](x, y, w, h, src) {
     drawSource(
         @url(e) {
             drawImage(e.ctx, e.url, x, y, w, h)
@@ -1233,7 +1233,7 @@ const component shapes.canvasImage[platform] {
     }
 }
 
-const component shapes.canvasText[platform] {
+const component shapes.canvasText[platform](x, y, content, style) {
     html.draw(@draw(e) {
         e.ctx.save()
         e.ctx.font = "{style.fontSize}px {style.fontFamily}"
@@ -1270,13 +1270,13 @@ component Page(content ...component ui.node) ui.node
 #[intrinsic("html:stack")]
 component Stack[F any](pages ...component F) ui.node
 
-const component nav.stack[platform] {
+const component nav.stack[platform](pages) {
     Stack {
         pages
     }
 }
 
-const component nav.page[platform] {
+const component nav.page[platform](params, content) {
     #[family.crosses]
     Page {
         content(params)
@@ -1287,7 +1287,7 @@ const component nav.page[platform] {
 // passes. Its own `@click` runs before the browser follows it, as ui.link's
 // does. A link in a window shown inside the document navigates in place, and
 // renders sngl:ui/nav's own body there instead.
-const component nav.link[platform] {
+const component nav.link[platform](to, params, text, style, @click) {
     ui.link(href=nav.href(to, params), text=text, style=style, @click {
         click()
     })

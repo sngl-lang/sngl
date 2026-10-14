@@ -40,11 +40,11 @@ component Badge(value string) node {
     text(value="default " + value)
 }
 
-component Badge[go.language] {
+component Badge[go.language](value) {
     text(value="go " + value)
 }
 
-component Badge[html.platform] {
+component Badge[html.platform](value) {
     html.span(textContent="html " + value)
 }
 
@@ -60,11 +60,11 @@ component Badge(value string) node {
     text(value=value)
 }
 
-component Badge[go.language] {
+component Badge[go.language](value) {
     text(value="a" + value)
 }
 
-component Badge[go.language] {
+component Badge[go.language](value) {
     text(value="b" + value)
 }
 

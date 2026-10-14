@@ -1,17 +1,88 @@
-import sngl "sngl:ui"
+import ui "sngl:ui"
 import "sngl:platform/html"
 
-// An override's prop list is a selection of what the declaration it overrides
-// declares, not a declaration of its own: the base owns the types, and a
-// restated one is a thing that can drift.
-component sngl.text[html.platform](extra string) { // ERROR(check) "its type belongs to the declaration being overridden"
-    span(textContent=value) {}
+// An override's parameter list selects what the declaration it overrides
+// declares; it is not a declaration of its own. Each entry names one of the
+// base's parameters, once, and restates nothing but a type that matches.
+component a(value string, size int = 1) ui.node
+
+component a[html.platform](value int) { // ERROR(check) "cannot use int as string for parameter \"value\" of override \"a\""
+    ui.text(value="a")
 }
 
-component main sngl.node {
-    sngl.text(value="hi")
+component b(value string) ui.node
+
+component b[html.platform](extra) { // ERROR(check) "override \"b\" selects \"extra\", which b does not declare"
+    ui.text(value="b")
 }
 
-sngl.window {
+component c(value string, size int = 1) ui.node
+
+component c[html.platform](value) {
+    ui.text(value="{value} {size}") // ERROR(check) "undefined: size"
+}
+
+component d(value string, size int = 1) ui.node
+
+component d[html.platform](value, size = 2) { // ERROR(check) "takes no default here"
+    ui.text(value=value)
+}
+
+component e(value string) ui.node
+
+component e[html.platform](value, value) { // ERROR(check) "selects \"value\" twice"
+    ui.text(value=value)
+}
+
+component f(value string) ui.node
+
+component f[html.platform] { // ERROR(check) "must list the parameters its body reads"
+    ui.text(value=value)
+}
+
+component g(content ...component ui.node) ui.node
+
+component g[html.platform](content ...component ui.node) { // ERROR(check) "a slot's type belongs to the declaration"
+    content
+}
+
+component h(@pick(index int)) ui.node
+
+component h[html.platform](@pick(index int)) { // ERROR(check) "its parameters belong to the declaration"
+    ui.text(value="h")
+}
+
+component k(on bool) ui.node
+
+component k[html.platform](:on) { // ERROR(check) "selects \"on\" as two-way, but k declares it one-way"
+    ui.text(value="k")
+}
+
+func label(n int, suffix string) string
+
+func label[html.platform](n, missing) { // ERROR(check) "override \"label\" selects \"missing\", which label does not declare"
+    return "x"
+}
+
+func caption(n int, suffix string) string
+
+func caption[html.platform](n) {
+    return "{n}{suffix}" // ERROR(check) "undefined: suffix"
+}
+
+component main ui.node {
+    a(value="hi")
+    b(value="hi")
+    c(value="hi")
+    d(value="hi")
+    e(value="hi")
+    f(value="hi")
+    g() { ui.text(value="x") }
+    h()
+    k(on=true)
+    ui.text(value=label(1, "px") + caption(1, "px"))
+}
+
+ui.window {
     main
 }

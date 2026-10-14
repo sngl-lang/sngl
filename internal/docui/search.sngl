@@ -23,7 +23,7 @@ component SearchBox(entries list[docs.SearchEntry] = []) node {
 // a const is unrolled into every page that holds one, and a docs site is a
 // thousand pages each holding the whole index. Read at render time instead,
 // the const is written once to a shared asset every page loads.
-component SearchBox[html.platform] {
+component SearchBox[html.platform](entries) {
     var typed = ""
 
     html.div(class="search-box") {

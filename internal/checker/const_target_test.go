@@ -22,7 +22,7 @@ func TestTargetPackageComponentsAreConst(t *testing.T) {
 		name: "override not const",
 		src: `import sngl "sngl:ui"
 
-component sngl.text[tgtstub.platform] {
+component sngl.text[tgtstub.platform]() {
     sngl.vbox {}
 }
 `,
@@ -54,7 +54,7 @@ const component Wrap(value string) sngl.node {
     sngl.text(value=value)
 }
 
-const component sngl.text[tgtstub.platform] {
+const component sngl.text[tgtstub.platform]() {
     sngl.vbox {}
 }
 `,

@@ -11,11 +11,11 @@ component block build.family // ERROR(check) "the block family's override for go
 
 component text(full string) block
 
-component block[go.language] {
+component block[go.language]() {
     gen.node(open="x") // ERROR(check) "gen.node is written as the whole body of a member's override"
 }
 
-component text[go.language] {
+component text[go.language](full) {
     gen.node(open="{full}") // ERROR(check) "gen.node is written as the whole body of a member's override"
     gen.node(open="{full}") // ERROR(check) "gen.node is written as the whole body of a member's override"
 }

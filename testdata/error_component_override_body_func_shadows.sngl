@@ -23,7 +23,7 @@ component thing(label string) ui.node {
     ui.text(value="base {helper()}")
 }
 
-component thing[html.platform] {
+component thing[html.platform]() {
     var m = 2
 
     func helper() => m + 200 // ERROR(check) "is declared in component thing and again in its override"
@@ -31,7 +31,7 @@ component thing[html.platform] {
     ui.text(value="html {helper()}")
 }
 
-component thing[bubbletea.platform] {
+component thing[bubbletea.platform]() {
     var k = 3
 
     func other() => k + 300

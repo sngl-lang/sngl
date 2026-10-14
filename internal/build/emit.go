@@ -13,7 +13,7 @@ import (
 )
 
 // A family is generated rather than rendered when a target overrides the
-// family itself: `component block[go.language] { gen.emit(…) }`. Its members
+// family itself: `component block[go.language]() { gen.emit(…) }`. Its members
 // then never reach a code generator. The build walks each place the program
 // renders the family -- a bodyless host whose rest slot takes it, written at
 // the root of a file -- into data, hands that to the family's emitter, and

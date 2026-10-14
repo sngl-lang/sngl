@@ -23,7 +23,7 @@ stderr 'not a target identity'
 import . "sngl:ui"
 import html "sngl:platform/html"
 
-component mybox[html.platform] {
+component mybox[html.platform]() {
     text(value="html")
 }
 
@@ -38,7 +38,7 @@ window #home(title="t") {
 import . "sngl:ui"
 import html "sngl:platform/html"
 
-component mybox[platform] {
+component mybox[platform]() {
     text(value="x")
 }
 
@@ -53,7 +53,7 @@ window #home(title="t") {
 import . "sngl:ui"
 import build "sngl:build"
 
-component mybox[build.platform] {
+component mybox[build.platform]() {
     text(value="x")
 }
 
