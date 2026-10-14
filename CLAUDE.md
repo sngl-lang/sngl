@@ -4192,16 +4192,24 @@ as written, its state and methods reached Go as `any` and Kotlin as an
 unnamed type -- a plain `var held T` too, which is older than anonymous
 structs (`generic_anon_struct.txtar`'s `tally`).
 
-Nothing copies a component *built at run time* per instantiation: it is
-emitted once with T erased, which cannot spell such a struct, so on a target
-not holding `genericComponents` (Go and Kotlin; html holds it under any
-`--lang`, its instances being the page's JavaScript) one that names such a
-struct anywhere -- a prop, an event's or slot's parameter, its state, a
-method's signature, a value its bodies build -- is refused at the
-instantiation (`refuseGenericAnonProps`,
-`cmd/sngl/testdata/generic_anon_struct_runtime_instance_refused.txt`). The
-same erasure already breaks a `list[T]` prop on fyne, whose `[]any` field takes
-no `[]int`; copying a component per instantiation is what would answer both.
+**A generic component built at run time is copied per instantiation** on a
+target not holding `genericComponents` (Go and Kotlin; html holds it under any
+`--lang`, its instances being the page's JavaScript), as a function is by
+`passMonomorphize` and a struct by `monomorphizeStructs`: `show[int]` renders
+`show__int`, whose props, events, slots, state, methods and body hold the types
+its call site bound (`ir.InstantiateComponent`, which owns what the component
+declares and shares the rest). The copy is made where passNoInlineComponents
+elects the instantiation to be built (`instantiateRuntime`), the one place that
+knows -- a spliced one is already at its types -- and everything after reads it
+as an ordinary component, `passInstanceSlots`' per-content copies and android's
+composables included. Emitted once with T erased, a `list[T]` prop was `[]any`
+on fyne, which the call site's `[]int` is not, and `struct { v T }` had no
+spelling at all, so a component naming one was refused. A recursion's copy
+joins the cycle and points its own renders of the cycle at their copies; one
+that renders itself at a deeper type at every level would need a copy per
+level, and is refused at that render past `maxInstances` copies
+(`testdata/generic_component_runtime_instance.txtar`,
+`cmd/sngl/testdata/generic_component_runtime_instance_runs.txt`).
 
 **`==` is `interp.Equal`, in the interpreter and in the optimizer's fold**: a
 struct field by field by name, a list element by element, a number by value.
