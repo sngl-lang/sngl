@@ -497,44 +497,80 @@ func (st *inlineCompState) run() error {
 	return nil
 }
 
-// refuseGenericAnonProps refuses a component built at run time whose props,
-// events, slots or state name an anonymous struct over one of its type
-// parameters, on a target that does not emit a generic component: nothing
-// copies a component per instantiation, so its one declaration erases T, and
-// the struct an instantiation hands it -- the package's `struct { v int }` --
-// is a different host type from the erased one. Spliced, the component's body
-// is the instantiation's and needs no declaration.
+// refuseGenericAnonProps refuses a component built at run time that names an
+// anonymous struct over one of its type parameters anywhere -- a prop, an
+// event's or slot's parameter, its state, a method's signature, a value in
+// its body or a handler -- on a target that does not emit a generic
+// component: nothing copies a component per instantiation, so its one
+// declaration erases T, and the struct an instantiation hands it -- the
+// package's `struct { v int }` -- is a different host type from the erased
+// one. Spliced, the component's body is the instantiation's, at its types.
 func (st *inlineCompState) refuseGenericAnonProps(n *ir.NodeInst) error {
 	c := n.Component
 	if st.genericComponents || c == nil || len(c.TypeParams) == 0 {
 		return nil
 	}
 	refuse := func(what string, t *ir.Type) error {
-		return fmt.Errorf("%s: %q is built while the program runs here, and its %s is %s, an anonymous struct naming a type parameter; this target emits such a component once with its type parameters erased, which cannot spell that struct -- give it a concrete type, or render %q where it is spliced", nodePos(n), c.Name, what, t, c.Name)
+		return fmt.Errorf("%s: %q is built while the program runs here, and %s is %s, an anonymous struct naming a type parameter; this target emits such a component once with its type parameters erased, which cannot spell that struct -- give it a concrete type, or render %q where it is spliced", nodePos(n), c.Name, what, t, c.Name)
 	}
 	for _, p := range c.Props {
 		if p != nil && namesGenericAnon(p.Type) {
-			return refuse(fmt.Sprintf("prop %q", p.Name), p.Type)
+			return refuse(fmt.Sprintf("its prop %q", p.Name), p.Type)
 		}
 	}
 	for _, e := range c.Events {
 		for _, p := range e.Params {
 			if p != nil && namesGenericAnon(p.Type) {
-				return refuse(fmt.Sprintf("event @%s's parameter", e.Name), p.Type)
+				return refuse(fmt.Sprintf("its event @%s's parameter", e.Name), p.Type)
 			}
 		}
 	}
 	for _, sl := range c.Slots {
 		for _, p := range sl.Params {
 			if p != nil && namesGenericAnon(p.Type) {
-				return refuse(fmt.Sprintf("slot %q's parameter", sl.Name), p.Type)
+				return refuse(fmt.Sprintf("its slot %q's parameter", sl.Name), p.Type)
 			}
 		}
 	}
 	for _, v := range c.Vars {
 		if v != nil && namesGenericAnon(v.Type) {
-			return refuse(fmt.Sprintf("state %q", v.Name), v.Type)
+			return refuse(fmt.Sprintf("its state %q", v.Name), v.Type)
 		}
+	}
+	for _, f := range c.Funcs {
+		for _, p := range f.Params {
+			if p != nil && namesGenericAnon(p.Type) {
+				return refuse(fmt.Sprintf("its func %q's parameter %q", f.Name, p.Name), p.Type)
+			}
+		}
+		if namesGenericAnon(f.Return) {
+			return refuse(fmt.Sprintf("what its func %q returns", f.Name), f.Return)
+		}
+	}
+	// What the bodies hold: a local, a value a handler or a method builds.
+	var found *ir.Type
+	visit := func(nd ir.Node) error {
+		var t *ir.Type
+		switch x := nd.(type) {
+		case *ir.LocalVar:
+			t = x.Type
+		case ir.Expr:
+			t = x.ExprType()
+		}
+		if namesGenericAnon(t) {
+			found = t
+			return ir.SkipAll
+		}
+		return nil
+	}
+	_ = ir.Walk(c.Stmts, visit)
+	for _, f := range c.Funcs {
+		if found == nil {
+			_ = ir.Walk(f.Block, visit)
+		}
+	}
+	if found != nil {
+		return refuse("a value its body builds", found)
 	}
 	return nil
 }
@@ -542,24 +578,10 @@ func (st *inlineCompState) refuseGenericAnonProps(n *ir.NodeInst) error {
 // namesGenericAnon reports whether t holds an anonymous struct that names a
 // type parameter.
 func namesGenericAnon(t *ir.Type) bool {
-	if t == nil {
-		return false
-	}
-	if sd := ir.AnonStructDef(t); sd != nil && ir.IsUninternedAnon(sd) && t.HasTypeParam() {
-		return true
-	}
-	if slices.ContainsFunc(t.Elems, namesGenericAnon) {
-		return true
-	}
-	if t.Sig != nil {
-		for _, p := range t.Sig.Params {
-			if namesGenericAnon(p.Type) {
-				return true
-			}
-		}
-		return namesGenericAnon(t.Sig.Return)
-	}
-	return false
+	return t.Any(func(c *ir.Type) bool {
+		sd := ir.AnonStructDef(c)
+		return sd != nil && ir.IsUninternedAnon(sd) && c.HasTypeParam()
+	})
 }
 
 // refuseCanvasInCycles: a canvas's surface and kitty image are kept per copy
@@ -1219,13 +1241,12 @@ func (st *inlineCompState) expandCall(n *ir.NodeInst) ([]ir.Stmt, error) {
 	hoist := st.hoist
 	varStart := len(*hoist.vars)
 	provided := providedContextVars(comp, n.Props)
+	typeArgs := spliceTypeArgs(comp, n)
 	for _, v := range comp.Vars {
 		if _, ok := provided[v]; ok {
 			continue
 		}
-		clone := cloneVarShallow(v)
-		clone.Name = st.names.next(v.Name, "inst")
-		clone.Init = deepCloneExpr(v.Init)
+		clone := cloneHoistedVar(v, st.names.next(v.Name, "inst"), typeArgs)
 		renames[v] = clone.Name
 		symRenames[v] = clone
 		if v.Cell && st.cells != nil {
@@ -1247,8 +1268,12 @@ func (st *inlineCompState) expandCall(n *ir.NodeInst) ([]ir.Stmt, error) {
 	funcStart := len(*hoist.funcs)
 	for _, f := range comp.Funcs {
 		clone := cloneFuncShallow(f)
-		clone.Name = st.names.next(f.Name, "inst")
 		clone.Block = deepCloneStmts(f.Block)
+		if typeArgs != nil {
+			clone = ir.InstantiateFunc(f, typeArgs)
+			clone.TypeParams, clone.RecvTypeParams = f.TypeParams, f.RecvTypeParams
+		}
+		clone.Name = st.names.next(f.Name, "inst")
 		renames[f] = clone.Name
 		symRenames[f] = clone
 		if !hoist.method {
@@ -1279,7 +1304,7 @@ func (st *inlineCompState) expandCall(n *ir.NodeInst) ([]ir.Stmt, error) {
 		fn.Reads = renameVarList(fn.Reads, symRenames)
 		fn.Writes = renameVarList(fn.Writes, symRenames)
 	}
-	body := substituteVars(deepCloneStmts(comp.Stmts), provided)
+	body := substituteVars(splicedBody(comp, typeArgs), provided)
 	body = renameIdents(body, renames, symRenames)
 
 	bindings := map[string]ir.Expr{}
@@ -1361,6 +1386,37 @@ func carryPointsTo(pkg *ir.Package, from, to ir.PointsToKey) {
 func cloneVarShallow(v *ir.Var) *ir.Var {
 	c := *v
 	return &c
+}
+
+// spliceTypeArgs is what n's call site bound comp's type parameters to, where
+// comp is the declaration n names; nil otherwise. A generic component's body
+// is spliced at those types: what it declares names them, and left naming T,
+// a backend that copies generics per instantiation erased it.
+func spliceTypeArgs(comp *ir.Component, n *ir.NodeInst) map[string]*ir.Type {
+	if n == nil || n.Component != comp {
+		return nil
+	}
+	return ir.ComponentBindings(n)
+}
+
+// splicedBody is a fresh copy of comp's body at typeArgs.
+func splicedBody(comp *ir.Component, typeArgs map[string]*ir.Type) []ir.Stmt {
+	return deepCloneStmts(ir.InstantiateStmts(comp.Stmts, typeArgs))
+}
+
+// cloneHoistedVar is a copy of a component's var to hoist onto the owner
+// splicing it, named name, at typeArgs.
+func cloneHoistedVar(v *ir.Var, name string, typeArgs map[string]*ir.Type) *ir.Var {
+	clone := cloneVarShallow(v)
+	clone.Name = name
+	clone.Init = deepCloneExpr(v.Init)
+	if typeArgs != nil {
+		clone.Type = v.Type.Substitute(typeArgs)
+		if clone.Init != nil {
+			clone.Init = ir.SubstituteExprTypes(clone.Init, typeArgs)
+		}
+	}
+	return clone
 }
 
 // renameVarList is vs with each var its clone renames, in a list of its own:

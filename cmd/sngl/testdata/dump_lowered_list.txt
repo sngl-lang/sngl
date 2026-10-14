@@ -63,7 +63,7 @@ stdout ' → CallDefaults → Monomorphize → '
 
 sngl dump --stage lowered --lang none --platform html --list main.sngl
 stdout ' → SlotChildInstances → '
-stdout ' → CallDefaults → AnonStructs → Navigation → '
+stdout ' → CallDefaults → Navigation → '
 
 # android holds Effects: Compose brackets a keyed lifetime itself, so the
 # Effect pass, which runs on every target, lowers only an effect's reports

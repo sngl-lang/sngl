@@ -4,6 +4,7 @@
 // the same type as the anonymous struct written with that type.
 
 import . "sngl:test"
+import . "sngl:ui"
 
 // A parameter: T binds from the argument's field.
 func unwrap[T any](w struct {
@@ -81,6 +82,30 @@ func copyOf[T any](w struct {
     v T
 } {
     return {...w}
+}
+
+// A component's prop binds T from the argument's field, and the handler's
+// parameter is that T.
+component show[T any](
+    w struct {
+        v T
+    },
+    @picked(p T),
+) node {
+    button(text="go", @click {
+        picked(w.v)
+    })
+}
+
+component picker node {
+    var got = 0
+    show(w={v=3}, @picked(p) {
+        got = p
+    })
+}
+
+func testComponentBinds(t Test, c picker) {
+    t.assert(c.got == 0)
 }
 
 func testAnonStruct(t Test) {

@@ -1,10 +1,6 @@
 package lower
 
-import (
-	"slices"
-
-	"duckfam.us/sngl/ir"
-)
+import "duckfam.us/sngl/ir"
 
 // passAnonStructs points every anonymous struct a substitution made at the
 // package's own declaration with those fields. `struct { v T }` in a generic
@@ -18,8 +14,10 @@ import (
 // conversion; where the package has none, one is declared under the name the
 // checker would have given it.
 //
-// It runs on every target, after passMonomorphize: a target keeping a generic
-// function whole still sees a call's result at the bound type. An anonymous
+// It runs on every target, after every pass that copies a body at bound types
+// -- passMonomorphize, and the inliners splicing a generic component: a target
+// keeping a generic function whole still sees a call's result at the bound
+// type. An anonymous
 // struct still naming a type parameter is left as it is, as a generic
 // struct's instantiation is.
 var passAnonStructs = pass{
@@ -64,56 +62,11 @@ func (a *anonStructs) rewrite(t *ir.Type) *ir.Type {
 	if t == nil {
 		return t
 	}
-	if sd := ir.AnonStructDef(t); sd != nil && ir.IsUninternedAnon(sd) {
-		if t.HasTypeParam() {
-			return t
-		}
-		fields := make([]*ir.StructField, len(sd.Fields))
-		for i, f := range sd.Fields {
-			fields[i] = &ir.StructField{Name: f.Name, Type: a.rewrite(f.Type)}
-		}
-		return a.declared(fields).SymType()
+	t = t.MapChildren(a.rewrite)
+	if sd := ir.AnonStructDef(t); sd != nil && ir.IsUninternedAnon(sd) && !t.HasTypeParam() {
+		return a.declared(sd.Fields).SymType()
 	}
-	elems := t.Elems
-	changed := false
-	for i, e := range t.Elems {
-		if ne := a.rewrite(e); ne != e {
-			if !changed {
-				elems = slices.Clone(t.Elems)
-				changed = true
-			}
-			elems[i] = ne
-		}
-	}
-	var sig *ir.FuncSig
-	if t.Kind == ir.TypeFunc && t.Sig != nil {
-		params := make([]*ir.Param, len(t.Sig.Params))
-		for i, p := range t.Sig.Params {
-			params[i] = p
-			if nt := a.rewrite(p.Type); nt != p.Type {
-				cp := *p
-				cp.Type = nt
-				params[i] = &cp
-				changed = true
-			}
-		}
-		ret := a.rewrite(t.Sig.Return)
-		if ret != t.Sig.Return {
-			changed = true
-		}
-		s := *t.Sig
-		s.Params, s.Return = params, ret
-		sig = &s
-	}
-	if !changed {
-		return t
-	}
-	cp := *t
-	cp.Elems = elems
-	if sig != nil {
-		cp.Sig = sig
-	}
-	return &cp
+	return t
 }
 
 // declared is the package's anonymous struct with fields, in name order,

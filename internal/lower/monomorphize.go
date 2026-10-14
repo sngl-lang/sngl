@@ -142,10 +142,10 @@ func (m *monomorph) visit(n ir.Node) {
 		b := map[string]*ir.Type{}
 		for i, p := range x.Func.Params {
 			if i < len(x.Args) && x.Args[i].Value != nil {
-				ir.UnifyTypeParams(p.Type, x.Args[i].Value.ExprType(), b)
+				ir.BindTypeParams(p.Type, x.Args[i].Value.ExprType(), b)
 			}
 		}
-		ir.UnifyTypeParams(x.Func.Return, x.Type, b)
+		ir.BindTypeParams(x.Func.Return, x.Type, b)
 		if inst := m.instance(x.Func, b); inst != nil {
 			x.Func = inst
 			// A default CallDefaults wrote is typed by the declaration's T.
@@ -170,10 +170,10 @@ func (m *monomorph) visit(n ir.Node) {
 		b := map[string]*ir.Type{}
 		for i, p := range fn.Params {
 			if i < len(x.Type.Sig.Params) {
-				ir.UnifyTypeParams(p.Type, x.Type.Sig.Params[i].Type, b)
+				ir.BindTypeParams(p.Type, x.Type.Sig.Params[i].Type, b)
 			}
 		}
-		ir.UnifyTypeParams(fn.Return, x.Type.Sig.Return, b)
+		ir.BindTypeParams(fn.Return, x.Type.Sig.Return, b)
 		if inst := m.instance(fn, b); inst != nil {
 			x.Sym = inst
 			x.Name = inst.Name
@@ -188,8 +188,10 @@ func (m *monomorph) instance(fn *ir.Func, b map[string]*ir.Type) *ir.Func {
 	args := make([]*ir.Type, len(params))
 	var key []string
 	for i, tp := range params {
+		// A binding naming a type parameter is a call in a body still
+		// generic, which keeps the original.
 		t, ok := b[tp.Name]
-		if !ok {
+		if !ok || t.HasTypeParam() {
 			m.kept[fn] = true
 			return nil
 		}

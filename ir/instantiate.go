@@ -37,9 +37,59 @@ func InstantiateFunc(fn *Func, bindings map[string]*Type) *Func {
 	return out
 }
 
+// InstantiateStmts copies stmts with bindings applied to every type in them,
+// as InstantiateFunc copies a function's body: what the statements declare is
+// copied, and everything they refer to beyond that is shared. It is how a
+// generic component's body is spliced where the call site bound its type
+// parameters -- left as written, `struct { v T }` in it reached a backend that
+// erases T.
+func InstantiateStmts(stmts []Stmt, bindings map[string]*Type) []Stmt {
+	if len(stmts) == 0 || len(bindings) == 0 {
+		return stmts
+	}
+	c := newCloner()
+	c.shareDecls = true
+	c.subst = bindings
+	c.own = map[uintptr]bool{}
+	addOwnDecls(c.own, stmts)
+	return c.clone(reflect.ValueOf(stmts)).Interface().([]Stmt)
+}
+
+// ComponentBindings is what the call site of n bound its component's type
+// parameters to, by name; nil for a component that declares none or a node
+// that records no binding for one.
+func ComponentBindings(n *NodeInst) map[string]*Type {
+	if n == nil || n.Component == nil || len(n.Component.TypeParams) == 0 || len(n.TypeArgs) != len(n.Component.TypeParams) {
+		return nil
+	}
+	b := make(map[string]*Type, len(n.TypeArgs))
+	for i, tp := range n.Component.TypeParams {
+		if t := n.TypeArgs[i]; t != nil && !t.HasTypeParam() {
+			b[tp.Name] = t
+		}
+	}
+	if len(b) == 0 {
+		return nil
+	}
+	return b
+}
+
 // ownDecls is the set of declarations fn's own text declares.
 func ownDecls(fn *Func) map[uintptr]bool {
 	own := map[uintptr]bool{}
+	for _, p := range fn.Params {
+		own[reflect.ValueOf(p).Pointer()] = true
+	}
+	if fn.RecvParam != nil {
+		own[reflect.ValueOf(fn.RecvParam).Pointer()] = true
+	}
+	addOwnDecls(own, fn.Block)
+	return own
+}
+
+// addOwnDecls adds to own what stmts declare: their locals and loop variables,
+// and the lambdas in them with their parameters.
+func addOwnDecls(own map[uintptr]bool, stmts []Stmt) {
 	addFunc := func(f *Func) {
 		own[reflect.ValueOf(f).Pointer()] = true
 		for _, p := range f.Params {
@@ -49,13 +99,7 @@ func ownDecls(fn *Func) map[uintptr]bool {
 			own[reflect.ValueOf(f.RecvParam).Pointer()] = true
 		}
 	}
-	for _, p := range fn.Params {
-		own[reflect.ValueOf(p).Pointer()] = true
-	}
-	if fn.RecvParam != nil {
-		own[reflect.ValueOf(fn.RecvParam).Pointer()] = true
-	}
-	_ = Walk(fn.Block, func(n Node) error {
+	_ = Walk(stmts, func(n Node) error {
 		switch x := n.(type) {
 		case *LocalVar:
 			if x.Sym != nil {
@@ -78,83 +122,60 @@ func ownDecls(fn *Func) map[uintptr]bool {
 		}
 		return nil
 	})
-	return own
 }
 
-// UnifyTypeParams binds the type parameters pattern names from the type
-// concrete has in the same position, leaving a parameter already bound as it
-// is.
-func UnifyTypeParams(pattern, concrete *Type, bindings map[string]*Type) {
-	if pattern == nil || concrete == nil {
+// BindTypeParams binds the type parameters pattern names from the type arg
+// has in the same position, leaving a parameter already bound as it is:
+// `list[T]` against `list[int]` binds T to int, `func(T) U` against
+// `func(int) string` both, and an anonymous struct binds by field name from
+// whatever fields arg has -- `{v=1}`, a named struct with a v, a type
+// parameter constrained to one. A binding may itself name a type parameter
+// (the checker binds a callee's T to a caller's); one that wants concrete
+// types only drops those.
+func BindTypeParams(pattern, arg *Type, bindings map[string]*Type) {
+	if pattern == nil || arg == nil {
 		return
 	}
 	if pattern.Kind == TypeTypeParam {
-		if _, ok := bindings[pattern.ParamName]; !ok && !concrete.HasTypeParam() {
-			bindings[pattern.ParamName] = concrete
+		if _, ok := bindings[pattern.ParamName]; !ok {
+			bindings[pattern.ParamName] = arg
 		}
 		return
 	}
-	if pattern.Kind != concrete.Kind {
-		return
-	}
-	// An anonymous struct binds by field name: `{v=1}` is no instantiation
-	// of `struct { v T }`, only a struct with a v.
 	if sd := AnonStructDef(pattern); sd != nil {
-		if fields, ok := FieldsOf(concrete); ok {
+		if fields, ok := FieldsOf(arg); ok {
 			for _, f := range sd.Fields {
-				for _, g := range fields {
-					if g.Name == f.Name {
-						UnifyTypeParams(f.Type, g.Type, bindings)
-					}
+				if g := FieldNamed(fields, f.Name); g != nil {
+					BindTypeParams(f.Type, g.Type, bindings)
 				}
 			}
 		}
 		return
 	}
-	if len(pattern.Elems) == len(concrete.Elems) {
-		for i := range pattern.Elems {
-			UnifyTypeParams(pattern.Elems[i], concrete.Elems[i], bindings)
-		}
+	if pattern.Kind != arg.Kind {
+		return
 	}
-	if pattern.Sig != nil && concrete.Sig != nil && len(pattern.Sig.Params) == len(concrete.Sig.Params) {
-		for i := range pattern.Sig.Params {
-			UnifyTypeParams(pattern.Sig.Params[i].Type, concrete.Sig.Params[i].Type, bindings)
+	if pattern.Kind == TypeFunc {
+		if pattern.Sig != nil && arg.Sig != nil {
+			if len(pattern.Sig.Params) == len(arg.Sig.Params) {
+				for i := range pattern.Sig.Params {
+					BindTypeParams(pattern.Sig.Params[i].Type, arg.Sig.Params[i].Type, bindings)
+				}
+			}
+			BindTypeParams(pattern.Sig.Return, arg.Sig.Return, bindings)
 		}
-		UnifyTypeParams(pattern.Sig.Return, concrete.Sig.Return, bindings)
+		return
+	}
+	if len(pattern.Elems) == len(arg.Elems) {
+		for i := range pattern.Elems {
+			BindTypeParams(pattern.Elems[i], arg.Elems[i], bindings)
+		}
 	}
 }
 
 // HasTypeParam reports whether t names a type parameter anywhere in it.
 func (t *Type) HasTypeParam() bool {
-	if t == nil {
-		return false
-	}
-	if t.Kind == TypeTypeParam {
-		return true
-	}
-	for _, e := range t.Elems {
-		if e.HasTypeParam() {
-			return true
-		}
-	}
-	// A field of an anonymous struct is part of its type: no cycle, since a
-	// field cannot name a type that has no name.
-	if sd := AnonStructDef(t); sd != nil {
-		for _, f := range sd.Fields {
-			if f.Type.HasTypeParam() {
-				return true
-			}
-		}
-	}
-	if t.Sig != nil {
-		for _, p := range t.Sig.Params {
-			if p.Type.HasTypeParam() {
-				return true
-			}
-		}
-		return t.Sig.Return.HasTypeParam()
-	}
-	return false
+	return t.Any(func(c *Type) bool { return c.Kind == TypeTypeParam })
 }
 
 // SubstituteExprTypes copies e with every type in it bound under bindings,

@@ -72,31 +72,6 @@ func paramConstraint(t *ir.Type) *ir.StructDef {
 	return constraintStruct(sym.Constraint)
 }
 
-// fieldsOf is the fields a value of type t is known to have, each at its
-// type: a struct's own, its type arguments bound, or the constraint's of a
-// type parameter. ok is false for a type that has no fields to measure.
-func fieldsOf(t *ir.Type) (fields []*ir.StructField, ok bool) {
-	switch t.Kind {
-	case ir.TypeStruct:
-		return ir.FieldsOf(t)
-	case ir.TypeTypeParam:
-		if sd := paramConstraint(t); sd != nil {
-			return sd.Fields, true
-		}
-	}
-	return nil, false
-}
-
-// fieldNamed is the field of fields called name, nil for none.
-func fieldNamed(fields []*ir.StructField, name string) *ir.StructField {
-	for _, f := range fields {
-		if f.Name == name {
-			return f
-		}
-	}
-	return nil
-}
-
 // unsatisfied says why t does not satisfy constraint, "" where it does. A dyn
 // says nothing to measure, and neither does a type parameter no declaration
 // constrains -- one a substitution made rather than a scope -- so both pass.
@@ -122,12 +97,12 @@ func unsatisfied(t, constraint *ir.Type) string {
 			return ""
 		}
 	}
-	fields, ok := fieldsOf(t)
+	fields, ok := ir.FieldsOf(t)
 	if !ok {
 		return "it is no struct"
 	}
 	for _, w := range want.Fields {
-		got := fieldNamed(fields, w.Name)
+		got := ir.FieldNamed(fields, w.Name)
 		if got == nil {
 			return fmt.Sprintf("it has no field %q", w.Name)
 		}
@@ -158,17 +133,17 @@ func inferFromConstraints(params []ir.TypeParam, bindings map[string]*ir.Type) {
 			if want == nil || t == nil {
 				continue
 			}
-			fields, ok := fieldsOf(t)
+			fields, ok := ir.FieldsOf(t)
 			if !ok {
 				continue
 			}
 			for _, w := range want.Fields {
-				got := fieldNamed(fields, w.Name)
+				got := ir.FieldNamed(fields, w.Name)
 				if got == nil || !w.Type.HasTypeParam() {
 					continue
 				}
 				found := map[string]*ir.Type{}
-				bindTypeParams(w.Type, got.Type, found)
+				ir.BindTypeParams(w.Type, got.Type, found)
 				for name, b := range found {
 					if _, bound := bindings[name]; !bound && own[name] && b.Kind != ir.TypeDyn {
 						bindings[name] = b

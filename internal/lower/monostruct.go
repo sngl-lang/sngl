@@ -99,74 +99,12 @@ func (ms *monoStructs) rewrite(t *ir.Type) *ir.Type {
 	if t == nil {
 		return t
 	}
-	// An anonymous struct's fields are part of its type, and nothing else
-	// reaches them: `struct { inner Box[int] }` names Box__int.
-	if sd := ir.AnonStructDef(t); sd != nil && ir.IsUninternedAnon(sd) {
-		var fields []*ir.StructField
-		for i, f := range sd.Fields {
-			ft := ms.rewrite(f.Type)
-			if ft == f.Type && fields == nil {
-				continue
-			}
-			if fields == nil {
-				fields = slices.Clone(sd.Fields[:i])
-			}
-			fields = append(fields, &ir.StructField{Name: f.Name, Type: ft})
-		}
-		if fields == nil {
-			return t
-		}
-		return (&ir.StructDef{Pkg: sd.Pkg, Fields: fields, Anon: true}).SymType()
-	}
-	elems, changed := ms.rewriteAll(t.Elems)
+	t = t.MapChildren(ms.rewrite)
 	if sd, ok := t.Decl.(*ir.StructDef); ok && t.Kind == ir.TypeStruct && ms.generic[sd] &&
-		len(elems) == len(sd.TypeParams) && !slices.ContainsFunc(elems, (*ir.Type).HasTypeParam) {
-		return ms.instance(sd, elems).SymType()
+		len(t.Elems) == len(sd.TypeParams) && !t.HasTypeParam() {
+		return ms.instance(sd, t.Elems).SymType()
 	}
-	var sig *ir.FuncSig
-	if t.Kind == ir.TypeFunc && t.Sig != nil {
-		params := make([]*ir.Param, len(t.Sig.Params))
-		for i, p := range t.Sig.Params {
-			params[i] = p
-			if nt := ms.rewrite(p.Type); nt != p.Type {
-				cp := *p
-				cp.Type = nt
-				params[i] = &cp
-				changed = true
-			}
-		}
-		ret := ms.rewrite(t.Sig.Return)
-		if ret != t.Sig.Return {
-			changed = true
-		}
-		s := *t.Sig
-		s.Params, s.Return = params, ret
-		sig = &s
-	}
-	if !changed {
-		return t
-	}
-	cp := *t
-	cp.Elems = elems
-	if sig != nil {
-		cp.Sig = sig
-	}
-	return &cp
-}
-
-func (ms *monoStructs) rewriteAll(ts []*ir.Type) ([]*ir.Type, bool) {
-	out := ts
-	changed := false
-	for i, e := range ts {
-		if ne := ms.rewrite(e); ne != e {
-			if !changed {
-				out = slices.Clone(ts)
-				changed = true
-			}
-			out[i] = ne
-		}
-	}
-	return out, changed
+	return t
 }
 
 // instance is sd's declaration at args, made the first time it is asked for
@@ -208,19 +146,10 @@ func (ms *monoStructs) instance(sd *ir.StructDef, args []*ir.Type) *ir.StructDef
 
 // markStructs records which of generic t still names, anywhere in it.
 func markStructs(t *ir.Type, generic, still map[*ir.StructDef]bool) {
-	if t == nil {
-		return
-	}
-	if sd, ok := t.Decl.(*ir.StructDef); ok && generic[sd] {
-		still[sd] = true
-	}
-	for _, e := range t.Elems {
-		markStructs(e, generic, still)
-	}
-	if t.Sig != nil {
-		for _, p := range t.Sig.Params {
-			markStructs(p.Type, generic, still)
+	t.Any(func(c *ir.Type) bool {
+		if sd, ok := c.Decl.(*ir.StructDef); ok && generic[sd] {
+			still[sd] = true
 		}
-		markStructs(t.Sig.Return, generic, still)
-	}
+		return false
+	})
 }

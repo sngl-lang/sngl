@@ -1462,7 +1462,7 @@ func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) ir.Ex
 				// Receiver kind matches but no concrete elems (e.g. bare "list" in
 				// stdlib lookup). Fall back to binding against Params[0] if present.
 				if len(sig.Params) > 0 {
-					bindTypeParams(sig.Params[0].Type, receiver, bindings)
+					ir.BindTypeParams(sig.Params[0].Type, receiver, bindings)
 				}
 			}
 			if len(bindings) > 0 {
@@ -1504,7 +1504,7 @@ func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) ir.Ex
 			// that e.g. list[int].length() binds T=int.
 			if recvParamStyle && !isStatic && len(sig.Params) > 0 && (sig.Params[0].Receiver || !bareTypeParam(sig.Params[0])) {
 				bindings := make(map[string]*ir.Type)
-				bindTypeParams(sig.Params[0].Type, receiver, bindings)
+				ir.BindTypeParams(sig.Params[0].Type, receiver, bindings)
 				if len(bindings) > 0 {
 					sig = sig.Substitute(bindings)
 				}
@@ -3040,7 +3040,7 @@ func (c *checker) inferTypeParams(at ast.Pos, sig *ir.FuncSig, args ast.ArgList,
 	maps.Copy(bindings, written)
 	bind := func(p *ir.Param, t *ir.Type) {
 		if p != nil && t != nil && t.Kind != ir.TypeDyn {
-			bindTypeParams(p.Type, t, bindings)
+			ir.BindTypeParams(p.Type, t, bindings)
 		}
 	}
 	// A parameter whose type the written arguments already settle has
@@ -3048,7 +3048,7 @@ func (c *checker) inferTypeParams(at ast.Pos, sig *ir.FuncSig, args ast.ArgList,
 	// call is: checked here with nothing expected, `apply[F]([])` met an
 	// empty list it could not type.
 	settled := func(p *ir.Param) bool {
-		return p == nil || len(written) > 0 && !mentionsTypeParam(p.Type.Substitute(bindings))
+		return p == nil || len(written) > 0 && !p.Type.Substitute(bindings).HasTypeParam()
 	}
 	pos := 0
 	for _, a := range args.Args {
@@ -3088,7 +3088,7 @@ func (c *checker) inferTypeParams(at ast.Pos, sig *ir.FuncSig, args ast.ArgList,
 	// while the expected type states what the result has to be assignable to,
 	// and the two disagree wherever a conversion would have been applied.
 	if c.expected != nil && c.expected.Kind != ir.TypeDyn {
-		bindTypeParams(sig.Return, c.expected, bindings)
+		ir.BindTypeParams(sig.Return, c.expected, bindings)
 	}
 	c.checkConstraints(at, sig.TypeParams, bindings)
 	// A parameter neither pinned nor implied falls back to its default, the way
@@ -3119,58 +3119,15 @@ func (c *checker) inferArgExpr(e ast.Expr, want *ir.Type, bindings map[string]*i
 	}
 	sig := want.Sig.Substitute(bindings)
 	for _, p := range sig.Params {
-		if mentionsTypeParam(p.Type) {
+		if p.Type.HasTypeParam() {
 			return c.checkExpr(e)
 		}
 	}
 	exp := &ir.FuncSig{Params: sig.Params}
-	if lam.ReturnType == nil && sig.Return != nil && !mentionsTypeParam(sig.Return) {
+	if lam.ReturnType == nil && sig.Return != nil && !sig.Return.HasTypeParam() {
 		exp.Return = sig.Return
 	}
 	return c.checkExprExpecting(e, &ir.Type{Kind: ir.TypeFunc, Sig: exp})
-}
-
-// bindTypeParams recursively matches a param type pattern against a concrete
-// arg type to extract type parameter bindings. E.g. list[T] vs list[int] → T=int.
-func bindTypeParams(param, arg *ir.Type, bindings map[string]*ir.Type) {
-	if param == nil || arg == nil {
-		return
-	}
-	if param.Kind == ir.TypeTypeParam {
-		if _, exists := bindings[param.ParamName]; !exists {
-			bindings[param.ParamName] = arg
-		}
-		return
-	}
-	// Recurse into func signatures: func(T) U vs func(int) string → T=int, U=string.
-	if param.Kind == ir.TypeFunc && arg.Kind == ir.TypeFunc &&
-		param.Sig != nil && arg.Sig != nil {
-		if len(param.Sig.Params) == len(arg.Sig.Params) {
-			for i := range param.Sig.Params {
-				bindTypeParams(param.Sig.Params[i].Type, arg.Sig.Params[i].Type, bindings)
-			}
-		}
-		bindTypeParams(param.Sig.Return, arg.Sig.Return, bindings)
-		return
-	}
-	// An anonymous struct binds by field name, from whatever fields the
-	// argument has: `{v=1}`, a named struct with a v, a T constrained to one.
-	if sd := ir.AnonStructDef(param); sd != nil {
-		if fields, ok := fieldsOf(arg); ok {
-			for _, f := range sd.Fields {
-				if g := fieldNamed(fields, f.Name); g != nil {
-					bindTypeParams(f.Type, g.Type, bindings)
-				}
-			}
-		}
-		return
-	}
-	// Recurse into type arguments (list[T], option[T], etc.).
-	if param.Kind == arg.Kind && len(param.Elems) == len(arg.Elems) {
-		for i := range param.Elems {
-			bindTypeParams(param.Elems[i], arg.Elems[i], bindings)
-		}
-	}
 }
 
 // paramNamed is the parameter of sig a call site can target by name, or nil.
@@ -3389,7 +3346,7 @@ func (c *checker) bindArgs(callPos ast.Pos, args []ast.ArgOrEventHandler, sig *i
 // typeParamZeroFor is a default as a call site binding typ writes it: the
 // zero of typ where the declaration wrote `T{}`, and the default otherwise.
 func typeParamZeroFor(def ir.Expr, typ *ir.Type) ir.Expr {
-	if typeParamZero(def) && typ != nil && !mentionsTypeParam(typ) {
+	if typeParamZero(def) && typ != nil && !typ.HasTypeParam() {
 		return ir.DeclaredDefault(typ)
 	}
 	return def
@@ -3540,7 +3497,7 @@ func (c *checker) checkCallArgs(args ast.ArgList, sig *ir.FuncSig) []ir.CallArg 
 			// the zero of what this call bound T to, and only the call knows
 			// that: the declaration's default names a type no backend can
 			// spell. So it is written here, where every one of them reads it.
-			if p := sig.Params[i]; typeParamZero(p.Default) && p.Type != nil && !mentionsTypeParam(p.Type) {
+			if p := sig.Params[i]; typeParamZero(p.Default) && p.Type != nil && !p.Type.HasTypeParam() {
 				result = append(result, ir.CallArg{Name: p.Name, Value: ir.DeclaredDefault(p.Type)})
 			}
 			continue
@@ -5326,7 +5283,7 @@ func (c *checker) checkAndSplitArgs(args ast.ArgList, comp *ir.Component) ([]ir.
 			if p.Default == nil || boundProps[p.Name] || comp.DataSlotOf(p) != nil {
 				continue
 			}
-			if fromDecl && (!typeParamZero(p.Default) || mentionsTypeParam(p.Type)) {
+			if fromDecl && (!typeParamZero(p.Default) || p.Type.HasTypeParam()) {
 				continue
 			}
 			props = append(props, ir.Arg{Name: p.Name, Value: typeParamZeroFor(p.Default, p.Type)})

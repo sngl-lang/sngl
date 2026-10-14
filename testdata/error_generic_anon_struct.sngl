@@ -1,5 +1,7 @@
 // What an anonymous struct naming a type parameter refuses.
 
+import . "sngl:ui"
+
 func unwrap[T any](w struct {
     v T
 }) T {
@@ -33,6 +35,26 @@ func wrap[T any](x T) struct {
 var d struct {
     w int
 } = {...wrap(1)} // ERROR(check) "cannot spread struct { v int } into struct { w int }"
+
+// A component's prop binds T from the field, so the handler's parameter is an
+// int.
+component show[T any](
+    w struct {
+        v T
+    },
+    @picked(p T),
+) node {
+    button(text="go", @click {
+        picked(w.v)
+    })
+}
+
+component picker node {
+    var name = ""
+    show(w={v=3}, @picked(p) {
+        name = p // ERROR(check) "cannot assign int to string"
+    })
+}
 
 // Two arguments binding T two ways.
 var c = pair({v=1}, {v="s"}) // ERROR(check) "cannot use"

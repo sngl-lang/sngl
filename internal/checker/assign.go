@@ -67,7 +67,7 @@ func (c *checker) coerce(written ast.Expr, val ir.Expr, want *ir.Type, s slot) i
 	if got.Kind == ir.TypeDyn || want.Kind == ir.TypeDyn {
 		return val
 	}
-	if s.later && (mentionsTypeParam(want) || got.Kind == ir.TypeTypeParam) {
+	if s.later && (want.HasTypeParam() || got.Kind == ir.TypeTypeParam) {
 		return val
 	}
 	if !got.IsAssignableTo(want) {

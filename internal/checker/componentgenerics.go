@@ -2,7 +2,6 @@ package checker
 
 import (
 	"maps"
-	"slices"
 	"strings"
 
 	"duckfam.us/sngl/ast"
@@ -33,7 +32,7 @@ func (c *checker) bindComponentTypeParams(pos ast.Pos, comp *ir.Component, args 
 		bindings = map[string]*ir.Type{}
 	}
 	for _, p := range comp.Props {
-		if p.Type == nil || !mentionsTypeParam(p.Type) {
+		if p.Type == nil || !p.Type.HasTypeParam() {
 			continue
 		}
 		argType := c.propArgType(args, comp, p)
@@ -43,7 +42,7 @@ func (c *checker) bindComponentTypeParams(pos ast.Pos, comp *ir.Component, args 
 		if argType == nil || argType.Kind == ir.TypeDyn {
 			continue
 		}
-		bindTypeParams(p.Type, argType, bindings)
+		ir.BindTypeParams(p.Type, argType, bindings)
 	}
 	bindEffectChanges(comp, bindings)
 	c.bindFromHandlers(comp, args, bindings)
@@ -90,7 +89,7 @@ func (c *checker) bindFromHandlers(comp *ir.Component, args ast.ArgList, binding
 			continue
 		}
 		for i, p := range h.Params.Params {
-			if p.Type == nil || i >= len(ev.Params) || ev.Params[i].Type == nil || !mentionsTypeParam(ev.Params[i].Type) {
+			if p.Type == nil || i >= len(ev.Params) || ev.Params[i].Type == nil || !ev.Params[i].Type.HasTypeParam() {
 				continue
 			}
 			n := len(c.diags)
@@ -99,7 +98,7 @@ func (c *checker) bindFromHandlers(comp *ir.Component, args ast.ArgList, binding
 			if got == nil || got.Kind == ir.TypeDyn {
 				continue
 			}
-			bindTypeParams(ev.Params[i].Type, got, bindings)
+			ir.BindTypeParams(ev.Params[i].Type, got, bindings)
 		}
 	}
 }
@@ -169,7 +168,7 @@ func (c *checker) bindFromChildren(comp, spec *ir.Component, children []ir.Stmt)
 		return spec
 	}
 	rest := comp.RestSlot()
-	if rest == nil || rest.Content == nil || len(rest.Content.Elems) == 0 || !mentionsTypeParam(rest.Content) {
+	if rest == nil || rest.Content == nil || len(rest.Content.Elems) == 0 || !rest.Content.HasTypeParam() {
 		return spec
 	}
 	fam := ir.TypeFamily(rest.Content)
@@ -204,7 +203,7 @@ func (c *checker) bindFromChildren(comp, spec *ir.Component, children []ir.Stmt)
 				if at := stmtPos(n.AST); at != nil {
 					firstAt = *at
 				}
-				bindTypeParams(rest.Content, got, bindings)
+				ir.BindTypeParams(rest.Content, got, bindings)
 				continue
 			}
 			if !got.Equal(first) {
@@ -398,30 +397,6 @@ func propArgValue(args ast.ArgList, comp *ir.Component, p *ir.Prop) ast.Expr {
 		pos++
 	}
 	return positional
-}
-
-// mentionsTypeParam reports whether t names a type parameter anywhere inside
-// it, so a prop that cannot contribute a binding is not checked twice for
-// nothing.
-func mentionsTypeParam(t *ir.Type) bool {
-	if t == nil {
-		return false
-	}
-	if t.Kind == ir.TypeTypeParam {
-		return true
-	}
-	if slices.ContainsFunc(t.Elems, mentionsTypeParam) {
-		return true
-	}
-	if t.Kind == ir.TypeFunc && t.Sig != nil {
-		for _, p := range t.Sig.Params {
-			if mentionsTypeParam(p.Type) {
-				return true
-			}
-		}
-		return mentionsTypeParam(t.Sig.Return)
-	}
-	return false
 }
 
 // specializeComponent is comp with bindings applied to everything a call site

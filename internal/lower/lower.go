@@ -52,7 +52,6 @@ var passes = []pass{
 	passReceiverParam,
 	passCallDefaults,
 	passMonomorphize,
-	passAnonStructs,
 	passNavigation,
 	passHandleParams,
 	passImplicitState,
@@ -89,6 +88,10 @@ var passes = []pass{
 	passRecursionDepth,
 	passInstanceSlots,
 	passCanvasInstances,
+	// After every pass that copies a body at bound types, and before any that
+	// names a struct by its declaration's name: a copy's structs are no
+	// package's until this points them at one.
+	passAnonStructs,
 	passFlattenStructSpread,
 	passNoImplicitRecv,
 	passShapeDraw,

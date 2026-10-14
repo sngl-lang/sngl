@@ -32,6 +32,14 @@ stderr 'event.sngl:18:13: "pick" is built while the program runs here, and its e
 ! sngl generate --lang kotlin --platform android --out out7 state.sngl
 stderr 'state.sngl:12:13: "keep" is built while the program runs here, and its state "w" is struct \{ v T \}'
 
+# So are what a method returns and a value a handler builds: the refusal reads
+# every type the component holds, its bodies included.
+! sngl generate --lang kotlin --platform android --out out8 method.sngl
+stderr 'method.sngl:22:13: "pick" is built while the program runs here, and what its func "boxed" returns is struct \{ v T \}'
+
+! sngl generate --lang go --platform fyne --out out9 local.sngl
+stderr 'local.sngl:17:13: "pick" is built while the program runs here, and a value its body builds is struct \{ v T \}'
+
 -- app.sngl --
 import ui "sngl:ui"
 
@@ -83,5 +91,50 @@ var items = [1, 2]
 ui.window(title="x") {
     for var i = items {
         keep(x=i)
+    }
+}
+-- method.sngl --
+import ui "sngl:ui"
+
+component pick[T any](x T, @chose(v T)) {
+    var hits = 0
+    func boxed() struct {
+        v T
+    } {
+        return {v=x}
+    }
+    ui.button(text="{hits}", @click {
+        hits = hits + 1
+        var w = boxed()
+        chose(w.v)
+    })
+}
+
+var items = [1, 2]
+var got = 0
+
+ui.window(title="x") {
+    for var i = items {
+        pick(x=i, @chose(w) { got = w })
+    }
+}
+-- local.sngl --
+import ui "sngl:ui"
+
+component pick[T any](x T, @chose(v T)) {
+    var hits = 0
+    ui.button(text="{hits}", @click {
+        hits = hits + 1
+        var w = {v=x}
+        chose(w.v)
+    })
+}
+
+var items = [1, 2]
+var got = 0
+
+ui.window(title="x") {
+    for var i = items {
+        pick(x=i, @chose(w) { got = w })
     }
 }

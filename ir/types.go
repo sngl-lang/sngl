@@ -2,7 +2,6 @@ package ir
 
 import (
 	"fmt"
-	"slices"
 	"strings"
 
 	"duckfam.us/sngl/ast"
@@ -451,78 +450,21 @@ func (t *Type) Substitute(bindings map[string]*Type) *Type {
 	if t == nil {
 		return nil
 	}
-	switch t.Kind {
-	case TypeTypeParam:
+	if t.Kind == TypeTypeParam {
 		if bound, ok := bindings[t.ParamName]; ok {
 			return bound
 		}
 		return t
-	case TypeList, TypeMap, TypeOption, TypeRef, TypeIter, TypeStruct:
-		if sd := anonStructDef(t); sd != nil {
-			return substituteAnon(t, sd, bindings)
-		}
-		elems := make([]*Type, len(t.Elems))
-		changed := false
-		for i, e := range t.Elems {
-			elems[i] = e.Substitute(bindings)
-			if elems[i] != e {
-				changed = true
-			}
-		}
-		if !changed {
-			return t
-		}
-		return &Type{Kind: t.Kind, Elems: elems, Decl: t.Decl}
-	case TypeComponent:
-		// `page[T]` in a generic signature: its type arguments are the
-		// signature's, bound at the call like any other element type.
-		if len(t.Elems) == 0 {
-			return t
-		}
-		elems := make([]*Type, len(t.Elems))
-		for i, e := range t.Elems {
-			elems[i] = e.Substitute(bindings)
-		}
-		cp := *t
-		cp.Elems = elems
-		return &cp
-	case TypeFunc:
-		if t.Sig == nil {
-			return t
-		}
-		sig := t.Sig.Substitute(bindings)
-		if sig == t.Sig {
-			return t
-		}
-		return &Type{Kind: TypeFunc, Sig: sig}
 	}
-	return t
+	return t.MapChildren(func(c *Type) *Type { return c.Substitute(bindings) })
 }
 
 // Substitute replaces TypeTypeParam in params and return type.
 func (s *FuncSig) Substitute(bindings map[string]*Type) *FuncSig {
-	if s == nil || len(bindings) == 0 {
+	if len(bindings) == 0 {
 		return s
 	}
-	params := make([]*Param, len(s.Params))
-	changed := false
-	for i, p := range s.Params {
-		nt := p.Type.Substitute(bindings)
-		if nt != p.Type {
-			changed = true
-			params[i] = &Param{Name: p.Name, Type: nt, Default: p.Default, Receiver: p.Receiver, Const: p.Const}
-		} else {
-			params[i] = p
-		}
-	}
-	ret := s.Return.Substitute(bindings)
-	if ret != s.Return {
-		changed = true
-	}
-	if !changed {
-		return s
-	}
-	return &FuncSig{Params: params, Return: ret, TypeParams: s.TypeParams, RecvTypeParams: s.RecvTypeParams, Purity: s.Purity, Color: s.Color, PolyParam: s.PolyParam}
+	return s.mapTypes(func(c *Type) *Type { return c.Substitute(bindings) })
 }
 
 // Equal reports structural type equality.
@@ -827,29 +769,6 @@ func anonStructDef(t *Type) *StructDef {
 	return sd
 }
 
-// substituteAnon is the anonymous struct t with each field's type
-// substituted, t itself where no field names a bound parameter. The result is
-// a declaration nobody interned: `struct { v T }` at T = int is no package's,
-// and the lowering points it at the package's own `struct { v int }`
-// (passAnonStructs) before a backend spells it.
-func substituteAnon(t *Type, sd *StructDef, bindings map[string]*Type) *Type {
-	var fields []*StructField
-	for i, f := range sd.Fields {
-		ft := f.Type.Substitute(bindings)
-		if ft == f.Type && fields == nil {
-			continue
-		}
-		if fields == nil {
-			fields = slices.Clone(sd.Fields[:i])
-		}
-		fields = append(fields, &StructField{Name: f.Name, Type: ft})
-	}
-	if fields == nil {
-		return t
-	}
-	return (&StructDef{Name: sd.Name, Pkg: sd.Pkg, Fields: fields, Anon: true}).SymType()
-}
-
 // AnonStructDef is t's declaration when t is an anonymous struct, nil
 // otherwise.
 func AnonStructDef(t *Type) *StructDef {
@@ -857,6 +776,16 @@ func AnonStructDef(t *Type) *StructDef {
 		return nil
 	}
 	return anonStructDef(t)
+}
+
+// FieldNamed is the field of fields called name, nil for none.
+func FieldNamed(fields []*StructField, name string) *StructField {
+	for _, f := range fields {
+		if f.Name == name {
+			return f
+		}
+	}
+	return nil
 }
 
 // IsUninternedAnon reports whether sd is an anonymous struct the checker
@@ -867,10 +796,20 @@ func IsUninternedAnon(sd *StructDef) bool {
 	return sd != nil && sd.Anon && sd.Name == ""
 }
 
-// FieldsOf is the fields a struct type t has, each at its type with t's type
-// arguments bound; ok is false for any other type.
+// FieldsOf is the fields a value of type t is known to have, each at its
+// type: a struct's own with t's type arguments bound, or a type parameter's
+// struct constraint's. ok is false for a type that has no fields to measure.
 func FieldsOf(t *Type) (fields []*StructField, ok bool) {
-	if t == nil || t.Kind != TypeStruct {
+	if t == nil {
+		return nil, false
+	}
+	if t.Kind == TypeTypeParam {
+		if sym, _ := t.Decl.(*TypeParamSym); sym != nil && sym.Constraint != nil && sym.Constraint.Kind == TypeStruct {
+			return FieldsOf(sym.Constraint)
+		}
+		return nil, false
+	}
+	if t.Kind != TypeStruct {
 		return nil, false
 	}
 	sd, _ := t.Decl.(*StructDef)
