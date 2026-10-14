@@ -49,6 +49,9 @@ func ReachedFrom(pkg *Package, platform, language string) *Reached {
 		if o.Options != nil {
 			r.expr(o.Options)
 		}
+		if o.Run != nil && o.Run.Func != nil {
+			r.fn(o.Run.Func)
+		}
 	}
 	r.stmts(pkg.Body)
 	for len(r.queue) > 0 {

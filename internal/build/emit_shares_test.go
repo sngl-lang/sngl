@@ -69,3 +69,31 @@ ui.window {
 `)},
 	})
 }
+
+func TestEmitLeavesAFuncOnlyRunCallsCopied(t *testing.T) {
+	emitLeavesImportsAlone(t, fstest.MapFS{
+		"main.sngl": &fstest.MapFile{Data: []byte(`import ui "sngl:ui"
+import "lib"
+
+var n = 0
+
+output {
+    go {
+        fyne(@run(args, run) {
+            n = lib.twice(args.length)
+            run()
+        })
+    }
+}
+
+ui.window {
+    ui.text(value="{n}")
+}
+`)},
+		"lib/lib.sngl": &fstest.MapFile{Data: []byte(`func twice(n int) int {
+    var two = 1 + 1
+    return n * two
+}
+`)},
+	})
+}

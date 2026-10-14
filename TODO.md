@@ -301,3 +301,7 @@ Re-measure the affected workload after each step and note the number here.
      around `build.Emit` and fails without it. (A const and a func value read
      the same way were already reached; a test of those passed either way and
      was dropped.)
+   - A library func called only from a platform's `@run` was shared:
+     `ReachedFrom` walked an output's options and not its handler, which
+     `installRun` makes a func of the build. It walks the handler;
+     `TestEmitLeavesAFuncOnlyRunCallsCopied` fails without it.
