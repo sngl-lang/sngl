@@ -57,7 +57,7 @@ Re-measure the affected workload after each step and note the number here.
      `import "gir:Gtk-4.0"`. Owner's call: keep the reports and memoize the
      produced registry per process by the GIR's content digest instead.
 
-3. [ ] **Unit table rebuilt per literal.** `optimize.parseLiteral` ->
+3. [X] **Unit table rebuilt per literal.** `optimize.parseLiteral` ->
    `interp.UnitLiteralValue` -> `buildUnitTableFromDef` builds a fresh table
    for every unit literal: 0.45 GB, 7% of TestGolden. Memoize by `*ir.UnitDef`
    (`unitTable.Decl` already compares by declaration).
@@ -116,3 +116,12 @@ Re-measure the affected workload after each step and note the number here.
    TestFixtures, TestScript and `codegen/platform/gtk4` green;
    `TestStoredRegistryIsDecodedOncePerContent` and
    `TestGIRIsParsedOncePerProcess` each fail with their memo removed.
+
+3. **Unit table per declaration** -- TestGolden 6.36 -> 6.03 GB allocated
+   (`parseLiteral` 466 -> 145 MB), CPU 26.9 -> 26.1 s user (within noise).
+   The tables live on the compilation's `EvalCache` (`interp.UnitTables`),
+   since each target's clone has UnitDefs of its own and a process-wide map
+   would keep every build's. What is left is the per-literal amounts map.
+   Docs site byte-identical; TestGolden, TestFixtures, `internal/optimize` and
+   `internal/interp` green; `TestUnitLiteralsShareTheirTable` fails with the
+   memo removed.

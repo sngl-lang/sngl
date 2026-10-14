@@ -165,7 +165,7 @@ func evalExpr(e ir.Expr, ctx *evalCtx) (any, bool) {
 	case *ir.Lambda:
 		return heldLambda(x, ctx)
 	case *ir.Literal:
-		val := parseLiteral(x)
+		val := parseLiteral(x, ctx.evalCache())
 		// parseLiteral returns nil for kinds it can't represent (units, etc.);
 		// signal non-foldable so the original literal is preserved.
 		if val == nil && x.Type != nil && x.Type.Kind != ir.TypeNull {
@@ -679,7 +679,7 @@ func evalConversion(conv *ir.Conversion, ctx *evalCtx) (any, bool) {
 }
 
 // parseLiteral converts an IR literal to a Go value.
-func parseLiteral(lit *ir.Literal) any {
+func parseLiteral(lit *ir.Literal, cache *EvalCache) any {
 	if lit.Type == nil {
 		return nil
 	}
@@ -724,7 +724,7 @@ func parseLiteral(lit *ir.Literal) any {
 		// view loop over rows carrying an indent unrolled to one copy with its
 		// variable bound to nothing (testdata/html_unroll_measurement.txtar).
 		if !ud.IsSingleBase() {
-			v, _ := interp.UnitLiteralValue(lit)
+			v, _ := interp.UnitLiteralValue(lit, &cache.units)
 			return v
 		}
 		mag, _, ok := ir.UnitMagnitude(lit)
