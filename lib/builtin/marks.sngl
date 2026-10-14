@@ -16,7 +16,6 @@ enum _IntrinsicFlag { mutates, readonly, mutatesReceiver, build }
 // marks declare.
 enum _Kind {
     bool
-    dyn
     any
     int
     int8
@@ -62,12 +61,8 @@ func _intrinsic(id string, flags list[_IntrinsicFlag] = []) _Macro
 #[_builtin(bool)]
 struct bool {}
 
-// A value the program says nothing about the type of.
-#[_builtin(dyn)]
-struct dyn {}
-
 // The constraint that says nothing about a type parameter: `func first[T any]`.
-// A constraint only, and no type a value may have -- a value the program says
-// nothing about the type of is a `dyn`.
+// A constraint only, and no type a value may have: every value's type is
+// one the program can name.
 #[_builtin(any)]
 struct any {}

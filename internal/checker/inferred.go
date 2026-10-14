@@ -1,9 +1,22 @@
 package checker
 
 import (
+	"strings"
+
 	"duckfam.us/sngl/ast"
 	"duckfam.us/sngl/ir"
 )
+
+// varSpecType is the type a var declares where it is written: the one it
+// names, or none yet when it takes its initializer's (typeFromInit). A var
+// naming neither has nothing to say what it holds, which is refused rather
+// than left a type that accepts anything.
+func (c *checker) varSpecType(pos ast.Pos, names []string, te ast.TypeExpr, init ast.Expr) *ir.Type {
+	if te == nil && init == nil {
+		c.error(pos, "var %s needs a type or an initializer", strings.Join(names, ", "))
+	}
+	return c.resolveType(te)
+}
 
 // typeFromInit is the type a var or const declaration holds: the one it was
 // annotated with, or with none, its initializer's. An annotation is read as

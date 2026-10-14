@@ -214,7 +214,7 @@ The declarations a file holds are `import`, `output`, `struct`, `enum`, `unit`, 
 
 ### Primitives
 
-`bool`, `int`, `float`, `string` work as expected. `dyn` is the escape hatch for untyped values -- use it for host interop, not as a default.
+`bool`, `int`, `float`, `string` work as expected. Every value has a type a program can name: there is no type that accepts anything. A declaration names its type or takes it from its initializer, and a host type SNGL has no spelling for is an opaque native struct.
 
 ### Special types
 
@@ -378,8 +378,6 @@ Narrow list — most type changes are rejected and require an explicit cast.
 | `null`            | `option[T]`   | Assignment: `var x option[int] = null`                      |
 | `null`            | `func(...)`   | Assignment; calling it yields the return type's zero value  |
 | `func() T`        | `T`           | A zero-arg function passed as an argument, prop or `{expr}` |
-| any               | `dyn`         | `dyn` accepts any type                                      |
-| `dyn`             | any           | Escape hatch; no runtime check                              |
 
 `float` → `int` is **not** implicit — write `int(x)` to discard the fractional part. Non-zero `int` → unit is **not** implicit — use unit literals (`5s`) or multiply (`n * 1s`).
 
@@ -703,8 +701,8 @@ what a function handing its argument to something that reads fields by name
 wants: `i18n.format` takes its arguments that way. A constraint's field takes
 no default -- a constraint says what a type has, not what it starts with.
 
-`any` is only a constraint. A value whose type you say nothing about is a
-`dyn`, and `var x any` is an error. Nor is the constraint optional: a bracket
+`any` is only a constraint: `var x any` is an error, since every value has a
+type you can name. Nor is the constraint optional: a bracket
 holding a bare name after a declaration's name is the target an override is
 for, so `func firstOr[T]` is an override for a target called `T`, and the
 error says to write `T any`.

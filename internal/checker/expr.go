@@ -2078,7 +2078,9 @@ func (c *checker) rejectVoidReceiver(t *ir.Type, operand ast.Expr) bool {
 }
 
 func (c *checker) inferSelect(x *ast.SelectExpr) ir.Expr {
-	operandExpr := c.checkExpr(x.Operand)
+	// What the select is expected to be says nothing of what it reads off:
+	// an option expected of `node.left` is no reason to leave `node` wrapped.
+	operandExpr := c.checkExprExpecting(x.Operand, nil)
 	operand := exprType(operandExpr)
 
 	if c.rejectVoidReceiver(operand, x.Operand) {
@@ -2098,16 +2100,13 @@ func (c *checker) inferSelect(x *ast.SelectExpr) ir.Expr {
 		operand = operand.Elems[0]
 	}
 
-	// A field read through `option[Struct]` resolves against the struct, which
-	// is what every backend already emits -- Go reads through the pointer an
-	// option is. Only the type it was resolved against changes; no deref node
-	// is synthesized, because there is nothing for one to lower to.
-	//
-	// Without this the whole select degraded to dyn: `contents.value().status`
-	// worked, `contents.value().nope` worked exactly as well, and both reached
-	// a backend as a field read of whatever was there.
+	// A field read through `option[Struct]` reads off a value that may not be
+	// there: a null test narrows it first (narrow.go), and the read is then
+	// of the struct. Unnarrowed it is refused, rather than resolved against
+	// the struct as Go's pointer read would and Kotlin's nullable refuses.
 	if operand != nil && operand.Kind == ir.TypeOption && len(operand.Elems) == 1 &&
 		operand.Elems[0] != nil && operand.Elems[0].Kind == ir.TypeStruct {
+		c.error(x.Pos, "%s may be null: test it against null before reading .%s", operand, x.Field)
 		operand = operand.Elems[0]
 	}
 
@@ -3629,7 +3628,7 @@ func (c *checker) checkBlockScoped(block *ast.StmtBlock, isScope bool, headNames
 func (c *checker) checkLocalVarDecl(decl *ast.VarDecl) []ir.Stmt {
 	var out []ir.Stmt
 	for _, spec := range decl.Specs {
-		typ := c.resolveType(spec.Type)
+		typ := c.varSpecType(spec.Pos, spec.Names, spec.Type, spec.Default)
 		var initExpr ir.Expr
 		if spec.Default != nil {
 			initExpr = c.checkExprExpecting(spec.Default, typ)
@@ -3751,7 +3750,7 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 		}
 		return c.checkStmt(lowered)
 	case *ast.VarStmt:
-		typ := c.resolveType(x.Type)
+		typ := c.varSpecType(x.Pos, []string{x.Name}, x.Type, x.Init)
 		var initExpr ir.Expr
 		if x.Init != nil {
 			initExpr = c.checkExprExpecting(x.Init, typ)

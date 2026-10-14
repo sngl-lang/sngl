@@ -2473,7 +2473,7 @@ func (c *checker) nonConstCallRef(x *ast.CallExpr) string {
 
 func (c *checker) registerVars(decl *ast.VarDecl) {
 	for _, spec := range decl.Specs {
-		typ := c.resolveType(spec.Type)
+		typ := c.varSpecType(spec.Pos, spec.Names, spec.Type, spec.Default)
 		var vars []*ir.Var
 		for _, name := range spec.Names {
 			if _, exists := c.scope.LookupLocal(name); exists {
@@ -2554,7 +2554,7 @@ func (c *checker) checkPendingInits() {
 // that were pre-registered in pass1, and infers types from initializers.
 func (c *checker) checkComponentVars(decl *ast.VarDecl, comp *ir.Component) {
 	for _, spec := range decl.Specs {
-		typ := c.resolveType(spec.Type)
+		typ := c.varSpecType(spec.Pos, spec.Names, spec.Type, spec.Default)
 		var initExpr ir.Expr
 		if spec.Default != nil {
 			initExpr = c.checkExprExpecting(spec.Default, typ)

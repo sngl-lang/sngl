@@ -70,8 +70,8 @@ struct User {
 }
 struct TreeNode {
     value int = 0
-    left dyn = null
-    right dyn = null
+    left option[TreeNode] = null
+    right option[TreeNode] = null
 }
 ui.window {
     var u = User{}
@@ -84,8 +84,8 @@ ui.window {
 		`var admin: Boolean = false`,
 		`var name: String = ""`,
 		`var value: Int = 0`,
-		`var left: Any? = null`,
-		`var right: Any? = null`,
+		`var left: TreeNode? = null`,
+		`var right: TreeNode? = null`,
 	} {
 		if !strings.Contains(out, want) {
 			t.Errorf("missing %q in:\n%s", want, out)

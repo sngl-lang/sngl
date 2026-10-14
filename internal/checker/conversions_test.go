@@ -509,15 +509,3 @@ component main node {
 func TestLiteralZeroNotAppliedToString(t *testing.T) {
 	expectError(t, `var s string = 0`, "cannot initialize string with int")
 }
-
-func TestDynToConcreteFlows(t *testing.T) {
-	expectNoErrors(t, `
-func makeDyn() dyn {
-    var d dyn = 42
-    return d
-}
-func test() {
-    var n int = makeDyn()
-}
-`)
-}

@@ -1,0 +1,21 @@
+// A var says what it holds, or takes it from its initializer. One that does
+// neither has no type, and there is no type that accepts anything.
+
+import . "sngl:ui"
+
+var g // ERROR(check) "var g needs a type or an initializer"
+
+component main node {
+    var x // ERROR(check) "var x needs a type or an initializer"
+
+    func f() int {
+        var y // ERROR(check) "var y needs a type or an initializer"
+        return 0
+    }
+
+    text(value="x")
+}
+
+window {
+    main
+}
