@@ -68,9 +68,6 @@ func (g *Generator) Generate(req *codegen.Request, sink codegen.Sink) error {
 	}
 
 	if req.Pkg != nil {
-		if err := validateRawElements(req.Pkg); err != nil {
-			return err
-		}
 		if err := firstUnrenderedNode(req.Pkg); err != nil {
 			return err
 		}
@@ -687,6 +684,13 @@ type htmlGen struct {
 	dt *codegen.DepTracker
 
 	nextID int
+	// scriptErr is the first element the script was asked to build that it
+	// cannot (htmlTranslator.refuse).
+	scriptErr *scriptRefusal
+	// nodeSites is where each element the script creates was written, shared
+	// by every scope's translator: an updater writes an element another
+	// scope created.
+	nodeSites map[string]ast.Stmt
 
 	initWrites []updateFunc
 
@@ -1266,6 +1270,9 @@ func (g *htmlGen) generate() (string, error) {
 	// class's rule as it is translated.
 	var scriptBuf strings.Builder
 	g.emitScript(&scriptBuf)
+	if r := g.scriptErr; r != nil {
+		return "", fmt.Errorf("%s: %s", g.scriptNodePos(r.node), r.msg)
+	}
 	if script := scriptBuf.String(); strings.Contains(script, navPageMarker) {
 		decl := ""
 		if strings.Contains(script, "globalThis."+navPageGlobal) {

@@ -18,10 +18,12 @@ import (
 //
 // Both are static-render limits rather than facts about the DOM: the tag names
 // the element to create, and the attribute names have to be known to be written
-// as attributes. Saying so is the fix; guessing was the bug.
-func validateRawElements(pkg *ir.Package) error {
+// as attributes. Saying so is the fix; guessing was the bug. Asked of a
+// document once it is folded, which is where the page decides a tag its
+// element computes; the script refuses its own (htmlTranslator.refuse).
+func validateRawElements(body []ir.Stmt) error {
 	var bad error
-	ir.WalkStmts(pkg, func(s ir.Stmt) error {
+	ir.WalkStmts(body, func(s ir.Stmt) error {
 		n, ok := s.(*ir.NodeInst)
 		if !ok || n.Component == nil || bad != nil {
 			return nil

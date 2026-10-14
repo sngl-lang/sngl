@@ -97,3 +97,52 @@ func holdsSpan(stmts []ir.Stmt) bool {
 	}
 	return false
 }
+
+// constructSlots makes a render slot of each primitive written where nothing
+// re-renders it whose #[construct] prop reads state: the prop cannot be
+// written once the element is built, so a change rebuilds the element, which
+// is what a slot's re-render does.
+func (st *reactivityState) constructSlots(stmts []ir.Stmt) []ir.Stmt {
+	for i, s := range stmts {
+		switch n := s.(type) {
+		case *ir.NodeInst:
+			if st.constructReadsState(n) {
+				stmts[i] = flowSlot(n)
+				continue
+			}
+			n.Children = st.constructSlots(n.Children)
+			for _, name := range ir.SlotNames(n.Slots) {
+				n.Slots[name].Body = st.constructSlots(n.Slots[name].Body)
+			}
+		case *ir.If:
+			if len(st.exprDeps(n.Cond)) == 0 {
+				n.Body = st.constructSlots(n.Body)
+				n.Else = st.constructSlots(n.Else)
+			}
+		case *ir.For:
+			if len(st.exprDeps(n.Iter)) == 0 && !st.bodyNeedsSlot(n.Body) {
+				n.Body = st.constructSlots(n.Body)
+				n.Else = st.constructSlots(n.Else)
+			}
+		case *ir.ErrorBoundary:
+			n.Children = st.constructSlots(n.Children)
+		case *ir.ContextProvider:
+			n.Children = st.constructSlots(n.Children)
+		case *ir.SlotInst:
+			n.Children = st.constructSlots(n.Children)
+		}
+	}
+	return stmts
+}
+
+func (st *reactivityState) constructReadsState(n *ir.NodeInst) bool {
+	if isInstanceNode(n) {
+		return false
+	}
+	for _, p := range n.Props {
+		if p.Name != "" && propIsConstruct(n.Component, p.Name) && len(st.exprDeps(p.Value)) > 0 {
+			return true
+		}
+	}
+	return false
+}

@@ -127,19 +127,28 @@ Re-measure the affected workload after each step and note the number here.
      gate); only at a call site outside any spliced body, which may have been
      copied before its own declaration was walked; never a component a test
      takes or the harness root.
-   - [ ] c. What is left on the docs build after (b), 771 MB of
-     `deepCloneStmts`: content inserted more than once -- the two branches of
-     `markup.list` and `markup.listItem` (337 MB) -- and passNoInlineComponents'
-     slot splice (247 MB). The last cannot move as (a) does: its call site's
-     content is still read after the splice (`markdown_document`'s golden
-     changes, `Set__ctx_listDepth(… + 1)` becoming `Set__p1(…)`), and 174
-     statements are already reachable twice after that pass on TestGolden
-     before any change. The branches need sharing IR between them, which
-     later passes write in place, or html's overrides inserting once: an
-     `html.element(tag=ordered ? "ol" : "ul")` is refused before the
-     per-document fold decides `ordered` for md.document (`tag` and `attrs`
-     must be literals in `validateRawElements`), and a task item wraps its
-     content in a `div` a plain one does not, which no single insertion says.
+   - [X] c. html's `markup.list` is one element, `html.element(tag=ordered ? "ol" : "ul", attrs=ordered ? {"start"=…} : {})`, so `md.document`'s
+     three list levels hold 8 copies of the innermost content rather than 64.
+     That needed three things: html checks a raw element's `tag` and `attrs`
+     on each document once it is folded rather than on the whole package
+     (`validateRawElements`), its script creates an element under a computed
+     tag and writes a choice between attribute maps under its condition, and
+     `tag` is `#[construct]`. The last is what keeps a list whose `ordered`
+     reads state working: the mark used to apply to component instances only,
+     and a primitive whose `#[construct]` prop reads state is now made a
+     render slot (`constructSlots`), whose re-render builds the element
+     afresh -- where it stands, and in each copy of a loop over state, where
+     the copy's setter re-fires it. Without it, both shapes were refused.
+   - [ ] d. What is left on the docs build after (c), 362 MB of
+     `deepCloneStmts`: the two branches of `markup.listItem` and
+     passNoInlineComponents' slot splice (247 MB). The latter cannot move as
+     (a) does: its call site's content is still read after the splice
+     (`markdown_document`'s golden changes, `Set__ctx_listDepth(… + 1)`
+     becoming `Set__p1(…)`), and 174 statements are already reachable twice
+     after that pass on TestGolden before any change. A task item wraps its
+     content in a `div` a plain one does not; inserting it once needs
+     `display: contents`, which `ui.Display` does not have, or a markup
+     change. Owner's call; not pursued.
 
 8. [ ] **`ExprCtx.WithLocal` clones its maps per local**
    (`codegen/exprctx.go:284`): 1.2 GB on the docs build. A parent-chained
@@ -237,3 +246,17 @@ reachable twice after the pass. Docs site byte-identical (1187 files);
 `go test ./...` green. `TestInlinePureTakesTheBodyOfASoleInstance` fails
 under each revert: taking nothing, dropping the use count, and dropping
 the spliced-body guard.
+
+7c. **One list element, and `#[construct]` on a primitive** -- docs site
+9.59 -> 8.83 GB allocated, `lower.Lower` 1.08 -> 0.48 GB; two unprofiled
+pairs 29.7 -> 19.9 and 25.6 -> 19.4 s user. TestGolden 5.49 -> 4.93 GB;
+pairs 25.8 -> 23.2 and 25.3 -> 24.5 s user (box under load). Docs site
+byte-identical (1187 files) but for `docs/sngl/macro/construct.html`,
+which renders the mark's doc comment this change extends. `go test ./...`
+green (`TestImageSources` timed out navigating at load 13 and passes
+alone). `list_tag_from_state_runs.txt` runs both shapes of a list whose
+`ordered` reads state in Chromium and fails with the mark or
+`constructSlots` removed; `html_raw_element_refused.txt` fails with the
+attrs refusal, the choice between maps, or the deferred position removed;
+the three `markdown_document` goldens fail with the check back on the whole
+package; `html_list_tag_from_state.txtar` is the code.
