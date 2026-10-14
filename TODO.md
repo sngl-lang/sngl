@@ -119,7 +119,7 @@ Re-measure the affected workload after each step and note the number here.
      iterates no library symbol table. Owner's call, between a registry
      every body reader asks (~1,250 sites, at most 14 more points of the
      clone shared) and this one.
-   - [ ] (2) The clone copies the program and the library declarations it
+   - [X] (2) The clone copies the program and the library declarations it
      reaches, sharing the rest frozen.
      - [X] `ClonePackageFor`: `build.Emit`, dump, the playground, the docs
        preview and the snapshot compile paths.
@@ -127,7 +127,7 @@ Re-measure the affected workload after each step and note the number here.
      - [X] The batch snapshot paths.
      - [X] The LSP color fold.
      - [X] The fixture fold.
-     - [ ] `sngl test`'s per-group copy (`ClonePackage` today).
+     - [X] `sngl test`'s per-group copy.
 
 7. [ ] **passInlinePure clones slot content into both branches.**
    `ir.SlotSplicer.Substitute` / `lower.deepCloneStmts`: 2.8 GB (22%) of the
@@ -272,3 +272,8 @@ Re-measure the affected workload after each step and note the number here.
    (2) **Fixture fold** copies for the html/js target it optimizes for:
    `assertFolds` 13.5 -> 8.9 MB across `TestFixtures` (only `FOLD` fixtures
    fold). It is the harness itself, so no test of its own.
+
+   (2) **`sngl test`'s per-group copy** is for the platform and language the
+   group is launched on, not every target: in `cmd/sngl`'s `TestScript` that
+   copy is 1.42 -> 0.35 GB and the whole run 4.81 -> 3.70 GB allocated. The
+   scripts that launch tests are its test.
