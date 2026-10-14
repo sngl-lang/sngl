@@ -1,6 +1,7 @@
 package codegen
 
 import (
+	"fmt"
 	"reflect"
 	"testing"
 )
@@ -17,14 +18,17 @@ func TestCloneCarriesEveryField(t *testing.T) {
 	// Fields Clone deliberately re-allocates rather than aliasing: the copy
 	// must be equivalent, not identical, so they are compared by content.
 	deepCopied := map[string]bool{
-		"Locals": true, "Renames": true, "RawFieldAccess": true,
-		"MethodFields": true, "IdentRewrites": true,
+		"RawFieldAccess": true,
+		"MethodFields":   true, "IdentRewrites": true,
 	}
 
 	rt := reflect.TypeFor[ExprCtx]()
 	orig := reflect.New(rt).Elem()
 	// Fill every field with a distinguishable non-zero value.
 	for i := range rt.NumField() {
+		if !rt.Field(i).IsExported() {
+			continue
+		}
 		f := orig.Field(i)
 		switch f.Kind() {
 		case reflect.String:
@@ -47,6 +51,7 @@ func TestCloneCarriesEveryField(t *testing.T) {
 	}
 
 	src := orig.Addr().Interface().(*ExprCtx)
+	src.locals = &localScope{name: "k"}
 	got := reflect.ValueOf(src.Clone()).Elem()
 
 	for i := range rt.NumField() {
@@ -67,6 +72,12 @@ func TestCloneCarriesEveryField(t *testing.T) {
 		if want.Kind() == reflect.Map {
 			continue // shared maps compare equal by header; non-zero suffices
 		}
+		if !rt.Field(i).IsExported() {
+			if want.Pointer() != have.Pointer() {
+				t.Errorf("ExprCtx.Clone changed %s", name)
+			}
+			continue
+		}
 		if want.Comparable() && want.Interface() != have.Interface() {
 			t.Errorf("ExprCtx.Clone changed %s", name)
 		}
@@ -81,4 +92,21 @@ func mapKey(kt reflect.Type) reflect.Value {
 		return reflect.New(kt.Elem())
 	}
 	return reflect.ValueOf("k").Convert(kt)
+}
+
+func TestWithLocalSharesItsParentsLocals(t *testing.T) {
+	names := make([]string, 1000)
+	for i := range names {
+		names[i] = fmt.Sprint("c", i)
+	}
+	parent := NewExprCtx(nil).WithLocals(names...)
+	var child *ExprCtx
+	allocs := testing.AllocsPerRun(10, func() { child = parent.WithLocal("x") })
+	if allocs > 2 {
+		t.Errorf("WithLocal made %v allocations, want the context and one frame", allocs)
+	}
+	if !child.IsLocal("c999") || !child.IsLocal("x") || parent.IsLocal("x") {
+		t.Errorf("child sees c999 %v and x %v, parent sees x %v",
+			child.IsLocal("c999"), child.IsLocal("x"), parent.IsLocal("x"))
+	}
 }

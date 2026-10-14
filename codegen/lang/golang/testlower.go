@@ -39,14 +39,14 @@ func testIRContext(irPkg *ir.Package, fn *ir.Func, methodFields map[string]bool,
 	// Package state and the funcs reading it are Model members, and a test
 	// holds its Model as the instance rather than as `m`.
 	ctx.StateReceiver = instance
-	gc := NewIRContext(ctx)
+	var params []string
 	for _, p := range fn.Params {
-		gc.Ctx.Locals[p.Name] = true
+		params = append(params, p.Name)
 		if p.Type != nil && p.Type.Kind == ir.TypeComponent {
-			gc.Ctx.RawFieldAccess[p.Name] = true
+			ctx.RawFieldAccess[p.Name] = true
 		}
 	}
-	return gc
+	return NewIRContext(ctx.WithLocals(params...))
 }
 
 // lowerTestStmt translates one statement of a SNGL test body to Go.

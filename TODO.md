@@ -129,19 +129,8 @@ Re-measure the affected workload after each step and note the number here.
      - [X] The fixture fold.
      - [X] `sngl test`'s per-group copy.
 
-7. [ ] **passInlinePure clones slot content into both branches.**
-   `ir.SlotSplicer.Substitute` / `lower.deepCloneStmts`: 2.8 GB (22%) of the
-   docs build, 0.6 GB of TestGolden.
-
-8. [ ] **`ExprCtx.WithLocal` clones its maps per local**
-   (`codegen/exprctx.go:284`): 1.2 GB on the docs build. A parent-chained
-   scope instead of a copy.
-
-9. [ ] **Test-only guards (owner's call).** TestGolden fingerprints the checked
-   package and its library around every build: 7.2 s of 28.5 s CPU and
-   0.6 GB; `walkDivergence` adds 0.23 GB. With `Frozen`/`MustWriteDecl`
-   catching the known writers, fingerprinting only the program's package (or
-   a sample) is the option -- at the cost of unknown writers. Ask first.
+7-9. Done on `perf/allocation-sweep`, the merge request this one is stacked on,
+whose description carries their numbers.
 
 ## Deferred
 

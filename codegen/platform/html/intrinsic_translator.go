@@ -2,6 +2,7 @@ package html
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	"duckfam.us/sngl/ast"
@@ -75,6 +76,21 @@ type htmlTranslator struct {
 	// windows are the names a lowering creates a Window under, each a
 	// `<dialog>` built by _snglDialog (htmlGen.windowIDs).
 	windows map[string]bool
+	refuse  func(node ir.Expr, msg string)
+	sites   map[string]ast.Stmt // htmlGen.nodeSites
+}
+
+func (t *htmlTranslator) NodeSite(id string, at ast.Stmt) {
+	if t.sites != nil {
+		t.sites[id] = at
+	}
+}
+
+func (g *htmlGen) nodeSitesMap() map[string]ast.Stmt {
+	if g.nodeSites == nil {
+		g.nodeSites = map[string]ast.Stmt{}
+	}
+	return g.nodeSites
 }
 
 func (g *htmlGen) newHTMLTranslator(jc *javascript.JsIRContext) *htmlTranslator {
@@ -84,6 +100,15 @@ func (g *htmlGen) newHTMLTranslator(jc *javascript.JsIRContext) *htmlTranslator 
 		classProps: map[string][]ir.Arg{}, addStyle: g.AddStyle, useStyleValue: g.useStyleValue,
 		sources: map[string]string{},
 		windows: g.windowIDs(),
+		sites:   g.nodeSitesMap(),
+		refuse: func(node ir.Expr, msg string) {
+			if g.scriptErr == nil {
+				g.scriptErr = &scriptRefusal{msg: msg}
+				if id, ok := node.(*ir.Ident); ok {
+					g.scriptErr.node = id.Name
+				}
+			}
+		},
 	}
 }
 
@@ -379,15 +404,25 @@ func (t *htmlTranslator) OnDetachHandler(ctx context.Context, node ir.Expr, even
 func (t *htmlTranslator) OnPropAssign(ctx context.Context, node ir.Expr, prop string, value ir.Expr) []ir.Stmt {
 	// The write is emitted against the variable the element was emitted as,
 	// which for a program-written `#id` is not the name the op used.
+	written := node
 	node = t.nodeRef(node)
 	// The prop the tag name binds to names the element, so it is the
-	// createElement argument and no attribute. A computed one is left to the
-	// name the node was created under, as the page walk leaves it.
+	// createElement argument and no attribute. A computed one is evaluated
+	// there too, which only the scope creating the element can do.
 	if prop == tagProp {
-		if id, ok := node.(*ir.Ident); ok {
-			if s, ok := codegen.IRLiteralString(value); ok && s != "" && t.creates[id.Name] != nil {
-				t.creates[id.Name].Args[0].Value = &ir.Literal{Type: ir.TypString, Value: s}
-			}
+		id, _ := node.(*ir.Ident)
+		var create *ir.Call
+		if id != nil {
+			create = t.creates[id.Name]
+		}
+		s, literal := codegen.IRLiteralString(value)
+		switch {
+		case literal && s != "" && create != nil:
+			create.Args[0].Value = &ir.Literal{Type: ir.TypString, Value: s}
+		case !literal && create != nil:
+			create.Args[0].Value = value
+		case !literal:
+			t.refuse(written, fmt.Sprintf("%q changes while the element is shown, and an element cannot change its tag: make it a constant, or write each element under an `if`", tagProp))
 		}
 		return nil
 	}
@@ -441,19 +476,7 @@ func (t *htmlTranslator) OnPropAssign(ctx context.Context, node ir.Expr, prop st
 	// The two markup paths (nodeProps, elementAttrs) already unpack it; this is
 	// the third, and the one a node inside a `for` or a reactive slot takes.
 	if prop == attrsProp {
-		m, ok := value.(*ir.MapLitIR)
-		if !ok {
-			return nil
-		}
-		var out []ir.Stmt
-		for _, e := range m.Entries {
-			k, ok := e.Key.(*ir.Literal)
-			if !ok {
-				continue
-			}
-			out = append(out, t.OnPropAssign(ctx, node, k.Value, e.Value)...)
-		}
-		return out
+		return t.assignAttrs(ctx, written, node, value)
 	}
 	if id, ok := node.(*ir.Ident); ok {
 		if t.windows[id.Name] || isWindowPrimitive(t.idToNode[id.Name]) {
@@ -479,6 +502,29 @@ func (t *htmlTranslator) OnPropAssign(ctx context.Context, node ir.Expr, prop st
 		return setAttr(prop, codegen.MeasurementPxExpr(ud, value, codegen.CanvasEmPx))
 	}
 	return setAttr(prop, value)
+}
+
+// assignAttrs writes each attribute a wildcard map names, under the condition
+// that chose it where the map is a choice between maps.
+func (t *htmlTranslator) assignAttrs(ctx context.Context, written, node, value ir.Expr) []ir.Stmt {
+	switch v := value.(type) {
+	case *ir.MapLitIR:
+		var out []ir.Stmt
+		for _, e := range v.Entries {
+			if k, ok := e.Key.(*ir.Literal); ok {
+				out = append(out, t.OnPropAssign(ctx, node, k.Value, e.Value)...)
+			}
+		}
+		return out
+	case *ir.Ternary:
+		return []ir.Stmt{&ir.If{
+			Cond: v.Cond,
+			Body: t.assignAttrs(ctx, written, node, v.Then),
+			Else: t.assignAttrs(ctx, written, node, v.Else),
+		}}
+	}
+	t.refuse(written, fmt.Sprintf("%q must be a map literal, or a choice between map literals: each attribute is written by name, and these names are not known until it runs", attrsProp))
+	return nil
 }
 
 func (t *htmlTranslator) OnSlotReset(ctx context.Context, slot *ir.Var) []ir.Stmt {
@@ -623,4 +669,24 @@ func windowPropWrite(node ir.Expr, prop string, value ir.Expr) ([]ir.Stmt, bool)
 		}, true
 	}
 	return nil, false
+}
+
+// scriptRefusal is an element the script cannot build, by the name its node
+// op used. Its position is resolved once the whole script is written: an
+// updater may write an element before the scope creating it is translated.
+type scriptRefusal struct {
+	node, msg string
+}
+
+// scriptNodePos is where the program wrote the element a node op names.
+func (g *htmlGen) scriptNodePos(name string) ast.Pos {
+	if n := g.idToNode[name]; n != nil {
+		return ir.NodePos(n)
+	}
+	if at := g.nodeSites[name]; at != nil {
+		if p := at.StmtPos(); p != nil {
+			return *p
+		}
+	}
+	return ast.Pos{}
 }

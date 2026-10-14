@@ -1,0 +1,72 @@
+# A raw element's tag and attribute names have to be known when html writes
+# the element: in a page, once the page is folded, and in the script, where
+# the element is created. Each is refused with the program's position rather
+# than written as `<element>` or with its attributes dropped.
+
+! sngl generate --platform=html tag.sngl
+stderr 'tag.sngl:8:\d+: "tag" must be a string literal'
+
+! sngl generate --platform=html attrs.sngl
+stderr 'attrs.sngl:13:\d+: "attrs" must be a map literal'
+
+! sngl generate --platform=html slot.sngl
+stderr 'slot.sngl:11:\d+: "attrs" must be a map literal, or a choice between map literals'
+
+# A choice between map literals is written under the condition that chose it.
+sngl generate --platform=html --out out choice.sngl
+grep 'setAttribute\("data-w", "1"\)' out/index.html
+grep 'setAttribute\("data-n", "1"\)' out/index.html
+
+-- tag.sngl --
+import ui "sngl:ui"
+import html "sngl:platform/html"
+import time "sngl:time"
+
+output { none { html } }
+
+ui.window(title="t") {
+    html.element(tag=string(time.now())) {}
+}
+-- attrs.sngl --
+import ui "sngl:ui"
+import html "sngl:platform/html"
+import time "sngl:time"
+
+output { none { html } }
+
+func stamp() map<string, string> {
+    return {"t"=string(time.now())}
+}
+
+ui.window(title="t") {
+    html.div {}
+    html.div(attrs=stamp()) {}
+}
+-- slot.sngl --
+import ui "sngl:ui"
+import html "sngl:platform/html"
+
+output { none { html } }
+
+var shown = true
+var extra map<string, string> = {"a"="b"}
+
+ui.window(title="t") {
+    if shown {
+        html.div(attrs=extra) {}
+    }
+}
+-- choice.sngl --
+import ui "sngl:ui"
+import html "sngl:platform/html"
+
+output { none { html } }
+
+var wide = false
+
+ui.window(title="t") {
+    ui.button(text="wide", @click { wide = !wide })
+    if wide || !wide {
+        html.div(attrs=wide ? {"data-w"="1"} : {"data-n"="1"}) {}
+    }
+}
