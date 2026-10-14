@@ -29,7 +29,7 @@ require (
 	golang.org/x/text v0.42.0
 	golang.org/x/tools v0.51.0
 	gopkg.in/yaml.v3 v3.0.1
-	modernc.org/scanner v1.3.0
+	modernc.org/scanner v1.4.0
 	nhooyr.io/websocket v1.8.17
 	rsc.io/script v0.0.2
 )
@@ -146,10 +146,10 @@ require (
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	modernc.org/egg v1.2.3 // indirect
 	modernc.org/fsm v1.3.2 // indirect
-	modernc.org/gc/v3 v3.1.2 // indirect
+	modernc.org/gc/v3 v3.1.5 // indirect
 	modernc.org/mathutil v1.7.1 // indirect
 	modernc.org/opt v0.2.0 // indirect
-	modernc.org/rec v0.3.7 // indirect
+	modernc.org/rec v0.3.10 // indirect
 	modernc.org/regexp v1.7.10 // indirect
 	modernc.org/sortutil v1.2.1 // indirect
 	modernc.org/strutil v1.2.1 // indirect
@@ -165,3 +165,5 @@ tool (
 	golang.org/x/tools/cmd/stringer
 	modernc.org/egg
 )
+
+replace modernc.org/egg => gitlab.com/duckbrain/egg v1.4.2-0.20261013225253-e774f1de7b2e
