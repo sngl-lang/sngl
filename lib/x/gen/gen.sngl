@@ -12,9 +12,9 @@ import marks "sngl:internal/marks"
 // `instanceState` is the inliner's: withheld, a component with state of its own
 // is spliced where it is written and keeps a cell per copy of the loops around
 // it, rather than being built at run time. `genericComponents` is the
-// inliner's too: withheld, a generic component built at run time whose props,
-// events, slots or state name an anonymous struct over a type parameter is
-// refused, since its one declaration erases the parameter.
+// inliner's too: withheld, a generic component built at run time is copied
+// per instantiation, at the types its call site bound, rather than emitted
+// once with its type parameters erased.
 // `insertBefore`, `inlineSlots`, `asyncPost` and `asyncSpawn` are grants rather
 // than withdrawals -- the platform's container can place a child, a span can
 // hold a render slot, the platform can reach its drawing thread, the language

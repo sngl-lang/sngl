@@ -208,8 +208,8 @@ var soleGate = map[string][]string{
 	"InstanceState": nil,
 
 	// Gates no pass: passNoInlineComponents asks it whether a generic
-	// component built at run time may name an anonymous struct over its type
-	// parameters, and refuses one where it may not.
+	// component built at run time is emitted once or copied per
+	// instantiation where it is elected.
 	"GenericComponents": nil,
 
 	// The pass and the field are named for opposite sides of the same fact:

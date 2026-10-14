@@ -125,12 +125,12 @@ type Features struct {
 	GenericFuncs bool
 	// GenericComponents says a component with type parameters can be emitted
 	// once and built at every type, which is how a component built at run
-	// time reaches its host. Nothing copies a component per instantiation, so
-	// withheld, one whose prop, event or state names an anonymous struct over
-	// a type parameter is refused where it is built: its one declaration
-	// erases T and cannot spell that struct. A platform holds it apart from
-	// its language: html builds an instance in the page's JavaScript under
-	// any --lang.
+	// time reaches its host. Withheld, passNoInlineComponents copies such a
+	// component per instantiation where it elects it (instantiateRuntime), as
+	// passMonomorphize copies a function: one declaration with T erased holds
+	// a `list[T]` as `[]any`, which `[]int` is not, and cannot spell
+	// `struct { v T }`. A platform holds it apart from its language: html
+	// builds an instance in the page's JavaScript under any --lang.
 	GenericComponents bool
 
 	// The six below are requests rather than capabilities, which is the split
