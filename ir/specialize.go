@@ -20,7 +20,10 @@ func SpecializeForTarget(pkg *Package, platform, language string) {
 		return
 	}
 	InstallOverlay(pkg)
-	specializePkgBodies(pkg, target{platform, language}, map[*Package]struct{}{}, false)
+	t := target{platform, language}
+	if !specializeOverridden(pkg, t, false, nil) {
+		specializePkgBodies(pkg, t, map[*Package]struct{}{}, false)
+	}
 }
 
 // SpecializeOverriddenBodies is SpecializeForTarget restricted to declarations
@@ -34,25 +37,37 @@ func SpecializeForTarget(pkg *Package, platform, language string) {
 // build, which is a different change than this one. So the early pass moves
 // only what a program overrode.
 //
-// Given a reach, it moves only what that holds.
+// Given a reach, it moves only what that holds; reach nil holds everything.
 func SpecializeOverriddenBodies(pkg *Package, platform, language string, reach *Reached) {
 	if pkg == nil || (platform == "" && language == "") {
 		return
 	}
 	InstallOverlay(pkg)
 	t := target{platform, language}
-	if reach == nil {
+	if !specializeOverridden(pkg, t, true, reach) {
 		specializePkgBodies(pkg, t, map[*Package]struct{}{}, true)
-		return
 	}
-	for sym := range reach.decls {
+}
+
+// specializeOverridden swaps the declarations a build's copy recorded as
+// overridden for t (Package.Overridden), those reach holds, and reports
+// whether pkg is such a copy.
+func specializeOverridden(pkg *Package, t target, bodiedOnly bool, reach *Reached) bool {
+	if !covers(pkg.OverriddenFor, t) {
+		return false
+	}
+	for _, sym := range pkg.Overridden {
+		if !reach.Has(sym) {
+			continue
+		}
 		switch decl := sym.(type) {
 		case *Component:
-			specializeComp(decl, t, true)
+			specializeComp(decl, t, bodiedOnly)
 		case *Func:
-			specializeFunc(decl, t, true)
+			specializeFunc(decl, t, bodiedOnly)
 		}
 	}
+	return true
 }
 
 // target is the build's two axes. A declaration may be overridden on either,

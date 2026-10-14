@@ -114,6 +114,11 @@ Re-measure the affected workload after each step and note the number here.
      reports, per phase, which library declarations a build wrote.
    - [X] (1) `foldPkg`, `SpecializeOverriddenBodies` and `DataFamilies` touch
      only the library declarations the program reaches (`ir.ReachedFrom`).
+   - [X] (1b) The copy records the declarations it carries this target's
+     override of (`Package.Overridden`), and specialization swaps those and
+     iterates no library symbol table. Owner's call, between a registry
+     every body reader asks (~1,250 sites, at most 14 more points of the
+     clone shared) and this one.
    - [ ] (2) The clone copies the program and the library declarations it
      reaches, sharing the rest frozen.
 
@@ -210,3 +215,18 @@ Re-measure the affected workload after each step and note the number here.
    `TestImportedPackageIsFoldedOncePerConfig` now plants in `ui.window`'s
    `title` default, which the program reaches (step 5's `sngl:time` func was
    unreached), and still fails with step 5's skip removed.
+
+   (1b) **Specialization reads the copy's record** -- the first writer of
+   unreached declarations part (2) would meet is lowering's
+   `SpecializeForTarget`, which swapped every overridden component it found in
+   the library's symbol tables (27 the program never reaches on
+   `examples/todo`). `ClonePackageFor` now records the copies carrying an
+   override for its target, and both specializations swap only those.
+   `tmp/sharecost` measured the two designs on the clone over five examples
+   and five targets: sharing what a build does not reach saves 42% of the
+   clone's bytes (16-53% per build), and sharing every library declaration,
+   the ceiling of a registry every reader asks, 56%. TestGolden 5.20 -> 5.21 GB
+   (`SpecializeForTarget` 47 MB / 0.11 s drops out of the profile), 21.6 s
+   user; no golden moved; docs site byte-identical (1187 files).
+   `TestSpecializationReadsTheCopysRecord` fails with the symbol-table walk
+   back.

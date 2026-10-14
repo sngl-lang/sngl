@@ -73,6 +73,11 @@ type Package struct {
 	// as the check found them. Each package owns its overrides, so a build
 	// installs these on its copy beside the program's own (InstallOverlay).
 	Targets Overlay `json:"-"`
+	// Overridden is each declaration of a build's copy (ClonePackageFor) that
+	// carries an override for the target OverriddenFor names, in the order
+	// the copy was made. Specialization swaps these and asks no symbol table.
+	Overridden    []Symbol `json:"-"`
+	OverriddenFor string   `json:"-"`
 	// Frozen says the check that loaded the package has ended (Freeze).
 	Frozen bool `json:"-"`
 	// Origin is where a package the program reads by path came from: the

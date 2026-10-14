@@ -111,3 +111,49 @@ ui.window {
 		}
 	}
 }
+
+// TestSpecializationReadsTheCopysRecord holds specialization to what
+// ClonePackageFor recorded as overridden: a declaration left off the record
+// keeps its declared body, though it carries an override for the target.
+func TestSpecializationReadsTheCopysRecord(t *testing.T) {
+	fsys := fstest.MapFS{"main.sngl": &fstest.MapFile{Data: []byte(`import ui "sngl:ui"
+
+ui.window {
+    ui.text(value="hi")
+}
+`)}}
+	doc, err := build.ParsePackageFS(fsys)
+	if err != nil {
+		t.Fatal(err)
+	}
+	checked, err := build.Check(doc, build.CheckConfig{FS: fsys, IsMain: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	pkg := ir.ClonePackageFor(checked, "html", "js")
+	var window, text *ir.Component
+	kept := pkg.Overridden[:0:0]
+	for _, sym := range pkg.Overridden {
+		c, ok := sym.(*ir.Component)
+		switch {
+		case ok && c.Name == "window":
+			window = c
+			continue
+		case ok && c.Name == "text":
+			text = c
+		}
+		kept = append(kept, sym)
+	}
+	if window == nil || text == nil {
+		t.Fatalf("the copy recorded no html override of ui.window and ui.text: %v", pkg.Overridden)
+	}
+	pkg.Overridden = kept
+
+	ir.SpecializeForTarget(pkg, "html", "js")
+	if window.SpecializedFor != "" {
+		t.Error("ui.window, left off the record, was specialized")
+	}
+	if text.SpecializedFor == "" {
+		t.Error("ui.text, on the record, was not specialized")
+	}
+}

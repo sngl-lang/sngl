@@ -48,15 +48,34 @@ func ClonePackage(pkg *Package) *Package {
 // clone per target copied all of them for a target that reads one. Nothing in
 // a target's build reads another's: the swap (SpecializeForTarget) picks this
 // target's entry, and every reader after it asks for this target's key.
+//
+// The copy records each declaration it carries an override of for that target
+// (Package.Overridden), whether the override is its own or the overlay's.
 func ClonePackageFor(pkg *Package, platform, language string) *Package {
 	if pkg == nil {
 		return nil
 	}
 	c := newCloner()
 	c.only = &target{platform, language}
+	c.overridden = map[Symbol]bool{}
 	out := c.clone(reflect.ValueOf(pkg)).Interface().(*Package)
 	InstallOverlay(out)
+	for _, o := range []Overlay{out.Targets, out.Overlay} {
+		for sym, ov := range o.Overrides {
+			if _, ok := pick(*c.only, ov.Platform, ov.Language); ok {
+				c.noteOverridden(sym)
+			}
+		}
+	}
+	out.Overridden, out.OverriddenFor = c.overriddenList, c.only.key()
 	return out
+}
+
+func (c *cloner) noteOverridden(sym Symbol) {
+	if !c.overridden[sym] {
+		c.overridden[sym] = true
+		c.overriddenList = append(c.overriddenList, sym)
+	}
 }
 
 // CloneExpr returns a deep, independent copy of one expression, on the same
@@ -123,6 +142,10 @@ type cloner struct {
 	// rewritten under, and the declarations copied although shareDecls is set.
 	subst map[string]*Type
 	own   map[uintptr]bool
+	// overridden collects, for ClonePackageFor, each copy carrying an
+	// override for only.
+	overridden     map[Symbol]bool
+	overriddenList []Symbol
 }
 
 var typePtrType = reflect.TypeFor[*Type]()
@@ -242,6 +265,11 @@ func (c *cloner) cloneStruct(out, v reflect.Value) {
 					key = c.only.language
 				}
 				out.Field(i).Set(c.cloneOverride(v.Field(i), key))
+				if c.overridden != nil && key != "" && v.Field(i).MapIndex(reflect.ValueOf(key)).IsValid() {
+					if sym, ok := out.Addr().Interface().(Symbol); ok {
+						c.noteOverridden(sym)
+					}
+				}
 				continue
 			}
 		}
