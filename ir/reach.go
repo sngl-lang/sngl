@@ -2,10 +2,10 @@ package ir
 
 // Reached is what a program reaches: its own declarations, and each
 // declaration of a package it imports that a name in them leads to -- a call,
-// a node's component, a type, a struct literal, a context read -- through
-// bodies, signatures and the target's override of each declaration on the
-// way. A scope and an overlay name what is in scope rather than what is used,
-// so neither is followed.
+// a node's component, a type, a struct literal, a context read, a member
+// read through a package's name -- through bodies, signatures and the
+// target's override of each declaration on the way. A scope and an overlay
+// name what is in scope rather than what is used, so neither is followed.
 //
 // A nil *Reached reaches everything, for a caller that builds no target.
 type Reached struct {
@@ -216,6 +216,14 @@ func (r *Reached) visit(n Node) error {
 	case *Ident:
 		if x.Sym != nil {
 			r.add(x.Sym)
+		}
+	case *Select:
+		if id, ok := x.Operand.(*Ident); ok {
+			if ns, ok := id.Sym.(*Namespace); ok && ns.Pkg != nil && ns.Pkg.Symbols != nil {
+				if sym, ok := ns.Pkg.Symbols.LookupMember(x.Field); ok {
+					r.add(sym)
+				}
+			}
 		}
 	case *Call:
 		if x.Func != nil {

@@ -292,3 +292,12 @@ Re-measure the affected workload after each step and note the number here.
      library for `ui.window { ui.text }`. It passes the interpreter's reach;
      `TestPrepareLeavesTheCheckedLibraryAlone` fingerprints the checked
      imports around `Prepare` and fails without it.
+   - A member read through a package's name (`lib.calls`) is a `Select` on a
+     namespace, which `ReachedFrom` did not follow, so the declaration was
+     shared; `passLibFuncs` then found it by name and moved the checked var
+     into the build, which wrote it. `ReachedFrom` resolves such a select
+     through the package's symbols, as lowering does.
+     `TestEmitLeavesANamespaceReadsVarCopied` fingerprints a program's imports
+     around `build.Emit` and fails without it. (A const and a func value read
+     the same way were already reached; a test of those passed either way and
+     was dropped.)
