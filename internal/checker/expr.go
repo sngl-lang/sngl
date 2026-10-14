@@ -3343,13 +3343,45 @@ func (c *checker) bindArgs(callPos ast.Pos, args []ast.ArgOrEventHandler, sig *i
 	return bound, ok
 }
 
-// typeParamZeroFor is a default as a call site binding typ writes it: the
-// zero of typ where the declaration wrote `T{}`, and the default otherwise.
+// typeParamZeroFor is a default as a call site binding typ writes it, where
+// the declaration's default holds a type parameter's zero: the default at the
+// types typ binds, each `T{}` in it -- the whole default, or a part of one,
+// `{v=T{}}`, `[T{}]` -- the zero of what T is bound to. Only the call knows
+// that, and the declaration's default names a type no backend can spell. Any
+// other default is def.
 func typeParamZeroFor(def ir.Expr, typ *ir.Type) ir.Expr {
-	if typeParamZero(def) && typ != nil && !typ.HasTypeParam() {
-		return ir.DeclaredDefault(typ)
+	if !holdsTypeParamZero(def) || typ == nil || typ.HasTypeParam() {
+		return def
 	}
-	return def
+	b := map[string]*ir.Type{}
+	ir.BindTypeParams(exprType(def), typ, b)
+	holder := &ir.Return{Value: ir.CloneExprSharingDecls(def)}
+	_ = ir.RewriteExprs(holder, func(e ir.Expr) (ir.Expr, error) {
+		if !typeParamZero(e) {
+			return e, nil
+		}
+		if t := exprType(e).Substitute(b); !t.HasTypeParam() {
+			if zero := ir.DeclaredDefault(t); zero != nil {
+				return zero, ir.SkipDir
+			}
+		}
+		return e, nil
+	})
+	return ir.SubstituteExprTypes(holder.Value, b)
+}
+
+// holdsTypeParamZero reports whether def is, or holds, a type parameter's
+// zero.
+func holdsTypeParamZero(def ir.Expr) bool {
+	found := false
+	_ = ir.Walk(def, func(n ir.Node) error {
+		if e, ok := n.(ir.Expr); ok && typeParamZero(e) {
+			found = true
+			return ir.SkipAll
+		}
+		return nil
+	})
+	return found
 }
 
 // typeParamZero reports whether a default is `T{}` for a type parameter T --
@@ -3493,12 +3525,13 @@ func (c *checker) checkCallArgs(args ast.ArgList, sig *ir.FuncSig) []ir.CallArg 
 	var result []ir.CallArg
 	for i, expr := range bound {
 		if expr == nil {
-			// A default that is its type parameter's zero, `v T = T{}`, is
-			// the zero of what this call bound T to, and only the call knows
-			// that: the declaration's default names a type no backend can
-			// spell. So it is written here, where every one of them reads it.
-			if p := sig.Params[i]; typeParamZero(p.Default) && p.Type != nil && !p.Type.HasTypeParam() {
-				result = append(result, ir.CallArg{Name: p.Name, Value: ir.DeclaredDefault(p.Type)})
+			// A default holding its type parameter's zero, `v T = T{}` or
+			// `w struct { v T } = {v=T{}}`, is written at the types this call
+			// bound, and only the call knows those: the declaration's default
+			// names a type no backend can spell. So it is written here, where
+			// every one of them reads it.
+			if p := sig.Params[i]; holdsTypeParamZero(p.Default) && p.Type != nil && !p.Type.HasTypeParam() {
+				result = append(result, ir.CallArg{Name: p.Name, Value: typeParamZeroFor(p.Default, p.Type)})
 			}
 			continue
 		}
@@ -5283,7 +5316,7 @@ func (c *checker) checkAndSplitArgs(args ast.ArgList, comp *ir.Component) ([]ir.
 			if p.Default == nil || boundProps[p.Name] || comp.DataSlotOf(p) != nil {
 				continue
 			}
-			if fromDecl && (!typeParamZero(p.Default) || p.Type.HasTypeParam()) {
+			if fromDecl && (!holdsTypeParamZero(p.Default) || p.Type.HasTypeParam()) {
 				continue
 			}
 			props = append(props, ir.Arg{Name: p.Name, Value: typeParamZeroFor(p.Default, p.Type)})

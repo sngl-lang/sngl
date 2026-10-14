@@ -12,6 +12,14 @@ struct P {
 
 func pick[T any](seed T, v T = T{}) => v
 
+// A default may hold the zero rather than be it: the call writes it at the
+// types it bound, `T{}` inside it included. It used to evaluate to `{}`.
+func boxed[T any](seed T, w struct {
+    v T
+} = {v=T{}}) => w.v
+
+func listed[T any](seed T, xs list[T] = [T{}]) => xs[0]
+
 component shows node {
     text #given(value=pick(P{}, P{name="given"}).name)
     text #zero(value=pick(P{name="seed"}).name)
@@ -20,4 +28,11 @@ component shows node {
 func testAGenericDefaultIsTheZeroOfItsType(t Test, c shows) {
     t.assert(c.given.value == "given")
     t.assert(c.zero.value == "none")
+}
+
+func testANestedZeroIsTheZeroOfItsType(t Test) {
+    t.assert(boxed(5) == 0)
+    t.assert(boxed(5, {v=7}) == 7)
+    t.assert(listed("a") == "")
+    t.assert(boxed(P{name="seed"}).name == "none")
 }
