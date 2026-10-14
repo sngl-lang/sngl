@@ -123,7 +123,8 @@ Re-measure the affected workload after each step and note the number here.
      reaches, sharing the rest frozen.
      - [X] `ClonePackageFor`: `build.Emit`, dump, the playground, the docs
        preview and the snapshot compile paths.
-     - [ ] `interp.Prepare`, the batch snapshot paths, the LSP color fold, the
+     - [X] `interp.Prepare`.
+     - [ ] The batch snapshot paths, the LSP color fold, the
        fixture fold, `sngl test`'s per-group copy (`ClonePackage` today).
 
 7. [ ] **passInlinePure clones slot content into both branches.**
@@ -249,3 +250,9 @@ Re-measure the affected workload after each step and note the number here.
    included). `TestCopySharesWhatTheBuildDoesNotReach` fails with the share
    off, and with the overlay drop off `InstallOverlay` panics on a frozen
    `ui.checkbox`.
+
+   (2) **`interp.Prepare`** copies for the interpreter's platform rather than
+   every target: `TestRunFixtures` 778 -> 320 MB allocated (`Prepare` 578 ->
+   127 MB, since `ClonePackage` also copied every target's overrides), 3.3 ->
+   1.1 s CPU. `TestPrepareSharesWhatTheProgramDoesNotReach` fails with
+   `ClonePackage` back.
