@@ -115,7 +115,7 @@ func readClicks(members func() list[Entry]) {
     })
 }
 
-component block[go.language]() {
+component block[go.language] {
     gen.emit(
         render=encode,
         @start(members) {

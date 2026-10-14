@@ -361,7 +361,7 @@ component pair[T any, F any](a T, b T) F {
 An override names its target in the bracket after the name
 ================
 
-component ui.vbox[platform]() {
+component ui.vbox[platform] {
 }
 
 func f[html.platform]() {

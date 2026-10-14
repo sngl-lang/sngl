@@ -128,7 +128,7 @@ func renders(these list[Rendered]) ir.Macro
 // **A file**, named `file`: `open`, then what each member's `node` writes,
 // then `close`, all at build time.
 //
-//     component block[go.language]() {
+//     component block[go.language] {
 //         gen.emit(file="blocks.txt", open="[\n", close="]\n")
 //     }
 //
@@ -146,7 +146,7 @@ func renders(these list[Rendered]) ir.Macro
 // members to read again later -- which is how a handler a member carries is
 // reached, from a click the program learns of some other way.
 //
-//     component block[go.language]() {
+//     component block[go.language] {
 //         gen.emit(
 //             render=encode,
 //             @start(members) { async.start(func() { readClicks(members) }) },
@@ -169,7 +169,7 @@ func renders(these list[Rendered]) ir.Macro
 // it writes is stored and replayed until the members, its code or anything it
 // read changes. A raise that leaves it is the build's error.
 //
-//     component block[go.language]() {
+//     component block[go.language] {
 //         gen.emit(@generate(out, members list[gen.Member[Entry]]) {
 //             out.write("blocks.json", encode(members))
 //         })

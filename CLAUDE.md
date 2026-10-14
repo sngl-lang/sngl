@@ -171,8 +171,8 @@ Two consequences worth knowing before touching `lib/`:
 - A bodyless `lib/` component the program renders, with no implementation for
   the target being built, is a **build failure**, which is the mechanism that
   stops an implementation gap being skipped in a switch.
-- Every override writes a **parameter list**, `()` where its body reads
-  nothing, read by `overrideSelection` for a component and `selectFuncParams`
+- An override's **parameter list** selects what its body reads, and no list
+  is `()`, as for any other parameter list. It is read by `overrideSelection` for a component and `selectFuncParams`
   for a function, both through `selectEntry`: each entry names one of the
   base's props, slots or `@events` (a function's parameters), once, and may
   restate a type only where it matches. What it does not list is not in the
@@ -1380,7 +1380,7 @@ enums and units.
 
 **A family may be generated rather than rendered.** A target overrides the
 family itself with a `gen.emit` as the override's whole body --
-`component block[go.language]() { gen.emit(file="blocks.txt", open=…, close=…) }`
+`component block[go.language] { gen.emit(file="blocks.txt", open=…, close=…) }`
 -- and each bodyless member it reaches overrides itself with a `gen.node`
 (`open`/`close` templates, evaluated with the member's props bound). A bodyless
 *host*, a component whose rest slot takes the family (`ir.EmittedFamily`), is

@@ -107,7 +107,7 @@ func lines(members list[gen.Member[Entry]], indent string) string {
     return s
 }
 
-component block[go.language]() {
+component block[go.language] {
     gen.emit(@generate(out, members list[gen.Member[Entry]]) {
         out.write("blocks.txt", lines(members, ""))
     })
@@ -146,7 +146,7 @@ component word(text string) loud
 
 component shout(words ...component loud) root
 
-component loud[go.language]() {
+component loud[go.language] {
     gen.emit(@generate(out, members list[gen.Member[string]]) {
         var input = ""
         for var m = members {
@@ -185,13 +185,13 @@ component item() fam
 
 component host(items ...component fam) root
 
-component fam[go.language]() {
+component fam[go.language] {
     gen.emit(@generate(out, members list[gen.Member[string]]) {
         error.raise("nothing to say", "quiet")
     })
 }
 
-component item[go.language]() {
+component item[go.language] {
     gen.node(value="x")
 }
 -- escape.sngl --
@@ -216,12 +216,12 @@ component item() fam
 
 component host(items ...component fam) root
 
-component fam[go.language]() {
+component fam[go.language] {
     gen.emit(@generate(out, members list[gen.Member[string]]) {
         out.write("../x.txt", "x")
     })
 }
 
-component item[go.language]() {
+component item[go.language] {
     gen.node(value="x")
 }

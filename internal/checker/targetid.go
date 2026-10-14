@@ -152,27 +152,10 @@ func (c *checker) collectUserOverrides() {
 // one of the base's parameters and may restate its type only where it
 // matches (selectEntry). `@name` selects an event.
 //
-// The list is required, `()` where the body reads nothing: it is what makes
-// every name in the body traceable to the declaration, rather than appearing
-// from it unannounced.
+// No list is the empty one, as for any other parameter list: what the body
+// reads it names in its header, so every name in the body is traceable to the
+// declaration rather than appearing from it unannounced.
 func (c *checker) overrideSelection(decl *ast.ComponentDecl, base *ir.Component) []string {
-	if !decl.HasParens {
-		// Reported, and checked as though every parameter were listed, so the
-		// one thing wrong is the one thing said: dropped, the override left
-		// the base reported as bodyless and its body unchecked.
-		c.error(decl.Pos, "override %q must list the parameters its body reads, `()` for none: component %s[…](name, …)", decl.Name, decl.Name)
-		all := make([]string, 0, len(base.Props)+len(base.Slots)+len(base.Events))
-		for _, p := range base.Props {
-			all = append(all, p.Name)
-		}
-		for _, s := range base.Slots {
-			all = append(all, s.Name)
-		}
-		for _, e := range base.Events {
-			all = append(all, "@"+e.Name)
-		}
-		return all
-	}
 	props := map[string]*ir.Prop{}
 	for _, p := range base.Props {
 		props[p.Name] = p

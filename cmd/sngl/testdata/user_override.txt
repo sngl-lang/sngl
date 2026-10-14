@@ -48,10 +48,10 @@ stderr 'selects "bogus", which Avatar does not declare'
 ! sngl check unselected.sngl
 stderr 'undefined: size'
 
-# And the list is required, `()` where the body reads nothing: it is what makes
-# a name in the body traceable to the declaration.
+# And no list is the empty one, as for any parameter list: an override that
+# writes none reads no prop.
 ! sngl check noselection.sngl
-stderr 'override "Avatar" must list the parameters its body reads'
+stderr 'undefined: url'
 
 -- app.sngl --
 import . "sngl:ui"

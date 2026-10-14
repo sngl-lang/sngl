@@ -13,7 +13,7 @@ import go "sngl:language/go"
 //
 // `@start` writes the header, which has to reach stdout before the first
 // status line, and starts the reader before any click can be lost.
-component block[go.language]() {
+component block[go.language] {
     gen.emit(
         render = encode,
         @start(members) {

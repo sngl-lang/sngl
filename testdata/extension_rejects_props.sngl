@@ -36,8 +36,8 @@ component e[html.platform](value, value) { // ERROR(check) "selects \"value\" tw
 
 component f(value string) ui.node
 
-component f[html.platform] { // ERROR(check) "must list the parameters its body reads"
-    ui.text(value=value)
+component f[html.platform] {
+    ui.text(value=value) // ERROR(check) "undefined: value"
 }
 
 component g(content ...component ui.node) ui.node

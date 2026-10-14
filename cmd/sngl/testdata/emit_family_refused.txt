@@ -82,7 +82,7 @@ component bar(blocks ...component block) root
 
 func encode(xs list[string]) => xs.join(" ")
 
-component block[go.language]() {
+component block[go.language] {
     gen.emit(render=encode)
 }
 
@@ -90,7 +90,7 @@ component text[go.language](full) {
     gen.node(value=full)
 }
 
-component gap[go.language]() {
+component gap[go.language] {
     gen.node(open=" ")
 }
 
@@ -128,7 +128,7 @@ component bar(blocks ...component block) root
 
 func encode(xs list[string]) => xs.join(" ")
 
-component block[go.language]() {
+component block[go.language] {
     gen.emit(render=encode)
 }
 
@@ -163,7 +163,7 @@ component text(full string) block
 
 component bar(blocks ...component block) root
 
-component block[go.language]() {
+component block[go.language] {
     gen.emit(file="blocks.txt")
 }
 
@@ -198,7 +198,7 @@ component text(full string) block
 
 component bar(blocks ...component block) root
 
-component block[go.language]() {
+component block[go.language] {
     gen.emit(file="blocks.txt")
 }
 
@@ -233,13 +233,13 @@ component text(full string) block
 component gap() block
 
 // What it writes on html says nothing about what it writes on bubbletea.
-component gap[html.platform]() {
+component gap[html.platform] {
     gen.node(open=" ")
 }
 
 component bar(blocks ...component block) root
 
-component block[go.language]() {
+component block[go.language] {
     gen.emit(file="blocks.txt")
 }
 
@@ -273,7 +273,7 @@ component text(full string) block
 
 component bar(blocks ...component block) root
 
-component block[go.language]() {
+component block[go.language] {
     gen.emit(file="blocks.txt")
 }
 
@@ -308,7 +308,7 @@ component text(full string) block
 
 component bar(blocks ...component block) root
 
-component block[go.language]() {
+component block[go.language] {
     gen.emit(file="blocks.txt")
 }
 
@@ -344,7 +344,7 @@ component text(full string) block
 
 component bar(blocks ...component block) root
 
-component block[go.language]() {
+component block[go.language] {
     gen.emit(file="blocks.txt")
 }
 
@@ -383,7 +383,7 @@ component text(full string) block
 
 component bar(blocks ...component block) root
 
-component block[go.language]() {
+component block[go.language] {
     gen.emit(file="blocks.txt")
 }
 
@@ -419,7 +419,7 @@ component text(full string) block
 
 component bar(blocks ...component block) root
 
-component block[go.language]() {
+component block[go.language] {
     gen.emit(file="blocks.txt")
 }
 
@@ -454,7 +454,7 @@ component text(full string) block
 
 component bar(blocks ...component block) root
 
-component block[go.language]() {
+component block[go.language] {
     gen.emit(file="blocks.txt")
 }
 
@@ -496,7 +496,7 @@ component text(full string) block
 
 component bar(blocks ...component block) root
 
-component block[go.language]() {
+component block[go.language] {
     gen.emit(file="blocks.txt")
 }
 

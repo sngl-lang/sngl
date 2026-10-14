@@ -341,19 +341,19 @@ const component ui.splitview[platform](style, panes) {
     }
 }
 
-const component ui.table[platform]() {
+const component ui.table[platform] {
     Text(text="") {}
 }
 
-const component ui.tree[platform]() {
+const component ui.tree[platform] {
     Text(text="") {}
 }
 
-const component ui.menu[platform]() {
+const component ui.menu[platform] {
     Text(text="") {}
 }
 
-const component ui.menubar[platform]() {
+const component ui.menubar[platform] {
     Text(text="") {}
 }
 

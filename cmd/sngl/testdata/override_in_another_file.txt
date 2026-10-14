@@ -28,7 +28,7 @@ import ui "sngl:ui"
 
 func enc(xs list[string]) => xs.join(",")
 
-component block[go.language]() {
+component block[go.language] {
     gen.emit(render=enc)
 }
 

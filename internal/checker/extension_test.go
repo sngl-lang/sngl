@@ -138,7 +138,7 @@ func TestExtensionBodyVars(t *testing.T) {
 	const extA = `
 import sngl "sngl:ui"
 
-const component sngl.text[stubA.platform]() {
+const component sngl.text[stubA.platform] {
     const label string = "L"
     var flip bool = false
     vbox {
@@ -149,7 +149,7 @@ const component sngl.text[stubA.platform]() {
 	const extB = `
 import sngl "sngl:ui"
 
-const component sngl.text[stubB.platform]() {
+const component sngl.text[stubB.platform] {
     var other int = 7
     vbox {
         button(text="b", @click { other += 1 })

@@ -3014,8 +3014,8 @@ func (c *checker) registerComponentDecl(comp *ast.ComponentDecl, bodyLocal bool)
 	//
 	// A parens form with nothing in them and no target is neither:
 	// android.sngl writes `component ui.X() { body }`, whose body the
-	// platform reads itself. An override whose body reads no parameter
-	// writes `()` too, and names its target.
+	// platform reads itself. An override may write `()` too, and names
+	// its target.
 	bare := comp.Target == nil && comp.HasParens && len(comp.Props.Props) == 0 && comp.ChildrenType == nil
 	// An override merges into a declaration registered elsewhere in the
 	// package, so there is nothing body-scoped for one to land on.

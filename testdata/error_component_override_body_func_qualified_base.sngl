@@ -10,7 +10,7 @@ import "sngl:platform/bubbletea"
 //
 // The var is the counterpart: state in a qualified override is unaffected,
 // because a var is a binding rather than a member of the receiver.
-component draw.circle[bubbletea.platform]() {
+component draw.circle[bubbletea.platform] {
     var m = 3.0
 
     func scaled() => m * 2.0 // ERROR(check) "cannot be declared in this override"

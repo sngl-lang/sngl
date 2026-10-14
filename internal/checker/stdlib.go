@@ -967,7 +967,7 @@ func (c *checker) mergeTargetExtensions(pkgName string) {
 				// implementation, since the declaration it names has no body.
 				//
 				// It names no target, which is what tells it from an override
-				// whose body reads no parameter: that writes `()` too.
+				// written with an empty list.
 				if decl.Target == nil && decl.HasParens && len(decl.Props.Props) == 0 && decl.ChildrenType == nil {
 					c.recordRendersByName(decl, aliases, pkgName)
 					continue
