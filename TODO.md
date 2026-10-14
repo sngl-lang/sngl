@@ -42,7 +42,7 @@ Re-measure the affected workload after each step and note the number here.
    docsgen's `TestWebsiteProducesContent` (157 s) is the same build. Guard:
    the docs site output stays byte-identical.
 
-2. [ ] **gtk4 registry decoded from SNGL text on every cold store.**
+2. [X] **gtk4 registry decoded from SNGL text on every cold store.**
    `produceWidgets` (`codegen/platform/gtk4/girstore.go`) decodes the registry
    `produceRegistry` just encoded, through `parser.ParseNativeValue`; every
    check reaches it because every check asks every platform `Unavailable()`,
@@ -51,7 +51,11 @@ Re-measure the affected workload after each step and note the number here.
    CLI run after a compiler rebuild pays 268 MB instead of 25 MB.
    - Memoize the decoded registry per process by entry digest (as
      `internal/plugin` memoizes scheme output).
-   - Answer availability from the GIR probe rather than by producing widgets.
+   - ~~Answer availability from the GIR probe rather than by producing
+     widgets.~~ Not done: a stat-only probe moves a malformed or directory
+     GIR's report from "platform gtk4 is unavailable" to an error inside
+     `import "gir:Gtk-4.0"`. Owner's call: keep the reports and memoize the
+     produced registry per process by the GIR's content digest instead.
 
 3. [ ] **Unit table rebuilt per literal.** `optimize.parseLiteral` ->
    `interp.UnitLiteralValue` -> `buildUnitTableFromDef` builds a fresh table
@@ -102,3 +106,13 @@ Re-measure the affected workload after each step and note the number here.
    `TestWebsiteProducesContent` 157 s -> 21 s. TestGolden, TestFixtures and
    `codegen/platform/html` green; `TestWindowSharedWalksTheScriptOnce` fails
    with either memo removed.
+
+2. **gtk4 registry per process** -- `TestScript` 22.6 -> 6.2 GB allocated,
+   93.9 -> 64.1 s user (19.0 -> 16.9 s sys). Decoded registries are kept by the
+   stored file's digest and produced ones by the GIR's, so a fresh store
+   neither parses the GIR nor decodes the registry again; what is left under
+   `Unavailable` (~0.7 GB) is each command re-reading the stored files to
+   validate them. Docs site byte-identical (1187 files); TestGolden,
+   TestFixtures, TestScript and `codegen/platform/gtk4` green;
+   `TestStoredRegistryIsDecodedOncePerContent` and
+   `TestGIRIsParsedOncePerProcess` each fail with their memo removed.
