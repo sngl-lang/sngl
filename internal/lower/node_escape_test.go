@@ -12,9 +12,9 @@ import (
 func createNodeLV(id, tag string) *ir.LocalVar {
 	return &ir.LocalVar{
 		Name: id,
-		Type: ir.TypDyn,
+		Type: &ir.Type{Kind: ir.TypeComponent},
 		Init: &ir.Call{
-			Type: ir.TypDyn,
+			Type: &ir.Type{Kind: ir.TypeComponent},
 			Func: &ir.Func{Name: "CreateNode"},
 			Args: []ir.CallArg{{Value: &ir.Literal{Type: ir.TypString, Value: tag}}},
 		},
@@ -24,7 +24,7 @@ func createNodeLV(id, tag string) *ir.LocalVar {
 // elemRef builds a synthesized element-ref ident (`#__nN`) of the kind
 // passDeclarative emits in AppendChild / PropAssign / returns.
 func elemRef(id string) *ir.Ident {
-	return &ir.Ident{Name: id, Type: ir.TypDyn, IsElementRef: true, Synthesized: true}
+	return &ir.Ident{Name: id, Type: &ir.Type{Kind: ir.TypeComponent}, IsElementRef: true, Synthesized: true}
 }
 
 // appendChildStmt mirrors the lower.AppendChild(parent, child) CallStmt
@@ -71,7 +71,7 @@ func TestNodeEscape_RecursiveComponentRefsAreLocal(t *testing.T) {
 		Synthesized: true,
 		Block: []ir.Stmt{
 			&ir.Assign{
-				Target: &ir.Select{Operand: elemRef("__n1"), Field: "value", Type: ir.TypDyn},
+				Target: &ir.Select{Operand: elemRef("__n1"), Field: "value", Type: ir.TypString},
 				Op:     ast.AssignSet,
 				Value:  &ir.Literal{Type: ir.TypString, Value: "x"},
 			},

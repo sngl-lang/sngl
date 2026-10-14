@@ -15,7 +15,7 @@ import (
 func TestSlotChildInstancesReachesSlotContent(t *testing.T) {
 	items := &ir.Var{
 		Name: "items",
-		Type: &ir.Type{Kind: ir.TypeList, Elems: []*ir.Type{{Kind: ir.TypeDyn}}},
+		Type: &ir.Type{Kind: ir.TypeList, Elems: []*ir.Type{ir.TypInt}},
 	}
 	// A handler writing `items` is what makes it reactive.
 	mutate := &ir.NodeInst{Name: "button", Handlers: []ir.EventHandler{{

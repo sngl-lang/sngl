@@ -175,7 +175,7 @@ func TestJsNamespaceCall_CreateComponent(t *testing.T) {
 	ctx := codegen.NewExprCtx(pkg)
 	jc := NewIRContext(ctx)
 	call := &ir.Call{
-		Type: ir.TypDyn,
+		Type: &ir.Type{Kind: ir.TypeComponent},
 		Func: &ir.Func{Name: "CreateComponent", Intrinsic: "CreateComponent"},
 		Args: []ir.CallArg{
 			{Value: &ir.Ident{Name: "Card", Sym: comp}},
@@ -197,7 +197,7 @@ func TestJsNamespaceCall_CreateComponentWithProps(t *testing.T) {
 	ctx := codegen.NewExprCtx(pkg)
 	jc := NewIRContext(ctx)
 	call := &ir.Call{
-		Type: ir.TypDyn,
+		Type: &ir.Type{Kind: ir.TypeComponent},
 		Func: &ir.Func{Name: "CreateComponent", Intrinsic: "CreateComponent"},
 		Args: []ir.CallArg{
 			{Value: &ir.Ident{Name: "Badge", Sym: comp}},

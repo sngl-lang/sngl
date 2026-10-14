@@ -643,7 +643,7 @@ func (r *boxRegistry) boxFor(elem *ir.Type) *ir.StructDef {
 // as a suffix of __ref_. Collisions are avoided by structural-name encoding.
 func canonicalTypeName(t *ir.Type) string {
 	if t == nil {
-		return "dyn"
+		return "none"
 	}
 	switch t.Kind {
 	case ir.TypeInt:

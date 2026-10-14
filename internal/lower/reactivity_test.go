@@ -13,7 +13,7 @@ import (
 func TestReactivity_ComponentInSlotEmitsCreateComponent(t *testing.T) {
 	items := &ir.Var{
 		Name: "items",
-		Type: &ir.Type{Kind: ir.TypeList, Elems: []*ir.Type{{Kind: ir.TypeDyn}}},
+		Type: &ir.Type{Kind: ir.TypeList, Elems: []*ir.Type{ir.TypInt}},
 	}
 	// card needs a non-empty body for hasRealComponentBody to elect the
 	// CreateComponent path. Give it a single dummy var.

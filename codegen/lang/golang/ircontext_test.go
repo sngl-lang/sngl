@@ -447,9 +447,8 @@ func TestIRTypeToGo_NativeGoNamed(t *testing.T) {
 	}
 }
 
-// A concrete host type used to reach the Go printer as an ir.TypeDyn carrying
-// its name in Meta, which made every one of them Equal to every other. It is a
-// native type now, and TypeDyn renders as nothing in a result clause.
+// A concrete host type reaches the Go printer as a native type, spelled as
+// itself in a result clause.
 func TestGoReturnType_Native(t *testing.T) {
 	if got := goReturnType(ir.NativeGoNamed("fyne.CanvasObject")); got != " fyne.CanvasObject" {
 		t.Errorf("goReturnType(native) = %q; want %q", got, " fyne.CanvasObject")

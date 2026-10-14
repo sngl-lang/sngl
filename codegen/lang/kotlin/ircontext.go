@@ -1538,9 +1538,7 @@ func IRTypeToKt(t *ir.Type) string {
 			ret = IRTypeToKt(t.Sig.Return)
 		}
 		return "(" + strings.Join(params, ", ") + ") -> " + ret
-	case ir.TypeNull, ir.TypeDyn:
-		// dyn holds anything including null (recursive structs like TreeNode
-		// use `dyn = null` for absent children).
+	case ir.TypeNull:
 		return "Any?"
 	case ir.TypeIter:
 		// Iterable<T>, not List<T>: an iter[T] is a sequence something pulls

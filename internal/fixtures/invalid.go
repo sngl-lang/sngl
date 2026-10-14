@@ -1,10 +1,8 @@
 package fixtures
 
 import (
-	"bytes"
 	"fmt"
 	"reflect"
-	"regexp"
 	"testing"
 
 	"duckfam.us/sngl/ast"
@@ -12,36 +10,29 @@ import (
 	"duckfam.us/sngl/ir"
 )
 
-var dynKeyword = regexp.MustCompile(`\bdyn\b`)
-
-// assertNoSilentDyn guards strict typing: a fixture that checks clean holds no
-// TypeDyn anywhere -- not on a declaration, and not on any expression, a type
-// argument or element type included. A dyn the checker reached without
-// reporting is a type it gave up on, which nothing downstream can tell from a
-// type the program wrote.
+// assertNoSilentInvalid guards strict typing: a fixture that checks clean
+// holds no TypeInvalid anywhere -- not on a declaration, and not on any
+// expression, a type argument or element type included. An invalid type is a
+// mistake the checker reports where it is made, so one in a clean program is a
+// type the checker gave up on without saying so.
 //
 // The package is the one the runner already checked.
-func assertNoSilentDyn(t *testing.T, s testutil.Sample, pkg *ir.Package) {
+func assertNoSilentInvalid(t *testing.T, s testutil.Sample, pkg *ir.Package) {
 	if pkg == nil {
 		return
 	}
-	// Strip comments before scanning so a directive mentioning `dyn` in its
-	// expected message does not count as explicit use.
-	if dynKeyword.Match(stripLineComments([]byte(s.Source))) {
-		return
-	}
 	if s.ExpectsError("parse") || s.ExpectsError("check") {
-		return // TypDyn during error recovery is expected
+		return // invalid during error recovery is expected
 	}
-	hasDyn := func(t *ir.Type) bool {
-		return t != nil && t.Any(func(t *ir.Type) bool { return t.Kind == ir.TypeDyn || t.Kind == ir.TypeInvalid })
+	hasInvalid := func(t *ir.Type) bool {
+		return t != nil && t.Any(func(t *ir.Type) bool { return t.Kind == ir.TypeInvalid })
 	}
 	report := func(where string, pos ast.Pos) {
-		t.Errorf("TypeDyn at %s (%s:%d:%d) -- expected a type or an error",
+		t.Errorf("TypeInvalid at %s (%s:%d:%d) -- expected a type or an error",
 			where, s.Filename, pos.Line, pos.Column)
 	}
 	visit := func(label string, pos ast.Pos, typ *ir.Type) {
-		if hasDyn(typ) {
+		if hasInvalid(typ) {
 			report(label, pos)
 		}
 	}
@@ -92,7 +83,7 @@ func assertNoSilentDyn(t *testing.T, s testutil.Sample, pkg *ir.Package) {
 	}
 	_ = ir.Walk(pkg, func(n ir.Node) error {
 		e, ok := n.(ir.Expr)
-		if !ok || !hasDyn(e.ExprType()) {
+		if !ok || !hasInvalid(e.ExprType()) {
 			return nil
 		}
 		report(fmt.Sprintf("%T", e), exprPos(e))
@@ -119,24 +110,4 @@ func stmtPos(s ast.Stmt) ast.Pos {
 		return x.Pos
 	}
 	return ast.Pos{}
-}
-
-// stripLineComments removes // line comments from source so they don't pollute
-// the backstop's `dyn` keyword scan.
-func stripLineComments(src []byte) []byte {
-	var out []byte
-	for len(src) > 0 {
-		i := bytes.Index(src, []byte("//"))
-		if i < 0 {
-			out = append(out, src...)
-			break
-		}
-		out = append(out, src[:i]...)
-		eol := bytes.IndexByte(src[i:], '\n')
-		if eol < 0 {
-			break
-		}
-		src = src[i+eol:]
-	}
-	return out
 }

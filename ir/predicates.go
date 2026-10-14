@@ -67,7 +67,7 @@ func IsOptionWrap(n *Conversion) bool {
 		return false
 	}
 	switch src.Kind {
-	case TypeNull, TypeOption, TypeDyn, TypeInvalid:
+	case TypeNull, TypeOption, TypeInvalid:
 		return false
 	}
 	return src.Equal(n.Type.Elems[0])

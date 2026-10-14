@@ -2020,8 +2020,6 @@ func IRTypeToGo(t *ir.Type) string {
 			return fb.String()
 		}
 		return "any"
-	case ir.TypeDyn:
-		return "any"
 	case ir.TypeEnum:
 		return "string"
 	case ir.TypeUnit:

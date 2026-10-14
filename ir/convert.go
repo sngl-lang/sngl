@@ -936,7 +936,7 @@ func (c *converter) convertLiteral(lit *Literal) ast.Expr {
 func (c *converter) convertIdent(id *Ident) ast.Expr {
 	// Synthesized element references (IsElementRef) carry reserved __-prefixed
 	// names and convert to plain identifiers; the checker re-recognizes the
-	// __ prefix as an unresolved dyn reference when the source is reparsed.
+	// __ prefix as an unresolved reference when the source is reparsed.
 	// Bare enum member: Status.active referenced as just "active" in source.
 	if id.Member != "" {
 		if id.Sym != nil {
@@ -1184,7 +1184,7 @@ func (c *converter) convertType(t *Type) ast.TypeExpr {
 		}
 		// Bare `component` carries no declaration — it is the widest component
 		// type, not an unresolved one, so it has a spelling of its own.
-		name := "dyn" // anonymous/unresolved declaration
+		name := "<invalid>" // anonymous/unresolved declaration, which no source names
 		switch {
 		case t.Decl != nil:
 			name = t.Decl.SymName()

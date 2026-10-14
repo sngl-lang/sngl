@@ -108,7 +108,7 @@ func (b *Builtins) RegisterDuration(t *Type) {
 
 // DurationType is this library's duration unit, or int before it registers:
 // a duration's magnitude is carried in its base unit, so int is the lossless
-// fallback rather than dyn.
+// fallback.
 func (b *Builtins) DurationType() *Type {
 	if t := b.duration.Load(); t != nil {
 		return t
@@ -116,12 +116,13 @@ func (b *Builtins) DurationType() *Type {
 	return TypInt
 }
 
-// DateTimeType is this library's datetime struct, or dyn before it registers.
+// DateTimeType is this library's datetime struct, or TypInvalid -- a type
+// nothing can use -- before it registers.
 func (b *Builtins) DateTimeType() *Type {
 	if t := b.dateTime.Load(); t != nil {
 		return t
 	}
-	return TypDyn
+	return TypInvalid
 }
 
 // RegisterIntrinsic records what a #[intrinsic] declaration says.
@@ -200,8 +201,8 @@ func ListOf(elem *Type) *Type { return Published().ListOf(elem) }
 func MapOf(k, v *Type) *Type { return Published().MapOf(k, v) }
 
 // DateTimeType is the published datetime struct, for the foreign-type
-// importers that synthesize one without a scope of their own; dyn before a
-// library registers one.
+// importers that synthesize one without a scope of their own; TypInvalid
+// before a library registers one.
 func DateTimeType() *Type { return Published().DateTimeType() }
 
 // DurationType is the published duration unit, for the Go importer's

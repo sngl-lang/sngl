@@ -214,8 +214,7 @@ default, `const`, `...` -- is refused in `eventParams`
 (`testdata/error_event_param_forms.sngl`).
 
 There used to be a func *type's* list here, names optional, and a shorthand
-for a list of one, `@change T`; a bare `@tick` meant one loose `dyn`
-parameter. The shorthand is refused naming the list
+for a list of one, `@change T`. The shorthand is refused naming the list
 (`testdata/error_event_type_shorthand.sngl`): the grammar still admits it so
 that the builder can say `@change(v T)` rather than "unexpected identifier".
 Most bare events meant none -- a timer's tick, a DOM event SNGL cannot name a
@@ -303,8 +302,7 @@ insertion-ordered so the bug appears only on the other targets. The checker
 refuses all five in a view body with a positioned error (`checkHeadlessFor`,
 `checkViewMapFor`, `requireLoop`), which keeps codegen to the imperative paths
 that route through `ForHead`. A map whose map-ness the head has erased is out
-of reach: `map[K, V]` is not assignable to `iter[T]`, but `dyn` holds one and
-says nothing about it. `c.funcDepth == 0` is what "in a view body" means; `c.loopDepth` is
+of reach: `map[K, V]` is not assignable to `iter[T]`. `c.funcDepth == 0` is what "in a view body" means; `c.loopDepth` is
 what an escape requires one of, and it resets at every imperative-body
 boundary (`enterFuncBody`) so a lambda cannot break a loop it was written
 inside.
@@ -770,7 +768,7 @@ dump holding a `t.assert` checked again
 and `generic_call_site_args.txtar` are the three halves. `any` is `#[_builtin(any)] struct any {}` in sngl:builtin, read like a scalar (`ir.TypAny`, in
 `scalarUniverse`, since sngl:family's `one[T any]` is checked before
 sngl:builtin is in scope), and it is a constraint only: written where a
-value's type goes it is refused naming `dyn` (`error_any_outside_constraint.sngl`).
+value's type goes it is refused (`error_any_outside_constraint.sngl`).
 The constraint lands on `ir.TypeParam.Constraint` and
 `ir.TypeParamSym.Constraint`, and `ir.Convert` prints one for every parameter
 of a declaration's own list, and a method's receiver list as names alone
@@ -1162,7 +1160,7 @@ notes a wildcard symbol when it binds it, so a component's wildcard is noted
 again once its mark has set the pattern (`Scope.NoteWildcard`).
 
 **A scalar's name is read off that source, not a table.** `bool`, `int`,
-`string`, `dyn`, the sized numerics and the rest are each a `#[_builtin(kind)]`
+`string`, the sized numerics and the rest are each a `#[_builtin(kind)]`
 struct, and `scalarUniverse` (`internal/checker/universe.go`) reads them off
 sngl:builtin's parsed documents into the base scope `checker.NewSymbolTable`
 builds, as the singleton `ir.ScalarType(kind)` stands for. That is what the
@@ -1362,8 +1360,7 @@ reimplemented on it.
 
 Two general fixes it needed. A lambda handed to a generic method takes an
 unannotated parameter's type from what the call has bound
-(`inferArgExpr`): `ps.map(func(p) => p.name)` was `list[dyn]`
-(`testdata/lambda_param_from_receiver.sngl`). And `passNoListLambdas` no longer
+(`inferArgExpr`, `testdata/lambda_param_from_receiver.sngl`). And `passNoListLambdas` no longer
 hoists a `map` or `filter` out of a node's prop: the Go emitter writes the call
 as an expression of its own, and hoisted, fyne and gtk4 made the accumulator a
 render slot appending to a list it could not see
@@ -2822,9 +2819,8 @@ being folded away before it is asked.
 **A program's override of a declaration the program wrote is checked after that
 declaration's body** (`lateOverrides`, drained by `checkBodyOnce`): an
 unannotated `var count = 0` has no type until the body declaring it is read, and
-checked first, from `checkPendingExtensions`, a nested body reading `count` saw
-`dyn` and the interpolation `"{count}"` lost its conversion -- `"L " + m.count`
-on bubbletea (`component_override_body_capture.txtar`). A library's base is
+checked first, from `checkPendingExtensions`, a nested body reading `count`
+would see none (`component_override_body_capture.txtar`). A library's base is
 checked when its package loads, so its overrides stay where they were.
 
 A `func` written there is the third slot of the same shape. It is registered
@@ -4268,11 +4264,11 @@ carries a magnitude for it.
 
 Before the table existed, nothing looked a unit member up: `inferSelect`
 reports an unknown member only for the kinds `hasNoLegitimateFields` lists, and
-`ir.TypeUnit` was not one, so **every** select on a unit fell through to `dyn`.
+`ir.TypeUnit` was not one, so **every** select on a unit went untyped.
 That is one defect with two faces. The invented `.value` was accepted in
 silence and spelled blindly by each backend — `Measurement.Value` and
 `Tick.Value` in Go, neither of which compiles, `Double.value` in Kotlin,
-`undefined` in JavaScript. And the *valid* `m.px` was `dyn` too, which
+`undefined` in JavaScript. And the *valid* `m.px` was untyped too, which
 `interpPartAlreadyString` answers yes to, so the string conversion every other
 numeric operand gets was skipped and Go emitted `"px is " + m.m.Px`. Typing the
 select fixed the second everywhere at once; no backend grew a case.
@@ -4384,8 +4380,8 @@ Four things follow, and the first three are the record restated:
 - **Equality is per base**, and **ordering is refused** for a multi-base unit
   (`orderable`): `3px` and `2em` are each the larger on their own base, so
   there is no answer to invent. The checker already refuses the pair
-  (`IsSingleBaseUnit` gates `<`, `<=`, `>`, `>=`), so the guard is for the
-  `dyn` operand that reached a comparison untyped.
+  (`IsSingleBaseUnit` gates `<`, `<=`, `>`, `>=`), so the guard is for IR
+  the checker did not see.
 - **A cast reads `magnitude()`** — the one base of a single-base unit, which is
   every cast the checker's ordering rule leaves meaningful.
 - **Display sums the bases it carries**: `3px + 2em`, and a bare `3px` for a
@@ -4545,8 +4541,7 @@ runs one program through every form of access a test body has on all six. Four
 rules keep them agreeing:
 
 - **Test bodies are checked last**, after every component and window body:
-  an unannotated component var has no type until its body is read, and a test
-  naming it saw `dyn`.
+  an unannotated component var has no type until its body is read.
 - **A test holds its instance, not `m` or `state`**: package state and the
   funcs reading it are spelled through the instance (`ExprCtx.StateReceiver`
   on Go and JS; on android the state members MainScreen spells as `state.<x>`,

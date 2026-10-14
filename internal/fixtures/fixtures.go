@@ -95,7 +95,7 @@ func runOne(t *testing.T, s testutil.Sample) {
 	assertFormatIsIdempotent(t, s, doc)
 
 	pkg := check(t, s, doc)
-	assertNoSilentDyn(t, s, pkg)
+	assertNoSilentInvalid(t, s, pkg)
 	assertFolds(t, s, doc)
 
 	if strings.HasPrefix(s.Name, "lsp_") {

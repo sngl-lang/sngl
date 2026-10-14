@@ -14,7 +14,6 @@ type TypeKind int
 
 const (
 	TypeInvalid TypeKind = iota // error sentinel
-	TypeDyn                     // unknown/dynamic
 	TypeBool
 	TypeInt
 	TypeFloat
@@ -72,7 +71,6 @@ var (
 	// which is marked unusable. Nothing typed invalid reaches a program that
 	// checked clean.
 	TypInvalid = &Type{Kind: TypeInvalid}
-	TypDyn     = &Type{Kind: TypeDyn}
 	TypBool    = &Type{Kind: TypeBool}
 	TypInt     = &Type{Kind: TypeInt}
 	TypFloat   = &Type{Kind: TypeFloat}
@@ -154,8 +152,6 @@ func (t *Type) String() string {
 	switch t.Kind {
 	case TypeInvalid:
 		return "<invalid>"
-	case TypeDyn:
-		return "dyn"
 	case TypeAny:
 		return "any"
 	case TypeBool:
@@ -553,7 +549,7 @@ func (t *Type) Equal(other *Type) bool {
 		a, aok := t.Meta.(NativeTypeRef)
 		b, bok := other.Meta.(NativeTypeRef)
 		return aok && bok && a == b
-	case TypeInvalid, TypeDyn, TypeBool, TypeString, TypeNull, TypeVoid:
+	case TypeInvalid, TypeBool, TypeString, TypeNull, TypeVoid:
 		// Kinds carrying no distinguishing payload: the Kind comparison above
 		// has already settled them. Listed explicitly rather than defaulted so
 		// that a new kind with an identity field cannot be answered "equal" by
@@ -571,9 +567,6 @@ func (t *Type) IsAssignableTo(target *Type) bool {
 		return true
 	}
 	if t.Kind == TypeInvalid || target.Kind == TypeInvalid {
-		return true
-	}
-	if target.Kind == TypeDyn {
 		return true
 	}
 	// Widening a number is lossless, so it needs no cast. An untyped numeric
@@ -606,15 +599,10 @@ func (t *Type) IsAssignableTo(target *Type) bool {
 	if t.Kind == TypeList && target.Kind == TypeIter && len(t.Elems) == 1 && len(target.Elems) == 1 {
 		return t.Elems[0].IsAssignableTo(target.Elems[0])
 	}
-	// map[K, V] → map<K', V'> where V is assignable to V' and K is
-	// assignable to K' under the same rules (Equal, or K' is dyn).
-	// Allowing K → dyn lets stdlib wrappers forward typed maps to
-	// intrinsics whose key types are deliberately erased (e.g. i18n's
-	// PluralKey-keyed maps → map[dyn, string] at the runtime boundary).
-	// Concrete-key conversions (like int → string) are still rejected.
+	// map[K, V] → map[K, V'] where V is assignable to V'. The keys must be
+	// equal: a key converted on the way in would be a different key.
 	if t.Kind == TypeMap && target.Kind == TypeMap && len(t.Elems) == 2 && len(target.Elems) == 2 {
-		keyOK := t.Elems[0].Equal(target.Elems[0]) || target.Elems[0].Kind == TypeDyn
-		return keyOK && t.Elems[1].IsAssignableTo(target.Elems[1])
+		return t.Elems[0].Equal(target.Elems[0]) && t.Elems[1].IsAssignableTo(target.Elems[1])
 	}
 	if t.Kind == TypeOption && target.Kind == TypeOption {
 		return t.Elems[0].IsAssignableTo(target.Elems[0])

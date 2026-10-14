@@ -34,7 +34,7 @@ func TestValidateCatchesUnresolvedIdentAndNilCallType(t *testing.T) {
 }
 
 func TestValidateAcceptsSynthesizedIdentWithSym(t *testing.T) {
-	slot := &ir.Var{Name: "__slot0", Type: ir.ListOf(ir.TypDyn), Synthesized: true}
+	slot := &ir.Var{Name: "__slot0", Type: ir.ListOf(&ir.Type{Kind: ir.TypeComponent}), Synthesized: true}
 	fn := &ir.Func{
 		Name: "f",
 		Block: []ir.Stmt{

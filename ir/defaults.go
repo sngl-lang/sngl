@@ -1,7 +1,7 @@
 package ir
 
 // ZeroExpr returns a zero-value IR expression for t. Returns nil when t has no
-// well-defined zero (dyn, invalid, unresolved type parameters, component types).
+// well-defined zero (invalid, unresolved type parameters, component types).
 func ZeroExpr(t *Type) Expr {
 	if t == nil {
 		return nil
@@ -118,7 +118,7 @@ func zeroFuncExpr(t *Type) Expr {
 		TypeParams: t.Sig.TypeParams,
 		Purity:     t.Sig.Purity,
 	}
-	if t.Sig.Return != nil && t.Sig.Return.Kind != TypeDyn && t.Sig.Return.Kind != TypeInvalid {
+	if t.Sig.Return != nil && t.Sig.Return.Kind != TypeInvalid {
 		if z := ZeroExpr(t.Sig.Return); z != nil {
 			fn.Block = []Stmt{&Return{Value: z}}
 		} else {
@@ -192,7 +192,7 @@ func normalizeFunc(f *Func) {
 	if f.Return == nil {
 		return
 	}
-	if f.Return.Kind == TypeInvalid || f.Return.Kind == TypeDyn {
+	if f.Return.Kind == TypeInvalid {
 		return
 	}
 	if len(f.Block) > 0 {

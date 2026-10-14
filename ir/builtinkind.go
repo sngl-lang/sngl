@@ -27,8 +27,6 @@ const (
 	BuiltinFloat  BuiltinKind = "float"
 	BuiltinString BuiltinKind = "string"
 	BuiltinBool   BuiltinKind = "bool"
-	// Dyn is the type of a value the program says nothing about.
-	BuiltinDyn BuiltinKind = "dyn"
 	// Any is the constraint that says nothing about a type parameter. It is
 	// read like a scalar -- its name is in the universe before sngl:builtin is
 	// in scope, since sngl:family's `one[T any]` is checked first -- and is no
@@ -166,7 +164,7 @@ const (
 // string, and the sized numerics.
 func (b BuiltinKind) IsPrimitive() bool {
 	switch b {
-	case BuiltinInt, BuiltinFloat, BuiltinString, BuiltinBool, BuiltinDyn,
+	case BuiltinInt, BuiltinFloat, BuiltinString, BuiltinBool,
 		BuiltinInt8, BuiltinInt16, BuiltinInt32, BuiltinInt64,
 		BuiltinUint8, BuiltinUint16, BuiltinUint32, BuiltinUint64,
 		BuiltinFloat32, BuiltinFloat64:
@@ -264,7 +262,7 @@ func (b BuiltinKind) IsConst() bool {
 // AllBuiltinKinds returns every valid kind, in declaration order.
 func AllBuiltinKinds() []BuiltinKind {
 	return []BuiltinKind{
-		BuiltinInt, BuiltinFloat, BuiltinString, BuiltinBool, BuiltinDyn, BuiltinAny,
+		BuiltinInt, BuiltinFloat, BuiltinString, BuiltinBool, BuiltinAny,
 		BuiltinInt8, BuiltinInt16, BuiltinInt32, BuiltinInt64,
 		BuiltinUint8, BuiltinUint16, BuiltinUint32, BuiltinUint64,
 		BuiltinFloat32, BuiltinFloat64,

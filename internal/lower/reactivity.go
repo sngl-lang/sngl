@@ -296,9 +296,9 @@ func ownedFuncs(pkg *ir.Package) map[*ir.Func]bool {
 // injectIntoStmts for prop-updater injection. Future tasks add slot
 // generator Funcs and structural rewrites.
 func (st *reactivityState) rewriteAndInject(stmts []ir.Stmt) []ir.Stmt {
-	// If any reactive slots exist on this owner, synthesize a __root Var
-	// of type dyn. Platforms bind this to their root-container reference
-	// at codegen time.
+	// If any reactive slots exist on this owner, synthesize a __root Var,
+	// the container its top-level slots render into (ownerRootType).
+	// Platforms bind it to their root-container reference at codegen time.
 	if len(st.reverseSlots) > 0 || len(st.undriven) > 0 {
 		st.synthesizeRootVar()
 	}

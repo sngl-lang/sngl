@@ -5,7 +5,6 @@ import (
 	"maps"
 	"reflect"
 	"slices"
-	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -1484,24 +1483,8 @@ func (env *Env) evalIndex(e *ir.Index) (any, error) {
 		if v, ok := m[key]; ok {
 			return v, nil
 		}
-		// Miss → zero value. Use the Index node's result type when it is
-		// concrete; fall back to sampling an existing map value when the type
-		// was inferred as Dyn (e.g. c.scores["x"] through a component Select).
-		if e.Type != nil && e.Type.Kind != ir.TypeDyn {
-			return zeroValueFor(e.Type), nil
-		}
-		// Sample deterministically (smallest key): Go map iteration is
-		// randomised, so ranging picked a run-to-run-varying value, making the
-		// zero-value template flaky for heterogeneous dyn maps (bugs.md #24).
-		if len(m) > 0 {
-			keys := make([]string, 0, len(m))
-			for k := range m {
-				keys = append(keys, k)
-			}
-			sort.Strings(keys)
-			return zeroValueForValue(m[keys[0]]), nil
-		}
-		return nil, nil
+		// Miss → the zero value of the map's element type.
+		return zeroValueFor(e.Type), nil
 	}
 	return nil, fmt.Errorf("cannot index %T", obj)
 }
@@ -2573,7 +2556,7 @@ func (env *Env) evalUserFuncCore(fn *ir.Func, args []any) (any, error) {
 	}
 	defer func() { env.depth-- }()
 
-	isPure := fn.Return != nil && fn.Return.Kind != ir.TypeDyn
+	isPure := fn.Return != nil
 	for {
 		var execEnv *Env
 		if !isPure {
@@ -3033,7 +3016,7 @@ func runtimeTypeName(v any) string {
 		// built-in map declares methods with no body to run.
 		return "struct"
 	default:
-		return "dyn"
+		return ""
 	}
 }
 
@@ -3050,22 +3033,6 @@ func zeroValueFor(t *ir.Type) any {
 	case ir.TypeBool:
 		return false
 	case ir.TypeString:
-		return ""
-	}
-	return nil
-}
-
-// zeroValueForValue returns the zero value of the same runtime type as v.
-// Used when the static type is unknown (TypeDyn) but we can sample a value.
-func zeroValueForValue(v any) any {
-	switch v.(type) {
-	case int:
-		return 0
-	case float64:
-		return 0.0
-	case bool:
-		return false
-	case string:
 		return ""
 	}
 	return nil

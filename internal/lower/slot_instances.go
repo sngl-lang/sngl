@@ -577,8 +577,8 @@ func (si *slotInstance) reusable(has func() ir.Expr, entry func(*ir.Var) ir.Expr
 // one was.
 //
 //	var <id>__reN <C> = lower.CreateComponent(<C>, {props...})
-//	var <id>__reN__el dyn = lower.ComponentRoot(<id>__reN)
-//	var <id>__prevN__el dyn = lower.ComponentRoot(<id>)
+//	var <id>__reN__el <family> = lower.ComponentRoot(<id>__reN)
+//	var <id>__prevN__el <family> = lower.ComponentRoot(<id>)
 //	lower.InsertBefore(<id>__pos, <id>__reN__el, <id>__prevN__el)
 //	lower.RemoveChild(<id>__pos, <id>__prevN__el)
 //	lower.DestroyComponent(<id>)

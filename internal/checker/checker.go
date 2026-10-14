@@ -4555,7 +4555,7 @@ func (c *checker) checkComponentBody(comp *ir.Component) {
 	// Declare named-node ids as component-scoped bindings so a bare reference
 	// to a `#id`-tagged node resolves (this is also what lets lowered IR,
 	// whose synthesized node handles are referenced by bare name, round-trip
-	// through reparse + recheck). Node handles are opaque (dyn) and immutable.
+	// through reparse + recheck). Node handles are typed by their component and immutable.
 	if comp.AST != nil {
 		c.declareNodeIDs(&comp.AST.Body)
 	}
@@ -4626,7 +4626,7 @@ func (c *checker) checkComponentBody(comp *ir.Component) {
 
 // declareNodeIDs declares every named visual node's #id within block as a
 // component/window-scoped binding, so a bare reference to a `#id`-tagged node
-// resolves. Node handles are opaque (dyn) and immutable; this is also the
+// resolves. Node handles are typed by their component and immutable; this is also the
 // mechanism that lets lowered IR — whose synthesized node handles (`__nN`,
 // `__root`) are referenced by bare name — round-trip through reparse + check.
 func (c *checker) declareNodeIDs(block *ast.StmtBlock) {
