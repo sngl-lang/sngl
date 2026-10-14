@@ -3424,15 +3424,16 @@ Notable stdlib packages:
   take them as a type parameter constrained to a struct, `[A struct {}]`,
   which an anonymous struct literal binds and which refuses anything else;
   `$"..."` builds
-  the same literal. Every runtime still takes a string-keyed map, so
-  `lower.RecordArgs` -- at the start of `optimize.Optimize`, before the shake
-  can see the record's struct -- rewrites the argument of each intrinsic
-  `ir.RecordArg` names into one: a literal's fields as the entries, any other
-  operand read a field at a time with a spread site, so passSpreadOnce
-  evaluates a computed one once. It is also the always-on `RecordArgs` pass,
-  for a pipeline that lowers checked IR without optimizing it, where it finds
-  only maps once the optimizer has run. The interpreter reads a struct as the
-  map.
+  the same literal. Every runtime takes a string-keyed map, which only the
+  emitted code holds: the IR keeps the record, and each language spells its
+  runtime's map from the literal's fields (`codegen.RegisterRecordSpeller`,
+  reached through `codegen.EmitIntrinsicCall`). `lower.RecordArgs` -- at the
+  start of `optimize.Optimize`, and as the always-on `RecordArgs` pass --
+  makes the argument of each intrinsic `ir.RecordArg` names a literal: any
+  operand that is not one is read a field at a time with a spread site, so
+  passSpreadOnce evaluates a computed one once. Such a literal names no
+  declaration for the shake (`walkNames`), since nothing declares a struct
+  for it. The interpreter reads a struct as the map.
   **A template is written in backticks**, or with its braces escaped: a
   double-quoted string is interpolated where it is written, so `{name}` was
   gone before i18n read it and the arguments were read by nothing. An
