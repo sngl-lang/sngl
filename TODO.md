@@ -151,11 +151,15 @@ Re-measure the affected workload after each step and note the number here.
    `JsIRContext.WithLocal` (155 MB, `EmitFuncDef` and `Scoped`). A
    parent-chained scope instead of a copy.
 
-9. [ ] **Test-only guards (owner's call).** TestGolden fingerprints the checked
-   package and its library around every build: 7.2 s of 28.5 s CPU and
-   0.6 GB; `walkDivergence` adds 0.23 GB. With `Frozen`/`MustWriteDecl`
-   catching the known writers, fingerprinting only the program's package (or
-   a sample) is the option -- at the cost of unknown writers. Ask first.
+9. [X] **Test-only guards.** TestGolden fingerprints the checked package and
+   its library around every build. Re-measured after step 8 (3af320b0d):
+   `Fingerprinter.Of` is 7.5 s of 23.2 s CPU and 617 MB of 4.84 GB;
+   `walkDivergence` is 124 MB and under 0.1 s, so it stays. Owner's decision:
+   fingerprint the program around every build and the library once per run,
+   with `-golden.fingerprint=each` restoring the per-build library check for
+   bisecting. Of what a program's fingerprint reached, ~90% was the library's
+   own overrides the check hands it (`Package.Targets`), so those count as
+   library too.
 
 ## Deferred
 
@@ -271,3 +275,20 @@ package; `html_list_tag_from_state.txtar` is the code.
    byte-identical (1187 files); `go test ./...` green.
    `TestWithLocalSharesItsParentsLocals` fails (24 allocations) with
    `WithLocal` copying the chain into a fresh frame.
+
+9. **The library fingerprinted once per run** -- TestGolden 4.84 -> 4.34 GB
+   allocated, 23.2 -> 14.3 s CPU in the profiled run; two unprofiled pairs
+   20.9 -> 13.8 and 21.3 -> 13.9 s user (load 2). The guard is now 0.3 s and
+   35 MB. The program's fingerprint stops at a library package, a
+   declaration one declared, and an override in `Package.Targets`, and notes
+   each; what a fixture reaches first is fingerprinted before its build, and
+   all of it again when the run ends. The run reaches two library caches
+   (two `sngl:ui` packages, 46.7k objects from 1266 roots), and each is held
+   because the guard keys by address and keeps what it noted. A probe not committed wrote
+   `sngl:ui`'s `node` and, separately, a program component from the 100th build: the default run fails at the end
+   naming the flag and the changed `*ir.Component`, and
+   `-golden.fingerprint=each` fails `context_default_reads_var`; the program
+   write fails that fixture in both modes. `go test ./...` green.
+   `TestLibraryGuardOncePerRun` and `TestLibraryGuardEachBuild` fail with the
+   end-of-run check, the baseline, the overrides' stop or the program-only
+   fingerprint removed, or the each mode's message lost.
