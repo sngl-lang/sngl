@@ -1,6 +1,10 @@
 package lower
 
-import "duckfam.us/sngl/ir"
+import (
+	"slices"
+
+	"duckfam.us/sngl/ir"
+)
 
 // passAnonStructs points every anonymous struct a substitution made at the
 // package's own declaration with those fields. `struct { v T }` in a generic
@@ -30,53 +34,82 @@ type anonStructs struct {
 	pkg      *ir.Package
 	names    map[string]bool
 	interned []*ir.StructDef
+	// merged is each interned declaration another of equal fields stands for:
+	// a directory-imported package interns its own `struct { v int }`, which
+	// the program's output declares beside the program's under one name.
+	merged map[*ir.StructDef]*ir.StructDef
 }
 
 func lowerAnonStructs(pkg *ir.Package, _ Features, _ Options) error {
 	if pkg == nil {
 		return nil
 	}
-	a := &anonStructs{pkg: pkg, names: map[string]bool{}}
+	a := &anonStructs{pkg: pkg, names: map[string]bool{}, merged: map[*ir.StructDef]*ir.StructDef{}}
 	for _, sd := range pkg.Structs {
-		a.names[sd.Name] = true
-		if sd.Anon {
-			a.interned = append(a.interned, sd)
+		if !sd.Anon {
+			a.names[sd.Name] = true
+			continue
 		}
+		if first := a.find(sd.Fields); first != nil {
+			a.merged[sd] = first
+			continue
+		}
+		a.names[sd.Name] = true
+		a.interned = append(a.interned, sd)
+	}
+	if len(a.merged) > 0 {
+		pkg.Structs = slices.DeleteFunc(pkg.Structs, func(sd *ir.StructDef) bool { return a.merged[sd] != nil })
 	}
 	ir.RewriteTypes(pkg, a.rewrite)
 	// A literal names its declaration as well as its type.
 	_ = ir.Walk(pkg, func(n ir.Node) error {
-		if lit, ok := n.(*ir.StructLit); ok && lit.Def != nil && ir.IsUninternedAnon(lit.Def) && lit.Type != nil {
-			if sd, ok := lit.Type.Decl.(*ir.StructDef); ok {
-				lit.Def = sd
-			}
+		lit, ok := n.(*ir.StructLit)
+		if !ok || lit.Def == nil || lit.Type == nil || !(ir.IsUninternedAnon(lit.Def) || a.merged[lit.Def] != nil) {
+			return nil
+		}
+		if sd, ok := lit.Type.Decl.(*ir.StructDef); ok {
+			lit.Def = sd
 		}
 		return nil
 	})
 	return nil
 }
 
-// rewrite is t with every concrete un-interned anonymous struct in it
-// replaced by the package's declaration of it, t where there is none.
+// rewrite is t with every anonymous struct in it the package's one
+// declaration of those fields -- a concrete un-interned one's, or the first
+// of several interned ones' -- t where there is nothing to replace.
 func (a *anonStructs) rewrite(t *ir.Type) *ir.Type {
 	if t == nil {
 		return t
 	}
 	t = t.MapChildren(a.rewrite)
-	if sd := ir.AnonStructDef(t); sd != nil && ir.IsUninternedAnon(sd) && !t.HasTypeParam() {
+	sd := ir.AnonStructDef(t)
+	switch {
+	case sd == nil:
+	case a.merged[sd] != nil:
+		return a.merged[sd].SymType()
+	case ir.IsUninternedAnon(sd) && !t.HasTypeParam():
 		return a.declared(sd.Fields).SymType()
 	}
 	return t
 }
 
-// declared is the package's anonymous struct with fields, in name order,
-// declared the first time it is asked for.
-func (a *anonStructs) declared(fields []*ir.StructField) *ir.StructDef {
+// find is the interned declaration with fields, nil for none.
+func (a *anonStructs) find(fields []*ir.StructField) *ir.StructDef {
 	want := (&ir.StructDef{Fields: fields, Anon: true}).SymType()
 	for _, sd := range a.interned {
 		if sd.SymType().Equal(want) {
 			return sd
 		}
+	}
+	return nil
+}
+
+// declared is the package's anonymous struct with fields, in name order,
+// declared the first time it is asked for.
+func (a *anonStructs) declared(fields []*ir.StructField) *ir.StructDef {
+	if sd := a.find(fields); sd != nil {
+		return sd
 	}
 	sd := &ir.StructDef{
 		Name:   freshName(a.names, ir.AnonStructBaseName(fields)),
