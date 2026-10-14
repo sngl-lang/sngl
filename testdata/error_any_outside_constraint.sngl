@@ -4,20 +4,20 @@
 
 import ui "sngl:ui"
 
-var held any = 1 // ERROR(check) "`any` is a constraint, not a type: a value of any type is a dyn"
+var held any = 1 // ERROR(check) "`any` is a constraint, not a type: every value's type is one the program can name"
 
 struct Holder {
-    value any // ERROR(check) "`any` is a constraint, not a type: a value of any type is a dyn"
+    value any // ERROR(check) "`any` is a constraint, not a type: every value's type is one the program can name"
 }
 
-func keep(x any) { // ERROR(check) "`any` is a constraint, not a type: a value of any type is a dyn"
+func keep(x any) { // ERROR(check) "`any` is a constraint, not a type: every value's type is one the program can name"
 }
 
-func wrap[T any = any](x T) list[T] { // ERROR(check) "`any` is a constraint, not a type: a value of any type is a dyn"
+func wrap[T any = any](x T) list[T] { // ERROR(check) "`any` is a constraint, not a type: every value's type is one the program can name"
     return [x]
 }
 
-var many list[any] = [] // ERROR(check) "`any` is a constraint, not a type: a value of any type is a dyn"
+var many list[any] = [] // ERROR(check) "`any` is a constraint, not a type: every value's type is one the program can name"
 
 func only[T int](x T) T { // ERROR(check) "a type parameter's constraint is `any`"
     return x

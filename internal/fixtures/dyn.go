@@ -34,7 +34,7 @@ func assertNoSilentDyn(t *testing.T, s testutil.Sample, pkg *ir.Package) {
 		return // TypDyn during error recovery is expected
 	}
 	hasDyn := func(t *ir.Type) bool {
-		return t != nil && t.Any(func(t *ir.Type) bool { return t.Kind == ir.TypeDyn })
+		return t != nil && t.Any(func(t *ir.Type) bool { return t.Kind == ir.TypeDyn || t.Kind == ir.TypeInvalid })
 	}
 	report := func(where string, pos ast.Pos) {
 		t.Errorf("TypeDyn at %s (%s:%d:%d) -- expected a type or an error",

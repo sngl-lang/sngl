@@ -64,7 +64,7 @@ func (c *checker) coerce(written ast.Expr, val ir.Expr, want *ir.Type, s slot) i
 	if c.requireValueType(got, pos) || want == nil {
 		return val
 	}
-	if got.Kind == ir.TypeDyn || want.Kind == ir.TypeDyn {
+	if got.Kind == ir.TypeInvalid || want.Kind == ir.TypeInvalid {
 		return val
 	}
 	if s.later && (want.HasTypeParam() || got.Kind == ir.TypeTypeParam) {

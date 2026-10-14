@@ -845,11 +845,12 @@ func receiverName(t *Type) string {
 	return ""
 }
 
-// ReceiverNamed is a receiver for a function a pass synthesizes on a
-// declaration it holds no handle on: a namespace stand-in carrying the name,
-// which is all a backend reads off one.
+// ReceiverNamed stands in for the receiver of a method whose name resolves to
+// no type -- reported where the method is attached, or a probe asking only
+// what the method is called: invalid, carrying the name, which is all a
+// reader takes off one.
 func ReceiverNamed(name string) *Type {
-	return &Type{Kind: TypeDyn, Decl: &Namespace{Name: name}}
+	return &Type{Kind: TypeInvalid, Decl: &Namespace{Name: name}}
 }
 
 func (f *Func) IsExported() bool {

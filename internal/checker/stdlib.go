@@ -546,7 +546,7 @@ func (c *checker) loadStdlibPackage(pkgName string) *ir.Package {
 	// Once the bodies are checked the wrapper has its concrete return type,
 	// so re-pull ctx.Typ from the default expression's Call.Func.Return.
 	for _, ctx := range stdlibPkg.Contexts {
-		if ctx.Typ != nil && ctx.Typ.Kind != ir.TypeDyn {
+		if ctx.Typ != nil && ctx.Typ.Kind != ir.TypeInvalid {
 			continue
 		}
 		if call, ok := ctx.Default.(*ir.Call); ok && call.Func != nil && call.Func.Return != nil {

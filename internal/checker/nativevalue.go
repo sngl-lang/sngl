@@ -192,7 +192,7 @@ func (c *checker) nativeEnumMember(e ast.Expr, ed *ir.EnumDef) (ir.Expr, bool) {
 		}
 	}
 	c.error(lit.Pos, "encoded value %s is not the value of any member of %s", shown, ed.Name)
-	return &ir.Literal{Type: TypDyn}, true
+	return &ir.Literal{Type: TypInvalid}, true
 }
 
 // isNumericLiteralKind reports whether a literal kind carries a number, which

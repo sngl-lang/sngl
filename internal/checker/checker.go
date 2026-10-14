@@ -979,9 +979,9 @@ func (c *checker) ensureReturnType(fn *ir.Func) {
 	}
 	if c.inferring[fn] {
 		// `func f() => f()` has no type to arrive at. Reported here rather
-		// than left to recur, and typed dyn so the rest of the file checks.
+		// than left to recur, and typed invalid so the rest of the file checks.
 		c.error(funcDeclPos(fn), "cannot infer the return type of %q from a body that calls itself; annotate it", fn.Name)
-		fn.Return = TypDyn
+		fn.Return = TypInvalid
 		return
 	}
 	if c.inferring == nil {
@@ -2226,7 +2226,7 @@ func (c *checker) registerConstShells(decl *ast.ConstDecl) {
 		default:
 			typ = literalConstType(spec.Default)
 			if typ == nil {
-				typ = dynDeferred("const type, resolved by checkPendingConstInits")
+				typ = TypInvalid
 			}
 		}
 		vars := make([]*ir.Var, 0, len(spec.Names))
@@ -2657,7 +2657,7 @@ func (c *checker) registerFunc(f *ast.FuncDef) *ir.Func {
 	// does.
 	if c.inLibSource() {
 		if fn.Return == nil && f.Body != nil {
-			fn.Return = dynFallback("library function %q has a body and no return annotation", fn.Name)
+			fn.Return = TypInvalid
 		}
 		if fn.Purity == ir.PurityUnknown && funcHasBody(f) {
 			fn.Purity = ir.PurityPure
@@ -3112,10 +3112,8 @@ func (c *checker) registerComponentDecl(comp *ast.ComponentDecl, bodyLocal bool)
 			c.applyParamMarks(pd, prop)
 			c.checkConstProp(pd, prop)
 			// A prop with neither an annotation nor a default says nothing
-			// about what it takes. `dyn` written out is an annotation: it says
-			// the prop takes anything, which is what `context(default dyn)`
-			// means and what a caller reads at the call site.
-			if prop.Type.Kind == ir.TypeDyn && pd.Type == nil && pd.Default == nil {
+			// about what it takes.
+			if prop.Type.Kind == ir.TypeInvalid && pd.Type == nil && pd.Default == nil {
 				c.error(pd.Pos, "type annotation or default required for parameter %q", pd.Name)
 			}
 			// Default is checked later in checkComponentBody when scope is
@@ -4074,16 +4072,14 @@ func (c *checker) checkFuncBody(fn *ir.Func) {
 		}
 		bodyType := exprType(bodyExpr)
 		// Infer return type from expression body when there was no annotation.
-		// An explicit `dyn` annotation is kept as-is -- except in library
-		// source, where an unannotated signature was given dyn at
-		// registration rather than left nil, so the annotation and the
-		// absence of one are the same thing by the time this runs. Restricted
-		// to primitives: the `color` struct and the `color` primitive share a
+		// Library source gives an unannotated signature an invalid
+		// placeholder at registration rather than leaving it nil, which the
+		// body's type replaces the same way. Restricted to primitives: the `color` struct and the `color` primitive share a
 		// name, so inferring `color.rgb(...) => color{...}` as the struct
 		// makes it collide with the primitive in callers.
 		if fn.Return == nil {
 			fn.Return = c.inferredType(bodyType, *body.ExprPos())
-		} else if c.inLibSource() && fn.Return.Kind == ir.TypeDyn &&
+		} else if c.inLibSource() && fn.Return.Kind == ir.TypeInvalid &&
 			bodyType != nil && isPrimitiveTypeKind(bodyType.Kind) {
 			fn.Return = bodyType
 		}
@@ -4092,7 +4088,7 @@ func (c *checker) checkFuncBody(fn *ir.Func) {
 		fn.Block = c.checkBlockIR(&fn.AST.Block)
 		// A block-bodied func with a non-void return type must return on all
 		// paths, an empty `{}` body included.
-		if fn.Return != nil && fn.Return.Kind != ir.TypeVoid && fn.Return.Kind != ir.TypeDyn &&
+		if fn.Return != nil && fn.Return.Kind != ir.TypeVoid && fn.Return.Kind != ir.TypeInvalid &&
 			!blockAlwaysReturns(fn.Block) && !lastStmtMayDiverge(fn.Block) {
 			c.error(fn.AST.Pos, "missing return: %q must return %s on all paths", fn.Name, fn.Return)
 		}
@@ -4519,7 +4515,7 @@ func (c *checker) checkComponentBody(comp *ir.Component) {
 						c.inheritDefault(prop)
 					}
 					initType := exprType(prop.Default)
-					if pd.Type == nil && initType.Kind != ir.TypeDyn && initType.Kind != ir.TypeVoid {
+					if pd.Type == nil && initType.Kind != ir.TypeInvalid && initType.Kind != ir.TypeVoid {
 						prop.Type = c.inferredType(initType, *pd.Default.ExprPos())
 					}
 				}
@@ -4912,7 +4908,7 @@ func (c *checker) nodeHandleType(target string) *ir.Type {
 			return t
 		}
 	}
-	return dynFallback("node id names an instance of %q, which resolves to no component", target)
+	return TypInvalid
 }
 
 // countedHandleType wraps a handle in the counts of the scopes it was reached

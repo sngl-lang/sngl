@@ -564,10 +564,13 @@ func (t *Type) Equal(other *Type) bool {
 }
 
 // IsAssignableTo reports whether a value of type t can be assigned to target.
-// Dyn works like Go's any/interface{}: any value is assignable TO dyn,
-// but dyn is not assignable to concrete types without explicit conversion.
+// An invalid type is a mistake reported where it was made, and is assignable
+// both ways so that nothing downstream reports it again.
 func (t *Type) IsAssignableTo(target *Type) bool {
 	if t.Equal(target) {
+		return true
+	}
+	if t.Kind == TypeInvalid || target.Kind == TypeInvalid {
 		return true
 	}
 	if target.Kind == TypeDyn {

@@ -83,7 +83,7 @@ func unsatisfied(t, constraint *ir.Type) string {
 		return ""
 	}
 	switch t.Kind {
-	case ir.TypeDyn, ir.TypeInvalid:
+	case ir.TypeInvalid:
 		return ""
 	case ir.TypeTypeParam:
 		if sym, _ := t.Decl.(*ir.TypeParamSym); sym == nil {
@@ -145,7 +145,7 @@ func inferFromConstraints(params []ir.TypeParam, bindings map[string]*ir.Type) {
 				found := map[string]*ir.Type{}
 				ir.BindTypeParams(w.Type, got.Type, found)
 				for name, b := range found {
-					if _, bound := bindings[name]; !bound && own[name] && b.Kind != ir.TypeDyn {
+					if _, bound := bindings[name]; !bound && own[name] && b.Kind != ir.TypeInvalid {
 						bindings[name] = b
 						changed = true
 					}

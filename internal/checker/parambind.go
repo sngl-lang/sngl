@@ -9,10 +9,10 @@ import (
 
 // A written type is held to the signature; an unknown want means there is none.
 func (c *checker) bindParamType(written ast.TypeExpr, want *ir.Type, what string) *ir.Type {
-	unknown := want == nil || want.Kind == ir.TypeDyn
+	unknown := want == nil || want.Kind == ir.TypeInvalid
 	if written == nil {
 		if unknown {
-			return TypDyn
+			return TypInvalid
 		}
 		return want
 	}

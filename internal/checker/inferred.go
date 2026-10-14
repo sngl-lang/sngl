@@ -25,7 +25,7 @@ func (c *checker) varSpecType(pos ast.Pos, names []string, te ast.TypeExpr, init
 // to take; what it is held to otherwise is coerce's, which ran first.
 func (c *checker) typeFromInit(declared *ir.Type, init ir.Expr, at ast.Pos) *ir.Type {
 	t := exprType(init)
-	if t.Kind == ir.TypeVoid || declared.Kind != ir.TypeDyn {
+	if t.Kind == ir.TypeVoid || declared.Kind != ir.TypeInvalid {
 		return declared
 	}
 	return c.inferredType(t, at)
@@ -49,11 +49,11 @@ func (c *checker) typeFromInit(declared *ir.Type, init ir.Expr, at ast.Pos) *ir.
 func (c *checker) inferredType(t *ir.Type, at ast.Pos) *ir.Type {
 	if holdsNull(t) {
 		c.error(at, "cannot infer a type from null; add a type annotation")
-		return ir.TypDyn
+		return ir.TypInvalid
 	}
 	if name := c.unboundTypeParam(t); name != "" {
 		c.error(at, "cannot infer %s: nothing here binds it; add a type annotation", name)
-		return ir.TypDyn
+		return ir.TypInvalid
 	}
 	return t
 }

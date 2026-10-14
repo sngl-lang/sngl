@@ -39,7 +39,7 @@ func (c *checker) bindComponentTypeParams(pos ast.Pos, comp *ir.Component, args 
 		// A dyn argument states nothing: binding T to it would make every
 		// other prop typed T accept anything, which is the opposite of what
 		// the annotation asked for. Same rule as inferTypeParams.
-		if argType == nil || argType.Kind == ir.TypeDyn {
+		if argType == nil || argType.Kind == ir.TypeInvalid {
 			continue
 		}
 		ir.BindTypeParams(p.Type, argType, bindings)
@@ -93,7 +93,7 @@ func (c *checker) bindFromHandlers(comp *ir.Component, args ast.ArgList, binding
 				continue
 			}
 			got := c.resolveTypeQuietly(p.Type)
-			if got == nil || got.Kind == ir.TypeDyn {
+			if got == nil || got.Kind == ir.TypeInvalid {
 				continue
 			}
 			ir.BindTypeParams(ev.Params[i].Type, got, bindings)

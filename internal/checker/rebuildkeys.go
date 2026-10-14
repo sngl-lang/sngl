@@ -175,7 +175,7 @@ func (w *rebuildWalker) bindings(comp *ir.Component, args map[string]rebuildArg,
 		t := a.value.ExprType().Substitute(env)
 		// A dyn argument states nothing, and one still typed by a parameter
 		// states only that this call did not pin it either.
-		if t == nil || t.Kind == ir.TypeDyn || t.HasTypeParam() {
+		if t == nil || t.Kind == ir.TypeInvalid || t.HasTypeParam() {
 			continue
 		}
 		ir.BindTypeParams(p.Type, t, out)
@@ -343,7 +343,7 @@ func effectKeyHint(t *ir.Type) string {
 		return "; to react to a write to the list, handle @update instead, and a key over several values is a struct of them, not a list"
 	case ir.TypeMap:
 		return "; to react to a write to the map, handle @update instead, and a key over several values is a struct of them, not a map"
-	case ir.TypeDyn:
+	case ir.TypeInvalid:
 		return "; a key over several values is a struct of them, and the struct has to be declared"
 	case ir.TypeStruct:
 		// An unresolved struct type. An anonymous literal is not one: the

@@ -144,7 +144,7 @@ func (c *checker) checkI18nPlaceholder(ph *ast.I18nPlaceholderExpr) {
 		if ph.Style != "" {
 			c.error(ph.Pos, "%s placeholder cannot take a style argument", ph.Type)
 		}
-		if vT != nil && vT.Kind != ir.TypeInt && vT.Kind != ir.TypeFloat && vT.Kind != ir.TypeDyn {
+		if vT != nil && vT.Kind != ir.TypeInt && vT.Kind != ir.TypeFloat && vT.Kind != ir.TypeInvalid {
 			c.error(ph.Pos, "%s placeholder requires numeric value, got %s", ph.Type, vT)
 		}
 		for _, ca := range ph.Cases {
@@ -167,7 +167,7 @@ func (c *checker) checkI18nPlaceholder(ph *ast.I18nPlaceholderExpr) {
 		var enumDecl *ir.EnumDef
 		if vT != nil {
 			switch vT.Kind {
-			case ir.TypeString, ir.TypeDyn:
+			case ir.TypeString, ir.TypeInvalid:
 			case ir.TypeEnum:
 				if d, ok := vT.Decl.(*ir.EnumDef); ok {
 					enumDecl = d
@@ -216,7 +216,7 @@ func (c *checker) checkI18nPlaceholder(ph *ast.I18nPlaceholderExpr) {
 		}
 	case "date", "time", "dateTime":
 		if vT != nil {
-			ok := vT.Kind == ir.TypeDyn ||
+			ok := vT.Kind == ir.TypeInvalid ||
 				ir.IsDateStruct(vT) || ir.IsTimeStruct(vT) || ir.IsDateTimeStruct(vT)
 			if !ok {
 				c.error(ph.Pos, "%s placeholder requires date/time value, got %s", ph.Type, vT)
@@ -228,7 +228,7 @@ func (c *checker) checkI18nPlaceholder(ph *ast.I18nPlaceholderExpr) {
 			}
 		}
 	case "number":
-		if vT != nil && vT.Kind != ir.TypeInt && vT.Kind != ir.TypeFloat && vT.Kind != ir.TypeDyn {
+		if vT != nil && vT.Kind != ir.TypeInt && vT.Kind != ir.TypeFloat && vT.Kind != ir.TypeInvalid {
 			c.error(ph.Pos, "number placeholder requires numeric value, got %s", vT)
 		}
 		if ph.Style != "" {

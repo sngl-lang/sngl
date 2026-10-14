@@ -12,7 +12,7 @@ import (
 	"slices"
 )
 
-// exprType extracts the resolved type from an ir.Expr, returning TypDyn for nil.
+// exprType extracts the resolved type from an ir.Expr, returning TypInvalid for nil.
 //
 // Neither arm may become a panic. lspcore.Analyze type-checks a document that
 // failed to parse, and a partial parse really does hand the checker an
@@ -20,12 +20,12 @@ import (
 // `const(())` all reach the nil arm today.
 func exprType(e ir.Expr) *ir.Type {
 	if e == nil {
-		return dynFallback("no expression to take the type of")
+		return TypInvalid
 	}
 	if t := e.ExprType(); t != nil {
 		return t
 	}
-	return dynFallback("%T carries no type", e)
+	return TypInvalid
 }
 
 // requireValueType errors if t is TypeVoid, covering the case where a call to
@@ -106,7 +106,7 @@ func (c *checker) inferExpr(e ast.Expr) ir.Expr {
 	// `xs[func(int) bool]`, or a func literal with no body.
 	if t, ok := e.(ast.TypeExpr); ok {
 		c.error(*t.ExprPos(), "%s is a type, not a value", parser.FormatType(t))
-		return &ir.Literal{Type: TypDyn}
+		return &ir.Literal{Type: TypInvalid}
 	}
 	switch x := e.(type) {
 	case *ast.LiteralExpr:
@@ -317,7 +317,7 @@ func (c *checker) inferUnitLiteral(x *ast.UnitLiteral) ir.Expr {
 	num := strings.TrimSuffix(x.Raw, x.Suffix)
 	bad := func(format string, args ...any) ir.Expr {
 		c.error(x.Pos, format, args...)
-		return &ir.Literal{AST: &x.LiteralExpr, Type: TypDyn, Value: num, Suffix: x.Suffix}
+		return &ir.Literal{AST: &x.LiteralExpr, Type: TypInvalid, Value: num, Suffix: x.Suffix}
 	}
 	ud := ir.UnitDeclOf(c.expected)
 	if ud == nil {
@@ -482,7 +482,7 @@ func (c *checker) inferIdent(x *ast.IdentExpr) ir.Expr {
 			}
 		}
 		c.error(x.Pos, "undefined: %s%s%s", x.Name, c.captureHint(x.Name), c.stdlibHint(x.Name))
-		return &ir.Ident{AST: x, Type: TypDyn, Name: x.Name}
+		return &ir.Ident{AST: x, Type: TypInvalid, Name: x.Name}
 	}
 	// The export rule only governs cross-package access: an unexported
 	// (`_`-prefixed) name is freely referenceable within the package that
@@ -498,26 +498,26 @@ func (c *checker) inferIdent(x *ast.IdentExpr) ir.Expr {
 	// -- and is not one of them itself.
 	if f, ok := sym.(*ir.Component); ok && f.IsFamily() {
 		c.error(x.Pos, "%s names a family, which is not a value: a value of it is a handle to one of its members", f.Name)
-		return &ir.Ident{AST: x, Type: TypDyn, Name: x.Name}
+		return &ir.Ident{AST: x, Type: TypInvalid, Name: x.Name}
 	}
 	// An import names a package, and a package is not a value: a member of
 	// it is named through it, `math.pi`, which inferSelect reads.
 	if _, ok := sym.(*ir.Namespace); ok {
 		c.error(x.Pos, "%s names a package, which is not a value: name one of its members, %s.<name>", x.Name, x.Name)
-		return &ir.Ident{AST: x, Type: TypDyn, Name: x.Name}
+		return &ir.Ident{AST: x, Type: TypInvalid, Name: x.Name}
 	}
 	if ctx, ok := sym.(*ir.Context); ok {
 		typ := ctx.Typ
 		if typ == nil {
 			// registerRootContextDecl leaves Typ nil only on its three
 			// bad-default paths, each of which reported first.
-			typ = ir.TypDyn
+			typ = ir.TypInvalid
 		}
 		return &ir.ContextRead{AST: x, Ref: ctx, Typ: typ}
 	}
 	t := c.symType(sym)
 	if t == nil {
-		t = dynFallback("symbol %q (%T) has no type", x.Name, sym)
+		t = TypInvalid
 	}
 	c.reportCountedHandleRead(x, sym, t)
 	ident := &ir.Ident{AST: x, Type: t, Name: x.Name, Sym: sym}
@@ -631,7 +631,7 @@ func comparableEq(left, right *ir.Type) bool {
 	if left == nil || right == nil {
 		return true
 	}
-	if left.Kind == ir.TypeDyn || right.Kind == ir.TypeDyn {
+	if left.Kind == ir.TypeInvalid || right.Kind == ir.TypeInvalid {
 		return true
 	}
 	if left.Kind == ir.TypeNull || right.Kind == ir.TypeNull {
@@ -781,7 +781,7 @@ func (c *checker) finishBinary(x *ast.BinaryExpr, leftExpr, rightExpr ir.Expr) i
 		right = exprType(rightExpr)
 	}
 
-	skip := left.Kind == ir.TypeDyn || right.Kind == ir.TypeDyn
+	skip := left.Kind == ir.TypeInvalid || right.Kind == ir.TypeInvalid
 
 	var typ *ir.Type
 	switch x.Op {
@@ -823,7 +823,7 @@ func (c *checker) finishBinary(x *ast.BinaryExpr, leftExpr, rightExpr ir.Expr) i
 				if !skip {
 					c.error(x.Pos, "operator - not defined for %s and %s", left, right)
 				}
-				typ = TypDyn
+				typ = TypInvalid
 			}
 		} else if left.Kind == ir.TypeUnit || right.Kind == ir.TypeUnit {
 			// unit +/- unit: both must be same unit type
@@ -837,7 +837,7 @@ func (c *checker) finishBinary(x *ast.BinaryExpr, leftExpr, rightExpr ir.Expr) i
 		} else if !skip && (!left.IsNumeric() || !right.IsNumeric()) {
 			// Reported once: unifyNumeric would say it again, of the same pair.
 			c.error(x.Pos, "operator %s not defined for %s and %s", x.Op, left, right)
-			typ = TypDyn
+			typ = TypInvalid
 		} else {
 			typ = c.unifyNumeric(left, right, x.Pos, x.Op)
 		}
@@ -852,7 +852,7 @@ func (c *checker) finishBinary(x *ast.BinaryExpr, leftExpr, rightExpr ir.Expr) i
 				typ = right // scalar * unit
 			default:
 				c.error(x.Pos, "operator * not defined for %s and %s", left, right)
-				typ = TypDyn
+				typ = TypInvalid
 			}
 		} else {
 			typ = c.unifyNumeric(left, right, x.Pos, x.Op)
@@ -868,7 +868,7 @@ func (c *checker) finishBinary(x *ast.BinaryExpr, leftExpr, rightExpr ir.Expr) i
 				typ = TypFloat // unit / unit → dimensionless ratio
 			default:
 				c.error(x.Pos, "operator / not defined for %s and %s", left, right)
-				typ = TypDyn
+				typ = TypInvalid
 			}
 		} else {
 			typ = c.unifyNumeric(left, right, x.Pos, x.Op)
@@ -882,7 +882,7 @@ func (c *checker) finishBinary(x *ast.BinaryExpr, leftExpr, rightExpr ir.Expr) i
 				typ = left // unit % scalar
 			default:
 				c.error(x.Pos, "operator %% not defined for %s and %s", left, right)
-				typ = TypDyn
+				typ = TypInvalid
 			}
 		} else {
 			typ = c.unifyNumeric(left, right, x.Pos, x.Op)
@@ -898,10 +898,10 @@ func (c *checker) finishBinary(x *ast.BinaryExpr, leftExpr, rightExpr ir.Expr) i
 // the other operand up front); a mismatch is an error requiring an explicit
 // conversion. Dyn on either side flows through without an error.
 func (c *checker) unifyNumeric(left, right *ir.Type, pos ast.Pos, op ast.BinaryOp) *ir.Type {
-	if left.Kind == ir.TypeDyn {
+	if left.Kind == ir.TypeInvalid {
 		return right
 	}
-	if right.Kind == ir.TypeDyn {
+	if right.Kind == ir.TypeInvalid {
 		return left
 	}
 	if left.Equal(right) {
@@ -944,7 +944,7 @@ func (c *checker) inferUnary(x *ast.UnaryExpr) ir.Expr {
 	}
 	operandExpr := c.checkExpr(x.Operand)
 	operand := exprType(operandExpr)
-	skip := operand.Kind == ir.TypeDyn
+	skip := operand.Kind == ir.TypeInvalid
 	var typ *ir.Type
 	switch x.Op {
 	case ast.UnaryNot:
@@ -971,10 +971,10 @@ func (c *checker) inferUnary(x *ast.UnaryExpr) ir.Expr {
 		typ = ir.RefOf(operand)
 	case ast.UnaryDeref:
 		if skip {
-			typ = TypDyn
+			typ = TypInvalid
 		} else if operand.Kind != ir.TypeRef {
 			c.error(x.Pos, "cannot dereference non-ref type %s", operand)
-			typ = TypDyn
+			typ = TypInvalid
 		} else {
 			typ = operand.Elems[0]
 		}
@@ -1133,14 +1133,14 @@ func (c *checker) inferCall(x *ast.CallExpr) (out ir.Expr) {
 	// type name means a cast to a type that has no cast, and with a value
 	// means calling a non-function.
 	//
-	// TypeDyn is exempt: a dyn callee is unknown by construction, so a call on
-	// it stays permissive.
+	// An invalid callee was reported where it went wrong, so a call on it
+	// reports nothing more.
 	if calleeType.Kind == ir.TypeUnit {
 		return c.inferUnitConversion(x, calleeType)
 	}
-	if calleeType.Kind != ir.TypeFunc && calleeType.Kind != ir.TypeDyn {
+	if calleeType.Kind != ir.TypeFunc && calleeType.Kind != ir.TypeInvalid {
 		c.errorNotCallable(x, calleeExpr, calleeType)
-		return &ir.Call{AST: x, Type: TypDyn, Args: c.checkCallArgs(x.Args, nil)}
+		return &ir.Call{AST: x, Type: TypInvalid, Args: c.checkCallArgs(x.Args, nil)}
 	}
 
 	var written map[string]*ir.Type
@@ -1201,7 +1201,7 @@ func (c *checker) inferUnitConversion(x *ast.CallExpr, target *ir.Type) ir.Expr 
 		return &ir.Conversion{AST: x, Type: target}
 	}
 	argExpr := c.checkExprExpecting(arg.Value, target)
-	if from := exprType(argExpr); from != nil && from.Kind != ir.TypeDyn && !from.Equal(target) {
+	if from := exprType(argExpr); from != nil && from.Kind != ir.TypeInvalid && !from.Equal(target) {
 		c.error(x.Pos, "cannot cast %s to unit %s (a unit value is written as a literal, e.g. 5%s)", from, target, target)
 	}
 	return argExpr
@@ -1321,12 +1321,12 @@ func (c *checker) inferQualifiedCall(sel *ast.SelectExpr, call *ast.CallExpr, ns
 	// An import that resolved to no package -- a check with no resolver --
 	// has no members to call, and the import is where that is the problem.
 	if ns.Pkg == nil {
-		return &ir.Call{AST: call, Type: TypDyn, Qualifier: ns, Args: c.checkCallArgs(call.Args, nil)}
+		return &ir.Call{AST: call, Type: TypInvalid, Qualifier: ns, Args: c.checkCallArgs(call.Args, nil)}
 	}
 	if ns.Pkg != nil {
 		if fsym, ok := ns.Pkg.Symbols.LookupMember(sel.Field); ok {
 			if c.rejectUnexported(sel.Pos, fsym) {
-				return &ir.Call{AST: call, Type: TypDyn, Args: c.checkCallArgs(call.Args, nil)}
+				return &ir.Call{AST: call, Type: TypInvalid, Args: c.checkCallArgs(call.Args, nil)}
 			}
 			// Component in namespace — validate visibility and props.
 			if comp, ok := fsym.(*ir.Component); ok {
@@ -1335,7 +1335,7 @@ func (c *checker) inferQualifiedCall(sel *ast.SelectExpr, call *ast.CallExpr, ns
 				// bound under whatever alias the file chose.
 				if ns.Pkg != c.stdlibPkg && len(sel.Field) > 0 && sel.Field[0] >= 'a' && sel.Field[0] <= 'z' {
 					c.error(sel.Pos, "unknown component %q in package %s", sel.Field, ident.Name)
-					return &ir.Call{AST: call, Type: TypDyn, Args: c.checkCallArgs(call.Args, nil)}
+					return &ir.Call{AST: call, Type: TypInvalid, Args: c.checkCallArgs(call.Args, nil)}
 				}
 				c.takeCallTypeArgs(call, comp.TypeParams)
 				args := c.checkComponentCallArgs(call, comp)
@@ -1391,13 +1391,13 @@ func (c *checker) inferQualifiedCall(sel *ast.SelectExpr, call *ast.CallExpr, ns
 	if resolved := c.nsMember(sel.Pos, ns, sel.Field); resolved != nil {
 		t := resolved.SymType()
 		if t == nil {
-			t = dynFallback("member %s.%s (%T) has no type", ident.Name, sel.Field, resolved)
+			t = TypInvalid
 		}
 		args := c.checkCallArgs(call.Args, nil)
 		return &ir.Call{AST: call, Type: t, Qualifier: ns, Args: args}
 	}
 	c.error(sel.Pos, "unknown component %q in package %s", sel.Field, ident.Name)
-	return &ir.Call{AST: call, Type: TypDyn, Args: c.checkCallArgs(call.Args, nil)}
+	return &ir.Call{AST: call, Type: TypInvalid, Args: c.checkCallArgs(call.Args, nil)}
 }
 
 func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) ir.Expr {
@@ -1411,7 +1411,7 @@ func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) ir.Ex
 	receiver := exprType(receiverExpr)
 
 	if c.rejectVoidReceiver(receiver, sel.Operand) {
-		return &ir.Call{AST: call, Type: TypDyn, Args: c.checkCallArgs(call.Args, nil)}
+		return &ir.Call{AST: call, Type: TypInvalid, Args: c.checkCallArgs(call.Args, nil)}
 	}
 
 	receiverExpr, receiver = callComputedOperand(receiverExpr, receiver)
@@ -1426,7 +1426,7 @@ func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) ir.Ex
 	if receiver.Decl != nil {
 		if owner, isSym := receiver.Decl.(ir.Symbol); isSym &&
 			c.rejectForeignUnexported(sel.Pos, owner, typeName, sel.Field) {
-			return &ir.Call{AST: call, Type: TypDyn, Args: c.checkCallArgs(call.Args, nil)}
+			return &ir.Call{AST: call, Type: TypInvalid, Args: c.checkCallArgs(call.Args, nil)}
 		}
 	}
 	// The receiver's declaration owns its members, so ask it directly. Only
@@ -1661,10 +1661,10 @@ func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) ir.Ex
 	// later phase to find unresolved.
 	typ := TypVoid
 	if event == "" {
-		if receiver.Kind != ir.TypeDyn && receiver.Kind != ir.TypeInvalid {
+		if receiver.Kind != ir.TypeInvalid {
 			c.error(sel.Pos, "no method %q on type %s", sel.Field, receiver)
 		}
-		typ = TypDyn
+		typ = TypInvalid
 	}
 	return &ir.Call{
 		AST:      call,
@@ -2014,7 +2014,7 @@ func (c *checker) methodNamed(t *ir.Type, name string) bool {
 
 // hasNoLegitimateFields reports whether a type cannot have any selector
 // fields. Used to surface "no field X on type Y" diagnostics that would
-// otherwise silently degrade to TypDyn. Kept conservative: a type qualifies
+// otherwise silently degrade to TypInvalid. Kept conservative: a type qualifies
 // only when it has no field-style accessor at all, which rules out most kinds
 // (color.r, list.length, struct fields, component vars/props, enum members)
 // and everything carrying no shape information (dyn, generic params, anonymous
@@ -2047,7 +2047,7 @@ func (c *checker) selectDeclaredMember(x *ast.SelectExpr, operandExpr ir.Expr, d
 	} else {
 		c.error(x.Pos, "no field %q on %s %s", x.Field, noun, name)
 	}
-	return &ir.Select{AST: x, Type: TypDyn, Operand: operandExpr, Field: x.Field}
+	return &ir.Select{AST: x, Type: TypInvalid, Operand: operandExpr, Field: x.Field}
 }
 
 func hasNoLegitimateFields(t *ir.Type) bool {
@@ -2066,11 +2066,11 @@ func hasNoLegitimateFields(t *ir.Type) bool {
 // yield a usable value, so we tag the call expression TypVoid. Consumer sites
 // that treat the call as an expression surface a normal assignability error
 // against TypVoid — this makes "silent dyn" leakage from missing return
-// annotations impossible. A nil sig (unknown function) stays TypDyn so the
+// annotations impossible. A nil sig (unknown function) stays TypInvalid so the
 // surrounding lookup error isn't doubled up.
 func callRetType(sig *ir.FuncSig) *ir.Type {
 	if sig == nil {
-		return ir.TypDyn
+		return ir.TypInvalid
 	}
 	if sig.Return == nil {
 		return TypVoid
@@ -2118,7 +2118,7 @@ func (c *checker) namespaceOperand(e ast.Expr) (*ir.Namespace, *ast.IdentExpr) {
 // it was named by, `math.pi`: the member's Ident, qualified by the import.
 func (c *checker) inferQualified(x *ast.SelectExpr, ns *ir.Namespace, ident *ast.IdentExpr) ir.Expr {
 	bad := func() ir.Expr {
-		return &ir.Ident{Type: TypDyn, Name: x.Field, Qualifier: ns, SelAST: x}
+		return &ir.Ident{Type: TypInvalid, Name: x.Field, Qualifier: ns, SelAST: x}
 	}
 	// An import that resolved to no package -- a check with no resolver --
 	// has no members to read, and the import is where that is the problem.
@@ -2143,7 +2143,7 @@ func (c *checker) inferQualified(x *ast.SelectExpr, ns *ir.Namespace, ident *ast
 			if ctx, isCtx := fsym.(*ir.Context); isCtx {
 				typ := ctx.Typ
 				if typ == nil {
-					typ = ir.TypDyn // already reported, as in inferIdent
+					typ = ir.TypInvalid // already reported, as in inferIdent
 				}
 				return &ir.ContextRead{Ref: ctx, Typ: typ}
 			}
@@ -2153,7 +2153,7 @@ func (c *checker) inferQualified(x *ast.SelectExpr, ns *ir.Namespace, ident *ast
 			}
 			t := c.symType(fsym)
 			if t == nil {
-				t = dynFallback("member %s.%s (%T) has no type", ident.Name, x.Field, fsym)
+				t = TypInvalid
 			}
 			// A host value reached through its package is the host
 			// identifier it is unqualified: a backend spells it from the
@@ -2170,7 +2170,7 @@ func (c *checker) inferQualified(x *ast.SelectExpr, ns *ir.Namespace, ident *ast
 	if resolved := c.nsMember(x.Pos, ns, x.Field); resolved != nil {
 		t := resolved.SymType()
 		if t == nil {
-			t = dynFallback("member %s.%s (%T) has no type", ident.Name, x.Field, resolved)
+			t = TypInvalid
 		}
 		return &ir.Ident{Type: t, Name: x.Field, Sym: resolved, Qualifier: ns, SelAST: x}
 	}
@@ -2195,7 +2195,7 @@ func (c *checker) inferSelect(x *ast.SelectExpr) ir.Expr {
 	operand := exprType(operandExpr)
 
 	if c.rejectVoidReceiver(operand, x.Operand) {
-		return &ir.Select{AST: x, Type: TypDyn, Operand: operandExpr, Field: x.Field}
+		return &ir.Select{AST: x, Type: TypInvalid, Operand: operandExpr, Field: x.Field}
 	}
 
 	// Auto-deref through Select: if the operand is `ref[T]`, treat the field
@@ -2250,7 +2250,7 @@ func (c *checker) inferSelect(x *ast.SelectExpr) ir.Expr {
 				}
 			}
 			c.error(x.Pos, "no field %q on %s, whose constraint is %s", x.Field, operand, sd.SymType())
-			return &ir.Select{AST: x, Type: TypDyn, Operand: operandExpr, Field: x.Field}
+			return &ir.Select{AST: x, Type: TypInvalid, Operand: operandExpr, Field: x.Field}
 		}
 
 		if operand.Kind == ir.TypeStruct && operand.Decl != nil {
@@ -2265,7 +2265,7 @@ func (c *checker) inferSelect(x *ast.SelectExpr) ir.Expr {
 					}
 				}
 				if c.rejectForeignUnexported(x.Pos, sd, sd.Name, x.Field) {
-					return &ir.Select{AST: x, Type: TypDyn, Operand: operandExpr, Field: x.Field}
+					return &ir.Select{AST: x, Type: TypInvalid, Operand: operandExpr, Field: x.Field}
 				}
 				return c.selectDeclaredMember(x, operandExpr, sd, "struct", typeArgBindings)
 			}
@@ -2305,7 +2305,7 @@ func (c *checker) inferSelect(x *ast.SelectExpr) ir.Expr {
 					}
 				}
 				c.error(x.Pos, "%s is a family, and a value of one reaches only the props its members share: it declares no %q", comp.Name, x.Field)
-				return &ir.Select{AST: x, Type: TypDyn, Operand: operandExpr, Field: x.Field}
+				return &ir.Select{AST: x, Type: TypInvalid, Operand: operandExpr, Field: x.Field}
 			}
 			if comp, ok := operand.Decl.(*ir.Component); ok {
 				// What the operand's type arguments bound: `pkg.params` off a
@@ -2436,7 +2436,7 @@ func (c *checker) inferSelect(x *ast.SelectExpr) ir.Expr {
 
 	return &ir.Select{
 		AST:     x,
-		Type:    dynSpread(operand, "no field %q on %s", x.Field, operand),
+		Type:    TypInvalid,
 		Operand: operandExpr,
 		Field:   x.Field,
 	}
@@ -2448,13 +2448,13 @@ func (c *checker) inferIndex(x *ast.IndexExpr) ir.Expr {
 	if name, ok := c.namesDeclaration(x.Operand); ok {
 		c.resolveTypeArgs(x.Indices)
 		c.error(x.Pos, "type arguments are written where %s is called: %s[…](…)", name, name)
-		return &ir.Literal{Type: TypDyn}
+		return &ir.Literal{Type: TypInvalid}
 	}
 	operandExpr := c.checkExpr(x.Operand)
 	if len(x.Indices) != 1 {
 		c.error(x.Pos, "an index takes one value")
 	}
-	var indexExpr ir.Expr = &ir.Literal{Type: TypDyn}
+	var indexExpr ir.Expr = &ir.Literal{Type: TypInvalid}
 	if len(x.Indices) > 0 {
 		indexExpr = c.checkExpr(x.Indices[0])
 	}
@@ -2465,7 +2465,7 @@ func (c *checker) inferIndex(x *ast.IndexExpr) ir.Expr {
 	// and the fallback below would hand it back as dyn, which assigns to
 	// anything. Reported here so the message names the line it was written on.
 	if c.requireValueType(operand, x.Pos) {
-		return &ir.Index{AST: x, Type: TypDyn, Operand: operandExpr, Idx: indexExpr}
+		return &ir.Index{AST: x, Type: TypInvalid, Operand: operandExpr, Idx: indexExpr}
 	}
 
 	if operand.Kind == ir.TypeMap {
@@ -2494,11 +2494,11 @@ func (c *checker) inferIndex(x *ast.IndexExpr) ir.Expr {
 	switch operand.Kind {
 	case ir.TypeBool, ir.TypeInt, ir.TypeFloat, ir.TypeEnum, ir.TypeUnit, ir.TypeFunc:
 		c.error(x.Pos, "cannot index %s", operand)
-		return &ir.Index{AST: x, Type: TypDyn, Operand: operandExpr, Idx: indexExpr}
+		return &ir.Index{AST: x, Type: TypInvalid, Operand: operandExpr, Idx: indexExpr}
 	}
 	return &ir.Index{
 		AST:     x,
-		Type:    dynSpread(operand, "%s is not indexable", operand),
+		Type:    TypInvalid,
 		Operand: operandExpr,
 		Idx:     indexExpr,
 	}
@@ -2509,16 +2509,21 @@ func (c *checker) inferStructLit(x *ast.StructExpr) ir.Expr {
 	// whatever was expected, as `struct { … }{ … }` does.
 	if len(x.TypeArgs) > 0 {
 		nt := &ast.NamedType{Pos: x.Pos, Package: x.Package, Name: x.Name}
+		bad := false
 		for _, a := range x.TypeArgs {
 			te, ok := ast.TypeFromExpr(a)
 			if !ok {
 				c.error(*a.ExprPos(), "a type argument is a type: write a name, such as int or option[User]")
-				te = &ast.NamedType{Pos: *a.ExprPos(), Name: "dyn"}
+				bad = true
+				continue
 			}
 			nt.TypeArgs = append(nt.TypeArgs, te)
 		}
 		saved := c.expected
-		c.expected = c.resolveType(nt)
+		c.expected = TypInvalid
+		if !bad {
+			c.expected = c.resolveType(nt)
+		}
 		defer func() { c.expected = saved }()
 	}
 	var sd *ir.StructDef
@@ -2530,11 +2535,11 @@ func (c *checker) inferStructLit(x *ast.StructExpr) ir.Expr {
 		if x.Native != nil {
 			var bad bool
 			if bad, sd = c.nativeStructDef(x, sd); bad {
-				return &ir.Literal{Type: TypDyn}
+				return &ir.Literal{Type: TypInvalid}
 			}
 		} else if sd != nil && x.Name != "" && x.Name != sd.Name {
 			c.error(x.Pos, "encoded value is a %s, but a %s was expected", x.Name, sd.Name)
-			return &ir.Literal{Type: TypDyn}
+			return &ir.Literal{Type: TypInvalid}
 		}
 	} else if x.Anon != nil {
 		// `struct { a int }{a = 1}` spells its own type, which wins over
@@ -2548,7 +2553,7 @@ func (c *checker) inferStructLit(x *ast.StructExpr) ir.Expr {
 			if ns, ok := sym.(*ir.Namespace); ok && ns.Pkg != nil {
 				if tsym, ok := ns.Pkg.Symbols.LookupMemberType(x.Name); ok {
 					if c.rejectUnexported(x.Pos, tsym) {
-						return &ir.Literal{Type: TypDyn}
+						return &ir.Literal{Type: TypInvalid}
 					}
 					if s, ok := tsym.(*ir.StructDef); ok {
 						sd = s
@@ -2565,7 +2570,7 @@ func (c *checker) inferStructLit(x *ast.StructExpr) ir.Expr {
 		// be right.
 		if sd == nil {
 			c.error(x.Pos, "undefined: %s.%s", x.Package, x.Name)
-			return &ir.Literal{Type: TypDyn}
+			return &ir.Literal{Type: TypInvalid}
 		}
 	} else if x.Name != "" {
 		if sym, ok := c.scope.Lookup(x.Name); ok {
@@ -2605,7 +2610,7 @@ func (c *checker) inferStructLit(x *ast.StructExpr) ir.Expr {
 			// resulting value at codegen time.
 			if sd != nil {
 				srcType := exprType(val)
-				if srcType != nil && srcType.Kind != ir.TypeDyn && srcType.Kind != ir.TypeInvalid {
+				if srcType != nil && srcType.Kind != ir.TypeInvalid {
 					// An anonymous struct is its fields, not its declaration: each
 					// `struct { v T }` written, and each substitution of one, is a
 					// declaration of its own.
@@ -2777,7 +2782,7 @@ func (c *checker) inferListLit(x *ast.ListExpr) ir.Expr {
 			return &ir.ListLit{AST: x, Type: c.expected, Elems: nil}
 		}
 		c.error(x.Pos, "cannot infer element type of empty list literal; add a type annotation")
-		return &ir.ListLit{AST: x, Type: c.listOf(TypDyn)}
+		return &ir.ListLit{AST: x, Type: c.listOf(TypInvalid)}
 	}
 	var elemExpected *ir.Type
 	if c.expected != nil && c.expected.Kind == ir.TypeList && len(c.expected.Elems) > 0 {
@@ -2828,13 +2833,13 @@ func (c *checker) checkListSpread(sp *ast.SpreadExpr, elemExpected *ir.Type) (*i
 	t := exprType(operand)
 	out := &ir.Spread{AST: sp, Type: t, Operand: operand}
 	switch {
-	case t.Kind == ir.TypeDyn:
+	case t.Kind == ir.TypeInvalid:
 		return out, t
 	case t.Kind == ir.TypeList && len(t.Elems) == 1:
 		return out, t.Elems[0]
 	}
 	c.error(sp.Pos, "cannot spread %s into a list literal: the operand must be a list", t)
-	return out, TypDyn
+	return out, TypInvalid
 }
 
 // unifyListElem folds one element's type into the literal's element type so
@@ -2846,7 +2851,7 @@ func (c *checker) unifyListElem(have, got, expected *ir.Type, pos ast.Pos) *ir.T
 	switch {
 	case have == nil:
 		return got
-	case got.Kind == ir.TypeDyn || have.Kind == ir.TypeDyn || got.IsAssignableTo(have):
+	case got.Kind == ir.TypeInvalid || have.Kind == ir.TypeInvalid || got.IsAssignableTo(have):
 		return have
 	case have.IsAssignableTo(got):
 		return got
@@ -2867,11 +2872,11 @@ func (c *checker) inferMapLit(x *ast.MapLit) ir.Expr {
 	// from its own entries. A struct expected type is always wrong.
 	if c.expected != nil && c.expected.Kind == ir.TypeStruct {
 		c.error(x.Pos, "map literal cannot be used where a struct is expected")
-		return &ir.MapLitIR{AST: x, Type: c.mapOf(TypDyn, TypDyn), Entries: nil}
+		return &ir.MapLitIR{AST: x, Type: c.mapOf(TypInvalid, TypInvalid), Entries: nil}
 	}
 	if c.expected == nil || c.expected.Kind != ir.TypeMap {
 		c.error(x.Pos, "anonymous map literal requires an expected type from context")
-		return &ir.MapLitIR{AST: x, Type: c.mapOf(TypDyn, TypDyn), Entries: nil}
+		return &ir.MapLitIR{AST: x, Type: c.mapOf(TypInvalid, TypInvalid), Entries: nil}
 	}
 	if len(x.Entries) == 0 {
 		return &ir.MapLitIR{AST: x, Type: c.expected, Entries: nil}
@@ -2913,7 +2918,7 @@ func interpPartAlreadyString(t *ir.Type) bool {
 		return true
 	}
 	switch t.Kind {
-	case ir.TypeString, ir.TypeDyn:
+	case ir.TypeString, ir.TypeInvalid:
 		return true
 	}
 	return false
@@ -3094,7 +3099,7 @@ func (c *checker) inferTypeParams(at ast.Pos, sig *ir.FuncSig, args ast.ArgList,
 	bindings := make(map[string]*ir.Type, len(written))
 	maps.Copy(bindings, written)
 	bind := func(p *ir.Param, t *ir.Type) {
-		if p != nil && t != nil && t.Kind != ir.TypeDyn {
+		if p != nil && t != nil && t.Kind != ir.TypeInvalid {
 			ir.BindTypeParams(p.Type, t, bindings)
 		}
 	}
@@ -3142,7 +3147,7 @@ func (c *checker) inferTypeParams(at ast.Pos, sig *ir.FuncSig, args ast.ArgList,
 	// Arguments come first on purpose. An argument states the type directly,
 	// while the expected type states what the result has to be assignable to,
 	// and the two disagree wherever a conversion would have been applied.
-	if c.expected != nil && c.expected.Kind != ir.TypeDyn {
+	if c.expected != nil && c.expected.Kind != ir.TypeInvalid {
 		ir.BindTypeParams(sig.Return, c.expected, bindings)
 	}
 	c.checkConstraints(at, sig.TypeParams, bindings)
@@ -3222,7 +3227,7 @@ func (c *checker) bindArgs(callPos ast.Pos, args []ast.ArgOrEventHandler, sig *i
 		if t := sig.Params[variadic].Type; t != nil && t.Kind == ir.TypeList && len(t.Elems) == 1 {
 			return t.Elems[0]
 		}
-		return TypDyn
+		return TypInvalid
 	}
 
 	for _, a := range args {
@@ -3239,7 +3244,7 @@ func (c *checker) bindArgs(callPos ast.Pos, args []ast.ArgOrEventHandler, sig *i
 			if variadic >= 0 && !seenNamed && positional >= variadic {
 				elem := variadicElem()
 				operand = c.checkExprExpecting(sp.Operand, c.listOf(elem))
-				if t := exprType(operand); t != nil && (t.Kind == ir.TypeList || t.Kind == ir.TypeDyn) {
+				if t := exprType(operand); t != nil && (t.Kind == ir.TypeList || t.Kind == ir.TypeInvalid) {
 					if t.Kind == ir.TypeList && len(t.Elems) == 1 && !t.Elems[0].IsAssignableTo(elem) {
 						c.error(sp.Pos, "cannot spread %s into ...%s", t, elem)
 						ok = false
@@ -3686,7 +3691,7 @@ func (c *checker) checkLocalVarDecl(decl *ast.VarDecl) []ir.Stmt {
 				c.error(decl.Pos, "context value cannot be captured into a local var (read at use site instead)")
 			}
 			initExpr = c.coerce(spec.Default, initExpr, typ, initSlot(decl.Pos))
-			if exprType(initExpr).Kind != ir.TypeVoid && typ.Kind != ir.TypeDyn {
+			if exprType(initExpr).Kind != ir.TypeVoid && typ.Kind != ir.TypeInvalid {
 				initExpr = wrapIfNeeded(initExpr, typ)
 			}
 			typ = c.typeFromInit(typ, initExpr, *spec.Default.ExprPos())
@@ -3743,7 +3748,7 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 			// Compound assignment: both sides must be numeric (or string for +=).
 			// The value type must be assignable to the target type so that any
 			// implicit numeric widening is materialized as ir.Conversion.
-			if targetType.Kind != ir.TypeDyn && valueType.Kind != ir.TypeDyn {
+			if targetType.Kind != ir.TypeInvalid && valueType.Kind != ir.TypeInvalid {
 				if x.Op == ast.AssignAdd && targetType.Kind == ir.TypeString {
 					// string += string is fine.
 				} else if !targetType.IsNumeric() || !valueType.IsNumeric() {
@@ -3764,7 +3769,7 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 		targetExpr := c.checkExpr(x.Target)
 		restoreLvalue()
 		t := exprType(targetExpr)
-		if t != nil && t.Kind != ir.TypeBool && t.Kind != ir.TypeDyn && t.Kind != ir.TypeInvalid {
+		if t != nil && t.Kind != ir.TypeBool && t.Kind != ir.TypeInvalid {
 			c.error(x.Pos, "toggle target must be bool, got %s", t)
 		}
 		c.refuseNodePropAssign(targetExpr, x.Pos, "toggle")
@@ -3987,7 +3992,7 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 			condExpr = c.checkExpr(x.Cond)
 			condType = ret
 		}
-		if condType.Kind != ir.TypeDyn && condType.Kind != ir.TypeBool {
+		if condType.Kind != ir.TypeInvalid && condType.Kind != ir.TypeBool {
 			c.error(x.Pos, "if condition must be bool, got %s", condType)
 		}
 		thenFacts := map[narrowKey]narrowFact{}
@@ -4095,7 +4100,7 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 			c.declare(x.Pos, valueSym)
 		}
 
-		elemType := TypDyn
+		elemType := TypInvalid
 		switch iter.Kind {
 		case ir.TypeList:
 			if len(iter.Elems) > 0 {
@@ -4130,20 +4135,20 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 				declValue(iter.Elems[1])
 				elemType = iter.Elems[1]
 			}
-		case ir.TypeDyn:
+		case ir.TypeInvalid:
 			if x.Value != "" {
-				declKey(TypDyn)
-				declValue(TypDyn)
+				declKey(TypInvalid)
+				declValue(TypInvalid)
 			} else {
-				declKey(TypDyn)
+				declKey(TypInvalid)
 			}
 		default:
 			c.error(x.Pos, "for iterator must be list, iter, or map; got %s", iter)
 			if x.Value != "" {
-				declKey(TypDyn)
-				declValue(TypDyn)
+				declKey(TypInvalid)
+				declValue(TypInvalid)
 			} else {
-				declKey(TypDyn)
+				declKey(TypInvalid)
 			}
 		}
 		c.loopDepth++
@@ -4497,7 +4502,7 @@ func (c *checker) buildErrorHandler(eh *ast.EventHandler) *ir.EventHandler {
 			c.rejectBindDefault(ast.Pos(*p.Default.ExprPos()), bindParamWhat(p.Name, "@"+eh.Name), "the error")
 		}
 		typ := c.resolveType(p.Type)
-		if typ == nil || typ.Kind == ir.TypeDyn {
+		if typ == nil || typ.Kind == ir.TypeInvalid {
 			typ = errEvtType
 		}
 		params[i] = &ir.Param{Name: p.Name, Type: typ}
@@ -5473,7 +5478,7 @@ func (c *checker) checkComponentCallArgs(call *ast.CallExpr, comp *ir.Component)
 			c.refuseConstParams(arg.Params.Params, "a handler's")
 			for i, p := range arg.Params.Params {
 				typ := c.resolveType(p.Type)
-				if typ.Kind == ir.TypeDyn && i < len(want) && want[i].Type != nil {
+				if typ.Kind == ir.TypeInvalid && i < len(want) && want[i].Type != nil {
 					typ = want[i].Type
 				}
 				c.declare(p.Pos, &ir.Param{Name: p.Name, Type: typ})
@@ -5743,7 +5748,7 @@ func (c *checker) checkHeadlessFor(x *ast.ForStmt, cond ir.Expr) *ir.For {
 		elseBody = c.checkScopeBlockIR(&x.Else)
 	}
 	c.popScope()
-	return &ir.For{AST: x, Iter: cond, ElemType: TypDyn, Body: body, Else: elseBody}
+	return &ir.For{AST: x, Iter: cond, ElemType: TypInvalid, Body: body, Else: elseBody}
 }
 
 // checkViewMapFor reports a loop over a map written in a view body. It is the
@@ -5791,8 +5796,8 @@ func (c *checker) checkViewForElse(pos ast.Pos, loop *ir.For, iter *ir.Type) {
 	switch {
 	case ir.SeqIntrinsic(loop) != "":
 		c.error(pos, "`for … else` over %s needs a literal non-zero step: which comparison says \"empty\" depends on the step's sign, and the else is decided when this compiles", ir.SeqIntrinsic(loop))
-	case iter.Kind == ir.TypeDyn:
-		c.error(pos, "`for … else` over dyn cannot be written in a view body: the else renders when the iterable yields nothing, and dyn says nothing about how to ask -- give the iterable a list, map or sngl:seq type")
+	case iter.Kind == ir.TypeInvalid:
+		// Reported where the iterable went wrong.
 	default:
 		c.error(pos, "`for … else` over %s cannot be written in a view body: the else renders when the iterable yields nothing, and a pull sequence reports that only by consuming an element -- iterate a list, a map, or a sngl:seq range", iter)
 	}
