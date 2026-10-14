@@ -4140,14 +4140,27 @@ anonymous `StructDef` with no name), since its fields mean the parameters in
 scope where it was written: two declarations each writing `struct { v T }`
 name two `T`s, where interning by the field signature had handed the second
 the first one's, constraint and all. `Type.Substitute` substitutes it field
-by field into another un-interned declaration, `bindTypeParams` and
-`ir.UnifyTypeParams` bind `T` from the argument's field by name (`ir.FieldsOf`,
-so `{v=1}` and a named struct with a `v` bind alike), and `HasTypeParam`
-reads its fields; `Type.Equal` needed nothing, comparing anonymous structs by
-fields already. A constraint naming a type parameter is this same struct. A
+by field into another un-interned declaration, `ir.BindTypeParams` binds `T`
+from the argument's field by name (`ir.FieldsOf`, so `{v=1}`, a named struct
+with a `v` and a `T` constrained to one bind alike), and `HasTypeParam` reads
+its fields; `Type.Equal` needed nothing, comparing anonymous structs by
+fields already.
+
+**A type is walked by `ir.Type.Any` and rebuilt by `ir.Type.MapChildren`**
+(`ir/typewalk.go`), and nothing else restates which types are inside one:
+the elements, the signature's parameters and result, and an un-interned
+anonymous struct's fields. `HasTypeParam`, `Substitute`, the monomorphizer's
+struct rewrite and `passAnonStructs` are each a predicate or a rewrite handed
+to one of the two. They were six walks, and each one written after
+anonymous structs could hold a `T` had to remember the fields --
+`mentionsTypeParam`, a seventh, did not, so a component's prop typed
+`struct { v T }` bound nothing. The checker's and the monomorphizer's
+binders are one `ir.BindTypeParams` for the same reason; the monomorphizer
+treats a binding that names a type parameter as none. A constraint naming a type parameter is this same struct. A
 substitution that makes one concrete names a declaration no package declares,
-so the always-on `passAnonStructs` points it, after `passMonomorphize`, at the
-package's interned struct with those fields, declaring one under the name the
+so the always-on `passAnonStructs` points it, after every pass that copies a
+body at bound types and before any that names a struct (`NoStructSpread`
+names a merge helper for one), at the package's interned struct with those fields, declaring one under the name the
 checker would have given it (`ir.AnonStructBaseName`) -- giving the
 instantiation a generic declaration's `Elems` instead would have made
 `Box__int`-style copies, a second host type beside the literal's that Go and
@@ -4163,16 +4176,32 @@ declaration. A value the optimizer folds out of a generic body carries the type
 its literal was checked at there, `struct { v T }`, so `irFromValue` takes the
 type the call was checked at instead, and its fields' types for the fields'
 values -- read off the values, `wrap[option[int]](3)` was a
-`struct { v int }`. And nothing copies a *component* per instantiation: one
-built at run time is emitted once with T erased, which cannot spell such a
-struct, so on a target not holding `genericComponents` (Go and Kotlin; html
-holds it under any `--lang`, its instances being the page's JavaScript) a
-generic component elected a runtime instance whose props, event parameters,
-slot parameters or state name one is refused at the instantiation
-(`refuseGenericAnonProps`,
+`struct { v int }`. **A generic component is spliced at the types its call site bound**
+(`ir.InstantiateStmts`, `ir.ComponentBindings` off `NodeInst.TypeArgs`): the
+optimizer's `inlineComponentCall`, `passInlinePure` and
+`passNoInlineComponents` all copy its body that way (`splicedBody`,
+`cloneHoistedVar`), and the latter instantiates each method it hoists. Left
+as written, its state and methods reached Go as `any` and Kotlin as an
+unnamed type -- a plain `var held T` too, which is older than anonymous
+structs (`generic_anon_struct.txtar`'s `tally`).
+
+Nothing copies a component *built at run time* per instantiation: it is
+emitted once with T erased, which cannot spell such a struct, so on a target
+not holding `genericComponents` (Go and Kotlin; html holds it under any
+`--lang`, its instances being the page's JavaScript) one that names such a
+struct anywhere -- a prop, an event's or slot's parameter, its state, a
+method's signature, a value its bodies build -- is refused at the
+instantiation (`refuseGenericAnonProps`,
 `cmd/sngl/testdata/generic_anon_struct_runtime_instance_refused.txt`). The
 same erasure already breaks a `list[T]` prop on fyne, whose `[]any` field takes
 no `[]int`; copying a component per instantiation is what would answer both.
+
+**`==` is `interp.Equal`, in the interpreter and in the optimizer's fold**: a
+struct field by field by name, a list element by element, a number by value.
+It says where it cannot answer (a map, two scalars of different kinds), which
+the fold leaves to run and the interpreter compares by rendered form as it
+always did. Two copies had drifted: the fold compared a struct's pointer and
+panicked on a list.
 
 **A unit's members are its bases, and they are registered like any other
 declaration's.** A unit value is a magnitude per base (`ir/units.go`): `unit measurement { px, em, rem }` declares three bases, so a

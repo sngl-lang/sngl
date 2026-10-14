@@ -314,3 +314,21 @@ Found in a second review:
 Not this work's: a directory-imported package and the program importing it
 each declare an interned `struct { v int }` under one name, and Go reports it
 redeclared.
+
+Found in a third review:
+
+- [X] A component's prop bound nothing from `struct { v T }`:
+  `mentionsTypeParam` was a second copy of `HasTypeParam` that did not read an
+  anonymous struct's fields. Every type walk is now `ir.Type.Any` or
+  `ir.Type.MapChildren`, and the checker's and monomorphizer's binders are one
+  `ir.BindTypeParams`.
+- [X] A generic component spliced where it is written kept `struct { v T }`,
+  and a plain `T`, in its state and methods; it is spliced at its call site's
+  types by all three splicers.
+- [X] The run-time refusal missed a method's signature and what a body builds;
+  it reads every type the component holds.
+- [X] The fold's `==` and the interpreter's were two copies; both are
+  `interp.Equal`.
+
+Not this work's: a parameter default holding a nested `T{}`, `{v=T{}}` or
+`[T{}]`, evaluates to `{}`.
