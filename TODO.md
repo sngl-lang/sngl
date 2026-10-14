@@ -76,19 +76,26 @@ Re-measure the affected workload after each step and note the number here.
    on the `Config` what an earlier `Optimize` folded and skip it.
 
 6. [ ] **Narrow the library passes, then share what no build reaches.**
-   Measured before starting (TestGolden after step 4): the clone is 2.14 GB
-   and 5.1 s CPU, library IR 64-91% of it. But every build *writes* most of
-   the library it copies: on `examples/todo` 85 of 142 library declarations
-   (~90% by weight) change between the clone and codegen, nearly all in the
-   first `optimize.Optimize` -- `foldPkg` folds every imported package
-   (0.84 GB, 1.46 s; it rewrites `ui.tabs` and `time.parseDate` for a program
-   using neither), and `SpecializeOverriddenBodies`, `DataFamilies` and
-   `InstallOverlay` write every declaration they touch. A program reaches
-   about two thirds of the library (`tmp/reachscan`), and that two thirds is
-   what specialization and folding write by design, so the shareable part is
-   the unreached third: ~0.5-0.9 GB and 2-3.5 s, not the 34% first assumed.
-   `foldPkg`'s 0.84 GB counted both optimizes; step 5 took the second's
-   0.38 GB, so re-measure before starting.
+   Every build *writes* most of the library it copies: on `examples/todo` 85
+   of 142 library declarations (~90% by weight) change between the clone and
+   codegen, 83 of them in the first `optimize.Optimize` -- `foldPkg` folds
+   every imported package (it rewrites `ui.tabs` and `time.parseDate` for a
+   program using neither), and `SpecializeOverriddenBodies`, `DataFamilies`
+   and `InstallOverlay` write every declaration they touch. A program reaches
+   65-69% of the library's objects (`tmp/reachscan`), a third of those through
+   the program's overlay, which holds every override a target declares; what
+   it reaches is what specialization and folding write by design, so the
+   shareable part is the unreached rest.
+   Re-measured at e6e1a36e2 (TestGolden, step 5 in): 5.56 GB, 22.9 s user.
+   The clone is 2.19 GB and 2.9 s CPU in the profile (6.2 s and 2.29 GB on
+   one core, collection included). The first optimize is 1.21 s and 541 MB on
+   one core: the library fold 0.71 s / 311 MB, the program's own 0.08 s /
+   65 MB, `SpecializeOverriddenBodies` 0.12 s / 46 MB, `DataFamilies` 0.11 s /
+   72 MB, `InstallOverlay` 0.03 s. The second is 0.63 s / 220 MB, folds no
+   library, and runs `SpecializeOverriddenBodies` (0.11 s / 47 MB) and
+   `DataFamilies` (0.09 s / 55 MB) again. (Step 4's numbers were 2.14 GB and
+   5.1 s for the clone, and 0.84 GB / 1.46 s for `foldPkg` over both
+   optimizes.)
    Owner's decisions:
    - Two parts. (1) `foldPkg`, `SpecializeOverriddenBodies` and
      `DataFamilies` touch only the library declarations the program reaches;
@@ -105,6 +112,10 @@ Re-measure the affected workload after each step and note the number here.
      steps.
      `tmp/writescan` is the probe: the file and a patch to `emitTarget` that
      reports, per phase, which library declarations a build wrote.
+   - [X] (1) `foldPkg`, `SpecializeOverriddenBodies` and `DataFamilies` touch
+     only the library declarations the program reaches (`ir.ReachedFrom`).
+   - [ ] (2) The clone copies the program and the library declarations it
+     reaches, sharing the rest frozen.
 
 7. [ ] **passInlinePure clones slot content into both branches.**
    `ir.SlotSplicer.Substitute` / `lower.deepCloneStmts`: 2.8 GB (22%) of the
@@ -180,3 +191,22 @@ Re-measure the affected workload after each step and note the number here.
    `internal/interp/...`, `internal/playground/...` and `internal/lsp/...`
    green; `TestImportedPackageIsFoldedOncePerConfig` fails with the skip
    removed.
+
+6. (1) **Library passes narrowed to what the program reaches** -- TestGolden
+   5.56 -> 5.20 GB allocated; two unprofiled pairs 21.7 -> 20.8 and 21.9 ->
+   20.6 s user. In the profile `optimize.Optimize` is 729 MB / 1.53 s -> 282 MB
+   / 0.71 s: `foldPkg` 449 -> 160 MB, `DataFamilies` 123 -> 32 MB,
+   `SpecializeOverriddenBodies` 89 MB -> under the profile's threshold (it now
+   iterates the reached set instead of every library symbol table).
+   `ir.ReachedFrom` itself is 15 MB / 0.10 s; a reflective walk tried first
+   cost 271 MB / 1.15 s, more than it saved. On `examples/todo` the first
+   optimize writes 7 of 142 library declarations, down from 83, and a build 34,
+   down from 85: the rest are lowering's (`SpecializeForTarget` swaps every
+   override in the library), which part (2) meets. No golden moved; docs site
+   byte-identical (1187 files), 25.6 s CPU before and after, allocation within
+   run-to-run noise (the site reaches most of the library). `go test ./...`
+   green. `TestUnreachedImportsAreLeftAlone` fails on each of its three
+   assertions when the matching pass is given everything;
+   `TestImportedPackageIsFoldedOncePerConfig` now plants in `ui.window`'s
+   `title` default, which the program reaches (step 5's `sngl:time` func was
+   unreached), and still fails with step 5's skip removed.

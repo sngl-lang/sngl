@@ -33,12 +33,26 @@ func SpecializeForTarget(pkg *Package, platform, language string) {
 // early changes what the optimizer sees for every stdlib component in every
 // build, which is a different change than this one. So the early pass moves
 // only what a program overrode.
-func SpecializeOverriddenBodies(pkg *Package, platform, language string) {
+//
+// Given a reach, it moves only what that holds.
+func SpecializeOverriddenBodies(pkg *Package, platform, language string, reach *Reached) {
 	if pkg == nil || (platform == "" && language == "") {
 		return
 	}
 	InstallOverlay(pkg)
-	specializePkgBodies(pkg, target{platform, language}, map[*Package]struct{}{}, true)
+	t := target{platform, language}
+	if reach == nil {
+		specializePkgBodies(pkg, t, map[*Package]struct{}{}, true)
+		return
+	}
+	for sym := range reach.decls {
+		switch decl := sym.(type) {
+		case *Component:
+			specializeComp(decl, t, true)
+		case *Func:
+			specializeFunc(decl, t, true)
+		}
+	}
 }
 
 // target is the build's two axes. A declaration may be overridden on either,

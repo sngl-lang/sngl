@@ -316,7 +316,7 @@ func sameType(a, b *ir.Type) bool {
 func Prepare(pkg *ir.Package) (*ir.Package, error) {
 	pkg = ir.ClonePackage(pkg)
 	ir.SpecializeForTarget(pkg, InterpreterPlatform, "")
-	if err := lower.DataFamilies(pkg, nil); err != nil {
+	if err := lower.DataFamilies(pkg, nil, nil); err != nil {
 		return pkg, err
 	}
 	return pkg, lower.RefParams(pkg)
