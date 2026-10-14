@@ -126,8 +126,8 @@ Re-measure the affected workload after each step and note the number here.
      - [X] `interp.Prepare`.
      - [X] The batch snapshot paths.
      - [X] The LSP color fold.
-     - [ ] The fixture fold, `sngl test`'s per-group copy (`ClonePackage`
-       today).
+     - [X] The fixture fold.
+     - [ ] `sngl test`'s per-group copy (`ClonePackage` today).
 
 7. [ ] **passInlinePure clones slot content into both branches.**
    `ir.SlotSplicer.Substitute` / `lower.deepCloneStmts`: 2.8 GB (22%) of the
@@ -268,3 +268,7 @@ Re-measure the affected workload after each step and note the number here.
    does not reach and every override: its copy in the color tests 1.5 ->
    0.64 MB per fold. The fold hands back colors, not the package, so no test
    can see the copy without an allocation bound; none was added.
+
+   (2) **Fixture fold** copies for the html/js target it optimizes for:
+   `assertFolds` 13.5 -> 8.9 MB across `TestFixtures` (only `FOLD` fixtures
+   fold). It is the harness itself, so no test of its own.
