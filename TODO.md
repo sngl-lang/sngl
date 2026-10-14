@@ -124,8 +124,9 @@ Re-measure the affected workload after each step and note the number here.
      - [X] `ClonePackageFor`: `build.Emit`, dump, the playground, the docs
        preview and the snapshot compile paths.
      - [X] `interp.Prepare`.
-     - [ ] The batch snapshot paths, the LSP color fold, the
-       fixture fold, `sngl test`'s per-group copy (`ClonePackage` today).
+     - [X] The batch snapshot paths.
+     - [ ] The LSP color fold, the fixture fold, `sngl test`'s per-group copy
+       (`ClonePackage` today).
 
 7. [ ] **passInlinePure clones slot content into both branches.**
    `ir.SlotSplicer.Substitute` / `lower.deepCloneStmts`: 2.8 GB (22%) of the
@@ -256,3 +257,8 @@ Re-measure the affected workload after each step and note the number here.
    127 MB, since `ClonePackage` also copied every target's overrides), 3.3 ->
    1.1 s CPU. `TestPrepareSharesWhatTheProgramDoesNotReach` fails with
    `ClonePackage` back.
+
+   (2) **Batch snapshots** copy per target as `snapshotTarget` already did.
+   A target's copy of the five examples is 60% smaller than a whole one
+   (`tmp/copycost`: 83.9 -> 33.6 MB over 25 copies). No test reaches
+   `GenerateBatch` (android is its only implementer), so none was added.
