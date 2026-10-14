@@ -81,6 +81,29 @@ func Rewrite(root any, visit func(Node) (Node, error)) error {
 	return w.err
 }
 
+// RewriteBlocks hands fn every statement list the walk reaches from root,
+// innermost first, and writes back the list fn returns -- which may be longer
+// or shorter, as no node visit can be: it is how a pass splices a statement
+// out into the block it stood in. A []Stmt root is handed to fn too, but its
+// result is returned rather than written anywhere.
+func RewriteBlocks(root any, fn func([]Stmt) []Stmt) []Stmt {
+	w := rewriter{visit: func(n Node) (Node, error) { return n, nil }, block: fn}
+	if stmts, ok := root.([]Stmt); ok {
+		return w.stmts(stmts)
+	}
+	w.root(root)
+	return nil
+}
+
+// RewriteExpr is Rewrite over the expression e, returning what e became: a
+// bare Expr root is passed by value, so Rewrite cannot hand back a replaced
+// root and this can.
+func RewriteExpr(e Expr, visit func(Node) (Node, error)) (Expr, error) {
+	w := rewriter{visit: visit}
+	e = w.expr(e)
+	return e, w.err
+}
+
 // RewriteExprs rewrites only expressions; statements pass through unchanged.
 func RewriteExprs(root any, fn func(Expr) (Expr, error)) error {
 	return Rewrite(root, func(n Node) (Node, error) {
@@ -96,6 +119,9 @@ func RewriteExprs(root any, fn func(Expr) (Expr, error)) error {
 // error to surface (nil for SkipAll).
 type rewriter struct {
 	visit func(Node) (Node, error)
+	// block, when set, is handed each statement list once its statements
+	// have been walked, and what it returns replaces the list.
+	block func([]Stmt) []Stmt
 	done  bool
 	err   error
 }
@@ -304,6 +330,9 @@ func (w *rewriter) stmts(stmts []Stmt) []Stmt {
 			break
 		}
 		stmts[i] = w.stmt(stmts[i])
+	}
+	if w.block != nil && !w.done {
+		stmts = w.block(stmts)
 	}
 	return stmts
 }

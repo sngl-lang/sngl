@@ -397,11 +397,11 @@ func (c *checker) typeParamConstraint(sd *ir.StructDef, i int) *ir.Type {
 	if sd.AST == nil || i >= len(sd.AST.TypeParams) || sd.AST.TypeParams[i].Constraint == nil {
 		return nil
 	}
-	n := len(c.diags)
-	pop := pushTypeParams(c, sd.AST.TypeParams)
-	t := c.resolveConstraint(sd.AST.TypeParams[i].Constraint)
-	pop()
-	c.diags = c.diags[:n]
+	var t *ir.Type
+	c.quietly(func() {
+		defer pushTypeParams(c, sd.AST.TypeParams)()
+		t = c.resolveConstraint(sd.AST.TypeParams[i].Constraint)
+	})
 	return t
 }
 

@@ -3233,11 +3233,25 @@ func (c *checker) collectComponentDecls(comp *ast.ComponentDecl, irComp *ir.Comp
 // annotation is resolved again, and reported, where it is checked. A
 // component's var is registered before its body is read and checked with it,
 // and resolving it loudly in both said everything wrong with its type twice.
-func (c *checker) resolveTypeQuietly(te ast.TypeExpr) *ir.Type {
-	n := len(c.diags)
-	t := c.resolveType(te)
-	c.diags = c.diags[:n]
+func (c *checker) resolveTypeQuietly(te ast.TypeExpr) (t *ir.Type) {
+	c.quietly(func() { t = c.resolveType(te) })
 	return t
+}
+
+// checkExprQuietly checks e and reports nothing, for a read of its type ahead
+// of the check that reports it: a type parameter bound from an argument, a
+// name tested for what it denotes. Checked loudly in both, everything wrong
+// with the expression was said twice.
+func (c *checker) checkExprQuietly(e ast.Expr) (out ir.Expr) {
+	c.quietly(func() { out = c.checkExpr(e) })
+	return out
+}
+
+// quietly runs f and drops whatever it reported.
+func (c *checker) quietly(f func()) {
+	n := len(c.diags)
+	f()
+	c.diags = c.diags[:n]
 }
 
 // collectComponentVarDecl builds the pre-registered ir.Vars for one component
@@ -4394,11 +4408,11 @@ func (c *checker) declareBodyDecls(comp *ir.Component) {
 	// The symbols were declared, and a duplicate among them reported, when
 	// pass1 collected the body; this binds them again for every body read in
 	// that scope, and reporting again said it once a read.
-	n := len(c.diags)
-	for _, sym := range comp.BodyDecls {
-		c.declare(declPos(sym), sym)
-	}
-	c.diags = c.diags[:n]
+	c.quietly(func() {
+		for _, sym := range comp.BodyDecls {
+			c.declare(declPos(sym), sym)
+		}
+	})
 }
 
 // declareEnclosingBody declares, into comp's body scope, what the body comp
