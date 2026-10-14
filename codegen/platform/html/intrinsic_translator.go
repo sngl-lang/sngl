@@ -531,7 +531,8 @@ func (t *htmlTranslator) OnPropAssign(ctx context.Context, node ir.Expr, prop st
 // assignAttrs writes each attribute a wildcard map names, under the condition
 // that chose it where the map is a choice between maps. A branch removes what
 // another one writes, since the same statements patch the element when the
-// condition changes.
+// condition changes -- except a name the element declares as a prop of its
+// own, which that prop writes too.
 func (t *htmlTranslator) assignAttrs(ctx context.Context, written, node, value ir.Expr) []ir.Stmt {
 	var names []string
 	if !attrNames(value, &names) {
@@ -572,8 +573,9 @@ func (t *htmlTranslator) assignAttrChoice(ctx context.Context, node, value ir.Ex
 			set[k.Value] = true
 		}
 	}
+	decl := t.declOf(t.nodeRef(node))
 	for _, name := range names {
-		if !set[name] {
+		if !set[name] && elementProp(decl, name) == nil {
 			out = append(out, &ir.CallStmt{Call: &ir.Call{
 				Type:     ir.TypVoid,
 				Receiver: t.nodeRef(node),
