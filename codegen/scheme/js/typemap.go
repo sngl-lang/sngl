@@ -7,13 +7,11 @@ import (
 
 // tsTypeToIR maps a TS type-expression node to an SNGL IR type.
 //
-// Returns (TypDyn, "<reason>") for shapes SNGL cannot model precisely; the
-// caller marks the surrounding declaration Unusable. Returns nil with no
-// reason when the input node is itself nil (declaration without an annotation
-// — caller decides whether that means void or any).
+// Returns (TypInvalid, "<reason>") for shapes SNGL has no spelling for; the
+// caller marks the surrounding declaration Unusable with the reason.
 func (w *walker) tsTypeToIR(n *snglts.Node) (*ir.Type, string) {
 	if n == nil {
-		return ir.TypDyn, ""
+		return ir.TypInvalid, "no type annotation"
 	}
 	switch n.Kind {
 	case snglts.KindStringKeyword:
@@ -29,11 +27,11 @@ func (w *walker) tsTypeToIR(n *snglts.Node) (*ir.Type, string) {
 	case snglts.KindNullKeyword, snglts.KindUndefinedKeyword:
 		return ir.TypNull, ""
 	case snglts.KindAnyKeyword, snglts.KindUnknownKeyword:
-		return ir.TypDyn, ""
+		return ir.TypInvalid, "any and unknown say nothing of what they hold"
 	case snglts.KindNeverKeyword:
 		return ir.TypVoid, ""
 	case snglts.KindObjectKeyword:
-		return ir.TypDyn, "object keyword type not supported"
+		return ir.TypInvalid, "object keyword type not supported"
 
 	case snglts.KindLiteralType:
 		return literalTypeToIR(n)
@@ -42,9 +40,11 @@ func (w *walker) tsTypeToIR(n *snglts.Node) (*ir.Type, string) {
 		return w.tsTypeToIR(n.Type())
 
 	case snglts.KindArrayType:
-		elem, unusable := w.tsTypeToIR(n.Type())
+		// The element is the array node's own field: Type() reads no array,
+		// and answered nil, so `string[]` was imported as a list of nothing.
+		elem, unusable := w.tsTypeToIR(n.AsArrayTypeNode().ElementType)
 		if unusable != "" {
-			return ir.TypDyn, unusable
+			return ir.TypInvalid, unusable
 		}
 		return ir.ListOf(elem), ""
 
@@ -52,23 +52,23 @@ func (w *walker) tsTypeToIR(n *snglts.Node) (*ir.Type, string) {
 		return w.unionToIR(n)
 
 	case snglts.KindIntersectionType:
-		return ir.TypDyn, "intersection types not supported"
+		return ir.TypInvalid, "intersection types not supported"
 
 	case snglts.KindTupleType:
-		return ir.TypDyn, "tuple types not supported"
+		return ir.TypInvalid, "tuple types not supported"
 
 	case snglts.KindFunctionType:
-		return ir.TypDyn, "function-typed values not supported"
+		return ir.TypInvalid, "function-typed values not supported"
 
 	case snglts.KindTypeLiteral:
 		// Inline object type — could synth anonymous struct, but v1 keeps
 		// it dyn until we have a clean way to anchor it for LSP.
-		return ir.TypDyn, "inline object types not supported"
+		return ir.TypInvalid, "inline object types not supported"
 
 	case snglts.KindTypeReference:
 		return w.typeRefToIR(n)
 	}
-	return ir.TypDyn, "unsupported TS type kind"
+	return ir.TypInvalid, "unsupported TS type kind"
 }
 
 // unionToIR maps `T | null`, `T | undefined`, `T | null | undefined` to
@@ -84,11 +84,11 @@ func (w *walker) unionToIR(n *snglts.Node) (*ir.Type, string) {
 		nonNullables = append(nonNullables, t)
 	}
 	if !hasNullable || len(nonNullables) != 1 {
-		return ir.TypDyn, "union types not supported"
+		return ir.TypInvalid, "union types not supported"
 	}
 	inner, unusable := w.tsTypeToIR(nonNullables[0])
 	if unusable != "" {
-		return ir.TypDyn, unusable
+		return ir.TypInvalid, unusable
 	}
 	return ir.OptionOf(inner), ""
 }
@@ -104,7 +104,7 @@ func (w *walker) typeRefToIR(n *snglts.Node) (*ir.Type, string) {
 		if len(args) == 1 {
 			elem, unusable := w.tsTypeToIR(args[0])
 			if unusable != "" {
-				return ir.TypDyn, unusable
+				return ir.TypInvalid, unusable
 			}
 			return ir.ListOf(elem), ""
 		}
@@ -112,11 +112,11 @@ func (w *walker) typeRefToIR(n *snglts.Node) (*ir.Type, string) {
 		// Plain Promise<T> in non-return position: leave as dyn since
 		// SNGL has no top-level promise type. The function-decl path
 		// handles return-position promises separately.
-		return ir.TypDyn, "Promise type only supported as a function return"
+		return ir.TypInvalid, "Promise type only supported as a function return"
 	case "Date":
 		return ir.DateTimeType(), ""
 	case "Record", "Map":
-		return ir.TypDyn, "map/record types not supported"
+		return ir.TypInvalid, "map/record types not supported"
 	}
 	if sd, ok := w.structs[name]; ok {
 		return sd.SymType(), ""
@@ -124,7 +124,7 @@ func (w *walker) typeRefToIR(n *snglts.Node) (*ir.Type, string) {
 	if ed, ok := w.enums[name]; ok {
 		return ed.SymType(), ""
 	}
-	return ir.TypDyn, "unknown type reference: " + name
+	return ir.TypInvalid, "unknown type reference: " + name
 }
 
 // literalTypeToIR maps a TS LiteralType (e.g. `"foo"`, `42`, `null`) to
@@ -132,13 +132,13 @@ func (w *walker) typeRefToIR(n *snglts.Node) (*ir.Type, string) {
 func literalTypeToIR(n *snglts.Node) (*ir.Type, string) {
 	inner := firstChild(n)
 	if inner == nil {
-		return ir.TypDyn, "literal type"
+		return ir.TypInvalid, "literal type"
 	}
 	switch inner.Kind {
 	case snglts.KindNullKeyword:
 		return ir.TypNull, ""
 	}
-	return ir.TypDyn, "literal type"
+	return ir.TypInvalid, "literal type"
 }
 
 // isNullableTypeNode reports whether a type node represents `null` or

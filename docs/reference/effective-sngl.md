@@ -189,17 +189,13 @@ Any `node` will do. The compiler compiles the module and everything it imports
 itself, so TypeScript is already gone by the time node sees it — a `.ts` with
 an enum folds, and node's own type stripping never comes into it.
 
-Where the function's declared return type says what the value is, that type is
-what makes it well-typed. Where it does not — a Go `[]any`, a TypeScript
-`any[]` — a `go:` value still arrives typed, because the Go runtime can name
-the type it is: `reflect` gives the declaring package and the name in it, which
-is exactly what the `go:` importer keyed its declarations by. It writes that
-as `import("go:path/to/pkg").Type{…}`, which is not source you can write —
-only the reader the compiler points at a folded value accepts an import in
-expression position. A `js:` value cannot. A JavaScript value carries no link to the module that declared its
-type, a class name alone does not identify one, and a TypeScript interface has
-no runtime constructor at all — so an untyped `js:` element stays `dyn`, with
-the field names the source language used.
+The function's declared return type is what makes the value well-typed, and it
+has to say: a Go `[]any` or a TypeScript `any[]` names no SNGL type, so the
+importer marks a function returning one unusable rather than handing the
+program a value it could not type. A `go:` value is written back as
+`import("go:path/to/pkg").Type{…}`, the declaration the importer built for its
+runtime type, which is not source you can write — only the reader the compiler
+points at a folded value accepts an import in expression position.
 
 A folded value crosses as SNGL source, and a class can choose its own form with
 a `[Symbol.for("sngl.marshal")]()` method returning that source; for a class

@@ -67,14 +67,19 @@ type Type struct {
 
 // Predefined singleton types for primitives.
 var (
-	TypDyn    = &Type{Kind: TypeDyn}
-	TypBool   = &Type{Kind: TypeBool}
-	TypInt    = &Type{Kind: TypeInt}
-	TypFloat  = &Type{Kind: TypeFloat}
-	TypString = &Type{Kind: TypeString}
-	TypNull   = &Type{Kind: TypeNull}
-	TypVoid   = &Type{Kind: TypeVoid}
-	TypAny    = &Type{Kind: TypeAny}
+	// TypInvalid is the type of what has none: an expression the checker
+	// reported an error about, and a host declaration with no SNGL spelling,
+	// which is marked unusable. Nothing typed invalid reaches a program that
+	// checked clean.
+	TypInvalid = &Type{Kind: TypeInvalid}
+	TypDyn     = &Type{Kind: TypeDyn}
+	TypBool    = &Type{Kind: TypeBool}
+	TypInt     = &Type{Kind: TypeInt}
+	TypFloat   = &Type{Kind: TypeFloat}
+	TypString  = &Type{Kind: TypeString}
+	TypNull    = &Type{Kind: TypeNull}
+	TypVoid    = &Type{Kind: TypeVoid}
+	TypAny     = &Type{Kind: TypeAny}
 )
 
 // Sized numeric singletons. Plain int/float (TypInt/TypFloat) keep Bits==0.
