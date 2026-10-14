@@ -101,8 +101,10 @@ func holdsSpan(stmts []ir.Stmt) bool {
 // constructSlots makes a render slot of each primitive written where nothing
 // re-renders it whose #[construct] prop reads state: the prop cannot be
 // written once the element is built, so a change rebuilds the element, which
-// is what a slot's re-render does.
-func (st *reactivityState) constructSlots(stmts []ir.Stmt) []ir.Stmt {
+// is what a slot's re-render does. It runs before liftSlotBodies, which lifts
+// the primitive into an instance like any slot body that reads state, so what
+// else it reads is patched rather than rebuilt (synthesize).
+func (st *slotChildSynth) constructSlots(stmts []ir.Stmt) []ir.Stmt {
 	for i, s := range stmts {
 		switch n := s.(type) {
 		case *ir.NodeInst:
@@ -115,12 +117,12 @@ func (st *reactivityState) constructSlots(stmts []ir.Stmt) []ir.Stmt {
 				n.Slots[name].Body = st.constructSlots(n.Slots[name].Body)
 			}
 		case *ir.If:
-			if len(st.exprDeps(n.Cond)) == 0 {
+			if !st.readsCells(n.Cond) {
 				n.Body = st.constructSlots(n.Body)
 				n.Else = st.constructSlots(n.Else)
 			}
 		case *ir.For:
-			if len(st.exprDeps(n.Iter)) == 0 && !st.bodyNeedsSlot(n.Body) {
+			if !st.readsCells(n.Iter) && !st.armReadsCells(n.Body) && !st.armReadsCells(n.Else) {
 				n.Body = st.constructSlots(n.Body)
 				n.Else = st.constructSlots(n.Else)
 			}
@@ -135,12 +137,12 @@ func (st *reactivityState) constructSlots(stmts []ir.Stmt) []ir.Stmt {
 	return stmts
 }
 
-func (st *reactivityState) constructReadsState(n *ir.NodeInst) bool {
+func (st *slotChildSynth) constructReadsState(n *ir.NodeInst) bool {
 	if isInstanceNode(n) {
 		return false
 	}
 	for _, p := range n.Props {
-		if p.Name != "" && propIsConstruct(n.Component, p.Name) && len(st.exprDeps(p.Value)) > 0 {
+		if p.Name != "" && propIsConstruct(n.Component, p.Name) && st.readsCells(p.Value) {
 			return true
 		}
 	}

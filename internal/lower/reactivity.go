@@ -202,10 +202,6 @@ func lowerReactivity(pkg *ir.Package, caps Features, opts Options) error {
 		}
 		pkg.Body = st.slotFlows(pkg.Body)
 	}
-	for _, comp := range pkg.Components {
-		comp.Stmts = st.constructSlots(comp.Stmts)
-	}
-	pkg.Body = st.constructSlots(pkg.Body)
 	// Pass 1: collect reverse deps per owner scope.
 	for _, comp := range pkg.Components {
 		st.owner = compOwner{comp}
