@@ -391,9 +391,7 @@ func (c *checker) libPkg(name string) *ir.Package {
 	// only where it builds for the target or imports its package
 	// (mergeTargetExtensions replays it).
 	if _, _, isTarget := targetTierName(name); isTarget && !c.cfg.noTargets {
-		mark := len(c.diags)
-		c.mergeTargetExtensions(name)
-		c.diags = c.diags[:mark]
+		c.quietly(func() { c.mergeTargetExtensions(name) })
 		delete(c.hold.replayed, "merge:"+name)
 	}
 	return pkg

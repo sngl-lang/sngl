@@ -828,10 +828,11 @@ func (c *checker) finishBinary(x *ast.BinaryExpr, leftExpr, rightExpr ir.Expr) i
 			if typ.Kind != ir.TypeUnit {
 				typ = right
 			}
+		} else if !skip && (!left.IsNumeric() || !right.IsNumeric()) {
+			// Reported once: unifyNumeric would say it again, of the same pair.
+			c.error(x.Pos, "operator %s not defined for %s and %s", x.Op, left, right)
+			typ = TypDyn
 		} else {
-			if !skip && (!left.IsNumeric() || !right.IsNumeric()) {
-				c.error(x.Pos, "operator %s not defined for %s and %s", x.Op, left, right)
-			}
 			typ = c.unifyNumeric(left, right, x.Pos, x.Op)
 		}
 	case ast.BinMul:
@@ -5062,17 +5063,7 @@ func (c *checker) checkAndSplitArgs(args ast.ArgList, comp *ir.Component) ([]ir.
 	var handlers []ir.EventHandler
 	seen := make(map[string]ast.Pos)
 
-	// Build ordered prop list for positional binding.
-	// A wildcard prop has no position: it stands for names, and binding one
-	// positionally would give it a name nobody wrote.
-	var orderedProps []*ir.Prop
-	if comp != nil {
-		for _, p := range comp.Props {
-			if p.Wildcard == "" {
-				orderedProps = append(orderedProps, p)
-			}
-		}
-	}
+	argNames := argPropNames(args, comp)
 	boundProps := make(map[string]bool)
 	// Entries a wildcard prop collected, keyed by the prop's own name. Built
 	// alongside props and appended as one map arg once every name is in.
@@ -5134,8 +5125,7 @@ func (c *checker) checkAndSplitArgs(args ast.ArgList, comp *ir.Component) ([]ir.
 		}
 	}
 
-	positional := 0
-	for _, a := range args.Args {
+	for i, a := range args.Args {
 		switch arg := a.(type) {
 		case ast.Arg:
 			if arg.Name == "key" {
@@ -5166,20 +5156,17 @@ func (c *checker) checkAndSplitArgs(args ast.ArgList, comp *ir.Component) ([]ir.
 
 			if arg.Name == "" {
 				// Positional: bind to next prop slot (only when comp is known).
-				if comp == nil {
-					// No component context — pass through unchanged (dynamic call).
-					resolvedName = ""
-				} else if positional >= len(orderedProps) {
-					if arg.Value != nil {
-						c.error(*arg.Value.ExprPos(), "too many positional arguments")
+				// With no component it passes through unchanged (a dynamic
+				// call).
+				if comp != nil {
+					resolvedName = argNames[i]
+					if resolvedName == "" {
+						if arg.Value != nil {
+							c.error(*arg.Value.ExprPos(), "too many positional arguments")
+						}
+						continue
 					}
-					positional++
-					continue
-				} else {
-					p := orderedProps[positional]
-					resolvedName = p.Name
-					expected = p.Type
-					positional++
+					expected = componentPropType(comp, resolvedName)
 				}
 			} else {
 				resolvedName = arg.Name
