@@ -40,6 +40,7 @@ func lowerInlinePure(pkg *ir.Package, caps Features, opts Options) error {
 		platform: opts.Platform,
 		inFlight: map[*ir.Component]bool{},
 		stack:    nil,
+		owned:    soleInstances(pkg, caps, opts),
 	}
 	for _, comp := range pkg.Components {
 		st.hoist = &comp.Vars
@@ -95,6 +96,63 @@ type inlinePureState struct {
 	// with state of its own may not be substituted there -- it stays a runtime
 	// instance and the platform gives each row its own record.
 	loopDepth int
+	// owned is each program component one node instantiates, whose body that
+	// node's splice may take rather than copy, and spliced counts the spliced
+	// bodies the walk is inside: a node there may be one of several copies.
+	owned   map[*ir.Component]bool
+	spliced int
+}
+
+// soleInstances is each component the package declares that exactly one node
+// instantiates and no test takes. Taking its body empties the declaration, so
+// it is answered only where passNoInlineComponents runs next and drops what
+// nothing instantiates.
+func soleInstances(pkg *ir.Package, caps Features, opts Options) map[*ir.Component]bool {
+	if caps.InlineComponents || opts.StopAfter == "InlinePure" || (len(pkg.Body) == 0 && rootComponent(pkg, opts) == nil) {
+		return nil
+	}
+	uses := map[*ir.Component]int{}
+	_ = ir.Walk(pkg, func(n ir.Node) error {
+		switch n := n.(type) {
+		case *ir.NodeInst:
+			if n.Component != nil {
+				uses[n.Component]++
+			}
+		case *ir.Ident:
+			if c, ok := n.Sym.(*ir.Component); ok {
+				uses[c]++
+			}
+		}
+		return nil
+	})
+	tested := map[*ir.Component]bool{}
+	for _, fn := range pkg.Funcs {
+		if fn == nil || !fn.IsTest {
+			continue
+		}
+		for _, p := range fn.Params {
+			if p.Type == nil {
+				continue
+			}
+			if c, ok := p.Type.Decl.(*ir.Component); ok {
+				tested[c] = true
+			}
+		}
+	}
+	out := map[*ir.Component]bool{}
+	for _, c := range pkg.Components {
+		if uses[c] == 1 && !tested[c] && c.Name != opts.RootComponent && c.PkgPath() == "" {
+			out[c] = true
+		}
+	}
+	return out
+}
+
+// takesBody reports whether the splice being made may take comp's body: comp
+// is one node's alone, and that node is not inside a spliced body, which
+// could have been copied before it was walked.
+func (st *inlinePureState) takesBody(comp *ir.Component) bool {
+	return st.spliced == 0 && st.owned[comp] && !comp.RuntimeInstance
 }
 
 // viewReadVars is every var of comp's that its rendered tree reads.
@@ -454,6 +512,8 @@ func (st *inlinePureState) inlineNodeInst(n *ir.NodeInst) ([]ir.Stmt, error) {
 	}
 	// Recurse on substituted body (the wrapper's body may itself contain
 	// pure-component calls that need inlining).
+	st.spliced++
+	defer func() { st.spliced-- }()
 	return st.inlineStmts(body)
 }
 
@@ -595,10 +655,18 @@ func (st *inlinePureState) substitute(comp *ir.Component, callsite *ir.NodeInst)
 		}
 	}
 
-	// Deep-clone the wrapper body so substitution mutations don't leak
-	// across call sites.
+	var emitted map[string]struct{}
+	if len(callsite.Handlers) > 0 {
+		emitted = emittedHandlerNames(comp.Stmts)
+	}
 	provided := providedContextVars(comp, callsite.Props)
-	body := substituteVars(deepCloneStmts(comp.Stmts), provided)
+	var own []ir.Stmt
+	if st.takesBody(comp) {
+		own, comp.Stmts = comp.Stmts, nil
+	} else {
+		own = deepCloneStmts(comp.Stmts)
+	}
+	body := substituteVars(own, provided)
 
 	// Hoist the callee's own vars onto the owner being walked, one copy per
 	// call site. isPure let them through because nothing rendered reads them,
@@ -685,7 +753,6 @@ func (st *inlinePureState) substitute(comp *ir.Component, callsite *ir.NodeInst)
 	// explicit @name() emit in the body have been substituted in place above
 	// and are skipped here to avoid double-emission.
 	if len(callsite.Handlers) > 0 {
-		emitted := emittedHandlerNames(comp.Stmts)
 		var pending []ir.EventHandler
 		for _, h := range callsite.Handlers {
 			if _, ok := emitted[h.Name]; ok {

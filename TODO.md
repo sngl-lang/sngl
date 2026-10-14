@@ -119,18 +119,27 @@ Re-measure the affected workload after each step and note the number here.
      call site is replaced by the splice and nothing else holds it. Content
      inserted more than once, or beside a fallback or population that inserts
      slots of its own (spliced once per use), is still copied.
-   - [ ] b. What is left on the docs build after (a), 1.12 GB of
-     `deepCloneStmts`: passInlinePure copying the callee's body per call site
-     (541 MB, most of it md's `site`, whose body is one `nav.page` per file
-     and has one call site), content inserted more than once -- the two
-     branches of `markup.list` and `markup.listItem` -- (337 MB), and
-     passNoInlineComponents' slot splice (247 MB). The last cannot move as (a)
-     does: its call site's content is still read after the splice
-     (`markdown_document`'s golden changes, `Set__ctx_listDepth(… + 1)`
-     becoming `Set__p1(…)`), and 174 statements are already reachable twice
-     after that pass on TestGolden before any change. The first two need
-     either sharing IR (with the declaration, or between branches) or
-     changing html's overrides; owner's call.
+   - [X] b. Take the body of a component one node instantiates rather than
+     copy it, emptying the declaration: md's `site` and each page component.
+     Only where passNoInlineComponents runs next and drops what nothing
+     instantiates, so no lowered output shows an emptied declaration
+     (`TestLower`'s goldens, which have no root, showed `{}` before that
+     gate); only at a call site outside any spliced body, which may have been
+     copied before its own declaration was walked; never a component a test
+     takes or the harness root.
+   - [ ] c. What is left on the docs build after (b), 771 MB of
+     `deepCloneStmts`: content inserted more than once -- the two branches of
+     `markup.list` and `markup.listItem` (337 MB) -- and passNoInlineComponents'
+     slot splice (247 MB). The last cannot move as (a) does: its call site's
+     content is still read after the splice (`markdown_document`'s golden
+     changes, `Set__ctx_listDepth(… + 1)` becoming `Set__p1(…)`), and 174
+     statements are already reachable twice after that pass on TestGolden
+     before any change. The branches need sharing IR between them, which
+     later passes write in place, or html's overrides inserting once: an
+     `html.element(tag=ordered ? "ol" : "ul")` is refused before the
+     per-document fold decides `ordered` for md.document (`tag` and `attrs`
+     must be literals in `validateRawElements`), and a task item wraps its
+     content in a `div` a plain one does not, which no single insertion says.
 
 8. [ ] **`ExprCtx.WithLocal` clones its maps per local**
    (`codegen/exprctx.go:284`): 1.2 GB on the docs build. A parent-chained
@@ -215,3 +224,16 @@ not committed. Docs site byte-identical (1187 files); `go test ./...`
 green. Each case of `TestInlinePureMovesContentInsertedOnce` fails under
 its own revert: the call cloning again, the use count dropped, and the
 fallback check dropped.
+
+7b. **A sole instance takes its component's body** -- docs site 9.94 ->
+9.59 GB allocated, passInlinePure 973 -> 614 MB, `deepCloneStmts` 1.12 ->
+0.77 GB; four unprofiled pairs 28.3 -> 23.5, 30.2 -> 22.8, 25.4 -> 23.4 and
+25.2 -> 23.1 s user (the first two under load). TestGolden unchanged at
+5.49 GB, its programs instantiating little once each. A probe not
+committed found, over the root, internal, codegen and docs tests,
+`TestScript` and the docs build, 940 bodies taken, no node or identifier
+naming an emptied declaration at the end of lowering, and no statement
+reachable twice after the pass. Docs site byte-identical (1187 files);
+`go test ./...` green. `TestInlinePureTakesTheBodyOfASoleInstance` fails
+under each revert: taking nothing, dropping the use count, and dropping
+the spliced-body guard.
