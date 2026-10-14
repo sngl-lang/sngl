@@ -1037,7 +1037,9 @@ func (f *formatter) writeParams(pl ast.ParamList) {
 		}
 		widths := f.columnWidths(heads, lines)
 		for i, p := range pl.Params {
-			f.blankBeforeBodyItem(i, lines[i])
+			if f.blankBeforeListItem(lines, i) {
+				f.blankLine()
+			}
 			f.writeParamPadded(p, true, widths[i])
 			f.write(",")
 			f.writeTrailing(p.Trailing)
@@ -1152,12 +1154,21 @@ func (f *formatter) columnWidths(heads []string, lines []int) []int {
 		start = end
 	}
 	for i := 1; i < len(heads); i++ {
-		if lines[i] > 0 && f.doc != nil && f.doc.BlankBefore(lines[i]) {
+		if f.blankBeforeListItem(lines, i) {
 			flush(i)
 		}
 	}
 	flush(len(heads))
 	return out
+}
+
+// blankBeforeListItem reports whether the source left a blank line between
+// item i of a list and the one before it, lines being where each starts. An
+// item on its predecessor's line has none: the blank above that line is above
+// the list -- the one before a declaration whose parameters begin on its own
+// line -- and read as one, the list was split and its run of types ended.
+func (f *formatter) blankBeforeListItem(lines []int, i int) bool {
+	return i > 0 && lines[i] > lines[i-1] && f.doc != nil && f.doc.BlankBefore(lines[i])
 }
 
 // writeLeadingComments writes comments above whatever follows, one per line.
@@ -1180,7 +1191,9 @@ func (f *formatter) writeProps(pl ast.PropList) {
 		}
 		widths := f.columnWidths(heads, lines)
 		for i, p := range pl.Props {
-			f.blankBeforeBodyItem(i, lines[i])
+			if f.blankBeforeListItem(lines, i) {
+				f.blankLine()
+			}
 			f.writePropOrEventPadded(p, true, widths[i])
 			f.write(",")
 			f.writeTrailing(propComment(p))

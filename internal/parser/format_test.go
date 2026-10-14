@@ -397,3 +397,30 @@ func TestFormatDecrement(t *testing.T) {
 		"func foo() {\n    x--\n}",
 		"func foo() {\n    x--\n}")
 }
+
+// A list broken across lines by a multi-line type keeps no blank line its
+// source did not have between two items: the blank above the declaration is
+// above the item written on the declaration's own line, not between items,
+// and read as one it split the list in two and ended the run its types are
+// lined up over.
+func TestFormatParamsSplitOnTheirFirstLine(t *testing.T) {
+	assertFormat(t, `var n = 1
+
+component show(xs list[int], w struct {
+    v int
+}, @chose(w struct {
+    v int
+})) {}
+`, `var n = 1
+
+component show(
+    xs list[int],
+    w  struct {
+        v int
+    },
+    @chose(w struct {
+        v int
+    }),
+) {}
+`)
+}
