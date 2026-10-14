@@ -1,6 +1,8 @@
 package checker
 
 import (
+	"slices"
+
 	"duckfam.us/sngl/ast"
 	"duckfam.us/sngl/ir"
 )
@@ -41,7 +43,7 @@ func (c *checker) checkSlotEmptyAnswers(node *ir.NodeInst) {
 	if comp == nil {
 		return
 	}
-	asked := slotsAskedEmpty(comp)
+	asked := c.slotsAskedEmpty(comp)
 	if len(asked) == 0 {
 		return
 	}
@@ -59,17 +61,54 @@ func (c *checker) checkSlotEmptyAnswers(node *ir.NodeInst) {
 	}
 }
 
-// slotsAskedEmpty is the names of the slots comp's body asks `.empty` of.
-func slotsAskedEmpty(comp *ir.Component) map[string]bool {
-	var out map[string]bool
+// slotsAskedEmpty is the names of the slots comp's body asks `.empty` of,
+// directly or by forwarding the slot into one a component it renders asks of:
+// the forwarded content is what that question is answered from, so it has to
+// have an answer as much as content handed in directly.
+func (c *checker) slotsAskedEmpty(comp *ir.Component) map[string]bool {
+	if out, ok := c.askedEmpty[comp]; ok {
+		return out
+	}
+	if c.askedEmpty == nil {
+		c.askedEmpty = map[*ir.Component]map[string]bool{}
+	}
+	out := map[string]bool{}
+	c.askedEmpty[comp] = out // a recursion asks what it already found
+	own := func(s *ir.SlotDecl) bool {
+		return slices.Contains(comp.Slots, s)
+	}
 	_ = ir.WalkExprs(comp.Stmts, func(e ir.Expr) error {
-		if se, ok := e.(*ir.SlotEmpty); ok {
-			if out == nil {
-				out = map[string]bool{}
-			}
+		if se, ok := e.(*ir.SlotEmpty); ok && own(se.Slot) {
 			out[se.Slot.Name] = true
 		}
 		return nil
+	})
+	ir.WalkView(comp.Stmts, func(s ir.Stmt) bool {
+		node, ok := s.(*ir.NodeInst)
+		if !ok || node.Component == nil || node.Component == comp {
+			return true
+		}
+		asked := c.slotsAskedEmpty(node.Component)
+		for _, slot := range node.Component.Slots {
+			if !asked[slot.Name] {
+				continue
+			}
+			body, _, supplied := ir.SlotBody(&ir.SlotInst{Name: slot.Name, Rest: slot.Rest}, node)
+			if !supplied {
+				continue
+			}
+			answer, ok := ir.RendersNothing(body)
+			if !ok {
+				continue
+			}
+			_ = ir.WalkExprs(answer, func(e ir.Expr) error {
+				if se, ok := e.(*ir.SlotEmpty); ok && own(se.Slot) {
+					out[se.Slot.Name] = true
+				}
+				return nil
+			})
+		}
+		return true
 	})
 	return out
 }

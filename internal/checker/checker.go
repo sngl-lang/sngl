@@ -342,6 +342,8 @@ func CheckPackage(docs []*ast.Document, cfg *Config) (*ir.Package, []ir.Diagnost
 }
 
 type checker struct {
+	// askedEmpty memoizes slotsAskedEmpty per component.
+	askedEmpty map[*ir.Component]map[string]bool
 	// refBindable is the plain element variables of loops over an addressable
 	// list, which `&` could have bound to write the element.
 	refBindable map[*ir.LoopVar]bool

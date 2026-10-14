@@ -1,7 +1,8 @@
 // A slot is no value, so its name is read through only to ask `.empty`; a
 // scoped slot's content may turn on the arguments an insertion hands it,
 // which asking hands none; and content whose answer turns on what one copy of
-// a loop renders has no answer at the position.
+// a loop renders has no answer at the position, whether handed in directly
+// or forwarded to a component that asks.
 
 import . "sngl:ui"
 
@@ -25,6 +26,12 @@ component boxed(content ...component node) node {
     }
 }
 
+component forwards(content ...component node) node {
+    boxed {
+        content
+    }
+}
+
 component main node {
     var xs = [1, 2, 3]
     boxed { // ERROR(check) "boxed asks whether its content renders anything"
@@ -37,6 +44,13 @@ component main node {
     boxed {
         for var x = xs {
             text(value="{x}")
+        }
+    }
+    forwards { // ERROR(check) "forwards asks whether its content renders anything"
+        for var x = xs {
+            if x > 1 {
+                text(value="{x}")
+            }
         }
     }
 }

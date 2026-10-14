@@ -28,54 +28,63 @@ func lowerSlotEmptyProps(pkg *ir.Package, _ Features, _ Options) error {
 		slot string
 		prop *ir.Prop
 	}
-	props := map[*ir.Component][]asked{}
-	for _, c := range pkg.Components {
-		byName := map[string]*ir.Prop{}
-		var order []asked
-		_ = ir.RewriteExprs(c, func(e ir.Expr) (ir.Expr, error) {
-			se, ok := e.(*ir.SlotEmpty)
-			if !ok {
-				return e, nil
-			}
-			p := byName[se.Slot.Name]
-			if p == nil {
-				param := &ir.Param{Name: "__empty_" + se.Slot.Name, Type: ir.TypBool}
-				p = &ir.Prop{Name: param.Name, Type: ir.TypBool, Default: &ir.Literal{Type: ir.TypBool, Value: "true"}, DefaultWritten: true, Sym: param}
-				byName[se.Slot.Name] = p
-				order = append(order, asked{se.Slot.Name, p})
-				c.Props = append(c.Props, p)
-			}
-			return &ir.Ident{Name: p.Name, Type: ir.TypBool, Sym: p.Sym}, nil
-		})
-		if len(order) > 0 {
-			props[c] = order
+	byName := map[*ir.Component]map[string]*ir.Prop{}
+	// An answer handed to an instantiation may itself ask: content forwarding
+	// the caller's own slot renders nothing where that slot's content does
+	// (ir.RendersNothing). So the caller is handed its own answer in turn,
+	// round after round until no answer asks.
+	for {
+		fresh := map[*ir.Component][]asked{}
+		for _, c := range pkg.Components {
+			_ = ir.RewriteExprs(c, func(e ir.Expr) (ir.Expr, error) {
+				se, ok := e.(*ir.SlotEmpty)
+				if !ok {
+					return e, nil
+				}
+				props := byName[c]
+				if props == nil {
+					props = map[string]*ir.Prop{}
+					byName[c] = props
+				}
+				p := props[se.Slot.Name]
+				if p == nil {
+					param := &ir.Param{Name: "__empty_" + se.Slot.Name, Type: ir.TypBool}
+					p = &ir.Prop{Name: param.Name, Type: ir.TypBool, Default: &ir.Literal{Type: ir.TypBool, Value: "true"}, DefaultWritten: true, Sym: param}
+					props[se.Slot.Name] = p
+					fresh[c] = append(fresh[c], asked{se.Slot.Name, p})
+					c.Props = append(c.Props, p)
+				}
+				return &ir.Ident{Name: p.Name, Type: ir.TypBool, Sym: p.Sym}, nil
+			})
 		}
-	}
-	if len(props) == 0 {
-		return nil
-	}
-	return ir.Walk(pkg, func(n ir.Node) error {
-		inst, ok := n.(*ir.NodeInst)
-		if !ok {
+		if len(fresh) == 0 {
 			return nil
 		}
-		for _, a := range props[inst.Component] {
-			p := a.prop
-			decl := slotDeclOf(inst.Component, a.slot)
-			if decl == nil {
-				continue
+		err := ir.Walk(pkg, func(n ir.Node) error {
+			inst, ok := n.(*ir.NodeInst)
+			if !ok {
+				return nil
 			}
-			body, _, supplied := ir.SlotBody(&ir.SlotInst{Name: decl.Name, Rest: decl.Rest}, inst)
-			var answer ir.Expr = &ir.Literal{Type: ir.TypBool, Value: "true"}
-			if supplied {
-				if a, ok := ir.RendersNothing(deepCloneStmts(body)); ok {
-					answer = a
-				} else {
-					answer = &ir.Literal{Type: ir.TypBool, Value: "false"}
+			for _, a := range fresh[inst.Component] {
+				decl := slotDeclOf(inst.Component, a.slot)
+				if decl == nil {
+					continue
 				}
+				body, _, supplied := ir.SlotBody(&ir.SlotInst{Name: decl.Name, Rest: decl.Rest}, inst)
+				var answer ir.Expr = &ir.Literal{Type: ir.TypBool, Value: "true"}
+				if supplied {
+					if e, ok := ir.RendersNothing(deepCloneStmts(body)); ok {
+						answer = e
+					} else {
+						answer = &ir.Literal{Type: ir.TypBool, Value: "false"}
+					}
+				}
+				inst.Props = append(inst.Props, ir.Arg{Name: a.prop.Name, Value: answer})
 			}
-			inst.Props = append(inst.Props, ir.Arg{Name: p.Name, Value: answer})
+			return nil
+		})
+		if err != nil {
+			return err
 		}
-		return nil
-	})
+	}
 }
