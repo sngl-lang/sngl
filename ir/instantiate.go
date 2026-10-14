@@ -55,6 +55,88 @@ func InstantiateStmts(stmts []Stmt, bindings map[string]*Type) []Stmt {
 	return c.clone(reflect.ValueOf(stmts)).Interface().([]Stmt)
 }
 
+// InstantiateComponent copies c with its type parameters bound, as
+// InstantiateFunc copies a function: what c declares -- its props, events and
+// slots with their parameters, its state, its methods with what they declare,
+// the handles its body names and everything its body declares -- is copied,
+// and what it refers to beyond that is shared. A node in the copy rendering c
+// itself names c again, being bound by its own type arguments: under
+// polymorphic recursion it is not the copy it sits in.
+func InstantiateComponent(c *Component, bindings map[string]*Type) *Component {
+	if c == nil {
+		return nil
+	}
+	cl := newCloner()
+	cl.shareDecls = true
+	cl.subst = bindings
+	cl.own = ownComponentDecls(c)
+	cl.deepNext = true
+	out := cl.clone(reflect.ValueOf(c)).Interface().(*Component)
+	_ = Walk(out, func(n Node) error {
+		if x, ok := n.(*NodeInst); ok && x.Component == out {
+			x.Component = c
+		}
+		return nil
+	})
+	out.TypeParams = nil
+	out.PlatformOverrides, out.LanguageOverrides = nil, nil
+	return out
+}
+
+// ownComponentDecls is the set of declarations c's own text declares.
+func ownComponentDecls(c *Component) map[uintptr]bool {
+	own := map[uintptr]bool{reflect.ValueOf(c).Pointer(): true}
+	add := func(x any) { own[reflect.ValueOf(x).Pointer()] = true }
+	params := func(ps []*Param) {
+		for _, p := range ps {
+			if p != nil {
+				add(p)
+			}
+		}
+	}
+	for _, p := range c.Props {
+		if p != nil && p.Sym != nil {
+			add(p.Sym)
+		}
+	}
+	for _, e := range c.Events {
+		if e != nil {
+			params(e.Params)
+		}
+	}
+	var slots func([]*SlotDecl)
+	slots = func(ss []*SlotDecl) {
+		for _, s := range ss {
+			if s != nil {
+				add(s)
+				params(s.Params)
+				slots(s.Slots)
+			}
+		}
+	}
+	slots(c.Slots)
+	for _, v := range c.Vars {
+		if v != nil {
+			add(v)
+		}
+	}
+	for _, f := range c.Funcs {
+		if f != nil {
+			for k := range ownDecls(f) {
+				own[k] = true
+			}
+		}
+	}
+	addOwnDecls(own, c.Stmts)
+	_ = Walk(c.Stmts, func(n Node) error {
+		if x, ok := n.(*NodeInst); ok && x.Handle != nil {
+			add(x.Handle)
+		}
+		return nil
+	})
+	return own
+}
+
 // ComponentBindings is what the call site of n bound its component's type
 // parameters to, by name; nil for a component that declares none or a node
 // that records no binding for one.
@@ -76,7 +158,7 @@ func ComponentBindings(n *NodeInst) map[string]*Type {
 
 // ownDecls is the set of declarations fn's own text declares.
 func ownDecls(fn *Func) map[uintptr]bool {
-	own := map[uintptr]bool{}
+	own := map[uintptr]bool{reflect.ValueOf(fn).Pointer(): true}
 	for _, p := range fn.Params {
 		own[reflect.ValueOf(p).Pointer()] = true
 	}
@@ -88,7 +170,7 @@ func ownDecls(fn *Func) map[uintptr]bool {
 }
 
 // addOwnDecls adds to own what stmts declare: their locals and loop variables,
-// and the lambdas in them with their parameters.
+// and the lambdas and node handlers in them with their parameters.
 func addOwnDecls(own map[uintptr]bool, stmts []Stmt) {
 	addFunc := func(f *Func) {
 		own[reflect.ValueOf(f).Pointer()] = true
@@ -118,6 +200,12 @@ func addOwnDecls(own map[uintptr]bool, stmts []Stmt) {
 		case *Closure:
 			if x.Func != nil {
 				addFunc(x.Func)
+			}
+		case *NodeInst:
+			for _, h := range x.Handlers {
+				if h.Func != nil {
+					addFunc(h.Func)
+				}
 			}
 		}
 		return nil

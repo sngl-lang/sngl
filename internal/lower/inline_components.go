@@ -39,7 +39,7 @@ func lowerInlineComponents(pkg *ir.Package, feats Features, opts Options) error 
 	for _, c := range pkg.Components {
 		onList[c] = true
 	}
-	st := &inlineCompState{pkg: pkg, main: main, cycles: cycles, reactive: reactive, platform: opts.Platform, instanceState: feats.InstanceState, genericComponents: feats.GenericComponents, onList: onList, names: namesOrOwn(opts.names), demoted: map[*ir.Func]bool{}, cells: map[*ir.Var][]*ir.Var{}, methods: map[*ir.Var]map[*ir.Func][]*ir.Func{}}
+	st := &inlineCompState{pkg: pkg, main: main, cycles: cycles, reactive: reactive, platform: opts.Platform, instanceState: feats.InstanceState, genericComponents: feats.GenericComponents, onList: onList, names: namesOrOwn(opts.names), demoted: map[*ir.Func]bool{}, cells: map[*ir.Var][]*ir.Var{}, compInsts: map[*ir.Component][]componentInstance{}, methods: map[*ir.Var]map[*ir.Func][]*ir.Func{}}
 	cellOwners := implicitCellOwners(pkg)
 	st.reach = testReachRoots(pkg, main, opts)
 	if err := st.run(); err != nil {
@@ -345,8 +345,12 @@ type inlineCompState struct {
 	// time keeps its own state on this target.
 	instanceState bool
 	// genericComponents is Features.GenericComponents: whether the target
-	// emits a generic component once for every instantiation.
+	// emits a generic component once for every instantiation. Where it does
+	// not, compInsts is each generic component's copies (instantiateRuntime),
+	// and taken the names a copy may not take.
 	genericComponents bool
+	compInsts         map[*ir.Component][]componentInstance
+	taken             map[string]bool
 	// names is passInlinePure's as well; see Options.names.
 	names renamer
 	// demoted is the clones dropReceiver made receiverless, so the call sites
@@ -1059,7 +1063,7 @@ func (st *inlineCompState) inlineStmtCtx(s ir.Stmt, rc reactiveCtx) ([]ir.Stmt, 
 		// const iterable cannot change says how many copies there are, not
 		// that they may share state.
 		if st.captureOnly == nil && n.Component != nil && (rc.perCopy(n.Component) || st.cycles[n.Component]) {
-			if err := st.refuseGenericAnonProps(n); err != nil {
+			if err := st.instantiateRuntime(n); err != nil {
 				return nil, false, err
 			}
 			st.keep[n.Component] = true
