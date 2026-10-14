@@ -1,6 +1,9 @@
 package ir
 
-import "reflect"
+import (
+	"reflect"
+	"sync"
+)
 
 // irPkgPath is the import path of this package; used by the cloner to decide
 // which values to deep-copy (ir types) versus share (AST nodes, platform
@@ -219,20 +222,12 @@ func (c *cloner) cloneInto(dst, v reflect.Value) {
 }
 
 func (c *cloner) cloneStruct(out, v reflect.Value) {
-	for i := 0; i < v.NumField(); i++ {
-		// A copy is a build's own, whatever the original says.
-		if v.Type().Field(i).Name == "Frozen" {
+	for i, kind := range planOf(v.Type()) {
+		c.deepNext = kind == fieldFuncBody
+		switch kind {
+		case fieldSkip:
 			continue
-		}
-		// A lambda's Func is the expression's own body rather than a
-		// declaration it names, so it is copied even in share mode. One
-		// hop only: the declarations reached from inside that body are
-		// references like any other.
-		c.deepNext = carriesFuncBody(v.Type()) && v.Type().Field(i).Name == "Func"
-		// A declaration's package is where it came from, not part of it:
-		// the package being cloned maps to its clone, and any other -- a
-		// library package -- is shared rather than copied whole.
-		if v.Type() == declInfoType && v.Type().Field(i).Name == "Pkg" {
+		case fieldDeclPkg:
 			p := v.Field(i)
 			if cv, ok := c.seen[p.Pointer()]; ok && !p.IsNil() {
 				out.Field(i).Set(cv)
@@ -240,9 +235,12 @@ func (c *cloner) cloneStruct(out, v reflect.Value) {
 				out.Field(i).Set(p)
 			}
 			continue
-		}
-		if c.only != nil && carriesOverrides(v.Type()) {
-			if key, ok := c.overrideKey(v.Type().Field(i).Name); ok {
+		case fieldPlatformOverrides, fieldLanguageOverrides:
+			if c.only != nil {
+				key := c.only.platform
+				if kind == fieldLanguageOverrides {
+					key = c.only.language
+				}
 				out.Field(i).Set(c.cloneOverride(v.Field(i), key))
 				continue
 			}
@@ -252,22 +250,62 @@ func (c *cloner) cloneStruct(out, v reflect.Value) {
 	c.deepNext = false
 }
 
+// fieldKind is what the cloner does with one field of a struct, decided once
+// per type: reading a field's name through reflection is most of what a
+// struct copy otherwise costs.
+type fieldKind uint8
+
+const (
+	fieldCopy fieldKind = iota
+	// A copy is a build's own, whatever the original's Frozen says.
+	fieldSkip
+	// A lambda's Func is the expression's own body rather than a declaration
+	// it names, so it is copied even in share mode. One hop only: the
+	// declarations reached from inside that body are references like any
+	// other.
+	fieldFuncBody
+	// A declaration's package is where it came from, not part of it: the
+	// package being cloned maps to its clone, and any other -- a library
+	// package -- is shared rather than copied whole.
+	fieldDeclPkg
+	fieldPlatformOverrides
+	fieldLanguageOverrides
+)
+
+var fieldPlans sync.Map // reflect.Type -> []fieldKind
+
+func planOf(t reflect.Type) []fieldKind {
+	if p, ok := fieldPlans.Load(t); ok {
+		return p.([]fieldKind)
+	}
+	p := make([]fieldKind, t.NumField())
+	for i := range p {
+		p[i] = fieldKindOf(t, t.Field(i).Name)
+	}
+	fieldPlans.Store(t, p)
+	return p
+}
+
+func fieldKindOf(t reflect.Type, name string) fieldKind {
+	switch {
+	case name == "Frozen":
+		return fieldSkip
+	case name == "Func" && carriesFuncBody(t):
+		return fieldFuncBody
+	case name == "Pkg" && t == declInfoType:
+		return fieldDeclPkg
+	case carriesOverrides(t) && (name == "PlatformOverrides" || name == "Platform"):
+		return fieldPlatformOverrides
+	case carriesOverrides(t) && (name == "LanguageOverrides" || name == "Language"):
+		return fieldLanguageOverrides
+	}
+	return fieldCopy
+}
+
 // carriesOverrides reports whether t is a declaration with per-target
 // override maps.
 func carriesOverrides(t reflect.Type) bool {
 	return t == reflect.TypeFor[Component]() || t == reflect.TypeFor[Func]() || t == reflect.TypeFor[Overrides]()
-}
-
-// overrideKey is the entry of the named override map this clone's target
-// picks, and whether the field is an override map at all.
-func (c *cloner) overrideKey(field string) (string, bool) {
-	switch field {
-	case "PlatformOverrides", "Platform":
-		return c.only.platform, true
-	case "LanguageOverrides", "Language":
-		return c.only.language, true
-	}
-	return "", false
 }
 
 // cloneOverride copies the entry of an override map that key names, and every

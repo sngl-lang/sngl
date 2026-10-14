@@ -62,7 +62,7 @@ Re-measure the affected workload after each step and note the number here.
    for every unit literal: 0.45 GB, 7% of TestGolden. Memoize by `*ir.UnitDef`
    (`unitTable.Decl` already compares by declaration).
 
-4. [ ] **Reflective cloner reads field names per node.** `ir/clone.go`
+4. [X] **Reflective cloner reads field names per node.** `ir/clone.go`
    `cloneStruct` calls `v.Type().Field(i).Name` several times per field;
    `rtype.Field` is 6.6% of TestGolden CPU. Cache a field plan per
    `reflect.Type` (frozen-skip, lambda body, DeclInfo.Pkg, override key).
@@ -125,3 +125,16 @@ Re-measure the affected workload after each step and note the number here.
    Docs site byte-identical; TestGolden, TestFixtures, `internal/optimize` and
    `internal/interp` green; `TestUnitLiteralsShareTheirTable` fails with the
    memo removed.
+
+4. **Cloner field plan** -- TestGolden 26.4 -> 24.1 s user in the profiled
+   run (two unprofiled pairs: 25.3 -> 22.8 and 25.3 -> 23.1 s), cloner CPU
+   7.7 -> 5.1 s with `rtype.Field` gone from the profile (`planOf`'s
+   `sync.Map` load is 0.2 s); allocation unchanged, 6.0 GB. Each struct
+   type's plan is read once (`ir.planOf`). Docs site byte-identical (1187
+   files) at 26.6 s CPU warm, unchanged since cloning is a small share of it.
+   TestGolden, TestFixtures, TestLibraryShared and `ir` green; the four tests
+   in `ir/clone_test.go` and `TestCopyOfAFrozenPackageIsWritable` each fail
+   when their field kind's case is removed from the plan.
+   `internal/testutil`'s `walker.write` reads no field metadata (none of
+   `rtype.Field`'s samples are its), so a plan has nothing to save there; its
+   5.6 s is hashing and the seen map, which is step 8's question.
