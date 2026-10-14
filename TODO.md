@@ -140,9 +140,16 @@ Re-measure the affected workload after each step and note the number here.
      afresh -- where it stands, and in each copy of a loop over state, where
      the copy's setter re-fires it. Without it, both shapes were refused.
 
-8. [ ] **`ExprCtx.WithLocal` clones its maps per local**
-   (`codegen/exprctx.go:284`): 1.2 GB on the docs build. A parent-chained
-   scope instead of a copy.
+8. [X] **`ExprCtx.WithLocal` clones its maps per local**
+   (`codegen/exprctx.go:284`). Re-measured after step 7c (506964168): on the
+   docs build `WithLocal` is 1.20 GB of 8.98 GB and 0.42 s of 17.9 s CPU,
+   `Clone` 1.15 GB, `maps.clone` 0.90 GB (all but 35 MB of it `Locals`);
+   on TestGolden 6 MB of 4.93 GB, so this is the docs build's alone.
+   `emitComponentFactory` is 1.05 GB of it: it adds each prop and var with
+   its own `WithLocal`, and html's root `Locals` holds every package const,
+   so each of those copies the whole const set again. The rest is
+   `JsIRContext.WithLocal` (155 MB, `EmitFuncDef` and `Scoped`). A
+   parent-chained scope instead of a copy.
 
 9. [ ] **Test-only guards (owner's call).** TestGolden fingerprints the checked
    package and its library around every build: 7.2 s of 28.5 s CPU and
@@ -250,3 +257,17 @@ alone). `list_tag_from_state_runs.txt` runs both shapes of a list whose
 attrs refusal, the choice between maps, or the deferred position removed;
 the three `markdown_document` goldens fail with the check back on the whole
 package; `html_list_tag_from_state.txtar` is the code.
+
+8. **Locals are a chain of frames** -- docs site 8.98 -> 7.79 GB allocated,
+   `emitComponentFactory` 1.74 -> 0.67 GB, `WithLocal` 1.20 GB -> 68 MB,
+   `Clone` 1.15 GB -> 57 MB; three unprofiled pairs 22.0 -> 17.2, 18.1 ->
+   17.0 and 18.8 -> 16.7 s user (load 3-4). TestGolden unchanged at 4.94 GB.
+   `ExprCtx.Locals` and `Renames` are gone: a clone shares its parent's
+   frames, `WithLocal`, `WithRenamedLocal` and the new `WithLocals` add one,
+   and `IsLocal`/`Renamed` read the chain with the maps' semantics (a plain
+   local inside a renamed one keeps the rename). The three writers in place
+   became frames: html's consts, html's handler parameters (`g.ctx` swapped
+   and restored, as `EventVar` was) and Go's test parameters. Docs site
+   byte-identical (1187 files); `go test ./...` green.
+   `TestWithLocalSharesItsParentsLocals` fails (24 allocations) with
+   `WithLocal` copying the chain into a fresh frame.

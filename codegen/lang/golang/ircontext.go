@@ -658,7 +658,7 @@ func (gc *GoIRContext) shadowedStateVar(sym ir.Symbol) (*ir.Var, bool) {
 	if !ok || v.IsConst || v.NodeHandle || gc.Ctx == nil {
 		return nil, false
 	}
-	if _, renamed := gc.Ctx.Renames[v.Name]; !gc.Ctx.Locals[v.Name] && !renamed {
+	if !gc.Ctx.IsLocal(v.Name) {
 		return nil, false
 	}
 	if gc.Ctx.Component != nil && slices.Contains(gc.Ctx.Component.Vars, v) {

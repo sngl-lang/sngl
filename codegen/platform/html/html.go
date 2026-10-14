@@ -876,9 +876,11 @@ func newHTMLGen(pkg *ir.Package, lang codegen.LangTranslator, opts htmlConfig, s
 	g.ctx = codegen.NewExprCtx(pkg)
 	g.ctx.Platform = "html"
 	if pkg != nil {
-		for _, c := range pkg.Consts {
-			g.ctx.Locals[c.Name] = true
+		consts := make([]string, len(pkg.Consts))
+		for i, c := range pkg.Consts {
+			consts[i] = c.Name
 		}
+		g.ctx = g.ctx.WithLocals(consts...)
 	}
 	if g.ctx.NativeImports == nil {
 		g.ctx.NativeImports = map[string]map[string]bool{}
@@ -3258,36 +3260,28 @@ func (g *htmlGen) addEventHandler(elemID, event string, fn *ir.Func) {
 	if fn == nil || len(fn.Block) == 0 {
 		return
 	}
-	savedEvent := g.ctx.EventVar
-	savedEventParam := g.ctx.EventParam
+	// The parameter is a local; what it stands for is EventParam's job.
+	// Renaming by name as well would replace a lambda parameter spelled the
+	// same, emitting `e2.target` where the lambda's own value was meant.
+	var params []string
+	for _, p := range fn.Params {
+		if p != nil && p.Name != "" {
+			params = append(params, p.Name)
+		}
+	}
+	outer := g.ctx
+	g.ctx = g.ctx.WithLocals(params...)
 	g.ctx.EventVar = "e"
 	if len(fn.Params) > 0 {
 		g.ctx.EventParam = fn.Params[0]
 	}
-	// The parameter is a local; what it stands for is EventParam's job.
-	// Renaming by name as well would replace a lambda parameter spelled the
-	// same, emitting `e2.target` where the lambda's own value was meant.
-	var savedLocal []string
-	for _, p := range fn.Params {
-		if p == nil || p.Name == "" {
-			continue
-		}
-		if !g.ctx.Locals[p.Name] {
-			savedLocal = append(savedLocal, p.Name)
-			g.ctx.Locals[p.Name] = true
-		}
-	}
 	lines := g.translateBlockJC(fn.Block)
+	g.ctx = outer
 	mutated := make(map[string]bool)
 	for _, s := range fn.Block {
 		for v := range codegen.MutatedFields(g.currentComp, g.dt, s) {
 			mutated[v.SymName()] = true
 		}
-	}
-	g.ctx.EventVar = savedEvent
-	g.ctx.EventParam = savedEventParam
-	for _, n := range savedLocal {
-		delete(g.ctx.Locals, n)
 	}
 	g.handlers = append(g.handlers, eventHandler{
 		elemID: elemID,
