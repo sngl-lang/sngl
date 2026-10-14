@@ -1529,20 +1529,9 @@ func cloneStmts(stmts []ir.Stmt) []ir.Stmt {
 // back to the list. Shared with passSlotInstances, which describes what a
 // render holds the same way.
 func callListPush(dst ir.Expr, v ir.Expr, elem *ir.Type) ir.Stmt {
-	var params []*ir.Param
-	var ret *ir.Type
-	if def := ir.LookupIntrinsic("list.push"); def != nil {
-		params, ret = def.Instantiate(elem)
-	}
 	return &ir.CallStmt{Call: &ir.Call{
 		Type: ir.TypVoid,
-		Func: &ir.Func{
-			Name:      "push",
-			Receiver:  ir.ListOf(ir.TypDyn),
-			Intrinsic: "list.push",
-			Params:    params,
-			Return:    ret,
-		},
+		Func: ir.IntrinsicMethod("push", "list.push", ir.ListOf(elem), nil),
 		Args: []ir.CallArg{{Value: dst}, {Value: v}},
 	}}
 }

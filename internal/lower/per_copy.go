@@ -272,13 +272,9 @@ func cellIdent(v *ir.Var) *ir.Ident {
 
 func cellGet(v *ir.Var, init, key ir.Expr) ir.Expr {
 	elem := v.Type.Elems[1]
-	var params []*ir.Param
-	if def := ir.LookupIntrinsic("map.get"); def != nil {
-		params, _ = def.Instantiate(ir.TypString, elem)
-	}
 	return &ir.Call{
 		Type: elem,
-		Func: &ir.Func{Name: "get", Receiver: ir.MapOf(ir.TypDyn, ir.TypDyn), Intrinsic: "map.get", Return: elem, Params: params},
+		Func: ir.IntrinsicMethod("get", "map.get", v.Type, elem),
 		Args: []ir.CallArg{{Value: cellIdent(v)}, {Value: key}, {Value: init}},
 	}
 }

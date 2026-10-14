@@ -53,6 +53,19 @@ func (d IntrinsicDef) Instantiate(args ...*Type) ([]*Param, *Type) {
 	return sig.Params, sig.Return
 }
 
+// IntrinsicMethod is the declaration a pass names when it synthesizes a call
+// of a generic built-in's intrinsic method, `xs.push(v)`: receiver recv, the
+// operand the call is made on, with the parameters and result instantiated at
+// recv's element types. ret is the result where no library has registered the
+// intrinsic -- IR built by hand, which declares nothing to instantiate.
+func IntrinsicMethod(name, id string, recv, ret *Type) *Func {
+	fn := &Func{Name: name, Receiver: recv, Intrinsic: id, Return: ret}
+	if def := LookupIntrinsic(id); def != nil && recv != nil {
+		fn.Params, fn.Return = def.Instantiate(recv.Elems...)
+	}
+	return fn
+}
+
 // The node operations: the protocol between the lowering passes that flatten a
 // visual tree into imperative statements and the platforms that rebuild it.
 //

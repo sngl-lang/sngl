@@ -373,17 +373,9 @@ func (st *reactivityState) claimKey(si *slotInstance) (*ir.Var, []ir.Stmt) {
 
 // callMapGet builds `m.get(key, default)`.
 func callMapGet(m, key, def ir.Expr, valueType *ir.Type) *ir.Call {
-	var params []*ir.Param
-	var ret *ir.Type
-	if d := ir.LookupIntrinsic("map.get"); d != nil {
-		params, ret = d.Instantiate(ir.TypString, valueType)
-	}
-	if ret == nil {
-		ret = valueType
-	}
 	return &ir.Call{
 		Type:      valueType,
-		Func:      &ir.Func{Name: "get", Receiver: ir.MapOf(ir.TypDyn, ir.TypDyn), Intrinsic: "map.get", Params: params, Return: ret},
+		Func:      ir.IntrinsicMethod("get", "map.get", m.ExprType(), valueType),
 		Args:      []ir.CallArg{{Value: m}, {Value: key}, {Value: def}},
 		ErrorMode: ir.ErrorNone,
 	}
@@ -391,13 +383,9 @@ func callMapGet(m, key, def ir.Expr, valueType *ir.Type) *ir.Call {
 
 // callMapContains builds `m.contains(key)`.
 func callMapContains(m, key ir.Expr, valueType *ir.Type) *ir.Call {
-	var params []*ir.Param
-	if d := ir.LookupIntrinsic("map.contains"); d != nil {
-		params, _ = d.Instantiate(ir.TypString, valueType)
-	}
 	return &ir.Call{
 		Type: ir.TypBool,
-		Func: &ir.Func{Name: "contains", Receiver: ir.MapOf(ir.TypDyn, ir.TypDyn), Intrinsic: "map.contains", Params: params, Return: ir.TypBool},
+		Func: ir.IntrinsicMethod("contains", "map.contains", m.ExprType(), ir.TypBool),
 		Args: []ir.CallArg{{Value: m}, {Value: key}},
 	}
 }

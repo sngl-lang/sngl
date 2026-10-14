@@ -149,13 +149,9 @@ func (st *reactivityState) closeSlotPlacement(sp *slotPlacement) []ir.Stmt {
 // source rather than an intrinsic, and by this pass there is nothing left to
 // inline it from.
 func callListIndexOf(xs, item ir.Expr) *ir.Call {
-	var params []*ir.Param
-	if d := ir.LookupIntrinsic("list.indexOf"); d != nil {
-		params, _ = d.Instantiate(ir.TypDyn)
-	}
 	return &ir.Call{
 		Type: ir.TypInt,
-		Func: &ir.Func{Name: "indexOf", Receiver: ir.ListOf(ir.TypDyn), Intrinsic: "list.indexOf", Params: params, Return: ir.TypInt},
+		Func: ir.IntrinsicMethod("indexOf", "list.indexOf", xs.ExprType(), ir.TypInt),
 		Args: []ir.CallArg{{Value: xs}, {Value: item}},
 	}
 }
