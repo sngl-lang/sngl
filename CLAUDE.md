@@ -4073,8 +4073,11 @@ What it needed from the checker is general:
 - **`T{}` is the zero of what T is bound to**: typed `T` in the declaration,
   and written out by each call that omits it (`typeParamZeroFor`), for a func
   and for a component prop, the library's included, since no backend can
-  spell a type parameter's zero. A generic signature's defaults see its type
-  parameters.
+  spell a type parameter's zero. A default that *holds* one, `{v=T{}}` or
+  `[T{}]`, is written the same way, at the types the call bound with each
+  `T{}` inside it that type's zero; it used to evaluate to `{}`
+  (`testdata/generic_default_zero.sngl`). A generic signature's defaults see
+  its type parameters.
 - **A two-way prop is never required**: unbound, it starts from its default
   or its type's zero.
 - **A window's own props see its body's handles uncounted**, so
@@ -4165,7 +4168,11 @@ checker would have given it (`ir.AnonStructBaseName`) -- giving the
 instantiation a generic declaration's `Elems` instead would have made
 `Box__int`-style copies, a second host type beside the literal's that Go and
 Kotlin cannot assign between (`testdata/generic_anon_struct.sngl`,
-`error_generic_anon_struct.sngl`, `generic_anon_struct.txtar`).
+`error_generic_anon_struct.sngl`, `generic_anon_struct.txtar`). The pass also
+merges two *interned* declarations of equal fields into the first: a
+directory-imported package interns its own `struct { v int }`, which spells
+the program's host name, and the output declared both
+(`testdata/anon_struct_from_package.txtar`).
 
 Four things follow from a struct having no one declaration. Its identity is
 its fields everywhere, so the intern key spells an anonymous struct inside a
