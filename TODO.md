@@ -284,9 +284,10 @@ package; `html_list_tag_from_state.txtar` is the code.
    each; what a fixture reaches first is fingerprinted before its build, and
    all of it again when the run ends. The run reaches two library caches
    (two `sngl:ui` packages, 46.7k objects from 1266 roots), and each is held
-   because the guard keys by address and keeps what it noted. A probe not committed wrote
-   `sngl:ui`'s `node` and, separately, a program component from the 100th build: the default run fails at the end
-   naming the flag and the changed `*ir.Component`, and
+   because the guard keys by address and keeps what it noted. A probe not
+   committed wrote `sngl:ui`'s `node` and, separately, a program component
+   from the 100th build: the default run fails at the end naming the flag and
+   the changed `*ir.Component`, and
    `-golden.fingerprint=each` fails `context_default_reads_var`; the program
    write fails that fixture in both modes. `go test ./...` green.
    `TestLibraryGuardOncePerRun` and `TestLibraryGuardEachBuild` fail with the
