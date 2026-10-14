@@ -125,8 +125,9 @@ Re-measure the affected workload after each step and note the number here.
        preview and the snapshot compile paths.
      - [X] `interp.Prepare`.
      - [X] The batch snapshot paths.
-     - [ ] The LSP color fold, the fixture fold, `sngl test`'s per-group copy
-       (`ClonePackage` today).
+     - [X] The LSP color fold.
+     - [ ] The fixture fold, `sngl test`'s per-group copy (`ClonePackage`
+       today).
 
 7. [ ] **passInlinePure clones slot content into both branches.**
    `ir.SlotSplicer.Substitute` / `lower.deepCloneStmts`: 2.8 GB (22%) of the
@@ -262,3 +263,8 @@ Re-measure the affected workload after each step and note the number here.
    A target's copy of the five examples is 60% smaller than a whole one
    (`tmp/copycost`: 83.9 -> 33.6 MB over 25 copies). No test reaches
    `GenerateBatch` (android is its only implementer), so none was added.
+
+   (2) **LSP color fold** copies for no target, which shares what the document
+   does not reach and every override: its copy in the color tests 1.5 ->
+   0.64 MB per fold. The fold hands back colors, not the package, so no test
+   can see the copy without an allocation bound; none was added.
