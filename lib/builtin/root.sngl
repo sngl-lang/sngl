@@ -17,3 +17,13 @@ import build "sngl:build"
 // other.
 #[_builtin(familyRoot)]
 component root build.family
+
+// The application a program runs: what the windows at the root of a file are
+// attached to, and what a render slot there re-renders them into. No program
+// writes one -- a target makes the application and holds it -- and both
+// declarations are unexported for that reason. It is a family of its own
+// because it is placed in no tree: it is the top of every one.
+component _host build.family
+
+#[_builtin(application)]
+component _application(windows ...component root) _host

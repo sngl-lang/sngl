@@ -25,6 +25,7 @@ type Builtins struct {
 	list, mapDecl atomic.Pointer[StructDef]
 	dateTime      atomic.Pointer[Type]
 	duration      atomic.Pointer[Type]
+	application   atomic.Pointer[Component]
 
 	mu         sync.RWMutex
 	intrinsics map[string]*IntrinsicDef
@@ -80,6 +81,21 @@ func (b *Builtins) MapOf(k, v *Type) *Type {
 		t.Decl = sd
 	}
 	return t
+}
+
+// RegisterApplication records sngl:builtin's `_application`.
+func (b *Builtins) RegisterApplication(c *Component) {
+	b.application.Store(c)
+}
+
+// ApplicationType is the type of a handle to the application the package
+// body's nodes attach to, or nil before sngl:builtin registers it -- IR built
+// with no library loaded has no application to name.
+func (b *Builtins) ApplicationType() *Type {
+	if c := b.application.Load(); c != nil {
+		return &Type{Kind: TypeComponent, Decl: c}
+	}
+	return nil
 }
 
 // RegisterDuration records sngl:time's duration unit.

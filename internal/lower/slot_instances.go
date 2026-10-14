@@ -291,9 +291,6 @@ func propValueType(comp *ir.Component, prop string) *ir.Type {
 
 // instanceTypeOf is the handle type an instantiation of comp is held as.
 func instanceTypeOf(comp *ir.Component) *ir.Type {
-	if comp == nil {
-		return ir.TypDyn
-	}
 	return &ir.Type{Kind: ir.TypeInstance, Decl: comp}
 }
 
@@ -626,21 +623,19 @@ func (st *reactivityState) recreateStatic(n *ir.NodeInst, declSt *declarativeSta
 	elem := instanceTypeOf(n.Component)
 	cur := &ir.Var{Name: n.ID, Type: elem, Synthesized: true}
 	fresh := &ir.Var{Name: n.ID + "__re" + n1, Type: elem, Synthesized: true}
-	freshEl := &ir.Var{Name: fresh.Name + instanceRootSuffix, Type: ir.TypDyn, Synthesized: true}
-	prevEl := &ir.Var{Name: n.ID + "__prev" + n1 + instanceRootSuffix, Type: ir.TypDyn, Synthesized: true}
+	root := rendersAsType(n.Component, declSt.hosted)
+	freshEl := &ir.Var{Name: fresh.Name + instanceRootSuffix, Type: root, Synthesized: true}
+	prevEl := &ir.Var{Name: n.ID + "__prev" + n1 + instanceRootSuffix, Type: root, Synthesized: true}
 
-	place := &ir.Ident{
-		Name:         ir.InstancePlaceName(n.ID),
-		Type:         ir.TypDyn,
-		IsElementRef: true,
-		Synthesized:  true,
-	}
+	// The position the instance's root stands in, a node of the same family:
+	// what a platform binds the name to is its answer.
+	place := handleRef(ir.InstancePlaceName(n.ID), root)
 	elRef := func(v *ir.Var) ir.Expr {
-		return &ir.Ident{Name: v.Name, Type: ir.TypDyn, IsElementRef: true, Sym: v, Synthesized: true}
+		return &ir.Ident{Name: v.Name, Type: v.Type, IsElementRef: true, Sym: v, Synthesized: true}
 	}
 	bindRoot := func(el *ir.Var, inst *ir.Var) ir.Stmt {
-		return &ir.LocalVar{Name: el.Name, Type: ir.TypDyn, Sym: el, Init: &ir.Call{
-			Type: ir.TypDyn,
+		return &ir.LocalVar{Name: el.Name, Type: el.Type, Sym: el, Init: &ir.Call{
+			Type: el.Type,
 			Func: st.intrinsics[ir.NodeOpComponentRoot],
 			Args: []ir.CallArg{{Value: varRef(inst)}},
 		}}

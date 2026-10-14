@@ -678,6 +678,9 @@ type checker struct {
 	// package body is checked against it, which is the whole of what makes a
 	// window and an output directive top-level: no syntactic rule names them.
 	rootFamily *ir.Component
+	// applicationComp is sngl:builtin's `_application`, the #[builtin
+	// ("application")] the package body's nodes attach to.
+	applicationComp *ir.Component
 	// familyPosition is non-zero while a return position or a slot's content
 	// resolves, where a data family's name is the family rather than its
 	// record (dataRecord).

@@ -43,6 +43,7 @@ enum _Kind {
     errorBoundary
     output
     familyRoot
+    application
     targetPlatform
     targetLanguage
 }

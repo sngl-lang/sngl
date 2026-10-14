@@ -54,7 +54,7 @@ func (st *reactivityState) newSlotPlacement(slotID string, slotVar *ir.Var, pare
 	n := strconv.Itoa(st.instCounter)
 	st.instCounter++
 	return &slotPlacement{
-		prev:   &ir.Var{Name: "__place" + n + "_prev", Type: ir.ListOf(ir.TypDyn), Synthesized: true},
+		prev:   &ir.Var{Name: "__place" + n + "_prev", Type: slotVar.Type, Synthesized: true},
 		slot:   slotVar,
 		idx:    &ir.Var{Name: "__place" + n + "_i", Type: ir.TypInt, Synthesized: true},
 		parent: parent,
@@ -66,16 +66,15 @@ func (sp *slotPlacement) open() []ir.Stmt {
 	return []ir.Stmt{
 		&ir.LocalVar{Name: sp.prev.Name, Type: sp.prev.Type, Sym: sp.prev, Init: varRef(sp.slot)},
 		&ir.LocalVar{Name: sp.idx.Name, Type: ir.TypInt, Sym: sp.idx, Init: intLiteralLit(0)},
-		&ir.Assign{Target: varRef(sp.slot), Op: ast.AssignSet, Value: &ir.ListLit{Type: ir.ListOf(ir.TypDyn)}},
+		&ir.Assign{Target: varRef(sp.slot), Op: ast.AssignSet, Value: &ir.ListLit{Type: sp.slot.Type}},
 	}
 }
 
 // place puts one node where the desired order says it goes, or leaves it alone
 // when it is already there.
-func (st *reactivityState) place(sp *slotPlacement, name string) []ir.Stmt {
-	node := func() ir.Expr {
-		return &ir.Ident{Name: name, Type: ir.TypDyn, IsElementRef: true, Synthesized: true}
-	}
+func (st *reactivityState) place(sp *slotPlacement, ref0 *ir.Ident) []ir.Stmt {
+	node := func() ir.Expr { return cloneIdent(ref0) }
+	elem := sp.prev.Type.Elems[0]
 	inRange := func() ir.Expr {
 		return &ir.Binary{
 			Type: ir.TypBool, Op: ast.BinLt,
@@ -84,17 +83,17 @@ func (st *reactivityState) place(sp *slotPlacement, name string) []ir.Stmt {
 		}
 	}
 	atCursor := func() ir.Expr {
-		return &ir.Index{Type: ir.TypDyn, Operand: varRef(sp.prev), Idx: varRef(sp.idx)}
+		return &ir.Index{Type: elem, Operand: varRef(sp.prev), Idx: varRef(sp.idx)}
 	}
 
 	// The ref answers both questions at once. In range it is the old node at
 	// the cursor, so matching it means the node is already there; out of range
 	// it is null, which the protocol defines as the end -- and a node is never
 	// null, so the same comparison falls through to the insert.
-	ref := &ir.Var{Name: sp.idx.Name + "_ref" + strconv.Itoa(sp.refs), Type: ir.TypDyn, Synthesized: true}
+	ref := &ir.Var{Name: sp.idx.Name + "_ref" + strconv.Itoa(sp.refs), Type: ir.OptionOf(elem), Synthesized: true}
 	sp.refs++
 	return []ir.Stmt{
-		&ir.LocalVar{Name: ref.Name, Type: ir.TypDyn, Sym: ref, Init: &ir.Literal{Type: ir.TypNull}},
+		&ir.LocalVar{Name: ref.Name, Type: ref.Type, Sym: ref, Init: &ir.Literal{Type: ir.TypNull}},
 		&ir.If{
 			Cond: inRange(),
 			Body: []ir.Stmt{&ir.Assign{Target: varRef(ref), Op: ast.AssignSet, Value: atCursor()}},
@@ -121,15 +120,16 @@ func (st *reactivityState) place(sp *slotPlacement, name string) []ir.Stmt {
 
 // close removes what the parent held and the render did not ask for.
 func (st *reactivityState) closeSlotPlacement(sp *slotPlacement) []ir.Stmt {
-	e := &ir.LoopVar{Name: sp.prev.Name + "_e", Type: ir.TypDyn}
+	elem := sp.prev.Type.Elems[0]
+	e := &ir.LoopVar{Name: sp.prev.Name + "_e", Type: elem}
 	eRef := func() ir.Expr {
-		return &ir.Ident{Name: e.Name, Type: ir.TypDyn, IsElementRef: true, Sym: e, Synthesized: true}
+		return &ir.Ident{Name: e.Name, Type: elem, IsElementRef: true, Sym: e, Synthesized: true}
 	}
 	return []ir.Stmt{&ir.For{
 		Key:      e.Name,
 		KeySym:   e,
 		Iter:     varRef(sp.prev),
-		ElemType: ir.TypDyn,
+		ElemType: elem,
 		Body: []ir.Stmt{&ir.If{
 			Cond: &ir.Binary{
 				Type: ir.TypBool, Op: ast.BinLt,

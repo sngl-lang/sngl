@@ -78,6 +78,8 @@ type reactivityState struct {
 	// across slots so two slot Funcs in the same package don't
 	// collide on `m.__n0` widget fields.
 	slotDeclSt *declarativeState
+	// slots is what each render slot's synthesized names hold (typeSlots).
+	slots map[string]slotTypes
 	// slot synthesis owner: the *ir.Component or *ir.Window whose stmt body
 	// we're currently walking, so synthesized slot Vars/Funcs get attached
 	// to the right scope.
@@ -212,6 +214,7 @@ func lowerReactivity(pkg *ir.Package, caps Features, opts Options) error {
 	// re-renders into it.
 	st.owner = pkgOwner{pkg: pkg, root: ir.AppParent}
 	st.collectFromStmts(pkg.Body)
+	st.typeSlots()
 	// Pass 2: rewrite + inject. Delegates to existing injectIntoStmts;
 	// future tasks add slot synthesis here.
 
@@ -398,7 +401,7 @@ func (st *reactivityState) rewriteReactiveStructures(stmts []ir.Stmt, parentRef 
 			// holds is parented as an owner's top level is.
 			if n.Component != nil && ir.IsSurface(n.Component) {
 				if kids := ir.WidgetChildren(n); kids != nil {
-					n.Children = st.rewriteReactiveStructures(kids, &ir.Ident{Name: "__root", Type: ir.TypDyn, IsElementRef: true, Synthesized: true})
+					n.Children = st.rewriteReactiveStructures(kids, handleRef("__root", handleType(n)))
 				}
 				for _, h := range n.Handlers {
 					if h.Func != nil {
@@ -414,7 +417,7 @@ func (st *reactivityState) rewriteReactiveStructures(stmts []ir.Stmt, parentRef 
 			if n.ID == "" && childrenContainReactiveSlot(kids) {
 				n.ID = st.freshNodeID()
 			}
-			pref := &ir.Ident{Name: n.ID, Type: ir.TypDyn, IsElementRef: true, Synthesized: true}
+			pref := handleRef(n.ID, handleType(n))
 			if kids != nil {
 				n.Children = st.rewriteReactiveStructures(kids, pref)
 			}
@@ -486,8 +489,7 @@ func (st *reactivityState) slotCall(slotID string, parentRef ir.Expr) *ir.CallSt
 	if parentRef == nil {
 		// Top-level reactive If/For: use the "__root" sentinel. Platforms
 		// translate this to their root container reference.
-		rootVar := st.findSlotVar(st.rootName())
-		parentRef = &ir.Ident{Name: st.rootName(), Type: ir.TypDyn, IsElementRef: true, Synthesized: true, Sym: rootVar}
+		parentRef = st.rootRef()
 	}
 	// Find the synthesized Func on the current owner.
 	want := renderFuncName(slotID)
@@ -515,7 +517,7 @@ func (st *reactivityState) slotCall(slotID string, parentRef ir.Expr) *ir.CallSt
 	}}
 }
 
-// synthesizeSlotVar creates the per-slot `__slotN list[dyn]` Var and
+// synthesizeSlotVar creates the per-slot `__slotN list[<node>]` Var and
 // attaches it to the current owner. Idempotent — returns the existing
 // Var if one was already created.
 func (st *reactivityState) synthesizeSlotVar(slotID string) *ir.Var {
@@ -524,8 +526,8 @@ func (st *reactivityState) synthesizeSlotVar(slotID string) *ir.Var {
 	}
 	v := &ir.Var{
 		Name:        slotID,
-		Type:        ir.ListOf(ir.TypDyn),
-		Init:        &ir.ListLit{Type: ir.ListOf(ir.TypDyn), Elems: nil},
+		Type:        ir.ListOf(st.slotElemType(slotID)),
+		Init:        &ir.ListLit{Type: ir.ListOf(st.slotElemType(slotID)), Elems: nil},
 		Synthesized: true,
 	}
 	st.owner.addVar(v)
@@ -534,15 +536,16 @@ func (st *reactivityState) synthesizeSlotVar(slotID string) *ir.Var {
 
 // slotIdent references the per-slot `__slotN` Var, creating it on first use.
 func (st *reactivityState) slotIdent(slotID string) *ir.Ident {
+	v := st.synthesizeSlotVar(slotID)
 	return &ir.Ident{
 		Name:        slotID,
-		Type:        ir.ListOf(ir.TypDyn),
-		Sym:         st.synthesizeSlotVar(slotID),
+		Type:        v.Type,
+		Sym:         v,
 		Synthesized: true,
 	}
 }
 
-// synthesizeRootVar creates the `__root dyn` Var on the current owner
+// synthesizeRootVar creates the `__root` Var on the current owner
 // if it doesn't exist yet. Idempotent. Marked Synthesized so codegen
 // can detect it.
 func (st *reactivityState) synthesizeRootVar() {
@@ -555,7 +558,7 @@ func (st *reactivityState) synthesizeRootVar() {
 	}
 	v := &ir.Var{
 		Name:        st.rootName(),
-		Type:        ir.TypDyn,
+		Type:        st.ownerRootType(st.owner),
 		Synthesized: true,
 	}
 	st.owner.addVar(v)
@@ -575,7 +578,7 @@ func (st *reactivityState) rootName() string {
 // parented to. The application is no var, so its name carries no symbol --
 // a nil *ir.Var in an ir.Symbol is not a nil symbol.
 func (st *reactivityState) rootRef() *ir.Ident {
-	ref := &ir.Ident{Name: st.rootName(), Type: ir.TypDyn, IsElementRef: true, Synthesized: true}
+	ref := handleRef(st.rootName(), st.ownerRootType(st.owner))
 	if v := st.findSlotVar(st.rootName()); v != nil {
 		ref.Sym = v
 	}
@@ -1352,7 +1355,7 @@ func (st *reactivityState) updaterStmts(props []reactiveProp, slots []reactiveSl
 		//
 		value := rewriteIdentsToCaptures(p.Expr, rewrite)
 		nodeRef := func() ir.Expr {
-			return &ir.Ident{Name: p.NodeID, Type: ir.TypDyn, IsElementRef: true, Synthesized: true}
+			return handleRef(p.NodeID, handleType(p.Node))
 		}
 		if p.Instance {
 			// A prop the instance cannot absorb is not written through a
@@ -1380,7 +1383,7 @@ func (st *reactivityState) updaterStmts(props []reactiveProp, slots []reactiveSl
 		}
 		out = append(out, &ir.Assign{
 			Target: &ir.Select{
-				Type:    ir.TypDyn,
+				Type:    propType(p.Node, p.Key, p.Expr),
 				Operand: nodeRef(),
 				Field:   p.Key,
 			},
@@ -1401,8 +1404,7 @@ func (st *reactivityState) updaterStmts(props []reactiveProp, slots []reactiveSl
 		}
 		parentRef := slot.ParentRef
 		if parentRef == nil {
-			rootVar := st.findSlotVar(st.rootName())
-			parentRef = &ir.Ident{Name: st.rootName(), Type: ir.TypDyn, IsElementRef: true, Synthesized: true, Sym: rootVar}
+			parentRef = st.rootRef()
 		}
 		out = append(out, &ir.CallStmt{Call: &ir.Call{
 			Type: ir.TypVoid,
@@ -1709,11 +1711,16 @@ func renderFuncName(slotID string) string {
 	return "__renderSlot" + n
 }
 
-// synthesizeRenderSlotFunc generates the __renderSlotN(parent dyn) Func.
+// synthesizeRenderSlotFunc generates the __renderSlotN(parent) Func, parent
+// typed as the container its call site hands it.
 // origBody/origElse are the original If.Body/Else or For.Body/Else.
 // Exactly one of (cond) or (iter) should be non-nil.
 func (st *reactivityState) synthesizeRenderSlotFunc(slotID string, cond ir.Expr, iter ir.Expr, key, value string, origBody, origElse []ir.Stmt) *ir.Func {
-	parentParam := &ir.Param{Name: "parent", Type: ir.TypDyn}
+	parentParam := &ir.Param{Name: "parent", Type: st.slotParentType(slotID)}
+	parentRef := func() *ir.Ident {
+		return &ir.Ident{Name: parentParam.Name, Type: parentParam.Type, Sym: parentParam, IsElementRef: true}
+	}
+	elem := st.slotElemType(slotID)
 	fn := &ir.Func{
 		Name:        renderFuncName(slotID),
 		Params:      []*ir.Param{parentParam},
@@ -1724,7 +1731,7 @@ func (st *reactivityState) synthesizeRenderSlotFunc(slotID string, cond ir.Expr,
 
 	// 1. Teardown: for var __entry = __slotN { lower.RemoveChild(parent, __entry) }
 	entryVar := "__entry"
-	entrySym := &ir.LoopVar{Name: entryVar, Type: ir.TypDyn}
+	entrySym := &ir.LoopVar{Name: entryVar, Type: elem}
 	teardown := &ir.For{
 		Key:    entryVar,
 		KeySym: entrySym,
@@ -1734,8 +1741,8 @@ func (st *reactivityState) synthesizeRenderSlotFunc(slotID string, cond ir.Expr,
 				Type: ir.TypVoid,
 				Func: st.intrinsics["RemoveChild"],
 				Args: []ir.CallArg{
-					{Value: &ir.Ident{Name: parentParam.Name, Type: ir.TypDyn, Sym: parentParam, IsElementRef: true}},
-					{Value: &ir.Ident{Name: entryVar, Type: ir.TypDyn, Sym: entrySym, Synthesized: true}},
+					{Value: parentRef()},
+					{Value: &ir.Ident{Name: entryVar, Type: elem, Sym: entrySym, Synthesized: true}},
 				},
 			}},
 		},
@@ -1745,7 +1752,7 @@ func (st *reactivityState) synthesizeRenderSlotFunc(slotID string, cond ir.Expr,
 	reset := &ir.Assign{
 		Target: st.slotIdent(slotID),
 		Op:     ast.AssignSet,
-		Value:  &ir.ListLit{Type: ir.ListOf(ir.TypDyn), Elems: nil},
+		Value:  &ir.ListLit{Type: ir.ListOf(elem), Elems: nil},
 	}
 
 	// 3. Re-evaluate and re-render. Reuse one declarative state across
@@ -1759,10 +1766,11 @@ func (st *reactivityState) synthesizeRenderSlotFunc(slotID string, cond ir.Expr,
 		st.slotDeclSt.nextID = st.idCounter
 	}
 	// Created before the body, because each node it emits places itself.
-	placement := st.newSlotPlacement(slotID, st.synthesizeSlotVar(slotID),
-		&ir.Ident{Name: parentParam.Name, Type: ir.TypDyn, Sym: parentParam, IsElementRef: true})
+	placement := st.newSlotPlacement(slotID, st.synthesizeSlotVar(slotID), parentRef())
 	st.placement = placement
+	restore := st.slotDeclSt.within(hostedBy(parentParam.Type))
 	body := st.renderSlotBody(st.slotDeclSt, parentParam, slotID, cond, iter, key, value, origBody, origElse)
+	restore()
 	st.placement = nil
 	// Propagate the slot's advanced counter back so subsequent
 	// reactivity freshNodeID calls (line 253, line 446) don't reuse
@@ -1807,14 +1815,14 @@ func (st *reactivityState) renderSlotBody(declSt *declarativeState, parentParam 
 	// itself, so the wrapper emitted `x = x = append(...)`. passListLambdas
 	// has always built the bare form for exactly that reason; this one had
 	// not, and only html's OnSlotAppend hook hid it.
-	pushToSlot := func(nodeID string) ir.Stmt {
+	pushToSlot := func(n *ir.NodeInst) ir.Stmt {
 		return &ir.CallStmt{
 			Call: &ir.Call{
 				Type: ir.TypVoid,
 				Func: listPushFn,
 				Args: []ir.CallArg{
 					{Value: st.slotIdent(slotID)},
-					{Value: &ir.Ident{Name: nodeID, Type: ir.TypDyn, IsElementRef: true, Synthesized: true}},
+					{Value: declSt.attachRef(n)},
 				},
 			},
 		}
@@ -1828,18 +1836,18 @@ func (st *reactivityState) renderSlotBody(declSt *declarativeState, parentParam 
 	}
 	// The append target is the slot func's `parent` param; carry its Sym so
 	// codegen resolves it as the local parameter rather than a Model field.
-	parentRef := &ir.Ident{Name: parentParam.Name, Type: ir.TypDyn, Sym: parentParam, IsElementRef: true}
+	parentRef := &ir.Ident{Name: parentParam.Name, Type: parentParam.Type, Sym: parentParam, IsElementRef: true}
 	// The instantiation sites met while emitting this body, in the order they
 	// were reached: each keeps a list of the instances it holds, opened before
 	// the body and closed after it.
 	var instances []*slotInstance
 	// attach is how a node reaches the parent: placed where the desired order
 	// says, on a target that can place one, and appended on every other.
-	attach := func(name string) []ir.Stmt {
+	attach := func(n *ir.NodeInst) []ir.Stmt {
 		if st.placement != nil {
-			return st.place(st.placement, name)
+			return st.place(st.placement, declSt.attachRef(n))
 		}
-		return []ir.Stmt{declSt.appendChildStmt(parentRef, name)}
+		return []ir.Stmt{declSt.appendChildStmt(parentRef, n)}
 	}
 	emitNodeAt := func(n *ir.NodeInst) []ir.Stmt {
 		var sub []ir.Stmt
@@ -1856,12 +1864,11 @@ func (st *reactivityState) renderSlotBody(declSt *declarativeState, parentParam 
 			// the node lowering must not append one of its own.
 			_, sub = lowerNodeForSlot(declSt, n, nil, ownerFuncs)
 		}
-		name := declSt.attachName(n)
-		sub = append(sub, attach(name)...)
+		sub = append(sub, attach(n)...)
 		// What the slot retains is what it later removes from the parent, and
 		// RemoveChild takes a node -- so for an instance that is its root, not
 		// the instance itself.
-		return append(sub, pushToSlot(name))
+		return append(sub, pushToSlot(n))
 	}
 	// Recursively process a body: NodeInsts are realized + pushed onto the
 	// slot list. Nested If/For without their own slot (i.e. depending only
