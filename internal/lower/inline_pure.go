@@ -106,7 +106,8 @@ type inlinePureState struct {
 // soleInstances is each component the package declares that exactly one node
 // instantiates and no test takes. Taking its body empties the declaration, so
 // it is answered only where passNoInlineComponents runs next and drops what
-// nothing instantiates.
+// nothing instantiates, which it does not for a package with no body and no
+// root: every component there is an entry point and is kept.
 func soleInstances(pkg *ir.Package, caps Features, opts Options) map[*ir.Component]bool {
 	if caps.InlineComponents || opts.StopAfter == "InlinePure" || (len(pkg.Body) == 0 && rootComponent(pkg, opts) == nil) {
 		return nil
