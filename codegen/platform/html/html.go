@@ -687,9 +687,9 @@ type htmlGen struct {
 	// scriptErr is the first element the script was asked to build that it
 	// cannot (htmlTranslator.refuse).
 	scriptErr *scriptRefusal
-	// translators are every translator the script was written with, asked after
-	// it for what they could not refuse as they went (refuseUntagged).
-	translators []*htmlTranslator
+	// untagged are the translators that created an element no tag had named
+	// yet, asked once the script is written (refuseUntagged).
+	untagged []*htmlTranslator
 	// nodeSites is where each element the script creates was written, shared
 	// by every scope's translator: an updater writes an element another
 	// scope created.

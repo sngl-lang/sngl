@@ -82,7 +82,8 @@ type htmlTranslator struct {
 	sites   map[string]ast.Stmt // htmlGen.nodeSites
 	// untagged are the elements created under the wildcard's own name that no
 	// tag has been assigned, refused once the script is written (refuseUntagged).
-	untagged map[string]bool
+	untagged     map[string]bool
+	holdUntagged func(*htmlTranslator)
 }
 
 func (t *htmlTranslator) NodeSite(id string, at ast.Stmt) {
@@ -114,16 +115,15 @@ func (g *htmlGen) newHTMLTranslator(jc *javascript.JsIRContext) *htmlTranslator 
 				}
 			}
 		},
-		untagged: map[string]bool{},
+		holdUntagged: func(tr *htmlTranslator) { g.untagged = append(g.untagged, tr) },
 	}
-	g.translators = append(g.translators, tr)
 	return tr
 }
 
 // refuseUntagged refuses each element a script created and named no tag,
 // which would otherwise be created as `<element>`.
 func (g *htmlGen) refuseUntagged() {
-	for _, tr := range g.translators {
+	for _, tr := range g.untagged {
 		for _, id := range slices.Sorted(maps.Keys(tr.untagged)) {
 			tr.refuse(&ir.Ident{Name: id}, fmt.Sprintf("a raw element needs its %q prop to name a tag", tagProp))
 		}
@@ -206,6 +206,10 @@ func (t *htmlTranslator) OnCreateNode(ctx context.Context, id, tag string) []ir.
 		t.sources[id] = tag
 	}
 	if tag == elementName {
+		if t.untagged == nil {
+			t.untagged = map[string]bool{}
+			t.holdUntagged(t)
+		}
 		t.untagged[id] = true
 	}
 	tag = elementTag(tag)
