@@ -2,6 +2,9 @@ package gtk4
 
 import (
 	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
+	"errors"
 	"os"
 	"path/filepath"
 	"slices"
@@ -36,9 +39,20 @@ func rulesGIR(t *testing.T) *Generator {
 	start += bytes.IndexByte(rules[start:], '\n') + 1
 	cut := bytes.LastIndex(base, end)
 	merged := slices.Concat(base[:cut], rules[start:bytes.LastIndex(rules, end)], base[cut:])
-	path := filepath.Join(t.TempDir(), "Gtk-4.0.gir")
-	if err := os.WriteFile(path, merged, 0o644); err != nil {
-		t.Fatal(err)
+	// Named by its content: the path is in the gtk4.registry store key and the
+	// library cache's, so a fresh one per test filled the user's store with an
+	// entry per run and checked the library again per call.
+	sum := sha256.Sum256(merged)
+	path := filepath.Join(os.TempDir(), "sngl-gtk4-rules-"+hex.EncodeToString(sum[:8])+".gir")
+	if _, err := os.Stat(path); err != nil {
+		tmp, err := os.CreateTemp(os.TempDir(), "sngl-gtk4-rules-*")
+		if err != nil {
+			t.Fatal(err)
+		}
+		_, werr := tmp.Write(merged)
+		if err := errors.Join(werr, tmp.Close(), os.Rename(tmp.Name(), path)); err != nil {
+			t.Fatal(err)
+		}
 	}
 	g := codegen.LookupPlatform(platformName).(*Generator)
 	if err := g.Configure(map[string]string{"gir": path}); err != nil {
