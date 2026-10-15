@@ -40,7 +40,7 @@ func red(p color) bool {
 // url, and an avatar with no source shows its placeholder.
 component sources ui.node {
     var w = 5.0
-    var url = "https://example.com/a.png"
+    var url = "/a.png"
     ui.vbox {
         dot #d(r=w)
         ui.image #remote(alt="remote") {
@@ -49,7 +49,7 @@ component sources ui.node {
         ui.avatar #avatar(initials="JD")
         ui.button #grow(text="grow", @click {
             w = w + 5.0
-            url = "https://example.com/b.png"
+            url = "/b.png"
         })
     }
 }
@@ -58,14 +58,14 @@ func testImageSourcesPaint(t Test, c sources) {
     t.wait(func() => red(browser.pixel(c.d, 4, 10)), 2000)
     t.assert(red(browser.pixel(c.d, 4, 10)))
     t.assert(!red(browser.pixel(c.d, 5, 10)))
-    t.assert(browser.markup(c.remote).indexOf("src=\"https://example.com/a.png\"") >= 0)
+    t.assert(browser.markup(c.remote).indexOf("src=\"/a.png\"") >= 0)
     t.assert(browser.text(c.avatar) == "JD")
     t.assert(browser.markup(c.avatar).indexOf("<img") < 0)
     c.grow.click()
     t.wait(func() => red(browser.pixel(c.d, 9, 10)), 2000)
     t.assert(red(browser.pixel(c.d, 9, 10)))
     t.assert(!red(browser.pixel(c.d, 10, 10)))
-    t.assert(browser.markup(c.remote).indexOf("src=\"https://example.com/b.png\"") >= 0)
+    t.assert(browser.markup(c.remote).indexOf("src=\"/b.png\"") >= 0)
 }
 
 ui.window {
@@ -133,7 +133,7 @@ window.__sngl_reset = () => {
 window.__sngl_boot = () => {
 (() => {
   // sngl-entry.js
-  var state = { w__inst0: 5, url__inst0: "https://example.com/a.png", visible__inst0: true };
+  var state = { w__inst0: 5, url__inst0: "/a.png", visible__inst0: true };
   state.growClick = () => $4.click();
   if (typeof window !== "undefined") {
     window.__sngl_state = state;
@@ -174,7 +174,7 @@ window.__sngl_boot = () => {
       const d = c2.getContext("2d").getImageData(x, y, 1, 1).data;
       return { r: d[0], g: d[1], b: d[2], a: d[3] };
     })(document.querySelectorAll('[data-sngl-id="d"]')[0], 5, 10)), '!red(((el, x, y) => {\n	const src = el.matches("canvas, img") ? el : el.querySelector("canvas, img");\n	if (src.tagName === "IMG" && src.naturalWidth === 0) return { r: 0, g: 0, b: 0, a: 0 };\n	let c = src;\n	if (src.tagName === "IMG") {\n		c = document.createElement("canvas");\n		c.width = src.naturalWidth;\n		c.height = src.naturalHeight;\n		c.getContext("2d").drawImage(src, 0, 0);\n	}\n	const d = c.getContext("2d").getImageData(x, y, 1, 1).data;\n	return { r: d[0], g: d[1], b: d[2], a: d[3] };\n})(document.querySelectorAll("[data-sngl-id=\\"d\\"]")[0], 5, 10))');
-    t.assertTrue(document.querySelectorAll('[data-sngl-id="remote"]')[0].outerHTML.replace(/>\s+/g, ">").replace(/\s+</g, "<").indexOf('src="https://example.com/a.png"') >= 0, '(document.querySelectorAll("[data-sngl-id=\\"remote\\"]")[0].outerHTML.replace(/>\\s+/g, ">").replace(/\\s+</g, "<").indexOf("src=\\"https://example.com/a.png\\"") >= 0)');
+    t.assertTrue(document.querySelectorAll('[data-sngl-id="remote"]')[0].outerHTML.replace(/>\s+/g, ">").replace(/\s+</g, "<").indexOf('src="/a.png"') >= 0, '(document.querySelectorAll("[data-sngl-id=\\"remote\\"]")[0].outerHTML.replace(/>\\s+/g, ">").replace(/\\s+</g, "<").indexOf("src=\\"/a.png\\"") >= 0)');
     t.assertTrue(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll('[data-sngl-id="avatar"]')[0]) === "JD", '(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll("[data-sngl-id=\\"avatar\\"]")[0]) === "JD")');
     t.assertTrue(document.querySelectorAll('[data-sngl-id="avatar"]')[0].outerHTML.replace(/>\s+/g, ">").replace(/\s+</g, "<").indexOf("<img") < 0, '(document.querySelectorAll("[data-sngl-id=\\"avatar\\"]")[0].outerHTML.replace(/>\\s+/g, ">").replace(/\\s+</g, "<").indexOf("<img") < 0)');
     c.grow();
@@ -205,7 +205,7 @@ window.__sngl_boot = () => {
       const d = c2.getContext("2d").getImageData(x, y, 1, 1).data;
       return { r: d[0], g: d[1], b: d[2], a: d[3] };
     })(document.querySelectorAll('[data-sngl-id="d"]')[0], 10, 10)), '!red(((el, x, y) => {\n	const src = el.matches("canvas, img") ? el : el.querySelector("canvas, img");\n	if (src.tagName === "IMG" && src.naturalWidth === 0) return { r: 0, g: 0, b: 0, a: 0 };\n	let c = src;\n	if (src.tagName === "IMG") {\n		c = document.createElement("canvas");\n		c.width = src.naturalWidth;\n		c.height = src.naturalHeight;\n		c.getContext("2d").drawImage(src, 0, 0);\n	}\n	const d = c.getContext("2d").getImageData(x, y, 1, 1).data;\n	return { r: d[0], g: d[1], b: d[2], a: d[3] };\n})(document.querySelectorAll("[data-sngl-id=\\"d\\"]")[0], 10, 10))');
-    t.assertTrue(document.querySelectorAll('[data-sngl-id="remote"]')[0].outerHTML.replace(/>\s+/g, ">").replace(/\s+</g, "<").indexOf('src="https://example.com/b.png"') >= 0, '(document.querySelectorAll("[data-sngl-id=\\"remote\\"]")[0].outerHTML.replace(/>\\s+/g, ">").replace(/\\s+</g, "<").indexOf("src=\\"https://example.com/b.png\\"") >= 0)');
+    t.assertTrue(document.querySelectorAll('[data-sngl-id="remote"]')[0].outerHTML.replace(/>\s+/g, ">").replace(/\s+</g, "<").indexOf('src="/b.png"') >= 0, '(document.querySelectorAll("[data-sngl-id=\\"remote\\"]")[0].outerHTML.replace(/>\\s+/g, ">").replace(/\\s+</g, "<").indexOf("src=\\"/b.png\\"") >= 0)');
   }
   function cssColor(c) {
     return "rgba(" + String(c.r) + "," + String(c.g) + "," + String(c.b) + "," + String(parseFloat(c.a) / 255) + ")";
@@ -271,7 +271,7 @@ window.__sngl_boot = () => {
   var __n1 = document.querySelector('[data-sngl-id="__n1"]');
   $4.addEventListener("click", function() {
     state.w__inst0 = state.w__inst0 + 5;
-    state.url__inst0 = "https://example.com/b.png";
+    state.url__inst0 = "/b.png";
     __n1.src = state.url__inst0;
     _snglImageDraw($7, 20, 20, _canvasDraw0);
   });
@@ -286,7 +286,7 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:148279a4645b075375817ff154e86acd
+pass sha256:8aa43b2f7f83d8d45e41bfdabe0a9f95
 -- testrun/html/none/component_browser_paint.sngl/lengths/1 --
 sha256:97a912b8548c0ca2b1042408e303d009
 {
@@ -298,7 +298,7 @@ sha256:97a912b8548c0ca2b1042408e303d009
   ]
 }
 -- testrun/html/none/component_browser_paint.sngl/sources/1 --
-sha256:4e4587dc869b5b371e1a94787a8d3755
+sha256:4a7eff2687fbfb87d34ded0827b6b27a
 {
   "results": [
     {
