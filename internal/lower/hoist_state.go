@@ -169,7 +169,7 @@ func (st *blockState) walk(o *stateOwner, stmts []ir.Stmt, dyn, top bool, host *
 				// An entry's population renders wherever the population it
 				// was handed inserts the entry -- any number of times, as a
 				// node's population does.
-				n.Slots[name].Body = st.walk(o, n.Slots[name].Body, true, false, entryHost(n, name))
+				n.Slots[name].Body = st.walk(o, n.Slots[name].Body, true, false, orHost(entryHost(n, name), host))
 			}
 		}
 	}
@@ -301,7 +301,8 @@ func slotHost(comp *ir.Component, name string) *ir.Component {
 }
 
 // entryHost is the family a population of the entry name, handed to an
-// insertion of in, accepts; nil where the position says nothing.
+// insertion of in, accepts; nil where the entry names none, which then takes
+// the family of the position the insertion stands in.
 func entryHost(in *ir.SlotInst, name string) *ir.Component {
 	slot := in.Decl
 	if in.Entry != nil {
