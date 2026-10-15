@@ -130,6 +130,10 @@ func lowerTestBody(irPkg *ir.Package, fn *ir.Func, methodFields map[string]bool,
 			out = append(out, line)
 			continue
 		}
+		if line, ok := lowerTestWait(s, jc); ok {
+			out = append(out, line)
+			continue
+		}
 		if line, ok := lowerEventTrigger(s, jc); ok {
 			out = append(out, line)
 			continue
@@ -191,6 +195,17 @@ func lowerTestSnapshot(s ir.Stmt, jc *JsIRContext) (string, bool) {
 	}
 	name := jc.EvalExpr(cs.Call.Args[1].Value)
 	return fmt.Sprintf("await t.snapshot(%s)", name), true
+}
+
+// lowerTestWait polls the predicate between turns of the page's event loop,
+// which is where a timer fires and an async handler resumes, until it holds or
+// the timeout passes.
+func lowerTestWait(s ir.Stmt, jc *JsIRContext) (string, bool) {
+	cs, ok := s.(*ir.CallStmt)
+	if !ok || cs.Call == nil || !ir.IsTestCall(cs.Call, ir.TestWaitID) || len(cs.Call.Args) != 3 {
+		return "", false
+	}
+	return fmt.Sprintf("for (const __snglWait = %s, __snglEnd = Date.now() + %s; !__snglWait() && Date.now() < __snglEnd; ) await new Promise((r) => setTimeout(r, 5))", jc.EvalExpr(cs.Call.Args[1].Value), jc.EvalExpr(cs.Call.Args[2].Value)), true
 }
 
 // lowerEventTrigger matches the IR shape a test line like `c.inc.click()`
