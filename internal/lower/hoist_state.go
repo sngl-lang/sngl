@@ -51,10 +51,10 @@ func applyHoistState(pkg *ir.Package, _ Features, _ Options) error {
 	// The package's own top level is its state, as a component's is.
 	pkg.Body, pkg.Vars = promoteLocalVarsToVars(pkg.Body, pkg.Vars)
 	po := st.packageOwner()
-	pkg.Body = st.walk(po, pkg.Body, false, true)
+	pkg.Body = st.walk(po, pkg.Body, false, true, hostedBy(ir.Published().ApplicationType()))
 	for _, comp := range pkg.Components {
 		if comp != nil {
-			comp.Stmts = st.walk(st.componentOwner(comp), comp.Stmts, false, true)
+			comp.Stmts = st.walk(st.componentOwner(comp), comp.Stmts, false, true, comp.Family)
 		}
 	}
 	pkg.Components = append(pkg.Components, st.made...)
@@ -120,13 +120,14 @@ func (st *blockState) componentOwner(c *ir.Component) *stateOwner {
 
 // walk lowers the blocks of a view. dyn says the statements are rendered
 // other than once -- under a loop, a branch over state, a page; top that they
-// are the owner's own body, whose vars the checker already made its state.
-func (st *blockState) walk(o *stateOwner, stmts []ir.Stmt, dyn, top bool) []ir.Stmt {
+// are the owner's own body, whose vars the checker already made its state;
+// host the family the position the statements stand in accepts, or nil.
+func (st *blockState) walk(o *stateOwner, stmts []ir.Stmt, dyn, top bool, host *ir.Component) []ir.Stmt {
 	if !top && hasLocalVar(stmts) {
 		if !dyn {
 			stmts = st.promote(o, stmts)
 		} else {
-			return []ir.Stmt{st.wrap(o, stmts)}
+			return []ir.Stmt{st.wrap(o, stmts, host)}
 		}
 	}
 	for _, s := range stmts {
@@ -137,36 +138,36 @@ func (st *blockState) walk(o *stateOwner, stmts []ir.Stmt, dyn, top bool) []ir.S
 				// A page is mounted while it shows and gone when it does not.
 				d = true
 			}
-			n.Children = st.walk(o, n.Children, d, false)
+			n.Children = st.walk(o, n.Children, d, false, hostedBy(handleType(n)))
 			for _, name := range ir.SlotNames(n.Slots) {
 				// A population renders where the component inserts it, which
 				// may be any number of times.
-				n.Slots[name].Body = st.walk(o, n.Slots[name].Body, true, false)
+				n.Slots[name].Body = st.walk(o, n.Slots[name].Body, true, false, slotHost(n.Component, name))
 			}
 		case *ir.If:
 			d := dyn || !ir.IsConst(n.Cond)
-			n.Body = st.walk(o, n.Body, d, false)
-			n.Else = st.walk(o, n.Else, d, false)
+			n.Body = st.walk(o, n.Body, d, false, host)
+			n.Else = st.walk(o, n.Else, d, false, host)
 		case *ir.For:
-			n.Body = st.walk(o, n.Body, true, false)
-			n.Else = st.walk(o, n.Else, dyn, false)
+			n.Body = st.walk(o, n.Body, true, false, host)
+			n.Else = st.walk(o, n.Else, dyn, false, host)
 		case *ir.ErrorBoundary:
-			n.Children = st.walk(o, n.Children, dyn, false)
-			n.Failed = st.walk(o, n.Failed, dyn, false)
+			n.Children = st.walk(o, n.Children, dyn, false, host)
+			n.Failed = st.walk(o, n.Failed, dyn, false, host)
 		case *ir.ContextProvider:
 			// passContext splices a provider's children into the body around it
 			// and promotes the vars it held there, with the provided value in
 			// scope for their initializers; rendered once, they are its to
 			// promote. Rendered other than once, the block is an instance like
 			// any other, and the provided value reaches it as a context does.
-			n.Children = st.walk(o, n.Children, dyn, !dyn)
+			n.Children = st.walk(o, n.Children, dyn, !dyn, host)
 		case *ir.SlotInst:
-			n.Children = st.walk(o, n.Children, dyn, false)
+			n.Children = st.walk(o, n.Children, dyn, false, host)
 			for _, name := range ir.SlotNames(n.Slots) {
 				// An entry's population renders wherever the population it
 				// was handed inserts the entry -- any number of times, as a
 				// node's population does.
-				n.Slots[name].Body = st.walk(o, n.Slots[name].Body, true, false)
+				n.Slots[name].Body = st.walk(o, n.Slots[name].Body, true, false, entryHost(n, name))
 			}
 		}
 	}
@@ -204,11 +205,19 @@ func (st *blockState) promote(o *stateOwner, stmts []ir.Stmt) []ir.Stmt {
 
 // wrap is the instantiation of a component synthesized for a block rendered
 // other than once, with the block as its body and the block's vars its own.
-func (st *blockState) wrap(o *stateOwner, stmts []ir.Stmt) ir.Stmt {
-	w := &ir.Component{Name: "__block_state" + strconv.Itoa(len(st.made)), Family: treeOfStmts(stmts)}
+//
+// Its family is the one the first node the block renders belongs to, or, for
+// a block rendering nothing but nodes that take the family they are placed in
+// -- an effect, a timer -- the family its position accepts, host.
+func (st *blockState) wrap(o *stateOwner, stmts []ir.Stmt, host *ir.Component) ir.Stmt {
+	family := treeOfStmts(stmts)
+	if family == nil {
+		family = host
+	}
+	w := &ir.Component{Name: "__block_state" + strconv.Itoa(len(st.made)), Family: family}
 	st.made = append(st.made, w)
 	w.Stmts, w.Vars = promoteLocalVarsToVars(stmts, nil)
-	w.Stmts = st.walk(st.componentOwner(w), w.Stmts, false, true)
+	w.Stmts = st.walk(st.componentOwner(w), w.Stmts, false, true, family)
 
 	site := &ir.NodeInst{Name: w.Name, Component: w}
 	inside := declaredWithin(w.Stmts)
@@ -273,6 +282,45 @@ func (st *blockState) wrap(o *stateOwner, stmts []ir.Stmt) ir.Stmt {
 		return &ir.Ident{AST: id.AST, Name: p.Name, Type: id.Type, Sym: p}, ir.SkipDir
 	})
 	return site
+}
+
+// slotHost is the family a population of comp's slot name accepts: the one
+// the slot names, or, where it names none of its own, comp's.
+func slotHost(comp *ir.Component, name string) *ir.Component {
+	if comp == nil {
+		return nil
+	}
+	for _, s := range comp.Slots {
+		if s.Name == name {
+			return slotDeclHost(s, comp.Family)
+		}
+	}
+	return comp.Family
+}
+
+// entryHost is the family a population of the entry name, handed to an
+// insertion of in, accepts; nil where the position says nothing.
+func entryHost(in *ir.SlotInst, name string) *ir.Component {
+	slot := in.Decl
+	if in.Entry != nil {
+		slot = in.Entry
+	}
+	if slot == nil {
+		return nil
+	}
+	for _, e := range slot.Slots {
+		if e.Name == name {
+			return slotDeclHost(e, nil)
+		}
+	}
+	return nil
+}
+
+func slotDeclHost(s *ir.SlotDecl, fallback *ir.Component) *ir.Component {
+	if f := ir.TypeFamily(s.Content); f != nil {
+		return f
+	}
+	return fallback
 }
 
 // treeOfStmts is the family the first node a block renders belongs to,
