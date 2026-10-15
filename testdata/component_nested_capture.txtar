@@ -774,3 +774,13 @@ pass sha256:17a07a2681da4c330f675ed090d30af2
 pass sha256:ce3e2249f524177e27e3a3b1a1913937
 -- run/none/html --
 pass sha256:53b6b8b16ab16c1b8ff0a493bd249660
+-- testrun/html/none/component_nested_capture.sngl/main/1 --
+sha256:f6aec79fc2ee40434400d2ced1b78ecd
+{
+  "results": [
+    {
+      "Desc": "NestedBodyReadsAndWritesTheOwnersVar",
+      "Passed": true
+    }
+  ]
+}

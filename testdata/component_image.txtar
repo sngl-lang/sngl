@@ -492,3 +492,13 @@ pass sha256:67ec3e91a8b60e6e941ccd16ee5be6b4
 pass sha256:a5013d2f0dfbc6c0696e34396ea76c4b
 -- run/none/html --
 pass sha256:239be933fd48476ec4259fdd2ed8d3bb
+-- testrun/html/none/component_image.sngl/main/1 --
+sha256:7edb85c34375b07d8642532c37073224
+{
+  "results": [
+    {
+      "Desc": "ImageSrcMutates",
+      "Passed": true
+    }
+  ]
+}

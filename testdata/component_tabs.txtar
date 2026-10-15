@@ -1217,3 +1217,13 @@ pass sha256:103dcac124b54cd5bafd2bceb0d3b41a
 pass sha256:225a36a54547a35ba9dcf3b85ffb4903
 -- run/none/html --
 pass sha256:5462306a55a5206695fca38b35d8914c
+-- testrun/html/none/component_tabs.sngl/main/1 --
+sha256:7f5488b3f37c4b9930b7a459da956b11
+{
+  "results": [
+    {
+      "Desc": "TabsSelectedMutates",
+      "Passed": true
+    }
+  ]
+}

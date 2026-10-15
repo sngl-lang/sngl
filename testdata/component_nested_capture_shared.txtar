@@ -893,3 +893,13 @@ pass sha256:c814bc4f52f81366a95175d0d2b85f37
 pass sha256:cd6537e12897e2cccf9de673ec51633a
 -- run/none/html --
 pass sha256:9d8bd1084a33d9a42f46dadf754112a5
+-- testrun/html/none/component_nested_capture_shared.sngl/main/1 --
+sha256:a5025c1d76f2de493bf866153497ae35
+{
+  "results": [
+    {
+      "Desc": "TwoInstantiationsShareOneCapturedVar",
+      "Passed": true
+    }
+  ]
+}

@@ -100,6 +100,7 @@ import (
 
 	"duckfam.us/sngl/internal/build"
 	"duckfam.us/sngl/internal/parser"
+	"duckfam.us/sngl/internal/testlaunch"
 	"duckfam.us/sngl/internal/testutil"
 	"duckfam.us/sngl/internal/trust"
 
@@ -241,6 +242,9 @@ func split(arc *txtar.Archive) (src, golden map[string][]byte, records map[strin
 				return fail("golden file %q: expected out/<lang>/<platform>/<path>", f.Name)
 			}
 			golden[name] = f.Data
+			continue
+		}
+		if strings.HasPrefix(name, testlaunch.RecordPrefix) {
 			continue
 		}
 		if rest, ok := strings.CutPrefix(name, recordPrefix); ok {
@@ -438,10 +442,13 @@ func compare(t *testing.T, got, golden map[string][]byte) {
 
 func writeGolden(t *testing.T, path string, arc *txtar.Archive, got map[string][]byte, boilerplate map[string]bool, records map[string]record) {
 	t.Helper()
-	var files []txtar.File
+	var files, runs []txtar.File
 	for _, f := range arc.Files {
 		trimmed := strings.TrimPrefix(f.Name, "./")
-		if !strings.HasPrefix(trimmed, goldenPrefix) && !strings.HasPrefix(trimmed, recordPrefix) {
+		switch {
+		case strings.HasPrefix(trimmed, testlaunch.RecordPrefix):
+			runs = append(runs, f)
+		case !strings.HasPrefix(trimmed, goldenPrefix) && !strings.HasPrefix(trimmed, recordPrefix):
 			files = append(files, f)
 		}
 	}
@@ -451,6 +458,7 @@ func writeGolden(t *testing.T, path string, arc *txtar.Archive, got map[string][
 	for _, name := range sortedStrings(records) {
 		files = append(files, txtar.File{Name: name, Data: []byte(records[name].String())})
 	}
+	files = append(files, runs...)
 	arc.Files = files
 	if err := os.WriteFile(path, txtar.Format(arc), 0o644); err != nil {
 		t.Fatalf("write golden: %v", err)

@@ -615,3 +615,13 @@ pass sha256:dd7061389f331d479546227d113eb66e
 pass sha256:b047c58b5fb76b302904b1b225e24e03
 -- run/none/html --
 pass sha256:71b4a9745dca5976770419961b8d8624
+-- testrun/html/none/component_toggle.sngl/main/1 --
+sha256:72f1ac00575260755144b5af7dbbd137
+{
+  "results": [
+    {
+      "Desc": "ToggleFlips",
+      "Passed": true
+    }
+  ]
+}

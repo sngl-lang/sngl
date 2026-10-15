@@ -876,3 +876,13 @@ pass sha256:e51d8b87b8ec51806497b14bacdc3719
 pass sha256:065e25d98e6928fcae22e53208439053
 -- run/none/html --
 pass sha256:0dd52251f239491eadfdb23e5dbe3a22
+-- testrun/html/none/component_datepicker.sngl/main/1 --
+sha256:c14d8e765787b8d8a1a012c2469f1b65
+{
+  "results": [
+    {
+      "Desc": "DatepickerValueMutates",
+      "Passed": true
+    }
+  ]
+}

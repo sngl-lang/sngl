@@ -547,3 +547,13 @@ pass sha256:4d512fb2c1d669d4724aa8f30879e2c7
 pass sha256:4262f40f0fbcb35b9448d273572e9bee
 -- run/none/html --
 pass sha256:403ff51becc61b003c90cee6a3717eb6
+-- testrun/html/none/component_input.sngl/main/1 --
+sha256:85ef8174f6f858cf5f39728ec7cdac11
+{
+  "results": [
+    {
+      "Desc": "InputValueMutates",
+      "Passed": true
+    }
+  ]
+}

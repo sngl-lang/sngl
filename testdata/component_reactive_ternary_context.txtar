@@ -574,3 +574,13 @@ pass sha256:d6b8036338f7da9b587efa0694c9ccc4
 pass sha256:d7856d7493d22bfc5e861fff278b232e
 -- run/none/html --
 pass sha256:6d0572bf1ca0febcbcff4bc7c7b8fe60
+-- testrun/html/none/component_reactive_ternary_context.sngl/main/1 --
+sha256:0fa142ec771424ab2dc97f6aaa274ccf
+{
+  "results": [
+    {
+      "Desc": "ThemeToggles",
+      "Passed": true
+    }
+  ]
+}
