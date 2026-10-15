@@ -1,4 +1,4 @@
-package main
+package testlaunch
 
 import (
 	"bytes"
@@ -15,38 +15,36 @@ import (
 	"strings"
 	"sync"
 
+	"golang.org/x/tools/txtar"
+
 	"duckfam.us/sngl/codegen"
 )
 
-// testRuns, when set, answers a test launch from a record of an earlier one
-// with the same inputs. Only the script harness sets it.
-var testRuns *runRecords
-
-// A runRecord is what one launch of a generated test program produced: its
+// A Record is what one launch of a generated test program produced: its
 // results or its error, and the snapshots it wrote. Digest names the inputs --
 // the generated program and the snapshots it was compared against.
-type runRecord struct {
+type Record struct {
 	Digest    string                `json:"-"`
 	Results   []*codegen.TestResult `json:"results,omitempty"`
 	Error     string                `json:"error,omitempty"`
 	Snapshots map[string][]byte     `json:"snapshots,omitempty"`
 }
 
-type runRecords struct {
+type Records struct {
 	mu      sync.Mutex
 	update  bool
-	have    map[string]runRecord
-	written map[string]runRecord
+	have    map[string]Record
+	written map[string]Record
 	seen    map[string]int
 }
 
-func newRunRecords(have map[string]runRecord, update bool) *runRecords {
-	return &runRecords{update: update, have: have, written: map[string]runRecord{}, seen: map[string]int{}}
+func NewRecords(have map[string]Record, update bool) *Records {
+	return &Records{update: update, have: have, written: map[string]Record{}, seen: map[string]int{}}
 }
 
-func parseRunRecord(name string, data []byte) (runRecord, error) {
+func parseRecord(name string, data []byte) (Record, error) {
 	head, body, _ := bytes.Cut(data, []byte("\n"))
-	rec := runRecord{Digest: strings.TrimSpace(string(head))}
+	rec := Record{Digest: strings.TrimSpace(string(head))}
 	if !strings.HasPrefix(rec.Digest, "sha256:") {
 		return rec, fmt.Errorf("%s: first line is not a digest", name)
 	}
@@ -56,13 +54,13 @@ func parseRunRecord(name string, data []byte) (runRecord, error) {
 	return rec, nil
 }
 
-func (r runRecord) format() []byte {
+func (r Record) format() []byte {
 	body, _ := json.MarshalIndent(r, "", "  ")
 	return fmt.Appendf(nil, "%s\n%s\n", r.Digest, body)
 }
 
 // Written returns every record reached this run, keyed by archive name.
-func (rr *runRecords) Written() map[string]runRecord {
+func (rr *Records) Written() map[string]Record {
 	rr.mu.Lock()
 	defer rr.mu.Unlock()
 	return maps.Clone(rr.written)
@@ -71,7 +69,7 @@ func (rr *runRecords) Written() map[string]runRecord {
 // answer replays the record for this launch when its digest matches, and
 // otherwise runs launch -- only under update, since a run that is not
 // recorded is one CI has no answer for.
-func (rr *runRecords) answer(key, genDir, snapDir string, launch func() ([]*codegen.TestResult, error)) ([]*codegen.TestResult, error) {
+func (rr *Records) answer(key, genDir, snapDir string, launch func() ([]*codegen.TestResult, error)) ([]*codegen.TestResult, error) {
 	rr.mu.Lock()
 	rr.seen[key]++
 	name := fmt.Sprintf("testrun/%s/%d", key, rr.seen[key])
@@ -108,16 +106,16 @@ func (rr *runRecords) answer(key, genDir, snapDir string, launch func() ([]*code
 	if !rr.update {
 		if recorded {
 			rr.keep(name, have)
-			return nil, fmt.Errorf("%s: the generated test program changed since it was run; rerun the script with -update", name)
+			return nil, fmt.Errorf("%s: the generated test program changed since it was run; rerun its test with -update", name)
 		}
-		return nil, fmt.Errorf("%s: no record of this test run; rerun the script with -update on a host with the toolchain", name)
+		return nil, fmt.Errorf("%s: no record of this test run; rerun its test with -update on a host with the toolchain", name)
 	}
 
 	results, err := launch()
 	if skip, ok := errors.AsType[*codegen.SkipError](err); ok {
 		return nil, fmt.Errorf("%s: cannot record — %s", name, skip.Reason)
 	}
-	rec := runRecord{Digest: want}
+	rec := Record{Digest: want}
 	if err != nil {
 		rec.Error = err.Error()
 	}
@@ -141,7 +139,7 @@ func (rr *runRecords) answer(key, genDir, snapDir string, launch func() ([]*code
 	return results, err
 }
 
-func (rr *runRecords) keep(name string, rec runRecord) {
+func (rr *Records) keep(name string, rec Record) {
 	rr.mu.Lock()
 	rr.written[name] = rec
 	rr.mu.Unlock()
@@ -203,4 +201,40 @@ func cloneResults(rs []*codegen.TestResult) []*codegen.TestResult {
 	var out []*codegen.TestResult
 	_ = json.Unmarshal(data, &out)
 	return out
+}
+
+// RecordPrefix is the archive directory holding a fixture's run records.
+const RecordPrefix = "testrun/"
+
+// SplitArchive separates an archive's run records from its other files.
+func SplitArchive(a *txtar.Archive) (map[string]Record, []txtar.File, error) {
+	records := map[string]Record{}
+	var rest []txtar.File
+	for _, f := range a.Files {
+		if !strings.HasPrefix(f.Name, RecordPrefix) {
+			rest = append(rest, f)
+			continue
+		}
+		rec, err := parseRecord(f.Name, f.Data)
+		if err != nil {
+			return nil, nil, err
+		}
+		records[f.Name] = rec
+	}
+	return records, rest, nil
+}
+
+// WriteArchive writes rest and then written to file, unless that is what a
+// already holds. Records reached this run replace every record the archive
+// held, so one no longer launched goes with it.
+func WriteArchive(file string, a *txtar.Archive, rest []txtar.File, written map[string]Record) error {
+	out := &txtar.Archive{Comment: a.Comment, Files: slices.Clone(rest)}
+	for _, name := range slices.Sorted(maps.Keys(written)) {
+		out.Files = append(out.Files, txtar.File{Name: name, Data: written[name].format()})
+	}
+	data := txtar.Format(out)
+	if bytes.Equal(data, txtar.Format(a)) {
+		return nil
+	}
+	return os.WriteFile(file, data, 0o644)
 }

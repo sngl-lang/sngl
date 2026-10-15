@@ -1,4 +1,7 @@
-package main
+// Package testlaunch runs a checked package's tests by generating a test
+// program for one target and launching it -- what `sngl test` does for every
+// target but none, and what the html component fixtures do in process.
+package testlaunch
 
 import (
 	"cmp"
@@ -20,10 +23,27 @@ import (
 	"duckfam.us/sngl/internal/lower"
 	"duckfam.us/sngl/internal/optimize"
 	"duckfam.us/sngl/internal/testrpc"
+	"duckfam.us/sngl/internal/trust"
 	"duckfam.us/sngl/ir"
 )
 
-func resolveLauncher(plat codegen.PlatformGenerator, lang codegen.LangTranslator) codegen.TestLauncher {
+// Config says what to launch a package's tests on and where its fixture lives.
+type Config struct {
+	Platform codegen.PlatformGenerator
+	Lang     codegen.LangTranslator
+	Options  *ir.StructLit
+	Trust    *trust.Policy
+
+	// Dir and File name the fixture; its snapshots are Dir/File.snapshots.
+	Dir, File string
+
+	// Records, when set, answers each launch from a record of an earlier one
+	// with the same inputs.
+	Records *Records
+}
+
+// Launcher is what launches a pair's tests, or nil when neither half can.
+func Launcher(plat codegen.PlatformGenerator, lang codegen.LangTranslator) codegen.TestLauncher {
 	if l, ok := plat.(codegen.TestLauncher); ok {
 		return l
 	}
@@ -33,24 +53,23 @@ func resolveLauncher(plat codegen.PlatformGenerator, lang codegen.LangTranslator
 	return nil
 }
 
-// Tests are grouped by their component-under-test (second parameter type), and
-// each group runs in its own launcher invocation against the original IR
-// package: the component name goes over the rootComponent option so the
-// platform builds its Model from it, with no AST round-trip.
-func runViaLauncher(ctx context.Context, plat codegen.PlatformGenerator, lang codegen.LangTranslator, pkg *ir.Package, opts *ir.StructLit, fixtureDir, fixtureFile string) (results []*codegen.TestResult, err error) {
+// Run runs pkg's tests. They are grouped by their component-under-test (second
+// parameter type), and each group runs in its own launcher invocation against
+// the original IR package: the component name goes over the rootComponent
+// option so the platform builds its Model from it, with no AST round-trip.
+func Run(ctx context.Context, pkg *ir.Package, cfg Config) (results []*codegen.TestResult, err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			err = fmt.Errorf("panic in test launcher: %v", r)
 		}
 	}()
-	launcher := resolveLauncher(plat, lang)
+	plat, lang := cfg.Platform, cfg.Lang
+	launcher := Launcher(plat, lang)
 	if launcher == nil {
-		return nil, fmt.Errorf("no TestLauncher for platform %q lang %q", plat.PlatformIdentifier(), langIdent(lang))
+		return nil, fmt.Errorf("no TestLauncher for platform %q lang %q", plat.PlatformIdentifier(), LangIdent(lang))
 	}
 
-	if opts == nil {
-		opts = &ir.StructLit{}
-	}
+	opts := cloneOptions(cfg.Options)
 	codegen.SetOptionField(opts, "test", true)
 	codegen.SetOptionField(opts, "testMode", "agent")
 
@@ -75,9 +94,9 @@ func runViaLauncher(ctx context.Context, plat codegen.PlatformGenerator, lang co
 		// Each group lowers its own clone, the way each build target does: the
 		// pipeline mutates in place, and two groups do not agree on what the
 		// root is.
-		groupPkg := ir.ClonePackageFor(pkg, plat.PlatformIdentifier(), langIdent(lang))
+		groupPkg := ir.ClonePackageFor(pkg, plat.PlatformIdentifier(), LangIdent(lang))
 		rootForTests(groupPkg, group.Component)
-		assets, err := prepareForLaunch(groupPkg, plat, lang, group.Component)
+		assets, err := prepareForLaunch(groupPkg, cfg, group.Component)
 		if err != nil {
 			return results, err
 		}
@@ -86,7 +105,7 @@ func runViaLauncher(ctx context.Context, plat codegen.PlatformGenerator, lang co
 		if group.Component != "" {
 			codegen.SetOptionField(groupOpts, "rootComponent", group.Component)
 		}
-		grpResults, err := launchOneGroup(ctx, plat, lang, launcher, groupPkg, groupOpts, assets, fixtureDir, fixtureFile, group)
+		grpResults, err := launchOneGroup(ctx, cfg, launcher, groupPkg, groupOpts, assets, group)
 		if err != nil {
 			return results, err
 		}
@@ -120,7 +139,8 @@ func pkgWithTestSubset(pkg *ir.Package, keep map[string]bool) *ir.Package {
 	return &out
 }
 
-func launchOneGroup(ctx context.Context, plat codegen.PlatformGenerator, lang codegen.LangTranslator, launcher codegen.TestLauncher, pkg *ir.Package, opts *ir.StructLit, assets []codegen.FileAsset, fixtureDir, fixtureFile string, group testharness.TestGroup) (results []*codegen.TestResult, err error) {
+func launchOneGroup(ctx context.Context, cfg Config, launcher codegen.TestLauncher, pkg *ir.Package, opts *ir.StructLit, assets []codegen.FileAsset, group testharness.TestGroup) (results []*codegen.TestResult, err error) {
+	plat, lang := cfg.Platform, cfg.Lang
 	defer func() {
 		if r := recover(); r != nil {
 			err = fmt.Errorf("panic in test launcher: %v", r)
@@ -133,7 +153,7 @@ func launchOneGroup(ctx context.Context, plat codegen.PlatformGenerator, lang co
 	// to ask for) and emptied on the next use of the same key; `sngl -v`
 	// logs the path. See codegen.BuildDir.
 	tmpDir, release, mkErr := codegen.BuildDir("test",
-		plat.PlatformIdentifier(), langIdent(lang), fixtureFile, group.Component)
+		plat.PlatformIdentifier(), LangIdent(lang), cfg.File, group.Component)
 	if mkErr != nil {
 		return nil, fmt.Errorf("build dir: %w", mkErr)
 	}
@@ -165,12 +185,12 @@ func launchOneGroup(ctx context.Context, plat codegen.PlatformGenerator, lang co
 			return nil, fmt.Errorf("launch: %w", err)
 		}
 		defer cleanup()
-		return driveRPC(ch, fixtureDir, fixtureFile)
+		return driveRPC(ch, cfg.Dir, cfg.File)
 	}
-	if testRuns != nil {
-		key := strings.Join([]string{plat.PlatformIdentifier(), langIdent(lang), fixtureFile, cmp.Or(group.Component, "_")}, "/")
-		snapDir := filepath.Join(fixtureDir, fixtureFile+".snapshots")
-		return testRuns.answer(key, tmpDir, snapDir, launch)
+	if cfg.Records != nil {
+		key := strings.Join([]string{plat.PlatformIdentifier(), LangIdent(lang), cfg.File, cmp.Or(group.Component, "_")}, "/")
+		snapDir := filepath.Join(cfg.Dir, cfg.File+".snapshots")
+		return cfg.Records.answer(key, tmpDir, snapDir, launch)
 	}
 	results, err = launch()
 	if skip, ok := errors.AsType[*codegen.SkipError](err); ok {
@@ -184,15 +204,14 @@ func launchOneGroup(ctx context.Context, plat codegen.PlatformGenerator, lang co
 	return results, err
 }
 
-// Best-effort, for error messages: language types spell this differently.
-// langIdent is the language's name, as `ir.Language` declares it.
+// LangIdent is the language's name, as `ir.Language` declares it, or "" for none.
 //
 // It probed for two method names a LangTranslator does not have —
 // LangIdentifier and Identifier — so it answered "" for every language there
 // is. The optimizer and the lowering both take that name, and with no name the
 // program under test was optimized differently from the one `sngl generate`
 // builds: `go test` and `go build` disagreed about the same source.
-func langIdent(lang codegen.LangTranslator) string {
+func LangIdent(lang codegen.LangTranslator) string {
 	if lang == nil {
 		return ""
 	}
@@ -333,11 +352,12 @@ func rootForTests(pkg *ir.Package, comp string) {
 // rejects, e.g. a ternary stranded in the __ctx_* Var.Init passContext
 // synthesizes, which NoTernary does not rewrite (it lowers ternaries in
 // statement positions only) and the post-lower optimize folds away.
-func prepareForLaunch(pkg *ir.Package, plat codegen.PlatformGenerator, lang codegen.LangTranslator, root string) ([]codegen.FileAsset, error) {
+func prepareForLaunch(pkg *ir.Package, cfg Config, root string) ([]codegen.FileAsset, error) {
+	plat, lang := cfg.Platform, cfg.Lang
 	optCfg := &optimize.Config{
-		Trust:    cliTrust,
+		Trust:    cfg.Trust,
 		Platform: plat.PlatformIdentifier(),
-		Language: langIdent(lang),
+		Language: LangIdent(lang),
 	}
 	if err := optimize.Optimize(pkg, optCfg); err != nil {
 		return nil, fmt.Errorf("optimize for tests: %w", err)
@@ -352,7 +372,7 @@ func prepareForLaunch(pkg *ir.Package, plat codegen.PlatformGenerator, lang code
 	// `sngl generate` builds.
 	if err := lower.Lower(pkg, feats, lower.Options{
 		Platform:      plat.PlatformIdentifier(),
-		Language:      langIdent(lang),
+		Language:      LangIdent(lang),
 		RootComponent: root,
 		// A group rooted at no component emits the tests handed none, so
 		// it repoints nothing; another group roots at each other component.

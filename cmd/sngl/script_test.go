@@ -6,11 +6,9 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"maps"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -20,6 +18,7 @@ import (
 	"duckfam.us/sngl/internal/gencache"
 	"duckfam.us/sngl/internal/headless"
 	"duckfam.us/sngl/internal/jdk"
+	"duckfam.us/sngl/internal/testlaunch"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"golang.org/x/tools/txtar"
@@ -109,18 +108,18 @@ func TestScript(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			records, rest, err := splitRunRecords(a)
+			records, rest, err := testlaunch.SplitArchive(a)
 			if err != nil {
 				t.Fatal(err)
 			}
 			if err := s.ExtractFiles(&txtar.Archive{Files: rest}); err != nil {
 				t.Fatal(err)
 			}
-			testRuns = newRunRecords(records, *updateTestRuns)
+			testRuns = testlaunch.NewRecords(records, *updateTestRuns)
 			defer func() { testRuns = nil }()
 			scripttest.Run(t, engine, s, file, bytes.NewReader(a.Comment))
 			if *updateTestRuns && !t.Failed() {
-				if err := writeRunRecords(file, a, rest, testRuns.Written()); err != nil {
+				if err := testlaunch.WriteArchive(file, a, rest, testRuns.Written()); err != nil {
 					t.Fatal(err)
 				}
 			}
@@ -132,39 +131,6 @@ func TestScript(t *testing.T) {
 // testrun/ records its archive carries; without it a launch is answered from
 // its record, so CI needs no toolchain, display or browser to run one.
 var updateTestRuns = flag.Bool("update", false, "rerun the test programs scripts launch and rewrite their testrun/ records")
-
-const runRecordPrefix = "testrun/"
-
-func splitRunRecords(a *txtar.Archive) (map[string]runRecord, []txtar.File, error) {
-	records := map[string]runRecord{}
-	var rest []txtar.File
-	for _, f := range a.Files {
-		if !strings.HasPrefix(f.Name, runRecordPrefix) {
-			rest = append(rest, f)
-			continue
-		}
-		rec, err := parseRunRecord(f.Name, f.Data)
-		if err != nil {
-			return nil, nil, err
-		}
-		records[f.Name] = rec
-	}
-	return records, rest, nil
-}
-
-// Records reached this run replace every record the archive held, so one a
-// script no longer launches goes with it.
-func writeRunRecords(file string, a *txtar.Archive, rest []txtar.File, written map[string]runRecord) error {
-	out := &txtar.Archive{Comment: a.Comment, Files: slices.Clone(rest)}
-	for _, name := range slices.Sorted(maps.Keys(written)) {
-		out.Files = append(out.Files, txtar.File{Name: name, Data: written[name].format()})
-	}
-	data := txtar.Format(out)
-	if bytes.Equal(data, txtar.Format(a)) {
-		return nil
-	}
-	return os.WriteFile(file, data, 0o644)
-}
 
 func scriptCmds() map[string]script.Cmd {
 	cmds := scripttest.DefaultCmds()
