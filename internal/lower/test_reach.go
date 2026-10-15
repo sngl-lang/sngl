@@ -145,6 +145,7 @@ func (r *testReach) takes(comp *ir.Component) bool {
 // resolver answers what a test's select chain names.
 type resolver struct {
 	*testReach
+	pkg *ir.Package
 	// byHandle is every splice of a node by its handle, and rendered every
 	// splice of a component a test takes in a build that renders it.
 	byHandle map[*ir.Var][]*splicedInstance
@@ -217,7 +218,7 @@ func repointTestReaches(pkg *ir.Package, reach *testReach, splices []splice) err
 	if len(reach.params) == 0 {
 		return nil
 	}
-	r := &resolver{testReach: reach, byHandle: map[*ir.Var][]*splicedInstance{}, rendered: map[*ir.Component][]*splicedInstance{}}
+	r := &resolver{testReach: reach, pkg: pkg, byHandle: map[*ir.Var][]*splicedInstance{}, rendered: map[*ir.Component][]*splicedInstance{}}
 	for _, sp := range splices {
 		if sp.handle != nil {
 			r.byHandle[sp.handle] = append(r.byHandle[sp.handle], sp.inst)
@@ -246,8 +247,11 @@ func repointTestReaches(pkg *ir.Package, reach *testReach, splices []splice) err
 			case *ir.Select:
 				si := r.instOf(x.Operand)
 				if si == nil {
-					if e := r.runtimeNode(x); e != nil {
+					if e, why := r.runtimeNode(x); e != nil {
 						return e, ir.SkipDir
+					} else if why != "" {
+						fail(x, "%s", why)
+						return n, nil
 					}
 					r.refuseUnspliced(x.Operand, x.Field, fail)
 					return n, nil
@@ -309,13 +313,15 @@ func (r *resolver) repointCall(c *ir.Call, fail func(ir.Expr, string, ...any)) {
 }
 
 // runtimeNode is a node x selects from a component built at run time, as the
-// target finds it: by the id the component gave it, among every element
-// rendered under that id, at the copy x indexed or the first. Nil where the
-// target cannot, where x selects anything but such a node, or where more than
-// one loop's copies are indexed on the way.
-func (r *resolver) runtimeNode(x *ir.Select) ir.Expr {
+// target finds it: by the id the component gave it, among every element the
+// page renders under that id, at the copy x indexed or the first. That order is
+// the copies' only where each copy renders the node once and nothing else on
+// the page carries the id, so a reach the order cannot answer is refused,
+// saying why. Nil and no reason where the target has no such reach, or x
+// selects no such node.
+func (r *resolver) runtimeNode(x *ir.Select) (ir.Expr, string) {
 	if !r.runtime {
-		return nil
+		return nil, ""
 	}
 	operand := x.Operand
 	var idx ir.Expr
@@ -324,18 +330,51 @@ func (r *resolver) runtimeNode(x *ir.Select) ir.Expr {
 	}
 	comp := componentOf(operand)
 	if comp == nil || comp == r.root || r.instOf(operand) != nil {
-		return nil
+		return nil, ""
 	}
 	h := bodyNodes(comp.Stmts)[x.Field]
 	inst := r.instance(operand)
-	if h == nil || inst == nil || indexed(operand) {
-		return nil
+	if h == nil || inst == nil {
+		return nil, ""
+	}
+	if indexed(operand) {
+		return nil, fmt.Sprintf("`#%s` is reached through the copies of more than one loop; a test indexes one", x.Field)
+	}
+	if _, always := ownNode(comp, x.Field); !always {
+		return nil, fmt.Sprintf("`#%s` is not rendered once by every copy of %s, so its copies cannot be told apart by their order on the page", x.Field, comp.Name)
+	}
+	if !r.alone(comp, h.Name) {
+		return nil, fmt.Sprintf("the page renders `#%s` outside %s, or %s at more than one site, so a test cannot tell which copy is which; give each its own id", x.Field, comp.Name, comp.Name)
 	}
 	sel := &ir.Select{AST: x.AST, Type: x.Type, Operand: inst, Field: h.Name}
 	if idx == nil {
-		return sel
+		return sel, ""
 	}
-	return &ir.Index{Type: x.Type, Operand: sel, Idx: idx}
+	return &ir.Index{Type: x.Type, Operand: sel, Idx: idx}, ""
+}
+
+// alone reports whether comp is rendered at one site and the id it gives a
+// node is carried by that node alone.
+func (r *resolver) alone(comp *ir.Component, id string) bool {
+	ids, sites := 0, 0
+	visit := func(stmts []ir.Stmt) {
+		_ = ir.Walk(stmts, func(n ir.Node) error {
+			if ni, ok := n.(*ir.NodeInst); ok {
+				if ni.ID == id {
+					ids++
+				}
+				if ni.Component == comp {
+					sites++
+				}
+			}
+			return nil
+		})
+	}
+	for _, c := range r.pkg.Components {
+		visit(c.Stmts)
+	}
+	visit(r.pkg.Body)
+	return ids == 1 && sites == 1
 }
 
 // indexed reports whether a select chain indexes a loop's copies anywhere.

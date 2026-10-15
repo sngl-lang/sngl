@@ -124,9 +124,10 @@ type Features struct {
 	// constraint to state what a body does with T.
 	GenericFuncs bool
 	// RuntimeReach grants a test the nodes of a component built at run time, by
-	// the id it gave each one and, under a loop, the copy's index in render
-	// order. Withheld, such a reach is refused, there being no one instance to
-	// name.
+	// the id it gave each one and, under a loop, the copy's index among every
+	// element the page renders under that id -- which test_reach allows only
+	// where the id is the one component's, rendered once per copy. Withheld, such
+	// a reach is refused, there being no one instance to name.
 	RuntimeReach bool
 
 	// The six below are requests rather than capabilities, which is the split

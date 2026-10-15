@@ -16,6 +16,11 @@ stdout 'ok   1 tests, 0 failures'
 sngl test --platform=none app.sngl
 stdout 'ok   1 tests, 0 failures'
 
+# html reaches a node of one by its id and copy, which the order of the page
+# answers only where nothing else renders the id: here a second loop does.
+! sngl test --platform=html twice.sngl
+stderr 'twice.sngl:\d+:\d+: the page renders `#shown` outside badge, or badge at more than one site, so a test cannot tell which copy is which'
+
 -- app.sngl --
 import . "sngl:ui"
 import . "sngl:test"
@@ -52,4 +57,36 @@ sha256:b260c8cf15434663f761da0d7e8c59c8
       "Passed": true
     }
   ]
+}
+-- twice.sngl --
+import "sngl:test/browser"
+import . "sngl:test"
+import . "sngl:ui"
+
+component other(label string) node {
+    var seen = 0
+    text #shown(value="other {label}:{seen}")
+}
+
+component badge(label string) node {
+    var hits = 0
+    text #shown(value="[{label}:{hits}]")
+}
+
+component main node {
+    var names list<string> = ["a"]
+    for var n = names {
+        other #o(label=n)
+    }
+    for var n = names {
+        badge #b(label=n)
+    }
+}
+
+func testTheSecondLoopsCopy(t Test, c main) {
+    t.assert(browser.text(c.b[0].shown) == "[a:0]")
+}
+
+window {
+    main
 }

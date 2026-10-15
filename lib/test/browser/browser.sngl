@@ -27,6 +27,7 @@ func markup(node ui.node) string
 func pixel(node ui.node, x int, y int) color
 
 // How many elements the page renders for the node's `#id`: none for one under
-// an `if` that is false, one copy per element for one a `for` repeats.
+// an `if` that is false, and every copy of one a `for` repeats, whichever copy
+// the test names.
 #[marks.intrinsic("browser.count", readonly)]
 func count(node ui.node) int

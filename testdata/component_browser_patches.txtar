@@ -346,16 +346,16 @@ window.__sngl_boot = () => {
   }
   function testANamedSlotFollowsItsBranch(t, c) {
     t.assertTrue(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll('[data-sngl-id="box"]')[0]) === "", '(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll("[data-sngl-id=\\"box\\"]")[0]) === "")');
-    c.t();
+    c.q.t();
     t.assertTrue(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll('[data-sngl-id="box"]')[0]) === "SUPPLIED", '(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll("[data-sngl-id=\\"box\\"]")[0]) === "SUPPLIED")');
-    c.t();
+    c.q.t();
     t.assertTrue(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll('[data-sngl-id="box"]')[0]) === "", '(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll("[data-sngl-id=\\"box\\"]")[0]) === "")');
   }
   function testAScopedSlotIsHandedItsArgument(t, c) {
-    c.b();
-    t.assertTrue(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll('[data-sngl-id="box__1"]')[0]) === "N=1", '(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll("[data-sngl-id=\\"box__1\\"]")[0]) === "N=1")');
-    c.b();
-    t.assertTrue(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll('[data-sngl-id="box__1"]')[0]) === "N=2", '(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll("[data-sngl-id=\\"box__1\\"]")[0]) === "N=2")');
+    c.r.b();
+    t.assertTrue(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll('[data-sngl-id="box"]')[0]) === "N=1", '(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll("[data-sngl-id=\\"box\\"]")[0]) === "N=1")');
+    c.r.b();
+    t.assertTrue(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll('[data-sngl-id="box"]')[0]) === "N=2", '(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll("[data-sngl-id=\\"box\\"]")[0]) === "N=2")');
   }
   function testACarouselShowsOneAtATime(t, c) {
     t.assertTrue(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll('[data-sngl-id="s__1"]')[0]) === "ZERO", '(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll("[data-sngl-id=\\"s__1\\"]")[0]) === "ZERO")');
@@ -891,7 +891,7 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:9a503ab145e516cdd8d06479949f683f
+pass sha256:83a918b904a3991c75cabb2353842413
 -- testrun/html/none/component_browser_patches.sngl/app/1 --
 sha256:f4e423f0ec54d2fa0d5761cc95cd33b9
 {

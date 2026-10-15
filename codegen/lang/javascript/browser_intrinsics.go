@@ -9,8 +9,9 @@ import (
 
 // sngl:test/browser reads the document a test runs in. Each function takes the
 // node a test reaches by its `#id`, which on html is the element carrying it
-// as data-sngl-id, and one copy of a loop's is that element's index among the
-// copies in document order.
+// as data-sngl-id, and one copy of a loop's is that element's index among
+// every element carrying it -- the lowering refuses a reach that order cannot
+// answer.
 func init() {
 	reg := func(id string, fn func(el string, rest []string) string) {
 		codegen.RegisterIntrinsic(langJS, id, func(args []ir.Expr, tr func(ir.Expr) string) (string, []string) {
