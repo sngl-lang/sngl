@@ -3651,8 +3651,9 @@ Known gaps, each refused or documented where it bites:
   into the Model, so its state survives the page being left.
 - A page handle read above its `nav.page` does not check
   (`specializeHandle` runs only when the node is).
-- A compiled test cannot reach into a component built at run time, nor read
-  the prop of a node rendered only some of the time (see *A test reaches
+- A compiled test cannot reach into a component built at run time, but for
+  a node of one on html, nor read the prop of a node rendered only some of
+  the time (see *A test reaches
   into what its component renders*).
 - `sngl dump` prints a qualified node by its local name, so a dump of a
   program writing `nav.page` does not check again.
@@ -4363,7 +4364,10 @@ members by name, so the lowering says the rest in those terms:
   it -- and every clone shares the handle, which a rename of the id renames
   too. One built at run time, or rendered more than once, names no one
   instance, and a build rooted at the component under test refuses the read
-  (`test_reach_runtime_instance_refused.txt`).
+  (`test_reach_runtime_instance_refused.txt`) -- except a node of one on a
+  target granting `runtimeReach`: html finds the element by the id the
+  component gave it, `c.b[1].hit` being the second copy's in render order
+  (`testdata/component_browser_runtime.txtar`).
 - **A build of the whole program reaches a test's instance where the program
   renders it**, which is how a golden whose tests take two components is
   compiled: each is spliced, and each test reaches what its splice made of it

@@ -42,6 +42,7 @@ func lowerInlineComponents(pkg *ir.Package, feats Features, opts Options) error 
 	st := &inlineCompState{pkg: pkg, main: main, cycles: cycles, reactive: reactive, platform: opts.Platform, instanceState: feats.InstanceState, onList: onList, names: namesOrOwn(opts.names), demoted: map[*ir.Func]bool{}, cells: map[*ir.Var][]*ir.Var{}, methods: map[*ir.Var]map[*ir.Func][]*ir.Func{}}
 	cellOwners := implicitCellOwners(pkg)
 	st.reach = testReachRoots(pkg, main, opts)
+	st.reach.runtime = feats.RuntimeReach
 	if err := st.run(); err != nil {
 		return err
 	}

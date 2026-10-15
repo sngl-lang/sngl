@@ -1,0 +1,1702 @@
+A component fixture: the source, the code every target generates from it,
+and the record saying a host toolchain built that and ran whatever tests it
+carries.
+-- component_browser_runtime.sngl --
+// Components the page builds while it runs -- one per element of a list, one
+// under a reactive `if`, one in a recursion -- reached by the ids they render
+// and, under a loop, the copy's index in render order.
+
+import macro "sngl:macro"
+import "sngl:test/browser"
+import . "sngl:test"
+import . "sngl:ui"
+import draw "sngl:ui/draw"
+
+component badge(label string) node {
+    var hits = 0
+    text #shown(value="[{label}:{hits}]")
+    button #hit(text="hit {label}", @click { hits = hits + 1 })
+}
+
+// Each instance keeps its own state: a click counts once, in the copy clicked.
+component perElement node {
+    var names list<string> = ["a", "b"]
+    for var n = names {
+        badge #b(label=n)
+    }
+}
+
+func testEachInstanceKeepsItsOwnState(t Test, c perElement) {
+    t.assert(browser.text(c.b[0].shown) == "[a:0]")
+    c.b[0].hit.click()
+    t.assert(browser.text(c.b[0].shown) == "[a:1]")
+    t.assert(browser.text(c.b[1].shown) == "[b:0]")
+}
+
+// A prop reaches the leaf and leaves the instance's state alone.
+component renamed node {
+    var names list<string> = ["a"]
+    var tag = "x"
+    for var n = names {
+        badge #b(label=n + tag)
+    }
+    button #rename(text="rename", @click { tag = "y" })
+}
+
+func testAPropReachesTheLeaf(t Test, c renamed) {
+    c.b[0].hit.click()
+    t.assert(browser.text(c.b[0].shown) == "[ax:1]")
+    c.rename.click()
+    t.assert(browser.text(c.b[0].shown) == "[ay:1]")
+}
+
+// Growing the list keeps the instances already there.
+component growing node {
+    var names list<string> = ["a", "b"]
+    for var n = names {
+        badge #b(label=n)
+    }
+    button #grow(text="grow", @click { names = ["a", "b", "c"] })
+}
+
+func testGrowingTheListKeepsTheOthers(t Test, c growing) {
+    c.b[0].hit.click()
+    c.b[1].hit.click()
+    c.b[1].hit.click()
+    c.grow.click()
+    t.assert(browser.text(c.b[0].shown) == "[a:1]")
+    t.assert(browser.text(c.b[1].shown) == "[b:2]")
+    t.assert(browser.text(c.b[2].shown) == "[c:0]")
+}
+
+// A key keeps an instance with its element when one is inserted ahead of it,
+// and two elements under one key are two instances.
+component keyed node {
+    var names list<string> = ["a", "b"]
+    for var n = names {
+        badge #b(label=n, key=n)
+    }
+    button #prepend(text="prepend", @click { names = ["z", "a", "b"] })
+}
+
+func testAKeyedInsertAtTheFrontKeepsTheOthers(t Test, c keyed) {
+    c.b[1].hit.click()
+    c.b[1].hit.click()
+    c.prepend.click()
+    t.assert(browser.text(c.b[0].shown) == "[z:0]")
+    t.assert(browser.text(c.b[1].shown) == "[a:0]")
+    t.assert(browser.text(c.b[2].shown) == "[b:2]")
+}
+
+component duplicates node {
+    var names list<string> = ["a", "a"]
+    for var n = names {
+        badge #b(label=n, key=n)
+    }
+    button #churn(text="churn", @click { names = ["a", "a"] })
+}
+
+func testDuplicateKeysAreDistinctInstances(t Test, c duplicates) {
+    t.assert(browser.count(c.b[0].shown) == 2)
+    c.b[0].hit.click()
+    c.churn.click()
+    t.assert(browser.text(c.b[0].shown) == "[a:1]")
+    t.assert(browser.text(c.b[1].shown) == "[a:0]")
+}
+
+// An instance under a reactive `if` starts again when its branch comes back.
+component branch node {
+    var shown = true
+    button #toggle(text="toggle", @click { shown = !shown })
+    if shown {
+        badge #inner(label="i")
+    }
+}
+
+func testReenteringABranchResetsItsInstance(t Test, c branch) {
+    c.inner.hit.click()
+    t.assert(browser.text(c.inner.shown) == "[i:1]")
+    c.toggle.click()
+    t.assert(browser.count(c.inner.shown) == 0)
+    c.toggle.click()
+    t.assert(browser.text(c.inner.shown) == "[i:0]")
+}
+
+component row(label string, @pick(v string)) node {
+    var seen = 0
+    button #btn(text="pick {label}:{seen}", @click {
+        seen = seen + 1
+        pick(label)
+    })
+}
+
+// An instance's event reaches the handler its call site wrote, with what the
+// row renders now rather than what it was built for.
+component events node {
+    var items list<string> = ["a", "b", "c"]
+    var picked = ""
+    text(value="picked={picked}")
+    for var item = items {
+        row #r(label=item, @pick { picked = item })
+    }
+    button #unshift(text="unshift", @click { items = ["z", "a", "b", "c"] })
+}
+
+func testAnInstancesEventReachesTheCallSite(t Test, c events) {
+    c.r[0].btn.click()
+    t.assert(c.picked == "a")
+}
+
+func testARetainedRowIsNotStale(t Test, c events) {
+    c.unshift.click()
+    t.assert(browser.text(c.r[0].btn) == "pick z:0")
+    c.r[0].btn.click()
+    t.assert(c.picked == "z")
+}
+
+component choice(label string, onpick func(string)) node {
+    var hits = 0
+    button #pick(text="pick {label}:{hits}", @click { onpick(label) })
+}
+
+// A callback handed to an instance as a prop writes the caller's state.
+component callback node {
+    var items list<string> = ["a", "b"]
+    var picked = ""
+    text #out(value="picked={picked}")
+    for var item = items {
+        choice #ch(label=item, onpick=func(s string) { picked = s })
+    }
+}
+
+func testAFreshInstancesCallbackRepaints(t Test, c callback) {
+    c.ch[0].pick.click()
+    t.assert(browser.text(c.out) == "picked=a")
+}
+
+component seededBadge(#[macro.construct] start int, label string) node {
+    var n = start
+    text #shown(value="[{label}:{n}]")
+    button #bump(text="bump", @click { n = n + 1 })
+}
+
+// A #[macro.construct] prop rebuilds the instance when its value changes, and only
+// then; an ordinary prop is patched in place.
+component rebased node {
+    var names list<string> = ["a"]
+    var base = 10
+    var tag = "x"
+    for var nm = names {
+        seededBadge #b(start=base, label=nm + tag)
+    }
+    button #rebase(text="rebase", @click { base = base + 100 })
+    button #touch(text="touch", @click { base = base })
+    button #rename(text="rename", @click { tag = "y" })
+}
+
+func testAChangedConstructPropRebuilds(t Test, c rebased) {
+    t.assert(browser.text(c.b[0].shown) == "[ax:10]")
+    c.b[0].bump.click()
+    c.rename.click()
+    t.assert(browser.text(c.b[0].shown) == "[ay:11]")
+    c.rebase.click()
+    t.assert(browser.text(c.b[0].shown) == "[ay:110]")
+}
+
+func testAnUnchangedConstructPropKeepsTheInstance(t Test, c rebased) {
+    c.b[0].bump.click()
+    c.touch.click()
+    c.rename.click()
+    t.assert(browser.text(c.b[0].shown) == "[ay:11]")
+}
+
+component seeded(#[macro.construct] start int, more = 0) node {
+    var n = start
+    button #inner(text="bump inner", @click { n = n + 5 })
+    text #shown(value="s:{n}")
+    if more > 0 {
+        seeded(start=start, more=more - 1)
+    }
+}
+
+// A recursion's instance rebuilt from state stays where it stood.
+component rebuilt node {
+    var k = 10
+    button #bump(text="bump", @click { k = k + 1 })
+    vbox #out {
+        text(value="before")
+        seeded #s(start=k, more=0)
+        text(value="after")
+    }
+}
+
+func testARebuiltInstanceKeepsItsPlace(t Test, c rebuilt) {
+    t.assert(browser.text(c.s.shown) == "s:10")
+    c.s.inner.click()
+    t.assert(browser.text(c.s.shown) == "s:15")
+    c.bump.click()
+    t.assert(browser.text(c.out) == "before\nbump inner\ns:11\nafter")
+}
+
+component gauge(level = 0.0) node {
+    var hits = 0.0
+    button #hit(text="hit", @click { hits += 20.0 })
+    draw.canvas #cv(width=100px, height=100px) {
+        draw.rect(x=0.0, y=0.0, w=level + hits, h=40.0, style={fill=#ff0000}) {}
+    }
+}
+
+func red(p color) bool {
+    return p.a > 200 && p.r > 200 && p.g < 50
+}
+
+// Each instance's canvas draws its own state and redraws alone.
+component gauges node {
+    var levels list<float> = [10.0, 20.0]
+    for var l = levels {
+        gauge #g(level=l)
+    }
+}
+
+func testEachInstancesCanvasDrawsItsOwnState(t Test, c gauges) {
+    t.assert(red(browser.pixel(c.g[0].cv, 9, 10)))
+    t.assert(!red(browser.pixel(c.g[0].cv, 10, 10)))
+    t.assert(red(browser.pixel(c.g[1].cv, 19, 10)))
+    c.g[0].hit.click()
+    t.assert(red(browser.pixel(c.g[0].cv, 29, 10)))
+    t.assert(!red(browser.pixel(c.g[1].cv, 20, 10)))
+}
+
+window {
+    perElement
+    renamed
+    growing
+    keyed
+    duplicates
+    branch
+    events
+    callback
+    rebased
+    rebuilt
+    gauges
+}
+
+output {
+    none {
+        html
+    }
+}
+-- out/none/html/index.html --
+<!-- Code generated by sngl (html) from component_browser_runtime.sngl; DO NOT EDIT. -->
+
+<!DOCTYPE html>
+<html><head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: system-ui, sans-serif; }
+  </style>
+</head><body>
+
+<span data-sngl-slot="1" style="display:contents"></span>
+<span data-sngl-slot="2" style="display:contents"></span>
+<button id="$0" data-sngl-id="rename">
+  <span>rename</span>
+</button>
+<span data-sngl-slot="3" style="display:contents"></span>
+<button id="$1" data-sngl-id="grow">
+  <span>grow</span>
+</button>
+<span data-sngl-slot="4" style="display:contents"></span>
+<button id="$2" data-sngl-id="prepend">
+  <span>prepend</span>
+</button>
+<span data-sngl-slot="5" style="display:contents"></span>
+<button id="$3" data-sngl-id="churn">
+  <span>churn</span>
+</button>
+<button id="$4" data-sngl-id="toggle">
+  <span>toggle</span>
+</button>
+<span data-sngl-slot="6" style="display:contents"></span>
+<span id="__n4" data-sngl-id="__n4">
+</span>
+<span data-sngl-slot="7" style="display:contents"></span>
+<button id="$5" data-sngl-id="unshift">
+  <span>unshift</span>
+</button>
+<span id="$6" data-sngl-id="out">
+</span>
+<span data-sngl-slot="8" style="display:contents"></span>
+<span data-sngl-slot="9" style="display:contents"></span>
+<button id="$7" data-sngl-id="rebase">
+  <span>rebase</span>
+</button>
+<button id="$8" data-sngl-id="touch">
+  <span>touch</span>
+</button>
+<button id="$9" data-sngl-id="rename__1">
+  <span>rename</span>
+</button>
+<button id="$10" data-sngl-id="bump">
+  <span>bump</span>
+</button>
+<div style="display:flex;flex-direction:column" data-sngl-id="out__1">
+  <span>before</span>
+  <span data-sngl-inst="s" style="display:contents"></span>
+  <span>after</span>
+</div>
+<span data-sngl-slot="10" style="display:contents"></span>
+
+<script>
+window.__snglErrors = [];
+addEventListener("error", (e) => window.__snglErrors.push(String(e.message)));
+addEventListener("unhandledrejection", (e) => window.__snglErrors.push(String(e.reason?.message ?? e.reason)));
+window.__sngl_markup = Array.from(document.body.childNodes)
+  .filter((n) => n.nodeName !== "SCRIPT").map((n) => n.cloneNode(true));
+window.__sngl_reset = () => {
+  for (const n of Array.from(document.body.childNodes)) {
+    if (n.nodeName !== "SCRIPT") n.remove();
+  }
+  const first = document.body.firstChild;
+  for (const n of window.__sngl_markup) document.body.insertBefore(n.cloneNode(true), first);
+  window.__sngl_boot();
+};
+window.__sngl_boot = () => {
+(() => {
+  // sngl-entry.js
+  var state = { names__inst0: ["a", "b"], names__inst1: ["a"], tag__inst0: "x", names__inst2: ["a", "b"], names__inst3: ["a", "b"], names__inst4: ["a", "a"], shown__inst0: true, items__inst0: ["a", "b", "c"], picked__inst0: "", items__inst1: ["a", "b"], picked__inst1: "", names__inst5: ["a"], base__inst0: 10, tag__inst1: "x", k__inst0: 10, levels__inst0: [10, 20], visible__inst0: true };
+  state.renameClick = () => $0.click();
+  state.growClick = () => $1.click();
+  state.prependClick = () => $2.click();
+  state.churnClick = () => $3.click();
+  state.toggleClick = () => $4.click();
+  state.unshiftClick = () => $5.click();
+  state.rebaseClick = () => $7.click();
+  state.touchClick = () => $8.click();
+  state.rename__1Click = () => $9.click();
+  state.bumpClick = () => $10.click();
+  state.bumpClickAt = (i) => [$10][i].click();
+  state.hitClick = () => document.querySelector('[data-sngl-id="hit"]').click();
+  state.hitClickAt = (i) => document.querySelectorAll('[data-sngl-id="hit"]')[i].click();
+  state.hitContextmenu = (p) => {
+    const el = document.querySelector('[data-sngl-id="hit"]');
+    Object.assign(el, p);
+    el.dispatchEvent(Object.assign(new Event("contextmenu"), p));
+  };
+  state.hitContextmenuAt = (i, p) => {
+    const el = document.querySelectorAll('[data-sngl-id="hit"]')[i];
+    Object.assign(el, p);
+    el.dispatchEvent(Object.assign(new Event("contextmenu"), p));
+  };
+  state.btnClick = () => document.querySelector('[data-sngl-id="btn"]').click();
+  state.btnClickAt = (i) => document.querySelectorAll('[data-sngl-id="btn"]')[i].click();
+  state.btnContextmenu = (p) => {
+    const el = document.querySelector('[data-sngl-id="btn"]');
+    Object.assign(el, p);
+    el.dispatchEvent(Object.assign(new Event("contextmenu"), p));
+  };
+  state.btnContextmenuAt = (i, p) => {
+    const el = document.querySelectorAll('[data-sngl-id="btn"]')[i];
+    Object.assign(el, p);
+    el.dispatchEvent(Object.assign(new Event("contextmenu"), p));
+  };
+  state.pickClick = () => document.querySelector('[data-sngl-id="pick"]').click();
+  state.pickClickAt = (i) => document.querySelectorAll('[data-sngl-id="pick"]')[i].click();
+  state.pickContextmenu = (p) => {
+    const el = document.querySelector('[data-sngl-id="pick"]');
+    Object.assign(el, p);
+    el.dispatchEvent(Object.assign(new Event("contextmenu"), p));
+  };
+  state.pickContextmenuAt = (i, p) => {
+    const el = document.querySelectorAll('[data-sngl-id="pick"]')[i];
+    Object.assign(el, p);
+    el.dispatchEvent(Object.assign(new Event("contextmenu"), p));
+  };
+  state.bumpContextmenu = (p) => {
+    const el = document.querySelector('[data-sngl-id="bump"]');
+    Object.assign(el, p);
+    el.dispatchEvent(Object.assign(new Event("contextmenu"), p));
+  };
+  state.bumpContextmenuAt = (i, p) => {
+    const el = document.querySelectorAll('[data-sngl-id="bump"]')[i];
+    Object.assign(el, p);
+    el.dispatchEvent(Object.assign(new Event("contextmenu"), p));
+  };
+  state.innerClick = () => document.querySelector('[data-sngl-id="inner"]').click();
+  state.innerClickAt = (i) => document.querySelectorAll('[data-sngl-id="inner"]')[i].click();
+  state.innerContextmenu = (p) => {
+    const el = document.querySelector('[data-sngl-id="inner"]');
+    Object.assign(el, p);
+    el.dispatchEvent(Object.assign(new Event("contextmenu"), p));
+  };
+  state.innerContextmenuAt = (i, p) => {
+    const el = document.querySelectorAll('[data-sngl-id="inner"]')[i];
+    Object.assign(el, p);
+    el.dispatchEvent(Object.assign(new Event("contextmenu"), p));
+  };
+  if (typeof window !== "undefined") {
+    window.__sngl_state = state;
+  }
+  function testEachInstanceKeepsItsOwnState(t, c) {
+    t.assertTrue(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll('[data-sngl-id="shown"]')[0]) === "[a:0]", '(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll("[data-sngl-id=\\"shown\\"]")[0]) === "[a:0]")');
+    c.hit[0]();
+    t.assertTrue(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll('[data-sngl-id="shown"]')[0]) === "[a:1]", '(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll("[data-sngl-id=\\"shown\\"]")[0]) === "[a:1]")');
+    t.assertTrue(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll('[data-sngl-id="shown"]')[1]) === "[b:0]", '(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll("[data-sngl-id=\\"shown\\"]")[1]) === "[b:0]")');
+  }
+  function testAPropReachesTheLeaf(t, c) {
+    c.hit[0]();
+    t.assertTrue(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll('[data-sngl-id="shown"]')[0]) === "[ax:1]", '(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll("[data-sngl-id=\\"shown\\"]")[0]) === "[ax:1]")');
+    c.rename();
+    t.assertTrue(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll('[data-sngl-id="shown"]')[0]) === "[ay:1]", '(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll("[data-sngl-id=\\"shown\\"]")[0]) === "[ay:1]")');
+  }
+  function testGrowingTheListKeepsTheOthers(t, c) {
+    c.hit[0]();
+    c.hit[1]();
+    c.hit[1]();
+    c.grow();
+    t.assertTrue(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll('[data-sngl-id="shown"]')[0]) === "[a:1]", '(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll("[data-sngl-id=\\"shown\\"]")[0]) === "[a:1]")');
+    t.assertTrue(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll('[data-sngl-id="shown"]')[1]) === "[b:2]", '(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll("[data-sngl-id=\\"shown\\"]")[1]) === "[b:2]")');
+    t.assertTrue(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll('[data-sngl-id="shown"]')[2]) === "[c:0]", '(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll("[data-sngl-id=\\"shown\\"]")[2]) === "[c:0]")');
+  }
+  function testAKeyedInsertAtTheFrontKeepsTheOthers(t, c) {
+    c.hit[1]();
+    c.hit[1]();
+    c.prepend();
+    t.assertTrue(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll('[data-sngl-id="shown"]')[0]) === "[z:0]", '(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll("[data-sngl-id=\\"shown\\"]")[0]) === "[z:0]")');
+    t.assertTrue(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll('[data-sngl-id="shown"]')[1]) === "[a:0]", '(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll("[data-sngl-id=\\"shown\\"]")[1]) === "[a:0]")');
+    t.assertTrue(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll('[data-sngl-id="shown"]')[2]) === "[b:2]", '(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll("[data-sngl-id=\\"shown\\"]")[2]) === "[b:2]")');
+  }
+  function testDuplicateKeysAreDistinctInstances(t, c) {
+    t.assertTrue(document.querySelectorAll('[data-sngl-id="shown"]').length === 2, '(document.querySelectorAll("[data-sngl-id=\\"shown\\"]").length === 2)');
+    c.hit[0]();
+    c.churn();
+    t.assertTrue(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll('[data-sngl-id="shown"]')[0]) === "[a:1]", '(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll("[data-sngl-id=\\"shown\\"]")[0]) === "[a:1]")');
+    t.assertTrue(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll('[data-sngl-id="shown"]')[1]) === "[a:0]", '(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll("[data-sngl-id=\\"shown\\"]")[1]) === "[a:0]")');
+  }
+  function testReenteringABranchResetsItsInstance(t, c) {
+    c.hit();
+    t.assertTrue(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll('[data-sngl-id="shown"]')[0]) === "[i:1]", '(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll("[data-sngl-id=\\"shown\\"]")[0]) === "[i:1]")');
+    c.toggle();
+    t.assertTrue(document.querySelectorAll('[data-sngl-id="shown"]').length === 0, '(document.querySelectorAll("[data-sngl-id=\\"shown\\"]").length === 0)');
+    c.toggle();
+    t.assertTrue(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll('[data-sngl-id="shown"]')[0]) === "[i:0]", '(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll("[data-sngl-id=\\"shown\\"]")[0]) === "[i:0]")');
+  }
+  function testAnInstancesEventReachesTheCallSite(t, c) {
+    c.btn[0]();
+    t.assertTrue(state.picked__inst0 === "a", '(state.picked__inst0 === "a")');
+  }
+  function testARetainedRowIsNotStale(t, c) {
+    c.unshift();
+    t.assertTrue(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll('[data-sngl-id="btn"]')[0]) === "pick z:0", '(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll("[data-sngl-id=\\"btn\\"]")[0]) === "pick z:0")');
+    c.btn[0]();
+    t.assertTrue(state.picked__inst0 === "z", '(state.picked__inst0 === "z")');
+  }
+  function testAFreshInstancesCallbackRepaints(t, c) {
+    c.pick[0]();
+    t.assertTrue(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll('[data-sngl-id="out"]')[0]) === "picked=a", '(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll("[data-sngl-id=\\"out\\"]")[0]) === "picked=a")');
+  }
+  function testAChangedConstructPropRebuilds(t, c) {
+    t.assertTrue(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll('[data-sngl-id="shown"]')[0]) === "[ax:10]", '(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll("[data-sngl-id=\\"shown\\"]")[0]) === "[ax:10]")');
+    c.bump[0]();
+    c.rename__1();
+    t.assertTrue(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll('[data-sngl-id="shown"]')[0]) === "[ay:11]", '(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll("[data-sngl-id=\\"shown\\"]")[0]) === "[ay:11]")');
+    c.rebase();
+    t.assertTrue(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll('[data-sngl-id="shown"]')[0]) === "[ay:110]", '(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll("[data-sngl-id=\\"shown\\"]")[0]) === "[ay:110]")');
+  }
+  function testAnUnchangedConstructPropKeepsTheInstance(t, c) {
+    c.bump[0]();
+    c.touch();
+    c.rename__1();
+    t.assertTrue(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll('[data-sngl-id="shown"]')[0]) === "[ay:11]", '(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll("[data-sngl-id=\\"shown\\"]")[0]) === "[ay:11]")');
+  }
+  function testARebuiltInstanceKeepsItsPlace(t, c) {
+    t.assertTrue(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll('[data-sngl-id="shown"]')[0]) === "s:10", '(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll("[data-sngl-id=\\"shown\\"]")[0]) === "s:10")');
+    c.inner();
+    t.assertTrue(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll('[data-sngl-id="shown"]')[0]) === "s:15", '(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll("[data-sngl-id=\\"shown\\"]")[0]) === "s:15")');
+    c.bump();
+    t.assertTrue(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll('[data-sngl-id="out__1"]')[0]) === "before\nbump inner\ns:11\nafter", '(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll("[data-sngl-id=\\"out__1\\"]")[0]) === "before\\nbump inner\\ns:11\\nafter")');
+  }
+  function red(p) {
+    return p.a > 200 && p.r > 200 && p.g < 50;
+  }
+  function testEachInstancesCanvasDrawsItsOwnState(t, c) {
+    t.assertTrue(red(((el, x, y) => {
+      const src = el.matches("canvas, img") ? el : el.querySelector("canvas, img");
+      if (src.tagName === "IMG" && src.naturalWidth === 0) return { r: 0, g: 0, b: 0, a: 0 };
+      let c2 = src;
+      if (src.tagName === "IMG") {
+        c2 = document.createElement("canvas");
+        c2.width = src.naturalWidth;
+        c2.height = src.naturalHeight;
+        c2.getContext("2d").drawImage(src, 0, 0);
+      }
+      const d = c2.getContext("2d").getImageData(x, y, 1, 1).data;
+      return { r: d[0], g: d[1], b: d[2], a: d[3] };
+    })(document.querySelectorAll('[data-sngl-id="cv"]')[0], 9, 10)), 'red(((el, x, y) => {\n	const src = el.matches("canvas, img") ? el : el.querySelector("canvas, img");\n	if (src.tagName === "IMG" && src.naturalWidth === 0) return { r: 0, g: 0, b: 0, a: 0 };\n	let c = src;\n	if (src.tagName === "IMG") {\n		c = document.createElement("canvas");\n		c.width = src.naturalWidth;\n		c.height = src.naturalHeight;\n		c.getContext("2d").drawImage(src, 0, 0);\n	}\n	const d = c.getContext("2d").getImageData(x, y, 1, 1).data;\n	return { r: d[0], g: d[1], b: d[2], a: d[3] };\n})(document.querySelectorAll("[data-sngl-id=\\"cv\\"]")[0], 9, 10))');
+    t.assertTrue(!red(((el, x, y) => {
+      const src = el.matches("canvas, img") ? el : el.querySelector("canvas, img");
+      if (src.tagName === "IMG" && src.naturalWidth === 0) return { r: 0, g: 0, b: 0, a: 0 };
+      let c2 = src;
+      if (src.tagName === "IMG") {
+        c2 = document.createElement("canvas");
+        c2.width = src.naturalWidth;
+        c2.height = src.naturalHeight;
+        c2.getContext("2d").drawImage(src, 0, 0);
+      }
+      const d = c2.getContext("2d").getImageData(x, y, 1, 1).data;
+      return { r: d[0], g: d[1], b: d[2], a: d[3] };
+    })(document.querySelectorAll('[data-sngl-id="cv"]')[0], 10, 10)), '!red(((el, x, y) => {\n	const src = el.matches("canvas, img") ? el : el.querySelector("canvas, img");\n	if (src.tagName === "IMG" && src.naturalWidth === 0) return { r: 0, g: 0, b: 0, a: 0 };\n	let c = src;\n	if (src.tagName === "IMG") {\n		c = document.createElement("canvas");\n		c.width = src.naturalWidth;\n		c.height = src.naturalHeight;\n		c.getContext("2d").drawImage(src, 0, 0);\n	}\n	const d = c.getContext("2d").getImageData(x, y, 1, 1).data;\n	return { r: d[0], g: d[1], b: d[2], a: d[3] };\n})(document.querySelectorAll("[data-sngl-id=\\"cv\\"]")[0], 10, 10))');
+    t.assertTrue(red(((el, x, y) => {
+      const src = el.matches("canvas, img") ? el : el.querySelector("canvas, img");
+      if (src.tagName === "IMG" && src.naturalWidth === 0) return { r: 0, g: 0, b: 0, a: 0 };
+      let c2 = src;
+      if (src.tagName === "IMG") {
+        c2 = document.createElement("canvas");
+        c2.width = src.naturalWidth;
+        c2.height = src.naturalHeight;
+        c2.getContext("2d").drawImage(src, 0, 0);
+      }
+      const d = c2.getContext("2d").getImageData(x, y, 1, 1).data;
+      return { r: d[0], g: d[1], b: d[2], a: d[3] };
+    })(document.querySelectorAll('[data-sngl-id="cv"]')[1], 19, 10)), 'red(((el, x, y) => {\n	const src = el.matches("canvas, img") ? el : el.querySelector("canvas, img");\n	if (src.tagName === "IMG" && src.naturalWidth === 0) return { r: 0, g: 0, b: 0, a: 0 };\n	let c = src;\n	if (src.tagName === "IMG") {\n		c = document.createElement("canvas");\n		c.width = src.naturalWidth;\n		c.height = src.naturalHeight;\n		c.getContext("2d").drawImage(src, 0, 0);\n	}\n	const d = c.getContext("2d").getImageData(x, y, 1, 1).data;\n	return { r: d[0], g: d[1], b: d[2], a: d[3] };\n})(document.querySelectorAll("[data-sngl-id=\\"cv\\"]")[1], 19, 10))');
+    c.hit[0]();
+    t.assertTrue(red(((el, x, y) => {
+      const src = el.matches("canvas, img") ? el : el.querySelector("canvas, img");
+      if (src.tagName === "IMG" && src.naturalWidth === 0) return { r: 0, g: 0, b: 0, a: 0 };
+      let c2 = src;
+      if (src.tagName === "IMG") {
+        c2 = document.createElement("canvas");
+        c2.width = src.naturalWidth;
+        c2.height = src.naturalHeight;
+        c2.getContext("2d").drawImage(src, 0, 0);
+      }
+      const d = c2.getContext("2d").getImageData(x, y, 1, 1).data;
+      return { r: d[0], g: d[1], b: d[2], a: d[3] };
+    })(document.querySelectorAll('[data-sngl-id="cv"]')[0], 29, 10)), 'red(((el, x, y) => {\n	const src = el.matches("canvas, img") ? el : el.querySelector("canvas, img");\n	if (src.tagName === "IMG" && src.naturalWidth === 0) return { r: 0, g: 0, b: 0, a: 0 };\n	let c = src;\n	if (src.tagName === "IMG") {\n		c = document.createElement("canvas");\n		c.width = src.naturalWidth;\n		c.height = src.naturalHeight;\n		c.getContext("2d").drawImage(src, 0, 0);\n	}\n	const d = c.getContext("2d").getImageData(x, y, 1, 1).data;\n	return { r: d[0], g: d[1], b: d[2], a: d[3] };\n})(document.querySelectorAll("[data-sngl-id=\\"cv\\"]")[0], 29, 10))');
+    t.assertTrue(!red(((el, x, y) => {
+      const src = el.matches("canvas, img") ? el : el.querySelector("canvas, img");
+      if (src.tagName === "IMG" && src.naturalWidth === 0) return { r: 0, g: 0, b: 0, a: 0 };
+      let c2 = src;
+      if (src.tagName === "IMG") {
+        c2 = document.createElement("canvas");
+        c2.width = src.naturalWidth;
+        c2.height = src.naturalHeight;
+        c2.getContext("2d").drawImage(src, 0, 0);
+      }
+      const d = c2.getContext("2d").getImageData(x, y, 1, 1).data;
+      return { r: d[0], g: d[1], b: d[2], a: d[3] };
+    })(document.querySelectorAll('[data-sngl-id="cv"]')[1], 20, 10)), '!red(((el, x, y) => {\n	const src = el.matches("canvas, img") ? el : el.querySelector("canvas, img");\n	if (src.tagName === "IMG" && src.naturalWidth === 0) return { r: 0, g: 0, b: 0, a: 0 };\n	let c = src;\n	if (src.tagName === "IMG") {\n		c = document.createElement("canvas");\n		c.width = src.naturalWidth;\n		c.height = src.naturalHeight;\n		c.getContext("2d").drawImage(src, 0, 0);\n	}\n	const d = c.getContext("2d").getImageData(x, y, 1, 1).data;\n	return { r: d[0], g: d[1], b: d[2], a: d[3] };\n})(document.querySelectorAll("[data-sngl-id=\\"cv\\"]")[1], 20, 10))');
+  }
+  if (typeof window !== "undefined") {
+    Object.assign(window, { testEachInstanceKeepsItsOwnState, testAPropReachesTheLeaf, testGrowingTheListKeepsTheOthers, testAKeyedInsertAtTheFrontKeepsTheOthers, testDuplicateKeysAreDistinctInstances, testReenteringABranchResetsItsInstance, testAnInstancesEventReachesTheCallSite, testARetainedRowIsNotStale, testAFreshInstancesCallbackRepaints, testAChangedConstructPropRebuilds, testAnUnchangedConstructPropKeepsTheInstance, testARebuiltInstanceKeepsItsPlace, red, testEachInstancesCanvasDrawsItsOwnState });
+  }
+  function __cf_badge(props) {
+    const __root = document.createElement("div");
+    __root.style.display = "contents";
+    let label = props.label ?? "";
+    let __prop_label = label;
+    let hits = 0;
+    let __slot0 = [];
+    let __slot12 = [];
+    let __slot102 = [];
+    let __slot22 = [];
+    let __slot32 = [];
+    let __slot42 = [];
+    let __slot52 = [];
+    let __slot62 = [];
+    let __slot72 = [];
+    let __slot82 = [];
+    let __slot92 = [];
+    function __set_label(__v) {
+      __prop_label = __v;
+      shown.textContent = "[" + __prop_label + ":" + String(hits) + "]";
+      __n0.textContent = "hit " + __prop_label;
+    }
+    let shown = document.createElement("span");
+    shown.setAttribute("data-sngl-id", "shown");
+    shown.textContent = "[" + __prop_label + ":" + String(hits) + "]";
+    let hit = document.createElement("button");
+    hit.setAttribute("data-sngl-id", "hit");
+    hit.disabled = false;
+    hit.addEventListener("click", () => {
+      hits = hits + 1;
+      shown.textContent = "[" + __prop_label + ":" + String(hits) + "]";
+    });
+    hit.addEventListener("contextmenu", () => {
+    });
+    let __n0 = document.createElement("span");
+    __n0.textContent = "hit " + __prop_label;
+    hit.appendChild(__n0);
+    __root.appendChild(shown);
+    __root.appendChild(hit);
+    return {
+      __root,
+      __destroy() {
+      },
+      __set_label
+    };
+  }
+  function __cf_row(props) {
+    const __root = document.createElement("div");
+    __root.style.display = "contents";
+    let label = props.label ?? "";
+    let pick = props.pick ?? ((__e0) => {
+    });
+    let __prop_label = label;
+    let __prop_pick = pick;
+    let seen = 0;
+    let __slot0 = [];
+    let __slot12 = [];
+    let __slot102 = [];
+    let __slot22 = [];
+    let __slot32 = [];
+    let __slot42 = [];
+    let __slot52 = [];
+    let __slot62 = [];
+    let __slot72 = [];
+    let __slot82 = [];
+    let __slot92 = [];
+    function __set_label(__v) {
+      __prop_label = __v;
+      __n1.textContent = "pick " + __prop_label + ":" + String(seen);
+    }
+    function __set_pick(__v) {
+      __prop_pick = __v;
+    }
+    let btn = document.createElement("button");
+    btn.setAttribute("data-sngl-id", "btn");
+    btn.disabled = false;
+    btn.addEventListener("click", () => {
+      seen = seen + 1;
+      __n1.textContent = "pick " + __prop_label + ":" + String(seen);
+      __prop_pick(__prop_label);
+    });
+    btn.addEventListener("contextmenu", () => {
+    });
+    let __n1 = document.createElement("span");
+    __n1.textContent = "pick " + __prop_label + ":" + String(seen);
+    btn.appendChild(__n1);
+    __root.appendChild(btn);
+    return {
+      __root,
+      __destroy() {
+      },
+      __set_label,
+      __set_pick
+    };
+  }
+  function __cf_choice(props) {
+    const __root = document.createElement("div");
+    __root.style.display = "contents";
+    let label = props.label ?? "";
+    let onpick = props.onpick ?? ((_) => {
+    });
+    let __prop_label = label;
+    let __prop_onpick = onpick;
+    let hits = 0;
+    let __slot0 = [];
+    let __slot12 = [];
+    let __slot102 = [];
+    let __slot22 = [];
+    let __slot32 = [];
+    let __slot42 = [];
+    let __slot52 = [];
+    let __slot62 = [];
+    let __slot72 = [];
+    let __slot82 = [];
+    let __slot92 = [];
+    function __set_label(__v) {
+      __prop_label = __v;
+      __n2.textContent = "pick " + __prop_label + ":" + String(hits);
+    }
+    function __set_onpick(__v) {
+      __prop_onpick = __v;
+    }
+    let pick = document.createElement("button");
+    pick.setAttribute("data-sngl-id", "pick");
+    pick.disabled = false;
+    pick.addEventListener("click", () => {
+      __prop_onpick(__prop_label);
+    });
+    pick.addEventListener("contextmenu", () => {
+    });
+    let __n2 = document.createElement("span");
+    __n2.textContent = "pick " + __prop_label + ":" + String(hits);
+    pick.appendChild(__n2);
+    __root.appendChild(pick);
+    return {
+      __root,
+      __destroy() {
+      },
+      __set_label,
+      __set_onpick
+    };
+  }
+  function __cf_seededBadge(props) {
+    const __root = document.createElement("div");
+    __root.style.display = "contents";
+    let start = props.start ?? 0;
+    let label = props.label ?? "";
+    let __prop_start = start;
+    let __prop_label = label;
+    let n = __prop_start;
+    let __slot0 = [];
+    let __slot12 = [];
+    let __slot102 = [];
+    let __slot22 = [];
+    let __slot32 = [];
+    let __slot42 = [];
+    let __slot52 = [];
+    let __slot62 = [];
+    let __slot72 = [];
+    let __slot82 = [];
+    let __slot92 = [];
+    function __set_label(__v) {
+      __prop_label = __v;
+      shown.textContent = "[" + __prop_label + ":" + String(n) + "]";
+    }
+    let shown = document.createElement("span");
+    shown.setAttribute("data-sngl-id", "shown");
+    shown.textContent = "[" + __prop_label + ":" + String(n) + "]";
+    let bump = document.createElement("button");
+    bump.setAttribute("data-sngl-id", "bump");
+    $10.disabled = false;
+    $10.addEventListener("click", () => {
+      n = n + 1;
+      shown.textContent = "[" + __prop_label + ":" + String(n) + "]";
+    });
+    $10.addEventListener("contextmenu", () => {
+    });
+    let __n6 = document.createElement("span");
+    __n6.textContent = "bump";
+    $10.appendChild(__n6);
+    __root.appendChild(shown);
+    __root.appendChild(bump);
+    return {
+      __root,
+      __destroy() {
+      },
+      __set_label
+    };
+  }
+  function __cf_seeded(props) {
+    const __root = document.createElement("div");
+    __root.style.display = "contents";
+    let start = props.start ?? 0;
+    let more = props.more ?? 0;
+    let __depth = props.__depth ?? 0;
+    let __prop_start = start;
+    let __prop_more = more;
+    let __prop___depth = __depth;
+    let n = __prop_start;
+    let __slot0 = [];
+    let __inst1_live = [];
+    let __inst1_was_start = [];
+    let __slot12 = [];
+    let __slot102 = [];
+    let __slot22 = [];
+    let __slot32 = [];
+    let __slot42 = [];
+    let __slot52 = [];
+    let __slot62 = [];
+    let __slot72 = [];
+    let __slot82 = [];
+    let __slot92 = [];
+    function __set_more(__v) {
+      __prop_more = __v;
+      __renderSlot0(__slotAnchor_0);
+    }
+    function __set___depth(__v) {
+      __prop___depth = __v;
+      __renderSlot0(__slotAnchor_0);
+    }
+    function __renderSlot0(parent) {
+      let __place0_prev = __slot0;
+      let __place0_i = 0;
+      __slot0 = [];
+      let __inst1_next = [];
+      let __inst1_i = 0;
+      let __inst1_now_start = [];
+      if (__prop_more > 0) {
+        if (__prop___depth >= 512) {
+          throw Object.assign(new Error("seeded: recursion exceeded 512 nested instances"), { kind: "recursion" });
+        } else {
+          let __n5 = null;
+          if (__inst1_live.length > __inst1_i && __inst1_was_start[__inst1_i] === __prop_start) {
+            __n5 = __inst1_live[__inst1_i];
+            __n5.__set_more(__prop_more - 1);
+            __n5.__set___depth(__prop___depth + 1);
+          } else {
+            if (__inst1_live.length > __inst1_i) {
+              __inst1_live[__inst1_i].__destroy();
+            }
+            let __n5__new = __cf_seeded({ start: __prop_start, more: __prop_more - 1, __depth: __prop___depth + 1 });
+            __n5 = __n5__new;
+          }
+          __inst1_next.push(__n5);
+          __inst1_now_start.push(__prop_start);
+          __inst1_i = __inst1_i + 1;
+          let __n5__el = __n5.__root;
+          let __place0_i_ref0 = null;
+          if (__place0_i < __place0_prev.length) {
+            __place0_i_ref0 = __place0_prev[__place0_i];
+          }
+          if (__place0_i_ref0 === __n5__el) {
+            __place0_i = __place0_i + 1;
+          } else {
+            parent.insertBefore(__n5__el, __place0_i_ref0);
+          }
+          __slot0.push(__n5__el);
+        }
+      }
+      for (const [__inst1_i_d, _] of __inst1_live.entries()) {
+        let __inst1_i_j = __inst1_live.length - 1 - __inst1_i_d;
+        if (__inst1_i_j >= __inst1_i) {
+          __inst1_live[__inst1_i_j].__destroy();
+        }
+      }
+      __inst1_live = __inst1_next;
+      __inst1_was_start = __inst1_now_start;
+      for (const __place0_prev_e of __place0_prev) {
+        if (__slot0.indexOf(__place0_prev_e) < 0) {
+          parent.removeChild(__place0_prev_e);
+        }
+      }
+    }
+    function __snglTeardown() {
+      for (const [__inst1_live_di, _] of __inst1_live.entries()) {
+        let __inst1_live_dj = __inst1_live.length - 1 - __inst1_live_di;
+        __inst1_live[__inst1_live_dj].__destroy();
+      }
+      __inst1_live = [];
+    }
+    let inner = document.createElement("button");
+    inner.setAttribute("data-sngl-id", "inner");
+    inner.disabled = false;
+    inner.addEventListener("click", () => {
+      n = n + 5;
+      shown.textContent = "s:" + String(n);
+    });
+    inner.addEventListener("contextmenu", () => {
+    });
+    let __n7 = document.createElement("span");
+    __n7.textContent = "bump inner";
+    inner.appendChild(__n7);
+    let shown = document.createElement("span");
+    shown.setAttribute("data-sngl-id", "shown");
+    shown.textContent = "s:" + String(n);
+    const __slotAnchor_0 = document.createElement("span");
+    __slotAnchor_0.style.display = "contents";
+    __renderSlot0(__slotAnchor_0);
+    __root.appendChild(inner);
+    __root.appendChild(shown);
+    __root.appendChild(__slotAnchor_0);
+    return {
+      __root,
+      __destroy() {
+        __snglTeardown();
+      },
+      __set_more,
+      __set___depth
+    };
+  }
+  function __cf_gauge(props) {
+    const __root = document.createElement("div");
+    __root.style.display = "contents";
+    let level = props.level ?? 0;
+    let __prop_level = level;
+    let hits = 0;
+    let __slot0 = [];
+    let __slot12 = [];
+    let __slot102 = [];
+    let __slot22 = [];
+    let __slot32 = [];
+    let __slot42 = [];
+    let __slot52 = [];
+    let __slot62 = [];
+    let __slot72 = [];
+    let __slot82 = [];
+    let __slot92 = [];
+    function __set_level(__v) {
+      __prop_level = __v;
+      _snglCanvasDraw(cv, 100, 100, "", _canvasDraw0);
+    }
+    function _canvasDraw0(ctx) {
+      ctx.save();
+      ctx.fillStyle = "rgba(255,0,0,1)";
+      ctx.fillRect(0, 0, __prop_level + hits, 40);
+      ctx.restore();
+    }
+    let hit = document.createElement("button");
+    hit.setAttribute("data-sngl-id", "hit");
+    hit.disabled = false;
+    hit.addEventListener("click", () => {
+      hits += 20;
+      _snglCanvasDraw(cv, 100, 100, "", _canvasDraw0);
+    });
+    hit.addEventListener("contextmenu", () => {
+    });
+    let __n8 = document.createElement("span");
+    __n8.textContent = "hit";
+    hit.appendChild(__n8);
+    let cv = document.createElement("canvas");
+    cv.setAttribute("data-sngl-id", "cv");
+    cv.setAttribute("width", 100);
+    cv.setAttribute("height", 100);
+    __root.appendChild(hit);
+    __root.appendChild(cv);
+    _snglCanvasDraw(cv, 100, 100, "", _canvasDraw0);
+    return {
+      __root,
+      __destroy() {
+      },
+      __set_level
+    };
+  }
+  var __slot1 = [];
+  var __inst3_live = [];
+  var __slot10 = [];
+  var __inst5_live = [];
+  var __slot2 = [];
+  var __inst7_live = [];
+  var __slot3 = [];
+  var __inst9_live = [];
+  var __slot4 = [];
+  var __inst11_live = /* @__PURE__ */ new Map([]);
+  var __slot5 = [];
+  var __inst13_live = /* @__PURE__ */ new Map([]);
+  var __slot6 = [];
+  var __inst15_live = [];
+  var __slot7 = [];
+  var __inst17_live = [];
+  var __slot8 = [];
+  var __inst19_live = [];
+  var __slot9 = [];
+  var __inst21_live = [];
+  var __inst21_was_start = [];
+  function __renderSlot1(parent) {
+    let __place2_prev = __slot1;
+    let __place2_i = 0;
+    __slot1 = [];
+    let __inst3_next = [];
+    let __inst3_i = 0;
+    for (const n of state.names__inst0) {
+      let b = null;
+      if (__inst3_live.length > __inst3_i) {
+        b = __inst3_live[__inst3_i];
+        b.__set_label(n);
+      } else {
+        if (__inst3_live.length > __inst3_i) {
+          __inst3_live[__inst3_i].__destroy();
+        }
+        let b__new = __cf_badge({ label: n });
+        b = b__new;
+      }
+      __inst3_next.push(b);
+      __inst3_i = __inst3_i + 1;
+      let b__el = b.__root;
+      let __place2_i_ref0 = null;
+      if (__place2_i < __place2_prev.length) {
+        __place2_i_ref0 = __place2_prev[__place2_i];
+      }
+      if (__place2_i_ref0 === b__el) {
+        __place2_i = __place2_i + 1;
+      } else {
+        parent.insertBefore(b__el, __place2_i_ref0);
+      }
+      __slot1.push(b__el);
+    }
+    for (const [__inst3_i_d, _] of __inst3_live.entries()) {
+      let __inst3_i_j = __inst3_live.length - 1 - __inst3_i_d;
+      if (__inst3_i_j >= __inst3_i) {
+        __inst3_live[__inst3_i_j].__destroy();
+      }
+    }
+    __inst3_live = __inst3_next;
+    for (const __place2_prev_e of __place2_prev) {
+      if (__slot1.indexOf(__place2_prev_e) < 0) {
+        parent.removeChild(__place2_prev_e);
+      }
+    }
+  }
+  function __renderSlot10(parent) {
+    let __place4_prev = __slot10;
+    let __place4_i = 0;
+    __slot10 = [];
+    let __inst5_next = [];
+    let __inst5_i = 0;
+    for (const l of state.levels__inst0) {
+      let g = null;
+      if (__inst5_live.length > __inst5_i) {
+        g = __inst5_live[__inst5_i];
+        g.__set_level(l);
+      } else {
+        if (__inst5_live.length > __inst5_i) {
+          __inst5_live[__inst5_i].__destroy();
+        }
+        let g__new = __cf_gauge({ level: l });
+        g = g__new;
+      }
+      __inst5_next.push(g);
+      __inst5_i = __inst5_i + 1;
+      let g__el = g.__root;
+      let __place4_i_ref0 = null;
+      if (__place4_i < __place4_prev.length) {
+        __place4_i_ref0 = __place4_prev[__place4_i];
+      }
+      if (__place4_i_ref0 === g__el) {
+        __place4_i = __place4_i + 1;
+      } else {
+        parent.insertBefore(g__el, __place4_i_ref0);
+      }
+      __slot10.push(g__el);
+    }
+    for (const [__inst5_i_d, _] of __inst5_live.entries()) {
+      let __inst5_i_j = __inst5_live.length - 1 - __inst5_i_d;
+      if (__inst5_i_j >= __inst5_i) {
+        __inst5_live[__inst5_i_j].__destroy();
+      }
+    }
+    __inst5_live = __inst5_next;
+    for (const __place4_prev_e of __place4_prev) {
+      if (__slot10.indexOf(__place4_prev_e) < 0) {
+        parent.removeChild(__place4_prev_e);
+      }
+    }
+  }
+  function __renderSlot2(parent) {
+    let __place6_prev = __slot2;
+    let __place6_i = 0;
+    __slot2 = [];
+    let __inst7_next = [];
+    let __inst7_i = 0;
+    for (const n of state.names__inst1) {
+      let b__1 = null;
+      if (__inst7_live.length > __inst7_i) {
+        b__1 = __inst7_live[__inst7_i];
+        b__1.__set_label(n + state.tag__inst0);
+      } else {
+        if (__inst7_live.length > __inst7_i) {
+          __inst7_live[__inst7_i].__destroy();
+        }
+        let b__1__new = __cf_badge({ label: n + state.tag__inst0 });
+        b__1 = b__1__new;
+      }
+      __inst7_next.push(b__1);
+      __inst7_i = __inst7_i + 1;
+      let b__1__el = b__1.__root;
+      let __place6_i_ref0 = null;
+      if (__place6_i < __place6_prev.length) {
+        __place6_i_ref0 = __place6_prev[__place6_i];
+      }
+      if (__place6_i_ref0 === b__1__el) {
+        __place6_i = __place6_i + 1;
+      } else {
+        parent.insertBefore(b__1__el, __place6_i_ref0);
+      }
+      __slot2.push(b__1__el);
+    }
+    for (const [__inst7_i_d, _] of __inst7_live.entries()) {
+      let __inst7_i_j = __inst7_live.length - 1 - __inst7_i_d;
+      if (__inst7_i_j >= __inst7_i) {
+        __inst7_live[__inst7_i_j].__destroy();
+      }
+    }
+    __inst7_live = __inst7_next;
+    for (const __place6_prev_e of __place6_prev) {
+      if (__slot2.indexOf(__place6_prev_e) < 0) {
+        parent.removeChild(__place6_prev_e);
+      }
+    }
+  }
+  function __renderSlot3(parent) {
+    let __place8_prev = __slot3;
+    let __place8_i = 0;
+    __slot3 = [];
+    let __inst9_next = [];
+    let __inst9_i = 0;
+    for (const n of state.names__inst2) {
+      let b__2 = null;
+      if (__inst9_live.length > __inst9_i) {
+        b__2 = __inst9_live[__inst9_i];
+        b__2.__set_label(n);
+      } else {
+        if (__inst9_live.length > __inst9_i) {
+          __inst9_live[__inst9_i].__destroy();
+        }
+        let b__2__new = __cf_badge({ label: n });
+        b__2 = b__2__new;
+      }
+      __inst9_next.push(b__2);
+      __inst9_i = __inst9_i + 1;
+      let b__2__el = b__2.__root;
+      let __place8_i_ref0 = null;
+      if (__place8_i < __place8_prev.length) {
+        __place8_i_ref0 = __place8_prev[__place8_i];
+      }
+      if (__place8_i_ref0 === b__2__el) {
+        __place8_i = __place8_i + 1;
+      } else {
+        parent.insertBefore(b__2__el, __place8_i_ref0);
+      }
+      __slot3.push(b__2__el);
+    }
+    for (const [__inst9_i_d, _] of __inst9_live.entries()) {
+      let __inst9_i_j = __inst9_live.length - 1 - __inst9_i_d;
+      if (__inst9_i_j >= __inst9_i) {
+        __inst9_live[__inst9_i_j].__destroy();
+      }
+    }
+    __inst9_live = __inst9_next;
+    for (const __place8_prev_e of __place8_prev) {
+      if (__slot3.indexOf(__place8_prev_e) < 0) {
+        parent.removeChild(__place8_prev_e);
+      }
+    }
+  }
+  function __renderSlot4(parent) {
+    let __place10_prev = __slot4;
+    let __place10_i = 0;
+    __slot4 = [];
+    let __inst11_next = /* @__PURE__ */ new Map([]);
+    let __inst11_seen = /* @__PURE__ */ new Map([]);
+    for (const n of state.names__inst3) {
+      let b__3 = null;
+      let __key12 = String(n);
+      let __key12_n = __inst11_seen.has(__key12) ? __inst11_seen.get(__key12) : 0;
+      __inst11_seen.set(__key12, __key12_n + 1);
+      if (__key12_n > 0) {
+        __key12 = __key12 + "#" + String(__key12_n);
+      }
+      if (__inst11_live.has(__key12)) {
+        b__3 = __inst11_live.has(__key12) ? __inst11_live.get(__key12) : null;
+        b__3.__set_label(n);
+      } else {
+        if (__inst11_live.has(__key12)) {
+          (__inst11_live.has(__key12) ? __inst11_live.get(__key12) : null).__destroy();
+        }
+        let b__3__new = __cf_badge({ label: n });
+        b__3 = b__3__new;
+      }
+      __inst11_next.set(__key12, b__3);
+      let b__3__el = b__3.__root;
+      let __place10_i_ref0 = null;
+      if (__place10_i < __place10_prev.length) {
+        __place10_i_ref0 = __place10_prev[__place10_i];
+      }
+      if (__place10_i_ref0 === b__3__el) {
+        __place10_i = __place10_i + 1;
+      } else {
+        parent.insertBefore(b__3__el, __place10_i_ref0);
+      }
+      __slot4.push(b__3__el);
+    }
+    for (const [__inst11_live_k, __inst11_live_v] of __inst11_live.entries()) {
+      if (!__inst11_next.has(__inst11_live_k)) {
+        __inst11_live_v.__destroy();
+      }
+    }
+    __inst11_live = __inst11_next;
+    for (const __place10_prev_e of __place10_prev) {
+      if (__slot4.indexOf(__place10_prev_e) < 0) {
+        parent.removeChild(__place10_prev_e);
+      }
+    }
+  }
+  function __renderSlot5(parent) {
+    let __place12_prev = __slot5;
+    let __place12_i = 0;
+    __slot5 = [];
+    let __inst13_next = /* @__PURE__ */ new Map([]);
+    let __inst13_seen = /* @__PURE__ */ new Map([]);
+    for (const n of state.names__inst4) {
+      let b__4 = null;
+      let __key14 = String(n);
+      let __key14_n = __inst13_seen.has(__key14) ? __inst13_seen.get(__key14) : 0;
+      __inst13_seen.set(__key14, __key14_n + 1);
+      if (__key14_n > 0) {
+        __key14 = __key14 + "#" + String(__key14_n);
+      }
+      if (__inst13_live.has(__key14)) {
+        b__4 = __inst13_live.has(__key14) ? __inst13_live.get(__key14) : null;
+        b__4.__set_label(n);
+      } else {
+        if (__inst13_live.has(__key14)) {
+          (__inst13_live.has(__key14) ? __inst13_live.get(__key14) : null).__destroy();
+        }
+        let b__4__new = __cf_badge({ label: n });
+        b__4 = b__4__new;
+      }
+      __inst13_next.set(__key14, b__4);
+      let b__4__el = b__4.__root;
+      let __place12_i_ref0 = null;
+      if (__place12_i < __place12_prev.length) {
+        __place12_i_ref0 = __place12_prev[__place12_i];
+      }
+      if (__place12_i_ref0 === b__4__el) {
+        __place12_i = __place12_i + 1;
+      } else {
+        parent.insertBefore(b__4__el, __place12_i_ref0);
+      }
+      __slot5.push(b__4__el);
+    }
+    for (const [__inst13_live_k, __inst13_live_v] of __inst13_live.entries()) {
+      if (!__inst13_next.has(__inst13_live_k)) {
+        __inst13_live_v.__destroy();
+      }
+    }
+    __inst13_live = __inst13_next;
+    for (const __place12_prev_e of __place12_prev) {
+      if (__slot5.indexOf(__place12_prev_e) < 0) {
+        parent.removeChild(__place12_prev_e);
+      }
+    }
+  }
+  function __renderSlot6(parent) {
+    let __place14_prev = __slot6;
+    let __place14_i = 0;
+    __slot6 = [];
+    let __inst15_next = [];
+    let __inst15_i = 0;
+    if (state.shown__inst0) {
+      let inner = null;
+      if (__inst15_live.length > __inst15_i) {
+        inner = __inst15_live[__inst15_i];
+        inner.__set_label("i");
+      } else {
+        if (__inst15_live.length > __inst15_i) {
+          __inst15_live[__inst15_i].__destroy();
+        }
+        let inner__new = __cf_badge({ label: "i" });
+        inner = inner__new;
+      }
+      __inst15_next.push(inner);
+      __inst15_i = __inst15_i + 1;
+      let inner__el = inner.__root;
+      let __place14_i_ref0 = null;
+      if (__place14_i < __place14_prev.length) {
+        __place14_i_ref0 = __place14_prev[__place14_i];
+      }
+      if (__place14_i_ref0 === inner__el) {
+        __place14_i = __place14_i + 1;
+      } else {
+        parent.insertBefore(inner__el, __place14_i_ref0);
+      }
+      __slot6.push(inner__el);
+    }
+    for (const [__inst15_i_d, _] of __inst15_live.entries()) {
+      let __inst15_i_j = __inst15_live.length - 1 - __inst15_i_d;
+      if (__inst15_i_j >= __inst15_i) {
+        __inst15_live[__inst15_i_j].__destroy();
+      }
+    }
+    __inst15_live = __inst15_next;
+    for (const __place14_prev_e of __place14_prev) {
+      if (__slot6.indexOf(__place14_prev_e) < 0) {
+        parent.removeChild(__place14_prev_e);
+      }
+    }
+  }
+  function __renderSlot7(parent) {
+    let __place16_prev = __slot7;
+    let __place16_i = 0;
+    __slot7 = [];
+    let __inst17_next = [];
+    let __inst17_i = 0;
+    for (const item of state.items__inst0) {
+      let r = null;
+      if (__inst17_live.length > __inst17_i) {
+        r = __inst17_live[__inst17_i];
+        r.__set_label(item);
+        r.__set_pick((_) => {
+          state.picked__inst0 = item;
+          __n4.textContent = "picked=" + state.picked__inst0;
+        });
+      } else {
+        if (__inst17_live.length > __inst17_i) {
+          __inst17_live[__inst17_i].__destroy();
+        }
+        let r__new = __cf_row({ label: item, pick: (_) => {
+          state.picked__inst0 = item;
+          __n4.textContent = "picked=" + state.picked__inst0;
+        } });
+        r = r__new;
+      }
+      __inst17_next.push(r);
+      __inst17_i = __inst17_i + 1;
+      let r__el = r.__root;
+      let __place16_i_ref0 = null;
+      if (__place16_i < __place16_prev.length) {
+        __place16_i_ref0 = __place16_prev[__place16_i];
+      }
+      if (__place16_i_ref0 === r__el) {
+        __place16_i = __place16_i + 1;
+      } else {
+        parent.insertBefore(r__el, __place16_i_ref0);
+      }
+      __slot7.push(r__el);
+    }
+    for (const [__inst17_i_d, _] of __inst17_live.entries()) {
+      let __inst17_i_j = __inst17_live.length - 1 - __inst17_i_d;
+      if (__inst17_i_j >= __inst17_i) {
+        __inst17_live[__inst17_i_j].__destroy();
+      }
+    }
+    __inst17_live = __inst17_next;
+    for (const __place16_prev_e of __place16_prev) {
+      if (__slot7.indexOf(__place16_prev_e) < 0) {
+        parent.removeChild(__place16_prev_e);
+      }
+    }
+  }
+  function __renderSlot8(parent) {
+    let __place18_prev = __slot8;
+    let __place18_i = 0;
+    __slot8 = [];
+    let __inst19_next = [];
+    let __inst19_i = 0;
+    for (const item of state.items__inst1) {
+      let ch = null;
+      if (__inst19_live.length > __inst19_i) {
+        ch = __inst19_live[__inst19_i];
+        ch.__set_label(item);
+        ch.__set_onpick((s2) => {
+          state.picked__inst1 = s2;
+          $6.textContent = "picked=" + state.picked__inst1;
+        });
+      } else {
+        if (__inst19_live.length > __inst19_i) {
+          __inst19_live[__inst19_i].__destroy();
+        }
+        let ch__new = __cf_choice({ label: item, onpick: (s2) => {
+          state.picked__inst1 = s2;
+          $6.textContent = "picked=" + state.picked__inst1;
+        } });
+        ch = ch__new;
+      }
+      __inst19_next.push(ch);
+      __inst19_i = __inst19_i + 1;
+      let ch__el = ch.__root;
+      let __place18_i_ref0 = null;
+      if (__place18_i < __place18_prev.length) {
+        __place18_i_ref0 = __place18_prev[__place18_i];
+      }
+      if (__place18_i_ref0 === ch__el) {
+        __place18_i = __place18_i + 1;
+      } else {
+        parent.insertBefore(ch__el, __place18_i_ref0);
+      }
+      __slot8.push(ch__el);
+    }
+    for (const [__inst19_i_d, _] of __inst19_live.entries()) {
+      let __inst19_i_j = __inst19_live.length - 1 - __inst19_i_d;
+      if (__inst19_i_j >= __inst19_i) {
+        __inst19_live[__inst19_i_j].__destroy();
+      }
+    }
+    __inst19_live = __inst19_next;
+    for (const __place18_prev_e of __place18_prev) {
+      if (__slot8.indexOf(__place18_prev_e) < 0) {
+        parent.removeChild(__place18_prev_e);
+      }
+    }
+  }
+  function __renderSlot9(parent) {
+    let __place20_prev = __slot9;
+    let __place20_i = 0;
+    __slot9 = [];
+    let __inst21_next = [];
+    let __inst21_i = 0;
+    let __inst21_now_start = [];
+    for (const nm of state.names__inst5) {
+      let b__5 = null;
+      if (__inst21_live.length > __inst21_i && __inst21_was_start[__inst21_i] === state.base__inst0) {
+        b__5 = __inst21_live[__inst21_i];
+        b__5.__set_label(nm + state.tag__inst1);
+      } else {
+        if (__inst21_live.length > __inst21_i) {
+          __inst21_live[__inst21_i].__destroy();
+        }
+        let b__5__new = __cf_seededBadge({ start: state.base__inst0, label: nm + state.tag__inst1 });
+        b__5 = b__5__new;
+      }
+      __inst21_next.push(b__5);
+      __inst21_now_start.push(state.base__inst0);
+      __inst21_i = __inst21_i + 1;
+      let b__5__el = b__5.__root;
+      let __place20_i_ref0 = null;
+      if (__place20_i < __place20_prev.length) {
+        __place20_i_ref0 = __place20_prev[__place20_i];
+      }
+      if (__place20_i_ref0 === b__5__el) {
+        __place20_i = __place20_i + 1;
+      } else {
+        parent.insertBefore(b__5__el, __place20_i_ref0);
+      }
+      __slot9.push(b__5__el);
+    }
+    for (const [__inst21_i_d, _] of __inst21_live.entries()) {
+      let __inst21_i_j = __inst21_live.length - 1 - __inst21_i_d;
+      if (__inst21_i_j >= __inst21_i) {
+        __inst21_live[__inst21_i_j].__destroy();
+      }
+    }
+    __inst21_live = __inst21_next;
+    __inst21_was_start = __inst21_now_start;
+    for (const __place20_prev_e of __place20_prev) {
+      if (__slot9.indexOf(__place20_prev_e) < 0) {
+        parent.removeChild(__place20_prev_e);
+      }
+    }
+  }
+  function _snglCanvasDraw(el, w, h, mode, draw) {
+    const ctx = el.getContext("2d");
+    if (!mode) {
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.clearRect(0, 0, el.width, el.height);
+      draw(ctx);
+      return;
+    }
+    const dpr = window.devicePixelRatio || 1;
+    const pw = Math.max(1, Math.round((el.clientWidth || w) * dpr));
+    const ph = Math.max(1, Math.round((el.clientHeight || h) * dpr));
+    if (el.width !== pw) el.width = pw;
+    if (el.height !== ph) el.height = ph;
+    let sx, sy;
+    if (mode === "stretch") {
+      sx = pw / w;
+      sy = ph / h;
+    } else {
+      sx = sy = mode === "fill" ? Math.max(pw / w, ph / h) : Math.min(pw / w, ph / h);
+    }
+    ctx.setTransform(sx, 0, 0, sy, 0, 0);
+    ctx.clearRect(0, 0, w, h);
+    draw(ctx);
+  }
+  function _snglCanvasWatch(el, redraw) {
+    if (typeof ResizeObserver !== "function") return;
+    let first = true;
+    new ResizeObserver(function() {
+      if (first) {
+        first = false;
+        return;
+      }
+      redraw();
+    }).observe(el);
+  }
+  function String(v) {
+    return "" + v;
+  }
+  var s__pos = document.querySelector('[data-sngl-inst="s"]');
+  var s = __cf_seeded({ start: state.k__inst0, more: 0, __depth: 0 });
+  s__pos.appendChild(s.__root);
+  var $0 = document.getElementById("$0");
+  var $1 = document.getElementById("$1");
+  var $10 = document.getElementById("$10");
+  var $2 = document.getElementById("$2");
+  var $3 = document.getElementById("$3");
+  var $4 = document.getElementById("$4");
+  var $5 = document.getElementById("$5");
+  var $6 = document.getElementById("$6");
+  var $7 = document.getElementById("$7");
+  var $8 = document.getElementById("$8");
+  var $9 = document.getElementById("$9");
+  var __n4 = document.querySelector('[data-sngl-id="__n4"]');
+  var __slotAnchor_1 = document.querySelector('[data-sngl-slot="1"]');
+  __renderSlot1(__slotAnchor_1);
+  var __slotAnchor_10 = document.querySelector('[data-sngl-slot="10"]');
+  __renderSlot10(__slotAnchor_10);
+  var __slotAnchor_2 = document.querySelector('[data-sngl-slot="2"]');
+  __renderSlot2(__slotAnchor_2);
+  var __slotAnchor_3 = document.querySelector('[data-sngl-slot="3"]');
+  __renderSlot3(__slotAnchor_3);
+  var __slotAnchor_4 = document.querySelector('[data-sngl-slot="4"]');
+  __renderSlot4(__slotAnchor_4);
+  var __slotAnchor_5 = document.querySelector('[data-sngl-slot="5"]');
+  __renderSlot5(__slotAnchor_5);
+  var __slotAnchor_6 = document.querySelector('[data-sngl-slot="6"]');
+  __renderSlot6(__slotAnchor_6);
+  var __slotAnchor_7 = document.querySelector('[data-sngl-slot="7"]');
+  __renderSlot7(__slotAnchor_7);
+  var __slotAnchor_8 = document.querySelector('[data-sngl-slot="8"]');
+  __renderSlot8(__slotAnchor_8);
+  var __slotAnchor_9 = document.querySelector('[data-sngl-slot="9"]');
+  __renderSlot9(__slotAnchor_9);
+  $0.addEventListener("click", function() {
+    state.tag__inst0 = "y";
+    __renderSlot2(__slotAnchor_2);
+  });
+  $1.addEventListener("click", function() {
+    state.names__inst2 = ["a", "b", "c"];
+    __renderSlot3(__slotAnchor_3);
+  });
+  $2.addEventListener("click", function() {
+    state.names__inst3 = ["z", "a", "b"];
+    __renderSlot4(__slotAnchor_4);
+  });
+  $3.addEventListener("click", function() {
+    state.names__inst4 = ["a", "a"];
+    __renderSlot5(__slotAnchor_5);
+  });
+  $4.addEventListener("click", function() {
+    state.shown__inst0 = !state.shown__inst0;
+    __renderSlot6(__slotAnchor_6);
+  });
+  $5.addEventListener("click", function() {
+    state.items__inst0 = ["z", "a", "b", "c"];
+    __renderSlot7(__slotAnchor_7);
+  });
+  $7.addEventListener("click", function() {
+    state.base__inst0 = state.base__inst0 + 100;
+    __renderSlot9(__slotAnchor_9);
+  });
+  $8.addEventListener("click", function() {
+    state.base__inst0 = state.base__inst0;
+    __renderSlot9(__slotAnchor_9);
+  });
+  $9.addEventListener("click", function() {
+    state.tag__inst1 = "y";
+    __renderSlot9(__slotAnchor_9);
+  });
+  $10.addEventListener("click", function() {
+    state.k__inst0 = state.k__inst0 + 1;
+    let s__re22 = __cf_seeded({ start: state.k__inst0, more: 0, __depth: 0 });
+    let s__re22__el = s__re22.__root;
+    let s__prev22__el = s.__root;
+    s__pos.insertBefore(s__re22__el, s__prev22__el);
+    s__pos.removeChild(s__prev22__el);
+    s.__destroy();
+    s = s__re22;
+  });
+  function __sngl_init() {
+    __n4.textContent = "picked=" + state.picked__inst0;
+    $6.textContent = "picked=" + state.picked__inst1;
+  }
+  __sngl_init();
+})();
+};
+window.__sngl_boot();
+</script>
+</body></html>
+-- run/none/html --
+pass sha256:1098f5b1ebb05f52b97c9661e3dca685
+-- testrun/html/none/component_browser_runtime.sngl/branch/1 --
+sha256:ffb858f3983227919f59a7aa65190097
+{
+  "results": [
+    {
+      "Desc": "ReenteringABranchResetsItsInstance",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/component_browser_runtime.sngl/callback/1 --
+sha256:c19e2e3f453535d38e48524e4b23118b
+{
+  "results": [
+    {
+      "Desc": "AFreshInstancesCallbackRepaints",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/component_browser_runtime.sngl/duplicates/1 --
+sha256:ea10996715a5e2fd19ed0b4d6334f2c3
+{
+  "results": [
+    {
+      "Desc": "DuplicateKeysAreDistinctInstances",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/component_browser_runtime.sngl/events/1 --
+sha256:0806ef2c44f05569d2ea497a0f44c30b
+{
+  "results": [
+    {
+      "Desc": "ARetainedRowIsNotStale",
+      "Passed": true
+    },
+    {
+      "Desc": "AnInstancesEventReachesTheCallSite",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/component_browser_runtime.sngl/gauges/1 --
+sha256:3494c65a9e946acb2e5eeb3ddad28687
+{
+  "results": [
+    {
+      "Desc": "EachInstancesCanvasDrawsItsOwnState",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/component_browser_runtime.sngl/growing/1 --
+sha256:a30abef818fa46ac893f237d164b3869
+{
+  "results": [
+    {
+      "Desc": "GrowingTheListKeepsTheOthers",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/component_browser_runtime.sngl/keyed/1 --
+sha256:fc660fa4cfba26230f81d0af80a367f3
+{
+  "results": [
+    {
+      "Desc": "AKeyedInsertAtTheFrontKeepsTheOthers",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/component_browser_runtime.sngl/perElement/1 --
+sha256:3eaaaaa0a7195366a3cd2c7b7b098203
+{
+  "results": [
+    {
+      "Desc": "EachInstanceKeepsItsOwnState",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/component_browser_runtime.sngl/rebased/1 --
+sha256:a3ad7d0b39b7f9bd28ba46cf31f47611
+{
+  "results": [
+    {
+      "Desc": "AChangedConstructPropRebuilds",
+      "Passed": true
+    },
+    {
+      "Desc": "AnUnchangedConstructPropKeepsTheInstance",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/component_browser_runtime.sngl/rebuilt/1 --
+sha256:25deb65e1eea8cf407af214c0f5c1411
+{
+  "results": [
+    {
+      "Desc": "ARebuiltInstanceKeepsItsPlace",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/component_browser_runtime.sngl/renamed/1 --
+sha256:5c760150384aa2b5e57dd7c41a4a4e34
+{
+  "results": [
+    {
+      "Desc": "APropReachesTheLeaf",
+      "Passed": true
+    }
+  ]
+}

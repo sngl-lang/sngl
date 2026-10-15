@@ -123,6 +123,11 @@ type Features struct {
 	// generic method to put a state-reading one on the Model, and no
 	// constraint to state what a body does with T.
 	GenericFuncs bool
+	// RuntimeReach grants a test the nodes of a component built at run time, by
+	// the id it gave each one and, under a loop, the copy's index in render
+	// order. Withheld, such a reach is refused, there being no one instance to
+	// name.
+	RuntimeReach bool
 
 	// The six below are requests rather than capabilities, which is the split
 	// `sngl:x/gen` spells as `#[gen.wants]`: each asks for a pass the target

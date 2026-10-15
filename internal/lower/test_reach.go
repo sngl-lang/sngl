@@ -113,6 +113,9 @@ type testReach struct {
 	params map[*ir.Param]bool
 	root   *ir.Component
 	nodes  map[*ir.Component]map[string]*ir.Var
+	// runtime is the target's RuntimeReach: a node of a component built at
+	// run time is reached by its id rather than refused.
+	runtime bool
 }
 
 func testReachRoots(pkg *ir.Package, root *ir.Component, opts Options) *testReach {
@@ -243,6 +246,9 @@ func repointTestReaches(pkg *ir.Package, reach *testReach, splices []splice) err
 			case *ir.Select:
 				si := r.instOf(x.Operand)
 				if si == nil {
+					if e := r.runtimeNode(x); e != nil {
+						return e, ir.SkipDir
+					}
 					r.refuseUnspliced(x.Operand, x.Field, fail)
 					return n, nil
 				}
@@ -299,6 +305,50 @@ func (r *resolver) repointCall(c *ir.Call, fail func(ir.Expr, string, ...any)) {
 		c.Args[0].Value = inst
 	} else {
 		c.Receiver = inst
+	}
+}
+
+// runtimeNode is a node x selects from a component built at run time, as the
+// target finds it: by the id the component gave it, among every element
+// rendered under that id, at the copy x indexed or the first. Nil where the
+// target cannot, where x selects anything but such a node, or where more than
+// one loop's copies are indexed on the way.
+func (r *resolver) runtimeNode(x *ir.Select) ir.Expr {
+	if !r.runtime {
+		return nil
+	}
+	operand := x.Operand
+	var idx ir.Expr
+	if ix, ok := operand.(*ir.Index); ok {
+		operand, idx = ix.Operand, ix.Idx
+	}
+	comp := componentOf(operand)
+	if comp == nil || comp == r.root || r.instOf(operand) != nil {
+		return nil
+	}
+	h := bodyNodes(comp.Stmts)[x.Field]
+	inst := r.instance(operand)
+	if h == nil || inst == nil || indexed(operand) {
+		return nil
+	}
+	sel := &ir.Select{AST: x.AST, Type: x.Type, Operand: inst, Field: h.Name}
+	if idx == nil {
+		return sel
+	}
+	return &ir.Index{Type: x.Type, Operand: sel, Idx: idx}
+}
+
+// indexed reports whether a select chain indexes a loop's copies anywhere.
+func indexed(e ir.Expr) bool {
+	for {
+		switch x := e.(type) {
+		case *ir.Select:
+			e = x.Operand
+		case *ir.Index:
+			return true
+		default:
+			return false
+		}
 	}
 }
 
