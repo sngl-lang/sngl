@@ -539,10 +539,8 @@ func (c *checker) inferIdent(x *ast.IdentExpr) ir.Expr {
 // declaring it inside the slot render and reading it outside, bubbletea
 // emitting the read as the only occurrence of the name in the file.
 //
-// It is reported at the read rather than shipped as a type, because the type
-// alone is silent: option and list are both absent from hasNoLegitimateFields,
-// so `maybe.value` off one degrades to dyn and the three broken builds become
-// three no-ops. The read is also the line that has to move.
+// It is reported at the read rather than as the select's unknown member,
+// because the read is the line that has to move.
 //
 // Only a node handle is asked. A `for` over windows binds a real list[window]
 // that the unroll fills in (collectForLoopWindowIDs), and that var carries no
@@ -896,7 +894,8 @@ func (c *checker) finishBinary(x *ast.BinaryExpr, leftExpr, rightExpr ir.Expr) i
 // unifyNumeric returns the common type of two numeric binary operands. Operands
 // must already share a width and signedness (untyped literals are adapted to
 // the other operand up front); a mismatch is an error requiring an explicit
-// conversion. Dyn on either side flows through without an error.
+// conversion. An invalid operand on either side, already reported, flows
+// through without a second error.
 func (c *checker) unifyNumeric(left, right *ir.Type, pos ast.Pos, op ast.BinaryOp) *ir.Type {
 	if left.Kind == ir.TypeInvalid {
 		return right
@@ -1464,7 +1463,7 @@ func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) ir.Ex
 		// receiver's, which the receiver binds.
 		written := c.takeCallTypeArgs(call, sig.TypeParams)
 		// recvParamStyle tracks whether the receiver is passed as the first
-		// explicit param (old-style "dyn receiver" convention) vs. a new-style
+		// explicit param (receiver-as-first-param convention) vs. a new-style
 		// RecvTypeParams method where the receiver is implicit (not a param).
 		recvParamStyle := len(sig.RecvTypeParams) == 0
 
@@ -2012,13 +2011,6 @@ func (c *checker) methodNamed(t *ir.Type, name string) bool {
 	return found
 }
 
-// hasNoLegitimateFields reports whether a type cannot have any selector
-// fields. Used to surface "no field X on type Y" diagnostics that would
-// otherwise silently degrade to TypInvalid. Kept conservative: a type qualifies
-// only when it has no field-style accessor at all, which rules out most kinds
-// (color.r, list.length, struct fields, component vars/props, enum members)
-// and everything carrying no shape information (dyn, generic params, anonymous
-// structs).
 // selectDeclaredMember resolves x.Field against a declaration's own member
 // table -- fields first, then methods -- and reports a name in neither. Struct
 // and unit share it because they share the question, which is the same reason
@@ -2050,23 +2042,12 @@ func (c *checker) selectDeclaredMember(x *ast.SelectExpr, operandExpr ir.Expr, d
 	return &ir.Select{AST: x, Type: TypInvalid, Operand: operandExpr, Field: x.Field}
 }
 
-func hasNoLegitimateFields(t *ir.Type) bool {
-	if t == nil {
-		return false
-	}
-	switch t.Kind {
-	case ir.TypeInt, ir.TypeFloat, ir.TypeBool:
-		return true
-	}
-	return false
-}
-
 // callRetType returns the expression type a call through sig should produce.
 // A sig with a nil Return represents a void function; calling one does not
 // yield a usable value, so we tag the call expression TypVoid. Consumer sites
 // that treat the call as an expression surface a normal assignability error
-// against TypVoid — this makes "silent dyn" leakage from missing return
-// annotations impossible. A nil sig (unknown function) stays TypInvalid so the
+// against TypVoid, so a missing return annotation cannot leak a value of no
+// type. A nil sig (unknown function) stays TypInvalid so the
 // surrounding lookup error isn't doubled up.
 func callRetType(sig *ir.FuncSig) *ir.Type {
 	if sig == nil {
@@ -2079,9 +2060,9 @@ func callRetType(sig *ir.FuncSig) *ir.Type {
 }
 
 // rejectVoidReceiver reports a field or method named on an expression that
-// produces no value. Nothing can be selected through one, so leaving it
-// unreported typed the whole select dyn -- which accepted any field and any
-// method name at all, `nothing().nosuchmethod()` included. The position is the
+// produces no value. Nothing can be selected through one, and left
+// unreported the select would accept any field and any method name at all,
+// `nothing().nosuchmethod()` included. The position is the
 // receiver's rather than the select's: what is wrong is the thing on the left.
 func (c *checker) rejectVoidReceiver(t *ir.Type, operand ast.Expr) bool {
 	if t == nil || t.Kind != ir.TypeVoid {
@@ -2273,10 +2254,7 @@ func (c *checker) inferSelect(x *ast.SelectExpr) ir.Expr {
 
 		// A unit answers the same question off the same table: its fields are
 		// its bases (ir.UnitFields), so `m.px` is a float and anything else is
-		// the ordinary unknown-member error. Before the table existed a unit
-		// had no field lookup at all, and every member of one -- the valid
-		// `.px` as much as the invented `.value` -- fell through to dyn, which
-		// is why `"px is " + m.px` reached Go as a string plus a float64.
+		// the ordinary unknown-member error.
 		if operand.Kind == ir.TypeUnit && operand.Decl != nil {
 			if ud, ok := operand.Decl.(*ir.UnitDef); ok {
 				return c.selectDeclaredMember(x, operandExpr, ud, "unit", nil)
@@ -2289,7 +2267,7 @@ func (c *checker) inferSelect(x *ast.SelectExpr) ir.Expr {
 		// component-typed operand — `this.<name>` inside a method and `c.<name>`
 		// on a component-typed param/var in ordinary code or a test alike — so
 		// the feature is orthogonal to context. A name matching none of these is
-		// a hard error, not a silent `dyn`.
+		// a hard error.
 		if operand.Kind == ir.TypeComponent && operand.Decl != nil {
 			if comp, ok := operand.Decl.(*ir.Component); ok && comp.IsFamily() {
 				// A value of a family is a record of the props it declares,
@@ -2425,7 +2403,7 @@ func (c *checker) inferSelect(x *ast.SelectExpr) ir.Expr {
 		if x.Field == "length" && (operand.Kind == ir.TypeList || operand.Kind == ir.TypeMap || operand.Kind == ir.TypeString) {
 			return &ir.Select{AST: x, Type: TypInt, Operand: operandExpr, Field: x.Field}
 		}
-		if hasNoLegitimateFields(operand) {
+		if operand.Kind != ir.TypeInvalid {
 			if c.methodNamed(operand, x.Field) {
 				c.error(x.Pos, "%s.%s is a method; write %s() to call it", operand, x.Field, x.Field)
 			} else {
@@ -2462,8 +2440,8 @@ func (c *checker) inferIndex(x *ast.IndexExpr) ir.Expr {
 	operandExpr, operand = callComputedOperand(operandExpr, operand)
 
 	// An index on nothing: `xs.push(v)[0]` reaches here with a void operand,
-	// and the fallback below would hand it back as dyn, which assigns to
-	// anything. Reported here so the message names the line it was written on.
+	// and the fallback below would hand it back as invalid, which assigns to
+	// anything without a word. Reported here so the message names the line it was written on.
 	if c.requireValueType(operand, x.Pos) {
 		return &ir.Index{AST: x, Type: TypInvalid, Operand: operandExpr, Idx: indexExpr}
 	}
@@ -2676,7 +2654,7 @@ func (c *checker) inferStructLit(x *ast.StructExpr) ir.Expr {
 	// Nothing named a type, so the literal's own values do.
 	anonFields, ok := c.anonFieldsFromInits(fields)
 	if !ok {
-		return &ir.StructLit{AST: x, Type: &ir.Type{Kind: ir.TypeStruct}, Fields: fields}
+		return &ir.StructLit{AST: x, Type: TypInvalid, Fields: fields}
 	}
 	typ := c.anonStructType(anonFields)
 	return &ir.StructLit{AST: x, Type: typ, Def: typ.Decl.(*ir.StructDef), Fields: fields}
@@ -2845,8 +2823,8 @@ func (c *checker) checkListSpread(sp *ast.SpreadExpr, elemExpected *ir.Type) (*i
 // unifyListElem folds one element's type into the literal's element type so
 // far. The first element decides, widened when a later one is the wider
 // number, and a null beside a T makes it option[T]. Two that only agree as
-// the expected element type (`[2.0, "a"]` for a list[dyn]) make the literal a
-// list of that.
+// the expected element type (two members' handles for a list of their family)
+// make the literal a list of that.
 func (c *checker) unifyListElem(have, got, expected *ir.Type, pos ast.Pos) *ir.Type {
 	switch {
 	case have == nil:
@@ -2945,7 +2923,8 @@ func interpPartPrimitive(t *ir.Type) bool {
 }
 
 // interpolateStringify turns an interpolation part into a string-typed ir.Expr.
-// Primitives and dyn flow through (with a wrapping Conversion for primitives);
+// Primitives and an invalid part, already reported, flow through (with a
+// wrapping Conversion for primitives);
 // zero-arg funcs get an implicit call; other types must define a `.string()`
 // method. When no path exists an error is emitted and the original expr is
 // returned so chain assembly continues.
@@ -4849,10 +4828,10 @@ func (c *checker) checkVisualNode(vn *ast.VisualNode) ir.Stmt {
 // legitimately be the value wanted, and there the expected type is what decides;
 // here it never can be.
 //
-// All three positions used to fall through to a dyn result with no diagnostic —
-// `plain.bogusMethod()` checked clean — and, because the operand stayed an Ident
-// bound to the func rather than becoming a Call, reactivity never reached the
-// vars the computed reads, so a prop reading one never re-rendered.
+// The operand becomes a Call rather than staying an Ident bound to the func,
+// so a bogus member (`plain.bogusMethod()`) is reported against the result, and
+// reactivity reaches the vars the computed reads, so a prop reading one
+// re-renders.
 //
 // Args stays nil: this is the implicit-receiver shape passNoImplicitRecv
 // normalizes, so a component's computed picks up its `this` there rather than in
@@ -5763,10 +5742,8 @@ func (c *checker) checkHeadlessFor(x *ast.ForStmt, cond ir.Expr) *ir.For {
 // emitter that walks the map again elsewhere, a host map that happens to be
 // insertion-ordered so the bug only appears on the other three targets.
 //
-// A map reaching the head with its map-ness erased is not caught here and
-// cannot be: `iter[T]` is not one of the erasures, since map[K, V] is not
-// assignable to it, but `dyn` is, and a dyn head says nothing about what it
-// will hold.
+// A map cannot reach the head with its map-ness erased: map[K, V] is not
+// assignable to `iter[T]`, the one type a loop head could erase it to.
 func (c *checker) checkViewMapFor(pos ast.Pos, iter *ir.Type) {
 	if c.funcDepth > 0 || iter == nil || iter.Kind != ir.TypeMap {
 		return

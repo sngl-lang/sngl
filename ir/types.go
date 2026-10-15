@@ -68,8 +68,8 @@ type Type struct {
 var (
 	// TypInvalid is the type of what has none: an expression the checker
 	// reported an error about, and a host declaration with no SNGL spelling,
-	// which is marked unusable. Nothing typed invalid reaches a program that
-	// checked clean.
+	// which is marked unusable. Nothing typed invalid reaches a program or a
+	// library package that checked clean.
 	TypInvalid = &Type{Kind: TypeInvalid}
 	TypBool    = &Type{Kind: TypeBool}
 	TypInt     = &Type{Kind: TypeInt}
@@ -266,8 +266,7 @@ func (t *Type) String() string {
 		return "instance"
 	case TypeNative:
 		// A foreign type has no SNGL spelling, so a diagnostic names it the
-		// way the host does. Reachable since the C scheme importer started
-		// giving a void* parameter a native type rather than a dyn.
+		// way the host does.
 		if ref, ok := t.Meta.(NativeTypeRef); ok && ref.Name != "" {
 			return ref.Name
 		}

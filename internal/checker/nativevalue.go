@@ -24,8 +24,9 @@ import (
 // Def, a list with its real element type, a literal at the width and unit want
 // asks for.
 //
-// Where the value carries no ref and want is nothing — a func returning
-// []any — there is no declaration to be had, and the value stays dyn.
+// Where the value carries no ref and want is nothing there is no declaration
+// to be had. A go: func returning []any would be that case, and the importer
+// marks one unusable, since an interface has no SNGL type.
 //
 // The scope holds nothing but the standard library. An encoded value is data —
 // literals, lists, maps, struct literals and the predeclared true/false/null —

@@ -342,6 +342,9 @@ func CheckPackage(docs []*ast.Document, cfg *Config) (*ir.Package, []ir.Diagnost
 }
 
 type checker struct {
+	// anyWritten collects where `any` is written as a type while a marked
+	// declaration is typed (holdAny), nil otherwise.
+	anyWritten *[]ast.Pos
 	// askedEmpty memoizes slotsAskedEmpty per component.
 	askedEmpty map[*ir.Component]map[*ir.SlotDecl]bool
 	// refBindable is the plain element variables of loops over an addressable
@@ -2219,7 +2222,7 @@ func (c *checker) registerConstShells(decl *ast.ConstDecl) {
 		// An un-annotated const backed by a literal gets its concrete type on
 		// the shell immediately, so a later `var x = SOME_CONST` (registered
 		// before the deferred checkPendingConstInits runs) infers the const's
-		// type rather than dyn. Non-literal initializers still resolve in the
+		// type rather than none. Non-literal initializers still resolve in the
 		// deferred pass.
 		var typ *ir.Type
 		switch {
@@ -2478,7 +2481,8 @@ func (c *checker) nonConstCallRef(x *ast.CallExpr) string {
 
 func (c *checker) registerVars(decl *ast.VarDecl) {
 	for _, spec := range decl.Specs {
-		typ := c.varSpecType(spec.Pos, spec.Names, spec.Type, spec.Default)
+		var typ *ir.Type
+		anyAt := c.holdAny(decl, func() { typ = c.varSpecType(spec.Pos, spec.Names, spec.Type, spec.Default) })
 		var vars []*ir.Var
 		for _, name := range spec.Names {
 			if _, exists := c.scope.LookupLocal(name); exists {
@@ -2495,6 +2499,9 @@ func (c *checker) registerVars(decl *ast.VarDecl) {
 			c.declPkg().Vars = append(c.declPkg().Vars, v)
 			c.bindVar(decl.Pos, v)
 			vars = append(vars, v)
+		}
+		if len(vars) > 0 {
+			c.refuseAnyUnlessUnusable(anyAt, &vars[0].Foreign)
 		}
 		c.deferInit(decl.Pos, func() { c.checkVarInit(decl, spec, typ, vars) })
 	}
@@ -2629,7 +2636,8 @@ func (c *checker) registerFunc(f *ast.FuncDef) *ir.Func {
 		c.userFuncOverrides = append(c.userFuncOverrides, f)
 		return nil
 	}
-	fn := c.buildFunc(f)
+	var fn *ir.Func
+	anyAt := c.holdAny(f, func() { fn = c.buildFunc(f) })
 
 	// A macro declaration is not a function -- it is where a `#[...]` mark's
 	// documentation and argument list are written, and a Go handler is what
@@ -2649,18 +2657,13 @@ func (c *checker) registerFunc(f *ast.FuncDef) *ir.Func {
 		c.declPkg().Macros = append(c.declPkg().Macros, fn)
 	}
 	c.applyMarks(f, fn)
+	c.refuseAnyUnlessUnusable(anyAt, &fn.Foreign)
 
-	// Library source is not body-checked by pass2, so two things it would
-	// otherwise infer are stated here. A signature with no return annotation
-	// is dyn rather than void. And a bodied function's purity starts pure
-	// until finishDeclarations reads it off the body.
-	// A bodyless one is pure only where it is declared `const func`, which
-	// buildFunc has already said -- nothing in the program says what a host
-	// does.
+	// A library's bodied function's purity starts pure until
+	// finishDeclarations reads it off the body. A bodyless one is pure only
+	// where it is declared `const func`, which buildFunc has already said --
+	// nothing in the program says what a host does.
 	if c.inLibSource() {
-		if fn.Return == nil && f.Body != nil {
-			fn.Return = TypInvalid
-		}
 		if fn.Purity == ir.PurityUnknown && funcHasBody(f) {
 			fn.Purity = ir.PurityPure
 		}
@@ -4074,16 +4077,8 @@ func (c *checker) checkFuncBody(fn *ir.Func) {
 		}
 		bodyType := exprType(bodyExpr)
 		// Infer return type from expression body when there was no annotation.
-		// Library source gives an unannotated signature an invalid
-		// placeholder at registration rather than leaving it nil, which the
-		// body's type replaces the same way. Restricted to primitives: the `color` struct and the `color` primitive share a
-		// name, so inferring `color.rgb(...) => color{...}` as the struct
-		// makes it collide with the primitive in callers.
 		if fn.Return == nil {
 			fn.Return = c.inferredType(bodyType, *body.ExprPos())
-		} else if c.inLibSource() && fn.Return.Kind == ir.TypeInvalid &&
-			bodyType != nil && isPrimitiveTypeKind(bodyType.Kind) {
-			fn.Return = bodyType
 		}
 		fn.Block = []ir.Stmt{&ir.Return{AST: &ast.ReturnStmt{Pos: *body.ExprPos(), Value: body}, Value: bodyExpr}}
 	} else if fn.AST != nil && fn.AST.Block.IsDefined() {
@@ -4231,7 +4226,7 @@ func lastStmtMayDiverge(stmts []ir.Stmt) bool {
 // methods (Receiver == comp.Name) to infer their return types BEFORE any
 // top-level func body that may call them. The pre-pass discards its
 // diagnostics — they may be spurious because component var initializers
-// haven't been checked yet, so var types are Dyn here. The "real" check
+// haven't been checked yet, so an unannotated var has no type here. The "real" check
 // (with refined types and authoritative diagnostics) runs later inside
 // checkComponentBody.
 func (c *checker) preCheckComponentMethods(comp *ir.Component) {
@@ -4578,7 +4573,7 @@ func (c *checker) checkComponentBody(comp *ir.Component) {
 	// nested methods (Receiver = comp.Name) were already pre-checked once
 	// in pass2 with provisional var types; running them again here with
 	// fully-typed vars produces the authoritative diagnostics. Reset
-	// fn.Return so the pre-pass's possibly-Dyn inference doesn't shadow
+	// fn.Return so the pre-pass's provisional inference doesn't shadow
 	// the authoritative one.
 	for _, fn := range comp.Funcs {
 		// Foreign-type methods nested inside a component body (e.g.

@@ -495,8 +495,8 @@ func isNullOperand(e ir.Expr) bool {
 }
 
 // settledNullTest folds `x != null` and `x == null` where the type of x says
-// the answer: everything in SNGL is non-nullable but `option[T]`, the `null`
-// literal itself, and `dyn`, which says nothing about what it holds.
+// the answer: everything in SNGL is non-nullable but `option[T]` and the
+// `null` literal itself.
 //
 // The test is written by whoever declared the option and answered by whoever
 // filled it in, and for a component prop those are two different authors. A
@@ -541,7 +541,7 @@ func settledNullTest(x *ir.Binary) *ir.Literal {
 // comparing one against null has an answer the type already holds.
 //
 // An allowlist, and that direction is the point: the kinds that *can* be
-// absent are not a closed set -- `option`, `dyn` and a func null converts to,
+// absent are not a closed set -- `option` and a func null converts to,
 // but also an unbound type parameter, a foreign handle that is a host pointer,
 // and a `remote` still in flight. Listed the other way round, each new kind
 // would join the fold by default and be wrong there in silence.

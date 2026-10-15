@@ -1136,8 +1136,9 @@ func girTypeLabel(p gir.Prop) string {
 //   - Integers / Floats → C.int(v) / C.double(v)
 //   - anything else → C.CString(v)
 func (t *gtk4Translator) coerceSetterValue(setter string, value ir.Expr) ir.Expr {
-	// A boolean setter whose property the GIR did not carry: the value may
-	// well be typed dyn, and the cast below would make a string of it.
+	// A boolean setter whose property the GIR did not carry: the value may be
+	// one exprIRType cannot type (a `!x`), and the fallback below would make a
+	// string of it.
 	if setter == "gtk_check_button_set_active" {
 		return cScalar("gboolean", t.boolToGoInt(value))
 	}

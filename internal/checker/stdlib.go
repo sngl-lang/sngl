@@ -208,7 +208,7 @@ func (c *checker) loadStdlib() (builtinPkg, stdPkg *ir.Package) {
 // resolveMacroSig resolves a macro's declared parameter types, once, the
 // first time a mark of it is applied. Not as the package loads: the mark
 // package loads from inside sngl:builtin's own imports, where `list` names
-// nothing yet and `list[ir.IntrinsicFlag]` would degrade to `list[dyn]`.
+// nothing yet and `list[ir.IntrinsicFlag]` would not resolve.
 func (c *checker) resolveMacroSig(pkg *ir.Package, fn *ir.Func) {
 	if c.libs.macroSigs[fn] || fn.AST == nil || len(fn.Params) != len(fn.AST.Params.Params) {
 		return
@@ -1542,17 +1542,6 @@ func highestCalledPurity(fn *ir.Func) ir.Purity {
 		walkStmt(s)
 	}
 	return maxP
-}
-
-// isPrimitiveTypeKind reports whether k is a simple value-type kind safe to
-// use for inferred wrapper return types. Restricted to dodge the
-// color-struct-vs-primitive ambiguity noted in checkStdlibFuncBody.
-func isPrimitiveTypeKind(k ir.TypeKind) bool {
-	switch k {
-	case ir.TypeBool, ir.TypeInt, ir.TypeFloat, ir.TypeString:
-		return true
-	}
-	return false
 }
 
 // Platform sources use a library import's alias as the `component <alias>.X`

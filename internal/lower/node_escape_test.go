@@ -8,7 +8,7 @@ import (
 )
 
 // createNodeLV builds the LocalVar shape passDeclarative emits for a
-// flattened widget node: `var __nN dyn = lower.CreateNode("tag")`.
+// flattened widget node: `var __nN component = lower.CreateNode("tag")`.
 func createNodeLV(id, tag string) *ir.LocalVar {
 	return &ir.LocalVar{
 		Name: id,

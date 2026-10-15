@@ -1708,8 +1708,8 @@ func (env *Env) evalBinary(e *ir.Binary) (any, error) {
 }
 
 // numKindOf maps an IR result type to the opeval width descriptor so arithmetic
-// wraps to the right width. A nil or non-numeric type (e.g. a dyn operand in a
-// test context) yields the zero NumKind, which is default int / float-fallback.
+// wraps to the right width. A nil or non-numeric type yields the zero NumKind,
+// which is default int / float-fallback.
 func numKindOf(t *ir.Type) opeval.NumKind {
 	if t == nil || !t.IsNumeric() {
 		return opeval.NumKind{}
@@ -2078,9 +2078,8 @@ func (env *Env) evalNamespaceCall(call *ir.Call) (any, error) {
 			}
 			// Enum value method fallback: when recv is a bare string and no
 			// dispatch succeeded, scan user-defined enums for a matching
-			// member and try the method against that enum's namespace. Covers
-			// `c.s.isOk()` where `c.s` is typed dyn externally but holds an
-			// enum member at runtime.
+			// member and try the method against that enum's namespace: an
+			// enum member the interpreter holds as its bare name.
 			if s, ok := recv.(string); ok && env.Pkg != nil {
 				for _, ed := range env.Pkg.Enums {
 					for _, m := range ed.Members {
@@ -2976,7 +2975,7 @@ func ToInt(v any) int {
 // orderable reports why a pair cannot be ordered, or nil. Only a multi-base
 // unit has no answer: `3px` and `2em` are each larger on their own base. The
 // checker refuses that pair outright (`IsSingleBaseUnit` gates <, <=, >, >=),
-// so this is the `dyn` operand that reached a comparison untyped.
+// so this is for IR the checker did not see.
 func orderable(a, b any) error {
 	for _, v := range [...]any{a, b} {
 		if u, ok := v.(unitValue); ok && u.Table != nil && len(u.Table.Bases) > 1 {

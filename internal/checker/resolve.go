@@ -134,7 +134,11 @@ func (c *checker) resolveNamedType(t *ast.NamedType) *ir.Type {
 	if sym, ok := c.scope.Lookup(t.Name); ok {
 		if typ, _, ok := scalarOf(sym); ok {
 			if typ == ir.TypAny {
-				c.error(t.Pos, "`any` is a constraint, not a type: every value's type is one the program can name")
+				if c.anyWritten != nil {
+					*c.anyWritten = append(*c.anyWritten, t.Pos)
+					return TypInvalid
+				}
+				c.error(t.Pos, anyNotAType)
 				return TypInvalid
 			}
 			return typ
@@ -223,7 +227,7 @@ func (c *checker) applyStructTypeArgs(pos ast.Pos, base *ir.Type, sd *ir.StructD
 			if def == nil {
 				c.error(pos, "type %s requires a type argument for %s, which has no default",
 					sd.Name, sd.TypeParams[i].Name)
-				// The unparameterized base rather than dyn, so downstream code
+				// The unparameterized base rather than invalid, so downstream code
 				// can still see the struct shape.
 				return base
 			}
@@ -511,7 +515,8 @@ func (c *checker) resolveStructFields(s *ast.StructDef) []*ir.StructField {
 		if len(f.Names) > 0 {
 			fieldLabel = "struct field " + strconv.Quote(f.Names[0])
 		}
-		typ := c.resolveTypeRequired(f.Type, f.Pos, fieldLabel)
+		var typ *ir.Type
+		anyAt := c.holdAny(f, func() { typ = c.resolveTypeRequired(f.Type, f.Pos, fieldLabel) })
 		for _, name := range f.Names {
 			if _, dup := seen[name]; dup {
 				c.error(f.Pos, "duplicate struct field %q", name)
@@ -535,6 +540,9 @@ func (c *checker) resolveStructFields(s *ast.StructDef) []*ir.StructField {
 			fields = append(fields, fld)
 		}
 		c.applyMarks(f, first)
+		if first != nil {
+			c.refuseAnyUnlessUnusable(anyAt, &first.Foreign)
+		}
 	}
 	return fields
 }
@@ -782,8 +790,7 @@ func (c *checker) buildFunc(f *ast.FuncDef) *ir.Func {
 	}
 	popTypeParams := pushTypeParams(c, f.RecvTypeParams, f.TypeParams)
 	// nil ReturnType means void (block body) or pending-inference (expression body);
-	// leave Return nil here so checkFuncBody can infer from a `=>` body without
-	// conflating it with an explicit `dyn` return annotation.
+	// leave Return nil here so checkFuncBody can infer from a `=>` body.
 	var ret *ir.Type
 	if f.ReturnType != nil {
 		ret = c.resolveType(f.ReturnType)

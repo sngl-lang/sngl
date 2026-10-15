@@ -64,7 +64,7 @@ component main node {
 	if found == nil {
 		t.Fatalf("expected synthesized __slot0 var on component; got vars: %v", varSliceNames(comp.Vars))
 	}
-	// Verify the type is list[dyn].
+	// Verify the slot var is typed.
 	if found.Type == nil {
 		t.Errorf("__slot0 has nil Type")
 	}

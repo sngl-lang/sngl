@@ -1158,6 +1158,11 @@ func (c *converter) convertType(t *Type) ast.TypeExpr {
 		return nil
 	}
 	switch t.Kind {
+	case TypeInvalid:
+		// Only a host declaration marked #[macro.unusable] holds one in a
+		// package that checked clean, and its type is SNGL's to have no name
+		// for: the checker accepts `any` written there and reads nothing of it.
+		return &ast.NamedType{Name: "any"}
 	case TypeList:
 		nt := &ast.NamedType{Name: "list"}
 		if len(t.Elems) > 0 {

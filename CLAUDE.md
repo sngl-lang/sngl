@@ -2895,8 +2895,8 @@ checker's attaching and lookup, which still go by the bare name
 
 `declareEnclosingBody` is the scope half, and `checkBodyOnce` orders an owner's
 body check ahead of the bodies it declared — pass1 registers a nested
-declaration first, so read in package order an unannotated `var count = 0` was
-still `Dyn` where the nested body named it. The lowering half is
+declaration first, so read in package order an unannotated `var count = 0`
+would have no type yet where the nested body names it. The lowering half is
 `spliceNestedCaptures` (`internal/lower/nested_capture.go`): a capturing nested
 body is substituted into the body that declared it *before* that body is
 inlined anywhere, because `expandCall` renames the body it splices and not the
@@ -4441,13 +4441,12 @@ to zero: the interpreter's map holds no key for it where the JS and Go records
 hold a zero, so a comparison written over *the bases a value carries* rather
 than over the unit's declared bases disagrees with the other three.
 
-`hasNoLegitimateFields` stays an inverted allowlist, so a kind absent from it
-still accepts any member name silently: `list`, `map`, `option`, `iter`,
-`string` beyond `.length`, and a struct type carrying no `Decl`. That is not
-uniformly a defect — an element-ref list projects a member read over its
-elements, which `testdata/test_slot_element_ref.sngl` depends on
-(`c.body.value` where `c.body` is `list[text]`) — so closing the rest is a
-question per kind rather than one line.
+**A member a type does not have is an error on every kind** -- `o.value` off
+an `option`, `xs.bogus` off a `list`, `s.huh` off a `string`
+(`error_select_unknown_member.sngl`). Only an operand already typed invalid,
+whose error was reported where it was made, selects silently. A list of
+element refs projects a member read over its elements before that
+(`testdata/test_slot_element_ref.sngl`).
 
 Stdlib collection types support generic methods: `func list[T].filter(f func(T) bool) list[T]`, `func list[T].map[U any](f func(T) U) list[U]`, `func map[K, V].keys() list[K]`, etc. The receiver's type parameters are bound at the call site from the operand's concrete type (e.g. `xs : list[int]` binds `T=int`). Method-level type parameters (the `[U any]` after the method name) are inferred from the call's actual argument types — typically from a lambda's return type.
 
@@ -4615,6 +4614,16 @@ types it — and nothing in the compiler forces them to agree.
 is wrong. It is a test helper, not a runtime package, which is why it sits
 beside `sngl.go` rather than under `pkg/go/`: `pkg/<lang>/` is what generated
 code imports, and the compiler must not be in that graph.
+
+**Nothing typed invalid reaches a package that checked clean.**
+`ir.TypInvalid` is the type of what the checker reported an error about, and
+of a host declaration it marked unusable; anywhere else it is a type the
+checker gave up on without saying so, which `IsAssignableTo` then lets any
+misuse through. `TestFixtures` holds every clean fixture to it, override
+bodies included, and `TestLibraryHoldsNoInvalidType` every library package
+(`internal/fixtures/invalid.go`). A library function with no return
+annotation infers its type from its body on demand, as a program's does
+(`ensureReturnType`).
 
 `TestFixtures` refuses a diagnostic reported twice: a declaration read twice
 -- a component's var registered before its body and checked with it, a body's

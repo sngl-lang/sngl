@@ -96,7 +96,7 @@ ui.window {
 	}
 }
 
-// TestNullStateTyped guards that an option/dyn var initialized to null emits a
+// TestNullStateTyped guards that an option var initialized to null emits a
 // typed mutableStateOf so Kotlin can infer the type. Regression for the
 // null-state fix.
 func TestNullStateTyped(t *testing.T) {

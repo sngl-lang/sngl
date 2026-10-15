@@ -95,7 +95,7 @@ func TestWalkLoweredDispatchesCreate(t *testing.T) {
 
 func TestWalkLoweredDispatchesAll(t *testing.T) {
 	stmts := []ir.Stmt{
-		// var __n0 dyn = lower.CreateNode("vbox")
+		// var __n0 component = lower.CreateNode("vbox")
 		&ir.LocalVar{Name: "__n0", Type: &ir.Type{Kind: ir.TypeComponent}, Init: &ir.Call{
 			Func: &ir.Func{Name: "CreateNode", Intrinsic: "CreateNode"},
 			Args: []ir.CallArg{{Value: &ir.Literal{Type: ir.TypString, Value: "vbox"}}},
