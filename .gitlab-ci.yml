@@ -171,6 +171,12 @@ test:
     GOFLAGS: -count=1
   cache:
     key: go-build-test
+  # The trust scripts' offline `go mod tidy` needs every module of the
+  # checkout's graph, test-only ones included, which the image's `go mod
+  # download` leaves out. verify's own `go mod tidy -diff` fetched them while
+  # lint and test were one job.
+  before_script:
+    - go mod download all
   script: go tool verify -dry -only test
   coverage: '/total coverage: (\d+\.\d+)% of statements/'
 
