@@ -4280,10 +4280,12 @@ digest, so CI verifies a gtk4, Chromium or Robolectric run with none of them
 installed, and a script needs no `[!display]`, `[!chromium]` or `[short]`
 guard around one. A digest that moved, or a launch with no record, fails
 naming `-update`; `go test ./cmd/sngl -run TestScript/<name> -update` reruns
-every launch for real, refuses to record one the host cannot run, and
-rewrites the records. The digest does not cover `pkg/<lang>/` runtimes, which
-the generated program imports from the checkout -- a change there wants an
-`-update` the digest will not ask for, the same gap a golden's record has.
+those launches for real, refuses to record one the host cannot run, and
+rewrites the records, while `-verify` reruns every launch whatever its record
+says, as a golden's does -- a toolchain or browser upgrade moves no digest.
+The digest does not cover `pkg/<lang>/` runtimes, which the generated program
+imports from the checkout -- a change there wants a `-verify` the digest will
+not ask for, the same gap a golden's record has.
 
 **So is a component fixture's run in Chromium.** `TestComponentFixtures` in
 `codegen/platform/html` runs every `testdata/component_*.txtar` declaring a
@@ -4292,7 +4294,7 @@ answering each launch from a `testrun/html/none/<fixture>.sngl/<component>/<n>`
 file at the end of the fixture's own archive, after the golden and its `run/`
 record. A moved digest or a missing record fails naming `-update`, and
 `go test ./codegen/platform/html -run TestComponentFixtures -update` reruns
-them all in a real browser. On html the digest has no runtime gap: the
+those in a real browser, `-verify` all of them. On html the digest has no runtime gap: the
 testagent and the i18n runtime are files of the generated page.
 
 A claim of *absence* is the one thing a golden cannot state — it makes

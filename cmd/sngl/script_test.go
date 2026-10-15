@@ -115,7 +115,7 @@ func TestScript(t *testing.T) {
 			if err := s.ExtractFiles(&txtar.Archive{Files: rest}); err != nil {
 				t.Fatal(err)
 			}
-			testRuns = testlaunch.NewRecords(records, *updateTestRuns)
+			testRuns = testlaunch.NewRecords(records, *updateTestRuns, *verifyTestRuns)
 			defer func() { testRuns = nil }()
 			scripttest.Run(t, engine, s, file, bytes.NewReader(a.Comment))
 			if *updateTestRuns && !t.Failed() {
@@ -127,10 +127,12 @@ func TestScript(t *testing.T) {
 	}
 }
 
-// updateTestRuns reruns every `sngl test` a script launches and rewrites the
-// testrun/ records its archive carries; without it a launch is answered from
-// its record, so CI needs no toolchain, display or browser to run one.
-var updateTestRuns = flag.Bool("update", false, "rerun the test programs scripts launch and rewrite their testrun/ records")
+// Without -update or -verify a launch is answered from its testrun/ record, so
+// CI needs no toolchain, display or browser to run one.
+var (
+	updateTestRuns = flag.Bool("update", false, "rerun the test programs scripts launch whose inputs moved, and rewrite their testrun/ records")
+	verifyTestRuns = flag.Bool("verify", false, "rerun every test program scripts launch, whatever its testrun/ record says")
+)
 
 func scriptCmds() map[string]script.Cmd {
 	cmds := scripttest.DefaultCmds()

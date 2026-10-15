@@ -15,8 +15,11 @@ import (
 	_ "duckfam.us/sngl/codegen/scheme"
 )
 
-var update = flag.Bool("update", false, "rerun every component fixture in Chromium and rewrite its testrun/ records")
+var (
+	update = flag.Bool("update", false, "rerun in Chromium each component fixture whose page moved, and rewrite its testrun/ records")
+	verify = flag.Bool("verify", false, "rerun every component fixture in Chromium, whatever its testrun/ record says")
+)
 
 func TestComponentFixtures(t *testing.T) {
-	testutil.RunComponentFixtures(t, "html", *update)
+	testutil.RunComponentFixtures(t, "html", *update, *verify)
 }

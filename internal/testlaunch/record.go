@@ -33,13 +33,17 @@ type Record struct {
 type Records struct {
 	mu      sync.Mutex
 	update  bool
+	verify  bool
 	have    map[string]Record
 	written map[string]Record
 	seen    map[string]int
 }
 
-func NewRecords(have map[string]Record, update bool) *Records {
-	return &Records{update: update, have: have, written: map[string]Record{}, seen: map[string]int{}}
+// NewRecords answers launches from have. update runs a launch with no record,
+// or whose inputs moved, and records it; verify runs every launch, and fails
+// one that disagrees with its record unless update rewrites it.
+func NewRecords(have map[string]Record, update, verify bool) *Records {
+	return &Records{update: update, verify: verify, have: have, written: map[string]Record{}, seen: map[string]int{}}
 }
 
 func parseRecord(name string, data []byte) (Record, error) {
@@ -68,7 +72,8 @@ func (rr *Records) Written() map[string]Record {
 
 // answer replays the record for this launch when its digest matches, and
 // otherwise runs launch -- only under update, since a run that is not
-// recorded is one CI has no answer for.
+// recorded is one CI has no answer for. A toolchain moves no digest, which is
+// what verify is for.
 func (rr *Records) answer(key, genDir, snapDir string, launch func() ([]*codegen.TestResult, error)) ([]*codegen.TestResult, error) {
 	rr.mu.Lock()
 	rr.seen[key]++
@@ -87,7 +92,8 @@ func (rr *Records) answer(key, genDir, snapDir string, launch func() ([]*codegen
 	updating := os.Getenv("SNGL_UPDATE_SNAPSHOTS") == "1"
 	want := runDigest(gen, before, updating)
 
-	if recorded && have.Digest == want && !rr.update {
+	matched := recorded && have.Digest == want
+	if matched && !rr.verify {
 		rr.keep(name, have)
 		for rel, data := range have.Snapshots {
 			p := filepath.Join(snapDir, rel)
@@ -103,7 +109,7 @@ func (rr *Records) answer(key, genDir, snapDir string, launch func() ([]*codegen
 		}
 		return cloneResults(have.Results), nil
 	}
-	if !rr.update {
+	if !rr.update && !matched {
 		if recorded {
 			rr.keep(name, have)
 			return nil, fmt.Errorf("%s: the generated test program changed since it was run; rerun its test with -update", name)
@@ -134,6 +140,13 @@ func (rr *Records) answer(key, genDir, snapDir string, launch func() ([]*codegen
 			}
 			rec.Snapshots[rel] = data
 		}
+	}
+	if !rr.update {
+		rr.keep(name, have)
+		if !bytes.Equal(rec.format(), have.format()) {
+			return nil, fmt.Errorf("%s: a rerun disagrees with the record:\n%s\nrerun its test with -update", name, rec.format())
+		}
+		return results, err
 	}
 	rr.keep(name, rec)
 	return results, err

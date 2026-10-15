@@ -25,9 +25,9 @@ import (
 // the golden's `run/` record. html's record is `node --check`, and its
 // assertions only run when something drives a browser, which is this: each
 // launch is answered from a `testrun/` record in the fixture's archive, keyed
-// by a digest of the page and every file served beside it, and update reruns
-// every launch for real and rewrites the records.
-func RunComponentFixtures(t *testing.T, platform string, update bool) {
+// by a digest of the page and every file served beside it. update reruns a
+// launch whose digest moved and rewrites its record, and verify reruns them all.
+func RunComponentFixtures(t *testing.T, platform string, update, verify bool) {
 	t.Helper()
 
 	plat := codegen.LookupPlatform(platform)
@@ -53,12 +53,12 @@ func RunComponentFixtures(t *testing.T, platform string, update bool) {
 		base := strings.TrimSuffix(filepath.Base(archive), ".txtar")
 		t.Run(base, func(t *testing.T) {
 			t.Parallel()
-			runComponentFixture(t, archive, base, plat, lang, update)
+			runComponentFixture(t, archive, base, plat, lang, update, verify)
 		})
 	}
 }
 
-func runComponentFixture(t *testing.T, archive, base string, plat codegen.PlatformGenerator, lang codegen.LangTranslator, update bool) {
+func runComponentFixture(t *testing.T, archive, base string, plat codegen.PlatformGenerator, lang codegen.LangTranslator, update, verify bool) {
 	raw, err := os.ReadFile(archive)
 	if err != nil {
 		t.Fatal(err)
@@ -105,14 +105,14 @@ func runComponentFixture(t *testing.T, archive, base string, plat codegen.Platfo
 	}
 	pkg.SourcePath = path
 
-	if update {
+	if update || verify {
 		release, err := codegen.AcquireBuildToken(t.Context())
 		if err != nil {
 			t.Fatalf("build token: %v", err)
 		}
 		defer release()
 	}
-	runs := testlaunch.NewRecords(records, update)
+	runs := testlaunch.NewRecords(records, update, verify)
 	results, err := testlaunch.Run(t.Context(), pkg, testlaunch.Config{
 		Platform: plat,
 		Lang:     lang,
