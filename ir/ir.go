@@ -1191,10 +1191,11 @@ const (
 )
 
 // InsertsOf is how often c renders what fills slot. That is the slot's
-// declared count, except where c's builtin kind says more: a nav page's
-// content is mounted only while its stack shows the page.
+// declared count, except where c says more: a nav page's content is mounted
+// only while its stack shows the page, and a data record's while its container
+// shows the record.
 func (c *Component) InsertsOf(slot *SlotDecl) SlotInserts {
-	if c.Builtin == BuiltinNavPage && slot.Rest {
+	if (c.Builtin == BuiltinNavPage || c.Data) && slot.Rest {
 		return InsertOptional
 	}
 	return slot.Inserts

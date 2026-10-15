@@ -5,10 +5,10 @@
 # and the read is the splice's; the interpreter reads the instance it mounted.
 
 ! sngl test --platform=html app.sngl
-stderr 'app.sngl:21:15: `#b` is built at run time on this target, so there is no one instance whose hits a test can reach'
+stderr 'app.sngl:22:19: `#b` is built at run time on this target, so there is no one instance whose hits a test can reach'
 
 ! sngl test --platform=fyne --language=go app.sngl
-stderr 'app.sngl:21:15: `#b` is built at run time on this target'
+stderr 'app.sngl:22:19: `#b` is built at run time on this target'
 
 sngl test --platform=bubbletea --language=go app.sngl
 stdout 'ok   1 tests, 0 failures'
@@ -37,14 +37,16 @@ component main node {
 }
 
 func testReachesARuntimeInstance(t Test, c main) {
-    t.assert(c.b.hits == 0)
+    if c.b != null {
+        t.assert(c.b.hits == 0)
+    }
 }
 
 window {
     main
 }
 -- testrun/bubbletea/go/app.sngl/main/1 --
-sha256:b260c8cf15434663f761da0d7e8c59c8
+sha256:de839b619e953f34a19bae1aebaf44a7
 {
   "results": [
     {

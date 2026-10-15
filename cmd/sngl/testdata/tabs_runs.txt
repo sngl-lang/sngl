@@ -58,20 +58,29 @@ component app ui.node {
 }
 
 func testTheSelectedPanelIsShown(t Test, c app) {
-    c.hit.click()
+    t.assert(c.hit != null)
+    if c.hit != null {
+        c.hit.click()
+    }
     t.assert(c.hits == 1)
 }
 
 func testSwitchingShowsAnotherPanel(t Test, c app) {
     c.second.click()
-    c.twice.click()
+    t.assert(c.twice != null)
+    if c.twice != null {
+        c.twice.click()
+    }
     t.assert(c.hits == 10)
 }
 
 func testAPanelKeepsStateOfItsOwn(t Test, c app) {
     c.second.click()
-    c.twice.click()
-    c.twice.click()
+    t.assert(c.twice != null)
+    if c.twice != null {
+        c.twice.click()
+        c.twice.click()
+    }
     t.assert(c.hits == 20)
 }
 

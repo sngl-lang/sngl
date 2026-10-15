@@ -890,7 +890,9 @@ func (m *mounter) slotInst(env *Env, si *ir.SlotInst, path string) ([]*Node, err
 	// the instance they record as SuppliedTo.
 	prevOwner, prevIters, prevSupplied, prevBase := m.owner, m.iters, m.supplied, m.base
 	m.owner, m.iters, m.supplied, m.base = frame.owner, frame.iters, frame.supplied, frame.base
-	if sc != nil {
+	// A record's content is written bare at the call site, so it is the
+	// caller's, as its other bare children are.
+	if sc != nil && (si.Decl == nil || si.Decl.Shows == nil) {
 		m.supplied, m.base = frame.callee, len(frame.iters)
 		// Each insertion of a list slot is one more copy of the population.
 		if slotInserts(frame.callsite, si.Name) == ir.InsertMany {

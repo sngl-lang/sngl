@@ -1,6 +1,6 @@
 // A data component may declare a rest slot of content: a record is still a
 // value of its props, and what the caller wrote in it is rendered where the
-// container inserts it, `c.content`, which is only in the container's own
+// container inserts it -- so its nodes are the caller's, read as options -- `c.content`, which is only in the container's own
 // body. The container decides which records' content to show; the content
 // reads and writes the caller's scope, as anything the caller wrote does.
 
@@ -49,19 +49,21 @@ component app ui.node {
 }
 
 func testTheContainerShowsTheContentItChooses(t Test, c app) {
-    t.assert(c.first.value == "first")
+    t.assert(c.first != null && c.first.value == "first")
     t.assert(c.count == null)
     c.shown = 1
     t.assert(c.first == null)
-    t.assert(c.count.value == "0")
+    t.assert(c.count != null && c.count.value == "0")
 }
 
 func testContentWritesTheCallersState(t Test, c app) {
     c.shown = 1
-    c.hit.click()
-    c.hit.click()
+    if c.hit != null {
+        c.hit.click()
+        c.hit.click()
+    }
     t.assert(c.hits == 2)
-    t.assert(c.count.value == "2")
+    t.assert(c.count != null && c.count.value == "2")
 }
 
 func testARecordUnderAnIfKeepsItsContent(t Test, c app) {

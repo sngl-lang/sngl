@@ -97,12 +97,12 @@ window {
 import . "sngl:ui"
 import . "sngl:test"
 
-component boxed(content ...component option[node]) node {
+component boxed(content ...component node) node {
     text #asked(value=content.empty ? "empty" : "full")
     content
 }
 
-component frame(layout component(content component option[node]) node) node {
+component frame(layout component(content component node) node) node {
     layout {
         component content {
             text(value="inner")
@@ -110,7 +110,7 @@ component frame(layout component(content component option[node]) node) node {
     }
 }
 
-component framed(inner ...component option[node], layout component(content component option[node]) node) node {
+component framed(inner ...component node, layout component(content component node) node) node {
     layout {
         component content {
             inner

@@ -135,6 +135,7 @@ func (r *resolver) testParam(e ir.Expr) *ir.Param {
 // instOf is what the splice made of the instance e names, or nil: for the
 // root, whose members keep their names, and for anything not spliced.
 func (r *resolver) instOf(e ir.Expr) *splicedInstance {
+	e = unnarrowed(e)
 	if p := r.testParam(e); p != nil {
 		if c, _ := p.Type.Decl.(*ir.Component); c != nil && c != r.root {
 			if copies := r.rendered[c]; len(copies) == 1 {
@@ -172,6 +173,8 @@ func (r *resolver) instance(e ir.Expr) *ir.Ident {
 		case *ir.Select:
 			e = x.Operand
 		case *ir.Index:
+			e = x.Operand
+		case *ir.Conversion:
 			e = x.Operand
 		case *ir.Ident:
 			if r.testParam(x) != nil {
@@ -278,6 +281,7 @@ func (r *resolver) repointCall(c *ir.Call, fail func(ir.Expr, string, ...any)) {
 // renders more than once, neither of which a select can name one instance of.
 func (r *resolver) refuseUnspliced(x ir.Expr, member string, fail func(ir.Expr, string, ...any)) {
 	comp := componentOf(x)
+	x = unnarrowed(x)
 	if comp == nil || comp == r.root || !reachesInto(comp, member) {
 		return
 	}
@@ -327,4 +331,13 @@ func exprPos(e ir.Expr) string {
 		}
 	}
 	return "<unknown>"
+}
+
+// unnarrowed is e without the conversion a null test narrows an option ref
+// by, which names the same instance.
+func unnarrowed(e ir.Expr) ir.Expr {
+	if conv, ok := e.(*ir.Conversion); ok {
+		return conv.Operand
+	}
+	return e
 }

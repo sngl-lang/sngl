@@ -128,6 +128,11 @@ type evalCtx struct {
 	// asks.
 	nodeHandles    map[*ir.Var]*ir.NodeInst
 	nodeHandlesSet bool
+	// reachedIDs is every `#id` something reads through -- `c.p.opt`, `c.p.hits`
+	// -- which names an instance a splice here would leave the lowering no
+	// record of. Nil until the first splice asks.
+	reachedIDs    map[string]bool
+	reachedIDsSet bool
 	// foldingProp is the node props currently being folded, so a prop that
 	// reads itself stops rather than recursing. Built in foldPkg so that every
 	// child ctx shares the one map: created on first use instead, a child

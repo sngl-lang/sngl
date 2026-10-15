@@ -37,13 +37,13 @@ component pick(items list[string], @chose(s string)) ui.node {
 
 component app ui.node {
     var last = ""
-    pick(items=["a", "b"], @chose(s) {
+    pick #p(items=["a", "b"], @chose(s) {
         last = s
     })
 }
 
 func testTheCallSitesHandlerRuns(t Test, c app) {
-    c.opt[1].click()
+    c.p.opt[1].click()
     t.assert(c.last == "b")
 }
 

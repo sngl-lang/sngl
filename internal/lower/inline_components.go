@@ -1279,6 +1279,13 @@ func (st *inlineCompState) expandCall(n *ir.NodeInst) ([]ir.Stmt, error) {
 	if comp.PkgPath() != "" {
 		ir.AttachNodeSite(body, n)
 	}
+	if n.ID != "" {
+		for _, s := range body {
+			if root, ok := s.(*ir.NodeInst); ok && root.Instance == "" {
+				root.Instance = n.ID
+			}
+		}
+	}
 	if n.ID != "" || st.reach.takes(comp) {
 		st.recordInstance(n, symRenames, body)
 	}
