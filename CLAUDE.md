@@ -4331,6 +4331,25 @@ their change was about (`TestScriptGrepsNameAFile` is the lint against the
 class). A `deny` that names no reason, no file, a file no target generates, or
 a pattern that does not compile is a failure.
 
+**What a program does when it runs is an `exec` line**, for a Go target:
+
+```
+exec out/go/gtk4 --window x <clicks.txt -- shown.txt
+exec out/go/gtk4 --show toplevels=2
+exec out/go/gtk4 toplevels[Load]=2 -- want.txt
+```
+
+Its arguments, a standard input and the standard output it must print, each
+file one of the archive's; `toplevels=N` counts gtk4's `set_title` requests in
+its Wayland protocol log, of every toplevel or of the one titled, which is how
+a run tells a window reached the screen. A verification builds the program
+once its tests pass and runs each line inside the headless compositor the root
+test binary re-execs under, and the target's `run/` digest covers the lines
+and the files they name, so the ordinary run replays them as it does the
+build. A program meant to be run carries the scenario that drives it -- a
+timer, a `fmt.Println`, an `os.Exit` -- so it is a fixture of its own,
+`<name>_runs.txtar` beside the `<name>.txtar` showing the plain code.
+
 Neither harness fixes a fixture whose input never reaches the branch it means
 to exercise: generated output is identical either way. Confirm a new fixture
 *fails* when the behaviour is reverted.

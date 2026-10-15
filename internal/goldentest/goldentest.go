@@ -174,6 +174,10 @@ func runFixture(t *testing.T, path string, update, force bool, guard *libraryGua
 	if err != nil {
 		t.Fatalf("comment: %v", err)
 	}
+	execs, err := parseExecs(string(arc.Comment), src)
+	if err != nil {
+		t.Fatalf("comment: %v", err)
+	}
 
 	assertFormatted(t, src)
 
@@ -201,7 +205,7 @@ func runFixture(t *testing.T, path string, update, force bool, guard *libraryGua
 	// cannot compile what it generated leaves the archive as it found it.
 	// Written first, the bad golden would be committed and the record beside
 	// it would be the only thing saying so.
-	kept := verify(t, targetsOf(got), records, exempt, update, force)
+	kept := verify(t, targetsOf(got), records, exempt, execs, src, update, force)
 
 	if update {
 		if t.Failed() {

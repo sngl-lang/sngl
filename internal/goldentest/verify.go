@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"duckfam.us/sngl/internal/headless"
 	"duckfam.us/sngl/internal/toolchain"
 	"errors"
 )
@@ -118,17 +119,21 @@ func targetsOf(got map[string][]byte) []target {
 //     toolchain said.
 //   - it does not, and neither is set — a failure naming -update, the same
 //     answer a golden mismatch gives, for the same reason.
-func verify(t *testing.T, tgts []target, records map[string]record, exempt map[string]exemption, update, force bool) map[string]record {
+func verify(t *testing.T, tgts []target, records map[string]record, exempt map[string]exemption, execs map[string][]execution, src map[string][]byte, update, force bool) map[string]record {
 	t.Helper()
 	out := map[string]record{}
 	seen := map[string]bool{}
 	for _, tg := range tgts {
 		name := tg.recordName()
 		have, recorded := records[name]
-		want := digest(tg.files)
+		runs := execs[tg.lang+"/"+tg.platform]
+		want := digest(withExecs(tg.files, runs, src))
 		ex, exempted := exempt[tg.lang+"/"+tg.platform]
 		seen[tg.lang+"/"+tg.platform] = true
 
+		if exempted && len(runs) > 0 {
+			t.Errorf("line %d: exec runs %s, which line %d declares %s", runs[0].line, tg.lang+"/"+tg.platform, ex.line, directiveName(ex))
+		}
 		if exempted && !ex.broken {
 			// Nothing to run and nothing to record: no host can compile this,
 			// so a record would be a claim about a machine that does not
@@ -152,7 +157,7 @@ func verify(t *testing.T, tgts []target, records map[string]record, exempt map[s
 			case !recorded:
 				t.Errorf("%s: no record; regenerate with -update on a host that has the toolchain", name)
 			case have.digest != want:
-				t.Errorf("%s: generated output changed since it was verified; run -update", name)
+				t.Errorf("%s: generated output, or what exec runs, changed since it was verified; run -update", name)
 			default:
 				// Same bytes, different verdict asked for: a `broken`
 				// directive added over a passing target or removed from a
@@ -213,6 +218,9 @@ func verify(t *testing.T, tgts []target, records map[string]record, exempt map[s
 			t.Errorf("%s: %v", name, err)
 			continue
 		}
+		if len(runs) > 0 && !execute(t, name, tg, runs, src) {
+			continue
+		}
 		out[name] = record{status: "pass", digest: want}
 	}
 	// A directive naming a target the fixture does not generate asserts
@@ -222,7 +230,41 @@ func verify(t *testing.T, tgts []target, records map[string]record, exempt map[s
 			t.Errorf("line %d: %s names %s, which this fixture does not generate", exempt[spec].line, directiveName(exempt[spec]), spec)
 		}
 	}
+	for _, spec := range sortedStrings(execs) {
+		if !seen[spec] {
+			t.Errorf("line %d: exec names %s, which this fixture does not generate", execs[spec][0].line, spec)
+		}
+	}
 	return out
+}
+
+// execute runs a target's program once per execution and holds each to what
+// it printed. A program that presents windows runs only inside the headless
+// compositor, so a verification never puts one on a desktop.
+func execute(t *testing.T, name string, tg target, execs []execution, src map[string][]byte) bool {
+	t.Helper()
+	if !headless.Active() {
+		t.Errorf("%s: cannot verify — exec runs the program, which needs the headless compositor this test binary re-execs under (install cage)", name)
+		return false
+	}
+	runs := make([]toolchain.Run, len(execs))
+	for i, e := range execs {
+		runs[i] = e.run
+	}
+	output, ran, err := toolchain.Exec(t.Context(), tg.files, tg.lang, tg.platform, runs)
+	if err != nil {
+		t.Logf("%s: toolchain output:\n%s", name, output)
+		t.Errorf("%s: %v", name, err)
+		return false
+	}
+	ok := true
+	for i, e := range execs {
+		if err := checkRan(e, ran[i], src); err != nil {
+			t.Errorf("%s: %v", name, err)
+			ok = false
+		}
+	}
+	return ok
 }
 
 func directiveName(e exemption) string {
