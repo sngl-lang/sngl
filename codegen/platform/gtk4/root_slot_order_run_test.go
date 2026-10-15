@@ -108,7 +108,6 @@ func TestRootSlotsKeepTheirPlace(t *testing.T) {
 // written between, rather than above all of them. The toggle has no gtk4rt
 // wrapper, which puts the second variant on the cgo path.
 func TestRootSlotsKeepTheirPlaceRuns(t *testing.T) {
-	skipWithoutGIR(t)
 	for name, src := range map[string]string{
 		"wrapped": rootSlotOrderSrc,
 		"cgo":     strings.Replace(rootSlotOrderSrc, "    ui.text(value=\"footer\")", "    ui.toggle(checked=true)\n    ui.text(value=\"footer\")", 1),

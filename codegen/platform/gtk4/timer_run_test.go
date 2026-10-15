@@ -53,7 +53,6 @@ window {
 // The schedule is an `effect` over gtk4rt.Every now, so what arms it is the
 // settle rather than a startTimers the model called from New.
 func TestATimerFires(t *testing.T) {
-	skipWithoutGIR(t)
 	model := generateGTK4ModelBuilt(t, timerRunSrc)
 	if !strings.Contains(model, "gtk4rt.Every(") {
 		t.Fatalf("no schedule was armed at all:\n%s", model)

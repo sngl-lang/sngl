@@ -29,7 +29,7 @@ func generateGtk4(t *testing.T, src string) (map[string][]byte, error) {
 			t.Fatalf("check diag: %s", d.Msg)
 		}
 	}
-	g := &Generator{}
+	g := codegen.LookupPlatform(platformName)
 	lang := codegen.LookupLang("go")
 	if lang == nil {
 		t.Fatal("go lang not registered")
@@ -94,7 +94,7 @@ window(title="t") {
 // still set: by name, through g_object_set_property, with the preamble helper
 // the call needs. Nothing may emit a gtk_*_set_* function that does not exist.
 func TestGObjectPropSet_EmitsGenericPath(t *testing.T) {
-	skipWithoutGIR(t)
+	rulesGIR(t)
 	files, err := generateGtk4(t, setterlessSource)
 	if err != nil {
 		t.Fatalf("generate: %v", err)
@@ -146,7 +146,7 @@ func TestGObjectPropSet_EmitsGenericPath(t *testing.T) {
 // wrapped surface, so this one is emitted as cgo and does have a preamble for
 // the helpers to be absent from.
 func TestGObjectPropSet_HelperIsGatedOnUse(t *testing.T) {
-	skipWithoutGIR(t)
+	rulesGIR(t)
 	files, err := generateGtk4(t, `
 import . "sngl:ui"
 import gtk "gir:Gtk-4.0"
@@ -172,7 +172,7 @@ window(title="t") {
 // produce refuses the build, naming the property, rather than emitting a call
 // whose argument is the wrong type.
 func TestUnsettableProp_FailsTheBuild(t *testing.T) {
-	skipWithoutGIR(t)
+	rulesGIR(t)
 	_, err := generateGtk4(t, `
 import . "sngl:ui"
 import gtk "gir:Gtk-4.0"
@@ -194,7 +194,7 @@ window(title="t") {
 // TestEnumProp_RejectsUnknownMember pins that an enum member is resolved from
 // GIR and not guessed: a string naming no member fails the build.
 func TestEnumProp_RejectsUnknownMember(t *testing.T) {
-	skipWithoutGIR(t)
+	rulesGIR(t)
 	_, err := generateGtk4(t, `
 import . "sngl:ui"
 import gtk "gir:Gtk-4.0"
@@ -215,7 +215,7 @@ window(title="t") {
 // declaration that type-checks in SNGL but emits Go that cannot be built is
 // not a usable property. Builds the emitted cgo against the host's GTK.
 func TestSetterlessProps_GeneratedGoCompiles(t *testing.T) {
-	skipWithoutGIR(t)
+	rulesGIR(t)
 	files, err := generateGtk4(t, setterlessSource)
 	if err != nil {
 		t.Fatalf("generate: %v", err)
@@ -232,7 +232,7 @@ func TestSetterlessProps_GeneratedGoCompiles(t *testing.T) {
 // slice and panicking inside a C callback, where a Go panic cannot be
 // recovered by the caller.
 func TestDispatchIsBoundedBothWays(t *testing.T) {
-	skipWithoutGIR(t)
+	rulesGIR(t)
 	// GtkGrid is outside the wrapped gtk4rt surface, which puts the whole
 	// program on the inline-cgo path where snglGoDispatch exists at all.
 	files, err := generateGtk4(t, gtk4Window(`            gtk.GtkGrid(columnSpacing=4) {}
@@ -255,7 +255,7 @@ func TestDispatchIsBoundedBothWays(t *testing.T) {
 // assigns any prop — so a declaration would type-check a binding that does
 // nothing.
 func TestConstructOnlyProp_IsNotDeclared(t *testing.T) {
-	skipWithoutGIR(t)
+	rulesGIR(t)
 	msgs := checkGtk4(t, gtk4Window(`            gtk.GtkAssistant(useHeaderBar=1) {}`))
 	if len(msgs) == 0 {
 		t.Fatal("useHeaderBar type-checked; GtkAssistant.use-header-bar is construct-only and nothing can set it")
@@ -278,7 +278,7 @@ func TestConstructOnlyProp_IsNotDeclared(t *testing.T) {
 // GTK reads, is not declared as an event. Connecting one would hand the
 // signal's first argument to snglGoDispatch in place of the callback index.
 func TestNonConnectableSignal_IsNotDeclared(t *testing.T) {
-	skipWithoutGIR(t)
+	rulesGIR(t)
 	for _, tc := range []struct{ node, event string }{
 		// One extra argument (GtkEntryIconPosition).
 		{`gtk.GtkEntry(@iconPress { })`, "iconPress"},
@@ -315,7 +315,7 @@ func TestNonConnectableSignal_IsNotDeclared(t *testing.T) {
 // constructor at all, and it names one whose parameter type comes from a
 // namespace this platform does not parse.
 func TestUnconstructibleClass_FailsTheBuild(t *testing.T) {
-	skipWithoutGIR(t)
+	rulesGIR(t)
 	for _, tc := range []struct{ node, want string }{
 		// Abstract base: GTK ships no gtk_widget_new to link against.
 		{"gtk.GtkWidget", "no constructor"},

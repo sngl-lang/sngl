@@ -57,7 +57,6 @@ window {
 // synthesized func was handed a slot render's `parent` parameter, so the
 // emitted `__effects0_settle()` call did not match its own definition.
 func TestAnEffectCompiles(t *testing.T) {
-	skipWithoutGIR(t)
 	for name, src := range map[string]string{
 		"onTheModel":   effectModelSrc,
 		"inAnInstance": effectInstanceSrc,

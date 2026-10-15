@@ -100,7 +100,6 @@ func renderTreeViewBody(t *testing.T, src string) string {
 // is `c.__nX` on a record the frame allocated for itself, or a bare local.
 // `m.__nX` is the one spelling that is not.
 func TestNodeEscape_RecursiveRenderUsesLocals(t *testing.T) {
-	skipWithoutGIR(t)
 	model := generateGTK4Model(t, recursiveTreeSrc)
 	body := renderTreeViewBody(t, model)
 

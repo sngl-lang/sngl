@@ -4,7 +4,6 @@ package gtk4
 
 import (
 	"fmt"
-	"os/exec"
 	"sort"
 	"strings"
 	"testing"
@@ -36,19 +35,15 @@ var unixPrintClasses = map[string]bool{
 // with a diagnostic naming the class. Nothing in between — a declaration that
 // type-checks in SNGL and then emits Go the user's compiler rejects is the
 // bug class this platform is most exposed to, since every declaration comes
-// from introspection data no test in this repo wrote.
+// from introspection data.
 //
 // It generates every class once to partition them, then builds every widget
-// that did generate in a single program.
+// that did generate in a single program. The classes are the bundled GIR's,
+// which are the ones this platform wraps.
 func TestWidgetSurface_EitherCompilesOrRefuses(t *testing.T) {
-	skipWithoutGIR(t)
-	if testing.Short() {
-		t.Skip("builds the whole widget surface with cgo")
-	}
-	g := &Generator{}
-	reg, err := g.gir()
+	reg, err := (&Generator{}).gir()
 	if err != nil {
-		t.Skip(err)
+		t.Fatal(err)
 	}
 	var names []string
 	for _, c := range reg.Classes {
@@ -91,36 +86,16 @@ func TestWidgetSurface_EitherCompilesOrRefuses(t *testing.T) {
 	if err != nil {
 		t.Fatalf("generating all %d buildable widgets together: %v", len(buildable), err)
 	}
-	// Not recorded: the program is whatever the host's GIR declares, so a record
-	// made against one GTK would not answer for another.
-	requireGtk4Toolchain(t)
-	if out, ok := execGo(t, "gtk4-surface-", emittedGoModule(files), "build", "./..."); !ok {
+	if out, ok := buildEmittedGo(t, files); !ok {
 		t.Errorf("the emitted cgo for %d widgets does not build:\n%s", len(buildable), out)
 	}
 }
 
-// requireGtk4Toolchain skips when the host cannot build cgo against GTK4.
-func requireGtk4Toolchain(t *testing.T) {
-	t.Helper()
-	if _, err := exec.LookPath("pkg-config"); err != nil {
-		t.Skip("pkg-config not on PATH")
-	}
-	if err := exec.Command("pkg-config", "--exists", "gtk4").Run(); err != nil {
-		t.Skip("gtk4 dev libraries not installed (pkg-config)")
-	}
-}
-
 // buildEmittedGo builds the generated files as a module of their own and
-// reports the compiler's output.
+// reports the compiler's output. The emitted package is `main` but carries no
+// entry point unless the main option is set, so one is supplied.
 func buildEmittedGo(t *testing.T, files map[string][]byte) (string, bool) {
 	t.Helper()
-	return runGo(t, "gtk4-emitted-", emittedGoModule(files), false, "build", "./...")
-}
-
-// emittedGoModule is the generated files as a module of their own. The emitted
-// package is `main` but carries no entry point unless the main option is set,
-// so one is supplied.
-func emittedGoModule(files map[string][]byte) map[string]string {
 	build := map[string]string{"entry.go": "package main\n\nfunc main() {}\n"}
 	for name, data := range files {
 		build[name] = string(data)
@@ -134,5 +109,5 @@ func emittedGoModule(files map[string][]byte) map[string]string {
 		mod += "\n" + extra + "\n"
 	}
 	build["go.mod"] = mod
-	return build
+	return runGo(t, "gtk4-emitted-", build, false, "build", "./...")
 }

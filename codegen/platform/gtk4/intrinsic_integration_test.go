@@ -13,7 +13,6 @@ import (
 )
 
 func TestIntegration_ReactiveIfEmitsRenderSlot(t *testing.T) {
-	skipWithoutGIR(t)
 	src := `
 import . "sngl:ui"
 window {
@@ -95,7 +94,6 @@ window {
 // pkg/go/gtk4rt and never `import "C"`. Users only pay the cgo compile cost
 // when they reach outside the stdlib (raw gtk4.* widgets).
 func TestIntegration_StdlibComponentsWrapWithoutCgo(t *testing.T) {
-	skipWithoutGIR(t)
 	src := `
 import . "sngl:ui"
 window {

@@ -88,7 +88,6 @@ func TestASlotReRendersInPlace(t *testing.T) {
 // A render slot on the cgo path re-renders before its anchor, as it does
 // wrapped, rather than after every sibling written below it.
 func TestCgoSlotReRendersInPlace(t *testing.T) {
-	skipWithoutGIR(t)
 	files := goFiles(generateGTK4FilesBuilt(t, cgoSlotOrderSrc))
 	if strings.Contains(files["model.go"], "gtk4rt.") {
 		t.Fatalf("expected the cgo path:\n%s", files["model.go"])

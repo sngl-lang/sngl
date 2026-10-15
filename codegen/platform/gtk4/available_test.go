@@ -1,7 +1,10 @@
 package gtk4
 
 import (
+	"bytes"
+	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
@@ -10,22 +13,39 @@ import (
 	"duckfam.us/sngl/ir"
 )
 
-// skipWithoutGIR skips tests that need the GTK 4 introspection data to resolve
-// widget metadata. These tests are metadata-only — they never link against
-// GTK — but without Gtk-4.0.gir the platform reports itself unavailable and
-// Generate refuses, so there is nothing to assert. Tests that additionally
-// need a real GTK to compile or render gate on pkg-config as well (see
-// internal/testutil.ComponentFixtureSkipReason).
-// skipWithoutGIR skips a test that asserts the host GTK's own catalogue --
-// which classes exist, which properties it records a setter for. Since the
-// platform falls back to the bundled subset, Unavailable() can no longer fail,
-// so the condition is whether the registry came from that subset rather than
-// whether one loaded at all.
-func skipWithoutGIR(t *testing.T) {
+// No test reads the host's GIR: what it declares is whichever GTK the host
+// has, so every test generates against the bundled subset or rulesGIR.
+func init() { girAutoPaths = nil }
+
+// rulesGIR points the registered generator at the bundled GIR followed by
+// testdata/rules.gir, until the test ends, and returns it. The fragment is
+// GTK 4.8's own entries for the classes the generic rules are asserted over,
+// and an entry there replaces the bundled one of its name.
+func rulesGIR(t *testing.T) *Generator {
 	t.Helper()
-	if (&Generator{}).usingMinimalGIR() {
-		t.Skip("no host Gtk-4.0.gir; the bundled subset does not carry the catalogue this asserts")
+	base, err := os.ReadFile(filepath.Join("gir", "minimal", "Gtk-4.0.gir"))
+	if err != nil {
+		t.Fatal(err)
 	}
+	rules, err := os.ReadFile(filepath.Join("testdata", "rules.gir"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	end := []byte("  </namespace>")
+	start := bytes.Index(rules, []byte("<namespace"))
+	start += bytes.IndexByte(rules[start:], '\n') + 1
+	cut := bytes.LastIndex(base, end)
+	merged := slices.Concat(base[:cut], rules[start:bytes.LastIndex(rules, end)], base[cut:])
+	path := filepath.Join(t.TempDir(), "Gtk-4.0.gir")
+	if err := os.WriteFile(path, merged, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	g := codegen.LookupPlatform(platformName).(*Generator)
+	if err := g.Configure(map[string]string{"gir": path}); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = g.Configure(map[string]string{}) })
+	return g
 }
 
 // TestUnavailable_WithdrawsPackage pins the degradation contract: with no

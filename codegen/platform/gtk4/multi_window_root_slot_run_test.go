@@ -116,7 +116,6 @@ func TestEachWindowKeepsItsRows(t *testing.T) {
 // its own siblings, and a push in either window reaches every window that
 // renders what it wrote.
 func TestMultiWindowRootSlotsRun(t *testing.T) {
-	skipWithoutGIR(t)
 	files := goFiles(generateGTK4FilesBuilt(t, multiWindowRootSlotSrc))
 	files["entry.go"] = "package main\n\nfunc main() {}\n"
 	files["probe.go"] = multiWindowProbe

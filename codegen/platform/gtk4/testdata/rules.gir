@@ -1,0 +1,3404 @@
+<?xml version="1.0"?>
+<repository version="1.2"
+  xmlns="http://www.gtk.org/introspection/core/1.0"
+  xmlns:c="http://www.gtk.org/introspection/c/1.0"
+  xmlns:glib="http://www.gtk.org/introspection/glib/1.0">
+  <namespace name="Gtk" version="4.0">
+    <interface name="Accessible"
+               c:symbol-prefix="accessible"
+               c:type="GtkAccessible"
+               glib:type-name="GtkAccessible"
+               glib:get-type="gtk_accessible_get_type"
+               glib:type-struct="AccessibleInterface">
+      <property name="accessible-role"
+                writable="1"
+                transfer-ownership="none"
+                getter="get_accessible_role">
+        <attribute name="org.gtk.Property.get"
+                   value="gtk_accessible_get_accessible_role"/>
+        <type name="AccessibleRole"/>
+      </property>
+    </interface>
+    <enumeration name="AccessibleRole"
+                 glib:type-name="GtkAccessibleRole"
+                 glib:get-type="gtk_accessible_role_get_type"
+                 c:type="GtkAccessibleRole">
+      <member name="alert"
+              value="0"
+              c:identifier="GTK_ACCESSIBLE_ROLE_ALERT"
+              glib:nick="alert"
+              glib:name="GTK_ACCESSIBLE_ROLE_ALERT">
+      </member>
+      <member name="alert_dialog"
+              value="1"
+              c:identifier="GTK_ACCESSIBLE_ROLE_ALERT_DIALOG"
+              glib:nick="alert-dialog"
+              glib:name="GTK_ACCESSIBLE_ROLE_ALERT_DIALOG">
+      </member>
+      <member name="banner"
+              value="2"
+              c:identifier="GTK_ACCESSIBLE_ROLE_BANNER"
+              glib:nick="banner"
+              glib:name="GTK_ACCESSIBLE_ROLE_BANNER">
+      </member>
+      <member name="button"
+              value="3"
+              c:identifier="GTK_ACCESSIBLE_ROLE_BUTTON"
+              glib:nick="button"
+              glib:name="GTK_ACCESSIBLE_ROLE_BUTTON">
+      </member>
+      <member name="caption"
+              value="4"
+              c:identifier="GTK_ACCESSIBLE_ROLE_CAPTION"
+              glib:nick="caption"
+              glib:name="GTK_ACCESSIBLE_ROLE_CAPTION">
+      </member>
+      <member name="cell"
+              value="5"
+              c:identifier="GTK_ACCESSIBLE_ROLE_CELL"
+              glib:nick="cell"
+              glib:name="GTK_ACCESSIBLE_ROLE_CELL">
+      </member>
+      <member name="checkbox"
+              value="6"
+              c:identifier="GTK_ACCESSIBLE_ROLE_CHECKBOX"
+              glib:nick="checkbox"
+              glib:name="GTK_ACCESSIBLE_ROLE_CHECKBOX">
+      </member>
+      <member name="column_header"
+              value="7"
+              c:identifier="GTK_ACCESSIBLE_ROLE_COLUMN_HEADER"
+              glib:nick="column-header"
+              glib:name="GTK_ACCESSIBLE_ROLE_COLUMN_HEADER">
+      </member>
+      <member name="combo_box"
+              value="8"
+              c:identifier="GTK_ACCESSIBLE_ROLE_COMBO_BOX"
+              glib:nick="combo-box"
+              glib:name="GTK_ACCESSIBLE_ROLE_COMBO_BOX">
+      </member>
+      <member name="command"
+              value="9"
+              c:identifier="GTK_ACCESSIBLE_ROLE_COMMAND"
+              glib:nick="command"
+              glib:name="GTK_ACCESSIBLE_ROLE_COMMAND">
+      </member>
+      <member name="composite"
+              value="10"
+              c:identifier="GTK_ACCESSIBLE_ROLE_COMPOSITE"
+              glib:nick="composite"
+              glib:name="GTK_ACCESSIBLE_ROLE_COMPOSITE">
+      </member>
+      <member name="dialog"
+              value="11"
+              c:identifier="GTK_ACCESSIBLE_ROLE_DIALOG"
+              glib:nick="dialog"
+              glib:name="GTK_ACCESSIBLE_ROLE_DIALOG">
+      </member>
+      <member name="document"
+              value="12"
+              c:identifier="GTK_ACCESSIBLE_ROLE_DOCUMENT"
+              glib:nick="document"
+              glib:name="GTK_ACCESSIBLE_ROLE_DOCUMENT">
+      </member>
+      <member name="feed"
+              value="13"
+              c:identifier="GTK_ACCESSIBLE_ROLE_FEED"
+              glib:nick="feed"
+              glib:name="GTK_ACCESSIBLE_ROLE_FEED">
+      </member>
+      <member name="form"
+              value="14"
+              c:identifier="GTK_ACCESSIBLE_ROLE_FORM"
+              glib:nick="form"
+              glib:name="GTK_ACCESSIBLE_ROLE_FORM">
+      </member>
+      <member name="generic"
+              value="15"
+              c:identifier="GTK_ACCESSIBLE_ROLE_GENERIC"
+              glib:nick="generic"
+              glib:name="GTK_ACCESSIBLE_ROLE_GENERIC">
+      </member>
+      <member name="grid"
+              value="16"
+              c:identifier="GTK_ACCESSIBLE_ROLE_GRID"
+              glib:nick="grid"
+              glib:name="GTK_ACCESSIBLE_ROLE_GRID">
+      </member>
+      <member name="grid_cell"
+              value="17"
+              c:identifier="GTK_ACCESSIBLE_ROLE_GRID_CELL"
+              glib:nick="grid-cell"
+              glib:name="GTK_ACCESSIBLE_ROLE_GRID_CELL">
+      </member>
+      <member name="group"
+              value="18"
+              c:identifier="GTK_ACCESSIBLE_ROLE_GROUP"
+              glib:nick="group"
+              glib:name="GTK_ACCESSIBLE_ROLE_GROUP">
+      </member>
+      <member name="heading"
+              value="19"
+              c:identifier="GTK_ACCESSIBLE_ROLE_HEADING"
+              glib:nick="heading"
+              glib:name="GTK_ACCESSIBLE_ROLE_HEADING">
+      </member>
+      <member name="img"
+              value="20"
+              c:identifier="GTK_ACCESSIBLE_ROLE_IMG"
+              glib:nick="img"
+              glib:name="GTK_ACCESSIBLE_ROLE_IMG">
+      </member>
+      <member name="input"
+              value="21"
+              c:identifier="GTK_ACCESSIBLE_ROLE_INPUT"
+              glib:nick="input"
+              glib:name="GTK_ACCESSIBLE_ROLE_INPUT">
+      </member>
+      <member name="label"
+              value="22"
+              c:identifier="GTK_ACCESSIBLE_ROLE_LABEL"
+              glib:nick="label"
+              glib:name="GTK_ACCESSIBLE_ROLE_LABEL">
+      </member>
+      <member name="landmark"
+              value="23"
+              c:identifier="GTK_ACCESSIBLE_ROLE_LANDMARK"
+              glib:nick="landmark"
+              glib:name="GTK_ACCESSIBLE_ROLE_LANDMARK">
+      </member>
+      <member name="legend"
+              value="24"
+              c:identifier="GTK_ACCESSIBLE_ROLE_LEGEND"
+              glib:nick="legend"
+              glib:name="GTK_ACCESSIBLE_ROLE_LEGEND">
+      </member>
+      <member name="link"
+              value="25"
+              c:identifier="GTK_ACCESSIBLE_ROLE_LINK"
+              glib:nick="link"
+              glib:name="GTK_ACCESSIBLE_ROLE_LINK">
+      </member>
+      <member name="list"
+              value="26"
+              c:identifier="GTK_ACCESSIBLE_ROLE_LIST"
+              glib:nick="list"
+              glib:name="GTK_ACCESSIBLE_ROLE_LIST">
+      </member>
+      <member name="list_box"
+              value="27"
+              c:identifier="GTK_ACCESSIBLE_ROLE_LIST_BOX"
+              glib:nick="list-box"
+              glib:name="GTK_ACCESSIBLE_ROLE_LIST_BOX">
+      </member>
+      <member name="list_item"
+              value="28"
+              c:identifier="GTK_ACCESSIBLE_ROLE_LIST_ITEM"
+              glib:nick="list-item"
+              glib:name="GTK_ACCESSIBLE_ROLE_LIST_ITEM">
+      </member>
+      <member name="log"
+              value="29"
+              c:identifier="GTK_ACCESSIBLE_ROLE_LOG"
+              glib:nick="log"
+              glib:name="GTK_ACCESSIBLE_ROLE_LOG">
+      </member>
+      <member name="main"
+              value="30"
+              c:identifier="GTK_ACCESSIBLE_ROLE_MAIN"
+              glib:nick="main"
+              glib:name="GTK_ACCESSIBLE_ROLE_MAIN">
+      </member>
+      <member name="marquee"
+              value="31"
+              c:identifier="GTK_ACCESSIBLE_ROLE_MARQUEE"
+              glib:nick="marquee"
+              glib:name="GTK_ACCESSIBLE_ROLE_MARQUEE">
+      </member>
+      <member name="math"
+              value="32"
+              c:identifier="GTK_ACCESSIBLE_ROLE_MATH"
+              glib:nick="math"
+              glib:name="GTK_ACCESSIBLE_ROLE_MATH">
+      </member>
+      <member name="meter"
+              value="33"
+              c:identifier="GTK_ACCESSIBLE_ROLE_METER"
+              glib:nick="meter"
+              glib:name="GTK_ACCESSIBLE_ROLE_METER">
+      </member>
+      <member name="menu"
+              value="34"
+              c:identifier="GTK_ACCESSIBLE_ROLE_MENU"
+              glib:nick="menu"
+              glib:name="GTK_ACCESSIBLE_ROLE_MENU">
+      </member>
+      <member name="menu_bar"
+              value="35"
+              c:identifier="GTK_ACCESSIBLE_ROLE_MENU_BAR"
+              glib:nick="menu-bar"
+              glib:name="GTK_ACCESSIBLE_ROLE_MENU_BAR">
+      </member>
+      <member name="menu_item"
+              value="36"
+              c:identifier="GTK_ACCESSIBLE_ROLE_MENU_ITEM"
+              glib:nick="menu-item"
+              glib:name="GTK_ACCESSIBLE_ROLE_MENU_ITEM">
+      </member>
+      <member name="menu_item_checkbox"
+              value="37"
+              c:identifier="GTK_ACCESSIBLE_ROLE_MENU_ITEM_CHECKBOX"
+              glib:nick="menu-item-checkbox"
+              glib:name="GTK_ACCESSIBLE_ROLE_MENU_ITEM_CHECKBOX">
+      </member>
+      <member name="menu_item_radio"
+              value="38"
+              c:identifier="GTK_ACCESSIBLE_ROLE_MENU_ITEM_RADIO"
+              glib:nick="menu-item-radio"
+              glib:name="GTK_ACCESSIBLE_ROLE_MENU_ITEM_RADIO">
+      </member>
+      <member name="navigation"
+              value="39"
+              c:identifier="GTK_ACCESSIBLE_ROLE_NAVIGATION"
+              glib:nick="navigation"
+              glib:name="GTK_ACCESSIBLE_ROLE_NAVIGATION">
+      </member>
+      <member name="none"
+              value="40"
+              c:identifier="GTK_ACCESSIBLE_ROLE_NONE"
+              glib:nick="none"
+              glib:name="GTK_ACCESSIBLE_ROLE_NONE">
+      </member>
+      <member name="note"
+              value="41"
+              c:identifier="GTK_ACCESSIBLE_ROLE_NOTE"
+              glib:nick="note"
+              glib:name="GTK_ACCESSIBLE_ROLE_NOTE">
+      </member>
+      <member name="option"
+              value="42"
+              c:identifier="GTK_ACCESSIBLE_ROLE_OPTION"
+              glib:nick="option"
+              glib:name="GTK_ACCESSIBLE_ROLE_OPTION">
+      </member>
+      <member name="presentation"
+              value="43"
+              c:identifier="GTK_ACCESSIBLE_ROLE_PRESENTATION"
+              glib:nick="presentation"
+              glib:name="GTK_ACCESSIBLE_ROLE_PRESENTATION">
+      </member>
+      <member name="progress_bar"
+              value="44"
+              c:identifier="GTK_ACCESSIBLE_ROLE_PROGRESS_BAR"
+              glib:nick="progress-bar"
+              glib:name="GTK_ACCESSIBLE_ROLE_PROGRESS_BAR">
+      </member>
+      <member name="radio"
+              value="45"
+              c:identifier="GTK_ACCESSIBLE_ROLE_RADIO"
+              glib:nick="radio"
+              glib:name="GTK_ACCESSIBLE_ROLE_RADIO">
+      </member>
+      <member name="radio_group"
+              value="46"
+              c:identifier="GTK_ACCESSIBLE_ROLE_RADIO_GROUP"
+              glib:nick="radio-group"
+              glib:name="GTK_ACCESSIBLE_ROLE_RADIO_GROUP">
+      </member>
+      <member name="range"
+              value="47"
+              c:identifier="GTK_ACCESSIBLE_ROLE_RANGE"
+              glib:nick="range"
+              glib:name="GTK_ACCESSIBLE_ROLE_RANGE">
+      </member>
+      <member name="region"
+              value="48"
+              c:identifier="GTK_ACCESSIBLE_ROLE_REGION"
+              glib:nick="region"
+              glib:name="GTK_ACCESSIBLE_ROLE_REGION">
+      </member>
+      <member name="row"
+              value="49"
+              c:identifier="GTK_ACCESSIBLE_ROLE_ROW"
+              glib:nick="row"
+              glib:name="GTK_ACCESSIBLE_ROLE_ROW">
+      </member>
+      <member name="row_group"
+              value="50"
+              c:identifier="GTK_ACCESSIBLE_ROLE_ROW_GROUP"
+              glib:nick="row-group"
+              glib:name="GTK_ACCESSIBLE_ROLE_ROW_GROUP">
+      </member>
+      <member name="row_header"
+              value="51"
+              c:identifier="GTK_ACCESSIBLE_ROLE_ROW_HEADER"
+              glib:nick="row-header"
+              glib:name="GTK_ACCESSIBLE_ROLE_ROW_HEADER">
+      </member>
+      <member name="scrollbar"
+              value="52"
+              c:identifier="GTK_ACCESSIBLE_ROLE_SCROLLBAR"
+              glib:nick="scrollbar"
+              glib:name="GTK_ACCESSIBLE_ROLE_SCROLLBAR">
+      </member>
+      <member name="search"
+              value="53"
+              c:identifier="GTK_ACCESSIBLE_ROLE_SEARCH"
+              glib:nick="search"
+              glib:name="GTK_ACCESSIBLE_ROLE_SEARCH">
+      </member>
+      <member name="search_box"
+              value="54"
+              c:identifier="GTK_ACCESSIBLE_ROLE_SEARCH_BOX"
+              glib:nick="search-box"
+              glib:name="GTK_ACCESSIBLE_ROLE_SEARCH_BOX">
+      </member>
+      <member name="section"
+              value="55"
+              c:identifier="GTK_ACCESSIBLE_ROLE_SECTION"
+              glib:nick="section"
+              glib:name="GTK_ACCESSIBLE_ROLE_SECTION">
+      </member>
+      <member name="section_head"
+              value="56"
+              c:identifier="GTK_ACCESSIBLE_ROLE_SECTION_HEAD"
+              glib:nick="section-head"
+              glib:name="GTK_ACCESSIBLE_ROLE_SECTION_HEAD">
+      </member>
+      <member name="select"
+              value="57"
+              c:identifier="GTK_ACCESSIBLE_ROLE_SELECT"
+              glib:nick="select"
+              glib:name="GTK_ACCESSIBLE_ROLE_SELECT">
+      </member>
+      <member name="separator"
+              value="58"
+              c:identifier="GTK_ACCESSIBLE_ROLE_SEPARATOR"
+              glib:nick="separator"
+              glib:name="GTK_ACCESSIBLE_ROLE_SEPARATOR">
+      </member>
+      <member name="slider"
+              value="59"
+              c:identifier="GTK_ACCESSIBLE_ROLE_SLIDER"
+              glib:nick="slider"
+              glib:name="GTK_ACCESSIBLE_ROLE_SLIDER">
+      </member>
+      <member name="spin_button"
+              value="60"
+              c:identifier="GTK_ACCESSIBLE_ROLE_SPIN_BUTTON"
+              glib:nick="spin-button"
+              glib:name="GTK_ACCESSIBLE_ROLE_SPIN_BUTTON">
+      </member>
+      <member name="status"
+              value="61"
+              c:identifier="GTK_ACCESSIBLE_ROLE_STATUS"
+              glib:nick="status"
+              glib:name="GTK_ACCESSIBLE_ROLE_STATUS">
+      </member>
+      <member name="structure"
+              value="62"
+              c:identifier="GTK_ACCESSIBLE_ROLE_STRUCTURE"
+              glib:nick="structure"
+              glib:name="GTK_ACCESSIBLE_ROLE_STRUCTURE">
+      </member>
+      <member name="switch"
+              value="63"
+              c:identifier="GTK_ACCESSIBLE_ROLE_SWITCH"
+              glib:nick="switch"
+              glib:name="GTK_ACCESSIBLE_ROLE_SWITCH">
+      </member>
+      <member name="tab"
+              value="64"
+              c:identifier="GTK_ACCESSIBLE_ROLE_TAB"
+              glib:nick="tab"
+              glib:name="GTK_ACCESSIBLE_ROLE_TAB">
+      </member>
+      <member name="table"
+              value="65"
+              c:identifier="GTK_ACCESSIBLE_ROLE_TABLE"
+              glib:nick="table"
+              glib:name="GTK_ACCESSIBLE_ROLE_TABLE">
+      </member>
+      <member name="tab_list"
+              value="66"
+              c:identifier="GTK_ACCESSIBLE_ROLE_TAB_LIST"
+              glib:nick="tab-list"
+              glib:name="GTK_ACCESSIBLE_ROLE_TAB_LIST">
+      </member>
+      <member name="tab_panel"
+              value="67"
+              c:identifier="GTK_ACCESSIBLE_ROLE_TAB_PANEL"
+              glib:nick="tab-panel"
+              glib:name="GTK_ACCESSIBLE_ROLE_TAB_PANEL">
+      </member>
+      <member name="text_box"
+              value="68"
+              c:identifier="GTK_ACCESSIBLE_ROLE_TEXT_BOX"
+              glib:nick="text-box"
+              glib:name="GTK_ACCESSIBLE_ROLE_TEXT_BOX">
+      </member>
+      <member name="time"
+              value="69"
+              c:identifier="GTK_ACCESSIBLE_ROLE_TIME"
+              glib:nick="time"
+              glib:name="GTK_ACCESSIBLE_ROLE_TIME">
+      </member>
+      <member name="timer"
+              value="70"
+              c:identifier="GTK_ACCESSIBLE_ROLE_TIMER"
+              glib:nick="timer"
+              glib:name="GTK_ACCESSIBLE_ROLE_TIMER">
+      </member>
+      <member name="toolbar"
+              value="71"
+              c:identifier="GTK_ACCESSIBLE_ROLE_TOOLBAR"
+              glib:nick="toolbar"
+              glib:name="GTK_ACCESSIBLE_ROLE_TOOLBAR">
+      </member>
+      <member name="tooltip"
+              value="72"
+              c:identifier="GTK_ACCESSIBLE_ROLE_TOOLTIP"
+              glib:nick="tooltip"
+              glib:name="GTK_ACCESSIBLE_ROLE_TOOLTIP">
+      </member>
+      <member name="tree"
+              value="73"
+              c:identifier="GTK_ACCESSIBLE_ROLE_TREE"
+              glib:nick="tree"
+              glib:name="GTK_ACCESSIBLE_ROLE_TREE">
+      </member>
+      <member name="tree_grid"
+              value="74"
+              c:identifier="GTK_ACCESSIBLE_ROLE_TREE_GRID"
+              glib:nick="tree-grid"
+              glib:name="GTK_ACCESSIBLE_ROLE_TREE_GRID">
+      </member>
+      <member name="tree_item"
+              value="75"
+              c:identifier="GTK_ACCESSIBLE_ROLE_TREE_ITEM"
+              glib:nick="tree-item"
+              glib:name="GTK_ACCESSIBLE_ROLE_TREE_ITEM">
+      </member>
+      <member name="widget"
+              value="76"
+              c:identifier="GTK_ACCESSIBLE_ROLE_WIDGET"
+              glib:nick="widget"
+              glib:name="GTK_ACCESSIBLE_ROLE_WIDGET">
+      </member>
+      <member name="window"
+              value="77"
+              c:identifier="GTK_ACCESSIBLE_ROLE_WINDOW"
+              glib:nick="window"
+              glib:name="GTK_ACCESSIBLE_ROLE_WINDOW">
+      </member>
+    </enumeration>
+    <class name="Assistant"
+           c:symbol-prefix="assistant"
+           c:type="GtkAssistant"
+           parent="Window"
+           glib:type-name="GtkAssistant"
+           glib:get-type="gtk_assistant_get_type">
+      <implements name="Accessible"/>
+      <implements name="Buildable"/>
+      <implements name="ConstraintTarget"/>
+      <implements name="Native"/>
+      <implements name="Root"/>
+      <implements name="ShortcutManager"/>
+      <constructor name="new" c:identifier="gtk_assistant_new">
+        <return-value transfer-ownership="none">
+          <type name="Widget" c:type="GtkWidget*"/>
+        </return-value>
+      </constructor>
+      <property name="pages" transfer-ownership="none" getter="get_pages">
+        <type name="Gio.ListModel"/>
+      </property>
+      <property name="use-header-bar"
+                writable="1"
+                construct-only="1"
+                transfer-ownership="none">
+        <type name="gint" c:type="gint"/>
+      </property>
+      <glib:signal name="apply" when="last">
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+      </glib:signal>
+      <glib:signal name="cancel" when="last">
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+      </glib:signal>
+      <glib:signal name="close" when="last">
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+      </glib:signal>
+      <glib:signal name="escape" when="first" action="1">
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+      </glib:signal>
+      <glib:signal name="prepare" when="last">
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <parameter name="page" transfer-ownership="none">
+            <type name="Widget"/>
+          </parameter>
+        </parameters>
+      </glib:signal>
+    </class>
+    <class name="CellRenderer"
+           c:symbol-prefix="cell_renderer"
+           c:type="GtkCellRenderer"
+           parent="GObject.InitiallyUnowned"
+           abstract="1"
+           glib:type-name="GtkCellRenderer"
+           glib:get-type="gtk_cell_renderer_get_type"
+           glib:type-struct="CellRendererClass">
+      <method name="set_is_expanded"
+              c:identifier="gtk_cell_renderer_set_is_expanded"
+              glib:set-property="is-expanded">
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="cell" transfer-ownership="none">
+            <type name="CellRenderer" c:type="GtkCellRenderer*"/>
+          </instance-parameter>
+          <parameter name="is_expanded" transfer-ownership="none">
+            <type name="gboolean" c:type="gboolean"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="set_is_expander"
+              c:identifier="gtk_cell_renderer_set_is_expander"
+              glib:set-property="is-expander">
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="cell" transfer-ownership="none">
+            <type name="CellRenderer" c:type="GtkCellRenderer*"/>
+          </instance-parameter>
+          <parameter name="is_expander" transfer-ownership="none">
+            <type name="gboolean" c:type="gboolean"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="set_sensitive"
+              c:identifier="gtk_cell_renderer_set_sensitive"
+              glib:set-property="sensitive">
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="cell" transfer-ownership="none">
+            <type name="CellRenderer" c:type="GtkCellRenderer*"/>
+          </instance-parameter>
+          <parameter name="sensitive" transfer-ownership="none">
+            <type name="gboolean" c:type="gboolean"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="set_visible"
+              c:identifier="gtk_cell_renderer_set_visible"
+              glib:set-property="visible">
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="cell" transfer-ownership="none">
+            <type name="CellRenderer" c:type="GtkCellRenderer*"/>
+          </instance-parameter>
+          <parameter name="visible" transfer-ownership="none">
+            <type name="gboolean" c:type="gboolean"/>
+          </parameter>
+        </parameters>
+      </method>
+      <property name="cell-background"
+                readable="0"
+                writable="1"
+                transfer-ownership="none">
+        <type name="utf8" c:type="gchar*"/>
+      </property>
+      <property name="cell-background-rgba"
+                writable="1"
+                transfer-ownership="none">
+        <type name="Gdk.RGBA"/>
+      </property>
+      <property name="cell-background-set"
+                writable="1"
+                transfer-ownership="none">
+        <type name="gboolean" c:type="gboolean"/>
+      </property>
+      <property name="editing" transfer-ownership="none">
+        <type name="gboolean" c:type="gboolean"/>
+      </property>
+      <property name="height" writable="1" transfer-ownership="none">
+        <type name="gint" c:type="gint"/>
+      </property>
+      <property name="is-expanded"
+                writable="1"
+                transfer-ownership="none"
+                setter="set_is_expanded"
+                getter="get_is_expanded">
+        <type name="gboolean" c:type="gboolean"/>
+      </property>
+      <property name="is-expander"
+                writable="1"
+                transfer-ownership="none"
+                setter="set_is_expander"
+                getter="get_is_expander">
+        <type name="gboolean" c:type="gboolean"/>
+      </property>
+      <property name="mode" writable="1" transfer-ownership="none">
+        <type name="CellRendererMode"/>
+      </property>
+      <property name="sensitive"
+                writable="1"
+                transfer-ownership="none"
+                setter="set_sensitive"
+                getter="get_sensitive">
+        <type name="gboolean" c:type="gboolean"/>
+      </property>
+      <property name="visible"
+                writable="1"
+                transfer-ownership="none"
+                setter="set_visible"
+                getter="get_visible">
+        <type name="gboolean" c:type="gboolean"/>
+      </property>
+      <property name="width" writable="1" transfer-ownership="none">
+        <type name="gint" c:type="gint"/>
+      </property>
+      <property name="xalign" writable="1" transfer-ownership="none">
+        <type name="gfloat" c:type="gfloat"/>
+      </property>
+      <property name="xpad" writable="1" transfer-ownership="none">
+        <type name="guint" c:type="guint"/>
+      </property>
+      <property name="yalign" writable="1" transfer-ownership="none">
+        <type name="gfloat" c:type="gfloat"/>
+      </property>
+      <property name="ypad" writable="1" transfer-ownership="none">
+        <type name="guint" c:type="guint"/>
+      </property>
+      <glib:signal name="editing-canceled" when="first">
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+      </glib:signal>
+      <glib:signal name="editing-started" when="first">
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <parameter name="editable" transfer-ownership="none">
+            <type name="CellEditable"/>
+          </parameter>
+          <parameter name="path" transfer-ownership="none">
+            <type name="utf8" c:type="gchar*"/>
+          </parameter>
+        </parameters>
+      </glib:signal>
+    </class>
+    <class name="CellRendererAccel"
+           c:symbol-prefix="cell_renderer_accel"
+           c:type="GtkCellRendererAccel"
+           parent="CellRendererText"
+           glib:type-name="GtkCellRendererAccel"
+           glib:get-type="gtk_cell_renderer_accel_get_type">
+      <constructor name="new" c:identifier="gtk_cell_renderer_accel_new">
+        <return-value transfer-ownership="none">
+          <type name="CellRenderer" c:type="GtkCellRenderer*"/>
+        </return-value>
+      </constructor>
+      <property name="accel-key" writable="1" transfer-ownership="none">
+        <type name="guint" c:type="guint"/>
+      </property>
+      <property name="accel-mode" writable="1" transfer-ownership="none">
+        <type name="CellRendererAccelMode"/>
+      </property>
+      <property name="accel-mods" writable="1" transfer-ownership="none">
+        <type name="Gdk.ModifierType"/>
+      </property>
+      <property name="keycode" writable="1" transfer-ownership="none">
+        <type name="guint" c:type="guint"/>
+      </property>
+      <glib:signal name="accel-cleared" when="last">
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <parameter name="path_string" transfer-ownership="none">
+            <type name="utf8" c:type="gchar*"/>
+          </parameter>
+        </parameters>
+      </glib:signal>
+      <glib:signal name="accel-edited" when="last">
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <parameter name="path_string" transfer-ownership="none">
+            <type name="utf8" c:type="gchar*"/>
+          </parameter>
+          <parameter name="accel_key" transfer-ownership="none">
+            <type name="guint" c:type="guint"/>
+          </parameter>
+          <parameter name="accel_mods" transfer-ownership="none">
+            <type name="Gdk.ModifierType"/>
+          </parameter>
+          <parameter name="hardware_keycode" transfer-ownership="none">
+            <type name="guint" c:type="guint"/>
+          </parameter>
+        </parameters>
+      </glib:signal>
+    </class>
+    <class name="CellRendererCombo"
+           c:symbol-prefix="cell_renderer_combo"
+           c:type="GtkCellRendererCombo"
+           parent="CellRendererText"
+           glib:type-name="GtkCellRendererCombo"
+           glib:get-type="gtk_cell_renderer_combo_get_type">
+      <constructor name="new" c:identifier="gtk_cell_renderer_combo_new">
+        <return-value transfer-ownership="none">
+          <type name="CellRenderer" c:type="GtkCellRenderer*"/>
+        </return-value>
+      </constructor>
+      <property name="has-entry" writable="1" transfer-ownership="none">
+        <type name="gboolean" c:type="gboolean"/>
+      </property>
+      <property name="model" writable="1" transfer-ownership="none">
+        <type name="TreeModel"/>
+      </property>
+      <property name="text-column" writable="1" transfer-ownership="none">
+        <type name="gint" c:type="gint"/>
+      </property>
+      <glib:signal name="changed" when="last">
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <parameter name="path_string" transfer-ownership="none">
+            <type name="utf8" c:type="gchar*"/>
+          </parameter>
+          <parameter name="new_iter" transfer-ownership="none">
+            <type name="TreeIter"/>
+          </parameter>
+        </parameters>
+      </glib:signal>
+    </class>
+    <class name="CellRendererSpin"
+           c:symbol-prefix="cell_renderer_spin"
+           c:type="GtkCellRendererSpin"
+           parent="CellRendererText"
+           glib:type-name="GtkCellRendererSpin"
+           glib:get-type="gtk_cell_renderer_spin_get_type">
+      <constructor name="new" c:identifier="gtk_cell_renderer_spin_new">
+        <return-value transfer-ownership="none">
+          <type name="CellRenderer" c:type="GtkCellRenderer*"/>
+        </return-value>
+      </constructor>
+      <property name="adjustment" writable="1" transfer-ownership="none">
+        <type name="Adjustment"/>
+      </property>
+      <property name="climb-rate" writable="1" transfer-ownership="none">
+        <type name="gdouble" c:type="gdouble"/>
+      </property>
+      <property name="digits" writable="1" transfer-ownership="none">
+        <type name="guint" c:type="guint"/>
+      </property>
+    </class>
+    <class name="CellRendererText"
+           c:symbol-prefix="cell_renderer_text"
+           c:type="GtkCellRendererText"
+           parent="CellRenderer"
+           glib:type-name="GtkCellRendererText"
+           glib:get-type="gtk_cell_renderer_text_get_type"
+           glib:type-struct="CellRendererTextClass">
+      <constructor name="new" c:identifier="gtk_cell_renderer_text_new">
+        <return-value transfer-ownership="none">
+          <type name="CellRenderer" c:type="GtkCellRenderer*"/>
+        </return-value>
+      </constructor>
+      <property name="align-set" writable="1" transfer-ownership="none">
+        <type name="gboolean" c:type="gboolean"/>
+      </property>
+      <property name="alignment" writable="1" transfer-ownership="none">
+        <type name="Pango.Alignment"/>
+      </property>
+      <property name="attributes" writable="1" transfer-ownership="none">
+        <type name="Pango.AttrList"/>
+      </property>
+      <property name="background"
+                readable="0"
+                writable="1"
+                transfer-ownership="none">
+        <type name="utf8" c:type="gchar*"/>
+      </property>
+      <property name="background-rgba" writable="1" transfer-ownership="none">
+        <type name="Gdk.RGBA"/>
+      </property>
+      <property name="background-set" writable="1" transfer-ownership="none">
+        <type name="gboolean" c:type="gboolean"/>
+      </property>
+      <property name="editable" writable="1" transfer-ownership="none">
+        <type name="gboolean" c:type="gboolean"/>
+      </property>
+      <property name="editable-set" writable="1" transfer-ownership="none">
+        <type name="gboolean" c:type="gboolean"/>
+      </property>
+      <property name="ellipsize" writable="1" transfer-ownership="none">
+        <type name="Pango.EllipsizeMode"/>
+      </property>
+      <property name="ellipsize-set" writable="1" transfer-ownership="none">
+        <type name="gboolean" c:type="gboolean"/>
+      </property>
+      <property name="family" writable="1" transfer-ownership="none">
+        <type name="utf8" c:type="gchar*"/>
+      </property>
+      <property name="family-set" writable="1" transfer-ownership="none">
+        <type name="gboolean" c:type="gboolean"/>
+      </property>
+      <property name="font" writable="1" transfer-ownership="none">
+        <type name="utf8" c:type="gchar*"/>
+      </property>
+      <property name="font-desc" writable="1" transfer-ownership="none">
+        <type name="Pango.FontDescription"/>
+      </property>
+      <property name="foreground"
+                readable="0"
+                writable="1"
+                transfer-ownership="none">
+        <type name="utf8" c:type="gchar*"/>
+      </property>
+      <property name="foreground-rgba" writable="1" transfer-ownership="none">
+        <type name="Gdk.RGBA"/>
+      </property>
+      <property name="foreground-set" writable="1" transfer-ownership="none">
+        <type name="gboolean" c:type="gboolean"/>
+      </property>
+      <property name="language" writable="1" transfer-ownership="none">
+        <type name="utf8" c:type="gchar*"/>
+      </property>
+      <property name="language-set" writable="1" transfer-ownership="none">
+        <type name="gboolean" c:type="gboolean"/>
+      </property>
+      <property name="markup"
+                readable="0"
+                writable="1"
+                transfer-ownership="none">
+        <type name="utf8" c:type="gchar*"/>
+      </property>
+      <property name="max-width-chars" writable="1" transfer-ownership="none">
+        <type name="gint" c:type="gint"/>
+      </property>
+      <property name="placeholder-text" writable="1" transfer-ownership="none">
+        <type name="utf8" c:type="gchar*"/>
+      </property>
+      <property name="rise" writable="1" transfer-ownership="none">
+        <type name="gint" c:type="gint"/>
+      </property>
+      <property name="rise-set" writable="1" transfer-ownership="none">
+        <type name="gboolean" c:type="gboolean"/>
+      </property>
+      <property name="scale" writable="1" transfer-ownership="none">
+        <type name="gdouble" c:type="gdouble"/>
+      </property>
+      <property name="scale-set" writable="1" transfer-ownership="none">
+        <type name="gboolean" c:type="gboolean"/>
+      </property>
+      <property name="single-paragraph-mode"
+                writable="1"
+                transfer-ownership="none">
+        <type name="gboolean" c:type="gboolean"/>
+      </property>
+      <property name="size" writable="1" transfer-ownership="none">
+        <type name="gint" c:type="gint"/>
+      </property>
+      <property name="size-points" writable="1" transfer-ownership="none">
+        <type name="gdouble" c:type="gdouble"/>
+      </property>
+      <property name="size-set" writable="1" transfer-ownership="none">
+        <type name="gboolean" c:type="gboolean"/>
+      </property>
+      <property name="stretch" writable="1" transfer-ownership="none">
+        <type name="Pango.Stretch"/>
+      </property>
+      <property name="stretch-set" writable="1" transfer-ownership="none">
+        <type name="gboolean" c:type="gboolean"/>
+      </property>
+      <property name="strikethrough" writable="1" transfer-ownership="none">
+        <type name="gboolean" c:type="gboolean"/>
+      </property>
+      <property name="strikethrough-set"
+                writable="1"
+                transfer-ownership="none">
+        <type name="gboolean" c:type="gboolean"/>
+      </property>
+      <property name="style" writable="1" transfer-ownership="none">
+        <type name="Pango.Style"/>
+      </property>
+      <property name="style-set" writable="1" transfer-ownership="none">
+        <type name="gboolean" c:type="gboolean"/>
+      </property>
+      <property name="text" writable="1" transfer-ownership="none">
+        <type name="utf8" c:type="gchar*"/>
+      </property>
+      <property name="underline" writable="1" transfer-ownership="none">
+        <type name="Pango.Underline"/>
+      </property>
+      <property name="underline-set" writable="1" transfer-ownership="none">
+        <type name="gboolean" c:type="gboolean"/>
+      </property>
+      <property name="variant" writable="1" transfer-ownership="none">
+        <type name="Pango.Variant"/>
+      </property>
+      <property name="variant-set" writable="1" transfer-ownership="none">
+        <type name="gboolean" c:type="gboolean"/>
+      </property>
+      <property name="weight" writable="1" transfer-ownership="none">
+        <type name="gint" c:type="gint"/>
+      </property>
+      <property name="weight-set" writable="1" transfer-ownership="none">
+        <type name="gboolean" c:type="gboolean"/>
+      </property>
+      <property name="width-chars" writable="1" transfer-ownership="none">
+        <type name="gint" c:type="gint"/>
+      </property>
+      <property name="wrap-mode" writable="1" transfer-ownership="none">
+        <type name="Pango.WrapMode"/>
+      </property>
+      <property name="wrap-width" writable="1" transfer-ownership="none">
+        <type name="gint" c:type="gint"/>
+      </property>
+      <glib:signal name="edited" when="last">
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <parameter name="path" transfer-ownership="none">
+            <type name="utf8" c:type="gchar*"/>
+          </parameter>
+          <parameter name="new_text" transfer-ownership="none">
+            <type name="utf8" c:type="gchar*"/>
+          </parameter>
+        </parameters>
+      </glib:signal>
+    </class>
+    <class name="DropTarget"
+           c:symbol-prefix="drop_target"
+           c:type="GtkDropTarget"
+           parent="EventController"
+           glib:type-name="GtkDropTarget"
+           glib:get-type="gtk_drop_target_get_type"
+           glib:type-struct="DropTargetClass">
+      <constructor name="new" c:identifier="gtk_drop_target_new">
+        <return-value transfer-ownership="full">
+          <type name="DropTarget" c:type="GtkDropTarget*"/>
+        </return-value>
+        <parameters>
+          <parameter name="type" transfer-ownership="none">
+            <type name="GType" c:type="GType"/>
+          </parameter>
+          <parameter name="actions" transfer-ownership="none">
+            <type name="Gdk.DragAction" c:type="GdkDragAction"/>
+          </parameter>
+        </parameters>
+      </constructor>
+      <method name="set_actions"
+              c:identifier="gtk_drop_target_set_actions"
+              glib:set-property="actions">
+        <attribute name="org.gtk.Method.set_property" value="actions"/>
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none">
+            <type name="DropTarget" c:type="GtkDropTarget*"/>
+          </instance-parameter>
+          <parameter name="actions" transfer-ownership="none">
+            <type name="Gdk.DragAction" c:type="GdkDragAction"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="set_preload"
+              c:identifier="gtk_drop_target_set_preload"
+              glib:set-property="preload">
+        <attribute name="org.gtk.Method.set_property" value="preload"/>
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none">
+            <type name="DropTarget" c:type="GtkDropTarget*"/>
+          </instance-parameter>
+          <parameter name="preload" transfer-ownership="none">
+            <type name="gboolean" c:type="gboolean"/>
+          </parameter>
+        </parameters>
+      </method>
+      <property name="actions"
+                writable="1"
+                transfer-ownership="none"
+                setter="set_actions"
+                getter="get_actions">
+        <attribute name="org.gtk.Property.get"
+                   value="gtk_drop_target_get_actions"/>
+        <attribute name="org.gtk.Property.set"
+                   value="gtk_drop_target_set_actions"/>
+        <type name="Gdk.DragAction"/>
+      </property>
+      <property name="current-drop"
+                version="4.4"
+                transfer-ownership="none"
+                getter="get_current_drop">
+        <attribute name="org.gtk.Property.get"
+                   value="gtk_drop_target_get_current_drop"/>
+        <type name="Gdk.Drop"/>
+      </property>
+      <property name="drop"
+                introspectable="0"
+                deprecated="1"
+                deprecated-version="4.4"
+                transfer-ownership="none"
+                getter="get_drop">
+        <attribute name="org.gtk.Property.get"
+                   value="gtk_drop_target_get_drop"/>
+        <type name="Gdk.Drop"/>
+      </property>
+      <property name="formats"
+                writable="1"
+                construct-only="1"
+                transfer-ownership="none"
+                getter="get_formats">
+        <attribute name="org.gtk.Property.get"
+                   value="gtk_drop_target_get_formats"/>
+        <type name="Gdk.ContentFormats"/>
+      </property>
+      <property name="preload"
+                writable="1"
+                transfer-ownership="none"
+                setter="set_preload"
+                getter="get_preload">
+        <attribute name="org.gtk.Property.get"
+                   value="gtk_drop_target_get_preload"/>
+        <attribute name="org.gtk.Property.set"
+                   value="gtk_drop_target_set_preload"/>
+        <type name="gboolean" c:type="gboolean"/>
+      </property>
+      <property name="value" transfer-ownership="none" getter="get_value">
+        <attribute name="org.gtk.Property.get"
+                   value="gtk_drop_target_get_value"/>
+        <type name="GObject.Value"/>
+      </property>
+      <glib:signal name="accept" when="last">
+        <return-value transfer-ownership="none">
+          <type name="gboolean" c:type="gboolean"/>
+        </return-value>
+        <parameters>
+          <parameter name="drop" transfer-ownership="none">
+            <type name="Gdk.Drop"/>
+          </parameter>
+        </parameters>
+      </glib:signal>
+      <glib:signal name="drop" when="last">
+        <return-value transfer-ownership="none">
+          <type name="gboolean" c:type="gboolean"/>
+        </return-value>
+        <parameters>
+          <parameter name="value" transfer-ownership="none">
+            <type name="GObject.Value"/>
+          </parameter>
+          <parameter name="x" transfer-ownership="none">
+            <type name="gdouble" c:type="gdouble"/>
+          </parameter>
+          <parameter name="y" transfer-ownership="none">
+            <type name="gdouble" c:type="gdouble"/>
+          </parameter>
+        </parameters>
+      </glib:signal>
+      <glib:signal name="enter" when="last">
+        <return-value transfer-ownership="none">
+          <type name="Gdk.DragAction"/>
+        </return-value>
+        <parameters>
+          <parameter name="x" transfer-ownership="none">
+            <type name="gdouble" c:type="gdouble"/>
+          </parameter>
+          <parameter name="y" transfer-ownership="none">
+            <type name="gdouble" c:type="gdouble"/>
+          </parameter>
+        </parameters>
+      </glib:signal>
+      <glib:signal name="leave" when="last">
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+      </glib:signal>
+      <glib:signal name="motion" when="last">
+        <return-value transfer-ownership="none">
+          <type name="Gdk.DragAction"/>
+        </return-value>
+        <parameters>
+          <parameter name="x" transfer-ownership="none">
+            <type name="gdouble" c:type="gdouble"/>
+          </parameter>
+          <parameter name="y" transfer-ownership="none">
+            <type name="gdouble" c:type="gdouble"/>
+          </parameter>
+        </parameters>
+      </glib:signal>
+    </class>
+    <class name="Entry"
+           c:symbol-prefix="entry"
+           c:type="GtkEntry"
+           parent="Widget"
+           glib:type-name="GtkEntry"
+           glib:get-type="gtk_entry_get_type"
+           glib:type-struct="EntryClass">
+      <implements name="Accessible"/>
+      <implements name="Buildable"/>
+      <implements name="CellEditable"/>
+      <implements name="ConstraintTarget"/>
+      <implements name="Editable"/>
+      <constructor name="new" c:identifier="gtk_entry_new">
+        <return-value transfer-ownership="none">
+          <type name="Widget" c:type="GtkWidget*"/>
+        </return-value>
+      </constructor>
+      <constructor name="new_with_buffer"
+                   c:identifier="gtk_entry_new_with_buffer">
+        <return-value transfer-ownership="none">
+          <type name="Widget" c:type="GtkWidget*"/>
+        </return-value>
+        <parameters>
+          <parameter name="buffer" transfer-ownership="none">
+            <type name="EntryBuffer" c:type="GtkEntryBuffer*"/>
+          </parameter>
+        </parameters>
+      </constructor>
+      <method name="set_activates_default"
+              c:identifier="gtk_entry_set_activates_default"
+              glib:set-property="activates-default">
+        <attribute name="org.gtk.Method.set_property"
+                   value="activates-default"/>
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="entry" transfer-ownership="none">
+            <type name="Entry" c:type="GtkEntry*"/>
+          </instance-parameter>
+          <parameter name="setting" transfer-ownership="none">
+            <type name="gboolean" c:type="gboolean"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="set_attributes"
+              c:identifier="gtk_entry_set_attributes"
+              glib:set-property="attributes">
+        <attribute name="org.gtk.Method.set_property" value="attributes"/>
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="entry" transfer-ownership="none">
+            <type name="Entry" c:type="GtkEntry*"/>
+          </instance-parameter>
+          <parameter name="attrs" transfer-ownership="none">
+            <type name="Pango.AttrList" c:type="PangoAttrList*"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="set_buffer"
+              c:identifier="gtk_entry_set_buffer"
+              glib:set-property="buffer">
+        <attribute name="org.gtk.Method.set_property" value="buffer"/>
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="entry" transfer-ownership="none">
+            <type name="Entry" c:type="GtkEntry*"/>
+          </instance-parameter>
+          <parameter name="buffer" transfer-ownership="none">
+            <type name="EntryBuffer" c:type="GtkEntryBuffer*"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="set_completion"
+              c:identifier="gtk_entry_set_completion"
+              glib:set-property="completion">
+        <attribute name="org.gtk.Method.set_property" value="completion"/>
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="entry" transfer-ownership="none">
+            <type name="Entry" c:type="GtkEntry*"/>
+          </instance-parameter>
+          <parameter name="completion"
+                     transfer-ownership="none"
+                     nullable="1"
+                     allow-none="1">
+            <type name="EntryCompletion" c:type="GtkEntryCompletion*"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="set_extra_menu"
+              c:identifier="gtk_entry_set_extra_menu"
+              glib:set-property="extra-menu">
+        <attribute name="org.gtk.Method.set_property" value="extra-menu"/>
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="entry" transfer-ownership="none">
+            <type name="Entry" c:type="GtkEntry*"/>
+          </instance-parameter>
+          <parameter name="model"
+                     transfer-ownership="none"
+                     nullable="1"
+                     allow-none="1">
+            <type name="Gio.MenuModel" c:type="GMenuModel*"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="set_has_frame"
+              c:identifier="gtk_entry_set_has_frame"
+              glib:set-property="has-frame">
+        <attribute name="org.gtk.Method.set_property" value="has-frame"/>
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="entry" transfer-ownership="none">
+            <type name="Entry" c:type="GtkEntry*"/>
+          </instance-parameter>
+          <parameter name="setting" transfer-ownership="none">
+            <type name="gboolean" c:type="gboolean"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="set_input_hints"
+              c:identifier="gtk_entry_set_input_hints"
+              glib:set-property="input-hints">
+        <attribute name="org.gtk.Method.set_property" value="input-hints"/>
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="entry" transfer-ownership="none">
+            <type name="Entry" c:type="GtkEntry*"/>
+          </instance-parameter>
+          <parameter name="hints" transfer-ownership="none">
+            <type name="InputHints" c:type="GtkInputHints"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="set_input_purpose"
+              c:identifier="gtk_entry_set_input_purpose"
+              glib:set-property="input-purpose">
+        <attribute name="org.gtk.Method.set_property" value="input-purpose"/>
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="entry" transfer-ownership="none">
+            <type name="Entry" c:type="GtkEntry*"/>
+          </instance-parameter>
+          <parameter name="purpose" transfer-ownership="none">
+            <type name="InputPurpose" c:type="GtkInputPurpose"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="set_invisible_char"
+              c:identifier="gtk_entry_set_invisible_char"
+              glib:set-property="invisible-char">
+        <attribute name="org.gtk.Method.sets_property" value="invisible-char"/>
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="entry" transfer-ownership="none">
+            <type name="Entry" c:type="GtkEntry*"/>
+          </instance-parameter>
+          <parameter name="ch" transfer-ownership="none">
+            <type name="gunichar" c:type="gunichar"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="set_max_length"
+              c:identifier="gtk_entry_set_max_length"
+              glib:set-property="max-length">
+        <attribute name="org.gtk.Method.set_property" value="max-length"/>
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="entry" transfer-ownership="none">
+            <type name="Entry" c:type="GtkEntry*"/>
+          </instance-parameter>
+          <parameter name="max" transfer-ownership="none">
+            <type name="gint" c:type="int"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="set_overwrite_mode"
+              c:identifier="gtk_entry_set_overwrite_mode"
+              glib:set-property="overwrite-mode">
+        <attribute name="org.gtk.Method.set_property" value="overwrite-mode"/>
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="entry" transfer-ownership="none">
+            <type name="Entry" c:type="GtkEntry*"/>
+          </instance-parameter>
+          <parameter name="overwrite" transfer-ownership="none">
+            <type name="gboolean" c:type="gboolean"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="set_placeholder_text"
+              c:identifier="gtk_entry_set_placeholder_text"
+              glib:set-property="placeholder-text">
+        <attribute name="org.gtk.Method.set_property"
+                   value="placeholder-text"/>
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="entry" transfer-ownership="none">
+            <type name="Entry" c:type="GtkEntry*"/>
+          </instance-parameter>
+          <parameter name="text"
+                     transfer-ownership="none"
+                     nullable="1"
+                     allow-none="1">
+            <type name="utf8" c:type="const char*"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="set_progress_fraction"
+              c:identifier="gtk_entry_set_progress_fraction"
+              glib:set-property="progress-fraction">
+        <attribute name="org.gtk.Method.set_property"
+                   value="progress-fraction"/>
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="entry" transfer-ownership="none">
+            <type name="Entry" c:type="GtkEntry*"/>
+          </instance-parameter>
+          <parameter name="fraction" transfer-ownership="none">
+            <type name="gdouble" c:type="double"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="set_progress_pulse_step"
+              c:identifier="gtk_entry_set_progress_pulse_step"
+              glib:set-property="progress-pulse-step">
+        <attribute name="org.gtk.Method.set_property"
+                   value="progress-pulse-step"/>
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="entry" transfer-ownership="none">
+            <type name="Entry" c:type="GtkEntry*"/>
+          </instance-parameter>
+          <parameter name="fraction" transfer-ownership="none">
+            <type name="gdouble" c:type="double"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="set_tabs"
+              c:identifier="gtk_entry_set_tabs"
+              glib:set-property="tabs">
+        <attribute name="org.gtk.Method.set_property" value="tabs"/>
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="entry" transfer-ownership="none">
+            <type name="Entry" c:type="GtkEntry*"/>
+          </instance-parameter>
+          <parameter name="tabs"
+                     transfer-ownership="none"
+                     nullable="1"
+                     allow-none="1">
+            <type name="Pango.TabArray" c:type="PangoTabArray*"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="set_visibility"
+              c:identifier="gtk_entry_set_visibility"
+              glib:set-property="visibility">
+        <attribute name="org.gtk.Method.set_property" value="visibility"/>
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="entry" transfer-ownership="none">
+            <type name="Entry" c:type="GtkEntry*"/>
+          </instance-parameter>
+          <parameter name="visible" transfer-ownership="none">
+            <type name="gboolean" c:type="gboolean"/>
+          </parameter>
+        </parameters>
+      </method>
+      <property name="activates-default"
+                writable="1"
+                transfer-ownership="none"
+                setter="set_activates_default"
+                getter="get_activates_default">
+        <attribute name="org.gtk.Property.get"
+                   value="gtk_entry_get_activates_default"/>
+        <attribute name="org.gtk.Property.set"
+                   value="gtk_entry_set_activates_default"/>
+        <type name="gboolean" c:type="gboolean"/>
+      </property>
+      <property name="attributes"
+                writable="1"
+                transfer-ownership="none"
+                setter="set_attributes"
+                getter="get_attributes">
+        <attribute name="org.gtk.Property.get"
+                   value="gtk_entry_get_attributes"/>
+        <attribute name="org.gtk.Property.set"
+                   value="gtk_entry_set_attributes"/>
+        <type name="Pango.AttrList"/>
+      </property>
+      <property name="buffer"
+                writable="1"
+                construct="1"
+                transfer-ownership="none"
+                setter="set_buffer"
+                getter="get_buffer">
+        <attribute name="org.gtk.Property.get" value="gtk_entry_get_buffer"/>
+        <attribute name="org.gtk.Property.set" value="gtk_entry_set_buffer"/>
+        <type name="EntryBuffer"/>
+      </property>
+      <property name="completion"
+                writable="1"
+                transfer-ownership="none"
+                setter="set_completion"
+                getter="get_completion">
+        <attribute name="org.gtk.Property.get"
+                   value="gtk_entry_get_completion"/>
+        <attribute name="org.gtk.Property.set"
+                   value="gtk_entry_set_completion"/>
+        <type name="EntryCompletion"/>
+      </property>
+      <property name="enable-emoji-completion"
+                writable="1"
+                transfer-ownership="none">
+        <type name="gboolean" c:type="gboolean"/>
+      </property>
+      <property name="extra-menu"
+                writable="1"
+                transfer-ownership="none"
+                setter="set_extra_menu"
+                getter="get_extra_menu">
+        <attribute name="org.gtk.Property.get"
+                   value="gtk_entry_get_extra_menu"/>
+        <attribute name="org.gtk.Property.set"
+                   value="gtk_entry_set_extra_menu"/>
+        <type name="Gio.MenuModel"/>
+      </property>
+      <property name="has-frame"
+                writable="1"
+                transfer-ownership="none"
+                setter="set_has_frame"
+                getter="get_has_frame">
+        <attribute name="org.gtk.Property.get"
+                   value="gtk_entry_get_has_frame"/>
+        <attribute name="org.gtk.Property.set"
+                   value="gtk_entry_set_has_frame"/>
+        <type name="gboolean" c:type="gboolean"/>
+      </property>
+      <property name="im-module" writable="1" transfer-ownership="none">
+        <type name="utf8" c:type="gchar*"/>
+      </property>
+      <property name="input-hints"
+                writable="1"
+                transfer-ownership="none"
+                setter="set_input_hints"
+                getter="get_input_hints">
+        <attribute name="org.gtk.Property.get"
+                   value="gtk_entry_get_input_hints"/>
+        <attribute name="org.gtk.Property.set"
+                   value="gtk_entry_set_input_hints"/>
+        <type name="InputHints"/>
+      </property>
+      <property name="input-purpose"
+                writable="1"
+                transfer-ownership="none"
+                setter="set_input_purpose"
+                getter="get_input_purpose">
+        <attribute name="org.gtk.Property.get"
+                   value="gtk_entry_get_input_purpose"/>
+        <attribute name="org.gtk.Property.set"
+                   value="gtk_entry_set_input_purpose"/>
+        <type name="InputPurpose"/>
+      </property>
+      <property name="invisible-char"
+                writable="1"
+                transfer-ownership="none"
+                setter="set_invisible_char"
+                getter="get_invisible_char">
+        <attribute name="org.gtk.Property.get"
+                   value="gtk_entry_get_invisible_char"/>
+        <attribute name="org.gtk.Property.set"
+                   value="gtk_entry_set_invisible_char"/>
+        <type name="guint" c:type="guint"/>
+      </property>
+      <property name="invisible-char-set"
+                writable="1"
+                transfer-ownership="none">
+        <type name="gboolean" c:type="gboolean"/>
+      </property>
+      <property name="max-length"
+                writable="1"
+                transfer-ownership="none"
+                setter="set_max_length"
+                getter="get_max_length">
+        <attribute name="org.gtk.Property.get"
+                   value="gtk_entry_get_max_length"/>
+        <attribute name="org.gtk.Property.set"
+                   value="gtk_entry_set_max_length"/>
+        <type name="gint" c:type="gint"/>
+      </property>
+      <property name="overwrite-mode"
+                writable="1"
+                transfer-ownership="none"
+                setter="set_overwrite_mode"
+                getter="get_overwrite_mode">
+        <attribute name="org.gtk.Property.get"
+                   value="gtk_entry_get_overwrite_mode"/>
+        <attribute name="org.gtk.Property.set"
+                   value="gtk_entry_set_overwrite_mode"/>
+        <type name="gboolean" c:type="gboolean"/>
+      </property>
+      <property name="placeholder-text"
+                writable="1"
+                transfer-ownership="none"
+                setter="set_placeholder_text"
+                getter="get_placeholder_text">
+        <attribute name="org.gtk.Property.get"
+                   value="gtk_entry_get_placeholder_text"/>
+        <attribute name="org.gtk.Property.set"
+                   value="gtk_entry_set_placeholder_text"/>
+        <type name="utf8" c:type="gchar*"/>
+      </property>
+      <property name="primary-icon-activatable"
+                writable="1"
+                transfer-ownership="none">
+        <type name="gboolean" c:type="gboolean"/>
+      </property>
+      <property name="primary-icon-gicon"
+                writable="1"
+                transfer-ownership="none">
+        <type name="Gio.Icon"/>
+      </property>
+      <property name="primary-icon-name"
+                writable="1"
+                transfer-ownership="none">
+        <type name="utf8" c:type="gchar*"/>
+      </property>
+      <property name="primary-icon-paintable"
+                writable="1"
+                transfer-ownership="none">
+        <type name="Gdk.Paintable"/>
+      </property>
+      <property name="primary-icon-sensitive"
+                writable="1"
+                transfer-ownership="none">
+        <type name="gboolean" c:type="gboolean"/>
+      </property>
+      <property name="primary-icon-storage-type" transfer-ownership="none">
+        <type name="ImageType"/>
+      </property>
+      <property name="primary-icon-tooltip-markup"
+                writable="1"
+                transfer-ownership="none">
+        <type name="utf8" c:type="gchar*"/>
+      </property>
+      <property name="primary-icon-tooltip-text"
+                writable="1"
+                transfer-ownership="none">
+        <type name="utf8" c:type="gchar*"/>
+      </property>
+      <property name="progress-fraction"
+                writable="1"
+                transfer-ownership="none"
+                setter="set_progress_fraction"
+                getter="get_progress_fraction">
+        <attribute name="org.gtk.Property.get"
+                   value="gtk_entry_get_progress_fraction"/>
+        <attribute name="org.gtk.Property.set"
+                   value="gtk_entry_set_progress_fraction"/>
+        <type name="gdouble" c:type="gdouble"/>
+      </property>
+      <property name="progress-pulse-step"
+                writable="1"
+                transfer-ownership="none"
+                setter="set_progress_pulse_step"
+                getter="get_progress_pulse_step">
+        <attribute name="org.gtk.Property.get"
+                   value="gtk_entry_get_progress_pulse_step"/>
+        <attribute name="org.gtk.Property.set"
+                   value="gtk_entry_set_progress_pulse_step"/>
+        <type name="gdouble" c:type="gdouble"/>
+      </property>
+      <property name="scroll-offset" transfer-ownership="none">
+        <type name="gint" c:type="gint"/>
+      </property>
+      <property name="secondary-icon-activatable"
+                writable="1"
+                transfer-ownership="none">
+        <type name="gboolean" c:type="gboolean"/>
+      </property>
+      <property name="secondary-icon-gicon"
+                writable="1"
+                transfer-ownership="none">
+        <type name="Gio.Icon"/>
+      </property>
+      <property name="secondary-icon-name"
+                writable="1"
+                transfer-ownership="none">
+        <type name="utf8" c:type="gchar*"/>
+      </property>
+      <property name="secondary-icon-paintable"
+                writable="1"
+                transfer-ownership="none">
+        <type name="Gdk.Paintable"/>
+      </property>
+      <property name="secondary-icon-sensitive"
+                writable="1"
+                transfer-ownership="none">
+        <type name="gboolean" c:type="gboolean"/>
+      </property>
+      <property name="secondary-icon-storage-type" transfer-ownership="none">
+        <type name="ImageType"/>
+      </property>
+      <property name="secondary-icon-tooltip-markup"
+                writable="1"
+                transfer-ownership="none">
+        <type name="utf8" c:type="gchar*"/>
+      </property>
+      <property name="secondary-icon-tooltip-text"
+                writable="1"
+                transfer-ownership="none">
+        <type name="utf8" c:type="gchar*"/>
+      </property>
+      <property name="show-emoji-icon" writable="1" transfer-ownership="none">
+        <type name="gboolean" c:type="gboolean"/>
+      </property>
+      <property name="tabs"
+                writable="1"
+                transfer-ownership="none"
+                setter="set_tabs"
+                getter="get_tabs">
+        <type name="Pango.TabArray"/>
+      </property>
+      <property name="text-length"
+                transfer-ownership="none"
+                getter="get_text_length">
+        <attribute name="org.gtk.Property.get"
+                   value="gtk_entry_get_text_length"/>
+        <type name="guint" c:type="guint"/>
+      </property>
+      <property name="truncate-multiline"
+                writable="1"
+                transfer-ownership="none">
+        <type name="gboolean" c:type="gboolean"/>
+      </property>
+      <property name="visibility"
+                writable="1"
+                transfer-ownership="none"
+                setter="set_visibility"
+                getter="get_visibility">
+        <attribute name="org.gtk.Property.get"
+                   value="gtk_entry_get_visibility"/>
+        <attribute name="org.gtk.Property.set"
+                   value="gtk_entry_set_visibility"/>
+        <type name="gboolean" c:type="gboolean"/>
+      </property>
+      <glib:signal name="activate" when="last" action="1">
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+      </glib:signal>
+      <glib:signal name="icon-press" when="last">
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <parameter name="icon_pos" transfer-ownership="none">
+            <type name="EntryIconPosition"/>
+          </parameter>
+        </parameters>
+      </glib:signal>
+      <glib:signal name="icon-release" when="last">
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <parameter name="icon_pos" transfer-ownership="none">
+            <type name="EntryIconPosition"/>
+          </parameter>
+        </parameters>
+      </glib:signal>
+    </class>
+    <class name="Grid"
+           c:symbol-prefix="grid"
+           c:type="GtkGrid"
+           parent="Widget"
+           glib:type-name="GtkGrid"
+           glib:get-type="gtk_grid_get_type"
+           glib:type-struct="GridClass">
+      <implements name="Accessible"/>
+      <implements name="Buildable"/>
+      <implements name="ConstraintTarget"/>
+      <implements name="Orientable"/>
+      <constructor name="new" c:identifier="gtk_grid_new">
+        <return-value transfer-ownership="none">
+          <type name="Widget" c:type="GtkWidget*"/>
+        </return-value>
+      </constructor>
+      <method name="set_baseline_row"
+              c:identifier="gtk_grid_set_baseline_row"
+              glib:set-property="baseline-row">
+        <attribute name="org.gtk.Method.set_property" value="baseline-row"/>
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="grid" transfer-ownership="none">
+            <type name="Grid" c:type="GtkGrid*"/>
+          </instance-parameter>
+          <parameter name="row" transfer-ownership="none">
+            <type name="gint" c:type="int"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="set_column_homogeneous"
+              c:identifier="gtk_grid_set_column_homogeneous"
+              glib:set-property="column-homogeneous">
+        <attribute name="org.gtk.Method.set_property"
+                   value="column-homogeneous"/>
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="grid" transfer-ownership="none">
+            <type name="Grid" c:type="GtkGrid*"/>
+          </instance-parameter>
+          <parameter name="homogeneous" transfer-ownership="none">
+            <type name="gboolean" c:type="gboolean"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="set_column_spacing"
+              c:identifier="gtk_grid_set_column_spacing"
+              glib:set-property="column-spacing">
+        <attribute name="org.gtk.Method.set_property" value="column-spacing"/>
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="grid" transfer-ownership="none">
+            <type name="Grid" c:type="GtkGrid*"/>
+          </instance-parameter>
+          <parameter name="spacing" transfer-ownership="none">
+            <type name="guint" c:type="guint"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="set_row_homogeneous"
+              c:identifier="gtk_grid_set_row_homogeneous"
+              glib:set-property="row-homogeneous">
+        <attribute name="org.gtk.Method.set_property" value="row-homogeneous"/>
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="grid" transfer-ownership="none">
+            <type name="Grid" c:type="GtkGrid*"/>
+          </instance-parameter>
+          <parameter name="homogeneous" transfer-ownership="none">
+            <type name="gboolean" c:type="gboolean"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="set_row_spacing"
+              c:identifier="gtk_grid_set_row_spacing"
+              glib:set-property="row-spacing">
+        <attribute name="org.gtk.Method.set_property" value="row-spacing"/>
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="grid" transfer-ownership="none">
+            <type name="Grid" c:type="GtkGrid*"/>
+          </instance-parameter>
+          <parameter name="spacing" transfer-ownership="none">
+            <type name="guint" c:type="guint"/>
+          </parameter>
+        </parameters>
+      </method>
+      <property name="baseline-row"
+                writable="1"
+                transfer-ownership="none"
+                setter="set_baseline_row"
+                getter="get_baseline_row">
+        <attribute name="org.gtk.Property.get"
+                   value="gtk_grid_get_baseline_row"/>
+        <attribute name="org.gtk.Property.set"
+                   value="gtk_grid_set_baseline_row"/>
+        <type name="gint" c:type="gint"/>
+      </property>
+      <property name="column-homogeneous"
+                writable="1"
+                transfer-ownership="none"
+                setter="set_column_homogeneous"
+                getter="get_column_homogeneous">
+        <attribute name="org.gtk.Property.get"
+                   value="gtk_grid_get_column_homogeneous"/>
+        <attribute name="org.gtk.Property.set"
+                   value="gtk_grid_set_column_homogeneous"/>
+        <type name="gboolean" c:type="gboolean"/>
+      </property>
+      <property name="column-spacing"
+                writable="1"
+                transfer-ownership="none"
+                setter="set_column_spacing"
+                getter="get_column_spacing">
+        <attribute name="org.gtk.Property.get"
+                   value="gtk_grid_get_column_spacing"/>
+        <attribute name="org.gtk.Property.set"
+                   value="gtk_grid_set_column_spacing"/>
+        <type name="gint" c:type="gint"/>
+      </property>
+      <property name="row-homogeneous"
+                writable="1"
+                transfer-ownership="none"
+                setter="set_row_homogeneous"
+                getter="get_row_homogeneous">
+        <attribute name="org.gtk.Property.get"
+                   value="gtk_grid_get_row_homogeneous"/>
+        <attribute name="org.gtk.Property.set"
+                   value="gtk_grid_set_row_homogeneous"/>
+        <type name="gboolean" c:type="gboolean"/>
+      </property>
+      <property name="row-spacing"
+                writable="1"
+                transfer-ownership="none"
+                setter="set_row_spacing"
+                getter="get_row_spacing">
+        <attribute name="org.gtk.Property.get"
+                   value="gtk_grid_get_row_spacing"/>
+        <attribute name="org.gtk.Property.set"
+                   value="gtk_grid_set_row_spacing"/>
+        <type name="gint" c:type="gint"/>
+      </property>
+    </class>
+    <enumeration name="Justification"
+                 glib:type-name="GtkJustification"
+                 glib:get-type="gtk_justification_get_type"
+                 c:type="GtkJustification">
+      <member name="left"
+              value="0"
+              c:identifier="GTK_JUSTIFY_LEFT"
+              glib:nick="left"
+              glib:name="GTK_JUSTIFY_LEFT">
+      </member>
+      <member name="right"
+              value="1"
+              c:identifier="GTK_JUSTIFY_RIGHT"
+              glib:nick="right"
+              glib:name="GTK_JUSTIFY_RIGHT">
+      </member>
+      <member name="center"
+              value="2"
+              c:identifier="GTK_JUSTIFY_CENTER"
+              glib:nick="center"
+              glib:name="GTK_JUSTIFY_CENTER">
+      </member>
+      <member name="fill"
+              value="3"
+              c:identifier="GTK_JUSTIFY_FILL"
+              glib:nick="fill"
+              glib:name="GTK_JUSTIFY_FILL">
+      </member>
+    </enumeration>
+    <class name="Label"
+           c:symbol-prefix="label"
+           c:type="GtkLabel"
+           parent="Widget"
+           glib:type-name="GtkLabel"
+           glib:get-type="gtk_label_get_type">
+      <implements name="Accessible"/>
+      <implements name="Buildable"/>
+      <implements name="ConstraintTarget"/>
+      <constructor name="new" c:identifier="gtk_label_new">
+        <return-value transfer-ownership="none">
+          <type name="Widget" c:type="GtkWidget*"/>
+        </return-value>
+        <parameters>
+          <parameter name="str"
+                     transfer-ownership="none"
+                     nullable="1"
+                     allow-none="1">
+            <type name="utf8" c:type="const char*"/>
+          </parameter>
+        </parameters>
+      </constructor>
+      <constructor name="new_with_mnemonic"
+                   c:identifier="gtk_label_new_with_mnemonic">
+        <return-value transfer-ownership="none">
+          <type name="Widget" c:type="GtkWidget*"/>
+        </return-value>
+        <parameters>
+          <parameter name="str"
+                     transfer-ownership="none"
+                     nullable="1"
+                     allow-none="1">
+            <type name="utf8" c:type="const char*"/>
+          </parameter>
+        </parameters>
+      </constructor>
+      <method name="set_attributes"
+              c:identifier="gtk_label_set_attributes"
+              glib:set-property="attributes">
+        <attribute name="org.gtk.Method.set_property" value="attributes"/>
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none">
+            <type name="Label" c:type="GtkLabel*"/>
+          </instance-parameter>
+          <parameter name="attrs"
+                     transfer-ownership="none"
+                     nullable="1"
+                     allow-none="1">
+            <type name="Pango.AttrList" c:type="PangoAttrList*"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="set_ellipsize"
+              c:identifier="gtk_label_set_ellipsize"
+              glib:set-property="ellipsize">
+        <attribute name="org.gtk.Method.set_property" value="ellipsize"/>
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none">
+            <type name="Label" c:type="GtkLabel*"/>
+          </instance-parameter>
+          <parameter name="mode" transfer-ownership="none">
+            <type name="Pango.EllipsizeMode" c:type="PangoEllipsizeMode"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="set_extra_menu"
+              c:identifier="gtk_label_set_extra_menu"
+              glib:set-property="extra-menu">
+        <attribute name="org.gtk.Method.set_property" value="extra-menu"/>
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none">
+            <type name="Label" c:type="GtkLabel*"/>
+          </instance-parameter>
+          <parameter name="model"
+                     transfer-ownership="none"
+                     nullable="1"
+                     allow-none="1">
+            <type name="Gio.MenuModel" c:type="GMenuModel*"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="set_justify"
+              c:identifier="gtk_label_set_justify"
+              glib:set-property="justify">
+        <attribute name="org.gtk.Method.set_property" value="justify"/>
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none">
+            <type name="Label" c:type="GtkLabel*"/>
+          </instance-parameter>
+          <parameter name="jtype" transfer-ownership="none">
+            <type name="Justification" c:type="GtkJustification"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="set_label"
+              c:identifier="gtk_label_set_label"
+              glib:set-property="label">
+        <attribute name="org.gtk.Method.set_property" value="label"/>
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none">
+            <type name="Label" c:type="GtkLabel*"/>
+          </instance-parameter>
+          <parameter name="str" transfer-ownership="none">
+            <type name="utf8" c:type="const char*"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="set_lines"
+              c:identifier="gtk_label_set_lines"
+              glib:set-property="lines">
+        <attribute name="org.gtk.Method.set_property" value="lines"/>
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none">
+            <type name="Label" c:type="GtkLabel*"/>
+          </instance-parameter>
+          <parameter name="lines" transfer-ownership="none">
+            <type name="gint" c:type="int"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="set_max_width_chars"
+              c:identifier="gtk_label_set_max_width_chars"
+              glib:set-property="max-width-chars">
+        <attribute name="org.gtk.Method.set_property" value="max-width-chars"/>
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none">
+            <type name="Label" c:type="GtkLabel*"/>
+          </instance-parameter>
+          <parameter name="n_chars" transfer-ownership="none">
+            <type name="gint" c:type="int"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="set_mnemonic_widget"
+              c:identifier="gtk_label_set_mnemonic_widget"
+              glib:set-property="mnemonic-widget">
+        <attribute name="org.gtk.Method.set_property" value="mnemonic-widget"/>
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none">
+            <type name="Label" c:type="GtkLabel*"/>
+          </instance-parameter>
+          <parameter name="widget"
+                     transfer-ownership="none"
+                     nullable="1"
+                     allow-none="1">
+            <type name="Widget" c:type="GtkWidget*"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="set_natural_wrap_mode"
+              c:identifier="gtk_label_set_natural_wrap_mode"
+              glib:set-property="natural-wrap-mode"
+              version="4.6">
+        <attribute name="org.gtk.Method.set_property"
+                   value="natural-wrap-mode"/>
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none">
+            <type name="Label" c:type="GtkLabel*"/>
+          </instance-parameter>
+          <parameter name="wrap_mode" transfer-ownership="none">
+            <type name="NaturalWrapMode" c:type="GtkNaturalWrapMode"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="set_selectable"
+              c:identifier="gtk_label_set_selectable"
+              glib:set-property="selectable">
+        <attribute name="org.gtk.Method.set_property" value="selectable"/>
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none">
+            <type name="Label" c:type="GtkLabel*"/>
+          </instance-parameter>
+          <parameter name="setting" transfer-ownership="none">
+            <type name="gboolean" c:type="gboolean"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="set_single_line_mode"
+              c:identifier="gtk_label_set_single_line_mode"
+              glib:set-property="single-line-mode">
+        <attribute name="org.gtk.Method.set_property"
+                   value="single-line-mode"/>
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none">
+            <type name="Label" c:type="GtkLabel*"/>
+          </instance-parameter>
+          <parameter name="single_line_mode" transfer-ownership="none">
+            <type name="gboolean" c:type="gboolean"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="set_tabs"
+              c:identifier="gtk_label_set_tabs"
+              glib:set-property="tabs"
+              version="4.8">
+        <attribute name="org.gtk.Method.set_property" value="tabs"/>
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none">
+            <type name="Label" c:type="GtkLabel*"/>
+          </instance-parameter>
+          <parameter name="tabs"
+                     transfer-ownership="none"
+                     nullable="1"
+                     allow-none="1">
+            <type name="Pango.TabArray" c:type="PangoTabArray*"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="set_use_markup"
+              c:identifier="gtk_label_set_use_markup"
+              glib:set-property="use-markup">
+        <attribute name="org.gtk.Method.set_property" value="use-markup"/>
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none">
+            <type name="Label" c:type="GtkLabel*"/>
+          </instance-parameter>
+          <parameter name="setting" transfer-ownership="none">
+            <type name="gboolean" c:type="gboolean"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="set_use_underline"
+              c:identifier="gtk_label_set_use_underline"
+              glib:set-property="use-underline">
+        <attribute name="org.gtk.Method.set_property" value="use-underline"/>
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none">
+            <type name="Label" c:type="GtkLabel*"/>
+          </instance-parameter>
+          <parameter name="setting" transfer-ownership="none">
+            <type name="gboolean" c:type="gboolean"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="set_width_chars"
+              c:identifier="gtk_label_set_width_chars"
+              glib:set-property="width-chars">
+        <attribute name="org.gtk.Method.set_property" value="width-chars"/>
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none">
+            <type name="Label" c:type="GtkLabel*"/>
+          </instance-parameter>
+          <parameter name="n_chars" transfer-ownership="none">
+            <type name="gint" c:type="int"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="set_wrap"
+              c:identifier="gtk_label_set_wrap"
+              glib:set-property="wrap">
+        <attribute name="org.gtk.Method.set_property" value="wrap"/>
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none">
+            <type name="Label" c:type="GtkLabel*"/>
+          </instance-parameter>
+          <parameter name="wrap" transfer-ownership="none">
+            <type name="gboolean" c:type="gboolean"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="set_wrap_mode"
+              c:identifier="gtk_label_set_wrap_mode"
+              glib:set-property="wrap-mode">
+        <attribute name="org.gtk.Method.set_property" value="wrap-mode"/>
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none">
+            <type name="Label" c:type="GtkLabel*"/>
+          </instance-parameter>
+          <parameter name="wrap_mode" transfer-ownership="none">
+            <type name="Pango.WrapMode" c:type="PangoWrapMode"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="set_xalign"
+              c:identifier="gtk_label_set_xalign"
+              glib:set-property="xalign">
+        <attribute name="org.gtk.Method.set_property" value="xalign"/>
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none">
+            <type name="Label" c:type="GtkLabel*"/>
+          </instance-parameter>
+          <parameter name="xalign" transfer-ownership="none">
+            <type name="gfloat" c:type="float"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="set_yalign"
+              c:identifier="gtk_label_set_yalign"
+              glib:set-property="yalign">
+        <attribute name="org.gtk.Method.get_property" value="yalign"/>
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none">
+            <type name="Label" c:type="GtkLabel*"/>
+          </instance-parameter>
+          <parameter name="yalign" transfer-ownership="none">
+            <type name="gfloat" c:type="float"/>
+          </parameter>
+        </parameters>
+      </method>
+      <property name="attributes"
+                writable="1"
+                transfer-ownership="none"
+                setter="set_attributes"
+                getter="get_attributes">
+        <attribute name="org.gtk.Property.get"
+                   value="gtk_label_get_attributes"/>
+        <attribute name="org.gtk.Property.set"
+                   value="gtk_label_set_attributes"/>
+        <type name="Pango.AttrList"/>
+      </property>
+      <property name="ellipsize"
+                writable="1"
+                transfer-ownership="none"
+                setter="set_ellipsize"
+                getter="get_ellipsize">
+        <attribute name="org.gtk.Property.get"
+                   value="gtk_label_get_ellipsize"/>
+        <attribute name="org.gtk.Property.set"
+                   value="gtk_label_set_ellipsize"/>
+        <type name="Pango.EllipsizeMode"/>
+      </property>
+      <property name="extra-menu"
+                writable="1"
+                transfer-ownership="none"
+                setter="set_extra_menu"
+                getter="get_extra_menu">
+        <attribute name="org.gtk.Property.get"
+                   value="gtk_label_get_extra_menu"/>
+        <attribute name="org.gtk.Property.set"
+                   value="gtk_label_set_extra_menu"/>
+        <type name="Gio.MenuModel"/>
+      </property>
+      <property name="justify"
+                writable="1"
+                transfer-ownership="none"
+                setter="set_justify"
+                getter="get_justify">
+        <attribute name="org.gtk.Property.get" value="gtk_label_get_justify"/>
+        <attribute name="org.gtk.Property.set" value="gtk_label_set_justify"/>
+        <type name="Justification"/>
+      </property>
+      <property name="label"
+                writable="1"
+                transfer-ownership="none"
+                setter="set_label"
+                getter="get_label">
+        <attribute name="org.gtk.Property.get" value="gtk_label_get_label"/>
+        <attribute name="org.gtk.Property.set" value="gtk_label_set_label"/>
+        <type name="utf8" c:type="gchar*"/>
+      </property>
+      <property name="lines"
+                writable="1"
+                transfer-ownership="none"
+                setter="set_lines"
+                getter="get_lines">
+        <attribute name="org.gtk.Property.get" value="gtk_label_get_lines"/>
+        <attribute name="org.gtk.Property.set" value="gtk_label_set_lines"/>
+        <type name="gint" c:type="gint"/>
+      </property>
+      <property name="max-width-chars"
+                writable="1"
+                transfer-ownership="none"
+                setter="set_max_width_chars"
+                getter="get_max_width_chars">
+        <attribute name="org.gtk.Property.get"
+                   value="gtk_label_set_max_width_chars"/>
+        <attribute name="org.gtk.Property.set"
+                   value="gtk_label_set_max_width_chars"/>
+        <type name="gint" c:type="gint"/>
+      </property>
+      <property name="mnemonic-keyval"
+                transfer-ownership="none"
+                getter="get_mnemonic_keyval">
+        <attribute name="org.gtk.Property.get"
+                   value="gtk_label_get_mnemonic_keyval"/>
+        <type name="guint" c:type="guint"/>
+      </property>
+      <property name="mnemonic-widget"
+                writable="1"
+                transfer-ownership="none"
+                setter="set_mnemonic_widget"
+                getter="get_mnemonic_widget">
+        <attribute name="org.gtk.Property.get"
+                   value="gtk_label_get_mnemonic_widget"/>
+        <attribute name="org.gtk.Property.set"
+                   value="gtk_label_set_mnemonic_widget"/>
+        <type name="Widget"/>
+      </property>
+      <property name="natural-wrap-mode"
+                version="4.6"
+                writable="1"
+                transfer-ownership="none"
+                setter="set_natural_wrap_mode"
+                getter="get_natural_wrap_mode">
+        <attribute name="org.gtk.Property.get"
+                   value="gtk_label_get_natural_wrap_mode"/>
+        <attribute name="org.gtk.Property.set"
+                   value="gtk_label_set_natural_wrap_mode"/>
+        <type name="NaturalWrapMode"/>
+      </property>
+      <property name="selectable"
+                writable="1"
+                transfer-ownership="none"
+                setter="set_selectable"
+                getter="get_selectable">
+        <attribute name="org.gtk.Property.get"
+                   value="gtk_label_get_selectable"/>
+        <attribute name="og.gtk.Property.set"
+                   value="gtk_label_set_selectable"/>
+        <type name="gboolean" c:type="gboolean"/>
+      </property>
+      <property name="single-line-mode"
+                writable="1"
+                transfer-ownership="none"
+                setter="set_single_line_mode"
+                getter="get_single_line_mode">
+        <attribute name="org.gtk.Property.get"
+                   value="gtk_label_get_single_line_mode"/>
+        <attribute name="org.gtk.Property.set"
+                   value="gtk_label_set_single_line_mode"/>
+        <type name="gboolean" c:type="gboolean"/>
+      </property>
+      <property name="tabs"
+                version="4.8"
+                writable="1"
+                transfer-ownership="none"
+                setter="set_tabs"
+                getter="get_tabs">
+        <attribute name="org.gtk.Property.get" value="gtk_label_get_tabs"/>
+        <attribute name="org.gtk.Property.set" value="gtk_label_set_tabs"/>
+        <type name="Pango.TabArray"/>
+      </property>
+      <property name="use-markup"
+                writable="1"
+                transfer-ownership="none"
+                setter="set_use_markup"
+                getter="get_use_markup">
+        <attribute name="org.gtk.Property.get"
+                   value="gtk_label_get_use_markup"/>
+        <attribute name="org.gtk.Property.set"
+                   value="gtk_label_set_use_markup"/>
+        <type name="gboolean" c:type="gboolean"/>
+      </property>
+      <property name="use-underline"
+                writable="1"
+                transfer-ownership="none"
+                setter="set_use_underline"
+                getter="get_use_underline">
+        <attribute name="org.gtk.Property.get"
+                   value="gtk_label_get_use_underline"/>
+        <attribute name="org.gtk.Property.set"
+                   value="gtk_label_set_use_underline"/>
+        <type name="gboolean" c:type="gboolean"/>
+      </property>
+      <property name="width-chars"
+                writable="1"
+                transfer-ownership="none"
+                setter="set_width_chars"
+                getter="get_width_chars">
+        <attribute name="org.gtk.Property.get"
+                   value="gtk_label_get_width_chars"/>
+        <attribute name="org.gtk.Property.set"
+                   value="gtk_label_set_width_chars"/>
+        <type name="gint" c:type="gint"/>
+      </property>
+      <property name="wrap"
+                writable="1"
+                transfer-ownership="none"
+                setter="set_wrap"
+                getter="get_wrap">
+        <attribute name="org.gtk.Property.get" value="gtk_label_get_wrap"/>
+        <attribute name="org.gtk.Property.set" value="gtk_label_set_wrap"/>
+        <type name="gboolean" c:type="gboolean"/>
+      </property>
+      <property name="wrap-mode"
+                writable="1"
+                transfer-ownership="none"
+                setter="set_wrap_mode"
+                getter="get_wrap_mode">
+        <attribute name="org.gtk.Property.get"
+                   value="gtk_label_get_wrap_mode"/>
+        <attribute name="org.gtk.Property.set"
+                   value="gtk_label_set_wrap_mode"/>
+        <type name="Pango.WrapMode"/>
+      </property>
+      <property name="xalign"
+                writable="1"
+                transfer-ownership="none"
+                setter="set_xalign"
+                getter="get_xalign">
+        <attribute name="org.gtk.Property.get" value="gtk_label_get_xalign"/>
+        <attribute name="org.gtk.Property.set" value="gtk_label_set_xalign"/>
+        <type name="gfloat" c:type="gfloat"/>
+      </property>
+      <property name="yalign"
+                writable="1"
+                transfer-ownership="none"
+                setter="set_yalign"
+                getter="get_yalign">
+        <attribute name="org.gtk.Property.get" value="gtk_label_get_yalign"/>
+        <attribute name="org.gtk.Property.set" value="gtk_label_set_yalign"/>
+        <type name="gfloat" c:type="gfloat"/>
+      </property>
+      <glib:signal name="activate-current-link" when="last" action="1">
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+      </glib:signal>
+      <glib:signal name="activate-link" when="last">
+        <return-value transfer-ownership="none">
+          <type name="gboolean" c:type="gboolean"/>
+        </return-value>
+        <parameters>
+          <parameter name="uri" transfer-ownership="none">
+            <type name="utf8" c:type="gchar*"/>
+          </parameter>
+        </parameters>
+      </glib:signal>
+      <glib:signal name="copy-clipboard" when="last" action="1">
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+      </glib:signal>
+      <glib:signal name="move-cursor" when="last" action="1">
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <parameter name="step" transfer-ownership="none">
+            <type name="MovementStep"/>
+          </parameter>
+          <parameter name="count" transfer-ownership="none">
+            <type name="gint" c:type="gint"/>
+          </parameter>
+          <parameter name="extend_selection" transfer-ownership="none">
+            <type name="gboolean" c:type="gboolean"/>
+          </parameter>
+        </parameters>
+      </glib:signal>
+    </class>
+    <class name="ListBox"
+           c:symbol-prefix="list_box"
+           c:type="GtkListBox"
+           parent="Widget"
+           glib:type-name="GtkListBox"
+           glib:get-type="gtk_list_box_get_type">
+      <implements name="Accessible"/>
+      <implements name="Buildable"/>
+      <implements name="ConstraintTarget"/>
+      <constructor name="new" c:identifier="gtk_list_box_new">
+        <return-value transfer-ownership="none">
+          <type name="Widget" c:type="GtkWidget*"/>
+        </return-value>
+      </constructor>
+      <method name="set_activate_on_single_click"
+              c:identifier="gtk_list_box_set_activate_on_single_click"
+              glib:set-property="activate-on-single-click">
+        <attribute name="org.gtk.Method.set_property"
+                   value="activate-on-single-click"/>
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="box" transfer-ownership="none">
+            <type name="ListBox" c:type="GtkListBox*"/>
+          </instance-parameter>
+          <parameter name="single" transfer-ownership="none">
+            <type name="gboolean" c:type="gboolean"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="set_selection_mode"
+              c:identifier="gtk_list_box_set_selection_mode"
+              glib:set-property="selection-mode">
+        <attribute name="org.gtk.Method.set_property" value="selection-mode"/>
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="box" transfer-ownership="none">
+            <type name="ListBox" c:type="GtkListBox*"/>
+          </instance-parameter>
+          <parameter name="mode" transfer-ownership="none">
+            <type name="SelectionMode" c:type="GtkSelectionMode"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="set_show_separators"
+              c:identifier="gtk_list_box_set_show_separators"
+              glib:set-property="show-separators">
+        <attribute name="org.gtk.Method.set_property" value="show-separators"/>
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="box" transfer-ownership="none">
+            <type name="ListBox" c:type="GtkListBox*"/>
+          </instance-parameter>
+          <parameter name="show_separators" transfer-ownership="none">
+            <type name="gboolean" c:type="gboolean"/>
+          </parameter>
+        </parameters>
+      </method>
+      <property name="accept-unpaired-release"
+                writable="1"
+                transfer-ownership="none">
+        <type name="gboolean" c:type="gboolean"/>
+      </property>
+      <property name="activate-on-single-click"
+                writable="1"
+                transfer-ownership="none"
+                setter="set_activate_on_single_click"
+                getter="get_activate_on_single_click">
+        <attribute name="org.gtk.Property.get"
+                   value="gtk_list_box_get_activate_on_single_click"/>
+        <attribute name="org.gtk.Property.set"
+                   value="gtk_list_box_set_activate_on_single_click"/>
+        <type name="gboolean" c:type="gboolean"/>
+      </property>
+      <property name="selection-mode"
+                writable="1"
+                transfer-ownership="none"
+                setter="set_selection_mode"
+                getter="get_selection_mode">
+        <attribute name="org.gtk.Property.get"
+                   value="gtk_list_box_get_selection_mode"/>
+        <attribute name="org.gtk.Property.set"
+                   value="gtk_list_box_set_selection_mode"/>
+        <type name="SelectionMode"/>
+      </property>
+      <property name="show-separators"
+                writable="1"
+                transfer-ownership="none"
+                setter="set_show_separators"
+                getter="get_show_separators">
+        <attribute name="org.gtk.Property.get"
+                   value="gtk_list_box_get_show_separators"/>
+        <attribute name="org.gtk.Property.set"
+                   value="gtk_list_box_set_show_separators"/>
+        <type name="gboolean" c:type="gboolean"/>
+      </property>
+      <glib:signal name="activate-cursor-row" when="last" action="1">
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+      </glib:signal>
+      <glib:signal name="move-cursor" when="last" action="1">
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <parameter name="object" transfer-ownership="none">
+            <type name="MovementStep"/>
+          </parameter>
+          <parameter name="p0" transfer-ownership="none">
+            <type name="gint" c:type="gint"/>
+          </parameter>
+          <parameter name="p1" transfer-ownership="none">
+            <type name="gboolean" c:type="gboolean"/>
+          </parameter>
+          <parameter name="p2" transfer-ownership="none">
+            <type name="gboolean" c:type="gboolean"/>
+          </parameter>
+        </parameters>
+      </glib:signal>
+      <glib:signal name="row-activated" when="last">
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <parameter name="row" transfer-ownership="none">
+            <type name="ListBoxRow"/>
+          </parameter>
+        </parameters>
+      </glib:signal>
+      <glib:signal name="row-selected" when="last">
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <parameter name="row"
+                     transfer-ownership="none"
+                     nullable="1"
+                     allow-none="1">
+            <type name="ListBoxRow"/>
+          </parameter>
+        </parameters>
+      </glib:signal>
+      <glib:signal name="select-all" when="last" action="1">
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+      </glib:signal>
+      <glib:signal name="selected-rows-changed" when="first">
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+      </glib:signal>
+      <glib:signal name="toggle-cursor-row" when="last" action="1">
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+      </glib:signal>
+      <glib:signal name="unselect-all" when="last" action="1">
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+      </glib:signal>
+    </class>
+    <class name="ListStore"
+           c:symbol-prefix="list_store"
+           c:type="GtkListStore"
+           parent="GObject.Object"
+           glib:type-name="GtkListStore"
+           glib:get-type="gtk_list_store_get_type"
+           glib:type-struct="ListStoreClass">
+      <implements name="Buildable"/>
+      <implements name="TreeDragDest"/>
+      <implements name="TreeDragSource"/>
+      <implements name="TreeModel"/>
+      <implements name="TreeSortable"/>
+      <constructor name="new"
+                   c:identifier="gtk_list_store_new"
+                   shadowed-by="newv"
+                   introspectable="0">
+        <return-value transfer-ownership="full">
+          <type name="ListStore" c:type="GtkListStore*"/>
+        </return-value>
+        <parameters>
+          <parameter name="n_columns" transfer-ownership="none">
+            <type name="gint" c:type="int"/>
+          </parameter>
+          <parameter name="..." transfer-ownership="none">
+            <varargs/>
+          </parameter>
+        </parameters>
+      </constructor>
+      <constructor name="newv"
+                   c:identifier="gtk_list_store_newv"
+                   shadows="new">
+        <return-value transfer-ownership="full">
+          <type name="ListStore" c:type="GtkListStore*"/>
+        </return-value>
+        <parameters>
+          <parameter name="n_columns" transfer-ownership="none">
+            <type name="gint" c:type="int"/>
+          </parameter>
+          <parameter name="types" transfer-ownership="none">
+            <array length="0" zero-terminated="0" c:type="GType*">
+              <type name="GType" c:type="GType"/>
+            </array>
+          </parameter>
+        </parameters>
+      </constructor>
+    </class>
+    <class name="TextBuffer"
+           c:symbol-prefix="text_buffer"
+           c:type="GtkTextBuffer"
+           parent="GObject.Object"
+           glib:type-name="GtkTextBuffer"
+           glib:get-type="gtk_text_buffer_get_type"
+           glib:type-struct="TextBufferClass">
+      <constructor name="new" c:identifier="gtk_text_buffer_new">
+        <return-value transfer-ownership="full">
+          <type name="TextBuffer" c:type="GtkTextBuffer*"/>
+        </return-value>
+        <parameters>
+          <parameter name="table"
+                     transfer-ownership="none"
+                     nullable="1"
+                     allow-none="1">
+            <type name="TextTagTable" c:type="GtkTextTagTable*"/>
+          </parameter>
+        </parameters>
+      </constructor>
+      <method name="set_enable_undo"
+              c:identifier="gtk_text_buffer_set_enable_undo"
+              glib:set-property="enable-undo">
+        <attribute name="org.gtk.Method.set_property" value="enable-undo"/>
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="buffer" transfer-ownership="none">
+            <type name="TextBuffer" c:type="GtkTextBuffer*"/>
+          </instance-parameter>
+          <parameter name="enable_undo" transfer-ownership="none">
+            <type name="gboolean" c:type="gboolean"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="set_text"
+              c:identifier="gtk_text_buffer_set_text"
+              glib:set-property="text">
+        <attribute name="org.gtk.Method.set_property" value="text"/>
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="buffer" transfer-ownership="none">
+            <type name="TextBuffer" c:type="GtkTextBuffer*"/>
+          </instance-parameter>
+          <parameter name="text" transfer-ownership="none">
+            <type name="utf8" c:type="const char*"/>
+          </parameter>
+          <parameter name="len" transfer-ownership="none">
+            <type name="gint" c:type="int"/>
+          </parameter>
+        </parameters>
+      </method>
+      <property name="can-redo"
+                transfer-ownership="none"
+                getter="get_can_redo">
+        <attribute name="org.gtk.Property.get"
+                   value="gtk_text_buffer_get_can_redo"/>
+        <type name="gboolean" c:type="gboolean"/>
+      </property>
+      <property name="can-undo"
+                transfer-ownership="none"
+                getter="get_can_undo">
+        <attribute name="org.gtk.Property.get"
+                   value="gtk_text_buffer_get_can_undo"/>
+        <type name="gboolean" c:type="gboolean"/>
+      </property>
+      <property name="cursor-position" transfer-ownership="none">
+        <type name="gint" c:type="gint"/>
+      </property>
+      <property name="enable-undo"
+                writable="1"
+                transfer-ownership="none"
+                setter="set_enable_undo"
+                getter="get_enable_undo">
+        <attribute name="org.gtk.Property.get"
+                   value="gtk_text_buffer_get_enable_undo"/>
+        <attribute name="org.gtk.Property.set"
+                   value="gtk_text_buffer_set_enable_undo"/>
+        <type name="gboolean" c:type="gboolean"/>
+      </property>
+      <property name="has-selection"
+                transfer-ownership="none"
+                getter="get_has_selection">
+        <type name="gboolean" c:type="gboolean"/>
+      </property>
+      <property name="tag-table"
+                writable="1"
+                construct-only="1"
+                transfer-ownership="none"
+                getter="get_tag_table">
+        <attribute name="org.gtk.Property.get"
+                   value="gtk_text_buffer_get_tag_table"/>
+        <type name="TextTagTable"/>
+      </property>
+      <property name="text"
+                writable="1"
+                transfer-ownership="none"
+                setter="set_text"
+                getter="get_text">
+        <attribute name="org.gtk.Property.set"
+                   value="gtk_text_buffer_set_text"/>
+        <type name="utf8" c:type="gchar*"/>
+      </property>
+      <glib:signal name="apply-tag" when="last">
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <parameter name="tag" transfer-ownership="none">
+            <type name="TextTag"/>
+          </parameter>
+          <parameter name="start" transfer-ownership="none">
+            <type name="TextIter"/>
+          </parameter>
+          <parameter name="end" transfer-ownership="none">
+            <type name="TextIter"/>
+          </parameter>
+        </parameters>
+      </glib:signal>
+      <glib:signal name="begin-user-action" when="last">
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+      </glib:signal>
+      <glib:signal name="changed" when="last">
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+      </glib:signal>
+      <glib:signal name="delete-range" when="last">
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <parameter name="start" transfer-ownership="none">
+            <type name="TextIter"/>
+          </parameter>
+          <parameter name="end" transfer-ownership="none">
+            <type name="TextIter"/>
+          </parameter>
+        </parameters>
+      </glib:signal>
+      <glib:signal name="end-user-action" when="last">
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+      </glib:signal>
+      <glib:signal name="insert-child-anchor" when="last">
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <parameter name="location" transfer-ownership="none">
+            <type name="TextIter"/>
+          </parameter>
+          <parameter name="anchor" transfer-ownership="none">
+            <type name="TextChildAnchor"/>
+          </parameter>
+        </parameters>
+      </glib:signal>
+      <glib:signal name="insert-paintable" when="last">
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <parameter name="location" transfer-ownership="none">
+            <type name="TextIter"/>
+          </parameter>
+          <parameter name="paintable" transfer-ownership="none">
+            <type name="Gdk.Paintable"/>
+          </parameter>
+        </parameters>
+      </glib:signal>
+      <glib:signal name="insert-text" when="last">
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <parameter name="location" transfer-ownership="none">
+            <type name="TextIter"/>
+          </parameter>
+          <parameter name="text" transfer-ownership="none">
+            <type name="utf8" c:type="gchar*"/>
+          </parameter>
+          <parameter name="len" transfer-ownership="none">
+            <type name="gint" c:type="gint"/>
+          </parameter>
+        </parameters>
+      </glib:signal>
+      <glib:signal name="mark-deleted" when="last">
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <parameter name="mark" transfer-ownership="none">
+            <type name="TextMark"/>
+          </parameter>
+        </parameters>
+      </glib:signal>
+      <glib:signal name="mark-set" when="last">
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <parameter name="location" transfer-ownership="none">
+            <type name="TextIter"/>
+          </parameter>
+          <parameter name="mark" transfer-ownership="none">
+            <type name="TextMark"/>
+          </parameter>
+        </parameters>
+      </glib:signal>
+      <glib:signal name="modified-changed" when="last">
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+      </glib:signal>
+      <glib:signal name="paste-done" when="last">
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <parameter name="clipboard" transfer-ownership="none">
+            <type name="Gdk.Clipboard"/>
+          </parameter>
+        </parameters>
+      </glib:signal>
+      <glib:signal name="redo" when="last">
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+      </glib:signal>
+      <glib:signal name="remove-tag" when="last">
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <parameter name="tag" transfer-ownership="none">
+            <type name="TextTag"/>
+          </parameter>
+          <parameter name="start" transfer-ownership="none">
+            <type name="TextIter"/>
+          </parameter>
+          <parameter name="end" transfer-ownership="none">
+            <type name="TextIter"/>
+          </parameter>
+        </parameters>
+      </glib:signal>
+      <glib:signal name="undo" when="last">
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+      </glib:signal>
+    </class>
+    <class name="TextTag"
+           c:symbol-prefix="text_tag"
+           c:type="GtkTextTag"
+           parent="GObject.Object"
+           glib:type-name="GtkTextTag"
+           glib:get-type="gtk_text_tag_get_type"
+           glib:type-struct="TextTagClass">
+      <constructor name="new" c:identifier="gtk_text_tag_new">
+        <return-value transfer-ownership="full">
+          <type name="TextTag" c:type="GtkTextTag*"/>
+        </return-value>
+        <parameters>
+          <parameter name="name"
+                     transfer-ownership="none"
+                     nullable="1"
+                     allow-none="1">
+            <type name="utf8" c:type="const char*"/>
+          </parameter>
+        </parameters>
+      </constructor>
+      <property name="accumulative-margin"
+                writable="1"
+                transfer-ownership="none">
+        <type name="gboolean" c:type="gboolean"/>
+      </property>
+      <property name="allow-breaks" writable="1" transfer-ownership="none">
+        <type name="gboolean" c:type="gboolean"/>
+      </property>
+      <property name="allow-breaks-set" writable="1" transfer-ownership="none">
+        <type name="gboolean" c:type="gboolean"/>
+      </property>
+      <property name="background"
+                readable="0"
+                writable="1"
+                transfer-ownership="none">
+        <type name="utf8" c:type="gchar*"/>
+      </property>
+      <property name="background-full-height"
+                writable="1"
+                transfer-ownership="none">
+        <type name="gboolean" c:type="gboolean"/>
+      </property>
+      <property name="background-full-height-set"
+                writable="1"
+                transfer-ownership="none">
+        <type name="gboolean" c:type="gboolean"/>
+      </property>
+      <property name="background-rgba" writable="1" transfer-ownership="none">
+        <type name="Gdk.RGBA"/>
+      </property>
+      <property name="background-set" writable="1" transfer-ownership="none">
+        <type name="gboolean" c:type="gboolean"/>
+      </property>
+      <property name="direction" writable="1" transfer-ownership="none">
+        <type name="TextDirection"/>
+      </property>
+      <property name="editable" writable="1" transfer-ownership="none">
+        <type name="gboolean" c:type="gboolean"/>
+      </property>
+      <property name="editable-set" writable="1" transfer-ownership="none">
+        <type name="gboolean" c:type="gboolean"/>
+      </property>
+      <property name="fallback" writable="1" transfer-ownership="none">
+        <type name="gboolean" c:type="gboolean"/>
+      </property>
+      <property name="fallback-set" writable="1" transfer-ownership="none">
+        <type name="gboolean" c:type="gboolean"/>
+      </property>
+      <property name="family" writable="1" transfer-ownership="none">
+        <type name="utf8" c:type="gchar*"/>
+      </property>
+      <property name="family-set" writable="1" transfer-ownership="none">
+        <type name="gboolean" c:type="gboolean"/>
+      </property>
+      <property name="font" writable="1" transfer-ownership="none">
+        <type name="utf8" c:type="gchar*"/>
+      </property>
+      <property name="font-desc" writable="1" transfer-ownership="none">
+        <type name="Pango.FontDescription"/>
+      </property>
+      <property name="font-features" writable="1" transfer-ownership="none">
+        <type name="utf8" c:type="gchar*"/>
+      </property>
+      <property name="font-features-set"
+                writable="1"
+                transfer-ownership="none">
+        <type name="gboolean" c:type="gboolean"/>
+      </property>
+      <property name="foreground"
+                readable="0"
+                writable="1"
+                transfer-ownership="none">
+        <type name="utf8" c:type="gchar*"/>
+      </property>
+      <property name="foreground-rgba" writable="1" transfer-ownership="none">
+        <type name="Gdk.RGBA"/>
+      </property>
+      <property name="foreground-set" writable="1" transfer-ownership="none">
+        <type name="gboolean" c:type="gboolean"/>
+      </property>
+      <property name="indent" writable="1" transfer-ownership="none">
+        <type name="gint" c:type="gint"/>
+      </property>
+      <property name="indent-set" writable="1" transfer-ownership="none">
+        <type name="gboolean" c:type="gboolean"/>
+      </property>
+      <property name="insert-hyphens" writable="1" transfer-ownership="none">
+        <type name="gboolean" c:type="gboolean"/>
+      </property>
+      <property name="insert-hyphens-set"
+                writable="1"
+                transfer-ownership="none">
+        <type name="gboolean" c:type="gboolean"/>
+      </property>
+      <property name="invisible" writable="1" transfer-ownership="none">
+        <type name="gboolean" c:type="gboolean"/>
+      </property>
+      <property name="invisible-set" writable="1" transfer-ownership="none">
+        <type name="gboolean" c:type="gboolean"/>
+      </property>
+      <property name="justification" writable="1" transfer-ownership="none">
+        <type name="Justification"/>
+      </property>
+      <property name="justification-set"
+                writable="1"
+                transfer-ownership="none">
+        <type name="gboolean" c:type="gboolean"/>
+      </property>
+      <property name="language" writable="1" transfer-ownership="none">
+        <type name="utf8" c:type="gchar*"/>
+      </property>
+      <property name="language-set" writable="1" transfer-ownership="none">
+        <type name="gboolean" c:type="gboolean"/>
+      </property>
+      <property name="left-margin" writable="1" transfer-ownership="none">
+        <type name="gint" c:type="gint"/>
+      </property>
+      <property name="left-margin-set" writable="1" transfer-ownership="none">
+        <type name="gboolean" c:type="gboolean"/>
+      </property>
+      <property name="letter-spacing" writable="1" transfer-ownership="none">
+        <type name="gint" c:type="gint"/>
+      </property>
+      <property name="letter-spacing-set"
+                writable="1"
+                transfer-ownership="none">
+        <type name="gboolean" c:type="gboolean"/>
+      </property>
+      <property name="line-height"
+                version="4.6"
+                writable="1"
+                transfer-ownership="none">
+        <type name="gfloat" c:type="gfloat"/>
+      </property>
+      <property name="line-height-set" writable="1" transfer-ownership="none">
+        <type name="gboolean" c:type="gboolean"/>
+      </property>
+      <property name="name"
+                writable="1"
+                construct-only="1"
+                transfer-ownership="none">
+        <type name="utf8" c:type="gchar*"/>
+      </property>
+      <property name="overline" writable="1" transfer-ownership="none">
+        <type name="Pango.Overline"/>
+      </property>
+      <property name="overline-rgba" writable="1" transfer-ownership="none">
+        <type name="Gdk.RGBA"/>
+      </property>
+      <property name="overline-rgba-set"
+                writable="1"
+                transfer-ownership="none">
+        <type name="gboolean" c:type="gboolean"/>
+      </property>
+      <property name="overline-set" writable="1" transfer-ownership="none">
+        <type name="gboolean" c:type="gboolean"/>
+      </property>
+      <property name="paragraph-background"
+                readable="0"
+                writable="1"
+                transfer-ownership="none">
+        <type name="utf8" c:type="gchar*"/>
+      </property>
+      <property name="paragraph-background-rgba"
+                writable="1"
+                transfer-ownership="none">
+        <type name="Gdk.RGBA"/>
+      </property>
+      <property name="paragraph-background-set"
+                writable="1"
+                transfer-ownership="none">
+        <type name="gboolean" c:type="gboolean"/>
+      </property>
+      <property name="pixels-above-lines"
+                writable="1"
+                transfer-ownership="none">
+        <type name="gint" c:type="gint"/>
+      </property>
+      <property name="pixels-above-lines-set"
+                writable="1"
+                transfer-ownership="none">
+        <type name="gboolean" c:type="gboolean"/>
+      </property>
+      <property name="pixels-below-lines"
+                writable="1"
+                transfer-ownership="none">
+        <type name="gint" c:type="gint"/>
+      </property>
+      <property name="pixels-below-lines-set"
+                writable="1"
+                transfer-ownership="none">
+        <type name="gboolean" c:type="gboolean"/>
+      </property>
+      <property name="pixels-inside-wrap"
+                writable="1"
+                transfer-ownership="none">
+        <type name="gint" c:type="gint"/>
+      </property>
+      <property name="pixels-inside-wrap-set"
+                writable="1"
+                transfer-ownership="none">
+        <type name="gboolean" c:type="gboolean"/>
+      </property>
+      <property name="right-margin" writable="1" transfer-ownership="none">
+        <type name="gint" c:type="gint"/>
+      </property>
+      <property name="right-margin-set" writable="1" transfer-ownership="none">
+        <type name="gboolean" c:type="gboolean"/>
+      </property>
+      <property name="rise" writable="1" transfer-ownership="none">
+        <type name="gint" c:type="gint"/>
+      </property>
+      <property name="rise-set" writable="1" transfer-ownership="none">
+        <type name="gboolean" c:type="gboolean"/>
+      </property>
+      <property name="scale" writable="1" transfer-ownership="none">
+        <type name="gdouble" c:type="gdouble"/>
+      </property>
+      <property name="scale-set" writable="1" transfer-ownership="none">
+        <type name="gboolean" c:type="gboolean"/>
+      </property>
+      <property name="sentence"
+                version="4.6"
+                writable="1"
+                transfer-ownership="none">
+        <type name="gboolean" c:type="gboolean"/>
+      </property>
+      <property name="sentence-set" writable="1" transfer-ownership="none">
+        <type name="gboolean" c:type="gboolean"/>
+      </property>
+      <property name="show-spaces" writable="1" transfer-ownership="none">
+        <type name="Pango.ShowFlags"/>
+      </property>
+      <property name="show-spaces-set" writable="1" transfer-ownership="none">
+        <type name="gboolean" c:type="gboolean"/>
+      </property>
+      <property name="size" writable="1" transfer-ownership="none">
+        <type name="gint" c:type="gint"/>
+      </property>
+      <property name="size-points" writable="1" transfer-ownership="none">
+        <type name="gdouble" c:type="gdouble"/>
+      </property>
+      <property name="size-set" writable="1" transfer-ownership="none">
+        <type name="gboolean" c:type="gboolean"/>
+      </property>
+      <property name="stretch" writable="1" transfer-ownership="none">
+        <type name="Pango.Stretch"/>
+      </property>
+      <property name="stretch-set" writable="1" transfer-ownership="none">
+        <type name="gboolean" c:type="gboolean"/>
+      </property>
+      <property name="strikethrough" writable="1" transfer-ownership="none">
+        <type name="gboolean" c:type="gboolean"/>
+      </property>
+      <property name="strikethrough-rgba"
+                writable="1"
+                transfer-ownership="none">
+        <type name="Gdk.RGBA"/>
+      </property>
+      <property name="strikethrough-rgba-set"
+                writable="1"
+                transfer-ownership="none">
+        <type name="gboolean" c:type="gboolean"/>
+      </property>
+      <property name="strikethrough-set"
+                writable="1"
+                transfer-ownership="none">
+        <type name="gboolean" c:type="gboolean"/>
+      </property>
+      <property name="style" writable="1" transfer-ownership="none">
+        <type name="Pango.Style"/>
+      </property>
+      <property name="style-set" writable="1" transfer-ownership="none">
+        <type name="gboolean" c:type="gboolean"/>
+      </property>
+      <property name="tabs" writable="1" transfer-ownership="none">
+        <type name="Pango.TabArray"/>
+      </property>
+      <property name="tabs-set" writable="1" transfer-ownership="none">
+        <type name="gboolean" c:type="gboolean"/>
+      </property>
+      <property name="text-transform"
+                version="4.6"
+                writable="1"
+                transfer-ownership="none">
+        <type name="Pango.TextTransform"/>
+      </property>
+      <property name="text-transform-set"
+                writable="1"
+                transfer-ownership="none">
+        <type name="gboolean" c:type="gboolean"/>
+      </property>
+      <property name="underline" writable="1" transfer-ownership="none">
+        <type name="Pango.Underline"/>
+      </property>
+      <property name="underline-rgba" writable="1" transfer-ownership="none">
+        <type name="Gdk.RGBA"/>
+      </property>
+      <property name="underline-rgba-set"
+                writable="1"
+                transfer-ownership="none">
+        <type name="gboolean" c:type="gboolean"/>
+      </property>
+      <property name="underline-set" writable="1" transfer-ownership="none">
+        <type name="gboolean" c:type="gboolean"/>
+      </property>
+      <property name="variant" writable="1" transfer-ownership="none">
+        <type name="Pango.Variant"/>
+      </property>
+      <property name="variant-set" writable="1" transfer-ownership="none">
+        <type name="gboolean" c:type="gboolean"/>
+      </property>
+      <property name="weight" writable="1" transfer-ownership="none">
+        <type name="gint" c:type="gint"/>
+      </property>
+      <property name="weight-set" writable="1" transfer-ownership="none">
+        <type name="gboolean" c:type="gboolean"/>
+      </property>
+      <property name="word"
+                version="4.6"
+                writable="1"
+                transfer-ownership="none">
+        <type name="gboolean" c:type="gboolean"/>
+      </property>
+      <property name="word-set" writable="1" transfer-ownership="none">
+        <type name="gboolean" c:type="gboolean"/>
+      </property>
+      <property name="wrap-mode" writable="1" transfer-ownership="none">
+        <type name="WrapMode"/>
+      </property>
+      <property name="wrap-mode-set" writable="1" transfer-ownership="none">
+        <type name="gboolean" c:type="gboolean"/>
+      </property>
+    </class>
+    <class name="PrintOperation"
+           c:symbol-prefix="print_operation"
+           c:type="GtkPrintOperation"
+           parent="GObject.Object"
+           glib:type-name="GtkPrintOperation"
+           glib:get-type="gtk_print_operation_get_type"
+           glib:type-struct="PrintOperationClass">
+      <implements name="PrintOperationPreview"/>
+      <constructor name="new" c:identifier="gtk_print_operation_new">
+        <return-value transfer-ownership="full">
+          <type name="PrintOperation" c:type="GtkPrintOperation*"/>
+        </return-value>
+      </constructor>
+      <method name="set_unit"
+              c:identifier="gtk_print_operation_set_unit"
+              glib:set-property="unit">
+        <attribute name="org.gtk.Method.set_property" value="unit"/>
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="op" transfer-ownership="none">
+            <type name="PrintOperation" c:type="GtkPrintOperation*"/>
+          </instance-parameter>
+          <parameter name="unit" transfer-ownership="none">
+            <type name="Unit" c:type="GtkUnit"/>
+          </parameter>
+        </parameters>
+      </method>
+      <property name="unit"
+                writable="1"
+                transfer-ownership="none"
+                setter="set_unit">
+        <attribute name="org.gtk.Property.set"
+                   value="gtk_print_operation_set_unit"/>
+        <type name="Unit"/>
+      </property>
+    </class>
+  </namespace>
+</repository>

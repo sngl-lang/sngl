@@ -40,7 +40,6 @@ window {
 // runs-the-output half, over the same lowering (see
 // codegen/platform/fyne/instance_test.go).
 func TestInstanceRecordIsPerRow(t *testing.T) {
-	skipWithoutGIR(t)
 	model := generateGTK4Model(t, loopComponentSrc)
 
 	for _, want := range []string{
