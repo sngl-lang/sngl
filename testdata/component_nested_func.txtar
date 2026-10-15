@@ -779,7 +779,7 @@ window.__sngl_boot = () => {
     return outer__sum(a);
   }
   function testEachNestedFuncRunsUnderItsOwnBody(t, c) {
-    t.assert(c.total === 22);
+    t.assertTrue(c.total === 22, "(c.total === 22)");
   }
   function step__mark(k) {
     state.log = state.log + "!";
@@ -874,9 +874,9 @@ pass sha256:bd14a27ec9f6475fe665ba06bed44107
 -- run/kotlin/android --
 pass sha256:5dd1d9c1e179197ee72ad3a5a40ec53a
 -- run/none/html --
-pass sha256:1924fc4ec0235c3124c358502068c882
+pass sha256:b9482f85d1182c69ecc0dfe000a53e70
 -- testrun/html/none/component_nested_func.sngl/main/1 --
-sha256:4320f24dd7ea634b0f6dd0451f78d5ec
+sha256:8a2edabfd281edc95bf5af135c30b8ad
 {
   "results": [
     {

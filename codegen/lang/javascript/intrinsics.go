@@ -1,6 +1,7 @@
 package javascript
 
 import (
+	"strconv"
 	"strings"
 
 	"duckfam.us/sngl/codegen"
@@ -35,7 +36,12 @@ func init() {
 	// A test body is lowered by testlower.go, which answers these first. A
 	// test function emitted into a page as an ordinary function calls the
 	// method on the harness's t object instead.
-	for _, id := range []string{ir.TestAssertID, ir.TestMustID, ir.TestSetLocaleID, ir.TestSetContextID, ir.TestWaitID, ir.TestSnapshotID} {
+	// The agent's T fails a test through assertTrue, which a helper taking a
+	// `Test` reaches here.
+	for _, id := range []string{ir.TestAssertID, ir.TestMustID} {
+		reg(id, func(a []string) string { return a[0] + ".assertTrue(" + a[1] + ", " + strconv.Quote(a[1]) + ")" })
+	}
+	for _, id := range []string{ir.TestSetLocaleID, ir.TestSetContextID, ir.TestWaitID, ir.TestSnapshotID} {
 		method := strings.TrimPrefix(id, "test.")
 		reg(id, func(a []string) string { return a[0] + "." + method + "(" + strings.Join(a[1:], ", ") + ")" })
 	}

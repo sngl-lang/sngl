@@ -847,7 +847,7 @@ window.__sngl_boot = () => {
   function testDatepickerValueMutates(t, c) {
     let fresh = "0001-01-01";
     c.d = fresh;
-    t.assert(true);
+    t.assertTrue(true, "true");
   }
   if (typeof window !== "undefined") {
     Object.assign(window, { testDatepickerValueMutates });
@@ -878,9 +878,9 @@ pass sha256:e51d8b87b8ec51806497b14bacdc3719
 -- run/kotlin/android --
 pass sha256:065e25d98e6928fcae22e53208439053
 -- run/none/html --
-pass sha256:9011c410d64a96d08103442769a3c2d7
+pass sha256:83ec3484fd378572248e1b040e6018be
 -- testrun/html/none/component_datepicker.sngl/main/1 --
-sha256:17576fff8d7ea7c905154db5745bdf3f
+sha256:b7042049bbd3d05f106dc9a95ad3531a
 {
   "results": [
     {

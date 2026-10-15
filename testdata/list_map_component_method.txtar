@@ -442,7 +442,7 @@ window.__sngl_boot = () => {
     window.__sngl_state = state;
   }
   function testBuilds(t, c) {
-    t.assert(c.shown);
+    t.assertTrue(c.shown, "c.shown");
   }
   function panel_tag__inst0(state2, x) {
     return "<" + String(x) + ">";
@@ -475,4 +475,4 @@ pass sha256:c626544d0949868116ee1b956f1e1a7f
 -- run/kotlin/android --
 pass sha256:12c1e50661174edb383339badc838bc2
 -- run/none/html --
-pass sha256:2eceaa40c095a23c105a7ee022a6f55d
+pass sha256:38ee16f3f94e174fec8b839b8c3e9546

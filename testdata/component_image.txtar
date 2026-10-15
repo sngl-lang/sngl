@@ -468,9 +468,9 @@ window.__sngl_boot = () => {
     window.__sngl_state = state;
   }
   function testImageSrcMutates(t, c) {
-    t.assert(c.src === "https://example.com/a.png");
+    t.assertTrue(c.src === "https://example.com/a.png", '(c.src === "https://example.com/a.png")');
     c.src = "https://example.com/b.png";
-    t.assert(c.src === "https://example.com/b.png");
+    t.assertTrue(c.src === "https://example.com/b.png", '(c.src === "https://example.com/b.png")');
   }
   if (typeof window !== "undefined") {
     Object.assign(window, { testImageSrcMutates });
@@ -494,9 +494,9 @@ pass sha256:67ec3e91a8b60e6e941ccd16ee5be6b4
 -- run/kotlin/android --
 pass sha256:a5013d2f0dfbc6c0696e34396ea76c4b
 -- run/none/html --
-pass sha256:3d1751e770c365961c1e97389b140375
+pass sha256:1bcea114555921efe331f8c5cf016e60
 -- testrun/html/none/component_image.sngl/main/1 --
-sha256:d677624307881a46107ab7ac3d2acccd
+sha256:d079aa26a06dea6528fc93ef68ca5f1d
 {
   "results": [
     {

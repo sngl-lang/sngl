@@ -418,7 +418,7 @@ window.__sngl_boot = () => {
     return "d=" + String(d);
   }
   function testSiblingComputedCall(t, c) {
-    t.assert(c.summary === "d=6");
+    t.assertTrue(c.summary === "d=6", '(c.summary === "d=6")');
   }
   if (typeof window !== "undefined") {
     Object.assign(window, { main_double, main_summary, testSiblingComputedCall });
@@ -445,9 +445,9 @@ pass sha256:cb263fa7b19a21118ce632815adc3d4e
 -- run/kotlin/android --
 pass sha256:8a213560a0b3d68db3256b6364052562
 -- run/none/html --
-pass sha256:707e250846a7df27503877ac18014107
+pass sha256:19ac7f0bb1a8fed97cdb9e8b349fec3c
 -- testrun/html/none/component_sibling_computed_call.sngl/main/1 --
-sha256:9d6f346220ded1cd9b9f93d555740462
+sha256:4cb4a5c7283c4988d394cd47376f42b6
 {
   "results": [
     {

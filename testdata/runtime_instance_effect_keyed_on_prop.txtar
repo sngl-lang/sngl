@@ -1025,9 +1025,9 @@ window.__sngl_boot = () => {
     window.__sngl_state = state;
   }
   function testRemount(t, c) {
-    t.assert(c.log === "ax ");
+    t.assertTrue(c.log === "ax ", '(c.log === "ax ")');
     c.bump();
-    t.assert(c.log === "ax ay ");
+    t.assertTrue(c.log === "ax ay ", '(c.log === "ax ay ")');
   }
   if (typeof window !== "undefined") {
     Object.assign(window, { testRemount });
@@ -1188,4 +1188,4 @@ pass sha256:1ebfd59070656596e6250e4256983f3e
 -- run/kotlin/android --
 pass sha256:dd711902570959e8b3a99529556c5a24
 -- run/none/html --
-pass sha256:98e414d6bc916b1a705b350a616e18c2
+pass sha256:0cbffde746cf5f56fd8b6a136d939ff4

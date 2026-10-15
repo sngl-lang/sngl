@@ -1038,26 +1038,26 @@ window.__sngl_boot = () => {
     state2.copied[0] = 7;
   }
   function testListSpread(t, c) {
-    t.assert(c.aroundLen === 4);
-    t.assert(c.around[0] === 0);
-    t.assert(c.around[1] === 4);
-    t.assert(c.around[2] === 5);
-    t.assert(c.around[3] === 9);
+    t.assertTrue(c.aroundLen === 4, "(c.aroundLen === 4)");
+    t.assertTrue(c.around[0] === 0, "(c.around[0] === 0)");
+    t.assertTrue(c.around[1] === 4, "(c.around[1] === 4)");
+    t.assertTrue(c.around[2] === 5, "(c.around[2] === 5)");
+    t.assertTrue(c.around[3] === 9, "(c.around[3] === 9)");
     main_scribble(c);
-    t.assert(c.xs[0] === 4);
-    t.assert(c.copied[0] === 7);
-    t.assert(main_joinedLen(c, 9) === 7);
-    t.assert(main_joinedAt(c, 1) === 5);
-    t.assert(main_joinedAt(c, 2) === 0);
-    t.assert(main_joinedAt(c, 5) === 3);
-    t.assert(c.widened[0] === 4);
-    t.assert(c.widened[2] === 2.5);
-    t.assert(c.floats[1] === 5);
-    t.assert(main_fieldAt(c, 1) === 2);
-    t.assert(c.holes[0] !== null);
-    t.assert(c.holes[1] === null);
-    t.assert(c.leading[0] === null);
-    t.assert(c.leading[1] !== null);
+    t.assertTrue(c.xs[0] === 4, "(c.xs[0] === 4)");
+    t.assertTrue(c.copied[0] === 7, "(c.copied[0] === 7)");
+    t.assertTrue(main_joinedLen(c, 9) === 7, "(main_joinedLen(c, 9) === 7)");
+    t.assertTrue(main_joinedAt(c, 1) === 5, "(main_joinedAt(c, 1) === 5)");
+    t.assertTrue(main_joinedAt(c, 2) === 0, "(main_joinedAt(c, 2) === 0)");
+    t.assertTrue(main_joinedAt(c, 5) === 3, "(main_joinedAt(c, 5) === 3)");
+    t.assertTrue(c.widened[0] === 4, "(c.widened[0] === 4)");
+    t.assertTrue(c.widened[2] === 2.5, "(c.widened[2] === 2.5)");
+    t.assertTrue(c.floats[1] === 5, "(c.floats[1] === 5)");
+    t.assertTrue(main_fieldAt(c, 1) === 2, "(main_fieldAt(c, 1) === 2)");
+    t.assertTrue(c.holes[0] !== null, "(c.holes[0] !== null)");
+    t.assertTrue(c.holes[1] === null, "(c.holes[1] === null)");
+    t.assertTrue(c.leading[0] === null, "(c.leading[0] === null)");
+    t.assertTrue(c.leading[1] !== null, "(c.leading[1] !== null)");
   }
   if (typeof window !== "undefined") {
     Object.assign(window, { main_joinedLen, main_joinedAt, main_fieldAt, main_scribble, testListSpread });
@@ -1088,4 +1088,4 @@ pass sha256:aa6e874c0a4b8d7aa109c177d0fab18d
 -- run/kotlin/android --
 pass sha256:b6e7d2aaf61bf16463d6929cd426a3da
 -- run/none/html --
-pass sha256:435cd1970c8811c401855e62885891f4
+pass sha256:75ec69f926f1ee43e0ed5cc1acb3eee8

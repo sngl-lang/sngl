@@ -1104,7 +1104,7 @@ window.__sngl_boot = () => {
     return total;
   }
   function testCount(t, c) {
-    t.assert(main_count(c) === 3);
+    t.assertTrue(main_count(c) === 3, "(main_count(c) === 3)");
   }
   if (typeof window !== "undefined") {
     Object.assign(window, { main_count, testCount });
@@ -1451,4 +1451,4 @@ pass sha256:1124cb5330cf3ae5f9bd404d4117dd41
 -- run/kotlin/android --
 pass sha256:9b37b4735f154ab9747177872ca9ccb2
 -- run/none/html --
-pass sha256:80afed3d21033fcc4050383b6ded9eeb
+pass sha256:948ad927f4a89f4cdd5d1dd3c99a1205

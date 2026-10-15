@@ -710,13 +710,13 @@ window.__sngl_boot = () => {
   }
   function testOne(t, c) {
     c.b();
-    t.assert(state.a__inst0 === 1);
+    t.assertTrue(state.a__inst0 === 1, "(state.a__inst0 === 1)");
     reset__inst0();
-    t.assert(state.a__inst0 === 0);
+    t.assertTrue(state.a__inst0 === 0, "(state.a__inst0 === 0)");
   }
   function testTwo(t, c) {
     c.b__1();
-    t.assert(state.z__inst0 === 11);
+    t.assertTrue(state.z__inst0 === 11, "(state.z__inst0 === 11)");
   }
   function reset__inst0() {
     state.a__inst0 = 0;
@@ -746,4 +746,4 @@ pass sha256:e4f837802a546a3a1509288354320fe7
 -- run/kotlin/android --
 pass sha256:448825322f17d12c76824049ab72f06a
 -- run/none/html --
-pass sha256:08dbaf30031e7efb2393cd8df91ff439
+pass sha256:793107be3df981445c8fe222909a40db

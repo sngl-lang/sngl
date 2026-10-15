@@ -1537,9 +1537,9 @@ window.__sngl_boot = () => {
   }
   function testOneThenOther(t, c) {
     c.add();
-    t.assert(c.label === "You have 1 item");
+    t.assertTrue(c.label === "You have 1 item", '(c.label === "You have 1 item")');
     c.add();
-    t.assert(c.label === "You have 2 items");
+    t.assertTrue(c.label === "You have 2 items", '(c.label === "You have 2 items")');
   }
   if (typeof window !== "undefined") {
     Object.assign(window, { testOneThenOther });
@@ -1569,9 +1569,9 @@ pass sha256:ac4f1f2e69efe6b96163c2f50b961f60
 -- run/kotlin/android --
 pass sha256:0c53242ed68a0d15a60f70598b5a592e
 -- run/none/html --
-pass sha256:cbb154fbf143311e6881788426389115
+pass sha256:603f26ee258d7a920d3eba689c356b04
 -- testrun/html/none/component_i18n_plural.sngl/main/1 --
-sha256:16bdf7581170f065ea5d6e9481679bd7
+sha256:7b4e05f40b63faca9f4095e647502bcf
 {
   "results": [
     {

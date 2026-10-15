@@ -1108,11 +1108,11 @@ window.__sngl_boot = () => {
   }
   function testShadow(t, c) {
     c.box(true);
-    t.assert(c.on === true);
+    t.assertTrue(c.on === true, "(c.on === true)");
     c.field("q");
-    t.assert(c.v === "x!");
+    t.assertTrue(c.v === "x!", '(c.v === "x!")');
     c.sw(true);
-    t.assert(c.seen === "true true");
+    t.assertTrue(c.seen === "true true", '(c.seen === "true true")');
   }
   if (typeof window !== "undefined") {
     Object.assign(window, { testShadow });
@@ -1164,4 +1164,4 @@ pass sha256:22a6a121c8ae903629f6cafe1e7842b3
 -- run/kotlin/android --
 pass sha256:ce95896a41a42e8c98b55432e175bedf
 -- run/none/html --
-pass sha256:6c7e05a22e51c652b47ca8dd19814f6b
+pass sha256:3bd17450ca81032bf6ffc5c83e22eca0

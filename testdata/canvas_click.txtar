@@ -884,9 +884,9 @@ window.__sngl_boot = () => {
   }
   function testClickCounts(t, c) {
     c.board();
-    t.assert(c.hits === 1);
+    t.assertTrue(c.hits === 1, "(c.hits === 1)");
     c.board();
-    t.assert(c.hits === 2);
+    t.assertTrue(c.hits === 2, "(c.hits === 2)");
   }
   function paintStyle(ctx, style) {
     ctx.fillStyle = "rgba(" + String(style.fill.r) + "," + String(style.fill.g) + "," + String(style.fill.b) + "," + String(parseFloat(style.fill.a) / 255) + ")";
@@ -1064,4 +1064,4 @@ pass sha256:d666bb620b486efbe35275a183be268a
 -- run/go/gtk4 --
 pass sha256:2a7ecc42bab445931f8a39be1950759e
 -- run/none/html --
-pass sha256:830fa08e8d11293d2338d0c54e6f543e
+pass sha256:1b62c2ecc0636a25eaf41d7be01b9d8f

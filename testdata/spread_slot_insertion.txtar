@@ -587,7 +587,7 @@ window.__sngl_boot = () => {
   function testSpreadIntoSlot(t, c) {
     c.a();
     c.b();
-    t.assert(c.seen === "row3;part7;");
+    t.assertTrue(c.seen === "row3;part7;", '(c.seen === "row3;part7;")');
   }
   if (typeof window !== "undefined") {
     Object.assign(window, { testSpreadIntoSlot });
@@ -614,4 +614,4 @@ pass sha256:951f40700fa3657a9a550efbd1bdaa81
 -- run/kotlin/android --
 pass sha256:6bb056e04ea7a71f58d3f9cb790647c5
 -- run/none/html --
-pass sha256:dd45f25b0f901b2d65d673ad8f9cb595
+pass sha256:3249a875ad60ecb0f052dda318bb9979

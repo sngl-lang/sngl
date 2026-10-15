@@ -3197,41 +3197,41 @@ window.__sngl_boot = () => {
     window.__sngl_state = state;
   }
   function testBranchIsTheLifetime(t, c) {
-    t.assert(state.log__inst0.join(",") === "in");
+    t.assertTrue(state.log__inst0.join(",") === "in", '(state.log__inst0.join(",") === "in")');
     c.toggle();
-    t.assert(state.log__inst0.join(",") === "in,out");
+    t.assertTrue(state.log__inst0.join(",") === "in,out", '(state.log__inst0.join(",") === "in,out")');
     c.toggle();
-    t.assert(state.log__inst0.join(",") === "in,out,in");
+    t.assertTrue(state.log__inst0.join(",") === "in,out,in", '(state.log__inst0.join(",") === "in,out,in")');
     c.toggle();
-    t.assert(state.log__inst0.join(",") === "in,out,in,out");
+    t.assertTrue(state.log__inst0.join(",") === "in,out,in,out", '(state.log__inst0.join(",") === "in,out,in,out")');
   }
   function testEndingsRunNewestFirst(t, c) {
-    t.assert(state.log__inst1.join(",") === "+a,+b,+c");
+    t.assertTrue(state.log__inst1.join(",") === "+a,+b,+c", '(state.log__inst1.join(",") === "+a,+b,+c")');
     c.drop();
-    t.assert(state.log__inst1.join(",") === "+a,+b,+c,-c,-b");
+    t.assertTrue(state.log__inst1.join(",") === "+a,+b,+c,-c,-b", '(state.log__inst1.join(",") === "+a,+b,+c,-c,-b")');
   }
   function testPushMountsTheNewBracket(t, c) {
     c.add();
-    t.assert(state.log__inst1.join(",") === "+a,+b,+c,+d");
+    t.assertTrue(state.log__inst1.join(",") === "+a,+b,+c,+d", '(state.log__inst1.join(",") === "+a,+b,+c,+d")');
   }
   function testBothEndBeforeEitherBegins(t, c) {
-    t.assert(state.log__inst2.join(",") === "+A,+B");
+    t.assertTrue(state.log__inst2.join(",") === "+A,+B", '(state.log__inst2.join(",") === "+A,+B")');
     c.rekey();
-    t.assert(state.log__inst2.join(",") === "+A,+B,-B,-A,+A,+B");
+    t.assertTrue(state.log__inst2.join(",") === "+A,+B,-B,-A,+A,+B", '(state.log__inst2.join(",") === "+A,+B,-B,-A,+A,+B")');
   }
   function testAFieldWriteRekeys(t, c) {
     c.field();
-    t.assert(state.log__inst3.join(",") === "f+,c+,f-,f+");
+    t.assertTrue(state.log__inst3.join(",") === "f+,c+,f-,f+", '(state.log__inst3.join(",") === "f+,c+,f-,f+")');
   }
   function testACalledKeyRekeys(t, c) {
     c.called();
-    t.assert(state.log__inst3.join(",") === "f+,c+,c-,c+");
+    t.assertTrue(state.log__inst3.join(",") === "f+,c+,c-,c+", '(state.log__inst3.join(",") === "f+,c+,c-,c+")');
   }
   function testAStructKeyComparesFieldByField(t, c) {
     c.same();
-    t.assert(state.log__inst4.join(",") === "m");
+    t.assertTrue(state.log__inst4.join(",") === "m", '(state.log__inst4.join(",") === "m")');
     c.bump();
-    t.assert(state.log__inst4.join(",") === "m,u,m");
+    t.assertTrue(state.log__inst4.join(",") === "m,u,m", '(state.log__inst4.join(",") === "m,u,m")');
   }
   function scaled__inst0(m) {
     return m * state.n__inst0;
@@ -3685,9 +3685,9 @@ pass sha256:581656d2de782296f9691e90b0ae7edb
 -- run/kotlin/android --
 pass sha256:dfc7f3a50fdf70556fdca4f8ed32d16d
 -- run/none/html --
-pass sha256:38400f7add3bff635b52155e036db464
+pass sha256:4b140b663d45909ea1d98f488b99453f
 -- testrun/html/none/component_effect_lifetimes.sngl/branch/1 --
-sha256:7a571a1abc94f6720aaaac5b1b5f213d
+sha256:44dbde28dae684ef40b2f0d1a187229f
 {
   "results": [
     {
@@ -3697,7 +3697,7 @@ sha256:7a571a1abc94f6720aaaac5b1b5f213d
   ]
 }
 -- testrun/html/none/component_effect_lifetimes.sngl/keys/1 --
-sha256:d806f4ce0e02c601d6f55f67239a2b07
+sha256:2ec60c42ec7e3d5dac5c86c776c9f7d7
 {
   "results": [
     {
@@ -3711,7 +3711,7 @@ sha256:d806f4ce0e02c601d6f55f67239a2b07
   ]
 }
 -- testrun/html/none/component_effect_lifetimes.sngl/perElement/1 --
-sha256:6c2cc09126f057f47129457ed94ba87b
+sha256:060ae18736cd6d4821963247d5a89a26
 {
   "results": [
     {
@@ -3725,7 +3725,7 @@ sha256:6c2cc09126f057f47129457ed94ba87b
   ]
 }
 -- testrun/html/none/component_effect_lifetimes.sngl/structKey/1 --
-sha256:627ca2b635419afbf2d2b17f1dece75e
+sha256:b59d328b7b8ba39bceab28d333aa5a5b
 {
   "results": [
     {
@@ -3735,7 +3735,7 @@ sha256:627ca2b635419afbf2d2b17f1dece75e
   ]
 }
 -- testrun/html/none/component_effect_lifetimes.sngl/twoPositions/1 --
-sha256:97c8556b51fb53bb9ce0a8150867d87b
+sha256:99a4541dfcfdfadac92097b20c02f023
 {
   "results": [
     {

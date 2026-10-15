@@ -407,7 +407,7 @@ window.__sngl_boot = () => {
   }
   function testFuncValueReadsProvider(t, c) {
     c.run();
-    t.assert(c.got === "5:2");
+    t.assertTrue(c.got === "5:2", '(c.got === "5:2")');
   }
   if (typeof window !== "undefined") {
     Object.assign(window, { testFuncValueReadsProvider });
@@ -434,4 +434,4 @@ pass sha256:2044f3aac50b00cba81ecc6270c8d745
 -- run/kotlin/android --
 pass sha256:e5cd54306bec1bebff12b670860cc6e3
 -- run/none/html --
-pass sha256:aaae43cde1f12b050f3aef283f9ea48d
+pass sha256:ecbe2eaf8b7687c8b071e9c639f0c8cb

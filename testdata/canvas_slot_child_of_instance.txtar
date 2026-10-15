@@ -820,7 +820,7 @@ window.__sngl_boot = () => {
   }
   function testAdds(t, c) {
     c.add();
-    t.assert(c.rs.length === 3);
+    t.assertTrue(c.rs.length === 3, "(c.rs.length === 3)");
   }
   function paintStyle(ctx, style) {
     ctx.fillStyle = "rgba(" + String(style.fill.r) + "," + String(style.fill.g) + "," + String(style.fill.b) + "," + String(parseFloat(style.fill.a) / 255) + ")";
@@ -980,4 +980,4 @@ pass sha256:8ed37467494ad7b0dbd337e9e5873bf0
 -- run/go/gtk4 --
 pass sha256:77620ff558589187a74f92601bc6bae2
 -- run/none/html --
-pass sha256:78bf1562e50e172ccfe42064f16c3d42
+pass sha256:c8fbfb7c8617bb36c4125484d0da2581

@@ -1080,7 +1080,7 @@ window.__sngl_boot = () => {
     window.__sngl_state = state;
   }
   function testMounts(t, c) {
-    t.assert(c.foots === "1/2:0 2/4:0 ");
+    t.assertTrue(c.foots === "1/2:0 2/4:0 ", '(c.foots === "1/2:0 2/4:0 ")');
   }
   if (typeof window !== "undefined") {
     Object.assign(window, { testMounts });
@@ -1279,4 +1279,4 @@ pass sha256:ae0bd8bae4c0f55627cda221cacbdae2
 -- run/kotlin/android --
 pass sha256:c3e1a47c5ed99910236c364747976bec
 -- run/none/html --
-pass sha256:3dc524d3c2d379ea5ee7acbb2aa447fc
+pass sha256:c248b2c83474de89e94e6ec45469c6d1

@@ -904,9 +904,9 @@ window.__sngl_boot = () => {
     window.__sngl_state = state;
   }
   function testWhatARowHoldsIsDestroyedFirst(t, c) {
-    t.assert(c.log === "");
+    t.assertTrue(c.log === "", '(c.log === "")');
     c.drop();
-    t.assert(c.log === "b-;b;");
+    t.assertTrue(c.log === "b-;b;", '(c.log === "b-;b;")');
   }
   if (typeof window !== "undefined") {
     Object.assign(window, { testWhatARowHoldsIsDestroyedFirst });
@@ -1163,9 +1163,9 @@ pass sha256:069320d79065d7d667531e5f97f5466c
 -- run/kotlin/android --
 pass sha256:235e902935c0f5af4382f3579b59ba1b
 -- run/none/html --
-pass sha256:ebfbe877dd39971e2ea4c820742a8201
+pass sha256:88a323c559da08f5c034a7b5228fdfa5
 -- testrun/html/none/component_instance_teardown_nested.sngl/main/1 --
-sha256:12a223393275ce337c2d9d1da2e43861
+sha256:001e414bbe8ac474739b44858a9a5b14
 {
   "results": [
     {

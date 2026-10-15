@@ -350,7 +350,7 @@ window.__sngl_boot = () => {
   }
   function testFlip(t, c) {
     c.flip();
-    t.assert(!c.loud);
+    t.assertTrue(!c.loud, "!c.loud");
   }
   if (typeof window !== "undefined") {
     Object.assign(window, { testFlip });
@@ -414,4 +414,4 @@ pass sha256:c8b70784c7b976fcb994df92ca2ee6fc
 -- run/go/gtk4 --
 pass sha256:869db807bb02e2ef31c289fa3ca81e4b
 -- run/none/html --
-pass sha256:e08d8a04e3457409497c3de9e9b0e86a
+pass sha256:8a2cb625f972e4f33b746317198eee40

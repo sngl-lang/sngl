@@ -437,11 +437,11 @@ window.__sngl_boot = () => {
     window.__sngl_state = state;
   }
   function testCheckboxToggles(t, c) {
-    t.assert(c.on === false);
+    t.assertTrue(c.on === false, "(c.on === false)");
     c.on = true;
-    t.assert(c.on === true);
+    t.assertTrue(c.on === true, "(c.on === true)");
     c.on = false;
-    t.assert(c.on === false);
+    t.assertTrue(c.on === false, "(c.on === false)");
   }
   if (typeof window !== "undefined") {
     Object.assign(window, { testCheckboxToggles });
@@ -469,9 +469,9 @@ pass sha256:9e1d7983270278c73310422f51a036d5
 -- run/kotlin/android --
 pass sha256:bf380c48a11746ee4e1db5977e51f3de
 -- run/none/html --
-pass sha256:25ba3fc632ebe53dda2ff525260453ec
+pass sha256:676037953ee1934f6f84baf40261407e
 -- testrun/html/none/component_checkbox.sngl/main/1 --
-sha256:bf7839dc83ffbcc9c3f8b87f8c05728a
+sha256:d398762e700b82ea62313d655a557417
 {
   "results": [
     {

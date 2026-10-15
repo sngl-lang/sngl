@@ -92,7 +92,7 @@ sha256:fc352614dd3b1bcc64ee13c745451359
   ]
 }
 -- testrun/html/none/app.sngl/picker/1 --
-sha256:7722e4bf880ea414593d1cb68fffa7b8
+sha256:099b500b2d4056f1188fd223b1948f7e
 {
   "results": [
     {

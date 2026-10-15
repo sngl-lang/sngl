@@ -353,11 +353,11 @@ window.__sngl_boot = () => {
     window.__sngl_state = state;
   }
   function testDrawerOpenToggles(t, c) {
-    t.assert(c.open === false);
+    t.assertTrue(c.open === false, "(c.open === false)");
     c.open = true;
-    t.assert(c.open === true);
+    t.assertTrue(c.open === true, "(c.open === true)");
     c.open = false;
-    t.assert(c.open === false);
+    t.assertTrue(c.open === false, "(c.open === false)");
   }
   if (typeof window !== "undefined") {
     Object.assign(window, { testDrawerOpenToggles });
@@ -380,9 +380,9 @@ pass sha256:89810bf54a0d7197804a92b1c8885fed
 -- run/kotlin/android --
 pass sha256:d4d82ef97adf6753b81c8f114c749a59
 -- run/none/html --
-pass sha256:4e85908c058ea898f35aecfc88203449
+pass sha256:d782cf14491ef67e33ba2d406452b078
 -- testrun/html/none/component_drawer.sngl/main/1 --
-sha256:2fe87911bd63d45383c95516a0dda03d
+sha256:60c73b2a239471ac5d8b3c537950387a
 {
   "results": [
     {

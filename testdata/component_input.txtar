@@ -509,11 +509,11 @@ window.__sngl_boot = () => {
     window.__sngl_state = state;
   }
   function testInputValueMutates(t, c) {
-    t.assert(c.name === "World");
+    t.assertTrue(c.name === "World", '(c.name === "World")');
     c.name = "SNGL";
-    t.assert(c.name === "SNGL");
+    t.assertTrue(c.name === "SNGL", '(c.name === "SNGL")');
     c.name = c.name + "!";
-    t.assert(c.name === "SNGL!");
+    t.assertTrue(c.name === "SNGL!", '(c.name === "SNGL!")');
   }
   if (typeof window !== "undefined") {
     Object.assign(window, { testInputValueMutates });
@@ -549,9 +549,9 @@ pass sha256:4d512fb2c1d669d4724aa8f30879e2c7
 -- run/kotlin/android --
 pass sha256:4262f40f0fbcb35b9448d273572e9bee
 -- run/none/html --
-pass sha256:d9d5a84581eafd44de963bfc77151703
+pass sha256:2a6b5025f1e0943a6db441f37773a1cd
 -- testrun/html/none/component_input.sngl/main/1 --
-sha256:d471ce475907425b10f9c050f05094fc
+sha256:badb233adb43393564679854a95181d1
 {
   "results": [
     {

@@ -463,11 +463,11 @@ window.__sngl_boot = () => {
     window.__sngl_state = state;
   }
   function testTextareaValueMutates(t, c) {
-    t.assert(c.text === "");
+    t.assertTrue(c.text === "", '(c.text === "")');
     c.text = "hello";
-    t.assert(c.text === "hello");
+    t.assertTrue(c.text === "hello", '(c.text === "hello")');
     c.text = c.text + " world";
-    t.assert(c.text === "hello world");
+    t.assertTrue(c.text === "hello world", '(c.text === "hello world")');
   }
   if (typeof window !== "undefined") {
     Object.assign(window, { testTextareaValueMutates });
@@ -493,9 +493,9 @@ pass sha256:f11328d7ca282f8825664d4f7c2af8dd
 -- run/kotlin/android --
 pass sha256:59f0c531a4025cbe5b306ec5cb37d34f
 -- run/none/html --
-pass sha256:a003db8795923f922e6817eae91c7382
+pass sha256:87dc921fb3ae702deb50df80430b3c95
 -- testrun/html/none/component_textarea.sngl/main/1 --
-sha256:a01b3192e454f8b9fe8c341d937a04c3
+sha256:80ef617a05ce5d610374297a8167bccd
 {
   "results": [
     {

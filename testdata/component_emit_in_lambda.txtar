@@ -518,7 +518,7 @@ window.__sngl_boot = () => {
   }
   function testTheEmitReachesTheHandler(t, c) {
     c.ch();
-    t.assert(c.picks === 1);
+    t.assertTrue(c.picks === 1, "(c.picks === 1)");
   }
   if (typeof window !== "undefined") {
     Object.assign(window, { run, testTheEmitReachesTheHandler });
@@ -556,9 +556,9 @@ pass sha256:d576fabf0a6675719c79c795aeea7003
 -- run/kotlin/android --
 pass sha256:401c731053d8ea877e0f18ad73c4d499
 -- run/none/html --
-pass sha256:ccc880e9a9aec90e9e192c802dbb0ced
+pass sha256:f60e1394c279048c68ffb8bcd832848a
 -- testrun/html/none/component_emit_in_lambda.sngl/main/1 --
-sha256:363d998a8605044408e3ece9ff73b349
+sha256:56c84cabead80228b04947942144d6a0
 {
   "results": [
     {

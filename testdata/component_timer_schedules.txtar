@@ -137,24 +137,24 @@ window.__sngl_boot = () => {
   }
   function testBothTimersFire(t, c) {
     t.wait(() => state.seconds__inst0 > 0 && state.beats__inst0 > 0, 5e3);
-    t.assert(state.seconds__inst0 > 0);
-    t.assert(state.beats__inst0 > 0);
+    t.assertTrue(state.seconds__inst0 > 0, "(state.seconds__inst0 > 0)");
+    t.assertTrue(state.beats__inst0 > 0, "(state.beats__inst0 > 0)");
   }
   function testABranchIsTheGate(t, c) {
     t.wait(() => false, 200);
-    t.assert(state.n__inst0 === 0);
+    t.assertTrue(state.n__inst0 === 0, "(state.n__inst0 === 0)");
     c.toggle();
     t.wait(() => state.n__inst0 > 0, 5e3);
-    t.assert(state.n__inst0 > 0);
+    t.assertTrue(state.n__inst0 > 0, "(state.n__inst0 > 0)");
     c.toggle();
     let stopped = state.n__inst0;
     t.wait(() => false, 200);
-    t.assert(state.n__inst0 === stopped);
+    t.assertTrue(state.n__inst0 === stopped, "(state.n__inst0 === stopped)");
   }
   function testARowKeepsOneScheduleEach(t, c) {
     t.wait(() => state.slow__inst0 >= 2 && state.fast__inst0 > state.slow__inst0 * 5, 5e3);
-    t.assert(state.slow__inst0 >= 2);
-    t.assert(state.fast__inst0 > state.slow__inst0 * 5);
+    t.assertTrue(state.slow__inst0 >= 2, "(state.slow__inst0 >= 2)");
+    t.assertTrue(state.fast__inst0 > state.slow__inst0 * 5, "(state.fast__inst0 > (state.slow__inst0 * 5))");
   }
   function __effect0_mount() {
     state.handle__inst1__inst0 = setInterval(() => {
@@ -541,9 +541,9 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:7d9b4196cfbec39649623f07df18a146
+pass sha256:f91cb44aecffdd21f81f900a90c8a5ed
 -- testrun/html/none/component_timer_schedules.sngl/gated/1 --
-sha256:7dbd1af67261d7494c031662c9517a94
+sha256:6859fbc0b14aab144d14b9dcb4f405d2
 {
   "results": [
     {
@@ -553,7 +553,7 @@ sha256:7dbd1af67261d7494c031662c9517a94
   ]
 }
 -- testrun/html/none/component_timer_schedules.sngl/nested/1 --
-sha256:af4aefa76d1591c84fc7c4b6f482497d
+sha256:90710a4a9dd1f9a5787008148cce567d
 {
   "results": [
     {
@@ -563,7 +563,7 @@ sha256:af4aefa76d1591c84fc7c4b6f482497d
   ]
 }
 -- testrun/html/none/component_timer_schedules.sngl/row/1 --
-sha256:4a54fc22ac0563e4b41c104e5f9aad39
+sha256:7f33ce80b9fc393e4bee351ceea4f4e8
 {
   "results": [
     {

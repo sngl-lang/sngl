@@ -595,11 +595,11 @@ window.__sngl_boot = () => {
     window.__sngl_state = state;
   }
   function testPopoverOpenToggles(t, c) {
-    t.assert(c.visible === false);
+    t.assertTrue(c.visible === false, "(c.visible === false)");
     c.visible = true;
-    t.assert(c.visible === true);
+    t.assertTrue(c.visible === true, "(c.visible === true)");
     c.visible = false;
-    t.assert(c.visible === false);
+    t.assertTrue(c.visible === false, "(c.visible === false)");
   }
   if (typeof window !== "undefined") {
     Object.assign(window, { testPopoverOpenToggles });
@@ -618,9 +618,9 @@ pass sha256:bb69cd2301b6335989b1739861c1ab5d
 -- run/kotlin/android --
 pass sha256:d141a1982d7b4f387294ee8a86921bc0
 -- run/none/html --
-pass sha256:0173e2f497cadd6ac4c3ec9d64af2f6f
+pass sha256:efecf24d87aff957a2c09fad24b4b170
 -- testrun/html/none/component_popover.sngl/main/1 --
-sha256:412b487c9287d0dd44b501eaa7ae5287
+sha256:a3a3cf937fd85622bee4cf641163ba94
 {
   "results": [
     {

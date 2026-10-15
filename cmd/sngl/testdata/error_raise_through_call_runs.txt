@@ -202,7 +202,7 @@ sha256:c63c22b8b5b0a9d92154cfbc3d0073b4
   ]
 }
 -- testrun/html/none/app.sngl/argument/1 --
-sha256:c0b793b232d60e06a5e9582dd6fda6e5
+sha256:4e17735f5becf200ec6ef8c58c7308fb
 {
   "results": [
     {
@@ -212,7 +212,7 @@ sha256:c0b793b232d60e06a5e9582dd6fda6e5
   ]
 }
 -- testrun/html/none/app.sngl/direct/1 --
-sha256:c3251e2b33ef72b2861f7c25b370aa5d
+sha256:9130935ae88db9a1b2b05e98ebe6019a
 {
   "results": [
     {
@@ -222,7 +222,7 @@ sha256:c3251e2b33ef72b2861f7c25b370aa5d
   ]
 }
 -- testrun/html/none/app.sngl/noRaise/1 --
-sha256:070d48ca81f8d2d2087f3e1a821b33d7
+sha256:5b6f7b15542f6c96e94726fb0f08e178
 {
   "results": [
     {
@@ -232,7 +232,7 @@ sha256:070d48ca81f8d2d2087f3e1a821b33d7
   ]
 }
 -- testrun/html/none/app.sngl/perCall/1 --
-sha256:05950b36ec214ae3227a7c8a3ac7d8c1
+sha256:717a873bebaa205e76c9c0635c24100a
 {
   "results": [
     {
@@ -242,7 +242,7 @@ sha256:05950b36ec214ae3227a7c8a3ac7d8c1
   ]
 }
 -- testrun/html/none/app.sngl/throughCalls/1 --
-sha256:843f521fb6087696b3b489a7f586401e
+sha256:54fabf4ff3156d20d5397b0b51ff0398
 {
   "results": [
     {

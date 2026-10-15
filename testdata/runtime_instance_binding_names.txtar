@@ -2381,7 +2381,7 @@ window.__sngl_boot = () => {
     window.__sngl_state = state;
   }
   function testLevels(t, c) {
-    t.assert(c.depth === 2);
+    t.assertTrue(c.depth === 2, "(c.depth === 2)");
   }
   if (typeof window !== "undefined") {
     Object.assign(window, { testLevels });
@@ -3162,4 +3162,4 @@ pass sha256:34e4971051a81206c3140b1e0316de52
 -- run/kotlin/android --
 pass sha256:c005defb7c3e2207e03b76a638955650
 -- run/none/html --
-pass sha256:844255c13e647d755a6eafa162c5315a
+pass sha256:d8aa0794b6c83bde7c4aa40da7ada823

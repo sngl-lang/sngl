@@ -350,11 +350,11 @@ window.__sngl_boot = () => {
     window.__sngl_state = state;
   }
   function testRadioValueMutates(t, c) {
-    t.assert(c.sel === "medium");
+    t.assertTrue(c.sel === "medium", '(c.sel === "medium")');
     c.sel = "large";
-    t.assert(c.sel === "large");
+    t.assertTrue(c.sel === "large", '(c.sel === "large")');
     c.sel = "small";
-    t.assert(c.sel === "small");
+    t.assertTrue(c.sel === "small", '(c.sel === "small")');
   }
   if (typeof window !== "undefined") {
     Object.assign(window, { testRadioValueMutates });
@@ -495,9 +495,9 @@ pass sha256:be140ef1caa7387aa9b64424900ce3b0
 -- run/kotlin/android --
 pass sha256:35bd17229b7ac76768b744948ef54c50
 -- run/none/html --
-pass sha256:50d3f11dc8175802113720d62603011b
+pass sha256:d85ecbf513f9c844742b0bb6f1b8fdf0
 -- testrun/html/none/component_radio.sngl/main/1 --
-sha256:ae5de9a1f590fa79eb4d2f6a09a897d3
+sha256:498a2d71aacfde8036705dbaf967acd1
 {
   "results": [
     {

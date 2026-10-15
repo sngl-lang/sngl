@@ -1735,35 +1735,35 @@ window.__sngl_boot = () => {
   }
   function testCheckbox(t, c) {
     c.box(true);
-    t.assert(c.seen === "box true true");
-    t.assert(c.on === true);
+    t.assertTrue(c.seen === "box true true", '(c.seen === "box true true")');
+    t.assertTrue(c.on === true, "(c.on === true)");
     c.box(false);
-    t.assert(c.seen === "box false false");
-    t.assert(c.on === false);
+    t.assertTrue(c.seen === "box false false", '(c.seen === "box false false")');
+    t.assertTrue(c.on === false, "(c.on === false)");
   }
   function testToggle(t, c) {
     c.sw(true);
-    t.assert(c.seen === "sw true");
-    t.assert(c.lit === true);
+    t.assertTrue(c.seen === "sw true", '(c.seen === "sw true")');
+    t.assertTrue(c.lit === true, "(c.lit === true)");
     c.sw(false);
-    t.assert(c.seen === "sw false");
-    t.assert(c.lit === false);
+    t.assertTrue(c.seen === "sw false", '(c.seen === "sw false")');
+    t.assertTrue(c.lit === false, "(c.lit === false)");
   }
   function testInput(t, c) {
     c.field("ada");
-    t.assert(c.seen === "input ada ada");
-    t.assert(c.name === "ada");
+    t.assertTrue(c.seen === "input ada ada", '(c.seen === "input ada ada")');
+    t.assertTrue(c.name === "ada", '(c.name === "ada")');
   }
   function testDatepicker(t, c) {
     let d = "2024-03-05";
     c.day(d);
-    t.assert(c.picked === d);
-    t.assert(c.seen === "day");
+    t.assertTrue(c.picked === d, "(c.picked === d)");
+    t.assertTrue(c.seen === "day", '(c.seen === "day")');
   }
   function testButton(t, c) {
     c.press();
     c.press();
-    t.assert(c.clicks === 2);
+    t.assertTrue(c.clicks === 2, "(c.clicks === 2)");
   }
   if (typeof window !== "undefined") {
     Object.assign(window, { testCheckbox, testToggle, testInput, testDatepicker, testButton });
@@ -1834,4 +1834,4 @@ pass sha256:337b97c76f7c83e15ff02381d8e2b265
 -- run/kotlin/android --
 pass sha256:d69bfa67c70d57a41bcc8085bb585140
 -- run/none/html --
-pass sha256:c59176a6c434a88bca56c6dbd790b958
+pass sha256:acb5e74f8dfc29cf6c97f4dba8cbc22e

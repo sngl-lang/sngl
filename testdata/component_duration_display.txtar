@@ -491,9 +491,9 @@ window.__sngl_boot = () => {
     window.__sngl_state = state;
   }
   function testADurationIsANumberOfMilliseconds(t, c) {
-    t.assert(String(c.short + c.long) + "ms" === "1100ms");
-    t.assert(String(Math.trunc(c.short + c.long)) === "1100");
-    t.assert(String(Math.trunc(c.short * 3)) === "300");
+    t.assertTrue(String(c.short + c.long) + "ms" === "1100ms", '((String((c.short + c.long)) + "ms") === "1100ms")');
+    t.assertTrue(String(Math.trunc(c.short + c.long)) === "1100", '(String(Math.trunc((c.short + c.long))) === "1100")');
+    t.assertTrue(String(Math.trunc(c.short * 3)) === "300", '(String(Math.trunc((c.short * 3))) === "300")');
   }
   if (typeof window !== "undefined") {
     Object.assign(window, { testADurationIsANumberOfMilliseconds });
@@ -524,9 +524,9 @@ pass sha256:ea80182dbd02f784eb788e613977344d
 -- run/kotlin/android --
 pass sha256:842637d2d20d0ea0bef0a1ab099846c3
 -- run/none/html --
-pass sha256:a7c7d772b6ff3ad95357dcbc4f893be9
+pass sha256:f58800c5d668b47b7228bc71bff77878
 -- testrun/html/none/component_duration_display.sngl/main/1 --
-sha256:843f6e6eb356f6a64be0a385e260f99b
+sha256:ebbc1c6da40f1622c1ddf49c3e967dc9
 {
   "results": [
     {

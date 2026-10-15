@@ -582,10 +582,10 @@ window.__sngl_boot = () => {
   }
   function testIndexWritesReachTheMap(t, c) {
     c.put();
-    t.assert((c.counts.has("a") ? c.counts.get("a") : 0) === 7);
+    t.assertTrue((c.counts.has("a") ? c.counts.get("a") : 0) === 7, '((c.counts.has("a") ? c.counts.get("a") : 0) === 7)');
     c.bump();
-    t.assert((c.counts.has("a") ? c.counts.get("a") : 0) === 12);
-    t.assert(c.counts.size === 1);
+    t.assertTrue((c.counts.has("a") ? c.counts.get("a") : 0) === 12, '((c.counts.has("a") ? c.counts.get("a") : 0) === 12)');
+    t.assertTrue(c.counts.size === 1, "(c.counts.size === 1)");
   }
   if (typeof window !== "undefined") {
     Object.assign(window, { testIndexWritesReachTheMap });
@@ -622,9 +622,9 @@ pass sha256:7b8259bced939e301dc2a2ec7231fb61
 -- run/kotlin/android --
 pass sha256:3ca6b36d17413e8fec4522c70170029a
 -- run/none/html --
-pass sha256:46d98e17c13b727b16568e3871f432a3
+pass sha256:4a3c9c304234929a87d3c65a733effb3
 -- testrun/html/none/component_map_index_write.sngl/main/1 --
-sha256:ffa6acae8451496a0327132a78b44635
+sha256:905caed5b7ba4271659122b88a50975e
 {
   "results": [
     {

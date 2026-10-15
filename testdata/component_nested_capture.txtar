@@ -696,8 +696,8 @@ window.__sngl_boot = () => {
     window.__sngl_state = state;
   }
   function testNestedBodyReadsAndWritesTheOwnersVar(t, c) {
-    t.assert(c.seen === 2);
-    t.assert(c.count === 3);
+    t.assertTrue(c.seen === 2, "(c.seen === 2)");
+    t.assertTrue(c.count === 3, "(c.count === 3)");
   }
   function __effect0_mount() {
     state.renders__inst0 = state.renders__inst0 + 1;
@@ -776,9 +776,9 @@ pass sha256:17a07a2681da4c330f675ed090d30af2
 -- run/kotlin/android --
 pass sha256:ce3e2249f524177e27e3a3b1a1913937
 -- run/none/html --
-pass sha256:9b3d52cd4a5d685cbd69de9aaed58014
+pass sha256:3aaf20ca177f613d531ad2df9df8ad04
 -- testrun/html/none/component_nested_capture.sngl/main/1 --
-sha256:d5109573bd5a0b959382a492927ffbd3
+sha256:4c7f43e49aa33855a4eb9bff3e94d30b
 {
   "results": [
     {

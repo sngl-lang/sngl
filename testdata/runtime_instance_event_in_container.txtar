@@ -889,7 +889,7 @@ window.__sngl_boot = () => {
     window.__sngl_state = state;
   }
   function testEffectReportsThroughItsEvent(t, c) {
-    t.assert(c.total === 3);
+    t.assertTrue(c.total === 3, "(c.total === 3)");
   }
   if (typeof window !== "undefined") {
     Object.assign(window, { testEffectReportsThroughItsEvent });
@@ -1045,4 +1045,4 @@ pass sha256:9c922417ebf64545a91bc551ba6f624e
 -- run/kotlin/android --
 pass sha256:02559815f0ba5a01414706f295640298
 -- run/none/html --
-pass sha256:ebae88dd688f6668fe3fdadab610ee95
+pass sha256:f7cce5831ca1419f5d1ca76766686639

@@ -373,11 +373,11 @@ window.__sngl_boot = () => {
     window.__sngl_state = state;
   }
   function testModalOpenToggles(t, c) {
-    t.assert(c.open === false);
+    t.assertTrue(c.open === false, "(c.open === false)");
     c.open = true;
-    t.assert(c.open === true);
+    t.assertTrue(c.open === true, "(c.open === true)");
     c.open = false;
-    t.assert(c.open === false);
+    t.assertTrue(c.open === false, "(c.open === false)");
   }
   if (typeof window !== "undefined") {
     Object.assign(window, { testModalOpenToggles });
@@ -409,9 +409,9 @@ pass sha256:58d9771cb302d5848443ba9e68bc4cc0
 -- run/kotlin/android --
 pass sha256:b99865b722a7937119735cb028566f77
 -- run/none/html --
-pass sha256:1e567e22d89bdca7d6e822049034fb59
+pass sha256:7ea3c03f04bb78a38f47100bb89a0d43
 -- testrun/html/none/component_modal.sngl/main/1 --
-sha256:0f1122a1c6b865bf6d514a87b6d4a478
+sha256:51c7143b2c56ee23039ed52c0aacb0f7
 {
   "results": [
     {

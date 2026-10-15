@@ -78,7 +78,7 @@ window.__sngl_boot = () => {
   }
   function testSecond(t, c) {
     c.opt[1]();
-    t.assert(c.last === "b");
+    t.assertTrue(c.last === "b", '(c.last === "b")');
   }
   if (typeof window !== "undefined") {
     Object.assign(window, { testSecond });
@@ -97,4 +97,4 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:18009cd542ce092dee939c6daf5e8fbf
+pass sha256:34eae53afd25aeff84e7f84395141591

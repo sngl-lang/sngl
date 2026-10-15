@@ -789,9 +789,9 @@ window.__sngl_boot = () => {
     window.__sngl_state = state;
   }
   function testTableSelectedMutates(t, c) {
-    t.assert(c.idx === 0);
+    t.assertTrue(c.idx === 0, "(c.idx === 0)");
     c.idx = 3;
-    t.assert(c.idx === 3);
+    t.assertTrue(c.idx === 3, "(c.idx === 3)");
   }
   if (typeof window !== "undefined") {
     Object.assign(window, { testTableSelectedMutates });
@@ -814,9 +814,9 @@ pass sha256:b7a0f65a73d21415d39385f2ed019169
 -- run/kotlin/android --
 pass sha256:8024d25df4be54d4cec92f95b445761a
 -- run/none/html --
-pass sha256:82cdf25ed36b906a43e953a06c0db530
+pass sha256:ed9885e517aa8e349e7f310602898736
 -- testrun/html/none/component_table.sngl/main/1 --
-sha256:3131d959563dc9aaea93555075c4ee68
+sha256:28df58d90c40e8a9d1b0a266ebbaf0cd
 {
   "results": [
     {

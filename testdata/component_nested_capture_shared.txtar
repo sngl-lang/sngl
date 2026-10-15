@@ -791,7 +791,7 @@ window.__sngl_boot = () => {
     window.__sngl_state = state;
   }
   function testTwoInstantiationsShareOneCapturedVar(t, c) {
-    t.assert(c.count === 11);
+    t.assertTrue(c.count === 11, "(c.count === 11)");
   }
   function __effect0_mount() {
     state.runs__inst0 = state.runs__inst0 + 1;
@@ -895,9 +895,9 @@ pass sha256:c814bc4f52f81366a95175d0d2b85f37
 -- run/kotlin/android --
 pass sha256:cd6537e12897e2cccf9de673ec51633a
 -- run/none/html --
-pass sha256:7b8a149d99fb4f53c9cb4f7387bf91ac
+pass sha256:3e9dc3a822a269a6f0c956bdfc099d89
 -- testrun/html/none/component_nested_capture_shared.sngl/main/1 --
-sha256:11867f4603ad4877dcd23aa86671d7cd
+sha256:f6aefc3a38ca060829b8e7300a040c36
 {
   "results": [
     {

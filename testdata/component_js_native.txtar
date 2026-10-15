@@ -84,8 +84,8 @@ window.__sngl_boot = () => {
   }
   function testCallsTheRealGlobal(t, c) {
     c.go();
-    t.assert(c.same === "aGk=");
-    t.assert(c.renamed === "aGk=");
+    t.assertTrue(c.same === "aGk=", '(c.same === "aGk=")');
+    t.assertTrue(c.renamed === "aGk=", '(c.renamed === "aGk=")');
   }
   if (typeof window !== "undefined") {
     Object.assign(window, { testCallsTheRealGlobal });
@@ -108,9 +108,9 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:6da80db83ac6f8e025b5b52cda36bf3f
+pass sha256:267b78ab0de9bcc3faac3e90a4ebd2bc
 -- testrun/html/none/component_js_native.sngl/main/1 --
-sha256:ea10b6e3ee6c52063000bb8ffc7ee296
+sha256:d0a86074140f540f4b83c0022fad2f68
 {
   "results": [
     {

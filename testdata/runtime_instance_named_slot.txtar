@@ -1718,9 +1718,9 @@ window.__sngl_boot = () => {
     window.__sngl_state = state;
   }
   function testEachCopyRendersItsOwnCells(t, c) {
-    t.assert(c.mounted === "1:1 1:11 2:2 2:12 ");
+    t.assertTrue(c.mounted === "1:1 1:11 2:2 2:12 ", '(c.mounted === "1:1 1:11 2:2 2:12 ")');
     c.add();
-    t.assert(c.mounted === "1:1 1:11 2:2 2:12 3:3 3:13 ");
+    t.assertTrue(c.mounted === "1:1 1:11 2:2 2:12 3:3 3:13 ", '(c.mounted === "1:1 1:11 2:2 2:12 3:3 3:13 ")');
   }
   if (typeof window !== "undefined") {
     Object.assign(window, { testEachCopyRendersItsOwnCells });
@@ -2154,4 +2154,4 @@ pass sha256:3f6c6c2c2aab0dbf6c69a94a50262b4a
 -- run/kotlin/android --
 pass sha256:cf148f18aee3f213cf651fd447df6fa5
 -- run/none/html --
-pass sha256:8aeec77d02d49e58c3684c7ff95f84e3
+pass sha256:370599e9242f69c4de9b74414e65b99c

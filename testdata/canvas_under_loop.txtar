@@ -1077,7 +1077,7 @@ window.__sngl_boot = () => {
   }
   function testGrows(t, c) {
     c.add();
-    t.assert(c.rs.length === 3);
+    t.assertTrue(c.rs.length === 3, "(c.rs.length === 3)");
   }
   function paintStyle(ctx, style) {
     ctx.fillStyle = "rgba(" + String(style.fill.r) + "," + String(style.fill.g) + "," + String(style.fill.b) + "," + String(parseFloat(style.fill.a) / 255) + ")";
@@ -1337,4 +1337,4 @@ pass sha256:ed375d7d1b6d0482f640ae132b4c6bfc
 -- run/go/gtk4 --
 pass sha256:37c8ce4ed9cde0760cb0d29adc85e08e
 -- run/none/html --
-pass sha256:5d0477207d314f24d4880f60c606bd4c
+pass sha256:b60e3c2c52737644cc46384a97030411
