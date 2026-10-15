@@ -88,7 +88,7 @@ func inlineComponentCall(n *ir.NodeInst, ctx *evalCtx) []ir.Stmt {
 	}
 	// An instance something reads through is left to passNoInlineComponents,
 	// which records what its splice made of the instance's members.
-	if n.ID != "" && comp.PkgPath() == "" && ctx.reachedThrough()[n.ID] {
+	if n.Handle != nil && comp.PkgPath() == "" && ctx.reachedThrough()[n.Handle] {
 		return nil
 	}
 
@@ -604,10 +604,10 @@ func substituteSlots(stmts []ir.Stmt, callsite *ir.NodeInst) []ir.Stmt {
 	return sp.Substitute(stmts, callsite)
 }
 
-func (ctx *evalCtx) reachedThrough() map[string]bool {
+func (ctx *evalCtx) reachedThrough() map[*ir.Var]bool {
 	if !ctx.reachedIDsSet {
 		ctx.reachedIDsSet = true
-		ctx.reachedIDs = ir.ReachedThroughIDs(ctx.pkg)
+		ctx.reachedIDs = ir.ReachedHandles(ctx.pkg)
 	}
 	return ctx.reachedIDs
 }

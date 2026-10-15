@@ -436,8 +436,9 @@ type iteration struct {
 	owner, supplied *Env
 	base            int
 	path            []string
-	// loop is the *ir.For this is an iteration of, or the *ir.SlotContent a
-	// list slot inserted: what a ref matches it to its own loop by.
+	// loop is the *ir.For this is an iteration of, the *ir.SlotContent a
+	// list slot inserted, or the *ir.NodeInst whose list rest slot inserted
+	// bare children: what a ref matches it to its own loop by.
 	loop any
 }
 
@@ -899,6 +900,11 @@ func (m *mounter) slotInst(env *Env, si *ir.SlotInst, path string) ([]*Node, err
 			m.iters = append(slices.Clip(frame.iters), path)
 			m.view.iterations = append(m.view.iterations, iteration{owner: m.owner, supplied: m.supplied, base: m.base, path: m.iters, loop: sc})
 		}
+	}
+	// Bare children of a list rest slot are the caller's, one copy per insertion.
+	if sc == nil && slotInserts(frame.callsite, si.Name) == ir.InsertMany {
+		m.iters = append(slices.Clip(frame.iters), path)
+		m.view.iterations = append(m.view.iterations, iteration{owner: m.owner, supplied: m.supplied, base: m.base, path: m.iters, loop: frame.callsite})
 	}
 	// The path segment marks these nodes as having come from the call site,
 	// which is what distinguishes them from an insertion point's fallback.

@@ -868,8 +868,13 @@ func (c *converter) convertExpr(e Expr) ast.Expr {
 	case *Conversion:
 		return c.convertConversion(e)
 	case *Select:
+		// A node a population declares is read through the node it populates.
+		operand := e.Operand
+		if e.Via != nil {
+			operand = e.Via
+		}
 		return &ast.SelectExpr{
-			Operand: c.convertExpr(e.Operand),
+			Operand: c.convertExpr(operand),
 			Field:   e.Field,
 		}
 	case *Index:

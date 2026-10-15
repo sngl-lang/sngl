@@ -41,7 +41,7 @@ func lowerInlinePure(pkg *ir.Package, caps Features, opts Options) error {
 		inFlight: map[*ir.Component]bool{},
 		stack:    nil,
 		owned:    soleInstances(pkg, caps, opts),
-		reached:  ir.ReachedThroughIDs(pkg),
+		reached:  ir.ReachedHandles(pkg),
 	}
 	for _, comp := range pkg.Components {
 		st.hoist = &comp.Vars
@@ -92,10 +92,10 @@ type inlinePureState struct {
 	// through Options: the two substitute into one emitted namespace and a
 	// counter each made them collide.
 	names renamer
-	// reached is each `#id` a read reaches through, whose instance is left to
-	// passNoInlineComponents: it records what its splice made of the
+	// reached is each node handle a test reaches through, whose instance is
+	// left to passNoInlineComponents: it records what its splice made of the
 	// instance's members, which is what such a read is pointed at.
-	reached map[string]bool
+	reached map[*ir.Var]bool
 	// loopDepth counts the `for`s the walk is inside. A call site under one
 	// holds many copies of the body and a substitution makes one, so a callee
 	// with state of its own may not be substituted there -- it stays a runtime
@@ -448,7 +448,7 @@ func (st *inlinePureState) inlineNodeInst(n *ir.NodeInst) ([]ir.Stmt, error) {
 
 	pure := st.isPure(comp) || st.constSubstitutable(comp)
 	strictApplies := isPlatformStdlibComponent(st.pkg, comp)
-	if pure && comp.PkgPath() == "" && n.ID != "" && st.reached[n.ID] {
+	if pure && comp.PkgPath() == "" && n.Handle != nil && st.reached[n.Handle] {
 		pure = false
 	}
 	if strictApplies && !pure {

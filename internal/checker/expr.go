@@ -2123,7 +2123,7 @@ func (c *checker) inferSelect(x *ast.SelectExpr) ir.Expr {
 								if strings.IndexByte(string(sel.Ref), ir.RefList) >= 0 {
 									c.error(x.Pos, "%q is in the fallback of a boundary a loop repeats: read it inside the loop", x.Field)
 								}
-								return &ir.Select{AST: x, Type: k.Wrap(ph.SymType(), c.listOf), Operand: sel.Operand, Field: x.Field, Ref: k}
+								return &ir.Select{AST: x, Type: k.Wrap(ph.SymType(), c.listOf), Operand: sel.Operand, Field: x.Field, Ref: k, Via: operandExpr}
 							}
 							return &ir.Select{AST: x, Type: k.Wrap(ph.SymType(), c.listOf), Operand: sel.Operand, Field: x.Field, Ref: k, Populated: true, Via: operandExpr}
 						}

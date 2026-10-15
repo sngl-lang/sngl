@@ -1,6 +1,7 @@
 package bubbletea
 
 import (
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -11,10 +12,9 @@ import (
 )
 
 // emitPresenceChecks writes, for each `#id` a test null-tests, whether the
-// node is rendered now. View keeps no tree to look in, so the check walks the
-// view's own `if`s and `for`s down to the node, keeping nothing else, and
-// answers true where View would draw it: a tab's content is under the
-// container's loop over its records once the container is spliced.
+// node is rendered now. View keeps no tree to look in, so the check is the
+// view with every other node taken out, answering true where View would draw
+// this one.
 func emitPresenceChecks(b *strings.Builder, stmts []ir.Stmt, ids map[string]bool, gc *golang.GoIRContext) {
 	names := make([]string, 0, len(ids))
 	for id := range ids {
@@ -40,9 +40,11 @@ func emitPresenceChecks(b *strings.Builder, stmts []ir.Stmt, ids map[string]bool
 	}
 }
 
-// presencePath is stmts cut down to the statements that decide whether the
-// node with the id renders, each place it does returning true. A spliced
-// instance renders where the roots of its body do.
+// presencePath is stmts with every node taken out but the one with the id,
+// which returns true where it renders. What is not a node stays, so a
+// condition reads the temps the view computed it from; each local is read once
+// into `_`, since the node that read it may be gone. A spliced instance renders
+// where the roots of its body do.
 func presencePath(stmts []ir.Stmt, id string) ([]ir.Stmt, bool) {
 	var out []ir.Stmt
 	found := false
@@ -51,34 +53,39 @@ func presencePath(stmts []ir.Stmt, id string) ([]ir.Stmt, bool) {
 		case *ir.If:
 			body, inBody := presencePath(n.Body, id)
 			els, inElse := presencePath(n.Else, id)
-			if inBody || inElse {
+			if len(body) > 0 || len(els) > 0 {
 				cp := *n
 				cp.Body, cp.Else = body, els
 				out = append(out, &cp)
-				found = true
 			}
+			found = found || inBody || inElse
 		case *ir.For:
 			body, inBody := presencePath(n.Body, id)
 			els, inElse := presencePath(n.Else, id)
-			if inBody || inElse {
+			if len(body) > 0 || len(els) > 0 {
 				cp := *n
 				cp.Body, cp.Else = body, els
 				out = append(out, &cp)
-				found = true
 			}
+			found = found || inBody || inElse
 		case *ir.ErrorBoundary:
-			if body, ok := presencePath(n.Children, id); ok {
-				out, found = append(out, body...), true
-			}
+			body, ok := presencePath(n.Children, id)
+			out, found = append(out, body...), found || ok
 		case *ir.NodeInst:
-			if n.ID == id || n.Instance == id {
+			if n.ID == id || slices.Contains(n.Instances, id) {
 				return append(out, &ir.Return{Value: boolLit(true)}), true
 			}
 			for _, sc := range ir.SuppliedContent(n) {
-				if body, ok := presencePath(sc.Body, id); ok {
-					out, found = append(out, body...), true
-				}
+				body, ok := presencePath(sc.Body, id)
+				out, found = append(out, body...), found || ok
 			}
+		case *ir.LocalVar:
+			out = append(out, n, &ir.Assign{
+				Target: &ir.Ident{Name: "_", Type: n.Type, Synthesized: true},
+				Value:  &ir.Ident{Name: n.Name, Type: n.Type, Sym: n.Sym, Synthesized: true},
+			})
+		default:
+			out = append(out, s)
 		}
 	}
 	return out, found

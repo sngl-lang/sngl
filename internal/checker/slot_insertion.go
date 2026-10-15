@@ -35,8 +35,11 @@ func (c *checker) checkSlotInsertions(comp *ir.Component) {
 	}
 	for _, slot := range comp.Slots {
 		// A data family's records are read as a list and never inserted, and
-		// their content is shown per record (SlotDecl.Shows).
-		if !slot.Const && slot.Values == nil && slot.Shows == nil {
+		// their content is shown per record (SlotDecl.Shows), at most once each.
+		switch {
+		case slot.Shows != nil:
+			c.checkRecordContentInserts(comp, slot)
+		case !slot.Const && slot.Values == nil:
 			c.checkSlotInsertCount(comp, slot)
 		}
 	}
@@ -151,6 +154,9 @@ type insertionWalk struct {
 	slot  string
 	rest  bool
 	sites []insertionSite
+	// perIteration counts a loop's body once rather than as repeating, and
+	// reports a body that renders the slot more than once.
+	perIteration bool
 }
 
 func (w *insertionWalk) stmts(stmts []ir.Stmt, under string) renders {
@@ -221,6 +227,13 @@ func (w *insertionWalk) stmt(st ir.Stmt, under string) renders {
 	case *ir.If:
 		return w.stmts(n.Body, orUnder(under, "an if")).or(w.stmts(n.Else, orUnder(under, "an if")))
 	case *ir.For:
+		if w.perIteration {
+			body := w.stmts(n.Body, orUnder(under, "a for"))
+			if body.max > 1 {
+				return body
+			}
+			return body.maybe()
+		}
 		return w.repeating(n.Body, under, "a for").then(w.stmts(n.Else, orUnder(under, "a for-else")).maybe())
 	case *ir.ErrorBoundary:
 		if len(n.Failed) == 0 {
@@ -256,4 +269,16 @@ func slotNamed(slots []*ir.SlotDecl, name string) *ir.SlotDecl {
 		}
 	}
 	return nil
+}
+
+// checkRecordContentInserts holds a container to showing each record's
+// content at most once, which is what a ref into it is typed by
+// (ir.Component.InsertsOf): at most once outside a loop, and at most once in
+// each iteration of the loop it is shown in.
+func (c *checker) checkRecordContentInserts(comp *ir.Component, slot *ir.SlotDecl) {
+	w := &insertionWalk{slot: slot.Name, perIteration: true}
+	got := w.stmts(comp.Stmts, "")
+	if got.max > 1 {
+		c.reportRepeatedInsertion(w.sites, "a record's content", "it renders at most once for the record")
+	}
 }

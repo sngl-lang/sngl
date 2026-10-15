@@ -219,7 +219,9 @@ type Select struct {
 	// node Via reads -- `c.card.title`, through `card` -- rather than one in
 	// the body of the component Operand is an instance of. Operand is still
 	// the owner, `c`, which is the reach a compiled target answers; Via is
-	// which instance of the populated node, which only an evaluator asks.
+	// which instance of the populated node, which only an evaluator asks. Via is
+	// also set on a read of a boundary's fallback, which is not Populated, so
+	// the read prints back as written.
 	Populated bool `json:",omitempty"`
 	Via       Expr `json:",omitempty"`
 	// Spread is nonzero on a field read a spread argument expanded to, one id

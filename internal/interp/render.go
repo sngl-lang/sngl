@@ -463,7 +463,11 @@ func refLoops(stmts []ir.Stmt, id string, outer []any) ([]any, bool) {
 			if n.ID == id {
 				return outer, true
 			}
-			found, ok = try(n.Children, outer)
+			inner := outer
+			if rest := restOf(n); rest != nil && n.Component.InsertsOf(rest) == ir.InsertMany {
+				inner = append(slices.Clip(outer), n)
+			}
+			found, ok = try(n.Children, inner)
 		case *ir.If:
 			if found, ok = try(n.Body, outer); !ok {
 				found, ok = try(n.Else, outer)
@@ -486,4 +490,11 @@ func refLoops(stmts []ir.Stmt, id string, outer []any) ([]any, bool) {
 		}
 	}
 	return nil, false
+}
+
+func restOf(n *ir.NodeInst) *ir.SlotDecl {
+	if n.Component == nil {
+		return nil
+	}
+	return n.Component.RestSlot()
 }
