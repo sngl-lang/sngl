@@ -247,7 +247,7 @@ func (tv *testingT) CallMethod(env *interp.Env, method string, args []ir.Expr) (
 
 		start := time.Now()
 		childResult := &codegen.TestResult{Desc: fmt.Sprintf("%v", desc)}
-		childEnv := env.Snapshot()
+		childEnv := env.Isolate()
 		// The parent's clock, not one of its own: childEnv is a Snapshot and
 		// carries `Clock`, so a subtest's `time.now()` already reads the
 		// parent's. A second clock here would start back at Epoch, so
