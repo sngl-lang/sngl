@@ -44,9 +44,8 @@ type ExprCtx struct {
 	// state and consts through it, as it did through the one window that used
 	// to be the scope.
 	App      bool
-	Locals   map[string]bool   // for-loop vars, lambda params
-	Renames  map[string]string // original → unique name (component inlining)
-	EventVar string            // what the handler's event parameter maps to (e.g., "e.target")
+	locals   *localScope
+	EventVar string // what the handler's event parameter maps to (e.g., "e.target")
 	// EventParam is the handler parameter EventVar stands for. `event` was an
 	// ambient name once and is a declared parameter now, so the substitution
 	// is by declaration: a handler may call its parameter whatever it likes,
@@ -125,8 +124,6 @@ type ExprCtx struct {
 func NewExprCtx(pkg *ir.Package) *ExprCtx {
 	return &ExprCtx{
 		Pkg:     pkg,
-		Locals:  make(map[string]bool),
-		Renames: make(map[string]string),
 		Helpers: make(map[string]bool),
 	}
 }
@@ -151,11 +148,7 @@ func (ctx *ExprCtx) ForSurface(n *ir.NodeInst) *ExprCtx {
 
 // Resolve determines what a name refers to in the current scope.
 func (ctx *ExprCtx) Resolve(name string) (ir.Symbol, NameKind) {
-	// Locals and renames first (innermost scope).
-	if ctx.Locals[name] {
-		return nil, NameLocal
-	}
-	if _, ok := ctx.Renames[name]; ok {
+	if ctx.IsLocal(name) {
 		return nil, NameLocal
 	}
 
@@ -242,13 +235,49 @@ func (ctx *ExprCtx) Resolve(name string) (ir.Symbol, NameKind) {
 
 // RenamedName returns the renamed name for a local var, or the original if no rename.
 func (ctx *ExprCtx) RenamedName(name string) string {
-	if r, ok := ctx.Renames[name]; ok {
+	if r, ok := ctx.Renamed(name); ok {
 		return r
 	}
 	return name
 }
 
-// Clone creates a copy with independent Locals and Renames maps.
+// IsLocal reports whether name is a local of the scope: a loop variable, a
+// lambda's parameter, or a name a translation declared bare.
+func (ctx *ExprCtx) IsLocal(name string) bool {
+	for s := ctx.locals; s != nil; s = s.parent {
+		if s.batch != nil {
+			if s.batch[name] {
+				return true
+			}
+		} else if s.name == name {
+			return true
+		}
+	}
+	return false
+}
+
+// Renamed is what a local renders as where a scope renamed it. A local
+// declared again without a rename inside that scope keeps the rename.
+func (ctx *ExprCtx) Renamed(name string) (string, bool) {
+	for s := ctx.locals; s != nil; s = s.parent {
+		if s.renamed && s.name == name {
+			return s.as, true
+		}
+	}
+	return "", false
+}
+
+// localScope is one frame of an ExprCtx's locals. Every clone of a scope
+// shares its frames, so none is written once made.
+type localScope struct {
+	parent  *localScope
+	batch   map[string]bool
+	name    string
+	as      string
+	renamed bool
+}
+
+// Clone creates a copy sharing the locals, which a copy only adds frames to.
 func (ctx *ExprCtx) Clone() *ExprCtx {
 	return &ExprCtx{
 		Platform:      ctx.Platform,
@@ -256,8 +285,7 @@ func (ctx *ExprCtx) Clone() *ExprCtx {
 		Component:     ctx.Component,
 		Surface:       ctx.Surface,
 		App:           ctx.App,
-		Locals:        maps.Clone(ctx.Locals),
-		Renames:       maps.Clone(ctx.Renames),
+		locals:        ctx.locals,
 		EventVar:      ctx.EventVar,
 		EventParam:    ctx.EventParam,
 		Helpers:       ctx.Helpers,       // shared — helpers accumulate globally
@@ -283,15 +311,28 @@ func (ctx *ExprCtx) Clone() *ExprCtx {
 // WithLocal returns a clone with an additional local variable.
 func (ctx *ExprCtx) WithLocal(name string) *ExprCtx {
 	c := ctx.Clone()
-	c.Locals[name] = true
+	c.locals = &localScope{parent: ctx.locals, name: name}
+	return c
+}
+
+// WithLocals returns a clone with every one of names a local.
+func (ctx *ExprCtx) WithLocals(names ...string) *ExprCtx {
+	c := ctx.Clone()
+	if len(names) == 0 {
+		return c
+	}
+	batch := make(map[string]bool, len(names))
+	for _, n := range names {
+		batch[n] = true
+	}
+	c.locals = &localScope{parent: ctx.locals, batch: batch}
 	return c
 }
 
 // WithRenamedLocal returns a clone where name is a local that renders as `as`.
 func (ctx *ExprCtx) WithRenamedLocal(name, as string) *ExprCtx {
 	c := ctx.Clone()
-	c.Locals[name] = true
-	c.Renames[name] = as
+	c.locals = &localScope{parent: ctx.locals, name: name, as: as, renamed: true}
 	return c
 }
 

@@ -48,13 +48,13 @@ func (t *fyneTranslator) appSlotArg(cs *ir.CallStmt) *ir.CallStmt {
 	var v ir.Expr
 	switch {
 	case ir.IsAppParent(arg):
-		v = &ir.Ident{Name: fyneNative{Path: fyneLayoutImportPath, Name: "App"}.qualify(t.gc), Type: ir.TypDyn}
+		v = &ir.Ident{Name: fyneNative{Path: fyneLayoutImportPath, Name: "App"}.qualify(t.gc), Type: ir.NativeGoPointerOf("fyne.Container")}
 	default:
 		sp := t.specs[codegen.IdentBareName(arg)]
 		if sp == nil || sp.slotBox == "" {
 			return nil
 		}
-		v = &ir.Select{Operand: t.qualifyParentExpr(arg), Field: sp.slotBox, Type: ir.TypDyn}
+		v = &ir.Select{Operand: t.qualifyParentExpr(arg), Field: sp.slotBox, Type: ir.NativeGoPointerOf("fyne.Container")}
 	}
 	call := *cs.Call
 	call.Args = []ir.CallArg{{Name: cs.Call.Args[0].Name, Value: v}}

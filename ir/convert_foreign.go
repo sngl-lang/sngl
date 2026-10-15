@@ -8,7 +8,7 @@ import "duckfam.us/sngl/ast"
 // Without this a converted document dropped the whole of what makes a
 // declaration foreign: `sngl dump --stage checked` printed
 // `func shout(s string) string` for a declaration that *is* `strings.ToUpper`,
-// and `bad dyn` for a field whose type SNGL cannot model, with the reason
+// and a plain field for one whose type SNGL cannot model, with the reason
 // gone. Both read as ordinary declarations the backend would emit, which is
 // the opposite of what they are.
 //

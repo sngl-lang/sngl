@@ -1,0 +1,17 @@
+// Every value has a type the program can name. There is no type that says
+// nothing about what it holds: a parameter, a field or a var says what it
+// takes, or takes it from its initializer.
+
+import . "sngl:ui"
+
+component row(items dyn) node { // ERROR(check) "unknown type \"dyn\""
+    text(value="x")
+}
+
+struct Box {
+    v dyn // ERROR(check) "unknown type \"dyn\""
+}
+
+window {
+    row(items=1)
+}

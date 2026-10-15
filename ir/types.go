@@ -14,7 +14,6 @@ type TypeKind int
 
 const (
 	TypeInvalid TypeKind = iota // error sentinel
-	TypeDyn                     // unknown/dynamic
 	TypeBool
 	TypeInt
 	TypeFloat
@@ -67,14 +66,18 @@ type Type struct {
 
 // Predefined singleton types for primitives.
 var (
-	TypDyn    = &Type{Kind: TypeDyn}
-	TypBool   = &Type{Kind: TypeBool}
-	TypInt    = &Type{Kind: TypeInt}
-	TypFloat  = &Type{Kind: TypeFloat}
-	TypString = &Type{Kind: TypeString}
-	TypNull   = &Type{Kind: TypeNull}
-	TypVoid   = &Type{Kind: TypeVoid}
-	TypAny    = &Type{Kind: TypeAny}
+	// TypInvalid is the type of what has none: an expression the checker
+	// reported an error about, and a host declaration with no SNGL spelling,
+	// which is marked unusable. Nothing typed invalid reaches a program or a
+	// library package that checked clean.
+	TypInvalid = &Type{Kind: TypeInvalid}
+	TypBool    = &Type{Kind: TypeBool}
+	TypInt     = &Type{Kind: TypeInt}
+	TypFloat   = &Type{Kind: TypeFloat}
+	TypString  = &Type{Kind: TypeString}
+	TypNull    = &Type{Kind: TypeNull}
+	TypVoid    = &Type{Kind: TypeVoid}
+	TypAny     = &Type{Kind: TypeAny}
 )
 
 // Sized numeric singletons. Plain int/float (TypInt/TypFloat) keep Bits==0.
@@ -149,8 +152,6 @@ func (t *Type) String() string {
 	switch t.Kind {
 	case TypeInvalid:
 		return "<invalid>"
-	case TypeDyn:
-		return "dyn"
 	case TypeAny:
 		return "any"
 	case TypeBool:
@@ -265,8 +266,7 @@ func (t *Type) String() string {
 		return "instance"
 	case TypeNative:
 		// A foreign type has no SNGL spelling, so a diagnostic names it the
-		// way the host does. Reachable since the C scheme importer started
-		// giving a void* parameter a native type rather than a dyn.
+		// way the host does.
 		if ref, ok := t.Meta.(NativeTypeRef); ok && ref.Name != "" {
 			return ref.Name
 		}
@@ -548,7 +548,7 @@ func (t *Type) Equal(other *Type) bool {
 		a, aok := t.Meta.(NativeTypeRef)
 		b, bok := other.Meta.(NativeTypeRef)
 		return aok && bok && a == b
-	case TypeInvalid, TypeDyn, TypeBool, TypeString, TypeNull, TypeVoid:
+	case TypeInvalid, TypeBool, TypeString, TypeNull, TypeVoid:
 		// Kinds carrying no distinguishing payload: the Kind comparison above
 		// has already settled them. Listed explicitly rather than defaulted so
 		// that a new kind with an identity field cannot be answered "equal" by
@@ -559,13 +559,13 @@ func (t *Type) Equal(other *Type) bool {
 }
 
 // IsAssignableTo reports whether a value of type t can be assigned to target.
-// Dyn works like Go's any/interface{}: any value is assignable TO dyn,
-// but dyn is not assignable to concrete types without explicit conversion.
+// An invalid type is a mistake reported where it was made, and is assignable
+// both ways so that nothing downstream reports it again.
 func (t *Type) IsAssignableTo(target *Type) bool {
 	if t.Equal(target) {
 		return true
 	}
-	if target.Kind == TypeDyn {
+	if t.Kind == TypeInvalid || target.Kind == TypeInvalid {
 		return true
 	}
 	// Widening a number is lossless, so it needs no cast. An untyped numeric
@@ -598,15 +598,10 @@ func (t *Type) IsAssignableTo(target *Type) bool {
 	if t.Kind == TypeList && target.Kind == TypeIter && len(t.Elems) == 1 && len(target.Elems) == 1 {
 		return t.Elems[0].IsAssignableTo(target.Elems[0])
 	}
-	// map[K, V] → map<K', V'> where V is assignable to V' and K is
-	// assignable to K' under the same rules (Equal, or K' is dyn).
-	// Allowing K → dyn lets stdlib wrappers forward typed maps to
-	// intrinsics whose key types are deliberately erased (e.g. i18n's
-	// PluralKey-keyed maps → map[dyn, string] at the runtime boundary).
-	// Concrete-key conversions (like int → string) are still rejected.
+	// map[K, V] → map[K, V'] where V is assignable to V'. The keys must be
+	// equal: a key converted on the way in would be a different key.
 	if t.Kind == TypeMap && target.Kind == TypeMap && len(t.Elems) == 2 && len(target.Elems) == 2 {
-		keyOK := t.Elems[0].Equal(target.Elems[0]) || target.Elems[0].Kind == TypeDyn
-		return keyOK && t.Elems[1].IsAssignableTo(target.Elems[1])
+		return t.Elems[0].Equal(target.Elems[0]) && t.Elems[1].IsAssignableTo(target.Elems[1])
 	}
 	if t.Kind == TypeOption && target.Kind == TypeOption {
 		return t.Elems[0].IsAssignableTo(target.Elems[0])
@@ -750,6 +745,12 @@ func NativePointerOf(name string) *Type {
 // (e.g. "fyne.Container", "widget.Label").
 func NativeGoPointerOf(name string) *Type {
 	return &Type{Kind: TypeNative, Meta: NativeTypeRef{CgoC: false, Name: name}}
+}
+
+// NativeNamed is a host type spelled name in the target's own language --
+// `HTMLElement` on JavaScript -- for a value only emitted code holds.
+func NativeNamed(name string) *Type {
+	return &Type{Kind: TypeNative, Meta: NativeTypeRef{Name: name, Bare: true}}
 }
 
 // NativeGoNamed returns an *ir.Type that renders as the bare Go type name

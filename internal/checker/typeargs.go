@@ -61,7 +61,7 @@ func (c *checker) bindWritten(pos ast.Pos, name string, exprs []ast.Expr, own []
 	}
 	bindings := map[string]*ir.Type{}
 	for i, t := range types {
-		if t != nil && t.Kind != ir.TypeDyn {
+		if t != nil && t.Kind != ir.TypeInvalid {
 			bindings[own[i].Name] = t
 		}
 	}

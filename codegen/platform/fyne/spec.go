@@ -419,11 +419,13 @@ func (s *fyneSpec) ctorArgs(al aliaser) []ir.Expr {
 				continue
 			}
 		}
+		// The spec writes the argument as Go and says its type where it
+		// names one; text it leaves untyped is no SNGL value.
 		if a.Type.Name != "" {
-			out = append(out, rawGoExpr(a.Type.qualify(al)+a.Raw))
+			out = append(out, rawGoExpr(a.Type.qualify(al)+a.Raw, ir.NativeGoNamed(a.Type.qualify(al))))
 			continue
 		}
-		out = append(out, rawGoExpr(a.Raw))
+		out = append(out, rawGoExpr(a.Raw, nil))
 	}
 	return out
 }
@@ -432,8 +434,8 @@ func (s *fyneSpec) ctorArgs(al aliaser) []ir.Expr {
 // ir.Ident resolving to nothing renders as its name, which is what makes a
 // Spec able to name a constructor argument — `nil`, `""`, a numeric default —
 // without this package holding a table of the ones it knows.
-func rawGoExpr(src string) ir.Expr {
-	return &ir.Ident{Name: src, Type: ir.TypDyn}
+func rawGoExpr(src string, t *ir.Type) ir.Expr {
+	return &ir.Ident{Name: src, Type: t}
 }
 
 // listElems returns the elements of an IR list literal, or nil.

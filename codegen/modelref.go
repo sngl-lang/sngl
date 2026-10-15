@@ -12,8 +12,18 @@ import (
 // being copied into each platform.
 
 // ModelFieldRef builds an `m.<name>` selector against the generated model
-// struct.
-func ModelFieldRef(name string) ir.Expr { return RecvFieldRef(ModelReceiver, name) }
+// struct, for a field of host type t.
+func ModelFieldRef(name string, t *ir.Type) ir.Expr {
+	return RecvFieldRef(ReceiverRef(ModelReceiver, ModelType()), name, t)
+}
+
+// ModelType is the Model a model platform's method receives: `*Model`.
+func ModelType() *ir.Type { return ir.NativeGoPointerOf(ModelTypeName) }
+
+// ReceiverRef is the receiver named recv, of host type t, as an expression.
+func ReceiverRef(recv string, t *ir.Type) *ir.Ident {
+	return &ir.Ident{Name: recv, Type: t, Sym: &Receiver{Name: recv, Type: t}}
+}
 
 // ModelReceiver is the receiver a model platform's methods carry. It is the
 // default, not the only one: a component instance is a record of its own, and
@@ -50,24 +60,24 @@ func RootSlotRenders(body []ir.Stmt, root string) map[ir.Stmt]bool {
 
 // Receiver is the symbol of the receiver RecvFieldRef selects through, so a
 // program's own binding of the same name is never what it resolves to.
-type Receiver struct{ Name string }
+type Receiver struct {
+	Name string
+	// Type is the struct the receiver is: the Model, or a component
+	// instance's record.
+	Type *ir.Type
+}
 
 func (r *Receiver) SymName() string   { return r.Name }
-func (r *Receiver) SymType() *ir.Type { return ir.TypDyn }
+func (r *Receiver) SymType() *ir.Type { return r.Type }
 
 // RecvFieldRef builds a `<recv>.<name>` selector. recv is the receiver the
 // scope being emitted dispatches through -- the model in a model method, the
 // instance record inside a component's ctor -- so a node field written by a
 // translator lands on whichever struct actually holds it.
-func RecvFieldRef(recv, name string) ir.Expr {
-	if recv == "" {
-		recv = ModelReceiver
-	}
-	return &ir.Select{
-		Operand: &ir.Ident{Name: recv, Sym: &Receiver{Name: recv}},
-		Field:   name,
-		Type:    ir.TypDyn,
-	}
+// The field's type t is its host type, which the translator declaring the
+// field spelled.
+func RecvFieldRef(recv *ir.Ident, name string, t *ir.Type) ir.Expr {
+	return &ir.Select{Operand: recv, Field: name, Type: t}
 }
 
 // IdentBareName returns an ident's name with the "m." model-struct prefix

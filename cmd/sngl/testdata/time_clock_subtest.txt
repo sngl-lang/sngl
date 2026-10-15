@@ -32,7 +32,7 @@ component main ui.node {
 func testASubtestSharesTheEnclosingClock(t Test, c main) {
     t.tick()
 
-    t.test("inner", func(s Test) {
+    t.test("inner", func(s Test, c main) {
         // The enclosing test already moved the clock, so a subtest holding one
         // of its own reads an earlier instant than the test that created it.
         var seen time.datetime = time.now()

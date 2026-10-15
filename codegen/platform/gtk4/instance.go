@@ -324,15 +324,7 @@ func instanceRootBinding(tr *gtk4Translator, igc *golang.GoIRContext, wrapped bo
 		return b.String()
 	}
 	var b strings.Builder
-	boxInit := &ir.Conversion{Type: ir.NativePointerOf("GtkBox"), Operand: &ir.Call{
-		Type:     ir.TypDyn,
-		Receiver: &ir.Ident{Name: "C"},
-		Func:     nativeFunc("gtk_box_new"),
-		Args: []ir.CallArg{
-			{Value: &ir.Ident{Name: "C.GTK_ORIENTATION_VERTICAL", Type: ir.TypDyn}},
-			{Value: &ir.Literal{Type: ir.TypInt, Value: "6"}},
-		},
-	}}
+	boxInit := &ir.Conversion{Type: ir.NativePointerOf("GtkBox"), Operand: nativeCall("gtk_box_new", ir.NativePointerOf("GtkWidget"), cOrientationVertical(), intLit("6"))}
 	fmt.Fprintf(&b, "\t__box := %s\n", igc.EvalExpr(boxInit))
 	boxRef := &ir.Ident{Name: "__box"}
 	for _, id := range tops {
@@ -422,16 +414,8 @@ func instanceVarInit(v *ir.Var, igc *golang.GoIRContext, wrapped bool) string {
 			return "gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)"
 		}
 		return igc.EvalExpr(&ir.Conversion{
-			Type: ir.NativePointerOf("GtkBox"),
-			Operand: &ir.Call{
-				Type:     ir.TypDyn,
-				Receiver: &ir.Ident{Name: "C"},
-				Func:     nativeFunc("gtk_box_new"),
-				Args: []ir.CallArg{
-					{Value: &ir.Ident{Name: "C.GTK_ORIENTATION_VERTICAL", Type: ir.TypDyn}},
-					{Value: &ir.Literal{Type: ir.TypInt, Value: "6"}},
-				},
-			},
+			Type:    ir.NativePointerOf("GtkBox"),
+			Operand: nativeCall("gtk_box_new", ir.NativePointerOf("GtkWidget"), cOrientationVertical(), intLit("6")),
 		})
 	}
 	return irVarInit(v, igc)

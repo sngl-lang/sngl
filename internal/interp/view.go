@@ -618,6 +618,7 @@ func (m *mounter) nodeInst(env *Env, inst *ir.NodeInst, path string) ([]*Node, e
 		}
 		child := env.componentEnv(inst.Component, inst, path)
 		child.RenderDepth = env.RenderDepth + 1
+		child.entries = slices.Clone(m.entries)
 		node.CompEnv = child
 		if m.byEnv == nil {
 			m.byEnv = map[*Env]*Node{}
@@ -769,7 +770,7 @@ func (m *mounter) callStmt(env *Env, cs *ir.CallStmt, name, id, path string) ([]
 
 // slotInst mounts one insertion point: the content its call site supplied, or
 // the insertion's own block as the fallback where it supplied none or what it
-// supplied renders nothing -- the rule ir.WithFallback states for the splicer.
+// supplied renders nothing -- the rule the splicer states with ir.RendersNothing.
 //
 // Supplied content is mounted in the *caller's* scope with the caller's frame
 // current, because that content is written in the caller's body: a slot inside
@@ -800,6 +801,7 @@ func (m *mounter) slotInst(env *Env, si *ir.SlotInst, path string) ([]*Node, err
 	// names they bind are the populator's, declared at the call site.
 	if sc != nil && len(sc.Params) > 0 {
 		cenv = frame.env.Snapshot()
+		cenv.mountCopy = true
 		for i, prm := range sc.Params {
 			if i >= len(si.Args) {
 				break
@@ -852,6 +854,7 @@ func (m *mounter) entryInst(env *Env, x *ir.SlotInst, path string) ([]*Node, err
 	cenv := f.env
 	if len(content.Params) > 0 {
 		cenv = f.env.Snapshot()
+		cenv.mountCopy = true
 		for i, prm := range content.Params {
 			if i >= len(x.Args) {
 				break
@@ -898,6 +901,7 @@ func (m *mounter) forStmt(env *Env, f *ir.For, path string) ([]*Node, error) {
 	var out []*Node
 	for i := range n {
 		child := env.Snapshot()
+		child.mountCopy = true
 		bindLoopElem(child, f, i, at(i), list)
 
 		id := strconv.Itoa(i)
@@ -1016,6 +1020,7 @@ func (m *mounter) blockEnv(env *Env, stmts []ir.Stmt, at string) *Env {
 	child.Comp = env.Comp
 	child.parent = env
 	child.inst = env.inst
+	child.entries = env.entries
 	child.ContextVals = capturedContext(env)
 	child.RenderDepth = env.RenderDepth
 	for _, s := range stmts {

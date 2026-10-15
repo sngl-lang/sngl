@@ -146,6 +146,7 @@ type Model struct {
 	url__inst0      string
 	hasPhoto__inst0 bool
 	visible__inst0  bool
+	failed__inst0   bool
 	__focusID       int
 
 	width, height int
@@ -158,6 +159,7 @@ func New() Model {
 	m.url__inst0 = "https://example.com/a.png"
 	m.hasPhoto__inst0 = false
 	m.visible__inst0 = true
+	m.failed__inst0 = false
 	m.__focusID = 0
 	return m
 }
@@ -291,6 +293,21 @@ func SetVisible__inst0Cmd(v bool) tea.Cmd {
 	return func() tea.Msg { return setVisible__inst0Msg{value: v} }
 }
 
+func (m Model) Failed__inst0() bool {
+	return m.failed__inst0
+}
+
+func (m Model) SetFailed__inst0(v bool) Model {
+	m.failed__inst0 = v
+	return m
+}
+
+type setFailed__inst0Msg struct{ value bool }
+
+func SetFailed__inst0Cmd(v bool) tea.Cmd {
+	return func() tea.Msg { return setFailed__inst0Msg{value: v} }
+}
+
 func (m Model) Init() tea.Cmd {
 	return tea.Batch(nil, m.__canvasTransmit())
 }
@@ -308,6 +325,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m = m.SetHasPhoto__inst0(msg.value)
 	case setVisible__inst0Msg:
 		m = m.SetVisible__inst0(msg.value)
+	case setFailed__inst0Msg:
+		m = m.SetFailed__inst0(msg.value)
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
@@ -364,25 +383,29 @@ func (m Model) View() tea.View {
 		content_2 = lipgloss.JoinVertical(lipgloss.Left, content_2Children...)
 		contentChildren = append(contentChildren, content_2)
 		var content_3 string
-		var content_3Children []string
-		var content_3_0 string
-		if m.hasPhoto__inst0 {
-			content_3_0 = tui.Picture(m.url__inst0, 24, 12)
-		} else {
-			content_3_0 = lipgloss.NewStyle().
+		if m.failed__inst0 || !m.hasPhoto__inst0 {
+			content_3 = lipgloss.NewStyle().
 				Background(lipgloss.Color("#cccccc")).
 				Height(5).
 				AlignHorizontal(lipgloss.Center).
 				Width(5).Render(fmt.Sprint("JD"))
+		} else {
+			var content_3Children []string
+			var content_3_0 string
+			if m.hasPhoto__inst0 {
+				content_3_0 = tui.Picture(m.url__inst0, 24, 12)
+			}
+			if content_3_0 != "" {
+				content_3Children = append(content_3Children, content_3_0)
+			}
+			content_3 = lipgloss.JoinVertical(lipgloss.Left, content_3Children...)
+			content_3 = lipgloss.NewStyle().
+				Height(5).
+				Width(5).Render(content_3)
 		}
-		if content_3_0 != "" {
-			content_3Children = append(content_3Children, content_3_0)
+		if content_3 != "" {
+			contentChildren = append(contentChildren, content_3)
 		}
-		content_3 = lipgloss.JoinVertical(lipgloss.Left, content_3Children...)
-		content_3 = lipgloss.NewStyle().
-			Height(5).
-			Width(5).Render(content_3)
-		contentChildren = append(contentChildren, content_3)
 		var content_4 string
 		content_4 = tui.RenderTerminal(32, 16, 2, func() image.Image {
 			__c := _canvasSurface1.Begin(32, 32, 0, 0, "")
@@ -464,20 +487,20 @@ type Model struct {
 	url__inst0      string
 	hasPhoto__inst0 bool
 	visible__inst0  bool
-	__slot0         []fyne.CanvasObject
-	__slot0_at      fyne.CanvasObject
+	failed__inst0   bool
+	__slot1         []fyne.CanvasObject
+	__slot1_at      fyne.CanvasObject
 	__inst0_live    []*__child0Instance
 
-	__n1     *fynelayout.Toplevel
+	__n0     *fynelayout.Toplevel
 	__n6     *fyne.Container
 	__n7     *fynelayout.Image
 	__n8     *fynelayout.ImageSource
 	__n9     *fynelayout.Image
-	__n2     *fynelayout.ImageSource
+	__n1     *fynelayout.ImageSource
 	__n10    *fynelayout.Image
 	__n11    *fynelayout.ImageSource
 	__n11Ctx *snglcanvas.Context
-	__n5     *fynelayout.Image
 	__n12    *canvas.Image
 	__n12Ctx *snglcanvas.Context
 	__n13    *fynetext.Flow
@@ -496,8 +519,9 @@ func New() *Model {
 	m.url__inst0 = "https://example.com/a.png"
 	m.hasPhoto__inst0 = false
 	m.visible__inst0 = true
-	m.__slot0 = nil
-	m.__slot0_at = nil
+	m.failed__inst0 = false
+	m.__slot1 = nil
+	m.__slot1_at = nil
 	m.__inst0_live = []*__child0Instance{}
 	return m
 }
@@ -510,36 +534,44 @@ func ApplyStyle(ctx *snglcanvas.Context, style Style) {
 	ctx.SetLineStyle(style.LineCap, style.LineJoin)
 }
 
-func (m *Model) __renderSlot0(__parent *fyne.Container) {
-	for _, __entry := range m.__slot0 {
+func (m *Model) __renderSlot1(__parent *fyne.Container) {
+	for _, __entry := range m.__slot1 {
 		fynelayout.Remove(__parent, __entry)
 	}
-	m.__slot0 = nil
-	m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
+	m.__slot1 = nil
+	m.__slot1_at = fynelayout.SlotAnchor(__parent, m.__slot1_at)
 	__inst0_next := []*__child0Instance{}
 	var __inst0_i int = 0
-	if m.hasPhoto__inst0 {
-		var __n3 *__child0Instance
+	if m.failed__inst0 || !m.hasPhoto__inst0 {
+		__n4 := widget.NewLabel("")
+		__n4.SetText("JD")
+		fynelayout.InsertBefore(__parent, m.__slot1_at, container.NewThemeOverride(__n4, _snglTheme0))
+		m.__slot1 = append(m.__slot1, __n4)
+	} else {
+		var __n5 *__child0Instance
 		if len(m.__inst0_live) > __inst0_i {
-			__n3 = m.__inst0_live[__inst0_i]
-			__n3.Set__p0(m.url__inst0)
+			__n5 = m.__inst0_live[__inst0_i]
+			__n5.Set__p0(m.hasPhoto__inst0)
+			__n5.Set__p1(m.url__inst0)
+			__n5.Set__on0(func(m__r0 string) {
+				m.failed__inst0 = true
+				m.__renderSlot1(m.__n6)
+			})
 		} else {
 			if len(m.__inst0_live) > __inst0_i {
 				m.__inst0_live[__inst0_i].Destroy()
 			}
-			__n3__new := new__child0Instance(m, m.url__inst0)
-			__n3 = __n3__new
+			__n5__new := new__child0Instance(m, m.hasPhoto__inst0, m.url__inst0, func(m__r0 string) {
+				m.failed__inst0 = true
+				m.__renderSlot1(m.__n6)
+			})
+			__n5 = __n5__new
 		}
-		__inst0_next = append(__inst0_next, __n3)
+		__inst0_next = append(__inst0_next, __n5)
 		__inst0_i = (__inst0_i + 1)
-		__n3__el := __n3.Root
-		fynelayout.InsertBefore(__parent, m.__slot0_at, __n3__el)
-		m.__slot0 = append(m.__slot0, __n3__el)
-	} else {
-		__n4 := widget.NewLabel("")
-		__n4.SetText("JD")
-		fynelayout.InsertBefore(__parent, m.__slot0_at, container.NewThemeOverride(__n4, _snglTheme0))
-		m.__slot0 = append(m.__slot0, __n4)
+		__n5__el := __n5.Root
+		fynelayout.InsertBefore(__parent, m.__slot1_at, __n5__el)
+		m.__slot1 = append(m.__slot1, __n5__el)
 	}
 	for __inst0_i_d, _ := range m.__inst0_live {
 		var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
@@ -550,12 +582,12 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 	m.__inst0_live = __inst0_next
 }
 
-func (m *Model) __n1_closed_handler() {
+func (m *Model) __n0_closed_handler() {
 }
 
-func (m *Model) __n1_visible_handler(__visible bool) {
+func (m *Model) __n0_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
-	m.__n1.SetVisible(m.visible__inst0)
+	m.__n0.SetVisible(m.visible__inst0)
 }
 
 func (m *Model) __n7_click_handler() {
@@ -585,19 +617,10 @@ func (m *Model) __n10_load_handler() {
 func (m *Model) __n10_failed_handler(m__r0 string) {
 }
 
-func (m *Model) __n5_click_handler() {
-}
-
-func (m *Model) __n5_load_handler() {
-}
-
-func (m *Model) __n5_failed_handler(m__r0 string) {
-}
-
 func (m *Model) __n16_click_handler() {
 	m.radius__inst0 = (m.radius__inst0 + 1.0)
 	m.hasPhoto__inst0 = !m.hasPhoto__inst0
-	m.__renderSlot0(m.__n5.Box)
+	m.__renderSlot1(m.__n6)
 	m.__n11Ctx = snglcanvas.New(16, 16)
 	m._canvasDraw0(m.__n11Ctx)
 	m.__n11.SetImage(m.__n11Ctx.Result())
@@ -664,17 +687,25 @@ func (m *Model) SetVisible__inst0(v bool) {
 	m.visible__inst0 = v
 }
 
+func (m *Model) Failed__inst0() bool {
+	return m.failed__inst0
+}
+
+func (m *Model) SetFailed__inst0(v bool) {
+	m.failed__inst0 = v
+}
+
 // BuildUI creates the widget tree and returns the first window's content.
 func (m *Model) BuildUI() fyne.CanvasObject {
 	if m.__built {
-		return m.__n1.Container
+		return m.__n0.Container
 	}
 	m.__built = true
-	m.__n1 = fynelayout.NewToplevel()
-	m.__n1.SetTitle("Images")
-	m.__n1.SetVisible(m.visible__inst0)
-	m.__n1.OnClosed = m.__n1_closed_handler
-	m.__n1.OnVisible = m.__n1_visible_handler
+	m.__n0 = fynelayout.NewToplevel()
+	m.__n0.SetTitle("Images")
+	m.__n0.SetVisible(m.visible__inst0)
+	m.__n0.OnClosed = m.__n0_closed_handler
+	m.__n0.OnVisible = m.__n0_visible_handler
 	m.__n6 = container.NewVBox()
 	m.__n7 = fynelayout.NewImage()
 	m.__n7.SetFit("cover")
@@ -690,9 +721,9 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n9.OnTapped = m.__n9_click_handler
 	m.__n9.OnLoad = m.__n9_load_handler
 	m.__n9.OnError = m.__n9_failed_handler
-	m.__n2 = fynelayout.NewImageSource()
-	m.__n2.SetURL(m.url__inst0)
-	m.__n9.Add(m.__n2)
+	m.__n1 = fynelayout.NewImageSource()
+	m.__n1.SetURL(m.url__inst0)
+	m.__n9.Add(m.__n1)
 	m.__n6.Add(m.__n9)
 	m.__n10 = fynelayout.NewImage()
 	m.__n10.SetFit("contain")
@@ -705,13 +736,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n11.SetImage(m.__n11Ctx.Result())
 	m.__n10.Add(m.__n11)
 	m.__n6.Add(m.__n10)
-	m.__n5 = fynelayout.NewImage()
-	m.__n5.SetFit("cover")
-	m.__n5.OnTapped = m.__n5_click_handler
-	m.__n5.OnLoad = m.__n5_load_handler
-	m.__n5.OnError = m.__n5_failed_handler
-	m.__renderSlot0(m.__n5.Box)
-	m.__n6.Add(m.__n5)
+	m.__renderSlot1(m.__n6)
 	m.__n12Ctx = snglcanvas.New(32, 32)
 	m._canvasDraw1(m.__n12Ctx)
 	m.__n12 = canvas.NewImageFromImage(m.__n12Ctx.Result())
@@ -730,42 +755,80 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n16.SetText("grow")
 	m.__n16.OnTapped = m.__n16_click_handler
 	m.__n6.Add(m.__n16)
-	m.__n1.Add(m.__n6)
+	m.__n0.Add(m.__n6)
 	m.__n17 = fynelayout.NewImageSource()
 	m.__n17Ctx = snglcanvas.New(16, 16)
 	m._canvasDraw2(m.__n17Ctx)
 	m.__n17.SetImage(m.__n17Ctx.Result())
-	m.__n1.Add(m.__n17)
-	fynelayout.AppAttach(m.__n1)
-	return m.__n1.Container
+	m.__n0.Add(m.__n17)
+	fynelayout.AppAttach(m.__n0)
+	return m.__n0.Container
 }
 
 // __child0Instance is one live instance of the __child0 component.
 type __child0Instance struct {
-	Root        fyne.CanvasObject
-	__model     *Model
-	__prop___p0 string
-	__root      *fyne.Container
-	__slot0     []fyne.CanvasObject
-	__slot0_at  fyne.CanvasObject
-	__n0        *fynelayout.ImageSource
+	Root         fyne.CanvasObject
+	__model      *Model
+	__prop___p0  bool
+	__prop___p1  string
+	__prop___on0 func(string)
+	__root       *fyne.Container
+	__slot0      []fyne.CanvasObject
+	__slot0_at   fyne.CanvasObject
+	__slot1      []fyne.CanvasObject
+	__slot1_at   fyne.CanvasObject
+	__n3         *fynelayout.Image
 }
 
-func new__child0Instance(__model *Model, __a___p0 string) *__child0Instance {
+func new__child0Instance(__model *Model, __a___p0 bool, __a___p1 string, __a___on0 func(string)) *__child0Instance {
 	c := &__child0Instance{}
 	c.__model = __model
 	c.__prop___p0 = __a___p0
+	c.__prop___p1 = __a___p1
+	c.__prop___on0 = __a___on0
 	c.__root = container.NewVBox()
 	c.__slot0 = nil
-	c.__n0 = fynelayout.NewImageSource()
-	c.__n0.SetURL(c.__prop___p0)
-	c.Root = c.__n0
+	c.__slot1 = nil
+	c.__n3 = fynelayout.NewImage()
+	c.__n3.SetFit("cover")
+	c.__n3.OnTapped = func() {
+	}
+	c.__n3.OnLoad = func() {
+	}
+	c.__n3.OnError = func(__on0_0 string) {
+		c.__prop___on0(__on0_0)
+	}
+	c.__renderSlot0(c.__n3.Box)
+	c.Root = c.__n3
 	return c
 }
 
-func (c *__child0Instance) Set__p0(__v string) {
+func (c *__child0Instance) Set__p0(__v bool) {
 	c.__prop___p0 = __v
-	c.__n0.SetURL(c.__prop___p0)
+	c.__renderSlot0(c.__n3.Box)
+}
+
+func (c *__child0Instance) Set__p1(__v string) {
+	c.__prop___p1 = __v
+	c.__renderSlot0(c.__n3.Box)
+}
+
+func (c *__child0Instance) Set__on0(__v func(string)) {
+	c.__prop___on0 = __v
+}
+
+func (c *__child0Instance) __renderSlot0(__parent *fyne.Container) {
+	for _, __entry := range c.__slot0 {
+		fynelayout.Remove(__parent, __entry)
+	}
+	c.__slot0 = nil
+	c.__slot0_at = fynelayout.SlotAnchor(__parent, c.__slot0_at)
+	if c.__prop___p0 {
+		__n2 := fynelayout.NewImageSource()
+		__n2.SetURL(c.__prop___p1)
+		fynelayout.InsertBefore(__parent, c.__slot0_at, __n2)
+		c.__slot0 = append(c.__slot0, __n2)
+	}
 }
 
 func (c *__child0Instance) Destroy() {}
@@ -1066,18 +1129,18 @@ type Model struct {
 	url__inst0      string
 	hasPhoto__inst0 bool
 	visible__inst0  bool
-	__slot0         []*C.GtkWidget
-	__slot0_at      *C.GtkWidget
+	failed__inst0   bool
+	__slot1         []*C.GtkWidget
+	__slot1_at      *C.GtkWidget
 	__inst0_live    []*__child0Instance
-	__n1            *C.GtkBox
+	__n0            *C.GtkBox
 	__n6            *C.GtkBox
 	__n7            *C.GtkBox
 	__n8            *C.GtkPicture
 	__n9            *C.GtkBox
-	__n2            *C.GtkPicture
+	__n1            *C.GtkPicture
 	__n10           *C.GtkBox
 	__n11           *C.GtkPicture
-	__n5            *C.GtkBox
 	__n12           *C.GtkDrawingArea
 	__n13           *C.GtkLabel
 	__n16           *C.GtkButton
@@ -1093,8 +1156,9 @@ func New() *Model {
 	m.url__inst0 = "https://example.com/a.png"
 	m.hasPhoto__inst0 = false
 	m.visible__inst0 = true
-	m.__slot0 = nil
-	m.__slot0_at = nil
+	m.failed__inst0 = false
+	m.__slot1 = nil
+	m.__slot1_at = nil
 	m.__inst0_live = []*__child0Instance{}
 	return m
 }
@@ -1141,36 +1205,44 @@ func LineJoin(join string) C.cairo_line_join_t {
 	return C.cairo_line_join_t(C.int(0))
 }
 
-func (m *Model) __renderSlot0(parent *C.GtkBox) {
-	for _, __entry := range m.__slot0 {
+func (m *Model) __renderSlot1(parent *C.GtkBox) {
+	for _, __entry := range m.__slot1 {
 		C.gtk_box_remove((*C.GtkBox)(unsafe.Pointer(parent)), (*C.GtkWidget)(unsafe.Pointer(__entry)))
 	}
-	m.__slot0 = nil
-	m.__slot0_at = C.sngl_slot_anchor((*C.GtkBox)(unsafe.Pointer(parent)), m.__slot0_at)
+	m.__slot1 = nil
+	m.__slot1_at = C.sngl_slot_anchor((*C.GtkBox)(unsafe.Pointer(parent)), m.__slot1_at)
 	__inst0_next := []*__child0Instance{}
 	var __inst0_i int = 0
-	if m.hasPhoto__inst0 {
-		var __n3 *__child0Instance
+	if m.failed__inst0 || !m.hasPhoto__inst0 {
+		__n4 := (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
+		C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(__n4)), C.CString("JD"))
+		C.sngl_insert_before((*C.GtkBox)(unsafe.Pointer(parent)), m.__slot1_at, (*C.GtkWidget)(unsafe.Pointer(__n4)))
+		m.__slot1 = append(m.__slot1, (*C.GtkWidget)(unsafe.Pointer(__n4)))
+	} else {
+		var __n5 *__child0Instance
 		if len(m.__inst0_live) > __inst0_i {
-			__n3 = m.__inst0_live[__inst0_i]
-			__n3.Set__p0(m.url__inst0)
+			__n5 = m.__inst0_live[__inst0_i]
+			__n5.Set__p0(m.hasPhoto__inst0)
+			__n5.Set__p1(m.url__inst0)
+			__n5.Set__on0(func(m__r0 string) {
+				m.failed__inst0 = true
+				m.__renderSlot1(m.__n6)
+			})
 		} else {
 			if len(m.__inst0_live) > __inst0_i {
 				m.__inst0_live[__inst0_i].Destroy()
 			}
-			__n3__new := new__child0Instance(m, m.url__inst0)
-			__n3 = __n3__new
+			__n5__new := new__child0Instance(m, m.hasPhoto__inst0, m.url__inst0, func(m__r0 string) {
+				m.failed__inst0 = true
+				m.__renderSlot1(m.__n6)
+			})
+			__n5 = __n5__new
 		}
-		__inst0_next = append(__inst0_next, __n3)
+		__inst0_next = append(__inst0_next, __n5)
 		__inst0_i = (__inst0_i + 1)
-		__n3__el := __n3.Root
-		C.sngl_insert_before((*C.GtkBox)(unsafe.Pointer(parent)), m.__slot0_at, (*C.GtkWidget)(unsafe.Pointer(__n3__el)))
-		m.__slot0 = append(m.__slot0, (*C.GtkWidget)(unsafe.Pointer(__n3__el)))
-	} else {
-		__n4 := (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
-		C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(__n4)), C.CString("JD"))
-		C.sngl_insert_before((*C.GtkBox)(unsafe.Pointer(parent)), m.__slot0_at, (*C.GtkWidget)(unsafe.Pointer(__n4)))
-		m.__slot0 = append(m.__slot0, (*C.GtkWidget)(unsafe.Pointer(__n4)))
+		__n5__el := __n5.Root
+		C.sngl_insert_before((*C.GtkBox)(unsafe.Pointer(parent)), m.__slot1_at, (*C.GtkWidget)(unsafe.Pointer(__n5__el)))
+		m.__slot1 = append(m.__slot1, (*C.GtkWidget)(unsafe.Pointer(__n5__el)))
 	}
 	for __inst0_i_d, _ := range m.__inst0_live {
 		var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
@@ -1181,10 +1253,10 @@ func (m *Model) __renderSlot0(parent *C.GtkBox) {
 	m.__inst0_live = __inst0_next
 }
 
-func (m *Model) __n1_closed_handler() {
+func (m *Model) __n0_closed_handler() {
 }
 
-func (m *Model) __n1_visible_handler(__visible bool) {
+func (m *Model) __n0_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 }
 
@@ -1215,20 +1287,13 @@ func (m *Model) __n10_load_handler() {
 func (m *Model) __n10_failed_handler(m__r0 string) {
 }
 
-func (m *Model) __n5_click_handler() {
-}
-
-func (m *Model) __n5_load_handler() {
-}
-
-func (m *Model) __n5_failed_handler(m__r0 string) {
-}
-
 func (m *Model) __n16_clicked_handler() {
 	m.radius__inst0 = (m.radius__inst0 + 1.0)
 	m.hasPhoto__inst0 = !m.hasPhoto__inst0
-	m.__renderSlot0(m.__n5)
-	gtk4rt.ImagePaint(gtk4rt.Handle(unsafe.Pointer(m.__n11)), 16, 16, func(cr unsafe.Pointer) { m._canvasDraw0((*C.cairo_t)(cr)) })
+	m.__renderSlot1(m.__n6)
+	gtk4rt.ImagePaint(gtk4rt.Handle(unsafe.Pointer(m.__n11)), 16, 16, func(cr unsafe.Pointer) {
+		m._canvasDraw0((*C.cairo_t)(unsafe.Pointer(cr)))
+	})
 }
 
 func (m *Model) _canvasDraw0(ctx *C.cairo_t) {
@@ -1263,31 +1328,69 @@ func (m *Model) _canvasDraw2(ctx *C.cairo_t) {
 
 // __child0Instance is one live instance of the __child0 component.
 type __child0Instance struct {
-	Root        *C.GtkWidget
-	__model     *Model
-	__prop___p0 string
-	__root      *C.GtkBox
-	__slot0     []*C.GtkWidget
-	__slot0_at  *C.GtkWidget
-	__n0        *C.GtkPicture
+	Root         *C.GtkWidget
+	__model      *Model
+	__prop___p0  bool
+	__prop___p1  string
+	__prop___on0 func(string)
+	__root       *C.GtkBox
+	__slot0      []*C.GtkWidget
+	__slot0_at   *C.GtkWidget
+	__slot1      []*C.GtkWidget
+	__slot1_at   *C.GtkWidget
+	__n3         *C.GtkBox
 }
 
-func new__child0Instance(__model *Model, __a___p0 string) *__child0Instance {
+func new__child0Instance(__model *Model, __a___p0 bool, __a___p1 string, __a___on0 func(string)) *__child0Instance {
 	c := &__child0Instance{}
 	c.__model = __model
 	c.__prop___p0 = __a___p0
+	c.__prop___p1 = __a___p1
+	c.__prop___on0 = __a___on0
 	c.__root = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GTK_ORIENTATION_VERTICAL, 6)))
 	c.__slot0 = nil
-	c.__n0 = (*C.GtkPicture)(unsafe.Pointer(gtk4rt.ImageSourceNew()))
-	gtk4rt.ImageSourceSetURL(gtk4rt.Handle(unsafe.Pointer(c.__n0)), c.__prop___p0)
-	c.Root = (*C.GtkWidget)(unsafe.Pointer(c.__n0))
+	c.__slot1 = nil
+	c.__n3 = (*C.GtkBox)(unsafe.Pointer(gtk4rt.ImageFrameNew()))
+	gtk4rt.ImageFrameSetFit(gtk4rt.Handle(unsafe.Pointer(c.__n3)), "cover")
+	gtk4rt.ImageFrameOnClick(gtk4rt.Handle(unsafe.Pointer(c.__n3)), func() {
+	})
+	gtk4rt.ImageFrameOnLoad(gtk4rt.Handle(unsafe.Pointer(c.__n3)), func() {
+	})
+	gtk4rt.ImageFrameOnError(gtk4rt.Handle(unsafe.Pointer(c.__n3)), func(__on0_0 string) {
+		c.__prop___on0(__on0_0)
+	})
+	c.__renderSlot0(c.__n3)
+	c.Root = (*C.GtkWidget)(unsafe.Pointer(c.__n3))
 	C.g_object_ref_sink(C.gpointer(unsafe.Pointer(c.Root)))
 	return c
 }
 
-func (c *__child0Instance) Set__p0(__v string) {
+func (c *__child0Instance) Set__p0(__v bool) {
 	c.__prop___p0 = __v
-	gtk4rt.ImageSourceSetURL(gtk4rt.Handle(unsafe.Pointer(c.__n0)), c.__prop___p0)
+	c.__renderSlot0(c.__n3)
+}
+
+func (c *__child0Instance) Set__p1(__v string) {
+	c.__prop___p1 = __v
+	c.__renderSlot0(c.__n3)
+}
+
+func (c *__child0Instance) Set__on0(__v func(string)) {
+	c.__prop___on0 = __v
+}
+
+func (c *__child0Instance) __renderSlot0(parent *C.GtkBox) {
+	for _, __entry := range c.__slot0 {
+		C.gtk_box_remove((*C.GtkBox)(unsafe.Pointer(parent)), (*C.GtkWidget)(unsafe.Pointer(__entry)))
+	}
+	c.__slot0 = nil
+	c.__slot0_at = C.sngl_slot_anchor((*C.GtkBox)(unsafe.Pointer(parent)), c.__slot0_at)
+	if c.__prop___p0 {
+		__n2 := (*C.GtkPicture)(unsafe.Pointer(gtk4rt.ImageSourceNew()))
+		gtk4rt.ImageSourceSetURL(gtk4rt.Handle(unsafe.Pointer(__n2)), c.__prop___p1)
+		C.sngl_insert_before((*C.GtkBox)(unsafe.Pointer(parent)), c.__slot0_at, (*C.GtkWidget)(unsafe.Pointer(__n2)))
+		c.__slot0 = append(c.__slot0, (*C.GtkWidget)(unsafe.Pointer(__n2)))
+	}
 }
 
 func (c *__child0Instance) Destroy() {
@@ -1297,6 +1400,9 @@ func (c *__child0Instance) Destroy() {
 	}
 	if c.__slot0_at != nil {
 		C.g_object_unref(C.gpointer(unsafe.Pointer(c.__slot0_at)))
+	}
+	if c.__slot1_at != nil {
+		C.g_object_unref(C.gpointer(unsafe.Pointer(c.__slot1_at)))
 	}
 }
 
@@ -1332,12 +1438,20 @@ func (m *Model) SetVisible__inst0(v bool) {
 	m.visible__inst0 = v
 }
 
+func (m *Model) Failed__inst0() bool {
+	return m.failed__inst0
+}
+
+func (m *Model) SetFailed__inst0(v bool) {
+	m.failed__inst0 = v
+}
+
 func (m *Model) buildWidgetTree() {
 	if m.__root != nil {
 		return
 	}
 	m.__root = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GTK_ORIENTATION_VERTICAL, 6)))
-	m.__n1 = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GTK_ORIENTATION_VERTICAL, 6)))
+	m.__n0 = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GTK_ORIENTATION_VERTICAL, 6)))
 	m.__n6 = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(0, C.int(0))))
 	C.gtk_orientable_set_orientation((*C.GtkOrientable)(unsafe.Pointer(m.__n6)), C.GTK_ORIENTATION_VERTICAL)
 	C.gtk_box_set_spacing((*C.GtkBox)(unsafe.Pointer(m.__n6)), C.int(6))
@@ -1355,9 +1469,9 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ImageFrameOnClick(gtk4rt.Handle(unsafe.Pointer(m.__n9)), m.__n9_click_handler)
 	gtk4rt.ImageFrameOnLoad(gtk4rt.Handle(unsafe.Pointer(m.__n9)), m.__n9_load_handler)
 	gtk4rt.ImageFrameOnError(gtk4rt.Handle(unsafe.Pointer(m.__n9)), m.__n9_failed_handler)
-	m.__n2 = (*C.GtkPicture)(unsafe.Pointer(gtk4rt.ImageSourceNew()))
-	gtk4rt.ImageSourceSetURL(gtk4rt.Handle(unsafe.Pointer(m.__n2)), m.url__inst0)
-	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n9)), (*C.GtkWidget)(unsafe.Pointer(m.__n2)))
+	m.__n1 = (*C.GtkPicture)(unsafe.Pointer(gtk4rt.ImageSourceNew()))
+	gtk4rt.ImageSourceSetURL(gtk4rt.Handle(unsafe.Pointer(m.__n1)), m.url__inst0)
+	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n9)), (*C.GtkWidget)(unsafe.Pointer(m.__n1)))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n6)), (*C.GtkWidget)(unsafe.Pointer(m.__n9)))
 	m.__n10 = (*C.GtkBox)(unsafe.Pointer(gtk4rt.ImageFrameNew()))
 	gtk4rt.ImageFrameSetFit(gtk4rt.Handle(unsafe.Pointer(m.__n10)), "contain")
@@ -1365,20 +1479,19 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ImageFrameOnLoad(gtk4rt.Handle(unsafe.Pointer(m.__n10)), m.__n10_load_handler)
 	gtk4rt.ImageFrameOnError(gtk4rt.Handle(unsafe.Pointer(m.__n10)), m.__n10_failed_handler)
 	m.__n11 = (*C.GtkPicture)(unsafe.Pointer(gtk4rt.ImageSourceNew()))
-	gtk4rt.ImagePaint(gtk4rt.Handle(unsafe.Pointer(m.__n11)), 16, 16, func(cr unsafe.Pointer) { m._canvasDraw0((*C.cairo_t)(cr)) })
+	gtk4rt.ImagePaint(gtk4rt.Handle(unsafe.Pointer(m.__n11)), 16, 16, func(cr unsafe.Pointer) {
+		m._canvasDraw0((*C.cairo_t)(unsafe.Pointer(cr)))
+	})
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n10)), (*C.GtkWidget)(unsafe.Pointer(m.__n11)))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n6)), (*C.GtkWidget)(unsafe.Pointer(m.__n10)))
-	m.__n5 = (*C.GtkBox)(unsafe.Pointer(gtk4rt.ImageFrameNew()))
-	gtk4rt.ImageFrameSetFit(gtk4rt.Handle(unsafe.Pointer(m.__n5)), "cover")
-	gtk4rt.ImageFrameOnClick(gtk4rt.Handle(unsafe.Pointer(m.__n5)), m.__n5_click_handler)
-	gtk4rt.ImageFrameOnLoad(gtk4rt.Handle(unsafe.Pointer(m.__n5)), m.__n5_load_handler)
-	gtk4rt.ImageFrameOnError(gtk4rt.Handle(unsafe.Pointer(m.__n5)), m.__n5_failed_handler)
-	m.__renderSlot0(m.__n5)
-	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n6)), (*C.GtkWidget)(unsafe.Pointer(m.__n5)))
+	m.__renderSlot1(m.__n6)
 	m.__n12 = (*C.GtkDrawingArea)(unsafe.Pointer(C.gtk_drawing_area_new()))
 	C.gtk_drawing_area_set_content_width(m.__n12, C.int(32))
 	C.gtk_drawing_area_set_content_height(m.__n12, C.int(32))
-	snglDrawFuncs = append(snglDrawFuncs, func(cr *C.cairo_t, pw, ph int) { _snglCairoScale(cr, pw, ph, 32, 32, ""); m._canvasDraw1(cr) })
+	snglDrawFuncs = append(snglDrawFuncs, func(cr *C.cairo_t, pw int, ph int) {
+		_snglCairoScale(cr, pw, ph, 32, 32, "")
+		m._canvasDraw1(cr)
+	})
 	C.sngl_drawing_area_set_draw(unsafe.Pointer(m.__n12), C.int((len(snglDrawFuncs) - 1)))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n6)), (*C.GtkWidget)(unsafe.Pointer(m.__n12)))
 	m.__n13 = (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
@@ -1391,11 +1504,13 @@ func (m *Model) buildWidgetTree() {
 	snglCallbacks = append(snglCallbacks, m.__n16_clicked_handler)
 	C.sngl_connect(unsafe.Pointer(m.__n16), C.CString("clicked"), C.int((len(snglCallbacks) - 1)))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n6)), (*C.GtkWidget)(unsafe.Pointer(m.__n16)))
-	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n1)), (*C.GtkWidget)(unsafe.Pointer(m.__n6)))
+	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n0)), (*C.GtkWidget)(unsafe.Pointer(m.__n6)))
 	m.__n17 = (*C.GtkPicture)(unsafe.Pointer(gtk4rt.ImageSourceNew()))
-	gtk4rt.ImagePaint(gtk4rt.Handle(unsafe.Pointer(m.__n17)), 16, 16, func(cr unsafe.Pointer) { m._canvasDraw2((*C.cairo_t)(cr)) })
+	gtk4rt.ImagePaint(gtk4rt.Handle(unsafe.Pointer(m.__n17)), 16, 16, func(cr unsafe.Pointer) {
+		m._canvasDraw2((*C.cairo_t)(unsafe.Pointer(cr)))
+	})
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__root)), (*C.GtkWidget)(unsafe.Pointer(m.__n17)))
-	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__root)), (*C.GtkWidget)(unsafe.Pointer(m.__n1)))
+	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__root)), (*C.GtkWidget)(unsafe.Pointer(m.__n0)))
 }
 
 // BuildUI constructs the widget tree and returns the top-level window.
@@ -1436,9 +1551,9 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.size
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.material3.Text
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.height
-import androidx.compose.material3.Text
 import androidx.compose.foundation.background
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.TextStyle
@@ -1521,6 +1636,7 @@ fun MainScreen() {
     var url__inst0 by remember { mutableStateOf("https://example.com/a.png") }
     var hasPhoto__inst0 by remember { mutableStateOf(false) }
     var visible__inst0 by remember { mutableStateOf(true) }
+    var failed__inst0 by remember { mutableStateOf(false) }
 
     if (visible__inst0) {
         val __activity = LocalContext.current as? Activity
@@ -1542,11 +1658,13 @@ fun MainScreen() {
                     drawCircle(color = androidx.compose.ui.graphics.Color(red = 51, green = 102, blue = 204, alpha = 255), radius = radius__inst0.toFloat(), center = Offset(8.0.toFloat(), 8.0.toFloat()))
                 }
             }
-            Box(modifier = Modifier.width(40.dp).height(40.dp)) {
-                if (hasPhoto__inst0) {
-                    SnglAssetImage(url = url__inst0)
-                } else {
-                    Text(text = "JD", modifier = Modifier.width(40.dp).height(40.dp).background(ComposeColor(red = 204, green = 204, blue = 204, alpha = 255)), style = TextStyle(textAlign = TextAlign.Center))
+            if ((failed__inst0 || !hasPhoto__inst0)) {
+                Text(text = "JD", modifier = Modifier.width(40.dp).height(40.dp).background(ComposeColor(red = 204, green = 204, blue = 204, alpha = 255)), style = TextStyle(textAlign = TextAlign.Center))
+            } else {
+                Box(modifier = Modifier.width(40.dp).height(40.dp)) {
+                    if (hasPhoto__inst0) {
+                        SnglAssetImage(url = url__inst0)
+                    }
                 }
             }
             Canvas(modifier = Modifier.size(32.dp, 32.dp)) {
@@ -1625,23 +1743,21 @@ body { font-family: system-ui, sans-serif; }
   </style>
 </head><body>
 
-<div style="display:flex;flex-direction:column">
+<div id="__n6" data-sngl-id="__n6" style="display:flex;flex-direction:column">
   <span class="sngl-image sngl-image-cover" style="display:inline-block;overflow:hidden" aria-label="Logo" role="img">
     <img alt="" src="logo.svg"/>
   </span>
   <span class="sngl-image sngl-image-contain" style="display:inline-block;overflow:hidden" aria-label="Remote" role="img">
-    <img id="__n2" data-sngl-id="__n2" alt=""/>
+    <img id="__n1" data-sngl-id="__n1" alt=""/>
   </span>
   <span class="sngl-image sngl-image-contain" style="display:inline-block;overflow:hidden" aria-label="Dot" role="img">
-    <img id="$5" alt=""/>
+    <img id="$4" alt=""/>
   </span>
-  <span id="__n5" data-sngl-id="__n5" class="sngl-image sngl-image-cover" style="border-radius:20px;display:inline-block;height:40px;overflow:hidden;width:40px" aria-label="" role="img">
-    <span data-sngl-slot="0" style="display:contents"></span>
-  </span>
-  <canvas id="$6" style="height:32px;width:32px" height="32" width="32">
+  <span data-sngl-slot="1" style="display:contents"></span>
+  <canvas id="$5" style="height:32px;width:32px" height="32" width="32">
   </canvas>
   <p style="margin:0px;white-space:pre-wrap"><span>see </span><span class="sngl-image sngl-image-contain" style="display:inline-block;overflow:hidden" aria-label="logo" role="img"><img alt="" src="logo.svg"/></span></p>
-  <button id="$9">
+  <button id="$8">
     <span>grow</span>
   </button>
 </div>
@@ -1656,7 +1772,7 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { radius__inst0: 4, url__inst0: "https://example.com/a.png", hasPhoto__inst0: false, visible__inst0: true };
+  var state = { radius__inst0: 4, url__inst0: "https://example.com/a.png", hasPhoto__inst0: false, visible__inst0: true, failed__inst0: false };
   function paintStyle(ctx, style) {
     ctx.fillStyle = "rgba(" + String(style.fill.r) + "," + String(style.fill.g) + "," + String(style.fill.b) + "," + String(parseFloat(style.fill.a) / 255) + ")";
     ctx.strokeStyle = "rgba(" + String(style.stroke.r) + "," + String(style.stroke.g) + "," + String(style.stroke.b) + "," + String(parseFloat(style.stroke.a) / 255) + ")";
@@ -1666,25 +1782,76 @@ body { font-family: system-ui, sans-serif; }
     const __root = document.createElement("div");
     __root.style.display = "contents";
     let __p0 = props.__p0;
+    let __p1 = props.__p1;
+    let __on0 = props.__on0 ?? ((__e0) => {
+    });
     let __prop___p0 = __p0;
-    let __slot02 = [];
+    let __prop___p1 = __p1;
+    let __prop___on0 = __on0;
+    let __slot0 = [];
+    let __slot12 = [];
     function __set___p0(__v) {
       __prop___p0 = __v;
-      __n0.setAttribute("url", __prop___p0);
+      __renderSlot0(__slotAnchor_0);
     }
-    let __n0 = document.createElement("img");
-    __n0.setAttribute("alt", "");
-    __n0.src = __prop___p0;
-    __root.appendChild(__n0);
+    function __set___p1(__v) {
+      __prop___p1 = __v;
+      __renderSlot0(__slotAnchor_0);
+    }
+    function __set___on0(__v) {
+      __prop___on0 = __v;
+    }
+    function __renderSlot0(parent) {
+      let __place0_prev = __slot0;
+      let __place0_i = 0;
+      __slot0 = [];
+      if (__prop___p0) {
+        let __n2 = document.createElement("img");
+        __n2.setAttribute("alt", "");
+        __n2.src = __prop___p1;
+        let __place0_i_ref0 = null;
+        if (__place0_i < __place0_prev.length) {
+          __place0_i_ref0 = __place0_prev[__place0_i];
+        }
+        if (__place0_i_ref0 === __n2) {
+          __place0_i = __place0_i + 1;
+        } else {
+          parent.insertBefore(__n2, __place0_i_ref0);
+        }
+        __slot0.push(__n2);
+      }
+      for (const __place0_prev_e of __place0_prev) {
+        if (__slot0.indexOf(__place0_prev_e) < 0) {
+          parent.removeChild(__place0_prev_e);
+        }
+      }
+    }
+    let __n3 = document.createElement("span");
+    __n3.setAttribute("class", "sngl-image sngl-image-cover");
+    __n3.setAttribute("role", "img");
+    __n3.setAttribute("aria-label", "");
+    __n3.setAttribute("style", "border-radius:20px;display:inline-block;height:40px;overflow:hidden;width:40px");
+    __n3.addEventListener("click", () => {
+    });
+    __n3.addEventListener("error", (__on0_0) => {
+      __prop___on0(__on0_0);
+    });
+    const __slotAnchor_0 = document.createElement("span");
+    __slotAnchor_0.style.display = "contents";
+    __n3.appendChild(__slotAnchor_0);
+    __renderSlot0(__slotAnchor_0);
+    __root.appendChild(__n3);
     return {
       __root,
       __destroy() {
       },
-      __set___p0
+      __set___p0,
+      __set___p1,
+      __set___on0
     };
   }
-  var __slot0 = [];
-  var __inst1_live = [];
+  var __slot1 = [];
+  var __inst2_live = [];
   function _canvasDraw0(ctx) {
     ctx.save();
     paintStyle(ctx, { fill: { r: 51, g: 102, b: 204, a: 255 }, stroke: { a: 0, r: 0, g: 0, b: 0 }, strokeWidth: 1, lineCap: "butt", lineJoin: "miter", fontSize: 16, fontFamily: "sans-serif" });
@@ -1715,64 +1882,72 @@ body { font-family: system-ui, sans-serif; }
     ctx.fill();
     ctx.restore();
   }
-  function __renderSlot0(parent) {
-    let __place0_prev = __slot0;
-    let __place0_i = 0;
-    __slot0 = [];
-    let __inst1_next = [];
-    let __inst1_i = 0;
-    if (state.hasPhoto__inst0) {
-      let __n3 = null;
-      if (__inst1_live.length > __inst1_i) {
-        __n3 = __inst1_live[__inst1_i];
-        __n3.__set___p0(state.url__inst0);
-      } else {
-        if (__inst1_live.length > __inst1_i) {
-          __inst1_live[__inst1_i].__destroy();
-        }
-        let __n3__new = __cf___child0({ __p0: state.url__inst0 });
-        __n3 = __n3__new;
-      }
-      __inst1_next.push(__n3);
-      __inst1_i = __inst1_i + 1;
-      let __n3__el = __n3.__root;
-      let __place0_i_ref0 = null;
-      if (__place0_i < __place0_prev.length) {
-        __place0_i_ref0 = __place0_prev[__place0_i];
-      }
-      if (__place0_i_ref0 === __n3__el) {
-        __place0_i = __place0_i + 1;
-      } else {
-        parent.insertBefore(__n3__el, __place0_i_ref0);
-      }
-      __slot0.push(__n3__el);
-    } else {
+  function __renderSlot1(parent) {
+    let __place1_prev = __slot1;
+    let __place1_i = 0;
+    __slot1 = [];
+    let __inst2_next = [];
+    let __inst2_i = 0;
+    if (state.failed__inst0 || !state.hasPhoto__inst0) {
       let __n4 = document.createElement("span");
       __n4.textContent = "JD";
       __n4.setAttribute("style", "align-items:center;background-color:#cccccc;border-radius:20px;display:inline-flex;height:40px;justify-content:center;text-align:center;width:40px");
       __n4.addEventListener("click", () => {
       });
-      let __place0_i_ref1 = null;
-      if (__place0_i < __place0_prev.length) {
-        __place0_i_ref1 = __place0_prev[__place0_i];
+      let __place1_i_ref0 = null;
+      if (__place1_i < __place1_prev.length) {
+        __place1_i_ref0 = __place1_prev[__place1_i];
       }
-      if (__place0_i_ref1 === __n4) {
-        __place0_i = __place0_i + 1;
+      if (__place1_i_ref0 === __n4) {
+        __place1_i = __place1_i + 1;
       } else {
-        parent.insertBefore(__n4, __place0_i_ref1);
+        parent.insertBefore(__n4, __place1_i_ref0);
       }
-      __slot0.push(__n4);
+      __slot1.push(__n4);
+    } else {
+      let __n5 = null;
+      if (__inst2_live.length > __inst2_i) {
+        __n5 = __inst2_live[__inst2_i];
+        __n5.__set___p0(state.hasPhoto__inst0);
+        __n5.__set___p1(state.url__inst0);
+        __n5.__set___on0((e) => {
+          state.failed__inst0 = true;
+          __renderSlot1(__slotAnchor_1);
+        });
+      } else {
+        if (__inst2_live.length > __inst2_i) {
+          __inst2_live[__inst2_i].__destroy();
+        }
+        let __n5__new = __cf___child0({ __p0: state.hasPhoto__inst0, __p1: state.url__inst0, __on0: (e) => {
+          state.failed__inst0 = true;
+          __renderSlot1(__slotAnchor_1);
+        } });
+        __n5 = __n5__new;
+      }
+      __inst2_next.push(__n5);
+      __inst2_i = __inst2_i + 1;
+      let __n5__el = __n5.__root;
+      let __place1_i_ref1 = null;
+      if (__place1_i < __place1_prev.length) {
+        __place1_i_ref1 = __place1_prev[__place1_i];
+      }
+      if (__place1_i_ref1 === __n5__el) {
+        __place1_i = __place1_i + 1;
+      } else {
+        parent.insertBefore(__n5__el, __place1_i_ref1);
+      }
+      __slot1.push(__n5__el);
     }
-    for (const [__inst1_i_d, _] of __inst1_live.entries()) {
-      let __inst1_i_j = __inst1_live.length - 1 - __inst1_i_d;
-      if (__inst1_i_j >= __inst1_i) {
-        __inst1_live[__inst1_i_j].__destroy();
+    for (const [__inst2_i_d, _] of __inst2_live.entries()) {
+      let __inst2_i_j = __inst2_live.length - 1 - __inst2_i_d;
+      if (__inst2_i_j >= __inst2_i) {
+        __inst2_live[__inst2_i_j].__destroy();
       }
     }
-    __inst1_live = __inst1_next;
-    for (const __place0_prev_e of __place0_prev) {
-      if (__slot0.indexOf(__place0_prev_e) < 0) {
-        parent.removeChild(__place0_prev_e);
+    __inst2_live = __inst2_next;
+    for (const __place1_prev_e of __place1_prev) {
+      if (__slot1.indexOf(__place1_prev_e) < 0) {
+        parent.removeChild(__place1_prev_e);
       }
     }
   }
@@ -1840,38 +2015,38 @@ body { font-family: system-ui, sans-serif; }
     return "" + v;
   }
   var $0 = document.getElementById("$0");
+  var $4 = document.getElementById("$4");
   var $5 = document.getElementById("$5");
-  var $6 = document.getElementById("$6");
-  var $9 = document.getElementById("$9");
-  var __n2 = document.querySelector('[data-sngl-id="__n2"]');
-  var __slotAnchor_0 = document.querySelector('[data-sngl-slot="0"]');
-  __renderSlot0(__slotAnchor_0);
-  $9.addEventListener("click", function() {
+  var $8 = document.getElementById("$8");
+  var __n1 = document.querySelector('[data-sngl-id="__n1"]');
+  var __slotAnchor_1 = document.querySelector('[data-sngl-slot="1"]');
+  __renderSlot1(__slotAnchor_1);
+  $8.addEventListener("click", function() {
     state.radius__inst0 = state.radius__inst0 + 1;
     state.hasPhoto__inst0 = !state.hasPhoto__inst0;
-    __renderSlot0(__slotAnchor_0);
-    _snglImageDraw($5, 16, 16, _canvasDraw0);
+    __renderSlot1(__slotAnchor_1);
+    _snglImageDraw($4, 16, 16, _canvasDraw0);
   });
   function __sngl_init() {
     Object.defineProperty($0, "src", { set(v) {
       this.href = v;
     } });
     _snglImageDraw($0, 16, 16, _canvasDraw2);
-    __n2.setAttribute("src", state.url__inst0);
-    _snglImageDraw($5, 16, 16, _canvasDraw0);
-    _snglCanvasDraw($6, 32, 32, "", _canvasDraw1);
+    __n1.setAttribute("src", state.url__inst0);
+    _snglImageDraw($4, 16, 16, _canvasDraw0);
+    _snglCanvasDraw($5, 32, 32, "", _canvasDraw1);
   }
   __sngl_init();
 })();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:c686e1c477998e3285f46df2f55197a0
+pass sha256:66b5ea655cebdb9a44aa2c200edbefd3
 -- run/go/fyne --
-pass sha256:d9fad840eec4fc2b9c4cd38ee07e8be4
+pass sha256:14793d5bfd1c6d64b6f880f5eb76ec14
 -- run/go/gtk4 --
-pass sha256:14be6eaa7fa7481070ceb0af5a317c2b
+pass sha256:c4d48dc6f95de5f34281902d85095458
 -- run/kotlin/android --
-pass sha256:1d6dbbe6f1503342a843e5bcf259145b
+pass sha256:a9f41c50f197408490a7fc019ef70d13
 -- run/none/html --
-pass sha256:ffd84b2d4f26130243510ec55360b461
+pass sha256:14abd1e84dbd4239eac904844b95be76

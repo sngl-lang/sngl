@@ -11,11 +11,11 @@ import (
 )
 
 // resolveType converts an AST TypeExpr to an IR *Type. A nil TypeExpr yields
-// TypDyn; callers that must not tolerate a missing annotation should use
+// TypInvalid; callers that must not tolerate a missing annotation should use
 // resolveTypeRequired instead.
 func (c *checker) resolveType(te ast.TypeExpr) *ir.Type {
 	if te == nil {
-		return dynFallback("no type annotation to resolve")
+		return TypInvalid
 	}
 	switch t := te.(type) {
 	case *ast.NamedType:
@@ -33,13 +33,13 @@ func (c *checker) resolveType(te ast.TypeExpr) *ir.Type {
 		// it *means* is a slot, and only a component's parameter list has one.
 		// registerComponentDecl reads a slot's type itself and never gets here.
 		c.error(t.Pos, "a component type declares a slot, so only a parameter of a component may have one")
-		return TypDyn
+		return TypInvalid
 	case *ast.VariadicType:
 		c.error(t.Pos, "`...` bounds how many nodes a slot takes, so only a slot's type may carry one")
-		return TypDyn
+		return TypInvalid
 	default:
 		c.error(ast.Pos{}, "internal: unknown type expression %T", te)
-		return TypDyn
+		return TypInvalid
 	}
 }
 
@@ -48,7 +48,7 @@ func (c *checker) resolveType(te ast.TypeExpr) *ir.Type {
 func (c *checker) resolveTypeRequired(te ast.TypeExpr, pos ast.Pos, what string) *ir.Type {
 	if te == nil {
 		c.error(pos, "type annotation required for %s", what)
-		return TypDyn
+		return TypInvalid
 	}
 	return c.resolveType(te)
 }
@@ -75,37 +75,37 @@ func (c *checker) constructBuiltinGeneric(id ir.BuiltinKind, sd *ir.StructDef, t
 	case ir.BuiltinList:
 		if len(t.TypeArgs) == 0 {
 			c.error(t.Pos, "list requires a type argument, e.g. list[int]")
-			return c.listOf(TypDyn)
+			return c.listOf(TypInvalid)
 		}
 		return c.listOf(c.resolveType(t.TypeArgs[0]))
 	case ir.BuiltinOption:
 		if len(t.TypeArgs) == 0 {
 			c.error(t.Pos, "option requires a type argument, e.g. option[int]")
-			return OptionOf(TypDyn)
+			return OptionOf(TypInvalid)
 		}
 		return OptionOf(c.resolveType(t.TypeArgs[0]))
 	case ir.BuiltinMap:
 		if len(t.TypeArgs) != 2 {
 			c.error(t.Pos, "map requires exactly 2 type arguments (key, value), got %d", len(t.TypeArgs))
-			return TypDyn
+			return TypInvalid
 		}
 		k := c.resolveType(t.TypeArgs[0])
 		v := c.resolveType(t.TypeArgs[1])
 		if !isComparable(k) {
 			c.error(t.Pos, "map key type %s is not comparable", k)
-			return TypDyn
+			return TypInvalid
 		}
 		return c.mapOf(k, v)
 	case ir.BuiltinIter:
 		if len(t.TypeArgs) != 1 {
 			c.error(t.Pos, "iter requires exactly 1 type argument, got %d", len(t.TypeArgs))
-			return TypDyn
+			return TypInvalid
 		}
 		return IterOf(c.resolveType(t.TypeArgs[0]))
 	case ir.BuiltinRef:
 		if len(t.TypeArgs) == 0 {
 			c.error(t.Pos, "ref requires a type argument, e.g. ref[int]")
-			return ir.RefOf(TypDyn)
+			return ir.RefOf(TypInvalid)
 		}
 		return ir.RefOf(c.resolveType(t.TypeArgs[0]))
 	case ir.BuiltinReadonly:
@@ -115,7 +115,7 @@ func (c *checker) constructBuiltinGeneric(id ir.BuiltinKind, sd *ir.StructDef, t
 		if len(t.TypeArgs) == 1 {
 			return c.resolveType(t.TypeArgs[0])
 		}
-		return TypDyn
+		return TypInvalid
 	}
 	// The macro validates the id set, so an unhandled kind is a compiler bug.
 	panic(fmt.Sprintf("sngl: builtin generic kind %v has no constructor", id))
@@ -134,8 +134,12 @@ func (c *checker) resolveNamedType(t *ast.NamedType) *ir.Type {
 	if sym, ok := c.scope.Lookup(t.Name); ok {
 		if typ, _, ok := scalarOf(sym); ok {
 			if typ == ir.TypAny {
-				c.error(t.Pos, "`any` is a constraint, not a type: a value of any type is a dyn")
-				return TypDyn
+				if c.anyWritten != nil {
+					*c.anyWritten = append(*c.anyWritten, t.Pos)
+					return TypInvalid
+				}
+				c.error(t.Pos, anyNotAType)
+				return TypInvalid
 			}
 			return typ
 		}
@@ -159,7 +163,7 @@ func (c *checker) resolveNamedType(t *ast.NamedType) *ir.Type {
 		// The export rule is the one between packages: a bare name declared
 		// in this one -- a library's own `_page` -- is its own to name.
 		if !c.inLibSource() && !c.resolvedInPackage(t.Name) && c.rejectUnexported(t.Pos, sym) {
-			return TypDyn
+			return TypInvalid
 		}
 		if typ := sym.SymType(); typ != nil {
 			if typ.Kind == ir.TypeStruct {
@@ -177,7 +181,7 @@ func (c *checker) resolveNamedType(t *ast.NamedType) *ir.Type {
 	}
 
 	c.error(t.Pos, "unknown type %q%s", t.Name, c.stdlibHintFor(t.Name, hintType))
-	return TypDyn
+	return TypInvalid
 }
 
 // applyComponentTypeArgs is a component type carrying the type arguments it
@@ -223,7 +227,7 @@ func (c *checker) applyStructTypeArgs(pos ast.Pos, base *ir.Type, sd *ir.StructD
 			if def == nil {
 				c.error(pos, "type %s requires a type argument for %s, which has no default",
 					sd.Name, sd.TypeParams[i].Name)
-				// The unparameterized base rather than dyn, so downstream code
+				// The unparameterized base rather than invalid, so downstream code
 				// can still see the struct shape.
 				return base
 			}
@@ -265,20 +269,21 @@ func (c *checker) resolveQualifiedType(t *ast.NamedType) *ir.Type {
 	sym, ok := c.scope.Lookup(pkg)
 	if !ok {
 		c.error(ast.Pos{}, "unknown namespace %q", pkg)
-		return TypDyn
+		return TypInvalid
 	}
 	ns, ok := sym.(*ir.Namespace)
 	if !ok {
 		c.error(ast.Pos{}, "%q is not a namespace", pkg)
-		return TypDyn
+		return TypInvalid
 	}
 	if ns.Pkg == nil {
-		// Native import — accept as dyn.
-		return dynFallback("type %s.%s comes from a native import with no package", pkg, name)
+		// An import that resolved to no package -- a check with no resolver
+		// -- has no members, and the import is where that is the problem.
+		return TypInvalid
 	}
 	if tsym, ok := ns.Pkg.Symbols.LookupMemberType(name); ok {
 		if c.rejectUnexported(t.Pos, tsym) {
-			return TypDyn
+			return TypInvalid
 		}
 		typ := tsym.SymType()
 		if typ != nil && typ.Kind == ir.TypeStruct {
@@ -311,7 +316,7 @@ func (c *checker) resolveQualifiedType(t *ast.NamedType) *ir.Type {
 	if sym, ok := ns.Pkg.Symbols.LookupMember(name); ok {
 		if f, ok := sym.(*ir.Component); ok {
 			if c.rejectUnexported(t.Pos, sym) {
-				return TypDyn
+				return TypInvalid
 			}
 			if len(f.TypeParams) > 0 {
 				return c.applyComponentTypeArgs(t.Pos, f.SymType(), f, args)
@@ -320,7 +325,7 @@ func (c *checker) resolveQualifiedType(t *ast.NamedType) *ir.Type {
 		}
 	}
 	c.error(ast.Pos{}, "unknown type %q in namespace %q", name, pkg)
-	return TypDyn
+	return TypInvalid
 }
 
 func (c *checker) resolveFuncType(t *ast.FuncType) *ir.Type {
@@ -510,7 +515,8 @@ func (c *checker) resolveStructFields(s *ast.StructDef) []*ir.StructField {
 		if len(f.Names) > 0 {
 			fieldLabel = "struct field " + strconv.Quote(f.Names[0])
 		}
-		typ := c.resolveTypeRequired(f.Type, f.Pos, fieldLabel)
+		var typ *ir.Type
+		anyAt := c.holdAny(f, func() { typ = c.resolveTypeRequired(f.Type, f.Pos, fieldLabel) })
 		for _, name := range f.Names {
 			if _, dup := seen[name]; dup {
 				c.error(f.Pos, "duplicate struct field %q", name)
@@ -534,6 +540,9 @@ func (c *checker) resolveStructFields(s *ast.StructDef) []*ir.StructField {
 			fields = append(fields, fld)
 		}
 		c.applyMarks(f, first)
+		if first != nil {
+			c.refuseAnyUnlessUnusable(anyAt, &first.Foreign)
+		}
 	}
 	return fields
 }
@@ -545,7 +554,7 @@ func (c *checker) buildEnumDef(e *ast.EnumDef) *ir.EnumDef {
 		var val ir.Expr
 		if m.Value != nil {
 			// Placeholder; actual value checked later when scope is ready.
-			val = &ir.Literal{Type: TypDyn}
+			val = &ir.Literal{Type: TypInvalid}
 		}
 		members[i] = &ir.EnumMember{
 			Name:  m.Name,
@@ -690,7 +699,7 @@ func NamespaceFromPath(path string) string {
 
 // buildLambdaParams mirrors buildParams but accepts a contextual signature so
 // unannotated lambda params can adopt the expected parameter types. With no
-// context available, an unannotated lambda param keeps TypDyn — lambdas are
+// context available, an unannotated lambda param keeps TypInvalid — lambdas are
 // often handed to dynamically-dispatched callers (e.g. the testrunner's
 // `t.test("...", func(t, c) { ... })`) where the surrounding method is
 // resolved at runtime rather than through a typed stdlib signature.
@@ -704,7 +713,8 @@ func (c *checker) buildLambdaParams(pl ast.ParamList, expected *ir.FuncSig) []*i
 		case expected != nil && i < len(expected.Params):
 			typ = expected.Params[i].Type
 		default:
-			typ = dynFallback("lambda parameter %q has no annotation and no expected signature", p.Name)
+			c.error(p.Pos, "lambda parameter %q needs a type: nothing it is handed to says what it takes", p.Name)
+			typ = TypInvalid
 		}
 		var def ir.Expr
 		if p.Default != nil {
@@ -780,8 +790,7 @@ func (c *checker) buildFunc(f *ast.FuncDef) *ir.Func {
 	}
 	popTypeParams := pushTypeParams(c, f.RecvTypeParams, f.TypeParams)
 	// nil ReturnType means void (block body) or pending-inference (expression body);
-	// leave Return nil here so checkFuncBody can infer from a `=>` body without
-	// conflating it with an explicit `dyn` return annotation.
+	// leave Return nil here so checkFuncBody can infer from a `=>` body.
 	var ret *ir.Type
 	if f.ReturnType != nil {
 		ret = c.resolveType(f.ReturnType)
@@ -875,7 +884,7 @@ func (c *checker) resolveSlotContent(t ast.TypeExpr) (*ir.Type, ir.SlotCard) {
 // requireFamily holds a slot's content to naming a tree. What lands in a slot is
 // components, so a value type there says nothing a caller could satisfy.
 func (c *checker) requireFamily(pos ast.Pos, t *ir.Type) *ir.Type {
-	if t == nil || t.Kind == ir.TypeDyn {
+	if t == nil || t.Kind == ir.TypeInvalid {
 		return t
 	}
 	if ir.TypeFamily(t) != nil {

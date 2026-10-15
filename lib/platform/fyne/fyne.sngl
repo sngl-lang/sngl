@@ -638,7 +638,7 @@ component Image(
     @click(),
     @load(),
     @failed(message string),
-    content ...component ui.node,
+    content ...component option[ui.imageSource],
 ) ui.node
 
 #[intrinsic("fyne:ImageUrl")]
@@ -647,7 +647,7 @@ component ImageUrl(url string) ui.imageSource
 #[intrinsic("fyne:ImageDrawing")]
 component ImageDrawing(width float, height float, shapes ...component shapes.shape) ui.imageSource
 
-const component ui.image[platform](fit, style, @click, @load, @error, src, placeholder) {
+const component ui.image[platform](fit, style, @click, @load, @error, src) {
     Image(
         fit = string(fit),
         style = {...style},
@@ -661,10 +661,7 @@ const component ui.image[platform](fit, style, @click, @load, @error, src, place
             error({message=m, kind="image"})
         },
     ) {
-        #[family.crosses]
-        src {
-            placeholder
-        }
+        src
     }
 }
 

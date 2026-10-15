@@ -92,7 +92,7 @@ func TestEachValueIsReported(t *testing.T) {
 func TestUnmodelledType(t *testing.T) {
 	f := &fake{}
 	sngltest.CheckType[marshalpkg.Chan](f)
-	wants(t, f.only(t), "marshalpkg.Chan", "dyn", "unusable", "golang.RegisterType")
+	wants(t, f.only(t), "marshalpkg.Chan", "no SNGL spelling", "unusable", "golang.RegisterType")
 }
 
 // A type with no declaration behind it cannot be resolved through the

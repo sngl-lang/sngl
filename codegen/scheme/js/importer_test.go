@@ -103,8 +103,8 @@ func TestInterface(t *testing.T) {
 		t.Errorf("email type kind = %v, want Option", emailField.Type.Kind)
 	}
 	tagsField := user.Fields[3]
-	if tagsField.Type.Kind != ir.TypeList {
-		t.Errorf("tags type kind = %v, want List", tagsField.Type.Kind)
+	if tagsField.Type.Kind != ir.TypeList || tagsField.Type.Elems[0].Kind != ir.TypeString {
+		t.Errorf("tags type = %v, want list[string] (unusable %q)", tagsField.Type, tagsField.Foreign.Unusable)
 	}
 
 	mk := findFunc(imp, "makeUser")

@@ -226,9 +226,8 @@ func binOpSym(op ast.BinaryOp) string {
 //   - receiver-form: Func == nil with Receiver carrying the container value
 //     and the method name reachable via methodNameFromCall; Args=[needle]
 //
-// Receiver-typed dispatch is decided at runtime in assertContains based on
-// the evaluated container — the checker leaves component-field receivers
-// typed Dyn, so a static type guard would miss the most common case.
+// Receiver-typed dispatch is decided at runtime in assertContains, from the
+// evaluated container.
 func containsCallShape(c *ir.Call) (container, needle ir.Expr, ok bool) {
 	if c.Func != nil && c.Func.Name == "contains" &&
 		(c.Func.RecvName() == "list" || c.Func.RecvName() == "string") &&

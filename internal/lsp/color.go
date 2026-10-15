@@ -180,7 +180,7 @@ func computeColorsFromIR(doc *ast.Document, content string) []ColorInformation {
 			return nil
 		}
 	}
-	pkg = ir.ClonePackage(pkg)
+	pkg = ir.ClonePackageFor(pkg, "", "")
 	if err := optimize.Optimize(pkg, &optimize.Config{}); err != nil {
 		return nil
 	}

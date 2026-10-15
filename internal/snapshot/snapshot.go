@@ -323,7 +323,7 @@ func GenerateBatch(cfg BatchConfig) ([]Result, error) {
 				// blank. Both rewrite in place and both are target-specific, so a
 				// document snapshotted for several platforms gets a copy per
 				// platform -- the second otherwise lowers what the first left.
-				pkg := ir.ClonePackage(p.pkg)
+				pkg := ir.ClonePackageFor(p.pkg, platform, lang)
 				batchOptCfg := &optimize.Config{
 					Platform: platform,
 					Language: lang,
@@ -408,7 +408,7 @@ func GenerateBatch(cfg BatchConfig) ([]Result, error) {
 				continue
 			}
 
-			pkg := ir.ClonePackage(p.pkg)
+			pkg := ir.ClonePackageFor(p.pkg, platform, lang)
 			batchOptCfg := &optimize.Config{
 				Platform: platform,
 				Language: lang,

@@ -1,6 +1,7 @@
 package gtk4
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -27,13 +28,15 @@ func countParses(t *testing.T) *int {
 }
 
 // girCopy writes the bundled GIR to a file of the test's own, so the test can
-// edit it.
+// edit it. Its content names the test, since a process parses one content
+// once and an earlier test's parse would otherwise answer this one's.
 func girCopy(t *testing.T) string {
 	t.Helper()
 	data, err := os.ReadFile(filepath.Join("gir", "minimal", "Gtk-4.0.gir"))
 	if err != nil {
 		t.Fatal(err)
 	}
+	data = fmt.Appendf(data, "\n<!-- %s -->\n", t.Name())
 	path := filepath.Join(t.TempDir(), "Gtk-4.0.gir")
 	if err := os.WriteFile(path, data, 0o644); err != nil {
 		t.Fatal(err)
@@ -160,5 +163,40 @@ func TestProbeSkipsUnusableLocations(t *testing.T) {
 	}
 	if *parses != 1 {
 		t.Errorf("two builds over one probe parsed the GIR %d times, want 1", *parses)
+	}
+}
+
+// A registry is decoded once per process for each stored file, however many
+// stores hold it: every script and every cold build gets a store of its own,
+// and the full GTK registry is megabytes of SNGL to parse.
+func TestStoredRegistryIsDecodedOncePerContent(t *testing.T) {
+	path := girCopy(t)
+	read := func() *gir.TypeRegistry {
+		t.Helper()
+		g := &Generator{store: gencache.Open(t.TempDir()), girOpt: path}
+		reg, err := g.gir()
+		if err != nil {
+			t.Fatal(err)
+		}
+		return reg
+	}
+	if read() != read() {
+		t.Error("two stores holding one registry decoded it twice")
+	}
+}
+
+// A GIR is parsed once per process for each content, however many stores ask
+// for its registry.
+func TestGIRIsParsedOncePerProcess(t *testing.T) {
+	parses := countParses(t)
+	path := girCopy(t)
+	for range 2 {
+		g := &Generator{store: gencache.Open(t.TempDir()), girOpt: path}
+		if _, err := g.gir(); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if *parses != 1 {
+		t.Errorf("two stores over one GIR parsed it %d times, want 1", *parses)
 	}
 }

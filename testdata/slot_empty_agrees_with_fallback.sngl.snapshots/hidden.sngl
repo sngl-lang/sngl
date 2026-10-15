@@ -1,0 +1,14 @@
+text(value="asks: empty")
+vbox() {
+    text(value="fallback")
+}
+text(value="asks: empty")
+vbox() {
+    text(value="fallback")
+}
+text(value="asks: empty")
+vbox() {
+    text(value="fallback")
+}
+text(value="mounted 1")
+button(text="show", @click)

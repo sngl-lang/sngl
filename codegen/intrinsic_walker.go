@@ -3,6 +3,7 @@ package codegen
 import (
 	"context"
 
+	"duckfam.us/sngl/ast"
 	"duckfam.us/sngl/ir"
 )
 
@@ -62,6 +63,13 @@ type IntrinsicTranslator interface {
 	OnDefault(ctx context.Context, stmt ir.Stmt) []ir.Stmt
 }
 
+// NodeSites is implemented by a translator that reports a problem with a node
+// it builds at the source the node was written in: a createNode op carries
+// only the node's name, and its LocalVar the rest.
+type NodeSites interface {
+	NodeSite(id string, at ast.Stmt)
+}
+
 // ChildInserter is implemented by a platform whose container can put a child
 // at a position rather than only at the end.
 //
@@ -102,6 +110,9 @@ func walkOne(ctx context.Context, s ir.Stmt, t IntrinsicTranslator) []ir.Stmt {
 	case *ir.LocalVar:
 		if call, ok := n.Init.(*ir.Call); ok {
 			if isLowerIntrinsic(call, "CreateNode") {
+				if ns, ok := t.(NodeSites); ok {
+					ns.NodeSite(n.Name, n.NodeAST)
+				}
 				tag, _ := extractStringLit(call.Args[0].Value)
 				return t.OnCreateNode(ctx, n.Name, tag)
 			}

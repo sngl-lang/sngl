@@ -466,14 +466,9 @@ func callHandler(h *ir.EventHandler, args []ir.CallArg) ir.Stmt {
 }
 
 func listPush(dst, v ir.Expr, elem *ir.Type) *ir.Call {
-	var params []*ir.Param
-	var ret *ir.Type
-	if def := ir.LookupIntrinsic("list.push"); def != nil {
-		params, ret = def.Instantiate(elem)
-	}
 	return &ir.Call{
 		Type: ir.TypVoid,
-		Func: &ir.Func{Name: "push", Receiver: ir.ListOf(ir.TypDyn), Intrinsic: "list.push", Params: params, Return: ret},
+		Func: ir.IntrinsicMethod("push", "list.push", ir.ListOf(elem), nil),
 		Args: []ir.CallArg{{Value: dst}, {Value: v}},
 	}
 }

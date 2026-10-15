@@ -71,7 +71,7 @@ func buildCanvasPkg(t *testing.T) (*ir.Package, *ir.NodeInst) {
 		Handlers: []ir.EventHandler{{
 			Name: "draw",
 			Func: &ir.Func{
-				Params: []*ir.Param{{Name: "e", Type: ir.TypDyn}},
+				Params: []*ir.Param{{Name: "e", Type: ir.NativeNamed("DrawContext")}},
 				Block: []ir.Stmt{&ir.CallStmt{Call: &ir.Call{
 					Type: ir.TypVoid,
 					Func: &ir.Func{Name: "paintRect"},

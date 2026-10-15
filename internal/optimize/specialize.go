@@ -400,7 +400,7 @@ func bodyHasFoldableParamUse(stmts []ir.Stmt, propNames map[string]bool) bool {
 			}
 		case *ir.Spread:
 			visitExpr(x.Operand)
-		case *ir.Literal, *ir.Ident, *ir.ContextRead, *ir.Lambda, *ir.Closure:
+		case *ir.Literal, *ir.Ident, *ir.ContextRead, *ir.SlotEmpty, *ir.Lambda, *ir.Closure:
 			// Literals/Idents have no param-call shape; lambda bodies
 			// are opaque to this scan (they have their own scope).
 		default:

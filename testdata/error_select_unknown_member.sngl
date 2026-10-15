@@ -1,0 +1,20 @@
+// A member a type does not have is an error whatever the kind: an option, a
+// list, a map and a string have methods and `length`, and nothing else.
+
+import . "sngl:ui"
+
+component main node {
+    var o option[int] = null
+    var xs = [1, 2]
+    var m map[string, int] = {"a"=1}
+    var s = "x"
+    text(value="{o.value}")  // ERROR(check) "no field \"value\" on type option[int]"
+    text(value="{xs.bogus}") // ERROR(check) "no field \"bogus\" on type list[int]"
+    text(value="{m.nope}")   // ERROR(check) "no field \"nope\" on type map[string, int]"
+    text(value="{s.huh}")    // ERROR(check) "no field \"huh\" on type string"
+    text(value="{xs.length}")
+}
+
+window {
+    main
+}

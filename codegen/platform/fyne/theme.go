@@ -182,7 +182,7 @@ func (t *fyneTranslator) themed(child ir.Expr, sp *fyneSpec, id string) ir.Expr 
 	}
 	name := (fyneNative{Path: "fyne.io/fyne/v2/container", Name: "NewThemeOverride"}).qualify(t.gc)
 	return nativeCallAt(name, "fyne.io/fyne/v2/container",
-		[]ir.Expr{child, rawGoExpr(sp.ThemeVar)}, ir.TypDyn)
+		[]ir.Expr{child, rawGoExpr(sp.ThemeVar, fyneTheme())}, ir.NativeGoPointerOf("container.ThemeOverride"))
 }
 
 func goColorLit(c fyneColor) string {
@@ -229,10 +229,11 @@ func themeOverrideField(id string) string { return id + "__theme" }
 
 func (t *fyneTranslator) themeOverrideRef(id string) ir.Expr {
 	name := themeOverrideField(id)
+	ov := ir.NativeGoPointerOf("container.ThemeOverride")
 	if t.isLocalRef(id) {
-		return localElementRef(name)
+		return &ir.Ident{Name: name, Type: ov}
 	}
-	return codegen.RecvFieldRef(t.gc.NodeRecv(id), name)
+	return codegen.RecvFieldRef(t.gc.NodeRecvRef(id), name, ov)
 }
 
 // createThemeOverride wraps a runtime-themed node in its override as soon as
@@ -241,11 +242,11 @@ func (t *fyneTranslator) themeOverrideRef(id string) ir.Expr {
 func (t *fyneTranslator) createThemeOverride(id string, node ir.Expr) ir.Stmt {
 	path := "fyne.io/fyne/v2/container"
 	ctor := nativeCallAt((fyneNative{Path: path, Name: "NewThemeOverride"}).qualify(t.gc), path,
-		[]ir.Expr{node, t.baseTheme()}, ir.TypDyn)
+		[]ir.Expr{node, t.baseTheme()}, ir.NativeGoPointerOf("container.ThemeOverride"))
 	if t.isLocalRef(id) {
 		return &ir.LocalVar{Name: themeOverrideField(id), Init: ctor}
 	}
-	t.fieldSink(themeOverrideField(id), (fyneNative{Path: path, Name: "*ThemeOverride"}).qualify(t.gc))
+	t.sinkField(themeOverrideField(id), (fyneNative{Path: path, Name: "*ThemeOverride"}).qualify(t.gc))
 	return &ir.Assign{Target: t.themeOverrideRef(id), Op: ast.AssignSet, Value: ctor}
 }
 
@@ -253,7 +254,7 @@ func (t *fyneTranslator) baseTheme() ir.Expr {
 	def := (fyneNative{Path: "fyne.io/fyne/v2/theme", Name: "DefaultTheme"}).qualify(t.gc)
 	newTheme := (fyneNative{Path: ThemeImportPath, Name: "New"}).qualify(t.gc)
 	return nativeCallAt(newTheme, ThemeImportPath,
-		[]ir.Expr{nativeCallAt(def, "fyne.io/fyne/v2/theme", nil, ir.TypDyn)}, ir.TypDyn)
+		[]ir.Expr{nativeCallAt(def, "fyne.io/fyne/v2/theme", nil, fyneTheme())}, snglTheme())
 }
 
 // setRuntimeTheme is a write to a runtime-themed node's style: the whole
@@ -270,11 +271,11 @@ func (t *fyneTranslator) setRuntimeTheme(id string, lit *ir.StructLit) []ir.Stmt
 		if f.Name == "fontSize" || f.Name == "borderRadius" {
 			v = themeLength(v)
 		}
-		th = methodCall(th, method, []ir.Expr{v}, ir.TypDyn)
+		th = methodCall(th, method, []ir.Expr{v}, snglTheme())
 	}
 	ov := t.themeOverrideRef(id)
 	return []ir.Stmt{
-		&ir.Assign{Target: &ir.Select{Operand: ov, Field: "Theme", Type: ir.TypDyn}, Op: ast.AssignSet, Value: th},
+		&ir.Assign{Target: &ir.Select{Operand: ov, Field: "Theme", Type: fyneTheme()}, Op: ast.AssignSet, Value: th},
 		&ir.CallStmt{Call: methodCall(ov, "Refresh", nil, ir.TypVoid)},
 	}
 }
@@ -300,8 +301,8 @@ const styleThemeFunc = "__styleTheme"
 func (t *fyneTranslator) setRuntimeThemeFrom(id string, style ir.Expr) []ir.Stmt {
 	ov := t.themeOverrideRef(id)
 	return []ir.Stmt{
-		&ir.Assign{Target: &ir.Select{Operand: ov, Field: "Theme", Type: ir.TypDyn}, Op: ast.AssignSet,
-			Value: nativeCall(styleThemeFunc, []ir.Expr{style}, ir.TypDyn)},
+		&ir.Assign{Target: &ir.Select{Operand: ov, Field: "Theme", Type: fyneTheme()}, Op: ast.AssignSet,
+			Value: nativeCall(styleThemeFunc, []ir.Expr{style}, snglTheme())},
 		&ir.CallStmt{Call: methodCall(ov, "Refresh", nil, ir.TypVoid)},
 	}
 }
@@ -328,3 +329,10 @@ func ` + styleThemeFunc + `(s Style) fynetheme.Theme {
 	}
 	return ""
 }
+
+// fyneTheme is fyne.Theme, what a theme override holds.
+func fyneTheme() *ir.Type { return ir.NativeGoNamed("fyne.Theme") }
+
+// snglTheme is fynetheme.Theme, the theme a style builds, which is a
+// fyne.Theme.
+func snglTheme() *ir.Type { return ir.NativeGoNamed("fynetheme.Theme") }

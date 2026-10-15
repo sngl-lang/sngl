@@ -154,7 +154,7 @@ func eventNamed(comp *ir.Component, name string) *ir.EventDecl {
 // padParams and padArgs make both ends of an event agree with the declaration.
 //
 // An event's arity is loose in source and the substitution that used to
-// implement one hid that: `@pick(v dyn)` is declared carrying a payload,
+// implement one hid that: `@pick(v int)` is declared carrying a payload,
 // `pick()` may fire it with no argument, and `@pick { … }` may subscribe
 // without naming one. bindEventParams simply bound what it was given. A
 // func-typed prop is a real signature that a host language type-checks, so the

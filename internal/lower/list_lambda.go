@@ -277,7 +277,7 @@ func (st *listLambdaState) transformExpr(e ir.Expr) ([]ir.Stmt, ir.Expr) {
 			x.Func.Block = st.transformBlock(x.Func.Block)
 		}
 		return nil, x
-	case *ir.Literal, *ir.Ident, *ir.ContextRead:
+	case *ir.Literal, *ir.Ident, *ir.ContextRead, *ir.SlotEmpty:
 		// Terminal — no list-lambda call to lift.
 		return nil, e
 	default:
@@ -325,11 +325,7 @@ func (st *listLambdaState) liftListLambda(n *ir.Call) ([]ir.Stmt, ir.Expr) {
 		outElemT = elemT
 	case "map":
 		// map's result type is list[U]; pick U from n.Type.
-		if n.Type != nil && n.Type.Kind == ir.TypeList && len(n.Type.Elems) > 0 {
-			outElemT = n.Type.Elems[0]
-		} else {
-			outElemT = ir.TypDyn
-		}
+		outElemT = n.Type.Elems[0]
 	}
 	outListT := ir.ListOf(outElemT)
 
@@ -378,13 +374,13 @@ func (st *listLambdaState) liftListLambda(n *ir.Call) ([]ir.Stmt, ir.Expr) {
 	// built this way when push still returned a list, because every Go backend
 	// renders the intrinsic as the assignment itself and wrapping it in an
 	// Assign double-emitted the `=`.
-	pushFn := &ir.Func{Name: "push", Receiver: ir.ListOf(ir.TypDyn), Intrinsic: "list.push"}
+	pushFn := ir.IntrinsicMethod("push", "list.push", outListT, nil)
 	tempIdent := &ir.Ident{Name: tempName, Type: outListT, Sym: tempSym, Synthesized: true}
 
 	pushStmt := func(pushed ir.Expr) ir.Stmt {
 		return &ir.CallStmt{
 			Call: &ir.Call{
-				Type: outListT,
+				Type: ir.TypVoid,
 				Func: pushFn,
 				Args: []ir.CallArg{
 					{Value: tempIdent},
@@ -420,19 +416,12 @@ func (st *listLambdaState) liftListLambda(n *ir.Call) ([]ir.Stmt, ir.Expr) {
 	return []ir.Stmt{declStmt, loop}, tempIdent
 }
 
-// funcReturnType extracts the return type of a function-valued expr.
-// For lambdas it's Lambda.Return; for func-typed refs the carried type
-// signature has it. Returns TypDyn if unavailable — callers downstream
-// fall back to dyn semantics.
+// funcReturnType is the result of a function-valued expression: a lambda's
+// declared return, or what its function type says. The checker typed the
+// argument of a map or a filter as a function, so one of the two is there.
 func funcReturnType(e ir.Expr) *ir.Type {
-	if e == nil {
-		return ir.TypDyn
-	}
 	if lam, ok := e.(*ir.Lambda); ok && lam.Func != nil && lam.Func.Return != nil {
 		return lam.Func.Return
 	}
-	if t := e.ExprType(); t != nil && t.Kind == ir.TypeFunc && t.Sig != nil && t.Sig.Return != nil {
-		return t.Sig.Return
-	}
-	return ir.TypDyn
+	return e.ExprType().Sig.Return
 }

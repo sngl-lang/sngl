@@ -151,7 +151,7 @@ func isSynthNodeID(id string) bool { return strings.HasPrefix(id, "__n") }
 // The declaration is what decides, not what initialises it. A CreateNode or a
 // CreateComponent is the usual initializer, but a reactive slot's instance
 // reconcile opens each position with `var __nN <Comp> = null` and then binds
-// the node in `var __nN__el dyn = lower.ComponentRoot(__nN)` -- both locals of
+// the node in `var __nN__el <family> = lower.ComponentRoot(__nN)` -- both locals of
 // the render func, and matching only the two call names left them unknown to
 // the pass, so every platform emitted them as shared Model fields that each
 // iteration of the loop overwrote.

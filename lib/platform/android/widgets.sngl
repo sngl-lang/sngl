@@ -74,12 +74,10 @@ const component ui.button[platform](text, style, @click) {
 // platform ships with the app, which reads the picture out of the app's
 // assets; a drawing is a Canvas. Compose has no image loader in the box, so a
 // picture a URL names draws nothing.
-const component ui.image[platform](style, src, placeholder) {
+const component ui.image[platform](style, src) {
     Box(modifier={...style}) {
         #[family.crosses]
-        src {
-            placeholder
-        }
+        src
     }
 }
 
