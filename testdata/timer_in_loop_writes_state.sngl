@@ -1,0 +1,32 @@
+// A timer written under a `for` ticks in the loop iteration's scope, and what
+// its handler writes is the component's: each copy keeps its own period.
+
+import . "sngl:test"
+import "sngl:time"
+import . "sngl:ui"
+
+component row node {
+    var fast = 0
+    var slow = 0
+    var periods list<time.duration> = [20ms, 500ms]
+    for var p = periods {
+        time.timer(interval=p, enabled=true, @tick {
+            if p == 20ms {
+                fast += 1
+            } else {
+                slow += 1
+            }
+        })
+    }
+    text(value="fast={fast} slow={slow}")
+}
+
+func testEachCopyTicksAtItsOwnPeriod(t Test, c row) {
+    t.wait(func() => c.slow >= 2, 5000)
+    t.assert(c.slow == 2)
+    t.assert(c.fast == 50)
+}
+
+window {
+    row
+}
