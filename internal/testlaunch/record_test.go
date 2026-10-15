@@ -27,23 +27,35 @@ func TestRecordsRerunWhatEachModeAsks(t *testing.T) {
 		t.Fatal(err)
 	}
 	have := seed.Written()
+	movedGen := t.TempDir()
+	if err := os.WriteFile(filepath.Join(movedGen, "index.html"), []byte("<p>!"), 0o644); err != nil {
+		t.Fatal(err)
+	}
 
 	for _, tc := range []struct {
 		name           string
+		moved          bool
 		update, verify bool
 		result         []*codegen.TestResult
 		launches       int
 		err            string
 	}{
-		{"update replays a record whose inputs held", true, false, pass, 0, ""},
-		{"verify reruns it", false, true, pass, 1, ""},
-		{"verify fails a rerun that disagrees", false, true, []*codegen.TestResult{{Desc: "x"}}, 1, "disagrees with the record"},
-		{"update with verify rewrites it", true, true, []*codegen.TestResult{{Desc: "x"}}, 1, ""},
+		{"a run replays a record whose inputs held", false, false, false, pass, 0, ""},
+		{"a run fails one whose program moved", true, false, false, pass, 0, "changed since it was run"},
+		{"update replays a record whose inputs held", false, true, false, pass, 0, ""},
+		{"update reruns one whose program moved", true, true, false, pass, 1, ""},
+		{"verify reruns it", false, false, true, pass, 1, ""},
+		{"verify fails a rerun that disagrees", false, false, true, []*codegen.TestResult{{Desc: "x"}}, 1, "disagrees with the record"},
+		{"update with verify rewrites it", false, true, true, []*codegen.TestResult{{Desc: "x"}}, 1, ""},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			launches := 0
 			rr := NewRecords(have, tc.update, tc.verify)
-			_, err := rr.answer("k", gen, snaps, func() ([]*codegen.TestResult, error) {
+			dir := gen
+			if tc.moved {
+				dir = movedGen
+			}
+			_, err := rr.answer("k", dir, snaps, func() ([]*codegen.TestResult, error) {
 				launches++
 				return tc.result, nil
 			})
