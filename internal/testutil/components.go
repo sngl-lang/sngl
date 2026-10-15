@@ -81,6 +81,9 @@ func runComponentFixture(t *testing.T, archive, base string, plat codegen.Platfo
 	if err := os.WriteFile(path, []byte(src), 0o644); err != nil {
 		t.Fatal(err)
 	}
+	if err := writeSupportFiles(dir, rest); err != nil {
+		t.Fatal(err)
+	}
 	if hasErrorDirective(path) {
 		t.Skipf("fixture has ERROR directives — it does not build")
 	}
@@ -152,6 +155,26 @@ func reportResults(t *testing.T, results []*codegen.TestResult) int {
 		ran += reportResults(t, r.Children)
 	}
 	return ran
+}
+
+// writeSupportFiles writes the archive's files other than its SNGL source, the
+// golden and the records -- a TypeScript module a `js:` import names -- where
+// the source names them.
+func writeSupportFiles(dir string, files []txtar.File) error {
+	for _, f := range files {
+		name := strings.TrimPrefix(f.Name, "./")
+		if strings.HasSuffix(name, ".sngl") || strings.HasPrefix(name, "out/") || strings.HasPrefix(name, "run/") {
+			continue
+		}
+		p := filepath.Join(dir, filepath.FromSlash(name))
+		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+			return err
+		}
+		if err := os.WriteFile(p, f.Data, 0o644); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // archiveSource returns the fixture's own .sngl source -- everything outside

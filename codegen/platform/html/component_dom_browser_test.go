@@ -3,11 +3,14 @@
 package html
 
 import (
+	"fmt"
+	"io/fs"
 	"net/http"
 	"strings"
 	"testing"
 	"testing/fstest"
 
+	"duckfam.us/sngl/ast"
 	"duckfam.us/sngl/codegen"
 	"duckfam.us/sngl/codegen/platform/html/internal/webtest"
 	"duckfam.us/sngl/internal/checker"
@@ -15,6 +18,8 @@ import (
 	"duckfam.us/sngl/internal/optimize"
 	"duckfam.us/sngl/internal/parser"
 	"duckfam.us/sngl/ir"
+
+	_ "duckfam.us/sngl/codegen/scheme/js"
 )
 
 // renderComponentHTML prepends the output block to src, compiles to HTML bytes,
@@ -131,4 +136,49 @@ func startTrapped(t *testing.T, src string) *webtest.Browser {
 	}
 	_ = browser.WaitStable(stableWait)
 	return browser
+}
+
+// asyncBrowserResolver implements checker.ImportResolver backed by an
+// in-memory FS, delegating scheme imports to the registered JS importer.
+type asyncBrowserResolver struct {
+	fsys fs.FS
+}
+
+func (r *asyncBrowserResolver) Resolve(_ fs.FS, importPath string) ([]*ast.Document, error) {
+	entries, err := fs.ReadDir(r.fsys, importPath)
+	if err != nil {
+		return nil, fmt.Errorf("reading import dir %q: %w", importPath, err)
+	}
+	var docs []*ast.Document
+	for _, e := range entries {
+		if e.IsDir() || !strings.HasSuffix(e.Name(), ".sngl") {
+			continue
+		}
+		p := importPath + "/" + e.Name()
+		data, err := fs.ReadFile(r.fsys, p)
+		if err != nil {
+			return nil, fmt.Errorf("reading %s: %w", p, err)
+		}
+		doc, err := parser.Parse(e.Name(), data)
+		if err != nil {
+			return nil, fmt.Errorf("parsing %s: %w", p, err)
+		}
+		docs = append(docs, doc)
+	}
+	return docs, nil
+}
+
+func (r *asyncBrowserResolver) ResolveScheme(scheme, uri, _ string) (*ir.NativeImport, error) {
+	imp := codegen.LookupScheme(scheme)
+	if imp == nil {
+		return nil, fmt.Errorf("scheme %q not supported", scheme)
+	}
+	if fsa, ok := imp.(codegen.FSAwareScheme); ok && r.fsys != nil {
+		return fsa.ResolveFS(uri, r.fsys, ".")
+	}
+	return nil, fmt.Errorf("scheme %q requires OS filesystem; not supported in this test", scheme)
+}
+
+func (r *asyncBrowserResolver) ResolveSchemeFS(_, _, _ string) ([]*ast.Document, fs.FS, error) {
+	return nil, nil, nil
 }
