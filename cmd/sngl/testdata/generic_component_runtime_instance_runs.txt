@@ -515,7 +515,7 @@ sha256:c6e614e92b9625dc165a8454c45bc1c8
   ]
 }
 -- testrun/html/none/app.sngl/main/1 --
-sha256:d8bcfd8745331ca09f4d943c514daf3b
+sha256:52e7cb0676bd5c978245843abc274ee3
 {
   "results": [
     {
@@ -525,7 +525,7 @@ sha256:d8bcfd8745331ca09f4d943c514daf3b
   ]
 }
 -- testrun/html/none/list.sngl/main/1 --
-sha256:d3c798d973ef42a34331767435aa1a8c
+sha256:1edde8899982668eeca638a0a2c1bac6
 {
   "results": [
     {
@@ -535,7 +535,7 @@ sha256:d3c798d973ef42a34331767435aa1a8c
   ]
 }
 -- testrun/html/none/recursive.sngl/main/1 --
-sha256:69e7d9e03cb889386854e837362af4af
+sha256:ac68a36bf7529c01f48acd04c44f682c
 {
   "results": [
     {

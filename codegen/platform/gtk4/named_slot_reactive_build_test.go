@@ -63,7 +63,6 @@ window {
 // the caller wrote, and lowering refused the program before any code was
 // emitted at all.
 func TestANamedSlotInAReactiveIfCompiles(t *testing.T) {
-	skipWithoutGIR(t)
 	for name, src := range map[string]string{
 		"bare":   namedSlotReactiveSrc,
 		"scoped": scopedNamedSlotReactiveSrc,

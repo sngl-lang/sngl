@@ -47,7 +47,6 @@ window {
 // function does not declare. That does not compile, which is what the build
 // catches.
 func TestABlockingCallCompilesIntoAPostedUpdate(t *testing.T) {
-	skipWithoutGIR(t)
 	model := generateGTK4ModelBuilt(t, asyncOffloadSrc)
 
 	for _, want := range []string{

@@ -645,7 +645,7 @@ Both start from `codegen.AnalyzeCommon(doc)` which extracts model fields, comput
 
   The GIR reaches the platform as two producer outputs in the generated-file store (`girstore.go`, and see *Performance*): `gtk4.registry`, the parsed registry as SNGL data -- everything the code generator reads back per class, recorded against the GIR file and the probe locations before it that were absent -- and `gtk4.widgets`, the declarations derived from it, whose one input is the registry entry. The second is what the `gir:` scheme's package is -- `lib/x/scheme/gir`'s handler calls the build intrinsic `gir.widgets`, which gtk4 registers (`girwidgets.go`) and which hands it the entry, directive included, recording it and the `gtk4.gir` setting -- and what `Unavailable` answers from, because the checker asks every platform on every build; the first is decoded only by a build that targets gtk4. `lib/platform/gtk4/gtk4.sngl` imports `gtk "gir:Gtk-4.0"` and writes `gtk.GtkLabel`, as a program naming a widget does. A gob cache of the parsed registry used to do the first job on its own, keyed by the GIR's stat and a reflected schema fingerprint -- the compiler's identity in the store's key is what replaced the fingerprint.
 
-  `codegen/platform/gtk4/gir/minimal/Gtk-4.0.gir` is that subset: the ~19 classes `lib/platform/gtk4/gtk4.sngl` wraps, embedded so a host with no GTK 4 development files can still check, document and generate the stdlib overrides — the generated code needs GTK to *build*, which is a separate matter. It is also what the platform's tests read. Which classes and setter links a system GIR records varies by GTK version, so a test naming host vocabulary asserts GTK's catalogue rather than this platform's behaviour and fails on the wrong machine; the tests assert the parse and merge *rules* over every entry of the fixture instead, each with a guard that the rule was exercised. Adding an override that names a new widget means extending that file, which `TestBundledGIRCoversTheWrappedWidgets` reports.
+  `codegen/platform/gtk4/gir/minimal/Gtk-4.0.gir` is that subset: the ~19 classes `lib/platform/gtk4/gtk4.sngl` wraps, embedded so a host with no GTK 4 development files can still check, document and generate the stdlib overrides — the generated code needs GTK to *build*, which is a separate matter. It is also what the platform's tests read, and **no test reads the host's GIR** (the package's tests empty `girAutoPaths`). Which classes and setter links a system GIR records varies by GTK version, so a test naming host vocabulary asserts GTK's catalogue rather than this platform's behavior and fails on the wrong machine; the tests assert the parse and merge *rules* over every entry of the fixture instead, each with a guard that the rule was exercised. A rule about a class the platform does not wrap -- a setterless property, a construct-only one, a signal the trampoline cannot connect -- is asserted over `codegen/platform/gtk4/testdata/rules.gir`, GTK 4.8's own entries for those classes, which `rulesGIR` splices in after the bundled ones. Adding an override that names a new widget means extending that file, which `TestBundledGIRCoversTheWrappedWidgets` reports.
 
   A child is added through the call GIR names for the container, its receiver cast to the class that declares the call (`gir.ChildAdder.Owner`): a subclass inherits its parent's adder. A GIR *window* class written as a node is refused: GTK places a window in no container, and `ui.window` is how a program makes one (`cmd/sngl/testdata/gtk4_window_class_refused.txt`).
 
@@ -1417,8 +1417,8 @@ learn anything: a runner that writes SNGL is one no backend needs telling
 about. The synthesized function is given its Reads and Purity by
 `checker.AnalyzeSynthesizedFunc`, since the effect's settle is placed by what
 its key reads. `testdata/emit_family_state.txtar` is the code and
-`cmd/sngl/testdata/emit_family_state_runs.txt` runs it on gtk4 and fyne under
-the headless compositor (the `headless` script condition). What is not here
+`testdata/emit_family_state_runs.txtar` runs it on gtk4 and fyne under
+the headless compositor (an `exec` directive). What is not here
 yet: a host under a `for`, a composed member's handlers, and a member holding
 children in code mode -- each refused with a position.
 
@@ -1442,7 +1442,7 @@ members' encoded values behind the package's closure digest
 code-mode host is rewritten where it stands, so the family's `gen.emit` -- two
 effects -- sits under the same `if`, and passEffect mounts and unmounts it with
 the branch: `@start` runs again each time the host comes back, and a change
-while it is gone prints nothing (`cmd/sngl/testdata/emit_family_under_if_runs.txt`).
+while it is gone prints nothing (`testdata/emit_family_under_if_runs.txtar`).
 In a root component the members function joins that component's `Funcs`, so
 the inliner renames what it reads with the rest of the component
 (`testdata/emit_family_under_if.txtar`). A template-mode host writes its file
@@ -3261,7 +3261,7 @@ it gets the loop with no window presented (`RunWindows(false)` in
 `golang.ModelCallee` spells the call, since a handler that touches no state is
 emitted free. gtk4's cgo mode has no entry point to wrap and refuses it.
 `testdata/platform_run_handler.txtar` is the code and
-`cmd/sngl/testdata/platform_run_handler_runs.txt` runs it.
+`testdata/platform_run_handler_runs.txtar` runs it.
 
 **The package body is the application's view, and a window is a component.**
 Every node at the root of the package body is `lower.AppendChild(__app, n)`
@@ -3389,7 +3389,7 @@ own build made (`destroyBuiltInstances`) -- without that an effect in a
 component the window rendered stayed mounted after the window was gone.
 Nothing survives the condition turning false; hiding without destroying is
 `visible`. `testdata/window_under_if.txtar` is the code and
-`cmd/sngl/testdata/window_under_if_runs.txt` runs it, including a counter
+`testdata/window_under_if_runs.txtar` runs it, including a counter
 that starts again at zero the second time.
 
 **`visible` is a two-way prop of `ui.window`, and `open`/`close` assign it.**
@@ -3416,9 +3416,9 @@ already has, since the binding's write-back sets it again. gtk4 holds the
 application (`g_application_hold`) and fyne keeps a window it never shows,
 because both would otherwise end when the last window goes. gtk4's inline-cgo
 mode builds one window with no `@closed` and no state-driven `visible`, and
-refuses the rest. On gtk4 `WAYLAND_DEBUG` is how a script tells a window
-reached the screen (`cmd/sngl/testdata/window_open_runs.txt`,
-`window_several_runs.txt`, `window_visible_runs.txt`).
+refuses the rest. On gtk4 `WAYLAND_DEBUG` is how a fixture tells a window
+reached the screen (`testdata/window_open_runs.txtar`,
+`window_several_runs.txtar`, `window_visible_runs.txtar`).
 
 **A selected platform that cannot be used here is refused before the check**
 (`internal/build.Check`), by the platform's own `Unavailable()` -- gtk4 with
@@ -4547,6 +4547,15 @@ Chromium, through `inBrowser`, and recorded the same way in
 serves and the test's own source file, so an edit to the assertions asks for a
 run too.
 
+**And so is a gtk4 test's `go build` or `go test`** of the program it
+generated (`runGo` in `codegen/platform/gtk4`), recorded in
+`codegen/platform/gtk4/testdata/go_runs/<Test>`: a digest of the files the
+command runs over, its arguments, and the source of every package of this
+module those files import, transitively -- so an edit to `gtk4rt` asks for a
+run as an edit to the codegen does, and only a run that succeeded is recorded.
+The program never depends on the host's GIR, because no test reads one (see
+the gtk4 platform above).
+
 A claim of *absence* is the one thing a golden cannot state — it makes
 absence visible, but no reader notices that something is not there. Those are
 written as `deny` lines in the archive comment, naming a golden file (or `*`
@@ -4563,6 +4572,27 @@ such lines had accumulated, three asserting the absence of the very thing
 their change was about (`TestScriptGrepsNameAFile` is the lint against the
 class). A `deny` that names no reason, no file, a file no target generates, or
 a pattern that does not compile is a failure.
+
+**What a program does when it runs is an `exec` line**, for a Go target:
+
+```
+exec out/go/gtk4 --window x <clicks.txt -- shown.txt
+exec out/go/gtk4 --show toplevels=2
+exec out/go/gtk4 toplevels[Load]=2 -- want.txt
+```
+
+Its arguments, a standard input and the standard output it must print, each
+file one of the archive's; `toplevels=N` counts gtk4's `set_title` requests in
+its Wayland protocol log, of every toplevel or of the one titled, which is how
+a run tells a window reached the screen. A verification builds the program
+once its tests pass and runs each line inside the headless compositor the root
+test binary re-execs under, and the target's `run/` digest covers the lines,
+the files they name and the source of every package of this module the
+program imports (`toolchain.HashModuleImports`), so the ordinary run replays
+them as it does the build and an edit to `gtk4rt` or `fynelayout` asks for a
+run. A program meant to be run carries the scenario that drives it -- a
+timer, a `fmt.Println`, an `os.Exit` -- so it is a fixture of its own,
+`<name>_runs.txtar` beside the `<name>.txtar` showing the plain code.
 
 Neither harness fixes a fixture whose input never reaches the branch it means
 to exercise: generated output is identical either way. Confirm a new fixture

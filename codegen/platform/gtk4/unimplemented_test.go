@@ -48,7 +48,6 @@ func buildForGtk4(t *testing.T, src string) (map[string][]byte, error) {
 // saying it draws nothing, which is a legal thing to say — the fixtures behind
 // the LSP tests are written that way.
 func TestUserComponentWithEmptyBodyStillBuilds(t *testing.T) {
-	skipWithoutGIR(t)
 	files, err := buildForGtk4(t, `
 import . "sngl:ui"
 component label(value string) node {
@@ -78,7 +77,6 @@ window {
 // position), and a `date`, which is a builtin struct with no fields to pull
 // GtkCalendar's day/month/year out of.
 func TestStdlibOverrides_EmitTheirWidgets(t *testing.T) {
-	skipWithoutGIR(t)
 	files, err := buildForGtk4(t, `
 import . "sngl:ui"
 import . "sngl:time"
