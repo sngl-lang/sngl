@@ -35,10 +35,10 @@ import (
 	"fmt"
 	"reflect"
 
-	"git.duckfam.us/jonathan/sngl/internal/checker"
-	"git.duckfam.us/jonathan/sngl/internal/parser"
-	"git.duckfam.us/jonathan/sngl/ir"
-	"git.duckfam.us/jonathan/sngl/pkg/go/consteval"
+	"duckfam.us/sngl/internal/checker"
+	"duckfam.us/sngl/internal/parser"
+	"duckfam.us/sngl/ir"
+	"duckfam.us/sngl/pkg/go/consteval"
 )
 
 // TB is the part of *testing.T these checks use. A caller passes its *testing.T;

@@ -5,7 +5,7 @@
 package i18n
 
 import (
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 // IsCall reports whether c targets an i18n stdlib entry point.
@@ -15,9 +15,9 @@ func IsCall(c *ir.Call) bool { return ir.IsI18nCall(c) }
 // PluralKey select denotes, or "" if sel is not one. The JS and Kotlin
 // runtimes key plural forms by string category; Go emits the runtime's own
 // i18n.Plural* constants instead and does not use this.
-func PluralKeyConstString(sel *ir.Select) string {
-	if !ir.IsI18nPluralKey(sel) {
+func PluralKeyConstString(id *ir.Ident) string {
+	if !ir.IsI18nPluralKey(id) {
 		return ""
 	}
-	return `"` + sel.Field + `"`
+	return `"` + id.Name + `"`
 }

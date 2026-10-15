@@ -4,9 +4,9 @@ import (
 	"slices"
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/internal/checker"
-	"git.duckfam.us/jonathan/sngl/ir"
-	"git.duckfam.us/jonathan/sngl/lib"
+	"duckfam.us/sngl/internal/checker"
+	"duckfam.us/sngl/ir"
+	"duckfam.us/sngl/lib"
 )
 
 // TestBuiltinVocabularyIsDeclared holds each #[builtin] declaration to the

@@ -3,7 +3,7 @@ package lower
 import (
 	"fmt"
 
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 // passErrorScope resolves a raise the checker left native -- one that reached
@@ -31,7 +31,7 @@ func lowerErrorScope(pkg *ir.Package, _ Features, _ Options) error {
 	st := &errorScopeState{escapes: map[*ir.Component]bool{}}
 	st.stmts(pkg.Body, nil)
 	for _, c := range pkg.Components {
-		st.stmts(c.Body, nil)
+		st.stmts(c.Stmts, nil)
 	}
 	return st.err
 }
@@ -116,7 +116,7 @@ func (st *errorScopeState) componentEscapes(c *ir.Component) bool {
 	}
 	st.escapes[c] = false
 	found := false
-	_ = ir.Walk(c.Body, func(n ir.Node) error {
+	_ = ir.Walk(c.Stmts, func(n ir.Node) error {
 		switch x := n.(type) {
 		case *ir.NodeInst:
 			if x.Component != nil && x.Component != c && st.componentEscapes(x.Component) {

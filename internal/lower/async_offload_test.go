@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 // blockingHandlerPkg is one handler: a state write, a blocking call whose
@@ -51,7 +51,7 @@ func TestABlockingCallSplitsTheBodyInThree(t *testing.T) {
 	if _, ok := handler.Block[0].(*ir.Assign); !ok {
 		t.Errorf("first statement is %T; the write before the blocking call must stay where it was written", handler.Block[0])
 	}
-	spawn := intrinsicClosure(t, handler.Block[1], AsyncSpawnIntrinsic)
+	spawn := intrinsicClosure(t, handler.Block[1], AsyncStartIntrinsic)
 
 	// Inside the goroutine: the call bound to a temp, then the post.
 	if len(spawn) != 2 {
@@ -64,7 +64,7 @@ func TestABlockingCallSplitsTheBodyInThree(t *testing.T) {
 	if !(&offloadState{}).exprWaits(tmp.Init) {
 		t.Error("the local the goroutine binds is not the blocking call")
 	}
-	post := intrinsicClosure(t, spawn[1], AsyncPostIntrinsic)
+	post := intrinsicClosure(t, spawn[1], AsyncDoIntrinsic)
 
 	// Back on the drawing thread: the answer written to state, then the write
 	// that followed it.

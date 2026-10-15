@@ -4,8 +4,8 @@ import (
 	"slices"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/ir"
 )
 
 // passComponentProps gives a component that survives inlining a settable prop.
@@ -156,17 +156,12 @@ func contextProps(c *ir.Component) {
 	if len(renames) == 0 {
 		return
 	}
-	c.Body = renameIdents(c.Body, renames, symRenames)
+	c.Stmts = renameIdents(c.Stmts, renames, symRenames)
 	for _, f := range c.Funcs {
 		f.Block = renameIdents(f.Block, renames, symRenames)
 	}
 	for _, v := range c.Vars {
 		v.Init = renameInExpr(v.Init, renames, symRenames)
-		for _, h := range v.Handlers {
-			if h.Func != nil {
-				h.Func.Block = renameIdents(h.Func.Block, renames, symRenames)
-			}
-		}
 	}
 }
 
@@ -211,17 +206,12 @@ func promoteProps(c *ir.Component) []*ir.Func {
 	// Every read of the parameter becomes a read of the var -- except the
 	// initializers just built, which are the one place the parameter is still
 	// meant to be read.
-	c.Body = renameIdents(c.Body, renames, symRenames)
+	c.Stmts = renameIdents(c.Stmts, renames, symRenames)
 	for _, f := range c.Funcs {
 		f.Block = renameIdents(f.Block, renames, symRenames)
 	}
 	for _, v := range c.Vars {
 		v.Init = renameInExpr(v.Init, renames, symRenames)
-		for _, h := range v.Handlers {
-			if h.Func != nil {
-				h.Func.Block = renameIdents(h.Func.Block, renames, symRenames)
-			}
-		}
 	}
 
 	// Ahead of the component's own vars, because a var initializer may read a

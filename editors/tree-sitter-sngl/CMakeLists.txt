@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.13)
 project(tree-sitter-sngl
         VERSION "0.1.0"
         DESCRIPTION "Snuggly New Graphics Language"
-        HOMEPAGE_URL "https://sngl.duckfam.us/"
+        HOMEPAGE_URL "https://sngl-lang.github.io/"
         LANGUAGES C)
 
 option(BUILD_SHARED_LIBS "Build using shared libraries" ON)

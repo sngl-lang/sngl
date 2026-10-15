@@ -65,7 +65,7 @@ func TestATimerFires(t *testing.T) {
 import (
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/pkg/go/gtk4rt"
+	"duckfam.us/sngl/pkg/go/gtk4rt"
 )
 
 // The settle is what arms the schedules, and buildWidgetTree is where the
@@ -88,7 +88,7 @@ func TestTimersTick(t *testing.T) {
 	if m.Seconds() == 0 {
 		t.Error("the root component's timer never fired")
 	}
-	if m.Beats__inst2() == 0 {
+	if m.Beats__inst0() == 0 {
 		t.Error("the child component's timer never fired")
 	}
 	m.__snglTeardown()

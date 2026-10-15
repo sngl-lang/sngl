@@ -9,4 +9,16 @@
 // `date`, `time` and `datetime` are string-representable, as `color` is: a
 // string literal in the canonical form coerces to one, and one coerces back
 // to that form. Platform codegen maps all three to the host's native
-// date/time type (Go `time.Time`, JS/Kotlin string).
+// date/time type (Go `time.Time`, JS/Kotlin an RFC3339 string).
+//
+// `now` is the clock, `datetime.add` moves an instant by a duration, and
+// `between` reports the duration from one instant to another -- with `since`
+// and `until` the two halves of that with the current instant supplied. A
+// duration divided by a duration is the dimensionless number of times one
+// goes into the other; divided by a plain number it is still a duration.
+//
+// This is **wall-clock** time, which is what a date shown to someone is and
+// what an interval measured against a calendar deadline is. It is not a
+// scheduling primitive: a wall clock jumps on an NTP correction, on a daylight
+// saving change and on a manual adjustment, so anything that has to measure
+// *elapsed* time reliably wants a monotonic reading, which none of these is.

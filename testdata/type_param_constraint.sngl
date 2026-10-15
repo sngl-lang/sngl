@@ -1,0 +1,140 @@
+// A type parameter's constraint is `any`, which says nothing, or an anonymous
+// struct, which says the type is a struct with at least those fields, each at
+// an equal type. A named struct satisfies one as readily as an anonymous
+// struct: the constraint is about fields, not identity, and a field default on
+// the satisfying struct plays no part.
+
+import . "sngl:test"
+import . "sngl:ui"
+
+struct User {
+    name string
+    age  int = 30
+}
+
+struct Pet {
+    name string
+    legs int
+}
+
+// A select on a T reads the constraint's field, typed from the constraint.
+func nameOf[T struct {
+    name string
+}](v T) => v.name
+
+func greet(name string) => "hi {name}"
+
+// A spread of a T binds the constraint's fields and nothing beyond them: a
+// User's age reaches no parameter here.
+func greetAll[T struct {
+    name string
+}](v T) => greet(...v)
+
+// Any struct at all.
+func same[T struct {}](v T) => v
+
+// A default satisfies its own constraint.
+func named[T struct {
+    name string
+} = User](v option[T] = null) => v == null
+
+struct Holder[T struct {
+    name string
+}] {
+    item T
+}
+
+// A method's receiver list restates names, and its T is what the struct says.
+func Holder[T].label() => "<{this.item.name}>"
+
+// A T handed on is measured by its own constraint.
+func relay[T struct {
+    name string
+}](v T) => nameOf(v)
+
+// A constraint's field may name another parameter of its list: what the
+// argument's field is binds it, or a written argument settles it.
+struct Cell {
+    value int
+    label string
+}
+
+func valueOf[T any, U struct {
+    value T
+}](u U) => u.value
+
+// A T bound to a parameter is measured by that parameter's constraint, with
+// what the field names carried across.
+func relayValue[A any, B struct {
+    value A
+}](b B) => valueOf(b)
+
+// Or the parameter it constrains: a list of itself.
+struct Link {
+    name string
+    next option[Link]
+}
+
+func hasNext[T struct {
+    next option[T]
+}](v T) => v.next != null
+
+// A default binds what its constraint names, as an argument does.
+func defaulted[T any, U struct {
+    value T
+} = Cell](u option[U] = null) => u == null
+
+struct Keyed[K any, V struct {
+    key K
+}] {
+    item V
+}
+
+struct Entry {
+    key string
+}
+
+// A receiver may spell the parameters differently.
+func Keyed[A, B].keyOf() => this.item.key
+
+component badge[T struct {
+    name string
+}](item T) node {
+    text(value=item.name)
+}
+
+component main node {
+    var u = User{name="ann"}
+
+    vbox {
+        badge(item=u)
+        badge(item={name="anon"})
+        text(value=nameOf(Pet{name="rex", legs=4}))
+    }
+}
+
+func testConstraint(t Test, c main) {
+    t.assert(nameOf(User{name="ann"}) == "ann")
+    t.assert(nameOf(Pet{name="rex", legs=4}) == "rex")
+    t.assert(nameOf({name="anon", extra=1}) == "anon")
+    t.assert(nameOf[User]({name="bob"}) == "bob")
+    t.assert(greetAll(User{name="cy"}) == "hi cy")
+    t.assert(same(Pet{name="a", legs=2}).legs == 2)
+    t.assert(named())
+    var h = Holder[Pet]{item=Pet{name="p", legs=3}}
+    t.assert(nameOf(h.item) == "p")
+    t.assert(h.label() == "<p>")
+    t.assert(relay(User{name="dee"}) == "dee")
+    var cell = Cell{value=7, label="seven"}
+    t.assert(valueOf(cell) + 1 == 8)
+    t.assert(valueOf[int](cell) == 7)
+    t.assert(relayValue(cell) == 7)
+    t.assert(hasNext(Link{name="a", next=Link{name="b", next=null}}))
+    t.assert(defaulted())
+    var k = Keyed[string, Entry]{item=Entry{key="k"}}
+    t.assert(k.keyOf() == "k")
+}
+
+window {
+    main
+}

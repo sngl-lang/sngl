@@ -1,7 +1,7 @@
 // A window is an ordinary node, so what its body declares is hoisted the way
 // any node's is: plainly, with no count for the window. A sibling window reads
 // it as one node -- every target holds every window in one process or one
-// document -- where it used to be `option<T>`, "a window may not be open".
+// document -- where it used to be `option[T]`, "a window may not be open".
 //
 // And a node's #id at the root of a file is the package's, visible from a
 // package func as a window's handle always was: `poke` reads `a`, the handle

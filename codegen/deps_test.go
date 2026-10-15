@@ -3,8 +3,8 @@ package codegen
 import (
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/ir"
 )
 
 // makeVar constructs a minimal *ir.Var for testing.
@@ -72,7 +72,7 @@ func TestExtractor_SubstituteOneCall(t *testing.T) {
 	}
 	double := &ir.Func{
 		Name:     "double",
-		Receiver: "main",
+		Receiver: ir.ReceiverNamed("main"),
 		Params:   []*ir.Param{cParam},
 		Block:    []ir.Stmt{&ir.Return{Value: body}},
 		AST:      &ast.FuncDef{},
@@ -126,7 +126,7 @@ func TestExtractor_WriteThroughCompParam(t *testing.T) {
 	}
 	reset := &ir.Func{
 		Name:     "reset",
-		Receiver: "main",
+		Receiver: ir.ReceiverNamed("main"),
 		Params:   []*ir.Param{cParam},
 		Block:    []ir.Stmt{body},
 		AST:      &ast.FuncDef{},
@@ -216,7 +216,7 @@ func TestExtractor_Recursion(t *testing.T) {
 	cParam := &ir.Param{Name: "c", Type: &ir.Type{Kind: ir.TypeComponent, Decl: comp}}
 	loop := &ir.Func{
 		Name:     "loop",
-		Receiver: "main",
+		Receiver: ir.ReceiverNamed("main"),
 		Params:   []*ir.Param{cParam},
 		AST:      &ast.FuncDef{},
 	}

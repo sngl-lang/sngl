@@ -4,8 +4,8 @@ import (
 	"slices"
 	"strconv"
 
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/ir"
 )
 
 // A component instantiated inside a reactive slot survives the slot's
@@ -174,10 +174,9 @@ func (st *reactivityState) destroyHeld() {
 func (st *reactivityState) emptyRegistry(si *slotInstance) []ir.Stmt {
 	destroy := func(inst ir.Expr) ir.Stmt {
 		return &ir.CallStmt{Call: &ir.Call{
-			Type:     ir.TypVoid,
-			Receiver: lowerNSIdent(),
-			Func:     st.intrinsics[ir.NodeOpDestroyComponent],
-			Args:     []ir.CallArg{{Value: inst}},
+			Type: ir.TypVoid,
+			Func: st.intrinsics[ir.NodeOpDestroyComponent],
+			Args: []ir.CallArg{{Value: inst}},
 		}}
 	}
 	var loop *ir.For
@@ -292,9 +291,6 @@ func propValueType(comp *ir.Component, prop string) *ir.Type {
 
 // instanceTypeOf is the handle type an instantiation of comp is held as.
 func instanceTypeOf(comp *ir.Component) *ir.Type {
-	if comp == nil {
-		return ir.TypDyn
-	}
 	return &ir.Type{Kind: ir.TypeInstance, Decl: comp}
 }
 
@@ -377,17 +373,9 @@ func (st *reactivityState) claimKey(si *slotInstance) (*ir.Var, []ir.Stmt) {
 
 // callMapGet builds `m.get(key, default)`.
 func callMapGet(m, key, def ir.Expr, valueType *ir.Type) *ir.Call {
-	var params []*ir.Param
-	var ret *ir.Type
-	if d := ir.LookupIntrinsic("map.get"); d != nil {
-		params, ret = d.Instantiate(ir.TypString, valueType)
-	}
-	if ret == nil {
-		ret = valueType
-	}
 	return &ir.Call{
 		Type:      valueType,
-		Func:      &ir.Func{Name: "get", Receiver: "map", Intrinsic: "map.get", Params: params, Return: ret},
+		Func:      ir.IntrinsicMethod("get", "map.get", m.ExprType(), valueType),
 		Args:      []ir.CallArg{{Value: m}, {Value: key}, {Value: def}},
 		ErrorMode: ir.ErrorNone,
 	}
@@ -395,13 +383,9 @@ func callMapGet(m, key, def ir.Expr, valueType *ir.Type) *ir.Call {
 
 // callMapContains builds `m.contains(key)`.
 func callMapContains(m, key ir.Expr, valueType *ir.Type) *ir.Call {
-	var params []*ir.Param
-	if d := ir.LookupIntrinsic("map.contains"); d != nil {
-		params, _ = d.Instantiate(ir.TypString, valueType)
-	}
 	return &ir.Call{
 		Type: ir.TypBool,
-		Func: &ir.Func{Name: "contains", Receiver: "map", Intrinsic: "map.contains", Params: params, Return: ir.TypBool},
+		Func: ir.IntrinsicMethod("contains", "map.contains", m.ExprType(), ir.TypBool),
 		Args: []ir.CallArg{{Value: m}, {Value: key}},
 	}
 }
@@ -500,9 +484,8 @@ func (st *reactivityState) reuseOrCreate(si *slotInstance, n *ir.NodeInst, declS
 			continue
 		}
 		reuse = append(reuse, &ir.CallStmt{Call: &ir.Call{
-			Type:     ir.TypVoid,
-			Receiver: lowerNSIdent(),
-			Func:     st.intrinsics[ir.NodeOpUpdateComponent],
+			Type: ir.TypVoid,
+			Func: st.intrinsics[ir.NodeOpUpdateComponent],
 			Args: []ir.CallArg{
 				{Value: curRef()},
 				{Value: &ir.Literal{Type: ir.TypString, Value: p.Name}},
@@ -529,10 +512,9 @@ func (st *reactivityState) reuseOrCreate(si *slotInstance, n *ir.NodeInst, declS
 	discard := &ir.If{
 		Cond: has(),
 		Body: []ir.Stmt{&ir.CallStmt{Call: &ir.Call{
-			Type:     ir.TypVoid,
-			Receiver: lowerNSIdent(),
-			Func:     st.intrinsics[ir.NodeOpDestroyComponent],
-			Args:     []ir.CallArg{{Value: held()}},
+			Type: ir.TypVoid,
+			Func: st.intrinsics[ir.NodeOpDestroyComponent],
+			Args: []ir.CallArg{{Value: held()}},
 		}}},
 	}
 
@@ -595,8 +577,8 @@ func (si *slotInstance) reusable(has func() ir.Expr, entry func(*ir.Var) ir.Expr
 // one was.
 //
 //	var <id>__reN <C> = lower.CreateComponent(<C>, {props...})
-//	var <id>__reN__el dyn = lower.ComponentRoot(<id>__reN)
-//	var <id>__prevN__el dyn = lower.ComponentRoot(<id>)
+//	var <id>__reN__el <family> = lower.ComponentRoot(<id>__reN)
+//	var <id>__prevN__el <family> = lower.ComponentRoot(<id>)
 //	lower.InsertBefore(<id>__pos, <id>__reN__el, <id>__prevN__el)
 //	lower.RemoveChild(<id>__pos, <id>__prevN__el)
 //	lower.DestroyComponent(<id>)
@@ -629,31 +611,27 @@ func (st *reactivityState) recreateStatic(n *ir.NodeInst, declSt *declarativeSta
 	elem := instanceTypeOf(n.Component)
 	cur := &ir.Var{Name: n.ID, Type: elem, Synthesized: true}
 	fresh := &ir.Var{Name: n.ID + "__re" + n1, Type: elem, Synthesized: true}
-	freshEl := &ir.Var{Name: fresh.Name + instanceRootSuffix, Type: ir.TypDyn, Synthesized: true}
-	prevEl := &ir.Var{Name: n.ID + "__prev" + n1 + instanceRootSuffix, Type: ir.TypDyn, Synthesized: true}
+	root := rendersAsType(n.Component, declSt.hosted)
+	freshEl := &ir.Var{Name: fresh.Name + instanceRootSuffix, Type: root, Synthesized: true}
+	prevEl := &ir.Var{Name: n.ID + "__prev" + n1 + instanceRootSuffix, Type: root, Synthesized: true}
 
-	place := &ir.Ident{
-		Name:         ir.InstancePlaceName(n.ID),
-		Type:         ir.TypDyn,
-		IsElementRef: true,
-		Synthesized:  true,
-	}
+	// The position the instance's root stands in, a node of the same family:
+	// what a platform binds the name to is its answer.
+	place := handleRef(ir.InstancePlaceName(n.ID), root)
 	elRef := func(v *ir.Var) ir.Expr {
-		return &ir.Ident{Name: v.Name, Type: ir.TypDyn, IsElementRef: true, Sym: v, Synthesized: true}
+		return &ir.Ident{Name: v.Name, Type: v.Type, IsElementRef: true, Sym: v, Synthesized: true}
 	}
 	bindRoot := func(el *ir.Var, inst *ir.Var) ir.Stmt {
-		return &ir.LocalVar{Name: el.Name, Type: ir.TypDyn, Sym: el, Init: &ir.Call{
-			Type:     ir.TypDyn,
-			Receiver: lowerNSIdent(),
-			Func:     st.intrinsics[ir.NodeOpComponentRoot],
-			Args:     []ir.CallArg{{Value: varRef(inst)}},
+		return &ir.LocalVar{Name: el.Name, Type: el.Type, Sym: el, Init: &ir.Call{
+			Type: el.Type,
+			Func: st.intrinsics[ir.NodeOpComponentRoot],
+			Args: []ir.CallArg{{Value: varRef(inst)}},
 		}}
 	}
 	op := func(name string, args ...ir.Expr) ir.Stmt {
 		call := &ir.Call{
-			Type:     ir.TypVoid,
-			Receiver: lowerNSIdent(),
-			Func:     st.intrinsics[name],
+			Type: ir.TypVoid,
+			Func: st.intrinsics[name],
 		}
 		for _, a := range args {
 			call.Args = append(call.Args, ir.CallArg{Value: a})
@@ -725,9 +703,8 @@ func (st *reactivityState) closeSlotInstance(si *slotInstance) []ir.Stmt {
 				&ir.If{
 					Cond: &ir.Binary{Type: ir.TypBool, Op: ast.BinGte, Left: varRef(jSym), Right: varRef(si.idx)},
 					Body: []ir.Stmt{&ir.CallStmt{Call: &ir.Call{
-						Type:     ir.TypVoid,
-						Receiver: lowerNSIdent(),
-						Func:     st.intrinsics[ir.NodeOpDestroyComponent],
+						Type: ir.TypVoid,
+						Func: st.intrinsics[ir.NodeOpDestroyComponent],
 						Args: []ir.CallArg{{Value: &ir.Index{
 							Type:    si.elem,
 							Operand: varRef(si.live),
@@ -784,10 +761,9 @@ func (st *reactivityState) closeKeyedSlotInstance(si *slotInstance) []ir.Stmt {
 					Operand: callMapContains(varRef(si.next), &ir.Ident{Name: k.Name, Type: ir.TypString, Sym: k, Synthesized: true}, si.elem),
 				},
 				Body: []ir.Stmt{&ir.CallStmt{Call: &ir.Call{
-					Type:     ir.TypVoid,
-					Receiver: lowerNSIdent(),
-					Func:     st.intrinsics[ir.NodeOpDestroyComponent],
-					Args:     []ir.CallArg{{Value: &ir.Ident{Name: v.Name, Type: si.elem, Sym: v, Synthesized: true}}},
+					Type: ir.TypVoid,
+					Func: st.intrinsics[ir.NodeOpDestroyComponent],
+					Args: []ir.CallArg{{Value: &ir.Ident{Name: v.Name, Type: si.elem, Sym: v, Synthesized: true}}},
 				}}},
 			}},
 		},

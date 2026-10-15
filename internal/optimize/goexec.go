@@ -7,6 +7,7 @@ import (
 	"crypto/sha256"
 	"errors"
 	"fmt"
+	"go/format"
 	"io/fs"
 	"log/slog"
 	"maps"
@@ -18,14 +19,14 @@ import (
 	"strings"
 	"time"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/codegen/lang/golang"
-	"git.duckfam.us/jonathan/sngl/internal/buildhost"
-	"git.duckfam.us/jonathan/sngl/internal/gencache"
-	"git.duckfam.us/jonathan/sngl/internal/gencache/godeps"
-	"git.duckfam.us/jonathan/sngl/internal/trust"
-	"git.duckfam.us/jonathan/sngl/ir"
-	"git.duckfam.us/jonathan/sngl/pkg/go/consteval"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/codegen/lang/golang"
+	"duckfam.us/sngl/internal/buildhost"
+	"duckfam.us/sngl/internal/gencache"
+	"duckfam.us/sngl/internal/gencache/godeps"
+	"duckfam.us/sngl/internal/trust"
+	"duckfam.us/sngl/ir"
+	"duckfam.us/sngl/pkg/go/consteval"
 )
 
 // evalTimeout bounds one round: generating, building and running the batch.
@@ -78,9 +79,13 @@ func wantTypes(reqs []*nativeRequest) map[string]*ir.Type {
 type nativeEval struct {
 	byKey map[string]*nativeRequest
 	order []*nativeRequest
+	// asked counts every call that could not be answered, a key another fold
+	// already asked for included, so a caller can tell which folds asked.
+	asked int
 }
 
 func (n *nativeEval) add(req *nativeRequest) {
+	n.asked++
 	if n.byKey == nil {
 		n.byKey = map[string]*nativeRequest{}
 	}
@@ -493,9 +498,9 @@ func constEvalDeps(gen *gencache.Store, absDir string, reqs []*nativeRequest) ma
 // calls: the runtime it reports through, and the codegen registries a pure
 // function may enumerate (docs.Targets() does).
 var evaluatorImports = []string{
-	"git.duckfam.us/jonathan/sngl/pkg/go/consteval",
-	"git.duckfam.us/jonathan/sngl/codegen/lang",
-	"git.duckfam.us/jonathan/sngl/codegen/platform",
+	"duckfam.us/sngl/pkg/go/consteval",
+	"duckfam.us/sngl/codegen/lang",
+	"duckfam.us/sngl/codegen/platform",
 }
 
 // runConstEvalBatch generates, builds and runs the program for reqs and
@@ -779,7 +784,19 @@ func dirBytes(path string) int64 {
 
 // constEvalSource generates the batch program. Each call sits in its own
 // function with a recover, so a panic costs one value rather than the round.
+//
+// It is gofmt'd because it sits inside the project, where `gofmt -l .` finds
+// any a crashed compile leaves behind. Source that does not parse is returned
+// as written, for the build to report.
 func constEvalSource(reqs []*nativeRequest) string {
+	src := constEvalSourceRaw(reqs)
+	if formatted, err := format.Source([]byte(src)); err == nil {
+		return string(formatted)
+	}
+	return src
+}
+
+func constEvalSourceRaw(reqs []*nativeRequest) string {
 	aliases := map[string]string{}
 	var paths []string
 	for _, r := range reqs {
@@ -815,7 +832,7 @@ import (
 	// The runtime is imported by name; the codegen registries are blank so a
 	// pure func that enumerates them (docs.Targets()) sees what the compiler
 	// sees.
-	fmt.Fprintf(&b, "\n\t%q\n\t%q\n", evaluatorImports[0], "git.duckfam.us/jonathan/sngl/codegen")
+	fmt.Fprintf(&b, "\t%q\n\t%q\n", evaluatorImports[0], "duckfam.us/sngl/codegen")
 	for _, p := range evaluatorImports[1:] {
 		fmt.Fprintf(&b, "\t_ %q\n", p)
 	}

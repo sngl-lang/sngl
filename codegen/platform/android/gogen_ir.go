@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/codegen/lang/golang"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/codegen/lang/golang"
+	"duckfam.us/sngl/ir"
 )
 
 // emitGo produces output files for the go+android target using IR.
@@ -62,7 +62,7 @@ func (c *compilation) emitGo(req *codegen.Request, sink codegen.Sink) error {
 		if err := writeAndroidFile(sink, "golib/go.mod", goMod); err != nil {
 			return err
 		}
-		for _, f := range scaffoldFiles(cfg, false, false, "", false) {
+		for _, f := range scaffoldFiles(cfg, false, false, false, "", false) {
 			if err := writeOutputFile(sink, f); err != nil {
 				return err
 			}
@@ -84,7 +84,7 @@ func (c *compilation) emitGo(req *codegen.Request, sink codegen.Sink) error {
 		if err := writeAndroidFile(sink, "golib/go.mod", goMod); err != nil {
 			return err
 		}
-		for _, f := range directBuildFiles(cfg, false, false) {
+		for _, f := range directBuildFiles(cfg, false, false, false) {
 			if err := writeOutputFile(sink, f); err != nil {
 				return err
 			}
@@ -118,10 +118,10 @@ func emitGoLibIR(ctx *codegen.CodegenCtx) []byte {
 	// RequireImport is idempotent, so re-running in pass 2 is harmless.
 	var discard strings.Builder
 	for _, fn := range allFuncs {
-		if fn.IsTest || fn.Receiver != "" || codegen.IsComputed(fn) {
+		if fn.IsTest || fn.IsMethod() || codegen.IsComputed(fn) {
 			continue
 		}
-		if fn.Return == nil || fn.Return.Kind == ir.TypeDyn {
+		if fn.Return == nil {
 			continue
 		}
 		emitGoLibIRFunc(&discard, fn, gc)
@@ -150,10 +150,10 @@ func emitGoLibIR(ctx *codegen.CodegenCtx) []byte {
 	// constant before it arrives. The Kotlin side renders them from Compose
 	// state.
 	for _, fn := range allFuncs {
-		if fn.IsTest || fn.Receiver != "" || codegen.IsComputed(fn) {
+		if fn.IsTest || fn.IsMethod() || codegen.IsComputed(fn) {
 			continue
 		}
-		if fn.Return == nil || fn.Return.Kind == ir.TypeDyn {
+		if fn.Return == nil {
 			continue
 		}
 		emitGoLibIRFunc(&b, fn, gc)
@@ -168,10 +168,10 @@ func emitGoLibIR(ctx *codegen.CodegenCtx) []byte {
 func goLibConsts(pkg *ir.Package, funcs []*ir.Func) []*ir.Var {
 	read := map[*ir.Var]bool{}
 	for _, fn := range funcs {
-		if fn.IsTest || fn.Receiver != "" || codegen.IsComputed(fn) {
+		if fn.IsTest || fn.IsMethod() || codegen.IsComputed(fn) {
 			continue
 		}
-		if fn.Return == nil || fn.Return.Kind == ir.TypeDyn {
+		if fn.Return == nil {
 			continue
 		}
 		_ = ir.Walk(fn, func(n ir.Node) error {

@@ -5,7 +5,7 @@ import (
 	"slices"
 	"strconv"
 
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 // passNoInlineComponents inlines every non-recursive, non-native user-defined
@@ -39,8 +39,9 @@ func lowerInlineComponents(pkg *ir.Package, feats Features, opts Options) error 
 	for _, c := range pkg.Components {
 		onList[c] = true
 	}
-	st := &inlineCompState{pkg: pkg, main: main, cycles: cycles, reactive: reactive, platform: opts.Platform, instanceState: feats.InstanceState, onList: onList, instSeq: seqOrOwn(opts.instSeq), demoted: map[*ir.Func]bool{}, cells: map[*ir.Var][]*ir.Var{}, methods: map[*ir.Var]map[*ir.Func][]*ir.Func{}}
+	st := &inlineCompState{pkg: pkg, main: main, cycles: cycles, reactive: reactive, platform: opts.Platform, instanceState: feats.InstanceState, genericComponents: feats.GenericComponents, onList: onList, names: namesOrOwn(opts.names), demoted: map[*ir.Func]bool{}, cells: map[*ir.Var][]*ir.Var{}, compInsts: map[*ir.Component][]componentInstance{}, methods: map[*ir.Var]map[*ir.Func][]*ir.Func{}}
 	cellOwners := implicitCellOwners(pkg)
+	st.reach = testReachRoots(pkg, main, opts)
 	if err := st.run(); err != nil {
 		return err
 	}
@@ -61,7 +62,10 @@ func lowerInlineComponents(pkg *ir.Package, feats Features, opts Options) error 
 			contextProps(c)
 		}
 	}
-	return uniqueNodeIDs(pkg)
+	if err := uniqueNodeIDs(pkg); err != nil {
+		return err
+	}
+	return repointTestReaches(pkg, st.reach, st.insts)
 }
 
 // unreachedCycles is every recursive component nothing the program renders
@@ -103,13 +107,6 @@ func unreachedCycles(pkg *ir.Package, main *ir.Component, cycles map[*ir.Compone
 		for _, f := range o.Funcs {
 			if f != nil {
 				visit(f.Block)
-			}
-		}
-		for _, v := range o.Vars {
-			for _, h := range v.Handlers {
-				if h.Func != nil {
-					visit(h.Func.Block)
-				}
 			}
 		}
 	}
@@ -347,8 +344,15 @@ type inlineCompState struct {
 	// instanceState is Features.InstanceState: whether a component built at run
 	// time keeps its own state on this target.
 	instanceState bool
-	// instSeq is passInlinePure's counter as well; see Options.instSeq.
-	instSeq *int
+	// genericComponents is Features.GenericComponents: whether the target
+	// emits a generic component once for every instantiation. Where it does
+	// not, compInsts is each generic component's copies (instantiateRuntime),
+	// and taken the names a copy may not take.
+	genericComponents bool
+	compInsts         map[*ir.Component][]componentInstance
+	taken             map[string]bool
+	// names is passInlinePure's as well; see Options.names.
+	names renamer
 	// demoted is the clones dropReceiver made receiverless, so the call sites
 	// renameIdents repointed at them can give their receiver up too.
 	demoted map[*ir.Func]bool
@@ -358,6 +362,10 @@ type inlineCompState struct {
 	// methods is, per node handle, each method of the component splicing that
 	// node cloned and the clones, for repointHandleCalls.
 	methods map[*ir.Var]map[*ir.Func][]*ir.Func
+	// insts is what each spliced node carrying an id became, for a test
+	// reaching into it (repointTestReaches).
+	insts []splice
+	reach *testReach
 }
 
 // Pointers rather than values because the append must be visible to the owner.
@@ -391,7 +399,7 @@ func packageHoist(pkg *ir.Package) hoistTarget {
 // ir.Param.Receiver is the flag rather than the name, as the checker sets it
 // on exactly the synthetic parameter it prepended.
 func dropReceiver(fn *ir.Func) {
-	fn.Receiver = ""
+	fn.Receiver = nil
 	fn.RecvParam = nil
 	fn.Params = slices.DeleteFunc(slices.Clone(fn.Params), func(p *ir.Param) bool {
 		return p != nil && p.Receiver
@@ -413,11 +421,11 @@ func (st *inlineCompState) run() error {
 		ch, anyFuncCh := false, false
 		if st.main != nil {
 			st.hoist = componentHoist(st.main)
-			body, mch, err := st.inlineStmts(st.main.Body)
+			body, mch, err := st.inlineStmts(st.main.Stmts)
 			if err != nil {
 				return err
 			}
-			st.main.Body = body
+			st.main.Stmts = body
 			ch = mch
 			// Indexed: inlining a call inside a func body appends to this very
 			// slice, and the appended clones need walking too.
@@ -465,11 +473,11 @@ func (st *inlineCompState) run() error {
 				continue
 			}
 			st.hoist = componentHoist(c)
-			body, cch, err := st.inlineStmts(c.Body)
+			body, cch, err := st.inlineStmts(c.Stmts)
 			if err != nil {
 				return err
 			}
-			c.Body = body
+			c.Stmts = body
 			anyKeptCh = anyKeptCh || cch
 			for j := 0; j < len(c.Funcs); j++ {
 				fbody, fch, err := st.inlineStmts(c.Funcs[j].Block)
@@ -511,7 +519,7 @@ func (st *inlineCompState) refuseCanvasInCycles() error {
 		if c == nil || !st.cycles[c] {
 			continue
 		}
-		if n := firstCanvas(c.Body); n != nil {
+		if n := firstCanvas(c.Stmts); n != nil {
 			return fmt.Errorf("%s: a canvas in the recursive component %q is drawn once per level, and this target keeps one surface per canvas it can reach from the page -- draw it in what renders %q", nodePos(n), c.Name, c.Name)
 		}
 	}
@@ -554,7 +562,7 @@ func usedVar(c *ir.Component) *ir.Var {
 		}
 		return nil
 	}
-	_ = ir.Walk(c.Body, visit)
+	_ = ir.Walk(c.Stmts, visit)
 	for _, fn := range c.Funcs {
 		if found == nil && fn != nil {
 			_ = ir.Walk(fn.Block, visit)
@@ -584,7 +592,7 @@ func (st *inlineCompState) refuseStateInCycles() error {
 			return fmt.Errorf("%s: the recursive component %q declares state of its own (%q); this target keeps a component's state only by splicing it where it is written, and a recursion is never spliced -- keep the state in what renders %q and pass it in as props", varPos(v), c.Name, v.Name, c.Name)
 		}
 		var found, lifetime *ir.NodeInst
-		_ = ir.WalkStmts(c.Body, func(s ir.Stmt) error {
+		_ = ir.WalkStmts(c.Stmts, func(s ir.Stmt) error {
 			n, ok := s.(*ir.NodeInst)
 			if !ok || found != nil || n.Component == nil || st.cycles[n.Component] {
 				return nil
@@ -593,7 +601,7 @@ func (st *inlineCompState) refuseStateInCycles() error {
 				lifetime = n
 				return ir.SkipAll
 			}
-			if len(n.Component.Vars) > 0 || holdsLifetime(n.Component.Body) {
+			if len(n.Component.Vars) > 0 || holdsLifetime(n.Component.Stmts) {
 				found = n
 				return ir.SkipAll
 			}
@@ -730,15 +738,6 @@ func retainComponents(in []*ir.Component, keep map[*ir.Component]bool) []*ir.Com
 
 // --- inliner helpers ---
 
-func (st *inlineCompState) freshSuffix() string { return freshInstSuffix(st.instSeq) }
-
-// freshInstSuffix hands out the next `__instN`.
-func freshInstSuffix(seq *int) string {
-	n := *seq
-	*seq++
-	return "__inst" + strconv.Itoa(n)
-}
-
 // renameIdents rewrites Ident.Name via renames and repoints Ident.Sym via
 // symRenames. Repointing Sym is essential: after inlining, the cloned
 // vars/funcs live in main, and downstream passes (notably reactivity) collect
@@ -811,28 +810,11 @@ func (st *inlineCompState) inlinable(comp *ir.Component) bool {
 		return false
 	}
 	// Platform primitives and stdlib wrappers with no body cannot be inlined.
-	if len(comp.Body) == 0 && len(comp.Vars) == 0 && len(comp.Funcs) == 0 {
-		return false
-	}
-	// Only inline components declared in this package or an imported one this
-	// build renders, a stdlib component this build's platform extension
-	// specialized, or a stdlib component carrying a body of its own. An
-	// imported component is on the list because Lower put it there, and its
-	// state is per-instance for the same reasons a local one's is.
-	//
-	// The specialized case is passPlatformExtensionBody's: it swapped that
-	// body and its vars into the component, and state declared there is
-	// per-instance for exactly the reasons a user component's var is. A pure
-	// override never reaches here — passInlinePure substituted it already —
-	// so this is the impure override's path to the same renames.
-	//
-	// The third is a library component that answers for itself on every
-	// target: `sngl:ui/markup`'s blocks are a `richText` with a role set, and
-	// `list` is a `vbox` with a bullet column. Left out, the node survived to
-	// codegen carrying a body no backend reads, so the declaration rendered
-	// its children and nothing of its own — which is what a bodied lib
-	// component did on every target until now.
-	if !st.onList[comp] && !st.specializedHere(comp) && !comp.Stdlib {
+	// Asked of what the declaration holds now, not of comp.Bodyless: that says
+	// how it was written, and stays true once specializeComp has swapped an
+	// override's body in -- every `ui.text` a target implements is bodyless
+	// and has a body to splice by here.
+	if len(comp.Stmts) == 0 && len(comp.Vars) == 0 && len(comp.Funcs) == 0 {
 		return false
 	}
 	return true
@@ -849,7 +831,7 @@ func (st *inlineCompState) rendersNothing(comp *ir.Component) bool {
 		return false
 	}
 	renders := false
-	_ = ir.Walk(comp.Body, func(node ir.Node) error {
+	_ = ir.Walk(comp.Stmts, func(node ir.Node) error {
 		if renders {
 			return nil
 		}
@@ -864,17 +846,6 @@ func (st *inlineCompState) rendersNothing(comp *ir.Component) bool {
 		return nil
 	})
 	return !renders
-}
-
-// specializedHere reports whether comp carries a platform extension body for
-// the platform being lowered for. With no platform (LSP, format) nothing is
-// specialized and nothing qualifies.
-func (st *inlineCompState) specializedHere(comp *ir.Component) bool {
-	if st.platform == "" || comp.PlatformOverrides == nil {
-		return false
-	}
-	_, ok := comp.PlatformOverrides[st.platform]
-	return ok
 }
 
 func (st *inlineCompState) inlineStmts(stmts []ir.Stmt) ([]ir.Stmt, bool, error) {
@@ -978,7 +949,7 @@ func (st *inlineCompState) inlineStmtCtx(s ir.Stmt, rc reactiveCtx) ([]ir.Stmt, 
 		}
 		// A target that keeps no state of an instance's own is given the state
 		// where the component is written instead, one cell per copy.
-		if !st.instanceState && st.captureOnly == nil && n.Component != nil && (len(n.Component.Vars) > 0 || holdsLifetime(n.Component.Body)) && !st.cycles[n.Component] && st.inlinable(n.Component) {
+		if !st.instanceState && st.captureOnly == nil && n.Component != nil && (len(n.Component.Vars) > 0 || holdsLifetime(n.Component.Stmts)) && !st.cycles[n.Component] && st.inlinable(n.Component) {
 			return st.expandPerCopy(n, rc)
 		}
 		// A library declaration with no state of its own is spliced even here:
@@ -988,7 +959,7 @@ func (st *inlineCompState) inlineStmtCtx(s ir.Stmt, rc reactiveCtx) ([]ir.Stmt, 
 		// -- `ui.window`, whose methods keep passInlinePure off it, composed
 		// under a reactive `if` on bubbletea, where the implicit-state wrapper
 		// around it was spliced per copy.
-		if rc.perCopy(n.Component) && st.captureOnly == nil && n.Component != nil && n.Component.Stdlib && len(n.Component.Vars) == 0 && !holdsLifetime(n.Component.Body) && !st.cycles[n.Component] && st.inlinable(n.Component) {
+		if rc.perCopy(n.Component) && st.captureOnly == nil && n.Component != nil && n.Component.PkgPath() != "" && len(n.Component.Vars) == 0 && !holdsLifetime(n.Component.Stmts) && !st.cycles[n.Component] && st.inlinable(n.Component) {
 			spliced, err := st.expandCall(n)
 			if err != nil {
 				return nil, false, err
@@ -1005,6 +976,9 @@ func (st *inlineCompState) inlineStmtCtx(s ir.Stmt, rc reactiveCtx) ([]ir.Stmt, 
 		// const iterable cannot change says how many copies there are, not
 		// that they may share state.
 		if st.captureOnly == nil && n.Component != nil && (rc.perCopy(n.Component) || st.cycles[n.Component]) {
+			if err := st.instantiateRuntime(n); err != nil {
+				return nil, false, err
+			}
 			st.keep[n.Component] = true
 			// The one place that knows: this instantiation is built while the
 			// program runs, so the declaration needs a runtime of its own.
@@ -1178,21 +1152,18 @@ func dependsOnReactiveVar(e ir.Expr, reactive map[*ir.Var]bool) bool {
 
 func (st *inlineCompState) expandCall(n *ir.NodeInst) ([]ir.Stmt, error) {
 	comp := n.Component
-	suffix := st.freshSuffix()
-
 	renames := map[ir.Symbol]string{}
 	symRenames := map[ir.Symbol]ir.Symbol{}
 
 	hoist := st.hoist
 	varStart := len(*hoist.vars)
 	provided := providedContextVars(comp, n.Props)
+	typeArgs := spliceTypeArgs(comp, n)
 	for _, v := range comp.Vars {
 		if _, ok := provided[v]; ok {
 			continue
 		}
-		clone := cloneVarShallow(v)
-		clone.Name = v.Name + suffix
-		clone.Init = deepCloneExpr(v.Init)
+		clone := cloneHoistedVar(v, st.names.next(v.Name, "inst"), typeArgs)
 		renames[v] = clone.Name
 		symRenames[v] = clone
 		if v.Cell && st.cells != nil {
@@ -1214,8 +1185,12 @@ func (st *inlineCompState) expandCall(n *ir.NodeInst) ([]ir.Stmt, error) {
 	funcStart := len(*hoist.funcs)
 	for _, f := range comp.Funcs {
 		clone := cloneFuncShallow(f)
-		clone.Name = f.Name + suffix
 		clone.Block = deepCloneStmts(f.Block)
+		if typeArgs != nil {
+			clone = ir.InstantiateFunc(f, typeArgs)
+			clone.TypeParams, clone.RecvTypeParams = f.TypeParams, f.RecvTypeParams
+		}
+		clone.Name = st.names.next(f.Name, "inst")
 		renames[f] = clone.Name
 		symRenames[f] = clone
 		if !hoist.method {
@@ -1238,20 +1213,6 @@ func (st *inlineCompState) expandCall(n *ir.NodeInst) ([]ir.Stmt, error) {
 			(*hoist.vars)[i].Init = substituteVarsExpr((*hoist.vars)[i].Init, provided)
 			(*hoist.vars)[i].Init = renameInExpr((*hoist.vars)[i].Init, renames, symRenames)
 		}
-		for _, h := range (*hoist.vars)[i].Handlers {
-			if h.Func != nil {
-				h.Func.Block = substituteVars(h.Func.Block, provided)
-			}
-		}
-		// A var handler's body reads and writes the instance's state like any
-		// other block the callee wrote. Left unrenamed it kept pointing at the
-		// pre-inlining name, which every instance shares -- a silent
-		// wrong-variable write, since the emitters splice it verbatim.
-		for _, h := range (*hoist.vars)[i].Handlers {
-			if h.Func != nil {
-				h.Func.Block = renameIdents(h.Func.Block, renames, symRenames)
-			}
-		}
 	}
 	for i := funcStart; i < len(*hoist.funcs); i++ {
 		fn := (*hoist.funcs)[i]
@@ -1260,7 +1221,7 @@ func (st *inlineCompState) expandCall(n *ir.NodeInst) ([]ir.Stmt, error) {
 		fn.Reads = renameVarList(fn.Reads, symRenames)
 		fn.Writes = renameVarList(fn.Writes, symRenames)
 	}
-	body := substituteVars(deepCloneStmts(comp.Body), provided)
+	body := substituteVars(splicedBody(comp, typeArgs), provided)
 	body = renameIdents(body, renames, symRenames)
 
 	bindings := map[string]ir.Expr{}
@@ -1292,16 +1253,15 @@ func (st *inlineCompState) expandCall(n *ir.NodeInst) ([]ir.Stmt, error) {
 
 	// Prop refs may appear in the hoisted callee-scope Vars/Funcs too.
 	for i := varStart; i < len(*hoist.vars); i++ {
+		(*hoist.vars)[i].Init = answerSlotEmptyIn((*hoist.vars)[i].Init, n)
 		(*hoist.vars)[i].Init = substituteParamsExpr((*hoist.vars)[i].Init, bindings)
-		for _, h := range (*hoist.vars)[i].Handlers {
-			if h.Func != nil {
-				h.Func.Block = substituteParams(h.Func.Block, bindings)
-			}
-		}
 	}
 	for i := funcStart; i < len(*hoist.funcs); i++ {
 		(*hoist.funcs)[i].Block = substituteParams((*hoist.funcs)[i].Block, bindings)
 	}
+	// The caller's handlers land inside the body's own, so a parameter of the
+	// body's sharing a name they read is renamed first (freshenShadowingParams).
+	body = freshenShadowingParams(body, callsiteNames(n), st.names)
 	// Events before slots: an emit in spliced slot content names the caller's
 	// event, and would otherwise be matched against the callee's handlers.
 	body = substituteEvents(body, n.Handlers)
@@ -1316,8 +1276,11 @@ func (st *inlineCompState) expandCall(n *ir.NodeInst) ([]ir.Stmt, error) {
 	// A library body -- a builtin node this target composes, and the
 	// override it renders -- was written in the library, and a diagnostic
 	// about what it became belongs where the program wrote the node.
-	if comp.Stdlib {
+	if comp.PkgPath() != "" {
 		ir.AttachNodeSite(body, n)
+	}
+	if n.ID != "" || st.reach.takes(comp) {
+		st.recordInstance(n, symRenames, body)
 	}
 
 	return body, nil
@@ -1340,17 +1303,38 @@ func carryPointsTo(pkg *ir.Package, from, to ir.PointsToKey) {
 
 func cloneVarShallow(v *ir.Var) *ir.Var {
 	c := *v
-	c.Handlers = nil
-	for _, h := range v.Handlers {
-		hc := *h
-		if h.Func != nil {
-			fc := *h.Func
-			fc.Block = deepCloneStmts(h.Func.Block)
-			hc.Func = &fc
-		}
-		c.Handlers = append(c.Handlers, &hc)
-	}
 	return &c
+}
+
+// spliceTypeArgs is what n's call site bound comp's type parameters to, where
+// comp is the declaration n names; nil otherwise. A generic component's body
+// is spliced at those types: what it declares names them, and left naming T,
+// a backend that copies generics per instantiation erased it.
+func spliceTypeArgs(comp *ir.Component, n *ir.NodeInst) map[string]*ir.Type {
+	if n == nil || n.Component != comp {
+		return nil
+	}
+	return ir.ComponentBindings(n)
+}
+
+// splicedBody is a fresh copy of comp's body at typeArgs.
+func splicedBody(comp *ir.Component, typeArgs map[string]*ir.Type) []ir.Stmt {
+	return deepCloneStmts(ir.InstantiateStmts(comp.Stmts, typeArgs))
+}
+
+// cloneHoistedVar is a copy of a component's var to hoist onto the owner
+// splicing it, named name, at typeArgs.
+func cloneHoistedVar(v *ir.Var, name string, typeArgs map[string]*ir.Type) *ir.Var {
+	clone := cloneVarShallow(v)
+	clone.Name = name
+	clone.Init = deepCloneExpr(v.Init)
+	if typeArgs != nil {
+		clone.Type = v.Type.Substitute(typeArgs)
+		if clone.Init != nil {
+			clone.Init = ir.SubstituteExprTypes(clone.Init, typeArgs)
+		}
+	}
+	return clone
 }
 
 // renameVarList is vs with each var its clone renames, in a list of its own:

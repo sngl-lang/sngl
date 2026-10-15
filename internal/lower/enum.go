@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strconv"
 
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 var passEnum = pass{
@@ -123,7 +123,7 @@ func rewriteEnumExpr(e ir.Expr, memberOrdinal func(*ir.EnumDef, string) (int, bo
 				return rewriteEnumExpr(e, memberOrdinal)
 			})
 		}
-	case *ir.Literal, *ir.ContextRead:
+	case *ir.Literal, *ir.ContextRead, *ir.SlotEmpty:
 		// Terminal — no enum member to rewrite.
 	default:
 		panic(fmt.Sprintf("rewriteEnumExpr: unhandled %T", x))

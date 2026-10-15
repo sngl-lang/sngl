@@ -25,12 +25,12 @@ import (
 	"strings"
 	"sync"
 
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/internal/gencache"
-	"git.duckfam.us/jonathan/sngl/internal/interp"
-	"git.duckfam.us/jonathan/sngl/internal/parser"
-	"git.duckfam.us/jonathan/sngl/internal/trust"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/internal/gencache"
+	"duckfam.us/sngl/internal/interp"
+	"duckfam.us/sngl/internal/parser"
+	"duckfam.us/sngl/internal/trust"
+	"duckfam.us/sngl/ir"
 )
 
 // Error is a host call that failed: a refusal, or a read that could not
@@ -342,7 +342,7 @@ func (h *Host) call(id string, ow *Owner, call *ir.Call, args []any) (any, error
 		return proc.wait()
 	}
 	if fn := registered(id); fn != nil {
-		return fn(rec, args)
+		return fn(rec, call, args)
 	}
 	return nil, fmt.Errorf("%s: no build host answers it", id)
 }
@@ -351,7 +351,9 @@ func (h *Host) call(id string, ow *Owner, call *ir.Call, args []any) (any, error
 // registered: what only its Go can compute, for a library plugin's handler
 // to call. It records each input it reads on rec, as the host's own
 // intrinsics do, so what the handler writes is invalidated when one changes.
-type IntrinsicFunc func(rec *Recorder, args []any) (any, error)
+// call is the call being answered, which is where a value is built from: its
+// Func's Return is the declared type of what to hand back.
+type IntrinsicFunc func(rec *Recorder, call *ir.Call, args []any) (any, error)
 
 var (
 	intrinsicsMu sync.RWMutex

@@ -1,0 +1,66 @@
+# A call omitting a defaulted argument, run on the interpreter, in a browser
+# and on bubbletea: a package function's, and a component method's whose
+# default reads the component's own state. testdata/func_default_argument.txtar
+# is the code on all five targets.
+
+sngl test --platform=none app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=html app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout '1 tests, 0 failures'
+
+-- app.sngl --
+import . "sngl:test"
+import ui "sngl:ui"
+
+var n = 1
+
+func plus(k int, by int = 2) int {
+    return k + by + n
+}
+
+component counter ui.node {
+    var step = 2
+    var total = 0
+
+    func add(a int = 1, by int = step * 3) {
+        total += a + by
+    }
+
+    ui.button #b(text="{total}", @click {
+        add()
+    })
+}
+
+func testOmittedDefaults(t Test, c counter) {
+    t.assert(plus(1) == 4)
+    c.b.click()
+    t.assert(c.total == 7)
+}
+
+ui.window {
+    counter()
+}
+-- testrun/bubbletea/go/app.sngl/counter/1 --
+sha256:3f06d1a993cf9456419aec34e0be0a40
+{
+  "results": [
+    {
+      "Desc": "OmittedDefaults",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/counter/1 --
+sha256:b32011bff73cfd85037c75fbe0820f3b
+{
+  "results": [
+    {
+      "Desc": "OmittedDefaults",
+      "Passed": true
+    }
+  ]
+}

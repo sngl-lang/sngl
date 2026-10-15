@@ -11,6 +11,7 @@
     { "include": "#unit-declaration" },
     { "include": "#style-declaration" },
     { "include": "#output-declaration" },
+    { "include": "#type-parameters" },
     { "include": "#keywords" },
     { "include": "#constants" },
     { "include": "#strings" },
@@ -47,6 +48,14 @@
       "captures": {
         "1": { "name": "keyword.declaration.component.sngl" },
         "2": { "name": "entity.name.type.component.sngl" }
+      }
+    },
+    "type-parameters": {
+      "comment": "A declared type parameter names its constraint: [T any], [T any = int].",
+      "match": "(?<=[\\[,])\\s*([A-Za-z_][A-Za-z0-9_]*)\\s+(any)\\b(?=\\s*[,\\]=])",
+      "captures": {
+        "1": { "name": "entity.name.type.parameter.sngl" },
+        "2": { "name": "support.type.constraint.sngl" }
       }
     },
     "struct-declaration": {

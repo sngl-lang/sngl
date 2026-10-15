@@ -29,7 +29,7 @@ output {
 window {
     var shown bool = false
     var locked bool = true
-    var rows list<string> = ["a"]
+    var rows list[string] = ["a"]
 
     html.details(open=shown) {
         html.input(readonly=locked)

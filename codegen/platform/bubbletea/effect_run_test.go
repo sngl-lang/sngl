@@ -6,12 +6,12 @@ import (
 	"path/filepath"
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
-	_ "git.duckfam.us/jonathan/sngl/codegen/lang"
-	"git.duckfam.us/jonathan/sngl/internal/checker"
-	"git.duckfam.us/jonathan/sngl/internal/lower"
-	"git.duckfam.us/jonathan/sngl/internal/parser"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/codegen"
+	_ "duckfam.us/sngl/codegen/lang"
+	"duckfam.us/sngl/internal/checker"
+	"duckfam.us/sngl/internal/lower"
+	"duckfam.us/sngl/internal/parser"
+	"duckfam.us/sngl/ir"
 )
 
 // effectRunSrc is testdata/effect_on_recreates.sngl with the test funcs
@@ -23,7 +23,7 @@ import . "sngl:ui"
 window {
     var (
         n = 0
-        log list<string> = []
+        log list[string] = []
     )
 
     effect(
@@ -135,6 +135,7 @@ func TestEffectMountsAndRekeysInTheEmittedProgram(t *testing.T) {
 		}
 	}
 	g := &Generator{}
+	pkg = ir.ClonePackage(pkg)
 	if err := lower.Lower(pkg, codegen.CapsOrNone(lang.LanguageIdentifier(), g.PlatformIdentifier()), lower.Options{Platform: "bubbletea", Language: "go"}); err != nil {
 		t.Fatalf("lower: %v", err)
 	}

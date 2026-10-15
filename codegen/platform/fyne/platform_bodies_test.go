@@ -4,10 +4,10 @@ import (
 	"sort"
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/internal/checker"
-	"git.duckfam.us/jonathan/sngl/internal/parser"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/internal/checker"
+	"duckfam.us/sngl/internal/parser"
+	"duckfam.us/sngl/ir"
 )
 
 // StdlibComponents is every stdlib component this platform is
@@ -56,7 +56,7 @@ func TestEveryFyneBodyLowersToADeclaredWidget(t *testing.T) {
 
 	used := map[string]bool{}
 	for _, comp := range OverriddenComponents(pkg) {
-		prims := fynePrimitiveNodes(comp.PlatformOverrides["fyne"].Stmts)
+		prims := fynePrimitiveNodes(pkg.OverridesOf(comp).Platform["fyne"].Stmts)
 		if len(prims) == 0 {
 			t.Errorf("%s: fyne body reaches no fyne primitive", comp.Name)
 			continue

@@ -15,14 +15,14 @@ func TestFlexBuildsTheWeightedLayout(t *testing.T) {
 import . "sngl:ui"
 output { go { fyne } }
 window {
-    hbox(style={gap=4, padding=6}) {
-        text(value="a", style={flex=1, margin=3})
+    hbox(style={gap=4px, padding=6px}) {
+        text(value="a", style={flex=1, margin=3px})
         text(value="b", style={flex=2})
     }
 }
 `)
 	for _, want := range []string{
-		`"git.duckfam.us/jonathan/sngl/pkg/go/fynelayout"`,
+		`"duckfam.us/sngl/pkg/go/fynelayout"`,
 		"container.New(fynelayout.New(true, []float32{1, 2}, []float32{3, 0}, 4, 6))",
 	} {
 		if !strings.Contains(out, want) {
@@ -42,7 +42,7 @@ func TestNoFlexKeepsTheBoxConstructor(t *testing.T) {
 import . "sngl:ui"
 output { go { fyne } }
 window {
-    vbox(style={gap=4}) {
+    vbox(style={gap=4px}) {
         text(value="a")
         text(value="b")
     }

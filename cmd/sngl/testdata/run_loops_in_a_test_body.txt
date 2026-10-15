@@ -60,7 +60,7 @@ func testIndexed(t Test) {
 }
 
 func testMapEntries(t Test) {
-    var m map<string, int> = {"a" = 1, "b" = 5}
+    var m map[string, int] = {"a" = 1, "b" = 5}
     var n = 0
     for var k, v = m {
         n = n + v + k.length() - 1
@@ -72,7 +72,7 @@ window {
     main
 }
 -- testrun/bubbletea/go/app.sngl/_/1 --
-sha256:c4f0f375b55e0822aab5eebe9e589df2
+sha256:6986f7c8a3cbe64f1f931b3ce134d78f
 {
   "results": [
     {

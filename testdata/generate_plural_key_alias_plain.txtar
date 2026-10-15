@@ -561,7 +561,7 @@ body { font-family: system-ui, sans-serif; }
     }
     return __toCommonJS(i18n_entry_exports);
   })();
-  var state = { n__inst0: 2, visible__inst1: true };
+  var state = { n__inst0: 2, visible__inst0: true };
   var __n1 = document.querySelector('[data-sngl-id="__n1"]');
   function __sngl_init() {
     __n1.textContent = i18n.getTranslator().plural(state.n__inst0, { ["one"]: "one item", ["other"]: "many items" });
@@ -571,4 +571,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:9cdf1b3f75d1720a5488ae959eacfbec
+pass sha256:35914c359d495e096538742cf595ab5c

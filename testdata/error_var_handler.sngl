@@ -1,0 +1,28 @@
+// A var takes no handler. `var x = 0 @change { … }` ran its block after an
+// assignment to x; an effect keyed on x reports every write to it -- a push
+// and an element's field included -- so it is the one way to say this, and
+// the error names it.
+
+import ui "sngl:ui"
+
+var saved = 0
+var count = 0 @change { // ERROR(check) "a var takes no handler; to run code after a write to count, write effect(on=count, @update(v) { … })"
+    saved += 1
+}
+
+component box ui.node {
+    var items list[int] = [] @change(v) { // ERROR(check) "a var takes no handler; to run code after a write to items"
+        saved = v.length()
+    }
+
+    ui.text(value="{saved} {count} {items.length()}")
+}
+
+ui.window {
+    var shown = false @change { // ERROR(check) "a var takes no handler; to run code after a write to shown"
+        saved = 0
+    }
+
+    box
+    ui.text(value="{shown}")
+}

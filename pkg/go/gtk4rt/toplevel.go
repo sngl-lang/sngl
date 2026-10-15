@@ -7,7 +7,7 @@ package gtk4rt
 #include <gtk/gtk.h>
 #include <stdlib.h>
 
-extern void snglGoDispatch(int idx);
+extern void snglRtDispatch(int idx);
 extern void snglToplevelsActivate(GtkApplication *app, gpointer data);
 extern void snglToplevelGone(gpointer data, GObject *where);
 
@@ -16,7 +16,7 @@ extern void snglToplevelGone(gpointer data, GObject *where);
 // the program's answer, reached through its `visible` and `@closed`.
 static gboolean sngl_top_close_request(GtkWindow *win, gpointer data) {
     (void)win;
-    snglGoDispatch(GPOINTER_TO_INT(data));
+    snglRtDispatch(GPOINTER_TO_INT(data));
     return TRUE;
 }
 static void sngl_top_connect_close(GtkWindow *win, int idx) {
@@ -37,7 +37,7 @@ import (
 	"slices"
 	"unsafe"
 
-	"git.duckfam.us/jonathan/sngl/pkg/go/cbind"
+	"duckfam.us/sngl/pkg/go/cbind"
 )
 
 // A Toplevel is what a `ui.window` is on gtk4: a node whose handle is the box
@@ -61,6 +61,8 @@ type toplevel struct {
 	onVisible func(bool)
 	onClosed  func()
 	gone      int
+	// icon is the image source a `ui.window`'s favicon is.
+	icon *source
 }
 
 // App is the parent a node at the root of the package body is attached to.
@@ -242,6 +244,7 @@ func (t *toplevel) create() {
 	C.gtk_window_set_child(t.win, widget(t.box))
 	idx := cbind.Register(t.closeRequested)
 	C.sngl_top_connect_close(t.win, C.int(idx))
+	t.applyIcon()
 }
 
 // report is the host changing `visible` itself.

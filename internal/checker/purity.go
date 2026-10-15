@@ -1,6 +1,6 @@
 package checker
 
-import "git.duckfam.us/jonathan/sngl/ir"
+import "duckfam.us/sngl/ir"
 
 // analyzeEffects computes a function's direct purity and its Reads/Writes sets
 // by walking the checked IR body (fn.Block), using resolved identifier symbols
@@ -12,8 +12,9 @@ import "git.duckfam.us/jonathan/sngl/ir"
 // This computes only *direct* effects. Transitive purity (a function that
 // calls an impure one) is propagated separately by the call-graph fixed point
 // in checkBodies, after every function has its direct purity.
-func analyzeEffects(f *ir.Func, varSet map[*ir.Var]struct{}) {
+func analyzeEffects(lib *ir.Builtins, f *ir.Func, varSet map[*ir.Var]struct{}) {
 	w := &effectWalker{
+		lib:    lib,
 		vars:   varSet,
 		reads:  make(map[*ir.Var]struct{}),
 		writes: make(map[*ir.Var]struct{}),
@@ -44,6 +45,8 @@ func analyzeEffects(f *ir.Func, varSet map[*ir.Var]struct{}) {
 }
 
 type effectWalker struct {
+	// lib says which intrinsics write through their receiver.
+	lib    *ir.Builtins
 	vars   map[*ir.Var]struct{}
 	reads  map[*ir.Var]struct{}
 	writes map[*ir.Var]struct{}
@@ -97,7 +100,7 @@ func (w *effectWalker) visit(n ir.Node) error {
 		// what passReactivity reads for the same question -- so the two agree
 		// on what a write is without either of them listing method names.
 		if x.Func != nil && x.Func.Intrinsic != "" && len(x.Args) > 0 {
-			if def, ok := ir.IntrinsicByName(x.Func.Intrinsic); ok && def.MutatesReceiver {
+			if def, ok := w.lib.IntrinsicByName(x.Func.Intrinsic); ok && def.MutatesReceiver {
 				if v := w.rootVar(x.Args[0].Value); v != nil {
 					w.mutates = true
 					w.writes[v] = struct{}{}
@@ -236,7 +239,7 @@ func (w *effectWalker) rootVar(e ir.Expr) *ir.Var {
 // the package. The lowering reads both -- what a key reads is which writes
 // settle it -- so a function without them would be a key nothing rekeys.
 func AnalyzeSynthesizedFunc(pkg *ir.Package, owner *ir.Component, fn *ir.Func) {
-	analyzeEffects(fn, stateVars(pkg, owner))
+	analyzeEffects(ir.Published(), fn, stateVars(pkg, owner))
 	if p := highestCalledPurity(fn); p > fn.Purity {
 		fn.Purity = p
 	}
@@ -262,8 +265,12 @@ func stateVars(pkg *ir.Package, owner *ir.Component) map[*ir.Var]struct{} {
 	add(viewStateVars(pkg.Body))
 	if owner != nil {
 		add(owner.Vars)
-		add(viewStateVars(owner.Body))
-		for _, overrides := range []map[string]ir.Body{owner.PlatformOverrides, owner.LanguageOverrides} {
+		add(viewStateVars(owner.Stmts))
+		bodies := []map[string]ir.Override{owner.PlatformOverrides, owner.LanguageOverrides}
+		if added := pkg.Overlay.Overrides[owner]; added != nil {
+			bodies = append(bodies, added.Platform, added.Language)
+		}
+		for _, overrides := range bodies {
 			for _, b := range overrides {
 				add(b.Vars)
 				add(viewStateVars(b.Stmts))

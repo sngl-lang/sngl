@@ -5,11 +5,11 @@ import (
 	"strings"
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/internal/checker"
-	"git.duckfam.us/jonathan/sngl/internal/lower"
-	"git.duckfam.us/jonathan/sngl/internal/parser"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/internal/checker"
+	"duckfam.us/sngl/internal/lower"
+	"duckfam.us/sngl/internal/parser"
+	"duckfam.us/sngl/ir"
 )
 
 // extStubPlatform is a minimal ir.Platform used by extension-merge tests. It
@@ -41,7 +41,7 @@ func extStubConfig(t *testing.T, source string) *checker.Config {
 // TestExtensionMergeBasic exercises the platform-agnostic checker collection
 // + lower-time swap. An extension platform ships a new-form
 // `component sngl.text { ... }` declaration. The checker
-// stashes the checked IR body under stdText.PlatformOverrides["extstub"]; the
+// stashes the checked IR body in the stub package's overlay; the
 // stdlib `text` component's own Body stays empty after Check (the checker
 // does not know which platform is active). After running Lower with
 // Options.Platform="extstub", the swap pass moves the platform body into
@@ -51,8 +51,8 @@ func TestExtensionMergeBasic(t *testing.T) {
 	const extSource = `
 import sngl "sngl:ui"
 
-const component sngl.text[extstub.platform] {
-    image(src=value)
+const component sngl.text[extstub.platform](value) {
+    image(alt=value)
 }
 `
 	const userSource = `
@@ -80,33 +80,34 @@ component main node {
 		t.Fatal("stdlib text component missing from symbol table")
 	}
 
-	// Checker contract: PlatformOverrides has the extstub entry; the live
+	// Checker contract: the program sees an extstub override; the live
 	// Component.Body stays empty until the lowering swap runs.
-	if stdText.PlatformOverrides == nil {
-		t.Fatal("expected PlatformOverrides populated, got nil")
-	}
-	body, ok := stdText.PlatformOverrides["extstub"]
+	overrides := pkg.OverridesOf(stdText).Platform
+	body, ok := overrides["extstub"]
 	if !ok {
-		t.Fatalf("expected PlatformOverrides[\"extstub\"], have keys %v", keys(stdText.PlatformOverrides))
+		t.Fatalf("expected an extstub override, have keys %v", keys(overrides))
 	}
 	if len(body.Stmts) == 0 {
 		t.Errorf("expected stashed extstub body to be non-empty, got %d stmts", len(body.Stmts))
 	}
-	if len(stdText.Body) != 0 {
-		t.Errorf("expected stdlib text Body still empty pre-lower, got %d stmts", len(stdText.Body))
+	if len(stdText.Stmts) != 0 {
+		t.Errorf("expected stdlib text Body still empty pre-lower, got %d stmts", len(stdText.Stmts))
 	}
 
 	// Lower with the matching active platform — swap pass should move the
 	// stashed body into Component.Body.
+	pkg = ir.ClonePackage(pkg)
 	if err := lower.Lower(pkg, lower.NoLowering(), lower.Options{Platform: "extstub"}); err != nil {
 		t.Fatalf("lower: %v", err)
 	}
-	if len(stdText.Body) == 0 {
+	sym, _ = pkg.Symbols.LookupRootComponent("text")
+	stdText = sym.(*ir.Component)
+	if len(stdText.Stmts) == 0 {
 		t.Errorf("expected stdlib text Body to be swapped in by lower, got 0 stmts")
 	}
 }
 
-func keys(m map[string]ir.Body) []string {
+func keys(m map[string]ir.Override) []string {
 	out := make([]string, 0, len(m))
 	for k := range m {
 		out = append(out, k)
@@ -201,9 +202,9 @@ component main node {
 		platform string
 		names    []string
 	}{{"stubA", []string{"label", "flip"}}, {"stubB", []string{"other"}}} {
-		over, ok := stdText.PlatformOverrides[want.platform]
+		over, ok := pkg.OverridesOf(stdText).Platform[want.platform]
 		if !ok {
-			t.Fatalf("expected PlatformOverrides[%q], have %v", want.platform, stdText.PlatformOverrides)
+			t.Fatalf("expected PlatformOverrides[%q], have %v", want.platform, pkg.OverridesOf(stdText).Platform)
 		}
 		vars := over.Vars
 		if !slices.Equal(varNames(vars), want.names) {
@@ -217,7 +218,7 @@ component main node {
 	}
 	// A `const` in the extension body travels the same road: pass1 records it
 	// as a Var with IsConst, and nothing here distinguishes the two.
-	if v := stdText.PlatformOverrides["stubA"].Vars[0]; !v.IsConst {
+	if v := pkg.OverridesOf(stdText).Platform["stubA"].Vars[0]; !v.IsConst {
 		t.Errorf("expected %q to be a const", v.Name)
 	}
 	if len(stdText.Vars) != 0 {
@@ -233,6 +234,7 @@ component main node {
 	// says so — the same thing `sngl test` does for a component under test.
 	caps := lower.NoLowering()
 	caps.InlineComponents = false
+	pkg = ir.ClonePackage(pkg)
 	if err := lower.Lower(pkg, caps, lower.Options{Platform: "stubA", RootComponent: "main"}); err != nil {
 		t.Fatalf("lower: %v", err)
 	}

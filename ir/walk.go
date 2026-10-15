@@ -124,7 +124,7 @@ func (w *walker) expr(e Expr) {
 		if x.State != nil {
 			w.expr(x.State)
 		}
-	case *Literal, *Ident, *ContextRead:
+	case *Literal, *Ident, *ContextRead, *SlotEmpty:
 	default:
 		panic(fmt.Sprintf("ir.Walk: unhandled ir.Expr %T", x))
 	}
@@ -264,7 +264,7 @@ func (w *walker) component(c *Component) {
 	for _, f := range c.Funcs {
 		w.fn(f)
 	}
-	w.stmts(c.Body)
+	w.stmts(c.Stmts)
 }
 
 func (w *walker) varDecl(v *Var) {
@@ -272,11 +272,6 @@ func (w *walker) varDecl(v *Var) {
 		return
 	}
 	w.expr(v.Init)
-	for _, h := range v.Handlers {
-		if h.Func != nil {
-			w.fn(h.Func)
-		}
-	}
 }
 
 func (w *walker) pkg(pkg *Package) {

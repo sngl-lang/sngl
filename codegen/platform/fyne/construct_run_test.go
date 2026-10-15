@@ -6,9 +6,10 @@ import (
 	"path/filepath"
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
-	_ "git.duckfam.us/jonathan/sngl/codegen/lang"
-	"git.duckfam.us/jonathan/sngl/internal/lower"
+	"duckfam.us/sngl/codegen"
+	_ "duckfam.us/sngl/codegen/lang"
+	"duckfam.us/sngl/internal/lower"
+	"duckfam.us/sngl/ir"
 )
 
 // constructComponentSrc is loopComponentSrc with a #[construct] prop the row's
@@ -25,7 +26,7 @@ component card(#[construct] seed int, name = "") node {
 
 window {
     var (
-        names list<string> = ["a", "b"]
+        names list[string] = ["a", "b"]
         base = 0
     )
     for var nm = names {
@@ -98,6 +99,7 @@ func TestConstructPropRebuildsTheInstance(t *testing.T) {
 	if lang == nil {
 		t.Fatal("go lang not registered")
 	}
+	pkg = ir.ClonePackage(pkg)
 	if err := lower.Lower(pkg, codegen.CapsOrNone(lang.LanguageIdentifier(), g.PlatformIdentifier()), lower.Options{Platform: "fyne", Language: "go"}); err != nil {
 		t.Fatalf("lower: %v", err)
 	}

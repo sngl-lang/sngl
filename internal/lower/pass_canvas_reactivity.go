@@ -1,7 +1,7 @@
 package lower
 
 import (
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 var passCanvasReactivity = pass{
@@ -25,7 +25,7 @@ func lowerCanvasReactivity(pkg *ir.Package, _ Features, _ Options) error {
 	pkgVars := mutableVars(pkg.Vars)
 	for _, comp := range pkg.Components {
 		stateVars := mergeVarSets(pkgVars, mutableVars(comp.Vars))
-		injectCanvasRedraws(comp.Body, comp.Vars, stateVars, &comp.Funcs)
+		injectCanvasRedraws(comp.Stmts, comp.Vars, stateVars, &comp.Funcs)
 	}
 	injectCanvasRedraws(pkg.Body, nil, pkgVars, &pkg.Funcs)
 	return nil
@@ -64,21 +64,6 @@ func injectCanvasRedraws(stmts []ir.Stmt, vars []*ir.Var, stateVars map[*ir.Var]
 
 	if len(canvases) == 0 {
 		return
-	}
-
-	// Handlers on state vars (e.g. var x @change { ... }).
-	for _, v := range vars {
-		for _, h := range v.Handlers {
-			if h.Func == nil {
-				continue
-			}
-			mutated := handlerMutatedVars(h.Func, stateVars)
-			for _, e := range canvases {
-				if varsOverlap(mutated, e.deps) {
-					h.Func.Block = append(h.Func.Block, &ir.CanvasRedrawStmt{Canvas: e.canvas})
-				}
-			}
-		}
 	}
 
 	// Handlers on NodeInsts in the visual tree (e.g. button @click).
@@ -157,9 +142,9 @@ func canvasStateVars(canvas *ir.NodeInst, stateVars map[*ir.Var]bool) map[*ir.Va
 				}
 				// Once per declaration: a shape drawn twenty times reads the
 				// same names, and a shape that renders itself would not stop.
-				if n.Component != nil && len(n.Component.Body) > 0 && !seen[n.Component] {
+				if n.Component != nil && len(n.Component.Stmts) > 0 && !seen[n.Component] {
 					seen[n.Component] = true
-					walk(n.Component.Body)
+					walk(n.Component.Stmts)
 				}
 				walk(n.Children)
 			case *ir.CallStmt:

@@ -295,27 +295,18 @@ func newTestComponent() *Model {
 
 package test.sngl.app
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.*
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
-import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.foundation.layout.Column
+import androidx.compose.material3.Button
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color as ComposeColor
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.material3.Text
 
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
@@ -368,7 +359,7 @@ class MainScreenTest {
         val c = MainScreenState()
         @Suppress("UNUSED_VARIABLE") val composeTestRule = composeRule
         composeRule.setContent { MainScreen(c) }
-        composeTestRule.onNodeWithTag("run").performClick(); composeTestRule.waitForIdle()
+        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("run")).performClick(); composeTestRule.waitForIdle()
         org.junit.Assert.assertTrue("(c.got == \"5:2\")", (c.got == "5:2"))
     }
 
@@ -418,13 +409,10 @@ window.__sngl_boot = () => {
   if (typeof window !== "undefined") {
     Object.assign(window, { testFuncValueReadsProvider });
   }
-  function String(v) {
-    return "" + v;
-  }
   var $0 = document.getElementById("$0");
   var __n0 = document.querySelector('[data-sngl-id="__n0"]');
   $0.addEventListener("click", function() {
-    state.got = [2].map((x) => "5:" + String(x))[0];
+    state.got = "5:2";
     __n0.textContent = state.got;
   });
   function __sngl_init() {
@@ -441,6 +429,6 @@ pass sha256:4fe08cb382ad0a566c3859851a0a7be9
 -- run/go/fyne --
 pass sha256:2044f3aac50b00cba81ecc6270c8d745
 -- run/kotlin/android --
-pass sha256:84d59d3d8b81016f3599e44051b4a491
+pass sha256:e5cd54306bec1bebff12b670860cc6e3
 -- run/none/html --
-pass sha256:683e3f303a8ea209aa1f456c34e3439f
+pass sha256:a2f3f29da4e11898d0d2b3f9bc3639dc

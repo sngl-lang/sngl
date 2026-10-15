@@ -5,8 +5,8 @@ import (
 	"slices"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/ir"
 )
 
 // Hover returns markdown hover info for the word at the given 1-based position.
@@ -134,13 +134,16 @@ func formatComponentHoverWithDoc(c *ast.ComponentDecl, doc *ast.Document, opts H
 		for _, p := range params {
 			hint := typeExprString(p.Type)
 			if hint == "" {
-				hint = "dyn"
+				hint = "unknown"
 			}
+			line := fmt.Sprintf("- `%s` %s", p.Name, hint)
 			if p.Default == nil {
-				fmt.Fprintf(&sb, "- `%s` %s (required)\n", p.Name, hint)
-			} else {
-				fmt.Fprintf(&sb, "- `%s` %s\n", p.Name, hint)
+				line += " (required)"
 			}
+			if d := p.Doc(); d != "" {
+				line += " — " + d
+			}
+			sb.WriteString(line + "\n")
 		}
 	}
 	if opts.ComponentImageURL != nil {
@@ -252,7 +255,7 @@ func typeExprString(te ast.TypeExpr) string {
 			for _, arg := range t.TypeArgs {
 				parts = append(parts, typeExprString(arg))
 			}
-			s += "<" + strings.Join(parts, ", ") + ">"
+			s += "[" + strings.Join(parts, ", ") + "]"
 		}
 		return s
 	case *ast.FuncType:
@@ -445,7 +448,7 @@ func hoverStructFieldAt(doc *ast.Document, line, col int) string {
 				}
 				t := typeExprString(f.Type)
 				if t == "" {
-					t = "dyn"
+					t = "unknown"
 				}
 				owner := sd.Name
 				if owner == "" {
@@ -540,7 +543,9 @@ func walkStructExprs(doc *ast.Document, fn func(*ast.StructExpr)) {
 			walkE(x.Operand)
 		case *ast.IndexExpr:
 			walkE(x.Operand)
-			walkE(x.Index)
+			for _, ix := range x.Indices {
+				walkE(ix)
+			}
 		case *ast.TernaryExpr:
 			walkE(x.Cond)
 			walkE(x.Then)

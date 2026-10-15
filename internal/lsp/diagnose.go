@@ -5,8 +5,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/internal/build"
-	"git.duckfam.us/jonathan/sngl/internal/lspcore"
+	"duckfam.us/sngl/internal/build"
+	"duckfam.us/sngl/internal/lspcore"
 )
 
 // analyze parses and type-checks a file, returning LSP diagnostics.
@@ -19,9 +19,10 @@ func (s *Server) analyze(fs *fileState) []Diagnostic {
 	// under the server's grants, never prompting.
 	resolver := build.NewResolver(dir)
 	resolver.Trust = s.trust
-	doc, coreDiags := lspcore.Analyze(fs.Content, filename, build.ProjectFS(dir), dir, resolver)
-	if doc != nil {
-		fs.Doc = doc
+	a := lspcore.AnalyzeChecked(fs.Content, filename, build.ProjectFS(dir), dir, resolver)
+	coreDiags := a.Diags
+	if a.Doc != nil {
+		fs.Doc, fs.Pkg = a.Doc, a.Pkg
 	}
 
 	diags := make([]Diagnostic, len(coreDiags))

@@ -1,6 +1,6 @@
 package golang
 
-import "git.duckfam.us/jonathan/sngl/ir"
+import "duckfam.us/sngl/ir"
 
 // The Go types the compiler itself maps, and the import-side, do-not-own-the-
 // type cell of a matrix with two axes: which direction a value crosses, and
@@ -20,7 +20,8 @@ func init() {
 	// its Go underlying type is an int64, so without this a Duration imports
 	// as a bare int and disagrees with the `250ms` the encoder writes.
 	RegisterType("time.Duration", ir.DurationType)
-	// A datetime is a string-domain type; its Go underlying type is a struct,
-	// which would otherwise import as an opaque dyn.
+	// A datetime is a string-domain type; its Go underlying type is a struct
+	// of another package, which would otherwise import as invalid and leave
+	// every declaration naming it unusable.
 	RegisterType("time.Time", ir.DateTimeType)
 }

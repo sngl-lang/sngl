@@ -4,14 +4,14 @@ import (
 	"fmt"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/ir"
 )
 
 // fynetextPath is the runtime package Fyne's rich text is rendered through.
 // See its package comment for what Fyne does not do for itself and why each
 // of those is a widget implementation rather than a language gap.
-const fynetextPath = "git.duckfam.us/jonathan/sngl/pkg/go/fynetext"
+const fynetextPath = "duckfam.us/sngl/pkg/go/fynetext"
 
 // markupTags are the two primitives whose Spec is built here rather than read
 // off a `spec` record.
@@ -54,6 +54,11 @@ func markupSpec(tag string, props map[string]ir.Expr) (*fyneSpec, error) {
 		sp.CtorOnly = map[string]bool{"kind": true, "spanStyle": true}
 		sp.Setters["text"] = "SetText"
 		sp.Setters["href"] = "SetHref"
+		// A style the constructor could read off a literal is said there; one
+		// computed while the program runs -- a run's styles read from data, as
+		// md.document's are -- arrives through this, field by field.
+		sp.Setters["spanStyle"] = "SetSpanStyle"
+		sp.SetterArgs = map[string]func(ir.Expr) []ir.Expr{"spanStyle": spanStyleArgs}
 		if c, ok := props["color"]; ok && !codegen.SpanStyleKnownColor(c) {
 			sp.Setters["color"] = "SetColor"
 		} else {
@@ -63,6 +68,64 @@ func markupSpec(tag string, props map[string]ir.Expr) (*fyneSpec, error) {
 		return nil, fmt.Errorf("fyne: %s is not a markup primitive", tag)
 	}
 	return sp, nil
+}
+
+// spanStyleArgs is a `markup.SpanStyle` value as the arguments of
+// `fynetext.Span.SetSpanStyle`, in its order: weight, slant and family as the
+// strings Go spells their values with, the two decorations, the size in px
+// and the color. A literal hands over its fields; anything else is read a
+// field at a time.
+func spanStyleArgs(v ir.Expr) []ir.Expr {
+	def, _ := v.ExprType().Decl.(*ir.StructDef)
+	field := func(name string) ir.Expr {
+		var decl *ir.StructField
+		if def != nil {
+			for _, f := range def.Fields {
+				if f.Name == name {
+					decl = f
+				}
+			}
+		}
+		if sl, ok := v.(*ir.StructLit); ok {
+			for _, f := range sl.Fields {
+				if f.Name == name {
+					return f.Value
+				}
+			}
+			if decl != nil && decl.Default != nil {
+				return decl.Default
+			}
+			if decl != nil {
+				return ir.ZeroExpr(decl.Type)
+			}
+		}
+		var t *ir.Type
+		if decl != nil {
+			t = decl.Type
+		}
+		return &ir.Select{Operand: v, Field: name, Type: t}
+	}
+	size := field("fontSize")
+	return []ir.Expr{
+		field("fontWeight"),
+		field("fontStyle"),
+		field("fontFamily"),
+		field("underline"),
+		field("strike"),
+		sizePx(size),
+		field("color"),
+	}
+}
+
+// sizePx is a measurement as the float pixels Fyne takes.
+func sizePx(size ir.Expr) ir.Expr {
+	if px, ok := codegen.MeasurementPx(size, emPx); ok {
+		return &ir.Literal{Type: ir.TypFloat, Value: ir.FormatUnitMagnitude(px)}
+	}
+	if ud := ir.UnitDeclOf(size.ExprType()); ud != nil {
+		return codegen.MeasurementPxExpr(ud, size, emPx)
+	}
+	return size
 }
 
 // spanStyleChain is the builder call that follows `fynetext.Style`, written
@@ -100,7 +163,7 @@ func spanStyleChain(props map[string]ir.Expr) string {
 				fmt.Fprintf(&b, ".WithRGBA(%d, %d, %d, %d)", c.R, c.G, c.B, c.A)
 			}
 		case "fontSize":
-			if px, ok := literalNumber(f.Value); ok && px > 0 {
+			if px, ok := codegen.MeasurementPx(f.Value, emPx); ok && px > 0 {
 				fmt.Fprintf(&b, ".WithSize(%s)", float32Lit(px))
 			}
 		case "fontWeight":

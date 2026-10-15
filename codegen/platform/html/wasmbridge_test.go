@@ -4,9 +4,9 @@ import (
 	"sync"
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/ir"
 )
 
 func TestContainsRef(t *testing.T) {
@@ -33,7 +33,7 @@ func TestContainsRef(t *testing.T) {
 
 func TestWASMTypeHint_RefRejected(t *testing.T) {
 	if got := wasmTypeHint(ir.RefOf(ir.TypString)); got != "" {
-		t.Errorf("ref<string> should produce empty hint (raw passthrough disabled), got %q", got)
+		t.Errorf("ref[string] should produce empty hint (raw passthrough disabled), got %q", got)
 	}
 }
 
@@ -103,7 +103,7 @@ func TestCollectWASMPackages_SkipsRefSignatures(t *testing.T) {
 	// recognizes them.
 	frontendUse := func(name string) ir.Stmt {
 		return &ir.CallStmt{Call: intrinsicCall("html.frontend",
-			&ir.Call{Func: &ir.Func{Foreign: ir.Foreign{Path: "example.com/refpkg"}, Name: name}})}
+			&ir.Call{Func: &ir.Func{Path: "example.com/refpkg", Name: name}})}
 	}
 	pkg := &ir.Package{
 		Imports: []*ir.Import{{
@@ -114,7 +114,7 @@ func TestCollectWASMPackages_SkipsRefSignatures(t *testing.T) {
 		}},
 		Components: []*ir.Component{{
 			Name: "main",
-			Body: []ir.Stmt{
+			Stmts: []ir.Stmt{
 				frontendUse("Plain"),
 				frontendUse("TakesRef"),
 				frontendUse("ReturnsRef"),
@@ -161,14 +161,14 @@ func TestFrontendWasmOptIn(t *testing.T) {
 		Native: ni,
 	}
 	call := func() *ir.Call {
-		return &ir.Call{Func: &ir.Func{Foreign: ir.Foreign{Path: "example.com/optin"}, Name: "Persist"},
+		return &ir.Call{Func: &ir.Func{Path: "example.com/optin", Name: "Persist"},
 			Args: []ir.CallArg{{Value: &ir.Literal{}}}}
 	}
 
 	t.Run("bare backend call ships no WASM", func(t *testing.T) {
 		pkg := &ir.Package{
 			Imports: []*ir.Import{imp},
-			Components: []*ir.Component{{Name: "main", Body: []ir.Stmt{
+			Components: []*ir.Component{{Name: "main", Stmts: []ir.Stmt{
 				&ir.CallStmt{Call: call()},
 			}}},
 		}
@@ -180,7 +180,7 @@ func TestFrontendWasmOptIn(t *testing.T) {
 	t.Run("html.frontend call ships WASM", func(t *testing.T) {
 		pkg := &ir.Package{
 			Imports: []*ir.Import{imp},
-			Components: []*ir.Component{{Name: "main", Body: []ir.Stmt{
+			Components: []*ir.Component{{Name: "main", Stmts: []ir.Stmt{
 				&ir.CallStmt{Call: intrinsicCall("html.frontend", call())},
 			}}},
 		}

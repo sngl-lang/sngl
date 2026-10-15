@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/docs/lookup"
+	"duckfam.us/sngl/docs/lookup"
 )
 
 // `sngl` is the library root: it lists the packages and declares nothing
@@ -133,7 +133,7 @@ func TestLookupStdlibDottedLeaf(t *testing.T) {
 }
 
 func TestLookupStdlibField(t *testing.T) {
-	res, err := lookup.Lookup("sngl", "Style", "padding")
+	res, err := lookup.Lookup("sngl:ui", "Style", "padding")
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -28,7 +28,9 @@
 // route -- a Gradle project built and run per fixture. There the gating is a
 // flag on the command, `--skip-platform`, since a CLI has no -short.
 //
-// Usage: go tool verify [-v] [-dry] [-full]
+// -only lint runs steps 1-6 and -only test steps 7-8.
+//
+// Usage: go tool verify [-v] [-dry] [-full] [-only lint|test]
 package main
 
 import (
@@ -46,8 +48,8 @@ import (
 	"strconv"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/internal/headless"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/internal/headless"
 )
 
 var failRE = regexp.MustCompile(`^FAIL\s+(\S+)`)
@@ -57,26 +59,28 @@ var failRE = regexp.MustCompile(`^FAIL\s+(\S+)`)
 // test binaries that self-wrap in TestMain.
 func wrapHeadless(command string, args []string) (string, []string, []string) {
 	cmd, wrapped, env, cleanup := headless.Wrap(command, args)
-	cageCleanups = append(cageCleanups, cleanup)
+	cleanups = append(cleanups, cleanup)
 	return cmd, wrapped, env
 }
 
-// cageCleanups removes each compositor's private runtime dir. wrapHeadless is
-// called once per wrapped step, so these accumulate; os.Exit skips defers, so
-// every exit path goes through exit().
-var cageCleanups []func()
+// cleanups remove what this run created: each compositor's private runtime
+// dir (wrapHeadless is called once per wrapped step, so these accumulate) and
+// the coverage profile. os.Exit skips defers, so every exit path goes through
+// exit() -- a deferred remove of the profile left 300MB in the temp dir after
+// every failing run.
+var cleanups []func()
 
-// cleanupCage removes every compositor runtime dir this run created.
-func cleanupCage() {
-	for _, c := range cageCleanups {
+// cleanup removes everything this run created so far.
+func cleanup() {
+	for _, c := range cleanups {
 		c()
 	}
-	cageCleanups = nil
+	cleanups = nil
 }
 
 // exit terminates verify, removing anything it created on the way out.
 func exit(code int) {
-	cleanupCage()
+	cleanup()
 	os.Exit(code)
 }
 
@@ -96,9 +100,13 @@ func (r pkgResult) coverage() float64 {
 }
 
 func main() {
+	// cage runs this binary as the shim around each wrapped step.
+	headless.RunShim()
+
 	verbose := flag.Bool("v", false, "pass -v to go test")
 	dry := flag.Bool("dry", false, "skip file-mutating steps")
 	full := flag.Bool("full", false, "run the slow/heavy tests too (android fixtures, Robolectric, the android sngl-test matrix); default skips them")
+	only := flag.String("only", "", "run only the `lint` steps (1-6) or the `test` steps (7-8); both when empty")
 	flag.Parse()
 
 	log.SetFlags(0)
@@ -106,69 +114,20 @@ func main() {
 	// gtk4 presents real GtkWindows via cgo; the test steps run inside cage's
 	// wlroots headless backend so they render without a desktop and never
 	// reach the user's. Fyne uses its offscreen driver and needs no display.
-	if headless.Compositor() == "" {
+	if headless.Compositor() == "" && *only != "lint" {
 		log.Printf("note: cage not found; gtk4 GUI tests will skip. Install it (pacman -S cage) to run them headlessly.")
 	}
 
-	// Step 1: go generate (skip in dry mode)
-	if !*dry {
-		if !runStep("generate", "go", "generate", "./...") {
-			exit(1)
-		}
+	switch *only {
+	case "", "lint", "test":
+	default:
+		log.Fatalf("-only %q: want lint or test", *only)
 	}
-
-	// Step 2: go mod tidy
-	if *dry {
-		if !runCheckStep("mod-tidy", "go", "mod", "tidy", "-diff") {
-			exit(1)
-		}
-	} else {
-		if !runStep("mod-tidy", "go", "mod", "tidy") {
-			exit(1)
-		}
+	if *only != "test" {
+		lint(*dry)
 	}
-
-	// Step 3: go fmt
-	if *dry {
-		if !runCheckStep("fmt", "gofmt", "-l", ".") {
-			exit(1)
-		}
-	} else {
-		if !runStep("fmt", "go", "fmt", "./...") {
-			exit(1)
-		}
-	}
-
-	// Step 4: mdox fmt for markdown files
-	mdFiles, err := findMarkdownFiles(".")
-	if err != nil {
-		log.Fatalf("scan markdown: %v", err)
-	}
-	if len(mdFiles) > 0 {
-		mdArgs := []string{"tool", "mdox", "fmt", "--soft-wraps"}
-		if *dry {
-			mdArgs = append(mdArgs, "--check")
-		}
-		mdArgs = append(mdArgs, mdFiles...)
-		if !runStep("mdox-fmt", "go", mdArgs...) {
-			exit(1)
-		}
-	}
-
-	// Step 5: go fix
-	if *dry {
-		if !runCheckStep("fix", "go", "fix", "-diff", "./...") {
-			exit(1)
-		}
-	} else {
-		if !runStep("fix", "go", "fix", "./...") {
-			exit(1)
-		}
-	}
-
-	// Step 6: go vet
-	if !runStep("vet", "go", "vet", "./...") {
-		exit(1)
+	if *only == "lint" {
+		exit(0)
 	}
 
 	// Step 7: go test with coverage
@@ -178,16 +137,16 @@ func main() {
 	// whose probe says it can run on this host. Unavailable platforms are
 	// skipped, not failed.
 	//
-	// --opt goModExtra="replace git.duckfam.us/jonathan/sngl => <root>"
+	// --opt goModExtra="replace duckfam.us/sngl => <root>"
 	// points temp Go modules built by platform test runners (today: fyne)
 	// at the project root, so generated code that imports
-	// `git.duckfam.us/jonathan/sngl/pkg/go/*` resolves locally instead of
+	// `duckfam.us/sngl/pkg/go/*` resolves locally instead of
 	// failing on the public proxy.
 	root, err := os.Getwd()
 	if err != nil {
 		log.Fatalf("getwd: %v", err)
 	}
-	replaceDirective := fmt.Sprintf("replace git.duckfam.us/jonathan/sngl => %s", root)
+	replaceDirective := fmt.Sprintf("replace duckfam.us/sngl => %s", root)
 	testArgs := []string{"tool", "sngl", "test",
 		"--platform=all", "--opt", "goModExtra=" + replaceDirective}
 	// android builds a whole Gradle project per fixture and runs it, which is
@@ -203,7 +162,7 @@ func main() {
 	if !runStepEnv("sngl-test", senv, sc, sargs...) {
 		exit(1)
 	}
-	cleanupCage()
+	cleanup()
 }
 
 func runStep(name string, command string, args ...string) bool {
@@ -254,7 +213,7 @@ func runTests(verbose, fmtDocs, full bool) {
 		log.Fatalf("create coverprofile: %v", err)
 	}
 	profile.Close()
-	defer os.Remove(profile.Name())
+	cleanups = append(cleanups, func() { os.Remove(profile.Name()) })
 
 	args := []string{"test", "-coverpkg=./...", "-coverprofile=" + profile.Name()}
 	// Default to -short so the routine run (and background sessions) skips the
@@ -307,10 +266,12 @@ func runTests(verbose, fmtDocs, full bool) {
 
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
-		log.Fatal(err)
+		log.Print(err)
+		exit(1)
 	}
 	if err := cmd.Start(); err != nil {
-		log.Fatal(err)
+		log.Print(err)
+		exit(1)
 	}
 
 	failed := map[string]bool{}
@@ -469,7 +430,7 @@ func readProfile(path string) ([]pkgResult, error) {
 }
 
 // pkgPathDir returns the package import path for a profile entry. Profile
-// lines start with the full file path like "git.duckfam.us/jonathan/sngl/foo/bar.go".
+// lines start with the full file path like "duckfam.us/sngl/foo/bar.go".
 func pkgPathDir(p string) string {
 	return path.Dir(p)
 }
@@ -502,7 +463,7 @@ func findMarkdownFiles(root string) ([]string, error) {
 }
 
 func shortPkg(full string) string {
-	const prefix = "git.duckfam.us/jonathan/sngl/"
+	const prefix = "duckfam.us/sngl/"
 	if strings.HasPrefix(full, prefix) {
 		s := full[len(prefix):]
 		if s == "" {
@@ -511,4 +472,68 @@ func shortPkg(full string) string {
 		return s
 	}
 	return full
+}
+
+// lint is steps 1-6: what checks the source rather than running it.
+func lint(dry bool) {
+	// Step 1: go generate (skip in dry mode)
+	if !dry {
+		if !runStep("generate", "go", "generate", "./...") {
+			exit(1)
+		}
+	}
+
+	// Step 2: go mod tidy
+	if dry {
+		if !runCheckStep("mod-tidy", "go", "mod", "tidy", "-diff") {
+			exit(1)
+		}
+	} else {
+		if !runStep("mod-tidy", "go", "mod", "tidy") {
+			exit(1)
+		}
+	}
+
+	// Step 3: go fmt
+	if dry {
+		if !runCheckStep("fmt", "gofmt", "-l", ".") {
+			exit(1)
+		}
+	} else {
+		if !runStep("fmt", "go", "fmt", "./...") {
+			exit(1)
+		}
+	}
+
+	// Step 4: mdox fmt for markdown files
+	mdFiles, err := findMarkdownFiles(".")
+	if err != nil {
+		log.Fatalf("scan markdown: %v", err)
+	}
+	if len(mdFiles) > 0 {
+		mdArgs := []string{"tool", "mdox", "fmt", "--soft-wraps"}
+		if dry {
+			mdArgs = append(mdArgs, "--check")
+		}
+		mdArgs = append(mdArgs, mdFiles...)
+		if !runStep("mdox-fmt", "go", mdArgs...) {
+			exit(1)
+		}
+	}
+
+	// Step 5: go fix
+	if dry {
+		if !runCheckStep("fix", "go", "fix", "-diff", "./...") {
+			exit(1)
+		}
+	} else {
+		if !runStep("fix", "go", "fix", "./...") {
+			exit(1)
+		}
+	}
+
+	// Step 6: go vet
+	if !runStep("vet", "go", "vet", "./...") {
+		exit(1)
+	}
 }

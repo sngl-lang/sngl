@@ -1,0 +1,20 @@
+// SKIP(codegen) "names sngl:platform/bubbletea and sngl:platform/html, which a per-platform harness does not register"
+// Two of a program's overrides of one library component each keep a helper of
+// their own, though the component is reached by its bare name.
+import . "sngl:ui"
+import "sngl:platform/html"
+import "sngl:platform/bubbletea"
+
+component avatar[html.platform](initials) {
+    func shout() => "{initials}!"
+    text(value=shout())
+}
+
+component avatar[bubbletea.platform](initials) {
+    func shout() => "{initials}?"
+    text(value=shout())
+}
+
+window(title="t") {
+    avatar(initials="AB")
+}

@@ -4,8 +4,8 @@ import (
 	"io/fs"
 	"slices"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/ir"
 )
 
 // wasmPackage describes an imported package that needs WASM compilation.
@@ -81,7 +81,7 @@ func collectWASMPackages(pkg *ir.Package, frontend map[nativeFuncKey]bool, fsys 
 			if f.Foreign.Unusable != "" {
 				continue
 			}
-			// ref<T> is a SNGL-internal mutable-capture handle; it has no
+			// ref[T] is a SNGL-internal mutable-capture handle; it has no
 			// stable JSON representation and the bridge has no way to keep
 			// the Go and JS sides aliased to the same backing storage.
 			// Refuse to expose any func whose signature touches one.
@@ -121,7 +121,7 @@ func collectWASMPackages(pkg *ir.Package, frontend map[nativeFuncKey]bool, fsys 
 	return out
 }
 
-// containsRef reports whether t is, or transitively contains, a ref<T>.
+// containsRef reports whether t is, or transitively contains, a ref[T].
 func containsRef(t *ir.Type) bool {
 	if t == nil {
 		return false
@@ -140,7 +140,7 @@ func containsRef(t *ir.Type) bool {
 //   - "string" / "int" / "float" / "bool" use direct js.Value accessors;
 //   - any other non-empty value is a typed declaration that the bridge
 //     marshals through JSON;
-//   - "" means dyn / unrepresentable, and the bridge passes the raw js.Value
+//   - "" means unrepresentable, and the bridge passes the raw js.Value
 //     through unchanged (matching prior behavior for unknown types).
 func wasmTypeHint(t *ir.Type) string {
 	if t == nil {

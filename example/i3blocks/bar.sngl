@@ -29,7 +29,7 @@ output {
     }
 }
 
-func start(args list<string>, run func()) {
+func start(args list[string], run func()) {
     if args.contains("--window") {
         details = true
         run()
@@ -38,7 +38,7 @@ func start(args list<string>, run func()) {
 
 var (
     uptime = 0
-    samples list<int> = []
+    samples list[int] = []
     workspaces = ["web", "code", "chat"]
     focused = 0
     // Whether the details window exists. The tree says so below: the window
@@ -58,10 +58,10 @@ time.timer(interval=1s, @tick {
 i3.bar {
     for var i, w = workspaces {
         i3.text(
-            name="ws",
-            full=w,
-            color=i == focused ? #ffffff : #888888,
-            separator=false,
+            name = "ws",
+            full = w,
+            color = i == focused ? #ffffff : #888888,
+            separator = false,
             @click {
                 focused = i
             },
@@ -71,10 +71,10 @@ i3.bar {
     // A click on the load block toggles the window: the bar and the window
     // are one process, so a write to `details` is what brings it up.
     i3.text(
-        name="load",
-        full="load {load()}",
-        color=load() > 7 ? #ff5555 : #a3be8c,
-        urgent=load() > 9,
+        name = "load",
+        full = "load {load()}",
+        color = load() > 7 ? #ff5555 : #a3be8c,
+        urgent = load() > 9,
         @click {
             details = !details
         },
@@ -88,14 +88,14 @@ if details {
     ui.window(title="Load", @closed {
         details = false
     }) {
-        ui.vbox(style={gap=8, padding=16}) {
+        ui.vbox(style={gap=8px, padding=16px}) {
             ui.text(value="{workspaces[focused]}: load {load()} after {uptime}s", style={fontWeight=bold})
-            ui.vbox(style={gap=2}) {
+            ui.vbox(style={gap=2px}) {
                 for var s = samples {
                     ui.text(value="{s}")
                 }
             }
-            ui.hbox(style={gap=8}) {
+            ui.hbox(style={gap=8px}) {
                 ui.button(text="Clear", @click {
                     samples = []
                 })

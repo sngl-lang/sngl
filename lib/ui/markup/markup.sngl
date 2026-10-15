@@ -1,5 +1,7 @@
 import ui "sngl:ui"
 import build "sngl:build"
+import family "sngl:family"
+import marks "sngl:internal/marks"
 
 // The tree the inline pieces form. Declaring it here is what makes `span` a
 // name a component can resolve, so a misspelling is an unresolved name rather
@@ -10,6 +12,11 @@ import build "sngl:build"
 // orders are one flow of words. What it may not hold is a `node` -- a box
 // placed in the middle of a sentence has no line to sit on -- which is the
 // membership rule doing the work a content model would otherwise do in prose.
+//
+// The mark is how the compiler names this family: a node hosting its members
+// is a flow, which a reactive `if` or `for` among them makes a render slot of
+// on a target that cannot slot a span (slotFlows).
+#[marks.builtin("familySpan")]
 component span build.family
 
 // Shows one flow of rich text. Its rest slot accepts spans, so it hosts them
@@ -33,9 +40,15 @@ component span build.family
 // block components at the foot of this file, which are each a `richText` with
 // its role already set -- and what goes between them is everything a document
 // holds that this family does not describe.
+//
+// `anchor` names the flow for a link into the middle of a document -- the
+// `#id` a heading is reached by. Empty is no name. A host with addresses (an
+// html page) writes it; the rest have nothing a link could land on, and ignore
+// it.
 component richText(
-    style ui.Style,
-    role Role,
+    style   ui.Style = ui.Style{},
+    role    Role = Role.paragraph,
+    anchor  string = "",
     content ...component span,
 ) ui.node
 
@@ -104,13 +117,13 @@ component text(value string) span
 // inside one that turned it on. No markup asks to, and a fourth state per
 // field to express it would be paid for on every run.
 struct SpanStyle {
-    color color = color{a=0}
-    fontSize ui.measurement = 0px
+    color      color = color{a=0}
+    fontSize   ui.measurement = 0px
     fontFamily string = ""
     fontWeight Weight = Weight.inherit
-    fontStyle Slant = Slant.inherit
-    underline bool = false
-    strike bool = false
+    fontStyle  Slant = Slant.inherit
+    underline  bool = false
+    strike     bool = false
 }
 
 // Weight of a run, with `inherit` first so an unset one leaves its parent's
@@ -129,7 +142,7 @@ enum Slant { inherit, normal, italic, oblique }
 // reaches for it directly is saying it wants those exact letters rather than
 // what the wrappers name.
 component run(
-    style SpanStyle,
+    style   SpanStyle = SpanStyle{},
     content ...component span,
 ) span
 
@@ -214,16 +227,16 @@ component token(kind Token, content ...component span) span
 // a kind the palette does not answer: the words keep the color around them,
 // or take the host's where the palette is the one a program set.
 struct Palette {
-    plain color = color{a=0}
-    keyword color = color{a=0}
-    type color = color{a=0}
-    function color = color{a=0}
-    variable color = color{a=0}
-    constant color = color{a=0}
-    string color = color{a=0}
-    number color = color{a=0}
-    comment color = color{a=0}
-    operator color = color{a=0}
+    plain       color = color{a=0}
+    keyword     color = color{a=0}
+    type        color = color{a=0}
+    function    color = color{a=0}
+    variable    color = color{a=0}
+    constant    color = color{a=0}
+    string      color = color{a=0}
+    number      color = color{a=0}
+    comment     color = color{a=0}
+    operator    color = color{a=0}
     punctuation color = color{a=0}
 }
 
@@ -291,7 +304,7 @@ const func colorOf(p Palette, fallback Palette, kind Token) color {
 component link(href string, content ...component span) span
 
 // A picture on the line with the words -- an icon, a badge, an inline
-// formula. `alt` is the description: what the picture shows, for a reader who
+// formula -- from any source a `ui.image` takes. `alt` is the description: what the picture shows, for a reader who
 // is not looking at it and for a platform that cannot draw one inside a flow
 // of text.
 //
@@ -304,7 +317,7 @@ component link(href string, content ...component span) span
 // the author was offered a choice that was never theirs.
 //
 // So an importer flattens: the words between the brackets, and nothing else.
-component image(src string, alt string) span
+component image(alt string = "", src ...component family.one[ui.imageSource]) span
 
 // --- Document blocks ---
 //
@@ -329,43 +342,43 @@ component image(src string, alt string) span
 // The six levels are six components rather than one taking a level, for the
 // reason `Role` gives: a level is only ever one of six, and a number can be
 // none of them.
-component heading1(content ...component span) ui.node {
-    richText(role=Role.heading1, style={fontSize=32px, fontWeight=ui.FontWeight.bold}) {
+component heading1(anchor string = "", content ...component span) ui.node {
+    richText(role=Role.heading1, anchor=anchor, style={fontSize=32px, fontWeight=ui.FontWeight.bold}) {
         content
     }
 }
 
 // A section title.
-component heading2(content ...component span) ui.node {
-    richText(role=Role.heading2, style={fontSize=26px, fontWeight=ui.FontWeight.bold}) {
+component heading2(anchor string = "", content ...component span) ui.node {
+    richText(role=Role.heading2, anchor=anchor, style={fontSize=26px, fontWeight=ui.FontWeight.bold}) {
         content
     }
 }
 
 // A subsection title.
-component heading3(content ...component span) ui.node {
-    richText(role=Role.heading3, style={fontSize=21px, fontWeight=ui.FontWeight.bold}) {
+component heading3(anchor string = "", content ...component span) ui.node {
+    richText(role=Role.heading3, anchor=anchor, style={fontSize=21px, fontWeight=ui.FontWeight.bold}) {
         content
     }
 }
 
 // A title below a subsection.
-component heading4(content ...component span) ui.node {
-    richText(role=Role.heading4, style={fontSize=18px, fontWeight=ui.FontWeight.bold}) {
+component heading4(anchor string = "", content ...component span) ui.node {
+    richText(role=Role.heading4, anchor=anchor, style={fontSize=18px, fontWeight=ui.FontWeight.bold}) {
         content
     }
 }
 
 // A title four levels down; rare outside a reference document.
-component heading5(content ...component span) ui.node {
-    richText(role=Role.heading5, style={fontSize=16px, fontWeight=ui.FontWeight.bold}) {
+component heading5(anchor string = "", content ...component span) ui.node {
+    richText(role=Role.heading5, anchor=anchor, style={fontSize=16px, fontWeight=ui.FontWeight.bold}) {
         content
     }
 }
 
 // The deepest title a document outline has.
-component heading6(content ...component span) ui.node {
-    richText(role=Role.heading6, style={fontSize=14px, fontWeight=ui.FontWeight.bold}) {
+component heading6(anchor string = "", content ...component span) ui.node {
+    richText(role=Role.heading6, anchor=anchor, style={fontSize=14px, fontWeight=ui.FontWeight.bold}) {
         content
     }
 }
@@ -456,7 +469,7 @@ enum Task { none, todo, done }
 // wrapped the slot in.
 component list(ordered bool = false, start int = 1, items ...component) ui.node {
     listDepth(listDepth + 1) {
-        ui.vbox(style={gap=4, paddingLeft=20px}) {
+        ui.vbox(style={gap=4px, paddingLeft=20px}) {
             items
         }
     }
@@ -478,11 +491,11 @@ component list(ordered bool = false, start int = 1, items ...component) ui.node 
 // list is. It is not interactive: a document describes state rather than
 // holding it, and an application that wants a real checkbox writes one.
 component listItem(
-    marker string = "",
-    task Task = Task.none,
+    marker  string = "",
+    task    Task = Task.none,
     content ...component,
 ) ui.node {
-    ui.hbox(style={gap=8, alignItems=ui.Alignment.start}) {
+    ui.hbox(style={gap=8px, alignItems=ui.Alignment.start}) {
         if task == Task.none {
             ui.text(value=marker == "" ? bulletAt(listDepth) : marker)
         } else {

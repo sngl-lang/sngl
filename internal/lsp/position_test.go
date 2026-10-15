@@ -3,8 +3,8 @@ package lsp
 import (
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/internal/lspcore"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/internal/lspcore"
 )
 
 func TestAstPosToLSP(t *testing.T) {

@@ -1,4 +1,4 @@
-Kotlin codegen for map<K, V>: a literal, and the two methods whose Kotlin
+Kotlin codegen for map[K, V]: a literal, and the two methods whose Kotlin
 spelling is not a method call of the same name. A map literal is `mapOf(k to
 v, ...)`; `length()` is the `size` property; `get(key, default)` is
 `getOrDefault(key, default)`, whose fallback argument is why SNGL's `get`
@@ -10,7 +10,7 @@ import . "sngl:ui"
 output { kotlin { android } }
 
 component main node {
-    var scores map<string, int> = {alice=10, bob=20}
+    var scores map[string, int] = {alice=10, bob=20}
     var size = 0
     button(text="count", @click {
         size = scores.length()
@@ -29,30 +29,20 @@ window {
 
 package test.sngl.app
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.*
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
-import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color as ComposeColor
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
-import androidx.activity.compose.BackHandler
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.platform.LocalContext
 import android.app.Activity
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.layout.Column
+import androidx.compose.material3.Button
+import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.material3.Text
 
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
@@ -65,13 +55,13 @@ fun _snglSplit(s: String, sep: String): List<String> =
 fun MainScreen() {
     var scores__inst0 by remember { mutableStateOf(mapOf("alice" to 10, "bob" to 20)) }
     var size__inst0 by remember { mutableStateOf(0) }
-    var visible__inst1 by remember { mutableStateOf(true) }
+    var visible__inst0 by remember { mutableStateOf(true) }
 
-    if (visible__inst1) {
+    if (visible__inst0) {
         val __activity = LocalContext.current as? Activity
         BackHandler {
-            visible__inst1 = false
-            if (!(visible__inst1)) {
+            visible__inst0 = false
+            if (!(visible__inst0)) {
                 __activity?.finish()
             }
         }
@@ -91,4 +81,4 @@ fun MainScreen() {
     }
 }
 -- run/kotlin/android --
-pass sha256:5e1e4acd6f308b76508d8058c1d67b18
+pass sha256:dbfa104e1b9cc0ab65e33b139662189f

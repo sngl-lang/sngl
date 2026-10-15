@@ -44,7 +44,7 @@ characters and the terminal build carries no canvas.
 **The keypad is data.** `keypad/key.sngl` declares a `Key` carrying what
 pressing it *means* (an `Action`, and the digit or operator it names) rather
 than a label the handler has to parse back. `rows()` is a
-`list<list<Key>>`, so the layout is five lines long however many keys there
+`list[list[Key]]`, so the layout is five lines long however many keys there
 turn out to be, and `Calculator` switches on the action.
 
 **The keys fill the window.** Each row is an `hbox(style={flex=1})` and each

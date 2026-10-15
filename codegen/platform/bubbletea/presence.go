@@ -5,9 +5,9 @@ import (
 	"sort"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/codegen/lang/golang"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/codegen/lang/golang"
+	"duckfam.us/sngl/ir"
 )
 
 // emitPresenceChecks writes, for each `#id` a test null-tests, whether the

@@ -3,7 +3,7 @@ package optimize
 import (
 	"fmt"
 
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 // maxStaticUnroll bounds an unroll on a target that has no alternative to
@@ -44,7 +44,7 @@ func expandForStmt(fs *ir.For, ctx *evalCtx) []ir.Stmt {
 		// alone left an else-less empty loop looking unevaluable, so it stayed
 		// in the tree and rendered its body once with its variable bound to
 		// nothing -- an empty row per list that happened to be empty.
-		if expanded := foldStmts(cloneStmts(fs.Else), ctx); expanded != nil {
+		if expanded := foldStmts(ctx.ownCopy(fs.Else), ctx); expanded != nil {
 			return expanded
 		}
 		return []ir.Stmt{}
@@ -56,7 +56,7 @@ func expandForStmt(fs *ir.For, ctx *evalCtx) []ir.Stmt {
 		childCtx := bindLoopVars(fs, ctx, keyVar, valueVar, i, item)
 		// foldStmts so nested const-iterable fors and const-cond ifs unroll
 		// and inline too.
-		result = append(result, foldStmts(cloneStmts(fs.Body), childCtx)...)
+		result = append(result, foldStmts(childCtx.ownCopy(fs.Body), childCtx)...)
 		ctx.fileAssets = childCtx.fileAssets
 		if ctx.err == nil {
 			ctx.err = childCtx.err
@@ -144,7 +144,7 @@ func walkAllExprs(e ir.Expr, visit func(ir.Expr)) {
 		// Lambda/closure bodies are opaque to this walker; for-loop
 		// expansion only inspects expressions at the lexical scope of
 		// the for body, not inside nested lambda bodies.
-	case *ir.Literal, *ir.Ident, *ir.ContextRead:
+	case *ir.Literal, *ir.Ident, *ir.ContextRead, *ir.SlotEmpty:
 		// No subexpressions.
 	default:
 		panic(fmt.Sprintf("walkAllExprs: unhandled expr %T", x))

@@ -4,9 +4,9 @@ import (
 	"strings"
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/ir"
 )
 
 // TestGoIRContext_ContextVar_NativeCall verifies that a native (go:) call
@@ -240,6 +240,22 @@ func TestGoBinary_MultiBaseUnit_ScalarOperand(t *testing.T) {
 	}
 }
 
+func TestGoBinary_MultiBaseUnit_IntVarOperand(t *testing.T) {
+	gc := newMinimalIRCtx()
+	ut := multiBaseUnitType()
+	mul := &ir.Binary{
+		Op:    ast.BinMul,
+		Left:  &ir.Ident{Name: "b", Type: ut},
+		Right: &ir.Ident{Name: "n", Type: ir.TypInt},
+		Type:  ut,
+	}
+	got := gc.EvalExpr(mul)
+	want := "Measurement{Px: b.Px * float64(n), Em: b.Em * float64(n)}"
+	if got != want {
+		t.Errorf("unit * int var = %q; want %q", got, want)
+	}
+}
+
 func TestEvalStmt_If(t *testing.T) {
 	gc := newMinimalIRCtx()
 	stmt := &ir.If{
@@ -356,9 +372,9 @@ func TestEmitFuncDef_PlainFunc(t *testing.T) {
 func TestEmitFuncDef_ModelMethod(t *testing.T) {
 	gc := newMinimalIRCtx()
 	fn := &ir.Func{
-		Name:     "Click",
-		Receiver: "Model",
-		Block:    []ir.Stmt{},
+		Name:    "Click",
+		Lowered: ir.FuncLowering{HostReceiver: "Model"},
+		Block:   []ir.Stmt{},
 	}
 	got := strings.Join(gc.EmitFuncDef(fn), "\n")
 	want := "func (m *Model) Click() {\n}"
@@ -370,10 +386,10 @@ func TestEmitFuncDef_ModelMethod(t *testing.T) {
 func TestEmitFuncDef_NativeParam(t *testing.T) {
 	gc := newMinimalIRCtx()
 	fn := &ir.Func{
-		Name:     "__renderSlot0",
-		Receiver: "Model",
-		Params:   []*ir.Param{{Name: "container", Type: ir.NativePointerOf("GtkBox")}},
-		Return:   ir.TypVoid,
+		Name:    "__renderSlot0",
+		Lowered: ir.FuncLowering{HostReceiver: "Model"},
+		Params:  []*ir.Param{{Name: "container", Type: ir.NativePointerOf("GtkBox")}},
+		Return:  ir.TypVoid,
 	}
 	got := strings.Join(gc.EmitFuncDef(fn), "\n")
 	want := "func (m *Model) __renderSlot0(container *C.GtkBox) {\n}"
@@ -387,9 +403,9 @@ func TestEmitFuncDef_NativeParam(t *testing.T) {
 // path keeps its exact alias (call sites reference it literally).
 func TestRequireImportAs_ForcedDeconfliction(t *testing.T) {
 	gc := newMinimalIRCtx()
-	gc.RequireImportAs("git.duckfam.us/jonathan/sngl/pkg/go/canvas", "snglcanvas")
+	gc.RequireImportAs("duckfam.us/sngl/pkg/go/canvas", "snglcanvas")
 	gc.RequireImport("fyne.io/fyne/v2/canvas")
-	if a := gc.ForcedAlias("git.duckfam.us/jonathan/sngl/pkg/go/canvas"); a != "snglcanvas" {
+	if a := gc.ForcedAlias("duckfam.us/sngl/pkg/go/canvas"); a != "snglcanvas" {
 		t.Errorf("forced alias = %q, want snglcanvas", a)
 	}
 	if a := gc.ForcedAlias("fyne.io/fyne/v2/canvas"); a != "" {
@@ -431,24 +447,10 @@ func TestIRTypeToGo_NativeGoNamed(t *testing.T) {
 	}
 }
 
-// A concrete host type used to reach the Go printer as an ir.TypeDyn carrying
-// its name in Meta, which made every one of them Equal to every other. It is a
-// native type now, and TypeDyn renders as nothing in a result clause.
-func TestGoReturnType_NativeAndDyn(t *testing.T) {
+// A concrete host type reaches the Go printer as a native type, spelled as
+// itself in a result clause.
+func TestGoReturnType_Native(t *testing.T) {
 	if got := goReturnType(ir.NativeGoNamed("fyne.CanvasObject")); got != " fyne.CanvasObject" {
 		t.Errorf("goReturnType(native) = %q; want %q", got, " fyne.CanvasObject")
-	}
-	// A dyn is a dyn whatever Meta holds: the printer must not read a type
-	// name out of it, because ir.Type.Equal answers "equal" for any two of
-	// them and the other language backends ignore Meta entirely.
-	smuggled := &ir.Type{Kind: ir.TypeDyn, Meta: "fyne.CanvasObject"}
-	if got := goReturnType(smuggled); got != "" {
-		t.Errorf("goReturnType(dyn+Meta) = %q; want %q", got, "")
-	}
-	if got := IRTypeToGo(smuggled); got != "any" {
-		t.Errorf("IRTypeToGo(dyn+Meta) = %q; want %q", got, "any")
-	}
-	if got := goReturnType(ir.TypDyn); got != "" {
-		t.Errorf("goReturnType(dyn) = %q; want %q", got, "")
 	}
 }

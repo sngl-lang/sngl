@@ -3,10 +3,10 @@ package checker_test
 import (
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/internal/checker"
-	"git.duckfam.us/jonathan/sngl/internal/parser"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/internal/checker"
+	"duckfam.us/sngl/internal/parser"
+	"duckfam.us/sngl/ir"
 )
 
 func noErrors(t *testing.T, diags []ir.Diagnostic) {
@@ -18,10 +18,10 @@ func noErrors(t *testing.T, diags []ir.Diagnostic) {
 	}
 }
 
-// TestStdlibListHasTypeParam verifies that list<int> type-checks without errors
+// TestStdlibListHasTypeParam verifies that list[int] type-checks without errors
 // and that the stdlib list StructDef carries TypeParams = ["T"].
 func TestStdlibListHasTypeParam(t *testing.T) {
-	src := `var xs list<int> = [1, 2, 3]`
+	src := `var xs list[int] = [1, 2, 3]`
 	doc, err := parser.Parse("test.sngl", []byte(withStd(src)))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
@@ -36,10 +36,10 @@ func TestStdlibListHasTypeParam(t *testing.T) {
 	}
 }
 
-// TestStdlibMapHasTypeParams verifies that map<string, int> type-checks and
+// TestStdlibMapHasTypeParams verifies that map[string, int] type-checks and
 // that the stdlib map StructDef carries TypeParams = ["K", "V"].
 func TestStdlibMapHasTypeParams(t *testing.T) {
-	src := `var m map<string, int> = {a = 1, b = 2}`
+	src := `var m map[string, int] = {a = 1, b = 2}`
 	doc, err := parser.Parse("test.sngl", []byte(withStd(src)))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
@@ -57,10 +57,10 @@ func TestStdlibMapHasTypeParams(t *testing.T) {
 // be declared and instantiated with a concrete type argument.
 func TestUserDefinedGenericStruct(t *testing.T) {
 	src := `
-struct Box<T> {
+struct Box[T any] {
     value T
 }
-var b Box<int>
+var b Box[int]
 `
 	doc, err := parser.Parse("test.sngl", []byte(withStd(src)))
 	if err != nil {
@@ -71,12 +71,12 @@ var b Box<int>
 }
 
 // TestBuiltinGenericShadowable verifies that a user declaration of a built-in
-// generic name (here `list`) shadows the built-in: `list<int>` resolves to the
+// generic name (here `list`) shadows the built-in: `list[int]` resolves to the
 // user struct, so its declared field is accessible. Under the old hardcoded
 // switch this errored (built-in list has no fields).
 func TestBuiltinGenericShadowable(t *testing.T) {
-	src := `struct list<T> { first T }
-var xs list<int>
+	src := `struct list[T any] { first T }
+var xs list[int]
 var y int = xs.first`
 	doc, err := parser.Parse("test.sngl", []byte(withStd(src)))
 	if err != nil {
@@ -118,11 +118,11 @@ var d int = n.abs()`
 // TestUserDefinedGenericStructTwoParams verifies a two-parameter generic struct.
 func TestUserDefinedGenericStructTwoParams(t *testing.T) {
 	src := `
-struct Pair<A, B> {
+struct Pair[A any, B any] {
     first A
     second B
 }
-var p Pair<int, string>
+var p Pair[int, string]
 `
 	doc, err := parser.Parse("test.sngl", []byte(withStd(src)))
 	if err != nil {
@@ -136,7 +136,7 @@ var p Pair<int, string>
 // without type arguments produces a type error.
 func TestUserDefinedGenericStructMissingArgs(t *testing.T) {
 	src := `
-struct Box<T> {
+struct Box[T any] {
     value T
 }
 var b Box

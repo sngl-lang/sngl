@@ -65,7 +65,7 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { chosen__inst0: "", visible__inst1: true };
+  var state = { chosen__inst0: "", visible__inst0: true };
   function pick__inst0(label) {
     state.chosen__inst0 = label;
     __n1.textContent = state.chosen__inst0;
@@ -91,4 +91,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:d8b9cfdd5e14f7919b06f6aa6f45addb
+pass sha256:88d3cf70d7fcdd6398ce009b2f12b0c3

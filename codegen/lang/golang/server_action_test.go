@@ -145,7 +145,7 @@ func repoRootDir(t *testing.T) string {
 	}
 	for {
 		if b, err := os.ReadFile(filepath.Join(dir, "go.mod")); err == nil {
-			if strings.Contains(string(b), "git.duckfam.us/jonathan/sngl") {
+			if strings.Contains(string(b), "duckfam.us/sngl") {
 				return dir
 			}
 		}

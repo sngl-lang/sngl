@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
+	"duckfam.us/sngl/codegen"
 )
 
 func TestGenerateGoWASMBridge(t *testing.T) {
@@ -40,7 +40,7 @@ func TestGenerateGoWASMBridge(t *testing.T) {
 		`pkg.Search(a0, a1, a2)`,
 		`return sngl_toJS(result)`,
 		`if err != nil`,
-		`a0 := args[0]`, // dyn passthrough for Notify
+		`a0 := args[0]`, // raw js.Value passthrough for Notify
 		`func sngl_fromJS(`,
 		`func sngl_toJS(`,
 		`func sngl_lowerFirst(`,

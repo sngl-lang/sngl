@@ -1,4 +1,4 @@
-import tr "sngl:tree"
+import family "sngl:family"
 
 // Dialog overlay. Renders its children in a centered modal dialog
 // atop a scrim when `open` is true. `title` is the dialog heading;
@@ -6,18 +6,18 @@ import tr "sngl:tree"
 // is "small", "medium", "large", or "full". Dismissing the scrim or
 // pressing Escape also emits `@close`.
 component modal(
-    style Style,
-    open bool,
-    title string,
-    closable bool,
-    size string,
-    @close DismissEvent,
-    content option<component>,
-) node {}
+    style    Style = Style{},
+    open     bool = false,
+    title    string = "",
+    closable bool = false,
+    size     string = "",
+    @close(),
+    content  option[component],
+) node
 
 component _example_modal node {
     var showModal = false
-    vbox(style={padding=16}) {
+    vbox(style={padding=16px}) {
         button(text="Open Modal", @click { showModal = true })
         modal(open=showModal, title="Example Modal", closable=true) {
             component content {
@@ -33,24 +33,22 @@ component _example_modal node {
 // "medium", "large"). Like `modal`, tapping the scrim or pressing
 // Escape emits `@close`.
 component drawer(
-    style Style,
-    open bool,
-    side string,
-    size string,
-    @close DismissEvent,
-    content option<component>,
-) node {}
+    style   Style = Style{},
+    open    bool = false,
+    side    string = "",
+    size    string = "",
+    @close(),
+    content option[component],
+) node
 
 component _example_drawer node {
     var showDrawer = false
-    vbox(style={padding=16}) {
+    vbox(style={padding=16px}) {
         button(text="Open Drawer", @click { showDrawer = true })
         drawer(open=showDrawer, side="right") {
-            component content {
-                vbox(style={gap=8, padding=16}) {
-                    text(value="Drawer Content", style={fontWeight=bold})
-                    button(text="Close", @click { showDrawer = false })
-                }
+            vbox(style={gap=8px, padding=16px}) {
+                text(value="Drawer Content", style={fontWeight=bold})
+                button(text="Close", @click { showDrawer = false })
             }
         }
     }
@@ -61,15 +59,15 @@ component _example_drawer node {
 // ("top", "bottom", "left", "right", "auto"). `delay` is the
 // millisecond delay before the tooltip appears.
 component tooltip(
-    style Style,
-    text string,
-    position string,
-    delay int,
-    trigger ...component tr.one,
+    style    Style = Style{},
+    text     string,
+    position string = "",
+    delay    int = 0,
+    trigger  ...component family.one[node],
 ) node {}
 
 component _example_tooltip node {
-    vbox(style={padding=16}) {
+    vbox(style={padding=16px}) {
         tooltip(text="This is a tooltip") {
             button(text="Hover me")
         }
@@ -82,17 +80,17 @@ component _example_tooltip node {
 // hints at placement; the runtime flips to an opposite side if there
 // is not enough room. Clicking outside emits `@close`.
 component popover(
-    style Style,
-    open bool,
-    position string,
-    openOn string,
-    @close DismissEvent,
-    content ...component,
+    style    Style = Style{},
+    open     bool = false,
+    position string = "",
+    openOn   string = "",
+    @close(),
+    content  option[component],
 ) node {}
 
 component _example_popover node {
     var showPop = false
-    vbox(style={padding=16}) {
+    vbox(style={padding=16px}) {
         popover(open=showPop, position="bottom", openOn="click") {
             button(text="Toggle", @click { showPop!! })
         }

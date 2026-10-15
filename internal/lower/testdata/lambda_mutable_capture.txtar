@@ -9,7 +9,7 @@ component main node {
 -- expected.sngl --
 import . "sngl:ui"
 struct __lambda0_caps {
-    n ref<int>
+    n ref[int]
 }
 func __lambda0(state __lambda0_caps) {
     *state.n = *state.n + 1

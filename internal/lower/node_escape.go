@@ -3,7 +3,7 @@ package lower
 import (
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 // passNodeEscape runs only for MutationModel platforms (those that flatten
@@ -22,7 +22,7 @@ import (
 // a box to itself (the gtk4 infinite-layout hang).
 //
 // The pass records, per creating scope, the set of NON-escaping ("local")
-// ref ids on the scope's IR node (Component.LocalRefs / Func.LocalRefs /
+// ref ids on the scope's IR node (Component.LocalRefs / Func.Lowered.LocalRefs /
 // Window.LocalRefs). The platform translators consult these sets to decide
 // whether to emit a Model field or a bare local. Escaping refs keep the
 // existing Model-field behavior, so reactive updates are unaffected.
@@ -78,12 +78,12 @@ func lowerNodeEscape(pkg *ir.Package, _ Features, _ Options) error {
 	// Top-level funcs (handlers promoted by passDeclarative, reactive
 	// updaters/slot funcs, computeds, user funcs).
 	for _, f := range pkg.Funcs {
-		addScope(f.Block, &f.LocalRefs)
+		addScope(f.Block, &f.Lowered.LocalRefs)
 	}
 	for _, comp := range pkg.Components {
-		addScope(comp.Body, &comp.LocalRefs)
+		addScope(comp.Stmts, &comp.LocalRefs)
 		for _, f := range comp.Funcs {
-			addScope(f.Block, &f.LocalRefs)
+			addScope(f.Block, &f.Lowered.LocalRefs)
 		}
 		for _, v := range comp.Vars {
 			addVarHandlerScopes(v, &scopes)
@@ -141,17 +141,6 @@ func appendNested(scopes *[]*scopeRefInfo, s *scopeRefInfo) {
 }
 
 func addVarHandlerScopes(v *ir.Var, scopes *[]*scopeRefInfo) {
-	for _, h := range v.Handlers {
-		if h.Func == nil {
-			continue
-		}
-		s := newScopeRefInfo(&h.Func.LocalRefs)
-		collectScopeRefs(h.Func.Block, s)
-		*scopes = append(*scopes, s)
-		for _, n := range s.nested {
-			appendNested(scopes, n)
-		}
-	}
 }
 
 // isSynthNodeID reports whether id is a synthesized widget ref name (__nN).
@@ -162,7 +151,7 @@ func isSynthNodeID(id string) bool { return strings.HasPrefix(id, "__n") }
 // The declaration is what decides, not what initialises it. A CreateNode or a
 // CreateComponent is the usual initializer, but a reactive slot's instance
 // reconcile opens each position with `var __nN <Comp> = null` and then binds
-// the node in `var __nN__el dyn = lower.ComponentRoot(__nN)` -- both locals of
+// the node in `var __nN__el <family> = lower.ComponentRoot(__nN)` -- both locals of
 // the render func, and matching only the two call names left them unknown to
 // the pass, so every platform emitted them as shared Model fields that each
 // iteration of the loop overwrote.
@@ -176,7 +165,7 @@ func createdNodeID(lv *ir.LocalVar) string {
 // scopeFromFuncBody builds a scope for a nested inline closure/lambda's Func
 // body, sinking its local-ref result onto the lambda Func's LocalRefs.
 func scopeFromFuncBody(f *ir.Func) *scopeRefInfo {
-	s := newScopeRefInfo(&f.LocalRefs)
+	s := newScopeRefInfo(&f.Lowered.LocalRefs)
 	collectScopeRefs(f.Block, s)
 	return s
 }

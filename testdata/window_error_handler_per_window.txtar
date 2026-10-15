@@ -40,10 +40,10 @@ ui.window(title="B", @error(e) { b = "b caught" }) {
 package main
 
 import (
+	"duckfam.us/sngl/pkg/go/fynelayout"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/widget"
-	"git.duckfam.us/jonathan/sngl/pkg/go/fynelayout"
 	"os"
 )
 
@@ -211,7 +211,7 @@ func main() {
 
 package main
 
-import "git.duckfam.us/jonathan/sngl/pkg/go/gtk4rt"
+import "duckfam.us/sngl/pkg/go/gtk4rt"
 
 func main() {
 	gtk4rt.Init()
@@ -225,7 +225,7 @@ func main() {
 package main
 
 import (
-	"git.duckfam.us/jonathan/sngl/pkg/go/gtk4rt"
+	"duckfam.us/sngl/pkg/go/gtk4rt"
 )
 
 type ErrorEvent struct {
@@ -472,8 +472,8 @@ dialog { margin: auto; padding: 1em; }
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:ae836f490b5ea11b8d991cce3d01fb6a
+pass sha256:e74eb2d084201287c095c3bae46977c5
 -- run/go/gtk4 --
-pass sha256:3dd13667a28af413006d0b27928d3d6c
+pass sha256:d5e0a7c712ce49d780f7fefb869bd557
 -- run/none/html --
 pass sha256:e04fcd221a40373b10f1e666820f601e

@@ -3,8 +3,8 @@ package checker
 import (
 	"errors"
 
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/ir"
 )
 
 //go:fix inline
@@ -28,8 +28,16 @@ type SymbolTable = ir.SymbolTable
 //go:fix inline
 var NewScope = ir.NewScope
 
-//go:fix inline
-var NewSymbolTable = ir.NewSymbolTable
+// NewSymbolTable is ir.NewSymbolTable with the scalar universe in its base
+// scope (scalarUniverse).
+func NewSymbolTable() *ir.SymbolTable {
+	st := ir.NewSymbolTable()
+	base := st.Root.Parent
+	for name, typ := range scalarUniverse() {
+		base.Symbols[name] = &ir.TypeSym{Name: name, Type: typ}
+	}
+	return st
+}
 
 // lookupMethod finds a method on the declaration recv names, resolved through
 // the scope the checker is currently in. That is the scope AttachMethod wrote
@@ -47,42 +55,98 @@ func (c *checker) lookupMethod(recv, method string) (*ir.Func, bool) {
 // lookupBodyMethod finds a component-body method by bare name: on the
 // component being checked, then on each body that declared it.
 func (c *checker) lookupBodyMethod(name string) (*ir.Func, bool) {
-	for comp := c.currentComponent; comp != nil; comp = c.bodyOwner[comp] {
+	for comp := c.currentComponent; comp != nil; comp = c.bodyOwnerOf(comp) {
 		if fn, ok := c.lookupMethod(comp.Name, name); ok {
+			return fn, true
+		}
+		// An override's helper is in its own copy of the table, which its
+		// name does not reach.
+		if fn, ok := comp.Methods[name]; ok && comp == c.installedOverride {
+			c.ensureReturnType(fn)
 			return fn, true
 		}
 	}
 	return nil, false
 }
 
+// memberOf is the method named name on decl, a program's additions to it
+// included.
+func (c *checker) memberOf(decl any, name string) (*ir.Func, bool) {
+	sym, ok := decl.(ir.Symbol)
+	if !ok {
+		return nil, false
+	}
+	return ir.MethodOn(c.scope, sym, name)
+}
+
+// attachMethod makes fn a member of the declaration name resolves to. A
+// program's method on one another package declared is held on the program's
+// root scope (ir.Scope.Added) rather than in that declaration's table, which
+// every check reading the declaration's package shares -- except an override's
+// helper, which belongs to that override's own copy of the table.
+func (c *checker) attachMethod(name string, fn *ir.Func) error {
+	sym, found := c.scope.Lookup(name)
+	if ov := c.installedOverride; found && ov != nil && (sym == c.overriddenBase || sym == ov) {
+		if prev, ok := ov.Methods[fn.Name]; ok {
+			if prev != fn {
+				return &ir.RedeclaredError{Name: fn.Name, Prev: prev}
+			}
+			return nil
+		}
+		if ov.Methods == nil {
+			ov.Methods = map[string]*ir.Func{}
+		}
+		ov.Methods[fn.Name] = fn
+		return nil
+	}
+	if found && !c.inLibSource() {
+		if owner := ir.DeclaringPackage(sym); owner != nil && owner != c.declPkg() {
+			return ir.AddMethod(c.symtab.Root, sym, fn)
+		}
+	}
+	return ir.AttachMethod(c.scope, name, fn)
+}
+
+// reportDuplicateMethod reports fn colliding with prev on the declaration its
+// receiver names, described by on, naming the package that declared prev
+// when it is another's.
+func (c *checker) reportDuplicateMethod(pos ast.Pos, fn, prev *ir.Func, on string) {
+	if other := prev.PkgPath(); other != fn.PkgPath() && other != "" {
+		c.error(pos, "duplicate declaration of %q on %s: %s declares it", fn.Name, on, other)
+		return
+	}
+	c.error(pos, "duplicate declaration of %q on %s", fn.Name, on)
+}
+
 // declareMethod makes fn a member of the declaration its receiver names,
-// reporting an unknown receiver at pos. Returns the member it collides with
-// when the caller must report a duplicate, and nil when the attach stands:
-// because it succeeded, because it deliberately shadows a standard-library
-// member (which user code may do), or because the receiver carries no member
-// list — a namespace, whose members are the declarations of its package.
+// reporting an unknown receiver at pos. Returns the member it collides with,
+// for the caller to report as a duplicate, and nil when the attach stands:
+// because it succeeded, or because the receiver carries no member list -- a
+// namespace, whose members are the declarations of its package. A method
+// another package declared collides too: a program may add to a library
+// type but not redefine what it has, so a library declaration means one
+// thing in every program that reads it.
 func (c *checker) declareMethod(pos ast.Pos, fn *ir.Func) *ir.Func {
-	err := ir.AttachMethod(c.scope, fn.Receiver, fn)
+	// The member table is the declaration's, so the receiver is the one the
+	// table is found on -- in this scope, which a body-local type's method
+	// is attached in.
+	name := fn.RecvName()
+	fn.Receiver = c.receiverType(name)
+	err := c.attachMethod(name, fn)
 	switch {
 	case err == nil, errors.Is(err, ir.ErrNoMethodHost):
 		return nil
 	case errors.Is(err, ir.ErrUnknownReceiver):
 		// Without a receiver to attach to there is no member list to hold the
 		// method, so it could never be found again.
-		c.error(pos, "undefined: %s (no type to declare method %q on)", fn.Receiver, fn.Name)
+		c.error(pos, "undefined: %s (no type to declare method %q on)", fn.RecvName(), fn.Name)
 		return nil
 	}
 	var red *ir.RedeclaredError
 	if !errors.As(err, &red) {
 		return nil
 	}
-	prev, isFunc := red.Prev.(*ir.Func)
-	if isFunc && prev.Stdlib && !fn.Stdlib {
-		if err := ir.ReplaceMethod(c.scope, fn.Receiver, fn); err != nil {
-			return nil
-		}
-		return nil
-	}
+	prev, _ := red.Prev.(*ir.Func)
 	return prev
 }
 
@@ -191,8 +255,55 @@ func pushTypeParams[T typeParamLike](c *checker, groups ...[]T) func() {
 	c.pushScope()
 	for _, g := range groups {
 		for _, p := range g {
-			c.declare(p.ParamPos(), &ir.TypeParamSym{Name: p.ParamName()})
+			c.declare(p.ParamPos(), c.typeParamSym(p.ParamName(), p.ParamPos()))
 		}
 	}
 	return c.popScope
+}
+
+// typeParamSym is the symbol of the type parameter declared at pos. A
+// declaration's parameters are pushed more than once -- its signature, then
+// its body -- and each push has to bind the one symbol, since a type refers
+// to its parameter by that symbol. A parameter with no position is a new one.
+func (c *checker) typeParamSym(name string, pos ast.Pos) *ir.TypeParamSym {
+	if !pos.IsSet() {
+		return &ir.TypeParamSym{Name: name}
+	}
+	key := typeParamKey{pos: pos, name: name}
+	if sym, ok := c.decls.typeParamSyms[key]; ok {
+		return sym
+	}
+	if sym, ok := c.libs.decls.typeParamSyms[key]; ok {
+		return sym
+	}
+	t := c.tables()
+	if t.typeParamSyms == nil {
+		t.typeParamSyms = map[typeParamKey]*ir.TypeParamSym{}
+	}
+	sym := &ir.TypeParamSym{Name: name}
+	t.typeParamSyms[key] = sym
+	return sym
+}
+
+// typeParamKey names a declared type parameter: where it is written, and what.
+type typeParamKey struct {
+	pos  ast.Pos
+	name string
+}
+
+// receiverType is the receiver a method declared on name has: the type of the
+// declaration name resolves to here. A name that resolves to nothing, or to
+// something that is no type, keeps a stand-in for its name, and attaching
+// reports it.
+func (c *checker) receiverType(name string) *ir.Type {
+	sym, ok := c.scope.Lookup(name)
+	if !ok {
+		return ir.ReceiverNamed(name)
+	}
+	if t := sym.SymType(); t != nil && t.Decl == sym {
+		return t
+	}
+	// A name that is no type -- a value, a package -- receives no method,
+	// which attaching reports; the type only carries the name there.
+	return &ir.Type{Kind: ir.TypeInvalid, Decl: sym}
 }

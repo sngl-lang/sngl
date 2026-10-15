@@ -1,0 +1,944 @@
+# An effect's list change events, run on every compiled target and on the
+# interpreter, which is what they are held to.
+#
+# testdata/effect_changes.txtar is the code. The tests pin what a compiled queue
+# could get wrong: the order the writes were made in (testOrder), the index a
+# write read against the list as it stood then (testOrder's set), the removed
+# item read before the removal (testOrder), a write no handler describes
+# reaching @update after the changes (testReplace, testPartial), an
+# out-of-range insert or remove reporting nothing (testOutOfRange), the element
+# as each write left it rather than as the handler ends (testSetTwice), a
+# field key's sibling reporting nothing (testField), a test's own write
+# (testHarness), none to a bracket the tree no longer holds (testGated), and
+# under a loop each copy reporting what reached its own element -- a list
+# mutation of what the loop walks reaching the copies it moved
+# (testPerCopy*).
+
+sngl test --platform=none app.sngl
+stdout 'PASS'
+! stdout 'FAIL'
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout 'PASS'
+! stdout 'FAIL'
+
+sngl test --platform=fyne --language=go app.sngl
+stdout 'PASS'
+! stdout 'FAIL'
+
+[gtk4] sngl test --platform=gtk4 --language=go app.sngl
+[gtk4] stdout 'PASS'
+[gtk4] ! stdout 'FAIL'
+
+sngl test --platform=html app.sngl
+stdout 'PASS'
+! stdout 'FAIL'
+
+sngl test --platform=android --opt testRunner=robolectric app.sngl
+stdout 'PASS'
+! stdout 'FAIL'
+
+-- app.sngl --
+import ui "sngl:ui"
+import "sngl:test"
+
+struct Holder {
+    items list[int]
+    other int = 0
+}
+
+struct Item {
+    n int = 0
+}
+
+component changes ui.node {
+    var xs list[int] = [10, 20]
+    var log list[string] = []
+
+    effect(
+        on = xs,
+        @update(v) {
+            log.push("update {v.length()}")
+        },
+        @insert(at, item) {
+            log.push("insert {at} {item}")
+        },
+        @remove(at, item) {
+            log.push("remove {at} {item}")
+        },
+        @set(at, item) {
+            log.push("set {at} {item}")
+        },
+        @clear {
+            log.push("clear")
+        },
+    )
+
+    func pushRemoveSet() {
+        xs.push(30)
+        xs.remove(0)
+        xs[1] = 99
+    }
+
+    func insertAt(i int, x int) {
+        xs.insert(i, x)
+    }
+
+    func outOfRange() {
+        xs.insert(9, 1)
+        xs.remove(-1)
+        xs.remove(5)
+    }
+
+    func bump() {
+        for var k, &x = xs {
+            if k == 1 {
+                x += 1
+            }
+        }
+    }
+
+    func clearAll() {
+        xs.clear()
+    }
+
+    func swapAll() {
+        xs.push(1)
+        xs = [7]
+    }
+
+    ui.text #out(value = log.join(","))
+}
+
+func testOrder(t test.Test, c changes) {
+    c.pushRemoveSet()
+    t.assert(c.out.value == "insert 2 30,remove 0 10,set 1 99")
+}
+
+func testInsert(t test.Test, c changes) {
+    c.insertAt(1, 15)
+    t.assert(c.out.value == "insert 1 15")
+}
+
+func testOutOfRange(t test.Test, c changes) {
+    c.outOfRange()
+    t.assert(c.out.value == "")
+}
+
+func testThroughARef(t test.Test, c changes) {
+    c.bump()
+    t.assert(c.out.value == "set 1 21")
+}
+
+func testClear(t test.Test, c changes) {
+    c.clearAll()
+    t.assert(c.out.value == "clear")
+}
+
+func testReplace(t test.Test, c changes) {
+    c.swapAll()
+    t.assert(c.out.value == "insert 2 1,update 1")
+}
+
+func testHarness(t test.Test, c changes) {
+    c.xs.push(5)
+    t.assert(c.out.value == "insert 2 5")
+    c.xs[0] = 4
+    t.assert(c.out.value == "insert 2 5,set 0 4")
+}
+
+component partial ui.node {
+    var xs list[int] = [1]
+    var log list[string] = []
+
+    effect(
+        on = xs,
+        @update(v) {
+            log.push("update {v.length()}")
+        },
+        @insert(at, item) {
+            log.push("insert {at}")
+        },
+    )
+
+    func pushThenRemove() {
+        xs.push(2)
+        xs.remove(0)
+    }
+
+    ui.text #out(value = log.join(","))
+}
+
+func testPartial(t test.Test, c partial) {
+    c.pushThenRemove()
+    t.assert(c.out.value == "insert 1,update 1")
+}
+
+component field ui.node {
+    var h = Holder{items=[1]}
+    var log list[string] = []
+
+    effect(
+        on = h.items,
+        @update {
+            log.push("update")
+        },
+        @insert(at, item) {
+            log.push("insert {at} {item}")
+        },
+        @set(at, item) {
+            log.push("set {at} {item}")
+        },
+    )
+
+    func add() {
+        h.items.push(2)
+    }
+
+    func poke() {
+        h.items[0] = 7
+    }
+
+    func sibling() {
+        h.other = 3
+    }
+
+    func swap() {
+        h = Holder{items=[5]}
+    }
+
+    ui.text #out(value = "{h.items.length()} {log.join(",")}")
+}
+
+func testField(t test.Test, c field) {
+    c.add()
+    t.assert(c.out.value == "2 insert 1 2")
+    c.poke()
+    t.assert(c.out.value == "2 insert 1 2,set 0 7")
+    c.sibling()
+    t.assert(c.out.value == "2 insert 1 2,set 0 7")
+    c.swap()
+    t.assert(c.out.value == "1 insert 1 2,set 0 7,update")
+}
+
+component twice ui.node {
+    var xs list[Item] = [Item{}]
+    var log list[string] = []
+
+    effect(
+        on = xs,
+        @update {},
+        @set(at, item) {
+            log.push("set {at} {item.n}")
+        },
+    )
+
+    func setTwice() {
+        xs[0].n = 1
+        xs[0].n = 2
+    }
+
+    ui.text #out(value = log.join(","))
+}
+
+func testSetTwice(t test.Test, c twice) {
+    c.setTwice()
+    t.assert(c.out.value == "set 0 1,set 0 2")
+}
+
+component gated ui.node {
+    var on = true
+    var xs list[int] = []
+    var log list[string] = []
+
+    if on {
+        effect(
+            on = xs,
+            @update {},
+            @insert(at, item) {
+                log.push("insert {at}")
+            },
+        )
+    }
+
+    func pushAndHide() {
+        xs.push(1)
+        on = false
+    }
+
+    func pushWhileHidden() {
+        xs.push(2)
+    }
+
+    ui.text #out(value = log.join(","))
+}
+
+func testGated(t test.Test, c gated) {
+    c.pushAndHide()
+    t.assert(c.out.value == "")
+    c.pushWhileHidden()
+    t.assert(c.out.value == "")
+}
+
+struct Row {
+    items list[int] = []
+    n int = 0
+}
+
+component rows ui.node {
+    var xs list[Row] = [Row{items=[1]}, Row{items=[2]}]
+    var log list[string] = []
+
+    ui.vbox {
+        for var &x = xs {
+            effect(
+                on = x.items,
+                @update(v) {
+                    log.push("update {v.length()}")
+                },
+                @insert(at, item) {
+                    log.push("insert {at} {item}")
+                },
+            )
+        }
+    }
+
+    func grow() {
+        xs[1].items.push(5)
+    }
+
+    func same() {
+        xs[1].items = [2]
+    }
+
+    func sibling() {
+        xs[0].n = 3
+    }
+
+    func append() {
+        xs.push(Row{})
+    }
+
+    func insertFirst() {
+        xs.insert(0, Row{items=[9, 9]})
+    }
+
+    func dropFirst() {
+        xs.remove(0)
+    }
+
+    func swapAll() {
+        xs = [Row{items=[7]}]
+    }
+
+    ui.text #out(value = log.join(","))
+}
+
+func testPerCopyChange(t test.Test, c rows) {
+    c.grow()
+    t.assert(c.out.value == "insert 1 5")
+}
+
+func testPerCopyEqualWrite(t test.Test, c rows) {
+    c.same()
+    t.assert(c.out.value == "update 1")
+}
+
+func testPerCopySibling(t test.Test, c rows) {
+    c.sibling()
+    t.assert(c.out.value == "")
+}
+
+func testPerCopyPush(t test.Test, c rows) {
+    c.append()
+    t.assert(c.out.value == "")
+}
+
+func testPerCopyInsertShifts(t test.Test, c rows) {
+    c.insertFirst()
+    t.assert(c.out.value == "update 2,update 1")
+}
+
+func testPerCopyRemoveShifts(t test.Test, c rows) {
+    c.dropFirst()
+    t.assert(c.out.value == "update 1")
+}
+
+func testPerCopyReplace(t test.Test, c rows) {
+    c.swapAll()
+    t.assert(c.out.value == "update 1")
+}
+
+func testPerCopyHarness(t test.Test, c rows) {
+    c.xs[0].items.push(4)
+    t.assert(c.out.value == "insert 1 4")
+}
+
+ui.window(title = "Changes") {
+    changes
+    partial
+    field
+    twice
+    gated
+    rows
+}
+-- testrun/android/kotlin/app.sngl/changes/1 --
+sha256:934cd4869644be11115372bf18926a9d
+{
+  "results": [
+    {
+      "Desc": "Clear",
+      "Passed": true
+    },
+    {
+      "Desc": "Harness",
+      "Passed": true
+    },
+    {
+      "Desc": "Insert",
+      "Passed": true
+    },
+    {
+      "Desc": "Order",
+      "Passed": true
+    },
+    {
+      "Desc": "OutOfRange",
+      "Passed": true
+    },
+    {
+      "Desc": "Replace",
+      "Passed": true
+    },
+    {
+      "Desc": "ThroughARef",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/android/kotlin/app.sngl/field/1 --
+sha256:0ca33d83a8b34d8e31d7c00f4d251acf
+{
+  "results": [
+    {
+      "Desc": "Field",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/android/kotlin/app.sngl/gated/1 --
+sha256:570fa8629d65e107ce0cac05ad38d75e
+{
+  "results": [
+    {
+      "Desc": "Gated",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/android/kotlin/app.sngl/partial/1 --
+sha256:651d74a0e38f97d69e81d6abfea9babf
+{
+  "results": [
+    {
+      "Desc": "Partial",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/android/kotlin/app.sngl/rows/1 --
+sha256:fa41f103a6f1ac024e8b640bcdc64088
+{
+  "results": [
+    {
+      "Desc": "PerCopyChange",
+      "Passed": true
+    },
+    {
+      "Desc": "PerCopyEqualWrite",
+      "Passed": true
+    },
+    {
+      "Desc": "PerCopyHarness",
+      "Passed": true
+    },
+    {
+      "Desc": "PerCopyInsertShifts",
+      "Passed": true
+    },
+    {
+      "Desc": "PerCopyPush",
+      "Passed": true
+    },
+    {
+      "Desc": "PerCopyRemoveShifts",
+      "Passed": true
+    },
+    {
+      "Desc": "PerCopyReplace",
+      "Passed": true
+    },
+    {
+      "Desc": "PerCopySibling",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/android/kotlin/app.sngl/twice/1 --
+sha256:665e22886b8ba7ea5f58ce92bd70f871
+{
+  "results": [
+    {
+      "Desc": "SetTwice",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/changes/1 --
+sha256:9e758ee70da100b8af520303110ff93d
+{
+  "results": [
+    {
+      "Desc": "Clear",
+      "Passed": true
+    },
+    {
+      "Desc": "Harness",
+      "Passed": true
+    },
+    {
+      "Desc": "Insert",
+      "Passed": true
+    },
+    {
+      "Desc": "Order",
+      "Passed": true
+    },
+    {
+      "Desc": "OutOfRange",
+      "Passed": true
+    },
+    {
+      "Desc": "Replace",
+      "Passed": true
+    },
+    {
+      "Desc": "ThroughARef",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/field/1 --
+sha256:c249dd59efc1fd04ecd89ddf7078cb33
+{
+  "results": [
+    {
+      "Desc": "Field",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/gated/1 --
+sha256:7810f38886e3267bf5fb928820d62b59
+{
+  "results": [
+    {
+      "Desc": "Gated",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/partial/1 --
+sha256:30ae0702da7555ac6b6dff72e2abadce
+{
+  "results": [
+    {
+      "Desc": "Partial",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/rows/1 --
+sha256:e94e113d71a7bfe8177c8c5164b6488e
+{
+  "results": [
+    {
+      "Desc": "PerCopyChange",
+      "Passed": true
+    },
+    {
+      "Desc": "PerCopyEqualWrite",
+      "Passed": true
+    },
+    {
+      "Desc": "PerCopyHarness",
+      "Passed": true
+    },
+    {
+      "Desc": "PerCopyInsertShifts",
+      "Passed": true
+    },
+    {
+      "Desc": "PerCopyPush",
+      "Passed": true
+    },
+    {
+      "Desc": "PerCopyRemoveShifts",
+      "Passed": true
+    },
+    {
+      "Desc": "PerCopyReplace",
+      "Passed": true
+    },
+    {
+      "Desc": "PerCopySibling",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/twice/1 --
+sha256:bd9a7f012bae46ad290f9304be3707c8
+{
+  "results": [
+    {
+      "Desc": "SetTwice",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/changes/1 --
+sha256:e03eae041f5e9b0404e9dd1c848d1ebe
+{
+  "results": [
+    {
+      "Desc": "Clear",
+      "Passed": true
+    },
+    {
+      "Desc": "Harness",
+      "Passed": true
+    },
+    {
+      "Desc": "Insert",
+      "Passed": true
+    },
+    {
+      "Desc": "Order",
+      "Passed": true
+    },
+    {
+      "Desc": "OutOfRange",
+      "Passed": true
+    },
+    {
+      "Desc": "Replace",
+      "Passed": true
+    },
+    {
+      "Desc": "ThroughARef",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/field/1 --
+sha256:c221fb4d01924bbcd353a894e32bf50f
+{
+  "results": [
+    {
+      "Desc": "Field",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/gated/1 --
+sha256:95ea05c8d201918571dbb0ff750ecc07
+{
+  "results": [
+    {
+      "Desc": "Gated",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/partial/1 --
+sha256:9c4a29c9e6139eced15c4b03b515076c
+{
+  "results": [
+    {
+      "Desc": "Partial",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/rows/1 --
+sha256:74a329240583b545d27a6bf25d40b123
+{
+  "results": [
+    {
+      "Desc": "PerCopyChange",
+      "Passed": true
+    },
+    {
+      "Desc": "PerCopyEqualWrite",
+      "Passed": true
+    },
+    {
+      "Desc": "PerCopyHarness",
+      "Passed": true
+    },
+    {
+      "Desc": "PerCopyInsertShifts",
+      "Passed": true
+    },
+    {
+      "Desc": "PerCopyPush",
+      "Passed": true
+    },
+    {
+      "Desc": "PerCopyRemoveShifts",
+      "Passed": true
+    },
+    {
+      "Desc": "PerCopyReplace",
+      "Passed": true
+    },
+    {
+      "Desc": "PerCopySibling",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/twice/1 --
+sha256:42195b103adc8296d4256c31a7f82d1a
+{
+  "results": [
+    {
+      "Desc": "SetTwice",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/changes/1 --
+sha256:a452e84837ef9ffdb0c4fd22dee29c43
+{
+  "results": [
+    {
+      "Desc": "Clear",
+      "Passed": true
+    },
+    {
+      "Desc": "Harness",
+      "Passed": true
+    },
+    {
+      "Desc": "Insert",
+      "Passed": true
+    },
+    {
+      "Desc": "Order",
+      "Passed": true
+    },
+    {
+      "Desc": "OutOfRange",
+      "Passed": true
+    },
+    {
+      "Desc": "Replace",
+      "Passed": true
+    },
+    {
+      "Desc": "ThroughARef",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/field/1 --
+sha256:1d29321c4d94cea5ac33425e9199977a
+{
+  "results": [
+    {
+      "Desc": "Field",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/gated/1 --
+sha256:8d9eb7cb615ed7778d4578294fa7f1e1
+{
+  "results": [
+    {
+      "Desc": "Gated",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/partial/1 --
+sha256:79bb3d227a5f4b28e174265b266cdccd
+{
+  "results": [
+    {
+      "Desc": "Partial",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/rows/1 --
+sha256:35ffab3eff03decc6b5fd1fdd8c67592
+{
+  "results": [
+    {
+      "Desc": "PerCopyChange",
+      "Passed": true
+    },
+    {
+      "Desc": "PerCopyEqualWrite",
+      "Passed": true
+    },
+    {
+      "Desc": "PerCopyHarness",
+      "Passed": true
+    },
+    {
+      "Desc": "PerCopyInsertShifts",
+      "Passed": true
+    },
+    {
+      "Desc": "PerCopyPush",
+      "Passed": true
+    },
+    {
+      "Desc": "PerCopyRemoveShifts",
+      "Passed": true
+    },
+    {
+      "Desc": "PerCopyReplace",
+      "Passed": true
+    },
+    {
+      "Desc": "PerCopySibling",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/twice/1 --
+sha256:2b73e9fc858502a46c2a4e871e231625
+{
+  "results": [
+    {
+      "Desc": "SetTwice",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/changes/1 --
+sha256:13d9723c18d2f304b6dd28f06f4499db
+{
+  "results": [
+    {
+      "Desc": "Clear",
+      "Passed": true
+    },
+    {
+      "Desc": "Harness",
+      "Passed": true
+    },
+    {
+      "Desc": "Insert",
+      "Passed": true
+    },
+    {
+      "Desc": "Order",
+      "Passed": true
+    },
+    {
+      "Desc": "OutOfRange",
+      "Passed": true
+    },
+    {
+      "Desc": "Replace",
+      "Passed": true
+    },
+    {
+      "Desc": "ThroughARef",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/field/1 --
+sha256:7169756023166db7138d48840c27fe25
+{
+  "results": [
+    {
+      "Desc": "Field",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/gated/1 --
+sha256:4a677a9955362bafd515ac0492fc7a1b
+{
+  "results": [
+    {
+      "Desc": "Gated",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/partial/1 --
+sha256:546342881916590c4789ce2f0e19ef0a
+{
+  "results": [
+    {
+      "Desc": "Partial",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/rows/1 --
+sha256:b6a0eba09321c394cc4a275fdae62879
+{
+  "results": [
+    {
+      "Desc": "PerCopyChange",
+      "Passed": true
+    },
+    {
+      "Desc": "PerCopyEqualWrite",
+      "Passed": true
+    },
+    {
+      "Desc": "PerCopyHarness",
+      "Passed": true
+    },
+    {
+      "Desc": "PerCopyInsertShifts",
+      "Passed": true
+    },
+    {
+      "Desc": "PerCopyPush",
+      "Passed": true
+    },
+    {
+      "Desc": "PerCopyRemoveShifts",
+      "Passed": true
+    },
+    {
+      "Desc": "PerCopyReplace",
+      "Passed": true
+    },
+    {
+      "Desc": "PerCopySibling",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/twice/1 --
+sha256:702a4c72174d253e9c34f2b757a8c8a1
+{
+  "results": [
+    {
+      "Desc": "SetTwice",
+      "Passed": true
+    }
+  ]
+}

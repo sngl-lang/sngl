@@ -1,0 +1,47 @@
+# A loop html writes into a page's markup has its iterable worked out while
+# the page is built. One that cannot be -- here a function that raises -- is
+# refused at the loop. Written as it stood, its body came out once with its
+# variable bound to nothing: an empty element, and a handler naming a variable
+# nothing declared.
+#
+# A loop an override's body holds is reported at the node the program wrote,
+# since the override's position is nothing the program can act on: menubar's
+# entries, written under a `for` over the same function, are walked by the
+# loop in html's own override.
+
+! sngl generate --platform=html --out out own.sngl
+stderr 'own.sngl:10:9: this loop is written into the page, and what it iterates cannot be worked out while the page is built'
+
+! sngl generate --platform=html --out out override.sngl
+stderr 'override.sngl:9:7: this loop is written into the page, and what it iterates cannot be worked out while the page is built'
+
+-- own.sngl --
+import ui "sngl:ui"
+
+func names() list[string] {
+    error.raise("no names", "test")
+    return ["File"]
+}
+
+ui.window {
+    ui.vbox {
+        for var n = names() {
+            ui.text(value=n)
+        }
+    }
+}
+-- override.sngl --
+import ui "sngl:ui"
+
+func names() list[string] {
+    error.raise("no names", "test")
+    return ["File"]
+}
+
+ui.window {
+    ui.menubar {
+        for var n = names() {
+            ui.menuItem(label=n)
+        }
+    }
+}

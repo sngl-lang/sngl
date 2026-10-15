@@ -1,25 +1,25 @@
 import . "sngl:ui"
 import . "sngl:test"
 
+// An effect keyed on a var reports each write to it: @update runs after the
+// handler that wrote it.
 component main node {
     var count = 0
-    var items = ["a", "b"]
+    var tracked = 0
 
-    var tracked = 0 @change {
+    effect(on=tracked, @update {
         count = count + 1
-    }
+    })
 
     button #inc(text="+", @click { tracked = tracked + 1 })
     text(value=string(tracked))
 }
 
-// Basic test that the component parses and checks with data events.
-// Data event execution is platform-specific; the none/testrunner
-// does not currently fire @change handlers.
-func testDataFieldExists(t Test, c main) {
-    t.assert(c.tracked == 0)
+func testUpdateReportsTheWrite(t Test, c main) {
+    t.assert(c.count == 0)
     c.inc.click()
     t.assert(c.tracked == 1)
+    t.assert(c.count == 1)
 }
 
 window {

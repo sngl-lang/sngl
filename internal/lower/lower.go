@@ -3,9 +3,10 @@ package lower
 import (
 	"fmt"
 	"slices"
+	"strconv"
 
-	"git.duckfam.us/jonathan/sngl/internal/imports"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/internal/imports"
+	"duckfam.us/sngl/ir"
 )
 
 // pass is one lowering pass: a name, a predicate over Features for whether it
@@ -37,10 +38,20 @@ type pass struct {
 var passes = []pass{
 	passHoistBodyTypes,
 	passHoistState,
+	// Before every pass that writes a store of its own: what it copies is
+	// what the program wrote. After passHoistState, which turns a view block's
+	// local into a var whose initializer it reaches.
+	passValueCopy,
 	passForeignPrimitive,
 	passNavigationValues,
 	passNavigationHrefs,
 	passPlatformExtensionBody,
+	// Before anything inlines a body or appends an argument of its own: a
+	// default is written where the call is, and names what the callee's
+	// declaration does.
+	passReceiverParam,
+	passCallDefaults,
+	passMonomorphize,
 	passNavigation,
 	passHandleParams,
 	passImplicitState,
@@ -51,12 +62,14 @@ var passes = []pass{
 	passNodePropReads,
 	passPropBindings,
 	passRefLoop,
+	// After passRefLoop, so an element bound with `&` is a place by now.
+	passRefParams,
+	passRecordArgs,
 	passSpreadOnce,
 	passViewForElse,
 	passBoundaryFailed,
 	passUnit,
 	passEnum,
-	passQuery,
 	// Before passAsyncOffload, which synthesizes calls to the two ids this
 	// reads, and before anything rewrites a body out from under a position.
 	passAsyncCapable,
@@ -69,10 +82,18 @@ var passes = []pass{
 	passContext,
 	passInlinePure,
 	passNoInlineComponents,
+	// Once the inliners have settled every node's ID, before anything copies one.
+	passReservedNodeIDs,
 	passErrorScope,
 	passRecursionDepth,
 	passInstanceSlots,
+	// After it, which splices a copy per content and so answers its own.
+	passSlotEmptyProps,
 	passCanvasInstances,
+	// After every pass that copies a body at bound types, and before any that
+	// names a struct by its declaration's name: a copy's structs are no
+	// package's until this points them at one.
+	passAnonStructs,
 	passFlattenStructSpread,
 	passNoImplicitRecv,
 	passShapeDraw,
@@ -109,6 +130,8 @@ var passes = []pass{
 	// After the passthrough: what is left to count is what raises or
 	// catches, whatever a boundary was given.
 	passStampUsage,
+	// Last of all: it renames what every pass above declared or copied.
+	passReservedNames,
 }
 
 // Options controls a single Lower invocation.
@@ -143,6 +166,12 @@ type Options struct {
 	// against the declaration -- asks for `n` (#136).
 	RootComponent string
 
+	// Tests says the build emits the program's tests, which reach into what
+	// their component renders through what the inliner made of it
+	// (repointTestReaches). A build that emits none leaves its tests as they
+	// were checked, so that nothing a test names is kept alive for them.
+	Tests bool
+
 	// ClaimsIntrinsic reports whether the target implements an #[intrinsic]
 	// component id from another platform's namespace. A platform primitive is
 	// the emitting codegen's dispatch key, so one platform's is meaningless to
@@ -150,23 +179,46 @@ type Options struct {
 	// this is how it says so. Nil means it claims none.
 	ClaimsIntrinsic func(id string) bool
 
-	// instSeq numbers the `__instN` suffix each substituted component's state
-	// is renamed with. Shared, because two passes substitute into one emitted
-	// namespace -- passInlinePure takes a platform override, passNoInlineComponents
-	// takes a user component -- and a counter each had them both start at zero:
-	// an override and a component in one owner were emitted as two
-	// `hits__inst0`. A pointer so it survives Options being passed by value.
-	// Set by Lower; a caller's value is overwritten.
-	instSeq *int
+	// RendersNative reports whether the target renders a component a native
+	// mark of this scheme names -- a host's own widget, which only the
+	// platform built on that host can call. Nil means it renders none.
+	RendersNative func(scheme string) bool
+
+	// names numbers what the inliners rename: the `__instN` each substituted
+	// component's state and funcs take, and the `__pN` a spliced body's
+	// parameter takes where it would shadow a name the call site's code reads
+	// (freshenShadowingParams). Shared, because two passes substitute into one
+	// emitted namespace -- passInlinePure takes a platform override,
+	// passNoInlineComponents takes a user component -- and a counter each had
+	// them both start at zero: an override and a component in one owner were
+	// emitted as two `hits__inst0`. Set by Lower; a caller's value is
+	// overwritten.
+	names renamer
 }
 
-// seqOrOwn is the shared `__instN` counter, or a private one for a caller that
-// built a pass's state directly rather than through Lower -- a unit test.
-func seqOrOwn(seq *int) *int {
-	if seq == nil {
-		return new(int)
+// renamer numbers renamed declarations per name: `hits__inst0` and
+// `hits__inst1` are the first two copies of a `hits`, whatever else was
+// renamed between them. One sequence for every name made each emitted name
+// depend on how many unrelated instances came before it, so a change anywhere
+// in a program renumbered everything after it.
+type renamer map[string]int
+
+// next is base's next copy under kind: `next("hits", "inst")` is
+// `hits__inst0`, then `hits__inst1`.
+func (r renamer) next(base, kind string) string {
+	k := base + "__" + kind
+	n := r[k]
+	r[k] = n + 1
+	return k + strconv.Itoa(n)
+}
+
+// namesOrOwn is the shared renamer, or a private one for a caller that built
+// a pass's state directly rather than through Lower -- a unit test.
+func namesOrOwn(r renamer) renamer {
+	if r == nil {
+		return renamer{}
 	}
-	return seq
+	return r
 }
 
 // Lower applies all enabled lowering passes to pkg in execution order,
@@ -176,10 +228,11 @@ func seqOrOwn(seq *int) *int {
 // Returns an error wrapping the failing pass's name when any pass fails or
 // when opts.StopAfter names a pass that does not exist.
 func Lower(pkg *ir.Package, feats Features, opts Options) error {
+	ir.InstallOverlay(pkg)
 	if opts.StopAfter == "none" {
 		return nil
 	}
-	opts.instSeq = new(int)
+	opts.names = renamer{}
 	if opts.StopAfter != "" {
 		known := false
 		for _, p := range passes {
@@ -383,7 +436,7 @@ func reachableForeignFuncs(pkg *ir.Package) []*ir.Func {
 		walk(fn.Block)
 	}
 	for _, c := range pkg.Components {
-		walk(c.Body)
+		walk(c.Stmts)
 		for _, f := range c.Funcs {
 			walk(f.Block)
 		}
@@ -445,12 +498,12 @@ func reachableForeignComponents(pkg *ir.Package, local map[*ir.Component]bool, p
 		// bodiless here. Judged so, it never joined the list, so a node of it
 		// that survived inlining had no declaration for a backend to emit --
 		// html called `__cf_timer(...)`, a factory nothing defined.
-		if len(c.Body) == 0 && len(c.Vars) == 0 && len(c.Funcs) == 0 && !overrideNeedsDeclFor(c, platform) {
+		if len(c.Stmts) == 0 && len(c.Vars) == 0 && len(c.Funcs) == 0 && !overrideNeedsDeclFor(c, platform) {
 			return
 		}
 		seen[c] = true
 		out = append(out, c)
-		walk(c.Body)
+		walk(c.Stmts)
 		for _, f := range c.Funcs {
 			walk(f.Block)
 		}
@@ -486,7 +539,7 @@ func reachableForeignComponents(pkg *ir.Package, local map[*ir.Component]bool, p
 		}
 	}
 	for _, c := range pkg.Components {
-		walk(c.Body)
+		walk(c.Stmts)
 		for _, f := range c.Funcs {
 			walk(f.Block)
 		}

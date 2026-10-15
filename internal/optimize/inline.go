@@ -5,8 +5,8 @@ import (
 	"slices"
 	"sync/atomic"
 
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/ir"
 )
 
 // inlineCall attempts to replace a function call with its inlined body.
@@ -29,16 +29,15 @@ func inlineCall(call *ir.Call, ctx *evalCtx) ir.Expr {
 	// A function the output contains keeps its call. Inlining is how a function
 	// the output does *not* contain gets there -- nothing emits an imported
 	// package's declarations, so a call to one is a call to a name the output
-	// lacks, and until now every library function was either pure (inlined
-	// here) or an intrinsic (emitted by the backend). sngl:remote/http's
-	// transport is neither.
+	// lacks, unless it is pure (inlined here) or an intrinsic (emitted by the
+	// backend).
 	//
 	// Applied to non-pure declarations only, because folding still wants to see
 	// through a pure wrapper wherever it was written, and because a program's
 	// own functions are what its generated code is made of: a computed reading
 	// state is readonly, and dissolving it into every prop that names it is a
 	// different program to read.
-	if f.Purity != ir.PurityPure && f.Pkg == "" {
+	if f.Purity != ir.PurityPure && f.PkgPath() == "" {
 		return nil
 	}
 	// A foreign declaration's body describes the function rather than
@@ -60,6 +59,14 @@ func inlineCall(call *ir.Call, ctx *evalCtx) ir.Expr {
 	// backend is expected to replace — would erase the thing it substitutes
 	// for. Constant arguments still fold, through the intrinsic itself.
 	if f.Intrinsic != "" {
+		return nil
+	}
+	// A function that reaches the build host keeps its call: it is a
+	// producer, folded whole where its arguments are known and stored by its
+	// own identity (produce). Spliced, the bare intrinsic it wraps is left,
+	// which nothing folds -- and a call whose arguments a later fold binds,
+	// a page's loop variable, is the one still to be answered.
+	if ir.ReachesBuildHost(f, ctx.hostMemoOrNew()) {
 		return nil
 	}
 	if len(f.TypeParams) > 0 {
@@ -215,7 +222,7 @@ func callsFunc(e ir.Expr, target *ir.Func) bool {
 				return true
 			}
 		}
-	case *ir.Literal, *ir.Ident, *ir.ContextRead:
+	case *ir.Literal, *ir.Ident, *ir.ContextRead, *ir.SlotEmpty:
 		// No nested calls possible.
 	default:
 		panic(fmt.Sprintf("callsFunc: unhandled expr %T", x))
@@ -325,6 +332,8 @@ func containsContextRead(e ir.Expr) bool {
 	switch x := e.(type) {
 	case *ir.ContextRead:
 		return true
+	case *ir.SlotEmpty:
+		return false
 	case *ir.Call:
 		if containsContextRead(x.Receiver) || containsContextRead(x.Callee) {
 			return true
@@ -410,8 +419,7 @@ func effectFree(e ir.Expr) bool {
 		case *ir.Unary:
 			// *p reads through an alias, so what it answers depends on when it
 			// is evaluated. &x does not: every evaluation names the same cell,
-			// which is the whole reason a caller writes one -- and a query key
-			// mentions its ref twice, once to key on and once to fetch with.
+			// which is the whole reason a caller writes one.
 			if n.Op == ast.UnaryDeref {
 				free = false
 				return ir.SkipAll
@@ -478,13 +486,12 @@ func substituteParams(e ir.Expr, subs map[*ir.Param]ir.Expr) ir.Expr {
 			x.Entries[i].Key = substituteParams(x.Entries[i].Key, subs)
 			x.Entries[i].Value = substituteParams(x.Entries[i].Value, subs)
 		}
-	case *ir.Literal, *ir.ContextRead:
+	case *ir.Literal, *ir.ContextRead, *ir.SlotEmpty:
 		// No parameter references.
 	case *ir.Lambda:
 		// The lambda a body hands to something else closes over the
-		// parameters of the func being inlined -- an adapter returning
-		// `remote.query(..., func() => get(*url))` is the whole shape -- so
-		// leaving the body alone leaves those references pointing at a
+		// parameters of the func being inlined -- `func() => get(*url)` handed
+		// on from an adapter is the whole shape -- so leaving the body alone leaves those references pointing at a
 		// declaration the call site is replacing. cloneExpr gives each copy its
 		// own body, which is what makes rewriting it here safe.
 		if x.Func != nil {
@@ -604,13 +611,29 @@ func cloneExpr(e ir.Expr) ir.Expr {
 	case *ir.ContextRead:
 		cp := *x
 		return &cp
+	case *ir.SlotEmpty:
+		cp := *x
+		return &cp
 	default:
 		panic(fmt.Sprintf("cloneExpr: unhandled expr %T", x))
 	}
 }
 
 // cloneStmt creates a deep copy of a statement.
-func cloneStmt(s ir.Stmt) ir.Stmt {
+func cloneStmt(s ir.Stmt) ir.Stmt { return deepCloner.stmt(s) }
+
+// stmtCloner copies statements. One that shares loops leaves a loop's body
+// and else as they are, for a fold that unrolls the loop to copy per
+// iteration (evalCtx.ownCopy); it records the boundary handlers it copies, so
+// that the aliases a shared body holds can be repointed once it is copied.
+type stmtCloner struct {
+	shareLoops bool
+	handlers   map[*ir.EventHandler]*ir.EventHandler
+}
+
+var deepCloner stmtCloner
+
+func (c *stmtCloner) stmt(s ir.Stmt) ir.Stmt {
 	if s == nil {
 		return nil
 	}
@@ -632,12 +655,12 @@ func cloneStmt(s ir.Stmt) ir.Stmt {
 			// each reporting the press of the first.
 			if h.Func != nil {
 				fn := *h.Func
-				fn.Block = copyStmts(h.Func.Block)
+				fn.Block = c.stmts(h.Func.Block)
 				cp.Handlers[i].Func = &fn
 			}
 		}
-		cp.Children = copyStmts(n.Children)
-		cp.Slots = cloneSlots(n.Slots)
+		cp.Children = c.stmts(n.Children)
+		cp.Slots = c.slots(n.Slots)
 		return &cp
 	case *ir.If:
 		if n.Catch != nil {
@@ -645,14 +668,16 @@ func cloneStmt(s ir.Stmt) ir.Stmt {
 		}
 		cp := *n
 		cp.Cond = cloneExpr(n.Cond)
-		cp.Body = copyStmts(n.Body)
-		cp.Else = copyStmts(n.Else)
+		cp.Body = c.stmts(n.Body)
+		cp.Else = c.stmts(n.Else)
 		return &cp
 	case *ir.For:
 		cp := *n
 		cp.Iter = cloneExpr(n.Iter)
-		cp.Body = copyStmts(n.Body)
-		cp.Else = copyStmts(n.Else)
+		if !c.shareLoops {
+			cp.Body = c.stmts(n.Body)
+			cp.Else = c.stmts(n.Else)
+		}
 		return &cp
 	case *ir.Assign:
 		cp := *n
@@ -695,30 +720,36 @@ func cloneStmt(s ir.Stmt) ir.Stmt {
 		for i, a := range n.Args {
 			cp.Args[i] = cloneExpr(a)
 		}
-		cp.Children = copyStmts(n.Children)
-		cp.Slots = cloneSlots(n.Slots)
+		cp.Children = c.stmts(n.Children)
+		cp.Slots = c.slots(n.Slots)
 		return &cp
 	case *ir.ContextProvider:
 		cp := *n
 		cp.Value = cloneExpr(n.Value)
-		cp.Children = copyStmts(n.Children)
+		cp.Children = c.stmts(n.Children)
 		return &cp
 	case *ir.ErrorBoundary:
 		cp := *n
-		cp.Children = copyStmts(n.Children)
-		cp.Failed = copyStmts(n.Failed)
+		cp.Children = c.stmts(n.Children)
+		cp.Failed = c.stmts(n.Failed)
 		// The handler is folded per copy as its children are; shared, the
 		// first copy's bindings wrote the handler every copy runs.
 		if h := n.Handler; h != nil {
 			hc := *h
 			if h.Func != nil {
 				fc := *h.Func
-				fc.Block = copyStmts(h.Func.Block)
+				fc.Block = c.stmts(h.Func.Block)
 				hc.Func = &fc
 			}
 			cp.Handler = &hc
-			ir.RepointHandler(cp.Children, h, &hc)
-			ir.RepointHandler(cp.Failed, h, &hc)
+			if c.shareLoops {
+				c.handlers[h] = &hc
+				repointCopied(cp.Children, map[*ir.EventHandler]*ir.EventHandler{h: &hc}, nil)
+				repointCopied(cp.Failed, map[*ir.EventHandler]*ir.EventHandler{h: &hc}, nil)
+			} else {
+				ir.RepointHandler(cp.Children, h, &hc)
+				ir.RepointHandler(cp.Failed, h, &hc)
+			}
 		}
 		return &cp
 	case *ir.CanvasRedrawStmt:
@@ -738,26 +769,28 @@ func cloneStmt(s ir.Stmt) ir.Stmt {
 
 // copyStmts is cloneStmts' recursion: the copy alone, without repointing
 // what the copy names.
-func copyStmts(stmts []ir.Stmt) []ir.Stmt {
+func copyStmts(stmts []ir.Stmt) []ir.Stmt { return deepCloner.stmts(stmts) }
+
+func (c *stmtCloner) stmts(stmts []ir.Stmt) []ir.Stmt {
 	if stmts == nil {
 		return nil
 	}
 	out := make([]ir.Stmt, len(stmts))
 	for i, s := range stmts {
-		out[i] = cloneStmt(s)
+		out[i] = c.stmt(s)
 	}
 	return out
 }
 
-// cloneSlots copies each population's body and keeps its parameters, which a
+// slots copies each population's body and keeps its parameters, which a
 // splice binds by pointer.
-func cloneSlots(slots map[string]*ir.SlotContent) map[string]*ir.SlotContent {
+func (c *stmtCloner) slots(slots map[string]*ir.SlotContent) map[string]*ir.SlotContent {
 	if slots == nil {
 		return nil
 	}
 	out := make(map[string]*ir.SlotContent, len(slots))
 	for name, sc := range slots {
-		out[name] = &ir.SlotContent{Params: sc.Params, Body: copyStmts(sc.Body)}
+		out[name] = &ir.SlotContent{Params: sc.Params, Body: c.stmts(sc.Body)}
 	}
 	return out
 }

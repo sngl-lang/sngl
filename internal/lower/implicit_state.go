@@ -6,8 +6,8 @@ import (
 	"strconv"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/ir"
 )
 
 // passImplicitState gives a two-way prop the call site left unbound a cell of
@@ -78,6 +78,44 @@ func lowerImplicitState(pkg *ir.Package, _ Features, _ Options) error {
 	})
 }
 
+// hostReports is whether this target can write p of an instance of comp: a
+// cell is what the host's reports land in, and a prop nothing reports needs
+// none. Without one, the node stays a plain node -- static markup under a
+// const `for` rather than a component built at run time.
+//
+// The host is what this target renders comp as, which by now is its
+// override's body (passPlatformExtensionBody). A primitive is the host
+// itself, and a bodyless declaration with no override is one this build
+// cannot see into; both may report anything. Otherwise the body has to name
+// the prop for a report to reach it -- read it, bind a primitive's prop to
+// it, or name it in a descriptor, which is how bubbletea's `Widget.binds`
+// says which handler writes which prop (`Bind{prop="selected"}`). A name
+// matched rather than a symbol errs towards a cell, which is the safe side.
+//
+// Only asked of a node with no `#id`: a read of the prop through the handle
+// names the cell, so a node something reads keeps one.
+func hostReports(comp *ir.Component, p *ir.Prop) bool {
+	if isPrimitiveComponent(comp) || len(comp.Stmts) == 0 {
+		return true
+	}
+	named := false
+	_ = ir.Walk(comp.Stmts, func(n ir.Node) error {
+		switch x := n.(type) {
+		case *ir.Ident:
+			named = x.Name == p.Name
+		case *ir.Literal:
+			named = x.Value == p.Name
+		case *ir.NodeInst:
+			named = slices.ContainsFunc(x.Bindings, func(b ir.PropBinding) bool { return b.PropName == p.Name })
+		}
+		if named {
+			return ir.SkipAll
+		}
+		return nil
+	})
+	return named
+}
+
 // handleThrough is the node handle e names: the handle itself, or a select of
 // it through an instance of the component that declares it -- a test's
 // `c.box` -- whose read of `c.box.checked` is the same cell's.
@@ -137,26 +175,25 @@ func (st *implicitState) wrap(n *ir.NodeInst) (*ir.NodeInst, error) {
 		return nil, nil
 	}
 	unbound := ir.UnboundProps(comp, n.Bindings)
+	if n.Handle == nil && n.ID == "" {
+		unbound = slices.DeleteFunc(unbound, func(p *ir.Prop) bool { return !hostReports(comp, p) })
+	}
 	if len(unbound) == 0 {
 		return nil, nil
 	}
-	// Each is a gap no component in sngl:ui reaches: its two-way props are one
-	// per component and none takes content.
+	// A gap no component in sngl:ui reaches: its two-way props are one per
+	// component.
 	if len(n.Bindings) > 0 {
 		return nil, fmt.Errorf("%s: %s binds :%s and leaves :%s unbound, which is not supported yet; bind both, or neither", nodePos(n), comp.DisplayName(), n.Bindings[0].PropName, unbound[0].Name)
 	}
 	rest := comp.RestSlot()
-	var restPop *ir.SlotContent
-	if rest != nil && len(n.Slots) == 1 {
-		restPop = n.Slots[rest.Name]
-	}
-	if len(n.Slots) > 0 && restPop == nil || len(n.Children) > 0 && rest == nil {
+	if len(n.Children) > 0 && rest == nil || slices.ContainsFunc(ir.SlotNames(n.Slots), func(name string) bool { return slotDeclOf(comp, name) == nil }) {
 		return nil, fmt.Errorf("%s: %s is given content and leaves :%s unbound, which is not supported yet; bind :%s", nodePos(n), comp.DisplayName(), unbound[0].Name, unbound[0].Name)
 	}
 
 	w := &ir.Component{
-		Name: "__" + identSafe(comp.Name) + "_state" + strconv.Itoa(len(st.made)),
-		Tree: comp.Tree,
+		Name:   "__" + identSafe(comp.Name) + "_state" + strconv.Itoa(len(st.made)),
+		Family: comp.Family,
 	}
 	st.made = append(st.made, w)
 
@@ -238,29 +275,33 @@ func (st *implicitState) wrap(n *ir.NodeInst) (*ir.NodeInst, error) {
 	// arguments even where the node's rest slot is scoped -- a window's
 	// `content ...component(v T)` -- because bare children bind none.
 	//
-	// A population of that slot written by name -- a window's
-	// `component content(v)` -- is handed on the same way with its argument:
-	// the wrapper's slot takes it, and the node's own population inserts that
-	// slot with what the node hands it.
-	switch {
-	case restPop != nil:
-		fwd := &ir.SlotDecl{Name: rest.Name, Rest: true, Content: rest.Content, Card: rest.Card}
-		slot := &ir.SlotInst{Name: fwd.Name, Rest: true, Decl: fwd}
+	// A population written by name -- a window's `component content(v)`, or
+	// its `component favicon` -- is handed on the same way with its
+	// arguments: the wrapper's slot takes it, and the node's own population
+	// inserts that slot with what the node hands it.
+	for _, name := range ir.SlotNames(n.Slots) {
+		decl := slotDeclOf(comp, name)
+		fwd := &ir.SlotDecl{Name: decl.Name, Rest: decl.Rest, Content: decl.Content, Card: decl.Card}
+		slot := &ir.SlotInst{Name: fwd.Name, Rest: decl.Rest, Decl: fwd}
 		var params []*ir.Param
-		for _, p := range restPop.Params {
+		for _, p := range n.Slots[name].Params {
 			fwd.Params = append(fwd.Params, &ir.Param{Name: p.Name, Type: p.Type})
 			fp := &ir.Param{Name: "__" + p.Name, Type: p.Type}
 			params = append(params, fp)
 			slot.Args = append(slot.Args, &ir.Ident{Name: fp.Name, Type: fp.Type, Sym: fp})
 		}
-		w.Slots = []*ir.SlotDecl{fwd}
-		inner.Slots = map[string]*ir.SlotContent{rest.Name: {Params: params, Body: []ir.Stmt{slot}}}
-	case len(n.Children) > 0:
+		w.Slots = append(w.Slots, fwd)
+		if inner.Slots == nil {
+			inner.Slots = map[string]*ir.SlotContent{}
+		}
+		inner.Slots[name] = &ir.SlotContent{Params: params, Body: []ir.Stmt{slot}}
+	}
+	if len(n.Children) > 0 {
 		fwd := &ir.SlotDecl{Name: rest.Name, Rest: true, Content: rest.Content, Card: rest.Card}
-		w.Slots = []*ir.SlotDecl{fwd}
+		w.Slots = append(w.Slots, fwd)
 		inner.Children = []ir.Stmt{&ir.SlotInst{Name: fwd.Name, Rest: true, Decl: fwd}}
 	}
-	w.Body = []ir.Stmt{inner}
+	w.Stmts = []ir.Stmt{inner}
 
 	if n.Handle != nil {
 		st.reads[n.Handle] = cells
@@ -398,8 +439,8 @@ func repointCellReads(pkg *ir.Package, owners map[*ir.Var]*ir.Component, clones 
 
 func cellReadError(w *ir.Component, v *ir.Var, copies int) error {
 	pos, id := "<unknown>", "?"
-	if len(w.Body) > 0 {
-		if inner, ok := w.Body[0].(*ir.NodeInst); ok {
+	if len(w.Stmts) > 0 {
+		if inner, ok := w.Stmts[0].(*ir.NodeInst); ok {
 			pos, id = nodePos(inner), inner.ID
 		}
 	}
@@ -510,4 +551,13 @@ func handleCallPos(c *ir.Call) string {
 		}
 	}
 	return c.AST.Pos.String()
+}
+
+func slotDeclOf(comp *ir.Component, name string) *ir.SlotDecl {
+	for _, s := range comp.Slots {
+		if s.Name == name {
+			return s
+		}
+	}
+	return nil
 }

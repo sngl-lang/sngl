@@ -3,10 +3,10 @@
 package scheme
 
 import (
-	_ "git.duckfam.us/jonathan/sngl/codegen/scheme/file"
-	_ "git.duckfam.us/jonathan/sngl/codegen/scheme/git"
-	_ "git.duckfam.us/jonathan/sngl/codegen/scheme/golang"
-	_ "git.duckfam.us/jonathan/sngl/codegen/scheme/http"
-	_ "git.duckfam.us/jonathan/sngl/codegen/scheme/js"
-	_ "git.duckfam.us/jonathan/sngl/codegen/scheme/markdown"
+	_ "duckfam.us/sngl/codegen/scheme/file"
+	_ "duckfam.us/sngl/codegen/scheme/git"
+	_ "duckfam.us/sngl/codegen/scheme/golang"
+	_ "duckfam.us/sngl/codegen/scheme/http"
+	_ "duckfam.us/sngl/codegen/scheme/js"
+	_ "duckfam.us/sngl/codegen/scheme/markdown"
 )

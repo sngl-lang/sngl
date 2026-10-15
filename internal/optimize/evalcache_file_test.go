@@ -6,7 +6,7 @@ import (
 	"testing"
 	"unsafe"
 
-	"git.duckfam.us/jonathan/sngl/internal/asset"
+	"duckfam.us/sngl/internal/asset"
 )
 
 // A `file:` import's path() is folded once per fold, and a package is folded

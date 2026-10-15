@@ -6,8 +6,8 @@ package javascript
 import (
 	"strconv"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/ir"
 )
 
 // translateIRLiteral renders an ir.Literal to its JS literal text. Used by
@@ -80,7 +80,7 @@ func isIntIR(e ir.Expr) bool {
 	return false
 }
 
-// isPluralKeyMapType reports whether t is map<i18n.PluralKey, V>.
+// isPluralKeyMapType reports whether t is map[i18n.PluralKey, V].
 // The JS translator lowers such maps to plain objects with string keys,
 // because the JS i18n runtime uses string plural categories exclusively.
 func isPluralKeyMapType(t *ir.Type) bool {

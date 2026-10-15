@@ -2,13 +2,15 @@ package gtk4
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
+	"sync"
 
-	"git.duckfam.us/jonathan/sngl/codegen/platform/gtk4/gir"
-	"git.duckfam.us/jonathan/sngl/internal/gencache"
+	"duckfam.us/sngl/codegen/platform/gtk4/gir"
+	"duckfam.us/sngl/internal/gencache"
 )
 
 // The introspection data reaches this platform as two stored SNGL files, each
@@ -59,28 +61,22 @@ var parseGIR = gir.ParseGIR
 func produceRegistry(_ *gencache.Store, params []string) (gencache.Output, error) {
 	opt := params[0]
 	var (
-		inputs  []gencache.Input
-		reg     *gir.TypeRegistry
-		minimal bool
-		err     error
+		inputs []gencache.Input
+		src    gencache.Input
 	)
 	switch {
 	case opt == girBuiltin:
 		// Embedded in the compiler, so the compiler's identity in the key is
 		// its input.
-		reg, err = gir.ParseMinimal()
-		minimal = true
 	case opt != "":
-		p, perr := resolveGIRPath(opt)
-		if perr != nil {
-			return gencache.Output{}, perr
+		p, err := resolveGIRPath(opt)
+		if err != nil {
+			return gencache.Output{}, err
 		}
-		in, ferr := gencache.File(p)
-		if ferr != nil {
-			return gencache.Output{}, ferr
+		if src, err = gencache.File(p); err != nil {
+			return gencache.Output{}, err
 		}
-		inputs = append(inputs, in)
-		reg, err = parseGIR(p)
+		inputs = append(inputs, src)
 	default:
 		// The probe takes the first location that stats cleanly, as
 		// resolveGIRPath does, so the ones before it staying absent is part of
@@ -93,32 +89,67 @@ func produceRegistry(_ *gencache.Store, params []string) (gencache.Output, error
 				inputs = append(inputs, gencache.Absent(p))
 				continue
 			}
-			in, ferr := gencache.File(p)
-			if ferr != nil {
-				return gencache.Output{}, ferr
+			var err error
+			if src, err = gencache.File(p); err != nil {
+				return gencache.Output{}, err
 			}
-			inputs = append(inputs, in)
-			reg, err = parseGIR(p)
+			inputs = append(inputs, src)
 			break
 		}
-		if reg == nil && err == nil {
-			reg, err = gir.ParseMinimal()
-			minimal = true
-		}
 	}
+	body, err := registryBody(src.Get("path"), src.Get("sha256"))
 	if err != nil {
 		return gencache.Output{}, err
+	}
+	return gencache.Output{Inputs: inputs, Body: body}, nil
+}
+
+// encoded holds the registry files this process has written, by the digest of
+// the GIR each was parsed from ("" for the bundled subset). A store is one
+// build's, and a fresh one would otherwise parse an unchanged GIR again.
+var encoded = struct {
+	sync.Mutex
+	bodies map[string][]byte
+}{bodies: map[string][]byte{}}
+
+// registryBody is the gtk4.registry file for the GIR at path, whose content
+// has digest sum, or for the bundled subset when path is "".
+func registryBody(path, sum string) ([]byte, error) {
+	encoded.Lock()
+	body, ok := encoded.bodies[sum]
+	encoded.Unlock()
+	if ok {
+		return body, nil
+	}
+	var (
+		reg *gir.TypeRegistry
+		err error
+	)
+	if path == "" {
+		reg, err = gir.ParseMinimal()
+	} else {
+		reg, err = parseGIR(path)
+	}
+	if err != nil {
+		return nil, err
 	}
 	reg.Strip()
 	value, err := gencache.EncodeValue(reg)
 	if err != nil {
-		return gencache.Output{}, err
+		return nil, err
 	}
-	var body bytes.Buffer
-	fmt.Fprintf(&body, "%s%v\n%s", minimalPrefix, minimal, registryPrefix)
-	body.Write(value)
-	body.WriteByte('\n')
-	return gencache.Output{Inputs: inputs, Body: body.Bytes()}, nil
+	var b bytes.Buffer
+	fmt.Fprintf(&b, "%s%v\n%s", minimalPrefix, path == "", registryPrefix)
+	b.Write(value)
+	b.WriteByte('\n')
+	body = b.Bytes()
+	encoded.Lock()
+	defer encoded.Unlock()
+	if len(encoded.bodies) >= maxRegistries {
+		clear(encoded.bodies)
+	}
+	encoded.bodies[sum] = body
+	return body, nil
 }
 
 const (
@@ -126,9 +157,48 @@ const (
 	registryPrefix = "const registry = "
 )
 
+type decodedRegistry struct {
+	reg     *gir.TypeRegistry
+	minimal bool
+}
+
+// decoded holds the registries this process has read back, by the digest of
+// the stored file. A registry is never written once restored, so every store
+// holding the same file -- each script's own store, a fresh one per build --
+// shares one decode: the full GTK registry is megabytes of SNGL to parse.
+var decoded = struct {
+	sync.Mutex
+	regs map[[sha256.Size]byte]decodedRegistry
+}{regs: map[[sha256.Size]byte]decodedRegistry{}}
+
+// maxRegistries bounds what a long-lived process keeps of registries a changed
+// GIR has since replaced.
+const maxRegistries = 4
+
 // decodeRegistry reads a gtk4.registry file back into a registry, and whether
 // it is the bundled subset.
 func decodeRegistry(data []byte) (*gir.TypeRegistry, bool, error) {
+	key := sha256.Sum256(data)
+	decoded.Lock()
+	d, ok := decoded.regs[key]
+	decoded.Unlock()
+	if ok {
+		return d.reg, d.minimal, nil
+	}
+	reg, minimal, err := decodeRegistryText(data)
+	if err != nil {
+		return nil, false, err
+	}
+	decoded.Lock()
+	defer decoded.Unlock()
+	if len(decoded.regs) >= maxRegistries {
+		clear(decoded.regs)
+	}
+	decoded.regs[key] = decodedRegistry{reg, minimal}
+	return reg, minimal, nil
+}
+
+func decodeRegistryText(data []byte) (*gir.TypeRegistry, bool, error) {
 	body := gencache.Body(data)
 	first, rest, _ := bytes.Cut(body, []byte("\n"))
 	flag, ok := bytes.CutPrefix(first, []byte(minimalPrefix))

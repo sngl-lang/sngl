@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 // Clock is the interpreter's notion of time.

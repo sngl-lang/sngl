@@ -8,10 +8,10 @@ import (
 	"strings"
 	"time"
 
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/internal/build"
-	"git.duckfam.us/jonathan/sngl/internal/checker"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/internal/build"
+	"duckfam.us/sngl/internal/checker"
+	"duckfam.us/sngl/ir"
 )
 
 // A `sngl:<uri>` argument carries the package the checker built, not a

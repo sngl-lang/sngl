@@ -32,7 +32,7 @@ import (
 	"strings"
 	"time"
 
-	"git.duckfam.us/jonathan/sngl/internal/gencache"
+	"duckfam.us/sngl/internal/gencache"
 )
 
 // Producer is the name the producer is registered under.

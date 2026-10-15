@@ -3,8 +3,8 @@ import . "sngl:test"
 
 struct TreeNode {
     value int = 0
-    left option<TreeNode> = null
-    right option<TreeNode> = null
+    left  option[TreeNode] = null
+    right option[TreeNode] = null
 }
 
 // Each level is an instance of its own, so `#val` names that level's text and
@@ -59,8 +59,11 @@ func testRecursiveComponentRendersChildren(t Test, c main) {
     }
 }
 
+// A struct is a value: root holds a copy of node3, so a write to node3 reaches
+// what root renders once it is stored there again.
 func testRecursiveComponentMutation(t Test, c main) {
     c.node3.right = TreeNode{value=4}
+    c.root.left = c.node3
     var three = c.top.left
     t.assert(three != null)
     if three != null {

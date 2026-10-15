@@ -1,5 +1,4 @@
 import marks "sngl:internal/marks"
-import tree "sngl:tree"
 
 // What `sngl run` does with a target's output, written in the body of the
 // target's build-tree node:
@@ -16,18 +15,16 @@ import tree "sngl:tree"
 //
 // A platform's command wins over its language's, so `go run` is written once
 // on `sngl:language/go` and html says how it serves a site on its own node; an
-// override of the platform's node for one language (`component platform[go.language] { gen.run(…) }`)
+// override of the platform's node for one language (`component platform[go.language](…) { gen.run(…) }`)
 // wins over both. A target that writes none cannot be run. A command is the
 // target package's to write: one in a program is refused.
 #[marks.builtin("genRun")]
-#[tree.none]
-component run(@run(dir string, args list<string>))
+component run[F any](@run(dir string, args list[string])) F
 
 // What `sngl build` does with a target's output: build what `dir` holds into
 // the artifact at `out`. Found as `run` is.
 #[marks.builtin("genBuild")]
-#[tree.none]
-component build(@build(dir string, out string))
+component build[F any](@build(dir string, out string)) F
 
 // Runs cmd -- the program, then its arguments -- in dir, the current directory
 // when empty, with the terminal's standard input, output and error, and
@@ -35,4 +32,4 @@ component build(@build(dir string, out string))
 // build input, so nothing is recorded; it answers only in a `run` or `build`
 // handler.
 #[marks.intrinsic("gen.shell", build)]
-func shell(cmd list<string>, dir string = "") int
+func shell(cmd list[string], dir string = "") int

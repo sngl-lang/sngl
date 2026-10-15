@@ -10,7 +10,7 @@
 // number, `tr.one` exactly one, `option<T>` none or one.
 
 import . "sngl:ui"
-import tr "sngl:tree"
+import family "sngl:family"
 
 component frame(
     on bool = false,

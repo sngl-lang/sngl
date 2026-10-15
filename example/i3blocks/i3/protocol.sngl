@@ -11,19 +11,19 @@ const header = `{"version":1,"click_events":true}` + "\n[\n"
 // What one member of the family contributes: the block's fields, and the
 // handler a click on it runs.
 struct Entry {
-    name string
-    full string
-    short string
-    color color = #00000000
-    background color = #00000000
-    urgent bool
-    minWidth int
-    align Align
-    separator bool = true
+    name           string
+    full           string
+    short          string
+    color          color = #00000000
+    background     color = #00000000
+    urgent         bool
+    minWidth       int
+    align          Align
+    separator      bool = true
     // The space after the block, where it draws no separator; -1 is the
     // protocol's own.
     separatorWidth int = -1
-    click func(button int, x int, y int)
+    click          func(button int, x int, y int)
 }
 
 func quote(s string) => "\"" + s.replace("\\", "\\\\").replace("\"", "\\\"") + "\""
@@ -40,10 +40,10 @@ func alignName(a Align) string {
 
 // One status line. A block's `instance` is its position in the list, which
 // is how a click finds its way back to the member that was written there.
-func encode(members list<Entry>) string {
-    var blocks list<string> = []
+func encode(members list[Entry]) string {
+    var blocks list[string] = []
     for var i, e = members {
-        var fs list<string> = []
+        var fs list[string] = []
         fs.push("\"full_text\":" + quote(e.full))
         fs.push("\"instance\":" + quote("{i}"))
         if e.name != "" {

@@ -3,9 +3,9 @@ package gtk4
 import (
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/codegen/lang/golang"
-	"git.duckfam.us/jonathan/sngl/codegen/platform/gtk4/gir"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/codegen/lang/golang"
+	"duckfam.us/sngl/codegen/platform/gtk4/gir"
 )
 
 // widgetField is a persistent widget reference stored on the Model struct.
@@ -40,11 +40,13 @@ type gtkEventInvoker struct {
 	FieldName  string // Model widget field, e.g. "btn3"
 	GTKSignal  string // GTK signal name, e.g. "clicked"
 	WidgetType string // C type for the gpointer cast, e.g. "GtkButton"
-	// Payload is the Go type of the SNGL payload a test passes and
-	// PayloadField its field the widget's state is set from; both "" when
-	// the widget has no state the payload can be written into.
-	Payload      string
-	PayloadField string
+	// State says the widget holds an on/off state a test sets from the bool
+	// it passes, which is what a user's flip does.
+	State bool
+	// List says FieldName lists every copy of the widget in render order
+	// (namedWidgetField): the invoker fires the last one built, and its `At`
+	// variant the copy at an index.
+	List bool
 }
 
 // --- Lookup tables (consumed by gtk4Translator) ---

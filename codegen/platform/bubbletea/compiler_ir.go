@@ -6,10 +6,10 @@ import (
 	"strconv"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/codegen/lang/golang"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/codegen/lang/golang"
+	"duckfam.us/sngl/ir"
 )
 
 // Config controls code generation. Field names mirror bubbletea.sngl options.
@@ -56,6 +56,10 @@ type widgetInfo struct {
 	placeholder string // Go-quoted-ready raw string; "" = no placeholder setter
 	focusExpr   string // Go expr that is true when this widget is focused; "" = no tracking
 	node        *ir.NodeInst
+	// loop is set for a widget a loop renders, which is a model per copy
+	// (loopwidget.go); its binds then name no target, and every path written
+	// for one model skips it.
+	loop *loopWidget
 }
 
 // widgetBind pairs a two-way bound model field with the user var it syncs to.
@@ -92,6 +96,8 @@ func bindReadBack(field, get string) string {
 var widgetSyncGoTypes = map[string]struct{}{
 	"string": {},
 	"int":    {},
+	// An option[date], which tui.DateInput reads and writes.
+	"*time.Time": {},
 }
 
 // bindTargetSyncs keeps the constructor seed, the Set* setter and the Update
@@ -114,7 +120,7 @@ func CompileIR(ctx *codegen.CodegenCtx, cfg Config) ([]byte, error) {
 	cfg = cfg.withDefaults()
 	info := analyzeIR(ctx)
 	body, imports := emitIR(info, ctx, cfg)
-	body = golang.PruneStructDecls(body, golang.PayloadPruneCandidates(ctx.Pkg, codegen.TriggerPayloads(ctx.Pkg)))
+	body = golang.PruneStructDecls(body, golang.PayloadPruneCandidates(ctx.Pkg, codegen.TriggerArgs(ctx.Pkg)))
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
@@ -123,9 +129,17 @@ func CompileIR(ctx *codegen.CodegenCtx, cfg Config) ([]byte, error) {
 	// tests consume; the caller's emitter adds the generated-by header, so
 	// Source is left empty.
 	mem := codegen.NewMemSink()
-	e := (&golang.Translator{}).NewFileEmitter(mem, codegen.FileOptions{
+	tr := &golang.Translator{}
+	// A `#[cnative]` call is a call into C, which cgo reaches only through the
+	// headers the program's c.link directives name.
+	var preamble string
+	if links := ir.ReachedCLinks(ctx.Pkg); len(links) > 0 {
+		preamble = tr.EmitCHeader(links)
+	}
+	e := tr.NewFileEmitter(mem, codegen.FileOptions{
 		Name:        "model.go",
 		PackageName: cfg.Package,
+		CgoPreamble: preamble,
 	})
 	// pkg/go/canvas default-aliases to "canvas", but the draw-func selectors
 	// reference it as snglcanvas.
@@ -285,6 +299,7 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 	// An empty __focused prop (passFocusOrder did not run) means focus
 	// tracking is not active.
 	view := viewStmts(ctx)
+	loopsOf := widgetLoops(view)
 	codegen.WalkVisualTree(view, func(n *ir.NodeInst, _ int) bool {
 		if btIntrinsic(n) != "Widget" {
 			return false
@@ -333,14 +348,23 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 				break
 			}
 		}
-		info.widgets = append(info.widgets, widgetInfo{
+		wi := widgetInfo{
 			fieldName:   fieldName,
 			model:       model,
 			binds:       binds,
 			placeholder: placeholder,
 			focusExpr:   nodeStaticFocusExpr(n, gc),
 			node:        n,
-		})
+		}
+		if loops := loopsOf[n]; len(loops) > 0 && len(bp.Binds) > 0 {
+			if lw := newLoopWidget(n, loops, bp.Binds[0].Prop); lw != nil {
+				wi.loop, wi.focusExpr = lw, ""
+				for i := range wi.binds {
+					wi.binds[i].target = ""
+				}
+			}
+		}
+		info.widgets = append(info.widgets, wi)
 		return false
 	})
 
@@ -394,6 +418,12 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 		b.WriteString("}\n\n")
 	}
 
+	if usesStyleValue(ctx.Pkg) {
+		gc.RequireImport("charm.land/lipgloss/v2")
+		gc.RequireImport("duckfam.us/sngl/pkg/go/snglcolor")
+		b.WriteString(styleValueDecl(cfg.ScaleFactor))
+	}
+
 	// The canvas stdlib structs are read by the synthesized draw funcs but are
 	// not carried on pkg.Structs for the Go path. Skip a name a user struct
 	// already declares.
@@ -436,6 +466,10 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 		b.WriteString("\n")
 	}
 	for _, w := range info.widgets {
+		if w.loop != nil {
+			fmt.Fprintf(&b, "\t%s map[string]%s\n", w.fieldName, w.model.Type)
+			continue
+		}
 		fmt.Fprintf(&b, "\t%s %s\n", w.fieldName, w.model.Type)
 	}
 	if len(info.widgets) > 0 {
@@ -459,6 +493,10 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 	}
 	firstFocusable := true
 	for _, w := range info.widgets {
+		if w.loop != nil {
+			fmt.Fprintf(&b, "\tm.%s = map[string]%s{}\n", w.fieldName, w.model.Type)
+			continue
+		}
 		fmt.Fprintf(&b, "\tm.%s = %s\n", w.fieldName, w.model.New)
 		if w.placeholder != "" {
 			fmt.Fprintf(&b, "\tm.%s.Placeholder = %q\n", w.fieldName, w.placeholder)
@@ -511,6 +549,10 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 		b.WriteString("func (m *Model) resizeWidgets() {\n")
 		for _, w := range info.widgets {
 			if w.model.Resize == "" {
+				continue
+			}
+			if w.loop != nil {
+				fmt.Fprintf(&b, "\tfor key, w := range m.%s {\n\t\tw%s\n\t\tm.%s[key] = w\n\t}\n", w.fieldName, w.model.Resize, w.fieldName)
 				continue
 			}
 			fmt.Fprintf(&b, "\tm.%s%s\n", w.fieldName, w.model.Resize)
@@ -573,7 +615,7 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 			continue
 		}
 		// golang.LiftsToFreeFunc is the one answer the call site uses too.
-		if fn.Receiver != "" && golang.LiftsToFreeFunc(ctx.Pkg, fn.Receiver) {
+		if fn.IsMethod() && golang.LiftsToFreeFunc(ctx.Pkg, fn) {
 			emitIRTypeMethod(&b, fn, gc)
 			continue
 		}
@@ -590,7 +632,7 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 		// beside the `m.paint__inst0(…)` calling it. fyne and gtk4 ask the
 		// same question here and always did. A synthesized func is not in
 		// ModelFreeFuncs either, so its call sites spell it on m.
-		if fn.Receiver == "" && !fn.Synthesized && !componentFuncs[fn] && !stateFuncs[fn] {
+		if !fn.IsMethod() && !fn.Synthesized && !componentFuncs[fn] && !stateFuncs[fn] {
 			emitIRFreeFunc(&b, fn, gc)
 			continue
 		}
@@ -602,6 +644,9 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 	var widgetInits []string
 	seenInit := map[string]bool{}
 	for _, w := range info.widgets {
+		if w.loop != nil {
+			continue
+		}
 		if w.model.Init != "" && !seenInit[w.model.Init] {
 			seenInit[w.model.Init] = true
 			widgetInits = append(widgetInits, w.model.Init)
@@ -637,19 +682,10 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 	b.WriteString("}\n\n")
 
 	var eventInvokers []btEventInvoker
-	emitIRUpdate(&b, info, ctx, gc, cfg, func(n *ir.NodeInst, event string, slotIdx int, keyExpr string) {
-		// A synthesized id is not something a test can write.
-		if n.ID == "" || strings.HasPrefix(n.ID, "__n") {
-			return
-		}
-		eventInvokers = append(eventInvokers, btEventInvoker{
-			IDLabel:   n.ID,
-			SnglEvent: event,
-			SlotIdx:   slotIdx,
-			KeyExpr:   keyExpr,
-		})
+	emitIRUpdate(&b, info, ctx, gc, cfg, func(inv btEventInvoker) {
+		eventInvokers = append(eventInvokers, inv)
 	})
-	emitBtEventInvokers(&b, eventInvokers, codegen.TriggerPayloads(ctx.Pkg))
+	emitBtEventInvokers(&b, eventInvokers, codegen.TriggerArgs(ctx.Pkg))
 	emitPresenceChecks(&b, viewStmts(ctx), codegen.NullTestedRefs(ctx.Pkg), gc)
 	emitWidgetPayloadHandlers(&b, info, gc)
 	emitTimerSyncs(&b, info.timers, gc)
@@ -660,19 +696,14 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 		emitIRComponentMethod(&b, cc, ctx, gc, cfg)
 	}
 
-	if ctx.Pkg != nil && ctx.Pkg.UsesRemote {
-		b.WriteString("// remoteSettledMsg wakes the program when a fetch answers.\n")
-		b.WriteString("type remoteSettledMsg struct{}\n\n")
-	}
-
 	if cfg.Main {
 		b.WriteString("func main() {\n")
 		b.WriteString("\tp := tea.NewProgram(New())\n")
-		if ctx.Pkg != nil && ctx.Pkg.UsesRemote {
-			// After NewProgram, since the callback holds the program. Send is
-			// safe before Run: it blocks until the program is listening.
-			b.WriteString("\tremote.Default.OnSettle(func() { p.Send(remoteSettledMsg{}) })\n")
-			gc.RequireImport("git.duckfam.us/jonathan/sngl/pkg/go/remote")
+		if usesPictures(ctx.Pkg) {
+			// Any message draws the view again, which is all a picture that has
+			// just arrived needs.
+			gc.RequireImport(golang.SnglImageImportPath)
+			b.WriteString("\tsnglimage.OnArrive(func() { p.Send(struct{}{}) })\n")
 		}
 		teardown := ctx.Pkg != nil && ctx.Pkg.Teardown != nil
 		if teardown {
@@ -796,7 +827,8 @@ func emitIRFunc(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext) {
 	// invoke `c.<name>(...)`). Defer signature/body emission to the Go language
 	// driver's EmitFuncDef instead of re-implementing param/return/body here.
 	fnCopy := *fn
-	fnCopy.Receiver = "Model"
+	fnCopy.Receiver = nil
+	fnCopy.Lowered.HostReceiver = "Model"
 	for _, line := range gc.EmitFuncDef(&fnCopy) {
 		b.WriteString(line)
 		b.WriteByte('\n')
@@ -843,16 +875,6 @@ func emitIRGettersSetters(b *strings.Builder, info *irAnalysis, ctx *codegen.Cod
 			v := ov.Var()
 			if v == nil || v.Name != bind.name {
 				continue
-			}
-			for _, h := range v.Handlers {
-				if h.Name == "change" && h.Func != nil {
-					hgc := codegen.BindVarHandlerValue(gc, h, "v")
-					for _, stmt := range h.Func.Block {
-						for _, line := range hgc.EvalStmt(stmt) {
-							fmt.Fprintf(b, "\t%s\n", line)
-						}
-					}
-				}
 			}
 		}
 		b.WriteString("\treturn m\n")
@@ -923,13 +945,6 @@ func emitIRUpdate(b *strings.Builder, info *irAnalysis, ctx *codegen.CodegenCtx,
 		b.WriteString("\t\t\t\tcmds = append(cmds, tea.Tick(3*time.Second, func(time.Time) tea.Msg { return toastDismissMsg{} }))\n")
 		b.WriteString("\t\t\t}\n")
 		b.WriteString("\t\t}\n")
-	}
-
-	// A settled fetch. The box already holds the answer -- what was missing is
-	// a reason to look at it again, and in Bubble Tea that is a message: every
-	// Update is followed by a View, so the case needs no body.
-	if ctx.Pkg != nil && ctx.Pkg.UsesRemote {
-		b.WriteString("\tcase remoteSettledMsg:\n")
 	}
 
 	// WindowSizeMsg
@@ -1014,12 +1029,17 @@ func emitIRUpdate(b *strings.Builder, info *irAnalysis, ctx *codegen.CodegenCtx,
 		if w.model.Update == "" {
 			continue
 		}
+		if w.loop != nil {
+			emitLoopWidgetForward(b, w, info, gc, fwdIndent)
+			continue
+		}
 		if w.focusExpr != "" {
 			fmt.Fprintf(b, "%sif %s {\n", fwdIndent, w.focusExpr)
 		} else {
 			fmt.Fprintf(b, "%s{\n", fwdIndent)
 		}
-		get, hasInput, hasChange := widgetPayloadEvents(w)
+		val, hasInput, hasChange := widgetPayloadEvents(w)
+		get := val.get
 		if hasInput {
 			fmt.Fprintf(b, "%s\t__prev := %s\n", fwdIndent, bindReadBack(w.fieldName, get))
 		}
@@ -1072,7 +1092,7 @@ func emitIRButtonHandlers(b *strings.Builder, stmts []ir.Stmt, info *irAnalysis,
 
 // btInvokerSink records one (node, event) pair a test can drive. nil where
 // there is no test surface to emit.
-type btInvokerSink func(n *ir.NodeInst, event string, slotIdx int, keyExpr string)
+type btInvokerSink func(inv btEventInvoker)
 
 // emitIRButtonHandlersWalk traverses visual IR emitting KeyEnter cases for
 // button/checkbox handlers. A for-loop is a loop slot as a whole, answered by
@@ -1101,7 +1121,7 @@ func emitIRButtonHandlersWalk(b *strings.Builder, stmts []ir.Stmt, info *irAnaly
 	for _, s := range stmts {
 		switch n := s.(type) {
 		case *ir.For:
-			emitLoopSlotHandlers(b, n, info, gc, overlayGuard)
+			emitLoopSlotHandlers(b, n, info, gc, overlayGuard, invokerSink)
 		case *ir.If:
 			emitIRButtonHandlersWalk(b, n.Body, info, gc, bgGuard, inOverlay, invokerSink)
 			emitIRButtonHandlersWalk(b, n.Else, info, gc, bgGuard, inOverlay, invokerSink)
@@ -1124,9 +1144,9 @@ func emitIRButtonHandlersWalk(b *strings.Builder, stmts []ir.Stmt, info *irAnaly
 					continue
 				}
 				emitNodeCase(n, guard, h.Func.Block)
-				if invokerSink != nil {
+				if invokerSink != nil && n.ID != "" && !strings.HasPrefix(n.ID, "__n") {
 					if idx := nodeFocusSlotIdx(n); idx >= 0 {
-						invokerSink(n, ev.On, idx, teaKeyMsg(ev.Key))
+						invokerSink(btEventInvoker{IDLabel: n.ID, SnglEvent: ev.On, SlotIdx: idx, KeyExpr: teaKeyMsg(ev.Key)})
 					}
 				}
 			}
@@ -1208,6 +1228,10 @@ type btEventInvoker struct {
 	SnglEvent string // the event a test writes, e.g. "click"
 	SlotIdx   int    // the focus slot the widget occupies
 	KeyExpr   string // the tea key message that activates it
+	// Cursor is the loop slot's cursor field, for a node a loop renders: its
+	// copies are ordinals of that slot, and Copies is a Go expression of the
+	// ordinal of each, in render order. Empty for a node outside a loop.
+	Cursor, Copies string
 }
 
 // teaKeyMsg is the message a press of key arrives as. It pairs with
@@ -1231,10 +1255,10 @@ func teaKeyMsg(key string) string {
 // through the pointer receiver; a test holds an addressable local, which is
 // what makes `c.incClick()` legal.
 //
-// A payload a test passes is taken and not read: the key is the input, and
-// what it produces is what the override builds from the widget's state -- a
-// checkbox's press is its `checked` flipped, whatever the test asked for.
-func emitBtEventInvokers(b *strings.Builder, invokers []btEventInvoker, payloads map[string]*ir.Type) {
+// What a test passes is taken and not read: the key is the input, and what it
+// produces is what the override reads off the widget's state -- a checkbox's
+// press is its `checked` flipped, whatever the test asked for.
+func emitBtEventInvokers(b *strings.Builder, invokers []btEventInvoker, args map[string][]*ir.Type) {
 	seen := map[string]bool{}
 	for _, inv := range invokers {
 		name := inv.IDLabel + golang.ExportName(inv.SnglEvent)
@@ -1242,12 +1266,16 @@ func emitBtEventInvokers(b *strings.Builder, invokers []btEventInvoker, payloads
 			continue
 		}
 		seen[name] = true
-		fmt.Fprintf(b, "// %s activates the #%s widget the way a keypress does; for tests.\n", name, inv.IDLabel)
-		if t := payloads[inv.IDLabel+"."+inv.SnglEvent]; t != nil {
-			fmt.Fprintf(b, "func (m *Model) %s(_ %s) {\n", name, golang.IRTypeToGo(t))
-		} else {
-			fmt.Fprintf(b, "func (m *Model) %s() {\n", name)
+		params := make([]string, 0, len(args[inv.IDLabel+"."+inv.SnglEvent]))
+		for _, t := range args[inv.IDLabel+"."+inv.SnglEvent] {
+			params = append(params, "_ "+golang.IRTypeToGo(t))
 		}
+		if inv.Cursor != "" {
+			emitBtLoopInvokers(b, inv, name, params)
+			continue
+		}
+		fmt.Fprintf(b, "// %s activates the #%s widget the way a keypress does; for tests.\n", name, inv.IDLabel)
+		fmt.Fprintf(b, "func (m *Model) %s(%s) {\n", name, strings.Join(params, ", "))
 		fmt.Fprintf(b, "\tprev := m.__focusID\n")
 		fmt.Fprintf(b, "\tm.__focusID = %d\n", inv.SlotIdx)
 		fmt.Fprintf(b, "\tnm, _ := m.Update(%s)\n", inv.KeyExpr)
@@ -1257,28 +1285,79 @@ func emitBtEventInvokers(b *strings.Builder, invokers []btEventInvoker, payloads
 	}
 }
 
-// widgetPayloadEvents reports which of a text widget's payload events the
-// program handles, and the getter its value is read back through. @input
-// fires when an Update changed the text; @change, on Enter in a single-line
-// input, is the commit. Only a widget read back with .Value() carries text.
-func widgetPayloadEvents(w widgetInfo) (get string, input, change bool) {
+// emitBtLoopInvokers writes the invokers of a node a loop renders: the copy
+// at an index is the one the slot's cursor names when it is at that copy's
+// ordinal, which the loop is walked to find as View counts it. The plain
+// invoker drives the last copy, as fyne's and gtk4's do. What a test passes
+// is taken and not read, as every invoker here takes it: the key is the
+// input.
+func emitBtLoopInvokers(b *strings.Builder, inv btEventInvoker, name string, params []string) {
+	at := codegen.InvokerAt(name)
+	fmt.Fprintf(b, "// %s activates the copy of #%s at index i, in render order, the way a keypress does; for tests.\n", at, inv.IDLabel)
+	fmt.Fprintf(b, "func (m *Model) %s(%s) {\n", at, strings.Join(append([]string{"i int"}, params...), ", "))
+	fmt.Fprintf(b, "\tat := %s\n", inv.Copies)
+	b.WriteString("\tif i < 0 || i >= len(at) {\n\t\treturn\n\t}\n")
+	fmt.Fprintf(b, "\tprev, prevAt := m.__focusID, m.%s\n", inv.Cursor)
+	fmt.Fprintf(b, "\tm.__focusID, m.%s = %d, at[i]\n", inv.Cursor, inv.SlotIdx)
+	fmt.Fprintf(b, "\tnm, _ := m.Update(%s)\n", inv.KeyExpr)
+	b.WriteString("\t*m = nm.(Model)\n")
+	fmt.Fprintf(b, "\tm.__focusID, m.%s = prev, prevAt\n", inv.Cursor)
+	b.WriteString("}\n\n")
+
+	named := make([]string, len(params))
+	call := []string{fmt.Sprintf("len(%s) - 1", inv.Copies)}
+	for i, p := range params {
+		v := fmt.Sprintf("v%d", i)
+		named[i] = v + strings.TrimPrefix(p, "_")
+		call = append(call, v)
+	}
+	fmt.Fprintf(b, "// %s activates the last copy of #%s the way a keypress does; for tests.\n", name, inv.IDLabel)
+	fmt.Fprintf(b, "func (m *Model) %s(%s) {\n", name, strings.Join(named, ", "))
+	fmt.Fprintf(b, "\tm.%s(%s)\n", at, strings.Join(call, ", "))
+	b.WriteString("}\n\n")
+}
+
+// widgetValue is the value a widget's events carry: how it is read back from
+// the widget and written into it, and its Go type.
+type widgetValue struct {
+	get, set, goType string
+}
+
+// widgetValues are the binds a widget's events carry the value of: a text
+// field's text, and tui.DateInput's date as the *time.Time an option[date]
+// is in Go.
+var widgetValues = []widgetValue{
+	{get: ".Value()", set: ".SetValue", goType: "string"},
+	{get: ".Date()", set: ".SetDate", goType: "*time.Time"},
+}
+
+// widgetPayloadEvents reports which of a widget's payload events the program
+// handles, and the value they carry. @input fires when an Update changed the
+// value; @change, on Enter in a single-line field, is the commit. Only a
+// widget bound through one of widgetValues carries a value.
+func widgetPayloadEvents(w widgetInfo) (val widgetValue, input, change bool) {
 	if w.node == nil {
-		return "", false, false
+		return widgetValue{}, false, false
 	}
 	for _, bd := range w.binds {
-		if bd.get == ".Value()" && bd.set == ".SetValue" {
-			get = bd.get
+		for _, wv := range widgetValues {
+			if bd.get == wv.get && bd.set == wv.set {
+				val = wv
+			}
+		}
+		if val.get != "" {
 			break
 		}
 	}
-	if get == "" {
-		return "", false, false
+	if val.get == "" {
+		return widgetValue{}, false, false
 	}
 	has := func(event string) bool {
 		h := codegen.NodeHandler(w.node, event)
 		return h != nil && h.Func != nil
 	}
-	return get, has("input"), has("change") && w.model.Type == "textinput.Model"
+	singleLine := w.model.Type == "textinput.Model" || w.model.Type == "tui.DateInput"
+	return val, has("input"), has("change") && singleLine
 }
 
 func widgetEventMethod(w widgetInfo, event string) string {
@@ -1294,15 +1373,39 @@ func widgetEventMethod(w widgetInfo, event string) string {
 // carries: the event types are declarations nothing else here emits.
 func emitWidgetPayloadHandlers(b *strings.Builder, info *irAnalysis, gc *golang.GoIRContext) {
 	for _, w := range info.widgets {
-		get, hasInput, hasChange := widgetPayloadEvents(w)
-		// A text widget whose only subscriber is its binding -- a cell the
-		// call site left unbound, or a `:value` with no @input -- still takes
-		// a test's typing: into the widget, and back into the var the way
+		if w.loop != nil {
+			emitLoopWidgetMethods(b, w, gc)
+			emitLoopWidgetInvokers(b, w, info, gc)
+		}
+	}
+	for _, w := range info.widgets {
+		val, hasInput, hasChange := widgetPayloadEvents(w)
+		get := val.get
+		if strings.Contains(val.goType, "time.") {
+			gc.RequireImport("time")
+		}
+		if w.loop != nil {
+			continue
+		}
+		// A widget whose only subscriber is its binding -- a cell the call
+		// site left unbound, or a `:value` with no handler -- still takes a
+		// test's value: into the widget, and back into the var the way
 		// Update writes it.
-		if get != "" && !hasInput && w.node.ID != "" && !strings.HasPrefix(w.node.ID, "__n") {
-			fmt.Fprintf(b, "// %sInput types v into the #%s widget; for tests.\n", w.node.ID, w.node.ID)
-			fmt.Fprintf(b, "func (m *Model) %sInput(v string) {\n", w.node.ID)
-			fmt.Fprintf(b, "\tm.%s.SetValue(v)\n", w.fieldName)
+		named := w.node.ID != "" && !strings.HasPrefix(w.node.ID, "__n")
+		singleLine := w.model.Type == "textinput.Model" || w.model.Type == "tui.DateInput"
+		for _, ev := range []struct {
+			name string
+			want bool
+		}{
+			{"input", get != "" && !hasInput && val.goType == "string"},
+			{"change", get != "" && !hasChange && singleLine},
+		} {
+			if !ev.want || !named {
+				continue
+			}
+			fmt.Fprintf(b, "// %s%s puts v in the #%s widget; for tests.\n", w.node.ID, golang.ExportName(ev.name), w.node.ID)
+			fmt.Fprintf(b, "func (m *Model) %s%s(v %s) {\n", w.node.ID, golang.ExportName(ev.name), val.goType)
+			fmt.Fprintf(b, "\tm.%s%s(v)\n", w.fieldName, val.set)
 			for _, bd := range w.binds {
 				if bindTargetSyncs(info.binds, bd.target) {
 					fmt.Fprintf(b, "\tm.%s = %s\n", bd.target, bindReadBack(w.fieldName, bd.get))
@@ -1319,11 +1422,11 @@ func emitWidgetPayloadHandlers(b *strings.Builder, info *irAnalysis, gc *golang.
 			}
 			h := codegen.NodeHandler(w.node, ev.name)
 			hgc := gc
-			fmt.Fprintf(b, "func (m *Model) %s(__v string) {\n", widgetEventMethod(w, ev.name))
+			fmt.Fprintf(b, "func (m *Model) %s(__v %s) {\n", widgetEventMethod(w, ev.name), val.goType)
 			if len(h.Func.Params) > 0 {
 				name := h.Func.Params[0].Name
 				hgc = gc.WithLocal(name)
-				fmt.Fprintf(b, "\t%s := struct{ Value string }{Value: __v}\n\t_ = %s\n", name, name)
+				fmt.Fprintf(b, "\t%s := __v\n\t_ = %s\n", name, name)
 			}
 			for _, stmt := range h.Func.Block {
 				for _, line := range hgc.EvalStmt(stmt) {
@@ -1336,8 +1439,8 @@ func emitWidgetPayloadHandlers(b *strings.Builder, info *irAnalysis, gc *golang.
 				continue
 			}
 			fmt.Fprintf(b, "// %s%s types v into the #%s widget and runs its @%s; for tests.\n", w.node.ID, golang.ExportName(ev.name), w.node.ID, ev.name)
-			fmt.Fprintf(b, "func (m *Model) %s%s(v string) {\n", w.node.ID, golang.ExportName(ev.name))
-			fmt.Fprintf(b, "\tm.%s.SetValue(v)\n", w.fieldName)
+			fmt.Fprintf(b, "func (m *Model) %s%s(v %s) {\n", w.node.ID, golang.ExportName(ev.name), val.goType)
+			fmt.Fprintf(b, "\tm.%s%s(v)\n", w.fieldName, val.set)
 			// What Update writes back from the widget before it runs the
 			// handler, so a handler reading the bound var reads the text.
 			for _, bd := range w.binds {
@@ -1375,6 +1478,10 @@ func teaKeyGuard(key string) string {
 
 func emitIRFocusSync(b *strings.Builder, widgets []widgetInfo) {
 	for _, w := range widgets {
+		if w.loop != nil && modelHasFocusMethods(w.model.Type) {
+			fmt.Fprintf(b, "\t\t\tm.%s()\n", loopFocusMethod(w))
+			continue
+		}
 		if w.focusExpr == "" || !modelHasFocusMethods(w.model.Type) {
 			continue
 		}

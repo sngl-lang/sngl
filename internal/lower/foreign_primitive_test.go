@@ -4,8 +4,8 @@ import (
 	"strings"
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/internal/lower"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/internal/lower"
+	"duckfam.us/sngl/ir"
 )
 
 // A platform primitive's #[intrinsic] id is the emitting codegen's dispatch
@@ -20,7 +20,7 @@ func TestAForeignPlatformPrimitiveIsRejectedUnlessClaimed(t *testing.T) {
 	build := func(claims func(string) bool) error {
 		foreign := &ir.Component{Name: "Switch", Intrinsic: "android:Switch"}
 		main := &ir.Component{Name: "main"}
-		main.Body = []ir.Stmt{&ir.NodeInst{Name: "Switch", Component: foreign}}
+		main.Stmts = []ir.Stmt{&ir.NodeInst{Name: "Switch", Component: foreign}}
 		pkg := &ir.Package{Components: []*ir.Component{foreign, main}, Symbols: ir.NewSymbolTable()}
 		return lower.Lower(pkg, lower.NoLowering(), lower.Options{
 			Platform:        "html",
@@ -56,7 +56,7 @@ func TestAForeignPlatformPrimitiveIsRejectedUnlessClaimed(t *testing.T) {
 	// And the platform's own primitive needs no claim at all.
 	own := &ir.Component{Name: "Div", Intrinsic: "html:Div"}
 	main := &ir.Component{Name: "main"}
-	main.Body = []ir.Stmt{&ir.NodeInst{Name: "Div", Component: own}}
+	main.Stmts = []ir.Stmt{&ir.NodeInst{Name: "Div", Component: own}}
 	pkg := &ir.Package{Components: []*ir.Component{own, main}, Symbols: ir.NewSymbolTable()}
 	if err := lower.Lower(pkg, lower.NoLowering(), lower.Options{Platform: "html"}); err != nil {
 		t.Errorf("html refused its own primitive: %v", err)

@@ -3,7 +3,7 @@ package lower
 import (
 	"fmt"
 
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 var passComputed = pass{
@@ -55,7 +55,7 @@ func isComputed(f *ir.Func) bool {
 		return false
 	}
 	n := len(f.Params)
-	if n > 0 && f.Receiver != "" && f.Params[0].Receiver {
+	if n > 0 && f.IsMethod() && f.Params[0].Receiver {
 		n--
 	}
 	return n == 0
@@ -157,7 +157,7 @@ func inlineComputedExpr(e ir.Expr, bodies map[*ir.Func]ir.Expr) ir.Expr {
 			x.Entries[i].Value = inlineComputedExpr(x.Entries[i].Value, bodies)
 		}
 		return x
-	case *ir.Literal, *ir.Ident, *ir.ContextRead:
+	case *ir.Literal, *ir.Ident, *ir.ContextRead, *ir.SlotEmpty:
 		// Terminal — no nested Calls to inline.
 		return x
 	default:

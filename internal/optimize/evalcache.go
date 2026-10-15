@@ -6,9 +6,10 @@ import (
 	"path"
 	"sync"
 
-	"git.duckfam.us/jonathan/sngl/internal/asset"
-	"git.duckfam.us/jonathan/sngl/internal/gencache"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/internal/asset"
+	"duckfam.us/sngl/internal/gencache"
+	"duckfam.us/sngl/internal/interp"
+	"duckfam.us/sngl/ir"
 )
 
 // constResult is a finished compile-time evaluation: the checked IR of the
@@ -37,7 +38,8 @@ type EvalCache struct {
 	// gen is the store a go: value is kept in between compilations, keyed on
 	// what the value was built from rather than on the call alone. Nil means
 	// the process's default store.
-	gen *gencache.Store
+	gen   *gencache.Store
+	units interp.UnitTables
 }
 
 // fileResult is one file: import's read: the bytes, and the content-hashed

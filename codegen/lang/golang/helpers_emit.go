@@ -5,7 +5,7 @@ import (
 	"slices"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 // HelperSet records which lang-emitted runtime helpers and stdlib
@@ -29,7 +29,7 @@ type HelperSet struct {
 	// NeedTimeImport is any mention of the family at all, annotation
 	// included. It was the same four flags doing both jobs, and fyne's timer
 	// is what separated them: its `*time.Ticker` carries a
-	// `go.chan<time.datetime>`, which is a type nothing ever parses, so six
+	// `go.chan[time.datetime]`, which is a type nothing ever parses, so six
 	// timer fixtures emitted a `mustParseDateTime` no line called.
 	NeedTimeImport bool
 	// `int(s)` and `float(s)` are conversions the language allows and Go does
@@ -40,13 +40,15 @@ type HelperSet struct {
 	NeedParseFloat bool
 	// A sngl:seq sequence that is not a loop head's own iterable: the loop
 	// head becomes a counting `for` and needs nothing, and everywhere else
-	// the sequence is the pull func iter<int> is spelled as. One helper says
+	// the sequence is the pull func iter[int] is spelled as. One helper says
 	// that in three lines rather than a closure at every call site.
 	NeedSeq bool
-	// A bare T promoted into an option<T>. Go's option is *T and `&` is only
+	// A bare T promoted into an option[T]. Go's option is *T and `&` is only
 	// legal on an addressable operand, so the box is a helper rather than an
 	// operator -- see the IsOptionWrap arm of evalConversion.
 	NeedSome bool
+	// NeedOptEq: an option compared with a value of its element (OptionCompare).
+	NeedOptEq bool
 	// UnitStrings are the unit decls some string conversion renders, in the
 	// order first seen. One helper each rather than one shared: a unit's bases
 	// are per declaration, so the terms have to be written out.
@@ -85,8 +87,8 @@ func UnitStringConversion(n *ir.Conversion) *ir.UnitDef {
 // allows on a string and Go does not: `float64(s)` does not compile and
 // `int(s)` would be a rune.
 //
-// The operand's declared type is what decides, so a `dyn` stays a plain cast —
-// there is nothing to say it holds a string.
+// The operand's declared type is what decides: only a string operand takes a
+// helper, and every other one stays a plain cast.
 func StringToNumberHelper(n *ir.Conversion) string {
 	if n == nil || n.Type == nil || n.Operand == nil {
 		return ""
@@ -105,29 +107,28 @@ func StringToNumberHelper(n *ir.Conversion) string {
 }
 
 // HelpersNeeded walks pkg and returns the helpers the generated code
-// will use. It inspects every typed var (package-level + per-component)
-// and every checker-inserted ir.Conversion target.
+// will use. It inspects every typed var (on every state owner) and every
+// checker-inserted ir.Conversion target.
 func HelpersNeeded(pkg *ir.Package) HelperSet {
 	var h HelperSet
 	if pkg == nil {
 		return h
 	}
-	for _, v := range pkg.Vars {
-		recordInitHelpers(&h, v.Type, v.Init)
-	}
-	for _, c := range pkg.Consts {
-		recordInitHelpers(&h, c.Type, c.Init)
-	}
-	for _, comp := range pkg.Components {
-		for _, v := range comp.Vars {
+	// A var's declared type is the whole of what says which parse helper its
+	// initializer needs: LowerTypedLiteralGo reads the target type, not the
+	// string literal's own. So the owners have to be enumerated rather than
+	// left to the expression sweep below -- and asked through ir.Owners, since
+	// passHoistState moves a root component's vars onto the window it lifts.
+	for _, o := range ir.Owners(pkg) {
+		for _, v := range o.Vars {
 			recordInitHelpers(&h, v.Type, v.Init)
 		}
-		for _, f := range comp.Funcs {
+		for _, c := range o.Consts {
+			recordInitHelpers(&h, c.Type, c.Init)
+		}
+		for _, f := range o.Funcs {
 			recordFuncHelpers(&h, f)
 		}
-	}
-	for _, f := range pkg.Funcs {
-		recordFuncHelpers(&h, f)
 	}
 	// The loops above miss exprs that live only in the rendered visual tree
 	// (component/window bodies, handlers, timers) — e.g. a date/time literal
@@ -144,6 +145,10 @@ func HelpersNeeded(pkg *ir.Package) HelperSet {
 				h.NeedSome = true
 			}
 			h.needUnitString(UnitStringConversion(n))
+		case *ir.Binary:
+			if _, _, ok := OptionCompare(n); ok {
+				h.NeedOptEq = true
+			}
 		}
 		return nil
 	})
@@ -274,6 +279,14 @@ func (h HelperSet) Emit() string {
 
 `)
 	}
+	if h.NeedOptEq {
+		// An option equals a value when it holds one and that one is equal.
+		b.WriteString(`func snglOptEq[T comparable](p *T, v T) bool {
+	return p != nil && *p == v
+}
+
+`)
+	}
 	if h.NeedParseInt {
 		b.WriteString(`func snglParseInt(s string) int {
 	n, _ := strconv.Atoi(s)
@@ -316,12 +329,16 @@ func (h HelperSet) Emit() string {
 `)
 	}
 	if h.NeedDateTime {
+		// The layouts the checker's datetime literal permits, widest first.
+		// RFC3339 alone panicked on every offsetless one, which is most of
+		// them: the seconds and the offset are both optional there.
 		b.WriteString(`func mustParseDateTime(s string) time.Time {
-	t, err := time.Parse(time.RFC3339, s)
-	if err != nil {
-		panic(err)
+	for _, layout := range []string{time.RFC3339, "2006-01-02T15:04:05", "2006-01-02T15:04"} {
+		if t, err := time.Parse(layout, s); err == nil {
+			return t
+		}
 	}
-	return t
+	panic("not a datetime: " + s)
 }
 
 `)

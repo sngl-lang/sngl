@@ -41,7 +41,7 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { name__inst0: "World", visible__inst1: true };
+  var state = { name__inst0: "World", visible__inst0: true };
   var __n1 = document.querySelector('[data-sngl-id="__n1"]');
   function __sngl_init() {
     __n1.textContent = state.name__inst0;
@@ -51,4 +51,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:17d1c2e6c9233bf42d8bd13e2fd519f9
+pass sha256:8da8b83b2aef039fc5549e1dba97f6ac

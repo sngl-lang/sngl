@@ -2,8 +2,9 @@ package lower
 
 import (
 	"fmt"
+	"slices"
 
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 // passNodePropReads answers a prop read off a `#id` at build time, wherever the
@@ -32,7 +33,7 @@ var passNodePropReads = pass{
 	apply:   lowerNodePropReads,
 }
 
-func lowerNodePropReads(pkg *ir.Package, _ Features, _ Options) error {
+func lowerNodePropReads(pkg *ir.Package, _ Features, opts Options) error {
 	if pkg == nil {
 		return nil
 	}
@@ -66,6 +67,7 @@ func lowerNodePropReads(pkg *ir.Package, _ Features, _ Options) error {
 	// `b is 5` with the read after the canvas and an empty span with it before.
 	// A declarative position has no order to appeal to, so the answer must not
 	// have one either.
+	tests := testInstances(pkg, opts)
 	for {
 		changed := false
 		if err := ir.Rewrite(pkg, func(n ir.Node) (ir.Node, error) {
@@ -74,6 +76,9 @@ func lowerNodePropReads(pkg *ir.Package, _ Features, _ Options) error {
 				return n, nil
 			}
 			e := rewriteNodePropRead(sel, handles)
+			if e == nil {
+				e = rewriteTestPropRead(sel, tests)
+			}
 			if e == nil {
 				return n, nil
 			}
@@ -262,4 +267,346 @@ func refuseNodePropCycle(handles map[*ir.Var]*ir.NodeInst) error {
 		}
 	}
 	return nil
+}
+
+// testInstances is the component parameter of every test this build emits:
+// the instance a test reaches what its component renders through. A build
+// rooted at a component emits the tests handed it, and a build of the whole
+// program emits every test or, where Options.Tests is off, none. A test the
+// build does not emit is left as it was checked, so that nothing it names is
+// kept alive for it.
+func testInstances(pkg *ir.Package, opts Options) map[*ir.Param]bool {
+	out := map[*ir.Param]bool{}
+	if !opts.Tests {
+		return out
+	}
+	for _, fn := range pkg.Funcs {
+		if fn == nil || !fn.IsTest {
+			continue
+		}
+		for _, p := range fn.Params {
+			if p.Type == nil || p.Type.Kind != ir.TypeComponent {
+				continue
+			}
+			if c, ok := p.Type.Decl.(*ir.Component); ok && (opts.RootComponent == "" || c.Name == opts.RootComponent) {
+				out[p] = true
+			}
+		}
+	}
+	return out
+}
+
+// rewriteTestPropRead answers a test's read of a node's one-way prop --
+// `c.t.value`, `c.b.shown.value` -- with the expression the node's call site
+// gave it, read through the instance the node belongs to. A one-way prop says
+// what the node shows for as long as it is rendered, so that expression is
+// what the node holds; and no target's test reaches the host widget to ask it,
+// which spells the prop its own way, if it keeps it at all.
+//
+// What the expression reads of the component that renders the node is read
+// through the instance (`hits` in bar's body is `c.b.hits` in the test), which
+// passNoInlineComponents then repoints at the spliced copy as it repoints any
+// other member a test reads. What it reads of something a test cannot name --
+// a loop's variable, a slot's parameter -- has no value at the test, and such
+// a read is left as it was.
+func rewriteTestPropRead(sel *ir.Select, tests map[*ir.Param]bool) ir.Expr {
+	inner, ok := sel.Operand.(*ir.Select)
+	if !ok || !rootedAtTest(inner.Operand, tests) {
+		return nil
+	}
+	comp := componentOf(inner.Operand)
+	if comp == nil {
+		return nil
+	}
+	node, always := ownNode(comp, inner.Field)
+	if node == nil || node.Component == nil {
+		return nil
+	}
+	for _, p := range node.Component.Props {
+		if p.Name == sel.Field && p.Bidirectional {
+			return nil
+		}
+	}
+	v := nodePropExpr(node, sel.Field)
+	if v == nil {
+		return nil
+	}
+	// One rendered only some of the time has the expression's value only
+	// while it is, and the interpreter answers nothing while it is not; a
+	// read of it is left to the targets that keep the node.
+	if !always {
+		return nil
+	}
+	out := rebaseOnInstance(ir.CloneExprSharingDecls(v), comp, inner.Operand)
+	if out == nil {
+		return nil
+	}
+	return answerTestEmpty(out, inner.Operand, tests)
+}
+
+// answerTestEmpty answers each `.empty` e asks of the slots of the component
+// inst names, as the splice of that instance answers it: by what the call
+// site the test reaches it through supplied (ir.RendersNothing), read through
+// the instance that call site is written in. The instance a test takes is
+// rendered with no call site, so its own slots are supplied nothing. A
+// component entry a population forwards is answered by what the component
+// inserting the population populated it with, read through that component's
+// instance. nil where an answer reads what a test cannot name.
+func answerTestEmpty(e ir.Expr, inst ir.Expr, tests map[*ir.Param]bool) ir.Expr {
+	at := testInstanceNode(inst, tests)
+	ok := true
+	out := newExprWalker(func(x ir.Expr) ir.Expr {
+		se, isEmpty := x.(*ir.SlotEmpty)
+		if !isEmpty || !ok {
+			return x
+		}
+		var answer ir.Expr
+		switch {
+		case at.root:
+			if comp := componentOf(inst); comp != nil && slices.Contains(comp.Slots, se.Slot) {
+				return &ir.Literal{Type: ir.TypBool, Value: "true"}
+			}
+			return x
+		case at.node == nil:
+			ok = false
+			return x
+		case at.node.Component != nil && slices.Contains(at.node.Component.Slots, se.Slot):
+			body, _, supplied := ir.SlotBody(&ir.SlotInst{Name: se.Slot.Name, Rest: se.Slot.Rest}, at.node)
+			if !supplied {
+				return &ir.Literal{Type: ir.TypBool, Value: "true"}
+			}
+			a, answered := ir.RendersNothing(deepCloneStmts(body))
+			if !answered {
+				return &ir.Literal{Type: ir.TypBool, Value: "false"}
+			}
+			answer = a
+		default:
+			return x
+		}
+		if lit, isLit := answer.(*ir.Literal); isLit {
+			return lit
+		}
+		// The content is read through the instance its call site is written
+		// in; an entry it forwards is answered through the instance of the
+		// component that populated it, and a slot it forwards by the call
+		// site of the instance it is read through.
+		if answer = rebaseOnInstance(answer, componentOf(at.scope), at.scope); answer == nil {
+			ok = false
+			return x
+		}
+		if answer = at.answerEntries(answer, tests); answer == nil {
+			ok = false
+			return x
+		}
+		if answer = answerTestEmpty(answer, at.scope, tests); answer == nil {
+			ok = false
+			return x
+		}
+		return answer
+	}).expr(e)
+	if !ok {
+		return nil
+	}
+	return out
+}
+
+// testNode is the node a test's select through its instance names: the node
+// itself and the instance its call site is written in (scope). A node written
+// in a population is reached through the instance writing the population, and
+// host is then the node the population is supplied to and slot the slot it
+// populates, which answer the entries the population forwards.
+type testNode struct {
+	root  bool
+	node  *ir.NodeInst
+	scope ir.Expr
+	host  *ir.NodeInst
+	slot  *ir.SlotDecl
+}
+
+func testInstanceNode(inst ir.Expr, tests map[*ir.Param]bool) testNode {
+	sel, ok := inst.(*ir.Select)
+	if !ok {
+		return testNode{root: rootedAtTest(inst, tests)}
+	}
+	comp := componentOf(sel.Operand)
+	if comp == nil {
+		return testNode{}
+	}
+	at := testNode{scope: sel.Operand}
+	at.find(comp.Stmts, sel.Field, nil, nil)
+	return at
+}
+
+// find looks in stmts for the node rendered under id, under the population
+// host supplies for slot.
+func (at *testNode) find(stmts []ir.Stmt, id string, host *ir.NodeInst, slot *ir.SlotDecl) {
+	for _, s := range stmts {
+		if at.node != nil {
+			return
+		}
+		n, ok := s.(*ir.NodeInst)
+		if !ok {
+			for _, b := range ir.ViewBlocks(s) {
+				at.find(*b, id, host, slot)
+			}
+			continue
+		}
+		if n.ID == id {
+			at.node, at.host, at.slot = n, host, slot
+			return
+		}
+		at.find(n.Children, id, host, slot)
+		if n.Component == nil {
+			continue
+		}
+		for _, decl := range n.Component.Slots {
+			if pop := n.Slots[decl.Name]; pop != nil {
+				at.find(pop.Body, id, n, decl)
+			}
+		}
+	}
+}
+
+// answerEntries answers, in answer, each `.empty` of an entry of the slot
+// the node's population populates, by what the component inserting it
+// populated the entry with, read through that component's instance.
+func (at testNode) answerEntries(answer ir.Expr, tests map[*ir.Param]bool) ir.Expr {
+	if at.slot == nil || len(at.slot.Slots) == 0 {
+		return answer
+	}
+	comp := at.host.Component
+	var host ir.Expr
+	if at.host.Handle != nil {
+		host = &ir.Select{Type: at.host.Handle.Type, Operand: ir.CloneExprSharingDecls(at.scope), Field: at.host.ID}
+	}
+	ok := true
+	out := newExprWalker(func(x ir.Expr) ir.Expr {
+		se, isEmpty := x.(*ir.SlotEmpty)
+		if !isEmpty || !ok || !slices.Contains(at.slot.Slots, se.Slot) {
+			return x
+		}
+		var content *ir.SlotContent
+		ir.WalkView(comp.Stmts, func(s ir.Stmt) bool {
+			if ins, isIns := s.(*ir.SlotInst); isIns && ins.Decl == at.slot && content == nil {
+				content = ins.Slots[se.Slot.Name]
+			}
+			return content == nil
+		})
+		if content == nil {
+			return &ir.Literal{Type: ir.TypBool, Value: "true"}
+		}
+		a, answered := ir.RendersNothing(deepCloneStmts(content.Body))
+		if !answered {
+			return &ir.Literal{Type: ir.TypBool, Value: "false"}
+		}
+		if lit, isLit := a.(*ir.Literal); isLit {
+			return lit
+		}
+		if host == nil {
+			ok = false
+			return x
+		}
+		if a = rebaseOnInstance(a, comp, host); a == nil {
+			ok = false
+			return x
+		}
+		if a = answerTestEmpty(a, host, tests); a == nil {
+			ok = false
+			return x
+		}
+		return a
+	}).expr(answer)
+	if !ok {
+		return nil
+	}
+	return out
+}
+
+// rootedAtTest reports whether e is a test's instance or a select through it.
+func rootedAtTest(e ir.Expr, tests map[*ir.Param]bool) bool {
+	for {
+		switch x := e.(type) {
+		case *ir.Select:
+			e = x.Operand
+		case *ir.Ident:
+			p, ok := x.Sym.(*ir.Param)
+			return ok && tests[p]
+		default:
+			return false
+		}
+	}
+}
+
+func componentOf(e ir.Expr) *ir.Component {
+	t := e.ExprType()
+	if t == nil || t.Kind != ir.TypeComponent {
+		return nil
+	}
+	c, _ := t.Decl.(*ir.Component)
+	return c
+}
+
+// ownNode is the node comp's body renders under the id, or nil, and whether
+// the body renders it always. One under a `for` is a copy per iteration, which
+// a select names none of; one under an `if`, or in a page's content, is there
+// only while the condition holds or the page shows.
+func ownNode(comp *ir.Component, id string) (node *ir.NodeInst, always bool) {
+	var walk func(stmts []ir.Stmt, looped, conditional bool)
+	walk = func(stmts []ir.Stmt, looped, conditional bool) {
+		for _, s := range stmts {
+			if n, ok := s.(*ir.NodeInst); ok && n.ID == id && !looped && node == nil {
+				node, always = n, !conditional
+			}
+			_, isFor := s.(*ir.For)
+			_, isIf := s.(*ir.If)
+			page := false
+			if n, ok := s.(*ir.NodeInst); ok && n.Component != nil && n.Component.Builtin == ir.BuiltinNavPage {
+				page = true
+			}
+			for _, b := range ir.ViewBlocks(s) {
+				walk(*b, looped || isFor, conditional || isIf || page)
+			}
+		}
+	}
+	walk(comp.Stmts, false, false)
+	return node, always
+}
+
+// rebaseOnInstance rewrites e, written in comp's body, to read comp's members
+// through inst, or nil where e reads what a test cannot name.
+func rebaseOnInstance(e ir.Expr, comp *ir.Component, inst ir.Expr) ir.Expr {
+	own := map[ir.Symbol]bool{}
+	for _, v := range comp.Vars {
+		own[v] = true
+	}
+	for _, p := range comp.Props {
+		if p.Sym != nil {
+			own[p.Sym] = true
+		}
+	}
+	ir.WalkView(comp.Stmts, func(s ir.Stmt) bool {
+		if n, ok := s.(*ir.NodeInst); ok && n.Handle != nil {
+			own[n.Handle] = true
+		}
+		return true
+	})
+	unnamed := false
+	out := newExprWalker(func(x ir.Expr) ir.Expr {
+		id, ok := x.(*ir.Ident)
+		if !ok || id.Sym == nil {
+			return x
+		}
+		if own[id.Sym] {
+			return &ir.Select{Type: id.Type, Operand: ir.CloneExprSharingDecls(inst), Field: id.Name}
+		}
+		switch id.Sym.(type) {
+		case *ir.Param, *ir.LoopVar:
+			unnamed = true
+		}
+		return x
+	}).expr(e)
+	if unnamed {
+		return nil
+	}
+	return out
 }

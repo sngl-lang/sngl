@@ -25,7 +25,7 @@ struct Calc {
     // What a second `=` repeats, and the operand it repeats with. Every
     // calculator you have used answers `1 + 1 = = =` with 4; one that cleared
     // the operation on the first `=` stops at 2.
-    repeatOp Op = Op.none
+    repeatOp  Op = Op.none
     repeatArg float = 0
 
     // `entry` as a number. A trailing point is dropped rather than handed to

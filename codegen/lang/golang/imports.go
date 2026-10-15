@@ -1,7 +1,7 @@
 package golang
 
 import (
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 // BaseImports is the Go imports a generated file needs that no emitted
@@ -58,7 +58,7 @@ func foreignTypeImports(pkg *ir.Package) []string {
 	var out []string
 	seen := map[string]bool{}
 	// Through the type arguments and through a struct's fields: a
-	// `list<Schedule>` spells the element in the field it becomes, and a
+	// `list[Schedule]` spells the element in the field it becomes, and a
 	// program struct holding a native-typed field spells that type in the Go
 	// struct the backend emits -- with nothing else in the file naming the
 	// package, a field being no call.

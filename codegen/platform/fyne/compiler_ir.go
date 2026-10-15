@@ -6,19 +6,17 @@ import (
 	"fmt"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/codegen/lang/golang"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/codegen/lang/golang"
+	"duckfam.us/sngl/ir"
 )
 
 type irAnalysis struct {
 	*codegen.CommonAnalysis
-	binds      []irBind
-	externs    []irExtern
-	computeds  []irComputed
-	dataEvents map[string][]*ir.EventHandler
-	gc         *golang.GoIRContext
+	binds     []irBind
+	externs   []irExtern
+	computeds []irComputed
+	gc        *golang.GoIRContext
 }
 
 type irBind struct {
@@ -51,7 +49,6 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 	gc := golang.NewIRContext(exprCtx)
 	info := &irAnalysis{
 		CommonAnalysis: ctx.Analysis,
-		dataEvents:     make(map[string][]*ir.EventHandler),
 		gc:             gc,
 	}
 
@@ -86,7 +83,7 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 				// The __root sentinel is built through a native call so that
 				// rendering this init registers the container import.
 				initCall := &ir.Call{
-					Type:     ir.TypDyn,
+					Type:     ir.NativeGoPointerOf("fyne.Container"),
 					Receiver: &ir.Ident{Name: "container"},
 					Func:     &ir.Func{Foreign: ir.Foreign{Path: "fyne.io/fyne/v2/container", Name: "container.NewVBox"}},
 				}
@@ -150,10 +147,6 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 			// rule, written before there was a second var it applied to.
 			noAccessors: golang.ExportName(ov.Name()) == ov.Name(),
 		})
-		// A parameter carries no @change: nothing in the page assigns it.
-		if v != nil && len(v.Handlers) > 0 {
-			info.dataEvents[v.Name] = v.Handlers
-		}
 	}
 
 	allFuncs := ctx.AllFuncs()
@@ -235,16 +228,17 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 	appRoot := ctx.RootDecl() == nil
 	bodyStmts := ctx.Pkg.Body
 	if main := ctx.RootDecl(); main != nil {
-		bodyStmts = main.Body
+		bodyStmts = main.Stmts
 	}
 	var appChildren []string
+	// The ids a test drives one copy of, whose copies the Model lists.
+	indexed := codegen.IndexedTriggerIDs(ctx.Pkg)
+	recordInvoker := func(inv fyneEventInvoker) { eventInvokers = append(eventInvokers, inv) }
 	if len(bodyStmts) > 0 {
 		tr := newFyneTranslator(gc, nodeSpecs, func(name, goType string) {
 			widgetFields = append(widgetFields, irWidgetField{name: name, goType: goType})
 		}, addWidgetImport, failProp).withLocalRefs(mainScopeLocalRefs(ctx)).
-			withInvokerSink(func(inv fyneEventInvoker) {
-				eventInvokers = append(eventInvokers, inv)
-			})
+			withInvokerSink(recordInvoker).withIndexed(indexed, nil)
 		tr.canvasByID, tr.canvasByNode = canvasByID, canvasByNode
 		body := codegen.WalkLowered(context.Background(), bodyStmts, tr)
 		for _, stmt := range body {
@@ -290,11 +284,11 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 		if isInstanceComponent(cc.Component) {
 			var ib strings.Builder
 			emitComponentInstance(&ib, cc, gc, nodeSpecs, addWidgetImport, canvasByID, canvasByNode, ctx.Canvases.All(), failProp,
-				func(inv fyneEventInvoker) { eventInvokers = append(eventInvokers, inv) },
+				recordInvoker,
 				func(name, goType string) {
 					widgetFields = append(widgetFields, irWidgetField{name: name, goType: goType})
 				},
-				presentIDs, func(id, field string) { presenceFields[id] = field })
+				indexed, presentIDs, func(id, field string) { presenceFields[id] = field })
 			componentCodes = append(componentCodes, ib.String())
 			continue
 		}
@@ -350,24 +344,24 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 			continue
 		}
 		// golang.LiftsToFreeFunc is the one answer the call site uses too.
-		if fn.Receiver != "" && golang.LiftsToFreeFunc(ctx.Pkg, fn.Receiver) {
+		if fn.IsMethod() && golang.LiftsToFreeFunc(ctx.Pkg, fn) {
 			emitIRFyneTypeMethod(&funcBuf, fn, gc)
 			continue
 		}
 		// stateFuncs is the set ModelFreeFuncs kept from the call sites; see
 		// its doc for what a package var costs a free function.
-		if fn.Receiver == "" && !componentFuncs[fn] && !stateFuncs[fn] && fn.LoweredFromTag == "" && !fn.Synthesized {
+		if !fn.IsMethod() && !componentFuncs[fn] && !stateFuncs[fn] && fn.Lowered.Tag == "" && !fn.Synthesized {
 			emitIRFyneFreeFunc(&funcBuf, fn, gc)
 			continue
 		}
 		// A promoted node handler routes to emitIRPromotedHandler even when
 		// Synthesized: the two-way-bind writeback handler is both.
-		if fn.LoweredFromTag != "" {
+		if fn.Lowered.Tag != "" {
 			emitIRPromotedHandler(&funcBuf, fn, gc, &widgetFields, nodeSpecs, addWidgetImport, canvasByNode, failProp)
 			continue
 		}
 		if fn.Synthesized {
-			emitIRSlotFunc(&funcBuf, fn, gc, &widgetFields, nodeSpecs, addWidgetImport, canvasByNode, failProp)
+			emitIRSlotFunc(&funcBuf, fn, gc, &widgetFields, nodeSpecs, addWidgetImport, canvasByNode, failProp, indexed, recordInvoker)
 			continue
 		}
 		emitIRFyneModelMethod(&funcBuf, fn, gc, &widgetFields, nodeSpecs, addWidgetImport, canvasByNode, failProp)
@@ -390,34 +384,10 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 		emitIRCanvasDraw(&funcBuf, &all[i], gc, canvasByNode, nodeSpecs, addWidgetImport, failProp)
 	}
 
-	// A var handler's body carries reactivity-injected widget updates like an
-	// event handler's, so it goes through WalkLowered for the same reason. The
-	// value being assigned is the setter's own `v`.
-	varHandlerCode := map[string]string{}
-	for name, handlers := range info.dataEvents {
-		var hb strings.Builder
-		for _, h := range handlers {
-			if h.Name != "change" || h.Func == nil {
-				continue
-			}
-			tr := newFyneTranslator(gc, nodeSpecs, func(name, goType string) {
-				widgetFields = append(widgetFields, irWidgetField{name: name, goType: goType})
-			}, addWidgetImport, failProp)
-			tr.canvasByID, tr.canvasByNode = canvasByID, canvasByNode
-			hgc := codegen.BindVarHandlerValue(gc, h, "v")
-			for _, stmt := range codegen.WalkLowered(context.Background(), h.Func.Block, tr) {
-				for _, line := range hgc.EvalStmt(stmt) {
-					fmt.Fprintf(&hb, "\t%s\n", line)
-				}
-			}
-		}
-		varHandlerCode[name] = hb.String()
-	}
-
 	emitFyneEventInvokers(&funcBuf, eventInvokers)
 	emitFynePresenceChecks(&funcBuf, presentIDs, presenceFields, widgetFields)
 
-	td, err := newIRTemplateData(info, cfg, widgetFields, entrySync, widgetImports, funcBuf.String(), varHandlerCode, gc, ctx, lang)
+	td, err := newIRTemplateData(info, cfg, widgetFields, entrySync, widgetImports, funcBuf.String(), gc, ctx, lang)
 	if hasCanvas {
 		// Skip any struct the user already declared, to avoid a duplicate
 		// type decl.
@@ -429,6 +399,12 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 	if decls := emitThemeDecls(themes); decls != "" {
 		td.LangHelpers += decls
 		for _, path := range themeImports(themes) {
+			gc.RequireImport(path)
+		}
+	}
+	if fn := styleValueTheme(nodeSpecs); fn != "" {
+		td.LangHelpers += fn
+		for _, path := range []string{"fyne.io/fyne/v2/theme", ThemeImportPath, "duckfam.us/sngl/pkg/go/snglcolor"} {
 			gc.RequireImport(path)
 		}
 	}
@@ -479,7 +455,7 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 	return b.String(), imports, assignedAliases(gc), td.CgoPreamble, nil
 }
 
-func newIRTemplateData(info *irAnalysis, cfg Config, widgetFields []irWidgetField, entrySync []entrySyncRec, widgetImports map[string]bool, functionCode string, varHandlerCode map[string]string, gc *golang.GoIRContext, ctx *codegen.CodegenCtx, lang codegen.LangTranslator) (templateData, error) {
+func newIRTemplateData(info *irAnalysis, cfg Config, widgetFields []irWidgetField, entrySync []entrySyncRec, widgetImports map[string]bool, functionCode string, gc *golang.GoIRContext, ctx *codegen.CodegenCtx, lang codegen.LangTranslator) (templateData, error) {
 	td := templateData{
 		Package:      cfg.Package,
 		Main:         cfg.Main,
@@ -555,7 +531,6 @@ func newIRTemplateData(info *irAnalysis, cfg Config, widgetFields []irWidgetFiel
 				fmt.Fprintf(&extra, "\tm.%s%s(v)\n", sync.fieldName, sync.target)
 			}
 		}
-		extra.WriteString(varHandlerCode[bind.name])
 		bd.SetterExtra = extra.String()
 		td.Binds = append(td.Binds, bd)
 	}
@@ -660,7 +635,7 @@ func emitIRFyneModelMethod(b *strings.Builder, fn *ir.Func, gc *golang.GoIRConte
 	}
 	tr := newFyneTranslator(gc, nodeSpecs, func(name, goType string) {
 		*widgetFields = append(*widgetFields, irWidgetField{name: name, goType: goType})
-	}, importSink, failSink).withLocalRefs(fn.LocalRefs)
+	}, importSink, failSink).withLocalRefs(fn.Lowered.LocalRefs)
 	tr.canvasByNode = canvasByNode
 
 	params := fn.Params
@@ -668,11 +643,11 @@ func emitIRFyneModelMethod(b *strings.Builder, fn *ir.Func, gc *golang.GoIRConte
 		params = params[1:]
 	}
 	synthesized := &ir.Func{
-		Name:     fn.Name,
-		Receiver: "Model",
-		Params:   params,
-		Return:   fn.Return,
-		Block:    codegen.WalkLowered(context.Background(), fn.Block, tr),
+		Name:    fn.Name,
+		Lowered: ir.FuncLowering{HostReceiver: "Model"},
+		Params:  params,
+		Return:  fn.Return,
+		Block:   codegen.WalkLowered(context.Background(), fn.Block, tr),
 	}
 	for _, line := range gc.EmitFuncDef(synthesized) {
 		b.WriteString(line)
@@ -797,11 +772,11 @@ func renderIRComponentMethod(
 	}
 
 	synthesized := &ir.Func{
-		Name:     methodName,
-		Receiver: "Model",
-		Params:   params,
-		Return:   ir.NativeGoNamed("fyne.CanvasObject"),
-		Block:    bodyStmts,
+		Name:    methodName,
+		Lowered: ir.FuncLowering{HostReceiver: "Model"},
+		Params:  params,
+		Return:  ir.NativeGoNamed("fyne.CanvasObject"),
+		Block:   bodyStmts,
 	}
 	lines := compGC.EmitFuncDef(synthesized)
 	// EmitFuncDef emits "<sig> {", body lines, then "}", so the return-form
@@ -833,12 +808,6 @@ func emitIRMain(b *strings.Builder, cfg Config, info *irAnalysis, pkg *ir.Packag
 	// reports its default 0×0 dimensions at first paint and the user
 	// sees a blank window until they manually resize.
 	b.WriteString("\tw.SetContent(m.BuildUI())\n")
-	if pkg != nil && pkg.RemoteSettle != nil {
-		// After BuildUI, since the updaters write to widgets it creates, and
-		// through DoAndWait because a settle arrives on the fetch's goroutine
-		// and Fyne's widgets belong to the main one.
-		fmt.Fprintf(b, "\tremote.Default.OnSettle(func() { fyne.DoAndWait(m.%s) })\n", pkg.RemoteSettle.Name)
-	}
 	b.WriteString("\tw.Resize(fyne.NewSize(480, 640))\n")
 	b.WriteString("\tw.ShowAndRun()\n")
 	if pkg != nil && pkg.Teardown != nil {
@@ -863,9 +832,6 @@ func emitIRRunMain(b *strings.Builder, cfg Config, pkg *ir.Package) {
 	fmt.Fprintf(b, "\tw := a.NewWindow(%q)\n", cfg.AppName)
 	b.WriteString("\tw.SetContent(m.BuildUI())\n")
 	b.WriteString("\tw.Resize(fyne.NewSize(480, 640))\n")
-	if pkg.RemoteSettle != nil {
-		fmt.Fprintf(b, "\tremote.Default.OnSettle(func() { fyne.DoAndWait(m.%s) })\n", pkg.RemoteSettle.Name)
-	}
 	b.WriteString("\tran := false\n")
 	// An empty handler is emitted as no function at all, and never calls run.
 	if len(pkg.Run.Block) > 0 {
@@ -895,8 +861,11 @@ func elementRef(name string) *ir.Ident {
 // bare local for non-escaping ids (declared as `__nN := ...` in the same
 // scope), else the m.<name> element ref.
 func topRef(tr *fyneTranslator, name string) ir.Expr {
+	if sp := tr.specs[name]; sp != nil && sp.RuntimeTheme {
+		return tr.themeOverrideRef(name)
+	}
 	if tr.isLocalRef(name) {
-		return localElementRef(name)
+		return tr.localElementRef(name)
 	}
 	return elementRef(name)
 }
@@ -918,56 +887,6 @@ func mainScopeLocalRefs(ctx *codegen.CodegenCtx) map[string]bool {
 		return main.LocalRefs
 	}
 	return nil
-}
-
-// extractEventBindTarget returns the variable the synthesized two-way bind
-// writes, or "" when stmts does not begin with one.
-//
-// passPropBindings opens a bound node's handler with `<var> = <event>.<field>`.
-// A Fyne callback receives the unwrapped value rather than the SNGL event
-// struct, so the emitter replaces that statement with a read of the callback's
-// own parameter — which means it has to be certain it is looking at that
-// statement and not at the first line the user wrote.
-//
-// Recognising "an assignment" was not certain enough: a handler whose body
-// merely began with one had that line replaced and silently dropped. The bind
-// is identified by its whole shape instead — a plain assignment to a name,
-// reading a field off one of the handler's own parameters.
-func extractEventBindTarget(stmts []ir.Stmt, params []*ir.Param) string {
-	if len(stmts) == 0 {
-		return ""
-	}
-	assign, ok := stmts[0].(*ir.Assign)
-	if !ok || assign.Op != ast.AssignSet {
-		return ""
-	}
-	target, ok := assign.Target.(*ir.Ident)
-	if !ok {
-		return ""
-	}
-	sel, ok := assign.Value.(*ir.Select)
-	if !ok || !isParamRef(sel.Operand, params) {
-		return ""
-	}
-	return target.Name
-}
-
-// isParamRef reports whether e reads one of params. Sym is the reliable answer;
-// the name is the fallback for an ident a pass rebuilt without re-resolving it.
-func isParamRef(e ir.Expr, params []*ir.Param) bool {
-	id, ok := e.(*ir.Ident)
-	if !ok {
-		return false
-	}
-	for _, p := range params {
-		if p == nil {
-			continue
-		}
-		if id.Sym == ir.Symbol(p) || (id.Sym == nil && id.Name == p.Name) {
-			return true
-		}
-	}
-	return false
 }
 
 func fyneIRAlertFunc(gc *golang.GoIRContext, method string, args []ir.CallArg) []string {
@@ -1025,7 +944,7 @@ func promotedHandlersInNonMainComponents(ctx *codegen.CodegenCtx, have []*ir.Fun
 	var out []*ir.Func
 	for _, cc := range ctx.NonRootComponents() {
 		for _, fn := range cc.Component.Funcs {
-			if fn == nil || fn.LoweredFromTag == "" || seen[fn] {
+			if fn == nil || fn.Lowered.Tag == "" || seen[fn] {
 				continue
 			}
 			seen[fn] = true
@@ -1100,7 +1019,7 @@ func collectNodes(pkg *ir.Package, funcs []*ir.Func) (map[string]*fyneSpec, erro
 	}
 	if pkg != nil {
 		for _, comp := range pkg.Components {
-			walk(comp.Body)
+			walk(comp.Stmts)
 			// And its funcs. `funcs` above is what the Model emits, which is
 			// not the same set: a component the build could not inline keeps
 			// its slot renderer on itself, and the widgets that renderer
@@ -1152,7 +1071,14 @@ func harvestSpec(specs map[string]*fyneSpec, lv *ir.LocalVar, tag string, rest [
 		return nil
 	}
 	props := map[string]ir.Expr{}
+	temps := map[string]bool{}
 	for _, s := range rest {
+		if valueTemp(s) {
+			if v, ok := s.(*ir.LocalVar); ok {
+				temps[v.Name] = true
+			}
+			continue
+		}
 		asn, ok := s.(*ir.Assign)
 		if !ok {
 			break
@@ -1165,6 +1091,12 @@ func harvestSpec(specs map[string]*fyneSpec, lv *ir.LocalVar, tag string, rest [
 		if !ok || !id.IsElementRef || id.Name != lv.Name {
 			break
 		}
+		// A value read from a temp computed after the create is no
+		// constructor's to say, so its write goes through the setter; only
+		// the style is still read here, for the theme it needs.
+		if sel.Field != stylePropName && readsAny(asn.Value, temps) {
+			continue
+		}
 		props[sel.Field] = asn.Value
 	}
 	sp, err := specFromProps(tag, props)
@@ -1175,23 +1107,59 @@ func harvestSpec(specs map[string]*fyneSpec, lv *ir.LocalVar, tag string, rest [
 	return nil
 }
 
+func readsAny(e ir.Expr, names map[string]bool) bool {
+	found := false
+	_ = ir.WalkExprs(e, func(x ir.Expr) error {
+		if id, ok := x.(*ir.Ident); ok && names[id.Name] {
+			found = true
+		}
+		return nil
+	})
+	return found
+}
+
+// valueTemp reports a statement that only computes a value into a temp: the
+// `var __ltN` and value-only `if` NoTernary hoists a prop's ternary into. In a
+// render slot the pass runs after the node's props are written, so they sit
+// between the prop assignments rather than ahead of the create.
+func valueTemp(s ir.Stmt) bool {
+	switch n := s.(type) {
+	case *ir.LocalVar:
+		return n.Init == nil && (n.Type == nil || n.Type.Kind != ir.TypeComponent)
+	case *ir.If:
+		for _, b := range [][]ir.Stmt{n.Body, n.Else} {
+			for _, st := range b {
+				if asn, ok := st.(*ir.Assign); ok {
+					if _, plain := asn.Target.(*ir.Ident); plain {
+						continue
+					}
+				}
+				if !valueTemp(st) {
+					return false
+				}
+			}
+		}
+		return true
+	}
+	return false
+}
+
 // emitIRPromotedHandler emits a node-attached event handler that the
 // lower pass promoted to a top-level Func. The Handler record for
-// LoweredFromEvent on the node's Spec dictates the Go signature (e.g.
-// fyne's Entry.OnChanged is `func(s string)`, not `func(e InputEvent)`).
-// The first stmt of the handler body — the user's `var = e.<field>`
-// two-way bind — is rewritten to `m.<var> = <param>`; subsequent
-// stmts (reactive splices injected by passReactivity) flow through
-// the same WalkLowered + translator pipeline as slot bodies so they
-// pick up widget-setter rewrites via OnPropAssign.
+// Lowered.Event on the node's Spec dictates the Go signature (e.g.
+// fyne's Entry.OnChanged is `func(s string)`), whose parameters are the SNGL
+// event's position for position and take the handler's names for them
+// (namedAsHandler). The body flows through the same WalkLowered + translator
+// pipeline as slot bodies so it picks up widget-setter rewrites via
+// OnPropAssign.
 //
-// The node is found by LoweredFromNode rather than LoweredFromTag: a tag
+// The node is found by Lowered.Node rather than Lowered.Tag: a tag
 // names one of three primitives, so it says which children contract the
 // widget has and nothing about its callbacks.
 func emitIRPromotedHandler(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext, widgetFields *[]irWidgetField, nodeSpecs map[string]*fyneSpec, importSink func(string), canvasByNode map[*ir.NodeInst]*canvasMeta, failSink func(error)) {
 	var binding fyneHandler
-	if sp, ok := nodeSpecs[fn.LoweredFromNode]; ok {
-		binding = sp.Handlers[fn.LoweredFromEvent]
+	if sp, ok := nodeSpecs[fn.Lowered.Node]; ok {
+		binding = sp.Handlers[fn.Lowered.Event]
 	}
 
 	// One parse, shared with the Spec decode that validated it -- two
@@ -1199,56 +1167,28 @@ func emitIRPromotedHandler(b *strings.Builder, fn *ir.Func, gc *golang.GoIRConte
 	// signature the decoder had just accepted.
 	params := fn.Params
 	if binding.Signature != "" {
-		parsed, err := signatureParams("", fn.LoweredFromEvent, binding.Signature)
+		parsed, err := signatureParams("", fn.Lowered.Event, binding.Signature)
 		if err != nil {
 			// specFromProps rejected this already; reaching here means the two
 			// disagree, which is a bug in this package rather than in the Spec.
 			panic("fyne: " + err.Error())
 		}
-		params = parsed
+		params = namedAsHandler(parsed, fn.Params)
 	}
 
 	tr := newFyneTranslator(gc, nodeSpecs, func(name, goType string) {
 		*widgetFields = append(*widgetFields, irWidgetField{name: name, goType: goType})
-	}, importSink, failSink).withLocalRefs(fn.LocalRefs)
+	}, importSink, failSink).withLocalRefs(fn.Lowered.LocalRefs)
 	tr.canvasByNode = canvasByNode
 
-	stmts := fn.Block
-
-	var prelude []ir.Stmt
-	if binding.Param != "" {
-		// The synthesized `var = e.<field>` two-way bind, when the handler
-		// opens with one, is re-emitted as a direct `m.<var> = <param>` since
-		// the closure exposes the unwrapped fyne value. fn.Params is the SNGL
-		// signature the bind was written against, not the Fyne one that
-		// replaced it above.
-		bindVar := extractEventBindTarget(stmts, fn.Params)
-		if bindVar != "" {
-			prelude = []ir.Stmt{&ir.Assign{
-				Target: &ir.Ident{Name: bindVar},
-				Op:     ast.AssignSet,
-				Value:  &ir.Ident{Name: binding.Param},
-			}}
-			stmts = stmts[1:]
-		}
-		// Any other read of the payload's value is the callback's argument
-		// too: the closure is handed the text, never an event struct.
-		if len(fn.Params) > 0 {
-			codegen.ReadEventField(stmts, fn.Params[0], "value", &ir.Ident{Name: binding.Param, Type: ir.TypString})
-		}
-	}
-
-	body := codegen.WalkLowered(context.Background(), stmts, tr)
-	if binding.Signature != "" {
-		body = substitutePayload(body, fn.Params, binding.Param, params)
-	}
+	body := codegen.WalkLowered(context.Background(), fn.Block, tr)
 
 	synthesized := &ir.Func{
-		Name:     fn.Name,
-		Receiver: "Model",
-		Params:   params,
-		Return:   ir.TypVoid,
-		Block:    append(prelude, body...),
+		Name:    fn.Name,
+		Lowered: ir.FuncLowering{HostReceiver: "Model"},
+		Params:  params,
+		Return:  ir.TypVoid,
+		Block:   body,
 	}
 	for _, line := range gc.EmitFuncDef(synthesized) {
 		b.WriteString(line)
@@ -1267,24 +1207,29 @@ func emitIRPromotedHandler(b *strings.Builder, fn *ir.Func, gc *golang.GoIRConte
 // against passReactivity's `parent`, which the translator rewrites to
 // slotParentParam. Every other synthesized func -- an effect's settle halves, the
 // focus-order navigation -- takes the parameters it declares, which is none.
-func emitIRSlotFunc(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext, widgetFields *[]irWidgetField, specs map[string]*fyneSpec, importSink func(string), canvasByNode map[*ir.NodeInst]*canvasMeta, failSink func(error)) {
+//
+// A widget a render func builds is one a test drives as much as one BuildUI
+// builds, so the func records its invokers too; one of an id a test indexes
+// is listed as it is built (withIndexed).
+func emitIRSlotFunc(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext, widgetFields *[]irWidgetField, specs map[string]*fyneSpec, importSink func(string), canvasByNode map[*ir.NodeInst]*canvasMeta, failSink func(error), indexed map[string]bool, invokerSink func(fyneEventInvoker)) {
 	tr := newFyneTranslator(gc, specs, func(name, goType string) {
 		*widgetFields = append(*widgetFields, irWidgetField{name: name, goType: goType})
-	}, importSink, failSink).withLocalRefs(fn.LocalRefs)
+	}, importSink, failSink).withLocalRefs(fn.Lowered.LocalRefs).
+		withInvokerSink(invokerSink).withIndexed(indexed, fn.Block)
 	tr.canvasByNode = canvasByNode
 
 	bodyStmts := codegen.WalkLowered(context.Background(), fn.Block, tr)
 
 	params := fn.Params
-	if fn.SlotRender {
+	if fn.Lowered.SlotRender {
 		params = []*ir.Param{{Name: slotParentParam, Type: ir.NativeGoPointerOf("fyne.Container")}}
 	}
 	synthesized := &ir.Func{
-		Name:     fn.Name,
-		Receiver: "Model",
-		Params:   params,
-		Return:   ir.TypVoid,
-		Block:    bodyStmts,
+		Name:    fn.Name,
+		Lowered: ir.FuncLowering{HostReceiver: "Model"},
+		Params:  params,
+		Return:  ir.TypVoid,
+		Block:   bodyStmts,
 	}
 	for _, line := range gc.EmitFuncDef(synthesized) {
 		b.WriteString(line)

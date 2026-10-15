@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/internal/parser"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/internal/parser"
+	"duckfam.us/sngl/ir"
 )
 
 // RunAssert evaluates the expression passed to t.assert/t.must and, on
@@ -226,12 +226,11 @@ func binOpSym(op ast.BinaryOp) string {
 //   - receiver-form: Func == nil with Receiver carrying the container value
 //     and the method name reachable via methodNameFromCall; Args=[needle]
 //
-// Receiver-typed dispatch is decided at runtime in assertContains based on
-// the evaluated container — the checker leaves component-field receivers
-// typed Dyn, so a static type guard would miss the most common case.
+// Receiver-typed dispatch is decided at runtime in assertContains, from the
+// evaluated container.
 func containsCallShape(c *ir.Call) (container, needle ir.Expr, ok bool) {
 	if c.Func != nil && c.Func.Name == "contains" &&
-		(c.Func.Receiver == "list" || c.Func.Receiver == "string") &&
+		(c.Func.RecvName() == "list" || c.Func.RecvName() == "string") &&
 		len(c.Args) == 2 {
 		return c.Args[0].Value, c.Args[1].Value, true
 	}

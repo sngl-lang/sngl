@@ -23,7 +23,7 @@ stderr 'cannot pass struct \{ s Style \} as struct \{ s Style \}'
 
 # The direct form was never wrong: two declarations that record no package are
 # told apart by their pointers, which is what the wrapped form now does too.
-stderr 'cannot pass Style as Style'
+stderr 'cannot pass Style \(lib.sngl:3:1\) as Style \(direct/main.sngl:4:1\)'
 
 -- app.sngl --
 import . "sngl:ui"

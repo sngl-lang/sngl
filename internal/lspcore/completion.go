@@ -1,20 +1,38 @@
 package lspcore
 
 import (
+	"maps"
 	"regexp"
+	"slices"
 	"sort"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/internal/checker"
-	"git.duckfam.us/jonathan/sngl/internal/parser"
-	"git.duckfam.us/jonathan/sngl/ir"
-	"git.duckfam.us/jonathan/sngl/lib"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/internal/checker"
+	"duckfam.us/sngl/internal/parser"
+	"duckfam.us/sngl/ir"
+	"duckfam.us/sngl/lib"
 )
 
 // Complete returns completion items for the given position (1-based line and col).
 func Complete(content string, doc *ast.Document, line, col int) []CompletionItem {
+	return CompleteChecked(content, doc, nil, line, col)
+}
+
+// CompleteChecked is Complete with the package doc was last checked into, so a
+// node's events are offered as its call site typed them and as the checker
+// would accept them. pkg may be nil, and is consulted only where the node it
+// holds is the one the cursor is in.
+func CompleteChecked(content string, doc *ast.Document, pkg *ir.Package, line, col int) []CompletionItem {
+	// An override's header names its target through a package, `html.`, which
+	// is not the namespace the cursor is completing.
+	if line >= 1 && line <= strings.Count(content, "\n")+1 {
+		raw := strings.Split(content, "\n")[line-1]
+		if items, ok := overrideHeaderCompletions(content, doc, raw[:min(col-1, len(raw))]); ok {
+			return items
+		}
+	}
 	// Check for namespace dot completion first (e.g., "html.|")
 	if items := NamespaceCompletions(content, doc, line, col); items != nil {
 		return items
@@ -30,17 +48,19 @@ func Complete(content string, doc *ast.Document, line, col int) []CompletionItem
 	case CtxVisualNode:
 		return ComponentNameCompletions(content, doc)
 	case CtxPropList:
-		return PropListCompletions(content, doc, line, col)
+		return propListCompletions(content, doc, pkg, line, col)
 	case CtxStyleProp:
 		return StylePropCompletions()
 	case CtxEventHandler:
-		return EventCompletions(content, doc, line)
+		return eventCompletions(content, doc, pkg, line, col)
 	case CtxOutputOpts:
 		return OutputOptsCompletions(content, line)
 	case CtxOutputTarget:
 		return OutputTargetCompletions(content, line)
 	case CtxImportPath:
 		return ImportPathCompletions(content, line)
+	case CtxTypeArgs:
+		return TypeArgCompletions(doc)
 	default:
 		return ExpressionCompletions(doc)
 	}
@@ -58,6 +78,7 @@ const (
 	CtxOutputOpts
 	CtxOutputTarget
 	CtxImportPath // inside the quotes of an import path
+	CtxTypeArgs   // inside the brackets after a name: `first[|]`
 )
 
 var outputShadowed = regexp.MustCompile(`(?m)^[ \t]*component[ \t]+output\b`)
@@ -102,6 +123,11 @@ func CompletionContext(content string, line, col int) CompletionCtx {
 	if strings.Contains(l, "style={") || strings.Contains(prefix, "style=") {
 		return CtxStyleProp
 	}
+	// Type arguments: the innermost thing open is a bracket written right
+	// after a name, `empty[opt|`, which holds types.
+	if inTypeArgs(prefix) {
+		return CtxTypeArgs
+	}
 	// Prop list: cursor is after an opening ( with no closing ) before it,
 	// and NOT on an output line
 	if strings.Contains(prefix, "(") && !strings.Contains(prefix, ")") {
@@ -120,6 +146,42 @@ func CompletionContext(content string, line, col int) CompletionCtx {
 		return CtxComponent
 	}
 	return CtxVisualNode
+}
+
+// inTypeArgs reports whether the innermost bracket open in prefix is one
+// written right after a name: a bracket there holds type arguments, or an
+// index, and both are offered the names a type is spelled with.
+func inTypeArgs(prefix string) bool {
+	depth := 0
+	for i := len(prefix) - 1; i >= 0; i-- {
+		switch prefix[i] {
+		case ']', ')', '}':
+			depth++
+		case '(', '{':
+			if depth == 0 {
+				return false
+			}
+			depth--
+		case '[':
+			if depth == 0 {
+				return i > 0 && isIdentChar(prefix[i-1])
+			}
+			depth--
+		}
+	}
+	return false
+}
+
+// TypeArgCompletions offers what a bracket after a name holds: the names a
+// type argument is written with -- the scalars and the generic builtins --
+// and, since the same bracket indexes a value, what an expression may name,
+// the document's structs and enums among it.
+func TypeArgCompletions(doc *ast.Document) []CompletionItem {
+	var items []CompletionItem
+	for _, name := range []string{"int", "float", "string", "bool", "list", "map", "option", "iter"} {
+		items = append(items, CompletionItem{Label: name, Kind: CIKStruct})
+	}
+	return append(items, ExpressionCompletions(doc)...)
 }
 
 func TopLevelKeywords() []CompletionItem {
@@ -203,6 +265,13 @@ func ExpressionCompletions(doc *ast.Document) []CompletionItem {
 // EventCompletions offers the events of the node whose block the cursor is in,
 // which is the only component whose handlers can be written there.
 func EventCompletions(content string, doc *ast.Document, line int) []CompletionItem {
+	return eventCompletions(content, doc, nil, line, 1)
+}
+
+func eventCompletions(content string, doc *ast.Document, pkg *ir.Package, line, col int) []CompletionItem {
+	if n := nodeAt(pkg, content, line, col); n != nil {
+		return nodeEventItems(n, nil)
+	}
 	name := enclosingNodeName(content, line)
 	if name == "" {
 		return nil
@@ -322,9 +391,118 @@ func userComponent(doc *ast.Document, name string) *ast.ComponentDecl {
 	return nil
 }
 
+// overrideHead is a declaration line up to the open parameter list of an
+// override: `component ui.text[platform](`, `func label[html.platform](`.
+var overrideHead = regexp.MustCompile(`^\s*(?:const\s+)?(component|func)\s+([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)?)\[[^\]]*\]\(([^)]*)$`)
+
+// overrideHeaderCompletions offers what an override's parameter list may
+// select: the parameters of the declaration it overrides, each by its bare
+// name, an event as `@name`. ok reports that prefix is such a header, which
+// is never a call site's argument list whether or not the base resolved.
+func overrideHeaderCompletions(content string, doc *ast.Document, prefix string) (items []CompletionItem, ok bool) {
+	m := overrideHead.FindStringSubmatch(prefix)
+	if m == nil {
+		return nil, false
+	}
+	kind, name, written := m[1], m[2], m[3]
+	used := map[string]bool{}
+	for part := range strings.SplitSeq(written, ",") {
+		if f := strings.Fields(part); len(f) > 0 {
+			used[strings.TrimPrefix(f[0], ":")] = true
+		}
+	}
+	add := func(label, detail string, k int) {
+		if !used[label] {
+			items = append(items, CompletionItem{Label: label, Kind: k, Detail: detail, InsertText: label})
+		}
+	}
+	if kind == "func" {
+		if f, _ := baseDecl(content, doc, kind, name).(*ast.FuncDef); f != nil {
+			for _, p := range f.Params.Params {
+				add(p.Name, typeExprString(p.Type), CIKVariable)
+			}
+		}
+		return items, true
+	}
+	if c, _ := baseDecl(content, doc, kind, name).(*ast.ComponentDecl); c != nil {
+		for _, p := range c.Props.Props {
+			switch pd := p.(type) {
+			case ast.Param:
+				add(pd.Name, typeExprString(pd.Type), CIKProperty)
+			case ast.EventDecl:
+				add("@"+pd.Name, parser.FormatEventSignature(pd), CIKEvent)
+			}
+		}
+		return items, true
+	}
+	if schema := scopeOf(content, doc).componentSchema(name); schema != nil {
+		for _, n := range slices.Sorted(maps.Keys(schema.Props)) {
+			ps := schema.Props[n]
+			add(n, (&ps.Type).String(), CIKProperty)
+		}
+		for _, sl := range schema.Slots {
+			add(sl.Name, "slot", CIKProperty)
+		}
+		for _, n := range slices.Sorted(maps.Keys(schema.Events)) {
+			add("@"+n, schema.Events[n], CIKEvent)
+		}
+	}
+	return items, true
+}
+
+// baseDecl is the declaration named name that the file writes itself, not an
+// override of it, kind being "component" or "func". It is read off the parse
+// where there is one and off the text where there is not: completion is asked
+// mid-edit, and a header whose list is still open parses to no statements at
+// all -- so the declaration's own header is found in the text and parsed alone.
+func baseDecl(content string, doc *ast.Document, kind, name string) ast.Stmt {
+	match := func(stmt ast.Stmt) bool {
+		switch d := stmt.(type) {
+		case *ast.ComponentDecl:
+			return kind == "component" && d.Name == name && d.Target == nil
+		case *ast.FuncDef:
+			return kind == "func" && d.Name == name && d.Target == nil
+		}
+		return false
+	}
+	if doc != nil {
+		for _, stmt := range doc.Stmts {
+			if match(stmt) {
+				return stmt
+			}
+		}
+	}
+	head := regexp.MustCompile(`(?m)^[ \t]*(?:const[ \t]+)?` + kind + `[ \t]+` + regexp.QuoteMeta(name) + `\(`)
+	loc := head.FindStringIndex(content)
+	if loc == nil {
+		return nil
+	}
+	depth := 0
+	for i := loc[1] - 1; i < len(content); i++ {
+		switch content[i] {
+		case '(':
+			depth++
+		case ')':
+			if depth--; depth == 0 {
+				src := strings.TrimSpace(content[loc[0] : i+1])
+				parsed, err := parser.Parse("header.sngl", []byte(src))
+				if err != nil || len(parsed.Stmts) != 1 || !match(parsed.Stmts[0]) {
+					return nil
+				}
+				return parsed.Stmts[0]
+			}
+		}
+	}
+	return nil
+}
+
 // PropListCompletions returns props and events for the component whose
 // prop list the cursor is inside.
 func PropListCompletions(content string, doc *ast.Document, line, col int) []CompletionItem {
+	return propListCompletions(content, doc, nil, line, col)
+}
+
+func propListCompletions(content string, doc *ast.Document, pkg *ir.Package, line, col int) []CompletionItem {
 	lines := strings.Split(content, "\n")
 	if line < 1 || line > len(lines) {
 		return nil
@@ -415,7 +593,12 @@ func PropListCompletions(content string, doc *ast.Document, line, col int) []Com
 		})
 	}
 
-	// Events
+	// Events, as the checked node's call site typed them where there is one.
+	node := nodeAt(pkg, content, line, col)
+	if node != nil {
+		items = append(items, nodeEventItems(node, used)...)
+		events = nil
+	}
 	for _, e := range events {
 		if used[e.Name] {
 			continue
@@ -455,7 +638,7 @@ func PropListCompletions(content string, doc *ast.Document, line, col int) []Com
 		}
 		sort.Strings(enames)
 		for _, n := range enames {
-			if used[n] {
+			if used[n] || node != nil {
 				continue
 			}
 			items = append(items, eventItem(n, schema.Events[n]))

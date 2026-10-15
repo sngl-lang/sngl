@@ -1,6 +1,6 @@
 package docsite
 
-import "git.duckfam.us/jonathan/sngl/ir"
+import "duckfam.us/sngl/ir"
 
 // Starter is the components the /components page leads with, in reading order:
 // what a first application reaches for. Everything else is a click away in the

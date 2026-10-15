@@ -3,7 +3,8 @@ package lsp
 import (
 	"sync"
 
-	"git.duckfam.us/jonathan/sngl/ast"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/ir"
 )
 
 // fileState holds the current state for an open file.
@@ -12,6 +13,9 @@ type fileState struct {
 	Content string
 	Version int
 	Doc     *ast.Document // last successful parse
+	// Pkg is the package Doc was checked into, errors and all: completion
+	// asks it how a node's call site typed its events.
+	Pkg *ir.Package
 }
 
 // workspace tracks all open files.

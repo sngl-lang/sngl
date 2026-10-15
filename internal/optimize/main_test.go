@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/internal/gencache"
+	"duckfam.us/sngl/internal/gencache"
 )
 
 // TestMain moves the evaluator binary cache out of the developer's real cache:

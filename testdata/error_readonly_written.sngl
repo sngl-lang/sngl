@@ -1,0 +1,11 @@
+// `readonly[T]` is the type the checker gives a loop variable bound by copy,
+// declared in sngl:builtin so the documentation shows it. A program may not
+// write it, in any position a type is written.
+
+var n readonly[int] = 1 // ERROR(check) "readonly[T] is the type of a loop variable bound by copy, and a program may not write it"
+
+func f(x readonly[string]) => x // ERROR(check) "readonly[T] is the type of a loop variable bound by copy"
+
+struct S {
+    xs list[readonly[int]] // ERROR(check) "readonly[T] is the type of a loop variable bound by copy"
+}

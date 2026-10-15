@@ -3,8 +3,8 @@ package lower
 import (
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/ir"
 )
 
 func TestAnalyzeCapturesImmutableRead(t *testing.T) {
@@ -142,7 +142,7 @@ func TestLifterMutableCaptureUsesRefType(t *testing.T) {
 
 	field := cl.State.Def.Fields[0]
 	if field.Type.Kind != ir.TypeRef {
-		t.Errorf("mutable capture field should be ref<int>, got %v", field.Type.Kind)
+		t.Errorf("mutable capture field should be ref[int], got %v", field.Type.Kind)
 	}
 	if len(field.Type.Elems) == 0 || field.Type.Elems[0] == nil || field.Type.Elems[0].Kind != ir.TypeInt {
 		t.Errorf("ref elem should be int, got %v", field.Type.Elems)
@@ -175,7 +175,7 @@ func TestLifterFreshNameCollision(t *testing.T) {
 func TestAnalyzeCapturesNestedLambda(t *testing.T) {
 	// Outer lambda's body contains an inner lambda that mutates `n`.
 	// analyzeCaptures on the outer body must see `n` as a capture marked
-	// Mutable (so the outer lifts it as ref<int> and the mutation can
+	// Mutable (so the outer lifts it as ref[int] and the mutation can
 	// propagate through both frames).
 	outerN := &ir.Var{Name: "n", Type: ir.TypInt}
 	innerBody := []ir.Stmt{
@@ -212,7 +212,7 @@ func TestLifterNestedClosureSharesRef(t *testing.T) {
 	// Equivalent to fixture lambda_nested.txtar:
 	//   var n int = 0
 	//   var outer = func() { return func() { n = n + 1 } }
-	// After lifting, both frames' caps fields for n must be ref<int>, and
+	// After lifting, both frames' caps fields for n must be ref[int], and
 	// the inner closure's caps init must reference state.n (the bare Select
 	// from the outer frame), not &n directly.
 	pkg := &ir.Package{
@@ -244,13 +244,13 @@ func TestLifterNestedClosureSharesRef(t *testing.T) {
 	l := newLifter(pkg)
 	outerCl := l.Lift(outerBody, nil, nil, nil)
 
-	// Outer's caps: must have one field, n, of type ref<int>.
+	// Outer's caps: must have one field, n, of type ref[int].
 	if len(outerCl.State.Def.Fields) != 1 {
 		t.Fatalf("outer caps: want 1 field, got %d", len(outerCl.State.Def.Fields))
 	}
 	outerField := outerCl.State.Def.Fields[0]
 	if outerField.Name != "n" || outerField.Type.Kind != ir.TypeRef {
-		t.Errorf("outer caps n: want ref<int>, got %s %v", outerField.Name, outerField.Type)
+		t.Errorf("outer caps n: want ref[int], got %s %v", outerField.Name, outerField.Type)
 	}
 
 	// Outer's caps init for n: &n (Unary{Addr, Ident{outerN}}).
@@ -273,16 +273,16 @@ func TestLifterNestedClosureSharesRef(t *testing.T) {
 		t.Fatalf("outer Return.Value: want Closure (inner lifted), got %T", ret.Value)
 	}
 
-	// Inner's caps: one field, n, ref<int>.
+	// Inner's caps: one field, n, ref[int].
 	if len(innerCl.State.Def.Fields) != 1 {
 		t.Fatalf("inner caps: want 1 field, got %d", len(innerCl.State.Def.Fields))
 	}
 	innerField := innerCl.State.Def.Fields[0]
 	if innerField.Name != "n" || innerField.Type.Kind != ir.TypeRef {
-		t.Errorf("inner caps n: want ref<int>, got %s %v", innerField.Name, innerField.Type)
+		t.Errorf("inner caps n: want ref[int], got %s %v", innerField.Name, innerField.Type)
 	}
 
-	// Inner's caps init for n: bare Select{state, n} (typed ref<int>),
+	// Inner's caps init for n: bare Select{state, n} (typed ref[int]),
 	// NOT &n and NOT *state.n.
 	innerInit := innerCl.State.Fields[0].Value
 	sel, ok := innerInit.(*ir.Select)
@@ -293,7 +293,7 @@ func TestLifterNestedClosureSharesRef(t *testing.T) {
 		t.Errorf("inner caps init Select.Field: want n, got %s", sel.Field)
 	}
 	if sel.Type == nil || sel.Type.Kind != ir.TypeRef {
-		t.Errorf("inner caps init Select.Type: want ref<int>, got %v", sel.Type)
+		t.Errorf("inner caps init Select.Type: want ref[int], got %v", sel.Type)
 	}
 
 	// Inner's body assignments must deref state.n: *state.n = *state.n + 1.

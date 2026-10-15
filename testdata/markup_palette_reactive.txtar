@@ -53,17 +53,15 @@ package main
 import (
 	"charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"duckfam.us/sngl/pkg/go/snglcolor"
 	"fmt"
-	"git.duckfam.us/jonathan/sngl/pkg/go/snglcolor"
 	"os"
 )
 
 type Measurement struct {
 	Px  float64
 	Em  float64
-	Vw  float64
-	Vh  float64
-	Pct float64
+	Rem float64
 }
 
 type Palette struct {
@@ -261,22 +259,20 @@ func main() {
 package main
 
 import (
+	"duckfam.us/sngl/pkg/go/fynelayout"
+	"duckfam.us/sngl/pkg/go/fynetext"
+	"duckfam.us/sngl/pkg/go/snglcolor"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
-	"git.duckfam.us/jonathan/sngl/pkg/go/fynelayout"
-	"git.duckfam.us/jonathan/sngl/pkg/go/fynetext"
-	"git.duckfam.us/jonathan/sngl/pkg/go/snglcolor"
 	"os"
 )
 
 type Measurement struct {
 	Px  float64
 	Em  float64
-	Vw  float64
-	Vh  float64
-	Pct float64
+	Rem float64
 }
 
 type Palette struct {
@@ -378,10 +374,10 @@ func (m *Model) homeClosed() {
 }
 
 // homeVisible invokes the OnVisible callback on the #home widget; for tests.
-func (m *Model) homeVisible(__visible bool) {
+func (m *Model) homeVisible(visible bool) {
 	if cb := m.home.OnVisible; cb != nil {
 		m.home.OnVisible = nil
-		cb(__visible)
+		cb(visible)
 		m.home.OnVisible = cb
 	}
 }
@@ -445,7 +441,7 @@ func main() {
 
 package main
 
-import "git.duckfam.us/jonathan/sngl/pkg/go/gtk4rt"
+import "duckfam.us/sngl/pkg/go/gtk4rt"
 
 func main() {
 	gtk4rt.Init()
@@ -459,16 +455,14 @@ func main() {
 package main
 
 import (
-	"git.duckfam.us/jonathan/sngl/pkg/go/gtk4rt"
-	"git.duckfam.us/jonathan/sngl/pkg/go/snglcolor"
+	"duckfam.us/sngl/pkg/go/gtk4rt"
+	"duckfam.us/sngl/pkg/go/snglcolor"
 )
 
 type Measurement struct {
 	Px  float64
 	Em  float64
-	Vw  float64
-	Vh  float64
-	Pct float64
+	Rem float64
 }
 
 type Palette struct {
@@ -513,9 +507,9 @@ func New() *Model {
 }
 
 func ColorOf(p Palette, fallback Palette, kind string) snglcolor.Color {
-	c := TokenColor(p, kind)
-	if c.A != 0 {
-		return c
+	c__r0 := TokenColor(p, kind)
+	if c__r0.A != 0 {
+		return c__r0
 	}
 	return TokenColor(fallback, kind)
 }
@@ -620,41 +614,31 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 
 package test.sngl.app
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.*
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
-import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color as ComposeColor
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
-import androidx.activity.compose.BackHandler
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.platform.LocalContext
 import android.app.Activity
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.layout.Column
+import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.material3.Button
+import androidx.compose.material3.Text
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.withStyle
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.ui.graphics.Color as ComposeColor
 
 data class Measurement(
     val px: Double = 0.0,
     val em: Double = 0.0,
-    val vw: Double = 0.0,
-    val vh: Double = 0.0,
-    val pct: Double = 0.0
+    val rem: Double = 0.0
 )
 
 data class Palette(
@@ -869,12 +853,12 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:0c6497ba9629ac2da7a950be1db7ddba
+pass sha256:770a795f8f275430b650b57f6adca16f
 -- run/go/fyne --
-pass sha256:c06d2134d634202e1926dce7e4273ed5
+pass sha256:50ad3d5fbea6be79b5c8614600cd3971
 -- run/go/gtk4 --
-pass sha256:4b9a37946f9b206457a5cfad7c9b49f3
+pass sha256:4d08ac5ff904730f25fe73a3015552a4
 -- run/kotlin/android --
-pass sha256:0dc53e949ccffdac37a5bd388c404d86
+pass sha256:95f5b42f3f5c3ba7436a835b4f72aa59
 -- run/none/html --
 pass sha256:d226a21ec189c973db38fbe636e5ad6e

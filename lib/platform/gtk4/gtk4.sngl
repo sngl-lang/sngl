@@ -1,7 +1,6 @@
 import ui "sngl:ui"
 import time "sngl:time"
 import . "sngl:macro"
-import tree "sngl:tree"
 import build "sngl:build"
 import marks "sngl:internal/marks"
 import shapes "sngl:ui/draw"
@@ -9,6 +8,7 @@ import markup "sngl:ui/markup"
 import math "sngl:math"
 import go "sngl:language/go"
 import gen "sngl:x/gen"
+import family "sngl:family"
 import gtk "gir:Gtk-4.0"
 
 // The `gtk4` node of a build directive: `output { go { gtk4() } }`.
@@ -26,20 +26,41 @@ import gtk "gir:Gtk-4.0"
 #[gen.native("gtk4")]
 component platform(
     // Go package name for the generated files.
-    const package string,
+    const package       string,
     // Emit a standalone main() or a library-style module.
-    const main bool,
+    const main          bool,
     // The process start, wrapped: what the handler does before calling `run`
     // happens before the event loop, and what it does after, once the loop
     // has exited. `run` presents the windows and runs the loop. A handler
     // that never calls it gets a process whose loop still runs -- timers,
     // effects, posted work -- with no window on screen. `args` is the command
     // line after the program's name.
-    @run(args list<string>, run func()),
+    @run(args list[string], run func()),
     // Which introspection data to read the widget vocabulary from: "builtin"
     // for the bundled subset, a path to a `Gtk-4.0.gir`, or unset to probe the
     // system locations and fall back to the bundled subset.
-    const gir string,
+    const gir           string,
+    // What its generated code introduces beside a program's names: the packages
+    // it imports -- `C` is cgo's, which a Go export of `c` would be -- an
+    // instance record's receiver, the Model's own members, and the locals and
+    // helpers its application code declares.
+    const reservedNames list[string] = [
+        "gtk4rt",
+        "c",
+        "app",
+        "win",
+        "buildUI",
+        "buildWidgetTree",
+        "snglCallbacks",
+        "snglDrawFuncs",
+        "gtkPost",
+        "snglGoDispatch",
+        "snglIdleCallback",
+        "snglActivate",
+        "boolToInt",
+        "snglCalendarDate",
+        "snglCalendarSelect",
+    ],
 ) build.platform
 
 // --- Windows ---
@@ -52,66 +73,123 @@ component platform(
 // manager's close is reported as `visible = false` followed by `@closed`.
 #[marks.intrinsic("gtk4:Toplevel")]
 component Toplevel(
-    title string,
+    title    string,
     :visible bool = true,
     @closed(),
-    content ...component ui.node,
+    content  ...component ui.node,
 ) root
 
 // The window's `@error` is the outermost boundary of what it renders, and
 // catches whether or not the call site handles one.
-const component ui.window[platform] {
+const component ui.window[platform](title, visible, @error, @closed, content, favicon) {
     Toplevel(title=title, :visible=visible, @closed { closed() }) {
         boundary(@error(e) { error(e) }) {
             content
         }
+        #[family.crosses]
+        favicon
     }
 }
 
 // --- Leaf widgets ---
 
-const component ui.text[platform] {
+// What a control holds, read off its widget. A GTK signal hands its handler
+// the widget it fired on and nothing else, so an override reporting a change
+// asks that widget: `@toggled(b) { checked = checkActive(b) }`.
+#[marks.intrinsic("gtk4.checkActive")]
+func checkActive(b gtk.GtkCheckButton) bool
+
+#[marks.intrinsic("gtk4.switchActive")]
+func switchActive(s gtk.GtkSwitch) bool
+
+#[marks.intrinsic("gtk4.entryText")]
+func entryText(e gtk.GtkEntry) string
+
+// The day a calendar has selected. A calendar always has one, so this is null
+// only where GTK reports no date at all.
+#[marks.intrinsic("gtk4.calendarDate")]
+func calendarDate(c gtk.GtkCalendar) option[time.date]
+
+const component ui.text[platform](value, style) {
     gtk.GtkLabel(label=value, style={...style}) {}
 }
 
-const component ui.button[platform] {
+const component ui.button[platform](text, style, @click) {
     gtk.GtkButton(label=text, style={...style}, @clicked { click() }) {}
 }
 
-const component ui.checkbox[platform] {
-    gtk.GtkCheckButton(label=label, active=checked, style={...style}, @toggled { change() }) {}
+const component ui.checkbox[platform](label, checked, style, @change) {
+    gtk.GtkCheckButton(label=label, active=checked, style={...style}, @toggled(b) {
+        checked = checkActive(b)
+        change(checked)
+    }) {}
 }
 
-const component ui.image[platform] {
-    gtk.GtkImage(file=src, style={...style}) {}
+const component ui.image[platform](fit, @click, @load, @error, src) {
+    Image(
+        fit = string(fit),
+        @click {
+            click()
+        },
+        @load {
+            load()
+        },
+        @failed(m) {
+            error({message=m, kind="image"})
+        },
+    ) {
+        src
+    }
 }
 
-const component ui.input[platform] {
-    gtk.GtkEntry(text=value, style={...style}, @changed { input() }, @activate { change() }) {}
+const component ui.input[platform](value, style, @input, @change) {
+    gtk.GtkEntry(
+        text = value,
+        style = {...style},
+        @changed(e) {
+            value = entryText(e)
+            input(value)
+        },
+        @activate(e) {
+            value = entryText(e)
+            change(value)
+        },
+    ) {}
 }
 
 // gtk4 has no lightweight multi-line entry; map textarea to GtkEntry so
 // the value binding + changed handler compile and round-trip. (Rich
 // multi-line GtkTextView support is a future enhancement.)
-const component ui.textarea[platform] {
-    gtk.GtkEntry(text=value, style={...style}, @changed { input() }, @activate { change() }) {}
+const component ui.textarea[platform](value, style, @input, @change) {
+    gtk.GtkEntry(
+        text = value,
+        style = {...style},
+        @changed(e) {
+            value = entryText(e)
+            input(value)
+        },
+        @activate(e) {
+            value = entryText(e)
+            change(value)
+        },
+    ) {}
 }
 
 // --- Container widgets ---
 
-const component ui.vbox[platform] {
+const component ui.vbox[platform](style, children) {
     gtk.GtkBox(orientation="vertical", spacing=6, style={...style}) {
         children
     }
 }
 
-const component ui.hbox[platform] {
+const component ui.hbox[platform](style, children) {
     gtk.GtkBox(orientation="horizontal", spacing=6, style={...style}) {
         children
     }
 }
 
-const component ui.scroll[platform] {
+const component ui.scroll[platform](style, content) {
     gtk.GtkScrolledWindow(style={...style}) {
         content
     }
@@ -129,7 +207,7 @@ const component ui.scroll[platform] {
 // conditional expression, and that happens before the fold that would have
 // settled it -- `C.double(__lt0)` where `__lt0 = (2 / 10)`, which is Go
 // integer division.
-const component ui.progress[platform] {
+const component ui.progress[platform](style, value, max, label, showValue) {
     if value != null {
         gtk.GtkProgressBar(fraction=value / max, text=label, showText=showValue, style={...style}) {}
     } else {
@@ -137,7 +215,7 @@ const component ui.progress[platform] {
     }
 }
 
-const component ui.spinner[platform] {
+const component ui.spinner[platform](label, style) {
     gtk.GtkSpinner(spinning=true, tooltipText=label, style={...style}) {}
 }
 
@@ -146,18 +224,21 @@ const component ui.spinner[platform] {
 // its members (see enumValueArg) — a prop reference has no compile-time
 // member to name. A separator is therefore horizontal, which is what
 // `direction` defaults to.
-const component ui.divider[platform] {
+const component ui.divider[platform](style) {
     gtk.GtkSeparator(style={...style}) {}
 }
 
-const component ui.link[platform] {
+const component ui.link[platform](text, href, disabled, style, @click) {
     gtk.GtkLinkButton(uri=href, label=text, sensitive=(disabled == false), style={...style}, @clicked { click() }) {}
 }
 
 // A flip reaches the program through `notify::active`: GtkSwitch's own
 // `state-set` returns a gboolean, which the connect trampoline cannot carry.
-const component ui.toggle[platform] {
-    gtk.GtkSwitch(active=checked, sensitive=(disabled == false), style={...style}, @notifyActive { change() }) {}
+const component ui.toggle[platform](checked, disabled, style, @change) {
+    gtk.GtkSwitch(active=checked, sensitive=(disabled == false), style={...style}, @notifyActive(s) {
+        checked = switchActive(s)
+        change(checked)
+    }) {}
 }
 
 // GtkCalendar takes the day, month and year as three separate ints -- its own
@@ -165,31 +246,47 @@ const component ui.toggle[platform] {
 // a `date` offers no way to take those three apart. So the calendar is shown
 // and its selection reported, and the bound value does not reach it, whether
 // or not the `option` holds one.
-const component ui.datepicker[platform] {
-    gtk.GtkCalendar(sensitive=(disabled == false), style={...style}, @daySelected { change() }) {}
+// Selects y-m-d on a calendar as a click on the day does: the cgo preamble's
+// sngl_calendar_select, since the setter GTK 4.20 adds is not in the GTKs
+// before it and the one they have is deprecated in it.
+#[cnative("sngl_calendar_select")]
+func selectDay(cal gtk.GtkCalendar, y int, m int, d int)
+
+// One calendar, which a bound date selects whenever it changes. With no date
+// it shows GTK's own, today: a calendar always has a day selected.
+const component ui.datepicker[platform](value, disabled, style, @change) {
+    gtk.GtkCalendar #cal(sensitive=(disabled == false), style={...style}, @daySelected(c) {
+        value = calendarDate(c)
+        change(value)
+    }) {}
+    effect(on=value, @mount(v) {
+        if v != null {
+            selectDay(cal, v.year(), v.month(), v.day())
+        }
+    })
 }
 
 // --- Layout ---
 
-const component ui.spacer[platform] {
+const component ui.spacer[platform](style) {
     gtk.GtkBox(hexpand=true, vexpand=true, style={...style}) {}
 }
 
 // The same shape html uses: a wrapper carrying the tooltip text, with the
 // wrapped content inside it.
-const component ui.tooltip[platform] {
+const component ui.tooltip[platform](style, text, trigger) {
     gtk.GtkBox(tooltipText=text, style={...style}) {
         trigger
     }
 }
 
-const component ui.card[platform] {
+const component ui.card[platform](style, content) {
     gtk.GtkFrame(style={...style}) {
         content
     }
 }
 
-const component ui.stack[platform] {
+const component ui.stack[platform](style, layers) {
     gtk.GtkStack(style={...style}) {
         layers
     }
@@ -200,9 +297,189 @@ const component ui.stack[platform] {
 // popup/popdown is a pair of calls chosen by the value. `position` is a
 // GtkPositionType, so it is unreachable for the same reason as divider's
 // orientation.
-const component ui.popover[platform] {
+const component ui.popover[platform](style, open, @close, content) {
     gtk.GtkPopover(visible=open, autohide=true, style={...style}, @closed { close() }) {
         content
+    }
+}
+
+// A widget's `style` sets nothing on this platform, so nothing below can mark
+// a selection with a font weight; a check button's `active` marks it instead.
+// Clicking the selected one unchecks it on screen and changes nothing, since
+// GTK has no way here to refuse the toggle.
+
+// A row per box, each homogeneous so every cell takes an equal share and the
+// columns line up. GtkColumnView is GTK's table, but it is fed through a list
+// model and item factories, which nothing here can declare. A selectable table
+// leads each row with a check button that selects it; a sortable header's
+// cells are buttons reporting the column.
+const component ui.table[platform](style, columns, selectable, selected, sortable, @select, @sort, rows) {
+    gtk.GtkBox(orientation="vertical", spacing=0, style={...style}) {
+        gtk.GtkBox(orientation="horizontal", homogeneous=true) {
+            if selectable {
+                gtk.GtkLabel(label="") {}
+            }
+            for var col = columns {
+                if sortable {
+                    gtk.GtkButton(label=col, @clicked { sort(col) }) {}
+                } else {
+                    gtk.GtkLabel(label=col, xalign=0.0) {}
+                }
+            }
+        }
+        gtk.GtkSeparator() {}
+        for var k, row = rows {
+            gtk.GtkBox(orientation="horizontal", homogeneous=true) {
+                if selectable {
+                    gtk.GtkCheckButton(active=(k == selected), @toggled(b) {
+                        if checkActive(b) {
+                            selected = k
+                            select()
+                        }
+                    }) {}
+                }
+                for var cell = row.cells {
+                    gtk.GtkLabel(label=cell, xalign=0.0) {}
+                }
+            }
+        }
+    }
+}
+
+// A tree's row: a node's label, and the spaces that indent it to its depth.
+struct _TreeRow {
+    label  string
+    indent string
+}
+
+// A tree's rows in traversal order, each node's below it and indented one step
+// further.
+const func _treeRows(items list[ui.treeItem], indent string) list[_TreeRow] {
+    var out list[_TreeRow] = []
+    for var it = items {
+        out = [...out, _TreeRow{label=it.label, indent=indent}, ..._treeRows(it.children, indent + "    ")]
+    }
+    return out
+}
+
+// Every node is shown, expanded or not: a row cannot be hidden and shown by
+// its parent's state without a var, which a const component has none of.
+const component ui.tree[platform](style, selected, @select, items) {
+    gtk.GtkBox(orientation="vertical", spacing=0, style={...style}) {
+        for var row = _treeRows(items, "") {
+            gtk.GtkCheckButton(label=row.indent + row.label, active=(row.label == selected), @toggled(b) {
+                if checkActive(b) {
+                    selected = row.label
+                    select()
+                }
+            }) {}
+        }
+    }
+}
+
+const component ui.radio[platform](value, disabled, direction, style, @change, options) {
+    if direction == ui.Orientation.horizontal {
+        gtk.GtkBox(orientation="horizontal", spacing=6, sensitive=(disabled == false), style={...style}) {
+            for var opt = options {
+                gtk.GtkCheckButton(label=opt.label, active=(opt.label == value), @toggled(b) {
+                    if checkActive(b) {
+                        value = opt.label
+                        change(opt.label)
+                    }
+                }) {}
+            }
+        }
+    } else {
+        gtk.GtkBox(orientation="vertical", spacing=6, sensitive=(disabled == false), style={...style}) {
+            for var opt = options {
+                gtk.GtkCheckButton(label=opt.label, active=(opt.label == value), @toggled(b) {
+                    if checkActive(b) {
+                        value = opt.label
+                        change(opt.label)
+                    }
+                }) {}
+            }
+        }
+    }
+}
+
+// GtkDropDown takes its choices as a list model, which nothing here can
+// declare, so a select lays its choices out as a radio does. `placeholder`,
+// `multiple` and the focus events have nothing to reach.
+const component ui.select[platform](value, disabled, style, @change, options) {
+    gtk.GtkBox(orientation="vertical", spacing=6, sensitive=(disabled == false), style={...style}) {
+        for var opt = options {
+            gtk.GtkCheckButton(label=opt.label, active=(opt.label == value), @toggled(b) {
+                if checkActive(b) {
+                    value = opt.label
+                    change(opt.label)
+                }
+            }) {}
+        }
+    }
+}
+
+// A menu's top-level entries, as html shows them; a submenu has nowhere to
+// open without a var.
+const component ui.menubar[platform](style, items) {
+    gtk.GtkBox(orientation="horizontal", spacing=4, style={...style}) {
+        for var it = items {
+            gtk.GtkButton(label=it.label, sensitive=(it.disabled == false), @clicked { it.select() }) {}
+        }
+    }
+}
+
+const component ui.menu[platform](style, open, items) {
+    if open {
+        gtk.GtkBox(orientation="vertical", spacing=0, style={...style}) {
+            for var it = items {
+                gtk.GtkButton(label=it.label, sensitive=(it.disabled == false), @clicked { it.select() }) {}
+            }
+        }
+    }
+}
+
+const component ui.toolbar[platform](style, controls) {
+    gtk.GtkBox(orientation="horizontal", spacing=4, style={...style}) {
+        controls
+    }
+}
+
+// GtkPaned holds exactly two panes, so the panes share a box evenly instead
+// and `position` and its bounds have nothing to reach.
+const component ui.splitview[platform](style, direction, panes) {
+    if direction == "vertical" {
+        gtk.GtkBox(orientation="vertical", homogeneous=true, style={...style}) {
+            panes
+        }
+    } else {
+        gtk.GtkBox(orientation="horizontal", homogeneous=true, style={...style}) {
+            panes
+        }
+    }
+}
+
+const component ui.drawer[platform](style, open, content) {
+    gtk.GtkBox(orientation="vertical", spacing=6, visible=open, style={...style}) {
+        content
+    }
+}
+
+// Shown in place rather than in a window of its own, as html shows it in the
+// page.
+const component ui.modal[platform](style, open, title, closable, @close, content) {
+    gtk.GtkFrame(visible=open, style={...style}) {
+        gtk.GtkBox(orientation="vertical", spacing=6) {
+            if title != "" || closable {
+                gtk.GtkBox(orientation="horizontal", spacing=6) {
+                    gtk.GtkLabel(label=title, xalign=0.0, hexpand=true) {}
+                    if closable {
+                        gtk.GtkButton(label="Close", @clicked { close() }) {}
+                    }
+                }
+            }
+            content
+        }
     }
 }
 
@@ -216,7 +493,7 @@ const component ui.popover[platform] {
 // signal handler does and needs no marshalling of its own.
 
 // The runtime package the schedule lives in, named once.
-const _rtPkg = "git.duckfam.us/jonathan/sngl/pkg/go/gtk4rt"
+const _rtPkg = "duckfam.us/sngl/pkg/go/gtk4rt"
 
 // The armed source itself, held as an opaque type rather than as an id paired
 // with its callback slot in a table the runtime keeps. `*gtk4rt.Schedule` is a
@@ -235,12 +512,12 @@ func Schedule.cancel()
 // long as the branch it is written in, so `if enabled` is what makes toggling
 // the gate a mount and an unmount. `on=interval` is the key, because a running
 // schedule is the same schedule for as long as its period is unchanged.
-const component time.timer[platform] {
+const component time.timer[platform](interval, enabled, @tick) {
     var handle Schedule
 
     if enabled {
         effect(
-            on=interval,
+            on = interval,
             @mount(d) { handle = every(int(d), tick) },
             @unmount(d) {
                 handle.cancel()
@@ -342,7 +619,7 @@ func CairoContext.setFontSize(size float)
 // they are cast the same way rather than passed as `C.int` -- cgo refuses an
 // int where a `cairo_font_slant_t` belongs.
 //
-// `CanvasStyle` exposes neither, so both are always the normal value. Declared
+// `Style` exposes neither, so both are always the normal value. Declared
 // anyway, because the alternative is a native that lies about its signature.
 #[cnative("C.cairo_font_slant_t")]
 struct FontSlant {}
@@ -366,33 +643,33 @@ func CairoContext.showText(text string)
 // What a `@draw` handler is handed: the context, and the coordinate space the
 // shapes were placed in.
 struct DrawEvent {
-    ctx CairoContext
-    width int
+    ctx    CairoContext
+    width  int
     height int
 }
 
 #[marks.intrinsic("gtk4:draw:cairo")]
-component draw(@draw DrawEvent) shapes.shape
+component draw(@draw(e DrawEvent)) shapes.shape
 
 // cairo takes its line cap and join as enum values. The names are SNGL's, the
 // numbers are `CAIRO_LINE_CAP_*` and `CAIRO_LINE_JOIN_*`, and mapping them
 // here is what makes `lineCap` and `lineJoin` reach this target at all --
 // before the overrides, gtk4 read neither (#223).
-const func lineCap(name string) LineCapValue {
-    if name == "round" {
+const func lineCap(cap shapes.LineCap) LineCapValue {
+    if cap == shapes.LineCap.round {
         return toLineCap(1)
     }
-    if name == "square" {
+    if cap == shapes.LineCap.square {
         return toLineCap(2)
     }
     return toLineCap(0)
 }
 
-const func lineJoin(name string) LineJoinValue {
-    if name == "round" {
+const func lineJoin(join shapes.LineJoin) LineJoinValue {
+    if join == shapes.LineJoin.round {
         return toLineJoin(1)
     }
-    if name == "bevel" {
+    if join == shapes.LineJoin.bevel {
         return toLineJoin(2)
     }
     return toLineJoin(0)
@@ -406,7 +683,7 @@ func source(ctx CairoContext, c color) {
 // Fill then stroke the current path, preserving it between the two when both
 // apply. This is `_snglCairoPaint` written in SNGL rather than spliced in as
 // Go text.
-func paint(ctx CairoContext, style shapes.CanvasStyle) {
+func paint(ctx CairoContext, style shapes.Style) {
     if style.fill.a > 0 {
         source(ctx, style.fill)
         if style.stroke.a > 0 {
@@ -424,7 +701,7 @@ func paint(ctx CairoContext, style shapes.CanvasStyle) {
     }
 }
 
-const component shapes.rect[platform] {
+const component shapes.rect[platform](x, y, w, h, style) {
     draw(@draw(e) {
         e.ctx.save()
         e.ctx.rectangle(x, y, w, h)
@@ -433,7 +710,7 @@ const component shapes.rect[platform] {
     })
 }
 
-const component shapes.circle[platform] {
+const component shapes.circle[platform](cx, cy, r, style) {
     draw(@draw(e) {
         e.ctx.save()
         e.ctx.newSubPath()
@@ -447,7 +724,7 @@ const component shapes.circle[platform] {
 // would scale the *stroke* with the axes, so a 2px outline on a wide ellipse
 // comes out thicker horizontally than vertically. kappa is the control-point
 // offset that makes a cubic match a quarter arc to within a thousandth.
-const component shapes.ellipse[platform] {
+const component shapes.ellipse[platform](cx, cy, rx, ry, style) {
     draw(@draw(e) {
         var k = 0.5522847498307936
         var ox = rx * k
@@ -469,7 +746,7 @@ const component shapes.ellipse[platform] {
 // A line has no interior, so `fill` is not read: the declaration says a fill
 // on a line is ignored, and here that is the absence of a call rather than a
 // special case in the emitter.
-const component shapes.line[platform] {
+const component shapes.line[platform](x1, y1, x2, y2, style) {
     draw(@draw(e) {
         e.ctx.save()
         e.ctx.moveTo(x1, y1)
@@ -502,7 +779,7 @@ func arcTo(ctx CairoContext, from shapes.Point, corner shapes.Point, to shapes.P
     return a.tangent2
 }
 
-const component shapes.path[platform] {
+const component shapes.path[platform](style, steps) {
     draw(@draw(e) {
         // Where the path is, which `arcTo` needs and cairo will not hand back
         // without an out-parameter. Every other command ends at its own point,
@@ -510,23 +787,23 @@ const component shapes.path[platform] {
         var at = shapes.Point{x=0.0, y=0.0}
 
         e.ctx.save()
-        for var c = cmds {
-            if c.op == "moveTo" {
+        for var c = steps {
+            if c.op == shapes.PathOp.moveTo {
                 e.ctx.moveTo(c.x, c.y)
                 at = shapes.Point{x=c.x, y=c.y}
             }
-            if c.op == "lineTo" {
+            if c.op == shapes.PathOp.lineTo {
                 e.ctx.lineTo(c.x, c.y)
                 at = shapes.Point{x=c.x, y=c.y}
             }
-            if c.op == "bezierTo" {
+            if c.op == shapes.PathOp.bezierTo {
                 e.ctx.curveTo(c.cx1, c.cy1, c.cx2, c.cy2, c.x, c.y)
                 at = shapes.Point{x=c.x, y=c.y}
             }
-            if c.op == "arcTo" {
+            if c.op == shapes.PathOp.arcTo {
                 at = arcTo(e.ctx, at, shapes.Point{x=c.cx1, y=c.cy1}, shapes.Point{x=c.x, y=c.y}, c.r)
             }
-            if c.op == "close" {
+            if c.op == shapes.PathOp.close {
                 e.ctx.closePath()
             }
         }
@@ -535,7 +812,7 @@ const component shapes.path[platform] {
     })
 }
 
-const component shapes.canvasText[platform] {
+const component shapes.canvasText[platform](x, y, content, style) {
     draw(@draw(e) {
         e.ctx.save()
         // CAIRO_FONT_SLANT_NORMAL and CAIRO_FONT_WEIGHT_NORMAL. gtk4 read
@@ -552,54 +829,93 @@ const component shapes.canvasText[platform] {
 
 // --- Images ---
 //
-// GdkPixbuf rather than cairo's own PNG loader: it is already linked into any
-// GTK application, it reads JPEG and SVG as well as PNG, and it scales in the
-// loader so no `cairo_scale` is needed -- which would scale the stroke of
-// anything drawn after it.
-//
-// A nullable C pointer is `option<T>`: both `option` and `ref` render as `*T`,
-// so `option<Pixbuf>` is the `GdkPixbuf*` the loader answers and a null test
-// is the NULL check. The `GError**` out-parameter is the one place the extra
-// indirection is right, and `option<ref<GError>>` is it.
-//
-// The functions that consume the pointer declare `option<Pixbuf>` as well,
-// even inside the null test: narrowing an option yields the *referent*, so a
-// parameter typed `Pixbuf` is handed `(*pb)` -- the struct, where the C
-// function wants the pointer.
-#[cnative("C.GdkPixbuf")]
-struct Pixbuf {}
+// An image is gtk4rt's rather than a GIR class: a box holding the source it
+// shows, fitted as `fit` says, or the placeholder where it holds none. A
+// source is a GtkPicture showing the texture its bytes or its drawing make --
+// a file the program carries, one fetched, or a picture a drawing paints --
+// and reports to the image whether it arrived. Appended to a window, it is the
+// window's icon.
+#[marks.intrinsic("gtk4:Image")]
+component Image(
+    fit     string,
+    @click(),
+    @load(),
+    @failed(message string),
+    content ...component option[ui.imageSource],
+) ui.node
 
-#[cnative("C.GError")]
-struct GError {}
+#[marks.intrinsic("gtk4:ImageUrl")]
+component ImageUrl(url string) ui.imageSource
 
-#[cnative("gdk_pixbuf_new_from_file_at_scale")]
-func loadPixbuf(path string, w int, h int, keepAspect int, err option<ref<GError>>) option<Pixbuf>
+#[marks.intrinsic("gtk4:ImageDrawing")]
+component ImageDrawing(width float, height float, shapes ...component shapes.shape) ui.imageSource
 
-#[cnative("gdk_cairo_set_source_pixbuf")]
-func CairoContext.setSourcePixbuf(pb option<Pixbuf>, x float, y float)
+const component ui.file[platform](path) {
+    ImageUrl(url=path)
+}
 
-#[cnative("cairo_paint")]
-func CairoContext.paintSource()
+const component ui.remote[platform](url) {
+    ImageUrl(url=url)
+}
 
-#[cnative("sngl_unref_pixbuf")]
-func unrefPixbuf(pb option<Pixbuf>)
+const component shapes.image[platform](width, height, shapes) {
+    ImageDrawing(width=width, height=height) {
+        shapes
+    }
+}
 
-// A missing or unreadable file draws nothing rather than failing the render:
-// the loader answers NULL and the null test is what reads it. This is the gap
-// #223 recorded -- gtk4 emitted nothing at all for canvasImage, where every
-// other target loads a local path.
-const component shapes.canvasImage[platform] {
-    draw(@draw(e) {
-        var pb = loadPixbuf(src, int(w), int(h), 0, null)
+#[cnative("cairo_translate")]
+func CairoContext.translate(x float, y float)
 
-        if pb != null {
+#[cnative("cairo_scale")]
+func CairoContext.scale(x float, y float)
+
+#[cnative("cairo_clip")]
+func CairoContext.clip()
+
+// Paints the picture a URL names into a box, decoded once per URL: a file the
+// program carries at once, and one fetched the next time the drawing paints
+// after it arrives.
+#[go.native(_rtPkg, "gtk4rt.CairoPaintURL")]
+func paintURL(cr CairoContext, url string, x float, y float, w float, h float)
+
+// What a `drawSource` paints a carried or fetched image with: the context, and
+// the URL its source names.
+struct SourceEvent {
+    ctx CairoContext
+    url string
+}
+
+// The primitive a `canvasImage` paints its source through. `@url` paints an
+// image a URL names; a drawing is painted in place rather than as a picture,
+// its shapes between `@enter`, which maps the drawing's own space onto the box
+// and clips to it, and `@leave`. The size in their payload is the drawing's.
+#[marks.intrinsic("gtk4:drawSource")]
+component drawSource(
+    @url(e SourceEvent),
+    @enter(e DrawEvent),
+    @leave(e DrawEvent),
+    source ...component family.one[ui.imageSource],
+) shapes.shape
+
+const component shapes.canvasImage[platform](x, y, w, h, src) {
+    drawSource(
+        @url(e) {
+            paintURL(e.ctx, e.url, x, y, w, h)
+        },
+        @enter(e) {
             e.ctx.save()
-            e.ctx.setSourcePixbuf(pb, x, y)
-            e.ctx.paintSource()
+            e.ctx.translate(x, y)
+            e.ctx.scale(w / float(e.width), h / float(e.height))
+            e.ctx.rectangle(0.0, 0.0, float(e.width), float(e.height))
+            e.ctx.clip()
+        },
+        @leave(e) {
             e.ctx.restore()
-            unrefPixbuf(pb)
-        }
-    })
+        },
+    ) {
+        src
+    }
 }
 
 // --- Rich text ---
@@ -618,7 +934,7 @@ const component shapes.canvasImage[platform] {
 
 #[marks.intrinsic("gtk4:Flow")]
 component Flow(
-    style ui.Style,
+    style   ui.Style,
     content ...component markup.span,
 ) ui.node
 
@@ -627,23 +943,23 @@ component Flow(
 // other target -- and becomes the Pango tags wrapped around this run's content.
 #[marks.intrinsic("gtk4:Span")]
 component Span(
-    text string,
-    href string,
+    text      string,
+    href      string,
     spanStyle markup.SpanStyle,
-    content ...component markup.span,
+    content   ...component markup.span,
 ) markup.span
 
-const component markup.richText[platform] {
+const component markup.richText[platform](style, content) {
     Flow(style={...style}) {
         content
     }
 }
 
-const component markup.text[platform] {
+const component markup.text[platform](value) {
     Span(text=value) {}
 }
 
-const component markup.run[platform] {
+const component markup.run[platform](style, content) {
     Span(spanStyle=style) {
         content
     }
@@ -651,7 +967,7 @@ const component markup.run[platform] {
 
 // Pango has `<a href>` and GtkLabel follows one when it is clicked, so this is
 // the one target besides html where a link is a link.
-const component markup.link[platform] {
+const component markup.link[platform](href, content) {
     Span(href=href) {
         content
     }
@@ -660,7 +976,7 @@ const component markup.link[platform] {
 // Pango takes a foreground and nothing a theme could answer, so the fallback
 // is a palette rather than the host: the light one, since the theme GTK ships
 // with is light.
-const component markup.token[platform] {
+const component markup.token[platform](kind, content) {
     Span(spanStyle={color=markup.colorOf(markup.palette, markup.lightPalette, kind)}) {
         content
     }
@@ -669,6 +985,6 @@ const component markup.token[platform] {
 // Pango markup has no image, and a GtkLabel holds text. So the description is
 // what an image is here, in the brackets that say a picture stood where they
 // are.
-const component markup.image[platform] {
+const component markup.image[platform](alt) {
     Span(text="[{alt}]") {}
 }

@@ -122,8 +122,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case msg.Code == tea.KeyTab && msg.Mod == tea.ModShift:
 			m.__focusPrev()
 		case msg.Code == tea.KeySpace && m.__focusID == 0:
-			__bound_checked := !m.on
-			m.on = __bound_checked
+			m.on = !m.on
 		}
 	}
 	return m, tea.Batch(cmds...)
@@ -193,8 +192,8 @@ func New() *Model {
 	return m
 }
 
-func (m *Model) __n0_change_handler(b bool) {
-	m.on = b
+func (m *Model) __n0_toggle_handler(on__p0 bool) {
+	m.on = on__p0
 	m.__n0.SetChecked(m.on)
 }
 
@@ -211,7 +210,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n0 = widget.NewCheck("", nil)
 	m.__n0.SetText("Notifications")
 	m.__n0.SetChecked(m.on)
-	m.__n0.OnChanged = m.__n0_change_handler
+	m.__n0.OnChanged = m.__n0_toggle_handler
 	content := fyne.CanvasObject(m.__n0)
 	return content
 }
@@ -378,6 +377,18 @@ static void sngl_unref_pixbuf(GdkPixbuf *p) {
     if (p != NULL) g_object_unref(p);
 }
 
+// Selects a day the way a click on it does, for gtk4's datepicker override
+// (selectDay) and a test's invoker. select_day is the call every GTK 4 has;
+// 4.20 deprecates it for set_date, which the older ones lack.
+static void sngl_calendar_select(GtkCalendar *c, int y, int m, int d) {
+    GDateTime *dt = g_date_time_new_utc(y, m, d, 0, 0, 0);
+    if (dt == NULL) return;
+    G_GNUC_BEGIN_IGNORE_DEPRECATIONS
+    gtk_calendar_select_day(c, dt);
+    G_GNUC_END_IGNORE_DEPRECATIONS
+    g_date_time_unref(dt);
+}
+
 static void sngl_set_entry_text(GtkEditable *e, const char *t) {
     const char *cur = gtk_editable_get_text(e);
     if (t == NULL) t = "";
@@ -461,27 +472,18 @@ func (m *Model) BuildUI(app *C.GtkApplication) *C.GtkWidget {
 
 package test.sngl.app
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.*
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
-import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.foundation.layout.Row
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color as ComposeColor
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.ui.Alignment
+import androidx.compose.material3.Switch
+import androidx.compose.material3.Text
 
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
@@ -498,8 +500,8 @@ class MainScreenState {
 fun MainScreen(state: MainScreenState = remember { MainScreenState() }) {
 
     Row(modifier = Modifier.safeDrawingPadding(), verticalAlignment = Alignment.CenterVertically) {
-        Switch(checked = state.on, onCheckedChange = { on ->
-            state.on = on
+        Switch(checked = state.on, onCheckedChange = { on__p0 ->
+            state.on = on__p0
         })
         Text(text = "Notifications", modifier = Modifier)
     }
@@ -591,7 +593,7 @@ window.__sngl_boot = () => {
   }
   var __n0 = document.querySelector('[data-sngl-id="__n0"]');
   __n0.addEventListener("change", function(e) {
-    state.on = e.target.checked;
+    state.on = e.currentTarget.checked;
     __n0.checked = state.on;
   });
   function __sngl_init() {
@@ -604,12 +606,12 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:40583d77fa2e06bf6a770e78bdb2e2e0
+pass sha256:5e967bc24e50d57eb79e3887e8a70966
 -- run/go/fyne --
-pass sha256:742803ad7f0ad0f316e40c9fdcae6a94
+pass sha256:2a9a2a10cfedf1cb41348824f1bffa88
 -- run/go/gtk4 --
-pass sha256:89f3cc50f483bc467318ab963f68e036
+pass sha256:dd7061389f331d479546227d113eb66e
 -- run/kotlin/android --
-pass sha256:d14beb72f4939abed0596a7dd2ae4302
+pass sha256:b047c58b5fb76b302904b1b225e24e03
 -- run/none/html --
-pass sha256:7701a8c6431d00b0392ed0ddcf9f9a64
+pass sha256:71b4a9745dca5976770419961b8d8624

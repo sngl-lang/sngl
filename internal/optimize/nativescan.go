@@ -1,6 +1,6 @@
 package optimize
 
-import "git.duckfam.us/jonathan/sngl/ir"
+import "duckfam.us/sngl/ir"
 
 // hasUnresolvedNativeCall reports whether the package graph still holds a call
 // the compile-time evaluator would have to run: an ir.Call whose selector names
@@ -59,11 +59,6 @@ func pkgHasNativeCall(pkg *ir.Package, cfg *Config) bool {
 	}
 	scanVar := func(v *ir.Var) {
 		scanExprs(v.Init)
-		for _, h := range v.Handlers {
-			if h.Func != nil {
-				scanStmts(h.Func.Block, visit)
-			}
-		}
 	}
 
 	for _, c := range pkg.Consts {
@@ -91,7 +86,7 @@ func pkgHasNativeCall(pkg *ir.Package, cfg *Config) bool {
 		for _, f := range comp.Funcs {
 			scanStmts(f.Block, visit)
 		}
-		scanStmts(comp.Body, visit)
+		scanStmts(comp.Stmts, visit)
 	}
 	scanStmts(pkg.Body, visit)
 	return found

@@ -3,12 +3,11 @@ A style field written with its unit, on android.
 `8px` is a unit value, and Kotlin spells one as the `Measurement` data class
 this target emits. Every place a Style field lands on Compose appends `.dp` or
 `.sp` to it, so the field came out as `Measurement(px = 8.0).dp` -- an
-extension nothing declares, and a file that does not compile. The same numbers
-written bare worked, which is why nothing had caught it: the harness compiles
-what the fixtures write, and the fixtures wrote `padding=8`.
+extension nothing declares, and a file that does not compile. Nothing caught
+it while a bare number was accepted for a length, since the fixtures wrote
+`padding=8`; a length now says its unit, so every one is this case.
 
-Both spellings are below and both are the same number, which is the claim: a
-measurement reaching a Compose argument is its magnitude in px, as it is
+A measurement reaching a Compose argument is its magnitude in px, as it is
 everywhere else this platform answers one.
 
 deny out/kotlin/android/app/src/main/java/test/sngl/app/MainScreen.kt `Measurement\(px` -- a measurement reaching a Compose argument is reduced to its magnitude, not spelled as the data class
@@ -24,7 +23,6 @@ output {
 window #home(title="units") {
     vbox(style={padding=8px, gap=4px}) {
         text(value="with units", style={fontSize=32px})
-        text(value="bare", style={fontSize=32})
         button(text="rounded", style={borderRadius=12px, width=100px, height=40px})
     }
 }
@@ -33,38 +31,32 @@ window #home(title="units") {
 
 package test.sngl.app
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.*
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
-import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color as ComposeColor
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
-import androidx.activity.compose.BackHandler
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.platform.LocalContext
 import android.app.Activity
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.layout.Column
+import androidx.compose.ui.Modifier
+import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.material3.Text
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.material3.Button
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.shape.RoundedCornerShape
 
 data class Measurement(
     val px: Double = 0.0,
     val em: Double = 0.0,
-    val vw: Double = 0.0,
-    val vh: Double = 0.0,
-    val pct: Double = 0.0
+    val rem: Double = 0.0
 )
 
 fun _snglFloatStr(v: Double): String =
@@ -88,7 +80,6 @@ fun MainScreen() {
         }
         Column(modifier = Modifier.padding(8.dp).safeDrawingPadding()) {
             Text(text = "with units", modifier = Modifier, style = TextStyle(fontSize = 32.sp))
-            Text(text = "bare", modifier = Modifier, style = TextStyle(fontSize = 32.sp))
             Button(onClick = {}, modifier = Modifier.width(100.dp).height(40.dp), shape = RoundedCornerShape(12.dp)) {
                 Text(text = "rounded", modifier = Modifier)
             }
@@ -96,4 +87,4 @@ fun MainScreen() {
     }
 }
 -- run/kotlin/android --
-pass sha256:5b3eb58b50904e6150a1d027d0eae1a4
+pass sha256:22eede1ada80b9cc70a9fd4a9c6d3d34

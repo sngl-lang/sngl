@@ -713,7 +713,7 @@ func newTestComponent() *Model {
 
 package main
 
-import "git.duckfam.us/jonathan/sngl/pkg/go/gtk4rt"
+import "duckfam.us/sngl/pkg/go/gtk4rt"
 
 func main() {
 	gtk4rt.Run(func(app gtk4rt.Handle) gtk4rt.Handle {
@@ -726,7 +726,7 @@ func main() {
 package main
 
 import (
-	"git.duckfam.us/jonathan/sngl/pkg/go/gtk4rt"
+	"duckfam.us/sngl/pkg/go/gtk4rt"
 )
 
 type ErrorEvent struct {
@@ -951,27 +951,18 @@ func main() {
 
 package test.sngl.app
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.*
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
-import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.foundation.layout.Column
+import androidx.compose.material3.Button
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color as ComposeColor
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.material3.Text
 
 data class ErrorEvent(val message: String = "", val kind: String = "")
 
@@ -1082,7 +1073,7 @@ class MainScreenTest {
         val c = MainScreenState()
         @Suppress("UNUSED_VARIABLE") val composeTestRule = composeRule
         composeRule.setContent { MainScreen(c) }
-        composeTestRule.onNodeWithTag("inHandler").performClick(); composeTestRule.waitForIdle()
+        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("inHandler")).performClick(); composeTestRule.waitForIdle()
         org.junit.Assert.assertTrue("(c.caught == \"too big/range;\")", (c.caught == "too big/range;"))
         org.junit.Assert.assertTrue("(c.after == \"h\")", (c.after == "h"))
     }
@@ -1091,7 +1082,7 @@ class MainScreenTest {
         val c = MainScreenState()
         @Suppress("UNUSED_VARIABLE") val composeTestRule = composeRule
         composeRule.setContent { MainScreen(c) }
-        composeTestRule.onNodeWithTag("inFunc").performClick(); composeTestRule.waitForIdle()
+        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("inFunc")).performClick(); composeTestRule.waitForIdle()
         org.junit.Assert.assertTrue("(c.caught == \"func:too big;\")", (c.caught == "func:too big;"))
         org.junit.Assert.assertTrue("(c.after == \"f\")", (c.after == "f"))
     }
@@ -1100,7 +1091,7 @@ class MainScreenTest {
         val c = MainScreenState()
         @Suppress("UNUSED_VARIABLE") val composeTestRule = composeRule
         composeRule.setContent { MainScreen(c) }
-        composeTestRule.onNodeWithTag("deep").performClick(); composeTestRule.waitForIdle()
+        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("deep")).performClick(); composeTestRule.waitForIdle()
         org.junit.Assert.assertTrue("(c.caught == \"deep:too big;\")", (c.caught == "deep:too big;"))
         org.junit.Assert.assertTrue("(c.after == \"d\")", (c.after == "d"))
     }
@@ -1109,7 +1100,7 @@ class MainScreenTest {
         val c = MainScreenState()
         @Suppress("UNUSED_VARIABLE") val composeTestRule = composeRule
         composeRule.setContent { MainScreen(c) }
-        composeTestRule.onNodeWithTag("fine").performClick(); composeTestRule.waitForIdle()
+        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("fine")).performClick(); composeTestRule.waitForIdle()
         org.junit.Assert.assertTrue("(c.caught == \"\")", (c.caught == ""))
         org.junit.Assert.assertTrue("(c.after == \"ok\")", (c.after == "ok"))
     }
@@ -1285,10 +1276,10 @@ pass sha256:11ecd2a37aa105e3444638f6e7d856e0
 -- run/go/fyne --
 pass sha256:1112193df48bef5dc65ee8dbb21a8081
 -- run/go/gtk4 --
-pass sha256:dcb8995d75f0e7590efd658204b4af52
+pass sha256:9a4f0c9c943e1aae1f9c16764f97880d
 -- run/go/html --
 pass sha256:6ba5a3bcc28f75c158efafa24eecbf84
 -- run/kotlin/android --
-pass sha256:f2b06aa721eb47bb3bdaab262759862b
+pass sha256:8566691325f1be691cb5d24d31f881b3
 -- run/none/html --
 pass sha256:ba8c993f19a1fd37aaa15ccaa7c094d5

@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"slices"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/ir"
 )
 
 // validateRawElements rejects a raw element this platform cannot render.
@@ -13,15 +13,17 @@ import (
 // Both cases were silently produced instead. A tag that is not a literal, or
 // absent, fell back to the node's own name and emitted `<element>` -- markup
 // for a tag that does not exist. A wildcard attribute map that is not a literal
-// was skipped entirely, so a declared `attrs map<string, string>` holding real
+// was skipped entirely, so a declared `attrs map[string, string]` holding real
 // attributes reached the output as nothing at all.
 //
 // Both are static-render limits rather than facts about the DOM: the tag names
 // the element to create, and the attribute names have to be known to be written
-// as attributes. Saying so is the fix; guessing was the bug.
-func validateRawElements(pkg *ir.Package) error {
+// as attributes. Saying so is the fix; guessing was the bug. Asked of a
+// document once it is folded, which is where the page decides a tag its
+// element computes; the script refuses its own (htmlTranslator.refuse).
+func validateRawElements(body []ir.Stmt) error {
 	var bad error
-	ir.WalkStmts(pkg, func(s ir.Stmt) error {
+	ir.WalkStmts(body, func(s ir.Stmt) error {
 		n, ok := s.(*ir.NodeInst)
 		if !ok || n.Component == nil || bad != nil {
 			return nil
@@ -59,7 +61,7 @@ func validateRawElements(pkg *ir.Package) error {
 func firstUnrenderedNode(pkg *ir.Package) error {
 	var bad error
 	declines := func(c *ir.Component) bool {
-		return c != nil && c.Stdlib && c.Pkg != "sngl:platform/html" && !slices.Contains(pkg.Components, c)
+		return c != nil && c.Bodyless && c.PkgPath() != "sngl:platform/html" && !slices.Contains(pkg.Components, c)
 	}
 	ir.WalkStmts(pkg, func(s ir.Stmt) error {
 		if bad != nil {

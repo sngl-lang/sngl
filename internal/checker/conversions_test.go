@@ -3,9 +3,9 @@ package checker_test
 import (
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/internal/checker"
-	"git.duckfam.us/jonathan/sngl/internal/parser"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/internal/checker"
+	"duckfam.us/sngl/internal/parser"
+	"duckfam.us/sngl/ir"
 )
 
 func TestConvIntFromFloat(t *testing.T) {
@@ -217,7 +217,7 @@ func test() {
 func TestConvIntFromListRejected(t *testing.T) {
 	expectError(t, `
 func test() {
-    var xs list<int> = [1, 2, 3]
+    var xs list[int] = [1, 2, 3]
     var n = int(xs)
 }
 `, "cannot convert")
@@ -226,7 +226,7 @@ func test() {
 func TestConvStringFromListRejected(t *testing.T) {
 	expectError(t, `
 func test() {
-    var xs list<int> = [1, 2, 3]
+    var xs list[int] = [1, 2, 3]
     var s = string(xs)
 }
 `, "cannot convert")
@@ -296,16 +296,16 @@ func test() {
 func TestNullToOption(t *testing.T) {
 	expectNoErrors(t, `
 component main node {
-    var maybe option<int> = null
+    var maybe option[int] = null
     text(value="hi")
 }
 `)
 }
 
 func TestValueWrapsAsOption(t *testing.T) {
-	// T → option<T>: bare value auto-wraps when expected is option.
+	// T → option[T]: bare value auto-wraps when expected is option.
 	expectNoErrors(t, `
-func takeMaybe(x option<int>) => x
+func takeMaybe(x option[int]) => x
 func test() {
     var r = takeMaybe(42)
 }
@@ -370,7 +370,7 @@ func TestInterpolateList(t *testing.T) {
 	// `list.string()` method exists — no checker error.
 	expectNoErrors(t, `
 component main node {
-    var xs list<int> = [1, 2, 3]
+    var xs list[int] = [1, 2, 3]
     text(value="xs={xs}")
 }
 `)
@@ -379,7 +379,7 @@ component main node {
 func TestInterpolateOption(t *testing.T) {
 	expectNoErrors(t, `
 component main node {
-    var maybe option<int> = null
+    var maybe option[int] = null
     text(value="maybe={maybe}")
 }
 `)
@@ -492,7 +492,7 @@ component main node {
 			}
 		}
 	}
-	for _, stmt := range pkg.Components[0].Body {
+	for _, stmt := range pkg.Components[0].Stmts {
 		if node, ok := stmt.(*ir.NodeInst); ok {
 			for _, p := range node.Props {
 				if p.Name == "value" {
@@ -508,16 +508,4 @@ component main node {
 
 func TestLiteralZeroNotAppliedToString(t *testing.T) {
 	expectError(t, `var s string = 0`, "cannot initialize string with int")
-}
-
-func TestDynToConcreteFlows(t *testing.T) {
-	expectNoErrors(t, `
-func makeDyn() dyn {
-    var d dyn = 42
-    return d
-}
-func test() {
-    var n int = makeDyn()
-}
-`)
 }

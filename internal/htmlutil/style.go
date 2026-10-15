@@ -7,7 +7,7 @@ import (
 	"sort"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 // BuildCSSStyleIR builds an inline CSS style string from a slice of IR args
@@ -79,6 +79,30 @@ func stylePropCSS(prop, val string) string {
 		val += "px"
 	}
 	return cssProp + ":" + val
+}
+
+// StyleDecl is one CSS declaration a style field writes. Value is the fixed
+// text when Dynamic is false; when true the field's value goes there.
+type StyleDecl struct {
+	Name    string
+	Value   string
+	Dynamic bool
+}
+
+// StylePropDecls is the declarations a style field whose value is only known
+// at run time writes: the same mapping stylePropCSS applies to a static one,
+// with the value left as a hole.
+func StylePropDecls(prop string) []StyleDecl {
+	const hole = "\x00"
+	var out []StyleDecl
+	for decl := range strings.SplitSeq(stylePropCSS(prop, hole), ";") {
+		name, val, ok := strings.Cut(decl, ":")
+		if !ok {
+			continue
+		}
+		out = append(out, StyleDecl{Name: name, Value: val, Dynamic: val == hole})
+	}
+	return out
 }
 
 // PropToCSS maps a SNGL style property name to its CSS equivalent.

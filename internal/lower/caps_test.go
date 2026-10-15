@@ -143,7 +143,7 @@ func TestInterpreterWithholdsOnlyEffects(t *testing.T) {
 		t.Error("InterpreterFeatures holds Effects, so passEffect will not run and the interpreter meets a node it has no case for")
 	}
 	f.Effects = true
-	if f != NoLowering() {
+	if !f.LowersNothing() {
 		t.Errorf("InterpreterFeatures differs from NoLowering by more than Effects:\n  got:  %s\n  want: %s", f, NoLowering())
 	}
 }

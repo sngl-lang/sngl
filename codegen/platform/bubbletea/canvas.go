@@ -5,10 +5,10 @@ import (
 	"strconv"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/codegen/canvasutil"
-	"git.duckfam.us/jonathan/sngl/codegen/lang/golang"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/codegen/canvasutil"
+	"duckfam.us/sngl/codegen/lang/golang"
+	"duckfam.us/sngl/ir"
 )
 
 // Canvas2D rendering for bubbletea.
@@ -33,9 +33,9 @@ import (
 // method calls is gone with them.
 
 const (
-	snglCanvasImportPath = "git.duckfam.us/jonathan/sngl/pkg/go/canvas"
+	snglCanvasImportPath = "duckfam.us/sngl/pkg/go/canvas"
 	snglCanvasAlias      = "snglcanvas"
-	tuiImportPath        = "git.duckfam.us/jonathan/sngl/pkg/go/tui"
+	tuiImportPath        = "duckfam.us/sngl/pkg/go/tui"
 )
 
 // canvasCtxType is the IR native type for the draw-func ctx parameter:
@@ -64,13 +64,13 @@ func terminalCells(w, h int) (cols, rows int) {
 }
 
 // canvasStdlibDecls returns the Go decls for the canvas stdlib structs
-// (Color/CanvasStyle/PathCmd), omitting any whose name a user struct already
+// (Color/Style), omitting any whose name a user struct already
 // declares (those emit their own type decl).
 func canvasStdlibDecls(structs []*ir.StructDef) string {
 	declared := map[string]struct{}{}
 	for _, s := range structs {
 		switch s.Name {
-		case "Color", "CanvasStyle", "PathCmd":
+		case "Color", "Style":
 			declared[s.Name] = struct{}{}
 		}
 	}
@@ -87,12 +87,12 @@ func (vc *irViewContext) renderCanvas(n *ir.NodeInst, c *codegen.Canvas, resultV
 	vc.requireImport(snglCanvasImportPath)
 	vc.requireImport(tuiImportPath)
 	vc.requireImport("image")
-	// The emitted CanvasStyle struct decl references snglcolor.Color.
+	// The emitted Style struct decl references snglcolor.Color.
 	vc.requireImport(canvasutil.ColorImportPath)
 	if vc.canvasSeq[c.Name] {
 		id, raster := emitLoopCanvasRaster(vc.line, c, vc.gc)
 		render := fmt.Sprintf("tui.RenderTerminal(%d, %d, %s, %s)", cols, rows, id, raster)
-		style := buildIRStyleExpr(codegen.NodeStyleFields(n), vc.gc, vc.scaleFactor)
+		style := vc.styleExpr(codegen.NodeStyleFields(n))
 		if style != "lipgloss.NewStyle()" {
 			render = fmt.Sprintf("%s.Render(%s)", style, render)
 		}
@@ -106,7 +106,7 @@ func (vc *irViewContext) renderCanvas(n *ir.NodeInst, c *codegen.Canvas, resultV
 	// style when one is actually set — an empty NewStyle().Render() pads the
 	// multi-line half-block grid with background cells, mangling the art.
 	render := fmt.Sprintf("tui.RenderTerminal(%d, %d, %d, %s)", cols, rows, canvasImageID(c), canvasRasteriser(c))
-	style := buildIRStyleExpr(codegen.NodeStyleFields(n), vc.gc, vc.scaleFactor)
+	style := vc.styleExpr(codegen.NodeStyleFields(n))
 	if style != "lipgloss.NewStyle()" {
 		vc.line("%s = %s.Render(%s)", resultVar, style, render)
 	} else {
@@ -190,7 +190,7 @@ func loopCanvases(ctx *codegen.CodegenCtx) map[*ir.NodeInst]bool {
 	}
 	walk(viewStmts(ctx), false)
 	for _, comp := range ctx.Pkg.Components {
-		walk(comp.Body, false)
+		walk(comp.Stmts, false)
 	}
 	return out
 }
@@ -363,11 +363,11 @@ func translateCanvasBody(stmts []ir.Stmt) []ir.Stmt {
 func emitCanvasDrawFunc(b *strings.Builder, cv *codegen.Canvas, gc *golang.GoIRContext) {
 	body := translateCanvasBody(cv.Draw)
 	synthesized := &ir.Func{
-		Name:     cv.Name,
-		Receiver: "Model",
-		Params:   []*ir.Param{{Name: "ctx", Type: canvasCtxType()}},
-		Return:   ir.TypVoid,
-		Block:    body,
+		Name:    cv.Name,
+		Lowered: ir.FuncLowering{HostReceiver: "Model"},
+		Params:  []*ir.Param{{Name: "ctx", Type: canvasCtxType()}},
+		Return:  ir.TypVoid,
+		Block:   body,
 	}
 	for _, line := range gc.EmitFuncDef(synthesized) {
 		b.WriteString(line)

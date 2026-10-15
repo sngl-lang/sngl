@@ -11,9 +11,9 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/internal/build"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/internal/build"
+	"duckfam.us/sngl/ir"
 )
 
 // main=true sets the "main" option, so platforms emit a runnable entry point.

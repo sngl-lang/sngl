@@ -1,0 +1,36 @@
+// A bare enum member resolves against the type it is wanted as, and in a
+// comparison that is the type of the other operand, on either side. An inline
+// enum has no name to qualify a member with, so this is the only way to
+// compare one against a member at all.
+import . "sngl:test"
+import . "sngl:ui"
+
+enum Status { active, inactive, pending }
+
+struct Look {
+    weight enum { normal, bold }
+}
+
+component panel node {
+    var status Status = pending
+    var look = Look{weight=bold}
+    var maybe option[Status] = active
+
+    text(value=status == pending ? "waiting" : "done")
+    text(value=look.weight == bold ? "heavy" : "light")
+    text(value=normal != look.weight ? "heavy" : "light")
+    text(value=maybe == active ? "on" : "off")
+}
+
+func testBareMembersCompare(t Test, c panel) {
+    t.assert(c.status == pending)
+    t.assert(pending == c.status)
+    t.assert(c.status != active)
+    t.assert(c.look.weight == bold)
+    t.assert(normal != c.look.weight)
+    t.assert(c.maybe == active)
+}
+
+window {
+    panel
+}

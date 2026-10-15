@@ -5,7 +5,7 @@ import (
 	"reflect"
 	"sort"
 
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 // MountedEffect is one `effect` the current tree holds.
@@ -30,6 +30,24 @@ type MountedEffect struct {
 	// one alone is a whole bracket.
 	Mount   *ir.Func
 	Unmount *ir.Func
+	// Changes are the handlers that report writes -- `@update` and a list's
+	// change events -- by event name. Empty for a plain bracket, which then
+	// keeps no place in the write log.
+	Changes map[string]*ir.Func
+	// Incomparable says On has no equality every target agrees on, so it
+	// identifies no lifetime: the bracket lives as long as its node.
+	Incomparable bool
+	// Cell is the storage On names, when it names some; a list's change
+	// events are read off the writes that land in it.
+	Cell    cell
+	HasCell bool
+	// Reads are the bindings On reads, for an On computed from them: a write
+	// to one is a write `@update` reports.
+	Reads []cell
+	// Untracked says On reads something no write is logged against -- a prop,
+	// which whoever bound it writes, or a loop's variable -- so a change in its
+	// value is the only sign it was written.
+	Untracked bool
 	// Env is the scope the effect was written in, which is where its handlers
 	// run and whose state they mutate.
 	Env *Env
@@ -48,7 +66,7 @@ func (a MountedEffect) sameLifetime(b MountedEffect) bool {
 	if a.HasOn != b.HasOn {
 		return false
 	}
-	if !a.HasOn {
+	if !a.HasOn || a.Incomparable || b.Incomparable {
 		return true
 	}
 	return reflect.DeepEqual(a.On, b.On)
@@ -63,10 +81,13 @@ func (a MountedEffect) sameLifetime(b MountedEffect) bool {
 type Effects struct {
 	live map[Key]MountedEffect
 	next int // the seq to stamp on the next lifetime to begin
+	// watch is where each running bracket with change handlers has read the
+	// write log to, and what it has yet to report.
+	watch map[Key]*watchState
 }
 
 func NewEffects() *Effects {
-	return &Effects{live: map[Key]MountedEffect{}}
+	return &Effects{live: map[Key]MountedEffect{}, watch: map[Key]*watchState{}}
 }
 
 // maxEffectRestarts is how many times ONE bracket may begin a lifetime inside a
@@ -101,6 +122,10 @@ func (b *settleBudget) spend(k Key) error {
 	b.steps++
 	if b.steps >= maxEffectSteps {
 		return fmt.Errorf("effects did not settle in %d steps", maxEffectSteps)
+	}
+	if k == (Key{}) {
+		// A report of a write began no lifetime.
+		return nil
 	}
 	if b.starts == nil {
 		b.starts = map[Key]int{}
@@ -149,10 +174,18 @@ func (fx *Effects) Reconcile(v *View, root *Env) (Key, bool, error) {
 		}
 	}
 
+	// Reports first, to every bracket the tree still holds: a write was made
+	// while the lifetime it reaches was running, so it is reported before that
+	// lifetime rekeys.
+	if ran, err := fx.deliver(next, root); ran || err != nil {
+		return Key{}, ran, err
+	}
+
 	// Teardown. Dead brackets leave the running set whether or not they have a
 	// handler to run, so a bracket with only an @mount does not cost a step.
 	for _, prev := range fx.endingLifetimes(next) {
 		delete(fx.live, prev.Key)
+		delete(fx.watch, prev.Key)
 		if prev.Unmount != nil {
 			return prev.Key, true, fx.run(prev, prev.Unmount, root)
 		}
@@ -167,6 +200,7 @@ func (fx *Effects) Reconcile(v *View, root *Env) (Key, bool, error) {
 		cur.seq = fx.next
 		fx.next++
 		fx.live[k] = cur
+		fx.startWatching(cur, root)
 		if cur.Mount != nil {
 			return cur.Key, true, fx.run(cur, cur.Mount, root)
 		}
@@ -207,6 +241,7 @@ func (fx *Effects) Retarget(v *View, root *Env) error {
 	}
 	for _, prev := range fx.endingLifetimes(next) {
 		delete(fx.live, prev.Key)
+		delete(fx.watch, prev.Key)
 		if prev.Unmount == nil {
 			continue
 		}
@@ -241,6 +276,11 @@ func (fx *Effects) endingLifetimes(next map[Key]MountedEffect) []MountedEffect {
 
 // run executes one side of a bracket, passing the lifetime's own key value.
 func (fx *Effects) run(e MountedEffect, fn *ir.Func, root *Env) error {
+	return fx.runWith(e, fn, root, []any{e.On})
+}
+
+// runWith executes one of e's handlers with the values its event carries.
+func (fx *Effects) runWith(e MountedEffect, fn *ir.Func, root *Env, values []any) error {
 	if fn == nil {
 		return nil
 	}
@@ -257,10 +297,8 @@ func (fx *Effects) run(e MountedEffect, fn *ir.Func, root *Env) error {
 	// refreshes it, and writing the whole scope back would put the state back
 	// with it.
 	env.refreshFrom(root)
-	var args []any
-	if len(fn.Params) > 0 {
-		args = []any{e.On}
-	}
+	// A handler may leave trailing parameters unbound.
+	args := values[:min(len(values), len(fn.Params))]
 	if _, err := env.underHandler(e.Context, func() (any, error) { return env.runEventHandlerValues(fn, args) }); err != nil {
 		return err
 	}
@@ -315,17 +353,44 @@ func effectOf(inst *ir.NodeInst, env *Env, key Key) (MountedEffect, bool) {
 			break
 		}
 		e.On, e.HasOn = v, true
+		// The type, or the value where the type is a parameter the call site
+		// bound: the checker refuses a bracket on such a key, and a key that
+		// only reports writes may be one.
+		switch v.(type) {
+		case []any, map[string]any:
+			e.Incomparable = true
+		default:
+			e.Incomparable = ir.RebuildIncomparable(arg.Value.ExprType()) != ""
+		}
 	}
 	for _, h := range inst.Handlers {
 		switch h.Name {
-		case "mount":
+		case ir.EffectMount:
 			e.Mount = h.Func
-		case "unmount":
+		case ir.EffectUnmount:
 			e.Unmount = h.Func
+		default:
+			if e.Changes == nil {
+				e.Changes = map[string]*ir.Func{}
+			}
+			e.Changes[h.Name] = h.Func
 		}
+	}
+	if e.HasOn && len(e.Changes) > 0 {
+		e.Cell, e.HasCell = env.cellOf(onExpr(inst))
+		e.Reads, e.Untracked = env.readCells(onExpr(inst))
 	}
 	return e, true
 }
 
 // effectKeyProp is the prop sngl:builtin's `effect` keys its identity on.
-const effectKeyProp = "on"
+const effectKeyProp = ir.EffectOn
+
+func onExpr(inst *ir.NodeInst) ir.Expr {
+	for _, arg := range inst.Props {
+		if arg.Name == effectKeyProp {
+			return arg.Value
+		}
+	}
+	return nil
+}

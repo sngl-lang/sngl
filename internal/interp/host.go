@@ -5,7 +5,7 @@ import (
 	"io"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/pkg/go/snglhost"
+	"duckfam.us/sngl/pkg/go/snglhost"
 )
 
 // The protocol lives in pkg/go/snglhost, where a generated worker can reach it
@@ -39,9 +39,14 @@ func wireValue(v any) any {
 		if x == nil {
 			return nil
 		}
-		w := WireStruct{Fields: make([]PropVal, len(x.Fields))}
-		for i, f := range x.Fields {
-			w.Fields[i] = PropVal{Name: f.Name, Value: wireValue(f.Value)}
+		// A host reads a field's presence as having been set, as a backend
+		// does, so one the literal left out stays out (Field.Unwritten).
+		w := WireStruct{Fields: make([]PropVal, 0, len(x.Fields))}
+		for _, f := range x.Fields {
+			if f.Unwritten() {
+				continue
+			}
+			w.Fields = append(w.Fields, PropVal{Name: f.Name, Value: wireValue(f.Value)})
 		}
 		return w
 	case []any:
@@ -54,6 +59,19 @@ func wireValue(v any) any {
 		out := make(map[string]any, len(x))
 		for k, el := range x {
 			out[k] = wireValue(el)
+		}
+		return out
+	case unitValue:
+		// A single-base unit is its number. A multi-base one crosses as its
+		// magnitude per base, which is what the host has to weigh: a
+		// measurement's em is the host's text size. The unit table is the
+		// interpreter's and does not cross.
+		if x.Table != nil && len(x.Table.Bases) == 1 {
+			return x.magnitude()
+		}
+		out := make(map[string]any, len(x.Amounts))
+		for b, v := range x.Amounts {
+			out[b] = v
 		}
 		return out
 	}

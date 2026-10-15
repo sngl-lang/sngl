@@ -1,0 +1,30 @@
+// An insertion's fallback stands where the content would have, so it is held
+// to the family of the slot it falls back for rather than to the position's:
+// one insertion renders one family whichever of the two it shows. Crossing
+// lifts the position's check and never this one.
+
+import . "sngl:ui"
+import draw "sngl:ui/draw"
+import family "sngl:family"
+
+component picture(src ...component option[imageSource]) node {
+    vbox {
+        #[family.crosses]
+        src {
+            text(value="no picture") // ERROR(check) "expected imageSource component in the fallback of the slot src, got text"
+        }
+    }
+}
+
+component shapes(content ...component draw.shape) node {
+    draw.canvas(width=10px, height=10px) {
+        content {
+            draw.circle(cx=1.0, cy=1.0, r=1.0)
+        }
+    }
+}
+
+window {
+    picture
+    shapes
+}

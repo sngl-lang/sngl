@@ -9,14 +9,14 @@ import (
 	"os/exec"
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
-	_ "git.duckfam.us/jonathan/sngl/codegen/lang"
-	"git.duckfam.us/jonathan/sngl/codegen/platform/gtk4"
-	"git.duckfam.us/jonathan/sngl/internal/checker"
-	"git.duckfam.us/jonathan/sngl/internal/lower"
-	"git.duckfam.us/jonathan/sngl/internal/parser"
-	"git.duckfam.us/jonathan/sngl/internal/testutil"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/codegen"
+	_ "duckfam.us/sngl/codegen/lang"
+	"duckfam.us/sngl/codegen/platform/gtk4"
+	"duckfam.us/sngl/internal/checker"
+	"duckfam.us/sngl/internal/lower"
+	"duckfam.us/sngl/internal/parser"
+	"duckfam.us/sngl/internal/testutil"
+	"duckfam.us/sngl/ir"
 )
 
 // TestCanvas_RendersRealPixels builds and runs the generated gtk4 app through
@@ -48,12 +48,12 @@ func TestCanvas_RendersRealPixels(t *testing.T) {
 
 	src := `
 import . "sngl:ui"
-import . "sngl:ui/draw"
+import draw "sngl:ui/draw"
 window {
     var radius = 60.0
-    canvas(width=200px, height=200px) {
-        rect(x=0.0, y=0.0, w=200.0, h=200.0, style=CanvasStyle{fill=color{r=240, g=240, b=240, a=255}}) {}
-        circle(cx=100.0, cy=100.0, r=radius, style=CanvasStyle{fill=color{r=200, g=40, b=40, a=255}}) {}
+    draw.canvas(width=200px, height=200px) {
+        draw.rect(x=0.0, y=0.0, w=200.0, h=200.0, style=draw.Style{fill=color{r=240, g=240, b=240, a=255}}) {}
+        draw.circle(cx=100.0, cy=100.0, r=radius, style=draw.Style{fill=color{r=200, g=40, b=40, a=255}}) {}
     }
 }
 `
@@ -73,6 +73,7 @@ window {
 		t.Fatal("go lang not registered")
 	}
 	caps := codegen.CapsOrNone(lang.LanguageIdentifier(), g.PlatformIdentifier())
+	pkg = ir.ClonePackage(pkg)
 	if err := lower.Lower(pkg, caps, lower.Options{Platform: "gtk4", Language: "go"}); err != nil {
 		t.Fatalf("lower: %v", err)
 	}

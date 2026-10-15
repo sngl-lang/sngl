@@ -3,7 +3,7 @@ package lower
 import (
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 // boundedSites counts the instantiations of comp that carry the depth bound,
@@ -44,10 +44,10 @@ func boundedSites(root any, comp *ir.Component) (bounded, bare int) {
 // unbounded -- the one shape where the bound is a program's only protection
 // from the host's stack.
 func TestRecursionDepthBoundsASiteInSlotContent(t *testing.T) {
-	panel := &ir.Component{Name: "panel", Body: []ir.Stmt{&ir.SlotInst{Name: "header"}}}
+	panel := &ir.Component{Name: "panel", Stmts: []ir.Stmt{&ir.SlotInst{Name: "header"}}}
 	endless := &ir.Component{Name: "endless"}
 	site := &ir.NodeInst{Name: "endless", Component: endless}
-	endless.Body = []ir.Stmt{&ir.NodeInst{
+	endless.Stmts = []ir.Stmt{&ir.NodeInst{
 		Name:      "panel",
 		Component: panel,
 		Slots:     map[string]*ir.SlotContent{"header": {Body: []ir.Stmt{site}}},
@@ -69,7 +69,7 @@ func TestRecursionDepthBoundsASiteInSlotContent(t *testing.T) {
 // wrap it again.
 func TestRecursionDepthBoundsEachSiteOnce(t *testing.T) {
 	self := &ir.Component{Name: "self"}
-	self.Body = []ir.Stmt{&ir.NodeInst{Name: "self", Component: self}}
+	self.Stmts = []ir.Stmt{&ir.NodeInst{Name: "self", Component: self}}
 	pkg := &ir.Package{Components: []*ir.Component{self}}
 
 	if err := lowerRecursionDepth(pkg, Features{}, Options{}); err != nil {
@@ -80,7 +80,7 @@ func TestRecursionDepthBoundsEachSiteOnce(t *testing.T) {
 		t.Errorf("self-recursive site: %d bounded, %d bare; want 1 and 0", bounded, bare)
 	}
 	// One depth arg, not one per visit.
-	site := self.Body[0].(*ir.If).Else[0].(*ir.NodeInst)
+	site := self.Stmts[0].(*ir.If).Else[0].(*ir.NodeInst)
 	depthArgs := 0
 	for _, a := range site.Props {
 		if a.Name == recursionDepthProp {

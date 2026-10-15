@@ -11,12 +11,12 @@ stdout '## Slots'
 stdout 'children +\.\.\.component'
 stdout '\*\*Children:\*\* many'
 
-# `scroll` bounds the bare children to one. Both halves of that show: the
-# slot's own type carries the bound, and the children line stops claiming
+# `scroll` bounds the bare children to at most one. Both halves of that show:
+# the slot's own type carries the bound, and the children line stops claiming
 # "many", which it said for every component that accepted any children at all.
 sngl doc scroll
-stdout 'content +\.\.\.component tr\.one'
-stdout '\*\*Children:\*\* exactly one'
+stdout 'content +\.\.\.component option\[node\]'
+stdout '\*\*Children:\*\* at most one'
 
 # A slot that accepts a segmented tree names it.
 sngl doc canvas
@@ -51,7 +51,7 @@ struct Row {
     title string
 }
 
-component table(rows list<Row>, cell component(row Row), body ...component) node {
+component table(rows list[Row], cell component(row Row), body ...component) node {
     vbox {
         for var r = rows {
             cell(r)

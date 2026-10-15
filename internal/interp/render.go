@@ -5,8 +5,8 @@ import (
 	"maps"
 	"slices"
 
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/ir"
 )
 
 // ResolveElementRef finds visual nodes with the given #id in the current body.
@@ -129,6 +129,7 @@ func (env *Env) componentEnv(comp *ir.Component, inst *ir.NodeInst, at string) *
 	child := NewEnv()
 	child.Pkg = env.Pkg
 	child.handling = env.handling
+	child.wlog = env.writes()
 	child.Units = env.Units
 	child.Comp = comp
 	child.parent = env
@@ -139,7 +140,7 @@ func (env *Env) componentEnv(comp *ir.Component, inst *ir.NodeInst, at string) *
 	for _, v := range comp.Vars {
 		child.Set(v, evalInit(child, v.Init))
 	}
-	child.BodyStmts = comp.Body
+	child.BodyStmts = comp.Stmts
 	env.childEnvs[key] = child
 	return child
 }
@@ -230,6 +231,7 @@ func (env *Env) componentEnvFromCall(comp *ir.Component, call *ir.Call) *Env {
 	child := NewEnv()
 	child.Pkg = env.Pkg
 	child.handling = env.handling
+	child.wlog = env.writes()
 	child.Units = env.Units
 	child.Comp = comp
 	child.parent = env
@@ -249,7 +251,7 @@ func (env *Env) componentEnvFromCall(comp *ir.Component, call *ir.Call) *Env {
 	for _, v := range comp.Vars {
 		child.Set(v, evalInit(child, v.Init))
 	}
-	child.BodyStmts = comp.Body
+	child.BodyStmts = comp.Stmts
 	return child
 }
 

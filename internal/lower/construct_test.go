@@ -4,9 +4,9 @@ import (
 	"strings"
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/internal/checker"
-	"git.duckfam.us/jonathan/sngl/internal/parser"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/internal/checker"
+	"duckfam.us/sngl/internal/parser"
+	"duckfam.us/sngl/ir"
 )
 
 // constructInstanceSrc is one component under a dynamic `for` -- the shape that
@@ -22,7 +22,7 @@ component card(#[construct] seed int, name = "") node {
 
 component main node {
     var (
-        names list<string> = ["a", "b"]
+        names list[string] = ["a", "b"]
         base = 0
     )
     for var nm = names {

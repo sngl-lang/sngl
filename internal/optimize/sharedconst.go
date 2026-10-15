@@ -3,7 +3,7 @@ package optimize
 import (
 	"fmt"
 
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 // sharedAggregateConsts is the set of pkg's consts that a reference keeps
@@ -212,9 +212,9 @@ func (w *writesAnalysis) propWrites(comp *ir.Component, name string) bool {
 		p, ok := s.(*ir.Param)
 		return ok && p.Name == name
 	}
-	got := w.escapes(ir.Body{Stmts: comp.Body, Vars: comp.Vars, Funcs: comp.Funcs}, isProp)
+	got := w.escapes(comp.Body, isProp)
 	if b, ok := ir.ComponentOverride(comp, w.platform, w.language); ok {
-		got = got || w.escapes(b, isProp)
+		got = got || w.escapes(b.Body, isProp)
 	}
 	w.props[key] = got
 	return got
@@ -224,10 +224,10 @@ func (w *writesAnalysis) propWrites(comp *ir.Component, name string) bool {
 // emitter rather than by a body, which is to say read as literals. A body
 // another target overrides the component with is not one this build renders.
 func (w *writesAnalysis) renderedByPlatform(comp *ir.Component) bool {
-	if comp.Intrinsic != "" || comp.Wildcard != "" || comp.Builtin != ir.BuiltinNone {
+	if comp.Primitive() || comp.Builtin != ir.BuiltinNone {
 		return true
 	}
-	if len(comp.Body) > 0 {
+	if len(comp.Stmts) > 0 {
 		return false
 	}
 	_, ok := ir.ComponentOverride(comp, w.platform, w.language)
@@ -332,9 +332,6 @@ func (w *writesAnalysis) escapes(body ir.Body, match func(ir.Symbol) bool) bool 
 		if v.Init != nil {
 			found = found || bare(v.Init)
 			_ = ir.Walk(v.Init, visit)
-		}
-		for _, h := range v.Handlers {
-			_ = ir.Walk(h.Func, visit)
 		}
 	}
 	for _, f := range body.Funcs {

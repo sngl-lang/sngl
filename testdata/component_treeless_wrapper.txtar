@@ -6,7 +6,7 @@ carries.
 // A wrapper whose family is whatever it was handed says so with a type
 // parameter:
 //
-//     component boundary<T>(@error error, content ...component T) T
+//     component boundary[T any](@error error, content ...component T) T
 //
 // Nothing at a call site names a type argument, and nothing needs to: a
 // slot's content *is* an argument. The children bind T — the first one that
@@ -55,10 +55,10 @@ package main
 import (
 	"charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	snglcanvas "duckfam.us/sngl/pkg/go/canvas"
+	"duckfam.us/sngl/pkg/go/snglcolor"
+	"duckfam.us/sngl/pkg/go/tui"
 	"fmt"
-	snglcanvas "git.duckfam.us/jonathan/sngl/pkg/go/canvas"
-	"git.duckfam.us/jonathan/sngl/pkg/go/snglcolor"
-	"git.duckfam.us/jonathan/sngl/pkg/go/tui"
 	"image"
 	"os"
 	"strings"
@@ -67,12 +67,10 @@ import (
 type Measurement struct {
 	Px  float64
 	Em  float64
-	Vw  float64
-	Vh  float64
-	Pct float64
+	Rem float64
 }
 
-type CanvasStyle struct {
+type Style struct {
 	Fill        snglcolor.Color
 	Stroke      snglcolor.Color
 	StrokeWidth float64
@@ -80,17 +78,6 @@ type CanvasStyle struct {
 	LineJoin    string
 	FontSize    float64
 	FontFamily  string
-}
-
-type PathCmd struct {
-	Op  string
-	X   float64
-	Y   float64
-	Cx1 float64
-	Cy1 float64
-	Cx2 float64
-	Cy2 float64
-	R   float64
 }
 
 // Model is the Bubble Tea model for this SNGL UI.
@@ -117,11 +104,11 @@ var _canvasSurface0 snglcanvas.Surface
 
 func (m *Model) _canvasDraw0(ctx *snglcanvas.Context) {
 	ctx.Save()
-	ApplyStyle(ctx, CanvasStyle{Fill: snglcolor.Color{R: 255, G: 0, B: 0, A: 255}, Stroke: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, StrokeWidth: 1.0, LineCap: "butt", LineJoin: "miter", FontSize: 16.0, FontFamily: "sans-serif"})
+	ApplyStyle(ctx, Style{Fill: snglcolor.Color{R: 255, G: 0, B: 0, A: 255}, Stroke: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, StrokeWidth: 1.0, LineCap: "butt", LineJoin: "miter", FontSize: 16.0, FontFamily: "sans-serif"})
 	ctx.Circle(5.0, 5.0, 4.0)
 	ctx.Restore()
 	ctx.Save()
-	ApplyStyle(ctx, CanvasStyle{Fill: snglcolor.Color{R: 0, G: 255, B: 0, A: 255}, Stroke: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, StrokeWidth: 1.0, LineCap: "butt", LineJoin: "miter", FontSize: 16.0, FontFamily: "sans-serif"})
+	ApplyStyle(ctx, Style{Fill: snglcolor.Color{R: 0, G: 255, B: 0, A: 255}, Stroke: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, StrokeWidth: 1.0, LineCap: "butt", LineJoin: "miter", FontSize: 16.0, FontFamily: "sans-serif"})
 	ctx.Rect(0.0, 0.0, 2.0, 2.0)
 	ctx.Restore()
 }
@@ -139,7 +126,7 @@ func (m Model) __canvasTransmit() tea.Cmd {
 	return tea.Raw(__ctb.String())
 }
 
-func ApplyStyle(ctx *snglcanvas.Context, style CanvasStyle) {
+func ApplyStyle(ctx *snglcanvas.Context, style Style) {
 	ctx.SetFill(style.Fill.R, style.Fill.G, style.Fill.B, style.Fill.A)
 	ctx.SetStroke(style.Stroke.R, style.Stroke.G, style.Stroke.B, style.Stroke.A)
 	ctx.SetStrokeWidth(style.StrokeWidth)
@@ -226,48 +213,35 @@ func main() {
 
 package test.sngl.app
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.*
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
-import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.Color as ComposeColor
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
-import androidx.activity.compose.BackHandler
-import androidx.compose.ui.platform.LocalContext
-import android.app.Activity
-import androidx.compose.foundation.layout.safeDrawingPadding
-import androidx.compose.foundation.Canvas
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.nativeCanvas
-import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
-import androidx.compose.ui.graphics.drawscope.DrawScope
-import androidx.compose.ui.graphics.toArgb
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.platform.LocalContext
+import android.app.Activity
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.layout.Column
+import androidx.compose.material3.Text
+import androidx.compose.ui.Modifier
+import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.layout.size
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 
 data class Measurement(
     val px: Double = 0.0,
     val em: Double = 0.0,
-    val vw: Double = 0.0,
-    val vh: Double = 0.0,
-    val pct: Double = 0.0
+    val rem: Double = 0.0
 )
 
 data class Color(
@@ -280,7 +254,7 @@ data class Color(
         if (a < 255) "rgba($r,$g,$b,${a / 255.0})" else String.format("#%02x%02x%02x", r, g, b)
 }
 
-data class CanvasStyle(
+data class Style(
     var fill: Color = Color(a = 0),
     var stroke: Color = Color(a = 0),
     var strokeWidth: Double = 1.0,
@@ -288,17 +262,6 @@ data class CanvasStyle(
     var lineJoin: String = "miter",
     var fontSize: Double = 16.0,
     var fontFamily: String = "sans-serif"
-)
-
-data class PathCmd(
-    var op: String = "",
-    var x: Double = 0.0,
-    var y: Double = 0.0,
-    var cx1: Double = 0.0,
-    var cy1: Double = 0.0,
-    var cx2: Double = 0.0,
-    var cy2: Double = 0.0,
-    var r: Double = 0.0
 )
 
 fun DrawScope.snglDrawText(content: String, x: Float, y: Float, c: ComposeColor, size: Float, family: String) {
@@ -313,15 +276,28 @@ fun DrawScope.snglDrawText(content: String, x: Float, y: Float, c: ComposeColor,
     })
 }
 
-// A file that will not decode draws nothing rather than failing the frame,
+// A picture that will not decode draws nothing rather than failing the frame,
 // which is what every other target does with an unreadable source.
 fun DrawScope.snglDrawImage(src: String, x: Float, y: Float, w: Float, h: Float) {
-    val bmp = android.graphics.BitmapFactory.decodeFile(src) ?: return
+    val bmp = SnglAssets.bitmap(src) ?: return
     drawImage(
-        image = bmp.asImageBitmap(),
+        image = bmp,
         dstOffset = IntOffset(x.toInt(), y.toInt()),
         dstSize = IntSize(w.toInt(), h.toInt()),
     )
+}
+
+// A drawing painted in place of a picture: its own space mapped onto the box
+// and clipped to it, until snglDrawLeave.
+fun DrawScope.snglDrawEnter(x: Float, y: Float, sx: Float, sy: Float, w: Float, h: Float) {
+    drawContext.canvas.save()
+    drawContext.canvas.translate(x, y)
+    drawContext.canvas.scale(sx, sy)
+    drawContext.canvas.clipRect(0f, 0f, w, h)
+}
+
+fun DrawScope.snglDrawLeave() {
+    drawContext.canvas.restore()
 }
 
 fun _snglFloatStr(v: Double): String =
@@ -351,6 +327,48 @@ fun MainScreen() {
             }
         }
     }
+}
+-- out/kotlin/android/app/src/main/java/test/sngl/app/SnglAssets.kt --
+package test.sngl.app
+
+import android.content.Context
+import android.graphics.BitmapFactory
+import androidx.compose.foundation.Image
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
+
+// SnglAssets reads the pictures the program carries out of the app's assets,
+// where the build put each file at the path the program names it by. A
+// picture a URL names is not one of them: no loader ships with the app, so it
+// is no picture at all. MainActivity hands it the application's context, since
+// a drawing paints where there is none to ask.
+object SnglAssets {
+    private var context: Context? = null
+    private val pictures = HashMap<String, ImageBitmap?>()
+
+    fun init(c: Context) {
+        context = c.applicationContext
+    }
+
+    fun bitmap(path: String): ImageBitmap? = pictures.getOrPut(path) {
+        val c = context ?: return null
+        if (path.startsWith("http://") || path.startsWith("https://")) {
+            null
+        } else {
+            runCatching { c.assets.open(path.removePrefix("/")).use { BitmapFactory.decodeStream(it) } }
+                .getOrNull()?.asImageBitmap()
+        }
+    }
+}
+
+// SnglAssetImage is an image's source on this platform: the picture a URL
+// names, or nothing where there is none.
+@Composable
+fun SnglAssetImage(url: String) {
+    val bmp = SnglAssets.bitmap(url) ?: return
+    Image(bitmap = bmp, contentDescription = null, modifier = Modifier)
 }
 -- out/none/html/index.html --
 <!-- Code generated by sngl (html) from component_treeless_wrapper.sngl; DO NOT EDIT. -->
@@ -438,8 +456,8 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:b2e1be46df95345ee05aee4399ffce6a
+pass sha256:1ef834d8be36f826a91b4cf7dff3afc2
 -- run/kotlin/android --
-pass sha256:db9c521792de0d90812ffe8256f5ed10
+pass sha256:b695569ef3c8016d79342d76d16978fb
 -- run/none/html --
 pass sha256:b048c35cf2daca88cee830fd47cc31d4

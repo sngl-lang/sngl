@@ -16,9 +16,9 @@ import (
 	"sync"
 	"time"
 
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/internal/parser"
-	"git.duckfam.us/jonathan/sngl/pkg/go/consteval"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/internal/parser"
+	"duckfam.us/sngl/pkg/go/consteval"
 )
 
 // Input is one thing a generated file was derived from: a member of

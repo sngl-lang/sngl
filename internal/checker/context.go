@@ -1,8 +1,9 @@
 package checker
 
 import (
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/ir"
+	"fmt"
 )
 
 // isContextDeclCallStmt reports whether s has the shape `context #id(arg)`:
@@ -13,7 +14,11 @@ func (c *checker) isContextDeclCallStmt(s *ast.CallStmt) bool {
 	if s.Call.ID == "" {
 		return false
 	}
-	ident, ok := s.Call.Func.(*ast.IdentExpr)
+	fn := s.Call.Func
+	if ix, ok := fn.(*ast.IndexExpr); ok {
+		fn = ix.Operand
+	}
+	ident, ok := fn.(*ast.IdentExpr)
 	if !ok {
 		return false
 	}
@@ -43,18 +48,9 @@ func (c *checker) buildContextProvider(vn *ast.VisualNode, ctx *ir.Context) *ir.
 		c.error(vn.Pos, "context provider %q argument must be positional", ctx.Name)
 		return &ir.ContextProvider{AST: vn, Ref: ctx}
 	}
-	val := c.checkExpr(a.Value)
-	if val != nil && ctx.Typ != nil {
-		valType := val.ExprType()
-		if valType != nil && valType.Kind != ir.TypeDyn && ctx.Typ.Kind != ir.TypeDyn && !valType.IsAssignableTo(ctx.Typ) {
-			pos := vn.Pos
-			if p := a.Value.ExprPos(); p != nil {
-				pos = *p
-			}
-			got, want := ir.Contrast(valType, ctx.Typ)
-			c.error(pos, "context %q: value type %v is not assignable to context type %v", ctx.Name, got, want)
-		}
-	}
+	val := c.checkExprAs(a.Value, ctx.Typ, slot{mismatch: func(want, got string) string {
+		return fmt.Sprintf("context %q: value type %v is not assignable to context type %v", ctx.Name, got, want)
+	}})
 	children := c.checkBlockIR(&vn.Block)
 	return &ir.ContextProvider{AST: vn, Ref: ctx, Value: val, Children: children}
 }
@@ -72,18 +68,18 @@ func (c *checker) registerRootContextDecl(s *ast.CallStmt) {
 	args := s.Call.Args.Args
 	if len(args) == 0 {
 		c.error(s.Pos, "context decl requires a default value")
-		c.pkg.Contexts = append(c.pkg.Contexts, ctx)
+		c.declPkg().Contexts = append(c.declPkg().Contexts, ctx)
 		return
 	}
 	if len(args) > 1 {
 		c.error(s.Pos, "context decl takes exactly one default value")
-		c.pkg.Contexts = append(c.pkg.Contexts, ctx)
+		c.declPkg().Contexts = append(c.declPkg().Contexts, ctx)
 		return
 	}
 	a, isArg := args[0].(ast.Arg)
 	if !isArg || a.Name != "" {
 		c.error(s.Pos, "context default must be positional, not named")
-		c.pkg.Contexts = append(c.pkg.Contexts, ctx)
+		c.declPkg().Contexts = append(c.declPkg().Contexts, ctx)
 		return
 	}
 	// The default is an initializer expression, evaluated once when the
@@ -99,16 +95,47 @@ func (c *checker) registerRootContextDecl(s *ast.CallStmt) {
 	if name != "" {
 		c.declare(s.Pos, ctx)
 	}
-	def := c.checkExpr(a.Value)
-	c.reportSelfReferentialDefault(s.Pos, ctx, def)
-	ctx.Default = def
-	if def != nil {
-		ctx.Typ = def.ExprType()
+	// Checked once every declaration is registered and marked, with the
+	// package's other initializers (checkPendingInits).
+	// `context[option[User]] #who(null)` states the type a default alone
+	// says too little about, and the default is held to it.
+	var written []ast.Expr
+	if ix, ok := s.Call.Func.(*ast.IndexExpr); ok {
+		written = ix.Indices
 	}
+	c.deferInit(s.Pos, func() {
+		var stated *ir.Type
+		if len(written) > 0 {
+			var params []ir.TypeParam
+			if comp := c.contextComp; comp != nil {
+				params = comp.TypeParams
+			}
+			if _, types := c.bindWritten(s.Pos, "context", written, params); len(types) > 0 {
+				ctx.TypeArgs = types
+				stated = types[0]
+			}
+		}
+		var def ir.Expr
+		if stated != nil {
+			def = c.checkExprAs(a.Value, stated, slot{mismatch: func(want, got string) string {
+				return fmt.Sprintf("context %q: default %v is not assignable to context type %v", name, got, want)
+			}})
+		} else {
+			def = c.checkExpr(a.Value)
+		}
+		c.reportSelfReferentialDefault(s.Pos, ctx, def)
+		ctx.Default = def
+		switch {
+		case stated != nil:
+			ctx.Typ = stated
+		case def != nil:
+			ctx.Typ = c.inferredType(def.ExprType(), *a.Value.ExprPos())
+		}
+	})
 	// A context is program-global whichever tier declared it: the one sngl:i18n
-	// declares has to reach the program's own codegen, which reads
-	// c.pkg.Contexts.
-	c.pkg.Contexts = append(c.pkg.Contexts, ctx)
+	// declares reaches the program's own codegen, which reads its
+	// Contexts, when the program adopts the library's (adoptLibContexts).
+	c.declPkg().Contexts = append(c.declPkg().Contexts, ctx)
 }
 
 // reportSelfReferentialDefault reports a context default that reads the
@@ -129,4 +156,46 @@ func (c *checker) reportSelfReferentialDefault(pos ast.Pos, ctx *ir.Context, def
 		c.error(at, "#%s names the context this argument list declares, so its default cannot read it", ctx.Name)
 		return nil
 	})
+}
+
+// refuseSetContextName reports a `t.setContext` whose first argument is not a
+// context. The call names the context it sets, so the argument is a read of
+// one, which every later phase takes as the name; anything else -- a string
+// spelling the name -- named nothing, and failed only when the test ran.
+func (c *checker) refuseSetContextName(e ir.Expr) {
+	call, ok := e.(*ir.Call)
+	if !ok || !ir.IsTestCall(call, ir.TestSetContextID) || len(call.Args) < 2 {
+		return
+	}
+	arg := call.Args[len(call.Args)-2].Value
+	if _, ok := arg.(*ir.ContextRead); ok {
+		return
+	}
+	pos := call.AST.Pos
+	if args := call.AST.Args.Args; len(args) > 0 {
+		if a, ok := args[0].(ast.Arg); ok && a.Value.ExprPos() != nil {
+			pos = *a.Value.ExprPos()
+		}
+	}
+	c.error(pos, "t.setContext sets a context: name one declared with `context #name(default)`")
+}
+
+// adoptLibContexts puts the contexts a library package and what it imports
+// declare on the program's list, in the order they were declared: a context is
+// program-global whichever package declared it, and the library is loaded once
+// for every check that reaches it.
+func (c *checker) adoptLibContexts(pkg *ir.Package) {
+	if pkg == nil || c.adoptedContexts[pkg] {
+		return
+	}
+	if c.adoptedContexts == nil {
+		c.adoptedContexts = map[*ir.Package]bool{}
+	}
+	c.adoptedContexts[pkg] = true
+	for _, imp := range pkg.Imports {
+		c.adoptLibContexts(imp.Pkg)
+	}
+	if pkg != c.pkg {
+		c.adoptContexts(pkg)
+	}
 }

@@ -3,8 +3,8 @@ package html
 import (
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/ir"
 )
 
 // pkgWithImport builds a minimal *ir.Package carrying a single scheme import
@@ -22,12 +22,12 @@ func pkgWithImport(scheme, importPath string) *ir.Package {
 
 // goCall builds a *ir.Call to a native func originating from the given import.
 func goCall(importPath string) *ir.Call {
-	return &ir.Call{Func: &ir.Func{Foreign: ir.Foreign{Path: importPath}}}
+	return &ir.Call{Func: &ir.Func{Path: importPath}}
 }
 
 // jsCall builds a *ir.Call to a native js: func.
 func jsCall(importPath string) *ir.Call {
-	return &ir.Call{Func: &ir.Func{Foreign: ir.Foreign{Path: importPath}}}
+	return &ir.Call{Func: &ir.Func{Path: importPath}}
 }
 
 // intrinsicCall wraps an argument expression in a call to a func carrying the
@@ -42,14 +42,14 @@ func intrinsicCall(id string, arg ir.Expr) *ir.Call {
 func TestFuncImportScheme(t *testing.T) {
 	t.Run("go native func", func(t *testing.T) {
 		pkg := pkgWithImport("go", "example.com/api")
-		fn := &ir.Func{Foreign: ir.Foreign{Path: "example.com/api"}}
+		fn := &ir.Func{Path: "example.com/api"}
 		if s := funcImportScheme(pkg, fn); s != "go" {
 			t.Fatalf("got %q want go", s)
 		}
 	})
 	t.Run("js native func", func(t *testing.T) {
 		pkg := pkgWithImport("js", "some-pkg")
-		fn := &ir.Func{Foreign: ir.Foreign{Path: "some-pkg"}}
+		fn := &ir.Func{Path: "some-pkg"}
 		if s := funcImportScheme(pkg, fn); s != "js" {
 			t.Fatalf("got %q want js", s)
 		}

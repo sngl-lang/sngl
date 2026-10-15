@@ -15,15 +15,15 @@ import . "sngl:ui"
 
 component main node {
     var (
-        items list<string> = ["a", "b"]
-        log list<string> = []
+        items list[string] = ["a", "b"]
+        log list[string] = []
     )
 
     for var it = items {
         text(value=it)
     } else {
         effect(
-            on="none",
+            on = "none",
             @mount(v) {
                 log.push("+{v}")
             },

@@ -6,11 +6,11 @@ import (
 	"path/filepath"
 	"time"
 
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/codegen/testharness/snapshot"
-	"git.duckfam.us/jonathan/sngl/internal/interp"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/codegen/testharness/snapshot"
+	"duckfam.us/sngl/internal/interp"
+	"duckfam.us/sngl/ir"
 )
 
 // CallMethod dispatches method calls on the Test value.
@@ -76,9 +76,6 @@ func (tv *testingT) CallMethod(env *interp.Env, method string, args []ir.Expr) (
 
 		// The deadline is simulated, not wall-clock: a test asking to wait
 		// 1000ms for a 10ms timer spends three ticks, not a real second.
-		if tv.clock == nil {
-			tv.clock = interp.NewVirtual()
-		}
 		deadline := tv.clock.Now().Add(time.Duration(timeoutMs) * time.Millisecond)
 
 		// A test function may take no component, in which case there is
@@ -251,7 +248,12 @@ func (tv *testingT) CallMethod(env *interp.Env, method string, args []ir.Expr) (
 		start := time.Now()
 		childResult := &codegen.TestResult{Desc: fmt.Sprintf("%v", desc)}
 		childEnv := env.Snapshot()
-		childT := &testingT{env: childEnv, result: childResult, pkg: tv.pkg, compName: tv.compName, locale: tv.locale, contextOverrides: tv.contextOverrides}
+		// The parent's clock, not one of its own: childEnv is a Snapshot and
+		// carries `Clock`, so a subtest's `time.now()` already reads the
+		// parent's. A second clock here would start back at Epoch, so
+		// `t.tick()` would advance one while `now()` read the other -- and
+		// time would appear to run backwards across the subtest boundary.
+		childT := &testingT{env: childEnv, result: childResult, pkg: tv.pkg, compName: tv.compName, locale: tv.locale, contextOverrides: tv.contextOverrides, clock: tv.clock}
 
 		callArgs := []any{childT}
 		if tv.compName != "" && tv.comp != nil {
@@ -305,7 +307,7 @@ func wrapChildComponent(n *interp.Node, by *componentValue) *componentValue {
 		Env:      n.CompEnv,
 		comp:     n.Component,
 		compName: n.Component.Name,
-		body:     n.Component.Body,
+		body:     n.Component.Stmts,
 		by:       by,
 		inst:     n.Inst,
 	}
@@ -422,6 +424,7 @@ func (cv *componentValue) SetField(op ast.AssignOp, field string, val any) error
 		return err
 	}
 	cv.Env.Set(sym, nv)
+	cv.Env.NoteReplace(sym)
 	// After the write, not before: the assignment is what the new lifetimes are
 	// keyed on, so settling first would reconcile against the old value and
 	// leave the change to whatever read came next.
@@ -537,6 +540,7 @@ func (cv *componentValue) Toggle(field string) error {
 		return fmt.Errorf("cannot toggle non-bool field %q", field)
 	}
 	cv.Env.Set(sym, !b)
+	cv.Env.NoteReplace(sym)
 	return nil
 }
 
@@ -552,6 +556,16 @@ func (cv *componentValue) WriteBackList(field string, list []any) error {
 	return nil
 }
 
+// FieldCell is the binding field names in the instance's scope.
+func (cv *componentValue) FieldCell(field string) (*interp.Env, ir.Symbol, bool) {
+	sym, err := cv.writableFieldSym(field)
+	if err != nil || sym == nil {
+		return nil, nil, false
+	}
+	owner, ok := cv.Env.CellOf(sym)
+	return owner, sym, ok
+}
+
 // childComponentByID returns the live componentValue wrapper for a user
 // component instantiated in the component's body with element id == id (e.g.
 // `main #m()` reached as `c.m`), or nil.
@@ -560,7 +574,7 @@ func (cv *componentValue) WriteBackList(field string, list []any) error {
 // component instantiation as a node carrying its own scope, which is exactly
 // what a wrapper needs -- and it reaches ids the old walk could not, since that
 // one descended `if` branches only and skipped loops, slots and boundaries.
-func (cv *componentValue) childComponentByID(id string) *componentValue {
+func (cv *componentValue) childComponentByID(id string) any {
 	view, err := interp.Mount(cv.Env)
 	if err != nil {
 		return nil
@@ -596,7 +610,7 @@ func isUserComponent(comp *ir.Component) bool {
 	if comp == nil {
 		return false
 	}
-	return len(comp.Body) > 0 || len(comp.Vars) > 0 || len(comp.Funcs) > 0
+	return len(comp.Stmts) > 0 || len(comp.Vars) > 0 || len(comp.Funcs) > 0
 }
 
 // InstanceEnv is the instance this wrapper stands for, which is what a
@@ -612,7 +626,7 @@ func (cv *componentValue) funcNamed(name string) *ir.Func {
 		return nil
 	}
 	for _, fn := range cv.comp.Funcs {
-		if fn.Name == name && fn.Receiver == "" {
+		if fn.Name == name && !fn.IsMethod() {
 			return fn
 		}
 	}
@@ -667,4 +681,12 @@ func (cv *componentValue) writableFieldSym(field string) (ir.Symbol, error) {
 		return nil, fmt.Errorf("cannot assign to const %q", field)
 	}
 	return sym, nil
+}
+
+// The interpreter is the none language's test harness, and the reference: it
+// answers every sngl:test method, the ones no compiled harness lowers yet
+// included.
+func init() {
+	codegen.DeclareLangImplements("none", ir.TestAssertID, ir.TestMustID, ir.TestSetLocaleID,
+		ir.TestSetContextID, ir.TestWaitID, ir.TestSnapshotID, ir.TestTickID, ir.TestSubtestID)
 }

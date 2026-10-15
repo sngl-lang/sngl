@@ -8,12 +8,12 @@
 package testtargets
 
 import (
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/ir"
 
 	// Register every language and platform, exactly as cmd/sngl does.
-	_ "git.duckfam.us/jonathan/sngl/codegen/lang"
-	_ "git.duckfam.us/jonathan/sngl/codegen/platform"
+	_ "duckfam.us/sngl/codegen/lang"
+	_ "duckfam.us/sngl/codegen/platform"
 )
 
 // Targets returns every registered language and platform, mirroring the set

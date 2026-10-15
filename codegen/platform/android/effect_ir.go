@@ -1,8 +1,8 @@
 package android
 
 import (
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/ir"
 )
 
 // renderEffect emits an `effect` node as Compose's own lifetime bracket.
@@ -32,7 +32,7 @@ func (cc *irComposeContext) renderEffect(n *ir.NodeInst) {
 		key = cc.kc.EvalExpr(on)
 	}
 
-	cc.line("DisposableEffect(%s) {", key)
+	cc.line("%s(%s) {", cc.kc.Name(ktDisposableEffect), key)
 	cc.indent++
 	// Bound once, on the way in, and read by both halves. onDispose runs when
 	// the composition leaves -- by which time the state the key reads already

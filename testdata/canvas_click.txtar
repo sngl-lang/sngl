@@ -8,12 +8,8 @@ container holds that in the canvas's place. gtk4 draws one in a
 controller does, and its `pressed` passes `(n_press, x, y)` ahead of the
 user_data the connect trampoline reads, so it has a trampoline of its own.
 
-No Fyne or GTK signature replaces the handler's SNGL parameter, so it keeps it
-and is handed the declared payload, a `ClickEvent`. That is why a payload named
-by a handler is declared: before, the handler said `ClickEvent` and nothing
-emitted the type. `ClickEvent` has no fields -- nothing reports where the click
-landed -- so a test may write `click()` or `click({})` and the Go invoker takes
-nothing.
+A canvas's `@click()` passes nothing -- nothing reports where the click
+landed -- so the handler takes no parameter and the Go invoker takes nothing.
 
 A test's `c.board` is found for a canvas written `draw.canvas #board`: the
 lookup resolved only a bare component name, so a node written through an import
@@ -46,11 +42,11 @@ component main node {
 
     vbox {
         text(value="hits {hits}")
-        draw.canvas #board(width=40px, height=40px, @click(e) { hits += 1 }) {
+        draw.canvas #board(width=40px, height=40px, @click { hits += 1 }) {
             draw.circle(cx=20.0, cy=20.0, r=10.0)
         }
         for var x = xs {
-            draw.canvas(width=40px, height=40px, @click(e) { hits += x }) {
+            draw.canvas(width=40px, height=40px, @click { hits += x }) {
                 draw.circle(cx=20.0, cy=20.0, r=float(x) * 5.0)
             }
         }
@@ -60,7 +56,7 @@ component main node {
 func testClickCounts(t Test, c main) {
     c.board.click()
     t.assert(c.hits == 1)
-    c.board.click({})
+    c.board.click()
     t.assert(c.hits == 2)
 }
 
@@ -73,41 +69,25 @@ window {
 package main
 
 import (
+	snglcanvas "duckfam.us/sngl/pkg/go/canvas"
+	"duckfam.us/sngl/pkg/go/fynelayout"
+	"duckfam.us/sngl/pkg/go/snglcolor"
 	"fmt"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
-	snglcanvas "git.duckfam.us/jonathan/sngl/pkg/go/canvas"
-	"git.duckfam.us/jonathan/sngl/pkg/go/fynelayout"
-	"git.duckfam.us/jonathan/sngl/pkg/go/snglcolor"
 	"os"
 )
-
-type PathCmd struct {
-	Op  string
-	X   float64
-	Y   float64
-	Cx1 float64
-	Cy1 float64
-	Cx2 float64
-	Cy2 float64
-	R   float64
-}
 
 type Measurement struct {
 	Px  float64
 	Em  float64
-	Vw  float64
-	Vh  float64
-	Pct float64
+	Rem float64
 }
 
-type ClickEvent struct {
-}
-
-type CanvasStyle struct {
+type Style struct {
 	Fill        snglcolor.Color
 	Stroke      snglcolor.Color
 	StrokeWidth float64
@@ -145,7 +125,7 @@ func New() *Model {
 	return m
 }
 
-func ApplyStyle(ctx *snglcanvas.Context, style CanvasStyle) {
+func ApplyStyle(ctx *snglcanvas.Context, style Style) {
 	ctx.SetFill(style.Fill.R, style.Fill.G, style.Fill.B, style.Fill.A)
 	ctx.SetStroke(style.Stroke.R, style.Stroke.G, style.Stroke.B, style.Stroke.A)
 	ctx.SetStrokeWidth(style.StrokeWidth)
@@ -166,7 +146,7 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 		if len(m.__inst0_live) > __inst0_i {
 			__n1 = m.__inst0_live[__inst0_i]
 			__n1.Set__p0(x)
-			__n1.Set__on0(func(e ClickEvent) {
+			__n1.Set__on0(func() {
 				m.hits += x
 				m.__n0.SetText(("hits " + fmt.Sprint(m.hits)))
 			})
@@ -174,7 +154,7 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 			if len(m.__inst0_live) > __inst0_i {
 				m.__inst0_live[__inst0_i].Destroy()
 			}
-			__n1__new := new__canvas0Instance(m, x, func(e ClickEvent) {
+			__n1__new := new__canvas0Instance(m, x, func() {
 				m.hits += x
 				m.__n0.SetText(("hits " + fmt.Sprint(m.hits)))
 			})
@@ -195,14 +175,14 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 	m.__inst0_live = __inst0_next
 }
 
-func (m *Model) board_click_handler(e ClickEvent) {
+func (m *Model) board_click_handler() {
 	m.hits += 1
 	m.__n0.SetText(("hits " + fmt.Sprint(m.hits)))
 }
 
 func (m *Model) _canvasDraw0(ctx *snglcanvas.Context) {
 	ctx.Save()
-	ApplyStyle(ctx, CanvasStyle{Fill: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, Stroke: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, StrokeWidth: 1.0, LineCap: "butt", LineJoin: "miter", FontSize: 16.0, FontFamily: "sans-serif"})
+	ApplyStyle(ctx, Style{Fill: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, Stroke: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, StrokeWidth: 1.0, LineCap: "butt", LineJoin: "miter", FontSize: 16.0, FontFamily: "sans-serif"})
 	ctx.Circle(20.0, 20.0, 10.0)
 	ctx.Restore()
 }
@@ -242,7 +222,9 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.board.FillMode = canvas.ImageFillOriginal
 	m.board.SetMinSize(fyne.NewSize(40, 40))
 	m.boardTap = fynelayout.NewTap(m.board)
-	m.boardTap.OnTapped = func() { m.board_click_handler(ClickEvent{}) }
+	m.boardTap.OnTapped = func() {
+		m.board_click_handler()
+	}
 	m.__n2.Add(m.boardTap)
 	m.__renderSlot0(m.__n2)
 	content := fyne.CanvasObject(m.__n2)
@@ -254,7 +236,7 @@ type __canvas0Instance struct {
 	Root         fyne.CanvasObject
 	__model      *Model
 	__prop___p0  int
-	__prop___on0 func(ClickEvent)
+	__prop___on0 func()
 	__root       *fyne.Container
 	__slot0      []fyne.CanvasObject
 	__slot0_at   fyne.CanvasObject
@@ -263,7 +245,7 @@ type __canvas0Instance struct {
 	__n3Tap      *fynelayout.Tap
 }
 
-func new__canvas0Instance(__model *Model, __a___p0 int, __a___on0 func(ClickEvent)) *__canvas0Instance {
+func new__canvas0Instance(__model *Model, __a___p0 int, __a___on0 func()) *__canvas0Instance {
 	c := &__canvas0Instance{}
 	c.__model = __model
 	c.__prop___p0 = __a___p0
@@ -277,9 +259,9 @@ func new__canvas0Instance(__model *Model, __a___p0 int, __a___on0 func(ClickEven
 	c.__n3.SetMinSize(fyne.NewSize(40, 40))
 	c.__n3Tap = fynelayout.NewTap(c.__n3)
 	c.__n3Tap.OnTapped = func() {
-		func(__on0_0 ClickEvent) {
-			c.__prop___on0(__on0_0)
-		}(ClickEvent{})
+		func() {
+			c.__prop___on0()
+		}()
 	}
 	c.Root = c.__n3Tap
 	return c
@@ -293,13 +275,13 @@ func (c *__canvas0Instance) Set__p0(__v int) {
 	c.__n3.Refresh()
 }
 
-func (c *__canvas0Instance) Set__on0(__v func(ClickEvent)) {
+func (c *__canvas0Instance) Set__on0(__v func()) {
 	c.__prop___on0 = __v
 }
 
 func (c *__canvas0Instance) _canvasDraw1(ctx *snglcanvas.Context) {
 	ctx.Save()
-	ApplyStyle(ctx, CanvasStyle{Fill: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, Stroke: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, StrokeWidth: 1.0, LineCap: "butt", LineJoin: "miter", FontSize: 16.0, FontFamily: "sans-serif"})
+	ApplyStyle(ctx, Style{Fill: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, Stroke: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, StrokeWidth: 1.0, LineCap: "butt", LineJoin: "miter", FontSize: 16.0, FontFamily: "sans-serif"})
 	ctx.Circle(20.0, 20.0, (float64(c.__prop___p0) * 5.0))
 	ctx.Restore()
 }
@@ -481,6 +463,18 @@ static void sngl_unref_pixbuf(GdkPixbuf *p) {
     if (p != NULL) g_object_unref(p);
 }
 
+// Selects a day the way a click on it does, for gtk4's datepicker override
+// (selectDay) and a test's invoker. select_day is the call every GTK 4 has;
+// 4.20 deprecates it for set_date, which the older ones lack.
+static void sngl_calendar_select(GtkCalendar *c, int y, int m, int d) {
+    GDateTime *dt = g_date_time_new_utc(y, m, d, 0, 0, 0);
+    if (dt == NULL) return;
+    G_GNUC_BEGIN_IGNORE_DEPRECATIONS
+    gtk_calendar_select_day(c, dt);
+    G_GNUC_END_IGNORE_DEPRECATIONS
+    g_date_time_unref(dt);
+}
+
 static GtkWidget *sngl_slot_anchor(GtkBox *box, GtkWidget *a) {
     if (a != NULL && gtk_widget_get_parent(a) == GTK_WIDGET(box)) return a;
     GtkWidget *w = gtk_label_new(NULL);
@@ -559,21 +553,10 @@ static void sngl_emit_pressed(void* gesture) {
 import "C"
 
 import (
+	"duckfam.us/sngl/pkg/go/snglcolor"
 	"fmt"
-	"git.duckfam.us/jonathan/sngl/pkg/go/snglcolor"
 	"unsafe"
 )
-
-type PathCmd struct {
-	Op  string
-	X   float64
-	Y   float64
-	Cx1 float64
-	Cy1 float64
-	Cx2 float64
-	Cy2 float64
-	R   float64
-}
 
 // _snglCairoScale maps a drawing's own coordinate space onto the size GTK is
 // drawing at. An empty mode leaves the context alone, which is what a canvas
@@ -602,15 +585,10 @@ func _snglCairoScale(cr *C.cairo_t, pw, ph, w, h int, mode string) {
 type Measurement struct {
 	Px  float64
 	Em  float64
-	Vw  float64
-	Vh  float64
-	Pct float64
+	Rem float64
 }
 
-type ClickEvent struct {
-}
-
-type CanvasStyle struct {
+type Style struct {
 	Fill        snglcolor.Color
 	Stroke      snglcolor.Color
 	StrokeWidth float64
@@ -653,7 +631,7 @@ func New() *Model {
 	return m
 }
 
-func Paint(ctx *C.cairo_t, style CanvasStyle) {
+func Paint(ctx *C.cairo_t, style Style) {
 	if style.Fill.A > 0 {
 		Source(ctx, style.Fill)
 		if style.Stroke.A > 0 {
@@ -671,25 +649,25 @@ func Paint(ctx *C.cairo_t, style CanvasStyle) {
 	}
 }
 
-func Source(ctx *C.cairo_t, c snglcolor.Color) {
-	C.cairo_set_source_rgba(ctx, C.double((float64(c.R) / 255.0)), C.double((float64(c.G) / 255.0)), C.double((float64(c.B) / 255.0)), C.double((float64(c.A) / 255.0)))
+func Source(ctx *C.cairo_t, c__r0 snglcolor.Color) {
+	C.cairo_set_source_rgba(ctx, C.double((float64(c__r0.R) / 255.0)), C.double((float64(c__r0.G) / 255.0)), C.double((float64(c__r0.B) / 255.0)), C.double((float64(c__r0.A) / 255.0)))
 }
 
-func LineCap(name string) C.cairo_line_cap_t {
-	if name == "round" {
+func LineCap(cap__r0 string) C.cairo_line_cap_t {
+	if cap__r0 == "round" {
 		return C.cairo_line_cap_t(C.int(1))
 	}
-	if name == "square" {
+	if cap__r0 == "square" {
 		return C.cairo_line_cap_t(C.int(2))
 	}
 	return C.cairo_line_cap_t(C.int(0))
 }
 
-func LineJoin(name string) C.cairo_line_join_t {
-	if name == "round" {
+func LineJoin(join string) C.cairo_line_join_t {
+	if join == "round" {
 		return C.cairo_line_join_t(C.int(1))
 	}
-	if name == "bevel" {
+	if join == "bevel" {
 		return C.cairo_line_join_t(C.int(2))
 	}
 	return C.cairo_line_join_t(C.int(0))
@@ -708,14 +686,14 @@ func (m *Model) __renderSlot0(parent *C.GtkBox) {
 		if len(m.__inst0_live) > __inst0_i {
 			__n1 = m.__inst0_live[__inst0_i]
 			__n1.Set__p0(x)
-			__n1.Set__on0(func(e ClickEvent) {
+			__n1.Set__on0(func() {
 				m.hits += x
 			})
 		} else {
 			if len(m.__inst0_live) > __inst0_i {
 				m.__inst0_live[__inst0_i].Destroy()
 			}
-			__n1__new := new__canvas0Instance(m, x, func(e ClickEvent) {
+			__n1__new := new__canvas0Instance(m, x, func() {
 				m.hits += x
 			})
 			__n1 = __n1__new
@@ -735,7 +713,7 @@ func (m *Model) __renderSlot0(parent *C.GtkBox) {
 	m.__inst0_live = __inst0_next
 }
 
-func (m *Model) board_click_handler(e ClickEvent) {
+func (m *Model) board_click_handler() {
 	m.hits += 1
 	C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(m.__n0)), C.CString(("hits " + fmt.Sprint(m.hits))))
 }
@@ -744,7 +722,7 @@ func (m *Model) _canvasDraw0(ctx *C.cairo_t) {
 	C.cairo_save(ctx)
 	C.cairo_new_sub_path(ctx)
 	C.cairo_arc(ctx, C.double(20.0), C.double(20.0), C.double(10.0), C.double(0.0), C.double(6.283185307179586))
-	Paint(ctx, CanvasStyle{Fill: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, Stroke: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, StrokeWidth: 1.0, LineCap: "butt", LineJoin: "miter", FontSize: 16.0, FontFamily: "sans-serif"})
+	Paint(ctx, Style{Fill: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, Stroke: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, StrokeWidth: 1.0, LineCap: "butt", LineJoin: "miter", FontSize: 16.0, FontFamily: "sans-serif"})
 	C.cairo_restore(ctx)
 }
 
@@ -753,7 +731,7 @@ type __canvas0Instance struct {
 	Root         *C.GtkWidget
 	__model      *Model
 	__prop___p0  int
-	__prop___on0 func(ClickEvent)
+	__prop___on0 func()
 	__root       *C.GtkBox
 	__slot0      []*C.GtkWidget
 	__slot0_at   *C.GtkWidget
@@ -761,7 +739,7 @@ type __canvas0Instance struct {
 	__n3Gesture  *C.GtkGesture
 }
 
-func new__canvas0Instance(__model *Model, __a___p0 int, __a___on0 func(ClickEvent)) *__canvas0Instance {
+func new__canvas0Instance(__model *Model, __a___p0 int, __a___on0 func()) *__canvas0Instance {
 	c := &__canvas0Instance{}
 	c.__model = __model
 	c.__prop___p0 = __a___p0
@@ -771,12 +749,15 @@ func new__canvas0Instance(__model *Model, __a___p0 int, __a___on0 func(ClickEven
 	c.__n3 = (*C.GtkDrawingArea)(unsafe.Pointer(C.gtk_drawing_area_new()))
 	C.gtk_drawing_area_set_content_width(c.__n3, C.int(40))
 	C.gtk_drawing_area_set_content_height(c.__n3, C.int(40))
-	snglDrawFuncs = append(snglDrawFuncs, func(cr *C.cairo_t, pw, ph int) { _snglCairoScale(cr, pw, ph, 40, 40, ""); c._canvasDraw1(cr) })
+	snglDrawFuncs = append(snglDrawFuncs, func(cr *C.cairo_t, pw int, ph int) {
+		_snglCairoScale(cr, pw, ph, 40, 40, "")
+		c._canvasDraw1(cr)
+	})
 	C.sngl_drawing_area_set_draw(unsafe.Pointer(c.__n3), C.int((len(snglDrawFuncs) - 1)))
 	snglCallbacks = append(snglCallbacks, func() {
-		func(__on0_0 ClickEvent) {
-			c.__prop___on0(__on0_0)
-		}(ClickEvent{})
+		func() {
+			c.__prop___on0()
+		}()
 	})
 	c.__n3Gesture = C.sngl_connect_click(unsafe.Pointer(c.__n3), C.int((len(snglCallbacks) - 1)))
 	c.Root = (*C.GtkWidget)(unsafe.Pointer(c.__n3))
@@ -789,7 +770,7 @@ func (c *__canvas0Instance) Set__p0(__v int) {
 	C.gtk_widget_queue_draw((*C.GtkWidget)(unsafe.Pointer(c.__n3)))
 }
 
-func (c *__canvas0Instance) Set__on0(__v func(ClickEvent)) {
+func (c *__canvas0Instance) Set__on0(__v func()) {
 	c.__prop___on0 = __v
 }
 
@@ -797,7 +778,7 @@ func (c *__canvas0Instance) _canvasDraw1(ctx *C.cairo_t) {
 	C.cairo_save(ctx)
 	C.cairo_new_sub_path(ctx)
 	C.cairo_arc(ctx, C.double(20.0), C.double(20.0), C.double((float64(c.__prop___p0) * 5.0)), C.double(0.0), C.double(6.283185307179586))
-	Paint(ctx, CanvasStyle{Fill: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, Stroke: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, StrokeWidth: 1.0, LineCap: "butt", LineJoin: "miter", FontSize: 16.0, FontFamily: "sans-serif"})
+	Paint(ctx, Style{Fill: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, Stroke: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, StrokeWidth: 1.0, LineCap: "butt", LineJoin: "miter", FontSize: 16.0, FontFamily: "sans-serif"})
 	C.cairo_restore(ctx)
 }
 
@@ -841,9 +822,14 @@ func (m *Model) buildWidgetTree() {
 	m.board = (*C.GtkDrawingArea)(unsafe.Pointer(C.gtk_drawing_area_new()))
 	C.gtk_drawing_area_set_content_width(m.board, C.int(40))
 	C.gtk_drawing_area_set_content_height(m.board, C.int(40))
-	snglDrawFuncs = append(snglDrawFuncs, func(cr *C.cairo_t, pw, ph int) { _snglCairoScale(cr, pw, ph, 40, 40, ""); m._canvasDraw0(cr) })
+	snglDrawFuncs = append(snglDrawFuncs, func(cr *C.cairo_t, pw int, ph int) {
+		_snglCairoScale(cr, pw, ph, 40, 40, "")
+		m._canvasDraw0(cr)
+	})
 	C.sngl_drawing_area_set_draw(unsafe.Pointer(m.board), C.int((len(snglDrawFuncs) - 1)))
-	snglCallbacks = append(snglCallbacks, func() { m.board_click_handler(ClickEvent{}) })
+	snglCallbacks = append(snglCallbacks, func() {
+		m.board_click_handler()
+	})
 	m.boardGesture = C.sngl_connect_click(unsafe.Pointer(m.board), C.int((len(snglCallbacks) - 1)))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(__n2)), (*C.GtkWidget)(unsafe.Pointer(m.board)))
 	m.__renderSlot0(__n2)
@@ -906,7 +892,7 @@ window.__sngl_boot = () => {
   function testClickCounts(t, c) {
     c.board();
     t.assert(c.hits === 1);
-    c.board({});
+    c.board();
     t.assert(c.hits === 2);
   }
   function paintStyle(ctx, style) {
@@ -921,7 +907,7 @@ window.__sngl_boot = () => {
     const __root = document.createElement("div");
     __root.style.display = "contents";
     let __p0 = props.__p0;
-    let __on0 = props.__on0 ?? ((__e0) => {
+    let __on0 = props.__on0 ?? (() => {
     });
     let __prop___p0 = __p0;
     let __prop___on0 = __on0;
@@ -941,10 +927,10 @@ window.__sngl_boot = () => {
       ctx.restore();
     }
     let __n3 = document.createElement("canvas");
-    __n3.setAttribute("width", { px: 40, em: 0, vw: 0, vh: 0, pct: 0 });
-    __n3.setAttribute("height", { px: 40, em: 0, vw: 0, vh: 0, pct: 0 });
-    __n3.addEventListener("click", (__on0_0) => {
-      __prop___on0(__on0_0);
+    __n3.setAttribute("width", 40);
+    __n3.setAttribute("height", 40);
+    __n3.addEventListener("click", () => {
+      __prop___on0();
     });
     __root.appendChild(__n3);
     _snglCanvasDraw(__n3, 40, 40, "", _canvasDraw1);
@@ -983,7 +969,7 @@ window.__sngl_boot = () => {
       if (__inst1_live.length > __inst1_i) {
         __n1 = __inst1_live[__inst1_i];
         __n1.__set___p0(x);
-        __n1.__set___on0((e) => {
+        __n1.__set___on0(() => {
           state.hits += x;
           __n0.textContent = "hits " + String(state.hits);
         });
@@ -991,7 +977,7 @@ window.__sngl_boot = () => {
         if (__inst1_live.length > __inst1_i) {
           __inst1_live[__inst1_i].__destroy();
         }
-        let __n1__new = __cf___canvas0({ __p0: x, __on0: (e) => {
+        let __n1__new = __cf___canvas0({ __p0: x, __on0: () => {
           state.hits += x;
           __n0.textContent = "hits " + String(state.hits);
         } });
@@ -1066,7 +1052,7 @@ window.__sngl_boot = () => {
   var __n0 = document.querySelector('[data-sngl-id="__n0"]');
   var __slotAnchor_0 = document.querySelector('[data-sngl-slot="0"]');
   __renderSlot0(__slotAnchor_0);
-  $0.addEventListener("click", function(e) {
+  $0.addEventListener("click", function() {
     state.hits += 1;
     __n0.textContent = "hits " + String(state.hits);
   });
@@ -1081,8 +1067,8 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:41368d3e3774f847b706c9387eff014c
+pass sha256:90fb4e6f842c2e9b8095dffe3d6e1227
 -- run/go/gtk4 --
-pass sha256:669173e58010e9c201fbefa5f3a7ba2e
+pass sha256:c5d332148b6f6b4ef4fd91752cb5ce27
 -- run/none/html --
-pass sha256:32adce2982b59b6f3d22c40c9c6aa352
+pass sha256:54a27a668dfc7c4e080fdedbdd035193

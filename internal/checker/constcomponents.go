@@ -3,8 +3,8 @@ package checker
 import (
 	"strconv"
 
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/ir"
 )
 
 // A `const component` says its render depends only on its props, and a
@@ -231,7 +231,7 @@ func (c *checker) checkOverrideConst(pe pendingExtension) {
 		}
 		return
 	}
-	c.checkConstRender(constComponentLabel(pe.name+"["+pe.platform+"]"), pe.comp.Body, pe.pos)
+	c.checkConstRender(constComponentLabel(pe.name+"["+pe.platform+"]"), pe.comp.Stmts, pe.pos)
 }
 
 // checkTargetComponentsConst holds a target package's own bodied components to
@@ -242,18 +242,18 @@ func (c *checker) checkTargetComponentsConst(pkg *ir.Package) {
 		// A target's build node is never rendered: its body holds the
 		// commands the CLI reads, and the output block it is written in is
 		// read before anything runs.
-		if comp.Bodyless || comp.Intrinsic != "" || comp.Wildcard != "" || comp.Builtin != ir.BuiltinNone || isTargetNode(comp) {
+		if comp.Bodyless || comp.Primitive() || comp.Builtin != ir.BuiltinNone || isTargetNode(comp) {
 			continue
 		}
 		// `{}` renders nothing, which depends on nothing: anything declared
 		// only to be named.
-		if len(comp.Body) == 0 && len(comp.Vars) == 0 && len(comp.Funcs) == 0 {
+		if len(comp.Stmts) == 0 && len(comp.Vars) == 0 && len(comp.Funcs) == 0 {
 			continue
 		}
 		if !comp.Const {
 			c.error(compDeclPos(comp), "component %s in a target package must be const: a target's render depends only on its props; write `const component %s`", comp.Name, comp.Name)
 			continue
 		}
-		c.checkConstRender(constComponentLabel(comp.Name), comp.Body, compDeclPos(comp))
+		c.checkConstRender(constComponentLabel(comp.Name), comp.Stmts, compDeclPos(comp))
 	}
 }

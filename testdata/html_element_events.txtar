@@ -1,12 +1,10 @@
 `element` declares its events, so codegen reads the declaration rather than
-matching names: which listener is attached, whether it takes an event
-argument, and what that argument stands for all come from there. @error
-carries ErrorEvent, whose fields the element declares nothing of, so the
-parameter stands for the event and the listener takes it. @input carries
-InputEvent{value}, and `value` IS a prop of the element, so the field is the
-control's own state, read back off the target. A handler that declares no
-parameter gets no argument in the signature -- the body has nothing that could
-resolve to the event. An event the element declares no payload for reaches its
+matching names: which listener is attached and whether it takes an event
+argument come from there. A handler's parameter is the DOM's event: @error's
+`e.message` reads it, and @input's `e.currentTarget.value` reads the control
+the listener is on, which the element declares as `Event` and `Target`. A
+handler that declares no parameter gets no argument in the signature -- the
+body has nothing that could resolve to the event. An event the element does not declare by name reaches its
 own DOM event through the wildcard event and not click's listener, on the
 static path and equally on the lowered one, where the element is built by JS.
 
@@ -38,10 +36,10 @@ window {
     var msg string = ""
     var txt string = ""
     var hits int = 0
-    var rows list<string> = ["a"]
+    var rows list[string] = ["a"]
 
     html.img(src="x.png", @error(e) { msg = e.message })
-    html.input(@input(e) { txt = e.value })
+    html.input(@input(e) { txt = e.currentTarget.value })
     html.button(@click { hits = hits + 1 })
     html.div(@mouseover { hits = hits + 1 })
     for var r = rows {
@@ -165,7 +163,7 @@ body { font-family: system-ui, sans-serif; }
     state.msg = e.message;
   });
   $1.addEventListener("input", function(e) {
-    state.txt = e.target.value;
+    state.txt = e.currentTarget.value;
   });
   $2.addEventListener("click", function() {
     state.hits = state.hits + 1;
@@ -177,4 +175,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:a5fff2f1f1b36ae8e10f0b5398b2ea35
+pass sha256:dbd0ddfbbe44e30196488089ab902a72

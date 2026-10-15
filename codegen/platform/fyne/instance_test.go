@@ -6,9 +6,10 @@ import (
 	"path/filepath"
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
-	_ "git.duckfam.us/jonathan/sngl/codegen/lang"
-	"git.duckfam.us/jonathan/sngl/internal/lower"
+	"duckfam.us/sngl/codegen"
+	_ "duckfam.us/sngl/codegen/lang"
+	"duckfam.us/sngl/internal/lower"
+	"duckfam.us/sngl/ir"
 )
 
 // loopComponentSrc is testdata/test_html_loop_component.sngl without the test
@@ -27,7 +28,7 @@ component card(name = "") node {
 }
 
 window {
-    var items list<Item> = [
+    var items list[Item] = [
         {name="a"},
         {name="b"},
     ]
@@ -100,6 +101,7 @@ func TestInstanceRecordsRunIndependently(t *testing.T) {
 	if lang == nil {
 		t.Fatal("go lang not registered")
 	}
+	pkg = ir.ClonePackage(pkg)
 	if err := lower.Lower(pkg, codegen.CapsOrNone(lang.LanguageIdentifier(), g.PlatformIdentifier()), lower.Options{Platform: "fyne", Language: "go"}); err != nil {
 		t.Fatalf("lower: %v", err)
 	}

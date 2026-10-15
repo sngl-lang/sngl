@@ -1,6 +1,6 @@
 package checker
 
-import "git.duckfam.us/jonathan/sngl/ir"
+import "duckfam.us/sngl/ir"
 
 // Type aliases re-export all IR types so existing code using checker.X
 // continues to work. New code should import ir directly.
@@ -11,8 +11,6 @@ type TypeKind = ir.TypeKind
 const (
 	//go:fix inline
 	TypeInvalid = ir.TypeInvalid
-	//go:fix inline
-	TypeDyn = ir.TypeDyn
 	//go:fix inline
 	TypeBool = ir.TypeBool
 	//go:fix inline
@@ -65,7 +63,7 @@ const (
 )
 
 //go:fix inline
-var TypDyn = ir.TypDyn
+var TypInvalid = ir.TypInvalid
 
 //go:fix inline
 var TypBool = ir.TypBool
@@ -86,9 +84,6 @@ var TypNull = ir.TypNull
 
 //go:fix inline
 var TypVoid = ir.TypVoid
-
-//go:fix inline
-var ListOf = ir.ListOf
 
 //go:fix inline
 var OptionOf = ir.OptionOf

@@ -6,9 +6,9 @@ import (
 	"slices"
 	"strconv"
 
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/internal/lower"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/internal/lower"
+	"duckfam.us/sngl/ir"
 )
 
 // maxRenderDepth bounds how deeply one mount may nest component
@@ -145,7 +145,7 @@ func IsUserComponent(comp *ir.Component) bool {
 	if comp == nil {
 		return false
 	}
-	return len(comp.Body) > 0 || len(comp.Vars) > 0 || len(comp.Funcs) > 0
+	return len(comp.Stmts) > 0 || len(comp.Vars) > 0 || len(comp.Funcs) > 0
 }
 
 // Mount builds the retained tree for env's component body.
@@ -293,6 +293,73 @@ func (v *View) Handling(event string) *Node {
 	}
 	root := &Node{Children: v.Roots}
 	return handlingDescendant(root, event)
+}
+
+// forwardingDescendant is the node a host reports event through, when n is a
+// component whose body hands that event on: the first node under n, in mount
+// order, whose handler emits event from n's instance -- the primitive an
+// override renders, `Control(@change(on) { checked = on; change(on) })`. The
+// handler it carries is returned with it. A trigger enters there rather than
+// at n's call site, so the override writes the prop it reports as a host's
+// report would make it, and its emit runs the call site's handler.
+//
+// Only the nodes n's own body rendered are asked: another component's
+// instance below them emits that component's events, not n's.
+func forwardingDescendant(n *Node, event string) (*Node, string) {
+	if n == nil || !n.Expanded {
+		return nil, ""
+	}
+	var find func(ns []*Node) (*Node, string)
+	find = func(ns []*Node) (*Node, string) {
+		for _, k := range ns {
+			for _, h := range k.Handlers {
+				if fn, ok := h.Body.(*ir.Func); ok && emitsEvent(fn.Block, event) {
+					return k, h.Name
+				}
+			}
+			if k.Expanded {
+				continue
+			}
+			if d, name := find(k.Children); d != nil {
+				return d, name
+			}
+		}
+		return nil, ""
+	}
+	return find(n.Children)
+}
+
+// instanceBody is what the component instance a handle map names rendered: n
+// itself once its body is mounted beneath it, and otherwise a mount of the
+// instance's own scope. A map a test reads off a handle was taken when the
+// node was, before the body beneath it was, so the node it carries holds none
+// of it.
+func instanceBody(m map[string]any, n *Node) *Node {
+	if n != nil && n.Expanded {
+		return n
+	}
+	ce, _ := m["__compEnv"].(*Env)
+	if ce == nil || len(ce.BodyStmts) == 0 {
+		return n
+	}
+	view, err := Mount(ce)
+	if err != nil {
+		return n
+	}
+	return &Node{Children: view.Roots, Expanded: true}
+}
+
+// emitsEvent reports whether stmts emit event, at any depth of their blocks.
+func emitsEvent(stmts []ir.Stmt, event string) bool {
+	found := false
+	_ = ir.Walk(stmts, func(n ir.Node) error {
+		if e, ok := n.(*ir.Emit); ok && e.Name == event {
+			found = true
+			return ir.SkipDir
+		}
+		return nil
+	})
+	return found
 }
 
 // handlingDescendant is the first node under n, in mount order, carrying a
@@ -605,7 +672,7 @@ func (m *mounter) nodeInst(env *Env, inst *ir.NodeInst, path string) ([]*Node, e
 			Env:       env,
 			Inst:      inst,
 			Component: inst.Component,
-			Expanded:  len(inst.Component.Body) > 0,
+			Expanded:  len(inst.Component.Stmts) > 0,
 		}
 		node.Props, node.PropOrder = evalProps(env, inst.Props)
 		node.Handlers = handlersOf(inst)
@@ -617,6 +684,7 @@ func (m *mounter) nodeInst(env *Env, inst *ir.NodeInst, path string) ([]*Node, e
 		}
 		child := env.componentEnv(inst.Component, inst, path)
 		child.RenderDepth = env.RenderDepth + 1
+		child.entries = slices.Clone(m.entries)
 		node.CompEnv = child
 		if m.byEnv == nil {
 			m.byEnv = map[*Env]*Node{}
@@ -722,7 +790,7 @@ func (m *mounter) callStmt(env *Env, cs *ir.CallStmt, name, id, path string) ([]
 			child := env.ComponentEnvFromCallStmt(comp, cs)
 			child.RenderDepth = env.RenderDepth + 1
 			node.CompEnv = child
-			node.Expanded = len(comp.Body) > 0
+			node.Expanded = len(comp.Stmts) > 0
 			if !node.Expanded {
 				return []*Node{node}, nil
 			}
@@ -767,8 +835,8 @@ func (m *mounter) callStmt(env *Env, cs *ir.CallStmt, name, id, path string) ([]
 }
 
 // slotInst mounts one insertion point: the content its call site supplied, or
-// the insertion's own block as the fallback. ir.SlotBody makes that choice, so
-// the rule is the splicer's and this does not decide it a second time.
+// the insertion's own block as the fallback where it supplied none or what it
+// supplied renders nothing -- the rule the splicer states with ir.RendersNothing.
 //
 // Supplied content is mounted in the *caller's* scope with the caller's frame
 // current, because that content is written in the caller's body: a slot inside
@@ -799,6 +867,7 @@ func (m *mounter) slotInst(env *Env, si *ir.SlotInst, path string) ([]*Node, err
 	// names they bind are the populator's, declared at the call site.
 	if sc != nil && len(sc.Params) > 0 {
 		cenv = frame.env.Snapshot()
+		cenv.mountCopy = true
 		for i, prm := range sc.Params {
 			if i >= len(si.Args) {
 				break
@@ -816,13 +885,11 @@ func (m *mounter) slotInst(env *Env, si *ir.SlotInst, path string) ([]*Node, err
 		defer func() { m.entries = m.entries[:len(m.entries)-1] }()
 	}
 	m.pop()
-	defer m.push(frame)
 	// What a call site supplies is the caller's: bare children are its refs, and
 	// a population's nodes are reached through the node it populates, which is
 	// the instance they record as SuppliedTo.
 	prevOwner, prevIters, prevSupplied, prevBase := m.owner, m.iters, m.supplied, m.base
 	m.owner, m.iters, m.supplied, m.base = frame.owner, frame.iters, frame.supplied, frame.base
-	defer func() { m.owner, m.iters, m.supplied, m.base = prevOwner, prevIters, prevSupplied, prevBase }()
 	if sc != nil {
 		m.supplied, m.base = frame.callee, len(frame.iters)
 		// Each insertion of a list slot is one more copy of the population.
@@ -833,7 +900,16 @@ func (m *mounter) slotInst(env *Env, si *ir.SlotInst, path string) ([]*Node, err
 	}
 	// The path segment marks these nodes as having come from the call site,
 	// which is what distinguishes them from an insertion point's fallback.
-	return m.stmts(cenv, body, path+"/supplied:"+si.Name)
+	nodes, err := m.stmts(cenv, body, path+"/supplied:"+si.Name)
+	m.owner, m.iters, m.supplied, m.base = prevOwner, prevIters, prevSupplied, prevBase
+	m.push(frame)
+	// Content that renders nothing is the fallback's place as much as no
+	// content is: the branch of an `if` that holds none, a forward of a slot
+	// its own caller left empty.
+	if err != nil || len(nodes) > 0 || len(si.Children) == 0 {
+		return nodes, err
+	}
+	return m.stmts(env, si.Children, path)
 }
 
 // entryInst mounts an insertion of a component entry: what the insertion
@@ -858,6 +934,7 @@ func (m *mounter) entryInst(env *Env, x *ir.SlotInst, path string) ([]*Node, err
 	cenv := f.env
 	if len(content.Params) > 0 {
 		cenv = f.env.Snapshot()
+		cenv.mountCopy = true
 		for i, prm := range content.Params {
 			if i >= len(x.Args) {
 				break
@@ -918,6 +995,7 @@ func (m *mounter) forStmt(env *Env, f *ir.For, path string) ([]*Node, error) {
 	defer func() { m.iters = iters }()
 	for i := range n {
 		child := env.Snapshot()
+		child.mountCopy = true
 		bindLoopElem(child, f, i, at(i), list)
 
 		id := strconv.Itoa(i)
@@ -1034,10 +1112,12 @@ func (m *mounter) blockEnv(env *Env, stmts []ir.Stmt, at string) *Env {
 	child := NewEnv()
 	child.Pkg = env.Pkg
 	child.handling = env.handling
+	child.wlog = env.writes()
 	child.Units = env.Units
 	child.Comp = env.Comp
 	child.parent = env
 	child.inst = env.inst
+	child.entries = env.entries
 	child.ContextVals = capturedContext(env)
 	child.RenderDepth = env.RenderDepth
 	for _, s := range stmts {

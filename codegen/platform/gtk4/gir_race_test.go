@@ -4,8 +4,8 @@ import (
 	"sync"
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/internal/buildhost"
-	"git.duckfam.us/jonathan/sngl/internal/gencache"
+	"duckfam.us/sngl/internal/buildhost"
+	"duckfam.us/sngl/internal/gencache"
 )
 
 // The generator is one value shared by every check and build in the process
@@ -24,7 +24,7 @@ func TestGIROptionIsSafeConcurrently(t *testing.T) {
 				case 1:
 					_, _ = g.useGIR(girBuiltin)
 				case 2:
-					_, _ = g.girWidgets(buildhost.NewRecorder(), nil)
+					_, _ = g.girWidgets(buildhost.NewRecorder(), nil, nil)
 				case 3:
 					_ = g.Unavailable()
 				case 4:

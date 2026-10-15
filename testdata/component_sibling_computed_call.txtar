@@ -240,7 +240,7 @@ func newTestComponent() *Model {
 
 package main
 
-import "git.duckfam.us/jonathan/sngl/pkg/go/gtk4rt"
+import "duckfam.us/sngl/pkg/go/gtk4rt"
 
 func main() {
 	gtk4rt.Run(func(app gtk4rt.Handle) gtk4rt.Handle {
@@ -253,8 +253,8 @@ func main() {
 package main
 
 import (
+	"duckfam.us/sngl/pkg/go/gtk4rt"
 	"fmt"
-	"git.duckfam.us/jonathan/sngl/pkg/go/gtk4rt"
 )
 
 // Model holds the state and widget references for this SNGL UI.
@@ -311,26 +311,14 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 
 package test.sngl.app
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.*
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
-import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.material3.Text
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color as ComposeColor
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
 import androidx.compose.foundation.layout.safeDrawingPadding
 
 fun _snglFloatStr(v: Double): String =
@@ -450,8 +438,8 @@ pass sha256:eca6b10bae64bbb6d5108bfc92c93691
 -- run/go/fyne --
 pass sha256:a8e40c44c4d466f1e10cdbd2a06eb163
 -- run/go/gtk4 --
-pass sha256:9685b3096ea1cc9a477cae276a864574
+pass sha256:cb263fa7b19a21118ce632815adc3d4e
 -- run/kotlin/android --
-pass sha256:1e9cd198a7e484591f698c9300d1ffb4
+pass sha256:8a213560a0b3d68db3256b6364052562
 -- run/none/html --
 pass sha256:94fe7f8cf8809f631bbb1a2808daacad

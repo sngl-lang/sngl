@@ -1,0 +1,75 @@
+// A default is written where the call is. A call through a handle is outside
+// the component, so a default reading the component's state, props or
+// methods has to be passed there; and a call through a function value passes
+// every argument, so a lambda's parameter takes no default.
+
+import "sngl:platform/html"
+import ui "sngl:ui"
+
+component counter(label string = "c") ui.node {
+    var step = 2
+    var total = 0
+
+    func doubled() => step * 2
+
+    func add(a int, by int = step * 3) {
+        total += a + by
+    }
+
+    func bump(a int, d int = doubled()) {
+        total += a + d
+    }
+
+    func tag(t string = label) {
+        total += t.length
+    }
+
+    func twice() {
+        this.add(1)
+    }
+
+    func shown(s string = lbl.value) {
+        total += s.length
+    }
+
+    ui.button(text="{total}", @click {
+        add(1)
+        bump(1)
+        tag()
+    })
+    ui.text #lbl(value="{total}")
+}
+
+var lam = func(a int, b int = 5) => a + b // ERROR(check) "a lambda's parameter \"b\" takes no default"
+
+ui.window {
+    counter #k
+    ui.button(text="go", @click {
+        k.add(1) // ERROR(check) "the default of \"by\" reads \"step\" of counter"
+        k.add(1, by=2)
+        k.bump(1) // ERROR(check) "the default of \"d\" reads \"doubled\" of counter"
+        k.tag()   // ERROR(check) "the default of \"t\" reads \"label\" of counter"
+    })
+}
+
+component other ui.node {
+    ui.button(text="x", @click {
+        counter.add(1) // ERROR(check) "the default of \"by\" reads \"step\" of counter"
+    })
+}
+
+component pair ui.node {
+    ui.text(value="plain")
+}
+
+component pair[html.platform] {
+    counter #inner
+    var v = 0
+    effect(on=v, @update {
+        inner.add(1) // ERROR(check) "the default of \"by\" reads \"step\" of counter"
+    })
+    ui.button(text="go", @click {
+        inner.add(1)  // ERROR(check) "the default of \"by\" reads \"step\" of counter"
+        inner.shown() // ERROR(check) "the default of \"s\" reads \"lbl\" of counter"
+    })
+}

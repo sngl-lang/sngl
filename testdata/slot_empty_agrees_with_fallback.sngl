@@ -1,0 +1,58 @@
+// A slot's fallback and its `.empty` are one answer: the fallback stands
+// exactly where asking says the content renders nothing. That is decided for
+// content of several statements as for one -- two `if`s that are both false,
+// a loop over nothing -- and an effect is a lifetime rather than a node, so
+// content holding only one renders nothing, and the effect still mounts.
+
+import . "sngl:ui"
+import . "sngl:test"
+
+component card(content ...component node) node {
+    text(value=content.empty ? "asks: empty" : "asks: full")
+    vbox {
+        content {
+            text(value="fallback")
+        }
+    }
+}
+
+component main node {
+    var a = false
+    var b = false
+    var xs list[int] = []
+    var mounted = 0
+    card #two {
+        if a {
+            text(value="a")
+        }
+        if b {
+            text(value="b")
+        }
+    }
+    card #loop {
+        for var x = xs {
+            text(value="{x}")
+        }
+    }
+    card #lifetime {
+        effect(@mount { mounted = mounted + 1 })
+    }
+    text(value="mounted {mounted}")
+    button #show(text="show", @click {
+        b = true
+        xs = [7]
+    })
+}
+
+func testTheFallbackStandsWhereAskingSaysEmpty(t Test, c main) {
+    t.snapshot("hidden")
+}
+
+func testTheContentReplacesItWhenItRenders(t Test, c main) {
+    c.show.click()
+    t.snapshot("shown")
+}
+
+window {
+    main
+}

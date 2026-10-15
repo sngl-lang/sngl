@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"git.duckfam.us/jonathan/sngl/codegen/platform/html/internal/webtest"
+	"duckfam.us/sngl/codegen/platform/html/internal/webtest"
 	"github.com/go-rod/rod"
 )
 
@@ -102,7 +102,11 @@ import . "sngl:ui"
 window {
     var fruit = "apple"
     text(value="picked: {fruit}")
-    select(options=["apple","banana","cherry"], :value=fruit)
+    select(:value=fruit) {
+        choice(label="apple")
+        choice(label="banana")
+        choice(label="cherry")
+    }
 }
 `
 	browser := startComponent(t, src)

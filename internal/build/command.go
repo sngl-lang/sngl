@@ -7,10 +7,10 @@ import (
 	"os"
 	"os/exec"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/internal/checker"
-	"git.duckfam.us/jonathan/sngl/internal/interp"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/internal/checker"
+	"duckfam.us/sngl/internal/interp"
+	"duckfam.us/sngl/ir"
 )
 
 // A command is what `sngl run` and `sngl build` do with a target's output:
@@ -29,11 +29,11 @@ type command struct {
 // findCommand is t's command of the given kind: the platform node's override
 // for t's language, else the platform node's body, else the language node's.
 func findCommand(t Target, kind ir.BuiltinKind) (*command, error) {
-	plat, err := targetNode("platform/"+t.Platform, ir.BuiltinPlatform)
+	plat, err := targetNode("platform/"+t.Platform, ir.BuiltinFamilyPlatform)
 	if err != nil {
 		return nil, err
 	}
-	lang, err := targetNode("language/"+t.Lang, ir.BuiltinLanguage)
+	lang, err := targetNode("language/"+t.Lang, ir.BuiltinFamilyLanguage)
 	if err != nil {
 		return nil, err
 	}
@@ -48,7 +48,7 @@ func findCommand(t Target, kind ir.BuiltinKind) (*command, error) {
 		if n.node == nil {
 			continue
 		}
-		if h := commandIn(n.node.Body, kind); h != nil {
+		if h := commandIn(n.node.Stmts, kind); h != nil {
 			return &command{handler: h, node: n.node, pkg: n.pkg}, nil
 		}
 	}
@@ -101,7 +101,7 @@ func RunCommand(t Target, kind ir.BuiltinKind, args ...any) error {
 	if c == nil {
 		return fmt.Errorf("neither platform %q nor language %q says how to %s what it generates", t.Platform, t.Lang, what)
 	}
-	env, err := interp.BuildEnv(c.pkg, "")
+	env, err := interp.BuildEnv(c.pkg, "", nil)
 	if err != nil {
 		return err
 	}

@@ -65,7 +65,7 @@ import (
 type Model struct {
 	txt            string
 	xs             []int
-	visible__inst1 bool
+	visible__inst0 bool
 	__focusID      int
 
 	width, height int
@@ -76,7 +76,7 @@ func New() Model {
 	m := Model{}
 	m.txt = "b"
 	m.xs = []int{1, 2}
-	m.visible__inst1 = true
+	m.visible__inst0 = true
 	m.__focusID = 0
 	return m
 }
@@ -129,19 +129,19 @@ func SetXsCmd(v []int) tea.Cmd {
 	return func() tea.Msg { return setXsMsg{value: v} }
 }
 
-func (m Model) Visible__inst1() bool {
-	return m.visible__inst1
+func (m Model) Visible__inst0() bool {
+	return m.visible__inst0
 }
 
-func (m Model) SetVisible__inst1(v bool) Model {
-	m.visible__inst1 = v
+func (m Model) SetVisible__inst0(v bool) Model {
+	m.visible__inst0 = v
 	return m
 }
 
-type setVisible__inst1Msg struct{ value bool }
+type setVisible__inst0Msg struct{ value bool }
 
-func SetVisible__inst1Cmd(v bool) tea.Cmd {
-	return func() tea.Msg { return setVisible__inst1Msg{value: v} }
+func SetVisible__inst0Cmd(v bool) tea.Cmd {
+	return func() tea.Msg { return setVisible__inst0Msg{value: v} }
 }
 
 func (m Model) Init() tea.Cmd {
@@ -157,18 +157,18 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m = m.SetTxt(msg.value)
 	case setXsMsg:
 		m = m.SetXs(msg.value)
-	case setVisible__inst1Msg:
-		m = m.SetVisible__inst1(msg.value)
+	case setVisible__inst0Msg:
+		m = m.SetVisible__inst0(msg.value)
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
 	case tea.KeyPressMsg:
 		switch {
 		case msg.Code == 'c' && msg.Mod == tea.ModCtrl:
-			if m.visible__inst1 {
-				m.visible__inst1 = false
+			if m.visible__inst0 {
+				m.visible__inst0 = false
 			}
-			if !(m.visible__inst1) {
+			if !(m.visible__inst0) {
 				return m, tea.Quit
 			}
 			return m, nil
@@ -185,7 +185,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m Model) View() tea.View {
 	var content string
-	if m.visible__inst1 {
+	if m.visible__inst0 {
 		var contentChildren []string
 		var content_0 string
 		content_0Focused := (m.__focusID == 0)
@@ -228,12 +228,12 @@ func main() {
 package main
 
 import (
+	"duckfam.us/sngl/pkg/go/fynelayout"
 	"fmt"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
-	"git.duckfam.us/jonathan/sngl/pkg/go/fynelayout"
 	"os"
 )
 
@@ -323,10 +323,10 @@ func (m *Model) homeClosed() {
 }
 
 // homeVisible invokes the OnVisible callback on the #home widget; for tests.
-func (m *Model) homeVisible(__visible bool) {
+func (m *Model) homeVisible(visible bool) {
 	if cb := m.home.OnVisible; cb != nil {
 		m.home.OnVisible = nil
-		cb(__visible)
+		cb(visible)
 		m.home.OnVisible = cb
 	}
 }
@@ -426,7 +426,7 @@ func main() {
 
 package main
 
-import "git.duckfam.us/jonathan/sngl/pkg/go/gtk4rt"
+import "duckfam.us/sngl/pkg/go/gtk4rt"
 
 func main() {
 	gtk4rt.Init()
@@ -440,8 +440,8 @@ func main() {
 package main
 
 import (
+	"duckfam.us/sngl/pkg/go/gtk4rt"
 	"fmt"
-	"git.duckfam.us/jonathan/sngl/pkg/go/gtk4rt"
 )
 
 // Model holds the state and widget references for this SNGL UI.
@@ -625,30 +625,21 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 
 package test.sngl.app
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.*
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
-import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color as ComposeColor
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
-import androidx.activity.compose.BackHandler
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.ui.platform.LocalContext
 import android.app.Activity
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.layout.Column
+import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.material3.Button
+import androidx.compose.material3.Text
 
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
@@ -806,12 +797,12 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:a2fa734f7cc07f13b93243cab2f78cd4
+pass sha256:a172abc8f42f6699404f340353427a52
 -- run/go/fyne --
-pass sha256:37a96d13d332e1f6886fa17b46636da0
+pass sha256:a9913d84a3553801216cc6bfecb7c20a
 -- run/go/gtk4 --
-pass sha256:b7fb78b50e1c81bf7afe65f99eaaa283
+pass sha256:b8b5516423fc30716d37e22eaafe7e7b
 -- run/kotlin/android --
-pass sha256:2bd10715e56de4c5015b0e04eeea1a0c
+pass sha256:43d60e92565268e3425e99e6b720385c
 -- run/none/html --
 pass sha256:03846ef2fe0f8cca6dc5d2b6d9096fe1

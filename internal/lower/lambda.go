@@ -5,9 +5,9 @@ import (
 	"slices"
 	"strconv"
 
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/internal/names"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/internal/names"
+	"duckfam.us/sngl/ir"
 )
 
 var passLambda = pass{
@@ -88,6 +88,7 @@ func analyzeCaptures(body []ir.Stmt, params []*ir.Param) []capture {
 			walkExpr(x.Then)
 			walkExpr(x.Else)
 		case *ir.Call:
+			walkExpr(x.Callee)
 			walkExpr(x.Receiver)
 			for i := range x.Args {
 				walkExpr(x.Args[i].Value)
@@ -133,7 +134,7 @@ func analyzeCaptures(body []ir.Stmt, params []*ir.Param) []capture {
 				walkExpr(en.Key)
 				walkExpr(en.Value)
 			}
-		case *ir.Literal, *ir.ContextRead:
+		case *ir.Literal, *ir.ContextRead, *ir.SlotEmpty:
 			// Terminal — no captures hidden inside.
 		default:
 			panic(fmt.Sprintf("analyzeCaptures.walkExpr: unhandled %T", x))
@@ -316,7 +317,7 @@ func liftLambdas(e ir.Expr, l *lifter) ir.Expr {
 			x.Entries[i].Value = liftLambdas(x.Entries[i].Value, l)
 		}
 		return x
-	case *ir.Literal, *ir.Ident, *ir.ContextRead, *ir.Closure:
+	case *ir.Literal, *ir.Ident, *ir.ContextRead, *ir.SlotEmpty, *ir.Closure:
 		// Terminal / already-lifted — no nested *ir.Lambda.
 		return x
 	default:
@@ -434,13 +435,13 @@ func newLifter(pkg *ir.Package) *lifter {
 type scopeFrame struct {
 	// captureField maps a captured outer Symbol to the bare Select expression
 	// reaching it from this frame's lifted body: Select{Ident{state},
-	// fieldName, type=ref<T>} for mutable captures, or
+	// fieldName, type=ref[T]} for mutable captures, or
 	// Select{Ident{state}, fieldName, type=T} for read-only captures.
 	// Reads/writes inside the body wrap mutable captures in Unary{Deref};
-	// inner-lambda caps-init reads the bare Select so the ref<T> threads
+	// inner-lambda caps-init reads the bare Select so the ref[T] threads
 	// through unchanged.
 	captureField map[ir.Symbol]ir.Expr
-	// captureMutable[sym] is true iff the captured field is ref<T>.
+	// captureMutable[sym] is true iff the captured field is ref[T].
 	captureMutable map[ir.Symbol]bool
 }
 
@@ -480,7 +481,7 @@ func (l *lifter) Lift(body []ir.Stmt, params []*ir.Param, ret *ir.Type, src *ast
 	}
 
 	// Build the rewrite maps. captureField stores the bare Select for each
-	// captured Sym (typed ref<T> if the body mutates it, T otherwise).
+	// captured Sym (typed ref[T] if the body mutates it, T otherwise).
 	// captureMutable flags which captures are ref-typed so rewriteExpr knows
 	// to wrap with Unary{Deref} on reads.
 	captureField := make(map[ir.Symbol]ir.Expr, len(caps))
@@ -516,7 +517,7 @@ func (l *lifter) Lift(body []ir.Stmt, params []*ir.Param, ret *ir.Type, src *ast
 	for _, c := range caps {
 		var fieldValue ir.Expr
 		// If an enclosing frame already aliases this Sym, re-use its access
-		// expression (already a ref<T> read or value access). Otherwise
+		// expression (already a ref[T] read or value access). Otherwise
 		// synthesize a fresh Ident or & based on mutability.
 		if outer := l.outerCaptureAccess(c.Sym); outer != nil {
 			fieldValue = cloneExpr(outer)
@@ -734,7 +735,7 @@ func (l *lifter) rewriteExpr(e ir.Expr, captureField map[ir.Symbol]ir.Expr, capt
 			x.Entries[i].Value = l.rewriteExpr(x.Entries[i].Value, captureField, captureMutable)
 		}
 		return x
-	case *ir.Literal, *ir.ContextRead:
+	case *ir.Literal, *ir.ContextRead, *ir.SlotEmpty:
 		// Terminal — no Idents to rewrite.
 		return x
 	default:

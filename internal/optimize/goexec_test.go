@@ -4,7 +4,7 @@ package optimize
 
 import (
 	"errors"
-	"git.duckfam.us/jonathan/sngl/internal/trust"
+	"go/format"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -12,12 +12,13 @@ import (
 	"testing"
 	"time"
 
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/internal/interp"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/internal/interp"
+	"duckfam.us/sngl/internal/trust"
+	"duckfam.us/sngl/ir"
 )
 
-const purepkgPath = "git.duckfam.us/jonathan/sngl/internal/optimize/testdata/purepkg"
+const purepkgPath = "duckfam.us/sngl/internal/optimize/testdata/purepkg"
 
 func projectDir() string {
 	// Walk up from the test file to find go.mod
@@ -338,6 +339,25 @@ func TestConstEvalSource(t *testing.T) {
 	}
 }
 
+// The program sits inside the project while it builds, and a crashed compile
+// leaves it there for `gofmt -l .` to find.
+func TestConstEvalSourceIsFormatted(t *testing.T) {
+	src := constEvalSource([]*nativeRequest{
+		{key: "a", importPath: purepkgPath, funcName: "Greet", args: []string{`"x"`}, ret: ir.TypString},
+		{key: "b", importPath: "duckfam.us/sngl/docs/lookup", funcName: "Find", ctxArg: true,
+			args: []string{`time.Duration(3)`}, imports: []string{"time", "strings"}, errReturn: true, ret: ir.TypString},
+		{key: "c", importPath: purepkgPath, funcName: "Check", errReturn: true},
+		{key: "d", importPath: purepkgPath, funcName: "Nothing"},
+	})
+	formatted, err := format.Source([]byte(src))
+	if err != nil {
+		t.Fatalf("generated program does not parse: %v\n%s", err, src)
+	}
+	if string(formatted) != src {
+		t.Errorf("generated program is not gofmt'd:\n%s", src)
+	}
+}
+
 // A pure func with no result is still called; the fold takes null for its
 // value rather than failing (which on a target that cannot call go: at
 // runtime would abort the build).
@@ -623,7 +643,7 @@ func TestOneBadValueDoesNotBlankTheBatch(t *testing.T) {
 	if got[1].err == nil {
 		t.Errorf("Huge() = %v; want an error: %v does not fit %v", got[1].expr, "math.MaxUint64", huge.Return)
 	}
-	// []byte is list<int> on the import side, so the elements are what checks.
+	// []byte is list[int] on the import side, so the elements are what checks.
 	list, ok := got[2].expr.(*ir.ListLit)
 	if !ok {
 		t.Fatalf("Bytes() = %T (%v), want a list literal", got[2].expr, got[2].err)
@@ -749,7 +769,7 @@ func TestNestedFoldErrorIsReported(t *testing.T) {
 			comp := &ir.Component{
 				Name:  "wrapped",
 				Props: []*ir.Prop{{Name: "name", Type: ir.TypString, Sym: sym}},
-				Body: []ir.Stmt{&ir.NodeInst{Name: "text", Props: []ir.Arg{{
+				Stmts: []ir.Stmt{&ir.NodeInst{Name: "text", Props: []ir.Arg{{
 					Name:  "value",
 					Value: boomWith(&ir.Ident{Name: "name", Sym: sym, Type: ir.TypString}),
 				}}}},
@@ -777,7 +797,7 @@ func TestNestedFoldErrorIsReported(t *testing.T) {
 				}}}},
 			}}
 		}
-		comps = append(comps, &ir.Component{Name: "main", Body: body})
+		comps = append(comps, &ir.Component{Name: "main", Stmts: body})
 		return &ir.Package{
 			Components: comps,
 			Imports: []*ir.Import{{
@@ -802,7 +822,7 @@ func TestNestedFoldErrorIsReported(t *testing.T) {
 			// runs.
 			pkg.RootComponent = "main"
 			f := NewFold(pkg, cfg).Child()
-			f.Stmts(f.Clone(pkg.RootDecl().Body))
+			f.Stmts(f.Clone(pkg.RootDecl().Stmts))
 			if err == nil {
 				err = f.Err()
 			}

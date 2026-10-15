@@ -6,12 +6,12 @@ import (
 	"path/filepath"
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/internal/checker"
-	"git.duckfam.us/jonathan/sngl/internal/lower"
-	"git.duckfam.us/jonathan/sngl/internal/optimize"
-	"git.duckfam.us/jonathan/sngl/internal/parser"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/internal/checker"
+	"duckfam.us/sngl/internal/lower"
+	"duckfam.us/sngl/internal/optimize"
+	"duckfam.us/sngl/internal/parser"
+	"duckfam.us/sngl/ir"
 )
 
 // loopTimerRunSrc is a component with state of its own and a timer, once per
@@ -29,7 +29,7 @@ component ticker(period duration = 10ms) node {
 }
 
 window {
-    var periods list<duration> = [10ms, 20ms]
+    var periods list[duration] = [10ms, 20ms]
     for var p = periods {
         ticker(period=p)
     }
@@ -134,6 +134,7 @@ func runEmittedProgram(t *testing.T, src, driver string) {
 		}
 	}
 	optCfg := &optimize.Config{Platform: "bubbletea", Language: "go"}
+	pkg = ir.ClonePackage(pkg)
 	if err := optimize.Optimize(pkg, optCfg); err != nil {
 		t.Fatalf("optimize: %v", err)
 	}

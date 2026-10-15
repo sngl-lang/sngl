@@ -15,15 +15,15 @@ import . "sngl:ui"
 
 component main node {
     var (
-        items list<string> = ["a", "b", "c"]
-        log list<string> = []
+        items list[string] = ["a", "b", "c"]
+        log list[string] = []
         k = 0
-        pairLog list<string> = []
+        pairLog list[string] = []
     )
 
     for var it = items {
         effect(
-            on=it,
+            on = it,
             @mount(v) {
                 log.push("+{v}")
             },
@@ -34,7 +34,7 @@ component main node {
     }
 
     effect(
-        on=k,
+        on = k,
         @mount {
             pairLog.push("+A")
         },
@@ -43,7 +43,7 @@ component main node {
         },
     )
     effect(
-        on=k,
+        on = k,
         @mount {
             pairLog.push("+B")
         },

@@ -8,14 +8,16 @@ output {
     }
 }
 
-import "go:git.duckfam.us/jonathan/sngl/docs"
-import "go:git.duckfam.us/jonathan/sngl/docs/lookup"
+import "go:duckfam.us/sngl/docs"
+import "go:duckfam.us/sngl/docs/lookup"
 import "file:public"
 import pgAssets "file:internal/playground/assets"
 import snapshots "file:lib/snapshots"
 import "internal/docui"
 import mddocs "md:./docs/"
 import "sngl:platform/html"
+import markup "sngl:ui/markup"
+import md "sngl:ui/markup/md"
 
 const snapshotFiles = snapshots.names("*.png")
 const components = docs.LibraryComponents(snapshotFiles)
@@ -34,6 +36,42 @@ const screenshotWeb = public.path("snapshots/todo/todo_html.png")
 const screenshotTerminal = public.path("snapshots/todo/todo_bubbletea.png")
 const screenshotDesktop = public.path("snapshots/todo/todo_fyne.png")
 const screenshotAndroid = public.path("snapshots/todo/todo_android.png")
+
+// A component's live preview: its example compiled to a page shown in an
+// iframe, beside the snapshots the other platforms took of it, one at a time.
+component Preview(name string, doc string, tabs list[docs.PreviewTab]) ui.node {
+    var active = 0
+
+    html.div(class="platform-tabs") {
+        for var i, tab = tabs {
+            html.button(textContent=tab.label, class=i == active ? "active" : "", @click { active = i })
+        }
+    }
+    html.div(class="preview-frame") {
+        for var i, tab = tabs {
+            html.div(class="preview", hidden=i != active) {
+                if tab.image == "" {
+                    html.iframe(srcdoc=doc)
+                } else {
+                    html.img(src=tab.image, alt=name + " on " + tab.label)
+                }
+            }
+        }
+    }
+}
+
+// source as a markdown code fence in language. The fence is longer than any
+// run of backticks a sample holds would need to be in practice.
+const func fenced(language string, source string) => "````" + language + "\n" + source + "\n````"
+
+// The rows of a table of options: name, type, description.
+const func optionRows(opts list[docs.OptionDoc]) => opts.map(func(o docs.OptionDoc) => [o.name, o.type, o.doc])
+
+const func propRows(props list[docs.ComponentProp]) => props.map(func(p docs.ComponentProp) => [p.name, p.type, p.doc])
+
+const func slotRows(slots list[docs.ComponentSlot]) => slots.map(func(sl docs.ComponentSlot) => [sl.name, sl.type, sl.doc])
+
+const func eventRows(events list[docs.ComponentEvent]) => events.map(func(e docs.ComponentEvent) => [e.name, e.payloadType, e.doc])
 
 component NavSidebar(currentHref = "") ui.node {
     docui.Sidebar(homeHref="/index.html", logo=logo) {
@@ -66,78 +104,84 @@ component PlatformCarousel() ui.node {
         active = (active + 1) % 4
     })
 
-    ui.vbox(style={gap=16, alignItems=center, paddingY=32}) {
-        ui.stack {
-            if active == 0 {
-                ui.image(
-                    src=screenshotWeb,
-                    alt="SNGL Todo App on Web",
-                    fit=contain,
-                    style={maxWidth=800, maxHeight=500, borderRadius=8, width=100pct},
-                )
-            }
-            if active == 1 {
-                ui.image(
-                    src=screenshotTerminal,
-                    alt="SNGL Todo App in Terminal",
-                    fit=contain,
-                    style={maxWidth=800, maxHeight=500, borderRadius=8, width=100pct},
-                )
-            }
-            if active == 2 {
-                ui.image(
-                    src=screenshotDesktop,
-                    alt="SNGL Todo App on Desktop",
-                    fit=contain,
-                    style={maxWidth=800, maxHeight=500, borderRadius=8, width=100pct},
-                )
-            }
-            if active == 3 {
-                ui.image(
-                    src=screenshotAndroid,
-                    alt="SNGL Todo App on Android",
-                    fit=contain,
-                    style={maxWidth=800, maxHeight=500, borderRadius=8, width=100pct},
-                )
+    ui.vbox(style={gap=16px, alignItems=center, paddingY=32px}) {
+        html.div(class="platform-carousel") {
+            ui.stack {
+                if active == 0 {
+                    ui.image(
+                        alt = "SNGL Todo App on Web",
+                        fit = contain,
+                        style = {maxWidth=800px, maxHeight=500px, borderRadius=8px},
+                    ) {
+                        ui.file(path=screenshotWeb)
+                    }
+                }
+                if active == 1 {
+                    ui.image(
+                        alt = "SNGL Todo App in Terminal",
+                        fit = contain,
+                        style = {maxWidth=800px, maxHeight=500px, borderRadius=8px},
+                    ) {
+                        ui.file(path=screenshotTerminal)
+                    }
+                }
+                if active == 2 {
+                    ui.image(
+                        alt = "SNGL Todo App on Desktop",
+                        fit = contain,
+                        style = {maxWidth=800px, maxHeight=500px, borderRadius=8px},
+                    ) {
+                        ui.file(path=screenshotDesktop)
+                    }
+                }
+                if active == 3 {
+                    ui.image(
+                        alt = "SNGL Todo App on Android",
+                        fit = contain,
+                        style = {maxWidth=800px, maxHeight=500px, borderRadius=8px},
+                    ) {
+                        ui.file(path=screenshotAndroid)
+                    }
+                }
             }
         }
-        ui.hbox(style={gap=8}) {
+        ui.hbox(style={gap=8px}) {
             ui.button(
-                text="Web",
+                text = "Web",
                 @click { active = 0 },
-                style={
-                    paddingX = 20,
-                    borderRadius = 20,
+                style = {
+                    paddingX = 20px,
+                    borderRadius = 20px,
                     background = active == 0 ? #2196f3 : #f5f5f5,
                     color = active == 0 ? #fff : #333,
                 },
             )
             ui.button(
-                text="Terminal",
+                text = "Terminal",
                 @click { active = 1 },
-                style={
-                    paddingX = 20,
-                    borderRadius = 20,
+                style = {
+                    paddingX = 20px,
+                    borderRadius = 20px,
                     background = active == 1 ? #2196f3 : #f5f5f5,
                     color = active == 1 ? #fff : #333,
                 },
             )
             ui.button(
-                text="Desktop",
+                text = "Desktop",
                 @click { active = 2 },
-                style={
-                    paddingX = 20,
-                    borderRadius = 20,
+                style = {
+                    paddingX = 20px,
+                    borderRadius = 20px,
                     background = active == 2 ? #2196f3 : #f5f5f5,
                     color = active == 2 ? #fff : #333,
                 },
             )
             ui.button(
-                text="Android",
+                text = "Android",
                 @click { active = 3 },
-                style={
-                    paddingX = 20,
-                    borderRadius = 20,
+                style = {
+                    paddingX = 20px,
+                    borderRadius = 20px,
                     background = active == 3 ? #2196f3 : #f5f5f5,
                     color = active == 3 ? #fff : #333,
                 },
@@ -159,11 +203,11 @@ component PageLayout(title = "", currentHref = "", children ...component) ui.nod
                 html.footer(class="site-footer") {
                     // docsgen replaces the year marker with the commit's year.
                     html.span(
-                        class="copyright",
-                        innerHTML="&copy; <!-- sngl:year --> Jonathan Duck. All rights reserved.",
+                        class = "copyright",
+                        innerHTML = "&copy; <!-- sngl:year --> Jonathan Duck. All rights reserved.",
                     )
                     html.span(class="footer-meta") {
-                        html.a(href="https://git.duckfam.us/jonathan/sngl", innerText="Source")
+                        html.a(href="https://github.com/sngl-lang/sngl", innerText="Source")
                         // docsgen replaces the marker with the commit this site
                         // was generated from; plain `sngl generate` leaves it out.
                         html.span(class="build-stamp", innerHTML="<!-- sngl:build -->")
@@ -174,8 +218,8 @@ component PageLayout(title = "", currentHref = "", children ...component) ui.nod
     } else {
         ui.hbox {
             NavSidebar(currentHref=currentHref)
-            ui.vbox(style={padding=24, flex=1}) {
-                ui.text(value=title, style={fontSize=28, fontWeight=bold})
+            ui.vbox(style={padding=24px, flex=1}) {
+                ui.text(value=title, style={fontSize=28px, fontWeight=bold})
                 children
             }
         }
@@ -277,7 +321,10 @@ component TutorialContent() ui.node {
 // root family so they read as one declaration. Nothing renders it until
 // `site()` at the end of the file.
 component site() root {
-    ui.window(title=pages.current.title, favicon=logo) {
+    ui.window(title=pages.current.title) {
+        component favicon {
+            ui.file(path=logo)
+        }
         nav.stack #pages {
             // Components — the starter set, in reading order. Everything else is one
             // click on, in the package the component belongs to.
@@ -319,51 +366,32 @@ component site() root {
                     PageLayout(title=comp.name, currentHref=componentPage.href) {
                         html.p(innerText=comp.doc, class="component-blurb")
 
-                        docui.Markdown(src=comp.previewHTML)
-                        docui.Markdown(src=comp.highlightedCode)
+                        if comp.previewDoc != "" {
+                            Preview(name=comp.name, doc=comp.previewDoc, tabs=comp.previewTabs)
+                        }
+                        if comp.example != "" {
+                            md.document(source=fenced("sngl", comp.example))
+                        }
 
-                        ui.text(value="Properties", style={fontSize=20, fontWeight=bold})
-                        docui.Table {
-                            docui.HeaderRow {
-                                docui.HeaderCell(value="Name")
-                                docui.HeaderCell(value="Type")
-                                docui.HeaderCell(value="Description")
-                            }
-                            for var prop = comp.props {
-                                docui.Row {
-                                    docui.CodeCell(value=prop.name)
-                                    docui.Cell(value=prop.type)
-                                    docui.Cell(value=prop.doc)
-                                }
+                        markup.heading2 { markup.text(value="Properties") }
+                        ui.table(columns=["Name", "Type", "Description"]) {
+                            for var r = propRows(comp.props) {
+                                ui.tableRow(cells=r)
                             }
                         }
-                        ui.text(value="Slots", style={fontSize=20, fontWeight=bold})
-                        docui.Table {
-                            docui.HeaderRow {
-                                docui.HeaderCell(value="Name")
-                                docui.HeaderCell(value="Type")
-                            }
-                            for var sl = comp.slots {
-                                docui.Row {
-                                    docui.CodeCell(value=sl.name)
-                                    docui.Cell(value=sl.type)
-                                }
+                        markup.heading2 { markup.text(value="Slots") }
+                        ui.table(columns=["Name", "Type", "Description"]) {
+                            for var r = slotRows(comp.slots) {
+                                ui.tableRow(cells=r)
                             }
                         }
-                        ui.text(value="Events", style={fontSize=20, fontWeight=bold})
-                        docui.Table {
-                            docui.HeaderRow {
-                                docui.HeaderCell(value="Name")
-                                docui.HeaderCell(value="Payload Type")
-                            }
-                            for var evt = comp.events {
-                                docui.Row {
-                                    docui.CodeCell(value=evt.name)
-                                    docui.Cell(value=evt.payloadType)
-                                }
+                        markup.heading2 { markup.text(value="Events") }
+                        ui.table(columns=["Name", "Payload Type", "Description"]) {
+                            for var r = eventRows(comp.events) {
+                                ui.tableRow(cells=r)
                             }
                         }
-                        ui.text(value="Children: " + comp.children)
+                        markup.paragraph { markup.text(value="Children: " + comp.children) }
                     }
                 }
             }
@@ -383,7 +411,7 @@ component site() root {
             for var d = allDeclPages {
                 nav.page #declPage(href=d.href, title=d.title) {
                     PageLayout(title=d.title, currentHref=d.href) {
-                        docui.Markdown(src=d.body)
+                        md.document(source=d.markdown)
                     }
                 }
             }
@@ -391,63 +419,31 @@ component site() root {
             // Platforms reference — capability matrix and per-platform options
             nav.page(href="/platforms/index.html", title="Platforms") {
                 PageLayout(title="Built-in Platforms", currentHref="/platforms/index.html") {
-                    ui.text(value="A platform decides what to render. The matrix below shows which optional capabilities each platform implements; each section documents its options, which a program sets as props on the target in its `output` block, or `--opt key=value` sets from the command line.")
+                    md.document(source="A platform decides what to render. The matrix below shows which optional capabilities each platform implements; each section documents its options, which a program sets as props on the target in its `output` block, or `--opt key=value` sets from the command line.")
 
-                    ui.text(value="Global Options", style={fontSize=22, fontWeight=bold})
-                    ui.text(value="Declared by the standard library and set on `output` itself; accepted by every target.")
-                    docui.Table {
-                        docui.HeaderRow {
-                            docui.HeaderCell(value="Name")
-                            docui.HeaderCell(value="Type")
-                            docui.HeaderCell(value="Description")
-                        }
-                        for var opt = targets.globalOptions {
-                            docui.Row {
-                                docui.CodeCell(value=opt.name)
-                                docui.Cell(value=opt.type)
-                                docui.Cell(value=opt.doc)
-                            }
+                    markup.heading2 { markup.text(value="Global Options") }
+                    md.document(source="Declared by the standard library and set on `output` itself; accepted by every target.")
+                    ui.table(columns=["Name", "Type", "Description"]) {
+                        for var r = optionRows(targets.globalOptions) {
+                            ui.tableRow(cells=r)
                         }
                     }
 
-                    ui.text(value="Capabilities", style={fontSize=22, fontWeight=bold})
-                    docui.Table {
-                        docui.HeaderRow {
-                            docui.HeaderCell(value="Platform")
-                            for var col = targets.platformCapabilities {
-                                docui.HeaderCell(value=col)
-                            }
-                        }
-                        for var p = targets.platforms {
-                            docui.Row {
-                                docui.CodeCell(value=p.name)
-                                for var c = p.capabilities {
-                                    docui.Cell(value=c.value == "" ? "—" : c.value)
-                                }
-                            }
+                    markup.heading2 { markup.text(value="Capabilities") }
+                    ui.table(columns=targets.platformMatrix.columns) {
+                        for var r = targets.platformMatrix.rows {
+                            ui.tableRow(cells=r)
                         }
                     }
 
                     for var p = targets.platforms {
-                        ui.text(value=p.name, style={fontSize=20, fontWeight=bold})
-                        ui.text(value=p.doc)
-                        ui.text(value="Supported languages:")
-                        for var lname = p.languages {
-                            ui.text(value="• " + lname, style={fontFamily="monospace"})
-                        }
-                        ui.text(value="Options", style={fontSize=16, fontWeight=bold})
-                        docui.Table {
-                            docui.HeaderRow {
-                                docui.HeaderCell(value="Name")
-                                docui.HeaderCell(value="Type")
-                                docui.HeaderCell(value="Description")
-                            }
-                            for var opt = p.options {
-                                docui.Row {
-                                    docui.CodeCell(value=opt.name)
-                                    docui.Cell(value=opt.type)
-                                    docui.Cell(value=opt.doc)
-                                }
+                        markup.heading3 { markup.text(value=p.name) }
+                        markup.paragraph { markup.text(value=p.doc) }
+                        markup.paragraph { markup.text(value="Supported languages: " + p.languages.join(", ")) }
+                        markup.heading4 { markup.text(value="Options") }
+                        ui.table(columns=["Name", "Type", "Description"]) {
+                            for var r = optionRows(p.options) {
+                                ui.tableRow(cells=r)
                             }
                         }
                     }
@@ -457,42 +453,22 @@ component site() root {
             // Languages reference — capability matrix and per-language options
             nav.page(href="/languages/index.html", title="Languages") {
                 PageLayout(title="Built-in Languages", currentHref="/languages/index.html") {
-                    ui.text(value="A language decides what code to emit. The matrix below shows which optional capabilities each language implements; each section documents its options, which a program sets as props on the target in its `output` block, or `--opt key=value` sets from the command line.")
+                    md.document(source="A language decides what code to emit. The matrix below shows which optional capabilities each language implements; each section documents its options, which a program sets as props on the target in its `output` block, or `--opt key=value` sets from the command line.")
 
-                    ui.text(value="Capabilities", style={fontSize=22, fontWeight=bold})
-                    docui.Table {
-                        docui.HeaderRow {
-                            docui.HeaderCell(value="Language")
-                            for var col = targets.languageCapabilities {
-                                docui.HeaderCell(value=col)
-                            }
-                        }
-                        for var l = targets.languages {
-                            docui.Row {
-                                docui.CodeCell(value=l.name)
-                                for var c = l.capabilities {
-                                    docui.Cell(value=c.value == "" ? "—" : c.value)
-                                }
-                            }
+                    markup.heading2 { markup.text(value="Capabilities") }
+                    ui.table(columns=targets.languageMatrix.columns) {
+                        for var r = targets.languageMatrix.rows {
+                            ui.tableRow(cells=r)
                         }
                     }
 
                     for var l = targets.languages {
-                        ui.text(value=l.name, style={fontSize=20, fontWeight=bold})
-                        ui.text(value=l.doc)
-                        ui.text(value="Options", style={fontSize=16, fontWeight=bold})
-                        docui.Table {
-                            docui.HeaderRow {
-                                docui.HeaderCell(value="Name")
-                                docui.HeaderCell(value="Type")
-                                docui.HeaderCell(value="Description")
-                            }
-                            for var opt = l.options {
-                                docui.Row {
-                                    docui.CodeCell(value=opt.name)
-                                    docui.Cell(value=opt.type)
-                                    docui.Cell(value=opt.doc)
-                                }
+                        markup.heading3 { markup.text(value=l.name) }
+                        markup.paragraph { markup.text(value=l.doc) }
+                        markup.heading4 { markup.text(value="Options") }
+                        ui.table(columns=["Name", "Type", "Description"]) {
+                            for var r = optionRows(l.options) {
+                                ui.tableRow(cells=r)
                             }
                         }
                     }

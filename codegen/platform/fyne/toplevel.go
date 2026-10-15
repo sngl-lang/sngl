@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/codegen/lang/golang"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/codegen/lang/golang"
+	"duckfam.us/sngl/ir"
 )
 
 // toplevelTag is fyne.sngl's `Toplevel`, the primitive `ui.window` is on this
@@ -28,33 +28,33 @@ func toplevelSpec(props map[string]ir.Expr) *fyneSpec {
 		Setters:   map[string]string{"title": "SetTitle", "visible": "SetVisible"},
 		Currents:  map[string]string{},
 		Handlers: map[string]fyneHandler{
-			"closed": {Field: "OnClosed", Signature: "func()"},
-			// Named for the parameter the binding's write-back handler is
-			// given (passPropBindings), which is what its body reads.
-			"visible": {Field: "OnVisible", Signature: "func(__visible bool)", Param: "__visible"},
+			"closed":  {Field: "OnClosed", Signature: "func()"},
+			"visible": {Field: "OnVisible", Signature: "func(visible bool)"},
 		},
 		toplevel: true,
+		slotBox:  "Container",
 	}
 }
 
 // appSlotArg is the argument a render slot is handed for its container: the
-// application at the root of the package body, and a Toplevel's box inside
-// one, since a slot renders into a *fyne.Container.
+// application at the root of the package body, and the box inside a widget
+// that holds one -- a Toplevel, an image -- since a slot renders into a
+// *fyne.Container.
 func (t *fyneTranslator) appSlotArg(cs *ir.CallStmt) *ir.CallStmt {
-	if cs.Call == nil || cs.Call.Func == nil || !cs.Call.Func.SlotRender || len(cs.Call.Args) != 1 {
+	if cs.Call == nil || cs.Call.Func == nil || !cs.Call.Func.Lowered.SlotRender || len(cs.Call.Args) != 1 {
 		return nil
 	}
 	arg := cs.Call.Args[0].Value
 	var v ir.Expr
 	switch {
 	case ir.IsAppParent(arg):
-		v = &ir.Ident{Name: fyneNative{Path: fyneLayoutImportPath, Name: "App"}.qualify(t.gc), Type: ir.TypDyn}
+		v = &ir.Ident{Name: fyneNative{Path: fyneLayoutImportPath, Name: "App"}.qualify(t.gc), Type: ir.NativeGoPointerOf("fyne.Container")}
 	default:
 		sp := t.specs[codegen.IdentBareName(arg)]
-		if sp == nil || !sp.toplevel {
+		if sp == nil || sp.slotBox == "" {
 			return nil
 		}
-		v = &ir.Select{Operand: t.qualifyParentExpr(arg), Field: "Container", Type: ir.TypDyn}
+		v = &ir.Select{Operand: t.qualifyParentExpr(arg), Field: sp.slotBox, Type: ir.NativeGoPointerOf("fyne.Container")}
 	}
 	call := *cs.Call
 	call.Args = []ir.CallArg{{Name: cs.Call.Args[0].Name, Value: v}}
@@ -112,11 +112,6 @@ func emitIRAppMain(b *strings.Builder, pkg *ir.Package) {
 	b.WriteString("\ta := app.New()\n")
 	b.WriteString("\tm := New()\n")
 	b.WriteString("\tm.BuildUI()\n")
-	if pkg.RemoteSettle != nil {
-		// Through DoAndWait because a settle arrives on the fetch's goroutine
-		// and Fyne's widgets belong to the main one.
-		fmt.Fprintf(b, "\tremote.Default.OnSettle(func() { fyne.DoAndWait(m.%s) })\n", pkg.RemoteSettle.Name)
-	}
 	switch {
 	case pkg.Run == nil:
 		b.WriteString("\tfynelayout.RunWindows(a, true)\n")

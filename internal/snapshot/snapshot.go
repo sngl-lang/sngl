@@ -1,18 +1,18 @@
 package snapshot
 
 import (
+	"duckfam.us/sngl/internal/trust"
 	"fmt"
-	"git.duckfam.us/jonathan/sngl/internal/trust"
 	"os"
 	"path/filepath"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/internal/checker"
-	"git.duckfam.us/jonathan/sngl/internal/lower"
-	"git.duckfam.us/jonathan/sngl/internal/optimize"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/internal/checker"
+	"duckfam.us/sngl/internal/lower"
+	"duckfam.us/sngl/internal/optimize"
+	"duckfam.us/sngl/ir"
 )
 
 // Config controls snapshot generation.
@@ -133,6 +133,7 @@ func snapshotTarget(sourceFile, platform, lang string, width, height int, policy
 		if err != nil {
 			return nil, err
 		}
+		pkg = ir.ClonePackageFor(pkg, platform, lang)
 		optCfg := &optimize.Config{
 			Platform: platform,
 			Language: lang,
@@ -155,9 +156,9 @@ func snapshotTarget(sourceFile, platform, lang string, width, height int, policy
 		}
 		// Unconditional. It used to run only when the target had capabilities to lower
 		// for, on the reading that a build lowering nothing had nothing new to fold --
-		// which stopped being true when passQuery became always-on: it synthesizes a
-		// thunk after the optimizer has walked every declaration, so the calls inside
-		// one are calls nothing has looked at.
+		// which is not so: an always-on lowering pass may synthesize code after the
+		// optimizer has walked every declaration, and the calls inside it are calls
+		// nothing has looked at.
 		if err := optimize.Optimize(pkg, optCfg); err != nil {
 			return nil, fmt.Errorf("optimize2: %w", err)
 		}
@@ -184,6 +185,7 @@ func textSnapshotTarget(sourceFile, platform, lang string, width, height int, po
 	if err != nil {
 		return nil, err
 	}
+	pkg = ir.ClonePackageFor(pkg, platform, lang)
 	optCfg := &optimize.Config{
 		Platform: platform,
 		Language: lang,
@@ -206,9 +208,9 @@ func textSnapshotTarget(sourceFile, platform, lang string, width, height int, po
 	}
 	// Unconditional. It used to run only when the target had capabilities to lower
 	// for, on the reading that a build lowering nothing had nothing new to fold --
-	// which stopped being true when passQuery became always-on: it synthesizes a
-	// thunk after the optimizer has walked every declaration, so the calls inside
-	// one are calls nothing has looked at.
+	// which is not so: an always-on lowering pass may synthesize code after the
+	// optimizer has walked every declaration, and the calls inside it are calls
+	// nothing has looked at.
 	if err := optimize.Optimize(pkg, optCfg); err != nil {
 		return nil, fmt.Errorf("optimize2: %w", err)
 	}
@@ -321,7 +323,7 @@ func GenerateBatch(cfg BatchConfig) ([]Result, error) {
 				// blank. Both rewrite in place and both are target-specific, so a
 				// document snapshotted for several platforms gets a copy per
 				// platform -- the second otherwise lowers what the first left.
-				pkg := ir.ClonePackage(p.pkg)
+				pkg := ir.ClonePackageFor(p.pkg, platform, lang)
 				batchOptCfg := &optimize.Config{
 					Platform: platform,
 					Language: lang,
@@ -385,7 +387,7 @@ func GenerateBatch(cfg BatchConfig) ([]Result, error) {
 			snapshotter, ok := plat.(codegen.Snapshotter)
 			if !ok {
 				// No native snapshotter — try HTML fallback.
-				html, err := compilePreviewHTMLDoc(ir.ClonePackage(p.pkg), platform, lang)
+				html, err := compilePreviewHTMLDoc(p.pkg, platform, lang)
 				if err != nil {
 					return nil, fmt.Errorf("snapshot %s/%s: %w", p.entry.ID, platform, err)
 				}
@@ -406,7 +408,7 @@ func GenerateBatch(cfg BatchConfig) ([]Result, error) {
 				continue
 			}
 
-			pkg := ir.ClonePackage(p.pkg)
+			pkg := ir.ClonePackageFor(p.pkg, platform, lang)
 			batchOptCfg := &optimize.Config{
 				Platform: platform,
 				Language: lang,
@@ -423,7 +425,7 @@ func GenerateBatch(cfg BatchConfig) ([]Result, error) {
 			if err := lower.Lower(pkg, batchFeats, lower.Options{Platform: platform}); err != nil {
 				return nil, fmt.Errorf("snapshot %s/%s: lower: %w", p.entry.ID, platform, err)
 			}
-			if batchFeats != lower.NoLowering() {
+			if !batchFeats.LowersNothing() {
 				if err := optimize.Optimize(pkg, batchOptCfg); err != nil {
 					return nil, fmt.Errorf("snapshot %s/%s: optimize2: %w", p.entry.ID, platform, err)
 				}

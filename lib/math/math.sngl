@@ -1,6 +1,53 @@
+import marks "sngl:internal/marks"
+
 // The ratio of a circle's circumference to its diameter.
 const pi = 3.141592653589793
 
 // Twice pi: one full turn in radians, which is what a shape sweeping a whole
 // circle needs and what every override was writing out by hand.
 const tau = 6.283185307179586
+
+// Raises base to the power exp. Integer powers are exact up to float
+// precision; fractional powers of negative bases yield NaN.
+#[marks.intrinsic("math.pow")]
+const func pow(base float, exp float) float
+
+// Non-negative square root of x. Returns NaN for negative x.
+#[marks.intrinsic("math.sqrt")]
+const func sqrt(x float) float
+
+// Sine of x, where x is in radians.
+#[marks.intrinsic("math.sin")]
+const func sin(x float) float
+
+// Cosine of x, where x is in radians.
+#[marks.intrinsic("math.cos")]
+const func cos(x float) float
+
+// Tangent of x, where x is in radians. Undefined (±Inf / large finite)
+// near odd multiples of π/2.
+#[marks.intrinsic("math.tan")]
+const func tan(x float) float
+
+// Arcsine of x, result in radians within [-π/2, π/2]. Returns NaN for
+// |x| > 1.
+#[marks.intrinsic("math.asin")]
+const func asin(x float) float
+
+// Arccosine of x, result in radians within [0, π]. Returns NaN for
+// |x| > 1.
+#[marks.intrinsic("math.acos")]
+const func acos(x float) float
+
+// Arctangent of x, result in radians within [-π/2, π/2]. Use
+// `atan2` when you have separate y and x and need to recover
+// the quadrant.
+#[marks.intrinsic("math.atan")]
+const func atan(x float) float
+
+// Arctangent of y/x using signs of both arguments to pick the correct
+// quadrant. Result is in radians within [-π, π]. `atan2(0, 0)` returns
+// 0. This is the correct function for converting Cartesian (x, y)
+// into an angle.
+#[marks.intrinsic("math.atan2")]
+const func atan2(y float, x float) float

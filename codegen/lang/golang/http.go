@@ -8,9 +8,9 @@ import (
 	"strconv"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/internal/names"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/internal/names"
+	"duckfam.us/sngl/ir"
 )
 
 // CompileHTTP implements codegen.HTTPCompiler for Go. Produces a single
@@ -154,6 +154,9 @@ func writeRouteFuncs(b *bytes.Buffer, req *codegen.HTTPRequest, r codegen.HTTPRo
 	for _, fn := range fns {
 		fnCopy := *fn
 		fnCopy.Name = ExportName(fn.Name)
+		// The page's lowering put its DOM patches in the body too, and a
+		// server holds no node for one to name, as an action's body does not.
+		fnCopy.Block = codegen.LogicalMutations(fn.Block)
 		fmt.Fprintln(b)
 		for _, line := range gc.EmitFuncDef(&fnCopy) {
 			fmt.Fprintln(b, line)
@@ -184,7 +187,7 @@ func routeEmittableFuncs(pkg *ir.Package) []*ir.Func {
 			if fn == nil || seen[fn] || len(fn.Block) == 0 {
 				continue
 			}
-			if fn.IsTest || fn.Receiver != "" {
+			if fn.IsTest || fn.IsMethod() {
 				continue
 			}
 			if fn.Foreign.Name != "" && !fn.Foreign.Marked {

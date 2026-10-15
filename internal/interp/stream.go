@@ -4,10 +4,10 @@ import (
 	"errors"
 	"fmt"
 
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
-// A Stream is an iter<T> whose elements arrive one at a time from outside the
+// A Stream is an iter[T] whose elements arrive one at a time from outside the
 // program -- the lines of a file, what a process prints -- and are never held
 // together. It is the one iterable that cannot say how long it is, so a loop
 // over one asks its `else` by taking the first element.
@@ -134,7 +134,7 @@ func (env *Env) callBuildOnly(call *ir.Call) (any, error) {
 // first.
 func (env *Env) boundArgs(fn *ir.Func, callArgs []ir.CallArg) ([]any, error) {
 	var recv []any
-	if fn.Receiver != "" && len(callArgs) == len(fn.Params)+1 {
+	if fn.IsMethod() && len(callArgs) == len(fn.Params)+1 {
 		v, err := env.Eval(callArgs[0].Value)
 		if err != nil {
 			return nil, err

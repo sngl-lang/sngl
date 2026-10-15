@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strconv"
 
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 var passUnit = pass{
@@ -84,7 +84,7 @@ func rewriteUnitExpr(e ir.Expr) ir.Expr {
 		if x.Func != nil {
 			x.Func.Block = rewriteStmtExprs(x.Func.Block, rewriteUnitExpr)
 		}
-	case *ir.Ident, *ir.ContextRead:
+	case *ir.Ident, *ir.ContextRead, *ir.SlotEmpty:
 		// Terminal — no unit-typed sub-expressions to rewrite.
 	default:
 		panic(fmt.Sprintf("rewriteUnitExpr: unhandled %T", x))
@@ -97,7 +97,7 @@ func rewriteUnitExpr(e ir.Expr) ir.Expr {
 // when the unit decl can't be resolved or the value can't be parsed.
 //
 // A multi-base unit is refused: erasing `measurement` to a bare number would
-// make `1px` and `1pct` the same value, and this pass has no record to put
+// make `1px` and `1em` the same value, and this pass has no record to put
 // the other bases in. NoUnit is for a target with no unit vocabulary at all
 // (the interpreter test runner), where a single-base unit is exactly its
 // magnitude and a multi-base one has no meaning to preserve. Every real

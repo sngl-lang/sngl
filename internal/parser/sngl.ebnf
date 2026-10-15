@@ -304,6 +304,8 @@ VarDecl =
 
 VarSpec = IdentList [ Type ] [ assign Expr ] { VarHandler } .
 
+# A var takes no handler: the checker refuses one at its position and names the
+# effect that replaces it, which is why the grammar still reads it.
 # Left-factored: both forms start with 'at ident'; lparen vs lbrace disambiguates.
 # The params are a ParamList, the same production a function's are: a handler
 # binds a name and may annotate its type, and the checker refuses the default
@@ -313,17 +315,18 @@ VarHandler = at ident [ lparen [ ParamList ] rparen ] StmtBlock .
 # ── Functions ─────────────────────────────────────────────────────────────────
 #
 # Two forms:
-#   func name [<T>] [params] => Expr          (expression body)
-#   func name [<T>] [params] [Type] { }   (statement body, optional return type)
+#   func name [[T any]] [params] => Expr          (expression body)
+#   func name [[T any]] [params] [Type] { }   (statement body, optional return type)
 #
 # LL(1) after params: fat_arrow → expr body; ident|kw_func → Type; lbrace → StmtBlock.
 
-FuncDecl = kw_func FuncName [ TargetIndex ] FuncTail .
+FuncDecl = kw_func FuncName FuncTail .
 
 # The target a declaration overrides, indexed off the name it overrides:
-# `component sngl.button[html.platform](text) { ... }`. The expression must
-# fold to a target identity, which only a target's own package can supply.
-TargetIndex = lbracket Expr rbracket .
+# `component sngl.button[html.platform](text) { ... }`. A target is a build
+# node, named bare inside its own package and through it outside, so the
+# index is a name or a qualified one and nothing else.
+TargetIndex = lbracket ident [ dot ident ] rbracket .
 
 FuncTail =
       lparen [ ParamList ] rparen FuncBodyTail
@@ -340,29 +343,51 @@ FuncBodyTail =
     | [ Type ] [ StmtBlock ]
     .
 
-# FuncName encodes all name/type-param combinations inside a single non-terminal.
-# Moving all TypeParamLists inside FuncName ensures `lt` is never in FOLLOW(FuncName),
-# keeping the grammar LL(1).
+# FuncName encodes all name/type-param/target combinations inside a single
+# non-terminal, so `lbracket` is never in FOLLOW(FuncName) and the grammar
+# stays LL(1).
 #
 # Supported forms:
-#   func name(...)                  → ident
-#   func name<T>(...)               → ident TypeParamList
-#   func recv.method(...)           → ident dot ident
-#   func recv.method<T>(...)        → ident dot ident TypeParamList
-#   func recv<T>.method(...)        → ident TypeParamList dot ident
-#   func recv<T>.method<U>(...)     → ident TypeParamList dot ident TypeParamList
+#   func name(...)                        → ident
+#   func name[T any](...)                 → ident lbracket ident TypeParamRest
+#   func name[html.platform](...)         → ident lbracket ident dot ident rbracket
+#   func name[platform](...)              → ident lbracket ident rbracket
+#   func recv.method(...)                 → ident dot ident
+#   func recv.method[T any](...)          → ident dot ident NameBracket
+#   func recv[T].method[U any](...)       → ident lbracket ident rbracket dot ident NameBracket
 #
-# LL(1) disambiguation after leading ident:
-#   lt  → TypeParamList branch; if dot follows it is receiver-level, else function-level
-#   dot → method branch; trailing TypeParamList (if lt present) is method-level
-#   else → bare function name
-FuncName = ident [ TypeParamList [ dot ident [ TypeParamList ] ] | dot ident [ TypeParamList ] ] .
+# A receiver's list restates the receiver's names and no constraints, as Go's
+# does, while a function's own list names one for each. A target is a name or
+# a qualified one. So all three open `lbracket ident`, and the token after
+# that ident decides: `comma` is a receiver's list, a Type is the function's
+# own, `dot` is a qualified target, and `rbracket` is a bare target or a
+# receiver's single name -- a `dot` after the bracket says which. Neither
+# `comma`, `dot` nor `rbracket` begins a Type.
+FuncName = ident [ lbracket ident FuncNameBracket | dot ident [ NameBracket ] ] .
 
-TypeParamList = lt TypeParam { comma TypeParam } gt .
+FuncNameBracket =
+      rbracket [ dot ident [ NameBracket ] ]
+    | comma ident { comma ident } rbracket dot ident [ NameBracket ]
+    | dot ident rbracket
+    | TypeParamRest [ TargetIndex ]
+    .
 
-# A type parameter may carry a default, the way a value parameter does: an
-# argument list that stops short falls back to them, right to left.
-TypeParam = ident [ assign Type ] .
+# The rest of a function's own list, its first parameter's name already read.
+TypeParamRest = Type [ assign Type ] { comma TypeParam } rbracket .
+
+# What may follow a declaration's name: its own type parameters, the target it
+# overrides, or both, in that order. Both open `lbracket ident`, and the token
+# after the ident decides, as in FuncName: `dot` or `rbracket` is a target and
+# a Type is a type parameter's constraint.
+NameBracket = lbracket ident ( [ dot ident ] rbracket | TypeParamRest [ TargetIndex ] ) .
+
+TypeParamList = lbracket TypeParam { comma TypeParam } rbracket .
+
+# A type parameter names its constraint, `any` when it says nothing, and may
+# carry a default the way a value parameter does: an argument list that stops
+# short falls back to them, right to left. The constraint is what tells a type
+# parameter list from an override's target, which shares its bracket.
+TypeParam = ident Type [ assign Type ] .
 
 ParamList = Param { comma Param } [ comma ] .
 
@@ -376,23 +401,41 @@ ParamList = Param { comma Param } [ comma ] .
 # both -- and so is whether a type is required, optional or forbidden there.
 # Attrs are hoisted ahead of the alternation so all three forms accept them.
 #
-# An event declares the parameters its handlers receive. The list is a func
-# type's, `@pick(index int, label string)`, and `@change T` is the
-# one-parameter case written without the parens; `lparen` cannot begin a Type,
-# so the two alternatives are LL(1).
+# An event declares the parameters its handlers receive, and its list is a
+# function's: `@pick(index int, label string)`, read by the same production
+# and the same code. As a function may, it may leave the parens off, and
+# `@tick` then declares none, as `@tick()` does. The Type alternative is not a
+# spelling: it is admitted so that `@change T`, which a list used to be
+# shortened to, is refused naming `@change(v T)` rather than reported as an
+# unexpected token. `lparen` cannot begin a Type, so the two are LL(1).
 #
 # kw_const → a parameter whose argument is constant at every call site. The
 # grammar admits it in every list; the checker refuses it where it means nothing
 # (a lambda, a handler, a slot population).
-Param = { MacroAttr } ( colon ident [ Type ] | at ident [ EventParams | Type ] | kw_const ident [ Type ] | ident [ Type ] ) [ assign Expr ] .
+Param = { MacroAttr } ( colon ident [ Type ] | at ident [ EventParams | Type ] | kw_const ident [ Type ] | ident [ Type | dot ident [ TypeArgs ] | TypeArgs ] | KeywordType ) [ assign Expr ] .
 
-EventParams = lparen [ FuncTypeParamList ] rparen .
+# A parameter that is a type and no name -- `list[int]`, `ui.Style`,
+# `func(int) bool`, `struct {}` -- is what a func literal with no body lists,
+# which is a func *type* written where an expression goes, `apply[func(int)
+# bool](fs)`. Every other list names its parameters, and the builder says so.
+# The keyword-led half of Type, written out because a name-led type is the
+# ident alternative above.
+KeywordType =
+      kw_func      [ lparen [ FuncTypeParamList ] rparen ] [ Type ]
+    | kw_component [ lparen [ FuncTypeParamList ] rparen ] [ Type ]
+    | ellipsis Type
+    | StructDecl
+    | EnumDecl
+    | UnitDecl
+    .
+
+EventParams = lparen [ ParamList ] rparen .
 
 # ── Components ────────────────────────────────────────────────────────────────
 
 # The block is optional, as FuncBodyTail's is. `{}` and no block at all are
 # different declarations, so the formatter must not print one for the other.
-ComponentDecl = kw_component ident [ dot ident ] [ TypeParamList ] [ TargetIndex ] [ lparen [ ParamList ] rparen ] [ Type ] [ StmtBlock ] .
+ComponentDecl = kw_component ident [ dot ident ] [ NameBracket ] [ lparen [ ParamList ] rparen ] [ Type ] [ StmtBlock ] .
 
 # ── Visual nodes + expression statements ──────────────────────────────────────
 #
@@ -434,7 +477,13 @@ StatementPrimary =
     | lbracket ListBody rbracket
     | AnonStructLit
     | ident
+    | star StatementPrimary
     .
+
+# `star StatementPrimary` is a write through a reference, `*x = 9`: what a
+# `ref[T]` parameter holding a scalar, or a whole struct, is assigned with. A
+# field of one is written without it (`p.n = 5`). No statement can otherwise
+# begin with `*`, which has no left operand there.
 
 
 # ── Control flow ──────────────────────────────────────────────────────────────
@@ -523,16 +572,16 @@ CondPrimary =
 # no StmtBlock (not a statement).
 CondPostfixOp =
       dot ident
-    | lbracket Expr rbracket
+    | lbracket IndexList rbracket
     | lparen [ ArgList ] rparen
     .
 
-# Expression context: struct lit available via dot-ident, NO StmtBlock.
+# Expression context: struct lit available via dot-ident or an index, NO StmtBlock.
 # lbrace never appears in ExprPostfixOp FIRST set, so ident [ StructLitBody ]
 # in PrimaryExpr is LL(1) conflict-free.
 ExprPostfixOp =
       dot ident [ StructLitBody ]
-    | lbracket Expr rbracket
+    | lbracket IndexList rbracket [ StructLitBody ]
     | lparen [ ArgList ] rparen
     .
 
@@ -542,9 +591,28 @@ ExprPostfixOp =
 StmtPostfixOp =
       dot ident
     | hash
-    | lbracket Expr rbracket
+    | lbracket IndexList rbracket
     | lparen [ ArgList ] rparen
     | [ lparen [ ArgList ] rparen ] StmtBlock
+    .
+
+# A bracket after a name is an index or a list of type arguments, and the
+# checker says which: on a generic declaration -- `first[int](xs)`,
+# `Box[int]{v=1}`, `context[option[User]] #who(null)` -- it instantiates it,
+# and anywhere else it takes one value. What it holds is a type or an
+# expression (IndexElem).
+IndexList = IndexElem { comma IndexElem } .
+
+# A type argument is a type or an expression. An expression already spells a
+# name-led type, a func type (a func literal with no body) and a struct type (a
+# struct declaration with no literal after it); what no expression begins with
+# is written here.
+IndexElem =
+      Expr
+    | kw_component [ lparen [ FuncTypeParamList ] rparen ] [ Type ]
+    | ellipsis Type
+    | EnumDecl
+    | UnitDecl
     .
 
 PrimaryExpr =
@@ -565,7 +633,7 @@ PrimaryExpr =
     | lbracket ListBody rbracket
     | AnonStructLit
     | FuncLit
-    | StructDecl StructLitBody
+    | StructDecl [ StructLitBody ]
     | ImportExpr StructLitBody
     | ident [ StructLitBody ]
     .
@@ -686,7 +754,7 @@ NonIdentPrimary =
 # only bound a slot: both parse wherever a type does, and the checker rejects
 # the rest with a message naming the rule.
 Type =
-      ident [ dot ident [ lt TypeList gt ] | lt TypeList gt ]
+      ident [ dot ident [ TypeArgs ] | TypeArgs ]
     | kw_func      [ lparen [ FuncTypeParamList ] rparen ] [ Type ]
     | kw_component [ lparen [ FuncTypeParamList ] rparen ] [ Type ]
     | ellipsis Type
@@ -695,12 +763,14 @@ Type =
     | UnitDecl
     .
 
+TypeArgs = lbracket TypeList rbracket .
+
 TypeList = Type { comma Type } .
 
 FuncTypeParamList = FuncTypeParam { comma FuncTypeParam } .
 
 FuncTypeParam =
-      ident [ dot ident [ lt TypeList gt ] | lt TypeList gt | Type ]
+      ident [ dot ident [ TypeArgs ] | TypeArgs | Type ]
     | kw_func      [ lparen [ FuncTypeParamList ] rparen ] [ Type ]
     | kw_component [ lparen [ FuncTypeParamList ] rparen ] [ Type ]
     | ellipsis Type

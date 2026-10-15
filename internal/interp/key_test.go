@@ -3,9 +3,9 @@ package interp
 import (
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/internal/checker"
-	"git.duckfam.us/jonathan/sngl/internal/parser"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/internal/checker"
+	"duckfam.us/sngl/internal/parser"
+	"duckfam.us/sngl/ir"
 )
 
 func check(t *testing.T, src string) *ir.Package {
@@ -69,7 +69,7 @@ func TestKeysSurviveARecheck(t *testing.T) {
 	if a == b {
 		t.Fatal("two checks returned the same *ir.Component; the test proves nothing")
 	}
-	an, bn := firstNode(a.Body), firstNode(b.Body)
+	an, bn := firstNode(a.Stmts), firstNode(b.Stmts)
 	if an == nil || bn == nil {
 		t.Fatal("no *ir.NodeInst in body")
 	}
@@ -95,7 +95,7 @@ component main node {
 
 component main node {
     vbox {
-        image()
+        image(alt="a")
         text #greeting(value="hi")
     }
 }
@@ -126,7 +126,7 @@ component main node {
 
 component main node {
     vbox {
-        image()
+        image(alt="a")
         text(value="hi")
     }
 }

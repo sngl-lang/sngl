@@ -77,7 +77,7 @@ ui.window {
     var mood = Mood.happy
     var w = ui.FontWeight.bold
     var look = Look{weight=ui.FontWeight.lighter}
-    var none list<Empty> = []
+    var none list[Empty] = []
     var open = false
     ui.button(text="next", @click {
         mood = flip(pick(mood))
@@ -117,7 +117,7 @@ type Model struct {
 	none           []string
 	open           bool
 	taps__inst0    int
-	visible__inst1 bool
+	visible__inst0 bool
 	__focusID      int
 
 	width, height int
@@ -132,7 +132,7 @@ func New() Model {
 	m.none = []string{}
 	m.open = false
 	m.taps__inst0 = 0
-	m.visible__inst1 = true
+	m.visible__inst0 = true
 	m.__focusID = 0
 	return m
 }
@@ -155,7 +155,7 @@ func Flip(r string) string {
 func Shape(n int) string {
 	out := ""
 	for _, a := range []string{"start", "end"} {
-		out = (out + fmt.Sprint(a))
+		out = (out + a)
 	}
 	var __lt0 string
 	if n > 1 {
@@ -163,7 +163,7 @@ func Shape(n int) string {
 	} else {
 		__lt0 = "block"
 	}
-	return (out + fmt.Sprint(__lt0))
+	return (out + __lt0)
 }
 
 func (m *Model) __focusNext() {
@@ -276,19 +276,19 @@ func SetTaps__inst0Cmd(v int) tea.Cmd {
 	return func() tea.Msg { return setTaps__inst0Msg{value: v} }
 }
 
-func (m Model) Visible__inst1() bool {
-	return m.visible__inst1
+func (m Model) Visible__inst0() bool {
+	return m.visible__inst0
 }
 
-func (m Model) SetVisible__inst1(v bool) Model {
-	m.visible__inst1 = v
+func (m Model) SetVisible__inst0(v bool) Model {
+	m.visible__inst0 = v
 	return m
 }
 
-type setVisible__inst1Msg struct{ value bool }
+type setVisible__inst0Msg struct{ value bool }
 
-func SetVisible__inst1Cmd(v bool) tea.Cmd {
-	return func() tea.Msg { return setVisible__inst1Msg{value: v} }
+func SetVisible__inst0Cmd(v bool) tea.Cmd {
+	return func() tea.Msg { return setVisible__inst0Msg{value: v} }
 }
 
 func (m Model) Init() tea.Cmd {
@@ -312,18 +312,18 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m = m.SetOpen(msg.value)
 	case setTaps__inst0Msg:
 		m = m.SetTaps__inst0(msg.value)
-	case setVisible__inst1Msg:
-		m = m.SetVisible__inst1(msg.value)
+	case setVisible__inst0Msg:
+		m = m.SetVisible__inst0(msg.value)
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
 	case tea.KeyPressMsg:
 		switch {
 		case msg.Code == 'c' && msg.Mod == tea.ModCtrl:
-			if m.visible__inst1 {
-				m.visible__inst1 = false
+			if m.visible__inst0 {
+				m.visible__inst0 = false
 			}
-			if !(m.visible__inst1) {
+			if !(m.visible__inst0) {
 				return m, tea.Quit
 			}
 			return m, nil
@@ -344,7 +344,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m Model) View() tea.View {
 	var content string
-	if m.visible__inst1 {
+	if m.visible__inst0 {
 		var contentParts []string
 		var contentPart_0 string
 		contentPart_0Focused := (m.__focusID == 0)
@@ -355,7 +355,7 @@ func (m Model) View() tea.View {
 		contentPart_0 = lipgloss.NewStyle().Render(contentPart_0Prefix + " " + fmt.Sprint("next"))
 		contentParts = append(contentParts, contentPart_0)
 		var contentPart_1 string
-		contentPart_1 = lipgloss.NewStyle().Render(fmt.Sprint(((((((((fmt.Sprint(m.mood) + " ") + fmt.Sprint(m.mood)) + " ") + fmt.Sprint(m.w)) + " ") + fmt.Sprint(m.look.Weight)) + " ") + Shape(len(m.none)))))
+		contentPart_1 = lipgloss.NewStyle().Render(fmt.Sprint(((((((((m.mood + " ") + m.mood) + " ") + m.w) + " ") + m.look.Weight) + " ") + Shape(len(m.none)))))
 		contentParts = append(contentParts, contentPart_1)
 		var contentPart_2 string
 		if m.open {
@@ -396,30 +396,21 @@ func main() {
 
 package test.sngl.app
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.*
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
-import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color as ComposeColor
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
-import androidx.activity.compose.BackHandler
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.ui.platform.LocalContext
 import android.app.Activity
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.layout.Column
+import androidx.compose.material3.Button
+import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.material3.Text
 
 data class Look(
     var weight: SnglFontWeight = SnglFontWeight.NORMAL
@@ -444,6 +435,17 @@ enum class Empty(private val sngl: String) {
     override fun toString(): String = sngl
 }
 
+enum class SnglJustification(private val sngl: String) {
+    START("start"),
+    CENTER("center"),
+    END("end"),
+    SPACEBETWEEN("spaceBetween"),
+    SPACEAROUND("spaceAround"),
+    SPACEEVENLY("spaceEvenly");
+
+    override fun toString(): String = sngl
+}
+
 enum class SnglDisplay(private val sngl: String) {
     FLEX("flex"),
     BLOCK("block"),
@@ -461,17 +463,6 @@ enum class SnglFontWeight(private val sngl: String) {
     BOLD("bold"),
     LIGHTER("lighter"),
     BOLDER("bolder");
-
-    override fun toString(): String = sngl
-}
-
-enum class SnglJustification(private val sngl: String) {
-    START("start"),
-    CENTER("center"),
-    END("end"),
-    SPACEBETWEEN("spaceBetween"),
-    SPACEAROUND("spaceAround"),
-    SPACEEVENLY("spaceEvenly");
 
     override fun toString(): String = sngl
 }
@@ -690,8 +681,8 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:dbda3ceac241e931467a5960e74fa817
+pass sha256:7f84de24bbb8ac023618bb9f82623894
 -- run/kotlin/android --
-pass sha256:547c58bd9d00a0578109e2c8e538ac3a
+pass sha256:087735fa4ad46de84f439568a2a30312
 -- run/none/html --
 pass sha256:28f76c774e10e181697cde7cf2e27c09

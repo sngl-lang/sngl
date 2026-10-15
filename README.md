@@ -21,20 +21,20 @@ struct Todo {
 ui.window(title="Todos") {
     var (
         newTodo = ""
-        todos list<Todo> = []
+        todos list[Todo] = []
     )
     func status() => "Todo List ({todos.length} items)"
 
-    ui.vbox(style={gap=12, padding=16}) {
-        ui.text(value=status, style={fontWeight=bold, fontSize=24})
-        ui.hbox(style={gap=8, alignItems=center}) {
+    ui.vbox(style={gap=12px, padding=16px}) {
+        ui.text(value=status, style={fontWeight=bold, fontSize=24px})
+        ui.hbox(style={gap=8px, alignItems=center}) {
             ui.input(:value=newTodo, placeholder="Buy eggs", style={flex=1})
             ui.button(text="Add", @click {
                 todos.push(Todo{text=newTodo})
                 newTodo = ""
             })
         }
-        ui.vbox(style={gap=4}) {
+        ui.vbox(style={gap=4px}) {
             for var index, item = todos {
                 ui.checkbox(checked=item.done, label=item.text, @change { todos[index].done!! })
             }
@@ -71,16 +71,22 @@ from the command line.
 
 ## Install
 
-Requires Go 1.26+.
+Requires Go 1.27+.
 
 ```bash
-git clone https://git.duckfam.us/jonathan/sngl.git
+go install duckfam.us/sngl/cmd/sngl@latest
+```
+
+Or from a checkout:
+
+```bash
+git clone https://github.com/sngl-lang/sngl.git
 cd sngl
 go install ./cmd/sngl
 ```
 
 Prebuilt binaries are linked from the
-[installation page](https://jonathan.git.duckfam.us/sngl/learn/installation.html).
+[installation page](https://sngl-lang.github.io/learn/installation.html).
 
 ## Usage
 
@@ -112,7 +118,7 @@ Code generation is pluggable: platform backends and language translators registe
 
 ## Documentation
 
-Full docs are at the [SNGL documentation site](https://jonathan.git.duckfam.us/sngl), including a browser-based [Playground](https://jonathan.git.duckfam.us/sngl/playground.html) that compiles SNGL to HTML+JS via WebAssembly.
+Full docs are at the [SNGL documentation site](https://sngl-lang.github.io), including a browser-based [Playground](https://sngl-lang.github.io/playground.html) that compiles SNGL to HTML+JS via WebAssembly.
 
 To build the docs locally:
 

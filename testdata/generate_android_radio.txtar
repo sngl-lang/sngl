@@ -1,22 +1,22 @@
 
-radio's android body is declarative: the group is a for over `options`, the
+radio's android body is declarative: the group is a for over the choices, the
 container is the one `direction` asks for, and each option is a RadioButton
 beside its label in a Row aligned on its centre. Nothing about radio is keyed
 on its name in compose_ir.go any more, so what this asserts is the override's
 own shape.
 
-A literal `options` stays a loop, like a runtime one: Kotlin is a language
+Choices written one by one stay a loop, like a list of them: Kotlin is a language
 target, so the loop is emitted and its own compiler decides whether to unroll
 it. Three copies of a RadioButton is what this used to be. direction is the
 other way round -- "horizontal" is a Row and the default vertical a Column, and
 both fold at build time so no runtime branch survives.
 
 Compose passes onClick nothing, so the override names the option itself: the
-@change handler's `e.value` is the option that was clicked, which is the loop
+@change handler's `e` is the label of the option that was clicked, read off the loop
 variable.
 
 deny out/kotlin/android/app/src/main/java/test/sngl/app/MainScreen.kt `RadioButton\(selected = \(pick == "small"\)` -- a literal options list is left as a loop, not unrolled into one RadioButton per option
-deny out/kotlin/android/app/src/main/java/test/sngl/app/MainScreen.kt `val e = SnglInputEvent` -- the handler reads the loop variable directly; there is no event object for Compose to have handed it
+deny out/kotlin/android/app/src/main/java/test/sngl/app/MainScreen.kt `val e = ` -- the handler reads the loop variable directly; there is nothing Compose handed it to bind
 deny out/kotlin/android/app/src/main/java/test/sngl/app/MainScreen.kt `"horizontal" == "horizontal"` -- direction is compared at build time, so neither branch's test reaches the output
 -- app.sngl --
 import . "sngl:ui"
@@ -33,15 +33,20 @@ component main node {
     var more = ["a", "b"]
 
     vbox {
-        radio(
-            style={padding=4},
-            direction="horizontal",
-            options=["small", "medium", "large"],
-            value=pick,
-            @change(e) { chosen = e.value },
-        )
-        radio(style={padding=5}, options=["one", "two"], value=pick)
-        radio(options=more, value=pick)
+        radio(style={padding=4px}, direction=horizontal, value=pick, @change(e) { chosen = e }) {
+            choice(label="small")
+            choice(label="medium")
+            choice(label="large")
+        }
+        radio(style={padding=5px}, value=pick) {
+            choice(label="one")
+            choice(label="two")
+        }
+        radio(value=pick) {
+            for var m = more {
+                choice(label=m)
+            }
+        }
     }
 }
 
@@ -53,30 +58,35 @@ window {
 
 package test.sngl.app
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.*
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
-import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color as ComposeColor
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
-import androidx.activity.compose.BackHandler
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.ui.platform.LocalContext
 import android.app.Activity
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.layout.Column
+import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.Alignment
+import androidx.compose.material3.RadioButton
+import androidx.compose.material3.Text
+
+data class Measurement(
+    val px: Double = 0.0,
+    val em: Double = 0.0,
+    val rem: Double = 0.0
+)
+
+data class Choice__record(
+    var label: String = ""
+)
 
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
@@ -90,48 +100,48 @@ fun MainScreen() {
     var pick__inst0 by remember { mutableStateOf("medium") }
     var chosen__inst0 by remember { mutableStateOf("") }
     val more__inst0 = remember { mutableStateListOf("a", "b") }
-    var visible__inst1 by remember { mutableStateOf(true) }
+    var visible__inst0 by remember { mutableStateOf(true) }
+    var value__inst0 by remember { mutableStateOf(pick__inst0) }
+    var value__inst1 by remember { mutableStateOf(pick__inst0) }
     var value__inst2 by remember { mutableStateOf(pick__inst0) }
-    var value__inst3 by remember { mutableStateOf(pick__inst0) }
-    var value__inst4 by remember { mutableStateOf(pick__inst0) }
 
-    if (visible__inst1) {
+    if (visible__inst0) {
         val __activity = LocalContext.current as? Activity
         BackHandler {
-            visible__inst1 = false
-            if (!(visible__inst1)) {
+            visible__inst0 = false
+            if (!(visible__inst0)) {
                 __activity?.finish()
             }
         }
         Column(modifier = Modifier.safeDrawingPadding()) {
             Row(modifier = Modifier.padding(4.dp)) {
-                for (opt in listOf("small", "medium", "large")) {
+                for (opt in listOf(Choice__record(label = "small"), Choice__record(label = "medium"), Choice__record(label = "large"))) {
                     Row(modifier = Modifier, verticalAlignment = Alignment.CenterVertically) {
-                        RadioButton(selected = (value__inst2 == opt), onClick = {
-                            value__inst2 = opt
-                            chosen__inst0 = opt
+                        RadioButton(selected = (value__inst0 == opt.label), onClick = {
+                            value__inst0 = opt.label
+                            chosen__inst0 = opt.label
                         })
-                        Text(text = opt, modifier = Modifier)
+                        Text(text = opt.label, modifier = Modifier)
                     }
                 }
             }
             Column(modifier = Modifier.padding(5.dp)) {
-                for (opt in listOf("one", "two")) {
+                for (opt in listOf(Choice__record(label = "one"), Choice__record(label = "two"))) {
                     Row(modifier = Modifier, verticalAlignment = Alignment.CenterVertically) {
-                        RadioButton(selected = (value__inst3 == opt), onClick = {
-                            value__inst3 = opt
+                        RadioButton(selected = (value__inst1 == opt.label), onClick = {
+                            value__inst1 = opt.label
                         })
-                        Text(text = opt, modifier = Modifier)
+                        Text(text = opt.label, modifier = Modifier)
                     }
                 }
             }
             Column(modifier = Modifier) {
-                for (opt in more__inst0) {
+                for (opt in listOf(*more__inst0.map({ m: String -> Choice__record(label = m) }).toTypedArray())) {
                     Row(modifier = Modifier, verticalAlignment = Alignment.CenterVertically) {
-                        RadioButton(selected = (value__inst4 == opt), onClick = {
-                            value__inst4 = opt
+                        RadioButton(selected = (value__inst2 == opt.label), onClick = {
+                            value__inst2 = opt.label
                         })
-                        Text(text = opt, modifier = Modifier)
+                        Text(text = opt.label, modifier = Modifier)
                     }
                 }
             }
@@ -139,4 +149,4 @@ fun MainScreen() {
     }
 }
 -- run/kotlin/android --
-pass sha256:868d4513d5301d5a4338f8337125d0fd
+pass sha256:732c85733620494c646e946c2c9b362f

@@ -6,9 +6,10 @@ import (
 	"path/filepath"
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
-	_ "git.duckfam.us/jonathan/sngl/codegen/lang"
-	"git.duckfam.us/jonathan/sngl/internal/lower"
+	"duckfam.us/sngl/codegen"
+	_ "duckfam.us/sngl/codegen/lang"
+	"duckfam.us/sngl/internal/lower"
+	"duckfam.us/sngl/ir"
 )
 
 // generateForFyne checks, lowers and generates src, and returns model.go.
@@ -20,6 +21,7 @@ func generateForFyne(t *testing.T, src string) []byte {
 	if lang == nil {
 		t.Fatal("go lang not registered")
 	}
+	pkg = ir.ClonePackage(pkg)
 	if err := lower.Lower(pkg, codegen.CapsOrNone(lang.LanguageIdentifier(), g.PlatformIdentifier()), lower.Options{Platform: "fyne", Language: "go"}); err != nil {
 		t.Fatalf("lower: %v", err)
 	}

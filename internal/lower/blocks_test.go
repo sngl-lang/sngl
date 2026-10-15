@@ -4,7 +4,7 @@ import (
 	"slices"
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 // TestBlocksReachSlotContent is the sixth walker's share of the same
@@ -19,7 +19,7 @@ func TestBlocksReachSlotContent(t *testing.T) {
 		Handlers: []ir.EventHandler{{Name: "click", Func: handler}},
 	}}
 	sc := &ir.SlotContent{Body: slotBody}
-	main := &ir.Component{Name: "main", Body: []ir.Stmt{&ir.NodeInst{
+	main := &ir.Component{Name: "main", Stmts: []ir.Stmt{&ir.NodeInst{
 		Name:  "panel",
 		Slots: map[string]*ir.SlotContent{"header": sc},
 	}}}

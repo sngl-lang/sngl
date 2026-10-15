@@ -3,16 +3,16 @@ package checker
 import (
 	"strconv"
 
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/ir"
 )
 
 // A written type is held to the signature; an unknown want means there is none.
 func (c *checker) bindParamType(written ast.TypeExpr, want *ir.Type, what string) *ir.Type {
-	unknown := want == nil || want.Kind == ir.TypeDyn
+	unknown := want == nil || want.Kind == ir.TypeInvalid
 	if written == nil {
 		if unknown {
-			return TypDyn
+			return TypInvalid
 		}
 		return want
 	}
@@ -38,7 +38,7 @@ func bindParamWhat(name, owner string) string {
 // binds its parameters: a handler may stop short, but may not name a parameter
 // the supplier does not pass. A nil want is a supplier with no signature to
 // read -- an undeclared event on a component the checker could not resolve --
-// and binds every name as dyn; an empty one passes nothing.
+// and binds every name as invalid; an empty one passes nothing.
 func (c *checker) bindParams(pl ast.ParamList, want []*ir.Param, owner, supplier string) []*ir.Param {
 	c.refuseParamMarks(pl.Params)
 	c.refuseConstParams(pl.Params, "a handler's")
@@ -68,23 +68,25 @@ func (c *checker) rejectBindDefault(pos ast.Pos, what, supplier string) {
 	c.error(pos, "%s takes no default value: %s supplies what the name is bound to", what, supplier)
 }
 
-// eventParams resolves the parameters an event declares. A bare `@tick`, with
-// neither a type nor parens, is the one loose `dyn` parameter it has always
-// carried; `@done()` declares none.
+// eventParams resolves the parameters an event declares, which are a
+// function's: the same list, resolved by the same code, so each is named and
+// typed. A bare `@tick` declares none, as `@tick()` does. What a function's
+// parameter may carry and an event's may not is refused here: an emit
+// supplies every parameter or forwards them all, so none has a default or a
+// `const` to hold the caller to, and a handler binds them by position, so
+// none collects the rest.
 func (c *checker) eventParams(e ast.EventDecl) []*ir.Param {
-	if !e.HasParens && len(e.Params) == 0 {
-		return []*ir.Param{{Type: TypDyn}}
-	}
-	params := make([]*ir.Param, len(e.Params))
-	seen := map[string]bool{}
-	for i, p := range e.Params {
-		if p.Name != "" {
-			if seen[p.Name] {
-				c.error(e.Pos, "event %q declares parameter %q twice", e.Name, p.Name)
-			}
-			seen[p.Name] = true
+	c.refuseParamMarks(e.Params.Params)
+	for _, p := range e.Params.Params {
+		switch {
+		case p.Default != nil:
+			c.error(p.Pos, "parameter %q of event @%s takes no default value: the emit supplies it", p.Name, e.Name)
+		case p.Const:
+			c.error(p.Pos, "parameter %q of event @%s cannot be const: a handler receives what the emit passed", p.Name, e.Name)
 		}
-		params[i] = &ir.Param{Name: p.Name, Type: c.resolveType(p.Type)}
+		if vt, ok := p.Type.(*ast.VariadicType); ok {
+			c.error(vt.Pos, "parameter %q of event @%s cannot collect the rest: a handler binds an event's parameters by position", p.Name, e.Name)
+		}
 	}
-	return params
+	return c.buildParams(e.Params)
 }

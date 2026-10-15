@@ -4,12 +4,12 @@ import (
 	"fmt"
 	"strconv"
 
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/ir"
 )
 
 // passRefLoop lowers `for var &t = list` / `for var i, &t = list` element references.
-// The checker types the &-bound element var as ref<T> and wraps its reads in
+// The checker types the &-bound element var as ref[T] and wraps its reads in
 // Unary{Deref}. This pass replaces every reference to that element var with
 // indexed list access (`list[idx]`), so reads index the live element and
 // writes update it in place under value semantics. The loop is then desugared
@@ -32,13 +32,12 @@ func lowerRefLoop(pkg *ir.Package, _ Features, _ Options) error {
 	}
 	st := &refLoopState{}
 	for _, c := range pkg.Components {
-		st.stmts(c.Body)
+		st.stmts(c.Stmts)
 		for _, fn := range c.Funcs {
 			if fn != nil {
 				st.stmts(fn.Block)
 			}
 		}
-		st.varHandlers(c.Vars)
 	}
 	st.stmts(pkg.Body)
 	for _, fn := range pkg.Funcs {
@@ -46,22 +45,11 @@ func lowerRefLoop(pkg *ir.Package, _ Features, _ Options) error {
 			st.stmts(fn.Block)
 		}
 	}
-	st.varHandlers(pkg.Vars)
 	return nil
 }
 
 type refLoopState struct {
 	idxCounter int
-}
-
-func (st *refLoopState) varHandlers(vars []*ir.Var) {
-	for _, v := range vars {
-		for _, h := range v.Handlers {
-			if h.Func != nil {
-				st.stmts(h.Func.Block)
-			}
-		}
-	}
 }
 
 // stmts walks statements, lowering any RefElem For it finds (depth-first so a
@@ -194,7 +182,7 @@ func (r *refLoopRewriter) expr(e ir.Expr) ir.Expr {
 		return r.indexAccess()
 	}
 	switch x := e.(type) {
-	case *ir.Literal, *ir.Ident, *ir.ContextRead:
+	case *ir.Literal, *ir.Ident, *ir.ContextRead, *ir.SlotEmpty:
 		// leaves (an Ident here is not the element var — checked above)
 	case *ir.Binary:
 		x.Left = r.expr(x.Left)

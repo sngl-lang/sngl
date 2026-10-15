@@ -5,7 +5,8 @@ import (
 	"maps"
 	"slices"
 
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/internal/lower"
+	"duckfam.us/sngl/ir"
 )
 
 // maxInlineDepth caps how deep component-call inlining may recurse.
@@ -101,8 +102,8 @@ func inlineComponentCall(n *ir.NodeInst, ctx *evalCtx) []ir.Stmt {
 	// it renders is decided here -- an `if` over what its call site handed it
 	// folds against the member it is about, which nothing after the splice can
 	// do.
-	composes := comp.Tree != nil && !ir.IsFamilyValue(comp)
-	if !composes && !bodyHasFoldableParamUse(comp.Body, propNames) {
+	composes := comp.Family != nil && !ir.IsFamilyValue(comp)
+	if !composes && !bodyHasFoldableParamUse(comp.Stmts, propNames) {
 		return nil
 	}
 
@@ -128,12 +129,14 @@ func inlineComponentCall(n *ir.NodeInst, ctx *evalCtx) []ir.Stmt {
 		return nil
 	}
 
-	paramSyms := findParamSyms(comp.Body, propNames)
+	paramSyms := findParamSyms(comp.Stmts, propNames)
 	if len(paramSyms) == 0 && !composes {
 		return nil
 	}
 
-	cloned := cloneStmts(comp.Body)
+	// At the types the call site bound: a generic body's `struct { v T }`
+	// left as written reached a backend that erases T.
+	cloned := cloneStmts(ir.InstantiateStmts(comp.Stmts, ir.ComponentBindings(n)))
 
 	// When inlining a cross-package component, native-call resolution
 	// inside the body (e.g. `docs.Highlight(...)`) needs to consult the
@@ -147,6 +150,11 @@ func inlineComponentCall(n *ir.NodeInst, ctx *evalCtx) []ir.Stmt {
 
 	childCtx := ctx.childInPkg(bodyPkg)
 	childCtx.inlining[comp] = ctx.inlining[comp] + 1
+	// A library body was written where the program cannot see it, so a
+	// diagnostic about what it became belongs at the node the program wrote.
+	if comp.PkgPath() != "" && !childCtx.site.IsValid() {
+		childCtx.site = ir.NodePos(n)
+	}
 	for name, val := range propValues {
 		if _, ref := propRefs[name]; ref {
 			continue
@@ -198,7 +206,18 @@ func inlineComponentCall(n *ir.NodeInst, ctx *evalCtx) []ir.Stmt {
 		defaultSubs[sym] = def
 	}
 
-	cloned = substituteSlots(cloned, n)
+	site, ok := siteInCallerScope(n, paramSyms, ctx)
+	if !ok {
+		return nil
+	}
+	// Events before slots, as in the lowering's inliners: an emit in spliced
+	// slot content is the caller's own, and would otherwise be matched
+	// against the handlers this call site gave the callee. Left standing, an
+	// emit became one of the caller's events -- `emit("change", k)` in a
+	// root component that declares none, against nothing the Go targets
+	// define -- and a handler the call site did write was never run.
+	cloned = lower.SubstituteEvents(cloned, n.Handlers)
+	cloned = substituteSlots(cloned, site)
 	// Component-body platform override at inline time: optimize splices the
 	// (cloned) body into the parent tree here, before lower's
 	// passPlatformExtensionBody runs, so the override must be resolved now while
@@ -381,7 +400,7 @@ func bodyHasFoldableParamUse(stmts []ir.Stmt, propNames map[string]bool) bool {
 			}
 		case *ir.Spread:
 			visitExpr(x.Operand)
-		case *ir.Literal, *ir.Ident, *ir.ContextRead, *ir.Lambda, *ir.Closure:
+		case *ir.Literal, *ir.Ident, *ir.ContextRead, *ir.SlotEmpty, *ir.Lambda, *ir.Closure:
 			// Literals/Idents have no param-call shape; lambda bodies
 			// are opaque to this scan (they have their own scope).
 		default:
@@ -494,6 +513,76 @@ func slotBindings(sc *ir.SlotContent, si *ir.SlotInst) map[*ir.Param]ir.Expr {
 		}
 	}
 	return subs
+}
+
+// siteInCallerScope is the call site with the content it supplies resolved
+// against the caller's bindings, where that content reads a parameter the
+// callee is about to rebind.
+//
+// Content written at a call site reads the caller's scope, and the splice puts
+// it in the callee's, where a parameter is bound by pointer. The two are one
+// scope only when the content names a parameter of the callee itself, which is
+// a recursion: `frame(n=n - 1) { text(value="level {n}") }` written in
+// frame's own body means the enclosing frame's n, and bound with the callee's,
+// html rendered `level 1, level 0` for `level 2, level 1`. So each such read is
+// replaced by the value the caller holds for it first. One the caller holds no
+// value for cannot be told apart from the callee's after the splice, and the
+// call is left to the target (false).
+func siteInCallerScope(n *ir.NodeInst, params map[string]*ir.Param, ctx *evalCtx) (*ir.NodeInst, bool) {
+	rebound := make(map[*ir.Param]bool, len(params))
+	for _, p := range params {
+		rebound[p] = true
+	}
+	reads := func(stmts []ir.Stmt) bool {
+		found := false
+		_ = ir.RewriteExprs(stmts, func(e ir.Expr) (ir.Expr, error) {
+			if id, ok := e.(*ir.Ident); ok {
+				if p, ok := id.Sym.(*ir.Param); ok && rebound[p] {
+					found = true
+				}
+			}
+			return e, nil
+		})
+		return found
+	}
+	readsAny := reads(n.Children)
+	for _, sc := range n.Slots {
+		readsAny = readsAny || reads(sc.Body)
+	}
+	if !readsAny {
+		return n, true
+	}
+
+	ok := true
+	resolve := func(stmts []ir.Stmt) []ir.Stmt {
+		out := cloneStmts(stmts)
+		_ = ir.RewriteExprs(out, func(e ir.Expr) (ir.Expr, error) {
+			id, isIdent := e.(*ir.Ident)
+			if !isIdent {
+				return e, nil
+			}
+			p, isParam := id.Sym.(*ir.Param)
+			if !isParam || !rebound[p] {
+				return e, nil
+			}
+			val, found := ctx.values[p]
+			if !found {
+				ok = false
+				return e, nil
+			}
+			return irFromValue(val, id.Type), ir.SkipDir
+		})
+		return out
+	}
+	site := *n
+	site.Children = resolve(n.Children)
+	if n.Slots != nil {
+		site.Slots = make(map[string]*ir.SlotContent, len(n.Slots))
+		for name, sc := range n.Slots {
+			site.Slots[name] = &ir.SlotContent{Params: sc.Params, Body: resolve(sc.Body)}
+		}
+	}
+	return &site, ok
 }
 
 // substituteSlots replaces *ir.SlotInst nodes in stmts with what the call site

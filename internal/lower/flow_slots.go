@@ -1,6 +1,6 @@
 package lower
 
-import "git.duckfam.us/jonathan/sngl/ir"
+import "duckfam.us/sngl/ir"
 
 // slotFlows makes the flow itself the render slot when a reactive `if` or
 // `for` sits among its spans, for a target with no container a span can be
@@ -40,12 +40,12 @@ func flowSlot(n *ir.NodeInst) ir.Stmt {
 }
 
 func (st *reactivityState) hostsReactiveSpans(n *ir.NodeInst) bool {
-	return n.Component != nil && ir.IsUITree(n.Component.Tree) && !ir.IsShapeContainer(n) &&
+	return n.Component != nil && !ir.IsSpanFamily(n.Component.Family) && !ir.IsShapeContainer(n) &&
 		holdsSpan(n.Children) && st.reactiveAmongSpans(n.Children, false)
 }
 
 func isSpanNode(n *ir.NodeInst) bool {
-	return n.Component != nil && ir.IsSegmentedTree(n.Component.Tree) && !ir.IsDrawShapeTree(n.Component.Tree)
+	return n.Component != nil && ir.IsSpanFamily(n.Component.Family)
 }
 
 // reactiveAmongSpans reports whether stmts' own content -- not what a widget
@@ -93,6 +93,57 @@ func holdsSpan(stmts []ir.Stmt) bool {
 			if holdsSpan(n.Body) {
 				return true
 			}
+		}
+	}
+	return false
+}
+
+// constructSlots makes a render slot of each primitive written where nothing
+// re-renders it whose #[construct] prop reads state: the prop cannot be
+// written once the element is built, so a change rebuilds the element, which
+// is what a slot's re-render does. It runs before liftSlotBodies, which lifts
+// the primitive into an instance like any slot body that reads state, so what
+// else it reads is patched rather than rebuilt (synthesize).
+func (st *slotChildSynth) constructSlots(stmts []ir.Stmt) []ir.Stmt {
+	for i, s := range stmts {
+		switch n := s.(type) {
+		case *ir.NodeInst:
+			if st.constructReadsState(n) {
+				stmts[i] = flowSlot(n)
+				continue
+			}
+			n.Children = st.constructSlots(n.Children)
+			for _, name := range ir.SlotNames(n.Slots) {
+				n.Slots[name].Body = st.constructSlots(n.Slots[name].Body)
+			}
+		case *ir.If:
+			if !st.readsCells(n.Cond) {
+				n.Body = st.constructSlots(n.Body)
+				n.Else = st.constructSlots(n.Else)
+			}
+		case *ir.For:
+			if !st.readsCells(n.Iter) && !st.armReadsCells(n.Body) && !st.armReadsCells(n.Else) {
+				n.Body = st.constructSlots(n.Body)
+				n.Else = st.constructSlots(n.Else)
+			}
+		case *ir.ErrorBoundary:
+			n.Children = st.constructSlots(n.Children)
+		case *ir.ContextProvider:
+			n.Children = st.constructSlots(n.Children)
+		case *ir.SlotInst:
+			n.Children = st.constructSlots(n.Children)
+		}
+	}
+	return stmts
+}
+
+func (st *slotChildSynth) constructReadsState(n *ir.NodeInst) bool {
+	if isInstanceNode(n) {
+		return false
+	}
+	for _, p := range n.Props {
+		if p.Name != "" && propIsConstruct(n.Component, p.Name) && st.readsCells(p.Value) {
+			return true
 		}
 	}
 	return false

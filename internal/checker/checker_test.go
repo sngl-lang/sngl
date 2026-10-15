@@ -7,10 +7,10 @@ import (
 	"strings"
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/internal/checker"
-	"git.duckfam.us/jonathan/sngl/internal/parser"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/internal/checker"
+	"duckfam.us/sngl/internal/parser"
+	"duckfam.us/sngl/ir"
 )
 
 // mockResolver provides fake packages for import tests.
@@ -202,8 +202,8 @@ func int.double(x int) => x + x
 		t.Fatalf("got %d funcs, want 1", len(pkg.Funcs))
 	}
 	f := pkg.Funcs[0]
-	if f.Receiver != "int" {
-		t.Errorf("receiver = %q, want int", f.Receiver)
+	if f.RecvName() != "int" {
+		t.Errorf("receiver = %q, want int", f.RecvName())
 	}
 	if f.Name != "double" {
 		t.Errorf("name = %q, want double", f.Name)
@@ -347,7 +347,7 @@ func TestCheckRefAndDeref(t *testing.T) {
 	expectNoErrors(t, `
 component main node {
     var x int = 0
-    var p ref<int> = &x
+    var p ref[int] = &x
     var y int = *p
 }`)
 }
@@ -355,17 +355,17 @@ component main node {
 func TestCheckAddrOfNonLvalue(t *testing.T) {
 	expectError(t, `
 component main node {
-    var p ref<int> = &(1 + 2)
+    var p ref[int] = &(1 + 2)
 }`, "non-lvalue")
 }
 
-// A ref<T> parameter takes a plain T, and the value is what the callee gets.
+// A ref[T] parameter takes a plain T, and the value is what the callee gets.
 // One declaration then serves the caller who wants the handle and the caller who
 // wants the contents, which is the whole point: `&` is the difference, written
 // where the choice belongs.
 func TestCheckValueForARefParam(t *testing.T) {
 	expectNoErrors(t, `
-func peek(r ref<int>) => *r
+func peek(r ref[int]) => *r
 
 component main node {
     var n int = 1
@@ -379,7 +379,7 @@ component main node {
 // that hands the ref on has to be given a real one.
 func TestCheckValueForAnEscapingRefParam(t *testing.T) {
 	expectError(t, `
-func keep(r ref<int>) ref<int> {
+func keep(r ref[int]) ref[int] {
     return r
 }
 
@@ -398,7 +398,7 @@ component main node {
     var a int = *keep(n)
 }
 
-func keep(r ref<int>) ref<int> {
+func keep(r ref[int]) ref[int] {
     return r
 }`, "lets it escape")
 }
@@ -418,7 +418,7 @@ struct Node {
 }
 component main node {
     var n Node = Node{value=0}
-    var p ref<Node> = &n
+    var p ref[Node] = &n
     var v int = p.value
     func bump() { p.value = p.value + 1 }
 }`)
@@ -768,7 +768,7 @@ func foo() {
 func TestForIteratorListOk(t *testing.T) {
 	expectNoErrors(t, `
 func foo() {
-	var items list<int>
+	var items list[int]
 	for var item = items {
 	}
 }`)
@@ -899,14 +899,14 @@ func test() {
 
 func TestGenericTypeInference(t *testing.T) {
 	pkg := parse(t, `
-func identity<T>(x T) => x
-func first<T>(items list<T>) T {
+func identity[T any](x T) => x
+func first[T any](items list[T]) T {
 	return items[0]
 }
 func test() {
 	var a = identity(42)
 	var b = identity("hello")
-	var items list<int>
+	var items list[int]
 	var c = first(items)
 }
 `)
@@ -914,8 +914,8 @@ func test() {
 	for _, fn := range pkg.Funcs {
 		switch fn.Name {
 		case "identity":
-			if fn.Return == nil || fn.Return.String() == "dyn" {
-				t.Errorf("identity return type not inferred: %s", fn.Return)
+			if fn.Return == nil || fn.Return.String() != "T" {
+				t.Errorf("identity return type: got %s, want T", fn.Return)
 			}
 		case "first":
 			if fn.Return == nil || fn.Return.String() != "T" {
@@ -984,12 +984,12 @@ func test() {
 
 func TestMethodStringReceiver(t *testing.T) {
 	expectNoErrors(t, `
-func string.upper(s string) string {
+func string.shout(s string) string {
 	return s
 }
 func test() {
-	var x = "hello".upper()
-	var y = string.upper("hello")
+	var x = "hello".shout()
+	var y = string.shout("hello")
 }
 `)
 }
@@ -1087,14 +1087,14 @@ component main node {
 	if main == nil {
 		t.Fatal("main component not found")
 	}
-	if len(main.Body) == 0 {
+	if len(main.Stmts) == 0 {
 		t.Fatal("Body is empty")
 	}
 
 	// First statement: greeting() → NodeInst (component instantiation).
-	ni, ok := main.Body[0].(*ir.NodeInst)
+	ni, ok := main.Stmts[0].(*ir.NodeInst)
 	if !ok {
-		t.Fatalf("Body[0]: want *NodeInst, got %T", main.Body[0])
+		t.Fatalf("Body[0]: want *NodeInst, got %T", main.Stmts[0])
 	}
 	if ni.Name != "greeting" {
 		t.Errorf("NodeInst.Name = %q, want %q", ni.Name, "greeting")
@@ -1107,9 +1107,9 @@ component main node {
 	// disambiguation this test is about is between a component call and a
 	// function call; a function call is only a statement in a body that runs,
 	// so the function half of the pair is asserted in a handler.
-	btn, ok := main.Body[1].(*ir.NodeInst)
+	btn, ok := main.Stmts[1].(*ir.NodeInst)
 	if !ok {
-		t.Fatalf("Body[1]: want *NodeInst, got %T", main.Body[1])
+		t.Fatalf("Body[1]: want *NodeInst, got %T", main.Stmts[1])
 	}
 	if len(btn.Handlers) != 1 || btn.Handlers[0].Func == nil {
 		t.Fatalf("Body[1]: want one resolved handler, got %#v", btn.Handlers)
@@ -1125,9 +1125,9 @@ component main node {
 	}
 
 	// Third statement: if → If with nested NodeInst.
-	ifStmt, ok := main.Body[2].(*ir.If)
+	ifStmt, ok := main.Stmts[2].(*ir.If)
 	if !ok {
-		t.Fatalf("Body[2]: want *If, got %T", main.Body[2])
+		t.Fatalf("Body[2]: want *If, got %T", main.Stmts[2])
 	}
 	if len(ifStmt.Body) != 1 {
 		t.Fatalf("If.Body length = %d, want 1", len(ifStmt.Body))
@@ -1158,7 +1158,7 @@ component main node {
 
 	// Find the For statement (skip any non-For stmts).
 	var forStmt *ir.For
-	for _, s := range main.Body {
+	for _, s := range main.Stmts {
 		if f, ok := s.(*ir.For); ok {
 			forStmt = f
 			break
@@ -1317,12 +1317,12 @@ func TestAnonymousWindowHasEmptyName(t *testing.T) {
 func TestCheckShapeType(t *testing.T) {
 	expectNoErrors(t, `
 import . "sngl:ui"
-import . "sngl:ui/draw"
+import draw "sngl:ui/draw"
 
 component myWidget() node {
-    canvas(width=400px, height=300px) {
-        rect(x=10.0, y=10.0, w=100.0, h=50.0)
-        circle(cx=50.0, cy=50.0, r=30.0)
+    draw.canvas(width=400px, height=300px) {
+        draw.rect(x=10.0, y=10.0, w=100.0, h=50.0)
+        draw.circle(cx=50.0, cy=50.0, r=30.0)
     }
 }
 `)
@@ -1334,12 +1334,12 @@ component myWidget() node {
 func TestCheckShapeHostsOnlyThroughASlot(t *testing.T) {
 	expectError(t, `
 import . "sngl:ui"
-import . "sngl:ui/draw"
+import draw "sngl:ui/draw"
 
 component myWidget() node {
-    canvas(width=400px, height=300px) {
-        rect(x=10.0, y=10.0, w=100.0, h=50.0) {
-            circle(cx=50.0, cy=50.0, r=30.0)
+    draw.canvas(width=400px, height=300px) {
+        draw.rect(x=10.0, y=10.0, w=100.0, h=50.0) {
+            draw.circle(cx=50.0, cy=50.0, r=30.0)
         }
     }
 }
@@ -1347,16 +1347,16 @@ component myWidget() node {
 
 	expectNoErrors(t, `
 import . "sngl:ui"
-import . "sngl:ui/draw"
+import draw "sngl:ui/draw"
 
-component group(children ...component) shape {
+component group(children ...component) draw.shape {
     children
 }
 
 component myWidget() node {
-    canvas(width=400px, height=300px) {
+    draw.canvas(width=400px, height=300px) {
         group() {
-            circle(cx=50.0, cy=50.0, r=30.0)
+            draw.circle(cx=50.0, cy=50.0, r=30.0)
         }
     }
 }
@@ -1366,11 +1366,11 @@ component myWidget() node {
 func TestCheckShapeTypeRejectsNonShape(t *testing.T) {
 	expectError(t, `
 import . "sngl:ui"
-import . "sngl:ui/draw"
+import draw "sngl:ui/draw"
 
 component notAShape() node {}
 component myWidget() node {
-    canvas(width=400px, height=300px) {
+    draw.canvas(width=400px, height=300px) {
         notAShape() {}
     }
 }
@@ -1382,10 +1382,10 @@ component myWidget() node {
 func TestCheckShape_IsNotAValue(t *testing.T) {
 	expectError(t, `
 import . "sngl:ui"
-import . "sngl:ui/draw"
+import draw "sngl:ui/draw"
 
 component myWidget() node {
-    var bad = shape
+    var bad = draw.shape
 }
 `, "shape names a family, which is not a value")
 }
@@ -1395,13 +1395,13 @@ func TestCheckCanvasStdlib(t *testing.T) {
 	// surface is imported by a program that draws, not by every program.
 	expectNoErrors(t, `
 import . "sngl:ui"
-import . "sngl:ui/draw"
+import draw "sngl:ui/draw"
 
 component myWidget() node {
-    canvas(width=400px, height=300px) {
-        rect(x=10.0, y=10.0, w=100.0, h=50.0, style=CanvasStyle{}) {}
-        circle(cx=50.0, cy=50.0, r=30.0, style=CanvasStyle{}) {}
-        canvasText(x=10.0, y=10.0, content="hello", style=CanvasStyle{}) {}
+    draw.canvas(width=400px, height=300px) {
+        draw.rect(x=10.0, y=10.0, w=100.0, h=50.0, style=draw.Style{}) {}
+        draw.circle(cx=50.0, cy=50.0, r=30.0, style=draw.Style{}) {}
+        draw.canvasText(x=10.0, y=10.0, content="hello", style=draw.Style{}) {}
     }
 }
 `)

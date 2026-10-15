@@ -6,9 +6,9 @@ import (
 	"strings"
 	"unicode"
 
-	"git.duckfam.us/jonathan/sngl/codegen/platform/gtk4/gir"
-	"git.duckfam.us/jonathan/sngl/internal/parser"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/codegen/platform/gtk4/gir"
+	"duckfam.us/sngl/internal/parser"
+	"duckfam.us/sngl/ir"
 )
 
 // widgetSourceFile is the name the synthesized declarations are served under.
@@ -65,10 +65,28 @@ func widgetSource(reg *gir.TypeRegistry) []byte {
 			if !ok || taken[n] {
 				continue
 			}
+			// A property whose GIR type has no SNGL spelling -- an object, a
+			// boxed struct, a flags set -- is not declared: a prop typed to
+			// take anything would type-check a value the C setter cannot be
+			// handed.
+			typ, ok := snglTypeName(p.IRType)
+			if !ok && reg.Enums[p.GIRType] != nil {
+				// An enumeration is written as its member's name, which the
+				// emitter turns into the C constant (girEnumMember).
+				typ, ok = "string", true
+			}
+			if !ok {
+				continue
+			}
 			taken[n] = true
-			fmt.Fprintf(&b, "    %s %s,\n", n, snglTypeName(p.IRType))
+			fmt.Fprintf(&b, "    %s %s,\n", n, typ)
 		}
-		fmt.Fprintf(&b, "    %s dyn,\n", stylePropName)
+		fmt.Fprintf(&b, "    %s ui.Style = ui.Style{},\n", stylePropName)
+		// A signal hands its callback the instance it fired on, as GTK's own
+		// signature does (`void toggled(GtkCheckButton *self, gpointer)`), so
+		// a handler reads the widget that fired rather than reaching it
+		// through a `#id` -- which names no one widget where the node is
+		// rendered more than once.
 		events := map[string]bool{}
 		for _, s := range info.Signals {
 			// A signal the fixed trampoline cannot carry is not declared, so
@@ -83,12 +101,12 @@ func widgetSource(reg *gir.TypeRegistry) []byte {
 				continue
 			}
 			events[n] = true
-			fmt.Fprintf(&b, "    @%s,\n", n)
+			fmt.Fprintf(&b, "    @%s(self %s),\n", n, info.CType)
 		}
 		for _, prop := range notifyProps[info.CType] {
 			if n, ok := snglName("notify-" + prop); ok && !events[n] {
 				events[n] = true
-				fmt.Fprintf(&b, "    @%s,\n", n)
+				fmt.Fprintf(&b, "    @%s(self %s),\n", n, info.CType)
 			}
 		}
 		// GIR does not say which widgets accept children, and declaring a
@@ -200,24 +218,23 @@ func isSnglIdent(s string) bool {
 	return s != ""
 }
 
-// snglTypeName is the source spelling of the type girTypeToIR resolved. A GIR
-// type with no SNGL equivalent lands on dyn, which accepts the value and
-// leaves the emitter to coerce it for the C setter.
-func snglTypeName(t *ir.Type) string {
+// snglTypeName is the source spelling of the type girTypeToIR resolved, and
+// false for a GIR type with no SNGL equivalent.
+func snglTypeName(t *ir.Type) (string, bool) {
 	if t == nil {
-		return "dyn"
+		return "", false
 	}
 	switch t.Kind {
 	case ir.TypeString:
-		return "string"
+		return "string", true
 	case ir.TypeBool:
-		return "bool"
+		return "bool", true
 	case ir.TypeInt:
-		return "int"
+		return "int", true
 	case ir.TypeFloat:
-		return "float"
+		return "float", true
 	}
-	return "dyn"
+	return "", false
 }
 
 // --- Reading the metadata back out ---

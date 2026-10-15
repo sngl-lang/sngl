@@ -45,7 +45,7 @@ output {
 
 component main node {
     var ticks = 0
-    var periods list<duration> = [20ms, 500ms]
+    var periods list[duration] = [20ms, 500ms]
 
     button(text="add", @click { periods.push(1000ms) })
     for var p = periods {
@@ -80,13 +80,13 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { ticks__inst0: 0, periods__inst0: [20, 500], visible__inst1: true };
+  var state = { ticks__inst0: 0, periods__inst0: [20, 500], visible__inst0: true };
   function __cf_timer(props) {
     const __root = document.createElement("div");
     __root.style.display = "contents";
     let interval = props.interval;
     let enabled = props.enabled ?? true;
-    let tick = props.tick ?? ((__e0) => {
+    let tick = props.tick ?? (() => {
     });
     let __prop_interval = interval;
     let __prop_enabled = enabled;
@@ -101,7 +101,7 @@ body { font-family: system-ui, sans-serif; }
     let __slot02 = [];
     function __effect0_mount() {
       handle = setInterval(() => {
-        __prop_tick(null);
+        __prop_tick();
       }, __effect0_key);
     }
     function __effect0_unmount() {
@@ -195,7 +195,7 @@ body { font-family: system-ui, sans-serif; }
       let __n2 = null;
       if (__inst1_live.length > __inst1_i && __inst1_was_interval[__inst1_i] === p) {
         __n2 = __inst1_live[__inst1_i];
-        __n2.__set_tick((_) => {
+        __n2.__set_tick(() => {
           state.ticks__inst0 += 1;
           __n1.textContent = "ticks=" + String(state.ticks__inst0);
         });
@@ -203,7 +203,7 @@ body { font-family: system-ui, sans-serif; }
         if (__inst1_live.length > __inst1_i) {
           __inst1_live[__inst1_i].__destroy();
         }
-        let __n2__new = __cf_timer({ interval: p, enabled: true, tick: (_) => {
+        let __n2__new = __cf_timer({ interval: p, enabled: true, tick: () => {
           state.ticks__inst0 += 1;
           __n1.textContent = "ticks=" + String(state.ticks__inst0);
         } });
@@ -257,4 +257,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:ccf42ddf5c7033a8e24195483eb2bae4
+pass sha256:b30029e8a2984b844839f915d39b28db

@@ -3,7 +3,7 @@ package opeval
 import (
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/ast"
+	"duckfam.us/sngl/ast"
 )
 
 func TestArithIntVsFloat(t *testing.T) {

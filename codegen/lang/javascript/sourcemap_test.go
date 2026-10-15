@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/codegen"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/codegen"
 )
 
 func TestRenderJSSourceMap_Basic(t *testing.T) {

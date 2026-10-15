@@ -6,28 +6,28 @@ component editor node {
     var lastCommit = ""
 
     input #field(
-        value=name,
-        @input(e) { name = e.value },
-        @change(e) { lastCommit = e.value },
+        value = name,
+        @input(e) { name = e },
+        @change(e) { lastCommit = e },
     )
     text #display(value=name)
 }
 
 func testInputFiresOnEachKeystroke(t Test, c editor) {
     t.assert(c.name == "")
-    c.field.input({value="h"})
+    c.field.input("h")
     t.assert(c.name == "h")
-    c.field.input({value="hello"})
+    c.field.input("hello")
     t.assert(c.name == "hello")
 }
 
 func testInputUpdatesBoundText(t Test, c editor) {
-    c.field.input({value="world"})
+    c.field.input("world")
     t.assert(c.display.value == "world")
 }
 
 func testChangeFiresOnCommit(t Test, c editor) {
-    c.field.change({value="committed"})
+    c.field.change("committed")
     t.assert(c.lastCommit == "committed")
 }
 

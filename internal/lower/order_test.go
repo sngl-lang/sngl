@@ -57,6 +57,8 @@ func TestPassRegistryIsWellFormed(t *testing.T) {
 // them. It is a set and not an order: what it states is that a pass cannot
 // quietly acquire a gate, or quietly lose one, without someone saying so.
 var alwaysOn = []string{
+	// A substitution's anonymous struct names no declaration on any target.
+	"AnonStructs",
 	// A program naming sngl:async is refused on a target with no answer for
 	// it, and every target is asked -- what differs is the answer.
 	"AsyncCapable",
@@ -64,8 +66,13 @@ var alwaysOn = []string{
 	// Once every raise is resolved a boundary holds nothing, on any target.
 	"BoundaryPassthrough",
 	"CSE",
+	// Every emitted function takes every parameter it declares.
+	"CallDefaults",
 	// A call through a name the inliner bound to a declared function.
 	"DirectCalls",
+	// An effect's reports are lowered on every target; one that brackets a
+	// lifetime itself keeps the node with its @mount and @unmount.
+	"Effect",
 	// A raise is a raise on every target, and the catch it unwinds to is a block
 	// every language renders.
 	"ErrorCatch",
@@ -105,14 +112,29 @@ var alwaysOn = []string{
 	"NodePropReads",
 	"PlatformExtensionBody",
 	"PropBindings",
-	"Query",
+	// No target reaches a receiver no parameter names.
+	"ReceiverParam",
+	// Every runtime takes an i18n call's arguments as a map, whatever the
+	// target.
+	"RecordArgs",
 	"RecursionDepth",
 	"RefLoop",
+	// A by-reference parameter is copy-in, copy-out on every target.
+	"RefParams",
+	// What a target reserves is read off its marks, and a target reserving
+	// nothing renames nothing; there is no capability to hold.
+	"ReservedNames",
+	"ReservedNodeIDs",
+	// A slot's `.empty` has no spelling on any target, spliced or not.
+	"SlotEmptyProps",
 	"SpreadOnce",
 	"StampUsage",
 	// A context nothing provides is folded to its default on every target: the
 	// ones that lower contexts to state, and the ones that keep them.
 	"UnprovidedContext",
+	// A struct, list or map is a value on every target, and no host copies
+	// all three on a store.
+	"ValueCopy",
 	"ViewForElse",
 }
 
@@ -174,6 +196,7 @@ var soleGate = map[string][]string{
 	"InlineComponents": {"NoInlineComponents"},
 	"ImplicitRecv":     {"NoImplicitRecv"},
 	"StructSpread":     {"NoStructSpread"},
+	"GenericFuncs":     {"Monomorphize"},
 	"FocusOrder":       {"FocusOrder"},
 	"Canvas":           {"Canvas"},
 
@@ -186,12 +209,19 @@ var soleGate = map[string][]string{
 	// spliced with a cell per copy.
 	"InstanceState": nil,
 
+	// Gates no pass: passNoInlineComponents asks it whether a generic
+	// component built at run time is emitted once or copied per
+	// instantiation where it is elected.
+	"GenericComponents": nil,
+
 	// The pass and the field are named for opposite sides of the same fact:
 	// ReactiveCanvas is the redraw the platform wants, CanvasReactivity is the
 	// pass that injects it. Effects is the same shape inverted -- withholding
 	// it is what asks for the pass.
 	"ReactiveCanvas": {"CanvasReactivity"},
-	"Effects":        {"Effect"},
+	// Read by passEffect rather than gating it: with it, only the reports are
+	// lowered and the node is left for the platform's own bracket.
+	"Effects": {},
 	// Read by passNavigation and the composition rather than gating either:
 	// with it, only the stacks in a surface other than the document are
 	// lowered.
@@ -245,6 +275,9 @@ func TestEachCapabilityGatesItsPasses(t *testing.T) {
 	rt := reflect.TypeFor[Features]()
 	for i := range rt.NumField() {
 		f := rt.Field(i)
+		if f.Type.Kind() != reflect.Bool {
+			continue // Reserved: a set of names, which gates nothing
+		}
 		want, ok := soleGate[f.Name]
 		if !ok {
 			t.Errorf("Features.%s gates no passes here; add a row to soleGate saying what it asks for", f.Name)

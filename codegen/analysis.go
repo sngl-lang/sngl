@@ -5,7 +5,7 @@ import (
 	"maps"
 	"slices"
 
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 // CommonAnalysis holds platform-independent analysis extracted from a Package.
@@ -138,8 +138,8 @@ func AnalyzeCommonFor(pkg *ir.Package, o AnalyzeOpts) *CommonAnalysis {
 		}
 		for _, f := range o.Funcs {
 			a.FuncNames[f.Name] = true
-			if f.Receiver != "" {
-				a.FuncNames[f.Receiver+"."+f.Name] = true
+			if f.IsMethod() {
+				a.FuncNames[f.RecvName()+"."+f.Name] = true
 			}
 			if IsComputed(f) {
 				a.ModelFields[f.Name] = true
@@ -196,7 +196,7 @@ func AnalyzeCommonFor(pkg *ir.Package, o AnalyzeOpts) *CommonAnalysis {
 		maps.Copy(a.UsedComponents, o.UsedComponents)
 	} else {
 		for _, comp := range pkg.Components {
-			collectUsedIRStmts(comp.Body, a.UsedComponents)
+			collectUsedIRStmts(comp.Stmts, a.UsedComponents)
 		}
 	}
 
@@ -220,7 +220,7 @@ func AnalyzeCommonFor(pkg *ir.Package, o AnalyzeOpts) *CommonAnalysis {
 			ActiveVar:  activeVar,
 			Enabled:    t.Enabled,
 			Body:       t.Handler.Block,
-			LocalRefs:  t.Handler.LocalRefs,
+			LocalRefs:  t.Handler.Lowered.LocalRefs,
 		})
 	}
 

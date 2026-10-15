@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
+	"duckfam.us/sngl/codegen"
 )
 
 // Each part of a git: import becomes a directory under the cache, so a part

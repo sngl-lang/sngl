@@ -7,11 +7,11 @@ import (
 	"slices"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/codegen/lang/golang"
-	"git.duckfam.us/jonathan/sngl/codegen/platform/gtk4/gir"
-	"git.duckfam.us/jonathan/sngl/internal/lower"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/codegen/lang/golang"
+	"duckfam.us/sngl/codegen/platform/gtk4/gir"
+	"duckfam.us/sngl/internal/lower"
+	"duckfam.us/sngl/ir"
 )
 
 // instanceReceiver is the identifier a component instance's ctor and methods
@@ -37,6 +37,7 @@ func emitComponentInstance(
 	canvases []codegen.Canvas,
 	invokerSink func(gtkEventInvoker),
 	modelFieldSink func(widgetField),
+	indexed map[string]bool,
 	presentIDs map[string]bool,
 	presenceSink func(id, field string),
 ) {
@@ -73,7 +74,7 @@ func emitComponentInstance(
 		// this map does not carry resolves to no widget and stops the build.
 		// collectNodeCTypes answers over every component's funcs already, for
 		// the same reason.
-		tr.collectTagComponents(comp.Body)
+		tr.collectTagComponents(comp.Stmts)
 		for _, fn := range comp.Funcs {
 			if fn != nil {
 				tr.collectTagComponents(fn.Block)
@@ -87,9 +88,9 @@ func emitComponentInstance(
 	// the Model as it is built: the invoker reaches whichever instance built
 	// it last, which is the one on screen.
 	var invokers []gtkEventInvoker
-	tr := newTr(comp.LocalRefs).withSlotRoot(instanceRootVar).
+	tr := newTr(comp.LocalRefs).withSlotRoot(instanceRootVar, comp.Stmts).
 		withInvokerSink(func(inv gtkEventInvoker) { invokers = append(invokers, inv) })
-	bodyStmts := codegen.WalkLowered(context.Background(), comp.Body, tr)
+	bodyStmts := codegen.WalkLowered(context.Background(), comp.Stmts, tr)
 
 	var ctorBody strings.Builder
 	for _, v := range comp.Vars {
@@ -102,6 +103,7 @@ func emitComponentInstance(
 	}
 	ctorBody.WriteString(instanceRootBinding(tr, cgc, wrapped))
 	exposed := map[string]bool{}
+	var listed []string
 	for _, inv := range invokers {
 		var field *widgetField
 		for i := range fields {
@@ -113,13 +115,25 @@ func emitComponentInstance(
 		if field == nil || invokerSink == nil {
 			continue
 		}
-		named := "__named_" + inv.FieldName
+		named := namedWidgetField(inv.FieldName)
+		// An id a test indexes is every instance's copy, listed in the order
+		// the instances render, which is the order a slot built them in: it
+		// keeps an instance at its position, and one it builds goes at the end.
+		// The copy leaves the list when its instance is destroyed.
+		list := indexed[inv.IDLabel]
 		if !exposed[named] {
 			exposed[named] = true
-			fmt.Fprintf(&ctorBody, "\t%s.%s.%s = %s.%s\n", instanceReceiver, golang.InstanceModelField, named, instanceReceiver, inv.FieldName)
-			modelFieldSink(widgetField{name: named, goType: field.goType})
+			model := instanceReceiver + "." + golang.InstanceModelField + "." + named
+			if list {
+				fmt.Fprintf(&ctorBody, "\t%s = append(%s, %s.%s)\n", model, model, instanceReceiver, inv.FieldName)
+				modelFieldSink(widgetField{name: named, goType: "[]" + field.goType})
+				listed = append(listed, inv.FieldName)
+			} else {
+				fmt.Fprintf(&ctorBody, "\t%s = %s.%s\n", model, instanceReceiver, inv.FieldName)
+				modelFieldSink(widgetField{name: named, goType: field.goType})
+			}
 		}
-		inv.FieldName = named
+		inv.FieldName, inv.List = named, list
 		invokerSink(inv)
 	}
 	// A widget a test null-tests is handed over too, and taken back when the
@@ -157,22 +171,35 @@ func emitComponentInstance(
 		if fn == nil || len(fn.Block) == 0 {
 			continue
 		}
-		mtr := newTr(fn.LocalRefs)
+		mtr := newTr(fn.Lowered.LocalRefs)
 		params := fn.Params
 		if len(params) > 0 && params[0].Receiver {
 			params = params[1:]
 		}
-		if fn.SlotRender {
+		if fn.Lowered.SlotRender {
 			// A reactive slot's render func, whose body was written against
 			// the reactivity pass's `parent` name and is typed the way the
 			// Model's own slot funcs type it (see emitIRSlotFunc).
 			params = []*ir.Param{{Name: "parent", Type: slotParentType(wrapped)}}
 		}
+		block := fn.Block
+		if fn.Lowered.Tag != "" {
+			// A handler a widget's signal calls, promoted onto the record: the
+			// trampoline passes it nothing, so the signal's instance is the
+			// node it is attached to, as emitIRPromotedHandler reads it for
+			// one on the Model.
+			nodeID := strings.TrimSuffix(fn.Name, "_"+fn.Lowered.Event+"_handler")
+			if mtr.signalFor(nodeID, fn.Lowered.Event) != "" {
+				block = selfIsNode(block, fn.Params, &ir.Ident{Name: nodeID, IsElementRef: true})
+				params = nil
+			}
+		}
+		block = readWidgets(block, mtr.widgetReader())
 		emitted := &ir.Func{
 			Name:   instanceMethodName(fn),
 			Params: params,
 			Return: fn.Return,
-			Block:  codegen.WalkLowered(context.Background(), fn.Block, mtr),
+			Block:  codegen.WalkLowered(context.Background(), block, mtr),
 		}
 		for _, line := range igc.EmitFuncDef(emitted) {
 			methods.WriteString(line)
@@ -240,6 +267,13 @@ func emitComponentInstance(
 	// reused instance's root would be appended after it was gone.
 	root := instanceReceiver + "." + golang.ComponentRootField
 	fmt.Fprintf(b, "func (%s *%s) %s() {\n", instanceReceiver, typeName, golang.ComponentDestroyMethod)
+	// A destroyed instance's widgets leave the Model's lists of them, so a
+	// list holds the copies on screen.
+	for _, w := range listed {
+		list := instanceReceiver + "." + golang.InstanceModelField + "." + namedWidgetField(w)
+		fmt.Fprintf(b, "\tfor i, w := range %s {\n\t\tif w == %s.%s {\n\t\t\t%s = append(%s[:i], %s[i+1:]...)\n\t\t\tbreak\n\t\t}\n\t}\n",
+			list, instanceReceiver, w, list, list, list)
+	}
 	if componentDeclaresFunc(comp, lower.TeardownFunc) {
 		fmt.Fprintf(b, "\t%s.%s()\n", instanceReceiver, instanceTeardownMethod)
 	}
@@ -273,19 +307,28 @@ func rootRefLine(cFunc, rtFunc string, wrapped bool) string {
 	return fmt.Sprintf("C.%s(C.gpointer(unsafe.Pointer(%s)))", cFunc, root)
 }
 
-// instanceRootBinding assigns the widget the instance renders as: whatever the
-// body left unattached, boxed when it left several, because a parent holds one
-// child per instance.
-//
-// The container a reactive slot in the body renders into counts as one of
-// those: the subtree is built into it rather than named by a ref, so it
-// reaches tr.topLevel through withSlotRoot, at the position the slot was
-// written. Reading tr.topLevel without it left that box parented nowhere and
-// its whole subtree invisible.
+// instanceRootBinding assigns the widget the instance renders as: the box its
+// reactive slots render into when the body has one, holding the body's own
+// widgets in written order, and otherwise whatever the body left unattached,
+// boxed when it left several, because a parent holds one child per instance.
 func instanceRootBinding(tr *gtk4Translator, igc *golang.GoIRContext, wrapped bool) string {
 	root := instanceReceiver + "." + golang.ComponentRootField
 	nodeRef := func(id string) ir.Expr {
 		return tr.qualifyNodeExpr(&ir.Ident{Name: id, IsElementRef: true, Synthesized: true})
+	}
+	if tr.renderedRoot != nil {
+		var b strings.Builder
+		for _, stmt := range tr.addTopsTo(context.Background(), tr.renderedRoot) {
+			for _, line := range igc.EvalStmt(stmt) {
+				fmt.Fprintf(&b, "\t%s\n", line)
+			}
+		}
+		box := tr.qualifyNodeExpr(tr.renderedRoot)
+		if !wrapped {
+			box = &ir.Conversion{Type: ir.NativePointerOf("GtkWidget"), Operand: box}
+		}
+		fmt.Fprintf(&b, "\t%s = %s\n", root, igc.EvalExpr(box))
+		return b.String()
 	}
 	tops := tr.topLevel
 	switch {
@@ -308,15 +351,7 @@ func instanceRootBinding(tr *gtk4Translator, igc *golang.GoIRContext, wrapped bo
 		return b.String()
 	}
 	var b strings.Builder
-	boxInit := &ir.Conversion{Type: ir.NativePointerOf("GtkBox"), Operand: &ir.Call{
-		Type:     ir.TypDyn,
-		Receiver: &ir.Ident{Name: "C"},
-		Func:     nativeFunc("gtk_box_new"),
-		Args: []ir.CallArg{
-			{Value: &ir.Ident{Name: "C.GTK_ORIENTATION_VERTICAL", Type: ir.TypDyn}},
-			{Value: &ir.Literal{Type: ir.TypInt, Value: "6"}},
-		},
-	}}
+	boxInit := &ir.Conversion{Type: ir.NativePointerOf("GtkBox"), Operand: nativeCall("gtk_box_new", ir.NativePointerOf("GtkWidget"), cOrientationVertical(), intLit("6"))}
 	fmt.Fprintf(&b, "\t__box := %s\n", igc.EvalExpr(boxInit))
 	boxRef := &ir.Ident{Name: "__box"}
 	for _, id := range tops {
@@ -406,16 +441,8 @@ func instanceVarInit(v *ir.Var, igc *golang.GoIRContext, wrapped bool) string {
 			return "gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)"
 		}
 		return igc.EvalExpr(&ir.Conversion{
-			Type: ir.NativePointerOf("GtkBox"),
-			Operand: &ir.Call{
-				Type:     ir.TypDyn,
-				Receiver: &ir.Ident{Name: "C"},
-				Func:     nativeFunc("gtk_box_new"),
-				Args: []ir.CallArg{
-					{Value: &ir.Ident{Name: "C.GTK_ORIENTATION_VERTICAL", Type: ir.TypDyn}},
-					{Value: &ir.Literal{Type: ir.TypInt, Value: "6"}},
-				},
-			},
+			Type:    ir.NativePointerOf("GtkBox"),
+			Operand: nativeCall("gtk_box_new", ir.NativePointerOf("GtkWidget"), cOrientationVertical(), intLit("6")),
 		})
 	}
 	return irVarInit(v, igc)

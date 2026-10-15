@@ -25,7 +25,7 @@ func bgOf(tone string) color {
 
 // The rows, top to bottom. Written as data so that the layout below is five
 // lines long however many keys there turn out to be.
-func rows() list<list<Key>> {
+func rows() list[list[Key]] {
     return [
         [
             Key{label="C", action=Action.clear},
@@ -47,24 +47,24 @@ func rows() list<list<Key>> {
 
 // One key. `flex` is what makes the grid fill the window: every key claims its
 // span of its row, and every row claims an equal share of the keypad.
-component KeyCap(entry Key, @press Key) ui.node {
+component KeyCap(entry Key, @press(v Key)) ui.node {
     ui.button(
-        text=entry.label,
-        style={
+        text = entry.label,
+        style = {
             flex = entry.span,
             background = bgOf(entry.tone()),
             color = KEY_FG,
-            fontSize = 22,
-            fontWeight = "bold",
-            borderRadius = 8,
-            margin = 3,
+            fontSize = 22px,
+            fontWeight = bold,
+            borderRadius = 8px,
+            margin = 3px,
         },
         @click { press(entry) },
     )
 }
 
-component Keypad(@press Key) ui.node {
-    ui.vbox(style={flex=1, gap=0, padding=6}) {
+component Keypad(@press(v Key)) ui.node {
+    ui.vbox(style={flex=1, gap=0, padding=6px}) {
         for var row = rows() {
             ui.hbox(style={flex=1, gap=0}) {
                 for var entry = row {

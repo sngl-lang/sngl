@@ -94,11 +94,11 @@ func renderedPrimitive(comp *Component, seen map[*Component]bool) *Component {
 	// only the intrinsic left that platform with no primitive for any widget,
 	// which is indistinguishable from a widget that renders nothing -- and the
 	// pass that asks then answered a live read at build time.
-	if comp.Intrinsic != "" || comp.Wildcard != "" {
+	if comp.Primitive() {
 		return comp
 	}
 	seen[comp] = true
-	return firstPrimitive(comp.Body, seen)
+	return firstPrimitive(comp.Stmts, seen)
 }
 
 func firstPrimitive(stmts []Stmt, seen map[*Component]bool) *Component {
@@ -135,7 +135,7 @@ func GenCapsOf(c *Component) *GenCaps {
 // its value is that name.
 func TargetNode(sym Symbol) (*Component, string, bool) {
 	c, ok := sym.(*Component)
-	if !ok || c.Gen == nil || c.Gen.TargetName == "" || !IsBuildTargetTree(c.Tree) {
+	if !ok || c.Gen == nil || c.Gen.TargetName == "" || !IsBuildTargetFamily(c.Family) {
 		return nil, "", false
 	}
 	return c, c.Gen.TargetName, true
@@ -160,29 +160,29 @@ func EmittedFamily(host *Component) *Component {
 	if host == nil || !host.Bodyless {
 		return nil
 	}
-	f := RestSlotTree(host)
+	f := RestSlotFamily(host)
 	if f == nil || f == host || (len(f.PlatformOverrides) == 0 && len(f.LanguageOverrides) == 0) {
 		return nil
 	}
 	return f
 }
 
-// IsBuildTargetTree reports whether f is `build.language` or `build.platform`
+// IsBuildTargetFamily reports whether f is `build.language` or `build.platform`
 // -- the families a target package's own node is a member of.
-func IsBuildTargetTree(f *Component) bool {
+func IsBuildTargetFamily(f *Component) bool {
 	return TargetTier(f) != ""
 }
 
-// TargetTier is the tier a build-target family holds -- BuiltinLanguage for
-// `build.language`, BuiltinPlatform for `build.platform` -- and "" for any
+// TargetTier is the tier a build-target family holds -- BuiltinTreeLanguage for
+// `build.language`, BuiltinTreePlatform for `build.platform` -- and "" for any
 // other family. Read off the family's mark, so a package declaring a
 // `language` family of its own declares a different one.
 func TargetTier(f *Component) BuiltinKind {
 	switch {
-	case isTreeRole(f, BuiltinTreeLanguage):
-		return BuiltinLanguage
-	case isTreeRole(f, BuiltinTreePlatform):
-		return BuiltinPlatform
+	case isFamilyRole(f, BuiltinFamilyLanguage):
+		return BuiltinFamilyLanguage
+	case isFamilyRole(f, BuiltinFamilyPlatform):
+		return BuiltinFamilyPlatform
 	}
 	return ""
 }
@@ -195,9 +195,48 @@ func TargetNodeOf(pkg *Package, tier BuiltinKind) *Component {
 		return nil
 	}
 	for _, c := range pkg.Components {
-		if node, _, ok := TargetNode(c); ok && TargetTier(node.Tree) == tier {
+		if node, _, ok := TargetNode(c); ok && TargetTier(node.Family) == tier {
 			return node
 		}
 	}
 	return nil
+}
+
+// Primitive reports whether a platform's codegen emits c from its declaration
+// rather than composing a body: a primitive a platform declares
+// (#[intrinsic]), a raw element a wildcard matched, or a host's own widget a
+// native mark names (`#[kt.native("Card", "androidx.compose.material3.Card")]`).
+// The last is the one a program may write, which is how it describes a widget
+// of the host's that the compiler never heard of.
+func (c *Component) Primitive() bool {
+	return c != nil && (c.Intrinsic != "" || c.Wildcard != "" || c.IsNative())
+}
+
+// IsNative reports whether c is a host's own widget, named by a native mark:
+// the declaration is that host identifier, and its props are the arguments
+// the host takes.
+func (c *Component) IsNative() bool {
+	return c != nil && c.Foreign.Scheme != "" && c.Foreign.Name != ""
+}
+
+// RendersFromDeclaration reports whether a target reads c's props off the
+// declaration rather than off a body: a primitive a platform's codegen emits
+// (#[intrinsic]), a raw element a wildcard matched, a builtin node the
+// compiler dispatches on, a build-target node an output block holds, and a
+// canvas -- a component whose rest slot hosts the drawing family, which every
+// target paints from the node whatever body it was declared with. For such a
+// component a prop the call site omitted is absent rather than its default,
+// which is what lets html write no `checked` on an element that never named
+// one, and it is not required.
+func (c *Component) RendersFromDeclaration() bool {
+	if c == nil {
+		return false
+	}
+	if c.Primitive() || c.Builtin != BuiltinNone || IsBuildTargetFamily(c.Family) {
+		return true
+	}
+	if rest := c.RestSlot(); rest != nil && rest.Content != nil && IsShapeFamily(TypeFamily(rest.Content)) {
+		return true
+	}
+	return false
 }

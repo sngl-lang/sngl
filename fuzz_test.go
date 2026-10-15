@@ -10,14 +10,14 @@ import (
 	"strings"
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/ast"
-	_ "git.duckfam.us/jonathan/sngl/codegen/lang"
-	_ "git.duckfam.us/jonathan/sngl/codegen/platform"
-	"git.duckfam.us/jonathan/sngl/internal/checker"
-	"git.duckfam.us/jonathan/sngl/internal/interp"
-	"git.duckfam.us/jonathan/sngl/internal/lower"
-	"git.duckfam.us/jonathan/sngl/internal/parser"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ast"
+	_ "duckfam.us/sngl/codegen/lang"
+	_ "duckfam.us/sngl/codegen/platform"
+	"duckfam.us/sngl/internal/checker"
+	"duckfam.us/sngl/internal/interp"
+	"duckfam.us/sngl/internal/lower"
+	"duckfam.us/sngl/internal/parser"
+	"duckfam.us/sngl/ir"
 )
 
 // FuzzDocument exercises the full Parse → Check → Format / IR-Convert
@@ -41,7 +41,7 @@ func FuzzDocument(f *testing.F) {
 		if !ok {
 			t.Skip("parse failed")
 		}
-		pkg1, diags := checker.Check(doc1, &checker.Config{IsMain: true})
+		pkg1, diags := checker.Check(doc1, &checker.Config{IsMain: true, PrivateLibrary: true})
 		if hasError(diags) {
 			t.Skip("check failed")
 		}
@@ -60,7 +60,7 @@ func FuzzDocument(f *testing.F) {
 		if err != nil {
 			t.Fatalf("formatter output failed to parse: %v\n--- formatted ---\n%s", err, formatted)
 		}
-		fmtPkg, fmtDiags := checker.Check(fmtDoc, &checker.Config{IsMain: true})
+		fmtPkg, fmtDiags := checker.Check(fmtDoc, &checker.Config{IsMain: true, PrivateLibrary: true})
 		if hasError(fmtDiags) {
 			t.Fatalf("formatter output failed to type-check:\n--- formatted ---\n%s\n--- diags ---\n%s",
 				formatted, joinDiags(fmtDiags))
@@ -77,7 +77,7 @@ func FuzzDocument(f *testing.F) {
 		if err != nil {
 			t.Fatalf("ir.Convert output failed to parse: %v\n--- generated ---\n%s", err, convSrc)
 		}
-		convPkg, convDiags := checker.Check(convReparsed, &checker.Config{IsMain: true})
+		convPkg, convDiags := checker.Check(convReparsed, &checker.Config{IsMain: true, PrivateLibrary: true})
 		if hasError(convDiags) {
 			t.Fatalf("ir.Convert output failed to type-check:\n--- generated ---\n%s\n--- diags ---\n%s",
 				convSrc, joinDiags(convDiags))
@@ -448,7 +448,7 @@ func (v *irValidator) walkComponent(c *ir.Component) {
 		v.pop()
 	}
 	v.push("body")
-	v.walkStmts(c.Body)
+	v.walkStmts(c.Stmts)
 	v.pop()
 }
 
@@ -645,7 +645,7 @@ func runEvalFn(pkg *ir.Package) (val any, err error) {
 	if fn == nil {
 		return nil, fmt.Errorf("_eval not present in package")
 	}
-	env, err := interp.BuildEnv(pkg, "")
+	env, err := interp.BuildEnv(pkg, "", nil)
 	if err != nil {
 		return nil, err
 	}

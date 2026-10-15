@@ -12,11 +12,11 @@ import (
 	"testing"
 	"time"
 
-	"git.duckfam.us/jonathan/sngl/internal/checker"
-	"git.duckfam.us/jonathan/sngl/internal/interp"
-	"git.duckfam.us/jonathan/sngl/internal/parser"
-	"git.duckfam.us/jonathan/sngl/internal/testtargets"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/internal/checker"
+	"duckfam.us/sngl/internal/interp"
+	"duckfam.us/sngl/internal/parser"
+	"duckfam.us/sngl/internal/testtargets"
+	"duckfam.us/sngl/ir"
 )
 
 const twoTimersSrc = `import . "sngl:ui"
@@ -60,8 +60,9 @@ func check(t *testing.T, src string) *ir.Package {
 func envFor(t *testing.T, src, comp string) *interp.Env {
 	t.Helper()
 	pkg := check(t, src)
+	pkg = ir.ClonePackage(pkg)
 	ir.SpecializeForTarget(pkg, interp.InterpreterPlatform, "")
-	env, err := interp.BuildEnv(pkg, comp)
+	env, err := interp.BuildEnv(pkg, comp, nil)
 	if err != nil {
 		t.Fatalf("BuildEnv: %v", err)
 	}

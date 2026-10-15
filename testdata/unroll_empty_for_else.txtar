@@ -22,7 +22,7 @@ output {
     }
 }
 
-const empty list<int> = []
+const empty list[int] = []
 
 component main node {
     vbox {

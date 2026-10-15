@@ -3,7 +3,7 @@ package lower
 import (
 	"strconv"
 
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 // passHoistBodyTypes renames a body-local struct, enum or unit whose name
@@ -74,7 +74,7 @@ func hoistBodyTypes(pkg *ir.Package, _ Features, _ Options) error {
 	// interim error measured a body-local name against. A method is spelled
 	// under its receiver on every target and claims nothing here.
 	for _, fn := range pkg.Funcs {
-		if fn.Receiver == "" {
+		if !fn.IsMethod() {
 			reserve(fn.Name)
 		}
 	}
@@ -96,15 +96,8 @@ func hoistBodyTypes(pkg *ir.Package, _ Features, _ Options) error {
 		}
 		fresh := freshTypeName(old, bt.owner, taken)
 		taken[fresh] = true
+		// A method's receiver is the declaration, so it is renamed with it.
 		bt.setName(fresh)
-		for _, m := range bt.methods {
-			// Receiver is the type's name written out, so a method whose host
-			// spelling this pass has just changed would otherwise be emitted
-			// on a type nobody declares.
-			if m.Receiver == old {
-				m.Receiver = fresh
-			}
-		}
 	}
 	return nil
 }

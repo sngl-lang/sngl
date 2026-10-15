@@ -9,13 +9,13 @@ import (
 	"testing/fstest"
 	"time"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/codegen/platform/html/internal/webtest"
-	"git.duckfam.us/jonathan/sngl/internal/checker"
-	"git.duckfam.us/jonathan/sngl/internal/lower"
-	"git.duckfam.us/jonathan/sngl/internal/optimize"
-	"git.duckfam.us/jonathan/sngl/internal/parser"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/codegen/platform/html/internal/webtest"
+	"duckfam.us/sngl/internal/checker"
+	"duckfam.us/sngl/internal/lower"
+	"duckfam.us/sngl/internal/optimize"
+	"duckfam.us/sngl/internal/parser"
+	"duckfam.us/sngl/ir"
 )
 
 // componentDOMCase is one stdlib component rendered in isolation, with
@@ -38,7 +38,7 @@ ui.window { vbox { text(value="A") text(value="B") } }`, []string{"flex-directio
 	// `#hex` color literal must render as a CSS color (colorStructToCSS).
 	{"vbox-style", `import . "sngl:ui"
 import ui "sngl:ui"
-ui.window { vbox(style={gap=8, background=#ff0000}) { text(value="A") } }`,
+ui.window { vbox(style={gap=8px, background=#ff0000}) { text(value="A") } }`,
 		[]string{"flex-direction:column", "gap:8px", "background-color:#ff0000"}},
 	{"text-color", `import . "sngl:ui"
 import ui "sngl:ui"
@@ -57,32 +57,32 @@ import ui "sngl:ui"
 ui.window { var c = true checkbox(label="ok", checked=c) }`, []string{`type="checkbox"`, "ok"}},
 	{"image", `import . "sngl:ui"
 import ui "sngl:ui"
-ui.window { image(src="/x.png", alt="pic") }`, []string{"<img", `src="/x.png"`, `alt="pic"`}},
+ui.window { image(alt="pic") { remote(url="/x.png") } }`, []string{"<img", `src="/x.png"`, `aria-label="pic"`}},
 	{"link", `import . "sngl:ui"
 import ui "sngl:ui"
 ui.window { link(text="Home", href="/") }`, []string{"<a", `href="/"`, "Home"}},
 	{"select", `import . "sngl:ui"
 import ui "sngl:ui"
-ui.window { var f = "b" select(options=["a","b","c"], :value=f, placeholder="pick") }`,
+ui.window { var f = "b" select(:value=f, placeholder="pick") { choice(label="a") choice(label="b") choice(label="c") } }`,
 		[]string{"<select", "<option", ">a<", ">b<", ">c<", "pick"}},
 	{"radio", `import . "sngl:ui"
 import ui "sngl:ui"
-ui.window { var r = "y" radio(options=["x","y"], :value=r) }`,
+ui.window { var r = "y" radio(:value=r) { choice(label="x") choice(label="y") } }`,
 		[]string{"<fieldset", `type="radio"`, `value="x"`, `value="y"`}},
 	{"textarea", `import . "sngl:ui"
 import ui "sngl:ui"
 ui.window { var t = "hi" textarea(:value=t, rows=3) }`, []string{"<textarea", `rows="3"`}},
 	{"tabs", `import . "sngl:ui"
 import ui "sngl:ui"
-ui.window { var sel = 0 tabs(items=["One","Two"], selected=sel) { text(value="panel") } }`,
+ui.window { var sel = 0 tabs(:selected=sel) { tab(label="One") { text(value="panel") } tab(label="Two") { text(value="other") } } }`,
 		[]string{`role="tablist"`, "One", "Two", "panel"}},
 	{"table", `import . "sngl:ui"
 import ui "sngl:ui"
-ui.window { table(columns=["A","B"], rows=[["1","2"],["3","4"]]) }`,
+ui.window { table(columns=["A","B"]) { tableRow(cells=["1","2"]) tableRow(cells=["3","4"]) } }`,
 		[]string{"<table", "<thead", "<tbody", ">A<", ">B<", ">1<", ">4<"}},
 	{"tree", `import . "sngl:ui"
 import ui "sngl:ui"
-ui.window { tree(items=["root","child"]) }`, []string{"<ul", "<li", "root", "child"}},
+ui.window { tree { treeItem(label="root") { treeItem(label="child") } } }`, []string{"<ul", "<li", "root", "child"}},
 	{"modal", `import . "sngl:ui"
 import ui "sngl:ui"
 ui.window { var o = true modal(open=o, title="Dialog") { component content { text(value="body") } } }`,
@@ -156,6 +156,7 @@ func renderComponentHTML(t *testing.T, src string) string {
 	// real path), instead of the legacy renderStaticX helpers — so this test
 	// reflects what `sngl generate` actually emits.
 	optCfg := &optimize.Config{Platform: gen.PlatformIdentifier(), Language: lang.LanguageIdentifier(), Dir: "."}
+	pkg = ir.ClonePackage(pkg)
 	if err := optimize.Optimize(pkg, optCfg); err != nil {
 		t.Fatalf("optimize: %v", err)
 	}

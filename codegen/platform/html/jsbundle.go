@@ -10,10 +10,10 @@ import (
 
 	"github.com/evanw/esbuild/pkg/api"
 
-	"git.duckfam.us/jonathan/sngl/codegen/jsbundle"
-	"git.duckfam.us/jonathan/sngl/codegen/lang/javascript"
-	"git.duckfam.us/jonathan/sngl/codegen/scheme/js"
-	"git.duckfam.us/jonathan/sngl/codegen/testharness"
+	"duckfam.us/sngl/codegen/jsbundle"
+	"duckfam.us/sngl/codegen/lang/javascript"
+	"duckfam.us/sngl/codegen/scheme/js"
+	"duckfam.us/sngl/codegen/testharness"
 )
 
 // bundleNativeScript runs the rendered <script> body — which contains real

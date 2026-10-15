@@ -4,8 +4,8 @@ import (
 	"regexp"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/internal/docsite"
-	"git.duckfam.us/jonathan/sngl/internal/parser"
+	"duckfam.us/sngl/internal/docsite"
+	"duckfam.us/sngl/internal/parser"
 )
 
 // Section groups lessons under a top-level (`#`) heading.

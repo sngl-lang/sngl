@@ -3,8 +3,8 @@
 package html
 
 import (
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/ir"
 )
 
 // emitTestagentFiles is a stub for js/wasm builds where the real

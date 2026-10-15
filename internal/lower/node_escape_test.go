@@ -3,21 +3,20 @@ package lower
 import (
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/ir"
 )
 
 // createNodeLV builds the LocalVar shape passDeclarative emits for a
-// flattened widget node: `var __nN dyn = lower.CreateNode("tag")`.
+// flattened widget node: `var __nN component = lower.CreateNode("tag")`.
 func createNodeLV(id, tag string) *ir.LocalVar {
 	return &ir.LocalVar{
 		Name: id,
-		Type: ir.TypDyn,
+		Type: &ir.Type{Kind: ir.TypeComponent},
 		Init: &ir.Call{
-			Type:     ir.TypDyn,
-			Receiver: &ir.Ident{Name: "lower"},
-			Func:     &ir.Func{Name: "CreateNode"},
-			Args:     []ir.CallArg{{Value: &ir.Literal{Type: ir.TypString, Value: tag}}},
+			Type: &ir.Type{Kind: ir.TypeComponent},
+			Func: &ir.Func{Name: "CreateNode"},
+			Args: []ir.CallArg{{Value: &ir.Literal{Type: ir.TypString, Value: tag}}},
 		},
 	}
 }
@@ -25,16 +24,15 @@ func createNodeLV(id, tag string) *ir.LocalVar {
 // elemRef builds a synthesized element-ref ident (`#__nN`) of the kind
 // passDeclarative emits in AppendChild / PropAssign / returns.
 func elemRef(id string) *ir.Ident {
-	return &ir.Ident{Name: id, Type: ir.TypDyn, IsElementRef: true, Synthesized: true}
+	return &ir.Ident{Name: id, Type: &ir.Type{Kind: ir.TypeComponent}, IsElementRef: true, Synthesized: true}
 }
 
 // appendChildStmt mirrors the lower.AppendChild(parent, child) CallStmt
 // passDeclarative emits.
 func appendChildStmt(parent, child string) *ir.CallStmt {
 	return &ir.CallStmt{Call: &ir.Call{
-		Type:     ir.TypVoid,
-		Receiver: &ir.Ident{Name: "lower"},
-		Func:     &ir.Func{Name: "AppendChild"},
+		Type: ir.TypVoid,
+		Func: &ir.Func{Name: "AppendChild"},
 		Args: []ir.CallArg{
 			{Value: elemRef(parent)},
 			{Value: elemRef(child)},
@@ -52,7 +50,7 @@ func TestNodeEscape_RecursiveComponentRefsAreLocal(t *testing.T) {
 	// Recursive component body: creates __n2 (vbox) and __n3 (text),
 	// appends __n3 to __n2 — all internal temps, none referenced elsewhere.
 	tree := &ir.Component{Name: "TreeView"}
-	tree.Body = []ir.Stmt{
+	tree.Stmts = []ir.Stmt{
 		createNodeLV("__n2", "vbox"),
 		createNodeLV("__n3", "text"),
 		appendChildStmt("__n2", "__n3"),
@@ -61,7 +59,7 @@ func TestNodeEscape_RecursiveComponentRefsAreLocal(t *testing.T) {
 	// Main body: creates __n0 (vbox) and __n1 (text). __n1 is mutated by a
 	// reactive updater func below, so it must escape to a Model field.
 	main := &ir.Component{Name: "main"}
-	main.Body = []ir.Stmt{
+	main.Stmts = []ir.Stmt{
 		createNodeLV("__n0", "vbox"),
 		createNodeLV("__n1", "text"),
 		appendChildStmt("__n0", "__n1"),
@@ -73,7 +71,7 @@ func TestNodeEscape_RecursiveComponentRefsAreLocal(t *testing.T) {
 		Synthesized: true,
 		Block: []ir.Stmt{
 			&ir.Assign{
-				Target: &ir.Select{Operand: elemRef("__n1"), Field: "value", Type: ir.TypDyn},
+				Target: &ir.Select{Operand: elemRef("__n1"), Field: "value", Type: ir.TypString},
 				Op:     ast.AssignSet,
 				Value:  &ir.Literal{Type: ir.TypString, Value: "x"},
 			},

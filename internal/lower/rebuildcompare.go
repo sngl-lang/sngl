@@ -1,8 +1,8 @@
 package lower
 
 import (
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/ir"
 )
 
 // rebuildDiffers is the expression that is true when a and b are not the same
@@ -23,7 +23,7 @@ import (
 // every backend already agrees.
 //
 // The walk terminates because the checker gates both call sites -- an effect's
-// `on` at checkEffectKey, a #[construct] prop at checkConstructProps -- and a
+// `on` at checkEffectKey, a #[construct] prop at markConstruct -- and a
 // struct that contains itself is refused there. Reaching one here
 // would be a caller that skipped the gate.
 func rebuildDiffers(a, b ir.Expr, t *ir.Type) ir.Expr {
@@ -65,7 +65,7 @@ func rebuildCompare(a, b ir.Expr, t *ir.Type, same bool) ir.Expr {
 			}
 			if out == nil {
 				// No fields, so there is nothing two values can differ in and
-				// the bracket never restarts. `effect<T = struct {}>`'s
+				// the bracket never restarts. `effect[T = struct {}]`'s
 				// default is such a struct, though a bracket written with no
 				// `on` at all does not arrive here -- it has no key to compare
 				// and lowers over a bool instead.

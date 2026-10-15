@@ -1,6 +1,6 @@
 package lower
 
-import "git.duckfam.us/jonathan/sngl/ir"
+import "duckfam.us/sngl/ir"
 
 // passMutatedVars records which Vars are written after they are bound.
 //
@@ -78,7 +78,7 @@ func lowerMutatedVars(pkg *ir.Package, _ Features, _ Options) error {
 		})
 	}
 	// The package, not a list of roots assembled here. The list this replaces
-	// named component bodies, their funcs and their var handlers, window
+	// named component bodies, their funcs, window
 	// bodies and funcs, package funcs and the package body -- and so missed
 	// every `Timers` entry and a window's error handler. A timer handler that
 	// wrote through a struct binding was read as writing nothing, Kotlin then

@@ -8,16 +8,16 @@ import (
 	"testing"
 	"time"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/codegen/platform/html/internal/webtest"
-	"git.duckfam.us/jonathan/sngl/internal/checker"
-	"git.duckfam.us/jonathan/sngl/internal/lower"
-	"git.duckfam.us/jonathan/sngl/internal/optimize"
-	"git.duckfam.us/jonathan/sngl/internal/parser"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/codegen/platform/html/internal/webtest"
+	"duckfam.us/sngl/internal/checker"
+	"duckfam.us/sngl/internal/lower"
+	"duckfam.us/sngl/internal/optimize"
+	"duckfam.us/sngl/internal/parser"
+	"duckfam.us/sngl/ir"
 	rodproto "github.com/go-rod/rod/lib/proto"
 
-	_ "git.duckfam.us/jonathan/sngl/codegen/lang/javascript"
+	_ "duckfam.us/sngl/codegen/lang/javascript"
 )
 
 // compileI18nHTML parses, checks, lowers, and generates HTML from src, then
@@ -54,6 +54,7 @@ func compileI18nHTML(t *testing.T, src string) []byte {
 	// stdlib components (text, button) render through their `platform html { }`
 	// bodies — the real path `sngl generate` takes.
 	optCfg := &optimize.Config{Platform: gen.PlatformIdentifier(), Language: lang.LanguageIdentifier(), Dir: "."}
+	pkg = ir.ClonePackage(pkg)
 	if err := optimize.Optimize(pkg, optCfg); err != nil {
 		t.Fatalf("optimize: %v", err)
 	}

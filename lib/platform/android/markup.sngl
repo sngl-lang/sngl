@@ -36,8 +36,8 @@ import . "sngl:internal/marks"
 #[intrinsic("android:Flow")]
 component Flow(
     modifier ui.Style,
-    style ui.Style,
-    content ...component markup.span,
+    style    ui.Style,
+    content  ...component markup.span,
 ) ui.node
 
 // One run of words. `text` is the literal a leaf carries, `spanStyle` what
@@ -50,25 +50,25 @@ component Flow(
 // a prop is opaque to the `if` that would ask it.
 #[intrinsic("android:Span")]
 component Span(
-    text string,
-    href string,
+    text      string,
+    href      string,
     spanStyle markup.SpanStyle,
-    kind markup.Token,
-    color color,
-    content ...component markup.span,
+    kind      markup.Token,
+    color     color,
+    content   ...component markup.span,
 ) markup.span
 
-const component markup.richText[platform] {
+const component markup.richText[platform](style, content) {
     Flow(modifier={...style}, style={...style}) {
         content
     }
 }
 
-const component markup.text[platform] {
+const component markup.text[platform](value) {
     Span(text=value) {}
 }
 
-const component markup.run[platform] {
+const component markup.run[platform](style, content) {
     Span(spanStyle=style) {
         content
     }
@@ -79,13 +79,13 @@ const component markup.run[platform] {
 // `LinkAnnotation.Url` with no `TextLinkStyles` looks like the words around
 // it -- so the underline is said here, in the family's own vocabulary, rather
 // than being a second thing the emitter decides.
-const component markup.link[platform] {
+const component markup.link[platform](href, content) {
     Span(href=href, spanStyle={underline=true}) {
         content
     }
 }
 
-const component markup.token[platform] {
+const component markup.token[platform](kind, content) {
     Span(kind=kind, color=markup.tokenColor(markup.palette, kind)) {
         content
     }
@@ -96,6 +96,6 @@ const component markup.token[platform] {
 // for on this platform. So the description is what an image is here, in the
 // brackets that say a picture stood where they are, as it is on bubbletea,
 // fyne and gtk4.
-const component markup.image[platform] {
+const component markup.image[platform](alt) {
     Span(text="[{alt}]") {}
 }

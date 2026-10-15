@@ -3,8 +3,8 @@ package kotlin
 import (
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/ir"
 )
 
 // langKt is this backend's registry key (matches LanguageIdentifier).
@@ -16,6 +16,14 @@ const langKt = "kotlin"
 // removeAt. Intrinsics whose native form needs an import flow through
 // ktBuiltinMethodFromArgs until the emitter interface can declare imports.
 func init() {
+	// A record handed to the i18n runtime is the map it takes.
+	codegen.RegisterRecordSpeller(langKt, func(keys, vals []string) string {
+		parts := make([]string, len(keys))
+		for i := range keys {
+			parts[i] = keys[i] + " to " + vals[i]
+		}
+		return "mapOf(" + strings.Join(parts, ", ") + ")"
+	})
 	// Most emissions below are a Kotlin builtin (String members, MutableList
 	// members) or fully qualified (java.lang.Math, auto-imported on the JVM)
 	// and declare no imports; the i18n entry points need the runtime class.
@@ -48,20 +56,40 @@ func init() {
 	// one meaning, on every target.
 	reg("string.split", func(a []string) string { return SplitFn + "(" + a[0] + ", " + a[1] + ")" })
 
+	// --- sngl:time ---
+	// Instant.toString writes RFC3339; OffsetDateTime reads it, because
+	// Instant.parse refuses a string with no offset and a SNGL datetime
+	// literal may be written without one. Z is supplied only where no offset
+	// is there -- unconditionally makes `...+05:00` throw -- and `let` keeps
+	// that to one evaluation of what may be any expression. Index tests rather
+	// than a Regex: these land inside `derivedStateOf`, which re-runs on every
+	// recomposition, and a Regex there is compiled per frame.
+	local := func(x string) string {
+		return "java.time.OffsetDateTime.parse(" + x +
+			`.let { if (it.endsWith("Z") || it.length > 16 && (it[it.length - 6] == '+' || it[it.length - 6] == '-')) it else it + "Z" }).toInstant()`
+	}
+	reg("time.now", func(a []string) string { return "java.time.Instant.now().toString()" })
+	reg("datetime.add", func(a []string) string {
+		return local(a[0]) + ".plusMillis(" + a[1] + ").toString()"
+	})
+	reg("time.between", func(a []string) string {
+		return "java.time.Duration.between(" + local(a[0]) + ", " + local(a[1]) + ").toMillis()"
+	})
+
 	// --- float math --- (java.lang.Math)
 	reg("float.floor", func(a []string) string { return "Math.floor(" + a[0] + ")" })
 	reg("float.ceil", func(a []string) string { return "Math.ceil(" + a[0] + ")" })
 	// Math.round(Double) returns Long; float is Double.
 	reg("float.round", func(a []string) string { return "Math.round(" + a[0] + ").toDouble()" })
-	reg("float.sqrt", func(a []string) string { return "Math.sqrt(" + a[0] + ")" })
-	reg("float.pow", func(a []string) string { return "Math.pow(" + a[0] + ", " + a[1] + ")" })
-	reg("float.sin", func(a []string) string { return "Math.sin(" + a[0] + ")" })
-	reg("float.cos", func(a []string) string { return "Math.cos(" + a[0] + ")" })
-	reg("float.tan", func(a []string) string { return "Math.tan(" + a[0] + ")" })
-	reg("float.asin", func(a []string) string { return "Math.asin(" + a[0] + ")" })
-	reg("float.acos", func(a []string) string { return "Math.acos(" + a[0] + ")" })
-	reg("float.atan", func(a []string) string { return "Math.atan(" + a[0] + ")" })
-	reg("float.atan2", func(a []string) string { return "Math.atan2(" + a[0] + ", " + a[1] + ")" })
+	reg("math.sqrt", func(a []string) string { return "Math.sqrt(" + a[0] + ")" })
+	reg("math.pow", func(a []string) string { return "Math.pow(" + a[0] + ", " + a[1] + ")" })
+	reg("math.sin", func(a []string) string { return "Math.sin(" + a[0] + ")" })
+	reg("math.cos", func(a []string) string { return "Math.cos(" + a[0] + ")" })
+	reg("math.tan", func(a []string) string { return "Math.tan(" + a[0] + ")" })
+	reg("math.asin", func(a []string) string { return "Math.asin(" + a[0] + ")" })
+	reg("math.acos", func(a []string) string { return "Math.acos(" + a[0] + ")" })
+	reg("math.atan", func(a []string) string { return "Math.atan(" + a[0] + ")" })
+	reg("math.atan2", func(a []string) string { return "Math.atan2(" + a[0] + ", " + a[1] + ")" })
 
 	// --- list (in-place mutations) ---
 	reg("list.push", func(a []string) string { return a[0] + ".add(" + a[1] + ")" })
@@ -71,6 +99,11 @@ func init() {
 		return "run { val __l = " + a[0] + "; val __i = " + a[1] + "; " +
 			"if (__i >= 0 && __i < __l.size) __l.removeAt(__i) }"
 	})
+	reg("list.insert", func(a []string) string {
+		return "run { val __l = " + a[0] + "; val __i = " + a[1] + "; " +
+			"if (__i >= 0 && __i <= __l.size) __l.add(__i, " + a[2] + ") }"
+	})
+	reg("list.clear", func(a []string) string { return a[0] + ".clear()" })
 
 	// --- list and map (non-mutating) ---
 	reg("list.length", func(a []string) string { return a[0] + ".size" })
@@ -94,8 +127,8 @@ func init() {
 	reg("map.get", func(a []string) string { return a[0] + ".getOrDefault(" + a[1] + ", " + a[2] + ")" })
 
 	// --- numeric ---
-	reg("int.min", func(a []string) string { return "minOf(" + a[0] + ", " + a[1] + ")" })
-	reg("int.max", func(a []string) string { return "maxOf(" + a[0] + ", " + a[1] + ")" })
+	regVariadicMinMax("int.min", "min")
+	regVariadicMinMax("int.max", "max")
 	reg("int.abs", func(a []string) string { return "kotlin.math.abs(" + a[0] + ")" })
 	// max(lo, min(x, hi)): with a malformed range lo wins, which is what the
 	// declaration documents and its own body computes.
@@ -103,8 +136,8 @@ func init() {
 	reg("int.clamp", func(a []string) string {
 		return "maxOf(" + a[1] + ", minOf(" + a[0] + ", " + a[2] + "))"
 	})
-	reg("float.min", func(a []string) string { return "minOf(" + a[0] + ", " + a[1] + ")" })
-	reg("float.max", func(a []string) string { return "maxOf(" + a[0] + ", " + a[1] + ")" })
+	regVariadicMinMax("float.min", "min")
+	regVariadicMinMax("float.max", "max")
 	reg("float.abs", func(a []string) string { return "kotlin.math.abs(" + a[0] + ")" })
 	reg("float.clamp", func(a []string) string {
 		return "maxOf(" + a[1] + ", minOf(" + a[0] + ", " + a[2] + "))"
@@ -198,4 +231,16 @@ func init() {
 			return call + "(" + strings.Join(a, ", ") + ")"
 		})
 	}
+}
+
+// regVariadicMinMax emits `minOf(a, e1, e2)`, Kotlin's vararg form, when the
+// rest is a literal list, and the list's own min or max over it and the first
+// otherwise.
+func regVariadicMinMax(id, fn string) {
+	codegen.RegisterIntrinsic(langKt, id, func(args []ir.Expr, tr func(ir.Expr) string) (string, []string) {
+		if parts, ok := codegen.VariadicArgs(args, tr); ok {
+			return fn + "Of(" + strings.Join(parts, ", ") + ")", nil
+		}
+		return "(listOf(" + tr(args[0]) + ") + " + tr(codegen.VariadicRest(args[1])) + ")." + fn + "()", nil
+	})
 }

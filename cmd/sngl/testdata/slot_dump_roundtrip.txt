@@ -12,9 +12,9 @@
 # The check is the round trip, not the text: dump it, check the dump.
 
 sngl dump --stage checked --format sngl slots.sngl
-stdout 'header component,'
-stdout 'children \.\.\.component,'
-stdout 'cell list<component\(row Row\)>'
+stdout 'header +component,'
+stdout 'children +\.\.\.component,'
+stdout 'cell +list\[component\(row Row\)\]'
 
 cp stdout out.sngl
 sngl check out.sngl
@@ -28,7 +28,7 @@ struct Row {
 }
 
 component table(
-    rows list<Row>,
+    rows list[Row],
     children ...component,
     header component,
     cell list<component(row Row)>,

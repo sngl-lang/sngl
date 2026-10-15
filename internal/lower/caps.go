@@ -34,7 +34,7 @@ type Features struct {
 	Toggle        bool // can emit x!! natively
 	Ternary       bool // can emit a ? b : c natively
 	Lambda        bool // can emit closures natively
-	Ref           bool // can emit ref<T> natively
+	Ref           bool // can emit ref[T] natively
 	Unit          bool // can emit unit types natively
 	Enum          bool // can emit enum types natively
 	AsyncReactive bool // can handle async in reactive contexts natively
@@ -89,7 +89,7 @@ type Features struct {
 	// Withheld, the flow holding one is the render slot instead.
 	InlineSlots bool
 	// AsyncPost says the platform can run a closure back on the thread it
-	// draws on, and answers lower.AsyncPostIntrinsic with the call that does
+	// draws on, and answers lower.AsyncDoIntrinsic with the call that does
 	// it. Without it there is nowhere for a blocking call's answer to land,
 	// and passAsyncOffload refuses the program rather than writing a state
 	// update onto a goroutine that does not own the widgets.
@@ -98,16 +98,18 @@ type Features struct {
 	// tests check the two against each other.
 	AsyncPost bool
 	// AsyncSpawn says the language can run a closure without waiting for it,
-	// and answers lower.AsyncSpawnIntrinsic with the call that does -- Go's
+	// and answers lower.AsyncStartIntrinsic with the call that does -- Go's
 	// `go func(){}()`. It sits on the language axis where AsyncPost sits on
 	// the platform's, because starting work is a property of the host language
 	// and getting back to the drawing thread is a property of the surface.
 	AsyncSpawn bool
-	// Effects says the platform emits an `effect` node itself and wants it
-	// left standing. A framework whose own model already brackets a lifetime
-	// keyed on a value -- Compose's DisposableEffect is one -- expresses the
-	// construct better than the calls passEffect lowers it to, and gets the
-	// node instead: its two handlers and its key are all the declaration says.
+	// Effects says the platform brackets an `effect`'s lifetime itself and
+	// wants the node left standing. A framework whose own model already
+	// brackets a lifetime keyed on a value -- Compose's DisposableEffect is one
+	// -- expresses @mount and @unmount better than the calls passEffect lowers
+	// them to, and gets the node with those two handlers and its key. It knows
+	// nothing of writes, so passEffect still lowers `@update` and a list's
+	// change events there.
 	Effects bool
 	// Navigation says the platform answers sngl:ui/nav's stack, page and link
 	// in its own codegen -- a document or a route per page, a Compose NavHost
@@ -115,6 +117,21 @@ type Features struct {
 	// a var holding the current page, a history list and an if-chain over the
 	// pages, which every target can render.
 	Navigation bool
+	// GenericFuncs says a function with type parameters can be emitted once
+	// and called at every type. Withheld, passMonomorphize gives each
+	// instantiation a copy of its own with the types written in: Go has no
+	// generic method to put a state-reading one on the Model, and no
+	// constraint to state what a body does with T.
+	GenericFuncs bool
+	// GenericComponents says a component with type parameters can be emitted
+	// once and built at every type, which is how a component built at run
+	// time reaches its host. Withheld, passNoInlineComponents copies such a
+	// component per instantiation where it elects it (instantiateRuntime), as
+	// passMonomorphize copies a function: one declaration with T erased holds
+	// a `list[T]` as `[]any`, which `[]int` is not, and cannot spell
+	// `struct { v T }`. A platform holds it apart from its language: html
+	// builds an instance in the page's JavaScript under any --lang.
+	GenericComponents bool
 
 	// The six below are requests rather than capabilities, which is the split
 	// `sngl:x/gen` spells as `#[gen.wants]`: each asks for a pass the target
@@ -145,6 +162,21 @@ type Features struct {
 	// sngl:ui/nav with an address per page: a link becomes a ui.link to the
 	// page's href, and a go passing no params passes the page's own.
 	NavigationHrefs bool
+
+	// Reserved is every name the build's two build-tree nodes reserve by
+	// default -- the language's reservedWords and the platform's
+	// reservedNames props together -- for a build with no output block to
+	// read them from: passReservedNames renames a
+	// declaration the program gave one of them. Not a capability, so it is
+	// the one field String does not list and no pass is gated on.
+	Reserved []string
+}
+
+// LowersNothing reports whether f holds exactly NoLowering's capabilities,
+// whatever names it reserves. String lists every capability held, so two
+// records listing the same are the same set of passes.
+func (f Features) LowersNothing() bool {
+	return f.String() == NoLowering().String()
 }
 
 // NoLowering is the Features under which no capability-gated pass runs: every
@@ -154,25 +186,27 @@ type Features struct {
 // and the one place a build wants this shape is the interpreted path below.
 func NoLowering() Features {
 	return Features{
-		Toggle:           true,
-		Ternary:          true,
-		Lambda:           true,
-		Ref:              true,
-		Unit:             true,
-		Enum:             true,
-		AsyncReactive:    true,
-		AsyncCalls:       true,
-		Computed:         true,
-		ListLambdas:      true,
-		Reactivity:       true,
-		Declarative:      true,
-		InlineComponents: true,
-		ImplicitRecv:     true,
-		StructSpread:     true,
-		ViewStatements:   true,
-		InstanceState:    true,
-		Effects:          true,
-		Navigation:       true,
+		Toggle:            true,
+		Ternary:           true,
+		Lambda:            true,
+		Ref:               true,
+		Unit:              true,
+		Enum:              true,
+		AsyncReactive:     true,
+		AsyncCalls:        true,
+		Computed:          true,
+		ListLambdas:       true,
+		Reactivity:        true,
+		Declarative:       true,
+		InlineComponents:  true,
+		ImplicitRecv:      true,
+		StructSpread:      true,
+		ViewStatements:    true,
+		InstanceState:     true,
+		Effects:           true,
+		Navigation:        true,
+		GenericFuncs:      true,
+		GenericComponents: true,
 	}
 }
 
@@ -226,6 +260,8 @@ func (f Features) String() string {
 		{"AsyncSpawn", f.AsyncSpawn},
 		{"Effects", f.Effects},
 		{"Navigation", f.Navigation},
+		{"GenericFuncs", f.GenericFuncs},
+		{"GenericComponents", f.GenericComponents},
 		{"StructComponents", f.StructComponents},
 		{"StdlibContextParam", f.StdlibContextParam},
 		{"FocusOrder", f.FocusOrder},

@@ -5,12 +5,14 @@ carries.
 -- component_avatar.sngl --
 import . "sngl:ui"
 
-// avatar: A-tier — declaration + src/initials fallback.
+// avatar: A-tier — declaration + source/initials fallback.
 component main node {
     hbox {
         avatar(initials="JD")
-        avatar(src="https://example.com/a.png", initials="AB", variant="square")
-        avatar(initials="XY", size="large")
+        avatar(initials="AB", variant=square) {
+            remote(url="https://example.com/a.png")
+        }
+        avatar(initials="XY", size=large)
     }
 }
 
@@ -38,12 +40,23 @@ package main
 import (
 	"charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"duckfam.us/sngl/pkg/go/snglimage"
+	"duckfam.us/sngl/pkg/go/tui"
 	"fmt"
 	"os"
 )
 
+type Measurement struct {
+	Px  float64
+	Em  float64
+	Rem float64
+}
+
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
+	failed__inst0  bool
+	failed__inst1  bool
+	failed__inst2  bool
 	visible__inst0 bool
 
 	width, height int
@@ -52,6 +65,9 @@ type Model struct {
 // New creates a Model with default bind values.
 func New() Model {
 	m := Model{}
+	m.failed__inst0 = false
+	m.failed__inst1 = false
+	m.failed__inst2 = false
 	m.visible__inst0 = true
 	return m
 }
@@ -60,6 +76,51 @@ func New() Model {
 func (m *Model) SetTerminalSize(w, h int) {
 	m.width = w
 	m.height = h
+}
+
+func (m Model) Failed__inst0() bool {
+	return m.failed__inst0
+}
+
+func (m Model) SetFailed__inst0(v bool) Model {
+	m.failed__inst0 = v
+	return m
+}
+
+type setFailed__inst0Msg struct{ value bool }
+
+func SetFailed__inst0Cmd(v bool) tea.Cmd {
+	return func() tea.Msg { return setFailed__inst0Msg{value: v} }
+}
+
+func (m Model) Failed__inst1() bool {
+	return m.failed__inst1
+}
+
+func (m Model) SetFailed__inst1(v bool) Model {
+	m.failed__inst1 = v
+	return m
+}
+
+type setFailed__inst1Msg struct{ value bool }
+
+func SetFailed__inst1Cmd(v bool) tea.Cmd {
+	return func() tea.Msg { return setFailed__inst1Msg{value: v} }
+}
+
+func (m Model) Failed__inst2() bool {
+	return m.failed__inst2
+}
+
+func (m Model) SetFailed__inst2(v bool) Model {
+	m.failed__inst2 = v
+	return m
+}
+
+type setFailed__inst2Msg struct{ value bool }
+
+func SetFailed__inst2Cmd(v bool) tea.Cmd {
+	return func() tea.Msg { return setFailed__inst2Msg{value: v} }
 }
 
 func (m Model) Visible__inst0() bool {
@@ -86,6 +147,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	_ = cmd
 	switch msg := msg.(type) {
+	case setFailed__inst0Msg:
+		m = m.SetFailed__inst0(msg.value)
+	case setFailed__inst1Msg:
+		m = m.SetFailed__inst1(msg.value)
+	case setFailed__inst2Msg:
+		m = m.SetFailed__inst2(msg.value)
 	case setVisible__inst0Msg:
 		m = m.SetVisible__inst0(msg.value)
 	case tea.WindowSizeMsg:
@@ -111,14 +178,59 @@ func (m Model) View() tea.View {
 	if m.visible__inst0 {
 		var contentChildren []string
 		var content_0 string
-		content_0 = lipgloss.NewStyle().Render(fmt.Sprint("JD"))
-		contentChildren = append(contentChildren, content_0)
+		if m.failed__inst0 || true {
+			content_0 = lipgloss.NewStyle().
+				Background(lipgloss.Color("#cccccc")).
+				Height(5).
+				AlignHorizontal(lipgloss.Center).
+				Width(5).Render(fmt.Sprint("JD"))
+		} else {
+			var content_0Children []string
+			content_0 = lipgloss.JoinVertical(lipgloss.Left, content_0Children...)
+			content_0 = lipgloss.NewStyle().
+				Height(5).
+				Width(5).Render(content_0)
+		}
+		if content_0 != "" {
+			contentChildren = append(contentChildren, content_0)
+		}
 		var content_1 string
-		content_1 = lipgloss.NewStyle().Render(fmt.Sprint("AB"))
-		contentChildren = append(contentChildren, content_1)
+		if m.failed__inst1 || false {
+			content_1 = lipgloss.NewStyle().
+				Background(lipgloss.Color("#cccccc")).
+				Height(5).
+				AlignHorizontal(lipgloss.Center).
+				Width(5).Render(fmt.Sprint("AB"))
+		} else {
+			var content_1Children []string
+			var content_1_0 string
+			content_1_0 = tui.Picture("https://example.com/a.png", 24, 12)
+			content_1Children = append(content_1Children, content_1_0)
+			content_1 = lipgloss.JoinVertical(lipgloss.Left, content_1Children...)
+			content_1 = lipgloss.NewStyle().
+				Height(5).
+				Width(5).Render(content_1)
+		}
+		if content_1 != "" {
+			contentChildren = append(contentChildren, content_1)
+		}
 		var content_2 string
-		content_2 = lipgloss.NewStyle().Render(fmt.Sprint("XY"))
-		contentChildren = append(contentChildren, content_2)
+		if m.failed__inst2 || true {
+			content_2 = lipgloss.NewStyle().
+				Background(lipgloss.Color("#cccccc")).
+				Height(8).
+				AlignHorizontal(lipgloss.Center).
+				Width(8).Render(fmt.Sprint("XY"))
+		} else {
+			var content_2Children []string
+			content_2 = lipgloss.JoinVertical(lipgloss.Left, content_2Children...)
+			content_2 = lipgloss.NewStyle().
+				Height(8).
+				Width(8).Render(content_2)
+		}
+		if content_2 != "" {
+			contentChildren = append(contentChildren, content_2)
+		}
 		content = lipgloss.JoinHorizontal(lipgloss.Top, contentChildren...)
 	}
 	v := tea.NewView(content)
@@ -128,6 +240,7 @@ func (m Model) View() tea.View {
 
 func main() {
 	p := tea.NewProgram(New())
+	snglimage.OnArrive(func() { p.Send(struct{}{}) })
 	_, err := p.Run()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
@@ -140,31 +253,143 @@ func main() {
 package main
 
 import (
+	"duckfam.us/sngl/pkg/go/fynelayout"
+	"duckfam.us/sngl/pkg/go/fynetheme"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
+	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
-	"git.duckfam.us/jonathan/sngl/pkg/go/fynelayout"
+	"image/color"
 	"os"
 )
 
+var _snglTheme0 = fynetheme.Theme{Theme: theme.DefaultTheme(), Background: color.NRGBA{R: 204, G: 204, B: 204, A: 255}, Radius: 20}
+var _snglTheme1 = fynetheme.Theme{Theme: theme.DefaultTheme(), Background: color.NRGBA{R: 204, G: 204, B: 204, A: 255}, Radius: 4}
+var _snglTheme2 = fynetheme.Theme{Theme: theme.DefaultTheme(), Background: color.NRGBA{R: 204, G: 204, B: 204, A: 255}, Radius: 32}
+
+type Measurement struct {
+	Px  float64
+	Em  float64
+	Rem float64
+}
+
 // Model holds the state for this SNGL UI.
 type Model struct {
+	failed__inst0  bool
+	failed__inst1  bool
+	failed__inst2  bool
 	visible__inst0 bool
+	__slot0        []fyne.CanvasObject
+	__slot0_at     fyne.CanvasObject
+	__slot1        []fyne.CanvasObject
+	__slot1_at     fyne.CanvasObject
+	__slot2        []fyne.CanvasObject
+	__slot2_at     fyne.CanvasObject
 
 	__n0    *fynelayout.Toplevel
-	__n1    *fyne.Container
-	__n2    *widget.Label
-	__n3    *widget.Label
-	__n4    *widget.Label
+	__n8    *fyne.Container
 	__built bool
 }
 
 // New creates a Model with default values.
 func New() *Model {
 	m := &Model{}
+	m.failed__inst0 = false
+	m.failed__inst1 = false
+	m.failed__inst2 = false
 	m.visible__inst0 = true
+	m.__slot0 = nil
+	m.__slot0_at = nil
+	m.__slot1 = nil
+	m.__slot1_at = nil
+	m.__slot2 = nil
+	m.__slot2_at = nil
 	return m
+}
+
+func (m *Model) __renderSlot0(__parent *fyne.Container) {
+	for _, __entry := range m.__slot0 {
+		fynelayout.Remove(__parent, __entry)
+	}
+	m.__slot0 = nil
+	m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
+	if m.failed__inst0 || true {
+		__n1 := widget.NewLabel("")
+		__n1.SetText("JD")
+		fynelayout.InsertBefore(__parent, m.__slot0_at, container.NewThemeOverride(__n1, _snglTheme0))
+		m.__slot0 = append(m.__slot0, __n1)
+	} else {
+		__n2 := fynelayout.NewImage()
+		__n2.SetFit("cover")
+		__n2.OnTapped = func() {
+		}
+		__n2.OnLoad = func() {
+		}
+		__n2.OnError = func(m__r0 string) {
+			m.failed__inst0 = true
+			m.__renderSlot0(m.__n8)
+		}
+		fynelayout.InsertBefore(__parent, m.__slot0_at, __n2)
+		m.__slot0 = append(m.__slot0, __n2)
+	}
+}
+
+func (m *Model) __renderSlot1(__parent *fyne.Container) {
+	for _, __entry := range m.__slot1 {
+		fynelayout.Remove(__parent, __entry)
+	}
+	m.__slot1 = nil
+	m.__slot1_at = fynelayout.SlotAnchor(__parent, m.__slot1_at)
+	if m.failed__inst1 || false {
+		__n3 := widget.NewLabel("")
+		__n3.SetText("AB")
+		fynelayout.InsertBefore(__parent, m.__slot1_at, container.NewThemeOverride(__n3, _snglTheme1))
+		m.__slot1 = append(m.__slot1, __n3)
+	} else {
+		__n4 := fynelayout.NewImage()
+		__n4.SetFit("cover")
+		__n4.OnTapped = func() {
+		}
+		__n4.OnLoad = func() {
+		}
+		__n4.OnError = func(m__r0 string) {
+			m.failed__inst1 = true
+			m.__renderSlot1(m.__n8)
+		}
+		__n5 := fynelayout.NewImageSource()
+		__n5.SetURL("https://example.com/a.png")
+		__n4.Add(__n5)
+		fynelayout.InsertBefore(__parent, m.__slot1_at, __n4)
+		m.__slot1 = append(m.__slot1, __n4)
+	}
+}
+
+func (m *Model) __renderSlot2(__parent *fyne.Container) {
+	for _, __entry := range m.__slot2 {
+		fynelayout.Remove(__parent, __entry)
+	}
+	m.__slot2 = nil
+	m.__slot2_at = fynelayout.SlotAnchor(__parent, m.__slot2_at)
+	if m.failed__inst2 || true {
+		__n6 := widget.NewLabel("")
+		__n6.SetText("XY")
+		fynelayout.InsertBefore(__parent, m.__slot2_at, container.NewThemeOverride(__n6, _snglTheme2))
+		m.__slot2 = append(m.__slot2, __n6)
+	} else {
+		__n7 := fynelayout.NewImage()
+		__n7.SetFit("cover")
+		__n7.OnTapped = func() {
+		}
+		__n7.OnLoad = func() {
+		}
+		__n7.OnError = func(m__r0 string) {
+			m.failed__inst2 = true
+			m.__renderSlot2(m.__n8)
+		}
+		fynelayout.InsertBefore(__parent, m.__slot2_at, __n7)
+		m.__slot2 = append(m.__slot2, __n7)
+	}
 }
 
 func (m *Model) __n0_closed_handler() {
@@ -173,6 +398,30 @@ func (m *Model) __n0_closed_handler() {
 func (m *Model) __n0_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	m.__n0.SetVisible(m.visible__inst0)
+}
+
+func (m *Model) Failed__inst0() bool {
+	return m.failed__inst0
+}
+
+func (m *Model) SetFailed__inst0(v bool) {
+	m.failed__inst0 = v
+}
+
+func (m *Model) Failed__inst1() bool {
+	return m.failed__inst1
+}
+
+func (m *Model) SetFailed__inst1(v bool) {
+	m.failed__inst1 = v
+}
+
+func (m *Model) Failed__inst2() bool {
+	return m.failed__inst2
+}
+
+func (m *Model) SetFailed__inst2(v bool) {
+	m.failed__inst2 = v
 }
 
 func (m *Model) Visible__inst0() bool {
@@ -193,17 +442,11 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n0.SetVisible(m.visible__inst0)
 	m.__n0.OnClosed = m.__n0_closed_handler
 	m.__n0.OnVisible = m.__n0_visible_handler
-	m.__n1 = container.NewHBox()
-	m.__n2 = widget.NewLabel("")
-	m.__n2.SetText("JD")
-	m.__n1.Add(m.__n2)
-	m.__n3 = widget.NewLabel("")
-	m.__n3.SetText("AB")
-	m.__n1.Add(m.__n3)
-	m.__n4 = widget.NewLabel("")
-	m.__n4.SetText("XY")
-	m.__n1.Add(m.__n4)
-	m.__n0.Add(m.__n1)
+	m.__n8 = container.NewHBox()
+	m.__renderSlot0(m.__n8)
+	m.__renderSlot1(m.__n8)
+	m.__renderSlot2(m.__n8)
+	m.__n0.Add(m.__n8)
 	fynelayout.AppAttach(m.__n0)
 	return m.__n0.Container
 }
@@ -220,30 +463,33 @@ func main() {
 
 package test.sngl.app
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.*
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
-import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color as ComposeColor
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
-import androidx.activity.compose.BackHandler
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.platform.LocalContext
 import android.app.Activity
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.layout.Row
+import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.material3.Text
+import androidx.compose.foundation.layout.width
+import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.background
+import androidx.compose.ui.graphics.Color as ComposeColor
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.foundation.layout.Box
+
+data class Measurement(
+    val px: Double = 0.0,
+    val em: Double = 0.0,
+    val rem: Double = 0.0
+)
 
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
@@ -254,6 +500,9 @@ fun _snglSplit(s: String, sep: String): List<String> =
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen() {
+    var failed__inst0 by remember { mutableStateOf(false) }
+    var failed__inst1 by remember { mutableStateOf(false) }
+    var failed__inst2 by remember { mutableStateOf(false) }
     var visible__inst0 by remember { mutableStateOf(true) }
 
     if (visible__inst0) {
@@ -265,11 +514,69 @@ fun MainScreen() {
             }
         }
         Row(modifier = Modifier.safeDrawingPadding()) {
-            Text(text = "", modifier = Modifier)
-            Text(text = "", modifier = Modifier)
-            Text(text = "", modifier = Modifier)
+            if ((failed__inst0 || true)) {
+                Text(text = "JD", modifier = Modifier.width(40.dp).height(40.dp).background(ComposeColor(red = 204, green = 204, blue = 204, alpha = 255)), style = TextStyle(textAlign = TextAlign.Center))
+            } else {
+                Box(modifier = Modifier.width(40.dp).height(40.dp)) {
+                }
+            }
+            if ((failed__inst1 || false)) {
+                Text(text = "AB", modifier = Modifier.width(40.dp).height(40.dp).background(ComposeColor(red = 204, green = 204, blue = 204, alpha = 255)), style = TextStyle(textAlign = TextAlign.Center))
+            } else {
+                Box(modifier = Modifier.width(40.dp).height(40.dp)) {
+                    SnglAssetImage(url = "https://example.com/a.png")
+                }
+            }
+            if ((failed__inst2 || true)) {
+                Text(text = "XY", modifier = Modifier.width(64.dp).height(64.dp).background(ComposeColor(red = 204, green = 204, blue = 204, alpha = 255)), style = TextStyle(textAlign = TextAlign.Center))
+            } else {
+                Box(modifier = Modifier.width(64.dp).height(64.dp)) {
+                }
+            }
         }
     }
+}
+-- out/kotlin/android/app/src/main/java/test/sngl/app/SnglAssets.kt --
+package test.sngl.app
+
+import android.content.Context
+import android.graphics.BitmapFactory
+import androidx.compose.foundation.Image
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
+
+// SnglAssets reads the pictures the program carries out of the app's assets,
+// where the build put each file at the path the program names it by. A
+// picture a URL names is not one of them: no loader ships with the app, so it
+// is no picture at all. MainActivity hands it the application's context, since
+// a drawing paints where there is none to ask.
+object SnglAssets {
+    private var context: Context? = null
+    private val pictures = HashMap<String, ImageBitmap?>()
+
+    fun init(c: Context) {
+        context = c.applicationContext
+    }
+
+    fun bitmap(path: String): ImageBitmap? = pictures.getOrPut(path) {
+        val c = context ?: return null
+        if (path.startsWith("http://") || path.startsWith("https://")) {
+            null
+        } else {
+            runCatching { c.assets.open(path.removePrefix("/")).use { BitmapFactory.decodeStream(it) } }
+                .getOrNull()?.asImageBitmap()
+        }
+    }
+}
+
+// SnglAssetImage is an image's source on this platform: the picture a URL
+// names, or nothing where there is none.
+@Composable
+fun SnglAssetImage(url: String) {
+    val bmp = SnglAssets.bitmap(url) ?: return
+    Image(bitmap = bmp, contentDescription = null, modifier = Modifier)
 }
 -- out/none/html/index.html --
 <!-- Code generated by sngl (html) from component_avatar.sngl; DO NOT EDIT. -->
@@ -284,30 +591,191 @@ body { font-family: system-ui, sans-serif; }
   </style>
 </head><body>
 
-<div style="display:flex;flex-direction:row">
-  <div style="align-items:center;background-color:#ccc;border-radius:50%;display:inline-flex;height:40px;justify-content:center;overflow:hidden;width:40px">
-    <span>JD</span>
-  </div>
-  <div style="align-items:center;background-color:#ccc;border-radius:50%;display:inline-flex;height:40px;justify-content:center;overflow:hidden;width:40px">
-    <span>AB</span>
-  </div>
-  <div style="align-items:center;background-color:#ccc;border-radius:50%;display:inline-flex;height:40px;justify-content:center;overflow:hidden;width:40px">
-    <span>XY</span>
-  </div>
+<div id="__n8" data-sngl-id="__n8" style="display:flex;flex-direction:row">
+  <span data-sngl-slot="0" style="display:contents"></span>
+  <span data-sngl-slot="1" style="display:contents"></span>
+  <span data-sngl-slot="2" style="display:contents"></span>
 </div>
+<style>
+.sngl-image img { display: block; width: 100%; height: 100%; object-fit: contain; }
+.sngl-image-cover img { object-fit: cover; }
+.sngl-image-fill img { object-fit: fill; }
+.sngl-image-none img { object-fit: none; }
+.sngl-image-scaleDown img { object-fit: scale-down; }
+</style>
 
 <script>
 (() => {
   // sngl-entry.js
-  var state = { visible__inst0: true };
+  var state = { failed__inst0: false, failed__inst1: false, failed__inst2: false, visible__inst0: true };
+  var __slot0 = [];
+  var __slot1 = [];
+  var __slot2 = [];
+  function __renderSlot0(parent) {
+    let __place0_prev = __slot0;
+    let __place0_i = 0;
+    __slot0 = [];
+    if (state.failed__inst0 || true) {
+      let __n1 = document.createElement("span");
+      __n1.textContent = "JD";
+      __n1.setAttribute("style", "align-items:center;background-color:#cccccc;border-radius:20px;display:inline-flex;height:40px;justify-content:center;text-align:center;width:40px");
+      __n1.addEventListener("click", () => {
+      });
+      let __place0_i_ref0 = null;
+      if (__place0_i < __place0_prev.length) {
+        __place0_i_ref0 = __place0_prev[__place0_i];
+      }
+      if (__place0_i_ref0 === __n1) {
+        __place0_i = __place0_i + 1;
+      } else {
+        parent.insertBefore(__n1, __place0_i_ref0);
+      }
+      __slot0.push(__n1);
+    } else {
+      let __n2 = document.createElement("span");
+      __n2.setAttribute("class", "sngl-image sngl-image-cover");
+      __n2.setAttribute("role", "img");
+      __n2.setAttribute("aria-label", "");
+      __n2.setAttribute("style", "border-radius:20px;display:inline-block;height:40px;overflow:hidden;width:40px");
+      __n2.addEventListener("click", () => {
+      });
+      __n2.addEventListener("error", (e) => {
+        state.failed__inst0 = true;
+        __renderSlot0(__slotAnchor_0);
+      });
+      let __place0_i_ref1 = null;
+      if (__place0_i < __place0_prev.length) {
+        __place0_i_ref1 = __place0_prev[__place0_i];
+      }
+      if (__place0_i_ref1 === __n2) {
+        __place0_i = __place0_i + 1;
+      } else {
+        parent.insertBefore(__n2, __place0_i_ref1);
+      }
+      __slot0.push(__n2);
+    }
+    for (const __place0_prev_e of __place0_prev) {
+      if (__slot0.indexOf(__place0_prev_e) < 0) {
+        parent.removeChild(__place0_prev_e);
+      }
+    }
+  }
+  function __renderSlot1(parent) {
+    let __place1_prev = __slot1;
+    let __place1_i = 0;
+    __slot1 = [];
+    if (state.failed__inst1 || false) {
+      let __n3 = document.createElement("span");
+      __n3.textContent = "AB";
+      __n3.setAttribute("style", "align-items:center;background-color:#cccccc;border-radius:4px;display:inline-flex;height:40px;justify-content:center;text-align:center;width:40px");
+      __n3.addEventListener("click", () => {
+      });
+      let __place1_i_ref0 = null;
+      if (__place1_i < __place1_prev.length) {
+        __place1_i_ref0 = __place1_prev[__place1_i];
+      }
+      if (__place1_i_ref0 === __n3) {
+        __place1_i = __place1_i + 1;
+      } else {
+        parent.insertBefore(__n3, __place1_i_ref0);
+      }
+      __slot1.push(__n3);
+    } else {
+      let __n4 = document.createElement("span");
+      __n4.setAttribute("class", "sngl-image sngl-image-cover");
+      __n4.setAttribute("role", "img");
+      __n4.setAttribute("aria-label", "");
+      __n4.setAttribute("style", "border-radius:4px;display:inline-block;height:40px;overflow:hidden;width:40px");
+      __n4.addEventListener("click", () => {
+      });
+      __n4.addEventListener("error", (e) => {
+        state.failed__inst1 = true;
+        __renderSlot1(__slotAnchor_1);
+      });
+      let __n5 = document.createElement("img");
+      __n5.setAttribute("alt", "");
+      __n5.src = "https://example.com/a.png";
+      __n4.appendChild(__n5);
+      let __place1_i_ref1 = null;
+      if (__place1_i < __place1_prev.length) {
+        __place1_i_ref1 = __place1_prev[__place1_i];
+      }
+      if (__place1_i_ref1 === __n4) {
+        __place1_i = __place1_i + 1;
+      } else {
+        parent.insertBefore(__n4, __place1_i_ref1);
+      }
+      __slot1.push(__n4);
+    }
+    for (const __place1_prev_e of __place1_prev) {
+      if (__slot1.indexOf(__place1_prev_e) < 0) {
+        parent.removeChild(__place1_prev_e);
+      }
+    }
+  }
+  function __renderSlot2(parent) {
+    let __place2_prev = __slot2;
+    let __place2_i = 0;
+    __slot2 = [];
+    if (state.failed__inst2 || true) {
+      let __n6 = document.createElement("span");
+      __n6.textContent = "XY";
+      __n6.setAttribute("style", "align-items:center;background-color:#cccccc;border-radius:32px;display:inline-flex;height:64px;justify-content:center;text-align:center;width:64px");
+      __n6.addEventListener("click", () => {
+      });
+      let __place2_i_ref0 = null;
+      if (__place2_i < __place2_prev.length) {
+        __place2_i_ref0 = __place2_prev[__place2_i];
+      }
+      if (__place2_i_ref0 === __n6) {
+        __place2_i = __place2_i + 1;
+      } else {
+        parent.insertBefore(__n6, __place2_i_ref0);
+      }
+      __slot2.push(__n6);
+    } else {
+      let __n7 = document.createElement("span");
+      __n7.setAttribute("class", "sngl-image sngl-image-cover");
+      __n7.setAttribute("role", "img");
+      __n7.setAttribute("aria-label", "");
+      __n7.setAttribute("style", "border-radius:32px;display:inline-block;height:64px;overflow:hidden;width:64px");
+      __n7.addEventListener("click", () => {
+      });
+      __n7.addEventListener("error", (e) => {
+        state.failed__inst2 = true;
+        __renderSlot2(__slotAnchor_2);
+      });
+      let __place2_i_ref1 = null;
+      if (__place2_i < __place2_prev.length) {
+        __place2_i_ref1 = __place2_prev[__place2_i];
+      }
+      if (__place2_i_ref1 === __n7) {
+        __place2_i = __place2_i + 1;
+      } else {
+        parent.insertBefore(__n7, __place2_i_ref1);
+      }
+      __slot2.push(__n7);
+    }
+    for (const __place2_prev_e of __place2_prev) {
+      if (__slot2.indexOf(__place2_prev_e) < 0) {
+        parent.removeChild(__place2_prev_e);
+      }
+    }
+  }
+  var __slotAnchor_0 = document.querySelector('[data-sngl-slot="0"]');
+  __renderSlot0(__slotAnchor_0);
+  var __slotAnchor_1 = document.querySelector('[data-sngl-slot="1"]');
+  __renderSlot1(__slotAnchor_1);
+  var __slotAnchor_2 = document.querySelector('[data-sngl-slot="2"]');
+  __renderSlot2(__slotAnchor_2);
 })();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:6c0e8900d8838a582669143861ed7b4a
+pass sha256:2c5a975ff5906119b363aac9a7e58a6c
 -- run/go/fyne --
-pass sha256:f8bb308dc7f60fe8283dd89c78f543db
+pass sha256:0b79497c1a3865497d58ca5c5f840f1e
 -- run/kotlin/android --
-pass sha256:c9a8cc945eed10c558269ad03fb89802
+pass sha256:66a574d8dded179e33fcda4c666fa054
 -- run/none/html --
-pass sha256:57ac190eb2a0b4b84253d72eec5af5d8
+pass sha256:e06544c67f9fc8c043b3f4619691e859

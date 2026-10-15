@@ -6,10 +6,10 @@ import (
 	"slices"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/codegen/lang/javascript"
-	"git.duckfam.us/jonathan/sngl/internal/lower"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/codegen/lang/javascript"
+	"duckfam.us/sngl/internal/lower"
+	"duckfam.us/sngl/ir"
 )
 
 // emitComponentFactories writes one factory per component this build renders as
@@ -136,7 +136,7 @@ func (g *htmlGen) adoptElemDecl(comp *ir.Component) {
 			}
 		}
 	}
-	scan(comp.Body)
+	scan(comp.Stmts)
 	for _, fn := range comp.Funcs {
 		if fn != nil {
 			scan(fn.Block)
@@ -167,7 +167,7 @@ func factorySlotAnchors(comp *ir.Component) map[string]bool {
 			}
 		}
 	}
-	scan(comp.Body)
+	scan(comp.Stmts)
 	if len(anchored) == 0 {
 		return anchored
 	}
@@ -178,22 +178,16 @@ func factorySlotAnchors(comp *ir.Component) map[string]bool {
 				return nil
 			}
 			if n := slotIndexFromRenderFunc(call.Func.Name); anchored[n] {
-				call.Args[0].Value = &ir.Ident{Name: slotAnchorVar(n), Type: ir.TypDyn, IsElementRef: true, Synthesized: true}
+				// The anchor stands for the container the slot was handed.
+				call.Args[0].Value = &ir.Ident{Name: slotAnchorVar(n), Type: call.Args[0].Value.ExprType(), IsElementRef: true, Synthesized: true}
 			}
 			return nil
 		})
 	}
-	retarget(comp.Body)
+	retarget(comp.Stmts)
 	for _, fn := range comp.Funcs {
 		if fn != nil {
 			retarget(fn.Block)
-		}
-	}
-	for _, v := range comp.Vars {
-		for _, h := range v.Handlers {
-			if h.Func != nil {
-				retarget(h.Func.Block)
-			}
 		}
 	}
 	return anchored
@@ -219,14 +213,15 @@ func (g *htmlGen) emitComponentFactory(b *strings.Builder, comp *ir.Component) {
 	// Props and vars are locals of the call, so every read of one renders as a
 	// bare identifier rather than `state.x` -- which is what makes the closure
 	// the record.
-	ctx := g.ctx.ForComponent(comp)
-	ctx.ClosureMethods = true
+	names := make([]string, 0, len(comp.Props)+len(comp.Vars))
 	for _, p := range comp.Props {
-		ctx = ctx.WithLocal(p.Name)
+		names = append(names, p.Name)
 	}
 	for _, v := range comp.Vars {
-		ctx = ctx.WithLocal(v.Name)
+		names = append(names, v.Name)
 	}
+	ctx := g.ctx.ForComponent(comp).WithLocals(names...)
+	ctx.ClosureMethods = true
 	jc := javascript.NewIRContext(ctx)
 
 	fmt.Fprintf(b, "function %s(props) {\n", javascript.FactoryName(comp))
@@ -293,7 +288,7 @@ func (g *htmlGen) emitComponentFactory(b *strings.Builder, comp *ir.Component) {
 		dtr := g.newHTMLTranslator(jc)
 		drawn := &ir.Func{
 			Name:   cv.Name,
-			Params: []*ir.Param{{Name: "ctx", Type: ir.TypDyn}},
+			Params: []*ir.Param{{Name: "ctx", Type: drawCtxType(cv.Draw)}},
 			Block:  codegen.WalkLowered(context.Background(), cv.Draw, dtr),
 		}
 		for _, line := range jc.EmitFuncDef(drawn) {
@@ -302,7 +297,7 @@ func (g *htmlGen) emitComponentFactory(b *strings.Builder, comp *ir.Component) {
 	}
 
 	tr := g.newHTMLTranslator(jc)
-	body := codegen.WalkLowered(context.Background(), comp.Body, tr)
+	body := codegen.WalkLowered(context.Background(), comp.Stmts, tr)
 	topLevel := make(map[string]bool, len(tr.topLevel))
 	for _, id := range tr.topLevel {
 		topLevel[id] = true

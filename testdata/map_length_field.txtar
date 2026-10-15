@@ -24,7 +24,7 @@ output {
 }
 
 ui.window {
-    var stock map<string, int> = {"a"=1}
+    var stock map[string, int] = {"a"=1}
 
     ui.text(value="{stock.length}")
 }
@@ -146,29 +146,17 @@ func main() {
 
 package test.sngl.app
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.*
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
-import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color as ComposeColor
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
-import androidx.activity.compose.BackHandler
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.platform.LocalContext
 import android.app.Activity
+import androidx.activity.compose.BackHandler
+import androidx.compose.material3.Text
+import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
 
 fun _snglFloatStr(v: Double): String =
@@ -229,6 +217,6 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:ea4213fa0acc305869512e92bd4698cb
 -- run/kotlin/android --
-pass sha256:5a8b1d4bb2739bd1d4e78b07b882fca5
+pass sha256:1a90f20ac571a2c10b9c774b81c60797
 -- run/none/html --
 pass sha256:d2a70898fc55eedd22405a1ee69a739a

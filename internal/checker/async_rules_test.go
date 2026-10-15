@@ -3,7 +3,7 @@ package checker_test
 import (
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 // hasError returns true if any error diagnostic contains the substring needle.
@@ -114,7 +114,7 @@ import api "js:app/api"
 
 func greet(name string) => api.fetchHello(name)
 
-var names list<string> = []
+var names list[string] = []
 
 window #main(title="Main") {
     text(value=list.map(names, func(x string) => greet(x))[0])

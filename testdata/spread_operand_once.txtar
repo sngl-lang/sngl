@@ -534,27 +534,18 @@ func newTestComponent() *Model {
 
 package test.sngl.app
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.*
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
-import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.foundation.layout.Column
+import androidx.compose.material3.Button
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color as ComposeColor
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.material3.Text
 
 data class Pair(
     var x: Int = 0,
@@ -633,7 +624,7 @@ class MainScreenTest {
         val c = MainScreenState()
         @Suppress("UNUSED_VARIABLE") val composeTestRule = composeRule
         composeRule.setContent { MainScreen(c) }
-        composeTestRule.onNodeWithTag("once").performClick(); composeTestRule.waitForIdle()
+        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("once")).performClick(); composeTestRule.waitForIdle()
         org.junit.Assert.assertTrue("(c.got == 101)", (c.got == 101))
         org.junit.Assert.assertTrue("(c.n == 1)", (c.n == 1))
     }
@@ -642,7 +633,7 @@ class MainScreenTest {
         val c = MainScreenState()
         @Suppress("UNUSED_VARIABLE") val composeTestRule = composeRule
         composeRule.setContent { MainScreen(c) }
-        composeTestRule.onNodeWithTag("path").performClick(); composeTestRule.waitForIdle()
+        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("path")).performClick(); composeTestRule.waitForIdle()
         org.junit.Assert.assertTrue("(c.got == 7)", (c.got == 7))
     }
 
@@ -650,7 +641,7 @@ class MainScreenTest {
         val c = MainScreenState()
         @Suppress("UNUSED_VARIABLE") val composeTestRule = composeRule
         composeRule.setContent { MainScreen(c) }
-        composeTestRule.onNodeWithTag("nested").performClick(); composeTestRule.waitForIdle()
+        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("nested")).performClick(); composeTestRule.waitForIdle()
         org.junit.Assert.assertTrue("(c.got == 101)", (c.got == 101))
         org.junit.Assert.assertTrue("(c.n == 1)", (c.n == 1))
     }
@@ -738,7 +729,7 @@ window.__sngl_boot = () => {
   var $2 = document.getElementById("$2");
   var __n0 = document.querySelector('[data-sngl-id="__n0"]');
   $0.addEventListener("click", function() {
-    let __spread0 = { ...panel_next(state) };
+    let __spread0 = panel_next(state);
     state.got = __spread0.x + __spread0.y;
     __n0.textContent = String(state.got);
   });
@@ -747,7 +738,7 @@ window.__sngl_boot = () => {
     __n0.textContent = String(state.got);
   });
   $2.addEventListener("click", function() {
-    let __spread1 = { ...panel_next(state) };
+    let __spread1 = panel_next(state);
     let __spread2 = { x: __spread1.y, y: __spread1.x };
     state.got = __spread2.x + __spread2.y;
     __n0.textContent = String(state.got);
@@ -766,6 +757,6 @@ pass sha256:014c657c1bf66982ffaf57c452cacc6b
 -- run/go/fyne --
 pass sha256:3fde783984f22b8cde5f10b6d288701e
 -- run/kotlin/android --
-pass sha256:15cb238b369f2716fcb0ad15aa44e92c
+pass sha256:4298f1fc04a3e7cbefbb8f7943002e7e
 -- run/none/html --
-pass sha256:8ed3bf8f7c777b0a02be7a059ac563f1
+pass sha256:cec341245a6737058f45e23704f027fd

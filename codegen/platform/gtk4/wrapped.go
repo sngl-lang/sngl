@@ -5,9 +5,9 @@ import (
 	"regexp"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/codegen/platform/gtk4/gir"
+	"duckfam.us/sngl/codegen/platform/gtk4/gir"
 
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 // This file implements "wrapped mode" gtk4 codegen: instead of emitting inline
@@ -27,7 +27,7 @@ import (
 // gtk4rtPkg is the import path of the shared GTK4 runtime. Emitting an
 // ir.Func with this Foreign.Path auto-registers the import via the golang IR
 // context (see evalNamespaceCall).
-const gtk4rtPkg = "git.duckfam.us/jonathan/sngl/pkg/go/gtk4rt"
+const gtk4rtPkg = "duckfam.us/sngl/pkg/go/gtk4rt"
 
 // gtk4rtHandleType is the Go type wrapped-mode code uses for every widget
 // field/local, replacing the per-widget *C.GtkX pointer types.
@@ -35,13 +35,13 @@ const gtk4rtHandleType = "gtk4rt.Handle"
 
 // rtCall builds a `gtk4rt.<name>(args...)` call. The non-"C" Foreign.Path makes
 // evalNamespaceCall register the gtk4rt import and emit the Foreign.Name verbatim.
-func rtCall(name string, args ...ir.Expr) *ir.Call {
+func rtCall(name string, ret *ir.Type, args ...ir.Expr) *ir.Call {
 	ca := make([]ir.CallArg, len(args))
 	for i, a := range args {
 		ca[i] = ir.CallArg{Value: a}
 	}
 	return &ir.Call{
-		Type:     ir.TypDyn,
+		Type:     ret,
 		Receiver: &ir.Ident{Name: "gtk4rt"},
 		Func:     &ir.Func{Foreign: ir.Foreign{Path: gtk4rtPkg, Name: "gtk4rt." + name}},
 		Args:     ca,
@@ -50,8 +50,16 @@ func rtCall(name string, args ...ir.Expr) *ir.Call {
 
 // rtConst references an exported gtk4rt identifier (e.g. a constant). The
 // gtk4rt import is registered by the rtCall(s) the same file always emits.
-func rtConst(name string) *ir.Ident {
-	return &ir.Ident{Name: "gtk4rt." + name, Type: ir.TypDyn}
+func rtConst(name string, t *ir.Type) *ir.Ident {
+	return &ir.Ident{Name: "gtk4rt." + name, Type: t}
+}
+
+// rtOrientation is gtk4rt's Orientation, the type of its two constants.
+func rtOrientation() *ir.Type { return ir.NativeGoNamed("gtk4rt.Orientation") }
+
+// cOrientationVertical is the cgo constant a vertical box is built with.
+func cOrientationVertical() *ir.Ident {
+	return &ir.Ident{Name: "C.GTK_ORIENTATION_VERTICAL", Type: ir.NativeGoNamed("C.GtkOrientation")}
 }
 
 func intLit(v string) *ir.Literal { return &ir.Literal{Type: ir.TypInt, Value: v} }
@@ -71,6 +79,10 @@ func slotParentType(wrapped bool) *ir.Type {
 // widgetFieldGoType returns the Go type for a Model widget field: gtk4rt.Handle
 // in wrapped mode, else the per-widget cgo pointer type.
 func widgetFieldGoType(cType string, wrapped bool) string {
+	// A list of widgets (namedWidgetField) is a slice of what one is.
+	if rest, ok := strings.CutPrefix(cType, "[]"); ok {
+		return "[]" + widgetFieldGoType(rest, wrapped)
+	}
 	// A component instance's handle is a generated Go struct, not a GTK class,
 	// so it arrives already spelled as Go and is not a widget in either mode.
 	if strings.HasPrefix(cType, "*") {
@@ -99,21 +111,21 @@ func bytesUseCgo(src []byte) bool { return cgoRefRE.Match(src) }
 func rtCtorForCType(cType string) (ir.Expr, bool) {
 	switch cType {
 	case "GtkBox":
-		return rtCall("BoxNew", rtConst("OrientationHorizontal"), intLit("0")), true
+		return rtCall("BoxNew", gtk4rtHandleIRType(), rtConst("OrientationHorizontal", rtOrientation()), intLit("0")), true
 	case "GtkLabel":
-		return rtCall("LabelNew", &ir.Literal{Type: ir.TypString, Value: ""}), true
+		return rtCall("LabelNew", gtk4rtHandleIRType(), &ir.Literal{Type: ir.TypString, Value: ""}), true
 	case "GtkButton":
-		return rtCall("ButtonNew"), true
+		return rtCall("ButtonNew", gtk4rtHandleIRType()), true
 	case "GtkCheckButton":
-		return rtCall("CheckButtonNew"), true
+		return rtCall("CheckButtonNew", gtk4rtHandleIRType()), true
 	case "GtkEntry":
-		return rtCall("EntryNew"), true
+		return rtCall("EntryNew", gtk4rtHandleIRType()), true
 	case "GtkImage":
-		return rtCall("ImageNew"), true
+		return rtCall("ImageNew", gtk4rtHandleIRType()), true
 	case "GtkScrolledWindow":
-		return rtCall("ScrolledWindowNew"), true
+		return rtCall("ScrolledWindowNew", gtk4rtHandleIRType()), true
 	case "GtkFrame":
-		return rtCall("FrameNew"), true
+		return rtCall("FrameNew", gtk4rtHandleIRType()), true
 	}
 	return nil, false
 }
@@ -182,27 +194,29 @@ func rtChildAppendCall(adder gir.ChildAdder, parent, child ir.Expr) (ir.Stmt, bo
 	if !ok {
 		return nil, false
 	}
-	return &ir.CallStmt{Call: rtCall(fn, parent, child)}, true
+	return &ir.CallStmt{Call: rtCall(fn, ir.TypVoid, parent, child)}, true
 }
 
 // rtChildRemoveCall returns the gtk4rt call for removing child from a parent of
 // the given C type, and ok=false if unmapped.
 func rtChildRemoveCall(parentCType string, parent, child ir.Expr) (ir.Stmt, bool) {
 	if parentCType == "GtkBox" {
-		return &ir.CallStmt{Call: rtCall("BoxRemove", parent, child)}, true
+		return &ir.CallStmt{Call: rtCall("BoxRemove", ir.TypVoid, parent, child)}, true
 	}
 	return nil, false
 }
 
-// rtEventGetterExpr is the wrapped-mode analogue of gtk4EventGetterExpr: it
+// rtEventGetterExpr is the wrapped-mode analogue of cgoEventGetterExpr: it
 // reads a widget's bound value through gtk4rt rather than cgo. Returns nil when
 // the widget's read-back isn't wrapped (→ fallback).
 func rtEventGetterExpr(cType string, widgetRef ir.Expr) ir.Expr {
 	switch cType {
 	case "GtkEntry":
-		return rtCall("EditableGetText", widgetRef)
+		return rtCall("EditableGetText", ir.TypString, widgetRef)
 	case "GtkCheckButton":
-		return rtCall("CheckButtonGetActive", widgetRef)
+		return rtCall("CheckButtonGetActive", ir.TypBool, widgetRef)
+	case "GtkCalendar":
+		return rtCall("CalendarGetDate", ir.NativeGoPointerOf("time.Time"), widgetRef)
 	}
 	return nil
 }
@@ -212,9 +226,9 @@ func rtEventGetterExpr(cType string, widgetRef ir.Expr) ir.Expr {
 func rtOrientationConst(value string) (ir.Expr, bool) {
 	switch value {
 	case "vertical":
-		return rtConst("OrientationVertical"), true
+		return rtConst("OrientationVertical", rtOrientation()), true
 	case "horizontal":
-		return rtConst("OrientationHorizontal"), true
+		return rtConst("OrientationHorizontal", rtOrientation()), true
 	}
 	return nil, false
 }
@@ -290,8 +304,8 @@ func agentMainBytes(pkg string, wrapped bool, cgoSrc []byte) []byte {
 import (
 	"sync"
 
-	"git.duckfam.us/jonathan/sngl/pkg/go/gtk4rt"
-	"git.duckfam.us/jonathan/sngl/pkg/go/testagent"
+	"duckfam.us/sngl/pkg/go/gtk4rt"
+	"duckfam.us/sngl/pkg/go/testagent"
 )
 
 var gtkInit sync.Once
@@ -322,8 +336,8 @@ func agentSnapshotBytes(pkg string, wrapped bool, cgoSrc []byte) []byte {
 import (
 	"fmt"
 
-	"git.duckfam.us/jonathan/sngl/pkg/go/gtk4rt"
-	"git.duckfam.us/jonathan/sngl/pkg/go/testagent"
+	"duckfam.us/sngl/pkg/go/gtk4rt"
+	"duckfam.us/sngl/pkg/go/testagent"
 )
 
 func currentTestModel() *Model { return currentModel }

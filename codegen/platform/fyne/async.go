@@ -1,9 +1,9 @@
 package fyne
 
 import (
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/internal/lower"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/internal/lower"
+	"duckfam.us/sngl/ir"
 )
 
 // Fyne's widgets belong to the goroutine running the driver, and fyne.Do is
@@ -12,7 +12,7 @@ import (
 // nothing left to do, and waiting for the UI to catch up would only hold it
 // open.
 func init() {
-	codegen.RegisterPlatformIntrinsic("fyne", lower.AsyncPostIntrinsic, func(args []ir.Expr, tr func(ir.Expr) string) (string, []string) {
+	codegen.RegisterPlatformIntrinsic("fyne", lower.AsyncDoIntrinsic, func(args []ir.Expr, tr func(ir.Expr) string) (string, []string) {
 		if len(args) != 1 {
 			return "", nil
 		}

@@ -5,11 +5,11 @@ import (
 	"strings"
 	"sync"
 
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/internal/checker"
-	"git.duckfam.us/jonathan/sngl/internal/interp"
-	"git.duckfam.us/jonathan/sngl/ir"
-	"git.duckfam.us/jonathan/sngl/lib"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/internal/checker"
+	"duckfam.us/sngl/internal/interp"
+	"duckfam.us/sngl/ir"
+	"duckfam.us/sngl/lib"
 )
 
 // A target is its package: a lib/ directory -- `lib/platform/<name>`,
@@ -179,6 +179,17 @@ func (p *DeclaredPlatform) Unavailable() error {
 		return r.Unavailable()
 	}
 	return nil
+}
+
+// LibraryState is the generator's, where it has state that changes the
+// package the platform serves (checker.LibraryState).
+func (p *DeclaredPlatform) LibraryState() string {
+	if r := p.resolve(); r != PlatformGenerator(p) {
+		if s, ok := r.(interface{ LibraryState() string }); ok {
+			return s.LibraryState()
+		}
+	}
+	return ""
 }
 
 func (p *DeclaredPlatform) missingErr() error {

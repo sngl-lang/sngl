@@ -7,11 +7,11 @@ import (
 	"strconv"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl"
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/internal/lspcore"
-	"git.duckfam.us/jonathan/sngl/internal/optimize"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/internal/lspcore"
+	"duckfam.us/sngl/internal/optimize"
+	"duckfam.us/sngl/ir"
 )
 
 // parseHexColor converts "#rgb", "#rrggbb", or "#rrggbbaa" to a Color.
@@ -180,6 +180,7 @@ func computeColorsFromIR(doc *ast.Document, content string) []ColorInformation {
 			return nil
 		}
 	}
+	pkg = ir.ClonePackageFor(pkg, "", "")
 	if err := optimize.Optimize(pkg, &optimize.Config{}); err != nil {
 		return nil
 	}
@@ -497,7 +498,9 @@ func walkCallExprs(doc *ast.Document, fn func(*ast.CallExpr)) {
 			walkE(x.Operand)
 		case *ast.IndexExpr:
 			walkE(x.Operand)
-			walkE(x.Index)
+			for _, ix := range x.Indices {
+				walkE(ix)
+			}
 		case *ast.TernaryExpr:
 			walkE(x.Cond)
 			walkE(x.Then)

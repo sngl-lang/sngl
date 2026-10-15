@@ -21,7 +21,7 @@ import (
 //  1. $SNGL_HOST_GO_MOD: the script-test convention from Plan 1; its
 //     parent dir is the sngl repo root.
 //  2. Walk up from os.Executable() looking for a go.mod whose module
-//     path is git.duckfam.us/jonathan/sngl.
+//     path is duckfam.us/sngl.
 //  3. Walk up from runtime.Caller(0)'s source path (works for `go
 //     test` and `go run` where Executable() points at a build cache).
 func LangTestagentPath(lang string) (string, error) {
@@ -44,7 +44,7 @@ func LangTestagentPath(lang string) (string, error) {
 		for range 12 {
 			modPath := filepath.Join(dir, "go.mod")
 			if data, err := os.ReadFile(modPath); err == nil {
-				if strings.Contains(string(data), "module git.duckfam.us/jonathan/sngl") {
+				if strings.Contains(string(data), "module duckfam.us/sngl") {
 					p := filepath.Join(dir, "pkg", lang, "testagent")
 					if _, err := os.Stat(p); err == nil {
 						return p, nil

@@ -5,12 +5,12 @@ import (
 	"strings"
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
-	_ "git.duckfam.us/jonathan/sngl/codegen/lang"
-	"git.duckfam.us/jonathan/sngl/internal/checker"
-	"git.duckfam.us/jonathan/sngl/internal/lower"
-	"git.duckfam.us/jonathan/sngl/internal/parser"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/codegen"
+	_ "duckfam.us/sngl/codegen/lang"
+	"duckfam.us/sngl/internal/checker"
+	"duckfam.us/sngl/internal/lower"
+	"duckfam.us/sngl/internal/parser"
+	"duckfam.us/sngl/ir"
 )
 
 // recursiveTreeSrc is the repro: a recursive TreeView component that
@@ -21,11 +21,11 @@ const recursiveTreeSrc = `
 import . "sngl:ui"
 struct TreeNode {
     value int = 0
-    left dyn = null
-    right dyn = null
+    left option[TreeNode] = null
+    right option[TreeNode] = null
 }
-component TreeView(node dyn = null) node {
-    vbox(style={paddingLeft=12, gap=2}) {
+component TreeView(node TreeNode) node {
+    vbox(style={paddingLeft=12px, gap=2px}) {
         text(value=string(node.value))
         if node.left != null { TreeView(node=node.left) }
         if node.right != null { TreeView(node=node.right) }
@@ -58,6 +58,7 @@ func generateGTK4Model(t *testing.T, src string) string {
 	if lang == nil {
 		t.Fatal("go lang not registered")
 	}
+	pkg = ir.ClonePackage(pkg)
 	if err := lower.Lower(pkg, codegen.CapsOrNone(lang.LanguageIdentifier(), g.PlatformIdentifier()), lower.Options{Platform: "gtk4", Language: "go"}); err != nil {
 		t.Fatalf("lower: %v", err)
 	}

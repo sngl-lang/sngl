@@ -4,24 +4,26 @@ import (
 	"regexp"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 // PayloadPruneCandidates are the library structs the shake declared in pkg
-// because a handler or a test names one as its payload, less those a test
-// file constructs. Whether the emitted Go reads one is the emitter's answer:
-// a fyne or gtk4 handler hands its host callback's own value to the body in
-// place of `e.value`, and the ChangeEvent declared for it is read by nothing.
-func PayloadPruneCandidates(pkg *ir.Package, testPayloads map[string]*ir.Type) []string {
+// because a handler or a test names one as an event's parameter, less those a
+// test file constructs. Whether the emitted Go reads one is the emitter's
+// answer: a handler that never reads its parameter leaves the type it names
+// read by nothing.
+func PayloadPruneCandidates(pkg *ir.Package, testArgs map[string][]*ir.Type) []string {
 	keep := map[string]bool{}
-	for _, t := range testPayloads {
-		if sd, ok := t.Decl.(*ir.StructDef); ok && sd != nil {
-			keep[sd.Name] = true
+	for _, ts := range testArgs {
+		for _, t := range ts {
+			if sd, ok := t.Decl.(*ir.StructDef); ok && sd != nil {
+				keep[sd.Name] = true
+			}
 		}
 	}
 	var out []string
 	for _, sd := range pkg.Structs {
-		if sd != nil && sd.Pkg != "" && !keep[sd.Name] {
+		if sd != nil && sd.PkgPath() != "" && !keep[sd.Name] {
 			out = append(out, ExportName(sd.Name))
 		}
 	}

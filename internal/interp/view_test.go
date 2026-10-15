@@ -8,9 +8,9 @@ import (
 	"sort"
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/internal/checker"
-	"git.duckfam.us/jonathan/sngl/internal/parser"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/internal/checker"
+	"duckfam.us/sngl/internal/parser"
+	"duckfam.us/sngl/ir"
 )
 
 // TestMountAgreesWithThePreTreeWalk is the evidence that the retained tree
@@ -47,7 +47,7 @@ func TestMountAgreesWithThePreTreeWalk(t *testing.T) {
 		swept++
 		ids := allIDs(pkg)
 		for _, comp := range pkg.Components {
-			env, err := BuildEnv(pkg, comp.Name)
+			env, err := BuildEnv(pkg, comp.Name, nil)
 			if err != nil {
 				continue
 			}
@@ -295,7 +295,7 @@ func allIDs(pkg *ir.Package) []string {
 		}
 	}
 	for _, c := range pkg.Components {
-		walk(c.Body)
+		walk(c.Stmts)
 	}
 	out := make([]string, 0, len(seen))
 	for id := range seen {

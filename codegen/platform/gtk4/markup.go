@@ -6,9 +6,9 @@ import (
 	"strconv"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/ir"
 )
 
 // Rich text on GTK, which is the one target where the *host* resolves the
@@ -234,7 +234,7 @@ func appendEdge(cs *ir.CallStmt) (parent, child string, ok bool) {
 // paragraph: wrapped, and starting at the left rather than centred, which is
 // what every other target does with a run of prose.
 func (t *gtk4Translator) emitFlowCreate(id string) []ir.Stmt {
-	var ctor ir.Expr = nativeCall("gtk_label_new", &ir.Literal{Type: ir.TypNull})
+	var ctor ir.Expr = nativeCall("gtk_label_new", ir.NativePointerOf("GtkWidget"), &ir.Literal{Type: ir.TypNull})
 	if t.wrapped {
 		if rt, ok := rtCtorForCType("GtkLabel"); ok {
 			ctor = rt
@@ -244,14 +244,14 @@ func (t *gtk4Translator) emitFlowCreate(id string) []ir.Stmt {
 	ref := t.qualifyNodeExpr(&ir.Ident{Name: id, IsElementRef: true})
 	if t.wrapped {
 		out = append(out,
-			&ir.CallStmt{Call: rtCall("LabelSetWrap", ref, &ir.Literal{Type: ir.TypBool, Value: "true"})},
-			&ir.CallStmt{Call: rtCall("LabelSetXAlign", ref, &ir.Literal{Type: ir.TypFloat, Value: "0"})},
+			&ir.CallStmt{Call: rtCall("LabelSetWrap", ir.TypVoid, ref, &ir.Literal{Type: ir.TypBool, Value: "true"})},
+			&ir.CallStmt{Call: rtCall("LabelSetXAlign", ir.TypVoid, ref, &ir.Literal{Type: ir.TypFloat, Value: "0"})},
 		)
 	} else {
 		label := cgoCast("GtkLabel", ref)
 		out = append(out,
-			&ir.CallStmt{Call: nativeCall("gtk_label_set_wrap", label, nativeCall("gboolean", intLit("1")))},
-			&ir.CallStmt{Call: nativeCall("gtk_label_set_xalign", cgoCast("GtkLabel", ref), nativeCall("float", &ir.Literal{Type: ir.TypFloat, Value: "0"}))},
+			&ir.CallStmt{Call: nativeCall("gtk_label_set_wrap", ir.TypVoid, label, cScalar("gboolean", intLit("1")))},
+			&ir.CallStmt{Call: nativeCall("gtk_label_set_xalign", ir.TypVoid, cgoCast("GtkLabel", ref), cScalar("float", &ir.Literal{Type: ir.TypFloat, Value: "0"}))},
 		)
 	}
 	return append(out, t.emitFlowMarkup(id)...)
@@ -267,10 +267,10 @@ func (t *gtk4Translator) emitFlowMarkup(flow string) []ir.Stmt {
 	expr := t.markupExpr(flow)
 	ref := t.qualifyNodeExpr(&ir.Ident{Name: flow, IsElementRef: true})
 	if t.wrapped {
-		return []ir.Stmt{&ir.CallStmt{Call: rtCall("LabelSetMarkup", ref, expr)}}
+		return []ir.Stmt{&ir.CallStmt{Call: rtCall("LabelSetMarkup", ir.TypVoid, ref, expr)}}
 	}
-	return []ir.Stmt{&ir.CallStmt{Call: nativeCall("gtk_label_set_markup",
-		cgoCast("GtkLabel", ref), nativeCall("CString", expr))}}
+	return []ir.Stmt{&ir.CallStmt{Call: nativeCall("gtk_label_set_markup", ir.TypVoid,
+		cgoCast("GtkLabel", ref), cString(expr))}}
 }
 
 // markupExpr is the Pango markup one flow renders, as a Go string expression.
@@ -362,7 +362,7 @@ func flowTags(style map[string]ir.Expr) (open, close string) {
 				attrs = append(attrs, fmt.Sprintf(`foreground="%s"`, hexColor(c)))
 			}
 		case "fontSize":
-			if px, ok := literalNumberOf(f.Value); ok && px > 0 {
+			if px, ok := codegen.MeasurementPx(f.Value, emPx); ok && px > 0 {
 				attrs = append(attrs, pangoSize(px))
 			}
 		case "fontFamily":
@@ -444,7 +444,7 @@ func spanTags(props map[string]ir.Expr) (open ir.Expr, close string) {
 					foreground = rtStrCall("Foreground", f.Value)
 				}
 			case "fontSize":
-				if px, ok := literalNumberOf(f.Value); ok && px > 0 {
+				if px, ok := codegen.MeasurementPx(f.Value, emPx); ok && px > 0 {
 					attrs = append(attrs, pangoSize(px))
 				}
 			}
@@ -472,6 +472,9 @@ func spanTags(props map[string]ir.Expr) (open ir.Expr, close string) {
 func pangoSize(px float64) string {
 	return fmt.Sprintf(`size="%d"`, int(px*1024))
 }
+
+// emPx is an em on this platform: GTK's default font, Adwaita's 11pt.
+const emPx = 11
 
 // markupColor is an RGBA read off a SNGL color literal. Its own reader rather
 // than the layout one's, because a colour that is not a literal is no colour
@@ -504,8 +507,8 @@ func colorFromExpr(e ir.Expr) *markupColor {
 	return &c
 }
 
-// literalNumberOf reads a numeric literal, with or without a unit suffix: a
-// measurement is written `6` or `6px` and both mean one number here.
+// literalNumberOf reads a numeric literal: a colour's channel. A measurement is
+// codegen.MeasurementPx's.
 func literalNumberOf(e ir.Expr) (float64, bool) {
 	lit, ok := e.(*ir.Literal)
 	if !ok || lit == nil {
@@ -567,7 +570,5 @@ func strLit(s string) *ir.Literal { return &ir.Literal{Type: ir.TypString, Value
 // rtStrCall is rtCall for a gtk4rt function returning a string, so the
 // concatenation around it types as one.
 func rtStrCall(name string, args ...ir.Expr) *ir.Call {
-	call := rtCall(name, args...)
-	call.Type = ir.TypString
-	return call
+	return rtCall(name, ir.TypString, args...)
 }

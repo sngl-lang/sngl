@@ -20,7 +20,7 @@ struct pair {
 }
 
 struct hasMap {
-    counts map<string, int>
+    counts map[string, int]
 }
 
 enum mode {
@@ -44,19 +44,19 @@ component fine(
 }
 
 component seededList(
-    #[construct] xs list<int>, // ERROR(check) "list<int> does not"
+    #[construct] xs list[int], // ERROR(check) "list[int] does not"
 ) node {
     text(value=string(xs.length()))
 }
 
 component seededMap(
-    #[construct] m map<string, int>, // ERROR(check) "map<string, int> does not"
+    #[construct] m map[string, int], // ERROR(check) "map[string, int] does not"
 ) node {
     text(value=string(m.length()))
 }
 
 component seededOption(
-    #[construct] o option<int>, // ERROR(check) "option<int> does not"
+    #[construct] o option[int], // ERROR(check) "option[int] does not"
 ) node {
     text(value="o")
 }
@@ -71,7 +71,7 @@ component seededDate(
 
 // The struct is comparable only if every field is, and this one names which.
 component seededStruct(
-    #[construct] h hasMap, // ERROR(check) "map<string, int> (field counts of struct hasMap)"
+    #[construct] h hasMap, // ERROR(check) "map[string, int] (field counts of struct hasMap)"
 ) node {
     text(value="h")
 }
@@ -82,17 +82,17 @@ component seededStruct(
 // type is the call. Unchecked, a list bound to one reached fyne's rebuild
 // comparison as `m.__inst0_was_seed[i] == m.xs` over a []any holding a []int,
 // which panics at runtime rather than reporting anything.
-component seeded<T>(#[construct] seed T) node {
+component seeded[T any](#[construct] seed T) node {
     text(value="seeded")
 }
 
 component holder node {
     var n = 1
-    var xs list<int> = [1]
+    var xs list[int] = [1]
 
     seeded(seed=n)
 
-    seeded(seed=xs) // ERROR(check) "bound to list<int> here"
+    seeded(seed=xs) // ERROR(check) "bound to list[int] here"
 }
 
 // The call that binds T need not be the one that places the marked prop. Here
@@ -101,17 +101,17 @@ component holder node {
 // is a walk down the instances rather than a check on the call that writes the
 // prop. Unchecked, the marked prop reached html as
 // `__inst1_was_seed[__inst1_i] === seed` over an array, which is identity.
-component pass<T>(x T) node {
+component pass[T any](x T) node {
     seeded(seed=x)
 }
 
 component passer node {
     var n = 1
-    var xs list<int> = [1]
+    var xs list[int] = [1]
 
     pass(x=n)
 
-    pass(x=xs) // ERROR(check) "bound to list<int> here"
+    pass(x=xs) // ERROR(check) "bound to list[int] here"
 }
 
 window {

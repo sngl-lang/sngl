@@ -12,21 +12,23 @@ package plugin
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"errors"
 	"fmt"
 	"log/slog"
 	"path/filepath"
 	"sort"
 	"strings"
+	"sync"
 
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/internal/buildhost"
-	"git.duckfam.us/jonathan/sngl/internal/checker"
-	"git.duckfam.us/jonathan/sngl/internal/gencache"
-	"git.duckfam.us/jonathan/sngl/internal/interp"
-	"git.duckfam.us/jonathan/sngl/internal/parser"
-	"git.duckfam.us/jonathan/sngl/internal/trust"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/internal/buildhost"
+	"duckfam.us/sngl/internal/checker"
+	"duckfam.us/sngl/internal/gencache"
+	"duckfam.us/sngl/internal/interp"
+	"duckfam.us/sngl/internal/parser"
+	"duckfam.us/sngl/internal/trust"
+	"duckfam.us/sngl/ir"
 )
 
 // A check with no build around it -- `sngl doc`, the LSP's library path, a
@@ -76,7 +78,7 @@ func (r *Runner) Generate(s *ir.Scheme, uri string) ([]*ast.Document, error) {
 		store = gencache.Default()
 	}
 	if data, ok := store.Lookup(req); ok {
-		if docs, err := parseFiles(splitFiles(gencache.Body(data))); err == nil {
+		if docs, err := parseStored(gencache.Body(data)); err == nil {
 			return docs, nil
 		} else {
 			slog.Debug("sngl.scheme stored output", "scheme", s.Name, "uri", uri, "err", err)
@@ -87,7 +89,8 @@ func (r *Runner) Generate(s *ir.Scheme, uri string) ([]*ast.Document, error) {
 	if err != nil {
 		return nil, err
 	}
-	docs, err := parseFiles(out)
+	body := joinFiles(out)
+	docs, err := parseStored(body)
 	if err != nil {
 		return nil, err
 	}
@@ -95,13 +98,47 @@ func (r *Runner) Generate(s *ir.Scheme, uri string) ([]*ast.Document, error) {
 	if err != nil {
 		return nil, err
 	}
-	store.Put(req, gencache.Output{Inputs: append(inputs, literal...), Body: joinFiles(out)})
+	store.Put(req, gencache.Output{Inputs: append(inputs, literal...), Body: body})
+	return docs, nil
+}
+
+// parsed holds the documents of the outputs this process has parsed, by the
+// digest of what was stored. A parsed AST is never written to, so every check
+// replaying one output shares one parse: gtk4's widget set is megabytes of
+// SNGL, and every check that registers the platform imports it.
+var parsed = struct {
+	sync.Mutex
+	docs map[[sha256.Size]byte][]*ast.Document
+}{docs: map[[sha256.Size]byte][]*ast.Document{}}
+
+// maxParsed bounds what a long-lived process (the LSP) keeps of outputs that
+// a plugin's edits have since replaced.
+const maxParsed = 16
+
+func parseStored(body []byte) ([]*ast.Document, error) {
+	key := sha256.Sum256(body)
+	parsed.Lock()
+	docs, ok := parsed.docs[key]
+	parsed.Unlock()
+	if ok {
+		return docs, nil
+	}
+	docs, err := parseFiles(splitFiles(body))
+	if err != nil {
+		return nil, err
+	}
+	parsed.Lock()
+	defer parsed.Unlock()
+	if len(parsed.docs) >= maxParsed {
+		clear(parsed.docs)
+	}
+	parsed.docs[key] = docs
 	return docs, nil
 }
 
 // run calls the handler with the output it writes to and the import's path.
 func run(host *buildhost.Host, s *ir.Scheme, uri string) (*buildhost.Output, []gencache.Input, error) {
-	env, err := interp.BuildEnv(s.Pkg, "")
+	env, err := interp.BuildEnv(s.Pkg, "", nil)
 	if err != nil {
 		return nil, nil, fmt.Errorf("scheme %q: %w", s.Name, err)
 	}

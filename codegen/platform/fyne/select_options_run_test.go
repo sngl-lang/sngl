@@ -9,10 +9,14 @@ const selectOptionsSrc = `
 import . "sngl:ui"
 
 window {
-    var opts list<string> = ["a", "b"]
+    var opts list[string] = ["a", "b"]
     var pick = "b"
     vbox {
-        select(options=opts, value=pick)
+        select(value=pick) {
+            for var o = opts {
+                choice(label=o)
+            }
+        }
         button(text="more", @click { opts = ["a", "b", "c"] })
     }
 }

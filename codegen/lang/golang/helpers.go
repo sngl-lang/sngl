@@ -5,8 +5,8 @@ import (
 	"strings"
 	"unicode"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/ir"
 )
 
 // ModelFreeFuncs names the user functions a Model-receiver platform
@@ -39,7 +39,7 @@ func ModelFreeFuncs(pkg *ir.Package) map[string]bool {
 	for _, fn := range pkg.Funcs {
 		// A promoted handler is always a Model method: it is wired to a widget
 		// by name, and nothing calls it, so it never had to be in the set.
-		if fn.IsTest || fn.Receiver != "" || fn.Synthesized || componentFuncs[fn] || fn.LoweredFromEvent != "" {
+		if fn.IsTest || fn.IsMethod() || fn.Synthesized || componentFuncs[fn] || fn.Lowered.Event != "" {
 			continue
 		}
 		if isComputedSig(fn) || stateFuncs[fn] {
@@ -90,14 +90,14 @@ func ModelStateFuncs(pkg *ir.Package) map[*ir.Func]bool {
 func ModelParamFuncs(pkg *ir.Package) map[*ir.Func]bool {
 	out := map[*ir.Func]bool{}
 	for fn := range ModelStateFuncs(pkg) {
-		if fn.Receiver != "" && LiftsToFreeFunc(pkg, fn.Receiver) {
+		if fn.IsMethod() && LiftsToFreeFunc(pkg, fn) {
 			out[fn] = true
 		}
 	}
 	return out
 }
 
-// LiftsToFreeFunc reports whether a method on this receiver is emitted as a
+// LiftsToFreeFunc reports whether fn, a method, is emitted as a
 // free `ReceiverMethod(recv, …)` function rather than dispatched through the
 // Model. A component's method is the other case and stays a Model method, so
 // it has a receiver to read state from already.
@@ -105,10 +105,16 @@ func ModelParamFuncs(pkg *ir.Package) map[*ir.Func]bool {
 // bubbletea, fyne and gtk4 each route their emit loop through this rather than
 // asking again: the call site (evalTypeMethodCall) lifts a method on any type
 // the package declares, and a narrower emitter answer emits a definition in a
-// form no call site names.
-func LiftsToFreeFunc(pkg *ir.Package, receiver string) bool {
+// form no call site names. A type the host declares -- one a scheme imported,
+// or a library describes with a native mark -- is declared in no package the
+// build emits, and Go attaches no method to it here either.
+func LiftsToFreeFunc(pkg *ir.Package, fn *ir.Func) bool {
+	receiver := fn.RecvName()
 	if pkg == nil || receiver == "" {
 		return false
+	}
+	if hostDeclared(fn.RecvDecl()) {
+		return true
 	}
 	for _, c := range pkg.Components {
 		if c.Name == receiver {
@@ -132,6 +138,16 @@ func LiftsToFreeFunc(pkg *ir.Package, receiver string) bool {
 		if u.Name == receiver {
 			return true
 		}
+	}
+	return false
+}
+
+func hostDeclared(decl ir.Symbol) bool {
+	switch d := decl.(type) {
+	case *ir.StructDef:
+		return d.Foreign.Path != "" && !d.Foreign.Marked
+	case *ir.EnumDef:
+		return d.Foreign.Path != "" && !d.Foreign.Marked
 	}
 	return false
 }
@@ -293,7 +309,7 @@ func InstanceCtorParam(prop string) string { return "__a_" + prop }
 // component built at run time, less comp's own, since a synthesized name may
 // be spelled the same in both and in comp's scope means comp's.
 func PageNodes(pkg *ir.Package, comp *ir.Component) map[string]bool {
-	own := ownerNames(comp.Vars, comp.Body, comp.Funcs)
+	own := ownerNames(comp.Vars, comp.Stmts, comp.Funcs)
 	out := map[string]bool{}
 	for _, o := range ir.Owners(pkg) {
 		if o.Comp != nil && o.Comp.RuntimeInstance {

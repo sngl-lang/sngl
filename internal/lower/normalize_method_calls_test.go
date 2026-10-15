@@ -3,7 +3,7 @@ package lower
 import (
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 func TestNoImplicitRecv_SynthesizesComponentSelf(t *testing.T) {
@@ -11,7 +11,7 @@ func TestNoImplicitRecv_SynthesizesComponentSelf(t *testing.T) {
 	thisType := &ir.Type{Kind: ir.TypeComponent, Decl: main}
 
 	status := &ir.Func{
-		Receiver: "main",
+		Receiver: ir.ReceiverNamed("main"),
 		Name:     "status",
 		Params:   []*ir.Param{{Name: "this", Type: thisType}},
 	}
@@ -20,7 +20,7 @@ func TestNoImplicitRecv_SynthesizesComponentSelf(t *testing.T) {
 		Func: status,
 		Args: nil,
 	}
-	main.Body = []ir.Stmt{&ir.Return{Value: call}}
+	main.Stmts = []ir.Stmt{&ir.Return{Value: call}}
 	main.Funcs = []*ir.Func{status}
 
 	pkg := &ir.Package{Components: []*ir.Component{main}}
@@ -46,7 +46,7 @@ func TestNoImplicitRecv_LeavesExplicitRecvUnchanged(t *testing.T) {
 	main := &ir.Component{Name: "main"}
 	thisType := &ir.Type{Kind: ir.TypeComponent, Decl: main}
 	status := &ir.Func{
-		Receiver: "main",
+		Receiver: ir.ReceiverNamed("main"),
 		Name:     "status",
 		Params:   []*ir.Param{{Name: "this", Type: thisType}},
 	}
@@ -56,7 +56,7 @@ func TestNoImplicitRecv_LeavesExplicitRecvUnchanged(t *testing.T) {
 		Func: status,
 		Args: []ir.CallArg{{Value: explicitRecv}},
 	}
-	main.Body = []ir.Stmt{&ir.Return{Value: call}}
+	main.Stmts = []ir.Stmt{&ir.Return{Value: call}}
 	main.Funcs = []*ir.Func{status}
 
 	pkg := &ir.Package{Components: []*ir.Component{main}}
@@ -75,7 +75,7 @@ func TestNoImplicitRecv_LeavesExplicitRecvUnchanged(t *testing.T) {
 
 func TestNoImplicitRecv_IgnoresFreeFunctionCalls(t *testing.T) {
 	add := &ir.Func{
-		Receiver: "",
+		Receiver: nil,
 		Name:     "add",
 		Params: []*ir.Param{
 			{Name: "a", Type: &ir.Type{Kind: ir.TypeInt}},
@@ -89,7 +89,7 @@ func TestNoImplicitRecv_IgnoresFreeFunctionCalls(t *testing.T) {
 			{Value: &ir.Literal{Type: &ir.Type{Kind: ir.TypeInt}, Value: "2"}},
 		},
 	}
-	main := &ir.Component{Name: "main", Body: []ir.Stmt{&ir.Return{Value: call}}}
+	main := &ir.Component{Name: "main", Stmts: []ir.Stmt{&ir.Return{Value: call}}}
 	pkg := &ir.Package{Components: []*ir.Component{main}, Funcs: []*ir.Func{add}}
 
 	if err := lowerNoImplicitRecv(pkg, without("implicitRecv"), Options{}); err != nil {

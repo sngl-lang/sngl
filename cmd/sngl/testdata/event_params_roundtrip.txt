@@ -2,7 +2,7 @@
 #
 # The IR carries an event's parameters rather than a single payload type, and
 # ir.Convert has to spell each form so it parses as the same declaration: a
-# list with names, the bare one-parameter `@name T`, and `@name()`, which
+# function's list, `@name(v T)` for one parameter, and `@name()`, which
 # passes nothing. Dumping twice and comparing is what catches a form that
 # reads back as a different declaration.
 
@@ -14,13 +14,13 @@ cp stdout second.sngl
 cmp first.sngl second.sngl
 
 grep '@pick\(index int, label string\)' first.sngl
-grep '@change int' first.sngl
+grep '@change\(v int\)' first.sngl
 grep '@done\(\)' first.sngl
 
 -- app.sngl --
 import . "sngl:ui"
 
-component picker(@pick(index int, label string), @change int, @done()) node {
+component picker(@pick(index int, label string), @change(v int), @done()) node {
     button(text="a", @click {
         pick(0, "a")
         change(1)

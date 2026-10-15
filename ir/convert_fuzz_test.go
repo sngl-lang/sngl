@@ -9,10 +9,10 @@ import (
 	"strings"
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/internal/checker"
-	"git.duckfam.us/jonathan/sngl/internal/parser"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/internal/checker"
+	"duckfam.us/sngl/internal/parser"
+	"duckfam.us/sngl/ir"
 )
 
 func FuzzConvertRoundTrip(f *testing.F) {
@@ -38,7 +38,7 @@ func FuzzConvertRoundTrip(f *testing.F) {
 		if !ok {
 			t.Skip("parse failed")
 		}
-		pkg1, diags1 := checker.Check(doc1, &checker.Config{IsMain: true})
+		pkg1, diags1 := checker.Check(doc1, &checker.Config{IsMain: true, PrivateLibrary: true})
 		for _, d := range diags1 {
 			if d.Severity == ir.Error {
 				t.Skip("check failed")
@@ -52,7 +52,7 @@ func FuzzConvertRoundTrip(f *testing.F) {
 
 		// Phase 2: convert IR back to AST and type-check again.
 		doc2 := ir.Convert(pkg1)
-		pkg2, diags2 := checker.Check(doc2, &checker.Config{IsMain: true})
+		pkg2, diags2 := checker.Check(doc2, &checker.Config{IsMain: true, PrivateLibrary: true})
 		for _, d := range diags2 {
 			if d.Severity == ir.Error {
 				t.Fatalf("round-trip check error: %s", d.Error())

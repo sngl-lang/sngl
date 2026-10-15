@@ -6,12 +6,12 @@ import (
 	"path/filepath"
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/internal/checker"
-	"git.duckfam.us/jonathan/sngl/internal/lower"
-	"git.duckfam.us/jonathan/sngl/internal/optimize"
-	"git.duckfam.us/jonathan/sngl/internal/parser"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/internal/checker"
+	"duckfam.us/sngl/internal/lower"
+	"duckfam.us/sngl/internal/optimize"
+	"duckfam.us/sngl/internal/parser"
+	"duckfam.us/sngl/ir"
 )
 
 // generateGTK4ModelBuilt is the pipeline internal/build runs, which is what
@@ -40,6 +40,7 @@ func generateGTK4ModelBuilt(t *testing.T, src string) string {
 			t.Fatalf("check diag: %s: %s", d.Pos, d.Msg)
 		}
 	}
+	pkg = ir.ClonePackageFor(pkg, "gtk4", "go")
 	optCfg := &optimize.Config{Platform: "gtk4", Language: "go"}
 	if err := optimize.Optimize(pkg, optCfg); err != nil {
 		t.Fatalf("optimize: %v", err)
@@ -86,6 +87,7 @@ func generateGTK4FilesBuilt(t *testing.T, src string) map[string]string {
 			t.Fatalf("check diag: %s: %s", d.Pos, d.Msg)
 		}
 	}
+	pkg = ir.ClonePackageFor(pkg, "gtk4", "go")
 	optCfg := &optimize.Config{Platform: "gtk4", Language: "go"}
 	if err := optimize.Optimize(pkg, optCfg); err != nil {
 		t.Fatalf("optimize: %v", err)

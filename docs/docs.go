@@ -11,17 +11,18 @@ import (
 	"sort"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/docs/lookup"
-	"git.duckfam.us/jonathan/sngl/internal/checker"
-	"git.duckfam.us/jonathan/sngl/internal/docsite"
-	"git.duckfam.us/jonathan/sngl/internal/lower"
-	"git.duckfam.us/jonathan/sngl/internal/optimize"
-	"git.duckfam.us/jonathan/sngl/internal/parser"
-	"git.duckfam.us/jonathan/sngl/lib"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/docs/lookup"
+	"duckfam.us/sngl/internal/checker"
+	"duckfam.us/sngl/internal/docsite"
+	"duckfam.us/sngl/internal/lower"
+	"duckfam.us/sngl/internal/optimize"
+	"duckfam.us/sngl/internal/parser"
+	"duckfam.us/sngl/ir"
+	"duckfam.us/sngl/lib"
 
-	_ "git.duckfam.us/jonathan/sngl/codegen/lang/javascript"
-	_ "git.duckfam.us/jonathan/sngl/codegen/platform/html"
+	_ "duckfam.us/sngl/codegen/lang/javascript"
+	_ "duckfam.us/sngl/codegen/platform/html"
 )
 
 //go:embed *.md learn learn/_tour.md reference
@@ -253,11 +254,24 @@ type Component struct {
 	Props    []ComponentProp
 	// Slots are in declaration order, not sorted: the rest slot conventionally
 	// ends the list and a reader looking for where bare children go reads down.
-	Slots           []ComponentSlot
-	Events          []ComponentEvent
-	Examples        []string // raw .sngl source for each example
-	HighlightedCode string   // syntax-highlighted HTML of the first example
-	PreviewHTML     string   // compiled HTML for interactive iframe preview
+	Slots    []ComponentSlot
+	Events   []ComponentEvent
+	Examples []string // raw .sngl source for each example
+	// Example is the first of Examples, the one the page shows, and
+	// PreviewDoc the html document it compiles to, which the page shows in an
+	// iframe beside the snapshots PreviewPlatforms names -- "html" for the
+	// iframe itself. Empty where the example does not compile.
+	Example     string
+	PreviewDoc  string
+	PreviewTabs []PreviewTab
+}
+
+// PreviewTab is one platform a component's preview shows: the html document
+// itself (Image empty), or the snapshot another platform rendered.
+type PreviewTab struct {
+	Platform string
+	Label    string
+	Image    string
 }
 
 type ComponentProp struct {
@@ -273,11 +287,13 @@ type ComponentSlot struct {
 	Name string
 	Type string
 	Rest bool
+	Doc  string
 }
 
 type ComponentEvent struct {
 	Name        string
 	PayloadType string
+	Doc         string
 }
 
 // LibraryComponents is every exported component of every public library
@@ -392,12 +408,14 @@ func packageComponents(uri string, snapshots []string) []Component {
 				Name: sl.Name,
 				Type: parser.FormatType(sl.Type),
 				Rest: sl.Rest,
+				Doc:  sl.Doc,
 			})
 		}
 		for ename, payload := range schema.Events {
 			c.Events = append(c.Events, ComponentEvent{
 				Name:        ename,
 				PayloadType: payload,
+				Doc:         schema.EventDocs[ename],
 			})
 		}
 		sort.Slice(c.Events, func(i, j int) bool { return c.Events[i].Name < c.Events[j].Name })
@@ -405,8 +423,10 @@ func packageComponents(uri string, snapshots []string) []Component {
 		if srcs, ok := examples[name]; ok {
 			c.Examples = srcs
 			if len(srcs) > 0 {
-				c.HighlightedCode = docsite.HighlightSNGL(srcs[0])
-				c.PreviewHTML = buildPreviewSection(name, srcs[0], detectPlatforms(name, snapshots))
+				c.Example = srcs[0]
+				if c.PreviewDoc = compilePreview(srcs[0]); c.PreviewDoc != "" {
+					c.PreviewTabs = previewTabs(name, snapshots)
+				}
 			}
 		}
 
@@ -425,60 +445,18 @@ var platformDisplayName = map[string]string{
 	"fyne":      "Fyne",
 }
 
-func detectPlatforms(name string, snapshots []string) []string {
-	var platforms []string
+func previewTabs(name string, snapshots []string) []PreviewTab {
+	var tabs []PreviewTab
 	for _, p := range platformOrder {
 		if slices.Contains(snapshots, name+"_"+p+".png") {
-			platforms = append(platforms, p)
+			tab := PreviewTab{Platform: p, Label: platformDisplayName[p]}
+			if p != "html" {
+				tab.Image = "/assets/gallery/" + name + "_" + p + ".png"
+			}
+			tabs = append(tabs, tab)
 		}
 	}
-	return platforms
-}
-
-func buildPreviewSection(name, program string, platforms []string) string {
-	iframeHTML := compilePreview(program)
-	if iframeHTML == "" {
-		return ""
-	}
-
-	escaped := strings.ReplaceAll(iframeHTML, "&", "&amp;")
-	escaped = strings.ReplaceAll(escaped, "\"", "&quot;")
-	escaped = strings.ReplaceAll(escaped, "<", "&lt;")
-	escaped = strings.ReplaceAll(escaped, ">", "&gt;")
-
-	var b strings.Builder
-	b.WriteString(`<div class="platform-tabs">`)
-	for i, p := range platforms {
-		label := platformDisplayName[p]
-		if label == "" {
-			label = strings.ToUpper(p[:1]) + p[1:]
-		}
-		if i == 0 {
-			b.WriteString(`<button class="active" onclick="switchPlatform('` + p + `', this)">` + label + `</button>`)
-		} else {
-			b.WriteString(`<button onclick="switchPlatform('` + p + `', this)">` + label + `</button>`)
-		}
-	}
-	b.WriteString(`</div><div class="preview-frame">`)
-
-	for i, p := range platforms {
-		hidden := ""
-		if i > 0 {
-			hidden = " hidden"
-		}
-		if p == "html" {
-			b.WriteString(`<div class="preview" data-platform="html"` + hidden + `>`)
-			b.WriteString(`<iframe srcdoc="` + escaped + `"></iframe>`)
-			b.WriteString(`</div>`)
-		} else {
-			b.WriteString(`<div class="preview" data-platform="` + p + `"` + hidden + `>`)
-			b.WriteString(`<img src="/assets/gallery/` + name + `_` + p + `.png" alt="` + name + ` on ` + platformDisplayName[p] + `">`)
-			b.WriteString(`</div>`)
-		}
-	}
-	b.WriteString(`</div>`)
-	b.WriteString(`<script>function switchPlatform(p, btn) { document.querySelectorAll('.preview').forEach(el => el.hidden = el.dataset.platform !== p); document.querySelectorAll('.platform-tabs button').forEach(b => b.classList.remove('active')); btn.classList.add('active'); }</script>`)
-	return b.String()
+	return tabs
 }
 
 // source is a complete program with one window, as checker.PackageExamples
@@ -502,6 +480,7 @@ func compilePreview(source string) string {
 		return ""
 	}
 
+	pkg = ir.ClonePackageFor(pkg, "html", "none")
 	optCfg := &optimize.Config{Platform: "html", Language: "none"}
 	if err := optimize.Optimize(pkg, optCfg); err != nil {
 		return ""
@@ -517,9 +496,9 @@ func compilePreview(source string) string {
 
 	// Unconditional. It used to run only when the target had capabilities to lower
 	// for, on the reading that a build lowering nothing had nothing new to fold --
-	// which stopped being true when passQuery became always-on: it synthesizes a
-	// thunk after the optimizer has walked every declaration, so the calls inside
-	// one are calls nothing has looked at.
+	// which is not so: an always-on lowering pass may synthesize code after the
+	// optimizer has walked every declaration, and the calls inside it are calls
+	// nothing has looked at.
 	if err := optimize.Optimize(pkg, optCfg); err != nil {
 		return ""
 	}
@@ -551,9 +530,3 @@ func autoTitle(name string) string {
 	}
 	return strings.ToUpper(name[:1]) + name[1:]
 }
-
-// Pure so SNGL components can call it inline: the optimizer folds it to a
-// literal at compile time when both args are const.
-//
-//sngl:pure
-func Highlight(src, language string) string { return docsite.Highlight(src, language) }

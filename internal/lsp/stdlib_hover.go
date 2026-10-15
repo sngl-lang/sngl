@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 // lookupStdlibSymbol walks pkg.Imports looking for a func, component,
@@ -89,7 +89,7 @@ func matchesFuncName(fn *ir.Func, query string) bool {
 	if fn.Name == query {
 		return true
 	}
-	if fn.Receiver != "" && (fn.Receiver+"."+fn.Name) == query {
+	if fn.IsMethod() && (fn.RecvName()+"."+fn.Name) == query {
 		return true
 	}
 	return false
@@ -114,8 +114,8 @@ func typeString(t *ir.Type) string {
 func formatStdlibFunc(fn *ir.Func) string {
 	var sb strings.Builder
 	sb.WriteString("```sngl\nfunc ")
-	if fn.Receiver != "" {
-		sb.WriteString(fn.Receiver)
+	if fn.IsMethod() {
+		sb.WriteString(fn.RecvName())
 		sb.WriteByte('.')
 	}
 	sb.WriteString(fn.Name)
@@ -153,13 +153,16 @@ func formatStdlibComponent(c *ir.Component) string {
 		for _, p := range c.Props {
 			t := typeString(p.Type)
 			if t == "" {
-				t = "dyn"
+				t = "unknown"
 			}
+			line := fmt.Sprintf("- `%s` %s", p.Name, t)
 			if p.Default == nil {
-				fmt.Fprintf(&sb, "- `%s` %s (required)\n", p.Name, t)
-			} else {
-				fmt.Fprintf(&sb, "- `%s` %s\n", p.Name, t)
+				line += " (required)"
 			}
+			if p.Doc != "" {
+				line += " — " + p.Doc
+			}
+			sb.WriteString(line + "\n")
 		}
 	}
 	sb.WriteString("\n> stdlib\n")
@@ -240,13 +243,17 @@ func findComponent(pkg *ir.Package, name string) *ir.Component {
 func formatProp(comp *ir.Component, p *ir.Prop) string {
 	t := typeString(p.Type)
 	if t == "" {
-		t = "dyn"
+		t = "unknown"
 	}
 	required := "required"
 	if p.Default != nil {
 		required = "optional"
 	}
-	return fmt.Sprintf("```sngl\n%s.%s: %s\n```\n\n%s prop on `component %s`.\n", comp.Name, p.Name, t, required, comp.Name)
+	out := fmt.Sprintf("```sngl\n%s.%s: %s\n```\n\n", comp.Name, p.Name, t)
+	if p.Doc != "" {
+		out += p.Doc + "\n\n"
+	}
+	return out + fmt.Sprintf("%s prop on `component %s`.\n", required, comp.Name)
 }
 
 // lookupStructFieldType finds field on the struct named structName
@@ -260,7 +267,7 @@ func lookupStructFieldType(pkg *ir.Package, structName, fieldName string) (strin
 		if f.Name != fieldName {
 			continue
 		}
-		t := "dyn"
+		t := "unknown"
 		if f.Type != nil {
 			t = f.Type.String()
 		}

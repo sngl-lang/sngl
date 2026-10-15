@@ -5,7 +5,7 @@ import (
 	"sort"
 	"sync"
 
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 // IntrinsicEmitter renders the native call-site invocation for an intrinsic in
@@ -209,6 +209,53 @@ func LookupIntrinsic(lang, id string) IntrinsicEmitter {
 	return intrinsicEmitters[lang][id]
 }
 
+// RecordSpeller spells, in a language's own syntax, the string-keyed map a
+// host runtime takes where SNGL hands a record (ir.RecordArg): keys are the
+// fields' names as string literals, vals their values, in the order written.
+// The map's element type is the host's catch-all, which exists only here, in
+// emitted code: the IR keeps the record and its types.
+type RecordSpeller func(keys, vals []string) string
+
+var recordSpellers = map[string]RecordSpeller{}
+
+// RegisterRecordSpeller registers lang's RecordSpeller.
+func RegisterRecordSpeller(lang string, sp RecordSpeller) {
+	intrinsicMu.Lock()
+	defer intrinsicMu.Unlock()
+	recordSpellers[lang] = sp
+}
+
+// recordTranslate is translate with the record argument c hands its intrinsic
+// spelled as lang's map, where c hands one and lang spells one.
+func recordTranslate(lang string, c *ir.Call, translate func(ir.Expr) string) func(ir.Expr) string {
+	i := ir.RecordArg(c.Func)
+	if i < 0 || i >= len(c.Args) {
+		return translate
+	}
+	lit, ok := c.Args[i].Value.(*ir.StructLit)
+	if !ok {
+		return translate
+	}
+	intrinsicMu.RLock()
+	sp := recordSpellers[lang]
+	intrinsicMu.RUnlock()
+	if sp == nil {
+		return translate
+	}
+	return func(e ir.Expr) string {
+		if e != ir.Expr(lit) {
+			return translate(e)
+		}
+		keys := make([]string, len(lit.Fields))
+		vals := make([]string, len(lit.Fields))
+		for j, f := range lit.Fields {
+			keys[j] = translate(&ir.Literal{Type: ir.TypString, Value: f.Name})
+			vals[j] = translate(f.Value)
+		}
+		return sp(keys, vals)
+	}
+}
+
 // EmitIntrinsicCall renders an intrinsic call for a build targeting lang on
 // platform, if c resolves to an intrinsic with a registered emitter, returning
 // (code, imports, true).
@@ -234,16 +281,13 @@ func EmitIntrinsicCall(lang, platform string, c *ir.Call, translate func(ir.Expr
 	if e == nil {
 		return "", nil, false
 	}
+	translate = recordTranslate(lang, c, translate)
 	args := make([]ir.Expr, 0, len(c.Args)+1)
 	// Prepend the receiver only when it's a value operand filling the
 	// intrinsic's first param — i.e. a method-style call like canvas
 	// `ctx.fillRect(x,y,w,h)` (params [ctx,x,y,w,h], explicit args [x,y,w,h]).
-	// A namespace-qualified call like `stdlib.StrLength(s)` (the inlined body
-	// of `string.length`) carries the namespace as Receiver but passes every
-	// operand as an explicit arg, so the explicit args already fill all params;
-	// prepending would shift the `stdlib` namespace ident into a[0] and emit
-	// e.g. `len(stdlib)`. Gate on the param count so both shapes land their
-	// operands at the right indices.
+	// A call whose explicit args already fill every param has no receiver
+	// slot to fill.
 	def := ir.LookupIntrinsic(c.Func.Intrinsic)
 	prependReceiver := c.Receiver != nil && (def == nil || len(c.Args) < len(def.Params))
 	if prependReceiver {
@@ -286,8 +330,47 @@ func RequireIntrinsicFallback(lang string, fn *ir.Func) {
 }
 
 func callName(fn *ir.Func) string {
-	if fn.Receiver != "" {
-		return fn.Receiver + "." + fn.Name
+	if fn.IsMethod() {
+		return fn.RecvName() + "." + fn.Name
 	}
 	return fn.Name
+}
+
+// VariadicArgs is a call's arguments with a variadic last one written out:
+// the checker packs the arguments past the others into a list literal, and
+// an emitter whose host takes them as separate arguments wants them back.
+// ok is false when the last argument is not a literal, or spreads another
+// list into itself, so there is no fixed list of arguments to give.
+func VariadicArgs(args []ir.Expr, tr func(ir.Expr) string) (out []string, ok bool) {
+	if len(args) == 0 {
+		return nil, false
+	}
+	lit, isLit := args[len(args)-1].(*ir.ListLit)
+	if !isLit {
+		return nil, false
+	}
+	for _, a := range args[:len(args)-1] {
+		out = append(out, tr(a))
+	}
+	for _, e := range lit.Elems {
+		if _, spread := e.(*ir.Spread); spread {
+			return nil, false
+		}
+		out = append(out, tr(e))
+	}
+	return out, true
+}
+
+// VariadicRest is a variadic argument as a list to read: the list a call
+// spread whole into it, `f(a, ...xs)`, rather than the copy the checker's
+// literal makes of it. Only for an emitter that reads the rest and keeps
+// nothing of it, since the copy is what stops a body writing the caller's
+// list.
+func VariadicRest(arg ir.Expr) ir.Expr {
+	if lit, ok := arg.(*ir.ListLit); ok && len(lit.Elems) == 1 {
+		if sp, ok := lit.Elems[0].(*ir.Spread); ok {
+			return sp.Operand
+		}
+	}
+	return arg
 }

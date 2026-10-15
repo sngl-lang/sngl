@@ -63,10 +63,10 @@ import (
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
 	items__inst0        []string
-	visible__inst1      bool
-	checked__inst2      bool
-	checked__inst3      bool
-	checked__inst4      map[string]bool
+	visible__inst0      bool
+	checked__inst0      bool
+	checked__inst1      bool
+	checked__inst2      map[string]bool
 	__focusID           int
 	__focusLoop2_cursor int
 
@@ -77,10 +77,10 @@ type Model struct {
 func New() Model {
 	m := Model{}
 	m.items__inst0 = []string{"a", "b"}
-	m.visible__inst1 = true
-	m.checked__inst2 = false
-	m.checked__inst3 = true
-	m.checked__inst4 = map[string]bool{}
+	m.visible__inst0 = true
+	m.checked__inst0 = false
+	m.checked__inst1 = true
+	m.checked__inst2 = map[string]bool{}
 	m.__focusID = 0
 	m.__focusLoop2_cursor = 0
 	return m
@@ -155,64 +155,64 @@ func SetItems__inst0Cmd(v []string) tea.Cmd {
 	return func() tea.Msg { return setItems__inst0Msg{value: v} }
 }
 
-func (m Model) Visible__inst1() bool {
-	return m.visible__inst1
+func (m Model) Visible__inst0() bool {
+	return m.visible__inst0
 }
 
-func (m Model) SetVisible__inst1(v bool) Model {
-	m.visible__inst1 = v
+func (m Model) SetVisible__inst0(v bool) Model {
+	m.visible__inst0 = v
 	return m
 }
 
-type setVisible__inst1Msg struct{ value bool }
+type setVisible__inst0Msg struct{ value bool }
 
-func SetVisible__inst1Cmd(v bool) tea.Cmd {
-	return func() tea.Msg { return setVisible__inst1Msg{value: v} }
+func SetVisible__inst0Cmd(v bool) tea.Cmd {
+	return func() tea.Msg { return setVisible__inst0Msg{value: v} }
 }
 
-func (m Model) Checked__inst2() bool {
+func (m Model) Checked__inst0() bool {
+	return m.checked__inst0
+}
+
+func (m Model) SetChecked__inst0(v bool) Model {
+	m.checked__inst0 = v
+	return m
+}
+
+type setChecked__inst0Msg struct{ value bool }
+
+func SetChecked__inst0Cmd(v bool) tea.Cmd {
+	return func() tea.Msg { return setChecked__inst0Msg{value: v} }
+}
+
+func (m Model) Checked__inst1() bool {
+	return m.checked__inst1
+}
+
+func (m Model) SetChecked__inst1(v bool) Model {
+	m.checked__inst1 = v
+	return m
+}
+
+type setChecked__inst1Msg struct{ value bool }
+
+func SetChecked__inst1Cmd(v bool) tea.Cmd {
+	return func() tea.Msg { return setChecked__inst1Msg{value: v} }
+}
+
+func (m Model) Checked__inst2() map[string]bool {
 	return m.checked__inst2
 }
 
-func (m Model) SetChecked__inst2(v bool) Model {
+func (m Model) SetChecked__inst2(v map[string]bool) Model {
 	m.checked__inst2 = v
 	return m
 }
 
-type setChecked__inst2Msg struct{ value bool }
+type setChecked__inst2Msg struct{ value map[string]bool }
 
-func SetChecked__inst2Cmd(v bool) tea.Cmd {
+func SetChecked__inst2Cmd(v map[string]bool) tea.Cmd {
 	return func() tea.Msg { return setChecked__inst2Msg{value: v} }
-}
-
-func (m Model) Checked__inst3() bool {
-	return m.checked__inst3
-}
-
-func (m Model) SetChecked__inst3(v bool) Model {
-	m.checked__inst3 = v
-	return m
-}
-
-type setChecked__inst3Msg struct{ value bool }
-
-func SetChecked__inst3Cmd(v bool) tea.Cmd {
-	return func() tea.Msg { return setChecked__inst3Msg{value: v} }
-}
-
-func (m Model) Checked__inst4() map[string]bool {
-	return m.checked__inst4
-}
-
-func (m Model) SetChecked__inst4(v map[string]bool) Model {
-	m.checked__inst4 = v
-	return m
-}
-
-type setChecked__inst4Msg struct{ value map[string]bool }
-
-func SetChecked__inst4Cmd(v map[string]bool) tea.Cmd {
-	return func() tea.Msg { return setChecked__inst4Msg{value: v} }
 }
 
 func (m Model) Init() tea.Cmd {
@@ -226,24 +226,24 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case setItems__inst0Msg:
 		m = m.SetItems__inst0(msg.value)
-	case setVisible__inst1Msg:
-		m = m.SetVisible__inst1(msg.value)
+	case setVisible__inst0Msg:
+		m = m.SetVisible__inst0(msg.value)
+	case setChecked__inst0Msg:
+		m = m.SetChecked__inst0(msg.value)
+	case setChecked__inst1Msg:
+		m = m.SetChecked__inst1(msg.value)
 	case setChecked__inst2Msg:
 		m = m.SetChecked__inst2(msg.value)
-	case setChecked__inst3Msg:
-		m = m.SetChecked__inst3(msg.value)
-	case setChecked__inst4Msg:
-		m = m.SetChecked__inst4(msg.value)
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
 	case tea.KeyPressMsg:
 		switch {
 		case msg.Code == 'c' && msg.Mod == tea.ModCtrl:
-			if m.visible__inst1 {
-				m.visible__inst1 = false
+			if m.visible__inst0 {
+				m.visible__inst0 = false
 			}
-			if !(m.visible__inst1) {
+			if !(m.visible__inst0) {
 				return m, tea.Quit
 			}
 			return m, nil
@@ -252,11 +252,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case msg.Code == tea.KeyTab && msg.Mod == tea.ModShift:
 			m.__focusPrev()
 		case msg.Code == tea.KeySpace && m.__focusID == 0:
-			__bound_checked := !m.checked__inst2
-			m.checked__inst2 = __bound_checked
+			m.checked__inst0 = !m.checked__inst0
 		case msg.Code == tea.KeySpace && m.__focusID == 1:
-			__bound_checked := !m.checked__inst3
-			m.checked__inst3 = __bound_checked
+			m.checked__inst1 = !m.checked__inst1
 		case msg.Code == tea.KeySpace && m.__focusID == 2:
 			func() {
 				__focusPos2 := 0
@@ -264,20 +262,19 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					_ = __copy0
 					_ = it
 					if m.__focusLoop2_cursor == __focusPos2 {
-						__bound_checked := !func() bool {
-							if __v, __ok := m.checked__inst4[fmt.Sprint(__copy0)]; __ok {
+						__cell1_checked__inst2 := func() bool {
+							if __v, __ok := m.checked__inst2[fmt.Sprint(__copy0)]; __ok {
 								return __v
 							}
 							return false
 						}()
-						__cell1_checked__inst4 := func() bool {
-							if __v, __ok := m.checked__inst4[fmt.Sprint(__copy0)]; __ok {
+						__cell1_checked__inst2 = !func() bool {
+							if __v, __ok := m.checked__inst2[fmt.Sprint(__copy0)]; __ok {
 								return __v
 							}
 							return false
 						}()
-						__cell1_checked__inst4 = __bound_checked
-						m.checked__inst4[fmt.Sprint(__copy0)] = __cell1_checked__inst4
+						m.checked__inst2[fmt.Sprint(__copy0)] = __cell1_checked__inst2
 						return
 					}
 					__focusPos2++
@@ -299,7 +296,7 @@ func (m *Model) boxChange() {
 
 func (m Model) View() tea.View {
 	var content string
-	if m.visible__inst1 {
+	if m.visible__inst0 {
 		var contentChildren []string
 		var content_0 string
 		content_0Focused := (m.__focusID == 0)
@@ -310,7 +307,7 @@ func (m Model) View() tea.View {
 		content_0 = lipgloss.NewStyle().Render(content_0Prefix + " " + fmt.Sprint("alone"))
 		contentChildren = append(contentChildren, content_0)
 		var __lt0 string
-		if m.checked__inst2 {
+		if m.checked__inst0 {
 			__lt0 = "on"
 		} else {
 			__lt0 = "off"
@@ -368,24 +365,20 @@ func main() {
 package main
 
 import (
+	"duckfam.us/sngl/pkg/go/fynelayout"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
-	"git.duckfam.us/jonathan/sngl/pkg/go/fynelayout"
 	"os"
 )
-
-type ToggleEvent struct {
-	Checked bool
-}
 
 // Model holds the state for this SNGL UI.
 type Model struct {
 	items__inst0   []string
-	visible__inst1 bool
-	checked__inst2 bool
-	checked__inst3 bool
+	visible__inst0 bool
+	checked__inst0 bool
+	checked__inst1 bool
 	__slot0        []fyne.CanvasObject
 	__slot0_at     fyne.CanvasObject
 	__inst0_live   []*__checkbox_state3Instance
@@ -402,9 +395,9 @@ type Model struct {
 func New() *Model {
 	m := &Model{}
 	m.items__inst0 = []string{"a", "b"}
-	m.visible__inst1 = true
-	m.checked__inst2 = false
-	m.checked__inst3 = true
+	m.visible__inst0 = true
+	m.checked__inst0 = false
+	m.checked__inst1 = true
 	m.__slot0 = nil
 	m.__slot0_at = nil
 	m.__inst0_live = []*__checkbox_state3Instance{}
@@ -450,15 +443,15 @@ func (m *Model) __n1_closed_handler() {
 }
 
 func (m *Model) __n1_visible_handler(__visible bool) {
-	m.visible__inst1 = __visible
-	m.__n1.SetVisible(m.visible__inst1)
+	m.visible__inst0 = __visible
+	m.__n1.SetVisible(m.visible__inst0)
 }
 
-func (m *Model) box_change_handler(b bool) {
-	m.checked__inst2 = b
-	m.box.SetChecked(m.checked__inst2)
+func (m *Model) box_toggle_handler(on bool) {
+	m.checked__inst0 = on
+	m.box.SetChecked(m.checked__inst0)
 	var __lt0 string
-	if m.checked__inst2 {
+	if m.checked__inst0 {
 		__lt0 = "on"
 	} else {
 		__lt0 = "off"
@@ -466,15 +459,17 @@ func (m *Model) box_change_handler(b bool) {
 	m.__n2.SetText(__lt0)
 }
 
-func (m *Model) __n3_change_handler(b bool) {
-	m.checked__inst3 = b
-	m.__n3.SetChecked(m.checked__inst3)
+func (m *Model) __n3_toggle_handler(on bool) {
+	m.checked__inst1 = on
+	m.__n3.SetChecked(m.checked__inst1)
 }
 
 // boxChange invokes the OnChanged callback on the #box widget; for tests.
-func (m *Model) boxChange(e ToggleEvent) {
-	if m.box.OnChanged != nil {
-		m.box.OnChanged(e.Checked)
+func (m *Model) boxChange(b bool) {
+	if cb := m.box.OnChanged; cb != nil {
+		m.box.OnChanged = nil
+		cb(b)
+		m.box.OnChanged = cb
 	}
 }
 
@@ -486,28 +481,28 @@ func (m *Model) SetItems__inst0(v []string) {
 	m.items__inst0 = v
 }
 
-func (m *Model) Visible__inst1() bool {
-	return m.visible__inst1
+func (m *Model) Visible__inst0() bool {
+	return m.visible__inst0
 }
 
-func (m *Model) SetVisible__inst1(v bool) {
-	m.visible__inst1 = v
+func (m *Model) SetVisible__inst0(v bool) {
+	m.visible__inst0 = v
 }
 
-func (m *Model) Checked__inst2() bool {
-	return m.checked__inst2
+func (m *Model) Checked__inst0() bool {
+	return m.checked__inst0
 }
 
-func (m *Model) SetChecked__inst2(v bool) {
-	m.checked__inst2 = v
+func (m *Model) SetChecked__inst0(v bool) {
+	m.checked__inst0 = v
 }
 
-func (m *Model) Checked__inst3() bool {
-	return m.checked__inst3
+func (m *Model) Checked__inst1() bool {
+	return m.checked__inst1
 }
 
-func (m *Model) SetChecked__inst3(v bool) {
-	m.checked__inst3 = v
+func (m *Model) SetChecked__inst1(v bool) {
+	m.checked__inst1 = v
 }
 
 // BuildUI creates the widget tree and returns the first window's content.
@@ -517,17 +512,17 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	}
 	m.__built = true
 	m.__n1 = fynelayout.NewToplevel()
-	m.__n1.SetVisible(m.visible__inst1)
+	m.__n1.SetVisible(m.visible__inst0)
 	m.__n1.OnClosed = m.__n1_closed_handler
 	m.__n1.OnVisible = m.__n1_visible_handler
 	m.__n5 = container.NewVBox()
 	m.box = widget.NewCheck("", nil)
 	m.box.SetText("alone")
-	m.box.SetChecked(m.checked__inst2)
-	m.box.OnChanged = m.box_change_handler
+	m.box.SetChecked(m.checked__inst0)
+	m.box.OnChanged = m.box_toggle_handler
 	m.__n5.Add(m.box)
 	var __lt1 string
-	if m.checked__inst2 {
+	if m.checked__inst0 {
 		__lt1 = "on"
 	} else {
 		__lt1 = "off"
@@ -537,8 +532,8 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n5.Add(m.__n2)
 	m.__n3 = widget.NewCheck("", nil)
 	m.__n3.SetText("starts on")
-	m.__n3.SetChecked(m.checked__inst3)
-	m.__n3.OnChanged = m.__n3_change_handler
+	m.__n3.SetChecked(m.checked__inst1)
+	m.__n3.OnChanged = m.__n3_toggle_handler
 	m.__n5.Add(m.__n3)
 	m.__renderSlot0(m.__n5)
 	m.__n1.Add(m.__n5)
@@ -570,8 +565,8 @@ func new__checkbox_state3Instance(__model *Model, __a___start_checked bool, __a_
 	c.__n0 = widget.NewCheck("", nil)
 	c.__n0.SetText(c.__prop_label)
 	c.__n0.SetChecked(c.checked)
-	c.__n0.OnChanged = func(b bool) {
-		c.checked = b
+	c.__n0.OnChanged = func(on bool) {
+		c.checked = on
 		c.__n0.SetChecked(c.checked)
 	}
 	c.Root = c.__n0
@@ -601,7 +596,7 @@ func main() {
 
 package main
 
-import "git.duckfam.us/jonathan/sngl/pkg/go/gtk4rt"
+import "duckfam.us/sngl/pkg/go/gtk4rt"
 
 func main() {
 	gtk4rt.Init()
@@ -615,19 +610,15 @@ func main() {
 package main
 
 import (
-	"git.duckfam.us/jonathan/sngl/pkg/go/gtk4rt"
+	"duckfam.us/sngl/pkg/go/gtk4rt"
 )
-
-type ToggleEvent struct {
-	Checked bool
-}
 
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
 	items__inst0   []string
-	visible__inst1 bool
-	checked__inst2 bool
-	checked__inst3 bool
+	visible__inst0 bool
+	checked__inst0 bool
+	checked__inst1 bool
 	__slot0        []gtk4rt.Handle
 	__slot0_at     gtk4rt.Handle
 	__inst0_live   []*__checkbox_state3Instance
@@ -644,9 +635,9 @@ type Model struct {
 func New() *Model {
 	m := &Model{}
 	m.items__inst0 = []string{"a", "b"}
-	m.visible__inst1 = true
-	m.checked__inst2 = false
-	m.checked__inst3 = true
+	m.visible__inst0 = true
+	m.checked__inst0 = false
+	m.checked__inst1 = true
 	m.__slot0 = nil
 	m.__slot0_at = nil
 	m.__inst0_live = []*__checkbox_state3Instance{}
@@ -692,15 +683,15 @@ func (m *Model) __n1_closed_handler() {
 }
 
 func (m *Model) __n1_visible_handler(__visible bool) {
-	m.visible__inst1 = __visible
-	gtk4rt.ToplevelSetVisible(m.__n1, m.visible__inst1)
+	m.visible__inst0 = __visible
+	gtk4rt.ToplevelSetVisible(m.__n1, m.visible__inst0)
 }
 
 func (m *Model) box_toggled_handler() {
-	m.checked__inst2 = gtk4rt.CheckButtonGetActive(m.box)
-	gtk4rt.CheckButtonSetActive(m.box, m.checked__inst2)
+	m.checked__inst0 = gtk4rt.CheckButtonGetActive(m.box)
+	gtk4rt.CheckButtonSetActive(m.box, m.checked__inst0)
 	var __lt0 string
-	if m.checked__inst2 {
+	if m.checked__inst0 {
 		__lt0 = "on"
 	} else {
 		__lt0 = "off"
@@ -709,8 +700,8 @@ func (m *Model) box_toggled_handler() {
 }
 
 func (m *Model) __n3_toggled_handler() {
-	m.checked__inst3 = gtk4rt.CheckButtonGetActive(m.__n3)
-	gtk4rt.CheckButtonSetActive(m.__n3, m.checked__inst3)
+	m.checked__inst1 = gtk4rt.CheckButtonGetActive(m.__n3)
+	gtk4rt.CheckButtonSetActive(m.__n3, m.checked__inst1)
 }
 
 // __checkbox_state3Instance is one live instance of the __checkbox_state3 component.
@@ -773,28 +764,28 @@ func (m *Model) SetItems__inst0(v []string) {
 	m.items__inst0 = v
 }
 
-func (m *Model) Visible__inst1() bool {
-	return m.visible__inst1
+func (m *Model) Visible__inst0() bool {
+	return m.visible__inst0
 }
 
-func (m *Model) SetVisible__inst1(v bool) {
-	m.visible__inst1 = v
+func (m *Model) SetVisible__inst0(v bool) {
+	m.visible__inst0 = v
 }
 
-func (m *Model) Checked__inst2() bool {
-	return m.checked__inst2
+func (m *Model) Checked__inst0() bool {
+	return m.checked__inst0
 }
 
-func (m *Model) SetChecked__inst2(v bool) {
-	m.checked__inst2 = v
+func (m *Model) SetChecked__inst0(v bool) {
+	m.checked__inst0 = v
 }
 
-func (m *Model) Checked__inst3() bool {
-	return m.checked__inst3
+func (m *Model) Checked__inst1() bool {
+	return m.checked__inst1
 }
 
-func (m *Model) SetChecked__inst3(v bool) {
-	m.checked__inst3 = v
+func (m *Model) SetChecked__inst1(v bool) {
+	m.checked__inst1 = v
 }
 
 func (m *Model) buildWidgetTree() {
@@ -803,7 +794,7 @@ func (m *Model) buildWidgetTree() {
 	}
 	m.__built = true
 	m.__n1 = gtk4rt.ToplevelNew()
-	gtk4rt.ToplevelSetVisible(m.__n1, m.visible__inst1)
+	gtk4rt.ToplevelSetVisible(m.__n1, m.visible__inst0)
 	gtk4rt.ToplevelOnClosed(m.__n1, m.__n1_closed_handler)
 	gtk4rt.ToplevelOnVisible(m.__n1, m.__n1_visible_handler)
 	m.__n5 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
@@ -811,11 +802,11 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.BoxSetSpacing(m.__n5, 6)
 	m.box = gtk4rt.CheckButtonNew()
 	gtk4rt.CheckButtonSetLabel(m.box, "alone")
-	gtk4rt.CheckButtonSetActive(m.box, m.checked__inst2)
+	gtk4rt.CheckButtonSetActive(m.box, m.checked__inst0)
 	gtk4rt.Connect(m.box, "toggled", m.box_toggled_handler)
 	gtk4rt.BoxAppend(m.__n5, m.box)
 	var __lt1 string
-	if m.checked__inst2 {
+	if m.checked__inst0 {
 		__lt1 = "on"
 	} else {
 		__lt1 = "off"
@@ -825,7 +816,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.BoxAppend(m.__n5, m.__n2)
 	m.__n3 = gtk4rt.CheckButtonNew()
 	gtk4rt.CheckButtonSetLabel(m.__n3, "starts on")
-	gtk4rt.CheckButtonSetActive(m.__n3, m.checked__inst3)
+	gtk4rt.CheckButtonSetActive(m.__n3, m.checked__inst1)
 	gtk4rt.Connect(m.__n3, "toggled", m.__n3_toggled_handler)
 	gtk4rt.BoxAppend(m.__n5, m.__n3)
 	m.__renderSlot0(m.__n5)
@@ -841,9 +832,9 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 }
 
 // boxChange fires the "toggled" signal on the #box widget; for tests.
-func (m *Model) boxChange(e ToggleEvent) {
-	if gtk4rt.CheckButtonGetActive(m.box) != e.Checked {
-		gtk4rt.CheckButtonSetActive(m.box, e.Checked)
+func (m *Model) boxChange(v bool) {
+	if gtk4rt.CheckButtonGetActive(m.box) != v {
+		gtk4rt.CheckButtonSetActive(m.box, v)
 		return
 	}
 	gtk4rt.Emit(m.box, "toggled")
@@ -853,30 +844,24 @@ func (m *Model) boxChange(e ToggleEvent) {
 
 package test.sngl.app
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.*
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
-import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color as ComposeColor
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
-import androidx.activity.compose.BackHandler
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.platform.LocalContext
 import android.app.Activity
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.layout.Column
+import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.Row
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.Alignment
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.Text
 
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
@@ -888,29 +873,29 @@ fun _snglSplit(s: String, sep: String): List<String> =
 @Composable
 fun MainScreen() {
     val items__inst0 = remember { mutableStateListOf("a", "b") }
-    var visible__inst1 by remember { mutableStateOf(true) }
-    var checked__inst2 by remember { mutableStateOf(false) }
-    var checked__inst3 by remember { mutableStateOf(true) }
+    var visible__inst0 by remember { mutableStateOf(true) }
+    var checked__inst0 by remember { mutableStateOf(false) }
+    var checked__inst1 by remember { mutableStateOf(true) }
 
-    if (visible__inst1) {
+    if (visible__inst0) {
         val __activity = LocalContext.current as? Activity
         BackHandler {
-            visible__inst1 = false
-            if (!(visible__inst1)) {
+            visible__inst0 = false
+            if (!(visible__inst0)) {
                 __activity?.finish()
             }
         }
         Column(modifier = Modifier.safeDrawingPadding()) {
             Row(modifier = Modifier.testTag("box"), verticalAlignment = Alignment.CenterVertically) {
-                Checkbox(checked = checked__inst2, onCheckedChange = { on ->
-                    checked__inst2 = on
+                Checkbox(checked = checked__inst0, onCheckedChange = { on ->
+                    checked__inst0 = on
                 })
                 Text(text = "alone", modifier = Modifier)
             }
-            Text(text = (if (checked__inst2) "on" else "off"), modifier = Modifier)
+            Text(text = (if (checked__inst0) "on" else "off"), modifier = Modifier)
             Row(modifier = Modifier, verticalAlignment = Alignment.CenterVertically) {
-                Checkbox(checked = checked__inst3, onCheckedChange = { on ->
-                    checked__inst3 = on
+                Checkbox(checked = checked__inst1, onCheckedChange = { on ->
+                    checked__inst1 = on
                 })
                 Text(text = "starts on", modifier = Modifier)
             }
@@ -964,7 +949,7 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { items__inst0: ["a", "b"], visible__inst1: true, checked__inst2: false, checked__inst3: true };
+  var state = { items__inst0: ["a", "b"], visible__inst0: true, checked__inst0: false, checked__inst1: true };
   function __cf___checkbox_state3(props) {
     const __root = document.createElement("div");
     __root.style.display = "contents";
@@ -987,8 +972,8 @@ body { font-family: system-ui, sans-serif; }
     __n0.checked = checked;
     __n0.disabled = false;
     __n0.setAttribute("type", "checkbox");
-    __n0.addEventListener("change", (__event) => {
-      checked = __event.checked;
+    __n0.addEventListener("change", (e) => {
+      checked = e.currentTarget.checked;
       __n0.checked = checked;
     });
     __n8.appendChild(__n0);
@@ -1057,30 +1042,30 @@ body { font-family: system-ui, sans-serif; }
   var __slotAnchor_0 = document.querySelector('[data-sngl-slot="0"]');
   __renderSlot0(__slotAnchor_0);
   __n3.addEventListener("change", function(e) {
-    state.checked__inst2 = e.target.checked;
-    __n3.checked = state.checked__inst2;
-    __n4.textContent = state.checked__inst2 ? "on" : "off";
+    state.checked__inst0 = e.currentTarget.checked;
+    __n3.checked = state.checked__inst0;
+    __n4.textContent = state.checked__inst0 ? "on" : "off";
   });
   __n5.addEventListener("change", function(e) {
-    state.checked__inst3 = e.target.checked;
-    __n5.checked = state.checked__inst3;
+    state.checked__inst1 = e.currentTarget.checked;
+    __n5.checked = state.checked__inst1;
   });
   function __sngl_init() {
-    __n3.checked = state.checked__inst2;
-    __n4.textContent = state.checked__inst2 ? "on" : "off";
-    __n5.checked = state.checked__inst3;
+    __n3.checked = state.checked__inst0;
+    __n4.textContent = state.checked__inst0 ? "on" : "off";
+    __n5.checked = state.checked__inst1;
   }
   __sngl_init();
 })();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:ea50b2bcd0abd12b7b3462a4bbf70609
+pass sha256:76ff51c185bf960498a4d777b1eeb604
 -- run/go/fyne --
-pass sha256:fc614b71207e96860ff5952cfab130a2
+pass sha256:655dfb02a272d12f4957f54a9deef398
 -- run/go/gtk4 --
-pass sha256:f5ce6d1b8a6455d9c5e766f6c8b000ee
+pass sha256:7d3d7cd2f7e39546a7ddf834f3d8bfc0
 -- run/kotlin/android --
-pass sha256:b5368a4ed7faaa084b3c29bf66f3f242
+pass sha256:5630ced9a0e6f0c8b6debe42f6958c87
 -- run/none/html --
-pass sha256:ef3ec67e6e38af2a05fdb115d8f82c8b
+pass sha256:b8779496cbbf4bac312f49ceb23262d6

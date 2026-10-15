@@ -3,7 +3,7 @@ package codegen
 import (
 	"sort"
 
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 // collectUsedUnits returns every unit declaration the package needs a type
@@ -36,6 +36,13 @@ func collectUsedUnits(pkg *ir.Package) []*ir.UnitDef {
 	}
 	for _, v := range pkg.Vars {
 		add(v.Type)
+	}
+	// A declared struct names its field types whether or not the program
+	// writes a value of one: `Style` holds measurements.
+	for _, s := range pkg.Structs {
+		for _, f := range s.Fields {
+			add(f.Type)
+		}
 	}
 	// An expression's type covers the rest: a prop, a local, a return value
 	// and a binary result all carry one.

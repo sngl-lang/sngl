@@ -65,22 +65,13 @@ default:
   - go.mod
   - go.sum
 
-# What decides the warmed build cache: the dependency closure, plus the job
-# that builds it.
-.cache-inputs: &cache-inputs
-  - go.mod
-  - go.sum
-  - .gitlab-ci.yml
-
 build-image:
   stage: dependencies
   image:
     name: gcr.io/kaniko-project/executor:debug
     entrypoint: [""]
-  # A failed image build must not take the pipeline with it: `test` and
-  # `pages` fall back to the $IMAGE:latest already in the registry, and an
-  # `optional` need is only optional about the job *existing*.
-  allow_failure: true
+  # A failed build fails the pipeline: it only runs when an image input changed,
+  # and the jobs after it would otherwise test that change on the stale :latest.
   rules:
     # An MR pipeline's `changes` is already diffed against the target branch.
     # Must come first: CI_COMMIT_BEFORE_SHA is zeroed here too.
@@ -105,6 +96,8 @@ build-image:
         paths: *image-inputs
       when: always
     - when: never
+  # --compressed-caching=false and --snapshot-mode=redo keep kaniko under the
+  # runner's memory; without them the snapshot after the apt layer is OOM-killed.
   script:
     - mkdir -p /kaniko/.docker
     - >-
@@ -116,95 +109,94 @@ build-image:
       --dockerfile $CI_PROJECT_DIR/Dockerfile
       --destination $IMAGE:latest
       --cache=true
+      --compressed-caching=false
+      --snapshot-mode=redo
 
-# Compile the third-party dependency closure into a Go build cache the test
-# job restores.
+# A Go job's build cache, kept whole between its pipelines: one holding only
+# the third-party closure left this repository to compile cold every time.
 #
-# `go mod download` in the image fetches module *source* and compiles nothing,
-# and CI clones fresh every run, so every pipeline rebuilt every dependency
-# from scratch. That lands on whichever step type-checks first: `go fix -diff
-# ./...` was 272s of a 630s job, with `go vet` right behind it at 14s only
-# because `go fix` had already paid for it. Of 418s of action time in a cold
-# `go build ./...`, 53s is this repo's own code. Measured locally, against a
-# warmed closure: go fix 272s -> 26s, go vet 14s -> 8s.
+# One key per job, not per branch: unprotected branches share theirs, which a
+# stack of branches over one base mostly hits, and GitLab keeps the protected
+# main's apart.
 #
-# Not baked into the CI image, which is where this was tried first: kaniko
-# holds a filesystem snapshot while the RUN executes, and one package
-# (typescript-go/internal/ast) compiles in a single 2.2GB process. Both
-# attempts were OOM-killed, exit 137 -- the same pressure the note above
-# records behind past host lockups. A plain job has the whole container to
-# itself and already survives that compile in the test step.
+# The after_script keeps what this job used and nothing else. Go refreshes an
+# entry's mtime when it reads one older than an hour, so an entry older than
+# two hours at the end of the job was not read by it -- which holds while a
+# job runs under an hour. Without it the cache gains every commit's objects
+# until Go's own five-day trim.
 #
-# Keyed on go.sum, since that is what decides the closure. `policy: push` here
-# and `pull` on the test job, so only this job pays to archive it.
-#
-# Runs on every default-branch pipeline rather than only when go.sum moves.
-# Keying alone would leave a cleared runner cache cold until someone next
-# bumped a dependency -- there is no "if the cache is missing" rule to write,
-# so main refreshing it each time is what makes it self-healing. That is cheap
-# because the job pulls first: with the cache present it restores, finds
-# nothing to build, and puts it back. Branch pipelines only pull, and pick up
-# whatever main last pushed; go.sum rarely moves, so that is almost always
-# current. A branch that changes go.sum, or this file, builds its own.
-warm-cache:
-  stage: dependencies
-  image: $IMAGE:latest
-  allow_failure: true
-  rules:
-    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
-      when: always
-    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
-      changes:
-        paths: *cache-inputs
-      when: always
-    - if: $CI_COMMIT_BEFORE_SHA == "0000000000000000000000000000000000000000"
-      changes:
-        paths: *cache-inputs
-        compare_to: refs/heads/$CI_DEFAULT_BRANCH
-      when: always
-    - changes:
-        paths: *cache-inputs
-      when: always
-    - when: never
-  variables:
-    GOCACHE: $CI_PROJECT_DIR/.gocache
-  cache:
-    key:
-      files:
-        - go.sum
-    paths:
-      - .gocache
-    # pull-push, not push: on the default branch this job runs every pipeline,
-    # and without the pull it would rebuild the whole closure each time
-    # (5m23s) instead of restoring it (6s), confirming it, and putting it back.
-    policy: pull-push
-  script:
-    - >-
-      go list -deps -test ./...
-      | grep -v '^git.duckfam.us/jonathan/sngl'
-      | grep '\.'
-      | xargs go build -p 2
-    - du -sh .gocache
-
-test:
-  stage: test
+# Not baked into the CI image: kaniko holds a filesystem snapshot while the
+# RUN executes, and one package (typescript-go/internal/ast) compiles in a
+# single 2.2GB process, which twice got the image build OOM-killed.
+.go-cache:
   image: $IMAGE:latest
   needs:
     - job: build-image
       optional: true
-    - job: warm-cache
-      optional: true
-  cache:
-    key:
-      files:
-        - go.sum
-    paths:
-      - .gocache
-    policy: pull
   variables:
     GOCACHE: $CI_PROJECT_DIR/.gocache
-  script: go tool verify -dry
+    # A 2GB cache archived each job: fastzip at its fastest level, since the
+    # cache stays on the runner and is never sent over the network.
+    FF_USE_FASTZIP: "true"
+    CACHE_COMPRESSION_LEVEL: fastest
+  cache:
+    paths:
+      - .gocache
+    policy: pull-push
+    when: always
+  after_script:
+    - du -sh .gocache || true
+    - find .gocache -mindepth 2 -type f -mmin +120 -delete || true
+    - du -sh .gocache || true
+
+# verify's two halves are jobs of their own, so a formatting or vet failure
+# reports in two minutes rather than after the tests, and the halves run side
+# by side wherever the runner takes more than one job at a time. Each keeps its
+# own cache: what `go fix` and `go vet` store is type-checking, and what the
+# tests build is coverage-instrumented objects and their links.
+lint:
+  extends: .go-cache
+  stage: test
+  cache:
+    key: go-build-lint
+  script: go tool verify -dry -only lint
+
+test:
+  extends: .go-cache
+  stage: test
+  variables:
+    # A saved cache would otherwise replay a package's test result while its
+    # Go inputs stand still, and these tests read what Go cannot see them
+    # read: a script's `go build`, a fixture's toolchain run.
+    GOFLAGS: -count=1
+  cache:
+    key: go-build-test
+  # The trust scripts' offline `go mod tidy` needs every module of the
+  # checkout's graph, test-only ones included. The image carries them, so this
+  # fetches only what a branch's go.sum adds before its image is rebuilt.
+  before_script:
+    - go mod download all
+  script: go tool verify -dry -only test
   coverage: '/total coverage: (\d+\.\d+)% of statements/'
+
+# A branch built over several sessions carries its plan in TODO.md, and the
+# plan is the branch's, not the repository's: fail until it is deleted, so it
+# cannot be merged along with the work. Never on main, where a stray TODO.md
+# should not turn every pipeline red.
+no-todo:
+  stage: test
+  image: alpine:latest
+  needs: []
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+      when: never
+    - when: on_success
+  script:
+    - |
+      if [ -e TODO.md ]; then
+        echo "TODO.md is still present: delete it before merging"
+        exit 1
+      fi
 
 pages:
   stage: pages

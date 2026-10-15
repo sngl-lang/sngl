@@ -1,0 +1,66 @@
+// A data component may hold records of a data family in a slot of its own:
+// the slot is a field of its record, the list its population renders, so a
+// record is a tree of them. Each level's population is read as the
+// container's is -- an `if` or a `for` among the records, a component that
+// composes them -- and follows state the same way.
+
+import . "sngl:test"
+import ui "sngl:ui"
+
+component folder(name string, contents ...component folder) folder
+
+// Composes records without being one, at any depth.
+component pair(a string, b string) {
+    folder(name=a)
+    folder(name=b)
+}
+
+func show(fs list[folder]) string {
+    return fs.map(func(f folder) string {
+        if f.contents.length() == 0 {
+            return f.name
+        }
+        return f.name + "(" + show(f.contents) + ")"
+    }).join(",")
+}
+
+component browser(roots ...component folder) ui.node {
+    ui.text #shape(value=show(roots))
+}
+
+component app ui.node {
+    var more = false
+    var years = ["2024", "2025"]
+    browser #b {
+        folder(name="docs") {
+            folder(name="a")
+            if more {
+                folder(name="b") {
+                    pair(a="x", b="y")
+                }
+            }
+        }
+        folder(name="photos") {
+            for var y = years {
+                folder(name=y)
+            }
+        }
+        folder(name="music")
+    }
+    ui.button #add(text="more", @click {
+        more = true
+    })
+}
+
+func testNestedRecordsAreReadInOrder(t Test, c app) {
+    t.assert(c.b.shape.value == "docs(a),photos(2024,2025),music")
+}
+
+func testANestedListFollowsState(t Test, c app) {
+    c.add.click()
+    t.assert(c.b.shape.value == "docs(a,b(x,y)),photos(2024,2025),music")
+}
+
+ui.window {
+    app()
+}

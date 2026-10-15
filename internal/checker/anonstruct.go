@@ -1,18 +1,15 @@
 package checker
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
-	"fmt"
 	"slices"
 	"strconv"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/ir"
 )
 
-const anonStructPrefix = "__anon_"
+const anonStructPrefix = ir.AnonStructPrefix
 
 // rejectReservedName keeps a program out of the namespace the interned
 // declarations are named in. Nothing else can: they are registered in
@@ -26,72 +23,15 @@ func (c *checker) rejectReservedName(pos ast.Pos, name string) bool {
 	return true
 }
 
-// anonSignature spells a field set in name order, so field order is not part
-// of a type's identity. The two spellings answer different questions: key
-// tells every declaration apart and is the intern map's, sig is stable across
-// runs and is all the generated name is allowed to see.
-func anonSignature(canon []*ir.StructField) (sig, key string) {
-	sigs := make([]string, len(canon))
+// anonKey spells a field set for the intern map: it tells every declaration
+// apart (ir.AnonTypeKey), where ir.AnonStructBaseName sees only what is stable
+// across runs.
+func anonKey(canon []*ir.StructField) string {
 	keys := make([]string, len(canon))
 	for i, f := range canon {
-		sigs[i] = f.Name + " " + anonTypeKey(f.Type, false)
-		keys[i] = f.Name + " " + anonTypeKey(f.Type, true)
+		keys[i] = f.Name + " " + ir.AnonTypeKey(f.Type, true)
 	}
-	return strings.Join(sigs, "; "), strings.Join(keys, "; ")
-}
-
-// anonTypeKey spells a type for the signature. Type.String() alone would not:
-// it prints a named type unqualified, so a program's own `Style` and
-// `sngl:ui`'s read alike.
-func anonTypeKey(t *ir.Type, exact bool) string {
-	var b strings.Builder
-	b.WriteString(t.String())
-	writeDeclIDs(&b, t, exact)
-	return b.String()
-}
-
-func writeDeclIDs(b *strings.Builder, t *ir.Type, exact bool) {
-	if t == nil {
-		return
-	}
-	if id, ok := declID(t.Decl, exact); ok {
-		b.WriteString("@")
-		b.WriteString(id)
-	}
-	for _, e := range t.Elems {
-		writeDeclIDs(b, e, exact)
-	}
-	if t.Sig != nil {
-		for _, p := range t.Sig.Params {
-			writeDeclIDs(b, p.Type, exact)
-		}
-		writeDeclIDs(b, t.Sig.Return, exact)
-	}
-}
-
-// declID is the declaring package of a named declaration. With exact set, one
-// that records no package answers with its address instead -- the same thing
-// ir.sameDecl identifies those by, and not their name, which two packages of
-// one program may both use. Never stable across runs, so only the intern map
-// may see it; see #175 before making a name enough.
-func declID(sym ir.Symbol, exact bool) (string, bool) {
-	var pkg string
-	switch d := sym.(type) {
-	case *ir.StructDef:
-		pkg = d.Pkg
-	case *ir.EnumDef:
-		pkg = d.Pkg
-	case *ir.UnitDef:
-		pkg = d.Pkg
-	case *ir.Component:
-		pkg = d.Pkg
-	default:
-		return "", false
-	}
-	if pkg == "" && exact {
-		return fmt.Sprintf("%p", sym), true
-	}
-	return pkg, true
+	return strings.Join(keys, "; ")
 }
 
 // anonStructName names the declaration in generated code. It must be one
@@ -99,64 +39,58 @@ func declID(sym ir.Symbol, exact bool) (string, bool) {
 // and underscore to build it from. Two declarations can share a base name --
 // a local `Style` and an imported one spell one signature -- so a taken name
 // gets a counter rather than a second `type` of that name in the output.
-func (c *checker) anonStructName(pkg *ir.Package, canon []*ir.StructField, sig string) string {
-	var b strings.Builder
-	b.WriteString(anonStructPrefix)
-	for _, f := range canon {
-		b.WriteString(f.Name)
-		b.WriteString("_")
-	}
-	sum := sha256.Sum256([]byte(sig))
-	b.WriteString(hex.EncodeToString(sum[:])[:6])
-	base := b.String()
-	if c.anonNames[pkg] == nil {
-		c.anonNames[pkg] = map[string]bool{}
+func (t *declTables) anonStructName(pkg *ir.Package, canon []*ir.StructField) string {
+	base := ir.AnonStructBaseName(canon)
+	if t.anonNames[pkg] == nil {
+		t.anonNames[pkg] = map[string]bool{}
 	}
 	name := base
-	for n := 2; c.anonNames[pkg][name]; n++ {
+	for n := 2; t.anonNames[pkg][name]; n++ {
 		name = base + "_" + strconv.Itoa(n)
 	}
-	c.anonNames[pkg][name] = true
+	t.anonNames[pkg][name] = true
 	return name
 }
 
 // internAnonStruct returns the one *ir.StructDef this package uses for an
 // anonymous struct with these fields, registering it in pkg.Structs the first
 // time. Keyed by package as well as signature: `sngl:builtin` interns
-// `struct {}` for `effect<T = struct {}>` before a program is parsed, and
+// `struct {}` for `effect[T = struct {}]` before a program is parsed, and
 // sharing that would hand the program a decl its own codegen never emits.
 func (c *checker) internAnonStruct(fields []*ir.StructField) *ir.StructDef {
 	canon := slices.SortedStableFunc(slices.Values(fields), func(a, b *ir.StructField) int {
 		return strings.Compare(a.Name, b.Name)
 	})
-	sig, key := anonSignature(canon)
+	key := anonKey(canon)
 	pkg := c.declPkg()
-	if c.anonStructs == nil {
-		c.anonStructs = map[*ir.Package]map[string]*ir.StructDef{}
-		c.anonNames = map[*ir.Package]map[string]bool{}
+	t := c.tables()
+	if t.anonStructs == nil {
+		t.anonStructs = map[*ir.Package]map[string]*ir.StructDef{}
+		t.anonNames = map[*ir.Package]map[string]bool{}
 	}
-	if c.anonStructs[pkg] == nil {
-		c.anonStructs[pkg] = map[string]*ir.StructDef{}
+	if t.anonStructs[pkg] == nil {
+		t.anonStructs[pkg] = map[string]*ir.StructDef{}
 	}
-	if sd, ok := c.anonStructs[pkg][key]; ok {
+	if sd, ok := t.anonStructs[pkg][key]; ok {
 		return sd
 	}
 	sd := &ir.StructDef{
-		Name:   c.anonStructName(pkg, canon, sig),
-		Pkg:    c.libPkgName,
+		Name:   t.anonStructName(pkg, canon),
+		Pkg:    c.declPkg(),
 		Fields: canon,
 		Anon:   true,
 	}
-	c.anonStructs[pkg][key] = sd
+	t.anonStructs[pkg][key] = sd
 	pkg.Structs = append(pkg.Structs, sd)
 	return sd
 }
 
 // anonFieldsFromInits types an anonymous struct literal by its own values.
 // Giving up leaves it the decl-less struct it was. A spread names no field
-// set; an unbound type parameter has no one type, and interning it would give
-// every instantiation one declaration whose field is `T`. A duplicate name is
-// reported by the caller, which sees the declared literals too.
+// set.
+// A field naming a type parameter is kept: anonStructType declares such a
+// struct un-interned. A duplicate name is reported by the caller, which sees
+// the declared literals too.
 func (c *checker) anonFieldsFromInits(inits []ir.FieldInit) ([]*ir.StructField, bool) {
 	fields := make([]*ir.StructField, 0, len(inits))
 	seen := map[string]bool{}
@@ -166,10 +100,7 @@ func (c *checker) anonFieldsFromInits(inits []ir.FieldInit) ([]*ir.StructField, 
 		}
 		seen[fi.Name] = true
 		t := exprType(fi.Value)
-		if t == nil || t.Kind == ir.TypeInvalid || t.Kind == ir.TypeVoid || t.Kind == ir.TypeDyn {
-			return nil, false
-		}
-		if hasTypeParam(t) {
+		if t == nil || t.Kind == ir.TypeInvalid || t.Kind == ir.TypeVoid {
 			return nil, false
 		}
 		fields = append(fields, &ir.StructField{Name: fi.Name, Type: t})
@@ -177,21 +108,18 @@ func (c *checker) anonFieldsFromInits(inits []ir.FieldInit) ([]*ir.StructField, 
 	return fields, true
 }
 
-func hasTypeParam(t *ir.Type) bool {
-	if t == nil {
-		return false
+// anonStructType is the anonymous struct with these fields. One whose fields
+// name a type parameter is declared here and interned nowhere: its fields mean
+// the parameters in scope where it was written and no other, so two
+// declarations each writing `struct { v T }` get one each, and substituting
+// it (ir.Type.Substitute) builds another rather than writing a shared one.
+// Everything else is the package's interned declaration.
+func (c *checker) anonStructType(fields []*ir.StructField) *ir.Type {
+	if !slices.ContainsFunc(fields, func(f *ir.StructField) bool { return f.Type.HasTypeParam() }) {
+		return c.internAnonStruct(fields).SymType()
 	}
-	if t.Kind == ir.TypeTypeParam {
-		return true
-	}
-	if slices.ContainsFunc(t.Elems, hasTypeParam) {
-		return true
-	}
-	if t.Sig != nil {
-		if slices.ContainsFunc(t.Sig.Params, func(p *ir.Param) bool { return hasTypeParam(p.Type) }) {
-			return true
-		}
-		return hasTypeParam(t.Sig.Return)
-	}
-	return false
+	canon := slices.SortedStableFunc(slices.Values(fields), func(a, b *ir.StructField) int {
+		return strings.Compare(a.Name, b.Name)
+	})
+	return (&ir.StructDef{Pkg: c.declPkg(), Fields: canon, Anon: true}).SymType()
 }

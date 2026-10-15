@@ -6,8 +6,8 @@ import (
 	"slices"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/ir"
 )
 
 // rendermodel.go builds the language-agnostic per-route render model
@@ -328,6 +328,9 @@ func (rb *renderBuilder) elementAttrs(n *ir.NodeInst) []*ir.Arg {
 		if p.Name == "" || p.Name == tagProp || p.Name == attrsProp || p.Name == classStyleProp || p.Name == classStyleDarkProp {
 			continue
 		}
+		if isEmptyIDProp(p.Name, p.Value) {
+			continue
+		}
 		out = append(out, p)
 	}
 	extra := codegen.WildcardProps(n)
@@ -335,50 +338,6 @@ func (rb *renderBuilder) elementAttrs(n *ir.NodeInst) []*ir.Arg {
 		out = append(out, &ir.Arg{Name: name, Value: extra[name]})
 	}
 	return out
-}
-
-// logicalMutations returns the handler body with visual/DOM-patch statements
-// removed, leaving only logical state mutations (and any other non-DOM
-// statements). A DOM-patch is an ir.Assign whose target is a field Select on an
-// element-ref ident (e.g. `__n0.value = ...`) — the lowered client-side patch
-// that has no place in a server-side action body.
-func logicalMutations(block []ir.Stmt) []ir.Stmt {
-	out := make([]ir.Stmt, 0, len(block))
-	for _, s := range block {
-		if isDOMPatchStmt(s) {
-			continue
-		}
-		// A patch inside a block is the page's too -- the catch block the
-		// window's boundary makes of a handler that may raise, a branch. The
-		// block is copied, since the page's half of the handler keeps it.
-		switch n := s.(type) {
-		case *ir.If:
-			cp := *n
-			cp.Body, cp.Else = logicalMutations(n.Body), logicalMutations(n.Else)
-			s = &cp
-		case *ir.For:
-			cp := *n
-			cp.Body, cp.Else = logicalMutations(n.Body), logicalMutations(n.Else)
-			s = &cp
-		}
-		out = append(out, s)
-	}
-	return out
-}
-
-// isDOMPatchStmt reports whether s is a lowered DOM-patch assignment
-// (assignment to a field on an element-ref ident).
-func isDOMPatchStmt(s ir.Stmt) bool {
-	a, ok := s.(*ir.Assign)
-	if !ok {
-		return false
-	}
-	sel, ok := a.Target.(*ir.Select)
-	if !ok {
-		return false
-	}
-	id, ok := sel.Operand.(*ir.Ident)
-	return ok && id.IsElementRef
 }
 
 // stateVarNames returns the set of (non-synthesized) state var names.

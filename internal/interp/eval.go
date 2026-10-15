@@ -3,16 +3,17 @@ package interp
 import (
 	"fmt"
 	"maps"
+	"reflect"
 	"slices"
-	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/internal/opeval"
-	"git.duckfam.us/jonathan/sngl/ir"
-	goi18n "git.duckfam.us/jonathan/sngl/pkg/go/i18n"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/internal/opeval"
+	"duckfam.us/sngl/ir"
+	goi18n "duckfam.us/sngl/pkg/go/i18n"
 )
 
 // maxCallDepth is the maximum allowed function call depth.
@@ -53,16 +54,35 @@ func funcValue(fn *ir.Func, env *Env) *LambdaValue {
 //
 // Rebound even when the body failed, because the statements before the failure
 // did run.
+//
+// A lambda made while another lambda ran closes over that call's snapshot,
+// which nothing reads once the call has returned: its values were carried back
+// to where it was taken from, and go stale there as the program runs on. So a
+// lambda closing over an ended call reads the scopes that call was taken from
+// first, and writes back to them after -- a handler a record holds is made
+// inside the `map` that builds the list, and its writes reached nobody
+// (testdata/family_data_events.sngl). A call still running is left alone: what
+// it has written has not reached its origin yet.
 func (lv *LambdaValue) Call(args []any) (any, error) {
+	ended := lv.env.ended
+	if ended {
+		for o := lv.env.origin; o != nil; o = o.origin {
+			lv.env.refreshFrom(o)
+		}
+	}
 	child := lv.env.Snapshot()
+	defer func() { child.ended = true }()
 	for i, p := range lv.params(args) {
 		if i < len(args) {
-			child.Set(p, args[i])
+			child.Set(p, bindArg(args[i], p))
 		}
 	}
 	defer child.enterFrame(lv.site)()
 	res, err := child.underContext(lv.ctx, func() (any, error) { return child.execBlockForResult(lv.fn.Block) })
 	lv.env.RebindFrom(child)
+	if ended {
+		lv.env.writeBack()
+	}
 	return res, err
 }
 
@@ -70,7 +90,7 @@ func (lv *LambdaValue) Call(args []any) (any, error) {
 func (lv *LambdaValue) CallWithEnv(env *Env, args []any) (any, error) {
 	for i, p := range lv.params(args) {
 		if i < len(args) {
-			env.Set(p, args[i])
+			env.Set(p, bindArg(args[i], p))
 		}
 	}
 	defer env.enterFrame(lv.site)()
@@ -98,6 +118,99 @@ type unitValue struct {
 	// the bases, since no compiled target carries a spelling to prefer.
 	Suffix string
 	Table  *unitTable
+}
+
+// UnitAmounts reports v's magnitude per base when v is a unit value. The map
+// is the value's own and must not be written.
+func UnitAmounts(v any) (map[string]float64, bool) {
+	u, ok := v.(unitValue)
+	if !ok {
+		return nil, false
+	}
+	return u.Amounts, true
+}
+
+// UnitLiteralValue is a unit literal's value, for an evaluator outside the
+// interpreter that holds one: the optimizer, folding a constant that holds a
+// multi-base unit, which no number can stand for. It is the interpreter's own
+// value, so UnitAmounts spells it back and UnitBinary combines it with one the
+// interpreter made.
+func UnitLiteralValue(lit *ir.Literal, tables *UnitTables) (any, bool) {
+	ud := ir.UnitDeclOf(lit.Type)
+	mag, base, ok := ir.UnitMagnitude(lit)
+	if ud == nil || !ok {
+		return nil, false
+	}
+	amounts := map[string]float64{}
+	if mag != 0 {
+		amounts[base] = mag
+	}
+	return newUnitValue(tables.of(ud), lit.Suffix, amounts), true
+}
+
+// UnitTables holds the table of each unit declaration a caller has read a
+// literal of, which UnitLiteralValue would otherwise build per literal.
+type UnitTables struct {
+	m sync.Map // *ir.UnitDef -> *unitTable
+}
+
+func (ts *UnitTables) of(ud *ir.UnitDef) *unitTable {
+	if t, ok := ts.m.Load(ud); ok {
+		return t.(*unitTable)
+	}
+	t, _ := ts.m.LoadOrStore(ud, buildUnitTableFromDef(ud))
+	return t.(*unitTable)
+}
+
+// UnitBinary is op on a and b where either is a unit value (isUnit): the sum
+// or difference of two values of one unit, a value scaled by a number, and
+// equality base by base. Anything else is not evaluable (ok false) -- the
+// checker refuses an ordering of a multi-base unit, and a raw comparison of two
+// values would compare maps.
+func UnitBinary(op ast.BinaryOp, a, b any) (val any, ok, isUnit bool) {
+	ua, aUnit := a.(unitValue)
+	ub, bUnit := b.(unitValue)
+	if !aUnit && !bUnit {
+		return nil, false, false
+	}
+	num := func(v any) (float64, bool) {
+		switch n := v.(type) {
+		case int:
+			return float64(n), true
+		case float64:
+			return n, true
+		}
+		return 0, false
+	}
+	switch {
+	case aUnit && bUnit && ua.sameUnit(ub):
+		switch op {
+		case ast.BinAdd:
+			return ua.Add(ub), true, true
+		case ast.BinSub:
+			return ua.Sub(ub), true, true
+		case ast.BinEq:
+			return ua.Equal(ub), true, true
+		case ast.BinNeq:
+			return !ua.Equal(ub), true, true
+		}
+	case aUnit && !bUnit:
+		if f, ok := num(b); ok {
+			switch op {
+			case ast.BinMul:
+				return ua.Scale(f), true, true
+			case ast.BinDiv:
+				if f != 0 {
+					return ua.Scale(1 / f), true, true
+				}
+			}
+		}
+	case bUnit && !aUnit:
+		if f, ok := num(a); ok && op == ast.BinMul {
+			return ub.Scale(f), true, true
+		}
+	}
+	return nil, false, true
 }
 
 // newUnitValue takes ownership of amounts, so every caller passes a map it
@@ -132,8 +245,24 @@ func (u unitValue) eachBase(peers []unitValue, f func(base string)) {
 	}
 }
 
+// sameUnit reports whether u and other are values of one unit declaration.
+// Each environment builds its own tables, so two tables of one declaration
+// are one unit; and a build clones the package per target, so two
+// declarations of one name and the same bases are one declaration copied --
+// the optimizer's value of a literal and the interpreter's met as two.
+func (u unitValue) sameUnit(other unitValue) bool {
+	if u.Table == other.Table {
+		return true
+	}
+	a, b := u.Table, other.Table
+	if a == nil || b == nil || a.Decl == nil || b.Decl == nil {
+		return false
+	}
+	return a.Decl == b.Decl || a.Decl.Name == b.Decl.Name && slices.Equal(a.Bases, b.Bases)
+}
+
 func (u unitValue) Equal(other unitValue) bool {
-	if u.Table != other.Table {
+	if !u.sameUnit(other) {
 		return false
 	}
 	equal := true
@@ -157,14 +286,14 @@ func (u unitValue) combine(other unitValue, op func(a, b float64) float64) unitV
 }
 
 func (u unitValue) Add(other unitValue) unitValue {
-	if u.Table != other.Table {
+	if !u.sameUnit(other) {
 		return u
 	}
 	return u.combine(other, func(a, b float64) float64 { return a + b })
 }
 
 func (u unitValue) Sub(other unitValue) unitValue {
-	if u.Table != other.Table {
+	if !u.sameUnit(other) {
 		return u
 	}
 	return u.combine(other, func(a, b float64) float64 { return a - b })
@@ -247,12 +376,21 @@ func (u unitValue) firstBase() string {
 	return u.countedIn()
 }
 
+// singleBase reports whether the unit declares one base, which is what makes
+// magnitude() the whole of the value rather than one component of it.
+func (u unitValue) singleBase() bool {
+	return u.Table != nil && len(u.Table.Bases) == 1
+}
+
 func (u unitValue) sameFamily(other unitValue) bool {
-	return u.Table != nil && u.Table == other.Table
+	return u.Table != nil && u.sameUnit(other)
 }
 
 // unitTable maps suffixes to conversion factors.
 type unitTable struct {
+	// Decl is the declaration the table was built from, which is what makes
+	// two values one unit.
+	Decl        *ir.UnitDef
 	Base        string
 	Conversions map[string]float64
 	// BaseOf is the base each suffix reduces to (a base reduces to itself),
@@ -297,6 +435,11 @@ type Env struct {
 	Log           []string
 	// Locale is the active BCP-47 locale for i18n calls (default "en").
 	Locale string
+	// Clock is what `time.now()` reads, set on the scope a run is rooted at
+	// and found from the rest through the owner chain (Env.clock). A test
+	// hands in the Virtual one its timers are scheduled against, so the two
+	// cannot disagree; nil anywhere on the chain is the wall clock.
+	Clock Clock
 	// ContextVals holds runtime overrides for context values keyed by *ir.Context.
 	// Set by t.setContext(); read by Eval(*ir.ContextRead).
 	ContextVals map[*ir.Context]any
@@ -332,8 +475,19 @@ type Env struct {
 	// needs: the handlers a call site supplied are written there, and the scope
 	// one runs in is this env's parent.
 	inst *ir.NodeInst
+	// entries is the insertions whose populations were being mounted where
+	// inst was, innermost last: what a forwarded component entry's `.empty`
+	// is answered from (slotEmpty).
+	entries []entryFrame
 	// origin is the scope this one is a Snapshot of, or nil.
 	origin *Env
+	// ended says this is the snapshot a lambda call ran in, and the call has
+	// returned (LambdaValue.Call).
+	ended bool
+	// mountCopy says this is the copy of a live scope a mount took for one
+	// copy of a loop's body or one scoped population: the state it holds is
+	// as old as that mount (Env.runHandler).
+	mountCopy bool
 	// spreadVals holds the operands of the spreads the running statement
 	// evaluates once (ir.StatementSpreads), by site.
 	spreadVals map[int]any
@@ -349,6 +503,9 @@ type Env struct {
 	nav       *navState
 	navStack  *Env
 	navParams *navParams
+	// wlog is the program's write log, held by the outermost scope and
+	// reached by every other through writes().
+	wlog *writeLog
 }
 
 func NewEnv() *Env {
@@ -356,6 +513,7 @@ func NewEnv() *Env {
 		vals:      map[ir.Symbol]any{},
 		childEnvs: map[childKey]*Env{},
 		handling:  new(int),
+		wlog:      &writeLog{},
 	}
 }
 
@@ -487,6 +645,7 @@ func (env *Env) Snapshot() *Env {
 		RenderDepth:   env.RenderDepth,
 		maxIterations: env.maxIterations,
 		Locale:        env.Locale,
+		Clock:         env.Clock,
 		ContextVals:   env.ContextVals, // shared reference — overrides visible in child envs
 		// Shared reference: a click handler runs against a snapshot, and the
 		// boundary it trips is the one the original scope renders.
@@ -501,9 +660,11 @@ func (env *Env) Snapshot() *Env {
 		// *caller's* instantiation instead, asked it for a subscriber to an
 		// event it does not declare, and went nowhere.
 		inst:       env.inst,
+		entries:    env.entries,
 		origin:     env,
 		spreadVals: env.spreadVals,
 		handling:   env.handling,
+		wlog:       env.writes(),
 		build:      env.build,
 	}
 	maps.Copy(cp.vals, env.vals)
@@ -912,7 +1073,7 @@ func toStringStringMap(v any) map[string]string {
 	return m
 }
 
-// evalPluralKeyMap evaluates a map<PluralKey, string> literal expr, converting
+// evalPluralKeyMap evaluates a map[PluralKey, string] literal expr, converting
 // keys to goi18n.PluralKey values. It handles ir.MapLitIR (the normal form after
 // checking) and falls back to a generic eval for other expr kinds.
 func (env *Env) evalPluralKeyMap(expr ir.Expr) (map[goi18n.PluralKey]string, error) {
@@ -1016,6 +1177,8 @@ func (env *Env) Eval(e ir.Expr) (any, error) {
 		return newLambda(n.Func, env), nil
 	case *ir.ContextRead:
 		return env.ContextVal(n.Ref), nil
+	case *ir.SlotEmpty:
+		return env.slotEmpty(n)
 	case *ir.Closure:
 		return newLambda(n.Func, env), nil
 	}
@@ -1071,6 +1234,12 @@ func (env *Env) evalIdent(e *ir.Ident) (any, error) {
 	if e.Member != "" {
 		return e.Member, nil
 	}
+	// i18n's predeclared PluralKey constants, whose value is the runtime's.
+	if ir.IsI18nPluralKey(e) {
+		if pk, ok := i18nPluralConst(e.Name); ok {
+			return pk, nil
+		}
+	}
 	// A build-target node read as a value, bare inside its own package.
 	if _, name, ok := ir.TargetNode(e.Sym); ok {
 		return name, nil
@@ -1108,7 +1277,7 @@ func (env *Env) resolveCallableFunc(name string) *ir.Func {
 	for e := env; e != nil; e = e.parent {
 		if e.Comp != nil {
 			for _, fn := range e.Comp.Funcs {
-				if fn.Name == name && fn.Receiver == "" {
+				if fn.Name == name && !fn.IsMethod() {
 					return fn
 				}
 			}
@@ -1118,7 +1287,7 @@ func (env *Env) resolveCallableFunc(name string) *ir.Func {
 		}
 		if e.Pkg != nil {
 			for _, fn := range e.Pkg.Funcs {
-				if fn.Name == name && fn.Receiver == "" {
+				if fn.Name == name && !fn.IsMethod() {
 					return fn
 				}
 			}
@@ -1218,34 +1387,15 @@ func (env *Env) lookup(sym ir.Symbol) (any, error) {
 		return funcValue(fn, env), nil
 	}
 	// A declaration the environment never bound but that carries its own
-	// value: a constant from a library package, which is in no list this
-	// program walks. The symbol has the initializer, so evaluate it.
-	if v, ok := sym.(*ir.Var); ok && v.IsConst && v.Init != nil {
+	// value: a constant or a var of another package, which is in no list
+	// this program walks. The symbol has the initializer, so evaluate it.
+	if v, ok := sym.(*ir.Var); ok && v.Init != nil {
 		return env.Eval(v.Init)
 	}
 	return nil, fmt.Errorf("undefined variable %q", sym.SymName())
 }
 
 func (env *Env) evalSelect(e *ir.Select) (any, error) {
-	// i18n namespace field access: i18n.zero, i18n.one, etc.
-	// These are predeclared PluralKey constants; resolve them before
-	// attempting a general object lookup.
-	if ident, ok := e.Operand.(*ir.Ident); ok && ident.Name == "i18n" {
-		if pk, ok := i18nPluralConst(e.Field); ok {
-			return pk, nil
-		}
-	}
-
-	// `pkg.NAME` where pkg is an import's namespace. A namespace is not a
-	// value, so evaluating the operand would report the alias as an undefined
-	// variable -- which is what a const named through one used to do wherever
-	// the optimizer had not already folded it away.
-	if ident, ok := e.Operand.(*ir.Ident); ok {
-		if ns, ok := ident.Sym.(*ir.Namespace); ok {
-			return env.namespaceMember(ns, e.Field)
-		}
-	}
-
 	if e.Populated {
 		node, err := env.Eval(e.Via)
 		if err != nil {
@@ -1319,36 +1469,6 @@ func intrinsicMethod(t *ir.Type, field string) func([]any) (any, error) {
 	return intrinsics[fn.Intrinsic]
 }
 
-// namespaceMember evaluates `alias.member` where alias names an imported
-// package. A const is the only member a select can produce a value for: a
-// type, a component or a function reached this way is a call or a literal, and
-// arrives as one of those rather than here.
-func (env *Env) namespaceMember(ns *ir.Namespace, field string) (any, error) {
-	if ns.Pkg == nil || ns.Pkg.Symbols == nil {
-		return nil, fmt.Errorf("package %q has no declarations", ns.Name)
-	}
-	sym, ok := ns.Pkg.Symbols.LookupMember(field)
-	if !ok {
-		return nil, fmt.Errorf("undefined: %s.%s", ns.Name, field)
-	}
-	// A build-target node read as a value is the target's identity: its
-	// registered name, which is what PLATFORM holds.
-	if _, name, ok := ir.TargetNode(sym); ok {
-		return name, nil
-	}
-	v, isVar := sym.(*ir.Var)
-	if !isVar {
-		return nil, fmt.Errorf("cannot read %s.%s as a value", ns.Name, field)
-	}
-	if val, bound := env.Value(v); bound {
-		return val, nil
-	}
-	if v.Init == nil {
-		return nil, nil
-	}
-	return env.Eval(v.Init)
-}
-
 // i18nPluralConst maps the predeclared i18n PluralKey field names to their
 // Go runtime values. Returns (PluralKey, true) if found; (nil, false) otherwise.
 func i18nPluralConst(field string) (goi18n.PluralKey, bool) {
@@ -1385,29 +1505,24 @@ func (env *Env) evalIndex(e *ir.Index) (any, error) {
 		}
 		return list[i], nil
 	}
+	// One copy of a node a loop rendered under one id, where the loop rendered
+	// it once: ResolveElementRef hands a single node back as itself rather
+	// than as a list of one.
+	if e.Type != nil && e.Type.Kind == ir.TypeComponent && obj != nil {
+		if _, isList := obj.([]any); !isList {
+			if i := ToInt(idx); i != 0 {
+				return nil, fmt.Errorf("index %d out of range (len 1)", i)
+			}
+			return obj, nil
+		}
+	}
 	if m, ok := obj.(map[string]any); ok {
 		key := fmt.Sprintf("%v", idx)
 		if v, ok := m[key]; ok {
 			return v, nil
 		}
-		// Miss → zero value. Use the Index node's result type when it is
-		// concrete; fall back to sampling an existing map value when the type
-		// was inferred as Dyn (e.g. c.scores["x"] through a component Select).
-		if e.Type != nil && e.Type.Kind != ir.TypeDyn {
-			return zeroValueFor(e.Type), nil
-		}
-		// Sample deterministically (smallest key): Go map iteration is
-		// randomised, so ranging picked a run-to-run-varying value, making the
-		// zero-value template flaky for heterogeneous dyn maps (bugs.md #24).
-		if len(m) > 0 {
-			keys := make([]string, 0, len(m))
-			for k := range m {
-				keys = append(keys, k)
-			}
-			sort.Strings(keys)
-			return zeroValueForValue(m[keys[0]]), nil
-		}
-		return nil, nil
+		// Miss → the zero value of the map's element type.
+		return zeroValueFor(e.Type), nil
 	}
 	return nil, fmt.Errorf("cannot index %T", obj)
 }
@@ -1450,7 +1565,7 @@ func (env *Env) evalListLit(e *ir.ListLit) (any, error) {
 			if err != nil {
 				return nil, err
 			}
-			if items, ok := v.([]any); ok {
+			if items, ok := copyOf(v, sp.Operand.ExprType()).([]any); ok {
 				list = append(list, items...)
 			} else {
 				list = append(list, v)
@@ -1461,7 +1576,7 @@ func (env *Env) evalListLit(e *ir.ListLit) (any, error) {
 		if err != nil {
 			return nil, err
 		}
-		list = append(list, v)
+		list = append(list, copyOf(v, el.ExprType()))
 	}
 	if list == nil {
 		list = []any{}
@@ -1476,6 +1591,7 @@ func (env *Env) evalStructLit(e *ir.StructLit) (any, error) {
 		if err != nil {
 			return nil, err
 		}
+		v = copyOf(v, f.Value.ExprType())
 		if f.Spread {
 			if src, ok := v.(*Struct); ok {
 				s.Merge(src)
@@ -1484,7 +1600,49 @@ func (env *Env) evalStructLit(e *ir.StructLit) (any, error) {
 		}
 		s.Set(f.Name, v)
 	}
-	return s, nil
+	return s, env.fillOmittedFields(s, e.Def)
+}
+
+// fillOmittedFields gives every field of def a literal left out the value the
+// declaration means by omitting it: its written default, or its type's zero,
+// as every compiled target's struct holds. The fields end in def's order,
+// which is the order every backend emits.
+func (env *Env) fillOmittedFields(s *Struct, def *ir.StructDef) error {
+	if def == nil || !slices.ContainsFunc(def.Fields, func(f *ir.StructField) bool {
+		_, ok := s.Get(f.Name)
+		return !ok
+	}) {
+		return nil
+	}
+	fields := make([]Field, 0, len(def.Fields))
+	for _, f := range def.Fields {
+		if i := slices.IndexFunc(s.Fields, func(g Field) bool { return g.Name == f.Name }); i >= 0 {
+			fields = append(fields, s.Fields[i])
+			continue
+		}
+		init := f.Default
+		if init == nil {
+			init = ir.ZeroExpr(f.Type)
+		}
+		if init == nil {
+			// A type with no zero of its own here -- a type parameter the
+			// declaration left unbound -- stays absent, as before.
+			continue
+		}
+		v, err := env.Eval(init)
+		if err != nil {
+			return err
+		}
+		fields = append(fields, Field{Name: f.Name, Value: copyOf(v, f.Type), Omitted: true, Filled: DeepCopy(v)})
+	}
+	// A spread may have supplied a field def does not name; keep it after.
+	for _, f := range s.Fields {
+		if !slices.ContainsFunc(fields, func(g Field) bool { return g.Name == f.Name }) {
+			fields = append(fields, f)
+		}
+	}
+	s.Fields = fields
+	return nil
 }
 
 func (env *Env) evalMapLitIR(e *ir.MapLitIR) (any, error) {
@@ -1501,7 +1659,7 @@ func (env *Env) evalMapLitIR(e *ir.MapLitIR) (any, error) {
 		// Keys may be PluralKey values (from i18n.exactly/i18n.one etc.) or
 		// plain strings. Store them as formatted strings so the map is
 		// map[string]any; toPluralKeyStringMap will re-interpret them.
-		m[fmt.Sprintf("%v", k)] = v
+		m[fmt.Sprintf("%v", k)] = copyOf(v, entry.Value.ExprType())
 	}
 	return m, nil
 }
@@ -1561,7 +1719,19 @@ func (env *Env) evalBinary(e *ir.Binary) (any, error) {
 				}
 				return lu.Scale(1 / r), nil
 			}
-			return nil, fmt.Errorf("cannot divide by a unit value")
+			// unit / unit is the dimensionless ratio the checker types as
+			// float. Only for a single-base unit: a multi-base value is a
+			// magnitude per base, so a ratio would need one answer per base
+			// and there is none to pick -- the same premise that refuses
+			// ordering two of them.
+			if lu.sameFamily(ru) && lu.singleBase() && ru.singleBase() {
+				d := ru.magnitude()
+				if d == 0 {
+					return nil, fmt.Errorf("division by zero")
+				}
+				return lu.magnitude() / d, nil
+			}
+			return nil, fmt.Errorf("cannot divide %s by %s", lu.Suffix, ru.Suffix)
 		}
 	}
 
@@ -1613,8 +1783,8 @@ func (env *Env) evalBinary(e *ir.Binary) (any, error) {
 }
 
 // numKindOf maps an IR result type to the opeval width descriptor so arithmetic
-// wraps to the right width. A nil or non-numeric type (e.g. a dyn operand in a
-// test context) yields the zero NumKind, which is default int / float-fallback.
+// wraps to the right width. A nil or non-numeric type yields the zero NumKind,
+// which is default int / float-fallback.
 func numKindOf(t *ir.Type) opeval.NumKind {
 	if t == nil || !t.IsNumeric() {
 		return opeval.NumKind{}
@@ -1657,6 +1827,10 @@ func (env *Env) evalUnary(e *ir.Unary) (any, error) {
 type listRef struct {
 	list []any
 	idx  int
+	// iter is the loop's iterable and at the scope it was evaluated in, which
+	// is where a write through the element lands (listRef.cell).
+	iter ir.Expr
+	at   *Env
 }
 
 func (r *listRef) get() any  { return r.list[r.idx] }
@@ -1697,7 +1871,7 @@ func (env *Env) evalCallSite(call *ir.Call) (any, error) {
 	}
 
 	// Type-attached method call (checker-normalized): Args[0] is the receiver.
-	if call.Func != nil && call.Func.Receiver != "" {
+	if call.Func != nil && call.Func.IsMethod() {
 		return env.evalTypeMethodCall(call)
 	}
 
@@ -1705,13 +1879,23 @@ func (env *Env) evalCallSite(call *ir.Call) (any, error) {
 		// An intrinsic this interpreter implements answers a bare call too,
 		// as it does a qualified one: `follow(to, params)` in the package that
 		// declares it. The declaration's body is a placeholder.
-		if _, ok := intrinsics[call.Func.Intrinsic]; ok && call.Func.Intrinsic != "" {
-			args, err := env.evalCallArgs(call.Args)
+		if call.Func.Intrinsic != "" {
+			values, err := env.evalCallArgs(call.Args)
 			if err != nil {
 				return nil, err
 			}
-			result, _, err := runIntrinsic(call.Func.Intrinsic, args)
-			return result, err
+			args, err := env.boundArgValues(call.Func, call.Args, values)
+			if err != nil {
+				return nil, err
+			}
+			if result, handled, err := env.runClockIntrinsic(call.Func, args); handled {
+				return result, err
+			}
+			if _, ok := intrinsics[call.Func.Intrinsic]; ok {
+				result, _, err := runIntrinsic(call.Func.Intrinsic, args)
+				return result, err
+			}
+			return env.callUserFuncArgValues(call.Func, call.Args, values)
 		}
 		return env.EvalUserFuncCallArgs(call.Func, call.Args)
 	}
@@ -1749,7 +1933,7 @@ func (env *Env) evalCallSite(call *ir.Call) (any, error) {
 
 func (env *Env) evalTypeMethodCall(call *ir.Call) (any, error) {
 	method := call.Func.Name
-	receiverName := call.Func.Receiver
+	receiverName := call.Func.RecvName()
 
 	// ErrorRaise: construct an error payload and bubble a RaisedError
 	// up the Go error chain. The originating CallStmt's ErrorMode then
@@ -1818,13 +2002,17 @@ func (env *Env) evalTypeMethodCall(call *ir.Call) (any, error) {
 		evalArgs = append([]any{recv}, rest...)
 	}
 
+	if result, handled, err := env.runClockIntrinsic(call.Func, evalArgs); handled {
+		return result, err
+	}
+
 	if result, handled, err := runIntrinsic(call.Func.Intrinsic, evalArgs); handled {
 		return result, err
 	}
 
 	// List mutation (push/remove) needs writeback; evaluate before user funcs
 	// since stdlib push/remove delegate to untranslated intrinsics.
-	if receiverName == "list" && (method == "push" || method == "remove") && len(call.Args) >= 1 {
+	if receiverName == "list" && isListMutation(method) && len(call.Args) >= 1 {
 		return env.evalBuiltinMethod(call, method, evalArgs)
 	}
 
@@ -1946,11 +2134,11 @@ func (env *Env) evalNamespaceCall(call *ir.Call) (any, error) {
 			}
 			// Mutation methods on lists need a writeback; dispatch before
 			// user-defined stdlib bodies that delegate to intrinsics.
-			if method == "push" || method == "remove" || method == "filter" || method == "map" {
+			if isListMutation(method) || method == "filter" || method == "map" {
 				return env.evalBuiltinMethodFromRecv(call.Receiver, method, recv, evalArgs[1:])
 			}
 			if fn := recvFn; recvOK && len(fn.Block) > 0 {
-				// A method on a generic receiver (list<T>, map<K,V>) declares
+				// A method on a generic receiver (list[T], map[K,V]) declares
 				// no receiver parameter and names the value `this`, so there
 				// is nothing in the argument list to bind it to. Supply it the
 				// way a component method gets its receiver, in a scope of its
@@ -1965,9 +2153,8 @@ func (env *Env) evalNamespaceCall(call *ir.Call) (any, error) {
 			}
 			// Enum value method fallback: when recv is a bare string and no
 			// dispatch succeeded, scan user-defined enums for a matching
-			// member and try the method against that enum's namespace. Covers
-			// `c.s.isOk()` where `c.s` is typed dyn externally but holds an
-			// enum member at runtime.
+			// member and try the method against that enum's namespace: an
+			// enum member the interpreter holds as its bare name.
 			if s, ok := recv.(string); ok && env.Pkg != nil {
 				for _, ed := range env.Pkg.Enums {
 					for _, m := range ed.Members {
@@ -2003,200 +2190,18 @@ func (env *Env) runEventHandlerValues(fn *ir.Func, vals []any) (any, error) {
 		if i >= len(vals) {
 			break
 		}
-		env.Set(p, coerceEventArg(p.Type, vals[i]))
+		env.Set(p, bindArg(vals[i], p))
 	}
 	return env.execBlockForResult(fn.Block)
-}
-
-// coerceEventArg shapes what a host reported into what the handler declared.
-//
-// A toolkit reports positional values -- OnChanged hands over a string -- while
-// an event's payload is a declared struct, InputEvent{value string}. The
-// declaration is the only thing that knows which is which, so the adaptation
-// happens here rather than in a host that would have to know the field names.
-func coerceEventArg(want *ir.Type, v any) any {
-	if want == nil || want.Kind != ir.TypeStruct {
-		return v
-	}
-	if _, already := v.(*Struct); already {
-		return v
-	}
-	def, _ := want.Decl.(*ir.StructDef)
-	if def == nil || len(def.Fields) == 0 {
-		return v
-	}
-	// One value, one payload: it fills the first field. An event carrying more
-	// than one would need the host to report them in declaration order, which
-	// is what a Spec's param naming is for when that arrives.
-	out := NewStruct(def, want)
-	for i, f := range def.Fields {
-		if i == 0 {
-			out.Set(f.Name, v)
-			continue
-		}
-		out.Set(f.Name, zeroOf(f.Type))
-	}
-	return out
-}
-
-// zeroOf is the empty value of a type, for a payload field nothing reported.
-func zeroOf(t *ir.Type) any {
-	if t == nil {
-		return nil
-	}
-	switch t.Kind {
-	case ir.TypeString:
-		return ""
-	case ir.TypeBool:
-		return false
-	case ir.TypeInt:
-		return 0
-	case ir.TypeFloat:
-		return 0.0
-	}
-	return nil
-}
-
-// boundByEvent reports whether one of inst's `:prop` bindings is written back
-// by event, which boundPayloadField says.
-func boundByEvent(inst *ir.NodeInst, event string) bool {
-	if inst == nil {
-		return false
-	}
-	for _, b := range inst.Bindings {
-		if boundPayloadField(inst, b, event) != "" {
-			return true
-		}
-	}
-	return false
-}
-
-// eventPayload is the payload type inst's component declares for event.
-func eventPayload(inst *ir.NodeInst, event string) *ir.Type {
-	if inst == nil || inst.Component == nil {
-		return nil
-	}
-	for _, e := range inst.Component.Events {
-		if e.Name == event {
-			return e.Payload()
-		}
-	}
-	return nil
-}
-
-// boundPayloadField is the field of event's payload that carries binding b's
-// new value: the one of the bound prop's type, which is what the lowering's
-// write-back reads on every compiled target.
-func boundPayloadField(inst *ir.NodeInst, b ir.PropBinding, event string) string {
-	comp := inst.Component
-	if comp == nil {
-		return ""
-	}
-	var propType *ir.Type
-	for _, p := range comp.Props {
-		if p.Name == b.PropName {
-			propType = p.Type
-		}
-	}
-	payload := eventPayload(inst, event)
-	if propType == nil || payload == nil {
-		return ""
-	}
-	sd, _ := payload.Decl.(*ir.StructDef)
-	if sd == nil {
-		return ""
-	}
-	for _, f := range sd.Fields {
-		if f.Type != nil && f.Type.Kind == propType.Kind {
-			return f.Name
-		}
-	}
-	return ""
-}
-
-// cellByEvent reports whether event writes one of the cells an instance keeps
-// for the two-way props its call site left unbound (ir.UnboundProps). env is
-// the instance's own scope, and nil for a node that is no component's.
-func (env *Env) cellByEvent(inst *ir.NodeInst, event string) bool {
-	if env == nil || inst == nil {
-		return false
-	}
-	for _, p := range ir.UnboundProps(inst.Component, inst.Bindings) {
-		if boundPayloadField(inst, ir.PropBinding{PropName: p.Name}, event) != "" {
-			return true
-		}
-	}
-	return false
-}
-
-// writeCells is writeBindings for those cells: the payload's field of the
-// prop's type, written into the instance's scope, where bindProps leaves it
-// on every mount after the first.
-func (env *Env) writeCells(inst *ir.NodeInst, event string, vals []any) {
-	if env == nil || inst == nil || len(vals) == 0 {
-		return
-	}
-	st, ok := vals[0].(*Struct)
-	if !ok {
-		return
-	}
-	for _, p := range ir.UnboundProps(inst.Component, inst.Bindings) {
-		if field := boundPayloadField(inst, ir.PropBinding{PropName: p.Name}, event); field != "" {
-			v, _ := st.Get(field)
-			env.Set(p.Sym, v)
-			// The node's `#id` is bound to what the last mount showed
-			// (bindHandle); the handler about to run reads it before the
-			// next one does.
-			if inst.Handle != nil {
-				if m, ok := env.parentValue(inst.Handle).(map[string]any); ok {
-					m[p.Name] = v
-				}
-			}
-		}
-	}
-}
-
-// parentValue is sym's value in the scope env was mounted from, or nil.
-func (env *Env) parentValue(sym ir.Symbol) any {
-	if env.parent == nil {
-		return nil
-	}
-	v, _ := env.parent.Value(sym)
-	return v
-}
-
-// writeBindings writes an event's payload back through the node's bindings
-// before its handler runs, which is the order a compiled target runs them in.
-// `sngl test` runs the checked IR, where a binding is still the node's and no
-// lowering has made it a handler.
-func (env *Env) writeBindings(inst *ir.NodeInst, event string, vals []any) error {
-	if inst == nil || len(vals) == 0 {
-		return nil
-	}
-	st, ok := vals[0].(*Struct)
-	if !ok {
-		return nil
-	}
-	for _, b := range inst.Bindings {
-		field := boundPayloadField(inst, b, event)
-		if field == "" {
-			continue
-		}
-		v, _ := st.Get(field)
-		tmp := &ir.Param{Name: "__bound"}
-		env.Set(tmp, v)
-		err := env.execAssign(&ir.Assign{Target: b.Target, Op: ast.AssignSet, Value: &ir.Ident{Name: tmp.Name, Sym: tmp}})
-		delete(env.vals, tmp)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 // evalBuiltinMethodFromRecv dispatches list/string built-in methods when the
 // receiver expression is known separately from the rest of the args.
 func (env *Env) evalBuiltinMethodFromRecv(recvExpr ir.Expr, method string, recv any, rest []any) (any, error) {
+	var recvType *ir.Type
+	if recvExpr != nil {
+		recvType = recvExpr.ExprType()
+	}
 	switch method {
 	case "filter":
 		if list, ok := recv.([]any); ok && len(rest) == 1 {
@@ -2237,8 +2242,9 @@ func (env *Env) evalBuiltinMethodFromRecv(recvExpr ir.Expr, method string, recv 
 		}
 	case "push":
 		if list, ok := recv.([]any); ok && len(rest) == 1 {
+			rest[0] = copyOf(rest[0], elemType(recvType))
 			newList := append(list, rest[0])
-			return env.writeBackList(recvExpr, newList)
+			return env.writeBackList(recvExpr, newList, writeInsert, len(list), rest[0])
 		}
 	case "remove":
 		if list, ok := recv.([]any); ok && len(rest) == 1 {
@@ -2246,8 +2252,22 @@ func (env *Env) evalBuiltinMethodFromRecv(recvExpr ir.Expr, method string, recv 
 			if idx < 0 || idx >= len(list) {
 				return list, nil // documented: out of range leaves the list unchanged
 			}
+			removed := list[idx]
 			newList := append(list[:idx], list[idx+1:]...)
-			return env.writeBackList(recvExpr, newList)
+			return env.writeBackList(recvExpr, newList, writeRemove, idx, removed)
+		}
+	case "insert":
+		if list, ok := recv.([]any); ok && len(rest) == 2 {
+			rest[1] = copyOf(rest[1], elemType(recvType))
+			idx := ToInt(rest[0])
+			if idx < 0 || idx > len(list) {
+				return list, nil // documented: out of range leaves the list unchanged
+			}
+			return env.writeBackList(recvExpr, slices.Insert(slices.Clone(list), idx, rest[1]), writeInsert, idx, rest[1])
+		}
+	case "clear":
+		if _, ok := recv.([]any); ok && len(rest) == 0 {
+			return env.writeBackList(recvExpr, []any{}, writeClear, 0, nil)
 		}
 	case "contains":
 		if s, ok := recv.(string); ok && len(rest) == 1 {
@@ -2259,6 +2279,16 @@ func (env *Env) evalBuiltinMethodFromRecv(recvExpr ir.Expr, method string, recv 
 		return mapMethodResult(method, m, rest)
 	}
 	return nil, fmt.Errorf("unsupported method %q on %T", method, recv)
+}
+
+// isListMutation is whether method is one of list's in-place mutations, which
+// write their receiver back rather than returning a new list.
+func isListMutation(method string) bool {
+	switch method {
+	case "push", "remove", "insert", "clear":
+		return true
+	}
+	return false
 }
 
 // methodNameFromCall recovers the method name for a Receiver-bearing call from
@@ -2286,6 +2316,10 @@ func methodNameFromCall(call *ir.Call) string {
 func (env *Env) evalBuiltinMethod(call *ir.Call, method string, evalArgs []any) (any, error) {
 	recv := evalArgs[0]
 	rest := evalArgs[1:]
+	var recvType *ir.Type
+	if len(call.Args) > 0 && call.Args[0].Value != nil {
+		recvType = call.Args[0].Value.ExprType()
+	}
 	switch method {
 	case "filter":
 		if list, ok := recv.([]any); ok && len(rest) == 1 {
@@ -2326,8 +2360,9 @@ func (env *Env) evalBuiltinMethod(call *ir.Call, method string, evalArgs []any) 
 		}
 	case "push":
 		if list, ok := recv.([]any); ok && len(rest) == 1 {
+			rest[0] = copyOf(rest[0], elemType(recvType))
 			newList := append(list, rest[0])
-			return env.writeBackList(call.Args[0].Value, newList)
+			return env.writeBackList(call.Args[0].Value, newList, writeInsert, len(list), rest[0])
 		}
 	case "remove":
 		if list, ok := recv.([]any); ok && len(rest) == 1 {
@@ -2335,8 +2370,22 @@ func (env *Env) evalBuiltinMethod(call *ir.Call, method string, evalArgs []any) 
 			if idx < 0 || idx >= len(list) {
 				return list, nil // documented: out of range leaves the list unchanged
 			}
+			removed := list[idx]
 			newList := append(list[:idx], list[idx+1:]...)
-			return env.writeBackList(call.Args[0].Value, newList)
+			return env.writeBackList(call.Args[0].Value, newList, writeRemove, idx, removed)
+		}
+	case "insert":
+		if list, ok := recv.([]any); ok && len(rest) == 2 {
+			rest[1] = copyOf(rest[1], elemType(recvType))
+			idx := ToInt(rest[0])
+			if idx < 0 || idx > len(list) {
+				return list, nil // documented: out of range leaves the list unchanged
+			}
+			return env.writeBackList(call.Args[0].Value, slices.Insert(slices.Clone(list), idx, rest[1]), writeInsert, idx, rest[1])
+		}
+	case "clear":
+		if _, ok := recv.([]any); ok && len(rest) == 0 {
+			return env.writeBackList(call.Args[0].Value, []any{}, writeClear, 0, nil)
 		}
 	case "contains":
 		if s, ok := recv.(string); ok && len(rest) == 1 {
@@ -2351,7 +2400,8 @@ func (env *Env) evalBuiltinMethod(call *ir.Call, method string, evalArgs []any) 
 }
 
 // writeBackList applies a mutated list back to its originating variable.
-func (env *Env) writeBackList(target ir.Expr, newList []any) (any, error) {
+func (env *Env) writeBackList(target ir.Expr, newList []any, kind writeKind, index int, item any) (any, error) {
+	defer env.noteWrite(target, kind, index, item)
 	switch t := target.(type) {
 	case *ir.Ident:
 		if owner := env.findVarOwner(t.Sym); owner != nil {
@@ -2376,6 +2426,35 @@ func (env *Env) writeBackList(target ir.Expr, newList []any) (any, error) {
 			if err := cv.WriteBackList(t.Field, newList); err != nil {
 				return nil, err
 			}
+		}
+		// A list in a struct's field: the struct is shared, so writing the
+		// field is the write. Without it `h.items.push(2)` grew a slice
+		// nothing held.
+		if st, ok := obj.(*Struct); ok {
+			st.Set(t.Field, newList)
+		}
+	case *ir.Index:
+		// A list held in an element or an entry: `xs[0].push(5)`. The holder
+		// is shared, as a struct is, so writing its slot is the write.
+		obj, err := env.Eval(t.Operand)
+		if err != nil {
+			return nil, err
+		}
+		idx, err := env.Eval(t.Idx)
+		if err != nil {
+			return nil, err
+		}
+		switch o := obj.(type) {
+		case []any:
+			i := ToInt(idx)
+			if i < 0 || i >= len(o) {
+				return nil, fmt.Errorf("index %d out of range [0:%d]", i, len(o))
+			}
+			o[i] = newList
+		case map[string]any:
+			o[fmt.Sprintf("%v", idx)] = newList
+		default:
+			return nil, fmt.Errorf("testrunner.writeBackList: cannot index %T", obj)
 		}
 	default:
 		return nil, fmt.Errorf("testrunner.writeBackList: unhandled target ir.Expr %T", target)
@@ -2450,7 +2529,7 @@ func (env *Env) CallUserFuncValues(fn *ir.Func, args []any) (any, error) {
 	child := env.Snapshot()
 	for i, p := range fn.Params {
 		if i < len(args) {
-			child.Set(p, args[i])
+			child.Set(p, bindArg(args[i], p))
 		}
 	}
 	return child.execBlockForResult(fn.Block)
@@ -2500,45 +2579,51 @@ func (env *Env) EvalUserFuncCallArgs(fn *ir.Func, callArgs []ir.CallArg) (any, e
 // evaluated, values[i] being callArgs[i]'s: a caller that had to read them
 // first must not evaluate them a second time.
 func (env *Env) callUserFuncArgValues(fn *ir.Func, callArgs []ir.CallArg, values []any) (any, error) {
-	hasNamed := false
-	for _, a := range callArgs {
-		if a.Name != "" {
-			hasNamed = true
-			break
-		}
-	}
-	if !hasNamed {
-		return env.evalUserFuncCore(fn, values)
-	}
-
-	vals := make(map[string]any, len(fn.Params))
-	for _, p := range fn.Params {
-		if p.Default != nil {
-			v, err := env.Eval(p.Default)
-			if err != nil {
-				return nil, err
-			}
-			vals[p.Name] = v
-		}
-	}
-	positional := 0
-	for i, a := range callArgs {
-		v := values[i]
-		if a.Name != "" {
-			vals[a.Name] = v
-		} else {
-			if positional < len(fn.Params) {
-				vals[fn.Params[positional].Name] = v
-			}
-			positional++
-		}
-	}
-	// Assemble positional slice in param order for evalUserFuncCore.
-	args := make([]any, len(fn.Params))
-	for i, p := range fn.Params {
-		args[i] = vals[p.Name]
+	args, err := env.boundArgValues(fn, callArgs, values)
+	if err != nil {
+		return nil, err
 	}
 	return env.evalUserFuncCore(fn, args)
+}
+
+// boundArgValues puts already-evaluated arguments in fn's parameter order,
+// by name where one was written and from the default where none was given.
+func (env *Env) boundArgValues(fn *ir.Func, callArgs []ir.CallArg, values []any) ([]any, error) {
+	params := fn.Params
+	// A method of a component called in its own body passes no receiver, and
+	// evalUserFuncCore binds it from the scope when the arguments are one short.
+	if fn.OnComponent() && len(params) > 0 && params[0].Receiver && (len(callArgs) == 0 || callArgs[0].Name != "") {
+		params = params[1:]
+	}
+	vals := make(map[*ir.Param]any, len(params))
+	positional := 0
+	for i, a := range callArgs {
+		if a.Name == "" {
+			if positional < len(params) {
+				vals[params[positional]] = values[i]
+			}
+			positional++
+			continue
+		}
+		for _, p := range params {
+			if p.Name == a.Name {
+				vals[p] = values[i]
+				break
+			}
+		}
+	}
+	args := make([]any, len(params))
+	for i, p := range params {
+		v, ok := vals[p]
+		if !ok && p.Default != nil {
+			var err error
+			if v, err = env.Eval(p.Default); err != nil {
+				return nil, err
+			}
+		}
+		args[i] = v
+	}
+	return args, nil
 }
 
 func (env *Env) evalUserFuncCore(fn *ir.Func, args []any) (any, error) {
@@ -2550,7 +2635,7 @@ func (env *Env) evalUserFuncCore(fn *ir.Func, args []any) (any, error) {
 	}
 	defer func() { env.depth-- }()
 
-	isPure := fn.Return != nil && fn.Return.Kind != ir.TypeDyn
+	isPure := fn.Return != nil
 	for {
 		var execEnv *Env
 		if !isPure {
@@ -2576,7 +2661,7 @@ func (env *Env) evalUserFuncCore(fn *ir.Func, args []any) (any, error) {
 			}
 			argIdx := i - argOffset
 			if argIdx >= 0 && argIdx < len(args) {
-				execEnv.Set(p, args[argIdx])
+				execEnv.Set(p, bindArg(args[argIdx], p))
 			}
 		}
 		var localVars []ir.Symbol
@@ -2615,15 +2700,21 @@ func (env *Env) evalUserFuncCore(fn *ir.Func, args []any) (any, error) {
 				break
 			}
 			if lv, ok := stmt.(*ir.LocalVar); ok {
+				// A local written with no initializer is bound all the same,
+				// as Exec binds one: skipped, a read of it found nothing.
+				var v any
 				if lv.Init != nil {
-					v, err := execEnv.Eval(lv.Init)
-					if err != nil {
+					var err error
+					if v, err = execEnv.Eval(lv.Init); err != nil {
 						restoreVoid()
 						return nil, err
 					}
-					execEnv.Set(lv.Sym, CopyValue(v))
-					localVars = append(localVars, lv.Sym)
 				}
+				if lv.Init != nil {
+					v = copyOf(v, lv.Init.ExprType())
+				}
+				execEnv.Set(lv.Sym, v)
+				localVars = append(localVars, lv.Sym)
 				continue
 			}
 			if err := execEnv.Exec(stmt); err != nil {
@@ -2733,6 +2824,27 @@ func (env *Env) evalTailAware(e ir.Expr, fn *ir.Func) (any, []any, bool, error) 
 	}
 }
 
+// unitTableOf is the table of the unit lit is a literal of: its type's
+// declaration where the checker recorded one, and the table its suffix names
+// otherwise. A suffix alone is ambiguous -- a program declaring its own `unit
+// length { px, … }` claims `px` for the whole environment, and a library body
+// writing `16px` for a measurement was then a length the measurement it was
+// added to could not be added to.
+func (env *Env) unitTableOf(lit *ir.Literal) *unitTable {
+	if ud := ir.UnitDeclOf(lit.Type); ud != nil {
+		if t := env.Units[lit.Suffix]; t != nil && t.Decl == ud {
+			return t
+		}
+		for _, t := range env.Units {
+			if t.Decl == ud {
+				return t
+			}
+		}
+		return buildUnitTableFromDef(ud)
+	}
+	return env.Units[lit.Suffix]
+}
+
 // makeUnitValue converts a unit literal to a unitValue.
 func (env *Env) makeUnitValue(lit *ir.Literal) (unitValue, error) {
 	suffix := lit.Suffix
@@ -2745,7 +2857,7 @@ func (env *Env) makeUnitValue(lit *ir.Literal) (unitValue, error) {
 	if err != nil {
 		return unitValue{}, fmt.Errorf("invalid unit literal %q: %w", lit.Value, err)
 	}
-	table := env.Units[suffix]
+	table := env.unitTableOf(lit)
 	base, amount := suffix, num
 	if table != nil {
 		if factor, ok := table.Conversions[suffix]; ok {
@@ -2808,34 +2920,85 @@ func (env *Env) logAlertConfirm(args []ir.CallArg) (any, error) {
 
 // --- helpers ---
 
+// equals is ==: Equal, and where it cannot say, the two rendered alike.
 func equals(a, b any) bool {
-	if au, ok := a.(unitValue); ok {
-		if bu, ok := b.(unitValue); ok {
-			return au.Equal(bu)
-		}
-		return false
+	if eq, ok := Equal(a, b); ok {
+		return eq
 	}
-	// Two struct values hold the same fields whatever order they were written
-	// in, so they are compared by name rather than by their rendered form.
-	if as, ok := a.(*Struct); ok {
-		bs, ok := b.(*Struct)
-		if !ok || len(as.Fields) != len(bs.Fields) {
-			return false
+	return fmt.Sprintf("%v", a) == fmt.Sprintf("%v", b)
+}
+
+// Equal compares two values as SNGL's == does, and is what the optimizer folds
+// == with: a unit base by base, a struct field by field by name -- they hold
+// the same fields whatever order they were written in -- a list element by
+// element, a handle by the instance it is, a number by value whatever its
+// width, and a string or a bool as itself. ok is false for a pair it cannot
+// say that of: a map, a host value, two scalars of different kinds.
+func Equal(a, b any) (eq, ok bool) {
+	if a == nil || b == nil {
+		return a == nil && b == nil, true
+	}
+	if au, isUnit := a.(unitValue); isUnit {
+		bu, isUnit := b.(unitValue)
+		return isUnit && au.Equal(bu), true
+	}
+	switch x := a.(type) {
+	case *Struct:
+		y, isStruct := b.(*Struct)
+		if !isStruct || len(x.Fields) != len(y.Fields) {
+			return false, true
 		}
-		for _, f := range as.Fields {
-			other, found := bs.Get(f.Name)
-			if !found || !equals(f.Value, other) {
-				return false
+		for _, f := range x.Fields {
+			other, found := y.Get(f.Name)
+			if !found {
+				return false, true
+			}
+			if eq, ok := Equal(f.Value, other); !ok || !eq {
+				return false, ok
 			}
 		}
-		return true
+		return true, true
+	case []any:
+		y, isList := b.([]any)
+		if !isList || len(x) != len(y) {
+			return false, isList
+		}
+		for i := range x {
+			if eq, ok := Equal(x[i], y[i]); !ok || !eq {
+				return false, ok
+			}
+		}
+		return true, true
 	}
 	// A handle read as a value is its instance, and two are equal when they
 	// are one instance: the scope the interpreter keeps for it.
 	if ae, be := instanceEnv(a), instanceEnv(b); ae != nil || be != nil {
-		return ae == be
+		return ae == be, true
 	}
-	return fmt.Sprintf("%v", a) == fmt.Sprintf("%v", b)
+	if af, isNum := numberOf(a); isNum {
+		bf, isNum := numberOf(b)
+		return af == bf, isNum
+	}
+	switch a.(type) {
+	case string, bool:
+		if reflect.TypeOf(a) == reflect.TypeOf(b) {
+			return a == b, true
+		}
+	}
+	return false, false
+}
+
+// numberOf is v as a float, for a value of any of the numeric widths.
+func numberOf(v any) (float64, bool) {
+	switch n := v.(type) {
+	case int:
+		return float64(n), true
+	case uint64:
+		return float64(n), true
+	case float64:
+		return n, true
+	}
+	return 0, false
 }
 
 func toFloat(v any) float64 {
@@ -2887,7 +3050,7 @@ func ToInt(v any) int {
 // orderable reports why a pair cannot be ordered, or nil. Only a multi-base
 // unit has no answer: `3px` and `2em` are each larger on their own base. The
 // checker refuses that pair outright (`IsSingleBaseUnit` gates <, <=, >, >=),
-// so this is the `dyn` operand that reached a comparison untyped.
+// so this is for IR the checker did not see.
 func orderable(a, b any) error {
 	for _, v := range [...]any{a, b} {
 		if u, ok := v.(unitValue); ok && u.Table != nil && len(u.Table.Bases) > 1 {
@@ -2932,7 +3095,7 @@ func runtimeTypeName(v any) string {
 		// built-in map declares methods with no body to run.
 		return "struct"
 	default:
-		return "dyn"
+		return ""
 	}
 }
 
@@ -2949,22 +3112,6 @@ func zeroValueFor(t *ir.Type) any {
 	case ir.TypeBool:
 		return false
 	case ir.TypeString:
-		return ""
-	}
-	return nil
-}
-
-// zeroValueForValue returns the zero value of the same runtime type as v.
-// Used when the static type is unknown (TypeDyn) but we can sample a value.
-func zeroValueForValue(v any) any {
-	switch v.(type) {
-	case int:
-		return 0
-	case float64:
-		return 0.0
-	case bool:
-		return false
-	case string:
 		return ""
 	}
 	return nil
@@ -3042,20 +3189,24 @@ func (env *Env) underHandler(vals map[*ir.Context]any, fn func() (any, error)) (
 }
 
 // InvokeElementEvent runs the handler a rendered node carries for event, the
-// way a host reporting it would: the binding and the cell it writes first, then
-// the handler, in the scope the node was written in. It reports false when the
-// node handles nothing of the event.
+// way a host reporting it would, in the scope the node was written in. It
+// reports false when the node handles nothing of the event.
+//
+// A component whose body hands the event on enters where the host would
+// report it (forwardingDescendant): the override's handler writes the prop
+// the control reports, and its emit runs the call site's handler.
 //
 // A component whose call site handled nothing of the event still renders
 // something that reports it: the event reaches that, and the component's own
 // forwarding emit, if it has one, runs the call site's handler from there.
 func (env *Env) InvokeElementEvent(m map[string]any, event string, args func() ([]any, error)) (any, bool, error) {
+	n, _ := m["__node"].(*Node)
+	if d, name := forwardingDescendant(instanceBody(m, n), event); d != nil {
+		return env.InvokeElementEvent(d.Map(), name, args)
+	}
 	h, _ := m["@"+event].(*ir.Func)
-	inst, _ := m["__inst"].(*ir.NodeInst)
-	cells, _ := m["__compEnv"].(*Env)
-	if h == nil && !boundByEvent(inst, event) && !cells.cellByEvent(inst, event) {
-		n, ok := m["__node"].(*Node)
-		if !ok || !n.Expanded {
+	if h == nil {
+		if n == nil || !n.Expanded {
 			return nil, false, nil
 		}
 		d := handlingDescendant(n, event)
@@ -3077,20 +3228,73 @@ func (env *Env) InvokeElementEvent(m map[string]any, event string, args func() (
 	}
 	provided, _ := m["__ownerContext"].(map[*ir.Context]any)
 	res, err := handlerEnv.underHandler(provided, func() (any, error) {
-		cells.writeCells(inst, event, vals)
-		if err := handlerEnv.writeBindings(inst, event, vals); err != nil {
-			return nil, err
-		}
-		if h == nil {
-			return nil, nil
-		}
 		for i, p := range h.Params {
 			if i < len(vals) {
-				handlerEnv.Set(p, vals[i])
+				handlerEnv.Set(p, bindArg(vals[i], p))
 			}
 		}
 		return handlerEnv.execBlockForResult(h.Block)
 	})
 	handlerEnv.writeBack()
 	return res, true, err
+}
+
+// elemType is the element type of a list type, nil for anything else.
+func elemType(t *ir.Type) *ir.Type {
+	if t == nil || t.Kind != ir.TypeList || len(t.Elems) == 0 {
+		return nil
+	}
+	return t.Elems[0]
+}
+
+// slotEmpty answers `src.empty` in a component's body: whether what the call
+// site of the component declaring the slot supplied for it renders nothing,
+// asked of that content in the caller's scope -- the answer the splicer writes
+// in for a compiled target (ir.RendersNothing), evaluated rather than spliced.
+// The slot is matched by declaration, as the splicer matches it: the nearest
+// instance may be another component's, one the content was forwarded into. A
+// component entry is answered by the insertion whose population forwarded it,
+// which is one of the entry frames current where the asking instance was
+// mounted.
+func (env *Env) slotEmpty(x *ir.SlotEmpty) (any, error) {
+	for e := env; e != nil; e = e.parent {
+		if e.inst != nil && e.inst.Component != nil && slices.Contains(e.inst.Component.Slots, x.Slot) {
+			body, _, supplied := ir.SlotBody(&ir.SlotInst{Name: x.Slot.Name, Rest: x.Slot.Rest}, e.inst)
+			if !supplied {
+				return true, nil
+			}
+			caller := e.parent
+			if caller == nil {
+				caller = e
+			}
+			return caller.answerEmpty(x, body, e.entries)
+		}
+		for _, f := range slices.Backward(e.entries) {
+			if f.ins.Decl == nil || !slices.Contains(f.ins.Decl.Slots, x.Slot) {
+				continue
+			}
+			content := f.ins.Slots[x.Slot.Name]
+			if content == nil {
+				return true, nil
+			}
+			return f.env.answerEmpty(x, content.Body, f.env.entries)
+		}
+	}
+	return true, nil
+}
+
+// answerEmpty evaluates in env whether body renders nothing. A forward of a
+// component entry in it is answered from entries, the frames current where
+// body was handed on, which env -- the scope body was written in -- need not
+// hold.
+func (env *Env) answerEmpty(x *ir.SlotEmpty, body []ir.Stmt, entries []entryFrame) (any, error) {
+	answer, ok := ir.RendersNothing(body)
+	if !ok {
+		return nil, fmt.Errorf("%s.%s: what the call site supplied cannot say whether it renders anything", x.Slot.Name, ir.SlotEmptyMember)
+	}
+	if len(entries) > 0 {
+		env = env.Snapshot()
+		env.entries = entries
+	}
+	return env.Eval(answer)
 }

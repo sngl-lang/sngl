@@ -4,12 +4,12 @@ import (
 	"strings"
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/internal/checker"
-	"git.duckfam.us/jonathan/sngl/internal/lower"
-	"git.duckfam.us/jonathan/sngl/internal/parser"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/internal/checker"
+	"duckfam.us/sngl/internal/lower"
+	"duckfam.us/sngl/internal/parser"
 )
 
 // compileCanvasSrc parses, checks, lowers (with android caps) and emits the
@@ -26,6 +26,7 @@ func compileCanvasSrc(t *testing.T, src string) string {
 	}
 	gen := &Generator{}
 	kotlinLang := codegen.LookupLang("kotlin")
+	pkg = ir.ClonePackage(pkg)
 	if err := lower.Lower(pkg, codegen.CapsOrNone(kotlinLang.LanguageIdentifier(), gen.PlatformIdentifier()), lower.Options{Platform: gen.PlatformIdentifier()}); err != nil {
 		t.Fatalf("lower: %v", err)
 	}
@@ -38,7 +39,7 @@ func compileCanvasSrc(t *testing.T, src string) string {
 }
 
 const canvasReactiveSrc = `import . "sngl:ui"
-import . "sngl:ui/draw"
+import draw "sngl:ui/draw"
 import ui "sngl:ui"
 output {
     none { html }
@@ -47,16 +48,16 @@ output {
 ui.window {
     var radius = 50.0
 
-    func circleStyle() => CanvasStyle{
+    func circleStyle() => draw.Style{
         fill        = color{r=99, g=102, b=241, a=255},
         stroke      = color{r=67, g=56,  b=202, a=255},
         strokeWidth = 3.0,
     }
 
     vbox {
-        canvas(width=400px, height=280px) {
-            rect(x=0.0, y=0.0, w=400.0, h=280.0, style=circleStyle) {}
-            circle(cx=200.0, cy=140.0, r=radius, style=circleStyle) {}
+        draw.canvas(width=400px, height=280px) {
+            draw.rect(x=0.0, y=0.0, w=400.0, h=280.0, style=circleStyle) {}
+            draw.circle(cx=200.0, cy=140.0, r=radius, style=circleStyle) {}
         }
         button(text="Grow", @click { radius = radius + 10.0 })
     }
@@ -80,7 +81,7 @@ func TestCanvasComposeEmission(t *testing.T) {
 	mustContain("drawRect(")
 	mustContain("drawCircle(")
 	// The stdlib data classes for the canvas structs.
-	mustContain("data class CanvasStyle(")
+	mustContain("data class Style(")
 	mustContain("data class Color(")
 	// The circle radius must read the reactive state var inside the draw
 	// lambda so Compose recomposition redraws the canvas (no explicit
@@ -112,11 +113,11 @@ func TestCanvasComposeEmission(t *testing.T) {
 // no-op.
 func TestCanvasTextRendersViaNativeCanvas(t *testing.T) {
 	src := `import . "sngl:ui"
-import . "sngl:ui/draw"
+import draw "sngl:ui/draw"
 import ui "sngl:ui"
 ui.window {
-    canvas(width=200px, height=80px) {
-        canvasText(x=10.0, y=40.0, content="hi", style=CanvasStyle{fill=color{r=10, g=20, b=30, a=255}, fontSize=14.0}) {}
+    draw.canvas(width=200px, height=80px) {
+        draw.canvasText(x=10.0, y=40.0, content="hi", style=draw.Style{fill=color{r=10, g=20, b=30, a=255}, fontSize=14.0}) {}
     }
 }`
 	out := compileCanvasSrc(t, src)
@@ -130,15 +131,17 @@ ui.window {
 	}
 }
 
-// TestCanvasImageRenders guards that a canvasImage shape decodes + draws a
-// bitmap (best-effort, local file path) rather than being a silent no-op.
+// TestCanvasImageRenders guards that a canvasImage shape draws the bitmap its
+// source names rather than being a silent no-op.
 func TestCanvasImageRenders(t *testing.T) {
 	src := `import . "sngl:ui"
-import . "sngl:ui/draw"
+import draw "sngl:ui/draw"
 import ui "sngl:ui"
 ui.window {
-    canvas(width=100px, height=100px) {
-        canvasImage(x=5.0, y=5.0, w=40.0, h=40.0, src="/tmp/p.png") {}
+    draw.canvas(width=100px, height=100px) {
+        draw.canvasImage(x=5.0, y=5.0, w=40.0, h=40.0) {
+            remote(url="/tmp/p.png")
+        }
     }
 }`
 	out := compileCanvasSrc(t, src)
@@ -146,7 +149,7 @@ ui.window {
 	// its body alone would pass with no image in the program at all.
 	for _, want := range []string{
 		`snglDrawImage(src = "/tmp/p.png"`,
-		"BitmapFactory.decodeFile(", "asImageBitmap()", "drawImage(",
+		"SnglAssets.bitmap(src)", "drawImage(",
 	} {
 		if !strings.Contains(out, want) {
 			t.Errorf("canvasImage missing %q:\n%s", want, out)

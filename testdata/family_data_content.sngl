@@ -1,0 +1,73 @@
+// A data component may declare a rest slot of content: a record is still a
+// value of its props, and what the caller wrote in it is rendered where the
+// container inserts it, `c.content`, which is only in the container's own
+// body. The container decides which records' content to show; the content
+// reads and writes the caller's scope, as anything the caller wrote does.
+
+import . "sngl:test"
+import ui "sngl:ui"
+
+component card(label string, content ...component ui.node) card
+
+// Shows the content of the card at `shown`, and a button per card.
+component deck(:shown int, cards ...component card) ui.node {
+    for var c = cards {
+        ui.button(text=c.label)
+    }
+    for var k, c = cards {
+        if k == shown {
+            c.content
+        }
+    }
+}
+
+component app ui.node {
+    var shown = 0
+    var hits = 0
+    var extra = false
+    deck #d(:shown=shown) {
+        card(label="one") {
+            ui.text #first(value="first")
+        }
+        card(label="two") {
+            ui.button #hit(text="hit", @click {
+                hits = hits + 1
+            })
+            ui.text #count(value="{hits}")
+        }
+        if extra {
+            card(label="three") {
+                ui.text #third(value="third")
+            }
+        }
+        for var n = ["a", "b"] {
+            card(label=n) {
+                ui.text(value="same")
+            }
+        }
+    }
+}
+
+func testTheContainerShowsTheContentItChooses(t Test, c app) {
+    t.assert(c.first.value == "first")
+    t.assert(c.count == null)
+    c.shown = 1
+    t.assert(c.first == null)
+    t.assert(c.count.value == "0")
+}
+
+func testContentWritesTheCallersState(t Test, c app) {
+    c.shown = 1
+    c.hit.click()
+    c.hit.click()
+    t.assert(c.hits == 2)
+    t.assert(c.count.value == "2")
+}
+
+func testARecordUnderAnIfKeepsItsContent(t Test, c app) {
+    c.extra = true
+    c.shown = 2
+    t.assert(c.third.value == "third")
+    c.extra = false
+    t.assert(c.third == null)
+}

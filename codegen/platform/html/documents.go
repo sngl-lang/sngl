@@ -5,8 +5,8 @@ import (
 	"iter"
 	"slices"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/ir"
 )
 
 // Which documents a program is, on a target whose view is markup: the answer
@@ -30,12 +30,28 @@ import (
 // is its own params or the request's.
 func documentsOf(pkg *ir.Package, fold codegen.Fold, static bool) iter.Seq2[*codegen.Document, error] {
 	return func(yield func(*codegen.Document, error) bool) {
+		// A document that asked for no call in a round that finished was folded
+		// whole, and answers to other documents' calls cannot change it, so the
+		// next round probes only the documents that asked. A round that failed
+		// may not have reached every document, or known them all.
+		var askers map[int]bool
 		if err := fold.SettleNatives(func(probe codegen.Fold) error {
 			doc, _ := documentSurface(pkg)
 			if doc == nil || !probe.HoldsNativeCall(doc) {
 				return nil
 			}
-			_, err := surfaceDocuments(doc, probe, static, func(*codegen.Document, codegen.Fold) bool { return true })
+			want := func(i int) bool { return askers == nil || askers[i] }
+			asked, before := map[int]bool{}, probe.NativesAsked()
+			_, err := surfaceDocuments(doc, probe, static, want, func(i int, _ *codegen.Document, dfold codegen.Fold) bool {
+				if n := dfold.NativesAsked(); n > before {
+					asked[i], before = true, n
+				}
+				return true
+			})
+			askers = asked
+			if err != nil {
+				askers = nil
+			}
 			return err
 		}); err != nil {
 			yield(nil, err)
@@ -44,11 +60,11 @@ func documentsOf(pkg *ir.Package, fold codegen.Fold, static bool) iter.Seq2[*cod
 
 		if doc, body := documentSurface(pkg); doc != nil {
 			before, after := bodyAround(body, doc)
-			_, err := surfaceDocuments(doc, fold, static, func(d *codegen.Document, dfold codegen.Fold) bool {
+			_, err := surfaceDocuments(doc, fold, static, nil, func(_ int, d *codegen.Document, dfold codegen.Fold) bool {
 				if len(before)+len(after) > 0 {
 					d.Body = slices.Concat(dfold.Stmts(dfold.Clone(before)), d.Body, dfold.Stmts(dfold.Clone(after)))
 				}
-				return yieldDocument(yield, d, dfold)
+				return yieldDocument(yield, d, dfold, static)
 			})
 			if err != nil {
 				yield(nil, err)
@@ -60,33 +76,51 @@ func documentsOf(pkg *ir.Package, fold codegen.Fold, static bool) iter.Seq2[*cod
 			return
 		}
 		// A harness renders its root component in place of a surface.
-		stack, err := documentStack(root.Body, fold)
+		stack, err := documentStack(root.Stmts, fold)
 		if err != nil {
 			yield(nil, err)
 			return
 		}
 		if stack == nil {
 			dfold := fold.Child()
-			body := dfold.Stmts(dfold.Clone(root.Body))
-			yieldDocument(yield, &codegen.Document{Body: body}, dfold)
+			body := dfold.Stmts(dfold.Clone(root.Stmts))
+			yieldDocument(yield, &codegen.Document{Body: body}, dfold, static)
 			return
 		}
 		for _, pc := range documentCopies(stack, fold) {
 			dfold := fold.Child()
-			body := cloneWithOnly(stack, pc, func() []ir.Stmt { return dfold.Clone(root.Body) })
+			body := cloneWithOnly(stack, pc, func() []ir.Stmt { return dfold.Clone(root.Stmts) })
 			page := pageDocument(&body, pc, dfold, true)
 			body = dfold.Stmts(body)
-			if !yieldDocument(yield, &codegen.Document{Body: body, Page: page.node}, dfold) {
+			if !yieldDocument(yield, &codegen.Document{Body: body, Page: page.node}, dfold, static) {
 				return
 			}
 		}
 	}
 }
 
-func yieldDocument(yield func(*codegen.Document, error) bool, doc *codegen.Document, fold codegen.Fold) bool {
+func yieldDocument(yield func(*codegen.Document, error) bool, doc *codegen.Document, fold codegen.Fold, static bool) bool {
 	if err := fold.Err(); err != nil {
 		yield(nil, err)
 		return false
+	}
+	// The build left a call only it can answer in the view for the fold to
+	// answer per document; one still standing has nothing left to answer it.
+	if err := codegen.RefuseUnfoldedBuildCalls(doc.Body); err != nil {
+		yield(nil, err)
+		return false
+	}
+	if err := validateRawElements(doc.Body); err != nil {
+		yield(nil, err)
+		return false
+	}
+	// A served page renders a loop on the server, over what the request
+	// brought; only a static one has nowhere to run it.
+	if static {
+		if err := refuseUnrolledViewLoops(doc.Body); err != nil {
+			yield(nil, err)
+			return false
+		}
 	}
 	doc.FileAssets = append(doc.FileAssets, fold.TakeFileAssets()...)
 	return yield(doc, nil)
@@ -119,7 +153,7 @@ func documentSurface(pkg *ir.Package) (*ir.NodeInst, []ir.Stmt) {
 		return d, body
 	}
 	if root := pkg.RootDecl(); root != nil {
-		return walk(root.Body)
+		return walk(root.Stmts)
 	}
 	return nil, nil
 }
@@ -140,7 +174,7 @@ func bodyAround(body []ir.Stmt, doc *ir.NodeInst) (before, after []ir.Stmt) {
 			case *ir.NodeInst:
 				out = append(out, n)
 			case *ir.CallStmt:
-				if n.Call != nil && n.Call.Func != nil && n.Call.Func.SlotRender {
+				if n.Call != nil && n.Call.Func != nil && n.Call.Func.Lowered.SlotRender {
 					out = append(out, n)
 				}
 			}
@@ -152,7 +186,9 @@ func bodyAround(body []ir.Stmt, doc *ir.NodeInst) (before, after []ir.Stmt) {
 
 // surfaceDocuments hands each document w, a surface, is written as to yield:
 // w itself when it holds no stack, and one per page copy when it holds one.
-// False when yield stopped the walk.
+// False when yield stopped the walk. want, when not nil, picks the documents
+// to write by their index in that order, and yield is handed the index; the
+// order is the same on every call that finds the same pages.
 //
 // A surface holding a nav.stack is one document per page: the whole surface,
 // with the stack standing for that page alone. A page is the node carrying a
@@ -165,23 +201,29 @@ func bodyAround(body []ir.Stmt, doc *ir.NodeInst) (before, after []ir.Stmt) {
 // loop around it, the iteration it is. The surface is cloned holding that one
 // page, the loops' variables bound for the iteration, so a site of a thousand
 // pages holds one page's tree at a time.
-func surfaceDocuments(w *ir.NodeInst, wfold codegen.Fold, static bool, yield func(*codegen.Document, codegen.Fold) bool) (bool, error) {
+func surfaceDocuments(w *ir.NodeInst, wfold codegen.Fold, static bool, want func(int) bool, yield func(int, *codegen.Document, codegen.Fold) bool) (bool, error) {
 	stack, err := documentStack(w.Children, wfold)
 	if err != nil {
 		return false, err
 	}
 	if stack == nil {
+		if want != nil && !want(0) {
+			return true, nil
+		}
 		dfold := wfold.Child()
 		dfold.TakeFileAssets() // a document carries what its own fold resolved
 		doc := dfold.Clone([]ir.Stmt{w})[0].(*ir.NodeInst)
 		foldSurface(doc, dfold)
-		return yield(&codegen.Document{Surface: doc, Body: doc.Children}, dfold), nil
+		return yield(0, &codegen.Document{Surface: doc, Body: doc.Children}, dfold), nil
 	}
 	copies := documentCopies(stack, wfold)
 	if err := wfold.Err(); err != nil {
 		return false, err
 	}
-	for _, pc := range copies {
+	for i, pc := range copies {
+		if want != nil && !want(i) {
+			continue
+		}
 		dfold := wfold.Child()
 		dfold.TakeFileAssets()
 		doc := cloneWithOnly(stack, pc, func() []ir.Stmt { return dfold.Clone([]ir.Stmt{w}) })[0].(*ir.NodeInst)
@@ -193,7 +235,7 @@ func surfaceDocuments(w *ir.NodeInst, wfold codegen.Fold, static bool, yield fun
 		if err := dfold.Err(); err != nil {
 			return false, err
 		}
-		if !yield(&codegen.Document{Surface: doc, Body: doc.Children, Page: page.node}, dfold) {
+		if !yield(i, &codegen.Document{Surface: doc, Body: doc.Children, Page: page.node}, dfold) {
 			return false, nil
 		}
 	}
@@ -386,6 +428,9 @@ func pageDocument(stmts *[]ir.Stmt, pc pageCopy, fold codegen.Fold, static bool)
 // page's content.
 func (out *documentPage) take(stack *ir.NodeInst, pc pageCopy, fold codegen.Fold, static bool) []ir.Stmt {
 	stmts := stack.Children
+	// The fold's copy shares a loop's body, so a page reached through one is
+	// the program's own until it is copied here.
+	shared := false
 	for depth, step := range pc.path {
 		idx := step.idx
 		if depth == 0 {
@@ -406,8 +451,14 @@ func (out *documentPage) take(stack *ir.NodeInst, pc pageCopy, fold codegen.Fold
 				return nil
 			}
 			fold.BindLoop(n, step.sub, items[step.sub])
-			stmts = n.Body
+			stmts, shared = n.Body, true
 		case *ir.NodeInst:
+			if shared {
+				cp := *n
+				cp.Record = ir.CloneExprSharingDecls(n.Record)
+				cp.Children = fold.Clone(n.Children)
+				n = &cp
+			}
 			out.node, out.static = n, static
 			// The record is the copy's: under a `for` it reads the loop's
 			// variables, which fold now binds.
@@ -440,4 +491,56 @@ func foldSurface(n *ir.NodeInst, fold codegen.Fold) {
 		}
 	}
 	n.Children = fold.Stmts(n.Children)
+}
+
+// refuseUnrolledViewLoops reports a `for` left standing in a document's view.
+// A loop over state is a render slot by now, so one still here is a loop the
+// page writes into its markup, and the fold could not work out what it
+// iterates: written as it stands, its body came out once with its variable
+// bound to nothing -- an empty row and a handler naming a variable nothing
+// declared. Only a loop that writes markup is asked: a canvas's children are
+// the statements that paint it by now, and a loop among them is drawing code
+// the page runs. A loop an override's body wrote is reported at the node the
+// program wrote, since the override's is no position the program can act on.
+func refuseUnrolledViewLoops(stmts []ir.Stmt) error {
+	var err error
+	var walk func(stmts []ir.Stmt, site ir.Stmt)
+	walk = func(stmts []ir.Stmt, site ir.Stmt) {
+		for _, s := range stmts {
+			if err != nil {
+				return
+			}
+			if fs, ok := s.(*ir.For); ok && rendersNodes(fs.Body) {
+				pos := ir.StmtPos(fs)
+				if n, ok := site.(*ir.NodeInst); ok && n.Site != nil {
+					if at := ir.NodePos(n); at.File != pos.File {
+						pos = at
+					}
+				}
+				err = fmt.Errorf("%s: this loop is written into the page, and what it iterates cannot be worked out while the page is built: iterate a constant, or state, which the page's script renders", pos)
+				return
+			}
+			inner := site
+			if n, ok := s.(*ir.NodeInst); ok && n.Site != nil {
+				inner = n
+			}
+			for _, b := range ir.ViewBlocks(s) {
+				walk(*b, inner)
+			}
+		}
+	}
+	walk(stmts, nil)
+	return err
+}
+
+// rendersNodes reports whether stmts put a node in the tree.
+func rendersNodes(stmts []ir.Stmt) bool {
+	found := false
+	ir.WalkView(stmts, func(s ir.Stmt) bool {
+		if _, ok := s.(*ir.NodeInst); ok {
+			found = true
+		}
+		return !found
+	})
+	return found
 }

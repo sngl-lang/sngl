@@ -11,7 +11,7 @@ output {
 // leaf components it renders itself -- a composition delivered nothing here
 // while delivering correctly on every compiled target, which reaches the
 // handler through the inliner's substitution instead.
-var log list<string> = []
+var log list[string] = []
 
 func testAnEmitReachesTheCallSiteHandler(t Test, c main) {
     t.assert(c.pressed == 1)
@@ -31,13 +31,13 @@ func testAnEmitFromADefaultedChildArrives(t Test, c main) {
     t.assert(c.defaulted == 1)
 }
 
-component relay(on bool = true, @fired ChangeEvent) node {
+component relay(on bool = true, @fired(value string)) node {
     var seen = 0
 
     if on {
         effect(@mount {
             seen += 1
-            fired({value="hello"})
+            fired("hello")
         })
     }
 
@@ -53,7 +53,7 @@ component main node {
 
     relay(on=true, @fired(e) {
         pressed += 1
-        log.push(e.value)
+        log.push(e)
     })
 
     // No handler for @fired: the emit has no subscriber and goes nowhere.

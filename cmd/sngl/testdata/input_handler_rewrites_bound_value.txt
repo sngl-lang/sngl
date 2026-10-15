@@ -23,14 +23,14 @@ component editor node {
     input #field(
         value=s,
         @input(e) {
-            s = e.value + "!"
+            s = e + "!"
             edits = edits + 1
         },
     )
 }
 
 func testRewriteRunsOnce(t Test, c editor) {
-    c.field.input({value="h"})
+    c.field.input("h")
     t.assert(c.s == "h!")
     t.assert(c.edits == 1)
 }
@@ -38,7 +38,7 @@ func testRewriteRunsOnce(t Test, c editor) {
 window {
 }
 -- testrun/gtk4/go/app.sngl/editor/1 --
-sha256:a1b05733282cb5c09a2bc787bac9d3b2
+sha256:b7f981ecf025e078a14647a202e0fe7b
 {
   "results": [
     {

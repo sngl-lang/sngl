@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strconv"
 
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/ir"
 )
 
 var passTernary = pass{
@@ -268,7 +268,7 @@ func (st *ternState) transformExpr(e ir.Expr) ([]ir.Stmt, ir.Expr) {
 			x.Entries[i].Value = v
 		}
 		return pre, x
-	case *ir.Literal, *ir.Ident, *ir.ContextRead:
+	case *ir.Literal, *ir.Ident, *ir.ContextRead, *ir.SlotEmpty:
 		// Terminal — no Ternary to lift.
 		return nil, e
 	default:

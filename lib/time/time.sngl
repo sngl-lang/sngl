@@ -1,10 +1,63 @@
 import marks "sngl:internal/marks"
 import macro "sngl:macro"
-import tree "sngl:tree"
 
 // Calendar date in canonical "YYYY-MM-DD" form.
 #[marks.builtin("date")]
 struct date {}
+
+// The year of a date.
+const func date.year(d date) => int.parse(string(d).substring(0, 4), 10)
+
+// The month of a date, from 1 for January.
+const func date.month(d date) => int.parse(string(d).substring(5, 7), 10)
+
+// The day of a date's month, from 1.
+const func date.day(d date) => int.parse(string(d).substring(8, 10), 10)
+
+// The date "YYYY-MM-DD" names, or null when the text is not one: a month past
+// 12, or a day past the last of its month, is no date. Text a program did not
+// write -- what a user typed -- is read this way, since converting it with
+// `date(s)` takes it on trust.
+const func parseDate(s string) option[date] {
+    // An option nothing set holds no date. `null` is sngl:builtin's, and
+    // this package loads before that one is in scope.
+    var unset option[date]
+    if s.length() != 10 || s.substring(4, 5) != "-" || s.substring(7, 8) != "-" {
+        return unset
+    }
+    if !_digits(s.substring(0, 4) + s.substring(5, 7) + s.substring(8, 10)) {
+        return unset
+    }
+    var y = int.parse(s.substring(0, 4), 10)
+    var m = int.parse(s.substring(5, 7), 10)
+    var d = int.parse(s.substring(8, 10), 10)
+    if m < 1 || m > 12 || d < 1 || d > _daysIn(y, m) {
+        return unset
+    }
+    return date(s)
+}
+
+// Whether t is all decimal digits.
+const func _digits(t string) bool {
+    if t == "" {
+        return true
+    }
+    return "0123456789".contains(t.substring(0, 1)) && _digits(t.substring(1, t.length()))
+}
+
+// The days in month m of year y, February counting the leap day.
+const func _daysIn(y int, m int) int {
+    if m == 2 {
+        if (y % 4 == 0 && y % 100 != 0) || y % 400 == 0 {
+            return 29
+        }
+        return 28
+    }
+    if m == 4 || m == 6 || m == 9 || m == 11 {
+        return 30
+    }
+    return 31
+}
 
 // Wall-clock time in "HH:MM" or "HH:MM:SS" form.
 #[marks.builtin("time")]
@@ -40,9 +93,44 @@ unit duration { ms, s = 1000ms, m = 60s, h = 60m }
 //
 // A timer belongs to no tree: it schedules and renders nothing, so it sits
 // wherever the work it drives belongs.
-#[tree.none]
-component timer(
+component timer[F any](
     #[macro.construct] interval duration,
     #[macro.construct] enabled bool = true,
     @tick,
-) {}
+) F {}
+
+// The current instant, as the host's clock reports it.
+//
+// Not `const`, and that is the load-bearing half of the declaration: a const
+// call is a compile-time constant, so a clock reading marked one would be
+// accepted wherever a constant is demanded, and the value a build ships would
+// be the one the build machine read. An `output` option is the position that
+// shows it: read once, before the program runs.
+#[marks.intrinsic("time.now", readonly)]
+func now() datetime
+
+// The instant `d` after this one. A negative duration moves back.
+#[marks.intrinsic("datetime.add")]
+const func datetime.add(d duration) datetime
+
+// How long `start` is before `end`; negative when it is after.
+//
+// A package function and not a `datetime` method, which is not a style
+// choice: a method's first parameter *is* the receiver when it carries the
+// receiver's own type (`resolve.go`'s convention, what lets `int.ident(1)`
+// mean `1.ident()`), so no `datetime` method can take a second instant.
+#[marks.intrinsic("time.between")]
+const func between(start datetime, end datetime) duration
+
+// How long ago `t` was, negative while it is still ahead.
+//
+// A SNGL body rather than a third intrinsic: it inherits `now`'s impurity
+// through the purity fixed point, so nothing here restates the rule above.
+func since(t datetime) duration {
+    return between(t, now())
+}
+
+// What remains until `t`, negative once it has passed.
+func until(t datetime) duration {
+    return between(now(), t)
+}

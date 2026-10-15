@@ -11,10 +11,10 @@ import . "sngl:ui"
 output { kotlin { android } }
 
 component main node {
-    var xs list<int> = [3, 1, 2]
-    var rev list<int> = xs.reverse()
-    var evens list<int> = xs.filter(func(n int) => n % 2 == 0)
-    var empty list<int> = []
+    var xs list[int] = [3, 1, 2]
+    var rev list[int] = xs.reverse()
+    var evens list[int] = xs.filter(func(n int) => n % 2 == 0)
+    var empty list[int] = []
     var idx int = xs.indexOf(2)
     text(value=string(rev.length()) + string(evens.length()) + string(empty.length()) + string(idx))
 }
@@ -27,29 +27,19 @@ window {
 
 package test.sngl.app
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.*
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
-import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color as ComposeColor
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
-import androidx.activity.compose.BackHandler
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.toMutableStateList
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.platform.LocalContext
 import android.app.Activity
+import androidx.activity.compose.BackHandler
+import androidx.compose.material3.Text
+import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
 
 fun _snglFloatStr(v: Double): String =
@@ -66,13 +56,13 @@ fun MainScreen() {
     val evens__inst0 = remember { xs__inst0.filter({ n: Int -> ((n % 2) == 0) }).toMutableStateList() }
     val empty__inst0 = remember { mutableStateListOf<Int>() }
     var idx__inst0 by remember { mutableStateOf(xs__inst0.indexOf(2)) }
-    var visible__inst1 by remember { mutableStateOf(true) }
+    var visible__inst0 by remember { mutableStateOf(true) }
 
-    if (visible__inst1) {
+    if (visible__inst0) {
         val __activity = LocalContext.current as? Activity
         BackHandler {
-            visible__inst1 = false
-            if (!(visible__inst1)) {
+            visible__inst0 = false
+            if (!(visible__inst0)) {
                 __activity?.finish()
             }
         }
@@ -80,4 +70,4 @@ fun MainScreen() {
     }
 }
 -- run/kotlin/android --
-pass sha256:66aa08af8894c310d35fb562e83fba77
+pass sha256:6c9f772bc4a2c9177a54da7ff6c65a61

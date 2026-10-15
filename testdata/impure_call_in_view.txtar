@@ -162,11 +162,11 @@ func main() {
 package main
 
 import (
+	"duckfam.us/sngl/pkg/go/fynelayout"
 	"fmt"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/widget"
-	"git.duckfam.us/jonathan/sngl/pkg/go/fynelayout"
 	"os"
 )
 
@@ -209,10 +209,10 @@ func (m *Model) homeClosed() {
 }
 
 // homeVisible invokes the OnVisible callback on the #home widget; for tests.
-func (m *Model) homeVisible(__visible bool) {
+func (m *Model) homeVisible(visible bool) {
 	if cb := m.home.OnVisible; cb != nil {
 		m.home.OnVisible = nil
-		cb(__visible)
+		cb(visible)
 		m.home.OnVisible = cb
 	}
 }
@@ -263,7 +263,7 @@ func main() {
 
 package main
 
-import "git.duckfam.us/jonathan/sngl/pkg/go/gtk4rt"
+import "duckfam.us/sngl/pkg/go/gtk4rt"
 
 func main() {
 	gtk4rt.Init()
@@ -277,8 +277,8 @@ func main() {
 package main
 
 import (
+	"duckfam.us/sngl/pkg/go/gtk4rt"
 	"fmt"
-	"git.duckfam.us/jonathan/sngl/pkg/go/gtk4rt"
 )
 
 // Model holds the state and widget references for this SNGL UI.
@@ -355,29 +355,17 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 
 package test.sngl.app
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.*
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
-import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color as ComposeColor
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
-import androidx.activity.compose.BackHandler
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.platform.LocalContext
 import android.app.Activity
+import androidx.activity.compose.BackHandler
+import androidx.compose.material3.Text
+import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
 
 fun _snglFloatStr(v: Double): String =
@@ -448,10 +436,10 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:bceb10b25456b4b7911db77efa67e42f
 -- run/go/fyne --
-pass sha256:b135395d3cde152277d1cf36d66032d3
+pass sha256:492422cbcca463fcec17b941dba1f97f
 -- run/go/gtk4 --
-pass sha256:3fe11ea110a7a0fccb1bb49a07d91494
+pass sha256:1ce3953b1ab4c6b6377532eb5c16a6b2
 -- run/kotlin/android --
-pass sha256:7a284e1f3f77bece1c7a29ef97a96c8e
+pass sha256:46bb7030987b86e3a88df2eabe3a375f
 -- run/none/html --
 pass sha256:3509037b67a6963354773defc18ee4ba

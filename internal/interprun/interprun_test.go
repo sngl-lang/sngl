@@ -5,12 +5,12 @@ import (
 	"testing"
 	"time"
 
-	"git.duckfam.us/jonathan/sngl/internal/checker"
-	"git.duckfam.us/jonathan/sngl/internal/interp"
-	"git.duckfam.us/jonathan/sngl/internal/parser"
-	"git.duckfam.us/jonathan/sngl/internal/testtargets"
-	"git.duckfam.us/jonathan/sngl/ir"
-	"git.duckfam.us/jonathan/sngl/pkg/go/snglhost"
+	"duckfam.us/sngl/internal/checker"
+	"duckfam.us/sngl/internal/interp"
+	"duckfam.us/sngl/internal/parser"
+	"duckfam.us/sngl/internal/testtargets"
+	"duckfam.us/sngl/ir"
+	"duckfam.us/sngl/pkg/go/snglhost"
 )
 
 func check(t *testing.T, src string) *ir.Package {

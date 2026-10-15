@@ -3,8 +3,8 @@ package lower
 import (
 	"fmt"
 
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/ir"
 )
 
 // MaxRecursionDepth counts nested instances of one recursive component: the
@@ -223,19 +223,23 @@ func (st *recursionState) here() ir.Expr {
 // @error handler that means to catch one of them should not have to catch the
 // other: a recursion bound and a settle bound come from different mistakes.
 func raiseStmt(msg, kind string, scope []*ir.EventHandler) ir.Stmt {
+	// sngl:builtin's `error`, where a library registered the declaration.
+	var recv *ir.Type
+	if def := ir.LookupIntrinsic("error.raise"); def != nil {
+		recv = def.Receiver
+	}
 	call := &ir.Call{
 		Type: ir.TypVoid,
 		Func: &ir.Func{
 			Name:     "raise",
-			Pkg:      "sngl:builtin",
-			Receiver: "error",
+			Pkg:      &ir.Package{Path: "sngl:builtin"},
+			Receiver: recv,
 			Params: []*ir.Param{
 				{Name: "message", Type: ir.TypString},
 				{Name: "kind", Type: ir.TypString},
 			},
 			Intrinsic: "error.raise",
 			Purity:    ir.PurityPure,
-			Stdlib:    true,
 		},
 		Args: []ir.CallArg{
 			{Name: "message", Value: &ir.Literal{Type: ir.TypString, Value: msg}},

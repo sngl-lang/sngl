@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/internal/testutil"
+	"duckfam.us/sngl/internal/testutil"
 )
 
 // TestIntegration_ReactiveIfEmitsRenderSlot verifies that a reactive
@@ -71,7 +71,7 @@ func TestIntegration_ReactiveForEmitsRenderSlot(t *testing.T) {
 import . "sngl:ui"
 
 window {
-    var items list<string> = ["a", "b"]
+    var items list[string] = ["a", "b"]
     button(text="add", @click { items.push("c") })
     for var item = items {
         text(value=item)

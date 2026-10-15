@@ -4,7 +4,7 @@ import (
 	"flag"
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/internal/goldentest"
+	"duckfam.us/sngl/internal/goldentest"
 )
 
 var (

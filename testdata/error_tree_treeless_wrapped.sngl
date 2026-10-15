@@ -1,29 +1,28 @@
-// A tree-less component's rule is asked of what is under a wrapper too. A
-// boundary and a context override put nothing in the tree themselves -- they
-// say what happens when a raise reaches them, and what value the nodes under
-// them read -- so a widget written inside one is a widget this component
-// renders, and #[tree.none] says it renders none.
+// A component that takes the family it is placed in -- a type parameter in its
+// return position -- is held to rendering nothing of a family of its own, and
+// the rule is asked of what is under a wrapper too. A boundary and a context
+// override put nothing in the tree themselves -- they say what happens when a
+// raise reaches them, and what value the nodes under them read -- so a widget
+// written inside one is a widget this component renders.
 //
-// checkTreelessBody walked an `if` and a `for` and stopped there, so both of
-// these passed in silence. It reads treeTransparent now, the one list
-// checkTreeMembership, treeEvidence, childrenTree and insertsSlot all read.
+// The rule walked an `if` and a `for` and stopped there, so both of these
+// passed in silence. It reads familyTransparent now, the one list
+// checkFamilyMembership, familyEvidence, childrenFamily and insertsSlot all
+// read.
 
-import tree "sngl:tree"
 import ui "sngl:ui"
 
 context #theme("light")
 
-#[tree.none]
-component guarded() {
+component guarded[F any]() F {
     boundary(@error(e) {}) {
-        ui.text(value="x") // ERROR(check) "component guarded names no tree, so it may not contain the node component text"
+        ui.text(value="x") // ERROR(check) "component guarded takes the family it is placed in, so it may not contain the node component text"
     }
 }
 
-#[tree.none]
-component scoped() {
+component scoped[F any]() F {
     theme("dark") {
-        ui.text(value="y") // ERROR(check) "component scoped names no tree, so it may not contain the node component text"
+        ui.text(value="y") // ERROR(check) "component scoped takes the family it is placed in, so it may not contain the node component text"
     }
 }
 

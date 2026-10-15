@@ -1,5 +1,6 @@
 import ui "sngl:ui"
 import time "sngl:time"
+import shapes "sngl:ui/draw"
 import . "sngl:internal/marks"
 
 // The portable components, implemented for this platform.
@@ -12,7 +13,7 @@ import . "sngl:internal/marks"
 
 // The window's `@error` is the outermost boundary of what it renders, and
 // catches whether or not the call site handles one.
-const component ui.window[platform] {
+const component ui.window[platform](visible, @error, @closed, content) {
     Screen(visible=visible, onBack=func() {
         visible = false
         closed()
@@ -25,32 +26,32 @@ const component ui.window[platform] {
 
 // --- Core Layout ---
 
-const component ui.vbox[platform] {
+const component ui.vbox[platform](style, children) {
     Column(modifier={...style}) {
         children
     }
 }
 
-const component ui.hbox[platform] {
+const component ui.hbox[platform](style, children) {
     Row(modifier={...style}) {
         children
     }
 }
 
-const component ui.stack[platform] {
+const component ui.stack[platform](style, layers) {
     Box(modifier={...style}) {
         layers
     }
 }
 
-const component ui.spacer[platform] {
+const component ui.spacer[platform](style) {
     Spacer(modifier={...style}) {}
 }
 
-const component ui.scroll[platform] {
+const component ui.scroll[platform](style, content) {
     Column(
-        modifier={...style},
-        chain=["verticalScroll(rememberScrollState())"],
+        modifier = {...style},
+        then = [modifier.verticalScroll(rememberScrollState())],
     ) {
         content
     }
@@ -58,22 +59,46 @@ const component ui.scroll[platform] {
 
 // --- Core Text & Media ---
 
-const component ui.text[platform] {
+const component ui.text[platform](value, style) {
     Text(text=value, modifier={...style}, style={...style}) {}
 }
 
-const component ui.button[platform] {
+const component ui.button[platform](text, style, @click) {
     Button(onClick=func() { click() }, modifier={...style}, colors={...style}, shape={...style}) {
         Text(text=text) {}
     }
 }
 
-// Compose has no image loader in the box: an `Image` needs a painter, and
-// every source SNGL accepts (a URL, an asset path) needs a different one, so
-// android draws no image yet. The emitter used to render a TODO comment,
-// which draws nothing; an unsized Spacer is the declared spelling of that.
-const component ui.image[platform] {
-    Spacer(modifier={...style}) {}
+// An image is a box holding the source it shows, or the placeholder where it
+// holds none. A file the program carries is SnglAssetImage, Kotlin the
+// platform ships with the app, which reads the picture out of the app's
+// assets; a drawing is a Canvas. Compose has no image loader in the box, so a
+// picture a URL names draws nothing.
+const component ui.image[platform](style, src) {
+    Box(modifier={...style}) {
+        #[family.crosses]
+        src
+    }
+}
+
+#[intrinsic("android:SnglAssetImage")]
+component SnglAssetImage(url string) ui.imageSource
+
+#[intrinsic("android:ImageDrawing")]
+component ImageDrawing(width float, height float, shapes ...component shapes.shape) ui.imageSource
+
+const component ui.file[platform](path) {
+    SnglAssetImage(url=path)
+}
+
+const component ui.remote[platform](url) {
+    SnglAssetImage(url=url)
+}
+
+const component shapes.image[platform](width, height, shapes) {
+    ImageDrawing(width=width, height=height) {
+        shapes
+    }
 }
 
 // The placeholder is Compose's floating `label`. A field given none must get
@@ -82,14 +107,15 @@ const component ui.image[platform] {
 // renders nothing is not passed. A placeholder only known at run time cannot
 // be answered that way and keeps the argument, so an empty one shows as the
 // notched, uncaptioned field the fold exists to avoid.
-const component ui.input[platform] {
+const component ui.input[platform](placeholder, readonly, value, style, @input, @change) {
     OutlinedTextField(
-        value=value,
-        readOnly=readonly,
-        modifier={...style},
-        onValueChange=func(e) {
-            input(e)
-            change({value=e.value})
+        value = value,
+        readOnly = readonly,
+        modifier = {...style},
+        onValueChange = func(v) {
+            value = v
+            input(v)
+            change(v)
         },
     ) {
         component label {
@@ -100,9 +126,12 @@ const component ui.input[platform] {
     }
 }
 
-const component ui.checkbox[platform] {
-    Row(modifier={...style}, args=["verticalAlignment = Alignment.CenterVertically"]) {
-        Checkbox(checked=checked, onCheckedChange=func(on) { change({checked=on}) }) {}
+const component ui.checkbox[platform](label, checked, style, @change) {
+    Row(modifier={...style}, verticalAlignment=alignCenterVertically) {
+        Checkbox(checked=checked, onCheckedChange=func(on) {
+            checked = on
+            change(on)
+        }) {}
         if label != "" {
             Text(text=label) {}
         }
@@ -113,33 +142,42 @@ const component ui.checkbox[platform] {
 
 // Compose's RadioButton is one option, so the group is the loop: the
 // container is the direction the prop asks for and each option is a button
-// beside its label. onClick is passed nothing, so the override builds the
-// ChangeEvent itself from the option it looped over.
-const component ui.radio[platform] {
-    if direction == "horizontal" {
+// beside its label. onClick is passed nothing, so the override reports the
+// option it looped over.
+const component ui.radio[platform](value, direction, style, @change, options) {
+    if direction == ui.Orientation.horizontal {
         Row(modifier={...style}) {
             for var opt = options {
-                Row(args=["verticalAlignment = Alignment.CenterVertically"]) {
-                    RadioButton(selected=(value == opt), onClick=func() { change({value=opt}) }) {}
-                    Text(text=opt) {}
+                Row(verticalAlignment=alignCenterVertically) {
+                    RadioButton(selected=(value == opt.label), onClick=func() {
+                        value = opt.label
+                        change(opt.label)
+                    }) {}
+                    Text(text=opt.label) {}
                 }
             }
         }
     } else {
         Column(modifier={...style}) {
             for var opt = options {
-                Row(args=["verticalAlignment = Alignment.CenterVertically"]) {
-                    RadioButton(selected=(value == opt), onClick=func() { change({value=opt}) }) {}
-                    Text(text=opt) {}
+                Row(verticalAlignment=alignCenterVertically) {
+                    RadioButton(selected=(value == opt.label), onClick=func() {
+                        value = opt.label
+                        change(opt.label)
+                    }) {}
+                    Text(text=opt.label) {}
                 }
             }
         }
     }
 }
 
-const component ui.toggle[platform] {
-    Row(modifier={...style}, args=["verticalAlignment = Alignment.CenterVertically"]) {
-        Switch(checked=checked, onCheckedChange=func(on) { change({checked=on}) }) {}
+const component ui.toggle[platform](label, checked, style, @change) {
+    Row(modifier={...style}, verticalAlignment=alignCenterVertically) {
+        Switch(checked=checked, onCheckedChange=func(on) {
+            checked = on
+            change(on)
+        }) {}
         if label != "" {
             Text(text=label) {}
         }
@@ -159,46 +197,36 @@ const component ui.select() {
     OutlinedTextField(value=value, readOnly=true) {}
 }
 
-const component ui.textarea[platform] {
+const component ui.textarea[platform](value, style, @input, @change) {
     OutlinedTextField(
-        value=value,
-        minLines=3,
-        modifier={...style},
-        onValueChange=func(e) {
-            input(e)
-            change({value=e.value})
+        value = value,
+        minLines = 3,
+        modifier = {...style},
+        onValueChange = func(v) {
+            value = v
+            input(v)
+            change(v)
         },
     ) {}
-    // @input carries the InputEvent Compose's text is built into;
-    // @change carries a ChangeEvent, a different declaration, so it
-    // takes the value rather than the other event.
 }
 
-// A read-only field showing the date, not a calendar: Material3's date-picker
-// dialog is a second surface with its own open state, which an override cannot
-// hold (see select). An unpicked date shows nothing -- the `option` is what
-// distinguishes that from the zero date, which would otherwise pre-fill every
-// field with the first day of year one. Compose's onValueChange is not
-// optional even on a read-only field, so the argument is written and never
-// reached.
-//
-// A ternary here rather than the two calls the other platforms' progress
-// overrides write: Kotlin has a conditional expression, so nothing lowers this
-// one to a temporary, and duplicating the call would duplicate the label slot
-// with it.
-const component ui.datepicker[platform] {
-    OutlinedTextField(
-        value=(value != null ? string(value) : ""),
-        readOnly=true,
-        modifier={...style},
-        onValueChange=func(e) { change({}) },
-    ) {
-        component label {
-            if placeholder != "" {
-                Text(text=placeholder) {}
-            }
-        }
-    }
+// A date is typed as YYYY-MM-DD, or picked in Material's dialog from the
+// button beside the field. The half-typed text and the dialog's open state are
+// SnglDateField's own, in Kotlin, because a const override has nowhere to hold
+// state its render reads (see select). An
+// unpicked date shows nothing -- the `option` is what distinguishes that from
+// the zero date, the first day of year one.
+const component ui.datepicker[platform](placeholder, value, disabled, style, @change) {
+    SnglDateField(
+        value = value,
+        label = placeholder,
+        enabled = disabled == false,
+        modifier = {...style},
+        onValueChange = func(v) {
+            value = v
+            change(v)
+        },
+    ) {}
 }
 
 // --- Tier 2: Feedback & Navigation ---
@@ -206,64 +234,77 @@ const component ui.datepicker[platform] {
 // Compose's determinate/indeterminate split is by *presence* of the `progress`
 // argument, which is the shape `value` being an `option` gives the override:
 // the null test picks the call, and neither branch invents a fraction.
-const component ui.progress[platform] {
+const component ui.progress[platform](style, value, max) {
     if value != null {
         // The null test is repeated inside the lambda because narrowing does
         // not cross into one: a lambda runs later, and the checker will not
         // assume a binding still holds what it held when it was written. The
         // branch the outer `if` already settled is the unreachable one.
         LinearProgressIndicator(
-            progress=func() => (value != null ? float32(value / max) : float32(0.0)),
-            modifier={...style},
+            progress = func() => (value != null ? float32(value / max) : float32(0.0)),
+            modifier = {...style},
         ) {}
     } else {
         LinearProgressIndicator(modifier={...style}) {}
     }
 }
 
-const component ui.spinner[platform] {
+const component ui.spinner[platform](style) {
     CircularProgressIndicator(modifier={...style}) {}
 }
 
-const component ui.badge[platform] {
+const component ui.badge[platform](value, style) {
     Badge(modifier={...style}) {
         Text(text=value) {}
     }
 }
 
-const component ui.divider[platform] {
+const component ui.divider[platform](style) {
     HorizontalDivider(modifier={...style}) {}
 }
 
-const component ui.card[platform] {
+const component ui.card[platform](style, content) {
     Card(modifier={...style}) {
         content
     }
 }
 
-const component ui.chip[platform] {
-    Text(text=label) {}
-}
-
-const component ui.link[platform] {
+const component ui.link[platform](text, style) {
     Text(
-        text=text,
-        style={...style},
-        args=["color = MaterialTheme.colorScheme.primary"],
+        text = text,
+        style = {...style},
+        color = primaryColor,
     ) {}
 }
 
-const component ui.tabs[platform] {
-    TabRow(selectedTabIndex=selected) {
-        panels
+// Material's TabRow of a Tab per tab, and the selected one's content under it.
+const component ui.tabs[platform](selected, style, @change, items) {
+    Column(modifier={...style}) {
+        TabRow(selectedTabIndex=selected) {
+            for var k, t = items {
+                Tab(selected=(k == selected), enabled=!t.disabled, onClick=func() {
+                    selected = k
+                    change(k)
+                }) {
+                    component text {
+                        Text(text=t.label) {}
+                    }
+                }
+            }
+        }
+        for var k, t = items {
+            if k == selected {
+                t.content
+            }
+        }
     }
 }
 
-const component ui.modal[platform] {
+const component ui.modal[platform](open, title, @close, content) {
     if open {
         Dialog(onDismissRequest=func() { close() }) {
-            Surface(args=["shape = MaterialTheme.shapes.medium"]) {
-                Column(modifier={padding=16}) {
+            Surface(shape=mediumShape) {
+                Column(modifier={padding=16px}) {
                     if title != "" {
                         Text(text=title) {}
                     }
@@ -274,25 +315,25 @@ const component ui.modal[platform] {
     }
 }
 
-const component ui.drawer[platform] {
+const component ui.drawer[platform](style, content) {
     Column(modifier={...style}) {
         content
     }
 }
 
-const component ui.tooltip[platform] {
+const component ui.tooltip[platform](style, trigger) {
     Column(modifier={...style}) {
         trigger
     }
 }
 
-const component ui.popover[platform] {
+const component ui.popover[platform](style, content) {
     Column(modifier={...style}) {
         content
     }
 }
 
-const component ui.splitview[platform] {
+const component ui.splitview[platform](style, panes) {
     Column(modifier={...style}) {
         panes
     }
@@ -314,14 +355,10 @@ const component ui.menubar[platform] {
     Text(text="") {}
 }
 
-const component ui.toolbar[platform] {
+const component ui.toolbar[platform](style, controls) {
     Column(modifier={...style}) {
         controls
     }
-}
-
-const component ui.avatar[platform] {
-    Text(text="") {}
 }
 
 // --- The timer ---
@@ -334,14 +371,13 @@ const component ui.avatar[platform] {
 // variable name the analysis used to reduce it to. `enabled=true` produced
 // `LaunchedEffect() { while () {`, which is not Kotlin, and no golden covered
 // an android timer to say so.
-#[tree.none]
 #[intrinsic("android:Timer")]
-component Timer(
+component Timer[F any](
     interval time.duration,
-    enabled bool,
+    enabled  bool,
     @tick,
-)
+) F
 
-const component time.timer[platform] {
+const component time.timer[platform](interval, enabled, @tick) {
     Timer(interval=interval, enabled=enabled, @tick { tick() }) {}
 }

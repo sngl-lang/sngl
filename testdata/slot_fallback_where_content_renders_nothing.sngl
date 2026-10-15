@@ -1,0 +1,50 @@
+// A slot's fallback renders wherever what the call site supplied renders
+// nothing: no content at all, the branch of an `if` that holds none, and a
+// forward of a slot whose own caller left it empty. An image's placeholder is
+// the case that asks it: an avatar forwards its source to the image, and a
+// source under `if hasPhoto` is no source when the photo is not there.
+
+import . "sngl:ui"
+import . "sngl:test"
+
+component card(content ...component option[node]) node {
+    vbox {
+        content {
+            text(value="empty")
+        }
+    }
+}
+
+component forward(content ...component option[node]) node {
+    card {
+        content
+    }
+}
+
+component main node {
+    var shown = false
+    card
+    card {
+        if shown {
+            text(value="shown")
+        }
+    }
+    forward
+    forward {
+        text(value="forwarded")
+    }
+    button #show(text="show", @click { shown = true })
+}
+
+func testTheFallbackStandsWhereNothingRenders(t Test, c main) {
+    t.snapshot("hidden")
+}
+
+func testTheContentReplacesItWhenItRenders(t Test, c main) {
+    c.show.click()
+    t.snapshot("shown")
+}
+
+window {
+    main
+}

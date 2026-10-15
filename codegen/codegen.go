@@ -10,10 +10,10 @@ import (
 	"text/template"
 	"time"
 
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/internal/checker"
-	"git.duckfam.us/jonathan/sngl/internal/imports"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/internal/checker"
+	"duckfam.us/sngl/internal/imports"
+	"duckfam.us/sngl/ir"
 )
 
 // ErrSkip is returned by an OutputFile's WriteTo to indicate the file should
@@ -172,6 +172,25 @@ type ForeignIntrinsics interface {
 func ClaimsIntrinsicFunc(p PlatformGenerator) func(string) bool {
 	if fi, ok := p.(ForeignIntrinsics); ok {
 		return fi.ClaimsIntrinsic
+	}
+	return nil
+}
+
+// NativeWidgets is optionally implemented by a PlatformGenerator that renders a
+// component a native mark names -- `#[kt.native]` on android, whose widgets are
+// composables. Naming one on any other platform is an error (lower's
+// ForeignPrimitive pass).
+type NativeWidgets interface {
+	// RendersNative reports whether this platform calls a component a native
+	// mark of scheme names, e.g. "kotlin".
+	RendersNative(scheme string) bool
+}
+
+// RendersNativeFunc returns p's native-widget predicate, or nil when it renders
+// none. Shaped for lower.Options.RendersNative.
+func RendersNativeFunc(p PlatformGenerator) func(string) bool {
+	if nw, ok := p.(NativeWidgets); ok {
+		return nw.RendersNative
 	}
 	return nil
 }
@@ -691,7 +710,8 @@ type Fold interface {
 	Expr(e ir.Expr) ir.Expr
 	Stmts(stmts []ir.Stmt) []ir.Stmt
 	// Clone copies statements so a fold may rewrite them, sharing every
-	// declaration they name.
+	// declaration they name and every loop body, which the fold copies when it
+	// reaches one. A caller that writes into a loop body copies it first.
 	Clone(stmts []ir.Stmt) []ir.Stmt
 	// Decide is a condition's value, where the build can know it.
 	Decide(cond ir.Expr) (value, ok bool)
@@ -716,6 +736,10 @@ type Fold interface {
 	// documents with the fold it is handed, and each round runs what it could
 	// not answer as one program.
 	SettleNatives(probe func(Fold) error) error
+	// NativesAsked counts the native calls a probe round has asked to run so
+	// far, across this fold and every fold it shares the round with; zero
+	// outside a probe.
+	NativesAsked() int
 	// HoldsNativeCall reports whether s holds a pure native call the fold
 	// could evaluate.
 	HoldsNativeCall(s ir.Stmt) bool

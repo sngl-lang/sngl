@@ -14,18 +14,18 @@ import "testing"
 func TestInstanceCanvasDrawsAndRedraws(t *testing.T) {
 	src := `
 import . "sngl:ui"
-import . "sngl:ui/draw"
+import draw "sngl:ui/draw"
 
 component gauge(level = 0.0) node {
     var hits = 0.0
     button(text="hit", @click { hits += 20.0 })
-    canvas(width=100px, height=100px) {
-        rect(x=0.0, y=0.0, w=level + hits, h=40.0, style={fill=#ff0000}) {}
+    draw.canvas(width=100px, height=100px) {
+        draw.rect(x=0.0, y=0.0, w=level + hits, h=40.0, style={fill=#ff0000}) {}
     }
 }
 
 component App() node {
-    var levels list<float> = [10.0, 20.0]
+    var levels list[float] = [10.0, 20.0]
     for var l = levels {
         gauge(level=l)
     }

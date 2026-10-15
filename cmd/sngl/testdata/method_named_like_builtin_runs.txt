@@ -1,0 +1,61 @@
+# A program's method named like a builtin's is the program's: a component's
+# `replace` and a struct's `upper` are called as written, not spelled as the
+# string methods of the same name.
+
+sngl test --platform=none app.sngl
+stdout '2 tests, 0 failures'
+
+sngl test --platform=html app.sngl
+stdout '2 tests, 0 failures'
+
+-- app.sngl --
+import . "sngl:test"
+import ui "sngl:ui"
+
+struct Name {
+    first string
+}
+
+func Name.upper(n Name) => "<{n.first}>"
+
+component box ui.node {
+    var (
+        xs list[int] = [1, 2]
+        n = Name{first="ada"}
+    )
+
+    func replace() {
+        xs = [7]
+    }
+
+    ui.text #out(value="{xs.length()} {n.upper()}")
+    ui.button #b(text="go", @click { replace() })
+}
+
+func testComponentMethod(t Test, c box) {
+    c.replace()
+    t.assert(c.out.value == "1 <ada>")
+}
+
+func testFromAHandler(t Test, c box) {
+    c.b.click()
+    t.assert(c.out.value == "1 <ada>")
+}
+
+ui.window {
+    box
+}
+-- testrun/html/none/app.sngl/box/1 --
+sha256:38156543bae1c601ad2cc7a5711ca07a
+{
+  "results": [
+    {
+      "Desc": "ComponentMethod",
+      "Passed": true
+    },
+    {
+      "Desc": "FromAHandler",
+      "Passed": true
+    }
+  ]
+}

@@ -4,17 +4,17 @@ import (
 	"strings"
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
-	_ "git.duckfam.us/jonathan/sngl/codegen/lang"
-	"git.duckfam.us/jonathan/sngl/internal/checker"
-	"git.duckfam.us/jonathan/sngl/internal/parser"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/codegen"
+	_ "duckfam.us/sngl/codegen/lang"
+	"duckfam.us/sngl/internal/checker"
+	"duckfam.us/sngl/internal/parser"
+	"duckfam.us/sngl/ir"
 )
 
 // A list is not a key, and the program that tries to use one does not reach
 // this platform at all.
 //
-// `effect<T = struct {}>` constrains T to nothing, so `on` may be written as a
+// `effect[T = struct {}]` constrains T to nothing, so `on` may be written as a
 // list -- and `==` on one does not mean the same thing on every target. Go will
 // not compile `!=` on a slice; JS compares two objects by identity, so a
 // freshly built one is never the one already running. What this used to assert
@@ -33,8 +33,8 @@ import . "sngl:ui"
 
 window {
     var (
-        tags list<string> = ["a"]
-        log list<string> = []
+        tags list[string] = ["a"]
+        log list[string] = []
     )
 
     effect(

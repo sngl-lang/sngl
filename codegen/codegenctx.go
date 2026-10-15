@@ -4,7 +4,7 @@ import (
 	"errors"
 	"maps"
 
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 // CodegenCtx is the codegen-layer view of a checked package, created by a
@@ -218,13 +218,11 @@ func (ctx *CodegenCtx) collectTimers() []TimerHandler {
 			}
 		}
 		timers = append(timers, TimerHandler{
-			TimerInfo: TimerInfo{
-				Index:      i,
-				IntervalMs: IntervalToMs(t.Interval),
-				ActiveVar:  activeVar,
-				Body:       t.Handler.Block,
-			},
-			Mutated: mutated,
+			Index:      i,
+			IntervalMs: IntervalToMs(t.Interval),
+			ActiveVar:  activeVar,
+			Body:       t.Handler.Block,
+			Mutated:    mutated,
 		})
 	}
 	return timers

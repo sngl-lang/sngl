@@ -4,7 +4,7 @@ import (
 	"slices"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 // EmitCHeader implements codegen.CCompiler for the Go/cgo translator.
@@ -14,7 +14,13 @@ func (t *Translator) EmitCHeader(links []*ir.CLink) string {
 	if len(links) == 0 {
 		return ""
 	}
+	return "/*\n" + CPreambleLines(links) + "*/\nimport \"C\"\n"
+}
 
+// CPreambleLines is what the c.link directives put in a cgo preamble: the
+// #cgo flags and the #include lines, one per line, for a target that writes a
+// preamble of its own around them.
+func CPreambleLines(links []*ir.CLink) string {
 	// Each flag once, in the order the headers first name it: a linker
 	// resolves a library against the ones after it, so pkg-config's order is
 	// meaningful and sorting would break it.
@@ -33,7 +39,6 @@ func (t *Translator) EmitCHeader(links []*ir.CLink) string {
 	}
 
 	var b strings.Builder
-	b.WriteString("/*\n")
 	if len(cflags) > 0 {
 		b.WriteString("#cgo CFLAGS: " + strings.Join(cflags, " ") + "\n")
 	}
@@ -52,6 +57,5 @@ func (t *Translator) EmitCHeader(links []*ir.CLink) string {
 		seen = append(seen, inc)
 		b.WriteString("#include " + inc + "\n")
 	}
-	b.WriteString("*/\nimport \"C\"\n")
 	return b.String()
 }

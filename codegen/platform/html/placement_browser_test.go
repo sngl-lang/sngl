@@ -35,7 +35,7 @@ component row(label string) node {
     button(text="hit " + label, @click { hits = hits + 1 })
 }
 component App() node {
-    var rows list<string> = ["a", "b"]
+    var rows list[string] = ["a", "b"]
     for var r = rows {
         row(label=r, key=r)
     }

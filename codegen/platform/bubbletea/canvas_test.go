@@ -4,20 +4,20 @@ import (
 	"strings"
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/internal/checker"
-	"git.duckfam.us/jonathan/sngl/internal/lower"
-	"git.duckfam.us/jonathan/sngl/internal/parser"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/internal/checker"
+	"duckfam.us/sngl/internal/lower"
+	"duckfam.us/sngl/internal/parser"
+	"duckfam.us/sngl/ir"
 )
 
 func TestBubbleteaCanvasEmission(t *testing.T) {
 	src := `import . "sngl:ui"
-import . "sngl:ui/draw"
+import draw "sngl:ui/draw"
 import ui "sngl:ui"
 ui.window {
-    canvas(width=40px, height=20px) {
-        rect(x=0.0, y=0.0, w=40.0, h=20.0, style=CanvasStyle{fill=color{r=10, g=20, b=30, a=255}}) {}
+    draw.canvas(width=40px, height=20px) {
+        draw.rect(x=0.0, y=0.0, w=40.0, h=20.0, style=draw.Style{fill=color{r=10, g=20, b=30, a=255}}) {}
     }
 }`
 	doc, err := parser.Parse("t.sngl", []byte(src))
@@ -32,6 +32,7 @@ ui.window {
 	}
 	g := &Generator{}
 	lang := codegen.LookupLang("go")
+	pkg = ir.ClonePackage(pkg)
 	if err := lower.Lower(pkg, codegen.CapsOrNone(lang.LanguageIdentifier(), g.PlatformIdentifier()), lower.Options{Platform: "bubbletea", Language: "go"}); err != nil {
 		t.Fatal(err)
 	}

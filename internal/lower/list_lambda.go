@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strconv"
 
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 // passNoListLambdas expands `xs.filter(f)` and `xs.map(f)` into an
@@ -17,7 +17,7 @@ import (
 //
 // Each lifted call hoists three statements before the using statement:
 //
-//	var __list<N> list<T> = []
+//	var __list<N> list[T] = []
 //	for item<N> = xs {
 //	    // filter: if (f)(item<N>) { __list<N> = ListPush(__list<N>, item<N>) }
 //	    // map:    __list<N> = ListPush(__list<N>, (f)(item<N>))
@@ -102,13 +102,11 @@ func (st *listLambdaState) transformStmt(s ir.Stmt) ([]ir.Stmt, ir.Stmt) {
 		n.Body = st.transformBlock(n.Body)
 		n.Else = st.transformBlock(n.Else)
 	case *ir.NodeInst:
-		for i := range n.Props {
-			if n.Props[i].Value != nil {
-				p, v := st.transformExpr(n.Props[i].Value)
-				pre = append(pre, p...)
-				n.Props[i].Value = v
-			}
-		}
+		// A prop is left for the emitter, which writes the call as an
+		// expression of its own: hoisted, the loop building it was a
+		// statement of the view, which reactivity made a render slot when the
+		// list read state -- and the temp it filled stayed declared where the
+		// node was built, out of the slot's reach.
 		n.Children = st.transformBlock(n.Children)
 		for i := range n.Handlers {
 			if n.Handlers[i].Func != nil {
@@ -279,7 +277,7 @@ func (st *listLambdaState) transformExpr(e ir.Expr) ([]ir.Stmt, ir.Expr) {
 			x.Func.Block = st.transformBlock(x.Func.Block)
 		}
 		return nil, x
-	case *ir.Literal, *ir.Ident, *ir.ContextRead:
+	case *ir.Literal, *ir.Ident, *ir.ContextRead, *ir.SlotEmpty:
 		// Terminal — no list-lambda call to lift.
 		return nil, e
 	default:
@@ -295,7 +293,7 @@ func isListLambdaCall(n *ir.Call) bool {
 	if n == nil || n.Func == nil {
 		return false
 	}
-	if n.Func.Receiver != "list" && n.Func.Receiver != "*" {
+	if n.Func.RecvName() != "list" && n.Func.RecvName() != "*" {
 		return false
 	}
 	if n.Func.Name != "filter" && n.Func.Name != "map" {
@@ -326,19 +324,15 @@ func (st *listLambdaState) liftListLambda(n *ir.Call) ([]ir.Stmt, ir.Expr) {
 	case "filter":
 		outElemT = elemT
 	case "map":
-		// map's result type is list<U>; pick U from n.Type.
-		if n.Type != nil && n.Type.Kind == ir.TypeList && len(n.Type.Elems) > 0 {
-			outElemT = n.Type.Elems[0]
-		} else {
-			outElemT = ir.TypDyn
-		}
+		// map's result type is list[U]; pick U from n.Type.
+		outElemT = n.Type.Elems[0]
 	}
 	outListT := ir.ListOf(outElemT)
 
 	tempName := st.freshList()
 	itemName := st.freshItem()
 
-	// var __list<N> list<T> = []
+	// var __list<N> list[T] = []
 	tempSym := &ir.Var{Name: tempName, Type: outListT, Synthesized: true}
 	declStmt := &ir.LocalVar{
 		Name: tempName,
@@ -364,10 +358,10 @@ func (st *listLambdaState) liftListLambda(n *ir.Call) ([]ir.Stmt, ir.Expr) {
 	if id, ok := fn.(*ir.Ident); ok {
 		if decl, ok := id.Sym.(*ir.Func); ok {
 			params := decl.Params
-			if decl.Receiver != "" && len(params) > 0 && params[0].Receiver {
+			if decl.IsMethod() && len(params) > 0 && params[0].Receiver {
 				params = params[1:]
 			}
-			if (decl.Receiver == "" || len(params) < len(decl.Params)) && len(params) > 0 {
+			if (!decl.IsMethod() || len(params) < len(decl.Params)) && len(params) > 0 {
 				lambdaCall.Callee = nil
 				lambdaCall.Func = decl
 				lambdaCall.Args[0].Name = params[0].Name
@@ -380,13 +374,13 @@ func (st *listLambdaState) liftListLambda(n *ir.Call) ([]ir.Stmt, ir.Expr) {
 	// built this way when push still returned a list, because every Go backend
 	// renders the intrinsic as the assignment itself and wrapping it in an
 	// Assign double-emitted the `=`.
-	pushFn := &ir.Func{Name: "push", Receiver: "list", Intrinsic: "list.push"}
+	pushFn := ir.IntrinsicMethod("push", "list.push", outListT, nil)
 	tempIdent := &ir.Ident{Name: tempName, Type: outListT, Sym: tempSym, Synthesized: true}
 
 	pushStmt := func(pushed ir.Expr) ir.Stmt {
 		return &ir.CallStmt{
 			Call: &ir.Call{
-				Type: outListT,
+				Type: ir.TypVoid,
 				Func: pushFn,
 				Args: []ir.CallArg{
 					{Value: tempIdent},
@@ -422,19 +416,12 @@ func (st *listLambdaState) liftListLambda(n *ir.Call) ([]ir.Stmt, ir.Expr) {
 	return []ir.Stmt{declStmt, loop}, tempIdent
 }
 
-// funcReturnType extracts the return type of a function-valued expr.
-// For lambdas it's Lambda.Return; for func-typed refs the carried type
-// signature has it. Returns TypDyn if unavailable — callers downstream
-// fall back to dyn semantics.
+// funcReturnType is the result of a function-valued expression: a lambda's
+// declared return, or what its function type says. The checker typed the
+// argument of a map or a filter as a function, so one of the two is there.
 func funcReturnType(e ir.Expr) *ir.Type {
-	if e == nil {
-		return ir.TypDyn
-	}
 	if lam, ok := e.(*ir.Lambda); ok && lam.Func != nil && lam.Func.Return != nil {
 		return lam.Func.Return
 	}
-	if t := e.ExprType(); t != nil && t.Kind == ir.TypeFunc && t.Sig != nil && t.Sig.Return != nil {
-		return t.Sig.Return
-	}
-	return ir.TypDyn
+	return e.ExprType().Sig.Return
 }

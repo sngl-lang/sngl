@@ -15,8 +15,8 @@ import (
 	fyne "fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 
-	"git.duckfam.us/jonathan/sngl/pkg/go/fynehost"
-	"git.duckfam.us/jonathan/sngl/pkg/go/snglhost"
+	"duckfam.us/sngl/pkg/go/fynehost"
+	"duckfam.us/sngl/pkg/go/snglhost"
 )
 
 func main() {

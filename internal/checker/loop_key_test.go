@@ -3,8 +3,8 @@ package checker
 import (
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/internal/parser"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/internal/parser"
+	"duckfam.us/sngl/ir"
 )
 
 // A node in a loop carries its list-diffing key however it is written: as a
@@ -14,7 +14,7 @@ func TestKeyOnEveryNodeForm(t *testing.T) {
 	src := `import . "sngl:ui"
 
 component main node {
-    var items list<int> = [1, 2]
+    var items list[int] = [1, 2]
     vbox() {
         for var item, i = items {
             button(text="b", key=string(i), @click { })
@@ -52,7 +52,7 @@ component main node {
 		}
 	}
 	for _, c := range pkg.Components {
-		walk(c.Body)
+		walk(c.Stmts)
 	}
 	for _, name := range []string{"button", "text", "vbox"} {
 		if !got[name] {

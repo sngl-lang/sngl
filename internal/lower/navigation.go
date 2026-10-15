@@ -7,8 +7,8 @@ import (
 	"strconv"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/ir"
 )
 
 // passNavigation lowers sngl:ui/nav to plain UI, for a target that does not
@@ -25,7 +25,7 @@ import (
 //
 //	var pages__current _page__value = _page__value{id=0, href="/", title="Home", meta=…}
 //	var pkg__params Pkg = Pkg{}
-//	var pages__history list<pages__entry> = []
+//	var pages__history list[pages__entry] = []
 //	if pages__current.id == 0 { … } else if pages__current.id == 1 { …p is pkg__params… }
 //
 // The record is the page family's: one struct per instantiation of it -- the
@@ -474,13 +474,13 @@ func (nv *navigation) index(v any, n *ir.NodeInst, o ir.Owner) {
 func (nv *navigation) familyOf(p *ir.NodeInst) *navFamily {
 	lit, ok := p.Record.(*ir.StructLit)
 	if !ok || lit.Def == nil {
-		return nv.family(p.Component.Tree, ir.FamilyArgs(p.Component, pageArgs(p)))
+		return nv.family(p.Component.Family, ir.FamilyArgs(p.Component, pageArgs(p)))
 	}
 	key := fmt.Sprintf("record:%p", lit.Def)
 	if fam := nv.families[key]; fam != nil {
 		return fam
 	}
-	fam := &navFamily{comp: p.Component.Tree, record: lit.Def, typ: &ir.Type{Kind: ir.TypeStruct, Decl: lit.Def}, copied: hasField(lit.Def, "copy")}
+	fam := &navFamily{comp: p.Component.Family, record: lit.Def, typ: &ir.Type{Kind: ir.TypeStruct, Decl: lit.Def}, copied: hasField(lit.Def, "copy")}
 	nv.families[key] = fam
 	return fam
 }
@@ -543,7 +543,8 @@ func familyArgs(f *ir.Component, args []*ir.Type) []*ir.Type {
 		case tp.Default != nil:
 			out[i] = tp.Default
 		default:
-			out[i] = ir.TypDyn
+			// The checker has a parameter with no default written.
+			panic(fmt.Sprintf("lower: family %s's %s is bound by nothing", f.Name, tp.Name))
 		}
 	}
 	return out
@@ -570,7 +571,7 @@ func pageArgs(n *ir.NodeInst) []*ir.Type {
 			if p.Type == nil || p.Type.Kind != ir.TypeTypeParam || p.Type.ParamName != tp.Name {
 				continue
 			}
-			if t := typeOf(n.Prop(p.Name)); t != nil && t.Kind != ir.TypeDyn {
+			if t := typeOf(n.Prop(p.Name)); t != nil {
 				out[i] = t
 			}
 		}
@@ -1040,26 +1041,12 @@ func (nv *navigation) lowerBack(n *ir.CallStmt) ([]ir.Stmt, error) {
 }
 
 func listLength(list ir.Expr) ir.Expr {
-	fn := &ir.Func{Name: "length", Receiver: "list", Intrinsic: "list.length", Return: ir.TypInt}
-	if def := ir.LookupIntrinsic("list.length"); def != nil {
-		fn.Params, fn.Return = def.Instantiate(elemOf(typeOf(list)))
-	}
-	return &ir.Call{Type: ir.TypInt, Func: fn, Args: []ir.CallArg{{Value: list}}}
+	return callListLength(list)
 }
 
 func callListRemove(list, index ir.Expr, elem *ir.Type) ir.Stmt {
-	fn := &ir.Func{Name: "remove", Receiver: "list", Intrinsic: "list.remove"}
-	if def := ir.LookupIntrinsic("list.remove"); def != nil {
-		fn.Params, fn.Return = def.Instantiate(elem)
-	}
+	fn := ir.IntrinsicMethod("remove", "list.remove", ir.ListOf(elem), nil)
 	return &ir.CallStmt{Call: &ir.Call{Type: ir.TypVoid, Func: fn, Args: []ir.CallArg{{Value: list}, {Value: index}}}}
-}
-
-func elemOf(t *ir.Type) *ir.Type {
-	if t != nil && len(t.Elems) > 0 {
-		return t.Elems[0]
-	}
-	return ir.TypDyn
 }
 
 // lowerView replaces each stack with the if-chain over its pages and lowers
@@ -1193,7 +1180,7 @@ func (nv *navigation) link(n *ir.NodeInst) (ir.Stmt, error) {
 	// left to it.
 	own := decl.DeclaredBody
 	if own == nil {
-		own = decl.Body
+		own = decl.Stmts
 	}
 	if len(own) == 0 {
 		return nil, fmt.Errorf("%s: nav.link has no body to render here", ir.NodePos(n))
@@ -1233,7 +1220,7 @@ func (nv *navigation) link(n *ir.NodeInst) (ir.Stmt, error) {
 	}
 	cp := *decl
 	cp.Builtin = ""
-	cp.Body = body
+	cp.Stmts = body
 	n.Component = &cp
 	if n.Handle != nil {
 		n.Handle.Type = cp.SymType()
@@ -1382,8 +1369,8 @@ func (nv *navigation) navFamilyOf(t *ir.Type) *navFamily {
 	if c.IsFamily() {
 		return nv.families[familyKey(c, familyArgs(c, t.Elems))]
 	}
-	if c.Tree != nil && c.Builtin == ir.BuiltinNavPage {
-		return nv.families[familyKey(c.Tree, familyArgs(c.Tree, ir.FamilyArgs(c, t.Elems)))]
+	if c.Family != nil && c.Builtin == ir.BuiltinNavPage {
+		return nv.families[familyKey(c.Family, familyArgs(c.Family, ir.FamilyArgs(c, t.Elems)))]
 	}
 	return nil
 }
@@ -1421,7 +1408,9 @@ func (nv *navigation) retype() {
 		}
 	}
 	for _, c := range nv.pkg.Components {
-		if c.Stdlib {
+		// A library declaration is shared by every build, so retyping it
+		// here would retype it for the next one.
+		if c.PkgPath() != "" {
 			continue
 		}
 		for _, v := range c.Vars {
@@ -1515,7 +1504,7 @@ func spliceComposedPages(pkg *ir.Package) error {
 						return out
 					}
 					spliced[c] = true
-					body := substituteParams(deepCloneStmts(c.Body), pageBindings(c, n))
+					body := substituteParams(deepCloneStmts(c.Stmts), pageBindings(c, n))
 					body = substituteSlots(body, n)
 					out = append(out, pages(body, depth+1)...)
 					continue
@@ -1554,15 +1543,15 @@ func spliceComposedPages(pkg *ir.Package) error {
 	used := map[*ir.Component]bool{}
 	_ = ir.Walk(pkg, func(n ir.Node) error {
 		if inst, ok := n.(*ir.NodeInst); ok && inst.Component != nil {
-			if isNavNode(inst, ir.BuiltinNavPage) && inst.Component.Tree != nil {
-				pageFamilies[inst.Component.Tree] = true
+			if isNavNode(inst, ir.BuiltinNavPage) && inst.Component.Family != nil {
+				pageFamilies[inst.Component.Family] = true
 			}
 			used[inst.Component] = true
 		}
 		return nil
 	})
 	pkg.Components = slices.DeleteFunc(pkg.Components, func(c *ir.Component) bool {
-		return c != nil && !used[c] && (spliced[c] || composesPages(c) && pageFamilies[c.Tree])
+		return c != nil && !used[c] && (spliced[c] || composesPages(c) && pageFamilies[c.Family])
 	})
 	return nil
 }
@@ -1572,7 +1561,7 @@ func spliceComposedPages(pkg *ir.Package) error {
 // program's with a body. The page builtin -- or a target's primitive standing
 // for it -- is what the composition comes down to.
 func composesPages(c *ir.Component) bool {
-	return c != nil && !isPrimitiveComponent(c) && !c.Bodyless && len(c.Body) > 0
+	return c != nil && !isPrimitiveComponent(c) && !c.Bodyless && len(c.Stmts) > 0
 }
 
 // maxInlinePagesDepth bounds a composition of pages that renders a
@@ -1644,7 +1633,7 @@ func (nv *navigation) copiesEqual(a, b ir.Expr) ir.Expr {
 	return &ir.Call{Type: ir.TypBool, Func: nv.copyEq(), Args: []ir.CallArg{{Value: nv.copyOfExpr(a)}, {Value: nv.copyOfExpr(b)}}}
 }
 
-// copyEq is the package's `__nav_copy_eq(a, b list<int>) bool`, made the
+// copyEq is the package's `__nav_copy_eq(a, b list[int]) bool`, made the
 // first time two copies neither of which is known are compared.
 func (nv *navigation) copyEq() *ir.Func {
 	for _, f := range nv.pkg.Funcs {
@@ -1737,11 +1726,6 @@ func signedFuncs(pkg *ir.Package) []*ir.Func {
 	for _, o := range ir.Owners(pkg) {
 		for _, f := range o.Funcs {
 			add(f)
-		}
-		for _, v := range o.Vars {
-			for _, h := range v.Handlers {
-				add(h.Func)
-			}
 		}
 	}
 	_ = ir.Walk(pkg, func(n ir.Node) error {

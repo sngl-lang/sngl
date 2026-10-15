@@ -8,7 +8,7 @@ import . "sngl:ui"
 // spinner: A-tier — the real stdlib signature exposes only
 // label/variant/size (no `visible` prop). Declaration-only fixture.
 component main node {
-    spinner(label="Loading...", variant="circle", size="large")
+    spinner(label="Loading...", variant=circle, size=large)
 }
 
 window {
@@ -135,10 +135,10 @@ func main() {
 package main
 
 import (
+	"duckfam.us/sngl/pkg/go/fynelayout"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/widget"
-	"git.duckfam.us/jonathan/sngl/pkg/go/fynelayout"
 	"os"
 )
 
@@ -325,6 +325,18 @@ static void sngl_unref_pixbuf(GdkPixbuf *p) {
     if (p != NULL) g_object_unref(p);
 }
 
+// Selects a day the way a click on it does, for gtk4's datepicker override
+// (selectDay) and a test's invoker. select_day is the call every GTK 4 has;
+// 4.20 deprecates it for set_date, which the older ones lack.
+static void sngl_calendar_select(GtkCalendar *c, int y, int m, int d) {
+    GDateTime *dt = g_date_time_new_utc(y, m, d, 0, 0, 0);
+    if (dt == NULL) return;
+    G_GNUC_BEGIN_IGNORE_DEPRECATIONS
+    gtk_calendar_select_day(c, dt);
+    G_GNUC_END_IGNORE_DEPRECATIONS
+    g_date_time_unref(dt);
+}
+
 static void sngl_set_entry_text(GtkEditable *e, const char *t) {
     const char *cur = gtk_editable_get_text(e);
     if (t == NULL) t = "";
@@ -412,29 +424,17 @@ func (m *Model) BuildUI(app *C.GtkApplication) *C.GtkWidget {
 
 package test.sngl.app
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.*
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
-import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color as ComposeColor
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
-import androidx.activity.compose.BackHandler
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.platform.LocalContext
 import android.app.Activity
+import androidx.activity.compose.BackHandler
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
 
 fun _snglFloatStr(v: Double): String =
@@ -488,10 +488,10 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:65ed0ab8df10a12740fd78105ff81e94
 -- run/go/fyne --
-pass sha256:48e4d6431d306b7d56b6eb10a9e15621
+pass sha256:31c6a0e68080b0c3fb4660295623f912
 -- run/go/gtk4 --
-pass sha256:30723ca4a89337b837124895b50e47be
+pass sha256:ce33ddcbc40e77933ae53ec36c6924fa
 -- run/kotlin/android --
-pass sha256:fa3296d28968338481ae2b5f02ca9154
+pass sha256:fd293d19553c6cb8d332940633ec930a
 -- run/none/html --
 pass sha256:beb6047effa629bd064338dc06fb96af

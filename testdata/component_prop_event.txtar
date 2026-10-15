@@ -5,7 +5,7 @@ carries.
 -- component_prop_event.sngl --
 import . "sngl:ui"
 
-component Button(variant = "primary", @click) node {
+component Button(variant = "primary", @click(v int)) node {
     button(text="Click me", @click { click(1) })
 }
 
@@ -48,7 +48,7 @@ import (
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
 	count__inst0   int
-	visible__inst1 bool
+	visible__inst0 bool
 	__focusID      int
 
 	width, height int
@@ -58,7 +58,7 @@ type Model struct {
 func New() Model {
 	m := Model{}
 	m.count__inst0 = 0
-	m.visible__inst1 = true
+	m.visible__inst0 = true
 	m.__focusID = 0
 	return m
 }
@@ -96,19 +96,19 @@ func SetCount__inst0Cmd(v int) tea.Cmd {
 	return func() tea.Msg { return setCount__inst0Msg{value: v} }
 }
 
-func (m Model) Visible__inst1() bool {
-	return m.visible__inst1
+func (m Model) Visible__inst0() bool {
+	return m.visible__inst0
 }
 
-func (m Model) SetVisible__inst1(v bool) Model {
-	m.visible__inst1 = v
+func (m Model) SetVisible__inst0(v bool) Model {
+	m.visible__inst0 = v
 	return m
 }
 
-type setVisible__inst1Msg struct{ value bool }
+type setVisible__inst0Msg struct{ value bool }
 
-func SetVisible__inst1Cmd(v bool) tea.Cmd {
-	return func() tea.Msg { return setVisible__inst1Msg{value: v} }
+func SetVisible__inst0Cmd(v bool) tea.Cmd {
+	return func() tea.Msg { return setVisible__inst0Msg{value: v} }
 }
 
 func (m Model) Init() tea.Cmd {
@@ -122,18 +122,18 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case setCount__inst0Msg:
 		m = m.SetCount__inst0(msg.value)
-	case setVisible__inst1Msg:
-		m = m.SetVisible__inst1(msg.value)
+	case setVisible__inst0Msg:
+		m = m.SetVisible__inst0(msg.value)
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
 	case tea.KeyPressMsg:
 		switch {
 		case msg.Code == 'c' && msg.Mod == tea.ModCtrl:
-			if m.visible__inst1 {
-				m.visible__inst1 = false
+			if m.visible__inst0 {
+				m.visible__inst0 = false
 			}
-			if !(m.visible__inst1) {
+			if !(m.visible__inst0) {
 				return m, tea.Quit
 			}
 			return m, nil
@@ -150,7 +150,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m Model) View() tea.View {
 	var content string
-	if m.visible__inst1 {
+	if m.visible__inst0 {
 		var contentParts []string
 		var contentPart_0 string
 		contentPart_0Focused := (m.__focusID == 0)
@@ -184,18 +184,18 @@ func main() {
 package main
 
 import (
+	"duckfam.us/sngl/pkg/go/fynelayout"
 	"fmt"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/widget"
-	"git.duckfam.us/jonathan/sngl/pkg/go/fynelayout"
 	"os"
 )
 
 // Model holds the state for this SNGL UI.
 type Model struct {
 	count__inst0   int
-	visible__inst1 bool
+	visible__inst0 bool
 
 	__n0    *fynelayout.Toplevel
 	__n2    *widget.Button
@@ -207,7 +207,7 @@ type Model struct {
 func New() *Model {
 	m := &Model{}
 	m.count__inst0 = 0
-	m.visible__inst1 = true
+	m.visible__inst0 = true
 	return m
 }
 
@@ -215,8 +215,8 @@ func (m *Model) __n0_closed_handler() {
 }
 
 func (m *Model) __n0_visible_handler(__visible bool) {
-	m.visible__inst1 = __visible
-	m.__n0.SetVisible(m.visible__inst1)
+	m.visible__inst0 = __visible
+	m.__n0.SetVisible(m.visible__inst0)
 }
 
 func (m *Model) __n2_click_handler() {
@@ -232,12 +232,12 @@ func (m *Model) SetCount__inst0(v int) {
 	m.count__inst0 = v
 }
 
-func (m *Model) Visible__inst1() bool {
-	return m.visible__inst1
+func (m *Model) Visible__inst0() bool {
+	return m.visible__inst0
 }
 
-func (m *Model) SetVisible__inst1(v bool) {
-	m.visible__inst1 = v
+func (m *Model) SetVisible__inst0(v bool) {
+	m.visible__inst0 = v
 }
 
 // BuildUI creates the widget tree and returns the first window's content.
@@ -247,7 +247,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	}
 	m.__built = true
 	m.__n0 = fynelayout.NewToplevel()
-	m.__n0.SetVisible(m.visible__inst1)
+	m.__n0.SetVisible(m.visible__inst0)
 	m.__n0.OnClosed = m.__n0_closed_handler
 	m.__n0.OnVisible = m.__n0_visible_handler
 	m.__n2 = widget.NewButton("", nil)
@@ -273,7 +273,7 @@ func main() {
 
 package main
 
-import "git.duckfam.us/jonathan/sngl/pkg/go/gtk4rt"
+import "duckfam.us/sngl/pkg/go/gtk4rt"
 
 func main() {
 	gtk4rt.Init()
@@ -287,14 +287,14 @@ func main() {
 package main
 
 import (
+	"duckfam.us/sngl/pkg/go/gtk4rt"
 	"fmt"
-	"git.duckfam.us/jonathan/sngl/pkg/go/gtk4rt"
 )
 
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
 	count__inst0   int
-	visible__inst1 bool
+	visible__inst0 bool
 	__n0           gtk4rt.Handle
 	__n2           gtk4rt.Handle
 	__n1           gtk4rt.Handle
@@ -306,7 +306,7 @@ type Model struct {
 func New() *Model {
 	m := &Model{}
 	m.count__inst0 = 0
-	m.visible__inst1 = true
+	m.visible__inst0 = true
 	return m
 }
 
@@ -314,8 +314,8 @@ func (m *Model) __n0_closed_handler() {
 }
 
 func (m *Model) __n0_visible_handler(__visible bool) {
-	m.visible__inst1 = __visible
-	gtk4rt.ToplevelSetVisible(m.__n0, m.visible__inst1)
+	m.visible__inst0 = __visible
+	gtk4rt.ToplevelSetVisible(m.__n0, m.visible__inst0)
 }
 
 func (m *Model) __n2_clicked_handler() {
@@ -331,12 +331,12 @@ func (m *Model) SetCount__inst0(v int) {
 	m.count__inst0 = v
 }
 
-func (m *Model) Visible__inst1() bool {
-	return m.visible__inst1
+func (m *Model) Visible__inst0() bool {
+	return m.visible__inst0
 }
 
-func (m *Model) SetVisible__inst1(v bool) {
-	m.visible__inst1 = v
+func (m *Model) SetVisible__inst0(v bool) {
+	m.visible__inst0 = v
 }
 
 func (m *Model) buildWidgetTree() {
@@ -345,7 +345,7 @@ func (m *Model) buildWidgetTree() {
 	}
 	m.__built = true
 	m.__n0 = gtk4rt.ToplevelNew()
-	gtk4rt.ToplevelSetVisible(m.__n0, m.visible__inst1)
+	gtk4rt.ToplevelSetVisible(m.__n0, m.visible__inst0)
 	gtk4rt.ToplevelOnClosed(m.__n0, m.__n0_closed_handler)
 	gtk4rt.ToplevelOnVisible(m.__n0, m.__n0_visible_handler)
 	m.__n2 = gtk4rt.ButtonNew()
@@ -369,30 +369,20 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 
 package test.sngl.app
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.*
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
-import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color as ComposeColor
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
-import androidx.activity.compose.BackHandler
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.platform.LocalContext
 import android.app.Activity
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.layout.Column
+import androidx.compose.material3.Button
+import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.material3.Text
 
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
@@ -404,13 +394,13 @@ fun _snglSplit(s: String, sep: String): List<String> =
 @Composable
 fun MainScreen() {
     var count__inst0 by remember { mutableStateOf(0) }
-    var visible__inst1 by remember { mutableStateOf(true) }
+    var visible__inst0 by remember { mutableStateOf(true) }
 
-    if (visible__inst1) {
+    if (visible__inst0) {
         val __activity = LocalContext.current as? Activity
         BackHandler {
-            visible__inst1 = false
-            if (!(visible__inst1)) {
+            visible__inst0 = false
+            if (!(visible__inst0)) {
                 __activity?.finish()
             }
         }
@@ -446,7 +436,7 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { count__inst0: 0, visible__inst1: true };
+  var state = { count__inst0: 0, visible__inst0: true };
   function String(v) {
     return "" + v;
   }
@@ -464,12 +454,12 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:ff59876adbbc04a37807691eba4d7eb8
+pass sha256:77a09f5f4ae72fb15508225782dcb1b8
 -- run/go/fyne --
-pass sha256:a6a2687ee4ce49181f632c7c4b9012ae
+pass sha256:807482192c44013bcb927e0b5a94bc66
 -- run/go/gtk4 --
-pass sha256:957ba94e2cfb6ca879cc90daf6729799
+pass sha256:d102f1be7e13bfd26022cb670af6d3e3
 -- run/kotlin/android --
-pass sha256:34af25c5fa13629357da8197c305b1ea
+pass sha256:e6ecff21382e772327a549d037bd7686
 -- run/none/html --
-pass sha256:672a01631120f769230e1cde94d95148
+pass sha256:d0cfebd6c3c5247410be39c35ee6d346

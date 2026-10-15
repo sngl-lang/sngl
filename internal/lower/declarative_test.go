@@ -3,7 +3,7 @@ package lower
 import (
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 // A recursive component (tree → tree) is left in place by
@@ -12,10 +12,10 @@ import (
 // AppendChild instead of CreateNode("tree").
 func TestDeclarative_RecursiveComponentEmitsCreateComponent(t *testing.T) {
 	tree := &ir.Component{Name: "tree"}
-	tree.Body = []ir.Stmt{&ir.NodeInst{Name: "tree", Component: tree}}
+	tree.Stmts = []ir.Stmt{&ir.NodeInst{Name: "tree", Component: tree}}
 	main := &ir.Component{
-		Name: "main",
-		Body: []ir.Stmt{&ir.NodeInst{Name: "tree", Component: tree}},
+		Name:  "main",
+		Stmts: []ir.Stmt{&ir.NodeInst{Name: "tree", Component: tree}},
 	}
 
 	pkg := &ir.Package{Components: []*ir.Component{tree, main}}
@@ -27,8 +27,8 @@ func TestDeclarative_RecursiveComponentEmitsCreateComponent(t *testing.T) {
 		t.Fatalf("declarative: %v", err)
 	}
 
-	if !blockContainsCreateComponent(main.Body) {
-		t.Errorf("expected CreateComponent in main.Body for static recursive NodeInst; got %#v", main.Body)
+	if !blockContainsCreateComponent(main.Stmts) {
+		t.Errorf("expected CreateComponent in main.Body for static recursive NodeInst; got %#v", main.Stmts)
 	}
 }
 

@@ -24,7 +24,7 @@ func TestTheCompilerDoesNotLinkAToolkit(t *testing.T) {
 	}
 	banned := []string{
 		"fyne.io/",
-		"git.duckfam.us/jonathan/sngl/pkg/go/fynehost",
+		"duckfam.us/sngl/pkg/go/fynehost",
 		"github.com/fogleman/gg",
 	}
 	var deps int

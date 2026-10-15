@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 // toplevelTag is gtk4.sngl's `Toplevel`, the primitive `ui.window` is on this
@@ -24,9 +24,9 @@ func (t *gtk4Translator) emitToplevelCreate(id string) []ir.Stmt {
 	if t.shared != nil {
 		t.shared.toplevels[id] = true
 	}
-	var ctor ir.Expr = rtCall("ToplevelNew")
+	var ctor ir.Expr = rtCall("ToplevelNew", gtk4rtHandleIRType())
 	if !t.wrapped {
-		ctor = nativeCall("gtk_box_new", &ir.Ident{Name: "C.GTK_ORIENTATION_VERTICAL", Type: ir.TypDyn}, intLit("6"))
+		ctor = nativeCall("gtk_box_new", ir.NativePointerOf("GtkWidget"), cOrientationVertical(), intLit("6"))
 	}
 	return t.emitConstructorAssign(id, "GtkBox", ctor)
 }
@@ -62,9 +62,9 @@ func (t *gtk4Translator) toplevelPropAssign(node ir.Expr, prop string, value ir.
 	}
 	switch prop {
 	case "title":
-		return []ir.Stmt{&ir.CallStmt{Call: rtCall("ToplevelSetTitle", ref, value)}}
+		return []ir.Stmt{&ir.CallStmt{Call: rtCall("ToplevelSetTitle", ir.TypVoid, ref, value)}}
 	case "visible":
-		return []ir.Stmt{&ir.CallStmt{Call: rtCall("ToplevelSetVisible", ref, value)}}
+		return []ir.Stmt{&ir.CallStmt{Call: rtCall("ToplevelSetVisible", ir.TypVoid, ref, value)}}
 	}
 	return nil
 }
@@ -98,7 +98,7 @@ func (t *gtk4Translator) toplevelAttachHandler(node ir.Expr, event string, handl
 	default:
 		return nil
 	}
-	return []ir.Stmt{&ir.CallStmt{Call: rtCall(fn, t.qualifyNodeExpr(node), handler)}}
+	return []ir.Stmt{&ir.CallStmt{Call: rtCall(fn, ir.TypVoid, t.qualifyNodeExpr(node), handler)}}
 }
 
 // appAttach is a node at the root of the package body joining the
@@ -115,14 +115,14 @@ func (t *gtk4Translator) appAttach(child ir.Expr) []ir.Stmt {
 		}
 		return nil
 	}
-	return []ir.Stmt{&ir.CallStmt{Call: rtCall("AppAttach", t.qualifyNodeExpr(child))}}
+	return []ir.Stmt{&ir.CallStmt{Call: rtCall("AppAttach", ir.TypVoid, t.qualifyNodeExpr(child))}}
 }
 
 func (t *gtk4Translator) appDetach(child ir.Expr) []ir.Stmt {
 	if !t.wrapped {
 		return nil
 	}
-	return []ir.Stmt{&ir.CallStmt{Call: rtCall("AppDetach", t.qualifyNodeExpr(child))}}
+	return []ir.Stmt{&ir.CallStmt{Call: rtCall("AppDetach", ir.TypVoid, t.qualifyNodeExpr(child))}}
 }
 
 // dropTopLevel takes child off the list of refs buildWidgetTree parents into
@@ -144,7 +144,7 @@ func (t *gtk4Translator) dropTopLevel(child ir.Expr) {
 // application as its parent: gtk4rt.App, which the box calls it makes answer
 // for the application.
 func (t *gtk4Translator) appSlotCall(cs *ir.CallStmt) ([]ir.Stmt, bool) {
-	if cs.Call == nil || cs.Call.Func == nil || !cs.Call.Func.SlotRender || len(cs.Call.Args) != 1 || !ir.IsAppParent(cs.Call.Args[0].Value) {
+	if cs.Call == nil || cs.Call.Func == nil || !cs.Call.Func.Lowered.SlotRender || len(cs.Call.Args) != 1 || !ir.IsAppParent(cs.Call.Args[0].Value) {
 		return nil, false
 	}
 	if !t.wrapped {
@@ -152,7 +152,7 @@ func (t *gtk4Translator) appSlotCall(cs *ir.CallStmt) ([]ir.Stmt, bool) {
 		return nil, true
 	}
 	call := *cs.Call
-	call.Args = []ir.CallArg{{Name: cs.Call.Args[0].Name, Value: rtConst("App")}}
+	call.Args = []ir.CallArg{{Name: cs.Call.Args[0].Name, Value: rtConst("App", gtk4rtHandleIRType())}}
 	return []ir.Stmt{&ir.CallStmt{Call: &call}}, true
 }
 
@@ -270,10 +270,10 @@ func refuseCgoVisibleWrites(pkg *ir.Package, tops map[string]bool) error {
 		return nil
 	})
 	for _, fn := range pkg.Funcs {
-		if fn == nil || (fn.LoweredFromEvent == "visible" && tops[fn.LoweredFromNode]) {
+		if fn == nil || (fn.Lowered.Event == "visible" && tops[fn.Lowered.Node]) {
 			continue
 		}
-		if !reached[fn] && fn.LoweredFromEvent == "" {
+		if !reached[fn] && fn.Lowered.Event == "" {
 			continue
 		}
 		var found bool

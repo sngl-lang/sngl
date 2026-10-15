@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 // trace records each translator call as a string so tests can assert
@@ -78,11 +78,10 @@ func TestWalkLoweredDispatchesCreate(t *testing.T) {
 	stmts := []ir.Stmt{
 		&ir.LocalVar{
 			Name: "__n0",
-			Type: ir.TypDyn,
+			Type: &ir.Type{Kind: ir.TypeComponent},
 			Init: &ir.Call{
-				Receiver: &ir.Ident{Name: "lower"},
-				Func:     createFunc,
-				Args:     []ir.CallArg{{Value: &ir.Literal{Type: ir.TypString, Value: "vbox"}}},
+				Func: createFunc,
+				Args: []ir.CallArg{{Value: &ir.Literal{Type: ir.TypString, Value: "vbox"}}},
 			},
 		},
 	}
@@ -96,8 +95,8 @@ func TestWalkLoweredDispatchesCreate(t *testing.T) {
 
 func TestWalkLoweredDispatchesAll(t *testing.T) {
 	stmts := []ir.Stmt{
-		// var __n0 dyn = lower.CreateNode("vbox")
-		&ir.LocalVar{Name: "__n0", Type: ir.TypDyn, Init: &ir.Call{
+		// var __n0 component = lower.CreateNode("vbox")
+		&ir.LocalVar{Name: "__n0", Type: &ir.Type{Kind: ir.TypeComponent}, Init: &ir.Call{
 			Func: &ir.Func{Name: "CreateNode", Intrinsic: "CreateNode"},
 			Args: []ir.CallArg{{Value: &ir.Literal{Type: ir.TypString, Value: "vbox"}}},
 		}},
@@ -153,7 +152,7 @@ func TestWalkLowered_SlotReset(t *testing.T) {
 	slotVar := &ir.Var{Name: "__slot0", Synthesized: true}
 	stmt := &ir.Assign{
 		Target: &ir.Ident{Name: "__slot0", Synthesized: true, Sym: slotVar},
-		Value:  &ir.ListLit{Type: ir.ListOf(ir.TypDyn), Elems: nil},
+		Value:  &ir.ListLit{Type: ir.ListOf(&ir.Type{Kind: ir.TypeComponent}), Elems: nil},
 	}
 	tr := &trace{}
 	WalkLowered(context.Background(), []ir.Stmt{stmt}, tr)
@@ -226,7 +225,7 @@ func nodeOpShapes() map[string]struct {
 } {
 	inst := func() ir.Expr { return &ir.Ident{Name: "__i0", Synthesized: true} }
 	lower := func(op string, args ...ir.Expr) *ir.Call {
-		c := &ir.Call{Receiver: &ir.Ident{Name: "lower"}, Func: &ir.Func{Name: op, Intrinsic: op}}
+		c := &ir.Call{Func: &ir.Func{Name: op, Intrinsic: op}}
 		for _, a := range args {
 			c.Args = append(c.Args, ir.CallArg{Value: a})
 		}
@@ -234,7 +233,7 @@ func nodeOpShapes() map[string]struct {
 	}
 	str := func(s string) ir.Expr { return &ir.Literal{Type: ir.TypString, Value: s} }
 	bind := func(name string, c *ir.Call) ir.Stmt {
-		return &ir.LocalVar{Name: name, Type: ir.TypDyn, Init: c}
+		return &ir.LocalVar{Name: name, Type: &ir.Type{Kind: ir.TypeComponent}, Init: c}
 	}
 	call := func(c *ir.Call) ir.Stmt { return &ir.CallStmt{Call: c} }
 

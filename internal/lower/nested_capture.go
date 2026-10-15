@@ -1,6 +1,6 @@
 package lower
 
-import "git.duckfam.us/jonathan/sngl/ir"
+import "duckfam.us/sngl/ir"
 
 // spliceNestedCaptures substitutes every instantiation of a capturing
 // body-local component into the body that declared it, before that body is
@@ -31,11 +31,11 @@ func (st *inlineCompState) spliceNestedCaptures() error {
 		}
 		st.hoist = componentHoist(owner)
 		for {
-			body, changed, err := st.inlineStmts(owner.Body)
+			body, changed, err := st.inlineStmts(owner.Stmts)
 			if err != nil {
 				return err
 			}
-			owner.Body = body
+			owner.Stmts = body
 			if !changed {
 				break
 			}

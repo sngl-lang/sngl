@@ -18,7 +18,7 @@ const H = 120.0
 
 window #w {
     draw.canvas(width=W * 2 * 1px, height=H * 1px / 2) {
-        draw.rect(x=0.0, y=0.0, w=W, h=H, style=draw.CanvasStyle{fill=color{r=200, g=0, b=0, a=255}})
+        draw.rect(x=0.0, y=0.0, w=W, h=H, style=draw.Style{fill=color{r=200, g=0, b=0, a=255}})
     }
 }
 -- out/none/html/index.html --

@@ -5,10 +5,10 @@ import (
 	"strings"
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/codegen/lang/golang"
-	"git.duckfam.us/jonathan/sngl/codegen/platform/gtk4/gir"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/codegen/lang/golang"
+	"duckfam.us/sngl/codegen/platform/gtk4/gir"
+	"duckfam.us/sngl/ir"
 )
 
 func stubGC() *golang.GoIRContext {
@@ -99,9 +99,9 @@ func TestGtk4Translator_OnCreateNode_UnimplementedStdlibComponent(t *testing.T) 
 	// collected across every registered platform.
 	tr.tagComponent["avatar"] = &ir.Component{
 		Name:              "avatar",
-		Stdlib:            true,
-		Pkg:               "sngl:ui",
-		PlatformOverrides: map[string]ir.Body{"html": {}},
+		Bodyless:          true,
+		Pkg:               &ir.Package{Path: "sngl:ui"},
+		PlatformOverrides: map[string]ir.Override{"html": {}},
 	}
 	if stmts := tr.OnCreateNode(context.Background(), "__n0", "avatar"); len(stmts) != 0 {
 		t.Errorf("expected no stmts; got %d", len(stmts))
@@ -203,7 +203,7 @@ func TestGtk4Translator_OnAttachHandler_ButtonClick(t *testing.T) {
 func TestGtk4Translator_OnSlotReset(t *testing.T) {
 	gc := stubGC()
 	tr := newGtk4Translator(gc, func(_, _ string) {})
-	slot := &ir.Var{Name: "__slot0", Synthesized: true, Type: ir.ListOf(ir.TypDyn)}
+	slot := &ir.Var{Name: "__slot0", Synthesized: true, Type: ir.ListOf(&ir.Type{Kind: ir.TypeComponent})}
 	got := renderStmts(gc, tr.OnSlotReset(context.Background(), slot))
 	if !strings.Contains(got, "m.__slot0 = nil") {
 		t.Errorf("expected slot reset to nil; got: %s", got)
@@ -213,7 +213,7 @@ func TestGtk4Translator_OnSlotReset(t *testing.T) {
 func TestGtk4Translator_OnSlotAppend(t *testing.T) {
 	gc := stubGC()
 	tr := newGtk4Translator(gc, func(_, _ string) {})
-	slot := &ir.Var{Name: "__slot0", Synthesized: true, Type: ir.ListOf(ir.TypDyn)}
+	slot := &ir.Var{Name: "__slot0", Synthesized: true, Type: ir.ListOf(&ir.Type{Kind: ir.TypeComponent})}
 	child := &ir.Ident{Name: "__n0", Synthesized: true, IsElementRef: true}
 	got := renderStmts(gc, tr.OnSlotAppend(context.Background(), slot, child))
 	if !strings.Contains(got, "append(m.__slot0") {

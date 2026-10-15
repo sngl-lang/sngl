@@ -2,13 +2,14 @@ package android
 
 import (
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/codegen/canvasutil"
-	"git.duckfam.us/jonathan/sngl/codegen/lang/kotlin"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/codegen/canvasutil"
+	"duckfam.us/sngl/codegen/lang/kotlin"
+	"duckfam.us/sngl/ir"
 )
 
 // Canvas2D rendering for android via Jetpack Compose's DrawScope.
@@ -38,26 +39,6 @@ import (
 // a Compose-specific 2D API — the drawing is now written in SNGL and reaches
 // the emitter as ordinary Compose calls.
 
-// canvasComposeImports are the Compose graphics imports the DrawScope
-// translation needs. Registered when any canvas is rendered.
-var canvasComposeImports = []string{
-	"androidx.compose.foundation.Canvas",
-	"androidx.compose.ui.geometry.Offset",
-	"androidx.compose.ui.geometry.Size",
-	"androidx.compose.ui.graphics.Path",
-	// No Fill: the fill variants in android.sngl omit `style` entirely and
-	// take Compose's own default, so nothing the overrides emit names it.
-	"androidx.compose.ui.graphics.drawscope.Stroke",
-	"androidx.compose.ui.graphics.nativeCanvas",
-	"androidx.compose.ui.graphics.asImageBitmap",
-	"androidx.compose.ui.unit.IntOffset",
-	"androidx.compose.ui.unit.IntSize",
-	// The two shims' own needs: the receiver they extend, and the ARGB int a
-	// `Paint` colour is.
-	"androidx.compose.ui.graphics.drawscope.DrawScope",
-	"androidx.compose.ui.graphics.toArgb",
-}
-
 // packageHasCanvas reports whether the program contains at least one canvas.
 // Used to decide whether to emit the canvas stdlib data classes.
 func packageHasCanvas(draws *codegen.CanvasDraws) bool {
@@ -70,17 +51,9 @@ func packageHasCanvas(draws *codegen.CanvasDraws) bool {
 // keeps the NodeInst, so it reads the prop here. Returns 0 when absent.
 func canvasIntProp(n *ir.NodeInst, name string) int {
 	for _, p := range n.Props {
-		if p.Name != name {
-			continue
-		}
-		if lit, ok := p.Value.(*ir.Literal); ok {
-			raw := lit.Value
-			if v, err := strconv.Atoi(raw); err == nil {
-				return v
-			}
-			if f, err := strconv.ParseFloat(raw, 64); err == nil {
-				return int(f)
-			}
+		if p.Name == name {
+			px, _ := codegen.MeasurementPx(p.Value, codegen.CanvasEmPx)
+			return int(px)
 		}
 	}
 	return 0
@@ -94,10 +67,6 @@ func (cc *irComposeContext) renderCanvas(n *ir.NodeInst) {
 	if drawing == nil {
 		return
 	}
-	for _, imp := range canvasComposeImports {
-		cc.kc.RequireImport(imp)
-	}
-
 	w, h := canvasIntProp(n, "width"), canvasIntProp(n, "height")
 	if w <= 0 {
 		w = 300
@@ -108,7 +77,7 @@ func (cc *irComposeContext) renderCanvas(n *ir.NodeInst) {
 
 	tag := ""
 	if id := userTestTag(n); id != "" {
-		tag = fmt.Sprintf(".testTag(%q)", id)
+		tag = fmt.Sprintf(".%s(%q)", cc.kc.Name(ktTestTag), id)
 	}
 
 	// `width`/`height` are the coordinate space the shapes were placed in.
@@ -119,14 +88,11 @@ func (cc *irComposeContext) renderCanvas(n *ir.NodeInst) {
 	mode := canvasScalingProp(n)
 	switch mode {
 	case canvasutil.ScaleFit, canvasutil.ScaleFill, canvasutil.ScaleStretch:
-		cc.kc.RequireImport("androidx.compose.foundation.layout.fillMaxWidth")
-		cc.kc.RequireImport("androidx.compose.ui.graphics.drawscope.scale")
-		cc.line("Canvas(modifier = Modifier.fillMaxWidth().aspectRatio(%df / %df)%s) {", w, h, tag)
+		cc.line("%s(modifier = %s.%s().%s(%df / %df)%s) {", cc.kc.Name(ktCanvas), cc.kc.Name(ktModifier), cc.kc.Name(ktFillMaxWidth), cc.kc.Name(ktAspectRatio), w, h, tag)
 		cc.indent++
-		cc.kc.RequireImport("androidx.compose.foundation.layout.aspectRatio")
 		cc.emitCanvasScale(mode, w, h)
 	default:
-		cc.line("Canvas(modifier = Modifier.size(%d.dp, %d.dp)%s) {", w, h, tag)
+		cc.line("%s(modifier = %s.%s(%s, %s)%s) {", cc.kc.Name(ktCanvas), cc.kc.Name(ktModifier), cc.kc.Name(ktSize), dp(cc.kc, strconv.Itoa(w)), dp(cc.kc, strconv.Itoa(h)), tag)
 		cc.indent++
 		cc.emitDrawBody(drawing.Draw)
 		cc.indent--
@@ -148,13 +114,14 @@ func (cc *irComposeContext) renderCanvas(n *ir.NodeInst) {
 // factor, the smaller ratio for fit so the whole drawing lands inside and the
 // larger for fill so none of the room is left over.
 func (cc *irComposeContext) emitCanvasScale(mode string, w, h int) {
+	scale, zero := cc.kc.Name(ktDrawScale), cc.kc.Name(ktOffset)+".Zero"
 	switch mode {
 	case canvasutil.ScaleStretch:
-		cc.line("scale(scaleX = size.width / %df, scaleY = size.height / %df, pivot = Offset.Zero) {", w, h)
+		cc.line("%s(scaleX = size.width / %df, scaleY = size.height / %df, pivot = %s) {", scale, w, h, zero)
 	case canvasutil.ScaleFill:
-		cc.line("scale(scale = maxOf(size.width / %df, size.height / %df), pivot = Offset.Zero) {", w, h)
+		cc.line("%s(scale = maxOf(size.width / %df, size.height / %df), pivot = %s) {", scale, w, h, zero)
 	default:
-		cc.line("scale(scale = minOf(size.width / %df, size.height / %df), pivot = Offset.Zero) {", w, h)
+		cc.line("%s(scale = minOf(size.width / %df, size.height / %df), pivot = %s) {", scale, w, h, zero)
 	}
 	cc.indent++
 }
@@ -251,7 +218,7 @@ func (cc *irComposeContext) emitDrawIf(s *ir.If) {
 }
 
 // canvasKotlinDecls returns the Kotlin data classes for the canvas stdlib
-// structs (CanvasStyle/PathCmd) plus the SNGL-color→Compose-Color helper.
+// struct (Style) plus the SNGL-color→Compose-Color helper.
 // These structs are stdlib-only and aren't carried on pkg.Structs, so — like
 // canvasutil does for the Go platforms — they're materialized here. declared is
 // the set of user-declared struct names (data classes already emitted) so a
@@ -259,10 +226,10 @@ func (cc *irComposeContext) emitDrawIf(s *ir.If) {
 //
 // Color is not among them: a canvas is one of two ways a program reaches the
 // color type, so it is emitted by colorKotlinDecl for both.
-func canvasKotlinDecls(declared map[string]struct{}) string {
+func canvasKotlinDecls(kc *kotlin.KtIRContext, declared map[string]struct{}) string {
 	var b strings.Builder
-	if _, ok := declared["CanvasStyle"]; !ok {
-		b.WriteString("data class CanvasStyle(\n")
+	if _, ok := declared["Style"]; !ok {
+		b.WriteString("data class Style(\n")
 		b.WriteString("    var fill: Color = Color(a = 0),\n")
 		b.WriteString("    var stroke: Color = Color(a = 0),\n")
 		b.WriteString("    var strokeWidth: Double = 1.0,\n")
@@ -270,15 +237,6 @@ func canvasKotlinDecls(declared map[string]struct{}) string {
 		b.WriteString("    var lineJoin: String = \"miter\",\n")
 		b.WriteString("    var fontSize: Double = 16.0,\n")
 		b.WriteString("    var fontFamily: String = \"sans-serif\"\n")
-		b.WriteString(")\n\n")
-	}
-	if _, ok := declared["PathCmd"]; !ok {
-		b.WriteString("data class PathCmd(\n")
-		b.WriteString("    var op: String = \"\",\n")
-		b.WriteString("    var x: Double = 0.0,\n    var y: Double = 0.0,\n")
-		b.WriteString("    var cx1: Double = 0.0,\n    var cy1: Double = 0.0,\n")
-		b.WriteString("    var cx2: Double = 0.0,\n    var cy2: Double = 0.0,\n")
-		b.WriteString("    var r: Double = 0.0\n")
 		b.WriteString(")\n\n")
 	}
 	// Two DrawScope extensions the shape overrides call, for the drawing this
@@ -291,15 +249,23 @@ func canvasKotlinDecls(declared map[string]struct{}) string {
 	//
 	// Extensions on DrawScope, so an override calls them the way it calls
 	// `drawRect`: receiverless, with the scope supplying the receiver.
-	b.WriteString(snglDrawShims)
+	b.WriteString(strings.NewReplacer(
+		"{DrawScope}", kc.Name(ktDrawScope),
+		"{ComposeColor}", composeColor(kc),
+		"{nativeCanvas}", kc.Name(ktNativeCanvas),
+		"{toArgb}", kc.Name(ktToArgb),
+		"{IntOffset}", kc.Name(ktIntOffset),
+		"{IntSize}", kc.Name(ktIntSize),
+	).Replace(snglDrawShims))
 	return b.String()
 }
 
 // snglDrawShims are the DrawScope extensions a shape override calls for the
 // two drawings a native declaration cannot describe. See emitCanvasStructs.
-const snglDrawShims = `fun DrawScope.snglDrawText(content: String, x: Float, y: Float, c: ComposeColor, size: Float, family: String) {
-    drawContext.canvas.nativeCanvas.drawText(content, x, y, android.graphics.Paint().apply {
-        color = c.toArgb()
+// Each {Name} is a Compose name, replaced with what the file calls it.
+const snglDrawShims = `fun {DrawScope}.snglDrawText(content: String, x: Float, y: Float, c: {ComposeColor}, size: Float, family: String) {
+    drawContext.canvas.{nativeCanvas}.drawText(content, x, y, android.graphics.Paint().apply {
+        color = c.{toArgb}()
         textSize = size
         // The three CSS generic families Typeface names, and Typeface.create
         // falls back to the system default for anything else -- which is the
@@ -309,15 +275,28 @@ const snglDrawShims = `fun DrawScope.snglDrawText(content: String, x: Float, y: 
     })
 }
 
-// A file that will not decode draws nothing rather than failing the frame,
+// A picture that will not decode draws nothing rather than failing the frame,
 // which is what every other target does with an unreadable source.
-fun DrawScope.snglDrawImage(src: String, x: Float, y: Float, w: Float, h: Float) {
-    val bmp = android.graphics.BitmapFactory.decodeFile(src) ?: return
+fun {DrawScope}.snglDrawImage(src: String, x: Float, y: Float, w: Float, h: Float) {
+    val bmp = SnglAssets.bitmap(src) ?: return
     drawImage(
-        image = bmp.asImageBitmap(),
-        dstOffset = IntOffset(x.toInt(), y.toInt()),
-        dstSize = IntSize(w.toInt(), h.toInt()),
+        image = bmp,
+        dstOffset = {IntOffset}(x.toInt(), y.toInt()),
+        dstSize = {IntSize}(w.toInt(), h.toInt()),
     )
+}
+
+// A drawing painted in place of a picture: its own space mapped onto the box
+// and clipped to it, until snglDrawLeave.
+fun {DrawScope}.snglDrawEnter(x: Float, y: Float, sx: Float, sy: Float, w: Float, h: Float) {
+    drawContext.canvas.save()
+    drawContext.canvas.translate(x, y)
+    drawContext.canvas.scale(sx, sy)
+    drawContext.canvas.clipRect(0f, 0f, w, h)
+}
+
+fun {DrawScope}.snglDrawLeave() {
+    drawContext.canvas.restore()
 }
 
 `
@@ -334,13 +313,28 @@ func colorKotlinDecl(declared map[string]struct{}) string {
 
 // namesColor reports whether the built-in color type reached this package's
 // struct list -- promoteForeignStructs puts it there when a function this
-// build emits names it in its signature, which is the one way a program
-// reaches the type without drawing.
+// build emits names it in its signature -- or a field of a struct on it names
+// the type, since that data class is emitted and spells Color too.
 func namesColor(structs []*ir.StructDef) bool {
 	for _, sd := range structs {
 		if sd.Builtin == ir.BuiltinColor {
 			return true
 		}
+		for _, f := range sd.Fields {
+			if typeNamesColor(f.Type) {
+				return true
+			}
+		}
 	}
 	return false
+}
+
+func typeNamesColor(t *ir.Type) bool {
+	if t == nil {
+		return false
+	}
+	if ir.IsColorStruct(t) {
+		return true
+	}
+	return slices.ContainsFunc(t.Elems, typeNamesColor)
 }

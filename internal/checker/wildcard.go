@@ -3,8 +3,8 @@ package checker
 import (
 	"fmt"
 
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/ir"
 )
 
 // A wildcard is matched where every other name is: a scope checks its
@@ -44,9 +44,16 @@ func wildcardProp(comp *ir.Component, name string) (*ir.Prop, bool, error) {
 // An event sits in the prop list, so the marks legal there are the same ones,
 // and applyMark is told so.
 func (c *checker) applyEventMarks(e ast.EventDecl, evt *ir.EventDecl) {
-	for _, attr := range e.MacroAttrs() {
-		c.applyMark(attr, e, evt, true)
+	if len(e.MacroAttrs()) == 0 {
+		return
 	}
+	// Copied past the return so only a marked declaration moves to the heap.
+	marked := e
+	c.afterMarks(func() {
+		for _, attr := range marked.MacroAttrs() {
+			c.applyMark(attr, marked, evt, true)
+		}
+	})
 }
 
 // wildcardEvent returns the event of comp whose pattern covers name. A

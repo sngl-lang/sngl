@@ -46,15 +46,21 @@ unit tick {
     tk
 }
 
+unit length {
+    mm,
+    cm = 10mm,
+    pt,
+}
+
 component main ui.node {
     var m ui.measurement = 3px
-    var r ui.measurement = 2rem
-    var sum ui.measurement = m + r
+    var r length = 2cm
+    var sum ui.measurement = m + 2em
     var t tick = 4tk
     var d time.duration = 500ms
     var widePx = 0.0
-    var remEm = 0.0
-    var remPx = 0.0
+    var cmMm = 0.0
+    var cmPt = 0.0
     var sumPx = 0.0
     var sumEm = 0.0
     var ticks = 0.0
@@ -64,8 +70,8 @@ component main ui.node {
 
     effect(@mount {
         widePx = m.px
-        remEm = r.em
-        remPx = r.px
+        cmMm = r.mm
+        cmPt = r.pt
         sumPx = sum.px
         sumEm = sum.em
         ticks = float(t)
@@ -83,22 +89,22 @@ func testAPerBaseFieldIsANumber(t Test, c main) {
     t.assert(c.widePx == 3.0)
 }
 
-// A reduced suffix counts in the base it reduces to, so 2rem is 32em and no px
+// A reduced suffix counts in the base it reduces to, so 2cm is 20mm and no pt
 // at all -- the record every backend builds, with the bases it was not written
 // in left at zero.
 func testAReducedSuffixCountsInItsBase(t Test, c main) {
-    t.assert(c.remEm == 32.0)
-    t.assert(c.remPx == 0.0)
+    t.assert(c.cmMm == 20.0)
+    t.assert(c.cmPt == 0.0)
 }
 
-// Addition is per base and keeps every one of them: 3px + 32em is not 35 of
+// Addition is per base and keeps every one of them: 3px + 2em is not 5 of
 // anything. Both reads are off a value arithmetic built rather than off a
 // literal, which is the one shape a single magnitude and a suffix can hold --
-// the interpreter answered 35 for px and 0 for em while both compiled targets
-// answered 3 and 32, and only a two-runner assertion says so.
+// the interpreter answered the sum for px and 0 for em while both compiled
+// targets answered each base, and only a two-runner assertion says so.
 func testAdditionKeepsEveryBase(t Test, c main) {
     t.assert(c.sumPx == 3.0)
-    t.assert(c.sumEm == 32.0)
+    t.assert(c.sumEm == 2.0)
 }
 
 func testASingleBaseUnitConverts(t Test, c main) {
@@ -115,7 +121,7 @@ ui.window {
     main
 }
 -- testrun/bubbletea/go/app.sngl/main/1 --
-sha256:4b0e334237a071f626266a906609a62f
+sha256:00c5de73947fa50e06c749756065d973
 {
   "results": [
     {

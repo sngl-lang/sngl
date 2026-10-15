@@ -1,0 +1,76 @@
+// What an anonymous struct naming a type parameter refuses.
+
+import . "sngl:ui"
+
+func unwrap[T any](w struct {
+    v T
+}) T {
+    return w.v
+}
+
+func pair[T any](
+    a struct {
+        v T
+    },
+    b struct {
+        v T
+    },
+) T {
+    return a.v
+}
+
+// A field at the wrong type.
+var a = unwrap[int]({v="s"}) // ERROR(check) "cannot use string as int for field \"v\" of struct { v int }"
+
+// A missing field.
+var b = unwrap({w=1}) // ERROR(check) "unknown field \"w\" on struct { v T }"
+
+// A spread of a struct with other fields.
+func wrap[T any](x T) struct {
+    v T
+} {
+    return {v=x}
+}
+
+var d struct {
+    w int
+} = {...wrap(1)} // ERROR(check) "cannot spread struct { v int } into struct { w int }"
+
+// A component's prop binds T from the field, so the handler's parameter is an
+// int.
+component show[T any](
+    w struct {
+        v T
+    },
+    @picked(p T),
+) node {
+    button(text="go", @click {
+        picked(w.v)
+    })
+}
+
+component picker node {
+    var name = ""
+    show(w={v=3}, @picked(p) {
+        name = p // ERROR(check) "cannot assign int to string"
+    })
+}
+
+// Two arguments binding T two ways.
+var c = pair({v=1}, {v="s"}) // ERROR(check) "cannot use"
+
+// Two declarations each writing `struct { v T }` share no declaration: each
+// field is its own declaration's T, and only the first one's names a field.
+func nameOf[T struct {
+    name string
+}](v T) => v.name
+
+func named[T struct {
+    name string
+}](w struct {
+    v T
+}) => nameOf(w.v)
+
+func bare[T any](w struct {
+    v T
+}) => nameOf(w.v) // ERROR(check) "does not satisfy"

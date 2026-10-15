@@ -1,8 +1,8 @@
 package interp
 
 import (
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/ir"
 )
 
 // TestingT is the runtime interface for the SNGL `Test` parameter. The
@@ -39,4 +39,7 @@ type ComponentValue interface {
 	Toggle(field string) error
 	// WriteBackList sets a list field after in-place list mutation.
 	WriteBackList(field string, list []any) error
+	// FieldCell is the binding a field names and the scope that owns it, or
+	// false for a field that is no binding.
+	FieldCell(field string) (owner *Env, sym ir.Symbol, ok bool)
 }

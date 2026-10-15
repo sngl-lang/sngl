@@ -1,6 +1,6 @@
 package lspcore
 
-import "git.duckfam.us/jonathan/sngl/ast"
+import "duckfam.us/sngl/ast"
 
 // WalkLiterals invokes fn for every LiteralExpr in the document.
 // Minimal walker shared by hover and color features.
@@ -29,7 +29,9 @@ func WalkLiterals(doc *ast.Document, fn func(*ast.LiteralExpr)) {
 			walkE(x.Operand)
 		case *ast.IndexExpr:
 			walkE(x.Operand)
-			walkE(x.Index)
+			for _, ix := range x.Indices {
+				walkE(ix)
+			}
 		case *ast.TernaryExpr:
 			walkE(x.Cond)
 			walkE(x.Then)

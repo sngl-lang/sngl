@@ -112,7 +112,7 @@ func Owners(pkg *Package) []Owner {
 	out := make([]Owner, 0, 1+len(pkg.Components))
 	out = append(out, Owner{Pkg: pkg, Vars: pkg.Vars, Consts: pkg.Consts, Funcs: pkg.Funcs, Body: &pkg.Body})
 	for _, c := range pkg.Components {
-		out = append(out, Owner{Pkg: pkg, Comp: c, Vars: c.Vars, Funcs: c.Funcs, Body: &c.Body})
+		out = append(out, Owner{Pkg: pkg, Comp: c, Vars: c.Vars, Funcs: c.Funcs, Body: &c.Stmts})
 	}
 	return out
 }
@@ -121,9 +121,10 @@ func Owners(pkg *Package) []Owner {
 // to: the application. `lower.AppendChild(__app, n)` is what the package body
 // says of each of its nodes, and what attaching to the application means is
 // each platform's answer -- a toplevel created and put on screen on gtk4 and
-// fyne. Nothing declares it: a translator recognises the name, as it
-// recognises a slot's parent, and a platform that has no application to
-// attach to treats the node as it treated an unparented root before.
+// fyne. It is sngl:builtin's `_application` (Builtins.ApplicationType), which
+// no program writes: a translator recognises the name, as it recognises a
+// slot's parent, and a platform that has no application to attach to treats
+// the node as an unparented root.
 const AppParent = "__app"
 
 // IsAppParent reports whether e names the application a root node attaches

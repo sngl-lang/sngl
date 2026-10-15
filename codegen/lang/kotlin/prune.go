@@ -4,7 +4,7 @@ import (
 	"regexp"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 // PruneLibraryDataClasses removes the `data class` of each library struct in
@@ -15,7 +15,7 @@ func PruneLibraryDataClasses(src string, pkg *ir.Package) string {
 	for changed := true; changed; {
 		changed = false
 		for _, sd := range pkg.Structs {
-			if sd == nil || sd.Pkg == "" {
+			if sd == nil || sd.PkgPath() == "" {
 				continue
 			}
 			if out, ok := dropDecl(src, "data class "+exportName(sd.Name)+"(", "\n)\n", exportName(sd.Name)); ok {

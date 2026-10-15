@@ -11,12 +11,12 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/internal/build"
-	"git.duckfam.us/jonathan/sngl/internal/checker"
-	"git.duckfam.us/jonathan/sngl/internal/trust"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/internal/build"
+	"duckfam.us/sngl/internal/checker"
+	"duckfam.us/sngl/internal/trust"
+	"duckfam.us/sngl/ir"
 )
 
 var pkgCmd = &cobra.Command{

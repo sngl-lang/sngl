@@ -8,12 +8,15 @@ import (
 	"strings"
 	"time"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/internal/buildhost"
-	"git.duckfam.us/jonathan/sngl/internal/imports"
-	"git.duckfam.us/jonathan/sngl/internal/interp"
-	"git.duckfam.us/jonathan/sngl/internal/trust"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/internal/buildhost"
+	"duckfam.us/sngl/internal/checker"
+	"duckfam.us/sngl/internal/imports"
+	"duckfam.us/sngl/internal/interp"
+	"duckfam.us/sngl/internal/lower"
+	"duckfam.us/sngl/internal/trust"
+	"duckfam.us/sngl/ir"
 )
 
 // schemeRunnableAtRuntime reports whether a target written in language `lang`
@@ -77,6 +80,12 @@ type Config struct {
 	// js: call. It is not cached with the calls: the next target's Config
 	// starts clean and retries.
 	nativeErr map[string]error
+
+	// folded holds the imported packages an earlier Optimize with this Config
+	// folded. Lowering writes nothing into one that a backend emits as it
+	// stands: what the program calls of it, passLibFuncs moves into the
+	// program's own lists, where the next fold reaches it.
+	folded map[*ir.Package]bool
 
 	// nativeSettled records that compile-time evaluation of this build's
 	// native calls has already run. Every caller optimizes twice with one
@@ -157,6 +166,12 @@ type evalCtx struct {
 	// one gets its loops unrolled one document at a time, after lowering. For
 	// spliced see addSplicedNativeImports.
 	unroll, spliced bool
+	// copiedHandlers and copiedCanvases are what this fold's region has
+	// copied that a loop body it shares may name (ownCopy); redraws is
+	// whether the package redraws a canvas at all, which a Fold sets.
+	copiedHandlers map[*ir.EventHandler]*ir.EventHandler
+	copiedCanvases map[*ir.NodeInst]*ir.NodeInst
+	redraws        bool
 	// answers is what a call of an intrinsic folds to in this fold, by id:
 	// the record of the page a document is written for is `pages.current`
 	// there (Fold.Answer). Nil everywhere else.
@@ -167,6 +182,11 @@ type evalCtx struct {
 	hostMemo map[*ir.Func]bool
 	// cfg is the run's Config, for what a fold reports back to it.
 	cfg *Config
+	// site is the node the program wrote that a library body being folded
+	// was spliced in for, invalid outside one. A fold that fails reading the
+	// host inside that body is reported there: the call that failed is the
+	// library's, and says nothing about which of the program's nodes asked.
+	site ast.Pos
 }
 
 // child returns a context for folding a nested scope — a for-loop iteration,
@@ -213,6 +233,9 @@ type optimizerRun struct {
 	readsCtx   map[*ir.Func]bool
 	host       *buildhost.Host
 	hostMemo   map[*ir.Func]bool
+	// reach is what the root reaches of the packages it imports; foldPkg
+	// folds nothing else of theirs.
+	reach *ir.Reached
 }
 
 // maxEvalRounds bounds the round loop. Every round either caches a value for
@@ -230,13 +253,29 @@ const maxEvalRounds = 10
 // No loop is unrolled here, for any target; Documents does that for a static
 // one.
 func Optimize(pkg *ir.Package, cfg *Config) error {
+	ir.InstallOverlay(pkg)
 	if cfg.Cache == nil {
 		cfg.Cache = NewEvalCache()
 	}
 	// An override is the body a call runs on this target, so it has to be in
 	// place before anything folds or inlines against it. Lowering swaps the
 	// rest; this moves only what already has a body to replace.
-	ir.SpecializeOverriddenBodies(pkg, cfg.Platform, cfg.Language)
+	reach := ir.ReachedFrom(pkg, cfg.Platform, cfg.Language)
+	ir.SpecializeOverriddenBodies(pkg, cfg.Platform, cfg.Language, reach)
+	// A data family's slot is read as the list its call site's population
+	// renders, built before anything folds: the prop is otherwise unwritten,
+	// and would fold to its empty default. A second run finds no population
+	// left to read.
+	if err := lower.DataFamilies(pkg, reach, func(owner *ir.Component, fn *ir.Func) {
+		checker.AnalyzeSynthesizedFunc(pkg, owner, fn)
+	}); err != nil {
+		return err
+	}
+	// A record an intrinsic reads by field name is the map its runtime takes,
+	// converted before the shake so its struct is declared by no target.
+	if err := lower.RecordArgs(pkg); err != nil {
+		return err
+	}
 	// A pure native call can only fold once a subprocess has computed it, and
 	// building that subprocess is worth doing once for the whole batch. Learn
 	// the batch from throwaway passes over a clone, then fold pkg itself with
@@ -247,7 +286,7 @@ func Optimize(pkg *ir.Package, cfg *Config) error {
 		}
 	}
 	cfg.nativeSettled = true
-	if err := optimizeIR(pkg, cfg, nil); err != nil {
+	if err := optimizeIR(pkg, cfg, nil, reach); err != nil {
 		return err
 	}
 	return reportRefused(cfg)
@@ -267,7 +306,7 @@ func evalNativeRounds(pkg *ir.Package, cfg *Config) error {
 		cloneStart := time.Now()
 		clone := ir.ClonePackage(pkg)
 		slog.Debug("consteval probe clone", "duration", time.Since(cloneStart))
-		if err := optimizeIR(clone, &probe, ne); err != nil {
+		if err := optimizeIR(clone, &probe, ne, nil); err != nil {
 			// Not final: the same fold runs again on the real package once the
 			// values are in, and reports it then if it still fails.
 			slog.Debug("consteval probe", "err", err)
@@ -330,7 +369,7 @@ func hasPureNativeFuncs(pkg *ir.Package, cfg *Config) bool {
 // optimizeIR is Optimize's single pass. native is non-nil only for a probe
 // pass, which records the native calls it could not fold instead of folding
 // them.
-func optimizeIR(pkg *ir.Package, cfg *Config, native *nativeEval) error {
+func optimizeIR(pkg *ir.Package, cfg *Config, native *nativeEval, reach *ir.Reached) error {
 	run := &optimizerRun{
 		cfg:        cfg,
 		done:       map[*ir.Package]bool{},
@@ -340,6 +379,7 @@ func optimizeIR(pkg *ir.Package, cfg *Config, native *nativeEval) error {
 		interpEnvs: map[*ir.Package]*interp.Env{},
 		readsCtx:   map[*ir.Func]bool{},
 		hostMemo:   map[*ir.Func]bool{},
+		reach:      reach,
 	}
 	if cfg.Dir != "" {
 		run.host = buildhost.New(cfg.Trust, cfg.Dir, pkg, nil)
@@ -396,10 +436,16 @@ func optimizeIR(pkg *ir.Package, cfg *Config, native *nativeEval) error {
 // pkg's evalCtx (so the caller can run downstream phases against it), or nil
 // when pkg has already been folded by this run.
 func (r *optimizerRun) foldPkg(pkg *ir.Package) *evalCtx {
-	if pkg == nil || r.done[pkg] {
+	if pkg == nil || r.done[pkg] || pkg != r.root && r.cfg.folded[pkg] {
 		return nil
 	}
 	r.done[pkg] = true
+	if pkg != r.root && r.native == nil {
+		if r.cfg.folded == nil {
+			r.cfg.folded = map[*ir.Package]bool{}
+		}
+		r.cfg.folded[pkg] = true
+	}
 
 	// Recurse imports first so their consts/components are folded by the
 	// time we fold this pkg's bodies (which may inline component calls
@@ -419,11 +465,12 @@ func (r *optimizerRun) foldPkg(pkg *ir.Package) *evalCtx {
 	}
 
 	ctx := r.newCtx(pkg)
+	reached := func(d ir.Symbol) bool { return pkg == r.root || r.reach.Has(d) }
 
 	// Phase 1: Evaluate all top-level consts.
 	start := time.Now()
 	for _, c := range pkg.Consts {
-		if c.Init != nil {
+		if c.Init != nil && reached(c) {
 			if val, ok := evalExpr(c.Init, ctx); ok {
 				ctx.values[c] = val
 			}
@@ -435,12 +482,19 @@ func (r *optimizerRun) foldPkg(pkg *ir.Package) *evalCtx {
 	// Phase 2: Fold expressions in all declarations.
 	start = time.Now()
 	for _, v := range pkg.Vars {
-		foldVar(v, ctx)
+		if reached(v) {
+			foldVar(v, ctx)
+		}
 	}
 	for _, f := range pkg.Funcs {
-		f.Block = foldStmts(f.Block, ctx)
+		if reached(f) {
+			f.Block = foldStmts(f.Block, ctx)
+		}
 	}
 	for _, s := range pkg.Structs {
+		if !reached(s) {
+			continue
+		}
 		for _, f := range s.Fields {
 			if f.Default != nil {
 				f.Default = foldOwned(f.Default, ctx)
@@ -448,6 +502,9 @@ func (r *optimizerRun) foldPkg(pkg *ir.Package) *evalCtx {
 		}
 	}
 	for _, e := range pkg.Enums {
+		if !reached(e) {
+			continue
+		}
 		for _, m := range e.Members {
 			if m.Value != nil {
 				m.Value = foldExpr(m.Value, ctx)
@@ -457,7 +514,7 @@ func (r *optimizerRun) foldPkg(pkg *ir.Package) *evalCtx {
 	// A context default is spliced into a synthesized Var by passContext, which
 	// runs after this; folding it here is the only chance it gets.
 	for _, c := range pkg.Contexts {
-		if c.Default != nil {
+		if c.Default != nil && reached(c) {
 			c.Default = foldOwned(c.Default, ctx)
 		}
 	}
@@ -470,7 +527,9 @@ func (r *optimizerRun) foldPkg(pkg *ir.Package) *evalCtx {
 	}
 	pkg.Body = foldStmts(pkg.Body, ctx)
 	for _, comp := range pkg.Components {
-		foldComponent(comp, ctx)
+		if reached(comp) {
+			foldComponent(comp, ctx)
+		}
 	}
 	slog.Debug("optimize: fold", "duration", time.Since(start))
 
@@ -515,9 +574,6 @@ func foldVar(v *ir.Var, ctx *evalCtx) {
 	if v.Init != nil {
 		v.Init = foldOwned(v.Init, ctx)
 	}
-	for _, h := range v.Handlers {
-		h.Func.Block = foldStmts(h.Func.Block, ctx)
-	}
 }
 
 func foldComponent(comp *ir.Component, ctx *evalCtx) {
@@ -532,7 +588,7 @@ func foldComponent(comp *ir.Component, ctx *evalCtx) {
 	for _, f := range comp.Funcs {
 		f.Block = foldStmts(f.Block, ctx)
 	}
-	comp.Body = foldStmts(comp.Body, ctx)
+	comp.Stmts = foldStmts(comp.Stmts, ctx)
 }
 
 // getNativeImports lazily builds the native imports map from the IR package.
@@ -612,7 +668,7 @@ func (ctx *evalCtx) nodeForHandle(v *ir.Var) *ir.NodeInst {
 		ctx.nodeHandlesSet = true
 		_ = ir.Walk(ctx.pkg, func(n ir.Node) error {
 			inst, ok := n.(*ir.NodeInst)
-			if !ok || inst.Handle == nil || inst.Component == nil || isPrimitiveDecl(inst.Component) || inst.Component.Tree == nil || !ir.IsAppRootTree(inst.Component.Tree) {
+			if !ok || inst.Handle == nil || inst.Component == nil || isPrimitiveDecl(inst.Component) || inst.Component.Family == nil || !ir.IsRootFamily(inst.Component.Family) {
 				return nil
 			}
 			if ctx.nodeHandles == nil {
@@ -630,7 +686,7 @@ func (ctx *evalCtx) nodeForHandle(v *ir.Var) *ir.NodeInst {
 // isPrimitiveDecl reports whether c is rendered by a target rather than
 // composed: an #[intrinsic] primitive, a wildcard element or a builtin node.
 func isPrimitiveDecl(c *ir.Component) bool {
-	return c.Intrinsic != "" || c.Wildcard != "" || c.Builtin != ""
+	return c.Primitive() || c.Builtin != ""
 }
 
 // oneWayProp reports whether c declares field as a one-way prop: a two-way

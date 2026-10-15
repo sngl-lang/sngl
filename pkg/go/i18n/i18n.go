@@ -1,6 +1,6 @@
 // Package i18n is the Go runtime for the SNGL i18n stdlib package.
 // Generated SNGL code targeting Go imports this package via the path
-// git.duckfam.us/jonathan/sngl/pkg/go/i18n.
+// duckfam.us/sngl/pkg/go/i18n.
 package i18n
 
 import (
@@ -981,28 +981,15 @@ func Select(locale, value string, cases map[string]string) string {
 	return translatorFor(locale).Select(value, cases)
 }
 
-// Plural picks a message by CLDR cardinal plural form for count.
-//
-// forms accepts map[any]string (the codegen-typed shape after the SNGL
-// `map<dyn, string>` intrinsic param) and converts to the strongly-typed
-// map[PluralKey]string the underlying Translator expects.
-func Plural(locale string, count int, forms map[any]string) string {
-	return translatorFor(locale).Plural(count, coercePluralForms(forms))
+// Plural picks a message by CLDR cardinal plural form for count. forms is
+// what sngl:i18n declares, a map[PluralKey, string].
+func Plural(locale string, count int, forms map[PluralKey]string) string {
+	return translatorFor(locale).Plural(count, forms)
 }
 
 // Selectordinal picks a message by CLDR ordinal plural form for count.
-func Selectordinal(locale string, count int, forms map[any]string) string {
-	return translatorFor(locale).Selectordinal(count, coercePluralForms(forms))
-}
-
-func coercePluralForms(forms map[any]string) map[PluralKey]string {
-	out := make(map[PluralKey]string, len(forms))
-	for k, v := range forms {
-		if pk, ok := k.(PluralKey); ok {
-			out[pk] = v
-		}
-	}
-	return out
+func Selectordinal(locale string, count int, forms map[PluralKey]string) string {
+	return translatorFor(locale).Selectordinal(count, forms)
 }
 
 // DefaultLocale resolves the process-startup locale from environment variables,

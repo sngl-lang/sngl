@@ -3,7 +3,7 @@ package html
 import (
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
+	"duckfam.us/sngl/codegen"
 )
 
 // The capability and the implementation must agree. Declaring one without the

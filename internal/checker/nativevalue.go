@@ -6,9 +6,9 @@ import (
 	"strings"
 	"sync"
 
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/internal/imports"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/internal/imports"
+	"duckfam.us/sngl/ir"
 )
 
 // CheckNativeValue checks e against want and returns its IR form.
@@ -24,8 +24,9 @@ import (
 // Def, a list with its real element type, a literal at the width and unit want
 // asks for.
 //
-// Where the value carries no ref and want is nothing — a func returning
-// []any — there is no declaration to be had, and the value stays dyn.
+// Where the value carries no ref and want is nothing there is no declaration
+// to be had. A go: func returning []any would be that case, and the importer
+// marks one unusable, since an interface has no SNGL type.
 //
 // The scope holds nothing but the standard library. An encoded value is data —
 // literals, lists, maps, struct literals and the predeclared true/false/null —
@@ -40,9 +41,10 @@ func CheckNativeValue(e ast.Expr, want *ir.Type, types ir.NativeDecls) (ir.Expr,
 	// One checker for the process. Building it re-registers the whole embedded
 	// stdlib (~0.6ms), which would otherwise be paid per value rather than
 	// per program, and nothing in an encoded value can leave state behind that
-	// the next one would see.
+	// the next one would see. Its library is its own, since it holds it for
+	// the life of the process.
 	if nativeValueChecker == nil {
-		nativeValueChecker = newChecker(nil, &Config{})
+		nativeValueChecker = newChecker(nil, &Config{PrivateLibrary: true})
 		nativeValueChecker.nativeValues = true
 	}
 	c := nativeValueChecker
@@ -191,7 +193,7 @@ func (c *checker) nativeEnumMember(e ast.Expr, ed *ir.EnumDef) (ir.Expr, bool) {
 		}
 	}
 	c.error(lit.Pos, "encoded value %s is not the value of any member of %s", shown, ed.Name)
-	return &ir.Literal{Type: TypDyn}, true
+	return &ir.Literal{Type: TypInvalid}, true
 }
 
 // isNumericLiteralKind reports whether a literal kind carries a number, which

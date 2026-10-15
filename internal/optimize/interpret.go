@@ -1,8 +1,9 @@
 package optimize
 
 import (
-	"git.duckfam.us/jonathan/sngl/internal/interp"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/internal/interp"
+	"duckfam.us/sngl/ir"
 )
 
 // maxInterpDepth bounds recursion in the interpreter adapter. Excess
@@ -14,10 +15,9 @@ const maxInterpDepth = 256
 // values become StructLits, maps MapLitIRs, slices ListLits.
 //
 // typ is the type of the position the expression is going into. A value that
-// says what it is outranks it — a struct held in a `dyn` field is still that
-// struct, and Go names it by its own type — while a value that does not (a
-// bare slice or map) takes the position's, so a list of Item read through a
-// name declared list<dyn> is still emitted as []any.
+// says what it is outranks it — a struct is still that struct, and Go names
+// it by its own type — while a value that does not (a bare slice or map)
+// takes the position's.
 //
 // What the value carries beyond its type — the declaration, and the order its
 // fields were checked in — typ cannot supply at all, and is kept.
@@ -25,24 +25,67 @@ func irFromValue(val any, typ *ir.Type) ir.Expr {
 	if m := enumMemberIdent(val, typ); m != nil {
 		return m
 	}
+	if typ != nil && val != nil {
+		// A value in an option position is the element promoted, which the
+		// checker writes as a conversion around the element: Go's option is a
+		// pointer, and the bare value there does not compile.
+		if typ.Kind == ir.TypeOption && len(typ.Elems) == 1 && typ.Elems[0] != nil {
+			if inner := irFromValue(val, typ.Elems[0]); inner != nil {
+				return &ir.Conversion{Type: typ, Operand: inner}
+			}
+		}
+		// A date, time or datetime evaluates to the string it is written as,
+		// and goes back as a literal of its own type rather than a string's:
+		// a target holding a time.Time parses one where it is written, and a
+		// bare string there is a type error.
+		if s, ok := val.(string); ok && ir.StringReprStruct(typ) && !ir.IsColorStruct(typ) {
+			return &ir.Literal{Type: typ, Value: s}
+		}
+	}
+	if amounts, ok := interp.UnitAmounts(val); ok {
+		return unitValueExpr(amounts, typ)
+	}
+	if l, ok := val.(constLambda); ok {
+		return ir.CloneExprSharingDecls(l.lam)
+	}
 	switch v := val.(type) {
 	case nil:
 		return &ir.Literal{Type: ir.TypNull, Value: "null"}
 	case bool, int, uint64, float64, string:
-		return irLiteral(v, typ)
+		if lit := irLiteral(v, typ); lit != nil {
+			return lit
+		}
+		return nil
 	case *interp.Struct:
 		sd, t := v.Def, v.Type
+		// A value a generic body built carries the type its literal was
+		// checked at there, `struct { v T }`; where it lands, the call's own
+		// type says what T was, and that is the type the literal is.
+		if t != nil && t.HasTypeParam() && typ != nil && typ.Kind == ir.TypeStruct && !typ.HasTypeParam() {
+			sd, t = nil, typ
+		}
 		if sd == nil {
 			sd = expectedStructDef(typ)
 		}
 		if t == nil {
 			t = typ
 		}
+		declared, _ := ir.FieldsOf(t)
 		fields := make([]ir.FieldInit, 0, len(v.Fields))
 		for _, f := range v.Fields {
+			if f.Unwritten() {
+				// The literal left it out, and so does this one.
+				continue
+			}
+			ft := structFieldType(sd, f.Name)
+			for _, d := range declared {
+				if d.Name == f.Name {
+					ft = d.Type
+				}
+			}
 			fields = append(fields, ir.FieldInit{
 				Name:  f.Name,
-				Value: irFromValue(f.Value, structFieldType(sd, f.Name)),
+				Value: irFromValue(f.Value, ft),
 			})
 		}
 		return &ir.StructLit{Type: t, Def: sd, Fields: fields}
@@ -68,8 +111,8 @@ func irFromValue(val any, typ *ir.Type) ir.Expr {
 		for _, e := range v {
 			elems = append(elems, irFromValue(e, elemType))
 		}
-		// A folded sequence lands in an iter<T> position, and a list literal
-		// is not one: an iter<T> is a pull sequence in every backend that
+		// A folded sequence lands in an iter[T] position, and a list literal
+		// is not one: an iter[T] is a pull sequence in every backend that
 		// spells it. So the literal keeps its own type and takes the same
 		// conversion the checker inserts for a list written there by hand.
 		if typ != nil && typ.Kind == ir.TypeIter && len(typ.Elems) == 1 {
@@ -394,12 +437,12 @@ func structFieldType(sd *ir.StructDef, name string) *ir.Type {
 // A call runs in a snapshot of it (CallUserFuncValues), so none writes it.
 func (ctx *evalCtx) interpEnv() (*interp.Env, error) {
 	if ctx.interpEnvs == nil {
-		return interp.BuildEnv(ctx.pkg, "")
+		return interp.BuildEnv(ctx.pkg, "", nil)
 	}
 	if env, ok := ctx.interpEnvs[ctx.pkg]; ok {
 		return env, nil
 	}
-	env, err := interp.BuildEnv(ctx.pkg, "")
+	env, err := interp.BuildEnv(ctx.pkg, "", nil)
 	if err != nil {
 		return nil, err
 	}
@@ -408,4 +451,35 @@ func (ctx *evalCtx) interpEnv() (*interp.Env, error) {
 	}
 	ctx.interpEnvs[ctx.pkg] = env
 	return env, nil
+}
+
+// unitValueExpr spells a unit value back as the sum of a literal per base it
+// carries, in the order the unit declares them: `3px + 2em`. A value carrying
+// none is the zero in the first base. Nil when typ is no unit to spell it in.
+func unitValueExpr(amounts map[string]float64, typ *ir.Type) ir.Expr {
+	ud := ir.UnitDeclOf(typ)
+	if ud == nil {
+		return nil
+	}
+	var sum ir.Expr
+	for _, b := range ud.Bases() {
+		m, ok := amounts[b.Name]
+		if !ok || m == 0 {
+			continue
+		}
+		lit := &ir.Literal{Type: typ, Value: ir.FormatUnitMagnitude(m), Suffix: b.Name}
+		if sum == nil {
+			sum = lit
+		} else {
+			sum = &ir.Binary{Op: ast.BinAdd, Left: sum, Right: lit, Type: typ}
+		}
+	}
+	if sum == nil {
+		bases := ud.Bases()
+		if len(bases) == 0 {
+			return nil
+		}
+		return &ir.Literal{Type: typ, Value: "0", Suffix: bases[0].Name}
+	}
+	return sum
 }

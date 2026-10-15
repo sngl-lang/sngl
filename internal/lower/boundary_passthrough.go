@@ -1,6 +1,6 @@
 package lower
 
-import "git.duckfam.us/jonathan/sngl/ir"
+import "duckfam.us/sngl/ir"
 
 // passBoundaryPassthrough splices each boundary that holds no fallback into
 // what it holds, on every target, so no backend is handed one: gtk4 and fyne
@@ -29,7 +29,7 @@ func lowerBoundaryPassthrough(pkg *ir.Package, _ Features, _ Options) error {
 	splice := func(stmts []ir.Stmt) []ir.Stmt { return spliceBoundaries(stmts) }
 	pkg.Body = splice(pkg.Body)
 	for _, c := range pkg.Components {
-		c.Body = splice(c.Body)
+		c.Stmts = splice(c.Stmts)
 	}
 	funcs := map[*ir.Func]bool{}
 	for _, f := range pkg.Funcs {

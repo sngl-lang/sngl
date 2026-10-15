@@ -9,10 +9,11 @@ import (
 	gast "github.com/yuin/goldmark/ast"
 	"github.com/yuin/goldmark/extension"
 	east "github.com/yuin/goldmark/extension/ast"
+	"github.com/yuin/goldmark/parser"
 	"github.com/yuin/goldmark/text"
 	"github.com/yuin/goldmark/util"
 
-	snglast "git.duckfam.us/jonathan/sngl/ast"
+	snglast "duckfam.us/sngl/ast"
 )
 
 // DocumentComponent is the name the generated component takes. One name
@@ -60,9 +61,13 @@ func (d *docState) page(src []byte, name string) ([]constDecl, string, error) {
 		return nil, "", fmt.Errorf("md: %s: %w", name, err)
 	}
 	d.name, d.lineOffset = name, lineOffset
-	// The same goldmark the doc site parses with, GFM and all: two readings of
-	// one document is a difference nobody would look for.
-	doc := goldmark.New(goldmark.WithExtensions(extension.GFM)).Parser().Parse(text.NewReader(body))
+	// The same goldmark the doc site parses with, GFM and heading ids and all:
+	// two readings of one document is a difference nobody would look for, and
+	// an in-page `#` link names the id goldmark gave the heading.
+	doc := goldmark.New(
+		goldmark.WithExtensions(extension.GFM),
+		goldmark.WithParserOptions(parser.WithAutoHeadingID()),
+	).Parser().Parse(text.NewReader(body))
 	var err0 error
 	inner := &emitter{src: body, depth: 2, err: &err0, doc: d}
 	inner.blocks(doc, false)
@@ -93,7 +98,7 @@ func (e *emitter) decls() {
 // component writes one page's component around blocks rendered by page.
 func (e *emitter) component(name, blocks string) {
 	e.line("component " + name + " ui.node {")
-	e.line("    ui.vbox(style={gap=12}) {")
+	e.line("    ui.vbox(style={gap=12px}) {")
 	e.b.WriteString(blocks)
 	e.line("    }")
 	e.line("}")
@@ -181,7 +186,7 @@ func (e *emitter) blocks(n gast.Node, quoted bool) {
 func (e *emitter) block(n gast.Node, quoted bool) {
 	switch n := n.(type) {
 	case *gast.Heading:
-		e.wrap(fmt.Sprintf("markup.heading%d", n.Level), "", func(e *emitter) { e.inlines(n) })
+		e.wrap(fmt.Sprintf("markup.heading%d", n.Level), headingAnchor(n), func(e *emitter) { e.inlines(n) })
 	case *gast.Paragraph:
 		e.paragraph(n, quoted)
 	case *gast.TextBlock:
@@ -211,6 +216,27 @@ func (e *emitter) block(n gast.Node, quoted bool) {
 	default:
 		e.fail("unsupported markdown block %T", n)
 	}
+}
+
+// headingAnchor is the `anchor` argument for a heading: the id goldmark's
+// WithAutoHeadingID gave it, deduplicated per document as goldmark does, so a
+// `#` link written against the rendered page finds it.
+func headingAnchor(n *gast.Heading) string {
+	id := anchorOf(n)
+	if id == "" {
+		return ""
+	}
+	return "anchor=" + str(id)
+}
+
+// anchorOf is the id goldmark's WithAutoHeadingID gave a heading, or "".
+func anchorOf(n *gast.Heading) string {
+	id, ok := n.AttributeString("id")
+	if !ok {
+		return ""
+	}
+	b, _ := id.([]byte)
+	return string(b)
 }
 
 func (e *emitter) paragraph(n gast.Node, quoted bool) {
@@ -344,16 +370,16 @@ func (e *emitter) table(n *east.Table) {
 			columns = cells
 			continue
 		}
-		rows = append(rows, "["+strings.Join(cells, ", ")+"]")
+		rows = append(rows, "ui.tableRow(cells=["+strings.Join(cells, ", ")+"])")
 	}
 	// `ui.table`'s cells are plain strings, so a table's inline formatting
 	// flattens to its words. A table of prose wants a layout of `richText`
 	// runs, which is a document writing rows rather than an importer.
-	args := "columns=[" + strings.Join(columns, ", ") + "]"
-	if len(rows) > 0 {
-		args += ", rows=[" + strings.Join(rows, ", ") + "]"
-	}
-	e.line("ui.table(" + args + ")")
+	e.wrap("ui.table", "columns=["+strings.Join(columns, ", ")+"]", func(e *emitter) {
+		for _, r := range rows {
+			e.line(r)
+		}
+	})
 }
 
 // --- Inlines ---
@@ -411,7 +437,9 @@ func (e *emitter) inlines(n gast.Node) {
 			flush()
 			// The description flattens to its words: `alt` is a string on the
 			// declaration because a description is read aloud, not looked at.
-			e.linef("markup.image(src=%s, alt=%s)", str(string(c.Destination)), str(plainText(c, e.src)))
+			e.wrap("markup.image", "alt="+str(plainText(c, e.src)), func(e *emitter) {
+				e.line("ui.remote(url=" + str(string(c.Destination)) + ")")
+			})
 		case *gast.RawHTML:
 			// Dropped, for the reason an html block is.
 		case *east.TaskCheckBox:

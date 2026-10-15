@@ -3,8 +3,8 @@ package checker
 import (
 	"fmt"
 
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/ir"
 )
 
 // checkSlotInsertions holds a body to inserting each slot as often as its
@@ -30,7 +30,7 @@ func (c *checker) checkSlotInsertions(comp *ir.Component) {
 	if comp.Builtin != ir.BuiltinNone || comp.Intrinsic != "" || comp.Wildcard != "" {
 		return
 	}
-	if comp.Pkg != "" && len(comp.AST.Body.Stmts) == 0 && !c.overrideAt.IsSet() {
+	if comp.PkgPath() != "" && len(comp.AST.Body.Stmts) == 0 && !c.overrideAt.IsSet() {
 		return
 	}
 	for _, slot := range comp.Slots {
@@ -42,7 +42,7 @@ func (c *checker) checkSlotInsertions(comp *ir.Component) {
 
 func (c *checker) checkSlotInsertCount(comp *ir.Component, slot *ir.SlotDecl) {
 	w := &insertionWalk{slot: slot.Name, rest: slot.Rest}
-	got := w.stmts(comp.Body, "")
+	got := w.stmts(comp.Stmts, "")
 	what := fmt.Sprintf("slot %q", slot.Name)
 	why := "it is declared to render exactly once; declare it option<…> if the body may leave it out, or list<…> if it may repeat"
 	if slot.Rest {
@@ -103,7 +103,7 @@ func (c *checker) slotPos(comp *ir.Component, slot *ir.SlotDecl) ast.Pos {
 		return c.overrideAt
 	}
 	// The library body is what fails to insert; its slot is a published contract.
-	if comp.Pkg != "" {
+	if comp.PkgPath() != "" {
 		return comp.AST.Body.Pos
 	}
 	for _, p := range comp.AST.Props.Props {

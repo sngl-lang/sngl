@@ -1,21 +1,22 @@
-# A test drives a text input's payload events -- `c.field.input({value=…})`
-# and `c.field.change({value=…})` -- and every target runs the handler the
-# program wrote, once, with that value, as the interpreter does.
+# A test drives a text input's events with the text they carry --
+# `c.field.input("h")` and `c.field.change("committed")` -- and every target
+# runs the handler the program wrote, once, with that value, as the
+# interpreter does.
 #
 # The invokers for these were missing or took the wrong thing:
 #
-#   - The Go test lowerer passed the payload as a Go `InputEvent{Value: …}`,
-#     a type no Go target declares; an invoker takes the widget's value, the
-#     payload's `value`, as android's performTextReplacement already does.
+#   - The Go test lowerer passed a payload struct no Go target declares; an
+#     invoker takes the widget's value, which is the event's parameter, as
+#     android's performTextReplacement already does.
 #   - bubbletea ran neither handler at all: an input widget synced its bound
 #     var and dropped the @input and @change bodies. It now runs @input when
 #     an Update changed the text and @change on Enter.
 #   - fyne had no @change on an entry (OnSubmitted is its commit), read the
-#     payload only in a handler shaped like the two-way bind, and invoked the
+#     value only in a handler shaped like the two-way bind, and invoked the
 #     callback with it attached, so the handler's write-back of the bound
 #     text fired it a second time.
 #   - gtk4's invokers took no argument, had no commit signal to fire
-#     (`activate`), and read the payload only in the bind shape.
+#     (`activate`), and read the value only in the bind shape.
 #   - html dispatched the DOM event without putting the value in the element
 #     the handler reads it from.
 #
@@ -49,25 +50,25 @@ component editor node {
     input #field(
         value=name,
         @input(e) {
-            name = e.value
+            name = e
             edits = edits + 1
         },
-        @change(e) { lastCommit = e.value + "!" },
+        @change(e) { lastCommit = e + "!" },
     )
     text(value=name)
 }
 
 func testInputFiresOnEachKeystroke(t Test, c editor) {
     t.assert(c.name == "")
-    c.field.input({value="h"})
+    c.field.input("h")
     t.assert(c.name == "h")
-    c.field.input({value="hello"})
+    c.field.input("hello")
     t.assert(c.name == "hello")
     t.assert(c.edits == 2)
 }
 
 func testChangeFiresOnCommit(t Test, c editor) {
-    c.field.change({value="committed"})
+    c.field.change("committed")
     t.assert(c.lastCommit == "committed!")
     t.assert(c.edits == 0)
 }
@@ -75,7 +76,7 @@ func testChangeFiresOnCommit(t Test, c editor) {
 window {
 }
 -- testrun/bubbletea/go/app.sngl/editor/1 --
-sha256:fe368fb5975be9d587d5eefd8ed2947e
+sha256:c9f8556f33886ea255389080b0319572
 {
   "results": [
     {
@@ -89,7 +90,7 @@ sha256:fe368fb5975be9d587d5eefd8ed2947e
   ]
 }
 -- testrun/fyne/go/app.sngl/editor/1 --
-sha256:a0c16e0c7d7c2c741d4acd6f1536e512
+sha256:d1c8c006a3fb99639bf5440da0fdc40b
 {
   "results": [
     {
@@ -103,7 +104,7 @@ sha256:a0c16e0c7d7c2c741d4acd6f1536e512
   ]
 }
 -- testrun/gtk4/go/app.sngl/editor/1 --
-sha256:b1ef58768413babe8f5fbeb2680acdca
+sha256:f65be788aa82e90605a1dc9fb055cc4a
 {
   "results": [
     {
@@ -117,7 +118,7 @@ sha256:b1ef58768413babe8f5fbeb2680acdca
   ]
 }
 -- testrun/html/none/app.sngl/editor/1 --
-sha256:0d36154981a89eb9515a1f4e5aed9c19
+sha256:526b84ef47d94eb49a610f622f19e3aa
 {
   "results": [
     {

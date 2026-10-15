@@ -24,7 +24,7 @@ struct pair {
 component App() node {
     var (
         key pair = pair{a = 1, b = "x"}
-        log list<string> = []
+        log list[string] = []
     )
     button(text="same", @click { key = pair{a = 1, b = "x"} })
     button(text="other", @click { key = pair{a = 1, b = "y"} })

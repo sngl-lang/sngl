@@ -1,6 +1,6 @@
 import . "sngl:ui"
 
-var maybe option<int> = 3
+var maybe option[int] = 3
 
 func clear() {
     maybe = null

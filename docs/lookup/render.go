@@ -5,30 +5,17 @@ import (
 	"sort"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/internal/checker"
-	"git.duckfam.us/jonathan/sngl/internal/docsite"
-	"git.duckfam.us/jonathan/sngl/internal/parser"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/internal/checker"
+	"duckfam.us/sngl/internal/docsite"
+	"duckfam.us/sngl/internal/parser"
 )
 
-// renderDeclBody returns rendered HTML for the given lookup result. Used to
-// pre-bake DeclPage.Body so the website can drop the page contents in via
-// docui.Markdown without depending on the optimizer to fold a runtime
-// lookup.Resolve call. `pkg` lets renderers cross-link to sibling decl pages
-// (e.g. methods → method detail pages) using the same URL scheme as
-// declPageHref.
-func renderDeclBody(pkg string, res Result) string {
-	md := buildDeclMarkdown(pkg, res)
-	if md == "" {
-		return ""
-	}
-	html, err := docsite.RenderMarkdown([]byte(md))
-	if err != nil {
-		return md
-	}
-	return string(html)
-}
-
+// buildDeclMarkdown returns the markdown source of the given lookup result's
+// page, which the website renders with md.document -- parsed while the site
+// builds, into the same markup tree a page of docs/ is. `pkg` lets renderers
+// cross-link to sibling decl pages (e.g. methods → method detail pages) using
+// the same URL scheme as declPageHref.
 func buildDeclMarkdown(pkg string, res Result) string {
 	switch res.Kind {
 	case KindComponent:
@@ -82,15 +69,15 @@ func componentMD(c *ComponentDetail) string {
 		}
 		if len(c.Schema.Events) > 0 {
 			sb.WriteString("## Events\n\n")
-			sb.WriteString("| Name | Payload |\n")
-			sb.WriteString("|------|---------|\n")
+			sb.WriteString("| Name | Payload | Description |\n")
+			sb.WriteString("|------|---------|-------------|\n")
 			enames := make([]string, 0, len(c.Schema.Events))
 			for n := range c.Schema.Events {
 				enames = append(enames, n)
 			}
 			sort.Strings(enames)
 			for _, n := range enames {
-				sb.WriteString(fmt.Sprintf("| `@%s` | %s |\n", n, c.Schema.Events[n]))
+				sb.WriteString(fmt.Sprintf("| `@%s` | %s | %s |\n", n, c.Schema.Events[n], escapeMD(c.Schema.EventDocs[n])))
 			}
 			sb.WriteString("\n")
 		}
@@ -262,7 +249,7 @@ func snglSignatureWithInferred(pkgPath, fullName string, f *ast.FuncDef) string 
 		simple = fullName[i+1:]
 	}
 	for _, irFunc := range pkg.Funcs {
-		if irFunc.Receiver != receiver || irFunc.Name != simple {
+		if irFunc.RecvName() != receiver || irFunc.Name != simple {
 			continue
 		}
 		if irFunc.Return != nil {

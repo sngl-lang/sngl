@@ -3,8 +3,8 @@ package gir_test
 import (
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/codegen/platform/gtk4/gir"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/codegen/platform/gtk4/gir"
+	"duckfam.us/sngl/ir"
 )
 
 const minimalGIR = `<?xml version="1.0"?>
@@ -267,8 +267,8 @@ func TestParseGIR_UnmappableType(t *testing.T) {
 	if info == nil {
 		t.Fatal("Weird not found")
 	}
-	if len(info.Props) != 1 || info.Props[0].IRType.Kind != ir.TypeDyn {
-		t.Errorf("expected TypeDyn fallback, got %v", info.Props)
+	if len(info.Props) != 1 || info.Props[0].IRType.Kind != ir.TypeInvalid {
+		t.Errorf("expected an unusable (TypeInvalid) prop, got %v", info.Props)
 	}
 }
 

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"slices"
 
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 var passFlattenStructSpread = pass{
@@ -95,7 +95,7 @@ func flattenSpreadExprCtx(e ir.Expr, pkg *ir.Package) ir.Expr {
 		if x.Func != nil {
 			x.Func.Block = rewriteStmtExprs(x.Func.Block, rewrite)
 		}
-	case *ir.Literal, *ir.Ident, *ir.ContextRead:
+	case *ir.Literal, *ir.Ident, *ir.ContextRead, *ir.SlotEmpty:
 		// Terminal — no struct literals beneath.
 	default:
 		panic(fmt.Sprintf("flattenSpreadExprCtx: unhandled %T", x))
@@ -220,27 +220,12 @@ func structDefOf(sl *ir.StructLit) *ir.StructDef {
 	}
 	for _, f := range sl.Fields {
 		if f.Spread && f.Value != nil {
-			if t := exprStructType(f.Value); t != nil {
+			if t := f.Value.ExprType(); t != nil {
 				if sd, ok := t.Decl.(*ir.StructDef); ok {
 					return sd
 				}
 			}
 		}
-	}
-	return nil
-}
-
-// exprStructType returns the static *Type of an expr when it carries one.
-func exprStructType(e ir.Expr) *ir.Type {
-	switch x := e.(type) {
-	case *ir.Ident:
-		return x.Type
-	case *ir.Select:
-		return x.Type
-	case *ir.Call:
-		return x.Type
-	case *ir.Index:
-		return x.Type
 	}
 	return nil
 }

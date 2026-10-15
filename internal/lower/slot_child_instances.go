@@ -4,7 +4,7 @@ import (
 	"slices"
 	"strconv"
 
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 // passSlotChildInstances makes a slot child the render can keep.
@@ -75,11 +75,17 @@ func lowerSlotChildInstances(pkg *ir.Package, caps Features, opts Options) error
 	//
 	// By index, because lifting appends the components it synthesizes and
 	// each of their bodies is a view body with slots of its own.
+	written := len(pkg.Components)
 	for i := 0; i < len(pkg.Components); i++ {
 		if c := pkg.Components[i]; c != nil {
-			st.liftSlotBodies(c.Body)
+			// What lifting synthesizes holds its #[construct] props as its own.
+			if i < written {
+				c.Stmts = st.constructSlots(c.Stmts)
+			}
+			st.liftSlotBodies(c.Stmts)
 		}
 	}
+	pkg.Body = st.constructSlots(pkg.Body)
 	st.liftSlotBodies(pkg.Body)
 	if !caps.InsertBefore {
 		return nil
@@ -92,7 +98,7 @@ func lowerSlotChildInstances(pkg *ir.Package, caps Features, opts Options) error
 	// nothing else.
 	for _, c := range pkg.Components {
 		if c != nil {
-			st.walk(c.Body)
+			st.walk(c.Stmts)
 		}
 	}
 	st.walk(pkg.Body)
@@ -169,9 +175,11 @@ func (st *slotChildSynth) convertible(n *ir.NodeInst) bool {
 func (st *slotChildSynth) synthesize(n *ir.NodeInst) *ir.NodeInst {
 	id := st.n
 	st.n++
+	// A member of the family of the node it renders, as any component is.
 	comp := &ir.Component{
 		Name:            "__child" + strconv.Itoa(id),
 		RuntimeInstance: true,
+		Family:          nodeFamily(n),
 	}
 
 	inst := &ir.NodeInst{AST: n.AST, Component: comp}
@@ -180,12 +188,16 @@ func (st *slotChildSynth) synthesize(n *ir.NodeInst) *ir.NodeInst {
 	// subtree and the free-value scan should not then see what it reads.
 	l := newLift(comp, inst)
 	st.liftHandlers(n, l, nil)
-	st.liftValues(n, l, handlerParams(n, map[ir.Symbol]bool{}))
+	local := handlerParams(n, boundWithin(n))
+	st.liftConstructProps(n, l, local)
+	st.liftValues(n, l, local)
 	for _, p := range comp.Props {
-		st.cells[p.Sym] = true
+		if !p.Construct {
+			st.cells[p.Sym] = true
+		}
 	}
 
-	comp.Body = []ir.Stmt{n}
+	comp.Stmts = []ir.Stmt{n}
 	st.pkg.Components = append(st.pkg.Components, comp)
 	return inst
 }
@@ -218,7 +230,7 @@ func (st *slotChildSynth) liftHandlers(n any, l *lift, bound []*ir.Param) {
 // isDrawShape reports whether n is a shape, whose handlers are its canvas's
 // drawing rather than anything the program subscribes to.
 func isDrawShape(n *ir.NodeInst) bool {
-	return n.Component != nil && ir.IsDrawShapeTree(n.Component.Tree)
+	return n.Component != nil && ir.IsShapeFamily(n.Component.Family)
 }
 
 // handlerParams is the parameters of every handler under n, which no lifting
@@ -243,6 +255,35 @@ func handlerParams(n ir.Node, into map[ir.Symbol]bool) map[ir.Symbol]bool {
 		return nil
 	})
 	return into
+}
+
+// liftConstructProps makes each #[construct] prop of a primitive under n that
+// reads a value from outside n a #[construct] prop of the component, the
+// expression lifted whole so the prop keeps the type the checker vetted for
+// comparison. The primitive cannot be handed a new value once built, so
+// neither can the instance holding it: a change rebuilds the instance
+// (reuseOrCreate) where any other prop is patched. A component instance under
+// n rebuilds itself where it stands, and a prop reading what n binds is left
+// to liftValues.
+func (st *slotChildSynth) liftConstructProps(n *ir.NodeInst, l *lift, local map[ir.Symbol]bool) {
+	_ = ir.Walk(n, func(node ir.Node) error {
+		x, ok := node.(*ir.NodeInst)
+		if !ok || isInstanceNode(x) {
+			return nil
+		}
+		for i, a := range x.Props {
+			if a.Name == "" || !propIsConstruct(x.Component, a.Name) || !st.readsFree(a.Value, local) || readsAny(a.Value, local) {
+				continue
+			}
+			t := propValueType(x.Component, a.Name)
+			p := l.prop("construct#"+strconv.Itoa(l.uniq), t, a.Value)
+			l.uniq++
+			l.comp.Props[len(l.comp.Props)-1].Construct = true
+			local[p] = true
+			x.Props[i].Value = &ir.Ident{Name: p.Name, Type: t, Sym: p}
+		}
+		return nil
+	})
 }
 
 // liftNodeHandlers is liftHandlers for host's own handlers alone.
@@ -435,4 +476,25 @@ func liftableSym(s ir.Symbol) bool {
 		return !v.IsConst
 	}
 	return false
+}
+
+// readsFree reports whether e reads what liftValues would make a prop: a
+// binding declared outside local, or a call reading state.
+func (st *slotChildSynth) readsFree(e ir.Expr, local map[ir.Symbol]bool) bool {
+	found := false
+	_ = ir.WalkExprs(e, func(x ir.Expr) error {
+		switch y := x.(type) {
+		case *ir.Ident:
+			found = y.Sym != nil && liftableSym(y.Sym) && !local[y.Sym]
+		case *ir.Call:
+			found = st.readsReactiveState(y)
+		case *ir.Lambda, *ir.Closure:
+			return ir.SkipDir
+		}
+		if found {
+			return ir.SkipAll
+		}
+		return nil
+	})
+	return found
 }

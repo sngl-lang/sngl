@@ -4,9 +4,9 @@ import (
 	"testing"
 	"testing/fstest"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
-	jsscheme "git.duckfam.us/jonathan/sngl/codegen/scheme/js"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/codegen"
+	jsscheme "duckfam.us/sngl/codegen/scheme/js"
+	"duckfam.us/sngl/ir"
 )
 
 // jsStructDef loads one interface out of a TypeScript module the way the
@@ -49,8 +49,8 @@ func TestStructLitUsesTypeScriptPropertyNames(t *testing.T) {
 func TestStructLitKeepsSnglNamesForOtherSchemes(t *testing.T) {
 	type goTypeID struct{ Path, Name string }
 	sd := &ir.StructDef{
-		Name:    "Entry",
-		Foreign: ir.Foreign{Origin: goTypeID{Path: "example.com/api", Name: "Entry"}},
+		Name:   "Entry",
+		Origin: goTypeID{Path: "example.com/api", Name: "Entry"},
 		Fields: []*ir.StructField{
 			{Name: "title", Foreign: ir.Foreign{Name: "Title"}},
 			{Name: "href", Foreign: ir.Foreign{Name: "Href"}},

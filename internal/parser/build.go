@@ -5,14 +5,17 @@ import (
 	"math"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/ast"
+	"duckfam.us/sngl/ast"
 )
 
 // builder converts an egg parse tree ([]int32) into AST nodes.
 type builder struct {
-	file     string
-	filtered []Token
-	comments []Token
+	// unnamedParams admits a parameter that is a type and no name, which only
+	// a func literal's list may hold: one with no body is a func type.
+	unnamedParams bool
+	file          string
+	filtered      []Token
+	comments      []Token
 	// firstCodeCol maps a line to the column its leftmost code token starts
 	// at, which is how a trailing comment is told from one on its own line.
 	firstCodeCol map[int]int
@@ -525,8 +528,8 @@ func (b *builder) buildStructDecl(it nodeIter) *ast.StructDef {
 	lbraceLine, rbraceLine := 0, 0
 	if !it.done() && !it.isNonTerminal() && it.tokenType() == LBRACE {
 		lbraceLine = it.token().Line
+		it.skip() // lbrace
 	}
-	it.skip() // lbrace
 	for !it.done() {
 		if it.isNonTerminal() && it.symbol() == StructBodyItem {
 			if item := b.buildStructBodyItem(it.enter()); item != nil {
@@ -1004,14 +1007,11 @@ func (b *builder) buildIdentListWithPos(it nodeIter) ([]string, []ast.Pos) {
 // --- Functions ---
 
 func (b *builder) buildFuncDecl(it nodeIter) *ast.FuncDef {
-	// FuncDecl = kw_func FuncName [ TargetIndex ] FuncTail .
+	// FuncDecl = kw_func FuncName FuncTail .
 	pos := b.posFromToken(it.shift()) // kw_func
 	f := &ast.FuncDef{Pos: pos}
 	if !it.done() && it.isNonTerminal() && it.symbol() == FuncName {
 		b.buildFuncName(it.enter(), f)
-	}
-	if !it.done() && it.isNonTerminal() && it.symbol() == TargetIndex {
-		f.Target = b.buildTargetIndex(it.enter())
 	}
 	if !it.done() && it.isNonTerminal() && it.symbol() == FuncTail {
 		b.buildFuncTail(it.enter(), f)
@@ -1019,64 +1019,181 @@ func (b *builder) buildFuncDecl(it nodeIter) *ast.FuncDef {
 	return f
 }
 
-// buildTargetIndex builds the `[expr]` index that names the target a
-// declaration implements.
+// buildTargetIndex builds the `[name]` or `[pkg.name]` index that names the
+// target a declaration implements.
 func (b *builder) buildTargetIndex(it nodeIter) ast.Expr {
-	// TargetIndex = lbracket Expr rbracket .
+	// TargetIndex = lbracket ident [ dot ident ] rbracket .
 	it.skip() // lbracket
-	var e ast.Expr
-	if !it.done() && it.isNonTerminal() && it.symbol() == Expr {
-		e = b.buildExpr(it.enter())
+	return b.buildTargetName(&it)
+}
+
+// buildTargetName reads a target's name, `ident [ dot ident ]`, as the
+// expression it would be anywhere else: a bare name, or a select off one.
+// The closing bracket is left for the caller.
+func (b *builder) buildTargetName(it *nodeIter) ast.Expr {
+	if it.done() || it.isNonTerminal() || it.tokenType() != IDENT {
+		return nil
 	}
-	return e
+	tok := it.shift()
+	return b.buildTargetSelect(it, &ast.IdentExpr{Pos: b.posFromToken(tok), Name: tok.Literal})
+}
+
+// buildTargetSelect finishes a target whose first name is already read.
+func (b *builder) buildTargetSelect(it *nodeIter, head *ast.IdentExpr) ast.Expr {
+	if it.done() || it.isNonTerminal() || it.tokenType() != DOT {
+		return head
+	}
+	dot := it.shift()
+	if it.done() || it.isNonTerminal() || it.tokenType() != IDENT {
+		return head
+	}
+	return &ast.SelectExpr{Pos: b.posFromToken(dot), Operand: head, Field: it.shift().Literal}
+}
+
+// buildNameBracket reads what follows a declaration's name: its own type
+// parameters, the target it overrides, or both. The two open alike, and the
+// token after the first name says which: a Type is a constraint, and a `dot`
+// or the closing bracket a target.
+func (b *builder) buildNameBracket(it nodeIter) (params []ast.TypeParam, target ast.Expr) {
+	// NameBracket = lbracket ident ( [ dot ident ] rbracket | TypeParamRest [ TargetIndex ] ) .
+	if it.done() || it.isNonTerminal() {
+		return nil, nil
+	}
+	it.skip() // lbracket
+	if it.done() || it.isNonTerminal() || it.tokenType() != IDENT {
+		return nil, nil
+	}
+	tok := it.shift()
+	if !it.done() && it.isNonTerminal() && it.symbol() == TypeParamRest {
+		params = b.buildTypeParamRest(it.enter(), ast.TypeParam{Pos: b.posFromToken(tok), Name: tok.Literal})
+		if !it.done() && it.isNonTerminal() && it.symbol() == TargetIndex {
+			target = b.buildTargetIndex(it.enter())
+		}
+		return params, target
+	}
+	return nil, b.buildTargetSelect(&it, &ast.IdentExpr{Pos: b.posFromToken(tok), Name: tok.Literal})
 }
 
 func (b *builder) buildFuncName(it nodeIter, f *ast.FuncDef) {
-	// FuncName = ident [ TypeParamList [ dot ident [ TypeParamList ] ] | dot ident [ TypeParamList ] ] .
+	// FuncName = ident [ lbracket ident FuncNameBracket | dot ident [ NameBracket ] ] .
 	//
 	// All cases after the leading ident:
-	//   TypeParamList dot ident [TypeParamList] → recv<T>.method[<U>]
-	//     RecvTypeParams=[T], TypeParams=[U], Name="recv.method"
-	//   TypeParamList (no dot)                  → name<T>
-	//     TypeParams=[T], Name="name"
-	//   dot ident [TypeParamList]               → recv.method[<T>]
-	//     TypeParams=[T], Name="recv.method"
-	//   (nothing)                               → name
-	//     Name="name"
+	//   [T].method[NameBracket]     → RecvTypeParams=[T], Name="recv.method"
+	//   [T, U].method[NameBracket]  → RecvTypeParams=[T, U], Name="recv.method"
+	//   [T any][TargetIndex]        → TypeParams=[T], Name="name"
+	//   [platform], [html.platform] → Target, Name="name"
+	//   .method[NameBracket]        → Name="recv.method"
+	//   (nothing)                   → Name="name"
 	first := it.shift().Literal
-	if it.done() {
-		f.Name = first
-		return
-	}
-	if it.isNonTerminal() && it.symbol() == TypeParamList {
-		params := b.buildTypeParams(it.enter())
-		if !it.done() && !it.isNonTerminal() && it.tokenType() == DOT {
-			// recv<T>.method[<U>] — receiver-level type params
-			it.skip() // dot
-			f.RecvTypeParams = params
-			f.Name = first + "." + it.shift().Literal
-			// optional method-level type params after the method name
-			if !it.done() && it.isNonTerminal() && it.symbol() == TypeParamList {
-				f.TypeParams = b.buildTypeParams(it.enter())
-			}
-		} else {
-			// name<T> — function-level type params only
-			f.TypeParams = params
-			f.Name = first
-		}
-		return
-	}
-	if !it.isNonTerminal() && it.tokenType() == DOT {
-		it.skip() // dot
-		f.Name = first + "." + it.shift().Literal
-		// optional method-level type params after the method name
-		if !it.done() && it.isNonTerminal() && it.symbol() == TypeParamList {
-			f.TypeParams = b.buildTypeParams(it.enter())
-		}
-		return
-	}
-	// plain function name, no type params, no dot
 	f.Name = first
+	if it.done() || it.isNonTerminal() {
+		return
+	}
+	switch it.tokenType() {
+	case LBRACKET:
+		it.skip() // lbracket
+		if it.done() || it.isNonTerminal() || it.tokenType() != IDENT {
+			return
+		}
+		tok := it.shift()
+		head := ast.TypeParam{Pos: b.posFromToken(tok), Name: tok.Literal}
+		if it.done() || !it.isNonTerminal() || it.symbol() != FuncNameBracket {
+			return
+		}
+		b.buildFuncNameBracket(it.enter(), f, head)
+	case DOT:
+		b.buildMethodName(&it, f, first)
+	}
+}
+
+// buildFuncNameBracket reads the rest of a bracket opened after a function's
+// first name, whose first ident buildFuncName has already read as head. A
+// `dot` after the bracket makes it a receiver's names; a Type after the head
+// a type parameter list; anything else a target.
+func (b *builder) buildFuncNameBracket(it nodeIter, f *ast.FuncDef, head ast.TypeParam) {
+	// FuncNameBracket = rbracket [ dot ident [ NameBracket ] ]
+	//                 | comma ident { comma ident } rbracket dot ident [ NameBracket ]
+	//                 | dot ident rbracket
+	//                 | TypeParamRest [ TargetIndex ] .
+	first := f.Name
+	if it.done() {
+		return
+	}
+	if it.isNonTerminal() && it.symbol() == TypeParamRest {
+		f.TypeParams = b.buildTypeParamRest(it.enter(), head)
+		if !it.done() && it.isNonTerminal() && it.symbol() == TargetIndex {
+			f.Target = b.buildTargetIndex(it.enter())
+		}
+		return
+	}
+	switch it.tokenType() {
+	case DOT:
+		f.Target = b.buildTargetSelect(&it, &ast.IdentExpr{Pos: head.Pos, Name: head.Name})
+	case RBRACKET:
+		it.skip() // rbracket
+		if it.done() {
+			f.Target = &ast.IdentExpr{Pos: head.Pos, Name: head.Name}
+			return
+		}
+		f.RecvTypeParams = []ast.TypeParam{head}
+		b.buildMethodName(&it, f, first)
+	case COMMA:
+		f.RecvTypeParams = []ast.TypeParam{head}
+		for !it.done() && (it.isNonTerminal() || it.tokenType() != DOT) {
+			if !it.isNonTerminal() && it.tokenType() == IDENT {
+				tok := it.shift()
+				f.RecvTypeParams = append(f.RecvTypeParams, ast.TypeParam{Pos: b.posFromToken(tok), Name: tok.Literal})
+				continue
+			}
+			it.skip() // comma, rbracket
+		}
+		b.buildMethodName(&it, f, first)
+	}
+}
+
+// buildMethodName reads `dot ident [ NameBracket ]` after a receiver.
+func (b *builder) buildMethodName(it *nodeIter, f *ast.FuncDef, recv string) {
+	if it.done() || it.isNonTerminal() || it.tokenType() != DOT {
+		return
+	}
+	it.skip() // dot
+	if it.done() || it.isNonTerminal() || it.tokenType() != IDENT {
+		return
+	}
+	f.Name = recv + "." + it.shift().Literal
+	if !it.done() && it.isNonTerminal() && it.symbol() == NameBracket {
+		f.TypeParams, f.Target = b.buildNameBracket(it.enter())
+	}
+}
+
+// buildTypeParamRest finishes a function's own list, whose first parameter's
+// name buildFuncName has already read as head.
+func (b *builder) buildTypeParamRest(it nodeIter, head ast.TypeParam) []ast.TypeParam {
+	// TypeParamRest = Type [ assign Type ] { comma TypeParam } rbracket .
+	b.buildTypeParamTypes(&it, &head)
+	out := []ast.TypeParam{head}
+	for !it.done() {
+		if it.isNonTerminal() && it.symbol() == TypeParam {
+			out = append(out, b.buildTypeParam(it.enter()))
+			continue
+		}
+		it.skip() // comma, rbracket
+	}
+	return out
+}
+
+// buildTypeParamTypes reads a parameter's constraint and its default, if it
+// has one: `Type [ assign Type ]`.
+func (b *builder) buildTypeParamTypes(it *nodeIter, tp *ast.TypeParam) {
+	if !it.done() && it.isNonTerminal() && it.symbol() == Type {
+		tp.Constraint = b.buildType(it.enter())
+	}
+	if !it.done() && !it.isNonTerminal() && it.tokenType() == ASSIGN {
+		it.skip() // assign
+		if !it.done() && it.isNonTerminal() && it.symbol() == Type {
+			tp.Default = b.buildType(it.enter())
+		}
+	}
 }
 
 func (b *builder) buildFuncTail(it nodeIter, f *ast.FuncDef) {
@@ -1113,37 +1230,26 @@ func (b *builder) buildFuncBodyTail(it nodeIter, f *ast.FuncDef) {
 }
 
 func (b *builder) buildTypeParams(it nodeIter) []ast.TypeParam {
-	// TypeParamList = lt TypeParam { comma TypeParam } gt .
+	// TypeParamList = lbracket TypeParam { comma TypeParam } rbracket .
 	var out []ast.TypeParam
 	for !it.done() {
 		if it.isNonTerminal() && it.symbol() == TypeParam {
 			out = append(out, b.buildTypeParam(it.enter()))
 			continue
 		}
-		it.skip() // lt, gt, comma
+		it.skip() // lbracket, rbracket, comma
 	}
 	return out
 }
 
 func (b *builder) buildTypeParam(it nodeIter) ast.TypeParam {
-	// TypeParam = ident [ assign Type ] .
+	// TypeParam = ident Type [ assign Type ] .
 	var tp ast.TypeParam
-	for !it.done() {
-		if it.isNonTerminal() {
-			if it.symbol() == Type {
-				tp.Default = b.buildType(it.enter())
-				continue
-			}
-			it.skip()
-			continue
-		}
-		if it.tokenType() == IDENT && tp.Name == "" {
-			tok := it.shift()
-			tp.Pos, tp.Name = b.posFromToken(tok), tok.Literal
-			continue
-		}
-		it.skip() // assign
+	if !it.done() && !it.isNonTerminal() && it.tokenType() == IDENT {
+		tok := it.shift()
+		tp.Pos, tp.Name = b.posFromToken(tok), tok.Literal
 	}
+	b.buildTypeParamTypes(&it, &tp)
 	return tp
 }
 
@@ -1207,10 +1313,15 @@ func (b *builder) buildParamEntries(it nodeIter, openLine int, multiline *bool, 
 }
 
 func (b *builder) buildParam(it nodeIter) ast.ParamOrEventDecl {
-	// Param = { MacroAttr } ( colon ident [ Type ] | at ident [ EventParams | Type ] | ident [ Type ] ) [ assign Expr ] .
+	// Param = { MacroAttr } ( colon ident [ Type ] | at ident [ EventParams | Type ] | kw_const ident [ Type ] | ident [ Type ] ) [ assign Expr ] .
 	attrs := b.buildParamAttrs(&it)
 	if it.done() {
 		return ast.Param{Attrs: attrs}
+	}
+	// A type with no name: `func(int) bool`, `struct {}` as a parameter.
+	if it.isNonTerminal() && it.symbol() == KeywordType {
+		t := b.buildType(it.enter())
+		return b.unnamedParam(&it, ast.Param{Pos: *t.ExprPos(), Type: t, Attrs: attrs})
 	}
 	bidi, event, isConst := false, false, false
 	switch it.tokenType() {
@@ -1232,18 +1343,31 @@ func (b *builder) buildParam(it nodeIter) ast.ParamOrEventDecl {
 		Const:         isConst,
 		Attrs:         attrs,
 	}
-	var evParams []ast.FuncTypeParam
+	// A name-led type with no name: `ui.Style`, `list[int]`.
+	if !it.done() && !it.isNonTerminal() && it.tokenType() == DOT {
+		it.skip() // dot
+		nt := &ast.NamedType{Pos: p.Pos, Package: p.Name}
+		if !it.done() && !it.isNonTerminal() && it.tokenType() == IDENT {
+			nt.Name = it.shift().Literal
+		}
+		if !it.done() && it.isNonTerminal() && it.symbol() == TypeArgs {
+			nt.TypeArgs = b.buildTypeArgs(it.enter())
+		}
+		return b.unnamedParam(&it, ast.Param{Pos: p.Pos, Type: nt, Attrs: attrs})
+	}
+	if !it.done() && it.isNonTerminal() && it.symbol() == TypeArgs {
+		nt := &ast.NamedType{Pos: p.Pos, Name: p.Name, TypeArgs: b.buildTypeArgs(it.enter())}
+		return b.unnamedParam(&it, ast.Param{Pos: p.Pos, Type: nt, Attrs: attrs})
+	}
+	var evParams ast.ParamList
 	evParens := false
 	if !it.done() && it.isNonTerminal() && it.symbol() == EventParams {
-		// EventParams = lparen [ FuncTypeParamList ] rparen .
+		// EventParams = lparen [ ParamList ] rparen .
 		evParens = true
 		inner := it.enter()
-		for !inner.done() {
-			if inner.isNonTerminal() && inner.symbol() == FuncTypeParamList {
-				evParams = b.buildFuncTypeParamList(inner.enter())
-				continue
-			}
-			inner.skip() // lparen, rparen
+		open := inner.shift() // lparen
+		if !inner.done() && inner.isNonTerminal() && inner.symbol() == ParamList {
+			evParams = b.buildParamList(inner.enter(), open.Line)
 		}
 	}
 	if !it.done() && it.isNonTerminal() && it.symbol() == Type {
@@ -1262,9 +1386,26 @@ func (b *builder) buildParam(it nodeIter) ast.ParamOrEventDecl {
 		b.errorf(p.Pos, "event %q takes no default value", p.Name)
 	}
 	if p.Type != nil {
-		evParams = []ast.FuncTypeParam{{Type: p.Type}}
+		// The list a declaration used to shorten to its one type, which a
+		// function's parameter list has no form for.
+		b.errorf(p.Pos, "event %q declares its parameters as a function does: @%s(v %s)", p.Name, p.Name, FormatType(p.Type))
 	}
 	return ast.EventDecl{Pos: b.posFromToken(nameTok), Name: p.Name, Params: evParams, HasParens: evParens, Attrs: attrs}
+}
+
+// unnamedParam finishes a parameter that is a type and no name, which only a
+// func literal's list admits.
+func (b *builder) unnamedParam(it *nodeIter, p ast.Param) ast.Param {
+	if !it.done() && !it.isNonTerminal() && it.tokenType() == ASSIGN {
+		it.skip() // assign
+		if !it.done() && it.isNonTerminal() {
+			p.Default = b.buildExpr(it.enter())
+		}
+	}
+	if !b.unnamedParams {
+		b.errorf(p.Pos, "a parameter is named: write name %s", FormatType(p.Type))
+	}
+	return p
 }
 
 // --- Components ---
@@ -1279,14 +1420,10 @@ func (b *builder) buildComponentDecl(it nodeIter) *ast.ComponentDecl {
 		it.skip() // dot
 		c.Name = c.Name + "." + it.shift().Literal
 	}
-	// After the (possibly qualified) name, `lt` can only open a type parameter
-	// list -- a target index opens with `lbracket` and a prop list with
-	// `lparen` -- so the three optionals stay LL(1) in this order.
-	if !it.done() && it.isNonTerminal() && it.symbol() == TypeParamList {
-		c.TypeParams = b.buildTypeParams(it.enter())
-	}
-	if !it.done() && it.isNonTerminal() && it.symbol() == TargetIndex {
-		c.Target = b.buildTargetIndex(it.enter())
+	// After the (possibly qualified) name a bracket holds the type
+	// parameters, the target the declaration overrides, or both.
+	if !it.done() && it.isNonTerminal() && it.symbol() == NameBracket {
+		c.TypeParams, c.Target = b.buildNameBracket(it.enter())
 	}
 
 	if !it.done() && !it.isNonTerminal() && it.tokenType() == LPAREN {
@@ -1427,7 +1564,7 @@ func (b *builder) buildVisualOrStmt(it nodeIter) ast.Stmt {
 			if !it.done() && it.isNonTerminal() {
 				val = b.buildExpr(it.enter())
 			}
-			if target, ok := base.(ast.TargetExpr); ok {
+			if target, ok := base.(ast.TargetExpr); ok && namesStorage(target) {
 				return &ast.AssignStmt{
 					Pos:    ast.Pos(*base.ExprPos()),
 					Target: target,
@@ -1435,15 +1572,17 @@ func (b *builder) buildVisualOrStmt(it nodeIter) ast.Stmt {
 					Value:  val,
 				}
 			}
+			return b.notAssignable(base)
 		}
 		if !it.done() && !it.isNonTerminal() && it.tokenType() == BANGBANG {
 			it.skip()
-			if target, ok := base.(ast.TargetExpr); ok {
+			if target, ok := base.(ast.TargetExpr); ok && namesStorage(target) {
 				return &ast.ToggleStmt{
 					Pos:    ast.Pos(*base.ExprPos()),
 					Target: target,
 				}
 			}
+			return b.notAssignable(base)
 		}
 		if !it.done() && it.isNonTerminal() && it.symbol() == IncDecOp {
 			inner := it.enter()
@@ -1454,13 +1593,14 @@ func (b *builder) buildVisualOrStmt(it nodeIter) ast.Stmt {
 					isDec = true
 				}
 			}
-			if target, ok := base.(ast.TargetExpr); ok {
+			if target, ok := base.(ast.TargetExpr); ok && namesStorage(target) {
 				return &ast.IncDecStmt{
 					Pos:    ast.Pos(*base.ExprPos()),
 					Target: target,
 					IsDec:  isDec,
 				}
 			}
+			return b.notAssignable(base)
 		}
 	}
 
@@ -1472,15 +1612,21 @@ func (b *builder) buildVisualOrStmt(it nodeIter) ast.Stmt {
 		// If base is a CallExpr, decompose: Target = Func, Args = call's args,
 		// and carry the element-ref id (`name #id(...)`) onto the node.
 		if call, ok := base.(*ast.CallExpr); ok {
-			if target, ok := call.Func.(ast.TargetExpr); ok {
-				vn.Target = target
+			fn, typeArgs := splitTypeArgs(call.Func)
+			if target, ok := fn.(ast.TargetExpr); ok && namesNode(target) {
+				vn.Target, vn.TypeArgs = target, typeArgs
+			} else {
+				b.errorf(ast.Pos(*call.Func.ExprPos()), "a node names its component: write name(…) or pkg.name(…)")
 			}
 			vn.Args = call.Args
 			vn.ID = call.ID
 			vn.HasParens = true
 		} else {
-			if target, ok := base.(ast.TargetExpr); ok {
-				vn.Target = target
+			fn, typeArgs := splitTypeArgs(base)
+			if target, ok := fn.(ast.TargetExpr); ok && namesNode(target) {
+				vn.Target, vn.TypeArgs = target, typeArgs
+			} else {
+				b.notAStatement(base)
 			}
 			if args != nil {
 				vn.Args = *args
@@ -1507,10 +1653,30 @@ func (b *builder) buildVisualOrStmt(it nodeIter) ast.Stmt {
 		Pos: ast.Pos(*base.ExprPos()),
 		ID:  elemID,
 	}
-	if target, ok := base.(ast.TargetExpr); ok {
-		vn.Target = target
+	// A bracket on a bare name is a node's type arguments, `spacer[int]`, or
+	// an index, `xs[0]`, which is no statement; only the checker knows what
+	// the name is, so it is the one that says.
+	fn, typeArgs := splitTypeArgs(base)
+	if target, ok := fn.(ast.TargetExpr); ok && namesNode(target) {
+		vn.Target, vn.TypeArgs = target, typeArgs
+	} else {
+		b.notAStatement(base)
 	}
 	return vn
+}
+
+// splitTypeArgs reads a node's name off a bracket after it, `context[V]`: a
+// node names its component, so a bracket there can only be the component's
+// type arguments. Anything else is handed back whole.
+func splitTypeArgs(e ast.Expr) (ast.Expr, []ast.Expr) {
+	ix, ok := e.(*ast.IndexExpr)
+	if !ok {
+		return e, nil
+	}
+	if target, ok := ix.Operand.(ast.TargetExpr); ok && namesNode(target) {
+		return ix.Operand, ix.Indices
+	}
+	return e, nil
 }
 
 func (b *builder) applyStmtPostfixOp(it nodeIter, base ast.Expr, lastBlock *ast.StmtBlock, lastArgs *ast.ArgList) (ast.Expr, *ast.StmtBlock, *ast.ArgList, string) {
@@ -1559,15 +1725,10 @@ func (b *builder) applyStmtPostfixOp(it nodeIter, base ast.Expr, lastBlock *ast.
 		return base, lastBlock, lastArgs, ref.Literal
 	case LBRACKET:
 		it.skip() // lbracket
-		var idx ast.Expr
-		if !it.done() && it.isNonTerminal() {
-			idx = b.buildExpr(it.enter())
-		}
-		// rbracket
 		return &ast.IndexExpr{
 			Pos:     b.posFromToken(tok),
 			Operand: base,
-			Index:   idx,
+			Indices: b.buildIndexList(&it),
 		}, nil, nil, ""
 	case LPAREN:
 		it.skip() // lparen
@@ -1716,7 +1877,7 @@ func (b *builder) buildForNode(it nodeIter) *ast.ForStmt {
 	if declares {
 		it.skip() // kw_var
 		if !it.done() && !it.isNonTerminal() && it.tokenType() == AMP {
-			it.skip() // & — bind the element var as ref<T>
+			it.skip() // & — bind the element var as ref[T]
 			stmt.KeyRef = true
 		}
 		stmt.Key = it.shift().Literal // ident
@@ -2136,16 +2297,26 @@ func (b *builder) buildExprPostfixOp(it nodeIter, base ast.Expr) ast.Expr {
 		}
 	case LBRACKET:
 		it.skip() // lbracket
-		var idx ast.Expr
-		if !it.done() && it.isNonTerminal() {
-			idx = b.buildExpr(it.enter())
-		}
-		// rbracket
-		return &ast.IndexExpr{
+		ix := &ast.IndexExpr{
 			Pos:     b.posFromToken(tok),
 			Operand: base,
-			Index:   idx,
+			Indices: b.buildIndexList(&it),
 		}
+		if !it.done() && !it.isNonTerminal() && it.tokenType() == RBRACKET {
+			it.skip() // rbracket
+		}
+		// `Box[int]{v=1}` and `pkg.Box[int]{v=1}`: a struct literal of a
+		// generic type, its arguments written after the name.
+		if !it.done() && it.isNonTerminal() && it.symbol() == StructLitBody {
+			if pkg, name, ok := structLitName(base); ok {
+				s := &ast.StructExpr{Pos: ast.Pos(*base.ExprPos()), Package: pkg, Name: name, TypeArgs: ix.Indices}
+				s.Fields = b.buildStructLitFields(it.enter(), &s.Multiline)
+				return s
+			}
+			b.errorf(ast.Pos(*base.ExprPos()), "a struct literal names its type: write Name[…]{…} or pkg.Name[…]{…}")
+			it.skip()
+		}
+		return ix
 	case LPAREN:
 		it.skip() // lparen
 		call := &ast.CallExpr{Pos: ast.Pos(b.posFromToken(tok)), Func: base}
@@ -2157,6 +2328,45 @@ func (b *builder) buildExprPostfixOp(it nodeIter, base ast.Expr) ast.Expr {
 	}
 	it.skip()
 	return base
+}
+
+// buildIndexList reads what a bracket holds, `IndexList`, leaving the closing
+// bracket for the caller: each an expression or a type no expression spells,
+// which is an ast.TypeExpr in the list.
+func (b *builder) buildIndexList(it *nodeIter) []ast.Expr {
+	if it.done() || !it.isNonTerminal() || it.symbol() != IndexList {
+		return nil
+	}
+	lit := it.enter()
+	var out []ast.Expr
+	for !lit.done() {
+		if lit.isNonTerminal() && lit.symbol() == IndexElem {
+			// IndexElem = Expr | kw_component … | ellipsis Type | EnumDecl | UnitDecl .
+			el := lit.enter()
+			if !el.done() && el.isNonTerminal() && el.symbol() == Expr {
+				out = append(out, b.buildExpr(el.enter()))
+			} else if t := b.buildType(el); t != nil {
+				out = append(out, t)
+			}
+			continue
+		}
+		lit.skip() // comma
+	}
+	return out
+}
+
+// structLitName is the type a struct literal written after an index names: a
+// bare name or a name qualified by a package.
+func structLitName(e ast.Expr) (pkg, name string, ok bool) {
+	switch x := e.(type) {
+	case *ast.IdentExpr:
+		return "", x.Name, true
+	case *ast.SelectExpr:
+		if id, isID := x.Operand.(*ast.IdentExpr); isID {
+			return id.Name, x.Field, true
+		}
+	}
+	return "", "", false
 }
 
 func (b *builder) buildPrimaryExpr(it nodeIter) ast.Expr {
@@ -2198,10 +2408,13 @@ func (b *builder) buildPrimaryInner(it nodeIter, exprContext bool) ast.Expr {
 			le.Elements = b.buildListBody(it.enter(), &le.IsMultiline)
 			return le
 		case StructDecl:
-			// `struct { … }{ … }`: the value of an inline anonymous type. The
-			// literal body is mandatory in the grammar, so a bare type
-			// expression never reaches expression position.
+			// `struct { … }{ … }`: the value of an inline anonymous type.
+			// With no literal after it the declaration is the type itself,
+			// which is what a type argument is, `Box[struct {}]`.
 			anon := b.buildStructDecl(it.enter())
+			if it.done() || !it.isNonTerminal() || it.symbol() != StructLitBody {
+				return anon
+			}
 			x := &ast.StructExpr{Anon: anon}
 			if anon != nil {
 				x.Pos = anon.Pos
@@ -2225,6 +2438,14 @@ func (b *builder) buildPrimaryInner(it nodeIter, exprContext bool) ast.Expr {
 
 	tok := it.token()
 	switch tok.Type {
+	case STAR:
+		// `*x = 9`: a statement writing through a reference.
+		pos := b.posFromToken(it.shift())
+		var operand ast.Expr
+		if !it.done() && it.isNonTerminal() && it.symbol() == StatementPrimary {
+			operand = b.buildStatementPrimary(it.enter())
+		}
+		return &ast.UnaryExpr{Pos: ast.Pos(pos), Op: ast.UnaryDeref, Operand: operand}
 	case LPAREN:
 		it.skip() // lparen
 		var inner ast.Expr
@@ -3126,7 +3347,7 @@ func (b *builder) buildNonIdentPrimary(it nodeIter) ast.Expr {
 // --- Types ---
 
 func (b *builder) buildType(it nodeIter) ast.TypeExpr {
-	// Type = ident [ dot ident | lt TypeList gt ]
+	// Type = ident [ dot ident [ TypeArgs ] | TypeArgs ]
 	//      | kw_func [ lparen [ FuncTypeParamList ] rparen ] [ Type ]
 	//      | kw_component [ lparen [ FuncTypeParamList ] rparen ] [ Type ]
 	//      | ellipsis Type | StructDecl | EnumDecl | UnitDecl .
@@ -3177,16 +3398,10 @@ func (b *builder) buildType(it nodeIter) ast.TypeExpr {
 			nt.Package = nt.Name
 			nt.Name = it.shift().Literal
 		}
-		// `list<int>` and `tree.one<shape>` are both spellable, so the
+		// `list[int]` and `family.one[shape]` are both spellable, so the
 		// qualified branch above falls through rather than returning.
-		if !it.done() && !it.isNonTerminal() && it.tokenType() == LT {
-			it.skip() // lt
-			if !it.done() && it.isNonTerminal() && it.symbol() == TypeList {
-				nt.TypeArgs = b.buildTypeList(it.enter())
-			}
-			if !it.done() && !it.isNonTerminal() && it.tokenType() == GT {
-				it.skip() // gt
-			}
+		if !it.done() && it.isNonTerminal() && it.symbol() == TypeArgs {
+			nt.TypeArgs = b.buildTypeArgs(it.enter())
 		}
 		return nt
 	case KW_FUNC:
@@ -3207,6 +3422,18 @@ func (b *builder) buildType(it nodeIter) ast.TypeExpr {
 		return ft
 	}
 	it.skip()
+	return nil
+}
+
+// buildTypeArgs reads a type's arguments, `[int]` or `[K, V]`.
+func (b *builder) buildTypeArgs(it nodeIter) []ast.TypeExpr {
+	// TypeArgs = lbracket TypeList rbracket .
+	for !it.done() {
+		if it.isNonTerminal() && it.symbol() == TypeList {
+			return b.buildTypeList(it.enter())
+		}
+		it.skip() // lbracket
+	}
 	return nil
 }
 
@@ -3238,7 +3465,7 @@ func (b *builder) buildFuncTypeParamList(it nodeIter) []ast.FuncTypeParam {
 
 func (b *builder) buildFuncTypeParam(it nodeIter) ast.FuncTypeParam {
 	// FuncTypeParam =
-	//   ident [ dot ident [ lt TypeList gt ] | lt TypeList gt | Type ]
+	//   ident [ dot ident [ TypeArgs ] | TypeArgs | Type ]
 	// | kw_func [ lparen [ FuncTypeParamList ] rparen ] [ Type ]
 	// | kw_component [ lparen [ FuncTypeParamList ] rparen ] [ Type ]
 	// | ellipsis Type | StructDecl | EnumDecl | UnitDecl .
@@ -3270,12 +3497,16 @@ func (b *builder) buildFuncTypeParam(it nodeIter) ast.FuncTypeParam {
 	}
 
 	if it.isNonTerminal() {
+		if it.symbol() == TypeArgs {
+			nt := &ast.NamedType{Pos: identPos, Name: identName, TypeArgs: b.buildTypeArgs(it.enter())}
+			return ast.FuncTypeParam{Type: nt}
+		}
 		// Type nonterminal → leading ident is the param name.
 		typ := b.buildType(it.enter())
 		return ast.FuncTypeParam{Name: identName, Type: typ}
 	}
 
-	// Terminal follows: dot, lt, or something unexpected.
+	// Terminal follows: dot, or something unexpected.
 	switch it.tokenType() {
 	case DOT:
 		it.skip() // dot
@@ -3284,25 +3515,8 @@ func (b *builder) buildFuncTypeParam(it nodeIter) ast.FuncTypeParam {
 			qualName = it.shift().Literal
 		}
 		nt := &ast.NamedType{Pos: identPos, Package: identName, Name: qualName}
-		// Optional lt TypeList gt
-		if !it.done() && !it.isNonTerminal() && it.tokenType() == LT {
-			it.skip() // lt
-			if !it.done() && it.isNonTerminal() && it.symbol() == TypeList {
-				nt.TypeArgs = b.buildTypeList(it.enter())
-			}
-			if !it.done() && !it.isNonTerminal() && it.tokenType() == GT {
-				it.skip() // gt
-			}
-		}
-		return ast.FuncTypeParam{Type: nt}
-	case LT:
-		it.skip() // lt
-		nt := &ast.NamedType{Pos: identPos, Name: identName}
-		if !it.done() && it.isNonTerminal() && it.symbol() == TypeList {
-			nt.TypeArgs = b.buildTypeList(it.enter())
-		}
-		if !it.done() && !it.isNonTerminal() && it.tokenType() == GT {
-			it.skip() // gt
+		if !it.done() && it.isNonTerminal() && it.symbol() == TypeArgs {
+			nt.TypeArgs = b.buildTypeArgs(it.enter())
 		}
 		return ast.FuncTypeParam{Type: nt}
 	default:
@@ -3313,14 +3527,17 @@ func (b *builder) buildFuncTypeParam(it nodeIter) ast.FuncTypeParam {
 
 // --- Lambda ---
 
-func (b *builder) buildFuncLit(it nodeIter) *ast.LambdaExpr {
+func (b *builder) buildFuncLit(it nodeIter) ast.Expr {
 	// FuncLit = kw_func [ lparen [ ParamList ] rparen ] FuncBodyTail .
 	pos := b.posFromToken(it.shift()) // kw_func
 	lam := &ast.LambdaExpr{Pos: ast.Pos(pos)}
 	if !it.done() && !it.isNonTerminal() && it.tokenType() == LPAREN {
 		open := it.shift() // lparen
 		if !it.done() && it.isNonTerminal() && it.symbol() == ParamList {
+			outer := b.unnamedParams
+			b.unnamedParams = true
 			lam.Params = b.buildParamList(it.enter(), open.Line)
+			b.unnamedParams = outer
 		}
 		if !it.done() && !it.isNonTerminal() && it.tokenType() == RPAREN {
 			it.skip() // rparen
@@ -3342,7 +3559,36 @@ func (b *builder) buildFuncLit(it nodeIter) *ast.LambdaExpr {
 			}
 		}
 	}
+	// No body: a func type written where an expression goes, which is what
+	// a type argument is, `apply[func(int) bool](fs)`.
+	if lam.Body == nil && !lam.Block.IsDefined() {
+		return b.funcTypeOf(lam)
+	}
+	for _, p := range lam.Params.Params {
+		if p.Name == "" {
+			b.errorf(p.Pos, "a func literal's parameter is named: write name %s", FormatType(p.Type))
+		}
+	}
 	return lam
+}
+
+// funcTypeOf is a func literal with no body read as the func type it spells.
+// A parameter written as a bare name is a type there, as it is in any func
+// type, and one written as a name and a type keeps the name.
+func (b *builder) funcTypeOf(lam *ast.LambdaExpr) *ast.FuncType {
+	ft := &ast.FuncType{Pos: lam.Pos, Return: lam.ReturnType}
+	for _, p := range lam.Params.Params {
+		if p.Default != nil {
+			b.errorf(p.Pos, "a func type's parameter takes no default")
+		}
+		switch {
+		case p.Name != "" && p.Type == nil:
+			ft.Params = append(ft.Params, ast.FuncTypeParam{Type: &ast.NamedType{Pos: p.Pos, Name: p.Name}})
+		default:
+			ft.Params = append(ft.Params, ast.FuncTypeParam{Name: p.Name, Type: p.Type})
+		}
+	}
+	return ft
 }
 
 // --- AssignOp ---
@@ -3396,3 +3642,47 @@ func extractUnitSuffix(raw string) string {
 }
 
 var _ = strings.Contains // keep import
+
+// notAStatement reports a value written where a statement is expected. SNGL
+// has no expression statements: such a value would be computed and dropped,
+// which in a view is text that silently never renders.
+func (b *builder) notAStatement(e ast.Expr) {
+	b.errorf(ast.Pos(*e.ExprPos()), "a value is not a statement: show it with a node, such as ui.text(value=…), or use it in one")
+}
+
+// notAssignable reports an assignment, toggle or increment of something that
+// names no storage, and stands in for the statement.
+func (b *builder) notAssignable(e ast.Expr) ast.Stmt {
+	pos := ast.Pos(*e.ExprPos())
+	b.errorf(pos, "only a name, a field or an element can be assigned to")
+	return &ast.VisualNode{Pos: pos}
+}
+
+// namesNode reports whether e can name a node's component: a name, qualified
+// by package or namespace as deep as it likes. Anything else is a value, as
+// `"a".length` and `xs[0]` are, though both parse as targets.
+func namesNode(e ast.Expr) bool {
+	switch e := e.(type) {
+	case *ast.IdentExpr:
+		return true
+	case *ast.SelectExpr:
+		return namesNode(e.Operand)
+	}
+	return false
+}
+
+// namesStorage reports whether e reaches storage through a name: a write to a
+// field or element of a literal or a call's result is a write to nothing.
+func namesStorage(e ast.Expr) bool {
+	switch e := e.(type) {
+	case *ast.IdentExpr:
+		return true
+	case *ast.SelectExpr:
+		return namesStorage(e.Operand)
+	case *ast.IndexExpr:
+		return namesStorage(e.Operand)
+	case *ast.UnaryExpr:
+		return namesStorage(e.Operand)
+	}
+	return false
+}

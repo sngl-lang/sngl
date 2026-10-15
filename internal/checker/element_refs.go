@@ -3,8 +3,8 @@ package checker
 import (
 	"slices"
 
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/ir"
 )
 
 // elementRef resolves `c.<id>` where c is an instance of comp: the component
@@ -31,7 +31,7 @@ func (c *checker) elementRef(comp *ir.Component, id string) (*ir.Component, ir.R
 	// importer, so its IR is complete.
 	if !slices.Contains(c.pkg.Components, comp) {
 		s := &refSearch{id: id}
-		s.walkIR(comp.Body, ir.RefOne)
+		s.walkIR(comp.Stmts, ir.RefOne)
 		return s.host, s.count
 	}
 	s := &refSearch{c: c, comp: comp, id: id}

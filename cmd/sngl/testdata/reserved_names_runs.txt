@@ -1,0 +1,153 @@
+# A name a target reserves is renamed, and a test still reaches it by the
+# name the program wrote: `c.range` reads the var and `c.go.click()` clicks
+# the node, on every target a test executes on.
+#
+# testdata/reserved_names.txtar is the code; this is the answer. `main` is
+# the component under test, so its declarations reach each target under the
+# names written here rather than an instance's copies of them.
+
+sngl test --platform=none app.sngl
+stdout 'ok   2 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout 'ok   2 tests, 0 failures'
+
+sngl test --platform=fyne --language=go app.sngl
+stdout 'ok   2 tests, 0 failures'
+
+sngl test --platform=html app.sngl
+stdout 'ok   2 tests, 0 failures'
+
+sngl test --platform=android --opt testRunner=robolectric app.sngl
+stdout 'ok   2 tests, 0 failures'
+
+[!gtk4] stop 'gtk4 needs its development libraries to build'
+sngl test --platform=gtk4 --language=go app.sngl
+stdout 'ok   2 tests, 0 failures'
+
+-- app.sngl --
+import . "sngl:test"
+import . "sngl:ui"
+
+struct Item {
+    type  string
+    class int
+}
+
+func bump(m int, fmt int, class int) int {
+    var cmds = m + fmt
+    var msg = cmds + class
+    return msg
+}
+
+func longest(len int, xs list[int]) int {
+    return len + xs.length
+}
+
+component main node {
+    var range = 1
+    var chan = 2
+    var m = 3
+    var cmd = 4
+    var object = 5
+    var width = 6
+    var it = Item{type="a", class=1}
+    func add(state int) {
+        object = object + state
+    }
+    vbox {
+        button #go(text="go {range} {chan} {m} {cmd} {object} {width} {it.type}", @click {
+            range = bump(range, cmd, chan)
+            m = m + 1
+            add(1)
+            width = longest(width, [1, 2])
+            it = Item{type="b", class=it.class + 1}
+        })
+    }
+}
+
+func testStartsFromItsInitializers(t Test, c main) {
+    t.assert(c.range == 1)
+    t.assert(c.object == 5)
+    t.assert(c.it.type == "a")
+}
+
+func testClickReachesTheRenamed(t Test, c main) {
+    c.go.click()
+    t.assert(c.range == 7)
+    t.assert(c.m == 4)
+    t.assert(c.object == 6)
+    t.assert(c.width == 8)
+    t.assert(c.it.type == "b")
+    t.assert(c.it.class == 2)
+}
+-- testrun/android/kotlin/app.sngl/main/1 --
+sha256:eb7e1438b140e59f98f651f48948758c
+{
+  "results": [
+    {
+      "Desc": "ClickReachesTheRenamed",
+      "Passed": true
+    },
+    {
+      "Desc": "StartsFromItsInitializers",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/main/1 --
+sha256:4de3dd5a91797e910b3ef188528e22f2
+{
+  "results": [
+    {
+      "Desc": "ClickReachesTheRenamed",
+      "Passed": true
+    },
+    {
+      "Desc": "StartsFromItsInitializers",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/main/1 --
+sha256:c6610e86c0e54c3f77d15b3396894a35
+{
+  "results": [
+    {
+      "Desc": "ClickReachesTheRenamed",
+      "Passed": true
+    },
+    {
+      "Desc": "StartsFromItsInitializers",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/main/1 --
+sha256:181819114dcfdb77d7de6adb92b1d5d4
+{
+  "results": [
+    {
+      "Desc": "ClickReachesTheRenamed",
+      "Passed": true
+    },
+    {
+      "Desc": "StartsFromItsInitializers",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/main/1 --
+sha256:324e7adfe8fb46b93028a4454599c301
+{
+  "results": [
+    {
+      "Desc": "ClickReachesTheRenamed",
+      "Passed": true
+    },
+    {
+      "Desc": "StartsFromItsInitializers",
+      "Passed": true
+    }
+  ]
+}

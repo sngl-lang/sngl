@@ -5,9 +5,9 @@ import (
 	"strings"
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/codegen/lang/golang"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/codegen/lang/golang"
+	"duckfam.us/sngl/ir"
 )
 
 // stubGC builds a GoIRContext suitable for translator unit tests —
@@ -50,7 +50,7 @@ func entrySpec() *fyneSpec {
 		GoType:  fyneNative{Path: "fyne.io/fyne/v2/widget", Name: "*Entry"},
 		Setters: map[string]string{"text": "SetText"},
 		Handlers: map[string]fyneHandler{
-			"input": {Field: "OnChanged", Signature: "func(s string)", Param: "s"},
+			"input": {Field: "OnChanged", Signature: "func(s string)"},
 		},
 	}
 }
@@ -171,14 +171,13 @@ func TestFyneTranslator_OnPropAssign_UnknownProp(t *testing.T) {
 func TestFyneStmtDispatch_SlotTeardownFor(t *testing.T) {
 	gc := stubGC()
 	removeChild := &ir.Func{Name: "RemoveChild", Intrinsic: "RemoveChild"}
-	slotVar := &ir.Var{Name: "__slot0", Synthesized: true, Type: ir.ListOf(ir.TypDyn)}
+	slotVar := &ir.Var{Name: "__slot0", Synthesized: true, Type: ir.ListOf(&ir.Type{Kind: ir.TypeComponent})}
 	stmt := &ir.For{
 		Key:  "__entry",
-		Iter: &ir.Ident{Name: "__slot0", Type: ir.ListOf(ir.TypDyn), Synthesized: true, Sym: slotVar},
+		Iter: &ir.Ident{Name: "__slot0", Type: ir.ListOf(&ir.Type{Kind: ir.TypeComponent}), Synthesized: true, Sym: slotVar},
 		Body: []ir.Stmt{
 			&ir.CallStmt{Call: &ir.Call{
-				Receiver: &ir.Ident{Name: "lower"},
-				Func:     removeChild,
+				Func: removeChild,
 				Args: []ir.CallArg{
 					{Value: &ir.Ident{Name: "parent", IsElementRef: true}},
 					{Value: &ir.Ident{Name: "__entry"}},
@@ -199,7 +198,7 @@ func TestFyneStmtDispatch_SlotTeardownFor(t *testing.T) {
 func TestFyneStmtDispatch_IfRecurses(t *testing.T) {
 	gc := stubGC()
 	listPush := &ir.Func{Name: "list.push", Intrinsic: "list.push"}
-	slotVar := &ir.Var{Name: "__slot0", Synthesized: true, Type: ir.ListOf(ir.TypDyn)}
+	slotVar := &ir.Var{Name: "__slot0", Synthesized: true, Type: ir.ListOf(&ir.Type{Kind: ir.TypeComponent})}
 	stmt := &ir.If{
 		Cond: &ir.Ident{Name: "visible"},
 		Body: []ir.Stmt{
@@ -227,10 +226,10 @@ func TestFyneStmtDispatch_IfRecurses(t *testing.T) {
 
 func TestFyneStmtDispatch_SlotReset(t *testing.T) {
 	gc := stubGC()
-	slotVar := &ir.Var{Name: "__slot0", Synthesized: true, Type: ir.ListOf(ir.TypDyn)}
+	slotVar := &ir.Var{Name: "__slot0", Synthesized: true, Type: ir.ListOf(&ir.Type{Kind: ir.TypeComponent})}
 	stmt := &ir.Assign{
 		Target: &ir.Ident{Name: "__slot0", Synthesized: true, Sym: slotVar},
-		Value:  &ir.ListLit{Type: ir.ListOf(ir.TypDyn), Elems: nil},
+		Value:  &ir.ListLit{Type: ir.ListOf(&ir.Type{Kind: ir.TypeComponent}), Elems: nil},
 	}
 	tr := newFyneTranslator(gc, specsAt(map[string]*fyneSpec{"__n0": labelSpec(), "__n5": labelSpec()}), func(_, _ string) {}, nil, nil)
 	got := renderStmts(gc, codegen.WalkLowered(context.Background(), []ir.Stmt{stmt}, tr))
@@ -243,7 +242,7 @@ func TestFyneStmtDispatch_SlotReset(t *testing.T) {
 func TestFyneStmtDispatch_SlotListPush(t *testing.T) {
 	gc := stubGC()
 	listPush := &ir.Func{Name: "list.push", Intrinsic: "list.push"}
-	slotVar := &ir.Var{Name: "__slot0", Synthesized: true, Type: ir.ListOf(ir.TypDyn)}
+	slotVar := &ir.Var{Name: "__slot0", Synthesized: true, Type: ir.ListOf(&ir.Type{Kind: ir.TypeComponent})}
 	// A call, not an assignment: push mutates its receiver and returns nothing,
 	// which is the shape renderSlotBody builds.
 	stmt := &ir.CallStmt{
@@ -280,16 +279,14 @@ func TestFyneStmtDispatch_ReactiveForRecurses(t *testing.T) {
 		Body: []ir.Stmt{
 			&ir.LocalVar{
 				Name: "__n5",
-				Type: ir.TypDyn,
+				Type: &ir.Type{Kind: ir.TypeComponent},
 				Init: &ir.Call{
-					Receiver: &ir.Ident{Name: "lower"},
-					Func:     createNode,
-					Args:     []ir.CallArg{{Value: &ir.Literal{Type: ir.TypString, Value: "Label"}}},
+					Func: createNode,
+					Args: []ir.CallArg{{Value: &ir.Literal{Type: ir.TypString, Value: "Label"}}},
 				},
 			},
 			&ir.CallStmt{Call: &ir.Call{
-				Receiver: &ir.Ident{Name: "lower"},
-				Func:     appendChild,
+				Func: appendChild,
 				Args: []ir.CallArg{
 					{Value: &ir.Ident{Name: "parent", IsElementRef: true}},
 					{Value: &ir.Ident{Name: "__n5", IsElementRef: true, Synthesized: true}},

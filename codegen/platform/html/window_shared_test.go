@@ -4,9 +4,9 @@ import (
 	"reflect"
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/codegen/canvasutil"
+	"duckfam.us/sngl/codegen/canvasutil"
 
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 // TestWindowSharedDerivesPackageAnalysisOnce pins the split a site of many
@@ -105,4 +105,45 @@ func TestVarRegistrySharesTheModelVarsAndNotThePlaceholders(t *testing.T) {
 
 func sameVarMap(x, y map[string]*ir.Var) bool {
 	return reflect.ValueOf(x).UnsafePointer() == reflect.ValueOf(y).UnsafePointer()
+}
+
+// The package's script is walked once per compilation for what its node ops
+// build and for the funcs a document's writes are dropped from; a document's
+// own body is walked for its own.
+func TestWindowSharedWalksTheScriptOnce(t *testing.T) {
+	writeTitle := func() ir.Stmt {
+		return &ir.Assign{
+			Target: &ir.Select{Operand: &ir.Ident{Name: "page"}, Field: "title"},
+			Value:  &ir.Literal{Type: ir.TypString, Value: "x"},
+		}
+	}
+	create := &ir.Func{Name: ir.NodeOpCreateNode, Intrinsic: ir.NodeOpCreateNode}
+	shared := &ir.Func{Name: "shared", Block: []ir.Stmt{
+		&ir.LocalVar{Name: "w", Init: &ir.Call{Func: create, Args: []ir.CallArg{{Value: &ir.Literal{Type: ir.TypString, Value: windowElement}}}}},
+		writeTitle(),
+	}}
+	pkg := &ir.Package{Funcs: []*ir.Func{shared}}
+	ws := newWindowShared("", nil)
+
+	first := newHTMLGen(pkg, nil, htmlConfig{}, ws)
+	second := newHTMLGen(pkg, nil, htmlConfig{}, ws)
+	if !first.windowIDs()["w"] {
+		t.Fatalf("windowIDs = %v, want w", first.windowIDs())
+	}
+	if reflect.ValueOf(first.windowIDs()).UnsafePointer() != reflect.ValueOf(second.windowIDs()).UnsafePointer() {
+		t.Error("each document re-walks the package for the names a Window is created under")
+	}
+
+	doc := &ir.NodeInst{ID: "page"}
+	handler := &ir.Func{Block: []ir.Stmt{writeTitle()}}
+	body := []ir.Stmt{&ir.NodeInst{Name: "div", Handlers: []ir.EventHandler{{Name: "click", Func: handler}}}}
+	ws.respellWindowWrites(pkg, doc, body)
+	if len(shared.Block) != 1 || len(handler.Block) != 0 {
+		t.Fatalf("a write to the document survived: package %d stmts, body %d", len(shared.Block), len(handler.Block))
+	}
+	funcs := ws.pkgFuncs
+	ws.respellWindowWrites(pkg, doc, nil)
+	if len(funcs) == 0 || &funcs[0] != &ws.pkgFuncs[0] {
+		t.Error("each document re-collects the package's funcs")
+	}
 }

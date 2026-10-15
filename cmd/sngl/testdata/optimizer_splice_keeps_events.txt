@@ -1,0 +1,25 @@
+# The optimizer splices a component body into its caller when a prop it was
+# handed folds, and the call site dissolves there: an event the body fires runs
+# the handler that call site wrote, or nothing where it wrote none. Left
+# standing, the emit fired an event the caller does not declare -- a test's
+# harness makes the component under test the root, nothing splices it later,
+# and the Go called an `emit` nothing declares (the showcase's `undefined: emit`
+# on fyne) -- or, where the caller declared one of the name, ran the caller's
+# handler in place of the one written for the call.
+
+sngl generate --platform fyne --lang go --opt rootComponent=main --out out app.sngl
+! grep 'emit\(' out/model.go
+grep 'm.taps = \(m.taps \+ 1\)' out/model.go
+
+-- app.sngl --
+import ui "sngl:ui"
+
+component main ui.node {
+    var taps = 0
+    ui.avatar(initials="JD")
+    ui.avatar(initials="AB", @click { taps = taps + 1 })
+}
+
+ui.window {
+    main
+}

@@ -3,8 +3,8 @@ import . "sngl:test"
 
 struct TreeNode {
     value int = 0
-    left dyn = null
-    right dyn = null
+    left  option[TreeNode] = null
+    right option[TreeNode] = null
 }
 
 component main node {
@@ -21,17 +21,17 @@ component main node {
     var root = TreeNode{value=5, left=node3, right=node8}
 
     // Recursive tree sum
-    func treeSum(node dyn) int {
+    func treeSum(node option[TreeNode]) int {
         return node == null ? 0 : node.value + treeSum(node.left) + treeSum(node.right)
     }
 
     // Recursive tree depth
-    func treeDepth(node dyn) int {
+    func treeDepth(node option[TreeNode]) int {
         return node == null ? 0 : 1 + int.max(treeDepth(node.left), treeDepth(node.right))
     }
 
     // Recursive tree contains
-    func treeContains(node dyn, target int) bool {
+    func treeContains(node option[TreeNode], target int) bool {
         return node == null ? false : node.value == target || treeContains(node.left, target) || treeContains(node.right, target)
     }
 
@@ -60,11 +60,16 @@ func testTreeContains(t Test, c main) {
     t.assert(c.treeContains(null, 1) == false)
 }
 
+// A struct is a value: root was built from a copy of node8, so a write to
+// node8 is node8's alone until it is stored in root again.
 func testTreeMutation(t Test, c main) {
     c.node8.left = TreeNode{value=7}
+    t.assert(c.treeSum(c.node8) == 15)
+    t.assert(c.treeSum(c.root) == 21)
+    t.assert(c.treeContains(c.root, 7) == false)
+    c.root.right = c.node8
     t.assert(c.treeSum(c.root) == 28)
     t.assert(c.treeDepth(c.root) == 3)
-    t.assert(c.treeContains(c.root, 7) == true)
 }
 
 window {

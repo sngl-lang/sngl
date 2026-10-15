@@ -4,9 +4,9 @@ import (
 	"strings"
 	"time"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/internal/interp"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/internal/interp"
+	"duckfam.us/sngl/ir"
 )
 
 // Run executes all test functions in a package and returns results.
@@ -14,9 +14,12 @@ func Run(pkg *ir.Package) ([]*codegen.TestResult, error) {
 	if pkg == nil {
 		return nil, nil
 	}
-	// See interp.NewSession: the interpreter takes its platform's bodies, and
-	// the test runner builds envs without going through a Session.
-	ir.SpecializeForTarget(pkg, interp.InterpreterPlatform, "")
+	// See interp.Prepare: the test runner builds envs without going through a
+	// Session, so it takes what a Session takes from the pipeline itself.
+	pkg, err := interp.Prepare(pkg)
+	if err != nil {
+		return nil, err
+	}
 	var results []*codegen.TestResult
 	for _, fn := range pkg.Funcs {
 		if !fn.IsTest {
@@ -42,7 +45,14 @@ func runTestFunc(pkg *ir.Package, fn *ir.Func) *codegen.TestResult {
 		r.Component = compName
 	}
 
-	env, err := interp.BuildEnv(pkg, compName)
+	// One clock for the test, built here rather than on first use: the same
+	// virtual clock the timer schedule runs on has to be what `time.now()`
+	// answers with, or a test that reads the clock and ticks it is reading two
+	// different times. It has to exist before BuildEnv, which evaluates the
+	// component's var initializers.
+	clock := interp.NewVirtual()
+
+	env, err := interp.BuildEnv(pkg, compName, clock)
 	if err != nil {
 		r.Error = err.Error()
 		r.Duration = time.Since(start)
@@ -58,7 +68,7 @@ func runTestFunc(pkg *ir.Package, fn *ir.Func) *codegen.TestResult {
 			fx:       interp.NewEffects(),
 		}
 		if cVal.comp != nil {
-			cVal.body = cVal.comp.Body
+			cVal.body = cVal.comp.Stmts
 		}
 		// Mounted here rather than on the first read. A test whose opening
 		// statement is a write -- `c.running = false` before any assertion --
@@ -70,7 +80,7 @@ func runTestFunc(pkg *ir.Package, fn *ir.Func) *codegen.TestResult {
 		env.Set(fn.Params[1], cVal)
 	}
 
-	tVal := &testingT{env: env, result: r, pkg: pkg, compName: compName, comp: cVal}
+	tVal := &testingT{env: env, result: r, pkg: pkg, compName: compName, comp: cVal, clock: clock}
 	if len(fn.Params) >= 1 {
 		env.Set(fn.Params[0], tVal)
 	}
@@ -129,10 +139,12 @@ type testingT struct {
 	// contextOverrides accumulates the overrides established by t.setContext()
 	// calls so they can be propagated to child sub-tests created by t.test().
 	contextOverrides map[*ir.Context]any
-	// clock and timers are the test's simulated time. Built on first use
-	// because a test function without a component parameter has neither.
-	// A test advances time explicitly, so the clock is virtual: t.wait()
-	// spends simulated milliseconds, not real ones.
+	// clock and timers are the test's simulated time. A test advances time
+	// explicitly, so the clock is virtual: t.wait() spends simulated
+	// milliseconds, not real ones. The clock is the env's and is never built
+	// here -- lazily, it was a *second* clock, so `time.now()` read one and
+	// `t.tick()` moved the other. A subtest is handed the parent's for the
+	// same reason.
 	clock  *interp.Virtual
 	timers *interp.Timers
 }
@@ -153,9 +165,6 @@ type testingT struct {
 // compEnv() snapshots, so two calls are two scopes and the write would land in
 // the one that is thrown away.
 func (tv *testingT) sched(env *interp.Env) (*interp.Timers, error) {
-	if tv.clock == nil {
-		tv.clock = interp.NewVirtual()
-	}
 	if tv.timers == nil {
 		tv.timers = interp.NewTimers(tv.clock)
 	}

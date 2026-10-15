@@ -6,11 +6,11 @@ import (
 	"slices"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/codegen/lang/golang"
-	"git.duckfam.us/jonathan/sngl/codegen/platform/gtk4/gir"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/codegen/lang/golang"
+	"duckfam.us/sngl/codegen/platform/gtk4/gir"
+	"duckfam.us/sngl/ir"
 )
 
 // emitShared is the state every translator emitting into one generated file
@@ -21,8 +21,11 @@ type emitShared struct {
 	boolToInt  bool
 	gObjectSet bool
 	slotAnchor bool
-	errs       []error
-	seen       map[string]bool
+	// calendarDate: a handler reads a GtkCalendar's day through
+	// calendarDateHelper.
+	calendarDate bool
+	errs         []error
+	seen         map[string]bool
 
 	// The canvas metadata passDeclarative flattened out of the program, which every
 	// scope in the file reads: a `canvas` tag has no GIR widget behind it, so a
@@ -46,6 +49,11 @@ type emitShared struct {
 	// scaffold writes on the window BuildUI makes.
 	toplevels      map[string]bool
 	toplevelTitles map[string]ir.Expr
+	// images are every image primitive id the file creates, by tag.
+	images map[string]string
+	// toplevelIcons is each window's icon source in an inline-cgo build, by
+	// the window's id.
+	toplevelIcons map[string]string
 }
 
 func (s *emitShared) needBoolToInt() {
@@ -91,6 +99,9 @@ type gtk4Translator struct {
 	gc        *golang.GoIRContext
 	pkg       *ir.Package // optional; used to consult GIR-resolved native metadata
 	fieldSink func(name, cType string)
+	// fieldCTypes is what sinkField declared each field this translator
+	// writes as, which is the type a reference to it carries.
+	fieldCTypes map[string]string
 	// localRefs are the ref ids passNodeEscape found not to escape this scope;
 	// they are emitted as function-locals rather than Model fields. nil means
 	// every id is a field.
@@ -109,14 +120,15 @@ type gtk4Translator struct {
 	// reactive one and is what re-writes it.
 	builtSpans map[string]bool
 	topLevel   []string
-	// slotRoot is the box a reactive slot in this scope's body renders into,
-	// when this scope owns one. A call to that slot's renderer holds a place in
-	// the tree exactly as a created widget does -- the subtree is built into
-	// the box rather than named by a ref -- so OnDefault records the box in
-	// topLevel at that position. Empty in a scope whose root is decided some
-	// other way, which is every Model scope: the Model's own __root is the
-	// wrapper buildWidgetTree already parents into.
-	slotRoot string
+	// rootRenders are the calls written directly in this scope's body that
+	// render a slot into the scope's own box; renderedRoot is that box once one
+	// has run. Every slot in a body renders into the one box, so the body's own
+	// widgets go into it too, in written order, or a widget between two slots
+	// lands after both. Empty in a scope whose root is decided some other way,
+	// which is every Model scope: the Model's own __root is the wrapper
+	// buildWidgetTree already parents into.
+	rootRenders  map[ir.Stmt]bool
+	renderedRoot ir.Expr
 	// slotAnchor is the anchor field of the slot this render func renders,
 	// set when the func resets its slot, in wrapped mode.
 	slotAnchor ir.Expr
@@ -154,6 +166,33 @@ type gtk4Translator struct {
 	// no test surface -- a slot func, a canvas draw -- which is also why this
 	// is a sink rather than a field read back off the translator.
 	invokerSink func(gtkEventInvoker)
+	// indexed are the ids a test triggers one copy of (`c.row[1]`), whose
+	// widgets this Model scope lists in render order as it builds them
+	// (namedWidgetField), and slotNamed those of them this slot render func
+	// creates, which its reset empties.
+	indexed   map[string]bool
+	slotNamed []string
+}
+
+// namedWidgetField is the Model field listing every copy of an indexed id's
+// widget, in render order.
+func namedWidgetField(id string) string { return "__named_" + id }
+
+// withIndexed has this Model scope list the widgets of the ids a test
+// indexes; stmts is the scope's body, whose creates of them a slot's reset
+// empties.
+func (t *gtk4Translator) withIndexed(indexed map[string]bool, stmts []ir.Stmt) *gtk4Translator {
+	t.indexed = indexed
+	t.slotNamed = nil
+	_ = ir.Walk(stmts, func(n ir.Node) error {
+		if lv, ok := n.(*ir.LocalVar); ok && indexed[lv.Name] {
+			if c, ok := lv.Init.(*ir.Call); ok && c.Func != nil && c.Func.Intrinsic == ir.NodeOpCreateNode {
+				t.slotNamed = append(t.slotNamed, lv.Name)
+			}
+		}
+		return nil
+	})
+	return t
 }
 
 func newGtk4Translator(gc *golang.GoIRContext, fieldSink func(name, cType string)) *gtk4Translator {
@@ -173,23 +212,21 @@ func (t *gtk4Translator) withLocalRefs(local map[string]bool) *gtk4Translator {
 	return t
 }
 
-func (t *gtk4Translator) withSlotRoot(name string) *gtk4Translator {
-	t.slotRoot = name
+func (t *gtk4Translator) withSlotRoot(name string, body []ir.Stmt) *gtk4Translator {
+	t.rootRenders = codegen.RootSlotRenders(body, name)
 	return t
 }
 
-// recordsSlotRoot reports whether stmt is the call that renders this scope's
-// own slot box, which is what puts that box in the tree.
-func (t *gtk4Translator) recordsSlotRoot(stmt ir.Stmt) bool {
-	if t.slotRoot == "" {
-		return false
+// addTopsTo places the top-level widgets written so far into root, ahead of
+// the slot render that follows: a slot's first render appends at the end of
+// its box, and lowering finishes a node's subtree before anything later.
+func (t *gtk4Translator) addTopsTo(ctx context.Context, root ir.Expr) []ir.Stmt {
+	var stmts []ir.Stmt
+	for _, ref := range slices.Clone(t.topLevel) {
+		stmts = append(stmts, t.OnAppendChild(ctx, root, &ir.Ident{Name: ref, IsElementRef: true, Synthesized: true})...)
 	}
-	cs, ok := stmt.(*ir.CallStmt)
-	if !ok || cs.Call == nil || cs.Call.Func == nil || !cs.Call.Func.SlotRender || len(cs.Call.Args) != 1 {
-		return false
-	}
-	id, ok := cs.Call.Args[0].Value.(*ir.Ident)
-	return ok && id.Name == t.slotRoot
+	t.topLevel = nil
+	return stmts
 }
 
 func (t *gtk4Translator) isLocalRef(id string) bool {
@@ -301,7 +338,7 @@ func (t *gtk4Translator) unresolvedTagError(id, tag string) error {
 	if cType := widgetCType(comp); cType != "" {
 		return fmt.Errorf("gtk4: widget %q names C type %s, which the installed Gtk-4.0.gir does not declare", tag, cType)
 	}
-	if !comp.Stdlib {
+	if !codegen.DeclinesNode(comp) {
 		// Lowering drops such a node, so this is unreachable through a
 		// compile; answering here beats telling a user their own component
 		// has no gtk4 implementation.
@@ -329,7 +366,48 @@ func (t *gtk4Translator) classFor(cType string) *gir.ClassInfo {
 // here rather than codegen.ModelFieldRef, which names the Model and only the
 // Model.
 func (t *gtk4Translator) fieldRef(name string) ir.Expr {
-	return codegen.RecvFieldRef(t.gc.NodeRecv(name), name)
+	return codegen.RecvFieldRef(t.gc.NodeRecvRef(name), name, t.fieldType(name))
+}
+
+// sinkField declares a field of the C type cType, and remembers it as the
+// type a reference to the field carries.
+func (t *gtk4Translator) sinkField(name, cType string) {
+	if t.fieldCTypes == nil {
+		t.fieldCTypes = map[string]string{}
+	}
+	t.fieldCTypes[name] = cType
+	t.fieldSink(name, cType)
+}
+
+// fieldType is the host type of the field name: what it was declared as, or
+// for a node another scope created, its widget's C type.
+func (t *gtk4Translator) fieldType(name string) *ir.Type {
+	if ft, ok := t.declaredType(name); ok {
+		return ft
+	}
+	panic(fmt.Sprintf("gtk4: the field %s was declared by no translator", name))
+}
+
+func (t *gtk4Translator) declaredType(name string) (*ir.Type, bool) {
+	cType, ok := t.fieldCTypes[name]
+	if !ok {
+		cType, ok = t.idCTypes[name]
+	}
+	if !ok {
+		return nil, false
+	}
+	return ir.NativeGoNamed(widgetFieldGoType(cType, t.wrapped)), true
+}
+
+// nodeFieldRef is fieldRef for a reference the lowered IR made, which
+// another scope may have declared: typed as the field was declared where this
+// translator knows it, and as the reference is otherwise.
+func (t *gtk4Translator) nodeFieldRef(id *ir.Ident) ir.Expr {
+	ft, ok := t.declaredType(id.Name)
+	if !ok {
+		ft = id.Type
+	}
+	return codegen.RecvFieldRef(t.gc.NodeRecvRef(id.Name), id.Name, ft)
 }
 
 var _ codegen.IntrinsicTranslator = (*gtk4Translator)(nil)
@@ -341,13 +419,13 @@ func nativeFunc(nativeName string) *ir.Func {
 }
 
 // nativeCall builds a single-level cgo C-API call.
-func nativeCall(nativeName string, args ...ir.Expr) *ir.Call {
+func nativeCall(nativeName string, ret *ir.Type, args ...ir.Expr) *ir.Call {
 	callArgs := make([]ir.CallArg, len(args))
 	for i, a := range args {
 		callArgs[i] = ir.CallArg{Value: a}
 	}
 	return &ir.Call{
-		Type:     ir.TypDyn,
+		Type:     ret,
 		Receiver: &ir.Ident{Name: "C"},
 		Func:     nativeFunc(nativeName),
 		Args:     callArgs,
@@ -361,6 +439,16 @@ func cgoCast(typeName string, expr ir.Expr) ir.Expr {
 		Type:    ir.NativePointerOf(typeName),
 		Operand: expr,
 	}
+}
+
+// cScalar is the cgo conversion `C.<cType>(v)`, a value of that C type.
+func cScalar(cType string, v ir.Expr) *ir.Call {
+	return nativeCall(cType, ir.NativeGoNamed("C."+cType), v)
+}
+
+// cString is `C.CString(v)`, the C copy of a Go string.
+func cString(v ir.Expr) *ir.Call {
+	return nativeCall("CString", ir.NativePointerOf("char"), v)
 }
 
 // boolToGoInt exists because cgo cannot convert a bool to a named C integer
@@ -391,6 +479,8 @@ func (t *gtk4Translator) OnCreateNode(ctx context.Context, id, tag string) []ir.
 	switch tag {
 	case toplevelTag:
 		return t.emitToplevelCreate(id)
+	case imageTag, imageURLTag, imageDrawingTag:
+		return t.emitImageCreate(id, tag)
 	case flowTag:
 		return t.emitFlowCreate(id)
 	case spanTag:
@@ -415,15 +505,15 @@ func (t *gtk4Translator) OnCreateNode(ctx context.Context, id, tag string) []ir.
 		t.skipped[id] = struct{}{}
 		return nil
 	}
-	ctorInfo := pickPrimaryConstructorInfo(info)
-	// gtk_application_window_new needs BuildUI's `app` parameter, not nil.
-	if ctorInfo.Name == "gtk_application_window_new" {
-		appRef := &ir.Ident{Name: "app", Type: ir.TypDyn}
-		if t.wrapped {
-			return t.emitConstructorAssign(id, cType, rtCall("ApplicationWindowNew", appRef))
-		}
-		return t.emitConstructorAssign(id, cType, nativeCall("gtk_application_window_new", appRef))
+	// A window is a toplevel, which GTK will not put inside a container, and
+	// the platform makes one where a program writes ui.window: its Toplevel
+	// is created with the application and attached to it.
+	if t.isWindowClass(info) {
+		t.shared.fail(fmt.Errorf("gtk4: %s is a window, which GTK places in no container; write ui.window, which this platform makes a GtkApplicationWindow of", cType))
+		t.skipped[id] = struct{}{}
+		return nil
 	}
+	ctorInfo := pickPrimaryConstructorInfo(info)
 	if t.wrapped {
 		if ctor, ok := rtCtorForCType(cType); ok {
 			return t.emitConstructorAssign(id, cType, ctor)
@@ -447,7 +537,7 @@ func (t *gtk4Translator) OnCreateNode(ctx context.Context, id, tag string) []ir.
 		}
 		args = append(args, arg)
 	}
-	ctor := nativeCall(ctorInfo.Name, args...)
+	ctor := nativeCall(ctorInfo.Name, ir.NativePointerOf("GtkWidget"), args...)
 	return t.emitConstructorAssign(id, cType, ctor)
 }
 
@@ -467,11 +557,15 @@ func (t *gtk4Translator) OnCreateNode(ctx context.Context, id, tag string) []ir.
 func ctorZeroArg(reg *gir.TypeRegistry, p gir.ConstructorParam) (ir.Expr, error) {
 	switch p.GIRType {
 	case "utf8", "filename", "gchararray":
+		// gtk_link_button_new refuses NULL and returns no widget at all.
+		if !p.Nullable {
+			return cString(&ir.Literal{Type: ir.TypString, Value: ""}), nil
+		}
 		return &ir.Literal{Type: ir.TypNull}, nil
 	case "gboolean", "gint", "gint32", "gint64", "guint", "guint32", "guint64", "gsize":
-		return nativeCall(ctorScalarCast(p), &ir.Literal{Type: ir.TypInt, Value: "0"}), nil
+		return cScalar(ctorScalarCast(p), &ir.Literal{Type: ir.TypInt, Value: "0"}), nil
 	case "gdouble", "gfloat":
-		return nativeCall(ctorScalarCast(p), &ir.Literal{Type: ir.TypFloat, Value: "0"}), nil
+		return cScalar(ctorScalarCast(p), &ir.Literal{Type: ir.TypFloat, Value: "0"}), nil
 	}
 	if reg != nil && reg.Enums[p.GIRType] != nil {
 		return &ir.Literal{Type: ir.TypInt, Value: "0"}, nil
@@ -525,9 +619,9 @@ func (t *gtk4Translator) OnCreateComponent(ctx context.Context, id string, call 
 		return []ir.Stmt{lv}
 	}
 	if instType != "" {
-		t.fieldSink(id, instType)
+		t.sinkField(id, instType)
 	} else {
-		t.fieldSink(id, "GtkWidget")
+		t.sinkField(id, "GtkWidget")
 	}
 	return []ir.Stmt{&ir.Assign{
 		Target: t.fieldRef(id),
@@ -575,7 +669,7 @@ func (t *gtk4Translator) OnComponentRoot(ctx context.Context, id string, inst ir
 		// component as a method of the enclosing scope instead, the handle IS
 		// the widget it returned -- `__n0.Root` on a gtk4rt.Handle names no
 		// field the emitted file has.
-		root = &ir.Select{Type: ir.TypDyn, Operand: root, Field: golang.ComponentRootField}
+		root = &ir.Select{Type: ir.NativeGoNamed(widgetFieldGoType("GtkWidget", t.wrapped)), Operand: root, Field: golang.ComponentRootField}
 	}
 	if t.isLocalRef(id) {
 		return []ir.Stmt{&ir.LocalVar{
@@ -584,7 +678,7 @@ func (t *gtk4Translator) OnComponentRoot(ctx context.Context, id string, inst ir
 			Init: root,
 		}}
 	}
-	t.fieldSink(id, "GtkWidget")
+	t.sinkField(id, "GtkWidget")
 	return []ir.Stmt{&ir.Assign{Target: t.fieldRef(id), Op: ast.AssignSet, Value: root}}
 }
 
@@ -629,12 +723,22 @@ func (t *gtk4Translator) emitConstructorAssign(id, cType string, ctor ir.Expr) [
 			Init: initVal,
 		}}
 	}
-	t.fieldSink(id, cType)
-	return []ir.Stmt{&ir.Assign{
+	t.sinkField(id, cType)
+	create := []ir.Stmt{&ir.Assign{
 		Target: t.fieldRef(id),
 		Op:     ast.AssignSet,
 		Value:  initVal,
 	}}
+	if t.indexed[id] {
+		list := namedWidgetField(id)
+		t.sinkField(list, "[]"+cType)
+		create = append(create, &ir.Assign{
+			Target: t.fieldRef(list),
+			Op:     ast.AssignSet,
+			Value:  &ir.Call{Type: t.fieldType(list), Func: &ir.Func{Name: "append"}, Args: []ir.CallArg{{Value: t.fieldRef(list)}, {Value: t.fieldRef(id)}}},
+		})
+	}
+	return create
 }
 
 // childAdder is how a parent takes a child, read from the introspection data
@@ -646,6 +750,25 @@ func (t *gtk4Translator) emitConstructorAssign(id, cType string, ctor ir.Expr) [
 // guessed at, since a dropped child is silently reparented to the root by
 // emitBuildUI. What is derivable is the three shapes that take a widget and
 // nothing else; see gir.ChildAdder.
+// adderReceiver is the C type a child adder's receiver is cast to: the class
+// that declares it, or the container's own where GIR named none.
+func adderReceiver(adder gir.ChildAdder, cType string) string {
+	if adder.Owner != "" {
+		return adder.Owner
+	}
+	return cType
+}
+
+// isWindowClass reports whether a GIR class is GtkWindow or descends from it.
+func (t *gtk4Translator) isWindowClass(info *gir.ClassInfo) bool {
+	for c := info; c != nil; c = t.registry.Classes[c.Parent] {
+		if c.CType == "GtkWindow" {
+			return true
+		}
+	}
+	return false
+}
+
 func (t *gtk4Translator) childAdder(cType string) gir.ChildAdder {
 	if cls := t.classFor(cType); cls != nil {
 		return cls.ChildAdd
@@ -689,6 +812,9 @@ func (t *gtk4Translator) OnAppendChild(ctx context.Context, parent, child ir.Exp
 	if ir.IsAppParent(parent) {
 		return t.appAttach(child)
 	}
+	if t.windowIcon(parent, child) {
+		return nil
+	}
 	cType := t.parentCType(parent)
 	if cType == "" {
 		cType = "GtkBox"
@@ -710,9 +836,9 @@ func (t *gtk4Translator) OnAppendChild(ctx context.Context, parent, child ir.Exp
 	}
 	if id, ok := parent.(*ir.Ident); ok && id.Name == "parent" && t.slotAnchor != nil && cType == "GtkBox" {
 		if t.wrapped {
-			return []ir.Stmt{&ir.CallStmt{Call: rtCall("InsertBefore", parent, t.slotAnchor, t.qualifyNodeExpr(child))}}
+			return []ir.Stmt{&ir.CallStmt{Call: rtCall("InsertBefore", ir.TypVoid, parent, t.slotAnchor, t.qualifyNodeExpr(child))}}
 		}
-		call := nativeCall("sngl_insert_before", cgoCast("GtkBox", parent), t.slotAnchor, cgoCast("GtkWidget", t.qualifyNodeExpr(child)))
+		call := nativeCall("sngl_insert_before", ir.TypVoid, cgoCast("GtkBox", parent), t.slotAnchor, cgoCast("GtkWidget", t.qualifyNodeExpr(child)))
 		return []ir.Stmt{&ir.CallStmt{Call: call}}
 	}
 	if t.wrapped {
@@ -726,9 +852,9 @@ func (t *gtk4Translator) OnAppendChild(ctx context.Context, parent, child ir.Exp
 		}
 		return []ir.Stmt{stmt}
 	}
-	parentArg := cgoCast(cType, t.qualifyNodeExpr(parent))
+	parentArg := cgoCast(adderReceiver(adder, cType), t.qualifyNodeExpr(parent))
 	childArg := cgoCast("GtkWidget", t.qualifyNodeExpr(child))
-	return []ir.Stmt{&ir.CallStmt{Call: nativeCall(fn, parentArg, childArg)}}
+	return []ir.Stmt{&ir.CallStmt{Call: nativeCall(fn, ir.TypVoid, parentArg, childArg)}}
 }
 
 func (t *gtk4Translator) OnRemoveChild(ctx context.Context, parent, child ir.Expr) []ir.Stmt {
@@ -753,7 +879,7 @@ func (t *gtk4Translator) OnRemoveChild(ctx context.Context, parent, child ir.Exp
 	}
 	parentArg := cgoCast(cType, t.qualifyNodeExpr(parent))
 	childArg := cgoCast("GtkWidget", t.qualifyNodeExpr(child))
-	return []ir.Stmt{&ir.CallStmt{Call: nativeCall(fn, parentArg, childArg)}}
+	return []ir.Stmt{&ir.CallStmt{Call: nativeCall(fn, ir.TypVoid, parentArg, childArg)}}
 }
 
 // qualifyNodeExpr re-qualifies a synthesized widget ident as a Model field
@@ -776,7 +902,7 @@ func (t *gtk4Translator) qualifyNodeExpr(e ir.Expr) ir.Expr {
 		// covers -- a tagged widget then reached the setter as a bare `inc`,
 		// which is not a binding this file has.
 		if id.IsElementRef || strings.HasPrefix(id.Name, "__n") {
-			return t.fieldRef(id.Name)
+			return t.nodeFieldRef(id)
 		}
 	}
 	return e
@@ -807,11 +933,14 @@ func (t *gtk4Translator) OnPropAssign(ctx context.Context, node ir.Expr, prop st
 	// (GtkTextTag, GtkCellRendererText) do have a property of that name; the
 	// declaration reserves the name for style, so it is not theirs.
 	if prop == stylePropName {
-		return nil
+		return codegen.KeepLocalsRead(value)
 	}
 	bare := codegen.IdentBareName(node)
 	if t.isToplevel(bare) {
 		return t.toplevelPropAssign(node, prop, value)
+	}
+	if tag := t.imageTagOf(bare); tag != "" {
+		return t.imagePropAssign(node, tag, prop, value)
 	}
 	cType, ok := t.idCTypes[bare]
 	if !ok {
@@ -846,7 +975,7 @@ func (t *gtk4Translator) OnPropAssign(ctx context.Context, node ir.Expr, prop st
 	if t.wrapped && entry.Setter != "" {
 		if rt, ok := rtSetterTable[entry.Setter]; ok {
 			if arg, ok := rtSetterValue(rt.kind, value); ok {
-				return []ir.Stmt{&ir.CallStmt{Call: rtCall(rt.fn, t.qualifyNodeExpr(node), arg)}}
+				return []ir.Stmt{&ir.CallStmt{Call: rtCall(rt.fn, ir.TypVoid, t.qualifyNodeExpr(node), arg)}}
 			}
 		}
 	}
@@ -893,7 +1022,7 @@ func (t *gtk4Translator) OnPropAssign(ctx context.Context, node ir.Expr, prop st
 
 func (t *gtk4Translator) emitSetterCall(node ir.Expr, recvType, setter string, valArg ir.Expr) []ir.Stmt {
 	cast := cgoCast(recvType, t.qualifyNodeExpr(node))
-	return []ir.Stmt{&ir.CallStmt{Call: nativeCall(setter, cast, valArg)}}
+	return []ir.Stmt{&ir.CallStmt{Call: nativeCall(setter, ir.TypVoid, cast, valArg)}}
 }
 
 // gObjectSetFn is the preamble helper that carries each kind of value through
@@ -924,18 +1053,18 @@ func (t *gtk4Translator) emitGObjectPropSet(node ir.Expr, p gir.Prop, kind propV
 	}
 	t.shared.needGObjectSet()
 	obj := cgoCast("", t.qualifyNodeExpr(node))
-	name := nativeCall("CString", &ir.Literal{Type: ir.TypString, Value: p.Name})
-	return []ir.Stmt{&ir.CallStmt{Call: nativeCall(fn, obj, name, valArg)}}
+	name := cString(&ir.Literal{Type: ir.TypString, Value: p.Name})
+	return []ir.Stmt{&ir.CallStmt{Call: nativeCall(fn, ir.TypVoid, obj, name, valArg)}}
 }
 
 func (t *gtk4Translator) setterValueArg(kind propValueKind, p gir.Prop, valType string, value ir.Expr) (ir.Expr, error) {
 	switch kind {
 	case propString:
-		return nativeCall("CString", value), nil
+		return cString(value), nil
 	case propBool:
-		return nativeCall("gboolean", t.boolToGoInt(value)), nil
+		return cScalar("gboolean", t.boolToGoInt(value)), nil
 	case propInt, propFloat:
-		return nativeCall(girScalarCast(p), value), nil
+		return cScalar(girScalarCast(p), value), nil
 	case propEnum:
 		member, isMember, err := t.enumValueArg(p, value)
 		if err != nil {
@@ -944,7 +1073,7 @@ func (t *gtk4Translator) setterValueArg(kind propValueKind, p gir.Prop, valType 
 		if isMember {
 			return member, nil
 		}
-		return nativeCall(valType, member), nil
+		return cScalar(valType, member), nil
 	}
 	return nil, fmt.Errorf("no value of this type can be set")
 }
@@ -952,19 +1081,19 @@ func (t *gtk4Translator) setterValueArg(kind propValueKind, p gir.Prop, valType 
 func (t *gtk4Translator) gObjectValueArg(kind propValueKind, p gir.Prop, value ir.Expr) (ir.Expr, error) {
 	switch kind {
 	case propString:
-		return nativeCall("CString", value), nil
+		return cString(value), nil
 	case propBool:
-		return nativeCall("int", t.boolToGoInt(value)), nil
+		return cScalar("int", t.boolToGoInt(value)), nil
 	case propInt:
-		return nativeCall("int", value), nil
+		return cScalar("int", value), nil
 	case propFloat:
-		return nativeCall("double", value), nil
+		return cScalar("double", value), nil
 	case propEnum:
 		member, _, err := t.enumValueArg(p, value)
 		if err != nil {
 			return nil, err
 		}
-		return nativeCall("int", member), nil
+		return cScalar("int", member), nil
 	}
 	return nil, fmt.Errorf("no value of this type can be set")
 }
@@ -979,7 +1108,9 @@ func (t *gtk4Translator) enumValueArg(p gir.Prop, value ir.Expr) (arg ir.Expr, i
 		if cst == "" {
 			return nil, false, fmt.Errorf("%q names no member of the %s enumeration", lit.Value, p.GIRType)
 		}
-		return &ir.Ident{Name: cst, Type: ir.TypDyn}, true, nil
+		// A member of the GIR enumeration, as cgo spells its constant, of
+		// the enumeration's C type.
+		return &ir.Ident{Name: cst, Type: ir.NativeGoNamed("C." + t.registry.Enums[p.GIRType].CType)}, true, nil
 	}
 	if vt := exprIRType(value); vt != nil && vt.Kind == ir.TypeInt {
 		return value, false, nil
@@ -1005,22 +1136,23 @@ func girTypeLabel(p gir.Prop) string {
 //   - Integers / Floats → C.int(v) / C.double(v)
 //   - anything else → C.CString(v)
 func (t *gtk4Translator) coerceSetterValue(setter string, value ir.Expr) ir.Expr {
-	// A boolean setter whose property the GIR did not carry: the value may
-	// well be typed dyn, and the cast below would make a string of it.
+	// A boolean setter whose property the GIR did not carry: the value may be
+	// one exprIRType cannot type (a `!x`), and the fallback below would make a
+	// string of it.
 	if setter == "gtk_check_button_set_active" {
-		return nativeCall("gboolean", t.boolToGoInt(value))
+		return cScalar("gboolean", t.boolToGoInt(value))
 	}
 	if vt := exprIRType(value); vt != nil {
 		switch vt.Kind {
 		case ir.TypeBool:
-			return nativeCall("gboolean", t.boolToGoInt(value))
+			return cScalar("gboolean", t.boolToGoInt(value))
 		case ir.TypeInt:
-			return nativeCall("int", value)
+			return cScalar("int", value)
 		case ir.TypeFloat:
-			return nativeCall("double", value)
+			return cScalar("double", value)
 		}
 	}
-	return nativeCall("CString", value)
+	return cString(value)
 }
 
 func exprIRType(e ir.Expr) *ir.Type {
@@ -1082,78 +1214,27 @@ func (t *gtk4Translator) signalFor(nodeID, event string) string {
 
 // signalLambda gives a handler written in place -- in an instance record,
 // where nothing promotes it to a method -- the shape emitIRPromotedHandler
-// gives a promoted one: the trampoline passes no arguments, so the SNGL event
-// parameter goes, and a two-way bind opening the body reads the widget.
-func (t *gtk4Translator) signalLambda(lam *ir.Lambda, node ir.Expr, cType string) ir.Expr {
-	if lam.Func == nil || len(lam.Func.Params) == 0 {
+// gives a promoted one: the trampoline passes no arguments, so the signal's
+// instance is the node it is attached to, and what the body reads of a widget
+// is read off it.
+func (t *gtk4Translator) signalLambda(lam *ir.Lambda, self ir.Expr) ir.Expr {
+	if lam.Func == nil {
 		return lam
-	}
-	var getter ir.Expr
-	if t.wrapped {
-		getter = rtEventGetterExpr(cType, t.qualifyNodeExpr(node))
-	} else {
-		getter = cgoEventGetterExpr(cType, t.qualifyNodeExpr(node))
-	}
-	stmts := lam.Func.Block
-	if assign, ok := firstEventBind(stmts, lam.Func.Params); ok && getter != nil {
-		stmts = append([]ir.Stmt{&ir.Assign{Target: assign.Target, Op: ast.AssignSet, Value: getter}}, stmts[1:]...)
 	}
 	fn := *lam.Func
 	fn.Params = nil
-	fn.Block = substituteWidgetPayload(stmts, lam.Func.Params, cType, getter)
+	fn.Block = readWidgets(selfIsNode(lam.Func.Block, lam.Func.Params, self), t.widgetReader())
 	out := *lam
 	out.Func = &fn
 	return &out
 }
 
-// substituteWidgetPayload reads an event's value off the widget that fired it,
-// the trampoline handing the handler nothing: an entry's text is a payload's
-// string, and a check button's or a switch's state its bool.
-func substituteWidgetPayload(stmts []ir.Stmt, params []*ir.Param, cType string, getter ir.Expr) []ir.Stmt {
-	var kind ir.TypeKind
-	switch cType {
-	case "GtkEntry":
-		kind = ir.TypeString
-	case "GtkCheckButton", "GtkSwitch":
-		kind = ir.TypeBool
-	default:
-		return stmts
-	}
-	if getter == nil {
-		return stmts
-	}
-	return codegen.SubstituteEventPayload(stmts, params, func(f *ir.StructField) ir.Expr {
-		if f.Type == nil || f.Type.Kind != kind {
-			return nil
-		}
-		return getter
+// widgetReader is readWidgets' read for what this translator emits, which
+// spells a node the way it spells every other.
+func (t *gtk4Translator) widgetReader() func(cType string, ref ir.Expr) ir.Expr {
+	return widgetReader(t.wrapped, t.shared, func(name string) ir.Expr {
+		return t.qualifyNodeExpr(&ir.Ident{Name: name, IsElementRef: true})
 	})
-}
-
-// firstEventBind is the `x = e.<field>` a two-way bind opens a handler with,
-// e being one of params.
-func firstEventBind(stmts []ir.Stmt, params []*ir.Param) (*ir.Assign, bool) {
-	if len(stmts) == 0 {
-		return nil, false
-	}
-	assign, ok := stmts[0].(*ir.Assign)
-	if !ok || assign.Op != ast.AssignSet {
-		return nil, false
-	}
-	sel, ok := assign.Value.(*ir.Select)
-	if !ok {
-		return nil, false
-	}
-	op, ok := sel.Operand.(*ir.Ident)
-	if !ok {
-		return nil, false
-	}
-	for _, p := range params {
-		if p != nil && (op.Sym == ir.Symbol(p) || (op.Sym == nil && op.Name == p.Name)) {
-			return assign, true
-		}
-	}
-	return nil, false
 }
 
 func (t *gtk4Translator) OnAttachHandler(ctx context.Context, node ir.Expr, event string, handler ir.Expr) []ir.Stmt {
@@ -1163,6 +1244,9 @@ func (t *gtk4Translator) OnAttachHandler(ctx context.Context, node ir.Expr, even
 	bare := codegen.IdentBareName(node)
 	if t.isToplevel(bare) {
 		return t.toplevelAttachHandler(node, event, handler)
+	}
+	if tag := t.imageTagOf(bare); tag != "" {
+		return t.imageAttachHandler(node, tag, event, handler)
 	}
 	cType := t.idCTypes[bare]
 	if event == "click" && t.canvasMetaForID(bare) != nil {
@@ -1184,21 +1268,21 @@ func (t *gtk4Translator) OnAttachHandler(ctx context.Context, node ir.Expr, even
 	// program wrote, the SNGL event written on it, and the GTK signal that event
 	// maps to. The statements emitted below keep only the signal, which is why
 	// this is recorded rather than recovered.
-	t.recordInvoker(bare, codegen.TriggerEventName(handler, event), signal, cType, handler)
+	t.recordInvoker(bare, codegen.TriggerEventName(handler, event), signal, cType)
 	if lam, ok := handler.(*ir.Lambda); ok {
-		handler = t.signalLambda(lam, node, cType)
+		handler = t.signalLambda(lam, node)
 	}
 
 	// gtk4rt.Connect registers the handler and wires the signal in one call —
 	// no per-program snglCallbacks slice or cgo.
 	if t.wrapped {
 		sigLit := &ir.Literal{Type: ir.TypString, Value: signal}
-		return []ir.Stmt{&ir.CallStmt{Call: rtCall("Connect", t.qualifyNodeExpr(node), sigLit, handler)}}
+		return []ir.Stmt{&ir.CallStmt{Call: rtCall("Connect", ir.TypVoid, t.qualifyNodeExpr(node), sigLit, handler)}}
 	}
 	// snglCallbacks = append(snglCallbacks, handler)
-	cbList := &ir.Ident{Name: "snglCallbacks", Type: ir.TypDyn}
+	cbList := snglCallbacksRef()
 	appendCall := &ir.Call{
-		Type: ir.TypDyn,
+		Type: cbList.Type,
 		Func: &ir.Func{Name: "append"},
 		Args: []ir.CallArg{
 			{Value: cbList},
@@ -1213,7 +1297,7 @@ func (t *gtk4Translator) OnAttachHandler(ctx context.Context, node ir.Expr, even
 	// sngl_connect's C signature is `void *widget`, so cgo expects
 	// unsafe.Pointer.
 	widget := cgoCast("", t.qualifyNodeExpr(node))
-	signalCStr := nativeCall("CString", &ir.Literal{Type: ir.TypString, Value: signal})
+	signalCStr := cString(&ir.Literal{Type: ir.TypString, Value: signal})
 	lenCall := &ir.Call{
 		Type: ir.TypInt,
 		Func: &ir.Func{Name: "len"},
@@ -1224,32 +1308,42 @@ func (t *gtk4Translator) OnAttachHandler(ctx context.Context, node ir.Expr, even
 		Left:  lenCall,
 		Right: &ir.Literal{Type: ir.TypInt, Value: "1"},
 	}
-	idxArg := nativeCall("int", idxExpr)
+	idxArg := cScalar("int", idxExpr)
 	connectStmt := &ir.CallStmt{
-		Call: nativeCall("sngl_connect", widget, signalCStr, idxArg),
+		Call: nativeCall("sngl_connect", ir.TypVoid, widget, signalCStr, idxArg),
 	}
 	return []ir.Stmt{registerStmt, connectStmt}
 }
 
 func (t *gtk4Translator) OnSlotReset(ctx context.Context, slot *ir.Var) []ir.Stmt {
+	// A slot's fields are the widgets it holds and the anchor it inserts
+	// them before, as the compiler declares them.
+	widget := ir.NativeGoNamed(widgetFieldGoType("GtkWidget", t.wrapped))
 	reset := &ir.Assign{
-		Target: t.fieldRef(slot.Name),
+		Target: t.slotFieldRef(slot),
 		Op:     ast.AssignSet,
 		Value:  &ir.Literal{Type: ir.TypNull},
 	}
-	t.slotAnchor = codegen.RecvFieldRef(t.gc.NodeRecv(slot.Name), codegen.SlotAnchorField(slot.Name))
+	t.slotAnchor = codegen.RecvFieldRef(t.gc.NodeRecvRef(slot.Name), codegen.SlotAnchorField(slot.Name), widget)
 	var anchor ir.Expr
 	if t.wrapped {
-		anchor = rtCall("SlotAnchor", &ir.Ident{Name: "parent"}, t.slotAnchor)
+		anchor = rtCall("SlotAnchor", gtk4rtHandleIRType(), &ir.Ident{Name: "parent"}, t.slotAnchor)
 	} else {
 		t.shared.needSlotAnchor()
-		anchor = nativeCall("sngl_slot_anchor", cgoCast("GtkBox", &ir.Ident{Name: "parent"}), t.slotAnchor)
+		anchor = nativeCall("sngl_slot_anchor", ir.NativePointerOf("GtkWidget"), cgoCast("GtkBox", &ir.Ident{Name: "parent"}), t.slotAnchor)
 	}
-	return []ir.Stmt{reset, &ir.Assign{Target: t.slotAnchor, Op: ast.AssignSet, Value: anchor}}
+	stmts := []ir.Stmt{reset, &ir.Assign{Target: t.slotAnchor, Op: ast.AssignSet, Value: anchor}}
+	// The render builds every copy again, in order, so the list of them
+	// starts over with it.
+	for _, id := range t.slotNamed {
+		list := namedWidgetField(id)
+		stmts = append(stmts, &ir.Assign{Target: codegen.RecvFieldRef(t.gc.NodeRecvRef(list), list, t.namedListType(id)), Op: ast.AssignSet, Value: &ir.Literal{Type: ir.TypNull}})
+	}
+	return stmts
 }
 
 func (t *gtk4Translator) OnSlotAppend(ctx context.Context, slot *ir.Var, child ir.Expr) []ir.Stmt {
-	slotRef := t.fieldRef(slot.Name)
+	slotRef := t.slotFieldRef(slot)
 	childArg := ir.Expr(cgoCast("GtkWidget", t.qualifyNodeExpr(child)))
 	if t.wrapped {
 		childArg = t.qualifyNodeExpr(child)
@@ -1263,7 +1357,7 @@ func (t *gtk4Translator) OnSlotAppend(ctx context.Context, slot *ir.Var, child i
 		},
 	}
 	return []ir.Stmt{&ir.Assign{
-		Target: t.fieldRef(slot.Name),
+		Target: t.slotFieldRef(slot),
 		Op:     ast.AssignSet,
 		Value:  appendCall,
 	}}
@@ -1271,7 +1365,7 @@ func (t *gtk4Translator) OnSlotAppend(ctx context.Context, slot *ir.Var, child i
 
 func (t *gtk4Translator) OnIter(ctx context.Context, iter ir.Expr) ir.Expr {
 	if id, ok := iter.(*ir.Ident); ok && id.Synthesized {
-		return t.fieldRef(id.Name)
+		return t.nodeFieldRef(id)
 	}
 	return iter
 }
@@ -1281,9 +1375,14 @@ func (t *gtk4Translator) OnCond(ctx context.Context, cond ir.Expr) ir.Expr {
 }
 
 func (t *gtk4Translator) OnDefault(ctx context.Context, stmt ir.Stmt) []ir.Stmt {
-	if t.recordsSlotRoot(stmt) && !slices.Contains(t.topLevel, t.slotRoot) {
-		t.topLevel = append(t.topLevel, t.slotRoot)
+	if t.rootRenders[stmt] {
+		t.renderedRoot = stmt.(*ir.CallStmt).Call.Args[0].Value
+		return append(t.addTopsTo(ctx, t.renderedRoot), t.translateDefault(stmt)...)
 	}
+	return t.translateDefault(stmt)
+}
+
+func (t *gtk4Translator) translateDefault(stmt ir.Stmt) []ir.Stmt {
 	switch n := stmt.(type) {
 	case *ir.CanvasRedrawStmt:
 		return t.translateCanvasRedraw(n)
@@ -1307,7 +1406,7 @@ func (t *gtk4Translator) OnDefault(ctx context.Context, stmt ir.Stmt) []ir.Stmt 
 // several children through a call of its own is refused rather than handed to
 // gtk_box_append.
 func (t *gtk4Translator) boxedSlotRenderCall(cs *ir.CallStmt) ([]ir.Stmt, bool) {
-	if cs.Call == nil || cs.Call.Func == nil || !cs.Call.Func.SlotRender || len(cs.Call.Args) != 1 {
+	if cs.Call == nil || cs.Call.Func == nil || !cs.Call.Func.Lowered.SlotRender || len(cs.Call.Args) != 1 {
 		return nil, false
 	}
 	bare := codegen.IdentBareName(cs.Call.Args[0].Value)
@@ -1321,7 +1420,7 @@ func (t *gtk4Translator) boxedSlotRenderCall(cs *ir.CallStmt) ([]ir.Stmt, bool) 
 		return nil, false
 	}
 	boxName := bare + "_box"
-	t.fieldSink(boxName, "GtkBox")
+	t.sinkField(boxName, "GtkBox")
 	box := t.fieldRef(boxName)
 	parent := t.qualifyNodeExpr(&ir.Ident{Name: bare, IsElementRef: true})
 	var slotBox, parentOf, parentArg ir.Expr
@@ -1331,12 +1430,12 @@ func (t *gtk4Translator) boxedSlotRenderCall(cs *ir.CallStmt) ([]ir.Stmt, bool) 
 		if set, ok = rtChildAppendCall(adder, parent, box); !ok {
 			return nil, false
 		}
-		slotBox, parentOf, parentArg = rtCall("SlotBox", box), rtCall("ParentOf", box), parent
+		slotBox, parentOf, parentArg = rtCall("SlotBox", gtk4rtHandleIRType(), box), rtCall("ParentOf", gtk4rtHandleIRType(), box), parent
 	} else {
 		t.shared.needSlotAnchor()
-		set = &ir.CallStmt{Call: nativeCall(adder.Func, cgoCast(cType, parent), cgoCast("GtkWidget", box))}
-		slotBox = nativeCall("sngl_slot_box", box)
-		parentOf = nativeCall("gtk_widget_get_parent", cgoCast("GtkWidget", box))
+		set = &ir.CallStmt{Call: nativeCall(adder.Func, ir.TypVoid, cgoCast(adderReceiver(adder, cType), parent), cgoCast("GtkWidget", box))}
+		slotBox = nativeCall("sngl_slot_box", ir.NativePointerOf("GtkWidget"), box)
+		parentOf = nativeCall("gtk_widget_get_parent", ir.NativePointerOf("GtkWidget"), cgoCast("GtkWidget", box))
 		parentArg = cgoCast("GtkWidget", parent)
 	}
 	call := *cs.Call
@@ -1355,7 +1454,7 @@ func (t *gtk4Translator) boxedSlotRenderCall(cs *ir.CallStmt) ([]ir.Stmt, bool) 
 // of this scope -- a slot nothing but the ctor renders -- to pass the local,
 // which the language context would otherwise spell as a field.
 func localSlotRenderCall(cs *ir.CallStmt, isLocal func(string) bool) *ir.CallStmt {
-	if cs.Call == nil || cs.Call.Func == nil || !cs.Call.Func.SlotRender || len(cs.Call.Args) != 1 {
+	if cs.Call == nil || cs.Call.Func == nil || !cs.Call.Func.Lowered.SlotRender || len(cs.Call.Args) != 1 {
 		return nil
 	}
 	id, ok := cs.Call.Args[0].Value.(*ir.Ident)
@@ -1373,7 +1472,7 @@ func localSlotRenderCall(cs *ir.CallStmt, isLocal func(string) bool) *ir.CallStm
 // A synthesized id is skipped: `c.__n0.click()` is not something a test can
 // write, so a method for it would be dead. A scope with no sink -- a slot func,
 // a canvas draw -- records nothing.
-func (t *gtk4Translator) recordInvoker(id, event, signal, cType string, handler ir.Expr) {
+func (t *gtk4Translator) recordInvoker(id, event, signal, cType string) {
 	if t.invokerSink == nil || id == "" || strings.HasPrefix(id, "__n") {
 		return
 	}
@@ -1383,20 +1482,15 @@ func (t *gtk4Translator) recordInvoker(id, event, signal, cType string, handler 
 		FieldName:  id,
 		GTKSignal:  signal,
 		WidgetType: cType,
+		State:      invokerStateSetter(cType, t.wrapped) != "",
 	}
-	if pt, sd := codegen.HandlerPayload(handler); sd != nil && invokerStateSetter(cType, t.wrapped) != "" {
-		for _, f := range sd.Fields {
-			if f != nil && f.Type != nil && f.Type.Kind == ir.TypeBool {
-				inv.Payload = golang.IRTypeToGo(pt)
-				inv.PayloadField = golang.ExportName(f.Name)
-				break
-			}
-		}
+	if t.indexed[id] {
+		inv.FieldName, inv.List = namedWidgetField(id), true
 	}
 	t.invokerSink(inv)
 }
 
-// invokerStateSetter is the call a test invoker writes a payload's state into
+// invokerStateSetter is the call a test invoker writes a test's state into
 // a widget with, "" for a widget it has none for. Setting the state is what
 // fires the signal, as a user's flip does.
 func invokerStateSetter(cType string, wrapped bool) string {
@@ -1409,4 +1503,21 @@ func invokerStateSetter(cType string, wrapped bool) string {
 		return "C.gtk_switch_set_active"
 	}
 	return ""
+}
+
+// slotFieldRef is the field a render slot's var is held in.
+func (t *gtk4Translator) slotFieldRef(slot *ir.Var) ir.Expr {
+	return codegen.RecvFieldRef(t.gc.NodeRecvRef(slot.Name), slot.Name, slot.Type)
+}
+
+// namedListType is the type of the list a test-indexed widget's copies are
+// kept in: a slice of the widget's own.
+func (t *gtk4Translator) namedListType(id string) *ir.Type {
+	if ft, ok := t.declaredType(namedWidgetField(id)); ok {
+		return ft
+	}
+	if cType, ok := t.idCTypes[id]; ok {
+		return ir.NativeGoNamed(widgetFieldGoType("[]"+cType, t.wrapped))
+	}
+	return ir.NativeGoNamed(widgetFieldGoType("[]GtkWidget", t.wrapped))
 }

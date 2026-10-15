@@ -446,7 +446,7 @@ component gap(w int) node
 Component declaring events with parameter lists
 ================
 
-component picker(@pick(index int, label string), @change int, @done(), @tick) {
+component picker(@pick(index int, label string), @change(v int), @done(), @tick) {
 }
 
 ---
@@ -457,18 +457,21 @@ component picker(@pick(index int, label string), @change int, @done(), @tick) {
     (func_param
       name: (identifier)
       params: (event_params
-        (event_param
+        (func_param
           name: (identifier)
           type: (type_identifier
             (identifier)))
-        (event_param
+        (func_param
           name: (identifier)
           type: (type_identifier
             (identifier)))))
     (func_param
       name: (identifier)
-      type: (type_identifier
-        (identifier)))
+      params: (event_params
+        (func_param
+          name: (identifier)
+          type: (type_identifier
+            (identifier)))))
     (func_param
       name: (identifier)
       params: (event_params))

@@ -56,37 +56,24 @@ ui.window(title="t") {
 package main
 
 import (
+	snglcanvas "duckfam.us/sngl/pkg/go/canvas"
+	"duckfam.us/sngl/pkg/go/fynelayout"
+	"duckfam.us/sngl/pkg/go/snglcolor"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
-	snglcanvas "git.duckfam.us/jonathan/sngl/pkg/go/canvas"
-	"git.duckfam.us/jonathan/sngl/pkg/go/fynelayout"
-	"git.duckfam.us/jonathan/sngl/pkg/go/snglcolor"
 	"os"
 )
-
-type PathCmd struct {
-	Op  string
-	X   float64
-	Y   float64
-	Cx1 float64
-	Cy1 float64
-	Cx2 float64
-	Cy2 float64
-	R   float64
-}
 
 type Measurement struct {
 	Px  float64
 	Em  float64
-	Vw  float64
-	Vh  float64
-	Pct float64
+	Rem float64
 }
 
-type CanvasStyle struct {
+type Style struct {
 	Fill        snglcolor.Color
 	Stroke      snglcolor.Color
 	StrokeWidth float64
@@ -124,7 +111,7 @@ func (m *Model) bump() {
 	step()
 }
 
-func ApplyStyle(ctx *snglcanvas.Context, style CanvasStyle) {
+func ApplyStyle(ctx *snglcanvas.Context, style Style) {
 	ctx.SetFill(style.Fill.R, style.Fill.G, style.Fill.B, style.Fill.A)
 	ctx.SetStroke(style.Stroke.R, style.Stroke.G, style.Stroke.B, style.Stroke.A)
 	ctx.SetStrokeWidth(style.StrokeWidth)
@@ -150,7 +137,7 @@ func (m *Model) __n3_click_handler() {
 
 func (m *Model) _canvasDraw0(ctx *snglcanvas.Context) {
 	ctx.Save()
-	ApplyStyle(ctx, CanvasStyle{Fill: snglcolor.Color{R: 51, G: 102, B: 255, A: 255}, Stroke: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, StrokeWidth: 1.0, LineCap: "butt", LineJoin: "miter", FontSize: 16.0, FontFamily: "sans-serif"})
+	ApplyStyle(ctx, Style{Fill: snglcolor.Color{R: 51, G: 102, B: 255, A: 255}, Stroke: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, StrokeWidth: 1.0, LineCap: "butt", LineJoin: "miter", FontSize: 16.0, FontFamily: "sans-serif"})
 	ctx.Circle(20.0, 20.0, float64(m.frame))
 	ctx.Restore()
 }
@@ -206,4 +193,4 @@ func main() {
 	_ = os.Stderr
 }
 -- run/go/fyne --
-pass sha256:2de6a5dd071ff9da22aa938b841f125c
+pass sha256:469c2753fb6877447599b4e9f8611f0e

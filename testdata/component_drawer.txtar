@@ -49,8 +49,8 @@ package main
 import (
 	"charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"duckfam.us/sngl/pkg/go/tui"
 	"fmt"
-	"git.duckfam.us/jonathan/sngl/pkg/go/tui"
 	"os"
 )
 
@@ -248,27 +248,16 @@ func newTestComponent() *Model {
 
 package test.sngl.app
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.*
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
-import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.foundation.layout.Column
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color as ComposeColor
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.material3.Text
 
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
@@ -340,7 +329,7 @@ body { font-family: system-ui, sans-serif; }
   </style>
 </head><body>
 
-<div style="background-color:#fff;bottom:0px;position:fixed;top:0px;z-index:1000">
+<div style="background-color:#fff;position:fixed;z-index:1000">
   <span>drawer content</span>
 </div>
 
@@ -372,16 +361,22 @@ window.__sngl_boot = () => {
   if (typeof window !== "undefined") {
     Object.assign(window, { testDrawerOpenToggles });
   }
+  function _snglStyleLength(v) {
+    if (typeof v === "number") return v + "px";
+    const t = Object.keys(v).filter((k) => v[k] !== 0).map((k) => v[k] + k);
+    if (t.length === 0) return "0px";
+    return t.length === 1 ? t[0] : "calc(" + t.join(" + ") + ")";
+  }
 })();
 };
 window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:880027166e53d1f622b689fde7766af7
+pass sha256:1e614a9a67186b609d4e8d62efe3fb01
 -- run/go/fyne --
 pass sha256:89810bf54a0d7197804a92b1c8885fed
 -- run/kotlin/android --
-pass sha256:1d5886f2039d964d297fa6265cb5f55e
+pass sha256:d4d82ef97adf6753b81c8f114c749a59
 -- run/none/html --
-pass sha256:fd99829b910ef5c63256436878eb45c7
+pass sha256:5d12b5123d3941cece2a7a4d33b879b2

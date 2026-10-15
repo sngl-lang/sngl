@@ -26,18 +26,18 @@ import nav "sngl:ui/nav"
 output { none { html } }
 
 struct Page {
-    slug string = ""
+    slug  string = ""
     title string = ""
 }
 
-const pages list<Page> = [
+const pages list[Page] = [
     {slug="one", title="One"},
     {slug="two", title="Two"},
     {slug="three", title="Three"},
 ]
 
 component Log(label = "") node {
-    var lines list<string> = []
+    var lines list[string] = []
     button(text=label, @click { lines.push(label) })
     for var line = lines {
         text(value=line)
@@ -78,7 +78,7 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { lines__inst0: [], lines__inst1: [], visible__inst2: true };
+  var state = { lines__inst0: [], lines__inst1: [], visible__inst0: true };
   function __cf___child1(props) {
     const __root = document.createElement("div");
     __root.style.display = "contents";
@@ -180,7 +180,7 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { lines__inst0: [], lines__inst1: [], visible__inst2: true };
+  var state = { lines__inst0: [], lines__inst1: [], visible__inst0: true };
   function __cf___child0(props) {
     const __root = document.createElement("div");
     __root.style.display = "contents";
@@ -282,7 +282,7 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { lines__inst0: [], lines__inst1: [], visible__inst2: true };
+  var state = { lines__inst0: [], lines__inst1: [], visible__inst0: true };
   function __cf___child0(props) {
     const __root = document.createElement("div");
     __root.style.display = "contents";
@@ -384,7 +384,7 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { lines__inst0: [], lines__inst1: [], visible__inst2: true };
+  var state = { lines__inst0: [], lines__inst1: [], visible__inst0: true };
   function __cf___child0(props) {
     const __root = document.createElement("div");
     __root.style.display = "contents";
@@ -465,4 +465,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:0aad999f2e9ae2fe2086e2b985a19914
+pass sha256:652b2d0ed76c3695e30edbecc22b63bf

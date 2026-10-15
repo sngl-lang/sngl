@@ -3,8 +3,8 @@ package android
 import (
 	"slices"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/ir"
 )
 
 // viewStmts is what MainScreen draws: the package body, which is the
@@ -42,8 +42,7 @@ func (cc *irComposeContext) renderContent(stmts []ir.Stmt) {
 		return
 	}
 	if slices.ContainsFunc(stmts, func(s ir.Stmt) bool { _, ok := s.(*ir.SlotInst); return ok }) {
-		cc.kc.RequireImport("androidx.compose.foundation.layout.safeDrawingPadding")
-		cc.line("Column(modifier = Modifier.safeDrawingPadding()) {")
+		cc.line("%s(modifier = %s.%s()) {", cc.kc.Name(ktColumn), cc.kc.Name(ktModifier), cc.kc.Name(ktSafeDrawingPadding))
 		cc.indent++
 		outerAxis, outerRoot := cc.parentAxis, cc.atRoot
 		cc.parentAxis, cc.atRoot = "Column", false
@@ -59,7 +58,7 @@ func (cc *irComposeContext) renderContent(stmts []ir.Stmt) {
 		cc.renderStmt(stmts[0])
 		return
 	}
-	cc.line("Column {")
+	cc.line("%s {", cc.kc.Name(ktColumn))
 	cc.indent++
 	for _, s := range stmts {
 		cc.renderStmt(s)
@@ -87,11 +86,8 @@ func (cc *irComposeContext) renderScreen(n *ir.NodeInst) {
 		cc.indent++
 		gated = true
 	}
-	cc.kc.RequireImport("androidx.activity.compose.BackHandler")
-	cc.kc.RequireImport("androidx.compose.ui.platform.LocalContext")
-	cc.kc.RequireImport("android.app.Activity")
-	cc.line("val __activity = LocalContext.current as? Activity")
-	cc.line("BackHandler {")
+	cc.line("val __activity = %s.current as? %s", cc.kc.Name(ktLocalContext), cc.kc.Name("android.app.Activity"))
+	cc.line("%s {", cc.kc.Name("androidx.activity.compose.BackHandler"))
 	for _, l := range body {
 		cc.line("    %s", l)
 	}

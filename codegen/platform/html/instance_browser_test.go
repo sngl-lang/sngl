@@ -27,7 +27,7 @@ component badge(label string) node {
     button(text="hit " + label, @click { hits = hits + 1 })
 }
 component App() node {
-    var names list<string> = ["a", "b"]
+    var names list[string] = ["a", "b"]
     for var n = names {
         badge(label=n)
     }
@@ -78,7 +78,7 @@ component badge(label string) node {
 }
 component App() node {
     var (
-        names list<string> = ["a"]
+        names list[string] = ["a"]
         tag = "x"
     )
     for var n = names {
@@ -157,7 +157,7 @@ component badge(label string) node {
     button(text="hit " + label, @click { hits = hits + 1 })
 }
 component App() node {
-    var names list<string> = ["a", "b"]
+    var names list[string] = ["a", "b"]
     for var n = names {
         badge(label=n)
     }
@@ -211,7 +211,7 @@ component badge(label string) node {
     button(text="hit " + label, @click { hits = hits + 1 })
 }
 component App() node {
-    var names list<string> = ["a", "b"]
+    var names list[string] = ["a", "b"]
     for var n = names {
         badge(label=n, key=n)
     }
@@ -262,7 +262,7 @@ component badge(label string) node {
     button(text="hit", @click { hits = hits + 1 })
 }
 component App() node {
-    var names list<string> = ["a", "a"]
+    var names list[string] = ["a", "a"]
     for var n = names {
         badge(label=n, key=n)
     }

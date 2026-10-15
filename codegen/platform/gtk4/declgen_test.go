@@ -6,11 +6,11 @@ import (
 	"strings"
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/codegen/platform/gtk4/gir"
-	"git.duckfam.us/jonathan/sngl/internal/checker"
-	"git.duckfam.us/jonathan/sngl/internal/parser"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/codegen/platform/gtk4/gir"
+	"duckfam.us/sngl/internal/checker"
+	"duckfam.us/sngl/internal/parser"
+	"duckfam.us/sngl/ir"
 )
 
 // girClassInfoFor is the loaded class metadata for one C type, from whatever
@@ -53,13 +53,13 @@ func TestWidgetSource_DeclaresProps(t *testing.T) {
 	for _, want := range []string{
 		"#[intrinsic(\"gtk4:GtkBox\")]\ncomponent GtkBox(",
 		"\n    spacing int,\n",
-		"\n    orientation dyn,\n",
+		"\n    orientation string,\n",
 		"#[intrinsic(\"gtk4:GtkButton\")]\ncomponent GtkButton(",
-		"\n    @clicked,\n",
+		"\n    @clicked(self GtkButton),\n",
 		// Hyphenated GIR names are unwritable in SNGL as they stand, so the
 		// declaration carries the camel-cased spelling.
 		"\n    defaultWidth int,\n",
-		"\n    style dyn,\n",
+		"\n    style ui.Style = ui.Style{},\n",
 	} {
 		if !strings.Contains(src, want) {
 			t.Errorf("generated source is missing %q", want)
@@ -535,12 +535,12 @@ func TestClassInheritance_Merges(t *testing.T) {
 		t.Fatal(err)
 	}
 	decl := componentDecl(t, string(widgetSource(reg)), "GtkBox")
-	for _, want := range []string{"\n    tooltipText string,\n", "\n    hexpand bool,\n", "\n    visible bool,\n", "\n    @destroy,\n"} {
+	for _, want := range []string{"\n    tooltipText string,\n", "\n    hexpand bool,\n", "\n    visible bool,\n", "\n    @destroy(self GtkBox),\n"} {
 		if !strings.Contains(decl, want) {
 			t.Errorf("the GtkBox declaration is missing %q", want)
 		}
 	}
-	for _, unwanted := range []string{"\n    cssName ", "\n    @queryTooltip,\n"} {
+	for _, unwanted := range []string{"\n    cssName ", "\n    @queryTooltip("} {
 		if strings.Contains(decl, unwanted) {
 			t.Errorf("the GtkBox declaration carries %q, which the merge must withhold", unwanted)
 		}

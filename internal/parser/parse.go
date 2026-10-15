@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 
-	"git.duckfam.us/jonathan/sngl/ast"
+	"duckfam.us/sngl/ast"
 	"modernc.org/scanner"
 )
 
@@ -12,8 +12,19 @@ import (
 // AST builder are converted into errors so callers don't crash on malformed
 // input.
 func Parse(filename string, src []byte) (*ast.Document, error) {
+	return parse(filename, src, "")
+}
+
+// parse is Parse given the source's Digest, or "" to compute it.
+func parse(filename string, src []byte, digest string) (*ast.Document, error) {
 	stream, filtered, comments, lexErrs := scanEncoded(newLexer(string(src)), nil)
 	doc, _, err := parseTokens(filename, stream, filtered, comments, lexErrs)
+	if err == nil {
+		if digest == "" {
+			digest = Digest(filename, src)
+		}
+		doc.Digest = digest
+	}
 	return doc, err
 }
 
@@ -117,6 +128,85 @@ func loopVarNeedsVar(filtered []Token, idx int) bool {
 	return false
 }
 
+// typeParamWithoutConstraint reports the name of a declared type parameter
+// written with no constraint, when that is why the token at idx failed to
+// parse. Every one names a constraint, so the generic message names the tokens
+// that may begin a type -- or, in a function's list, the `.` a receiver's list
+// of bare names wants after it -- and not the `any` that is missing.
+func typeParamWithoutConstraint(filtered []Token, idx int) (string, bool) {
+	const opener, closer = LBRACKET, RBRACKET
+	if idx <= 0 || idx >= len(filtered) {
+		return "", false
+	}
+	// Back to the bracket opening the list the failure is in. A failure just
+	// past its close -- `func f[T, U](`, where a receiver's list wanted a `.`
+	// -- is in it too.
+	i := idx - 1
+	if filtered[i].Type == closer {
+		i--
+	}
+	depth, opened := 0, -1
+	for ; i >= 0 && opened < 0; i-- {
+		switch filtered[i].Type {
+		case closer:
+			depth++
+		case opener:
+			if depth == 0 {
+				opened = i
+			}
+			depth--
+		case LBRACE, RBRACE, SEMICOLON, KW_FUNC, KW_COMPONENT, KW_STRUCT:
+			return "", false
+		}
+	}
+	if opened < 1 || filtered[opened-1].Type != IDENT {
+		return "", false
+	}
+	// The list belongs to a declaration's name: a keyword ahead of it, past a
+	// receiver and its own list where it is a method's.
+	decl := false
+	for j := opened - 2; j >= 0 && !decl; j-- {
+		switch filtered[j].Type {
+		case KW_FUNC, KW_COMPONENT, KW_STRUCT:
+			decl = true
+		case IDENT, DOT, COMMA, opener, closer:
+		default:
+			return "", false
+		}
+	}
+	if !decl {
+		return "", false
+	}
+	// The first parameter whose name is followed by what ends it.
+	depth = 0
+	start := true
+	for j := opened + 1; j <= idx && j+1 < len(filtered); j++ {
+		switch filtered[j].Type {
+		case opener:
+			depth++
+		case closer:
+			if depth == 0 {
+				return "", false
+			}
+			depth--
+		case COMMA:
+			if depth == 0 {
+				start = true
+				continue
+			}
+		case IDENT:
+			if start && depth == 0 {
+				switch filtered[j+1].Type {
+				case COMMA, closer, ASSIGN:
+					return filtered[j].Literal, true
+				}
+			}
+		}
+		start = false
+	}
+	return "", false
+}
+
 func remapErrors(err error, filtered []Token) error {
 	errList, ok := err.(scanner.ErrList)
 	if !ok {
@@ -146,6 +236,10 @@ func remapErrors(err error, filtered []Token) error {
 			// that this is not an expression.
 			if inInterpolation(filtered, idx) {
 				errList[i].Err = errors.New("invalid expression in interpolation")
+				continue
+			}
+			if name, ok := typeParamWithoutConstraint(filtered, idx); ok {
+				errList[i].Err = fmt.Errorf("type parameter %s names no constraint: write `%s any`", name, name)
 				continue
 			}
 			if loopVarNeedsVar(filtered, idx) {

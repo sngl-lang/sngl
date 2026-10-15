@@ -10,9 +10,10 @@ import (
 	"strings"
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
-	_ "git.duckfam.us/jonathan/sngl/codegen/lang"
-	"git.duckfam.us/jonathan/sngl/internal/lower"
+	"duckfam.us/sngl/codegen"
+	_ "duckfam.us/sngl/codegen/lang"
+	"duckfam.us/sngl/internal/lower"
+	"duckfam.us/sngl/ir"
 )
 
 // TestCanvas_EmitsGGDrawAndRedraw verifies the fyne platform renders a
@@ -22,13 +23,13 @@ import (
 func TestCanvas_EmitsGGDrawAndRedraw(t *testing.T) {
 	src := `
 import . "sngl:ui"
-import . "sngl:ui/draw"
+import draw "sngl:ui/draw"
 output { none { html } }
 window {
     var radius = 50.0
-    canvas(width=400px, height=280px) {
-        rect(x=0.0, y=0.0, w=400.0, h=280.0, style=CanvasStyle{fill=color{r=10, g=20, b=30, a=255}}) {}
-        circle(cx=200.0, cy=140.0, r=radius, style=CanvasStyle{fill=color{r=99, g=102, b=241, a=255}, stroke=color{r=67, g=56, b=202, a=255}, strokeWidth=3.0}) {}
+    draw.canvas(width=400px, height=280px) {
+        draw.rect(x=0.0, y=0.0, w=400.0, h=280.0, style=draw.Style{fill=color{r=10, g=20, b=30, a=255}}) {}
+        draw.circle(cx=200.0, cy=140.0, r=radius, style=draw.Style{fill=color{r=99, g=102, b=241, a=255}, stroke=color{r=67, g=56, b=202, a=255}, strokeWidth=3.0}) {}
     }
     button(text="Grow", @click { radius = radius + 10.0 })
 }
@@ -41,6 +42,7 @@ window {
 		t.Fatal("go lang not registered")
 	}
 	caps := codegen.CapsOrNone(lang.LanguageIdentifier(), g.PlatformIdentifier())
+	pkg = ir.ClonePackage(pkg)
 	if err := lower.Lower(pkg, caps, lower.Options{Platform: "fyne", Language: "go"}); err != nil {
 		t.Fatalf("lower: %v", err)
 	}
@@ -59,7 +61,7 @@ window {
 		// draw func signature uses the shared *snglcanvas.Context runtime.
 		"func (m *Model) _canvasDraw0(ctx *snglcanvas.Context)",
 		// the SNGL canvas runtime is imported under the snglcanvas alias.
-		`snglcanvas "git.duckfam.us/jonathan/sngl/pkg/go/canvas"`,
+		`snglcanvas "duckfam.us/sngl/pkg/go/canvas"`,
 		// primitive draws go through Context methods.
 		"ctx.Rect(",
 		"ctx.Circle(",
@@ -131,13 +133,13 @@ func TestCanvas_RendersRealPixels(t *testing.T) {
 
 	src := `
 import . "sngl:ui"
-import . "sngl:ui/draw"
+import draw "sngl:ui/draw"
 output { none { html } }
 window {
     var radius = 60.0
-    canvas(width=200px, height=200px) {
-        rect(x=0.0, y=0.0, w=200.0, h=200.0, style=CanvasStyle{fill=color{r=240, g=240, b=240, a=255}}) {}
-        circle(cx=100.0, cy=100.0, r=radius, style=CanvasStyle{fill=color{r=200, g=40, b=40, a=255}}) {}
+    draw.canvas(width=200px, height=200px) {
+        draw.rect(x=0.0, y=0.0, w=200.0, h=200.0, style=draw.Style{fill=color{r=240, g=240, b=240, a=255}}) {}
+        draw.circle(cx=100.0, cy=100.0, r=radius, style=draw.Style{fill=color{r=200, g=40, b=40, a=255}}) {}
     }
 }
 `
@@ -145,6 +147,7 @@ window {
 	g := &Generator{}
 	lang := codegen.LookupLang("go")
 	caps := codegen.CapsOrNone(lang.LanguageIdentifier(), g.PlatformIdentifier())
+	pkg = ir.ClonePackage(pkg)
 	if err := lower.Lower(pkg, caps, lower.Options{Platform: "fyne", Language: "go"}); err != nil {
 		t.Fatalf("lower: %v", err)
 	}

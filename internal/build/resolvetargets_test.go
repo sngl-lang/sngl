@@ -3,8 +3,8 @@ package build
 import (
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/ir"
 )
 
 // Selecting a declared target by flag must inherit that target's options: both

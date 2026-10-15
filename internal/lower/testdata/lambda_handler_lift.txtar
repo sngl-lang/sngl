@@ -4,14 +4,14 @@ import . "sngl:ui"
 
 component counter node {
     var count int = 0
-    button(@click {
+    button(text="Go", @click {
         count = count + 1
     })
 }
 -- expected.sngl --
 import . "sngl:ui"
 struct __lambda0_caps {
-    count ref<int>
+    count ref[int]
 }
 func __lambda0(state __lambda0_caps) {
     *state.count = *state.count + 1
@@ -19,5 +19,6 @@ func __lambda0(state __lambda0_caps) {
 component counter node {
     var count int = 0
     var __n0 button = lower.CreateNode("button")
+    __n0.text = "Go"
     lower.AttachHandler(__n0, "click", __closure(__lambda0, __lambda0_caps{count=&count}))
 }

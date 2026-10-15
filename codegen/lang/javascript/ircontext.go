@@ -6,12 +6,12 @@ import (
 	"strconv"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/codegen"
-	snglI18n "git.duckfam.us/jonathan/sngl/codegen/i18n"
-	"git.duckfam.us/jonathan/sngl/codegen/irwalk"
-	jsscheme "git.duckfam.us/jonathan/sngl/codegen/scheme/js"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/codegen"
+	snglI18n "duckfam.us/sngl/codegen/i18n"
+	"duckfam.us/sngl/codegen/irwalk"
+	jsscheme "duckfam.us/sngl/codegen/scheme/js"
+	"duckfam.us/sngl/ir"
 )
 
 // JsIRContext translates IR expressions and statements into JavaScript code.
@@ -79,18 +79,6 @@ func (jc *JsIRContext) Ternary(_ *ir.Ternary, cond, then_, else_ string) string 
 	return "(" + cond + " ? " + then_ + " : " + else_ + ")"
 }
 func (jc *JsIRContext) Select(n *ir.Select, operand string) string {
-	if s := snglI18n.PluralKeyConstString(n); s != "" {
-		return s
-	}
-	// Registered so the platform emits the `import * as` prelude.
-	if ident, ok := n.Operand.(*ir.Ident); ok {
-		if _, ok := ident.Sym.(*ir.Namespace); ok {
-			if jsAlias, importPath := nativeBundledNamespaceAliasCtx(jc.Ctx, ident.Name); jsAlias != "" {
-				jc.registerNativeImport(importPath, n.Field)
-				return jsAlias + "." + n.Field
-			}
-		}
-	}
 	// A MethodFields field is a zero-arg method, so `c.greeting` must invoke
 	// it rather than compare the function object.
 	if jc.Ctx != nil && jc.Ctx.MethodFields != nil && jc.Ctx.MethodFields[n.Field] {
@@ -309,36 +297,11 @@ func (jc *JsIRContext) EmitText(n *ir.Emit, argStrs []string) string {
 }
 func (jc *JsIRContext) LocalVarText(n *ir.LocalVar, initStr string) string {
 	if n.Init != nil {
-		return "let " + n.Name + " = " + jsValueCopy(n.Init, n.Type, initStr)
+		return "let " + n.Name + " = " + initStr
 	}
 	return "let " + n.Name
 }
 
-// jsValueCopy binds a struct value the way SNGL binds one: by copy. A SNGL
-// struct is a value, so `var next = this` gives you your own -- Go's
-// assignment does that and JavaScript's does not, so mutating `next` wrote
-// through to whatever else held the object.
-//
-// It has not shown as a wrong pixel here, because the html updaters run after
-// every handler whether anything changed or not. It is still the wrong
-// semantics, and a program comparing a value it kept against the current one
-// sees them both move. The same lowering on Compose, whose recomposition is
-// decided by equality, meant no button did anything.
-//
-// A literal needs no copy: it is already nobody else's.
-func jsValueCopy(init ir.Expr, t *ir.Type, rendered string) string {
-	if t == nil || t.Kind != ir.TypeStruct || t.Decl == nil {
-		return rendered
-	}
-	if ir.StringReprStruct(t) {
-		return rendered
-	}
-	switch init.(type) {
-	case *ir.StructLit, *ir.Literal, nil:
-		return rendered
-	}
-	return "{ ..." + rendered + " }"
-}
 func (jc *JsIRContext) ReturnText(n *ir.Return, valueStr string) string {
 	if n.Value != nil {
 		return "return " + valueStr
@@ -516,6 +479,19 @@ func (jc *JsIRContext) evalLiteral(n *ir.Literal) string {
 }
 
 func (jc *JsIRContext) evalIdent(n *ir.Ident) string {
+	if s := snglI18n.PluralKeyConstString(n); s != "" {
+		return s
+	}
+	// A member of a bundled native module, named through its import:
+	// registered so the platform emits the `import * as` prelude. Any other
+	// package's declarations are emitted into this module, where the import
+	// names nothing.
+	if n.Qualifier != nil {
+		if jsAlias, importPath := nativeBundledNamespaceAliasCtx(jc.Ctx, n.Qualifier.Name); jsAlias != "" {
+			jc.registerNativeImport(importPath, n.Name)
+			return jsAlias + "." + n.Name
+		}
+	}
 	if n.Member != "" {
 		if src, ok := nativeEnumMemberJS(n.Type, n.Member); ok {
 			return src
@@ -629,10 +605,23 @@ func (jc *JsIRContext) evalCall(n *ir.Call) string {
 	if n.Func != nil && jsscheme.CallsHere(n.Func.Foreign) {
 		return jc.evalNativeCall(n)
 	}
+	if out, ok := jc.evalCreateComponent(n); ok {
+		return out
+	}
+	if n.Qualifier != nil && n.Func != nil {
+		if out, ok := jc.evalQualifiedCall(n); ok {
+			return out
+		}
+	}
+	// A member nothing declares -- an import that resolved to no package --
+	// is named as the call site wrote it.
+	if n.Qualifier != nil && n.Func == nil {
+		return n.QualifiedName() + "(" + strings.Join(jc.evalCallArgs(n.Args), ", ") + ")"
+	}
 	if n.Receiver != nil {
 		return jc.evalNamespaceCall(n)
 	}
-	if n.Func != nil && n.Func.Receiver != "" {
+	if n.Func != nil && n.Func.IsMethod() {
 		return jc.evalTypeMethodCall(n)
 	}
 	if n.Func != nil {
@@ -703,6 +692,13 @@ func jsMethodTail(name string) string {
 
 func (jc *JsIRContext) evalFuncvarCall(n *ir.Call) string {
 	calleeJS := jc.EvalExpr(n.Callee)
+	// A function literal called where it is written -- a slot's func argument
+	// substituted for the parameter its population calls -- is parenthesized:
+	// `function() {…}()` is a declaration followed by a stray `()`, and an
+	// arrow binds looser than a call.
+	if _, ok := n.Callee.(*ir.Lambda); ok {
+		calleeJS = "(" + calleeJS + ")"
+	}
 	args := jc.evalCallArgs(n.Args)
 	call := calleeJS + "(" + strings.Join(args, ", ") + ")"
 
@@ -737,16 +733,50 @@ func (jc *JsIRContext) registerNativeImport(mod, name string) {
 	jc.Ctx.NativeImports[mod][name] = true
 }
 
-// jsSnglNamespace reports whether an expression is the alias of an imported
-// SNGL package — one whose declarations this build emits itself, as opposed to
-// a scheme import naming a real JavaScript module.
-func jsSnglNamespace(e ir.Expr) bool {
-	id, ok := e.(*ir.Ident)
-	if !ok {
-		return false
+// evalCreateComponent is lower.CreateComponent(comp, props), which builds a
+// component instance: __cf_<name>(props).
+func (jc *JsIRContext) evalCreateComponent(n *ir.Call) (string, bool) {
+	if !ir.IsNodeOpCall(n) || n.Func.Intrinsic != "CreateComponent" {
+		return "", false
 	}
-	ns, ok := id.Sym.(*ir.Namespace)
-	return ok && ns.Pkg != nil
+	if len(n.Args) != 2 {
+		return "/* CreateComponent: wrong arity */", true
+	}
+	compIdent, ok := n.Args[0].Value.(*ir.Ident)
+	if !ok {
+		return "/* CreateComponent: arg[0] not an Ident */", true
+	}
+	comp, ok := compIdent.Sym.(*ir.Component)
+	if !ok {
+		return "/* CreateComponent: arg[0].Sym not a Component */", true
+	}
+	return FactoryName(comp) + "(" + jc.EvalExpr(n.Args[1].Value) + ")", true
+}
+
+// evalQualifiedCall is a call named through an import, where the import
+// still means something in JavaScript. A SNGL package's declarations are
+// emitted into this very module, so for one of those the alias names nothing
+// and the call is an ordinary one: false.
+func (jc *JsIRContext) evalQualifiedCall(n *ir.Call) (string, bool) {
+	fname := n.Func.Name
+	qualName := n.Qualifier.Name + "." + fname
+	args := jc.evalCallArgs(n.Args)
+	// An i18n.* entry point maps to the runtime's module object.
+	if ir.IsI18nCall(n) {
+		if result := jsBuiltinMethodFromArgs("i18n."+fname, args); result != "" {
+			return result, true
+		}
+	}
+	if n.Func.Foreign.Path == "" {
+		return "", false
+	}
+	// A native import JavaScript does not call here: named through its alias.
+	codegen.RequireIntrinsicFallback(langJS, n.Func)
+	call := qualName + "(" + strings.Join(args, ", ") + ")"
+	if n.Func.IsAsync {
+		call = "await " + call
+	}
+	return call, true
 }
 
 func (jc *JsIRContext) evalNamespaceCall(n *ir.Call) string {
@@ -758,55 +788,8 @@ func (jc *JsIRContext) evalNamespaceCall(n *ir.Call) string {
 		// A package function called through its import has no receiver on the
 		// declaration — the namespace is the alias at the call site. Name it
 		// from there so a qualified call reads the same either way.
-		receiverName := n.Func.Receiver
-		if receiverName == "" {
-			if id, ok := n.Receiver.(*ir.Ident); ok {
-				receiverName = id.Name
-			}
-		}
+		receiverName := n.Func.RecvName()
 		qualName := receiverName + "." + fname
-
-		// lower.CreateComponent(comp, props) → __cf_<name>(props). Mirrors
-		// legacy translateIRNamespaceCall (translate_ir.go:390-404): the
-		// component-instance lowering emits this intrinsic with the `lower`
-		// namespace receiver, the component ident as arg[0], and the prop
-		// struct as arg[1]. Must precede every dispatch below.
-		if fname == "CreateComponent" {
-			if len(n.Args) != 2 {
-				return "/* CreateComponent: wrong arity */"
-			}
-			compIdent, ok := n.Args[0].Value.(*ir.Ident)
-			if !ok {
-				return "/* CreateComponent: arg[0] not an Ident */"
-			}
-			comp, ok := compIdent.Sym.(*ir.Component)
-			if !ok {
-				return "/* CreateComponent: arg[0].Sym not a Component */"
-			}
-			return FactoryName(comp) + "(" + jc.EvalExpr(n.Args[1].Value) + ")"
-		}
-
-		// Intrinsic dispatch: stdlib intrinsics that map to per-locale
-		// runtime entry points. After NoContext + InlinePure, i18n.*
-		// wrapper calls have been lowered to direct intl.* intrinsic
-		// calls with the locale threaded as the first arg.
-
-		// For i18n.* calls the namespace receiver is the module object, not a
-		// value argument. Pass only the real call args to the builtin dispatcher
-		// so that a(0) is the first semantic argument (matches type-method path).
-		if receiverName == "i18n" {
-			if result := jsBuiltinMethodFromArgs(qualName, args); result != "" {
-				return result
-			}
-		}
-
-		// A SNGL package's declarations are emitted into this very module, so
-		// the alias at the call site names nothing: `readout.cells(…)` is the
-		// free `cells(…)` the emitter wrote. The alias survives only for a
-		// native import, which carries a Foreign path.
-		if jsSnglNamespace(n.Receiver) && n.Func.Foreign.Path == "" {
-			return fname + "(" + strings.Join(args, ", ") + ")"
-		}
 
 		allArgs := append([]string{receiver}, args...)
 		if result := jsBuiltinMethodFromArgs(qualName, allArgs); result != "" {
@@ -815,7 +798,7 @@ func (jc *JsIRContext) evalNamespaceCall(n *ir.Call) string {
 		// Only for a receiver whose type the checker could not resolve. With an id
 		// in hand the registry is the answer, and its absence has to reach
 		// RequireIntrinsicFallback rather than be hidden by a name match.
-		if n.Func == nil || n.Func.Intrinsic == "" {
+		if nameMatchable(n.Func) {
 			if result := jsBuiltinMethodFromArgs("*."+fname, allArgs); result != "" {
 				return result
 			}
@@ -851,6 +834,20 @@ func (jc *JsIRContext) evalNamespaceCall(n *ir.Call) string {
 	return receiver + "(" + strings.Join(args, ", ") + ")"
 }
 
+// nameMatchable reports whether a call of f may be answered by a builtin
+// method's name: f carries no intrinsic id, and is not a function someone
+// wrote a body for. A program's method is emitted as itself, so a component's
+// `replace` is no string's.
+func nameMatchable(f *ir.Func) bool {
+	if f == nil {
+		return true
+	}
+	if f.Intrinsic != "" {
+		return false
+	}
+	return f.AST == nil || (f.AST.Body == nil && !f.AST.Block.IsDefined())
+}
+
 // userFuncMatches reports whether Pkg.Funcs holds a user-defined function with
 // the given receiver type/namespace and name. This is the Pkg.Funcs analog of
 // the legacy scope.FuncNames lookup used by both the namespace-call and
@@ -860,7 +857,7 @@ func (jc *JsIRContext) userFuncMatches(receiver, name string) bool {
 		return false
 	}
 	for _, f := range jc.Ctx.Pkg.Funcs {
-		if f.Receiver == receiver && f.Name == name {
+		if f.RecvName() == receiver && f.Name == name {
 			return true
 		}
 	}
@@ -869,7 +866,7 @@ func (jc *JsIRContext) userFuncMatches(receiver, name string) bool {
 
 func (jc *JsIRContext) evalTypeMethodCall(n *ir.Call) string {
 	method := n.Func.Name
-	receiverName := n.Func.Receiver
+	receiverName := n.Func.RecvName()
 	qualName := receiverName + "." + method
 
 	args := jc.evalCallArgs(n.Args)
@@ -887,7 +884,7 @@ func (jc *JsIRContext) evalTypeMethodCall(n *ir.Call) string {
 	// Only for a receiver whose type the checker could not resolve. With an id
 	// in hand the registry is the answer, and its absence has to reach
 	// RequireIntrinsicFallback rather than be hidden by a name match.
-	if n.Func == nil || n.Func.Intrinsic == "" {
+	if nameMatchable(n.Func) {
 		if result := jsBuiltinMethodFromArgs("*."+method, args); result != "" {
 			return result
 		}
@@ -923,7 +920,7 @@ func (jc *JsIRContext) evalConversion(n *ir.Conversion) string {
 		return nullFuncStubJS(n.Type)
 	}
 	operand := jc.EvalExpr(n.Operand)
-	// A narrowed option: JavaScript's option<T> is the value or null, so the
+	// A narrowed option: JavaScript's option[T] is the value or null, so the
 	// unwrap is the value as it stands.
 	if ir.IsOptionUnwrap(n) {
 		return operand
@@ -1005,6 +1002,11 @@ func (jc *JsIRContext) evalLambda(n *ir.Lambda) string {
 	if len(n.Func.Block) == 1 {
 		if ret, ok := n.Func.Block[0].(*ir.Return); ok && ret.Value != nil {
 			body := bodyJC.EvalExpr(ret.Value)
+			// An arrow reads `{` as the start of a block, so a body that is an
+			// object literal -- a struct value -- is parenthesized.
+			if strings.HasPrefix(body, "{") {
+				body = "(" + body + ")"
+			}
 			if asyncPrefix == "" && len(params) == 1 {
 				return params[0] + " => " + body
 			}

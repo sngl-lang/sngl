@@ -4,9 +4,12 @@ import (
 	"fmt"
 	"slices"
 	"sort"
+	"strconv"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/ir"
 )
 
 // The paint half of sngl.Style, in Fyne.
@@ -27,7 +30,7 @@ import (
 // of. The type used to be emitted here as a string constant, which meant the
 // interpreted host had to carry a second copy of the same forty lines -- and
 // two copies of a Fyne contract drift the moment Fyne changes one.
-const ThemeImportPath = "git.duckfam.us/jonathan/sngl/pkg/go/fynetheme"
+const ThemeImportPath = "duckfam.us/sngl/pkg/go/fynetheme"
 
 // themeValue is one distinct set of paint properties. Comparable, so the set
 // of styles in a program dedupes to the set of themes it needs.
@@ -91,6 +94,9 @@ func assignThemes(specs map[string]*fyneSpec) []themeValue {
 	byKey := map[string]string{}
 	for _, id := range ids {
 		sp := specs[id]
+		if sp.RuntimeTheme {
+			continue
+		}
 		tv, ok := themeOf(sp.Style)
 		if !ok {
 			continue
@@ -167,15 +173,166 @@ func themeImports(themes []themeValue) []string {
 //
 // The Model field still holds the widget itself, so a setter written for a
 // reactive prop reaches the widget and not the wrapper.
-func (t *fyneTranslator) themed(child ir.Expr, sp *fyneSpec) ir.Expr {
+func (t *fyneTranslator) themed(child ir.Expr, sp *fyneSpec, id string) ir.Expr {
+	if sp != nil && sp.RuntimeTheme {
+		return t.themeOverrideRef(id)
+	}
 	if sp == nil || sp.ThemeVar == "" {
 		return child
 	}
 	name := (fyneNative{Path: "fyne.io/fyne/v2/container", Name: "NewThemeOverride"}).qualify(t.gc)
 	return nativeCallAt(name, "fyne.io/fyne/v2/container",
-		[]ir.Expr{child, rawGoExpr(sp.ThemeVar)}, ir.TypDyn)
+		[]ir.Expr{child, rawGoExpr(sp.ThemeVar, fyneTheme())}, ir.NativeGoPointerOf("container.ThemeOverride"))
 }
 
 func goColorLit(c fyneColor) string {
 	return fmt.Sprintf("color.NRGBA{R: %d, G: %d, B: %d, A: %d}", c.R, c.G, c.B, c.A)
 }
+
+var themeWith = map[string]string{
+	"background":   "WithBackground",
+	"color":        "WithForeground",
+	"fontSize":     "WithTextSize",
+	"borderRadius": "WithRadius",
+	"fontWeight":   "WithWeight",
+	"fontStyle":    "WithSlant",
+}
+
+// readsRuntimePaint reports whether a paint field of a style literal has a
+// value the build cannot read, which is what themeOf leaves out.
+func readsRuntimePaint(lit *ir.StructLit) bool {
+	for _, f := range lit.Fields {
+		if f.Value == nil || themeWith[f.Name] == "" {
+			continue
+		}
+		switch f.Name {
+		case "background", "color":
+			if colorFromExpr(f.Value) == nil {
+				return true
+			}
+		case "fontWeight", "fontStyle":
+			if enumOrString(f.Value) == "" {
+				return true
+			}
+		default:
+			if _, ok := literalNumber(f.Value); !ok {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// themeOverrideField is the Model field holding a runtime-themed node's
+// override, beside the field holding the node.
+func themeOverrideField(id string) string { return id + "__theme" }
+
+func (t *fyneTranslator) themeOverrideRef(id string) ir.Expr {
+	name := themeOverrideField(id)
+	ov := ir.NativeGoPointerOf("container.ThemeOverride")
+	if t.isLocalRef(id) {
+		return &ir.Ident{Name: name, Type: ov}
+	}
+	return codegen.RecvFieldRef(t.gc.NodeRecvRef(id), name, ov)
+}
+
+// createThemeOverride wraps a runtime-themed node in its override as soon as
+// the node exists, so the style write that follows has something to set. The
+// children appended later are themed when the override first renders.
+func (t *fyneTranslator) createThemeOverride(id string, node ir.Expr) ir.Stmt {
+	path := "fyne.io/fyne/v2/container"
+	ctor := nativeCallAt((fyneNative{Path: path, Name: "NewThemeOverride"}).qualify(t.gc), path,
+		[]ir.Expr{node, t.baseTheme()}, ir.NativeGoPointerOf("container.ThemeOverride"))
+	if t.isLocalRef(id) {
+		return &ir.LocalVar{Name: themeOverrideField(id), Init: ctor}
+	}
+	t.sinkField(themeOverrideField(id), (fyneNative{Path: path, Name: "*ThemeOverride"}).qualify(t.gc))
+	return &ir.Assign{Target: t.themeOverrideRef(id), Op: ast.AssignSet, Value: ctor}
+}
+
+func (t *fyneTranslator) baseTheme() ir.Expr {
+	def := (fyneNative{Path: "fyne.io/fyne/v2/theme", Name: "DefaultTheme"}).qualify(t.gc)
+	newTheme := (fyneNative{Path: ThemeImportPath, Name: "New"}).qualify(t.gc)
+	return nativeCallAt(newTheme, ThemeImportPath,
+		[]ir.Expr{nativeCallAt(def, "fyne.io/fyne/v2/theme", nil, fyneTheme())}, snglTheme())
+}
+
+// setRuntimeTheme is a write to a runtime-themed node's style: the whole
+// theme rebuilt from the literal, static fields included, and the override
+// refreshed so the subtree repaints under it.
+func (t *fyneTranslator) setRuntimeTheme(id string, lit *ir.StructLit) []ir.Stmt {
+	th := t.baseTheme()
+	for _, f := range lit.Fields {
+		method := themeWith[f.Name]
+		if method == "" || f.Value == nil {
+			continue
+		}
+		v := f.Value
+		if f.Name == "fontSize" || f.Name == "borderRadius" {
+			v = themeLength(v)
+		}
+		th = methodCall(th, method, []ir.Expr{v}, snglTheme())
+	}
+	ov := t.themeOverrideRef(id)
+	return []ir.Stmt{
+		&ir.Assign{Target: &ir.Select{Operand: ov, Field: "Theme", Type: fyneTheme()}, Op: ast.AssignSet, Value: th},
+		&ir.CallStmt{Call: methodCall(ov, "Refresh", nil, ir.TypVoid)},
+	}
+}
+
+// themeLength is a length as the float64 a theme size takes. A measurement's
+// px is what Fyne's device-independent pixels answer to; its other bases have
+// no Fyne counterpart, as a literal's suffix has none in themeOf.
+func themeLength(v ir.Expr) ir.Expr {
+	if n, ok := literalNumber(v); ok {
+		return &ir.Literal{Type: ir.TypFloat, Value: strconv.FormatFloat(n, 'f', -1, 64)}
+	}
+	if vt := v.ExprType(); vt != nil && vt.Kind == ir.TypeUnit {
+		v = &ir.Select{Operand: v, Field: "px", Type: ir.TypFloat}
+	}
+	return &ir.Conversion{Type: ir.TypFloat, Operand: v}
+}
+
+// styleThemeFunc builds a theme from a whole Style value. A field left unset
+// in the value is its zero, which is also what __merge_Style reads as unset,
+// so a zero field leaves the default theme's answer in place.
+const styleThemeFunc = "__styleTheme"
+
+func (t *fyneTranslator) setRuntimeThemeFrom(id string, style ir.Expr) []ir.Stmt {
+	ov := t.themeOverrideRef(id)
+	return []ir.Stmt{
+		&ir.Assign{Target: &ir.Select{Operand: ov, Field: "Theme", Type: fyneTheme()}, Op: ast.AssignSet,
+			Value: nativeCall(styleThemeFunc, []ir.Expr{style}, snglTheme())},
+		&ir.CallStmt{Call: methodCall(ov, "Refresh", nil, ir.TypVoid)},
+	}
+}
+
+// styleValueTheme is the Go declaration of styleThemeFunc, when a node takes
+// its style as a whole value; "" otherwise. It is themeWith applied to a
+// value, so a field added there belongs here too.
+func styleValueTheme(specs map[string]*fyneSpec) string {
+	for _, sp := range specs {
+		if sp.StyleValue {
+			return `
+func ` + styleThemeFunc + `(s Style) fynetheme.Theme {
+	t := fynetheme.New(theme.DefaultTheme())
+	if s.Background != (snglcolor.Color{}) {
+		t = t.WithBackground(s.Background)
+	}
+	if s.Color != (snglcolor.Color{}) {
+		t = t.WithForeground(s.Color)
+	}
+	return t.WithTextSize(s.FontSize.Px).WithRadius(s.BorderRadius.Px).WithWeight(s.FontWeight).WithSlant(s.FontStyle)
+}
+`
+		}
+	}
+	return ""
+}
+
+// fyneTheme is fyne.Theme, what a theme override holds.
+func fyneTheme() *ir.Type { return ir.NativeGoNamed("fyne.Theme") }
+
+// snglTheme is fynetheme.Theme, the theme a style builds, which is a
+// fyne.Theme.
+func snglTheme() *ir.Type { return ir.NativeGoNamed("fynetheme.Theme") }

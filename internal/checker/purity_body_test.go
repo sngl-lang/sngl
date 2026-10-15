@@ -3,8 +3,8 @@ package checker
 import (
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/internal/parser"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/internal/parser"
+	"duckfam.us/sngl/ir"
 )
 
 // A bodyless library function says nothing about what its host does, so its
@@ -14,7 +14,7 @@ import (
 func TestBodylessLibFuncKeepsUnknownPurity(t *testing.T) {
 	pkg := LibPackage("builtin")
 	for _, fn := range pkg.Funcs {
-		if fn.Receiver == "error" && fn.Name == "raise" {
+		if fn.RecvName() == "error" && fn.Name == "raise" {
 			if fn.Purity != ir.PurityUnknown {
 				t.Fatalf("error.raise purity = %v, want Unknown", fn.Purity)
 			}
@@ -42,13 +42,13 @@ func built(a int) P {
     return r
 }
 
-func element(a int) list<int> {
+func element(a int) list[int] {
     var r = [0, 0]
     r[0] = a
     return r
 }
 
-func aliased(xs list<int>) list<int> {
+func aliased(xs list[int]) list[int] {
     var r = xs
     r[0] = 1
     return r

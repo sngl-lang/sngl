@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"git.duckfam.us/jonathan/sngl/sngltest"
-	"git.duckfam.us/jonathan/sngl/sngltest/testdata/marshalpkg"
+	"duckfam.us/sngl/sngltest"
+	"duckfam.us/sngl/sngltest/testdata/marshalpkg"
 )
 
 // fake stands in for *testing.T so a check that is supposed to fail can be
@@ -60,7 +60,7 @@ func TestRegisteredType(t *testing.T) {
 }
 
 // The disagreement this package exists to catch: base64 is a string, and the
-// importer makes list<int> of a []byte. The message has to name both halves,
+// importer makes list[int] of a []byte. The message has to name both halves,
 // or the reader goes and looks at the wrong one.
 func TestMismatchedMarshaler(t *testing.T) {
 	f := &fake{}
@@ -70,7 +70,7 @@ func TestMismatchedMarshaler(t *testing.T) {
 		"marshalpkg.Blob",                        // the type
 		`"AQI="`,                                 // what the marshaller wrote
 		"Blob.MarshalSNGL",                       // which half wrote it
-		"list<int>",                              // what the importer made of it
+		"list[int]",                              // what the importer made of it
 		"codegen/scheme/golang",                  // which half decided that
 		"not assignable",                         // the checker's own verdict
 		"golang.RegisterType",                    // the other way out
@@ -92,7 +92,7 @@ func TestEachValueIsReported(t *testing.T) {
 func TestUnmodelledType(t *testing.T) {
 	f := &fake{}
 	sngltest.CheckType[marshalpkg.Chan](f)
-	wants(t, f.only(t), "marshalpkg.Chan", "dyn", "unusable", "golang.RegisterType")
+	wants(t, f.only(t), "marshalpkg.Chan", "no SNGL spelling", "unusable", "golang.RegisterType")
 }
 
 // A type with no declaration behind it cannot be resolved through the
@@ -113,7 +113,7 @@ func TestCheckTypePasses(t *testing.T) {
 // Encode hands back the source the compiler would have parsed, for a golden
 // test over the exact text.
 func TestEncode(t *testing.T) {
-	const itemRef = `import("go:git.duckfam.us/jonathan/sngl/sngltest/testdata/marshalpkg").Item`
+	const itemRef = `import("go:duckfam.us/sngl/sngltest/testdata/marshalpkg").Item`
 	if got := sngltest.Encode(t, marshalpkg.Item{Name: "alpha", Value: 1}); got != itemRef+`{Name = "alpha", Value = 1}` {
 		t.Errorf("Encode() = %s", got)
 	}

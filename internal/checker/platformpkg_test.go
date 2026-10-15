@@ -5,9 +5,9 @@ import (
 	"strings"
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/internal/checker"
-	"git.duckfam.us/jonathan/sngl/internal/parser"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/internal/checker"
+	"duckfam.us/sngl/internal/parser"
+	"duckfam.us/sngl/ir"
 )
 
 // TestPlatformPackageDiagnosticsAreReported pins the reason platform packages
@@ -99,15 +99,15 @@ component main node {
 	if wrap == nil {
 		t.Fatal("platform package contributed no Wrap component")
 	}
-	if wrap.Pkg != "sngl:platform/extstub" {
-		t.Errorf("Wrap.Pkg = %q; want sngl:platform/extstub", wrap.Pkg)
+	if wrap.PkgPath() != "sngl:platform/extstub" {
+		t.Errorf("Wrap.Pkg = %q; want sngl:platform/extstub", wrap.PkgPath())
 	}
-	if len(wrap.Body) == 0 {
+	if len(wrap.Stmts) == 0 {
 		t.Fatal("Wrap has no checked body")
 	}
-	inst, ok := wrap.Body[0].(*ir.NodeInst)
+	inst, ok := wrap.Stmts[0].(*ir.NodeInst)
 	if !ok {
-		t.Fatalf("Wrap body[0] = %T; want *ir.NodeInst", wrap.Body[0])
+		t.Fatalf("Wrap body[0] = %T; want *ir.NodeInst", wrap.Stmts[0])
 	}
 	if inst.Component != userText {
 		t.Errorf("text inside the platform package is %p; the program holds %p — two identities", inst.Component, userText)
@@ -126,7 +126,7 @@ component main node {
 		t.Fatal("component main missing")
 	}
 	var blockWrap *ir.Component
-	for _, stmt := range main.Body {
+	for _, stmt := range main.Stmts {
 		if n, ok := stmt.(*ir.NodeInst); ok && n.Component != nil && n.Component.Name == "Wrap" {
 			blockWrap = n.Component
 		}

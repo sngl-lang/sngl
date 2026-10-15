@@ -20,11 +20,11 @@ struct pair {
 component main node {
     var (
         key pair = pair{a=1, b="x"}
-        log list<string> = []
+        log list[string] = []
     )
 
     effect(
-        on=key,
+        on = key,
         @mount {
             log.push("m")
         },

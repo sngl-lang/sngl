@@ -6,7 +6,7 @@ import (
 	"os"
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/internal/testutil"
+	"duckfam.us/sngl/internal/testutil"
 )
 
 // TestMain re-execs under a headless cage compositor so TestSnapshotRender

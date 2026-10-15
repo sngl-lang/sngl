@@ -6,10 +6,10 @@ import (
 	"sort"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/internal/parser"
-	"git.duckfam.us/jonathan/sngl/lib"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/internal/parser"
+	"duckfam.us/sngl/lib"
 )
 
 // The types and functions in this file project the Go Result/DeclIndex/*Detail
@@ -218,16 +218,16 @@ type PackageEntry struct {
 
 // DeclPage is one generated documentation page for a decl. Pkg + Kind + Name
 // (+ optional Ident2) identify the lookup target; Href is the URL the website
-// uses to host the page; Body is the rendered HTML body to drop into the
+// uses to host the page; Markdown is the source of the body to render into the
 // page's article element.
 type DeclPage struct {
-	Pkg    string // "sngl", "android", ...
-	Kind   string // "components" | "types" | "enums" | "functions" | "constants" | "data" | "overrides" | "platform-types"
-	Name   string
-	Ident2 string // method name (for types) / member name (for enums); empty for top-level
-	Href   string // generated URL, e.g. "/docs/sngl/types/color/darken.html"
-	Title  string // page title
-	Body   string // rendered HTML body (already markdown-converted)
+	Pkg      string // "sngl", "android", ...
+	Kind     string // "components" | "types" | "enums" | "functions" | "constants" | "data" | "overrides" | "platform-types"
+	Name     string
+	Ident2   string // method name (for types) / member name (for enums); empty for top-level
+	Href     string // generated URL, e.g. "/docs/sngl/types/color/darken.html"
+	Title    string // page title
+	Markdown string // the page body's markdown source, which md.document renders
 }
 
 // --- Public sngl entry points ---
@@ -380,16 +380,16 @@ func AllDeclPages() []DeclPage {
 				idents = append(idents, ident2)
 			}
 			if r, err := Lookup(pkg.Path, idents...); err == nil {
-				body = renderDeclBody(pkg.Path, r)
+				body = buildDeclMarkdown(pkg.Path, r)
 			}
 			out = append(out, DeclPage{
-				Pkg:    pkg.Path,
-				Kind:   kind,
-				Name:   name,
-				Ident2: ident2,
-				Href:   declPageHref(pkg.Path, kind, name, ident2),
-				Title:  declPageTitle(name, ident2),
-				Body:   body,
+				Pkg:      pkg.Path,
+				Kind:     kind,
+				Name:     name,
+				Ident2:   ident2,
+				Href:     declPageHref(pkg.Path, kind, name, ident2),
+				Title:    declPageTitle(name, ident2),
+				Markdown: body,
 			})
 		}
 		for _, c := range idx.Components {
@@ -641,10 +641,11 @@ func mapComponent(c *ComponentDetail) ComponentDetailView {
 				Name:    n,
 				IsEvent: true,
 				Payload: c.Schema.Events[n],
+				Doc:     c.Schema.EventDocs[n],
 			})
 		}
 		for _, sl := range c.Schema.Slots {
-			v.Slots = append(v.Slots, PropView{Name: sl.Name, Type: formatType(sl.Type)})
+			v.Slots = append(v.Slots, PropView{Name: sl.Name, Type: formatType(sl.Type), Doc: sl.Doc})
 		}
 		if c.Schema.Children != nil {
 			v.Children = c.Schema.Children.String()
@@ -659,6 +660,7 @@ func mapComponent(c *ComponentDetail) ComponentDetailView {
 						v.Slots = append(v.Slots, PropView{
 							Name: pd.Name,
 							Type: formatType(pd.Type),
+							Doc:  pd.Doc(),
 						})
 					}
 					continue
@@ -667,6 +669,7 @@ func mapComponent(c *ComponentDetail) ComponentDetailView {
 					v.Props = append(v.Props, PropView{
 						Name: pd.Name,
 						Type: formatType(pd.Type),
+						Doc:  pd.Doc(),
 					})
 				}
 			case ast.EventDecl:
@@ -675,6 +678,7 @@ func mapComponent(c *ComponentDetail) ComponentDetailView {
 						Name:    pd.Name,
 						IsEvent: true,
 						Payload: parser.FormatEventSignature(pd),
+						Doc:     pd.Doc(),
 					})
 				}
 			}

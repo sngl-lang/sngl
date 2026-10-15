@@ -3,7 +3,7 @@ package codegen
 import (
 	"sort"
 
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 // collectUsedEnums returns the package's own enums followed by every library
@@ -107,7 +107,7 @@ func collectUsedEnums(pkg *ir.Package) []*ir.EnumDef {
 				return nil
 			}
 		case *ir.StructLit:
-			if x.Def != nil && x.Def.Pkg != "" && !declared[x.Def] {
+			if x.Def != nil && x.Def.PkgPath() != "" && !declared[x.Def] {
 				return ir.SkipDir
 			}
 		case *ir.LocalVar:

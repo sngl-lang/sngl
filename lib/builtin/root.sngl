@@ -1,4 +1,3 @@
-import marks "sngl:internal/marks"
 import build "sngl:build"
 
 // The family whose members are written at the root of a file: the windows a
@@ -16,5 +15,15 @@ import build "sngl:build"
 // member declared anywhere names it without importing the package the
 // members happen to come from, and `output`, declared here, is one like any
 // other.
-#[marks.builtin("treeRoot")]
+#[_builtin(familyRoot)]
 component root build.family
+
+// The application a program runs: what the windows at the root of a file are
+// attached to, and what a render slot there re-renders them into. No program
+// writes one -- a target makes the application and holds it -- and both
+// declarations are unexported for that reason. It is a family of its own
+// because it is placed in no tree: it is the top of every one.
+component _host build.family
+
+#[_builtin(application)]
+component _application(windows ...component root) _host

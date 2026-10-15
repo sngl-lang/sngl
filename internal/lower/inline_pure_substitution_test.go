@@ -3,7 +3,7 @@ package lower
 import (
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 // A pure wrapper whose body declares events as metadata (e.g. the bubbletea
@@ -18,7 +18,7 @@ func TestInlinePure_TransfersUnemittedHandler(t *testing.T) {
 	btn := &ir.Component{
 		Name:  "btn",
 		Props: []*ir.Prop{{Name: "text", Type: ir.TypString}},
-		Body: []ir.Stmt{
+		Stmts: []ir.Stmt{
 			&ir.NodeInst{
 				Name: "Styled",
 				Props: []ir.Arg{{
@@ -35,7 +35,7 @@ func TestInlinePure_TransfersUnemittedHandler(t *testing.T) {
 	}
 	main := &ir.Component{
 		Name: "main",
-		Body: []ir.Stmt{&ir.NodeInst{
+		Stmts: []ir.Stmt{&ir.NodeInst{
 			Name:      "btn",
 			Component: btn,
 			Handlers:  []ir.EventHandler{clickHandler},
@@ -47,9 +47,9 @@ func TestInlinePure_TransfersUnemittedHandler(t *testing.T) {
 		t.Fatalf("lowerInlinePure: %v", err)
 	}
 
-	styled, ok := main.Body[0].(*ir.NodeInst)
+	styled, ok := main.Stmts[0].(*ir.NodeInst)
 	if !ok || styled.Name != "Styled" {
-		t.Fatalf("expected inlined Styled at main.Body[0], got %T", main.Body[0])
+		t.Fatalf("expected inlined Styled at main.Body[0], got %T", main.Stmts[0])
 	}
 	var found bool
 	for _, h := range styled.Handlers {
@@ -73,7 +73,7 @@ func TestInlinePure_EmittedHandlerNotDoubleTransferred(t *testing.T) {
 	//   — body forwards the event via an explicit @click() emit.
 	btn := &ir.Component{
 		Name: "Button",
-		Body: []ir.Stmt{
+		Stmts: []ir.Stmt{
 			&ir.NodeInst{
 				Name: "button",
 				Children: []ir.Stmt{
@@ -93,7 +93,7 @@ func TestInlinePure_EmittedHandlerNotDoubleTransferred(t *testing.T) {
 	}
 	main := &ir.Component{
 		Name: "main",
-		Body: []ir.Stmt{&ir.NodeInst{
+		Stmts: []ir.Stmt{&ir.NodeInst{
 			Name:      "Button",
 			Component: btn,
 			Handlers:  []ir.EventHandler{clickHandler},
@@ -105,7 +105,7 @@ func TestInlinePure_EmittedHandlerNotDoubleTransferred(t *testing.T) {
 		t.Fatalf("lowerInlinePure: %v", err)
 	}
 
-	if got := countMarkerAssigns(main.Body, marker); got != 1 {
+	if got := countMarkerAssigns(main.Stmts, marker); got != 1 {
 		t.Fatalf("handler body inlined %d times, want exactly 1 (no double-transfer)", got)
 	}
 }
@@ -118,8 +118,8 @@ func TestInlinePure_NonBubbleteaUnemittedHandlerTransferred(t *testing.T) {
 	// component card { div { } }   — ordinary pure wrapper, no event metadata,
 	// no @name() emit.
 	card := &ir.Component{
-		Name: "card",
-		Body: []ir.Stmt{&ir.NodeInst{Name: "div"}},
+		Name:  "card",
+		Stmts: []ir.Stmt{&ir.NodeInst{Name: "div"}},
 	}
 	// component main { card(@click { ... }) }
 	clickHandler := ir.EventHandler{
@@ -128,7 +128,7 @@ func TestInlinePure_NonBubbleteaUnemittedHandlerTransferred(t *testing.T) {
 	}
 	main := &ir.Component{
 		Name: "main",
-		Body: []ir.Stmt{&ir.NodeInst{
+		Stmts: []ir.Stmt{&ir.NodeInst{
 			Name:      "card",
 			Component: card,
 			Handlers:  []ir.EventHandler{clickHandler},
@@ -140,9 +140,9 @@ func TestInlinePure_NonBubbleteaUnemittedHandlerTransferred(t *testing.T) {
 		t.Fatalf("lowerInlinePure: %v", err)
 	}
 
-	div, ok := main.Body[0].(*ir.NodeInst)
+	div, ok := main.Stmts[0].(*ir.NodeInst)
 	if !ok || div.Name != "div" {
-		t.Fatalf("expected inlined div at main.Body[0], got %T", main.Body[0])
+		t.Fatalf("expected inlined div at main.Body[0], got %T", main.Stmts[0])
 	}
 	var count int
 	for _, h := range div.Handlers {
@@ -195,12 +195,12 @@ func TestInlinePure_OmittedParamGetsZeroValue(t *testing.T) {
 	wrap := &ir.Component{
 		Name:  "wrap",
 		Props: []*ir.Prop{{Name: "flag", Type: ir.TypBool}}, // no Default
-		Body:  body,
+		Stmts: body,
 	}
 	// component main { wrap() }   — no flag arg passed
 	main := &ir.Component{
-		Name: "main",
-		Body: []ir.Stmt{&ir.NodeInst{Name: "wrap", Component: wrap}},
+		Name:  "main",
+		Stmts: []ir.Stmt{&ir.NodeInst{Name: "wrap", Component: wrap}},
 	}
 	pkg := &ir.Package{Components: []*ir.Component{wrap, main}}
 
@@ -210,9 +210,9 @@ func TestInlinePure_OmittedParamGetsZeroValue(t *testing.T) {
 
 	// main.Body[0] is now the inlined <div>; its data-flag prop must be a
 	// literal false, not the bare `flag` identifier.
-	div, ok := main.Body[0].(*ir.NodeInst)
+	div, ok := main.Stmts[0].(*ir.NodeInst)
 	if !ok || div.Name != "div" {
-		t.Fatalf("expected inlined div at main.Body[0], got %T", main.Body[0])
+		t.Fatalf("expected inlined div at main.Body[0], got %T", main.Stmts[0])
 	}
 	var val ir.Expr
 	for _, p := range div.Props {

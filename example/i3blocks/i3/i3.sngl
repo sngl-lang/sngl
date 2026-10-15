@@ -15,18 +15,18 @@ enum Align { left, center, right }
 // it is how a handler reading the protocol tells blocks apart; the emitter
 // supplies the position.
 component text(
-    name string = "",
-    full string,
+    name       string = "",
+    full       string,
     // Shown instead of `full` when the bar runs out of room.
-    short string = "",
+    short      string = "",
     // Transparent is "the bar's own": the protocol's field is left out.
-    color color = #00000000,
+    color      color = #00000000,
     background color = #00000000,
-    urgent bool = false,
-    minWidth int = 0,
-    align Align = Align.left,
+    urgent     bool = false,
+    minWidth   int = 0,
+    align      Align = Align.left,
     // Draw i3bar's separator after this block. The protocol's default is on.
-    separator bool = true,
+    separator  bool = true,
     @click(button int, x int, y int),
 ) block
 

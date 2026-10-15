@@ -6,7 +6,7 @@ import ui "sngl:ui"
 
 var count = 0
 
-component rows(items list<string>, const row component(item string) ui.node) ui.node {
+component rows(items list[string], const row component(item string) ui.node) ui.node {
     ui.vbox {
         for var it = items {
             row(it)

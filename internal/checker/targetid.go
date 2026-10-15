@@ -4,10 +4,11 @@ import (
 	"cmp"
 	"maps"
 	"slices"
+	"strconv"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/ir"
 )
 
 // A build target is named by its node: the `component platform(…)
@@ -19,54 +20,33 @@ import (
 // its identity, so there is no second one to disagree with it.
 //
 // As a value it is the identity PLATFORM and LANGUAGE are compared against:
-// its type is sngl:builtin's `platform` or `language` (targetValueType), so
+// its type is sngl:build's `platform` or `language` family (targetValueType), so
 // `PLATFORM == "html"` still does not type-check, and a misspelled target is
 // an unresolved name rather than a branch nobody takes.
 
-// typeTargetConsts gives PLATFORM and LANGUAGE their types. It runs after the
-// whole of lib/builtin is registered: the consts and the types they carry are
-// in different files (consts.sngl, types.sngl) and load order is not
-// guaranteed, so neither mark can fill the other in as it is applied.
-func (c *checker) typeTargetConsts() {
-	if c.platformConst != nil && c.platformType != nil {
-		c.platformConst.Type = c.platformType.SymType()
-	}
-	if c.languageConst != nil && c.languageType != nil {
-		c.languageConst.Type = c.languageType.SymType()
-	}
-}
-
 // targetValueType is the type a reference to a build-target node has where it
-// is read as a value: sngl:builtin's `platform` or `language`, the types
-// PLATFORM and LANGUAGE carry. Nil for any other symbol.
+// is read as a value: the family it is a member of, sngl:build's `platform` or
+// `language`, which PLATFORM and LANGUAGE are declared as. Nil for any other
+// symbol.
 func (c *checker) targetValueType(sym ir.Symbol) *ir.Type {
 	node, _, ok := ir.TargetNode(sym)
-	if !ok {
+	if !ok || node.Family == nil {
 		return nil
 	}
-	if ir.TargetTier(node.Tree) == ir.BuiltinLanguage {
-		if c.languageType != nil {
-			return c.languageType.SymType()
-		}
-		return nil
-	}
-	if c.platformType != nil {
-		return c.platformType.SymType()
-	}
-	return nil
+	return node.Family.SymType()
 }
 
 // targetTierMember is the word for a tier: the segment of a target package's
 // URI (`sngl:platform/html`), and what a message calls one. Its node is
 // conventionally named the same, but is found by its family (ir.TargetNodeOf).
 func targetTierMember(kind ir.BuiltinKind) string {
-	if kind == ir.BuiltinLanguage {
+	if kind == ir.BuiltinFamilyLanguage {
 		return "language"
 	}
 	return "platform"
 }
 
-// resolveTargetIndex resolves the `[expr]` index on a declaration name to the
+// resolveTargetIndex resolves the `[target]` index on a declaration name to the
 // target it implements: the registered name, and whether the identity is a
 // platform or a language.
 //
@@ -83,7 +63,10 @@ func (c *checker) resolveTargetIndex(e ast.Expr) (name string, kind ir.BuiltinKi
 		// program outside the package writes.
 		sym, found := c.scope.Lookup(t.Name)
 		if !found {
-			c.error(t.Pos, "undefined: %s", t.Name)
+			// A bracket holding one bare name is a target, so a type
+			// parameter written with no constraint reads as one, and an
+			// undefined one: say what the author more likely meant.
+			c.error(t.Pos, "undefined: %s (a type parameter names its constraint: write `%s any`)", t.Name, t.Name)
 			return "", ir.BuiltinNone, false
 		}
 		return c.targetIdentity(t.Pos, sym, t.Name)
@@ -131,10 +114,10 @@ func (c *checker) targetIdentity(pos ast.Pos, sym ir.Symbol, spelling string) (s
 		c.error(pos, "%s is not a target identity: an override names a target's build node, e.g. html.platform", spelling)
 		return "", ir.BuiltinNone, false
 	}
-	return name, ir.TargetTier(node.Tree), true
+	return name, ir.TargetTier(node.Family), true
 }
 
-// collectUserOverrides merges each `component X[target] { ... }` a program
+// collectUserOverrides merges each `component X[target](…) { ... }` a program
 // declares into the component it names, the way a platform package's overrides
 // are merged. It runs after pass1: an override may be written above the
 // declaration it overrides.
@@ -158,64 +141,130 @@ func (c *checker) collectUserOverrides() {
 		if base == nil {
 			continue
 		}
-		selection, ok := c.overrideSelection(decl, base)
-		if !ok {
-			continue
-		}
+		selection := c.overrideSelection(decl, base)
 		c.addOverrideBody(decl.Pos, base, kind, plat, ns, local, decl.Body, true, selection, decl.Const)
 	}
 }
 
-// overrideSelection reads an override's prop list: the props of the
-// declaration it overrides that its body consumes. The list is a selection,
-// not a declaration -- the base owns the types, and restating one is a thing
-// that can drift -- so each entry is a bare name, and `@name` selects an event.
+// overrideSelection reads an override's parameter list: the props, slots and
+// events of the declaration it overrides that its body reads. The list is a
+// selection, not a declaration -- the base owns each type, so an entry names
+// one of the base's parameters and may restate its type only where it
+// matches (selectEntry). `@name` selects an event.
 //
-// The list is optional. Without one the override reads every prop the base
-// declares, which is what an override written before this could do and all a
-// platform package's do today.
-func (c *checker) overrideSelection(decl *ast.ComponentDecl, base *ir.Component) ([]string, bool) {
-	if !decl.HasParens {
-		return nil, true
-	}
-	declared := map[string]bool{}
+// No list is the empty one, as for any other parameter list: what the body
+// reads it names in its header, so every name in the body is traceable to the
+// declaration rather than appearing from it unannounced.
+func (c *checker) overrideSelection(decl *ast.ComponentDecl, base *ir.Component) []string {
+	props := map[string]*ir.Prop{}
 	for _, p := range base.Props {
-		declared[p.Name] = true
+		props[p.Name] = p
 	}
+	slots := map[string]bool{}
+	for _, s := range base.Slots {
+		slots[s.Name] = true
+	}
+	events := map[string]bool{}
 	for _, e := range base.Events {
-		declared["@"+e.Name] = true
+		events[e.Name] = true
 	}
 	out := make([]string, 0, len(decl.Props.Props))
-	ok := true
+	seen := map[string]bool{}
 	for _, p := range decl.Props.Props {
-		var name string
-		var pos ast.Pos
 		switch pd := p.(type) {
 		case ast.Param:
-			name, pos = pd.Name, pd.Pos
-			if pd.Type != nil || pd.Default != nil {
-				c.error(pos, "override %q selects prop %q; its type belongs to the declaration being overridden", decl.Name, name)
-				ok = false
+			var want *ir.Type
+			found := false
+			switch prop := props[pd.Name]; {
+			case prop != nil:
+				want, found = prop.Type, true
+				if pd.Bidirectional && !prop.Bidirectional {
+					c.error(pd.Pos, "override %q selects %q as two-way, but %s declares it one-way", decl.Name, pd.Name, decl.Name)
+				}
+			case slots[pd.Name]:
+				found = true
+				if pd.Type != nil {
+					c.error(pd.Pos, "override %q selects slot %q; a slot's type belongs to the declaration, so write its name alone", decl.Name, pd.Name)
+				}
+				pd.Type = nil
+			}
+			if !c.selectEntry(decl.Name, pd, want, found, seen) {
 				continue
 			}
+			out = append(out, pd.Name)
 		case ast.EventDecl:
-			name, pos = "@"+pd.Name, pd.Pos
-			if len(pd.Params) > 0 || pd.HasParens {
-				c.error(pos, "override %q selects event %q; its type belongs to the declaration being overridden", decl.Name, name)
-				ok = false
+			name := "@" + pd.Name
+			if len(pd.Params.Params) > 0 || pd.HasParens {
+				c.error(pd.Pos, "override %q selects event %q; its parameters belong to the declaration, so write its name alone", decl.Name, name)
 				continue
 			}
-		default:
-			continue
+			if c.selectEntry(decl.Name, ast.Param{Pos: pd.Pos, Name: name}, nil, events[pd.Name], seen) {
+				out = append(out, name)
+			}
 		}
-		if !declared[name] {
-			c.error(pos, "override %q selects %q, which %s does not declare", decl.Name, name, decl.Name)
-			ok = false
-			continue
-		}
-		out = append(out, name)
 	}
-	return out, ok
+	return out
+}
+
+// selectEntry holds one entry of an override's parameter list to the
+// declaration it overrides, for a component's and a function's alike: it
+// names a parameter the declaration has, once, and restates nothing but a
+// matching type. want is that parameter's type and found whether there is
+// one; seen collects the names already selected.
+func (c *checker) selectEntry(over string, p ast.Param, want *ir.Type, found bool, seen map[string]bool) bool {
+	switch {
+	case !found:
+		c.error(p.Pos, "override %q selects %q, which %s does not declare", over, p.Name, over)
+		return false
+	case seen[p.Name]:
+		c.error(p.Pos, "override %q selects %q twice", over, p.Name)
+		return false
+	case p.Default != nil:
+		c.error(p.Pos, "override %q selects %q, which takes no default here: the declaration's is the one a call omitting it gets", over, p.Name)
+		return false
+	case p.Const:
+		c.error(p.Pos, "override %q selects %q, which takes no `const` here: whether it is constant is the declaration's to say", over, p.Name)
+		return false
+	case len(p.Attrs) > 0:
+		c.error(p.Pos, "override %q selects %q, which takes no mark here: its marks are the declaration's", over, p.Name)
+		return false
+	}
+	seen[p.Name] = true
+	if p.Type != nil {
+		c.bindParamType(p.Type, want, bindParamWhat(p.Name, "override "+strconv.Quote(over)))
+	}
+	return true
+}
+
+// selectFuncParams reads a function override's parameter list, the same
+// selection a component override's is: each entry names a parameter of the
+// function it overrides, and those are the only ones its body reads. The
+// parameters themselves stay the declaration's, in its order, since that is
+// what every call passes. An entry it refuses is reported and left out, so
+// the body is still checked.
+func (c *checker) selectFuncParams(decl *ast.FuncDef, base *ir.Func) []*ir.Param {
+	byName := map[string]*ir.Param{}
+	for _, p := range base.Params {
+		byName[p.Name] = p
+	}
+	seen := map[string]bool{}
+	for _, p := range decl.Params.Params {
+		bp := byName[p.Name]
+		var want *ir.Type
+		if bp != nil {
+			want = bp.Type
+		}
+		c.selectEntry(decl.Name, p, want, bp != nil, seen)
+	}
+	var out []*ir.Param
+	for _, p := range base.Params {
+		// The receiver a method on a generic built-in carries as a parameter
+		// is no parameter a call writes, and is read as the method's own.
+		if seen[p.Name] || p.Name == ir.ReceiverParam {
+			out = append(out, p)
+		}
+	}
+	return out
 }
 
 // overrideBase resolves the declaration an override names, qualified
@@ -264,7 +313,10 @@ func (c *checker) overrideBase(decl *ast.ComponentDecl) (base *ir.Component, ns,
 // pass1 the way a component override's is and for the same reason: it may be
 // written above the declaration it overrides.
 type pendingFuncOverride struct {
-	fn       *ir.Func
+	fn *ir.Func
+	// params are the parameters of fn its override listed, and so the only
+	// ones in scope for its body.
+	params   []*ir.Param
 	platform string
 	kind     ir.BuiltinKind
 	decl     *ast.FuncDef
@@ -273,12 +325,21 @@ type pendingFuncOverride struct {
 	// package's own source is written against its own imports, none of which
 	// the program has.
 	libURI string
+	// pkg is the package a program's override is written in, nil for a
+	// target package's.
+	pkg *ir.Package
 }
 
 // collectFuncOverrides merges each `func f[target] { ... }` a program declares
 // into the function it names.
+//
+// Each in the file it was written in, whose imports its target names: read in
+// whichever file pass1 ended on, `[html.platform]` was undefined unless that
+// file happened to import html too.
 func (c *checker) collectFuncOverrides() {
+	defer c.saveFile()()
 	for _, decl := range c.userFuncOverrides {
+		c.enterFileOf(decl.Pos)
 		c.mergeFuncOverride(decl, nil, "")
 	}
 }
@@ -308,10 +369,6 @@ func (c *checker) mergeFuncOverride(decl *ast.FuncDef, base *ir.Func, libURI str
 		c.error(decl.Pos, "package for %q may not declare an override for %q", owner, plat)
 		return
 	}
-	if len(decl.Params.Params) > 0 {
-		c.error(decl.Pos, "override %q may not declare params (inherited from the declaration it overrides)", decl.Name)
-		return
-	}
 	if decl.ReturnType != nil {
 		c.error(decl.Pos, "override %q may not declare a return type (inherited from the declaration it overrides)", decl.Name)
 		return
@@ -321,21 +378,29 @@ func (c *checker) mergeFuncOverride(decl *ast.FuncDef, base *ir.Func, libURI str
 			return
 		}
 	}
-	overrides := &base.PlatformOverrides
-	if kind == ir.BuiltinLanguage {
-		overrides = &base.LanguageOverrides
+	// No target emits a native, so a body overriding one would be checked and
+	// then never run.
+	if base.Foreign.Name != "" && !base.Foreign.Marked {
+		c.error(decl.Pos, "%q is declared outside SNGL, so no target emits it and an override would never run", decl.Name)
+		return
 	}
+	overrides := c.overrideMap(base, libURI == "", kind)
 	if *overrides == nil {
-		*overrides = map[string]ir.Body{}
+		*overrides = map[string]ir.Override{}
 	}
-	if _, dup := (*overrides)[plat]; dup {
+	all := c.overridesOf(base)
+	if _, dup := (*all.Of(kind))[plat]; dup {
 		c.error(decl.Pos, "function %q already has an implementation for %q", decl.Name, plat)
 		return
 	}
 	// Reserve the key so a duplicate is caught even when the body check
 	// contributes nothing, as addOverrideBody does for a component.
-	(*overrides)[plat] = ir.Body{}
-	c.pendingFuncOverrides = append(c.pendingFuncOverrides, pendingFuncOverride{fn: base, platform: plat, kind: kind, decl: decl, libURI: libURI})
+	(*overrides)[plat] = ir.Override{}
+	po := pendingFuncOverride{fn: base, params: c.selectFuncParams(decl, base), platform: plat, kind: kind, decl: decl, libURI: libURI}
+	if libURI == "" {
+		po.pkg = c.declPkg()
+	}
+	c.pendingFuncOverrides = append(c.pendingFuncOverrides, po)
 }
 
 // libFuncOverrideBase resolves the function a target package's own override
@@ -418,13 +483,20 @@ func (c *checker) funcOverrideBase(decl *ast.FuncDef) *ir.Func {
 // checkPendingFuncOverrides checks each override body against the signature of
 // the function it overrides, and stashes the result under its platform.
 //
-// The body is checked with the base's AST in place of the override's so the
-// params and the return type in scope are the ones the override inherits: the
-// override declares neither, and checkFuncBody reads both off the declaration.
+// The body is checked on a copy of the base carrying the override's body, so
+// the params and the return type in scope are the ones the override inherits:
+// the override declares neither, and checkFuncBody reads both off the
+// declaration.
 func (c *checker) checkPendingFuncOverrides() {
+	c.checkFuncOverrides(c.pendingFuncOverrides)
+}
+
+// checkFuncOverrides checks each of pending as checkPendingFuncOverrides
+// describes.
+func (c *checker) checkFuncOverrides(pending []pendingFuncOverride) {
 	savedScope := c.scope
 	defer func() { c.scope = savedScope }()
-	for _, po := range c.pendingFuncOverrides {
+	for _, po := range pending {
 		// A target package's own override is compiler-internal source: it
 		// resolves in that package, chained to the library scope it is written
 		// against, and not where a program's declarations are visible. A
@@ -437,23 +509,24 @@ func (c *checker) checkPendingFuncOverrides() {
 				c.scope = ps
 			}
 		}
-		saved := po.fn.AST
-		savedBlock := po.fn.Block
-		if saved != nil {
-			swapped := *saved
+		// On a copy, as a component override is, so the declaration is not
+		// written.
+		ov := new(ir.Func)
+		*ov = *po.fn
+		if po.fn.AST != nil {
+			swapped := *po.fn.AST
 			swapped.Body = po.decl.Body
 			swapped.Block = po.decl.Block
-			po.fn.AST = &swapped
+			ov.AST = &swapped
 		}
-		po.fn.Block = nil
-		c.checkFuncBody(po.fn)
-		if po.kind == ir.BuiltinLanguage {
-			po.fn.LanguageOverrides[po.platform] = ir.Body{Stmts: po.fn.Block}
-		} else {
-			po.fn.PlatformOverrides[po.platform] = ir.Body{Stmts: po.fn.Block}
+		ov.Block = nil
+		ov.Params = po.params
+		c.checkFuncBody(ov)
+		checked := ir.Override{Stmts: ov.Block, Pkg: po.pkg}
+		if po.fn.RecvParam == nil {
+			checked.RecvParam = ov.RecvParam
 		}
-		po.fn.AST = saved
-		po.fn.Block = savedBlock
+		(*c.overrideMap(po.fn, po.libURI == "", po.kind))[po.platform] = checked
 	}
 }
 
@@ -494,13 +567,13 @@ func (c *checker) reportTargetNames() {
 	// A library's nodes first: a program's node that takes a shipped
 	// target's name is the one that has to change, so it is the one reported.
 	slices.SortStableFunc(nodes, func(a, b *ir.Component) int {
-		if (a.Pkg == "") != (b.Pkg == "") {
-			if a.Pkg == "" {
+		if (a.PkgPath() == "") != (b.PkgPath() == "") {
+			if a.PkgPath() == "" {
 				return 1
 			}
 			return -1
 		}
-		if n := cmp.Compare(a.Pkg, b.Pkg); n != 0 {
+		if n := cmp.Compare(a.PkgPath(), b.PkgPath()); n != 0 {
 			return n
 		}
 		if n := cmp.Compare(a.AST.Pos.File, b.AST.Pos.File); n != 0 {
@@ -513,11 +586,11 @@ func (c *checker) reportTargetNames() {
 	})
 	first := map[string]*ir.Component{}
 	for _, n := range nodes {
-		tierKind, name := ir.TargetTier(n.Tree), n.Gen.TargetName
+		tierKind, name := ir.TargetTier(n.Family), n.Gen.TargetName
 		tier := targetTierMember(tierKind)
-		if owner, kind, ok := targetTierName(strings.TrimPrefix(n.Pkg, "sngl:")); ok &&
+		if owner, kind, ok := targetTierName(strings.TrimPrefix(n.PkgPath(), "sngl:")); ok &&
 			kind == tierKind && owner != name {
-			c.error(n.AST.Pos, "%s names its %s %q: a target package's node carries the package's own name, %q", n.Pkg, tier, name, owner)
+			c.error(n.AST.Pos, "%s names its %s %q: a target package's node carries the package's own name, %q", n.PkgPath(), tier, name, owner)
 			continue
 		}
 		key := tier + "/" + name
@@ -544,21 +617,46 @@ func (c *checker) reportEmitterPlacement() {
 	}
 	allowed := map[*ir.NodeInst]bool{}
 	var bodies [][]ir.Stmt
+	place := func(comp *ir.Component, target string, body ir.Override, at *ast.Pos) {
+		want := ir.BuiltinGenNode
+		if comp.IsFamily() {
+			want = ir.BuiltinGenEmit
+		}
+		if ni := soleEmitterNode(body.Body, want); ni != nil {
+			allowed[ni] = true
+		} else if at != nil && comp.IsFamily() {
+			c.error(*at, "the %s family's override for %s is a gen.emit and nothing else: a family is never rendered, so nothing else in it would be read", comp.Name, target)
+		}
+		bodies = append(bodies, body.Stmts)
+	}
+	tiers := []ir.BuiltinKind{ir.BuiltinFamilyPlatform, ir.BuiltinFamilyLanguage}
 	for _, comp := range c.pkg.Components {
-		bodies = append(bodies, comp.Body)
-		for _, overrides := range []map[string]ir.Body{comp.PlatformOverrides, comp.LanguageOverrides} {
+		bodies = append(bodies, comp.Stmts)
+		var at *ast.Pos
+		if comp.AST != nil {
+			at = &comp.AST.Pos
+		}
+		for _, kind := range tiers {
+			overrides := *ir.OverridesOf(comp).Of(kind)
 			for _, target := range slices.Sorted(maps.Keys(overrides)) {
-				body := overrides[target]
-				want := ir.BuiltinGenNode
-				if comp.IsFamily() {
-					want = ir.BuiltinGenEmit
+				place(comp, target, overrides[target], at)
+			}
+		}
+	}
+	// An override the program wrote of another package's component is the
+	// program's to answer for; one an import added was its own package's.
+	for _, sym := range bySymName(maps.Keys(c.pkg.Overlay.Overrides)) {
+		comp, ok := sym.(*ir.Component)
+		if !ok {
+			continue
+		}
+		for _, kind := range tiers {
+			overrides := *c.pkg.Overlay.Overrides[sym].Of(kind)
+			for _, target := range slices.Sorted(maps.Keys(overrides)) {
+				if body := overrides[target]; body.Pkg == c.declPkg() {
+					at := c.addedOverrideAt[addedOverride{comp, kind, target}]
+					place(comp, target, body, &at)
 				}
-				if ni := soleEmitterNode(body, want); ni != nil {
-					allowed[ni] = true
-				} else if comp.IsFamily() && comp.AST != nil {
-					c.error(comp.AST.Pos, "the %s family's override for %s is a gen.emit and nothing else: a family is never rendered, so nothing else in it would be read", comp.Name, target)
-				}
-				bodies = append(bodies, body.Stmts)
 			}
 		}
 	}
@@ -571,6 +669,12 @@ func (c *checker) reportEmitterPlacement() {
 			c.reportMisplacedEmitters(st, allowed, seen)
 		}
 	}
+}
+
+type addedOverride struct {
+	decl   ir.Symbol
+	kind   ir.BuiltinKind
+	target string
 }
 
 func (c *checker) reportMisplacedEmitters(st ir.Stmt, allowed, seen map[*ir.NodeInst]bool) {
@@ -617,4 +721,74 @@ func soleEmitterNode(body ir.Body, kind ir.BuiltinKind) *ir.NodeInst {
 		return nil
 	}
 	return ni
+}
+
+// overrideMap is where an override of decl for the tier kind is recorded: on
+// decl when its own package writes it, and otherwise in the overlay of the
+// package that writes it -- the program's, or a library package's -- since
+// the declaration belongs to another package, which every check shares.
+func (c *checker) overrideMap(decl ir.Symbol, user bool, kind ir.BuiltinKind) *map[string]ir.Override {
+	if writer := c.overrideWriter(user); writer != nil {
+		if owner := ir.DeclaringPackage(decl); owner != nil && owner != writer {
+			return writer.Overlay.For(decl).Of(kind)
+		}
+	}
+	ir.MustWriteDecl(decl, "an override of "+decl.SymName())
+	switch d := decl.(type) {
+	case *ir.Component:
+		if kind == ir.BuiltinFamilyLanguage {
+			return &d.LanguageOverrides
+		}
+		return &d.PlatformOverrides
+	case *ir.Func:
+		if kind == ir.BuiltinFamilyLanguage {
+			return &d.LanguageOverrides
+		}
+		return &d.PlatformOverrides
+	}
+	return nil
+}
+
+// overrideWriter is the package an override being recorded belongs to: the
+// program for a user's, else the target package being merged or the library
+// package loading.
+func (c *checker) overrideWriter(user bool) *ir.Package {
+	switch {
+	case user:
+		return c.declPkg()
+	case c.overrideOwner != nil:
+		return c.overrideOwner
+	}
+	return c.libLoadPkg
+}
+
+// overridesOf is every override decl has: its own, the library's, the
+// package being merged's and the program's.
+func (c *checker) overridesOf(decl ir.Symbol) ir.Overrides {
+	all := *ir.OverridesOf(decl)
+	for _, o := range []ir.Overlay{c.libs.targets, c.overrideOwnerOverlay(), c.pkg.Overlay} {
+		if added := o.Overrides[decl]; added != nil {
+			all = ir.Overrides{Platform: mergedOverrides(all.Platform, added.Platform), Language: mergedOverrides(all.Language, added.Language)}
+		}
+	}
+	return all
+}
+
+func (c *checker) overrideOwnerOverlay() ir.Overlay {
+	if w := c.overrideWriter(false); w != nil {
+		return w.Overlay
+	}
+	return ir.Overlay{}
+}
+
+func mergedOverrides(own, added map[string]ir.Override) map[string]ir.Override {
+	if len(added) == 0 {
+		return own
+	}
+	out := maps.Clone(own)
+	if out == nil {
+		out = make(map[string]ir.Override, len(added))
+	}
+	maps.Copy(out, added)
+	return out
 }

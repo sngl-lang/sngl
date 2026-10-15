@@ -30,18 +30,18 @@ component dial(angle float) ui.node {
 
     draw.canvas(width=100px, height=100px) {
         draw.line(
-            x1=c.x,
-            y1=c.y,
-            x2=draw.Point.polar(c, 40.0, angle).x,
-            y2=draw.Point.polar(c, 40.0, angle).y,
-            style=draw.CanvasStyle{stroke=color{r=255}, strokeWidth=2.0},
+            x1 = c.x,
+            y1 = c.y,
+            x2 = draw.Point.polar(c, 40.0, angle).x,
+            y2 = draw.Point.polar(c, 40.0, angle).y,
+            style = draw.Style{stroke=color{r=255}, strokeWidth=2.0},
         )
         for var i = seq.count(6) {
             draw.circle(
-                cx=draw.Point.polar(c, 45.0, float(i) * math.tau / 6.0).x,
-                cy=draw.Point.polar(c, 45.0, float(i) * math.tau / 6.0).y,
-                r=2.0,
-                style=draw.CanvasStyle{fill=color{b=255}},
+                cx = draw.Point.polar(c, 45.0, float(i) * math.tau / 6.0).x,
+                cy = draw.Point.polar(c, 45.0, float(i) * math.tau / 6.0).y,
+                r = 2.0,
+                style = draw.Style{fill=color{b=255}},
             )
         }
     }
@@ -69,7 +69,7 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { c__inst0: null, visible__inst1: true };
+  var state = { c__inst0: null, visible__inst0: true };
   state.c__inst0 = { x: 50, y: 50 };
   function paintStyle(ctx, style) {
     ctx.fillStyle = "rgba(" + String(style.fill.r) + "," + String(style.fill.g) + "," + String(style.fill.b) + "," + String(parseFloat(style.fill.a) / 255) + ")";
@@ -171,4 +171,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:c49367ff8b7ad7b7a34281e8e0f77015
+pass sha256:789b0ef9250ff8c231a1ec1eb0e3c28b

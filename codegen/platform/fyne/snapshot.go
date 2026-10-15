@@ -9,17 +9,17 @@ import (
 	"runtime"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/ir"
 )
 
 // snapshotGoMod returns the go.mod for a snapshot harness module. Generated
 // fyne code now imports the SNGL Go canvas runtime
-// (git.duckfam.us/jonathan/sngl/pkg/go/canvas), which is not publicly
+// (duckfam.us/sngl/pkg/go/canvas), which is not publicly
 // fetchable, so the module requires the sngl module and replaces it with the
 // local checkout resolved from this source file's location.
 func snapshotGoMod() string {
-	const mod = "git.duckfam.us/jonathan/sngl"
+	const mod = "duckfam.us/sngl"
 	root := snglModuleRoot()
 	b := &strings.Builder{}
 	b.WriteString("module tmp\n\ngo 1.23\n")

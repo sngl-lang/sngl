@@ -6,10 +6,10 @@ import (
 	"strconv"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/codegen/lang/golang"
-	"git.duckfam.us/jonathan/sngl/internal/htmlutil"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/codegen/lang/golang"
+	"duckfam.us/sngl/internal/htmlutil"
+	"duckfam.us/sngl/ir"
 )
 
 // irViewContext tracks state during IR-based View() code generation.
@@ -60,6 +60,15 @@ func (vc *irViewContext) line(format string, args ...any) {
 // `var __ltN` decl or its value-only If) to Go via the shared Go IR context,
 // honoring the current indent.
 func (vc *irViewContext) emitIRStmt(s ir.Stmt) {
+	// A nested ternary's inner temp is declared inside the outer one's
+	// branches, and an unbound enum-typed temp is spelled as the member of its
+	// own name.
+	_ = ir.WalkStmts(s, func(st ir.Stmt) error {
+		if lv, ok := st.(*ir.LocalVar); ok {
+			vc.gc = vc.gc.WithLocal(lv.Name)
+		}
+		return nil
+	})
 	for _, l := range vc.gc.EvalStmt(s) {
 		vc.line("%s", l)
 	}
@@ -468,6 +477,11 @@ func (vc *irViewContext) renderNode(n *ir.NodeInst, resultVar string) {
 		return
 	}
 
+	if btIntrinsic(n) == pictureIntrinsic {
+		vc.renderPicture(n, resultVar)
+		return
+	}
+
 	// Inlined blueprint primitive — render off its blueprint record. Every
 	// stdlib wrapper inlines to one of these at lower time, and the #[intrinsic]
 	// id on the declaration is what identifies one; see bubbletea.sngl +
@@ -529,8 +543,13 @@ func tooltipFocusExpr(stmts []ir.Stmt, gc *golang.GoIRContext) string {
 // component's bubbletea override body is inlined (see bubbletea.sngl).
 func (vc *irViewContext) renderBlueprint(n *ir.NodeInst, resultVar string) {
 	bp := extractBlueprint(n)
-	styleFields := codegen.NodeStyleFields(n)
-	style := buildIRStyleExpr(styleFields, vc.gc, vc.scaleFactor)
+	var style string
+	switch bp.Kind {
+	case bpOverlay, bpLayout, bpStyled:
+		style = vc.nodeStyle(n)
+	case bpSpan, bpWidget:
+		vc.discardStyle(codegen.NodeStyleFields(n))
+	}
 
 	switch bp.Kind {
 	case bpFlow:
@@ -651,6 +670,10 @@ func (vc *irViewContext) renderBlueprint(n *ir.NodeInst, resultVar string) {
 			panic(fmt.Sprintf("bubbletea: widget index %d out of range (%d widgets analyzed); view/analyze walk desync", idx, len(vc.widgets)))
 		}
 		w := vc.widgets[idx]
+		if w.loop != nil {
+			vc.line(`%s = %s%s`, resultVar, copyCall(w, vc.gc), w.model.View)
+			return
+		}
 		vc.line(`%s = m.%s%s`, resultVar, w.fieldName, w.model.View)
 	}
 }
@@ -680,8 +703,7 @@ func (vc *irViewContext) renderUserComponent(n *ir.NodeInst, resultVar string) {
 }
 
 func (vc *irViewContext) renderRawTerminal(n *ir.NodeInst, resultVar string) {
-	styleFields := codegen.NodeStyleFields(n)
-	style := buildIRStyleExpr(styleFields, vc.gc, vc.scaleFactor)
+	style := vc.nodeStyle(n)
 
 	// Join layout
 	if joinExpr := codegen.NodeProp(n, "join"); joinExpr != nil {
@@ -724,19 +746,45 @@ func (vc *irViewContext) renderRawTerminal(n *ir.NodeInst, resultVar string) {
 	}
 }
 
-// buildIRStyleExpr builds a Go lipgloss style chain from IR style fields.
-func buildIRStyleExpr(styles []codegen.StyleField, gc *golang.GoIRContext, scaleFactor int) string {
+// styleExpr builds a Go lipgloss style chain from IR style fields.
+func (vc *irViewContext) styleExpr(styles []codegen.StyleField) string {
 	chain := []string{"lipgloss.NewStyle()"}
 	// Sort by property name: a lipgloss builder chain is order-independent, and
 	// a stable key order keeps the emitted source reproducible.
 	sorted := append([]codegen.StyleField(nil), styles...)
 	slices.SortFunc(sorted, func(a, b codegen.StyleField) int { return strings.Compare(a.Name, b.Name) })
 	for _, sf := range sorted {
-		if call := irStyleCall(sf.Name, sf.Value, gc, scaleFactor); call != "" {
+		if call := irStyleCall(sf.Name, sf.Value, vc.gc, vc.scaleFactor); call != "" {
 			chain = append(chain, call)
+		} else {
+			vc.discard(sf.Value)
 		}
 	}
 	return strings.Join(chain, ".\n")
+}
+
+func (vc *irViewContext) discardStyle(styles []codegen.StyleField) {
+	for _, sf := range styles {
+		vc.discard(sf.Value)
+	}
+}
+
+// discard marks a view-local temp read by a field this target does not draw.
+// NoTernary hoists `fontSize = on ? 20px : 10px` into a `var __ltN` ahead of
+// the node whether or not anything reads it, and Go refuses one nobody reads.
+func (vc *irViewContext) discard(e ir.Expr) {
+	seen := map[string]bool{}
+	_ = ir.WalkExprs(e, func(x ir.Expr) error {
+		id, ok := x.(*ir.Ident)
+		if !ok || id.Member != "" || seen[id.Name] {
+			return nil
+		}
+		if _, kind := vc.gc.Ctx.Resolve(id.Name); kind == codegen.NameLocal {
+			seen[id.Name] = true
+			vc.line("_ = %s", vc.gc.EvalExpr(id))
+		}
+		return nil
+	})
 }
 
 // lipglossColor renders a color style value for `lipgloss.Color(...)`. A
@@ -760,11 +808,10 @@ func lipglossColor(expr ir.Expr, gc *golang.GoIRContext) string {
 
 // cellVal is a style value in terminal cells.
 //
-// A measurement is a magnitude per base, and a terminal has a size for exactly
-// one of them: a cell is so many pixels wide, while an em is a font the host
-// chose and a pct is a fraction of a box lipgloss never reports. So the first
-// declared base is the one read and the rest contribute nothing -- which is
-// the same answer `2rem` and `50pct` already got, arrived at deliberately.
+// A measurement is read as pixels and scaled to cells: a cell stands for
+// scaleFactor pixels, and an em for emPx of them -- a terminal's font is one
+// cell wide and about two tall, so 16px, two cells, is an em
+// (codegen.MeasurementPx).
 //
 // Reading the magnitude at all is what was missing: a unit value is a record
 // in Go, so `paddingLeft=20px` came out as `max(1, Measurement{Px: 20}/8)` and
@@ -772,29 +819,22 @@ func lipglossColor(expr ir.Expr, gc *golang.GoIRContext) string {
 // compiled. Nothing in lib/ rendered a body until now, which is why the one
 // spelling every document uses did not reach it sooner.
 func cellVal(expr ir.Expr, gc *golang.GoIRContext, scaleFactor int) string {
-	val := gc.EvalExpr(expr)
 	ud := ir.UnitDeclOf(exprType(expr))
 	if ud == nil {
-		return scaleVal(val, scaleFactor)
+		return scaleVal(gc.EvalExpr(expr), scaleFactor)
 	}
-	bases := ud.Bases()
-	if len(bases) == 0 {
-		return scaleVal(val, scaleFactor)
+	if px, ok := codegen.MeasurementPx(expr, emPx); ok {
+		return scaleVal(strconv.Itoa(int(px)), scaleFactor)
 	}
-	if lit, ok := expr.(*ir.Literal); ok {
-		mag, base, ok := ir.UnitMagnitude(lit)
-		if ok && base != bases[0].Name {
-			return "0"
-		}
-		if ok {
-			return scaleVal(strconv.Itoa(int(mag)), scaleFactor)
-		}
-	}
+	val := gc.EvalExpr(expr)
 	if ud.IsSingleBase() {
 		return scaleVal("int("+val+")", scaleFactor)
 	}
-	return scaleVal("int("+val+"."+golang.ExportName(bases[0].Name)+")", scaleFactor)
+	return scaleVal("int("+codegen.MeasurementSum(ud, val, golang.ExportName, strconv.Itoa(emPx))+")", scaleFactor)
 }
+
+// emPx is an em in the pixels a cell is counted in.
+const emPx = 16
 
 // exprType is expr's type, nil-safely: a style field may carry no expression
 // at all.
@@ -863,28 +903,74 @@ func irStyleCall(prop string, expr ir.Expr, gc *golang.GoIRContext, scaleFactor 
 	case "maxHeight":
 		return fmt.Sprintf("MaxHeight(%s)", cellVal(expr, gc, scaleFactor))
 	case "fontWeight":
-		if val == `"bold"` {
-			return "Bold(true)"
-		}
+		return enumFlagCall("Bold", expr, val, "bold")
 	case "fontStyle":
-		if val == `"italic"` {
-			return "Italic(true)"
-		}
+		return enumFlagCall("Italic", expr, val, "italic")
 	case "textAlign":
-		switch val {
-		case `"center"`:
-			return "AlignHorizontal(lipgloss.Center)"
-		case `"right"`:
-			return "AlignHorizontal(lipgloss.Right)"
-		case `"left"`:
-			return "AlignHorizontal(lipgloss.Left)"
+		if m := enumMember(expr); m != "" {
+			if pos, ok := lipglossPositions[m]; ok {
+				return "AlignHorizontal(" + pos + ")"
+			}
+			return ""
 		}
+		// Every enum is a string in Go. A member with no entry reads the zero
+		// Position, which is lipgloss.Left -- what left and justify both get.
+		return fmt.Sprintf(`AlignHorizontal(map[string]lipgloss.Position{"center": lipgloss.Center, "right": lipgloss.Right}[%s])`, val)
 	case "borderWidth":
-		return "Border(lipgloss.NormalBorder())"
+		if mag, ok := codegen.MeasurementPx(expr, emPx); ok {
+			if mag <= 0 {
+				return ""
+			}
+			return "Border(lipgloss.NormalBorder())"
+		}
+		return fmt.Sprintf("Border(lipgloss.NormalBorder(), %s)", nonzero(expr, val))
 	case "opacity":
-		return "Faint(true)"
+		if v, ok := codegen.IRLiteralNumber(expr); ok {
+			if v >= 1 {
+				return ""
+			}
+			return "Faint(true)"
+		}
+		return fmt.Sprintf("Faint(%s < 1)", val)
 	}
 	return ""
+}
+
+var lipglossPositions = map[string]string{
+	"left":   "lipgloss.Left",
+	"center": "lipgloss.Center",
+	"right":  "lipgloss.Right",
+}
+
+// enumFlagCall is a lipgloss toggle that one member of an enum field turns on.
+func enumFlagCall(method string, expr ir.Expr, val, member string) string {
+	if on := enumFlag(expr, val, member); on != "" {
+		return method + "(" + on + ")"
+	}
+	return ""
+}
+
+// enumFlag is whether an enum field holds member, as a Go bool expression: ""
+// for a literal that does not, "true" for one that does. A value that reads
+// state is compared at render time; a lowering has usually hoisted it into a
+// temp by now, which is an Ident with no member. val is expr in Go.
+func enumFlag(expr ir.Expr, val, member string) string {
+	if m := enumMember(expr); m != "" {
+		if m == member {
+			return "true"
+		}
+		return ""
+	}
+	return fmt.Sprintf("%s == %q", val, member)
+}
+
+// nonzero is whether a run-time measurement is anything but zero, in Go. A
+// multi-base one is a struct, and nonzero in any base.
+func nonzero(expr ir.Expr, val string) string {
+	if ud := ir.UnitDeclOf(exprType(expr)); ud != nil && !ud.IsSingleBase() {
+		return fmt.Sprintf("%s != (%s{})", val, golang.ExportName(ud.Name))
+	}
+	return val + " > 0"
 }
 
 // viewStmts is what View draws: the package body, which is the application's

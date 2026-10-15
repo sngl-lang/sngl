@@ -1,27 +1,26 @@
 A write that moves an effect's key list settles it from inside a nested block.
 
-`injectSettles` asks allBlocks for every block a write can sit in and puts the
-settle call after each write it finds. A *view* body arrives branch by branch --
-the collector descends its control flow and adds each one -- but an imperative
-block arrives as a single pointer, so the `if` inside a handler or inside a tick
-body was never visited and the write in it settled nothing.
+`injectSettles` asks allBlocks for every block a write can sit in and settles
+where the block is left. A *view* body arrives branch by branch -- the collector
+descends its control flow and adds each one -- but an imperative block arrives
+as a single pointer, so the `if` inside a handler or inside a tick body was once
+never visited and the write in it settled nothing.
 
 Both shapes are here, one brace deeper than `timer_enabled_toggle.txtar`, which
 writes the gate at the top of its handler and so passed throughout:
 
   - `@click { if seconds > 0 { running = !running } }` -- the countdown never
-    starts, though the label updates, because the reactive updater injection
-    does descend and this one did not.
+    started, though the label updated, because the reactive updater injection
+    did descend and this one did not.
   - `@tick { seconds -= 1; if seconds <= 0 { running = false } }` -- the
-    countdown never stops itself, which is the same bug in the effect's own
+    countdown never stopped itself, which is the same bug in the effect's own
     mount body.
 
-This is the tutorial "timers" regression a second time. It became reachable for
-html when the timer stopped being a primitive: the emitter's own re-sync used
-codegen.MutatedFields, which walks a statement recursively.
+The settle is where the handler ends, after the `if` holding the write: a
+handler settles once, however many writes it makes, as the interpreter does.
 
-deny out/none/html/index.html `state.running = !state.running;\n *\}` -- the write is followed by the settle, not by the end of the branch
-deny out/none/html/index.html `state.running = false;\n *\}` -- likewise in the tick body
+deny out/none/html/index.html `state.running__inst0 = !state.running__inst0;\n *\}\n *;\n *\}\)` -- the click handler ends in its settle, not straight after the branch
+deny out/none/html/index.html `state.running__inst0 = false;\n *\}\n *;\n *\}, __effect0_key` -- likewise the tick body
 
 -- app.sngl --
 import . "sngl:ui"
@@ -80,21 +79,21 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { seconds__inst1: 3, running__inst1: false, handle__inst0__inst1: 0, visible__inst2: true };
+  var state = { seconds__inst0: 3, running__inst0: false, handle__inst0__inst0: 0, visible__inst0: true };
   function __effect0_mount() {
-    state.handle__inst0__inst1 = setInterval(() => {
-      state.seconds__inst1 -= 1;
-      __n1.textContent = String(state.seconds__inst1) + " s";
-      if (state.seconds__inst1 <= 0) {
+    state.handle__inst0__inst0 = setInterval(() => {
+      state.seconds__inst0 -= 1;
+      __n1.textContent = String(state.seconds__inst0) + " s";
+      if (state.seconds__inst0 <= 0) {
         ;
-        state.running__inst1 = false;
-        __effects0_settle();
+        state.running__inst0 = false;
       }
       ;
+      __effects0_settle();
     }, __effect0_key);
   }
   function __effect0_unmount() {
-    clearInterval(state.handle__inst0__inst1);
+    clearInterval(state.handle__inst0__inst0);
   }
   function __snglTeardown() {
     __effect0_teardown();
@@ -107,7 +106,7 @@ body { font-family: system-ui, sans-serif; }
   var __effects0_steps = 0;
   function __effect0_down() {
     __effect0_desired = [];
-    if (state.running__inst1) {
+    if (state.running__inst0) {
       __effect0_desired.push(1e3);
     }
     for (const [__effect0_i, _] of __effect0_live.entries()) {
@@ -169,15 +168,15 @@ body { font-family: system-ui, sans-serif; }
   var $1 = document.getElementById("$1");
   var __n1 = document.querySelector('[data-sngl-id="__n1"]');
   $1.addEventListener("click", function() {
-    if (state.seconds__inst1 > 0) {
+    if (state.seconds__inst0 > 0) {
       ;
-      state.running__inst1 = !state.running__inst1;
-      __effects0_settle();
+      state.running__inst0 = !state.running__inst0;
     }
     ;
+    __effects0_settle();
   });
   function __sngl_init() {
-    __n1.textContent = String(state.seconds__inst1) + " s";
+    __n1.textContent = String(state.seconds__inst0) + " s";
   }
   __sngl_init();
   __effects0_settle();
@@ -186,4 +185,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:198f75248c1353fa00d8c00cd226cf30
+pass sha256:ea528eb7fbf397e024e4d6d74cd6c48f

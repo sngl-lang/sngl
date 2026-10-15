@@ -1,6 +1,6 @@
 package lower
 
-import "git.duckfam.us/jonathan/sngl/ir"
+import "duckfam.us/sngl/ir"
 
 // passIterKind stamps ir.For.IterKind on every loop so each language's ForHead
 // emits a pure per-kind template instead of independently re-deriving the

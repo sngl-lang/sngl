@@ -101,7 +101,7 @@ body { font-family: system-ui, sans-serif; }
 </head><body>
 
 <div style="display:flex;flex-direction:column;gap:12px">
-  <h1 style="font-size:32px;font-weight:bold;margin:0px;white-space:pre-wrap"><span>Live</span></h1>
+  <h1 style="font-size:32px;font-weight:bold;margin:0px;white-space:pre-wrap" id="live"><span>Live</span></h1>
   <p style="margin:0px;white-space:pre-wrap"><span>A counter:</span></p>
   <span id="__n0" data-sngl-id="__n0">
   </span>
@@ -125,7 +125,7 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { n__inst0: 1, n__inst1: 100, visible__inst2: true };
+  var state = { n__inst0: 1, n__inst1: 100, visible__inst0: true };
   function String(v) {
     return "" + v;
   }
@@ -140,4 +140,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:e141a29ba2c022b132d60b3fa2453276
+pass sha256:afb21d1ae4ee8c3af8720a412e1282a2

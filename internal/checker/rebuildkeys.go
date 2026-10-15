@@ -5,12 +5,12 @@ import (
 	"slices"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/ir"
 )
 
 // maxRebuildDepth bounds the descent into generic bodies. A generic component
-// may place itself under a wider type -- `r(x=[x])` inside `r<T>(x T)` -- and
+// may place itself under a wider type -- `r(x=[x])` inside `r[T any](x T)` -- and
 // each round is a type the walk has not seen, so the frame set alone does not
 // terminate it. The bound is far past any real nesting; a program that reaches
 // it has a rebuild key nobody can write down either.
@@ -116,13 +116,13 @@ func (w *rebuildWalker) node(inst *ir.NodeInst, scope rebuildScope) {
 		if a.value != nil {
 			t = a.value.ExprType().Substitute(scope.env)
 		}
-		if mentionsTypeParam(t) {
+		if t.HasTypeParam() {
 			// Still a parameter, so this body is being read on its own terms
 			// and the call sites owe the answer.
 			continue
 		}
 		switch {
-		case comp.Builtin == ir.BuiltinEffect && p.Name == "on":
+		case comp.Builtin == ir.BuiltinEffect && p.Name == ir.EffectOn && effectBrackets(inst):
 			w.reportKey(inst, a, t, scope)
 		case p.Construct && t != nil:
 			w.reportConstruct(inst, comp, p, a, t, scope)
@@ -138,7 +138,7 @@ func (w *rebuildWalker) node(inst *ir.NodeInst, scope rebuildScope) {
 // wherever it is placed, and it was already walked as an owner.
 func (w *rebuildWalker) descend(inst *ir.NodeInst, args map[string]rebuildArg, scope rebuildScope) {
 	comp := inst.Component
-	if len(comp.TypeParams) == 0 || len(comp.Body) == 0 || scope.depth >= maxRebuildDepth {
+	if len(comp.TypeParams) == 0 || len(comp.Stmts) == 0 || scope.depth >= maxRebuildDepth {
 		return
 	}
 	env := w.bindings(comp, args, scope.env)
@@ -154,7 +154,7 @@ func (w *rebuildWalker) descend(inst *ir.NodeInst, args map[string]rebuildArg, s
 	if !scope.bound() {
 		site = ir.StmtPos(inst)
 	}
-	w.body(comp.Body, rebuildScope{holder: comp, env: env, site: site, depth: scope.depth + 1})
+	w.body(comp.Stmts, rebuildScope{holder: comp, env: env, site: site, depth: scope.depth + 1})
 }
 
 // bindings is what this call site pins comp's type parameters to, read from the
@@ -165,7 +165,7 @@ func (w *rebuildWalker) descend(inst *ir.NodeInst, args map[string]rebuildArg, s
 func (w *rebuildWalker) bindings(comp *ir.Component, args map[string]rebuildArg, env map[string]*ir.Type) map[string]*ir.Type {
 	out := map[string]*ir.Type{}
 	for _, p := range comp.Props {
-		if !mentionsTypeParam(p.Type) {
+		if !p.Type.HasTypeParam() {
 			continue
 		}
 		a, supplied := args[p.Name]
@@ -173,12 +173,12 @@ func (w *rebuildWalker) bindings(comp *ir.Component, args map[string]rebuildArg,
 			continue
 		}
 		t := a.value.ExprType().Substitute(env)
-		// A dyn argument states nothing, and one still typed by a parameter
+		// An invalid argument states nothing, and one still typed by a parameter
 		// states only that this call did not pin it either.
-		if t == nil || t.Kind == ir.TypeDyn || mentionsTypeParam(t) {
+		if t == nil || t.Kind == ir.TypeInvalid || t.HasTypeParam() {
 			continue
 		}
-		bindTypeParams(p.Type, t, out)
+		ir.BindTypeParams(p.Type, t, out)
 	}
 	for _, tp := range comp.TypeParams {
 		if tp.Default == nil {
@@ -240,7 +240,7 @@ func (w *rebuildWalker) reportKey(inst *ir.NodeInst, a rebuildArg, t *ir.Type, s
 // alike on every target.
 //
 // The declaration answers this one only when it is written concretely, which
-// checkConstructProps does. `#[construct] seed T` is admitted where it is
+// markConstruct does. `#[construct] seed T` is admitted where it is
 // written -- judging a parameter there would make a generic component
 // undeclarable -- and the call is the only place T becomes a type. Unchecked,
 // bound to a list, the prop reached fyne's rebuild comparison as
@@ -340,10 +340,10 @@ func effectKeyHint(t *ir.Type) string {
 	}
 	switch t.Kind {
 	case ir.TypeList:
-		return "; a key over several values is a struct of them, not a list"
+		return "; to react to a write to the list, handle @update instead, and a key over several values is a struct of them, not a list"
 	case ir.TypeMap:
-		return "; a key over several values is a struct of them, not a map"
-	case ir.TypeDyn:
+		return "; to react to a write to the map, handle @update instead, and a key over several values is a struct of them, not a map"
+	case ir.TypeInvalid:
 		return "; a key over several values is a struct of them, and the struct has to be declared"
 	case ir.TypeStruct:
 		// An unresolved struct type. An anonymous literal is not one: the

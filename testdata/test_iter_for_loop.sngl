@@ -1,12 +1,12 @@
-// for ... = expr binds to an iter<T>; list<T> implicitly converts.
+// for ... = expr binds to an iter[T]; list[T] implicitly converts.
 // Map iteration yields iter<(K, V)> with key+value loop variables.
 
 import . "sngl:ui"
 import . "sngl:test"
 
 component iterLoop node {
-    var nums list<int> = [1, 2, 3, 4, 5]
-    var scores map<string, int> = {alice=10, bob=20}
+    var nums list[int] = [1, 2, 3, 4, 5]
+    var scores map[string, int] = {alice=10, bob=20}
     text(value="{nums.length()}")
 }
 
@@ -33,8 +33,8 @@ func testMapForLoopKeysAndValues(t Test, c iterLoop) {
     t.assert(valueSum == 30)
 }
 
-// A function taking iter<T> directly. Passing a list<T> implicitly converts.
-func count(xs iter<int>) int {
+// A function taking iter[T] directly. Passing a list[T] implicitly converts.
+func count(xs iter[int]) int {
     var n = 0
     for var _ = xs {
         n = n + 1

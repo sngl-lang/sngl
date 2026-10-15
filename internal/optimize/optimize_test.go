@@ -7,11 +7,11 @@ import (
 	"testing"
 	"testing/fstest"
 
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/internal/checker"
-	"git.duckfam.us/jonathan/sngl/internal/parser"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/internal/checker"
+	"duckfam.us/sngl/internal/parser"
+	"duckfam.us/sngl/ir"
 )
 
 // checkAndOptimize is a test helper: parse → check → optimize → convert.
@@ -172,7 +172,7 @@ component main node {
 		t.Fatal("expected at least one component")
 	}
 	comp := pkg.Components[0]
-	for _, s := range comp.Body {
+	for _, s := range comp.Stmts {
 		if ni, ok := s.(*ir.NodeInst); ok && ni.Name == "text" {
 			for _, p := range ni.Props {
 				if p.Name == "value" {
@@ -213,7 +213,7 @@ func TestOptimize_ShakeUnusedConst(t *testing.T) {
 const used = 1
 const unused = 2
 component main node {
-	text string(used)
+	text(value=string(used))
 }
 `
 	pkg, _ := checkAndOptimize(t, src, "html", "js")
@@ -248,7 +248,7 @@ func TestOptimize_KeepStructUsedOnlyAsType(t *testing.T) {
 	src := `
 struct User { name string = "" }
 component main node {
-	var picked option<User> = null
+	var picked option[User] = null
 	text(value="hi")
 }
 `
@@ -264,15 +264,15 @@ component main node {
 	}
 }
 
-func TestOptimize_StructInDynFieldKeepsDef(t *testing.T) {
-	// A struct literal stored in a `dyn`-typed field must keep its concrete
+func TestOptimize_StructInOptionFieldKeepsDef(t *testing.T) {
+	// A struct literal stored in an option field must keep its concrete
 	// Def through const-folding. Folding round-tripped composites through a
 	// type-less runtime value, rebuilding the nested struct as a naked
 	// StructLit (Def=nil) → Go codegen emitted `struct{}{...}` (invalid).
 	src := `
 struct TreeNode {
 	value int = 0
-	left dyn = null
+	left option[TreeNode] = null
 }
 component main node {
 	var tree = TreeNode{value=5, left=TreeNode{value=3}}
@@ -293,12 +293,21 @@ component main node {
 				if f.Name != "left" {
 					continue
 				}
-				inner, ok := f.Value.(*ir.StructLit)
+				// Wrapped as the option it is stored in.
+				val := f.Value
+				for {
+					conv, ok := val.(*ir.Conversion)
+					if !ok {
+						break
+					}
+					val = conv.Operand
+				}
+				inner, ok := val.(*ir.StructLit)
 				if !ok {
-					t.Fatalf("left value is %T, want *ir.StructLit", f.Value)
+					t.Fatalf("left value is %T, want *ir.StructLit", val)
 				}
 				if inner.Def == nil {
-					t.Error("nested struct in dyn field lost its Def after folding")
+					t.Error("nested struct in an option field lost its Def after folding")
 				}
 			}
 		}
@@ -337,7 +346,7 @@ func TestOptimize_EmptyPkg(t *testing.T) {
 func TestOptimize_PropPropagatesAsConst(t *testing.T) {
 	src := `
 const items = ["a", "b"]
-component Row(entries list<string> = []) node {
+component Row(entries list[string] = []) node {
 	for var x = entries {
 		text(value=x)
 	}
@@ -381,7 +390,7 @@ func drainDocuments(t *testing.T, pkg *ir.Package, cfg *Config) []*codegen.Docum
 		return nil
 	}
 	f := NewFold(pkg, cfg).Child()
-	body := f.Stmts(f.Clone(root.Body))
+	body := f.Stmts(f.Clone(root.Stmts))
 	if err := f.Err(); err != nil {
 		t.Fatalf("documents: %v", err)
 	}
@@ -397,7 +406,7 @@ func TestFoldDoesNotCollapseDerefOfAddrOfConst(t *testing.T) {
 	src := `
 const k int = 5
 component main node {
-    var p ref<int> = &k
+    var p ref[int] = &k
     var v int = *p
 }
 `
@@ -569,12 +578,12 @@ component List() node {
 	if list == nil {
 		t.Fatal("expected to find imported component List")
 	}
-	if len(list.Body) != 1 {
-		t.Fatalf("lib.List: got %d statements, want the loop", len(list.Body))
+	if len(list.Stmts) != 1 {
+		t.Fatalf("lib.List: got %d statements, want the loop", len(list.Stmts))
 	}
-	loop, ok := list.Body[0].(*ir.For)
+	loop, ok := list.Stmts[0].(*ir.For)
 	if !ok {
-		t.Fatalf("lib.List: got %T, want the loop", list.Body[0])
+		t.Fatalf("lib.List: got %T, want the loop", list.Stmts[0])
 	}
 	var values []string
 	if lit, ok := loop.Iter.(*ir.ListLit); ok {

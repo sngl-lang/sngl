@@ -4,10 +4,10 @@ import (
 	"strings"
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/internal/checker"
-	"git.duckfam.us/jonathan/sngl/internal/parser"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/internal/checker"
+	"duckfam.us/sngl/internal/parser"
+	"duckfam.us/sngl/ir"
 )
 
 // optStubPlatform and optStubLang are a target pair whose packages are handed
@@ -100,7 +100,7 @@ func optStubConfig(t *testing.T) *checker.Config {
 
 func checkOptStub(t *testing.T, output string) []string {
 	t.Helper()
-	src := withStd(output + "\ncomponent main node {\n    text(value=\"hi\")\n}\n")
+	src := withStd(output + "\ncomponent leaf node {}\n\ncomponent main node {\n    leaf()\n}\n")
 	doc, err := parser.Parse("main.sngl", []byte(src))
 	if err != nil {
 		t.Fatalf("parse: %v", err)

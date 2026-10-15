@@ -4,7 +4,7 @@
 
 import . "sngl:ui"
 
-func g(xs list<int>) int { // ERROR(check) "missing return"
+func g(xs list[int]) int { // ERROR(check) "missing return"
     for var x = xs {
         if x > 5 {
             continue

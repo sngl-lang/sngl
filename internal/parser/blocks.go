@@ -3,7 +3,7 @@ package parser
 import (
 	"sort"
 
-	"git.duckfam.us/jonathan/sngl/ast"
+	"duckfam.us/sngl/ast"
 )
 
 // stmtBlocks lists every brace-delimited block a statement opens, in source
@@ -75,7 +75,9 @@ func stmtBlocks(s ast.Stmt) (blocks []*ast.StmtBlock, commit func()) {
 			}
 		case *ast.IndexExpr:
 			walkExpr(x.Operand)
-			walkExpr(x.Index)
+			for _, ix := range x.Indices {
+				walkExpr(ix)
+			}
 		case *ast.SelectExpr:
 			walkExpr(x.Operand)
 		case *ast.SpreadExpr:

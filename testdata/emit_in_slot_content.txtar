@@ -29,7 +29,7 @@ output {
     }
 }
 
-component Picker(@picked int) ui.node {
+component Picker(@picked(v int)) ui.node {
     ui.hbox {
         for var i = [1, 2, 3] {
             ui.button(text="p{i}", @click { picked(i) })
@@ -37,7 +37,7 @@ component Picker(@picked int) ui.node {
     }
 }
 
-component Stepper(@changed int) ui.node {
+component Stepper(@changed(v int)) ui.node {
     ui.hbox {
         ui.button(text="inc", @click { changed(5) })
     }
@@ -274,12 +274,12 @@ func main() {
 package main
 
 import (
+	"duckfam.us/sngl/pkg/go/fynelayout"
 	"fmt"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
-	"git.duckfam.us/jonathan/sngl/pkg/go/fynelayout"
 	"os"
 )
 
@@ -383,30 +383,21 @@ func main() {
 
 package test.sngl.app
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.*
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
-import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color as ComposeColor
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
-import androidx.activity.compose.BackHandler
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.platform.LocalContext
 import android.app.Activity
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.layout.Column
+import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.Row
+import androidx.compose.material3.Button
+import androidx.compose.material3.Text
 
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
@@ -521,8 +512,8 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:3646e1b654335c0c200c0eae63740069
 -- run/go/fyne --
-pass sha256:3c6dfba7e875f542a67a0b69208edb26
+pass sha256:7226f3b4e59cad5ffbde7bcc1cce231f
 -- run/kotlin/android --
-pass sha256:452a8fb6690fa955a47f1123bdd5715e
+pass sha256:6a0576a59354215714eb8e4f89c55c64
 -- run/none/html --
 pass sha256:e062eb15bbca01392e58af8c753422a6

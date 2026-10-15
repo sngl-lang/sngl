@@ -4,8 +4,8 @@ import (
 	"strings"
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/ir"
 )
 
 // ktTestCtx builds a KtIRContext over an empty package, matching the
@@ -18,7 +18,7 @@ func ktTestCtx() *KtIRContext {
 // ir.Call with no Receiver expression and Func.Receiver="i18n" for an i18n.tr
 // interpolation. This routes through the type-method call path.
 func TestKtIRContext_I18nTr(t *testing.T) {
-	fn := &ir.Func{Name: "tr", Receiver: "i18n"}
+	fn := &ir.Func{Name: "tr", Receiver: ir.ReceiverNamed("i18n")}
 	keyLit := &ir.Literal{Value: "Hello, {name}!", Type: ir.TypString}
 	argsMap := &ir.MapLitIR{}
 	call := &ir.Call{
@@ -37,13 +37,12 @@ func TestKtIRContext_I18nTr(t *testing.T) {
 // TestKtIRContext_I18nPlural ports TestEmitI18nPlural_Kotlin: i18n.plural is a
 // namespace call i18n.plural(count, forms).
 func TestKtIRContext_I18nPlural(t *testing.T) {
-	fn := &ir.Func{Name: "plural", Receiver: "i18n"}
-	receiverExpr := &ir.Ident{Name: "i18n"}
+	fn := &ir.Func{Name: "plural", Intrinsic: "i18n.plural"}
 	countLit := &ir.Literal{Value: "3", Type: ir.TypInt}
 	formsMap := &ir.MapLitIR{}
 	call := &ir.Call{
-		Func:     fn,
-		Receiver: receiverExpr,
+		Func:      fn,
+		Qualifier: &ir.Namespace{Name: "i18n"},
 		Args: []ir.CallArg{
 			{Value: countLit},
 			{Value: formsMap},
@@ -58,12 +57,11 @@ func TestKtIRContext_I18nPlural(t *testing.T) {
 // TestKtIRContext_I18nExactly ports TestEmitI18nExactly_Kotlin: i18n.exactly(n)
 // lowers to ("=" + (n)).
 func TestKtIRContext_I18nExactly(t *testing.T) {
-	fn := &ir.Func{Name: "exactly", Receiver: "i18n", Intrinsic: "i18n.exactly"}
-	receiverExpr := &ir.Ident{Name: "i18n"}
+	fn := &ir.Func{Name: "exactly", Intrinsic: "i18n.exactly"}
 	nLit := &ir.Literal{Value: "0", Type: ir.TypInt}
 	call := &ir.Call{
-		Func:     fn,
-		Receiver: receiverExpr,
+		Func:      fn,
+		Qualifier: &ir.Namespace{Name: "i18n"},
 		Args: []ir.CallArg{
 			{Value: nLit},
 		},
@@ -75,17 +73,13 @@ func TestKtIRContext_I18nExactly(t *testing.T) {
 }
 
 // TestKtIRContext_PluralKeyMapLit ports
-// TestPluralKeyMapLitLowersToStringKeyMap_Kotlin: a map<i18n.PluralKey, string>
+// TestPluralKeyMapLitLowersToStringKeyMap_Kotlin: a map[i18n.PluralKey, string]
 // still lowers to mapOf(...) with string keys.
 func TestKtIRContext_PluralKeyMapLit(t *testing.T) {
 	keyType := pluralKeyType()
 	mapType := ir.MapOf(keyType, ir.TypString)
 
-	keyExpr := &ir.Select{
-		Operand: &ir.Ident{Name: "i18n"},
-		Field:   "one",
-		Type:    keyType,
-	}
+	keyExpr := pluralKeyRef("one", keyType)
 	valExpr := &ir.Literal{Value: "# item", Type: ir.TypString}
 
 	m := &ir.MapLitIR{
@@ -119,11 +113,7 @@ func TestKtIRContext_I18nPluralKeyConstants(t *testing.T) {
 		{"other", `"other"`},
 	}
 	for _, tc := range cases {
-		sel := &ir.Select{
-			Operand: &ir.Ident{Name: "i18n"},
-			Field:   tc.field,
-			Type:    pluralKeyType(),
-		}
+		sel := pluralKeyRef(tc.field, pluralKeyType())
 		got := ktTestCtx().EvalExpr(sel)
 		if got != tc.want {
 			t.Errorf("i18n.%s: got %q, want %q", tc.field, got, tc.want)
@@ -140,7 +130,7 @@ func TestUnimplementedIntrinsicPanics(t *testing.T) {
 	}{
 		{"plain call", &ir.Call{Func: &ir.Func{Name: "nope", Intrinsic: "NoBackendHasThis"}}},
 		{"method call", &ir.Call{
-			Func: &ir.Func{Name: "nope", Receiver: "string", Intrinsic: "NoBackendHasThis"},
+			Func: &ir.Func{Name: "nope", Receiver: ir.ReceiverNamed("string"), Intrinsic: "NoBackendHasThis"},
 			Args: []ir.CallArg{{Value: &ir.Ident{Name: "s", Type: ir.TypString}}},
 		}},
 	} {
@@ -163,4 +153,15 @@ func TestUnimplementedIntrinsicPanics(t *testing.T) {
 // a hand-built one has to carry it.
 func pluralKeyType() *ir.Type {
 	return &ir.Type{Kind: ir.TypeStruct, Decl: &ir.StructDef{Name: "PluralKey"}}
+}
+
+// pluralKeyRef is a read of one of i18n's predeclared PluralKey constants
+// through the import, as the checker builds it.
+func pluralKeyRef(name string, t *ir.Type) *ir.Ident {
+	return &ir.Ident{
+		Name:      name,
+		Type:      t,
+		Sym:       &ir.Var{Name: name, Type: t, IsConst: true},
+		Qualifier: &ir.Namespace{Name: "i18n"},
+	}
 }

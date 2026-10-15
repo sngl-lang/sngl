@@ -10,7 +10,7 @@
 //
 //  1. the flattened canvas metadata in the shape these platforms read it
 //     (Collect / Meta), and
-//  2. emitting the Go stdlib struct decls for Color/CanvasStyle/PathCmd,
+//  2. emitting the Go stdlib struct decls for Color/Style,
 //     which the draw funcs reference but which aren't carried on pkg.Structs
 //     for the Go path.
 //
@@ -21,8 +21,8 @@ package canvasutil
 import (
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/ir"
 )
 
 // Meta records a flattened canvas element discovered via a
@@ -77,11 +77,11 @@ func Collect(draws *codegen.CanvasDraws) (byID map[string]*Meta, byNode map[*ir.
 // StructDecls holds the hardcoded Go decl per stdlib struct name, keyed by
 // struct name so a collision with a user-declared struct can omit just that
 // one decl. Field names/types mirror the stdlib definitions in
-// lib/canvas.sngl (CanvasStyle, PathCmd); their color fields reference the
+// lib/ui/draw/draw.sngl (Style); their color fields reference the
 // shared ColorGoType. The per-platform drift-guard tests assert every stdlib
 // field is present.
 var StructDecls = map[string]string{
-	"CanvasStyle": "type CanvasStyle struct {\n" +
+	"Style": "type Style struct {\n" +
 		"\tFill        " + ColorGoType + "\n" +
 		"\tStroke      " + ColorGoType + "\n" +
 		"\tStrokeWidth float64\n" +
@@ -90,25 +90,20 @@ var StructDecls = map[string]string{
 		"\tFontSize    float64\n" +
 		"\tFontFamily  string\n" +
 		"}\n",
-	"PathCmd": "type PathCmd struct {\n" +
-		"\tOp  string\n" +
-		"\tX   float64\n\tY   float64\n" +
-		"\tCx1 float64\n\tCy1 float64\n\tCx2 float64\n\tCy2 float64\n\tR float64\n" +
-		"}\n",
 }
 
 // Color is the SNGL `color` type. On Go it maps to the shared
 // pkg/go/snglcolor.Color struct (int RGBA channels), so a color value is the
-// same type whether it flows into a CanvasStyle field or is coerced to a CSS
+// same type whether it flows into a Style field or is coerced to a CSS
 // string elsewhere. Canvas emitters must register ColorImportPath when they
-// emit CanvasStyle. Kept in sync with lib/types.sngl by the golang lang layer.
+// emit Style. Kept in sync with lib/types.sngl by the golang lang layer.
 const (
-	ColorImportPath = "git.duckfam.us/jonathan/sngl/pkg/go/snglcolor"
+	ColorImportPath = "duckfam.us/sngl/pkg/go/snglcolor"
 	ColorGoType     = "snglcolor.Color"
 )
 
 // StructOrder fixes the emission order of StructDecls.
-var StructOrder = []string{"CanvasStyle", "PathCmd"}
+var StructOrder = []string{"Style"}
 
 // StructDeclsExcluding returns the canvas stdlib struct decls, omitting any
 // whose name is in declared (a set of user-declared struct names that already
@@ -125,4 +120,25 @@ func StructDeclsExcluding(declared map[string]struct{}) string {
 		b.WriteString("\n")
 	}
 	return b.String()
+}
+
+// CtxType is the type of the drawing context a canvas's draw statements are
+// written against: the platform's own context, which passShapeDraw types from
+// the payload its shapes declare. A drawing with no shapes names none, and is
+// handed the host's.
+func CtxType(draw []ir.Stmt, host *ir.Type) *ir.Type {
+	var t *ir.Type
+	_ = ir.WalkExprs(draw, func(e ir.Expr) error {
+		if id, ok := e.(*ir.Ident); ok {
+			if p, ok := id.Sym.(*ir.Param); ok && p.Name == "ctx" && p.Type != nil {
+				t = p.Type
+				return ir.SkipAll
+			}
+		}
+		return nil
+	})
+	if t == nil {
+		return host
+	}
+	return t
 }

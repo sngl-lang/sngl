@@ -3,7 +3,7 @@ package lower
 import (
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 // TestSlotChildInstancesReachesSlotContent names the bodies the walk this pass
@@ -15,7 +15,7 @@ import (
 func TestSlotChildInstancesReachesSlotContent(t *testing.T) {
 	items := &ir.Var{
 		Name: "items",
-		Type: &ir.Type{Kind: ir.TypeList, Elems: []*ir.Type{{Kind: ir.TypeDyn}}},
+		Type: &ir.Type{Kind: ir.TypeList, Elems: []*ir.Type{ir.TypInt}},
 	}
 	// A handler writing `items` is what makes it reactive.
 	mutate := &ir.NodeInst{Name: "button", Handlers: []ir.EventHandler{{
@@ -31,7 +31,7 @@ func TestSlotChildInstancesReachesSlotContent(t *testing.T) {
 	loop := func(body ir.Stmt) *ir.For {
 		return &ir.For{Key: "x", Iter: &ir.Ident{Name: "items", Sym: items}, Body: []ir.Stmt{body}}
 	}
-	main := &ir.Component{Name: "main", Vars: []*ir.Var{items}, Body: []ir.Stmt{
+	main := &ir.Component{Name: "main", Vars: []*ir.Var{items}, Stmts: []ir.Stmt{
 		mutate,
 		&ir.NodeInst{Name: "panel", Slots: map[string]*ir.SlotContent{
 			"header": {Body: []ir.Stmt{loop(inSlot)}},
@@ -53,15 +53,15 @@ func TestSlotChildInstancesReachesSlotContent(t *testing.T) {
 		body []ir.Stmt
 		row  *ir.NodeInst
 	}{
-		{"slot content", main.Body[1].(*ir.NodeInst).Slots["header"].Body[0].(*ir.For).Body, inSlot},
-		{"context provider", main.Body[2].(*ir.ContextProvider).Children[0].(*ir.For).Body, inProvider},
+		{"slot content", main.Stmts[1].(*ir.NodeInst).Slots["header"].Body[0].(*ir.For).Body, inSlot},
+		{"context provider", main.Stmts[2].(*ir.ContextProvider).Children[0].(*ir.For).Body, inProvider},
 	} {
 		inst, ok := where.body[0].(*ir.NodeInst)
 		if !ok || inst.Component == nil {
 			t.Errorf("%s: loop body is still %T, not an instantiation", where.name, where.body[0])
 			continue
 		}
-		if len(inst.Component.Body) != 1 || inst.Component.Body[0] != where.row {
+		if len(inst.Component.Stmts) != 1 || inst.Component.Stmts[0] != where.row {
 			t.Errorf("%s: synthesized component does not hold the row", where.name)
 		}
 		if !inst.Component.RuntimeInstance {

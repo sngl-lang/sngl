@@ -49,13 +49,13 @@ import (
 	"strings"
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/internal/checker"
-	"git.duckfam.us/jonathan/sngl/internal/optimize"
-	"git.duckfam.us/jonathan/sngl/internal/parser"
-	"git.duckfam.us/jonathan/sngl/internal/testtargets"
-	"git.duckfam.us/jonathan/sngl/internal/testutil"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/internal/checker"
+	"duckfam.us/sngl/internal/optimize"
+	"duckfam.us/sngl/internal/parser"
+	"duckfam.us/sngl/internal/testtargets"
+	"duckfam.us/sngl/internal/testutil"
+	"duckfam.us/sngl/ir"
 )
 
 // Run walks testdata/*.sngl, one subtest per fixture, and then the SNGL
@@ -95,7 +95,7 @@ func runOne(t *testing.T, s testutil.Sample) {
 	assertFormatIsIdempotent(t, s, doc)
 
 	pkg := check(t, s, doc)
-	assertNoSilentDyn(t, s, pkg)
+	assertNoSilentInvalid(t, s, pkg)
 	assertFolds(t, s, doc)
 
 	if strings.HasPrefix(s.Name, "lsp_") {
@@ -172,34 +172,22 @@ func assertFormatIsIdempotent(t *testing.T, s testutil.Sample, doc *ast.Document
 // check runs the checker against every registered target and holds the result
 // to the fixture's ERROR(check) and ERROR(lint) directives.
 func check(t *testing.T, s testutil.Sample, doc *ast.Document) *ir.Package {
-	langs, plats := testtargets.Targets()
-	cfg := &checker.Config{
-		IsMain:          true,
-		FS:              s.FS,
-		Dir:             s.Dir,
-		Languages:       langs,
-		Platforms:       plats,
-		TargetsComplete: true,
-	}
-	// A fixture that imports a directory package resolves through the stub in
-	// resolver.go rather than off disk.
-	for _, st := range doc.Stmts {
-		if _, ok := st.(*ast.Import); ok {
-			cfg.Resolver = newTestResolver()
-			break
-		}
-	}
-	pkg, diags := checker.Check(doc, cfg)
+	pkg, diags := checker.Check(doc, CheckConfig(s, doc))
 
 	expected := s.PhaseErrors("check")
 	directed := map[int]bool{}
 	for _, exp := range expected {
 		directed[exp.Pos()] = true
 	}
+	seen := map[string]bool{}
 	for _, d := range diags {
 		if d.Severity == ir.Error && !directed[d.Pos.Line] {
 			t.Errorf("unexpected error: %s", d.Error())
 		}
+		if seen[d.Error()] {
+			t.Errorf("reported twice: %s", d.Error())
+		}
+		seen[d.Error()] = true
 	}
 	for _, exp := range expected {
 		found := false
@@ -228,6 +216,27 @@ func check(t *testing.T, s testutil.Sample, doc *ast.Document) *ir.Package {
 	return pkg
 }
 
+// CheckConfig is the Config a fixture is checked with: every registered target,
+// and the import stub for a fixture that imports a directory package.
+func CheckConfig(s testutil.Sample, doc *ast.Document) *checker.Config {
+	langs, plats := testtargets.Targets()
+	cfg := &checker.Config{
+		IsMain:          true,
+		FS:              s.FS,
+		Dir:             s.Dir,
+		Languages:       langs,
+		Platforms:       plats,
+		TargetsComplete: true,
+	}
+	for _, st := range doc.Stmts {
+		if _, ok := st.(*ast.Import); ok {
+			cfg.Resolver = newTestResolver()
+			break
+		}
+	}
+	return cfg
+}
+
 // assertFolds holds each FOLD directive to the value the optimizer reaches.
 //
 // It checks the fixture a second time rather than reusing check's package: the
@@ -244,6 +253,7 @@ func assertFolds(t *testing.T, s testutil.Sample, doc *ast.Document) {
 			t.Fatalf("check: %s", d.Error())
 		}
 	}
+	pkg = ir.ClonePackageFor(pkg, "html", "js")
 	if err := optimize.Optimize(pkg, &optimize.Config{Platform: "html", Language: "js"}); err != nil {
 		t.Fatalf("optimize: %v", err)
 	}

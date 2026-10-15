@@ -14,8 +14,8 @@ import . "sngl:ui"
 
 window {
     var (
-        items list<string> = ["a", "b"]
-        log list<string> = []
+        items list[string] = ["a", "b"]
+        log list[string] = []
     )
 
     for var it = items {
@@ -28,7 +28,7 @@ window {
         )
     }
 
-    button #clear(text="clear", @click { items = [] })
+    button #empty(text="clear", @click { items = [] })
     button #fill(text="fill", @click { items = ["a"] })
     text #out(value=log.join(","))
 }
@@ -54,7 +54,7 @@ func TestTheLoopElseBracketsEmptinessNotElements(t *testing.T) {
 		t.Fatalf("log with a full list = %q, want it empty", got)
 	}
 
-	m.clear.OnTapped()
+	m.empty.OnTapped()
 	if got := strings.Join(m.log, ","); got != "+none" {
 		t.Fatalf("log after emptying the list = %q, want %q", got, "+none")
 	}

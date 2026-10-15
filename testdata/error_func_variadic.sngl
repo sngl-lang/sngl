@@ -1,0 +1,13 @@
+import . "sngl:ui"
+
+func notLast(xs ...int, y int) {} // ERROR(check) "only the last parameter"
+
+func takesInts(xs ...int) {}
+
+component main node {
+    var names = ["a"]
+    func f() {
+        takesInts(1, "two") // ERROR(check) "cannot pass string as int"
+        takesInts(...names) // ERROR(check) "cannot spread list[string] into ...int"
+    }
+}

@@ -7,8 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/ir"
 )
 
 // loadJSON reads a .json file and synthesises a SNGL IR var named after
@@ -75,7 +75,7 @@ func (g *jsonGen) inferType(v any, name string) *ir.Type {
 		return ir.TypString
 	case []any:
 		if len(x) == 0 {
-			return ir.ListOf(ir.TypDyn)
+			return ir.ListOf(ir.TypInvalid)
 		}
 		elemType := g.inferType(x[0], singularize(name))
 		return ir.ListOf(elemType)
@@ -88,15 +88,20 @@ func (g *jsonGen) inferType(v any, name string) *ir.Type {
 		g.structs = append(g.structs, sd)
 		for key, val := range x {
 			fieldType := g.inferType(val, upperFirst(sanitizeIdent(key)))
-			sd.Fields = append(sd.Fields, &ir.StructField{
+			sf := &ir.StructField{
 				Name:    sanitizeIdent(key),
 				Type:    fieldType,
 				Foreign: ir.Foreign{Name: key},
-			})
+			}
+			if fieldType.Any(func(t *ir.Type) bool { return t.Kind == ir.TypeInvalid }) {
+				sf.Foreign.Unusable = "an empty array says nothing of what it holds"
+			}
+			sd.Fields = append(sd.Fields, sf)
 		}
 		return sd.SymType()
 	}
-	return ir.TypDyn
+	// encoding/json decodes to nothing else.
+	panic(fmt.Sprintf("json: %T is no value encoding/json decodes", v))
 }
 
 func (g *jsonGen) uniqueName(name string) string {

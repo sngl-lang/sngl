@@ -3,8 +3,8 @@ package lower
 import (
 	"fmt"
 
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/ir"
 )
 
 // passAsyncCapable refuses a program that names `sngl:async` on a target with
@@ -14,7 +14,7 @@ import (
 // target that cannot emit one produced was neither an error nor working code.
 // `RequireIntrinsicFallback` is the guard for this, and it never saw the call:
 // a backend consults it at the generic path, and bubbletea's Go emitter had
-// already spelled the call as a method on the model. So `async.post` there
+// already spelled the call as a method on the model. So `async.do` there
 // emitted `m.post(func(){…})` and the first anyone heard of it was the Go
 // compiler reporting an undefined method, with no position in the SNGL that
 // asked for it.
@@ -26,7 +26,7 @@ import (
 //
 // It does *not* see only what a program wrote, though: passPlatformExtensionBody
 // has already swapped an override's body into the declaration, so a platform
-// package's own `async.post` is walked too. That is right -- a platform whose
+// package's own `async.do` is walked too. That is right -- a platform whose
 // override needs the hand-over must answer for it -- but the first override
 // written for a target with AsyncPost false would point its diagnostic inside
 // that package's own .sngl, at a target the program author picked and a line
@@ -67,7 +67,7 @@ func asyncIntrinsicCalls(s ir.Stmt) []*ir.Call {
 			return nil
 		}
 		switch c.Func.Intrinsic {
-		case AsyncPostIntrinsic, AsyncSpawnIntrinsic:
+		case AsyncDoIntrinsic, AsyncStartIntrinsic:
 			out = append(out, c)
 		}
 		return nil
@@ -80,12 +80,12 @@ func asyncIntrinsicCalls(s ir.Stmt) []*ir.Call {
 // draws on, a language starts work that does not block.
 func refuseAsyncIntrinsic(c *ir.Call, s ir.Stmt, caps Features, opts Options) error {
 	switch c.Func.Intrinsic {
-	case AsyncPostIntrinsic:
+	case AsyncDoIntrinsic:
 		if caps.AsyncPost {
 			return nil
 		}
-		return fmt.Errorf("%s: async.post runs a closure back on the thread the target draws on, and %s has no way to reach one", callPos(c, s), platformOrThis(opts.Platform))
-	case AsyncSpawnIntrinsic:
+		return fmt.Errorf("%s: async.do runs a closure back on the thread the target draws on, and %s has no way to reach one", callPos(c, s), platformOrThis(opts.Platform))
+	case AsyncStartIntrinsic:
 		if caps.AsyncSpawn {
 			return nil
 		}
@@ -93,7 +93,7 @@ func refuseAsyncIntrinsic(c *ir.Call, s ir.Stmt, caps Features, opts Options) er
 		// answers the id, and a platform whose handlers are not written in
 		// that language takes it back -- html's are JavaScript whatever
 		// `--lang` says.
-		return fmt.Errorf("%s: async.spawn runs a closure without waiting for it, and %s has no way to start one", callPos(c, s), describeBuild(opts))
+		return fmt.Errorf("%s: async.start runs a closure without waiting for it, and %s has no way to start one", callPos(c, s), describeBuild(opts))
 	}
 	return nil
 }

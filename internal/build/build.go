@@ -21,11 +21,11 @@ import (
 	"slices"
 	"time"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/internal/lower"
-	"git.duckfam.us/jonathan/sngl/internal/optimize"
-	"git.duckfam.us/jonathan/sngl/internal/trust"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/internal/lower"
+	"duckfam.us/sngl/internal/optimize"
+	"duckfam.us/sngl/internal/trust"
+	"duckfam.us/sngl/ir"
 )
 
 // Options is everything a build needs that is not the package itself.
@@ -80,14 +80,9 @@ type Result struct {
 	Warnings []ir.Diagnostic
 }
 
-// Emit builds pkg for every resolved target.
-//
-// optimize and lower work in place, so every target but the last starts from
-// a clone of the pristine checked IR, and the last -- the only one, in a
-// single-target build -- works on pkg itself and leaves it optimized and
-// lowered. A clone copies the whole reachable graph, library IR included, so
-// the one nothing reads afterwards is not made. A caller that needs the
-// checked IR afterwards has to clone before calling.
+// Emit builds pkg for every resolved target, each from a copy of its own:
+// optimize and lower work in place, and the checked package and the library
+// it reaches are read by every build after this one.
 func Emit(pkg *ir.Package, o Options) ([]Result, error) {
 	// A build's rule and not the language's, which is why it is asked here
 	// rather than in the checker: `component c { … }` on its own is a
@@ -116,8 +111,8 @@ func Emit(pkg *ir.Package, o Options) ([]Result, error) {
 	evalCache := optimize.NewEvalCache()
 
 	results := make([]Result, 0, len(targets))
-	for i, target := range targets {
-		res, err := emitTarget(pkg, target, i < len(targets)-1, evalCache, o)
+	for _, target := range targets {
+		res, err := emitTarget(pkg, target, evalCache, o)
 		if err != nil {
 			return nil, err
 		}
@@ -126,11 +121,8 @@ func Emit(pkg *ir.Package, o Options) ([]Result, error) {
 	return results, nil
 }
 
-func emitTarget(pkg *ir.Package, target Target, clone bool, evalCache *optimize.EvalCache, o Options) (Result, error) {
-	tpkg := pkg
-	if clone {
-		tpkg = ir.ClonePackageFor(pkg, target.Platform, target.Lang)
-	}
+func emitTarget(pkg *ir.Package, target Target, evalCache *optimize.EvalCache, o Options) (Result, error) {
+	tpkg := ir.ClonePackageFor(pkg, target.Platform, target.Lang)
 
 	if target.Options == nil {
 		target.Options = &ir.StructLit{}
@@ -167,6 +159,9 @@ func emitTarget(pkg *ir.Package, target Target, clone bool, evalCache *optimize.
 	if err := optimize.Optimize(tpkg, optCfg); err != nil {
 		return Result{}, inDir(o.Dir, err)
 	}
+	if err := refuseStateIntoBuildCalls(tpkg); err != nil {
+		return Result{}, err
+	}
 	slog.Info("optimize", "dir", o.Dir, "lang", target.Lang, "platform", target.Platform, "duration", time.Since(start))
 
 	plat := codegen.LookupPlatform(target.Platform)
@@ -191,11 +186,11 @@ func emitTarget(pkg *ir.Package, target Target, clone bool, evalCache *optimize.
 		if err := lower.Lower(tpkg, icaps, lower.Options{
 			Platform:        target.Platform,
 			RootComponent:   root,
-			ClaimsIntrinsic: codegen.ClaimsIntrinsicFunc(plat),
+			ClaimsIntrinsic: codegen.ClaimsIntrinsicFunc(plat), RendersNative: codegen.RendersNativeFunc(plat),
 		}); err != nil {
 			return Result{}, fmt.Errorf("%s: %w", o.Dir, err)
 		}
-		if err := refuseBuildOnlyCalls(tpkg); err != nil {
+		if err := refuseBuildOnlyCalls(tpkg, false); err != nil {
 			return Result{}, err
 		}
 		return Result{Target: target, Pkg: tpkg, Files: emitted, Warnings: optCfg.Warnings}, nil
@@ -206,21 +201,21 @@ func emitTarget(pkg *ir.Package, target Target, clone bool, evalCache *optimize.
 		return Result{}, fmt.Errorf("%s: %w", o.Dir, err)
 	}
 	start = time.Now()
-	if err := lower.Lower(tpkg, feats, lower.Options{Platform: target.Platform, Language: target.Lang, RootComponent: root, ClaimsIntrinsic: codegen.ClaimsIntrinsicFunc(plat)}); err != nil {
+	if err := lower.Lower(tpkg, feats, lower.Options{Platform: target.Platform, Language: target.Lang, RootComponent: root, Tests: optionBool(target.Options, "test"), ClaimsIntrinsic: codegen.ClaimsIntrinsicFunc(plat), RendersNative: codegen.RendersNativeFunc(plat)}); err != nil {
 		return Result{}, fmt.Errorf("%s: %w", o.Dir, err)
 	}
 	slog.Info("lower", "dir", o.Dir, "caps", feats.String(), "duration", time.Since(start))
 
 	// Unconditional. It used to run only when the target had capabilities to lower
 	// for, on the reading that a build lowering nothing had nothing new to fold --
-	// which stopped being true when passQuery became always-on: it synthesizes a
-	// thunk after the optimizer has walked every declaration, so the calls inside
-	// one are calls nothing has looked at.
+	// which is not so: an always-on lowering pass may synthesize code after the
+	// optimizer has walked every declaration, and the calls inside it are calls
+	// nothing has looked at.
 	start = time.Now()
 	if err := optimize.Optimize(tpkg, optCfg); err != nil {
 		return Result{}, inDir(o.Dir, err)
 	}
-	if err := refuseBuildOnlyCalls(tpkg); err != nil {
+	if err := refuseBuildOnlyCalls(tpkg, codegen.PlatformRendersViewStatically(target.Platform, target.Lang)); err != nil {
 		return Result{}, err
 	}
 	slog.Info("optimize2", "dir", o.Dir, "lang", target.Lang, "platform", target.Platform, "duration", time.Since(start))
@@ -253,29 +248,6 @@ func inDir(dir string, err error) error {
 		return err
 	}
 	return fmt.Errorf("%s: %w", dir, err)
-}
-
-// refuseBuildOnlyCalls reports a call to an intrinsic only the build answers
-// -- sngl:x/gen's host API -- that survived the optimizer: one written
-// outside a const func, or in one whose arguments are not known until the
-// program runs. No target can make it.
-func refuseBuildOnlyCalls(pkg *ir.Package) error {
-	var found *ir.Call
-	ir.Walk(pkg, func(n ir.Node) error {
-		if c, ok := n.(*ir.Call); ok && c.Func != nil && c.Func.BuildOnly {
-			found = c
-			return ir.SkipAll
-		}
-		return nil
-	})
-	if found == nil {
-		return nil
-	}
-	d := ir.Diagnostic{Severity: ir.Error, Msg: fmt.Sprintf("%s reads the machine the build runs on, so only the build can call it, and this call was left for the program to make: call it from a const func whose arguments are known at build time", found.Func.Intrinsic)}
-	if found.AST != nil {
-		d.Pos = found.AST.Pos
-	}
-	return d
 }
 
 func generate(o Options, pkg *ir.Package, target Target, fileAssets []codegen.FileAsset, optCfg *optimize.Config) (map[string][]byte, map[string]bool, error) {
@@ -328,4 +300,83 @@ func IsolateRootComponent(pkg *ir.Package, comp string) {
 	// only thing left that says which declaration the program renders, and
 	// AnalyzeCommon runs from the package alone.
 	pkg.RootComponent = comp
+	for _, c := range pkg.Components {
+		if c.Name == comp {
+			bindRootProps(c)
+		}
+	}
+}
+
+// bindRootProps makes each prop of a component rendered with no call site a
+// var of it holding the prop's default, or its type's zero where nothing
+// supplies one, as the interpreter's mount binds it. One that renders itself
+// is left alone: its own call sites bind the props, and a var there is state
+// a recursion has nowhere to keep.
+func bindRootProps(comp *ir.Component) {
+	if rendersItself(comp) {
+		return
+	}
+	vars := map[ir.Symbol]*ir.Var{}
+	var bound []*ir.Var
+	for _, p := range comp.Props {
+		if p.Sym == nil {
+			continue
+		}
+		init := p.Default
+		if init == nil {
+			init = ir.DeclaredDefault(p.Type)
+		} else {
+			init = ir.CloneExprSharingDecls(init)
+		}
+		v := &ir.Var{Type: p.Type, Init: init, IsConst: p.Const}
+		v.Name = p.Name
+		v.Pkg = comp.Pkg
+		vars[p.Sym] = v
+		bound = append(bound, v)
+	}
+	if len(vars) == 0 {
+		return
+	}
+	// Ahead of the component's own, whose initializers may read them.
+	comp.Vars = append(bound, comp.Vars...)
+	comp.Props = nil
+	_ = ir.Walk(comp, func(n ir.Node) error {
+		if id, ok := n.(*ir.Ident); ok && id.Sym != nil {
+			if v, ok := vars[id.Sym]; ok {
+				id.Sym = v
+			}
+		}
+		return nil
+	})
+}
+
+// rendersItself reports whether comp renders an instance of itself, directly
+// or through the components it renders.
+func rendersItself(comp *ir.Component) bool {
+	seen := map[*ir.Component]bool{}
+	work := []*ir.Component{comp}
+	for len(work) > 0 {
+		c := work[len(work)-1]
+		work = work[:len(work)-1]
+		found := false
+		_ = ir.Walk(c, func(n ir.Node) error {
+			inst, ok := n.(*ir.NodeInst)
+			if !ok || inst.Component == nil {
+				return nil
+			}
+			if inst.Component == comp {
+				found = true
+				return ir.SkipAll
+			}
+			if !seen[inst.Component] {
+				seen[inst.Component] = true
+				work = append(work, inst.Component)
+			}
+			return nil
+		})
+		if found {
+			return true
+		}
+	}
+	return false
 }

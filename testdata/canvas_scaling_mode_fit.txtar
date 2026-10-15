@@ -52,7 +52,7 @@ output {
 
 window #w {
     draw.canvas(width=200px, height=100px, scalingMode=draw.ScalingMode.fit) {
-        draw.rect(x=0.0, y=0.0, w=200.0, h=100.0, style=draw.CanvasStyle{fill=#3366cc})
+        draw.rect(x=0.0, y=0.0, w=200.0, h=100.0, style=draw.Style{fill=#3366cc})
     }
 }
 -- out/go/fyne/model.go --
@@ -61,36 +61,23 @@ window #w {
 package main
 
 import (
+	snglcanvas "duckfam.us/sngl/pkg/go/canvas"
+	"duckfam.us/sngl/pkg/go/fynelayout"
+	"duckfam.us/sngl/pkg/go/snglcolor"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/canvas"
-	snglcanvas "git.duckfam.us/jonathan/sngl/pkg/go/canvas"
-	"git.duckfam.us/jonathan/sngl/pkg/go/fynelayout"
-	"git.duckfam.us/jonathan/sngl/pkg/go/snglcolor"
 	"image"
 	"os"
 )
 
-type PathCmd struct {
-	Op  string
-	X   float64
-	Y   float64
-	Cx1 float64
-	Cy1 float64
-	Cx2 float64
-	Cy2 float64
-	R   float64
-}
-
 type Measurement struct {
 	Px  float64
 	Em  float64
-	Vw  float64
-	Vh  float64
-	Pct float64
+	Rem float64
 }
 
-type CanvasStyle struct {
+type Style struct {
 	Fill        snglcolor.Color
 	Stroke      snglcolor.Color
 	StrokeWidth float64
@@ -117,7 +104,7 @@ func New() *Model {
 	return m
 }
 
-func ApplyStyle(ctx *snglcanvas.Context, style CanvasStyle) {
+func ApplyStyle(ctx *snglcanvas.Context, style Style) {
 	ctx.SetFill(style.Fill.R, style.Fill.G, style.Fill.B, style.Fill.A)
 	ctx.SetStroke(style.Stroke.R, style.Stroke.G, style.Stroke.B, style.Stroke.A)
 	ctx.SetStrokeWidth(style.StrokeWidth)
@@ -135,7 +122,7 @@ func (m *Model) w_visible_handler(__visible bool) {
 
 func (m *Model) _canvasDraw0(ctx *snglcanvas.Context) {
 	ctx.Save()
-	ApplyStyle(ctx, CanvasStyle{Fill: snglcolor.Color{R: 51, G: 102, B: 204, A: 255}, Stroke: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, StrokeWidth: 1.0, LineCap: "butt", LineJoin: "miter", FontSize: 16.0, FontFamily: "sans-serif"})
+	ApplyStyle(ctx, Style{Fill: snglcolor.Color{R: 51, G: 102, B: 204, A: 255}, Stroke: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, StrokeWidth: 1.0, LineCap: "butt", LineJoin: "miter", FontSize: 16.0, FontFamily: "sans-serif"})
 	ctx.Rect(0.0, 0.0, 200.0, 100.0)
 	ctx.Restore()
 }
@@ -148,10 +135,10 @@ func (m *Model) wClosed() {
 }
 
 // wVisible invokes the OnVisible callback on the #w widget; for tests.
-func (m *Model) wVisible(__visible bool) {
+func (m *Model) wVisible(visible bool) {
 	if cb := m.w.OnVisible; cb != nil {
 		m.w.OnVisible = nil
-		cb(__visible)
+		cb(visible)
 		m.w.OnVisible = cb
 	}
 }
@@ -174,7 +161,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.w.SetVisible(m.visible__inst0)
 	m.w.OnClosed = m.w_closed_handler
 	m.w.OnVisible = m.w_visible_handler
-	m.__n0 = canvas.NewRaster(func(pw, ph int) image.Image {
+	m.__n0 = canvas.NewRaster(func(pw int, ph int) image.Image {
 		ctx := m.__n0Surface.Begin(pw, ph, 200, 100, "fit")
 		m._canvasDraw0(ctx)
 		return ctx.Result()
@@ -333,6 +320,18 @@ static void sngl_unref_pixbuf(GdkPixbuf *p) {
     if (p != NULL) g_object_unref(p);
 }
 
+// Selects a day the way a click on it does, for gtk4's datepicker override
+// (selectDay) and a test's invoker. select_day is the call every GTK 4 has;
+// 4.20 deprecates it for set_date, which the older ones lack.
+static void sngl_calendar_select(GtkCalendar *c, int y, int m, int d) {
+    GDateTime *dt = g_date_time_new_utc(y, m, d, 0, 0, 0);
+    if (dt == NULL) return;
+    G_GNUC_BEGIN_IGNORE_DEPRECATIONS
+    gtk_calendar_select_day(c, dt);
+    G_GNUC_END_IGNORE_DEPRECATIONS
+    g_date_time_unref(dt);
+}
+
 static void sngl_set_entry_text(GtkEditable *e, const char *t) {
     const char *cur = gtk_editable_get_text(e);
     if (t == NULL) t = "";
@@ -387,20 +386,9 @@ static void sngl_emit_pressed(void* gesture) {
 import "C"
 
 import (
-	"git.duckfam.us/jonathan/sngl/pkg/go/snglcolor"
+	"duckfam.us/sngl/pkg/go/snglcolor"
 	"unsafe"
 )
-
-type PathCmd struct {
-	Op  string
-	X   float64
-	Y   float64
-	Cx1 float64
-	Cy1 float64
-	Cx2 float64
-	Cy2 float64
-	R   float64
-}
 
 // _snglCairoScale maps a drawing's own coordinate space onto the size GTK is
 // drawing at. An empty mode leaves the context alone, which is what a canvas
@@ -429,12 +417,10 @@ func _snglCairoScale(cr *C.cairo_t, pw, ph, w, h int, mode string) {
 type Measurement struct {
 	Px  float64
 	Em  float64
-	Vw  float64
-	Vh  float64
-	Pct float64
+	Rem float64
 }
 
-type CanvasStyle struct {
+type Style struct {
 	Fill        snglcolor.Color
 	Stroke      snglcolor.Color
 	StrokeWidth float64
@@ -467,7 +453,7 @@ func New() *Model {
 	return m
 }
 
-func Paint(ctx *C.cairo_t, style CanvasStyle) {
+func Paint(ctx *C.cairo_t, style Style) {
 	if style.Fill.A > 0 {
 		Source(ctx, style.Fill)
 		if style.Stroke.A > 0 {
@@ -485,25 +471,25 @@ func Paint(ctx *C.cairo_t, style CanvasStyle) {
 	}
 }
 
-func Source(ctx *C.cairo_t, c snglcolor.Color) {
-	C.cairo_set_source_rgba(ctx, C.double((float64(c.R) / 255.0)), C.double((float64(c.G) / 255.0)), C.double((float64(c.B) / 255.0)), C.double((float64(c.A) / 255.0)))
+func Source(ctx *C.cairo_t, c__r0 snglcolor.Color) {
+	C.cairo_set_source_rgba(ctx, C.double((float64(c__r0.R) / 255.0)), C.double((float64(c__r0.G) / 255.0)), C.double((float64(c__r0.B) / 255.0)), C.double((float64(c__r0.A) / 255.0)))
 }
 
-func LineCap(name string) C.cairo_line_cap_t {
-	if name == "round" {
+func LineCap(cap__r0 string) C.cairo_line_cap_t {
+	if cap__r0 == "round" {
 		return C.cairo_line_cap_t(C.int(1))
 	}
-	if name == "square" {
+	if cap__r0 == "square" {
 		return C.cairo_line_cap_t(C.int(2))
 	}
 	return C.cairo_line_cap_t(C.int(0))
 }
 
-func LineJoin(name string) C.cairo_line_join_t {
-	if name == "round" {
+func LineJoin(join string) C.cairo_line_join_t {
+	if join == "round" {
 		return C.cairo_line_join_t(C.int(1))
 	}
-	if name == "bevel" {
+	if join == "bevel" {
 		return C.cairo_line_join_t(C.int(2))
 	}
 	return C.cairo_line_join_t(C.int(0))
@@ -519,7 +505,7 @@ func (m *Model) w_visible_handler(__visible bool) {
 func (m *Model) _canvasDraw0(ctx *C.cairo_t) {
 	C.cairo_save(ctx)
 	C.cairo_rectangle(ctx, C.double(0.0), C.double(0.0), C.double(200.0), C.double(100.0))
-	Paint(ctx, CanvasStyle{Fill: snglcolor.Color{R: 51, G: 102, B: 204, A: 255}, Stroke: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, StrokeWidth: 1.0, LineCap: "butt", LineJoin: "miter", FontSize: 16.0, FontFamily: "sans-serif"})
+	Paint(ctx, Style{Fill: snglcolor.Color{R: 51, G: 102, B: 204, A: 255}, Stroke: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, StrokeWidth: 1.0, LineCap: "butt", LineJoin: "miter", FontSize: 16.0, FontFamily: "sans-serif"})
 	C.cairo_restore(ctx)
 }
 
@@ -542,7 +528,10 @@ func (m *Model) buildWidgetTree() {
 	C.gtk_drawing_area_set_content_height(m.__n0, C.int(100))
 	C.gtk_widget_set_hexpand((*C.GtkWidget)(unsafe.Pointer(m.__n0)), 1)
 	C.gtk_widget_set_vexpand((*C.GtkWidget)(unsafe.Pointer(m.__n0)), 1)
-	snglDrawFuncs = append(snglDrawFuncs, func(cr *C.cairo_t, pw, ph int) { _snglCairoScale(cr, pw, ph, 200, 100, "fit"); m._canvasDraw0(cr) })
+	snglDrawFuncs = append(snglDrawFuncs, func(cr *C.cairo_t, pw int, ph int) {
+		_snglCairoScale(cr, pw, ph, 200, 100, "fit")
+		m._canvasDraw0(cr)
+	})
 	C.sngl_drawing_area_set_draw(unsafe.Pointer(m.__n0), C.int((len(snglDrawFuncs) - 1)))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.w)), (*C.GtkWidget)(unsafe.Pointer(m.__n0)))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__root)), (*C.GtkWidget)(unsafe.Pointer(m.w)))
@@ -561,50 +550,33 @@ func (m *Model) BuildUI(app *C.GtkApplication) *C.GtkWidget {
 
 package test.sngl.app
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.*
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
-import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.Color as ComposeColor
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
-import androidx.activity.compose.BackHandler
-import androidx.compose.ui.platform.LocalContext
-import android.app.Activity
-import androidx.compose.foundation.Canvas
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.nativeCanvas
-import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
-import androidx.compose.ui.graphics.drawscope.DrawScope
-import androidx.compose.ui.graphics.toArgb
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.platform.LocalContext
+import android.app.Activity
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.Canvas
+import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.ui.graphics.drawscope.scale
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 
 data class Measurement(
     val px: Double = 0.0,
     val em: Double = 0.0,
-    val vw: Double = 0.0,
-    val vh: Double = 0.0,
-    val pct: Double = 0.0
+    val rem: Double = 0.0
 )
 
 data class Color(
@@ -617,7 +589,7 @@ data class Color(
         if (a < 255) "rgba($r,$g,$b,${a / 255.0})" else String.format("#%02x%02x%02x", r, g, b)
 }
 
-data class CanvasStyle(
+data class Style(
     var fill: Color = Color(a = 0),
     var stroke: Color = Color(a = 0),
     var strokeWidth: Double = 1.0,
@@ -625,17 +597,6 @@ data class CanvasStyle(
     var lineJoin: String = "miter",
     var fontSize: Double = 16.0,
     var fontFamily: String = "sans-serif"
-)
-
-data class PathCmd(
-    var op: String = "",
-    var x: Double = 0.0,
-    var y: Double = 0.0,
-    var cx1: Double = 0.0,
-    var cy1: Double = 0.0,
-    var cx2: Double = 0.0,
-    var cy2: Double = 0.0,
-    var r: Double = 0.0
 )
 
 fun DrawScope.snglDrawText(content: String, x: Float, y: Float, c: ComposeColor, size: Float, family: String) {
@@ -650,15 +611,28 @@ fun DrawScope.snglDrawText(content: String, x: Float, y: Float, c: ComposeColor,
     })
 }
 
-// A file that will not decode draws nothing rather than failing the frame,
+// A picture that will not decode draws nothing rather than failing the frame,
 // which is what every other target does with an unreadable source.
 fun DrawScope.snglDrawImage(src: String, x: Float, y: Float, w: Float, h: Float) {
-    val bmp = android.graphics.BitmapFactory.decodeFile(src) ?: return
+    val bmp = SnglAssets.bitmap(src) ?: return
     drawImage(
-        image = bmp.asImageBitmap(),
+        image = bmp,
         dstOffset = IntOffset(x.toInt(), y.toInt()),
         dstSize = IntSize(w.toInt(), h.toInt()),
     )
+}
+
+// A drawing painted in place of a picture: its own space mapped onto the box
+// and clipped to it, until snglDrawLeave.
+fun DrawScope.snglDrawEnter(x: Float, y: Float, sx: Float, sy: Float, w: Float, h: Float) {
+    drawContext.canvas.save()
+    drawContext.canvas.translate(x, y)
+    drawContext.canvas.scale(sx, sy)
+    drawContext.canvas.clipRect(0f, 0f, w, h)
+}
+
+fun DrawScope.snglDrawLeave() {
+    drawContext.canvas.restore()
 }
 
 fun _snglFloatStr(v: Double): String =
@@ -686,6 +660,48 @@ fun MainScreen() {
             }
         }
     }
+}
+-- out/kotlin/android/app/src/main/java/test/sngl/app/SnglAssets.kt --
+package test.sngl.app
+
+import android.content.Context
+import android.graphics.BitmapFactory
+import androidx.compose.foundation.Image
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
+
+// SnglAssets reads the pictures the program carries out of the app's assets,
+// where the build put each file at the path the program names it by. A
+// picture a URL names is not one of them: no loader ships with the app, so it
+// is no picture at all. MainActivity hands it the application's context, since
+// a drawing paints where there is none to ask.
+object SnglAssets {
+    private var context: Context? = null
+    private val pictures = HashMap<String, ImageBitmap?>()
+
+    fun init(c: Context) {
+        context = c.applicationContext
+    }
+
+    fun bitmap(path: String): ImageBitmap? = pictures.getOrPut(path) {
+        val c = context ?: return null
+        if (path.startsWith("http://") || path.startsWith("https://")) {
+            null
+        } else {
+            runCatching { c.assets.open(path.removePrefix("/")).use { BitmapFactory.decodeStream(it) } }
+                .getOrNull()?.asImageBitmap()
+        }
+    }
+}
+
+// SnglAssetImage is an image's source on this platform: the picture a URL
+// names, or nothing where there is none.
+@Composable
+fun SnglAssetImage(url: String) {
+    val bmp = SnglAssets.bitmap(url) ?: return
+    Image(bitmap = bmp, contentDescription = null, modifier = Modifier)
 }
 -- out/none/html/index.html --
 <!-- Code generated by sngl (html) from fit.sngl; DO NOT EDIT. -->
@@ -760,10 +776,10 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:f1b097ee300773666b6014f72b10a516
+pass sha256:18039fa20319a4ace37209075dc26c8e
 -- run/go/gtk4 --
-pass sha256:5b3ee5051edf204a3b22d29b154db696
+pass sha256:0bec55661aee69c2d20495806e253023
 -- run/kotlin/android --
-pass sha256:6cc4a37796a7d0d3b92aa752511f5986
+pass sha256:dde3c6f398e6bc1816c3abbe37fdb06a
 -- run/none/html --
 pass sha256:774b31d51405558e8a0332ed7aee6ec7

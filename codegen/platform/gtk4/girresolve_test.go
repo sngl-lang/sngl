@@ -5,13 +5,13 @@ import (
 	"strings"
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/internal/checker"
-	"git.duckfam.us/jonathan/sngl/internal/lower"
-	"git.duckfam.us/jonathan/sngl/internal/parser"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/internal/checker"
+	"duckfam.us/sngl/internal/lower"
+	"duckfam.us/sngl/internal/parser"
+	"duckfam.us/sngl/ir"
 
-	"git.duckfam.us/jonathan/sngl/codegen/platform/gtk4/gir"
+	"duckfam.us/sngl/codegen/platform/gtk4/gir"
 )
 
 // The bundled subset must cover every widget codegen/platform/gtk4 names, or a
@@ -108,7 +108,9 @@ window(title="t") {
         button(text="b")
         input(value="c")
         checkbox(label="d", checked=true)
-        image(src="e")
+        image {
+            remote(url="e")
+        }
         progress(value=0.5, showValue=true)
         spinner(label="f")
         divider()
@@ -185,6 +187,7 @@ func generateWithBundledGIR(t *testing.T, src string) string {
 		}
 	}
 	lang := codegen.LookupLang("go")
+	pkg = ir.ClonePackage(pkg)
 	if err := lower.Lower(pkg, codegen.CapsOrNone(lang.LanguageIdentifier(), g.PlatformIdentifier()), lower.Options{Platform: platformName}); err != nil {
 		t.Fatalf("lower: %v", err)
 	}

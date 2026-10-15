@@ -3,9 +3,9 @@ package checker_test
 import (
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/internal/checker"
-	"git.duckfam.us/jonathan/sngl/internal/parser"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/internal/checker"
+	"duckfam.us/sngl/internal/parser"
+	"duckfam.us/sngl/ir"
 )
 
 // A collection type carries the #[builtin]-marked declaration it was resolved
@@ -15,10 +15,10 @@ import (
 // having it.
 func TestCollectionTypesCarryTheirDeclaration(t *testing.T) {
 	const src = `component main node {
-    var annotated list<int> = [1]
+    var annotated list[int] = [1]
     var inferred = [1, 2]
-    var nested list<list<string>> = [["a"]]
-    var m map<string, int> = {}
+    var nested list[list[string]] = [["a"]]
+    var m map[string, int] = {}
     var mapped = inferred.map(func(x int) => x * 2)
     text(value=string(annotated.length))
 }

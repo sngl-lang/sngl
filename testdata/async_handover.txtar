@@ -1,13 +1,13 @@
 A program hands a closure over, and each half of the build answers its own.
 
-`spawn` and `post` are what `passAsyncOffload` has always written for a
+`start` and `do` are what `passAsyncOffload` has always written for a
 blocking call on a language that cannot suspend. Declaring them in `sngl:async`
 is what lets a program -- and, the reason for it, a *platform package* -- name
 the same two operations.
 
-The two ids are answered on different axes and this pins both at once: `spawn`
+The two ids are answered on different axes and this pins both at once: `start`
 comes from the language, so both targets here emit Go's `go func(){}()`, while
-`post` comes from the platform and the two differ -- fyne queues onto its
+`do` comes from the platform and the two differ -- fyne queues onto its
 driver, gtk4 onto a GLib idle tick. One source, one language, two platforms is
 the smallest program that shows the split.
 
@@ -15,7 +15,7 @@ Nothing here is a blocking call, so passAsyncOffload rewrites none of it: what
 each target emits is what the program asked for rather than what the compiler
 decided it needed.
 
-deny out/go/gtk4/model.go `fyne\.Do` -- post is the platform's answer, not the language's, so the two targets must not share one
+deny out/go/gtk4/model.go `fyne\.Do` -- do is the platform's answer, not the language's, so the two targets must not share one
 deny out/go/fyne/model.go `gtk4rt\.Post` -- likewise from the other side
 
 -- app.sngl --
@@ -33,8 +33,8 @@ ui.window(title="handover") {
     var n = 0
 
     ui.button(text="go", @click {
-        async.spawn(func() {
-            async.post(func() {
+        async.start(func() {
+            async.do(func() {
                 n = n + 1
             })
         })
@@ -46,10 +46,10 @@ ui.window(title="handover") {
 package main
 
 import (
+	"duckfam.us/sngl/pkg/go/fynelayout"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/widget"
-	"git.duckfam.us/jonathan/sngl/pkg/go/fynelayout"
 	"os"
 )
 
@@ -134,7 +134,7 @@ func main() {
 
 package main
 
-import "git.duckfam.us/jonathan/sngl/pkg/go/gtk4rt"
+import "duckfam.us/sngl/pkg/go/gtk4rt"
 
 func main() {
 	gtk4rt.Init()
@@ -148,7 +148,7 @@ func main() {
 package main
 
 import (
-	"git.duckfam.us/jonathan/sngl/pkg/go/gtk4rt"
+	"duckfam.us/sngl/pkg/go/gtk4rt"
 )
 
 // Model holds the state and widget references for this SNGL UI.
@@ -225,6 +225,6 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return gtk4rt.ToplevelWindow(app, m.__n0)
 }
 -- run/go/fyne --
-pass sha256:298507a69354123362f1683d360cdcf1
+pass sha256:135c988cbc78a080e8555c18f549e10c
 -- run/go/gtk4 --
-pass sha256:7033700aa9389d7f6a412c45a7801b43
+pass sha256:100ab37187953dd33d9c22530e746b4e

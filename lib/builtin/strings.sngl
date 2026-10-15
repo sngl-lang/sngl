@@ -1,51 +1,49 @@
-import marks "sngl:internal/marks"
-
-// UTF-8 string. Strings are immutable; methods on the `string` receiver
+// Unicode string. Strings are immutable; methods on the `string` receiver
 // return new values rather than mutating in place. Use `+` for
 // concatenation and the `string.*` helpers (`length`, `upper`, `split`,
 // `replace`, …) for everything else.
-#[marks.builtin("string")]
+#[_builtin(string)]
 struct string {}
 
-// Number of Unicode characters in s (not bytes).
-#[marks.intrinsic("string.length")]
+// Number of Unicode codepoints in s (not bytes).
+#[_intrinsic("string.length")]
 const func string.length(s string) int
 
 // Index of the first occurrence of sub in s, or -1 if absent. The
 // index is a character index, matching `string.substring`.
-#[marks.intrinsic("string.indexOf")]
+#[_intrinsic("string.indexOf")]
 const func string.indexOf(s string, sub string) int
 
 // Substring of s from start (inclusive) to end (exclusive). Both
 // bounds are character indices; negative or out-of-range values are
 // clamped to [0, length(s)].
-#[marks.intrinsic("string.substring")]
+#[_intrinsic("string.substring")]
 const func string.substring(s string, start int, end int) string
 
 // Uppercased copy of s using the platform's Unicode case mapping.
-#[marks.intrinsic("string.upper")]
+#[_intrinsic("string.upper")]
 const func string.upper(s string) string
 
 // Lowercased copy of s using the platform's Unicode case mapping.
-#[marks.intrinsic("string.lower")]
+#[_intrinsic("string.lower")]
 const func string.lower(s string) string
 
 // Copy of s with leading and trailing whitespace removed. Whitespace
 // follows the platform's Unicode whitespace definition.
-#[marks.intrinsic("string.trim")]
+#[_intrinsic("string.trim")]
 const func string.trim(s string) string
 
 // Copy of s with every occurrence of old replaced by new. Replacement
 // is non-overlapping — after each match, scanning resumes after the
 // replacement (not after old).
-#[marks.intrinsic("string.replace")]
+#[_intrinsic("string.replace")]
 const func string.replace(s string, old string, new string) string
 
 // Splits s on every occurrence of sep and returns the pieces. An
 // empty s returns a list with a single empty string; consecutive
 // separators produce empty pieces.
-#[marks.intrinsic("string.split")]
-const func string.split(s string, sep string) list<string>
+#[_intrinsic("string.split")]
+const func string.split(s string, sep string) list[string]
 
 // True if sub appears anywhere in s. Equivalent to
 // `string.indexOf(s, sub) >= 0`.

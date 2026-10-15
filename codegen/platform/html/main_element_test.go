@@ -4,12 +4,12 @@ import (
 	"strings"
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/internal/checker"
-	"git.duckfam.us/jonathan/sngl/internal/lower"
-	"git.duckfam.us/jonathan/sngl/internal/optimize"
-	"git.duckfam.us/jonathan/sngl/internal/parser"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/internal/checker"
+	"duckfam.us/sngl/internal/lower"
+	"duckfam.us/sngl/internal/optimize"
+	"duckfam.us/sngl/internal/parser"
+	"duckfam.us/sngl/ir"
 )
 
 // TestMainElementNotSwallowedByMainComponent guards a regression where a
@@ -66,6 +66,7 @@ func generateMainPage(t *testing.T, src string) string {
 		t.Fatalf("check: %v", diags[0])
 	}
 	caps := codegen.CapsOrNone(lang.LanguageIdentifier(), gen.PlatformIdentifier())
+	pkg = ir.ClonePackage(pkg)
 	if err := optimize.Optimize(pkg, &optimize.Config{
 		Platform: gen.PlatformIdentifier(),
 		Language: lang.LanguageIdentifier(),

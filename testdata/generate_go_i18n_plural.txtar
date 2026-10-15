@@ -4,7 +4,6 @@ pkg/go/i18n and calls i18n.Plural and i18n.Selectordinal with the locale
 threaded from the active context (m.__ctx_locale) and the forms as a
 map[i18n.PluralKey]string. `i18n.exactly(0)` becomes i18n.Exactly(0), and the
 CLDR keywords become the i18n.PluralOne / PluralFew / PluralOther constants.
-broken out/go/bubbletea -- emits map[i18n.PluralKey]string where pkg/go/i18n's Plural and Selectordinal take map[any]string
 -- app.sngl --
 import . "sngl:ui"
 import "sngl:i18n"
@@ -42,8 +41,8 @@ package main
 import (
 	"charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"duckfam.us/sngl/pkg/go/i18n"
 	"fmt"
-	"git.duckfam.us/jonathan/sngl/pkg/go/i18n"
 	"os"
 )
 
@@ -54,7 +53,7 @@ type Model struct {
 	msg__inst0          string
 	place__inst0        int
 	ordinal__inst0      string
-	visible__inst1      bool
+	visible__inst0      bool
 
 	width, height int
 }
@@ -67,7 +66,7 @@ func New() Model {
 	m.msg__inst0 = i18n.Plural(m.__ctx_locale__inst0, m.count__inst0, map[i18n.PluralKey]string{i18n.Exactly(0): "no items", i18n.PluralOne: "1 item", i18n.PluralOther: "many items"})
 	m.place__inst0 = 21
 	m.ordinal__inst0 = i18n.Selectordinal(m.__ctx_locale__inst0, m.place__inst0, map[i18n.PluralKey]string{i18n.PluralOne: "1st", i18n.PluralTwo: "2nd", i18n.PluralFew: "3rd", i18n.PluralOther: "nth"})
-	m.visible__inst1 = true
+	m.visible__inst0 = true
 	return m
 }
 
@@ -137,19 +136,19 @@ func SetOrdinal__inst0Cmd(v string) tea.Cmd {
 	return func() tea.Msg { return setOrdinal__inst0Msg{value: v} }
 }
 
-func (m Model) Visible__inst1() bool {
-	return m.visible__inst1
+func (m Model) Visible__inst0() bool {
+	return m.visible__inst0
 }
 
-func (m Model) SetVisible__inst1(v bool) Model {
-	m.visible__inst1 = v
+func (m Model) SetVisible__inst0(v bool) Model {
+	m.visible__inst0 = v
 	return m
 }
 
-type setVisible__inst1Msg struct{ value bool }
+type setVisible__inst0Msg struct{ value bool }
 
-func SetVisible__inst1Cmd(v bool) tea.Cmd {
-	return func() tea.Msg { return setVisible__inst1Msg{value: v} }
+func SetVisible__inst0Cmd(v bool) tea.Cmd {
+	return func() tea.Msg { return setVisible__inst0Msg{value: v} }
 }
 
 func (m Model) Init() tea.Cmd {
@@ -169,18 +168,18 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m = m.SetPlace__inst0(msg.value)
 	case setOrdinal__inst0Msg:
 		m = m.SetOrdinal__inst0(msg.value)
-	case setVisible__inst1Msg:
-		m = m.SetVisible__inst1(msg.value)
+	case setVisible__inst0Msg:
+		m = m.SetVisible__inst0(msg.value)
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
 	case tea.KeyPressMsg:
 		switch {
 		case msg.Code == 'c' && msg.Mod == tea.ModCtrl:
-			if m.visible__inst1 {
-				m.visible__inst1 = false
+			if m.visible__inst0 {
+				m.visible__inst0 = false
 			}
-			if !(m.visible__inst1) {
+			if !(m.visible__inst0) {
 				return m, tea.Quit
 			}
 			return m, nil
@@ -191,7 +190,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m Model) View() tea.View {
 	var content string
-	if m.visible__inst1 {
+	if m.visible__inst0 {
 		var contentParts []string
 		var contentPart_0 string
 		contentPart_0 = lipgloss.NewStyle().Render(fmt.Sprint(m.msg__inst0))
@@ -215,4 +214,4 @@ func main() {
 	}
 }
 -- run/go/bubbletea --
-broken sha256:8a6b19fe3a25d3bd06e5b81b4643f05b
+pass sha256:718586da3646b810e2c250044805bd26

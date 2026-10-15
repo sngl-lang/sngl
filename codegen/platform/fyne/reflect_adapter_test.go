@@ -13,7 +13,7 @@ import (
 	fynetest "fyne.io/fyne/v2/test"
 	"fyne.io/fyne/v2/widget"
 
-	"git.duckfam.us/jonathan/sngl/pkg/go/fynelayout"
+	"duckfam.us/sngl/pkg/go/fynelayout"
 )
 
 // This file is the spike for an interpreted fyne host: proof that a widget can
@@ -37,6 +37,7 @@ var fyneCtors = map[string]any{
 	"fyne.io/fyne/v2/widget.NewLabel":             widget.NewLabel,
 	"fyne.io/fyne/v2/widget.NewButton":            widget.NewButton,
 	"fyne.io/fyne/v2/widget.NewCheck":             widget.NewCheck,
+	"fyne.io/fyne/v2/widget.NewDateEntry":         widget.NewDateEntry,
 	"fyne.io/fyne/v2/widget.NewEntry":             widget.NewEntry,
 	"fyne.io/fyne/v2/widget.NewMultiLineEntry":    widget.NewMultiLineEntry,
 	"fyne.io/fyne/v2/widget.NewHyperlink":         widget.NewHyperlink,
@@ -50,7 +51,9 @@ var fyneCtors = map[string]any{
 	"fyne.io/fyne/v2/container.NewVScroll":        container.NewVScroll,
 	// The window's Toplevel is this platform's own runtime type, not a Fyne
 	// widget, and is held to the same reflection as the rest.
-	"git.duckfam.us/jonathan/sngl/pkg/go/fynelayout.NewToplevel": fynelayout.NewToplevel,
+	"duckfam.us/sngl/pkg/go/fynelayout.NewToplevel":    fynelayout.NewToplevel,
+	"duckfam.us/sngl/pkg/go/fynelayout.NewImage":       fynelayout.NewImage,
+	"duckfam.us/sngl/pkg/go/fynelayout.NewImageSource": fynelayout.NewImageSource,
 }
 
 // allSpecs decodes every Spec the fyne overrides reach, keyed by the stdlib
@@ -61,7 +64,7 @@ func allSpecs(t *testing.T) map[string]*fyneSpec {
 	pkg := checkAllComponents(t)
 	out := map[string]*fyneSpec{}
 	for _, comp := range OverriddenComponents(pkg) {
-		for _, n := range fynePrimitiveNodes(comp.PlatformOverrides["fyne"].Stmts) {
+		for _, n := range fynePrimitiveNodes(pkg.OverridesOf(comp).Platform["fyne"].Stmts) {
 			sp, err := specFromProps(n.Name, nodeProps(n))
 			if err != nil {
 				t.Fatalf("%s: %v", comp.Name, err)
@@ -194,7 +197,15 @@ func TestSignatureIsRecoverableFromTheGoType(t *testing.T) {
 			if !ok {
 				continue
 			}
-			if got := renderFuncSig(f.Type, h.Param); got != h.Signature {
+			params, err := signatureParams(name, event, h.Signature)
+			if err != nil {
+				t.Fatal(err)
+			}
+			names := make([]string, len(params))
+			for i, p := range params {
+				names[i] = p.Name
+			}
+			if got := renderFuncSig(f.Type, names); got != h.Signature {
 				t.Errorf("%s/%s: reflected signature %q, Spec says %q", name, event, got, h.Signature)
 			}
 			checked++
@@ -358,15 +369,15 @@ func bind(w any, sp *fyneSpec, event string, fn func([]reflect.Value) []reflect.
 
 // renderFuncSig prints a reflect func type the way fyne.sngl's Signature
 // spells it, so the two can be compared.
-func renderFuncSig(ft reflect.Type, param string) string {
+func renderFuncSig(ft reflect.Type, names []string) string {
 	var b strings.Builder
 	b.WriteString("func(")
 	for i := 0; i < ft.NumIn(); i++ {
 		if i > 0 {
 			b.WriteString(", ")
 		}
-		if param != "" {
-			b.WriteString(param + " ")
+		if i < len(names) {
+			b.WriteString(names[i] + " ")
 		}
 		b.WriteString(ft.In(i).String())
 	}

@@ -5,8 +5,8 @@ import (
 	"strings"
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/internal/lspcore"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/internal/lspcore"
 )
 
 func TestHover_NilDoc(t *testing.T) {
@@ -473,7 +473,7 @@ func TestExtractOutputPlatform(t *testing.T) {
 // completion cannot tell the two cases apart — it has one parsed document and
 // no checker — so it must not offer the name at all.
 func TestPropListCompletions_OmitsWildcardProp(t *testing.T) {
-	content := "component attrs(\n  label string = \"\",\n  #[wildcard(\"data[A-Za-z0-9]+\")] data map<string, string>,\n) {\n  text(value = label)\n}\ncomponent main node {\n  window {\n    attrs()\n  }\n}\n"
+	content := "component attrs(\n  label string = \"\",\n  #[wildcard(\"data[A-Za-z0-9]+\")] data map[string, string],\n) {\n  text(value = label)\n}\ncomponent main node {\n  window {\n    attrs()\n  }\n}\n"
 	doc, _ := lspcore.Analyze(content, "test.sngl", nil, "", nil)
 	items := lspcore.PropListCompletions(content, doc, 9, 11)
 	var labels []string
@@ -519,18 +519,18 @@ func TestImportPathCompletionsHideTheInternalTier(t *testing.T) {
 	}
 }
 
-// Completion is asked for mid-edit, when the buffer does not parse: `button(`
+// Completion is asked for mid-edit, when the buffer does not parse: `input(`
 // has no closing paren, and Analyze returns a document with no statements at
 // all rather than a partial one. The imports decide what is in scope, so they
 // are read from the text when the parse has none -- without that, everything
 // below is empty exactly when an editor asks.
 func TestPropListCompletions_UnparseableBuffer(t *testing.T) {
-	content := "import . \"sngl:ui\"\n\ncomponent Foo {\n  button(\n}"
+	content := "import . \"sngl:ui\"\n\ncomponent Foo {\n  input(\n}"
 	doc, _ := lspcore.Analyze(content, "test.sngl", nil, "", nil)
 	if doc != nil && len(doc.Stmts) > 0 {
 		t.Fatal("this buffer is supposed to be unparseable; the test no longer covers what it says")
 	}
-	items := lspcore.Complete(content, doc, 4, 10)
+	items := lspcore.Complete(content, doc, 4, 9)
 	byLabel := map[string]lspcore.CompletionItem{}
 	styles := 0
 	for _, it := range items {
@@ -539,16 +539,17 @@ func TestPropListCompletions_UnparseableBuffer(t *testing.T) {
 			styles++
 		}
 	}
-	// The props and events are resolved, not written: `text` is a string and
-	// @click carries a ClickEvent, neither of which the AST says.
-	if got := byLabel["text"].Detail; got != "string" {
-		t.Errorf("button.text detail = %q, want string", got)
+	// The props and events are resolved, not written: `placeholder` is a
+	// string and @change carries the committed text, neither of which the AST
+	// says.
+	if got := byLabel["placeholder"].Detail; got != "string" {
+		t.Errorf("input.placeholder detail = %q, want string", got)
 	}
-	if got := byLabel["@click"].Detail; got != "ClickEvent" {
-		t.Errorf("button @click detail = %q, want ClickEvent", got)
+	if got := byLabel["@change"].Detail; got != "(value string)" {
+		t.Errorf("input @change detail = %q, want (value string)", got)
 	}
-	if _, ok := byLabel["value"]; ok {
-		t.Error("button offered `value`, which is input's prop")
+	if _, ok := byLabel["text"]; ok {
+		t.Error("input offered `text`, which is button's prop")
 	}
 	// `style` comes from the schema with its type, and the untyped fallback
 	// must not double it.
@@ -576,5 +577,104 @@ func TestNamespaceCompletions_AliasedLibraryPackage(t *testing.T) {
 	}
 	if labels["button"] {
 		t.Error("d. offered button, which is sngl:ui's")
+	}
+}
+
+// An effect's events are offered as its call site typed them, from the package
+// last checked: the edit adding the `@` does not parse, which is when an editor
+// asks.
+func TestComplete_EffectEventsFromLastCheck(t *testing.T) {
+	checked := `import . "sngl:ui"
+
+struct Todo {
+    title string
+}
+
+component main node {
+    var todos list[Todo] = []
+
+    effect(
+        on = todos,
+        @update {},
+    )
+
+    text(value="x")
+}
+`
+	a := lspcore.AnalyzeChecked(checked, "test.sngl", nil, "", nil)
+	if a.Pkg == nil {
+		t.Fatal("no package checked")
+	}
+	editing := strings.Replace(checked, "        @update {},\n", "        @update {},\n        @\n", 1)
+	items := lspcore.CompleteChecked(editing, a.Doc, a.Pkg, 13, 10)
+	detail := map[string]string{}
+	for _, it := range items {
+		detail[it.Label] = it.Detail
+	}
+	if got := detail["@insert"]; got != "(at int, item Todo)" {
+		t.Errorf("@insert detail = %q, want (at int, item Todo); offered %v", got, detail)
+	}
+	if _, ok := detail["@mount"]; ok {
+		t.Errorf("@mount offered on a list key, which does not compare: %v", detail)
+	}
+}
+
+// Inside the brackets after a name the names a type is spelled with are
+// offered, the document's own struct among them, and an index into a value
+// written inside a call's parens is still one.
+func TestComplete_TypeArgs(t *testing.T) {
+	src := "struct User {\n    name string\n}\n\ncomponent main node {\n    var xs = empty[option[Us\n}\n"
+	doc := &ast.Document{Stmts: []ast.Stmt{&ast.StructDef{Name: "User"}}}
+	items := lspcore.Complete(src, doc, 6, 29)
+	for _, want := range []string{"User", "int", "option"} {
+		found := false
+		for _, it := range items {
+			if it.Label == want {
+				found = true
+			}
+		}
+		if !found {
+			t.Errorf("expected %q among type-argument completions, got %v", want, items)
+		}
+	}
+	if ctx := lspcore.CompletionContext("    text(value=f(x[0], ", 1, 24); ctx != lspcore.CtxPropList {
+		t.Errorf("a closed index inside parens: context %v, want the prop list", ctx)
+	}
+}
+
+// An override's parameter list selects from the declaration it overrides, so
+// completion there offers the base's parameters by their bare names -- not the
+// `name=` of a call site, and not the override's own, which names nothing yet.
+func TestOverrideHeaderCompletions(t *testing.T) {
+	content := "import . \"sngl:ui\"\nimport html \"sngl:platform/html\"\n\ncomponent Avatar(url string, size int, @pick(i int), content ...component node) node\n\ncomponent Avatar[html.platform](url, \n\nfunc label(n int, suffix string) string\n\nfunc label[html.platform](\n\ncomponent text[html.platform](value, \n"
+	doc, _ := lspcore.Analyze(content, "test.sngl", nil, "", nil)
+	labels := func(line, col int) map[string]lspcore.CompletionItem {
+		out := map[string]lspcore.CompletionItem{}
+		for _, it := range lspcore.Complete(content, doc, line, col) {
+			out[it.Label] = it
+		}
+		return out
+	}
+	got := labels(6, 38)
+	for _, want := range []string{"size", "@pick", "content"} {
+		if _, ok := got[want]; !ok {
+			t.Errorf("component header: missing %q in %v", want, got)
+		}
+	}
+	if _, ok := got["url"]; ok {
+		t.Error("component header offered url, which the list already selects")
+	}
+	if it := got["size"]; it.InsertText != "size" {
+		t.Errorf("size inserts %q, want the bare name", it.InsertText)
+	}
+	got = labels(10, 27)
+	if _, ok := got["suffix"]; !ok || len(got) != 2 {
+		t.Errorf("func header: want n and suffix, got %v", got)
+	}
+	got = labels(12, 37)
+	for _, want := range []string{"selectable", "style", "@click"} {
+		if _, ok := got[want]; !ok {
+			t.Errorf("library header: missing %q in %v", want, got)
+		}
 	}
 }

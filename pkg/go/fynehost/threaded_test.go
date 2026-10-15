@@ -5,9 +5,9 @@ import (
 
 	fynetest "fyne.io/fyne/v2/test"
 
-	"git.duckfam.us/jonathan/sngl/internal/interp"
-	"git.duckfam.us/jonathan/sngl/pkg/go/fynehost"
-	"git.duckfam.us/jonathan/sngl/pkg/go/snglhost"
+	"duckfam.us/sngl/internal/interp"
+	"duckfam.us/sngl/pkg/go/fynehost"
+	"duckfam.us/sngl/pkg/go/snglhost"
 )
 
 // recorder notes the order ops were applied in, so the deferral can be checked

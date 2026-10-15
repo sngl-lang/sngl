@@ -13,7 +13,7 @@ import (
 	"strings"
 	"time"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
+	"duckfam.us/sngl/codegen"
 )
 
 // BuildWASM compiles a Go package to WASM with JS bindings for the specified functions.

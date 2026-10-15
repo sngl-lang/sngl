@@ -1,7 +1,7 @@
 package lower
 
 import (
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 // imperativeBlocks returns every imperative block in pkg, in a stable order:
@@ -65,10 +65,7 @@ func collectBlocks(pkg *ir.Package, imperative, views bool) []*[]ir.Stmt {
 	}
 	// The order is ir.Owners' now rather than this file's, and it is
 	// observable: passCSE and passForElse name their temps __cseN/__ranN off
-	// the position a block holds here. It also reaches one set of blocks this
-	// file never listed -- the handlers on a *package* var, which a component's
-	// and a window's had and the package's did not
-	// (testdata/for_else_package_var_handler.txtar).
+	// the position a block holds here.
 	for _, o := range ir.Owners(pkg) {
 		c.owner(o)
 	}
@@ -115,13 +112,6 @@ func (c *blockCollector) add(b *[]ir.Stmt) {
 func (c *blockCollector) owner(o ir.Owner) {
 	for _, f := range o.Funcs {
 		c.addImperative(&f.Block)
-	}
-	for _, v := range o.Vars {
-		for _, h := range v.Handlers {
-			if h.Func != nil {
-				c.addImperative(&h.Func.Block)
-			}
-		}
 	}
 	c.viewIn(o.Body)
 }

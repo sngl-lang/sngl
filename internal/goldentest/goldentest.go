@@ -90,6 +90,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"reflect"
 	"sort"
 	"strings"
 	"testing"
@@ -97,17 +98,17 @@ import (
 
 	"golang.org/x/tools/txtar"
 
-	"git.duckfam.us/jonathan/sngl/internal/build"
-	"git.duckfam.us/jonathan/sngl/internal/parser"
-	"git.duckfam.us/jonathan/sngl/internal/testutil"
-	"git.duckfam.us/jonathan/sngl/internal/trust"
+	"duckfam.us/sngl/internal/build"
+	"duckfam.us/sngl/internal/parser"
+	"duckfam.us/sngl/internal/testutil"
+	"duckfam.us/sngl/internal/trust"
 
 	// Register every language and platform, so a fixture's output block can
 	// name any of them, and every import scheme, so a fixture may import a
 	// `go:` or `c:` package the way a program built by the CLI can -- main.go
 	// blank-imports the same package.
-	_ "git.duckfam.us/jonathan/sngl/codegen/scheme"
-	_ "git.duckfam.us/jonathan/sngl/internal/testtargets"
+	_ "duckfam.us/sngl/codegen/scheme"
+	_ "duckfam.us/sngl/internal/testtargets"
 )
 
 // goldenPrefix is the archive directory holding generated output. Everything
@@ -131,22 +132,29 @@ func Run(t *testing.T, glob string, update, force bool) {
 	if len(files) == 0 {
 		t.Fatalf("no fixtures match %s", glob)
 	}
+	guard, err := newLibraryGuard(*fingerprintMode)
+	if err != nil {
+		t.Fatal(err)
+	}
 	ran, walkedPkgs := 0, 0
 	for _, file := range files {
 		name := strings.TrimSuffix(filepath.Base(file), ".txtar")
 		t.Run(name, func(t *testing.T) {
 			ran++
-			runFixture(t, file, update, force, &walkedPkgs)
+			runFixture(t, file, update, force, guard, &walkedPkgs)
 		})
 	}
 	if ran > 0 && walkedPkgs == 0 {
 		t.Errorf("%d fixtures ran and no package had ir.Walk compared against ir.Rewrite", ran)
 	}
+	if err := guard.finish(); err != nil {
+		t.Error(err)
+	}
 }
 
 // No t.Helper: with one, every failure from any of the four checks below
 // reports this function's caller, and which check fired is the useful part.
-func runFixture(t *testing.T, path string, update, force bool, walkedPkgs *int) {
+func runFixture(t *testing.T, path string, update, force bool, guard *libraryGuard, walkedPkgs *int) {
 	raw, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatalf("read: %v", err)
@@ -182,12 +190,11 @@ func runFixture(t *testing.T, path string, update, force bool, walkedPkgs *int) 
 	// options on top, so the assertions are compiled and run rather than
 	// merely the program.
 	opts, _ := testutil.TestHarnessBuild(fixtureSource(src))
-	got, boilerplate, walked, err := generate(src, opts, true, "", "")
+	got, boilerplate, walked, err := generate(src, opts, true, "", "", guard)
 	if err != nil {
 		t.Fatalf("generate: %v", err)
 	}
 	*walkedPkgs += walked
-	assertTargetsIndependent(t, src, opts, got)
 
 	// Verification comes before the golden is written, so a -update run that
 	// cannot compile what it generated leaves the archive as it found it.
@@ -312,7 +319,7 @@ func assertFormatted(t *testing.T, src map[string][]byte) {
 //
 // lang and plat select one target, as --lang/--platform do; empty builds every
 // target the output block names.
-func generate(src map[string][]byte, opts map[string]string, main bool, lang, plat string) (files map[string][]byte, boilerplate map[string]bool, walked int, err error) {
+func generate(src map[string][]byte, opts map[string]string, main bool, lang, plat string, guard *libraryGuard) (files map[string][]byte, boilerplate map[string]bool, walked int, err error) {
 	fsys := fstest.MapFS{}
 	for name, data := range src {
 		fsys[name] = &fstest.MapFile{Data: data}
@@ -331,8 +338,7 @@ func generate(src map[string][]byte, opts map[string]string, main bool, lang, pl
 	if err != nil {
 		return nil, nil, 0, fmt.Errorf("check: %w", err)
 	}
-	// Before Emit: a single-target build lowers pkg in place.
-	if err := walkDivergence(pkg); err != nil {
+	if err := walkDivergence(ownContexts(pkg)); err != nil {
 		return nil, nil, 0, fmt.Errorf("checked IR: %w", err)
 	}
 	walked++
@@ -341,20 +347,26 @@ func generate(src map[string][]byte, opts map[string]string, main bool, lang, pl
 	// the working directory, and OutDir is its default. A golden is meant to
 	// be what the CLI would have written, so nothing here may be a setting the
 	// CLI does not use.
-	results, err := build.Emit(pkg, build.Options{
-		Name:      firstRootSNGL(src),
-		Dir:       ".",
-		OutDir:    ".",
-		ProjectFS: fsys,
-		Opts:      opts,
-		Main:      main,
-		Lang:      lang,
-		Platform:  plat,
-		// The fixtures are this repository's own, and evaluating their go:
-		// imports is what a golden of one records.
-		Trust: trust.AllowAll(),
-	})
-	if err != nil {
+	//
+	// Every target builds from a copy of its own, so the checked package --
+	// and the library it reaches -- is what the next build reads, untouched.
+	var results []build.Result
+	if err := guard.around(pkg, func() (err error) {
+		results, err = build.Emit(pkg, build.Options{
+			Name:      firstRootSNGL(src),
+			Dir:       ".",
+			OutDir:    ".",
+			ProjectFS: fsys,
+			Opts:      opts,
+			Main:      main,
+			Lang:      lang,
+			Platform:  plat,
+			// The fixtures are this repository's own, and evaluating their go:
+			// imports is what a golden of one records.
+			Trust: trust.AllowAll(),
+		})
+		return err
+	}); err != nil {
 		return nil, nil, 0, err
 	}
 
@@ -391,47 +403,6 @@ func generate(src map[string][]byte, opts map[string]string, main bool, lang, pl
 		}
 	}
 	return out, boiler, walked, nil
-}
-
-// assertTargetsIndependent builds each target of a multi-target fixture on its
-// own and requires the files it wrote in the shared build. What a target
-// generates is a function of the program and the target, never of what else
-// the build targets.
-//
-// It is a claim build.Emit has to work to keep: every target but the last
-// builds a clone carrying only its own override bodies
-// (ir.ClonePackageFor), while the last -- and a target built alone -- builds
-// the checked package itself, every target's overrides still on it. A reader
-// that ranged over all of them, rather than asking for its target's, would
-// see different IR depending on where in the list its target came.
-func assertTargetsIndependent(t *testing.T, src map[string][]byte, opts map[string]string, got map[string][]byte) {
-	t.Helper()
-	targets := targetsOf(got)
-	if len(targets) < 2 {
-		return
-	}
-	for _, tg := range targets {
-		alone, _, _, err := generate(src, opts, true, tg.lang, tg.platform)
-		if err != nil {
-			t.Errorf("%s/%s built alone: %v", tg.lang, tg.platform, err)
-			continue
-		}
-		prefix := goldenPrefix + tg.lang + "/" + tg.platform + "/"
-		for _, name := range sortedKeys(got) {
-			if !strings.HasPrefix(name, prefix) {
-				continue
-			}
-			if !bytes.Equal(got[name], alone[name]) {
-				t.Errorf("%s: differs when %s/%s is built alone rather than beside the fixture's other targets:\n%s",
-					name, tg.lang, tg.platform, firstDiff(string(alone[name]), string(got[name])))
-			}
-		}
-		for _, name := range sortedKeys(alone) {
-			if _, ok := got[name]; !ok {
-				t.Errorf("%s: generated only when %s/%s is built alone", name, tg.lang, tg.platform)
-			}
-		}
-	}
 }
 
 func firstRootSNGL(src map[string][]byte) string {
@@ -553,4 +524,10 @@ func reviewable(files map[string][]byte, boilerplate map[string]bool) map[string
 		}
 	}
 	return out
+}
+
+// notIR stops a fingerprint at the AST, which TestProvidedDocsSurviveBuilds
+// holds immutable.
+func notIR(v reflect.Value) bool {
+	return v.Type().Elem().PkgPath() == "duckfam.us/sngl/ast"
 }

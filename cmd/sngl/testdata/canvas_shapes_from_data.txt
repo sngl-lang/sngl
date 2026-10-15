@@ -53,7 +53,7 @@ import "sngl:platform/bubbletea"
 
 // An aliased import: the shapes are named draw.rect, not rect.
 component Bar(on = false, x = 0.0) draw.shape {
-    draw.rect(x=x, y=0.0, w=6.0, h=6.0, style=draw.CanvasStyle{fill=on ? #ff0000 : #003300})
+    draw.rect(x=x, y=0.0, w=6.0, h=6.0, style=draw.Style{fill=on ? #ff0000 : #003300})
 }
 
 // A shape made of shapes. It is not inlined away, so the canvas emitter has to
@@ -73,7 +73,7 @@ component Panel(lit = false) node {
             text(value="no pixels here")
         } else {
             draw.canvas(width=60px, height=10px) {
-                draw.rect(x=0.0, y=0.0, w=60.0, h=10.0, style=draw.CanvasStyle{fill=#000000})
+                draw.rect(x=0.0, y=0.0, w=60.0, h=10.0, style=draw.Style{fill=#000000})
                 for var c = columns() {
                     Cell(on=lit, x=c)
                 }

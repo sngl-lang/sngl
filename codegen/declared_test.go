@@ -4,11 +4,11 @@ import (
 	"strings"
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/codegen/platform/html"
-	"git.duckfam.us/jonathan/sngl/internal/checker"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/codegen/platform/html"
+	"duckfam.us/sngl/internal/checker"
+	"duckfam.us/sngl/ir"
 )
 
 // A target whose package is a lib/ directory and that registers no Go is a
@@ -62,7 +62,7 @@ func fileOf(d *ast.Document) string {
 // mark, and the package through the layout. Nothing in Go serves the package.
 func TestNativeTargetFoundThroughItsMark(t *testing.T) {
 	pkg := checker.LibPackage("platform/html")
-	node := ir.TargetNodeOf(pkg, ir.BuiltinPlatform)
+	node := ir.TargetNodeOf(pkg, ir.BuiltinFamilyPlatform)
 	if node == nil || node.Gen == nil || node.Gen.Native != "html" {
 		t.Fatalf("sngl:platform/html's node does not say #[gen.native(\"html\")]")
 	}

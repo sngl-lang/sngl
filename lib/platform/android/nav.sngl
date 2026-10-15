@@ -14,9 +14,9 @@ import . "sngl:internal/marks"
 // A link as a Compose button: `to` is the page's record and `params` what it
 // is handed, null for the page's own -- the route's default.
 #[intrinsic("android:Link")]
-component Link<P, Q>(to P, params Q, text string, style ui.Style, @click ui.ClickEvent) ui.node
+component Link[P any, Q any](to P, params Q, text string, style ui.Style, @click()) ui.node
 
-const component nav.link[platform] {
+const component nav.link[platform](to, params, text, style, @click) {
     Link(to=to, params=params, text=text, style=style, @click {
         click()
     })

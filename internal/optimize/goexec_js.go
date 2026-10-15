@@ -5,8 +5,8 @@ package optimize
 import (
 	"fmt"
 
-	"git.duckfam.us/jonathan/sngl/internal/trust"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/internal/trust"
+	"duckfam.us/sngl/ir"
 )
 
 // nativeCallState mirrors the non-WASM build; only nativeFailed occurs here.
@@ -21,7 +21,11 @@ const (
 // nativeRequest is never constructed in WASM builds: nothing can be run.
 type nativeRequest struct{ nativeType string }
 
-type nativeEval struct{ order []*nativeRequest }
+// asked stays zero: no call is ever pending here.
+type nativeEval struct {
+	order []*nativeRequest
+	asked int
+}
 
 // requestPureNativeFunc always fails in WASM builds: there is no subprocess to
 // build or run, so a scheme-import const is unevaluable and the caller's

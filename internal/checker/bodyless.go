@@ -4,7 +4,7 @@ import (
 	"maps"
 	"slices"
 
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 // reportBodylessComponents requires a component declared with no body to get
@@ -22,7 +22,7 @@ func (c *checker) reportBodylessComponents() {
 		return
 	}
 	for _, comp := range c.pkg.Components {
-		if comp.AST == nil || !comp.Bodyless || comp.IsFamily() || isTargetNode(comp) || renderSuppliedElsewhere(comp) {
+		if comp.AST == nil || !comp.Bodyless || comp.IsFamily() || isTargetNode(comp) || c.renderSuppliedElsewhere(comp) {
 			continue
 		}
 		c.error(comp.AST.Pos, "component %q has no body: give it one, or say where the render comes from with a per-target override", comp.Name)
@@ -60,14 +60,14 @@ func (c *checker) reportBodylessLibComponents() {
 			if comp == nil || comp.AST == nil || !comp.Bodyless {
 				continue
 			}
-			if comp.Intrinsic != "" || comp.Builtin != ir.BuiltinNone || isTargetNode(comp) {
+			if comp.Primitive() || comp.Builtin != ir.BuiltinNone || isTargetNode(comp) || ir.IsDataMember(comp) {
 				continue
 			}
 			if !used[comp] {
 				continue
 			}
 			for _, t := range c.targets {
-				if hasOverrideFor(comp, t) {
+				if !c.knowsTarget(t) || c.hasOverrideFor(comp, t) || c.rendersByName(comp, t) {
 					continue
 				}
 				c.error(comp.AST.Pos, "component %q in sngl:%s has no body and no implementation for %s: every target it can be built for needs one",
@@ -79,24 +79,43 @@ func (c *checker) reportBodylessLibComponents() {
 
 // hasOverrideFor mirrors ir.SpecializeForTarget's choice: the platform's
 // override answers first, and the language's is the fallback.
-func hasOverrideFor(comp *ir.Component, t ir.StaticTarget) bool {
+func (c *checker) hasOverrideFor(comp *ir.Component, t ir.StaticTarget) bool {
 	// A host of a family that emits is answered by the family's override: the
 	// emitter consumes the host where it is written, so there is nothing of
 	// the host's own left for a target to render.
-	if f := ir.EmittedFamily(comp); f != nil && hasOverrideFor(f, t) {
+	if f := c.emittedFamily(comp); f != nil && c.hasOverrideFor(f, t) {
 		return true
 	}
-	if t.Platform != "" && comp.PlatformOverrides != nil {
-		if _, ok := comp.PlatformOverrides[t.Platform]; ok {
-			return true
-		}
+	ov := c.overridesOf(comp)
+	if _, ok := ov.Platform[t.Platform]; ok && t.Platform != "" {
+		return true
 	}
-	if t.Language != "" && comp.LanguageOverrides != nil {
-		if _, ok := comp.LanguageOverrides[t.Language]; ok {
-			return true
-		}
+	if _, ok := ov.Language[t.Language]; ok && t.Language != "" {
+		return true
 	}
 	return false
+}
+
+// rendersByName reports whether a target package's codegen marker answers
+// for comp on t (see libCache.rendersByName).
+func (c *checker) rendersByName(comp *ir.Component, t ir.StaticTarget) bool {
+	return (t.Platform != "" && c.libs.rendersByName["platform/"+t.Platform][comp]) ||
+		(t.Language != "" && c.libs.rendersByName["language/"+t.Language][comp])
+}
+
+// knowsTarget reports whether every half of a target names a library package
+// this check can load. One that does not is a misspelling, reported where the
+// output block names it, or a target this check has no registry for; either
+// way there is no package to hold an implementation, so asking it for one
+// reports the same name a second time against every widget the program uses.
+func (c *checker) knowsTarget(t ir.StaticTarget) bool {
+	if t.Platform != "" && !c.hasLibPkg("platform/"+t.Platform) {
+		return false
+	}
+	if t.Language != "" && !c.hasLibPkg("language/"+t.Language) {
+		return false
+	}
+	return true
 }
 
 func describeTarget(t ir.StaticTarget) string {
@@ -114,12 +133,12 @@ func describeTarget(t ir.StaticTarget) string {
 // from somewhere a declaration names. Runs after every route that populates
 // the override maps -- mergeTargetExtensions in newChecker, collectUserOverrides
 // and checkPendingExtensions before pass2.
-func renderSuppliedElsewhere(comp *ir.Component) bool {
-	if f := ir.EmittedFamily(comp); f != nil && renderSuppliedElsewhere(f) {
+func (c *checker) renderSuppliedElsewhere(comp *ir.Component) bool {
+	if f := c.emittedFamily(comp); f != nil && c.renderSuppliedElsewhere(f) {
 		return true
 	}
-	return comp.Intrinsic != "" || comp.Builtin != ir.BuiltinNone ||
-		len(comp.PlatformOverrides) > 0 || len(comp.LanguageOverrides) > 0
+	return comp.Primitive() || comp.Builtin != ir.BuiltinNone || ir.IsDataMember(comp) ||
+		c.overridesOf(comp).Any()
 }
 
 // reachedLibComponents is the set of library components this program actually
@@ -156,7 +175,7 @@ func (c *checker) reachedLibComponents() map[*ir.Component]bool {
 	// only reads library declarations -- but what it renders is.
 	if c.pkg != nil {
 		for _, comp := range c.pkg.Components {
-			reach(comp.Body)
+			reach(comp.Stmts)
 		}
 		reach(c.pkg.Body)
 	}
@@ -164,7 +183,7 @@ func (c *checker) reachedLibComponents() map[*ir.Component]bool {
 	for len(queue) > 0 {
 		comp := queue[0]
 		queue = queue[1:]
-		for _, b := range bodiesBuiltFor(comp, c.targets) {
+		for _, b := range c.bodiesBuiltFor(comp, c.targets) {
 			reach(b)
 		}
 	}
@@ -178,16 +197,17 @@ func (c *checker) reachedLibComponents() map[*ir.Component]bool {
 // Every target, not the first: a build checks one pair, but c.targets may hold
 // several, and a component reached only through one target's override is
 // reached.
-func bodiesBuiltFor(comp *ir.Component, targets []ir.StaticTarget) [][]ir.Stmt {
+func (c *checker) bodiesBuiltFor(comp *ir.Component, targets []ir.StaticTarget) [][]ir.Stmt {
+	ov := c.overridesOf(comp)
 	var out [][]ir.Stmt
-	if len(comp.Body) > 0 {
-		out = append(out, comp.Body)
+	if len(comp.Stmts) > 0 {
+		out = append(out, comp.Stmts)
 	}
 	for _, t := range targets {
-		if b, ok := comp.PlatformOverrides[t.Platform]; ok {
+		if b, ok := ov.Platform[t.Platform]; ok {
 			out = append(out, b.Stmts)
 		}
-		if b, ok := comp.LanguageOverrides[t.Language]; ok {
+		if b, ok := ov.Language[t.Language]; ok {
 			out = append(out, b.Stmts)
 		}
 	}
@@ -198,5 +218,18 @@ func bodiesBuiltFor(comp *ir.Component, targets []ir.StaticTarget) [][]ir.Stmt {
 // is its generator's, so with no command to write it has no body to give --
 // `{}` would say it renders nothing -- and is exempt as a family is.
 func isTargetNode(comp *ir.Component) bool {
-	return ir.TargetTier(comp.Tree) != ""
+	return ir.TargetTier(comp.Family) != ""
+}
+
+// emittedFamily is ir.EmittedFamily asked during the check, when a program's
+// override of a library family is in the overlay rather than on the family.
+func (c *checker) emittedFamily(host *ir.Component) *ir.Component {
+	if host == nil || !host.Bodyless {
+		return nil
+	}
+	f := ir.RestSlotFamily(host)
+	if f == nil || f == host || !c.overridesOf(f).Any() {
+		return nil
+	}
+	return f
 }

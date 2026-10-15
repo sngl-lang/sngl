@@ -1,0 +1,23 @@
+// A struct literal that leaves a field out holds what the declaration means
+// by omitting it: the field's written default, or its type's zero, as every
+// compiled target's struct does. The interpreter used to leave a field with
+// no default absent, so a read of it was nothing at all and a ternary on it
+// rendered nothing.
+
+import . "sngl:test"
+
+struct Item {
+    name  string
+    empty bool
+    count int = 5
+    tags  list[string]
+}
+
+func testOmittedFieldsHoldTheirDefaults(t Test) {
+    var it = Item{name="a"}
+    t.assert(it.count == 5)
+    t.assert(!it.empty)
+    t.assert(it.tags.length == 0)
+    t.assert((it.empty ? "x" : "y") == "y")
+    t.assert(it == Item{name="a", empty=false, count=5, tags=[]})
+}

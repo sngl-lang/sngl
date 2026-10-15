@@ -9,8 +9,8 @@ import (
 	"strconv"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/ir"
 )
 
 // intrinsicPrefix is the namespace every fyne primitive's #[intrinsic] id
@@ -45,13 +45,11 @@ type fyneArg struct {
 }
 
 // fyneHandler is the Fyne callback field one declared event is assigned to,
-// decoded from the SNGL `Handler` record. See that declaration for why
-// Signature is Fyne's shape rather than the SNGL event's, and what Param is
-// for.
+// decoded from the SNGL `Handler` record. Signature is Fyne's spelling of the
+// event's parameters.
 type fyneHandler struct {
 	Field     string
 	Signature string
-	Param     string
 }
 
 // fyneSpec is one widget's construction, decoded from the SNGL `Spec` record
@@ -69,9 +67,12 @@ type fyneNative struct {
 type fyneSpec struct {
 	// toplevel is the platform's own Toplevel (toplevelSpec).
 	toplevel bool
-	New      fyneNative
-	Args     []fyneArg
-	GoType   fyneNative
+	// slotBox is the field holding the *fyne.Container a render slot inside the
+	// widget renders into, for a widget that is not one itself.
+	slotBox string
+	New     fyneNative
+	Args    []fyneArg
+	GoType  fyneNative
 	// Add is the method a multi-child container attaches each child with;
 	// Content the field a single-child container assigns its child to. Which
 	// applies is decided by Content being set, because that is the case with
@@ -82,6 +83,10 @@ type fyneSpec struct {
 	// receiver: "SetText" emits `w.SetText(v)`. A prop absent here has no
 	// Fyne surface to reach, so the assignment is dropped.
 	Setters map[string]string
+	// SetterArgs splits a prop's value into the setter's arguments, for a
+	// setter that takes a record's fields rather than the record: a span's
+	// style is a SNGL struct the runtime has no type for.
+	SetterArgs map[string]func(ir.Expr) []ir.Expr
 	// Currents maps a prop to the Go field holding the value its setter
 	// writes, for a widget whose setter fires its own change callback even
 	// when the value is the one it holds: the assignment is skipped then, or
@@ -113,6 +118,13 @@ type fyneSpec struct {
 	// ThemeVar is the generated theme this node's paint styles resolved to,
 	// empty when it asked for none. See theme.go.
 	ThemeVar string
+	// RuntimeTheme is set when a paint field of the style reads state: the
+	// theme is then built where the program runs and held in an override the
+	// node is created with, so a write to `style` can replace it.
+	RuntimeTheme bool
+	// StyleValue is set when the style is a whole value rather than a literal
+	// -- a Style held in state -- so the theme is read off it field by field.
+	StyleValue bool
 }
 
 // fyneStyle is the part of sngl.Style this platform can answer, in the
@@ -214,6 +226,9 @@ func specFromProps(tag string, props map[string]ir.Expr) (*fyneSpec, error) {
 	if tag == toplevelTag {
 		return toplevelSpec(props), nil
 	}
+	if sp := imageSpecFor(tag, props); sp != nil {
+		return sp, nil
+	}
 	raw := props[specPropName]
 	if raw == nil {
 		return nil, fmt.Errorf("fyne primitive %s was instantiated without a %s record", tag, specPropName)
@@ -264,7 +279,6 @@ func specFromProps(tag string, props map[string]ir.Expr) (*fyneSpec, error) {
 				var h fyneHandler
 				h.Field = specString(tag, "Handler.field", structField(sl, "field"))
 				h.Signature = specString(tag, "Handler.signature", structField(sl, "signature"))
-				h.Param = specString(tag, "Handler.param", structField(sl, "param"))
 				if _, err := signatureParams(tag, on, h.Signature); err != nil {
 					return nil, err
 				}
@@ -278,6 +292,13 @@ func specFromProps(tag string, props map[string]ir.Expr) (*fyneSpec, error) {
 		return nil, fmt.Errorf("fyne primitive %s: Spec needs both `new` and `goType`", tag)
 	}
 	sp.Style = styleFromProps(props)
+	switch v := props[stylePropName].(type) {
+	case nil:
+	case *ir.StructLit:
+		sp.RuntimeTheme = readsRuntimePaint(v)
+	default:
+		sp.RuntimeTheme, sp.StyleValue = true, true
+	}
 	return sp, nil
 }
 
@@ -325,12 +346,15 @@ func styleFromProps(props map[string]ir.Expr) fyneStyle {
 		default:
 			continue
 		}
-		if v, ok := literalNumber(f.Value); ok {
+		if v, ok := codegen.MeasurementPx(f.Value, emPx); ok {
 			*into = v
 		}
 	}
 	return st
 }
+
+// emPx is an em on this platform: the default theme's text size.
+const emPx = 14
 
 // enumOrString reads an enum member, or a plain string, as its name.
 func enumOrString(e ir.Expr) string {
@@ -369,9 +393,8 @@ func colorFromExpr(e ir.Expr) *fyneColor {
 	return &c
 }
 
-// literalNumber reads a numeric literal, with or without a unit suffix: a
-// Style measurement is written `6` or `6px` and both mean the same number of
-// device-independent pixels to Fyne.
+// literalNumber reads a numeric literal: a colour's channel. A measurement is
+// codegen.MeasurementPx's.
 func literalNumber(e ir.Expr) (float64, bool) {
 	lit, ok := e.(*ir.Literal)
 	if !ok || lit == nil {
@@ -396,11 +419,13 @@ func (s *fyneSpec) ctorArgs(al aliaser) []ir.Expr {
 				continue
 			}
 		}
+		// The spec writes the argument as Go and says its type where it
+		// names one; text it leaves untyped is no SNGL value.
 		if a.Type.Name != "" {
-			out = append(out, rawGoExpr(a.Type.qualify(al)+a.Raw))
+			out = append(out, rawGoExpr(a.Type.qualify(al)+a.Raw, ir.NativeGoNamed(a.Type.qualify(al))))
 			continue
 		}
-		out = append(out, rawGoExpr(a.Raw))
+		out = append(out, rawGoExpr(a.Raw, nil))
 	}
 	return out
 }
@@ -409,8 +434,8 @@ func (s *fyneSpec) ctorArgs(al aliaser) []ir.Expr {
 // ir.Ident resolving to nothing renders as its name, which is what makes a
 // Spec able to name a constructor argument — `nil`, `""`, a numeric default —
 // without this package holding a table of the ones it knows.
-func rawGoExpr(src string) ir.Expr {
-	return &ir.Ident{Name: src, Type: ir.TypDyn}
+func rawGoExpr(src string, t *ir.Type) ir.Expr {
+	return &ir.Ident{Name: src, Type: t}
 }
 
 // listElems returns the elements of an IR list literal, or nil.

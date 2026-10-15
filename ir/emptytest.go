@@ -1,6 +1,6 @@
 package ir
 
-import "git.duckfam.us/jonathan/sngl/ast"
+import "duckfam.us/sngl/ast"
 
 // EmptyTest returns a bool expression that holds exactly when n's loop body
 // would not run — the iterable yields nothing — or nil when the loop's head is
@@ -34,12 +34,12 @@ func EmptyTest(n *For, clone func(Expr) Expr) Expr {
 	if t == nil {
 		return nil
 	}
-	var intrinsic, recv string
+	var intrinsic string
 	switch t.Kind {
 	case TypeList:
-		intrinsic, recv = "list.length", "list"
+		intrinsic = "list.length"
 	case TypeMap:
-		intrinsic, recv = "map.length", "map"
+		intrinsic = "map.length"
 	default:
 		// Asking a pull sequence consumes the element that answers.
 		return nil
@@ -52,7 +52,7 @@ func EmptyTest(n *For, clone func(Expr) Expr) Expr {
 		Type: TypInt,
 		Func: &Func{
 			Name:      "length",
-			Receiver:  recv,
+			Receiver:  t,
 			Intrinsic: intrinsic,
 			Return:    TypInt,
 			Params:    params,

@@ -15,10 +15,10 @@ import (
 	"path/filepath"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/docs"
+	"duckfam.us/sngl/docs"
 
-	_ "git.duckfam.us/jonathan/sngl/codegen/lang"
-	_ "git.duckfam.us/jonathan/sngl/codegen/platform"
+	_ "duckfam.us/sngl/codegen/lang"
+	_ "duckfam.us/sngl/codegen/platform"
 )
 
 func main() {
@@ -115,8 +115,8 @@ func copySnapshots(outDir string) {
 // runs too.
 func generateArgs(filename, outDir string) []string {
 	return []string{"tool", "sngl", "generate",
-		"--allow-eval=go:git.duckfam.us/jonathan/sngl/docs",
-		"--allow-eval=go:git.duckfam.us/jonathan/sngl/docs/lookup",
+		"--allow-eval=go:duckfam.us/sngl/docs",
+		"--allow-eval=go:duckfam.us/sngl/docs/lookup",
 		"--platform", "html", "--lang", "none", "--out", outDir, filename}
 }
 
@@ -161,73 +161,6 @@ func prebuildPlaygroundAssets() error {
 	if err := os.WriteFile(filepath.Join(stageDir, "wasm_exec.js"), wasmExecData, 0o644); err != nil {
 		return fmt.Errorf("writing wasm_exec.js: %w", err)
 	}
-	return nil
-}
-
-func injectExamples(outDir string) error {
-	pgHTML := filepath.Join(outDir, "playground.html")
-	htmlData, err := os.ReadFile(pgHTML)
-	if err != nil {
-		return fmt.Errorf("reading playground.html: %w", err)
-	}
-
-	type example struct {
-		name, label, source string
-	}
-	var examples []example
-	exEntries, _ := os.ReadDir("examples")
-	for _, entry := range exEntries {
-		if !entry.IsDir() {
-			continue
-		}
-		dir := filepath.Join("examples", entry.Name())
-		files, _ := os.ReadDir(dir)
-		for _, f := range files {
-			if !strings.HasSuffix(f.Name(), ".sngl") {
-				continue
-			}
-			data, err := os.ReadFile(filepath.Join(dir, f.Name()))
-			if err != nil {
-				continue
-			}
-			src := strings.TrimSpace(string(data))
-			if strings.Contains(src, `"go:`) {
-				continue // skip examples with go: imports (not supported in WASM)
-			}
-			name := entry.Name()
-			label := strings.ReplaceAll(name, "-", " ")
-			words := strings.Fields(label)
-			for i, w := range words {
-				if len(w) > 0 {
-					words[i] = strings.ToUpper(w[:1]) + w[1:]
-				}
-			}
-			label = strings.Join(words, " ")
-			examples = append(examples, example{name: name, label: label, source: src})
-		}
-	}
-
-	// Build example source scripts and inject into page.
-	var scriptTags string
-	if len(examples) > 0 {
-		var optionTags strings.Builder
-		for _, ex := range examples {
-			optionTags.WriteString(fmt.Sprintf("<option value=%q>%s</option>", ex.name, ex.label))
-			scriptTags += fmt.Sprintf("<script type=\"text/sngl\" id=%q>%s</script>\n", ex.name+"-source", ex.source)
-		}
-		scriptTags = strings.Replace(scriptTags, fmt.Sprintf(`id="%s-source"`, examples[0].name), `id="default-source"`, 1)
-
-		html := string(htmlData)
-		html = strings.Replace(html, `<option value="default">Hello</option>`, optionTags.String(), 1)
-		htmlData = []byte(html)
-		log.Printf("playground: %d examples injected", len(examples))
-	} else {
-		scriptTags = "<script type=\"text/sngl\" id=\"default-source\">import ui \"sngl:ui\"\n\nui.window {\n    ui.vbox(style={padding=16}) {\n        ui.text(value=\"Hello, SNGL!\")\n    }\n}</script>"
-	}
-
-	pgHTMLStr := strings.Replace(string(htmlData), `<div id="playground-sources">`, `<div id="playground-sources">`+scriptTags, 1)
-	os.WriteFile(pgHTML, []byte(pgHTMLStr), 0o644)
-	log.Printf("playground: ready")
 	return nil
 }
 

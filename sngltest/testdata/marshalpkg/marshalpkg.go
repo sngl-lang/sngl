@@ -5,7 +5,7 @@ package marshalpkg
 import (
 	"encoding/base64"
 
-	"git.duckfam.us/jonathan/sngl/pkg/go/consteval"
+	"duckfam.us/sngl/pkg/go/consteval"
 )
 
 // Item has no marshalling of its own: the encoder walks it by reflection and
@@ -24,7 +24,7 @@ func (t Tag) MarshalSNGL() ([]byte, error) {
 }
 
 // Blob is the disagreement: base64 is a reasonable form for a byte slice and a
-// string is not a list<int>, which is what the importer makes of []byte.
+// string is not a list[int], which is what the importer makes of []byte.
 type Blob []byte
 
 // MarshalSNGL writes the bytes base64-encoded.

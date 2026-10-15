@@ -6,19 +6,19 @@ import (
 	"slices"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/codegen/irwalk"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/codegen/irwalk"
+	"duckfam.us/sngl/ir"
 )
 
 // SNGL's built-in `color` maps to the shared pkg/go/snglcolor.Color struct
 // (int channels), so both string contexts (via Color.String()) and canvas
 // contexts (reading .R/.G/.B/.A) work off one type. colorImportPath is
 // registered on demand at the emit sites that actually reference the type:
-// StructLit (a color value) and the canvas emitters (CanvasStyle decls).
+// StructLit (a color value) and the canvas emitters (Style decls).
 const (
-	colorImportPath = "git.duckfam.us/jonathan/sngl/pkg/go/snglcolor"
+	colorImportPath = "duckfam.us/sngl/pkg/go/snglcolor"
 	colorGoType     = "snglcolor.Color"
 )
 
@@ -220,7 +220,41 @@ func (gc *GoIRContext) Binary(n *ir.Binary, left, right string) string {
 	if out, ok := goMultiBaseUnitBinary(n, left, right); ok {
 		return out
 	}
+	if out, ok := goUnitRatio(n, left, right); ok {
+		return out
+	}
+	if out, ok := goScalarUnitScale(n, left, right); ok {
+		return out
+	}
+	// option[T] against a T: Go's option is *T, and comparing the pointer
+	// with a value does not compile. Each operand is evaluated once.
+	if optLeft, _, ok := OptionCompare(n); ok {
+		opt, val := left, right
+		if !optLeft {
+			opt, val = right, left
+		}
+		eq := "snglOptEq(" + opt + ", " + val + ")"
+		if n.Op == ast.BinNeq {
+			return "!" + eq
+		}
+		return eq
+	}
 	return "(" + left + " " + irBinaryOp(n.Op) + " " + right + ")"
+}
+
+// goUnitRatio emits `unit / unit`, which the checker types as the
+// dimensionless float the two magnitudes divide to. Both operands are the
+// unit's host representation -- an integer time.Duration for a duration -- so
+// the bare `/` is Go's integer division and the func returning it does not
+// compile against its float64 result. Widening before the divide is also what
+// keeps a sub-millisecond ratio from truncating to zero.
+//
+// No conversion out of the representation is needed: it cancels.
+func goUnitRatio(n *ir.Binary, left, right string) (string, bool) {
+	if !ir.IsUnitRatio(n) {
+		return "", false
+	}
+	return "(float64(" + left + ") / float64(" + right + "))", true
 }
 
 // goMultiBaseUnitBinary expands a binary op over each base field of a
@@ -238,6 +272,15 @@ func goMultiBaseUnitBinary(n *ir.Binary, left, right string) (string, bool) {
 	// Equality on two unit structs is fine via Go struct equality.
 	if n.Op == ast.BinEq || n.Op == ast.BinNeq {
 		return "(" + left + " " + op + " " + right + ")", true
+	}
+
+	// A base is a float64 and Go will not scale one by an int; an int literal
+	// is an untyped constant and needs nothing.
+	if !leftIsStruct && isIntVar(n.Left) {
+		left = "float64(" + left + ")"
+	}
+	if !rightIsStruct && isIntVar(n.Right) {
+		right = "float64(" + right + ")"
 	}
 
 	bases := UnitBases(ud)
@@ -272,13 +315,6 @@ func (gc *GoIRContext) Select(n *ir.Select, operand string) string {
 	if n.Field == "length" {
 		return "len(" + operand + ")"
 	}
-	// i18n plural-category constants: map SNGL names (zero/one/…/other) to
-	// the qualified Go runtime names (i18n.PluralZero/PluralOne/…/PluralOther).
-	if operand == "i18n" {
-		if goName := i18nPluralKeyGoName(n.Field); goName != "" {
-			return "i18n." + goName
-		}
-	}
 	// A Select on a RawFieldAccess ident reads the unexported field directly,
 	// so a generated `_test.go` in the same package can touch Model fields.
 	if gc.rawFieldAccess(n.Operand) {
@@ -309,13 +345,6 @@ func (gc *GoIRContext) Select(n *ir.Select, operand string) string {
 			if id, ok := inner.Operand.(*ir.Ident); ok && gc.rawFieldAccess(id) && gc.methodField(inner.Field) {
 				return fmt.Sprintf("%s.%s()[%s].%s()", id.Name, inner.Field, gc.EvalExpr(idxExpr.Idx), ExportName(n.Field))
 			}
-		}
-	}
-	// Go's `any` has no fields, so a bare `.<F>` on a `dyn` operand will not
-	// compile; when exactly one user struct declares the field, assert to it.
-	if t := n.Operand.ExprType(); t != nil && t.Kind == ir.TypeDyn {
-		if name := gc.uniqueStructWithField(n.Field); name != "" {
-			return "(" + operand + ").(" + name + ")." + ExportName(n.Field)
 		}
 	}
 	if field, ok := gc.modelField(n); ok {
@@ -379,15 +408,9 @@ func (gc *GoIRContext) StructLit(n *ir.StructLit, fieldStrs []string) string {
 	if isColorStructLit(n) {
 		gc.RequireImport(colorImportPath)
 	}
-	// A literal of a type the runtime defines is the only mention of it that
-	// need not be reached through a call to that runtime, so it is the one
-	// place the import can be missing.
-	if ir.IsRemoteHTTPResultStruct(n.Type) {
-		gc.RequireImport(remoteHTTPImportPath)
-	}
 	// A channel has no composite literal either, and for the same reason: the
 	// only one that reaches here is the zero the checker synthesizes for an
-	// uninitialised `var done go.chan<bool>`, and a channel's zero is nil.
+	// uninitialised `var done go.chan[bool]`, and a channel's zero is nil.
 	// `make` is what produces a usable one, which is go.makechan.
 	if isChanLit(n) {
 		return "nil"
@@ -576,7 +599,7 @@ func (gc *GoIRContext) ForHead(n *ir.For, iter string) string {
 		}
 		return fmt.Sprintf("for %s, %s := range %s {", n.Key, n.Value, iter)
 	default:
-		// An iter<T> is a func, and `range` over one yields the element
+		// An iter[T] is a func, and `range` over one yields the element
 		// alone; a slice yields (index, element). Which of the two the
 		// iterable is, is a Go representation question rather than a shape
 		// question, so IterKind does not classify it -- IRTypeToGo makes the
@@ -595,8 +618,8 @@ func (gc *GoIRContext) ForHead(n *ir.For, iter string) string {
 }
 
 // lazyIter reports whether e is spelled as a pull sequence in Go -- an
-// iter<T>, which IRTypeToGo renders as func(func(T) bool). A list or map
-// reaching an iter<T> position carries an ir.Conversion, so this reads the
+// iter[T], which IRTypeToGo renders as func(func(T) bool). A list or map
+// reaching an iter[T] position carries an ir.Conversion, so this reads the
 // expression's own type and not the loop's element type.
 func lazyIter(e ir.Expr) bool {
 	if e == nil {
@@ -605,7 +628,7 @@ func lazyIter(e ir.Expr) bool {
 	t := e.ExprType()
 	// A channel ranges like a pull sequence and not like a slice: one variable,
 	// the element.
-	return t != nil && (t.Kind == ir.TypeIter || t.Kind == ir.TypeChan)
+	return t != nil && (t.Kind == ir.TypeIter || isChanType(t))
 }
 
 func (gc *GoIRContext) IfHead(_ *ir.If, cond string) string { return "if " + cond + " {" }
@@ -621,7 +644,7 @@ func (gc *GoIRContext) shadowedStateVar(sym ir.Symbol) (*ir.Var, bool) {
 	if !ok || v.IsConst || v.NodeHandle || gc.Ctx == nil {
 		return nil, false
 	}
-	if _, renamed := gc.Ctx.Renames[v.Name]; !gc.Ctx.Locals[v.Name] && !renamed {
+	if !gc.Ctx.IsLocal(v.Name) {
 		return nil, false
 	}
 	if gc.Ctx.Component != nil && slices.Contains(gc.Ctx.Component.Vars, v) {
@@ -783,6 +806,13 @@ func (gc *GoIRContext) evalIdent(n *ir.Ident) string {
 	if n.Member != "" {
 		return fmt.Sprintf("%q", n.Member)
 	}
+	// i18n plural-category constants: map SNGL names (zero/one/…/other) to
+	// the qualified Go runtime names (i18n.PluralZero/PluralOne/…/PluralOther).
+	if ir.IsI18nPluralKey(n) {
+		if goName := i18nPluralKeyGoName(n.Name); goName != "" {
+			return "i18n." + goName
+		}
+	}
 
 	// passNoImplicitRecv's synthesized receiver renders as the Model's `m`.
 	if _, ok := n.Sym.(*ir.Component); ok {
@@ -903,11 +933,24 @@ func (gc *GoIRContext) evalCall(n *ir.Call) string {
 		return out
 	}
 
+	if out, ok := gc.evalCreateComponent(n); ok {
+		return out
+	}
+	if n.Qualifier != nil && n.Func != nil {
+		if out, ok := gc.evalQualifiedCall(n); ok {
+			return out
+		}
+	}
+	// A member nothing declares -- an import that resolved to no package --
+	// is named as the call site wrote it.
+	if n.Qualifier != nil && n.Func == nil {
+		return n.QualifiedName() + "(" + strings.Join(gc.evalCallArgs(n.Args), ", ") + ")"
+	}
 	if n.Receiver != nil {
 		return gc.evalNamespaceCall(n)
 	}
 
-	if n.Func != nil && n.Func.Receiver != "" {
+	if n.Func != nil && n.Func.IsMethod() {
 		return gc.evalTypeMethodCall(n)
 	}
 
@@ -1096,84 +1139,67 @@ func methodTail(name string) string {
 	return name
 }
 
+// evalCreateComponent is lower.CreateComponent(comp, props), which builds a
+// component instance: m.render<Comp>(propArgs...), with the prop literal's
+// fields reordered to the component's declared prop order.
+func (gc *GoIRContext) evalCreateComponent(n *ir.Call) (string, bool) {
+	comp := CreateComponentTarget(n)
+	if comp == nil || !ir.IsNodeOpCall(n) || len(n.Args) != 2 {
+		return "", false
+	}
+	var pargs []string
+	lit, _ := n.Args[1].Value.(*ir.StructLit)
+	for _, p := range comp.Props {
+		var val ir.Expr
+		if lit != nil {
+			for _, f := range lit.Fields {
+				if f.Name == p.Name {
+					val = f.Value
+					break
+				}
+			}
+		}
+		switch {
+		case val != nil:
+			pargs = append(pargs, gc.EvalExpr(val))
+		case p.Default != nil:
+			pargs = append(pargs, gc.EvalExpr(p.Default))
+		default:
+			pargs = append(pargs, "nil")
+		}
+	}
+	// A host that builds the component as a record calls the record's ctor,
+	// which is a free function: there is no receiver to reach it through, and
+	// the instance it returns is what the caller holds.
+	if gc.InstanceRecords && comp.RuntimeInstance {
+		pargs = append([]string{gc.ModelRef()}, pargs...)
+		return ComponentInstanceCtor(comp.Name) + "(" + strings.Join(pargs, ", ") + ")", true
+	}
+	return gc.RecvName() + "." + ComponentRenderMethod(comp.Name) + "(" + strings.Join(pargs, ", ") + ")", true
+}
+
+// evalQualifiedCall is a call named through an import, where the import still
+// means something in Go. A SNGL package's declarations are emitted into this
+// very Go package, so the alias names nothing Go has, and the call is an
+// ordinary one: false. The alias survives only for a native import, which
+// nativeCall answers before this.
+func (gc *GoIRContext) evalQualifiedCall(n *ir.Call) (string, bool) {
+	// An i18n.* entry point is the runtime package's.
+	if ir.IsI18nCall(n) {
+		if result := goBuiltinMethodFromArgs("i18n."+n.Func.Name, gc.evalCallArgs(n.Args)); result != "" {
+			return result, true
+		}
+	}
+	return "", false
+}
+
 func (gc *GoIRContext) evalNamespaceCall(n *ir.Call) string {
 	receiver := gc.EvalExpr(n.Receiver)
 	args := gc.evalCallArgs(n.Args)
 
 	if n.Func != nil {
-
 		fname := n.Func.Name
-		// A package function called through its import has no receiver on the
-		// declaration — the namespace is the alias at the call site. Name it
-		// from there so a qualified call reads the same either way.
-		receiverName := n.Func.Receiver
-		if receiverName == "" {
-			if id, ok := n.Receiver.(*ir.Ident); ok {
-				receiverName = id.Name
-			}
-		}
-
-		qualName := receiverName + "." + fname
-
-		// lower.CreateComponent(comp, props) → m.render<Comp>(propArgs...),
-		// with the prop literal's fields reordered to the component's
-		// declared prop order.
-		if fname == "CreateComponent" && len(n.Args) == 2 {
-			if compIdent, ok := n.Args[0].Value.(*ir.Ident); ok {
-				if comp, ok := compIdent.Sym.(*ir.Component); ok {
-					var pargs []string
-					lit, _ := n.Args[1].Value.(*ir.StructLit)
-					for _, p := range comp.Props {
-						var val ir.Expr
-						if lit != nil {
-							for _, f := range lit.Fields {
-								if f.Name == p.Name {
-									val = f.Value
-									break
-								}
-							}
-						}
-						switch {
-						case val != nil:
-							pargs = append(pargs, gc.EvalExpr(val))
-						case p.Default != nil:
-							pargs = append(pargs, gc.EvalExpr(p.Default))
-						default:
-							pargs = append(pargs, "nil")
-						}
-					}
-					// A host that builds the component as a record calls
-					// the record's ctor, which is a free function: there is
-					// no receiver to reach it through, and the instance it
-					// returns is what the caller holds.
-					if gc.InstanceRecords && comp.RuntimeInstance {
-						pargs = append([]string{gc.ModelRef()}, pargs...)
-						return ComponentInstanceCtor(comp.Name) + "(" + strings.Join(pargs, ", ") + ")"
-					}
-					return gc.RecvName() + "." + ComponentRenderMethod(comp.Name) + "(" + strings.Join(pargs, ", ") + ")"
-				}
-			}
-		}
-
-		// A SNGL package's declarations are emitted into this very Go package,
-		// so the alias at the call site names nothing Go has: `readout.cells(…)`
-		// is `Cells(…)` or `m.cells(…)`, whichever the emitter chose for it.
-		// The alias only survives for a native import, handled above.
-		if gc.snglNamespace(n.Receiver) {
-			if gc.Ctx != nil && gc.Ctx.FreeFuncs[fname] {
-				return ExportName(fname) + "(" + strings.Join(args, ", ") + ")"
-			}
-			return gc.RecvName() + "." + fname + "(" + strings.Join(args, ", ") + ")"
-		}
-
-		// An i18n.* namespace receiver is the module object, not a value
-		// argument, so a(0) must be the first semantic argument.
-		if receiverName == "i18n" {
-			if result := goBuiltinMethodFromArgs(qualName, args); result != "" {
-				return result
-			}
-		}
-
+		qualName := n.Func.RecvName() + "." + fname
 		allArgs := append([]string{receiver}, args...)
 		if result := goBuiltinMethodFromArgs(qualName, allArgs); result != "" {
 			return result
@@ -1202,21 +1228,9 @@ func isStructExpr(e ir.Expr) bool {
 	return ok && sd.Builtin == ir.BuiltinNone
 }
 
-// snglNamespace reports whether an expression is the alias of an imported
-// SNGL package — one whose declarations this build emits itself, as opposed to
-// a scheme import naming a real Go package.
-func (gc *GoIRContext) snglNamespace(e ir.Expr) bool {
-	id, ok := e.(*ir.Ident)
-	if !ok {
-		return false
-	}
-	ns, ok := id.Sym.(*ir.Namespace)
-	return ok && ns.Pkg != nil
-}
-
 func (gc *GoIRContext) evalTypeMethodCall(n *ir.Call) string {
 	method := n.Func.Name
-	receiverName := n.Func.Receiver
+	receiverName := n.Func.RecvName()
 	qualName := receiverName + "." + method
 
 	if receiverName == "Alert" {
@@ -1266,7 +1280,7 @@ func (gc *GoIRContext) evalTypeMethodCall(n *ir.Call) string {
 	// nothing the package declares is the hoisted clone: the component it
 	// names is gone, and there is no Go type to attach the method to.
 	if gc.Ctx != nil && (gc.Ctx.Component != nil && gc.Ctx.Component.Name == receiverName ||
-		resolved && !LiftsToFreeFunc(pkg, receiverName)) {
+		resolved && !LiftsToFreeFunc(pkg, n.Func)) {
 		// A method-form call threads the receiver as args[0]; a zero-arg
 		// computed referenced by name carries none, and still dispatches
 		// through `m` rather than lifting to a free func.
@@ -1331,41 +1345,6 @@ func (gc *GoIRContext) rawFieldAccess(e ir.Expr) bool {
 // (nil-safe); such a field lowers to a zero-arg method call.
 func (gc *GoIRContext) methodField(field string) bool {
 	return gc.Ctx != nil && gc.Ctx.MethodFields != nil && gc.Ctx.MethodFields[field]
-}
-
-// uniqueStructWithField returns the Go type name of the sole package struct
-// declaring this field, or "" if zero or several do. The program's own
-// structs are asked first: a library payload a handler names joins
-// Pkg.Structs too, and `ChangeEvent.value` made every dyn `.value` ambiguous.
-func (gc *GoIRContext) uniqueStructWithField(field string) string {
-	if gc.Ctx == nil || gc.Ctx.Pkg == nil {
-		return ""
-	}
-	find := func(own bool) (match *ir.StructDef, ambiguous bool) {
-		for _, sd := range gc.Ctx.Pkg.Structs {
-			if own && sd.Pkg != "" {
-				continue
-			}
-			for _, f := range sd.Fields {
-				if f.Name == field {
-					if match != nil {
-						return nil, true
-					}
-					match = sd
-					break
-				}
-			}
-		}
-		return match, false
-	}
-	match, ambiguous := find(true)
-	if match == nil && !ambiguous {
-		match, _ = find(false)
-	}
-	if match == nil {
-		return ""
-	}
-	return ExportName(match.Name)
 }
 
 // isPrimitiveTypeName reports whether a SNGL receiver type name refers to a
@@ -1601,6 +1580,17 @@ func (gc *GoIRContext) evalConversion(n *ir.Conversion) string {
 				return s
 			}
 		}
+		// And a computed string the same way: the helper is what reads one.
+		if src := n.Operand.ExprType(); src != nil && src.Kind == ir.TypeString {
+			switch {
+			case ir.IsDateStruct(n.Type):
+				return "mustParseDate(" + gc.EvalExpr(n.Operand) + ")"
+			case ir.IsTimeStruct(n.Type):
+				return "mustParseTime(" + gc.EvalExpr(n.Operand) + ")"
+			case ir.IsDateTimeStruct(n.Type):
+				return "mustParseDateTime(" + gc.EvalExpr(n.Operand) + ")"
+			}
+		}
 	}
 	// `null` into a nillable target takes Go's untyped nil directly: plain
 	// conversion would give `*string(nil)`, which is not valid Go.
@@ -1612,7 +1602,7 @@ func (gc *GoIRContext) evalConversion(n *ir.Conversion) string {
 			}
 		}
 	}
-	// A list flowing into an iter<T> position becomes the pull sequence that
+	// A list flowing into an iter[T] position becomes the pull sequence that
 	// type is. slices.Values is that, in the standard library: it yields the
 	// slice's elements one at a time and copies nothing.
 	if n.Type != nil && n.Type.Kind == ir.TypeIter && len(n.Type.Elems) == 1 {
@@ -1621,7 +1611,7 @@ func (gc *GoIRContext) evalConversion(n *ir.Conversion) string {
 			return "slices.Values(" + gc.EvalExpr(n.Operand) + ")"
 		}
 	}
-	// A narrowed option: Go's option<T> is *T, so reading it as the T a null
+	// A narrowed option: Go's option[T] is *T, so reading it as the T a null
 	// test proved it to be is the star.
 	// The whole deref is parenthesised, not just its operand: `*` binds looser
 	// than a selector, so `*(m.h.Inner).Value` is a deref OF the field and Go
@@ -1649,6 +1639,28 @@ func (gc *GoIRContext) evalConversion(n *ir.Conversion) string {
 	if n.Type != nil && n.Type.Kind == ir.TypeString {
 		if ud := UnitStringConversion(n); ud != nil {
 			return UnitStringFn(ud) + "(" + operand + ")"
+		}
+		// An enum value is the string of its member's name already.
+		if src := n.Operand.ExprType(); src != nil && src.Kind == ir.TypeEnum {
+			return operand
+		}
+		// A date, time or datetime is the literal it was written as on every
+		// other target, since each holds it as that string. Go holds a
+		// time.Time, so it writes the same spelling back: fmt.Sprint wrote
+		// "2024-03-05 00:00:00 +0000 UTC".
+		if src := n.Operand.ExprType(); src != nil {
+			switch {
+			case ir.IsDateStruct(src):
+				return operand + `.Format("2006-01-02")`
+			case ir.IsDateTimeStruct(src):
+				gc.RequireImport("time")
+				return operand + ".Format(time.RFC3339)"
+			case ir.IsTimeStruct(src):
+				// HH:MM, or HH:MM:SS where it has seconds: the two spellings
+				// a time literal takes.
+				gc.RequireImport("time")
+				return "func(t time.Time) string { if t.Second() == 0 { return t.Format(\"15:04\") }; return t.Format(\"15:04:05\") }(" + operand + ")"
+			}
 		}
 		gc.RequireImport("fmt")
 		return "fmt.Sprint(" + operand + ")"
@@ -1710,7 +1722,7 @@ func nullFuncStubGo(t *ir.Type) string {
 	}
 	ret := ""
 	body := ""
-	if sig.Return != nil && sig.Return.Kind != ir.TypeDyn && sig.Return.Kind != ir.TypeInvalid {
+	if sig.Return != nil && sig.Return.Kind != ir.TypeInvalid {
 		retGo := IRTypeToGo(sig.Return)
 		ret = " " + retGo
 		body = " return " + ZeroValueGo(retGo) + " "
@@ -1737,16 +1749,26 @@ func isChanLit(n *ir.StructLit) bool {
 	if n == nil {
 		return false
 	}
-	if n.Type != nil && n.Type.Kind == ir.TypeChan {
-		return true
-	}
 	def := n.Def
 	if def == nil && n.Type != nil {
 		if sd, ok := n.Type.Decl.(*ir.StructDef); ok {
 			def = sd
 		}
 	}
-	return def != nil && def.Builtin == ir.BuiltinChan
+	return def != nil && def.Intrinsic == chanIntrinsic
+}
+
+// chanIntrinsic is sngl:language/go's `chan[T]`: Go's `chan T`, which SNGL
+// declares as a struct it cannot describe.
+const chanIntrinsic = "go:chan"
+
+// isChanType reports whether t is a `chan[T]`.
+func isChanType(t *ir.Type) bool {
+	if t == nil || t.Kind != ir.TypeStruct {
+		return false
+	}
+	sd, _ := t.Decl.(*ir.StructDef)
+	return sd != nil && sd.Intrinsic == chanIntrinsic
 }
 
 // structLitTypeName picks the Go type prefix for a struct literal. An
@@ -1817,14 +1839,9 @@ func structLitTypeName(n *ir.StructLit) string {
 // goReturnType is the result clause of a Go signature, leading space
 // included, or "" for a function that returns nothing.
 //
-// Nothing is the answer for a nil or void return, and also for a TypeDyn: that
-// has no first-class Go representation, so the signature reads `func foo()`
-// rather than `func foo() any`.
+// Nothing is the answer for a nil or void return.
 func goReturnType(ret *ir.Type) string {
 	if ret == nil || ret.Kind == ir.TypeVoid {
-		return ""
-	}
-	if ret.Kind == ir.TypeDyn {
 		return ""
 	}
 	return " " + IRTypeToGo(ret)
@@ -1847,6 +1864,13 @@ func (gc *GoIRContext) evalLambda(n *ir.Lambda) string {
 	// a host callback field of that type. It used to read `func() any`, which
 	// Go rejected at the assignment and again for the missing return.
 	retType := goReturnType(n.Func.Return)
+
+	// The body reads its parameters as the locals they are: one sharing a
+	// field's name -- a platform override's `func(on bool)` inlined into a
+	// component with a `var on` -- read the field.
+	for _, p := range n.Func.Params {
+		gc = gc.WithLocal(p.Name)
+	}
 
 	if len(n.Func.Block) == 1 {
 		if ret, ok := n.Func.Block[0].(*ir.Return); ok && ret.Value != nil {
@@ -1887,8 +1911,8 @@ func (gc *GoIRContext) WithLocal(name string) *GoIRContext {
 	}
 }
 
-// WithRenamedLocal binds name as a local that renders as `as` — what a var
-// handler's parameter needs, the setter having named the value already.
+// WithRenamedLocal binds name as a local that renders as `as` -- what a
+// parameter needs where the emitted code holds its value under another name.
 func (gc *GoIRContext) WithRenamedLocal(name, as string) *GoIRContext {
 	c := gc.WithLocal(name)
 	c.Ctx = gc.Ctx.WithRenamedLocal(name, as)
@@ -1951,30 +1975,21 @@ func IRTypeToGo(t *ir.Type) string {
 			return "*" + IRTypeToGo(t.Elems[0])
 		}
 		return "*any"
-	case ir.TypeRemote:
-		// A pointer: two readers of one key hold the same box, and a settle has
-		// to be visible to both.
-		if len(t.Elems) > 0 {
-			return "*" + remoteGoType + "[" + IRTypeToGo(t.Elems[0]) + "]"
-		}
-		return "*" + remoteGoType + "[any]"
 	case ir.TypeStruct:
+		// Bidirectional, because SNGL does not spell a direction. A host
+		// channel that is receive-only reaches a program as a field read and
+		// is selected on rather than bound, so no Go type is written for it;
+		// binding one to a var would spell this and not compile.
+		if isChanType(t) {
+			if len(t.Elems) == 1 {
+				return "chan " + IRTypeToGo(t.Elems[0])
+			}
+			return "chan any"
+		}
 		// date/time/datetime are stdlib structs mapping to time.Time; detect
 		// them by name before the generic struct path.
 		if ir.IsDateStruct(t) || ir.IsTimeStruct(t) || ir.IsDateTimeStruct(t) {
 			return "time.Time"
-		}
-		// The runtime defines the failure its boxes carry, so generated code
-		// spells that rather than emitting a struct of its own that no box
-		// could hold.
-		if ir.IsRemoteFailureStruct(t) {
-			return remoteFailureGo
-		}
-		// Likewise the value a request answers with: the transport returns it,
-		// so a Result declared beside it would be a second type `http.Get`
-		// could not hand back.
-		if ir.IsRemoteHTTPResultStruct(t) {
-			return remoteHTTPResultGo
 		}
 		if ir.IsColorStruct(t) {
 			return colorGoType
@@ -2005,8 +2020,6 @@ func IRTypeToGo(t *ir.Type) string {
 			return fb.String()
 		}
 		return "any"
-	case ir.TypeDyn:
-		return "any"
 	case ir.TypeEnum:
 		return "string"
 	case ir.TypeUnit:
@@ -2032,24 +2045,15 @@ func IRTypeToGo(t *ir.Type) string {
 		// `func name(params)`.
 		return ""
 	case ir.TypeIter:
-		// An iter<T> is a pull sequence, never a materialised one: the shape
+		// An iter[T] is a pull sequence, never a materialised one: the shape
 		// `range` accepts over a function (Go 1.23), spelled structurally so
-		// nothing has to import "iter" to name it. A list reaching an iter<T>
+		// nothing has to import "iter" to name it. A list reaching an iter[T]
 		// position is wrapped by evalConversion, and the wrapper yields the
 		// elements one at a time -- so no list is ever built to be iterated.
 		if len(t.Elems) == 1 {
 			return "func(func(" + IRTypeToGo(t.Elems[0]) + ") bool)"
 		}
 		return "func(func(any) bool)"
-	case ir.TypeChan:
-		// Bidirectional, because SNGL does not spell a direction. A host
-		// channel that is receive-only reaches a program as a field read and
-		// is selected on rather than bound, so no Go type is written for it;
-		// binding one to a var would spell this and not compile.
-		if len(t.Elems) == 1 {
-			return "chan " + IRTypeToGo(t.Elems[0])
-		}
-		return "chan any"
 	case ir.TypeInstance:
 		// A live instance of a component is the generated record every Go
 		// platform allocates for it. Decl carries which component; without one
@@ -2177,7 +2181,7 @@ func irLambdaLiteralToGo(n *ir.Lambda) string {
 		params[i] = "_ " + goType
 	}
 	retType := ""
-	if n.Func.Return != nil && n.Func.Return.Kind != ir.TypeDyn && n.Func.Return.Kind != ir.TypeInvalid {
+	if n.Func.Return != nil && n.Func.Return.Kind != ir.TypeInvalid {
 		retType = " " + IRTypeToGo(n.Func.Return)
 	}
 	body := ""
@@ -2272,6 +2276,33 @@ func (gc *GoIRContext) NodeRecv(name string) string {
 	return gc.RecvName()
 }
 
+// NodeRecvRef is NodeRecv as an expression, typed as the struct it is: the
+// Model, or the component instance record a ctor fills.
+func (gc *GoIRContext) NodeRecvRef(name string) *ir.Ident {
+	recv := gc.NodeRecv(name)
+	if recv == "" {
+		recv = codegen.ModelReceiver
+	}
+	return codegen.ReceiverRef(recv, gc.recvType(recv))
+}
+
+// RecvRef is RecvName as an expression, typed as NodeRecvRef's is.
+func (gc *GoIRContext) RecvRef() *ir.Ident {
+	return codegen.ReceiverRef(gc.RecvName(), gc.recvType(gc.RecvName()))
+}
+
+// recvType is the struct the receiver named recv is: a component instance's
+// record for the scope's own receiver inside one, and the Model otherwise.
+func (gc *GoIRContext) recvType(recv string) *ir.Type {
+	if gc.Ctx != nil && gc.Ctx.Component != nil && gc.Ctx.StateReceiver != "" && recv == gc.Ctx.StateReceiver {
+		return ir.NativeGoPointerOf(ComponentInstanceType(gc.Ctx.Component.Name))
+	}
+	if gc.ModelIsValue && recv == codegen.ModelReceiver {
+		return ir.NativeGoNamed(codegen.ModelTypeName)
+	}
+	return codegen.ModelType()
+}
+
 // ModelRef is the Model this scope belongs to, as a `*Model`: the one a
 // component instance record holds, or the receiver.
 func (gc *GoIRContext) ModelRef() string {
@@ -2295,8 +2326,8 @@ func (gc *GoIRContext) ModelArg() string {
 // receiver as the first parameter (passNoImplicitRecv already put it there).
 func (gc *GoIRContext) EmitTypeMethodDef(fn *ir.Func) []string {
 	fnCopy := *fn
-	fnCopy.Name = ExportName(fn.Receiver) + ExportName(fn.Name)
-	fnCopy.Receiver = ""
+	fnCopy.Name = ExportName(fn.RecvName()) + ExportName(fn.Name)
+	fnCopy.Receiver = nil
 	sub := *gc
 	if gc.Ctx != nil && gc.Ctx.ModelParamFuncs[fn] {
 		sub.ExtraParam = gc.RecvName() + " *" + codegen.ModelTypeName
@@ -2322,7 +2353,7 @@ func (gc *GoIRContext) EmitFuncDef(fn *ir.Func) []string {
 		// to put a component's funcs on the per-request State, which is the
 		// only receiver that file has.
 		sig += "(" + gc.RecvName() + " *" + gc.MethodRecvType + ") "
-		if len(params) > 0 && fn.Receiver != "" {
+		if len(params) > 0 && fn.IsMethod() {
 			// The component receiver arrives as an ordinary first parameter
 			// (passNoImplicitRecv). As a Go method it is the receiver, so it
 			// is not also an argument.
@@ -2331,8 +2362,8 @@ func (gc *GoIRContext) EmitFuncDef(fn *ir.Func) []string {
 		sig += fn.Name + "(" + appendParam(params, extra) + ")" + retType + " {"
 		lines = append(lines, sig)
 		return gc.emitFuncBody(lines, fn, params)
-	case fn.Receiver != "":
-		sig += "(m *" + fn.Receiver + ") "
+	case fn.IsMethod():
+		sig += "(m *" + fn.RecvName() + ") "
 		// The synthetic receiver passNoImplicitRecv prepended is this method's
 		// Go receiver, so it is not also an argument. Emitting it as one gave
 		// `func (m *Model) press(this any, k Key)` against call sites that pass
@@ -2439,4 +2470,26 @@ func WithUnreadVarsDropped(n *ir.For) *ir.For {
 		cp.Value = "_"
 	}
 	return &cp
+}
+
+// OptionCompare reports whether n compares an option with a value of its
+// element type (== or !=), and whether the option is the left operand. A
+// comparison with null, or of two options, is the pointer comparison Go
+// already spells.
+func OptionCompare(n *ir.Binary) (optionLeft, valueRight, ok bool) {
+	if n == nil || (n.Op != ast.BinEq && n.Op != ast.BinNeq) {
+		return false, false, false
+	}
+	lt, rt := n.Left.ExprType(), n.Right.ExprType()
+	isOpt := func(t *ir.Type) bool { return t != nil && t.Kind == ir.TypeOption }
+	isVal := func(t *ir.Type) bool {
+		return t != nil && t.Kind != ir.TypeOption && t.Kind != ir.TypeNull
+	}
+	switch {
+	case isOpt(lt) && isVal(rt):
+		return true, true, true
+	case isOpt(rt) && isVal(lt):
+		return false, true, true
+	}
+	return false, false, false
 }

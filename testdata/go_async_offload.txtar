@@ -54,10 +54,10 @@ window {
 package main
 
 import (
+	"duckfam.us/sngl/pkg/go/fynelayout"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/widget"
-	"git.duckfam.us/jonathan/sngl/pkg/go/fynelayout"
 	"os"
 	"time"
 )
@@ -71,7 +71,7 @@ type ErrorEvent struct {
 type Model struct {
 	greeting__inst0 string
 	busy__inst0     bool
-	visible__inst1  bool
+	visible__inst0  bool
 
 	__n0    *fynelayout.Toplevel
 	out     *widget.Label
@@ -84,7 +84,7 @@ func New() *Model {
 	m := &Model{}
 	m.greeting__inst0 = "idle"
 	m.busy__inst0 = false
-	m.visible__inst1 = true
+	m.visible__inst0 = true
 	return m
 }
 
@@ -92,8 +92,8 @@ func (m *Model) __n0_closed_handler() {
 }
 
 func (m *Model) __n0_visible_handler(__visible bool) {
-	m.visible__inst1 = __visible
-	m.__n0.SetVisible(m.visible__inst1)
+	m.visible__inst0 = __visible
+	m.__n0.SetVisible(m.visible__inst0)
 }
 
 func (m *Model) load_click_handler() {
@@ -147,12 +147,12 @@ func (m *Model) SetBusy__inst0(v bool) {
 	m.busy__inst0 = v
 }
 
-func (m *Model) Visible__inst1() bool {
-	return m.visible__inst1
+func (m *Model) Visible__inst0() bool {
+	return m.visible__inst0
 }
 
-func (m *Model) SetVisible__inst1(v bool) {
-	m.visible__inst1 = v
+func (m *Model) SetVisible__inst0(v bool) {
+	m.visible__inst0 = v
 }
 
 // BuildUI creates the widget tree and returns the first window's content.
@@ -162,7 +162,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	}
 	m.__built = true
 	m.__n0 = fynelayout.NewToplevel()
-	m.__n0.SetVisible(m.visible__inst1)
+	m.__n0.SetVisible(m.visible__inst0)
 	m.__n0.OnClosed = m.__n0_closed_handler
 	m.__n0.OnVisible = m.__n0_visible_handler
 	m.out = widget.NewLabel("")
@@ -184,4 +184,4 @@ func main() {
 	_ = os.Stderr
 }
 -- run/go/fyne --
-pass sha256:1ff5c8b0f3685d9cf97987a16ce7368d
+pass sha256:2406a7cb5cccc211924f5c2c2e0cb511

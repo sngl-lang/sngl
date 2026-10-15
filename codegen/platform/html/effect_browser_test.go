@@ -37,7 +37,7 @@ import . "sngl:ui"
 component App() node {
     var (
         shown = true
-        log list<string> = []
+        log list[string] = []
     )
     button(text="toggle", @click { shown = !shown })
     if shown {
@@ -73,8 +73,8 @@ func TestEffect_OneBracketPerElement(t *testing.T) {
 import . "sngl:ui"
 component App() node {
     var (
-        items list<string> = ["a", "b"]
-        log list<string> = []
+        items list[string] = ["a", "b"]
+        log list[string] = []
     )
     button(text="drop", @click { items = ["a"] })
     for var it = items {
@@ -108,8 +108,8 @@ func TestEffect_TwoEndingsRunNewestFirst(t *testing.T) {
 import . "sngl:ui"
 component App() node {
     var (
-        items list<string> = ["a", "b", "c"]
-        log list<string> = []
+        items list[string] = ["a", "b", "c"]
+        log list[string] = []
     )
     button(text="drop", @click { items = ["a"] })
     for var it = items {
@@ -138,7 +138,7 @@ import . "sngl:ui"
 component App() node {
     var (
         n = 0
-        log list<string> = []
+        log list[string] = []
     )
     button(text="same", @click { n = 0 })
     button(text="bump", @click { n = n + 1 })

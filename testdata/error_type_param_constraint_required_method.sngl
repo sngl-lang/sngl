@@ -1,0 +1,8 @@
+// A method's own type parameters name constraints. Its receiver's list only
+// restates the receiver's names, so it carries none: the `.` after it is what
+// says it is the receiver's, and a method's bracket of one bare name is a
+// target.
+
+func list[T].pairWith[U](u U) list[U] { // ERROR(check) "undefined: U (a type parameter names its constraint: write `U any`)"
+    return [u]
+}

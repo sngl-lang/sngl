@@ -6,7 +6,7 @@ import (
 	"slices"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 // passContext lowers context declarations into hidden state. Runs when
@@ -152,11 +152,6 @@ func collectReachableExternalFuncs(pkg *ir.Package) []*ir.Func {
 	}
 	seedFromVar := func(v *ir.Var) {
 		seedFromExpr(v.Init)
-		for _, h := range v.Handlers {
-			if h.Func != nil {
-				seedFromStmts(h.Func.Block)
-			}
-		}
 	}
 
 	// Seed from user package: walk every place an expression or stmt can
@@ -165,7 +160,7 @@ func collectReachableExternalFuncs(pkg *ir.Package) []*ir.Func {
 	// vars. callsInBody alone misses comp.Vars / comp.Funcs because Vars
 	// aren't part of Body — they hang off the Component struct directly.
 	for _, comp := range pkg.Components {
-		seedFromStmts(comp.Body)
+		seedFromStmts(comp.Stmts)
 		for _, v := range comp.Vars {
 			seedFromVar(v)
 		}
@@ -286,27 +281,17 @@ func computeReachability(pkg *ir.Package, extraFuncs []*ir.Func) Reachable {
 		}
 	}
 	componentCalls := func(comp *ir.Component) []callEdge {
-		calls := callsInBody(comp.Body, nil)
+		calls := callsInBody(comp.Stmts, nil)
 		for _, v := range comp.Vars {
 			calls = append(calls, callsInExpr(v.Init, nil)...)
-			for _, h := range v.Handlers {
-				if h.Func != nil {
-					calls = append(calls, callsInBody(h.Func.Block, nil)...)
-				}
-			}
 		}
 		return calls
 	}
 	for _, comp := range pkg.Components {
 		out := map[*ir.Context]bool{}
-		collectContextReads(comp.Body, out)
+		collectContextReads(comp.Stmts, out)
 		for _, v := range comp.Vars {
 			collectContextReads(v.Init, out)
-			for _, h := range v.Handlers {
-				if h.Func != nil {
-					collectContextReads(h.Func.Block, out)
-				}
-			}
 		}
 		for ctx := range out {
 			reach.Components[ctx][comp] = true
@@ -574,17 +559,12 @@ func rewriteReads(pkg *ir.Package, reach Reachable, extraFuncs []*ir.Func, hidde
 				continue
 			}
 			w := readsOf(func() ir.Expr { return hiddenIdent(varSym, varSym.Name, varSym.Type) })
-			comp.Body = w.stmts(comp.Body)
+			comp.Stmts = w.stmts(comp.Stmts)
 			for _, v := range comp.Vars {
 				if v == varSym {
 					continue
 				}
 				v.Init = w.expr(v.Init)
-				for _, h := range v.Handlers {
-					if h.Func != nil {
-						h.Func.Block = w.stmts(h.Func.Block)
-					}
-				}
 			}
 		}
 		for _, fn := range contextFuncs(pkg, extraFuncs) {
@@ -639,7 +619,7 @@ func computeSlotEnvs(pkg *ir.Package) slotEnvs {
 	out := slotEnvs{}
 	for _, comp := range pkg.Components {
 		per := map[string]map[*ir.Context]ir.Expr{}
-		collectSlotEnv(comp.Body, map[*ir.Context]ir.Expr{}, per)
+		collectSlotEnv(comp.Stmts, map[*ir.Context]ir.Expr{}, per)
 		if len(per) > 0 {
 			out[comp] = per
 		}
@@ -752,11 +732,6 @@ func lowerProviders(pkg *ir.Package, reach Reachable, extraFuncs []*ir.Func, hid
 	for _, v := range pkg.Vars {
 		pkgActive := copyExprMap(defaults)
 		v.Init = lowerInExpr(v.Init, pkgActive, pc)
-		for _, h := range v.Handlers {
-			if h.Func != nil {
-				h.Func.Block = lowerInStmts(h.Func.Block, pkgActive, pc)
-			}
-		}
 	}
 
 	// For component bodies: the active value for each ctx is a read of
@@ -766,21 +741,16 @@ func lowerProviders(pkg *ir.Package, reach Reachable, extraFuncs []*ir.Func, hid
 	// the field see the threaded value.
 	for _, comp := range pkg.Components {
 		compActive := hiddenActiveFor(pkg, hidden, comp, nil)
-		comp.Body = lowerInStmts(comp.Body, compActive, pc)
+		comp.Stmts = lowerInStmts(comp.Stmts, compActive, pc)
 		// Any LocalVar (`var x = ...` originating from inside a provider
 		// block, now spliced up to component-body level by the provider
 		// unwrap above) is promoted to a component-level *ir.Var so
 		// codegen treats it as Model state instead of leaving it as a
 		// dangling block-local in a context where there is no enclosing
 		// function body.
-		comp.Body, comp.Vars = promoteLocalVarsToVars(comp.Body, comp.Vars)
+		comp.Stmts, comp.Vars = promoteLocalVarsToVars(comp.Stmts, comp.Vars)
 		for _, v := range comp.Vars {
 			v.Init = lowerInExpr(v.Init, compActive, pc)
-			for _, h := range v.Handlers {
-				if h.Func != nil {
-					h.Func.Block = lowerInStmts(h.Func.Block, compActive, pc)
-				}
-			}
 		}
 	}
 
@@ -854,240 +824,159 @@ func hiddenActiveFor(pkg *ir.Package, hidden hiddenParamIndex, comp *ir.Componen
 	return out
 }
 
-// lowerInStmts recursively lowers ContextProvider nodes and threads context
-// args onto component-call NodeInsts and func-call Calls. active maps each
-// context to its current value expression at this point in the tree.
+// lowerInStmts lowers the context reads and calls in stmts against active,
+// each context's current value expression at this point, and splices every
+// provider out into the block it stood in. A provider's value is what its
+// children see; a component call is handed the hidden arguments of the
+// contexts its body reaches, and a func call those of its callee.
 func lowerInStmts(stmts []ir.Stmt, active map[*ir.Context]ir.Expr, pc *provLower) []ir.Stmt {
-	out := make([]ir.Stmt, 0, len(stmts))
-	for _, s := range stmts {
-		switch n := s.(type) {
-		case *ir.ContextProvider:
-			// Replace provider with its children, updating the active value.
-			// The value is lowered against the *enclosing* active map, not the
-			// one it establishes: `depth(depth + 1)` reads the value it is
-			// overriding, which is a strictly outer scope, so the substitution
-			// terminates and nesting accumulates. Installed unlowered, that
-			// read stayed an *ir.ContextRead and reached codegen as a bare
-			// identifier nothing declares.
-			inner := copyExprMap(active)
-			inner[n.Ref] = lowerInExpr(n.Value, active, pc)
-			lowered := lowerInStmts(n.Children, inner, pc)
-			out = append(out, lowered...)
-
-		case *ir.NodeInst:
-			// Thread hidden args onto user-component calls that are reachable.
-			if n.Component != nil {
-				// By name: the order is the props' order, which is output.
-				for _, ctx := range sortedContexts(active) {
-					val := active[ctx]
-					if !pc.reach.Components[ctx][n.Component] {
-						continue
-					}
-					paramName := "__ctx_" + ctx.Name
-					if !hasArgNamed(n.Props, paramName) {
-						n.Props = append(n.Props, ir.Arg{Name: paramName, Value: val})
-					}
-				}
-			}
-			// Walk prop values and handler bodies to thread args onto
-			// nested func calls. Those are the caller's own and stay on the
-			// caller's active map -- only what the callee *renders* stands
-			// under the callee's providers.
-			for i := range n.Props {
-				n.Props[i].Value = lowerInExpr(n.Props[i].Value, active, pc)
-			}
-			for i := range n.Handlers {
-				lowerInHandler(&n.Handlers[i], active, pc)
-			}
-			// A slot population is rendered where the callee's body inserts
-			// it, so a provider the callee wrapped that insertion in covers
-			// it -- even though the population is written here.
-			slots := pc.slots[n.Component]
-			entry := active
-			if len(slots) > 0 {
-				entry = calleeEntry(active, pc)
-			}
-			n.Children = lowerInStmts(n.Children, slotActive(active, entry, slots[""], pc), pc)
-			for _, name := range ir.SlotNames(n.Slots) {
-				sc := n.Slots[name]
-				sc.Body = lowerInStmts(sc.Body, slotActive(active, entry, slots[name], pc), pc)
-			}
-			out = append(out, n)
-
-		case *ir.If:
-			n.Cond = lowerInExpr(n.Cond, active, pc)
-			n.Body = lowerInStmts(n.Body, active, pc)
-			n.Else = lowerInStmts(n.Else, active, pc)
-			out = append(out, n)
-
-		case *ir.For:
-			n.Iter = lowerInExpr(n.Iter, active, pc)
-			n.Body = lowerInStmts(n.Body, active, pc)
-			n.Else = lowerInStmts(n.Else, active, pc)
-			out = append(out, n)
-
-		case *ir.SlotInst:
-			// What the insertion hands its population is evaluated here.
-			for i := range n.Args {
-				n.Args[i] = lowerInExpr(n.Args[i], active, pc)
-			}
-			n.Children = lowerInStmts(n.Children, active, pc)
-			for _, name := range ir.SlotNames(n.Slots) {
-				sc := n.Slots[name]
-				sc.Body = lowerInStmts(sc.Body, active, pc)
-			}
-			out = append(out, n)
-
-		case *ir.ErrorBoundary:
-			lowerInHandler(n.Handler, active, pc)
-			n.Children = lowerInStmts(n.Children, active, pc)
-			n.Failed = lowerInStmts(n.Failed, active, pc)
-			out = append(out, n)
-
-		case *ir.Assign:
-			n.Target = lowerInExpr(n.Target, active, pc)
-			n.Value = lowerInExpr(n.Value, active, pc)
-			out = append(out, n)
-
-		case *ir.LocalVar:
-			n.Init = lowerInExpr(n.Init, active, pc)
-			out = append(out, n)
-
-		case *ir.Return:
-			n.Value = lowerInExpr(n.Value, active, pc)
-			out = append(out, n)
-
-		case *ir.CallStmt:
-			if ctx, val := testSetContext(n.Call); ctx != nil {
-				// A test body's override is a provider over the statements after it.
-				lowered := lowerInExpr(val.Value, active, pc)
-				val.Value = lowered
-				active = copyExprMap(active)
-				active[ctx] = lowered
-			} else if n.Call != nil {
-				lowerInExpr(n.Call, active, pc)
-			}
-			out = append(out, n)
-
-		case *ir.Emit:
-			for i := range n.Args {
-				n.Args[i].Value = lowerInExpr(n.Args[i].Value, active, pc)
-			}
-			out = append(out, n)
-
-		case *ir.Toggle:
-			// Toggle may survive into NoContext when NoToggle cap is off.
-			n.Target = lowerInExpr(n.Target, active, pc)
-			out = append(out, n)
-
-		case *ir.Break, *ir.Continue:
-			// A loop escape has no expression and no nested block to lower --
-			// but it is still a statement, and this walk rebuilds the list it
-			// was in. Left out it was deleted: a `continue` in any program
-			// that also lowers a context vanished on every target, silently,
-			// and which programs those were depended only on whether some
-			// package in the build declared one.
-			out = append(out, n)
-		default:
-			panic(fmt.Sprintf("lowerInStmts: unhandled %T", n))
-		}
-	}
-	return out
+	lowerScope(stmts, active, pc)
+	return spliceProviders(stmts)
 }
 
-// lowerInExpr walks an expression, threading hidden ctx args onto any
-// reachable *ir.Call inside.
+// lowerScope is lowerInStmts leaving the providers standing, for a block under
+// one that is being lowered: the splice is done once, from the top.
+func lowerScope(stmts []ir.Stmt, active map[*ir.Context]ir.Expr, pc *provLower) {
+	l := contextLowerer{active: active, pc: pc}
+	if err := ir.Rewrite(stmts, l.visit); err != nil {
+		panic(err)
+	}
+}
+
+// lowerInExpr is lowerInStmts for one expression, returning what it became.
 func lowerInExpr(e ir.Expr, active map[*ir.Context]ir.Expr, pc *provLower) ir.Expr {
 	if e == nil {
 		return nil
 	}
-	switch n := e.(type) {
-	case *ir.Call:
-		lowerCallInPlace(n, active, pc)
-		n.Receiver = lowerInExpr(n.Receiver, active, pc)
-		if calledFunc(n) == n.Func {
-			n.Callee = lowerInExpr(n.Callee, active, pc)
-		}
-		for i := range n.Args {
-			n.Args[i].Value = lowerInExpr(n.Args[i].Value, active, pc)
-		}
-		lowerInHandler(n.ErrorHandler, active, pc)
-	case *ir.Binary:
-		n.Left = lowerInExpr(n.Left, active, pc)
-		n.Right = lowerInExpr(n.Right, active, pc)
-	case *ir.Unary:
-		n.Operand = lowerInExpr(n.Operand, active, pc)
-	case *ir.Ternary:
-		n.Cond = lowerInExpr(n.Cond, active, pc)
-		n.Then = lowerInExpr(n.Then, active, pc)
-		n.Else = lowerInExpr(n.Else, active, pc)
-	case *ir.Select:
-		n.Operand = lowerInExpr(n.Operand, active, pc)
-	case *ir.Index:
-		n.Operand = lowerInExpr(n.Operand, active, pc)
-		n.Idx = lowerInExpr(n.Idx, active, pc)
-	case *ir.Conversion:
-		n.Operand = lowerInExpr(n.Operand, active, pc)
-	case *ir.StructLit:
-		for i := range n.Fields {
-			n.Fields[i].Value = lowerInExpr(n.Fields[i].Value, active, pc)
-		}
-	case *ir.ListLit:
-		for i := range n.Elems {
-			n.Elems[i] = lowerInExpr(n.Elems[i], active, pc)
-		}
-	case *ir.MapLitIR:
-		for i := range n.Entries {
-			n.Entries[i].Key = lowerInExpr(n.Entries[i].Key, active, pc)
-			n.Entries[i].Value = lowerInExpr(n.Entries[i].Value, active, pc)
-		}
-	case *ir.Spread:
-		n.Operand = lowerInExpr(n.Operand, active, pc)
-	case *ir.Lambda:
-		// Lambda survives NoContext when NoLambda cap is off; thread ctx
-		// args into its body.
-		if n.Func != nil {
-			n.Func.Block = lowerInStmts(n.Func.Block, active, pc)
-		}
-	case *ir.Closure:
-		// Closure (post-NoLambda) — captured-state field exprs may need
-		// threading; the lifted Func is walked separately via pkg.Funcs.
-		if n.State != nil {
-			for i := range n.State.Fields {
-				n.State.Fields[i].Value = lowerInExpr(n.State.Fields[i].Value, active, pc)
-			}
-		}
-	case *ir.ContextRead:
-		// Inside an active provider scope, replace the ContextRead with the
-		// provider's current value expression. rewriteReads handles direct
-		// readers outside any provider (replacing with the hidden-param
-		// Ident); this branch handles inside-provider reads, which the
-		// reachability collector deliberately skips because they are
-		// "shielded" by the provider — but the provider's value is what
-		// they should actually resolve to.
-		if val, ok := active[n.Ref]; ok {
-			return val
-		}
-		// No active provider for this ctx in scope (the read sits outside
-		// any provider in this lowering scope but reachability didn't mark
-		// the surrounding scope as a reader). Leave as-is; downstream
-		// codegen will surface this via its unhandled-IR panic if it
-		// matters.
-	case *ir.Ident:
-		if fn, ok := n.Sym.(*ir.Func); ok && len(pc.hidden.funcs[fn]) > 0 && fn.Receiver == "" {
-			return funcValueUnder(n, fn, active, pc)
-		}
-	case *ir.Literal:
-	default:
-		panic(fmt.Sprintf("lowerInExpr: unhandled %T", n))
+	l := contextLowerer{active: active, pc: pc}
+	e, err := ir.RewriteExpr(e, l.visit)
+	if err != nil {
+		panic(err)
 	}
 	return e
 }
 
 func lowerInHandler(h *ir.EventHandler, active map[*ir.Context]ir.Expr, pc *provLower) {
 	if h != nil && h.Func != nil {
-		h.Func.Block = lowerInStmts(h.Func.Block, active, pc)
+		lowerScope(h.Func.Block, active, pc)
 	}
+}
+
+// contextLowerer is one ir.Rewrite over a scope with one set of active
+// values. Everything the walk reaches is the generic traversal's; what turns
+// on a context -- a block standing under different values, a read, a call
+// that takes them -- is answered here, and the subtree lowered under other
+// values is walked by a lowerer of its own and skipped by this one.
+type contextLowerer struct {
+	active map[*ir.Context]ir.Expr
+	pc     *provLower
+	// bareCallee is the callee of the call being visited, where it names the
+	// function the call invokes: a call is not a function value taken, and
+	// funcValueUnder must leave it alone.
+	bareCallee ir.Expr
+}
+
+func (l *contextLowerer) visit(n ir.Node) (ir.Node, error) {
+	switch x := n.(type) {
+	case *ir.ContextProvider:
+		// The value is lowered against the *enclosing* values, not the ones
+		// it establishes: `depth(depth + 1)` reads the value it is
+		// overriding, a strictly outer scope, so the substitution terminates
+		// and nesting accumulates. Installed unlowered, that read stayed an
+		// *ir.ContextRead and reached codegen as a bare identifier nothing
+		// declares. spliceProviders takes the provider out afterwards.
+		x.Value = lowerInExpr(x.Value, l.active, l.pc)
+		inner := copyExprMap(l.active)
+		inner[x.Ref] = x.Value
+		lowerScope(x.Children, inner, l.pc)
+		return x, ir.SkipDir
+
+	case *ir.NodeInst:
+		// The hidden arguments of the contexts the component's body reaches.
+		if x.Component != nil {
+			// By name: the order is the props' order, which is output.
+			for _, ctx := range sortedContexts(l.active) {
+				if !l.pc.reach.Components[ctx][x.Component] {
+					continue
+				}
+				paramName := "__ctx_" + ctx.Name
+				if !hasArgNamed(x.Props, paramName) {
+					x.Props = append(x.Props, ir.Arg{Name: paramName, Value: l.active[ctx]})
+				}
+			}
+		}
+		// Props and handlers are the caller's own and stay on the caller's
+		// values -- only what the callee *renders* stands under the callee's
+		// providers.
+		for i := range x.Props {
+			x.Props[i].Value = lowerInExpr(x.Props[i].Value, l.active, l.pc)
+		}
+		for i := range x.Handlers {
+			lowerInHandler(&x.Handlers[i], l.active, l.pc)
+		}
+		// A slot population is rendered where the callee's body inserts it,
+		// so a provider the callee wrapped that insertion in covers it --
+		// even though the population is written here.
+		slots := l.pc.slots[x.Component]
+		entry := l.active
+		if len(slots) > 0 {
+			entry = calleeEntry(l.active, l.pc)
+		}
+		lowerScope(x.Children, slotActive(l.active, entry, slots[""], l.pc), l.pc)
+		for _, name := range ir.SlotNames(x.Slots) {
+			lowerScope(x.Slots[name].Body, slotActive(l.active, entry, slots[name], l.pc), l.pc)
+		}
+		return x, ir.SkipDir
+
+	case *ir.CallStmt:
+		// A test body's override is a provider over the statements after it.
+		if ctx, val := testSetContext(x.Call); ctx != nil {
+			val.Value = lowerInExpr(val.Value, l.active, l.pc)
+			l.active = copyExprMap(l.active)
+			l.active[ctx] = val.Value
+			return x, ir.SkipDir
+		}
+
+	case *ir.Call:
+		lowerCallInPlace(x, l.active, l.pc)
+		if calledFunc(x) != x.Func {
+			l.bareCallee = x.Callee
+		}
+
+	case *ir.ContextRead:
+		// Inside a provider, the provider's value. A read outside any
+		// provider is rewriteReads' (the hidden parameter); one with no value
+		// here is left for codegen to refuse.
+		if val, ok := l.active[x.Ref]; ok {
+			return val, ir.SkipDir
+		}
+
+	case *ir.Ident:
+		if fn, ok := x.Sym.(*ir.Func); ok && ir.Expr(x) != l.bareCallee && len(l.pc.hidden.funcs[fn]) > 0 && !fn.IsMethod() {
+			return funcValueUnder(x, fn, l.active, l.pc), ir.SkipDir
+		}
+	}
+	return n, nil
+}
+
+// spliceProviders replaces each provider under stmts, in whatever block it
+// stands -- a view's, a handler's -- with the children lowerInStmts lowered
+// under its value.
+func spliceProviders(stmts []ir.Stmt) []ir.Stmt {
+	return ir.RewriteBlocks(stmts, func(block []ir.Stmt) []ir.Stmt {
+		if !slices.ContainsFunc(block, func(s ir.Stmt) bool { _, ok := s.(*ir.ContextProvider); return ok }) {
+			return block
+		}
+		out := make([]ir.Stmt, 0, len(block))
+		for _, s := range block {
+			if p, ok := s.(*ir.ContextProvider); ok {
+				out = append(out, p.Children...)
+				continue
+			}
+			out = append(out, s)
+		}
+		return out
+	})
 }
 
 // lowerCallInPlace threads hidden __ctx_<name> args onto a func call site
@@ -1175,7 +1064,7 @@ func testSetContext(c *ir.Call) (*ir.Context, *ir.CallArg) {
 // setContextArg is the index of the argument naming the context
 // `t.setContext` sets, and that context.
 func setContextArg(c *ir.Call) (int, *ir.Context) {
-	if c == nil || c.Func == nil || c.Func.Receiver != "Test" || c.Func.Name != "setContext" {
+	if !ir.IsTestCall(c, ir.TestSetContextID) {
 		return 0, nil
 	}
 	for i := range c.Args {

@@ -1,5 +1,5 @@
 // &-bound loop element variables (`for var &t = list`) make the element a
-// ref<T> into the list, so field/whole-element writes update the original
+// ref[T] into the list, so field/whole-element writes update the original
 // element by index. Reads auto-deref. Plain `for t` stays a value copy
 // (enforced for compiled targets; the headless interpreter models structs
 // as references, so only the &-write-through behaviour is asserted here).
@@ -9,12 +9,12 @@ import . "sngl:test"
 
 struct Task {
     label string = ""
-    done bool = false
+    done  bool = false
 }
 
 component main node {
-    var tasks list<Task> = [{label="a", done=false}, {label="b", done=true}]
-    var nums list<int> = [1, 2, 3]
+    var tasks list[Task] = [{label="a", done=false}, {label="b", done=true}]
+    var nums list[int] = [1, 2, 3]
 
     // struct-field write through a ref element
     func markAllDone() {

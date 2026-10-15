@@ -10,14 +10,24 @@ Prebuilt binaries are available for common platforms. Download the `.gz` for
 your system, decompress it (`gunzip sngl-*.gz`), make it executable
 (`chmod +x sngl-*`), rename it to `sngl`, and place it on your `PATH`.
 
-<!-- sngl:downloads -->
+```sngl mode=body
+import html "sngl:platform/html"
+
+html.div(class="downloads", innerHTML="<!-- sngl:downloads -->")
+```
 
 ## Install from Source
 
-Building from source requires Go 1.26 or later.
+Building from source requires Go 1.27 or later.
 
 ```bash
-git clone https://git.duckfam.us/jonathan/sngl.git
+go install duckfam.us/sngl/cmd/sngl@latest
+```
+
+Or from a checkout:
+
+```bash
+git clone https://github.com/sngl-lang/sngl.git
 cd sngl
 go install ./cmd/sngl
 ```

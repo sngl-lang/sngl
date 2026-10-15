@@ -8,15 +8,15 @@ import (
 	fynetest "fyne.io/fyne/v2/test"
 	"fyne.io/fyne/v2/widget"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
-	_ "git.duckfam.us/jonathan/sngl/codegen/platform"
-	"git.duckfam.us/jonathan/sngl/internal/checker"
-	"git.duckfam.us/jonathan/sngl/internal/interp"
-	"git.duckfam.us/jonathan/sngl/internal/lower"
-	"git.duckfam.us/jonathan/sngl/internal/parser"
-	"git.duckfam.us/jonathan/sngl/ir"
-	"git.duckfam.us/jonathan/sngl/pkg/go/fynehost"
-	"git.duckfam.us/jonathan/sngl/pkg/go/fynelayout"
+	"duckfam.us/sngl/codegen"
+	_ "duckfam.us/sngl/codegen/platform"
+	"duckfam.us/sngl/internal/checker"
+	"duckfam.us/sngl/internal/interp"
+	"duckfam.us/sngl/internal/lower"
+	"duckfam.us/sngl/internal/parser"
+	"duckfam.us/sngl/ir"
+	"duckfam.us/sngl/pkg/go/fynehost"
+	"duckfam.us/sngl/pkg/go/fynelayout"
 )
 
 // This test imports the compiler, which the package under test must not. That
@@ -55,6 +55,7 @@ func check(t *testing.T, src string) *ir.Package {
 			t.Fatalf("check: %s: %s", d.Pos, d.Msg)
 		}
 	}
+	pkg = ir.ClonePackage(pkg)
 	if err := lower.Lower(pkg, lower.InterpreterFeatures(), lower.Options{
 		Platform:        "fyne",
 		ClaimsIntrinsic: codegen.ClaimsIntrinsicFunc(plat),
@@ -347,8 +348,8 @@ func TestAContainerCarriesItsChildrensFlex(t *testing.T) {
 	src := `import . "sngl:ui"
 
 component main node {
-    hbox #row(style={gap=4, padding=6}) {
-        button(text="a", style={flex=1, margin=3})
+    hbox #row(style={gap=4px, padding=6px}) {
+        button(text="a", style={flex=1, margin=3px})
         button(text="b", style={flex=2})
     }
 }
@@ -400,7 +401,7 @@ func TestPaintStylesReachATheme(t *testing.T) {
 component main node {
     vbox {
         button #plain(text="plain")
-        button #painted(text="painted", style={background=#f59e0b, color=#ffffff, fontSize=22})
+        button #painted(text="painted", style={background=#f59e0b, color=#ffffff, fontSize=22px})
     }
 }
 `

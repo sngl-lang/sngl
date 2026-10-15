@@ -5,10 +5,10 @@ import (
 	"strconv"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/codegen/lang/golang"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/codegen/lang/golang"
+	"duckfam.us/sngl/ir"
 )
 
 // loopFocus is what passFocusOrder put on a focusable node inside a loop slot:
@@ -126,7 +126,7 @@ func (vc *irViewContext) countFocusPos(n *ir.NodeInst) {
 
 // emitLoopSlotHandlers' cases are closures so that finding the node the cursor
 // names ends the walk however deep the loops are.
-func emitLoopSlotHandlers(b *strings.Builder, f *ir.For, info *irAnalysis, gc *golang.GoIRContext, guard string) {
+func emitLoopSlotHandlers(b *strings.Builder, f *ir.For, info *irAnalysis, gc *golang.GoIRContext, guard string, invokerSink btInvokerSink) {
 	lf, ok := firstLoopFocus([]ir.Stmt{f})
 	if !ok {
 		return
@@ -148,6 +148,24 @@ func emitLoopSlotHandlers(b *strings.Builder, f *ir.For, info *irAnalysis, gc *g
 			}
 		}
 	})
+	// A test drives a copy of a node the loop renders through the ordinal
+	// that copy has, which only a walk of the loop can say (loopCopies).
+	if invokerSink != nil {
+		eachRenderedNode([]ir.Stmt{f}, func(n *ir.NodeInst) {
+			if !isLoopFocus(n) || n.ID == "" || strings.HasPrefix(n.ID, "__n") {
+				return
+			}
+			for _, ev := range extractBlueprint(n).Events {
+				if teaKeyGuard(ev.Key) == "" || nodeKeyHandler(n, teaKeyGuard(ev.Key)) == nil {
+					continue
+				}
+				invokerSink(btEventInvoker{
+					IDLabel: n.ID, SnglEvent: ev.On, SlotIdx: lf.slot, KeyExpr: teaKeyMsg(ev.Key),
+					Cursor: lf.cursor, Copies: loopCopies(f, lf, n.ID, isLoopFocus, gc),
+				})
+			}
+		})
+	}
 	for _, key := range keys {
 		fmt.Fprintf(b, "\t\tcase %s && m.__focusID == %d%s:\n", key, lf.slot, guard)
 		b.WriteString("\t\t\tfunc() {\n")
@@ -172,4 +190,25 @@ func emitLoopSlotHandlers(b *strings.Builder, f *ir.For, info *irAnalysis, gc *g
 		w.stmts([]ir.Stmt{f}, gc)
 		b.WriteString("\t\t\t}()\n")
 	}
+}
+
+// loopCopies is a Go expression of the ordinal each copy of the node id has
+// in loop slot lf, in render order: the loop walked as View walks it, counting
+// the slot's focusable nodes, noting where id's copies fall.
+func loopCopies(f *ir.For, lf loopFocus, id string, isLoopFocus func(*ir.NodeInst) bool, gc *golang.GoIRContext) string {
+	var b strings.Builder
+	b.WriteString("func() []int {\n")
+	w := &viewWalk{b: &b, indent: 2, wants: isLoopFocus}
+	w.visit = func(w *viewWalk, n *ir.NodeInst, _ *golang.GoIRContext) {
+		if n.ID == id {
+			w.line("__at = append(__at, %s)", lf.pos)
+		}
+		w.line("%s++", lf.pos)
+	}
+	w.line("var __at []int")
+	w.line("%s := 0", lf.pos)
+	w.stmts([]ir.Stmt{f}, gc)
+	w.line("return __at")
+	b.WriteString("\t}()")
+	return b.String()
 }

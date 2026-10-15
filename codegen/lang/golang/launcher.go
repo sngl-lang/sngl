@@ -8,8 +8,8 @@ import (
 	"os/exec"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/ir"
 )
 
 // LaunchTest implements codegen.TestLauncher for the default Go path:

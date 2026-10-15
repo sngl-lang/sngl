@@ -3,7 +3,7 @@ package lower
 import (
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 // TestInstanceEventsRewritesAnEmitInSlotContent names the bodies the walk this
@@ -21,7 +21,7 @@ func TestInstanceEventsRewritesAnEmitInSlotContent(t *testing.T) {
 		Name:            "picker",
 		RuntimeInstance: true,
 		Events:          []*ir.EventDecl{{Name: "pick"}},
-		Body: []ir.Stmt{
+		Stmts: []ir.Stmt{
 			&ir.NodeInst{Name: "panel", Slots: map[string]*ir.SlotContent{
 				"header": {Body: []ir.Stmt{&ir.NodeInst{
 					Name:     "button",

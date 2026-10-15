@@ -23,10 +23,10 @@ func testOptionAcceptsConcreteValues(t Test, c main) {
 
 component main node {
     var (
-        name option<string>
-        count option<int> = 5
-        todo option<Todo> = null
-        flag option<bool> = true
+        name option[string]
+        count option[int] = 5
+        todo option[Todo] = null
+        flag option[bool] = true
     )
 
     text(value="test")

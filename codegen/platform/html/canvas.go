@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"strconv"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/codegen/canvasutil"
-	"git.duckfam.us/jonathan/sngl/codegen/lang/javascript"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/codegen/canvasutil"
+	"duckfam.us/sngl/codegen/lang/javascript"
+	"duckfam.us/sngl/ir"
 )
 
 // This package registered two platform intrinsics here, CanvasSave and
@@ -30,6 +30,9 @@ type canvasSetup struct {
 	// call, not only where the element is written.
 	w, h    int
 	scaling string
+	// image is a drawing an image shows, painted into a canvas of its own
+	// rather than into the element.
+	image bool
 }
 
 // canvasIntProp is the integer pixel value of a canvas dimension prop, which
@@ -49,6 +52,9 @@ func canvasIntProp(n *ir.NodeInst, name string) int {
 // drawCall is the one way this platform draws a canvas: through the helper,
 // which decides the backing store from the box and scales the shapes into it.
 func (cs canvasSetup) drawCall() string {
+	if cs.image {
+		return fmt.Sprintf("_snglImageDraw(%s,%d,%d,%s)", cs.id, cs.w, cs.h, cs.drawName)
+	}
 	return fmt.Sprintf("_snglCanvasDraw(%s,%d,%d,%q,%s)", cs.id, cs.w, cs.h, cs.scaling, cs.drawName)
 }
 
@@ -58,15 +64,29 @@ func (cs canvasSetup) drawCall() string {
 // that scope there, so both are named rather than looked up.
 func canvasDrawStmt(m *canvasutil.Meta) ir.Stmt {
 	num := func(v int) ir.Expr { return &ir.Literal{Type: ir.TypInt, Value: strconv.Itoa(v)} }
+	el := canvasElementRef(m)
+	draw := &ir.Ident{Name: m.DrawName, Type: drawFuncType(m)}
+	if isImageDrawing(m.Node) {
+		return &ir.CallStmt{Call: &ir.Call{
+			Type: ir.TypVoid,
+			Func: &ir.Func{Name: imageDrawHelper},
+			Args: []ir.CallArg{
+				{Value: el},
+				{Value: num(m.Width)},
+				{Value: num(m.Height)},
+				{Value: draw},
+			},
+		}}
+	}
 	return &ir.CallStmt{Call: &ir.Call{
 		Type: ir.TypVoid,
 		Func: &ir.Func{Name: "_snglCanvasDraw"},
 		Args: []ir.CallArg{
-			{Value: &ir.Ident{Name: m.ID, Type: ir.TypDyn}},
+			{Value: el},
 			{Value: num(m.Width)},
 			{Value: num(m.Height)},
 			{Value: &ir.Literal{Type: ir.TypString, Value: m.Scaling}},
-			{Value: &ir.Ident{Name: m.DrawName, Type: ir.TypDyn}},
+			{Value: draw},
 		},
 	}}
 }
@@ -79,8 +99,11 @@ func (g *htmlGen) canvasInitLines(tr *htmlTranslator, jc *javascript.JsIRContext
 	var out []string
 	for _, m := range tr.canvasDraws {
 		g.usesLoweredCanvas = true
+		if isImageDrawing(m.Node) {
+			g.ctx.Helpers[imageDrawHelper] = true
+		}
 		stmts := []ir.Stmt{canvasDrawStmt(m)}
-		if m.Scaling != "" {
+		if m.Scaling != "" && !isImageDrawing(m.Node) {
 			stmts = append(stmts, canvasWatchStmt(m))
 		}
 		for _, s := range stmts {
@@ -99,8 +122,8 @@ func canvasWatchStmt(m *canvasutil.Meta) ir.Stmt {
 		Type: ir.TypVoid,
 		Func: &ir.Func{Name: "_snglCanvasWatch"},
 		Args: []ir.CallArg{
-			{Value: &ir.Ident{Name: m.ID, Type: ir.TypDyn}},
-			{Value: &ir.Lambda{Type: ir.TypDyn, Func: &ir.Func{Block: []ir.Stmt{canvasDrawStmt(m)}}}},
+			{Value: canvasElementRef(m)},
+			{Value: &ir.Lambda{Type: voidFuncType(), Func: &ir.Func{Return: ir.TypVoid, Block: []ir.Stmt{canvasDrawStmt(m)}}}},
 		},
 	}}
 }
@@ -174,3 +197,27 @@ function _snglCanvasWatch(el,redraw){
   new ResizeObserver(function(){if(first){first=false;return}redraw()}).observe(el);
 }
 `
+
+// canvasElementRef is the element a canvas, or a drawn image source, is: a
+// `<canvas>`, or the `<img>` the drawing's picture is handed to.
+func canvasElementRef(m *canvasutil.Meta) *ir.Ident {
+	if isImageDrawing(m.Node) {
+		return &ir.Ident{Name: m.ID, Type: ir.NativeNamed("HTMLImageElement")}
+	}
+	return &ir.Ident{Name: m.ID, Type: ir.NativeNamed("HTMLCanvasElement")}
+}
+
+// drawCtxType is the context a canvas's draw func is handed.
+func drawCtxType(draw []ir.Stmt) *ir.Type {
+	return canvasutil.CtxType(draw, ir.NativeNamed("CanvasRenderingContext2D"))
+}
+
+// drawFuncType is a canvas's draw func: it takes the context and paints.
+func drawFuncType(m *canvasutil.Meta) *ir.Type {
+	return &ir.Type{Kind: ir.TypeFunc, Sig: &ir.FuncSig{Params: []*ir.Param{{Name: "ctx", Type: drawCtxType(m.Draw)}}, Return: ir.TypVoid}}
+}
+
+// voidFuncType is func(), a callback handed nothing that returns nothing.
+func voidFuncType() *ir.Type {
+	return &ir.Type{Kind: ir.TypeFunc, Sig: &ir.FuncSig{Return: ir.TypVoid}}
+}

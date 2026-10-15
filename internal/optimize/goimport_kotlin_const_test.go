@@ -3,11 +3,11 @@
 package optimize
 
 import (
-	"git.duckfam.us/jonathan/sngl/internal/trust"
+	"duckfam.us/sngl/internal/trust"
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/ir"
 )
 
 // TestOptimize_GoImportConstFoldsOnKotlin confirms a pure go: call used as a
@@ -39,7 +39,7 @@ func TestOptimize_GoImportConstFoldsOnKotlin(t *testing.T) {
 		Imports: []*ir.Import{{
 			Alias: "purepkg",
 			Native: &ir.NativeImport{
-				ImportPath: "git.duckfam.us/jonathan/sngl/internal/optimize/testdata/purepkg",
+				ImportPath: "duckfam.us/sngl/internal/optimize/testdata/purepkg",
 				Funcs: []*ir.Func{{
 					Name:    "Double",
 					Foreign: ir.Foreign{Name: "purepkg.Double", Path: "purepkg"},

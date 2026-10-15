@@ -3,8 +3,7 @@ import clock "sngl:time"
 
 // --- Locale context ---
 
-// Returns the process-startup locale string. Reads $LC_ALL, then
-// $LC_MESSAGES, then $LANG, falling back to "en-US".
+// Returns the process-startup locale string for the given platform.
 #[marks.intrinsic("i18n.defaultLocale")]
 func defaultLocale() string { return _defaultLocale() }
 
@@ -15,44 +14,89 @@ context #locale(defaultLocale())
 
 // --- Translation entry points ---
 
-// Translate `key` against the loaded manifest, formatting via ICU.
-// The lowering of $"..." passes the synthesized ICU template as `key`
-// and the placeholder values as `args`.
+// Translate `key` against the loaded manifest, formatting via ICU. `args`
+// is a struct with a field per placeholder, `{name=n}`. Write the key in
+// backticks, or escape its braces: a double-quoted string is interpolated
+// where it is written, before tr could read its placeholders.
 #[marks.intrinsic("i18n.tr")]
-func tr(key string, args map<string, dyn>) string { return _translate(locale, key, "", args) }
+func tr[A struct {}](key string, args A) string { return _translate(locale, key, "", args) }
 
 // Internal: target of $"..." string interpolation lowering. Carries both
 // the canonical key and the synthesized ICU template at the call site so
 // the runtime can fall back to the inlined template when the manifest
 // lookup misses.
 #[marks.intrinsic("i18n.trInline")]
-func trInline(key string, inlinedTemplate string, args map<string, dyn>) string { return _translate(locale, key, inlinedTemplate, args) }
+func trInline[A struct {}](key string, inlinedTemplate string, args A) string { return _translate(locale, key, inlinedTemplate, args) }
 
-// Format an ICU template directly, no manifest lookup.
+// Format an ICU template directly, no manifest lookup. `args` is a struct
+// with a field per placeholder, and the template is written in backticks, as
+// tr's key is.
 #[marks.intrinsic("i18n.format")]
-func format(template string, args map<string, dyn>) string { return _format(locale, template, args) }
+func format[A struct {}](template string, args A) string { return _format(locale, template, args) }
 
 // --- Direct formatters ---
 
-// Style: "decimal" (default), "percent", "currency", "scientific".
-#[marks.intrinsic("i18n.numberInt")]
-func numberInt(n int, style string) string { return _numberInt(locale, n, style) }
-#[marks.intrinsic("i18n.numberFloat")]
-func numberFloat(n float, style string) string { return _numberFloat(locale, n, style) }
+// How a number is written: plainly, as a percentage, as an amount of the
+// locale's currency, or in scientific notation.
+enum NumberStyle { decimal, percent, currency, scientific }
 
-// Style: "short", "medium" (default), "long", "full".
+// How much of a date or a time is written, from the locale's shortest
+// numeric form to its longest.
+enum DateStyle { short, medium, long, full }
+
+// An integer written for the active locale: its digit grouping, and its
+// percent sign or currency where the style asks for one.
+#[marks.intrinsic("i18n.numberInt")]
+func numberInt(
+    n     int,
+    style NumberStyle = decimal, // how the number is written
+) string {
+    return _numberInt(locale, n, string(style))
+}
+
+// A fractional number written for the active locale, as numberInt writes an
+// integer.
+#[marks.intrinsic("i18n.numberFloat")]
+func numberFloat(
+    n     float,
+    style NumberStyle = decimal, // how the number is written
+) string {
+    return _numberFloat(locale, n, string(style))
+}
+
+// A date written for the active locale.
 #[marks.intrinsic("i18n.date")]
-func date(d clock.date, style string) string { return _date(locale, d, style) }
+func date(
+    d     clock.date,
+    style DateStyle = medium, // how much of the date is written
+) string {
+    return _date(locale, d, string(style))
+}
+
+// A time of day written for the active locale.
 #[marks.intrinsic("i18n.time")]
-func time(t clock.time, style string) string { return _time(locale, t, style) }
+func time(
+    t     clock.time,
+    style DateStyle = medium, // how much of the time is written
+) string {
+    return _time(locale, t, string(style))
+}
+
+// A date and time written together for the active locale.
 #[marks.intrinsic("i18n.datetime")]
-func datetime(dt clock.datetime, dateStyle string, timeStyle string) string { return _dateTime(locale, dt, dateStyle, timeStyle) }
+func datetime(
+    dt        clock.datetime,
+    dateStyle DateStyle = medium, // how much of the date is written
+    timeStyle DateStyle = medium, // how much of the time is written
+) string {
+    return _dateTime(locale, dt, string(dateStyle), string(timeStyle))
+}
 
 // --- Direct selectors ---
 
-// Free-form value-based selection.
+// Free-form value-based selection: the case whose key is value, else `other`.
 #[marks.intrinsic("i18n.select")]
-func select(value string, cases map<string, string>) string { return _select(locale, value, cases) }
+func select(value string, cases map[string, string]) string { return _select(locale, value, cases) }
 
 // --- Plural/ordinal selectors ---
 
@@ -65,12 +109,12 @@ const func exactly(n int) PluralKey
 // Plural selects a message by CLDR cardinal plural rule for count.
 // forms maps PluralKey constants (or i18n.exactly(n)) to message strings.
 #[marks.intrinsic("i18n.plural")]
-func plural(count int, forms map<PluralKey, string>) string { return _plural(locale, count, forms) }
+func plural(count int, forms map[PluralKey, string]) string { return _plural(locale, count, forms) }
 
 // Selectordinal selects a message by CLDR ordinal plural rule for count.
 // forms maps PluralKey constants (or i18n.exactly(n)) to message strings.
 #[marks.intrinsic("i18n.selectordinal")]
-func selectordinal(count int, forms map<PluralKey, string>) string { return _selectOrdinal(locale, count, forms) }
+func selectordinal(count int, forms map[PluralKey, string]) string { return _selectOrdinal(locale, count, forms) }
 
 // --- Primitives ---
 //
@@ -84,10 +128,10 @@ func selectordinal(count int, forms map<PluralKey, string>) string { return _sel
 func _defaultLocale() string
 
 #[marks.intrinsic("i18n._translate")]
-const func _translate(locale string, key string, inlinedTemplate string, args map<string, dyn>) string
+const func _translate[A struct {}](locale string, key string, inlinedTemplate string, args A) string
 
 #[marks.intrinsic("i18n._format")]
-const func _format(locale string, template string, args map<string, dyn>) string
+const func _format[A struct {}](locale string, template string, args A) string
 
 #[marks.intrinsic("i18n._numberInt")]
 const func _numberInt(locale string, n int, style string) string
@@ -105,18 +149,20 @@ const func _time(locale string, t clock.time, style string) string
 const func _dateTime(locale string, dt clock.datetime, dateStyle string, timeStyle string) string
 
 #[marks.intrinsic("i18n._select")]
-const func _select(locale string, value string, cases map<string, string>) string
+const func _select(locale string, value string, cases map[string, string]) string
 
 // PluralKey identifies a CLDR plural category or an exact numeric match.
 // Write the predeclared constants (i18n.zero, i18n.one, …, i18n.other) or
-// i18n.exactly(n); the fields are the runtime's business.
+// i18n.exactly(n); the fields are the runtime's business. It is a declared
+// type rather than an anonymous one so that those are the only ways to write
+// one.
 struct PluralKey {
-    n int
+    n     int
     exact bool
 }
 
 #[marks.intrinsic("i18n._plural")]
-const func _plural(locale string, count int, forms map<PluralKey, string>) string
+const func _plural(locale string, count int, forms map[PluralKey, string]) string
 
 #[marks.intrinsic("i18n._selectOrdinal")]
-const func _selectOrdinal(locale string, count int, forms map<PluralKey, string>) string
+const func _selectOrdinal(locale string, count int, forms map[PluralKey, string]) string

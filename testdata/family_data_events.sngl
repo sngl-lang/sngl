@@ -1,0 +1,58 @@
+// A data component may declare events: each is a field of its record, a
+// function taking the event's parameters, which the container calls where it
+// means the record was acted on. The call site's handler is that function,
+// closing over the call site's scope, so a write in it is the caller's state;
+// an event nobody handled does nothing. A record never emits: it renders
+// nothing to fire one from.
+
+import . "sngl:test"
+import ui "sngl:ui"
+
+component action(label string, @run(), @pick(n int)) action
+
+component bar(actions ...component action) ui.node {
+    for var a = actions {
+        ui.button #btn(text=a.label, @click {
+            a.run()
+            a.pick(a.label.length)
+        })
+    }
+}
+
+component app ui.node {
+    var count = 0
+    var picked = 0
+    var names = ["x", "yy"]
+    bar #b {
+        action(label="inc", @run {
+            count = count + 1
+        })
+        action(label="none")
+        for var n = names {
+            action(label=n, @pick(k) {
+                picked = picked + k * 10 + n.length
+            })
+        }
+    }
+    ui.text #out(value="{count} {picked}")
+}
+
+func testAHandlerWritesTheCallersState(t Test, c app) {
+    c.b.btn[0].click()
+    c.b.btn[0].click()
+    t.assert(c.out.value == "2 0")
+}
+
+func testAnUnhandledEventDoesNothing(t Test, c app) {
+    c.b.btn[1].click()
+    t.assert(c.out.value == "0 0")
+}
+
+func testAHandlerUnderAForReadsItsCopy(t Test, c app) {
+    c.b.btn[3].click()
+    t.assert(c.out.value == "0 22")
+}
+
+ui.window {
+    app()
+}

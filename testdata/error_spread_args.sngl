@@ -19,7 +19,7 @@ struct Unrelated {
 }
 
 struct Listed {
-    value list<int>
+    value list[int]
 }
 
 func pair(a int, b int) => a + b
@@ -40,7 +40,7 @@ component unnamed(r Row, cell component(Row)) node {
     }
 }
 
-component emitter(@fired Row) node {
+component emitter(@fired(v Row)) node {
     var row = Row{title="a", count=1}
     button(text="spread", @click { fired(...row) }) // ERROR(check) "spread of Row names no parameter"
     button(text="named", @click { fired(r=row) })   // ERROR(check) "no parameter name"
@@ -50,7 +50,7 @@ component main node {
     var u = Unrelated{other="o"}
     var none = pair(a=1, b=2, ...u)     // ERROR(check) "spread of Unrelated names no parameter"
     var cast = int(...u)                // ERROR(check) "this position takes one value"
-    text(...Listed{value=[1]})          // ERROR(check) "cannot use field \"value\" (list<int>) as prop \"value\" (string)"
+    text(...Listed{value=[1]})          // ERROR(check) "cannot use field \"value\" (list[int]) as prop \"value\" (string)"
     theme(...Row{title="x", count=1}) { // ERROR(check) "this position takes one value"
         text(value="{none}{cast}")
     }

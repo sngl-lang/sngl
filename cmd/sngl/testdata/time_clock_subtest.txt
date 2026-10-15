@@ -1,0 +1,49 @@
+# A subtest reads the enclosing test's clock.
+#
+# Interpreter-only, and not because of a gap: `t.test()` and `t.tick()` are the
+# interpreter's own, and the compiled test agent does not have them. So the
+# claim can only be made here.
+#
+# Given a clock of its own the subtest would start back at Epoch while the
+# enclosing test's had already moved, so `t.tick()` advanced one clock and
+# `time.now()` read the other -- and across the boundary time appeared to run
+# backwards. The subtest's env is a Snapshot and carries the clock already;
+# what was missing was the runner's own handle on it.
+
+sngl test --platform=none app.sngl
+stdout 'PASS'
+! stdout 'FAIL'
+
+-- app.sngl --
+import . "sngl:test"
+import ui "sngl:ui"
+import time "sngl:time"
+
+component main ui.node {
+    var ticks = 0
+
+    time.timer(interval=1s, @tick {
+        ticks += 1
+    })
+
+    ui.text(value="{ticks}")
+}
+
+func testASubtestSharesTheEnclosingClock(t Test, c main) {
+    t.tick()
+
+    t.test("inner", func(s Test, c main) {
+        // The enclosing test already moved the clock, so a subtest holding one
+        // of its own reads an earlier instant than the test that created it.
+        var seen time.datetime = time.now()
+        s.assert(time.between(time.datetime("2000-01-01T00:00:00"), seen) > 0s)
+
+        // And moving it here has to be visible to the same scope's clock.
+        s.tick()
+        s.assert(time.between(seen, time.now()) > 0s)
+    })
+}
+
+ui.window {
+    main
+}

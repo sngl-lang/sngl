@@ -1,0 +1,174 @@
+# A generic function at two types, on every target: one reading the page's
+# state, one comparing two T's, one calling another with its own T, a
+# component's generic method, one whose T only the result names, and
+# recursion: one calling itself at a deeper T, and two calling each other.
+# testdata/generic_func_instances.txtar is the code.
+
+sngl test --platform=none app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=html app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=fyne --language=go app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin app.sngl
+stdout '1 tests, 0 failures'
+
+-- app.sngl --
+import . "sngl:test"
+import ui "sngl:ui"
+
+var n = 1
+
+func at[T any](xs list[T]) T {
+    var i = n
+    if i >= xs.length {
+        i = 0
+    }
+    return xs[i]
+}
+
+func count[T any](xs list[T], want T) int {
+    var c = 0
+    for var x = xs {
+        if x == want {
+            c += 1
+        }
+    }
+    return c
+}
+
+func both[T any](xs list[T], want T) int {
+    var c = count(xs, want)
+    return c + count([at(xs)], want)
+}
+
+func blank[T any]() list[T] {
+    var out list[T] = []
+    if n < 0 {
+        return out
+    }
+    return out
+}
+
+func wrap[T any](x T) T {
+    var y = x
+    return y
+}
+
+func deep[T any](x T, d int) int {
+    var y = wrap(x)
+    if d <= 0 {
+        return n
+    }
+    return deep([y], d - 1) + 1
+}
+
+func there[T any](x T, d int) int {
+    if d <= 0 {
+        return n
+    }
+    return back([x], d - 1) + 1
+}
+
+func back[T any](x T, d int) int {
+    var y = wrap(x)
+    return there(y, d)
+}
+
+component main ui.node {
+    var k = 1
+    var ints = 0
+    var strs = 0
+    var picked = ""
+    var e list[string] = ["z"]
+    var depth = 0
+    var mutual = 0
+
+    func nth[T any](xs list[T]) T {
+        var i = k
+        return xs[i]
+    }
+
+    effect(@mount {
+        ints = both([10, 20, 10], 20)
+        strs = both(["a", "b", "b"], "b")
+        picked = nth(["a", "b"])
+        e = blank()
+        depth = deep(1, 3)
+        mutual = there(1, 3)
+    })
+
+    ui.text(value="{ints} {strs} {picked} {nth([1, 2])} {e.length}")
+}
+
+func testEachInstantiationRuns(t Test, c main) {
+    t.assert(c.ints == 2)
+    t.assert(c.strs == 3)
+    t.assert(c.picked == "b")
+    t.assert(c.e.length == 0)
+    t.assert(c.depth == 4)
+    t.assert(c.mutual == 4)
+}
+
+ui.window {
+    main
+}
+-- testrun/android/kotlin/app.sngl/main/1 --
+sha256:dcc29cbb3eaff0f9d18fc98d216705e7
+{
+  "results": [
+    {
+      "Desc": "EachInstantiationRuns",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/main/1 --
+sha256:ea1f8679e8ff51c7aba5012654f230a9
+{
+  "results": [
+    {
+      "Desc": "EachInstantiationRuns",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/main/1 --
+sha256:22416112134824c0f3546482d69dbfba
+{
+  "results": [
+    {
+      "Desc": "EachInstantiationRuns",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/main/1 --
+sha256:8e0a942eb26e0c8b186c27d4529cb9d2
+{
+  "results": [
+    {
+      "Desc": "EachInstantiationRuns",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/main/1 --
+sha256:67b2896e898cedbf8048e401812ee90d
+{
+  "results": [
+    {
+      "Desc": "EachInstantiationRuns",
+      "Passed": true
+    }
+  ]
+}

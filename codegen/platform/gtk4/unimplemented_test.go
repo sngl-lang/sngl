@@ -1,19 +1,21 @@
 package gtk4
 
 import (
+	"errors"
 	"strings"
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
-	_ "git.duckfam.us/jonathan/sngl/codegen/lang"
-	"git.duckfam.us/jonathan/sngl/internal/checker"
-	"git.duckfam.us/jonathan/sngl/internal/lower"
-	"git.duckfam.us/jonathan/sngl/internal/parser"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/codegen"
+	_ "duckfam.us/sngl/codegen/lang"
+	"duckfam.us/sngl/internal/checker"
+	"duckfam.us/sngl/internal/lower"
+	"duckfam.us/sngl/internal/parser"
+	"duckfam.us/sngl/ir"
 )
 
 // buildForGtk4 runs the whole pipeline for one source string and returns the
-// generated files, or the error the platform refused with.
+// generated files, or the first error the checker or the platform refused
+// with.
 func buildForGtk4(t *testing.T, src string) (map[string][]byte, error) {
 	t.Helper()
 	doc, err := parser.Parse("t.sngl", []byte(src))
@@ -23,7 +25,7 @@ func buildForGtk4(t *testing.T, src string) (map[string][]byte, error) {
 	pkg, diags := checker.Check(doc, &checker.Config{IsMain: true, Platforms: codegen.CollectPlatforms(), Languages: codegen.CollectLangs(), Targets: []ir.StaticTarget{{Platform: "gtk4", Language: "go"}}})
 	for _, d := range diags {
 		if d.Severity == ir.Error {
-			t.Fatalf("check diag: %s", d.Msg)
+			return nil, errors.New(d.Msg)
 		}
 	}
 	g := &Generator{}
@@ -31,6 +33,7 @@ func buildForGtk4(t *testing.T, src string) (map[string][]byte, error) {
 	if lang == nil {
 		t.Fatal("go lang not registered")
 	}
+	pkg = ir.ClonePackage(pkg)
 	if err := lower.Lower(pkg, codegen.CapsOrNone(lang.LanguageIdentifier(), g.PlatformIdentifier()), lower.Options{Platform: "gtk4", Language: "go"}); err != nil {
 		t.Fatalf("lower: %v", err)
 	}
@@ -41,34 +44,9 @@ func buildForGtk4(t *testing.T, src string) (map[string][]byte, error) {
 	return mem.Files(), nil
 }
 
-// A stdlib component with no `platform gtk4` body has nothing to emit. Before
-// this was an error the node was dropped and the build succeeded, so the window
-// came out missing widgets the source asked for with no diagnostic anywhere.
-func TestUnimplementedStdlibComponentFailsBuild(t *testing.T) {
-	skipWithoutGIR(t)
-	files, err := buildForGtk4(t, `
-import . "sngl:ui"
-window {
-    text(value="visible")
-    avatar(initials="ab")
-}
-`)
-	if err == nil {
-		t.Fatalf("expected the build to fail; it emitted %d files", len(files))
-	}
-	msg := err.Error()
-	// The message has to name both halves: which component, and which target
-	// does not have it.
-	for _, want := range []string{`"avatar"`, "gtk4"} {
-		if !strings.Contains(msg, want) {
-			t.Errorf("diagnostic %q does not mention %s", msg, want)
-		}
-	}
-}
-
-// The same rule must not fire on a component the program declared itself. An
-// empty body there is the program saying it draws nothing, which is a legal
-// thing to say — the fixtures behind the LSP tests are written that way.
+// A component the program declared with an empty body builds: the program is
+// saying it draws nothing, which is a legal thing to say — the fixtures behind
+// the LSP tests are written that way.
 func TestUserComponentWithEmptyBodyStillBuilds(t *testing.T) {
 	skipWithoutGIR(t)
 	files, err := buildForGtk4(t, `
@@ -88,11 +66,11 @@ window {
 	}
 }
 
-// TestStdlibOverrides_EmitTheirWidgets is the other side of the rule above:
-// the stdlib components gtk4.sngl does implement have to reach the C API the
-// override body names. A missing override is a build failure by the rule
-// above, so what this adds is that the body was not merely present but
-// emitted — the widget constructor and the setter for each prop it forwards.
+// TestStdlibOverrides_EmitTheirWidgets: the stdlib components gtk4.sngl
+// implements have to reach the C API the override body names. A missing
+// override is a build failure in the checker (reportBodylessLibComponents), so
+// what this adds is that the body was not merely present but emitted — the
+// widget constructor and the setter for each prop it forwards.
 //
 // The props that are not here are the ones the platform cannot carry, and
 // they are documented at each override: a GtkOrientation or GtkPositionType
@@ -121,6 +99,16 @@ window {
         card { text(value="in a card") }
         stack { text(value="a page") }
         popover(open=shown) { button(text="trigger") }
+        table(columns=["Name"], selectable=true) { tableRow(cells=["Ada"]) }
+        tree { treeItem(label="root") { treeItem(label="leaf") } }
+        radio { choice(label="a") }
+        select { choice(label="b") }
+        menubar { menuItem(label="File") }
+        menu(open=shown) { menuItem(label="Open") }
+        toolbar { button(text="tool") }
+        splitview { text(value="left") }
+        drawer(open=shown) { text(value="drawn") }
+        modal(open=shown, title="Title", closable=true) { text(value="modal") }
     }
 }
 `)
@@ -160,6 +148,15 @@ window {
 		"C.gtk_stack_add_child(",
 		"C.gtk_popover_set_child(",
 		"C.gtk_popover_set_autohide(",
+		// table and splitview: rows and panes in homogeneous boxes, cells
+		// left-aligned
+		"C.gtk_box_set_homogeneous(",
+		"C.gtk_label_set_xalign(",
+		// table, tree, radio and select mark a selection with a check button
+		"C.gtk_check_button_set_active(",
+		`C.CString("toggled")`,
+		// drawer, menu and modal show while open
+		"C.gtk_widget_set_visible(",
 	} {
 		if !strings.Contains(model, want) {
 			t.Errorf("the emitted model.go does not call %s", want)

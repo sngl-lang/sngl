@@ -1,0 +1,17 @@
+import . "sngl:ui"
+import "sngl:i18n"
+
+// A translation's arguments are a struct, a field per placeholder, and its
+// template reaches i18n as written. A double-quoted template is interpolated
+// where it is written, so `{name}` was gone before i18n saw it and the
+// arguments were read by nothing.
+func greet(name string, byName map[string, string]) {
+    var a = i18n.format("Hello, {name}!", {name=name}) // ERROR(check) "interpolated before i18n.format sees it"
+    var b = i18n.tr("Hi {name}", {name=name})          // ERROR(check) "interpolated before i18n.tr sees it"
+    var c = i18n.format(`Hello, {name}!`, byName)      // ERROR(check) "map[string, string] does not satisfy struct {}"
+    var d = i18n.format(`Hello, {name}!`, {name=name})
+    var e = i18n.format("Hello, \{name}!", {name=name})
+}
+
+window {
+}

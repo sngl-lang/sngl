@@ -4,21 +4,23 @@ import (
 	"strings"
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/internal/checker"
-	"git.duckfam.us/jonathan/sngl/internal/parser"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/internal/checker"
+	"duckfam.us/sngl/internal/parser"
+	"duckfam.us/sngl/ir"
 )
 
 // checkedType resolves a named type out of a freshly checked package. Each call
-// is its own Check, which is the point: every check loads its own copy of the
-// embedded library, so two calls give two declarations of one library type.
+// checks against a library of its own, which is the point: two calls give two
+// declarations of one library type.
 func checkedType(t *testing.T, src, name string) *ir.Type {
 	t.Helper()
 	doc, err := parser.Parse("test.sngl", []byte(withStd(src)))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
-	pkg, diags := checker.Check(doc, &checker.Config{IsMain: true})
+	cfg := &checker.Config{IsMain: true}
+	checker.NewSharedLibrary().Use(cfg)
+	pkg, diags := checker.Check(doc, cfg)
 	for _, d := range diags {
 		if d.Severity == ir.Error {
 			t.Fatalf("check: %v", d.Error())
@@ -122,7 +124,7 @@ component main node { text(value="x") }`)))
 // scope -- a fallback meant for stdlib bootstrap that also swallowed a missing
 // import in user source, typing the declaration as dyn and building anyway.
 func TestUnimportedTimeIsAnErrorNotDyn(t *testing.T) {
-	doc, err := parser.Parse("test.sngl", []byte("import tree \"sngl:tree\"\n\n#[tree.none]\ncomponent main {\n    var x time\n}\n"))
+	doc, err := parser.Parse("test.sngl", []byte("component main[F any] F {\n    var x time\n}\n"))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}

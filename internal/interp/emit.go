@@ -1,6 +1,6 @@
 package interp
 
-import "git.duckfam.us/jonathan/sngl/ir"
+import "duckfam.us/sngl/ir"
 
 // emit runs the handler the call site supplied for the event a component
 // emitted.
@@ -52,7 +52,23 @@ func handlerNamed(inst *ir.NodeInst, name string) *ir.EventHandler {
 //
 // argEnv is the emitting scope: the payload expression is written there, so it
 // is evaluated there and only the resulting value crosses.
+//
+// The scope may be the copy a mount took for one copy of a loop's body or a
+// scoped population, which another handler's writes have made stale since:
+// so it reads the scopes it copies first -- after handing them what it wrote
+// itself, which a handler still running in it may not have yet -- and hands
+// back what the body wrote. Without it two handlers written in one loop each
+// read the state the mount saw: `count += 1; done(count)` emitted 1 from both.
+// Only through mount copies: a test's subtest runs against a snapshot of its
+// parent's state as well, which it must not write back to.
 func (env *Env) runHandler(fn *ir.Func, argEnv *Env, args []ir.CallArg) error {
+	if env.mountCopy {
+		env.writeBackMountCopies()
+		for o := env; o.mountCopy && o.origin != nil; o = o.origin {
+			env.refreshFrom(o.origin)
+		}
+		defer env.writeBackMountCopies()
+	}
 	for i, p := range fn.Params {
 		if i >= len(args) || args[i].Value == nil {
 			env.Set(p, nil)
@@ -62,7 +78,7 @@ func (env *Env) runHandler(fn *ir.Func, argEnv *Env, args []ir.CallArg) error {
 		if err != nil {
 			return err
 		}
-		env.Set(p, v)
+		env.Set(p, bindArg(v, p))
 	}
 	// A raise a boundary caught ends the handler that emitted too, as it does on
 	// a compiled target, where this body is inlined into that one.
@@ -76,4 +92,12 @@ func (env *Env) runHandler(fn *ir.Func, argEnv *Env, args []ir.CallArg) error {
 		}
 	}
 	return nil
+}
+
+// writeBackMountCopies carries what env wrote to each scope it is a mount copy
+// of, and no further.
+func (env *Env) writeBackMountCopies() {
+	for o := env; o.mountCopy && o.origin != nil; o = o.origin {
+		o.origin.RebindFrom(env)
+	}
 }

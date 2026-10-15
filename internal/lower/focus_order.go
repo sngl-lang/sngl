@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"slices"
 
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/ir"
 )
 
 var passFocusOrder = pass{
@@ -47,7 +47,7 @@ func lowerFocusOrder(pkg *ir.Package, _ Features, _ Options) error {
 				return err
 			}
 		}
-		lowerFocusInOwner(comp.Body, &comp.Vars, &comp.Funcs)
+		lowerFocusInOwner(comp.Stmts, &comp.Vars, &comp.Funcs)
 	}
 	lowerFocusInOwner(pkg.Body, &pkg.Vars, &pkg.Funcs)
 	return nil
@@ -101,7 +101,7 @@ func lowerFocusInOwner(stmts []ir.Stmt, vars *[]*ir.Var, funcs *[]*ir.Func) {
 // refuseFocusInRecursion: Tab and Update reach only the stops the window
 // renders, and a recursion renders each level from a function of its own.
 func refuseFocusInRecursion(comp *ir.Component) error {
-	slots := gatherFocusSlots(comp.Body)
+	slots := gatherFocusSlots(comp.Stmts)
 	if len(slots) == 0 {
 		return nil
 	}
@@ -645,20 +645,9 @@ func stmtsMoveTo(slots []focusSlot, slotIdx int, focusIDIdent func() *ir.Ident, 
 // callListLength builds a Call for list.length, instantiated at the element
 // type of the list being measured.
 func callListLength(iter ir.Expr) *ir.Call {
-	var params []*ir.Param
-	if def := ir.LookupIntrinsic("list.length"); def != nil {
-		params, _ = def.Instantiate(listElem(iter))
-	}
-	fn := &ir.Func{
-		Name:      "length",
-		Receiver:  "list",
-		Intrinsic: "list.length",
-		Return:    ir.TypInt,
-		Params:    params,
-	}
 	return &ir.Call{
 		Type: ir.TypInt,
-		Func: fn,
+		Func: ir.IntrinsicMethod("length", "list.length", iter.ExprType(), ir.TypInt),
 		Args: []ir.CallArg{{Value: iter}},
 	}
 }

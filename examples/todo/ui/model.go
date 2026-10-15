@@ -6,10 +6,16 @@ import (
 	"charm.land/bubbles/v2/textinput"
 	"charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"duckfam.us/sngl/pkg/go/tui"
 	"fmt"
-	"git.duckfam.us/jonathan/sngl/pkg/go/tui"
 	"strings"
 )
+
+type Measurement struct {
+	Px  float64
+	Em  float64
+	Rem float64
+}
 
 type Todo struct {
 	Text string
@@ -21,7 +27,7 @@ type Model struct {
 	newTodo             string
 	todos               []Todo
 	checked__inst0      map[string]bool
-	visible__inst1      bool
+	visible__inst0      bool
 	__focusID           int
 	__focusLoop2_cursor int
 
@@ -36,7 +42,7 @@ func New() Model {
 	m.newTodo = ""
 	m.todos = []Todo{Todo{Text: "Buy groceries", Done: false}, Todo{Text: "Walk the dog", Done: true}, Todo{Text: "Write SNGL docs", Done: false}}
 	m.checked__inst0 = map[string]bool{}
-	m.visible__inst1 = true
+	m.visible__inst0 = true
 	m.__focusID = 0
 	m.__focusLoop2_cursor = 0
 	m.widget0 = textinput.New()
@@ -165,19 +171,19 @@ func SetChecked__inst0Cmd(v map[string]bool) tea.Cmd {
 	return func() tea.Msg { return setChecked__inst0Msg{value: v} }
 }
 
-func (m Model) Visible__inst1() bool {
-	return m.visible__inst1
+func (m Model) Visible__inst0() bool {
+	return m.visible__inst0
 }
 
-func (m Model) SetVisible__inst1(v bool) Model {
-	m.visible__inst1 = v
+func (m Model) SetVisible__inst0(v bool) Model {
+	m.visible__inst0 = v
 	return m
 }
 
-type setVisible__inst1Msg struct{ value bool }
+type setVisible__inst0Msg struct{ value bool }
 
-func SetVisible__inst1Cmd(v bool) tea.Cmd {
-	return func() tea.Msg { return setVisible__inst1Msg{value: v} }
+func SetVisible__inst0Cmd(v bool) tea.Cmd {
+	return func() tea.Msg { return setVisible__inst0Msg{value: v} }
 }
 
 func (m Model) Init() tea.Cmd {
@@ -195,8 +201,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m = m.SetTodos(msg.value)
 	case setChecked__inst0Msg:
 		m = m.SetChecked__inst0(msg.value)
-	case setVisible__inst1Msg:
-		m = m.SetVisible__inst1(msg.value)
+	case setVisible__inst0Msg:
+		m = m.SetVisible__inst0(msg.value)
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
@@ -204,10 +210,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyPressMsg:
 		switch {
 		case msg.Code == 'c' && msg.Mod == tea.ModCtrl:
-			if m.visible__inst1 {
-				m.visible__inst1 = false
+			if m.visible__inst0 {
+				m.visible__inst0 = false
 			}
-			if !(m.visible__inst1) {
+			if !(m.visible__inst0) {
 				return m, tea.Quit
 			}
 			return m, nil
@@ -235,19 +241,18 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					_ = index
 					_ = item
 					if m.__focusLoop2_cursor == __focusPos2 {
-						__bound_checked := !func() bool {
-							if __v, __ok := m.checked__inst0[fmt.Sprint(index)]; __ok {
-								return __v
-							}
-							return item.Done
-						}()
 						__cell1_checked__inst0 := func() bool {
 							if __v, __ok := m.checked__inst0[fmt.Sprint(index)]; __ok {
 								return __v
 							}
 							return item.Done
 						}()
-						__cell1_checked__inst0 = __bound_checked
+						__cell1_checked__inst0 = !func() bool {
+							if __v, __ok := m.checked__inst0[fmt.Sprint(index)]; __ok {
+								return __v
+							}
+							return item.Done
+						}()
 						m.checked__inst0[fmt.Sprint(index)] = __cell1_checked__inst0
 						m.todos[index].Done = !m.todos[index].Done
 						return
@@ -271,7 +276,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m Model) View() tea.View {
 	var content string
-	if m.visible__inst1 {
+	if m.visible__inst0 {
 		var contentChildren []string
 		var content_0 string
 		content_0 = lipgloss.NewStyle().

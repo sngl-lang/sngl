@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 func TestEmitMergeFuncsGo(t *testing.T) {
@@ -12,6 +12,8 @@ func TestEmitMergeFuncsGo(t *testing.T) {
 		{Name: "gap", Type: ir.OptionOf(ir.TypInt)},
 		{Name: "color", Type: ir.OptionOf(ir.TypString)},
 		{Name: "flex", Type: ir.TypFloat}, // plain field → type-zero test
+		{Name: "weight", Type: &ir.Type{Kind: ir.TypeEnum, Decl: &ir.EnumDef{Name: "W"}}},
+		{Name: "size", Type: multiBaseUnitType()},
 	}}
 	out := EmitMergeFuncs([]*ir.StructDef{sd})
 	for _, want := range []string{
@@ -19,6 +21,8 @@ func TestEmitMergeFuncsGo(t *testing.T) {
 		"if ov.Gap != nil { base.Gap = ov.Gap }",
 		"if ov.Color != nil { base.Color = ov.Color }",
 		"if ov.Flex != 0 { base.Flex = ov.Flex }",
+		`if ov.Weight != "" { base.Weight = ov.Weight }`,
+		"if ov.Size != (Measurement{}) { base.Size = ov.Size }",
 		"return base",
 	} {
 		if !strings.Contains(out, want) {

@@ -4,12 +4,12 @@ import (
 	"strings"
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
-	_ "git.duckfam.us/jonathan/sngl/codegen/lang"
-	"git.duckfam.us/jonathan/sngl/internal/checker"
-	"git.duckfam.us/jonathan/sngl/internal/lower"
-	"git.duckfam.us/jonathan/sngl/internal/parser"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/codegen"
+	_ "duckfam.us/sngl/codegen/lang"
+	"duckfam.us/sngl/internal/checker"
+	"duckfam.us/sngl/internal/lower"
+	"duckfam.us/sngl/internal/parser"
+	"duckfam.us/sngl/ir"
 )
 
 func TestIntegration_ReactiveIfEmitsRenderSlot(t *testing.T) {
@@ -39,6 +39,7 @@ window {
 	if lang == nil {
 		t.Fatal("go lang not registered")
 	}
+	pkg = ir.ClonePackage(pkg)
 	if err := lower.Lower(pkg, codegen.CapsOrNone(lang.LanguageIdentifier(), g.PlatformIdentifier()), lower.Options{Platform: "gtk4", Language: "go"}); err != nil {
 		t.Fatalf("lower: %v", err)
 	}
@@ -103,9 +104,11 @@ window {
     vbox {
         text(value="hello")
         button(text="go", @click { on = !on })
-        input(value=name, @input(e) { name = e.value })
+        input(value=name, @input(e) { name = e })
         checkbox(checked=on, label="check")
-        image(src="/x.png", alt="x")
+        image(alt="x") {
+            remote(url="/x.png")
+        }
         hbox {
             text(value="a")
             text(value="b")
@@ -128,6 +131,7 @@ window {
 	}
 	g := &Generator{}
 	lang := codegen.LookupLang("go")
+	pkg = ir.ClonePackage(pkg)
 	if err := lower.Lower(pkg, codegen.CapsOrNone(lang.LanguageIdentifier(), g.PlatformIdentifier()), lower.Options{Platform: "gtk4", Language: "go"}); err != nil {
 		t.Fatalf("lower: %v", err)
 	}

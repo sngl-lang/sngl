@@ -3,8 +3,8 @@ package checker
 import (
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/ir"
 )
 
 // extractBindings processes `:prop=target` args on a VisualNode.

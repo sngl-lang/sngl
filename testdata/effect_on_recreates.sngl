@@ -12,11 +12,11 @@ import . "sngl:ui"
 component main node {
     var (
         n = 0
-        log list<string> = []
+        log list[string] = []
     )
 
     effect(
-        on=n,
+        on = n,
         @mount {
             log.push("mount")
         },

@@ -41,26 +41,15 @@ ui.window(title="t", @error(e) { r = 20.0 }) {
 package main
 
 import (
+	snglcanvas "duckfam.us/sngl/pkg/go/canvas"
+	"duckfam.us/sngl/pkg/go/fynelayout"
+	"duckfam.us/sngl/pkg/go/snglcolor"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/widget"
-	snglcanvas "git.duckfam.us/jonathan/sngl/pkg/go/canvas"
-	"git.duckfam.us/jonathan/sngl/pkg/go/fynelayout"
-	"git.duckfam.us/jonathan/sngl/pkg/go/snglcolor"
 	"os"
 )
-
-type PathCmd struct {
-	Op  string
-	X   float64
-	Y   float64
-	Cx1 float64
-	Cy1 float64
-	Cx2 float64
-	Cy2 float64
-	R   float64
-}
 
 type ErrorEvent struct {
 	Message string
@@ -70,12 +59,10 @@ type ErrorEvent struct {
 type Measurement struct {
 	Px  float64
 	Em  float64
-	Vw  float64
-	Vh  float64
-	Pct float64
+	Rem float64
 }
 
-type CanvasStyle struct {
+type Style struct {
 	Fill        snglcolor.Color
 	Stroke      snglcolor.Color
 	StrokeWidth float64
@@ -106,7 +93,7 @@ func New() *Model {
 	return m
 }
 
-func ApplyStyle(ctx *snglcanvas.Context, style CanvasStyle) {
+func ApplyStyle(ctx *snglcanvas.Context, style Style) {
 	ctx.SetFill(style.Fill.R, style.Fill.G, style.Fill.B, style.Fill.A)
 	ctx.SetStroke(style.Stroke.R, style.Stroke.G, style.Stroke.B, style.Stroke.A)
 	ctx.SetStrokeWidth(style.StrokeWidth)
@@ -154,7 +141,7 @@ func (m *Model) __n3_click_handler() {
 
 func (m *Model) _canvasDraw0(ctx *snglcanvas.Context) {
 	ctx.Save()
-	ApplyStyle(ctx, CanvasStyle{Fill: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, Stroke: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, StrokeWidth: 1.0, LineCap: "butt", LineJoin: "miter", FontSize: 16.0, FontFamily: "sans-serif"})
+	ApplyStyle(ctx, Style{Fill: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, Stroke: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, StrokeWidth: 1.0, LineCap: "butt", LineJoin: "miter", FontSize: 16.0, FontFamily: "sans-serif"})
 	ctx.Circle(25.0, 25.0, m.r)
 	ctx.Restore()
 }
@@ -352,6 +339,18 @@ static void sngl_unref_pixbuf(GdkPixbuf *p) {
     if (p != NULL) g_object_unref(p);
 }
 
+// Selects a day the way a click on it does, for gtk4's datepicker override
+// (selectDay) and a test's invoker. select_day is the call every GTK 4 has;
+// 4.20 deprecates it for set_date, which the older ones lack.
+static void sngl_calendar_select(GtkCalendar *c, int y, int m, int d) {
+    GDateTime *dt = g_date_time_new_utc(y, m, d, 0, 0, 0);
+    if (dt == NULL) return;
+    G_GNUC_BEGIN_IGNORE_DEPRECATIONS
+    gtk_calendar_select_day(c, dt);
+    G_GNUC_END_IGNORE_DEPRECATIONS
+    g_date_time_unref(dt);
+}
+
 static void sngl_set_entry_text(GtkEditable *e, const char *t) {
     const char *cur = gtk_editable_get_text(e);
     if (t == NULL) t = "";
@@ -406,20 +405,9 @@ static void sngl_emit_pressed(void* gesture) {
 import "C"
 
 import (
-	"git.duckfam.us/jonathan/sngl/pkg/go/snglcolor"
+	"duckfam.us/sngl/pkg/go/snglcolor"
 	"unsafe"
 )
-
-type PathCmd struct {
-	Op  string
-	X   float64
-	Y   float64
-	Cx1 float64
-	Cy1 float64
-	Cx2 float64
-	Cy2 float64
-	R   float64
-}
 
 // _snglCairoScale maps a drawing's own coordinate space onto the size GTK is
 // drawing at. An empty mode leaves the context alone, which is what a canvas
@@ -453,12 +441,10 @@ type ErrorEvent struct {
 type Measurement struct {
 	Px  float64
 	Em  float64
-	Vw  float64
-	Vh  float64
-	Pct float64
+	Rem float64
 }
 
-type CanvasStyle struct {
+type Style struct {
 	Fill        snglcolor.Color
 	Stroke      snglcolor.Color
 	StrokeWidth float64
@@ -495,7 +481,7 @@ func New() *Model {
 	return m
 }
 
-func Paint(ctx *C.cairo_t, style CanvasStyle) {
+func Paint(ctx *C.cairo_t, style Style) {
 	if style.Fill.A > 0 {
 		Source(ctx, style.Fill)
 		if style.Stroke.A > 0 {
@@ -513,25 +499,25 @@ func Paint(ctx *C.cairo_t, style CanvasStyle) {
 	}
 }
 
-func Source(ctx *C.cairo_t, c snglcolor.Color) {
-	C.cairo_set_source_rgba(ctx, C.double((float64(c.R) / 255.0)), C.double((float64(c.G) / 255.0)), C.double((float64(c.B) / 255.0)), C.double((float64(c.A) / 255.0)))
+func Source(ctx *C.cairo_t, c__r0 snglcolor.Color) {
+	C.cairo_set_source_rgba(ctx, C.double((float64(c__r0.R) / 255.0)), C.double((float64(c__r0.G) / 255.0)), C.double((float64(c__r0.B) / 255.0)), C.double((float64(c__r0.A) / 255.0)))
 }
 
-func LineCap(name string) C.cairo_line_cap_t {
-	if name == "round" {
+func LineCap(cap__r0 string) C.cairo_line_cap_t {
+	if cap__r0 == "round" {
 		return C.cairo_line_cap_t(C.int(1))
 	}
-	if name == "square" {
+	if cap__r0 == "square" {
 		return C.cairo_line_cap_t(C.int(2))
 	}
 	return C.cairo_line_cap_t(C.int(0))
 }
 
-func LineJoin(name string) C.cairo_line_join_t {
-	if name == "round" {
+func LineJoin(join string) C.cairo_line_join_t {
+	if join == "round" {
 		return C.cairo_line_join_t(C.int(1))
 	}
-	if name == "bevel" {
+	if join == "bevel" {
 		return C.cairo_line_join_t(C.int(2))
 	}
 	return C.cairo_line_join_t(C.int(0))
@@ -572,7 +558,7 @@ func (m *Model) _canvasDraw0(ctx *C.cairo_t) {
 	C.cairo_save(ctx)
 	C.cairo_new_sub_path(ctx)
 	C.cairo_arc(ctx, C.double(25.0), C.double(25.0), C.double(m.r), C.double(0.0), C.double(6.283185307179586))
-	Paint(ctx, CanvasStyle{Fill: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, Stroke: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, StrokeWidth: 1.0, LineCap: "butt", LineJoin: "miter", FontSize: 16.0, FontFamily: "sans-serif"})
+	Paint(ctx, Style{Fill: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, Stroke: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, StrokeWidth: 1.0, LineCap: "butt", LineJoin: "miter", FontSize: 16.0, FontFamily: "sans-serif"})
 	C.cairo_restore(ctx)
 }
 
@@ -601,7 +587,10 @@ func (m *Model) buildWidgetTree() {
 	m.__n1 = (*C.GtkDrawingArea)(unsafe.Pointer(C.gtk_drawing_area_new()))
 	C.gtk_drawing_area_set_content_width(m.__n1, C.int(50))
 	C.gtk_drawing_area_set_content_height(m.__n1, C.int(50))
-	snglDrawFuncs = append(snglDrawFuncs, func(cr *C.cairo_t, pw, ph int) { _snglCairoScale(cr, pw, ph, 50, 50, ""); m._canvasDraw0(cr) })
+	snglDrawFuncs = append(snglDrawFuncs, func(cr *C.cairo_t, pw int, ph int) {
+		_snglCairoScale(cr, pw, ph, 50, 50, "")
+		m._canvasDraw0(cr)
+	})
 	C.sngl_drawing_area_set_draw(unsafe.Pointer(m.__n1), C.int((len(snglDrawFuncs) - 1)))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n0)), (*C.GtkWidget)(unsafe.Pointer(m.__n1)))
 	m.__n2 = (*C.GtkButton)(unsafe.Pointer(C.gtk_button_new()))
@@ -733,8 +722,8 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:053bb16bdf03ecd9de8e01fd88a6dac6
+pass sha256:84817ec604ecc25df369eafcced980bd
 -- run/go/gtk4 --
-pass sha256:eeae08cfb6bb0e4295933afe4714ce11
+pass sha256:b131c3db8be62ac0e6251f08d906dea1
 -- run/none/html --
 pass sha256:523fc3baf813fbbb32f7b4dee3954419

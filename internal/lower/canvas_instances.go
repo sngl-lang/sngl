@@ -3,7 +3,7 @@ package lower
 import (
 	"strconv"
 
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 // passCanvasInstances makes each canvas under a `for` a component built at
@@ -22,7 +22,7 @@ func lowerCanvasInstances(pkg *ir.Package, _ Features, _ Options) error {
 	st := &slotChildSynth{pkg: pkg, reactive: collectReactiveVars(pkg)}
 	for _, c := range append([]*ir.Component(nil), pkg.Components...) {
 		if c != nil {
-			st.canvasesUnderLoops(c.Body, false)
+			st.canvasesUnderLoops(c.Stmts, false)
 		}
 	}
 	st.canvasesUnderLoops(pkg.Body, false)
@@ -33,13 +33,13 @@ func lowerCanvasInstances(pkg *ir.Package, _ Features, _ Options) error {
 // handlers are the drawing: they stay in the component, and only the canvas's
 // handlers -- what the program wrote on it -- cross as events.
 func (st *slotChildSynth) synthesizeCanvas(n *ir.NodeInst) *ir.NodeInst {
-	comp := &ir.Component{Name: "__canvas" + strconv.Itoa(st.n), RuntimeInstance: true}
+	comp := &ir.Component{Name: "__canvas" + strconv.Itoa(st.n), RuntimeInstance: true, Family: nodeFamily(n)}
 	st.n++
 	inst := &ir.NodeInst{AST: n.AST, Component: comp}
 	l := newLift(comp, inst)
 	liftNodeHandlers(n, l, nil)
 	st.liftValues(n, l, handlerParams(n, declaredWithin([]ir.Stmt{n})))
-	comp.Body = []ir.Stmt{n}
+	comp.Stmts = []ir.Stmt{n}
 	st.pkg.Components = append(st.pkg.Components, comp)
 	return inst
 }

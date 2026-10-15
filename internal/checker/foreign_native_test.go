@@ -4,10 +4,10 @@ import (
 	"strings"
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/internal/checker"
-	"git.duckfam.us/jonathan/sngl/internal/parser"
-	"git.duckfam.us/jonathan/sngl/internal/testtargets"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/internal/checker"
+	"duckfam.us/sngl/internal/parser"
+	"duckfam.us/sngl/internal/testtargets"
+	"duckfam.us/sngl/ir"
 )
 
 // checkedPkgWithTargets checks inline source with the targets registered and
@@ -38,9 +38,9 @@ func checkedPkgWithTargets(t *testing.T, src string) *ir.Package {
 //
 // The consequence is where the import lands. One written at the top of a
 // target's library package is resolved by every program built for that
-// language — writing sngl:remote/http's Go transport as a plain `go:` import in
-// golang.sngl made three html server-action tests fail on a package they have
-// no interest in. A native declaration costs nothing until something calls it.
+// language — writing a Go transport as a plain `go:` import in golang.sngl
+// made three html server-action tests fail on a package they have no interest
+// in. A native declaration costs nothing until something calls it.
 func TestGoNativeIsAReferenceNotADeclaration(t *testing.T) {
 	src := `import . "sngl:macro"
 import go "sngl:language/go"

@@ -6,8 +6,8 @@ import (
 	"sort"
 	"strconv"
 
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/ir"
 )
 
 var passAsyncReactive = pass{
@@ -87,7 +87,7 @@ func isReactiveAsyncComputed(fn *ir.Func) bool {
 	}
 	// Accept if: (a) it's a synthetic hoist, or (b) it has AST.Body.
 	if fn.AST == nil {
-		return fn.AsyncHoist
+		return fn.Lowered.AsyncHoist
 	}
 	return fn.AST.Body != nil
 }
@@ -108,7 +108,7 @@ func hoistInlineAsyncReactive(pkg *ir.Package) error {
 	hoistInStmts(h, pkg.Body)
 	// Walk components.
 	for _, comp := range pkg.Components {
-		hoistInStmts(h, comp.Body)
+		hoistInStmts(h, comp.Stmts)
 	}
 	return nil
 }
@@ -179,10 +179,10 @@ func synthesizeHoist(h *hoister, e ir.Expr) ir.Expr {
 	name := h.freshHoistName()
 	retType := e.ExprType()
 	fn := &ir.Func{
-		Name:       name,
-		IsAsync:    true,
-		AsyncHoist: true,
-		Return:     retType,
+		Name:    name,
+		IsAsync: true,
+		Lowered: ir.FuncLowering{AsyncHoist: true},
+		Return:  retType,
 		Block: []ir.Stmt{
 			&ir.Return{Value: e},
 		},
@@ -327,7 +327,7 @@ func exprHasLocals(e ir.Expr) bool {
 			}
 		}
 		return false
-	case *ir.Literal, *ir.ContextRead:
+	case *ir.Literal, *ir.ContextRead, *ir.SlotEmpty:
 		return false
 	case *ir.Lambda:
 		// A lambda is evaluated at invocation time — its internal

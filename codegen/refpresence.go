@@ -3,8 +3,8 @@ package codegen
 import (
 	"maps"
 
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/ir"
 )
 
 // PresenceMethod is the check a target generates beside its trigger invokers

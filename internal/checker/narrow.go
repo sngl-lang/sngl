@@ -5,20 +5,20 @@ import (
 	"slices"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/ir"
 )
 
-// Flow narrowing for option<T>. A null test says, in the branch where it
+// Flow narrowing for option[T]. A null test says, in the branch where it
 // cannot be null, that the value is a T -- which is the only way to consume an
-// option<T> as a T, since option declares no methods and every reader in the
+// option[T] as a T, since option declares no methods and every reader in the
 // library is a total function taking a default.
 //
-// The judgement is not purely type-level: option<T> is a nullable
+// The judgement is not purely type-level: option[T] is a nullable
 // representation on Kotlin (T?) and JavaScript (a value or null) but a pointer
-// on Go (*T), so a narrowed read carries an ir.Conversion from option<T> to T
+// on Go (*T), so a narrowed read carries an ir.Conversion from option[T] to T
 // and each language emits its own unwrap. Conversion rather than
-// ir.Unary{UnaryDeref}: a deref means ref<T> to every phase that already
+// ir.Unary{UnaryDeref}: a deref means ref[T] to every phase that already
 // reads one, and both passNoRef and the constant folder rewrite it on that
 // assumption.
 
@@ -63,7 +63,7 @@ func (c *checker) applyNarrowing(e ir.Expr) ir.Expr {
 		return e
 	}
 	// An option is what was asked for here, so the value already fits. Without
-	// this, passing a narrowed value to a parameter that takes an option<T>
+	// this, passing a narrowed value to a parameter that takes an option[T]
 	// would unwrap it and let the assignability rule wrap it straight back:
 	// two conversions where the value needed none.
 	if c.expected != nil && c.expected.Kind == ir.TypeOption {
@@ -140,7 +140,7 @@ func nullOperand(e ir.Expr) bool {
 // (positive) or when it fails. `&&` is the conjunction of what both operands
 // establish; `||` is the same fact negated, since neither held. Every other
 // form establishes nothing -- a plain non-narrowing, so the existing "cannot
-// pass option<T> as T" stands rather than a wrong type reaching a backend.
+// pass option[T] as T" stands rather than a wrong type reaching a backend.
 func narrowingsFrom(cond ir.Expr, positive bool, out map[narrowKey]narrowFact) {
 	switch n := cond.(type) {
 	case *ir.Conversion:
@@ -373,7 +373,7 @@ func (v *narrowValidator) visitCall(x *ir.Call) {
 	// `l.push(x)` writes through its receiver, which the intrinsic names --
 	// the same fact passReactivity and analyzeEffects both read.
 	if x.Func.Intrinsic != "" && len(x.Args) > 0 {
-		if def, ok := ir.IntrinsicByName(x.Func.Intrinsic); ok && def.MutatesReceiver {
+		if def, ok := v.c.libs.builtins.IntrinsicByName(x.Func.Intrinsic); ok && def.MutatesReceiver {
 			if v.invalidatedBy(x.Args[0].Value) {
 				v.report(callPos(x, v.chk.fact.pos), "mutated by a method call in this branch")
 				return

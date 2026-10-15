@@ -5,8 +5,8 @@ package optimize
 import (
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/ir"
 )
 
 // A pure go: call inside a component body only becomes const when the call
@@ -36,7 +36,7 @@ func TestInlinedNativeCallReachesTheBatch(t *testing.T) {
 	comp := &ir.Component{
 		Name:  "wrapped",
 		Props: []*ir.Prop{{Name: "name", Type: ir.TypString, Sym: sym}},
-		Body:  []ir.Stmt{body},
+		Stmts: []ir.Stmt{body},
 	}
 	// wrapped(name="inlined")
 	site := &ir.NodeInst{

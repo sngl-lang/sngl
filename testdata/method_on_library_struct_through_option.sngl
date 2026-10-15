@@ -1,0 +1,11 @@
+// A program's method on a library struct is found through an option of it.
+import ui "sngl:ui"
+import . "sngl:ui/draw"
+
+func Point.sum(p Point) => p.x + p.y
+
+func total(p option[Point]) => p.sum()
+
+ui.window(title="t") {
+    ui.text(value="{total(Point{x=1.0, y=2.0})}")
+}

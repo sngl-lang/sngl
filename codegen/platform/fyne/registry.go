@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"sort"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/ir"
 )
 
 // WidgetProbeSource pulls this platform in and does nothing else, which is all
@@ -30,7 +30,7 @@ func OverriddenComponents(pkg *ir.Package) []*ir.Component {
 		if !ok {
 			return true
 		}
-		if b, has := c.PlatformOverrides["fyne"]; has && len(b.Stmts) > 0 {
+		if b, has := pkg.OverridesOf(c).Platform["fyne"]; has && len(b.Stmts) > 0 {
 			out = append(out, c)
 		}
 		return true
@@ -39,9 +39,9 @@ func OverriddenComponents(pkg *ir.Package) []*ir.Component {
 	return out
 }
 
-// BareStdlibComponents lists the stdlib components this platform gives no body
-// to, and should be empty: a component reaching this list is a widget nothing
-// here builds.
+// BareStdlibComponents lists the bodyless library components this platform
+// gives no body to, and should be empty: a component reaching this list is a
+// widget nothing here builds.
 //
 // A #[builtin] kind is not one of them. `context`, `effect` and `output` are declared
 // as components because that is the form their call site takes, but a visual
@@ -57,10 +57,15 @@ func BareStdlibComponents(pkg *ir.Package) []string {
 	var out []string
 	pkg.Symbols.EachSymbol(func(sym ir.Symbol) bool {
 		c, ok := sym.(*ir.Component)
-		if !ok || !c.Stdlib || c.Builtin != ir.BuiltinNone {
+		if !ok || c.PkgPath() == "" || c.Builtin != ir.BuiltinNone || c.IsFamily() || ir.IsDataMember(c) {
 			return true
 		}
-		if b, has := c.PlatformOverrides["fyne"]; !has || len(b.Stmts) == 0 {
+		// A body of its own is what every platform renders where it has
+		// nothing better: badge is a styled text.
+		if !c.Bodyless && len(c.Stmts) > 0 {
+			return true
+		}
+		if b, has := pkg.OverridesOf(c).Platform["fyne"]; !has || len(b.Stmts) == 0 {
 			out = append(out, c.Name)
 		}
 		return true
@@ -94,8 +99,8 @@ type WidgetSpec struct {
 // writes. The rename lives there rather than on the primitive: by the time the
 // walk reaches a primitive it is inside the widget declaration, where the props
 // are that declaration's own.
-func overrideNode(comp *ir.Component) *ir.NodeInst {
-	for _, s := range comp.PlatformOverrides["fyne"].Stmts {
+func overrideNode(pkg *ir.Package, comp *ir.Component) *ir.NodeInst {
+	for _, s := range pkg.OverridesOf(comp).Platform["fyne"].Stmts {
 		if n, ok := s.(*ir.NodeInst); ok {
 			return n
 		}
@@ -146,7 +151,7 @@ func WidgetSpecsFrom(pkg *ir.Package) ([]WidgetSpec, error) {
 	var out []WidgetSpec
 	for _, comp := range comps {
 		name := comp.Name
-		prims := fynePrimitiveNodes(comp.PlatformOverrides["fyne"].Stmts)
+		prims := fynePrimitiveNodes(pkg.OverridesOf(comp).Platform["fyne"].Stmts)
 		if len(prims) == 0 {
 			return nil, fmt.Errorf("%s: its fyne body reaches no primitive", name)
 		}
@@ -164,10 +169,10 @@ func WidgetSpecsFrom(pkg *ir.Package) ([]WidgetSpec, error) {
 		// A Spec's setters are keyed by the *primitive's* prop vocabulary --
 		// `text`, `placeholder`, `flag` -- while a host is handed the stdlib
 		// component's own prop names. The override is what bridges them:
-		// `component ui.text[platform] { Label(text=value) }` says this
+		// `component ui.text[platform](value) { Label(text=value) }` says this
 		// component's `value` is that widget's `text`. Without following it a
 		// registry looks right and sets nothing.
-		rename := propRenames(comp, overrideNode(comp))
+		rename := propRenames(comp, overrideNode(pkg, comp))
 		if len(sp.Setters) > 0 {
 			w.Setters = map[string]string{}
 			for own, widgetProp := range rename {
@@ -211,7 +216,7 @@ func fynePrimitiveNodes(stmts []ir.Stmt) []*ir.NodeInst {
 			}
 			if !seen[n.Component] {
 				seen[n.Component] = true
-				walk(n.Component.Body)
+				walk(n.Component.Stmts)
 			}
 			return false
 		})

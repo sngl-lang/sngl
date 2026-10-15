@@ -1,5 +1,6 @@
 import . "sngl:ui"
 import . "sngl:test"
+import math "sngl:math"
 
 component main node {
     text(value="test")
@@ -10,6 +11,11 @@ func testIntMinMaxAbsClamp(t Test, c main) {
     t.assert(int.min(-1, 5) == -1)
     t.assert(int.max(3, 7) == 7)
     t.assert(int.max(-1, 5) == 5)
+    t.assert(int.min(4) == 4)
+    t.assert(int.min(4, 9, -2, 6) == -2)
+    t.assert(int.max(4, 9, -2, 6) == 9)
+    var rest = [8, 1]
+    t.assert(int.min(5, ...rest) == 1)
     t.assert(int.abs(-5) == 5)
     t.assert(int.abs(5) == 5)
     t.assert(int.clamp(5, 0, 10) == 5)
@@ -26,6 +32,7 @@ func testIntMethodSyntax(t Test, c main) {
 func testFloatMinMaxAbsClamp(t Test, c main) {
     t.assert(float.min(1.5, 2.5) == 1.5)
     t.assert(float.max(1.5, 2.5) == 2.5)
+    t.assert(float.min(1.5, 0.5, 2.5) == 0.5)
     t.assert(float.abs(-3.14) == 3.14)
     t.assert(float.clamp(0.5, 0.0, 1.0) == 0.5)
     t.assert(float.clamp(-0.5, 0.0, 1.0) == 0.0)
@@ -43,27 +50,27 @@ func testFloatFloorCeilRound(t Test, c main) {
 }
 
 func testFloatSqrt(t Test, c main) {
-    t.assert(float.sqrt(4.0) == 2.0)
-    t.assert(float.sqrt(9.0) == 3.0)
-    t.assert(float.sqrt(0.0) == 0.0)
+    t.assert(math.sqrt(4.0) == 2.0)
+    t.assert(math.sqrt(9.0) == 3.0)
+    t.assert(math.sqrt(0.0) == 0.0)
 }
 
 func testFloatPow(t Test, c main) {
-    t.assert(float.pow(2.0, 3.0) == 8.0)
-    t.assert(float.pow(3.0, 2.0) == 9.0)
-    t.assert(float.pow(2.0, 0.0) == 1.0)
+    t.assert(math.pow(2.0, 3.0) == 8.0)
+    t.assert(math.pow(3.0, 2.0) == 9.0)
+    t.assert(math.pow(2.0, 0.0) == 1.0)
 }
 
 func testFloatTrig(t Test, c main) {
-    t.assert(float.sin(0.0) == 0.0)
-    t.assert(float.cos(0.0) == 1.0)
-    t.assert(float.tan(0.0) == 0.0)
+    t.assert(math.sin(0.0) == 0.0)
+    t.assert(math.cos(0.0) == 1.0)
+    t.assert(math.tan(0.0) == 0.0)
 }
 
 func testFloatInverseTrig(t Test, c main) {
-    t.assert(float.asin(0.0) == 0.0)
-    t.assert(float.acos(1.0) == 0.0)
-    t.assert(float.atan(0.0) == 0.0)
+    t.assert(math.asin(0.0) == 0.0)
+    t.assert(math.acos(1.0) == 0.0)
+    t.assert(math.atan(0.0) == 0.0)
 }
 
 func testStringLength(t Test, c main) {

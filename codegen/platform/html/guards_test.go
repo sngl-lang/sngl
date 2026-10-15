@@ -4,9 +4,9 @@ import (
 	"strings"
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/ir"
 )
 
 // noneLang returns the registered "none" (static-site) language translator.
@@ -31,7 +31,7 @@ func backendHandlerPkg() *ir.Package {
 	handler := EventHandlerValue(&ir.Func{Block: []ir.Stmt{
 		&ir.Assign{
 			Target: &ir.Ident{Name: "count"},
-			Value:  &ir.Call{Func: &ir.Func{Foreign: ir.Foreign{Path: "example.com/api"}, Name: "Persist"}},
+			Value:  &ir.Call{Func: &ir.Func{Path: "example.com/api", Name: "Persist"}},
 		},
 	}})
 	btn := &ir.NodeInst{Name: "button", Handlers: []ir.EventHandler{handler}}
@@ -44,7 +44,7 @@ func backendHandlerPkg() *ir.Package {
 	}
 	return &ir.Package{
 		Imports:    []*ir.Import{imp},
-		Components: []*ir.Component{{Name: "main", Body: []ir.Stmt{win}}},
+		Components: []*ir.Component{{Name: "main", Stmts: []ir.Stmt{win}}},
 	}
 }
 
@@ -78,7 +78,7 @@ func directivePkg(binding ir.Expr) *ir.Package {
 		Props: []ir.Arg{{Value: binding}},
 	}
 	return &ir.Package{
-		Components: []*ir.Component{{Name: "main", Body: []ir.Stmt{text}}},
+		Components: []*ir.Component{{Name: "main", Stmts: []ir.Stmt{text}}},
 	}
 }
 
@@ -115,7 +115,7 @@ func TestFrontendOnBackendValueErrors(t *testing.T) {
 // a bare go: call under html.frontend is the WASM opt-in and must NOT error.
 func TestFrontendGoCallAllowed(t *testing.T) {
 	pkg := pkgWithImport("go", "example.com/api")
-	pkg.Components = []*ir.Component{{Name: "main", Body: []ir.Stmt{
+	pkg.Components = []*ir.Component{{Name: "main", Stmts: []ir.Stmt{
 		&ir.NodeInst{Name: "text", Props: []ir.Arg{{
 			Value: intrinsicCall("html.frontend", goCall("example.com/api")),
 		}}},

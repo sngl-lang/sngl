@@ -3,7 +3,7 @@ package lower
 import (
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 // TestHoistBodyTypesDisambiguatesOneOwnerName is the branch no fixture
@@ -78,7 +78,7 @@ func TestHoistBodyTypesReservesFuncsAndComponents(t *testing.T) {
 	method := &ir.StructDef{Name: "shout", BodyOwner: "sum"}
 	pkg := &ir.Package{
 		Structs:    []*ir.StructDef{fnName, compName, method},
-		Funcs:      []*ir.Func{{Name: "total"}, {Name: "shout", Receiver: "Local"}},
+		Funcs:      []*ir.Func{{Name: "total"}, {Name: "shout", Receiver: ir.ReceiverNamed("Local")}},
 		Components: []*ir.Component{{Name: "card"}},
 	}
 	if err := hoistBodyTypes(pkg, Features{}, Options{}); err != nil {
@@ -97,20 +97,17 @@ func TestHoistBodyTypesReservesFuncsAndComponents(t *testing.T) {
 	}
 }
 
-// TestHoistBodyTypesRenamesTheReceiver is the one reference site that does not
-// ride on the declaration pointer.
+// TestHoistBodyTypesRenamesTheReceiver: a method's receiver is the type's
+// declaration, so renaming the type renames the receiver a backend spells.
 func TestHoistBodyTypesRenamesTheReceiver(t *testing.T) {
-	shout := &ir.Func{Name: "shout", Receiver: "Local"}
-	sd := &ir.StructDef{
-		Name:      "Local",
-		BodyOwner: "second",
-		Methods:   map[string]*ir.Func{"shout": shout},
-	}
+	sd := &ir.StructDef{Name: "Local", BodyOwner: "second"}
+	shout := &ir.Func{Name: "shout", Receiver: sd.SymType()}
+	sd.Methods = map[string]*ir.Func{"shout": shout}
 	pkg := &ir.Package{Structs: []*ir.StructDef{{Name: "Local"}, sd}}
 	if err := hoistBodyTypes(pkg, Features{}, Options{}); err != nil {
 		t.Fatal(err)
 	}
-	if shout.Receiver != "Local__second" {
-		t.Errorf("Receiver = %q; want %q", shout.Receiver, "Local__second")
+	if shout.RecvName() != "Local__second" {
+		t.Errorf("Receiver = %q; want %q", shout.RecvName(), "Local__second")
 	}
 }

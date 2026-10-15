@@ -6,9 +6,10 @@ import (
 	"path/filepath"
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/internal/lower"
-	"git.duckfam.us/jonathan/sngl/internal/optimize"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/internal/lower"
+	"duckfam.us/sngl/internal/optimize"
+	"duckfam.us/sngl/ir"
 )
 
 // generateFyneModelBuilt is the pipeline internal/build runs, which is what
@@ -18,6 +19,7 @@ import (
 func generateFyneModelBuilt(t *testing.T, src string) string {
 	t.Helper()
 	pkg := checkForFyne(t, src)
+	pkg = ir.ClonePackage(pkg)
 	lang := codegen.LookupLang("go")
 	if lang == nil {
 		t.Fatal("go lang not registered")

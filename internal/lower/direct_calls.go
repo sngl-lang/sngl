@@ -1,6 +1,6 @@
 package lower
 
-import "git.duckfam.us/jonathan/sngl/ir"
+import "duckfam.us/sngl/ir"
 
 // passDirectCalls turns a call through a name that holds a declared function
 // into a call of that function.
@@ -32,7 +32,7 @@ func lowerDirectCalls(pkg *ir.Package, _ Features, _ Options) error {
 		}
 		// A method named as a value carries its receiver in the value, which
 		// a direct call would have to be handed as an argument.
-		if fn, ok := id.Sym.(*ir.Func); ok && fn.Receiver == "" {
+		if fn, ok := id.Sym.(*ir.Func); ok && !fn.IsMethod() {
 			call.Func = fn
 			call.Callee = nil
 		}

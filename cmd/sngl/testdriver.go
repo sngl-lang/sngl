@@ -13,14 +13,14 @@ import (
 	"strings"
 	"time"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/codegen/testharness"
-	"git.duckfam.us/jonathan/sngl/codegen/testharness/snapshot"
-	"git.duckfam.us/jonathan/sngl/internal/build"
-	"git.duckfam.us/jonathan/sngl/internal/lower"
-	"git.duckfam.us/jonathan/sngl/internal/optimize"
-	"git.duckfam.us/jonathan/sngl/internal/testrpc"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/codegen/testharness"
+	"duckfam.us/sngl/codegen/testharness/snapshot"
+	"duckfam.us/sngl/internal/build"
+	"duckfam.us/sngl/internal/lower"
+	"duckfam.us/sngl/internal/optimize"
+	"duckfam.us/sngl/internal/testrpc"
+	"duckfam.us/sngl/ir"
 )
 
 func resolveLauncher(plat codegen.PlatformGenerator, lang codegen.LangTranslator) codegen.TestLauncher {
@@ -66,7 +66,7 @@ func runViaLauncher(ctx context.Context, plat codegen.PlatformGenerator, lang co
 	}
 	if os.Getenv("SNGL_DEBUG_LAUNCHER") != "" {
 		for _, f := range pkg.Funcs {
-			fmt.Fprintf(os.Stderr, "DEBUG pkg.Func name=%q receiver=%q isTest=%v\n", f.Name, f.Receiver, f.IsTest)
+			fmt.Fprintf(os.Stderr, "DEBUG pkg.Func name=%q receiver=%q isTest=%v\n", f.Name, f.RecvName(), f.IsTest)
 		}
 	}
 	groups := testharness.GroupIR(testFns)
@@ -75,9 +75,10 @@ func runViaLauncher(ctx context.Context, plat codegen.PlatformGenerator, lang co
 		// Each group lowers its own clone, the way each build target does: the
 		// pipeline mutates in place, and two groups do not agree on what the
 		// root is.
-		groupPkg := ir.ClonePackage(pkg)
+		groupPkg := ir.ClonePackageFor(pkg, plat.PlatformIdentifier(), langIdent(lang))
 		rootForTests(groupPkg, group.Component)
-		if err := prepareForLaunch(groupPkg, plat, lang, group.Component); err != nil {
+		assets, err := prepareForLaunch(groupPkg, plat, lang, group.Component)
+		if err != nil {
 			return results, err
 		}
 
@@ -85,7 +86,7 @@ func runViaLauncher(ctx context.Context, plat codegen.PlatformGenerator, lang co
 		if group.Component != "" {
 			codegen.SetOptionField(groupOpts, "rootComponent", group.Component)
 		}
-		grpResults, err := launchOneGroup(ctx, plat, lang, launcher, groupPkg, groupOpts, fixtureDir, fixtureFile, group)
+		grpResults, err := launchOneGroup(ctx, plat, lang, launcher, groupPkg, groupOpts, assets, fixtureDir, fixtureFile, group)
 		if err != nil {
 			return results, err
 		}
@@ -119,7 +120,7 @@ func pkgWithTestSubset(pkg *ir.Package, keep map[string]bool) *ir.Package {
 	return &out
 }
 
-func launchOneGroup(ctx context.Context, plat codegen.PlatformGenerator, lang codegen.LangTranslator, launcher codegen.TestLauncher, pkg *ir.Package, opts *ir.StructLit, fixtureDir, fixtureFile string, group testharness.TestGroup) (results []*codegen.TestResult, err error) {
+func launchOneGroup(ctx context.Context, plat codegen.PlatformGenerator, lang codegen.LangTranslator, launcher codegen.TestLauncher, pkg *ir.Package, opts *ir.StructLit, assets []codegen.FileAsset, fixtureDir, fixtureFile string, group testharness.TestGroup) (results []*codegen.TestResult, err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			err = fmt.Errorf("panic in test launcher: %v", r)
@@ -144,11 +145,12 @@ func launchOneGroup(ctx context.Context, plat codegen.PlatformGenerator, lang co
 	scopedPkg := pkgWithTestSubset(pkg, keep)
 
 	req := &codegen.Request{
-		Pkg:     scopedPkg,
-		Lang:    lang,
-		Options: opts,
-		Source:  "",
-		OutDir:  tmpDir,
+		Pkg:        scopedPkg,
+		Lang:       lang,
+		Options:    opts,
+		Source:     "",
+		OutDir:     tmpDir,
+		FileAssets: assets,
 	}
 	if err := plat.Generate(req, codegen.NewDirSink(tmpDir)); err != nil {
 		return nil, fmt.Errorf("generate: %w", err)
@@ -331,38 +333,45 @@ func rootForTests(pkg *ir.Package, comp string) {
 // rejects, e.g. a ternary stranded in the __ctx_* Var.Init passContext
 // synthesizes, which NoTernary does not rewrite (it lowers ternaries in
 // statement positions only) and the post-lower optimize folds away.
-func prepareForLaunch(pkg *ir.Package, plat codegen.PlatformGenerator, lang codegen.LangTranslator, root string) error {
+func prepareForLaunch(pkg *ir.Package, plat codegen.PlatformGenerator, lang codegen.LangTranslator, root string) ([]codegen.FileAsset, error) {
 	optCfg := &optimize.Config{
 		Trust:    cliTrust,
 		Platform: plat.PlatformIdentifier(),
 		Language: langIdent(lang),
 	}
 	if err := optimize.Optimize(pkg, optCfg); err != nil {
-		return fmt.Errorf("optimize for tests: %w", err)
+		return nil, fmt.Errorf("optimize for tests: %w", err)
 	}
 	feats, err := codegen.CapsFor(lang.LanguageIdentifier(), plat.PlatformIdentifier())
 	if err != nil {
-		return fmt.Errorf("lower for tests: %w", err)
+		return nil, fmt.Errorf("lower for tests: %w", err)
 	}
 	// The same options every other caller lowers with. Without the language,
 	// passPlatformExtensionBody picks a different body for a component that
 	// overrides on both axes, so the program under test was not the program
 	// `sngl generate` builds.
 	if err := lower.Lower(pkg, feats, lower.Options{
-		Platform:        plat.PlatformIdentifier(),
-		Language:        langIdent(lang),
-		RootComponent:   root,
-		ClaimsIntrinsic: codegen.ClaimsIntrinsicFunc(plat),
+		Platform:      plat.PlatformIdentifier(),
+		Language:      langIdent(lang),
+		RootComponent: root,
+		// A group rooted at no component emits the tests handed none, so
+		// it repoints nothing; another group roots at each other component.
+		Tests:           root != "",
+		ClaimsIntrinsic: codegen.ClaimsIntrinsicFunc(plat), RendersNative: codegen.RendersNativeFunc(plat),
 	}); err != nil {
-		return fmt.Errorf("lower for tests: %w", err)
+		return nil, fmt.Errorf("lower for tests: %w", err)
 	}
 	// Unconditional. It used to run only when the target had capabilities to lower
 	// for, on the reading that a build lowering nothing had nothing new to fold --
-	// which stopped being true when passQuery became always-on: it synthesizes a
-	// thunk after the optimizer has walked every declaration, so the calls inside
-	// one are calls nothing has looked at.
+	// which is not so: an always-on lowering pass may synthesize code after the
+	// optimizer has walked every declaration, and the calls inside it are calls
+	// nothing has looked at.
 	if err := optimize.Optimize(pkg, optCfg); err != nil {
-		return fmt.Errorf("optimize for tests: %w", err)
+		return nil, fmt.Errorf("optimize for tests: %w", err)
 	}
-	return nil
+	var assets []codegen.FileAsset
+	for _, fa := range optCfg.FileAssets {
+		assets = append(assets, codegen.FileAsset{SrcPath: fa.SrcPath, OutPath: fa.OutPath, Data: fa.Data})
+	}
+	return assets, nil
 }

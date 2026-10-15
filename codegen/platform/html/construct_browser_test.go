@@ -27,7 +27,7 @@ component badge(#[construct] start int, label string) node {
 }
 component App() node {
     var (
-        names list<string> = ["a"]
+        names list[string] = ["a"]
         base = 10
         tag = "x"
     )
@@ -84,7 +84,7 @@ component badge(#[construct] start int, label string) node {
 }
 component App() node {
     var (
-        names list<string> = ["a"]
+        names list[string] = ["a"]
         base = 10
         tag = "x"
     )

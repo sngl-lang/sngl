@@ -46,8 +46,8 @@ package main
 import (
 	"charm.land/bubbles/v2/textarea"
 	"charm.land/bubbletea/v2"
+	"duckfam.us/sngl/pkg/go/tui"
 	"fmt"
-	"git.duckfam.us/jonathan/sngl/pkg/go/tui"
 	"os"
 )
 
@@ -215,13 +215,13 @@ func New() *Model {
 	return m
 }
 
-func (m *Model) __n0_input_handler(s string) {
-	m.text = s
+func (m *Model) __n0_input_handler(v string) {
+	m.text = v
 	m.__n0.SetText(m.text)
 }
 
-func (m *Model) __n0_change_handler(s string) {
-	m.text = s
+func (m *Model) __n0_change_handler(v string) {
+	m.text = v
 	m.__n0.SetText(m.text)
 }
 
@@ -285,7 +285,7 @@ func newTestComponent() *Model {
 
 package main
 
-import "git.duckfam.us/jonathan/sngl/pkg/go/gtk4rt"
+import "duckfam.us/sngl/pkg/go/gtk4rt"
 
 func main() {
 	gtk4rt.Run(func(app gtk4rt.Handle) gtk4rt.Handle {
@@ -298,7 +298,7 @@ func main() {
 package main
 
 import (
-	"git.duckfam.us/jonathan/sngl/pkg/go/gtk4rt"
+	"duckfam.us/sngl/pkg/go/gtk4rt"
 )
 
 // Model holds the state and widget references for this SNGL UI.
@@ -359,29 +359,15 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 
 package test.sngl.app
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.*
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
-import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color as ComposeColor
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
 import androidx.compose.foundation.layout.safeDrawingPadding
-
-data class SnglInputEvent(val value: String)
 
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
@@ -397,9 +383,8 @@ class MainScreenState {
 @Composable
 fun MainScreen(state: MainScreenState = remember { MainScreenState() }) {
 
-    OutlinedTextField(value = state.text, minLines = 3, modifier = Modifier.safeDrawingPadding(), onValueChange = { newValue ->
-        val e = SnglInputEvent(newValue)
-        state.text = e.value
+    OutlinedTextField(value = state.text, minLines = 3, modifier = Modifier.safeDrawingPadding(), onValueChange = { v ->
+        state.text = v
     })
 }
 -- out/kotlin/android/app/src/test/kotlin/test/sngl/app/MainScreenTest.kt --
@@ -486,10 +471,10 @@ window.__sngl_boot = () => {
   }
   var $0 = document.getElementById("$0");
   $0.addEventListener("input", function(e) {
-    state.text = e.target.value;
+    state.text = e.currentTarget.value;
   });
   $0.addEventListener("change", function(e) {
-    state.text = e.target.value;
+    state.text = e.currentTarget.value;
   });
 })();
 };
@@ -497,12 +482,12 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:269017a68813d867a8f2b22983710ea1
+pass sha256:6cdc6c136e2a92de2d8a30397303737e
 -- run/go/fyne --
-pass sha256:a6385dcda8d0a8d027399ded41954537
+pass sha256:ea0928959261ab6c9e224df50539e4d3
 -- run/go/gtk4 --
-pass sha256:44c1ea4703e79fa1abcde1dd6bb20d92
+pass sha256:f11328d7ca282f8825664d4f7c2af8dd
 -- run/kotlin/android --
-pass sha256:ab5bbde298afecd0043f22734a373405
+pass sha256:59f0c531a4025cbe5b306ec5cb37d34f
 -- run/none/html --
-pass sha256:b40b62c1007da3df4f5b23abf45adf85
+pass sha256:b19ec53cc064141429bc4e54e032234c

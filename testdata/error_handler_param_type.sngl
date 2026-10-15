@@ -4,11 +4,12 @@
 import . "sngl:ui"
 
 component main node {
-    var count = 0 @change(v string) { // ERROR(check) "cannot use string as int for parameter \"v\" of @change"
+    var count = 0
+    effect(on=count, @update(v string) { // ERROR(check) "cannot use string as int for parameter \"v\" of @update"
         count = 1
-    }
+    })
     vbox {
-        input(value="", @change(e ClickEvent) { // ERROR(check) "cannot use ClickEvent as ChangeEvent for parameter \"e\" of @change"
+        input(value="", @change(e bool) { // ERROR(check) "cannot use bool as string for parameter \"e\" of @change"
             count = 1
         })
     }

@@ -3,7 +3,7 @@ package lower
 import (
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 // A platform's intrinsic is what the wrappers lower *to*, so it has no body
@@ -14,8 +14,8 @@ func TestInlinePure_StrictKeepsIntrinsic(t *testing.T) {
 	intrinsic := &ir.Component{Name: "Column", Intrinsic: "Column"}
 	platformPkg := &ir.Package{Components: []*ir.Component{intrinsic}}
 	main := &ir.Component{
-		Name: "main",
-		Body: []ir.Stmt{&ir.NodeInst{Name: "Column", Component: intrinsic}},
+		Name:  "main",
+		Stmts: []ir.Stmt{&ir.NodeInst{Name: "Column", Component: intrinsic}},
 	}
 	pkg := &ir.Package{
 		Components: []*ir.Component{main},
@@ -25,12 +25,12 @@ func TestInlinePure_StrictKeepsIntrinsic(t *testing.T) {
 	if err := lowerInlinePure(pkg, Features{}, Options{}); err != nil {
 		t.Fatalf("lowerInlinePure: %v", err)
 	}
-	if len(main.Body) != 1 {
-		t.Fatalf("main.Body = %d stmts, want the intrinsic left standing", len(main.Body))
+	if len(main.Stmts) != 1 {
+		t.Fatalf("main.Body = %d stmts, want the intrinsic left standing", len(main.Stmts))
 	}
-	n, ok := main.Body[0].(*ir.NodeInst)
+	n, ok := main.Stmts[0].(*ir.NodeInst)
 	if !ok || n.Component != intrinsic {
-		t.Fatalf("main.Body[0] = %#v, want the Column node unchanged", main.Body[0])
+		t.Fatalf("main.Body[0] = %#v, want the Column node unchanged", main.Stmts[0])
 	}
 
 	// Unmarked, the same declaration is a wrapper the pass must reject.

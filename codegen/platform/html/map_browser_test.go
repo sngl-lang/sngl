@@ -21,7 +21,7 @@ func TestMapIndexWriteReachesTheMap(t *testing.T) {
 	src := `
 import . "sngl:ui"
 component App() node {
-    var counts map<string, int> = {}
+    var counts map[string, int] = {}
     text(value="[" + string(counts.length()) + ":" + string(counts.get("a", 0)) + "]")
     button(text="put", @click { counts["a"] = 7 })
     button(text="bump", @click { counts["a"] += 5 })

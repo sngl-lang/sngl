@@ -1,0 +1,69 @@
+// The result type that makes a function a macro; sngl:internal/ir's `Macro`
+// for this package alone. The marks below are what sngl:builtin writes on its
+// own declarations, declared here so the package imports no macros: it is the
+// first package checked, and what every other package's `int` and `string`
+// resolve to. They are private, so a program writes sngl:internal/marks' and
+// sngl:family's, which the compiler answers the same way.
+struct _Macro {}
+
+// What the compiler may assume about a call to an intrinsic, as
+// sngl:internal/ir's `IntrinsicFlag` says.
+enum _IntrinsicFlag { mutates, readonly, mutatesReceiver, build }
+
+// The constructs sngl:builtin's declarations dispatch to: the kinds of
+// sngl:internal/marks' `builtin` this package writes. An enum rather than a
+// string, so that `_builtin`'s signature names none of the scalars its own
+// marks declare.
+enum _Kind {
+    bool
+    any
+    int
+    int8
+    int16
+    int32
+    int64
+    uint8
+    uint16
+    uint32
+    uint64
+    float
+    float32
+    float64
+    string
+    color
+    list
+    map
+    iter
+    ref
+    readonly
+    option
+    null
+    context
+    effect
+    errorBoundary
+    output
+    familyRoot
+    application
+    targetPlatform
+    targetLanguage
+}
+
+// Names the IR construct a declaration dispatches to: sngl:internal/marks'
+// `builtin`, written with the kind bare, `#[_builtin(int)]`. A scalar's mark is
+// also what puts its name in scope before this package is checked (the
+// compiler reads it off the source).
+func _builtin(kind _Kind) _Macro
+
+// Names the native implementation behind a function: sngl:internal/marks'
+// `intrinsic`.
+func _intrinsic(id string, flags list[_IntrinsicFlag] = []) _Macro
+
+// A truth value; `true` and `false` are its two.
+#[_builtin(bool)]
+struct bool {}
+
+// The constraint that says nothing about a type parameter: `func first[T any]`.
+// A constraint only, and no type a value may have: every value's type is
+// one the program can name.
+#[_builtin(any)]
+struct any {}

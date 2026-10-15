@@ -1,13 +1,13 @@
 // Valid children counts for all three child-type forms.
 
 import . "sngl:ui"
-import tr "sngl:tree"
+import family "sngl:family"
 
-component RequiresOne(content ...component tr.one) node {
+component RequiresOne(content ...component family.one) node {
     vbox { content }
 }
 
-component OptionalOne(content ...component option<node>) node {
+component OptionalOne(content ...component option[node]) node {
     vbox { content }
 }
 

@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/internal/parser"
+	"duckfam.us/sngl/internal/parser"
 )
 
 // Every .sngl the compiler ships is written the way `sngl fmt` writes it,

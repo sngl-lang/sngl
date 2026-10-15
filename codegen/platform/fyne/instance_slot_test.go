@@ -21,7 +21,7 @@ component card(name = "") node {
 }
 
 window {
-    var items list<string> = ["a", "b"]
+    var items list[string] = ["a", "b"]
     for var it = items {
         card(name=it)
     }

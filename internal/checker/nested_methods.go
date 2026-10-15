@@ -1,8 +1,8 @@
 package checker
 
 import (
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/ir"
 )
 
 // synthRecvTypeExpr returns an ast.TypeExpr referring to `name`, with type
@@ -178,7 +178,7 @@ func (c *checker) registerNestedMethods(recvName string, typeParams []ast.TypePa
 			fn := c.buildFunc(n)
 			c.applyMarks(n, fn)
 			if prev := c.declareMethod(n.Pos, fn); prev != nil {
-				c.error(n.Pos, "duplicate declaration of %q on type %s", fn.Name, fn.Receiver)
+				c.reportDuplicateMethod(n.Pos, fn, prev, "type "+fn.RecvName())
 				continue
 			}
 			c.declPkg().Funcs = append(c.declPkg().Funcs, fn)
@@ -235,7 +235,7 @@ func (c *checker) registerNestedMethods(recvName string, typeParams []ast.TypePa
 			if typeDecl != nil {
 				noun = typeKindNoun(typeDecl)
 			}
-			c.error(n.Pos, "duplicate declaration of %q on %s %s", n.Name, noun, recvName)
+			c.reportDuplicateMethod(n.Pos, fn, prev, noun+" "+recvName)
 			continue
 		}
 		c.declPkg().Funcs = append(c.declPkg().Funcs, fn)

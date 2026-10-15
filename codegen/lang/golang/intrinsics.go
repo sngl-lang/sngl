@@ -3,8 +3,8 @@ package golang
 import (
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/ir"
 )
 
 // langGo is this backend's registry key (matches LanguageIdentifier).
@@ -15,6 +15,14 @@ const langGo = "go"
 // imports their native form needs ("strings"/"math"); GoIRContext applies them
 // via RequireImport.
 func init() {
+	// A record handed to the i18n runtime is the map it takes.
+	codegen.RegisterRecordSpeller(langGo, func(keys, vals []string) string {
+		parts := make([]string, len(keys))
+		for i := range keys {
+			parts[i] = keys[i] + ": " + vals[i]
+		}
+		return "map[string]any{" + strings.Join(parts, ", ") + "}"
+	})
 	// reg registers an import-free emitter (builtins / slicing).
 	reg := func(id string, fn func(a []string) string) {
 		regImp(id, nil, fn)
@@ -38,19 +46,28 @@ func init() {
 	regImp("string.replace", []string{"strings"}, func(a []string) string { return "strings.ReplaceAll(" + a[0] + ", " + a[1] + ", " + a[2] + ")" })
 	regImp("string.split", []string{"strings"}, func(a []string) string { return "strings.Split(" + a[0] + ", " + a[1] + ")" })
 
+	// --- sngl:time ---
+	// datetime is time.Time here and duration is time.Duration, so the host
+	// operators line up and nothing is converted. .UTC() because every other
+	// target produces UTC and a bare time.Now() carries the machine's zone; it
+	// drops the monotonic reading, which this is documented as not needing.
+	regImp("time.now", []string{"time"}, func(a []string) string { return "time.Now().UTC()" })
+	reg("datetime.add", func(a []string) string { return "(" + a[0] + ").Add(" + a[1] + ")" })
+	reg("time.between", func(a []string) string { return "(" + a[1] + ").Sub(" + a[0] + ")" })
+
 	// --- float math --- (Math{Floor,Ceil,Round} return int)
 	regImp("float.floor", []string{"math"}, func(a []string) string { return "math.Floor(" + a[0] + ")" })
 	regImp("float.ceil", []string{"math"}, func(a []string) string { return "math.Ceil(" + a[0] + ")" })
 	regImp("float.round", []string{"math"}, func(a []string) string { return "math.Round(" + a[0] + ")" })
-	regImp("float.sqrt", []string{"math"}, func(a []string) string { return "math.Sqrt(" + a[0] + ")" })
-	regImp("float.pow", []string{"math"}, func(a []string) string { return "math.Pow(" + a[0] + ", " + a[1] + ")" })
-	regImp("float.sin", []string{"math"}, func(a []string) string { return "math.Sin(" + a[0] + ")" })
-	regImp("float.cos", []string{"math"}, func(a []string) string { return "math.Cos(" + a[0] + ")" })
-	regImp("float.tan", []string{"math"}, func(a []string) string { return "math.Tan(" + a[0] + ")" })
-	regImp("float.asin", []string{"math"}, func(a []string) string { return "math.Asin(" + a[0] + ")" })
-	regImp("float.acos", []string{"math"}, func(a []string) string { return "math.Acos(" + a[0] + ")" })
-	regImp("float.atan", []string{"math"}, func(a []string) string { return "math.Atan(" + a[0] + ")" })
-	regImp("float.atan2", []string{"math"}, func(a []string) string { return "math.Atan2(" + a[0] + ", " + a[1] + ")" })
+	regImp("math.sqrt", []string{"math"}, func(a []string) string { return "math.Sqrt(" + a[0] + ")" })
+	regImp("math.pow", []string{"math"}, func(a []string) string { return "math.Pow(" + a[0] + ", " + a[1] + ")" })
+	regImp("math.sin", []string{"math"}, func(a []string) string { return "math.Sin(" + a[0] + ")" })
+	regImp("math.cos", []string{"math"}, func(a []string) string { return "math.Cos(" + a[0] + ")" })
+	regImp("math.tan", []string{"math"}, func(a []string) string { return "math.Tan(" + a[0] + ")" })
+	regImp("math.asin", []string{"math"}, func(a []string) string { return "math.Asin(" + a[0] + ")" })
+	regImp("math.acos", []string{"math"}, func(a []string) string { return "math.Acos(" + a[0] + ")" })
+	regImp("math.atan", []string{"math"}, func(a []string) string { return "math.Atan(" + a[0] + ")" })
+	regImp("math.atan2", []string{"math"}, func(a []string) string { return "math.Atan2(" + a[0] + ", " + a[1] + ")" })
 
 	// --- list ---
 	reg("list.length", func(a []string) string { return "len(" + a[0] + ")" })
@@ -69,13 +86,20 @@ func init() {
 		return "if __i := " + a[1] + "; __i >= 0 && __i < len(" + a[0] + ") { " +
 			a[0] + " = append(" + a[0] + "[:__i], " + a[0] + "[__i+1:]...) }"
 	})
+	// slices.Insert panics outside [0, len]; the declaration leaves the list
+	// unchanged there instead.
+	regImp("list.insert", []string{"slices"}, func(a []string) string {
+		return "if __i := " + a[1] + "; __i >= 0 && __i <= len(" + a[0] + ") { " +
+			a[0] + " = slices.Insert(" + a[0] + ", __i, " + a[2] + ") }"
+	})
+	reg("list.clear", func(a []string) string { return a[0] + " = " + a[0] + "[:0]" })
 
 	// --- int/float min, max, abs, clamp ---
 	// Their SNGL bodies are correct but spell the answer as a ternary, which
 	// Go has no expression form for; these are the reason the `usable` flag
 	// distinguishes "a backend may substitute" from "a backend must".
-	reg("int.min", func(a []string) string { return "min(" + a[0] + ", " + a[1] + ")" })
-	reg("int.max", func(a []string) string { return "max(" + a[0] + ", " + a[1] + ")" })
+	regVariadicMinMax("int.min", "min")
+	regVariadicMinMax("int.max", "max")
 	reg("int.abs", func(a []string) string {
 		return "func(x int) int { if x < 0 { return -x }; return x }(" + a[0] + ")"
 	})
@@ -84,8 +108,8 @@ func init() {
 	reg("int.clamp", func(a []string) string {
 		return "max(" + a[1] + ", min(" + a[0] + ", " + a[2] + "))"
 	})
-	regImp("float.min", []string{"math"}, func(a []string) string { return "math.Min(" + a[0] + ", " + a[1] + ")" })
-	regImp("float.max", []string{"math"}, func(a []string) string { return "math.Max(" + a[0] + ", " + a[1] + ")" })
+	regVariadicMinMax("float.min", "min")
+	regVariadicMinMax("float.max", "max")
 	regImp("float.abs", []string{"math"}, func(a []string) string { return "math.Abs(" + a[0] + ")" })
 	regImp("float.clamp", []string{"math"}, func(a []string) string {
 		return "math.Max(" + a[1] + ", math.Min(" + a[0] + ", " + a[2] + "))"
@@ -93,9 +117,9 @@ func init() {
 
 	// --- list and map ---
 	// Go is statically typed, so these name the element type they build rather
-	// than falling back to []any: a list<int> is emitted as []int, and an []any
+	// than falling back to []any: a list[int] is emitted as []int, and an []any
 	// result would not assign to it.
-	// strings.Join needs []string, so it only spells a list<string>. Every
+	// strings.Join needs []string, so it only spells a list[string]. Every
 	// other element type goes through the platform's default conversion, which
 	// is what the declaration promises and what fmt.Sprint is.
 	regTypedImp("list.join", func(a []string, ts []*ir.Type) (string, []string) {
@@ -154,7 +178,7 @@ func init() {
 	// --- seq (sngl:seq) ---
 	// A sequence in a loop head becomes the host's counting loop and never
 	// reaches here (GoIRContext.ForHead). Everywhere else it is the pull
-	// sequence iter<int> is spelled as, built by the snglSeq helper the
+	// sequence iter[int] is spelled as, built by the snglSeq helper the
 	// package emits (HelperSet.NeedSeq) -- so holding or passing one still
 	// counts rather than building a slice, and reads as a call rather than a
 	// closure written out at each site.
@@ -275,5 +299,20 @@ func regImp(id string, imports []string, fn func(a []string) string) {
 			a[i] = tr(e)
 		}
 		return fn(a), imports
+	})
+}
+
+// regVariadicMinMax emits `min(a, rest...)` and its max twin as Go's builtin,
+// which takes any number of arguments of one ordered type -- float NaN
+// included, as math.Min did. A rest that is not a literal list folds over the
+// slice instead, since the builtin takes no slice.
+func regVariadicMinMax(id, builtin string) {
+	codegen.RegisterIntrinsic(langGo, id, func(args []ir.Expr, tr func(ir.Expr) string) (string, []string) {
+		if parts, ok := codegen.VariadicArgs(args, tr); ok {
+			return builtin + "(" + strings.Join(parts, ", ") + ")", nil
+		}
+		t := IRTypeToGo(args[0].ExprType())
+		return "func(__m " + t + ", __xs []" + t + ") " + t + " { for _, __x := range __xs { __m = " + builtin + "(__m, __x) }; return __m }(" +
+			tr(args[0]) + ", " + tr(codegen.VariadicRest(args[1])) + ")", nil
 	})
 }

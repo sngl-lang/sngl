@@ -35,6 +35,28 @@ func (c orderConstraint) String() string {
 
 // orderConstraints is every ordering the pipeline actually depends on.
 var orderConstraints = []orderConstraint{
+	{"ReceiverParam", "CallDefaults",
+		"a generic built-in's method gets its receiver as a parameter here, and until it has one the receiver every call passes first is matched to the first declared parameter"},
+	{"CallDefaults", "InlinePure",
+		"a default names what the callee's declaration names; once a body holding the call is spliced and renamed per copy, the default names a var the copy no longer has"},
+	{"CallDefaults", "NoInlineComponents",
+		"the same renaming, for a component method's default reading the component's state"},
+	{"CallDefaults", "HandleParams",
+		"a call handing a handle to a function is inlined only when its arguments cover every parameter, which an omitted default leaves them short of"},
+	{"CallDefaults", "Context",
+		"Context appends each threaded value as an argument, which the defaults would then be filled in front of"},
+	{"CallDefaults", "NoImplicitRecv",
+		"a component method called in its own body has no receiver argument until NoImplicitRecv writes one, and the defaults are matched with the receiver still implicit"},
+	{"CallDefaults", "Monomorphize",
+		"an instantiation is read off the call's arguments, and an omitted one with a default binds nothing until it is written"},
+	{"Monomorphize", "AnonStructs",
+		"a copy's `struct { v T }` is concrete only once the copy is made, and names a declaration no package declares until AnonStructs points it at one"},
+	{"NoInlineComponents", "AnonStructs",
+		"a generic component is spliced at the types its call site bound, and the spliced body's structs are concrete only from then"},
+	{"AnonStructs", "NoStructSpread",
+		"a spread's merge helper is named for its struct's declaration, which an un-interned struct has no name for until AnonStructs points it at the package's"},
+	{"Monomorphize", "NoInlineComponents",
+		"a component's generic method is copied per instantiation into the component, and the splice renames the copies with the rest of its methods"},
 	{"HoistBodyTypes", "NoRef",
 		"NoRef synthesizes a box struct per element type and deduplicates them by the element's type *name*, so two body-local types still sharing one name are handed one __ref_ box between them"},
 	{"PlatformExtensionBody", "InlinePure",
@@ -89,6 +111,8 @@ var orderConstraints = []orderConstraint{
 	{"DirectCalls", "NoReactivity",
 		"the same, for a render slot whose condition calls through a name"},
 
+	{"RecordArgs", "SpreadOnce",
+		"a computed record handed to an i18n entry point is read a field at a time under a spread site, which SpreadOnce binds once ahead of the statement; after it, the operand is evaluated once per placeholder"},
 	{"SpreadOnce", "NoAsyncCalls",
 		"the temp a spread's operand is bound to is a statement of its own, and a blocking call in it has to be in a statement by the time the offload splits a body around one"},
 
@@ -190,7 +214,7 @@ var orderConstraints = []orderConstraint{
 	{"NoDeclarative", "NodeEscape",
 		"the escape analysis runs over the flat `var __nN = CreateNode(...)` + `#__nN` sequence NoDeclarative emits, and there is nothing to analyse before it"},
 	{"NoDeclarative", "NoRef",
-		"NoDeclarative's handler lifter emits fresh ref<T> shapes, and NoRef is what boxes them"},
+		"NoDeclarative's handler lifter emits fresh ref[T] shapes, and NoRef is what boxes them"},
 	{"NoLambda", "NoRef",
-		"NoLambda's lifter is the other producer of ref<T>, and it seeds pkg.AddressedVars for NoRef to read"},
+		"NoLambda's lifter is the other producer of ref[T], and it seeds pkg.AddressedVars for NoRef to read"},
 }

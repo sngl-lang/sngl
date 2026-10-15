@@ -1,0 +1,42 @@
+// `any` is the constraint that says nothing about a type parameter, and it is
+// a constraint only: every value has a type the program can name. The one
+// exception is a declaration marked unusable, a host's whose type SNGL has no
+// name for and which no program can reach: `any` written there says so. A
+// mark that does not make it unusable leaves `any` refused.
+
+import macro "sngl:macro"
+import go "sngl:language/go"
+import ui "sngl:ui"
+
+var held any = 1 // ERROR(check) "`any` is a constraint, not a type: every value's type is one the program can name"
+
+struct Holder {
+    value any // ERROR(check) "`any` is a constraint, not a type: every value's type is one the program can name"
+}
+
+func keep(x any) { // ERROR(check) "`any` is a constraint, not a type: every value's type is one the program can name"
+}
+
+func wrap[T any = any](x T) list[T] { // ERROR(check) "`any` is a constraint, not a type: every value's type is one the program can name"
+    return [x]
+}
+
+var many list[any] = [] // ERROR(check) "`any` is a constraint, not a type: every value's type is one the program can name"
+
+#[go.native("example.com/api", "api.Keep")]
+#[macro.unusable("parameter \"x\" has type not representable in SNGL")]
+func hostKeep(x any)
+
+#[go.native("example.com/api", "api.Hold")]
+func hostHold(x any) // ERROR(check) "`any` is a constraint, not a type: every value's type is one the program can name"
+
+func only[T int](x T) T { // ERROR(check) "a type parameter's constraint is `any`"
+    return x
+}
+
+func fine[T any](x T) T {
+    return x
+}
+
+ui.window {
+}

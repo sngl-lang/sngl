@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/internal/checker"
-	"git.duckfam.us/jonathan/sngl/lib"
+	"duckfam.us/sngl/internal/checker"
+	"duckfam.us/sngl/lib"
 )
 
 // macroDeclRE matches a macro declaration: a func whose return type is

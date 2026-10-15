@@ -4,8 +4,8 @@ import (
 	"strings"
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/internal/parser"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/internal/parser"
+	"duckfam.us/sngl/ir"
 )
 
 // expectCheckError parses+checks src and asserts an error diagnostic whose
@@ -62,7 +62,7 @@ func mustReturn() int {
 func TestMissingReturnForElseOK(t *testing.T) {
 	checkNoErrors(t, `
 component main node {
-    func first(xs list<int>) int {
+    func first(xs list[int]) int {
         for var x = xs {
             return x
         } else {

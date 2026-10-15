@@ -28,6 +28,8 @@ type Toplevel struct {
 	// OnClosed is the window's `@closed`, run after a window manager's close
 	// has been reported as `visible = false`.
 	OnClosed func()
+	// icon is the image source a `ui.window`'s favicon is.
+	icon *ImageSource
 }
 
 // App is the parent a node at the root of the package body is attached to.
@@ -103,6 +105,7 @@ func (t *Toplevel) create() {
 	t.w.SetContent(t.Container)
 	t.w.Resize(fyne.NewSize(480, 640))
 	t.w.SetCloseIntercept(t.closeRequested)
+	t.applyIcon()
 }
 
 func (t *Toplevel) report(v bool) {
@@ -201,4 +204,25 @@ func RunWindows(a fyne.App, show bool) {
 		}
 	}
 	app.Run()
+}
+
+// Add puts o in the window's box, or makes it the window's icon when it is an
+// image source: a `ui.window`'s favicon.
+func (t *Toplevel) Add(o fyne.CanvasObject) {
+	if s, ok := o.(*ImageSource); ok {
+		t.icon = s
+		s.onChange = t.applyIcon
+		t.applyIcon()
+		return
+	}
+	t.Container.Add(o)
+}
+
+func (t *Toplevel) applyIcon() {
+	if t.w == nil || t.icon == nil {
+		return
+	}
+	if r := t.icon.Resource(); r != nil {
+		t.w.SetIcon(r)
+	}
 }

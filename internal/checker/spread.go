@@ -1,10 +1,11 @@
 package checker
 
 import (
+	"fmt"
 	"strconv"
 
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/ir"
 )
 
 // spreadArg is a `...operand` written in an argument list, read as the named
@@ -26,7 +27,13 @@ type spreadField struct {
 // reads one this way -- a call, a component's props, a slot insertion, an
 // emit -- so what a spread means does not depend on where it is written.
 func (c *checker) expandSpread(sp *ast.SpreadExpr) (*spreadArg, bool) {
-	operand := c.checkExpr(sp.Operand)
+	return c.expandSpreadOf(sp, c.checkExpr(sp.Operand))
+}
+
+// expandSpreadOf is expandSpread with the operand already checked, for an
+// argument list that has to look at the operand's type first: a list spread
+// into a variadic parameter is not a struct's fields.
+func (c *checker) expandSpreadOf(sp *ast.SpreadExpr, operand ir.Expr) (*spreadArg, bool) {
 	fields, ok := spreadFieldsOf(operand)
 	if !ok {
 		got := "(nil)"
@@ -99,11 +106,17 @@ func spreadFieldsOf(operand ir.Expr) ([]spreadField, bool) {
 	if t != nil && t.Kind == ir.TypeStruct {
 		sd, _ = t.Decl.(*ir.StructDef)
 	}
+	// A T a struct constrains spreads the constraint's fields: they are all
+	// a generic body knows the value has.
+	if sd == nil {
+		sd = paramConstraint(t)
+		t = nil
+	}
 	if sd == nil {
 		return nil, false
 	}
 	var bindings map[string]*ir.Type
-	if len(sd.TypeParams) > 0 && len(t.Elems) == len(sd.TypeParams) {
+	if t != nil && len(sd.TypeParams) > 0 && len(t.Elems) == len(sd.TypeParams) {
 		bindings = make(map[string]*ir.Type, len(sd.TypeParams))
 		for i, tp := range sd.TypeParams {
 			bindings[tp.Name] = t.Elems[i]
@@ -131,11 +144,15 @@ func (c *checker) bindSpreadField(s *spreadArg, f spreadField, want *ir.Type, wh
 	if want == nil {
 		return f.value, true
 	}
-	if f.typ.Kind != ir.TypeDyn && want.Kind != ir.TypeDyn && !f.typ.IsAssignableTo(want) {
-		c.error(s.ast.Pos, "cannot use field %q (%s) as %s (%s)", f.name, f.typ, what, want)
+	ok := true
+	val := c.coerce(nil, f.value, want, slot{pos: s.ast.Pos, mismatch: func(wantS, got string) string {
+		ok = false
+		return fmt.Sprintf("cannot use field %q (%s) as %s (%s)", f.name, got, what, wantS)
+	}})
+	if !ok {
 		return nil, false
 	}
-	return wrapIfNeeded(f.value, want), true
+	return val, true
 }
 
 // spreadProps binds a spread written in a component call's arguments to the

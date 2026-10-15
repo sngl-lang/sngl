@@ -8,7 +8,7 @@ import ui "sngl:ui"
 
 component Counter ui.node {
     var n = 1234
-    func formatted() => i18n.numberInt(n, "decimal")
+    func formatted() => i18n.numberInt(n, decimal)
 }
 
 func testEnUsFormat(t Test, c Counter) {

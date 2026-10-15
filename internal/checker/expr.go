@@ -5,13 +5,14 @@ import (
 	"strconv"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/internal/parser"
+	"duckfam.us/sngl/ir"
 	"maps"
 	"slices"
 )
 
-// exprType extracts the resolved type from an ir.Expr, returning TypDyn for nil.
+// exprType extracts the resolved type from an ir.Expr, returning TypInvalid for nil.
 //
 // Neither arm may become a panic. lspcore.Analyze type-checks a document that
 // failed to parse, and a partial parse really does hand the checker an
@@ -19,12 +20,12 @@ import (
 // `const(())` all reach the nil arm today.
 func exprType(e ir.Expr) *ir.Type {
 	if e == nil {
-		return dynFallback("no expression to take the type of")
+		return TypInvalid
 	}
 	if t := e.ExprType(); t != nil {
 		return t
 	}
-	return dynFallback("%T carries no type", e)
+	return TypInvalid
 }
 
 // requireValueType errors if t is TypeVoid, covering the case where a call to
@@ -101,6 +102,12 @@ func isAddressableListExpr(e ir.Expr) bool {
 }
 
 func (c *checker) inferExpr(e ast.Expr) ir.Expr {
+	// A type written where a value goes: what a bracket after a value holds,
+	// `xs[func(int) bool]`, or a func literal with no body.
+	if t, ok := e.(ast.TypeExpr); ok {
+		c.error(*t.ExprPos(), "%s is a type, not a value", parser.FormatType(t))
+		return &ir.Literal{Type: TypInvalid}
+	}
 	switch x := e.(type) {
 	case *ast.LiteralExpr:
 		return c.inferLiteral(x)
@@ -310,7 +317,7 @@ func (c *checker) inferUnitLiteral(x *ast.UnitLiteral) ir.Expr {
 	num := strings.TrimSuffix(x.Raw, x.Suffix)
 	bad := func(format string, args ...any) ir.Expr {
 		c.error(x.Pos, format, args...)
-		return &ir.Literal{AST: &x.LiteralExpr, Type: TypDyn, Value: num, Suffix: x.Suffix}
+		return &ir.Literal{AST: &x.LiteralExpr, Type: TypInvalid, Value: num, Suffix: x.Suffix}
 	}
 	ud := ir.UnitDeclOf(c.expected)
 	if ud == nil {
@@ -429,12 +436,11 @@ func (c *checker) eventAsFunc(x *ast.IdentExpr) ir.Expr {
 func (c *checker) inferIdent(x *ast.IdentExpr) ir.Expr {
 	sym, ok := c.scope.Lookup(x.Name)
 	if !ok {
-		// When expected type is an enum, resolve bare member names.
-		if c.expected != nil && c.expected.Kind == ir.TypeEnum {
-			if ed, ok := c.expected.Decl.(*ir.EnumDef); ok {
-				if c.enumMember(x.Pos, ed, x.Name) {
-					return &ir.Ident{AST: x, Type: c.expected, Name: x.Name, Member: x.Name}
-				}
+		// When expected type is an enum, resolve bare member names. An
+		// option of one wants a member as readily: the slot wraps it.
+		if want := optionElem(c.expected); want != nil {
+			if ed := expectedEnumDef(want); ed != nil && c.enumMember(x.Pos, ed, x.Name) {
+				return &ir.Ident{AST: x, Type: want, Name: x.Name, Member: x.Name}
 			}
 		}
 		// And an event where a function is expected.
@@ -476,7 +482,7 @@ func (c *checker) inferIdent(x *ast.IdentExpr) ir.Expr {
 			}
 		}
 		c.error(x.Pos, "undefined: %s%s%s", x.Name, c.captureHint(x.Name), c.stdlibHint(x.Name))
-		return &ir.Ident{AST: x, Type: TypDyn, Name: x.Name}
+		return &ir.Ident{AST: x, Type: TypInvalid, Name: x.Name}
 	}
 	// The export rule only governs cross-package access: an unexported
 	// (`_`-prefixed) name is freely referenceable within the package that
@@ -492,24 +498,30 @@ func (c *checker) inferIdent(x *ast.IdentExpr) ir.Expr {
 	// -- and is not one of them itself.
 	if f, ok := sym.(*ir.Component); ok && f.IsFamily() {
 		c.error(x.Pos, "%s names a family, which is not a value: a value of it is a handle to one of its members", f.Name)
-		return &ir.Ident{AST: x, Type: TypDyn, Name: x.Name}
+		return &ir.Ident{AST: x, Type: TypInvalid, Name: x.Name}
+	}
+	// An import names a package, and a package is not a value: a member of
+	// it is named through it, `math.pi`, which inferSelect reads.
+	if _, ok := sym.(*ir.Namespace); ok {
+		c.error(x.Pos, "%s names a package, which is not a value: name one of its members, %s.<name>", x.Name, x.Name)
+		return &ir.Ident{AST: x, Type: TypInvalid, Name: x.Name}
 	}
 	if ctx, ok := sym.(*ir.Context); ok {
 		typ := ctx.Typ
 		if typ == nil {
 			// registerRootContextDecl leaves Typ nil only on its three
 			// bad-default paths, each of which reported first.
-			typ = ir.TypDyn
+			typ = ir.TypInvalid
 		}
 		return &ir.ContextRead{AST: x, Ref: ctx, Typ: typ}
 	}
 	t := c.symType(sym)
 	if t == nil {
-		t = dynNoSymType(sym, "symbol %q (%T) has no type", x.Name, sym)
+		t = TypInvalid
 	}
 	c.reportCountedHandleRead(x, sym, t)
 	ident := &ir.Ident{AST: x, Type: t, Name: x.Name, Sym: sym}
-	// An &-bound loop variable has type ref<T>. Auto-deref it to T (an explicit
+	// An &-bound loop variable has type ref[T]. Auto-deref it to T (an explicit
 	// Unary{Deref}, mirroring Select-operand deref) so reads type-check as the
 	// element type and assignment targets resolve to the dereferenced element.
 	// Lowering rewrites the ref to indexed list access. Only loop vars are
@@ -527,12 +539,10 @@ func (c *checker) inferIdent(x *ast.IdentExpr) ir.Expr {
 // declaring it inside the slot render and reading it outside, bubbletea
 // emitting the read as the only occurrence of the name in the file.
 //
-// It is reported at the read rather than shipped as a type, because the type
-// alone is silent: option and list are both absent from hasNoLegitimateFields,
-// so `maybe.value` off one degrades to dyn and the three broken builds become
-// three no-ops. The read is also the line that has to move.
+// It is reported at the read rather than as the select's unknown member,
+// because the read is the line that has to move.
 //
-// Only a node handle is asked. A `for` over windows binds a real list<window>
+// Only a node handle is asked. A `for` over windows binds a real list[window]
 // that the unroll fills in (collectForLoopWindowIDs), and that var carries no
 // NodeHandle.
 func (c *checker) reportCountedHandleRead(x *ast.IdentExpr, sym ir.Symbol, t *ir.Type) {
@@ -602,9 +612,9 @@ func (c *checker) reportUnusable(pos ast.Pos, name string, sym ir.Symbol) {
 	}
 }
 
-// optionElem unwraps a well-formed option<T> to T; other types (including a
+// optionElem unwraps a well-formed option[T] to T; other types (including a
 // malformed option with no element) pass through unchanged, so callers can
-// treat `T` and `option<T>` uniformly.
+// treat `T` and `option[T]` uniformly.
 func optionElem(t *ir.Type) *ir.Type {
 	if t != nil && t.Kind == ir.TypeOption && len(t.Elems) == 1 {
 		return t.Elems[0]
@@ -614,21 +624,21 @@ func optionElem(t *ir.Type) *ir.Type {
 
 // comparableEq reports whether two operand types can be compared with == / !=.
 // Strict "like types" rule: same kind, numeric-to-numeric, one side is null, or
-// an option<T> against T / option<T>.
+// an option[T] against T / option[T].
 func comparableEq(left, right *ir.Type) bool {
 	if left == nil || right == nil {
 		return true
 	}
-	if left.Kind == ir.TypeDyn || right.Kind == ir.TypeDyn {
+	if left.Kind == ir.TypeInvalid || right.Kind == ir.TypeInvalid {
 		return true
 	}
 	if left.Kind == ir.TypeNull || right.Kind == ir.TypeNull {
 		return true
 	}
-	// An option<T> compares against another option<T>, a bare T, or null
+	// An option[T] compares against another option[T], a bare T, or null
 	// (handled above). Unwrap the option(s) and compare the element types, so
-	// `opt == value` means "present and equal" and `option<int> ==
-	// option<string>` is still rejected.
+	// `opt == value` means "present and equal" and `option[int] ==
+	// option[string]` is still rejected.
 	if left.Kind == ir.TypeOption || right.Kind == ir.TypeOption {
 		return comparableEq(optionElem(left), optionElem(right))
 	}
@@ -657,11 +667,32 @@ func comparableEq(left, right *ir.Type) bool {
 // operand's type fits. A component method's synthesized `this` names the
 // declaration bare, which a handle carrying its call site's type arguments
 // does not equal, and is the receiver all the same.
+//
+// A parameter typed by a bare type parameter is the receiver only where it is
+// marked so: every operand fits one, so fitting says nothing, and
+// `Test.setContext[V any](ctx V, value V)` took `t` as its context.
 func receivesOperand(receiver *ir.Type, p *ir.Param) bool {
-	return p.Receiver || receiver.IsAssignableTo(p.Type)
+	if p.Receiver {
+		return true
+	}
+	return !bareTypeParam(p) && receiver.IsAssignableTo(p.Type)
+}
+
+// bareTypeParam reports whether p's type is a type parameter and nothing
+// else, which any operand fits.
+func bareTypeParam(p *ir.Param) bool {
+	return p.Type != nil && p.Type.Kind == ir.TypeTypeParam
 }
 
 func (c *checker) inferBinary(x *ast.BinaryExpr) ir.Expr {
+	if (x.Op == ast.BinEq || x.Op == ast.BinNeq) && c.bareMember(x.Left) && !c.bareMember(x.Right) {
+		rightExpr := c.checkExpr(x.Right)
+		leftExpected := c.expected
+		if rt := comparedEnum(exprType(rightExpr)); rt != nil {
+			leftExpected = rt
+		}
+		return c.finishBinary(x, c.checkExprExpecting(x.Left, leftExpected), rightExpr)
+	}
 	leftExpr := c.checkExpr(x.Left)
 	// `a && b` evaluates b only where a held, so a null test in a narrows what
 	// follows it; `a || b` evaluates b only where a failed, which is the same
@@ -685,8 +716,39 @@ func (c *checker) inferBinary(x *ast.BinaryExpr) ir.Expr {
 	if lt := exprType(leftExpr); ir.UnitDeclOf(lt) != nil {
 		rightExpected = lt
 	}
+	// An enum is what the other side of a comparison is expected to be, so
+	// a bare member resolves on either side of `==`: `x == bold`, and
+	// `bold == x`, where the member is checked once the right is known. An
+	// inline enum has no name to qualify a member with, so this is the
+	// only way to compare one against a member.
+	if x.Op == ast.BinEq || x.Op == ast.BinNeq {
+		if lt := comparedEnum(exprType(leftExpr)); lt != nil {
+			rightExpected = lt
+		}
+	}
 	rightExpr := c.checkExprExpecting(x.Right, rightExpected)
 	return c.finishBinary(x, leftExpr, rightExpr)
+}
+
+// comparedEnum is the enum a comparison operand of type t holds -- t itself,
+// or the element of an option of one -- or nil.
+func comparedEnum(t *ir.Type) *ir.Type {
+	if t = optionElem(t); expectedEnumDef(t) != nil {
+		return t
+	}
+	return nil
+}
+
+// bareMember reports whether e is a name nothing in scope binds, which a
+// comparison checks after its other operand so that it may be a member of
+// that operand's enum.
+func (c *checker) bareMember(e ast.Expr) bool {
+	id, ok := e.(*ast.IdentExpr)
+	if !ok {
+		return false
+	}
+	_, bound := c.scope.Lookup(id.Name)
+	return !bound
 }
 
 func (c *checker) finishBinary(x *ast.BinaryExpr, leftExpr, rightExpr ir.Expr) ir.Expr {
@@ -717,7 +779,7 @@ func (c *checker) finishBinary(x *ast.BinaryExpr, leftExpr, rightExpr ir.Expr) i
 		right = exprType(rightExpr)
 	}
 
-	skip := left.Kind == ir.TypeDyn || right.Kind == ir.TypeDyn
+	skip := left.Kind == ir.TypeInvalid || right.Kind == ir.TypeInvalid
 
 	var typ *ir.Type
 	switch x.Op {
@@ -759,7 +821,7 @@ func (c *checker) finishBinary(x *ast.BinaryExpr, leftExpr, rightExpr ir.Expr) i
 				if !skip {
 					c.error(x.Pos, "operator - not defined for %s and %s", left, right)
 				}
-				typ = TypDyn
+				typ = TypInvalid
 			}
 		} else if left.Kind == ir.TypeUnit || right.Kind == ir.TypeUnit {
 			// unit +/- unit: both must be same unit type
@@ -770,10 +832,11 @@ func (c *checker) finishBinary(x *ast.BinaryExpr, leftExpr, rightExpr ir.Expr) i
 			if typ.Kind != ir.TypeUnit {
 				typ = right
 			}
+		} else if !skip && (!left.IsNumeric() || !right.IsNumeric()) {
+			// Reported once: unifyNumeric would say it again, of the same pair.
+			c.error(x.Pos, "operator %s not defined for %s and %s", x.Op, left, right)
+			typ = TypInvalid
 		} else {
-			if !skip && (!left.IsNumeric() || !right.IsNumeric()) {
-				c.error(x.Pos, "operator %s not defined for %s and %s", x.Op, left, right)
-			}
 			typ = c.unifyNumeric(left, right, x.Pos, x.Op)
 		}
 	case ast.BinMul:
@@ -787,7 +850,7 @@ func (c *checker) finishBinary(x *ast.BinaryExpr, leftExpr, rightExpr ir.Expr) i
 				typ = right // scalar * unit
 			default:
 				c.error(x.Pos, "operator * not defined for %s and %s", left, right)
-				typ = TypDyn
+				typ = TypInvalid
 			}
 		} else {
 			typ = c.unifyNumeric(left, right, x.Pos, x.Op)
@@ -803,7 +866,7 @@ func (c *checker) finishBinary(x *ast.BinaryExpr, leftExpr, rightExpr ir.Expr) i
 				typ = TypFloat // unit / unit → dimensionless ratio
 			default:
 				c.error(x.Pos, "operator / not defined for %s and %s", left, right)
-				typ = TypDyn
+				typ = TypInvalid
 			}
 		} else {
 			typ = c.unifyNumeric(left, right, x.Pos, x.Op)
@@ -817,7 +880,7 @@ func (c *checker) finishBinary(x *ast.BinaryExpr, leftExpr, rightExpr ir.Expr) i
 				typ = left // unit % scalar
 			default:
 				c.error(x.Pos, "operator %% not defined for %s and %s", left, right)
-				typ = TypDyn
+				typ = TypInvalid
 			}
 		} else {
 			typ = c.unifyNumeric(left, right, x.Pos, x.Op)
@@ -831,12 +894,13 @@ func (c *checker) finishBinary(x *ast.BinaryExpr, leftExpr, rightExpr ir.Expr) i
 // unifyNumeric returns the common type of two numeric binary operands. Operands
 // must already share a width and signedness (untyped literals are adapted to
 // the other operand up front); a mismatch is an error requiring an explicit
-// conversion. Dyn on either side flows through without an error.
+// conversion. An invalid operand on either side, already reported, flows
+// through without a second error.
 func (c *checker) unifyNumeric(left, right *ir.Type, pos ast.Pos, op ast.BinaryOp) *ir.Type {
-	if left.Kind == ir.TypeDyn {
+	if left.Kind == ir.TypeInvalid {
 		return right
 	}
-	if right.Kind == ir.TypeDyn {
+	if right.Kind == ir.TypeInvalid {
 		return left
 	}
 	if left.Equal(right) {
@@ -879,7 +943,7 @@ func (c *checker) inferUnary(x *ast.UnaryExpr) ir.Expr {
 	}
 	operandExpr := c.checkExpr(x.Operand)
 	operand := exprType(operandExpr)
-	skip := operand.Kind == ir.TypeDyn
+	skip := operand.Kind == ir.TypeInvalid
 	var typ *ir.Type
 	switch x.Op {
 	case ast.UnaryNot:
@@ -906,10 +970,10 @@ func (c *checker) inferUnary(x *ast.UnaryExpr) ir.Expr {
 		typ = ir.RefOf(operand)
 	case ast.UnaryDeref:
 		if skip {
-			typ = TypDyn
+			typ = TypInvalid
 		} else if operand.Kind != ir.TypeRef {
 			c.error(x.Pos, "cannot dereference non-ref type %s", operand)
-			typ = TypDyn
+			typ = TypInvalid
 		} else {
 			typ = operand.Elems[0]
 		}
@@ -972,11 +1036,20 @@ func (c *checker) inferTernary(x *ast.TernaryExpr) ir.Expr {
 	return &ir.Ternary{AST: x, Type: typ, Cond: condExpr, Then: thenExpr, Else: elseExpr}
 }
 
-func (c *checker) inferCall(x *ast.CallExpr) ir.Expr {
+func (c *checker) inferCall(x *ast.CallExpr) (out ir.Expr) {
+	// What a call to one of these intrinsics is handed is held to rules its
+	// signature cannot state.
+	defer func() {
+		c.refuseSetContextName(out)
+		c.checkI18nCall(x, out)
+	}()
 	stmtCall := c.stmtCall
 	c.stmtCall = nil
 	if x != stmtCall {
 		c.refuseExprErrorHandler(x)
+	}
+	if out, ok := c.instantiatedCall(x); ok {
+		return out
 	}
 	if sel, ok := x.Func.(*ast.SelectExpr); ok {
 		return c.inferMethodCall(sel, x)
@@ -987,12 +1060,13 @@ func (c *checker) inferCall(x *ast.CallExpr) ir.Expr {
 	// user method and be called as `x.string()` etc. — the cast form never
 	// dispatches to user methods.
 	if ident, ok := x.Func.(*ast.IdentExpr); ok {
-		// Scalar-primitive casts are dispatched from the shared registry
-		// (ir/builtins.go); struct-backed casts (color/date/time) follow.
-		if b, ok := ir.LookupBuiltinScalar(ident.Name); ok && b.Convertible {
-			return c.inferBuiltinConversion(x, b.Type, ident.Name)
-		}
+		// A scalar cast and a struct-backed one (color/date/time) are both
+		// found through scope, so a program's own declaration of the name is
+		// no cast.
 		if sym, ok := c.scope.Lookup(ident.Name); ok {
+			if typ, kind, ok := scalarOf(sym); ok && kind.IsConvertibleScalar() {
+				return c.inferBuiltinConversion(x, typ, ident.Name)
+			}
 			if target, ok := stringReprCast(sym); ok {
 				return c.inferBuiltinConversion(x, target, ident.Name)
 			}
@@ -1040,6 +1114,7 @@ func (c *checker) inferCall(x *ast.CallExpr) ir.Expr {
 	// Component instantiation in expression position: text(value="hi")
 	if calleeType.Kind == ir.TypeComponent {
 		if comp, ok := calleeType.Decl.(*ir.Component); ok {
+			c.takeCallTypeArgs(x, comp.TypeParams)
 			args := c.checkComponentCallArgs(x, comp)
 			return &ir.Call{AST: x, Type: calleeType, Args: args}
 		}
@@ -1057,18 +1132,22 @@ func (c *checker) inferCall(x *ast.CallExpr) ir.Expr {
 	// type name means a cast to a type that has no cast, and with a value
 	// means calling a non-function.
 	//
-	// TypeDyn is exempt: a dyn callee is unknown by construction, so a call on
-	// it stays permissive.
+	// An invalid callee was reported where it went wrong, so a call on it
+	// reports nothing more.
 	if calleeType.Kind == ir.TypeUnit {
 		return c.inferUnitConversion(x, calleeType)
 	}
-	if calleeType.Kind != ir.TypeFunc && calleeType.Kind != ir.TypeDyn {
+	if calleeType.Kind != ir.TypeFunc && calleeType.Kind != ir.TypeInvalid {
 		c.errorNotCallable(x, calleeExpr, calleeType)
-		return &ir.Call{AST: x, Type: TypDyn, Args: c.checkCallArgs(x.Args, nil)}
+		return &ir.Call{AST: x, Type: TypInvalid, Args: c.checkCallArgs(x.Args, nil)}
 	}
 
+	var written map[string]*ir.Type
+	if sig != nil {
+		written = c.takeCallTypeArgs(x, sig.TypeParams)
+	}
 	if sig != nil && len(sig.TypeParams) > 0 {
-		sig = c.inferTypeParams(sig, x.Args)
+		sig = c.inferTypeParams(x.Pos, sig, x.Args, written)
 	}
 
 	args := c.checkCallArgs(x.Args, sig)
@@ -1121,7 +1200,7 @@ func (c *checker) inferUnitConversion(x *ast.CallExpr, target *ir.Type) ir.Expr 
 		return &ir.Conversion{AST: x, Type: target}
 	}
 	argExpr := c.checkExprExpecting(arg.Value, target)
-	if from := exprType(argExpr); from != nil && from.Kind != ir.TypeDyn && !from.Equal(target) {
+	if from := exprType(argExpr); from != nil && from.Kind != ir.TypeInvalid && !from.Equal(target) {
 		c.error(x.Pos, "cannot cast %s to unit %s (a unit value is written as a literal, e.g. 5%s)", from, target, target)
 	}
 	return argExpr
@@ -1234,7 +1313,96 @@ func isTypeSym(sym ir.Symbol) bool {
 	return false
 }
 
+// inferQualifiedCall is a call of another package's member named through
+// the import, `math.sqrt(x)` or `ui.vbox(…)`: the call is qualified by the
+// import, which is not a value and so is no receiver.
+func (c *checker) inferQualifiedCall(sel *ast.SelectExpr, call *ast.CallExpr, ns *ir.Namespace, ident *ast.IdentExpr) ir.Expr {
+	// An import that resolved to no package -- a check with no resolver --
+	// has no members to call, and the import is where that is the problem.
+	if ns.Pkg == nil {
+		return &ir.Call{AST: call, Type: TypInvalid, Qualifier: ns, Args: c.checkCallArgs(call.Args, nil)}
+	}
+	if ns.Pkg != nil {
+		if fsym, ok := ns.Pkg.Symbols.LookupMember(sel.Field); ok {
+			if c.rejectUnexported(sel.Pos, fsym) {
+				return &ir.Call{AST: call, Type: TypInvalid, Args: c.checkCallArgs(call.Args, nil)}
+			}
+			// Component in namespace — validate visibility and props.
+			if comp, ok := fsym.(*ir.Component); ok {
+				// Private component filter: only for imported user
+				// packages. Identity, not name — the stdlib is
+				// bound under whatever alias the file chose.
+				if ns.Pkg != c.stdlibPkg && len(sel.Field) > 0 && sel.Field[0] >= 'a' && sel.Field[0] <= 'z' {
+					c.error(sel.Pos, "unknown component %q in package %s", sel.Field, ident.Name)
+					return &ir.Call{AST: call, Type: TypInvalid, Args: c.checkCallArgs(call.Args, nil)}
+				}
+				c.takeCallTypeArgs(call, comp.TypeParams)
+				args := c.checkComponentCallArgs(call, comp)
+				c.validateCallStmtComponentArgs(call, comp)
+				return &ir.Call{AST: call, Type: comp.SymType(), Qualifier: ns, Args: args}
+			}
+			// A qualified unit names a type, and naming one is the
+			// point of the cast: `time.duration(1m)` is the same
+			// expected-type provider the bare `duration(1m)` is.
+			if ud, ok := fsym.(*ir.UnitDef); ok {
+				return c.inferUnitConversion(call, ud.SymType())
+			}
+			// An ir.Call is not what the optimizer folds.
+			if target, ok := stringReprCast(fsym); ok {
+				return c.inferBuiltinConversion(call, target, ident.Name+"."+sel.Field)
+			}
+			t := c.symType(fsym)
+			var sig *ir.FuncSig
+			if t != nil && t.Kind == ir.TypeFunc && t.Sig != nil {
+				sig = t.Sig
+			}
+			// Infer generic type params from arguments (e.g. the
+			// html.frontend[T]/html.backend[T] placement directives),
+			// mirroring the bare-call path above.
+			var written map[string]*ir.Type
+			if sig != nil {
+				written = c.takeCallTypeArgs(call, sig.TypeParams)
+			}
+			if sig != nil && len(sig.TypeParams) > 0 {
+				sig = c.inferTypeParams(call.Pos, sig, call.Args, written)
+			}
+			args := c.checkCallArgs(call.Args, sig)
+			var resolvedFunc *ir.Func
+			if f, ok := fsym.(*ir.Func); ok {
+				resolvedFunc = f
+			}
+			var retType *ir.Type
+			if sig != nil {
+				retType = callRetType(sig)
+			} else {
+				retType = t
+			}
+			// A func value the package holds is called through what it
+			// holds: the callee is the qualified read of it.
+			if v, ok := fsym.(*ir.Var); ok && resolvedFunc == nil {
+				callee := &ir.Ident{Type: t, Name: v.Name, Sym: v, Qualifier: ns, SelAST: sel}
+				return &ir.Call{AST: call, Type: retType, Callee: callee, Args: args}
+			}
+			return &ir.Call{AST: call, Type: retType, Func: resolvedFunc, Qualifier: ns, Args: args}
+		}
+	}
+	// A name the package does not declare (e.g. html.code).
+	if resolved := c.nsMember(sel.Pos, ns, sel.Field); resolved != nil {
+		t := resolved.SymType()
+		if t == nil {
+			t = TypInvalid
+		}
+		args := c.checkCallArgs(call.Args, nil)
+		return &ir.Call{AST: call, Type: t, Qualifier: ns, Args: args}
+	}
+	c.error(sel.Pos, "unknown component %q in package %s", sel.Field, ident.Name)
+	return &ir.Call{AST: call, Type: TypInvalid, Args: c.checkCallArgs(call.Args, nil)}
+}
+
 func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) ir.Expr {
+	if ns, ident := c.namespaceOperand(sel.Operand); ns != nil {
+		return c.inferQualifiedCall(sel, call, ns, ident)
+	}
 	// Determine if operand is a type name (static call) vs a value (instance call).
 	isStatic := isTypeSym(c.staticReceiverSym(sel.Operand))
 
@@ -1242,99 +1410,33 @@ func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) ir.Ex
 	receiver := exprType(receiverExpr)
 
 	if c.rejectVoidReceiver(receiver, sel.Operand) {
-		return &ir.Call{AST: call, Type: TypDyn, Args: c.checkCallArgs(call.Args, nil)}
-	}
-
-	// Namespace function or component call: ns.func() or ns.Component().
-	if ident, ok := sel.Operand.(*ast.IdentExpr); ok {
-		if sym, ok := c.scope.Lookup(ident.Name); ok {
-			if ns, ok := sym.(*ir.Namespace); ok && ns.Pkg != nil {
-				if ns.Pkg != nil {
-					if fsym, ok := ns.Pkg.Symbols.LookupMember(sel.Field); ok {
-						if c.rejectUnexported(sel.Pos, fsym) {
-							return &ir.Call{AST: call, Type: TypDyn, Args: c.checkCallArgs(call.Args, nil)}
-						}
-						// Component in namespace — validate visibility and props.
-						if comp, ok := fsym.(*ir.Component); ok {
-							// Private component filter: only for imported user
-							// packages. Identity, not name — the stdlib is
-							// bound under whatever alias the file chose.
-							if ns.Pkg != c.stdlibPkg && len(sel.Field) > 0 && sel.Field[0] >= 'a' && sel.Field[0] <= 'z' {
-								c.error(sel.Pos, "unknown component %q in package %s", sel.Field, ident.Name)
-								return &ir.Call{AST: call, Type: TypDyn, Args: c.checkCallArgs(call.Args, nil)}
-							}
-							args := c.checkComponentCallArgs(call, comp)
-							c.validateCallStmtComponentArgs(call, comp)
-							return &ir.Call{AST: call, Type: comp.SymType(), Receiver: receiverExpr, Args: args}
-						}
-						// A qualified unit names a type, and naming one is the
-						// point of the cast: `time.duration(1m)` is the same
-						// expected-type provider the bare `duration(1m)` is.
-						if ud, ok := fsym.(*ir.UnitDef); ok {
-							return c.inferUnitConversion(call, ud.SymType())
-						}
-						// An ir.Call is not what the optimizer folds.
-						if target, ok := stringReprCast(fsym); ok {
-							return c.inferBuiltinConversion(call, target, ident.Name+"."+sel.Field)
-						}
-						t := c.symType(fsym)
-						var sig *ir.FuncSig
-						if t != nil && t.Kind == ir.TypeFunc && t.Sig != nil {
-							sig = t.Sig
-						}
-						// Infer generic type params from arguments (e.g. the
-						// html.frontend<T>/html.backend<T> placement directives),
-						// mirroring the bare-call path above.
-						if sig != nil && len(sig.TypeParams) > 0 {
-							sig = c.inferTypeParams(sig, call.Args)
-						}
-						args := c.checkCallArgs(call.Args, sig)
-						var resolvedFunc *ir.Func
-						if f, ok := fsym.(*ir.Func); ok {
-							resolvedFunc = f
-						}
-						var retType *ir.Type
-						if sig != nil {
-							retType = callRetType(sig)
-						} else {
-							retType = t
-						}
-						return &ir.Call{AST: call, Type: retType, Func: resolvedFunc, Receiver: receiverExpr, Args: args}
-					}
-				}
-				// A name the package does not declare (e.g. html.code).
-				if resolved := c.nsMember(sel.Pos, ns, sel.Field); resolved != nil {
-					t := resolved.SymType()
-					if t == nil {
-						t = dynFallback("member %s.%s (%T) has no type", ident.Name, sel.Field, resolved)
-					}
-					args := c.checkCallArgs(call.Args, nil)
-					return &ir.Call{AST: call, Type: t, Receiver: receiverExpr, Args: args}
-				}
-				c.error(sel.Pos, "unknown component %q in package %s", sel.Field, ident.Name)
-				return &ir.Call{AST: call, Type: TypDyn, Args: c.checkCallArgs(call.Args, nil)}
-			}
-		}
+		return &ir.Call{AST: call, Type: TypInvalid, Args: c.checkCallArgs(call.Args, nil)}
 	}
 
 	receiverExpr, receiver = callComputedOperand(receiverExpr, receiver)
+	// A method of what a reference refers to is called through it, as a
+	// field of it is read: `s.add(7)` with s a `ref[Stack]` is (*s).add(7).
+	if receiver != nil && receiver.Kind == ir.TypeRef && len(receiver.Elems) > 0 {
+		receiver = receiver.Elems[0]
+		receiverExpr = &ir.Unary{Type: receiver, Op: ast.UnaryDeref, Operand: receiverExpr}
+	}
 
 	typeName := receiver.String()
 	if receiver.Decl != nil {
 		if owner, isSym := receiver.Decl.(ir.Symbol); isSym &&
 			c.rejectForeignUnexported(sel.Pos, owner, typeName, sel.Field) {
-			return &ir.Call{AST: call, Type: TypDyn, Args: c.checkCallArgs(call.Args, nil)}
+			return &ir.Call{AST: call, Type: TypInvalid, Args: c.checkCallArgs(call.Args, nil)}
 		}
 	}
 	// The receiver's declaration owns its members, so ask it directly. Only
 	// when the type has no declaration to ask — a builtin generic, whose
 	// members hang off the bare constructor name — does the name matter.
-	fn, ok := ir.MemberOf(receiver.Decl, sel.Field)
+	fn, ok := c.memberOf(receiver.Decl, sel.Field)
 	if !ok {
 		fn, ok = c.lookupMethod(typeName, sel.Field)
 	}
-	// Fallback for generic types: list<int> → "list", option<int> → "option",
-	// map<K,V> → "map".
+	// Fallback for generic types: list[int] → "list", option[int] → "option",
+	// map[K,V] → "map".
 	if !ok {
 		switch receiver.Kind {
 		case ir.TypeList:
@@ -1345,25 +1447,28 @@ func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) ir.Ex
 			fn, ok = c.lookupMethod("map", sel.Field)
 		}
 	}
-	// A method reached through `option<Struct>` resolves against the struct,
+	// A method reached through `option[Struct]` resolves against the struct,
 	// the same way a field read through one does (see inferSelect). Asked after
 	// `option`'s own members, so a name the option itself declares still wins.
 	if !ok && receiver.Kind == ir.TypeOption && len(receiver.Elems) == 1 &&
 		receiver.Elems[0] != nil && receiver.Elems[0].Kind == ir.TypeStruct {
-		if fn, ok = ir.MemberOf(receiver.Elems[0].Decl, sel.Field); ok {
+		if fn, ok = c.memberOf(receiver.Elems[0].Decl, sel.Field); ok {
 			receiver = receiver.Elems[0]
 			typeName = receiver.String()
 		}
 	}
 	if ok {
 		sig := fn.FuncSig()
+		// The written type arguments are the method's own, after its
+		// receiver's, which the receiver binds.
+		written := c.takeCallTypeArgs(call, sig.TypeParams)
 		// recvParamStyle tracks whether the receiver is passed as the first
-		// explicit param (old-style "dyn receiver" convention) vs. a new-style
+		// explicit param (receiver-as-first-param convention) vs. a new-style
 		// RecvTypeParams method where the receiver is implicit (not a param).
 		recvParamStyle := len(sig.RecvTypeParams) == 0
 
 		// If the method was declared with receiver-level type params
-		// (e.g. func list<T>.filter(...)), bind them from the receiver's concrete
+		// (e.g. func list[T].filter(...)), bind them from the receiver's concrete
 		// type arguments before any other type-param work.
 		if !recvParamStyle && !isStatic {
 			bindings := make(map[string]*ir.Type, len(sig.RecvTypeParams))
@@ -1375,7 +1480,7 @@ func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) ir.Ex
 				// Receiver kind matches but no concrete elems (e.g. bare "list" in
 				// stdlib lookup). Fall back to binding against Params[0] if present.
 				if len(sig.Params) > 0 {
-					bindTypeParams(sig.Params[0].Type, receiver, bindings)
+					ir.BindTypeParams(sig.Params[0].Type, receiver, bindings)
 				}
 			}
 			if len(bindings) > 0 {
@@ -1414,10 +1519,10 @@ func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) ir.Ex
 		if len(sig.TypeParams) > 0 {
 			// For instance calls using the old-style receiver-as-param convention,
 			// bind receiver to param[0] before inferring from explicit args so
-			// that e.g. list<int>.length() binds T=int.
-			if recvParamStyle && !isStatic && len(sig.Params) > 0 {
+			// that e.g. list[int].length() binds T=int.
+			if recvParamStyle && !isStatic && len(sig.Params) > 0 && (sig.Params[0].Receiver || !bareTypeParam(sig.Params[0])) {
 				bindings := make(map[string]*ir.Type)
-				bindTypeParams(sig.Params[0].Type, receiver, bindings)
+				ir.BindTypeParams(sig.Params[0].Type, receiver, bindings)
 				if len(bindings) > 0 {
 					sig = sig.Substitute(bindings)
 				}
@@ -1430,7 +1535,7 @@ func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) ir.Ex
 			// Only where the receiver is that parameter, though: a `sngl:`
 			// method takes its receiver through Call.Receiver, so its first
 			// parameter is an ordinary one -- the test the argument check
-			// below makes, and `stack.go(to page<T>, …)` bound nothing from
+			// below makes, and `stack.go(to page[T], …)` bound nothing from
 			// `to` without it.
 			inferSig := sig
 			if recvParamStyle && !isStatic && len(sig.Params) > 0 && receivesOperand(receiver, sig.Params[0]) {
@@ -1438,7 +1543,7 @@ func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) ir.Ex
 				shifted.Params = sig.Params[1:]
 				inferSig = &shifted
 			}
-			inferred := c.inferTypeParams(inferSig, call.Args)
+			inferred := c.inferTypeParams(call.Pos, inferSig, call.Args, written)
 			if inferSig != sig {
 				merged := *sig
 				merged.Params = append([]*ir.Param{sig.Params[0]}, inferred.Params...)
@@ -1449,6 +1554,7 @@ func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) ir.Ex
 			}
 		}
 		var args []ir.CallArg
+		receiverArg := false
 		if isStatic {
 			// Static call: Type.method(args...) — all args explicit.
 			// Type ident is only a namespace marker; drop it.
@@ -1464,12 +1570,19 @@ func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) ir.Ex
 			}
 			rest := c.checkCallArgs(call.Args, shifted)
 			args = append([]ir.CallArg{{Value: receiverExpr}}, rest...)
+			// `this.add(1)` in a component's own body is `add(1)`: the
+			// instance is the one the call is made in, which a call of a
+			// component method leaves implicit for every target to supply.
+			if comp, ok := fn.RecvDecl().(*ir.Component); ok && isOwnReceiver(receiverExpr, comp) {
+				args = rest
+			}
 		} else if !recvParamStyle {
 			// New-style RecvTypeParams method: receiver is NOT a param.
 			// Check all call args against the full (substituted) sig.
 			// Prepend receiver so IR shape is consistent with static call convention.
 			rest := c.checkCallArgs(call.Args, sig)
 			args = append([]ir.CallArg{{Value: receiverExpr}}, rest...)
+			receiverArg = true
 		} else {
 			// The receiver-as-param form with no parameter the receiver fits:
 			// the method is static in its type's namespace (`S.helper(5)`),
@@ -1483,20 +1596,21 @@ func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) ir.Ex
 			// A native is excluded because it *is* a host identifier: its
 			// parameters are the host's, and the receiver arrives before the
 			// dot under `method` and as argument zero without it.
-			if fn.Pkg == "" && (fn.Foreign.Name == "" || fn.Foreign.Marked) {
+			if fn.PkgPath() == "" && (fn.Foreign.Name == "" || fn.Foreign.Marked) {
 				if len(sig.Params) == 0 {
 					c.error(sel.Pos, "%s.%s is static: it declares no parameters, so call it as %s.%s()",
-						fn.Receiver, fn.Name, fn.Receiver, fn.Name)
+						fn.RecvName(), fn.Name, fn.RecvName(), fn.Name)
 				} else {
 					c.error(sel.Pos, "%s.%s is static: its first parameter is not %s, so call it as %s.%s(…)",
-						fn.Receiver, fn.Name, fn.Receiver, fn.Receiver, fn.Name)
+						fn.RecvName(), fn.Name, fn.RecvName(), fn.RecvName(), fn.Name)
 				}
 			}
 			rest := c.checkCallArgs(call.Args, sig)
 			args = append([]ir.CallArg{{Value: receiverExpr}}, rest...)
+			receiverArg = true
 		}
 		retType := callRetType(sig)
-		return &ir.Call{AST: call, Type: retType, Func: fn, Args: args}
+		return &ir.Call{AST: call, Type: retType, Func: fn, Args: args, ReceiverArg: receiverArg}
 	}
 
 	// Struct field funcvar call: h.run() where h is a struct and run is a
@@ -1525,33 +1639,31 @@ func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) ir.Ex
 		}
 	}
 
-	// Element-ref event invocation: `c.<id>.<event>(payload)`. When the
-	// field names a declared event on the addressed component, tag the
-	// call as an event trigger and type any payload arg against the
-	// event's declared type (so anonymous struct literals like
-	// InputEvent{value="x"} can be written {value="x"}).
+	// Element-ref event invocation: `c.<id>.<event>(args)`. When the field
+	// names a declared event on the addressed component, tag the call as an
+	// event trigger and bind its arguments as an emit's are: one per declared
+	// parameter, by position or by name -- `c.box.change(true)`,
+	// `c.f.input(value="x")`. A test fires the event as the program would.
 	var argSig *ir.FuncSig
 	event := ""
 	if evt := c.elementEvent(receiverExpr, sel.Field); evt != nil {
 		event = evt.Name
-		if len(evt.Params) > 0 {
-			// Mark each param optional via a placeholder Default so
-			// `c.btn.click()` (zero args) and `c.entry.input({…})`
-			// (one struct arg) both pass arity, while each positional
-			// arg still gets its parameter's expected type.
-			argSig = &ir.FuncSig{Params: make([]*ir.Param, len(evt.Params))}
-			for i, p := range evt.Params {
-				argSig.Params[i] = &ir.Param{Name: p.Name, Type: p.Type, Default: &ir.Literal{Type: p.Type}}
-			}
-		}
+		argSig = &ir.FuncSig{Params: evt.Params}
 	}
 	args := c.checkCallArgs(call.Args, argSig)
-	if event == "" && isPrimitiveMethodReceiver(receiver) {
-		c.error(sel.Pos, "no method %q on type %s", sel.Field, receiver)
+	// A trigger fires the event and yields nothing. Anything else names no
+	// method the receiver has, which is said here rather than left for a
+	// later phase to find unresolved.
+	typ := TypVoid
+	if event == "" {
+		if receiver.Kind != ir.TypeInvalid {
+			c.error(sel.Pos, "no method %q on type %s", sel.Field, receiver)
+		}
+		typ = TypInvalid
 	}
 	return &ir.Call{
 		AST:      call,
-		Type:     dynSpread(receiver, "no method %q on %s", sel.Field, receiver),
+		Type:     typ,
 		Receiver: receiverExpr,
 		Args:     args,
 		Event:    event,
@@ -1623,7 +1735,7 @@ func isPrimitiveMethodReceiver(t *ir.Type) bool {
 	}
 	switch t.Kind {
 	case ir.TypeInt, ir.TypeFloat, ir.TypeBool, ir.TypeString,
-		ir.TypeList, ir.TypeOption, ir.TypeMap, ir.TypeRemote:
+		ir.TypeList, ir.TypeOption, ir.TypeMap:
 		return true
 	}
 	return false
@@ -1631,7 +1743,7 @@ func isPrimitiveMethodReceiver(t *ir.Type) bool {
 
 // methodNamed reports whether the type declares a method of this name, which
 // is what a field read of a type with no fields usually is: the call left off.
-func methodNamed(t *ir.Type, name string) bool {
+func (c *checker) methodNamed(t *ir.Type, name string) bool {
 	if t == nil {
 		return false
 	}
@@ -1639,22 +1751,10 @@ func methodNamed(t *ir.Type, name string) bool {
 	if !ok {
 		return false
 	}
-	_, found := decl.Methods[name]
+	_, found := ir.MethodOn(c.scope, decl, name)
 	return found
 }
 
-// hasNoLegitimateFields reports whether a type cannot have any selector
-// fields. Used to surface "no field X on type Y" diagnostics that would
-// otherwise silently degrade to TypDyn. Kept conservative: a type qualifies
-// only when it has no field-style accessor at all, which rules out most kinds
-// (color.r, list.length, struct fields, component vars/props, enum members)
-// and everything carrying no shape information (dyn, generic params, anonymous
-// structs).
-//
-// remote.Value is one: it declares no fields and reaches its three facts
-// through methods alone, so `box.value` is `box.value()` with the call left
-// off — which degraded to dyn, passed every prop it was handed, and reached a
-// backend as a field read of a struct that has none.
 // selectDeclaredMember resolves x.Field against a declaration's own member
 // table -- fields first, then methods -- and reports a name in neither. Struct
 // and unit share it because they share the question, which is the same reason
@@ -1678,35 +1778,24 @@ func (c *checker) selectDeclaredMember(x *ast.SelectExpr, operandExpr ir.Expr, d
 		}
 		return &ir.Select{AST: x, Type: fieldType, Operand: operandExpr, Field: x.Field}
 	}
-	if _, isMethod := decl.MethodTable()[x.Field]; isMethod {
+	if _, isMethod := ir.MethodOn(c.scope, decl, x.Field); isMethod {
 		c.error(x.Pos, "%s.%s is a method; write %s() to call it", name, x.Field, x.Field)
 	} else {
 		c.error(x.Pos, "no field %q on %s %s", x.Field, noun, name)
 	}
-	return &ir.Select{AST: x, Type: TypDyn, Operand: operandExpr, Field: x.Field}
-}
-
-func hasNoLegitimateFields(t *ir.Type) bool {
-	if t == nil {
-		return false
-	}
-	switch t.Kind {
-	case ir.TypeInt, ir.TypeFloat, ir.TypeBool, ir.TypeRemote:
-		return true
-	}
-	return false
+	return &ir.Select{AST: x, Type: TypInvalid, Operand: operandExpr, Field: x.Field}
 }
 
 // callRetType returns the expression type a call through sig should produce.
 // A sig with a nil Return represents a void function; calling one does not
 // yield a usable value, so we tag the call expression TypVoid. Consumer sites
 // that treat the call as an expression surface a normal assignability error
-// against TypVoid — this makes "silent dyn" leakage from missing return
-// annotations impossible. A nil sig (unknown function) stays TypDyn so the
+// against TypVoid, so a missing return annotation cannot leak a value of no
+// type. A nil sig (unknown function) stays TypInvalid so the
 // surrounding lookup error isn't doubled up.
 func callRetType(sig *ir.FuncSig) *ir.Type {
 	if sig == nil {
-		return ir.TypDyn
+		return ir.TypInvalid
 	}
 	if sig.Return == nil {
 		return TypVoid
@@ -1715,9 +1804,9 @@ func callRetType(sig *ir.FuncSig) *ir.Type {
 }
 
 // rejectVoidReceiver reports a field or method named on an expression that
-// produces no value. Nothing can be selected through one, so leaving it
-// unreported typed the whole select dyn -- which accepted any field and any
-// method name at all, `nothing().nosuchmethod()` included. The position is the
+// produces no value. Nothing can be selected through one, and left
+// unreported the select would accept any field and any method name at all,
+// `nothing().nosuchmethod()` included. The position is the
 // receiver's rather than the select's: what is wrong is the thing on the left.
 func (c *checker) rejectVoidReceiver(t *ir.Type, operand ast.Expr) bool {
 	if t == nil || t.Kind != ir.TypeVoid {
@@ -1731,15 +1820,110 @@ func (c *checker) rejectVoidReceiver(t *ir.Type, operand ast.Expr) bool {
 	return true
 }
 
+// namespaceOperand is the import an operand names, when it is a bare name
+// bound to one. A namespace is not a value, so a select or call through one
+// is read here rather than by checking the operand.
+func (c *checker) namespaceOperand(e ast.Expr) (*ir.Namespace, *ast.IdentExpr) {
+	ident, ok := e.(*ast.IdentExpr)
+	if !ok {
+		return nil, nil
+	}
+	sym, ok := c.scope.Lookup(ident.Name)
+	if !ok {
+		return nil, nil
+	}
+	ns, ok := sym.(*ir.Namespace)
+	if !ok {
+		return nil, nil
+	}
+	return ns, ident
+}
+
+// inferQualified is a member of another package read through the import
+// it was named by, `math.pi`: the member's Ident, qualified by the import.
+func (c *checker) inferQualified(x *ast.SelectExpr, ns *ir.Namespace, ident *ast.IdentExpr) ir.Expr {
+	bad := func() ir.Expr {
+		return &ir.Ident{Type: TypInvalid, Name: x.Field, Qualifier: ns, SelAST: x}
+	}
+	// An import that resolved to no package -- a check with no resolver --
+	// has no members to read, and the import is where that is the problem.
+	if ns.Pkg == nil {
+		return bad()
+	}
+	if ns.Pkg != nil {
+		if fsym, ok := ns.Pkg.Symbols.LookupMember(x.Field); ok {
+			if c.rejectUnexported(x.Pos, fsym) {
+				return bad()
+			}
+			c.reportUnusable(x.Pos, ident.Name+"."+x.Field, fsym)
+			// A family reached through its package is no more a value than
+			// it is in scope.
+			if f, isComp := fsym.(*ir.Component); isComp && f.IsFamily() {
+				c.error(x.Pos, "%s.%s names a family, which is not a value: a value of it is a handle to one of its members", ident.Name, x.Field)
+				return bad()
+			}
+			// A context reached through its package is the same context:
+			// `i18n.locale` reads what `locale` reads where the name is in
+			// scope unqualified.
+			if ctx, isCtx := fsym.(*ir.Context); isCtx {
+				typ := ctx.Typ
+				if typ == nil {
+					typ = ir.TypInvalid // already reported, as in inferIdent
+				}
+				return &ir.ContextRead{Ref: ctx, Typ: typ}
+			}
+			if _, isNS := fsym.(*ir.Namespace); isNS {
+				c.error(x.Pos, "%s.%s names a package, which is not a value", ident.Name, x.Field)
+				return bad()
+			}
+			t := c.symType(fsym)
+			if t == nil {
+				t = TypInvalid
+			}
+			// A host value reached through its package is the host
+			// identifier it is unqualified: a backend spells it from the
+			// declaration, and the import names nothing the host declares.
+			if v, ok := fsym.(*ir.Var); ok && ir.IsHostValue(v) {
+				return &ir.Ident{Type: t, Name: v.Name, Sym: v}
+			}
+			return &ir.Ident{Type: t, Name: x.Field, Sym: fsym, Qualifier: ns, SelAST: x}
+		}
+	}
+	// A name the package does not declare. A wildcard may still answer to
+	// it -- html's element set is open, so `html.div` is a name nobody
+	// declared and still resolves.
+	if resolved := c.nsMember(x.Pos, ns, x.Field); resolved != nil {
+		t := resolved.SymType()
+		if t == nil {
+			t = TypInvalid
+		}
+		return &ir.Ident{Type: t, Name: x.Field, Sym: resolved, Qualifier: ns, SelAST: x}
+	}
+	// Nothing declares it and no wildcard covers it. A package's members
+	// are a closed set unless it says otherwise.
+	if isExportedMemberName(x.Field) {
+		c.error(x.Pos, "undefined: %s.%s", ident.Name, x.Field)
+	}
+	return bad()
+}
+
 func (c *checker) inferSelect(x *ast.SelectExpr) ir.Expr {
-	operandExpr := c.checkExpr(x.Operand)
+	if ns, ident := c.namespaceOperand(x.Operand); ns != nil {
+		return c.inferQualified(x, ns, ident)
+	}
+	if e := c.inferSlotEmpty(x); e != nil {
+		return e
+	}
+	// What the select is expected to be says nothing of what it reads off:
+	// an option expected of `node.left` is no reason to leave `node` wrapped.
+	operandExpr := c.checkExprExpecting(x.Operand, nil)
 	operand := exprType(operandExpr)
 
 	if c.rejectVoidReceiver(operand, x.Operand) {
-		return &ir.Select{AST: x, Type: TypDyn, Operand: operandExpr, Field: x.Field}
+		return &ir.Select{AST: x, Type: TypInvalid, Operand: operandExpr, Field: x.Field}
 	}
 
-	// Auto-deref through Select: if the operand is `ref<T>`, treat the field
+	// Auto-deref through Select: if the operand is `ref[T]`, treat the field
 	// access as if the operand were dereferenced first. The IR carries an
 	// explicit Unary{Deref} so downstream passes never need a special case.
 	if operand != nil && operand.Kind == ir.TypeRef && len(operand.Elems) > 0 {
@@ -1752,16 +1936,13 @@ func (c *checker) inferSelect(x *ast.SelectExpr) ir.Expr {
 		operand = operand.Elems[0]
 	}
 
-	// A field read through `option<Struct>` resolves against the struct, which
-	// is what every backend already emits -- Go reads through the pointer an
-	// option is. Only the type it was resolved against changes; no deref node
-	// is synthesized, because there is nothing for one to lower to.
-	//
-	// Without this the whole select degraded to dyn: `contents.value().status`
-	// worked, `contents.value().nope` worked exactly as well, and both reached
-	// a backend as a field read of whatever was there.
+	// A field read through `option[Struct]` reads off a value that may not be
+	// there: a null test narrows it first (narrow.go), and the read is then
+	// of the struct. Unnarrowed it is refused, rather than resolved against
+	// the struct as Go's pointer read would and Kotlin's nullable refuses.
 	if operand != nil && operand.Kind == ir.TypeOption && len(operand.Elems) == 1 &&
 		operand.Elems[0] != nil && operand.Elems[0].Kind == ir.TypeStruct {
+		c.error(x.Pos, "%s may be null: test it against null before reading .%s", operand, x.Field)
 		operand = operand.Elems[0]
 	}
 
@@ -1771,52 +1952,6 @@ func (c *checker) inferSelect(x *ast.SelectExpr) ir.Expr {
 	operandExpr, operand = callComputedOperand(operandExpr, operand)
 
 	{
-		// Namespace member access: ns.field.
-		if ident, ok := x.Operand.(*ast.IdentExpr); ok {
-			if sym, ok := c.scope.Lookup(ident.Name); ok {
-				if ns, ok := sym.(*ir.Namespace); ok {
-					if ns.Pkg != nil {
-						if fsym, ok := ns.Pkg.Symbols.LookupMember(x.Field); ok {
-							if c.rejectUnexported(x.Pos, fsym) {
-								return &ir.Select{AST: x, Type: TypDyn, Operand: operandExpr, Field: x.Field}
-							}
-							c.reportUnusable(x.Pos, ident.Name+"."+x.Field, fsym)
-							// A context reached through its package is the
-							// same context: `i18n.locale` reads what `locale`
-							// reads where the name is in scope unqualified.
-							if ctx, isCtx := fsym.(*ir.Context); isCtx {
-								typ := ctx.Typ
-								if typ == nil {
-									typ = ir.TypDyn // already reported, as above
-								}
-								return &ir.ContextRead{Ref: ctx, Typ: typ}
-							}
-							t := c.symType(fsym)
-							return &ir.Select{AST: x, Type: t, Operand: operandExpr, Field: x.Field}
-						}
-					}
-					// A name the package does not declare. A wildcard may still
-					// answer to it -- html's element set is open, so `html.div`
-					// is a name nobody declared and still resolves.
-					if resolved := c.nsMember(x.Pos, ns, x.Field); resolved != nil {
-						t := resolved.SymType()
-						if t == nil {
-							t = dynFallback("member %s.%s (%T) has no type", ident.Name, x.Field, resolved)
-						}
-						return &ir.Select{AST: x, Type: t, Operand: operandExpr, Field: x.Field}
-					}
-					// Nothing declares it and no wildcard covers it. Reported
-					// rather than typed dyn: a package's members are a closed
-					// set unless it says otherwise, and a dyn here made every
-					// misspelled member of every target package compile.
-					if isExportedMemberName(x.Field) {
-						c.error(x.Pos, "undefined: %s.%s", ident.Name, x.Field)
-					}
-					return &ir.Select{AST: x, Type: TypDyn, Operand: operandExpr, Field: x.Field}
-				}
-			}
-		}
-
 		// Enum member access: EnumType.member. Normalize to the same IR shape
 		// as a bare enum member reference so codegen never sees a dangling
 		// EnumType.member select that the target language doesn't define.
@@ -1831,10 +1966,22 @@ func (c *checker) inferSelect(x *ast.SelectExpr) ir.Expr {
 			}
 		}
 
+		// A T a struct constrains has the constraint's fields, typed from
+		// it, and nothing else a generic body can name.
+		if sd := paramConstraint(operand); sd != nil {
+			for _, f := range sd.Fields {
+				if f.Name == x.Field {
+					return &ir.Select{AST: x, Type: f.Type, Operand: operandExpr, Field: x.Field}
+				}
+			}
+			c.error(x.Pos, "no field %q on %s, whose constraint is %s", x.Field, operand, sd.SymType())
+			return &ir.Select{AST: x, Type: TypInvalid, Operand: operandExpr, Field: x.Field}
+		}
+
 		if operand.Kind == ir.TypeStruct && operand.Decl != nil {
 			if sd, ok := operand.Decl.(*ir.StructDef); ok {
 				// Build type-arg substitution bindings if the struct is generic and
-				// the operand carries concrete type arguments (e.g. Box<int>.value).
+				// the operand carries concrete type arguments (e.g. Box[int].value).
 				var typeArgBindings map[string]*ir.Type
 				if len(sd.TypeParams) > 0 && len(operand.Elems) == len(sd.TypeParams) {
 					typeArgBindings = make(map[string]*ir.Type, len(sd.TypeParams))
@@ -1843,7 +1990,7 @@ func (c *checker) inferSelect(x *ast.SelectExpr) ir.Expr {
 					}
 				}
 				if c.rejectForeignUnexported(x.Pos, sd, sd.Name, x.Field) {
-					return &ir.Select{AST: x, Type: TypDyn, Operand: operandExpr, Field: x.Field}
+					return &ir.Select{AST: x, Type: TypInvalid, Operand: operandExpr, Field: x.Field}
 				}
 				return c.selectDeclaredMember(x, operandExpr, sd, "struct", typeArgBindings)
 			}
@@ -1851,10 +1998,7 @@ func (c *checker) inferSelect(x *ast.SelectExpr) ir.Expr {
 
 		// A unit answers the same question off the same table: its fields are
 		// its bases (ir.UnitFields), so `m.px` is a float and anything else is
-		// the ordinary unknown-member error. Before the table existed a unit
-		// had no field lookup at all, and every member of one -- the valid
-		// `.px` as much as the invented `.value` -- fell through to dyn, which
-		// is why `"px is " + m.px` reached Go as a string plus a float64.
+		// the ordinary unknown-member error.
 		if operand.Kind == ir.TypeUnit && operand.Decl != nil {
 			if ud, ok := operand.Decl.(*ir.UnitDef); ok {
 				return c.selectDeclaredMember(x, operandExpr, ud, "unit", nil)
@@ -1863,11 +2007,11 @@ func (c *checker) inferSelect(x *ast.SelectExpr) ir.Expr {
 
 		// Component-instance member access: resolve the field against the
 		// component's vars, props, methods, and element refs (its own body and,
-		// as list<host>, its descendant components), fully typed. Applies to any
+		// as list[host], its descendant components), fully typed. Applies to any
 		// component-typed operand — `this.<name>` inside a method and `c.<name>`
 		// on a component-typed param/var in ordinary code or a test alike — so
 		// the feature is orthogonal to context. A name matching none of these is
-		// a hard error, not a silent `dyn`.
+		// a hard error.
 		if operand.Kind == ir.TypeComponent && operand.Decl != nil {
 			if comp, ok := operand.Decl.(*ir.Component); ok && comp.IsFamily() {
 				// A value of a family is a record of the props it declares,
@@ -1883,11 +2027,11 @@ func (c *checker) inferSelect(x *ast.SelectExpr) ir.Expr {
 					}
 				}
 				c.error(x.Pos, "%s is a family, and a value of one reaches only the props its members share: it declares no %q", comp.Name, x.Field)
-				return &ir.Select{AST: x, Type: TypDyn, Operand: operandExpr, Field: x.Field}
+				return &ir.Select{AST: x, Type: TypInvalid, Operand: operandExpr, Field: x.Field}
 			}
 			if comp, ok := operand.Decl.(*ir.Component); ok {
 				// What the operand's type arguments bound: `pkg.params` off a
-				// `page<Pkg>` is a Pkg.
+				// `page[Pkg]` is a Pkg.
 				bindings := componentArgBindings(operand, comp)
 				for _, v := range comp.Vars {
 					if v.Name == x.Field {
@@ -1918,7 +2062,7 @@ func (c *checker) inferSelect(x *ast.SelectExpr) ir.Expr {
 					// A component another package declares is not in scope by
 					// its bare name: `pages.current` off a sngl:ui/nav stack.
 					// Its own table holds its methods.
-					if fn, ok = comp.Methods[x.Field]; ok {
+					if fn, ok = ir.MethodOn(c.scope, comp, x.Field); ok {
 						c.ensureReturnType(fn)
 					}
 				}
@@ -1958,7 +2102,7 @@ func (c *checker) inferSelect(x *ast.SelectExpr) ir.Expr {
 					if args, ok := c.handleArgs[handleKey{comp, x.Field}]; ok {
 						typ = withComponentArgs(typ, host, args)
 					}
-					return &ir.Select{AST: x, Type: k.Wrap(typ), Operand: operandExpr, Field: x.Field, Ref: k}
+					return &ir.Select{AST: x, Type: k.Wrap(typ, c.listOf), Operand: operandExpr, Field: x.Field, Ref: k}
 				}
 				// Not the instance's own: a node a population written at the
 				// instance's call site declares. `c.card.title` is the node
@@ -1979,9 +2123,9 @@ func (c *checker) inferSelect(x *ast.SelectExpr) ir.Expr {
 								if strings.IndexByte(string(sel.Ref), ir.RefList) >= 0 {
 									c.error(x.Pos, "%q is in the fallback of a boundary a loop repeats: read it inside the loop", x.Field)
 								}
-								return &ir.Select{AST: x, Type: k.Wrap(ph.SymType()), Operand: sel.Operand, Field: x.Field, Ref: k}
+								return &ir.Select{AST: x, Type: k.Wrap(ph.SymType(), c.listOf), Operand: sel.Operand, Field: x.Field, Ref: k}
 							}
-							return &ir.Select{AST: x, Type: k.Wrap(ph.SymType()), Operand: sel.Operand, Field: x.Field, Ref: k, Populated: true, Via: operandExpr}
+							return &ir.Select{AST: x, Type: k.Wrap(ph.SymType(), c.listOf), Operand: sel.Operand, Field: x.Field, Ref: k, Populated: true, Via: operandExpr}
 						}
 					}
 				}
@@ -1994,16 +2138,16 @@ func (c *checker) inferSelect(x *ast.SelectExpr) ir.Expr {
 		}
 		// A ref naming any number of nodes, or maybe none, is not one of them,
 		// and a member read through it would reach whichever a target found.
-		if isElementRefRead(operandExpr) && (operand.Kind == ir.TypeList || operand.Kind == ir.TypeOption) && !methodNamed(operand, x.Field) {
+		if isElementRefRead(operandExpr) && (operand.Kind == ir.TypeList || operand.Kind == ir.TypeOption) && !c.methodNamed(operand, x.Field) {
 			if operand.Kind == ir.TypeList {
 				c.error(x.Pos, "%q is read through %s, which names one node per copy: index it to pick the copy", x.Field, operand)
 			} else {
 				c.error(x.Pos, "%q is read through %s, which may name no node: test it against null first", x.Field, operand)
 			}
-			return &ir.Select{AST: x, Type: TypDyn, Operand: operandExpr, Field: x.Field}
+			return &ir.Select{AST: x, Type: TypInvalid, Operand: operandExpr, Field: x.Field}
 		}
-		if hasNoLegitimateFields(operand) {
-			if methodNamed(operand, x.Field) {
+		if operand.Kind != ir.TypeInvalid {
+			if c.methodNamed(operand, x.Field) {
 				c.error(x.Pos, "%s.%s is a method; write %s() to call it", operand, x.Field, x.Field)
 			} else {
 				c.error(x.Pos, "no field %q on type %s", x.Field, operand)
@@ -2013,23 +2157,36 @@ func (c *checker) inferSelect(x *ast.SelectExpr) ir.Expr {
 
 	return &ir.Select{
 		AST:     x,
-		Type:    dynSpread(operand, "no field %q on %s", x.Field, operand),
+		Type:    TypInvalid,
 		Operand: operandExpr,
 		Field:   x.Field,
 	}
 }
 
 func (c *checker) inferIndex(x *ast.IndexExpr) ir.Expr {
+	// A bracket on a declaration rather than a value is its type arguments,
+	// which are written where it is called or built, and nowhere else yet.
+	if name, ok := c.namesDeclaration(x.Operand); ok {
+		c.resolveTypeArgs(x.Indices)
+		c.error(x.Pos, "type arguments are written where %s is called: %s[…](…)", name, name)
+		return &ir.Literal{Type: TypInvalid}
+	}
 	operandExpr := c.checkExpr(x.Operand)
-	indexExpr := c.checkExpr(x.Index)
+	if len(x.Indices) != 1 {
+		c.error(x.Pos, "an index takes one value")
+	}
+	var indexExpr ir.Expr = &ir.Literal{Type: TypInvalid}
+	if len(x.Indices) > 0 {
+		indexExpr = c.checkExpr(x.Indices[0])
+	}
 	operand := exprType(operandExpr)
 	operandExpr, operand = callComputedOperand(operandExpr, operand)
 
 	// An index on nothing: `xs.push(v)[0]` reaches here with a void operand,
-	// and the fallback below would hand it back as dyn, which assigns to
-	// anything. Reported here so the message names the line it was written on.
+	// and the fallback below would hand it back as invalid, which assigns to
+	// anything without a word. Reported here so the message names the line it was written on.
 	if c.requireValueType(operand, x.Pos) {
-		return &ir.Index{AST: x, Type: TypDyn, Operand: operandExpr, Idx: indexExpr}
+		return &ir.Index{AST: x, Type: TypInvalid, Operand: operandExpr, Idx: indexExpr}
 	}
 
 	if operand.Kind == ir.TypeMap {
@@ -2048,20 +2205,48 @@ func (c *checker) inferIndex(x *ast.IndexExpr) ir.Expr {
 		t := operand.Elems[0]
 		return &ir.Index{AST: x, Type: t, Operand: operandExpr, Idx: indexExpr}
 	}
+	// One copy of a node a loop rendered under one id, `c.row[1]`, is a node
+	// of the same component as the id names.
+	if operand.Kind == ir.TypeComponent && operand.Decl != nil {
+		if _, ok := operandExpr.(*ir.Select); ok {
+			return &ir.Index{AST: x, Type: operand, Operand: operandExpr, Idx: indexExpr}
+		}
+	}
 	switch operand.Kind {
 	case ir.TypeBool, ir.TypeInt, ir.TypeFloat, ir.TypeEnum, ir.TypeUnit, ir.TypeFunc:
 		c.error(x.Pos, "cannot index %s", operand)
-		return &ir.Index{AST: x, Type: TypDyn, Operand: operandExpr, Idx: indexExpr}
+		return &ir.Index{AST: x, Type: TypInvalid, Operand: operandExpr, Idx: indexExpr}
 	}
 	return &ir.Index{
 		AST:     x,
-		Type:    dynSpread(operand, "%s is not indexable", operand),
+		Type:    TypInvalid,
 		Operand: operandExpr,
 		Idx:     indexExpr,
 	}
 }
 
 func (c *checker) inferStructLit(x *ast.StructExpr) ir.Expr {
+	// `Box[int]{…}` states its type, arguments and all, which wins over
+	// whatever was expected, as `struct { … }{ … }` does.
+	if len(x.TypeArgs) > 0 {
+		nt := &ast.NamedType{Pos: x.Pos, Package: x.Package, Name: x.Name}
+		bad := false
+		for _, a := range x.TypeArgs {
+			te, ok := ast.TypeFromExpr(a)
+			if !ok {
+				c.error(*a.ExprPos(), "a type argument is a type: write a name, such as int or option[User]")
+				bad = true
+				continue
+			}
+			nt.TypeArgs = append(nt.TypeArgs, te)
+		}
+		saved := c.expected
+		c.expected = TypInvalid
+		if !bad {
+			c.expected = c.resolveType(nt)
+		}
+		defer func() { c.expected = saved }()
+	}
 	var sd *ir.StructDef
 	if c.nativeValues {
 		// The declaration is the one the importer built: named by the value
@@ -2071,11 +2256,11 @@ func (c *checker) inferStructLit(x *ast.StructExpr) ir.Expr {
 		if x.Native != nil {
 			var bad bool
 			if bad, sd = c.nativeStructDef(x, sd); bad {
-				return &ir.Literal{Type: TypDyn}
+				return &ir.Literal{Type: TypInvalid}
 			}
 		} else if sd != nil && x.Name != "" && x.Name != sd.Name {
 			c.error(x.Pos, "encoded value is a %s, but a %s was expected", x.Name, sd.Name)
-			return &ir.Literal{Type: TypDyn}
+			return &ir.Literal{Type: TypInvalid}
 		}
 	} else if x.Anon != nil {
 		// `struct { a int }{a = 1}` spells its own type, which wins over
@@ -2089,7 +2274,7 @@ func (c *checker) inferStructLit(x *ast.StructExpr) ir.Expr {
 			if ns, ok := sym.(*ir.Namespace); ok && ns.Pkg != nil {
 				if tsym, ok := ns.Pkg.Symbols.LookupMemberType(x.Name); ok {
 					if c.rejectUnexported(x.Pos, tsym) {
-						return &ir.Literal{Type: TypDyn}
+						return &ir.Literal{Type: TypInvalid}
 					}
 					if s, ok := tsym.(*ir.StructDef); ok {
 						sd = s
@@ -2106,7 +2291,7 @@ func (c *checker) inferStructLit(x *ast.StructExpr) ir.Expr {
 		// be right.
 		if sd == nil {
 			c.error(x.Pos, "undefined: %s.%s", x.Package, x.Name)
-			return &ir.Literal{Type: TypDyn}
+			return &ir.Literal{Type: TypInvalid}
 		}
 	} else if x.Name != "" {
 		if sym, ok := c.scope.Lookup(x.Name); ok {
@@ -2119,7 +2304,7 @@ func (c *checker) inferStructLit(x *ast.StructExpr) ir.Expr {
 				if len(x.Fields) > 0 {
 					c.error(x.Pos, "%s is a type parameter: its literal is its zero value, %s{}, and takes no fields", tp.Name, tp.Name)
 				}
-				return &ir.StructLit{AST: x, Type: &ir.Type{Kind: ir.TypeTypeParam, ParamName: tp.Name}}
+				return &ir.StructLit{AST: x, Type: tp.SymType()}
 			}
 		} else {
 			c.error(x.Pos, "undefined: %s%s", x.Name, c.stdlibHint(x.Name))
@@ -2146,10 +2331,14 @@ func (c *checker) inferStructLit(x *ast.StructExpr) ir.Expr {
 			// resulting value at codegen time.
 			if sd != nil {
 				srcType := exprType(val)
-				if srcType != nil && srcType.Kind != ir.TypeDyn && srcType.Kind != ir.TypeInvalid {
+				if srcType != nil && srcType.Kind != ir.TypeInvalid {
+					// An anonymous struct is its fields, not its declaration: each
+					// `struct { v T }` written, and each substitution of one, is a
+					// declaration of its own.
 					srcDecl, _ := srcType.Decl.(*ir.StructDef)
-					if srcType.Kind != ir.TypeStruct || srcDecl != sd {
-						c.error(x.Pos, "cannot spread %s into struct %s", srcType, sd.Name)
+					same := srcDecl == sd || sd.Anon && srcType.Equal(sd.SymType())
+					if srcType.Kind != ir.TypeStruct || !same {
+						c.error(x.Pos, "cannot spread %s into %s", srcType, structLabel(sd))
 					}
 				}
 			}
@@ -2160,7 +2349,7 @@ func (c *checker) inferStructLit(x *ast.StructExpr) ir.Expr {
 		name := f.Name
 		field := c.structField(f.NamePos, sd, f.Name)
 		if field != nil {
-			expected = field.Type
+			expected = c.boundFieldType(field, sd)
 			// Identical to f.Name for SNGL source, where the field was found
 			// by that name; under nativeValues it is the SNGL name of a field
 			// written with its foreign one.
@@ -2168,16 +2357,12 @@ func (c *checker) inferStructLit(x *ast.StructExpr) ir.Expr {
 		}
 		val := c.checkExprExpecting(f.Value, expected)
 		if field != nil {
-			// `TreeNode{left = leaf1}` against `left option<TreeNode>` reached
-			// codegen as a bare TreeNode, and Go's option is *T -- the one
-			// assignment position that read the declared type and then threw
-			// the conversion away.
-			val = wrapOptionIfNeeded(val, expected)
+			val = c.checkFieldValue(f.Value, val, field, sd)
 		}
 		// Validate field exists on struct. An unexported field of another
 		// package is already reported by structField.
 		if sd != nil && field == nil && isExportedMemberName(f.Name) {
-			c.error(x.Pos, "unknown field %q on struct %s", f.Name, sd.Name)
+			c.error(x.Pos, "unknown field %q on %s", f.Name, structLabel(sd))
 		}
 		// A spread carries no name, so `{...base, x = 2}` is an override
 		// rather than a duplicate; only two written fields are one.
@@ -2199,7 +2384,7 @@ func (c *checker) inferStructLit(x *ast.StructExpr) ir.Expr {
 		}
 		typ := sd.SymType()
 		// For generic structs initialized via anonymous literal against a
-		// known expected type (e.g. `var b box<int> = {v=42}`), inherit the
+		// known expected type (e.g. `var b box[int] = {v=42}`), inherit the
 		// expected type's parameter bindings so downstream method calls
 		// resolve T correctly.
 		if c.expected != nil && c.expected.Kind == ir.TypeStruct && c.expected.Decl == sd {
@@ -2212,17 +2397,64 @@ func (c *checker) inferStructLit(x *ast.StructExpr) ir.Expr {
 	// Nothing named a type, so the literal's own values do.
 	anonFields, ok := c.anonFieldsFromInits(fields)
 	if !ok {
-		return &ir.StructLit{AST: x, Type: &ir.Type{Kind: ir.TypeStruct}, Fields: fields}
+		return &ir.StructLit{AST: x, Type: TypInvalid, Fields: fields}
 	}
-	anon := c.internAnonStruct(anonFields)
-	return &ir.StructLit{AST: x, Type: anon.SymType(), Def: anon, Fields: fields}
+	typ := c.anonStructType(anonFields)
+	return &ir.StructLit{AST: x, Type: typ, Def: typ.Decl.(*ir.StructDef), Fields: fields}
+}
+
+// checkFieldValue holds a struct literal's field value to the rule every
+// slot is held to. The field keeps the shape it was written in but for the
+// option promotion: `TreeNode{left = leaf1}` against `left option[TreeNode]`
+// reached codegen as a bare TreeNode, and Go's option is *T.
+func (c *checker) checkFieldValue(written ast.Expr, val ir.Expr, field *ir.StructField, sd *ir.StructDef) ir.Expr {
+	return c.coerce(written, val, c.boundFieldType(field, sd), slot{
+		later:     true,
+		keepShape: true,
+		// A Go nil slice or map encodes as null, and is the empty collection.
+		accept: func(_ ir.Expr, got *ir.Type) bool {
+			want := field.Type
+			return c.nativeValues && got.Kind == ir.TypeNull && (want.Kind == ir.TypeList || want.Kind == ir.TypeMap)
+		},
+		mismatch: func(want, got string) string {
+			return fmt.Sprintf("cannot use %s as %s for field %q of %s", got, want, field.Name, structSpelling(sd))
+		},
+	})
+}
+
+// structSpelling is how a diagnostic names sd: its name, or for an anonymous
+// struct the fields it was written with, never the name the compiler gave it.
+func structSpelling(sd *ir.StructDef) string {
+	if sd.Anon {
+		return sd.SymType().String()
+	}
+	return sd.Name
+}
+
+// structLabel is structSpelling with the word a named struct reads with.
+func structLabel(sd *ir.StructDef) string {
+	if sd.Anon {
+		return structSpelling(sd)
+	}
+	return "struct " + sd.Name
+}
+
+// boundFieldType is the field's type with the literal's type arguments
+// substituted, which only an expected type supplies; a field still naming a
+// parameter is left for the literal's inference.
+func (c *checker) boundFieldType(field *ir.StructField, sd *ir.StructDef) *ir.Type {
+	if sd == nil || len(sd.TypeParams) == 0 || c.expected == nil || c.expected.Decl != sd || len(c.expected.Elems) != len(sd.TypeParams) {
+		return field.Type
+	}
+	bindings := make(map[string]*ir.Type, len(sd.TypeParams))
+	for i, tp := range sd.TypeParams {
+		bindings[tp.Name] = c.expected.Elems[i]
+	}
+	return field.Type.Substitute(bindings)
 }
 
 // reinterpretStructAsMap converts an all-ident-key StructExpr into a MapLitIR
-// when the expected type is map<K,V>. Only map<string,V> is supported; ident
-// names become string literal keys. For any other K, a check error is emitted.
-// reinterpretStructAsMap converts an all-ident-key StructExpr into a MapLitIR
-// when the expected type is map<K,V>. Only map<string,V> is supported; ident
+// when the expected type is map[K,V]. Only map[string,V] is supported; ident
 // names become string literal keys. For any other K, a check error is emitted.
 func (c *checker) reinterpretStructAsMap(x *ast.StructExpr, mapType *ir.Type) ir.Expr {
 	if len(mapType.Elems) != 2 {
@@ -2250,7 +2482,7 @@ func (c *checker) reinterpretStructAsMap(x *ast.StructExpr, mapType *ir.Type) ir
 			// A non-string key type means the name is not a name: it is an
 			// expression written where a field name would go, and it has to
 			// resolve to the key type. `{true = "yes"}` for a
-			// map<bool, string> is the case that matters, now that true is a
+			// map[bool, string] is the case that matters, now that true is a
 			// declaration rather than something the parser recognises.
 			key := c.checkExprExpecting(&ast.IdentExpr{Pos: x.Pos, Name: f.Name}, keyT)
 			if kt := exprType(key); !kt.IsAssignableTo(keyT) {
@@ -2271,7 +2503,7 @@ func (c *checker) inferListLit(x *ast.ListExpr) ir.Expr {
 			return &ir.ListLit{AST: x, Type: c.expected, Elems: nil}
 		}
 		c.error(x.Pos, "cannot infer element type of empty list literal; add a type annotation")
-		return &ir.ListLit{AST: x, Type: ListOf(TypDyn)}
+		return &ir.ListLit{AST: x, Type: c.listOf(TypInvalid)}
 	}
 	var elemExpected *ir.Type
 	if c.expected != nil && c.expected.Kind == ir.TypeList && len(c.expected.Elems) > 0 {
@@ -2293,7 +2525,7 @@ func (c *checker) inferListLit(x *ast.ListExpr) ir.Expr {
 		} else {
 			elems[i] = c.checkExprExpecting(e, expect)
 			got = exprType(elems[i])
-			// A void element would make the literal a `list<void>`, which
+			// A void element would make the literal a `list[void]`, which
 			// only an annotated target refuses.
 			c.requireValueType(got, pos)
 		}
@@ -2301,46 +2533,46 @@ func (c *checker) inferListLit(x *ast.ListExpr) ir.Expr {
 	}
 	for i, el := range elems {
 		if sp, ok := el.(*ir.Spread); ok {
-			sp.Operand = wrapIfNeeded(sp.Operand, ListOf(elemT))
+			sp.Operand = wrapIfNeeded(sp.Operand, c.listOf(elemT))
 			sp.Type = exprType(sp.Operand)
 		} else {
 			elems[i] = wrapIfNeeded(el, elemT)
 		}
 	}
-	return &ir.ListLit{AST: x, Type: ListOf(elemT), Elems: elems}
+	return &ir.ListLit{AST: x, Type: c.listOf(elemT), Elems: elems}
 }
 
 // checkListSpread checks `...operand` written as a list element, returning
 // the spread and the element type it contributes. Only a list may be spread:
-// an iter<T> is a pull sequence that a literal would have to drain.
+// an iter[T] is a pull sequence that a literal would have to drain.
 func (c *checker) checkListSpread(sp *ast.SpreadExpr, elemExpected *ir.Type) (*ir.Spread, *ir.Type) {
 	var want *ir.Type
 	if elemExpected != nil {
-		want = ListOf(elemExpected)
+		want = c.listOf(elemExpected)
 	}
 	operand := c.checkExprExpecting(sp.Operand, want)
 	t := exprType(operand)
 	out := &ir.Spread{AST: sp, Type: t, Operand: operand}
 	switch {
-	case t.Kind == ir.TypeDyn:
+	case t.Kind == ir.TypeInvalid:
 		return out, t
 	case t.Kind == ir.TypeList && len(t.Elems) == 1:
 		return out, t.Elems[0]
 	}
 	c.error(sp.Pos, "cannot spread %s into a list literal: the operand must be a list", t)
-	return out, TypDyn
+	return out, TypInvalid
 }
 
 // unifyListElem folds one element's type into the literal's element type so
 // far. The first element decides, widened when a later one is the wider
-// number, and a null beside a T makes it option<T>. Two that only agree as
-// the expected element type (`[2.0, "a"]` for a list<dyn>) make the literal a
-// list of that.
+// number, and a null beside a T makes it option[T]. Two that only agree as
+// the expected element type (two members' handles for a list of their family)
+// make the literal a list of that.
 func (c *checker) unifyListElem(have, got, expected *ir.Type, pos ast.Pos) *ir.Type {
 	switch {
 	case have == nil:
 		return got
-	case got.Kind == ir.TypeDyn || have.Kind == ir.TypeDyn || got.IsAssignableTo(have):
+	case got.Kind == ir.TypeInvalid || have.Kind == ir.TypeInvalid || got.IsAssignableTo(have):
 		return have
 	case have.IsAssignableTo(got):
 		return got
@@ -2361,11 +2593,11 @@ func (c *checker) inferMapLit(x *ast.MapLit) ir.Expr {
 	// from its own entries. A struct expected type is always wrong.
 	if c.expected != nil && c.expected.Kind == ir.TypeStruct {
 		c.error(x.Pos, "map literal cannot be used where a struct is expected")
-		return &ir.MapLitIR{AST: x, Type: ir.MapOf(TypDyn, TypDyn), Entries: nil}
+		return &ir.MapLitIR{AST: x, Type: c.mapOf(TypInvalid, TypInvalid), Entries: nil}
 	}
 	if c.expected == nil || c.expected.Kind != ir.TypeMap {
 		c.error(x.Pos, "anonymous map literal requires an expected type from context")
-		return &ir.MapLitIR{AST: x, Type: ir.MapOf(TypDyn, TypDyn), Entries: nil}
+		return &ir.MapLitIR{AST: x, Type: c.mapOf(TypInvalid, TypInvalid), Entries: nil}
 	}
 	if len(x.Entries) == 0 {
 		return &ir.MapLitIR{AST: x, Type: c.expected, Entries: nil}
@@ -2397,7 +2629,7 @@ func (c *checker) inferMapLit(x *ast.MapLit) ir.Expr {
 	if !isComparable(keyT) {
 		c.error(x.Pos, "map key type %s is not comparable", keyT)
 	}
-	return &ir.MapLitIR{AST: x, Type: ir.MapOf(keyT, valT), Entries: entries}
+	return &ir.MapLitIR{AST: x, Type: c.mapOf(keyT, valT), Entries: entries}
 }
 
 // interpPartAlreadyString reports whether an interpolation part's type can be
@@ -2407,7 +2639,7 @@ func interpPartAlreadyString(t *ir.Type) bool {
 		return true
 	}
 	switch t.Kind {
-	case ir.TypeString, ir.TypeDyn:
+	case ir.TypeString, ir.TypeInvalid:
 		return true
 	}
 	return false
@@ -2434,7 +2666,8 @@ func interpPartPrimitive(t *ir.Type) bool {
 }
 
 // interpolateStringify turns an interpolation part into a string-typed ir.Expr.
-// Primitives and dyn flow through (with a wrapping Conversion for primitives);
+// Primitives and an invalid part, already reported, flow through (with a
+// wrapping Conversion for primitives);
 // zero-arg funcs get an implicit call; other types must define a `.string()`
 // method. When no path exists an error is emitted and the original expr is
 // returned so chain assembly continues.
@@ -2520,6 +2753,11 @@ func (c *checker) inferLambda(x *ast.LambdaExpr) ir.Expr {
 	}
 	c.refuseParamMarks(x.Params.Params)
 	c.refuseConstParams(x.Params.Params, "a lambda's")
+	for _, p := range x.Params.Params {
+		if p.Default != nil {
+			c.error(*p.Default.ExprPos(), "a lambda's parameter %q takes no default: a call through a function value passes every argument", p.Name)
+		}
+	}
 	params := c.buildLambdaParams(x.Params, expectedSig)
 	var ret *ir.Type
 	if x.ReturnType != nil {
@@ -2545,6 +2783,13 @@ func (c *checker) inferLambda(x *ast.LambdaExpr) ir.Expr {
 		// one, so it says the same thing here.
 		restoreNarrow := c.clearNarrowings()
 		bodyExpr := c.checkExprExpecting(x.Body, fn.Return)
+		if fn.Return != nil && fn.Return.Kind != ir.TypeVoid {
+			// A return type taken from context may still name a parameter the
+			// call is inferring.
+			s := returnSlot(*x.Body.ExprPos())
+			s.later = true
+			bodyExpr = c.coerce(x.Body, bodyExpr, fn.Return, s)
+		}
 		restoreNarrow()
 		if fn.Return == nil {
 			// Expression-body lambda with no annotation and no contextual
@@ -2552,7 +2797,7 @@ func (c *checker) inferLambda(x *ast.LambdaExpr) ir.Expr {
 			// that yields nothing gives it nothing to return, and the lowered
 			// `return xs.push(v)` is not something any target can spell.
 			c.requireValueType(exprType(bodyExpr), *x.Body.ExprPos())
-			fn.Return = exprType(bodyExpr)
+			fn.Return = c.inferredType(exprType(bodyExpr), *x.Body.ExprPos())
 			c.returnType = fn.Return
 		}
 		fn.Block = []ir.Stmt{&ir.Return{AST: &ast.ReturnStmt{Pos: *x.Body.ExprPos(), Value: x.Body}, Value: bodyExpr}}
@@ -2570,12 +2815,22 @@ func (c *checker) inferLambda(x *ast.LambdaExpr) ir.Expr {
 
 // inferTypeParams infers concrete types for generic type params by matching
 // argument types against parameter types, then returns a substituted FuncSig.
-func (c *checker) inferTypeParams(sig *ir.FuncSig, args ast.ArgList) *ir.FuncSig {
-	bindings := make(map[string]*ir.Type)
+func (c *checker) inferTypeParams(at ast.Pos, sig *ir.FuncSig, args ast.ArgList, written map[string]*ir.Type) *ir.FuncSig {
+	// What the call site wrote binds first, so an argument is held to it
+	// rather than binding the parameter itself.
+	bindings := make(map[string]*ir.Type, len(written))
+	maps.Copy(bindings, written)
 	bind := func(p *ir.Param, t *ir.Type) {
-		if p != nil && t != nil && t.Kind != ir.TypeDyn {
-			bindTypeParams(p.Type, t, bindings)
+		if p != nil && t != nil && t.Kind != ir.TypeInvalid {
+			ir.BindTypeParams(p.Type, t, bindings)
 		}
+	}
+	// A parameter whose type the written arguments already settle has
+	// nothing to bind, and its argument is checked against that type when the
+	// call is: checked here with nothing expected, `apply[F]([])` met an
+	// empty list it could not type.
+	settled := func(p *ir.Param) bool {
+		return p == nil || len(written) > 0 && !p.Type.Substitute(bindings).HasTypeParam()
 	}
 	pos := 0
 	for _, a := range args.Args {
@@ -2593,26 +2848,31 @@ func (c *checker) inferTypeParams(sig *ir.FuncSig, args ast.ArgList) *ir.FuncSig
 			continue
 		}
 		if arg.Name != "" {
-			bind(paramNamed(sig, arg.Name), exprType(c.checkExpr(arg.Value)))
+			if p := paramNamed(sig, arg.Name); !settled(p) {
+				bind(p, exprType(c.checkExpr(arg.Value)))
+			}
 			continue
 		}
-		if pos < len(sig.Params) {
-			bind(sig.Params[pos], exprType(c.checkExpr(arg.Value)))
+		if pos < len(sig.Params) && !settled(sig.Params[pos]) {
+			bind(sig.Params[pos], exprType(c.inferArgExpr(arg.Value, sig.Params[pos].Type, bindings)))
 		}
 		pos++
 	}
-	// A parameter the arguments could not pin is bound from the type the context
-	// wants, which is the only way to write one that appears in the return type
-	// alone: `remote.pending()` takes no arguments, and SNGL has no syntax for
-	// naming a type argument at a call site, so without this such a function is
-	// undeclarable rather than merely awkward.
+	// What the arguments bound binds what its constraint names:
+	// `[T any, U struct { value T }]` handed a U binds T.
+	inferFromConstraints(sig.TypeParams, bindings)
+	// A parameter neither written nor pinned by the arguments is bound from
+	// the type the context wants: `func empty[T any]() list[T]` takes no
+	// arguments, and `var xs list[int] = empty()` says what T is without
+	// `empty[int]()` saying it again.
 	//
 	// Arguments come first on purpose. An argument states the type directly,
 	// while the expected type states what the result has to be assignable to,
 	// and the two disagree wherever a conversion would have been applied.
-	if c.expected != nil && c.expected.Kind != ir.TypeDyn {
-		bindTypeParams(sig.Return, c.expected, bindings)
+	if c.expected != nil && c.expected.Kind != ir.TypeInvalid {
+		ir.BindTypeParams(sig.Return, c.expected, bindings)
 	}
+	c.checkConstraints(at, sig.TypeParams, bindings)
 	// A parameter neither pinned nor implied falls back to its default, the way
 	// a struct's does when the type-argument list stops short.
 	for _, tp := range sig.TypeParams {
@@ -2629,35 +2889,27 @@ func (c *checker) inferTypeParams(sig *ir.FuncSig, args ast.ArgList) *ir.FuncSig
 	return sig.Substitute(bindings)
 }
 
-// bindTypeParams recursively matches a param type pattern against a concrete
-// arg type to extract type parameter bindings. E.g. list<T> vs list<int> → T=int.
-func bindTypeParams(param, arg *ir.Type, bindings map[string]*ir.Type) {
-	if param == nil || arg == nil {
-		return
+// inferArgExpr checks an argument for inference. A lambda whose parameters
+// carry no annotation takes their types from the parameter it fills, with what
+// is bound so far substituted -- `ps.map(func(p) => p.name)` has its p from the
+// receiver -- and its return type from its body wherever the parameter's
+// still names a type parameter, which is what the body is binding.
+func (c *checker) inferArgExpr(e ast.Expr, want *ir.Type, bindings map[string]*ir.Type) ir.Expr {
+	lam, ok := e.(*ast.LambdaExpr)
+	if !ok || want == nil || want.Kind != ir.TypeFunc || want.Sig == nil {
+		return c.checkExpr(e)
 	}
-	if param.Kind == ir.TypeTypeParam {
-		if _, exists := bindings[param.ParamName]; !exists {
-			bindings[param.ParamName] = arg
-		}
-		return
-	}
-	// Recurse into func signatures: func(T) U vs func(int) string → T=int, U=string.
-	if param.Kind == ir.TypeFunc && arg.Kind == ir.TypeFunc &&
-		param.Sig != nil && arg.Sig != nil {
-		if len(param.Sig.Params) == len(arg.Sig.Params) {
-			for i := range param.Sig.Params {
-				bindTypeParams(param.Sig.Params[i].Type, arg.Sig.Params[i].Type, bindings)
-			}
-		}
-		bindTypeParams(param.Sig.Return, arg.Sig.Return, bindings)
-		return
-	}
-	// Recurse into type arguments (list<T>, option<T>, etc.).
-	if param.Kind == arg.Kind && len(param.Elems) == len(arg.Elems) {
-		for i := range param.Elems {
-			bindTypeParams(param.Elems[i], arg.Elems[i], bindings)
+	sig := want.Sig.Substitute(bindings)
+	for _, p := range sig.Params {
+		if p.Type.HasTypeParam() {
+			return c.checkExpr(e)
 		}
 	}
+	exp := &ir.FuncSig{Params: sig.Params}
+	if lam.ReturnType == nil && sig.Return != nil && !sig.Return.HasTypeParam() {
+		exp.Return = sig.Return
+	}
+	return c.checkExprExpecting(e, &ir.Type{Kind: ir.TypeFunc, Sig: exp})
 }
 
 // paramNamed is the parameter of sig a call site can target by name, or nil.
@@ -2684,6 +2936,22 @@ func (c *checker) bindArgs(callPos ast.Pos, args []ast.ArgOrEventHandler, sig *i
 	seenNamed := false
 	ok := true
 
+	// A variadic last parameter takes the positional arguments past the
+	// others, and the elements of a list spread among them, as one list
+	// literal: written by hand, the caller would have built the same.
+	variadic := -1
+	var extras []ir.Expr
+	var extrasPos *ast.Pos
+	if n > 0 && sig.Params[n-1].Variadic {
+		variadic = n - 1
+	}
+	variadicElem := func() *ir.Type {
+		if t := sig.Params[variadic].Type; t != nil && t.Kind == ir.TypeList && len(t.Elems) == 1 {
+			return t.Elems[0]
+		}
+		return TypInvalid
+	}
+
 	for _, a := range args {
 		arg, isArg := a.(ast.Arg)
 		if !isArg {
@@ -2694,8 +2962,31 @@ func (c *checker) bindArgs(callPos ast.Pos, args []ast.ArgOrEventHandler, sig *i
 		}
 
 		if sp, isSpr := arg.Value.(*ast.SpreadExpr); isSpr {
+			var operand ir.Expr
+			if variadic >= 0 && !seenNamed && positional >= variadic {
+				elem := variadicElem()
+				operand = c.checkExprExpecting(sp.Operand, c.listOf(elem))
+				if t := exprType(operand); t != nil && (t.Kind == ir.TypeList || t.Kind == ir.TypeInvalid) {
+					if t.Kind == ir.TypeList && len(t.Elems) == 1 && !t.Elems[0].IsAssignableTo(elem) {
+						c.error(sp.Pos, "cannot spread %s into ...%s", t, elem)
+						ok = false
+						continue
+					}
+					extras = append(extras, &ir.Spread{AST: sp, Type: t, Operand: operand})
+					if extrasPos == nil {
+						extrasPos = &sp.Pos
+					}
+					continue
+				}
+			}
 			seenNamed = true
-			spread, expanded := c.expandSpread(sp)
+			var spread *spreadArg
+			var expanded bool
+			if operand != nil {
+				spread, expanded = c.expandSpreadOf(sp, operand)
+			} else {
+				spread, expanded = c.expandSpread(sp)
+			}
 			if !expanded {
 				ok = false
 				continue
@@ -2740,6 +3031,15 @@ func (c *checker) bindArgs(callPos ast.Pos, args []ast.ArgOrEventHandler, sig *i
 				ok = false
 				// Still check the expression for side-effects (e.g. async detection).
 				c.checkExpr(arg.Value)
+				continue
+			}
+			if variadic >= 0 && positional >= variadic {
+				expr := c.checkArgExpr(arg.Value, &ir.Param{Type: variadicElem()})
+				extras = append(extras, expr)
+				if extrasPos == nil {
+					extrasPos = arg.Value.ExprPos()
+				}
+				positional++
 				continue
 			}
 			if positional >= n {
@@ -2798,6 +3098,18 @@ func (c *checker) bindArgs(callPos ast.Pos, args []ast.ArgOrEventHandler, sig *i
 		}
 	}
 
+	if variadic >= 0 {
+		switch {
+		case bound[variadic] == nil:
+			// Given nothing, it is the empty list.
+			lit := ir.Expr(&ir.ListLit{Type: sig.Params[variadic].Type, Elems: extras})
+			bound[variadic] = &lit
+		case extras != nil:
+			c.error(*extrasPos, "parameter %q already provided", sig.Params[variadic].Name)
+			ok = false
+		}
+	}
+
 	// Every required param must be filled.
 	for i, p := range sig.Params {
 		if bound[i] == nil && p.Default == nil {
@@ -2813,13 +3125,45 @@ func (c *checker) bindArgs(callPos ast.Pos, args []ast.ArgOrEventHandler, sig *i
 	return bound, ok
 }
 
-// typeParamZeroFor is a default as a call site binding typ writes it: the
-// zero of typ where the declaration wrote `T{}`, and the default otherwise.
+// typeParamZeroFor is a default as a call site binding typ writes it, where
+// the declaration's default holds a type parameter's zero: the default at the
+// types typ binds, each `T{}` in it -- the whole default, or a part of one,
+// `{v=T{}}`, `[T{}]` -- the zero of what T is bound to. Only the call knows
+// that, and the declaration's default names a type no backend can spell. Any
+// other default is def.
 func typeParamZeroFor(def ir.Expr, typ *ir.Type) ir.Expr {
-	if typeParamZero(def) && typ != nil && !mentionsTypeParam(typ) {
-		return ir.DeclaredDefault(typ)
+	if !holdsTypeParamZero(def) || typ == nil || typ.HasTypeParam() {
+		return def
 	}
-	return def
+	b := map[string]*ir.Type{}
+	ir.BindTypeParams(exprType(def), typ, b)
+	holder := &ir.Return{Value: ir.CloneExprSharingDecls(def)}
+	_ = ir.RewriteExprs(holder, func(e ir.Expr) (ir.Expr, error) {
+		if !typeParamZero(e) {
+			return e, nil
+		}
+		if t := exprType(e).Substitute(b); !t.HasTypeParam() {
+			if zero := ir.DeclaredDefault(t); zero != nil {
+				return zero, ir.SkipDir
+			}
+		}
+		return e, nil
+	})
+	return ir.SubstituteExprTypes(holder.Value, b)
+}
+
+// holdsTypeParamZero reports whether def is, or holds, a type parameter's
+// zero.
+func holdsTypeParamZero(def ir.Expr) bool {
+	found := false
+	_ = ir.Walk(def, func(n ir.Node) error {
+		if e, ok := n.(ir.Expr); ok && typeParamZero(e) {
+			found = true
+			return ir.SkipAll
+		}
+		return nil
+	})
+	return found
 }
 
 // typeParamZero reports whether a default is `T{}` for a type parameter T --
@@ -2837,26 +3181,11 @@ func typeParamZero(def ir.Expr) bool {
 }
 
 func (c *checker) checkArgExpr(value ast.Expr, p *ir.Param) ir.Expr {
-	expr := c.checkExprExpecting(value, p.Type)
-	actual := exprType(expr)
-	c.requireValueType(actual, *value.ExprPos())
-	if p.Type != nil && actual.Kind != ir.TypeDyn && p.Type.Kind != ir.TypeDyn && !actual.IsAssignableTo(p.Type) {
-		if adapted, ok := adaptLiteralZero(expr, p.Type); ok {
-			expr = adapted
-		} else if callExpr, _ := c.implicitCall(value, actual, p.Type); callExpr != nil {
-			expr = c.checkExpr(callExpr)
-		} else if c.coerceValueToRef(actual, p, *value.ExprPos()) {
-			// The value stands as it is, and is not wrapped in a conversion to
-			// ref<T>: see refcoerce.go for why the argument keeps its own type.
-			return expr
-		} else {
-			c.error(*value.ExprPos(), "cannot pass %s as %s", actual, p.Type)
-		}
-	}
-	if p.Type != nil {
-		expr = wrapIfNeeded(expr, p.Type)
-	}
-	return expr
+	s := passSlot()
+	// A plain value stands for a ref[T], and is not wrapped in a conversion to
+	// it: see refcoerce.go for why the argument keeps its own type.
+	s.accept = func(_ ir.Expr, got *ir.Type) bool { return c.coerceValueToRef(got, p, *value.ExprPos()) }
+	return c.checkExprAs(value, p.Type, s)
 }
 
 // checkCallArgs type-checks all arguments in an ArgList and returns resolved CallArgs.
@@ -2978,12 +3307,13 @@ func (c *checker) checkCallArgs(args ast.ArgList, sig *ir.FuncSig) []ir.CallArg 
 	var result []ir.CallArg
 	for i, expr := range bound {
 		if expr == nil {
-			// A default that is its type parameter's zero, `v T = T{}`, is
-			// the zero of what this call bound T to, and only the call knows
-			// that: the declaration's default names a type no backend can
-			// spell. So it is written here, where every one of them reads it.
-			if p := sig.Params[i]; typeParamZero(p.Default) && p.Type != nil && !mentionsTypeParam(p.Type) {
-				result = append(result, ir.CallArg{Name: p.Name, Value: ir.DeclaredDefault(p.Type)})
+			// A default holding its type parameter's zero, `v T = T{}` or
+			// `w struct { v T } = {v=T{}}`, is written at the types this call
+			// bound, and only the call knows those: the declaration's default
+			// names a type no backend can spell. So it is written here, where
+			// every one of them reads it.
+			if p := sig.Params[i]; holdsTypeParamZero(p.Default) && p.Type != nil && !p.Type.HasTypeParam() {
+				result = append(result, ir.CallArg{Name: p.Name, Value: typeParamZeroFor(p.Default, p.Type)})
 			}
 			continue
 		}
@@ -3005,7 +3335,7 @@ func (c *checker) checkCallArgs(args ast.ArgList, sig *ir.FuncSig) []ir.CallArg 
 		if _, isSpr := arg.Value.(*ast.SpreadExpr); isSpr {
 			continue
 		}
-		if positional >= len(sig.Params) {
+		if positional >= len(sig.Params) && !(len(sig.Params) > 0 && sig.Params[len(sig.Params)-1].Variadic) {
 			expr := c.checkExpr(arg.Value)
 			result = append(result, ir.CallArg{Value: expr})
 		}
@@ -3073,7 +3403,7 @@ func (c *checker) checkBlockScoped(block *ast.StmtBlock, isScope bool, headNames
 func (c *checker) checkLocalVarDecl(decl *ast.VarDecl) []ir.Stmt {
 	var out []ir.Stmt
 	for _, spec := range decl.Specs {
-		typ := c.resolveType(spec.Type)
+		typ := c.varSpecType(spec.Pos, spec.Names, spec.Type, spec.Default)
 		var initExpr ir.Expr
 		if spec.Default != nil {
 			initExpr = c.checkExprExpecting(spec.Default, typ)
@@ -3082,23 +3412,11 @@ func (c *checker) checkLocalVarDecl(decl *ast.VarDecl) []ir.Stmt {
 			if _, ok := initExpr.(*ir.ContextRead); ok {
 				c.error(decl.Pos, "context value cannot be captured into a local var (read at use site instead)")
 			}
-			initType := exprType(initExpr)
-			if typ.Kind != ir.TypeDyn && initType.Kind != ir.TypeDyn && !initType.IsAssignableTo(typ) {
-				if adapted, ok := adaptLiteralZero(initExpr, typ); ok {
-					initExpr = adapted
-				} else {
-					want, got := ir.Contrast(typ, initType)
-					c.error(decl.Pos, "cannot initialize %s with %s", want, got)
-				}
-			}
-			c.validateStringDomainLiteral(decl.Pos, typ, initExpr)
-			if c.requireValueType(initType, decl.Pos) {
-				// Prevent void propagation into an inferred var type.
-			} else if typ.Kind == ir.TypeDyn {
-				typ = initType
-			} else {
+			initExpr = c.coerce(spec.Default, initExpr, typ, initSlot(decl.Pos))
+			if exprType(initExpr).Kind != ir.TypeVoid && typ.Kind != ir.TypeInvalid {
 				initExpr = wrapIfNeeded(initExpr, typ)
 			}
+			typ = c.typeFromInit(typ, initExpr, *spec.Default.ExprPos())
 		}
 		for _, name := range spec.Names {
 			sym := &ir.Var{
@@ -3106,18 +3424,7 @@ func (c *checker) checkLocalVarDecl(decl *ast.VarDecl) []ir.Stmt {
 				Name: name,
 				Type: typ,
 			}
-			// A `var` at the top of a window body is that window's state and
-			// this path is what builds it, so a handler written on one travels
-			// with the symbol -- the way collectComponentVarDecl does for a
-			// component's.
-			for i := range spec.Handlers {
-				h := &spec.Handlers[i]
-				sym.Handlers = append(sym.Handlers, &ir.EventHandler{
-					AST:  h,
-					Name: h.Name,
-					Func: &ir.Func{},
-				})
-			}
+			c.refuseVarHandlers(spec, name)
 			c.declare(decl.Pos, sym)
 			out = append(out, &ir.LocalVar{
 				Name: name,
@@ -3154,23 +3461,16 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 			}
 		}
 		c.refuseNodePropAssign(targetExpr, x.Pos, "assign to")
-		c.requireValueType(valueType, x.Pos)
+		c.refuseReadonlyWrite(targetExpr, x.Pos, "assign to")
 		if x.Op == ast.AssignSet {
-			if targetType.Kind != ir.TypeDyn && valueType.Kind != ir.TypeDyn && !valueType.IsAssignableTo(targetType) {
-				if adapted, ok := adaptLiteralZero(valueExpr, targetType); ok {
-					valueExpr = adapted
-				} else {
-					c.error(x.Pos, "cannot assign %s to %s", valueType, targetType)
-				}
-			}
-			if targetType.Kind != ir.TypeDyn {
-				valueExpr = wrapIfNeeded(valueExpr, targetType)
-			}
-		} else {
+			valueExpr = c.coerce(x.Value, valueExpr, targetType, slot{pos: x.Pos, mismatch: func(want, got string) string {
+				return "cannot assign " + got + " to " + want
+			}})
+		} else if !c.requireValueType(valueType, x.Pos) {
 			// Compound assignment: both sides must be numeric (or string for +=).
 			// The value type must be assignable to the target type so that any
 			// implicit numeric widening is materialized as ir.Conversion.
-			if targetType.Kind != ir.TypeDyn && valueType.Kind != ir.TypeDyn {
+			if targetType.Kind != ir.TypeInvalid && valueType.Kind != ir.TypeInvalid {
 				if x.Op == ast.AssignAdd && targetType.Kind == ir.TypeString {
 					// string += string is fine.
 				} else if !targetType.IsNumeric() || !valueType.IsNumeric() {
@@ -3191,10 +3491,11 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 		targetExpr := c.checkExpr(x.Target)
 		restoreLvalue()
 		t := exprType(targetExpr)
-		if t != nil && t.Kind != ir.TypeBool && t.Kind != ir.TypeDyn && t.Kind != ir.TypeInvalid {
+		if t != nil && t.Kind != ir.TypeBool && t.Kind != ir.TypeInvalid {
 			c.error(x.Pos, "toggle target must be bool, got %s", t)
 		}
 		c.refuseNodePropAssign(targetExpr, x.Pos, "toggle")
+		c.refuseReadonlyWrite(targetExpr, x.Pos, "toggle")
 		if c.rejectStmtInViewBody(x.Pos, targetDescription("a toggle", "of", x.Target)) {
 			return nil
 		}
@@ -3224,7 +3525,7 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 		}
 		return c.checkStmt(lowered)
 	case *ast.VarStmt:
-		typ := c.resolveType(x.Type)
+		typ := c.varSpecType(x.Pos, []string{x.Name}, x.Type, x.Init)
 		var initExpr ir.Expr
 		if x.Init != nil {
 			initExpr = c.checkExprExpecting(x.Init, typ)
@@ -3233,12 +3534,8 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 			if _, ok := initExpr.(*ir.ContextRead); ok {
 				c.error(x.Pos, "context value cannot be captured into a local var (read at use site instead)")
 			}
-			initType := exprType(initExpr)
-			if c.requireValueType(initType, x.Pos) {
-				// Avoid propagating void into an inferred var type.
-			} else if typ.Kind == ir.TypeDyn {
-				typ = initType
-			}
+			initExpr = c.coerce(x.Init, initExpr, typ, initSlot(x.Pos))
+			typ = c.typeFromInit(typ, initExpr, *x.Init.ExprPos())
 		}
 		sym := &ir.Var{
 			AST:  x,
@@ -3250,19 +3547,7 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 	case *ast.ReturnStmt:
 		var valExpr ir.Expr
 		if x.Value != nil {
-			valExpr = c.checkExprExpecting(x.Value, c.returnType)
-			valType := exprType(valExpr)
-			c.requireValueType(valType, x.Pos)
-			if c.returnType != nil && c.returnType.Kind != ir.TypeDyn && valType.Kind != ir.TypeDyn && !valType.IsAssignableTo(c.returnType) {
-				if adapted, ok := adaptLiteralZero(valExpr, c.returnType); ok {
-					valExpr = adapted
-				} else {
-					c.error(x.Pos, "cannot return %s as %s", valType, c.returnType)
-				}
-			}
-			if c.returnType != nil && c.returnType.Kind != ir.TypeDyn {
-				valExpr = wrapIfNeeded(valExpr, c.returnType)
-			}
+			valExpr = c.checkExprAs(x.Value, c.returnType, returnSlot(x.Pos))
 		}
 		if c.rejectStmtInViewBody(x.Pos, "a return") {
 			return nil
@@ -3279,6 +3564,16 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 		if c.isContextDeclCallStmt(x) {
 			c.error(x.Pos, "context decl only permitted at file top level")
 			return nil
+		}
+		// `tagged[int](v=1)`: a node written with its component's type
+		// arguments is a node like any other.
+		if ix, ok := x.Call.Func.(*ast.IndexExpr); ok {
+			if target, ok := ix.Operand.(ast.TargetExpr); ok {
+				vn := &ast.VisualNode{Pos: x.Pos, Target: target, TypeArgs: ix.Indices, ID: x.Call.ID, Args: x.Call.Args, HasParens: true, Attrs: x.Attrs}
+				if c.componentNamed(vn.TargetName()) != nil {
+					return c.checkVisualNodeIR(vn)
+				}
+			}
 		}
 		// Bodyless forms of root-ish visual nodes (e.g. `timer(...)` with
 		// the tick handler inside the parens) parse as CallStmt but must
@@ -3305,6 +3600,16 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 				return c.checkVisualNodeIR(vn)
 			}
 		}
+		// `r.content(…)`: what a record was written with, inserted with
+		// parentheses.
+		if sel, ok := x.Call.Func.(*ast.SelectExpr); ok && x.Call.ID == "" {
+			if id, ok := sel.Operand.(*ast.IdentExpr); ok {
+				vn := &ast.VisualNode{Pos: x.Pos, Target: sel, Args: x.Call.Args, Attrs: x.Attrs, HasParens: true}
+				if st, ok := c.recordContent(vn, id.Name+"."+sel.Field); ok {
+					return st
+				}
+			}
+		}
 		// A bare `event(args)` whose name matches an event declared on the
 		// enclosing component is an emit, not a function call. Events share
 		// the component's namespace but cannot collide with funcs/vars, so
@@ -3326,7 +3631,7 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 		var comp *ir.Component
 		if id, ok := x.Call.Func.(*ast.IdentExpr); ok {
 			if sym, ok := c.lookupComponentInScope(x.Pos, id.Name); ok {
-				if c.rejectUnexported(x.Pos, sym) {
+				if !c.inLibSource() && !c.resolvedInPackage(id.Name) && c.rejectUnexported(x.Pos, sym) {
 					return nil
 				}
 				if co, ok := sym.(*ir.Component); ok {
@@ -3409,7 +3714,7 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 			condExpr = c.checkExpr(x.Cond)
 			condType = ret
 		}
-		if condType.Kind != ir.TypeDyn && condType.Kind != ir.TypeBool {
+		if condType.Kind != ir.TypeInvalid && condType.Kind != ir.TypeBool {
 			c.error(x.Pos, "if condition must be bool, got %s", condType)
 		}
 		thenFacts := map[narrowKey]narrowFact{}
@@ -3445,7 +3750,7 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 			return c.checkHeadlessFor(x, iterExpr)
 		}
 		// A zero-arg computed is called where its result is what is wanted, so
-		// `for var x = items` iterates what `func items() list<T>` returns. There
+		// `for var x = items` iterates what `func items() list[T]` returns. There
 		// is no single expected type to hand implicitCall here: any of the
 		// three iterable kinds will do.
 		if iter.Kind == ir.TypeFunc && iter.Sig != nil && len(iter.Sig.Params) == 0 && iter.Sig.Return != nil {
@@ -3462,10 +3767,8 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 		// over a mutable addressable list. The element is Key in single-var
 		// form and Value in two-var form. `&` on the index (two-var Key) is an
 		// error. An invalid `&` is reported and downgraded to a value binding.
-		// TODO(lint): a plain (non-&) element loop var is a value copy, so
-		// writing through its fields (`for var t = list { t.done!! }`) silently
-		// updates a throwaway copy. Surface that as a lint error suggesting
-		// `&t`; for now it compiles as a no-op.
+		// A plain loop variable is read-only (refuseReadonlyWrite): it is a copy
+		// of the element, and a write to it would change nothing read again.
 		elemRef := x.KeyRef
 		// A loop that declares nothing (`for seq.count(3) { }`) has no
 		// variable to bind, to ref-bind, or to complain about: only the
@@ -3487,7 +3790,7 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 				elemRef = false
 			}
 		}
-		// elemDeclType wraps the element type in ref<T> when &-bound so reads
+		// elemDeclType wraps the element type in ref[T] when &-bound so reads
 		// auto-deref and field/element writes type-check as lvalues; the
 		// lowering rewrites uses to indexed list access.
 		elemDeclType := func(t *ir.Type) *ir.Type {
@@ -3499,18 +3802,27 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 		// Declare loop variables based on iterator type, keeping the symbols
 		// so the For statement carries what its body's Idents resolve to.
 		var keySym, valueSym *ir.LoopVar
+		// Every loop variable but an &-bound element is readonly[T]: a copy, or
+		// an index, which a write would change nothing by writing.
+		readonly := func(t *ir.Type) *ir.Type {
+			if t != nil && t.Kind == ir.TypeRef {
+				return t
+			}
+			return ir.ReadonlyOf(t)
+		}
 		declKey := func(t *ir.Type) {
 			if !declares {
 				return
 			}
-			keySym = &ir.LoopVar{Name: x.Key, Type: t}
+			keySym = &ir.LoopVar{Name: x.Key, Type: readonly(t)}
 			c.declare(x.Pos, keySym)
 		}
 		declValue := func(t *ir.Type) {
-			valueSym = &ir.LoopVar{Name: x.Value, Type: t}
+			valueSym = &ir.LoopVar{Name: x.Value, Type: readonly(t)}
 			c.declare(x.Pos, valueSym)
 		}
-		elemType := TypDyn
+
+		elemType := TypInvalid
 		switch iter.Kind {
 		case ir.TypeList:
 			if len(iter.Elems) > 0 {
@@ -3545,23 +3857,37 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 				declValue(iter.Elems[1])
 				elemType = iter.Elems[1]
 			}
-		case ir.TypeDyn:
+		case ir.TypeInvalid:
 			if x.Value != "" {
-				declKey(TypDyn)
-				declValue(TypDyn)
+				declKey(TypInvalid)
+				declValue(TypInvalid)
 			} else {
-				declKey(TypDyn)
+				declKey(TypInvalid)
 			}
 		default:
 			c.error(x.Pos, "for iterator must be list, iter, or map; got %s", iter)
 			if x.Value != "" {
-				declKey(TypDyn)
-				declValue(TypDyn)
+				declKey(TypInvalid)
+				declValue(TypInvalid)
 			} else {
-				declKey(TypDyn)
+				declKey(TypInvalid)
 			}
 		}
 		c.loopDepth++
+		// An element of an addressable list is what `&` can bind instead,
+		// which a refused write through the plain binding suggests.
+		if !elemRef && iter.Kind == ir.TypeList && isAddressableListExpr(iterExpr) {
+			elem := keySym
+			if x.Value != "" {
+				elem = valueSym
+			}
+			if elem != nil {
+				if c.refBindable == nil {
+					c.refBindable = map[*ir.LoopVar]bool{}
+				}
+				c.refBindable[elem] = true
+			}
+		}
 		body := c.checkScopeBlockIR(&x.Body, x.Key, x.Value)
 		c.loopDepth--
 		var elseBody []ir.Stmt
@@ -3573,6 +3899,13 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 			elseBody = c.checkScopeBlockIR(&x.Else, x.Key, x.Value)
 		}
 		c.popScope()
+		// readonly[T] is the checker's: every read and write of the variables
+		// has been checked, so nothing after the check meets one.
+		for _, lv := range []*ir.LoopVar{keySym, valueSym} {
+			if lv != nil && lv.Type.IsReadonly() {
+				lv.Type = lv.Type.Elems[0]
+			}
+		}
 		loop := &ir.For{AST: x, Key: x.Key, Value: x.Value, KeySym: keySym, ValueSym: valueSym, Iter: iterExpr, ElemType: elemType, Body: body, Else: elseBody, RefElem: elemRef}
 		c.checkViewForElse(x.Pos, loop, iter)
 		return loop
@@ -3620,7 +3953,7 @@ func (c *checker) targetPkgScope(uri string) *ir.Scope {
 	if c.platformScopeCache != nil {
 		if s, ok := c.platformScopeCache[uri]; ok {
 			// Clone so each insertion point gets its own parent chain.
-			clone := NewScope(nil)
+			clone := ir.NewScopeSize(nil, len(s.Symbols))
 			maps.Copy(clone.Symbols, s.Symbols)
 			clone.Wildcards = slices.Clone(s.Wildcards)
 			return clone
@@ -3642,7 +3975,7 @@ func (c *checker) targetPkgScope(uri string) *ir.Scope {
 	// `import "sngl:platform/x"` must name one declaration, not two.
 	pkg := c.libPkg(uri)
 
-	scope := NewScope(nil)
+	scope := ir.NewScopeSize(nil, len(pkg.Symbols.Root.Symbols))
 	maps.Copy(scope.Symbols, pkg.Symbols.Root.Symbols)
 	scope.Wildcards = slices.Clone(pkg.Symbols.Root.Wildcards)
 	// The package's own import aliases, which its root chains to and which
@@ -3679,7 +4012,7 @@ func (c *checker) targetPkgScope(uri string) *ir.Scope {
 	c.platformScopeCache[uri] = scope
 
 	// Return a clone for this usage.
-	clone := NewScope(nil)
+	clone := ir.NewScopeSize(nil, len(scope.Symbols))
 	maps.Copy(clone.Symbols, scope.Symbols)
 	clone.Wildcards = slices.Clone(scope.Wildcards)
 	return clone
@@ -3811,7 +4144,42 @@ func (c *checker) resolveCallStmt(x *ast.CallStmt, callExpr ir.Expr) ir.Stmt {
 	if c.rejectCallInViewBody(x.Pos, call.Func) {
 		return nil
 	}
+	if call.Func != nil && call.Func.Intrinsic != "" && len(call.Args) > 0 {
+		if def, ok := c.libs.builtins.IntrinsicByName(call.Func.Intrinsic); ok && def.MutatesReceiver {
+			c.refuseReadonlyWrite(call.Args[0].Value, x.Pos, call.Func.Name)
+		}
+	}
 	return &ir.CallStmt{AST: x, Call: call}
+}
+
+// refuseReadonlyWrite reports a write whose root is a readonly[T] variable:
+// a loop's variable the loop did not bind by reference. `for var x = xs` hands
+// the body each element to read; a write to it, or to a field or element of
+// it, would change a copy nothing reads again, so it is refused rather than
+// dropped. `for var &x = xs` is the spelling that writes the element, and the
+// index of either form is read-only.
+func (c *checker) refuseReadonlyWrite(target ir.Expr, pos ast.Pos, verb string) {
+	for {
+		switch n := target.(type) {
+		case *ir.Select:
+			target = n.Operand
+			continue
+		case *ir.Index:
+			target = n.Operand
+			continue
+		case *ir.Ident:
+			lv, isLoop := n.Sym.(*ir.LoopVar)
+			if !isLoop || !lv.Type.IsReadonly() {
+				return
+			}
+			if c.refBindable[lv] {
+				c.error(pos, "cannot %s the loop variable %q, which holds a copy of the element; bind it with `for var &%s` to write the element", verb, n.Name, n.Name)
+			} else {
+				c.error(pos, "cannot %s the loop variable %q; a loop's variables are read-only", verb, n.Name)
+			}
+		}
+		return
+	}
 }
 
 // refuseExprErrorHandler reports an @error on a call whose value is used.
@@ -3856,7 +4224,7 @@ func (c *checker) buildErrorHandler(eh *ast.EventHandler) *ir.EventHandler {
 			c.rejectBindDefault(ast.Pos(*p.Default.ExprPos()), bindParamWhat(p.Name, "@"+eh.Name), "the error")
 		}
 		typ := c.resolveType(p.Type)
-		if typ == nil || typ.Kind == ir.TypeDyn {
+		if typ == nil || typ.Kind == ir.TypeInvalid {
 			typ = errEvtType
 		}
 		params[i] = &ir.Param{Name: p.Name, Type: typ}
@@ -3893,8 +4261,8 @@ func (c *checker) errorEventType() *ir.Type {
 		return nil
 	}
 	for _, e := range c.boundaryComp.Events {
-		if e.Name == "error" {
-			return e.Payload()
+		if e.Name == "error" && len(e.Params) == 1 {
+			return e.Params[0].Type
 		}
 	}
 	return nil
@@ -3914,6 +4282,19 @@ func (c *checker) checkVisualNodeIR(vn *ast.VisualNode) ir.Stmt {
 
 func (c *checker) checkVisualNode(vn *ast.VisualNode) ir.Stmt {
 	name := visualNodeTarget(vn)
+	// Only a component takes type arguments; a slot, a provider or a
+	// function written where a node goes takes none.
+	if len(vn.TypeArgs) > 0 && c.componentNamed(vn.TargetName()) == nil {
+		// Written bare, the bracket was an index: `xs[0]` on a line of its
+		// own, which the parser reads as a node because it cannot tell a
+		// value from a component.
+		if !vn.HasParens && !vn.Block.IsDefined() && vn.ID == "" && len(vn.Args.Args) == 0 {
+			c.error(vn.Pos, "a value is not a statement: show it with a node, such as ui.text(value=…), or use it in one")
+			return nil
+		}
+		c.resolveTypeArgs(vn.TypeArgs)
+		c.error(vn.Pos, "%s takes no type arguments", name)
+	}
 
 	// Built-in nodes — the compiler's own constructs, dispatched on the
 	// #[builtin] mark of whatever the target resolves to rather than on the
@@ -3957,6 +4338,9 @@ func (c *checker) checkVisualNode(vn *ast.VisualNode) ir.Stmt {
 	}
 	if slot := c.enclosingSlot(name); slot != nil {
 		return c.checkSlotInsertion(vn, slot, name, false)
+	}
+	if st, ok := c.recordContent(vn, name); ok {
+		return st
 	}
 
 	// Look up component — supports bare ("Foo") and qualified ("pkg.Foo") names.
@@ -4003,7 +4387,9 @@ func (c *checker) checkVisualNode(vn *ast.VisualNode) ir.Stmt {
 			return nil
 		}
 	} else if sym, ok := c.lookupComponentInScope(vn.Pos, name); ok {
-		if c.rejectUnexported(vn.Pos, sym) {
+		// The export rule is between packages, as it is for a type name: a
+		// library body renders its own unexported components.
+		if !c.inLibSource() && !c.resolvedInPackage(name) && c.rejectUnexported(vn.Pos, sym) {
 			return nil
 		}
 		if co, ok := sym.(*ir.Component); ok {
@@ -4083,7 +4469,12 @@ func (c *checker) checkVisualNode(vn *ast.VisualNode) ir.Stmt {
 	// the population a parameter named T. Once, not once per user: binding
 	// walks the argument expressions, and a second walk reports each of their
 	// diagnostics twice.
-	spec := c.bindComponentTypeParams(comp, vn.Args)
+	var written map[string]*ir.Type
+	var writtenTypes []*ir.Type
+	if comp != nil {
+		written, writtenTypes = c.bindWritten(vn.Pos, name, vn.TypeArgs, comp.TypeParams)
+	}
+	spec := c.bindComponentTypeParams(vn.Pos, comp, vn.Args, written)
 	if spec != comp {
 		c.specializeHandle(vn.ID, comp, spec)
 	}
@@ -4097,32 +4488,47 @@ func (c *checker) checkVisualNode(vn *ast.VisualNode) ir.Stmt {
 	if vn == c.outputDecl || outerOutputDepth > 0 {
 		c.outputDepth = outerOutputDepth + 1
 	}
+	data := 0
+	if rest := spec.RestSlot(); rest != nil && rest.Values != nil {
+		data = 1
+	}
+	c.dataPopulation += data
 	children := c.checkBlockIR(&childBlock)
+	c.dataPopulation -= data
 	c.outputDepth = outerOutputDepth
 	if bound := c.bindFromChildren(comp, spec, children); bound != spec {
 		spec = bound
 		c.specializeHandle(vn.ID, comp, spec)
 	}
 	if spec != nil && spec.AST != nil {
-		ct := spec.ChildrenType
+		rest := spec.RestSlot()
 		n := len(children)
-		if rest := spec.RestSlot(); rest != nil && slotContent[rest.Name] != nil {
+		if rest != nil && slotContent[rest.Name] != nil {
 			// The rest slot was populated by name, and checkSlotContent has
 			// already held that content to the slot's count. Bare children
 			// alongside it are the double population, reported there.
-			ct, n = nil, 0
+			rest, n = nil, 0
 		}
 		switch {
-		case ct == nil && n > 0:
-			c.error(vn.Pos, "component %s does not accept children", spec.DisplayName())
-		case ct != nil && ct.Kind != ir.TypeList && ct.Kind != ir.TypeOption && n != 1:
-			c.error(vn.Pos, "component %s requires exactly one child", spec.Name)
-		case ct != nil && ct.Kind == ir.TypeOption && n > 1:
-			c.error(vn.Pos, "component %s accepts at most one child", spec.Name)
+		case rest == nil:
+			if n > 0 {
+				c.error(vn.Pos, "component %s does not accept children", spec.DisplayName())
+			}
+		default:
+			// The count is what the children render, not how many
+			// statements wrote them: a `for` is one statement.
+			if lo, hi := c.renderedRange(c.currentComponent, children); !fitsCard(rest.Card, lo, hi) {
+				switch rest.Card {
+				case ir.SlotOne:
+					c.error(vn.Pos, "component %s requires exactly one child, and this renders %s", spec.Name, rangeWords(lo, hi))
+				case ir.SlotOptional:
+					c.error(vn.Pos, "component %s accepts at most one child, and this renders %s", spec.Name, rangeWords(lo, hi))
+				}
+			}
 		}
 		owner, node, at := c.currentComponent, spec, vn.Pos
-		c.deferTreeCheck(func() {
-			c.checkTreeMembership(owner, at, children, slotWant(node, node.RestSlot(), children), "in "+node.DisplayName())
+		c.deferFamilyCheck(func() {
+			c.checkFamilyMembership(owner, at, children, slotWant(node, node.RestSlot(), children), "in "+node.DisplayName())
 		})
 	}
 	props, handlers, bindings := c.checkAndSplitArgs(vn.Args, spec)
@@ -4146,13 +4552,10 @@ func (c *checker) checkVisualNode(vn *ast.VisualNode) ir.Stmt {
 		Handle:    c.nodeHandleSym(vn.ID),
 		Key:       c.keyArgExpr(vn.Args),
 	}
-	if args := c.specArgs[spec]; len(args) > 0 {
-		if c.nodeArgs == nil {
-			c.nodeArgs = map[*ir.NodeInst][]*ir.Type{}
-		}
-		c.nodeArgs[node] = args
-	}
+	node.TypeArgs = c.specArgs[spec]
+	node.WrittenTypeArgs = writtenTypes
 	c.deferConstSlots(node)
+	c.deferFamilyCheck(func() { c.checkSlotEmptyAnswers(node) })
 	return node
 }
 
@@ -4168,10 +4571,10 @@ func (c *checker) checkVisualNode(vn *ast.VisualNode) ir.Stmt {
 // legitimately be the value wanted, and there the expected type is what decides;
 // here it never can be.
 //
-// All three positions used to fall through to a dyn result with no diagnostic —
-// `plain.bogusMethod()` checked clean — and, because the operand stayed an Ident
-// bound to the func rather than becoming a Call, reactivity never reached the
-// vars the computed reads, so a prop reading one never re-rendered.
+// The operand becomes a Call rather than staying an Ident bound to the func,
+// so a bogus member (`plain.bogusMethod()`) is reported against the result, and
+// reactivity reaches the vars the computed reads, so a prop reading one
+// re-renders.
 //
 // Args stays nil: this is the implicit-receiver shape passNoImplicitRecv
 // normalizes, so a component's computed picks up its `this` there rather than in
@@ -4209,11 +4612,10 @@ func (c *checker) implicitCall(expr ast.Expr, actual, expected *ir.Type) (ast.Ex
 	if len(actual.Sig.Params) != 0 || actual.Sig.Return == nil {
 		return nil, actual
 	}
-	// The call is implied when its result can reach the expected type, not
-	// only when it already is that type: `text(value=doubled)` where doubled
-	// returns an int calls it and converts, as `text(value=doubled())` does.
-	if !actual.Sig.Return.IsAssignableTo(expected) &&
-		!primitiveConvertible(actual.Sig.Return, expected) {
+	// The call is implied only when its result is what is wanted. A result
+	// that would need a conversion is not: `var s string = count` is a
+	// function where a string is wanted, not `string(count())`.
+	if !actual.Sig.Return.IsAssignableTo(expected) {
 		return nil, actual
 	}
 	call := &ast.CallExpr{Pos: *expr.ExprPos(), Func: expr}
@@ -4361,23 +4763,6 @@ func wildcardTarget(comp *ir.Component, name string) *ir.Prop {
 	return p
 }
 
-// propTypeMismatch reports whether a prop value cannot reach its prop's type.
-// wrapIfNeeded would otherwise mint a Conversion for it, and the language has
-// no such cast: the same expression written out is a checker error.
-func propTypeMismatch(got, expected *ir.Type) bool {
-	if got == nil || expected == nil || got.Kind == ir.TypeDyn || expected.Kind == ir.TypeDyn {
-		return false
-	}
-	if got.IsAssignableTo(expected) {
-		return false
-	}
-	// An unresolved type parameter is the tail of an earlier error.
-	if got.Kind == ir.TypeTypeParam || expected.Kind == ir.TypeTypeParam {
-		return false
-	}
-	return true
-}
-
 // onComponent names the component in a diagnostic when there is one to name.
 func onComponent(comp *ir.Component) string {
 	if comp == nil {
@@ -4460,17 +4845,7 @@ func (c *checker) checkAndSplitArgs(args ast.ArgList, comp *ir.Component) ([]ir.
 	var handlers []ir.EventHandler
 	seen := make(map[string]ast.Pos)
 
-	// Build ordered prop list for positional binding.
-	// A wildcard prop has no position: it stands for names, and binding one
-	// positionally would give it a name nobody wrote.
-	var orderedProps []*ir.Prop
-	if comp != nil {
-		for _, p := range comp.Props {
-			if p.Wildcard == "" {
-				orderedProps = append(orderedProps, p)
-			}
-		}
-	}
+	argNames := argPropNames(args, comp)
 	boundProps := make(map[string]bool)
 	// Entries a wildcard prop collected, keyed by the prop's own name. Built
 	// alongside props and appended as one map arg once every name is in.
@@ -4532,8 +4907,7 @@ func (c *checker) checkAndSplitArgs(args ast.ArgList, comp *ir.Component) ([]ir.
 		}
 	}
 
-	positional := 0
-	for _, a := range args.Args {
+	for i, a := range args.Args {
 		switch arg := a.(type) {
 		case ast.Arg:
 			if arg.Name == "key" {
@@ -4564,20 +4938,17 @@ func (c *checker) checkAndSplitArgs(args ast.ArgList, comp *ir.Component) ([]ir.
 
 			if arg.Name == "" {
 				// Positional: bind to next prop slot (only when comp is known).
-				if comp == nil {
-					// No component context — pass through unchanged (dynamic call).
-					resolvedName = ""
-				} else if positional >= len(orderedProps) {
-					if arg.Value != nil {
-						c.error(*arg.Value.ExprPos(), "too many positional arguments")
+				// With no component it passes through unchanged (a dynamic
+				// call).
+				if comp != nil {
+					resolvedName = argNames[i]
+					if resolvedName == "" {
+						if arg.Value != nil {
+							c.error(*arg.Value.ExprPos(), "too many positional arguments")
+						}
+						continue
 					}
-					positional++
-					continue
-				} else {
-					p := orderedProps[positional]
-					resolvedName = p.Name
-					expected = p.Type
-					positional++
+					expected = componentPropType(comp, resolvedName)
 				}
 			} else {
 				resolvedName = arg.Name
@@ -4592,31 +4963,15 @@ func (c *checker) checkAndSplitArgs(args ast.ArgList, comp *ir.Component) ([]ir.
 
 			var val ir.Expr
 			if arg.Value != nil {
-				val = c.checkExprExpecting(arg.Value, expected)
-				c.requireValueType(exprType(val), *arg.Value.ExprPos())
-				// Implicit call: func() T used where T is expected.
-				if expected != nil {
-					actual := exprType(val)
-					if actual.Kind != ir.TypeDyn && expected.Kind != ir.TypeDyn && !actual.IsAssignableTo(expected) {
-						if adapted, ok := adaptLiteralZero(val, expected); ok {
-							val = adapted
-						} else if callExpr, _ := c.implicitCall(arg.Value, actual, expected); callExpr != nil {
-							val = c.checkExpr(callExpr)
-						}
-					}
-					// Nothing adapted it, and wrapIfNeeded would mint a cast
-					// to a struct — which the language does not have, so the
-					// same expression written out (Style("hi")) is a checker
-					// error. Left alone it reached lowering as a panic when
-					// the spread pass tried to resolve the struct type.
-					if got := exprType(val); propTypeMismatch(got, expected) {
-						c.error(*arg.Value.ExprPos(), "cannot use %s as %s for prop %q%s",
-							got, expected, strings.TrimPrefix(resolvedName, ":"), onComponent(comp))
-						continue
-					}
-					if expected.Kind != ir.TypeDyn {
-						val = wrapIfNeeded(val, expected)
-					}
+				mismatched := false
+				val = c.checkExprAs(arg.Value, expected, slot{later: true, mismatch: func(want, got string) string {
+					mismatched = true
+					return fmt.Sprintf("cannot use %s as %s for prop %q%s", got, want, strings.TrimPrefix(resolvedName, ":"), onComponent(comp))
+				}})
+				// A mismatched value binds nothing: wrapped, it reached lowering
+				// as a cast to a struct, which the language does not have.
+				if mismatched {
+					continue
 				}
 			}
 			if comp != nil && resolvedName != "" {
@@ -4696,9 +5051,10 @@ func (c *checker) checkAndSplitArgs(args ast.ArgList, comp *ir.Component) ([]ir.
 	}
 
 	c.refuseInheritedProps(args.Pos, comp, boundProps)
-	// Arity: all required props must be bound (user-defined components only;
-	// stdlib component props without defaults are optional by platform convention).
-	if comp != nil && !comp.Stdlib {
+	// Arity: a prop with no default must be bound, whichever package declared
+	// the component -- unless a target renders it from its declaration, which
+	// reads a prop the call omitted as absent (RendersFromDeclaration).
+	if comp != nil {
 		for _, p := range comp.Props {
 			// A wildcard prop stands for names rather than being one, so
 			// there is nothing to require: its own name binds nothing.
@@ -4710,28 +5066,29 @@ func (c *checker) checkAndSplitArgs(args ast.ArgList, comp *ir.Component) ([]ir.
 			if p.Bidirectional {
 				continue
 			}
-			if !boundProps[p.Name] && p.Default == nil {
+			if !boundProps[p.Name] && p.Default == nil && !p.DefaultWritten && !comp.RendersFromDeclaration() {
 				c.error(args.Pos, "missing required prop %q on component %s", p.Name, comp.Name)
 			}
 		}
 		// A prop the call omits is supplied here, so every consumer reads one
 		// list of arguments rather than each evaluating the declaration's
 		// defaults for itself. This is what a struct literal does with its
-		// field defaults.
+		// field defaults. A component rendered from its declaration reads an
+		// omitted prop as absent, and a bodyless one is rendered by a target's
+		// override, which reads the declaration's defaults where it uses them;
+		// for either, only the zero of a type parameter is written, since that
+		// names a type only this call site has bound.
+		fromDecl := comp.RendersFromDeclaration() || comp.Bodyless
 		for _, p := range comp.Props {
-			if p.Default == nil || boundProps[p.Name] {
+			// A data slot's list is what lower.DataFamilies writes from the
+			// population, which is not written yet.
+			if p.Default == nil || boundProps[p.Name] || comp.DataSlotOf(p) != nil {
+				continue
+			}
+			if fromDecl && (!holdsTypeParamZero(p.Default) || p.Type.HasTypeParam()) {
 				continue
 			}
 			props = append(props, ir.Arg{Name: p.Name, Value: typeParamZeroFor(p.Default, p.Type)})
-		}
-	} else if comp != nil {
-		// A library's defaults are its targets' to read, except the zero of a
-		// type parameter, which names a type only this call site has bound.
-		for _, p := range comp.Props {
-			if boundProps[p.Name] || !typeParamZero(p.Default) || mentionsTypeParam(p.Type) {
-				continue
-			}
-			props = append(props, ir.Arg{Name: p.Name, Value: ir.DeclaredDefault(p.Type)})
 		}
 	}
 
@@ -4829,21 +5186,7 @@ func (c *checker) checkComponentCallArgs(call *ast.CallExpr, comp *ir.Component)
 					c.error(arg.NamePos, "prop %q already provided on component %s", resolvedName, comp.Name)
 					continue
 				}
-				argExpr := c.checkExprExpecting(arg.Value, expected)
-				actual := exprType(argExpr)
-				c.requireValueType(actual, *arg.Value.ExprPos())
-				if expected != nil && actual.Kind != ir.TypeDyn && expected.Kind != ir.TypeDyn && !actual.IsAssignableTo(expected) {
-					if adapted, ok := adaptLiteralZero(argExpr, expected); ok {
-						argExpr = adapted
-					} else if callExpr, _ := c.implicitCall(arg.Value, actual, expected); callExpr != nil {
-						argExpr = c.checkExpr(callExpr)
-					} else {
-						c.error(*arg.Value.ExprPos(), "cannot pass %s as %s", actual, expected)
-					}
-				}
-				if expected != nil && expected.Kind != ir.TypeDyn {
-					argExpr = wrapIfNeeded(argExpr, expected)
-				}
+				argExpr := c.checkExprAs(arg.Value, expected, passSlot())
 				c.deferConstProp(*arg.Value.ExprPos(), argExpr, comp, boundKey)
 				result = append(result, ir.CallArg{Name: resolvedName, NamePos: arg.NamePos, Value: argExpr})
 				if boundKey != "" {
@@ -4857,7 +5200,7 @@ func (c *checker) checkComponentCallArgs(call *ast.CallExpr, comp *ir.Component)
 			c.refuseConstParams(arg.Params.Params, "a handler's")
 			for i, p := range arg.Params.Params {
 				typ := c.resolveType(p.Type)
-				if typ.Kind == ir.TypeDyn && i < len(want) && want[i].Type != nil {
+				if typ.Kind == ir.TypeInvalid && i < len(want) && want[i].Type != nil {
 					typ = want[i].Type
 				}
 				c.declare(p.Pos, &ir.Param{Name: p.Name, Type: typ})
@@ -4871,9 +5214,8 @@ func (c *checker) checkComponentCallArgs(call *ast.CallExpr, comp *ir.Component)
 	}
 
 	c.refuseInheritedProps(call.Args.Pos, comp, boundProps)
-	// Arity: required props must be bound (user-defined components only;
-	// stdlib component props without defaults are optional by platform convention).
-	if !comp.Stdlib {
+	// Arity: as checkAndSplitArgs.
+	if !comp.RendersFromDeclaration() {
 		for _, p := range comp.Props {
 			// A wildcard prop stands for names rather than being one, so
 			// there is nothing to require: its own name binds nothing.
@@ -4885,7 +5227,7 @@ func (c *checker) checkComponentCallArgs(call *ast.CallExpr, comp *ir.Component)
 			if p.Bidirectional {
 				continue
 			}
-			if !boundProps[p.Name] && p.Default == nil {
+			if !boundProps[p.Name] && p.Default == nil && !p.DefaultWritten {
 				c.error(call.Args.Pos, "missing required prop %q on component %s", p.Name, comp.Name)
 			}
 		}
@@ -4999,7 +5341,7 @@ func bindWildcardName(comp *ir.Component, name string, props []ir.Arg) []ir.Arg 
 }
 
 // rejectNodeInFuncBody reports a visual node written in an imperative body --
-// a function, an event handler, a timer, a var handler or a lambda -- and says
+// a function, an event handler, a timer or a lambda -- and says
 // whether it did.
 //
 // A node is a piece of a rendered tree: it is placed once, where it is
@@ -5128,7 +5470,7 @@ func (c *checker) checkHeadlessFor(x *ast.ForStmt, cond ir.Expr) *ir.For {
 		elseBody = c.checkScopeBlockIR(&x.Else)
 	}
 	c.popScope()
-	return &ir.For{AST: x, Iter: cond, ElemType: TypDyn, Body: body, Else: elseBody}
+	return &ir.For{AST: x, Iter: cond, ElemType: TypInvalid, Body: body, Else: elseBody}
 }
 
 // checkViewMapFor reports a loop over a map written in a view body. It is the
@@ -5143,10 +5485,8 @@ func (c *checker) checkHeadlessFor(x *ast.ForStmt, cond ir.Expr) *ir.For {
 // emitter that walks the map again elsewhere, a host map that happens to be
 // insertion-ordered so the bug only appears on the other three targets.
 //
-// A map reaching the head with its map-ness erased is not caught here and
-// cannot be: `iter<T>` is not one of the erasures, since map<K, V> is not
-// assignable to it, but `dyn` is, and a dyn head says nothing about what it
-// will hold.
+// A map cannot reach the head with its map-ness erased: map[K, V] is not
+// assignable to `iter[T]`, the one type a loop head could erase it to.
 func (c *checker) checkViewMapFor(pos ast.Pos, iter *ir.Type) {
 	if c.funcDepth > 0 || iter == nil || iter.Kind != ir.TypeMap {
 		return
@@ -5176,8 +5516,8 @@ func (c *checker) checkViewForElse(pos ast.Pos, loop *ir.For, iter *ir.Type) {
 	switch {
 	case ir.SeqIntrinsic(loop) != "":
 		c.error(pos, "`for … else` over %s needs a literal non-zero step: which comparison says \"empty\" depends on the step's sign, and the else is decided when this compiles", ir.SeqIntrinsic(loop))
-	case iter.Kind == ir.TypeDyn:
-		c.error(pos, "`for … else` over dyn cannot be written in a view body: the else renders when the iterable yields nothing, and dyn says nothing about how to ask -- give the iterable a list, map or sngl:seq type")
+	case iter.Kind == ir.TypeInvalid:
+		// Reported where the iterable went wrong.
 	default:
 		c.error(pos, "`for … else` over %s cannot be written in a view body: the else renders when the iterable yields nothing, and a pull sequence reports that only by consuming an element -- iterate a list, a map, or a sngl:seq range", iter)
 	}
@@ -5291,6 +5631,11 @@ func (c *checker) boundEntry(name string) *ir.SlotDecl {
 // entries, and the fallback block. written is the name the insertion was
 // written under, which for an entry is the population's and not the entry's.
 func (c *checker) checkSlotInsertion(vn *ast.VisualNode, slot *ir.SlotDecl, written string, entry bool) ir.Stmt {
+	// A data slot is a value, inserted only where it is forwarded: into
+	// another data slot's population, whose list it is spread into.
+	if c.dataPopulation == 0 && c.refuseDataSlotInsertion(vn.Pos, slot) {
+		return nil
+	}
 	inst := &ir.SlotInst{AST: vn, Name: written, Rest: slot.Rest}
 	if entry {
 		inst.Entry = slot
@@ -5410,12 +5755,15 @@ func (c *checker) checkSlotPopulations(vn *ast.VisualNode, comp *ir.Component) (
 // matched by position against the declaration's types, and are ordinary
 // block-scoped bindings.
 func (c *checker) checkSlotContent(cd *ast.ComponentDecl, decl *ir.SlotDecl, owner *ir.Component) *ir.SlotContent {
+	// A population binds by position and may leave trailing parameters
+	// unbound, as a handler may: `component failed { … }` ignores the error
+	// the boundary hands it. Binding more than the slot passes is the error.
 	params := cd.Props.Props
-	if len(params) != decl.Arity() {
+	if len(params) > decl.Arity() {
 		c.error(cd.Pos, "slot %q binds %d parameter(s), but declares %d", cd.Name, len(params), decl.Arity())
 	}
 	if cd.ChildrenType != nil {
-		c.error(cd.Pos, "slot %q: a population names no tree; what it accepts is the declaration's", cd.Name)
+		c.error(cd.Pos, "slot %q: a population names no family; what it accepts is the declaration's", cd.Name)
 	}
 	sc := &ir.SlotContent{}
 	var entries map[string]*ir.SlotDecl
@@ -5468,17 +5816,17 @@ func (c *checker) checkSlotContent(cd *ast.ComponentDecl, decl *ir.SlotDecl, own
 	sc.Body = c.checkScopeBlockIR(&cd.Body, bound...)
 	c.entryScopes = c.entryScopes[:len(c.entryScopes)-1]
 	c.popScope()
-	c.checkSlotArity(cd.Pos, decl, len(sc.Body), "slot \""+cd.Name+"\"")
+	c.checkSlotArity(cd.Pos, decl, sc.Body, "slot \""+cd.Name+"\"")
 	written, at := c.currentComponent, cd.Pos
-	c.deferTreeCheck(func() {
-		c.checkTreeMembership(written, at, sc.Body, slotWant(owner, decl, sc.Body), "in slot \""+cd.Name+"\"")
+	c.deferFamilyCheck(func() {
+		c.checkFamilyMembership(written, at, sc.Body, slotWant(owner, decl, sc.Body), "in slot \""+cd.Name+"\"")
 	})
 	return sc
 }
 
 // childrenTypeFor is the children contract a rest slot stands for, in the shape
 // the existing arity checks read.
-func childrenTypeFor(slot *ir.SlotDecl) *ir.Type {
+func (c *checker) childrenTypeFor(slot *ir.SlotDecl) *ir.Type {
 	elem := slot.Content
 	if elem == nil {
 		elem = &ir.Type{Kind: ir.TypeComponent}
@@ -5489,28 +5837,37 @@ func childrenTypeFor(slot *ir.SlotDecl) *ir.Type {
 	case ir.SlotOptional:
 		return ir.OptionOf(elem)
 	}
-	return ir.ListOf(elem)
+	return c.listOf(elem)
 }
 
-func (c *checker) checkSlotArity(pos ast.Pos, slot *ir.SlotDecl, n int, what string) {
-	switch slot.Card {
-	case ir.SlotOne:
-		if n != 1 {
-			c.error(pos, "%s takes exactly one node, got %d", what, n)
-		}
-	case ir.SlotOptional:
-		if n > 1 {
-			c.error(pos, "%s takes at most one node, got %d", what, n)
+func (c *checker) checkSlotArity(pos ast.Pos, slot *ir.SlotDecl, body []ir.Stmt, what string) {
+	if lo, hi := c.renderedRange(c.currentComponent, body); !fitsCard(slot.Card, lo, hi) {
+		switch slot.Card {
+		case ir.SlotOne:
+			c.error(pos, "%s takes exactly one node, and this renders %s", what, rangeWords(lo, hi))
+		case ir.SlotOptional:
+			c.error(pos, "%s takes at most one node, and this renders %s", what, rangeWords(lo, hi))
 		}
 	}
 }
 
-// slotTree is the segmented tree a slot accepts, or nil where nothing pins one
+// rangeWords spells a renderedRange for a diagnostic.
+func rangeWords(lo, hi int) string {
+	switch {
+	case hi == unbounded:
+		return fmt.Sprintf("%d or more", lo)
+	case lo == hi:
+		return strconv.Itoa(lo)
+	}
+	return fmt.Sprintf("%d to %d", lo, hi)
+}
+
+// slotFamily is the segmented tree a slot accepts, or nil where nothing pins one
 // — a tree-less owner's bare slot, or a tree parameter no call site has bound.
 //
 // owner is the component the slot is declared on: a slot naming no tree accepts
 // the owner's.
-func slotTree(owner *ir.Component, slot *ir.SlotDecl) *ir.Component {
+func slotFamily(owner *ir.Component, slot *ir.SlotDecl) *ir.Component {
 	if slot == nil {
 		return nil
 	}
@@ -5518,7 +5875,7 @@ func slotTree(owner *ir.Component, slot *ir.SlotDecl) *ir.Component {
 		if owner == nil {
 			return nil
 		}
-		return owner.Tree
+		return owner.Family
 	}
 	return ir.TypeFamily(slot.Content)
 }
@@ -5531,19 +5888,16 @@ func slotTree(owner *ir.Component, slot *ir.SlotDecl) *ir.Component {
 // pinned is already substituted and only an unpinned one reaches the second
 // case.
 func slotWant(owner *ir.Component, slot *ir.SlotDecl, content []ir.Stmt) *ir.Component {
-	if sd := slotTree(owner, slot); sd != nil {
+	if sd := slotFamily(owner, slot); sd != nil {
 		return sd
 	}
-	if owner == nil || owner.TreeParam == "" || slot == nil || slot.Content == nil {
+	if owner == nil || owner.FamilyParam == nil || slot == nil || !slot.Content.Equal(owner.FamilyParam) {
 		return nil
 	}
-	if slot.Content.Kind != ir.TypeTypeParam || slot.Content.ParamName != owner.TreeParam {
-		return nil
-	}
-	return childrenTree(content)
+	return childrenFamily(content)
 }
 
-// childrenTree is the tree the nodes written in a block belong to, for a slot
+// childrenFamily is the tree the nodes written in a block belong to, for a slot
 // whose content type is the component's own tree parameter. Nothing at the
 // call site names a type argument, so the children are what binds it: the
 // first one that belongs to a family says which, and checkTreeMembership then
@@ -5556,18 +5910,18 @@ func slotWant(owner *ir.Component, slot *ir.SlotDecl, content []ir.Stmt) *ir.Com
 // treeTransparent's *binding* blocks, which is every block but a boundary's
 // fallback: that one stands where the content stood and is held to the
 // content's answer rather than supplying one.
-func childrenTree(content []ir.Stmt) *ir.Component {
+func childrenFamily(content []ir.Stmt) *ir.Component {
 	for _, st := range content {
-		if _, binds, ok := treeTransparent(st); ok {
+		if _, binds, ok := familyTransparent(st); ok {
 			for _, b := range binds {
-				if sd := childrenTree(b); sd != nil {
+				if sd := childrenFamily(b); sd != nil {
 					return sd
 				}
 			}
 			continue
 		}
-		if ni, ok := st.(*ir.NodeInst); ok && ni.Component != nil && ni.Component.Tree != nil {
-			return ni.Component.Tree
+		if ni, ok := st.(*ir.NodeInst); ok && ni.Component != nil && ni.Component.Family != nil {
+			return ni.Component.Family
 		}
 	}
 	return nil
@@ -5582,7 +5936,7 @@ func stmtPos(s ast.Stmt) *ast.Pos {
 	return s.StmtPos()
 }
 
-// checkTreeMembership holds every supplied node to the tree the position
+// checkFamilyMembership holds every supplied node to the tree the position
 // accepts. Compared by declaration, so two packages each declaring a tree of
 // the same name are two trees.
 //
@@ -5597,7 +5951,7 @@ func stmtPos(s ast.Stmt) *ast.Pos {
 // readily as in a layout. The compiler's own constructs -- an error boundary,
 // a context override -- say the same thing by not being a node instance at
 // all, and each holds its own children to a family of their own.
-func (c *checker) checkTreeMembership(owner *ir.Component, pos ast.Pos, content []ir.Stmt, want *ir.Component, where string) {
+func (c *checker) checkFamilyMembership(owner *ir.Component, pos ast.Pos, content []ir.Stmt, want *ir.Component, where string) {
 	if want == nil {
 		return
 	}
@@ -5608,9 +5962,9 @@ func (c *checker) checkTreeMembership(owner *ir.Component, pos ast.Pos, content 
 		// the subtle one: its own check binds T off its content, and reaching
 		// through it here is what holds that T to the family this position
 		// accepts.
-		if blocks, _, ok := treeTransparent(st); ok {
+		if blocks, _, ok := familyTransparent(st); ok {
 			for _, b := range blocks {
-				c.checkTreeMembership(owner, pos, b, want, where)
+				c.checkFamilyMembership(owner, pos, b, want, where)
 			}
 			continue
 		}
@@ -5619,10 +5973,22 @@ func (c *checker) checkTreeMembership(owner *ir.Component, pos ast.Pos, content 
 		// is whatever the caller supplies, so the slot's own tree is what has
 		// to match, and the population is where the content is checked.
 		case *ir.SlotInst:
+			got := c.insertedFamily(owner, s)
+			// The fallback stands where the content would have, so it is
+			// held to the slot's family rather than the position's: an
+			// insertion renders one family whichever of the two it shows.
+			// Crossing lifts the position's check, never that one.
+			if len(s.Children) > 0 {
+				hold := got
+				if hold == nil {
+					hold = want
+				}
+				c.checkFamilyMembership(owner, pos, s.Children, hold, "in the fallback of the slot "+s.Name)
+			}
 			if s.Crosses {
 				continue
 			}
-			if got := c.insertedTree(owner, s); got != nil && got != want {
+			if got != nil && got != want {
 				c.error(pos, "expected %s component %s, got the %s slot %s", want.Name, where, got.Name, s.Name)
 			}
 		// A window is the checker's own IR rather than a NodeInst, so it
@@ -5630,7 +5996,7 @@ func (c *checker) checkTreeMembership(owner *ir.Component, pos ast.Pos, content 
 		// reads the same two fields off the same kind of pointer, and the two
 		// collapse when a window becomes a marked NodeInst.
 		case *ir.NodeInst:
-			if s.Crosses || s.Component == nil || s.Component.Tree == nil || s.Component.Tree == want {
+			if s.Crosses || s.Component == nil || s.Component.Family == nil || s.Component.Family == want {
 				continue
 			}
 			// The offending child is a better place to point than the position
@@ -5644,9 +6010,9 @@ func (c *checker) checkTreeMembership(owner *ir.Component, pos ast.Pos, content 
 	}
 }
 
-// insertedTree is the family a slot insertion puts where it stands: the slot's
+// insertedFamily is the family a slot insertion puts where it stands: the slot's
 // own, read off the declaration the insertion names.
-func (c *checker) insertedTree(owner *ir.Component, s *ir.SlotInst) *ir.Component {
+func (c *checker) insertedFamily(owner *ir.Component, s *ir.SlotInst) *ir.Component {
 	decl := c.entrySpec[s]
 	if decl == nil {
 		decl = s.Entry
@@ -5654,7 +6020,7 @@ func (c *checker) insertedTree(owner *ir.Component, s *ir.SlotInst) *ir.Componen
 	if decl == nil {
 		decl = ownerSlot(owner, s.Name)
 	}
-	return slotTree(owner, decl)
+	return slotFamily(owner, decl)
 }
 
 // errorEventName spells the payload type for a diagnostic, falling back to the

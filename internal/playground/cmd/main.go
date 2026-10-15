@@ -9,14 +9,14 @@ import (
 	"encoding/json"
 	"syscall/js"
 
-	"git.duckfam.us/jonathan/sngl/internal/playground"
+	"duckfam.us/sngl/internal/playground"
 
-	_ "git.duckfam.us/jonathan/sngl/codegen/lang/golang"
-	_ "git.duckfam.us/jonathan/sngl/codegen/lang/javascript"
-	_ "git.duckfam.us/jonathan/sngl/codegen/lang/kotlin"
-	_ "git.duckfam.us/jonathan/sngl/codegen/platform/android"
-	_ "git.duckfam.us/jonathan/sngl/codegen/platform/bubbletea"
-	_ "git.duckfam.us/jonathan/sngl/codegen/platform/html"
+	_ "duckfam.us/sngl/codegen/lang/golang"
+	_ "duckfam.us/sngl/codegen/lang/javascript"
+	_ "duckfam.us/sngl/codegen/lang/kotlin"
+	_ "duckfam.us/sngl/codegen/platform/android"
+	_ "duckfam.us/sngl/codegen/platform/bubbletea"
+	_ "duckfam.us/sngl/codegen/platform/html"
 )
 
 func main() {

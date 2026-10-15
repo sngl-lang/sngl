@@ -31,7 +31,7 @@ import . "sngl:ui"
 output { none { html } }
 
 component main node {
-    var items list<string> = ["a", "b", "c"]
+    var items list[string] = ["a", "b", "c"]
     button(text="add", @click { items.push("new") })
     for var item = items {
         text(value=item)
@@ -62,7 +62,7 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { items__inst0: ["a", "b", "c"], visible__inst1: true };
+  var state = { items__inst0: ["a", "b", "c"], visible__inst0: true };
   function __cf___child0(props) {
     const __root = document.createElement("div");
     __root.style.display = "contents";
@@ -141,4 +141,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:39c29447d28c525f9ac01dfd8eb0e5ca
+pass sha256:5a9abe7aee670bfa6dfa0db9cf4c7242

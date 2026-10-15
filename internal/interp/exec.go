@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"strconv"
 
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/internal/opeval"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/internal/opeval"
+	"duckfam.us/sngl/ir"
 )
 
 // AssertError is returned when an assertion fails. Msg is the structured
@@ -263,7 +263,7 @@ func (env *Env) exec(s ir.Stmt) error {
 		if err != nil {
 			return err
 		}
-		env.Set(n.Sym, CopyValue(v))
+		env.Set(n.Sym, copyOf(v, n.Init.ExprType()))
 		return nil
 	case *ir.If:
 		return env.execIf(n)
@@ -312,6 +312,7 @@ func (env *Env) execAssign(s *ir.Assign) error {
 	if err != nil {
 		return err
 	}
+	val = copyOf(val, s.Value.ExprType())
 	switch target := s.Target.(type) {
 	case *ir.Ident:
 		owner := env.findVarOwner(target.Sym)
@@ -324,13 +325,16 @@ func (env *Env) execAssign(s *ir.Assign) error {
 		}
 		owner.vals[target.Sym] = nv
 		owner.noteAssigned(target.Sym)
-		return nil
+		env.noteWrite(target, writeReplace, 0, nil)
+		return owner.writeBound(target.Sym, nv)
 	case *ir.Select:
 		obj, err := env.Eval(target.Operand)
 		if err != nil {
 			return err
 		}
 		if cv, ok := obj.(ComponentValue); ok {
+			// The harness records the write itself, since it settles before
+			// returning.
 			return cv.SetField(s.Op, target.Field, val)
 		}
 		if st, ok := obj.(*Struct); ok {
@@ -340,6 +344,7 @@ func (env *Env) execAssign(s *ir.Assign) error {
 				return err
 			}
 			st.Set(target.Field, nv)
+			env.noteWrite(target, writeReplace, 0, nil)
 			return nil
 		}
 		if m, ok := obj.(map[string]any); ok {
@@ -373,6 +378,7 @@ func (env *Env) execAssign(s *ir.Assign) error {
 				return err
 			}
 			list[i] = nv
+			env.noteWrite(target, writeReplace, 0, nil)
 			return nil
 		}
 		if m, ok := obj.(map[string]any); ok {
@@ -386,6 +392,7 @@ func (env *Env) execAssign(s *ir.Assign) error {
 				return err
 			}
 			m[key] = nv
+			env.noteWrite(target, writeReplace, 0, nil)
 			return nil
 		}
 		return fmt.Errorf("cannot index-assign to %T", obj)
@@ -403,6 +410,7 @@ func (env *Env) execAssign(s *ir.Assign) error {
 					return err
 				}
 				ref.set(nv)
+				env.noteWrite(target, writeReplace, 0, nil)
 				return nil
 			}
 			return fmt.Errorf("cannot deref-assign to %T", obj)
@@ -424,7 +432,8 @@ func (env *Env) execToggle(s *ir.Toggle) error {
 		}
 		owner.vals[target.Sym] = !b
 		owner.noteAssigned(target.Sym)
-		return nil
+		env.noteWrite(target, writeReplace, 0, nil)
+		return owner.writeBound(target.Sym, !b)
 	case *ir.Select:
 		obj, err := env.Eval(target.Operand)
 		if err != nil {
@@ -432,6 +441,16 @@ func (env *Env) execToggle(s *ir.Toggle) error {
 		}
 		if cv, ok := obj.(ComponentValue); ok {
 			return cv.Toggle(target.Field)
+		}
+		if st, ok := obj.(*Struct); ok {
+			cur, _ := st.Get(target.Field)
+			b, ok := cur.(bool)
+			if !ok {
+				return fmt.Errorf("cannot toggle non-bool %s", target.Field)
+			}
+			st.Set(target.Field, !b)
+			env.noteWrite(target, writeReplace, 0, nil)
+			return nil
 		}
 		// A two-way prop through a node's handle: what it holds now, written
 		// back negated the way an assignment through the handle is.
@@ -513,7 +532,7 @@ func (env *Env) execFor(s *ir.For) error {
 	case *Stream:
 		return env.execStreamLoop(s, v)
 	default:
-		// A list, or the sequence sngl:seq computes -- an iter<T> is whichever
+		// A list, or the sequence sngl:seq computes -- an iter[T] is whichever
 		// of the two produced it, and neither is walked by building the other.
 		n, at, isIterable := asIterable(iter)
 		if !isIterable {
@@ -630,7 +649,7 @@ func bindLoopElem(env *Env, s *ir.For, i int, item any, list []any) {
 	if s.RefElem && list != nil {
 		// &-bound element: bind a listRef so field/whole-element writes
 		// (through the checker's Unary{Deref}) update the list in place.
-		env.Set(elemSym, &listRef{list: list, idx: i})
+		env.Set(elemSym, &listRef{list: list, idx: i, iter: s.Iter, at: env})
 	} else {
 		env.Set(elemSym, item)
 	}
@@ -651,7 +670,7 @@ func (env *Env) unbindLoopVars(s *ir.For) {
 func ApplyOp(op ast.AssignOp, cur, val any, targetType *ir.Type) (any, error) {
 	// The declared target type drives the width so sized-integer compound
 	// assignment wraps at the right width. When the target type is unavailable
-	// or dyn (e.g. a dynamically-typed field in a test context), fall back to
+	// (IR built by hand), fall back to
 	// inferring from the current runtime carrier.
 	kind := numKindOf(targetType)
 	if kind == (opeval.NumKind{}) {
@@ -704,6 +723,54 @@ func (env *Env) execCatch(s *ir.If) error {
 		}
 	}
 	return nil
+}
+
+// writeBound carries a write of one of this instance's two-way props out to
+// the var its call site bound it to, `:checked=on`: a component writing its
+// own prop -- an override reporting what its control now holds -- writes the
+// caller's state, as every compiled target's lowering makes it do. A prop the
+// call site left unbound is the instance's own cell, which the write already
+// was; the node's `#id` is bound to what the last mount showed (bindHandle),
+// and a handler about to run reads it before the next mount does, so it is
+// written there too.
+func (env *Env) writeBound(sym ir.Symbol, val any) error {
+	if env.inst == nil || env.Comp == nil || env.parent == nil {
+		return nil
+	}
+	var prop *ir.Prop
+	for _, p := range env.Comp.Props {
+		if p.Bidirectional && p.Sym != nil && ir.Symbol(p.Sym) == sym {
+			prop = p
+		}
+	}
+	if prop == nil {
+		return nil
+	}
+	for _, b := range env.inst.Bindings {
+		if b.PropName != prop.Name {
+			continue
+		}
+		tmp := &ir.Param{Name: "__bound"}
+		env.parent.Set(tmp, val)
+		err := env.parent.execAssign(&ir.Assign{Target: b.Target, Op: ast.AssignSet, Value: &ir.Ident{Name: tmp.Name, Sym: tmp}})
+		delete(env.parent.vals, tmp)
+		return err
+	}
+	if env.inst.Handle != nil {
+		if m, ok := env.parentValue(env.inst.Handle).(map[string]any); ok {
+			m[prop.Name] = val
+		}
+	}
+	return nil
+}
+
+// parentValue is sym's value in the scope env was mounted from, or nil.
+func (env *Env) parentValue(sym ir.Symbol) any {
+	if env.parent == nil {
+		return nil
+	}
+	v, _ := env.parent.Value(sym)
+	return v
 }
 
 // writeThroughHandle writes a two-way prop of the node m is a handle to --

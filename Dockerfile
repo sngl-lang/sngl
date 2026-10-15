@@ -1,4 +1,4 @@
-FROM golang:1.26-bookworm
+FROM golang:1.27-bookworm
 
 # Everything a golden can be regenerated with.
 #
@@ -58,4 +58,6 @@ RUN mkdir -p "$ANDROID_HOME/cmdline-tools" \
 
 WORKDIR /src
 COPY go.mod go.sum ./
-RUN go mod download
+# `all`, so the module graph's test-only modules are here too: the trust
+# scripts' offline `go mod tidy` needs them, and fetched per job they were 35s.
+RUN go mod download all

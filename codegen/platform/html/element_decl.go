@@ -7,7 +7,8 @@ package html
 // than keeping a list of names beside the declaration to drift away from it.
 
 import (
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/ir"
 )
 
 // elementDecl is the declaration a node's props and events are read from: the
@@ -39,6 +40,10 @@ const tagProp = "tag"
 // error there. What reaches codegen is the map, and codegen.WildcardProps
 // unpacks it back into the names it was written under.
 const attrsProp = "attrs"
+
+// elementName is what html.sngl declares `element` under, the tag a raw element
+// is created with until its `tag` names one.
+const elementName = "element"
 
 // isElement reports whether a component is html's `element`. It is recognised
 // by the two props html gave it, for the reason their names are constants
@@ -125,6 +130,11 @@ func domPropForProp(comp *ir.Component, prop string) (string, bool) {
 	if comp != nil && comp.Intrinsic == windowIntrinsic && prop == "visible" {
 		return "open", true
 	}
+	// A URL source is an `<img>`, which takes its URL in `src`, and the icon
+	// `<link>` standing in for one answers a write of it (faviconInit).
+	if comp != nil && comp.Intrinsic == imageURLIntrinsic && prop == ir.ImageSourceURL {
+		return "src", true
+	}
 	if domOnlyProps[prop] {
 		return domName(prop), true
 	}
@@ -163,59 +173,6 @@ func domEventName(comp *ir.Component, event string) string {
 	return ""
 }
 
-// eventPayloadBase reports the JS expression a handler's event parameter binds
-// to for one event: the DOM event object, or the element the event fired on.
-//
-// The payload declaration decides. A payload field that names a prop the
-// element also declares is that element's state read back — `InputEvent.value`
-// is the control's `value` — so the parameter stands for the target. A field
-// the element declares nothing of is the event's own data —
-// `error.message` — so it stands for the event. A payload with no fields
-// is read by nobody and takes the event.
-//
-// Binding every event to the target is what turned `e.message` into
-// `e.target.message`; binding every event to the event object would turn
-// `evt.value` into `e.value`, which is undefined on every DOM event.
-func eventPayloadBase(comp *ir.Component, event string) string {
-	if comp == nil {
-		// No declaration to read: the target is what a handler reached for
-		// before there was one, so an unresolved element keeps reaching it.
-		return "e.target"
-	}
-	for _, f := range eventPayloadFields(comp, event) {
-		if elementProp(comp, f) != nil {
-			return "e.target"
-		}
-	}
-	return "e"
-}
-
-// eventPayloadFields is the field names of an event's declared payload struct,
-// or nil for a void event or one the element does not declare by name (its
-// wildcard event carries no payload).
-func eventPayloadFields(comp *ir.Component, event string) []string {
-	if comp == nil {
-		return nil
-	}
-	for _, e := range comp.Events {
-		if e == nil || e.Name != event || e.Payload() == nil {
-			continue
-		}
-		sd, ok := e.Payload().Decl.(*ir.StructDef)
-		if !ok || sd == nil {
-			return nil
-		}
-		out := make([]string, 0, len(sd.Fields))
-		for _, f := range sd.Fields {
-			if f != nil {
-				out = append(out, f.Name)
-			}
-		}
-		return out
-	}
-	return nil
-}
-
 // wildcardPropNamed reports whether prop is the declaration's wildcard prop --
 // the map every name it matched was collected into. Such a prop names no
 // attribute of its own, so a caller writing one has to unpack it first.
@@ -227,6 +184,17 @@ var voidElements = map[string]bool{
 	"area": true, "base": true, "br": true, "col": true, "embed": true,
 	"hr": true, "img": true, "input": true, "link": true, "meta": true,
 	"source": true, "track": true, "wbr": true,
+}
+
+// isEmptyIDProp reports an `id` prop whose value is the empty string literal.
+// An id attribute may not be empty, and a flow passes its anchor whether or
+// not one was named, so an empty one is no attribute rather than `id=""`.
+func isEmptyIDProp(prop string, value ir.Expr) bool {
+	if prop != "id" {
+		return false
+	}
+	s, ok := codegen.IRLiteralString(value)
+	return ok && s == ""
 }
 
 // contentProp reports how a prop's value is written when the element is

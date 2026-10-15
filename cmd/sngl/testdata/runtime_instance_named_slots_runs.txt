@@ -148,7 +148,7 @@ window {
 import . "sngl:test"
 import . "sngl:ui"
 
-component Card(start int, @report string, layout component(n int, content component node) node) node {
+component Card(start int, @report(v string), layout component(n int, content component node) node) node {
     var k = start
 
     vbox {
@@ -266,7 +266,7 @@ window {
     main
 }
 -- testrun/android/kotlin/app.sngl/main/1 --
-sha256:a064cbfa0f0930792c2893232843923d
+sha256:3fb0a138f0890dec869b363aaad8655a
 {
   "results": [
     {
@@ -279,7 +279,7 @@ sha256:a064cbfa0f0930792c2893232843923d
   }
 }
 -- testrun/bubbletea/go/rebind.sngl/main/1 --
-sha256:ba922bd346141f2e613118865e865a14
+sha256:03ea0eb42bf7662681487dba4589f697
 {
   "results": [
     {
@@ -292,7 +292,7 @@ sha256:ba922bd346141f2e613118865e865a14
   }
 }
 -- testrun/fyne/go/app.sngl/main/1 --
-sha256:906c8a4a508b1bb9b471fe0b049e6b09
+sha256:794b5c62c11c67c45100ddbd805bb2bc
 {
   "results": [
     {
@@ -305,7 +305,7 @@ sha256:906c8a4a508b1bb9b471fe0b049e6b09
   }
 }
 -- testrun/fyne/go/entry.sngl/main/1 --
-sha256:61fa882c11148a49769d8d06daf630fb
+sha256:4025d3bd948235c9643e53d0918607aa
 {
   "results": [
     {
@@ -315,7 +315,7 @@ sha256:61fa882c11148a49769d8d06daf630fb
   ]
 }
 -- testrun/fyne/go/scoped.sngl/main/1 --
-sha256:f861b88cbf9a2cb9bcd9f263825d6348
+sha256:0ee9f8faaaab39d5c5a7fd3e7ccc7992
 {
   "results": [
     {
@@ -325,7 +325,7 @@ sha256:f861b88cbf9a2cb9bcd9f263825d6348
   ]
 }
 -- testrun/gtk4/go/app.sngl/main/1 --
-sha256:5ea3c2aa9933fefd82f3d9f99dd8e19e
+sha256:548d155bdb43fbb34b1d5107378283a0
 {
   "results": [
     {
@@ -338,7 +338,7 @@ sha256:5ea3c2aa9933fefd82f3d9f99dd8e19e
   }
 }
 -- testrun/gtk4/go/entry.sngl/main/1 --
-sha256:aa310cd60060d2ee8613e221f6a01216
+sha256:b163e57b71786dfa79695fef5a0b85fd
 {
   "results": [
     {
@@ -348,7 +348,7 @@ sha256:aa310cd60060d2ee8613e221f6a01216
   ]
 }
 -- testrun/gtk4/go/scoped.sngl/main/1 --
-sha256:2a5be75cd7190fde01b4d02a1881c864
+sha256:2e6ddc4170eae009328bdda49dbdd2fe
 {
   "results": [
     {

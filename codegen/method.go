@@ -1,6 +1,6 @@
 package codegen
 
-import "git.duckfam.us/jonathan/sngl/ir"
+import "duckfam.us/sngl/ir"
 
 // OwnerMethod resolves a receiver-qualified method call to the func it names,
 // searching every state owner rather than package scope alone.
@@ -25,7 +25,7 @@ func OwnerMethod(pkg *ir.Package, receiver, method string) (*ir.Func, bool) {
 	}
 	for _, o := range ir.Owners(pkg) {
 		for _, f := range o.Funcs {
-			if f.Receiver == receiver && f.Name == method {
+			if f.RecvName() == receiver && f.Name == method {
 				return f, true
 			}
 		}

@@ -3,12 +3,12 @@ package checker_test
 import (
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/internal/checker"
-	"git.duckfam.us/jonathan/sngl/internal/lower"
-	"git.duckfam.us/jonathan/sngl/internal/optimize"
-	"git.duckfam.us/jonathan/sngl/internal/parser"
-	"git.duckfam.us/jonathan/sngl/internal/testtargets"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/internal/checker"
+	"duckfam.us/sngl/internal/lower"
+	"duckfam.us/sngl/internal/optimize"
+	"duckfam.us/sngl/internal/parser"
+	"duckfam.us/sngl/internal/testtargets"
+	"duckfam.us/sngl/ir"
 )
 
 // TestHtmlPlacementDirectivesResolve verifies that the checker resolves
@@ -58,6 +58,7 @@ func checkOptimizeLower(t *testing.T, src string) *ir.Package {
 	if pkg == nil {
 		t.Fatal("nil pkg")
 	}
+	pkg = ir.ClonePackage(pkg)
 	if err := optimize.Optimize(pkg, &optimize.Config{}); err != nil {
 		t.Fatalf("optimize: %v", err)
 	}

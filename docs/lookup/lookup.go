@@ -20,12 +20,12 @@ import (
 	"sort"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/internal/checker"
-	"git.duckfam.us/jonathan/sngl/internal/parser"
-	"git.duckfam.us/jonathan/sngl/ir"
-	"git.duckfam.us/jonathan/sngl/lib"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/internal/checker"
+	"duckfam.us/sngl/internal/parser"
+	"duckfam.us/sngl/ir"
+	"duckfam.us/sngl/lib"
 )
 
 // Kind tags which of Result's pointer fields is populated.
@@ -222,10 +222,17 @@ func lookupInUncached(cwd, path string, idents []string) (Result, error) {
 	// that package.
 	if tgt.tree {
 		origins := FindInLibrary(idents[0])
-		if len(origins) == 1 {
+		switch len(origins) {
+		case 1:
 			return LookupIn(cwd, origins[0].Pkg, idents...)
+		case 0:
+			return Result{}, fmt.Errorf("%w: %q is a package of the library, not a declaration in one", ErrNotFound, idents[0])
 		}
-		return Result{}, fmt.Errorf("%w: %q is a package of the library, not a declaration in one", ErrNotFound, idents[0])
+		pkgs := make([]string, len(origins))
+		for i, o := range origins {
+			pkgs[i] = o.Pkg
+		}
+		return Result{}, fmt.Errorf("%w: %q is declared by %s; name the package", ErrNotFound, idents[0], strings.Join(pkgs, " and "))
 	}
 	if tgt.native != nil {
 		return walkNative(tgt, idents)

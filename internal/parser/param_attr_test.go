@@ -3,7 +3,7 @@ package parser
 import (
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/ast"
+	"duckfam.us/sngl/ast"
 )
 
 // findFunc returns the named top-level function.
@@ -46,7 +46,7 @@ func TestParseParamAttrs(t *testing.T) {
 
 component element(
     tag string,
-    #[some.mark("^data-")] attributes map<string, string>,
+    #[some.mark("^data-")] attributes map[string, string],
 ) node {}
 `
 	doc, err := Parse("test.sngl", []byte(src))
@@ -104,7 +104,7 @@ func TestParseParamAttrForms(t *testing.T) {
 		{"multiple", `component c(#[m] #[n("x")] a int) node {}`, false},
 		{"lambda", `func f() => func(#[m] a int) => a`, false},
 		{"event", `component c(#[m] @click) node {}`, false},
-		{"event typed", `component c(#[m] @click E) node {}`, false},
+		{"event typed", `component c(#[m] @click(v E)) node {}`, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -131,12 +131,12 @@ func TestFormatParamAttrs(t *testing.T) {
 		`func f(#[some.mark("x")] a string, b int) {}`)
 
 	assertFormat(t,
-		"component element(\n    tag string,\n    #[some.mark(\"^data-\")] attributes map<string, string>,\n) {}",
-		"component element(\n    tag string,\n    #[some.mark(\"^data-\")] attributes map<string, string>,\n) {}")
+		"component element(\n    tag string,\n    #[some.mark(\"^data-\")] attributes map[string, string],\n) {}",
+		"component element(\n    tag string,\n    #[some.mark(\"^data-\")] attributes map[string, string],\n) {}")
 
 	assertFormat(t,
-		"component element(\n    #[some.mark(\"^data-\")]\n    attributes map<string, string>,\n) {}",
-		"component element(\n    #[some.mark(\"^data-\")]\n    attributes map<string, string>,\n) {}")
+		"component element(\n    #[some.mark(\"^data-\")]\n    attributes map[string, string],\n) {}",
+		"component element(\n    #[some.mark(\"^data-\")]\n    attributes map[string, string],\n) {}")
 
 	assertFormat(t,
 		`component c(#[m] #[n(1)] :a int = 2) node {}`,
@@ -168,7 +168,7 @@ func TestFormatParamAttrsMultiline(t *testing.T) {
 	// without a body rather than inventing `{}`.
 	fn.Block = ast.StmtBlock{Pos: ast.Pos{Line: 1, Column: 1}}
 	doc := &ast.Document{Stmts: []ast.Stmt{fn}}
-	const want = "func f(\n    tag string,\n    #[mark(\"^data-\")]\n    attributes string,\n) {}\n"
+	const want = "func f(\n    tag        string,\n    #[mark(\"^data-\")]\n    attributes string,\n) {}\n"
 	if got := Format(doc); got != want {
 		t.Errorf("format:\ngot:  %q\nwant: %q", got, want)
 	}

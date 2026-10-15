@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strconv"
 
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 // passErrorCatch makes each handler body holding a call resolved to a
@@ -168,13 +168,13 @@ func visitCoveredCalls(block []ir.Stmt, f func(*ir.Call)) {
 	}
 }
 
-// spawnedBlocks is the lambda bodies passAsyncOffload handed to async.spawn:
+// spawnedBlocks is the lambda bodies passAsyncOffload handed to async.start:
 // the half of a handler that runs off the thread the target draws on.
 func spawnedBlocks(pkg *ir.Package) map[*[]ir.Stmt]bool {
 	out := map[*[]ir.Stmt]bool{}
 	_ = ir.Walk(pkg, func(n ir.Node) error {
 		c, ok := n.(*ir.Call)
-		if !ok || c.Func == nil || c.Func.Intrinsic != AsyncSpawnIntrinsic {
+		if !ok || c.Func == nil || c.Func.Intrinsic != AsyncStartIntrinsic {
 			return nil
 		}
 		for _, a := range c.Args {
@@ -194,7 +194,7 @@ func postedHandler(h *ir.EventHandler) *ir.EventHandler {
 		return h
 	}
 	fn := *h.Func
-	fn.Block = []ir.Stmt{callStmt(AsyncPostIntrinsic, closure(h.Func.Block))}
+	fn.Block = []ir.Stmt{callStmt(AsyncDoIntrinsic, closure(h.Func.Block))}
 	posted := *h
 	posted.Func = &fn
 	return &posted

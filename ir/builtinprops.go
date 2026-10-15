@@ -46,6 +46,28 @@ const (
 	GenNodeValue    = "value"
 )
 
+// sngl:builtin's effect. The type parameters are its declaration's order:
+// EffectKeyParam is `on`'s, and the index and element of a list's changes are
+// bound from it (EffectIndexParam, EffectElemParam).
+const (
+	EffectOn      = "on"
+	EffectMount   = "mount"
+	EffectUnmount = "unmount"
+	EffectUpdate  = "update"
+	EffectInsert  = "insert"
+	EffectSet     = "set"
+	EffectRemove  = "remove"
+	EffectClear   = "clear"
+
+	EffectKeyParam   = 0
+	EffectIndexParam = 1
+	EffectElemParam  = 2
+)
+
+// EffectDeltas are the events that report how a list changed, rather than
+// that it did.
+var EffectDeltas = []string{EffectInsert, EffectSet, EffectRemove, EffectClear}
+
 // Vocabulary is what compiler code reads by name off a declaration of one
 // kind: its props, its events, and the intrinsic ids of its methods.
 type Vocabulary struct {
@@ -61,6 +83,9 @@ var BuiltinVocabulary = map[BuiltinKind]Vocabulary{
 	BuiltinNavStack: {Methods: []string{NavCurrentID, NavGoID, NavBackID}},
 	BuiltinGenEmit:  {Props: []string{GenEmitFile, GenEmitOpen, GenEmitClose, GenEmitRender, GenEmitMembers}, Events: []string{GenEmitGenerate}},
 	BuiltinGenNode:  {Props: []string{GenNodeOpen, GenNodeClose, GenNodeValue}},
+	BuiltinEffect: {Props: []string{EffectOn}, Events: []string{
+		EffectMount, EffectUnmount, EffectUpdate, EffectInsert, EffectSet, EffectRemove, EffectClear,
+	}},
 }
 
 // MethodByIntrinsic is c's method carrying the intrinsic id, or nil: how a

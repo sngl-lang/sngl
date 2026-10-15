@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/ast"
+	"duckfam.us/sngl/ast"
 )
 
 //go:generate go tool stringer -type=TypeKind -trimprefix Type
@@ -14,7 +14,6 @@ type TypeKind int
 
 const (
 	TypeInvalid TypeKind = iota // error sentinel
-	TypeDyn                     // unknown/dynamic
 	TypeBool
 	TypeInt
 	TypeFloat
@@ -30,19 +29,27 @@ const (
 	TypeNull      // type of null literal
 	TypeTypeParam // unresolved generic param; ParamName set
 	TypeVoid      // void — a call that yields no value; not usable as an expression
-	TypeRef       // Elem set — ref<T>, used by NoLambda for mutable captures
-	TypeIter      // Elems = [T] for iter<T>
-	TypeChan      // Elems = [T] for go.chan<T> — a host channel, ranged over like an iter
+	TypeRef       // Elem set — ref[T], used by NoLambda for mutable captures
+	TypeIter      // Elems = [T] for iter[T]
 	TypeNative    // platform-provided foreign type; Meta carries the platform-specific descriptor
-	TypeRemote    // Elems = [T] for remote<T> — a fetched value, its failure and its in-flight flag
 	TypeInstance  // Decl set — a live instance in the rendered tree
+	// TypeReadonly is readonly[T] (Elems set): a loop variable bound by copy,
+	// which a program reads and may not write. The checker's own -- a read
+	// unwraps it to T, and the loop erases it from its variables once its body
+	// is checked -- so nothing after the check meets one.
+	TypeReadonly
+	// TypeAny is `any`, the constraint that says nothing about a type
+	// parameter. It is a constraint only -- the checker refuses it where a
+	// value's type is written -- so it is met on a TypeParamSym's Constraint
+	// and nowhere else.
+	TypeAny
 )
 
 // Type is the unified representation of all SNGL types.
 // Zero value is TypeInvalid.
 type Type struct {
 	Kind      TypeKind
-	Elems     []*Type  // type arguments: List<T>, Option<T>, Map<K,V>, etc.
+	Elems     []*Type  // type arguments: list[T], option[T], map[K, V], etc.
 	Decl      Symbol   // struct, enum, unit, component declaration
 	Sig       *FuncSig // function types
 	ParamName string   // generic type param name ("T")
@@ -59,13 +66,18 @@ type Type struct {
 
 // Predefined singleton types for primitives.
 var (
-	TypDyn    = &Type{Kind: TypeDyn}
-	TypBool   = &Type{Kind: TypeBool}
-	TypInt    = &Type{Kind: TypeInt}
-	TypFloat  = &Type{Kind: TypeFloat}
-	TypString = &Type{Kind: TypeString}
-	TypNull   = &Type{Kind: TypeNull}
-	TypVoid   = &Type{Kind: TypeVoid}
+	// TypInvalid is the type of what has none: an expression the checker
+	// reported an error about, and a host declaration with no SNGL spelling,
+	// which is marked unusable. Nothing typed invalid reaches a program or a
+	// library package that checked clean.
+	TypInvalid = &Type{Kind: TypeInvalid}
+	TypBool    = &Type{Kind: TypeBool}
+	TypInt     = &Type{Kind: TypeInt}
+	TypFloat   = &Type{Kind: TypeFloat}
+	TypString  = &Type{Kind: TypeString}
+	TypNull    = &Type{Kind: TypeNull}
+	TypVoid    = &Type{Kind: TypeVoid}
+	TypAny     = &Type{Kind: TypeAny}
 )
 
 // Sized numeric singletons. Plain int/float (TypInt/TypFloat) keep Bits==0.
@@ -87,34 +99,22 @@ func (t *Type) IsSized() bool {
 	return t != nil && (t.Kind == TypeInt || t.Kind == TypeFloat) && t.Bits != 0
 }
 
-// ListOf returns a list type with the given element type, carrying the
-// #[builtin("list")] declaration (see genericbuiltins.go).
-func ListOf(elem *Type) *Type {
-	t := &Type{Kind: TypeList, Elems: []*Type{elem}}
-	// Not `Decl: listStructDef.Load()`: that stores a non-nil Symbol holding a
-	// nil *StructDef before the stdlib registers one, which every
-	// `if t.Decl != nil` in the compiler then dereferences.
-	if sd := listStructDef.Load(); sd != nil {
-		t.Decl = sd
-	}
-	return t
-}
-
-// MapOf returns a map<K, V> type, carrying the #[builtin("map")] declaration.
-func MapOf(k, v *Type) *Type {
-	t := &Type{Kind: TypeMap, Elems: []*Type{k, v}}
-	if sd := mapStructDef.Load(); sd != nil {
-		t.Decl = sd
-	}
-	return t
-}
-
 // OptionOf returns an option type wrapping the given type.
 func OptionOf(inner *Type) *Type {
 	return &Type{Kind: TypeOption, Elems: []*Type{inner}}
 }
 
-// RefOf builds a ref<elem> Type.
+// ReadonlyOf builds a readonly[elem] Type.
+func ReadonlyOf(elem *Type) *Type {
+	return &Type{Kind: TypeReadonly, Elems: []*Type{elem}}
+}
+
+// IsReadonly reports whether t is readonly[T].
+func (t *Type) IsReadonly() bool {
+	return t != nil && t.Kind == TypeReadonly && len(t.Elems) == 1
+}
+
+// RefOf builds a ref[elem] Type.
 func RefOf(elem *Type) *Type {
 	return &Type{Kind: TypeRef, Elems: []*Type{elem}}
 }
@@ -124,31 +124,9 @@ func FuncOf(params []*Param, ret *Type) *Type {
 	return &Type{Kind: TypeFunc, Sig: &FuncSig{Params: params, Return: ret}}
 }
 
-// IterOf returns an iter<T> type.
+// IterOf returns an iter[T] type.
 func IterOf(elem *Type) *Type {
 	return &Type{Kind: TypeIter, Elems: []*Type{elem}}
-}
-
-// ChanOf returns a go.chan<T> type.
-//
-// Direction is not represented. Go's own receive-only channels -- `*time.Ticker`'s
-// `C` is `<-chan Time` -- are reachable because nothing writes a Go type for an
-// expression that is only ranged over; binding one to a var would spell the
-// bidirectional `chan T` and not compile against it.
-func ChanOf(elem *Type) *Type {
-	return &Type{Kind: TypeChan, Elems: []*Type{elem}}
-}
-
-// RemoteOf returns a remote.Value<T> type wrapping the fetched type. decl is the
-// Value declaration, which the type carries so its methods resolve through
-// MemberOf; pass nothing where no scope is in reach, as the intrinsic registry
-// does.
-func RemoteOf(inner *Type, decl ...Symbol) *Type {
-	t := &Type{Kind: TypeRemote, Elems: []*Type{inner}}
-	if len(decl) == 1 {
-		t.Decl = decl[0]
-	}
-	return t
 }
 
 // anonStructString spells an interned anonymous struct structurally. No cycle
@@ -174,8 +152,8 @@ func (t *Type) String() string {
 	switch t.Kind {
 	case TypeInvalid:
 		return "<invalid>"
-	case TypeDyn:
-		return "dyn"
+	case TypeAny:
+		return "any"
 	case TypeBool:
 		return "bool"
 	case TypeInt:
@@ -195,42 +173,34 @@ func (t *Type) String() string {
 		return "string"
 	case TypeList:
 		if len(t.Elems) > 0 {
-			return fmt.Sprintf("list<%s>", t.Elems[0])
+			return fmt.Sprintf("list[%s]", t.Elems[0])
 		}
 		return "list"
 	case TypeMap:
 		if len(t.Elems) == 2 {
-			return fmt.Sprintf("map<%s, %s>", t.Elems[0], t.Elems[1])
+			return fmt.Sprintf("map[%s, %s]", t.Elems[0], t.Elems[1])
 		}
-		return "map<?>"
+		return "map[?]"
 	case TypeOption:
 		if len(t.Elems) > 0 {
-			return fmt.Sprintf("option<%s>", t.Elems[0])
+			return fmt.Sprintf("option[%s]", t.Elems[0])
 		}
 		return "option"
 	case TypeRef:
 		if len(t.Elems) > 0 {
-			return fmt.Sprintf("ref<%s>", t.Elems[0])
+			return fmt.Sprintf("ref[%s]", t.Elems[0])
 		}
 		return "ref"
-	case TypeRemote:
-		// Qualified, unlike list and option: the declaration lives in sngl:remote
-		// rather than being ambient, and a diagnostic naming a bare `Value<T>`
-		// says little when the program also has structs of its own.
+	case TypeReadonly:
 		if len(t.Elems) > 0 {
-			return fmt.Sprintf("remote.Value<%s>", t.Elems[0])
+			return fmt.Sprintf("readonly[%s]", t.Elems[0])
 		}
-		return "remote.Value"
+		return "readonly"
 	case TypeIter:
 		if len(t.Elems) == 1 {
-			return fmt.Sprintf("iter<%s>", t.Elems[0])
+			return fmt.Sprintf("iter[%s]", t.Elems[0])
 		}
-		return "iter<?>"
-	case TypeChan:
-		if len(t.Elems) == 1 {
-			return fmt.Sprintf("go.chan<%s>", t.Elems[0])
-		}
-		return "go.chan<?>"
+		return "iter[?]"
 	case TypeStruct:
 		name := "struct"
 		// A diagnostic says what the program wrote, never the synthesized name.
@@ -248,7 +218,7 @@ func (t *Type) String() string {
 			for i, e := range t.Elems {
 				args[i] = e.String()
 			}
-			return name + "<" + strings.Join(args, ", ") + ">"
+			return name + "[" + strings.Join(args, ", ") + "]"
 		}
 		return name
 	case TypeEnum:
@@ -288,16 +258,15 @@ func (t *Type) String() string {
 		for i, e := range t.Elems {
 			args[i] = e.String()
 		}
-		return t.Decl.SymName() + "<" + strings.Join(args, ", ") + ">"
+		return t.Decl.SymName() + "[" + strings.Join(args, ", ") + "]"
 	case TypeInstance:
 		if t.Decl != nil {
-			return "instance<" + t.Decl.SymName() + ">"
+			return "instance[" + t.Decl.SymName() + "]"
 		}
 		return "instance"
 	case TypeNative:
 		// A foreign type has no SNGL spelling, so a diagnostic names it the
-		// way the host does. Reachable since the C scheme importer started
-		// giving a void* parameter a native type rather than a dyn.
+		// way the host does.
 		if ref, ok := t.Meta.(NativeTypeRef); ok && ref.Name != "" {
 			return ref.Name
 		}
@@ -373,13 +342,13 @@ func declIdentity(sym Symbol) (declRef, bool) {
 	var ref declRef
 	switch d := sym.(type) {
 	case *StructDef:
-		ref = declRef{d.Pkg, d.Name}
+		ref = declRef{d.PkgPath(), d.Name}
 	case *EnumDef:
-		ref = declRef{d.Pkg, d.Name}
+		ref = declRef{d.PkgPath(), d.Name}
 	case *UnitDef:
-		ref = declRef{d.Pkg, d.Name}
+		ref = declRef{d.PkgPath(), d.Name}
 	case *Component:
-		ref = declRef{d.Pkg, d.Name}
+		ref = declRef{d.PkgPath(), d.Name}
 	default:
 		return declRef{}, false
 	}
@@ -429,22 +398,22 @@ func typeOrigin(t *Type) string {
 	var pos ast.Pos
 	switch d := t.Decl.(type) {
 	case *StructDef:
-		pkg = d.Pkg
+		pkg = d.PkgPath()
 		if d.AST != nil {
 			pos = d.AST.Pos
 		}
 	case *EnumDef:
-		pkg = d.Pkg
+		pkg = d.PkgPath()
 		if d.AST != nil {
 			pos = d.AST.Pos
 		}
 	case *UnitDef:
-		pkg = d.Pkg
+		pkg = d.PkgPath()
 		if d.AST != nil {
 			pos = d.AST.Pos
 		}
 	case *Component:
-		pkg = d.Pkg
+		pkg = d.PkgPath()
 		if d.AST != nil {
 			pos = d.AST.Pos
 		}
@@ -481,75 +450,21 @@ func (t *Type) Substitute(bindings map[string]*Type) *Type {
 	if t == nil {
 		return nil
 	}
-	switch t.Kind {
-	case TypeTypeParam:
+	if t.Kind == TypeTypeParam {
 		if bound, ok := bindings[t.ParamName]; ok {
 			return bound
 		}
 		return t
-	case TypeList, TypeMap, TypeOption, TypeRef, TypeIter, TypeChan, TypeRemote, TypeStruct:
-		elems := make([]*Type, len(t.Elems))
-		changed := false
-		for i, e := range t.Elems {
-			elems[i] = e.Substitute(bindings)
-			if elems[i] != e {
-				changed = true
-			}
-		}
-		if !changed {
-			return t
-		}
-		return &Type{Kind: t.Kind, Elems: elems, Decl: t.Decl}
-	case TypeComponent:
-		// `page<T>` in a generic signature: its type arguments are the
-		// signature's, bound at the call like any other element type.
-		if len(t.Elems) == 0 {
-			return t
-		}
-		elems := make([]*Type, len(t.Elems))
-		for i, e := range t.Elems {
-			elems[i] = e.Substitute(bindings)
-		}
-		cp := *t
-		cp.Elems = elems
-		return &cp
-	case TypeFunc:
-		if t.Sig == nil {
-			return t
-		}
-		sig := t.Sig.Substitute(bindings)
-		if sig == t.Sig {
-			return t
-		}
-		return &Type{Kind: TypeFunc, Sig: sig}
 	}
-	return t
+	return t.MapChildren(func(c *Type) *Type { return c.Substitute(bindings) })
 }
 
 // Substitute replaces TypeTypeParam in params and return type.
 func (s *FuncSig) Substitute(bindings map[string]*Type) *FuncSig {
-	if s == nil || len(bindings) == 0 {
+	if len(bindings) == 0 {
 		return s
 	}
-	params := make([]*Param, len(s.Params))
-	changed := false
-	for i, p := range s.Params {
-		nt := p.Type.Substitute(bindings)
-		if nt != p.Type {
-			changed = true
-			params[i] = &Param{Name: p.Name, Type: nt, Default: p.Default, Receiver: p.Receiver, Const: p.Const}
-		} else {
-			params[i] = p
-		}
-	}
-	ret := s.Return.Substitute(bindings)
-	if ret != s.Return {
-		changed = true
-	}
-	if !changed {
-		return s
-	}
-	return &FuncSig{Params: params, Return: ret, TypeParams: s.TypeParams, RecvTypeParams: s.RecvTypeParams, Purity: s.Purity, Color: s.Color, PolyParam: s.PolyParam}
+	return s.mapTypes(func(c *Type) *Type { return c.Substitute(bindings) })
 }
 
 // Equal reports structural type equality.
@@ -568,7 +483,7 @@ func (t *Type) Equal(other *Type) bool {
 		// Width and signedness distinguish sized numerics; Bits==0 (plain
 		// int/float) is a distinct type from any sized width.
 		return t.Bits == other.Bits && t.Unsigned == other.Unsigned
-	case TypeList, TypeMap, TypeOption, TypeRef, TypeIter, TypeChan, TypeRemote:
+	case TypeList, TypeMap, TypeOption, TypeRef, TypeIter:
 		if len(t.Elems) != len(other.Elems) {
 			return false
 		}
@@ -589,8 +504,8 @@ func (t *Type) Equal(other *Type) bool {
 		}
 		// Two struct types are equal when they share the same declaration AND
 		// their type arguments (if any) are pairwise equal. This covers both
-		// non-generic structs (no Elems) and generic instantiations like Box<int>
-		// vs Box<string>.
+		// non-generic structs (no Elems) and generic instantiations like Box[int]
+		// vs Box[string].
 		if !sameDecl(t, other) {
 			return false
 		}
@@ -604,7 +519,7 @@ func (t *Type) Equal(other *Type) bool {
 		}
 		return true
 	case TypeComponent:
-		// `page<P>` is the instances whose call site bound the declaration's
+		// `page[P]` is the instances whose call site bound the declaration's
 		// type parameters that way, and a handle carries what its call site
 		// bound. A bare `component` names no declaration and carries none.
 		if !sameDecl(t, other) {
@@ -633,7 +548,7 @@ func (t *Type) Equal(other *Type) bool {
 		a, aok := t.Meta.(NativeTypeRef)
 		b, bok := other.Meta.(NativeTypeRef)
 		return aok && bok && a == b
-	case TypeInvalid, TypeDyn, TypeBool, TypeString, TypeNull, TypeVoid:
+	case TypeInvalid, TypeBool, TypeString, TypeNull, TypeVoid:
 		// Kinds carrying no distinguishing payload: the Kind comparison above
 		// has already settled them. Listed explicitly rather than defaulted so
 		// that a new kind with an identity field cannot be answered "equal" by
@@ -644,13 +559,13 @@ func (t *Type) Equal(other *Type) bool {
 }
 
 // IsAssignableTo reports whether a value of type t can be assigned to target.
-// Dyn works like Go's any/interface{}: any value is assignable TO dyn,
-// but dyn is not assignable to concrete types without explicit conversion.
+// An invalid type is a mistake reported where it was made, and is assignable
+// both ways so that nothing downstream reports it again.
 func (t *Type) IsAssignableTo(target *Type) bool {
 	if t.Equal(target) {
 		return true
 	}
-	if target.Kind == TypeDyn {
+	if t.Kind == TypeInvalid || target.Kind == TypeInvalid {
 		return true
 	}
 	// Widening a number is lossless, so it needs no cast. An untyped numeric
@@ -679,19 +594,14 @@ func (t *Type) IsAssignableTo(target *Type) bool {
 	if t.Kind == TypeList && target.Kind == TypeList {
 		return t.Elems[0].IsAssignableTo(target.Elems[0])
 	}
-	// list<T> implicitly converts to iter<T>.
+	// list[T] implicitly converts to iter[T].
 	if t.Kind == TypeList && target.Kind == TypeIter && len(t.Elems) == 1 && len(target.Elems) == 1 {
 		return t.Elems[0].IsAssignableTo(target.Elems[0])
 	}
-	// map<K, V> → map<K', V'> where V is assignable to V' and K is
-	// assignable to K' under the same rules (Equal, or K' is dyn).
-	// Allowing K → dyn lets stdlib wrappers forward typed maps to
-	// intrinsics whose key types are deliberately erased (e.g. i18n's
-	// PluralKey-keyed maps → map<dyn, string> at the runtime boundary).
-	// Concrete-key conversions (like int → string) are still rejected.
+	// map[K, V] → map[K, V'] where V is assignable to V'. The keys must be
+	// equal: a key converted on the way in would be a different key.
 	if t.Kind == TypeMap && target.Kind == TypeMap && len(t.Elems) == 2 && len(target.Elems) == 2 {
-		keyOK := t.Elems[0].Equal(target.Elems[0]) || target.Elems[0].Kind == TypeDyn
-		return keyOK && t.Elems[1].IsAssignableTo(target.Elems[1])
+		return t.Elems[0].Equal(target.Elems[0]) && t.Elems[1].IsAssignableTo(target.Elems[1])
 	}
 	if t.Kind == TypeOption && target.Kind == TypeOption {
 		return t.Elems[0].IsAssignableTo(target.Elems[0])
@@ -706,7 +616,7 @@ func (t *Type) IsAssignableTo(target *Type) bool {
 	if t.Kind == TypeComponent && target.Kind == TypeComponent {
 		if f, ok := target.Decl.(*Component); ok && f.IsFamily() {
 			m, ok := t.Decl.(*Component)
-			if !ok || m.IsFamily() || !IsFamilyValue(m) || m.Tree != f {
+			if !ok || m.IsFamily() || !IsFamilyValue(m) || m.Family != f {
 				return false
 			}
 			if len(target.Elems) == 0 {
@@ -724,15 +634,6 @@ func (t *Type) IsAssignableTo(target *Type) bool {
 			return true
 		}
 	}
-	if t.Kind == TypeRemote && target.Kind == TypeRemote {
-		return t.Elems[0].IsAssignableTo(target.Elems[0])
-	}
-	// A bare T is deliberately NOT assignable to a remote.Value<T>, which is
-	// where this differs from option<T> just above. An option is "maybe a T", so
-	// promoting one loses nothing; a Value carries fetch state that no plain
-	// value implies, and a silent promotion would invent a settled box wherever
-	// a type happened to line up. remote.query constructs a box that fetches, and
-	// remote.of / failedWith / pending construct the three states directly.
 	return false
 }
 
@@ -755,50 +656,9 @@ func builtinOf(t *Type) BuiltinKind {
 // call this to detect the shape.
 func IsColorStruct(t *Type) bool { return builtinOf(t) == BuiltinColor }
 
-// IsRemoteFailureStruct reports whether t is sngl:remote's Failure.
-//
-// Matched by declaration site rather than by a #[builtin] kind: Failure is an
-// ordinary struct, and the compiler has no reason to know it beyond the one a
-// backend has — the Go runtime defines the type its boxes carry, so generated
-// code has to spell that rather than a struct of its own.
-func IsRemoteFailureStruct(t *Type) bool {
-	if t == nil || t.Kind != TypeStruct {
-		return false
-	}
-	sd, ok := t.Decl.(*StructDef)
-	return ok && sd.Name == "Failure" && sd.Pkg == remotePkg
-}
-
-// IsRemoteHTTPResultStruct reports whether t is sngl:remote/http's Result.
-//
-// Matched the same way and for the same reason as Failure above: the runtime
-// that performs the request is what defines the value a request answers with,
-// so generated code spells that type rather than declaring one of its own that
-// the transport could not return.
-func IsRemoteHTTPResultStruct(t *Type) bool {
-	if t == nil || t.Kind != TypeStruct {
-		return false
-	}
-	sd, ok := t.Decl.(*StructDef)
-	return ok && sd.Name == "Result" && sd.Pkg == remoteHTTPPkg
-}
-
-// remotePkg is sngl:remote, whose Failure a backend maps to its own runtime;
-// remoteHTTPPkg is sngl:remote/http, whose Result it maps the same way.
-const (
-	remotePkg     = "sngl:remote"
-	remoteHTTPPkg = "sngl:remote/http"
-)
-
 // StringReprStruct reports whether t is a struct with a canonical string form
 // (coerces to/from string): color, date, time, datetime.
 func StringReprStruct(t *Type) bool { return builtinOf(t).IsStringRepr() }
-
-// TargetIDStruct reports whether t is a target-identity type (platform,
-// language). A value of one carries the target's registered name as its Raw,
-// which is what lets the optimizer fold a comparison against PLATFORM or
-// LANGUAGE the way it folded one against a string.
-func TargetIDStruct(t *Type) bool { return builtinOf(t).IsTargetID() }
 
 // IsDateStruct/IsTimeStruct/IsDateTimeStruct report whether t is the date/
 // time/datetime value type. These three were formerly the TypeDate/TypeTime/
@@ -807,52 +667,6 @@ func TargetIDStruct(t *Type) bool { return builtinOf(t).IsTargetID() }
 func IsDateStruct(t *Type) bool     { return builtinOf(t) == BuiltinDate }
 func IsTimeStruct(t *Type) bool     { return builtinOf(t) == BuiltinTime }
 func IsDateTimeStruct(t *Type) bool { return builtinOf(t) == BuiltinDateTime }
-
-// The registered stdlib datetime struct type, so a phase with no scope of its
-// own (the foreign-type importers) can synthesize a canonical value type. Nil
-// before registration; the accessor falls back to TypDyn.
-var stdlibDateTimeType *Type
-
-// RegisterDateTimeStruct records the datetime struct. Idempotent.
-func RegisterDateTimeStruct(t *Type) {
-	if t != nil {
-		stdlibDateTimeType = t
-	}
-}
-
-// DateTimeType falls back to dyn before registration.
-func DateTimeType() *Type { return orDyn(stdlibDateTimeType) }
-
-func orDyn(t *Type) *Type {
-	if t != nil {
-		return t
-	}
-	return TypDyn
-}
-
-// Registered stdlib duration unit type, populated by the checker from the
-// #[builtin("duration")] declaration for the same reason as the datetime one:
-// a foreign-type importer has a Go time.Duration to map and no scope to
-// resolve a name in.
-var stdlibDurationUnit *Type
-
-// RegisterDurationUnit records the resolved stdlib duration unit type so the
-// DurationType accessor can hand it out. Idempotent.
-func RegisterDurationUnit(duration *Type) {
-	if duration != nil {
-		stdlibDurationUnit = duration
-	}
-}
-
-// DurationType returns the registered stdlib duration unit type, falling back
-// to int when the stdlib has not been loaded yet — a duration's magnitude is
-// carried in its base unit, so int is the lossless fallback rather than dyn.
-func DurationType() *Type {
-	if stdlibDurationUnit != nil {
-		return stdlibDurationUnit
-	}
-	return TypInt
-}
 
 // FuncSig describes a function signature.
 type FuncSig struct {
@@ -933,6 +747,12 @@ func NativeGoPointerOf(name string) *Type {
 	return &Type{Kind: TypeNative, Meta: NativeTypeRef{CgoC: false, Name: name}}
 }
 
+// NativeNamed is a host type spelled name in the target's own language --
+// `HTMLElement` on JavaScript -- for a value only emitted code holds.
+func NativeNamed(name string) *Type {
+	return &Type{Kind: TypeNative, Meta: NativeTypeRef{Name: name, Bare: true}}
+}
+
 // NativeGoNamed returns an *ir.Type that renders as the bare Go type name
 // (no leading "*"), for already-pointer-like named types such as an opaque
 // handle (e.g. "gtk4rt.Handle").
@@ -948,6 +768,67 @@ func anonStructDef(t *Type) *StructDef {
 		return nil
 	}
 	return sd
+}
+
+// AnonStructDef is t's declaration when t is an anonymous struct, nil
+// otherwise.
+func AnonStructDef(t *Type) *StructDef {
+	if t == nil {
+		return nil
+	}
+	return anonStructDef(t)
+}
+
+// FieldNamed is the field of fields called name, nil for none.
+func FieldNamed(fields []*StructField, name string) *StructField {
+	for _, f := range fields {
+		if f.Name == name {
+			return f
+		}
+	}
+	return nil
+}
+
+// IsUninternedAnon reports whether sd is an anonymous struct the checker
+// declared without interning it: one whose fields name a type parameter, or
+// what substituting one made. Only an interned declaration is named, so the
+// missing name is what says so.
+func IsUninternedAnon(sd *StructDef) bool {
+	return sd != nil && sd.Anon && sd.Name == ""
+}
+
+// FieldsOf is the fields a value of type t is known to have, each at its
+// type: a struct's own with t's type arguments bound, or a type parameter's
+// struct constraint's. ok is false for a type that has no fields to measure.
+func FieldsOf(t *Type) (fields []*StructField, ok bool) {
+	if t == nil {
+		return nil, false
+	}
+	if t.Kind == TypeTypeParam {
+		if sym, _ := t.Decl.(*TypeParamSym); sym != nil && sym.Constraint != nil && sym.Constraint.Kind == TypeStruct {
+			return FieldsOf(sym.Constraint)
+		}
+		return nil, false
+	}
+	if t.Kind != TypeStruct {
+		return nil, false
+	}
+	sd, _ := t.Decl.(*StructDef)
+	if sd == nil {
+		return nil, false
+	}
+	if len(sd.TypeParams) == 0 || len(t.Elems) != len(sd.TypeParams) {
+		return sd.Fields, true
+	}
+	bindings := make(map[string]*Type, len(sd.TypeParams))
+	for i, tp := range sd.TypeParams {
+		bindings[tp.Name] = t.Elems[i]
+	}
+	out := make([]*StructField, len(sd.Fields))
+	for i, f := range sd.Fields {
+		out[i] = &StructField{Name: f.Name, Type: f.Type.Substitute(bindings)}
+	}
+	return out, true
 }
 
 // sameFields reports whether two field lists, each in the name order an

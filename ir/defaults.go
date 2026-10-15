@@ -1,7 +1,7 @@
 package ir
 
 // ZeroExpr returns a zero-value IR expression for t. Returns nil when t has no
-// well-defined zero (dyn, invalid, unresolved type parameters, component types).
+// well-defined zero (invalid, unresolved type parameters, component types).
 func ZeroExpr(t *Type) Expr {
 	if t == nil {
 		return nil
@@ -21,23 +21,6 @@ func ZeroExpr(t *Type) Expr {
 		return &Literal{Type: TypNull, Value: "null"}
 	case TypeList:
 		return &ListLit{Type: t, Elems: nil}
-	case TypeRemote:
-		// The idle remote: no value, no failure, nothing in flight. An empty
-		// composite of the type, the way a struct's zero is — every host's zero
-		// three-field record already reads that way, so no backend has to
-		// special-case it.
-		//
-		// Having one is what keeps a remote total. Reading `.value()` off a
-		// remote nothing has fetched answers null rather than faulting, which is
-		// the point of returning the box instead of the bare T: `option<T>`
-		// carries the absence, so no accessor has a case with no answer.
-		//
-		// Note this is a zero of remote<T>, not a zero of T. The bug in the
-		// current async lowering is that it seeds with ZeroExpr(T) — a fetched
-		// empty list and a fetch still in flight are then the same []. A zero
-		// remote is distinguishable from a fetched anything, because `value()`
-		// is null and `inFlight()` is false.
-		return &StructLit{Type: t, Fields: nil}
 	case TypeStruct:
 		// date/time/datetime are string-representable stdlib structs (like
 		// color); their zero value is a canonical-form string literal rather
@@ -135,7 +118,7 @@ func zeroFuncExpr(t *Type) Expr {
 		TypeParams: t.Sig.TypeParams,
 		Purity:     t.Sig.Purity,
 	}
-	if t.Sig.Return != nil && t.Sig.Return.Kind != TypeDyn && t.Sig.Return.Kind != TypeInvalid {
+	if t.Sig.Return != nil && t.Sig.Return.Kind != TypeInvalid {
 		if z := ZeroExpr(t.Sig.Return); z != nil {
 			fn.Block = []Stmt{&Return{Value: z}}
 		} else {
@@ -199,11 +182,6 @@ func normalizeVar(v *Var) {
 	} else {
 		normalizeExpr(v.Init)
 	}
-	for _, h := range v.Handlers {
-		if h != nil && h.Func != nil {
-			normalizeFunc(h.Func)
-		}
-	}
 }
 
 func normalizeFunc(f *Func) {
@@ -214,7 +192,7 @@ func normalizeFunc(f *Func) {
 	if f.Return == nil {
 		return
 	}
-	if f.Return.Kind == TypeInvalid || f.Return.Kind == TypeDyn {
+	if f.Return.Kind == TypeInvalid {
 		return
 	}
 	if len(f.Block) > 0 {
@@ -244,7 +222,7 @@ func normalizeComponent(c *Component) {
 	for _, f := range c.Funcs {
 		normalizeFunc(f)
 	}
-	c.Body = normalizeStmts(c.Body)
+	c.Stmts = normalizeStmts(c.Stmts)
 }
 
 func normalizeStmts(stmts []Stmt) []Stmt {

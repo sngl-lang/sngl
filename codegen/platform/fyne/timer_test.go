@@ -4,8 +4,9 @@ import (
 	"strings"
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/internal/lower"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/internal/lower"
+	"duckfam.us/sngl/ir"
 )
 
 // A component with a timer must emit a schedule, and its tick body must go
@@ -41,6 +42,7 @@ window {
 	// The platform's own capabilities rather than a hand-written pair: the
 	// timer is an effect now, and a Caps literal that forgets NoEffects leaves
 	// the node standing and nothing emits a schedule at all.
+	pkg = ir.ClonePackage(pkg)
 	if err := lower.Lower(pkg, codegen.CapsOrNone(lang.LanguageIdentifier(), g.PlatformIdentifier()), lower.Options{Platform: "fyne", Language: "go"}); err != nil {
 		t.Fatalf("lower: %v", err)
 	}

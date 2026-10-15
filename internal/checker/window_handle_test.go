@@ -3,8 +3,8 @@ package checker
 import (
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/internal/parser"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/internal/parser"
+	"duckfam.us/sngl/ir"
 )
 
 // A window's `#id` binds the same *ir.Var every other node id binds, and the
@@ -67,7 +67,7 @@ window #home(title="Home") {
 // body's `page.title` reads that window's handle.
 func TestLoopWindowIDNamesItsIteration(t *testing.T) {
 	src := `
-const items list<string> = ["a", "b"]
+const items list[string] = ["a", "b"]
 
 for var it = items {
     window #page(title=it) {

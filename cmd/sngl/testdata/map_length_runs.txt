@@ -31,7 +31,7 @@ output {
 }
 
 component counts node {
-    var stock map<string, int> = {"a"=1, "b"=2}
+    var stock map[string, int] = {"a"=1, "b"=2}
     var xs = [1, 2, 3]
     var mapLen = 0
     var listLen = 0
@@ -51,7 +51,7 @@ func testLength(t Test, c counts) {
 window {
 }
 -- testrun/bubbletea/go/app.sngl/counts/1 --
-sha256:3a3656870f780e96646764d9b808ed9a
+sha256:a4a06539f07bbfadfc787c62e4483058
 {
   "results": [
     {

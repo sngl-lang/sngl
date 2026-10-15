@@ -8,7 +8,7 @@ import (
 )
 
 // optionWrapRunSrc exercises both halves of the option conversion pair in one
-// program: the promotion of a bare T into an option<T>, and the unwrap a null
+// program: the promotion of a bare T into an option[T], and the unwrap a null
 // test earns on the way back out.
 //
 // `h` promotes an addressable operand and `fresh` promotes one that is not --
@@ -27,7 +27,7 @@ struct Box {
 }
 
 struct Holder {
-    inner option<Box> = null
+    inner option[Box] = null
 }
 
 var made = 0
@@ -87,7 +87,7 @@ func TestAValueFromACallReachesTheOption(t *testing.T) {
 // TestOptionWrapAndUnwrapRunInTheEmittedProgram generates the program, builds
 // it and RUNS it.
 //
-// Building it is most of the claim and running it is the rest. Go's option<T>
+// Building it is most of the claim and running it is the rest. Go's option[T]
 // is *T, so the promotion is a box the checker inserts and the Go emitter
 // spells: `(*Box)(b)` -- what the generic conversion path emits -- does not
 // compile, and neither does `&nextBox()`. What only running catches is the

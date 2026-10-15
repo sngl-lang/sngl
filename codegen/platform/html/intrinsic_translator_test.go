@@ -5,9 +5,9 @@ import (
 	"strings"
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/codegen/lang/javascript"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/codegen/lang/javascript"
+	"duckfam.us/sngl/ir"
 )
 
 // stubJsCtx builds a JsIRContext suitable for translator unit tests —
@@ -208,7 +208,7 @@ func TestHTMLTranslator_OnAttachHandler_UndeclaredEvent(t *testing.T) {
 func TestHTMLTranslator_OnSlotReset(t *testing.T) {
 	jc := stubJsCtx()
 	tr := newTranslatorForTest(t, jc)
-	slot := &ir.Var{Name: "__slot0", Type: ir.TypDyn, Synthesized: true}
+	slot := &ir.Var{Name: "__slot0", Type: ir.ListOf(&ir.Type{Kind: ir.TypeComponent}), Synthesized: true}
 	got := renderStmts(jc, tr.OnSlotReset(context.Background(), slot))
 	if !strings.Contains(got, "__slot0 = []") {
 		t.Errorf("expected __slot0 = []; got: %s", got)
@@ -218,7 +218,7 @@ func TestHTMLTranslator_OnSlotReset(t *testing.T) {
 func TestHTMLTranslator_OnSlotAppend(t *testing.T) {
 	jc := stubJsCtx()
 	tr := newTranslatorForTest(t, jc)
-	slot := &ir.Var{Name: "__slot0", Type: ir.TypDyn, Synthesized: true}
+	slot := &ir.Var{Name: "__slot0", Type: ir.ListOf(&ir.Type{Kind: ir.TypeComponent}), Synthesized: true}
 	child := synthNodeRef("__n0")
 	got := renderStmts(jc, tr.OnSlotAppend(context.Background(), slot, child))
 	if !strings.Contains(got, "__slot0.push(__n0)") {

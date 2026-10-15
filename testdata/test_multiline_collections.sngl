@@ -2,8 +2,8 @@ import . "sngl:ui"
 import . "sngl:test"
 
 struct Config {
-    name string = ""
-    count int = 0
+    name    string = ""
+    count   int = 0
     enabled bool = false
 }
 

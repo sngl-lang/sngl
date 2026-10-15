@@ -7,9 +7,10 @@ import (
 	"strings"
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
-	_ "git.duckfam.us/jonathan/sngl/codegen/lang"
-	"git.duckfam.us/jonathan/sngl/internal/lower"
+	"duckfam.us/sngl/codegen"
+	_ "duckfam.us/sngl/codegen/lang"
+	"duckfam.us/sngl/internal/lower"
+	"duckfam.us/sngl/ir"
 )
 
 func TestIntegration_ReactiveIfEmitsRenderSlot(t *testing.T) {
@@ -32,6 +33,7 @@ window {
 	// other, which is the inliner this platform withholds inlineComponents
 	// to ask for.
 	feats.InlineComponents = false
+	pkg = ir.ClonePackage(pkg)
 	if err := lower.Lower(pkg, feats, lower.Options{Platform: "fyne", Language: "go"}); err != nil {
 		t.Fatalf("lower: %v", err)
 	}

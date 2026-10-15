@@ -4,7 +4,7 @@ import (
 	"slices"
 	"sync/atomic"
 
-	"git.duckfam.us/jonathan/sngl/ast"
+	"duckfam.us/sngl/ast"
 )
 
 var spreadSeq atomic.Int64
@@ -117,7 +117,7 @@ func (c *spreadCollector) add(x *Select, cond bool) {
 	if !ok {
 		i = len(c.groups)
 		c.byID[x.Spread] = i
-		c.groups = append(c.groups, spreadGroupAcc{SpreadGroup: SpreadGroup{ID: x.Spread, Operand: x.Operand}})
+		c.groups = append(c.groups, spreadGroupAcc{ID: x.Spread, Operand: x.Operand})
 	}
 	g := &c.groups[i]
 	g.conditional = g.conditional || cond

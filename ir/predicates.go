@@ -5,7 +5,7 @@ import (
 	"slices"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/ast"
+	"duckfam.us/sngl/ast"
 )
 
 // IR-level predicates and accessors shared by the checker and every codegen
@@ -25,12 +25,12 @@ func IsNullToFuncConv(n *Conversion) bool {
 }
 
 // IsOptionUnwrap reports whether a conversion is the unwrap a null test
-// earns: an option<T> read in the branch where it cannot be null, typed T.
+// earns: an option[T] read in the branch where it cannot be null, typed T.
 //
 // It is a conversion rather than a Unary{UnaryDeref} because a deref means
-// ref<T> to everything that already reads one -- passNoRef rewrites it to
+// ref[T] to everything that already reads one -- passNoRef rewrites it to
 // `.value` on a box, and the folder drops it outright when the operand is not
-// a ref. What each language emits for it differs: Go's option<T> is *T and
+// a ref. What each language emits for it differs: Go's option[T] is *T and
 // needs the star, Kotlin's is T? and needs `!!`, and JavaScript's is the value
 // itself and needs nothing.
 func IsOptionUnwrap(n *Conversion) bool {
@@ -45,7 +45,7 @@ func IsOptionUnwrap(n *Conversion) bool {
 }
 
 // IsOptionWrap reports whether a conversion is the promotion of a bare T into
-// the option<T> a declaration asked for -- the inverse of IsOptionUnwrap.
+// the option[T] a declaration asked for -- the inverse of IsOptionUnwrap.
 //
 // A null operand is not one: `null` already IS the empty option on every
 // target, and each language answers it before it reaches here. Neither is an
@@ -53,7 +53,7 @@ func IsOptionUnwrap(n *Conversion) bool {
 // promotion.
 //
 // The wrap has to survive folding and reach codegen because it is not a no-op
-// everywhere: Go's option<T> is *T, so the T needs a box. Kotlin's is T? and
+// everywhere: Go's option[T] is *T, so the T needs a box. Kotlin's is T? and
 // JavaScript's is the value itself, and both emit the operand unchanged.
 func IsOptionWrap(n *Conversion) bool {
 	if n == nil || n.Type == nil || n.Operand == nil {
@@ -67,7 +67,7 @@ func IsOptionWrap(n *Conversion) bool {
 		return false
 	}
 	switch src.Kind {
-	case TypeNull, TypeOption, TypeDyn, TypeInvalid:
+	case TypeNull, TypeOption, TypeInvalid:
 		return false
 	}
 	return src.Equal(n.Type.Elems[0])
@@ -83,7 +83,37 @@ func IsErrorRaiseFunc(fn *Func) bool {
 	if fn.Intrinsic == "error.raise" {
 		return true
 	}
-	return fn.Receiver == "error" && fn.Name == "raise"
+	return fn.RecvName() == "error" && fn.Name == "raise"
+}
+
+// The ids sngl:test's methods are marked with. No language emits them as calls:
+// each test harness answers them where it lowers a test body.
+const (
+	TestAssertID     = "test.assert"
+	TestMustID       = "test.must"
+	TestSetLocaleID  = "test.setLocale"
+	TestSetContextID = "test.setContext"
+	TestWaitID       = "test.wait"
+	TestSnapshotID   = "test.snapshot"
+	TestTickID       = "test.tick"
+	TestSubtestID    = "test.test"
+)
+
+// IsTestCall reports whether c calls the sngl:test method marked id.
+func IsTestCall(c *Call, id string) bool {
+	return c != nil && c.Func != nil && c.Func.Intrinsic == id
+}
+
+// IsTestMethodCall reports whether c calls any sngl:test method.
+func IsTestMethodCall(c *Call) bool {
+	if c == nil || c.Func == nil {
+		return false
+	}
+	switch c.Func.Intrinsic {
+	case TestAssertID, TestMustID, TestSetLocaleID, TestSetContextID, TestWaitID, TestSnapshotID, TestTickID, TestSubtestID:
+		return true
+	}
+	return false
 }
 
 // StmtPos returns the source position of an IR statement when one is available.
@@ -164,11 +194,11 @@ func StmtPos(s Stmt) ast.Pos {
 // comparison is emitted from this same walk: a struct compares field by field,
 // so a struct whose fields all compare alike does too, and one with no fields
 // is always equal to another -- which is exactly what a bracket with no `on`
-// wants of `effect<T = struct {}>`.
+// wants of `effect[T = struct {}]`.
 //
 // A phrase rather than a bool because a struct's answer is about something the
 // type's name does not show. "struct changed is not comparable" sends a reader
-// to the wrong declaration; "list<string> (field tags of struct changed)" names
+// to the wrong declaration; "list[string] (field tags of struct changed)" names
 // the line to change.
 func RebuildIncomparable(t *Type) string {
 	bad, path := rebuildIncomparable(t, nil)
@@ -250,7 +280,7 @@ func ComponentSelfRefs(comp *Component) bool {
 		return false
 	}
 	found := false
-	Walk(comp.Body, func(n Node) error {
+	Walk(comp.Stmts, func(n Node) error {
 		if inst, ok := n.(*NodeInst); ok && inst.Component == comp {
 			found = true
 		}
@@ -272,7 +302,7 @@ func IsHostValue(v *Var) bool {
 }
 
 // NumericListConversion reports whether a conversion re-types a list's
-// numeric elements, as widening a list<int> into a list<float> does, and
+// numeric elements, as widening a list[int] into a list[float] does, and
 // returns the two list types. A host holding each element in its own
 // representation converts element by element rather than casting the list.
 func NumericListConversion(n *Conversion) (src, dst *Type, ok bool) {

@@ -1,6 +1,6 @@
 `progress` written with no `value` is indeterminate: a bar that says work is
 happening and not how much is left. Zero is a legitimate fraction and cannot
-double as "not known", so `value` is an `option<float>` and the absence is in
+double as "not known", so `value` is an `option[float]` and the absence is in
 the type -- which is also the only way an override can ask whether a call site
 supplied it at all.
 
@@ -25,7 +25,7 @@ takes `() -> Float`, so the intrinsic declares a func prop returning `float32`
 and the emitter writes Kotlin's anonymous-function literal -- `fun(): Float`
 states both the return type inference would have got wrong and the `return`
 a lambda cannot carry. And the fraction still folds to a constant through the
-option: `float(option<float>(2.0)) / 10.0` is 0.2 before any target sees it.
+option: `float(option[float](2.0)) / 10.0` is 0.2 before any target sees it.
 
 deny out/none/html/index.html `value=""` -- an absent value leaves the attribute off; it is not an empty one
 deny out/kotlin/android/app/src/main/java/test/sngl/app/MainScreen.kt `null` -- both call sites are settled at build time, so no null test and no nullable Double survive into Kotlin
@@ -61,8 +61,8 @@ import (
 	"charm.land/bubbles/v2/progress"
 	"charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"duckfam.us/sngl/pkg/go/tui"
 	"fmt"
-	"git.duckfam.us/jonathan/sngl/pkg/go/tui"
 	"os"
 )
 
@@ -175,10 +175,10 @@ func main() {
 package main
 
 import (
+	"duckfam.us/sngl/pkg/go/fynelayout"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/widget"
-	"git.duckfam.us/jonathan/sngl/pkg/go/fynelayout"
 	"os"
 )
 
@@ -370,6 +370,18 @@ static void sngl_unref_pixbuf(GdkPixbuf *p) {
     if (p != NULL) g_object_unref(p);
 }
 
+// Selects a day the way a click on it does, for gtk4's datepicker override
+// (selectDay) and a test's invoker. select_day is the call every GTK 4 has;
+// 4.20 deprecates it for set_date, which the older ones lack.
+static void sngl_calendar_select(GtkCalendar *c, int y, int m, int d) {
+    GDateTime *dt = g_date_time_new_utc(y, m, d, 0, 0, 0);
+    if (dt == NULL) return;
+    G_GNUC_BEGIN_IGNORE_DEPRECATIONS
+    gtk_calendar_select_day(c, dt);
+    G_GNUC_END_IGNORE_DEPRECATIONS
+    g_date_time_unref(dt);
+}
+
 static void sngl_set_entry_text(GtkEditable *e, const char *t) {
     const char *cur = gtk_editable_get_text(e);
     if (t == NULL) t = "";
@@ -465,29 +477,18 @@ func (m *Model) BuildUI(app *C.GtkApplication) *C.GtkWidget {
 
 package test.sngl.app
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.*
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
-import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color as ComposeColor
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
-import androidx.activity.compose.BackHandler
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.platform.LocalContext
 import android.app.Activity
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.layout.Column
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
 
 fun _snglFloatStr(v: Double): String =
@@ -544,12 +545,12 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:9ebbe40623d075fcfe558cfbd7d2003c
+pass sha256:2e39ab1f24730afa975908dfe1fcf8d8
 -- run/go/fyne --
-pass sha256:63242e1dc2100b63689396f06e92bc9d
+pass sha256:59abfe38f664f8b16684ba4fce7475e2
 -- run/go/gtk4 --
-pass sha256:dc345a1aeadcf8dec3804fd60122fd0b
+pass sha256:a2536c742f0767267c9cf46f4c8b0ccb
 -- run/kotlin/android --
-pass sha256:8176d6c8217526d9acdf7fdcf35e48a4
+pass sha256:661d93e1a029014a2a96b1a1d85ad104
 -- run/none/html --
 pass sha256:c95b5bab246a9e2d15d850386fa75775

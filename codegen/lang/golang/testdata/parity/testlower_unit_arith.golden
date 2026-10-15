@@ -21,7 +21,7 @@ func TestMeasurementArithmetic(t *testing.T) {
 // ==== TestEmitAgent ====
 package ui
 
-import "git.duckfam.us/jonathan/sngl/pkg/go/testagent"
+import "duckfam.us/sngl/pkg/go/testagent"
 
 func testMeasurementArithmetic(t *testagent.T) {
 	c := newTestComponent()

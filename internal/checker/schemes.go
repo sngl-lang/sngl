@@ -6,9 +6,9 @@ import (
 	"strings"
 	"sync"
 
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/internal/imports"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/internal/imports"
+	"duckfam.us/sngl/ir"
 )
 
 // An import scheme is served three ways: by an importer compiled into the
@@ -110,8 +110,15 @@ func (c *checker) libraryScheme(name string) *ir.Scheme {
 	}
 	libs := c.libs
 	if s, ok := libs.schemes[name]; ok {
+		c.replayLoad("scheme:" + name)
 		return s
 	}
+	defer c.loadHold()()
+	if s, ok := libs.schemes[name]; ok {
+		c.replayLoad("scheme:" + name)
+		return s
+	}
+	defer c.recordLoad("scheme:"+name, len(c.diags))
 	libs.schemes[name] = nil // a plugin reaching its own scheme finds none
 	uri := "sngl:" + SchemeTier + name
 	docs := PackageDocsFor(SchemeTier + name)
@@ -123,6 +130,7 @@ func (c *checker) libraryScheme(name string) *ir.Scheme {
 		Targets:       c.targets,
 		LibSources:    c.cfg.LibSources,
 		libs:          libs,
+		hold:          c.hold,
 		generating:    c.generating,
 		libraryScheme: name,
 		noTargets:     true,
@@ -455,4 +463,33 @@ func (c *checker) checkCLinks() {
 		}
 		c.pkg.CLinks = append(c.pkg.CLinks, link)
 	}
+}
+
+// reportUnlinkedCNativeCalls refuses a call of a program's `#[cnative]`
+// function when no c.link reaches the package making it.
+//
+// A cgo preamble declares a C identifier only through a header, and the
+// headers a Go target includes for a program are its reached c.links
+// (ir.ReachedCLinks). With none, the call compiled through to the Go
+// toolchain, which answered `undefined: C` or "could not determine what C.abs
+// refers to" with no position in the program. A library's declaration is
+// exempt: gtk4's cairo functions and what `gir:` generates name headers its
+// own preamble includes. Declaring one is not refused, since a declaration
+// nothing calls reaches no preamble.
+func (c *checker) reportUnlinkedCNativeCalls() {
+	if c.inLibSource() || c.pkg.Library || len(ir.ReachedCLinks(c.pkg)) > 0 {
+		return
+	}
+	_ = ir.Walk(c.pkg, func(n ir.Node) error {
+		call, ok := n.(*ir.Call)
+		if !ok || call.AST == nil || call.Func == nil {
+			return nil
+		}
+		fn := call.Func
+		if fn.Foreign.Scheme != "c" || (fn.Pkg != nil && fn.Pkg.Library) {
+			return nil
+		}
+		c.error(call.AST.Pos, "C function %q is called, but no c.link names the header that declares it: write c.link(include=…) from sngl:x/c, or import a c: package", fn.Foreign.Name)
+		return nil
+	})
 }

@@ -4,11 +4,11 @@ import (
 	"strings"
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/internal/checker"
-	"git.duckfam.us/jonathan/sngl/internal/lower"
-	"git.duckfam.us/jonathan/sngl/internal/parser"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/internal/checker"
+	"duckfam.us/sngl/internal/lower"
+	"duckfam.us/sngl/internal/parser"
+	"duckfam.us/sngl/ir"
 )
 
 // androidTarget is the registered-platform set these tests check against.
@@ -39,6 +39,7 @@ func compileSrc(t *testing.T, src string, testMode bool) string {
 	}
 	gen := &Generator{}
 	kotlinLang := codegen.LookupLang("kotlin")
+	pkg = ir.ClonePackage(pkg)
 	if err := lower.Lower(pkg, codegen.CapsOrNone(kotlinLang.LanguageIdentifier(), gen.PlatformIdentifier()), lower.Options{Platform: gen.PlatformIdentifier()}); err != nil {
 		t.Fatalf("lower: %v", err)
 	}
@@ -69,8 +70,8 @@ struct User {
 }
 struct TreeNode {
     value int = 0
-    left dyn = null
-    right dyn = null
+    left option[TreeNode] = null
+    right option[TreeNode] = null
 }
 ui.window {
     var u = User{}
@@ -83,8 +84,8 @@ ui.window {
 		`var admin: Boolean = false`,
 		`var name: String = ""`,
 		`var value: Int = 0`,
-		`var left: Any? = null`,
-		`var right: Any? = null`,
+		`var left: TreeNode? = null`,
+		`var right: TreeNode? = null`,
 	} {
 		if !strings.Contains(out, want) {
 			t.Errorf("missing %q in:\n%s", want, out)
@@ -95,7 +96,7 @@ ui.window {
 	}
 }
 
-// TestNullStateTyped guards that an option/dyn var initialized to null emits a
+// TestNullStateTyped guards that an option var initialized to null emits a
 // typed mutableStateOf so Kotlin can infer the type. Regression for the
 // null-state fix.
 func TestNullStateTyped(t *testing.T) {
@@ -103,8 +104,8 @@ func TestNullStateTyped(t *testing.T) {
 import ui "sngl:ui"
 struct User { name string = "" }
 ui.window {
-    var nickname option<string> = null
-    var picked option<User> = null
+    var nickname option[string] = null
+    var picked option[User] = null
     vbox { text(value="x") }
 }`
 	out := compileSrc(t, src, false)
@@ -164,7 +165,7 @@ func TestTestModeStateHoisting(t *testing.T) {
 import ui "sngl:ui"
 ui.window {
     var count = 0
-    var nick option<string> = null
+    var nick option[string] = null
     func doubled() => count * 2
     vbox { text(value=string(doubled)) }
 }`
@@ -196,11 +197,18 @@ import ui "sngl:ui"
 ui.window {
     var fruit = ""
     var size = "medium"
-    var dob date = date("2000-01-01")
+    var dob option[date] = date("2000-01-01")
     vbox {
-        select(options=["Apple", "Banana"], placeholder="File.pick", :value=fruit)
-        radio(direction="horizontal", options=["small", "medium", "large"], :value=size)
-        datepicker(placeholder="Birthday", value=dob)
+        select(placeholder="File.pick", :value=fruit) {
+            choice(label="Apple")
+            choice(label="Banana")
+        }
+        radio(direction=horizontal, :value=size) {
+            choice(label="small")
+            choice(label="medium")
+            choice(label="large")
+        }
+        datepicker(placeholder="Birthday", :value=dob)
     }
 }`
 	out := compileSrc(t, src, false)
@@ -214,14 +222,13 @@ ui.window {
 		}
 	}
 	// radio: a RadioButton per option, selected reflects the bound value.
-	if !strings.Contains(out, "RadioButton(selected = (size == opt)") {
+	if !strings.Contains(out, "RadioButton(selected = (size == opt.label)") {
 		t.Errorf("radio not rendered as RadioButton group:\n%s", out)
 	}
-	// datepicker: a field showing the value (not bare Text). `value` is an
-	// option<date>, so what the field shows is the date under a null test --
-	// a date nobody picked shows nothing rather than the zero date.
-	if !strings.Contains(out, "OutlinedTextField(") || !strings.Contains(out, "dob != null") {
-		t.Errorf("datepicker not rendered as a value-bound field:\n%s", out)
+	// datepicker: SnglDateField, the field a date is typed or picked in,
+	// handed the bound option[date] itself and writing a pick back to it.
+	if !strings.Contains(out, "SnglDateField(value = dob") || !strings.Contains(out, "dob = v") {
+		t.Errorf("datepicker not rendered as a value-bound SnglDateField:\n%s", out)
 	}
 }
 
@@ -229,6 +236,7 @@ ui.window {
 // whose android override is a declared #[intrinsic] rather than a Go switch
 // case. `tabs` also guards the bound `selected` index reaching TabRow: the
 // switch it replaced passed a literal 0, so a program could not select a tab.
+// Each `tab` is a Material Tab in the row.
 func TestFeedbackIntrinsicsFromDeclarations(t *testing.T) {
 	src := `import . "sngl:ui"
 import ui "sngl:ui"
@@ -240,9 +248,13 @@ ui.window {
         card(variant="outlined") {
             text(value="in a card")
         }
-        tabs(items=["One", "Two"], selected=idx) {
-            text(value="one")
-            text(value="two")
+        tabs(:selected=idx) {
+            tab(label="One") {
+                text(value="one")
+            }
+            tab(label="Two") {
+                text(value="two")
+            }
         }
     }
 }`
@@ -252,6 +264,7 @@ ui.window {
 		"CircularProgressIndicator(modifier = Modifier)",
 		"Card(modifier = Modifier) {",
 		"TabRow(selectedTabIndex = idx) {",
+		"Tab(selected = ",
 	} {
 		if !strings.Contains(out, want) {
 			t.Errorf("missing %q:\n%s", want, out)

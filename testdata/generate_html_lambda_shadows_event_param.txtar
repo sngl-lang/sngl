@@ -16,11 +16,11 @@ output {
 }
 
 component main node {
-    var xs list<int> = [1, 2, 3]
+    var xs list[int] = [1, 2, 3]
     var n int = 0
     var name = ""
     input(value=name, @input(e) {
-        name = e.value
+        name = e
         n = xs.filter(func(e int) => e > 1).length()
     })
     text(value="{n}")
@@ -42,33 +42,33 @@ body { font-family: system-ui, sans-serif; }
   </style>
 </head><body>
 
-<input id="__n1" data-sngl-id="__n1" placeholder="" type=""/>
+<input id="__n1" data-sngl-id="__n1" placeholder="" type="text"/>
 <span id="__n2" data-sngl-id="__n2">
 </span>
 
 <script>
 (() => {
   // sngl-entry.js
-  var state = { xs__inst0: [1, 2, 3], n__inst0: 0, name__inst0: "", visible__inst1: true, value__inst2: null };
-  state.value__inst2 = state.name__inst0;
+  var state = { xs__inst0: [1, 2, 3], n__inst0: 0, name__inst0: "", visible__inst0: true, value__inst0: null };
+  state.value__inst0 = state.name__inst0;
   function String(v) {
     return "" + v;
   }
   var __n1 = document.querySelector('[data-sngl-id="__n1"]');
   var __n2 = document.querySelector('[data-sngl-id="__n2"]');
   __n1.addEventListener("input", function(e) {
-    state.value__inst2 = e.target.value;
-    __n1.value = state.value__inst2;
-    state.name__inst0 = e.target.value;
-    state.n__inst0 = state.xs__inst0.filter((e2) => __event > 1).length;
+    state.value__inst0 = e.currentTarget.value;
+    __n1.value = state.value__inst0;
+    state.name__inst0 = state.value__inst0;
+    state.n__inst0 = state.xs__inst0.filter((e2) => state.value__inst0 > 1).length;
     __n2.textContent = String(state.n__inst0);
   });
   __n1.addEventListener("change", function(e) {
-    state.value__inst2 = e.target.value;
-    __n1.value = state.value__inst2;
+    state.value__inst0 = e.currentTarget.value;
+    __n1.value = state.value__inst0;
   });
   function __sngl_init() {
-    __n1.value = state.value__inst2;
+    __n1.value = state.value__inst0;
     __n2.textContent = String(state.n__inst0);
   }
   __sngl_init();
@@ -76,4 +76,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:e72cac4471aaa0f7d1880a098bee711a
+pass sha256:37f6fac8a5613bcefbe633984d5513ef

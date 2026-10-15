@@ -6,7 +6,7 @@
 import . "sngl:ui"
 import . "sngl:test"
 
-func wrap<T>(v T) => {item=v}
+func wrap[T any](v T) => {item=v}
 
 component main node {
     var (

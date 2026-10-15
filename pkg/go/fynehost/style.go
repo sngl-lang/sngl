@@ -6,9 +6,9 @@ import (
 	fyne "fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
 
-	"git.duckfam.us/jonathan/sngl/pkg/go/fynelayout"
-	"git.duckfam.us/jonathan/sngl/pkg/go/fynetheme"
-	"git.duckfam.us/jonathan/sngl/pkg/go/snglhost"
+	"duckfam.us/sngl/pkg/go/fynelayout"
+	"duckfam.us/sngl/pkg/go/fynetheme"
+	"duckfam.us/sngl/pkg/go/snglhost"
 )
 
 // style is the part of sngl.Style this host can answer, in the
@@ -57,10 +57,13 @@ func (s style) theme(base fyne.Theme) fynetheme.Theme {
 	return t
 }
 
-// num reads a measurement. A `measurement` crosses the wire as its number, and
-// JSON has only float64.
+// num reads a number or a measurement. JSON has only float64, and a
+// `measurement` crosses as its magnitude per base, an em being the default
+// theme's text size.
 func num(v any) float32 {
 	switch x := v.(type) {
+	case map[string]any:
+		return num(x["px"]) + emPx*(num(x["em"])+num(x["rem"]))
 	case float64:
 		return float32(x)
 	case float32:
@@ -70,6 +73,10 @@ func num(v any) float32 {
 	}
 	return 0
 }
+
+// emPx is an em: the default theme's text size, as the code generator reads
+// one.
+const emPx = 14
 
 // colorOf reads a color record, which is four channels rather than a string.
 func colorOf(v any) color.Color {

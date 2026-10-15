@@ -6,13 +6,13 @@ import (
 	"path/filepath"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/internal/checker"
-	"git.duckfam.us/jonathan/sngl/internal/lower"
-	"git.duckfam.us/jonathan/sngl/internal/optimize"
-	"git.duckfam.us/jonathan/sngl/internal/parser"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/internal/checker"
+	"duckfam.us/sngl/internal/lower"
+	"duckfam.us/sngl/internal/optimize"
+	"duckfam.us/sngl/internal/parser"
+	"duckfam.us/sngl/ir"
 )
 
 // CompilePreviewHTML compiles a .sngl file to HTML for the given platform and language.
@@ -34,6 +34,7 @@ func CompilePreviewHTML(sourceFile, platform, lang string) ([]byte, error) {
 // a caller that already has one -- a package read from several files has no
 // single source file to re-read.
 func compilePreviewHTMLDoc(pkg *ir.Package, platform, lang string) ([]byte, error) {
+	pkg = ir.ClonePackageFor(pkg, platform, lang)
 	optCfg := &optimize.Config{
 		Platform: platform,
 		Language: lang,
@@ -55,9 +56,9 @@ func compilePreviewHTMLDoc(pkg *ir.Package, platform, lang string) ([]byte, erro
 	}
 	// Unconditional. It used to run only when the target had capabilities to lower
 	// for, on the reading that a build lowering nothing had nothing new to fold --
-	// which stopped being true when passQuery became always-on: it synthesizes a
-	// thunk after the optimizer has walked every declaration, so the calls inside
-	// one are calls nothing has looked at.
+	// which is not so: an always-on lowering pass may synthesize code after the
+	// optimizer has walked every declaration, and the calls inside it are calls
+	// nothing has looked at.
 	if err := optimize.Optimize(pkg, optCfg); err != nil {
 		return nil, fmt.Errorf("optimize2: %w", err)
 	}

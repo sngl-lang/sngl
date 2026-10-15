@@ -4,8 +4,8 @@ import (
 	"strings"
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/internal/lower"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/internal/lower"
+	"duckfam.us/sngl/ir"
 )
 
 func buildCanvasPkg(t *testing.T) (*ir.Package, *ir.NodeInst) {
@@ -16,9 +16,9 @@ func buildCanvasPkg(t *testing.T) (*ir.Package, *ir.NodeInst) {
 	// The family is a declaration, so both the member and its host name this
 	// one. It is a family by being a member of the family of families, which
 	// is a member of itself.
-	families := &ir.Component{Name: "family", Pkg: "sngl:build", Builtin: ir.BuiltinTreeFamily}
-	families.Tree = families
-	shapeTree := &ir.Component{Name: "shape", Pkg: "sngl:ui/draw", Builtin: ir.BuiltinTreeShape, Tree: families}
+	families := &ir.Component{Name: "family", Pkg: &ir.Package{Path: "sngl:build"}, Builtin: ir.BuiltinFamilyOfFamilies}
+	families.Family = families
+	shapeTree := &ir.Component{Name: "shape", Pkg: &ir.Package{Path: "sngl:ui/draw"}, Builtin: ir.BuiltinFamilyShape, Family: families}
 	shapeSlot := func() []*ir.SlotDecl {
 		return []*ir.SlotDecl{{
 			Name:    "shapes",
@@ -35,7 +35,7 @@ func buildCanvasPkg(t *testing.T) (*ir.Package, *ir.NodeInst) {
 	// lowering no longer writes.
 	rectComp := &ir.Component{
 		Name:         "rect",
-		Tree:         shapeTree,
+		Family:       shapeTree,
 		Intrinsic:    "test:draw",
 		Slots:        shapeSlot(),
 		ChildrenType: childListType,
@@ -71,7 +71,7 @@ func buildCanvasPkg(t *testing.T) (*ir.Package, *ir.NodeInst) {
 		Handlers: []ir.EventHandler{{
 			Name: "draw",
 			Func: &ir.Func{
-				Params: []*ir.Param{{Name: "e", Type: ir.TypDyn}},
+				Params: []*ir.Param{{Name: "e", Type: ir.NativeNamed("DrawContext")}},
 				Block: []ir.Stmt{&ir.CallStmt{Call: &ir.Call{
 					Type: ir.TypVoid,
 					Func: &ir.Func{Name: "paintRect"},
@@ -90,12 +90,12 @@ func buildCanvasPkg(t *testing.T) (*ir.Package, *ir.NodeInst) {
 	}
 
 	mainComp := &ir.Component{
-		Name: "main",
-		Body: []ir.Stmt{canvasInst},
+		Name:  "main",
+		Stmts: []ir.Stmt{canvasInst},
 	}
 	pkg := &ir.Package{
-		Components: []*ir.Component{mainComp},
-		TreeKinds:  map[*ir.Component]bool{shapeTree: true},
+		Components:  []*ir.Component{mainComp},
+		FamilyKinds: map[*ir.Component]bool{shapeTree: true},
 	}
 	return pkg, canvasInst
 }
@@ -104,7 +104,7 @@ func buildCanvasPkg(t *testing.T) (*ir.Package, *ir.NodeInst) {
 // pass walks every component of every program a canvas-capable target builds.
 func TestShapeDraw_SkipsProgramsWithoutShapes(t *testing.T) {
 	pkg, canvasInst := buildCanvasPkg(t)
-	pkg.TreeKinds = nil
+	pkg.FamilyKinds = nil
 
 	if err := lower.Lower(pkg, lower.Features{Canvas: true}, lower.Options{}); err != nil {
 		t.Fatalf("lower error: %v", err)
@@ -145,7 +145,7 @@ func TestShapeDraw_SplicesTheDrawingInPlace(t *testing.T) {
 		t.Fatal("expected the canvas to keep the statements that paint it")
 	}
 	for i, st := range canvasInst.Children {
-		if n, ok := st.(*ir.NodeInst); ok && ir.IsDrawShapeTree(n.Component.Tree) {
+		if n, ok := st.(*ir.NodeInst); ok && ir.IsShapeFamily(n.Component.Family) {
 			t.Errorf("children[%d] is still the shape %q, not the drawing", i, n.Name)
 		}
 	}
@@ -163,7 +163,7 @@ func TestShapeDraw_SplicesTheDrawingInPlace(t *testing.T) {
 func onlyShapeNodes(stmts []ir.Stmt) bool {
 	for _, st := range stmts {
 		n, ok := st.(*ir.NodeInst)
-		if !ok || !ir.IsDrawShapeTree(n.Component.Tree) {
+		if !ok || !ir.IsShapeFamily(n.Component.Family) {
 			return false
 		}
 	}

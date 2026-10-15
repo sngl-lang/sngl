@@ -3,8 +3,8 @@ package checker
 import (
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/ir"
 )
 
 // checkAsyncRules runs post-analyzeAsync validation rules that reject code
@@ -86,7 +86,7 @@ func collectReactiveCallees(pkg *ir.Package) map[*ir.Func]bool {
 	out := make(map[*ir.Func]bool)
 	collectCalleesInStmts(out, pkg.Body)
 	for _, comp := range pkg.Components {
-		collectCalleesInStmts(out, comp.Body)
+		collectCalleesInStmts(out, comp.Stmts)
 	}
 	return out
 }

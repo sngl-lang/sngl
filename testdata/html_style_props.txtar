@@ -31,14 +31,14 @@ output {
 }
 
 window {
-    var rows list<string> = ["a"]
+    var rows list[string] = ["a"]
 
     html.div(style={
         display = Display.inlineBlock,
         flexDirection = FlexDirection.rowReverse,
         justifyContent = Justification.spaceBetween,
         alignItems = Alignment.stretch,
-        minWidth = 120,
+        minWidth = 120px,
         fontFamily = "Iosevka, monospace",
         borderBottom = "1px solid #ccc",
         borderLeft = "2px solid #000",

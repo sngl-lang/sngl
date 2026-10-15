@@ -1,0 +1,39 @@
+// What a call site's type arguments may not do.
+
+import . "sngl:ui"
+
+func first[T any](xs list[T]) => xs[0]
+
+func plain(x int) => x
+
+struct Box[T any] {
+    value T
+}
+
+component main node {
+    // More arguments than the declaration has parameters.
+    var a = first[int, string]([1]) // ERROR(check) "too many type arguments for first: want 1, got 2"
+
+    // A name that takes none.
+    var b = plain[int](1) // ERROR(check) "plain takes no type arguments"
+
+    // An argument the explicit list contradicts.
+    var c = first[string]([1]) // ERROR(check) "cannot pass list[int] as list[string]"
+
+    // A type argument must be a type.
+    var d = first[1]([1]) // ERROR(check) "a type argument is a type"
+
+    // A type is no value: a func literal with no body is a func type, which a
+    // bracket holds and a var cannot.
+    var e = func(int) bool // ERROR(check) "func(int) bool is a type, not a value"
+
+    // Several indices on a value.
+    var xs = [1, 2]
+    var f = xs[0, 1] // ERROR(check) "an index takes one value"
+
+    text(value="x")
+}
+
+window {
+    main
+}

@@ -5,19 +5,20 @@ import (
 	"strings"
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
-	_ "git.duckfam.us/jonathan/sngl/codegen/lang"
-	"git.duckfam.us/jonathan/sngl/internal/lower"
+	"duckfam.us/sngl/codegen"
+	_ "duckfam.us/sngl/codegen/lang"
+	"duckfam.us/sngl/internal/lower"
+	"duckfam.us/sngl/ir"
 )
 
 const recursiveTreeSrc = `
 import . "sngl:ui"
 struct TreeNode {
     value int = 0
-    left dyn = null
-    right dyn = null
+    left option[TreeNode] = null
+    right option[TreeNode] = null
 }
-component TreeView(node dyn = null) node {
+component TreeView(node TreeNode) node {
     vbox {
         text(value=string(node.value))
         if node.left != null { TreeView(node=node.left) }
@@ -42,6 +43,7 @@ func generateFyneModel(t *testing.T, src string) string {
 	if lang == nil {
 		t.Fatal("go lang not registered")
 	}
+	pkg = ir.ClonePackage(pkg)
 	if err := lower.Lower(pkg, codegen.CapsOrNone(lang.LanguageIdentifier(), g.PlatformIdentifier()), lower.Options{Platform: "fyne", Language: "go"}); err != nil {
 		t.Fatalf("lower: %v", err)
 	}

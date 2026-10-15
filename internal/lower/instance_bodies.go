@@ -1,6 +1,6 @@
 package lower
 
-import "git.duckfam.us/jonathan/sngl/ir"
+import "duckfam.us/sngl/ir"
 
 // passInstanceBodies flattens the body of every component that survives
 // inlining, on the platforms that otherwise keep the declarative tree.
@@ -59,7 +59,7 @@ func lowerInstanceBodies(pkg *ir.Package, caps Features, opts Options) error {
 		if comp == nil || comp == root || !comp.RuntimeInstance {
 			continue
 		}
-		comp.Body = st.processStmts(comp.Body, &comp.Funcs)
+		comp.Stmts = st.processStmts(comp.Stmts, &comp.Funcs)
 	}
 	return nil
 }

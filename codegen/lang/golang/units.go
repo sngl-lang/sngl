@@ -5,7 +5,8 @@ import (
 	"strconv"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/ir"
 )
 
 // UnitGoTypeKind classifies how a SNGL unit decl is represented in Go.
@@ -116,12 +117,16 @@ func LowerUnitLiteralGo(lit *ir.Literal) (string, bool) {
 // num expressed in suffix suf. Picks the closest standard time.* constant
 // (Millisecond/Second/Minute/Hour) so the source `1s` reads as
 // `1*time.Second` instead of `1000*time.Millisecond`.
+//
+// Parenthesised because the form is a product: unbracketed, `d / 1s` came out
+// as `d / time.Duration(1000) * time.Millisecond`, which Go groups as
+// `(d / 1000) * time.Millisecond` and is off by a factor of a million.
 func durationLiteralGo(lit *ir.Literal, mag float64) string {
 	if unitExpr, ok := goTimeConst[lit.Suffix]; ok {
 		num, _ := parseUnitNumber(lit.Value)
-		return fmt.Sprintf("time.Duration(%s) * %s", ir.FormatUnitMagnitude(num), unitExpr)
+		return fmt.Sprintf("(time.Duration(%s) * %s)", ir.FormatUnitMagnitude(num), unitExpr)
 	}
-	return fmt.Sprintf("time.Duration(%s) * time.Millisecond", ir.FormatUnitMagnitude(mag))
+	return fmt.Sprintf("(time.Duration(%s) * time.Millisecond)", ir.FormatUnitMagnitude(mag))
 }
 
 // goTimeConst maps duration's declared suffixes onto the time package's own
@@ -235,11 +240,79 @@ func LowerBindInit(t *ir.Type, init ir.Expr, gc *GoIRContext) string {
 			// element is an arbitrary expression. Sent to the literal-only
 			// translator, an element that is not itself a literal reached its
 			// "" fallback, so `Node{value=first.value}` emitted `Value: ""`.
-			// It compiled wherever the field was `dyn`, because Go's `any`
-			// accepts a string.
 			return gc.EvalExpr(v.Init)
 		}
 
 	}
 	return IRLiteralToGo(v.Init)
+}
+
+// goScalarUnitScale writes a single-base unit or a duration scaled by a plain
+// number. Go multiplies two values of one type only, and a unit is a named
+// type -- `type Tick float64`, or time.Duration -- so the scalar has to become
+// the unit's type, which an untyped constant does by itself and a variable
+// does not: `m.one * m.n` is a time.Duration times an int, which no Go
+// compiler accepts. A float on a duration is the one case converting the
+// scalar cannot express, since time.Duration is an integer count of
+// nanoseconds and `time.Duration(0.5)` is zero; the product is taken in
+// float64 and converted back, which is what a fraction of a duration means.
+func goScalarUnitScale(n *ir.Binary, left, right string) (string, bool) {
+	if n.Op != ast.BinMul && n.Op != ast.BinDiv {
+		return "", false
+	}
+	ud, scalar, unitLeft := scaledUnit(n)
+	if ud == nil {
+		return "", false
+	}
+	kind := ClassifyUnit(ud)
+	goT := IRTypeToGo(n.ExprType())
+	scalarT := scalar.ExprType()
+	if kind == UnitDuration && scalarT.Kind == ir.TypeFloat {
+		if unitLeft {
+			left = "float64(" + left + ")"
+		} else {
+			right = "float64(" + right + ")"
+		}
+		return fmt.Sprintf("%s(%s %s %s)", goT, left, irBinaryOp(n.Op), right), true
+	}
+	if _, lit := scalar.(*ir.Literal); lit {
+		return "", false
+	}
+	if unitLeft {
+		right = goT + "(" + right + ")"
+	} else {
+		left = goT + "(" + left + ")"
+	}
+	return "(" + left + " " + irBinaryOp(n.Op) + " " + right + ")", true
+}
+
+// scaledUnit is the single-base unit or duration one operand of n holds when
+// the other is a plain number, that number, and whether the unit is on the
+// left.
+func scaledUnit(n *ir.Binary) (*ir.UnitDef, ir.Expr, bool) {
+	numeric := func(e ir.Expr) bool {
+		t := e.ExprType()
+		return t != nil && (t.Kind == ir.TypeInt || t.Kind == ir.TypeFloat)
+	}
+	single := func(e ir.Expr) *ir.UnitDef {
+		if ud := unitDeclOf(e.ExprType()); ud != nil && ClassifyUnit(ud) != UnitMultiBase {
+			return ud
+		}
+		return nil
+	}
+	if ud := single(n.Left); ud != nil && numeric(n.Right) {
+		return ud, n.Right, true
+	}
+	if ud := single(n.Right); ud != nil && numeric(n.Left) {
+		return ud, n.Left, false
+	}
+	return nil, nil, false
+}
+
+func isIntVar(e ir.Expr) bool {
+	if _, lit := e.(*ir.Literal); lit {
+		return false
+	}
+	t := e.ExprType()
+	return t != nil && t.Kind == ir.TypeInt
 }

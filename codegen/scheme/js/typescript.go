@@ -7,8 +7,8 @@ import (
 	"strconv"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/ir"
 	"github.com/sngl-lang/typescript-go/snglts"
 )
 
@@ -134,7 +134,7 @@ func (w *walker) walk() {
 			if name == "" {
 				continue
 			}
-			ed := &ir.EnumDef{Name: name, Foreign: ir.Foreign{Origin: jsTypeID{Module: w.importPath, Name: name}}, AST: w.synthEnumAST(name, s)}
+			ed := &ir.EnumDef{Name: name, Origin: jsTypeID{Module: w.importPath, Name: name}, AST: w.synthEnumAST(name, s)}
 			w.enums[name] = ed
 			w.outEnums = append(w.outEnums, ed)
 		}
