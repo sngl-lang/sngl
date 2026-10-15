@@ -21,12 +21,11 @@ import (
 )
 
 // A Record is what one launch of a generated test program produced: its
-// results or its error, and the snapshots it wrote. Digest names the inputs --
+// results and the snapshots it wrote. Digest names the inputs --
 // the generated program and the snapshots it was compared against.
 type Record struct {
 	Digest    string                `json:"-"`
 	Results   []*codegen.TestResult `json:"results,omitempty"`
-	Error     string                `json:"error,omitempty"`
 	Snapshots map[string][]byte     `json:"snapshots,omitempty"`
 }
 
@@ -104,9 +103,6 @@ func (rr *Records) answer(key, genDir, snapDir string, launch func() ([]*codegen
 				return nil, err
 			}
 		}
-		if have.Error != "" {
-			return nil, errors.New(have.Error)
-		}
 		return cloneResults(have.Results), nil
 	}
 	if !rr.update && !matched {
@@ -119,12 +115,15 @@ func (rr *Records) answer(key, genDir, snapDir string, launch func() ([]*codegen
 
 	results, err := launch()
 	if skip, ok := errors.AsType[*codegen.SkipError](err); ok {
-		return nil, fmt.Errorf("%s: cannot record — %s", name, skip.Reason)
+		return nil, fmt.Errorf("%s: cannot run here — %s", name, skip.Reason)
+	}
+	// A launch that failed says something about this host -- a browser that
+	// crashed, an agent that never dialled back -- and nothing a later run on
+	// another host should be answered with.
+	if err != nil {
+		return nil, fmt.Errorf("%s: the launch failed, so there is nothing to record: %w", name, err)
 	}
 	rec := Record{Digest: want}
-	if err != nil {
-		rec.Error = err.Error()
-	}
 	rec.Results = cloneResults(results)
 	for _, r := range rec.Results {
 		zeroDurations(r)

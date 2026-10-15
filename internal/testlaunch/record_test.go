@@ -1,6 +1,7 @@
 package testlaunch
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -76,5 +77,21 @@ func TestWriteArchiveKeepsWhatTheGoldenHarnessWrote(t *testing.T) {
 	}
 	if len(got.Files) != 2 || string(got.Files[0].Data) != "new\n" || got.Files[1].Name != "testrun/k/1" {
 		t.Errorf("archive = %s", txtar.Format(got))
+	}
+}
+
+// A launch that failed is the host's failure, not the program's answer, so
+// nothing is recorded for a later run to replay.
+func TestAFailedLaunchIsNotRecorded(t *testing.T) {
+	gen := t.TempDir()
+	rr := NewRecords(map[string]Record{}, true, false)
+	_, err := rr.answer("k", gen, filepath.Join(t.TempDir(), "none"), func() ([]*codegen.TestResult, error) {
+		return nil, errors.New("wait for agent: the page did not connect")
+	})
+	if err == nil || !strings.Contains(err.Error(), "nothing to record") {
+		t.Errorf("err = %v, want a refusal to record", err)
+	}
+	if len(rr.Written()) != 0 {
+		t.Errorf("recorded %v", rr.Written())
 	}
 }
