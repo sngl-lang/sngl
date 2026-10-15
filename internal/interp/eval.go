@@ -1567,7 +1567,46 @@ func (env *Env) evalStructLit(e *ir.StructLit) (any, error) {
 		}
 		s.Set(f.Name, v)
 	}
-	return s, nil
+	return s, env.fillOmittedFields(s, e.Def)
+}
+
+// fillOmittedFields gives every field of def a literal left out the value the
+// declaration means by omitting it: its written default, or its type's zero,
+// as every compiled target's struct holds. The fields end in def's order,
+// which is the order every backend emits.
+func (env *Env) fillOmittedFields(s *Struct, def *ir.StructDef) error {
+	if def == nil || len(s.Fields) == len(def.Fields) {
+		return nil
+	}
+	fields := make([]Field, 0, len(def.Fields))
+	for _, f := range def.Fields {
+		if v, ok := s.Get(f.Name); ok {
+			fields = append(fields, Field{Name: f.Name, Value: v})
+			continue
+		}
+		init := f.Default
+		if init == nil {
+			init = ir.ZeroExpr(f.Type)
+		}
+		if init == nil {
+			// A type with no zero of its own here -- a type parameter the
+			// declaration left unbound -- stays absent, as before.
+			continue
+		}
+		v, err := env.Eval(init)
+		if err != nil {
+			return err
+		}
+		fields = append(fields, Field{Name: f.Name, Value: copyOf(v, f.Type)})
+	}
+	// A spread may have supplied a field def does not name; keep it after.
+	for _, f := range s.Fields {
+		if !slices.ContainsFunc(fields, func(g Field) bool { return g.Name == f.Name }) {
+			fields = append(fields, f)
+		}
+	}
+	s.Fields = fields
+	return nil
 }
 
 func (env *Env) evalMapLitIR(e *ir.MapLitIR) (any, error) {
