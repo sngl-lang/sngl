@@ -29,11 +29,13 @@ func _() {
 	_ = x[TypeIter-18]
 	_ = x[TypeNative-19]
 	_ = x[TypeInstance-20]
+	_ = x[TypeReadonly-21]
+	_ = x[TypeAny-22]
 }
 
-const _TypeKind_name = "InvalidDynBoolIntFloatStringListMapOptionStructEnumUnitFuncComponentNullTypeParamVoidRefIterNativeInstance"
+const _TypeKind_name = "InvalidDynBoolIntFloatStringListMapOptionStructEnumUnitFuncComponentNullTypeParamVoidRefIterNativeInstanceReadonlyAny"
 
-var _TypeKind_index = [...]uint8{0, 7, 10, 14, 17, 22, 28, 32, 35, 41, 47, 51, 55, 59, 68, 72, 81, 85, 88, 92, 98, 106}
+var _TypeKind_index = [...]uint8{0, 7, 10, 14, 17, 22, 28, 32, 35, 41, 47, 51, 55, 59, 68, 72, 81, 85, 88, 92, 98, 106, 114, 117}
 
 func (i TypeKind) String() string {
 	idx := int(i) - 0

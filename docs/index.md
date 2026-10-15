@@ -34,7 +34,7 @@ struct Todo {
 ui.window(title="Todos") {
     var (
         newTodo = ""
-        todos list<Todo> = []
+        todos list[Todo] = []
     )
     func status() => "Todo List ({todos.length} items)"
     ui.vbox(style={gap=12px, padding=16px}) {

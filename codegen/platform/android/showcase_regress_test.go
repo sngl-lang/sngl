@@ -104,8 +104,8 @@ func TestNullStateTyped(t *testing.T) {
 import ui "sngl:ui"
 struct User { name string = "" }
 ui.window {
-    var nickname option<string> = null
-    var picked option<User> = null
+    var nickname option[string] = null
+    var picked option[User] = null
     vbox { text(value="x") }
 }`
 	out := compileSrc(t, src, false)
@@ -165,7 +165,7 @@ func TestTestModeStateHoisting(t *testing.T) {
 import ui "sngl:ui"
 ui.window {
     var count = 0
-    var nick option<string> = null
+    var nick option[string] = null
     func doubled() => count * 2
     vbox { text(value=string(doubled)) }
 }`
@@ -197,7 +197,7 @@ import ui "sngl:ui"
 ui.window {
     var fruit = ""
     var size = "medium"
-    var dob option<date> = date("2000-01-01")
+    var dob option[date] = date("2000-01-01")
     vbox {
         select(placeholder="File.pick", :value=fruit) {
             choice(label="Apple")
@@ -226,7 +226,7 @@ ui.window {
 		t.Errorf("radio not rendered as RadioButton group:\n%s", out)
 	}
 	// datepicker: SnglDateField, the field a date is typed or picked in,
-	// handed the bound option<date> itself and writing a pick back to it.
+	// handed the bound option[date] itself and writing a pick back to it.
 	if !strings.Contains(out, "SnglDateField(value = dob") || !strings.Contains(out, "dob = v") {
 		t.Errorf("datepicker not rendered as a value-bound SnglDateField:\n%s", out)
 	}

@@ -25,7 +25,7 @@ import . "sngl:test"
 output { go { bubbletea } }
 
 component main node {
-    var items list<string> = ["a", "b"]
+    var items list[string] = ["a", "b"]
     var picked = ""
     var hits = 0
 

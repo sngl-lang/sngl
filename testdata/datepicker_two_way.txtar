@@ -12,7 +12,7 @@ import time "sngl:time"
 // A datepicker's value is a two-way prop: a pick writes the var it is bound to,
 // from the date the change event carries, and clearing it writes null.
 component picker node {
-    var picked option<time.date> = null
+    var picked option[time.date] = null
     var changes = 0
     vbox {
         datepicker #d(:value=picked, @change { changes += 1 })
@@ -557,7 +557,7 @@ type ErrorEvent struct {
 }
 
 // snglCalendarDate is the day a GtkCalendar has selected, as the *time.Time an
-// option<date> is in Go. A calendar always has a day selected.
+// option[date] is in Go. A calendar always has a day selected.
 func snglCalendarDate(c *C.GtkCalendar) *time.Time {
 	dt := C.gtk_calendar_get_date(c)
 	defer C.g_date_time_unref(dt)
@@ -943,7 +943,7 @@ pass sha256:0fc901e6c103a94133bfee7711ab7fad
 -- run/go/fyne --
 pass sha256:fe601aba4571496d0b2b8851461872f4
 -- run/go/gtk4 --
-pass sha256:95e0885a06dec0b62744afd0054fe032
+pass sha256:b8ca0c289812145186e54cdce2e863e0
 -- run/kotlin/android --
 pass sha256:55d388f0330aff011e985b915c03281c
 -- run/none/html --

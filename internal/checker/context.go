@@ -14,7 +14,11 @@ func (c *checker) isContextDeclCallStmt(s *ast.CallStmt) bool {
 	if s.Call.ID == "" {
 		return false
 	}
-	ident, ok := s.Call.Func.(*ast.IdentExpr)
+	fn := s.Call.Func
+	if ix, ok := fn.(*ast.IndexExpr); ok {
+		fn = ix.Operand
+	}
+	ident, ok := fn.(*ast.IdentExpr)
 	if !ok {
 		return false
 	}
@@ -93,11 +97,38 @@ func (c *checker) registerRootContextDecl(s *ast.CallStmt) {
 	}
 	// Checked once every declaration is registered and marked, with the
 	// package's other initializers (checkPendingInits).
+	// `context[option[User]] #who(null)` states the type a default alone
+	// says too little about, and the default is held to it.
+	var written []ast.Expr
+	if ix, ok := s.Call.Func.(*ast.IndexExpr); ok {
+		written = ix.Indices
+	}
 	c.deferInit(s.Pos, func() {
-		def := c.checkExpr(a.Value)
+		var stated *ir.Type
+		if len(written) > 0 {
+			var params []ir.TypeParam
+			if comp := c.contextComp; comp != nil {
+				params = comp.TypeParams
+			}
+			if _, types := c.bindWritten(s.Pos, "context", written, params); len(types) > 0 {
+				ctx.TypeArgs = types
+				stated = types[0]
+			}
+		}
+		var def ir.Expr
+		if stated != nil {
+			def = c.checkExprAs(a.Value, stated, slot{mismatch: func(want, got string) string {
+				return fmt.Sprintf("context %q: default %v is not assignable to context type %v", name, got, want)
+			}})
+		} else {
+			def = c.checkExpr(a.Value)
+		}
 		c.reportSelfReferentialDefault(s.Pos, ctx, def)
 		ctx.Default = def
-		if def != nil {
+		switch {
+		case stated != nil:
+			ctx.Typ = stated
+		case def != nil:
 			ctx.Typ = c.inferredType(def.ExprType(), *a.Value.ExprPos())
 		}
 	})

@@ -54,12 +54,12 @@ component comp node {
     var s = "hi"
     var on = false
     var xs = [1, 2, 3]
-    var mp map<string, int> = {"a" = 1, "b" = 2}
-    var ps list<P> = [{a = 1, b = "x", inner = {v = 5}}, {a = 2, b = "y", inner = {v = 6}}]
+    var mp map[string, int] = {"a" = 1, "b" = 2}
+    var ps list[P] = [{a = 1, b = "x", inner = {v = 5}}, {a = 2, b = "y", inner = {v = 6}}]
     var p P = {a = 3, b = "z", inner = {v = 7}}
     var mode = Mode.off
     var t tick = 3tk
-    var o option<int> = null
+    var o option[int] = null
     func zero() int {
         return n + 1
     }

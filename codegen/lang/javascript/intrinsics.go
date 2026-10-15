@@ -129,7 +129,7 @@ func init() {
 	// iterable `for...of` drives one value at a time, which is what an array
 	// here would have thrown away. No conversion is needed in the other
 	// direction -- a JS array is already iterable -- so a list reaching an
-	// iter<T> position passes through unwrapped.
+	// iter[T] position passes through unwrapped.
 	seq := func(a, b, step string) string {
 		return "(function* (__a, __b, __s) { " +
 			"if (__s > 0) { for (let __i = __a; __i < __b; __i += __s) yield __i; } " +

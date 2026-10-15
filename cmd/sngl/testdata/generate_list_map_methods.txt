@@ -24,17 +24,17 @@ exists lm
 import . "sngl:ui"
 
 component main node {
-    var xs list<int> = [3, 1, 2]
-    var m map<string, int> = {"a" = 1}
+    var xs list[int] = [3, 1, 2]
+    var m map[string, int] = {"a" = 1}
 
     var idx int = xs.indexOf(2)
-    var rev list<int> = xs.reverse()
-    var sl list<int> = xs.slice(0, 2)
-    var ev list<int> = xs.filter(func(x int) => x > 1)
-    var ss list<string> = xs.map(func(x int) => string(x))
+    var rev list[int] = xs.reverse()
+    var sl list[int] = xs.slice(0, 2)
+    var ev list[int] = xs.filter(func(x int) => x > 1)
+    var ss list[string] = xs.map(func(x int) => string(x))
     var n int = m.length()
-    var ks list<string> = m.keys()
-    var vs list<int> = m.values()
+    var ks list[string] = m.keys()
+    var vs list[int] = m.values()
     var has bool = m.contains("a")
     var got int = m.get("a", 0)
     var c color = #ff0000
@@ -52,17 +52,17 @@ import . "sngl:ui"
 output { go { bubbletea } }
 
 component main node {
-    var xs list<int> = [3, 1, 2]
-    var m map<string, int> = {"a" = 1}
+    var xs list[int] = [3, 1, 2]
+    var m map[string, int] = {"a" = 1}
 
     var idx int = xs.indexOf(2)
-    var rev list<int> = xs.reverse()
-    var sl list<int> = xs.slice(0, 2)
-    var ev list<int> = xs.filter(func(x int) => x > 1)
-    var ss list<string> = xs.map(func(x int) => string(x))
+    var rev list[int] = xs.reverse()
+    var sl list[int] = xs.slice(0, 2)
+    var ev list[int] = xs.filter(func(x int) => x > 1)
+    var ss list[string] = xs.map(func(x int) => string(x))
     var n int = m.length()
-    var ks list<string> = m.keys()
-    var vs list<int> = m.values()
+    var ks list[string] = m.keys()
+    var vs list[int] = m.values()
     var has bool = m.contains("a")
     var got int = m.get("a", 0)
     var c color = #ff0000

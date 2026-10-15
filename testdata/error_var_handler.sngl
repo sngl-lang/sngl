@@ -11,7 +11,7 @@ var count = 0 @change { // ERROR(check) "a var takes no handler; to run code aft
 }
 
 component box ui.node {
-    var items list<int> = [] @change(v) { // ERROR(check) "a var takes no handler; to run code after a write to items"
+    var items list[int] = [] @change(v) { // ERROR(check) "a var takes no handler; to run code after a write to items"
         saved = v.length()
     }
 

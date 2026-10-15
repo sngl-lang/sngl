@@ -75,7 +75,7 @@ func TestKtIRContext_I18nExactly(t *testing.T) {
 }
 
 // TestKtIRContext_PluralKeyMapLit ports
-// TestPluralKeyMapLitLowersToStringKeyMap_Kotlin: a map<i18n.PluralKey, string>
+// TestPluralKeyMapLitLowersToStringKeyMap_Kotlin: a map[i18n.PluralKey, string]
 // still lowers to mapOf(...) with string keys.
 func TestKtIRContext_PluralKeyMapLit(t *testing.T) {
 	keyType := pluralKeyType()

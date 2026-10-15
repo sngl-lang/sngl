@@ -26,7 +26,7 @@ component gauge(level = 0.0) node {
 }
 
 window {
-    var items list<Item> = [
+    var items list[Item] = [
         {level=10.0},
         {level=20.0},
     ]

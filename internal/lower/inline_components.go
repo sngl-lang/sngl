@@ -39,7 +39,7 @@ func lowerInlineComponents(pkg *ir.Package, feats Features, opts Options) error 
 	for _, c := range pkg.Components {
 		onList[c] = true
 	}
-	st := &inlineCompState{pkg: pkg, main: main, cycles: cycles, reactive: reactive, platform: opts.Platform, instanceState: feats.InstanceState, onList: onList, names: namesOrOwn(opts.names), demoted: map[*ir.Func]bool{}, cells: map[*ir.Var][]*ir.Var{}, methods: map[*ir.Var]map[*ir.Func][]*ir.Func{}}
+	st := &inlineCompState{pkg: pkg, main: main, cycles: cycles, reactive: reactive, platform: opts.Platform, instanceState: feats.InstanceState, genericComponents: feats.GenericComponents, onList: onList, names: namesOrOwn(opts.names), demoted: map[*ir.Func]bool{}, cells: map[*ir.Var][]*ir.Var{}, compInsts: map[*ir.Component][]componentInstance{}, methods: map[*ir.Var]map[*ir.Func][]*ir.Func{}}
 	cellOwners := implicitCellOwners(pkg)
 	st.reach = testReachRoots(pkg, main, opts)
 	if err := st.run(); err != nil {
@@ -344,6 +344,13 @@ type inlineCompState struct {
 	// instanceState is Features.InstanceState: whether a component built at run
 	// time keeps its own state on this target.
 	instanceState bool
+	// genericComponents is Features.GenericComponents: whether the target
+	// emits a generic component once for every instantiation. Where it does
+	// not, compInsts is each generic component's copies (instantiateRuntime),
+	// and taken the names a copy may not take.
+	genericComponents bool
+	compInsts         map[*ir.Component][]componentInstance
+	taken             map[string]bool
 	// names is passInlinePure's as well; see Options.names.
 	names renamer
 	// demoted is the clones dropReceiver made receiverless, so the call sites
@@ -969,6 +976,9 @@ func (st *inlineCompState) inlineStmtCtx(s ir.Stmt, rc reactiveCtx) ([]ir.Stmt, 
 		// const iterable cannot change says how many copies there are, not
 		// that they may share state.
 		if st.captureOnly == nil && n.Component != nil && (rc.perCopy(n.Component) || st.cycles[n.Component]) {
+			if err := st.instantiateRuntime(n); err != nil {
+				return nil, false, err
+			}
 			st.keep[n.Component] = true
 			// The one place that knows: this instantiation is built while the
 			// program runs, so the declaration needs a runtime of its own.
@@ -1148,13 +1158,12 @@ func (st *inlineCompState) expandCall(n *ir.NodeInst) ([]ir.Stmt, error) {
 	hoist := st.hoist
 	varStart := len(*hoist.vars)
 	provided := providedContextVars(comp, n.Props)
+	typeArgs := spliceTypeArgs(comp, n)
 	for _, v := range comp.Vars {
 		if _, ok := provided[v]; ok {
 			continue
 		}
-		clone := cloneVarShallow(v)
-		clone.Name = st.names.next(v.Name, "inst")
-		clone.Init = deepCloneExpr(v.Init)
+		clone := cloneHoistedVar(v, st.names.next(v.Name, "inst"), typeArgs)
 		renames[v] = clone.Name
 		symRenames[v] = clone
 		if v.Cell && st.cells != nil {
@@ -1176,8 +1185,12 @@ func (st *inlineCompState) expandCall(n *ir.NodeInst) ([]ir.Stmt, error) {
 	funcStart := len(*hoist.funcs)
 	for _, f := range comp.Funcs {
 		clone := cloneFuncShallow(f)
-		clone.Name = st.names.next(f.Name, "inst")
 		clone.Block = deepCloneStmts(f.Block)
+		if typeArgs != nil {
+			clone = ir.InstantiateFunc(f, typeArgs)
+			clone.TypeParams, clone.RecvTypeParams = f.TypeParams, f.RecvTypeParams
+		}
+		clone.Name = st.names.next(f.Name, "inst")
 		renames[f] = clone.Name
 		symRenames[f] = clone
 		if !hoist.method {
@@ -1208,7 +1221,7 @@ func (st *inlineCompState) expandCall(n *ir.NodeInst) ([]ir.Stmt, error) {
 		fn.Reads = renameVarList(fn.Reads, symRenames)
 		fn.Writes = renameVarList(fn.Writes, symRenames)
 	}
-	body := substituteVars(deepCloneStmts(comp.Stmts), provided)
+	body := substituteVars(splicedBody(comp, typeArgs), provided)
 	body = renameIdents(body, renames, symRenames)
 
 	bindings := map[string]ir.Expr{}
@@ -1290,6 +1303,37 @@ func carryPointsTo(pkg *ir.Package, from, to ir.PointsToKey) {
 func cloneVarShallow(v *ir.Var) *ir.Var {
 	c := *v
 	return &c
+}
+
+// spliceTypeArgs is what n's call site bound comp's type parameters to, where
+// comp is the declaration n names; nil otherwise. A generic component's body
+// is spliced at those types: what it declares names them, and left naming T,
+// a backend that copies generics per instantiation erased it.
+func spliceTypeArgs(comp *ir.Component, n *ir.NodeInst) map[string]*ir.Type {
+	if n == nil || n.Component != comp {
+		return nil
+	}
+	return ir.ComponentBindings(n)
+}
+
+// splicedBody is a fresh copy of comp's body at typeArgs.
+func splicedBody(comp *ir.Component, typeArgs map[string]*ir.Type) []ir.Stmt {
+	return deepCloneStmts(ir.InstantiateStmts(comp.Stmts, typeArgs))
+}
+
+// cloneHoistedVar is a copy of a component's var to hoist onto the owner
+// splicing it, named name, at typeArgs.
+func cloneHoistedVar(v *ir.Var, name string, typeArgs map[string]*ir.Type) *ir.Var {
+	clone := cloneVarShallow(v)
+	clone.Name = name
+	clone.Init = deepCloneExpr(v.Init)
+	if typeArgs != nil {
+		clone.Type = v.Type.Substitute(typeArgs)
+		if clone.Init != nil {
+			clone.Init = ir.SubstituteExprTypes(clone.Init, typeArgs)
+		}
+	}
+	return clone
 }
 
 // renameVarList is vs with each var its clone renames, in a list of its own:

@@ -24,7 +24,7 @@ import . "sngl:ui"
 component App() node {
     var (
         k = 0
-        log list<string> = []
+        log list[string] = []
     )
     button(text="rekey", @click { k = k + 1 })
     effect(on=k, @mount { log.push("+A") }, @unmount { log.push("-A") })
@@ -55,8 +55,8 @@ func TestEffect_PushMountsTheNewBracket(t *testing.T) {
 import . "sngl:ui"
 component App() node {
     var (
-        items list<string> = ["a"]
-        log list<string> = []
+        items list[string] = ["a"]
+        log list[string] = []
     )
     button(text="add", @click { items.push("b") })
     for var it = items {
@@ -92,7 +92,7 @@ struct counter {
 component App() node {
     var (
         key counter = counter{n = 0}
-        log list<string> = []
+        log list[string] = []
     )
     button(text="bump", @click { key.n = key.n + 1 })
     effect(on=key.n, @mount { log.push("m") }, @unmount { log.push("u") })
@@ -122,7 +122,7 @@ func TestEffect_ACalledKeyRekeys(t *testing.T) {
 import . "sngl:ui"
 var (
     n = 0
-    log list<string> = []
+    log list[string] = []
 )
 func scaled(m int) => m * n
 component App() node {

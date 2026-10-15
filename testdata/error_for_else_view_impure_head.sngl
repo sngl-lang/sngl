@@ -7,10 +7,10 @@
 import . "sngl:ui"
 
 component main node {
-    var rows list<string> = []
+    var rows list[string] = []
     var seen = 0
 
-    func drain() list<string> {
+    func drain() list[string] {
         seen = seen + 1
         return rows
     }

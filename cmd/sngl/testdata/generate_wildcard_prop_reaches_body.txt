@@ -15,7 +15,7 @@ sngl dump --stage lowered --lang none --platform html app.sngl
 
 # The body's `data` reference became the map built from the call site, so the
 # name that matched and the value written for it both arrived.
-stdout 'map\.values\(\{"dataRole"="row-7"\}\)'
+stdout '\(\{"dataRole"="row-7"\}\)\.values\(\)'
 
 # The declared prop still binds under its own name, and is not collected.
 stdout 'textContent="plain"'
@@ -30,7 +30,7 @@ import . "sngl:macro"
 
 component badge(
     label string = "",
-    #[wildcard("data[A-Za-z0-9]*")] data map<string, string>,
+    #[wildcard("data[A-Za-z0-9]*")] data map[string, string],
 ) node {
     text(value = label)
     for var v = data.values() {

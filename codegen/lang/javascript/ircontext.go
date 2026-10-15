@@ -919,7 +919,7 @@ func (jc *JsIRContext) evalConversion(n *ir.Conversion) string {
 		return nullFuncStubJS(n.Type)
 	}
 	operand := jc.EvalExpr(n.Operand)
-	// A narrowed option: JavaScript's option<T> is the value or null, so the
+	// A narrowed option: JavaScript's option[T] is the value or null, so the
 	// unwrap is the value as it stands.
 	if ir.IsOptionUnwrap(n) {
 		return operand

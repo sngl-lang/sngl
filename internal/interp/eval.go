@@ -3,6 +3,7 @@ package interp
 import (
 	"fmt"
 	"maps"
+	"reflect"
 	"slices"
 	"sort"
 	"strconv"
@@ -1064,7 +1065,7 @@ func toStringStringMap(v any) map[string]string {
 	return m
 }
 
-// evalPluralKeyMap evaluates a map<PluralKey, string> literal expr, converting
+// evalPluralKeyMap evaluates a map[PluralKey, string] literal expr, converting
 // keys to goi18n.PluralKey values. It handles ir.MapLitIR (the normal form after
 // checking) and falls back to a generic eval for other expr kinds.
 func (env *Env) evalPluralKeyMap(expr ir.Expr) (map[goi18n.PluralKey]string, error) {
@@ -2130,7 +2131,7 @@ func (env *Env) evalNamespaceCall(call *ir.Call) (any, error) {
 				return env.evalBuiltinMethodFromRecv(call.Receiver, method, recv, evalArgs[1:])
 			}
 			if fn := recvFn; recvOK && len(fn.Block) > 0 {
-				// A method on a generic receiver (list<T>, map<K,V>) declares
+				// A method on a generic receiver (list[T], map[K,V]) declares
 				// no receiver parameter and names the value `this`, so there
 				// is nothing in the argument list to bind it to. Supply it the
 				// way a component method gets its receiver, in a scope of its
@@ -2913,34 +2914,85 @@ func (env *Env) logAlertConfirm(args []ir.CallArg) (any, error) {
 
 // --- helpers ---
 
+// equals is ==: Equal, and where it cannot say, the two rendered alike.
 func equals(a, b any) bool {
-	if au, ok := a.(unitValue); ok {
-		if bu, ok := b.(unitValue); ok {
-			return au.Equal(bu)
-		}
-		return false
+	if eq, ok := Equal(a, b); ok {
+		return eq
 	}
-	// Two struct values hold the same fields whatever order they were written
-	// in, so they are compared by name rather than by their rendered form.
-	if as, ok := a.(*Struct); ok {
-		bs, ok := b.(*Struct)
-		if !ok || len(as.Fields) != len(bs.Fields) {
-			return false
+	return fmt.Sprintf("%v", a) == fmt.Sprintf("%v", b)
+}
+
+// Equal compares two values as SNGL's == does, and is what the optimizer folds
+// == with: a unit base by base, a struct field by field by name -- they hold
+// the same fields whatever order they were written in -- a list element by
+// element, a handle by the instance it is, a number by value whatever its
+// width, and a string or a bool as itself. ok is false for a pair it cannot
+// say that of: a map, a host value, two scalars of different kinds.
+func Equal(a, b any) (eq, ok bool) {
+	if a == nil || b == nil {
+		return a == nil && b == nil, true
+	}
+	if au, isUnit := a.(unitValue); isUnit {
+		bu, isUnit := b.(unitValue)
+		return isUnit && au.Equal(bu), true
+	}
+	switch x := a.(type) {
+	case *Struct:
+		y, isStruct := b.(*Struct)
+		if !isStruct || len(x.Fields) != len(y.Fields) {
+			return false, true
 		}
-		for _, f := range as.Fields {
-			other, found := bs.Get(f.Name)
-			if !found || !equals(f.Value, other) {
-				return false
+		for _, f := range x.Fields {
+			other, found := y.Get(f.Name)
+			if !found {
+				return false, true
+			}
+			if eq, ok := Equal(f.Value, other); !ok || !eq {
+				return false, ok
 			}
 		}
-		return true
+		return true, true
+	case []any:
+		y, isList := b.([]any)
+		if !isList || len(x) != len(y) {
+			return false, isList
+		}
+		for i := range x {
+			if eq, ok := Equal(x[i], y[i]); !ok || !eq {
+				return false, ok
+			}
+		}
+		return true, true
 	}
 	// A handle read as a value is its instance, and two are equal when they
 	// are one instance: the scope the interpreter keeps for it.
 	if ae, be := instanceEnv(a), instanceEnv(b); ae != nil || be != nil {
-		return ae == be
+		return ae == be, true
 	}
-	return fmt.Sprintf("%v", a) == fmt.Sprintf("%v", b)
+	if af, isNum := numberOf(a); isNum {
+		bf, isNum := numberOf(b)
+		return af == bf, isNum
+	}
+	switch a.(type) {
+	case string, bool:
+		if reflect.TypeOf(a) == reflect.TypeOf(b) {
+			return a == b, true
+		}
+	}
+	return false, false
+}
+
+// numberOf is v as a float, for a value of any of the numeric widths.
+func numberOf(v any) (float64, bool) {
+	switch n := v.(type) {
+	case int:
+		return float64(n), true
+	case uint64:
+		return float64(n), true
+	case float64:
+		return n, true
+	}
+	return 0, false
 }
 
 func toFloat(v any) float64 {

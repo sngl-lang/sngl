@@ -495,7 +495,7 @@ type ErrorEvent struct {
 }
 
 // snglCalendarDate is the day a GtkCalendar has selected, as the *time.Time an
-// option<date> is in Go. A calendar always has a day selected.
+// option[date] is in Go. A calendar always has a day selected.
 func snglCalendarDate(c *C.GtkCalendar) *time.Time {
 	dt := C.gtk_calendar_get_date(c)
 	defer C.g_date_time_unref(dt)
@@ -871,7 +871,7 @@ pass sha256:8bed59316559345ca87e78b96994cd6a
 -- run/go/fyne --
 pass sha256:2737a66ac82ec597753e3303fcab2e47
 -- run/go/gtk4 --
-pass sha256:e51d8b87b8ec51806497b14bacdc3719
+pass sha256:50925dec013b33a75c2ff957219d0dee
 -- run/kotlin/android --
 pass sha256:065e25d98e6928fcae22e53208439053
 -- run/none/html --

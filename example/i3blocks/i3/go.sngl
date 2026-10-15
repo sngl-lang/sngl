@@ -30,7 +30,7 @@ component block[go.language] {
 
 // A member says what it contributes, with its props in scope -- and its
 // events, each a func running the handler the call site wrote.
-component text[go.language] {
+component text[go.language](name, full, short, color, background, urgent, minWidth, align, separator, @click) {
     gen.node(value=Entry{
         name = name,
         full = full,
@@ -45,7 +45,7 @@ component text[go.language] {
     })
 }
 
-component gap[go.language] {
+component gap[go.language](width) {
     gen.node(value=Entry{
         full = "",
         separator = false,
@@ -60,7 +60,7 @@ component gap[go.language] {
 // now are the ones the line i3bar last showed was built from. When stdin
 // closes i3bar has gone, and so does the program -- posted, so every click
 // read before it runs first.
-func readClicks(members func() list<Entry>) {
+func readClicks(members func() list[Entry]) {
     var in = newScanner(stdin)
     for in.scan() {
         var line = in.text()

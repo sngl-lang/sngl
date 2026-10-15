@@ -14,8 +14,8 @@ import . "sngl:ui"
 
 window {
     var (
-        items list<string> = ["a", "b"]
-        log list<string> = []
+        items list[string] = ["a", "b"]
+        log list[string] = []
     )
 
     for var it = items {

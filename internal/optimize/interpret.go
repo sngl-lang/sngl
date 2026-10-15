@@ -18,7 +18,7 @@ const maxInterpDepth = 256
 // says what it is outranks it — a struct held in a `dyn` field is still that
 // struct, and Go names it by its own type — while a value that does not (a
 // bare slice or map) takes the position's, so a list of Item read through a
-// name declared list<dyn> is still emitted as []any.
+// name declared list[dyn] is still emitted as []any.
 //
 // What the value carries beyond its type — the declaration, and the order its
 // fields were checked in — typ cannot supply at all, and is kept.
@@ -59,17 +59,30 @@ func irFromValue(val any, typ *ir.Type) ir.Expr {
 		return nil
 	case *interp.Struct:
 		sd, t := v.Def, v.Type
+		// A value a generic body built carries the type its literal was
+		// checked at there, `struct { v T }`; where it lands, the call's own
+		// type says what T was, and that is the type the literal is.
+		if t != nil && t.HasTypeParam() && typ != nil && typ.Kind == ir.TypeStruct && !typ.HasTypeParam() {
+			sd, t = nil, typ
+		}
 		if sd == nil {
 			sd = expectedStructDef(typ)
 		}
 		if t == nil {
 			t = typ
 		}
+		declared, _ := ir.FieldsOf(t)
 		fields := make([]ir.FieldInit, 0, len(v.Fields))
 		for _, f := range v.Fields {
+			ft := structFieldType(sd, f.Name)
+			for _, d := range declared {
+				if d.Name == f.Name {
+					ft = d.Type
+				}
+			}
 			fields = append(fields, ir.FieldInit{
 				Name:  f.Name,
-				Value: irFromValue(f.Value, structFieldType(sd, f.Name)),
+				Value: irFromValue(f.Value, ft),
 			})
 		}
 		return &ir.StructLit{Type: t, Def: sd, Fields: fields}
@@ -95,8 +108,8 @@ func irFromValue(val any, typ *ir.Type) ir.Expr {
 		for _, e := range v {
 			elems = append(elems, irFromValue(e, elemType))
 		}
-		// A folded sequence lands in an iter<T> position, and a list literal
-		// is not one: an iter<T> is a pull sequence in every backend that
+		// A folded sequence lands in an iter[T] position, and a list literal
+		// is not one: an iter[T] is a pull sequence in every backend that
 		// spells it. So the literal keeps its own type and takes the same
 		// conversion the checker inserts for a list written there by hand.
 		if typ != nil && typ.Kind == ir.TypeIter && len(typ.Elems) == 1 {

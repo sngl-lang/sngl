@@ -1,8 +1,8 @@
 import . "sngl:ui"
 
-// Component declares optional child (option<T>).
+// Component declares optional child (option[T]).
 // Two children: error.
-component OptionalOne(content ...component option<node>) node {
+component OptionalOne(content ...component option[node]) node {
     vbox {
         content
     }

@@ -717,7 +717,7 @@ func (kc *KtIRContext) ForHead(n *ir.For, iter string) string {
 		// withIndex() yields (index, element), matching that order.
 		return fmt.Sprintf("for ((%s, %s) in %s.withIndex()) {", key, valueVar, iter)
 	default:
-		// Single-var list / iter<T>: for (x in list) { ... }
+		// Single-var list / iter[T]: for (x in list) { ... }
 		return fmt.Sprintf("for (%s in %s) {", key, iter)
 	}
 }
@@ -1278,7 +1278,7 @@ func (kc *KtIRContext) evalConversion(n *ir.Conversion) string {
 		return nullFuncStubKt(n.Type)
 	}
 	operand := kc.EvalExpr(n.Operand)
-	// A narrowed option: Kotlin's option<T> is T?, and the null test is what
+	// A narrowed option: Kotlin's option[T] is T?, and the null test is what
 	// makes the assertion safe.
 	if ir.IsOptionUnwrap(n) {
 		return operand + "!!"
@@ -1594,10 +1594,10 @@ func IRTypeToKt(t *ir.Type) string {
 		// use `dyn = null` for absent children).
 		return "Any?"
 	case ir.TypeIter:
-		// Iterable<T>, not List<T>: an iter<T> is a sequence something pulls
+		// Iterable<T>, not List<T>: an iter[T] is a sequence something pulls
 		// from, and Iterable is the widest spelling of that -- a List is one,
 		// and so is the IntProgression sngl:seq produces. It is also why a
-		// list reaching an iter<T> position needs no conversion emitted.
+		// list reaching an iter[T] position needs no conversion emitted.
 		if len(t.Elems) == 1 {
 			return "Iterable<" + IRTypeToKt(t.Elems[0]) + ">"
 		}

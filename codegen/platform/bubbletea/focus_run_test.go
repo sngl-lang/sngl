@@ -11,7 +11,7 @@ import . "sngl:ui"
 
 struct Row {
     name string
-    cells list<string>
+    cells list[string]
 }
 
 component Card(children ...component) node {

@@ -22,10 +22,10 @@ output {
     }
 }
 
-const items list<string> = ["one", "two"]
+const items list[string] = ["one", "two"]
 
 window {
-    var picks list<string> = []
+    var picks list[string] = []
     html.ul {
         for var item = items {
             html.li(innerText=item)

@@ -248,7 +248,7 @@ func TestOptimize_KeepStructUsedOnlyAsType(t *testing.T) {
 	src := `
 struct User { name string = "" }
 component main node {
-	var picked option<User> = null
+	var picked option[User] = null
 	text(value="hi")
 }
 `
@@ -337,7 +337,7 @@ func TestOptimize_EmptyPkg(t *testing.T) {
 func TestOptimize_PropPropagatesAsConst(t *testing.T) {
 	src := `
 const items = ["a", "b"]
-component Row(entries list<string> = []) node {
+component Row(entries list[string] = []) node {
 	for var x = entries {
 		text(value=x)
 	}
@@ -397,7 +397,7 @@ func TestFoldDoesNotCollapseDerefOfAddrOfConst(t *testing.T) {
 	src := `
 const k int = 5
 component main node {
-    var p ref<int> = &k
+    var p ref[int] = &k
     var v int = *p
 }
 `

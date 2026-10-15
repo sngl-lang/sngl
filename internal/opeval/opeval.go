@@ -234,7 +234,7 @@ func asUint64(v any) (uint64, bool) {
 // negative. A by of 0 yields nothing rather than never terminating.
 //
 // The elements are `any` because that is how both callers carry a list value:
-// the interpreter builds one for an iter<int> a program holds, and the
+// the interpreter builds one for an iter[int] a program holds, and the
 // constant folder unrolls a loop over one.
 // SequenceLen is how many elements Sequence would produce, without producing
 // them. A caller that has a bound to check reads this first, so nothing is

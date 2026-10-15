@@ -277,7 +277,7 @@ func site(state *docState, label string, root *page, pages []*page, fields []fie
 	e.line("struct Page {")
 	e.line("    href string")
 	e.line("    frontmatter Frontmatter")
-	e.line("    children list<Page>")
+	e.line("    children list[Page]")
 	e.line("}")
 	e.line("")
 	e.line("const root = " + pageLit(root))

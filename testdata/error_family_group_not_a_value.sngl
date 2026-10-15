@@ -23,8 +23,8 @@ component site ui.node {
         }
         extras #more
     }
-    ui.button(text="More", @click { pages.go(more) })  // ERROR(check) "cannot pass extras as page<T, struct {}>"
-    ui.text(value=pages.current == more ? "more" : "") // ERROR(check) "operator == not defined for _page<struct {}> and extras"
+    ui.button(text="More", @click { pages.go(more) })  // ERROR(check) "cannot pass extras as page[T, struct {}]"
+    ui.text(value=pages.current == more ? "more" : "") // ERROR(check) "operator == not defined for _page[struct {}] and extras"
 }
 
 ui.window(title="Site") {

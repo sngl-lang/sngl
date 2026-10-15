@@ -15,7 +15,7 @@ component pair(a string, b string) {
     folder(name=b)
 }
 
-func show(fs list<folder>) string {
+func show(fs list[folder]) string {
     return fs.map(func(f folder) string {
         if f.contents.length() == 0 {
             return f.name

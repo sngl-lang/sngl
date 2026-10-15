@@ -16,7 +16,7 @@ func test() {
     var y float
     y = 42
 
-    var items list<int>
+    var items list[int]
     for var item = items {
     }
 

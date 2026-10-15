@@ -29,7 +29,7 @@ func (c *checker) typeFromInit(declared *ir.Type, init ir.Expr, at ast.Pos) *ir.
 //
 // A type parameter no enclosing declaration has in scope is the other: a call
 // that bound none of its callee's parameters leaves one in its result, and
-// `var xs = empty()` held a `list<T>` naming a type nothing declares. One in
+// `var xs = empty()` held a `list[T]` naming a type nothing declares. One in
 // scope -- the enclosing generic's own -- is a type like any other. In scope
 // means the name here resolves to the parameter the type refers to (its
 // Decl), so a callee's `T` is not taken for the `T` of the generic calling it.

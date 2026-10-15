@@ -8,7 +8,7 @@ import (
 
 // Events is the events n's component declares, each parameter typed by what
 // n's call site bound the component's type parameters to: an effect keyed on a
-// list<Todo> reports `@insert(at int, item Todo)`. The declaration's own events
+// list[Todo] reports `@insert(at int, item Todo)`. The declaration's own events
 // where nothing was bound.
 func (n *NodeInst) Events() []*EventDecl {
 	if n == nil || n.Component == nil {
@@ -100,10 +100,10 @@ func EffectEventRefusal(event string, key Expr) string {
 }
 
 // copiedLoopVar is the first loop variable key reads that the loop bound by
-// copy, or "". Nothing writes one -- it is readonly<T>, as every loop variable
+// copy, or "". Nothing writes one -- it is readonly[T], as every loop variable
 // is unless bound with `&` -- so a report of writes to it would never run.
-// Asked as "not ref<T>" rather than "readonly<T>" because the checker erases
-// readonly<T> once the loop is checked, and an editor asks of checked IR.
+// Asked as "not ref[T]" rather than "readonly[T]" because the checker erases
+// readonly[T] once the loop is checked, and an editor asks of checked IR.
 func copiedLoopVar(key Expr) string {
 	name := ""
 	_ = WalkExprs(key, func(e Expr) error {

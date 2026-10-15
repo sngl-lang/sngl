@@ -32,7 +32,7 @@ func Test.setLocale(loc string)
 // context — including component vars initialised from it — see the overridden
 // value. Replaces t.setLocale when the locale context is declared.
 #[marks.intrinsic("test.setContext")]
-func Test.setContext<V>(
+func Test.setContext[V any](
     ctx   V, // the context to set
     value V, // what it reads from here on
 )

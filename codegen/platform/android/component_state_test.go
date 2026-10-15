@@ -23,7 +23,7 @@ struct Item {
 
 component card(name = "") node {
     var clicks = 0
-    var tags list<string> = ["a"]
+    var tags list[string] = ["a"]
     func label() => "{name}:{clicks}:{tags.length()}"
     button(text = label(), @click { bump() })
     func bump() {
@@ -32,7 +32,7 @@ component card(name = "") node {
 }
 
 ui.window {
-    var items list<Item> = [{name = "a"}, {name = "b"}]
+    var items list[Item] = [{name = "a"}, {name = "b"}]
     for var item = items {
         card(name = item.name)
     }

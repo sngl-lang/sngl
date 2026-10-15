@@ -174,9 +174,13 @@ func (*Comment) structBodyItem()     {}
 // TypeParam is one generic parameter of a declaration. Default is what an
 // argument list that stops short falls back to.
 type TypeParam struct {
-	Pos     Pos `json:"-"`
-	Name    string
-	Default TypeExpr `json:",omitempty"`
+	Pos  Pos `json:"-"`
+	Name string
+	// Constraint is what a type bound to the parameter must be: `any` when
+	// it says nothing. Every declared parameter names one; a receiver's list
+	// restates names only, so its parameters carry none.
+	Constraint TypeExpr `json:",omitempty"`
+	Default    TypeExpr `json:",omitempty"`
 }
 
 // ParamName and ParamPos let one helper walk either package's type parameters
@@ -189,7 +193,7 @@ func (p TypeParam) ParamPos() Pos     { return p.Pos }
 type StructDef struct {
 	Pos         Pos
 	Name        string
-	TypeParams  []TypeParam // generic parameters: ["T"] for `struct list<T> {}`
+	TypeParams  []TypeParam // generic parameters: ["T"] for `struct list[T any] {}`
 	Body        []StructBodyItem
 	IsMultiline bool
 	Attrs       []MacroAttr `json:",omitempty"` // the #[...] marks written on the declaration
@@ -356,7 +360,7 @@ type FuncDef struct {
 	Pos            Pos
 	Name           string
 	TypeParams     []TypeParam // method-level generic parameters, e.g. ["T", "U"]
-	RecvTypeParams []TypeParam // receiver-level: ["T"] for func list<T>.length()
+	RecvTypeParams []TypeParam // receiver-level: ["T"] for func list[T].length()
 	Params         ParamList
 	// Target is the `[expr]` index on the declaration name: the build target
 	// this declaration implements, written by whoever overrides one. nil on an
@@ -407,7 +411,7 @@ type ComponentDecl struct {
 	// nothing ever selects.
 	Target Expr
 	// TypeParams are the generic parameters written after the name --
-	// ["T"] for `component effect<T>(on T)`. Bound at the call site from the
+	// ["T"] for `component effect[T any](on T)`. Bound at the call site from the
 	// props supplied there, the same way a func's are bound from its
 	// arguments.
 	TypeParams   []TypeParam `json:",omitempty"`
@@ -468,9 +472,13 @@ type EventHandler struct {
 type VisualNode struct {
 	Pos    Pos
 	Target TargetExpr
-	Args   ArgList
-	ID     string // element ID from #id syntax
-	Block  StmtBlock
+	// TypeArgs are the type arguments written after the target,
+	// `context[option[User]] #who(null)`, as the expressions a type's name is
+	// spelled with.
+	TypeArgs []Expr `json:",omitempty"`
+	Args     ArgList
+	ID       string // element ID from #id syntax
+	Block    StmtBlock
 	// HasParens records that the node was written with `()`, which an empty
 	// argument list cannot say on its own — `vbox()` and `vbox` are the same
 	// node, and the parens are the author's.
@@ -519,7 +527,7 @@ type IfStmt struct {
 type ForStmt struct {
 	Pos      Pos
 	Key      string // iterator variable
-	KeyRef   bool   // Key was &-prefixed: `for var &t = ...` (ref<T> element binding)
+	KeyRef   bool   // Key was &-prefixed: `for var &t = ...` (ref[T] element binding)
 	Value    string // optional second variable (empty if single-var form)
 	ValueRef bool   // Value was &-prefixed: `for var i, &t = ...`
 	Iter     Expr

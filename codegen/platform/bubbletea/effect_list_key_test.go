@@ -14,7 +14,7 @@ import (
 // A list is not a key, and the program that tries to use one does not reach
 // this platform at all.
 //
-// `effect<T = struct {}>` constrains T to nothing, so `on` may be written as a
+// `effect[T = struct {}]` constrains T to nothing, so `on` may be written as a
 // list -- and `==` on one does not mean the same thing on every target. Go will
 // not compile `!=` on a slice; JS compares two objects by identity, so a
 // freshly built one is never the one already running. What this used to assert
@@ -33,8 +33,8 @@ import . "sngl:ui"
 
 window {
     var (
-        tags list<string> = ["a"]
-        log list<string> = []
+        tags list[string] = ["a"]
+        log list[string] = []
     )
 
     effect(

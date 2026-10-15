@@ -23,6 +23,7 @@ import gen "sngl:x/gen"
     structSpread,
     viewStatements,
     genericFuncs,
+    genericComponents,
 )]
 #[gen.name("none")]
 component language(const platforms ...component build.platform) build.language

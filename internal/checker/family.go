@@ -124,7 +124,7 @@ func (c *checker) finishFamilyMarks(decl *ast.ComponentDecl, comp *ir.Component,
 			// should not be quietly restating -- and a bodyless one, the common
 			// case in lib/, has nothing to read an answer off. Every tier says
 			// it.
-			c.error(decl.Pos, "component %s: name the family it belongs to in the return position, or return a type parameter, `<F>(…) F`, to take the family it is placed in",
+			c.error(decl.Pos, "component %s: name the family it belongs to in the return position, or return a type parameter, `<F any>(…) F`, to take the family it is placed in",
 				comp.Name)
 			return
 		}
@@ -153,7 +153,7 @@ func (c *checker) finishFamilyMarks(decl *ast.ComponentDecl, comp *ir.Component,
 // member it holds and never bound, so each is a name, a type and perhaps a
 // default for the members that omit it: a two-way or const prop, an event, a
 // slot would each be read by nobody. A type parameter is the members' to
-// bind, each in its return position: `page<T, M>` is a `_page<M>`, and a
+// bind, each in its return position: `page[T, M]` is a `_page[M]`, and a
 // value of the family is read at the type it was bound to. A body is where
 // how a family is generated will be written, and nothing reads one yet -- refused rather than dropped, so
 // that the first program to write one is not one whose body silently did

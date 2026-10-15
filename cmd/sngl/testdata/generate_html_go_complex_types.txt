@@ -49,7 +49,7 @@ output { go { html } }
 import "go:example.com/wasm-complex/api"
 
 component main root {
-    var rows list<string> = []
+    var rows list[string] = []
 
     window #app(title="t") {
         vbox {

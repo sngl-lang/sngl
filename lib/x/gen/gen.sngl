@@ -6,19 +6,22 @@ import marks "sngl:internal/marks"
 // Most name a lowering pass that does *not* run when the target claims it, and
 // the list is closed: a capability nothing reads is a word with no consequence.
 //
-// Five are read somewhere other than a pass gate, and are here because a target
+// Six are read somewhere other than a pass gate, and are here because a target
 // still has to be able to say them. `viewStatements` is the build's: withheld, it
 // unrolls the target's view loops after lowering, one window at a time.
 // `instanceState` is the inliner's: withheld, a component with state of its own
 // is spliced where it is written and keeps a cell per copy of the loops around
-// it, rather than being built at run time.
+// it, rather than being built at run time. `genericComponents` is the
+// inliner's too: withheld, a generic component built at run time is copied
+// per instantiation, at the types its call site bound, rather than emitted
+// once with its type parameters erased.
 // `insertBefore`, `inlineSlots`, `asyncPost` and `asyncSpawn` are grants rather
 // than withdrawals -- the platform's container can place a child, a span can
 // hold a render slot, the platform can reach its drawing thread, the language
 // can spawn -- and a pass reads each to choose what to emit rather than whether
 // to run.
 //
-enum Capability { toggle, ternary, lambda, ref, unitType, enumType, asyncReactive, asyncCalls, computed, listLambdas, reactivity, declarative, inlineComponents, implicitRecv, structSpread, viewStatements, instanceState, insertBefore, inlineSlots, asyncPost, asyncSpawn, effects, navigation, genericFuncs }
+enum Capability { toggle, ternary, lambda, ref, unitType, enumType, asyncReactive, asyncCalls, computed, listLambdas, reactivity, declarative, inlineComponents, implicitRecv, structSpread, viewStatements, instanceState, insertBefore, inlineSlots, asyncPost, asyncSpawn, effects, navigation, genericFuncs, genericComponents }
 
 // What a *primitive* can do with the nodes it renders, as against what a
 // target can do with the language. Written on an `#[intrinsic]` component
@@ -70,7 +73,7 @@ enum Pass { structComponents, stdlibContextParam, focusOrder, canvas, reactiveCa
 // the ternary Go withdrew — the language emits route mode's server half and
 // not the markup, so a restriction that exists because Go lacks a construct
 // does not apply to what html itself renders.
-func can(caps list<Capability>) ir.Macro
+func can(caps list[Capability]) ir.Macro
 
 // Says the target cannot emit each named construct, so the pass that lowers it
 // runs.
@@ -79,10 +82,10 @@ func can(caps list<Capability>) ir.Macro
 // anyway where a target is refusing something it would otherwise inherit: a
 // platform overruling a language's `can`. Naming one capability both ways on
 // one declaration is an error rather than a precedence rule.
-func cannot(caps list<Capability>) ir.Macro
+func cannot(caps list[Capability]) ir.Macro
 
 // Asks for each named lowering pass.
-func wants(passes list<Pass>) ir.Macro
+func wants(passes list[Pass]) ir.Macro
 
 // Names a build-target node for everything outside SNGL that looks a target
 // up by string: `sngl generate --platform html`, and the generator a plugin
@@ -114,7 +117,7 @@ func native(generator string) ir.Macro
 // the only one that takes `Rendered` rather than `Capability` -- so naming a
 // target capability here, or a rendered one in `can`, is refused by the
 // argument check with a list of what the enum does accept.
-func renders(these list<Rendered>) ir.Macro
+func renders(these list[Rendered]) ir.Macro
 
 // How a family's override generates the family, written as the whole of the
 // override's body. The build walks each place the program renders the family
@@ -167,7 +170,7 @@ func renders(these list<Rendered>) ir.Macro
 // read changes. A raise that leaves it is the build's error.
 //
 //     component block[go.language] {
-//         gen.emit(@generate(out, members list<gen.Member<Entry>>) {
+//         gen.emit(@generate(out, members list[gen.Member[Entry]]) {
 //             out.write("blocks.json", encode(members))
 //         })
 //     }
@@ -175,20 +178,20 @@ func renders(these list<Rendered>) ir.Macro
 // A handler's annotation is what says what `T` is, as `render`'s does in code
 // mode.
 #[marks.builtin("genEmit")]
-component emit<T = struct {}, F>(
+component emit[T any = struct {}, F any](
     file    string = "",
     open    string = "",
     close   string = "",
     // The defaults are never read: code mode needs a `render`, and the build
     // always supplies `members`. They are typed by T's default because a
     // default is checked against what T stands for in the declaration.
-    render  func(members list<T>) string = func(members list<struct {}>) => "",
-    members func() list<T> = func() list<struct {}> {
+    render  func(members list[T]) string = func(members list[struct {}]) => "",
+    members func() list[T] = func() list[struct {}] {
         return []
     },
-    @start(members func() list<T>),
+    @start(members func() list[T]),
     @change(text string),
-    @generate(out Out, members list<Member<T>>),
+    @generate(out Out, members list[Member[T]]),
 ) F {
     effect(@mount {
         start(members)
@@ -201,9 +204,9 @@ component emit<T = struct {}, F>(
 // One member as a `@generate` handler is handed it: the value its `node` gives,
 // read at build time with its props bound, and the members it holds, in the
 // order they are written.
-struct Member<T> {
+struct Member[T any] {
     value    T
-    children list<Member<T>>
+    children list[Member[T]]
 }
 
 // What one member writes, written as the whole body of the member's override
@@ -213,7 +216,7 @@ struct Member<T> {
 // children write, then `close`; both are evaluated with the member's props in
 // scope, which is how a member says what it holds:
 //
-//     component text[go.language] {
+//     component text[go.language](name, full) {
 //         gen.node(open="{name}: {full}\n")
 //     }
 //
@@ -221,8 +224,8 @@ struct Member<T> {
 // in scope -- and its events, each a func running the handler the call site
 // wrote for it, or nothing where it wrote none:
 //
-//     component text[go.language] {
+//     component text[go.language](full, @click) {
 //         gen.node(value=Entry{full=full, click=click})
 //     }
 #[marks.builtin("genNode")]
-component node<T = struct {}, F>(open string = "", close string = "", value T = {}) F {}
+component node[T any = struct {}, F any](open string = "", close string = "", value T = {}) F {}

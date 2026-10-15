@@ -1,0 +1,6 @@
+// A parameter is named everywhere but in a func literal with no body, which
+// is a func type, `apply[func(list[int]) bool](fs)`: written in a function's
+// own list, a type with no name says nothing a call could bind.
+
+func f(list[int]) { // ERROR(parse) "a parameter is named: write name list[int]"
+}

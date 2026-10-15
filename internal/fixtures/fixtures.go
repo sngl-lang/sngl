@@ -179,10 +179,15 @@ func check(t *testing.T, s testutil.Sample, doc *ast.Document) *ir.Package {
 	for _, exp := range expected {
 		directed[exp.Pos()] = true
 	}
+	seen := map[string]bool{}
 	for _, d := range diags {
 		if d.Severity == ir.Error && !directed[d.Pos.Line] {
 			t.Errorf("unexpected error: %s", d.Error())
 		}
+		if seen[d.Error()] {
+			t.Errorf("reported twice: %s", d.Error())
+		}
+		seen[d.Error()] = true
 	}
 	for _, exp := range expected {
 		found := false

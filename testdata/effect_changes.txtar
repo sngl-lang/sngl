@@ -43,13 +43,13 @@ struct Todo {
 }
 
 struct Holder {
-    items list<int>
+    items list[int]
     other int = 0
 }
 
 component todoList ui.node {
-    var todos list<Todo> = []
-    var saved list<string> = []
+    var todos list[Todo] = []
+    var saved list[string] = []
 
     effect(
         on = todos,

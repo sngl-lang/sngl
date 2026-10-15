@@ -398,7 +398,7 @@ func IsRootFamily(f *Component) bool { return isFamilyRole(f, BuiltinFamilyRoot)
 
 // TypeFamily is the family t names in a return position or a slot, or nil.
 // FamilyArgs is what a member's type, at the type arguments it carries, hands
-// its family's type parameters: `page<Pkg, Meta>` is a `_page<Meta>`. A
+// its family's type parameters: `page[Pkg, Meta]` is a `_page[Meta]`. A
 // member written bare is its defaults, as a struct type is.
 func FamilyArgs(m *Component, args []*Type) []*Type {
 	if m == nil || len(m.FamilyTypeArgs) == 0 {
@@ -656,14 +656,14 @@ type Func struct {
 	// a pass renaming the declaration renames the receiver with it.
 	Receiver *Type
 	// RecvParam is the implicit `this` of a method on a generic built-in whose
-	// body is an expression -- `func list<T>.push(item T) => …ListPush(this,
+	// body is an expression -- `func list[T].push(item T) => …ListPush(this,
 	// item)`. The checker binds it into the body's scope without putting it in
 	// Params, because no call site passes one: the receiver arrives as
 	// Call.Receiver. Anything substituting arguments for parameters has to bind
 	// this one too, and needs a handle on it to do so.
 	RecvParam      *Param `json:"-"`
 	TypeParams     []TypeParam
-	RecvTypeParams []TypeParam // receiver-level: ["T"] for func list<T>.length()
+	RecvTypeParams []TypeParam // receiver-level: ["T"] for func list[T].length()
 	Params         []*Param
 	Return         *Type
 	Block          []Stmt // type-checked statements (expression bodies become a single Return)
@@ -960,8 +960,8 @@ type Component struct {
 	// and may contain none of their members.
 	Family *Component `json:"-"`
 	// FamilyTypeArgs are the type arguments the return position hands a generic
-	// family, in terms of the member's own type parameters: `page<T, M>`
-	// returning `_page<M>` holds M here. Nil for a family that takes none.
+	// family, in terms of the member's own type parameters: `page[T, M]`
+	// returning `_page[M]` holds M here. Nil for a family that takes none.
 	FamilyTypeArgs []*Type `json:"-"`
 	// Eventless is the #[family.eventless] mark on a family: its members raise
 	// no events, an #[intrinsic] primitive's being the target calling in.
@@ -1025,7 +1025,7 @@ type Component struct {
 	// Nil for the components that are neither, which is nearly all of them.
 	Gen *GenCaps `json:",omitempty"`
 	// TypeParams are the component's generic parameters, in declaration
-	// order -- ["T"] for `component effect<T>(on T)`. Bound at the call site
+	// order -- ["T"] for `component effect[T any](on T)`. Bound at the call site
 	// from the props supplied there, the same way a func's are bound from its
 	// arguments.
 	TypeParams []TypeParam `json:",omitempty"`
@@ -1207,8 +1207,8 @@ type SlotCard string
 
 const (
 	SlotAny      SlotCard = ""         // any number; the default
-	SlotOne      SlotCard = "one"      // exactly one, from tree.one<T>
-	SlotOptional SlotCard = "optional" // none or one, from option<T>
+	SlotOne      SlotCard = "one"      // exactly one, from tree.one[T]
+	SlotOptional SlotCard = "optional" // none or one, from option[T]
 )
 
 // EventHandler is a resolved event handler. The handler body is represented
@@ -1276,7 +1276,7 @@ type Param struct {
 	// every call site, so a read of the parameter is one too (IsConst).
 	Const bool `json:",omitempty"`
 	// Variadic is a function's last parameter written `...T`. Its Type is
-	// list<T>: the checker packs the positional arguments past the others
+	// list[T]: the checker packs the positional arguments past the others
 	// into a list literal at each call, so nothing after it sees anything
 	// but an ordinary list argument.
 	Variadic bool `json:",omitempty"`
@@ -1290,9 +1290,14 @@ func (p *Param) SymType() *Type  { return p.Type }
 // TypeParam is one generic parameter of a declaration. Default is what an
 // argument list that stops short falls back to.
 type TypeParam struct {
-	Pos     ast.Pos `json:"-"`
-	Name    string
-	Default *Type `json:"-"`
+	Pos  ast.Pos `json:"-"`
+	Name string
+	// Constraint is what the declaration says a type bound to the parameter
+	// must be: ir.TypAny, which says nothing, or an anonymous struct whose
+	// fields the type must have. A receiver's list restates names only and
+	// takes its declaration's.
+	Constraint *Type `json:"-"`
+	Default    *Type `json:"-"`
 }
 
 // ParamName and ParamPos mirror ast.TypeParam's; see the note there.
@@ -1303,7 +1308,7 @@ func (p TypeParam) ParamPos() ast.Pos { return p.Pos }
 type StructDef struct {
 	AST *ast.StructDef
 	DeclInfo
-	TypeParams []TypeParam // generic parameters, e.g. ["T"] for list<T>, ["K","V"] for map<K,V>
+	TypeParams []TypeParam // generic parameters, e.g. ["T"] for list[T], ["K","V"] for map[K,V]
 	Fields     []*StructField
 	// RecordOf is the data family this struct is the record of
 	// (Component.Record), nil for any other.

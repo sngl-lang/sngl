@@ -215,7 +215,7 @@ import (
 {{.LangHelpers}}
 {{- if .NeedsCalendarDate}}
 // snglCalendarDate is the day a GtkCalendar has selected, as the *time.Time an
-// option<date> is in Go. A calendar always has a day selected.
+// option[date] is in Go. A calendar always has a day selected.
 func snglCalendarDate(c *C.GtkCalendar) *time.Time {
 	dt := C.gtk_calendar_get_date(c)
 	defer C.g_date_time_unref(dt)

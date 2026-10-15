@@ -1,4 +1,4 @@
-JS codegen for map<K, V> under the html platform. A map literal is emitted as
+JS codegen for map[K, V] under the html platform. A map literal is emitted as
 `new Map([[k, v], ...])`; `length()` dispatches to the `.size` property rather
 than a call; and `get()` with a default becomes a `.has()`/`.get()` ternary,
 since JS has no two-argument lookup.
@@ -8,7 +8,7 @@ import . "sngl:ui"
 output { none { html } }
 
 component main node {
-    var scores map<string, int> = {alice=10, bob=20}
+    var scores map[string, int] = {alice=10, bob=20}
     var size = 0
     button(text="count", @click {
         size = scores.length()

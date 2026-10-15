@@ -661,11 +661,12 @@ func (st *inlinePureState) substitute(comp *ir.Component, callsite *ir.NodeInst)
 		emitted = emittedHandlerNames(comp.Stmts)
 	}
 	provided := providedContextVars(comp, callsite.Props)
+	typeArgs := spliceTypeArgs(comp, callsite)
 	var own []ir.Stmt
 	if st.takesBody(comp) {
-		own, comp.Stmts = comp.Stmts, nil
+		own, comp.Stmts = ir.InstantiateStmts(comp.Stmts, typeArgs), nil
 	} else {
-		own = deepCloneStmts(comp.Stmts)
+		own = splicedBody(comp, typeArgs)
 	}
 	body := substituteVars(own, provided)
 
@@ -684,9 +685,7 @@ func (st *inlinePureState) substitute(comp *ir.Component, callsite *ir.NodeInst)
 			if _, ok := provided[v]; ok {
 				continue
 			}
-			clone := cloneVarShallow(v)
-			clone.Name = st.names.next(v.Name, "inst")
-			clone.Init = deepCloneExpr(v.Init)
+			clone := cloneHoistedVar(v, st.names.next(v.Name, "inst"), typeArgs)
 			renames[v] = clone.Name
 			symRenames[v] = clone
 			*st.hoist = append(*st.hoist, clone)

@@ -31,12 +31,12 @@ import ui "sngl:ui"
 
 struct Row {
     n     int = 0
-    items list<int> = []
+    items list[int] = []
 }
 
 struct Tree {
     label string
-    kids  list<Tree> = []
+    kids  list[Tree] = []
 }
 
 func bumped(r Row) int {
@@ -58,23 +58,23 @@ func replaced(r Row) int {
     return r.n
 }
 
-func pushedTo(xs list<int>) int {
+func pushedTo(xs list[int]) int {
     xs.push(3)
     return xs.length()
 }
 
 component box ui.node {
     var (
-        xs list<Row> = [Row{n=1, items=[1]}]
-        ys list<Row> = []
-        a list<int> = [1, 2]
-        b list<int> = []
+        xs list[Row] = [Row{n=1, items=[1]}]
+        ys list[Row] = []
+        a list[int] = [1, 2]
+        b list[int] = []
         p = Row{n=1, items=[1]}
         q = Row{}
         t = Tree{label="a", kids=[Tree{label="b"}]}
         u = Tree{label="x"}
-        m map<string, Row> = {"a"=Row{n=1}}
-        mm map<string, Row> = {"b"=Row{}}
+        m map[string, Row] = {"a"=Row{n=1}}
+        mm map[string, Row] = {"b"=Row{}}
         out = ""
     )
 

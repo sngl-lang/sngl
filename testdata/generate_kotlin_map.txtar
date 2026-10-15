@@ -1,4 +1,4 @@
-Kotlin codegen for map<K, V>: a literal, and the two methods whose Kotlin
+Kotlin codegen for map[K, V]: a literal, and the two methods whose Kotlin
 spelling is not a method call of the same name. A map literal is `mapOf(k to
 v, ...)`; `length()` is the `size` property; `get(key, default)` is
 `getOrDefault(key, default)`, whose fallback argument is why SNGL's `get`
@@ -10,7 +10,7 @@ import . "sngl:ui"
 output { kotlin { android } }
 
 component main node {
-    var scores map<string, int> = {alice=10, bob=20}
+    var scores map[string, int] = {alice=10, bob=20}
     var size = 0
     button(text="count", @click {
         size = scores.length()

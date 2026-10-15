@@ -13,7 +13,7 @@ component greeter(name = "") node {
 }
 
 window {
-    var names list<string> = ["ann", "bob"]
+    var names list[string] = ["ann", "bob"]
     for var n = names {
         greeter(name=n)
     }

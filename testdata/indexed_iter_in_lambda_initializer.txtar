@@ -26,7 +26,7 @@ output {
     }
 }
 
-var totals list<int> = [1].map(func(n int) {
+var totals list[int] = [1].map(func(n int) {
     var acc = 0
     for var i, v = seq.count(3) {
         acc = acc + i + v + n

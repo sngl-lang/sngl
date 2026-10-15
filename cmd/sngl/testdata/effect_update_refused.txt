@@ -13,7 +13,7 @@ sngl check ref.sngl
 import ui "sngl:ui"
 
 component rows ui.node {
-    var xs list<list<int>> = [[1], [2]]
+    var xs list[list[int]] = [[1], [2]]
     var n = 0
     ui.vbox {
         for var x = xs {
@@ -29,7 +29,7 @@ ui.window(title = "Rows") {
 import ui "sngl:ui"
 
 component rows ui.node {
-    var xs list<list<int>> = [[1], [2]]
+    var xs list[list[int]] = [[1], [2]]
     var n = 0
     ui.vbox {
         for var &x = xs {

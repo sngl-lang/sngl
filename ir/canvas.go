@@ -12,7 +12,7 @@ package ir
 // A fourth used to live here: CrossesTreeFamily, which reported a component
 // hosting a family other than its own -- a window over widgets, a canvas over
 // shapes -- and was where a node id stopped carrying. Both halves of that have
-// been answered since. A window *counts*, conferring `option<T>` on a handle
+// been answered since. A window *counts*, conferring `option[T]` on a handle
 // read from outside it, because the surface may not be open. And a canvas no
 // longer stops the hoist at all: the id is ordinary, and it is the *read* that
 // passNodePropReads answers with the expression the prop was given, because a

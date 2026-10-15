@@ -8,12 +8,12 @@ import ui "sngl:ui"
 
 struct Todo {
     done bool = false
-    tags list<int> = []
+    tags list[int] = []
 }
 
-var todos list<Todo> = [Todo{}]
-var ns list<int> = [1]
-var m map<string, int> = {"a"=1}
+var todos list[Todo] = [Todo{}]
+var ns list[int] = [1]
+var m map[string, int] = {"a"=1}
 
 func copies() {
     for var t = todos {

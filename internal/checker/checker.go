@@ -394,7 +394,7 @@ type checker struct {
 	scope  *ir.Scope
 	symtab *ir.SymbolTable
 
-	// refCoercions are the call sites that handed a plain T to a ref<T>
+	// refCoercions are the call sites that handed a plain T to a ref[T]
 	// parameter; see verifyRefCoercions for why the callee is held to its half
 	// of the bargain only once every body has been checked.
 	refCoercions []refCoercion
@@ -658,9 +658,14 @@ type checker struct {
 	// specPinned is what a specialization's props pinned, before defaults:
 	// what bindFromChildren leaves as it is.
 	specPinned map[*ir.Component]map[string]*ir.Type
+
+	// callTypeArgs holds the type arguments written at a call,
+	// `first[int](xs)`, for the generic declaration the call reaches to bind
+	// (instantiatedCall).
+	callTypeArgs map[*ast.CallExpr]*writtenTypeArgs
 	// handleArgs is the type arguments each handle a component body declares
 	// was bound, for a select reaching it from outside: `c.pkg` is the
-	// `page<Pkg>` its call site made it.
+	// `page[Pkg]` its call site made it.
 	handleArgs map[handleKey][]*ir.Type
 	// entryOrigin is the declared entry each specialized slot entry was
 	// copied from, and entrySpec the specialization an insertion of one was
@@ -708,7 +713,7 @@ type checker struct {
 	// stdComp.PlatformOverrides[platformName] = checkedIRBody mapping.
 	pendingExtensions []pendingExtension
 
-	// Flow narrowing of option<T> after a null test. narrowed holds the facts
+	// Flow narrowing of option[T] after a null test. narrowed holds the facts
 	// current at the statement being checked, narrowUsed says which of them a
 	// read actually went through, and narrowChecks defers the soundness
 	// question to after the purity fixed point. noNarrow suspends the rewrite
@@ -2095,10 +2100,10 @@ func (c *checker) libraryRecords() [2]*ir.Builtins {
 	return [2]*ir.Builtins{c.libs.builtins, ir.Published()}
 }
 
-// listOf is list<elem> as this check's library declares it.
+// listOf is list[elem] as this check's library declares it.
 func (c *checker) listOf(elem *ir.Type) *ir.Type { return c.libs.builtins.ListOf(elem) }
 
-// mapOf is map<k, v> as this check's library declares it.
+// mapOf is map[k, v] as this check's library declares it.
 func (c *checker) mapOf(k, v *ir.Type) *ir.Type { return c.libs.builtins.MapOf(k, v) }
 
 func (c *checker) resolveStructBody(sd *ir.StructDef) {
@@ -2825,7 +2830,7 @@ func (c *checker) isLibraryNamespace(name string) bool {
 // claims its name, since a slot is resolved as a tag from anywhere in the body.
 //
 // An id declared inside a *descendant* component is deliberately absent. It is
-// reachable from here as list<host>, but the parent did not declare it -- were
+// reachable from here as list[host], but the parent did not declare it -- were
 // it a claim, renaming a var in a child would break its parent, and a library
 // component's internal ids would land in every caller's namespace.
 func (c *checker) claimComponentAPI(decl *ast.ComponentDecl, comp *ir.Component) {
@@ -3002,21 +3007,23 @@ func (c *checker) registerComponent(comp *ast.ComponentDecl) {
 // registerComponentDecl builds and registers one component declaration.
 func (c *checker) registerComponentDecl(comp *ast.ComponentDecl, bodyLocal bool) *ir.Component {
 	// An override implements one declaration for one target, and says which
-	// target on its own name: `component ui.button[platform] { ... }`.
+	// target on its own name: `component ui.button[platform](…) { ... }`.
 	// It is not a declaration of its own, so it registers nothing here --
 	// collectUserOverrides merges it into the declaration it names, after
 	// pass1 has registered everything it might name.
 	//
-	// A parens form with nothing in them is neither: android.sngl writes
-	// `component ui.X() { body }`, whose body the platform reads itself.
-	bare := comp.HasParens && len(comp.Props.Props) == 0 && comp.ChildrenType == nil
+	// A parens form with nothing in them and no target is neither:
+	// android.sngl writes `component ui.X() { body }`, whose body the
+	// platform reads itself. An override may write `()` too, and names
+	// its target.
+	bare := comp.Target == nil && comp.HasParens && len(comp.Props.Props) == 0 && comp.ChildrenType == nil
 	// An override merges into a declaration registered elsewhere in the
 	// package, so there is nothing body-scoped for one to land on.
 	if bodyLocal && (comp.Target != nil || strings.IndexByte(comp.Name, '.') > 0) {
 		c.error(comp.Pos, "an override may only be written at the root of a file")
 		return nil
 	}
-	if comp.Target != nil && !bare {
+	if comp.Target != nil {
 		if c.inLibSource() {
 			// A library package's overrides belong to mergeTargetExtensions,
 			// which resolves each one in that package's own scope -- where the
@@ -3106,7 +3113,7 @@ func (c *checker) registerComponentDecl(comp *ast.ComponentDecl, bodyLocal bool)
 			// the prop takes anything, which is what `context(default dyn)`
 			// means and what a caller reads at the call site.
 			if prop.Type.Kind == ir.TypeDyn && pd.Type == nil && pd.Default == nil {
-				c.error(comp.Pos, "param %q must have a type hint or a default value", pd.Name)
+				c.error(pd.Pos, "type annotation or default required for parameter %q", pd.Name)
 			}
 			// Default is checked later in checkComponentBody when scope is
 			// ready.
@@ -3222,6 +3229,31 @@ func (c *checker) collectComponentDecls(comp *ast.ComponentDecl, irComp *ir.Comp
 	return nestedFuncs
 }
 
+// resolveTypeQuietly resolves te and reports nothing: for a declaration whose
+// annotation is resolved again, and reported, where it is checked. A
+// component's var is registered before its body is read and checked with it,
+// and resolving it loudly in both said everything wrong with its type twice.
+func (c *checker) resolveTypeQuietly(te ast.TypeExpr) (t *ir.Type) {
+	c.quietly(func() { t = c.resolveType(te) })
+	return t
+}
+
+// checkExprQuietly checks e and reports nothing, for a read of its type ahead
+// of the check that reports it: a type parameter bound from an argument, a
+// name tested for what it denotes. Checked loudly in both, everything wrong
+// with the expression was said twice.
+func (c *checker) checkExprQuietly(e ast.Expr) (out ir.Expr) {
+	c.quietly(func() { out = c.checkExpr(e) })
+	return out
+}
+
+// quietly runs f and drops whatever it reported.
+func (c *checker) quietly(f func()) {
+	n := len(c.diags)
+	f()
+	c.diags = c.diags[:n]
+}
+
 // collectComponentVarDecl builds the pre-registered ir.Vars for one component
 // body var/const declaration. Split out of collectComponentDecls because a
 // platform extension body is collected on its own (checkPendingExtensions),
@@ -3234,7 +3266,7 @@ func (c *checker) collectComponentVarDecl(stmt ast.Stmt) []*ir.Var {
 	switch s := stmt.(type) {
 	case *ast.ConstDecl:
 		for _, spec := range s.Specs {
-			typ := c.resolveType(spec.Type)
+			typ := c.resolveTypeQuietly(spec.Type)
 			for _, name := range spec.Names {
 				v := &ir.Var{AST: s, Name: name, Type: typ, IsConst: true}
 				c.applyMarks(s, v)
@@ -3243,7 +3275,7 @@ func (c *checker) collectComponentVarDecl(stmt ast.Stmt) []*ir.Var {
 		}
 	case *ast.VarDecl:
 		for _, spec := range s.Specs {
-			typ := c.resolveType(spec.Type)
+			typ := c.resolveTypeQuietly(spec.Type)
 			for _, name := range spec.Names {
 				v := &ir.Var{AST: s, Name: name, Type: typ}
 				// A mark means the same thing wherever the declaration sits.
@@ -3627,7 +3659,7 @@ func (c *checker) buildErrorBoundary(vn *ast.VisualNode, comp *ir.Component) *ir
 		eb.Children = append(eb.Children, named...)
 	}
 	// A boundary belongs to no family and hosts whatever it was handed --
-	// `component boundary<T>(content ...component T, failed component T) T`.
+	// `component boundary[T any](content ...component T, failed component T) T`.
 	// Nothing at the call site names T, so the content binds it: the first
 	// child that belongs to a family says which, and the rest are held to
 	// that. An empty boundary binds nothing, and has nothing to check.
@@ -4003,7 +4035,7 @@ func (c *checker) checkFuncBody(fn *ir.Func) {
 
 	// A method on a generic receiver may carry no receiver parameter -- saying
 	// `this` instead -- so bind it for a body that names it,
-	// `func list<T>.push(item T) => stdlib.ListPush(this, item)` or a block.
+	// `func list[T].push(item T) => stdlib.ListPush(this, item)` or a block.
 	// A concrete receiver names itself a parameter and needs none, and so does
 	// a nested method, whose `this` is synthesized into its parameter list.
 	// Only a written body: the bodyless generic stubs never say `this`, and
@@ -4373,9 +4405,14 @@ func (c *checker) checkOverrideNestedBodies(decls []ir.Symbol) {
 // declareBodyDecls rebinds what comp's body declares: a scope cannot span the
 // two passes, so pass2 declares them again from the symbols.
 func (c *checker) declareBodyDecls(comp *ir.Component) {
-	for _, sym := range comp.BodyDecls {
-		c.declare(declPos(sym), sym)
-	}
+	// The symbols were declared, and a duplicate among them reported, when
+	// pass1 collected the body; this binds them again for every body read in
+	// that scope, and reporting again said it once a read.
+	c.quietly(func() {
+		for _, sym := range comp.BodyDecls {
+			c.declare(declPos(sym), sym)
+		}
+	})
 }
 
 // declareEnclosingBody declares, into comp's body scope, what the body comp
@@ -4437,18 +4474,21 @@ func (c *checker) checkComponentBody(comp *ir.Component) {
 	// that an unannotated prop's type can be inferred from its default and the
 	// param entry we declare below picks up the inferred type.
 	if comp.AST != nil {
-		propIdx := 0
+		// Matched by name: an override's copy holds only the props its list
+		// selected, and a slot is a Param too without being a prop.
+		byName := make(map[string]*ir.Prop, len(comp.Props))
+		for _, p := range comp.Props {
+			byName[p.Name] = p
+		}
 		for _, p := range comp.AST.Props.Props {
-			// A slot is a Param too, and is not in comp.Props -- counting one
-			// here walks propIdx off the end of the props it is indexing.
 			if pd, ok := p.(ast.Param); ok && !pd.IsSlot() {
 				// A default is the declaration's, written in its file against
 				// its imports. An override installed on the declaration has
 				// no business reading it again from the override's file, where
 				// `task Task = Task.none` names a type nothing there imports;
 				// once the declaration's own check has set it, it stands.
-				if propIdx < len(comp.Props) && pd.Default != nil && !(c.installedOverride == comp && comp.Props[propIdx].Default != nil) {
-					prop := comp.Props[propIdx]
+				prop := byName[pd.Name]
+				if prop != nil && pd.Default != nil && !(c.installedOverride == comp && prop.Default != nil) {
 					// A default states a value of what the prop takes here,
 					// which for `on T = 0` under `<T = int>` is an int. A
 					// parameter with no default of its own leaves the prop type
@@ -4474,7 +4514,6 @@ func (c *checker) checkComponentBody(comp *ir.Component) {
 						prop.Type = c.inferredType(initType, *pd.Default.ExprPos())
 					}
 				}
-				propIdx++
 			}
 		}
 	}
@@ -4634,7 +4673,7 @@ func withCount(counts []nodeCount, k nodeCount) []nodeCount {
 // declareNodeIDsIn hoists the node ids in block. counts is the chain of scopes
 // crossed to reach it, outermost first, and is what the handle's type is
 // wrapped in: a node written inside a `for` inside an `if` reads from outside
-// both as `option<list<T>>`.
+// both as `option[list[T]]`.
 //
 // Each block's own ids are hoisted again, at their own depth, into the scope
 // checkBlockIR pushes for it — so a read from *inside* the scope is the plain

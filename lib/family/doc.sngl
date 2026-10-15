@@ -9,19 +9,19 @@
 // and this package is the rest of the vocabulary. A component says which
 // family it belongs to by naming it in its return position, and a slot says
 // which one it accepts by naming it as the slot's type. How many children it
-// accepts is the wrapper: bare is any number, `family.one<T>` exactly one,
-// `option<T>` none or one -- counted as the nodes the population renders, so a
+// accepts is the wrapper: bare is any number, `family.one[T]` exactly one,
+// `option[T]` none or one -- counted as the nodes the population renders, so a
 // `for` in a slot of one is refused. How many times a body inserts the slot is
 // not bounded.
 //
 // Naming nothing asks: a component whose return position is empty joins the
 // family its body renders, and one whose body renders members of two families
 // or of none is asked to say which. A component that takes whatever family it
-// is placed in says so with a type parameter, `component effect<F>(…) F` -- a
+// is placed in says so with a type parameter, `component effect[F any](…) F` -- a
 // lifetime bracket, which sits in a drawing as readily as in a layout -- and
 // its body may render only what is generic in F the same way: another such
 // component, or a slot of F. A wrapper's call site binds F from the children
-// it supplies, `component boundary<T>(content ...component T) T`.
+// it supplies, `component boundary[T any](content ...component T) T`.
 //
 // A placement that crosses a family says so where it is written:
 // `#[family.crosses]` on a node or a slot insertion lets that one stand where

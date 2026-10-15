@@ -224,31 +224,31 @@ The declarations a file holds are `import`, `output`, `struct`, `enum`, `unit`, 
 
 ### Collections
 
-`list<T>` is an ordered, typed collection, and `map<K, V>` a keyed one:
+`list[T]` is an ordered, typed collection, and `map[K, V]` a keyed one:
 
 <!-- SNGL-component -->
 
 ```sngl
-var names list<string> = []
+var names list[string] = []
 var scores = [100, 95, 87]
-var ages map<string, int> = {"ada"=36, "alan"=41}
+var ages map[string, int] = {"ada"=36, "alan"=41}
 ```
 
 ### Optional types
 
-`option<T>` wraps a value of type `T` that may be null. `null` is the default value for option types and is **only** valid for option types (not bare structs or primitives):
+`option[T]` wraps a value of type `T` that may be null. `null` is the default value for option types and is **only** valid for option types (not bare structs or primitives):
 
 <!-- SNGL-component
 struct Todo { text string = ""; done bool = false }
 -->
 
 ```sngl
-var name option<string>
-var count option<int> = 5
-var todo option<Todo> = null
+var name option[string]
+var count option[int] = 5
+var todo option[Todo] = null
 ```
 
-Check for presence with `== null` / `!= null`. Concrete values of `T` are implicitly assignable to `option<T>`.
+Check for presence with `== null` / `!= null`. Concrete values of `T` are implicitly assignable to `option[T]`.
 
 ### Structs
 
@@ -317,7 +317,7 @@ var count = 0
 var name = "World"
 var bg = #ff0000
 var timeout time.duration = 5s
-var todos list<Todo> = []
+var todos list[Todo] = []
 var status Status = active
 ```
 
@@ -374,8 +374,8 @@ Narrow list — most type changes are rejected and require an explicit cast.
 | `int` literal `0` | any unit type | Typed zero: `var t time.duration = 0`                       |
 | `string`          | string-repr.  | Assignment: `var d time.date = "2024-01-15"` (validated)    |
 | string-repr.      | `string`      | Assignment: `var s string = myDate`                         |
-| `T`               | `option<T>`   | Assignment: `var x option<int> = 5`                         |
-| `null`            | `option<T>`   | Assignment: `var x option<int> = null`                      |
+| `T`               | `option[T]`   | Assignment: `var x option[int] = 5`                         |
+| `null`            | `option[T]`   | Assignment: `var x option[int] = null`                      |
 | `null`            | `func(...)`   | Assignment; calling it yields the return type's zero value  |
 | `func() T`        | `T`           | A zero-arg function passed as an argument, prop or `{expr}` |
 | any               | `dyn`         | `dyn` accepts any type                                      |
@@ -480,11 +480,11 @@ An `effect` keyed on a value reports each write to what `on` reads. `@update` ru
 
 <!-- SNGL-component
 struct Todo { text string = ""; done bool = false }
-func saveTodos(items list<Todo>) {}
+func saveTodos(items list[Todo]) {}
 -->
 
 ```sngl
-var todos list<Todo> = []
+var todos list[Todo] = []
 effect(on=todos, @update(t) {
     saveTodos(t)
 })
@@ -496,11 +496,11 @@ A list says how it changed, too: `@insert(at, item)`, `@set(at, item)`, `@remove
 
 <!-- SNGL-component
 func send(at int, item string) {}
-func resync(xs list<string>) {}
+func resync(xs list[string]) {}
 -->
 
 ```sngl
-var lines list<string> = []
+var lines list[string] = []
 effect(
     on = lines,
     @insert(at, item) { send(at, item) },
@@ -512,7 +512,7 @@ Prefer derived state to an effect wherever the answer is a function of other sta
 
 ### Gotchas
 
-Structs cannot be null (`var todo Todo = null` is a compile error; use `var todo Todo` or `var todo option<Todo> = null` for nullable). Empty lists need an explicit type (`var items list<string> = []`) because the compiler cannot infer `T` from `[]`.
+Structs cannot be null (`var todo Todo = null` is a compile error; use `var todo Todo` or `var todo option[Todo] = null` for nullable). Empty lists need an explicit type (`var items list[string] = []`) because the compiler cannot infer `T` from `[]`.
 
 A view body describes a tree; nothing runs it top to bottom. An assignment written directly in one is a compile error -- put it in a handler, a function, or an effect's `@mount`.
 
@@ -605,15 +605,15 @@ element type binds from the value they are called on:
 <!-- SNGL-nocheck -->
 
 ```sngl
-func list<T>.push(item T)
-func list<T>.reverse() list<T>
-func list<T>.indexOf(item T) int
-func list<T>.filter(pred func(T) bool) list<T>
-func list<T>.map<U>(fn func(T) U) list<U>
+func list[T].push(item T)
+func list[T].reverse() list[T]
+func list[T].indexOf(item T) int
+func list[T].filter(pred func(T) bool) list[T]
+func list[T].map[U any](fn func(T) U) list[U]
 ```
 
-Type parameters are inferred at call sites -- you never write `<T>` explicitly
-when calling a generic method. A method-level parameter such as `map`'s `<U>`
+Type parameters are inferred at call sites, so you rarely write `[T]` when
+calling a generic method. A method-level parameter such as `map`'s `U`
 is inferred from the lambda's return type, and the lambda's own parameter type
 is inferred from the receiver's element type:
 
@@ -626,6 +626,88 @@ var todos = [Todo{text="a", done=true}, Todo{text="b", done=false}]
 func active() => todos.filter(func(t) => !t.done)
 func labels() => todos.map(func(t) => t.text)
 ```
+
+A generic declaration of your own names a constraint for each type parameter,
+`any` when it says nothing about the type. A method restates its receiver's
+parameters by name alone, since the type already constrains them:
+
+```sngl
+struct Pair[A any, B any] {
+    first  A
+    second B
+}
+
+func Pair[A, B].left() => this.first
+
+func firstOr[T any](xs list[T], fallback T) T {
+    if xs.length == 0 {
+        return fallback
+    }
+    return xs[0]
+}
+```
+
+Write the arguments where nothing else says them: a function whose type
+parameter appears only in its result, called where nothing expects a type,
+`var xs = empty[int]()`, or a literal of a generic struct, `Box[int]{value=3}`.
+They go in brackets after the name, bind the leading parameters, and leave the
+rest to inference.
+
+When a generic body needs to read a field, say which: an anonymous struct as
+the constraint is any struct with at least those fields, at those types, so a
+named struct satisfies it as readily as a literal does.
+
+<!-- SNGL-component
+struct User { name string; age int = 0 }
+-->
+
+```sngl
+func nameOf[T struct {
+    name string
+}](v T) => v.name
+
+func names() => [nameOf(User{name="ann"}), nameOf({name="anon"})]
+```
+
+A field of a constraint may name another type parameter, and the argument's
+own field is what binds it, so a function can say "a struct whose `value` is
+some T" and return that T:
+
+```sngl
+func valueOf[T any, U struct {
+    value T
+}](u U) => u.value
+```
+
+An anonymous struct in a signature may name a type parameter too, which is how
+a function takes or returns a record of some `T` without declaring a generic
+struct for it. The argument's field binds `T`, and the result is the same type
+as an anonymous struct written with the bound type:
+
+```sngl
+func pairOf[T any](a T, b T) struct {
+    first  T
+    second T
+} {
+    return {first=a, second=b}
+}
+
+func firstOf[T any](p struct {
+    first  T
+    second T
+}) => p.first
+```
+
+`[T struct {}]` takes any struct and says nothing about its fields, which is
+what a function handing its argument to something that reads fields by name
+wants: `i18n.format` takes its arguments that way. A constraint's field takes
+no default -- a constraint says what a type has, not what it starts with.
+
+`any` is only a constraint. A value whose type you say nothing about is a
+`dyn`, and `var x any` is an error. Nor is the constraint optional: a bracket
+holding a bare name after a declaration's name is the target an override is
+for, so `func firstOr[T]` is an override for a target called `T`, and the
+error says to write `T any`.
 
 ### Lambdas
 
@@ -718,12 +800,12 @@ ui.window {
 }
 ```
 
-A named slot is populated by name with a nested `component`. The slot's type bounds how many: bare is any number, `option<T>` none or one. A slot may also hand its population arguments, declared in its parameter list and bound by position:
+A named slot is populated by name with a nested `component`. The slot's type bounds how many: bare is any number, `option[T]` none or one. A slot may also hand its population arguments, declared in its parameter list and bound by position:
 
 ```sngl
 import ui "sngl:ui"
 
-component Panel(title string, header component option<ui.node>, content ...component ui.node) ui.node {
+component Panel(title string, header component option[ui.node], content ...component ui.node) ui.node {
     ui.vbox {
         header
         ui.text(value=title)
@@ -731,7 +813,7 @@ component Panel(title string, header component option<ui.node>, content ...compo
     }
 }
 
-component Rows(items list<string>, row component(item string, index int) ui.node) ui.node {
+component Rows(items list[string], row component(item string, index int) ui.node) ui.node {
     ui.vbox {
         for var i, item = items {
             row(item, i)
@@ -821,7 +903,7 @@ struct Todo { text string = ""; done bool = false }
 ```sngl
 var (
     newTodo = ""
-    todos list<Todo> = []
+    todos list[Todo] = []
 )
 ui.button(text="Add", @click {
     todos.push(Todo{text=newTodo, done=false})
@@ -973,7 +1055,7 @@ for var d = seq.step(10, 0, -2) {
 
 A sequence written directly in a loop head becomes the host's own counting
 loop. Assigned to a variable or passed to a function it is an ordinary
-`iter<int>` — a sequence the loop pulls from, not a list of numbers — so
+`iter[int]` — a sequence the loop pulls from, not a list of numbers — so
 neither spelling allocates one. Reach for `sngl:seq` rather than building a
 list of numbers to loop over.
 
@@ -1029,7 +1111,7 @@ The `else` block renders when the list is empty. It works with both `for var ite
 <!-- SNGL-component -->
 
 ```sngl
-var items list<string> = []
+var items list[string] = []
 for var item = items {
     ui.text(value=item)
 } else {
@@ -1162,7 +1244,7 @@ Toggling `enabled` is the idiomatic way to start and stop a timer; `enabled` def
 import ui "sngl:ui"
 
 component Room(name string) ui.node {
-    var log list<string> = []
+    var log list[string] = []
     effect(on=name, @mount(r) { log.push("join {r}") }, @unmount(r) { log.push("leave {r}") })
     ui.text(value=log.join(", "))
 }
@@ -1433,7 +1515,7 @@ ui.window(title="Todos") {
     var (
         newTodo = ""
         nextId = 1
-        todos list<Todo> = []
+        todos list[Todo] = []
     )
     ui.vbox(style={padding=16px, gap=8px}) {
         ui.hbox(style={gap=8px}) {

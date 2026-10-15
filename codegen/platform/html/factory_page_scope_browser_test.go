@@ -25,7 +25,7 @@ func TestFactory_AnEffectInsideAFactoryIsNotCalledFromThePage(t *testing.T) {
 	src := `
 import . "sngl:ui"
 component Row(label string) node {
-    var log list<string> = []
+    var log list[string] = []
     effect(on=label, @mount { log.push("+") }, @unmount { log.push("-") })
     text(value=label + "[" + log.join(",") + "]")
 }

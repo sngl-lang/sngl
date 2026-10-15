@@ -12,7 +12,7 @@ reserves the space and notches the outline. It only folds that way for a
 placeholder the compiler can see; a run-time one keeps the argument and the
 `if` inside it.
 
-datepicker's `value` is an `option<date>`, which is what lets the override show
+datepicker's `value` is an `option[date]`, which is what lets the override show
 nothing for a date nobody picked -- a `date`'s zero is the first day of year
 one and would otherwise pre-fill every empty field with it.
 
@@ -36,7 +36,7 @@ window {
     var name = ""
     var fruit = ""
     var plain = ""
-    var birthday option<date> = null
+    var birthday option[date] = null
 
     input(placeholder="Name", value=name, @input(e) { name = e })
     input(value=plain)

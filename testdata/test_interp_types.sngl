@@ -9,8 +9,8 @@ component view node {
     var b = true
     var s = "text"
     var st = Status.active
-    var xs list<int> = [1, 2, 3]
-    var maybe option<int> = null
+    var xs list[int] = [1, 2, 3]
+    var maybe option[int] = null
     text #out(value="n={n} f={f} b={b} s={s} st={st}")
 }
 
@@ -19,7 +19,7 @@ func testInterpPrimitives(t Test, c view) {
 }
 
 func testInterpList(t Test) {
-    var xs list<int> = [1, 2]
+    var xs list[int] = [1, 2]
     var out = "{xs}"
     t.assert(out != "")
 }

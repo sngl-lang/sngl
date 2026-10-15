@@ -28,7 +28,7 @@ component card(name = "") node {
 }
 
 window {
-    var items list<Item> = [
+    var items list[Item] = [
         {name="a"},
         {name="b"},
     ]

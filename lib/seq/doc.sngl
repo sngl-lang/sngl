@@ -1,4 +1,4 @@
-// Integer sequences: the `iter<int>` a counting loop iterates.
+// Integer sequences: the `iter[int]` a counting loop iterates.
 //
 // A `for` loop iterates something, and a list or a map is the only something
 // a program can write down -- so counting to ten meant spelling ten numbers.
@@ -15,7 +15,7 @@
 //
 // Nothing here ever builds a list. A sequence written as a loop's iterable
 // compiles to the host's own counting loop; held in a variable or passed to a
-// function it is an ordinary `iter<int>`, which is a sequence the consumer
+// function it is an ordinary `iter[int]`, which is a sequence the consumer
 // pulls from -- a range func in Go, a generator in JavaScript, an
 // IntProgression in Kotlin. `for var i, x = seq.range(…)` counts twice rather
 // than indexing into anything.

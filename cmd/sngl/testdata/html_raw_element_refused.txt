@@ -40,7 +40,7 @@ import time "sngl:time"
 
 output { none { html } }
 
-func stamp() map<string, string> {
+func stamp() map[string, string] {
     return {"t"=string(time.now())}
 }
 
@@ -55,7 +55,7 @@ import html "sngl:platform/html"
 output { none { html } }
 
 var shown = true
-var extra map<string, string> = {"a"="b"}
+var extra map[string, string] = {"a"="b"}
 
 ui.window(title="t") {
     if shown {

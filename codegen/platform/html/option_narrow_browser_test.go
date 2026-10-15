@@ -11,7 +11,7 @@ import (
 // changes underneath it.
 //
 // Narrowing is a judgement the checker makes, but it is not only a judgement:
-// option<T> is a nullable representation in JavaScript and a pointer in Go, so
+// option[T] is a nullable representation in JavaScript and a pointer in Go, so
 // the read a null test earns carries an unwrap conversion each language emits
 // its own way. A checker test would pass with every one of them wrong. This
 // one runs the emitted JavaScript in a browser and reads the number back.
@@ -19,7 +19,7 @@ func TestNarrowedOptionIsArithmeticInTheBrowser(t *testing.T) {
 	src := `
 import . "sngl:ui"
 component App() node {
-    var maybe option<int> = 3
+    var maybe option[int] = 3
     if maybe != null {
         text(value="[" + string(maybe * 2) + "]")
     }

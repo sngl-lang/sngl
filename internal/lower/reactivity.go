@@ -515,7 +515,7 @@ func (st *reactivityState) slotCall(slotID string, parentRef ir.Expr) *ir.CallSt
 	}}
 }
 
-// synthesizeSlotVar creates the per-slot `__slotN list<dyn>` Var and
+// synthesizeSlotVar creates the per-slot `__slotN list[dyn]` Var and
 // attaches it to the current owner. Idempotent — returns the existing
 // Var if one was already created.
 func (st *reactivityState) synthesizeSlotVar(slotID string) *ir.Var {

@@ -1,7 +1,7 @@
 // `struct { … }{ … }` is the value of an inline anonymous type. `Type` already
 // accepted `struct { … }`, so the type was spellable and its value was not,
 // which is what made a component's type-parameter default unwritable:
-// `component bracket<T = struct {}>(on T = struct {}{})` had no way to say what
+// `component bracket[T any = struct {}](on T = struct {}{})` had no way to say what
 // the default value of the default type was.
 //
 // The written type wins over whatever was expected, and it reaches the same
@@ -15,7 +15,7 @@ func sumPair(p struct {
     b int
 }) => p.a + p.b
 
-component bracket<T = struct {}>(on T = struct {}{}) node {
+component bracket[T any = struct {}](on T = struct {}{}) node {
     text(value="held")
 }
 

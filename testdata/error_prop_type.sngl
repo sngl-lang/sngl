@@ -20,5 +20,5 @@ window {
     html.div(hidden="yes") {} // ERROR(check) "cannot use string as bool for prop \"hidden\""
     html.input(value=42) {}   // ERROR(check) "cannot use int as string for prop \"value\""
     text(value=n)             // ERROR(check) "cannot use int as string for prop \"value\""
-    progress(value="x")       // ERROR(check) "cannot use string as option<float> for prop \"value\""
+    progress(value="x")       // ERROR(check) "cannot use string as option[float] for prop \"value\""
 }

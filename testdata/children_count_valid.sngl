@@ -7,7 +7,7 @@ component RequiresOne(content ...component family.one) node {
     vbox { content }
 }
 
-component OptionalOne(content ...component option<node>) node {
+component OptionalOne(content ...component option[node]) node {
     vbox { content }
 }
 

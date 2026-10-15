@@ -13,7 +13,7 @@ stderr 'value.sngl:17:13: fill writes "s", which a call hands back to the place 
 import ui "sngl:ui"
 
 struct Stack {
-    items list<int> = []
+    items list[int] = []
 
     func pop() int {
         var top = this.items[0]
@@ -33,14 +33,14 @@ ui.window {
 import ui "sngl:ui"
 
 struct Stack {
-    items list<int> = []
+    items list[int] = []
 
     func add(x int) {
         this.items.push(x)
     }
 }
 
-func fill(s ref<Stack>) {
+func fill(s ref[Stack]) {
     s.add(1)
 }
 

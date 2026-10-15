@@ -47,7 +47,7 @@ output {
 const pi float
 
 #[go.native("os", "os.Args")]
-var hostArgs list<string>
+var hostArgs list[string]
 
 ui.window(title="t") {
     var turns = 2.0

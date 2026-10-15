@@ -5,12 +5,8 @@
 // `context` is shadowable like any other.
 //
 // The context's type is its default's, which every provider's value is held
-// to. A default whose type says too little -- `null`, an empty list -- is
-// written as a typed const: `const nobody option<User> = null`, then
-// `context #who(nobody)`.
-//
-// TODO Investigate type arguments at a call site, spelled with brackets as Go
-// does (`context[option<User>] #who(null)`), which would state the type in
-// place; `<…>` there is not LL(1) against a comparison.
+// to. A default whose type says too little -- `null`, an empty list -- states
+// it in brackets, `context[option[User]] #who(null)`, and the default is held
+// to the type written.
 #[_builtin(context)]
-component context<V, F>(default V) F {}
+component context[V any, F any](default V) F {}

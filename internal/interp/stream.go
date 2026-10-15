@@ -7,7 +7,7 @@ import (
 	"duckfam.us/sngl/ir"
 )
 
-// A Stream is an iter<T> whose elements arrive one at a time from outside the
+// A Stream is an iter[T] whose elements arrive one at a time from outside the
 // program -- the lines of a file, what a process prints -- and are never held
 // together. It is the one iterable that cannot say how long it is, so a loop
 // over one asks its `else` by taking the first element.

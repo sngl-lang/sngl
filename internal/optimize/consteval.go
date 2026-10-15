@@ -377,7 +377,7 @@ func evalCall(call *ir.Call, ctx *evalCtx) (any, bool) {
 		}
 	}
 	// Collect argument values. An argument is consumed as a value and never
-	// rebuilt into an expression, so a T promoted to option<T> is its
+	// rebuilt into an expression, so a T promoted to option[T] is its
 	// operand's: the wrap evalConversion declines changes nothing here.
 	args := make([]any, 0, len(call.Args))
 	for _, a := range call.Args {
@@ -614,7 +614,7 @@ func evalPureGoCall(call *ir.Call, name string, ns *ir.NativeImport, args []any,
 }
 
 func evalConversion(conv *ir.Conversion, ctx *evalCtx) (any, bool) {
-	// A T promoted to option<T> is not a value change, so folding it produces
+	// A T promoted to option[T] is not a value change, so folding it produces
 	// the operand's value and the rebuilt expression is typed T again -- the
 	// wrap vanishes, and Go's *T field is assigned a T. There is nothing to
 	// gain by folding it either: the operand folds on its own.
@@ -816,19 +816,6 @@ func floatLitType(typ *ir.Type) *ir.Type {
 	return ir.TypFloat
 }
 
-// numericOrNativeEq compares two folded constants. When both sides are
-// numeric, comparison happens after promotion to float so that
-// `1 == 1.0` folds to true (matching the language's mixed-numeric == rule).
-// For non-numeric pairs, it falls back to Go's native ==.
-func numericOrNativeEq(left, right any) bool {
-	lf, lok := toFloat(left)
-	rf, rok := toFloat(right)
-	if lok && rok {
-		return lf == rf
-	}
-	return left == right
-}
-
 // --- Arithmetic and comparison helpers (operate on Go values) ---
 
 // numKindOf maps a result type to the opeval width descriptor. A nil or
@@ -845,10 +832,12 @@ func evalBinaryOp(op ast.BinaryOp, left, right any, kind opeval.NumKind) (any, b
 		return v, ok
 	}
 	switch op {
-	case ast.BinEq:
-		return numericOrNativeEq(left, right), true
-	case ast.BinNeq:
-		return !numericOrNativeEq(left, right), true
+	case ast.BinEq, ast.BinNeq:
+		eq, ok := interp.Equal(left, right)
+		if !ok {
+			return nil, false
+		}
+		return eq == (op == ast.BinEq), true
 	case ast.BinAnd:
 		lb, lok := left.(bool)
 		rb, rok := right.(bool)
@@ -1144,7 +1133,7 @@ func evalFileFunc(funcName, dirPath, filename string, ctx *evalCtx) (any, bool) 
 }
 
 // fileNames is file:'s names(pattern): the names in dirPath that pattern
-// matches, sorted, as the list<string> the declaration returns. A pattern
+// matches, sorted, as the list[string] the declaration returns. A pattern
 // reaching outside the directory matches nothing rather than listing a
 // directory the import was not allowed to name.
 func fileNames(dirPath, pattern string) (any, bool) {

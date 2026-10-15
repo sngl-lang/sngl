@@ -35,6 +35,10 @@ module.exports = grammar({
     [$._expression, $.visual_node],
     [$._expression, $.visual_node, $.struct_literal],
     [$.func_name, $.type_identifier],
+    [$.func_name],
+    // `func(` in a bracket opens a func literal or a func type, and only the
+    // body after the list tells them apart.
+    [$.func_param, $.type_identifier],
     [$.statement_block, $.struct_literal],
     [$.statement_block, $.anon_struct_literal],
     [$.method_expression, $.field_expression],
@@ -65,7 +69,7 @@ module.exports = grammar({
       seq("import", optional(seq(field("alias", $.identifier), "=>")), $.string_literal),
 
     struct_declaration: ($) =>
-      seq("struct", optional(field("name", $.identifier)), "{", repeat($.struct_field), "}"),
+      seq("struct", optional(field("name", $.identifier)), optional($.type_param_list), "{", repeat($.struct_field), "}"),
 
     struct_field: ($) =>
       seq(
@@ -132,7 +136,7 @@ module.exports = grammar({
     ),
 
     func_declaration: ($) =>
-      seq(optional("const"), "func", $.func_name, optional($.type_param_list), $._func_tail),
+      seq(optional("const"), "func", $.func_name, optional($.type_param_list), optional($.override_target), $._func_tail),
 
     _func_tail: ($) =>
       choice(
@@ -148,12 +152,32 @@ module.exports = grammar({
 
     func_name: ($) =>
       choice(
-      seq(field("receiver", $.identifier), ".", field("name", $.identifier)),
+      seq(field("receiver", $.identifier), optional($.receiver_type_params), ".", field("name", $.identifier)),
       field("name", $.identifier)
     ),
 
+    // A receiver's list restates the receiver's names, with no constraints:
+    // `func list[T].map[U any]`.
+    receiver_type_params: ($) =>
+      seq("[", $.identifier, repeat(seq(",", $.identifier)), "]"),
+
     type_param_list: ($) =>
-      seq("<", $.identifier, repeat(seq(",", $.identifier)), ">"),
+      seq("[", $.type_param, repeat(seq(",", $.type_param)), "]"),
+
+    // The target an override implements, in the bracket after the name it
+    // overrides: `component ui.vbox[platform]`, `func f[html.platform]`. A
+    // type parameter names a constraint, which is what tells the two apart.
+    override_target: ($) =>
+      seq("[", field("target", $.identifier), optional(seq(".", field("target", $.identifier))), "]"),
+
+    // Every declared type parameter names a constraint, `any` when it says
+    // nothing, and may carry a default.
+    type_param: ($) =>
+      seq(
+      field("name", $.identifier),
+      field("constraint", $.type_identifier),
+      optional(seq("=", field("default", $.type_identifier)))
+    ),
 
     // One list for every param-like site: a function's parameters, a lambda's,
     // a handler's, a component's props, and the names a slot population binds.
@@ -190,7 +214,10 @@ module.exports = grammar({
       prec.right(seq(
       optional("const"),
       "component",
+      optional(seq(field("namespace", $.identifier), ".")),
       field("name", $.identifier),
+      optional($.type_param_list),
+      optional($.override_target),
       optional(seq("(", optional($._param_list), ")")),
       optional($.type_identifier),
       optional($.statement_block)
@@ -314,13 +341,15 @@ module.exports = grammar({
 
     type_identifier: ($) =>
       choice(
-      seq(
+      // A bracket right after a type is read as its arguments, as the
+      // compiler's grammar reads it.
+      prec.right(seq(
         $.identifier,
         optional(choice(
-        seq(".", $.identifier),
-        seq("<", $.type_identifier, ">")
+        seq(".", $.identifier, optional($.type_arguments)),
+        $.type_arguments
       ))
-      ),
+      )),
       // A slot's type. The parenthesised list is what the slot is invoked
       // with; the trailing type is the tree it accepts. Parens are optional on
       // both keyword forms, which is unambiguous because "(" cannot begin a
@@ -345,6 +374,9 @@ module.exports = grammar({
     // `...T` — a count bound written as a type prefix. On a slot it is the
     // children a caller writes bare.
     variadic_type: ($) => prec.right(seq("...", $.type_identifier)),
+
+    type_arguments: ($) =>
+      seq("[", $._type_list, "]"),
 
     _type_list: ($) =>
       seq($.type_identifier, repeat(seq(",", $.type_identifier))),
@@ -403,6 +435,8 @@ module.exports = grammar({
       prec.right(
         seq(
           field("component", choice($.qualified_name, $.identifier)),
+          // A component's type arguments, `context[option[User]] #who(null)`.
+          optional(seq("[", field("type_argument", $._index_element), repeat(seq(",", field("type_argument", $._index_element))), "]")),
           optional(field("element_id", $.element_ref)),
           optional(seq("(", optional($._arg_list), ")")),
           optional($.statement_block),
@@ -574,16 +608,40 @@ module.exports = grammar({
         seq(
           field("operand", $._expression),
           "[",
-          field("index", $._expression),
+          // An index, or a generic declaration's type arguments,
+          // `first[int]`, `pair[int, string]`: the compiler decides which.
+          field("index", $._index_element),
+          repeat(seq(",", field("index", $._index_element))),
           "]",
         ),
       ),
 
     parenthesized_expression: ($) => seq("(", $._expression, ")"),
 
+    // What a bracket holds: an index, or a type argument, which may be any
+    // type -- `func(int) bool`, `struct {}` -- as well as the name-led ones an
+    // expression already spells.
+    _index_element: ($) =>
+      choice(
+        $._expression,
+        $.func_type,
+        $.struct_declaration,
+        $.component_type,
+        $.variadic_type,
+        $.enum_declaration,
+      ),
+
+    func_type: ($) =>
+      prec.right(seq(
+        "func",
+        optional(seq("(", optional($._type_list), ")")),
+        optional($.type_identifier)
+      )),
+
     struct_literal: ($) =>
       seq(
         field("name", choice($.qualified_name, $.identifier)),
+        optional(seq("[", field("type_argument", $._index_element), repeat(seq(",", field("type_argument", $._index_element))), "]")),
         "{",
         commaSep(choice($.anon_struct_field, $.spread_expression)),
         optional(","),

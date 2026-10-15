@@ -38,7 +38,7 @@ component Dot(r float) node {
 }
 
 window {
-    var sizes list<float> = [1.0, 6.0]
+    var sizes list[float] = [1.0, 6.0]
 
     vbox {
         for var s = sizes {

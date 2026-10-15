@@ -34,7 +34,7 @@ component Counter(:n int, label string) ui.node {
 }
 
 ui.window(title="t") {
-    var items list<string> = ["a"]
+    var items list[string] = ["a"]
     var total = 0
     ui.vbox {
         for var it = items {

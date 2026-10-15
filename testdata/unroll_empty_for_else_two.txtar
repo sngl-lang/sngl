@@ -19,7 +19,7 @@ output {
     }
 }
 
-const two list<int> = [1, 2]
+const two list[int] = [1, 2]
 
 component main node {
     vbox {

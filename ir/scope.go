@@ -18,7 +18,14 @@ type Symbol interface {
 // One parameter has one: the type it stands for carries it as its Decl, which
 // is how a parameter is told from another of the same name -- a callee's `T`
 // left in a call's result from the `T` of the generic it was called in.
-type TypeParamSym struct{ Name string }
+type TypeParamSym struct {
+	Name string
+	// Constraint is what a type bound to the parameter must be: ir.TypAny,
+	// which says nothing, or an anonymous struct whose fields the type must
+	// have. Nil for a parameter no declaration constrains -- an intrinsic's.
+	// A receiver's restated name takes its declaration's.
+	Constraint *Type
+}
 
 func (t *TypeParamSym) SymName() string { return t.Name }
 func (t *TypeParamSym) SymType() *Type {

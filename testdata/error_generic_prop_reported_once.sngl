@@ -1,0 +1,12 @@
+import ui "sngl:ui"
+
+// A type parameter is bound from the argument before the argument is checked
+// against it, and only the second check reports: each mistake is said once.
+component box[T any](v T) ui.node {
+    ui.text(value="x")
+}
+
+ui.window {
+    box(v=1 + true) // ERROR(check) "operator + not defined for int and bool"
+    box(v=nope)     // ERROR(check) "undefined: nope"
+}

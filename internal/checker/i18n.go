@@ -426,13 +426,11 @@ var i18nTemplates = map[string]string{
 	"i18n.format": "template",
 }
 
-// checkI18nCall holds a call of i18n.tr or i18n.format to what its runtime
-// reads. The arguments are a struct, a field per placeholder, which every
-// runtime is handed as a map keyed by field name (lower.RecordArgs); a map or
-// a scalar bound to the type parameter would reach it as something else. And
-// the template is the one written: a double-quoted string is interpolated
-// where it is written, so its `{name}` was gone before i18n saw it and the
-// arguments were read by nothing.
+// checkI18nCall holds a call of i18n.tr or i18n.format to the template it
+// was written with: a double-quoted string is interpolated where it is
+// written, so its `{name}` was gone before i18n saw it and the arguments were
+// read by nothing. That the arguments are a struct, a field per placeholder,
+// is the declaration's own constraint, `[A struct {}]`.
 func (c *checker) checkI18nCall(x *ast.CallExpr, e ir.Expr) {
 	call, ok := e.(*ir.Call)
 	if !ok || call.Func == nil {
@@ -459,35 +457,6 @@ func (c *checker) checkI18nCall(x *ast.CallExpr, e ir.Expr) {
 			c.error(interp.Pos, "this template is interpolated before %s sees it, so its placeholders are gone: write it in backticks, or escape each brace as \\{", name)
 		}
 	}
-	if i := ir.RecordArg(call.Func); i >= 0 && i < len(call.Args) {
-		t := exprType(call.Args[i].Value)
-		if t == nil || t.Kind == ir.TypeDyn {
-			return
-		}
-		if t.Kind != ir.TypeStruct {
-			at := x.Pos
-			if n, ok := argAST(x, i, call.Func.Params[i].Name); ok {
-				at = n
-			}
-			c.error(at, "%s takes its arguments as a struct, a field per placeholder -- {name=…} -- not %s", name, t)
-		}
-	}
-}
-
-// argAST is the position of the argument x binds to parameter i, named name.
-func argAST(x *ast.CallExpr, i int, name string) (ast.Pos, bool) {
-	for j, a := range x.Args.Args {
-		arg, ok := a.(ast.Arg)
-		if !ok {
-			continue
-		}
-		if (arg.Name == "" && j == i) || arg.Name == name {
-			if p := arg.Value.ExprPos(); p != nil {
-				return *p, true
-			}
-		}
-	}
-	return ast.Pos{}, false
 }
 
 // i18nArgsRecord is the anonymous struct literal holding a translatable
@@ -497,6 +466,6 @@ func (c *checker) i18nArgsRecord(fields []ir.FieldInit) *ir.StructLit {
 	if !ok {
 		return &ir.StructLit{Type: &ir.Type{Kind: ir.TypeStruct}, Fields: fields}
 	}
-	anon := c.internAnonStruct(anonFields)
-	return &ir.StructLit{Type: anon.SymType(), Def: anon, Fields: fields}
+	typ := c.anonStructType(anonFields)
+	return &ir.StructLit{Type: typ, Def: typ.Decl.(*ir.StructDef), Fields: fields}
 }

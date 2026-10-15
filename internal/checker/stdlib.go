@@ -208,7 +208,7 @@ func (c *checker) loadStdlib() (builtinPkg, stdPkg *ir.Package) {
 // resolveMacroSig resolves a macro's declared parameter types, once, the
 // first time a mark of it is applied. Not as the package loads: the mark
 // package loads from inside sngl:builtin's own imports, where `list` names
-// nothing yet and `list<ir.IntrinsicFlag>` would degrade to `list<dyn>`.
+// nothing yet and `list[ir.IntrinsicFlag]` would degrade to `list[dyn]`.
 func (c *checker) resolveMacroSig(pkg *ir.Package, fn *ir.Func) {
 	if c.libs.macroSigs[fn] || fn.AST == nil || len(fn.Params) != len(fn.AST.Params.Params) {
 		return
@@ -391,9 +391,7 @@ func (c *checker) libPkg(name string) *ir.Package {
 	// only where it builds for the target or imports its package
 	// (mergeTargetExtensions replays it).
 	if _, _, isTarget := targetTierName(name); isTarget && !c.cfg.noTargets {
-		mark := len(c.diags)
-		c.mergeTargetExtensions(name)
-		c.diags = c.diags[:mark]
+		c.quietly(func() { c.mergeTargetExtensions(name) })
 		delete(c.hold.replayed, "merge:"+name)
 	}
 	return pkg
@@ -728,7 +726,7 @@ func funcDeclName(fn *ir.Func) string {
 }
 
 // intrinsicTypeParamNames is the order Instantiate binds in: the receiver's
-// parameters first, then the method's own -- T then U for `list<T>.map<U>`.
+// parameters first, then the method's own -- T then U for `list[T].map[U]`.
 func intrinsicTypeParamNames(fn *ir.Func) []string {
 	if len(fn.RecvTypeParams) == 0 && len(fn.TypeParams) == 0 {
 		return nil
@@ -966,10 +964,9 @@ func (c *checker) mergeTargetExtensions(pkgName string) {
 				// which #213 is deleting. It is recorded as this target's
 				// implementation, since the declaration it names has no body.
 				//
-				// A parens form that *names* props is a prop selection, and
-				// testing HasParens alone dropped one here with no override
-				// registered and no diagnostic: the body simply vanished.
-				if decl.HasParens && len(decl.Props.Props) == 0 && decl.ChildrenType == nil {
+				// It names no target, which is what tells it from an override
+				// written with an empty list.
+				if decl.Target == nil && decl.HasParens && len(decl.Props.Props) == 0 && decl.ChildrenType == nil {
 					c.recordRendersByName(decl, aliases, pkgName)
 					continue
 				}
@@ -1023,10 +1020,7 @@ func (c *checker) mergeTargetExtensions(pkgName string) {
 				// A selection is read the same way a program's override has
 				// it read: the base owns the prop types, and an entry names
 				// one of them.
-				selection, ok := c.overrideSelection(decl, stdComp)
-				if !ok {
-					continue
-				}
+				selection := c.overrideSelection(decl, stdComp)
 				c.addOverrideBody(decl.Pos, stdComp, kind, plat, ns, local, decl.Body, false, selection, decl.Const)
 			}
 		}
@@ -1110,26 +1104,19 @@ func (c *checker) addOverrideBody(pos ast.Pos, comp *ir.Component, kind ir.Built
 	})
 }
 
-// selectProps is the props and events an override named, in the declaring
-// component's order. A name it did not name is not in scope for its body.
-func selectProps(comp *ir.Component, selection []string) ([]*ir.Prop, []*ir.EventDecl) {
+// selectParams is the props, slots and events an override named, in the
+// declaring component's order. A name it did not name is not in scope for its
+// body.
+func selectParams(comp *ir.Component, selection []string) ([]*ir.Prop, []*ir.SlotDecl, []*ir.EventDecl) {
 	want := make(map[string]bool, len(selection))
 	for _, n := range selection {
 		want[n] = true
 	}
-	var props []*ir.Prop
-	for _, p := range comp.Props {
-		if want[p.Name] {
-			props = append(props, p)
-		}
-	}
-	var events []*ir.EventDecl
-	for _, e := range comp.Events {
-		if want["@"+e.Name] {
-			events = append(events, e)
-		}
-	}
-	return props, events
+	return slices.DeleteFunc(slices.Clone(comp.Props), func(p *ir.Prop) bool { return !want[p.Name] }),
+		// A content slot is the compiler's (SlotDecl.Shows), named by no list,
+		// and is what `t.content` inserts.
+		slices.DeleteFunc(slices.Clone(comp.Slots), func(s *ir.SlotDecl) bool { return s.Shows == nil && !want[s.Name] }),
+		slices.DeleteFunc(slices.Clone(comp.Events), func(e *ir.EventDecl) bool { return !want["@"+e.Name] })
 }
 
 // collectExtensionDecls pre-registers what a platform extension body declares
@@ -1234,8 +1221,8 @@ type pendingExtension struct {
 	// and so which of the component's two override maps the checked body
 	// belongs in.
 	kind ir.BuiltinKind
-	// selection is the props the override's body reads, when it listed them.
-	// nil means it listed none and reads all of them.
+	// selection is the props, slots and events the override's body reads:
+	// the names its parameter list wrote, events as `@name`.
 	selection []string
 	// user marks an override a program declared rather than a target package.
 	// Its body is the program's own source and resolves in the program's
@@ -1341,13 +1328,10 @@ func (c *checker) checkOverride(pe pendingExtension, libBodyScope *ir.Scope) {
 	base := pe.comp
 	ov := new(ir.Component)
 	*ov = *base
-	// An override that listed the props it consumes reads those and no
-	// others: the list is what makes the names in its body traceable
-	// to a declaration rather than appearing from the surrounding
-	// component. One that listed none reads them all.
-	if pe.selection != nil {
-		ov.Props, ov.Events = selectProps(base, pe.selection)
-	}
+	// An override reads the parameters it listed and no others: the list
+	// is what makes the names in its body traceable to a declaration
+	// rather than appearing from the surrounding component.
+	ov.Props, ov.Slots, ov.Events = selectParams(base, pe.selection)
 	// The declaration is the library's parsed source, which every check
 	// shares, so the copy is handed a copy of it carrying the
 	// override's body.

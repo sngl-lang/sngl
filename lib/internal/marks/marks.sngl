@@ -33,4 +33,4 @@ func builtin(kind string) ir.Macro
 // are the declaration itself. The mark also keeps the inliner off the
 // component: a platform's stdlib overrides lower down to its primitives, so
 // the primitives must survive the pass that removes the overrides.
-func intrinsic(id string, flags list<ir.IntrinsicFlag> = []) ir.Macro
+func intrinsic(id string, flags list[ir.IntrinsicFlag] = []) ir.Macro

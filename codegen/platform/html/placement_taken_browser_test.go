@@ -29,7 +29,7 @@ func TestPlacement_FastPathIsTaken(t *testing.T) {
 	src := `
 import . "sngl:ui"
 component App() node {
-    var rows list<string> = ["a", "b"]
+    var rows list[string] = ["a", "b"]
     var picked string = ""
     text(value="picked=" + picked)
     for var r = rows {

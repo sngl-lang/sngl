@@ -4,13 +4,13 @@ import . "sngl:ui"
 import . "sngl:test"
 
 component mapIntKeys node {
-    var grades map<int, string> = {
+    var grades map[int, string] = {
         1 = "one",
         2 = "two",
         3 = "three",
     }
 
-    var flags map<bool, string> = {
+    var flags map[bool, string] = {
         true = "yes",
         false = "no",
     }
