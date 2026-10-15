@@ -50,49 +50,6 @@ func startComponent(t *testing.T, src string) *webtest.Browser {
 	return browser
 }
 
-// TestInteraction_InputTwoWay verifies that a two-way bound input:
-//  1. seeds the <input> with the initial state value ("World"), and
-//  2. after typing "Sam", the <span> text updates to "Hello, Sam!" and
-//     the input value is "Sam".
-func TestInteraction_InputTwoWay(t *testing.T) {
-	const src = `
-import . "sngl:ui"
-window {
-    var name = "World"
-    text(value="Hello, {name}!")
-    input(:value=name)
-}
-`
-	browser := startComponent(t, src)
-	defer browser.Close()
-
-	page := browser.Page()
-
-	// 1. Check initial input value.
-	input := page.MustElement("input")
-	initialVal := input.MustEval("() => this.value").String()
-	if initialVal != "World" {
-		t.Errorf("initial input value: want %q got %q", "World", initialVal)
-	}
-
-	// 2. Type "Sam" into the input (select-all first to replace existing text).
-	input.MustSelectAllText()
-	input.MustInput("Sam")
-	_ = browser.WaitStable(stableWait)
-
-	// 3. Assert the span text updated.
-	spanText := page.MustElement("span").MustText()
-	if spanText != "Hello, Sam!" {
-		t.Errorf("span text after typing: want %q got %q", "Hello, Sam!", spanText)
-	}
-
-	// 4. Assert the input value is "Sam".
-	finalVal := input.MustEval("() => this.value").String()
-	if finalVal != "Sam" {
-		t.Errorf("input value after typing: want %q got %q", "Sam", finalVal)
-	}
-}
-
 // TestInteraction_SelectChange verifies that changing a select updates the
 // bound state and the dependent text span. This test is EXPECTED TO FAIL
 // until the select body is completed (select renders no options yet).

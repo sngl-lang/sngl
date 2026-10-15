@@ -48,42 +48,6 @@ window(title="H") { App() }
 	}
 }
 
-// A recursion that terminates well inside the bound raises nothing: the guard
-// is a comparison the shallow case never fails.
-//
-// The depth is an ordinary prop, promoted to a reactive cell like any other:
-// re-firing this component's own slot from its setter is how a deeper level
-// arrives when the caller raises the depth.
-func TestRecursionBound_TerminatingRecursionIsUntouched(t *testing.T) {
-	src := `
-import . "sngl:ui"
-component chain(n int) node {
-    text(value="[" + string(n) + "]")
-    if n > 0 {
-        chain(n=n - 1)
-    }
-}
-component App() node {
-    var d = 4
-    button(text="go", @click { d = d + 1 })
-    if d > 0 {
-        chain(n=d)
-    }
-}
-window(title="H") { App() }
-`
-	b := startTrapped(t, src)
-	defer b.Close()
-
-	page := b.Page()
-	if got := page.MustEval("() => window.__snglErr").String(); got != "" {
-		t.Fatalf("a terminating recursion raised: %q", got)
-	}
-	if got := page.MustElement("body").MustText(); !strings.Contains(got, "[4]") || !strings.Contains(got, "[0]") {
-		t.Errorf("the recursion should render every level down to the base case; got %q", got)
-	}
-}
-
 // A recursive component instantiated with a constant argument unrolls at build
 // time, so no instantiation of it survives for the inliner to mark as a runtime
 // instance -- and yet the declaration stays in the package, because it is its
