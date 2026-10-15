@@ -44,9 +44,95 @@ func perCopyCells(at string, body []ir.Stmt, vars []*ir.Var, funcs []*ir.Func, l
 		fn.Params = append(fn.Params, param)
 		fn.Block = rewriteCells(fn.Block, cells, keyed, temps, func() ir.Expr { return paramIdent(param) })
 	}
+	restore, err := keyEffectsByCopy(at, body, cells, keyed, temps, loops)
+	if err != nil {
+		return nil, err
+	}
 	body = rewriteCells(body, cells, keyed, temps, func() ir.Expr { return CopyKey(loops) })
+	restore()
 	passLoopVars(body, funcs, loops)
 	return body, nil
+}
+
+// keyEffectsByCopy routes the cells an effect's handlers touch through the
+// copy's key, which the handlers are handed rather than read: passEffect runs
+// them from the settle, outside the loops the key is built from. So the
+// effect is keyed `on` the copy's key -- which the settle evaluates where the
+// copy is, and hands each handler -- and each handler reads its cells through
+// the parameter that receives it.
+//
+// The handlers are rewritten here and held out of the body's rewrite, which
+// would otherwise route the cells it already routed a second time; restore
+// puts them back.
+func keyEffectsByCopy(at string, body []ir.Stmt, cells map[*ir.Var]ir.Expr, keyed map[*ir.Func]*ir.Param, temps *int, loops []*ir.For) (restore func(), err error) {
+	var held []func()
+	restore = func() {
+		for _, f := range held {
+			f()
+		}
+	}
+	_ = ir.WalkStmts(body, func(s ir.Stmt) error {
+		n, ok := s.(*ir.NodeInst)
+		if !ok || !isEffectNode(n) || !handlersTouchCells(n, cells, keyed) {
+			return nil
+		}
+		if effectKeyExpr(n) != nil {
+			err = fmt.Errorf("%s: an effect in a component built once per copy of a loop reads that component's state, and its handlers are handed the copy through `on`, which this one already sets; move the effect out of the loop, or its state into the component around the loop", at)
+			return ir.SkipAll
+		}
+		for _, h := range n.Handlers {
+			if h.Func != nil && len(h.Func.Params) > 0 {
+				err = fmt.Errorf("%s: an effect in a component built once per copy of a loop reads that component's state, and its @%s takes a parameter with no `on` to fill it; drop the parameter", at, h.Name)
+				return ir.SkipAll
+			}
+		}
+		n.Props = append(n.Props, ir.Arg{Name: ir.EffectOn, Value: CopyKey(loops)})
+		for i := range n.Handlers {
+			h := &n.Handlers[i]
+			if h.Func == nil {
+				continue
+			}
+			param := &ir.Param{Name: "__copy", Type: ir.TypString}
+			h.Func.Params = []*ir.Param{param}
+			block := rewriteCells(h.Func.Block, cells, keyed, temps, func() ir.Expr { return paramIdent(param) })
+			fn := h.Func
+			fn.Block = nil
+			held = append(held, func() { fn.Block = block })
+		}
+		return nil
+	})
+	if err != nil {
+		restore()
+	}
+	return restore, err
+}
+
+// handlersTouchCells reports whether any of n's handlers reads or writes a
+// cell, directly or through a func handed the key.
+func handlersTouchCells(n *ir.NodeInst, cells map[*ir.Var]ir.Expr, keyed map[*ir.Func]*ir.Param) bool {
+	touches := false
+	for _, h := range n.Handlers {
+		if h.Func == nil {
+			continue
+		}
+		_ = ir.Walk(h.Func.Block, func(nd ir.Node) error {
+			switch x := nd.(type) {
+			case *ir.Ident:
+				if v, ok := x.Sym.(*ir.Var); ok && cells[v] != nil {
+					touches = true
+				}
+			case *ir.Call:
+				if keyed[x.Func] != nil {
+					touches = true
+				}
+			}
+			if touches {
+				return ir.SkipAll
+			}
+			return nil
+		})
+	}
+	return touches
 }
 
 // passLoopVars hands each func the loop variables it reads as parameters.
