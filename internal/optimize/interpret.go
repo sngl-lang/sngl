@@ -73,6 +73,10 @@ func irFromValue(val any, typ *ir.Type) ir.Expr {
 		declared, _ := ir.FieldsOf(t)
 		fields := make([]ir.FieldInit, 0, len(v.Fields))
 		for _, f := range v.Fields {
+			if f.Omitted {
+				// The literal left it out, and so does this one.
+				continue
+			}
 			ft := structFieldType(sd, f.Name)
 			for _, d := range declared {
 				if d.Name == f.Name {

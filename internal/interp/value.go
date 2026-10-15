@@ -2,6 +2,7 @@ package interp
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 
 	"duckfam.us/sngl/ir"
@@ -32,6 +33,11 @@ type Struct struct {
 type Field struct {
 	Name  string
 	Value any
+	// Omitted marks a field the literal that built the struct left out,
+	// holding its type's zero or its declared default. It reads like any
+	// other field; a value spelled back as a literal leaves it out, since a
+	// backend reads a field's presence as having been set (ir.DeclaredDefault).
+	Omitted bool
 }
 
 // NewStruct returns an empty struct value of the given declaration and type.
@@ -50,7 +56,7 @@ func CopyValue(v any) any {
 	}
 	cp := &Struct{Def: s.Def, Type: s.Type, Fields: make([]Field, len(s.Fields))}
 	for i, f := range s.Fields {
-		cp.Fields[i] = Field{Name: f.Name, Value: CopyValue(f.Value)}
+		cp.Fields[i] = Field{Name: f.Name, Value: CopyValue(f.Value), Omitted: f.Omitted}
 	}
 	return cp
 }
@@ -118,9 +124,9 @@ func copyOf(v any, t *ir.Type) any {
 		cp := &Struct{Def: s.Def, Type: s.Type, Fields: make([]Field, len(s.Fields))}
 		for i, f := range s.Fields {
 			if ft, ok := fieldTypes[f.Name]; ok {
-				cp.Fields[i] = Field{Name: f.Name, Value: copyOf(f.Value, ft)}
+				cp.Fields[i] = Field{Name: f.Name, Value: copyOf(f.Value, ft), Omitted: f.Omitted}
 			} else {
-				cp.Fields[i] = Field{Name: f.Name, Value: CopyValue(f.Value)}
+				cp.Fields[i] = Field{Name: f.Name, Value: CopyValue(f.Value), Omitted: f.Omitted}
 			}
 		}
 		return cp
@@ -146,7 +152,7 @@ func DeepCopy(v any) any {
 		}
 		cp := &Struct{Def: x.Def, Type: x.Type, Fields: make([]Field, len(x.Fields))}
 		for i, f := range x.Fields {
-			cp.Fields[i] = Field{Name: f.Name, Value: DeepCopy(f.Value)}
+			cp.Fields[i] = Field{Name: f.Name, Value: DeepCopy(f.Value), Omitted: f.Omitted}
 		}
 		return cp
 	}
@@ -181,6 +187,7 @@ func (s *Struct) Set(name string, v any) {
 	for i := range s.Fields {
 		if s.Fields[i].Name == name {
 			s.Fields[i].Value = v
+			s.Fields[i].Omitted = false
 			return
 		}
 	}
@@ -195,6 +202,10 @@ func (s *Struct) Merge(src *Struct) {
 	}
 	for _, f := range src.Fields {
 		s.Set(f.Name, f.Value)
+		// What src's own literal left out, this one did not write either.
+		if f.Omitted {
+			s.Fields[slices.IndexFunc(s.Fields, func(g Field) bool { return g.Name == f.Name })].Omitted = true
+		}
 	}
 }
 
@@ -228,7 +239,7 @@ func (s *Struct) Clone() *Struct {
 	}
 	out := &Struct{Def: s.Def, Type: s.Type, Fields: make([]Field, len(s.Fields))}
 	for i, f := range s.Fields {
-		out.Fields[i] = Field{Name: f.Name, Value: CloneValue(f.Value)}
+		out.Fields[i] = Field{Name: f.Name, Value: CloneValue(f.Value), Omitted: f.Omitted}
 	}
 	return out
 }

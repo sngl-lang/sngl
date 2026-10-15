@@ -1575,13 +1575,16 @@ func (env *Env) evalStructLit(e *ir.StructLit) (any, error) {
 // as every compiled target's struct holds. The fields end in def's order,
 // which is the order every backend emits.
 func (env *Env) fillOmittedFields(s *Struct, def *ir.StructDef) error {
-	if def == nil || len(s.Fields) == len(def.Fields) {
+	if def == nil || !slices.ContainsFunc(def.Fields, func(f *ir.StructField) bool {
+		_, ok := s.Get(f.Name)
+		return !ok
+	}) {
 		return nil
 	}
 	fields := make([]Field, 0, len(def.Fields))
 	for _, f := range def.Fields {
-		if v, ok := s.Get(f.Name); ok {
-			fields = append(fields, Field{Name: f.Name, Value: v})
+		if i := slices.IndexFunc(s.Fields, func(g Field) bool { return g.Name == f.Name }); i >= 0 {
+			fields = append(fields, s.Fields[i])
 			continue
 		}
 		init := f.Default
@@ -1597,7 +1600,7 @@ func (env *Env) fillOmittedFields(s *Struct, def *ir.StructDef) error {
 		if err != nil {
 			return err
 		}
-		fields = append(fields, Field{Name: f.Name, Value: copyOf(v, f.Type)})
+		fields = append(fields, Field{Name: f.Name, Value: copyOf(v, f.Type), Omitted: true})
 	}
 	// A spread may have supplied a field def does not name; keep it after.
 	for _, f := range s.Fields {
