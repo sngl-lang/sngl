@@ -15,10 +15,9 @@ const maxInterpDepth = 256
 // values become StructLits, maps MapLitIRs, slices ListLits.
 //
 // typ is the type of the position the expression is going into. A value that
-// says what it is outranks it — a struct held in a `dyn` field is still that
-// struct, and Go names it by its own type — while a value that does not (a
-// bare slice or map) takes the position's, so a list of Item read through a
-// name declared list[dyn] is still emitted as []any.
+// says what it is outranks it — a struct is still that struct, and Go names
+// it by its own type — while a value that does not (a bare slice or map)
+// takes the position's.
 //
 // What the value carries beyond its type — the declaration, and the order its
 // fields were checked in — typ cannot supply at all, and is kept.
@@ -74,6 +73,10 @@ func irFromValue(val any, typ *ir.Type) ir.Expr {
 		declared, _ := ir.FieldsOf(t)
 		fields := make([]ir.FieldInit, 0, len(v.Fields))
 		for _, f := range v.Fields {
+			if f.Unwritten() {
+				// The literal left it out, and so does this one.
+				continue
+			}
 			ft := structFieldType(sd, f.Name)
 			for _, d := range declared {
 				if d.Name == f.Name {

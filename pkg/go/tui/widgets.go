@@ -79,7 +79,7 @@ func Columns(names []string) []table.Column {
 // Rows converts row data into table.Row values. table.Row is a []string, so
 // each input row is copied into a fresh table.Row.
 //
-// SNGL's `rows dyn` prop, given a list-of-list-of-string, lowers to Go
+// SNGL's `rows list[list[string]]` prop lowers to Go
 // [][]string (verified against generated bubbletea code), which matches this
 // signature directly: the codegen emits `tui.Rows(<rows expr>)` with no
 // intermediate conversion.

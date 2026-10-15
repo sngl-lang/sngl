@@ -125,7 +125,7 @@ const component ui.checkbox[platform](label, checked, style, @change) {
     }) {}
 }
 
-const component ui.image[platform](fit, @click, @load, @error, src, placeholder) {
+const component ui.image[platform](fit, @click, @load, @error, src) {
     Image(
         fit = string(fit),
         @click {
@@ -138,10 +138,7 @@ const component ui.image[platform](fit, @click, @load, @error, src, placeholder)
             error({message=m, kind="image"})
         },
     ) {
-        #[family.crosses]
-        src {
-            placeholder
-        }
+        src
     }
 }
 
@@ -844,7 +841,7 @@ component Image(
     @click(),
     @load(),
     @failed(message string),
-    content ...component ui.node,
+    content ...component option[ui.imageSource],
 ) ui.node
 
 #[marks.intrinsic("gtk4:ImageUrl")]

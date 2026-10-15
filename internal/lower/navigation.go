@@ -543,7 +543,8 @@ func familyArgs(f *ir.Component, args []*ir.Type) []*ir.Type {
 		case tp.Default != nil:
 			out[i] = tp.Default
 		default:
-			out[i] = ir.TypDyn
+			// The checker has a parameter with no default written.
+			panic(fmt.Sprintf("lower: family %s's %s is bound by nothing", f.Name, tp.Name))
 		}
 	}
 	return out
@@ -570,7 +571,7 @@ func pageArgs(n *ir.NodeInst) []*ir.Type {
 			if p.Type == nil || p.Type.Kind != ir.TypeTypeParam || p.Type.ParamName != tp.Name {
 				continue
 			}
-			if t := typeOf(n.Prop(p.Name)); t != nil && t.Kind != ir.TypeDyn {
+			if t := typeOf(n.Prop(p.Name)); t != nil {
 				out[i] = t
 			}
 		}
@@ -1040,26 +1041,12 @@ func (nv *navigation) lowerBack(n *ir.CallStmt) ([]ir.Stmt, error) {
 }
 
 func listLength(list ir.Expr) ir.Expr {
-	fn := &ir.Func{Name: "length", Receiver: ir.ListOf(ir.TypDyn), Intrinsic: "list.length", Return: ir.TypInt}
-	if def := ir.LookupIntrinsic("list.length"); def != nil {
-		fn.Params, fn.Return = def.Instantiate(elemOf(typeOf(list)))
-	}
-	return &ir.Call{Type: ir.TypInt, Func: fn, Args: []ir.CallArg{{Value: list}}}
+	return callListLength(list)
 }
 
 func callListRemove(list, index ir.Expr, elem *ir.Type) ir.Stmt {
-	fn := &ir.Func{Name: "remove", Receiver: ir.ListOf(ir.TypDyn), Intrinsic: "list.remove"}
-	if def := ir.LookupIntrinsic("list.remove"); def != nil {
-		fn.Params, fn.Return = def.Instantiate(elem)
-	}
+	fn := ir.IntrinsicMethod("remove", "list.remove", ir.ListOf(elem), nil)
 	return &ir.CallStmt{Call: &ir.Call{Type: ir.TypVoid, Func: fn, Args: []ir.CallArg{{Value: list}, {Value: index}}}}
-}
-
-func elemOf(t *ir.Type) *ir.Type {
-	if t != nil && len(t.Elems) > 0 {
-		return t.Elems[0]
-	}
-	return ir.TypDyn
 }
 
 // lowerView replaces each stack with the if-chain over its pages and lowers

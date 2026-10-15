@@ -1,0 +1,64 @@
+// A component entry a population forwards into a slot asked `.empty` is
+// answered by what the component inserting the population populated the
+// entry with: `frame` writes `content` beside its `layout` insertion, so the
+// `boxed` its caller's layout renders around the entry asks that content,
+// and a forward in it -- `framed`'s own rest slot -- asks `framed`'s caller.
+
+import . "sngl:ui"
+import . "sngl:test"
+
+component boxed(content ...component option[node]) node {
+    text(value=content.empty ? "boxed empty" : "boxed full")
+    content
+}
+
+component frame(layout component(content component option[node]) node) node {
+    layout {
+        component content {
+            text(value="inner")
+        }
+    }
+}
+
+component framed(inner ...component option[node], layout component(content component option[node]) node) node {
+    layout {
+        component content {
+            inner
+        }
+    }
+}
+
+component main node {
+    var shown = false
+    frame {
+        component layout(content) {
+            boxed {
+                content
+            }
+        }
+    }
+    framed {
+        component layout(content) {
+            boxed {
+                content
+            }
+        }
+        if shown {
+            text(value="shown")
+        }
+    }
+    button #show(text="show", @click { shown = true })
+}
+
+func testTheEntryIsAnsweredByItsContent(t Test, c main) {
+    t.snapshot("hidden")
+}
+
+func testAForwardInItAsksTheCaller(t Test, c main) {
+    c.show.click()
+    t.snapshot("shown")
+}
+
+window {
+    main
+}

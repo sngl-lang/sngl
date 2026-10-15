@@ -87,8 +87,8 @@ func UnitStringConversion(n *ir.Conversion) *ir.UnitDef {
 // allows on a string and Go does not: `float64(s)` does not compile and
 // `int(s)` would be a rune.
 //
-// The operand's declared type is what decides, so a `dyn` stays a plain cast —
-// there is nothing to say it holds a string.
+// The operand's declared type is what decides: only a string operand takes a
+// helper, and every other one stays a plain cast.
 func StringToNumberHelper(n *ir.Conversion) string {
 	if n == nil || n.Type == nil || n.Operand == nil {
 		return ""

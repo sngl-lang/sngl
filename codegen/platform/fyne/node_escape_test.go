@@ -15,10 +15,10 @@ const recursiveTreeSrc = `
 import . "sngl:ui"
 struct TreeNode {
     value int = 0
-    left dyn = null
-    right dyn = null
+    left option[TreeNode] = null
+    right option[TreeNode] = null
 }
-component TreeView(node dyn = null) node {
+component TreeView(node TreeNode) node {
     vbox {
         text(value=string(node.value))
         if node.left != null { TreeView(node=node.left) }

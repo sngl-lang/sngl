@@ -697,6 +697,9 @@ func (st *inlinePureState) substitute(comp *ir.Component, callsite *ir.NodeInst)
 			// The props too, not just the renames: an init may name a prop
 			// (`var handle = interval`), and after substitution the param it
 			// named does not exist.
+			// Before the props: an argument may carry the caller's own
+			// `.empty`, which asks about the caller's slot.
+			(*st.hoist)[i].Init = answerSlotEmptyIn((*st.hoist)[i].Init, callsite)
 			(*st.hoist)[i].Init = substituteVarsExpr((*st.hoist)[i].Init, provided)
 			(*st.hoist)[i].Init = substituteParamsExpr((*st.hoist)[i].Init, bindings)
 			(*st.hoist)[i].Init = renameInExpr((*st.hoist)[i].Init, renames, symRenames)
@@ -896,6 +899,12 @@ func movableContent(stmts []ir.Stmt, callsite *ir.NodeInst) map[ir.Stmt]bool {
 		}
 	}
 	return movable
+}
+
+// answerSlotEmptyIn answers the `.empty` a var hoisted out of callsite's body
+// asks in its initializer, as substituteSlots does those in the body.
+func answerSlotEmptyIn(e ir.Expr, callsite *ir.NodeInst) ir.Expr {
+	return ir.SlotSplicer{Clone: deepCloneStmts}.AnswerEmptyIn(e, callsite)
 }
 
 func substituteSlotsCloning(stmts []ir.Stmt, callsite *ir.NodeInst, clone func([]ir.Stmt) []ir.Stmt) []ir.Stmt {
@@ -1432,6 +1441,9 @@ func deepCloneExpr(e ir.Expr) ir.Expr {
 		clone.Operand = deepCloneExpr(n.Operand)
 		return &clone
 	case *ir.ContextRead:
+		clone := *n
+		return &clone
+	case *ir.SlotEmpty:
 		clone := *n
 		return &clone
 	case *ir.Lambda:

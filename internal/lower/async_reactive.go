@@ -327,7 +327,7 @@ func exprHasLocals(e ir.Expr) bool {
 			}
 		}
 		return false
-	case *ir.Literal, *ir.ContextRead:
+	case *ir.Literal, *ir.ContextRead, *ir.SlotEmpty:
 		return false
 	case *ir.Lambda:
 		// A lambda is evaluated at invocation time — its internal

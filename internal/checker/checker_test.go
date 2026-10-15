@@ -914,8 +914,8 @@ func test() {
 	for _, fn := range pkg.Funcs {
 		switch fn.Name {
 		case "identity":
-			if fn.Return == nil || fn.Return.String() == "dyn" {
-				t.Errorf("identity return type not inferred: %s", fn.Return)
+			if fn.Return == nil || fn.Return.String() != "T" {
+				t.Errorf("identity return type: got %s, want T", fn.Return)
 			}
 		case "first":
 			if fn.Return == nil || fn.Return.String() != "T" {

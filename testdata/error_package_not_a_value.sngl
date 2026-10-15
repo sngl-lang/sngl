@@ -1,0 +1,12 @@
+// An import names a package, and a package is not a value: what a program
+// reads through one is a member of it, `math.pi`. The checker never builds an
+// expression for the import itself -- a member read through it is the
+// member, qualified by the import -- so naming it alone is refused rather
+// than typed as something nothing could hold.
+import "sngl:math"
+
+const tau = math.pi * 2.0
+
+const m = math // ERROR(check) "math names a package, which is not a value"
+
+func half() => math.sqrt(tau) / 2.0

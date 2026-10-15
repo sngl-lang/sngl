@@ -119,7 +119,7 @@ func byRef(p *ir.Param) bool {
 		return false
 	}
 	switch p.Type.Kind {
-	case ir.TypeComponent, ir.TypeInstance, ir.TypeDyn:
+	case ir.TypeComponent, ir.TypeInstance:
 		return false
 	}
 	return true

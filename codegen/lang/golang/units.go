@@ -240,8 +240,6 @@ func LowerBindInit(t *ir.Type, init ir.Expr, gc *GoIRContext) string {
 			// element is an arbitrary expression. Sent to the literal-only
 			// translator, an element that is not itself a literal reached its
 			// "" fallback, so `Node{value=first.value}` emitted `Value: ""`.
-			// It compiled wherever the field was `dyn`, because Go's `any`
-			// accepts a string.
 			return gc.EvalExpr(v.Init)
 		}
 

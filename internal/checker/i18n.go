@@ -144,7 +144,7 @@ func (c *checker) checkI18nPlaceholder(ph *ast.I18nPlaceholderExpr) {
 		if ph.Style != "" {
 			c.error(ph.Pos, "%s placeholder cannot take a style argument", ph.Type)
 		}
-		if vT != nil && vT.Kind != ir.TypeInt && vT.Kind != ir.TypeFloat && vT.Kind != ir.TypeDyn {
+		if vT != nil && vT.Kind != ir.TypeInt && vT.Kind != ir.TypeFloat && vT.Kind != ir.TypeInvalid {
 			c.error(ph.Pos, "%s placeholder requires numeric value, got %s", ph.Type, vT)
 		}
 		for _, ca := range ph.Cases {
@@ -161,13 +161,13 @@ func (c *checker) checkI18nPlaceholder(ph *ast.I18nPlaceholderExpr) {
 		if ph.Style != "" {
 			c.error(ph.Pos, "%s placeholder cannot take a style argument", ph.Type)
 		}
-		// Allow string, dyn, or any enum type. For enums we also validate
+		// Allow string, or any enum type. For enums we also validate
 		// that case selectors correspond to declared members and that the
 		// match is exhaustive (or carries an `other` fallback).
 		var enumDecl *ir.EnumDef
 		if vT != nil {
 			switch vT.Kind {
-			case ir.TypeString, ir.TypeDyn:
+			case ir.TypeString, ir.TypeInvalid:
 			case ir.TypeEnum:
 				if d, ok := vT.Decl.(*ir.EnumDef); ok {
 					enumDecl = d
@@ -216,7 +216,7 @@ func (c *checker) checkI18nPlaceholder(ph *ast.I18nPlaceholderExpr) {
 		}
 	case "date", "time", "dateTime":
 		if vT != nil {
-			ok := vT.Kind == ir.TypeDyn ||
+			ok := vT.Kind == ir.TypeInvalid ||
 				ir.IsDateStruct(vT) || ir.IsTimeStruct(vT) || ir.IsDateTimeStruct(vT)
 			if !ok {
 				c.error(ph.Pos, "%s placeholder requires date/time value, got %s", ph.Type, vT)
@@ -228,7 +228,7 @@ func (c *checker) checkI18nPlaceholder(ph *ast.I18nPlaceholderExpr) {
 			}
 		}
 	case "number":
-		if vT != nil && vT.Kind != ir.TypeInt && vT.Kind != ir.TypeFloat && vT.Kind != ir.TypeDyn {
+		if vT != nil && vT.Kind != ir.TypeInt && vT.Kind != ir.TypeFloat && vT.Kind != ir.TypeInvalid {
 			c.error(ph.Pos, "number placeholder requires numeric value, got %s", vT)
 		}
 		if ph.Style != "" {
@@ -286,7 +286,7 @@ func (c *checker) inferI18nInterp(x *ast.I18nInterpExpr) ir.Expr {
 		// The namespace the call was reached through. trInline is a package
 		// function, so the alias at the call site is what names it — and a
 		// synthesized call has to carry what a written one would.
-		Receiver: i18nReceiver(c, trNS),
+		Qualifier: c.i18nQualifier(trNS),
 		Args: []ir.CallArg{
 			{Value: &ir.Literal{Type: TypString, Value: template}},
 			{Value: &ir.Literal{Type: TypString, Value: template}},
@@ -301,20 +301,15 @@ const i18nNamespace = "i18n"
 // i18nImportPath is the package $"..." lowers into a call on.
 const i18nImportPath = "sngl:i18n"
 
-// i18nReceiver names the namespace the call was reached through, or nil when
-// a dot import put the function in scope unqualified.
-func i18nReceiver(c *checker, ns string) ir.Expr {
-	if ns == "" {
+// i18nQualifier is the import the call was reached through, or nil when a
+// dot import put the function in scope unqualified.
+func (c *checker) i18nQualifier(name string) *ir.Namespace {
+	if name == "" {
 		return nil
 	}
-	return &ir.Ident{Name: ns, Sym: c.namespaceNamed(ns)}
-}
-
-func (c *checker) namespaceNamed(name string) ir.Symbol {
-	if sym, ok := c.scope.Lookup(name); ok {
-		return sym
-	}
-	return nil
+	sym, _ := c.scope.Lookup(name)
+	ns, _ := sym.(*ir.Namespace)
+	return ns
 }
 
 // lookupI18nTrInline resolves the i18n.trInline stdlib function — the

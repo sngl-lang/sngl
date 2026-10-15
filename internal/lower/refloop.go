@@ -182,7 +182,7 @@ func (r *refLoopRewriter) expr(e ir.Expr) ir.Expr {
 		return r.indexAccess()
 	}
 	switch x := e.(type) {
-	case *ir.Literal, *ir.Ident, *ir.ContextRead:
+	case *ir.Literal, *ir.Ident, *ir.ContextRead, *ir.SlotEmpty:
 		// leaves (an Ident here is not the element var — checked above)
 	case *ir.Binary:
 		x.Left = r.expr(x.Left)

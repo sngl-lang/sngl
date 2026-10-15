@@ -95,7 +95,7 @@ func flattenSpreadExprCtx(e ir.Expr, pkg *ir.Package) ir.Expr {
 		if x.Func != nil {
 			x.Func.Block = rewriteStmtExprs(x.Func.Block, rewrite)
 		}
-	case *ir.Literal, *ir.Ident, *ir.ContextRead:
+	case *ir.Literal, *ir.Ident, *ir.ContextRead, *ir.SlotEmpty:
 		// Terminal — no struct literals beneath.
 	default:
 		panic(fmt.Sprintf("flattenSpreadExprCtx: unhandled %T", x))

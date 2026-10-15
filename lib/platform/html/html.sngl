@@ -282,7 +282,7 @@ const component ui.button[platform](text, disabled, style, @click, @longPress, c
 // the style, the click and the description, as an `img` role, so the
 // placeholder stands in the same box where there is no source. The page's
 // rules fill the frame with the picture and fit it by the frame's class.
-const component ui.image[platform](alt, fit, style, @click, src, placeholder) {
+const component ui.image[platform](alt, fit, style, @click, src) {
     html.span(
         class = "sngl-image sngl-image-" + string(fit),
         attrs = {"role"="img", "aria-label"=alt},
@@ -290,9 +290,7 @@ const component ui.image[platform](alt, fit, style, @click, src, placeholder) {
         @click { click() },
     ) {
         #[family.crosses]
-        src {
-            placeholder
-        }
+        src
     }
 }
 

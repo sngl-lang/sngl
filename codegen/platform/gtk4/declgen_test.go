@@ -53,13 +53,13 @@ func TestWidgetSource_DeclaresProps(t *testing.T) {
 	for _, want := range []string{
 		"#[intrinsic(\"gtk4:GtkBox\")]\ncomponent GtkBox(",
 		"\n    spacing int,\n",
-		"\n    orientation dyn,\n",
+		"\n    orientation string,\n",
 		"#[intrinsic(\"gtk4:GtkButton\")]\ncomponent GtkButton(",
 		"\n    @clicked(self GtkButton),\n",
 		// Hyphenated GIR names are unwritable in SNGL as they stand, so the
 		// declaration carries the camel-cased spelling.
 		"\n    defaultWidth int,\n",
-		"\n    style dyn,\n",
+		"\n    style ui.Style = ui.Style{},\n",
 	} {
 		if !strings.Contains(src, want) {
 			t.Errorf("generated source is missing %q", want)

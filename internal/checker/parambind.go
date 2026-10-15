@@ -9,10 +9,10 @@ import (
 
 // A written type is held to the signature; an unknown want means there is none.
 func (c *checker) bindParamType(written ast.TypeExpr, want *ir.Type, what string) *ir.Type {
-	unknown := want == nil || want.Kind == ir.TypeDyn
+	unknown := want == nil || want.Kind == ir.TypeInvalid
 	if written == nil {
 		if unknown {
-			return TypDyn
+			return TypInvalid
 		}
 		return want
 	}
@@ -38,7 +38,7 @@ func bindParamWhat(name, owner string) string {
 // binds its parameters: a handler may stop short, but may not name a parameter
 // the supplier does not pass. A nil want is a supplier with no signature to
 // read -- an undeclared event on a component the checker could not resolve --
-// and binds every name as dyn; an empty one passes nothing.
+// and binds every name as invalid; an empty one passes nothing.
 func (c *checker) bindParams(pl ast.ParamList, want []*ir.Param, owner, supplier string) []*ir.Param {
 	c.refuseParamMarks(pl.Params)
 	c.refuseConstParams(pl.Params, "a handler's")

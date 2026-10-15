@@ -292,9 +292,8 @@ type typeParamKey struct {
 }
 
 // receiverType is the receiver a method declared on name has: the type of the
-// declaration name resolves to here. A namespace (i18n) hosts no member table
-// and has no type of its own, so the type carries it as its declaration; a
-// name that resolves to nothing keeps a stand-in for its name, and attaching
+// declaration name resolves to here. A name that resolves to nothing, or to
+// something that is no type, keeps a stand-in for its name, and attaching
 // reports it.
 func (c *checker) receiverType(name string) *ir.Type {
 	sym, ok := c.scope.Lookup(name)
@@ -304,5 +303,7 @@ func (c *checker) receiverType(name string) *ir.Type {
 	if t := sym.SymType(); t != nil && t.Decl == sym {
 		return t
 	}
-	return &ir.Type{Kind: ir.TypeDyn, Decl: sym}
+	// A name that is no type -- a value, a package -- receives no method,
+	// which attaching reports; the type only carries the name there.
+	return &ir.Type{Kind: ir.TypeInvalid, Decl: sym}
 }

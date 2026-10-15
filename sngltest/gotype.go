@@ -86,14 +86,15 @@ func (m *mapping) unusable() error {
 	return fmt.Errorf(`%s has no SNGL type.
 
     Go type       %s
-    imports as    %s, which the go: importer marks unusable
+    imports as    nothing: the go: importer has no SNGL spelling for it, and
+                  marks it unusable
 
 Every declaration that mentions this type is rejected, so a go: function
 returning it cannot be called from SNGL at all — whatever its MarshalSNGL
 writes. Return a type the importer models (a struct declared in the same
 package, a scalar, or a slice of those), or map this one to a SNGL type with
 golang.RegisterType(%q, ...) in the compiler.`,
-		m.goName(), m.goTypeLine(), m.want, m.qualified())
+		m.goName(), m.goTypeLine(), m.qualified())
 }
 
 // goName is how the reader spells the type under test.

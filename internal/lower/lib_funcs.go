@@ -84,9 +84,8 @@ func promoteFuncs(roots *[]any, push func(any), wanted func(*ir.Func) bool, have
 // foreignConst is the value behind a reference to a const another package
 // declares, or nil for anything else.
 //
-// Both spellings: a bare name lifted by a dot import, and `math.tau` through
-// an alias -- which is an ir.Select over the namespace and was the one that
-// mattered, since a target package qualifies its imports by convention.
+// Both spellings are the one Ident: a bare name lifted by a dot import, and
+// `math.tau` through an alias, which a target package writes by convention.
 func foreignConst(n ir.Node, own map[*ir.Var]bool) ir.Expr {
 	value := func(sym ir.Symbol) ir.Expr {
 		v, ok := sym.(*ir.Var)
@@ -105,23 +104,8 @@ func foreignConst(n ir.Node, own map[*ir.Var]bool) ir.Expr {
 		}
 		return v.Init
 	}
-	switch e := n.(type) {
-	case *ir.Ident:
+	if e, ok := n.(*ir.Ident); ok {
 		return value(e.Sym)
-	case *ir.Select:
-		id, ok := e.Operand.(*ir.Ident)
-		if !ok {
-			return nil
-		}
-		ns, ok := id.Sym.(*ir.Namespace)
-		if !ok || ns.Pkg == nil || ns.Pkg.Symbols == nil {
-			return nil
-		}
-		sym, ok := ns.Pkg.Symbols.LookupMember(e.Field)
-		if !ok {
-			return nil
-		}
-		return value(sym)
 	}
 	return nil
 }
@@ -201,34 +185,23 @@ func promoteVars(pkg *ir.Package, foreign map[*ir.Var]bool) bool {
 		return false
 	}
 	var added []*ir.Var
+	taken := map[*ir.Var]bool{}
 	take := func(v *ir.Var) {
 		if foreign[v] {
 			delete(foreign, v)
 			added = append(added, v)
+			taken[v] = true
 		}
 	}
 	_ = ir.Rewrite(pkg, func(n ir.Node) (ir.Node, error) {
-		switch e := n.(type) {
-		case *ir.Ident:
+		// A read through the package's alias, `doc.calls`, is of the
+		// declaration this package now holds, named bare.
+		if e, ok := n.(*ir.Ident); ok {
 			if v, ok := e.Sym.(*ir.Var); ok {
 				take(v)
-			}
-		case *ir.Select:
-			id, ok := e.Operand.(*ir.Ident)
-			if !ok {
-				return n, nil
-			}
-			ns, ok := id.Sym.(*ir.Namespace)
-			if !ok || ns.Pkg == nil || ns.Pkg.Symbols == nil {
-				return n, nil
-			}
-			sym, ok := ns.Pkg.Symbols.LookupMember(e.Field)
-			if !ok {
-				return n, nil
-			}
-			if v, ok := sym.(*ir.Var); ok && !v.IsConst {
-				take(v)
-				return &ir.Ident{Name: v.Name, Type: v.Type, Sym: v}, ir.SkipDir
+				if taken[v] {
+					e.Qualifier = nil
+				}
 			}
 		}
 		return n, nil

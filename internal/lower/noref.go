@@ -512,7 +512,7 @@ func seedAddressedVarsInExpr(e ir.Expr, set map[*ir.Var]bool) {
 			seedAddressedVarsInExpr(en.Key, set)
 			seedAddressedVarsInExpr(en.Value, set)
 		}
-	case *ir.Ident, *ir.Literal, *ir.ContextRead:
+	case *ir.Ident, *ir.Literal, *ir.ContextRead, *ir.SlotEmpty:
 		// Terminal — no UnaryAddr to seed.
 	default:
 		panic(fmt.Sprintf("seedAddressedVarsInExpr: unhandled %T", x))
@@ -643,7 +643,7 @@ func (r *boxRegistry) boxFor(elem *ir.Type) *ir.StructDef {
 // as a suffix of __ref_. Collisions are avoided by structural-name encoding.
 func canonicalTypeName(t *ir.Type) string {
 	if t == nil {
-		return "dyn"
+		return "none"
 	}
 	switch t.Kind {
 	case ir.TypeInt:

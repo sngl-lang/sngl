@@ -422,15 +422,15 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 	m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
 	__inst0_next := []*__child0Instance{}
 	var __inst0_i int = 0
-	for k, c := range []Card__record{Card__record{Label: "one", __id: 0}, Card__record{Label: "two", __id: 1}} {
+	for k, c__r0 := range []Card__record{Card__record{Label: "one", __id: 0}, Card__record{Label: "two", __id: 1}} {
 		if k == m.shown {
-			if c.__id == 0 {
+			if c__r0.__id == 0 {
 				__n2 := widget.NewLabel("")
 				__n2.SetText("first")
 				fynelayout.InsertBefore(__parent, m.__slot0_at, __n2)
 				m.__slot0 = append(m.__slot0, __n2)
 			} else {
-				if c.__id == 1 {
+				if c__r0.__id == 1 {
 					__n3 := widget.NewButton("", nil)
 					__n3.SetText("hit")
 					__n3.OnTapped = func() {
@@ -513,9 +513,9 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n1.OnClosed = m.__n1_closed_handler
 	m.__n1.OnVisible = m.__n1_visible_handler
 	m.__n5 = container.NewHBox()
-	for k, c__r0 := range []Card__record{Card__record{Label: "one", __id: 0}, Card__record{Label: "two", __id: 1}} {
+	for k, c__r1 := range []Card__record{Card__record{Label: "one", __id: 0}, Card__record{Label: "two", __id: 1}} {
 		m.__n6 = widget.NewButton("", nil)
-		m.__n6.SetText(c__r0.Label)
+		m.__n6.SetText(c__r1.Label)
 		m.__n6.OnTapped = func() {
 			m.shown = k
 			m.__renderSlot0(m.__n1.Container)
@@ -628,15 +628,15 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 	m.__slot0_at = gtk4rt.SlotAnchor(parent, m.__slot0_at)
 	__inst0_next := []*__child0Instance{}
 	var __inst0_i int = 0
-	for k, c := range []Card__record{Card__record{Label: "one", __id: 0}, Card__record{Label: "two", __id: 1}} {
+	for k, c__r0 := range []Card__record{Card__record{Label: "one", __id: 0}, Card__record{Label: "two", __id: 1}} {
 		if k == m.shown {
-			if c.__id == 0 {
+			if c__r0.__id == 0 {
 				__n2 := gtk4rt.LabelNew("")
 				gtk4rt.LabelSetText(__n2, "first")
 				gtk4rt.InsertBefore(parent, m.__slot0_at, __n2)
 				m.__slot0 = append(m.__slot0, __n2)
 			} else {
-				if c.__id == 1 {
+				if c__r0.__id == 1 {
 					__n3 := gtk4rt.ButtonNew()
 					gtk4rt.ButtonSetLabel(__n3, "hit")
 					gtk4rt.Connect(__n3, "clicked", func() {
@@ -759,9 +759,9 @@ func (m *Model) buildWidgetTree() {
 	m.__n5 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
 	gtk4rt.OrientableSetOrientation(m.__n5, gtk4rt.OrientationHorizontal)
 	gtk4rt.BoxSetSpacing(m.__n5, 6)
-	for k, c__r0 := range []Card__record{Card__record{Label: "one", __id: 0}, Card__record{Label: "two", __id: 1}} {
+	for k, c__r1 := range []Card__record{Card__record{Label: "one", __id: 0}, Card__record{Label: "two", __id: 1}} {
 		m.__n6 = gtk4rt.ButtonNew()
-		gtk4rt.ButtonSetLabel(m.__n6, c__r0.Label)
+		gtk4rt.ButtonSetLabel(m.__n6, c__r1.Label)
 		gtk4rt.Connect(m.__n6, "clicked", func() {
 			m.shown = k
 			m.__renderSlot0(m.__n1)
@@ -1014,9 +1014,9 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:6f82d6d360bc494afaa43d879ff597df
 -- run/go/fyne --
-pass sha256:fc5510da9288743e45b64f2d42914299
+pass sha256:a118d279c113e07ab4545ee98ded1949
 -- run/go/gtk4 --
-pass sha256:04fe88a6c1762ae393c5cf951a0dc431
+pass sha256:71bae377dba342f72ca79144bf36e388
 -- run/kotlin/android --
 pass sha256:faeeafa26a8f826978e1e52ab1f30409
 -- run/none/html --

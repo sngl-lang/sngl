@@ -78,30 +78,25 @@ enum SizePreset { small, medium, large }
 // The outline an avatar is clipped to.
 enum AvatarVariant { circle, square }
 
-// User profile image with fallback: the picture its source holds where it was
-// given one, and the initials in a styled placeholder where it was not.
+// A user's picture, or `fallback` where there is none to show: no source was
+// given, or the one given failed to load. The fallback is the initials in a
+// styled box unless the call site writes its own.
+//
+// A failed load is remembered until the avatar is rendered again, since the
+// image that would say a later source loaded is not on screen to say it.
 component avatar(
-    initials string = "",                          // shown when there is no source
+    initials string = "",                          // shown by the default fallback
     size     SizePreset = medium,                  // a preset; `style.width` and `style.height` set any other size
     variant  AvatarVariant = AvatarVariant.circle, // the outline it is clipped to
     alt      string = "",                          // the image's accessibility label
     style    Style = Style{},
     @click(),
     src      ...component option[imageSource],
+    fallback component option[node], // what stands in for the picture
 ) node {
-    image(
-        alt = alt,
-        fit = cover,
-        style = {
-            width = _avatarSide(size),
-            height = _avatarSide(size),
-            borderRadius = _avatarRadius(size, variant),
-            ...style,
-        },
-        @click { click() },
-    ) {
-        src
-        component placeholder {
+    var failed = false
+    if failed || src.empty {
+        fallback {
             text(
                 value = initials,
                 style = {
@@ -117,6 +112,21 @@ component avatar(
                 },
                 @click { click() },
             )
+        }
+    } else {
+        image(
+            alt = alt,
+            fit = cover,
+            style = {
+                width = _avatarSide(size),
+                height = _avatarSide(size),
+                borderRadius = _avatarRadius(size, variant),
+                ...style,
+            },
+            @click { click() },
+            @error(e) { failed = true },
+        ) {
+            src
         }
     }
 }

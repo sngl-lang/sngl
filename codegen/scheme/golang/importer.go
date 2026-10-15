@@ -239,8 +239,8 @@ func loadGoPackage(userPath, dir string) (*packages.Package, error) {
 }
 
 // populateStructFields fills sd.Fields from the Go struct type. Fields whose
-// Go type cannot be modelled precisely are still included (with TypDyn), but
-// marked Unusable so the checker rejects direct access.
+// Go type has no SNGL spelling are still included, typed invalid and marked
+// Unusable, so the checker rejects any access with the reason.
 func populateStructFields(sd *ir.StructDef, tn *types.TypeName, homePkg string, structs map[string]*ir.StructDef) {
 	st, ok := tn.Type().Underlying().(*types.Struct)
 	if !ok {
@@ -270,7 +270,7 @@ func populateStructFields(sd *ir.StructDef, tn *types.TypeName, homePkg string, 
 //   - A trailing error return is stripped and HasErrorReturn is recorded so
 //     codegen can adapt the call (check + unwrap).
 //   - Shapes SNGL cannot model precisely (multi-value returns beyond (T, error),
-//     parameter or return types that would otherwise collapse to dyn) produce
+//     parameter or return types SNGL cannot spell) produce
 //     a declaration with Unusable set. The declaration is retained so
 //     namespace lookup succeeds, but the checker rejects references.
 func goFuncToFunc(fn *types.Func, pkgPath, pkgName string, structs map[string]*ir.StructDef) *ir.Func {
@@ -384,10 +384,10 @@ func detectHiddenParam(t types.Type) string {
 // in SNGL. homePkg is the path of the package currently being imported.
 //
 // Usable results include the primitive scalars, slices of usable elements,
-// named struct types in the home package, the stdlib time.Time → DateTime
-// mapping, and any Go interface (exposed as explicit dyn). All other shapes
-// — maps, channels, functions, cross-package struct refs — return
-// (TypDyn, false); callers use the bool to mark the enclosing declaration
+// named struct types in the home package, and the stdlib time.Time → DateTime
+// mapping. Every other shape -- an interface, which says nothing of what it
+// holds, a map, a channel, a function, a cross-package struct -- returns
+// (TypInvalid, false); callers use the bool to mark the enclosing declaration
 // Unusable.
 func goTypeToIR(t types.Type, homePkg string, structs map[string]*ir.StructDef) (*ir.Type, bool) {
 	// A named type whose SNGL form is not its underlying one is registered by
@@ -411,18 +411,16 @@ func goTypeToIR(t types.Type, homePkg string, structs map[string]*ir.StructDef) 
 		case types.Float32, types.Float64:
 			return ir.TypFloat, true
 		default:
-			return ir.TypDyn, false
+			return ir.TypInvalid, false
 		}
 	case *types.Slice:
 		elem, ok := goTypeToIR(u.Elem(), homePkg, structs)
 		if !ok {
-			return ir.TypDyn, false
+			return ir.TypInvalid, false
 		}
 		return ir.ListOf(elem), true
 	case *types.Pointer:
 		return goTypeToIR(u.Elem(), homePkg, structs)
-	case *types.Interface:
-		return ir.TypDyn, true
 	default:
 		if named, ok := t.(*types.Named); ok {
 			name := named.Obj().Name()
@@ -435,7 +433,7 @@ func goTypeToIR(t types.Type, homePkg string, structs map[string]*ir.StructDef) 
 				}
 			}
 		}
-		return ir.TypDyn, false
+		return ir.TypInvalid, false
 	}
 }
 

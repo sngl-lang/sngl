@@ -1253,6 +1253,7 @@ func (st *inlineCompState) expandCall(n *ir.NodeInst) ([]ir.Stmt, error) {
 
 	// Prop refs may appear in the hoisted callee-scope Vars/Funcs too.
 	for i := varStart; i < len(*hoist.vars); i++ {
+		(*hoist.vars)[i].Init = answerSlotEmptyIn((*hoist.vars)[i].Init, n)
 		(*hoist.vars)[i].Init = substituteParamsExpr((*hoist.vars)[i].Init, bindings)
 	}
 	for i := funcStart; i < len(*hoist.funcs); i++ {

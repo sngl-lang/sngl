@@ -140,7 +140,7 @@ func containsRef(t *ir.Type) bool {
 //   - "string" / "int" / "float" / "bool" use direct js.Value accessors;
 //   - any other non-empty value is a typed declaration that the bridge
 //     marshals through JSON;
-//   - "" means dyn / unrepresentable, and the bridge passes the raw js.Value
+//   - "" means unrepresentable, and the bridge passes the raw js.Value
 //     through unchanged (matching prior behavior for unknown types).
 func wasmTypeHint(t *ir.Type) string {
 	if t == nil {

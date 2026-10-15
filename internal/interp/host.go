@@ -39,9 +39,14 @@ func wireValue(v any) any {
 		if x == nil {
 			return nil
 		}
-		w := WireStruct{Fields: make([]PropVal, len(x.Fields))}
-		for i, f := range x.Fields {
-			w.Fields[i] = PropVal{Name: f.Name, Value: wireValue(f.Value)}
+		// A host reads a field's presence as having been set, as a backend
+		// does, so one the literal left out stays out (Field.Unwritten).
+		w := WireStruct{Fields: make([]PropVal, 0, len(x.Fields))}
+		for _, f := range x.Fields {
+			if f.Unwritten() {
+				continue
+			}
+			w.Fields = append(w.Fields, PropVal{Name: f.Name, Value: wireValue(f.Value)})
 		}
 		return w
 	case []any:

@@ -806,7 +806,7 @@ func isNodeRef(id *ir.Ident) bool {
 func modelNode(wrapped bool) func(name string) ir.Expr {
 	return func(name string) ir.Expr {
 		if wrapped {
-			return codegen.ModelFieldRef(name)
+			return codegen.ModelFieldRef(name, gtk4rtHandleIRType())
 		}
 		return &ir.Ident{Name: name, IsElementRef: true, Synthesized: true}
 	}
@@ -828,7 +828,7 @@ func cgoEventGetterExpr(cType string, widgetRef ir.Expr) ir.Expr {
 		// In GTK4 the text accessor moved to GtkEditable.
 		cast := &ir.Conversion{Type: ir.NativePointerOf("GtkEditable"), Operand: widgetRef}
 		getText := &ir.Call{
-			Type:     ir.TypDyn,
+			Type:     ir.NativePointerOf("char"),
 			Receiver: &ir.Ident{Name: "C"},
 			Func:     nativeFunc("gtk_editable_get_text"),
 			Args:     []ir.CallArg{{Value: cast}},
@@ -848,7 +848,7 @@ func cgoEventGetterExpr(cType string, widgetRef ir.Expr) ir.Expr {
 		// that has to be released, which no one expression can say: the
 		// helper is Go in the template, emitted when this is reached.
 		return &ir.Call{
-			Type: ir.TypDyn,
+			Type: ir.NativeGoPointerOf("time.Time"),
 			Func: &ir.Func{Name: calendarDateHelper, Foreign: ir.Foreign{Name: calendarDateHelper}},
 			Args: []ir.CallArg{{Value: &ir.Conversion{Type: ir.NativePointerOf(cType), Operand: widgetRef}}},
 		}
@@ -1270,15 +1270,7 @@ func emitBuildUI(b *strings.Builder, buildBuf *strings.Builder, topLevelRefs []s
 	// makes a fresh window per call, so a second BuildUI does not re-parent an
 	// already-parented widget.
 	rootRef := &ir.Ident{Name: "__root", IsElementRef: true, Synthesized: true}
-	rootCtorCall := &ir.Call{
-		Type:     ir.TypDyn,
-		Receiver: &ir.Ident{Name: "C"},
-		Func:     nativeFunc("gtk_box_new"),
-		Args: []ir.CallArg{
-			{Value: &ir.Ident{Name: "C.GTK_ORIENTATION_VERTICAL", Type: ir.TypDyn}},
-			{Value: &ir.Literal{Type: ir.TypInt, Value: "6"}},
-		},
-	}
+	rootCtorCall := nativeCall("gtk_box_new", ir.NativePointerOf("GtkWidget"), cOrientationVertical(), intLit("6"))
 	rootInit := &ir.Conversion{Type: ir.NativePointerOf("GtkBox"), Operand: rootCtorCall}
 	b.WriteString("func (m *Model) buildWidgetTree() {\n")
 	b.WriteString("\tif m.__root != nil {\n\t\treturn\n\t}\n")
@@ -1337,7 +1329,7 @@ func emitBuildUI(b *strings.Builder, buildBuf *strings.Builder, topLevelRefs []s
 		fmt.Fprintf(b, "\t%s\n", line)
 	}
 	if icon != "" {
-		setIcon := rtCall("WindowSetIcon",
+		setIcon := rtCall("WindowSetIcon", ir.TypVoid,
 			&ir.Conversion{Type: gtk4rtHandleIRType(), Operand: cgoCast("", winRef)},
 			&ir.Conversion{Type: gtk4rtHandleIRType(), Operand: cgoCast("", buildRef(icon, fields))})
 		for _, line := range gc.EvalStmt(&ir.CallStmt{Call: setIcon}) {
@@ -1399,15 +1391,7 @@ func emitIRComponentMethod(b *strings.Builder, cc *codegen.ComponentCtx, gc *gol
 		trailer = tb.String()
 	default:
 		var tb strings.Builder
-		boxCtorCall := &ir.Call{
-			Type:     ir.TypDyn,
-			Receiver: &ir.Ident{Name: "C"},
-			Func:     nativeFunc("gtk_box_new"),
-			Args: []ir.CallArg{
-				{Value: &ir.Ident{Name: "C.GTK_ORIENTATION_VERTICAL", Type: ir.TypDyn}},
-				{Value: &ir.Literal{Type: ir.TypInt, Value: "6"}},
-			},
-		}
+		boxCtorCall := nativeCall("gtk_box_new", ir.NativePointerOf("GtkWidget"), cOrientationVertical(), intLit("6"))
 		boxInit := &ir.Conversion{Type: ir.NativePointerOf("GtkBox"), Operand: boxCtorCall}
 		fmt.Fprintf(&tb, "\t__box := %s\n", compGC.EvalExpr(boxInit))
 		boxRef := &ir.Ident{Name: "__box"}

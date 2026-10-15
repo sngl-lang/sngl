@@ -265,8 +265,8 @@ func (t *TypeSym) SymType() *Type  { return t.Type }
 // sngl:builtin's declarations.
 func NewBaseScope() *Scope {
 	s := &Scope{Symbols: make(map[string]Symbol)}
-	// The bare generic constructors are predeclared as dyn-parameterized
-	// defaults. "color", "date", "time", and "datetime" are intentionally
+	// The bare generic constructors are predeclared over their own type
+	// parameters. "color", "date", "time", and "datetime" are intentionally
 	// absent — they are provided exclusively as stdlib StructDefs
 	// (lib/types.sngl). The stdlib scope sits between this base scope and user
 	// code, so resolution finds the StructDef. Pre-stdlib lookups for these
@@ -277,9 +277,11 @@ func NewBaseScope() *Scope {
 	}{
 		// No declaration attached: a library load attaches its own `list` where
 		// sngl:builtin declares it, and what loads before that attaches none.
-		{"list", &Type{Kind: TypeList, Elems: []*Type{TypDyn}}},
-		{"option", OptionOf(TypDyn)},
-		{"map", &Type{Kind: TypeMap, Elems: []*Type{TypDyn, TypDyn}}},
+		// Each is the constructor over its own type parameters, as
+		// sngl:builtin declares it.
+		{"list", &Type{Kind: TypeList, Elems: []*Type{typeParam("T")}}},
+		{"option", OptionOf(typeParam("T"))},
+		{"map", &Type{Kind: TypeMap, Elems: []*Type{typeParam("K"), typeParam("V")}}},
 	} {
 		s.Symbols[entry.name] = &TypeSym{Name: entry.name, Type: entry.typ}
 	}
@@ -601,3 +603,6 @@ func MemberOf(decl any, name string) (*Func, bool) {
 	f, found := (*tbl)[name]
 	return f, found
 }
+
+// typeParam is a reference to the type parameter named name.
+func typeParam(name string) *Type { return &Type{Kind: TypeTypeParam, ParamName: name} }

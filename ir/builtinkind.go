@@ -27,8 +27,6 @@ const (
 	BuiltinFloat  BuiltinKind = "float"
 	BuiltinString BuiltinKind = "string"
 	BuiltinBool   BuiltinKind = "bool"
-	// Dyn is the type of a value the program says nothing about.
-	BuiltinDyn BuiltinKind = "dyn"
 	// Any is the constraint that says nothing about a type parameter. It is
 	// read like a scalar -- its name is in the universe before sngl:builtin is
 	// in scope, since sngl:family's `one[T any]` is checked first -- and is no
@@ -119,6 +117,12 @@ const (
 	BuiltinNavPage  BuiltinKind = "navPage"
 	BuiltinNavLink  BuiltinKind = "navLink"
 
+	// Application is what the package body's nodes are attached to: the
+	// application a target runs, which hosts the windows a program opens. No
+	// program writes one; a lowering pass names it where a node at the root
+	// of the package body is attached, and a target answers it with its own.
+	BuiltinApplication BuiltinKind = "application"
+
 	BuiltinOutput BuiltinKind = "output"
 	// GenInputs is `sngl:x/gen/cache`'s `inputs`: what a generated file was
 	// generated from. Like output it is read rather than rendered, and unlike
@@ -160,7 +164,7 @@ const (
 // string, and the sized numerics.
 func (b BuiltinKind) IsPrimitive() bool {
 	switch b {
-	case BuiltinInt, BuiltinFloat, BuiltinString, BuiltinBool, BuiltinDyn,
+	case BuiltinInt, BuiltinFloat, BuiltinString, BuiltinBool,
 		BuiltinInt8, BuiltinInt16, BuiltinInt32, BuiltinInt64,
 		BuiltinUint8, BuiltinUint16, BuiltinUint32, BuiltinUint64,
 		BuiltinFloat32, BuiltinFloat64:
@@ -258,7 +262,7 @@ func (b BuiltinKind) IsConst() bool {
 // AllBuiltinKinds returns every valid kind, in declaration order.
 func AllBuiltinKinds() []BuiltinKind {
 	return []BuiltinKind{
-		BuiltinInt, BuiltinFloat, BuiltinString, BuiltinBool, BuiltinDyn, BuiltinAny,
+		BuiltinInt, BuiltinFloat, BuiltinString, BuiltinBool, BuiltinAny,
 		BuiltinInt8, BuiltinInt16, BuiltinInt32, BuiltinInt64,
 		BuiltinUint8, BuiltinUint16, BuiltinUint32, BuiltinUint64,
 		BuiltinFloat32, BuiltinFloat64,
@@ -268,7 +272,7 @@ func AllBuiltinKinds() []BuiltinKind {
 		BuiltinFamilyOne, BuiltinFamilyOfFamilies, BuiltinFamilyRoot, BuiltinFamilySpan, BuiltinFamilyShape, BuiltinFamilyImageSource,
 		BuiltinFamilyLanguage, BuiltinFamilyPlatform,
 		BuiltinErrorBoundary, BuiltinContext, BuiltinEffect,
-		BuiltinNavStack, BuiltinNavPage, BuiltinNavLink,
+		BuiltinNavStack, BuiltinNavPage, BuiltinNavLink, BuiltinApplication,
 		BuiltinOutput, BuiltinGenInputs, BuiltinGenScheme, BuiltinCLink, BuiltinGenEmit, BuiltinGenNode, BuiltinGenRun, BuiltinGenBuild,
 		BuiltinNull, BuiltinTargetPlatform, BuiltinTargetLanguage,
 	}
@@ -277,6 +281,6 @@ func AllBuiltinKinds() []BuiltinKind {
 // Valid reports whether the kind names a built-in (i.e. is not BuiltinNone and
 // not an unrecognised string).
 func (b BuiltinKind) Valid() bool {
-	return b == BuiltinAny || b.IsPrimitive() || b.IsStringRepr() || b.IsUnit() || b.IsGeneric() ||
+	return b == BuiltinAny || b == BuiltinApplication || b.IsPrimitive() || b.IsStringRepr() || b.IsUnit() || b.IsGeneric() ||
 		b.IsSlotBound() || b.IsFamilyRole() || b.IsNode() || b.IsDirective() || b.IsEmitter() || b.IsCommand() || b.IsConst()
 }

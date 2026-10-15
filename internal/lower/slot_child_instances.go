@@ -175,9 +175,11 @@ func (st *slotChildSynth) convertible(n *ir.NodeInst) bool {
 func (st *slotChildSynth) synthesize(n *ir.NodeInst) *ir.NodeInst {
 	id := st.n
 	st.n++
+	// A member of the family of the node it renders, as any component is.
 	comp := &ir.Component{
 		Name:            "__child" + strconv.Itoa(id),
 		RuntimeInstance: true,
+		Family:          nodeFamily(n),
 	}
 
 	inst := &ir.NodeInst{AST: n.AST, Component: comp}

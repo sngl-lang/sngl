@@ -1139,9 +1139,10 @@ func retargetSlotCalls(root any) {
 		if n == "" || len(call.Args) != 1 {
 			return nil
 		}
+		// The anchor stands for the container the slot was handed.
 		call.Args[0].Value = &ir.Ident{
 			Name:         slotAnchorVar(n),
-			Type:         ir.TypDyn,
+			Type:         call.Args[0].Value.ExprType(),
 			IsElementRef: true,
 			Synthesized:  true,
 		}
@@ -1518,8 +1519,8 @@ func nodeFromIRCallStmt(n *ir.CallStmt) *ir.NodeInst {
 }
 
 // irCallName extracts the bare or namespace-qualified name from an IR Call.
-// A namespace-resolved element call leaves Call.Func nil and Call.Receiver set
-// to the namespace ident, so "ns.Foo" is reassembled from the AST back-ref.
+// A namespace-resolved element call leaves Call.Func nil and Call.Qualifier
+// set, so "ns.Foo" is reassembled from the AST back-ref.
 func irCallName(call *ir.Call) string {
 	if call == nil {
 		return ""
@@ -1527,14 +1528,7 @@ func irCallName(call *ir.Call) string {
 	if call.Func != nil {
 		return call.Func.Name
 	}
-	if call.Receiver != nil && call.AST != nil {
-		if sel, ok := call.AST.Func.(*ast.SelectExpr); ok {
-			if id, ok := sel.Operand.(*ast.IdentExpr); ok {
-				return id.Name + "." + sel.Field
-			}
-		}
-	}
-	return ""
+	return call.QualifiedName()
 }
 
 // renderIRNode dispatches a NodeInst to the appropriate renderer: a user
@@ -2520,7 +2514,7 @@ func (g *htmlGen) emitSynthesizedSlots(b *strings.Builder) {
 		tr := g.newHTMLTranslator(jc)
 		drawn := &ir.Func{
 			Name:   cv.Name,
-			Params: []*ir.Param{{Name: "ctx", Type: ir.TypDyn}},
+			Params: []*ir.Param{{Name: "ctx", Type: drawCtxType(cv.Draw)}},
 			Block:  codegen.WalkLowered(context.Background(), cv.Draw, tr),
 		}
 		for _, line := range jc.EmitFuncDef(drawn) {
@@ -2947,7 +2941,7 @@ func exprUsesI18n(expr ir.Expr) bool {
 					walkStmtExprs(s, walk)
 				}
 			}
-		case *ir.Literal, *ir.Ident, *ir.ContextRead:
+		case *ir.Literal, *ir.Ident, *ir.ContextRead, *ir.SlotEmpty:
 		default:
 			panic(fmt.Sprintf("html.exprUsesI18n: unhandled ir.Expr %T", x))
 		}
@@ -3199,7 +3193,7 @@ func (g *htmlGen) collectLoweredRefs(s ir.Stmt) {
 		case *ir.Spread:
 			walkExpr(x.Operand)
 		case *ir.Lambda, *ir.Closure:
-		case *ir.Literal, *ir.ContextRead:
+		case *ir.Literal, *ir.ContextRead, *ir.SlotEmpty:
 		default:
 			panic(fmt.Sprintf("html.collectLoweredRefs.walkExpr: unhandled ir.Expr %T", x))
 		}

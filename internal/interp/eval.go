@@ -5,7 +5,6 @@ import (
 	"maps"
 	"reflect"
 	"slices"
-	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -476,11 +475,19 @@ type Env struct {
 	// needs: the handlers a call site supplied are written there, and the scope
 	// one runs in is this env's parent.
 	inst *ir.NodeInst
+	// entries is the insertions whose populations were being mounted where
+	// inst was, innermost last: what a forwarded component entry's `.empty`
+	// is answered from (slotEmpty).
+	entries []entryFrame
 	// origin is the scope this one is a Snapshot of, or nil.
 	origin *Env
 	// ended says this is the snapshot a lambda call ran in, and the call has
 	// returned (LambdaValue.Call).
 	ended bool
+	// mountCopy says this is the copy of a live scope a mount took for one
+	// copy of a loop's body or one scoped population: the state it holds is
+	// as old as that mount (Env.runHandler).
+	mountCopy bool
 	// spreadVals holds the operands of the spreads the running statement
 	// evaluates once (ir.StatementSpreads), by site.
 	spreadVals map[int]any
@@ -653,6 +660,7 @@ func (env *Env) Snapshot() *Env {
 		// *caller's* instantiation instead, asked it for a subscriber to an
 		// event it does not declare, and went nowhere.
 		inst:       env.inst,
+		entries:    env.entries,
 		origin:     env,
 		spreadVals: env.spreadVals,
 		handling:   env.handling,
@@ -1169,6 +1177,8 @@ func (env *Env) Eval(e ir.Expr) (any, error) {
 		return newLambda(n.Func, env), nil
 	case *ir.ContextRead:
 		return env.ContextVal(n.Ref), nil
+	case *ir.SlotEmpty:
+		return env.slotEmpty(n)
 	case *ir.Closure:
 		return newLambda(n.Func, env), nil
 	}
@@ -1223,6 +1233,12 @@ func (env *Env) evalLiteral(e *ir.Literal) (any, error) {
 func (env *Env) evalIdent(e *ir.Ident) (any, error) {
 	if e.Member != "" {
 		return e.Member, nil
+	}
+	// i18n's predeclared PluralKey constants, whose value is the runtime's.
+	if ir.IsI18nPluralKey(e) {
+		if pk, ok := i18nPluralConst(e.Name); ok {
+			return pk, nil
+		}
 	}
 	// A build-target node read as a value, bare inside its own package.
 	if _, name, ok := ir.TargetNode(e.Sym); ok {
@@ -1371,34 +1387,15 @@ func (env *Env) lookup(sym ir.Symbol) (any, error) {
 		return funcValue(fn, env), nil
 	}
 	// A declaration the environment never bound but that carries its own
-	// value: a constant from a library package, which is in no list this
-	// program walks. The symbol has the initializer, so evaluate it.
-	if v, ok := sym.(*ir.Var); ok && v.IsConst && v.Init != nil {
+	// value: a constant or a var of another package, which is in no list
+	// this program walks. The symbol has the initializer, so evaluate it.
+	if v, ok := sym.(*ir.Var); ok && v.Init != nil {
 		return env.Eval(v.Init)
 	}
 	return nil, fmt.Errorf("undefined variable %q", sym.SymName())
 }
 
 func (env *Env) evalSelect(e *ir.Select) (any, error) {
-	// i18n namespace field access: i18n.zero, i18n.one, etc.
-	// These are predeclared PluralKey constants; resolve them before
-	// attempting a general object lookup.
-	if ident, ok := e.Operand.(*ir.Ident); ok && ident.Name == "i18n" {
-		if pk, ok := i18nPluralConst(e.Field); ok {
-			return pk, nil
-		}
-	}
-
-	// `pkg.NAME` where pkg is an import's namespace. A namespace is not a
-	// value, so evaluating the operand would report the alias as an undefined
-	// variable -- which is what a const named through one used to do wherever
-	// the optimizer had not already folded it away.
-	if ident, ok := e.Operand.(*ir.Ident); ok {
-		if ns, ok := ident.Sym.(*ir.Namespace); ok {
-			return env.namespaceMember(ns, e.Field)
-		}
-	}
-
 	obj, cached := env.spreadVals[e.Spread]
 	if e.Spread == 0 || !cached {
 		var err error
@@ -1458,36 +1455,6 @@ func intrinsicMethod(t *ir.Type, field string) func([]any) (any, error) {
 	return intrinsics[fn.Intrinsic]
 }
 
-// namespaceMember evaluates `alias.member` where alias names an imported
-// package. A const is the only member a select can produce a value for: a
-// type, a component or a function reached this way is a call or a literal, and
-// arrives as one of those rather than here.
-func (env *Env) namespaceMember(ns *ir.Namespace, field string) (any, error) {
-	if ns.Pkg == nil || ns.Pkg.Symbols == nil {
-		return nil, fmt.Errorf("package %q has no declarations", ns.Name)
-	}
-	sym, ok := ns.Pkg.Symbols.LookupMember(field)
-	if !ok {
-		return nil, fmt.Errorf("undefined: %s.%s", ns.Name, field)
-	}
-	// A build-target node read as a value is the target's identity: its
-	// registered name, which is what PLATFORM holds.
-	if _, name, ok := ir.TargetNode(sym); ok {
-		return name, nil
-	}
-	v, isVar := sym.(*ir.Var)
-	if !isVar {
-		return nil, fmt.Errorf("cannot read %s.%s as a value", ns.Name, field)
-	}
-	if val, bound := env.Value(v); bound {
-		return val, nil
-	}
-	if v.Init == nil {
-		return nil, nil
-	}
-	return env.Eval(v.Init)
-}
-
 // i18nPluralConst maps the predeclared i18n PluralKey field names to their
 // Go runtime values. Returns (PluralKey, true) if found; (nil, false) otherwise.
 func i18nPluralConst(field string) (goi18n.PluralKey, bool) {
@@ -1540,24 +1507,8 @@ func (env *Env) evalIndex(e *ir.Index) (any, error) {
 		if v, ok := m[key]; ok {
 			return v, nil
 		}
-		// Miss → zero value. Use the Index node's result type when it is
-		// concrete; fall back to sampling an existing map value when the type
-		// was inferred as Dyn (e.g. c.scores["x"] through a component Select).
-		if e.Type != nil && e.Type.Kind != ir.TypeDyn {
-			return zeroValueFor(e.Type), nil
-		}
-		// Sample deterministically (smallest key): Go map iteration is
-		// randomised, so ranging picked a run-to-run-varying value, making the
-		// zero-value template flaky for heterogeneous dyn maps (bugs.md #24).
-		if len(m) > 0 {
-			keys := make([]string, 0, len(m))
-			for k := range m {
-				keys = append(keys, k)
-			}
-			sort.Strings(keys)
-			return zeroValueForValue(m[keys[0]]), nil
-		}
-		return nil, nil
+		// Miss → the zero value of the map's element type.
+		return zeroValueFor(e.Type), nil
 	}
 	return nil, fmt.Errorf("cannot index %T", obj)
 }
@@ -1635,7 +1586,49 @@ func (env *Env) evalStructLit(e *ir.StructLit) (any, error) {
 		}
 		s.Set(f.Name, v)
 	}
-	return s, nil
+	return s, env.fillOmittedFields(s, e.Def)
+}
+
+// fillOmittedFields gives every field of def a literal left out the value the
+// declaration means by omitting it: its written default, or its type's zero,
+// as every compiled target's struct holds. The fields end in def's order,
+// which is the order every backend emits.
+func (env *Env) fillOmittedFields(s *Struct, def *ir.StructDef) error {
+	if def == nil || !slices.ContainsFunc(def.Fields, func(f *ir.StructField) bool {
+		_, ok := s.Get(f.Name)
+		return !ok
+	}) {
+		return nil
+	}
+	fields := make([]Field, 0, len(def.Fields))
+	for _, f := range def.Fields {
+		if i := slices.IndexFunc(s.Fields, func(g Field) bool { return g.Name == f.Name }); i >= 0 {
+			fields = append(fields, s.Fields[i])
+			continue
+		}
+		init := f.Default
+		if init == nil {
+			init = ir.ZeroExpr(f.Type)
+		}
+		if init == nil {
+			// A type with no zero of its own here -- a type parameter the
+			// declaration left unbound -- stays absent, as before.
+			continue
+		}
+		v, err := env.Eval(init)
+		if err != nil {
+			return err
+		}
+		fields = append(fields, Field{Name: f.Name, Value: copyOf(v, f.Type), Omitted: true, Filled: DeepCopy(v)})
+	}
+	// A spread may have supplied a field def does not name; keep it after.
+	for _, f := range s.Fields {
+		if !slices.ContainsFunc(fields, func(g Field) bool { return g.Name == f.Name }) {
+			fields = append(fields, f)
+		}
+	}
+	s.Fields = fields
+	return nil
 }
 
 func (env *Env) evalMapLitIR(e *ir.MapLitIR) (any, error) {
@@ -1776,8 +1769,8 @@ func (env *Env) evalBinary(e *ir.Binary) (any, error) {
 }
 
 // numKindOf maps an IR result type to the opeval width descriptor so arithmetic
-// wraps to the right width. A nil or non-numeric type (e.g. a dyn operand in a
-// test context) yields the zero NumKind, which is default int / float-fallback.
+// wraps to the right width. A nil or non-numeric type yields the zero NumKind,
+// which is default int / float-fallback.
 func numKindOf(t *ir.Type) opeval.NumKind {
 	if t == nil || !t.IsNumeric() {
 		return opeval.NumKind{}
@@ -2146,9 +2139,8 @@ func (env *Env) evalNamespaceCall(call *ir.Call) (any, error) {
 			}
 			// Enum value method fallback: when recv is a bare string and no
 			// dispatch succeeded, scan user-defined enums for a matching
-			// member and try the method against that enum's namespace. Covers
-			// `c.s.isOk()` where `c.s` is typed dyn externally but holds an
-			// enum member at runtime.
+			// member and try the method against that enum's namespace: an
+			// enum member the interpreter holds as its bare name.
 			if s, ok := recv.(string); ok && env.Pkg != nil {
 				for _, ed := range env.Pkg.Enums {
 					for _, m := range ed.Members {
@@ -2629,7 +2621,7 @@ func (env *Env) evalUserFuncCore(fn *ir.Func, args []any) (any, error) {
 	}
 	defer func() { env.depth-- }()
 
-	isPure := fn.Return != nil && fn.Return.Kind != ir.TypeDyn
+	isPure := fn.Return != nil
 	for {
 		var execEnv *Env
 		if !isPure {
@@ -3044,7 +3036,7 @@ func ToInt(v any) int {
 // orderable reports why a pair cannot be ordered, or nil. Only a multi-base
 // unit has no answer: `3px` and `2em` are each larger on their own base. The
 // checker refuses that pair outright (`IsSingleBaseUnit` gates <, <=, >, >=),
-// so this is the `dyn` operand that reached a comparison untyped.
+// so this is for IR the checker did not see.
 func orderable(a, b any) error {
 	for _, v := range [...]any{a, b} {
 		if u, ok := v.(unitValue); ok && u.Table != nil && len(u.Table.Bases) > 1 {
@@ -3089,7 +3081,7 @@ func runtimeTypeName(v any) string {
 		// built-in map declares methods with no body to run.
 		return "struct"
 	default:
-		return "dyn"
+		return ""
 	}
 }
 
@@ -3106,22 +3098,6 @@ func zeroValueFor(t *ir.Type) any {
 	case ir.TypeBool:
 		return false
 	case ir.TypeString:
-		return ""
-	}
-	return nil
-}
-
-// zeroValueForValue returns the zero value of the same runtime type as v.
-// Used when the static type is unknown (TypeDyn) but we can sample a value.
-func zeroValueForValue(v any) any {
-	switch v.(type) {
-	case int:
-		return 0
-	case float64:
-		return 0.0
-	case bool:
-		return false
-	case string:
 		return ""
 	}
 	return nil
@@ -3255,4 +3231,56 @@ func elemType(t *ir.Type) *ir.Type {
 		return nil
 	}
 	return t.Elems[0]
+}
+
+// slotEmpty answers `src.empty` in a component's body: whether what the call
+// site of the component declaring the slot supplied for it renders nothing,
+// asked of that content in the caller's scope -- the answer the splicer writes
+// in for a compiled target (ir.RendersNothing), evaluated rather than spliced.
+// The slot is matched by declaration, as the splicer matches it: the nearest
+// instance may be another component's, one the content was forwarded into. A
+// component entry is answered by the insertion whose population forwarded it,
+// which is one of the entry frames current where the asking instance was
+// mounted.
+func (env *Env) slotEmpty(x *ir.SlotEmpty) (any, error) {
+	for e := env; e != nil; e = e.parent {
+		if e.inst != nil && e.inst.Component != nil && slices.Contains(e.inst.Component.Slots, x.Slot) {
+			body, _, supplied := ir.SlotBody(&ir.SlotInst{Name: x.Slot.Name, Rest: x.Slot.Rest}, e.inst)
+			if !supplied {
+				return true, nil
+			}
+			caller := e.parent
+			if caller == nil {
+				caller = e
+			}
+			return caller.answerEmpty(x, body, e.entries)
+		}
+		for _, f := range slices.Backward(e.entries) {
+			if f.ins.Decl == nil || !slices.Contains(f.ins.Decl.Slots, x.Slot) {
+				continue
+			}
+			content := f.ins.Slots[x.Slot.Name]
+			if content == nil {
+				return true, nil
+			}
+			return f.env.answerEmpty(x, content.Body, f.env.entries)
+		}
+	}
+	return true, nil
+}
+
+// answerEmpty evaluates in env whether body renders nothing. A forward of a
+// component entry in it is answered from entries, the frames current where
+// body was handed on, which env -- the scope body was written in -- need not
+// hold.
+func (env *Env) answerEmpty(x *ir.SlotEmpty, body []ir.Stmt, entries []entryFrame) (any, error) {
+	answer, ok := ir.RendersNothing(body)
+	if !ok {
+		return nil, fmt.Errorf("%s.%s: what the call site supplied cannot say whether it renders anything", x.Slot.Name, ir.SlotEmptyMember)
+	}
+	if len(entries) > 0 {
+		env = env.Snapshot()
+		env.entries = entries
+	}
+	return env.Eval(answer)
 }

@@ -769,6 +769,7 @@ func girTypeToIR(name string) *ir.Type {
 	case "none":
 		return nil
 	default:
-		return &ir.Type{Kind: ir.TypeDyn}
+		// No SNGL spelling: the declaration generator leaves the prop out.
+		return ir.TypInvalid
 	}
 }

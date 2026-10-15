@@ -65,10 +65,23 @@ func widgetSource(reg *gir.TypeRegistry) []byte {
 			if !ok || taken[n] {
 				continue
 			}
+			// A property whose GIR type has no SNGL spelling -- an object, a
+			// boxed struct, a flags set -- is not declared: a prop typed to
+			// take anything would type-check a value the C setter cannot be
+			// handed.
+			typ, ok := snglTypeName(p.IRType)
+			if !ok && reg.Enums[p.GIRType] != nil {
+				// An enumeration is written as its member's name, which the
+				// emitter turns into the C constant (girEnumMember).
+				typ, ok = "string", true
+			}
+			if !ok {
+				continue
+			}
 			taken[n] = true
-			fmt.Fprintf(&b, "    %s %s,\n", n, snglTypeName(p.IRType))
+			fmt.Fprintf(&b, "    %s %s,\n", n, typ)
 		}
-		fmt.Fprintf(&b, "    %s dyn,\n", stylePropName)
+		fmt.Fprintf(&b, "    %s ui.Style = ui.Style{},\n", stylePropName)
 		// A signal hands its callback the instance it fired on, as GTK's own
 		// signature does (`void toggled(GtkCheckButton *self, gpointer)`), so
 		// a handler reads the widget that fired rather than reaching it
@@ -205,24 +218,23 @@ func isSnglIdent(s string) bool {
 	return s != ""
 }
 
-// snglTypeName is the source spelling of the type girTypeToIR resolved. A GIR
-// type with no SNGL equivalent lands on dyn, which accepts the value and
-// leaves the emitter to coerce it for the C setter.
-func snglTypeName(t *ir.Type) string {
+// snglTypeName is the source spelling of the type girTypeToIR resolved, and
+// false for a GIR type with no SNGL equivalent.
+func snglTypeName(t *ir.Type) (string, bool) {
 	if t == nil {
-		return "dyn"
+		return "", false
 	}
 	switch t.Kind {
 	case ir.TypeString:
-		return "string"
+		return "string", true
 	case ir.TypeBool:
-		return "bool"
+		return "bool", true
 	case ir.TypeInt:
-		return "int"
+		return "int", true
 	case ir.TypeFloat:
-		return "float"
+		return "float", true
 	}
-	return "dyn"
+	return "", false
 }
 
 // --- Reading the metadata back out ---

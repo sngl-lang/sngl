@@ -1,6 +1,6 @@
 // A library `=>` form cannot carry a return annotation and its body is never
-// checked, so one that states no return type is dyn and every use of the
-// result checks clean. These declare theirs off a block body.
+// checked, so one that states no return type would leave every use of the
+// result unchecked. These declare theirs off a block body.
 
 import ui "sngl:ui"
 

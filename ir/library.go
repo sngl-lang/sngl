@@ -25,6 +25,7 @@ type Builtins struct {
 	list, mapDecl atomic.Pointer[StructDef]
 	dateTime      atomic.Pointer[Type]
 	duration      atomic.Pointer[Type]
+	application   atomic.Pointer[Component]
 
 	mu         sync.RWMutex
 	intrinsics map[string]*IntrinsicDef
@@ -82,6 +83,21 @@ func (b *Builtins) MapOf(k, v *Type) *Type {
 	return t
 }
 
+// RegisterApplication records sngl:builtin's `_application`.
+func (b *Builtins) RegisterApplication(c *Component) {
+	b.application.Store(c)
+}
+
+// ApplicationType is the type of a handle to the application the package
+// body's nodes attach to, or nil before sngl:builtin registers it -- IR built
+// with no library loaded has no application to name.
+func (b *Builtins) ApplicationType() *Type {
+	if c := b.application.Load(); c != nil {
+		return &Type{Kind: TypeComponent, Decl: c}
+	}
+	return nil
+}
+
 // RegisterDuration records sngl:time's duration unit.
 func (b *Builtins) RegisterDuration(t *Type) {
 	if d, ok := t.Decl.(*UnitDef); ok {
@@ -92,7 +108,7 @@ func (b *Builtins) RegisterDuration(t *Type) {
 
 // DurationType is this library's duration unit, or int before it registers:
 // a duration's magnitude is carried in its base unit, so int is the lossless
-// fallback rather than dyn.
+// fallback.
 func (b *Builtins) DurationType() *Type {
 	if t := b.duration.Load(); t != nil {
 		return t
@@ -100,12 +116,13 @@ func (b *Builtins) DurationType() *Type {
 	return TypInt
 }
 
-// DateTimeType is this library's datetime struct, or dyn before it registers.
+// DateTimeType is this library's datetime struct, or TypInvalid -- a type
+// nothing can use -- before it registers.
 func (b *Builtins) DateTimeType() *Type {
 	if t := b.dateTime.Load(); t != nil {
 		return t
 	}
-	return TypDyn
+	return TypInvalid
 }
 
 // RegisterIntrinsic records what a #[intrinsic] declaration says.
@@ -184,8 +201,8 @@ func ListOf(elem *Type) *Type { return Published().ListOf(elem) }
 func MapOf(k, v *Type) *Type { return Published().MapOf(k, v) }
 
 // DateTimeType is the published datetime struct, for the foreign-type
-// importers that synthesize one without a scope of their own; dyn before a
-// library registers one.
+// importers that synthesize one without a scope of their own; TypInvalid
+// before a library registers one.
 func DateTimeType() *Type { return Published().DateTimeType() }
 
 // DurationType is the published duration unit, for the Go importer's

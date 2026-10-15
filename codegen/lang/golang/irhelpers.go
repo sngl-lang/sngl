@@ -12,7 +12,7 @@ import (
 // type, or (for a single-return-statement body) the inferred type of the
 // returned expression. Returns "" when neither is known.
 func FuncReturnGoType(f *ir.Func) string {
-	if f.Return != nil && f.Return.Kind != ir.TypeDyn {
+	if f.Return != nil {
 		return IRTypeToGo(f.Return)
 	}
 	if len(f.Block) == 1 {

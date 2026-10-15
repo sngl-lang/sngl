@@ -1,0 +1,113 @@
+# An effect in a block of a view that declares state, under a loop: each copy
+# of the block mounts once and its @mount writes that copy's own cell. If
+# `seen` were one cell every copy shared, the three mounts would add 1, 2
+# and 3. On bubbletea the block is a cell per copy, and the effect's handlers
+# are handed the copy's key through `on`, since the settle runs them outside
+# the loop the key is built from.
+#
+# testdata/view_block_state_renders_nothing.txtar is the code.
+
+sngl test --platform=none app.sngl
+stdout 'PASS'
+! stdout 'FAIL'
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout 'PASS'
+! stdout 'FAIL'
+
+sngl test --platform=fyne --language=go app.sngl
+stdout 'PASS'
+! stdout 'FAIL'
+
+[gtk4] sngl test --platform=gtk4 --language=go app.sngl
+[gtk4] stdout 'PASS'
+[gtk4] ! stdout 'FAIL'
+
+sngl test --platform=html app.sngl
+stdout 'PASS'
+! stdout 'FAIL'
+
+-- app.sngl --
+import ui "sngl:ui"
+import "sngl:test"
+
+component counter ui.node {
+    var items = [1, 2, 3]
+    var total = 0
+
+    ui.vbox {
+        for var i = items {
+            var seen = 0
+            effect(@mount {
+                seen = seen + 1
+                total = total + seen
+            })
+        }
+        ui.button #more(text="more", @click { items.push(4) })
+    }
+}
+
+func testEachCopyMountsWithItsOwnCell(t test.Test, c counter) {
+    t.assert(c.total == 3)
+}
+
+func testANewCopyMountsAlone(t test.Test, c counter) {
+    c.more.click()
+    t.assert(c.total == 4)
+}
+-- testrun/bubbletea/go/app.sngl/counter/1 --
+sha256:28159b0e3880f2ce9ca0d925d0fd8270
+{
+  "results": [
+    {
+      "Desc": "ANewCopyMountsAlone",
+      "Passed": true
+    },
+    {
+      "Desc": "EachCopyMountsWithItsOwnCell",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/counter/1 --
+sha256:4ed0598c5cc438bf72b94835122dac62
+{
+  "results": [
+    {
+      "Desc": "ANewCopyMountsAlone",
+      "Passed": true
+    },
+    {
+      "Desc": "EachCopyMountsWithItsOwnCell",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/counter/1 --
+sha256:23061d9730406939a7562cf04b64e0a7
+{
+  "results": [
+    {
+      "Desc": "ANewCopyMountsAlone",
+      "Passed": true
+    },
+    {
+      "Desc": "EachCopyMountsWithItsOwnCell",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/counter/1 --
+sha256:fb74c4993107b5cf5a22f827e7d80c17
+{
+  "results": [
+    {
+      "Desc": "ANewCopyMountsAlone",
+      "Passed": true
+    },
+    {
+      "Desc": "EachCopyMountsWithItsOwnCell",
+      "Passed": true
+    }
+  ]
+}

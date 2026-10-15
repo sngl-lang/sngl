@@ -214,8 +214,7 @@ default, `const`, `...` -- is refused in `eventParams`
 (`testdata/error_event_param_forms.sngl`).
 
 There used to be a func *type's* list here, names optional, and a shorthand
-for a list of one, `@change T`; a bare `@tick` meant one loose `dyn`
-parameter. The shorthand is refused naming the list
+for a list of one, `@change T`. The shorthand is refused naming the list
 (`testdata/error_event_type_shorthand.sngl`): the grammar still admits it so
 that the builder can say `@change(v T)` rather than "unexpected identifier".
 Most bare events meant none -- a timer's tick, a DOM event SNGL cannot name a
@@ -303,8 +302,7 @@ insertion-ordered so the bug appears only on the other targets. The checker
 refuses all five in a view body with a positioned error (`checkHeadlessFor`,
 `checkViewMapFor`, `requireLoop`), which keeps codegen to the imperative paths
 that route through `ForHead`. A map whose map-ness the head has erased is out
-of reach: `map[K, V]` is not assignable to `iter[T]`, but `dyn` holds one and
-says nothing about it. `c.funcDepth == 0` is what "in a view body" means; `c.loopDepth` is
+of reach: `map[K, V]` is not assignable to `iter[T]`. `c.funcDepth == 0` is what "in a view body" means; `c.loopDepth` is
 what an escape requires one of, and it resets at every imperative-body
 boundary (`enterFuncBody`) so a lambda cannot break a loop it was written
 inside.
@@ -770,7 +768,7 @@ dump holding a `t.assert` checked again
 and `generic_call_site_args.txtar` are the three halves. `any` is `#[_builtin(any)] struct any {}` in sngl:builtin, read like a scalar (`ir.TypAny`, in
 `scalarUniverse`, since sngl:family's `one[T any]` is checked before
 sngl:builtin is in scope), and it is a constraint only: written where a
-value's type goes it is refused naming `dyn` (`error_any_outside_constraint.sngl`).
+value's type goes it is refused (`error_any_outside_constraint.sngl`).
 The constraint lands on `ir.TypeParam.Constraint` and
 `ir.TypeParamSym.Constraint`, and `ir.Convert` prints one for every parameter
 of a declaration's own list, and a method's receiver list as names alone
@@ -1162,7 +1160,7 @@ notes a wildcard symbol when it binds it, so a component's wildcard is noted
 again once its mark has set the pattern (`Scope.NoteWildcard`).
 
 **A scalar's name is read off that source, not a table.** `bool`, `int`,
-`string`, `dyn`, the sized numerics and the rest are each a `#[_builtin(kind)]`
+`string`, the sized numerics and the rest are each a `#[_builtin(kind)]`
 struct, and `scalarUniverse` (`internal/checker/universe.go`) reads them off
 sngl:builtin's parsed documents into the base scope `checker.NewSymbolTable`
 builds, as the singleton `ir.ScalarType(kind)` stands for. That is what the
@@ -1362,8 +1360,7 @@ reimplemented on it.
 
 Two general fixes it needed. A lambda handed to a generic method takes an
 unannotated parameter's type from what the call has bound
-(`inferArgExpr`): `ps.map(func(p) => p.name)` was `list[dyn]`
-(`testdata/lambda_param_from_receiver.sngl`). And `passNoListLambdas` no longer
+(`inferArgExpr`, `testdata/lambda_param_from_receiver.sngl`). And `passNoListLambdas` no longer
 hoists a `map` or `filter` out of a node's prop: the Go emitter writes the call
 as an expression of its own, and hoisted, fyne and gtk4 made the accumulator a
 render slot appending to a list it could not see
@@ -2193,11 +2190,55 @@ entry would be filled by exactly the block that is already the fallback.
 
 **A fallback renders wherever the supplied content renders nothing**
 (Jonathan's call), not only where none was supplied: the branch of an `if`
-that holds none, and a forward of a slot its own caller left empty -- an
-avatar forwarding its `src` to its image, which an image's placeholder needs.
-The splicer states it statically (`ir.WithFallback`: an empty list, an `if`'s
-branches, a forward's own fallback) and the interpreter at mount
-(`slotInst`, which mounts the fallback when the content mounted no node).
+that holds none, a forward of a slot its own caller left empty, two `if`s
+both false, a loop over nothing, content holding only an effect. It is the
+answer `.empty` gives (below), so the two never disagree: the splicer puts
+the fallback where the answer is decided -- in place of no content, in an
+`if`'s empty branch, as a forward's own fallback -- and anywhere else after
+the content under an `if` on `ir.RendersNothing`
+(`SlotSplicer.withFallback`). The interpreter decides at mount (`slotInst`,
+which mounts the fallback when the content mounted no node). An effect or a
+timer -- a node of no family handed nothing -- renders nothing in both
+(`testdata/slot_empty_agrees_with_fallback.sngl`).
+
+**A fallback is held to the family of the slot it falls back for**, not to the
+position's (`checkFamilyMembership`'s `SlotInst` arm): it stands where the
+content would have, so one insertion renders one family whichever of the two
+it shows, and `#[family.crosses]` lifts the position's check and never this
+one (`error_slot_fallback_family.sngl`).
+
+**`name.empty` asks whether what the call site supplied for a slot renders
+nothing** (`ir.SlotEmpty`, `internal/checker/slotempty.go`), so a body puts
+something of its own in the content's place rather than inside it -- an
+avatar's initials, which are no image source. It is answered where the body
+is spliced, from the content (`ir.RendersNothing`, written in by
+`SlotSplicer.Substitute`, and in the initializer of a var the splice hoists),
+matched to its slot by declaration rather than name, since a caller's own
+`.empty` may arrive in a prop argument: none at all is true, a node false, an `if` its
+condition, a counted or measurable `for` its emptiness test (or, where its body
+renders nothing, the else's answer when it runs no copy), and a forward
+the forwarded slot's own `.empty`, answered at the next splice. A forward
+of a component entry is answered by what the insertion whose population
+forwarded it populated the entry with (`answerEntryEmpty`, where the
+population is spliced), and a slot that content forwards by the call site
+of the component that wrote it. So it is as reactive as the content -- under
+`if shown` it is `!shown`. A component built at run time is handed it as a
+prop (`passSlotEmptyProps`, keyed by declaration); a forwarded entry whose
+populating component is built at run time has no splice to answer it and is
+refused with a position. The interpreter asks the content it mounted
+(`Env.slotEmpty`), finding the slot's owner by declaration and an entry
+through the entry frames current where the asking instance mounted. A test
+reading a prop that asks (`c.card.label.value`) is answered the same way
+from the call site it reaches the instance through (`answerTestEmpty`).
+It is asked only in the view, where there is content to ask about. A scoped
+slot is refused, since what its content renders may turn on the arguments an
+insertion hands it, and so is content whose answer turns on what one copy of
+a loop renders (`checkSlotEmptyAnswers`, at the call site). That holds
+however the question reaches the content: from the declaration's body or
+any override's, through a recursion (`slotsAskedEmpty`, a fixed point over
+what a component reaches), and through an entry a population forwards
+(`slot_empty.sngl`, `slot_empty_entry.sngl`, `error_slot_empty.sngl`,
+`error_slot_empty_reach.sngl`, `cmd/sngl/testdata/slot_empty_runs.txt`).
 The fallback is spliced against the callee's call site, which it always
 should have been: a slot insertion inside a fallback used to be left
 unsubstituted. `testdata/slot_fallback_where_content_renders_nothing.sngl`.
@@ -2801,9 +2842,8 @@ being folded away before it is asked.
 **A program's override of a declaration the program wrote is checked after that
 declaration's body** (`lateOverrides`, drained by `checkBodyOnce`): an
 unannotated `var count = 0` has no type until the body declaring it is read, and
-checked first, from `checkPendingExtensions`, a nested body reading `count` saw
-`dyn` and the interpolation `"{count}"` lost its conversion -- `"L " + m.count`
-on bubbletea (`component_override_body_capture.txtar`). A library's base is
+checked first, from `checkPendingExtensions`, a nested body reading `count`
+would see none (`component_override_body_capture.txtar`). A library's base is
 checked when its package loads, so its overrides stay where they were.
 
 A `func` written there is the third slot of the same shape. It is registered
@@ -2855,8 +2895,8 @@ checker's attaching and lookup, which still go by the bare name
 
 `declareEnclosingBody` is the scope half, and `checkBodyOnce` orders an owner's
 body check ahead of the bodies it declared — pass1 registers a nested
-declaration first, so read in package order an unannotated `var count = 0` was
-still `Dyn` where the nested body named it. The lowering half is
+declaration first, so read in package order an unannotated `var count = 0`
+would have no type yet where the nested body names it. The lowering half is
 `spliceNestedCaptures` (`internal/lower/nested_capture.go`): a capturing nested
 body is substituted into the body that declared it *before* that body is
 inlined anywhere, because `expandCall` renames the body it splices and not the
@@ -3403,15 +3443,16 @@ Notable stdlib packages:
   take them as a type parameter constrained to a struct, `[A struct {}]`,
   which an anonymous struct literal binds and which refuses anything else;
   `$"..."` builds
-  the same literal. Every runtime still takes a string-keyed map, so
-  `lower.RecordArgs` -- at the start of `optimize.Optimize`, before the shake
-  can see the record's struct -- rewrites the argument of each intrinsic
-  `ir.RecordArg` names into one: a literal's fields as the entries, any other
-  operand read a field at a time with a spread site, so passSpreadOnce
-  evaluates a computed one once. It is also the always-on `RecordArgs` pass,
-  for a pipeline that lowers checked IR without optimizing it, where it finds
-  only maps once the optimizer has run. The interpreter reads a struct as the
-  map.
+  the same literal. Every runtime takes a string-keyed map, which only the
+  emitted code holds: the IR keeps the record, and each language spells its
+  runtime's map from the literal's fields (`codegen.RegisterRecordSpeller`,
+  reached through `codegen.EmitIntrinsicCall`). `lower.RecordArgs` -- at the
+  start of `optimize.Optimize`, and as the always-on `RecordArgs` pass --
+  makes the argument of each intrinsic `ir.RecordArg` names a literal: any
+  operand that is not one is read a field at a time with a spread site, so
+  passSpreadOnce evaluates a computed one once. Such a literal names no
+  declaration for the shake (`walkNames`), since nothing declares a struct
+  for it. The interpreter reads a struct as the map.
   **A template is written in backticks**, or with its braces escaped: a
   double-quoted string is interpolated where it is written, so `{name}` was
   gone before i18n read it and the arguments were read by nothing. An
@@ -3650,8 +3691,8 @@ would need. Its members are `ui.file(path)` -- a `file:` asset the build
 copies, which a Go target embeds (`golang.EmitAssetEmbed`, `assets.go`) and
 android ships in the app's assets -- `ui.remote(url)`, fetched while the
 program runs, and `draw.image(width, height) { shapes }`. Every container
-takes a source through a slot: `ui.image`'s `src` (`option`, with a
-`placeholder` slot shown where it holds none), `avatar`'s, `markup.image`'s,
+takes a source through a slot: `ui.image`'s `src` (`option`; an image with
+none shows nothing, as html's `<picture>` does), `avatar`'s, `markup.image`'s,
 `draw.canvasImage`'s, and a window's `favicon`. There is no `src=` string:
 one spelling (Jonathan's call). `draw.image` and `ui.image` collide under a
 double dot import, and dot imports are an anti-pattern, so that is the cost
@@ -3674,7 +3715,7 @@ does with it is each target's:
   of `src` with its `href`.
 - fyne: `fynelayout.Image`, a widget whose `Box` holds the source -- an
   `ImageSource` showing the picture itself and reporting `@load`/`@error` to
-  the image it lands in -- or the placeholder. A drawn source is rasterised
+  the image it lands in. A drawn source is rasterised
   and handed over (`SetImage`). A window takes a source as its icon
   (`Toplevel.Add`). The specs are written in Go as `Toplevel`'s are
   (`codegen/platform/fyne/image.go`), with `slotBox` naming the box a slot
@@ -3691,7 +3732,15 @@ does with it is each target's:
   (`snglimage.OnArrive`).
 - android: a file is `SnglAssetImage`, shipped Kotlin reading the app's
   assets; a drawing is a `Canvas`; a URL draws nothing, no loader shipping.
-- none: the image holds its source or placeholder, which a snapshot prints.
+- none: the image holds its source, which a snapshot prints.
+
+**An avatar is a wrapper on `ui.image` that does the fallback**: its
+`fallback` slot -- the initials in a styled box unless the call site writes
+its own -- stands in where `src.empty` or the image reported `@error`. A
+failed load is remembered until the avatar renders again, since the image
+that would say a later source loaded is no longer on screen. html, bubbletea,
+android and none do not yet report an image's `@error`, so there only an empty
+source shows the fallback.
 
 `canvasImage` paints its source through a shape primitive whose rest slot is
 the source family (`ir.IsImageSourceHost`): `passShapeDraw` runs its `@url`
@@ -4236,16 +4285,10 @@ nothing to select, and `float(x)`/`int(x)` is how that magnitude is read. So
 in `unit width { cm, mm = 0.1cm }`, `mm` is a tenth of a cm and no value
 carries a magnitude for it.
 
-Before the table existed, nothing looked a unit member up: `inferSelect`
-reports an unknown member only for the kinds `hasNoLegitimateFields` lists, and
-`ir.TypeUnit` was not one, so **every** select on a unit fell through to `dyn`.
-That is one defect with two faces. The invented `.value` was accepted in
-silence and spelled blindly by each backend — `Measurement.Value` and
-`Tick.Value` in Go, neither of which compiles, `Double.value` in Kotlin,
-`undefined` in JavaScript. And the *valid* `m.px` was `dyn` too, which
-`interpPartAlreadyString` answers yes to, so the string conversion every other
-numeric operand gets was skipped and Go emitted `"px is " + m.m.Px`. Typing the
-select fixed the second everywhere at once; no backend grew a case.
+`inferSelect` looks a unit member up in that table, so a member the unit does
+not declare (`m.value`) is an error, and a base (`m.px`) is a `float`, which
+takes the string conversion every other numeric operand gets in an
+interpolation.
 
 **A cast reads the magnitude, and it reads it in the unit's base.** `int(x)`
 and `float(x)` are the whole of how a single-base unit's value is got at, so
@@ -4354,8 +4397,8 @@ Four things follow, and the first three are the record restated:
 - **Equality is per base**, and **ordering is refused** for a multi-base unit
   (`orderable`): `3px` and `2em` are each the larger on their own base, so
   there is no answer to invent. The checker already refuses the pair
-  (`IsSingleBaseUnit` gates `<`, `<=`, `>`, `>=`), so the guard is for the
-  `dyn` operand that reached a comparison untyped.
+  (`IsSingleBaseUnit` gates `<`, `<=`, `>`, `>=`), so the guard is for IR
+  the checker did not see.
 - **A cast reads `magnitude()`** — the one base of a single-base unit, which is
   every cast the checker's ordering rule leaves meaningful.
 - **Display sums the bases it carries**: `3px + 2em`, and a bare `3px` for a
@@ -4398,13 +4441,12 @@ to zero: the interpreter's map holds no key for it where the JS and Go records
 hold a zero, so a comparison written over *the bases a value carries* rather
 than over the unit's declared bases disagrees with the other three.
 
-`hasNoLegitimateFields` stays an inverted allowlist, so a kind absent from it
-still accepts any member name silently: `list`, `map`, `option`, `iter`,
-`string` beyond `.length`, and a struct type carrying no `Decl`. That is not
-uniformly a defect — an element-ref list projects a member read over its
-elements, which `testdata/test_slot_element_ref.sngl` depends on
-(`c.body.value` where `c.body` is `list[text]`) — so closing the rest is a
-question per kind rather than one line.
+**A member a type does not have is an error on every kind** -- `o.value` off
+an `option`, `xs.bogus` off a `list`, `s.huh` off a `string`
+(`error_select_unknown_member.sngl`). Only an operand already typed invalid,
+whose error was reported where it was made, selects silently. A list of
+element refs projects a member read over its elements before that
+(`testdata/test_slot_element_ref.sngl`).
 
 Stdlib collection types support generic methods: `func list[T].filter(f func(T) bool) list[T]`, `func list[T].map[U any](f func(T) U) list[U]`, `func map[K, V].keys() list[K]`, etc. The receiver's type parameters are bound at the call site from the operand's concrete type (e.g. `xs : list[int]` binds `T=int`). Method-level type parameters (the `[U any]` after the method name) are inferred from the call's actual argument types — typically from a lambda's return type.
 
@@ -4515,8 +4557,7 @@ runs one program through every form of access a test body has on all six. Four
 rules keep them agreeing:
 
 - **Test bodies are checked last**, after every component and window body:
-  an unannotated component var has no type until its body is read, and a test
-  naming it saw `dyn`.
+  an unannotated component var has no type until its body is read.
 - **A test holds its instance, not `m` or `state`**: package state and the
   funcs reading it are spelled through the instance (`ExprCtx.StateReceiver`
   on Go and JS; on android the state members MainScreen spells as `state.<x>`,
@@ -4573,6 +4614,16 @@ types it — and nothing in the compiler forces them to agree.
 is wrong. It is a test helper, not a runtime package, which is why it sits
 beside `sngl.go` rather than under `pkg/go/`: `pkg/<lang>/` is what generated
 code imports, and the compiler must not be in that graph.
+
+**Nothing typed invalid reaches a package that checked clean.**
+`ir.TypInvalid` is the type of what the checker reported an error about, and
+of a host declaration it marked unusable; anywhere else it is a type the
+checker gave up on without saying so, which `IsAssignableTo` then lets any
+misuse through. `TestFixtures` holds every clean fixture to it, override
+bodies included, and `TestLibraryHoldsNoInvalidType` every library package
+(`internal/fixtures/invalid.go`). A library function with no return
+annotation infers its type from its body on demand, as a program's does
+(`ensureReturnType`).
 
 `TestFixtures` refuses a diagnostic reported twice: a declaration read twice
 -- a component's var registered before its body and checked with it, a body's
