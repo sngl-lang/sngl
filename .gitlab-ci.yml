@@ -157,6 +157,18 @@ build-image:
     - find .gocache -mindepth 2 -type f -mmin +120 -delete || true
     - du -sh .gocache || true
 
+# verify's two halves are jobs of their own, so a formatting or vet failure
+# reports in two minutes rather than after the tests, and the halves run side
+# by side wherever the runner takes more than one job at a time. Each keeps its
+# own cache: what `go fix` and `go vet` store is type-checking, and what the
+# tests build is coverage-instrumented objects and their links.
+lint:
+  extends: .go-cache
+  stage: test
+  cache:
+    key: go-build-lint
+  script: go tool verify -dry -only lint
+
 test:
   extends: .go-cache
   stage: test
@@ -167,7 +179,7 @@ test:
     GOFLAGS: -count=1
   cache:
     key: go-build-test
-  script: go tool verify -dry
+  script: go tool verify -dry -only test
   coverage: '/total coverage: (\d+\.\d+)% of statements/'
 
 # A branch built over several sessions carries its plan in TODO.md, and the
