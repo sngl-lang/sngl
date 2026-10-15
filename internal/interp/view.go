@@ -801,6 +801,7 @@ func (m *mounter) slotInst(env *Env, si *ir.SlotInst, path string) ([]*Node, err
 	// names they bind are the populator's, declared at the call site.
 	if sc != nil && len(sc.Params) > 0 {
 		cenv = frame.env.Snapshot()
+		cenv.mountCopy = true
 		for i, prm := range sc.Params {
 			if i >= len(si.Args) {
 				break
@@ -853,6 +854,7 @@ func (m *mounter) entryInst(env *Env, x *ir.SlotInst, path string) ([]*Node, err
 	cenv := f.env
 	if len(content.Params) > 0 {
 		cenv = f.env.Snapshot()
+		cenv.mountCopy = true
 		for i, prm := range content.Params {
 			if i >= len(x.Args) {
 				break
@@ -899,6 +901,7 @@ func (m *mounter) forStmt(env *Env, f *ir.For, path string) ([]*Node, error) {
 	var out []*Node
 	for i := range n {
 		child := env.Snapshot()
+		child.mountCopy = true
 		bindLoopElem(child, f, i, at(i), list)
 
 		id := strconv.Itoa(i)

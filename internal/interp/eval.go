@@ -469,6 +469,10 @@ type Env struct {
 	// ended says this is the snapshot a lambda call ran in, and the call has
 	// returned (LambdaValue.Call).
 	ended bool
+	// mountCopy says this is the copy of a live scope a mount took for one
+	// copy of a loop's body or one scoped population: the state it holds is
+	// as old as that mount (Env.runHandler).
+	mountCopy bool
 	// spreadVals holds the operands of the spreads the running statement
 	// evaluates once (ir.StatementSpreads), by site.
 	spreadVals map[int]any
