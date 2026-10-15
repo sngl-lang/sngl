@@ -27,8 +27,8 @@ const errorTrap = `<script>window.__snglErr = "";` +
 
 // inBrowser drives the page src renders in Chromium -- unless a record says
 // this page, driven by this test as it is now written, already passed, in
-// which case nothing is launched. The digest covers the page and the test's
-// own source file, so an edit to either asks for a run; a Chromium upgrade
+// which case nothing is launched. The digest covers the page, the test's own
+// source file and this one, so an edit to any asks for a run; a Chromium upgrade
 // moves neither, which is what -verify is for.
 //
 // A record is testdata/browser_runs/<test>. -update drives a page whose digest
@@ -43,15 +43,18 @@ func inBrowser(t *testing.T, src string, drive func(page *rod.Page)) {
 	}
 	served := []byte(page[:i] + errorTrap + page[i:])
 
-	_, file, _, _ := runtime.Caller(1)
-	test, err := os.ReadFile(file)
-	if err != nil {
-		t.Fatal(err)
-	}
 	h := sha256.New()
 	fmt.Fprintf(h, "%d\x00", len(served))
 	h.Write(served)
-	h.Write(test)
+	for _, depth := range []int{1, 0} {
+		_, file, _, _ := runtime.Caller(depth)
+		src, err := os.ReadFile(file)
+		if err != nil {
+			t.Fatal(err)
+		}
+		fmt.Fprintf(h, "%d\x00", len(src))
+		h.Write(src)
+	}
 	want := "sha256:" + hex.EncodeToString(h.Sum(nil)[:16]) + "\n"
 
 	record := filepath.Join("testdata", "browser_runs", strings.ReplaceAll(t.Name(), "/", "_"))

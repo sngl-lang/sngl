@@ -5,6 +5,8 @@ package html
 import (
 	"fmt"
 	"io/fs"
+	"maps"
+	"slices"
 	"strings"
 	"testing"
 	"testing/fstest"
@@ -34,7 +36,7 @@ func renderComponentHTML(t *testing.T, src string) string {
 		t.Fatalf("parse: %v", err)
 	}
 
-	resolver := &asyncBrowserResolver{fsys: fsys}
+	resolver := &memResolver{fsys: fsys}
 	pkg, diags := checker.Check(doc, &checker.Config{
 		FS:        fsys,
 		Dir:       ".",
@@ -61,11 +63,8 @@ func renderComponentHTML(t *testing.T, src string) string {
 
 	gen := &Generator{}
 	caps := codegen.CapsOrNone(lang.LanguageIdentifier(), gen.PlatformIdentifier())
-	// Mirror the CLI generate pipeline (cmd/sngl/pipeline.go): optimize →
-	// lower → optimize. Wiring Platforms above + these passes is what makes
-	// stdlib components render through their `platform html { }` bodies (the
-	// real path), instead of the legacy renderStaticX helpers — so this test
-	// reflects what `sngl generate` actually emits.
+	// The CLI's pipeline (cmd/sngl/pipeline.go), so a page is what `sngl
+	// generate` emits.
 	optCfg := &optimize.Config{Platform: gen.PlatformIdentifier(), Language: lang.LanguageIdentifier(), Dir: "."}
 	pkg = ir.ClonePackage(pkg)
 	if err := optimize.Optimize(pkg, optCfg); err != nil {
@@ -88,22 +87,22 @@ func renderComponentHTML(t *testing.T, src string) string {
 		t.Fatalf("generate: %v", err)
 	}
 
-	for name, content := range mem.Files() {
+	files := mem.Files()
+	for _, name := range slices.Sorted(maps.Keys(files)) {
 		if strings.HasSuffix(name, ".html") {
-			return string(content)
+			return string(files[name])
 		}
 	}
 	t.Fatal("expected at least 1 .html output file")
 	return ""
 }
 
-// asyncBrowserResolver implements checker.ImportResolver backed by an
-// in-memory FS, delegating scheme imports to the registered JS importer.
-type asyncBrowserResolver struct {
+// memResolver resolves imports against an in-memory FS.
+type memResolver struct {
 	fsys fs.FS
 }
 
-func (r *asyncBrowserResolver) Resolve(_ fs.FS, importPath string) ([]*ast.Document, error) {
+func (r *memResolver) Resolve(_ fs.FS, importPath string) ([]*ast.Document, error) {
 	entries, err := fs.ReadDir(r.fsys, importPath)
 	if err != nil {
 		return nil, fmt.Errorf("reading import dir %q: %w", importPath, err)
@@ -127,7 +126,7 @@ func (r *asyncBrowserResolver) Resolve(_ fs.FS, importPath string) ([]*ast.Docum
 	return docs, nil
 }
 
-func (r *asyncBrowserResolver) ResolveScheme(scheme, uri, _ string) (*ir.NativeImport, error) {
+func (r *memResolver) ResolveScheme(scheme, uri, _ string) (*ir.NativeImport, error) {
 	imp := codegen.LookupScheme(scheme)
 	if imp == nil {
 		return nil, fmt.Errorf("scheme %q not supported", scheme)
@@ -138,6 +137,6 @@ func (r *asyncBrowserResolver) ResolveScheme(scheme, uri, _ string) (*ir.NativeI
 	return nil, fmt.Errorf("scheme %q requires OS filesystem; not supported in this test", scheme)
 }
 
-func (r *asyncBrowserResolver) ResolveSchemeFS(_, _, _ string) ([]*ast.Document, fs.FS, error) {
+func (r *memResolver) ResolveSchemeFS(_, _, _ string) ([]*ast.Document, fs.FS, error) {
 	return nil, nil, nil
 }
