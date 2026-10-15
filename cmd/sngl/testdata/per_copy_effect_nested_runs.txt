@@ -3,10 +3,10 @@
 # as its @mount's `done()` -- writes that copy's cell. On bubbletea both are
 # cells per copy, and the effect is handed the whole copy key through `on`,
 # the outer copy's index included: each copy's `count` reaches 2, not 6.
-#
-# Not run on the interpreter: an emit in a handler under a loop hands on the
-# value the handler's own write replaced (`count += 1; done(count)` emits 1
-# twice), which is a bug of the interpreter's and older than this.
+
+sngl test --platform=none app.sngl
+stdout 'PASS'
+! stdout 'FAIL'
 
 sngl test --platform=bubbletea --language=go app.sngl
 stdout 'PASS'
