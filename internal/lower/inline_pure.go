@@ -448,7 +448,7 @@ func (st *inlinePureState) inlineNodeInst(n *ir.NodeInst) ([]ir.Stmt, error) {
 
 	pure := st.isPure(comp) || st.constSubstitutable(comp)
 	strictApplies := isPlatformStdlibComponent(st.pkg, comp)
-	if pure && !strictApplies && n.ID != "" && st.reached[n.ID] {
+	if pure && comp.PkgPath() == "" && n.ID != "" && st.reached[n.ID] {
 		pure = false
 	}
 	if strictApplies && !pure {

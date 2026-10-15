@@ -88,7 +88,7 @@ func inlineComponentCall(n *ir.NodeInst, ctx *evalCtx) []ir.Stmt {
 	}
 	// An instance something reads through is left to passNoInlineComponents,
 	// which records what its splice made of the instance's members.
-	if n.ID != "" && ctx.reachedThrough()[n.ID] {
+	if n.ID != "" && comp.PkgPath() == "" && ctx.reachedThrough()[n.ID] {
 		return nil
 	}
 
