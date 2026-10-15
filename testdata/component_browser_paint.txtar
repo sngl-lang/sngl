@@ -147,19 +147,7 @@ window.__sngl_boot = () => {
     return p.a > 200 && p.r > 200 && p.g < 50;
   }
   function testImageSourcesPaint(t, c) {
-    t.wait(() => red(((el, x, y) => {
-      const src = el.matches("canvas, img") ? el : el.querySelector("canvas, img");
-      if (src.tagName === "IMG" && src.naturalWidth === 0) return { r: 0, g: 0, b: 0, a: 0 };
-      let c2 = src;
-      if (src.tagName === "IMG") {
-        c2 = document.createElement("canvas");
-        c2.width = src.naturalWidth;
-        c2.height = src.naturalHeight;
-        c2.getContext("2d").drawImage(src, 0, 0);
-      }
-      const d = c2.getContext("2d").getImageData(x, y, 1, 1).data;
-      return { r: d[0], g: d[1], b: d[2], a: d[3] };
-    })(document.querySelectorAll('[data-sngl-id="d"]')[0], 4, 10)), 2e3);
+    t.fatal("t.wait waits only as a statement of a test's own body on html");
     t.assertTrue(red(((el, x, y) => {
       const src = el.matches("canvas, img") ? el : el.querySelector("canvas, img");
       if (src.tagName === "IMG" && src.naturalWidth === 0) return { r: 0, g: 0, b: 0, a: 0 };
@@ -190,19 +178,7 @@ window.__sngl_boot = () => {
     t.assertTrue(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll('[data-sngl-id="avatar"]')[0]) === "JD", '(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll("[data-sngl-id=\\"avatar\\"]")[0]) === "JD")');
     t.assertTrue(document.querySelectorAll('[data-sngl-id="avatar"]')[0].outerHTML.replace(/>\s+/g, ">").replace(/\s+</g, "<").indexOf("<img") < 0, '(document.querySelectorAll("[data-sngl-id=\\"avatar\\"]")[0].outerHTML.replace(/>\\s+/g, ">").replace(/\\s+</g, "<").indexOf("<img") < 0)');
     c.grow();
-    t.wait(() => red(((el, x, y) => {
-      const src = el.matches("canvas, img") ? el : el.querySelector("canvas, img");
-      if (src.tagName === "IMG" && src.naturalWidth === 0) return { r: 0, g: 0, b: 0, a: 0 };
-      let c2 = src;
-      if (src.tagName === "IMG") {
-        c2 = document.createElement("canvas");
-        c2.width = src.naturalWidth;
-        c2.height = src.naturalHeight;
-        c2.getContext("2d").drawImage(src, 0, 0);
-      }
-      const d = c2.getContext("2d").getImageData(x, y, 1, 1).data;
-      return { r: d[0], g: d[1], b: d[2], a: d[3] };
-    })(document.querySelectorAll('[data-sngl-id="d"]')[0], 9, 10)), 2e3);
+    t.fatal("t.wait waits only as a statement of a test's own body on html");
     t.assertTrue(red(((el, x, y) => {
       const src = el.matches("canvas, img") ? el : el.querySelector("canvas, img");
       if (src.tagName === "IMG" && src.naturalWidth === 0) return { r: 0, g: 0, b: 0, a: 0 };
@@ -310,7 +286,7 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:63ccdb8ca6caeb4d3c5fcd122c13b5c9
+pass sha256:148279a4645b075375817ff154e86acd
 -- testrun/html/none/component_browser_paint.sngl/lengths/1 --
 sha256:97a912b8548c0ca2b1042408e303d009
 {
@@ -322,7 +298,7 @@ sha256:97a912b8548c0ca2b1042408e303d009
   ]
 }
 -- testrun/html/none/component_browser_paint.sngl/sources/1 --
-sha256:8249e01f733a0eac8539b134e2f874bd
+sha256:4e4587dc869b5b371e1a94787a8d3755
 {
   "results": [
     {

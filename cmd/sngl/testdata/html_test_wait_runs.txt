@@ -1,0 +1,57 @@
+# html awaits t.wait where a test body writes it as a statement of its own,
+# polling between turns of the page's event loop. Anywhere else -- under an
+# `if`, in a helper the test hands its Test -- the call sits in code that
+# cannot await, and the test fails saying so rather than running on.
+
+! sngl test --platform=html app.sngl
+stdout '--- PASS: /WaitsAtTheTop'
+stdout 't.wait waits only as a statement of a test''s own body on html'
+
+-- app.sngl --
+import . "sngl:test"
+import "sngl:time"
+import ui "sngl:ui"
+
+component ticker ui.node {
+    var n = 0
+    time.timer(interval=10ms, enabled=true, @tick { n += 1 })
+    ui.text(value="{n}")
+}
+
+func testWaitsAtTheTop(t Test, c ticker) {
+    t.wait(func() => c.n >= 3, 2000)
+    t.assert(c.n >= 3)
+}
+
+func testWaitsInsideAnIf(t Test, c ticker) {
+    if c.n >= 0 {
+        t.wait(func() => c.n >= 3, 2000)
+    }
+    t.assert(c.n >= 3)
+}
+
+ui.window {
+    ticker
+}
+-- testrun/html/none/app.sngl/ticker/1 --
+sha256:ea39a8865eb523298c823f32e53dd250
+{
+  "results": [
+    {
+      "Desc": "WaitsAtTheTop",
+      "Passed": true
+    },
+    {
+      "Desc": "WaitsInsideAnIf",
+      "Error": "t.wait waits only as a statement of a test's own body on html",
+      "Failures": [
+        {
+          "Message": "t.wait waits only as a statement of a test's own body on html"
+        }
+      ],
+      "Log": [
+        "t.wait waits only as a statement of a test's own body on html"
+      ]
+    }
+  ]
+}

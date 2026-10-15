@@ -48,16 +48,6 @@ func testReachesARuntimeInstance(t Test, c main) {
 window {
     main
 }
--- testrun/bubbletea/go/app.sngl/main/1 --
-sha256:b260c8cf15434663f761da0d7e8c59c8
-{
-  "results": [
-    {
-      "Desc": "ReachesARuntimeInstance",
-      "Passed": true
-    }
-  ]
-}
 -- twice.sngl --
 import "sngl:test/browser"
 import . "sngl:test"
@@ -89,4 +79,14 @@ func testTheSecondLoopsCopy(t Test, c main) {
 
 window {
     main
+}
+-- testrun/bubbletea/go/app.sngl/main/1 --
+sha256:b260c8cf15434663f761da0d7e8c59c8
+{
+  "results": [
+    {
+      "Desc": "ReachesARuntimeInstance",
+      "Passed": true
+    }
+  ]
 }

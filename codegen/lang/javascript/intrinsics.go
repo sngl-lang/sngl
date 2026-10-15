@@ -41,7 +41,13 @@ func init() {
 	for _, id := range []string{ir.TestAssertID, ir.TestMustID} {
 		reg(id, func(a []string) string { return a[0] + ".assertTrue(" + a[1] + ", " + strconv.Quote(a[1]) + ")" })
 	}
-	for _, id := range []string{ir.TestSetLocaleID, ir.TestSetContextID, ir.TestWaitID, ir.TestSnapshotID} {
+	// A test body awaits t.wait where it stands (testlower.go); anywhere else
+	// the call is in a function that cannot await, so the test fails saying so
+	// rather than running on without waiting.
+	reg(ir.TestWaitID, func(a []string) string {
+		return a[0] + `.fatal("t.wait waits only as a statement of a test's own body on html")`
+	})
+	for _, id := range []string{ir.TestSetLocaleID, ir.TestSetContextID, ir.TestSnapshotID} {
 		method := strings.TrimPrefix(id, "test.")
 		reg(id, func(a []string) string { return a[0] + "." + method + "(" + strings.Join(a[1:], ", ") + ")" })
 	}
