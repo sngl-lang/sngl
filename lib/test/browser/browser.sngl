@@ -1,0 +1,32 @@
+import marks "sngl:internal/marks"
+import ui "sngl:ui"
+
+// The text the element shows: an input's, a textarea's or a select's value,
+// and otherwise its rendered text.
+#[marks.intrinsic("browser.text", readonly)]
+func text(node ui.node) string
+
+// The element's attribute, or "" where it carries none.
+#[marks.intrinsic("browser.attr", readonly)]
+func attr(node ui.node, name string) string
+
+// The value the browser computed for a CSS property of the element, as
+// getComputedStyle spells it: `width` of `2rem` is `32px`.
+#[marks.intrinsic("browser.style", readonly)]
+func style(node ui.node, property string) string
+
+// The element's markup as the page now holds it, with the whitespace between
+// tags removed.
+#[marks.intrinsic("browser.markup", readonly)]
+func markup(node ui.node) string
+
+// The color at x, y of what the element paints: a canvas, an image, or the
+// first of either it holds. An image not yet decoded is transparent, so a test
+// waits for what it expects with t.wait.
+#[marks.intrinsic("browser.pixel", readonly)]
+func pixel(node ui.node, x int, y int) color
+
+// How many elements the page renders for the node's `#id`: none for one under
+// an `if` that is false, one copy per element for one a `for` repeats.
+#[marks.intrinsic("browser.count", readonly)]
+func count(node ui.node) int

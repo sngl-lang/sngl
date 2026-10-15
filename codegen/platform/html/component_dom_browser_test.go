@@ -7,7 +7,6 @@ import (
 	"strings"
 	"testing"
 	"testing/fstest"
-	"time"
 
 	"duckfam.us/sngl/codegen"
 	"duckfam.us/sngl/codegen/platform/html/internal/webtest"
@@ -17,97 +16,6 @@ import (
 	"duckfam.us/sngl/internal/parser"
 	"duckfam.us/sngl/ir"
 )
-
-// componentDOMCase is one stdlib component rendered in isolation, with
-// substrings that MUST appear in the live rendered DOM (outerHTML of body).
-type componentDOMCase struct {
-	name string
-	src  string
-	want []string // substrings required in document.body.outerHTML
-}
-
-var componentDOMCases = []componentDOMCase{
-	{"text", `import . "sngl:ui"
-import ui "sngl:ui"
-ui.window { text(value="HELLO") }`, []string{"<span", "HELLO"}},
-	{"vbox", `import . "sngl:ui"
-import ui "sngl:ui"
-ui.window { vbox { text(value="A") text(value="B") } }`, []string{"flex-direction:column", ">A<", ">B<"}},
-	// Caller `style` on a stdlib wrapper must merge onto the wrapper's root
-	// element alongside its structural style (forwardStyle in lower), and a
-	// `#hex` color literal must render as a CSS color (colorStructToCSS).
-	{"vbox-style", `import . "sngl:ui"
-import ui "sngl:ui"
-ui.window { vbox(style={gap=8px, background=#ff0000}) { text(value="A") } }`,
-		[]string{"flex-direction:column", "gap:8px", "background-color:#ff0000"}},
-	{"text-color", `import . "sngl:ui"
-import ui "sngl:ui"
-ui.window { text(value="A", style={color=#112233}) }`, []string{"color:#112233"}},
-	{"hbox", `import . "sngl:ui"
-import ui "sngl:ui"
-ui.window { hbox { text(value="A") } }`, []string{"flex-direction:row"}},
-	{"button", `import . "sngl:ui"
-import ui "sngl:ui"
-ui.window { button(text="CLICK") }`, []string{"<button", "CLICK"}},
-	{"input", `import . "sngl:ui"
-import ui "sngl:ui"
-ui.window { var n = "Bob" input(:value=n) }`, []string{"<input"}},
-	{"checkbox", `import . "sngl:ui"
-import ui "sngl:ui"
-ui.window { var c = true checkbox(label="ok", checked=c) }`, []string{`type="checkbox"`, "ok"}},
-	{"image", `import . "sngl:ui"
-import ui "sngl:ui"
-ui.window { image(alt="pic") { remote(url="/x.png") } }`, []string{"<img", `src="/x.png"`, `aria-label="pic"`}},
-	{"link", `import . "sngl:ui"
-import ui "sngl:ui"
-ui.window { link(text="Home", href="/") }`, []string{"<a", `href="/"`, "Home"}},
-	{"select", `import . "sngl:ui"
-import ui "sngl:ui"
-ui.window { var f = "b" select(:value=f, placeholder="pick") { choice(label="a") choice(label="b") choice(label="c") } }`,
-		[]string{"<select", "<option", ">a<", ">b<", ">c<", "pick"}},
-	{"radio", `import . "sngl:ui"
-import ui "sngl:ui"
-ui.window { var r = "y" radio(:value=r) { choice(label="x") choice(label="y") } }`,
-		[]string{"<fieldset", `type="radio"`, `value="x"`, `value="y"`}},
-	{"textarea", `import . "sngl:ui"
-import ui "sngl:ui"
-ui.window { var t = "hi" textarea(:value=t, rows=3) }`, []string{"<textarea", `rows="3"`}},
-	{"tabs", `import . "sngl:ui"
-import ui "sngl:ui"
-ui.window { var sel = 0 tabs(:selected=sel) { tab(label="One") { text(value="panel") } tab(label="Two") { text(value="other") } } }`,
-		[]string{`role="tablist"`, "One", "Two", "panel"}},
-	{"table", `import . "sngl:ui"
-import ui "sngl:ui"
-ui.window { table(columns=["A","B"]) { tableRow(cells=["1","2"]) tableRow(cells=["3","4"]) } }`,
-		[]string{"<table", "<thead", "<tbody", ">A<", ">B<", ">1<", ">4<"}},
-	{"tree", `import . "sngl:ui"
-import ui "sngl:ui"
-ui.window { tree { treeItem(label="root") { treeItem(label="child") } } }`, []string{"<ul", "<li", "root", "child"}},
-	{"modal", `import . "sngl:ui"
-import ui "sngl:ui"
-ui.window { var o = true modal(open=o, title="Dialog") { text(value="body") } }`,
-		[]string{"Dialog", "body"}},
-	{"divider", `import . "sngl:ui"
-import ui "sngl:ui"
-ui.window { divider() }`, []string{"<hr"}},
-	{"badge", `import . "sngl:ui"
-import ui "sngl:ui"
-ui.window { badge(value="3") }`, []string{"3"}},
-}
-
-func TestComponentDOM(t *testing.T) {
-	for _, tc := range componentDOMCases {
-		t.Run(tc.name, func(t *testing.T) {
-			html := renderComponentHTML(t, tc.src)
-			outer := bodyOuterHTMLInBrowser(t, html) // t.Skipf if no browser
-			for _, want := range tc.want {
-				if !strings.Contains(outer, want) {
-					t.Errorf("%s: rendered DOM missing %q\n--- body.outerHTML ---\n%s", tc.name, want, outer)
-				}
-			}
-		})
-	}
-}
 
 // renderComponentHTML prepends the output block to src, compiles to HTML bytes,
 // and returns the HTML string. Fails the test on any compile/check/lower/generate error.
@@ -184,46 +92,6 @@ func renderComponentHTML(t *testing.T, src string) string {
 	}
 	t.Fatal("expected at least 1 .html output file")
 	return ""
-}
-
-// bodyOuterHTMLInBrowser serves the html at /, navigates a headless browser,
-// and returns document.body.outerHTML. Skips the test if no browser is available.
-func bodyOuterHTMLInBrowser(t *testing.T, html string) string {
-	t.Helper()
-
-	htmlBytes := []byte(html)
-	mux := http.NewServeMux()
-	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		w.Write(htmlBytes)
-	})
-
-	engine := webtest.New(mux)
-	defer engine.Close()
-
-	if testing.Short() {
-		t.Skip("skipping browser test in -short mode")
-	}
-	browser, err := engine.StartHeadless(1280, 720)
-	if err != nil {
-		t.Skipf("browser unavailable: %v", err)
-	}
-	defer browser.Close()
-
-	if err := browser.NavigateRaw(engine.BaseURL() + "/"); err != nil {
-		t.Fatalf("navigate: %v", err)
-	}
-
-	_ = browser.WaitStable(200 * time.Millisecond)
-
-	page := browser.Page()
-	// Normalize whitespace so that ">A<" assertions work even when the
-	// renderer emits "<span>\nA</span>" with indentation whitespace.
-	// We trim leading/trailing whitespace from every text node between tags.
-	result := page.MustElement("body").MustEval(`() => {
-		return this.outerHTML.replace(/>[ \t\n\r]+/g, '>').replace(/[ \t\n\r]+</g, '<');
-	}`).String()
-	return result
 }
 
 // startTrapped is startComponent with an error trap installed ahead of the

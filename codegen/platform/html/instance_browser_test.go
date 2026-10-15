@@ -110,37 +110,6 @@ window(title="H") { App() }
 	}
 }
 
-// A recursive component is the other shape that cannot be inlined: the depth
-// is not known until it runs.
-func TestInstance_Recursive(t *testing.T) {
-	src := `
-import . "sngl:ui"
-component chain(depth int) node {
-    text(value="<" + string(depth))
-    if depth > 0 {
-        chain(depth=depth - 1)
-    }
-}
-component App() node {
-    chain(depth=3)
-}
-window(title="H") { App() }
-`
-	b := startComponent(t, src)
-	defer b.Close()
-	page := b.Page()
-
-	got := page.MustElement("body").MustText()
-	for _, want := range []string{"<3", "<2", "<1", "<0"} {
-		if !strings.Contains(got, want) {
-			t.Errorf("recursion should reach %s; got %q", want, got)
-		}
-	}
-	if strings.Contains(got, "<-1") {
-		t.Errorf("recursion should stop at its own condition; got %q", got)
-	}
-}
-
 // Growing the list creates one instance and leaves the others holding what
 // they held.
 //

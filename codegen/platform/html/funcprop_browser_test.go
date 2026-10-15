@@ -26,22 +26,6 @@ component App() node {
 window(title="H") { App() }
 `
 
-// The page builds at all.
-//
-// Every prop a call site may omit carries a default, which the factory reads as
-// `props.<name> ?? <default>`. An arrow function binds looser than `??`, so a
-// func-typed prop's default closed the expression at its own `=>` and esbuild
-// rejected the whole page. Nothing saw it: the platform harness compiles the
-// fixtures it has and none had the shape.
-func TestFuncProp_DefaultDoesNotBreakTheBundle(t *testing.T) {
-	b := startComponent(t, funcPropSrc)
-	defer b.Close()
-
-	if got := b.Page().MustElement("body").MustText(); !strings.Contains(got, "pick a") {
-		t.Fatalf("both instances should render; got %q", got)
-	}
-}
-
 // A handler handed to an instance at construction reaches what it writes.
 //
 // The reconcile has two branches, and the callback goes in by a different route
