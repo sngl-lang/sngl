@@ -314,7 +314,7 @@ func TestJsCall_FuncvarAsyncSlot_Awaits(t *testing.T) {
 		},
 	}
 	ctx := codegen.NewExprCtx(pkg)
-	ctx.Locals["handler"] = true
+	ctx = ctx.WithLocal("handler")
 	jc := NewIRContext(ctx)
 	call := &ir.Call{Func: nil, Callee: jsIdentToVar(v)}
 	got := jc.EvalExpr(call)
@@ -335,7 +335,7 @@ func TestJsCall_FuncvarSyncSlot_NoAwait(t *testing.T) {
 		},
 	}
 	ctx := codegen.NewExprCtx(pkg)
-	ctx.Locals["handler"] = true
+	ctx = ctx.WithLocal("handler")
 	jc := NewIRContext(ctx)
 	call := &ir.Call{Func: nil, Callee: jsIdentToVar(v)}
 	got := jc.EvalExpr(call)
@@ -355,7 +355,7 @@ func TestJsCall_FuncvarParamSlot_AnyAsync_Awaits(t *testing.T) {
 		},
 	}
 	ctx := codegen.NewExprCtx(pkg)
-	ctx.Locals["cb"] = true
+	ctx = ctx.WithLocal("cb")
 	jc := NewIRContext(ctx)
 	call := &ir.Call{Func: nil, Callee: &ir.Ident{Name: "cb", Sym: p}}
 	got := jc.EvalExpr(call)

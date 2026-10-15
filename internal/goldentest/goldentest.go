@@ -132,22 +132,29 @@ func Run(t *testing.T, glob string, update, force bool) {
 	if len(files) == 0 {
 		t.Fatalf("no fixtures match %s", glob)
 	}
+	guard, err := newLibraryGuard(*fingerprintMode)
+	if err != nil {
+		t.Fatal(err)
+	}
 	ran, walkedPkgs := 0, 0
 	for _, file := range files {
 		name := strings.TrimSuffix(filepath.Base(file), ".txtar")
 		t.Run(name, func(t *testing.T) {
 			ran++
-			runFixture(t, file, update, force, &walkedPkgs)
+			runFixture(t, file, update, force, guard, &walkedPkgs)
 		})
 	}
 	if ran > 0 && walkedPkgs == 0 {
 		t.Errorf("%d fixtures ran and no package had ir.Walk compared against ir.Rewrite", ran)
 	}
+	if err := guard.finish(); err != nil {
+		t.Error(err)
+	}
 }
 
 // No t.Helper: with one, every failure from any of the four checks below
 // reports this function's caller, and which check fired is the useful part.
-func runFixture(t *testing.T, path string, update, force bool, walkedPkgs *int) {
+func runFixture(t *testing.T, path string, update, force bool, guard *libraryGuard, walkedPkgs *int) {
 	raw, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatalf("read: %v", err)
@@ -183,7 +190,7 @@ func runFixture(t *testing.T, path string, update, force bool, walkedPkgs *int) 
 	// options on top, so the assertions are compiled and run rather than
 	// merely the program.
 	opts, _ := testutil.TestHarnessBuild(fixtureSource(src))
-	got, boilerplate, walked, err := generate(src, opts, true, "", "")
+	got, boilerplate, walked, err := generate(src, opts, true, "", "", guard)
 	if err != nil {
 		t.Fatalf("generate: %v", err)
 	}
@@ -312,7 +319,7 @@ func assertFormatted(t *testing.T, src map[string][]byte) {
 //
 // lang and plat select one target, as --lang/--platform do; empty builds every
 // target the output block names.
-func generate(src map[string][]byte, opts map[string]string, main bool, lang, plat string) (files map[string][]byte, boilerplate map[string]bool, walked int, err error) {
+func generate(src map[string][]byte, opts map[string]string, main bool, lang, plat string, guard *libraryGuard) (files map[string][]byte, boilerplate map[string]bool, walked int, err error) {
 	fsys := fstest.MapFS{}
 	for name, data := range src {
 		fsys[name] = &fstest.MapFile{Data: data}
@@ -343,26 +350,24 @@ func generate(src map[string][]byte, opts map[string]string, main bool, lang, pl
 	//
 	// Every target builds from a copy of its own, so the checked package --
 	// and the library it reaches -- is what the next build reads, untouched.
-	prints := testutil.Fingerprinter{Skip: notIR}
-	before := prints.Of(pkg)
-	results, err := build.Emit(pkg, build.Options{
-		Name:      firstRootSNGL(src),
-		Dir:       ".",
-		OutDir:    ".",
-		ProjectFS: fsys,
-		Opts:      opts,
-		Main:      main,
-		Lang:      lang,
-		Platform:  plat,
-		// The fixtures are this repository's own, and evaluating their go:
-		// imports is what a golden of one records.
-		Trust: trust.AllowAll(),
-	})
-	if err != nil {
+	var results []build.Result
+	if err := guard.around(pkg, func() (err error) {
+		results, err = build.Emit(pkg, build.Options{
+			Name:      firstRootSNGL(src),
+			Dir:       ".",
+			OutDir:    ".",
+			ProjectFS: fsys,
+			Opts:      opts,
+			Main:      main,
+			Lang:      lang,
+			Platform:  plat,
+			// The fixtures are this repository's own, and evaluating their go:
+			// imports is what a golden of one records.
+			Trust: trust.AllowAll(),
+		})
+		return err
+	}); err != nil {
 		return nil, nil, 0, err
-	}
-	if prints.Of(pkg) != before {
-		return nil, nil, 0, fmt.Errorf("the build wrote the checked package or the library it reaches")
 	}
 
 	out := map[string][]byte{}

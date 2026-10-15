@@ -7,6 +7,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"duckfam.us/sngl/ast"
@@ -134,7 +135,7 @@ func UnitAmounts(v any) (map[string]float64, bool) {
 // multi-base unit, which no number can stand for. It is the interpreter's own
 // value, so UnitAmounts spells it back and UnitBinary combines it with one the
 // interpreter made.
-func UnitLiteralValue(lit *ir.Literal) (any, bool) {
+func UnitLiteralValue(lit *ir.Literal, tables *UnitTables) (any, bool) {
 	ud := ir.UnitDeclOf(lit.Type)
 	mag, base, ok := ir.UnitMagnitude(lit)
 	if ud == nil || !ok {
@@ -144,7 +145,21 @@ func UnitLiteralValue(lit *ir.Literal) (any, bool) {
 	if mag != 0 {
 		amounts[base] = mag
 	}
-	return newUnitValue(buildUnitTableFromDef(ud), lit.Suffix, amounts), true
+	return newUnitValue(tables.of(ud), lit.Suffix, amounts), true
+}
+
+// UnitTables holds the table of each unit declaration a caller has read a
+// literal of, which UnitLiteralValue would otherwise build per literal.
+type UnitTables struct {
+	m sync.Map // *ir.UnitDef -> *unitTable
+}
+
+func (ts *UnitTables) of(ud *ir.UnitDef) *unitTable {
+	if t, ok := ts.m.Load(ud); ok {
+		return t.(*unitTable)
+	}
+	t, _ := ts.m.LoadOrStore(ud, buildUnitTableFromDef(ud))
+	return t.(*unitTable)
 }
 
 // UnitBinary is op on a and b where either is a unit value (isUnit): the sum

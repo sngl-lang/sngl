@@ -40,6 +40,7 @@ func lowerInlinePure(pkg *ir.Package, caps Features, opts Options) error {
 		platform: opts.Platform,
 		inFlight: map[*ir.Component]bool{},
 		stack:    nil,
+		owned:    soleInstances(pkg, caps, opts),
 	}
 	for _, comp := range pkg.Components {
 		st.hoist = &comp.Vars
@@ -95,6 +96,64 @@ type inlinePureState struct {
 	// with state of its own may not be substituted there -- it stays a runtime
 	// instance and the platform gives each row its own record.
 	loopDepth int
+	// owned is each program component one node instantiates, whose body that
+	// node's splice may take rather than copy, and spliced counts the spliced
+	// bodies the walk is inside: a node there may be one of several copies.
+	owned   map[*ir.Component]bool
+	spliced int
+}
+
+// soleInstances is each component the package declares that exactly one node
+// instantiates and no test takes. Taking its body empties the declaration, so
+// it is answered only where passNoInlineComponents runs next and drops what
+// nothing instantiates, which it does not for a package with no body and no
+// root: every component there is an entry point and is kept.
+func soleInstances(pkg *ir.Package, caps Features, opts Options) map[*ir.Component]bool {
+	if caps.InlineComponents || opts.StopAfter == "InlinePure" || (len(pkg.Body) == 0 && rootComponent(pkg, opts) == nil) {
+		return nil
+	}
+	uses := map[*ir.Component]int{}
+	_ = ir.Walk(pkg, func(n ir.Node) error {
+		switch n := n.(type) {
+		case *ir.NodeInst:
+			if n.Component != nil {
+				uses[n.Component]++
+			}
+		case *ir.Ident:
+			if c, ok := n.Sym.(*ir.Component); ok {
+				uses[c]++
+			}
+		}
+		return nil
+	})
+	tested := map[*ir.Component]bool{}
+	for _, fn := range pkg.Funcs {
+		if fn == nil || !fn.IsTest {
+			continue
+		}
+		for _, p := range fn.Params {
+			if p.Type == nil {
+				continue
+			}
+			if c, ok := p.Type.Decl.(*ir.Component); ok {
+				tested[c] = true
+			}
+		}
+	}
+	out := map[*ir.Component]bool{}
+	for _, c := range pkg.Components {
+		if uses[c] == 1 && !tested[c] && c.Name != opts.RootComponent && c.PkgPath() == "" {
+			out[c] = true
+		}
+	}
+	return out
+}
+
+// takesBody reports whether the splice being made may take comp's body: comp
+// is one node's alone, and that node is not inside a spliced body, which
+// could have been copied before it was walked.
+func (st *inlinePureState) takesBody(comp *ir.Component) bool {
+	return st.spliced == 0 && st.owned[comp] && !comp.RuntimeInstance
 }
 
 // viewReadVars is every var of comp's that its rendered tree reads.
@@ -454,6 +513,8 @@ func (st *inlinePureState) inlineNodeInst(n *ir.NodeInst) ([]ir.Stmt, error) {
 	}
 	// Recurse on substituted body (the wrapper's body may itself contain
 	// pure-component calls that need inlining).
+	st.spliced++
+	defer func() { st.spliced-- }()
 	return st.inlineStmts(body)
 }
 
@@ -595,11 +656,19 @@ func (st *inlinePureState) substitute(comp *ir.Component, callsite *ir.NodeInst)
 		}
 	}
 
-	// Deep-clone the wrapper body so substitution mutations don't leak
-	// across call sites.
+	var emitted map[string]struct{}
+	if len(callsite.Handlers) > 0 {
+		emitted = emittedHandlerNames(comp.Stmts)
+	}
 	provided := providedContextVars(comp, callsite.Props)
 	typeArgs := spliceTypeArgs(comp, callsite)
-	body := substituteVars(splicedBody(comp, typeArgs), provided)
+	var own []ir.Stmt
+	if st.takesBody(comp) {
+		own, comp.Stmts = ir.InstantiateStmts(comp.Stmts, typeArgs), nil
+	} else {
+		own = splicedBody(comp, typeArgs)
+	}
+	body := substituteVars(own, provided)
 
 	// Hoist the callee's own vars onto the owner being walked, one copy per
 	// call site. isPure let them through because nothing rendered reads them,
@@ -655,7 +724,7 @@ func (st *inlinePureState) substitute(comp *ir.Component, callsite *ir.NodeInst)
 	// Apply slot substitution: replace each *ir.SlotInst with what the call
 	// site supplied for it -- its ordinary children for the anonymous slot,
 	// the matching `slot name { ... }` block for a named one.
-	body = substituteSlots(body, callsite)
+	body = spliceSlots(body, callsite)
 
 	// ID preservation: transfer callsite.ID to the first top-level
 	// NodeInst of the substituted body.
@@ -687,7 +756,6 @@ func (st *inlinePureState) substitute(comp *ir.Component, callsite *ir.NodeInst)
 	// explicit @name() emit in the body have been substituted in place above
 	// and are skipped here to avoid double-emission.
 	if len(callsite.Handlers) > 0 {
-		emitted := emittedHandlerNames(comp.Stmts)
 		var pending []ir.EventHandler
 		for _, h := range callsite.Handlers {
 			if _, ok := emitted[h.Name]; ok {
@@ -779,6 +847,58 @@ func substituteParams(stmts []ir.Stmt, bindings map[string]ir.Expr) []ir.Stmt {
 // it splices has been deep-cloned away from the *ir.Param the populator wrote.
 func substituteSlots(stmts []ir.Stmt, callsite *ir.NodeInst) []ir.Stmt {
 	return substituteSlotsCloning(stmts, callsite, deepCloneStmts)
+}
+
+// spliceSlots is substituteSlots for a call site the splice replaces: content
+// the body inserts once is moved there rather than copied, since nothing holds
+// the call site afterwards.
+func spliceSlots(stmts []ir.Stmt, callsite *ir.NodeInst) []ir.Stmt {
+	movable := movableContent(stmts, callsite)
+	return substituteSlotsCloning(stmts, callsite, func(body []ir.Stmt) []ir.Stmt {
+		if len(body) > 0 && movable[body[0]] {
+			delete(movable, body[0])
+			return body
+		}
+		return deepCloneStmts(body)
+	})
+}
+
+// movableContent is the first statement of each body callsite supplies that
+// stmts inserts exactly once, keyed so the splicer's Clone recognizes it. An
+// insertion whose fallback or populations hold another insertion is spliced
+// once per use of those, so with one anywhere nothing moves.
+func movableContent(stmts []ir.Stmt, callsite *ir.NodeInst) map[ir.Stmt]bool {
+	uses := map[ir.Stmt]int{}
+	nested := false
+	ir.WalkView(stmts, func(s ir.Stmt) bool {
+		si, ok := s.(*ir.SlotInst)
+		if !ok {
+			return true
+		}
+		if si.Entry == nil {
+			if body, _, supplied := ir.SlotBody(si, callsite); supplied && len(body) > 0 {
+				uses[body[0]]++
+			}
+		}
+		for _, b := range ir.ViewBlocks(si) {
+			ir.WalkView(*b, func(s ir.Stmt) bool {
+				_, isSlot := s.(*ir.SlotInst)
+				nested = nested || isSlot
+				return !nested
+			})
+		}
+		return false
+	})
+	if nested {
+		return nil
+	}
+	movable := map[ir.Stmt]bool{}
+	for first, n := range uses {
+		if n == 1 {
+			movable[first] = true
+		}
+	}
+	return movable
 }
 
 // answerSlotEmptyIn answers the `.empty` a var hoisted out of callsite's body

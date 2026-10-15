@@ -253,7 +253,7 @@ func assertFolds(t *testing.T, s testutil.Sample, doc *ast.Document) {
 			t.Fatalf("check: %s", d.Error())
 		}
 	}
-	pkg = ir.ClonePackage(pkg)
+	pkg = ir.ClonePackageFor(pkg, "html", "js")
 	if err := optimize.Optimize(pkg, &optimize.Config{Platform: "html", Language: "js"}); err != nil {
 		t.Fatalf("optimize: %v", err)
 	}

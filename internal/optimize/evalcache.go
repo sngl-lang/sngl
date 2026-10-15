@@ -8,6 +8,7 @@ import (
 
 	"duckfam.us/sngl/internal/asset"
 	"duckfam.us/sngl/internal/gencache"
+	"duckfam.us/sngl/internal/interp"
 	"duckfam.us/sngl/ir"
 )
 
@@ -37,7 +38,8 @@ type EvalCache struct {
 	// gen is the store a go: value is kept in between compilations, keyed on
 	// what the value was built from rather than on the call alone. Nil means
 	// the process's default store.
-	gen *gencache.Store
+	gen   *gencache.Store
+	units interp.UnitTables
 }
 
 // fileResult is one file: import's read: the bytes, and the content-hashed

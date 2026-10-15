@@ -213,14 +213,15 @@ func (g *htmlGen) emitComponentFactory(b *strings.Builder, comp *ir.Component) {
 	// Props and vars are locals of the call, so every read of one renders as a
 	// bare identifier rather than `state.x` -- which is what makes the closure
 	// the record.
-	ctx := g.ctx.ForComponent(comp)
-	ctx.ClosureMethods = true
+	names := make([]string, 0, len(comp.Props)+len(comp.Vars))
 	for _, p := range comp.Props {
-		ctx = ctx.WithLocal(p.Name)
+		names = append(names, p.Name)
 	}
 	for _, v := range comp.Vars {
-		ctx = ctx.WithLocal(v.Name)
+		names = append(names, v.Name)
 	}
+	ctx := g.ctx.ForComponent(comp).WithLocals(names...)
+	ctx.ClosureMethods = true
 	jc := javascript.NewIRContext(ctx)
 
 	fmt.Fprintf(b, "function %s(props) {\n", javascript.FactoryName(comp))

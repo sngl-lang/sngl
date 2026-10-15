@@ -1,6 +1,9 @@
 package ir
 
-import "reflect"
+import (
+	"reflect"
+	"sync"
+)
 
 // irPkgPath is the import path of this package; used by the cloner to decide
 // which values to deep-copy (ir types) versus share (AST nodes, platform
@@ -45,15 +48,39 @@ func ClonePackage(pkg *Package) *Package {
 // clone per target copied all of them for a target that reads one. Nothing in
 // a target's build reads another's: the swap (SpecializeForTarget) picks this
 // target's entry, and every reader after it asks for this target's key.
+//
+// The copy records each declaration it carries an override of for that target
+// (Package.Overridden), whether the override is its own or the overlay's.
+//
+// A library declaration the program does not reach (ReachedFrom) is not
+// copied: the copy's lists and scopes name the checked one, frozen, and the
+// overlays drop its overrides, so nothing in the build specializes it.
 func ClonePackageFor(pkg *Package, platform, language string) *Package {
 	if pkg == nil {
 		return nil
 	}
 	c := newCloner()
 	c.only = &target{platform, language}
+	c.share = unreachedLibrary(pkg, ReachedFrom(pkg, platform, language))
+	c.overridden = map[Symbol]bool{}
 	out := c.clone(reflect.ValueOf(pkg)).Interface().(*Package)
 	InstallOverlay(out)
+	for _, o := range []Overlay{out.Targets, out.Overlay} {
+		for sym, ov := range o.Overrides {
+			if _, ok := pick(*c.only, ov.Platform, ov.Language); ok {
+				c.noteOverridden(sym)
+			}
+		}
+	}
+	out.Overridden, out.OverriddenFor = c.overriddenList, c.only.key()
 	return out
+}
+
+func (c *cloner) noteOverridden(sym Symbol) {
+	if !c.overridden[sym] {
+		c.overridden[sym] = true
+		c.overriddenList = append(c.overriddenList, sym)
+	}
 }
 
 // CloneExpr returns a deep, independent copy of one expression, on the same
@@ -120,9 +147,17 @@ type cloner struct {
 	// rewritten under, and the declarations copied although shareDecls is set.
 	subst map[string]*Type
 	own   map[uintptr]bool
+	// overridden collects, for ClonePackageFor, each copy carrying an
+	// override for only.
+	overridden     map[Symbol]bool
+	overriddenList []Symbol
+	// share holds the declarations ClonePackageFor leaves shared.
+	share map[Symbol]bool
 }
 
 var typePtrType = reflect.TypeFor[*Type]()
+
+var overlayMapType = reflect.TypeFor[map[Symbol]*Overrides]()
 
 func (c *cloner) clone(v reflect.Value) reflect.Value {
 	switch v.Kind() {
@@ -143,6 +178,11 @@ func (c *cloner) clone(v reflect.Value) reflect.Value {
 		}
 		if c.shareDecls && !deep && !c.own[ptr] && isDeclType(v.Type().Elem()) {
 			return v
+		}
+		if c.share != nil && isDeclType(v.Type().Elem()) {
+			if s, ok := v.Interface().(Symbol); ok && c.share[s] {
+				return v
+			}
 		}
 		// Share anything that isn't one of our IR types (AST nodes,
 		// foreign structs). Returning the original pointer preserves its
@@ -191,6 +231,9 @@ func (c *cloner) clone(v reflect.Value) reflect.Value {
 		out := reflect.MakeMapWithSize(v.Type(), v.Len())
 		iter := v.MapRange()
 		for iter.Next() {
+			if c.share != nil && v.Type() == overlayMapType && c.share[iter.Key().Interface().(Symbol)] {
+				continue
+			}
 			out.SetMapIndex(c.clone(iter.Key()), c.clone(iter.Value()))
 		}
 		return out
@@ -219,20 +262,12 @@ func (c *cloner) cloneInto(dst, v reflect.Value) {
 }
 
 func (c *cloner) cloneStruct(out, v reflect.Value) {
-	for i := 0; i < v.NumField(); i++ {
-		// A copy is a build's own, whatever the original says.
-		if v.Type().Field(i).Name == "Frozen" {
+	for i, kind := range planOf(v.Type()) {
+		c.deepNext = kind == fieldFuncBody
+		switch kind {
+		case fieldSkip:
 			continue
-		}
-		// A lambda's Func is the expression's own body rather than a
-		// declaration it names, so it is copied even in share mode. One
-		// hop only: the declarations reached from inside that body are
-		// references like any other.
-		c.deepNext = carriesFuncBody(v.Type()) && v.Type().Field(i).Name == "Func"
-		// A declaration's package is where it came from, not part of it:
-		// the package being cloned maps to its clone, and any other -- a
-		// library package -- is shared rather than copied whole.
-		if v.Type() == declInfoType && v.Type().Field(i).Name == "Pkg" {
+		case fieldDeclPkg:
 			p := v.Field(i)
 			if cv, ok := c.seen[p.Pointer()]; ok && !p.IsNil() {
 				out.Field(i).Set(cv)
@@ -240,10 +275,18 @@ func (c *cloner) cloneStruct(out, v reflect.Value) {
 				out.Field(i).Set(p)
 			}
 			continue
-		}
-		if c.only != nil && carriesOverrides(v.Type()) {
-			if key, ok := c.overrideKey(v.Type().Field(i).Name); ok {
+		case fieldPlatformOverrides, fieldLanguageOverrides:
+			if c.only != nil {
+				key := c.only.platform
+				if kind == fieldLanguageOverrides {
+					key = c.only.language
+				}
 				out.Field(i).Set(c.cloneOverride(v.Field(i), key))
+				if c.overridden != nil && key != "" && v.Field(i).MapIndex(reflect.ValueOf(key)).IsValid() {
+					if sym, ok := out.Addr().Interface().(Symbol); ok {
+						c.noteOverridden(sym)
+					}
+				}
 				continue
 			}
 		}
@@ -252,22 +295,62 @@ func (c *cloner) cloneStruct(out, v reflect.Value) {
 	c.deepNext = false
 }
 
+// fieldKind is what the cloner does with one field of a struct, decided once
+// per type: reading a field's name through reflection is most of what a
+// struct copy otherwise costs.
+type fieldKind uint8
+
+const (
+	fieldCopy fieldKind = iota
+	// A copy is a build's own, whatever the original's Frozen says.
+	fieldSkip
+	// A lambda's Func is the expression's own body rather than a declaration
+	// it names, so it is copied even in share mode. One hop only: the
+	// declarations reached from inside that body are references like any
+	// other.
+	fieldFuncBody
+	// A declaration's package is where it came from, not part of it: the
+	// package being cloned maps to its clone, and any other -- a library
+	// package -- is shared rather than copied whole.
+	fieldDeclPkg
+	fieldPlatformOverrides
+	fieldLanguageOverrides
+)
+
+var fieldPlans sync.Map // reflect.Type -> []fieldKind
+
+func planOf(t reflect.Type) []fieldKind {
+	if p, ok := fieldPlans.Load(t); ok {
+		return p.([]fieldKind)
+	}
+	p := make([]fieldKind, t.NumField())
+	for i := range p {
+		p[i] = fieldKindOf(t, t.Field(i).Name)
+	}
+	fieldPlans.Store(t, p)
+	return p
+}
+
+func fieldKindOf(t reflect.Type, name string) fieldKind {
+	switch {
+	case name == "Frozen":
+		return fieldSkip
+	case name == "Func" && carriesFuncBody(t):
+		return fieldFuncBody
+	case name == "Pkg" && t == declInfoType:
+		return fieldDeclPkg
+	case carriesOverrides(t) && (name == "PlatformOverrides" || name == "Platform"):
+		return fieldPlatformOverrides
+	case carriesOverrides(t) && (name == "LanguageOverrides" || name == "Language"):
+		return fieldLanguageOverrides
+	}
+	return fieldCopy
+}
+
 // carriesOverrides reports whether t is a declaration with per-target
 // override maps.
 func carriesOverrides(t reflect.Type) bool {
 	return t == reflect.TypeFor[Component]() || t == reflect.TypeFor[Func]() || t == reflect.TypeFor[Overrides]()
-}
-
-// overrideKey is the entry of the named override map this clone's target
-// picks, and whether the field is an override map at all.
-func (c *cloner) overrideKey(field string) (string, bool) {
-	switch field {
-	case "PlatformOverrides", "Platform":
-		return c.only.platform, true
-	case "LanguageOverrides", "Language":
-		return c.only.language, true
-	}
-	return "", false
 }
 
 // cloneOverride copies the entry of an override map that key names, and every
@@ -331,4 +414,62 @@ func CloneStmtsSharingDecls(stmts []Stmt) []Stmt {
 	c := newCloner()
 	c.shareDecls = true
 	return c.clone(reflect.ValueOf(stmts)).Interface().([]Stmt)
+}
+
+// unreachedLibrary is each declaration a library package pkg imports lists
+// that reach does not hold. A package the program imports by path is copied
+// whole: lowering adds its types to the program (addForeignTypes), reached or
+// not, and writes them there.
+func unreachedLibrary(pkg *Package, reach *Reached) map[Symbol]bool {
+	out := map[Symbol]bool{}
+	note := func(s Symbol) {
+		if !reach.Has(s) {
+			out[s] = true
+		}
+	}
+	seen := map[*Package]bool{pkg: true}
+	var walk func(p *Package)
+	walk = func(p *Package) {
+		for _, imp := range p.Imports {
+			q := imp.Pkg
+			if q == nil || seen[q] {
+				continue
+			}
+			seen[q] = true
+			if !q.Library {
+				walk(q)
+				continue
+			}
+			for _, v := range q.Consts {
+				note(v)
+			}
+			for _, v := range q.BuildConsts {
+				note(v)
+			}
+			for _, v := range q.Vars {
+				note(v)
+			}
+			for _, f := range q.Funcs {
+				note(f)
+			}
+			for _, s := range q.Structs {
+				note(s)
+			}
+			for _, e := range q.Enums {
+				note(e)
+			}
+			for _, u := range q.Units {
+				note(u)
+			}
+			for _, x := range q.Contexts {
+				note(x)
+			}
+			for _, comp := range q.Components {
+				note(comp)
+			}
+			walk(q)
+		}
+	}
+	walk(pkg)
+	return out
 }
