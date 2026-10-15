@@ -223,6 +223,9 @@ var soleGate = map[string][]string{
 	// match and nothing else, so it is only ever asked alongside an instance
 	// runtime. See TestASlotChildNeedsBothCapabilities.
 	"InsertBefore": nil,
+	// Read by the test-reach repoint passNoInlineComponents makes, which is no
+	// pass of its own.
+	"RuntimeReach": nil,
 
 	// NoReactivity reads it to choose where a reactive `if` among spans
 	// renders; it turns no pass on.

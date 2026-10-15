@@ -56,7 +56,7 @@ cmp stdout fyne.txt
 # is the one the server half needs: its functions are Go, which emits no type
 # parameter, while a page script is JavaScript, which does.
 sngl dump --stage lowered --lang go --platform html --list main.sngl
-stdout '^caps: Toggle,Ternary,Lambda,Ref,Unit,Enum,AsyncCalls,Computed,ListLambdas,Declarative,InstanceState,InsertBefore,InlineSlots,Navigation,StructComponents,StdlibContextParam,Canvas,ReactiveCanvas,NavigationHrefs$'
+stdout '^caps: Toggle,Ternary,Lambda,Ref,Unit,Enum,AsyncCalls,Computed,ListLambdas,Declarative,InstanceState,InsertBefore,InlineSlots,Navigation,RuntimeReach,StructComponents,StdlibContextParam,Canvas,ReactiveCanvas,NavigationHrefs$'
 stdout ' → SlotChildInstances → '
 stdout ' → CallDefaults → Monomorphize → '
 

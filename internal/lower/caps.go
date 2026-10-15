@@ -256,6 +256,7 @@ func (f Features) String() string {
 		{"Effects", f.Effects},
 		{"Navigation", f.Navigation},
 		{"GenericFuncs", f.GenericFuncs},
+		{"RuntimeReach", f.RuntimeReach},
 		{"StructComponents", f.StructComponents},
 		{"StdlibContextParam", f.StdlibContextParam},
 		{"FocusOrder", f.FocusOrder},
