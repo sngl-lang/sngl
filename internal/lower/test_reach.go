@@ -32,6 +32,9 @@ type splicedInstance struct {
 	// cloned again -- a population is, where the body inserts it -- and every
 	// clone shares the handle, which a rename of the id renames too.
 	nodes map[string]*ir.Var
+	// self is the call site's handle where the splice moved it onto the body's
+	// root node, which a test names by either id.
+	self *ir.Var
 }
 
 func (st *inlineCompState) recordInstance(n *ir.NodeInst, symRenames map[ir.Symbol]ir.Symbol, body []ir.Stmt) {
@@ -50,6 +53,29 @@ func (st *inlineCompState) recordInstance(n *ir.NodeInst, symRenames map[ir.Symb
 	}
 	si.nodes = bodyNodes(body)
 	st.insts = append(st.insts, splice{handle: n.Handle, inst: si})
+}
+
+// pureSplice is what passInlinePure made of a component: its nodes by the ids
+// they were written with, read before the call site's id replaced the root's.
+func pureSplice(comp *ir.Component, handle *ir.Var, symRenames map[ir.Symbol]ir.Symbol, before map[string]*ir.Var, body []ir.Stmt) splice {
+	si := &splicedInstance{comp: comp, vars: map[string]*ir.Var{}, funcs: map[*ir.Func]*ir.Func{}, nodes: before, self: handle}
+	for from, to := range symRenames {
+		if f, ok := from.(*ir.Var); ok {
+			if t, ok := to.(*ir.Var); ok {
+				si.vars[f.Name] = t
+			}
+		}
+	}
+	after := map[*ir.Var]bool{}
+	for _, h := range bodyNodes(body) {
+		after[h] = true
+	}
+	for id, h := range before {
+		if !after[h] {
+			before[id] = handle
+		}
+	}
+	return splice{handle: handle, inst: si}
 }
 
 // splice is one splice of a component, and the handle its call site gave it.
@@ -219,6 +245,9 @@ func repointTestReaches(pkg *ir.Package, reach *testReach, splices []splice) err
 				if si == nil {
 					r.refuseUnspliced(x.Operand, x.Field, fail)
 					return n, nil
+				}
+				if h := si.nodes[x.Field]; h != nil && h == si.self {
+					return x.Operand, nil
 				}
 				if v := si.vars[x.Field]; v != nil {
 					return &ir.Ident{Name: v.Name, Type: x.Type, Sym: v}, ir.SkipDir

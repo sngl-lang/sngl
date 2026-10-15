@@ -188,6 +188,10 @@ type Options struct {
 	// emitted as two `hits__inst0`. Set by Lower; a caller's value is
 	// overwritten.
 	names renamer
+
+	// splices is what passInlinePure spliced of a program component carrying
+	// an id. Set by Lower.
+	splices *[]splice
 }
 
 // renamer numbers renamed declarations per name: `hits__inst0` and
@@ -227,6 +231,7 @@ func Lower(pkg *ir.Package, feats Features, opts Options) error {
 		return nil
 	}
 	opts.names = renamer{}
+	opts.splices = &[]splice{}
 	if opts.StopAfter != "" {
 		known := false
 		for _, p := range passes {

@@ -65,7 +65,11 @@ func lowerInlineComponents(pkg *ir.Package, feats Features, opts Options) error 
 	if err := uniqueNodeIDs(pkg); err != nil {
 		return err
 	}
-	return repointTestReaches(pkg, st.reach, st.insts)
+	var spliced []splice
+	if opts.splices != nil {
+		spliced = *opts.splices
+	}
+	return repointTestReaches(pkg, st.reach, append(spliced, st.insts...))
 }
 
 // unreachedCycles is every recursive component nothing the program renders
