@@ -445,11 +445,17 @@ func writeGolden(t *testing.T, path string, arc *txtar.Archive, got map[string][
 	var files, runs []txtar.File
 	for _, f := range arc.Files {
 		trimmed := strings.TrimPrefix(f.Name, "./")
-		switch {
-		case strings.HasPrefix(trimmed, testlaunch.RecordPrefix):
-			runs = append(runs, f)
-		case !strings.HasPrefix(trimmed, goldenPrefix) && !strings.HasPrefix(trimmed, recordPrefix):
+		if !strings.HasPrefix(trimmed, goldenPrefix) && !strings.HasPrefix(trimmed, recordPrefix) && !strings.HasPrefix(trimmed, testlaunch.RecordPrefix) {
 			files = append(files, f)
+		}
+	}
+	// The component harness rewrites the testrun/ records, perhaps since this
+	// archive was read, so they are taken from the file as it is now.
+	if now, err := txtar.ParseFile(path); err == nil {
+		for _, f := range now.Files {
+			if strings.HasPrefix(strings.TrimPrefix(f.Name, "./"), testlaunch.RecordPrefix) {
+				runs = append(runs, f)
+			}
 		}
 	}
 	for _, name := range sortedKeys(reviewable(got, boilerplate)) {
@@ -460,7 +466,7 @@ func writeGolden(t *testing.T, path string, arc *txtar.Archive, got map[string][
 	}
 	files = append(files, runs...)
 	arc.Files = files
-	if err := os.WriteFile(path, txtar.Format(arc), 0o644); err != nil {
+	if err := testlaunch.ReplaceFile(path, txtar.Format(arc)); err != nil {
 		t.Fatalf("write golden: %v", err)
 	}
 }

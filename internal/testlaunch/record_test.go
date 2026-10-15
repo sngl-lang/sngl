@@ -6,6 +6,8 @@ import (
 	"strings"
 	"testing"
 
+	"golang.org/x/tools/txtar"
+
 	"duckfam.us/sngl/codegen"
 )
 
@@ -51,5 +53,28 @@ func TestRecordsRerunWhatEachModeAsks(t *testing.T) {
 				t.Errorf("err = %v, want %q", err, tc.err)
 			}
 		})
+	}
+}
+
+// The golden harness rewrites a component fixture's golden too, perhaps since
+// the records' harness read the archive, so the records are written beside
+// the golden as it is on disk.
+func TestWriteArchiveKeepsWhatTheGoldenHarnessWrote(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "f.txtar")
+	read := &txtar.Archive{Files: []txtar.File{{Name: "out/none/html/index.html", Data: []byte("old\n")}}}
+	now := &txtar.Archive{Files: []txtar.File{{Name: "out/none/html/index.html", Data: []byte("new\n")}}}
+	if err := os.WriteFile(path, txtar.Format(now), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	rec := Record{Digest: "sha256:00", Results: []*codegen.TestResult{{Desc: "x", Passed: true}}}
+	if err := WriteArchive(path, read, read.Files, map[string]Record{"testrun/k/1": rec}); err != nil {
+		t.Fatal(err)
+	}
+	got, err := txtar.ParseFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got.Files) != 2 || string(got.Files[0].Data) != "new\n" || got.Files[1].Name != "testrun/k/1" {
+		t.Errorf("archive = %s", txtar.Format(got))
 	}
 }
