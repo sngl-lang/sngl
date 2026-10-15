@@ -15,6 +15,7 @@ import (
 	"duckfam.us/sngl/codegen"
 	"duckfam.us/sngl/internal/build"
 	"duckfam.us/sngl/internal/interp/testrunner"
+	"duckfam.us/sngl/internal/testlaunch"
 	"duckfam.us/sngl/ir"
 	"github.com/spf13/cobra"
 )
@@ -25,6 +26,10 @@ var testCmd = &cobra.Command{
 	Args:  cobra.ArbitraryArgs,
 	RunE:  runTest,
 }
+
+// testRuns, when set, answers a test launch from a record of an earlier one
+// with the same inputs. Only the script harness sets it.
+var testRuns *testlaunch.Records
 
 func init() {
 	testCmd.Flags().String("run", "", "filter tests by description pattern")
@@ -89,7 +94,7 @@ func runTest(cmd *cobra.Command, args []string) error {
 	}
 
 	runner := testRunnerFor(plat, lang)
-	if runner == nil && resolveLauncher(plat, lang) == nil {
+	if runner == nil && testlaunch.Launcher(plat, lang) == nil {
 		return fmt.Errorf("platform %q does not support testing", platform)
 	}
 
@@ -123,7 +128,7 @@ func runTestAll(language string, units []unit, runFilter string, verbose bool, f
 		// skips the platform when neither test path exists.
 		guess, _ := resolveTestLang(plat, language)
 		runner := testRunnerFor(plat, guess)
-		if runner == nil && resolveLauncher(plat, guess) == nil {
+		if runner == nil && testlaunch.Launcher(plat, guess) == nil {
 			continue
 		}
 		if prober, ok := plat.(codegen.TestProber); ok {
@@ -264,7 +269,7 @@ func runOnPlatform(ctx context.Context, plat codegen.PlatformGenerator, runner c
 		// would otherwise never have its platform package merged, and every
 		// stdlib component it renders through an override would report itself
 		// unimplemented.
-		pkg, err := checkDoc(doc, u.dir, true, build.SelectedTargets(langIdent(lang), plat.PlatformIdentifier())...)
+		pkg, err := checkDoc(doc, u.dir, true, build.SelectedTargets(testlaunch.LangIdent(lang), plat.PlatformIdentifier())...)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "%s: %s\n", u.name, err)
 			totalFail++
@@ -278,8 +283,16 @@ func runOnPlatform(ctx context.Context, plat codegen.PlatformGenerator, runner c
 
 		// runner.RunTests is the fallback for a pair with no launcher (`none`).
 		var results []*codegen.TestResult
-		if resolveLauncher(plat, lang) != nil {
-			results, err = runViaLauncher(ctx, plat, lang, pkg, opts, filepath.Dir(filename), filepath.Base(filename))
+		if testlaunch.Launcher(plat, lang) != nil {
+			results, err = testlaunch.Run(ctx, pkg, testlaunch.Config{
+				Platform: plat,
+				Lang:     lang,
+				Options:  opts,
+				Trust:    cliTrust,
+				Dir:      filepath.Dir(filename),
+				File:     filepath.Base(filename),
+				Records:  testRuns,
+			})
 		} else {
 			results, err = safeRunTests(runner, pkg, lang, opts)
 		}

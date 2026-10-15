@@ -447,6 +447,9 @@ body { font-family: system-ui, sans-serif; }
 </style>
 
 <script>
+window.__snglErrors = [];
+addEventListener("error", (e) => window.__snglErrors.push(String(e.message)));
+addEventListener("unhandledrejection", (e) => window.__snglErrors.push(String(e.reason?.message ?? e.reason)));
 window.__sngl_markup = Array.from(document.body.childNodes)
   .filter((n) => n.nodeName !== "SCRIPT").map((n) => n.cloneNode(true));
 window.__sngl_reset = () => {
@@ -465,9 +468,9 @@ window.__sngl_boot = () => {
     window.__sngl_state = state;
   }
   function testImageSrcMutates(t, c) {
-    t.assert(c.src === "https://example.com/a.png");
+    t.assertTrue(c.src === "https://example.com/a.png", '(c.src === "https://example.com/a.png")');
     c.src = "https://example.com/b.png";
-    t.assert(c.src === "https://example.com/b.png");
+    t.assertTrue(c.src === "https://example.com/b.png", '(c.src === "https://example.com/b.png")');
   }
   if (typeof window !== "undefined") {
     Object.assign(window, { testImageSrcMutates });
@@ -491,4 +494,14 @@ pass sha256:67ec3e91a8b60e6e941ccd16ee5be6b4
 -- run/kotlin/android --
 pass sha256:a5013d2f0dfbc6c0696e34396ea76c4b
 -- run/none/html --
-pass sha256:239be933fd48476ec4259fdd2ed8d3bb
+pass sha256:1bcea114555921efe331f8c5cf016e60
+-- testrun/html/none/component_image.sngl/main/1 --
+sha256:d079aa26a06dea6528fc93ef68ca5f1d
+{
+  "results": [
+    {
+      "Desc": "ImageSrcMutates",
+      "Passed": true
+    }
+  ]
+}

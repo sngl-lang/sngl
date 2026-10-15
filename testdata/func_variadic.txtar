@@ -698,6 +698,9 @@ body { font-family: system-ui, sans-serif; }
 </div>
 
 <script>
+window.__snglErrors = [];
+addEventListener("error", (e) => window.__snglErrors.push(String(e.message)));
+addEventListener("unhandledrejection", (e) => window.__snglErrors.push(String(e.reason?.message ?? e.reason)));
 window.__sngl_markup = Array.from(document.body.childNodes)
   .filter((n) => n.nodeName !== "SCRIPT").map((n) => n.cloneNode(true));
 window.__sngl_reset = () => {
@@ -725,16 +728,16 @@ window.__sngl_boot = () => {
     return total;
   }
   function testVariadic(t, c) {
-    t.assert(true);
-    t.assert(true);
+    t.assertTrue(true, "true");
+    t.assertTrue(true, "true");
     let xs = [2, 3, 4];
-    t.assert(sum(1, [...xs]) === 10);
-    t.assert(sum(1, [2, ...xs, 5]) === 17);
-    t.assert(true);
-    t.assert(true);
-    t.assert(true);
+    t.assertTrue(sum(1, [...xs]) === 10, "(sum(1, [...xs]) === 10)");
+    t.assertTrue(sum(1, [2, ...xs, 5]) === 17, "(sum(1, [2, ...xs, 5]) === 17)");
+    t.assertTrue(true, "true");
+    t.assertTrue(true, "true");
+    t.assertTrue(true, "true");
     let p = { first: 7 };
-    t.assert(sum(p.first, []) === 7);
+    t.assertTrue(sum(p.first, []) === 7, "(sum(p.first, []) === 7)");
   }
   if (typeof window !== "undefined") {
     Object.assign(window, { sum, testVariadic });
@@ -770,4 +773,4 @@ pass sha256:40d2312160f95546db84a12de459563d
 -- run/kotlin/android --
 pass sha256:ab89d7341a5f43d5622f5888b926e529
 -- run/none/html --
-pass sha256:fab28b758debbb2bced08fe8307e72e5
+pass sha256:c2771eeb9c7fb520244b7f682d0d4b52

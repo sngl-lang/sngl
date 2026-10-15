@@ -1003,6 +1003,9 @@ body { font-family: system-ui, sans-serif; }
 </div>
 
 <script>
+window.__snglErrors = [];
+addEventListener("error", (e) => window.__snglErrors.push(String(e.message)));
+addEventListener("unhandledrejection", (e) => window.__snglErrors.push(String(e.reason?.message ?? e.reason)));
 window.__sngl_markup = Array.from(document.body.childNodes)
   .filter((n) => n.nodeName !== "SCRIPT").map((n) => n.cloneNode(true));
 window.__sngl_reset = () => {
@@ -1022,9 +1025,9 @@ window.__sngl_boot = () => {
     window.__sngl_state = state;
   }
   function testRemount(t, c) {
-    t.assert(c.log === "ax ");
+    t.assertTrue(c.log === "ax ", '(c.log === "ax ")');
     c.bump();
-    t.assert(c.log === "ax ay ");
+    t.assertTrue(c.log === "ax ay ", '(c.log === "ax ay ")');
   }
   if (typeof window !== "undefined") {
     Object.assign(window, { testRemount });
@@ -1185,4 +1188,4 @@ pass sha256:1ebfd59070656596e6250e4256983f3e
 -- run/kotlin/android --
 pass sha256:dd711902570959e8b3a99529556c5a24
 -- run/none/html --
-pass sha256:f2c0f1c484d17c6294e6e9ece5f3c129
+pass sha256:0cbffde746cf5f56fd8b6a136d939ff4

@@ -42,6 +42,7 @@ func lowerInlineComponents(pkg *ir.Package, feats Features, opts Options) error 
 	st := &inlineCompState{pkg: pkg, main: main, cycles: cycles, reactive: reactive, platform: opts.Platform, instanceState: feats.InstanceState, genericComponents: feats.GenericComponents, onList: onList, names: namesOrOwn(opts.names), demoted: map[*ir.Func]bool{}, cells: map[*ir.Var][]*ir.Var{}, compInsts: map[*ir.Component][]componentInstance{}, methods: map[*ir.Var]map[*ir.Func][]*ir.Func{}}
 	cellOwners := implicitCellOwners(pkg)
 	st.reach = testReachRoots(pkg, main, opts)
+	st.reach.runtime = feats.RuntimeReach
 	if err := st.run(); err != nil {
 		return err
 	}
@@ -65,7 +66,11 @@ func lowerInlineComponents(pkg *ir.Package, feats Features, opts Options) error 
 	if err := uniqueNodeIDs(pkg); err != nil {
 		return err
 	}
-	return repointTestReaches(pkg, st.reach, st.insts)
+	var spliced []splice
+	if opts.splices != nil {
+		spliced = *opts.splices
+	}
+	return repointTestReaches(pkg, st.reach, append(spliced, st.insts...))
 }
 
 // unreachedCycles is every recursive component nothing the program renders

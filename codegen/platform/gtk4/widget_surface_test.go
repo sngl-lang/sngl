@@ -4,9 +4,6 @@ package gtk4
 
 import (
 	"fmt"
-	"os"
-	"os/exec"
-	"path/filepath"
 	"sort"
 	"strings"
 	"testing"
@@ -38,20 +35,15 @@ var unixPrintClasses = map[string]bool{
 // with a diagnostic naming the class. Nothing in between — a declaration that
 // type-checks in SNGL and then emits Go the user's compiler rejects is the
 // bug class this platform is most exposed to, since every declaration comes
-// from introspection data no test in this repo wrote.
+// from introspection data.
 //
 // It generates every class once to partition them, then builds every widget
-// that did generate in a single program.
+// that did generate in a single program. The classes are the bundled GIR's,
+// which are the ones this platform wraps.
 func TestWidgetSurface_EitherCompilesOrRefuses(t *testing.T) {
-	skipWithoutGIR(t)
-	if testing.Short() {
-		t.Skip("builds the whole widget surface with cgo")
-	}
-	requireGtk4Toolchain(t)
-	g := &Generator{}
-	reg, err := g.gir()
+	reg, err := (&Generator{}).gir()
 	if err != nil {
-		t.Skip(err)
+		t.Fatal(err)
 	}
 	var names []string
 	for _, c := range reg.Classes {
@@ -99,27 +91,14 @@ func TestWidgetSurface_EitherCompilesOrRefuses(t *testing.T) {
 	}
 }
 
-// requireGtk4Toolchain skips when the host cannot build cgo against GTK4.
-func requireGtk4Toolchain(t *testing.T) {
-	t.Helper()
-	if _, err := exec.LookPath("pkg-config"); err != nil {
-		t.Skip("pkg-config not on PATH")
-	}
-	if err := exec.Command("pkg-config", "--exists", "gtk4").Run(); err != nil {
-		t.Skip("gtk4 dev libraries not installed (pkg-config)")
-	}
-}
-
 // buildEmittedGo builds the generated files as a module of their own and
 // reports the compiler's output. The emitted package is `main` but carries no
 // entry point unless the main option is set, so one is supplied.
 func buildEmittedGo(t *testing.T, files map[string][]byte) (string, bool) {
 	t.Helper()
-	dir := t.TempDir()
+	build := map[string]string{"entry.go": "package main\n\nfunc main() {}\n"}
 	for name, data := range files {
-		if err := os.WriteFile(filepath.Join(dir, name), data, 0o644); err != nil {
-			t.Fatal(err)
-		}
+		build[name] = string(data)
 	}
 	goVersion, extra := codegen.DetectHostGoMod()
 	if goVersion == "" {
@@ -129,14 +108,6 @@ func buildEmittedGo(t *testing.T, files map[string][]byte) (string, bool) {
 	if extra != "" {
 		mod += "\n" + extra + "\n"
 	}
-	if err := os.WriteFile(filepath.Join(dir, "go.mod"), []byte(mod), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(dir, "entry.go"), []byte("package main\n\nfunc main() {}\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	cmd := exec.Command("go", "build", "./...")
-	cmd.Dir = dir
-	out, err := cmd.CombinedOutput()
-	return string(out), err == nil
+	build["go.mod"] = mod
+	return runGo(t, "gtk4-emitted-", build, false, "build", "./...")
 }

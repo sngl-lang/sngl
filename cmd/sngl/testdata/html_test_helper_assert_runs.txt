@@ -1,0 +1,60 @@
+# A function a test hands its `Test` asserts through it as the test body does:
+# on html the helper is emitted with the page and calls the agent's own
+# method, where it used to call a `t.assert` the agent does not have and fail
+# every test reaching it with a TypeError, passing or not.
+
+! sngl test --platform=none app.sngl
+stdout '2 tests, 1 failures'
+
+! sngl test --platform=html app.sngl
+stdout '--- PASS: /AHelperPasses'
+stdout '--- FAIL: /AHelperFails'
+! stdout 'is not a function'
+
+-- app.sngl --
+import . "sngl:test"
+import ui "sngl:ui"
+
+component counter ui.node {
+    var hits = 0
+    ui.button #b(text="{hits}", @click { hits += 1 })
+}
+
+func atLeast(t Test, got int, want int) {
+    t.assert(got >= want)
+}
+
+func testAHelperPasses(t Test, c counter) {
+    c.b.click()
+    atLeast(t, c.hits, 1)
+}
+
+func testAHelperFails(t Test, c counter) {
+    atLeast(t, c.hits, 1)
+}
+
+ui.window {
+    counter
+}
+-- testrun/html/none/app.sngl/counter/1 --
+sha256:ffc06d5782bb64567877bc09eb6ede90
+{
+  "results": [
+    {
+      "Desc": "AHelperFails",
+      "Error": "(got \u003e= want)",
+      "Failures": [
+        {
+          "Message": "(got \u003e= want)"
+        }
+      ],
+      "Log": [
+        "(got \u003e= want)"
+      ]
+    },
+    {
+      "Desc": "AHelperPasses",
+      "Passed": true
+    }
+  ]
+}

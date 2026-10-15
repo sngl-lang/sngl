@@ -24,14 +24,17 @@
 package toolchain
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"runtime"
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"duckfam.us/sngl/codegen"
 	"duckfam.us/sngl/internal/androidtc"
@@ -176,6 +179,13 @@ func Build(ctx context.Context, files map[string][]byte, lang, platform string) 
 // files is compiled and reported `[no test files]`, so one command covers a
 // target whose fixture carries tests and one whose fixture does not.
 func goTest(ctx context.Context, dir string) (string, error) {
+	return goModule(ctx, dir, "test", "-p", strconv.Itoa(childProcs()), "./...")
+}
+
+// goModule runs the go command in a generated module, writing its go.mod
+// first and tidying it where the module graph seeded from the host does not
+// cover the program.
+func goModule(ctx context.Context, dir string, args ...string) (string, error) {
 	needTidy, err := codegen.WriteGoMod(dir, "", "")
 	if err != nil {
 		return "", err
@@ -197,28 +207,99 @@ func goTest(ctx context.Context, dir string) (string, error) {
 	}
 
 	run := func() (string, error) {
-		cmd := exec.CommandContext(ctx, "go", "test", "-p", strconv.Itoa(childProcs()), "./...")
+		cmd := exec.CommandContext(ctx, "go", args...)
 		cmd.Dir = dir
 		cmd.Env = env()
 		out, err := cmd.CombinedOutput()
 		return string(out), err
 	}
-	out, testErr := run()
-	if testErr != nil && codegen.NeedsModuleTidy(out) {
-		// The module graph seeded from the host did not cover this program;
-		// let tidy resolve the rest and run once more.
+	out, runErr := run()
+	if runErr != nil && codegen.NeedsModuleTidy(out) {
 		if tout, err := tidy(); err != nil {
 			return out + tout, err
 		}
-		out, testErr = run()
+		out, runErr = run()
 	}
-	if testErr != nil {
+	if runErr != nil {
 		if reason, ok := SkipReason(out); ok {
 			return out, &SkipError{Reason: reason}
 		}
-		return out, fmt.Errorf("go test: %w", testErr)
+		return out, fmt.Errorf("go %s: %w", args[0], runErr)
 	}
 	return out, nil
+}
+
+// A Run is one execution of the program Exec builds.
+type Run struct {
+	Args  []string
+	Stdin []byte
+	// Wayland asks for the program's Wayland protocol log, on its stderr.
+	Wayland bool
+}
+
+// Ran is what one Run did. Err is set when the program could not start, did
+// not finish in time or exited non-zero.
+type Ran struct {
+	Stdout, Stderr string
+	Err            error
+}
+
+// runTimeout bounds one execution: every program a fixture runs ends itself.
+const runTimeout = time.Minute
+
+// Exec builds the generated files for one Go target into a program and runs
+// it once per run, in the display this process has, which for a program that
+// presents windows is the headless compositor its test binary runs inside.
+func Exec(ctx context.Context, files map[string][]byte, lang, platform string, runs []Run) (output string, ran []Ran, err error) {
+	if lang != "go" {
+		return "", nil, fmt.Errorf("no way to run a %s/%s program", lang, platform)
+	}
+	dir, release, err := codegen.BuildDirForContent("fixture", files, lang, platform)
+	if err != nil {
+		return "", nil, err
+	}
+	defer release()
+	for name, data := range files {
+		if err := writeUnder(dir, name, data); err != nil {
+			return "", nil, err
+		}
+	}
+	bin, err := os.MkdirTemp("", "sngl-exec")
+	if err != nil {
+		return "", nil, err
+	}
+	defer os.RemoveAll(bin)
+	program := filepath.Join(bin, "app")
+
+	token, err := codegen.AcquireBuildToken(ctx)
+	if err != nil {
+		return "", nil, err
+	}
+	output, err = goModule(ctx, dir, "build", "-o", program, ".")
+	token()
+	if err != nil {
+		return output, nil, err
+	}
+
+	for _, r := range runs {
+		rctx, cancel := context.WithTimeout(ctx, runTimeout)
+		cmd := exec.CommandContext(rctx, program, r.Args...)
+		// A helper the program started -- a D-Bus session bus -- can hold its
+		// stderr open after it is killed, and Wait would wait for it.
+		cmd.WaitDelay = 5 * time.Second
+		cmd.Dir = bin
+		cmd.Env = os.Environ()
+		if r.Wayland {
+			cmd.Env = append(cmd.Env, "WAYLAND_DEBUG=1")
+		}
+		cmd.Stdin = bytes.NewReader(r.Stdin)
+		var stdout, stderr bytes.Buffer
+		cmd.Stdout, cmd.Stderr = &stdout, &stderr
+		err := cmd.Run()
+		cancel()
+		ran = append(ran, Ran{Stdout: stdout.String(), Stderr: stderr.String(), Err: err})
+	}
+	return output, ran, nil
 }
 
 // nodeCheck parses every emitted script with node.

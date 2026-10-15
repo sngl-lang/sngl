@@ -623,6 +623,14 @@ func (env *Env) Values(f func(val any) bool) {
 	}
 }
 
+// Isolate is a Snapshot whose writes are its own: nothing run in it is carried
+// back to env, as what a loop iteration's handlers write is.
+func (env *Env) Isolate() *Env {
+	cp := env.Snapshot()
+	cp.origin = nil
+	return cp
+}
+
 // Snapshot returns a shallow copy of the env.
 func (env *Env) Snapshot() *Env {
 	childEnvs := env.childEnvs

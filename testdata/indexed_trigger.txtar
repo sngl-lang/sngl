@@ -1640,6 +1640,9 @@ body { font-family: system-ui, sans-serif; }
 </div>
 
 <script>
+window.__snglErrors = [];
+addEventListener("error", (e) => window.__snglErrors.push(String(e.message)));
+addEventListener("unhandledrejection", (e) => window.__snglErrors.push(String(e.reason?.message ?? e.reason)));
 window.__sngl_markup = Array.from(document.body.childNodes)
   .filter((n) => n.nodeName !== "SCRIPT").map((n) => n.cloneNode(true));
 window.__sngl_reset = () => {
@@ -1702,20 +1705,20 @@ window.__sngl_boot = () => {
   }
   function testOneCopy(t, c) {
     c.tap[1]();
-    t.assert(c.log === "b");
+    t.assertTrue(c.log === "b", '(c.log === "b")');
     c.box[0](true);
-    t.assert(c.log === "a true");
+    t.assertTrue(c.log === "a true", '(c.log === "a true")');
     c.field[1]("x");
-    t.assert(c.log === "b=x");
+    t.assertTrue(c.log === "b=x", '(c.log === "b=x")');
   }
   function testOneCopyAfterTheLoopRendersAgain(t, c) {
     c.swap();
     c.tap[2]();
-    t.assert(c.log === "e");
+    t.assertTrue(c.log === "e", '(c.log === "e")');
     c.box[1](true);
-    t.assert(c.log === "d true");
+    t.assertTrue(c.log === "d true", '(c.log === "d true")');
     c.field[0]("y");
-    t.assert(c.log === "c=y");
+    t.assertTrue(c.log === "c=y", '(c.log === "c=y")');
   }
   if (typeof window !== "undefined") {
     Object.assign(window, { testOneCopy, testOneCopyAfterTheLoopRendersAgain });
@@ -2010,4 +2013,4 @@ pass sha256:a526bea6229df4d18037a12c823d7781
 -- run/kotlin/android --
 pass sha256:7aa6a0f418c97770eaa09087b0380865
 -- run/none/html --
-pass sha256:9436f6f230072dca4a0a05d49d054d8d
+pass sha256:acedb3f60ca62f78f6d2dfe1bb88e4a4

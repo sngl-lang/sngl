@@ -564,6 +564,9 @@ body { font-family: system-ui, sans-serif; }
 </label>
 
 <script>
+window.__snglErrors = [];
+addEventListener("error", (e) => window.__snglErrors.push(String(e.message)));
+addEventListener("unhandledrejection", (e) => window.__snglErrors.push(String(e.reason?.message ?? e.reason)));
 window.__sngl_markup = Array.from(document.body.childNodes)
   .filter((n) => n.nodeName !== "SCRIPT").map((n) => n.cloneNode(true));
 window.__sngl_reset = () => {
@@ -582,11 +585,11 @@ window.__sngl_boot = () => {
     window.__sngl_state = state;
   }
   function testToggleFlips(t, c) {
-    t.assert(c.on === false);
+    t.assertTrue(c.on === false, "(c.on === false)");
     c.on = true;
-    t.assert(c.on === true);
+    t.assertTrue(c.on === true, "(c.on === true)");
     c.on = false;
-    t.assert(c.on === false);
+    t.assertTrue(c.on === false, "(c.on === false)");
   }
   if (typeof window !== "undefined") {
     Object.assign(window, { testToggleFlips });
@@ -614,4 +617,14 @@ pass sha256:dd7061389f331d479546227d113eb66e
 -- run/kotlin/android --
 pass sha256:b047c58b5fb76b302904b1b225e24e03
 -- run/none/html --
-pass sha256:71b4a9745dca5976770419961b8d8624
+pass sha256:8342f0a02ef5d576ad6b22fe206fe578
+-- testrun/html/none/component_toggle.sngl/main/1 --
+sha256:9a93c6b45e3a0b225d75eda20cbc8139
+{
+  "results": [
+    {
+      "Desc": "ToggleFlips",
+      "Passed": true
+    }
+  ]
+}

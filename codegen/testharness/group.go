@@ -12,7 +12,7 @@ import (
 //
 // Returned slice has stable iteration order: components appear in the
 // order their first test was encountered. Used by the IR-direct test
-// launcher (cmd/sngl/testdriver.go) to avoid round-tripping IR through
+// launcher (internal/testlaunch) to avoid round-tripping IR through
 // ir.Convert + Promote + re-check, which is lossy for maps, contexts,
 // and inferred types.
 func GroupIR(testFuncs []*ir.Func) []TestGroup {

@@ -2,6 +2,7 @@ package kotlin
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 
 	"duckfam.us/sngl/ast"
@@ -277,7 +278,10 @@ func (kc *KtIRContext) ListLit(n *ir.ListLit, elems []string) string {
 	}
 	return "listOf(" + strings.Join(elems, ", ") + ")"
 }
-func (kc *KtIRContext) MapLit(_ *ir.MapLitIR, keys, vals []string) string {
+func (kc *KtIRContext) MapLit(n *ir.MapLitIR, keys, vals []string) string {
+	if len(keys) == 0 && n != nil && n.Type != nil && n.Type.Kind == ir.TypeMap && len(n.Type.Elems) == 2 && !slices.ContainsFunc(n.Type.Elems, (*ir.Type).HasTypeParam) {
+		return "mapOf<" + IRTypeToKt(n.Type.Elems[0]) + ", " + IRTypeToKt(n.Type.Elems[1]) + ">()"
+	}
 	var b strings.Builder
 	b.WriteString("mapOf(")
 	for i := range keys {

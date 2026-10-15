@@ -13,6 +13,8 @@ import (
 	"time"
 
 	"nhooyr.io/websocket"
+
+	"duckfam.us/sngl/internal/testrpc"
 )
 
 // A browser that never answers fails the launch with the step's name, rather
@@ -94,4 +96,42 @@ func swapBrowser(bin string, steps browserSteps) func() {
 	}
 	cdpSteps = merged
 	return func() { findBrowser, cdpSteps = oldBin, oldSteps }
+}
+
+// testrpc writes a message and its newline in two writes; the agent parses
+// every frame as JSON, so the newline must not reach it as a frame of its own.
+func TestAMessageIsOneFrame(t *testing.T) {
+	accepted := make(chan *wsChannel, 1)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c, err := websocket.Accept(w, r, nil)
+		if err != nil {
+			return
+		}
+		accepted <- newWSChannel(context.Background(), c)
+		<-r.Context().Done()
+	}))
+	defer srv.Close()
+	client, _, err := websocket.Dial(context.Background(), "ws"+strings.TrimPrefix(srv.URL, "http"), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer client.CloseNow()
+
+	w := testrpc.NewWriter(<-accepted)
+	for _, method := range []string{"run", "list"} {
+		if _, err := w.Request(method, nil); err != nil {
+			t.Fatal(err)
+		}
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	for _, want := range []string{"run", "list"} {
+		_, data, err := client.Read(ctx)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(string(data), `"method":"`+want+`"`) {
+			t.Fatalf("frame = %q, want the %s request", data, want)
+		}
+	}
 }

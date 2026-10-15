@@ -400,6 +400,9 @@ body { font-family: system-ui, sans-serif; }
 <span data-sngl-slot="0" style="display:contents"></span>
 
 <script>
+window.__snglErrors = [];
+addEventListener("error", (e) => window.__snglErrors.push(String(e.message)));
+addEventListener("unhandledrejection", (e) => window.__snglErrors.push(String(e.reason?.message ?? e.reason)));
 window.__sngl_markup = Array.from(document.body.childNodes)
   .filter((n) => n.nodeName !== "SCRIPT").map((n) => n.cloneNode(true));
 window.__sngl_reset = () => {
@@ -418,11 +421,11 @@ window.__sngl_boot = () => {
     window.__sngl_state = state;
   }
   function testMenuOpenToggles(t, c) {
-    t.assert(c.open === false);
+    t.assertTrue(c.open === false, "(c.open === false)");
     c.open = true;
-    t.assert(c.open === true);
+    t.assertTrue(c.open === true, "(c.open === true)");
     c.open = false;
-    t.assert(c.open === false);
+    t.assertTrue(c.open === false, "(c.open === false)");
   }
   if (typeof window !== "undefined") {
     Object.assign(window, { testMenuOpenToggles });
@@ -482,4 +485,14 @@ pass sha256:17d6fd94936c8122bf533b2208fa4ec4
 -- run/kotlin/android --
 pass sha256:6cfe24e0ce640e7b5df209900992ab96
 -- run/none/html --
-pass sha256:20272ea643334c9281e2cdac28c0be26
+pass sha256:a96ae9e2761dd39f255895b64dfbcfa4
+-- testrun/html/none/component_menu.sngl/main/1 --
+sha256:396d31b6f1ebbca6a86de96c9d4a8093
+{
+  "results": [
+    {
+      "Desc": "MenuOpenToggles",
+      "Passed": true
+    }
+  ]
+}

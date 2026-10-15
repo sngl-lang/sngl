@@ -54,6 +54,9 @@ body { font-family: system-ui, sans-serif; }
 </button>
 
 <script>
+window.__snglErrors = [];
+addEventListener("error", (e) => window.__snglErrors.push(String(e.message)));
+addEventListener("unhandledrejection", (e) => window.__snglErrors.push(String(e.reason?.message ?? e.reason)));
 window.__sngl_markup = Array.from(document.body.childNodes)
   .filter((n) => n.nodeName !== "SCRIPT").map((n) => n.cloneNode(true));
 window.__sngl_reset = () => {
@@ -75,7 +78,7 @@ window.__sngl_boot = () => {
   }
   function testSecond(t, c) {
     c.opt[1]();
-    t.assert(c.last === "b");
+    t.assertTrue(c.last === "b", '(c.last === "b")');
   }
   if (typeof window !== "undefined") {
     Object.assign(window, { testSecond });
@@ -94,4 +97,4 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:bc32562fd6badd8802e3b38ea03e232e
+pass sha256:34eae53afd25aeff84e7f84395141591

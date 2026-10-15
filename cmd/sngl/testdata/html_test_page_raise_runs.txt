@@ -1,0 +1,97 @@
+# What a page raises outside a test body -- while it loads, or later from a
+# timer -- fails the test that was running, on html as on the interpreter. A
+# test agent sees only what a test body throws, so the page keeps what it
+# raised for the generated test module to fail on.
+
+! sngl test --platform=none load.sngl
+stdout 'raised: boom \(on mount\)'
+
+! sngl test --platform=html load.sngl
+stdout 'the page raised while it loaded: Uncaught Error: boom'
+
+! sngl test --platform=none click.sngl
+stdout 'raised: boom \(on tick\)'
+
+! sngl test --platform=html click.sngl
+stdout 'the page raised: Uncaught Error: boom'
+! stdout 'JSON'
+
+-- load.sngl --
+import . "sngl:test"
+import ui "sngl:ui"
+
+component main ui.node {
+    var n = 0
+    effect(@mount { error.raise("boom", "on mount") })
+    ui.text(value="{n}")
+}
+
+func testAfterALoadThatRaised(t Test, c main) {
+    t.assert(c.n == 0)
+}
+
+ui.window {
+    main
+}
+-- click.sngl --
+import . "sngl:test"
+import ui "sngl:ui"
+import "sngl:time"
+
+component main ui.node {
+    var on = false
+    var n = 0
+    ui.button #go(text="go", @click { on = true })
+    if on {
+        time.timer(interval=10ms, enabled=true, @tick {
+            n += 1
+            error.raise("boom", "on tick")
+        })
+    }
+}
+
+func testATickThatRaises(t Test, c main) {
+    c.go.click()
+    t.wait(func() => c.n > 0, 1000)
+    t.assert(c.n > 0)
+}
+
+ui.window {
+    main
+}
+-- testrun/html/none/click.sngl/main/1 --
+sha256:b2908deb1170bb03b2cfad2e7e70e88e
+{
+  "results": [
+    {
+      "Desc": "ATickThatRaises",
+      "Error": "the page raised: Uncaught Error: boom",
+      "Failures": [
+        {
+          "Message": "the page raised: Uncaught Error: boom"
+        }
+      ],
+      "Log": [
+        "the page raised: Uncaught Error: boom"
+      ]
+    }
+  ]
+}
+-- testrun/html/none/load.sngl/main/1 --
+sha256:f37d2497c6ad39ec6bc27d302ad3610b
+{
+  "results": [
+    {
+      "Desc": "AfterALoadThatRaised",
+      "Error": "the page raised while it loaded: Uncaught Error: boom",
+      "Failures": [
+        {
+          "Message": "the page raised while it loaded: Uncaught Error: boom"
+        }
+      ],
+      "Log": [
+        "the page raised while it loaded: Uncaught Error: boom"
+      ]
+    }
+  ]
+}

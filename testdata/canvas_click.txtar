@@ -871,6 +871,9 @@ body { font-family: system-ui, sans-serif; }
 </div>
 
 <script>
+window.__snglErrors = [];
+addEventListener("error", (e) => window.__snglErrors.push(String(e.message)));
+addEventListener("unhandledrejection", (e) => window.__snglErrors.push(String(e.reason?.message ?? e.reason)));
 window.__sngl_markup = Array.from(document.body.childNodes)
   .filter((n) => n.nodeName !== "SCRIPT").map((n) => n.cloneNode(true));
 window.__sngl_reset = () => {
@@ -891,9 +894,9 @@ window.__sngl_boot = () => {
   }
   function testClickCounts(t, c) {
     c.board();
-    t.assert(c.hits === 1);
+    t.assertTrue(c.hits === 1, "(c.hits === 1)");
     c.board();
-    t.assert(c.hits === 2);
+    t.assertTrue(c.hits === 2, "(c.hits === 2)");
   }
   function paintStyle(ctx, style) {
     ctx.fillStyle = "rgba(" + String(style.fill.r) + "," + String(style.fill.g) + "," + String(style.fill.b) + "," + String(parseFloat(style.fill.a) / 255) + ")";
@@ -1071,4 +1074,4 @@ pass sha256:90fb4e6f842c2e9b8095dffe3d6e1227
 -- run/go/gtk4 --
 pass sha256:c5d332148b6f6b4ef4fd91752cb5ce27
 -- run/none/html --
-pass sha256:54a27a668dfc7c4e080fdedbdd035193
+pass sha256:1b62c2ecc0636a25eaf41d7be01b9d8f

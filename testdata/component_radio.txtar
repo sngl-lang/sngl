@@ -329,6 +329,9 @@ body { font-family: system-ui, sans-serif; }
 </fieldset>
 
 <script>
+window.__snglErrors = [];
+addEventListener("error", (e) => window.__snglErrors.push(String(e.message)));
+addEventListener("unhandledrejection", (e) => window.__snglErrors.push(String(e.reason?.message ?? e.reason)));
 window.__sngl_markup = Array.from(document.body.childNodes)
   .filter((n) => n.nodeName !== "SCRIPT").map((n) => n.cloneNode(true));
 window.__sngl_reset = () => {
@@ -347,11 +350,11 @@ window.__sngl_boot = () => {
     window.__sngl_state = state;
   }
   function testRadioValueMutates(t, c) {
-    t.assert(c.sel === "medium");
+    t.assertTrue(c.sel === "medium", '(c.sel === "medium")');
     c.sel = "large";
-    t.assert(c.sel === "large");
+    t.assertTrue(c.sel === "large", '(c.sel === "large")');
     c.sel = "small";
-    t.assert(c.sel === "small");
+    t.assertTrue(c.sel === "small", '(c.sel === "small")');
   }
   if (typeof window !== "undefined") {
     Object.assign(window, { testRadioValueMutates });
@@ -492,4 +495,14 @@ pass sha256:be140ef1caa7387aa9b64424900ce3b0
 -- run/kotlin/android --
 pass sha256:35bd17229b7ac76768b744948ef54c50
 -- run/none/html --
-pass sha256:16478333e4be656a63874b423bbab18c
+pass sha256:d85ecbf513f9c844742b0bb6f1b8fdf0
+-- testrun/html/none/component_radio.sngl/main/1 --
+sha256:498a2d71aacfde8036705dbaf967acd1
+{
+  "results": [
+    {
+      "Desc": "RadioValueMutates",
+      "Passed": true
+    }
+  ]
+}

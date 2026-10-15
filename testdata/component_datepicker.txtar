@@ -823,6 +823,9 @@ body { font-family: system-ui, sans-serif; }
 <input id="__n0" data-sngl-id="__n0" type="date"/>
 
 <script>
+window.__snglErrors = [];
+addEventListener("error", (e) => window.__snglErrors.push(String(e.message)));
+addEventListener("unhandledrejection", (e) => window.__snglErrors.push(String(e.reason?.message ?? e.reason)));
 window.__sngl_markup = Array.from(document.body.childNodes)
   .filter((n) => n.nodeName !== "SCRIPT").map((n) => n.cloneNode(true));
 window.__sngl_reset = () => {
@@ -844,7 +847,7 @@ window.__sngl_boot = () => {
   function testDatepickerValueMutates(t, c) {
     let fresh = "0001-01-01";
     c.d = fresh;
-    t.assert(true);
+    t.assertTrue(true, "true");
   }
   if (typeof window !== "undefined") {
     Object.assign(window, { testDatepickerValueMutates });
@@ -875,4 +878,14 @@ pass sha256:50925dec013b33a75c2ff957219d0dee
 -- run/kotlin/android --
 pass sha256:065e25d98e6928fcae22e53208439053
 -- run/none/html --
-pass sha256:0dd52251f239491eadfdb23e5dbe3a22
+pass sha256:83ec3484fd378572248e1b040e6018be
+-- testrun/html/none/component_datepicker.sngl/main/1 --
+sha256:b7042049bbd3d05f106dc9a95ad3531a
+{
+  "results": [
+    {
+      "Desc": "DatepickerValueMutates",
+      "Passed": true
+    }
+  ]
+}

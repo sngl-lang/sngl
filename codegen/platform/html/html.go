@@ -108,8 +108,13 @@ func (g *Generator) Generate(req *codegen.Request, sink codegen.Sink) error {
 }
 
 // testBootOpen and testBootClose make a test page's program re-runnable, so
-// each test starts from a freshly mounted page.
-const testBootOpen = `window.__sngl_markup = Array.from(document.body.childNodes)
+// each test starts from a freshly mounted page. Whatever the page raises outside a
+// test body -- while it loads, or later from a timer -- is kept for the test
+// module to fail on, since nothing else would see it.
+const testBootOpen = `window.__snglErrors = [];
+addEventListener("error", (e) => window.__snglErrors.push(String(e.message)));
+addEventListener("unhandledrejection", (e) => window.__snglErrors.push(String(e.reason?.message ?? e.reason)));
+window.__sngl_markup = Array.from(document.body.childNodes)
   .filter((n) => n.nodeName !== "SCRIPT").map((n) => n.cloneNode(true));
 window.__sngl_reset = () => {
   for (const n of Array.from(document.body.childNodes)) {
