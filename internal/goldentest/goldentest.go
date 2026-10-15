@@ -100,6 +100,7 @@ import (
 
 	"duckfam.us/sngl/internal/build"
 	"duckfam.us/sngl/internal/parser"
+	"duckfam.us/sngl/internal/testlaunch"
 	"duckfam.us/sngl/internal/testutil"
 	"duckfam.us/sngl/internal/trust"
 
@@ -173,6 +174,10 @@ func runFixture(t *testing.T, path string, update, force bool, guard *libraryGua
 	if err != nil {
 		t.Fatalf("comment: %v", err)
 	}
+	execs, err := parseExecs(string(arc.Comment), src)
+	if err != nil {
+		t.Fatalf("comment: %v", err)
+	}
 
 	assertFormatted(t, src)
 
@@ -200,7 +205,7 @@ func runFixture(t *testing.T, path string, update, force bool, guard *libraryGua
 	// cannot compile what it generated leaves the archive as it found it.
 	// Written first, the bad golden would be committed and the record beside
 	// it would be the only thing saying so.
-	kept := verify(t, targetsOf(got), records, exempt, update, force)
+	kept := verify(t, targetsOf(got), records, exempt, execs, src, update, force)
 
 	if update {
 		if t.Failed() {
@@ -241,6 +246,9 @@ func split(arc *txtar.Archive) (src, golden map[string][]byte, records map[strin
 				return fail("golden file %q: expected out/<lang>/<platform>/<path>", f.Name)
 			}
 			golden[name] = f.Data
+			continue
+		}
+		if strings.HasPrefix(name, testlaunch.RecordPrefix) {
 			continue
 		}
 		if rest, ok := strings.CutPrefix(name, recordPrefix); ok {
@@ -438,11 +446,20 @@ func compare(t *testing.T, got, golden map[string][]byte) {
 
 func writeGolden(t *testing.T, path string, arc *txtar.Archive, got map[string][]byte, boilerplate map[string]bool, records map[string]record) {
 	t.Helper()
-	var files []txtar.File
+	var files, runs []txtar.File
 	for _, f := range arc.Files {
 		trimmed := strings.TrimPrefix(f.Name, "./")
-		if !strings.HasPrefix(trimmed, goldenPrefix) && !strings.HasPrefix(trimmed, recordPrefix) {
+		if !strings.HasPrefix(trimmed, goldenPrefix) && !strings.HasPrefix(trimmed, recordPrefix) && !strings.HasPrefix(trimmed, testlaunch.RecordPrefix) {
 			files = append(files, f)
+		}
+	}
+	// The component harness rewrites the testrun/ records, perhaps since this
+	// archive was read, so they are taken from the file as it is now.
+	if now, err := txtar.ParseFile(path); err == nil {
+		for _, f := range now.Files {
+			if strings.HasPrefix(strings.TrimPrefix(f.Name, "./"), testlaunch.RecordPrefix) {
+				runs = append(runs, f)
+			}
 		}
 	}
 	for _, name := range sortedKeys(reviewable(got, boilerplate)) {
@@ -451,8 +468,9 @@ func writeGolden(t *testing.T, path string, arc *txtar.Archive, got map[string][
 	for _, name := range sortedStrings(records) {
 		files = append(files, txtar.File{Name: name, Data: []byte(records[name].String())})
 	}
+	files = append(files, runs...)
 	arc.Files = files
-	if err := os.WriteFile(path, txtar.Format(arc), 0o644); err != nil {
+	if err := testlaunch.ReplaceFile(path, txtar.Format(arc)); err != nil {
 		t.Fatalf("write golden: %v", err)
 	}
 }

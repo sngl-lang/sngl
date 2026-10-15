@@ -44,8 +44,7 @@ func girClassInfoFor(t *testing.T, cType string) *gir.ClassInfo {
 // prop under the SNGL spelling of its name and the type girTypeToIR gave it,
 // and a GLib signal is an event.
 func TestWidgetSource_DeclaresProps(t *testing.T) {
-	skipWithoutGIR(t)
-	reg, err := (&Generator{}).gir()
+	reg, err := rulesGIR(t).gir()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -103,8 +102,7 @@ func TestSnglName_RewritesKeywords(t *testing.T) {
 // into one SNGL name, since the declaration would then carry one prop where
 // GTK has two and the emitter would set the wrong one.
 func TestSnglName_NoCollisions(t *testing.T) {
-	skipWithoutGIR(t)
-	reg, err := (&Generator{}).gir()
+	reg, err := rulesGIR(t).gir()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -188,7 +186,6 @@ func TestSnglName_NoCollisions(t *testing.T) {
 // with no resolver, as `sngl doc` checks a library package: the library
 // runner is what resolves the import.
 func TestGIRPackage_LoadsAsAPackage(t *testing.T) {
-	skipWithoutGIR(t)
 	doc, err := parser.Parse("t.sngl", []byte("import w \"sngl:platform/gtk4\"\nimport gtk \"gir:Gtk-4.0\"\n"))
 	if err != nil {
 		t.Fatal(err)

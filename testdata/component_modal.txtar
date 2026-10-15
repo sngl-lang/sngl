@@ -354,6 +354,9 @@ body { font-family: system-ui, sans-serif; }
 </div>
 
 <script>
+window.__snglErrors = [];
+addEventListener("error", (e) => window.__snglErrors.push(String(e.message)));
+addEventListener("unhandledrejection", (e) => window.__snglErrors.push(String(e.reason?.message ?? e.reason)));
 window.__sngl_markup = Array.from(document.body.childNodes)
   .filter((n) => n.nodeName !== "SCRIPT").map((n) => n.cloneNode(true));
 window.__sngl_reset = () => {
@@ -372,11 +375,11 @@ window.__sngl_boot = () => {
     window.__sngl_state = state;
   }
   function testModalOpenToggles(t, c) {
-    t.assert(c.open === false);
+    t.assertTrue(c.open === false, "(c.open === false)");
     c.open = true;
-    t.assert(c.open === true);
+    t.assertTrue(c.open === true, "(c.open === true)");
     c.open = false;
-    t.assert(c.open === false);
+    t.assertTrue(c.open === false, "(c.open === false)");
   }
   if (typeof window !== "undefined") {
     Object.assign(window, { testModalOpenToggles });
@@ -408,4 +411,14 @@ pass sha256:58d9771cb302d5848443ba9e68bc4cc0
 -- run/kotlin/android --
 pass sha256:b99865b722a7937119735cb028566f77
 -- run/none/html --
-pass sha256:53c9fc24f9d5aedcfc6668de8807f278
+pass sha256:7ea3c03f04bb78a38f47100bb89a0d43
+-- testrun/html/none/component_modal.sngl/main/1 --
+sha256:51c7143b2c56ee23039ed52c0aacb0f7
+{
+  "results": [
+    {
+      "Desc": "ModalOpenToggles",
+      "Passed": true
+    }
+  ]
+}

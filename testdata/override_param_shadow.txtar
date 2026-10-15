@@ -1070,6 +1070,9 @@ body { font-family: system-ui, sans-serif; }
 </div>
 
 <script>
+window.__snglErrors = [];
+addEventListener("error", (e) => window.__snglErrors.push(String(e.message)));
+addEventListener("unhandledrejection", (e) => window.__snglErrors.push(String(e.reason?.message ?? e.reason)));
 window.__sngl_markup = Array.from(document.body.childNodes)
   .filter((n) => n.nodeName !== "SCRIPT").map((n) => n.cloneNode(true));
 window.__sngl_reset = () => {
@@ -1105,11 +1108,11 @@ window.__sngl_boot = () => {
   }
   function testShadow(t, c) {
     c.box(true);
-    t.assert(c.on === true);
+    t.assertTrue(c.on === true, "(c.on === true)");
     c.field("q");
-    t.assert(c.v === "x!");
+    t.assertTrue(c.v === "x!", '(c.v === "x!")');
     c.sw(true);
-    t.assert(c.seen === "true true");
+    t.assertTrue(c.seen === "true true", '(c.seen === "true true")');
   }
   if (typeof window !== "undefined") {
     Object.assign(window, { testShadow });
@@ -1161,4 +1164,4 @@ pass sha256:22a6a121c8ae903629f6cafe1e7842b3
 -- run/kotlin/android --
 pass sha256:ce95896a41a42e8c98b55432e175bedf
 -- run/none/html --
-pass sha256:ee789b2d560f28b750347c822535050f
+pass sha256:3bd17450ca81032bf6ffc5c83e22eca0

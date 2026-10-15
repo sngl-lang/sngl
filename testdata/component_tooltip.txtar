@@ -554,6 +554,9 @@ body { font-family: system-ui, sans-serif; }
 </div>
 
 <script>
+window.__snglErrors = [];
+addEventListener("error", (e) => window.__snglErrors.push(String(e.message)));
+addEventListener("unhandledrejection", (e) => window.__snglErrors.push(String(e.reason?.message ?? e.reason)));
 window.__sngl_markup = Array.from(document.body.childNodes)
   .filter((n) => n.nodeName !== "SCRIPT").map((n) => n.cloneNode(true));
 window.__sngl_reset = () => {
@@ -572,9 +575,9 @@ window.__sngl_boot = () => {
     window.__sngl_state = state;
   }
   function testTooltipTextMutates(t, c) {
-    t.assert(c.msg === "hello");
+    t.assertTrue(c.msg === "hello", '(c.msg === "hello")');
     c.msg = "goodbye";
-    t.assert(c.msg === "goodbye");
+    t.assertTrue(c.msg === "goodbye", '(c.msg === "goodbye")');
   }
   if (typeof window !== "undefined") {
     Object.assign(window, { testTooltipTextMutates });
@@ -598,4 +601,14 @@ pass sha256:210aff9c468ebd577aaf15958fdaece2
 -- run/kotlin/android --
 pass sha256:2e89414007758dd41fcc074e1dc48687
 -- run/none/html --
-pass sha256:e33d56136132efe232961537b71c133e
+pass sha256:217831266171538bf9fb06bbf927018e
+-- testrun/html/none/component_tooltip.sngl/main/1 --
+sha256:6884ef7ff022272be8b36de677361fb4
+{
+  "results": [
+    {
+      "Desc": "TooltipTextMutates",
+      "Passed": true
+    }
+  ]
+}

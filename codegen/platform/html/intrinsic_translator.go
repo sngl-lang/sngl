@@ -299,12 +299,29 @@ func (t *htmlTranslator) OnCreateComponent(ctx context.Context, id string, call 
 // outside this platform names it.
 func (t *htmlTranslator) OnComponentRoot(ctx context.Context, id string, inst ir.Expr) []ir.Stmt {
 	element := ir.NativeNamed("HTMLElement")
-	return []ir.Stmt{&ir.LocalVar{
+	out := []ir.Stmt{&ir.LocalVar{
 		Name: id,
 		Type: element,
 		Init: &ir.Select{Type: element, Operand: inst, Field: instanceRootField},
 	}}
+	// An instance a program named carries no element of its own, so its root
+	// carries the name for a test's null test of it (emitEventInvokers).
+	if name, ok := inst.(*ir.Ident); ok && isProgramID(name.Name) {
+		out = append(out, &ir.CallStmt{Call: &ir.Call{
+			Type:     ir.TypVoid,
+			Receiver: &ir.Ident{Name: id},
+			Func:     &ir.Func{Name: "setAttribute"},
+			Args: []ir.CallArg{
+				{Value: &ir.Literal{Type: ir.TypString, Value: instanceMark}},
+				{Value: &ir.Literal{Type: ir.TypString, Value: name.Name}},
+			},
+		}})
+	}
+	return out
 }
+
+// instanceMark is the attribute naming the instance an element is the root of.
+const instanceMark = "data-sngl-instance"
 
 // OnUpdateComponent patches a prop on a live instance by calling the updater
 // the instance carries for it.

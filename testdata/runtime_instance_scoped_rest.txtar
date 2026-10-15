@@ -998,6 +998,9 @@ body { font-family: system-ui, sans-serif; }
 </div>
 
 <script>
+window.__snglErrors = [];
+addEventListener("error", (e) => window.__snglErrors.push(String(e.message)));
+addEventListener("unhandledrejection", (e) => window.__snglErrors.push(String(e.reason?.message ?? e.reason)));
 window.__sngl_markup = Array.from(document.body.childNodes)
   .filter((n) => n.nodeName !== "SCRIPT").map((n) => n.cloneNode(true));
 window.__sngl_reset = () => {
@@ -1017,9 +1020,9 @@ window.__sngl_boot = () => {
     window.__sngl_state = state;
   }
   function testScopedRestPerCopy(t, c) {
-    t.assert(c.mounted === "1:10 2:20 ");
+    t.assertTrue(c.mounted === "1:10 2:20 ", '(c.mounted === "1:10 2:20 ")');
     c.add();
-    t.assert(c.mounted === "1:10 2:20 3:30 ");
+    t.assertTrue(c.mounted === "1:10 2:20 3:30 ", '(c.mounted === "1:10 2:20 3:30 ")');
   }
   if (typeof window !== "undefined") {
     Object.assign(window, { testScopedRestPerCopy });
@@ -1190,4 +1193,4 @@ pass sha256:574897b514b04935739884a49ba68a67
 -- run/kotlin/android --
 pass sha256:a608b2af0f2e56dcd96e066b88b1301e
 -- run/none/html --
-pass sha256:65b31ab506c40bff2857b2402ce14e3e
+pass sha256:6acdca73ebe69cf478673b258b747bb6

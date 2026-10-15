@@ -388,6 +388,9 @@ body { font-family: system-ui, sans-serif; }
 </span>
 
 <script>
+window.__snglErrors = [];
+addEventListener("error", (e) => window.__snglErrors.push(String(e.message)));
+addEventListener("unhandledrejection", (e) => window.__snglErrors.push(String(e.reason?.message ?? e.reason)));
 window.__sngl_markup = Array.from(document.body.childNodes)
   .filter((n) => n.nodeName !== "SCRIPT").map((n) => n.cloneNode(true));
 window.__sngl_reset = () => {
@@ -415,7 +418,7 @@ window.__sngl_boot = () => {
     return "d=" + String(d);
   }
   function testSiblingComputedCall(t, c) {
-    t.assert(c.summary === "d=6");
+    t.assertTrue(c.summary === "d=6", '(c.summary === "d=6")');
   }
   if (typeof window !== "undefined") {
     Object.assign(window, { main_double, main_summary, testSiblingComputedCall });
@@ -442,4 +445,14 @@ pass sha256:cb263fa7b19a21118ce632815adc3d4e
 -- run/kotlin/android --
 pass sha256:8a213560a0b3d68db3256b6364052562
 -- run/none/html --
-pass sha256:94fe7f8cf8809f631bbb1a2808daacad
+pass sha256:19ac7f0bb1a8fed97cdb9e8b349fec3c
+-- testrun/html/none/component_sibling_computed_call.sngl/main/1 --
+sha256:4cb4a5c7283c4988d394cd47376f42b6
+{
+  "results": [
+    {
+      "Desc": "SiblingComputedCall",
+      "Passed": true
+    }
+  ]
+}

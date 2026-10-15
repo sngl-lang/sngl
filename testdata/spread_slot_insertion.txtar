@@ -562,6 +562,9 @@ body { font-family: system-ui, sans-serif; }
 </div>
 
 <script>
+window.__snglErrors = [];
+addEventListener("error", (e) => window.__snglErrors.push(String(e.message)));
+addEventListener("unhandledrejection", (e) => window.__snglErrors.push(String(e.reason?.message ?? e.reason)));
 window.__sngl_markup = Array.from(document.body.childNodes)
   .filter((n) => n.nodeName !== "SCRIPT").map((n) => n.cloneNode(true));
 window.__sngl_reset = () => {
@@ -584,7 +587,7 @@ window.__sngl_boot = () => {
   function testSpreadIntoSlot(t, c) {
     c.a();
     c.b();
-    t.assert(c.seen === "row3;part7;");
+    t.assertTrue(c.seen === "row3;part7;", '(c.seen === "row3;part7;")');
   }
   if (typeof window !== "undefined") {
     Object.assign(window, { testSpreadIntoSlot });
@@ -611,4 +614,4 @@ pass sha256:951f40700fa3657a9a550efbd1bdaa81
 -- run/kotlin/android --
 pass sha256:6bb056e04ea7a71f58d3f9cb790647c5
 -- run/none/html --
-pass sha256:459a698e1cde1ca1e17da99c6c256cd3
+pass sha256:3249a875ad60ecb0f052dda318bb9979

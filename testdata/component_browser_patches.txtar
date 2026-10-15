@@ -1,0 +1,974 @@
+A component fixture: the source, the code every target generates from it,
+and the record saying a host toolchain built that and ran whatever tests it
+carries.
+-- component_browser_patches.sngl --
+// What a page shows once a write has been patched into it, read in the
+// browser: each case writes state through an event and reads the element
+// that renders it, not the state, since the patch is what is under test.
+
+import "sngl:test/browser"
+import . "sngl:test"
+import . "sngl:ui"
+
+component picker node {
+    var fruit = "apple"
+    text #shown(value="picked: {fruit}")
+    select #s(:value=fruit) {
+        choice(label="apple")
+        choice(label="banana")
+        choice(label="cherry")
+    }
+}
+
+func testASelectChangeReachesTheSpan(t Test, c picker) {
+    t.assert(browser.text(c.shown) == "picked: apple")
+    c.s.change("banana")
+    t.assert(c.fruit == "banana")
+    t.assert(browser.text(c.shown) == "picked: banana")
+    t.assert(browser.text(c.s) == "banana")
+}
+
+func run(f func()) int {
+    f()
+    return 7
+}
+
+// A write inside a callback the handler hands on updates what reads it.
+component callback node {
+    var n = 0
+    var handle = 0
+    button #go(text="go", @click {
+        handle = run(func() {
+            n = n + 1
+        })
+    })
+    text #out(value="n={n}")
+}
+
+func testAWriteInsideACallbackIsPatched(t Test, c callback) {
+    c.go.click()
+    t.assert(browser.text(c.out) == "n=1")
+}
+
+var base = 3
+
+func doubled() => base * 2
+
+func blocky() int {
+    var x = base + 1
+    return x * 3
+}
+
+// A computed is called under the name it is declared with.
+component computed node {
+    vbox {
+        text #expr(value="expr={doubled()}")
+        text #block(value="block={blocky()}")
+    }
+}
+
+func testComputedsRender(t Test, c computed) {
+    t.assert(browser.text(c.expr) == "expr=6")
+    t.assert(browser.text(c.block) == "block=12")
+}
+
+// A narrowed option is a number in each branch that narrows it.
+component narrowed node {
+    var maybe option[int] = 3
+    vbox #out {
+        if maybe != null {
+            text(value="[{maybe * 2}]")
+        }
+        if maybe == null {
+            text(value="[none]")
+        } else {
+            text(value="[{maybe + 1}]")
+        }
+    }
+    button #clear(text="clear", @click { maybe = null })
+    button #set(text="set", @click { maybe = 21 })
+}
+
+func testANarrowedOptionIsArithmetic(t Test, c narrowed) {
+    t.assert(browser.text(c.out) == "[6]\n[4]")
+    c.clear.click()
+    t.assert(browser.text(c.out) == "[none]")
+    c.set.click()
+    t.assert(browser.text(c.out) == "[42]\n[22]")
+}
+
+component toggled(body option[component]) node {
+    var on = false
+    button #t(text="toggle", @click { on = !on })
+    vbox #box {
+        if on {
+            body {}
+        }
+    }
+}
+
+component scoped(ready option[component(int)]) node {
+    var n = 0
+    button #b(text="bump", @click { n = n + 1 })
+    vbox #box {
+        if n > 0 {
+            ready(n) {}
+        }
+    }
+}
+
+// A named slot inside a reactive `if` renders with the branch, and a scoped one
+// is handed its argument on each render.
+component slots node {
+    toggled #q {
+        component body {
+            text(value="SUPPLIED")
+        }
+    }
+    scoped #r {
+        component ready(v) {
+            text(value="N={v}")
+        }
+    }
+}
+
+func testANamedSlotFollowsItsBranch(t Test, c slots) {
+    t.assert(browser.text(c.q.box) == "")
+    c.q.t.click()
+    t.assert(browser.text(c.q.box) == "SUPPLIED")
+    c.q.t.click()
+    t.assert(browser.text(c.q.box) == "")
+}
+
+func testAScopedSlotIsHandedItsArgument(t Test, c slots) {
+    c.r.b.click()
+    t.assert(browser.text(c.r.box) == "N=1")
+    c.r.b.click()
+    t.assert(browser.text(c.r.box) == "N=2")
+}
+
+// Two branches of one stack: each render shows exactly one.
+component carousel node {
+    var a = 0
+    button #next(text="next", @click { a = (a + 1) % 2 })
+    stack #s {
+        if a == 0 {
+            text(value="ZERO")
+        }
+        if a == 1 {
+            text(value="ONE")
+        }
+    }
+}
+
+func testACarouselShowsOneAtATime(t Test, c carousel) {
+    t.assert(browser.text(c.s) == "ZERO")
+    c.next.click()
+    t.assert(browser.text(c.s) == "ONE")
+    c.next.click()
+    t.assert(browser.text(c.s) == "ZERO")
+}
+
+// An `if` at the root of a window's body.
+component app root {
+    var on = true
+    window {
+        button #t(text="t", @click { on = !on })
+        if on {
+            text #shown(value="SHOWN")
+        }
+    }
+}
+
+func testAnIfAtAWindowsRootFollowsItsState(t Test, c app) {
+    t.assert(c.shown != null)
+    if c.shown != null {
+        t.assert(browser.text(c.shown) == "SHOWN")
+    }
+    c.t.click()
+    t.assert(c.on == false)
+    t.assert(c.shown == null)
+}
+
+window {
+    picker
+    callback
+    computed
+    narrowed
+    slots
+    carousel
+}
+
+app()
+
+output {
+    none {
+        html
+    }
+}
+-- out/none/html/index.html --
+<!-- Code generated by sngl (html) from component_browser_patches.sngl; DO NOT EDIT. -->
+
+<!DOCTYPE html>
+<html><head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: system-ui, sans-serif; }
+dialog { margin: auto; padding: 1em; }
+  </style>
+</head><body>
+
+<span id="$0" data-sngl-id="shown">
+</span>
+<select id="$1" data-sngl-id="s">
+  <span data-sngl-slot="0" style="display:contents"></span>
+</select>
+<button id="$2" data-sngl-id="go">
+  <span>go</span>
+</button>
+<span id="$3" data-sngl-id="out">
+</span>
+<div style="display:flex;flex-direction:column">
+  <span id="$4" data-sngl-id="expr">
+  </span>
+  <span id="$5" data-sngl-id="block">
+  </span>
+</div>
+<div style="display:flex;flex-direction:column" data-sngl-id="out__1">
+  <span data-sngl-slot="1" style="display:contents"></span>
+  <span data-sngl-slot="2" style="display:contents"></span>
+</div>
+<button id="$7" data-sngl-id="clear">
+  <span>clear</span>
+</button>
+<button id="$8" data-sngl-id="set">
+  <span>set</span>
+</button>
+<button id="$9" data-sngl-id="t">
+  <span>toggle</span>
+</button>
+<div style="display:flex;flex-direction:column" data-sngl-id="box">
+  <span data-sngl-slot="3" style="display:contents"></span>
+</div>
+<button id="$11" data-sngl-id="b">
+  <span>bump</span>
+</button>
+<div style="display:flex;flex-direction:column" data-sngl-id="box__1">
+  <span data-sngl-slot="4" style="display:contents"></span>
+</div>
+<button id="$13" data-sngl-id="next">
+  <span>next</span>
+</button>
+<div style="position:relative" data-sngl-id="s__1">
+  <span data-sngl-slot="5" style="display:contents"></span>
+  <span data-sngl-slot="6" style="display:contents"></span>
+</div>
+<dialog id="__n5" data-sngl-id="__n5" aria-label="">
+  <header>
+    <span></span>
+    <button id="$23" aria-label="Close">
+      <span>×</span>
+    </button>
+  </header>
+  <button id="$15" data-sngl-id="t__1">
+    <span>t</span>
+  </button>
+  <span data-sngl-slot="7" style="display:contents"></span>
+</dialog>
+
+<script>
+window.__snglErrors = [];
+addEventListener("error", (e) => window.__snglErrors.push(String(e.message)));
+addEventListener("unhandledrejection", (e) => window.__snglErrors.push(String(e.reason?.message ?? e.reason)));
+window.__sngl_markup = Array.from(document.body.childNodes)
+  .filter((n) => n.nodeName !== "SCRIPT").map((n) => n.cloneNode(true));
+window.__sngl_reset = () => {
+  for (const n of Array.from(document.body.childNodes)) {
+    if (n.nodeName !== "SCRIPT") n.remove();
+  }
+  const first = document.body.firstChild;
+  for (const n of window.__sngl_markup) document.body.insertBefore(n.cloneNode(true), first);
+  window.__sngl_boot();
+};
+window.__sngl_boot = () => {
+(() => {
+  // sngl-entry.js
+  var state = { base: 3, fruit__inst0: "apple", n__inst0: 0, handle__inst0: 0, maybe__inst0: null, on__inst0: false, n__inst1: 0, a__inst0: 0, visible__inst0: true, on__inst1: true, visible__inst1: true };
+  state.maybe__inst0 = 3;
+  state.doubled = () => doubled();
+  state.blocky = () => blocky();
+  state.sChange = (p) => {
+    Object.assign($1, p);
+    $1.dispatchEvent(Object.assign(new Event("change"), p));
+  };
+  state.goClick = () => $2.click();
+  state.clearClick = () => $7.click();
+  state.setClick = () => $8.click();
+  state.tClick = () => $9.click();
+  state.bClick = () => $11.click();
+  state.nextClick = () => $13.click();
+  state.t__1Click = () => $15.click();
+  if (typeof window !== "undefined") {
+    window.__sngl_state = state;
+  }
+  function doubled() {
+    return state.base * 2;
+  }
+  function testASelectChangeReachesTheSpan(t, c) {
+    t.assertTrue(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll('[data-sngl-id="shown"]')[0]) === "picked: apple", '(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll("[data-sngl-id=\\"shown\\"]")[0]) === "picked: apple")');
+    c.s("banana");
+    t.assertTrue(state.fruit__inst0 === "banana", '(state.fruit__inst0 === "banana")');
+    t.assertTrue(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll('[data-sngl-id="shown"]')[0]) === "picked: banana", '(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll("[data-sngl-id=\\"shown\\"]")[0]) === "picked: banana")');
+    t.assertTrue(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll('[data-sngl-id="s"]')[0]) === "banana", '(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll("[data-sngl-id=\\"s\\"]")[0]) === "banana")');
+  }
+  function run(f) {
+    f();
+    return 7;
+  }
+  function testAWriteInsideACallbackIsPatched(t, c) {
+    c.go();
+    t.assertTrue(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll('[data-sngl-id="out"]')[0]) === "n=1", '(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll("[data-sngl-id=\\"out\\"]")[0]) === "n=1")');
+  }
+  function blocky() {
+    let x = state.base + 1;
+    return x * 3;
+  }
+  function testComputedsRender(t, c) {
+    t.assertTrue(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll('[data-sngl-id="expr"]')[0]) === "expr=6", '(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll("[data-sngl-id=\\"expr\\"]")[0]) === "expr=6")');
+    t.assertTrue(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll('[data-sngl-id="block"]')[0]) === "block=12", '(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll("[data-sngl-id=\\"block\\"]")[0]) === "block=12")');
+  }
+  function testANarrowedOptionIsArithmetic(t, c) {
+    t.assertTrue(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll('[data-sngl-id="out__1"]')[0]) === "[6]\n[4]", '(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll("[data-sngl-id=\\"out__1\\"]")[0]) === "[6]\\n[4]")');
+    c.clear();
+    t.assertTrue(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll('[data-sngl-id="out__1"]')[0]) === "[none]", '(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll("[data-sngl-id=\\"out__1\\"]")[0]) === "[none]")');
+    c.set();
+    t.assertTrue(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll('[data-sngl-id="out__1"]')[0]) === "[42]\n[22]", '(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll("[data-sngl-id=\\"out__1\\"]")[0]) === "[42]\\n[22]")');
+  }
+  function testANamedSlotFollowsItsBranch(t, c) {
+    t.assertTrue(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll('[data-sngl-id="box"]')[0]) === "", '(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll("[data-sngl-id=\\"box\\"]")[0]) === "")');
+    c.q.t();
+    t.assertTrue(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll('[data-sngl-id="box"]')[0]) === "SUPPLIED", '(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll("[data-sngl-id=\\"box\\"]")[0]) === "SUPPLIED")');
+    c.q.t();
+    t.assertTrue(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll('[data-sngl-id="box"]')[0]) === "", '(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll("[data-sngl-id=\\"box\\"]")[0]) === "")');
+  }
+  function testAScopedSlotIsHandedItsArgument(t, c) {
+    c.r.b();
+    t.assertTrue(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll('[data-sngl-id="box"]')[0]) === "N=1", '(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll("[data-sngl-id=\\"box\\"]")[0]) === "N=1")');
+    c.r.b();
+    t.assertTrue(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll('[data-sngl-id="box"]')[0]) === "N=2", '(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll("[data-sngl-id=\\"box\\"]")[0]) === "N=2")');
+  }
+  function testACarouselShowsOneAtATime(t, c) {
+    t.assertTrue(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll('[data-sngl-id="s__1"]')[0]) === "ZERO", '(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll("[data-sngl-id=\\"s__1\\"]")[0]) === "ZERO")');
+    c.next();
+    t.assertTrue(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll('[data-sngl-id="s__1"]')[0]) === "ONE", '(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll("[data-sngl-id=\\"s__1\\"]")[0]) === "ONE")');
+    c.next();
+    t.assertTrue(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll('[data-sngl-id="s__1"]')[0]) === "ZERO", '(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll("[data-sngl-id=\\"s__1\\"]")[0]) === "ZERO")');
+  }
+  function testAnIfAtAWindowsRootFollowsItsState(t, c) {
+    t.assertTrue(c.shown__1 !== null, "(c.shown__1 !== null)");
+    if (c.shown__1 !== null) {
+      ;
+      t.assertTrue(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll('[data-sngl-id="shown__1"]')[0]) === "SHOWN", '(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll("[data-sngl-id=\\"shown__1\\"]")[0]) === "SHOWN")');
+    }
+    ;
+    c.t__1();
+    t.assertTrue(state.on__inst1 === false, "(state.on__inst1 === false)");
+    t.assertTrue(c.shown__1 === null, "(c.shown__1 === null)");
+  }
+  if (typeof window !== "undefined") {
+    Object.assign(window, { testASelectChangeReachesTheSpan, run, testAWriteInsideACallbackIsPatched, doubled, blocky, testComputedsRender, testANarrowedOptionIsArithmetic, testANamedSlotFollowsItsBranch, testAScopedSlotIsHandedItsArgument, testACarouselShowsOneAtATime, testAnIfAtAWindowsRootFollowsItsState });
+  }
+  function __cf___child0(props) {
+    const __root = document.createElement("div");
+    __root.style.display = "contents";
+    let __p0 = props.__p0;
+    let __p1 = props.__p1;
+    let __prop___p0 = __p0;
+    let __prop___p1 = __p1;
+    let __slot02 = [];
+    let __slot12 = [];
+    let __slot22 = [];
+    let __slot32 = [];
+    let __slot42 = [];
+    let __slot52 = [];
+    let __slot62 = [];
+    let __slot72 = [];
+    function __set___p0(__v) {
+      __prop___p0 = __v;
+      __n0.value = __prop___p0.label;
+      __n0.selected = __prop___p0.label === __prop___p1;
+      __n0.textContent = __prop___p0.label;
+    }
+    function __set___p1(__v) {
+      __prop___p1 = __v;
+      __n0.selected = __prop___p0.label === __prop___p1;
+    }
+    let __n0 = document.createElement("option");
+    __n0.value = __prop___p0.label;
+    __n0.selected = __prop___p0.label === __prop___p1;
+    __n0.textContent = __prop___p0.label;
+    __root.appendChild(__n0);
+    return {
+      __root,
+      __destroy() {
+      },
+      __set___p0,
+      __set___p1
+    };
+  }
+  function __cf___child1(props) {
+    const __root = document.createElement("div");
+    __root.style.display = "contents";
+    let __p0 = props.__p0;
+    let __prop___p0 = __p0;
+    let __slot02 = [];
+    let __slot12 = [];
+    let __slot22 = [];
+    let __slot32 = [];
+    let __slot42 = [];
+    let __slot52 = [];
+    let __slot62 = [];
+    let __slot72 = [];
+    function __set___p0(__v) {
+      __prop___p0 = __v;
+      __n1.textContent = "[" + String(__prop___p0 * 2) + "]";
+    }
+    let __n1 = document.createElement("span");
+    __n1.textContent = "[" + String(__prop___p0 * 2) + "]";
+    __root.appendChild(__n1);
+    return {
+      __root,
+      __destroy() {
+      },
+      __set___p0
+    };
+  }
+  function __cf___child2(props) {
+    const __root = document.createElement("div");
+    __root.style.display = "contents";
+    let __p0 = props.__p0;
+    let __prop___p0 = __p0;
+    let __slot02 = [];
+    let __slot12 = [];
+    let __slot22 = [];
+    let __slot32 = [];
+    let __slot42 = [];
+    let __slot52 = [];
+    let __slot62 = [];
+    let __slot72 = [];
+    function __set___p0(__v) {
+      __prop___p0 = __v;
+      __n2.textContent = "[" + String(__prop___p0 + 1) + "]";
+    }
+    let __n2 = document.createElement("span");
+    __n2.textContent = "[" + String(__prop___p0 + 1) + "]";
+    __root.appendChild(__n2);
+    return {
+      __root,
+      __destroy() {
+      },
+      __set___p0
+    };
+  }
+  function __cf___child3(props) {
+    const __root = document.createElement("div");
+    __root.style.display = "contents";
+    let __p0 = props.__p0;
+    let __prop___p0 = __p0;
+    let __slot02 = [];
+    let __slot12 = [];
+    let __slot22 = [];
+    let __slot32 = [];
+    let __slot42 = [];
+    let __slot52 = [];
+    let __slot62 = [];
+    let __slot72 = [];
+    function __set___p0(__v) {
+      __prop___p0 = __v;
+      __n3.textContent = "N=" + String(__prop___p0);
+    }
+    let __n3 = document.createElement("span");
+    __n3.textContent = "N=" + String(__prop___p0);
+    __root.appendChild(__n3);
+    return {
+      __root,
+      __destroy() {
+      },
+      __set___p0
+    };
+  }
+  var __slot0 = [];
+  var __inst1_live = [];
+  var __slot1 = [];
+  var __inst3_live = [];
+  var __slot2 = [];
+  var __inst5_live = [];
+  var __slot3 = [];
+  var __slot4 = [];
+  var __inst8_live = [];
+  var __slot5 = [];
+  var __slot6 = [];
+  var __slot7 = [];
+  function __renderSlot0(parent) {
+    let __place0_prev = __slot0;
+    let __place0_i = 0;
+    __slot0 = [];
+    let __inst1_next = [];
+    let __inst1_i = 0;
+    for (const opt of [{ label: "apple" }, { label: "banana" }, { label: "cherry" }]) {
+      let __n6 = null;
+      if (__inst1_live.length > __inst1_i) {
+        __n6 = __inst1_live[__inst1_i];
+        __n6.__set___p0(opt);
+        __n6.__set___p1(state.fruit__inst0);
+      } else {
+        if (__inst1_live.length > __inst1_i) {
+          __inst1_live[__inst1_i].__destroy();
+        }
+        let __n6__new = __cf___child0({ __p0: opt, __p1: state.fruit__inst0 });
+        __n6 = __n6__new;
+      }
+      __inst1_next.push(__n6);
+      __inst1_i = __inst1_i + 1;
+      let __n6__el = __n6.__root;
+      let __place0_i_ref0 = null;
+      if (__place0_i < __place0_prev.length) {
+        __place0_i_ref0 = __place0_prev[__place0_i];
+      }
+      if (__place0_i_ref0 === __n6__el) {
+        __place0_i = __place0_i + 1;
+      } else {
+        parent.insertBefore(__n6__el, __place0_i_ref0);
+      }
+      __slot0.push(__n6__el);
+    }
+    for (const [__inst1_i_d, _] of __inst1_live.entries()) {
+      let __inst1_i_j = __inst1_live.length - 1 - __inst1_i_d;
+      if (__inst1_i_j >= __inst1_i) {
+        __inst1_live[__inst1_i_j].__destroy();
+      }
+    }
+    __inst1_live = __inst1_next;
+    for (const __place0_prev_e of __place0_prev) {
+      if (__slot0.indexOf(__place0_prev_e) < 0) {
+        parent.removeChild(__place0_prev_e);
+      }
+    }
+  }
+  function __renderSlot1(parent) {
+    let __place2_prev = __slot1;
+    let __place2_i = 0;
+    __slot1 = [];
+    let __inst3_next = [];
+    let __inst3_i = 0;
+    if (state.maybe__inst0 !== null) {
+      let __n7 = null;
+      if (__inst3_live.length > __inst3_i) {
+        __n7 = __inst3_live[__inst3_i];
+        __n7.__set___p0(state.maybe__inst0);
+      } else {
+        if (__inst3_live.length > __inst3_i) {
+          __inst3_live[__inst3_i].__destroy();
+        }
+        let __n7__new = __cf___child1({ __p0: state.maybe__inst0 });
+        __n7 = __n7__new;
+      }
+      __inst3_next.push(__n7);
+      __inst3_i = __inst3_i + 1;
+      let __n7__el = __n7.__root;
+      let __place2_i_ref0 = null;
+      if (__place2_i < __place2_prev.length) {
+        __place2_i_ref0 = __place2_prev[__place2_i];
+      }
+      if (__place2_i_ref0 === __n7__el) {
+        __place2_i = __place2_i + 1;
+      } else {
+        parent.insertBefore(__n7__el, __place2_i_ref0);
+      }
+      __slot1.push(__n7__el);
+    }
+    for (const [__inst3_i_d, _] of __inst3_live.entries()) {
+      let __inst3_i_j = __inst3_live.length - 1 - __inst3_i_d;
+      if (__inst3_i_j >= __inst3_i) {
+        __inst3_live[__inst3_i_j].__destroy();
+      }
+    }
+    __inst3_live = __inst3_next;
+    for (const __place2_prev_e of __place2_prev) {
+      if (__slot1.indexOf(__place2_prev_e) < 0) {
+        parent.removeChild(__place2_prev_e);
+      }
+    }
+  }
+  function __renderSlot2(parent) {
+    let __place4_prev = __slot2;
+    let __place4_i = 0;
+    __slot2 = [];
+    let __inst5_next = [];
+    let __inst5_i = 0;
+    if (state.maybe__inst0 === null) {
+      let __n8 = document.createElement("span");
+      __n8.textContent = "[none]";
+      let __place4_i_ref0 = null;
+      if (__place4_i < __place4_prev.length) {
+        __place4_i_ref0 = __place4_prev[__place4_i];
+      }
+      if (__place4_i_ref0 === __n8) {
+        __place4_i = __place4_i + 1;
+      } else {
+        parent.insertBefore(__n8, __place4_i_ref0);
+      }
+      __slot2.push(__n8);
+    } else {
+      let __n9 = null;
+      if (__inst5_live.length > __inst5_i) {
+        __n9 = __inst5_live[__inst5_i];
+        __n9.__set___p0(state.maybe__inst0);
+      } else {
+        if (__inst5_live.length > __inst5_i) {
+          __inst5_live[__inst5_i].__destroy();
+        }
+        let __n9__new = __cf___child2({ __p0: state.maybe__inst0 });
+        __n9 = __n9__new;
+      }
+      __inst5_next.push(__n9);
+      __inst5_i = __inst5_i + 1;
+      let __n9__el = __n9.__root;
+      let __place4_i_ref1 = null;
+      if (__place4_i < __place4_prev.length) {
+        __place4_i_ref1 = __place4_prev[__place4_i];
+      }
+      if (__place4_i_ref1 === __n9__el) {
+        __place4_i = __place4_i + 1;
+      } else {
+        parent.insertBefore(__n9__el, __place4_i_ref1);
+      }
+      __slot2.push(__n9__el);
+    }
+    for (const [__inst5_i_d, _] of __inst5_live.entries()) {
+      let __inst5_i_j = __inst5_live.length - 1 - __inst5_i_d;
+      if (__inst5_i_j >= __inst5_i) {
+        __inst5_live[__inst5_i_j].__destroy();
+      }
+    }
+    __inst5_live = __inst5_next;
+    for (const __place4_prev_e of __place4_prev) {
+      if (__slot2.indexOf(__place4_prev_e) < 0) {
+        parent.removeChild(__place4_prev_e);
+      }
+    }
+  }
+  function __renderSlot3(parent) {
+    let __place6_prev = __slot3;
+    let __place6_i = 0;
+    __slot3 = [];
+    if (state.on__inst0) {
+      let __n10 = document.createElement("span");
+      __n10.textContent = "SUPPLIED";
+      let __place6_i_ref0 = null;
+      if (__place6_i < __place6_prev.length) {
+        __place6_i_ref0 = __place6_prev[__place6_i];
+      }
+      if (__place6_i_ref0 === __n10) {
+        __place6_i = __place6_i + 1;
+      } else {
+        parent.insertBefore(__n10, __place6_i_ref0);
+      }
+      __slot3.push(__n10);
+    }
+    for (const __place6_prev_e of __place6_prev) {
+      if (__slot3.indexOf(__place6_prev_e) < 0) {
+        parent.removeChild(__place6_prev_e);
+      }
+    }
+  }
+  function __renderSlot4(parent) {
+    let __place7_prev = __slot4;
+    let __place7_i = 0;
+    __slot4 = [];
+    let __inst8_next = [];
+    let __inst8_i = 0;
+    if (state.n__inst1 > 0) {
+      let __n11 = null;
+      if (__inst8_live.length > __inst8_i) {
+        __n11 = __inst8_live[__inst8_i];
+        __n11.__set___p0(state.n__inst1);
+      } else {
+        if (__inst8_live.length > __inst8_i) {
+          __inst8_live[__inst8_i].__destroy();
+        }
+        let __n11__new = __cf___child3({ __p0: state.n__inst1 });
+        __n11 = __n11__new;
+      }
+      __inst8_next.push(__n11);
+      __inst8_i = __inst8_i + 1;
+      let __n11__el = __n11.__root;
+      let __place7_i_ref0 = null;
+      if (__place7_i < __place7_prev.length) {
+        __place7_i_ref0 = __place7_prev[__place7_i];
+      }
+      if (__place7_i_ref0 === __n11__el) {
+        __place7_i = __place7_i + 1;
+      } else {
+        parent.insertBefore(__n11__el, __place7_i_ref0);
+      }
+      __slot4.push(__n11__el);
+    }
+    for (const [__inst8_i_d, _] of __inst8_live.entries()) {
+      let __inst8_i_j = __inst8_live.length - 1 - __inst8_i_d;
+      if (__inst8_i_j >= __inst8_i) {
+        __inst8_live[__inst8_i_j].__destroy();
+      }
+    }
+    __inst8_live = __inst8_next;
+    for (const __place7_prev_e of __place7_prev) {
+      if (__slot4.indexOf(__place7_prev_e) < 0) {
+        parent.removeChild(__place7_prev_e);
+      }
+    }
+  }
+  function __renderSlot5(parent) {
+    let __place9_prev = __slot5;
+    let __place9_i = 0;
+    __slot5 = [];
+    if (state.a__inst0 === 0) {
+      let __n12 = document.createElement("span");
+      __n12.textContent = "ZERO";
+      let __place9_i_ref0 = null;
+      if (__place9_i < __place9_prev.length) {
+        __place9_i_ref0 = __place9_prev[__place9_i];
+      }
+      if (__place9_i_ref0 === __n12) {
+        __place9_i = __place9_i + 1;
+      } else {
+        parent.insertBefore(__n12, __place9_i_ref0);
+      }
+      __slot5.push(__n12);
+    }
+    for (const __place9_prev_e of __place9_prev) {
+      if (__slot5.indexOf(__place9_prev_e) < 0) {
+        parent.removeChild(__place9_prev_e);
+      }
+    }
+  }
+  function __renderSlot6(parent) {
+    let __place10_prev = __slot6;
+    let __place10_i = 0;
+    __slot6 = [];
+    if (state.a__inst0 === 1) {
+      let __n13 = document.createElement("span");
+      __n13.textContent = "ONE";
+      let __place10_i_ref0 = null;
+      if (__place10_i < __place10_prev.length) {
+        __place10_i_ref0 = __place10_prev[__place10_i];
+      }
+      if (__place10_i_ref0 === __n13) {
+        __place10_i = __place10_i + 1;
+      } else {
+        parent.insertBefore(__n13, __place10_i_ref0);
+      }
+      __slot6.push(__n13);
+    }
+    for (const __place10_prev_e of __place10_prev) {
+      if (__slot6.indexOf(__place10_prev_e) < 0) {
+        parent.removeChild(__place10_prev_e);
+      }
+    }
+  }
+  function __renderSlot7(parent) {
+    let __place11_prev = __slot7;
+    let __place11_i = 0;
+    __slot7 = [];
+    if (state.on__inst1) {
+      let shown__1 = document.createElement("span");
+      shown__1.setAttribute("data-sngl-id", "shown__1");
+      shown__1.textContent = "SHOWN";
+      let __place11_i_ref0 = null;
+      if (__place11_i < __place11_prev.length) {
+        __place11_i_ref0 = __place11_prev[__place11_i];
+      }
+      if (__place11_i_ref0 === shown__1) {
+        __place11_i = __place11_i + 1;
+      } else {
+        parent.insertBefore(shown__1, __place11_i_ref0);
+      }
+      __slot7.push(shown__1);
+    }
+    for (const __place11_prev_e of __place11_prev) {
+      if (__slot7.indexOf(__place11_prev_e) < 0) {
+        parent.removeChild(__place11_prev_e);
+      }
+    }
+  }
+  function String(v) {
+    return "" + v;
+  }
+  var $0 = document.getElementById("$0");
+  var $1 = document.getElementById("$1");
+  var $11 = document.getElementById("$11");
+  var $13 = document.getElementById("$13");
+  var $15 = document.getElementById("$15");
+  var $2 = document.getElementById("$2");
+  var $23 = document.getElementById("$23");
+  var $3 = document.getElementById("$3");
+  var $4 = document.getElementById("$4");
+  var $5 = document.getElementById("$5");
+  var $7 = document.getElementById("$7");
+  var $8 = document.getElementById("$8");
+  var $9 = document.getElementById("$9");
+  var __n5 = document.querySelector('[data-sngl-id="__n5"]');
+  var __slotAnchor_0 = document.querySelector('[data-sngl-slot="0"]');
+  __renderSlot0(__slotAnchor_0);
+  var __slotAnchor_1 = document.querySelector('[data-sngl-slot="1"]');
+  __renderSlot1(__slotAnchor_1);
+  var __slotAnchor_2 = document.querySelector('[data-sngl-slot="2"]');
+  __renderSlot2(__slotAnchor_2);
+  var __slotAnchor_3 = document.querySelector('[data-sngl-slot="3"]');
+  __renderSlot3(__slotAnchor_3);
+  var __slotAnchor_4 = document.querySelector('[data-sngl-slot="4"]');
+  __renderSlot4(__slotAnchor_4);
+  var __slotAnchor_5 = document.querySelector('[data-sngl-slot="5"]');
+  __renderSlot5(__slotAnchor_5);
+  var __slotAnchor_6 = document.querySelector('[data-sngl-slot="6"]');
+  __renderSlot6(__slotAnchor_6);
+  var __slotAnchor_7 = document.querySelector('[data-sngl-slot="7"]');
+  __renderSlot7(__slotAnchor_7);
+  $1.addEventListener("change", function(e) {
+    state.fruit__inst0 = e.currentTarget.value;
+    $0.textContent = "picked: " + state.fruit__inst0;
+    for (const [__inst1_live_ui, _] of __inst1_live.entries()) {
+      ;
+      __inst1_live[__inst1_live_ui].__set___p1(state.fruit__inst0);
+    }
+    ;
+    $0.textContent = "picked: " + state.fruit__inst0;
+  });
+  $2.addEventListener("click", function() {
+    state.handle__inst0 = run(() => {
+      state.n__inst0 = state.n__inst0 + 1;
+      $3.textContent = "n=" + String(state.n__inst0);
+    });
+    $3.textContent = "n=" + String(state.n__inst0);
+  });
+  $7.addEventListener("click", function() {
+    state.maybe__inst0 = null;
+    __renderSlot1(__slotAnchor_1);
+    __renderSlot2(__slotAnchor_2);
+  });
+  $8.addEventListener("click", function() {
+    state.maybe__inst0 = 21;
+    __renderSlot1(__slotAnchor_1);
+    __renderSlot2(__slotAnchor_2);
+  });
+  $9.addEventListener("click", function() {
+    state.on__inst0 = !state.on__inst0;
+    __renderSlot3(__slotAnchor_3);
+  });
+  $11.addEventListener("click", function() {
+    state.n__inst1 = state.n__inst1 + 1;
+    __renderSlot4(__slotAnchor_4);
+  });
+  $13.addEventListener("click", function() {
+    state.a__inst0 = (state.a__inst0 + 1) % 2;
+    __renderSlot5(__slotAnchor_5);
+    __renderSlot6(__slotAnchor_6);
+  });
+  $15.addEventListener("click", function() {
+    state.on__inst1 = !state.on__inst1;
+    __renderSlot7(__slotAnchor_7);
+  });
+  $23.addEventListener("click", function() {
+    state.visible__inst1 = false;
+    __n5.open = state.visible__inst1;
+  });
+  function __sngl_init() {
+    $0.textContent = "picked: " + state.fruit__inst0;
+    $3.textContent = "n=" + String(state.n__inst0);
+    $4.textContent = "expr=" + String(doubled());
+    $5.textContent = "block=" + String(blocky());
+    __n5.open = state.visible__inst1;
+  }
+  __sngl_init();
+})();
+};
+window.__sngl_boot();
+</script>
+</body></html>
+-- run/none/html --
+pass sha256:d5b7f49aefefa8fda8e4ccfb0904455d
+-- testrun/html/none/component_browser_patches.sngl/app/1 --
+sha256:041cbbb1c388806814d18fe7c8eb503f
+{
+  "results": [
+    {
+      "Desc": "AnIfAtAWindowsRootFollowsItsState",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/component_browser_patches.sngl/callback/1 --
+sha256:a1f5ef4a46762a6c2c8b615e01a7d9c8
+{
+  "results": [
+    {
+      "Desc": "AWriteInsideACallbackIsPatched",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/component_browser_patches.sngl/carousel/1 --
+sha256:3dd2f8e0c75ed328de64c9e18f43f8e6
+{
+  "results": [
+    {
+      "Desc": "ACarouselShowsOneAtATime",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/component_browser_patches.sngl/computed/1 --
+sha256:96cb31163c6241a1f1d13772a051ab48
+{
+  "results": [
+    {
+      "Desc": "ComputedsRender",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/component_browser_patches.sngl/narrowed/1 --
+sha256:761c3b09088fe8f609064ce0870d81d1
+{
+  "results": [
+    {
+      "Desc": "ANarrowedOptionIsArithmetic",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/component_browser_patches.sngl/picker/1 --
+sha256:468f8fc3dbec0f02c1e23966e21eaaaa
+{
+  "results": [
+    {
+      "Desc": "ASelectChangeReachesTheSpan",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/component_browser_patches.sngl/slots/1 --
+sha256:194766604805a5b5c00ec08f4fbe9cac
+{
+  "results": [
+    {
+      "Desc": "ANamedSlotFollowsItsBranch",
+      "Passed": true
+    },
+    {
+      "Desc": "AScopedSlotIsHandedItsArgument",
+      "Passed": true
+    }
+  ]
+}

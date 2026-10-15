@@ -429,6 +429,9 @@ body { font-family: system-ui, sans-serif; }
 </div>
 
 <script>
+window.__snglErrors = [];
+addEventListener("error", (e) => window.__snglErrors.push(String(e.message)));
+addEventListener("unhandledrejection", (e) => window.__snglErrors.push(String(e.reason?.message ?? e.reason)));
 window.__sngl_markup = Array.from(document.body.childNodes)
   .filter((n) => n.nodeName !== "SCRIPT").map((n) => n.cloneNode(true));
 window.__sngl_reset = () => {
@@ -447,12 +450,12 @@ window.__sngl_boot = () => {
     window.__sngl_state = state;
   }
   function testScrollOffsetsMutate(t, c) {
-    t.assert(c.x === 0);
-    t.assert(c.y === 0);
+    t.assertTrue(c.x === 0, "(c.x === 0)");
+    t.assertTrue(c.y === 0, "(c.y === 0)");
     c.x = 12.5;
     c.y = 42;
-    t.assert(c.x === 12.5);
-    t.assert(c.y === 42);
+    t.assertTrue(c.x === 12.5, "(c.x === 12.5)");
+    t.assertTrue(c.y === 42, "(c.y === 42)");
   }
   if (typeof window !== "undefined") {
     Object.assign(window, { testScrollOffsetsMutate });
@@ -471,4 +474,14 @@ pass sha256:9c70b978d2b2a76d364fd4fcabd36841
 -- run/kotlin/android --
 pass sha256:c9f8500b87ca099648ae5918a799f940
 -- run/none/html --
-pass sha256:d466e232bafb518f96be7e895e9be543
+pass sha256:1c26fca4e97a7808b9e897e72719a49d
+-- testrun/html/none/component_scroll.sngl/main/1 --
+sha256:77b77107ad56398c57abcfd8c948944f
+{
+  "results": [
+    {
+      "Desc": "ScrollOffsetsMutate",
+      "Passed": true
+    }
+  ]
+}

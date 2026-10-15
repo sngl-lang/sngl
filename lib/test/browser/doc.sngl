@@ -1,0 +1,10 @@
+// What a page shows, read in the browser running it: for a test on html, and
+// on no other target.
+//
+// `sngl:test` is portable -- a test reads the state a component holds and
+// fires the events it declares, and every target answers the same. Whether
+// the page patched an element, what CSS a length became and what a canvas
+// painted are questions about the document, so a test asks them here, and a
+// fixture importing this package builds for html alone. Each function takes
+// the node a test reaches by its `#id`, `c.label` or one copy of a loop's,
+// `c.row[1]`.

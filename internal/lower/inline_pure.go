@@ -37,6 +37,7 @@ func lowerInlinePure(pkg *ir.Package, caps Features, opts Options) error {
 	st := &inlinePureState{
 		pkg:      pkg,
 		names:    namesOrOwn(opts.names),
+		splices:  opts.splices,
 		platform: opts.Platform,
 		inFlight: map[*ir.Component]bool{},
 		stack:    nil,
@@ -77,6 +78,9 @@ func lowerInlinePure(pkg *ir.Package, caps Features, opts Options) error {
 
 type inlinePureState struct {
 	pkg *ir.Package
+	// splices is where a splice a test may reach into is recorded, for
+	// passNoInlineComponents to repoint the test's selects through.
+	splices *[]splice
 	// platform is the target being lowered for, empty for a platform-agnostic
 	// caller (LSP, format), which leaves every library component abstract.
 	platform string
@@ -677,6 +681,7 @@ func (st *inlinePureState) substitute(comp *ir.Component, callsite *ir.NodeInst)
 		own = splicedBody(comp, typeArgs)
 	}
 	body := substituteVars(own, provided)
+	symRenames := map[ir.Symbol]ir.Symbol{}
 
 	// Hoist the callee's own vars onto the owner being walked, one copy per
 	// call site. isPure let them through because nothing rendered reads them,
@@ -687,7 +692,6 @@ func (st *inlinePureState) substitute(comp *ir.Component, callsite *ir.NodeInst)
 			return nil, fmt.Errorf("component %q declares state and there is no owner to hoist it onto at %s", comp.Name, compPos(comp))
 		}
 		renames := map[ir.Symbol]string{}
-		symRenames := map[ir.Symbol]ir.Symbol{}
 		start := len(*st.hoist)
 		for _, v := range comp.Vars {
 			if _, ok := provided[v]; ok {
@@ -744,8 +748,15 @@ func (st *inlinePureState) substitute(comp *ir.Component, callsite *ir.NodeInst)
 	// nil Handle to key on, so its refusal of a read that cannot say which
 	// copy it meant never fired for one, and a rename had nothing to repoint
 	// the reads through.
+	var before map[string]*ir.Var
+	if callsite.ID != "" && st.splices != nil && comp.PkgPath() == "" {
+		before = bodyNodes(body)
+	}
 	if callsite.ID != "" {
 		ir.AttachNodeID(body, callsite.ID, callsite.Handle)
+	}
+	if before != nil {
+		*st.splices = append(*st.splices, pureSplice(comp, callsite.Handle, symRenames, before, body))
 	}
 	// Where the program wrote it travels to the same node, for a platform's
 	// diagnostic about the primitive it became.

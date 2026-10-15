@@ -1,0 +1,64 @@
+# `sngl run` is sngl:language/go's gen.run, which every Go platform inherits:
+# the same binary `sngl build` writes, handed the command line after `--`. The
+# program prints "after" only where @run did not call run, which it decides
+# from that command line.
+#
+# testdata/platform_run_handler_runs.txtar runs the built binary itself.
+
+[!headless] skip 'needs the headless compositor go tool verify provides'
+
+sngl run --lang go --platform fyne app.sngl
+cmp stdout hidden.txt
+sngl run --lang go --platform fyne app.sngl -- --window x
+cmp stdout shown.txt
+
+-- hidden.txt --
+before 0
+after
+tick 0
+-- shown.txt --
+before 2
+tick 2
+-- app.sngl --
+import go "sngl:language/go"
+import time "sngl:time"
+import ui "sngl:ui"
+
+#[go.native("fmt", "fmt.Print")]
+func print(s string)
+
+#[go.native("os", "os.Exit")]
+func exit(code int)
+
+var n = 0
+
+output {
+    go {
+        gtk4(@run(args, run) {
+            start(args, run)
+        })
+        fyne(@run(args, run) {
+            start(args, run)
+        })
+    }
+}
+
+// Before `run` is before the loop; after it, after the loop has exited. A
+// write here is state the tree is built from, not an update to one.
+func start(args list[string], run func()) {
+    print("before {args.length}\n")
+    n = args.length
+    if args.contains("--window") {
+        run()
+    }
+    print("after\n")
+}
+
+time.timer(interval=100ms, @tick {
+    print("tick {n}\n")
+    exit(0)
+})
+
+ui.window {
+    ui.text(value="{n}")
+}

@@ -334,6 +334,9 @@ body { font-family: system-ui, sans-serif; }
 </div>
 
 <script>
+window.__snglErrors = [];
+addEventListener("error", (e) => window.__snglErrors.push(String(e.message)));
+addEventListener("unhandledrejection", (e) => window.__snglErrors.push(String(e.reason?.message ?? e.reason)));
 window.__sngl_markup = Array.from(document.body.childNodes)
   .filter((n) => n.nodeName !== "SCRIPT").map((n) => n.cloneNode(true));
 window.__sngl_reset = () => {
@@ -352,11 +355,11 @@ window.__sngl_boot = () => {
     window.__sngl_state = state;
   }
   function testDrawerOpenToggles(t, c) {
-    t.assert(c.open === false);
+    t.assertTrue(c.open === false, "(c.open === false)");
     c.open = true;
-    t.assert(c.open === true);
+    t.assertTrue(c.open === true, "(c.open === true)");
     c.open = false;
-    t.assert(c.open === false);
+    t.assertTrue(c.open === false, "(c.open === false)");
   }
   if (typeof window !== "undefined") {
     Object.assign(window, { testDrawerOpenToggles });
@@ -379,4 +382,14 @@ pass sha256:89810bf54a0d7197804a92b1c8885fed
 -- run/kotlin/android --
 pass sha256:d4d82ef97adf6753b81c8f114c749a59
 -- run/none/html --
-pass sha256:5d12b5123d3941cece2a7a4d33b879b2
+pass sha256:d782cf14491ef67e33ba2d406452b078
+-- testrun/html/none/component_drawer.sngl/main/1 --
+sha256:60c73b2a239471ac5d8b3c537950387a
+{
+  "results": [
+    {
+      "Desc": "DrawerOpenToggles",
+      "Passed": true
+    }
+  ]
+}

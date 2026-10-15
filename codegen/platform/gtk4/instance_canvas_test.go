@@ -44,7 +44,6 @@ window {
 // `canvas` fell through to the GIR widget lookup and the build failed with
 // `component "canvas" has no gtk4 implementation`.
 func TestInstanceCanvasEmitsDrawingArea(t *testing.T) {
-	skipWithoutGIR(t)
 	files := generateGTK4FilesBuilt(t, instanceCanvasSrc)
 	model := files["model.go"]
 

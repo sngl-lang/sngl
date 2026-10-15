@@ -108,8 +108,13 @@ func (g *Generator) Generate(req *codegen.Request, sink codegen.Sink) error {
 }
 
 // testBootOpen and testBootClose make a test page's program re-runnable, so
-// each test starts from a freshly mounted page.
-const testBootOpen = `window.__sngl_markup = Array.from(document.body.childNodes)
+// each test starts from a freshly mounted page. Whatever the page raises outside a
+// test body -- while it loads, or later from a timer -- is kept for the test
+// module to fail on, since nothing else would see it.
+const testBootOpen = `window.__snglErrors = [];
+addEventListener("error", (e) => window.__snglErrors.push(String(e.message)));
+addEventListener("unhandledrejection", (e) => window.__snglErrors.push(String(e.reason?.message ?? e.reason)));
+window.__sngl_markup = Array.from(document.body.childNodes)
   .filter((n) => n.nodeName !== "SCRIPT").map((n) => n.cloneNode(true));
 window.__sngl_reset = () => {
   for (const n of Array.from(document.body.childNodes)) {
@@ -3663,9 +3668,10 @@ func (g *htmlGen) emitEventInvokers(b *strings.Builder) {
 		fmt.Fprintf(b, "state.%s = (i, p) => { const el = %s; Object.assign(el, p); el.dispatchEvent(Object.assign(new Event(%q), p)); };\n", codegen.InvokerAt(name), nth, h.event)
 	}
 	// A node a test null-tests is rendered while an element carries its mark,
-	// which goes with the element when a render slot takes it out.
+	// which goes with the element when a render slot takes it out; an instance
+	// is while the root it renders does.
 	for _, id := range slices.Sorted(maps.Keys(codegen.NullTestedRefs(g.pkg))) {
-		fmt.Fprintf(b, "state.%s = () => document.querySelector('[data-sngl-id=%q]') !== null;\n", codegen.PresenceMethod(id), id)
+		fmt.Fprintf(b, "state.%s = () => document.querySelector('[data-sngl-id=%q], [%s=%q]') !== null;\n", codegen.PresenceMethod(id), id, instanceMark, id)
 	}
 }
 

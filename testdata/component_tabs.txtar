@@ -984,6 +984,9 @@ body { font-family: system-ui, sans-serif; }
 </div>
 
 <script>
+window.__snglErrors = [];
+addEventListener("error", (e) => window.__snglErrors.push(String(e.message)));
+addEventListener("unhandledrejection", (e) => window.__snglErrors.push(String(e.reason?.message ?? e.reason)));
 window.__sngl_markup = Array.from(document.body.childNodes)
   .filter((n) => n.nodeName !== "SCRIPT").map((n) => n.cloneNode(true));
 window.__sngl_reset = () => {
@@ -1002,11 +1005,11 @@ window.__sngl_boot = () => {
     window.__sngl_state = state;
   }
   function testTabsSelectedMutates(t, c) {
-    t.assert(c.idx === 0);
+    t.assertTrue(c.idx === 0, "(c.idx === 0)");
     c.idx = 2;
-    t.assert(c.idx === 2);
+    t.assertTrue(c.idx === 2, "(c.idx === 2)");
     c.idx = 1;
-    t.assert(c.idx === 1);
+    t.assertTrue(c.idx === 1, "(c.idx === 1)");
   }
   if (typeof window !== "undefined") {
     Object.assign(window, { testTabsSelectedMutates });
@@ -1222,4 +1225,14 @@ pass sha256:c95d7782724c207421aa70000189cfe3
 -- run/kotlin/android --
 pass sha256:225a36a54547a35ba9dcf3b85ffb4903
 -- run/none/html --
-pass sha256:5462306a55a5206695fca38b35d8914c
+pass sha256:af69d0794e903b7fd840f74f7e92d625
+-- testrun/html/none/component_tabs.sngl/main/1 --
+sha256:096a27d532886a1ef402745f036034f8
+{
+  "results": [
+    {
+      "Desc": "TabsSelectedMutates",
+      "Passed": true
+    }
+  ]
+}

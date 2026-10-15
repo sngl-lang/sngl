@@ -6,7 +6,7 @@ import marks "sngl:internal/marks"
 // Most name a lowering pass that does *not* run when the target claims it, and
 // the list is closed: a capability nothing reads is a word with no consequence.
 //
-// Six are read somewhere other than a pass gate, and are here because a target
+// Eight are read somewhere other than a pass gate, and are here because a target
 // still has to be able to say them. `viewStatements` is the build's: withheld, it
 // unrolls the target's view loops after lowering, one window at a time.
 // `instanceState` is the inliner's: withheld, a component with state of its own
@@ -15,13 +15,14 @@ import marks "sngl:internal/marks"
 // inliner's too: withheld, a generic component built at run time is copied
 // per instantiation, at the types its call site bound, rather than emitted
 // once with its type parameters erased.
-// `insertBefore`, `inlineSlots`, `asyncPost` and `asyncSpawn` are grants rather
-// than withdrawals -- the platform's container can place a child, a span can
-// hold a render slot, the platform can reach its drawing thread, the language
-// can spawn -- and a pass reads each to choose what to emit rather than whether
+// `insertBefore`, `inlineSlots`, `asyncPost`, `asyncSpawn` and `runtimeReach` are
+// grants rather than withdrawals -- the platform's container can place a child,
+// a span can hold a render slot, the platform can reach its drawing thread, the
+// language can spawn, a test can find a node a component built at run time
+// rendered -- and a pass reads each to choose what to emit rather than whether
 // to run.
 //
-enum Capability { toggle, ternary, lambda, ref, unitType, enumType, asyncReactive, asyncCalls, computed, listLambdas, reactivity, declarative, inlineComponents, implicitRecv, structSpread, viewStatements, instanceState, insertBefore, inlineSlots, asyncPost, asyncSpawn, effects, navigation, genericFuncs, genericComponents }
+enum Capability { toggle, ternary, lambda, ref, unitType, enumType, asyncReactive, asyncCalls, computed, listLambdas, reactivity, declarative, inlineComponents, implicitRecv, structSpread, viewStatements, instanceState, insertBefore, inlineSlots, asyncPost, asyncSpawn, effects, navigation, genericFuncs, genericComponents, runtimeReach }
 
 // What a *primitive* can do with the nodes it renders, as against what a
 // target can do with the language. Written on an `#[intrinsic]` component
