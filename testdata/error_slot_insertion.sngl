@@ -154,5 +154,23 @@ component shown(on bool, tip option[component], rows list[component]) node {
     rows {}
 }
 
+// A rest slot says how often it is inserted outside the `...`.
+component optionalRest(on bool, children option[...component]) node {
+    if on {
+        children
+    }
+}
+
+component repeatedRest(children list[...component]) node {
+    for var i = [1, 2] {
+        children
+    }
+}
+
+component optionalRestTwice(children option[...component]) node {
+    children
+    children // ERROR(check) "rest slot \"children\" is inserted more than once"
+}
+
 window {
 }

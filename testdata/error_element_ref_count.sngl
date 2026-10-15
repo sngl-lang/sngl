@@ -39,5 +39,22 @@ func testChildInstance(t Test, c once) {
     var xs list[child] = c.kid // ERROR(check) "cannot initialize list[child] with child"
 }
 
+// Children handed to a rest slot declared `option[...]` may not render.
+component foldable(open bool, children option[...component]) node {
+    if open {
+        children
+    }
+}
+
+component folded node {
+    foldable(open=false) {
+        text #inside(value="in")
+    }
+}
+
+func testOptionalRestChildren(t Test, c folded) {
+    var one text = c.inside // ERROR(check) "cannot initialize text with option[text]"
+}
+
 window {
 }
