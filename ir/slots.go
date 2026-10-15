@@ -72,6 +72,29 @@ func (sp SlotSplicer) answerEmpty(stmts []Stmt, callsite *NodeInst) {
 	})
 }
 
+// answerEntryEmpty is answerEmpty for the entries of ins: a population that
+// forwards one of them into a slot asked `.empty` asks about the entry
+// (RendersNothing), which is answered by what ins populated it with. That
+// content was written beside ins, so a slot of callsite's it forwards in turn
+// answers to callsite.
+func (sp SlotSplicer) answerEntryEmpty(stmts []Stmt, ins *SlotInst, callsite *NodeInst) {
+	_ = RewriteExprs(stmts, func(e Expr) (Expr, error) {
+		se, ok := e.(*SlotEmpty)
+		if !ok || !slices.Contains(ins.Decl.Slots, se.Slot) {
+			return e, nil
+		}
+		content := ins.Slots[se.Slot.Name]
+		if content == nil {
+			return boolLit(true), nil
+		}
+		answer, ok := RendersNothing(sp.Clone(content.Body))
+		if !ok {
+			return boolLit(false), nil
+		}
+		return sp.AnswerEmptyIn(answer, callsite), nil
+	})
+}
+
 func (sp SlotSplicer) substitute(stmts []Stmt, callsite *NodeInst) []Stmt {
 	out := make([]Stmt, 0, len(stmts))
 	for _, s := range stmts {
@@ -124,40 +147,54 @@ func (sp SlotSplicer) body(si *SlotInst, callsite *NodeInst) []Stmt {
 	case si.Decl == nil || len(si.Decl.Slots) == 0:
 		out = sp.Bind(sp.Clone(stmts), sc, si)
 	default:
-		out = sp.entries(sp.Bind(sp.Clone(stmts), sc, si), si, callsite)
+		out = sp.Bind(sp.Clone(stmts), sc, si)
+		sp.answerEntryEmpty(out, si, callsite)
+		out = sp.entries(out, si, callsite)
 	}
 	if len(si.Children) == 0 {
 		return out
 	}
-	return WithFallback(out, fallback)
+	return sp.withFallback(out, fallback)
 }
 
-// WithFallback is content with an insertion's fallback standing wherever the
-// content renders nothing: in place of no content, in a branch of an `if` that
-// holds none, and as the fallback of a slot the content only forwards, which
-// renders nothing when what was supplied for that slot does. Looked for
-// through those three alone: a `for` that runs no times, or a component that
-// renders nothing, still renders the content.
-func WithFallback(stmts []Stmt, fallback func() []Stmt) []Stmt {
+// withFallback is content with an insertion's fallback standing wherever the
+// content renders nothing -- the same answer `.empty` gives (RendersNothing),
+// so a slot shows its fallback exactly where asking it says it is empty. In
+// place of no content, in a branch of an `if` that holds none, and as the
+// fallback of a slot the content only forwards, the fallback is put where the
+// answer is decided; anywhere else it follows the content, under an `if` on
+// the answer. Content whose answer turns on what one copy of a loop renders
+// has none to state, and gets no fallback.
+func (sp SlotSplicer) withFallback(stmts []Stmt, fallback func() []Stmt) []Stmt {
 	if len(stmts) == 0 {
 		return fallback()
 	}
-	if len(stmts) != 1 {
+	if len(stmts) == 1 {
+		switch n := stmts[0].(type) {
+		case *If:
+			if n.Catch == nil && !n.FromTernary {
+				n.Body = sp.withFallback(n.Body, fallback)
+				n.Else = sp.withFallback(n.Else, fallback)
+				return stmts
+			}
+		case *SlotInst:
+			if n.Entry == nil && len(n.Children) == 0 {
+				n.Children = fallback()
+				return stmts
+			}
+		}
+	}
+	empty, ok := RendersNothing(sp.Clone(stmts))
+	if !ok {
 		return stmts
 	}
-	switch n := stmts[0].(type) {
-	case *If:
-		if n.Catch != nil || n.FromTernary {
+	if lit, isLit := empty.(*Literal); isLit {
+		if lit.Value == "false" {
 			return stmts
 		}
-		n.Body = WithFallback(n.Body, fallback)
-		n.Else = WithFallback(n.Else, fallback)
-	case *SlotInst:
-		if n.Entry == nil && len(n.Children) == 0 {
-			n.Children = fallback()
-		}
+		return append(stmts, fallback()...)
 	}
-	return stmts
+	return append(stmts, &If{Cond: empty, Body: fallback()})
 }
 
 // entries replaces, in a population spliced for ins, every insertion of one of
@@ -325,8 +362,16 @@ func RendersNothing(stmts []Stmt) (e Expr, ok bool) {
 
 func stmtRendersNothing(s Stmt) (Expr, bool) {
 	switch n := s.(type) {
-	case *NodeInst, *CallStmt:
-		// A node, or a component written as a call.
+	case *NodeInst:
+		// A node renders, unless it is one that takes the family it is
+		// placed in and is handed nothing to render: an effect or a timer is
+		// a lifetime, not a node of the tree.
+		if IsFamilyGenericNode(n) && len(n.Children) == 0 && len(n.Slots) == 0 {
+			return boolLit(true), true
+		}
+		return boolLit(false), true
+	case *CallStmt:
+		// A component written as a call.
 		return boolLit(false), true
 	case *If:
 		if n.Catch != nil {

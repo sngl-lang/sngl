@@ -460,6 +460,10 @@ type Env struct {
 	// needs: the handlers a call site supplied are written there, and the scope
 	// one runs in is this env's parent.
 	inst *ir.NodeInst
+	// entries is the insertions whose populations were being mounted where
+	// inst was, innermost last: what a forwarded component entry's `.empty`
+	// is answered from (slotEmpty).
+	entries []entryFrame
 	// origin is the scope this one is a Snapshot of, or nil.
 	origin *Env
 	// ended says this is the snapshot a lambda call ran in, and the call has
@@ -637,6 +641,7 @@ func (env *Env) Snapshot() *Env {
 		// *caller's* instantiation instead, asked it for a subscriber to an
 		// event it does not declare, and went nowhere.
 		inst:       env.inst,
+		entries:    env.entries,
 		origin:     env,
 		spreadVals: env.spreadVals,
 		handling:   env.handling,
@@ -3169,28 +3174,53 @@ func elemType(t *ir.Type) *ir.Type {
 }
 
 // slotEmpty answers `src.empty` in a component's body: whether what the call
-// site the nearest component scope was entered through supplied for the slot
-// renders nothing, asked of that content in the caller's scope -- the answer
-// the splicer writes in for a compiled target (ir.RendersNothing), evaluated
-// rather than spliced.
+// site of the component declaring the slot supplied for it renders nothing,
+// asked of that content in the caller's scope -- the answer the splicer writes
+// in for a compiled target (ir.RendersNothing), evaluated rather than spliced.
+// The slot is matched by declaration, as the splicer matches it: the nearest
+// instance may be another component's, one the content was forwarded into. A
+// component entry is answered by the insertion whose population forwarded it,
+// which is one of the entry frames current where the asking instance was
+// mounted.
 func (env *Env) slotEmpty(x *ir.SlotEmpty) (any, error) {
 	for e := env; e != nil; e = e.parent {
-		if e.inst == nil {
-			continue
+		if e.inst != nil && e.inst.Component != nil && slices.Contains(e.inst.Component.Slots, x.Slot) {
+			body, _, supplied := ir.SlotBody(&ir.SlotInst{Name: x.Slot.Name, Rest: x.Slot.Rest}, e.inst)
+			if !supplied {
+				return true, nil
+			}
+			caller := e.parent
+			if caller == nil {
+				caller = e
+			}
+			return caller.answerEmpty(x, body, e.entries)
 		}
-		body, _, supplied := ir.SlotBody(&ir.SlotInst{Name: x.Slot.Name, Rest: x.Slot.Rest}, e.inst)
-		if !supplied {
-			return true, nil
+		for _, f := range slices.Backward(e.entries) {
+			if f.ins.Decl == nil || !slices.Contains(f.ins.Decl.Slots, x.Slot) {
+				continue
+			}
+			content := f.ins.Slots[x.Slot.Name]
+			if content == nil {
+				return true, nil
+			}
+			return f.env.answerEmpty(x, content.Body, f.env.entries)
 		}
-		answer, ok := ir.RendersNothing(body)
-		if !ok {
-			return nil, fmt.Errorf("%s.%s: what the call site supplied cannot say whether it renders anything", x.Slot.Name, ir.SlotEmptyMember)
-		}
-		caller := e.parent
-		if caller == nil {
-			caller = e
-		}
-		return caller.Eval(answer)
 	}
 	return true, nil
+}
+
+// answerEmpty evaluates in env whether body renders nothing. A forward of a
+// component entry in it is answered from entries, the frames current where
+// body was handed on, which env -- the scope body was written in -- need not
+// hold.
+func (env *Env) answerEmpty(x *ir.SlotEmpty, body []ir.Stmt, entries []entryFrame) (any, error) {
+	answer, ok := ir.RendersNothing(body)
+	if !ok {
+		return nil, fmt.Errorf("%s.%s: what the call site supplied cannot say whether it renders anything", x.Slot.Name, ir.SlotEmptyMember)
+	}
+	if len(entries) > 0 {
+		env = env.Snapshot()
+		env.entries = entries
+	}
+	return env.Eval(answer)
 }

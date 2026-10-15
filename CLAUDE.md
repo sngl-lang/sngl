@@ -2190,10 +2190,16 @@ entry would be filled by exactly the block that is already the fallback.
 
 **A fallback renders wherever the supplied content renders nothing**
 (Jonathan's call), not only where none was supplied: the branch of an `if`
-that holds none, and a forward of a slot its own caller left empty.
-The splicer states it statically (`ir.WithFallback`: an empty list, an `if`'s
-branches, a forward's own fallback) and the interpreter at mount
-(`slotInst`, which mounts the fallback when the content mounted no node).
+that holds none, a forward of a slot its own caller left empty, two `if`s
+both false, a loop over nothing, content holding only an effect. It is the
+answer `.empty` gives (below), so the two never disagree: the splicer puts
+the fallback where the answer is decided -- in place of no content, in an
+`if`'s empty branch, as a forward's own fallback -- and anywhere else after
+the content under an `if` on `ir.RendersNothing`
+(`SlotSplicer.withFallback`). The interpreter decides at mount (`slotInst`,
+which mounts the fallback when the content mounted no node). An effect or a
+timer -- a node of no family handed nothing -- renders nothing in both
+(`testdata/slot_empty_agrees_with_fallback.sngl`).
 
 **A fallback is held to the family of the slot it falls back for**, not to the
 position's (`checkFamilyMembership`'s `SlotInst` arm): it stands where the
@@ -2211,14 +2217,28 @@ matched to its slot by declaration rather than name, since a caller's own
 `.empty` may arrive in a prop argument: none at all is true, a node false, an `if` its
 condition, a counted or measurable `for` its emptiness test (or, where its body
 renders nothing, the else's answer when it runs no copy), and a forward
-the forwarded slot's own `.empty`, answered at the next splice. So it is as
-reactive as the content -- under `if shown` it is `!shown`. A component built
-at run time is handed it as a prop (`passSlotEmptyProps`), and the
-interpreter asks the content it mounted (`Env.slotEmpty`). A scoped slot is
-refused, since what its content renders may turn on the arguments an
+the forwarded slot's own `.empty`, answered at the next splice. A forward
+of a component entry is answered by what the insertion whose population
+forwarded it populated the entry with (`answerEntryEmpty`, where the
+population is spliced), and a slot that content forwards by the call site
+of the component that wrote it. So it is as reactive as the content -- under
+`if shown` it is `!shown`. A component built at run time is handed it as a
+prop (`passSlotEmptyProps`, keyed by declaration); a forwarded entry whose
+populating component is built at run time has no splice to answer it and is
+refused with a position. The interpreter asks the content it mounted
+(`Env.slotEmpty`), finding the slot's owner by declaration and an entry
+through the entry frames current where the asking instance mounted. A test
+reading a prop that asks (`c.card.label.value`) is answered the same way
+from the call site it reaches the instance through (`answerTestEmpty`).
+It is asked only in the view, where there is content to ask about. A scoped
+slot is refused, since what its content renders may turn on the arguments an
 insertion hands it, and so is content whose answer turns on what one copy of
-a loop renders (`checkSlotEmptyAnswers`, at the call site;
-`slot_empty.sngl`, `error_slot_empty.sngl`).
+a loop renders (`checkSlotEmptyAnswers`, at the call site). That holds
+however the question reaches the content: from the declaration's body or
+any override's, through a recursion (`slotsAskedEmpty`, a fixed point over
+what a component reaches), and through an entry a population forwards
+(`slot_empty.sngl`, `slot_empty_entry.sngl`, `error_slot_empty.sngl`,
+`error_slot_empty_reach.sngl`, `cmd/sngl/testdata/slot_empty_runs.txt`).
 The fallback is spliced against the callee's call site, which it always
 should have been: a slot insertion inside a fallback used to be left
 unsubstituted. `testdata/slot_fallback_where_content_renders_nothing.sngl`.
