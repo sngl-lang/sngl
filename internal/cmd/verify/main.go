@@ -28,8 +28,7 @@
 // route -- a Gradle project built and run per fixture. There the gating is a
 // flag on the command, `--skip-platform`, since a CLI has no -short.
 //
-// -only lint runs steps 1-6 and -only test steps 7-8, so CI can run the two
-// halves as jobs of their own, each keeping its own build cache.
+// -only lint runs steps 1-6 and -only test steps 7-8.
 //
 // Usage: go tool verify [-v] [-dry] [-full] [-only lint|test]
 package main
@@ -115,7 +114,7 @@ func main() {
 	// gtk4 presents real GtkWindows via cgo; the test steps run inside cage's
 	// wlroots headless backend so they render without a desktop and never
 	// reach the user's. Fyne uses its offscreen driver and needs no display.
-	if headless.Compositor() == "" {
+	if headless.Compositor() == "" && *only != "lint" {
 		log.Printf("note: cage not found; gtk4 GUI tests will skip. Install it (pacman -S cage) to run them headlessly.")
 	}
 

@@ -112,26 +112,18 @@ build-image:
       --compressed-caching=false
       --snapshot-mode=redo
 
-# A Go job's build cache, kept between its pipelines.
-#
-# Compiling is about half of what the Go jobs cost: of !239's 9m15 test job,
-# ~3m was building the test binaries and 89s was `go fix -diff` type-checking
-# the module, all cold. A cache holding only the third-party closure, which
-# this used to be, left every package of this repository to compile from
-# scratch on every pipeline. Measured locally against a cache from the
-# previous commit, one function body changed in internal/lower: building every
-# test binary 378 -> 186 CPU-s, `go fix -diff` 294 -> 105.
+# A Go job's build cache, kept whole between its pipelines: one holding only
+# the third-party closure left this repository to compile cold every time.
 #
 # One key per job, not per branch: unprotected branches share theirs, which a
 # stack of branches over one base mostly hits, and GitLab keeps the protected
-# main's apart. pull-push and `when: always`, so a red pipeline's compile is
-# still kept.
+# main's apart.
 #
 # The after_script keeps what this job used and nothing else. Go refreshes an
 # entry's mtime when it reads one older than an hour, so an entry older than
-# two hours at the end of the job was not read by it. Without that the cache
-# gains every commit's objects until Go's own five-day trim, a size nothing
-# bounds.
+# two hours at the end of the job was not read by it -- which holds while a
+# job runs under an hour. Without it the cache gains every commit's objects
+# until Go's own five-day trim.
 #
 # Not baked into the CI image: kaniko holds a filesystem snapshot while the
 # RUN executes, and one package (typescript-go/internal/ast) compiles in a
