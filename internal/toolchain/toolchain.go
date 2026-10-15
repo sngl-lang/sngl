@@ -284,6 +284,9 @@ func Exec(ctx context.Context, files map[string][]byte, lang, platform string, r
 	for _, r := range runs {
 		rctx, cancel := context.WithTimeout(ctx, runTimeout)
 		cmd := exec.CommandContext(rctx, program, r.Args...)
+		// A helper the program started -- a D-Bus session bus -- can hold its
+		// stderr open after it is killed, and Wait would wait for it.
+		cmd.WaitDelay = 5 * time.Second
 		cmd.Dir = bin
 		cmd.Env = os.Environ()
 		if r.Wayland {
