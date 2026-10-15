@@ -94,7 +94,8 @@ func keyEffectsByCopy(at string, body []ir.Stmt, cells map[*ir.Var]ir.Expr, keye
 			}
 			param := &ir.Param{Name: "__copy", Type: ir.TypString}
 			h.Func.Params = []*ir.Param{param}
-			block := rewriteCells(h.Func.Block, cells, keyed, temps, func() ir.Expr { return paramIdent(param) })
+			block := rewriteCells(h.Func.Block, cells, keyed, temps, func() ir.Expr { return CopyKey(loops) })
+			block = keyPartsFrom(block, loops, param)
 			fn := h.Func
 			fn.Block = nil
 			held = append(held, func() { fn.Block = block })
@@ -105,6 +106,48 @@ func keyEffectsByCopy(at string, body []ir.Stmt, cells map[*ir.Var]ir.Expr, keye
 		restore()
 	}
 	return restore, err
+}
+
+// keyPartsFrom reads each loop index a copy key is built from out of param,
+// which holds the whole key (CopyKey): `string(__copy0)` is its first part.
+// That covers every key a splice wrote into the handlers, an enclosing
+// component's included -- a handler its call site wrote reads that
+// component's cells by the loops around it, which are the outer of these.
+// An index read any other way is the program's, and passEffect says where.
+func keyPartsFrom(block []ir.Stmt, loops []*ir.For, param *ir.Param) []ir.Stmt {
+	part := map[*ir.LoopVar]int{}
+	for k, fs := range loops {
+		part[loopIndex(fs, k)] = k
+	}
+	_ = ir.Rewrite(block, func(nd ir.Node) (ir.Node, error) {
+		c, ok := nd.(*ir.Conversion)
+		if !ok || c.Type.Kind != ir.TypeString {
+			return nd, nil
+		}
+		id, ok := c.Operand.(*ir.Ident)
+		if !ok {
+			return nd, nil
+		}
+		lv, ok := id.Sym.(*ir.LoopVar)
+		if !ok {
+			return nd, nil
+		}
+		k, ok := part[lv]
+		if !ok {
+			return nd, nil
+		}
+		if len(loops) == 1 {
+			return paramIdent(param), nil
+		}
+		parts := ir.ListOf(ir.TypString)
+		split := &ir.Call{
+			Type: parts,
+			Func: ir.IntrinsicMethod("split", "string.split", ir.TypString, parts),
+			Args: []ir.CallArg{{Value: paramIdent(param)}, {Value: stringLit("/")}},
+		}
+		return &ir.Index{Type: ir.TypString, Operand: split, Idx: intLiteralLit(k)}, nil
+	})
+	return block
 }
 
 // handlersTouchCells reports whether any of n's handlers reads or writes a
