@@ -1714,8 +1714,8 @@ func renderFuncName(slotID string) string {
 // synthesizeRenderSlotFunc generates the __renderSlotN(parent) Func, parent
 // typed as the container its call site hands it.
 // origBody/origElse are the original If.Body/Else or For.Body/Else.
-// Exactly one of (cond) or (iter) should be non-nil.
-func (st *reactivityState) synthesizeRenderSlotFunc(slotID string, cond ir.Expr, iter ir.Expr, key, value string, origBody, origElse []ir.Stmt) *ir.Func {
+// Exactly one of (cond) or (loop) should be non-nil.
+func (st *reactivityState) synthesizeRenderSlotFunc(slotID string, cond ir.Expr, loop *ir.For, origBody, origElse []ir.Stmt) *ir.Func {
 	parentParam := &ir.Param{Name: "parent", Type: st.slotParentType(slotID)}
 	parentRef := func() *ir.Ident {
 		return &ir.Ident{Name: parentParam.Name, Type: parentParam.Type, Sym: parentParam, IsElementRef: true}
@@ -1769,7 +1769,7 @@ func (st *reactivityState) synthesizeRenderSlotFunc(slotID string, cond ir.Expr,
 	placement := st.newSlotPlacement(slotID, st.synthesizeSlotVar(slotID), parentRef())
 	st.placement = placement
 	restore := st.slotDeclSt.within(hostedBy(parentParam.Type))
-	body := st.renderSlotBody(st.slotDeclSt, parentParam, slotID, cond, iter, key, value, origBody, origElse)
+	body := st.renderSlotBody(st.slotDeclSt, parentParam, slotID, cond, loop, origBody, origElse)
 	restore()
 	st.placement = nil
 	// Propagate the slot's advanced counter back so subsequent
@@ -1793,7 +1793,7 @@ func (st *reactivityState) synthesizeRenderSlotFunc(slotID string, cond ir.Expr,
 // renderSlotBody emits the cond/iter-gated create+append sequence for the
 // slot's children, with each created top-level NodeInst's ref pushed onto
 // __slotN via ListPush.
-func (st *reactivityState) renderSlotBody(declSt *declarativeState, parentParam *ir.Param, slotID string, cond, iter ir.Expr, key, value string, origBody, origElse []ir.Stmt) []ir.Stmt {
+func (st *reactivityState) renderSlotBody(declSt *declarativeState, parentParam *ir.Param, slotID string, cond ir.Expr, loop *ir.For, origBody, origElse []ir.Stmt) []ir.Stmt {
 	listPushFn := ir.IntrinsicMethod("push", "list.push", st.synthesizeSlotVar(slotID).Type, nil)
 	// A call, not an assignment to the slot. push mutates its receiver and
 	// returns nothing, so `__slotN = list.push(__slotN, n)` says the append
@@ -1918,12 +1918,18 @@ func (st *reactivityState) renderSlotBody(declSt *declarativeState, parentParam 
 		return out
 	}
 	var structure []ir.Stmt
-	if iter != nil {
+	if loop != nil {
+		// The loop's own symbols, which its body's reads resolve to and what
+		// a later pass renames it by (passReservedNames).
 		structure = []ir.Stmt{&ir.For{
-			Key:   key,
-			Value: value,
-			Iter:  iter,
-			Body:  emitStmts(origBody),
+			Key:      loop.Key,
+			Value:    loop.Value,
+			KeySym:   loop.KeySym,
+			ValueSym: loop.ValueSym,
+			Iter:     loop.Iter,
+			ElemType: loop.ElemType,
+			AST:      loop.AST,
+			Body:     emitStmts(origBody),
 		}}
 	} else {
 		ifStmt := &ir.If{Cond: cond, Body: emitStmts(origBody)}
@@ -1981,14 +1987,14 @@ func (st *reactivityState) buildRenderSlotFor(slotID string, stmts []ir.Stmt) *i
 			switch n := s.(type) {
 			case *ir.If:
 				if n.LoweredSlotID == slotID {
-					fn = st.synthesizeRenderSlotFunc(slotID, n.Cond, nil, "", "", n.Body, n.Else)
+					fn = st.synthesizeRenderSlotFunc(slotID, n.Cond, nil, n.Body, n.Else)
 					return
 				}
 				walk(n.Body)
 				walk(n.Else)
 			case *ir.For:
 				if n.LoweredSlotID == slotID {
-					fn = st.synthesizeRenderSlotFunc(slotID, nil, n.Iter, n.Key, n.Value, n.Body, n.Else)
+					fn = st.synthesizeRenderSlotFunc(slotID, nil, n, n.Body, n.Else)
 					return
 				}
 				walk(n.Body)
