@@ -28,7 +28,10 @@
 // route -- a Gradle project built and run per fixture. There the gating is a
 // flag on the command, `--skip-platform`, since a CLI has no -short.
 //
-// Usage: go tool verify [-v] [-dry] [-full]
+// -only lint runs steps 1-6 and -only test steps 7-8, so CI can run the two
+// halves as jobs of their own, each keeping its own build cache.
+//
+// Usage: go tool verify [-v] [-dry] [-full] [-only lint|test]
 package main
 
 import (
@@ -104,6 +107,7 @@ func main() {
 	verbose := flag.Bool("v", false, "pass -v to go test")
 	dry := flag.Bool("dry", false, "skip file-mutating steps")
 	full := flag.Bool("full", false, "run the slow/heavy tests too (android fixtures, Robolectric, the android sngl-test matrix); default skips them")
+	only := flag.String("only", "", "run only the `lint` steps (1-6) or the `test` steps (7-8); both when empty")
 	flag.Parse()
 
 	log.SetFlags(0)
@@ -115,65 +119,16 @@ func main() {
 		log.Printf("note: cage not found; gtk4 GUI tests will skip. Install it (pacman -S cage) to run them headlessly.")
 	}
 
-	// Step 1: go generate (skip in dry mode)
-	if !*dry {
-		if !runStep("generate", "go", "generate", "./...") {
-			exit(1)
-		}
+	switch *only {
+	case "", "lint", "test":
+	default:
+		log.Fatalf("-only %q: want lint or test", *only)
 	}
-
-	// Step 2: go mod tidy
-	if *dry {
-		if !runCheckStep("mod-tidy", "go", "mod", "tidy", "-diff") {
-			exit(1)
-		}
-	} else {
-		if !runStep("mod-tidy", "go", "mod", "tidy") {
-			exit(1)
-		}
+	if *only != "test" {
+		lint(*dry)
 	}
-
-	// Step 3: go fmt
-	if *dry {
-		if !runCheckStep("fmt", "gofmt", "-l", ".") {
-			exit(1)
-		}
-	} else {
-		if !runStep("fmt", "go", "fmt", "./...") {
-			exit(1)
-		}
-	}
-
-	// Step 4: mdox fmt for markdown files
-	mdFiles, err := findMarkdownFiles(".")
-	if err != nil {
-		log.Fatalf("scan markdown: %v", err)
-	}
-	if len(mdFiles) > 0 {
-		mdArgs := []string{"tool", "mdox", "fmt", "--soft-wraps"}
-		if *dry {
-			mdArgs = append(mdArgs, "--check")
-		}
-		mdArgs = append(mdArgs, mdFiles...)
-		if !runStep("mdox-fmt", "go", mdArgs...) {
-			exit(1)
-		}
-	}
-
-	// Step 5: go fix
-	if *dry {
-		if !runCheckStep("fix", "go", "fix", "-diff", "./...") {
-			exit(1)
-		}
-	} else {
-		if !runStep("fix", "go", "fix", "./...") {
-			exit(1)
-		}
-	}
-
-	// Step 6: go vet
-	if !runStep("vet", "go", "vet", "./...") {
-		exit(1)
+	if *only == "lint" {
+		exit(0)
 	}
 
 	// Step 7: go test with coverage
@@ -518,4 +473,68 @@ func shortPkg(full string) string {
 		return s
 	}
 	return full
+}
+
+// lint is steps 1-6: what checks the source rather than running it.
+func lint(dry bool) {
+	// Step 1: go generate (skip in dry mode)
+	if !dry {
+		if !runStep("generate", "go", "generate", "./...") {
+			exit(1)
+		}
+	}
+
+	// Step 2: go mod tidy
+	if dry {
+		if !runCheckStep("mod-tidy", "go", "mod", "tidy", "-diff") {
+			exit(1)
+		}
+	} else {
+		if !runStep("mod-tidy", "go", "mod", "tidy") {
+			exit(1)
+		}
+	}
+
+	// Step 3: go fmt
+	if dry {
+		if !runCheckStep("fmt", "gofmt", "-l", ".") {
+			exit(1)
+		}
+	} else {
+		if !runStep("fmt", "go", "fmt", "./...") {
+			exit(1)
+		}
+	}
+
+	// Step 4: mdox fmt for markdown files
+	mdFiles, err := findMarkdownFiles(".")
+	if err != nil {
+		log.Fatalf("scan markdown: %v", err)
+	}
+	if len(mdFiles) > 0 {
+		mdArgs := []string{"tool", "mdox", "fmt", "--soft-wraps"}
+		if dry {
+			mdArgs = append(mdArgs, "--check")
+		}
+		mdArgs = append(mdArgs, mdFiles...)
+		if !runStep("mdox-fmt", "go", mdArgs...) {
+			exit(1)
+		}
+	}
+
+	// Step 5: go fix
+	if dry {
+		if !runCheckStep("fix", "go", "fix", "-diff", "./...") {
+			exit(1)
+		}
+	} else {
+		if !runStep("fix", "go", "fix", "./...") {
+			exit(1)
+		}
+	}
+
+	// Step 6: go vet
+	if !runStep("vet", "go", "vet", "./...") {
+		exit(1)
+	}
 }
