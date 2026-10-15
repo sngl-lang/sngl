@@ -13,7 +13,7 @@ import (
 // The second Optimize of a build folds the program and leaves an imported
 // package the first one folded as it stands; a fresh Config folds it again.
 func TestImportedPackageIsFoldedOncePerConfig(t *testing.T) {
-	src := "import ui \"sngl:ui\"\nimport time \"sngl:time\"\n\nui.window {\n\tui.text(value=\"hi\")\n}\n"
+	src := "import ui \"sngl:ui\"\n\nui.window {\n\tui.text(value=\"hi\")\n}\n"
 	doc, err := parser.Parse("test.sngl", []byte(src))
 	if err != nil {
 		t.Fatal(err)
@@ -30,41 +30,38 @@ func TestImportedPackageIsFoldedOncePerConfig(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	var fn *ir.Func
+	var title *ir.Prop
 	for _, imp := range pkg.Imports {
-		if imp.Pkg != nil && imp.Pkg.Path == "sngl:time" {
-			for _, f := range imp.Pkg.Funcs {
-				if len(f.Block) > 0 {
-					fn = f
-					break
+		if imp.Pkg != nil && imp.Pkg.Path == "sngl:ui" {
+			for _, c := range imp.Pkg.Components {
+				if c.Name == "window" {
+					title = c.Props[0]
 				}
 			}
 		}
 	}
-	if fn == nil {
-		t.Fatal("sngl:time declares no bodied func")
+	if title == nil || title.Name != "title" {
+		t.Fatal("sngl:ui declares no window title")
 	}
-	plant := func() *ir.Return {
-		ret := &ir.Return{Value: &ir.Binary{Op: ast.BinAdd, Type: ir.TypInt,
-			Left:  &ir.Literal{Type: ir.TypInt, Value: "1"},
-			Right: &ir.Literal{Type: ir.TypInt, Value: "2"}}}
-		fn.Block = []ir.Stmt{ret}
-		return ret
+	plant := func() {
+		title.Default = &ir.Binary{Op: ast.BinAdd, Type: ir.TypString,
+			Left:  &ir.Literal{Type: ir.TypString, Value: "a"},
+			Right: &ir.Literal{Type: ir.TypString, Value: "b"}}
 	}
 
 	plant()
 	if err := Optimize(pkg, cfg); err != nil {
 		t.Fatal(err)
 	}
-	if _, ok := fn.Block[0].(*ir.Return).Value.(*ir.Binary); !ok {
-		t.Errorf("the second Optimize folded %s again", fn.Name)
+	if _, ok := title.Default.(*ir.Binary); !ok {
+		t.Error("the second Optimize folded the window title again")
 	}
 
 	plant()
 	if err := Optimize(pkg, &Config{Platform: "html", Language: "js"}); err != nil {
 		t.Fatal(err)
 	}
-	if _, ok := fn.Block[0].(*ir.Return).Value.(*ir.Binary); ok {
-		t.Errorf("a fresh Config left %s unfolded", fn.Name)
+	if _, ok := title.Default.(*ir.Binary); ok {
+		t.Error("a fresh Config left the window title unfolded")
 	}
 }

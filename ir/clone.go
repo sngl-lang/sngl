@@ -48,15 +48,39 @@ func ClonePackage(pkg *Package) *Package {
 // clone per target copied all of them for a target that reads one. Nothing in
 // a target's build reads another's: the swap (SpecializeForTarget) picks this
 // target's entry, and every reader after it asks for this target's key.
+//
+// The copy records each declaration it carries an override of for that target
+// (Package.Overridden), whether the override is its own or the overlay's.
+//
+// A library declaration the program does not reach (ReachedFrom) is not
+// copied: the copy's lists and scopes name the checked one, frozen, and the
+// overlays drop its overrides, so nothing in the build specializes it.
 func ClonePackageFor(pkg *Package, platform, language string) *Package {
 	if pkg == nil {
 		return nil
 	}
 	c := newCloner()
 	c.only = &target{platform, language}
+	c.share = unreachedLibrary(pkg, ReachedFrom(pkg, platform, language))
+	c.overridden = map[Symbol]bool{}
 	out := c.clone(reflect.ValueOf(pkg)).Interface().(*Package)
 	InstallOverlay(out)
+	for _, o := range []Overlay{out.Targets, out.Overlay} {
+		for sym, ov := range o.Overrides {
+			if _, ok := pick(*c.only, ov.Platform, ov.Language); ok {
+				c.noteOverridden(sym)
+			}
+		}
+	}
+	out.Overridden, out.OverriddenFor = c.overriddenList, c.only.key()
 	return out
+}
+
+func (c *cloner) noteOverridden(sym Symbol) {
+	if !c.overridden[sym] {
+		c.overridden[sym] = true
+		c.overriddenList = append(c.overriddenList, sym)
+	}
 }
 
 // CloneExpr returns a deep, independent copy of one expression, on the same
@@ -123,9 +147,17 @@ type cloner struct {
 	// rewritten under, and the declarations copied although shareDecls is set.
 	subst map[string]*Type
 	own   map[uintptr]bool
+	// overridden collects, for ClonePackageFor, each copy carrying an
+	// override for only.
+	overridden     map[Symbol]bool
+	overriddenList []Symbol
+	// share holds the declarations ClonePackageFor leaves shared.
+	share map[Symbol]bool
 }
 
 var typePtrType = reflect.TypeFor[*Type]()
+
+var overlayMapType = reflect.TypeFor[map[Symbol]*Overrides]()
 
 func (c *cloner) clone(v reflect.Value) reflect.Value {
 	switch v.Kind() {
@@ -146,6 +178,11 @@ func (c *cloner) clone(v reflect.Value) reflect.Value {
 		}
 		if c.shareDecls && !deep && !c.own[ptr] && isDeclType(v.Type().Elem()) {
 			return v
+		}
+		if c.share != nil && isDeclType(v.Type().Elem()) {
+			if s, ok := v.Interface().(Symbol); ok && c.share[s] {
+				return v
+			}
 		}
 		// Share anything that isn't one of our IR types (AST nodes,
 		// foreign structs). Returning the original pointer preserves its
@@ -194,6 +231,9 @@ func (c *cloner) clone(v reflect.Value) reflect.Value {
 		out := reflect.MakeMapWithSize(v.Type(), v.Len())
 		iter := v.MapRange()
 		for iter.Next() {
+			if c.share != nil && v.Type() == overlayMapType && c.share[iter.Key().Interface().(Symbol)] {
+				continue
+			}
 			out.SetMapIndex(c.clone(iter.Key()), c.clone(iter.Value()))
 		}
 		return out
@@ -242,6 +282,11 @@ func (c *cloner) cloneStruct(out, v reflect.Value) {
 					key = c.only.language
 				}
 				out.Field(i).Set(c.cloneOverride(v.Field(i), key))
+				if c.overridden != nil && key != "" && v.Field(i).MapIndex(reflect.ValueOf(key)).IsValid() {
+					if sym, ok := out.Addr().Interface().(Symbol); ok {
+						c.noteOverridden(sym)
+					}
+				}
 				continue
 			}
 		}
@@ -369,4 +414,56 @@ func CloneStmtsSharingDecls(stmts []Stmt) []Stmt {
 	c := newCloner()
 	c.shareDecls = true
 	return c.clone(reflect.ValueOf(stmts)).Interface().([]Stmt)
+}
+
+// unreachedLibrary is each declaration a package pkg imports lists that
+// reach does not hold.
+func unreachedLibrary(pkg *Package, reach *Reached) map[Symbol]bool {
+	out := map[Symbol]bool{}
+	note := func(s Symbol) {
+		if !reach.Has(s) {
+			out[s] = true
+		}
+	}
+	seen := map[*Package]bool{pkg: true}
+	var walk func(p *Package)
+	walk = func(p *Package) {
+		for _, imp := range p.Imports {
+			q := imp.Pkg
+			if q == nil || seen[q] {
+				continue
+			}
+			seen[q] = true
+			for _, v := range q.Consts {
+				note(v)
+			}
+			for _, v := range q.BuildConsts {
+				note(v)
+			}
+			for _, v := range q.Vars {
+				note(v)
+			}
+			for _, f := range q.Funcs {
+				note(f)
+			}
+			for _, s := range q.Structs {
+				note(s)
+			}
+			for _, e := range q.Enums {
+				note(e)
+			}
+			for _, u := range q.Units {
+				note(u)
+			}
+			for _, x := range q.Contexts {
+				note(x)
+			}
+			for _, comp := range q.Components {
+				note(comp)
+			}
+			walk(q)
+		}
+	}
+	walk(pkg)
+	return out
 }

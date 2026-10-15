@@ -314,9 +314,9 @@ func sameType(a, b *ir.Type) bool {
 // call site's population renders, which lower.DataFamilies builds once the
 // compositions in it are spliced.
 func Prepare(pkg *ir.Package) (*ir.Package, error) {
-	pkg = ir.ClonePackage(pkg)
+	pkg = ir.ClonePackageFor(pkg, InterpreterPlatform, "")
 	ir.SpecializeForTarget(pkg, InterpreterPlatform, "")
-	if err := lower.DataFamilies(pkg, nil); err != nil {
+	if err := lower.DataFamilies(pkg, ir.ReachedFrom(pkg, InterpreterPlatform, ""), nil); err != nil {
 		return pkg, err
 	}
 	return pkg, lower.RefParams(pkg)

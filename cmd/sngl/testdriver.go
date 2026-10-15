@@ -75,7 +75,7 @@ func runViaLauncher(ctx context.Context, plat codegen.PlatformGenerator, lang co
 		// Each group lowers its own clone, the way each build target does: the
 		// pipeline mutates in place, and two groups do not agree on what the
 		// root is.
-		groupPkg := ir.ClonePackage(pkg)
+		groupPkg := ir.ClonePackageFor(pkg, plat.PlatformIdentifier(), langIdent(lang))
 		rootForTests(groupPkg, group.Component)
 		assets, err := prepareForLaunch(groupPkg, plat, lang, group.Component)
 		if err != nil {

@@ -25,6 +25,8 @@ import (
 // It runs on checked IR ahead of the first optimize, which would otherwise
 // fold an unwritten prop to its empty default, and ahead of the interpreter.
 // analyze, when non-nil, gives a lambda it synthesizes its reads and purity.
+// Of an imported package it reads only the components reach holds; a nil reach
+// holds every one.
 //
 // A record of a family that declares content (ir.Component.ContentSlot) is
 // numbered, ir.RecordID, and what it was written with is not dropped: it
@@ -34,7 +36,7 @@ import (
 // `if pages.current.id == N`. Numbers are unique across the run, so a
 // container forwarding another's records hands what it cannot show on to the
 // content slot of the component the population was written in.
-func DataFamilies(pkg *ir.Package, analyze func(owner *ir.Component, fn *ir.Func)) error {
+func DataFamilies(pkg *ir.Package, reach *ir.Reached, analyze func(owner *ir.Component, fn *ir.Func)) error {
 	if pkg == nil {
 		return nil
 	}
@@ -52,6 +54,9 @@ func DataFamilies(pkg *ir.Package, analyze func(owner *ir.Component, fn *ir.Func
 		}
 		seen[p] = true
 		for _, o := range ir.Owners(p) {
+			if p != pkg && o.Comp != nil && !reach.Has(o.Comp) {
+				continue
+			}
 			d.owner = o.Comp
 			d.walk(*o.Body)
 			if d.err != nil {
