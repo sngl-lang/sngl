@@ -1,6 +1,7 @@
 package goldentest
 
 import (
+	"bytes"
 	"slices"
 	"testing"
 )
@@ -51,21 +52,52 @@ func TestExecParses(t *testing.T) {
 // to the harness moved no record.
 func TestExecLeavesOtherDigestsAlone(t *testing.T) {
 	files := map[string][]byte{"model.go": []byte("package main\n")}
-	if digest(withExecs(files, nil, execSrc)) != digest(files) {
+	if execDigest(t, files, nil, execSrc) != digest(files) {
 		t.Error("a target with no exec has a different digest")
 	}
 	execs, err := parseExecs("exec out/go/gtk4 -- want.txt", execSrc)
 	if err != nil {
 		t.Fatal(err)
 	}
-	with := digest(withExecs(files, execs["go/gtk4"], execSrc))
+	with := execDigest(t, files, execs["go/gtk4"], execSrc)
 	if with == digest(files) {
 		t.Error("an exec does not move the digest")
 	}
 	edited := map[string][]byte{"app.sngl": nil, "want.txt": []byte("other\n")}
-	if digest(withExecs(files, execs["go/gtk4"], edited)) == with {
+	if execDigest(t, files, execs["go/gtk4"], edited) == with {
 		t.Error("editing the file an exec compares against does not move the digest")
 	}
+}
+
+// An execution tests the runtime its program imports from the checkout as
+// much as the program, so the runtime's source is in the digest.
+func TestExecDigestCoversTheRuntime(t *testing.T) {
+	execs, err := parseExecs("exec out/go/gtk4", execSrc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	program := map[string][]byte{"model.go": []byte("package main\n\nimport _ \"duckfam.us/sngl/pkg/go/gtk4rt\"\n")}
+	alone := map[string][]byte{"model.go": []byte("package main\n")}
+	withRuntime, err := withExecs(program, execs["go/gtk4"], execSrc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	without, err := withExecs(alone, execs["go/gtk4"], execSrc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if bytes.Equal(withRuntime["\x00exec/modules"], without["\x00exec/modules"]) {
+		t.Error("a program importing gtk4rt hashes the same runtime source as one importing nothing")
+	}
+}
+
+func execDigest(t *testing.T, files map[string][]byte, execs []execution, src map[string][]byte) string {
+	t.Helper()
+	hashed, err := withExecs(files, execs, src)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return digest(hashed)
 }
 
 func TestCountToplevels(t *testing.T) {

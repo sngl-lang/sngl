@@ -127,7 +127,11 @@ func verify(t *testing.T, tgts []target, records map[string]record, exempt map[s
 		name := tg.recordName()
 		have, recorded := records[name]
 		runs := execs[tg.lang+"/"+tg.platform]
-		want := digest(withExecs(tg.files, runs, src))
+		hashed, err := withExecs(tg.files, runs, src)
+		if err != nil {
+			t.Fatalf("%s: %v", name, err)
+		}
+		want := digest(hashed)
 		ex, exempted := exempt[tg.lang+"/"+tg.platform]
 		seen[tg.lang+"/"+tg.platform] = true
 

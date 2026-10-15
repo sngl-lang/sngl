@@ -4344,9 +4344,11 @@ file one of the archive's; `toplevels=N` counts gtk4's `set_title` requests in
 its Wayland protocol log, of every toplevel or of the one titled, which is how
 a run tells a window reached the screen. A verification builds the program
 once its tests pass and runs each line inside the headless compositor the root
-test binary re-execs under, and the target's `run/` digest covers the lines
-and the files they name, so the ordinary run replays them as it does the
-build. A program meant to be run carries the scenario that drives it -- a
+test binary re-execs under, and the target's `run/` digest covers the lines,
+the files they name and the source of every package of this module the
+program imports (`toolchain.HashModuleImports`), so the ordinary run replays
+them as it does the build and an edit to `gtk4rt` or `fynelayout` asks for a
+run. A program meant to be run carries the scenario that drives it -- a
 timer, a `fmt.Println`, an `os.Exit` -- so it is a fixture of its own,
 `<name>_runs.txtar` beside the `<name>.txtar` showing the plain code.
 

@@ -1,6 +1,7 @@
 package goldentest
 
 import (
+	"crypto/sha256"
 	"fmt"
 	"maps"
 	"regexp"
@@ -113,10 +114,16 @@ func parseExec(rest string, src map[string][]byte) (execution, error) {
 }
 
 // withExecs is what a target's digest is taken over: its generated files and,
-// where it has any, each execution and the archive files it names.
-func withExecs(files map[string][]byte, execs []execution, src map[string][]byte) map[string][]byte {
+// where it has any execution, each one, the archive files it names, and the
+// source of the runtime packages the program imports from this checkout --
+// which is most of what an execution tests.
+func withExecs(files map[string][]byte, execs []execution, src map[string][]byte) (map[string][]byte, error) {
 	if len(execs) == 0 {
-		return files
+		return files, nil
+	}
+	h := sha256.New()
+	if err := toolchain.HashModuleImports(h, files); err != nil {
+		return nil, err
 	}
 	out := make(map[string][]byte, len(files)+len(execs))
 	maps.Copy(out, files)
@@ -128,7 +135,8 @@ func withExecs(files map[string][]byte, execs []execution, src map[string][]byte
 			out[key+"/stdout"] = src[e.stdout]
 		}
 	}
-	return out
+	out["\x00exec/modules"] = h.Sum(nil)
+	return out, nil
 }
 
 // checkRan holds one execution to what it printed.

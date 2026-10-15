@@ -7,9 +7,6 @@ import (
 	"encoding/hex"
 	"flag"
 	"fmt"
-	"go/parser"
-	"go/token"
-	"hash"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -17,16 +14,14 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+
+	"duckfam.us/sngl/internal/toolchain"
 )
 
 var (
 	update = flag.Bool("update", false, "rerun each go build or go test whose files moved, and rewrite its testdata/go_runs record")
 	verify = flag.Bool("verify", false, "rerun every go build and go test, whatever its testdata/go_runs record says")
 )
-
-const modulePath = "duckfam.us/sngl"
-
-var moduleRoot = filepath.Join("..", "..", "..")
 
 var goRunsPerTest = map[string]int{}
 
@@ -117,80 +112,20 @@ func goRunDigest(t *testing.T, files map[string]string, args []string) string {
 		writeField(a)
 	}
 	var names []string
+	built := map[string][]byte{}
 	for name := range files {
 		if name != "go.mod" {
 			names = append(names, name)
+			built[name] = []byte(files[name])
 		}
 	}
 	slices.Sort(names)
-	imports := map[string]bool{}
 	for _, name := range names {
 		writeField(name)
 		writeField(files[name])
-		if filepath.Ext(name) == ".go" {
-			addModuleImports(t, name, files[name], imports)
-		}
 	}
-	hashed := map[string]bool{}
-	for len(imports) > 0 {
-		var next []string
-		for p := range imports {
-			if !hashed[p] {
-				next = append(next, p)
-			}
-		}
-		clear(imports)
-		slices.Sort(next)
-		for _, p := range next {
-			hashed[p] = true
-			hashModulePackage(t, h, p, imports)
-		}
+	if err := toolchain.HashModuleImports(h, built); err != nil {
+		t.Fatal(err)
 	}
 	return "sha256:" + hex.EncodeToString(h.Sum(nil)[:16])
-}
-
-// hashModulePackage hashes the source a build of the module package p reads,
-// and adds the module packages it imports.
-func hashModulePackage(t *testing.T, h hash.Hash, p string, imports map[string]bool) {
-	t.Helper()
-	dir := filepath.Join(moduleRoot, filepath.FromSlash(strings.TrimPrefix(p, modulePath)))
-	entries, err := os.ReadDir(dir)
-	if err != nil {
-		t.Fatalf("hashing %s: %v", p, err)
-	}
-	fmt.Fprintf(h, "%d\x00%s", len(p), p)
-	for _, e := range entries {
-		name := e.Name()
-		switch filepath.Ext(name) {
-		case ".go", ".c", ".h":
-		default:
-			continue
-		}
-		if e.IsDir() || strings.HasSuffix(name, "_test.go") {
-			continue
-		}
-		src, err := os.ReadFile(filepath.Join(dir, name))
-		if err != nil {
-			t.Fatal(err)
-		}
-		fmt.Fprintf(h, "%d\x00%s%d\x00", len(name), name, len(src))
-		h.Write(src)
-		if filepath.Ext(name) == ".go" {
-			addModuleImports(t, name, string(src), imports)
-		}
-	}
-}
-
-func addModuleImports(t *testing.T, name, src string, imports map[string]bool) {
-	t.Helper()
-	f, err := parser.ParseFile(token.NewFileSet(), name, src, parser.ImportsOnly)
-	if err != nil {
-		return
-	}
-	for _, imp := range f.Imports {
-		p, _ := strconv.Unquote(imp.Path.Value)
-		if p == modulePath || strings.HasPrefix(p, modulePath+"/") {
-			imports[p] = true
-		}
-	}
 }
