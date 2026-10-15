@@ -2020,8 +2020,12 @@ the call site.
 The rest slot keeps counting nodes, since its fill is the children a caller
 writes bare: `...component` any number, `...component family.one` exactly one,
 `...component option[T]` none or one -- and it is inserted exactly once, so
-bare children stay the caller's refs at the position the caller wrote them. A
-node count on a named slot is refused with the spelling that replaces it. Bare
+bare children stay the caller's refs at the position the caller wrote them.
+A rest slot that is not says so outside the `...` (Jonathan's call):
+`src option[...component option[imageSource]]` is inserted at most once and
+holds at most one node, which is avatar's, shown only when there is a picture
+to show; the children a caller hands it read as options. A node count on a
+named slot is refused with the spelling that replaces it. Bare
 `family.one` is a count and no family: "exactly one of whatever this slot
 already accepts", which is the tree the component declaring it belongs to.
 

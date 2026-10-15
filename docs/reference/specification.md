@@ -1743,7 +1743,9 @@ The rest slot counts nodes instead, since its fill is the children a caller
 writes bare: `...component` is any number, `...component family.one[ui.node]`
 exactly one (bare `family.one` is exactly one of whatever the slot already
 accepts) and `...component option[ui.node]` none or one. It is inserted exactly
-once.
+once, unless an insertion count is written around the `...`:
+`option[...component ui.node]` may be left out, and the children a caller
+writes bare then read as options.
 
 A slot's invocation parameters may be named in the type — `cell component(row Row)` — and the name is **part of the contract**, not documentation: two slot
 types match by name. Renaming one is therefore a breaking change to every
