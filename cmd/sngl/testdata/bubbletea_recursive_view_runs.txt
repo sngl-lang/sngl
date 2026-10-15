@@ -38,7 +38,7 @@ component frame(n int, content ...component node) node {
     }
 }
 
-component forward(n int, content list<component node>) node {
+component forward(n int, content list[component node]) node {
     vbox {
         content {}
         if n > 0 {

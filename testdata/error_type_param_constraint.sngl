@@ -62,7 +62,7 @@ component item[M struct {
 component shelf[M struct {
     label string
     name  string
-}](items ...component tagged[M]) node {}
+}](items option[...component tagged[M]]) node {}
 
 // A field naming another parameter is measured with what that one is bound
 // to.

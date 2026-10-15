@@ -18,7 +18,7 @@ component plain[html.platform](content) {
     content
 }
 
-component asks(content ...component node) node {
+component asks(content option[...component node]) node {
     if content.empty {
         text(value="nothing")
     }
@@ -30,7 +30,7 @@ component first node {
     }
 }
 
-component ping(n int, content ...component node) node {
+component ping(n int, content list[...component node]) node {
     if n > 0 {
         pong(n=n - 1) {
             content

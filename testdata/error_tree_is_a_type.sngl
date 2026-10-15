@@ -2,18 +2,18 @@
 
 import . "sngl:ui"
 import build "sngl:build"
-import tr "sngl:tree"
+import family "sngl:family"
 
 component block build.family
 
 component inline build.family
 
 component document(children ...component block) node {
-    #[tr.crosses]
+    #[family.crosses]
     children
 }
 component para(children ...component inline) block {
-    #[tr.crosses]
+    #[family.crosses]
     children
 }
 component bold(weight int) inline {}

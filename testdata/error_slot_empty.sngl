@@ -7,19 +7,19 @@
 
 import . "sngl:ui"
 
-component asks(content ...component option[node]) node {
+component asks(content option[...component option[node]]) node {
     if content.length > 0 { // ERROR(check) "content is a slot, which is not a value"
         content
     }
 }
 
-component scoped(cell component(n int) node) node {
+component scoped(cell option[component(n int) node]) node {
     if cell.empty { // ERROR(check) "cell is handed arguments where it is inserted"
         text(value="none")
     }
 }
 
-component boxed(content ...component node) node {
+component boxed(content option[...component node]) node {
     if content.empty {
         text(value="nothing")
     } else {

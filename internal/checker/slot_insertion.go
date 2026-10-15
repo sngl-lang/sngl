@@ -10,7 +10,7 @@ import (
 // checkSlotInsertions holds a body to inserting each slot as often as its
 // declared count says, counted over every path through the body: a slot of
 // exactly one -- a bare named slot, or the rest slot -- renders once whichever
-// way the body goes, `option<…>` at most once, `list<…>` any number of times.
+// way the body goes, `option[…]` at most once, `list[…]` any number of times.
 // The count is what a ref read through the slot is wrapped in, so it has to be
 // true of the body, not of a caller's reading of it.
 //
@@ -34,7 +34,9 @@ func (c *checker) checkSlotInsertions(comp *ir.Component) {
 		return
 	}
 	for _, slot := range comp.Slots {
-		if !slot.Const {
+		// A data family's records are read as a list and never inserted, and
+		// their content is shown per record (SlotDecl.Shows).
+		if !slot.Const && slot.Values == nil && slot.Shows == nil {
 			c.checkSlotInsertCount(comp, slot)
 		}
 	}
@@ -44,17 +46,17 @@ func (c *checker) checkSlotInsertCount(comp *ir.Component, slot *ir.SlotDecl) {
 	w := &insertionWalk{slot: slot.Name, rest: slot.Rest}
 	got := w.stmts(comp.Stmts, "")
 	what := fmt.Sprintf("slot %q", slot.Name)
-	why := "it is declared to render exactly once; declare it option<…> if the body may leave it out, or list<…> if it may repeat"
+	why := "it is declared to render exactly once; declare it option[…] if the body may leave it out, or list[…] if it may repeat"
 	if slot.Rest {
 		what = fmt.Sprintf("rest slot %q", slot.Name)
-		why = fmt.Sprintf("the children a caller writes bare render where the body inserts %s, exactly once", slot.Name)
+		why = fmt.Sprintf("the children a caller writes bare render where the body inserts %s, exactly once; declare it option[...component …] if the body may leave it out", slot.Name)
 	}
 	switch slot.Inserts {
 	case ir.InsertMany:
 		return
 	case ir.InsertOptional:
 		if got.max > 1 {
-			c.reportRepeatedInsertion(w.sites, what, "it is declared option<…> and renders at most once; declare it list<…> if it may repeat")
+			c.reportRepeatedInsertion(w.sites, what, "it is declared option[…] and renders at most once; declare it list[…] if it may repeat")
 		}
 		return
 	}
@@ -67,7 +69,7 @@ func (c *checker) checkSlotInsertCount(comp *ir.Component, slot *ir.SlotDecl) {
 			// A repeating site is reported for repeating, below.
 			if s.under != "" && s.repeats == "" {
 				if slot.Rest {
-					c.error(s.pos, "%s is inserted under %s: the children a caller writes bare render exactly once, so insert %s where it always renders", what, s.under, slot.Name)
+					c.error(s.pos, "%s is inserted under %s: the children a caller writes bare render exactly once, so insert %s where it always renders or declare it option[...component …]", what, s.under, slot.Name)
 				} else {
 					c.error(s.pos, "%s is inserted under %s: %s", what, s.under, why)
 				}
@@ -192,8 +194,12 @@ func (w *insertionWalk) stmt(st ir.Stmt, under string) renders {
 			r = renders{1, 1}
 		}
 		r = r.then(w.stmts(n.Children, orUnder(under, "a slot fallback")).maybe())
-		for _, sc := range n.Slots {
-			r = r.then(w.stmts(sc.Body, orUnder(under, "a slot population")).maybe())
+		for _, name := range ir.SlotNames(n.Slots) {
+			var entry *ir.SlotDecl
+			if n.Decl != nil {
+				entry = slotNamed(n.Decl.Slots, name)
+			}
+			r = r.then(w.population(entry, n.Slots[name].Body, under))
 		}
 		return r
 	case *ir.NodeInst:
@@ -204,8 +210,12 @@ func (w *insertionWalk) stmt(st ir.Stmt, under string) renders {
 			return renders{1, 1}
 		}
 		r := w.stmts(n.Children, under)
-		for name, sc := range n.Slots {
-			r = r.then(w.population(n.Component, name, sc.Body, under))
+		for _, name := range ir.SlotNames(n.Slots) {
+			var decl *ir.SlotDecl
+			if n.Component != nil {
+				decl = slotNamed(n.Component.Slots, name)
+			}
+			r = r.then(w.population(decl, n.Slots[name].Body, under))
 		}
 		return r
 	case *ir.If:
@@ -225,16 +235,9 @@ func (w *insertionWalk) stmt(st ir.Stmt, under string) renders {
 }
 
 // population counts an insertion written in a population of another node's
-// slot, which renders as often as that slot is inserted.
-func (w *insertionWalk) population(host *ir.Component, name string, body []ir.Stmt, under string) renders {
-	var decl *ir.SlotDecl
-	if host != nil {
-		for _, s := range host.Slots {
-			if s.Name == name {
-				decl = s
-			}
-		}
-	}
+// slot, or of an insertion's component entry, which renders as often as that
+// slot or entry is inserted.
+func (w *insertionWalk) population(decl *ir.SlotDecl, body []ir.Stmt, under string) renders {
 	switch {
 	case decl == nil:
 		return w.stmts(body, orUnder(under, "a slot population")).maybe()
@@ -244,4 +247,13 @@ func (w *insertionWalk) population(host *ir.Component, name string, body []ir.St
 		return w.repeating(body, under, "a list slot's population")
 	}
 	return w.stmts(body, under)
+}
+
+func slotNamed(slots []*ir.SlotDecl, name string) *ir.SlotDecl {
+	for _, s := range slots {
+		if s.Name == name {
+			return s
+		}
+	}
+	return nil
 }

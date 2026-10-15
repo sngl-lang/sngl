@@ -18,9 +18,9 @@ component frame(badge component option[int]) node { // ERROR(check) "a slot acce
     }
 }
 
-// The insertion count is recognised the same way: shadowed, `option<…>` around a
+// The insertion count is recognised the same way: shadowed, `option[…]` around a
 // slot counts nothing.
-component tip(hint option<component>) node { // ERROR(check) "option<…> around a slot is not the builtin option, so it counts nothing"
+component tip(hint option[component]) node { // ERROR(check) "option[…] around a slot is not the builtin option, so it counts nothing"
     vbox {
         hint {}
     }

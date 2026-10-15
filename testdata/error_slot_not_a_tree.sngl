@@ -11,13 +11,13 @@ component bare(children ...component int) node { // ERROR(check) "a slot accepts
 }
 
 // The wrapper is read for its count and its argument still has to be a tree.
-component wrapped(x ...component option<string>) node { // ERROR(check) "a slot accepts a family, and string is not one"
+component wrapped(x ...component option[string]) node { // ERROR(check) "a slot accepts a family, and string is not one"
     vbox {
         x
     }
 }
 
-component fine(ok ...component tr.one) node {
+component fine(ok ...component family.one) node {
     vbox {
         ok
     }

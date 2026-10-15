@@ -15,8 +15,8 @@ import . "sngl:ui"
 
 struct TreeNode {
     value int = 0
-    left option<TreeNode> = null
-    right option<TreeNode> = null
+    left option[TreeNode] = null
+    right option[TreeNode] = null
 }
 
 component tree_view(node TreeNode) node {

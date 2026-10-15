@@ -14,7 +14,7 @@ output {
 component counter node {
     var count = 0
     var shown = false
-    var items list<string> = []
+    var items list[string] = []
 
     vbox {
         button #inc(text="+", @click { count += 1 })
@@ -105,7 +105,7 @@ func testAnInstanceBehindAnIfIsAnOption(t Test, c maybeChild) {
 // A conditional inside a loop keeps an entry per iteration, so an index names
 // the iteration it would in the loop, and the one that rendered none is null.
 component children node {
-    var ns list<int> = [1, 2, 3]
+    var ns list[int] = [1, 2, 3]
 
     for var n = ns {
         if n != 2 {

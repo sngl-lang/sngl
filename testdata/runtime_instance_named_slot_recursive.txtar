@@ -45,7 +45,7 @@ output {
     }
 }
 
-component frame(n int, label list<component(depth int) node>) node {
+component frame(n int, label list[component(depth int) node]) node {
     vbox {
         label(n)
         if n > 0 {

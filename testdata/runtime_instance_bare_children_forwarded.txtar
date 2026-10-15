@@ -41,7 +41,7 @@ component Card(children ...component) node {
     }
 }
 
-component Row(item list<component node>) node {
+component Row(item list[component node]) node {
     var open = true
 
     hbox {

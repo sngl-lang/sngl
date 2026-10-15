@@ -132,7 +132,7 @@ window {
 import . "sngl:ui"
 import draw "sngl:ui/draw"
 
-component tower(n int, content list<component node>) node {
+component tower(n int, content list[component node]) node {
     vbox {
         content {}
         if n > 0 {

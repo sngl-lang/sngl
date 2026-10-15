@@ -1181,7 +1181,7 @@ type SlotDecl struct {
 }
 
 // SlotInserts is how many times a named slot is inserted: its declared type's
-// `option<…>` or `list<…>` wrapper, or neither.
+// `option[…]` or `list[…]` wrapper, or neither.
 type SlotInserts string
 
 const (
@@ -1232,7 +1232,7 @@ type SlotCard string
 
 const (
 	SlotAny      SlotCard = ""         // any number; the default
-	SlotOne      SlotCard = "one"      // exactly one, from tree.one[T]
+	SlotOne      SlotCard = "one"      // exactly one, from family.one[T]
 	SlotOptional SlotCard = "optional" // none or one, from option[T]
 )
 

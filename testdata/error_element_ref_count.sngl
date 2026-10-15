@@ -6,7 +6,7 @@ import . "sngl:test"
 
 component counter node {
     var shown = false
-    var items list<string> = []
+    var items list[string] = []
 
     vbox {
         text #lbl(value="x")
@@ -29,14 +29,14 @@ component once node {
 
 func testOwnNodes(t Test, c counter) {
     var one text = c.lbl
-    var opt text = c.maybe // ERROR(check) "cannot initialize text with option<button>"
-    var many text = c.row  // ERROR(check) "cannot initialize text with list<text>"
-    c.maybe.click()        // ERROR(check) "no method \"click\" on type option<button>"
+    var opt text = c.maybe // ERROR(check) "cannot initialize text with option[button]"
+    var many text = c.row  // ERROR(check) "cannot initialize text with list[text]"
+    c.maybe.click()        // ERROR(check) "no method \"click\" on type option[button]"
 }
 
 // A child instance written once is one instance, not a list of them.
 func testChildInstance(t Test, c once) {
-    var xs list<child> = c.kid // ERROR(check) "cannot initialize list<child> with child"
+    var xs list[child] = c.kid // ERROR(check) "cannot initialize list[child] with child"
 }
 
 window {

@@ -47,7 +47,7 @@ output {
     }
 }
 
-component Card(start int, cell list<component(row int) node>) node {
+component Card(start int, cell list[component(row int) node]) node {
     var rows = [start, start + 10]
 
     vbox {

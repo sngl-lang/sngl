@@ -9,7 +9,7 @@
 import . "sngl:ui"
 import . "sngl:test"
 
-component boxed(content ...component option[node]) node {
+component boxed(content option[...component option[node]]) node {
     if content.empty {
         text(value="nothing")
     } else {

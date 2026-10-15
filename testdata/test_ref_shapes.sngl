@@ -11,10 +11,10 @@ import . "sngl:ui"
 
 struct Row {
     name string
-    cols list<string>
+    cols list[string]
 }
 
-const rows list<Row> = [
+const rows list[Row] = [
     {name="a", cols=["1", "2"]},
     {name="b", cols=[]},
     {name="c", cols=["3"]},
@@ -37,7 +37,7 @@ func testNestedLoopsAreAListOfLists(t Test, c grid) {
     t.assert(c.cell[2][0].value == "c3")
 }
 
-component table(rows list<component(i int) node>, tip option<component node>) node {
+component table(rows list[component(i int) node], tip option[component node]) node {
     vbox {
         for var i = [1, 2] {
             rows(i)

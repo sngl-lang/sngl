@@ -10,19 +10,19 @@
 
 import . "sngl:ui"
 import build "sngl:build"
-import tr "sngl:tree"
+import family "sngl:family"
 
 // A container that is not itself a member: its rest slot names the family
 // it hosts.
 component document(children ...component block) node {
-    #[tr.crosses]
+    #[family.crosses]
     children
 }
 
 // A member that hosts a different family — the rich-text case the mechanism
 // was generalised for.
 component para(children ...component inline) block {
-    #[tr.crosses]
+    #[family.crosses]
     children
 }
 

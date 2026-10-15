@@ -31,7 +31,7 @@ component table(
     rows list[Row],
     children ...component,
     header component,
-    cell list<component(row Row)>,
+    cell list[component(row Row)],
 ) node {
     vbox {
         header {

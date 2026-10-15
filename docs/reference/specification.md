@@ -2067,7 +2067,7 @@ after the components that name it.
 
 ```sngl
 import build "sngl:build"
-import tree "sngl:tree"
+import family "sngl:family"
 import ui "sngl:ui"
 
 component item build.family
@@ -2075,7 +2075,7 @@ component item build.family
 component entry(label string) item {}
 
 component menu(items ...component item) ui.node {
-    #[tree.crosses]
+    #[family.crosses]
     items
 }
 

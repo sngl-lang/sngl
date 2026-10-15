@@ -1,6 +1,6 @@
 // A slot is inserted as often as its declared count says, over every path
 // through the body: exactly once for a rest slot and a bare named slot,
-// at most once for option<…>, any number of times for list<…>. The count is
+// at most once for option[…], any number of times for list[…]. The count is
 // what a ref read through the slot is wrapped in, so it has to be true.
 
 import . "sngl:ui"
@@ -34,7 +34,7 @@ component guarded(children ...component) node {
     }
 }
 
-component wrapped(header option<component>) node {
+component wrapped(header option[component]) node {
     vbox {
         header {}
     }
@@ -54,7 +54,7 @@ component fallback(extra component, children ...component) node {
     }
 }
 
-component emptied(xs list<int>, children ...component) node {
+component emptied(xs list[int], children ...component) node {
     for var x = xs {
         text(value="x")
     } else {
@@ -81,15 +81,15 @@ component card(on bool, head component, foot component) node { // ERROR(check) "
     }
 }
 
-// option<…> may be left out, but not repeated.
-component maybe(on bool, tip option<component>) node {
+// option[…] may be left out, but not repeated.
+component maybe(on bool, tip option[component]) node {
     vbox {
         tip {}
         tip {} // ERROR(check) "slot \"tip\" is inserted more than once"
     }
 }
 
-component looped(tip option<component>) node {
+component looped(tip option[component]) node {
     for var i = [1, 2] {
         tip {} // ERROR(check) "slot \"tip\" is inserted under a for"
     }
@@ -144,7 +144,7 @@ component toned(children ...component) node {
     }
 }
 
-component shown(on bool, tip option<component>, rows list<component>) node {
+component shown(on bool, tip option[component], rows list[component]) node {
     if on {
         tip {}
     }

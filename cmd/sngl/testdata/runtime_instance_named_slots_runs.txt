@@ -65,7 +65,7 @@ stdout 'PASS'
 import . "sngl:test"
 import . "sngl:ui"
 
-component Card(start int, cell list<component(row int) node>) node {
+component Card(start int, cell list[component(row int) node]) node {
     var rows = [start, start + 10]
 
     vbox {
@@ -197,7 +197,7 @@ window {
 import . "sngl:test"
 import . "sngl:ui"
 
-component frame(n int, label list<component(depth int) node>) node {
+component frame(n int, label list[component(depth int) node]) node {
     vbox {
         label(n)
         if n > 0 {
@@ -233,7 +233,7 @@ window {
 import . "sngl:test"
 import . "sngl:ui"
 
-component frame(n int, label list<component(depth int) node>) node {
+component frame(n int, label list[component(depth int) node]) node {
     vbox {
         label(n)
         if n > 0 {

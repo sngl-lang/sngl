@@ -4273,7 +4273,7 @@ func (c *checker) errorEventType() *ir.Type {
 func (c *checker) checkVisualNodeIR(vn *ast.VisualNode) ir.Stmt {
 	st := c.checkVisualNode(vn)
 	// The marks a placement carries, applied to what it became: a node or a
-	// slot insertion takes #[tree.crosses], and anything else refuses it.
+	// slot insertion takes #[family.crosses], and anything else refuses it.
 	if len(vn.Attrs) > 0 {
 		c.applyMarks(vn, st)
 	}

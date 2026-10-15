@@ -18,9 +18,9 @@ struct Row {
 }
 
 component table(
-    rows list<Row>,
-    header component,
-    cell list<component(Row)>,
+    rows     list[Row],
+    header   component,
+    cell     list[component(Row)],
     children ...component,
 ) node {
     vbox {

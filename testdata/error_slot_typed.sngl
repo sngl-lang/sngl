@@ -5,8 +5,8 @@ import family "sngl:family"
 
 // A named slot counts its insertions, so a count of nodes is not its to make.
 component frame(
-    body component tr.one,        // ERROR(check) "slot \"body\" counts its insertions, not its nodes: write `body component() T`"
-    badge component option<node>, // ERROR(check) "slot \"badge\" counts its insertions, not its nodes: write `badge option<component() T>`"
+    body  component family.one,   // ERROR(check) "slot \"body\" counts its insertions, not its nodes: write `body component() T`"
+    badge component option[node], // ERROR(check) "slot \"badge\" counts its insertions, not its nodes: write `badge option[component() T]`"
 ) node {
     vbox {
         body {}

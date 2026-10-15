@@ -2987,7 +2987,7 @@ func (c *checker) buildSlotDecl(pd ast.Param, ct *ast.ComponentType, rest bool) 
 	if !rest && slot.Card != ir.SlotAny {
 		want := "component() T"
 		if slot.Card == ir.SlotOptional {
-			want = "option<component() T>"
+			want = "option[component() T]"
 		}
 		c.error(pd.Pos, "slot %q counts its insertions, not its nodes: write `%s %s`", pd.Name, pd.Name, want)
 	}

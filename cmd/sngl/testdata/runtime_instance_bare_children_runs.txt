@@ -235,7 +235,7 @@ component Card(children ...component) node {
     }
 }
 
-component Row(item list<component node>) node {
+component Row(item list[component node]) node {
     var ks = [1, 2]
 
     hbox {
@@ -281,7 +281,7 @@ import . "sngl:test"
 
 output { none { html } }
 
-component frame(n int, content list<component node>) node {
+component frame(n int, content list[component node]) node {
     var open = true
 
     vbox {
@@ -333,7 +333,7 @@ component Card(children ...component) node {
     }
 }
 
-component Row(item list<component node>) node {
+component Row(item list[component node]) node {
     var ks = [1, 2]
 
     hbox {
@@ -346,7 +346,7 @@ component Row(item list<component node>) node {
     }
 }
 
-component frame(n int, content list<component node>) node {
+component frame(n int, content list[component node]) node {
     var open = true
 
     vbox {

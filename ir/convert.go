@@ -271,8 +271,9 @@ func (c *converter) convertComponent(comp *Component) *ast.ComponentDecl {
 		var typ ast.TypeExpr = ct
 		if s.Rest {
 			typ = &ast.VariadicType{Elem: ct}
-		} else if s.Inserts != InsertOne {
-			typ = &ast.NamedType{Name: string(s.Inserts), TypeArgs: []ast.TypeExpr{ct}}
+		}
+		if s.Inserts != InsertOne {
+			typ = &ast.NamedType{Name: string(s.Inserts), TypeArgs: []ast.TypeExpr{typ}}
 		}
 		props = append(props, ast.Param{Name: s.Name, Type: typ, Const: s.Const})
 	}
@@ -757,7 +758,7 @@ func (c *converter) convertErrorBoundary(n *ErrorBoundary) ast.Stmt {
 // whatever the count was read from.
 func (c *converter) convertSlotContent(s *SlotDecl) ast.TypeExpr {
 	if s.Content == nil {
-		// A count with no tree of its own: bare `tree.one` is one of whatever
+		// A count with no tree of its own: bare `family.one` is one of whatever
 		// the slot already accepts, which is its owner's family.
 		if s.Card == SlotOne {
 			return &ast.NamedType{Package: c.familyPkg(), Name: "one"}

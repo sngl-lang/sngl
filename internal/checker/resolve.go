@@ -946,7 +946,7 @@ func (c *checker) slotWrapper(nt *ast.NamedType) (ir.SlotCard, *ir.Type) {
 	case len(nt.TypeArgs) == 1:
 		return card, c.resolveType(nt.TypeArgs[0])
 	case len(nt.TypeArgs) == 0 && card == ir.SlotOne:
-		// Bare `tree.one` is a count and no family: one of whatever the slot
+		// Bare `family.one` is a count and no family: one of whatever the slot
 		// already accepts, which is the tree its owner belongs to. `option`
 		// has a type to name and no such reading.
 		return card, nil
@@ -957,7 +957,7 @@ func (c *checker) slotWrapper(nt *ast.NamedType) (ir.SlotCard, *ir.Type) {
 	return card, &ir.Type{Kind: ir.TypeComponent}
 }
 
-// slotInserts reads the `option<…>` or `list<…>` written around a named slot's
+// slotInserts reads the `option[…]` or `list[…]` written around a named slot's
 // component type. Like the node-count wrappers it is recognised by #[builtin]
 // kind, so a program's own `option` is no count and the slot is refused.
 func (c *checker) slotInserts(w *ast.NamedType) ir.SlotInserts {
@@ -971,7 +971,7 @@ func (c *checker) slotInserts(w *ast.NamedType) ir.SlotInserts {
 			}
 		}
 	}
-	c.error(w.Pos, "%s<…> around a slot is not the builtin %s, so it counts nothing; a slot's count is option<…> or list<…>", w.Name, w.Name)
+	c.error(w.Pos, "%s[…] around a slot is not the builtin %s, so it counts nothing; a slot's count is option[…] or list[…]", w.Name, w.Name)
 	return ir.InsertOne
 }
 

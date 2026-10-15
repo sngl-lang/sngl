@@ -25,7 +25,7 @@ output {
     }
 }
 
-component frame(n int, content list<component node>) node {
+component frame(n int, content list[component node]) node {
     var open = true
 
     vbox {

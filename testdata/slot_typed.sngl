@@ -1,22 +1,22 @@
 // A slot declares which family its content belongs to by naming that family's
 // type after `component`. A named slot says how many times the body inserts it
-// by wrapping the whole component type: bare is exactly once, `option<…>` at
-// most once, `list<…>` any number of times -- and a ref read through the
+// by wrapping the whole component type: bare is exactly once, `option[…]` at
+// most once, `list[…]` any number of times -- and a ref read through the
 // population is wrapped the same way (error_slot_insertion.sngl holds the body
 // to it).
 //
 // The rest slot counts nodes instead, since what fills it is the children a
 // caller writes bare, and the body inserts it exactly once: `...` is any
-// number, `tr.one` exactly one, `option<T>` none or one.
+// number, `family.one` exactly one, `option[T]` none or one.
 
 import . "sngl:ui"
 import family "sngl:family"
 
 component frame(
-    on bool = false,
-    body component node,
-    badge option<component node>,
-    rows list<component(i int) node>,
+    on    bool = false,
+    body  component node,
+    badge option[component node],
+    rows  list[component(i int) node],
 ) node {
     vbox {
         body {}
@@ -35,7 +35,7 @@ component strip(children ...component node) node {
     }
 }
 
-component single(child ...component tr.one) node {
+component single(child ...component family.one) node {
     vbox {
         child
     }

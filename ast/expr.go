@@ -153,27 +153,32 @@ type VariadicType struct {
 // ComponentDecl's parameter list has to tell a slot from a prop, and the docs
 // site and the CLI walk one without a checker in reach.
 func SlotType(t TypeExpr) (ct *ComponentType, rest, ok bool) {
+	if w := SlotWrapper(t); w != nil {
+		t = w.TypeArgs[0]
+	}
 	if v, isVariadic := t.(*VariadicType); isVariadic {
 		ct, isComp := v.Elem.(*ComponentType)
 		return ct, true, isComp
-	}
-	if w := SlotWrapper(t); w != nil {
-		return w.TypeArgs[0].(*ComponentType), false, true
 	}
 	ct, isComp := t.(*ComponentType)
 	return ct, false, isComp
 }
 
-// SlotWrapper is the `option<…>` or `list<…>` written around a named slot's
-// component type, which counts the slot's insertions, or nil. Matched by
-// shape: a component type is no type argument anywhere else, so whether the
-// name is the builtin is the checker's question, not this one's.
+// SlotWrapper is the `option[…]` or `list[…]` written around a slot's component
+// type, which counts the slot's insertions, or nil; around a rest slot it
+// wraps the `...` too, `option[...component T]`. Matched by shape: a component
+// type is no type argument anywhere else, so whether the name is the builtin is
+// the checker's question, not this one's.
 func SlotWrapper(t TypeExpr) *NamedType {
 	nt, ok := t.(*NamedType)
 	if !ok || nt.Package != "" || len(nt.TypeArgs) != 1 || (nt.Name != "option" && nt.Name != "list") {
 		return nil
 	}
-	if _, isComp := nt.TypeArgs[0].(*ComponentType); !isComp {
+	inner := nt.TypeArgs[0]
+	if v, isVariadic := inner.(*VariadicType); isVariadic {
+		inner = v.Elem
+	}
+	if _, isComp := inner.(*ComponentType); !isComp {
 		return nil
 	}
 	return nt

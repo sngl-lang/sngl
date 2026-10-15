@@ -8,7 +8,7 @@ import "testing"
 const focusRecursionRunSrc = `
 import . "sngl:ui"
 
-component frame(n int, content list<component node>) node {
+component frame(n int, content list[component node]) node {
     vbox {
         text(value="level {n}")
         content {}
@@ -22,7 +22,7 @@ component frame(n int, content list<component node>) node {
     }
 }
 
-component tower(n int, label list<component(depth int) node>) node {
+component tower(n int, label list[component(depth int) node]) node {
     vbox {
         label(n)
         if n > 0 {

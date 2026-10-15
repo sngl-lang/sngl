@@ -29,7 +29,7 @@ func unbox(value int) => value
 
 // A slot names its parameters, so a named argument and a spread field each have
 // something to bind to.
-component table(r Row, cell list<component(title string, count int)>) node {
+component table(r Row, cell list[component(title string, count int)]) node {
     vbox {
         cell(...r)
         cell(count=r.count, ...Partial{title="p"})

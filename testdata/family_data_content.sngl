@@ -67,7 +67,7 @@ func testContentWritesTheCallersState(t Test, c app) {
 func testARecordUnderAnIfKeepsItsContent(t Test, c app) {
     c.extra = true
     c.shown = 2
-    t.assert(c.third.value == "third")
+    t.assert(c.third != null && c.third.value == "third")
     c.extra = false
     t.assert(c.third == null)
 }

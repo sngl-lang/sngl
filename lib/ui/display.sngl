@@ -91,8 +91,8 @@ component avatar(
     alt      string = "",                          // the image's accessibility label
     style    Style = Style{},
     @click(),
-    src      ...component option[imageSource],
-    fallback component option[node], // what stands in for the picture
+    src      option[...component option[imageSource]],
+    fallback option[component node], // what stands in for the picture
 ) node {
     var failed = false
     if failed || src.empty {
