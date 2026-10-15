@@ -1307,8 +1307,8 @@ learn anything: a runner that writes SNGL is one no backend needs telling
 about. The synthesized function is given its Reads and Purity by
 `checker.AnalyzeSynthesizedFunc`, since the effect's settle is placed by what
 its key reads. `testdata/emit_family_state.txtar` is the code and
-`cmd/sngl/testdata/emit_family_state_runs.txt` runs it on gtk4 and fyne under
-the headless compositor (the `headless` script condition). What is not here
+`testdata/emit_family_state_runs.txtar` runs it on gtk4 and fyne under
+the headless compositor (an `exec` directive). What is not here
 yet: a host under a `for`, a composed member's handlers, and a member holding
 children in code mode -- each refused with a position.
 
@@ -1332,7 +1332,7 @@ members' encoded values behind the package's closure digest
 code-mode host is rewritten where it stands, so the family's `gen.emit` -- two
 effects -- sits under the same `if`, and passEffect mounts and unmounts it with
 the branch: `@start` runs again each time the host comes back, and a change
-while it is gone prints nothing (`cmd/sngl/testdata/emit_family_under_if_runs.txt`).
+while it is gone prints nothing (`testdata/emit_family_under_if_runs.txtar`).
 In a root component the members function joins that component's `Funcs`, so
 the inliner renames what it reads with the rest of the component
 (`testdata/emit_family_under_if.txtar`). A template-mode host writes its file
@@ -3107,7 +3107,7 @@ it gets the loop with no window presented (`RunWindows(false)` in
 `golang.ModelCallee` spells the call, since a handler that touches no state is
 emitted free. gtk4's cgo mode has no entry point to wrap and refuses it.
 `testdata/platform_run_handler.txtar` is the code and
-`cmd/sngl/testdata/platform_run_handler_runs.txt` runs it.
+`testdata/platform_run_handler_runs.txtar` runs it.
 
 **The package body is the application's view, and a window is a component.**
 Every node at the root of the package body is `lower.AppendChild(__app, n)`
@@ -3235,7 +3235,7 @@ own build made (`destroyBuiltInstances`) -- without that an effect in a
 component the window rendered stayed mounted after the window was gone.
 Nothing survives the condition turning false; hiding without destroying is
 `visible`. `testdata/window_under_if.txtar` is the code and
-`cmd/sngl/testdata/window_under_if_runs.txt` runs it, including a counter
+`testdata/window_under_if_runs.txtar` runs it, including a counter
 that starts again at zero the second time.
 
 **`visible` is a two-way prop of `ui.window`, and `open`/`close` assign it.**
@@ -3262,9 +3262,9 @@ already has, since the binding's write-back sets it again. gtk4 holds the
 application (`g_application_hold`) and fyne keeps a window it never shows,
 because both would otherwise end when the last window goes. gtk4's inline-cgo
 mode builds one window with no `@closed` and no state-driven `visible`, and
-refuses the rest. On gtk4 `WAYLAND_DEBUG` is how a script tells a window
-reached the screen (`cmd/sngl/testdata/window_open_runs.txt`,
-`window_several_runs.txt`, `window_visible_runs.txt`).
+refuses the rest. On gtk4 `WAYLAND_DEBUG` is how a fixture tells a window
+reached the screen (`testdata/window_open_runs.txtar`,
+`window_several_runs.txtar`, `window_visible_runs.txtar`).
 
 **A selected platform that cannot be used here is refused before the check**
 (`internal/build.Check`), by the platform's own `Unavailable()` -- gtk4 with
