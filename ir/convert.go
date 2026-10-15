@@ -219,11 +219,12 @@ func (c *converter) convertFuncDef(f *Func) *ast.FuncDef {
 		name = f.RecvName() + "." + f.Name
 	}
 	fd := &ast.FuncDef{
-		Name:       name,
-		TypeParams: c.convertTypeParams(f.TypeParams),
-		Params:     c.convertParamList(f.Params),
-		Attrs:      c.foreignAttrs(f.Foreign, f),
-		Const:      f.Const,
+		Name:           name,
+		RecvTypeParams: receiverTypeParams(f.RecvTypeParams),
+		TypeParams:     c.convertTypeParams(f.TypeParams),
+		Params:         c.convertParamList(f.Params),
+		Attrs:          c.foreignAttrs(f.Foreign, f),
+		Const:          f.Const,
 	}
 	if f.Return != nil {
 		fd.ReturnType = c.convertType(f.Return)
@@ -243,8 +244,9 @@ func (c *converter) convertFuncDef(f *Func) *ast.FuncDef {
 
 func (c *converter) convertComponent(comp *Component) *ast.ComponentDecl {
 	cd := &ast.ComponentDecl{
-		Name:  comp.Name,
-		Const: comp.Const,
+		Name:       comp.Name,
+		Const:      comp.Const,
+		TypeParams: c.convertTypeParams(comp.TypeParams),
 	}
 
 	// Build prop list.
@@ -343,6 +345,9 @@ func (c *converter) convertContext(ctx *Context) *ast.CallStmt {
 	call := &ast.CallExpr{
 		Func: &ast.IdentExpr{Name: "context"},
 		ID:   ctx.Name,
+	}
+	if written := c.typeArgExprs(ctx.TypeArgs); len(written) > 0 {
+		call.Func = &ast.IndexExpr{Operand: call.Func, Indices: written}
 	}
 	if ctx.Default != nil {
 		call.Args = ast.ArgList{
@@ -598,8 +603,9 @@ func (c *converter) convertNodeInst(n *NodeInst) *ast.VisualNode {
 		target = &ast.IdentExpr{Name: n.Name}
 	}
 	vn := &ast.VisualNode{
-		Target: target,
-		ID:     n.ID,
+		Target:   target,
+		TypeArgs: c.typeArgExprs(n.WrittenTypeArgs),
+		ID:       n.ID,
 	}
 	if n.Crosses {
 		vn.Attrs = []ast.MacroAttr{c.attr("family", "crosses")}
@@ -642,13 +648,34 @@ func (c *converter) convertNodeInst(n *NodeInst) *ast.VisualNode {
 	return vn
 }
 
+// receiverTypeParams is a method's receiver list as it is written: the names
+// alone, `func Box[T].get()`, since the type's declaration constrains them.
+// Printed without it, the receiver named no type and `this` nothing.
+func receiverTypeParams(ps []TypeParam) []ast.TypeParam {
+	if len(ps) == 0 {
+		return nil
+	}
+	out := make([]ast.TypeParam, len(ps))
+	for i, p := range ps {
+		out[i] = ast.TypeParam{Pos: p.Pos, Name: p.Name}
+	}
+	return out
+}
+
 func (c *converter) convertTypeParams(ps []TypeParam) []ast.TypeParam {
 	if len(ps) == 0 {
 		return nil
 	}
 	out := make([]ast.TypeParam, len(ps))
 	for i, p := range ps {
-		out[i] = ast.TypeParam{Pos: p.Pos, Name: p.Name, Default: c.convertType(p.Default)}
+		// A declaration's own list names a constraint for every parameter,
+		// so one the IR holds none for -- an intrinsic's, synthesized -- is
+		// printed with the constraint that says nothing.
+		constraint := p.Constraint
+		if constraint == nil {
+			constraint = TypAny
+		}
+		out[i] = ast.TypeParam{Pos: p.Pos, Name: p.Name, Constraint: c.convertType(constraint), Default: c.convertType(p.Default)}
 	}
 	return out
 }
@@ -845,7 +872,7 @@ func (c *converter) convertExpr(e Expr) ast.Expr {
 	case *Index:
 		return &ast.IndexExpr{
 			Operand: c.convertExpr(e.Operand),
-			Index:   c.convertExpr(e.Idx),
+			Indices: []ast.Expr{c.convertExpr(e.Idx)},
 		}
 	case *StructLit:
 		return c.convertStructLit(e)
@@ -861,6 +888,8 @@ func (c *converter) convertExpr(e Expr) ast.Expr {
 		return c.convertLambda(e)
 	case *ContextRead:
 		return &ast.IdentExpr{Name: e.Ref.Name}
+	case *SlotEmpty:
+		return &ast.SelectExpr{Operand: &ast.IdentExpr{Name: e.Slot.Name}, Field: SlotEmptyMember}
 	case *Closure:
 		// Render as a synthetic call: __closure(funcRef, structLit). Debug-only —
 		// not parseable as user syntax; provides readability for `dump lowered`.
@@ -907,7 +936,7 @@ func (c *converter) convertLiteral(lit *Literal) ast.Expr {
 func (c *converter) convertIdent(id *Ident) ast.Expr {
 	// Synthesized element references (IsElementRef) carry reserved __-prefixed
 	// names and convert to plain identifiers; the checker re-recognizes the
-	// __ prefix as an unresolved dyn reference when the source is reparsed.
+	// __ prefix as an unresolved reference when the source is reparsed.
 	// Bare enum member: Status.active referenced as just "active" in source.
 	if id.Member != "" {
 		if id.Sym != nil {
@@ -918,20 +947,40 @@ func (c *converter) convertIdent(id *Ident) ast.Expr {
 		}
 		return &ast.IdentExpr{Name: id.Member}
 	}
+	if id.Qualifier != nil {
+		return &ast.SelectExpr{Operand: &ast.IdentExpr{Name: id.Qualifier.Name}, Field: id.Name}
+	}
 	return &ast.IdentExpr{Name: id.Name}
 }
 
 func (c *converter) convertCallExpr(call *Call) *ast.CallExpr {
 	var funcExpr ast.Expr
-	if call.Receiver != nil && call.Func != nil {
+	if call.Qualifier != nil {
+		// Named through an import: `math.sqrt(x)`, `html.div(…)`. A member
+		// the package does not declare -- one a wildcard answers to -- is
+		// named by what the call site wrote.
+		name := ""
+		if call.Func != nil {
+			name = call.Func.Name
+		} else if call.AST != nil {
+			if sel, ok := call.AST.Func.(*ast.SelectExpr); ok {
+				name = sel.Field
+			}
+		}
+		funcExpr = &ast.SelectExpr{Operand: &ast.IdentExpr{Name: call.Qualifier.Name}, Field: name}
+	} else if IsNodeOpCall(call) {
+		// A node operation a lowering pass emitted, which no package
+		// declares: printed under the lowering's own name for it.
+		funcExpr = &ast.SelectExpr{Operand: &ast.IdentExpr{Name: "lower"}, Field: call.Func.Name}
+	} else if call.Receiver != nil && call.Func != nil {
 		// Method call: receiver.method(args)
 		funcExpr = &ast.SelectExpr{
 			Operand: c.convertExpr(call.Receiver),
 			Field:   call.Func.Name,
 		}
 	} else if call.Receiver != nil {
-		// Namespaced component/element (html.div, docui.Foo) — preserve the
-		// "ns.Field" select form.
+		// A host call on a value -- `c.label()` on a component-typed param
+		// the checker bound to no func -- preserves the "x.Field" form.
 		if call.AST != nil {
 			if sel, ok := call.AST.Func.(*ast.SelectExpr); ok {
 				funcExpr = &ast.SelectExpr{
@@ -945,19 +994,33 @@ func (c *converter) convertCallExpr(call *Call) *ast.CallExpr {
 			funcExpr = c.convertExpr(call.Receiver)
 		}
 	} else if call.Func != nil {
+		if call.ReceiverArg && len(call.Args) > 0 {
+			// The receiver is no parameter, so it goes before the dot.
+			recv := c.convertExpr(call.Args[0].Value)
+			// A brace may not open an `if` or `for` head, so a literal
+			// before the dot is parenthesized wherever it stands.
+			switch r := recv.(type) {
+			case *ast.MapLit:
+				recv = &ast.ParenExpr{Inner: r}
+			case *ast.StructExpr:
+				if r.Name == "" {
+					recv = &ast.ParenExpr{Inner: r}
+				}
+			}
+			return &ast.CallExpr{
+				Func: c.typeArgCallee(&ast.SelectExpr{
+					Operand: recv,
+					Field:   call.Func.Name,
+				}, call),
+				Args: c.convertCallArgList(call.Args[1:]),
+			}
+		}
 		if call.Func.IsMethod() {
 			// Type-attached method: render as Type.method(args). After checker
 			// normalization Args[0] is the receiver value; both "x.method(...)"
 			// and "Type.method(...)" syntaxes collapse to this shape.
 			funcExpr = &ast.SelectExpr{
 				Operand: &ast.IdentExpr{Name: call.Func.RecvName()},
-				Field:   call.Func.Name,
-			}
-		} else if id, ok := call.Receiver.(*Ident); ok && id.Name != "" {
-			// A package function called through its import: the namespace is
-			// the alias at the call site, not a receiver on the declaration.
-			funcExpr = &ast.SelectExpr{
-				Operand: &ast.IdentExpr{Name: id.Name},
 				Field:   call.Func.Name,
 			}
 		} else {
@@ -970,13 +1033,39 @@ func (c *converter) convertCallExpr(call *Call) *ast.CallExpr {
 		funcExpr = &ast.IdentExpr{Name: "_"}
 	}
 	return &ast.CallExpr{
-		Func: funcExpr,
+		Func: c.typeArgCallee(funcExpr, call),
 		Args: c.convertCallArgList(call.Args),
 	}
 }
 
+// typeArgCallee is callee with the type arguments call was written with.
+func (c *converter) typeArgCallee(callee ast.Expr, call *Call) ast.Expr {
+	if written := c.typeArgExprs(call.TypeArgs); len(written) > 0 {
+		return &ast.IndexExpr{Operand: callee, Indices: written}
+	}
+	return callee
+}
+
+// typeArgExprs spells the type arguments a call site wrote as the
+// expressions a bracket holds. Nil where none were written, or where one is a
+// type no expression spells, which the call could not have been written with.
+func (c *converter) typeArgExprs(types []*Type) []ast.Expr {
+	var out []ast.Expr
+	for _, t := range types {
+		if t == nil {
+			return nil
+		}
+		e, ok := ast.ExprFromType(c.convertType(t))
+		if !ok {
+			return nil
+		}
+		out = append(out, e)
+	}
+	return out
+}
+
 func (c *converter) convertConversion(conv *Conversion) ast.Expr {
-	// These conversions have no source spelling -- `list<float>(xs)` names
+	// These conversions have no source spelling -- `list[float](xs)` names
 	// nothing -- and only ever arise implicitly, so the checker re-inserts them.
 	if conv.Type != nil {
 		switch conv.Type.Kind {
@@ -1006,6 +1095,11 @@ func (c *converter) convertStructLit(sl *StructLit) *ast.StructExpr {
 		se.Name = sl.Def.Name
 		if sl.Type != nil && sl.Type.Package != "" {
 			se.Package = sl.Type.Package
+		}
+		// A generic struct's literal says what it is an instance of, which
+		// no expected type need then supply when it is read back.
+		if len(sl.Def.TypeParams) > 0 && sl.Type != nil && len(sl.Type.Elems) == len(sl.Def.TypeParams) {
+			se.TypeArgs = c.typeArgExprs(sl.Type.Elems)
 		}
 	} else if sl.Type != nil && sl.Type.Decl != nil {
 		se.Name = sl.Type.Decl.SymName()
@@ -1064,6 +1158,11 @@ func (c *converter) convertType(t *Type) ast.TypeExpr {
 		return nil
 	}
 	switch t.Kind {
+	case TypeInvalid:
+		// Only a host declaration marked #[macro.unusable] holds one in a
+		// package that checked clean, and its type is SNGL's to have no name
+		// for: the checker accepts `any` written there and reads nothing of it.
+		return &ast.NamedType{Name: "any"}
 	case TypeList:
 		nt := &ast.NamedType{Name: "list"}
 		if len(t.Elems) > 0 {
@@ -1090,7 +1189,7 @@ func (c *converter) convertType(t *Type) ast.TypeExpr {
 		}
 		// Bare `component` carries no declaration — it is the widest component
 		// type, not an unresolved one, so it has a spelling of its own.
-		name := "dyn" // anonymous/unresolved declaration
+		name := "<invalid>" // anonymous/unresolved declaration, which no source names
 		switch {
 		case t.Decl != nil:
 			name = t.Decl.SymName()

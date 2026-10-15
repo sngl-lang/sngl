@@ -22,7 +22,7 @@ receives in a row would take the tick before ever looking at `done` -- and that
 is the one thing only a golden can show, which is what the emitted `select {`
 below is here for.
 
-`sngl:language/go` grew `go.chan<T>` for this: `C` is a `<-chan Time` field, and
+`sngl:language/go` grew `go.chan[T]` for this: `C` is a `<-chan Time` field, and
 without a channel type there was nothing to declare it as. Direction is not
 spelled -- a receive-only channel is reachable because nothing writes a Go type
 for an expression that is only selected on.

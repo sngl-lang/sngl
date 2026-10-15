@@ -18,7 +18,7 @@ struct Row {
 }
 
 component table(
-    rows     list<Row>,
+    rows     list[Row],
     header   component,
     cell     component(Row),
     children ...component,

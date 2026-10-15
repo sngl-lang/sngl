@@ -799,7 +799,10 @@ func (m *Model) buildWidgetTree() {
 	m.__n1 = (*C.GtkDrawingArea)(unsafe.Pointer(C.gtk_drawing_area_new()))
 	C.gtk_drawing_area_set_content_width(m.__n1, C.int(60))
 	C.gtk_drawing_area_set_content_height(m.__n1, C.int(40))
-	snglDrawFuncs = append(snglDrawFuncs, func(cr *C.cairo_t, pw, ph int) { _snglCairoScale(cr, pw, ph, 60, 40, ""); m._canvasDraw0(cr) })
+	snglDrawFuncs = append(snglDrawFuncs, func(cr *C.cairo_t, pw int, ph int) {
+		_snglCairoScale(cr, pw, ph, 60, 40, "")
+		m._canvasDraw0(cr)
+	})
 	C.sngl_drawing_area_set_draw(unsafe.Pointer(m.__n1), C.int((len(snglDrawFuncs) - 1)))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n0)), (*C.GtkWidget)(unsafe.Pointer(m.__n1)))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__root)), (*C.GtkWidget)(unsafe.Pointer(m.__n0)))
@@ -1193,7 +1196,7 @@ pass sha256:4c4db1e340e3f040e86cf13a49dc9650
 -- run/go/fyne --
 pass sha256:9ed6653bc2c74513345c5f750d86a689
 -- run/go/gtk4 --
-pass sha256:9ff42a482aa40808de4d62f5cbdfe2c0
+pass sha256:08358ff383a0694149dee5b485acfc41
 -- run/kotlin/android --
 pass sha256:717d677a5939dab574481c37404038fa
 -- run/none/html --

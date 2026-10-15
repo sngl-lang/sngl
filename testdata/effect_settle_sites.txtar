@@ -33,9 +33,9 @@ output {
 
 component main node {
     var (
-        items list<string> = ["a"]
+        items list[string] = ["a"]
         k = 0
-        log list<string> = []
+        log list[string] = []
     )
 
     timer(interval=1s, @tick {

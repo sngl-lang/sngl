@@ -32,7 +32,7 @@ func Test.setLocale(loc string)
 // context — including component vars initialised from it — see the overridden
 // value. Replaces t.setLocale when the locale context is declared.
 #[marks.intrinsic("test.setContext")]
-func Test.setContext<V>(
+func Test.setContext[V any](
     ctx   V, // the context to set
     value V, // what it reads from here on
 )
@@ -50,3 +50,15 @@ func Test.wait(predicate func() bool, timeout_ms int)
 // The capture format (ANSI text, PNG, etc.) is chosen by the platform.
 #[marks.intrinsic("test.snapshot")]
 func Test.snapshot(name string)
+
+// Advances the test's clock to the next timer deadline and fires every timer
+// due then, as the running program's clock would.
+#[marks.intrinsic("test.tick")]
+func Test.tick()
+
+// Runs body as a subtest named desc, on a snapshot of the state the enclosing
+// test has reached: what the subtest changes, its siblings do not see. body
+// takes the subtest's own Test and the component the enclosing test took,
+// whose type its annotation names.
+#[marks.intrinsic("test.test")]
+func Test.test[C any = struct {}](desc string, body func(Test, C))

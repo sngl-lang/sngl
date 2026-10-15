@@ -54,7 +54,7 @@ component gauge(label = "") node {
     text(value="base {label}")
 }
 
-component gauge[android.platform] {
+component gauge[android.platform](label) {
     var hits = 0
 
     button(text=label, @click {
@@ -62,7 +62,7 @@ component gauge[android.platform] {
     })
 }
 
-component gauge[html.platform] {
+component gauge[html.platform](label) {
     var hits = 0
 
     button(text=label, @click {

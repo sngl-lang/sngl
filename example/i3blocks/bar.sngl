@@ -29,7 +29,7 @@ output {
     }
 }
 
-func start(args list<string>, run func()) {
+func start(args list[string], run func()) {
     if args.contains("--window") {
         details = true
         run()
@@ -38,7 +38,7 @@ func start(args list<string>, run func()) {
 
 var (
     uptime = 0
-    samples list<int> = []
+    samples list[int] = []
     workspaces = ["web", "code", "chat"]
     focused = 0
     // Whether the details window exists. The tree says so below: the window

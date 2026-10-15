@@ -8,8 +8,8 @@ import (
 	"duckfam.us/sngl/ir"
 )
 
-// passMonomorphize gives each instantiation of a generic function a copy of
-// its own, named for its type arguments and declared beside the original, and
+// passMonomorphize gives each instantiation of a generic function -- and of a
+// generic struct, in monomorphizeStructs -- a copy of its own, named for its type arguments and declared beside the original, and
 // points every call and reference at the copy. A target that cannot emit a
 // type parameter then sees concrete types only: Go puts a function reading
 // state on the Model, where no method may take one, and a body comparing two
@@ -69,6 +69,12 @@ func lowerMonomorphize(pkg *ir.Package, _ Features, _ Options) error {
 	for _, c := range pkg.Components {
 		note(&c.Funcs)
 	}
+	for _, sd := range pkg.Structs {
+		m.names[sd.Name] = true
+	}
+	// The structs after the functions: a function's copy names the struct
+	// instantiations its bindings make, which the struct pass then finds.
+	defer monomorphizeStructs(pkg, m.names)
 	if len(m.slot) == 0 {
 		return nil
 	}
@@ -136,10 +142,10 @@ func (m *monomorph) visit(n ir.Node) {
 		b := map[string]*ir.Type{}
 		for i, p := range x.Func.Params {
 			if i < len(x.Args) && x.Args[i].Value != nil {
-				ir.UnifyTypeParams(p.Type, x.Args[i].Value.ExprType(), b)
+				ir.BindTypeParams(p.Type, x.Args[i].Value.ExprType(), b)
 			}
 		}
-		ir.UnifyTypeParams(x.Func.Return, x.Type, b)
+		ir.BindTypeParams(x.Func.Return, x.Type, b)
 		if inst := m.instance(x.Func, b); inst != nil {
 			x.Func = inst
 			// A default CallDefaults wrote is typed by the declaration's T.
@@ -164,10 +170,10 @@ func (m *monomorph) visit(n ir.Node) {
 		b := map[string]*ir.Type{}
 		for i, p := range fn.Params {
 			if i < len(x.Type.Sig.Params) {
-				ir.UnifyTypeParams(p.Type, x.Type.Sig.Params[i].Type, b)
+				ir.BindTypeParams(p.Type, x.Type.Sig.Params[i].Type, b)
 			}
 		}
-		ir.UnifyTypeParams(fn.Return, x.Type.Sig.Return, b)
+		ir.BindTypeParams(fn.Return, x.Type.Sig.Return, b)
 		if inst := m.instance(fn, b); inst != nil {
 			x.Sym = inst
 			x.Name = inst.Name
@@ -182,8 +188,10 @@ func (m *monomorph) instance(fn *ir.Func, b map[string]*ir.Type) *ir.Func {
 	args := make([]*ir.Type, len(params))
 	var key []string
 	for i, tp := range params {
+		// A binding naming a type parameter is a call in a body still
+		// generic, which keeps the original.
 		t, ok := b[tp.Name]
-		if !ok {
+		if !ok || t.HasTypeParam() {
 			m.kept[fn] = true
 			return nil
 		}
@@ -212,15 +220,20 @@ func (m *monomorph) instance(fn *ir.Func, b map[string]*ir.Type) *ir.Func {
 // fresh is name, or name with a number where two instantiations spell
 // alike: `func(int) string` and `func(int, string)` are both func_int_string.
 func (m *monomorph) fresh(name string) string {
+	return freshName(m.names, name)
+}
+
+// freshName is name, or name with a number where it is taken, and takes it.
+func freshName(names map[string]bool, name string) string {
 	out := name
-	for n := 1; m.names[out]; n++ {
+	for n := 1; names[out]; n++ {
 		out = fmt.Sprintf("%s_%d", name, n)
 	}
-	m.names[out] = true
+	names[out] = true
 	return out
 }
 
-// typeKey spells t as an identifier fragment: `list<int>` is `list_int`.
+// typeKey spells t as an identifier fragment: `list[int]` is `list_int`.
 func typeKey(t *ir.Type) string {
 	var b strings.Builder
 	under := false

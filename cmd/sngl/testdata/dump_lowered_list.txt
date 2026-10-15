@@ -54,9 +54,10 @@ cmp stdout fyne.txt
 # not html's -- Ternary and ListLambdas are *held* here for the same reason
 # they are held under --lang none, even though Go withholds both. GenericFuncs
 # is the one the server half needs: its functions are Go, which emits no type
-# parameter, while a page script is JavaScript, which does.
+# parameter, while a page script is JavaScript, which does -- which is why
+# GenericComponents is held: a component built at run time is the page's.
 sngl dump --stage lowered --lang go --platform html --list main.sngl
-stdout '^caps: Toggle,Ternary,Lambda,Ref,Unit,Enum,AsyncCalls,Computed,ListLambdas,Declarative,InstanceState,InsertBefore,InlineSlots,Navigation,RuntimeReach,StructComponents,StdlibContextParam,Canvas,ReactiveCanvas,NavigationHrefs$'
+stdout '^caps: Toggle,Ternary,Lambda,Ref,Unit,Enum,AsyncCalls,Computed,ListLambdas,Declarative,InstanceState,InsertBefore,InlineSlots,Navigation,GenericComponents,RuntimeReach,StructComponents,StdlibContextParam,Canvas,ReactiveCanvas,NavigationHrefs$'
 stdout ' → SlotChildInstances → '
 stdout ' → CallDefaults → Monomorphize → '
 

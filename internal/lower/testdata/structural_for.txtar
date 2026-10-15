@@ -3,7 +3,7 @@ caps: NoReactivity
 import . "sngl:ui"
 
 component main node {
-    var items list<int> = [1, 2, 3]
+    var items list[int] = [1, 2, 3]
     button(text="add", @click { items.push(4) })
     for var item = items {
         text(value=string(item))
@@ -12,10 +12,10 @@ component main node {
 -- expected.sngl --
 import . "sngl:ui"
 component main node {
-    var items list<int> = [1, 2, 3]
-    var __root dyn
-    var __slot0 list<dyn> = []
-    func __renderSlot0(parent dyn) void {
+    var items list[int] = [1, 2, 3]
+    var __root node
+    var __slot0 list[text] = []
+    func __renderSlot0(parent node) void {
         for var __entry = __slot0 {
             lower.RemoveChild(parent, __entry)
         }
@@ -28,7 +28,7 @@ component main node {
         }
     }
     button(text="add", @click {
-        list.push(items, item=4)
+        items.push(item=4)
         __renderSlot0(__root)
     })
     __renderSlot0(__root)

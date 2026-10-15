@@ -55,7 +55,7 @@
 // `I` and `E` are what a list's changes are reported in -- its index and its
 // element type -- and are bound from `T` rather than written.
 #[_builtin(effect)]
-component effect<T = struct {}, I = int, E = dyn, F>(
+component effect[T any = struct {}, I any = int, E any = struct {}, F any](
     on T,
     @mount(key T),
     @unmount(key T),

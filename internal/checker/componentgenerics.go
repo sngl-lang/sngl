@@ -2,7 +2,6 @@ package checker
 
 import (
 	"maps"
-	"slices"
 	"strings"
 
 	"duckfam.us/sngl/ast"
@@ -13,37 +12,41 @@ import (
 // against the props one call site supplies, and returns the specialization
 // those props are checked against.
 //
-// A component's parameters are bound from its props for the same reason a
-// func's are bound from its arguments: there is no syntax for naming a type
-// argument at a call site, so the values written there are the only statement
-// of what the parameters are. `effect(on=page)` binds T from `page`, which is
-// what then types the `@mount(v)` payload.
+// A component's parameters are bound from its props as a func's are bound from
+// its arguments, after any the call site wrote, `tagged[int](v=1)`.
+// `effect(on=page)` binds T from `page`, which is what then types the
+// `@mount(v)` payload.
 //
 // The result is for checking the call site and nothing else. NodeInst.Component
 // keeps the generic declaration, because that is the identity every later pass
 // compares against -- the inliner's cycle set, the local-component set, the
 // method table keyed by name. A specialization put there would be a component
 // nothing else in the program has heard of.
-func (c *checker) bindComponentTypeParams(comp *ir.Component, args ast.ArgList) *ir.Component {
+func (c *checker) bindComponentTypeParams(pos ast.Pos, comp *ir.Component, args ast.ArgList, written map[string]*ir.Type) *ir.Component {
 	if comp == nil || len(comp.TypeParams) == 0 {
 		return comp
 	}
-	bindings := map[string]*ir.Type{}
+	// What the call site wrote binds first, and the props are held to it.
+	bindings := maps.Clone(written)
+	if bindings == nil {
+		bindings = map[string]*ir.Type{}
+	}
 	for _, p := range comp.Props {
-		if p.Type == nil || !mentionsTypeParam(p.Type) {
+		if p.Type == nil || !p.Type.HasTypeParam() {
 			continue
 		}
 		argType := c.propArgType(args, comp, p)
-		// A dyn argument states nothing: binding T to it would make every
+		// An invalid argument states nothing: binding T to it would make every
 		// other prop typed T accept anything, which is the opposite of what
 		// the annotation asked for. Same rule as inferTypeParams.
-		if argType == nil || argType.Kind == ir.TypeDyn {
+		if argType == nil || argType.Kind == ir.TypeInvalid {
 			continue
 		}
-		bindTypeParams(p.Type, argType, bindings)
+		ir.BindTypeParams(p.Type, argType, bindings)
 	}
 	bindEffectChanges(comp, bindings)
 	c.bindFromHandlers(comp, args, bindings)
+	c.checkConstraints(pos, comp.TypeParams, bindings)
 	return c.specializeWith(comp, bindings)
 }
 
@@ -67,7 +70,7 @@ func bindEffectChanges(comp *ir.Component, bindings map[string]*ir.Type) {
 
 // bindFromHandlers binds what the props left unbound from the types a handler
 // writes on its parameters, the way a lambda's annotation binds a func's:
-// `gen.emit(@generate(out, members list<gen.Member<Entry>>) { … })` says T is
+// `gen.emit(@generate(out, members list[gen.Member[Entry]]) { … })` says T is
 // Entry, and nothing else at that call site could. A written type is resolved
 // quietly here, since bindParams resolves it again and reports it there.
 func (c *checker) bindFromHandlers(comp *ir.Component, args ast.ArgList, bindings map[string]*ir.Type) {
@@ -86,16 +89,14 @@ func (c *checker) bindFromHandlers(comp *ir.Component, args ast.ArgList, binding
 			continue
 		}
 		for i, p := range h.Params.Params {
-			if p.Type == nil || i >= len(ev.Params) || ev.Params[i].Type == nil || !mentionsTypeParam(ev.Params[i].Type) {
+			if p.Type == nil || i >= len(ev.Params) || ev.Params[i].Type == nil || !ev.Params[i].Type.HasTypeParam() {
 				continue
 			}
-			n := len(c.diags)
-			got := c.resolveType(p.Type)
-			c.diags = c.diags[:n]
-			if got == nil || got.Kind == ir.TypeDyn {
+			got := c.resolveTypeQuietly(p.Type)
+			if got == nil || got.Kind == ir.TypeInvalid {
 				continue
 			}
-			bindTypeParams(ev.Params[i].Type, got, bindings)
+			ir.BindTypeParams(ev.Params[i].Type, got, bindings)
 		}
 	}
 }
@@ -156,8 +157,8 @@ func (c *checker) specializeWith(comp *ir.Component, pinned map[string]*ir.Type)
 
 // bindFromChildren binds the type parameters a generic family names in the
 // rest slot's type from the children written there, where no prop pinned
-// them: `stack<M>(pages ...component _page<M>)` holds pages each of which is
-// a `_page<Meta>`, so the stack is a `stack<Meta>`. The first child that is a
+// them: `stack[M any](pages ...component _page[M])` holds pages each of which is
+// a `_page[Meta]`, so the stack is a `stack[Meta]`. The first child that is a
 // member says what they are, and every other is held to it, since one slot
 // holds one type. Returns spec, or the specialization the children bound.
 func (c *checker) bindFromChildren(comp, spec *ir.Component, children []ir.Stmt) *ir.Component {
@@ -165,7 +166,7 @@ func (c *checker) bindFromChildren(comp, spec *ir.Component, children []ir.Stmt)
 		return spec
 	}
 	rest := comp.RestSlot()
-	if rest == nil || rest.Content == nil || len(rest.Content.Elems) == 0 || !mentionsTypeParam(rest.Content) {
+	if rest == nil || rest.Content == nil || len(rest.Content.Elems) == 0 || !rest.Content.HasTypeParam() {
 		return spec
 	}
 	fam := ir.TypeFamily(rest.Content)
@@ -178,6 +179,7 @@ func (c *checker) bindFromChildren(comp, spec *ir.Component, children []ir.Stmt)
 		bindings = map[string]*ir.Type{}
 	}
 	var first *ir.Type
+	var firstAt ast.Pos
 	var walk func([]ir.Stmt)
 	walk = func(stmts []ir.Stmt) {
 		for _, st := range stmts {
@@ -196,7 +198,10 @@ func (c *checker) bindFromChildren(comp, spec *ir.Component, children []ir.Stmt)
 			got := &ir.Type{Kind: ir.TypeComponent, Decl: fam, Elems: ir.FamilyArgs(n.Component, n.TypeArgs)}
 			if first == nil {
 				first = got
-				bindTypeParams(rest.Content, got, bindings)
+				if at := stmtPos(n.AST); at != nil {
+					firstAt = *at
+				}
+				ir.BindTypeParams(rest.Content, got, bindings)
 				continue
 			}
 			if !got.Equal(first) {
@@ -213,11 +218,20 @@ func (c *checker) bindFromChildren(comp, spec *ir.Component, children []ir.Stmt)
 	if first == nil {
 		return spec
 	}
+	// What the props pinned was measured where they bound it.
+	inferFromConstraints(comp.TypeParams, bindings)
+	for _, tp := range comp.TypeParams {
+		if _, was := pinned[tp.Name]; !was {
+			if t, ok := bindings[tp.Name]; ok {
+				c.checkConstraint(firstAt, tp, t, bindings)
+			}
+		}
+	}
 	return c.specializeWith(comp, bindings)
 }
 
 // specializeHandle gives the handle a node's `#id` declared the type
-// arguments its call site bound, so `box #counts(item=1)` is a `box<int>`
+// arguments its call site bound, so `box #counts(item=1)` is a `box[int]`
 // wherever it is read. The id is hoisted before any node is checked, when the
 // arguments are not known, so the var is completed here -- the count it was
 // hoisted through, an option or a list, is kept around it.
@@ -252,7 +266,7 @@ type handleKey struct {
 }
 
 // componentArgBindings is what a component type's arguments bind its
-// declaration's type parameters to: `page<Pkg>` binds T to Pkg, so a select
+// declaration's type parameters to: `page[Pkg]` binds T to Pkg, so a select
 // through it reads `params` as a Pkg.
 func componentArgBindings(t *ir.Type, comp *ir.Component) map[string]*ir.Type {
 	if t == nil || len(t.Elems) != len(comp.TypeParams) || len(comp.TypeParams) == 0 {
@@ -295,8 +309,10 @@ func withComponentArgs(t *ir.Type, comp *ir.Component, args []*ir.Type) *ir.Type
 // three answered here: a named arg, a positional one, and a field of a struct
 // spread.
 func (c *checker) propArgType(args ast.ArgList, comp *ir.Component, p *ir.Prop) *ir.Type {
+	// Quietly: checkAndSplitArgs checks the argument against what this binds,
+	// and reports it there.
 	if val := propArgValue(args, comp, p); val != nil {
-		return exprType(c.checkExpr(val))
+		return exprType(c.checkExprQuietly(val))
 	}
 	return c.spreadPropType(args, comp, p)
 }
@@ -317,7 +333,7 @@ func (c *checker) spreadPropType(args ast.ArgList, comp *ir.Component, p *ir.Pro
 		if !isSpr {
 			continue
 		}
-		t := exprType(c.checkExpr(spread.Operand))
+		t := exprType(c.checkExprQuietly(spread.Operand))
 		if t == nil || t.Kind != ir.TypeStruct {
 			continue
 		}
@@ -334,77 +350,64 @@ func (c *checker) spreadPropType(args ast.ArgList, comp *ir.Component, p *ir.Pro
 	return nil
 }
 
-// propArgValue is the expression a call site supplied for prop p, or nil.
-// Named args win over position, and a wildcard prop has no position at all --
-// it stands for names, so binding one positionally would give it a name nobody
-// wrote. Mirrors the matching checkAndSplitArgs does.
+// propArgValue is the expression a call site supplied for prop p, or nil:
+// the argument naming it, or else the one bound to it by position.
 func propArgValue(args ast.ArgList, comp *ir.Component, p *ir.Prop) ast.Expr {
-	var ordered []*ir.Prop
-	for _, q := range comp.Props {
-		if q.Wildcard == "" {
-			ordered = append(ordered, q)
-		}
-	}
-	pos := 0
 	var positional ast.Expr
-	for _, a := range args.Args {
-		arg, isArg := a.(ast.Arg)
-		if !isArg || arg.Value == nil {
+	for i, name := range argPropNames(args, comp) {
+		if name != p.Name {
 			continue
 		}
-		if arg.Name == "key" {
-			continue
-		}
+		arg := args.Args[i].(ast.Arg)
 		if arg.Name != "" {
-			// A binding is the same prop under a different spelling: the
-			// leading `:` says the value is written back, not that a different
-			// name was supplied, and checkAndSplitArgs strips it before it
-			// matches. Compared raw, `:on=n` bound no parameter at all, so
-			// every other prop typed T accepted anything -- `T` spelled at
-			// greater length, which is exactly what the annotation exists to
-			// prevent.
-			if strings.TrimPrefix(arg.Name, ":") == p.Name {
-				return arg.Value
-			}
-			continue
+			return arg.Value
 		}
-		// A spread carries no name and takes no position: it expands to named
-		// props. Read as a positional it bound the first prop's type parameter
-		// to the struct being spread -- `effect(...a)` made T the struct, and
-		// the `@mount(v)` payload with it.
-		if _, isSpr := arg.Value.(*ast.SpreadExpr); isSpr {
-			continue
-		}
-		if pos < len(ordered) && ordered[pos] == p {
+		if positional == nil {
 			positional = arg.Value
 		}
-		pos++
 	}
 	return positional
 }
 
-// mentionsTypeParam reports whether t names a type parameter anywhere inside
-// it, so a prop that cannot contribute a binding is not checked twice for
-// nothing.
-func mentionsTypeParam(t *ir.Type) bool {
-	if t == nil {
-		return false
-	}
-	if t.Kind == ir.TypeTypeParam {
-		return true
-	}
-	if slices.ContainsFunc(t.Elems, mentionsTypeParam) {
-		return true
-	}
-	if t.Kind == ir.TypeFunc && t.Sig != nil {
-		for _, p := range t.Sig.Params {
-			if mentionsTypeParam(p.Type) {
-				return true
+// argPropNames is the prop each of args binds, by index: the name an argument
+// wrote, or the next prop by position for one that wrote none. "" is an
+// argument that binds no one prop -- a handler, `key`, a spread (which
+// expands to named props and takes no position), and a positional argument
+// past the last prop.
+//
+// A binding is the same prop under a different spelling: the leading `:` says
+// the value is written back, not that another name was supplied. And a
+// wildcard prop has no position: it stands for names, and binding one
+// positionally would give it a name nobody wrote.
+func argPropNames(args ast.ArgList, comp *ir.Component) []string {
+	var ordered []*ir.Prop
+	if comp != nil {
+		for _, q := range comp.Props {
+			if q.Wildcard == "" {
+				ordered = append(ordered, q)
 			}
 		}
-		return mentionsTypeParam(t.Sig.Return)
 	}
-	return false
+	names := make([]string, len(args.Args))
+	pos := 0
+	for i, a := range args.Args {
+		arg, isArg := a.(ast.Arg)
+		if !isArg || arg.Name == "key" {
+			continue
+		}
+		if arg.Name != "" {
+			names[i] = strings.TrimPrefix(arg.Name, ":")
+			continue
+		}
+		if _, isSpr := arg.Value.(*ast.SpreadExpr); isSpr {
+			continue
+		}
+		if pos < len(ordered) {
+			names[i] = ordered[pos].Name
+		}
+		pos++
+	}
+	return names
 }
 
 // specializeComponent is comp with bindings applied to everything a call site
@@ -475,21 +478,6 @@ func substituteParams(params []*ir.Param, bindings map[string]*ir.Type) []*ir.Pa
 		out[j] = &q
 	}
 	return out
-}
-
-// checkEffectHandlers reports an effect that handles nothing.
-//
-// Either handler alone is a whole bracket -- a subscription with nothing to
-// give back, or a teardown for something the tree itself set up -- so the rule
-// is that at least one is written. Neither is a node that runs no code and
-// holds no state, which is a program that meant to say something else.
-func (c *checker) checkEffectHandlers(vn *ast.VisualNode) {
-	for _, a := range vn.Args.Args {
-		if _, isHandler := a.(ast.EventHandler); isHandler {
-			return
-		}
-	}
-	c.error(vn.Pos, "effect handles none of its events, so it brackets nothing and reports nothing")
 }
 
 // declTypeBindings is what a component's type parameters stand for where the

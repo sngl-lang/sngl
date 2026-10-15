@@ -659,5 +659,5 @@ func (cv *componentValue) writableFieldSym(field string) (ir.Symbol, error) {
 // included.
 func init() {
 	codegen.DeclareLangImplements("none", ir.TestAssertID, ir.TestMustID, ir.TestSetLocaleID,
-		ir.TestSetContextID, ir.TestWaitID, ir.TestSnapshotID)
+		ir.TestSetContextID, ir.TestWaitID, ir.TestSnapshotID, ir.TestTickID, ir.TestSubtestID)
 }

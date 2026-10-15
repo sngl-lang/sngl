@@ -3,6 +3,8 @@ package ir
 import (
 	"fmt"
 	"slices"
+
+	"duckfam.us/sngl/ast"
 )
 
 // SlotSplicer projects what a call site supplied into the insertion points a
@@ -22,8 +24,78 @@ type SlotSplicer struct {
 	Bind func(body []Stmt, sc *SlotContent, si *SlotInst) []Stmt
 }
 
-// Substitute replaces every SlotInst in stmts with what callsite supplied.
+// Substitute replaces every SlotInst in stmts with what callsite supplied,
+// and answers every `.empty` the body asks of one of its slots.
 func (sp SlotSplicer) Substitute(stmts []Stmt, callsite *NodeInst) []Stmt {
+	sp.answerEmpty(stmts, callsite)
+	return sp.substitute(stmts, callsite)
+}
+
+// answerEmpty replaces each SlotEmpty in a body about to be spliced for
+// callsite that asks about one of callsite's slots with what callsite
+// supplied says (RendersNothing), on a copy of the content of its own, since
+// the content itself is spliced in elsewhere. Which slot is asked is the
+// declaration, never the name: a caller's own `.empty` handed in as a prop
+// argument may already stand in this body, and asks about the caller's slot,
+// to be answered where the caller's body is spliced.
+// AnswerEmptyIn is answerEmpty for an expression the body holds outside its
+// statements: the initializer of a var the splice hoists out of it.
+func (sp SlotSplicer) AnswerEmptyIn(e Expr, callsite *NodeInst) Expr {
+	if e == nil {
+		return nil
+	}
+	holder := []Stmt{&Return{Value: e}}
+	sp.answerEmpty(holder, callsite)
+	return holder[0].(*Return).Value
+}
+
+func (sp SlotSplicer) answerEmpty(stmts []Stmt, callsite *NodeInst) {
+	if callsite == nil || callsite.Component == nil {
+		return
+	}
+	_ = RewriteExprs(stmts, func(e Expr) (Expr, error) {
+		se, ok := e.(*SlotEmpty)
+		if !ok || !slices.Contains(callsite.Component.Slots, se.Slot) {
+			return e, nil
+		}
+		body, _, supplied := SlotBody(&SlotInst{Name: se.Slot.Name, Rest: se.Slot.Rest}, callsite)
+		if !supplied {
+			return boolLit(true), nil
+		}
+		answer, ok := RendersNothing(sp.Clone(body))
+		if !ok {
+			// The checker refused this content at the call site
+			// (checkSlotEmptyAnswers); IR it did not see says nothing.
+			return boolLit(false), nil
+		}
+		return answer, nil
+	})
+}
+
+// answerEntryEmpty is answerEmpty for the entries of ins: a population that
+// forwards one of them into a slot asked `.empty` asks about the entry
+// (RendersNothing), which is answered by what ins populated it with. That
+// content was written beside ins, so a slot of callsite's it forwards in turn
+// answers to callsite.
+func (sp SlotSplicer) answerEntryEmpty(stmts []Stmt, ins *SlotInst, callsite *NodeInst) {
+	_ = RewriteExprs(stmts, func(e Expr) (Expr, error) {
+		se, ok := e.(*SlotEmpty)
+		if !ok || !slices.Contains(ins.Decl.Slots, se.Slot) {
+			return e, nil
+		}
+		content := ins.Slots[se.Slot.Name]
+		if content == nil {
+			return boolLit(true), nil
+		}
+		answer, ok := RendersNothing(sp.Clone(content.Body))
+		if !ok {
+			return boolLit(false), nil
+		}
+		return sp.AnswerEmptyIn(answer, callsite), nil
+	})
+}
+
+func (sp SlotSplicer) substitute(stmts []Stmt, callsite *NodeInst) []Stmt {
 	out := make([]Stmt, 0, len(stmts))
 	for _, s := range stmts {
 		if si, isSlot := s.(*SlotInst); isSlot && si.Entry == nil {
@@ -32,21 +104,21 @@ func (sp SlotSplicer) Substitute(stmts []Stmt, callsite *NodeInst) []Stmt {
 		}
 		switch n := s.(type) {
 		case *If:
-			n.Body = sp.Substitute(n.Body, callsite)
-			n.Else = sp.Substitute(n.Else, callsite)
+			n.Body = sp.substitute(n.Body, callsite)
+			n.Else = sp.substitute(n.Else, callsite)
 		case *For:
-			n.Body = sp.Substitute(n.Body, callsite)
-			n.Else = sp.Substitute(n.Else, callsite)
+			n.Body = sp.substitute(n.Body, callsite)
+			n.Else = sp.substitute(n.Else, callsite)
 		case *NodeInst:
-			n.Children = sp.Substitute(n.Children, callsite)
+			n.Children = sp.substitute(n.Children, callsite)
 			for _, name := range SlotNames(n.Slots) {
-				n.Slots[name].Body = sp.Substitute(n.Slots[name].Body, callsite)
+				n.Slots[name].Body = sp.substitute(n.Slots[name].Body, callsite)
 			}
 		case *ErrorBoundary:
-			n.Children = sp.Substitute(n.Children, callsite)
-			n.Failed = sp.Substitute(n.Failed, callsite)
+			n.Children = sp.substitute(n.Children, callsite)
+			n.Failed = sp.substitute(n.Failed, callsite)
 		case *ContextProvider:
-			n.Children = sp.Substitute(n.Children, callsite)
+			n.Children = sp.substitute(n.Children, callsite)
 		case *Assign, *LocalVar, *Return, *CallStmt, *Emit, *Toggle, *CanvasRedrawStmt,
 			*Break, *Continue:
 			// Leaf stmts -- no nested SlotInsts.
@@ -64,7 +136,7 @@ func (sp SlotSplicer) Substitute(stmts []Stmt, callsite *NodeInst) []Stmt {
 // body is what one insertion point renders, cloned and bound for splicing.
 func (sp SlotSplicer) body(si *SlotInst, callsite *NodeInst) []Stmt {
 	stmts, sc, supplied := SlotBody(si, callsite)
-	fallback := func() []Stmt { return sp.Substitute(sp.Clone(si.Children), callsite) }
+	fallback := func() []Stmt { return sp.substitute(sp.Clone(si.Children), callsite) }
 	if !supplied {
 		return fallback()
 	}
@@ -75,40 +147,54 @@ func (sp SlotSplicer) body(si *SlotInst, callsite *NodeInst) []Stmt {
 	case si.Decl == nil || len(si.Decl.Slots) == 0:
 		out = sp.Bind(sp.Clone(stmts), sc, si)
 	default:
-		out = sp.entries(sp.Bind(sp.Clone(stmts), sc, si), si, callsite)
+		out = sp.Bind(sp.Clone(stmts), sc, si)
+		sp.answerEntryEmpty(out, si, callsite)
+		out = sp.entries(out, si, callsite)
 	}
 	if len(si.Children) == 0 {
 		return out
 	}
-	return WithFallback(out, fallback)
+	return sp.withFallback(out, fallback)
 }
 
-// WithFallback is content with an insertion's fallback standing wherever the
-// content renders nothing: in place of no content, in a branch of an `if` that
-// holds none, and as the fallback of a slot the content only forwards, which
-// renders nothing when what was supplied for that slot does. Looked for
-// through those three alone: a `for` that runs no times, or a component that
-// renders nothing, still renders the content.
-func WithFallback(stmts []Stmt, fallback func() []Stmt) []Stmt {
+// withFallback is content with an insertion's fallback standing wherever the
+// content renders nothing -- the same answer `.empty` gives (RendersNothing),
+// so a slot shows its fallback exactly where asking it says it is empty. In
+// place of no content, in a branch of an `if` that holds none, and as the
+// fallback of a slot the content only forwards, the fallback is put where the
+// answer is decided; anywhere else it follows the content, under an `if` on
+// the answer. Content whose answer turns on what one copy of a loop renders
+// has none to state, and gets no fallback.
+func (sp SlotSplicer) withFallback(stmts []Stmt, fallback func() []Stmt) []Stmt {
 	if len(stmts) == 0 {
 		return fallback()
 	}
-	if len(stmts) != 1 {
+	if len(stmts) == 1 {
+		switch n := stmts[0].(type) {
+		case *If:
+			if n.Catch == nil && !n.FromTernary {
+				n.Body = sp.withFallback(n.Body, fallback)
+				n.Else = sp.withFallback(n.Else, fallback)
+				return stmts
+			}
+		case *SlotInst:
+			if n.Entry == nil && len(n.Children) == 0 {
+				n.Children = fallback()
+				return stmts
+			}
+		}
+	}
+	empty, ok := RendersNothing(sp.Clone(stmts))
+	if !ok {
 		return stmts
 	}
-	switch n := stmts[0].(type) {
-	case *If:
-		if n.Catch != nil || n.FromTernary {
+	if lit, isLit := empty.(*Literal); isLit {
+		if lit.Value == "false" {
 			return stmts
 		}
-		n.Body = WithFallback(n.Body, fallback)
-		n.Else = WithFallback(n.Else, fallback)
-	case *SlotInst:
-		if n.Entry == nil && len(n.Children) == 0 {
-			n.Children = fallback()
-		}
+		return append(stmts, fallback()...)
 	}
-	return stmts
+	return append(stmts, &If{Cond: empty, Body: fallback()})
 }
 
 // entries replaces, in a population spliced for ins, every insertion of one of
@@ -219,4 +305,168 @@ func SlotBody(si *SlotInst, callsite *NodeInst) (body []Stmt, sc *SlotContent, s
 		return callsite.Children, nil, true
 	}
 	return si.Children, nil, false
+}
+
+// SlotEmpty is `src.empty` in a component's body: whether what a call site
+// supplied for one of the component's slots renders nothing. It asks about a
+// call site, so it has no value of its own: the splicer answers it from the
+// population where the body is spliced (SlotSplicer.Substitute, with
+// RendersNothing), an instance built at run time is handed the answer as a
+// prop, and the interpreter asks the content it mounted.
+type SlotEmpty struct {
+	AST  *ast.SelectExpr
+	Slot *SlotDecl
+}
+
+// SlotEmptyMember is the member a slot's name is read through to ask it.
+const SlotEmptyMember = "empty"
+
+func (x *SlotEmpty) exprNode()       {}
+func (x *SlotEmpty) ExprType() *Type { return TypBool }
+
+// RendersNothing is whether stmts, a population a call site supplied, renders
+// nothing: true for none, false where a node stands, and decided where it is
+// written for the rest -- an `if` by its condition, a `for` by its iterable, a
+// forward of another slot by that slot's own answer and its fallback's. So a
+// population that renders under `if hasPhoto` is empty exactly when
+// `!hasPhoto`, and stays reactive. ok is false for content whose answer turns
+// on what one copy of a loop renders, which no expression at the position
+// can state, or on a loop whose head cannot be measured.
+//
+// The answer is built from stmts' own expressions, so stmts must be a copy
+// nothing else holds.
+func RendersNothing(stmts []Stmt) (e Expr, ok bool) {
+	var parts []Expr
+	for _, s := range stmts {
+		p, ok := stmtRendersNothing(s)
+		if !ok {
+			return nil, false
+		}
+		if lit, isLit := p.(*Literal); isLit {
+			if lit.Value == "false" {
+				return boolLit(false), true
+			}
+			continue // a true part says nothing
+		}
+		parts = append(parts, p)
+	}
+	if len(parts) == 0 {
+		return boolLit(true), true
+	}
+	out := parts[0]
+	for _, p := range parts[1:] {
+		out = &Binary{Type: TypBool, Op: ast.BinAnd, Left: out, Right: p}
+	}
+	return out, true
+}
+
+func stmtRendersNothing(s Stmt) (Expr, bool) {
+	switch n := s.(type) {
+	case *NodeInst:
+		// A node renders, unless it is one that takes the family it is
+		// placed in and is handed nothing to render: an effect or a timer is
+		// a lifetime, not a node of the tree.
+		if IsFamilyGenericNode(n) && len(n.Children) == 0 && len(n.Slots) == 0 {
+			return boolLit(true), true
+		}
+		return boolLit(false), true
+	case *CallStmt:
+		// A component written as a call.
+		return boolLit(false), true
+	case *If:
+		if n.Catch != nil {
+			return RendersNothing(n.Body)
+		}
+		then, ok := RendersNothing(n.Body)
+		if !ok {
+			return nil, false
+		}
+		els, ok := RendersNothing(n.Else)
+		if !ok {
+			return nil, false
+		}
+		return foldTernary(n.Cond, then, els), true
+	case *For:
+		body, ok := RendersNothing(n.Body)
+		if !ok {
+			return nil, false
+		}
+		els, ok := RendersNothing(n.Else)
+		if !ok {
+			return nil, false
+		}
+		lit, isLit := body.(*Literal)
+		if !isLit {
+			return nil, false
+		}
+		// A loop that runs renders its copies, and one that does not renders
+		// its else: so it renders nothing when it runs and the copies render
+		// nothing, or when it does not and the else renders nothing.
+		if lit.Value == "true" {
+			if el, ok := els.(*Literal); ok && el.Value == "true" {
+				return els, true
+			}
+		}
+		empty := EmptyTest(n, nil)
+		if empty == nil {
+			return nil, false
+		}
+		return foldTernary(empty, els, body), true
+	case *SlotInst:
+		var own Expr = &SlotEmpty{Slot: n.Decl}
+		if n.Entry != nil {
+			own = &SlotEmpty{Slot: n.Entry}
+		}
+		if len(n.Children) == 0 {
+			return own, true
+		}
+		fb, ok := RendersNothing(n.Children)
+		if !ok {
+			return nil, false
+		}
+		return foldAnd(own, fb), true
+	case *ErrorBoundary:
+		return RendersNothing(n.Children)
+	case *ContextProvider:
+		return RendersNothing(n.Children)
+	}
+	// A declaration or an imperative statement renders nothing itself.
+	return boolLit(true), true
+}
+
+func boolLit(v bool) *Literal {
+	if v {
+		return &Literal{Type: TypBool, Value: "true"}
+	}
+	return &Literal{Type: TypBool, Value: "false"}
+}
+
+func foldAnd(a, b Expr) Expr {
+	if l, ok := a.(*Literal); ok {
+		if l.Value == "false" {
+			return a
+		}
+		return b
+	}
+	if l, ok := b.(*Literal); ok {
+		if l.Value == "false" {
+			return b
+		}
+		return a
+	}
+	return &Binary{Type: TypBool, Op: ast.BinAnd, Left: a, Right: b}
+}
+
+func foldTernary(cond, then, els Expr) Expr {
+	tl, tok := then.(*Literal)
+	el, eok := els.(*Literal)
+	switch {
+	case tok && eok && tl.Value == el.Value:
+		return then
+	case tok && eok && tl.Value == "true":
+		return cond
+	case tok && eok:
+		return &Unary{Type: TypBool, Op: ast.UnaryNot, Operand: cond}
+	}
+	return &Ternary{Type: TypBool, Cond: cond, Then: then, Else: els}
 }

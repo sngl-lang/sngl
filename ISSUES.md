@@ -13,10 +13,10 @@ reports.
   section of getting-started, effective-sngl's "Reacting to a change" and the
   spec's "Variable handlers" all teach `var … @change { … }`, which has been
   replaced by `effect(on=)` but still checks. `effect(on=todos)` over a
-  `list<Todo>` is refused: "an effect's `on` is the identity of its lifetime,
-  so it must compare alike on every target, and list<string> does not".
+  `list[Todo]` is refused: "an effect's `on` is the identity of its lifetime,
+  so it must compare alike on every target, and list[string] does not".
   Wrapping it in an anonymous struct literal, `on={todos=todos}`, is refused
-  the same way, naming the field: `list<string> (field todos of struct __anon_todos_fc0e38) does not`. A key like `{n=todos.length}` would
+  the same way, naming the field: `list[string] (field todos of struct __anon_todos_fc0e38) does not`. A key like `{n=todos.length}` would
   check but misses a toggle that changes no length.
 
   *Decided:* an effect reports writes. `effect(on=todos, @update(t) { … })`
@@ -51,7 +51,7 @@ reports.
    ```sngl
    struct Item { done bool = false }
    ui.window {
-       var items list<Item> = [Item{}]
+       var items list[Item] = [Item{}]
        for var &item = items { ui.checkbox(:checked=item.done) }
    }
    ```
@@ -125,7 +125,7 @@ reports.
 
     ```sngl
     component L ui.node {
-        var names list<string> = []
+        var names list[string] = []
         for var n = names { ui.text #item(value=n) }
     }
     func testRef(t test.Test, c L) {
@@ -157,7 +157,7 @@ reports.
   target.
 - android `--opt main=true` writes `gradlew` mode 0644, as a curl-download
   script with no wrapper jar, and adds `coil-compose` the app doesn't use.
-- `cannot initialize list<Todo> with list<Todo>` when a SNGL `Todo` meets
+- `cannot initialize list[Todo] with list[Todo]` when a SNGL `Todo` meets
   `store.Todo`: the two names should be qualified.
 - A missing closing brace reports `unexpected "EOF"` at the wrong line with
   about fifty expected-token names.
@@ -169,7 +169,7 @@ reports.
 - html emits `<input type="">`.
 - html: a local named like a var of its component reads the var: `var b = bumped(p)` in a method of a component declaring `b` emits `state2.b` for the
   local. CLAUDE.md records the same gap on the Go mutation targets.
-- android: an empty map literal as a state var's initializer, `var mm map<string, Row> = {}`, comes
+- android: an empty map literal as a state var's initializer, `var mm map[string, Row] = {}`, comes
   out as `mutableStateOf(mapOf())`, which Kotlin cannot type.
 - android: a field written through a list held in a state struct,
   `t.kids[0].label = "z"`, is written in place on a read-only `List` element

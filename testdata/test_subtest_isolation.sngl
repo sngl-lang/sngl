@@ -17,7 +17,7 @@ component main node {
 }
 
 func testSubtestTickDoesNotLeak(t Test, c main) {
-    t.test("inner", func(t, c) {
+    t.test("inner", func(t Test, c main) {
         t.tick()
         t.assert(c.p == 1)
     })
@@ -25,7 +25,7 @@ func testSubtestTickDoesNotLeak(t Test, c main) {
 }
 
 func testSubtestClickDoesNotLeak(t Test, c main) {
-    t.test("inner", func(t, c) {
+    t.test("inner", func(t Test, c main) {
         c.bump.click()
         t.assert(c.p == 1)
     })

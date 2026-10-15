@@ -12,7 +12,7 @@ import marks "sngl:internal/marks"
 // between builds and replayed until the file changes. A loop that stops early
 // still records the whole file, the rest read and hashed but not handed out.
 #[marks.intrinsic("gen.lines", build)]
-const func lines(path string) iter<string>
+const func lines(path string) iter[string]
 
 // Whether anything is at path. Gated and recorded as a read of it is, so a
 // probe of a list of locations depends on the ones before the first hit
@@ -24,18 +24,18 @@ const func exists(path string) bool
 // that match pattern, a `path.Match` glob, sorted. Gated as a read of dir, and
 // recorded as its listing.
 #[marks.intrinsic("gen.files", build)]
-const func files(dir string, pattern string) list<string>
+const func files(dir string, pattern string) list[string]
 
 // The environment variable name, or null where it is unset. Needs
 // `--allow-env` for that variable, granted to the package making the call.
 #[marks.intrinsic("gen.env", build)]
-const func env(name string) option<string>
+const func env(name string) option[string]
 
 // A process `exec` started.
 struct Process {
     // What it writes to standard output, a line at a time, as a loop takes
     // them. Read once.
-    stdout iter<string>
+    stdout iter[string]
 }
 
 // Waits for the process to exit, reading and dropping what is left of its
@@ -65,4 +65,4 @@ const func Process.code() int
 // visible, which is why running one is never allowed unasked. The process
 // gets the build's environment, less SNGL_ALLOW.
 #[marks.intrinsic("gen.exec", build)]
-const func exec(cmd list<string>, prefix list<string> = [], banFlags list<string> = [], dir string = "", stdin string = "") Process
+const func exec(cmd list[string], prefix list[string] = [], banFlags list[string] = [], dir string = "", stdin string = "") Process

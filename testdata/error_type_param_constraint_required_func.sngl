@@ -1,0 +1,9 @@
+// Every type parameter names a constraint, `any` when it says nothing. The
+// constraint is what tells a type parameter list from an override's target,
+// which is a bracket holding a name: written without one, a function's type
+// parameter is read as the target it overrides, and an undefined one, so the
+// error names the spelling that says nothing.
+
+func first[T](xs list[T]) T { // ERROR(check) "undefined: T (a type parameter names its constraint: write `T any`)"
+    return xs[0]
+}

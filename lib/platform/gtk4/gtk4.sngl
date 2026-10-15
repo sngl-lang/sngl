@@ -35,7 +35,7 @@ component platform(
     // that never calls it gets a process whose loop still runs -- timers,
     // effects, posted work -- with no window on screen. `args` is the command
     // line after the program's name.
-    @run(args list<string>, run func()),
+    @run(args list[string], run func()),
     // Which introspection data to read the widget vocabulary from: "builtin"
     // for the bundled subset, a path to a `Gtk-4.0.gir`, or unset to probe the
     // system locations and fall back to the bundled subset.
@@ -44,7 +44,7 @@ component platform(
     // it imports -- `C` is cgo's, which a Go export of `c` would be -- an
     // instance record's receiver, the Model's own members, and the locals and
     // helpers its application code declares.
-    const reservedNames list<string> = [
+    const reservedNames list[string] = [
         "gtk4rt",
         "c",
         "app",
@@ -81,7 +81,7 @@ component Toplevel(
 
 // The window's `@error` is the outermost boundary of what it renders, and
 // catches whether or not the call site handles one.
-const component ui.window[platform] {
+const component ui.window[platform](title, visible, @error, @closed, content, favicon) {
     Toplevel(title=title, :visible=visible, @closed { closed() }) {
         boundary(@error(e) { error(e) }) {
             content
@@ -108,24 +108,24 @@ func entryText(e gtk.GtkEntry) string
 // The day a calendar has selected. A calendar always has one, so this is null
 // only where GTK reports no date at all.
 #[marks.intrinsic("gtk4.calendarDate")]
-func calendarDate(c gtk.GtkCalendar) option<time.date>
+func calendarDate(c gtk.GtkCalendar) option[time.date]
 
-const component ui.text[platform] {
+const component ui.text[platform](value, style) {
     gtk.GtkLabel(label=value, style={...style}) {}
 }
 
-const component ui.button[platform] {
+const component ui.button[platform](text, style, @click) {
     gtk.GtkButton(label=text, style={...style}, @clicked { click() }) {}
 }
 
-const component ui.checkbox[platform] {
+const component ui.checkbox[platform](label, checked, style, @change) {
     gtk.GtkCheckButton(label=label, active=checked, style={...style}, @toggled(b) {
         checked = checkActive(b)
         change(checked)
     }) {}
 }
 
-const component ui.image[platform] {
+const component ui.image[platform](fit, @click, @load, @error, src) {
     Image(
         fit = string(fit),
         @click {
@@ -138,14 +138,11 @@ const component ui.image[platform] {
             error({message=m, kind="image"})
         },
     ) {
-        #[family.crosses]
-        src {
-            placeholder
-        }
+        src
     }
 }
 
-const component ui.input[platform] {
+const component ui.input[platform](value, style, @input, @change) {
     gtk.GtkEntry(
         text = value,
         style = {...style},
@@ -163,7 +160,7 @@ const component ui.input[platform] {
 // gtk4 has no lightweight multi-line entry; map textarea to GtkEntry so
 // the value binding + changed handler compile and round-trip. (Rich
 // multi-line GtkTextView support is a future enhancement.)
-const component ui.textarea[platform] {
+const component ui.textarea[platform](value, style, @input, @change) {
     gtk.GtkEntry(
         text = value,
         style = {...style},
@@ -180,19 +177,19 @@ const component ui.textarea[platform] {
 
 // --- Container widgets ---
 
-const component ui.vbox[platform] {
+const component ui.vbox[platform](style, children) {
     gtk.GtkBox(orientation="vertical", spacing=6, style={...style}) {
         children
     }
 }
 
-const component ui.hbox[platform] {
+const component ui.hbox[platform](style, children) {
     gtk.GtkBox(orientation="horizontal", spacing=6, style={...style}) {
         children
     }
 }
 
-const component ui.scroll[platform] {
+const component ui.scroll[platform](style, content) {
     gtk.GtkScrolledWindow(style={...style}) {
         content
     }
@@ -210,7 +207,7 @@ const component ui.scroll[platform] {
 // conditional expression, and that happens before the fold that would have
 // settled it -- `C.double(__lt0)` where `__lt0 = (2 / 10)`, which is Go
 // integer division.
-const component ui.progress[platform] {
+const component ui.progress[platform](style, value, max, label, showValue) {
     if value != null {
         gtk.GtkProgressBar(fraction=value / max, text=label, showText=showValue, style={...style}) {}
     } else {
@@ -218,7 +215,7 @@ const component ui.progress[platform] {
     }
 }
 
-const component ui.spinner[platform] {
+const component ui.spinner[platform](label, style) {
     gtk.GtkSpinner(spinning=true, tooltipText=label, style={...style}) {}
 }
 
@@ -227,17 +224,17 @@ const component ui.spinner[platform] {
 // its members (see enumValueArg) — a prop reference has no compile-time
 // member to name. A separator is therefore horizontal, which is what
 // `direction` defaults to.
-const component ui.divider[platform] {
+const component ui.divider[platform](style) {
     gtk.GtkSeparator(style={...style}) {}
 }
 
-const component ui.link[platform] {
+const component ui.link[platform](text, href, disabled, style, @click) {
     gtk.GtkLinkButton(uri=href, label=text, sensitive=(disabled == false), style={...style}, @clicked { click() }) {}
 }
 
 // A flip reaches the program through `notify::active`: GtkSwitch's own
 // `state-set` returns a gboolean, which the connect trampoline cannot carry.
-const component ui.toggle[platform] {
+const component ui.toggle[platform](checked, disabled, style, @change) {
     gtk.GtkSwitch(active=checked, sensitive=(disabled == false), style={...style}, @notifyActive(s) {
         checked = switchActive(s)
         change(checked)
@@ -257,7 +254,7 @@ func selectDay(cal gtk.GtkCalendar, y int, m int, d int)
 
 // One calendar, which a bound date selects whenever it changes. With no date
 // it shows GTK's own, today: a calendar always has a day selected.
-const component ui.datepicker[platform] {
+const component ui.datepicker[platform](value, disabled, style, @change) {
     gtk.GtkCalendar #cal(sensitive=(disabled == false), style={...style}, @daySelected(c) {
         value = calendarDate(c)
         change(value)
@@ -271,25 +268,25 @@ const component ui.datepicker[platform] {
 
 // --- Layout ---
 
-const component ui.spacer[platform] {
+const component ui.spacer[platform](style) {
     gtk.GtkBox(hexpand=true, vexpand=true, style={...style}) {}
 }
 
 // The same shape html uses: a wrapper carrying the tooltip text, with the
 // wrapped content inside it.
-const component ui.tooltip[platform] {
+const component ui.tooltip[platform](style, text, trigger) {
     gtk.GtkBox(tooltipText=text, style={...style}) {
         trigger
     }
 }
 
-const component ui.card[platform] {
+const component ui.card[platform](style, content) {
     gtk.GtkFrame(style={...style}) {
         content
     }
 }
 
-const component ui.stack[platform] {
+const component ui.stack[platform](style, layers) {
     gtk.GtkStack(style={...style}) {
         layers
     }
@@ -300,7 +297,7 @@ const component ui.stack[platform] {
 // popup/popdown is a pair of calls chosen by the value. `position` is a
 // GtkPositionType, so it is unreachable for the same reason as divider's
 // orientation.
-const component ui.popover[platform] {
+const component ui.popover[platform](style, open, @close, content) {
     gtk.GtkPopover(visible=open, autohide=true, style={...style}, @closed { close() }) {
         content
     }
@@ -316,7 +313,7 @@ const component ui.popover[platform] {
 // model and item factories, which nothing here can declare. A selectable table
 // leads each row with a check button that selects it; a sortable header's
 // cells are buttons reporting the column.
-const component ui.table[platform] {
+const component ui.table[platform](style, columns, selectable, selected, sortable, @select, @sort, rows) {
     gtk.GtkBox(orientation="vertical", spacing=0, style={...style}) {
         gtk.GtkBox(orientation="horizontal", homogeneous=true) {
             if selectable {
@@ -357,8 +354,8 @@ struct _TreeRow {
 
 // A tree's rows in traversal order, each node's below it and indented one step
 // further.
-const func _treeRows(items list<ui.treeItem>, indent string) list<_TreeRow> {
-    var out list<_TreeRow> = []
+const func _treeRows(items list[ui.treeItem], indent string) list[_TreeRow] {
+    var out list[_TreeRow] = []
     for var it = items {
         out = [...out, _TreeRow{label=it.label, indent=indent}, ..._treeRows(it.children, indent + "    ")]
     }
@@ -367,7 +364,7 @@ const func _treeRows(items list<ui.treeItem>, indent string) list<_TreeRow> {
 
 // Every node is shown, expanded or not: a row cannot be hidden and shown by
 // its parent's state without a var, which a const component has none of.
-const component ui.tree[platform] {
+const component ui.tree[platform](style, selected, @select, items) {
     gtk.GtkBox(orientation="vertical", spacing=0, style={...style}) {
         for var row = _treeRows(items, "") {
             gtk.GtkCheckButton(label=row.indent + row.label, active=(row.label == selected), @toggled(b) {
@@ -380,7 +377,7 @@ const component ui.tree[platform] {
     }
 }
 
-const component ui.radio[platform] {
+const component ui.radio[platform](value, disabled, direction, style, @change, options) {
     if direction == ui.Orientation.horizontal {
         gtk.GtkBox(orientation="horizontal", spacing=6, sensitive=(disabled == false), style={...style}) {
             for var opt = options {
@@ -409,7 +406,7 @@ const component ui.radio[platform] {
 // GtkDropDown takes its choices as a list model, which nothing here can
 // declare, so a select lays its choices out as a radio does. `placeholder`,
 // `multiple` and the focus events have nothing to reach.
-const component ui.select[platform] {
+const component ui.select[platform](value, disabled, style, @change, options) {
     gtk.GtkBox(orientation="vertical", spacing=6, sensitive=(disabled == false), style={...style}) {
         for var opt = options {
             gtk.GtkCheckButton(label=opt.label, active=(opt.label == value), @toggled(b) {
@@ -424,7 +421,7 @@ const component ui.select[platform] {
 
 // A menu's top-level entries, as html shows them; a submenu has nowhere to
 // open without a var.
-const component ui.menubar[platform] {
+const component ui.menubar[platform](style, items) {
     gtk.GtkBox(orientation="horizontal", spacing=4, style={...style}) {
         for var it = items {
             gtk.GtkButton(label=it.label, sensitive=(it.disabled == false), @clicked { it.select() }) {}
@@ -432,7 +429,7 @@ const component ui.menubar[platform] {
     }
 }
 
-const component ui.menu[platform] {
+const component ui.menu[platform](style, open, items) {
     if open {
         gtk.GtkBox(orientation="vertical", spacing=0, style={...style}) {
             for var it = items {
@@ -442,7 +439,7 @@ const component ui.menu[platform] {
     }
 }
 
-const component ui.toolbar[platform] {
+const component ui.toolbar[platform](style, controls) {
     gtk.GtkBox(orientation="horizontal", spacing=4, style={...style}) {
         controls
     }
@@ -450,7 +447,7 @@ const component ui.toolbar[platform] {
 
 // GtkPaned holds exactly two panes, so the panes share a box evenly instead
 // and `position` and its bounds have nothing to reach.
-const component ui.splitview[platform] {
+const component ui.splitview[platform](style, direction, panes) {
     if direction == "vertical" {
         gtk.GtkBox(orientation="vertical", homogeneous=true, style={...style}) {
             panes
@@ -462,7 +459,7 @@ const component ui.splitview[platform] {
     }
 }
 
-const component ui.drawer[platform] {
+const component ui.drawer[platform](style, open, content) {
     gtk.GtkBox(orientation="vertical", spacing=6, visible=open, style={...style}) {
         content
     }
@@ -470,7 +467,7 @@ const component ui.drawer[platform] {
 
 // Shown in place rather than in a window of its own, as html shows it in the
 // page.
-const component ui.modal[platform] {
+const component ui.modal[platform](style, open, title, closable, @close, content) {
     gtk.GtkFrame(visible=open, style={...style}) {
         gtk.GtkBox(orientation="vertical", spacing=6) {
             if title != "" || closable {
@@ -515,7 +512,7 @@ func Schedule.cancel()
 // long as the branch it is written in, so `if enabled` is what makes toggling
 // the gate a mount and an unmount. `on=interval` is the key, because a running
 // schedule is the same schedule for as long as its period is unchanged.
-const component time.timer[platform] {
+const component time.timer[platform](interval, enabled, @tick) {
     var handle Schedule
 
     if enabled {
@@ -704,7 +701,7 @@ func paint(ctx CairoContext, style shapes.Style) {
     }
 }
 
-const component shapes.rect[platform] {
+const component shapes.rect[platform](x, y, w, h, style) {
     draw(@draw(e) {
         e.ctx.save()
         e.ctx.rectangle(x, y, w, h)
@@ -713,7 +710,7 @@ const component shapes.rect[platform] {
     })
 }
 
-const component shapes.circle[platform] {
+const component shapes.circle[platform](cx, cy, r, style) {
     draw(@draw(e) {
         e.ctx.save()
         e.ctx.newSubPath()
@@ -727,7 +724,7 @@ const component shapes.circle[platform] {
 // would scale the *stroke* with the axes, so a 2px outline on a wide ellipse
 // comes out thicker horizontally than vertically. kappa is the control-point
 // offset that makes a cubic match a quarter arc to within a thousandth.
-const component shapes.ellipse[platform] {
+const component shapes.ellipse[platform](cx, cy, rx, ry, style) {
     draw(@draw(e) {
         var k = 0.5522847498307936
         var ox = rx * k
@@ -749,7 +746,7 @@ const component shapes.ellipse[platform] {
 // A line has no interior, so `fill` is not read: the declaration says a fill
 // on a line is ignored, and here that is the absence of a call rather than a
 // special case in the emitter.
-const component shapes.line[platform] {
+const component shapes.line[platform](x1, y1, x2, y2, style) {
     draw(@draw(e) {
         e.ctx.save()
         e.ctx.moveTo(x1, y1)
@@ -782,7 +779,7 @@ func arcTo(ctx CairoContext, from shapes.Point, corner shapes.Point, to shapes.P
     return a.tangent2
 }
 
-const component shapes.path[platform] {
+const component shapes.path[platform](style, steps) {
     draw(@draw(e) {
         // Where the path is, which `arcTo` needs and cairo will not hand back
         // without an out-parameter. Every other command ends at its own point,
@@ -815,7 +812,7 @@ const component shapes.path[platform] {
     })
 }
 
-const component shapes.canvasText[platform] {
+const component shapes.canvasText[platform](x, y, content, style) {
     draw(@draw(e) {
         e.ctx.save()
         // CAIRO_FONT_SLANT_NORMAL and CAIRO_FONT_WEIGHT_NORMAL. gtk4 read
@@ -844,7 +841,7 @@ component Image(
     @click(),
     @load(),
     @failed(message string),
-    content ...component ui.node,
+    content ...component option[ui.imageSource],
 ) ui.node
 
 #[marks.intrinsic("gtk4:ImageUrl")]
@@ -853,15 +850,15 @@ component ImageUrl(url string) ui.imageSource
 #[marks.intrinsic("gtk4:ImageDrawing")]
 component ImageDrawing(width float, height float, shapes ...component shapes.shape) ui.imageSource
 
-const component ui.file[platform] {
+const component ui.file[platform](path) {
     ImageUrl(url=path)
 }
 
-const component ui.remote[platform] {
+const component ui.remote[platform](url) {
     ImageUrl(url=url)
 }
 
-const component shapes.image[platform] {
+const component shapes.image[platform](width, height, shapes) {
     ImageDrawing(width=width, height=height) {
         shapes
     }
@@ -898,10 +895,10 @@ component drawSource(
     @url(e SourceEvent),
     @enter(e DrawEvent),
     @leave(e DrawEvent),
-    source ...component family.one<ui.imageSource>,
+    source ...component family.one[ui.imageSource],
 ) shapes.shape
 
-const component shapes.canvasImage[platform] {
+const component shapes.canvasImage[platform](x, y, w, h, src) {
     drawSource(
         @url(e) {
             paintURL(e.ctx, e.url, x, y, w, h)
@@ -952,17 +949,17 @@ component Span(
     content   ...component markup.span,
 ) markup.span
 
-const component markup.richText[platform] {
+const component markup.richText[platform](style, content) {
     Flow(style={...style}) {
         content
     }
 }
 
-const component markup.text[platform] {
+const component markup.text[platform](value) {
     Span(text=value) {}
 }
 
-const component markup.run[platform] {
+const component markup.run[platform](style, content) {
     Span(spanStyle=style) {
         content
     }
@@ -970,7 +967,7 @@ const component markup.run[platform] {
 
 // Pango has `<a href>` and GtkLabel follows one when it is clicked, so this is
 // the one target besides html where a link is a link.
-const component markup.link[platform] {
+const component markup.link[platform](href, content) {
     Span(href=href) {
         content
     }
@@ -979,7 +976,7 @@ const component markup.link[platform] {
 // Pango takes a foreground and nothing a theme could answer, so the fallback
 // is a palette rather than the host: the light one, since the theme GTK ships
 // with is light.
-const component markup.token[platform] {
+const component markup.token[platform](kind, content) {
     Span(spanStyle={color=markup.colorOf(markup.palette, markup.lightPalette, kind)}) {
         content
     }
@@ -988,6 +985,6 @@ const component markup.token[platform] {
 // Pango markup has no image, and a GtkLabel holds text. So the description is
 // what an image is here, in the brackets that say a picture stood where they
 // are.
-const component markup.image[platform] {
+const component markup.image[platform](alt) {
     Span(text="[{alt}]") {}
 }

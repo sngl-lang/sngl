@@ -21,7 +21,7 @@ import . "sngl:ui"
 import . "sngl:test"
 
 component box node {
-    var xs list<int> = [1, 2]
+    var xs list[int] = [1, 2]
     var note = ""
 
     button #stop(text="stop", @click {

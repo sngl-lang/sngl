@@ -11,11 +11,11 @@ import (
 )
 
 // resolveType converts an AST TypeExpr to an IR *Type. A nil TypeExpr yields
-// TypDyn; callers that must not tolerate a missing annotation should use
+// TypInvalid; callers that must not tolerate a missing annotation should use
 // resolveTypeRequired instead.
 func (c *checker) resolveType(te ast.TypeExpr) *ir.Type {
 	if te == nil {
-		return dynFallback("no type annotation to resolve")
+		return TypInvalid
 	}
 	switch t := te.(type) {
 	case *ast.NamedType:
@@ -33,13 +33,13 @@ func (c *checker) resolveType(te ast.TypeExpr) *ir.Type {
 		// it *means* is a slot, and only a component's parameter list has one.
 		// registerComponentDecl reads a slot's type itself and never gets here.
 		c.error(t.Pos, "a component type declares a slot, so only a parameter of a component may have one")
-		return TypDyn
+		return TypInvalid
 	case *ast.VariadicType:
 		c.error(t.Pos, "`...` bounds how many nodes a slot takes, so only a slot's type may carry one")
-		return TypDyn
+		return TypInvalid
 	default:
 		c.error(ast.Pos{}, "internal: unknown type expression %T", te)
-		return TypDyn
+		return TypInvalid
 	}
 }
 
@@ -48,20 +48,20 @@ func (c *checker) resolveType(te ast.TypeExpr) *ir.Type {
 func (c *checker) resolveTypeRequired(te ast.TypeExpr, pos ast.Pos, what string) *ir.Type {
 	if te == nil {
 		c.error(pos, "type annotation required for %s", what)
-		return TypDyn
+		return TypInvalid
 	}
 	return c.resolveType(te)
 }
 
 // namesType reports whether t is the type called name, ignoring any type
-// arguments: the receiver of a `list<T>` method is a `list<T>`, and of a
-// `Box<T>` method a `Box<T>`, whichever element types they carry.
+// arguments: the receiver of a `list[T]` method is a `list[T]`, and of a
+// `Box[T]` method a `Box[T]`, whichever element types they carry.
 func namesType(t *ir.Type, name string) bool {
 	if t == nil || name == "" {
 		return false
 	}
 	s := t.String()
-	if i := strings.IndexByte(s, '<'); i >= 0 {
+	if i := strings.IndexByte(s, '['); i >= 0 {
 		s = s[:i]
 	}
 	return s == name
@@ -74,48 +74,48 @@ func (c *checker) constructBuiltinGeneric(id ir.BuiltinKind, sd *ir.StructDef, t
 	switch id {
 	case ir.BuiltinList:
 		if len(t.TypeArgs) == 0 {
-			c.error(t.Pos, "list requires a type argument, e.g. list<int>")
-			return c.listOf(TypDyn)
+			c.error(t.Pos, "list requires a type argument, e.g. list[int]")
+			return c.listOf(TypInvalid)
 		}
 		return c.listOf(c.resolveType(t.TypeArgs[0]))
 	case ir.BuiltinOption:
 		if len(t.TypeArgs) == 0 {
-			c.error(t.Pos, "option requires a type argument, e.g. option<int>")
-			return OptionOf(TypDyn)
+			c.error(t.Pos, "option requires a type argument, e.g. option[int]")
+			return OptionOf(TypInvalid)
 		}
 		return OptionOf(c.resolveType(t.TypeArgs[0]))
 	case ir.BuiltinMap:
 		if len(t.TypeArgs) != 2 {
 			c.error(t.Pos, "map requires exactly 2 type arguments (key, value), got %d", len(t.TypeArgs))
-			return TypDyn
+			return TypInvalid
 		}
 		k := c.resolveType(t.TypeArgs[0])
 		v := c.resolveType(t.TypeArgs[1])
 		if !isComparable(k) {
 			c.error(t.Pos, "map key type %s is not comparable", k)
-			return TypDyn
+			return TypInvalid
 		}
 		return c.mapOf(k, v)
 	case ir.BuiltinIter:
 		if len(t.TypeArgs) != 1 {
 			c.error(t.Pos, "iter requires exactly 1 type argument, got %d", len(t.TypeArgs))
-			return TypDyn
+			return TypInvalid
 		}
 		return IterOf(c.resolveType(t.TypeArgs[0]))
 	case ir.BuiltinRef:
 		if len(t.TypeArgs) == 0 {
-			c.error(t.Pos, "ref requires a type argument, e.g. ref<int>")
-			return ir.RefOf(TypDyn)
+			c.error(t.Pos, "ref requires a type argument, e.g. ref[int]")
+			return ir.RefOf(TypInvalid)
 		}
 		return ir.RefOf(c.resolveType(t.TypeArgs[0]))
 	case ir.BuiltinReadonly:
 		// The checker's own: what it gives a loop variable bound by copy. The
 		// argument is what the program meant, so it stands in after the error.
-		c.error(t.Pos, "readonly<T> is the type of a loop variable bound by copy, and a program may not write it")
+		c.error(t.Pos, "readonly[T] is the type of a loop variable bound by copy, and a program may not write it")
 		if len(t.TypeArgs) == 1 {
 			return c.resolveType(t.TypeArgs[0])
 		}
-		return TypDyn
+		return TypInvalid
 	}
 	// The macro validates the id set, so an unhandled kind is a compiler bug.
 	panic(fmt.Sprintf("sngl: builtin generic kind %v has no constructor", id))
@@ -133,6 +133,14 @@ func (c *checker) resolveNamedType(t *ast.NamedType) *ir.Type {
 	// and shadows it, as any declaration does.
 	if sym, ok := c.scope.Lookup(t.Name); ok {
 		if typ, _, ok := scalarOf(sym); ok {
+			if typ == ir.TypAny {
+				if c.anyWritten != nil {
+					*c.anyWritten = append(*c.anyWritten, t.Pos)
+					return TypInvalid
+				}
+				c.error(t.Pos, anyNotAType)
+				return TypInvalid
+			}
 			return typ
 		}
 	}
@@ -155,7 +163,7 @@ func (c *checker) resolveNamedType(t *ast.NamedType) *ir.Type {
 		// The export rule is the one between packages: a bare name declared
 		// in this one -- a library's own `_page` -- is its own to name.
 		if !c.inLibSource() && !c.resolvedInPackage(t.Name) && c.rejectUnexported(t.Pos, sym) {
-			return TypDyn
+			return TypInvalid
 		}
 		if typ := sym.SymType(); typ != nil {
 			if typ.Kind == ir.TypeStruct {
@@ -173,14 +181,14 @@ func (c *checker) resolveNamedType(t *ast.NamedType) *ir.Type {
 	}
 
 	c.error(t.Pos, "unknown type %q%s", t.Name, c.stdlibHintFor(t.Name, hintType))
-	return TypDyn
+	return TypInvalid
 }
 
 // applyComponentTypeArgs is a component type carrying the type arguments it
-// was written with, `page<P>`: the instances whose call sites bound the
+// was written with, `page[P]`: the instances whose call sites bound the
 // declaration's parameters that way. An argument list stopping short fills
 // from each parameter's default, as a struct type's does, so a bare `page` is
-// `page<struct {}>` -- and one with no default has to be written.
+// `page[struct {}]` -- and one with no default has to be written.
 func (c *checker) applyComponentTypeArgs(pos ast.Pos, base *ir.Type, comp *ir.Component, args []ast.TypeExpr) *ir.Type {
 	if len(args) > len(comp.TypeParams) {
 		c.error(pos, "%s takes %d type argument(s), got %d", comp.Name, len(comp.TypeParams), len(args))
@@ -198,6 +206,7 @@ func (c *checker) applyComponentTypeArgs(pos ast.Pos, base *ir.Type, comp *ir.Co
 			return base
 		}
 	}
+	c.checkWrittenArgs(comp.TypeParams, elems, args)
 	cp := *base
 	cp.Elems = elems
 	return &cp
@@ -218,7 +227,7 @@ func (c *checker) applyStructTypeArgs(pos ast.Pos, base *ir.Type, sd *ir.StructD
 			if def == nil {
 				c.error(pos, "type %s requires a type argument for %s, which has no default",
 					sd.Name, sd.TypeParams[i].Name)
-				// The unparameterized base rather than dyn, so downstream code
+				// The unparameterized base rather than invalid, so downstream code
 				// can still see the struct shape.
 				return base
 			}
@@ -230,7 +239,29 @@ func (c *checker) applyStructTypeArgs(pos ast.Pos, base *ir.Type, sd *ir.StructD
 			sd.Name, len(sd.TypeParams), len(args))
 		return base
 	}
+	params := make([]ir.TypeParam, len(sd.TypeParams))
+	for i, tp := range sd.TypeParams {
+		params[i] = tp
+		params[i].Constraint = c.typeParamConstraint(sd, i)
+	}
+	c.checkWrittenArgs(params, elems, args)
 	return &ir.Type{Kind: ir.TypeStruct, Decl: sd, Elems: elems}
+}
+
+// checkWrittenArgs holds each type argument a type was written with to its
+// parameter's constraint, measured with every parameter bound -- the rest by
+// their defaults -- and reports it where it is written. A default is checked
+// where it is declared.
+func (c *checker) checkWrittenArgs(params []ir.TypeParam, elems []*ir.Type, args []ast.TypeExpr) {
+	bindings := make(map[string]*ir.Type, len(params))
+	for i, tp := range params {
+		bindings[tp.Name] = elems[i]
+	}
+	for i, a := range args {
+		if i < len(params) {
+			c.checkConstraint(*a.ExprPos(), params[i], elems[i], bindings)
+		}
+	}
 }
 
 func (c *checker) resolveQualifiedType(t *ast.NamedType) *ir.Type {
@@ -238,27 +269,28 @@ func (c *checker) resolveQualifiedType(t *ast.NamedType) *ir.Type {
 	sym, ok := c.scope.Lookup(pkg)
 	if !ok {
 		c.error(ast.Pos{}, "unknown namespace %q", pkg)
-		return TypDyn
+		return TypInvalid
 	}
 	ns, ok := sym.(*ir.Namespace)
 	if !ok {
 		c.error(ast.Pos{}, "%q is not a namespace", pkg)
-		return TypDyn
+		return TypInvalid
 	}
 	if ns.Pkg == nil {
-		// Native import — accept as dyn.
-		return dynFallback("type %s.%s comes from a native import with no package", pkg, name)
+		// An import that resolved to no package -- a check with no resolver
+		// -- has no members, and the import is where that is the problem.
+		return TypInvalid
 	}
 	if tsym, ok := ns.Pkg.Symbols.LookupMemberType(name); ok {
 		if c.rejectUnexported(t.Pos, tsym) {
-			return TypDyn
+			return TypInvalid
 		}
 		typ := tsym.SymType()
 		if typ != nil && typ.Kind == ir.TypeStruct {
 			if sd, ok := typ.Decl.(*ir.StructDef); ok {
 				// A #[builtin] generic is the built-in however it was reached.
 				// Unqualified resolution dispatches on the kind a few lines up;
-				// without the same dispatch here, `go.chan<T>` would come back an
+				// without the same dispatch here, `go.chan[T]` would come back an
 				// ordinary generic struct that shared a declaration with the
 				// built-in but not a type, and fail to unify with itself. list,
 				// map and option are ambient, and importing sngl:builtin
@@ -284,7 +316,7 @@ func (c *checker) resolveQualifiedType(t *ast.NamedType) *ir.Type {
 	if sym, ok := ns.Pkg.Symbols.LookupMember(name); ok {
 		if f, ok := sym.(*ir.Component); ok {
 			if c.rejectUnexported(t.Pos, sym) {
-				return TypDyn
+				return TypInvalid
 			}
 			if len(f.TypeParams) > 0 {
 				return c.applyComponentTypeArgs(t.Pos, f.SymType(), f, args)
@@ -293,7 +325,7 @@ func (c *checker) resolveQualifiedType(t *ast.NamedType) *ir.Type {
 		}
 	}
 	c.error(ast.Pos{}, "unknown type %q in namespace %q", name, pkg)
-	return TypDyn
+	return TypInvalid
 }
 
 func (c *checker) resolveFuncType(t *ast.FuncType) *ir.Type {
@@ -322,7 +354,7 @@ func (c *checker) resolveAnonStruct(s *ast.StructDef) *ir.Type {
 	if len(sd.TypeParams) > 0 {
 		return sd.SymType()
 	}
-	return c.internAnonStruct(sd.Fields).SymType()
+	return c.anonStructType(sd.Fields)
 }
 
 func (c *checker) resolveAnonEnum(e *ast.EnumDef) *ir.Type {
@@ -359,6 +391,65 @@ func (c *checker) typeParamDefault(sd *ir.StructDef, i int) *ir.Type {
 	return c.resolveType(sd.AST.TypeParams[i].Default)
 }
 
+// typeParamConstraint is the constraint on a struct's i-th type parameter.
+// A struct shell exists before its constraints are resolved, as before its
+// defaults, so a use site that comes first resolves the written one quietly:
+// the declaration reports it.
+func (c *checker) typeParamConstraint(sd *ir.StructDef, i int) *ir.Type {
+	if i < len(sd.TypeParams) && sd.TypeParams[i].Constraint != nil {
+		return sd.TypeParams[i].Constraint
+	}
+	if sd.AST == nil || i >= len(sd.AST.TypeParams) || sd.AST.TypeParams[i].Constraint == nil {
+		return nil
+	}
+	var t *ir.Type
+	c.quietly(func() {
+		defer pushTypeParams(c, sd.AST.TypeParams)()
+		t = c.resolveConstraint(sd.AST.TypeParams[i].Constraint)
+	})
+	return t
+}
+
+// inheritReceiverConstraints gives a method's receiver parameters the
+// constraints of the declaration they restate, `func Holder[T].label()` or
+// `func stack[M].current()`: a receiver's list writes names only, and in the
+// body a T is what the declaration says it is.
+// It runs before the signature is resolved, which may hand a T on to the
+// declaration's own type, `_page[M]`.
+func (c *checker) inheritReceiverConstraints(recv *ir.Type, written []ast.TypeParam) {
+	if recv == nil || len(written) == 0 {
+		return
+	}
+	var constraint func(i int) *ir.Type
+	var declared []ir.TypeParam
+	switch d := recv.Decl.(type) {
+	case *ir.StructDef:
+		declared = d.TypeParams
+		constraint = func(i int) *ir.Type { return c.typeParamConstraint(d, i) }
+	case *ir.Component:
+		declared = d.TypeParams
+		constraint = func(i int) *ir.Type { return d.TypeParams[i].Constraint }
+	default:
+		return
+	}
+	if len(declared) != len(written) {
+		return
+	}
+	// A constraint naming the declaration's parameters names the receiver's
+	// here, which may be spelled differently: `func Pair[X, Y].left()`.
+	renamed := make(map[string]*ir.Type, len(written))
+	for i, p := range written {
+		renamed[declared[i].Name] = c.typeParamSym(p.Name, p.Pos).SymType()
+	}
+	for i, p := range written {
+		if con := constraint(i).Substitute(renamed); con != nil {
+			if sym := c.typeParamSym(p.Name, p.Pos); sym.Constraint == nil {
+				sym.Constraint = con
+			}
+		}
+	}
+}
+
 // typeParamShells records the names before any other declaration exists. A
 // default may name a type declared further down the file, so it is left to
 // resolveStructBody the way a field is.
@@ -373,7 +464,10 @@ func typeParamShells(ps []ast.TypeParam) []ir.TypeParam {
 	return out
 }
 
-// resolveTypeParams resolves each parameter's written default, if it has one.
+// resolveTypeParams resolves each parameter's constraint and its written
+// default, if it has one. A receiver's list restates names and carries no
+// constraint; every other list carries one per parameter, which the grammar
+// requires.
 func (c *checker) resolveTypeParams(ps []ast.TypeParam) []ir.TypeParam {
 	if len(ps) == 0 {
 		return nil
@@ -381,8 +475,25 @@ func (c *checker) resolveTypeParams(ps []ast.TypeParam) []ir.TypeParam {
 	out := make([]ir.TypeParam, len(ps))
 	for i, p := range ps {
 		out[i] = ir.TypeParam{Pos: p.Pos, Name: p.Name}
+		if p.Constraint != nil {
+			out[i].Constraint = c.resolveConstraint(p.Constraint)
+			if sym := c.typeParamSym(p.Name, p.Pos); sym.Constraint == nil {
+				sym.Constraint = out[i].Constraint
+			}
+		}
 		if p.Default != nil {
 			out[i].Default = c.resolveType(p.Default)
+		}
+	}
+	// A default is a binding like any other, and is held to the constraint
+	// written beside it. What that constraint names of the list is bound from
+	// the default's own fields, since nothing else is bound where a
+	// declaration is checked.
+	for i, p := range ps {
+		if p.Default != nil {
+			bindings := map[string]*ir.Type{p.Name: out[i].Default}
+			inferFromConstraints(out, bindings)
+			c.checkConstraint(*p.Default.ExprPos(), out[i], out[i].Default, bindings)
 		}
 	}
 	return out
@@ -404,7 +515,8 @@ func (c *checker) resolveStructFields(s *ast.StructDef) []*ir.StructField {
 		if len(f.Names) > 0 {
 			fieldLabel = "struct field " + strconv.Quote(f.Names[0])
 		}
-		typ := c.resolveTypeRequired(f.Type, f.Pos, fieldLabel)
+		var typ *ir.Type
+		anyAt := c.holdAny(f, func() { typ = c.resolveTypeRequired(f.Type, f.Pos, fieldLabel) })
 		for _, name := range f.Names {
 			if _, dup := seen[name]; dup {
 				c.error(f.Pos, "duplicate struct field %q", name)
@@ -428,6 +540,9 @@ func (c *checker) resolveStructFields(s *ast.StructDef) []*ir.StructField {
 			fields = append(fields, fld)
 		}
 		c.applyMarks(f, first)
+		if first != nil {
+			c.refuseAnyUnlessUnusable(anyAt, &first.Foreign)
+		}
 	}
 	return fields
 }
@@ -439,7 +554,7 @@ func (c *checker) buildEnumDef(e *ast.EnumDef) *ir.EnumDef {
 		var val ir.Expr
 		if m.Value != nil {
 			// Placeholder; actual value checked later when scope is ready.
-			val = &ir.Literal{Type: TypDyn}
+			val = &ir.Literal{Type: TypInvalid}
 		}
 		members[i] = &ir.EnumMember{
 			Name:  m.Name,
@@ -584,7 +699,7 @@ func NamespaceFromPath(path string) string {
 
 // buildLambdaParams mirrors buildParams but accepts a contextual signature so
 // unannotated lambda params can adopt the expected parameter types. With no
-// context available, an unannotated lambda param keeps TypDyn — lambdas are
+// context available, an unannotated lambda param keeps TypInvalid — lambdas are
 // often handed to dynamically-dispatched callers (e.g. the testrunner's
 // `t.test("...", func(t, c) { ... })`) where the surrounding method is
 // resolved at runtime rather than through a typed stdlib signature.
@@ -598,7 +713,8 @@ func (c *checker) buildLambdaParams(pl ast.ParamList, expected *ir.FuncSig) []*i
 		case expected != nil && i < len(expected.Params):
 			typ = expected.Params[i].Type
 		default:
-			typ = dynFallback("lambda parameter %q has no annotation and no expected signature", p.Name)
+			c.error(p.Pos, "lambda parameter %q needs a type: nothing it is handed to says what it takes", p.Name)
+			typ = TypInvalid
 		}
 		var def ir.Expr
 		if p.Default != nil {
@@ -667,12 +783,14 @@ func (c *checker) buildFunc(f *ast.FuncDef) *ir.Func {
 
 	// Set type params so T resolves during param/return type resolution.
 	// Include both method-level TypeParams and receiver-level RecvTypeParams so
-	// that e.g. `func list<T>.filter(f func(T) bool) list<T>` resolves T correctly.
-	// Receiver parameters come first so the receiver type `list<T>` resolves.
+	// that e.g. `func list[T].filter(f func(T) bool) list[T]` resolves T correctly.
+	// Receiver parameters come first so the receiver type `list[T]` resolves.
+	if isMethod {
+		c.inheritReceiverConstraints(c.receiverType(typeName), f.RecvTypeParams)
+	}
 	popTypeParams := pushTypeParams(c, f.RecvTypeParams, f.TypeParams)
 	// nil ReturnType means void (block body) or pending-inference (expression body);
-	// leave Return nil here so checkFuncBody can infer from a `=>` body without
-	// conflating it with an explicit `dyn` return annotation.
+	// leave Return nil here so checkFuncBody can infer from a `=>` body.
 	var ret *ir.Type
 	if f.ReturnType != nil {
 		ret = c.resolveType(f.ReturnType)
@@ -687,6 +805,9 @@ func (c *checker) buildFunc(f *ast.FuncDef) *ir.Func {
 		Return:         ret,
 		IsTest:         f.IsTest(),
 		Const:          f.Const,
+	}
+	for i, p := range f.RecvTypeParams {
+		fn.RecvTypeParams[i].Constraint = c.typeParamSym(p.Name, p.Pos).Constraint
 	}
 	// A bodyless `const func` is trusted: it is a host's identifier, an
 	// intrinsic or an import, and nothing in the program says what the host
@@ -736,7 +857,7 @@ func isComparable(t *ir.Type) bool {
 	case ir.TypeTypeParam:
 		// An unbound type parameter is not judgeable here; whether the key is
 		// comparable is decided where the parameter is bound to a concrete
-		// type. Rejecting it would make `map<K, V>` undeclarable as a
+		// type. Rejecting it would make `map[K, V]` undeclarable as a
 		// parameter, which the map intrinsics need.
 		return true
 	}
@@ -763,7 +884,7 @@ func (c *checker) resolveSlotContent(t ast.TypeExpr) (*ir.Type, ir.SlotCard) {
 // requireFamily holds a slot's content to naming a tree. What lands in a slot is
 // components, so a value type there says nothing a caller could satisfy.
 func (c *checker) requireFamily(pos ast.Pos, t *ir.Type) *ir.Type {
-	if t == nil || t.Kind == ir.TypeDyn {
+	if t == nil || t.Kind == ir.TypeInvalid {
 		return t
 	}
 	if ir.TypeFamily(t) != nil {

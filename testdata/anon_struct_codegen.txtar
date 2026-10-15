@@ -20,7 +20,7 @@ the output -- if they were not, the golden would carry two or three near-identic
 structs and the assignment between them would not compile.
 
 `empty` is the field-less signature, and it is here because `sngl:builtin`
-interns that one first, for `effect<T = struct {}>`. While the intern cache was
+interns that one first, for `effect[T = struct {}]`. While the intern cache was
 keyed by signature alone the program got back builtin's declaration and its own
 package never received one, so every target emitted five uses of a type it had
 not declared.

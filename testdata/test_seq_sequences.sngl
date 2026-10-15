@@ -8,7 +8,7 @@ import . "sngl:test"
 import ui "sngl:ui"
 
 func counted(n int) string {
-    var out list<int> = []
+    var out list[int] = []
     for var i = seq.count(n) {
         out.push(i)
     }
@@ -16,7 +16,7 @@ func counted(n int) string {
 }
 
 func ranged(start int, end int) string {
-    var out list<int> = []
+    var out list[int] = []
     for var i = seq.range(start, end) {
         out.push(i)
     }
@@ -24,17 +24,17 @@ func ranged(start int, end int) string {
 }
 
 func stepped(start int, end int, by int) string {
-    var out list<int> = []
+    var out list[int] = []
     for var i = seq.step(start, end, by) {
         out.push(i)
     }
     return out.join(",")
 }
 
-// A sequence in a variable is an ordinary iter<int>: the numbers exist, and
+// A sequence in a variable is an ordinary iter[int]: the numbers exist, and
 // the loop head is no longer the seq call that produced them.
 func held(n int) int {
-    var seen iter<int> = seq.count(n)
+    var seen iter[int] = seq.count(n)
     var total = 0
     for var i = seen {
         total = total + i
@@ -94,7 +94,7 @@ func testLoopWithNoBinding(t Test) {
 // A two-variable loop over a sequence binds the ordinal first and the number
 // second, the same way it does over a list.
 func indexed(n int) string {
-    var out list<string> = []
+    var out list[string] = []
     for var i, v = seq.step(0, n, 5) {
         out.push("{i}:{v}")
     }
@@ -105,10 +105,10 @@ func testTwoVariableFormOverASequence(t Test) {
     t.assert(indexed(12) == "0:0,1:5,2:10")
 }
 
-// An iter<int> parameter takes a sequence, a variable holding one, or a list:
+// An iter[int] parameter takes a sequence, a variable holding one, or a list:
 // all three are a thing the loop pulls from, and none of them is built to be
 // walked.
-func weighted(xs iter<int>) int {
+func weighted(xs iter[int]) int {
     var t = 0
     for var i, x = xs {
         t = t + i * x
@@ -121,12 +121,12 @@ func testSequenceThroughAParameter(t Test) {
 }
 
 func testHeldSequenceThroughAParameter(t Test) {
-    var held iter<int> = seq.range(2, 5)
+    var held iter[int] = seq.range(2, 5)
     t.assert(weighted(held) == 11)
 }
 
 func testListThroughAnIterParameter(t Test) {
-    var xs list<int> = [2, 3, 4]
+    var xs list[int] = [2, 3, 4]
     t.assert(weighted(xs) == 11)
 }
 

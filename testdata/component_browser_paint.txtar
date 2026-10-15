@@ -46,7 +46,11 @@ component sources ui.node {
         ui.image #remote(alt="remote") {
             ui.remote(url=url)
         }
-        ui.avatar #avatar(initials="JD")
+        // On html an avatar's own #id is lost: its override's root is an
+        // `if`, which no id attaches to. The box around it carries one.
+        ui.vbox #avatar {
+            ui.avatar(initials="JD")
+        }
         ui.button #grow(text="grow", @click {
             w = w + 5.0
             url = "/b.png"
@@ -101,9 +105,9 @@ body { font-family: system-ui, sans-serif; }
   <span class="sngl-image sngl-image-contain" style="display:inline-block;overflow:hidden" aria-label="remote" role="img" class="sngl-image sngl-image-contain" data-sngl-id="remote">
     <img id="__n1" data-sngl-id="__n1" alt=""/>
   </span>
-  <span class="sngl-image sngl-image-cover" style="border-radius:20px;display:inline-block;height:40px;overflow:hidden;width:40px" aria-label="" role="img" class="sngl-image sngl-image-cover" data-sngl-id="avatar">
-    <span style="align-items:center;background-color:#cccccc;border-radius:20px;display:inline-flex;height:40px;justify-content:center;text-align:center;width:40px">JD</span>
-  </span>
+  <div style="display:flex;flex-direction:column" data-sngl-id="avatar">
+    <span data-sngl-slot="0" style="display:contents"></span>
+  </div>
   <button id="$4" data-sngl-id="grow">
     <span>grow</span>
   </button>
@@ -133,10 +137,13 @@ window.__sngl_reset = () => {
 window.__sngl_boot = () => {
 (() => {
   // sngl-entry.js
-  var state = { w__inst0: 5, url__inst0: "/a.png", visible__inst0: true };
+  var state = { w__inst0: 5, url__inst0: "/a.png", visible__inst0: true, failed__inst0: false };
   state.growClick = () => $4.click();
   if (typeof window !== "undefined") {
     window.__sngl_state = state;
+  }
+  function color(r, g, b, a) {
+    return { r, g, b, a };
   }
   function testMeasurementsAreCSSLengths(t, c) {
     t.assertTrue(getComputedStyle(document.querySelectorAll('[data-sngl-id="box"]')[0]).getPropertyValue("width") === "32px", '(getComputedStyle(document.querySelectorAll("[data-sngl-id=\\"box\\"]")[0]).getPropertyValue("width") === "32px")');
@@ -210,14 +217,85 @@ window.__sngl_boot = () => {
   function cssColor(c) {
     return "rgba(" + String(c.r) + "," + String(c.g) + "," + String(c.b) + "," + String(parseFloat(c.a) / 255) + ")";
   }
-  if (typeof window !== "undefined") {
-    Object.assign(window, { testMeasurementsAreCSSLengths, red, testImageSourcesPaint, cssColor });
+  function _avatarSide(size) {
+    if (size === "small") {
+      ;
+      return { px: 24, em: 0, rem: 0 };
+    }
+    ;
+    if (size === "large") {
+      ;
+      return { px: 64, em: 0, rem: 0 };
+    }
+    ;
+    return { px: 40, em: 0, rem: 0 };
   }
+  function _avatarRadius(size, variant) {
+    if (variant === "square") {
+      ;
+      return { px: 4, em: 0, rem: 0 };
+    }
+    ;
+    return { px: _avatarSide(size).px * 0.5, em: _avatarSide(size).em * 0.5, rem: _avatarSide(size).rem * 0.5 };
+  }
+  if (typeof window !== "undefined") {
+    Object.assign(window, { testMeasurementsAreCSSLengths, red, testImageSourcesPaint, cssColor, _avatarSide, _avatarRadius });
+  }
+  var __slot0 = [];
   function _canvasDraw0(ctx) {
     ctx.save();
     ctx.fillStyle = "rgba(255,0,0,1)";
     ctx.fillRect(0, 0, state.w__inst0, 20);
     ctx.restore();
+  }
+  function __renderSlot0(parent) {
+    let __place0_prev = __slot0;
+    let __place0_i = 0;
+    __slot0 = [];
+    if (state.failed__inst0 || true) {
+      let __n2 = document.createElement("span");
+      __n2.textContent = "JD";
+      __n2.setAttribute("style", "align-items:center;background-color:#cccccc;border-radius:20px;display:inline-flex;height:40px;justify-content:center;text-align:center;width:40px");
+      __n2.addEventListener("click", () => {
+      });
+      let __place0_i_ref0 = null;
+      if (__place0_i < __place0_prev.length) {
+        __place0_i_ref0 = __place0_prev[__place0_i];
+      }
+      if (__place0_i_ref0 === __n2) {
+        __place0_i = __place0_i + 1;
+      } else {
+        parent.insertBefore(__n2, __place0_i_ref0);
+      }
+      __slot0.push(__n2);
+    } else {
+      let __n3 = document.createElement("span");
+      __n3.setAttribute("class", "sngl-image sngl-image-cover");
+      __n3.setAttribute("role", "img");
+      __n3.setAttribute("aria-label", "");
+      __n3.setAttribute("style", "border-radius:20px;display:inline-block;height:40px;overflow:hidden;width:40px");
+      __n3.addEventListener("click", () => {
+      });
+      __n3.addEventListener("error", (e) => {
+        state.failed__inst0 = true;
+        __renderSlot0(__slotAnchor_0);
+      });
+      let __place0_i_ref1 = null;
+      if (__place0_i < __place0_prev.length) {
+        __place0_i_ref1 = __place0_prev[__place0_i];
+      }
+      if (__place0_i_ref1 === __n3) {
+        __place0_i = __place0_i + 1;
+      } else {
+        parent.insertBefore(__n3, __place0_i_ref1);
+      }
+      __slot0.push(__n3);
+    }
+    for (const __place0_prev_e of __place0_prev) {
+      if (__slot0.indexOf(__place0_prev_e) < 0) {
+        parent.removeChild(__place0_prev_e);
+      }
+    }
   }
   function _snglImageDraw(el, w, h, draw) {
     const c = el._snglCanvas || (el._snglCanvas = document.createElement("canvas"));
@@ -269,6 +347,8 @@ window.__sngl_boot = () => {
   var $4 = document.getElementById("$4");
   var $7 = document.getElementById("$7");
   var __n1 = document.querySelector('[data-sngl-id="__n1"]');
+  var __slotAnchor_0 = document.querySelector('[data-sngl-slot="0"]');
+  __renderSlot0(__slotAnchor_0);
   $4.addEventListener("click", function() {
     state.w__inst0 = state.w__inst0 + 5;
     state.url__inst0 = "/b.png";
@@ -286,7 +366,7 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:8aa43b2f7f83d8d45e41bfdabe0a9f95
+pass sha256:d06c1df9476d75047f87637ee42992e5
 -- testrun/html/none/component_browser_paint.sngl/lengths/1 --
 sha256:97a912b8548c0ca2b1042408e303d009
 {
@@ -298,7 +378,7 @@ sha256:97a912b8548c0ca2b1042408e303d009
   ]
 }
 -- testrun/html/none/component_browser_paint.sngl/sources/1 --
-sha256:4a7eff2687fbfb87d34ded0827b6b27a
+sha256:d0ec0468ca694f49dda7e3c9c7e1d1af
 {
   "results": [
     {

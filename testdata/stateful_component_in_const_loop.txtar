@@ -39,7 +39,7 @@ output {
     }
 }
 
-const labels list<string> = ["a", "b", "c"]
+const labels list[string] = ["a", "b", "c"]
 
 component counter(label = "") node {
     var hits = 0

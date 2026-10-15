@@ -1,0 +1,35 @@
+// A name bound in the view -- a loop variable, a population's parameter --
+// shadows a slot of the same name, as an inner binding shadows anything: a
+// field read off it is the binding's, and so is a field called `empty`. Only
+// the slot's own name, unshadowed, asks what the call site supplied.
+
+import . "sngl:ui"
+import . "sngl:test"
+
+struct Item {
+    name  string
+    empty bool
+}
+
+component card(items list[Item], label ...component option[node]) node {
+    vbox {
+        for var label = items {
+            text(value=label.empty ? "blank {label.name}" : label.name)
+        }
+        if label.empty {
+            text(value="no label")
+        }
+    }
+}
+
+component main node {
+    card(items=[Item{name="a", empty=false}, Item{name="b", empty=true}])
+}
+
+func testShadowedSlotReadsTheBinding(t Test, c main) {
+    t.snapshot("rows")
+}
+
+window {
+    main
+}

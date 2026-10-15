@@ -15,7 +15,7 @@ component deck(cards ...component card) ui.node {
     }
 }
 
-component other(cards list<card>) ui.node {
+component other(cards list[card]) ui.node {
     for var c = cards {
         c.content // ERROR(check) "c.content is what a card was written with, which only a component taking cards in a slot inserts, in its own body"
     }

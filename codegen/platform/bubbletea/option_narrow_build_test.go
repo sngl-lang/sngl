@@ -7,7 +7,7 @@ import (
 
 // A narrowed option compiles as Go.
 //
-// Go's option<T> is *T, so reading one as the T a null test proved it to be is
+// Go's option[T] is *T, so reading one as the T a null test proved it to be is
 // a dereference. The generated program is where that is decided: a cast --
 // `int(m.maybe)` -- is what the conversion path emits for every other target
 // type, type-checks in the compiler, and does not compile as Go. Nothing short
@@ -17,7 +17,7 @@ func TestNarrowedOptionCompilesAsGo(t *testing.T) {
 import . "sngl:ui"
 
 window {
-    var maybe option<int>
+    var maybe option[int]
 
     button(text="clear", @click {
         maybe = null

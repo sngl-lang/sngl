@@ -153,7 +153,7 @@ func formatStdlibComponent(c *ir.Component) string {
 		for _, p := range c.Props {
 			t := typeString(p.Type)
 			if t == "" {
-				t = "dyn"
+				t = "unknown"
 			}
 			line := fmt.Sprintf("- `%s` %s", p.Name, t)
 			if p.Default == nil {
@@ -243,7 +243,7 @@ func findComponent(pkg *ir.Package, name string) *ir.Component {
 func formatProp(comp *ir.Component, p *ir.Prop) string {
 	t := typeString(p.Type)
 	if t == "" {
-		t = "dyn"
+		t = "unknown"
 	}
 	required := "required"
 	if p.Default != nil {
@@ -267,7 +267,7 @@ func lookupStructFieldType(pkg *ir.Package, structName, fieldName string) (strin
 		if f.Name != fieldName {
 			continue
 		}
-		t := "dyn"
+		t := "unknown"
 		if f.Type != nil {
 			t = f.Type.String()
 		}

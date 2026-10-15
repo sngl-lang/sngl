@@ -98,7 +98,7 @@ func TestGoImporter_Resolve(t *testing.T) {
 		t.Errorf("SaveTodo.Params[0] type should point to Todo struct, got %+v", st.Params[0].Type)
 	}
 
-	// FetchAll: list<Todo>.
+	// FetchAll: list[Todo].
 	fa, ok := funcs["FetchAll"]
 	if !ok {
 		t.Fatal("missing func FetchAll")
@@ -153,7 +153,8 @@ func TestGoImporter_Resolve(t *testing.T) {
 		t.Errorf("Count.Foreign.Unusable = %q, want empty", count.Foreign.Unusable)
 	}
 
-	// Interface field/param: exposed as dyn, still usable.
+	// An interface says nothing of what it holds, so a field or parameter of
+	// one has no SNGL type: declared, and unusable with the reason.
 	carrier, ok := structs["Carrier"]
 	if !ok {
 		t.Fatal("missing struct Carrier")
@@ -162,17 +163,14 @@ func TestGoImporter_Resolve(t *testing.T) {
 		t.Fatalf("Carrier fields = %d, want 1", len(carrier.Fields))
 	}
 	h := carrier.Fields[0]
-	if h.Type.Kind != ir.TypeDyn || h.Foreign.Unusable != "" {
-		t.Errorf("Carrier.handler type=%v unusable=%q, want dyn/empty", h.Type, h.Foreign.Unusable)
+	if h.Type.Kind != ir.TypeInvalid || h.Foreign.Unusable == "" {
+		t.Errorf("Carrier.handler type=%v unusable=%q, want invalid and unusable", h.Type, h.Foreign.Unusable)
 	}
 	wi, ok := funcs["WithIface"]
 	if !ok {
 		t.Fatal("missing func WithIface")
 	}
-	if wi.Foreign.Unusable != "" {
-		t.Errorf("WithIface.Foreign.Unusable = %q", wi.Foreign.Unusable)
-	}
-	if len(wi.Params) != 1 || wi.Params[0].Type.Kind != ir.TypeDyn {
-		t.Errorf("WithIface.Params = %+v, want dyn", wi.Params)
+	if wi.Foreign.Unusable == "" {
+		t.Error("WithIface is usable, though its parameter is an interface")
 	}
 }

@@ -21,10 +21,10 @@ output {
 }
 
 struct Holder {
-    f func(xs list<string>) string
+    f func(xs list[string]) string
 }
 
-func encode(xs list<string>) string {
+func encode(xs list[string]) string {
     var s = ""
     for var x = xs {
         s = s + x
@@ -32,7 +32,7 @@ func encode(xs list<string>) string {
     return s
 }
 
-component show(render func(xs list<string>) string) ui.node {
+component show(render func(xs list[string]) string) ui.node {
     var h = Holder{f=render}
 
     ui.text(value=h.f(["a"]))

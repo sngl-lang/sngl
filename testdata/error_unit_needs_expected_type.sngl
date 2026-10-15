@@ -20,7 +20,7 @@ component main node {
     var unknown duration = 5xyz  // ERROR(check) "has no suffix"
     var ok duration = 5ms
 
-    text(value="{ok.string()}{noType.string()}{wrongUnit.string()}{unknown.string()}")
+    text(value="{ok}{noType}{wrongUnit}{unknown}")
 }
 
 window {

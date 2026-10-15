@@ -15,6 +15,14 @@ const langGo = "go"
 // imports their native form needs ("strings"/"math"); GoIRContext applies them
 // via RequireImport.
 func init() {
+	// A record handed to the i18n runtime is the map it takes.
+	codegen.RegisterRecordSpeller(langGo, func(keys, vals []string) string {
+		parts := make([]string, len(keys))
+		for i := range keys {
+			parts[i] = keys[i] + ": " + vals[i]
+		}
+		return "map[string]any{" + strings.Join(parts, ", ") + "}"
+	})
 	// reg registers an import-free emitter (builtins / slicing).
 	reg := func(id string, fn func(a []string) string) {
 		regImp(id, nil, fn)
@@ -109,9 +117,9 @@ func init() {
 
 	// --- list and map ---
 	// Go is statically typed, so these name the element type they build rather
-	// than falling back to []any: a list<int> is emitted as []int, and an []any
+	// than falling back to []any: a list[int] is emitted as []int, and an []any
 	// result would not assign to it.
-	// strings.Join needs []string, so it only spells a list<string>. Every
+	// strings.Join needs []string, so it only spells a list[string]. Every
 	// other element type goes through the platform's default conversion, which
 	// is what the declaration promises and what fmt.Sprint is.
 	regTypedImp("list.join", func(a []string, ts []*ir.Type) (string, []string) {
@@ -170,7 +178,7 @@ func init() {
 	// --- seq (sngl:seq) ---
 	// A sequence in a loop head becomes the host's counting loop and never
 	// reaches here (GoIRContext.ForHead). Everywhere else it is the pull
-	// sequence iter<int> is spelled as, built by the snglSeq helper the
+	// sequence iter[int] is spelled as, built by the snglSeq helper the
 	// package emits (HelperSet.NeedSeq) -- so holding or passing one still
 	// counts rather than building a slice, and reads as a call rather than a
 	// closure written out at each site.

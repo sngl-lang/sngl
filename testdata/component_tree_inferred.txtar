@@ -40,7 +40,7 @@ component guarded(label string) {
 
 // A generic declaration is inferred like any other. The copy a call site
 // specializes is taken while the answer is still unsettled, and gets it after.
-component tagged<T>(value T, label string) {
+component tagged[T any](value T, label string) {
     ui.text(value=label)
 }
 

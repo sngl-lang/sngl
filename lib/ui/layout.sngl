@@ -68,7 +68,7 @@ component scroll(
     showScrollbar string = "",
     @scroll(),
     @scrollEnd(),
-    content       ...component option<node>,
+    content       ...component option[node],
 ) node
 
 component _example_scroll node {

@@ -51,7 +51,7 @@ func testAnUnrolledRecursionRendersEveryLevel(t Test, c unrolled) {
 }
 
 component row(label string) node {
-    var log list<string> = []
+    var log list[string] = []
     effect(on=label, @mount { log.push("+") }, @unmount { log.push("-") })
     text #shown(value="{label}[{log.join(",")}]")
 }
@@ -76,7 +76,7 @@ func testAnInstanceLivesWithItsBranch(t Test, c factory) {
 
 // Each row of a loop that reads state through a call repaints when it moves.
 component decorated node {
-    var items list<string> = ["a", "b"]
+    var items list[string] = ["a", "b"]
     var suffix = "!"
 
     func decorate() => suffix
@@ -103,7 +103,7 @@ component pick(label string, onpick func(string)) node {
 // A func-typed prop's default reads into the bundle: an arrow there used to
 // close the `??` expression it stood in, and the page did not build.
 component funcProp node {
-    var items list<string> = ["a", "b"]
+    var items list[string] = ["a", "b"]
     var picked = ""
     text(value="picked={picked}")
     vbox #out {

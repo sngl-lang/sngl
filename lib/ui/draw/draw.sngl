@@ -145,7 +145,7 @@ component canvasImage(
     y   float,
     w   float,
     h   float,
-    src ...component family.one<ui.imageSource>,
+    src ...component family.one[ui.imageSource],
 ) shape
 
 // A drawing as an image source: the shapes it holds, painted into a picture
@@ -187,8 +187,8 @@ struct Size {
 // Block bodies with the return type written out, not `=>`: in library source
 // an unannotated expression body is inferred only when it answers a
 // *primitive* -- `color.rgb() => color{…}` would otherwise shadow the `color`
-// primitive in callers -- so a struct-returning helper stays `dyn`, and an
-// expression body cannot carry an annotation to say otherwise.
+// primitive in callers -- so a struct-returning helper would have no type, and
+// an expression body cannot carry an annotation to say otherwise.
 const func Point.polar(center Point, radius float, angle float) Point {
     return Point{
         x = center.x + radius * math.cos(angle),

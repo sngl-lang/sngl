@@ -84,7 +84,7 @@ func rewriteUnitExpr(e ir.Expr) ir.Expr {
 		if x.Func != nil {
 			x.Func.Block = rewriteStmtExprs(x.Func.Block, rewriteUnitExpr)
 		}
-	case *ir.Ident, *ir.ContextRead:
+	case *ir.Ident, *ir.ContextRead, *ir.SlotEmpty:
 		// Terminal — no unit-typed sub-expressions to rewrite.
 	default:
 		panic(fmt.Sprintf("rewriteUnitExpr: unhandled %T", x))

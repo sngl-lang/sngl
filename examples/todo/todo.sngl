@@ -17,7 +17,7 @@ struct Todo {
 ui.window {
     var (
         newTodo = ""
-        todos list<Todo> = [
+        todos list[Todo] = [
             {text="Buy groceries", done=false},
             {text="Walk the dog", done=true},
             {text="Write SNGL docs", done=false},

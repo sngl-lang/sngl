@@ -28,7 +28,7 @@ import ui "sngl:ui"
 
 var n = 1
 
-func at<T>(xs list<T>) T {
+func at[T any](xs list[T]) T {
     var i = n
     if i >= xs.length {
         i = 0
@@ -36,7 +36,7 @@ func at<T>(xs list<T>) T {
     return xs[i]
 }
 
-func count<T>(xs list<T>, want T) int {
+func count[T any](xs list[T], want T) int {
     var c = 0
     for var x = xs {
         if x == want {
@@ -46,25 +46,25 @@ func count<T>(xs list<T>, want T) int {
     return c
 }
 
-func both<T>(xs list<T>, want T) int {
+func both[T any](xs list[T], want T) int {
     var c = count(xs, want)
     return c + count([at(xs)], want)
 }
 
-func blank<T>() list<T> {
-    var out list<T> = []
+func blank[T any]() list[T] {
+    var out list[T] = []
     if n < 0 {
         return out
     }
     return out
 }
 
-func wrap<T>(x T) T {
+func wrap[T any](x T) T {
     var y = x
     return y
 }
 
-func deep<T>(x T, d int) int {
+func deep[T any](x T, d int) int {
     var y = wrap(x)
     if d <= 0 {
         return n
@@ -72,14 +72,14 @@ func deep<T>(x T, d int) int {
     return deep([y], d - 1) + 1
 }
 
-func there<T>(x T, d int) int {
+func there[T any](x T, d int) int {
     if d <= 0 {
         return n
     }
     return back([x], d - 1) + 1
 }
 
-func back<T>(x T, d int) int {
+func back[T any](x T, d int) int {
     var y = wrap(x)
     return there(y, d)
 }
@@ -89,11 +89,11 @@ component main ui.node {
     var ints = 0
     var strs = 0
     var picked = ""
-    var e list<string> = ["z"]
+    var e list[string] = ["z"]
     var depth = 0
     var mutual = 0
 
-    func nth<T>(xs list<T>) T {
+    func nth[T any](xs list[T]) T {
         var i = k
         return xs[i]
     }

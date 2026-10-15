@@ -32,7 +32,7 @@ output { go { fyne } }
 import "go:example.com/native-err/api"
 
 window #app(title="t") {
-    var rows list<string> = []
+    var rows list[string] = []
 
     vbox {
         button(text="Load", @click {

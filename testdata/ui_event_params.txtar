@@ -1,7 +1,7 @@
 `sngl:ui`'s form controls declare their events' parameters as a function
 does, and every target hands a handler the value itself: a checkbox's and a
 toggle's `@change(checked bool)`, an input's `@input(value string)`, a
-datepicker's `@change(value option<time.date>)`, a button's `@click()`. They
+datepicker's `@change(value option[time.date])`, a button's `@click()`. They
 were one payload struct each -- `ToggleEvent{checked}`, `InputEvent{value}`,
 `DateEvent{value}`, an empty `ClickEvent` -- which a handler read a field of
 and every target declared, built and taught its test invokers.
@@ -37,7 +37,7 @@ component main node {
     var on = false
     var lit = false
     var name = ""
-    var picked option<time.date> = null
+    var picked option[time.date] = null
     var seen = "none"
     var clicks = 0
     vbox {
@@ -1084,7 +1084,7 @@ type ErrorEvent struct {
 }
 
 // snglCalendarDate is the day a GtkCalendar has selected, as the *time.Time an
-// option<date> is in Go. A calendar always has a day selected.
+// option[date] is in Go. A calendar always has a day selected.
 func snglCalendarDate(c *C.GtkCalendar) *time.Time {
 	dt := C.gtk_calendar_get_date(c)
 	defer C.g_date_time_unref(dt)
@@ -1830,7 +1830,7 @@ pass sha256:783486e3fc718606e69d1a438b710c67
 -- run/go/fyne --
 pass sha256:31c6429b45c92c7adad3d96e703355d5
 -- run/go/gtk4 --
-pass sha256:337b97c76f7c83e15ff02381d8e2b265
+pass sha256:4a329a2d813e1905a7f682faf39a901c
 -- run/kotlin/android --
 pass sha256:d69bfa67c70d57a41bcc8085bb585140
 -- run/none/html --

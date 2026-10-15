@@ -29,7 +29,7 @@ type HelperSet struct {
 	// NeedTimeImport is any mention of the family at all, annotation
 	// included. It was the same four flags doing both jobs, and fyne's timer
 	// is what separated them: its `*time.Ticker` carries a
-	// `go.chan<time.datetime>`, which is a type nothing ever parses, so six
+	// `go.chan[time.datetime]`, which is a type nothing ever parses, so six
 	// timer fixtures emitted a `mustParseDateTime` no line called.
 	NeedTimeImport bool
 	// `int(s)` and `float(s)` are conversions the language allows and Go does
@@ -40,10 +40,10 @@ type HelperSet struct {
 	NeedParseFloat bool
 	// A sngl:seq sequence that is not a loop head's own iterable: the loop
 	// head becomes a counting `for` and needs nothing, and everywhere else
-	// the sequence is the pull func iter<int> is spelled as. One helper says
+	// the sequence is the pull func iter[int] is spelled as. One helper says
 	// that in three lines rather than a closure at every call site.
 	NeedSeq bool
-	// A bare T promoted into an option<T>. Go's option is *T and `&` is only
+	// A bare T promoted into an option[T]. Go's option is *T and `&` is only
 	// legal on an addressable operand, so the box is a helper rather than an
 	// operator -- see the IsOptionWrap arm of evalConversion.
 	NeedSome bool
@@ -87,8 +87,8 @@ func UnitStringConversion(n *ir.Conversion) *ir.UnitDef {
 // allows on a string and Go does not: `float64(s)` does not compile and
 // `int(s)` would be a rune.
 //
-// The operand's declared type is what decides, so a `dyn` stays a plain cast —
-// there is nothing to say it holds a string.
+// The operand's declared type is what decides: only a string operand takes a
+// helper, and every other one stays a plain cast.
 func StringToNumberHelper(n *ir.Conversion) string {
 	if n == nil || n.Type == nil || n.Operand == nil {
 		return ""

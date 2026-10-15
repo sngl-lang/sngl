@@ -24,7 +24,7 @@ func (t Tag) MarshalSNGL() ([]byte, error) {
 }
 
 // Blob is the disagreement: base64 is a reasonable form for a byte slice and a
-// string is not a list<int>, which is what the importer makes of []byte.
+// string is not a list[int], which is what the importer makes of []byte.
 type Blob []byte
 
 // MarshalSNGL writes the bytes base64-encoded.

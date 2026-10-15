@@ -144,7 +144,7 @@ func (c *checker) checkI18nPlaceholder(ph *ast.I18nPlaceholderExpr) {
 		if ph.Style != "" {
 			c.error(ph.Pos, "%s placeholder cannot take a style argument", ph.Type)
 		}
-		if vT != nil && vT.Kind != ir.TypeInt && vT.Kind != ir.TypeFloat && vT.Kind != ir.TypeDyn {
+		if vT != nil && vT.Kind != ir.TypeInt && vT.Kind != ir.TypeFloat && vT.Kind != ir.TypeInvalid {
 			c.error(ph.Pos, "%s placeholder requires numeric value, got %s", ph.Type, vT)
 		}
 		for _, ca := range ph.Cases {
@@ -161,13 +161,13 @@ func (c *checker) checkI18nPlaceholder(ph *ast.I18nPlaceholderExpr) {
 		if ph.Style != "" {
 			c.error(ph.Pos, "%s placeholder cannot take a style argument", ph.Type)
 		}
-		// Allow string, dyn, or any enum type. For enums we also validate
+		// Allow string, or any enum type. For enums we also validate
 		// that case selectors correspond to declared members and that the
 		// match is exhaustive (or carries an `other` fallback).
 		var enumDecl *ir.EnumDef
 		if vT != nil {
 			switch vT.Kind {
-			case ir.TypeString, ir.TypeDyn:
+			case ir.TypeString, ir.TypeInvalid:
 			case ir.TypeEnum:
 				if d, ok := vT.Decl.(*ir.EnumDef); ok {
 					enumDecl = d
@@ -216,7 +216,7 @@ func (c *checker) checkI18nPlaceholder(ph *ast.I18nPlaceholderExpr) {
 		}
 	case "date", "time", "dateTime":
 		if vT != nil {
-			ok := vT.Kind == ir.TypeDyn ||
+			ok := vT.Kind == ir.TypeInvalid ||
 				ir.IsDateStruct(vT) || ir.IsTimeStruct(vT) || ir.IsDateTimeStruct(vT)
 			if !ok {
 				c.error(ph.Pos, "%s placeholder requires date/time value, got %s", ph.Type, vT)
@@ -228,7 +228,7 @@ func (c *checker) checkI18nPlaceholder(ph *ast.I18nPlaceholderExpr) {
 			}
 		}
 	case "number":
-		if vT != nil && vT.Kind != ir.TypeInt && vT.Kind != ir.TypeFloat && vT.Kind != ir.TypeDyn {
+		if vT != nil && vT.Kind != ir.TypeInt && vT.Kind != ir.TypeFloat && vT.Kind != ir.TypeInvalid {
 			c.error(ph.Pos, "number placeholder requires numeric value, got %s", vT)
 		}
 		if ph.Style != "" {
@@ -286,7 +286,7 @@ func (c *checker) inferI18nInterp(x *ast.I18nInterpExpr) ir.Expr {
 		// The namespace the call was reached through. trInline is a package
 		// function, so the alias at the call site is what names it — and a
 		// synthesized call has to carry what a written one would.
-		Receiver: i18nReceiver(c, trNS),
+		Qualifier: c.i18nQualifier(trNS),
 		Args: []ir.CallArg{
 			{Value: &ir.Literal{Type: TypString, Value: template}},
 			{Value: &ir.Literal{Type: TypString, Value: template}},
@@ -301,20 +301,15 @@ const i18nNamespace = "i18n"
 // i18nImportPath is the package $"..." lowers into a call on.
 const i18nImportPath = "sngl:i18n"
 
-// i18nReceiver names the namespace the call was reached through, or nil when
-// a dot import put the function in scope unqualified.
-func i18nReceiver(c *checker, ns string) ir.Expr {
-	if ns == "" {
+// i18nQualifier is the import the call was reached through, or nil when a
+// dot import put the function in scope unqualified.
+func (c *checker) i18nQualifier(name string) *ir.Namespace {
+	if name == "" {
 		return nil
 	}
-	return &ir.Ident{Name: ns, Sym: c.namespaceNamed(ns)}
-}
-
-func (c *checker) namespaceNamed(name string) ir.Symbol {
-	if sym, ok := c.scope.Lookup(name); ok {
-		return sym
-	}
-	return nil
+	sym, _ := c.scope.Lookup(name)
+	ns, _ := sym.(*ir.Namespace)
+	return ns
 }
 
 // lookupI18nTrInline resolves the i18n.trInline stdlib function — the
@@ -426,13 +421,11 @@ var i18nTemplates = map[string]string{
 	"i18n.format": "template",
 }
 
-// checkI18nCall holds a call of i18n.tr or i18n.format to what its runtime
-// reads. The arguments are a struct, a field per placeholder, which every
-// runtime is handed as a map keyed by field name (lower.RecordArgs); a map or
-// a scalar bound to the type parameter would reach it as something else. And
-// the template is the one written: a double-quoted string is interpolated
-// where it is written, so its `{name}` was gone before i18n saw it and the
-// arguments were read by nothing.
+// checkI18nCall holds a call of i18n.tr or i18n.format to the template it
+// was written with: a double-quoted string is interpolated where it is
+// written, so its `{name}` was gone before i18n saw it and the arguments were
+// read by nothing. That the arguments are a struct, a field per placeholder,
+// is the declaration's own constraint, `[A struct {}]`.
 func (c *checker) checkI18nCall(x *ast.CallExpr, e ir.Expr) {
 	call, ok := e.(*ir.Call)
 	if !ok || call.Func == nil {
@@ -459,35 +452,6 @@ func (c *checker) checkI18nCall(x *ast.CallExpr, e ir.Expr) {
 			c.error(interp.Pos, "this template is interpolated before %s sees it, so its placeholders are gone: write it in backticks, or escape each brace as \\{", name)
 		}
 	}
-	if i := ir.RecordArg(call.Func); i >= 0 && i < len(call.Args) {
-		t := exprType(call.Args[i].Value)
-		if t == nil || t.Kind == ir.TypeDyn {
-			return
-		}
-		if t.Kind != ir.TypeStruct {
-			at := x.Pos
-			if n, ok := argAST(x, i, call.Func.Params[i].Name); ok {
-				at = n
-			}
-			c.error(at, "%s takes its arguments as a struct, a field per placeholder -- {name=…} -- not %s", name, t)
-		}
-	}
-}
-
-// argAST is the position of the argument x binds to parameter i, named name.
-func argAST(x *ast.CallExpr, i int, name string) (ast.Pos, bool) {
-	for j, a := range x.Args.Args {
-		arg, ok := a.(ast.Arg)
-		if !ok {
-			continue
-		}
-		if (arg.Name == "" && j == i) || arg.Name == name {
-			if p := arg.Value.ExprPos(); p != nil {
-				return *p, true
-			}
-		}
-	}
-	return ast.Pos{}, false
 }
 
 // i18nArgsRecord is the anonymous struct literal holding a translatable
@@ -497,6 +461,6 @@ func (c *checker) i18nArgsRecord(fields []ir.FieldInit) *ir.StructLit {
 	if !ok {
 		return &ir.StructLit{Type: &ir.Type{Kind: ir.TypeStruct}, Fields: fields}
 	}
-	anon := c.internAnonStruct(anonFields)
-	return &ir.StructLit{Type: anon.SymType(), Def: anon, Fields: fields}
+	typ := c.anonStructType(anonFields)
+	return &ir.StructLit{Type: typ, Def: typ.Decl.(*ir.StructDef), Fields: fields}
 }

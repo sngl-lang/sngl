@@ -285,6 +285,11 @@ func (w *irTokenWalker) expr(e ir.Expr) {
 		w.expr(x.Then)
 		w.expr(x.Else)
 	case *ir.Call:
+		if x.Qualifier != nil && x.AST != nil {
+			if sel, ok := x.AST.Func.(*ast.SelectExpr); ok {
+				w.qualifier(sel)
+			}
+		}
 		w.expr(x.Callee)
 		w.expr(x.Receiver)
 		for _, a := range x.Args {
@@ -320,7 +325,18 @@ func (w *irTokenWalker) expr(e ir.Expr) {
 	}
 }
 
+// qualifier emits the import a member was named through, `math` in
+// `math.pi`, which the IR holds as no expression of its own.
+func (w *irTokenWalker) qualifier(sel *ast.SelectExpr) {
+	if id, ok := sel.Operand.(*ast.IdentExpr); ok && id.Name != "" {
+		w.emit(id.Pos, len(id.Name), stNamespace)
+	}
+}
+
 func (w *irTokenWalker) ident(x *ir.Ident) {
+	if x.Qualifier != nil && x.SelAST != nil && !x.Synthesized {
+		w.qualifier(x.SelAST)
+	}
 	if x.AST == nil || x.Synthesized {
 		return
 	}

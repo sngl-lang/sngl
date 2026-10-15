@@ -407,13 +407,16 @@ user-defined types.
 
 ### Predeclared types
 
-| Type     | Description                                                  |
-|----------|--------------------------------------------------------------|
-| `bool`   | `true` or `false`.                                           |
-| `int`    | 64-bit signed integer. Division truncates toward zero.       |
-| `float`  | 64-bit IEEE-754 floating point.                              |
-| `string` | Immutable UTF-8 text.                                        |
-| `dyn`    | The dynamic type; see [The dynamic type](#the-dynamic-type). |
+| Type     | Description                                            |
+|----------|--------------------------------------------------------|
+| `bool`   | `true` or `false`.                                     |
+| `int`    | 64-bit signed integer. Division truncates toward zero. |
+| `float`  | 64-bit IEEE-754 floating point.                        |
+| `string` | Immutable UTF-8 text.                                  |
+
+`any` is predeclared beside them and is no type a value may have: it is the
+constraint that says nothing about a type parameter (see
+[Generic type parameters](#generic-type-parameters)).
 
 A type may be designated *string-representable*: it has a canonical textual
 form and converts implicitly to and from `string` in both directions (a literal
@@ -428,18 +431,18 @@ core types — they are defined in SNGL under `lib/`.
 
 | Type        | Description                                                           |
 |-------------|-----------------------------------------------------------------------|
-| `list<T>`   | An ordered sequence of `T`. Literal: `[a, b, c]`.                     |
-| `option<T>` | Either a `T` or absent (`null`).                                      |
-| `map<K, V>` | A mapping from comparable keys `K` to values `V`. Literal: `{k = v}`. |
-| `iter<T>`   | An opaque pull sequence yielding `T`; no methods and no fields.       |
-| `ref<T>`    | A mutable reference to a `T` (see [References](#references)).         |
+| `list[T]`   | An ordered sequence of `T`. Literal: `[a, b, c]`.                     |
+| `option[T]` | Either a `T` or absent (`null`).                                      |
+| `map[K, V]` | A mapping from comparable keys `K` to values `V`. Literal: `{k = v}`. |
+| `iter[T]`   | An opaque pull sequence yielding `T`; no methods and no fields.       |
+| `ref[T]`    | A mutable reference to a `T` (see [References](#references)).         |
 
 All five are declarations in `sngl:builtin`, marked as the construct they
-stand for; `list<T>` and `map<K, V>` carry methods there (`length`, `map`,
-`filter`, `keys`, `contains`, `get`, …). A `list<T>` converts implicitly to
-`iter<T>`; a `map<K, V>` does not, so a map never reaches an `iter` position
+stand for; `list[T]` and `map[K, V]` carry methods there (`length`, `map`,
+`filter`, `keys`, `contains`, `get`, …). A `list[T]` converts implicitly to
+`iter[T]`; a `map[K, V]` does not, so a map never reaches an `iter` position
 with its map-ness erased. The integer sequences a counting loop walks are
-`iter<int>` values produced by `sngl:seq` — `seq.count(n)`,
+`iter[int]` values produced by `sngl:seq` — `seq.count(n)`,
 `seq.range(start, end)` and `seq.step(start, end, by)`.
 
 A `map` literal is written `{k1 = v1, k2 = v2}` and is distinguished from a
@@ -477,11 +480,11 @@ named parameter is passed by value the same way: a function that writes it
 writes its own copy and not the caller's. Two parameters are passed by
 reference instead -- a method's ambient `this`, so a method declared in a
 struct's body that writes `this` writes the value it was called on, and a
-parameter declared `ref<T>` (see [References](#references)). A struct may be
+parameter declared `ref[T]` (see [References](#references)). A struct may be
 generic over type parameters:
 
 ```
-struct Box<T> { value T }
+struct Box[T any] { value T }
 ```
 
 A struct may carry methods declared as `func StructName.method(…)` (see
@@ -533,21 +536,13 @@ expects (see [Unit literals](#unit-literals)).
 The integer literal `0` is assignable to any unit type; other bare numbers must
 be scaled by a unit literal (`5 * 1s`).
 
-### The dynamic type
-
-`dyn` is the dynamic type and the type assigned to a binding that has no
-annotation and no inferable initializer. Any value is assignable to `dyn`, a
-`dyn` value is assignable to any type, and operations on a `dyn` operand bypass
-static operand checking. Where the checker knows what a `dyn` binding was
-initialized with, it holds later uses to that type.
-
 ### References
 
-`ref<T>` is a mutable reference to a value of type `T`: what holds one goes on
+`ref[T]` is a mutable reference to a value of type `T`: what holds one goes on
 seeing what the referenced cell becomes. `&x` makes one and `*r` reads through
 it. References arise chiefly from reference loop variables (`for var &x = xs`),
 which make writes to the loop variable flow back to the underlying list element
-(see [The for statement](#the-for-statement)). A parameter declared `ref<T>`
+(see [The for statement](#the-for-statement)). A parameter declared `ref[T]`
 is the caller's cell: `f(&x)` hands it `x`, a field of it is read and written
 as one of the value is (`p.n = 5`), a method of it is called through it, and
 the whole value is written with `*p = v`. What the function writes is `x`'s
@@ -579,19 +574,17 @@ A value of type `A` may be used where type `B` is expected when any of the
 following holds:
 
 1. `A` and `B` are identical.
-2. `A` or `B` is `dyn` (see [The dynamic type](#the-dynamic-type)).
-3. `A` is `null` and `B` is an `option` type or a function type.
-4. `A` is `int` and `B` is `float`.
-5. one of `A` and `B` is `string` and the other is a string-representable type
+2. `A` is `null` and `B` is an `option` type or a function type.
+3. `A` is `int` and `B` is `float`.
+4. one of `A` and `B` is `string` and the other is a string-representable type
    (a standard-library type such as `color`, `date`, `time`, or `datetime`).
-6. `A` is `list<S>`, `B` is `list<T>`, and `S` is assignable to `T` (lists are
+5. `A` is `list[S]`, `B` is `list[T]`, and `S` is assignable to `T` (lists are
    covariant in their element type).
-7. `A` is `list<S>` and `B` is `iter<T>` with `S` assignable to `T` (the
+6. `A` is `list[S]` and `B` is `iter[T]` with `S` assignable to `T` (the
    conversion that underlies `for` over a list).
-8. `A` is `map<K, S>` and `B` is `map<K, T>` (or `B`'s key type is `dyn`) with
-   `S` assignable to `T`.
-9. `A` is `option<S>` and `B` is `option<T>` with `S` assignable to `T`, or `A`
-   is `T` and `B` is `option<T>` (a bare value auto-wraps into an option).
+7. `A` is `map[K, S]` and `B` is `map[K, T]` with `S` assignable to `T`.
+8. `A` is `option[S]` and `B` is `option[T]` with `S` assignable to `T`, or `A`
+   is `T` and `B` is `option[T]` (a bare value auto-wraps into an option).
 
 The auto-wrap stores the value, not a reference to where it was read from: a
 struct is a value in SNGL, so a later write to what was wrapped does not reach
@@ -603,7 +596,7 @@ struct box {
 }
 
 struct holder {
-    inner option<box> = null
+    inner option[box] = null
 }
 
 func wrapped() int {
@@ -630,18 +623,17 @@ permitted conversions among primitives are:
 - to `bool` — from `bool` or `string`;
 - to a string-representable type — from `string` or from itself.
 
-A `dyn` operand may be converted to any primitive type (this is how `dyn` is
-narrowed). Conversions whose operand is a struct, component, function, list,
+Conversions whose operand is a struct, component, function, list,
 option, or `null` are rejected, and so are `int` and `float` of a multi-base
 unit (see [Unit types](#unit-types)).
 
 ### Narrowing an option
 
 A comparison against `null` says what a value is in the branch where the
-comparison holds. Within that branch an `option<T>` reads as a `T`:
+comparison holds. Within that branch an `option[T]` reads as a `T`:
 
 ```sngl
-func doubled(maybe option<int>) int {
+func doubled(maybe option[int]) int {
     if maybe != null {
         return maybe * 2 // maybe is an int here
     }
@@ -662,7 +654,7 @@ The forms that narrow are:
   guards. `a || b` is the same fact negated: a `== null` test in `a` narrows
   `b`.
 
-Every other form leaves the value an `option<T>`, so reading it as a `T` is
+Every other form leaves the value an `option[T]`, so reading it as a `T` is
 the ordinary type error rather than a silent wrong type.
 
 A narrowing does not survive anything that could make the value absent again.
@@ -677,20 +669,123 @@ called, which may be after the test has stopped holding.
 
 ### Generic type parameters
 
-Type parameters are introduced by a type-parameter list (`<T>`, `<K, V>`) on a
-struct, a function, a method's receiver or name, or a component. A type
-parameter may carry a default (`<T = struct {}>`), used when nothing binds it.
-In a type position the arguments are written (`Box<int>`); at a call site they
-are bound by inference rather than written:
+Type parameters are introduced by a type-parameter list in brackets
+(`[T any]`, `[K any, V any]`) on a struct, a function, a method's name, or a
+component. Every type parameter names a **constraint** after its name: what a
+type bound to it must be. A constraint is `any` or an anonymous struct. `any`
+is the constraint that says nothing. A constraint is a constraint only: `any`
+written where a value's type goes is an error: every value has a type the
+program can name. A type parameter may also carry a default
+after its constraint (`[T any = struct {}]`), used when nothing binds it; a
+constraint is never a default, so a parameter with no default has none, and
+`[T struct {} = struct {}]` writes both.
+
+An anonymous struct constraint says the type is a struct with **at least**
+those fields, each at an equal type: `[T struct {}]` is any struct, and
+`[T struct { name string }]` any struct with a `name` field that is a
+`string`. Fields are matched by name and at equal types, not assignable ones,
+and a named struct satisfies the constraint as readily as an anonymous one,
+since the constraint is about fields, not identity. A constraint's field may
+not carry a default -- a constraint says what a type has, not what it starts
+with -- and the defaults of a struct being measured play no part. Every type
+bound to a parameter is held to its constraint: one an argument binds, one
+written in brackets, a type's own argument, one the children of a slot bind, a
+family's argument in a member's return position, and a default. A type
+parameter bound to another is measured by the other's own constraint.
+
+A constraint's field may name another type parameter of the same list, or
+the one it constrains: `[T any, U struct { value T }]` is a `U` whose `value`
+is whatever `T` is, and `[T struct { next option[T] }]` a struct whose `next`
+holds one of its own type. The field is measured with the list's other
+parameters bound, and where one is not -- nothing written or passed binds it
+-- the field of the type bound to the parameter it constrains does, so
+`valueOf(Cell{value=1})` binds `T` to `int`. A default binds its list the
+same way where its declaration is checked.
+
+In a generic body a value of a constrained `T` has the constraint's fields,
+typed from the constraint, and nothing else: `v.name` reads one, and any other
+member is unknown. A spread of a `T` binds those fields by name, as a struct's
+spread binds its own.
+
+```sngl
+struct User {
+    name string
+    age  int
+}
+
+func nameOf[T struct {
+    name string
+}](v T) => v.name
+
+var a = nameOf(User{name="ann"}) // User may have other fields
+var b = nameOf({name="anon"})    // an anonymous struct
+```
+
+An anonymous struct type may name a type parameter wherever a type is
+written -- a parameter, a result, a field, a variable, a list's element, an
+option: `struct { v T }` is the anonymous struct whose `v` is whatever `T` is
+bound to. A call binds `T` from the field of that name in the argument, as it
+binds one from a list's element, and once `T` is bound the type is the
+anonymous struct written with that type, since two anonymous structs with the
+same fields at equal types are one type. Its `T` is the parameter in scope
+where it is written, so two declarations each writing `struct { v T }` name
+two parameters.
+
+```sngl
+func unwrap[T any](w struct {
+    v T
+}) T {
+    return w.v
+}
+
+func wrap[T any](x T) struct {
+    v T
+} {
+    return {v=x}
+}
+
+var one = unwrap({v=1}) + 1 // T is int
+var two = unwrap(wrap("w")) // T is string
+```
+
+The bracket after a declaration's name is also where an override names the
+target it implements (`component ui.vbox[platform]`, see
+[Target-dependent code](#target-dependent-code)), and the constraint is what tells
+the two apart: a target is a name or a qualified name alone, so a bracket whose
+first name is followed by `]` or `.` is a target and one whose first name is
+followed by a type is a type-parameter list. `func first[T]` is therefore an
+override of a target named `T`, not a generic function.
+
+A method on a generic type restates its receiver's parameters by name alone,
+since the type's declaration already constrains them, and in its body each is
+what that declaration says it is:
+`func list[T].map[U any](f func(T) U) list[U]`. The `.` after the bracket is
+what makes it a receiver's.
+
+In a type position the arguments are written in brackets (`Box[int]`,
+`map[string, int]`). At a call site they may be written the same way, after
+the name of the func, method, component or struct being instantiated:
+`empty[int]()`, `xs.map[string](f)`, `tagged[int](v=1)`, `Box[int]{value=3}`.
+A bracket after a name is an index too, and which it is depends on what the
+name is: on a declaration it holds type arguments, and on a value it holds one
+index. The written arguments bind a prefix of the declaration's own type
+parameters -- a method's own, after its receiver's -- inference binds the rest,
+and a default fills what neither reaches. A bracket holds a type or an
+expression, so any type may be written there: `apply[func(int) bool](fs)`,
+`Box[struct { n int }]{…}`. A func literal with no body is the func type it
+spells, and a struct declaration with no literal after it the struct type,
+wherever an expression goes; a value that is a type is an error.
+
+Where nothing is written, a type parameter is bound by inference:
 
 - A **receiver type parameter** of a method on a generic type is bound from the
-  receiver's concrete type. For `func list<T>.first() T`, a call on a
-  `list<int>` binds `T = int`, so the result type is `int`.
+  receiver's concrete type. For `func list[T].first() T`, a call on a
+  `list[int]` binds `T = int`, so the result type is `int`.
 - A **method type parameter** is bound from the call's argument types,
   typically through a function argument's result type. For
-  `func list<T>.map<U>(f func(T) U) list<U>`, calling `xs.map(g)` on a
-  `list<int>` with `g : func(int) string` binds `T = int` and `U = string`,
-  yielding a `list<string>`.
+  `func list[T].map[U any](f func(T) U) list[U]`, calling `xs.map(g)` on a
+  `list[int]` with `g : func(int) string` binds `T = int` and `U = string`,
+  yielding a `list[string]`.
 
 Inference walks parameter and argument types structurally, recursing through
 function signatures and type arguments, and substitutes the bound types into the
@@ -743,9 +838,10 @@ library type, but one the library already declares is a duplicate declaration.
 
 ### Predeclared identifiers and the library tiers
 
-Apart from `bool` and `dyn`, everything predeclared is an ordinary declaration
+Apart from `bool`, everything predeclared is an ordinary declaration
 in `sngl:builtin`: the scalar and collection types (`int`, `float`, `string`,
-`color`, `list`, `map`, `option`, `ref`, `iter`) with their methods; the constants
+`color`, `list`, `map`, `option`, `ref`, `iter`) with their methods; the
+constraint `any`; the constants
 `true`, `false`, `null`, `PLATFORM` and `LANGUAGE`; the `platform` and
 `language` target-identity types; the `error` type; and the compiler's node
 constructs `output`, `effect`, `context` and `boundary`. That package is in
@@ -778,8 +874,8 @@ under `lib/` is one package, `lib/<path>` being `sngl:<path>`:
 | `sngl:x/gen`        | what a target package says about what it generates                                                 |
 | `sngl:x/gen/cache`  | what a generated file records it was generated from                                                |
 | `sngl:time`         | `date`, `time`, `datetime`, `duration`, `timer`                                                    |
-| `sngl:seq`          | `count`, `range`, `step`: the `iter<int>` sequences a counting loop walks                          |
-| `sngl:family`       | the `crosses` and `eventless` marks, and the `one<T>` slot count                                   |
+| `sngl:seq`          | `count`, `range`, `step`: the `iter[int]` sequences a counting loop walks                          |
+| `sngl:family`       | the `crosses` and `eventless` marks, and the `one[T]` slot count                                   |
 | `sngl:math`         | `pi`, `tau`                                                                                        |
 | `sngl:async`        | `start`, `do`                                                                                      |
 | `sngl:dialog`       | `Alert`, `File`                                                                                    |
@@ -918,7 +1014,7 @@ function, or a context. Constants may refer to one another in any source order.
 Assigning to a constant is an error.
 
 A `var` declaration binds a mutable name. The type may be given explicitly,
-inferred from the initializer, or — if neither is present — defaults to `dyn`.
+inferred from the initializer; a declaration with neither is an error.
 A variable initializer is evaluated **once**; it provides the initial value
 only and does not establish a reactive dependency. A derived value that should
 recompute when its inputs change must be a function, not a variable (see
@@ -955,7 +1051,7 @@ already implies.
 <!-- BEGIN GENERATED: grammar-functions -->
 
 ```ebnf
-FuncDecl = "func" FuncName [ TargetIndex ] FuncTail
+FuncDecl = "func" FuncName FuncTail
 
 FuncTail = 
     "(" [ ParamList ] ")" FuncBodyTail
@@ -965,15 +1061,15 @@ FuncBodyTail =
     "=>" Expr
     | [ Type ] [ StmtBlock ]
 
-FuncName = IDENT [ TypeParamList [ "." IDENT [ TypeParamList ] ] | "." IDENT [ TypeParamList ] ]
+FuncName = IDENT [ "[" IDENT FuncNameBracket | "." IDENT [ NameBracket ] ]
 
-TypeParamList = "<" TypeParam { "," TypeParam } ">"
+TypeParamList = "[" TypeParam { "," TypeParam } "]"
 
-TypeParam = IDENT [ "=" Type ]
+TypeParam = IDENT Type [ "=" Type ]
 
 ParamList = Param { "," Param } [ "," ]
 
-Param = { MacroAttr } ( ":" IDENT [ Type ] | "@" IDENT [ EventParams | Type ] | "const" IDENT [ Type ] | IDENT [ Type ] ) [ "=" Expr ]
+Param = { MacroAttr } ( ":" IDENT [ Type ] | "@" IDENT [ EventParams | Type ] | "const" IDENT [ Type ] | IDENT [ Type | "." IDENT [ TypeArgs ] | TypeArgs ] | KeywordType ) [ "=" Expr ]
 
 EventParams = "(" [ ParamList ] ")"
 
@@ -1005,7 +1101,7 @@ interpolation, or a condition, it is called implicitly. Elsewhere it is a value
 of function type and is called explicitly.
 
 The last parameter may be **variadic**, written `...T`: it collects the
-positional arguments past the others, and the body reads it as a `list<T>`.
+positional arguments past the others, and the body reads it as a `list[T]`.
 `func sum(first int, rest ...int)` is called as `sum(1)`, `sum(1, 2, 3)` or
 `sum(1, ...xs)`, where a list spread contributes its elements. A spread of a
 struct keeps its meaning, naming parameters by its fields. A variadic parameter
@@ -1013,7 +1109,8 @@ given no arguments is the empty list, so it takes no default.
 
 A **method** is a function whose name is qualified by a receiver type,
 `func Type.method(…)`. Type parameters may appear after the receiver type
-(receiver-level) and after the method name (method-level); see
+(receiver-level, names only) and after the method name (method-level, each
+naming its constraint); see
 [Generic type parameters](#generic-type-parameters). A method is dispatched on
 the type of the receiver expression. A `func` written inside a `struct` or
 `enum` body is a method of that type, and its body reads the receiver's fields
@@ -1127,19 +1224,19 @@ PrimaryExpr =
     | "[" ListBody "]"
     | AnonStructLit
     | FuncLit
-    | StructDecl StructLitBody
+    | StructDecl [ StructLitBody ]
     | ImportExpr StructLitBody
     | IDENT [ StructLitBody ]
 
 ExprPostfixOp = 
     "." IDENT [ StructLitBody ]
-    | "[" Expr "]"
+    | "[" IndexList "]" [ StructLitBody ]
     | "(" [ ArgList ] ")"
 
 StmtPostfixOp = 
     "." IDENT
     | HASH
-    | "[" Expr "]"
+    | "[" IndexList "]"
     | "(" [ ArgList ] ")"
     | [ "(" [ ArgList ] ")" ] StmtBlock
 
@@ -1374,7 +1471,7 @@ rendered, so change the state it reads instead.
 ### The toggle statement
 
 `target!!` negates a boolean lvalue in place; it is equivalent to
-`target = !target` and requires a `bool` (or `dyn`) target.
+`target = !target` and requires a `bool` target.
 
 ### The return statement
 
@@ -1403,7 +1500,7 @@ stream, so there is no iteration for an escape to cut short.
 IfNode = "if" CondExpr StmtBlock [ "else" ( IfNode | StmtBlock ) ]
 ```
 
-The condition must be `bool` (or `dyn`); a parameterless `bool`-returning
+The condition must be `bool`; a parameterless `bool`-returning
 computed is called implicitly. The `if` body and the optional `else` body are
 each their own scope; `else if` chains without nesting braces.
 
@@ -1452,13 +1549,13 @@ does everywhere else a name is introduced. It is also what tells the two forms
 apart: without it, the head is the iterable alone.
 
 The loop variables are scoped to the loop body. Prefixing the element variable
-with `&` (`for var &x = xs`, `for var i, &x = xs`) binds it as a `ref<T>`, so that
+with `&` (`for var &x = xs`, `for var i, &x = xs`) binds it as a `ref[T]`, so that
 assigning to `x` — or to a field of `x` — writes through to the underlying list
 element by index. The index variable may not be taken by reference.
 
-Every other loop variable is read-only, of type `readonly<T>`: a plain element
+Every other loop variable is read-only, of type `readonly[T]`: a plain element
 variable is a copy of the element, and the index, a map's key and value, and an
-iterator's element are values. `readonly<T>` is the compiler's to give; a
+iterator's element are values. `readonly[T]` is the compiler's to give; a
 program may not write it. Assigning to one, toggling it, or calling a mutating method such as
 `push` on it or on a field of it is an error, which for the element of a list
 names the `&` form that writes the element.
@@ -1497,7 +1594,7 @@ A loop's `else` block runs when **the body never ran**:
 <!-- SNGL-component -->
 
 ```sngl
-var items list<string> = []
+var items list[string] = []
 for var item = items {
     ui.text(value=item)
 } else {
@@ -1516,7 +1613,7 @@ so the block would be unreachable rather than an empty case.
 In a view body the emptiness is asked of the iterable on every render, so the
 head of a view loop with an `else` must be **measurable** — a list, a map, or a
 `sngl:seq` range, whose emptiness is known without consuming an element; a
-general `iter<T>` is an error there — and must be safe to evaluate twice.
+general `iter[T]` is an error there — and must be safe to evaluate twice.
 
 ### The emit statement
 
@@ -1532,7 +1629,7 @@ A **component** is a reusable, parameterized fragment of user interface.
 <!-- BEGIN GENERATED: grammar-components -->
 
 ```ebnf
-ComponentDecl = "component" IDENT [ "." IDENT ] [ TypeParamList ] [ TargetIndex ] [ "(" [ ParamList ] ")" ] [ Type ] [ StmtBlock ]
+ComponentDecl = "component" IDENT [ "." IDENT ] [ NameBracket ] [ "(" [ ParamList ] ")" ] [ Type ] [ StmtBlock ]
 
 ```
 
@@ -1630,9 +1727,9 @@ and slots — is one parameter list:
 - `header component` — any number of nodes, of whatever family the component
   itself belongs to;
 - `shapes component draw.shape` — any number of that family's members;
-- `body component family.one<ui.node>` — exactly one (bare `family.one` is exactly
+- `body component family.one[ui.node]` — exactly one (bare `family.one` is exactly
   one of whatever the slot already accepts);
-- `badge component option<ui.node>` — zero or one;
+- `badge component option[ui.node]` — zero or one;
 - `cell component(Row)` — a *scoped* slot: the insertion passes a `Row`, and
   the population binds a name for it.
 
@@ -1650,8 +1747,8 @@ directly in the instantiation's block:
 
 <!-- SNGL-component
 struct Row { title string }
-component table(rows list<Row>, cell component(Row)) ui.node { ui.vbox { for var r = rows { cell(r) } } }
-var rs list<Row> = []
+component table(rows list[Row], cell component(Row)) ui.node { ui.vbox { for var r = rows { cell(r) } } }
+var rs list[Row] = []
 -->
 
 ```sngl
@@ -1833,7 +1930,7 @@ loop variable bound by copy is refused: nothing writes it.
 import ui "sngl:ui"
 
 ui.window {
-    var todos list<string> = []
+    var todos list[string] = []
     var saved = 0
 
     effect(
@@ -1876,6 +1973,10 @@ ui.window {
     }
 }
 ```
+
+A default whose type says too little -- `null`, an empty list -- states the
+context's type in brackets, and the default is held to it:
+`context[option[User]] #who(null)`.
 
 A context may not be assigned, and may not be captured into a `var`, which
 would freeze the value and miss later changes; read it where it is used.
@@ -1987,7 +2088,8 @@ The rules:
   around it. A body rendering members of two families, or of none, is an
   error. A library declaration always names its family.
 - **A type parameter in the return position takes the family a component is
-  placed in.** `component effect<T, F>(…) F` may be placed in any family, and
+  placed in.** `component effect[T any, F any](…) F` may be placed in any
+  family, and
   its body may render only what is generic in `F` the same way -- another such
   component, or a slot typed `F` -- so a widget cannot reach a drawing through
   it. `effect`, `context` and `time.timer` are such components.
@@ -1996,11 +2098,11 @@ The rules:
   the tree themselves, so every membership rule looks through them.
 
 A component generic over the family it wraps writes a type parameter where a
-family goes — `component boundary<T>(…, content ...component T, failed component T) T` — and the children written in the slot bind `T`.
+family goes — `component boundary[T any](…, content ...component T, failed component T) T` — and the children written in the slot bind `T`.
 
 A slot's count is what its population renders, not the statements written in
 it: `family.one` takes one node, so a `for` there is an error and an `if` must
-render one in each branch; `option<T>` takes none or one. How many times a
+render one in each branch; `option[T]` takes none or one. How many times a
 body inserts a slot is not bounded.
 
 ### Data components
@@ -2069,7 +2171,7 @@ The rules:
   what the call site wrote inside the record. The container shows it by
   writing `r.content` as a node in its own body, `r` being a record and
   `content` the slot's name, and it renders in the call site's scope.
-- **Its name is its record type in a value position.** `list<fruit>` is a list
+- **Its name is its record type in a value position.** `list[fruit]` is a list
   of records. In a family position (a return position, a slot's content) the
   name is the component.
 
@@ -2309,12 +2411,23 @@ ui.window {
 }
 ```
 
-An override's parameter list selects the props of the declaration it overrides
-by name and carries no types of its own. The base may be a signature with no
+An override's parameter list selects by name the parameters of the declaration it overrides — props,
+slots and `@events` of a component, parameters of a function — so every name
+the body reads is written in its header; a body that reads none writes no list,
+or `()`, which is the same. An entry may restate a parameter's
+type only where it matches the declaration's, and takes no default, `const` or
+mark of its own: those are the declaration's. The base may be a signature with no
 body, as `badge` is here; an override satisfies it for every target, so a
 target with no override renders nothing for it. An override may itself not be
 bodyless. A target's raw elements, such as `html.span`, are reached through an
 import of its package like any other name.
+
+The index shares its bracket with a type-parameter list, and is told from one
+by its shape: a target is a name or a qualified name alone, while every type
+parameter names a constraint. An override of a method on a generic type writes
+the index after the method's name, `func list[T].second[html.platform]()`, and a
+declaration with type parameters of its own writes its list first,
+`func f[T any][html.platform]()`.
 
 ## Platform and language plugins
 
@@ -2432,7 +2545,7 @@ VarHandler = "@" IDENT [ "(" [ ParamList ] ")" ] StmtBlock
 ```
 
 ```ebnf
-FuncDecl = "func" FuncName [ TargetIndex ] FuncTail
+FuncDecl = "func" FuncName FuncTail
 
 FuncTail = 
     "(" [ ParamList ] ")" FuncBodyTail
@@ -2442,22 +2555,22 @@ FuncBodyTail =
     "=>" Expr
     | [ Type ] [ StmtBlock ]
 
-FuncName = IDENT [ TypeParamList [ "." IDENT [ TypeParamList ] ] | "." IDENT [ TypeParamList ] ]
+FuncName = IDENT [ "[" IDENT FuncNameBracket | "." IDENT [ NameBracket ] ]
 
-TypeParamList = "<" TypeParam { "," TypeParam } ">"
+TypeParamList = "[" TypeParam { "," TypeParam } "]"
 
-TypeParam = IDENT [ "=" Type ]
+TypeParam = IDENT Type [ "=" Type ]
 
 ParamList = Param { "," Param } [ "," ]
 
-Param = { MacroAttr } ( ":" IDENT [ Type ] | "@" IDENT [ EventParams | Type ] | "const" IDENT [ Type ] | IDENT [ Type ] ) [ "=" Expr ]
+Param = { MacroAttr } ( ":" IDENT [ Type ] | "@" IDENT [ EventParams | Type ] | "const" IDENT [ Type ] | IDENT [ Type | "." IDENT [ TypeArgs ] | TypeArgs ] | KeywordType ) [ "=" Expr ]
 
 EventParams = "(" [ ParamList ] ")"
 
 ```
 
 ```ebnf
-ComponentDecl = "component" IDENT [ "." IDENT ] [ TypeParamList ] [ TargetIndex ] [ "(" [ ParamList ] ")" ] [ Type ] [ StmtBlock ]
+ComponentDecl = "component" IDENT [ "." IDENT ] [ NameBracket ] [ "(" [ ParamList ] ")" ] [ Type ] [ StmtBlock ]
 
 ```
 
@@ -2514,19 +2627,19 @@ PrimaryExpr =
     | "[" ListBody "]"
     | AnonStructLit
     | FuncLit
-    | StructDecl StructLitBody
+    | StructDecl [ StructLitBody ]
     | ImportExpr StructLitBody
     | IDENT [ StructLitBody ]
 
 ExprPostfixOp = 
     "." IDENT [ StructLitBody ]
-    | "[" Expr "]"
+    | "[" IndexList "]" [ StructLitBody ]
     | "(" [ ArgList ] ")"
 
 StmtPostfixOp = 
     "." IDENT
     | HASH
-    | "[" Expr "]"
+    | "[" IndexList "]"
     | "(" [ ArgList ] ")"
     | [ "(" [ ArgList ] ")" ] StmtBlock
 
@@ -2597,7 +2710,7 @@ I18nPlaceholder = Expr [ "," IDENT [ "," I18nThirdArg ] ]
 
 ```ebnf
 Type = 
-    IDENT [ "." IDENT [ "<" TypeList ">" ] | "<" TypeList ">" ]
+    IDENT [ "." IDENT [ TypeArgs ] | TypeArgs ]
     | "func"      [ "(" [ FuncTypeParamList ] ")" ] [ Type ]
     | "component" [ "(" [ FuncTypeParamList ] ")" ] [ Type ]
     | "..." Type
@@ -2610,7 +2723,7 @@ TypeList = Type { "," Type }
 FuncTypeParamList = FuncTypeParam { "," FuncTypeParam }
 
 FuncTypeParam = 
-    IDENT [ "." IDENT [ "<" TypeList ">" ] | "<" TypeList ">" | Type ]
+    IDENT [ "." IDENT [ TypeArgs ] | TypeArgs | Type ]
     | "func"      [ "(" [ FuncTypeParamList ] ")" ] [ Type ]
     | "component" [ "(" [ FuncTypeParamList ] ")" ] [ Type ]
     | "..." Type

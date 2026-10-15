@@ -11,7 +11,8 @@
 //
 // Reported at the read rather than left to the type, because `option` and
 // `list` are both absent from hasNoLegitimateFields -- so `maybe.value` off
-// one degrades to dyn and a loud failure becomes a silent no-op.
+// one degrades to an unreported invalid type and a loud failure becomes a
+// silent no-op.
 
 import ui "sngl:ui"
 
@@ -29,11 +30,11 @@ ui.window #w(title="t") {
         }
 
         ui.button(text="a", @click {
-            maybe.value = "x" // ERROR(check) "maybe is rendered inside an if, so out here it is option<text> rather than one node; read it inside the if"
+            maybe.value = "x" // ERROR(check) "maybe is rendered inside an if, so out here it is option[text] rather than one node; read it inside the if"
         })
 
         ui.button(text="b", @click {
-            row.value = "x" // ERROR(check) "row is rendered inside a for, so out here it is list<text> rather than one node; read it inside the loop"
+            row.value = "x" // ERROR(check) "row is rendered inside a for, so out here it is list[text] rather than one node; read it inside the loop"
         })
     }
 }

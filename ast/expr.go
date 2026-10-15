@@ -97,12 +97,12 @@ const (
 
 // --- Type expressions ---
 
-// NamedType is a type reference: int, pkg.Type, List<int>.
+// NamedType is a type reference: int, pkg.Type, list[int].
 type NamedType struct {
 	Pos      Pos
 	Name     string     // type name
 	Package  string     // qualifier in pkg.Type (empty if unqualified)
-	TypeArgs []TypeExpr // generic arguments: List<int>, Map<string, int> (nil if not generic)
+	TypeArgs []TypeExpr // generic arguments: list[int], map[string, int] (nil if not generic)
 }
 
 // FuncTypeParam is one parameter in a func-type expression.
@@ -223,11 +223,14 @@ type SelectExpr struct {
 	Field   string
 }
 
-// IndexExpr is index access: operand[index].
+// IndexExpr is a bracket after an operand: an index, `xs[i]`, or the type
+// arguments of a generic declaration, `first[int]`, `map[string, int]`. The
+// parser cannot tell the two apart and the checker does; an index holds one
+// value.
 type IndexExpr struct {
 	Pos     Pos
 	Operand Expr
-	Index   Expr
+	Indices []Expr
 }
 
 // CallExpr is a call expression: callee(args...).
@@ -282,7 +285,10 @@ type StructExpr struct {
 	// Anon is the inline type of a `struct { … }{ … }` value: the literal
 	// spells its own type rather than naming one, so the declaration travels
 	// with the expression instead of sitting at the top of the file.
-	Anon      *StructDef `json:",omitempty"`
+	Anon *StructDef `json:",omitempty"`
+	// TypeArgs are the type arguments written after the name, `Box[int]{…}`,
+	// as the expressions a type's name is spelled with.
+	TypeArgs  []Expr `json:",omitempty"`
 	Fields    []StructFieldLit
 	Multiline bool
 }

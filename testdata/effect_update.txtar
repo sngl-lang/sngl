@@ -37,7 +37,7 @@ struct Todo {
 
 component saver node {
     var (
-        todos list<Todo> = []
+        todos list[Todo] = []
         saved = 0
     )
 
@@ -63,7 +63,7 @@ component saver node {
 component scalar node {
     var (
         n = 0
-        log list<string> = []
+        log list[string] = []
     )
 
     effect(

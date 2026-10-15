@@ -1,0 +1,18 @@
+// A bracket after a name on a line of its own is a node written with its
+// component's type arguments, `spacer[int]`, or an index, which is a value
+// and no statement. Only the name says which, so the checker reports the
+// second where the parser used to.
+
+import ui "sngl:ui"
+
+var xs = [1, 2]
+
+func f() {
+    xs[0] // ERROR(check) "a value is not a statement"
+}
+
+ui.window(title="t") {
+    ui.vbox {
+        xs[1] // ERROR(check) "a value is not a statement"
+    }
+}

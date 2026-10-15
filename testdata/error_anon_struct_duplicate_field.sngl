@@ -1,6 +1,7 @@
 // A field written twice has no one type for the declaration to carry, and the
 // literal has one initializer more than the struct has fields. Reported rather
-// than typed `dyn`, which is what giving up here would mean.
+// than given a type, which is what giving up here would mean; the literal is
+// invalid, so a read of it adds no error of its own.
 
 import . "sngl:ui"
 

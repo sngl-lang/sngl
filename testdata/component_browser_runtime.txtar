@@ -20,7 +20,7 @@ component badge(label string) node {
 
 // Each instance keeps its own state: a click counts once, in the copy clicked.
 component perElement node {
-    var names list<string> = ["a", "b"]
+    var names list[string] = ["a", "b"]
     for var n = names {
         badge #b(label=n)
     }
@@ -35,7 +35,7 @@ func testEachInstanceKeepsItsOwnState(t Test, c perElement) {
 
 // A prop reaches the leaf and leaves the instance's state alone.
 component renamed node {
-    var names list<string> = ["a"]
+    var names list[string] = ["a"]
     var tag = "x"
     for var n = names {
         badge #b(label=n + tag)
@@ -52,7 +52,7 @@ func testAPropReachesTheLeaf(t Test, c renamed) {
 
 // Growing the list keeps the instances already there.
 component growing node {
-    var names list<string> = ["a", "b"]
+    var names list[string] = ["a", "b"]
     for var n = names {
         badge #b(label=n)
     }
@@ -72,7 +72,7 @@ func testGrowingTheListKeepsTheOthers(t Test, c growing) {
 // A key keeps an instance with its element when one is inserted ahead of it,
 // and two elements under one key are two instances.
 component keyed node {
-    var names list<string> = ["a", "b"]
+    var names list[string] = ["a", "b"]
     for var n = names {
         badge #b(label=n, key=n)
     }
@@ -89,7 +89,7 @@ func testAKeyedInsertAtTheFrontKeepsTheOthers(t Test, c keyed) {
 }
 
 component duplicates node {
-    var names list<string> = ["a", "a"]
+    var names list[string] = ["a", "a"]
     for var n = names {
         badge #b(label=n, key=n)
     }
@@ -133,7 +133,7 @@ component row(label string, @pick(v string)) node {
 // An instance's event reaches the handler its call site wrote, with what the
 // row renders now rather than what it was built for.
 component events node {
-    var items list<string> = ["a", "b", "c"]
+    var items list[string] = ["a", "b", "c"]
     var picked = ""
     text(value="picked={picked}")
     for var item = items {
@@ -161,7 +161,7 @@ component choice(label string, onpick func(string)) node {
 
 // A callback handed to an instance as a prop writes the caller's state.
 component callback node {
-    var items list<string> = ["a", "b"]
+    var items list[string] = ["a", "b"]
     var picked = ""
     text #out(value="picked={picked}")
     for var item = items {
@@ -183,7 +183,7 @@ component seededBadge(#[macro.construct] start int, label string) node {
 // A #[macro.construct] prop rebuilds the instance when its value changes, and only
 // then; an ordinary prop is patched in place.
 component rebased node {
-    var names list<string> = ["a"]
+    var names list[string] = ["a"]
     var base = 10
     var tag = "x"
     for var nm = names {
@@ -224,7 +224,7 @@ func red(p color) bool {
 
 // Each instance's canvas draws its own state and redraws alone.
 component gauges node {
-    var levels list<float> = [10.0, 20.0]
+    var levels list[float] = [10.0, 20.0]
     for var l = levels {
         gauge #g(level=l)
     }

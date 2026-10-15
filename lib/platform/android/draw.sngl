@@ -194,7 +194,7 @@ struct DrawEvent {
     height int
 }
 
-const component shapes.rect[platform] {
+const component shapes.rect[platform](x, y, w, h, style) {
     draw(@draw(e) {
         if style.fill.a > 0 {
             drawRectFill(composeOf(style.fill), offset(f32(x), f32(y)), size(f32(w), f32(h)))
@@ -205,7 +205,7 @@ const component shapes.rect[platform] {
     })
 }
 
-const component shapes.circle[platform] {
+const component shapes.circle[platform](cx, cy, r, style) {
     draw(@draw(e) {
         if style.fill.a > 0 {
             drawCircleFill(composeOf(style.fill), f32(r), offset(f32(cx), f32(cy)))
@@ -218,7 +218,7 @@ const component shapes.circle[platform] {
 
 // Compose has no ellipse: `drawOval` takes the bounding box, so the centre and
 // radii become a top-left and a size.
-const component shapes.ellipse[platform] {
+const component shapes.ellipse[platform](cx, cy, rx, ry, style) {
     draw(@draw(e) {
         if style.fill.a > 0 {
             drawOvalFill(composeOf(style.fill), offset(f32(cx - rx), f32(cy - ry)), size(f32(rx * 2.0), f32(ry * 2.0)))
@@ -230,13 +230,13 @@ const component shapes.ellipse[platform] {
 }
 
 // A line has no interior, so `fill` is not read.
-const component shapes.line[platform] {
+const component shapes.line[platform](x1, y1, x2, y2, style) {
     draw(@draw(e) {
         drawLine(composeOf(style.stroke), offset(f32(x1), f32(y1)), offset(f32(x2), f32(y2)), f32(style.strokeWidth))
     })
 }
 
-const component shapes.path[platform] {
+const component shapes.path[platform](style, steps) {
     draw(@draw(e) {
         var p = newPath()
         // Where the path is, which the tangent arc measures from and Compose
@@ -290,7 +290,7 @@ func drawTextShim(content string, x float, y float, c ComposeColor, size float, 
 #[kt.native("snglDrawImage", "", named)]
 func drawImageShim(src string, x float, y float, w float, h float)
 
-const component shapes.canvasText[platform] {
+const component shapes.canvasText[platform](x, y, content, style) {
     draw(@draw(e) {
         if style.fill.a > 0 {
             drawTextShim(content, f32(x), f32(y), composeOf(style.fill), f32(style.fontSize), style.fontFamily)
@@ -312,7 +312,7 @@ component drawSource(
     @url(e SourceEvent),
     @enter(e DrawEvent),
     @leave(e DrawEvent),
-    source ...component family.one<ui.imageSource>,
+    source ...component family.one[ui.imageSource],
 ) shapes.shape
 
 // The canvas's own transform, which a DrawScope otherwise only takes as a
@@ -323,7 +323,7 @@ func drawEnter(x float, y float, sx float, sy float, w float, h float)
 #[kt.native("snglDrawLeave", "", named)]
 func drawLeave()
 
-const component shapes.canvasImage[platform] {
+const component shapes.canvasImage[platform](x, y, w, h, src) {
     drawSource(
         @url(e) {
             drawImageShim(e.url, f32(x), f32(y), f32(w), f32(h))

@@ -2,7 +2,7 @@ import . "sngl:ui"
 import . "sngl:test"
 
 // A function's last parameter may be `...T`: it collects the positional
-// arguments past the others into a list<T>, and a list spread into that
+// arguments past the others into a list[T], and a list spread into that
 // position contributes its elements.
 func sum(first int, rest ...int) int {
     var total = first

@@ -34,11 +34,11 @@ component platform(
     // that never calls it gets a process whose loop still runs -- timers,
     // effects, posted work -- with no window on screen. `args` is the command
     // line after the program's name.
-    @run(args list<string>, run func()),
+    @run(args list[string], run func()),
     // What its generated code introduces beside a program's names: the packages
     // it imports, an instance record's receiver, the Model's own members, and
     // the locals BuildUI declares around the nodes a program names.
-    const reservedNames list<string> = [
+    const reservedNames list[string] = [
         "fyne",
         "app",
         "canvas",
@@ -84,7 +84,7 @@ component Toplevel(
 
 // The window's `@error` is the outermost boundary of what it renders, and
 // catches whether or not the call site handles one.
-const component ui.window[platform] {
+const component ui.window[platform](title, visible, @error, @closed, content, favicon) {
     Toplevel(title=title, :visible=visible, @closed { closed() }) {
         boundary(@error(e) { error(e) }) {
             content
@@ -166,12 +166,12 @@ struct Native {
 
 struct Spec {
     new      Native
-    args     list<Arg>
+    args     list[Arg]
     goType   Native
     add      string
     content  string
-    setters  list<Setter>
-    handlers list<Handler>
+    setters  list[Setter]
+    handlers list[Handler]
     axis     string
 }
 
@@ -189,15 +189,15 @@ component Widget(
     placeholder string,
     number      int,
     flag        bool,
-    options     list<string>,
-    date        option<time.date>,
+    options     list[string],
+    date        option[time.date],
     style       ui.Style,
     @click(),
     @change(text string),
     @input(text string),
     @toggle(flag bool),
     @adjust(number int),
-    @pick(date option<time.date>),
+    @pick(date option[time.date]),
 ) ui.node
 
 #[gen.renders(identity)]
@@ -208,7 +208,7 @@ component Container(
     placeholder string,
     number      int,
     flag        bool,
-    options     list<string>,
+    options     list[string],
     style       ui.Style,
     @click(),
     @change(text string),
@@ -224,12 +224,12 @@ component Wrapper(
     placeholder string,
     number      int,
     flag        bool,
-    options     list<string>,
+    options     list[string],
     style       ui.Style,
     @click(),
     @change(text string),
     @input(text string),
-    content     ...component option<ui.node>,
+    content     ...component option[ui.node],
 ) ui.node
 
 // --- The Fyne widgets ---
@@ -346,7 +346,7 @@ const component Check(text string = "", checked bool = false, style ui.Style = u
 // choices.
 const component Select(
     selected string = "",
-    options  list<string> = [],
+    options  list[string] = [],
     style    ui.Style = ui.Style{},
     @change(value string),
 ) ui.node {
@@ -420,7 +420,7 @@ const component HBox(style ui.Style = ui.Style{}, children ...component) ui.node
     }
 }
 
-const component VScroll(style ui.Style = ui.Style{}, content ...component option<ui.node>) ui.node {
+const component VScroll(style ui.Style = ui.Style{}, content ...component option[ui.node]) ui.node {
     Wrapper(
         spec = Spec{
             new = Native{path="fyne.io/fyne/v2/container", name="NewVScroll"},
@@ -436,13 +436,13 @@ const component VScroll(style ui.Style = ui.Style{}, content ...component option
 
 // --- Layout containers ---
 
-const component ui.vbox[platform] {
+const component ui.vbox[platform](style, children) {
     VBox(style={...style}) {
         children
     }
 }
 
-const component ui.hbox[platform] {
+const component ui.hbox[platform](style, children) {
     HBox(style={...style}) {
         children
     }
@@ -451,29 +451,29 @@ const component ui.hbox[platform] {
 // Fyne has no layered container in the widget set this platform builds from,
 // so a stack is a vertical box: the children are all present and in order,
 // they just do not overlap.
-const component ui.stack[platform] {
+const component ui.stack[platform](style, layers) {
     VBox(style={...style}) {
         layers
     }
 }
 
-const component ui.scroll[platform] {
+const component ui.scroll[platform](style, content) {
     VScroll(style={...style}) {
         content
     }
 }
 
-const component ui.spacer[platform] {
+const component ui.spacer[platform](style) {
     Spacer(style={...style}) {}
 }
 
-const component ui.card[platform] {
+const component ui.card[platform](style, content) {
     VBox(style={...style}) {
         content
     }
 }
 
-const component ui.splitview[platform] {
+const component ui.splitview[platform](style, panes) {
     HBox(style={...style}) {
         panes
     }
@@ -486,19 +486,19 @@ const component ui.splitview[platform] {
 // constructor arguments. So an overlay renders inline with its content
 // visible.
 
-const component ui.modal[platform] {
+const component ui.modal[platform](style, content) {
     VBox(style={...style}) {
         content
     }
 }
 
-const component ui.drawer[platform] {
+const component ui.drawer[platform](style, content) {
     VBox(style={...style}) {
         content
     }
 }
 
-const component ui.popover[platform] {
+const component ui.popover[platform](style, content) {
     VBox(style={...style}) {
         content
     }
@@ -506,7 +506,7 @@ const component ui.popover[platform] {
 
 // The shape html uses: a box carrying the tooltip text, with the wrapped
 // content inside it.
-const component ui.tooltip[platform] {
+const component ui.tooltip[platform](style, trigger) {
     VBox(style={...style}) {
         trigger
     }
@@ -519,17 +519,17 @@ const component ui.tooltip[platform] {
 // constructor arguments (`[]*container.TabItem`, `[]*fyne.MenuItem`), which no
 // `Arg` can build out of a SNGL prop.
 
-const component ui.toolbar[platform] {
+const component ui.toolbar[platform](style, controls) {
     HBox(style={...style}) {
         controls
     }
 }
 
-const component ui.menubar[platform] {
+const component ui.menubar[platform](style) {
     HBox(style={...style}) {}
 }
 
-const component ui.menu[platform] {
+const component ui.menu[platform](style) {
     VBox(style={...style}) {}
 }
 
@@ -539,29 +539,29 @@ const component ui.menu[platform] {
 // as children, and Fyne's Table/Tree read theirs through callbacks a Spec has
 // no way to spell. Each renders as its container, empty.
 
-const component ui.table[platform] {
+const component ui.table[platform](style) {
     VBox(style={...style}) {}
 }
 
-const component ui.tree[platform] {
+const component ui.tree[platform](style) {
     VBox(style={...style}) {}
 }
 
-const component ui.radio[platform] {
+const component ui.radio[platform](style) {
     VBox(style={...style}) {}
 }
 
 // --- Text ---
 
-const component ui.text[platform] {
+const component ui.text[platform](value, style) {
     Label(text=value, style={...style}) {}
 }
 
-const component ui.divider[platform] {
+const component ui.divider[platform](style, label) {
     Label(text=label, style={...style}) {}
 }
 
-const component ui.spinner[platform] {
+const component ui.spinner[platform](label, style) {
     Label(text=label, style={...style}) {}
 }
 
@@ -569,7 +569,7 @@ const component ui.spinner[platform] {
 // here rather than left to the Spec, which binds a prop to a setter and
 // converts nothing. A bar with no value has no number to show and falls back
 // to its `label`, which is the only other thing it was told.
-const component ui.progress[platform] {
+const component ui.progress[platform](style, value, label) {
     if value != null {
         Label(text=string(value), style={...style}) {}
     } else {
@@ -582,12 +582,12 @@ const component ui.progress[platform] {
 // so the Label is a stub standing in for one rather than a picker whose value
 // has nowhere to go.
 // Fyne's DateEntry takes a typed date or one picked from its calendar button,
-// and reports it as the *time.Time an option<date> is in Go, nil when cleared.
+// and reports it as the *time.Time an option[date] is in Go, nil when cleared.
 const component DateEntry(
-    value       option<time.date> = null,
+    value       option[time.date] = null,
     placeholder string = "",
     style       ui.Style = ui.Style{},
-    @change(date option<time.date>),
+    @change(date option[time.date]),
 ) ui.node {
     Widget(
         spec = Spec{
@@ -606,7 +606,7 @@ const component DateEntry(
     ) {}
 }
 
-const component ui.datepicker[platform] {
+const component ui.datepicker[platform](placeholder, value, style, @change) {
     DateEntry(value=value, placeholder=placeholder, style={...style}, @change(d) {
         value = d
         change(d)
@@ -615,12 +615,12 @@ const component ui.datepicker[platform] {
 
 // --- Controls ---
 
-const component ui.button[platform] {
+const component ui.button[platform](text, style, @click) {
     Button(text=text, style={...style}, @click { click() }) {}
 }
 
 // `href` and `text` are not forwarded — see the Hyperlink declaration.
-const component ui.link[platform] {
+const component ui.link[platform](style) {
     Hyperlink(style={...style}) {}
 }
 
@@ -638,7 +638,7 @@ component Image(
     @click(),
     @load(),
     @failed(message string),
-    content ...component ui.node,
+    content ...component option[ui.imageSource],
 ) ui.node
 
 #[intrinsic("fyne:ImageUrl")]
@@ -647,7 +647,7 @@ component ImageUrl(url string) ui.imageSource
 #[intrinsic("fyne:ImageDrawing")]
 component ImageDrawing(width float, height float, shapes ...component shapes.shape) ui.imageSource
 
-const component ui.image[platform] {
+const component ui.image[platform](fit, style, @click, @load, @error, src) {
     Image(
         fit = string(fit),
         style = {...style},
@@ -661,28 +661,25 @@ const component ui.image[platform] {
             error({message=m, kind="image"})
         },
     ) {
-        #[family.crosses]
-        src {
-            placeholder
-        }
+        src
     }
 }
 
-const component ui.file[platform] {
+const component ui.file[platform](path) {
     ImageUrl(url=path)
 }
 
-const component ui.remote[platform] {
+const component ui.remote[platform](url) {
     ImageUrl(url=url)
 }
 
-const component shapes.image[platform] {
+const component shapes.image[platform](width, height, shapes) {
     ImageDrawing(width=width, height=height) {
         shapes
     }
 }
 
-const component ui.checkbox[platform] {
+const component ui.checkbox[platform](label, checked, style, @change) {
     Check(text=label, checked=checked, style={...style}, @change(on) {
         checked = on
         change(on)
@@ -691,14 +688,14 @@ const component ui.checkbox[platform] {
 
 // Fyne's Check is the switch affordance too: `widget.Switch` is not in the
 // widget set this platform builds from.
-const component ui.toggle[platform] {
+const component ui.toggle[platform](label, checked, style, @change) {
     Check(text=label, checked=checked, style={...style}, @change(on) {
         checked = on
         change(on)
     }) {}
 }
 
-const component ui.select[platform] {
+const component ui.select[platform](value, style, @change, options) {
     Select(selected=value, options=options.map(func(o) => o.label), style={...style}, @change(v) {
         value = v
         change(v)
@@ -707,7 +704,7 @@ const component ui.select[platform] {
 
 // --- Text entry ---
 
-const component ui.input[platform] {
+const component ui.input[platform](placeholder, value, style, @input, @change) {
     Entry(
         text = value,
         placeholder = placeholder,
@@ -723,7 +720,7 @@ const component ui.input[platform] {
     ) {}
 }
 
-const component ui.textarea[platform] {
+const component ui.textarea[platform](placeholder, value, rows, style, @input, @change) {
     MultiLineEntry(
         text = value,
         placeholder = placeholder,
@@ -752,7 +749,7 @@ const component ui.textarea[platform] {
 // before any of this could be written down.
 #[go.native("time", "*time.Ticker")]
 struct Schedule {
-    C go.chan<time.datetime>
+    C go.chan[time.datetime]
 }
 
 #[go.native("time", "time.NewTicker")]
@@ -779,9 +776,9 @@ func Schedule.stop()
 // stays parked for the life of the process. `done` is the second arm that ends
 // it, and `go.select` is what makes the two a choice rather than a sequence --
 // two receives in a row would take the tick before ever looking at `done`.
-const component time.timer[platform] {
+const component time.timer[platform](interval, enabled, @tick) {
     var handle Schedule
-    var done go.chan<bool>
+    var done go.chan[bool]
     var live = false
     var gen = 0
 
@@ -888,29 +885,29 @@ component Span(
     content   ...component markup.span,
 ) markup.span
 
-const component markup.richText[platform] {
+const component markup.richText[platform](style, content) {
     Flow(style={...style}) {
         content
     }
 }
 
-const component markup.text[platform] {
+const component markup.text[platform](value) {
     Span(text=value) {}
 }
 
-const component markup.run[platform] {
+const component markup.run[platform](style, content) {
     Span(spanStyle=style) {
         content
     }
 }
 
-const component markup.link[platform] {
+const component markup.link[platform](href, content) {
     Span(href=href) {
         content
     }
 }
 
-const component markup.token[platform] {
+const component markup.token[platform](kind, content) {
     Span(kind=kind, color=markup.tokenColor(markup.palette, kind)) {
         content
     }
@@ -920,6 +917,6 @@ const component markup.token[platform] {
 // blocks", says its own comment -- so there is no picture to put on the line
 // with the words. The description is what an image is here, in the brackets
 // that say a picture stood where they are.
-const component markup.image[platform] {
+const component markup.image[platform](alt) {
     Span(text="[{alt}]") {}
 }

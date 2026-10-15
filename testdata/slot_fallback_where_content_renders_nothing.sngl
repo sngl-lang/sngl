@@ -7,7 +7,7 @@
 import . "sngl:ui"
 import . "sngl:test"
 
-component card(content ...component option<node>) node {
+component card(content ...component option[node]) node {
     vbox {
         content {
             text(value="empty")
@@ -15,7 +15,7 @@ component card(content ...component option<node>) node {
     }
 }
 
-component forward(content ...component option<node>) node {
+component forward(content ...component option[node]) node {
     card {
         content
     }

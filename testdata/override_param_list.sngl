@@ -1,0 +1,34 @@
+// SKIP(codegen) "names sngl:platform/none, which a per-platform harness does not register; the interpreter runs it"
+
+import "sngl:platform/none"
+import ui "sngl:ui"
+import "sngl:test"
+
+// An override lists the parameters its body reads, and may restate a type
+// where it matches the declaration's. A slot is selected by its name.
+component tag(value string, count int = 0, content ...component ui.node) ui.node
+
+component tag[none.platform](value string, content) {
+    ui.vbox {
+        ui.text(value=value)
+        content
+    }
+}
+
+func label(n int, suffix string) string
+
+func label[none.platform](n int) {
+    return "n={n}"
+}
+
+component main ui.node {
+    tag(value="hi") { ui.text(value=label(2, "px")) }
+}
+
+func testLabel(t test.Test) {
+    t.assert(label(2, "px") == "n=2")
+}
+
+ui.window {
+    main
+}

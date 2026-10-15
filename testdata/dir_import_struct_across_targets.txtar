@@ -18,7 +18,7 @@ func label(x int) string {
     return "plain"
 }
 
-func label[bubbletea.platform]() {
+func label[bubbletea.platform](x) {
     var t = w.state{n=3}
     t.n = t.n + x
     return "{t.n}"

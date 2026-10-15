@@ -77,7 +77,7 @@ ui.window {
     var mood = Mood.happy
     var w = ui.FontWeight.bold
     var look = Look{weight=ui.FontWeight.lighter}
-    var none list<Empty> = []
+    var none list[Empty] = []
     var open = false
     ui.button(text="next", @click {
         mood = flip(pick(mood))

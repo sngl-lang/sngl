@@ -2,8 +2,8 @@
 // from what the call has already bound: `ps.map(func(p) => p.name)` reads p as
 // the list's element, so `p.name` is a string and the result a list of them.
 // Inferring the call's type parameters checked the lambda with nothing
-// expected, so p was dyn, `p.name` dyn, and the result `list<dyn>` -- which a
-// `list<string>` refused.
+// expected, so p was dyn, `p.name` dyn, and the result `list[dyn]` -- which a
+// `list[string]` refused.
 
 import . "sngl:test"
 import ui "sngl:ui"
@@ -13,11 +13,11 @@ struct Pet {
     legs int
 }
 
-func names(ps list<Pet>) list<string> {
+func names(ps list[Pet]) list[string] {
     return ps.map(func(p) => p.name)
 }
 
-func legs(ps list<Pet>) list<int> {
+func legs(ps list[Pet]) list[int] {
     return ps.map(func(p) => p.legs * 2)
 }
 

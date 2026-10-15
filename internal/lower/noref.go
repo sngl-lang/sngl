@@ -26,7 +26,7 @@ var passNoRef = pass{
 //     containing the original init under field "value".
 //  3. Every Expr and Stmt is rewritten via refRewriter: &v collapses to
 //     plain v; *p becomes p.value; reads of an addressed Var route through
-//     a Select on .value; ref<T> types appearing in struct fields and func
+//     a Select on .value; ref[T] types appearing in struct fields and func
 //     params/returns are replaced with the corresponding box-struct type.
 func lowerNoRef(pkg *ir.Package, _ Features, _ Options) error {
 	if pkg == nil {
@@ -57,21 +57,21 @@ func lowerNoRef(pkg *ir.Package, _ Features, _ Options) error {
 	}
 
 	// Step 1.5: rewrite Var.Type for ALL Vars, not just addressed ones.
-	// Catches non-addressed Vars whose declared type is ref<T> (e.g.,
-	// `var p ref<int> = &n` — p is not itself addressed but holds a ref),
-	// and composite types like `list<ref<int>>`. rewriteType is idempotent,
+	// Catches non-addressed Vars whose declared type is ref[T] (e.g.,
+	// `var p ref[int] = &n` — p is not itself addressed but holds a ref),
+	// and composite types like `list[ref[int]]`. rewriteType is idempotent,
 	// so this is a no-op for Vars whose Type contains no TypeRef.
 	for _, v := range collectAllVars(pkg) {
 		v.Type = rw.rewriteType(v.Type)
 	}
 
-	// Step 2: rewrite every Expr and Stmt — reads, writes, & and *, ref<T> types.
+	// Step 2: rewrite every Expr and Stmt — reads, writes, & and *, ref[T] types.
 	walkPackage(pkg, walkFuncs{
 		expr:  func(e ir.Expr) ir.Expr { return rw.rewriteExpr(e) },
 		stmts: func(stmts []ir.Stmt) []ir.Stmt { rw.rewriteStmts(stmts); return stmts },
 	})
 
-	// Step 3: rewrite ref<T> appearances in struct fields and func params/returns.
+	// Step 3: rewrite ref[T] appearances in struct fields and func params/returns.
 	for _, s := range pkg.Structs {
 		for _, f := range s.Fields {
 			f.Type = rw.rewriteType(f.Type)
@@ -144,7 +144,7 @@ func assertNoRefSurvives(pkg *ir.Package) error {
 }
 
 // rewriteFuncSignature rewrites every Param's Type and the Return type of f
-// through rw, replacing any ref<T> shape with the corresponding box struct.
+// through rw, replacing any ref[T] shape with the corresponding box struct.
 func rewriteFuncSignature(f *ir.Func, rw *refRewriter) {
 	if f == nil {
 		return
@@ -174,18 +174,18 @@ func collectAllVars(pkg *ir.Package) []*ir.Var {
 	return out
 }
 
-// refRewriter rewrites every Expr/Stmt to eliminate ref<T> shapes:
+// refRewriter rewrites every Expr/Stmt to eliminate ref[T] shapes:
 //   - &v → v (the box itself is the reference).
 //   - *p → p.value.
 //   - read of an addressed Var → Select{ident, "value"}.
-//   - ref<T> Type → corresponding __ref_T struct Type.
+//   - ref[T] Type → corresponding __ref_T struct Type.
 type refRewriter struct {
 	pkg *ir.Package
 	reg *boxRegistry
 }
 
-// rewriteType replaces ref<T> with the corresponding __ref_T struct type.
-// Recurses into Elems so nested types (list<ref<int>>) are handled.
+// rewriteType replaces ref[T] with the corresponding __ref_T struct type.
+// Recurses into Elems so nested types (list[ref[int]]) are handled.
 func (r *refRewriter) rewriteType(t *ir.Type) *ir.Type {
 	if t == nil {
 		return nil
@@ -346,7 +346,7 @@ func (r *refRewriter) rewriteExpr(e ir.Expr) ir.Expr {
 		x.Type = r.rewriteType(x.Type)
 		return x
 	case *ir.Literal:
-		// Terminal — no ref<T> shapes to rewrite.
+		// Terminal — no ref[T] shapes to rewrite.
 		return x
 	default:
 		panic(fmt.Sprintf("refRewriter.rewriteExpr: unhandled %T", x))
@@ -512,7 +512,7 @@ func seedAddressedVarsInExpr(e ir.Expr, set map[*ir.Var]bool) {
 			seedAddressedVarsInExpr(en.Key, set)
 			seedAddressedVarsInExpr(en.Value, set)
 		}
-	case *ir.Ident, *ir.Literal, *ir.ContextRead:
+	case *ir.Ident, *ir.Literal, *ir.ContextRead, *ir.SlotEmpty:
 		// Terminal — no UnaryAddr to seed.
 	default:
 		panic(fmt.Sprintf("seedAddressedVarsInExpr: unhandled %T", x))
@@ -643,7 +643,7 @@ func (r *boxRegistry) boxFor(elem *ir.Type) *ir.StructDef {
 // as a suffix of __ref_. Collisions are avoided by structural-name encoding.
 func canonicalTypeName(t *ir.Type) string {
 	if t == nil {
-		return "dyn"
+		return "none"
 	}
 	switch t.Kind {
 	case ir.TypeInt:

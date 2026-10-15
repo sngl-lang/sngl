@@ -134,7 +134,9 @@ func inlineComponentCall(n *ir.NodeInst, ctx *evalCtx) []ir.Stmt {
 		return nil
 	}
 
-	cloned := cloneStmts(comp.Stmts)
+	// At the types the call site bound: a generic body's `struct { v T }`
+	// left as written reached a backend that erases T.
+	cloned := cloneStmts(ir.InstantiateStmts(comp.Stmts, ir.ComponentBindings(n)))
 
 	// When inlining a cross-package component, native-call resolution
 	// inside the body (e.g. `docs.Highlight(...)`) needs to consult the
@@ -398,7 +400,7 @@ func bodyHasFoldableParamUse(stmts []ir.Stmt, propNames map[string]bool) bool {
 			}
 		case *ir.Spread:
 			visitExpr(x.Operand)
-		case *ir.Literal, *ir.Ident, *ir.ContextRead, *ir.Lambda, *ir.Closure:
+		case *ir.Literal, *ir.Ident, *ir.ContextRead, *ir.SlotEmpty, *ir.Lambda, *ir.Closure:
 			// Literals/Idents have no param-call shape; lambda bodies
 			// are opaque to this scan (they have their own scope).
 		default:

@@ -234,7 +234,7 @@ SNGL tracks list mutations (`push`, `remove`, index assignments) and updates the
 import ui "sngl:ui"
 
 ui.window {
-    var items list<string> = ["apples", "bread", "cheese"]
+    var items list[string] = ["apples", "bread", "cheese"]
     var next = ""
     ui.vbox(style={gap=8px, padding=16px}) {
         ui.hbox(style={gap=8px}) {
@@ -311,7 +311,7 @@ ui.window {
 
 Structs group related fields into a named value type. Every field has a type and a default — you never have a partially initialized struct. Construct one with `Name{field=value, ...}`; omitted fields fall back to their defaults. Where the type is already known, as in a typed `var` or a list of structs, the name can be left off: `{name="Ada"}`.
 
-Structs are values, not references, and a struct cannot be `null`: `var u User = null` is a compile error (`null` belongs to `option<T>`). Mutating a struct field notifies observers the same way assigning a `var` does.
+Structs are values, not references, and a struct cannot be `null`: `var u User = null` is a compile error (`null` belongs to `option[T]`). Mutating a struct field notifies observers the same way assigning a `var` does.
 
 ```sngl
 import ui "sngl:ui"
@@ -358,7 +358,7 @@ ui.window {
 
 ## Lists
 
-`list<T>` is an ordered collection, built with `[...]` literals. Methods — `.length`, `.push`, `.remove`, `.map`, `.filter`, `.contains`, and others — cover the common cases.
+`list[T]` is an ordered collection, built with `[...]` literals. Methods — `.length`, `.push`, `.remove`, `.map`, `.filter`, `.contains`, and others — cover the common cases.
 
 Index assignment (`items[i] = value`) and the toggle operator (`items[i].done!!`) work directly on list elements.
 
@@ -373,7 +373,7 @@ struct Task {
 }
 
 ui.window {
-    var tasks list<Task> = [{label="Write tests"}, {label="Ship it", done=true}, {label="Celebrate"}]
+    var tasks list[Task] = [{label="Write tests"}, {label="Ship it", done=true}, {label="Celebrate"}]
     var next = ""
     func remainingCount() => tasks.filter(func(x) => !x.done).length
     ui.vbox(style={gap=6px, padding=16px}) {
@@ -394,7 +394,7 @@ ui.window {
 
 ## Maps
 
-`map<K, V>` associates keys with values. A map literal is `{key=value, ...}`, told apart from a struct literal by the type it is assigned to. `m[key] = value` writes an entry; `m.get(key, fallback)` reads one, returning `fallback` when the key is absent; `.keys()`, `.values()` and `.contains(key)` do what they say.
+`map[K, V]` associates keys with values. A map literal is `{key=value, ...}`, told apart from a struct literal by the type it is assigned to. `m[key] = value` writes an entry; `m.get(key, fallback)` reads one, returning `fallback` when the key is absent; `.keys()`, `.values()` and `.contains(key)` do what they say.
 
 `for var k, v = m` walks a map in a function or handler. A map has no defined order, so it cannot say how a view should lay its entries out, and a view body may not loop over one directly — derive a list first, as `inStock` does below, and render that.
 
@@ -402,9 +402,9 @@ ui.window {
 import ui "sngl:ui"
 
 ui.window {
-    var stock map<string, int> = {"apples"=3, "pears"=0, "plums"=7}
-    func inStock() list<string> {
-        var names list<string>
+    var stock map[string, int] = {"apples"=3, "pears"=0, "plums"=7}
+    func inStock() list[string] {
+        var names list[string]
         for var name, count = stock {
             if count > 0 {
                 names.push(name)
@@ -537,7 +537,7 @@ struct Person {
     role string
 }
 
-component Table(people list<Person>, header component, row component(Person, int)) ui.node {
+component Table(people list[Person], header component, row component(Person, int)) ui.node {
     ui.vbox(style={gap=4px, padding=12px, background=#ffffff, borderRadius=8px}) {
         header {
             ui.text(value="People", style={fontWeight=bold})
@@ -577,7 +577,7 @@ import ui "sngl:ui"
 
 ui.window {
     var query = ""
-    var results list<string>
+    var results list[string]
     ui.vbox(style={gap=8px, padding=16px}) {
         ui.input(@input(text) { query = text }, placeholder="Type to search")
         ui.button(text="Add match", @click {
@@ -817,7 +817,7 @@ import ui "sngl:ui"
 ui.window {
     var showPanel = true
     var room = "general"
-    var log list<string>
+    var log list[string]
     ui.vbox(style={gap=8px, padding=16px}) {
         ui.hbox(style={gap=8px}) {
             ui.button(text=showPanel ? "Hide panel" : "Show panel", @click { showPanel!! })

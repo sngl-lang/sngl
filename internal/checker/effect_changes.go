@@ -74,3 +74,18 @@ func handlerPos(inst *ir.NodeInst, h ir.EventHandler) ast.Pos {
 	}
 	return ir.StmtPos(inst)
 }
+
+// checkEffectHandlers reports an effect that handles nothing.
+//
+// Either handler alone is a whole bracket -- a subscription with nothing to
+// give back, or a teardown for something the tree itself set up -- so the rule
+// is that at least one is written. Neither is a node that runs no code and
+// holds no state, which is a program that meant to say something else.
+func (c *checker) checkEffectHandlers(vn *ast.VisualNode) {
+	for _, a := range vn.Args.Args {
+		if _, isHandler := a.(ast.EventHandler); isHandler {
+			return
+		}
+	}
+	c.error(vn.Pos, "effect handles none of its events, so it brackets nothing and reports nothing")
+}

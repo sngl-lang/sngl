@@ -46,7 +46,7 @@ func Validate(pkg *Package) []error {
 			if x.Type == nil {
 				add("call %s has nil return Type", callDesc(x))
 			}
-			if x.Func == nil && x.Callee == nil && x.Receiver == nil {
+			if x.Func == nil && x.Callee == nil && x.Receiver == nil && x.Qualifier == nil {
 				add("call %s has no Func, Callee, or Receiver", callDesc(x))
 			}
 			for i, a := range x.Args {

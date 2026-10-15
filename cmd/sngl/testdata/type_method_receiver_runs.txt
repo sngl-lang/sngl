@@ -37,9 +37,9 @@ func Pt.sum(q Pt) int {
     return q.x + q.y + bonus
 }
 
-func list<T>.pick() => this[n]
+func list[T].pick() => this[n]
 
-func list<T>.second() T {
+func list[T].second() T {
     var i = 0
     for var x = this {
         if i == 1 {

@@ -11,8 +11,8 @@
 import . "sngl:ui"
 
 component main node {
-    var xs list<string> = ["a"]
-    var ys list<string> = []
+    var xs list[string] = ["a"]
+    var ys list[string] = []
     var n int = 0
 
     button(text="a", @click {

@@ -34,6 +34,9 @@ type IntrinsicDef struct {
 	// with Pkg identifies it: RegisterIntrinsic panics on a second declaration
 	// of one id, and this is what tells that from the same one re-registered.
 	DeclaredAs string
+	// Receiver is the type a method declaration is attached to, nil for a
+	// free function: what a pass synthesizing a call of it names.
+	Receiver *Type
 }
 
 // Instantiate binds d's type parameters, in TypeParams order. An unbound one
@@ -51,6 +54,19 @@ func (d IntrinsicDef) Instantiate(args ...*Type) ([]*Param, *Type) {
 	}
 	sig := (&FuncSig{Params: d.Params, Return: d.Return}).Substitute(bindings)
 	return sig.Params, sig.Return
+}
+
+// IntrinsicMethod is the declaration a pass names when it synthesizes a call
+// of a generic built-in's intrinsic method, `xs.push(v)`: receiver recv, the
+// operand the call is made on, with the parameters and result instantiated at
+// recv's element types. ret is the result where no library has registered the
+// intrinsic -- IR built by hand, which declares nothing to instantiate.
+func IntrinsicMethod(name, id string, recv, ret *Type) *Func {
+	fn := &Func{Name: name, Receiver: recv, Intrinsic: id, Return: ret}
+	if def := LookupIntrinsic(id); def != nil && recv != nil {
+		fn.Params, fn.Return = def.Instantiate(recv.Elems...)
+	}
+	return fn
 }
 
 // The node operations: the protocol between the lowering passes that flatten a
@@ -180,24 +196,28 @@ func IsI18nIntrinsic(name string) bool {
 
 const I18nPkg = "sngl:i18n"
 
-// IsI18nPluralKey reports whether sel reads one of i18n's predeclared
+// IsI18nPluralKey reports whether id reads one of i18n's predeclared
 // PluralKey constants — a CLDR category (zero, one, two, few, many, other).
-// Plural-map literals carry these as bare Selects that survive lowering, so
-// both usage detection and the JS/Kotlin backends have to recognize them.
+// Plural-map literals carry these as reads that survive lowering, so both
+// usage detection and the JS/Kotlin backends have to recognize them.
 //
-// The select's *type* is what identifies it. Matching the operand's spelling
-// instead read `i18n.one` and missed `t.one` under `import t "sngl:i18n"`,
-// which then emitted the alias as a bare identifier.
-func IsI18nPluralKey(sel *Select) bool {
-	if sel == nil {
+// The read's *type* is what identifies it, never the alias it was named
+// through: `t.one` under `import t "sngl:i18n"` is one, and so is a bare
+// `one` under a dot import.
+func IsI18nPluralKey(id *Ident) bool {
+	if id == nil {
 		return false
 	}
-	switch sel.Field {
+	v, ok := id.Sym.(*Var)
+	if !ok || !v.IsConst || v.Init != nil {
+		return false
+	}
+	switch v.Name {
 	case "zero", "one", "two", "few", "many", "other":
 	default:
 		return false
 	}
-	return isPluralKeyType(sel.Type)
+	return isPluralKeyType(v.Type)
 }
 
 func isPluralKeyType(t *Type) bool {

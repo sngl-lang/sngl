@@ -46,7 +46,7 @@ func (t *fyneTranslator) flexLayoutCall(sp *fyneSpec) ir.Expr {
 		float32Lit(sp.Style.Gap),
 		float32Lit(sp.Style.Padding),
 	)
-	return rawGoExpr(newContainer + "(" + layout + ")")
+	return rawGoExpr(newContainer+"("+layout+")", ir.NativeGoPointerOf("fyne.Container"))
 }
 
 // anyChildFlexes reports whether some child claimed a share of this box.

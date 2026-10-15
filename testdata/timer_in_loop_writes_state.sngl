@@ -8,7 +8,7 @@ import . "sngl:ui"
 component row node {
     var fast = 0
     var slow = 0
-    var periods list<time.duration> = [20ms, 500ms]
+    var periods list[time.duration] = [20ms, 500ms]
     for var p = periods {
         time.timer(interval=p, enabled=true, @tick {
             if p == 20ms {

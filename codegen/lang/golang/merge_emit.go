@@ -9,7 +9,7 @@ import (
 
 // EmitMergeFuncs returns Go source for one __merge_<Struct> helper per struct
 // in structs. Each copies the (value-semantics) base, overwrites a field only
-// when the override's value is "present" — non-nil for option<T> (*T), or
+// when the override's value is "present" — non-nil for option[T] (*T), or
 // non-zero for plain fields — and returns the merged copy.
 func EmitMergeFuncs(structs []*ir.StructDef) string {
 	var b strings.Builder

@@ -9,7 +9,7 @@ import (
 )
 
 // passRefLoop lowers `for var &t = list` / `for var i, &t = list` element references.
-// The checker types the &-bound element var as ref<T> and wraps its reads in
+// The checker types the &-bound element var as ref[T] and wraps its reads in
 // Unary{Deref}. This pass replaces every reference to that element var with
 // indexed list access (`list[idx]`), so reads index the live element and
 // writes update it in place under value semantics. The loop is then desugared
@@ -182,7 +182,7 @@ func (r *refLoopRewriter) expr(e ir.Expr) ir.Expr {
 		return r.indexAccess()
 	}
 	switch x := e.(type) {
-	case *ir.Literal, *ir.Ident, *ir.ContextRead:
+	case *ir.Literal, *ir.Ident, *ir.ContextRead, *ir.SlotEmpty:
 		// leaves (an Ident here is not the element var — checked above)
 	case *ir.Binary:
 		x.Left = r.expr(x.Left)

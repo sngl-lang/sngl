@@ -3,7 +3,7 @@ stack at run time: the lowered ones (gtk4, fyne, bubbletea) and android's
 NavHost.
 
 A copy is named by one index per enclosing loop, outermost first: the
-record's `copy` is a `list<int>`, so the copy at "/" -- row b, column 3 -- is
+record's `copy` is a `list[int]`, so the copy at "/" -- row b, column 3 -- is
 `[1, 0]`, and a page compares its copy element by element against the loop
 indices in scope. The page holds one params cell, the showing copy's, which
 starts at the starting copy's params: the same search finds both
@@ -28,14 +28,14 @@ output {
 
 struct Row {
     name string
-    cols list<string>
+    cols list[string]
 }
 
 struct Sel {
     pick string
 }
 
-const rows list<Row> = [
+const rows list[Row] = [
     {name="a", cols=["1", "2"]},
     {name="b", cols=["3"]},
 ]

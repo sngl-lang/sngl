@@ -78,30 +78,25 @@ enum SizePreset { small, medium, large }
 // The outline an avatar is clipped to.
 enum AvatarVariant { circle, square }
 
-// User profile image with fallback: the picture its source holds where it was
-// given one, and the initials in a styled placeholder where it was not.
+// A user's picture, or `fallback` where there is none to show: no source was
+// given, or the one given failed to load. The fallback is the initials in a
+// styled box unless the call site writes its own.
+//
+// A failed load is remembered until the avatar is rendered again, since the
+// image that would say a later source loaded is not on screen to say it.
 component avatar(
-    initials string = "",                          // shown when there is no source
+    initials string = "",                          // shown by the default fallback
     size     SizePreset = medium,                  // a preset; `style.width` and `style.height` set any other size
     variant  AvatarVariant = AvatarVariant.circle, // the outline it is clipped to
     alt      string = "",                          // the image's accessibility label
     style    Style = Style{},
     @click(),
-    src      ...component option<imageSource>,
+    src      ...component option[imageSource],
+    fallback component option[node], // what stands in for the picture
 ) node {
-    image(
-        alt = alt,
-        fit = cover,
-        style = {
-            width = _avatarSide(size),
-            height = _avatarSide(size),
-            borderRadius = _avatarRadius(size, variant),
-            ...style,
-        },
-        @click { click() },
-    ) {
-        src
-        component placeholder {
+    var failed = false
+    if failed || src.empty {
+        fallback {
             text(
                 value = initials,
                 style = {
@@ -117,6 +112,21 @@ component avatar(
                 },
                 @click { click() },
             )
+        }
+    } else {
+        image(
+            alt = alt,
+            fit = cover,
+            style = {
+                width = _avatarSide(size),
+                height = _avatarSide(size),
+                borderRadius = _avatarRadius(size, variant),
+                ...style,
+            },
+            @click { click() },
+            @error(e) { failed = true },
+        ) {
+            src
         }
     }
 }
@@ -156,7 +166,7 @@ component _example_avatar node {
 // platform has its own shape for the indeterminate one.
 component progress(
     style     Style = Style{},
-    value     option<float> = null, // how far along; none for work of unknown length
+    value     option[float] = null, // how far along; none for work of unknown length
     // The value `value` is measured against. One rather than zero, because a
     // platform that wants a fraction divides by it and every platform that
     // does not still has to render something: `<progress max="0">` is invalid
@@ -199,13 +209,13 @@ enum SortDirection { none, asc, desc }
 // One of a table's rows: data, since it names itself as its family, so a
 // table reads its rows as a list rather than rendering them. Each cell is
 // aligned to its column by position.
-component tableRow(cells list<string>) tableRow
+component tableRow(cells list[string]) tableRow
 
 // Tabular data display. Its rows are written as its children, each a `tableRow`,
 // under an `if` or a `for` where they depend on something.
 component table(
     style         Style = Style{},
-    columns       list<string>,                       // the column headers
+    columns       list[string],                       // the column headers
     selectable    bool = false,                       // lets the user select a row
     :selected     int,                                // the selected row's index from 0
     sortable      bool = false,                       // lets the user re-order by a column
@@ -241,7 +251,7 @@ component treeItem(
 component tree(
     style     Style = Style{},
     :selected string,         // the label of the selected row
-    expanded  list<int> = [], // the indices of the expanded nodes, in traversal order
+    expanded  list[int] = [], // the indices of the expanded nodes, in traversal order
     @select(),                // a row was picked
     @expand(),                // the user expanded or collapsed a node
     // The top-level nodes, in order.

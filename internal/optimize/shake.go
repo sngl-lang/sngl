@@ -136,7 +136,7 @@ func promoteForeignStructs(pkg *ir.Package) error {
 		have[sd] = true
 		added = append(added, sd)
 		// A promoted struct's declaration names its fields' types, which
-		// have to be declared beside it: `_Item` holds `list<_Block>`. A
+		// have to be declared beside it: `_Item` holds `list[_Block]`. A
 		// builtin kind's (`color`) is each backend's own to spell.
 		for _, f := range sd.Fields {
 			if !namesBuiltinStruct(f.Type) {
@@ -474,7 +474,7 @@ func collectUsedSymbols(pkg *ir.Package, documents bool) (used, build map[ir.Sym
 		switch s := sym.(type) {
 		case *ir.Var:
 			// Walk the declared type: a struct/enum referenced only as a
-			// type (e.g. `var x option<User> = null`) must stay reachable,
+			// type (e.g. `var x option[User] = null`) must stay reachable,
 			// or the shaker prunes its definition while codegen still emits
 			// the type reference → "undefined: User".
 			walkType(s.Type, used, walk)
@@ -602,7 +602,12 @@ func walkExpr(e ir.Expr, used map[ir.Symbol]bool, walk func(ir.Symbol)) {
 // catch block's handler, a node's component, and the types a local or a
 // node's route parameters name. A hand-written descent here missed a node's
 // record and start, which a stack's lowering leaves the page's values in.
+//
+// A record an intrinsic reads by field name (ir.RecordArg) names no
+// declaration: every language spells it as its runtime's map, from the
+// literal's fields.
 func walkNames(root any, walk func(ir.Symbol)) {
+	records := map[*ir.StructLit]bool{}
 	_ = ir.Walk(root, func(n ir.Node) error {
 		switch x := n.(type) {
 		case *ir.Ident:
@@ -613,8 +618,13 @@ func walkNames(root any, walk func(ir.Symbol)) {
 			if x.Func != nil {
 				walk(x.Func)
 			}
+			if i := ir.RecordArg(x.Func); i >= 0 && i < len(x.Args) {
+				if lit, ok := x.Args[i].Value.(*ir.StructLit); ok {
+					records[lit] = true
+				}
+			}
 		case *ir.StructLit:
-			if x.Def != nil {
+			if x.Def != nil && !records[x] {
 				walk(x.Def)
 			}
 		case *ir.ContextRead:

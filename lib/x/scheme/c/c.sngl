@@ -45,13 +45,13 @@ gen.scheme(name="c", @generate(out, importPath) {
 })
 
 // The fields pkg-config prints for args, which fail the import when it does.
-func pkgConfig(args list<string>) list<string> {
+func pkgConfig(args list[string]) list[string] {
     var cmd = ["pkg-config"]
     for var a = args {
         cmd.push(a)
     }
     var p = gen.exec(cmd=cmd, prefix=["pkg-config"])
-    var fields list<string> = []
+    var fields list[string] = []
     for var line = p.stdout {
         for var f = line.split(" ") {
             if f.trim().length() > 0 {
@@ -67,7 +67,7 @@ func pkgConfig(args list<string>) list<string> {
 
 // The package an import resolves to: one c.link, and the inputs pkg-config
 // read.
-func link(include string, system bool, cflags list<string>, ldflags list<string>, inputs list<string>) string {
+func link(include string, system bool, cflags list[string], ldflags list[string], inputs list[string]) string {
     var src = ""
     if inputs.length() > 0 {
         src = src + "import cache \"sngl:x/gen/cache\"\n"
@@ -89,4 +89,4 @@ func link(include string, system bool, cflags list<string>, ldflags list<string>
 
 const func quote(s string) => "\"" + s.replace("\\", "\\\\").replace("\"", "\\\"").replace("\{", "\\\{").replace("\}", "\\\}") + "\""
 
-const func quoteAll(xs list<string>) => "[" + xs.map(func(x string) => quote(x)).join(", ") + "]"
+const func quoteAll(xs list[string]) => "[" + xs.map(func(x string) => quote(x)).join(", ") + "]"

@@ -1,5 +1,5 @@
 // A call passes two parameters by reference: a method's ambient `this`, the
-// receiver's own value, and a parameter declared `ref<T>`, the cell `&x`
+// receiver's own value, and a parameter declared `ref[T]`, the cell `&x`
 // hands it. A named parameter of any other type is a value. A function
 // writing one by reference hands back what it wrote and the call writes it to
 // the place it passed (passRefParams), so the program reads the same on every
@@ -9,7 +9,7 @@ import . "sngl:test"
 import ui "sngl:ui"
 
 struct Stack {
-    items  list<int> = []
+    items  list[int] = []
     pushes int = 0
 
     // The ambient `this` is the receiver's own value: a method writing it
@@ -36,21 +36,21 @@ struct Stack {
     func size() => this.items.length()
 }
 
-// A named parameter is a value; `ref<T>` is the caller's cell.
-func fill(s ref<Stack>) {
+// A named parameter is a value; `ref[T]` is the caller's cell.
+func fill(s ref[Stack]) {
     s.add(7)
 }
 
-func reset(s ref<Stack>) {
+func reset(s ref[Stack]) {
     *s = Stack{}
 }
 
-func peek(s ref<Stack>) int {
+func peek(s ref[Stack]) int {
     return s.items.length()
 }
 
 // A whole value is written through a reference with `*`.
-func setTo(x ref<int>, v int) {
+func setTo(x ref[int], v int) {
     *x = v
 }
 
@@ -62,7 +62,7 @@ func touch(s Stack) int {
 component box ui.node {
     var (
         st = Stack{}
-        all list<Stack> = [Stack{}, Stack{}]
+        all list[Stack] = [Stack{}, Stack{}]
         k = 0
         out = ""
     )

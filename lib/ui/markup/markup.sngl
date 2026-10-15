@@ -317,7 +317,7 @@ component link(href string, content ...component span) span
 // the author was offered a choice that was never theirs.
 //
 // So an importer flattens: the words between the brackets, and nothing else.
-component image(alt string = "", src ...component family.one<ui.imageSource>) span
+component image(alt string = "", src ...component family.one[ui.imageSource]) span
 
 // --- Document blocks ---
 //

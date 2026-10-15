@@ -54,7 +54,7 @@ func TestComputedOperandPositionsResolve(t *testing.T) {
     func plain() => key + "!"
     text(value = "{plain.length()}")`,
 		"index operand": `
-    var xs list<int> = [1, 2, 3]
+    var xs list[int] = [1, 2, 3]
     func doubled() => xs.map(func(x int) => x * 2)
     text(value = "{doubled[0]}")`,
 		"field operand": `
@@ -76,8 +76,8 @@ func TestComputedOperandPositionsResolve(t *testing.T) {
 //
 // The guard is observable through the diagnostic: a zero-argument func is called
 // and a bogus member is reported against its *result*, while a parameterized one
-// is left alone and still falls through to the old silent-dyn path — which this
-// test documents rather than fixes. Reporting there means deciding what a method
+// is left alone and still falls through to an unreported invalid select —
+// which this test documents rather than fixes. Reporting there means deciding what a method
 // call on a bare function reference should say at all, a separate question from
 // the elision.
 //

@@ -23,7 +23,7 @@ component main node {
     var oneMinute time.duration = 1m
     var half time.duration = 500ms
 
-    text(value="{oneMinute.string()}")
+    text(value="{oneMinute}")
 }
 
 func testAnAliasedUnitComparesByMagnitude(t Test, c main) {

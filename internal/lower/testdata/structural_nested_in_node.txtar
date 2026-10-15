@@ -15,9 +15,9 @@ component main node {
 import . "sngl:ui"
 component main node {
     var visible bool = true
-    var __root dyn
-    var __slot0 list<dyn> = []
-    func __renderSlot0(parent dyn) void {
+    var __root node
+    var __slot0 list[text] = []
+    func __renderSlot0(parent vbox) void {
         for var __entry = __slot0 {
             lower.RemoveChild(parent, __entry)
         }

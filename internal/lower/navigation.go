@@ -25,7 +25,7 @@ import (
 //
 //	var pages__current _page__value = _page__value{id=0, href="/", title="Home", meta=…}
 //	var pkg__params Pkg = Pkg{}
-//	var pages__history list<pages__entry> = []
+//	var pages__history list[pages__entry] = []
 //	if pages__current.id == 0 { … } else if pages__current.id == 1 { …p is pkg__params… }
 //
 // The record is the page family's: one struct per instantiation of it -- the
@@ -543,7 +543,8 @@ func familyArgs(f *ir.Component, args []*ir.Type) []*ir.Type {
 		case tp.Default != nil:
 			out[i] = tp.Default
 		default:
-			out[i] = ir.TypDyn
+			// The checker has a parameter with no default written.
+			panic(fmt.Sprintf("lower: family %s's %s is bound by nothing", f.Name, tp.Name))
 		}
 	}
 	return out
@@ -570,7 +571,7 @@ func pageArgs(n *ir.NodeInst) []*ir.Type {
 			if p.Type == nil || p.Type.Kind != ir.TypeTypeParam || p.Type.ParamName != tp.Name {
 				continue
 			}
-			if t := typeOf(n.Prop(p.Name)); t != nil && t.Kind != ir.TypeDyn {
+			if t := typeOf(n.Prop(p.Name)); t != nil {
 				out[i] = t
 			}
 		}
@@ -1040,26 +1041,12 @@ func (nv *navigation) lowerBack(n *ir.CallStmt) ([]ir.Stmt, error) {
 }
 
 func listLength(list ir.Expr) ir.Expr {
-	fn := &ir.Func{Name: "length", Receiver: ir.ListOf(ir.TypDyn), Intrinsic: "list.length", Return: ir.TypInt}
-	if def := ir.LookupIntrinsic("list.length"); def != nil {
-		fn.Params, fn.Return = def.Instantiate(elemOf(typeOf(list)))
-	}
-	return &ir.Call{Type: ir.TypInt, Func: fn, Args: []ir.CallArg{{Value: list}}}
+	return callListLength(list)
 }
 
 func callListRemove(list, index ir.Expr, elem *ir.Type) ir.Stmt {
-	fn := &ir.Func{Name: "remove", Receiver: ir.ListOf(ir.TypDyn), Intrinsic: "list.remove"}
-	if def := ir.LookupIntrinsic("list.remove"); def != nil {
-		fn.Params, fn.Return = def.Instantiate(elem)
-	}
+	fn := ir.IntrinsicMethod("remove", "list.remove", ir.ListOf(elem), nil)
 	return &ir.CallStmt{Call: &ir.Call{Type: ir.TypVoid, Func: fn, Args: []ir.CallArg{{Value: list}, {Value: index}}}}
-}
-
-func elemOf(t *ir.Type) *ir.Type {
-	if t != nil && len(t.Elems) > 0 {
-		return t.Elems[0]
-	}
-	return ir.TypDyn
 }
 
 // lowerView replaces each stack with the if-chain over its pages and lowers
@@ -1646,7 +1633,7 @@ func (nv *navigation) copiesEqual(a, b ir.Expr) ir.Expr {
 	return &ir.Call{Type: ir.TypBool, Func: nv.copyEq(), Args: []ir.CallArg{{Value: nv.copyOfExpr(a)}, {Value: nv.copyOfExpr(b)}}}
 }
 
-// copyEq is the package's `__nav_copy_eq(a, b list<int>) bool`, made the
+// copyEq is the package's `__nav_copy_eq(a, b list[int]) bool`, made the
 // first time two copies neither of which is known are compared.
 func (nv *navigation) copyEq() *ir.Func {
 	for _, f := range nv.pkg.Funcs {

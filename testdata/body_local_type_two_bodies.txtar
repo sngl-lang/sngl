@@ -20,7 +20,7 @@ the other two kinds.
 reference site that does not ride on the declaration pointer: `ir.Func.Receiver`
 is the receiver type's name written out as a string.
 
-`rows` is a `list<Local>` in the body whose `Local` moved, so the element of a
+`rows` is a `list[Local]` in the body whose `Local` moved, so the element of a
 generic type is covered too -- Go spells it `[]Local__second`.
 
 deny out/go/bubbletea/model.go `(?s)type Tick float64.*type Tick float64` -- one Go file, one declaration of each name: two bodies declaring `unit Tick` is the unit half of what this pass fixes
@@ -98,7 +98,7 @@ component second node {
     }
 
     var here = Local{bField="two"}
-    var rows list<Local> = []
+    var rows list[Local] = []
     var p = Phase.ready
     var elapsed Tick = 5span
 

@@ -328,7 +328,7 @@ func (e *docEditor) flush(t testing.TB) {
 }
 
 // libImports returns the library imports a doc snippet needs but did not
-// write, so a fragment about `list<T>` need not open with boilerplate. They
+// write, so a fragment about `list[T]` need not open with boilerplate. They
 // are qualified under the package's last path segment, the spelling the docs
 // teach, so a fragment writes `ui.text(...)` and `draw.circle(...)`. Nothing
 // is added when the snippet imports for itself.

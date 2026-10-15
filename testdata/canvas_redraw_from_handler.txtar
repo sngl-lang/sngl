@@ -587,7 +587,10 @@ func (m *Model) buildWidgetTree() {
 	m.__n1 = (*C.GtkDrawingArea)(unsafe.Pointer(C.gtk_drawing_area_new()))
 	C.gtk_drawing_area_set_content_width(m.__n1, C.int(50))
 	C.gtk_drawing_area_set_content_height(m.__n1, C.int(50))
-	snglDrawFuncs = append(snglDrawFuncs, func(cr *C.cairo_t, pw, ph int) { _snglCairoScale(cr, pw, ph, 50, 50, ""); m._canvasDraw0(cr) })
+	snglDrawFuncs = append(snglDrawFuncs, func(cr *C.cairo_t, pw int, ph int) {
+		_snglCairoScale(cr, pw, ph, 50, 50, "")
+		m._canvasDraw0(cr)
+	})
 	C.sngl_drawing_area_set_draw(unsafe.Pointer(m.__n1), C.int((len(snglDrawFuncs) - 1)))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n0)), (*C.GtkWidget)(unsafe.Pointer(m.__n1)))
 	m.__n2 = (*C.GtkButton)(unsafe.Pointer(C.gtk_button_new()))
@@ -721,6 +724,6 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/fyne --
 pass sha256:84817ec604ecc25df369eafcced980bd
 -- run/go/gtk4 --
-pass sha256:a7a6a6215cdc57dc259b8b64a919aed8
+pass sha256:b131c3db8be62ac0e6251f08d906dea1
 -- run/none/html --
 pass sha256:523fc3baf813fbbb32f7b4dee3954419

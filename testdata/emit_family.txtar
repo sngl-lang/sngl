@@ -45,11 +45,11 @@ component block[go.language] {
     gen.emit(file="blocks.txt", open="[\n", close="]\n")
 }
 
-component text[go.language] {
+component text[go.language](name, full, color) {
     gen.node(open="  {name}: {full} {color}\n")
 }
 
-component group[go.language] {
+component group[go.language](label) {
     gen.node(open="  <{label}>\n", close="  </{label}>\n")
 }
 
@@ -57,11 +57,11 @@ component block[html.platform] {
     gen.emit(file="blocks.html", open="<ul>\n", close="</ul>\n")
 }
 
-component text[html.platform] {
+component text[html.platform](name, full) {
     gen.node(open="<li class=\"{name}\">{full}</li>\n")
 }
 
-component group[html.platform] {
+component group[html.platform](label) {
     gen.node(open="<li>{label}<ul>\n", close="</ul></li>\n")
 }
 

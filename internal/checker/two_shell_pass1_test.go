@@ -27,7 +27,7 @@ func checkNoErrors(t *testing.T, src string) *ir.Package {
 // was registered, so this failed with `unknown type`.
 func TestStructForwardReference(t *testing.T) {
 	checkNoErrors(t, `
-struct Tree { root option<Branch> }
+struct Tree { root option[Branch] }
 struct Branch { value int }
 `)
 }
@@ -36,8 +36,8 @@ struct Branch { value int }
 // regardless of declaration order.
 func TestStructMutualRecursion(t *testing.T) {
 	checkNoErrors(t, `
-struct A { b option<B> }
-struct B { a option<A> }
+struct A { b option[B] }
+struct B { a option[A] }
 `)
 }
 
@@ -45,7 +45,7 @@ struct B { a option<A> }
 // though the type is not yet registered while its own fields resolve.
 func TestStructSelfRecursion(t *testing.T) {
 	checkNoErrors(t, `
-struct Node { next option<Node> }
+struct Node { next option[Node] }
 `)
 }
 

@@ -15,7 +15,7 @@ output {
     }
 }
 
-const periods list<time.duration> = [100ms, 250ms]
+const periods list[time.duration] = [100ms, 250ms]
 
 component ticker(period time.duration = 100ms) ui.node {
     var ticks = 0

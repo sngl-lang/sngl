@@ -1,8 +1,8 @@
-A bare `T` written where an `option<T>` is declared is a conversion the
+A bare `T` written where an `option[T]` is declared is a conversion the
 checker inserts, the same way it inserts one for every other implicit
 coercion -- and the same way, each language spells it for itself.
 
-Go's option<T> is *T, so the promotion needs a box; Kotlin's is T? and
+Go's option[T] is *T, so the promotion needs a box; Kotlin's is T? and
 JavaScript's is the value itself, and both emit the operand unchanged. The box
 is a helper taking its argument by value, not `&`: `&` needs an addressable
 operand, so `&nextBox()` does not compile, and where it does compile it aliases
@@ -36,7 +36,7 @@ struct Box {
 }
 
 struct Holder {
-    inner option<Box> = null
+    inner option[Box] = null
 }
 
 component main node {

@@ -13,12 +13,12 @@ xs itself.
 the spread at all. Spreading it into `ys` splices its folded elements into the
 run beside them; `joinedAt` reads it where it is shared, so that spread stays.
 
-The element type is settled across every element. `widened` is a list<float>,
-so its spread of xs is a list<int> converted element by element -- a Go slice
+The element type is settled across every element. `widened` is a list[float],
+so its spread of xs is a list[int] converted element by element -- a Go slice
 cannot be cast to another element type, and a Kotlin List keeps the Ints it
 held, where `widened[0] == 4.0` would not compile. `floats` is the same
 conversion without a spread. `ps` checks its anonymous literal against the P
-before it, and a null beside an int makes `holes` and `leading` option<int>.
+before it, and a null beside an int makes `holes` and `leading` option[int].
 
 deny out/go/bubbletea/model.go `\(\[\]float64\)\(` -- a slice of ints is not castable to a slice of floats; each element converts
 
@@ -40,7 +40,7 @@ component main node {
     var copied = [...xs]
     var aroundLen = around.length()
     var widened = [...xs, 2.5]
-    var floats list<float> = xs
+    var floats list[float] = xs
     var ps = [P{a=1}, {a=2}]
     var holes = [1, null]
     var leading = [null, 1]

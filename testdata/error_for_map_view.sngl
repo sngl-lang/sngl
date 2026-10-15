@@ -9,7 +9,7 @@
 import . "sngl:ui"
 
 component main node {
-    var scores map<string, int> = {alice=10}
+    var scores map[string, int] = {alice=10}
 
     vbox {
         for var k, v = scores { // ERROR(check) "a map yields its elements in no defined order"

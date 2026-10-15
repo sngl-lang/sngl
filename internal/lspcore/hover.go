@@ -134,7 +134,7 @@ func formatComponentHoverWithDoc(c *ast.ComponentDecl, doc *ast.Document, opts H
 		for _, p := range params {
 			hint := typeExprString(p.Type)
 			if hint == "" {
-				hint = "dyn"
+				hint = "unknown"
 			}
 			line := fmt.Sprintf("- `%s` %s", p.Name, hint)
 			if p.Default == nil {
@@ -255,7 +255,7 @@ func typeExprString(te ast.TypeExpr) string {
 			for _, arg := range t.TypeArgs {
 				parts = append(parts, typeExprString(arg))
 			}
-			s += "<" + strings.Join(parts, ", ") + ">"
+			s += "[" + strings.Join(parts, ", ") + "]"
 		}
 		return s
 	case *ast.FuncType:
@@ -448,7 +448,7 @@ func hoverStructFieldAt(doc *ast.Document, line, col int) string {
 				}
 				t := typeExprString(f.Type)
 				if t == "" {
-					t = "dyn"
+					t = "unknown"
 				}
 				owner := sd.Name
 				if owner == "" {
@@ -543,7 +543,9 @@ func walkStructExprs(doc *ast.Document, fn func(*ast.StructExpr)) {
 			walkE(x.Operand)
 		case *ast.IndexExpr:
 			walkE(x.Operand)
-			walkE(x.Index)
+			for _, ix := range x.Indices {
+				walkE(ix)
+			}
 		case *ast.TernaryExpr:
 			walkE(x.Cond)
 			walkE(x.Then)

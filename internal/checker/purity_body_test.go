@@ -42,13 +42,13 @@ func built(a int) P {
     return r
 }
 
-func element(a int) list<int> {
+func element(a int) list[int] {
     var r = [0, 0]
     r[0] = a
     return r
 }
 
-func aliased(xs list<int>) list<int> {
+func aliased(xs list[int]) list[int] {
     var r = xs
     r[0] = 1
     return r

@@ -27,11 +27,11 @@ output {
 
 const xs = [1, 2]
 
-func grow(ys list<int>) {
+func grow(ys list[int]) {
     ys.push(3)
 }
 
-func sumFrom(ys list<int>, start int) int {
+func sumFrom(ys list[int], start int) int {
     var s = start
     for var y = ys {
         s = s + y

@@ -12,7 +12,7 @@ import . "sngl:test"
 import nav "sngl:ui/nav"
 import ui "sngl:ui"
 
-const items list<string> = ["a", "b"]
+const items list[string] = ["a", "b"]
 
 component panel ui.node {
     ui.vbox {

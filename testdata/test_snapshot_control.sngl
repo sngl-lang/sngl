@@ -8,7 +8,7 @@ component board node {
     var (
         items = ["a", "b"]
         ready = false
-        none list<string> = []
+        none list[string] = []
     )
 
     vbox {

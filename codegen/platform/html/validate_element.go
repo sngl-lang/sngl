@@ -13,7 +13,7 @@ import (
 // Both cases were silently produced instead. A tag that is not a literal, or
 // absent, fell back to the node's own name and emitted `<element>` -- markup
 // for a tag that does not exist. A wildcard attribute map that is not a literal
-// was skipped entirely, so a declared `attrs map<string, string>` holding real
+// was skipped entirely, so a declared `attrs map[string, string]` holding real
 // attributes reached the output as nothing at all.
 //
 // Both are static-render limits rather than facts about the DOM: the tag names

@@ -24,23 +24,21 @@ component file(path string) imageSource
 // An image fetched while the program runs, from a URL.
 component remote(url string) imageSource
 
-// Shows the image its source holds, scaled into its frame by `fit`.
-//
-// With no source it shows `placeholder` instead, in the same place: what an
-// avatar with no picture shows its initials in. A source under an `if` that
-// goes false is the same as none.
+// Shows the picture its source holds, scaled into its frame by `fit` -- what
+// html's `<picture>` is. With no source, or one that fails to load, it shows
+// nothing; a component that wants something in its place asks its own slot,
+// as `avatar` does with `src.empty` and `@error`.
 component image(
-    alt         string = "",                   // the accessibility label
-    fit         ObjectFit = ObjectFit.contain, // how the image is scaled into its frame
-    style       Style = Style{},
+    alt   string = "",                   // the accessibility label
+    fit   ObjectFit = ObjectFit.contain, // how the image is scaled into its frame
+    style Style = Style{},
     @click(),
     @load(), // decoding completed
     // Fetching or decoding failed. The payload is the ambient `error` --
     // the value `error.raise` throws and a `boundary` catches, because a
     // failure is a failure whoever noticed it.
     @error(e error),
-    src         ...component option<imageSource>,
-    placeholder component option<node>,
+    src   ...component option[imageSource],
 ) node
 
 component _example_image node {

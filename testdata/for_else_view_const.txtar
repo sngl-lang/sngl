@@ -30,9 +30,9 @@ output {
     }
 }
 
-const empty list<string> = []
+const empty list[string] = []
 
-const two list<string> = ["a", "b"]
+const two list[string] = ["a", "b"]
 
 component main node {
     vbox {

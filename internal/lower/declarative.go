@@ -33,16 +33,22 @@ func lowerDeclarative(pkg *ir.Package, caps Features, _ Options) error {
 	st := newDeclarativeState(pkg, caps)
 	st.seedCounter(pkg)
 	for _, comp := range pkg.Components {
+		st.hosted = comp.Family
 		comp.Stmts = st.processStmts(comp.Stmts, &comp.Funcs)
 		destroyBuiltInstances(comp, st)
 	}
 	// The package body's parent is the application: each node there is
 	// attached to it (ir.AppParent), and what that means is the platform's.
-	pkg.Body = st.processStmtsForParent(pkg.Body, &pkg.Funcs, ir.AppParent)
+	st.hosted = nil
+	pkg.Body = st.processStmtsForParent(pkg.Body, &pkg.Funcs, appRef())
 	return nil
 }
 
 type declarativeState struct {
+	// hosted is the family the position being lowered accepts, which a
+	// component taking the family it is placed in is a member of
+	// (rendersAsType).
+	hosted       *ir.Component
 	intrinsics   map[string]*ir.Func
 	nextID       int
 	lifter       *lifter
@@ -104,18 +110,6 @@ func capturesPerIteration(captures []capture) bool {
 // call, so a signature here would be describing nobody's contract.
 func nodeOpFunc(op string) *ir.Func {
 	return &ir.Func{Name: op, Intrinsic: op}
-}
-
-// lowerNS is the namespace symbol the intrinsic-call receivers
-// lowering emits resolve to. Lowering carries its own rather than reading the
-// checker's: a pass emits an intrinsic call whether or not the source package
-// ever named the namespace, so there is not always one to borrow.
-var lowerNS = &ir.Namespace{Name: "lower"}
-
-// lowerNSIdent returns a fresh Ident referring to the `lower` namespace.
-// Used as Call.Receiver so ir.Convert emits SelectExpr{Operand: Ident("lower"), Field: name}.
-func lowerNSIdent() *ir.Ident {
-	return &ir.Ident{Name: "lower", Type: ir.TypDyn, Sym: lowerNS, Synthesized: true}
 }
 
 // seedCounter scans every NodeInst.ID matching __n<digits> and starts the
@@ -194,46 +188,39 @@ func (st *declarativeState) freshID() string {
 // emission and recursing into nested control-flow / handler bodies.
 // funcs is the owning Funcs slice for handler lifting.
 func (st *declarativeState) processStmts(stmts []ir.Stmt, funcs *[]*ir.Func) []ir.Stmt {
-	return st.processStmtsForParent(stmts, funcs, "")
+	return st.processStmtsForParent(stmts, funcs, nil)
 }
 
-// processStmtsForParent is the general form of processStmts: when parentID is
-// non-empty, NodeInsts encountered (directly or recursively in control-flow
+// processStmtsForParent is the general form of processStmts: when parent is
+// non-nil, NodeInsts encountered (directly or recursively in control-flow
 // bodies) emit an AppendChild call back to parentID after their own subtree
 // is emitted. This keeps if/for-nested children attached to the surrounding
 // container rather than orphaned as top-level widgets.
-func (st *declarativeState) processStmtsForParent(stmts []ir.Stmt, funcs *[]*ir.Func, parentID string) []ir.Stmt {
+func (st *declarativeState) processStmtsForParent(stmts []ir.Stmt, funcs *[]*ir.Func, parent *ir.Ident) []ir.Stmt {
+	if parent != nil {
+		defer st.within(hostedBy(parent.Type))()
+	}
 	var out []ir.Stmt
 	for _, s := range stmts {
 		switch n := s.(type) {
 		case *ir.NodeInst:
 			out = append(out, st.lowerNodeIntoStmts(n, funcs)...)
-			if parentID != "" {
-				out = append(out, &ir.CallStmt{
-					Call: &ir.Call{
-						Type:     ir.TypVoid,
-						Receiver: lowerNSIdent(),
-						Func:     st.intrinsics["AppendChild"],
-						Args: []ir.CallArg{
-							{Value: &ir.Ident{Name: parentID, Type: ir.TypDyn, IsElementRef: true, Synthesized: true}},
-							{Value: &ir.Ident{Name: st.attachName(n), Type: ir.TypDyn, IsElementRef: true, Synthesized: true}},
-						},
-					},
-				})
+			if parent != nil {
+				out = append(out, st.appendChildStmt(cloneIdent(parent), n))
 			}
 		case *ir.If:
-			n.Body = st.processStmtsForParent(n.Body, funcs, parentID)
-			n.Else = st.processStmtsForParent(n.Else, funcs, parentID)
+			n.Body = st.processStmtsForParent(n.Body, funcs, parent)
+			n.Else = st.processStmtsForParent(n.Else, funcs, parent)
 			out = append(out, n)
 		case *ir.For:
-			n.Body = st.processStmtsForParent(n.Body, funcs, parentID)
-			n.Else = st.processStmtsForParent(n.Else, funcs, parentID)
+			n.Body = st.processStmtsForParent(n.Body, funcs, parent)
+			n.Else = st.processStmtsForParent(n.Else, funcs, parent)
 			out = append(out, n)
 		case *ir.SlotInst:
-			n.Children = st.processStmtsForParent(n.Children, funcs, parentID)
+			n.Children = st.processStmtsForParent(n.Children, funcs, parent)
 			out = append(out, n)
 		case *ir.ErrorBoundary:
-			n.Children = st.processStmtsForParent(n.Children, funcs, parentID)
+			n.Children = st.processStmtsForParent(n.Children, funcs, parent)
 			// Kept: what a boundary holds is flat now, and the boundary itself
 			// stays until passBoundaryPassthrough, because its handler is
 			// reached through it by every pass that still reads one.
@@ -272,7 +259,7 @@ func nodeIntProp(n *ir.NodeInst, name string) int {
 
 // lowerNodeIntoStmts emits the flat sequence for a single NodeInst:
 //
-//  1. var __nM dyn = lower.createNode("name")
+//  1. var __nM <component> = lower.createNode("name")
 //  2. #__nM.<key> = <propExpr>            (per prop)
 //  3. lower.attachHandler(#__nM, "<evt>", __nM_<evt>_handler)  (per handler)
 //  4. for each child: emit child's full subtree, then
@@ -297,10 +284,8 @@ func (st *declarativeState) lowerNodeIntoStmts(n *ir.NodeInst, funcs *[]*ir.Func
 
 	var stmts []ir.Stmt
 
-	varType := ir.TypDyn
-	if n.Component != nil {
-		varType = &ir.Type{Kind: ir.TypeComponent, Decl: n.Component}
-	}
+	varType := handleType(n)
+	ref := func() *ir.Ident { return handleRef(id, varType) }
 
 	// 1. createNode — a canvas rides across on the statement that replaces it,
 	// so a widget-emitting platform can still build a raster-backed canvas.
@@ -311,9 +296,8 @@ func (st *declarativeState) lowerNodeIntoStmts(n *ir.NodeInst, funcs *[]*ir.Func
 		Type:    varType,
 		NodeAST: n.AST,
 		Init: &ir.Call{
-			Type:     ir.TypDyn,
-			Receiver: lowerNSIdent(),
-			Func:     st.intrinsics["CreateNode"],
+			Type: varType,
+			Func: st.intrinsics["CreateNode"],
 			Args: []ir.CallArg{
 				{Value: &ir.Literal{Type: ir.TypString, Value: n.Name}},
 			},
@@ -328,8 +312,8 @@ func (st *declarativeState) lowerNodeIntoStmts(n *ir.NodeInst, funcs *[]*ir.Func
 	for _, p := range n.Props {
 		stmts = append(stmts, &ir.Assign{
 			Target: &ir.Select{
-				Type:    ir.TypDyn,
-				Operand: &ir.Ident{Name: id, Type: ir.TypDyn, IsElementRef: true},
+				Type:    propType(n, p.Name, p.Value),
+				Operand: &ir.Ident{Name: id, Type: varType, IsElementRef: true},
 				Field:   p.Name,
 			},
 			Op:    ast.AssignSet,
@@ -375,16 +359,15 @@ func (st *declarativeState) lowerNodeIntoStmts(n *ir.NodeInst, funcs *[]*ir.Func
 			h.Func.Lowered.Event = h.Name
 			h.Func.Lowered.Node = id
 			*funcs = append(*funcs, h.Func)
-			handlerArg = &ir.Ident{Name: handlerName, Type: ir.TypDyn, Sym: h.Func}
+			handlerArg = &ir.Ident{Name: handlerName, Type: h.Func.SymType(), Sym: h.Func}
 		}
 
 		stmts = append(stmts, &ir.CallStmt{
 			Call: &ir.Call{
-				Type:     ir.TypVoid,
-				Receiver: lowerNSIdent(),
-				Func:     st.intrinsics["AttachHandler"],
+				Type: ir.TypVoid,
+				Func: st.intrinsics["AttachHandler"],
 				Args: []ir.CallArg{
-					{Value: &ir.Ident{Name: id, Type: ir.TypDyn, IsElementRef: true, Synthesized: true}},
+					{Value: ref()},
 					{Value: &ir.Literal{Type: ir.TypString, Value: h.Name}},
 					{Value: handlerArg},
 				},
@@ -395,26 +378,17 @@ func (st *declarativeState) lowerNodeIntoStmts(n *ir.NodeInst, funcs *[]*ir.Func
 	// 4. children — recurse, then appendChild parent → child. A canvas's are
 	// shapes and are not flattened: they are not widgets, there is nothing to
 	// create for one, and an id spent on one shifts every id after it.
+	defer st.within(hostedBy(varType))()
 	for _, c := range ir.WidgetChildren(n) {
 		switch cn := c.(type) {
 		case *ir.NodeInst:
 			stmts = append(stmts, st.lowerNodeIntoStmts(cn, funcs)...)
-			stmts = append(stmts, &ir.CallStmt{
-				Call: &ir.Call{
-					Type:     ir.TypVoid,
-					Receiver: lowerNSIdent(),
-					Func:     st.intrinsics["AppendChild"],
-					Args: []ir.CallArg{
-						{Value: &ir.Ident{Name: id, Type: ir.TypDyn, IsElementRef: true, Synthesized: true}},
-						{Value: &ir.Ident{Name: st.attachName(cn), Type: ir.TypDyn, IsElementRef: true, Synthesized: true}},
-					},
-				},
-			})
+			stmts = append(stmts, st.appendChildStmt(ref(), cn))
 		default:
 			// Non-NodeInst child (If/For/etc.): recurse, but thread the
 			// surrounding parent id so any NodeInsts inside the body get
 			// appended back to this parent rather than orphaned.
-			stmts = append(stmts, st.processStmtsForParent([]ir.Stmt{c}, funcs, id)...)
+			stmts = append(stmts, st.processStmtsForParent([]ir.Stmt{c}, funcs, ref())...)
 		}
 	}
 
@@ -435,7 +409,7 @@ func hasRealComponentBody(comp *ir.Component) bool {
 // lowerComponentNodeIntoStmts emits the flat sequence for a NodeInst whose
 // target is a user component left in place by passNoInlineComponents:
 //
-//	var __nM dyn = lower.CreateComponent(<componentIdent>, {props...})
+//	var __nM <component> = lower.CreateComponent(<componentIdent>, {props...})
 //
 // AppendChild back to the surrounding parent is emitted by the caller
 // (processStmtsForParent / lowerNodeForSlot), mirroring how DOM-node
@@ -461,12 +435,11 @@ func (st *declarativeState) componentCreateCall(n *ir.NodeInst) *ir.Call {
 		})
 	}
 	return &ir.Call{
-		Type:     ir.TypDyn,
-		Receiver: lowerNSIdent(),
-		Func:     st.intrinsics[ir.NodeOpCreateComponent],
+		Type: handleType(n),
+		Func: st.intrinsics[ir.NodeOpCreateComponent],
 		Args: []ir.CallArg{
 			{Value: compIdent},
-			{Value: &ir.StructLit{Type: ir.TypDyn, Fields: fields}},
+			{Value: &ir.StructLit{Type: propsRecordType(n.Component, fields), Fields: fields}},
 		},
 	}
 }
@@ -477,31 +450,29 @@ func (st *declarativeState) componentRootBinding(n *ir.NodeInst) []ir.Stmt {
 	if !st.instanceRecords {
 		return nil
 	}
-	return []ir.Stmt{&ir.LocalVar{
-		Name: st.attachName(n),
-		Type: ir.TypDyn,
-		Init: &ir.Call{
-			Type:     ir.TypDyn,
-			Receiver: lowerNSIdent(),
-			Func:     st.intrinsics[ir.NodeOpComponentRoot],
-			Args: []ir.CallArg{
-				{Value: &ir.Ident{Name: n.ID, Type: ir.TypDyn, IsElementRef: true, Synthesized: true}},
-			},
+	return []ir.Stmt{st.componentRootLocal(n, n.ID)}
+}
+
+// appendChildStmt attaches a node to a parent expression: what the tree
+// attaches for it (attachRef).
+func (st *declarativeState) appendChildStmt(parent ir.Expr, child *ir.NodeInst) ir.Stmt {
+	return &ir.CallStmt{Call: &ir.Call{
+		Type: ir.TypVoid,
+		Func: st.intrinsics[ir.NodeOpAppendChild],
+		Args: []ir.CallArg{
+			{Value: parent},
+			{Value: st.attachRef(child)},
 		},
 	}}
 }
 
-// appendChildStmt attaches a node, named, to a parent expression.
-func (st *declarativeState) appendChildStmt(parent ir.Expr, child string) ir.Stmt {
-	return &ir.CallStmt{Call: &ir.Call{
-		Type:     ir.TypVoid,
-		Receiver: lowerNSIdent(),
-		Func:     st.intrinsics[ir.NodeOpAppendChild],
-		Args: []ir.CallArg{
-			{Value: parent},
-			{Value: &ir.Ident{Name: child, Type: ir.TypDyn, IsElementRef: true, Synthesized: true}},
-		},
-	}}
+// attachRef is a reference to what the tree attaches for n (attachName),
+// typed as what it is: the node, or the node an instance renders as.
+func (st *declarativeState) attachRef(n *ir.NodeInst) *ir.Ident {
+	if st.attachName(n) != n.ID {
+		return handleRef(st.attachName(n), rendersAsType(n.Component, st.hosted))
+	}
+	return handleRef(n.ID, handleType(n))
 }
 
 func (st *declarativeState) lowerComponentNodeIntoStmts(n *ir.NodeInst, id string) []ir.Stmt {
@@ -521,18 +492,20 @@ func (st *declarativeState) lowerComponentNodeIntoStmts(n *ir.NodeInst, id strin
 	// are two things. The id keeps the instance -- it is what a prop update is
 	// addressed to, and what the reactivity injection already named -- while
 	// the tree attaches the root beside it.
-	return []ir.Stmt{
-		instance,
-		&ir.LocalVar{
-			Name: st.attachName(n),
-			Type: ir.TypDyn,
-			Init: &ir.Call{
-				Type:     ir.TypDyn,
-				Receiver: lowerNSIdent(),
-				Func:     st.intrinsics[ir.NodeOpComponentRoot],
-				Args: []ir.CallArg{
-					{Value: &ir.Ident{Name: id, Type: ir.TypDyn, IsElementRef: true, Synthesized: true}},
-				},
+	return []ir.Stmt{instance, st.componentRootLocal(n, id)}
+}
+
+// componentRootLocal binds the node the instance named id renders as.
+func (st *declarativeState) componentRootLocal(n *ir.NodeInst, id string) *ir.LocalVar {
+	t := rendersAsType(n.Component, st.hosted)
+	return &ir.LocalVar{
+		Name: st.attachName(n),
+		Type: t,
+		Init: &ir.Call{
+			Type: t,
+			Func: st.intrinsics[ir.NodeOpComponentRoot],
+			Args: []ir.CallArg{
+				{Value: handleRef(id, handleType(n))},
 			},
 		},
 	}
@@ -560,17 +533,7 @@ const instanceRootSuffix = "__el"
 func lowerNodeForSlot(st *declarativeState, n *ir.NodeInst, parentRef ir.Expr, funcs *[]*ir.Func) (string, []ir.Stmt) {
 	stmts := st.lowerNodeIntoStmts(n, funcs)
 	if parentRef != nil {
-		stmts = append(stmts, &ir.CallStmt{
-			Call: &ir.Call{
-				Type:     ir.TypVoid,
-				Receiver: lowerNSIdent(),
-				Func:     st.intrinsics["AppendChild"],
-				Args: []ir.CallArg{
-					{Value: parentRef},
-					{Value: &ir.Ident{Name: st.attachName(n), Type: ir.TypDyn, IsElementRef: true, Synthesized: true}},
-				},
-			},
-		})
+		stmts = append(stmts, st.appendChildStmt(parentRef, n))
 	}
 	return st.attachName(n), stmts
 }
@@ -633,10 +596,9 @@ func destroyBuiltInstances(comp *ir.Component, st *declarativeState) {
 			continue
 		}
 		destroys = append([]ir.Stmt{&ir.CallStmt{Call: &ir.Call{
-			Type:     ir.TypVoid,
-			Receiver: lowerNSIdent(),
-			Func:     st.intrinsics[ir.NodeOpDestroyComponent],
-			Args:     []ir.CallArg{{Value: &ir.Ident{Name: lv.Name, Type: ir.TypDyn, IsElementRef: true, Synthesized: true}}},
+			Type: ir.TypVoid,
+			Func: st.intrinsics[ir.NodeOpDestroyComponent],
+			Args: []ir.CallArg{{Value: handleRef(lv.Name, lv.Type)}},
 		}}}, destroys...)
 	}
 	if len(destroys) == 0 {
@@ -652,4 +614,14 @@ func destroyBuiltInstances(comp *ir.Component, st *declarativeState) {
 		Purity: ir.PurityMutates,
 		Block:  destroys,
 	})
+}
+
+// within makes hosted the family the position being lowered accepts, and
+// returns what restores the one before.
+func (st *declarativeState) within(hosted *ir.Component) func() {
+	prev := st.hosted
+	if hosted != nil {
+		st.hosted = hosted
+	}
+	return func() { st.hosted = prev }
 }

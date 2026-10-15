@@ -61,7 +61,7 @@ component tooltip(
     text     string,
     position string = "",
     delay    int = 0,
-    trigger  ...component family.one<node>,
+    trigger  ...component family.one[node],
 ) node {}
 
 component _example_tooltip node {

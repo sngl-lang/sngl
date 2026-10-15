@@ -74,7 +74,7 @@ func testComputedsRender(t Test, c computed) {
 
 // A narrowed option is a number in each branch that narrows it.
 component narrowed node {
-    var maybe option<int> = 3
+    var maybe option[int] = 3
     vbox #out {
         if maybe != null {
             text(value="[{maybe * 2}]")

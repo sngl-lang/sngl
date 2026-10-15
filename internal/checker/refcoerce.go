@@ -7,11 +7,11 @@ import (
 	"duckfam.us/sngl/ir"
 )
 
-// A plain T is accepted where a ref<T> is expected, and reaches the callee as
+// A plain T is accepted where a ref[T] is expected, and reaches the callee as
 // the value it already was. That is what lets one declaration serve both
 // callers:
 //
-//	func fetch(url ref<string>) Result
+//	func fetch(url ref[string]) Result
 //
 //	fetch(&url)   // the handle: the callee keeps seeing what url becomes
 //	fetch(url)    // the value:  a snapshot of what it is now
@@ -31,7 +31,7 @@ type refCoercion struct {
 	p   *ir.Param
 }
 
-// coerceValueToRef reports whether a value of actual may stand in for a ref<T>
+// coerceValueToRef reports whether a value of actual may stand in for a ref[T]
 // parameter, recording the call site for verifyRefCoercions to hold the callee
 // to.
 func (c *checker) coerceValueToRef(actual *ir.Type, p *ir.Param, pos ast.Pos) bool {

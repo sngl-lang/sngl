@@ -228,16 +228,18 @@ func (t *htmlTranslator) OnCreateNode(ctx context.Context, id, tag string) []ir.
 	// and a close button, which _snglDialog makes.
 	if tag == windowElement {
 		t.jc.Ctx.Helpers[dialogHelper] = true
-		return []ir.Stmt{&ir.LocalVar{Name: id, Type: ir.TypDyn, Init: &ir.Call{
-			Type: ir.TypDyn,
+		dialog := ir.NativeNamed("HTMLDialogElement")
+		return []ir.Stmt{&ir.LocalVar{Name: id, Type: dialog, Init: &ir.Call{
+			Type: dialog,
 			Func: &ir.Func{Name: dialogHelper},
 		}}}
 	}
 
 	// const <id> = document.createElement("<tag>")
+	element := ir.NativeNamed("HTMLElement")
 	createCall := &ir.Call{
-		Type:     ir.TypDyn,
-		Receiver: &ir.Ident{Name: "document"},
+		Type:     element,
+		Receiver: &ir.Ident{Name: "document", Type: ir.NativeNamed("Document")},
 		Func:     &ir.Func{Name: "createElement"},
 		Args:     []ir.CallArg{{Value: &ir.Literal{Type: ir.TypString, Value: tag}}},
 	}
@@ -247,7 +249,7 @@ func (t *htmlTranslator) OnCreateNode(ctx context.Context, id, tag string) []ir.
 	t.creates[id] = createCall
 	out := []ir.Stmt{&ir.LocalVar{
 		Name: id,
-		Type: ir.TypDyn,
+		Type: element,
 		Init: createCall,
 	}}
 	// The frame carries the description, as sourceAttrs writes it in markup.
@@ -289,17 +291,18 @@ func isProgramID(id string) bool {
 // a non-inlinable component instance keeps its original
 // `const id = ...CreateComponent(...)` binding.
 func (t *htmlTranslator) OnCreateComponent(ctx context.Context, id string, call *ir.Call) []ir.Stmt {
-	return []ir.Stmt{&ir.LocalVar{Name: id, Type: ir.TypDyn, Init: call}}
+	return []ir.Stmt{&ir.LocalVar{Name: id, Type: call.Type, Init: call}}
 }
 
 // OnComponentRoot binds a name to the node an instance renders as. The record
 // carries it under a fixed field, which is html's own choice of shape: nothing
 // outside this platform names it.
 func (t *htmlTranslator) OnComponentRoot(ctx context.Context, id string, inst ir.Expr) []ir.Stmt {
+	element := ir.NativeNamed("HTMLElement")
 	return []ir.Stmt{&ir.LocalVar{
 		Name: id,
-		Type: ir.TypDyn,
-		Init: &ir.Select{Type: ir.TypDyn, Operand: inst, Field: instanceRootField},
+		Type: element,
+		Init: &ir.Select{Type: element, Operand: inst, Field: instanceRootField},
 	}}
 }
 
@@ -516,7 +519,7 @@ func (t *htmlTranslator) OnPropAssign(ctx context.Context, node ir.Expr, prop st
 	if field, ok := domPropForProp(t.declOf(node), prop); ok {
 		// node.<field> = value
 		return []ir.Stmt{&ir.Assign{
-			Target: &ir.Select{Operand: node, Field: field, Type: ir.TypDyn},
+			Target: &ir.Select{Operand: node, Field: field, Type: value.ExprType()},
 			Op:     ast.AssignSet,
 			Value:  value,
 		}}
@@ -703,7 +706,7 @@ func attachWindowHandler(node *ir.Ident, event string, handler ir.Expr) []ir.Stm
 		return nil
 	}
 	return []ir.Stmt{&ir.Assign{
-		Target: &ir.Select{Type: ir.TypDyn, Operand: node, Field: field},
+		Target: &ir.Select{Type: listener.ExprType(), Operand: node, Field: field},
 		Op:     ast.AssignSet,
 		Value:  listener,
 	}}
@@ -714,10 +717,10 @@ func attachWindowHandler(node *ir.Ident, event string, handler ir.Expr) []ir.Stm
 func windowPropWrite(node ir.Expr, prop string, value ir.Expr) ([]ir.Stmt, bool) {
 	switch prop {
 	case "visible":
-		return []ir.Stmt{&ir.Assign{Target: &ir.Select{Operand: node, Field: "open", Type: ir.TypDyn}, Op: ast.AssignSet, Value: value}}, true
+		return []ir.Stmt{&ir.Assign{Target: &ir.Select{Operand: node, Field: "open", Type: ir.TypBool}, Op: ast.AssignSet, Value: value}}, true
 	case windowTitle:
 		header := &ir.Call{
-			Type:     ir.TypDyn,
+			Type:     ir.NativeNamed("HTMLElement"),
 			Receiver: node,
 			Func:     &ir.Func{Name: "querySelector"},
 			Args:     []ir.CallArg{{Value: &ir.Literal{Type: ir.TypString, Value: "header > span"}}},
@@ -729,7 +732,7 @@ func windowPropWrite(node ir.Expr, prop string, value ir.Expr) ([]ir.Stmt, bool)
 				Func:     &ir.Func{Name: "setAttribute"},
 				Args:     []ir.CallArg{{Value: &ir.Literal{Type: ir.TypString, Value: "aria-label"}}, {Value: value}},
 			}},
-			&ir.Assign{Target: &ir.Select{Operand: header, Field: "textContent", Type: ir.TypDyn}, Op: ast.AssignSet, Value: value},
+			&ir.Assign{Target: &ir.Select{Operand: header, Field: "textContent", Type: ir.TypString}, Op: ast.AssignSet, Value: value},
 		}, true
 	}
 	return nil, false

@@ -171,10 +171,13 @@ Two consequences worth knowing before touching `lib/`:
 - A bodyless `lib/` component the program renders, with no implementation for
   the target being built, is a **build failure**, which is the mechanism that
   stops an implementation gap being skipped in a switch.
-- A platform package's override may carry a **prop selection**, read by the
-  same `overrideSelection` a program's override gets. Only
-  parens-with-nothing-in-them is skipped, and that form is android's marker for
-  a component its own codegen reads by name.
+- An override's **parameter list** selects what its body reads, and no list
+  is `()`, as for any other parameter list. It is read by `overrideSelection` for a component and `selectFuncParams`
+  for a function, both through `selectEntry`: each entry names one of the
+  base's props, slots or `@events` (a function's parameters), once, and may
+  restate a type only where it matches. What it does not list is not in the
+  body's scope. Parens with nothing in them *and no target index* are
+  android's marker for a component its own codegen reads by name.
 
 The distinction has to survive the checker, so it is `ir.Component.Bodyless`
 rather than `AST.Body.IsDefined()` — that reports whether a block came from
@@ -211,8 +214,7 @@ default, `const`, `...` -- is refused in `eventParams`
 (`testdata/error_event_param_forms.sngl`).
 
 There used to be a func *type's* list here, names optional, and a shorthand
-for a list of one, `@change T`; a bare `@tick` meant one loose `dyn`
-parameter. The shorthand is refused naming the list
+for a list of one, `@change T`. The shorthand is refused naming the list
 (`testdata/error_event_type_shorthand.sngl`): the grammar still admits it so
 that the builder can say `@change(v T)` rather than "unexpected identifier".
 Most bare events meant none -- a timer's tick, a DOM event SNGL cannot name a
@@ -240,7 +242,7 @@ parameters exactly, or none.
 **An event's parameters are what it carries; there are no payload structs.**
 `sngl:ui` declares each event as a function declares its parameters:
 `@change(checked bool)` on a checkbox, `@input(value string)` on an input,
-`@change(value option<time.date>)` on a datepicker, `@click()` carrying
+`@change(value option[time.date])` on a datepicker, `@click()` carrying
 nothing. A struct handed to a handler whole stays where the value *is* one:
 a boundary's `@error(e error)`, a user event whose author chose one. A host
 widget's own event is declared the host's way and read by the override that
@@ -300,8 +302,7 @@ insertion-ordered so the bug appears only on the other targets. The checker
 refuses all five in a view body with a positioned error (`checkHeadlessFor`,
 `checkViewMapFor`, `requireLoop`), which keeps codegen to the imperative paths
 that route through `ForHead`. A map whose map-ness the head has erased is out
-of reach: `map<K, V>` is not assignable to `iter<T>`, but `dyn` holds one and
-says nothing about it. `c.funcDepth == 0` is what "in a view body" means; `c.loopDepth` is
+of reach: `map[K, V]` is not assignable to `iter[T]`. `c.funcDepth == 0` is what "in a view body" means; `c.loopDepth` is
 what an escape requires one of, and it resets at every imperative-body
 boundary (`enterFuncBody`) so a lambda cannot break a loop it was written
 inside.
@@ -520,13 +521,13 @@ mount: a mounted node and an effect keep the values they were mounted under
 `cmd/sngl/testdata/context_read_in_user_func.txt` are the two halves.
 
 **A context's type is its default's**, and `sngl:builtin` says so:
-`component context<V, F>(default V) F`. The checker reads the default itself
+`component context[V any, F any](default V) F`. The checker reads the default itself
 (`registerRootContextDecl`) rather than binding the declaration's parameters,
 and holds every provider's value to it. A default whose type says too little
--- `null`, `[]` -- is written as a typed const, `const nobody option<User> = null` then `context #who(nobody)`; stating the type in place would need type
-arguments at a call site, which the language does not have (a TODO in
-`lib/builtin/context.sngl` names brackets, `<…>` not being LL(1) there).
-`t.setContext<V>(ctx V, value V)` takes any context and a value of its type,
+-- `null`, `[]` -- states it in brackets, `context[option[User]] #who(null)`:
+the written argument is the context's type and the default is held to it
+(`ir.Context.TypeArgs`, which `ir.Convert` prints back).
+`t.setContext[V any](ctx V, value V)` takes any context and a value of its type,
 and a first argument that is not a context is a positioned error
 (`refuseSetContextName`), where it used to fail only when the test ran
 (`error_test_set_context_not_a_context.sngl`,
@@ -631,7 +632,7 @@ Both start from `codegen.AnalyzeCommon(doc)` which extracts model fields, comput
   through `Name` where the path names the declaration or the name is reached
   through it (`Alignment.CenterVertically` beside `androidx.compose.ui.Alignment`).
   The composables' raw `chain` and `args` props are gone for the same reason:
-  `then list<Modifier>` takes Modifier values built from the calls
+  `then list[Modifier]` takes Modifier values built from the calls
   `android.sngl` declares (`modifier.verticalScroll(rememberScrollState())`),
   and a value SNGL had no way to write is a typed prop and a host const
   (`verticalAlignment=alignCenterVertically`, `color=primaryColor`,
@@ -689,13 +690,13 @@ hold a type only `null` is assignable to, a context no provider could set
 (`error_null_inferred.sngl`). The literal keeps its type, which `x == null`,
 a ternary and the option coercion read; only a declaration may not take it. A type parameter nothing in scope declares is refused the same way: a call
 that bound none of its callee's parameters left one in its result, and
-`var xs = empty()` held a `list<T>` naming nothing
+`var xs = empty()` held a `list[T]` naming nothing
 (`error_type_param_unbound.sngl`). An enclosing generic's own parameter is in
 scope and is a type like any other, and it is told from a callee's by
 reference rather than by name: a type parameter's type carries the
 `ir.TypeParamSym` that declared it as its `Decl`, and `pushTypeParams` binds
 one symbol per declared parameter however often a declaration's parameters
-are pushed (`typeParamSym`), so `empty()` inside `func shadow<T>` is still
+are pushed (`typeParamSym`), so `empty()` inside `func shadow[T any]` is still
 refused.
 
 **A parameter's default is evaluated at the call**, as a component prop's
@@ -706,17 +707,127 @@ any argument whose default reads the component's state, props or methods
 (`reportHandleCallDefaults`), and a lambda's parameter takes none
 (`error_func_default_reads_param.sngl`, `error_default_through_handle.sngl`).
 
+**Every type parameter names a constraint**, `any` when it says nothing, and
+type parameters and arguments are written in brackets, as Go writes them:
+`func first[T any](xs list[T]) T`, `component page[T any = struct {}, M any = struct {}]`, `map[string, int]`. The grammar requires the constraint
+(`TypeParam = ident Type [ assign Type ]`), because the bracket after a
+declaration's name is also an override's target, and the constraint is what
+tells `component box[T any]` from `component ui.vbox[platform]`. A target is
+a name or a qualified one and nothing else (`TargetIndex`), so after
+`[ ident` the next token decides: `.` or `]` is a target, a type is a type
+parameter's constraint (`NameBracket`). So `func f[T]` and `component box[T]`
+are overrides of an undefined target, and that error suggests `T any`
+(`resolveTargetIndex`); a list the parser can tell is no target -- several
+names, a default -- is a parse error naming `T any`
+(`typeParamWithoutConstraint` in `internal/parser/parse.go`). Both are
+`testdata/error_type_param_constraint_required_*.sngl`. A **receiver's** list
+restates names only, as Go's does -- `func list[T].map[U any]` -- and in
+`FuncName` it is the `.` after the bracket that says so (`FuncNameBracket`);
+the target index lives inside `FuncName` too, which keeps `lbracket` out of its
+FOLLOW set.
+
+**A call site may write type arguments**, in the same brackets:
+`empty[int]()`, `xs.map[string](f)`, `tagged[int](v=1)`, `Box[int]{v=1}`,
+`context[option[User]] #who(null)`. A bracket after a name is a postfix index
+to the parser (`IndexList`, so `ast.IndexExpr.Indices` is a list), and the
+checker says which it is (`internal/checker/typeargs.go`): on a name that
+reads as a declaration -- a func, a component, a struct named as a type, a
+method -- it holds type arguments, and on a value one index. A func that
+takes nothing and binds nothing reads as its result (`counts[0]` for
+`counts()`), which `namesItself` holds to. A bracket on a bare name on a line
+of its own is split onto the node by the builder too, since `marker[string]`
+and `xs[0]` are the same tokens, and the checker refuses the second as a value
+that is no statement (`error_expression_statement_index.sngl`). `instantiatedCall` checks the call
+without the bracket and leaves the written types for whichever path resolves
+the callee (`takeCallTypeArgs`), which seeds `inferTypeParams` with them: they
+bind a prefix of the callee's own parameters, inference the rest, a default
+what neither reaches. A component's go to `bindComponentTypeParams`, a node
+written with them is split by the builder (`ast.VisualNode.TypeArgs`), and a
+struct literal after the bracket is `ast.StructExpr.TypeArgs`. **The bracket
+holds a type or an expression** (`IndexElem`): a name-led type is parsed as the
+expression it is spelled as and read back by `ast.TypeFromExpr`; a func literal
+with no body is the `ast.FuncType` it spells, a struct declaration with no
+literal after it the `ast.StructDef`, wherever an expression goes, and the
+keyword-led types no expression begins with (`component …`, `...T`, `enum`,
+`unit`) are the bracket's own alternatives -- each an `ast.TypeExpr` standing
+where an `ast.Expr` does, which the formatter prints as a type and the checker
+refuses as a value. So a func literal's list admits a parameter that is a type
+and no name (`KeywordType`, a qualified or bracketed name), which a func type
+lists and the builder refuses everywhere else. A written argument settles the
+type of the argument it binds, which is then checked against it rather than
+inferred from: `count[func(int) bool]([])`. Nothing after the checker sees them: they reach the IR as the
+bindings inference produces, and are kept only so `ir.Convert` prints them
+back (`ir.Call.TypeArgs`, `NodeInst.WrittenTypeArgs`, `ir.Context.TypeArgs`; a
+generic struct literal always prints its arguments). A method whose receiver
+its parameters do not list -- a `sngl:` method's, one on a generic type --
+prints as it was written, `xs.map(f)`, which `ir.Call.ReceiverArg` says;
+printed `list.map(xs, f)` the receiver went to the first parameter, and no
+dump holding a `t.assert` checked again
+(`cmd/sngl/testdata/generic_call_roundtrip.txt`).
+`testdata/generic_call_site_args.sngl`, `error_generic_call_site_args.sngl`
+and `generic_call_site_args.txtar` are the three halves. `any` is `#[_builtin(any)] struct any {}` in sngl:builtin, read like a scalar (`ir.TypAny`, in
+`scalarUniverse`, since sngl:family's `one[T any]` is checked before
+sngl:builtin is in scope), and it is a constraint only: written where a
+value's type goes it is refused (`error_any_outside_constraint.sngl`).
+The constraint lands on `ir.TypeParam.Constraint` and
+`ir.TypeParamSym.Constraint`, and `ir.Convert` prints one for every parameter
+of a declaration's own list, and a method's receiver list as names alone
+(`receiverTypeParams`), without which `func Box.get()` named no type
+(`cmd/sngl/testdata/type_param_constraint_roundtrip.txt`).
+
+**A constraint is `any` or an anonymous struct** (`resolveConstraint`,
+`internal/checker/constraints.go`): `[T struct { name string }]` is any
+struct with at least a `name` that is a `string`, matched by name at equal
+types (`Type.Equal`), a named struct as readily as an anonymous one. A
+constraint's field takes no default, and a satisfying struct's own defaults
+play no part. **Every binding is held to it by one function**,
+`checkConstraint`: call inference (`inferTypeParams`, which written type
+arguments flow into), a struct's or a component type's own arguments
+(`applyStructTypeArgs`, `applyComponentTypeArgs` -- the latter is also a
+family's arguments in a member's return position), a component's props
+(`bindComponentTypeParams`), what the children bind (`bindFromChildren`, for
+what the props left), and a default against its own constraint
+(`resolveTypeParams`). A T bound to another type parameter is measured by that
+parameter's constraint. **A constraint's field may name a parameter of its
+list**, `[T any, U struct { value T }]`, or the one it constrains: such a
+constraint is never interned, its fields meaning that list's parameters and
+no other. It is measured against the bindings substituted in
+(`substituteConstraint`), and a parameter nothing else bound is bound from
+the field of the type bound to the one it constrains (`inferFromConstraints`,
+which `checkConstraints` runs first and `inferTypeParams` runs before the
+expected type binds); a default binds its list that way where it is declared,
+and a receiver's renamed list renames what the constraint names. In a generic
+body a select of a `T` reads the
+constraint's fields (`paramConstraint`) and a spread binds them
+(`spreadFieldsOf`); a receiver's restated names take their declaration's
+constraints (`inheritReceiverConstraints`), before the signature is resolved,
+since `func stack[M].current() _page[M]` hands M on. Nothing after the checker
+learns of a constraint: Go and Kotlin read the field off each copy
+`passMonomorphize` made, and JavaScript and the interpreter off the value. So
+i18n's `tr`, `trInline` and `format` take `[A struct {}]`, which is what
+refuses a map of arguments, and nav's page, link, `go`, `href` and `_follow`
+constrain their params and meta the same way
+(`testdata/type_param_constraint.sngl`, `error_type_param_constraint.sngl`,
+`type_param_constraint.txtar`).
+
 **A generic function is copied per instantiation** where the language does not
 claim `genericFuncs` (`passMonomorphize`), so Go and Kotlin see concrete types
 only: Go puts a function reading state on the Model, where no method may take
 a type parameter, and states no constraint for a body comparing two T's. Each
 copy is named for its type arguments (`at__string`), read off the call's
 arguments and its own type, so a parameter only the result names binds too
-(`testdata/generic_func_instances.txtar`).
+(`testdata/generic_func_instances.txtar`). **A generic struct is copied the
+same way** (`monomorphizeStructs`): `Box[int]` is a declaration `Box__int` with
+its fields at the bound types, a method's copy is reattached to the copy its
+receiver parameter was bound to, and every `*ir.Type` naming the instantiation
+is repointed by `ir.RewriteTypes`, a reflective walk that reaches whatever
+holds a type and leaves a frozen library declaration alone. Before it Go
+erased the field to `any`, so `box.value + 1` did not compile, and Kotlin
+declared it `Any = null` (`testdata/generic_struct_instances.txtar`).
 
 **A bodyless function's purity is its declaration's.** `analyzeEffects` and the fixpoint skip a func with no body (`hasDeclaredBody`): an empty block calls nothing, and read as a body it lifted an undeclared native from unknown to pure -- `error.raise` became foldable the moment library funcs joined the program's fixpoint. And **a write into a value the function built itself is no effect**: one field or element of a local initialized from a literal and never reassigned whole (`freshLocals`), which is how `color.lighten` fills its result. Deeper, or through a local that may share another value (a Go slice, a JavaScript object), stays a mutation.
 - **`internal/optimize/`** — constant folding, dead code elimination with platform/language awareness. The optimizer unrolls no loop, for any target: a language target emits the loop and its own compiler decides whether to unroll one whose bounds it can see — three copies of a Compose `RadioButton` were what the loop is. A target whose view is markup (html, which withholds `viewStatements`) has nowhere to run one, and a **`Fold`** (`optimize.NewFold`, handed to a platform as `codegen.Fold` on `Request.Fold`) unrolls its loops after lowering, one document at a time as the platform decides them -- html's `documentsOf`: each is a clone of the lowered window with the loops around it bound for its iteration and its constant view loops unrolled, so a site of a thousand pages holds one page's expanded tree at a time (the docs site peaked at 9 GB holding all of them). A loop in a handler or other script stays a JS loop. A const only such a view loop reads is a build value rather than the page's, and shake keeps it on `ir.Package.BuildConsts`, where the Fold evaluates it and no backend declares it. A static unroll is bounded (`maxStaticUnroll`) and reports rather than writing a page nobody asked for. A read of a root-package list or map const stays a reference to the declaration (`sharedAggregateConsts`) and folds through it where the value is needed; it is copied only where it becomes storage the program may write (`foldOwned`), so every backend must declare its package consts. html's static mode writes such a const once to `assets/consts/` when it emits more than one page. A body the optimizer splices into its caller (`inlineComponentCall`) answers its emits with the call site's handlers, as the lowering's inliners do (`lower.SubstituteEvents`): left standing, a handler the call site wrote never ran, and an event it did not handle became one of the caller's own -- `emit("change", k)` in a build rooted at a component declaring none (`cmd/sngl/testdata/optimizer_splice_events_runs.txt`).
-- **`internal/lower/`** — capability-driven IR→IR transformation passes, running between optimizer and codegen. Each pass is gated by a `lower.Features` flag. Languages declare their native capabilities via `Capabilities() lower.Features`; platforms combine that with their own restrictions. Passes include: PropBindings, RefLoop, NoTernary, NoLambda, NoReactivity, etc. Several run always and are not capability-gated because they answer for every target: `ValueCopy` (a store of a struct, list or map -- an assignment, an initializer, a push or insert, a literal's element -- copies what it stores, and a function that modifies such a named parameter binds its own copy at entry while one that only reads it copies nothing, written out by each language from the value's type, since Go shares a slice's storage and JavaScript and Kotlin every object; `ir/valuecopy.go`, `testdata/value_copy.txtar`, `cmd/sngl/testdata/value_copy_runs.txt`), `RefParams` (a method's ambient `this` and a `ref<T>` parameter are passed by reference, copy-in and copy-out: a function writing one hands back what it wrote, in a record beside its own result where it has one, and each call assigns it to the place it passed, so `q.add(1)` is `q = add(q, 1)` -- a pointer would not reach Compose, which recomposes on a reassignment to a value that differs; the interpreter runs it in `Prepare`; `testdata/ref_params.txtar`, `cmd/sngl/testdata/ref_params_runs.txt`), `Effect` (an effect's `@update` and list change events, which every target reports the same way, android's `DisposableEffect` keeping only `@mount`/`@unmount`), `HandleParams` (a program's write of a node's two-way prop lands where the host's report does: through the `#id`, `bound.checked = false` writes the var `:checked` bound, and a call handing the `#id` to a function that writes one through the parameter, `details.open()`, is inlined so its writes are such writes), `ImplicitState` (a two-way prop the call site left unbound, which is a cell of the instance), `DirectCalls` (a call through a name the inliner bound to a declared function -- a func-typed prop given `render=encode` -- becomes a call of that function, since every analysis following the call graph reads `Call.Func`, and an effect keyed on one was settled by no write), `RecordArgs` (an i18n call's struct of arguments, which every runtime takes as a string-keyed map; see *i18n*), `SpreadOnce` (a spread's computed operand, which every field read would otherwise evaluate again), `IndexedIter` (a two-variable loop over a pull sequence, which hands out no ordinal), `ReceiverParam` (the implicit `this` of a method on a generic built-in, which the checker keeps off the parameters for the inliner and which every call already passes first), `CallDefaults` (an omitted argument, whose default no emitted function declares), `ForElse` (an imperative for-else, which no host loop expresses), `ViewForElse` (the same construct in a view body, which no platform emitter rendered), `BoundaryFailed` (a boundary's fallback slot, which no platform emitter rendered either), `CSE` (a pure call a statement makes twice), `HoistBodyTypes` (a body-local type whose name another body claims — a component body is not a function scope on any host, so Go and Kotlin need it as much as JavaScript does), `UnprovidedContext` (a context nothing provides, whose constant default is folded into every read — lowered as state instead it is a field nothing writes, and a platform override reading `markup.palette` handed each token a runtime value where a literal was there to be had), `ErrorScope` (a raise resolved against the render tree once each component is spliced where it is rendered) `ErrorCatch` (the catch block a handler body resolved to a boundary becomes, so the raise ends the handler), `NavigationValues` (a `nav.page` read as a value is its record whichever target shows it; see *Navigation*) and `Navigation` (the structure half, which on a target holding `navigation` lowers only the stacks in a surface other than the document). A nineteenth runs always and late: `BoundaryPassthrough`, which splices a boundary with no fallback into what it holds once every pass that reaches a handler through it has run -- a boundary's meaning does not turn on its `@error`, but one with no fallback has nothing left to say once each raise is a catch block, and spliced earlier a handler survived only as a catch block's alias, which no walk follows. `StampUsage` runs after it, so a boundary that only forwarded a raise declares no `ErrorEvent`; `ReservedNames` runs after that, last of all, renaming what every pass above declared (see *A target reserves names*), and its node-ID half `ReservedNodeIDs` right after `NoInlineComponents`. After it a catch block is the only route to the boundary's handler, so an edit codegen makes in every handler walks one (html's `walkThroughCatch`): its slot retargets missed it, and a fallback a runtime instance's mount raised into rendered at the wrong parent. `CSE` is statement-local and imperative-only on purpose — the temp it binds has to be a statement the target can hold, and a view body on `--lang none` cannot hold one. Entry point: `lower.Lower(pkg, caps, opts)`.
+- **`internal/lower/`** — capability-driven IR→IR transformation passes, running between optimizer and codegen. Each pass is gated by a `lower.Features` flag. Languages declare their native capabilities via `Capabilities() lower.Features`; platforms combine that with their own restrictions. Passes include: PropBindings, RefLoop, NoTernary, NoLambda, NoReactivity, etc. Several run always and are not capability-gated because they answer for every target: `ValueCopy` (a store of a struct, list or map -- an assignment, an initializer, a push or insert, a literal's element -- copies what it stores, and a function that modifies such a named parameter binds its own copy at entry while one that only reads it copies nothing, written out by each language from the value's type, since Go shares a slice's storage and JavaScript and Kotlin every object; `ir/valuecopy.go`, `testdata/value_copy.txtar`, `cmd/sngl/testdata/value_copy_runs.txt`), `RefParams` (a method's ambient `this` and a `ref[T]` parameter are passed by reference, copy-in and copy-out: a function writing one hands back what it wrote, in a record beside its own result where it has one, and each call assigns it to the place it passed, so `q.add(1)` is `q = add(q, 1)` -- a pointer would not reach Compose, which recomposes on a reassignment to a value that differs; the interpreter runs it in `Prepare`; `testdata/ref_params.txtar`, `cmd/sngl/testdata/ref_params_runs.txt`), `Effect` (an effect's `@update` and list change events, which every target reports the same way, android's `DisposableEffect` keeping only `@mount`/`@unmount`), `HandleParams` (a program's write of a node's two-way prop lands where the host's report does: through the `#id`, `bound.checked = false` writes the var `:checked` bound, and a call handing the `#id` to a function that writes one through the parameter, `details.open()`, is inlined so its writes are such writes), `ImplicitState` (a two-way prop the call site left unbound, which is a cell of the instance), `DirectCalls` (a call through a name the inliner bound to a declared function -- a func-typed prop given `render=encode` -- becomes a call of that function, since every analysis following the call graph reads `Call.Func`, and an effect keyed on one was settled by no write), `RecordArgs` (an i18n call's struct of arguments, which every runtime takes as a string-keyed map; see *i18n*), `SpreadOnce` (a spread's computed operand, which every field read would otherwise evaluate again), `IndexedIter` (a two-variable loop over a pull sequence, which hands out no ordinal), `ReceiverParam` (the implicit `this` of a method on a generic built-in, which the checker keeps off the parameters for the inliner and which every call already passes first), `CallDefaults` (an omitted argument, whose default no emitted function declares), `ForElse` (an imperative for-else, which no host loop expresses), `ViewForElse` (the same construct in a view body, which no platform emitter rendered), `BoundaryFailed` (a boundary's fallback slot, which no platform emitter rendered either), `CSE` (a pure call a statement makes twice), `HoistBodyTypes` (a body-local type whose name another body claims — a component body is not a function scope on any host, so Go and Kotlin need it as much as JavaScript does), `UnprovidedContext` (a context nothing provides, whose constant default is folded into every read — lowered as state instead it is a field nothing writes, and a platform override reading `markup.palette` handed each token a runtime value where a literal was there to be had), `ErrorScope` (a raise resolved against the render tree once each component is spliced where it is rendered) `ErrorCatch` (the catch block a handler body resolved to a boundary becomes, so the raise ends the handler), `NavigationValues` (a `nav.page` read as a value is its record whichever target shows it; see *Navigation*) and `Navigation` (the structure half, which on a target holding `navigation` lowers only the stacks in a surface other than the document). A nineteenth runs always and late: `BoundaryPassthrough`, which splices a boundary with no fallback into what it holds once every pass that reaches a handler through it has run -- a boundary's meaning does not turn on its `@error`, but one with no fallback has nothing left to say once each raise is a catch block, and spliced earlier a handler survived only as a catch block's alias, which no walk follows. `StampUsage` runs after it, so a boundary that only forwarded a raise declares no `ErrorEvent`; `ReservedNames` runs after that, last of all, renaming what every pass above declared (see *A target reserves names*), and its node-ID half `ReservedNodeIDs` right after `NoInlineComponents`. After it a catch block is the only route to the boundary's handler, so an edit codegen makes in every handler walks one (html's `walkThroughCatch`): its slot retargets missed it, and a fallback a runtime instance's mount raised into rendered at the wrong parent. `CSE` is statement-local and imperative-only on purpose — the temp it binds has to be a statement the target can hold, and a view body on `--lang none` cannot hold one. Entry point: `lower.Lower(pkg, caps, opts)`.
 - **`internal/lsp/`** + **`internal/lspcore/`** — Language Server Protocol implementation (hover, completion, diagnostics)
 
 ### Stdlib
@@ -736,7 +847,7 @@ The tiers, and the split between them is the whole point of the system:
 - **`lib/ui/draw/` → `sngl:ui/draw`** — `canvas`, the `shape` tree it hosts, and the 2D shapes that are members of it. It is the first *specialised surface* under `sngl:ui/`: a program pays for a drawing canvas only by importing it.
 - **`lib/ui/markup/` → `sngl:ui/markup`** — inline rich text: the `span` family, the `richText` node that shows one flow of it, and the bodied block components a document is written in. The second specialised surface; see **Markup and the `md:` scheme** below.
 - **`lib/ui/nav/` → `sngl:ui/nav`** — navigation: `stack` (pages one on top of another, `current`/`go`/`back` as `#[intrinsic]` methods each target answers), `page` and the unexported family `_page` it is the one member of, and `link`. See **Navigation** below.
-- **`lib/family/` → `sngl:family`** — the family *vocabulary* and no families: the `crosses` mark a placement writes to stand outside the family its position accepts, the `eventless` mark a family writes, and `one<T>` for a slot that takes exactly one. A family lives where its members do, which is why the widget family is `sngl:ui`'s `node` and not a `family.default` here. It was `sngl:tree`, whose `none` mark is gone: a component that takes the family it is placed in returns a type parameter (see *A wrapper whose family is whatever it was handed*).
+- **`lib/family/` → `sngl:family`** — the family *vocabulary* and no families: the `crosses` mark a placement writes to stand outside the family its position accepts, the `eventless` mark a family writes, and `one[T]` for a slot that takes exactly one. A family lives where its members do, which is why the widget family is `sngl:ui`'s `node` and not a `family.default` here. It was `sngl:tree`, whose `none` mark is gone: a component that takes the family it is placed in returns a type parameter (see *A wrapper whose family is whatever it was handed*).
 - **`lib/build/` → `sngl:build`** — families, and the build-target tree: `family`, the family of families every family is a member of, and `language` and `platform`, the two families an `output` directive's contents are members of. It is a package of its own rather than part of `sngl:ui` because `sngl:builtin` declares `output` and so has to import whatever holds its slot's type; `sngl:ui` is what `sngl:builtin` would then be importing, and it loads before `sngl:builtin` is adopted into the ambient scope, so the load fails on `unknown type "color"`. The two target families double as the target identities: a target's node read as a value is a value of its family, and `PLATFORM` and `LANGUAGE` are declared `build.platform` and `build.language`. An application names it to declare a family (`component block build.family`); otherwise a program writes `output`, and a target package names `build.language` or `build.platform` in its own node's return position.
 - **`lib/time/` → `sngl:time`** — dates and the clock: `date`, `time`, `datetime`, the `duration` between two of them, a date's `year()`, `month()` and `day()` and `parseDate(s)` for text a program did not write (written in SNGL over `string(d)`, which every target spells as the literal), and the `timer` that fires every duration -- an ordinary component, not a builtin node, which is why it carries no `#[builtin]` mark. What it lowers to is each target's answer: html, fyne and gtk4 override it with an `effect` over a start/stop pair of host natives, since such a pair already is a lifetime with a thing to release; bubbletea, android and none still override it with an `#[intrinsic]` node, which stays where it was written -- `codegen.CollectTimers` reads the schedule off it and the platform's view emitter draws nothing for it, so the branch and the component boundary around it are answered by the tree rather than by a gate a pass folded. **An effect hands over a closure, and a closure is only a schedule where the host may run it against live state** — which is what the first two cannot offer, bubbletea because Elm lets nothing outside `Update` touch the model, android because `LaunchedEffect` already is the bracket. `none` is not that case: the interpreter honours `effect` itself, so an override would bracket correctly and schedule nothing, since it owns the clock and finds the node in the rendered tree. None of it is ambient — a program that never asks what time it is never names any of it — which is why all four types moved out of `sngl:builtin`. Loaded at startup even when nothing imports it, because its declarations carry kinds the compiler dispatches on.
 
@@ -780,7 +891,7 @@ The tiers, and the split between them is the whole point of the system:
   the reason the checker already refuses *ordering* and *casting* a multi-base
   value: a magnitude per base has no one ratio to report.
 - **`lib/math/` → `sngl:math`** — mathematical constants and functions: `pi` and `tau`, `sqrt`, `pow` and the trigonometry. A package rather than methods on `float`, because a constant has no receiver and nothing to fold — a zero-parameter static method survived only where the optimizer ran. The functions moved here from `float`: each takes a float without being about one, so a call reads `math.sin(x)`, and their intrinsic ids are `math.<name>`.
-- **`lib/seq/` → `sngl:seq`** — integer sequences: `count`, `range` and `step`, the `iter<int>` a counting loop iterates. Nothing else can produce one, since building a range in SNGL would need a loop and a loop needs a range; a sequence in a loop head lowers to the host's counting loop (`ir.IterCounted`), and anywhere else it is the pull sequence `iter<T>` is spelled as -- `func(func(T) bool)` in Go, a generator in JS, `Iterable<T>` in Kotlin -- so no list is built to iterate one. A list reaching an iter<T> position is wrapped by the conversion the checker already inserts there (`wrapIfNeeded`); a two-variable loop over one gets its ordinal from a counter (`passIndexedIter`), since a pull sequence hands out no index.
+- **`lib/seq/` → `sngl:seq`** — integer sequences: `count`, `range` and `step`, the `iter[int]` a counting loop iterates. Nothing else can produce one, since building a range in SNGL would need a loop and a loop needs a range; a sequence in a loop head lowers to the host's counting loop (`ir.IterCounted`), and anywhere else it is the pull sequence `iter[T]` is spelled as -- `func(func(T) bool)` in Go, a generator in JS, `Iterable<T>` in Kotlin -- so no list is built to iterate one. A list reaching an iter[T] position is wrapped by the conversion the checker already inserts there (`wrapIfNeeded`); a two-variable loop over one gets its ordinal from a counter (`passIndexedIter`), since a pull sequence hands out no index.
 - **`lib/async/` → `sngl:async`** — `start` and `do`: handing a closure somewhere else to run. They are each other's halves — `start` begins work that must not block the caller, `do` brings the answer back to the thread the target draws on — and **each is answered by a different half of the build**, which is why they are two declarations. Starting work is the host *language*'s (`go func(){}()`); reaching the drawing thread is the *platform*'s, because there is no such thread in general. `passAsyncOffload` has always written both for a blocking call on a language that cannot suspend; they are *declared* because a platform package needs to name one — a platform whose own `.sngl` describes a schedule (a timer handing its tick to a host scheduler) has to be back on the drawing thread before it touches a widget, and with no declaration has nothing to write but that platform's own spelling of `fyne.Do`, in its own package. A generator reaching its own thread from hand-written Go needs no name; a platform *package* does. That is the line against `ir.NodeOps`, which stay undeclared precisely because nothing can name them. A target that answers neither is refused at the call by `passAsyncCapable` rather than emitting code that does not compile: `async.do` on bubbletea used to come out as `m.post(...)`, a method on the model that does not exist.
 - **`lib/dialog/` → `sngl:dialog`** — `Alert` and `File`: host-native modal surfaces. Not components — a component is placed in a tree and rendered, whereas `Alert.confirm` hands control to the host and returns what the user chose.
 - **`lib/test/` → `sngl:test`** — `Test`, the receiver a test function's first parameter carries.
@@ -1038,7 +1149,7 @@ a const with no value, and what `finishFamilyMarks` asks of
 where it is met. Two things registration cannot wait for, and both are read
 off the source rather than by running a mark. A struct's or family's
 `#[builtin]` **kind** (`writtenBuiltinKind`, stamped by `stampBuiltinKind`):
-`list<T>` in sngl:builtin's own signatures resolves to the kind's
+`list[T]` in sngl:builtin's own signatures resolves to the kind's
 constructor, and a family's members, registered after it (`familiesFirst`),
 are measured against the family of families (`bindFamily`). The mark then binds
 the role and refuses a kind the stamp did not read. And **publishing**
@@ -1050,7 +1161,7 @@ notes a wildcard symbol when it binds it, so a component's wildcard is noted
 again once its mark has set the pattern (`Scope.NoteWildcard`).
 
 **A scalar's name is read off that source, not a table.** `bool`, `int`,
-`string`, `dyn`, the sized numerics and the rest are each a `#[_builtin(kind)]`
+`string`, the sized numerics and the rest are each a `#[_builtin(kind)]`
 struct, and `scalarUniverse` (`internal/checker/universe.go`) reads them off
 sngl:builtin's parsed documents into the base scope `checker.NewSymbolTable`
 builds, as the singleton `ir.ScalarType(kind)` stands for. That is what the
@@ -1139,7 +1250,7 @@ values. `testdata/family_props.sngl`, `family_generic.sngl`,
 (`component choice(label string) choice`, `ir.Component.Data`): its own
 family and the only member of it. Written in a slot of its type it is a record
 of its props, never rendered, and the slot is never inserted: in the
-container's body its name is the list of those records, `options list<choice>` for `options ...component choice`. It is how a widget that takes
+container's body its name is the list of those records, `options list[choice]` for `options ...component choice`. It is how a widget that takes
 its choices as a list is written with them as children --
 `ui.select { ui.choice(label="Apple") … }`, `ui.radio` likewise, a
 `ui.table`'s `ui.tableRow`s, a `ui.tree`'s `ui.treeItem`s and a `ui.tabs`'s
@@ -1169,7 +1280,7 @@ which may declare some of them under its own meaning and omit the rest. That
 is how a record stays private while a program writes it: `sngl:ui/draw`'s
 `path` takes `steps ...component _step`, and `moveTo`, `lineTo`, `bezierTo`,
 `arcTo` and `close` each compose one `_step` with only its own fields set, so
-an override reads `steps` as `list<_step__record>` and switches on `op`
+an override reads `steps` as `list[_step__record]` and switches on `op`
 (`testdata/draw_path_steps.sngl`, `draw_path_steps.txtar`).
 
 **A data component may declare content**: one rest slot of anything but
@@ -1250,8 +1361,7 @@ reimplemented on it.
 
 Two general fixes it needed. A lambda handed to a generic method takes an
 unannotated parameter's type from what the call has bound
-(`inferArgExpr`): `ps.map(func(p) => p.name)` was `list<dyn>`
-(`testdata/lambda_param_from_receiver.sngl`). And `passNoListLambdas` no longer
+(`inferArgExpr`, `testdata/lambda_param_from_receiver.sngl`). And `passNoListLambdas` no longer
 hoists a `map` or `filter` out of a node's prop: the Go emitter writes the call
 as an expression of its own, and hoisted, fyne and gtk4 made the accumulator a
 render slot appending to a list it could not see
@@ -1316,7 +1426,7 @@ children in code mode -- each refused with a position.
 handling `@generate(out, members)` on the family's `gen.emit`. The walk is
 template mode's, so every value is a build-time one, and what the handler is
 handed is each member's `gen.node(value=…)` with its props bound and what it
-holds, as `list<gen.Member<T>>`; the annotation on the handler's parameter is
+holds, as `list[gen.Member[T]]`; the annotation on the handler's parameter is
 what binds `T`, by the general rule that a handler's written type binds a type
 parameter its event names (`bindFromHandlers`). It runs in the interpreter
 under the build host (`internal/plugin`'s `Runner.Emit`) as the package the
@@ -1464,13 +1574,13 @@ package's declarations are a published contract, which a body should not be
 quietly restating.
 
 **A type parameter in the return position takes the family a component is
-placed in** -- `component effect<T, F>(…) F` -- which is what a component that
+placed in** -- `component effect[T any, F any](…) F` -- which is what a component that
 renders nothing wants: `effect`, `timer`, `context`, `gen.emit`, `gen.node`,
 and each platform's `Timer` primitive. Nothing binds `F` at a call site with
 no children, so such a node has a nil `Family` and `ir.IsFamilyGenericNode` is
 the question a pass asks of it. `#[tree.none]` said this until the generic form
 could, and the generic form could only once its body was held to `F`: before,
-`component sneak<F>(…) F { ui.text(…) }` placed in a canvas checked clean.
+`component sneak[F any](…) F { ui.text(…) }` placed in a canvas checked clean.
 
 **A canvas keeps them and draws the rest.** `passShapeDraw` replaces a
 canvas's shape children with the statements that paint them, in place, and
@@ -1495,7 +1605,7 @@ Two rules follow from the type parameter, and they are each other's halves:
   everything `familyTransparent` lists, so a widget wrapped in a boundary or a
   context override is still a widget this component renders -- and it counts
   a slot insertion, which puts what the slot takes where it stands. Passed
-  over, `component sneak<F>(content ...component ui.node) F { content }`
+  over, `component sneak[F any](content ...component ui.node) F { content }`
   carried a button into a canvas, where html painted nothing for it
   (`error_tree_treeless_slot.sngl`).
 
@@ -1515,7 +1625,7 @@ as a `VisualNode` does. `testdata/tree_crosses.sngl` and
 `error_tree_crosses_target.sngl`.
 
 **A wrapper whose family is whatever it was handed says so with a type
-parameter** — `component boundary<T>(@error error, content ...component T, failed component T) T`. Nothing at a call site names a type argument and nothing
+parameter** — `component boundary[T any](@error error, content ...component T, failed component T) T`. Nothing at a call site names a type argument and nothing
 needs to: a slot's content *is* an argument, so the children bind `T` — the
 first one that belongs to a family says which, and the rest are held to it
 (`slotWant`, `childrenFamily`). An empty body binds nothing and leaves `T`
@@ -1893,11 +2003,11 @@ the parameter list beside the props and events, so a component's whole API is
 one list. `slot` is not a keyword. The type carries the whole of a slot's
 contract: `component(Row)`'s parenthesised list is what the slot is *invoked*
 with at its insertion point, and the trailing type is the tree it *accepts*,
-wrapped in whatever bounds the count — bare is any number, `family.one<T>`
-exactly one, `option<T>` none or one. Bare `family.one` is a count and no
+wrapped in whatever bounds the count — bare is any number, `family.one[T]`
+exactly one, `option[T]` none or one. Bare `family.one` is a count and no
 family: "exactly one of whatever this slot already accepts", which is the
 tree the component declaring it belongs to. It used to say that through a
-defaulted type parameter, `one<T = default>`, and there is no default family
+defaulted type parameter, `one[T = default]`, and there is no default family
 to point one at any more.
 
 The parenthesised list reuses `FuncTypeParamList`, so a parameter there may be
@@ -1933,7 +2043,7 @@ naming one already given is "already provided". Two consequences:
 
 **A function's last parameter may be `...T`**, and it collects the positional
 arguments past the others: `func sum(first int, rest ...int)` reads `rest` as a
-`list<int>` (`ir.Param.Variadic`, whose `Type` is the list). The checker packs
+`list[int]` (`ir.Param.Variadic`, whose `Type` is the list). The checker packs
 them into a list literal at each call (`bindArgs`), so nothing after it sees
 anything but a list argument and no backend grew a case. A spread there is the
 other meaning `...` has in an argument list, told apart by the operand's type:
@@ -2046,7 +2156,7 @@ are a duplicate (`error_window_id_takes_a_declared_name.sngl`,
 things — `...` says *which* children arrive here (the unnamed ones), the
 wrapper says *how many* — so they are orthogonal rather than two spellings of
 one bound. `tooltip`'s trigger is of that shape, and `scroll` and fyne's
-`Wrapper` are its `option<…>` half: `Wrapper`'s codegen assigns the single
+`Wrapper` are its `option[…]` half: `Wrapper`'s codegen assigns the single
 child to a field, so the combination is load-bearing rather than tolerated.
 #193 briefly specified it as an error on the grounds that both were count
 bounds; that would have left the contract unspellable and is retracted there.
@@ -2058,7 +2168,7 @@ boundary its content or its fallback, an insertion of another slot that slot's
 count. So `one { for … }` is refused and `one { if c { a } else { b } }` is not;
 counting statements, the first passed and a wrapper assigning its one child to
 a field was handed several. A bare `if` is none or one, which is why `scroll`
-takes `option<node>`: the two goldens putting a reactive `if` in a scroll are
+takes `option[node]`: the two goldens putting a reactive `if` in a scroll are
 what the backends render into a box. The count says nothing about how many
 times a body inserts the slot, which is not bounded
 (`testdata/error_children_count_rendered.sngl`).
@@ -2081,11 +2191,55 @@ entry would be filled by exactly the block that is already the fallback.
 
 **A fallback renders wherever the supplied content renders nothing**
 (Jonathan's call), not only where none was supplied: the branch of an `if`
-that holds none, and a forward of a slot its own caller left empty -- an
-avatar forwarding its `src` to its image, which an image's placeholder needs.
-The splicer states it statically (`ir.WithFallback`: an empty list, an `if`'s
-branches, a forward's own fallback) and the interpreter at mount
-(`slotInst`, which mounts the fallback when the content mounted no node).
+that holds none, a forward of a slot its own caller left empty, two `if`s
+both false, a loop over nothing, content holding only an effect. It is the
+answer `.empty` gives (below), so the two never disagree: the splicer puts
+the fallback where the answer is decided -- in place of no content, in an
+`if`'s empty branch, as a forward's own fallback -- and anywhere else after
+the content under an `if` on `ir.RendersNothing`
+(`SlotSplicer.withFallback`). The interpreter decides at mount (`slotInst`,
+which mounts the fallback when the content mounted no node). An effect or a
+timer -- a node of no family handed nothing -- renders nothing in both
+(`testdata/slot_empty_agrees_with_fallback.sngl`).
+
+**A fallback is held to the family of the slot it falls back for**, not to the
+position's (`checkFamilyMembership`'s `SlotInst` arm): it stands where the
+content would have, so one insertion renders one family whichever of the two
+it shows, and `#[family.crosses]` lifts the position's check and never this
+one (`error_slot_fallback_family.sngl`).
+
+**`name.empty` asks whether what the call site supplied for a slot renders
+nothing** (`ir.SlotEmpty`, `internal/checker/slotempty.go`), so a body puts
+something of its own in the content's place rather than inside it -- an
+avatar's initials, which are no image source. It is answered where the body
+is spliced, from the content (`ir.RendersNothing`, written in by
+`SlotSplicer.Substitute`, and in the initializer of a var the splice hoists),
+matched to its slot by declaration rather than name, since a caller's own
+`.empty` may arrive in a prop argument: none at all is true, a node false, an `if` its
+condition, a counted or measurable `for` its emptiness test (or, where its body
+renders nothing, the else's answer when it runs no copy), and a forward
+the forwarded slot's own `.empty`, answered at the next splice. A forward
+of a component entry is answered by what the insertion whose population
+forwarded it populated the entry with (`answerEntryEmpty`, where the
+population is spliced), and a slot that content forwards by the call site
+of the component that wrote it. So it is as reactive as the content -- under
+`if shown` it is `!shown`. A component built at run time is handed it as a
+prop (`passSlotEmptyProps`, keyed by declaration); a forwarded entry whose
+populating component is built at run time has no splice to answer it and is
+refused with a position. The interpreter asks the content it mounted
+(`Env.slotEmpty`), finding the slot's owner by declaration and an entry
+through the entry frames current where the asking instance mounted. A test
+reading a prop that asks (`c.card.label.value`) is answered the same way
+from the call site it reaches the instance through (`answerTestEmpty`).
+It is asked only in the view, where there is content to ask about. A scoped
+slot is refused, since what its content renders may turn on the arguments an
+insertion hands it, and so is content whose answer turns on what one copy of
+a loop renders (`checkSlotEmptyAnswers`, at the call site). That holds
+however the question reaches the content: from the declaration's body or
+any override's, through a recursion (`slotsAskedEmpty`, a fixed point over
+what a component reaches), and through an entry a population forwards
+(`slot_empty.sngl`, `slot_empty_entry.sngl`, `error_slot_empty.sngl`,
+`error_slot_empty_reach.sngl`, `cmd/sngl/testdata/slot_empty_runs.txt`).
 The fallback is spliced against the callee's call site, which it always
 should have been: a slot insertion inside a fallback used to be left
 unsubstituted. `testdata/slot_fallback_where_content_renders_nothing.sngl`.
@@ -2254,7 +2408,7 @@ declaration itself. Two things about the name that are easy to get wrong:
   requires: `drawCircle(color, radius, center, alpha, style, …)` cannot be
   reached past `alpha` positionally.
 - **A native mark names a *type* as readily as a function**, which is what
-  makes a host handle spellable: `#[go.native("time", "*time.Ticker")] struct Schedule { C go.chan<time.datetime> }` with `#[go.native("time", "time.Ticker.Stop", method)] func Schedule.stop()` beside it -- and a *field* of one is how a host API hands a channel back. gtk4 has done the same for C all along —
+  makes a host handle spellable: `#[go.native("time", "*time.Ticker")] struct Schedule { C go.chan[time.datetime] }` with `#[go.native("time", "time.Ticker.Stop", method)] func Schedule.stop()` beside it -- and a *field* of one is how a host API hands a channel back. gtk4 has done the same for C all along —
   `#[cnative("*C.cairo_t")] struct CairoContext {}` — so the form predates the
   need for it by a platform.
 
@@ -2273,8 +2427,8 @@ declaration itself. Two things about the name that are easy to get wrong:
   gap itself, and it is closed rather than stepped around: fyne's timer is a
   `*time.Ticker` consumed on a goroutine, and `fyne.sngl` holds all of it.
 
-  **`go.chan<T>` is an intrinsic struct declared by `sngl:language/go`**
-  (`#[marks.intrinsic("go:chan")] struct chan<T> {}`, `StructDef.Intrinsic`),
+  **`go.chan[T]` is an intrinsic struct declared by `sngl:language/go`**
+  (`#[marks.intrinsic("go:chan")] struct chan[T any] {}`, `StructDef.Intrinsic`),
   not a type kind: to the checker it is an ordinary generic struct, and only
   the Go emitter, which answers the id, gives it a host spelling. It is
   declared there rather than in `lib/` because only a language with channels
@@ -2292,7 +2446,7 @@ declaration itself. Two things about the name that are easy to get wrong:
   is only selected on, while binding one to a var would emit the bidirectional
   `chan T` and not compile against it.
 
-  **`go.select` takes a `list<Case>`**, written before SNGL had variadic
+  **`go.select` takes a `list[Case]`**, written before SNGL had variadic
   parameters, and each arm is `go.recv(ch, func(v T) { … })`. It is
   the one thing here that cannot be an `IntrinsicEmitter`: that renders a single
   *expression*, and a select's arms are statement lists. So it is answered from
@@ -2302,8 +2456,9 @@ declaration itself. Two things about the name that are easy to get wrong:
   bound only where the body reads it, Go rejecting an unused one.
 
   `go.makechan` takes a witness value rather than a type argument --
-  `makeChan(false)` is a `chan<bool>` -- because a call site has no syntax for
-  the latter and a zero-argument generic leaves the element type unrecoverable.
+  `makeChan(false)` is a `chan[bool]` -- because it was declared before a call
+  site could write one, and the emitter reads the element type off the
+  argument.
   `make` and `close` are Go *builtins*, carrying no import path, so a
   `#[go.native]` cannot name them at all and both are intrinsics for that
   reason.
@@ -2344,7 +2499,7 @@ declaration itself. Two things about the name that are easy to get wrong:
   forever -- which is the idiom here rather than the hazard, since closing
   `done` is how the goroutine is told to stop and its arm is taken on the very
   next pass. A *nil* channel is never ready, so its arm is never chosen, and nil
-  is exactly what `chan<T>`'s zero value is.
+  is exactly what `chan[T]`'s zero value is.
 
   What such a type may *not* do is be constructed: a program holds one and
   calls methods on it. So the only literal of one that reaches a backend is the
@@ -2381,7 +2536,7 @@ matched. Each target reads its host its own way, in its own `.sngl`:
   on an element is handed the DOM event and reads `e.currentTarget.value`.
 - **fyne**'s primitives declare an event vocabulary by type, as their props
   are -- `@change(text string)`, `@toggle(flag bool)`, `@adjust(number int)`,
-  `@pick(date option<time.date>)` -- and a `Handler` names the Go callback
+  `@pick(date option[time.date])` -- and a `Handler` names the Go callback
   whose `signature` spells the same parameters in Go. The promoted handler
   takes the SNGL handler's own parameters (`namedAsHandler`), the declaration
   and not a copy, so its body reads them by symbol; a Go lambda scopes its
@@ -2399,7 +2554,7 @@ matched. Each target reads its host its own way, in its own `.sngl`:
 - **android**'s Compose callbacks pass the value: `func(on) { checked = on; change(on) }`; one passing nothing (radio's `onClick`) names the loop's
   option.
 - **bubbletea**'s key press flips the state itself: `checked = !checked; change(checked)`.
-- **none** renders a `Control<T>` primitive (`none:Control`) the trigger
+- **none** renders a `Control[T]` primitive (`none:Control`) the trigger
   reaches, whose handler writes the prop; the snapshot prints the `sngl:ui`
   component in its place.
 
@@ -2592,7 +2747,7 @@ and the two answers differ in kind because the collisions do.
   gets `type Local struct` beside `func Local()`. Which body a declaration
   belongs to is `BodyOwner` on the three decls, stamped by `registerBodyDecl`.
   Every reference rides on the declaration pointer — a literal's `Def`, an
-  annotation's `Decl`, a field type, the element of a `list<Local>`, the host
+  annotation's `Decl`, a field type, the element of a `list[Local]`, the host
   spelling each backend derives from `Name` — so setting `Name` reaches all of
   them, a method's `ir.Func.Receiver` included: it is the type of the
   declaration whose member table holds the method, so Go's
@@ -2688,9 +2843,8 @@ being folded away before it is asked.
 **A program's override of a declaration the program wrote is checked after that
 declaration's body** (`lateOverrides`, drained by `checkBodyOnce`): an
 unannotated `var count = 0` has no type until the body declaring it is read, and
-checked first, from `checkPendingExtensions`, a nested body reading `count` saw
-`dyn` and the interpolation `"{count}"` lost its conversion -- `"L " + m.count`
-on bubbletea (`component_override_body_capture.txtar`). A library's base is
+checked first, from `checkPendingExtensions`, a nested body reading `count`
+would see none (`component_override_body_capture.txtar`). A library's base is
 checked when its package loads, so its overrides stay where they were.
 
 A `func` written there is the third slot of the same shape. It is registered
@@ -2742,8 +2896,8 @@ checker's attaching and lookup, which still go by the bare name
 
 `declareEnclosingBody` is the scope half, and `checkBodyOnce` orders an owner's
 body check ahead of the bodies it declared — pass1 registers a nested
-declaration first, so read in package order an unannotated `var count = 0` was
-still `Dyn` where the nested body named it. The lowering half is
+declaration first, so read in package order an unannotated `var count = 0`
+would have no type yet where the nested body names it. The lowering half is
 `spliceNestedCaptures` (`internal/lower/nested_capture.go`): a capturing nested
 body is substituted into the body that declared it *before* that body is
 inlined anywhere, because `expandCall` renames the body it splices and not the
@@ -3287,24 +3441,26 @@ Notable stdlib packages:
 
   **A translation's arguments are a struct**, a field per placeholder:
   `i18n.format(t, {name=n})`. `tr`, `trInline` and `format`
-  take them as a type parameter, which an anonymous struct literal binds, and
-  the checker refuses anything but a struct (`checkI18nCall`); `$"..."` builds
-  the same literal. Every runtime still takes a string-keyed map, so
-  `lower.RecordArgs` -- at the start of `optimize.Optimize`, before the shake
-  can see the record's struct -- rewrites the argument of each intrinsic
-  `ir.RecordArg` names into one: a literal's fields as the entries, any other
-  operand read a field at a time with a spread site, so passSpreadOnce
-  evaluates a computed one once. It is also the always-on `RecordArgs` pass,
-  for a pipeline that lowers checked IR without optimizing it, where it finds
-  only maps once the optimizer has run. The interpreter reads a struct as the
-  map.
+  take them as a type parameter constrained to a struct, `[A struct {}]`,
+  which an anonymous struct literal binds and which refuses anything else;
+  `$"..."` builds
+  the same literal. Every runtime takes a string-keyed map, which only the
+  emitted code holds: the IR keeps the record, and each language spells its
+  runtime's map from the literal's fields (`codegen.RegisterRecordSpeller`,
+  reached through `codegen.EmitIntrinsicCall`). `lower.RecordArgs` -- at the
+  start of `optimize.Optimize`, and as the always-on `RecordArgs` pass --
+  makes the argument of each intrinsic `ir.RecordArg` names a literal: any
+  operand that is not one is read a field at a time with a spread site, so
+  passSpreadOnce evaluates a computed one once. Such a literal names no
+  declaration for the shake (`walkNames`), since nothing declares a struct
+  for it. The interpreter reads a struct as the map.
   **A template is written in backticks**, or with its braces escaped: a
   double-quoted string is interpolated where it is written, so `{name}` was
   gone before i18n read it and the arguments were read by nothing. An
   interpolated `tr` key or `format` template is a positioned error for that
   reason (`error_i18n_args.sngl`, `i18n_struct_args.txtar`,
   `cmd/sngl/testdata/i18n_struct_args_runs.txt`). `select` keeps a
-  `map<string, string>` -- its keys are data matched at run time -- and
+  `map[string, string]` -- its keys are data matched at run time -- and
   `PluralKey` stays a declared type, so the predeclared keys and
   `i18n.exactly` are the only ways to write one. html publishes its i18n
   runtime on `window` in test mode, as it does the page's functions: a test
@@ -3433,7 +3589,7 @@ writing none, and the other targets have nothing a link could land on.
   is the directory's own material and no page -- a template, a tutorial's
   source -- as Go skips one; the docs site's tutorial is `learn/_tour.md`.
 
-  The package declares **`Page`** (`href`, `frontmatter`, `children list<Page>`),
+  The package declares **`Page`** (`href`, `frontmatter`, `children list[Page]`),
   **`root`**, a const holding the whole tree, and **`site(layout component(page Page, content component ui.node) ui.node)`**, which renders
   one `nav.page` per file -- at the file's href, titled by the frontmatter's
   `title` where `Frontmatter` has one -- with `layout` inserted around it,
@@ -3536,8 +3692,8 @@ would need. Its members are `ui.file(path)` -- a `file:` asset the build
 copies, which a Go target embeds (`golang.EmitAssetEmbed`, `assets.go`) and
 android ships in the app's assets -- `ui.remote(url)`, fetched while the
 program runs, and `draw.image(width, height) { shapes }`. Every container
-takes a source through a slot: `ui.image`'s `src` (`option`, with a
-`placeholder` slot shown where it holds none), `avatar`'s, `markup.image`'s,
+takes a source through a slot: `ui.image`'s `src` (`option`; an image with
+none shows nothing, as html's `<picture>` does), `avatar`'s, `markup.image`'s,
 `draw.canvasImage`'s, and a window's `favicon`. There is no `src=` string:
 one spelling (Jonathan's call). `draw.image` and `ui.image` collide under a
 double dot import, and dot imports are an anti-pattern, so that is the cost
@@ -3560,7 +3716,7 @@ does with it is each target's:
   of `src` with its `href`.
 - fyne: `fynelayout.Image`, a widget whose `Box` holds the source -- an
   `ImageSource` showing the picture itself and reporting `@load`/`@error` to
-  the image it lands in -- or the placeholder. A drawn source is rasterised
+  the image it lands in. A drawn source is rasterised
   and handed over (`SetImage`). A window takes a source as its icon
   (`Toplevel.Add`). The specs are written in Go as `Toplevel`'s are
   (`codegen/platform/fyne/image.go`), with `slotBox` naming the box a slot
@@ -3577,7 +3733,15 @@ does with it is each target's:
   (`snglimage.OnArrive`).
 - android: a file is `SnglAssetImage`, shipped Kotlin reading the app's
   assets; a drawing is a `Canvas`; a URL draws nothing, no loader shipping.
-- none: the image holds its source or placeholder, which a snapshot prints.
+- none: the image holds its source, which a snapshot prints.
+
+**An avatar is a wrapper on `ui.image` that does the fallback**: its
+`fallback` slot -- the initials in a styled box unless the call site writes
+its own -- stands in where `src.empty` or the image reported `@error`. A
+failed load is remembered until the avatar renders again, since the image
+that would say a later source loaded is no longer on screen. html, bubbletea,
+android and none do not yet report an image's `@error`, so there only an empty
+source shows the fallback.
 
 `canvasImage` paints its source through a shape primitive whose rest slot is
 the source family (`ir.IsImageSourceHost`): `passShapeDraw` runs its `@url`
@@ -3723,21 +3887,21 @@ link shows `text`, as `ui.link` does, and takes no content: no Go target's
 button renders any.
 
 **The stack's page and a page's params are state of the navigation, never
-props.** `current` is a computed of the stack (`#[intrinsic("nav.current")] func stack<M>.current()`), read with its parentheses elided as any zero-arg
+props.** `current` is a computed of the stack (`#[intrinsic("nav.current")] func stack[M].current()`), read with its parentheses elided as any zero-arg
 method selected through a handle is, so nothing sets or binds it. A page's
 `params` is a one-way prop: where the page starts, and what a `go` or a
-`link` naming no params shows it with (`params option<T> = null`). The params
+`link` naming no params shows it with (`params option[T] = null`). The params
 it is showing reach its content's population, `component content(p)`, and
 nothing else; `pkg.params` reads what the call site wrote. They travel with
 the history entry, so `back` restores them.
 
-**The family is `_page<M>`, unexported, and `page` is its only member.** It
+**The family is `_page[M]`, unexported, and `page` is its only member.** It
 exists so `pages.current` has a type: `pages.current.title`,
 `pages.current.meta.label` and `pages.current == about` read it, and a program
 names a page and never the family -- so a func cannot take one as a
 parameter, and `pages.go(pages.current)` is refused, since `go` takes a
-`page<T, M>`. `meta M` is what a program says about every page of a stack
-beside its href and title, one type for all of them; `stack<M>` binds M from
+`page[T, M]`. `meta M` is what a program says about every page of a stack
+beside its href and title, one type for all of them; `stack[M]` binds M from
 the pages written in it (`bindFromChildren`, every page held to the first),
 which is what will let a menu iterate the pages.
 
@@ -3758,7 +3922,7 @@ renders is decided per node: html overrides it with `ui.link(href=nav.href(to, p
   `Page` primitives, renders the link's own body, and `internal/interp/nav.go`
   answers them and `nav._follow`, keeping the
   page showing on the stack's instance and the params a page is showing on
-  the page's. The primitives cannot name `_page`: `Stack<F>` binds the family
+  the page's. The primitives cannot name `_page`: `Stack[F]` binds the family
   from what it holds, and `Page` is a `ui.node`.
 - **A target declaring `#[gen.can(navigation)]`** renders them in its own
   codegen -- html's documents and routes, and android's `NavHost`
@@ -3883,7 +4047,7 @@ passNavigationValues numbers the pages, since the inliner runs long after.
 A member whose family is inferred from its body binds the family's type
 parameters at their defaults, so a wrapper may declare `href` and `title` and
 render the page from them (`_page`'s `meta` defaults to `M{}` for it to omit). A copy of a page under loops -- nested to any depth -- shares the page's id,
-and its record holds which copy it is, `copy`, a `list<int>` of one index per
+and its record holds which copy it is, `copy`, a `list[int]` of one index per
 enclosing loop, outermost first (`ensureLoopIndex` makes each loop's index
 explicit, `__copy`, `__copy1`, …), present on a family's record only where some
 page of it is under a loop. `==` compares the ids and the copies, element by
@@ -3929,7 +4093,7 @@ and html writes the same documents from it. A `var` written in a page's body is 
 Three limits that are not navigation's. On bubbletea a stateful component in a
 page is spliced into the Model, so its state survives the page being left --
 the divergence a window under an `if` has there. A `nav.link` above its
-`nav.page` in source does not check (`cannot use page as page<struct {}>`):
+`nav.page` in source does not check (`cannot use page as page[struct {}]`):
 `specializeHandle` completes a handle's type only when its node is checked, so
 a read above the node sees the bare declaration. And a node in a page's
 content is rendered only while the page shows, and a component there is built
@@ -3939,18 +4103,18 @@ tests a narrower surface than `testdata/nav_stack.sngl`.
 
 What it needed from the checker is general:
 
-- **A component type keeps its type arguments** (`page<T>`, resolved like a
+- **A component type keeps its type arguments** (`page[T]`, resolved like a
   struct's), and a node's `#id` is typed by what its call site bound
   (`specializeHandle`), so a func binding `T` from a handle holds the value
   beside it to that type. Written bare, a generic component type is its
-  defaults, as a struct type is (`page` is `page<struct {}>`), and a
+  defaults, as a struct type is (`page` is `page[struct {}]`), and a
   parameter with no default has to be written. A select through one reads
   its props, and its computeds' results, under those arguments, and a handle
   reached from outside its body (`c.pkg`) carries what its call site bound
   (`handleArgs`). A qualified component name (`nav.page`) is a type too, not
   only a family.
 - **A family may take type parameters**, and a member binds them in its
-  return position: `page<T, M>` is a `_page<M>` (`Component.FamilyTypeArgs`,
+  return position: `page[T, M]` is a `_page[M]` (`Component.FamilyTypeArgs`,
   `ir.FamilyArgs`). A member declares each family prop at the family's type
   under that binding, a member's handle is assignable to the family at the
   arguments it binds, and a select through a family value reads its props at
@@ -3963,8 +4127,11 @@ What it needed from the checker is general:
 - **`T{}` is the zero of what T is bound to**: typed `T` in the declaration,
   and written out by each call that omits it (`typeParamZeroFor`), for a func
   and for a component prop, the library's included, since no backend can
-  spell a type parameter's zero. A generic signature's defaults see its type
-  parameters.
+  spell a type parameter's zero. A default that *holds* one, `{v=T{}}` or
+  `[T{}]`, is written the same way, at the types the call bound with each
+  `T{}` inside it that type's zero; it used to evaluate to `{}`
+  (`testdata/generic_default_zero.sngl`). A generic signature's defaults see
+  its type parameters.
 - **A two-way prop is never required**: unbound, it starts from its default
   or its type's zero.
 - **A window's own props see its body's handles uncounted**, so
@@ -4011,8 +4178,8 @@ When adding a new stdlib package that needs runtime support:
 
 ### Built-in Generic Types
 
-- **`map<K, V>`** — generic map type. Literal syntax `{k = v}` (disambiguated from struct literals by expected-type context). Methods: `length`, `keys`, `values`, `contains`, `get`. Codegen: Go → `map[K]V`, JS → `Map`, Kotlin → `Map<K,V>`.
-- **`iter<T>`** — opaque generic iterator type. `list<T>` implicitly converts to `iter<T>`; `map<K, V>` does not, so a map cannot reach an `iter` position with its map-ness erased. For-loops bind elements via `for var x = iter`; map iteration uses two variables `for var k, v = m`. No methods, no fields.
+- **`map[K, V]`** — generic map type. Literal syntax `{k = v}` (disambiguated from struct literals by expected-type context). Methods: `length`, `keys`, `values`, `contains`, `get`. Codegen: Go → `map[K]V`, JS → `Map`, Kotlin → `Map<K,V>`.
+- **`iter[T]`** — opaque generic iterator type. `list[T]` implicitly converts to `iter[T]`; `map[K, V]` does not, so a map cannot reach an `iter` position with its map-ness erased. For-loops bind elements via `for var x = iter`; map iteration uses two variables `for var k, v = m`. No methods, no fields.
 
 **An anonymous struct is its fields.** `struct {}` and `{a int}` written
 inline are interned per package as a synthesized declaration
@@ -4022,6 +4189,88 @@ same fields at equal types, whichever package spelled them (`Type.Equal`):
 `sngl:ui/nav`'s page family defaults `meta` to its own `struct {}`, and a
 program declaring the prop writes the program's. Compared by declaration
 instead, the two never matched.
+
+**An anonymous struct may name a type parameter**, wherever a type is written:
+`func unwrap[T any](w struct { v T }) T`. Such a struct is declared and
+interned nowhere (`anonStructType`, `ir.IsUninternedAnon`, which is an
+anonymous `StructDef` with no name), since its fields mean the parameters in
+scope where it was written: two declarations each writing `struct { v T }`
+name two `T`s, where interning by the field signature had handed the second
+the first one's, constraint and all. `Type.Substitute` substitutes it field
+by field into another un-interned declaration, `ir.BindTypeParams` binds `T`
+from the argument's field by name (`ir.FieldsOf`, so `{v=1}`, a named struct
+with a `v` and a `T` constrained to one bind alike), and `HasTypeParam` reads
+its fields; `Type.Equal` needed nothing, comparing anonymous structs by
+fields already.
+
+**A type is walked by `ir.Type.Any` and rebuilt by `ir.Type.MapChildren`**
+(`ir/typewalk.go`), and nothing else restates which types are inside one:
+the elements, the signature's parameters and result, and an un-interned
+anonymous struct's fields. `HasTypeParam`, `Substitute`, the monomorphizer's
+struct rewrite and `passAnonStructs` are each a predicate or a rewrite handed
+to one of the two. They were six walks, and each one written after
+anonymous structs could hold a `T` had to remember the fields --
+`mentionsTypeParam`, a seventh, did not, so a component's prop typed
+`struct { v T }` bound nothing. The checker's and the monomorphizer's
+binders are one `ir.BindTypeParams` for the same reason; the monomorphizer
+treats a binding that names a type parameter as none. A constraint naming a type parameter is this same struct. A
+substitution that makes one concrete names a declaration no package declares,
+so the always-on `passAnonStructs` points it, after every pass that copies a
+body at bound types and before any that names a struct (`NoStructSpread`
+names a merge helper for one), at the package's interned struct with those fields, declaring one under the name the
+checker would have given it (`ir.AnonStructBaseName`) -- giving the
+instantiation a generic declaration's `Elems` instead would have made
+`Box__int`-style copies, a second host type beside the literal's that Go and
+Kotlin cannot assign between (`testdata/generic_anon_struct.sngl`,
+`error_generic_anon_struct.sngl`, `generic_anon_struct.txtar`). The pass also
+merges two *interned* declarations of equal fields into the first: a
+directory-imported package interns its own `struct { v int }`, which spells
+the program's host name, and the output declared both
+(`testdata/anon_struct_from_package.txtar`).
+
+Four things follow from a struct having no one declaration. Its identity is
+its fields everywhere, so the intern key spells an anonymous struct inside a
+field by *its* fields rather than its address (`ir.AnonTypeKey`), or
+`{o=wrap(1)}` and `{o={v=1}}` interned two Go types,
+and a spread's source is measured with `Type.Equal` rather than by
+declaration. A value the optimizer folds out of a generic body carries the type
+its literal was checked at there, `struct { v T }`, so `irFromValue` takes the
+type the call was checked at instead, and its fields' types for the fields'
+values -- read off the values, `wrap[option[int]](3)` was a
+`struct { v int }`. **A generic component is spliced at the types its call site bound**
+(`ir.InstantiateStmts`, `ir.ComponentBindings` off `NodeInst.TypeArgs`): the
+optimizer's `inlineComponentCall`, `passInlinePure` and
+`passNoInlineComponents` all copy its body that way (`splicedBody`,
+`cloneHoistedVar`), and the latter instantiates each method it hoists. Left
+as written, its state and methods reached Go as `any` and Kotlin as an
+unnamed type -- a plain `var held T` too, which is older than anonymous
+structs (`generic_anon_struct.txtar`'s `tally`).
+
+**A generic component built at run time is copied per instantiation** on a
+target not holding `genericComponents` (Go and Kotlin; html holds it under any
+`--lang`, its instances being the page's JavaScript), as a function is by
+`passMonomorphize` and a struct by `monomorphizeStructs`: `show[int]` renders
+`show__int`, whose props, events, slots, state, methods and body hold the types
+its call site bound (`ir.InstantiateComponent`, which owns what the component
+declares and shares the rest). The copy is made where passNoInlineComponents
+elects the instantiation to be built (`instantiateRuntime`), the one place that
+knows -- a spliced one is already at its types -- and everything after reads it
+as an ordinary component, `passInstanceSlots`' per-content copies and android's
+composables included. Emitted once with T erased, a `list[T]` prop was `[]any`
+on fyne, which the call site's `[]int` is not, and `struct { v T }` had no
+spelling at all, so a component naming one was refused. A recursion's copy
+joins the cycle and points its own renders of the cycle at their copies; one
+that renders itself at a deeper type at every level would need a copy per
+level, and is refused at that render past `maxInstances` copies
+(`testdata/generic_component_runtime_instance.txtar`,
+`cmd/sngl/testdata/generic_component_runtime_instance_runs.txt`).
+
+**`==` is `interp.Equal`, in the interpreter and in the optimizer's fold**: a
+struct field by field by name, a list element by element, a number by value.
+It says where it cannot answer (a map, two scalars of different kinds), which
+the fold leaves to run and the interpreter compares by rendered form as it
+always did. Two copies had drifted: the fold compared a struct's pointer and
+panicked on a list.
 
 **A unit's members are its bases, and they are registered like any other
 declaration's.** A unit value is a magnitude per base (`ir/units.go`): `unit measurement { px, em, rem }` declares three bases, so a
@@ -4038,16 +4287,10 @@ nothing to select, and `float(x)`/`int(x)` is how that magnitude is read. So
 in `unit width { cm, mm = 0.1cm }`, `mm` is a tenth of a cm and no value
 carries a magnitude for it.
 
-Before the table existed, nothing looked a unit member up: `inferSelect`
-reports an unknown member only for the kinds `hasNoLegitimateFields` lists, and
-`ir.TypeUnit` was not one, so **every** select on a unit fell through to `dyn`.
-That is one defect with two faces. The invented `.value` was accepted in
-silence and spelled blindly by each backend — `Measurement.Value` and
-`Tick.Value` in Go, neither of which compiles, `Double.value` in Kotlin,
-`undefined` in JavaScript. And the *valid* `m.px` was `dyn` too, which
-`interpPartAlreadyString` answers yes to, so the string conversion every other
-numeric operand gets was skipped and Go emitted `"px is " + m.m.Px`. Typing the
-select fixed the second everywhere at once; no backend grew a case.
+`inferSelect` looks a unit member up in that table, so a member the unit does
+not declare (`m.value`) is an error, and a base (`m.px`) is a `float`, which
+takes the string conversion every other numeric operand gets in an
+interpolation.
 
 **A cast reads the magnitude, and it reads it in the unit's base.** `int(x)`
 and `float(x)` are the whole of how a single-base unit's value is got at, so
@@ -4156,8 +4399,8 @@ Four things follow, and the first three are the record restated:
 - **Equality is per base**, and **ordering is refused** for a multi-base unit
   (`orderable`): `3px` and `2em` are each the larger on their own base, so
   there is no answer to invent. The checker already refuses the pair
-  (`IsSingleBaseUnit` gates `<`, `<=`, `>`, `>=`), so the guard is for the
-  `dyn` operand that reached a comparison untyped.
+  (`IsSingleBaseUnit` gates `<`, `<=`, `>`, `>=`), so the guard is for IR
+  the checker did not see.
 - **A cast reads `magnitude()`** — the one base of a single-base unit, which is
   every cast the checker's ordering rule leaves meaningful.
 - **Display sums the bases it carries**: `3px + 2em`, and a bare `3px` for a
@@ -4200,15 +4443,14 @@ to zero: the interpreter's map holds no key for it where the JS and Go records
 hold a zero, so a comparison written over *the bases a value carries* rather
 than over the unit's declared bases disagrees with the other three.
 
-`hasNoLegitimateFields` stays an inverted allowlist, so a kind absent from it
-still accepts any member name silently: `list`, `map`, `option`, `iter`,
-`string` beyond `.length`, and a struct type carrying no `Decl`. That is not
-uniformly a defect — an element-ref list projects a member read over its
-elements, which `testdata/test_slot_element_ref.sngl` depends on
-(`c.body.value` where `c.body` is `list<text>`) — so closing the rest is a
-question per kind rather than one line.
+**A member a type does not have is an error on every kind** -- `o.value` off
+an `option`, `xs.bogus` off a `list`, `s.huh` off a `string`
+(`error_select_unknown_member.sngl`). Only an operand already typed invalid,
+whose error was reported where it was made, selects silently. A list of
+element refs projects a member read over its elements before that
+(`testdata/test_slot_element_ref.sngl`).
 
-Stdlib collection types support generic methods: `func list<T>.filter(f func(T) bool) list<T>`, `func list<T>.map<U>(f func(T) U) list<U>`, `func map<K, V>.keys() list<K>`, etc. The receiver's type parameters are bound at the call site from the operand's concrete type (e.g. `xs : list<int>` binds `T=int`). Method-level type parameters (the `<U>` after the method name) are inferred from the call's actual argument types — typically from a lambda's return type.
+Stdlib collection types support generic methods: `func list[T].filter(f func(T) bool) list[T]`, `func list[T].map[U any](f func(T) U) list[U]`, `func map[K, V].keys() list[K]`, etc. The receiver's type parameters are bound at the call site from the operand's concrete type (e.g. `xs : list[int]` binds `T=int`). Method-level type parameters (the `[U any]` after the method name) are inferred from the call's actual argument types — typically from a lambda's return type.
 
 **A program may add a method to a library type, and may not redefine one it
 has.** `func int.twice` is an addition; `func int.abs` collides with the
@@ -4335,8 +4577,7 @@ runs one program through every form of access a test body has on all six. Four
 rules keep them agreeing:
 
 - **Test bodies are checked last**, after every component and window body:
-  an unannotated component var has no type until its body is read, and a test
-  naming it saw `dyn`.
+  an unannotated component var has no type until its body is read.
 - **A test holds its instance, not `m` or `state`**: package state and the
   funcs reading it are spelled through the instance (`ExprCtx.StateReceiver`
   on Go and JS; on android the state members MainScreen spells as `state.<x>`,
@@ -4396,6 +4637,21 @@ types it — and nothing in the compiler forces them to agree.
 is wrong. It is a test helper, not a runtime package, which is why it sits
 beside `sngl.go` rather than under `pkg/go/`: `pkg/<lang>/` is what generated
 code imports, and the compiler must not be in that graph.
+
+**Nothing typed invalid reaches a package that checked clean.**
+`ir.TypInvalid` is the type of what the checker reported an error about, and
+of a host declaration it marked unusable; anywhere else it is a type the
+checker gave up on without saying so, which `IsAssignableTo` then lets any
+misuse through. `TestFixtures` holds every clean fixture to it, override
+bodies included, and `TestLibraryHoldsNoInvalidType` every library package
+(`internal/fixtures/invalid.go`). A library function with no return
+annotation infers its type from its body on demand, as a program's does
+(`ensureReturnType`).
+
+`TestFixtures` refuses a diagnostic reported twice: a declaration read twice
+-- a component's var registered before its body and checked with it, a body's
+declarations bound again for every body in their scope -- reports once, the
+other read resolving quietly (`resolveTypeQuietly`, `declareBodyDecls`).
 
 When adding a fixture or directive, confirm it *fails* when the behaviour is reverted. Several directives in this repo assert conditions that no test actually evaluates.
 

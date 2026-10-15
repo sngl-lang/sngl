@@ -8,7 +8,7 @@ import "duckfam.us/sngl/ir"
 // is built from, is wrapped in ir.ValueCopy unless nothing else can hold it.
 // A named parameter is passed by value too, and a function whose body
 // modifies one takes its own copy at entry (ownModifiedParams); one that only
-// reads it copies nothing. A method's ambient `this` and a `ref<T>` are
+// reads it copies nothing. A method's ambient `this` and a `ref[T]` are
 // passed by reference instead (passRefParams).
 //
 // Before every other pass that writes a store, so what is copied is what the

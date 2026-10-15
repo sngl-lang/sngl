@@ -13,7 +13,7 @@ import . "sngl:ui"
 // A reactive `if` is the lifetime: the branch coming back is a new one.
 component branch node {
     var shown = true
-    var log list<string> = []
+    var log list[string] = []
     button #toggle(text="toggle", @click { shown = !shown })
     if shown {
         effect(@mount { log.push("in") }, @unmount { log.push("out") })
@@ -34,8 +34,8 @@ func testBranchIsTheLifetime(t Test, c branch) {
 // One bracket per element, keyed by it: dropping one moves only its own, and
 // several ending on one change end newest first.
 component perElement node {
-    var items list<string> = ["a", "b", "c"]
-    var log list<string> = []
+    var items list[string] = ["a", "b", "c"]
+    var log list[string] = []
     button #drop(text="drop", @click { items = ["a"] })
     button #add(text="add", @click { items.push("d") })
     for var it = items {
@@ -58,7 +58,7 @@ func testPushMountsTheNewBracket(t Test, c perElement) {
 // Two positions rekeyed by one write both end before either begins.
 component twoPositions node {
     var k = 0
-    var log list<string> = []
+    var log list[string] = []
     button #rekey(text="rekey", @click { k = k + 1 })
     effect(on=k, @mount { log.push("+A") }, @unmount { log.push("-A") })
     effect(on=k, @mount { log.push("+B") }, @unmount { log.push("-B") })
@@ -84,7 +84,7 @@ struct pair {
 component keys node {
     var key counter = counter{n=0}
     var n = 0
-    var log list<string> = []
+    var log list[string] = []
 
     func scaled(m int) => m * n
 
@@ -109,7 +109,7 @@ func testACalledKeyRekeys(t Test, c keys) {
 // new lifetime, and a changed field is one.
 component structKey node {
     var key pair = pair{a=1, b="x"}
-    var log list<string> = []
+    var log list[string] = []
     button #same(text="same", @click { key = pair{a=1, b="x"} })
     button #bump(text="bump", @click { key = pair{a=1, b="y"} })
     effect(on=key, @mount { log.push("m") }, @unmount { log.push("u") })

@@ -2,6 +2,7 @@ package lower
 
 import (
 	"fmt"
+	"slices"
 
 	"duckfam.us/sngl/ir"
 )
@@ -336,7 +337,189 @@ func rewriteTestPropRead(sel *ir.Select, tests map[*ir.Param]bool) ir.Expr {
 	if !always {
 		return nil
 	}
-	return rebaseOnInstance(ir.CloneExprSharingDecls(v), comp, inner.Operand)
+	out := rebaseOnInstance(ir.CloneExprSharingDecls(v), comp, inner.Operand)
+	if out == nil {
+		return nil
+	}
+	return answerTestEmpty(out, inner.Operand, tests)
+}
+
+// answerTestEmpty answers each `.empty` e asks of the slots of the component
+// inst names, as the splice of that instance answers it: by what the call
+// site the test reaches it through supplied (ir.RendersNothing), read through
+// the instance that call site is written in. The instance a test takes is
+// rendered with no call site, so its own slots are supplied nothing. A
+// component entry a population forwards is answered by what the component
+// inserting the population populated it with, read through that component's
+// instance. nil where an answer reads what a test cannot name.
+func answerTestEmpty(e ir.Expr, inst ir.Expr, tests map[*ir.Param]bool) ir.Expr {
+	at := testInstanceNode(inst, tests)
+	ok := true
+	out := newExprWalker(func(x ir.Expr) ir.Expr {
+		se, isEmpty := x.(*ir.SlotEmpty)
+		if !isEmpty || !ok {
+			return x
+		}
+		var answer ir.Expr
+		switch {
+		case at.root:
+			if comp := componentOf(inst); comp != nil && slices.Contains(comp.Slots, se.Slot) {
+				return &ir.Literal{Type: ir.TypBool, Value: "true"}
+			}
+			return x
+		case at.node == nil:
+			ok = false
+			return x
+		case at.node.Component != nil && slices.Contains(at.node.Component.Slots, se.Slot):
+			body, _, supplied := ir.SlotBody(&ir.SlotInst{Name: se.Slot.Name, Rest: se.Slot.Rest}, at.node)
+			if !supplied {
+				return &ir.Literal{Type: ir.TypBool, Value: "true"}
+			}
+			a, answered := ir.RendersNothing(deepCloneStmts(body))
+			if !answered {
+				return &ir.Literal{Type: ir.TypBool, Value: "false"}
+			}
+			answer = a
+		default:
+			return x
+		}
+		if lit, isLit := answer.(*ir.Literal); isLit {
+			return lit
+		}
+		// The content is read through the instance its call site is written
+		// in; an entry it forwards is answered through the instance of the
+		// component that populated it, and a slot it forwards by the call
+		// site of the instance it is read through.
+		if answer = rebaseOnInstance(answer, componentOf(at.scope), at.scope); answer == nil {
+			ok = false
+			return x
+		}
+		if answer = at.answerEntries(answer, tests); answer == nil {
+			ok = false
+			return x
+		}
+		if answer = answerTestEmpty(answer, at.scope, tests); answer == nil {
+			ok = false
+			return x
+		}
+		return answer
+	}).expr(e)
+	if !ok {
+		return nil
+	}
+	return out
+}
+
+// testNode is the node a test's select through its instance names: the node
+// itself and the instance its call site is written in (scope). A node written
+// in a population is reached through the instance writing the population, and
+// host is then the node the population is supplied to and slot the slot it
+// populates, which answer the entries the population forwards.
+type testNode struct {
+	root  bool
+	node  *ir.NodeInst
+	scope ir.Expr
+	host  *ir.NodeInst
+	slot  *ir.SlotDecl
+}
+
+func testInstanceNode(inst ir.Expr, tests map[*ir.Param]bool) testNode {
+	sel, ok := inst.(*ir.Select)
+	if !ok {
+		return testNode{root: rootedAtTest(inst, tests)}
+	}
+	comp := componentOf(sel.Operand)
+	if comp == nil {
+		return testNode{}
+	}
+	at := testNode{scope: sel.Operand}
+	at.find(comp.Stmts, sel.Field, nil, nil)
+	return at
+}
+
+// find looks in stmts for the node rendered under id, under the population
+// host supplies for slot.
+func (at *testNode) find(stmts []ir.Stmt, id string, host *ir.NodeInst, slot *ir.SlotDecl) {
+	for _, s := range stmts {
+		if at.node != nil {
+			return
+		}
+		n, ok := s.(*ir.NodeInst)
+		if !ok {
+			for _, b := range ir.ViewBlocks(s) {
+				at.find(*b, id, host, slot)
+			}
+			continue
+		}
+		if n.ID == id {
+			at.node, at.host, at.slot = n, host, slot
+			return
+		}
+		at.find(n.Children, id, host, slot)
+		if n.Component == nil {
+			continue
+		}
+		for _, decl := range n.Component.Slots {
+			if pop := n.Slots[decl.Name]; pop != nil {
+				at.find(pop.Body, id, n, decl)
+			}
+		}
+	}
+}
+
+// answerEntries answers, in answer, each `.empty` of an entry of the slot
+// the node's population populates, by what the component inserting it
+// populated the entry with, read through that component's instance.
+func (at testNode) answerEntries(answer ir.Expr, tests map[*ir.Param]bool) ir.Expr {
+	if at.slot == nil || len(at.slot.Slots) == 0 {
+		return answer
+	}
+	comp := at.host.Component
+	var host ir.Expr
+	if at.host.Handle != nil {
+		host = &ir.Select{Type: at.host.Handle.Type, Operand: ir.CloneExprSharingDecls(at.scope), Field: at.host.ID}
+	}
+	ok := true
+	out := newExprWalker(func(x ir.Expr) ir.Expr {
+		se, isEmpty := x.(*ir.SlotEmpty)
+		if !isEmpty || !ok || !slices.Contains(at.slot.Slots, se.Slot) {
+			return x
+		}
+		var content *ir.SlotContent
+		ir.WalkView(comp.Stmts, func(s ir.Stmt) bool {
+			if ins, isIns := s.(*ir.SlotInst); isIns && ins.Decl == at.slot && content == nil {
+				content = ins.Slots[se.Slot.Name]
+			}
+			return content == nil
+		})
+		if content == nil {
+			return &ir.Literal{Type: ir.TypBool, Value: "true"}
+		}
+		a, answered := ir.RendersNothing(deepCloneStmts(content.Body))
+		if !answered {
+			return &ir.Literal{Type: ir.TypBool, Value: "false"}
+		}
+		if lit, isLit := a.(*ir.Literal); isLit {
+			return lit
+		}
+		if host == nil {
+			ok = false
+			return x
+		}
+		if a = rebaseOnInstance(a, comp, host); a == nil {
+			ok = false
+			return x
+		}
+		if a = answerTestEmpty(a, host, tests); a == nil {
+			ok = false
+			return x
+		}
+		return a
+	}).expr(answer)
+	if !ok {
+		return nil
+	}
+	return out
 }
 
 // rootedAtTest reports whether e is a test's instance or a select through it.

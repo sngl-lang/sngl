@@ -3,7 +3,7 @@ import . "sngl:test"
 
 struct Node {
     value int = 0
-    next  option<Node> = null
+    next  option[Node] = null
 }
 
 func double(n int) int {
@@ -15,8 +15,8 @@ func valueOf(n Node) int {
 }
 
 component main node {
-    var maybe option<int> = 3
-    var absent option<int> = null
+    var maybe option[int] = 3
+    var absent option[int] = null
 
     vbox {
         if maybe != null {
@@ -56,13 +56,13 @@ func testNarrowsAFieldPath(t Test) {
 }
 
 func testNarrowsATernaryArm(t Test) {
-    var maybe option<int> = 5
+    var maybe option[int] = 5
     var got = maybe != null ? double(maybe) : 0
     t.assert(got == 10)
 }
 
 func testNegatedTestNarrowsTheElseArm(t Test) {
-    var maybe option<int> = 5
+    var maybe option[int] = 5
     var got = maybe == null ? 0 : double(maybe)
     t.assert(got == 10)
 }

@@ -31,7 +31,7 @@ output {
 }
 
 component counts node {
-    var stock map<string, int> = {"a"=1, "b"=2}
+    var stock map[string, int] = {"a"=1, "b"=2}
     var xs = [1, 2, 3]
     var mapLen = 0
     var listLen = 0

@@ -248,7 +248,7 @@ func TestOptimize_KeepStructUsedOnlyAsType(t *testing.T) {
 	src := `
 struct User { name string = "" }
 component main node {
-	var picked option<User> = null
+	var picked option[User] = null
 	text(value="hi")
 }
 `
@@ -264,15 +264,15 @@ component main node {
 	}
 }
 
-func TestOptimize_StructInDynFieldKeepsDef(t *testing.T) {
-	// A struct literal stored in a `dyn`-typed field must keep its concrete
+func TestOptimize_StructInOptionFieldKeepsDef(t *testing.T) {
+	// A struct literal stored in an option field must keep its concrete
 	// Def through const-folding. Folding round-tripped composites through a
 	// type-less runtime value, rebuilding the nested struct as a naked
 	// StructLit (Def=nil) → Go codegen emitted `struct{}{...}` (invalid).
 	src := `
 struct TreeNode {
 	value int = 0
-	left dyn = null
+	left option[TreeNode] = null
 }
 component main node {
 	var tree = TreeNode{value=5, left=TreeNode{value=3}}
@@ -293,12 +293,21 @@ component main node {
 				if f.Name != "left" {
 					continue
 				}
-				inner, ok := f.Value.(*ir.StructLit)
+				// Wrapped as the option it is stored in.
+				val := f.Value
+				for {
+					conv, ok := val.(*ir.Conversion)
+					if !ok {
+						break
+					}
+					val = conv.Operand
+				}
+				inner, ok := val.(*ir.StructLit)
 				if !ok {
-					t.Fatalf("left value is %T, want *ir.StructLit", f.Value)
+					t.Fatalf("left value is %T, want *ir.StructLit", val)
 				}
 				if inner.Def == nil {
-					t.Error("nested struct in dyn field lost its Def after folding")
+					t.Error("nested struct in an option field lost its Def after folding")
 				}
 			}
 		}
@@ -337,7 +346,7 @@ func TestOptimize_EmptyPkg(t *testing.T) {
 func TestOptimize_PropPropagatesAsConst(t *testing.T) {
 	src := `
 const items = ["a", "b"]
-component Row(entries list<string> = []) node {
+component Row(entries list[string] = []) node {
 	for var x = entries {
 		text(value=x)
 	}
@@ -397,7 +406,7 @@ func TestFoldDoesNotCollapseDerefOfAddrOfConst(t *testing.T) {
 	src := `
 const k int = 5
 component main node {
-    var p ref<int> = &k
+    var p ref[int] = &k
     var v int = *p
 }
 `

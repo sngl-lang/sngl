@@ -142,7 +142,7 @@ type loweredEffect struct {
 	comp *ir.Component
 	// prefix is what every name this bracket synthesizes starts with.
 	prefix string
-	// live is `list<T>`: the key each running lifetime is keyed on, in mount
+	// live is `list[T]`: the key each running lifetime is keyed on, in mount
 	// order. Its length is how many brackets this position currently holds.
 	live *ir.Var
 	// keyVar holds the key of the lifetime a handler is being run for, or is
@@ -675,7 +675,7 @@ func (st *effectState) positionBlock(prefix string, frames []effectFrame, leaf [
 // same way, because they answer the same question about the same loop.
 //
 // A walk rather than a length: the iterable may be a map or a pull sequence,
-// neither of which has one, and `iter<T>` hands out no count at all. The walk
+// neither of which has one, and `iter[T]` hands out no count at all. The walk
 // binds nothing, so the element does not have to be nameable here either --
 // which matters, since an `else` body is the one place a loop's variables are
 // out of scope. It carries no `break`, because passForElse has not run yet and
@@ -1529,20 +1529,9 @@ func cloneStmts(stmts []ir.Stmt) []ir.Stmt {
 // back to the list. Shared with passSlotInstances, which describes what a
 // render holds the same way.
 func callListPush(dst ir.Expr, v ir.Expr, elem *ir.Type) ir.Stmt {
-	var params []*ir.Param
-	var ret *ir.Type
-	if def := ir.LookupIntrinsic("list.push"); def != nil {
-		params, ret = def.Instantiate(elem)
-	}
 	return &ir.CallStmt{Call: &ir.Call{
 		Type: ir.TypVoid,
-		Func: &ir.Func{
-			Name:      "push",
-			Receiver:  ir.ListOf(ir.TypDyn),
-			Intrinsic: "list.push",
-			Params:    params,
-			Return:    ret,
-		},
+		Func: ir.IntrinsicMethod("push", "list.push", ir.ListOf(elem), nil),
 		Args: []ir.CallArg{{Value: dst}, {Value: v}},
 	}}
 }

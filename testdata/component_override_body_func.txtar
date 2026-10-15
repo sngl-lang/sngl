@@ -48,7 +48,7 @@ component outer(label = "") node {
     text(value="plain {label} {fromBase()}")
 }
 
-component outer[html.platform] {
+component outer[html.platform](label) {
     var htmlTally = 0
 
     func bump() { htmlTally = htmlTally + 100 }
@@ -72,7 +72,7 @@ component outer[html.platform] {
     }
 }
 
-component outer[bubbletea.platform] {
+component outer[bubbletea.platform](label) {
     var btTally = 0
 
     func bump() { btTally = btTally + 100 }

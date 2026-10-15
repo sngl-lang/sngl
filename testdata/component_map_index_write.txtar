@@ -9,7 +9,7 @@ import . "sngl:test"
 import . "sngl:ui"
 
 component main node {
-    var counts map<string, int> = {}
+    var counts map[string, int] = {}
     text(value="{counts.length()}:{counts.get("a", 0)}")
     button #put(text="put", @click { counts["a"] = 7 })
     button #bump(text="bump", @click { counts["a"] += 5 })

@@ -29,6 +29,12 @@ type Ident struct {
 	Sym          Symbol // resolved: *Var, *Func, *Param, *LoopVar, etc.
 	Member       string // non-empty for bare enum member ("active" → Status.active)
 	IsElementRef bool   // true when from #id syntax (ElementRefExpr)
+	// Qualifier is the import a member of another package was named through:
+	// `math.pi` is the Ident of pi qualified by math. A namespace is not a
+	// value, so it is never an operand; SelAST is the select it was written
+	// as, which is where its position is.
+	Qualifier *Namespace      `json:",omitempty"`
+	SelAST    *ast.SelectExpr `json:"-"`
 	// Synthesized marks Idents emitted by a lowering pass for refs to
 	// pass-introduced Vars or Funcs (e.g. __slot<N>, __renderSlot<N>,
 	// __n<N> widget refs). Codegen consumers use this to distinguish
@@ -68,15 +74,30 @@ type Ternary struct {
 //   - Type-attached method (string.upper, list.push, etc.): Func set with
 //     Func.Receiver != "", Receiver nil. The receiver value is Args[0]; both
 //     "x.upper()" and "string.upper(x)" normalize to this shape.
-//   - Namespace call (ns.foo, html.div): Func optionally set, Receiver set to
-//     the namespace ident.
+//   - Qualified call (ns.foo, html.div): Func optionally set, Qualifier set to
+//     the namespace it was named through, Receiver nil. A namespace is not a
+//     value, so it is never an operand.
+//   - Host call on a value (a node handle, a host package alias a codegen
+//     synthesizes): Receiver set.
 type Call struct {
 	AST      *ast.CallExpr
-	Type     *Type     // return type
-	Func     *Func     // resolved function (nil for unresolved/dynamic)
-	Callee   Expr      // callee expression when Func is nil (e.g. func-typed var)
-	Receiver Expr      // non-nil only for namespace/component/element-ref calls
-	Args     []CallArg // resolved arguments (for type-methods, Args[0] is the receiver)
+	Type     *Type // return type
+	Func     *Func // resolved function (nil for unresolved/dynamic)
+	Callee   Expr  // callee expression when Func is nil (e.g. func-typed var)
+	Receiver Expr  // non-nil only for component/element-ref/host calls
+	// Qualifier is the import the callee was named through, `math.sqrt(x)`.
+	Qualifier *Namespace `json:",omitempty"`
+	Args      []CallArg  // resolved arguments (for type-methods, Args[0] is the receiver)
+	// ReceiverArg says Args[0] is the value the method was called on, which
+	// its parameters do not list: a method whose receiver is implicit, as a
+	// `sngl:` one's and one on a generic type's are. ir.Convert prints such a
+	// call in the form it was written, `xs.map(f)`, since `list.map(xs, f)`
+	// would hand xs to the first parameter.
+	ReceiverArg bool `json:",omitempty"`
+	// TypeArgs are the type arguments the call site wrote, `first[int](xs)`.
+	// What they bind is already in Type and the arguments' types; they are
+	// kept so the call prints back as written.
+	TypeArgs []*Type `json:",omitempty"`
 
 	// Event is the event name when this call is an element-ref event
 	// trigger (`c.inc.click()`), set by the checker after resolving the
@@ -93,6 +114,25 @@ type Call struct {
 	ErrorHandler    *EventHandler
 	ResolvedHandler *EventHandler
 	ErrorMode       ErrorMode
+}
+
+// QualifiedName is "ns.member" for a call named through an import, read off
+// what the call site wrote, and "" for any other call. A member a wildcard
+// answers to has no declaration to name it, so the source is the only place
+// its name is.
+func (c *Call) QualifiedName() string {
+	if c == nil || c.Qualifier == nil {
+		return ""
+	}
+	if c.Func != nil {
+		return c.Qualifier.Name + "." + c.Func.Name
+	}
+	if c.AST != nil {
+		if sel, ok := c.AST.Func.(*ast.SelectExpr); ok {
+			return c.Qualifier.Name + "." + sel.Field
+		}
+	}
+	return ""
 }
 
 // ErrorMode describes how a fallible call's error is lowered at the callsite.
@@ -300,7 +340,8 @@ func IsConst(e Expr) bool {
 		if v, ok := x.Sym.(*Var); ok && v.IsConst {
 			return true
 		}
-		if _, ok := x.Sym.(*Namespace); ok {
+		// A build-target node read as a value is its name.
+		if _, _, ok := TargetNode(x.Sym); ok {
 			return true
 		}
 		if _, ok := x.Sym.(*EnumDef); ok {

@@ -13,7 +13,7 @@ import (
 
 // The list intrinsics whose edges the three backends disagreed on (GitLab
 // #100) are documented in lib/builtin/methods.sngl and implemented by
-// internal/interp. Nothing compiled the Go they emit, so `list<int>.join(",")`
+// internal/interp. Nothing compiled the Go they emit, so `list[int].join(",")`
 // produced code that did not build and slice/remove panicked where the
 // declaration promises a clamp or a no-op.
 //
@@ -75,7 +75,7 @@ func TestListJoinCompilesForNonStringElements(t *testing.T) {
 
 	got := runGo(t, imports, "\txs := []int{1, 2, 3}\n\tsep := \",\"\n\tfmt.Println("+code+")")
 	if got != "1,2,3" {
-		t.Errorf("list<int>.join(\",\") = %q, want %q", got, "1,2,3")
+		t.Errorf("list[int].join(\",\") = %q, want %q", got, "1,2,3")
 	}
 }
 
@@ -86,12 +86,12 @@ func TestListJoinStillUsesStringsJoinForStrings(t *testing.T) {
 
 	got := runGo(t, imports, "\txs := []string{\"a\", \"b\"}\n\tsep := \"-\"\n\tfmt.Println("+code+")")
 	if got != "a-b" {
-		t.Errorf("list<string>.join(\"-\") = %q, want %q", got, "a-b")
+		t.Errorf("list[string].join(\"-\") = %q, want %q", got, "a-b")
 	}
-	// The fast path is worth keeping; a list<string> should not be reformatted
+	// The fast path is worth keeping; a list[string] should not be reformatted
 	// value by value.
 	if !strings.Contains(code, "strings.Join(xs, sep)") {
-		t.Errorf("list<string>.join emitted %q, want the direct strings.Join form", code)
+		t.Errorf("list[string].join emitted %q, want the direct strings.Join form", code)
 	}
 }
 

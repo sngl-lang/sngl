@@ -45,7 +45,7 @@ func resolve(rt reflect.Type) (*mapping, error) {
 	want, usable := m.Type(wrap(gt))
 	// The base's own SNGL type is what a MarshalSNGL on it has to write: for
 	// []Blob the value is a list of whatever Blob writes, so pointing the
-	// reader at list<list<int>> would name a form no marshaller can produce.
+	// reader at list[list[int]] would name a form no marshaller can produce.
 	baseWant, _ := m.Type(gt)
 	out := &mapping{rt: rt, base: base, want: want, baseWant: baseWant}
 	if !usable {
@@ -86,14 +86,15 @@ func (m *mapping) unusable() error {
 	return fmt.Errorf(`%s has no SNGL type.
 
     Go type       %s
-    imports as    %s, which the go: importer marks unusable
+    imports as    nothing: the go: importer has no SNGL spelling for it, and
+                  marks it unusable
 
 Every declaration that mentions this type is rejected, so a go: function
 returning it cannot be called from SNGL at all — whatever its MarshalSNGL
 writes. Return a type the importer models (a struct declared in the same
 package, a scalar, or a slice of those), or map this one to a SNGL type with
 golang.RegisterType(%q, ...) in the compiler.`,
-		m.goName(), m.goTypeLine(), m.want, m.qualified())
+		m.goName(), m.goTypeLine(), m.qualified())
 }
 
 // goName is how the reader spells the type under test.

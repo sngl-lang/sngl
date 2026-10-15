@@ -329,61 +329,6 @@ func litFieldNames(s *ir.StructLit) []string {
 	return out
 }
 
-// Where the declared type is dyn there is nothing to map a field name
-// through — so the value names its own type instead, and the declaration it
-// names is the one the importer built. Before that, an element of a []any
-// arrived with a nil Def and the Go field names on it.
-func TestDynValueNamesItsOwnType(t *testing.T) {
-	dir := projectDir()
-	if dir == "" {
-		t.Skip("could not find project root")
-	}
-	f := importedFunc(t, "Anything") // []any
-	if f.Return == nil || f.Return.Elems[0].Kind != ir.TypeDyn {
-		t.Fatalf("Anything() returns %v, want a list of dyn", f.Return)
-	}
-	got := evalNow(t, purepkgCtx(dir), call{f, nil})
-	if got[0].err != nil {
-		t.Fatalf("Anything(): %v", got[0].err)
-	}
-	list, ok := got[0].expr.(*ir.ListLit)
-	if !ok {
-		t.Fatalf("Anything() = %T, want a list literal", got[0].expr)
-	}
-	assertItem(t, list.Elems[0])
-}
-
-// The type ref rides on every struct the encoder writes, so a named struct
-// nested inside a dyn one resolves too.
-func TestNestedDynValueNamesItsOwnType(t *testing.T) {
-	dir := projectDir()
-	if dir == "" {
-		t.Skip("could not find project root")
-	}
-	got := evalNow(t, purepkgCtx(dir), call{importedFunc(t, "AnythingNested"), nil})
-	if got[0].err != nil {
-		t.Fatalf("AnythingNested(): %v", got[0].err)
-	}
-	list, ok := got[0].expr.(*ir.ListLit)
-	if !ok {
-		t.Fatalf("AnythingNested() = %T, want a list literal", got[0].expr)
-	}
-	group, ok := list.Elems[0].(*ir.StructLit)
-	if !ok || group.Def == nil || group.Def.Name != "Group" {
-		t.Fatalf("element is %T with Def %v, want a Group", list.Elems[0], group)
-	}
-	var items *ir.ListLit
-	for _, f := range group.Fields {
-		if f.Name == "items" {
-			items, _ = f.Value.(*ir.ListLit)
-		}
-	}
-	if items == nil {
-		t.Fatalf("group has no items list, only %v", litFieldNames(group))
-	}
-	assertItem(t, items.Elems[0])
-}
-
 // assertItem checks that e is a purepkg.Item with its real declaration and the
 // field names that declaration gives, rather than Go's.
 func assertItem(t *testing.T, e ir.Expr) {

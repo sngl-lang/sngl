@@ -36,7 +36,7 @@ struct Entry {
 }
 
 const entries = [Entry{title="Home", href="/"}, Entry{title="About", href="/about.html"}]
-const labels map<string, string> = {"home"="Start", "about"="Us"}
+const labels map[string, string] = {"home"="Start", "about"="Us"}
 
 window {
     var pick = 0

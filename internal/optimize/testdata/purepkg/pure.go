@@ -128,22 +128,7 @@ type Record struct {
 // GetRecord returns a struct with an embedded struct.
 //
 //sngl:pure
-func GetRecord() Record { return Record{Stamp: Stamp{At: "t0", Seq: 1}, Note: "n"} }
-
-// Anything returns a struct through an interface slice, so the importer can
-// only type the element as dyn: the declaration reaches the reader off the
-// value's own type ref, not off the declared return type.
-//
-//sngl:pure
-func Anything() []any { return []any{Item{Name: "alpha", Value: 1}} }
-
-// AnythingNested is Anything one level deeper: the dyn element holds a struct
-// that holds the named one.
-//
-//sngl:pure
-func AnythingNested() []any {
-	return []any{Group{Label: "first", Items: []Item{{Name: "alpha", Value: 1}}}}
-}
+func GetRecord() Record { return Record{At: "t0", Seq: 1, Note: "n"} }
 
 // Stamp0 returns a fixed time.Time. Paired with the duration case: both are
 // registered on the import side (codegen/scheme/golang/stdtypes.go) and the
@@ -153,7 +138,7 @@ func AnythingNested() []any {
 //sngl:pure
 func Stamp0() time.Time { return time.Date(2026, 8, 24, 9, 30, 0, 0, time.UTC) }
 
-// Bytes returns a byte slice. The importer types []byte as list<int>, so the
+// Bytes returns a byte slice. The importer types []byte as list[int], so the
 // encoder has to write the elements rather than a base64 string.
 //
 //sngl:pure

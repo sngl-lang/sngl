@@ -3,7 +3,7 @@ package lower
 import "duckfam.us/sngl/ir"
 
 // passReceiverParam makes the implicit `this` of a method on a generic
-// built-in -- `func list<T>.pick() => this[n]` -- the method's first
+// built-in -- `func list[T].pick() => this[n]` -- the method's first
 // parameter. The checker keeps it off Params because such a body is written to
 // be inlined, and every call already passes the receiver as Args[0]; one the
 // optimizer left standing is emitted, and no target has another way to reach

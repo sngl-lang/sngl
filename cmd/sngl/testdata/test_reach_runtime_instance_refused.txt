@@ -64,7 +64,7 @@ component badge(label string) node {
 }
 
 component main node {
-    var names list<string> = ["a"]
+    var names list[string] = ["a"]
     for var n = names {
         other #o(label=n)
     }

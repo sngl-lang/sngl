@@ -17,6 +17,14 @@ const langJS = "js"
 // names for these — and the dispatch is identical whether a call survives as a
 // type-method call or is inlined to a direct intrinsic call.
 func init() {
+	// A record handed to the i18n runtime is the Map it takes.
+	codegen.RegisterRecordSpeller(langJS, func(keys, vals []string) string {
+		parts := make([]string, len(keys))
+		for i := range keys {
+			parts[i] = "[" + keys[i] + ", " + vals[i] + "]"
+		}
+		return "new Map([" + strings.Join(parts, ", ") + "])"
+	})
 	// reg registers an emitter whose args are rendered positionally; recv is
 	// args[0] for a type-method intrinsic. fn receives the already-translated
 	// argument strings.
@@ -47,7 +55,7 @@ func init() {
 	reg(ir.TestWaitID, func(a []string) string {
 		return a[0] + `.fatal("t.wait waits only as a statement of a test's own body on html")`
 	})
-	for _, id := range []string{ir.TestSetLocaleID, ir.TestSetContextID, ir.TestSnapshotID} {
+	for _, id := range []string{ir.TestSetLocaleID, ir.TestSetContextID, ir.TestSnapshotID, ir.TestTickID, ir.TestSubtestID} {
 		method := strings.TrimPrefix(id, "test.")
 		reg(id, func(a []string) string { return a[0] + "." + method + "(" + strings.Join(a[1:], ", ") + ")" })
 	}
@@ -141,7 +149,7 @@ func init() {
 	// iterable `for...of` drives one value at a time, which is what an array
 	// here would have thrown away. No conversion is needed in the other
 	// direction -- a JS array is already iterable -- so a list reaching an
-	// iter<T> position passes through unwrapped.
+	// iter[T] position passes through unwrapped.
 	seq := func(a, b, step string) string {
 		return "(function* (__a, __b, __s) { " +
 			"if (__s > 0) { for (let __i = __a; __i < __b; __i += __s) yield __i; } " +

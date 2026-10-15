@@ -65,7 +65,7 @@ window {
     Greeter
 }
 -- testrun/bubbletea/go/app.sngl/Greeter/1 --
-sha256:dab97fd7566198afa6d6325d870f43be
+sha256:49155f4713885b3d240bc6aae52f29d2
 {
   "results": [
     {

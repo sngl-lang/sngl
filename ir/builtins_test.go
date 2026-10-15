@@ -21,14 +21,13 @@ func TestScalarType(t *testing.T) {
 		BuiltinFloat32: TypFloat32,
 		BuiltinFloat64: TypFloat64,
 		BuiltinString:  TypString,
-		BuiltinDyn:     TypDyn,
 	}
 	for kind, typ := range want {
 		got, ok := ScalarType(kind)
 		if !ok || got != typ {
 			t.Errorf("%s: got %v, %v", kind, got, ok)
 		}
-		if conv := kind.IsConvertibleScalar(); conv == (kind == BuiltinDyn) {
+		if conv := kind.IsConvertibleScalar(); !conv {
 			t.Errorf("%s: convertible = %v", kind, conv)
 		}
 	}

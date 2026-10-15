@@ -34,7 +34,7 @@ type Features struct {
 	Toggle        bool // can emit x!! natively
 	Ternary       bool // can emit a ? b : c natively
 	Lambda        bool // can emit closures natively
-	Ref           bool // can emit ref<T> natively
+	Ref           bool // can emit ref[T] natively
 	Unit          bool // can emit unit types natively
 	Enum          bool // can emit enum types natively
 	AsyncReactive bool // can handle async in reactive contexts natively
@@ -123,6 +123,16 @@ type Features struct {
 	// generic method to put a state-reading one on the Model, and no
 	// constraint to state what a body does with T.
 	GenericFuncs bool
+	// GenericComponents says a component with type parameters can be emitted
+	// once and built at every type, which is how a component built at run
+	// time reaches its host. Withheld, passNoInlineComponents copies such a
+	// component per instantiation where it elects it (instantiateRuntime), as
+	// passMonomorphize copies a function: one declaration with T erased holds
+	// a `list[T]` as `[]any`, which `[]int` is not, and cannot spell
+	// `struct { v T }`. A platform holds it apart from its language: html
+	// builds an instance in the page's JavaScript under any --lang.
+	GenericComponents bool
+
 	// RuntimeReach grants a test the nodes of a component built at run time, by
 	// the id it gave each one and, under a loop, the copy's index among every
 	// element the page renders under that id -- which test_reach allows only
@@ -183,26 +193,27 @@ func (f Features) LowersNothing() bool {
 // and the one place a build wants this shape is the interpreted path below.
 func NoLowering() Features {
 	return Features{
-		Toggle:           true,
-		Ternary:          true,
-		Lambda:           true,
-		Ref:              true,
-		Unit:             true,
-		Enum:             true,
-		AsyncReactive:    true,
-		AsyncCalls:       true,
-		Computed:         true,
-		ListLambdas:      true,
-		Reactivity:       true,
-		Declarative:      true,
-		InlineComponents: true,
-		ImplicitRecv:     true,
-		StructSpread:     true,
-		ViewStatements:   true,
-		InstanceState:    true,
-		Effects:          true,
-		Navigation:       true,
-		GenericFuncs:     true,
+		Toggle:            true,
+		Ternary:           true,
+		Lambda:            true,
+		Ref:               true,
+		Unit:              true,
+		Enum:              true,
+		AsyncReactive:     true,
+		AsyncCalls:        true,
+		Computed:          true,
+		ListLambdas:       true,
+		Reactivity:        true,
+		Declarative:       true,
+		InlineComponents:  true,
+		ImplicitRecv:      true,
+		StructSpread:      true,
+		ViewStatements:    true,
+		InstanceState:     true,
+		Effects:           true,
+		Navigation:        true,
+		GenericFuncs:      true,
+		GenericComponents: true,
 	}
 }
 
@@ -257,6 +268,7 @@ func (f Features) String() string {
 		{"Effects", f.Effects},
 		{"Navigation", f.Navigation},
 		{"GenericFuncs", f.GenericFuncs},
+		{"GenericComponents", f.GenericComponents},
 		{"RuntimeReach", f.RuntimeReach},
 		{"StructComponents", f.StructComponents},
 		{"StdlibContextParam", f.StdlibContextParam},

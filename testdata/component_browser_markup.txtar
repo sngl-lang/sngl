@@ -68,7 +68,7 @@ component widgets node {
     badge #badge(value="3")
 }
 
-func has(t Test, markup string, parts list<string>) {
+func has(t Test, markup string, parts list[string]) {
     for var p = parts {
         if markup.indexOf(p) < 0 {
             t.assert(markup == p)

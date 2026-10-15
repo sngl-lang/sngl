@@ -30,7 +30,7 @@ output {
 
 var n = 1
 
-func at<T>(xs list<T>) T {
+func at[T any](xs list[T]) T {
     var i = n
     if i >= xs.length {
         i = 0
@@ -38,7 +38,7 @@ func at<T>(xs list<T>) T {
     return xs[i]
 }
 
-func count<T>(xs list<T>, want T) int {
+func count[T any](xs list[T], want T) int {
     var c = 0
     for var x = xs {
         if x == want {
@@ -48,23 +48,23 @@ func count<T>(xs list<T>, want T) int {
     return c
 }
 
-func both<T>(xs list<T>, want T) int {
+func both[T any](xs list[T], want T) int {
     var c = count(xs, want)
     return c + count([at(xs)], want)
 }
 
-func last<T>(xs list<T>) T {
+func last[T any](xs list[T]) T {
     var i = xs.length - 1
     return xs[i]
 }
 
-func pad<T>(xs list<T>, extra list<T> = []) int {
+func pad[T any](xs list[T], extra list[T] = []) int {
     var c = xs.length + extra.length
     return c + n
 }
 
-func blank<T>() list<T> {
-    var out list<T> = []
+func blank[T any]() list[T] {
+    var out list[T] = []
     if n < 0 {
         return out
     }
@@ -73,7 +73,7 @@ func blank<T>() list<T> {
 
 component box {
     var k = 0
-    func nth<T>(xs list<T>) T {
+    func nth[T any](xs list[T]) T {
         var i = k
         return xs[i]
     }
@@ -85,7 +85,7 @@ component box {
 
 var xs = [10, 20, 10]
 var names = ["a", "b"]
-var e list<string> = ["z"]
+var e list[string] = ["z"]
 var fns = last([
     func(x int) string {
         return "{x}"

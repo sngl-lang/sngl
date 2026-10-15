@@ -12,8 +12,6 @@ const (
 	//go:fix inline
 	TypeInvalid = ir.TypeInvalid
 	//go:fix inline
-	TypeDyn = ir.TypeDyn
-	//go:fix inline
 	TypeBool = ir.TypeBool
 	//go:fix inline
 	TypeInt = ir.TypeInt
@@ -65,7 +63,7 @@ const (
 )
 
 //go:fix inline
-var TypDyn = ir.TypDyn
+var TypInvalid = ir.TypInvalid
 
 //go:fix inline
 var TypBool = ir.TypBool

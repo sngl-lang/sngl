@@ -7,7 +7,7 @@ import . "sngl:ui"
 
 component main node {
     var (
-        xs list<int> = []
+        xs list[int] = []
         n = 0
     )
 

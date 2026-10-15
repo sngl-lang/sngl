@@ -36,7 +36,7 @@ func entry() => Entry{
     },
 }
 
-func entries() map<string, func()> {
+func entries() map[string, func()] {
     return {
         "b" = func() {
             n = n + 2
