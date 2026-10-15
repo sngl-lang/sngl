@@ -416,8 +416,10 @@ func CloneStmtsSharingDecls(stmts []Stmt) []Stmt {
 	return c.clone(reflect.ValueOf(stmts)).Interface().([]Stmt)
 }
 
-// unreachedLibrary is each declaration a package pkg imports lists that
-// reach does not hold.
+// unreachedLibrary is each declaration a library package pkg imports lists
+// that reach does not hold. A package the program imports by path is copied
+// whole: lowering adds its types to the program (addForeignTypes), reached or
+// not, and writes them there.
 func unreachedLibrary(pkg *Package, reach *Reached) map[Symbol]bool {
 	out := map[Symbol]bool{}
 	note := func(s Symbol) {
@@ -434,6 +436,10 @@ func unreachedLibrary(pkg *Package, reach *Reached) map[Symbol]bool {
 				continue
 			}
 			seen[q] = true
+			if !q.Library {
+				walk(q)
+				continue
+			}
 			for _, v := range q.Consts {
 				note(v)
 			}
