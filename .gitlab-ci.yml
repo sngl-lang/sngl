@@ -172,9 +172,8 @@ test:
   cache:
     key: go-build-test
   # The trust scripts' offline `go mod tidy` needs every module of the
-  # checkout's graph, test-only ones included, which the image's `go mod
-  # download` leaves out. verify's own `go mod tidy -diff` fetched them while
-  # lint and test were one job.
+  # checkout's graph, test-only ones included. The image carries them, so this
+  # fetches only what a branch's go.sum adds before its image is rebuilt.
   before_script:
     - go mod download all
   script: go tool verify -dry -only test
