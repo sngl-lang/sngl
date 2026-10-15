@@ -13,6 +13,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
 
 	"duckfam.us/sngl/internal/toolchain"
@@ -23,7 +24,12 @@ var (
 	verify = flag.Bool("verify", false, "rerun every go build and go test, whatever its testdata/go_runs record says")
 )
 
-var goRunsPerTest = map[string]int{}
+// goRunsPerTest is keyed by the test rather than its name, which -count=2
+// runs twice.
+var (
+	goRunsMu      sync.Mutex
+	goRunsPerTest = map[*testing.T]int{}
+)
 
 // runGo runs `go args...` over files in a fresh directory under this package,
 // so the checkout's runtime packages resolve -- unless a record says these
@@ -41,8 +47,11 @@ var goRunsPerTest = map[string]int{}
 func runGo(t *testing.T, prefix string, files map[string]string, display bool, args ...string) (string, bool) {
 	t.Helper()
 	name := strings.ReplaceAll(t.Name(), "/", "_")
-	goRunsPerTest[name]++
-	if n := goRunsPerTest[name]; n > 1 {
+	goRunsMu.Lock()
+	goRunsPerTest[t]++
+	n := goRunsPerTest[t]
+	goRunsMu.Unlock()
+	if n > 1 {
 		name += "." + strconv.Itoa(n)
 	}
 	record := filepath.Join("testdata", "go_runs", name)
