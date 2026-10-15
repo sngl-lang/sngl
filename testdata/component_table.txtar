@@ -813,7 +813,7 @@ pass sha256:8024d25df4be54d4cec92f95b445761a
 -- run/none/html --
 pass sha256:52a182f96961d04bb2bfb1d3bd08dbb5
 -- testrun/html/none/component_table.sngl/main/1 --
-sha256:125c3dde6fe7ed0e2a154bae336b65dc
+sha256:3131d959563dc9aaea93555075c4ee68
 {
   "results": [
     {

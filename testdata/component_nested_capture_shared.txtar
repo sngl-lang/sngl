@@ -894,7 +894,7 @@ pass sha256:cd6537e12897e2cccf9de673ec51633a
 -- run/none/html --
 pass sha256:9d8bd1084a33d9a42f46dadf754112a5
 -- testrun/html/none/component_nested_capture_shared.sngl/main/1 --
-sha256:a5025c1d76f2de493bf866153497ae35
+sha256:11867f4603ad4877dcd23aa86671d7cd
 {
   "results": [
     {

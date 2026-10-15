@@ -468,7 +468,7 @@ pass sha256:bf380c48a11746ee4e1db5977e51f3de
 -- run/none/html --
 pass sha256:7dd3e4e2df2f55a744e6b7699b465a34
 -- testrun/html/none/component_checkbox.sngl/main/1 --
-sha256:364ddaf760cc0db94de8b38116d2abb9
+sha256:bf7839dc83ffbcc9c3f8b87f8c05728a
 {
   "results": [
     {

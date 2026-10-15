@@ -179,7 +179,7 @@ sha256:a6d8c750aa4808952cde06bb3de198d5
   ]
 }
 -- testrun/html/none/app.sngl/main/1 --
-sha256:bb1a97bfa881ed697e93cb3f7290456c
+sha256:1f5b91ec4030bff5b013b68d711aa700
 {
   "results": [
     {
@@ -193,7 +193,7 @@ sha256:bb1a97bfa881ed697e93cb3f7290456c
   ]
 }
 -- testrun/html/none/canvas.sngl/main/1 --
-sha256:1f845510a99a8753755d750bc9ae3096
+sha256:d70c09c67d11e678dd84c07ee42bb00f
 {
   "results": [
     {

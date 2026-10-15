@@ -172,7 +172,7 @@ sha256:57cf406a19e8d7fb44577e76d6c3a29a
   ]
 }
 -- testrun/html/none/funcs.sngl/main/1 --
-sha256:264f7cc843032565f4bf04dc8778a373
+sha256:c44ee7834f3e47af624df7b56591169d
 {
   "results": [
     {
@@ -198,7 +198,7 @@ sha256:264f7cc843032565f4bf04dc8778a373
   ]
 }
 -- testrun/html/none/setctx.sngl/main/1 --
-sha256:1fe89dfb10ee3bc6824effd95e4385ac
+sha256:bcdbffd09dbc476df4b219a06a23f260
 {
   "results": [
     {

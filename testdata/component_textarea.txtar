@@ -492,7 +492,7 @@ pass sha256:59f0c531a4025cbe5b306ec5cb37d34f
 -- run/none/html --
 pass sha256:b19ec53cc064141429bc4e54e032234c
 -- testrun/html/none/component_textarea.sngl/main/1 --
-sha256:674676399f8224de9d8ca839d34b76cb
+sha256:a01b3192e454f8b9fe8c341d937a04c3
 {
   "results": [
     {

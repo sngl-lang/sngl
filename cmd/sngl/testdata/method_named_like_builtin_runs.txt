@@ -46,7 +46,7 @@ ui.window {
     box
 }
 -- testrun/html/none/app.sngl/box/1 --
-sha256:38156543bae1c601ad2cc7a5711ca07a
+sha256:459e178934bf7b268229d3896826989b
 {
   "results": [
     {

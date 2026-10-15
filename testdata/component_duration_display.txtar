@@ -523,7 +523,7 @@ pass sha256:842637d2d20d0ea0bef0a1ab099846c3
 -- run/none/html --
 pass sha256:340ddfa7e0fc915d7f870c8c83b0deb5
 -- testrun/html/none/component_duration_display.sngl/main/1 --
-sha256:47f1f595bd69b0382c0249b8f67a23f0
+sha256:843f6e6eb356f6a64be0a385e260f99b
 {
   "results": [
     {
