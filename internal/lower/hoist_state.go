@@ -138,11 +138,13 @@ func (st *blockState) walk(o *stateOwner, stmts []ir.Stmt, dyn, top bool, host *
 				// A page is mounted while it shows and gone when it does not.
 				d = true
 			}
-			n.Children = st.walk(o, n.Children, d, false, hostedBy(handleType(n)))
+			// A node that takes the family it is placed in names none of its
+			// own, and hosts what its position accepts.
+			n.Children = st.walk(o, n.Children, d, false, orHost(hostedBy(handleType(n)), host))
 			for _, name := range ir.SlotNames(n.Slots) {
 				// A population renders where the component inserts it, which
 				// may be any number of times.
-				n.Slots[name].Body = st.walk(o, n.Slots[name].Body, true, false, slotHost(n.Component, name))
+				n.Slots[name].Body = st.walk(o, n.Slots[name].Body, true, false, orHost(slotHost(n.Component, name), host))
 			}
 		case *ir.If:
 			d := dyn || !ir.IsConst(n.Cond)
@@ -314,6 +316,14 @@ func entryHost(in *ir.SlotInst, name string) *ir.Component {
 		}
 	}
 	return nil
+}
+
+// orHost is f, or host where f is nil.
+func orHost(f, host *ir.Component) *ir.Component {
+	if f == nil {
+		return host
+	}
+	return f
 }
 
 func slotDeclHost(s *ir.SlotDecl, fallback *ir.Component) *ir.Component {
