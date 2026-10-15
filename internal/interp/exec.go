@@ -670,7 +670,7 @@ func (env *Env) unbindLoopVars(s *ir.For) {
 func ApplyOp(op ast.AssignOp, cur, val any, targetType *ir.Type) (any, error) {
 	// The declared target type drives the width so sized-integer compound
 	// assignment wraps at the right width. When the target type is unavailable
-	// or dyn (e.g. a dynamically-typed field in a test context), fall back to
+	// (IR built by hand), fall back to
 	// inferring from the current runtime carrier.
 	kind := numKindOf(targetType)
 	if kind == (opeval.NumKind{}) {

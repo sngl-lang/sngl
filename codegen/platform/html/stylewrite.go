@@ -126,7 +126,7 @@ func styleHelperFor(t *ir.Type, css string) string {
 // styleWriteStmts is the writes as IR, for a node the translator reaches
 // through its handle: a handler's assignment or a factory's creation.
 func (t *htmlTranslator) styleWriteStmts(node ir.Expr, writes []styleWrite) []ir.Stmt {
-	style := &ir.Select{Operand: node, Field: "style", Type: ir.TypDyn}
+	style := &ir.Select{Operand: node, Field: "style", Type: ir.NativeNamed("CSSStyleDeclaration")}
 	var out []ir.Stmt
 	for _, w := range writes {
 		var v ir.Expr = &ir.Literal{Type: ir.TypString, Value: w.fixed}
@@ -224,7 +224,7 @@ func styleValueDecl(e ir.Expr) *ir.StructDef {
 // and drops a declaration it refuses instead of keeping it verbatim.
 func styleValueWrite(node, v ir.Expr) ir.Stmt {
 	return &ir.Assign{
-		Target: &ir.Select{Operand: &ir.Select{Operand: node, Field: "style", Type: ir.TypDyn}, Field: "cssText", Type: ir.TypString},
+		Target: &ir.Select{Operand: &ir.Select{Operand: node, Field: "style", Type: ir.NativeNamed("CSSStyleDeclaration")}, Field: "cssText", Type: ir.TypString},
 		Op:     ast.AssignSet,
 		Value:  &ir.Call{Type: ir.TypString, Func: &ir.Func{Name: styleValueHelper}, Args: []ir.CallArg{{Value: v}}},
 	}

@@ -1,0 +1,8 @@
+text(value="nothing")
+vbox() {
+    text(value="shown")
+}
+vbox() {
+    text(value="forwarded")
+}
+button(text="show", @click)

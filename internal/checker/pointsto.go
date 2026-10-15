@@ -223,20 +223,7 @@ func (w *pointsToWalker) bindRHS(dst ir.PointsToKey, rhs ir.Expr) {
 			*w.out = append(*w.out, constraint{dst: dst, srcs: []ir.PointsToKey{ir.SlotReturnKey(x.Func)}})
 		}
 	case *ir.Select:
-		// Namespace field select (e.g. api.fetchHello): resolve to the
-		// concrete *ir.Func in the namespace's package and treat it as a
-		// direct candidate.
 		if x.Operand != nil {
-			if ident, ok := x.Operand.(*ir.Ident); ok {
-				if ns, ok := ident.Sym.(*ir.Namespace); ok && ns.Pkg != nil {
-					for _, fn := range ns.Pkg.Funcs {
-						if fn.Name == x.Field {
-							*w.out = append(*w.out, constraint{dst: dst, funcs: []*ir.Func{fn}})
-							return
-						}
-					}
-				}
-			}
 			// Struct field read: subset of the field slot.
 			if k, ok := structFieldKey(exprType(x.Operand), x.Field); ok {
 				*w.out = append(*w.out, constraint{dst: dst, srcs: []ir.PointsToKey{k}})

@@ -14,7 +14,7 @@ output {
 func testSuppliedSlotContentIsAddressable(t Test, c main) {
     t.assert(c.body.value == "in the rest slot")
     t.assert(c.f.head.value == "Hello")
-    t.assert(c.own.value == "frame's own")
+    t.assert(c.f.own.value == "frame's own")
 }
 
 // An insertion point the caller supplied nothing for renders its own block.

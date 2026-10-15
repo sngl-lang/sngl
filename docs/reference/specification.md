@@ -407,13 +407,12 @@ user-defined types.
 
 ### Predeclared types
 
-| Type     | Description                                                  |
-|----------|--------------------------------------------------------------|
-| `bool`   | `true` or `false`.                                           |
-| `int`    | 64-bit signed integer. Division truncates toward zero.       |
-| `float`  | 64-bit IEEE-754 floating point.                              |
-| `string` | Immutable UTF-8 text.                                        |
-| `dyn`    | The dynamic type; see [The dynamic type](#the-dynamic-type). |
+| Type     | Description                                            |
+|----------|--------------------------------------------------------|
+| `bool`   | `true` or `false`.                                     |
+| `int`    | 64-bit signed integer. Division truncates toward zero. |
+| `float`  | 64-bit IEEE-754 floating point.                        |
+| `string` | Immutable UTF-8 text.                                  |
 
 `any` is predeclared beside them and is no type a value may have: it is the
 constraint that says nothing about a type parameter (see
@@ -537,14 +536,6 @@ expects (see [Unit literals](#unit-literals)).
 The integer literal `0` is assignable to any unit type; other bare numbers must
 be scaled by a unit literal (`5 * 1s`).
 
-### The dynamic type
-
-`dyn` is the dynamic type and the type assigned to a binding that has no
-annotation and no inferable initializer. Any value is assignable to `dyn`, a
-`dyn` value is assignable to any type, and operations on a `dyn` operand bypass
-static operand checking. Where the checker knows what a `dyn` binding was
-initialized with, it holds later uses to that type.
-
 ### References
 
 `ref[T]` is a mutable reference to a value of type `T`: what holds one goes on
@@ -583,18 +574,16 @@ A value of type `A` may be used where type `B` is expected when any of the
 following holds:
 
 1. `A` and `B` are identical.
-2. `A` or `B` is `dyn` (see [The dynamic type](#the-dynamic-type)).
-3. `A` is `null` and `B` is an `option` type or a function type.
-4. `A` is `int` and `B` is `float`.
-5. one of `A` and `B` is `string` and the other is a string-representable type
+2. `A` is `null` and `B` is an `option` type or a function type.
+3. `A` is `int` and `B` is `float`.
+4. one of `A` and `B` is `string` and the other is a string-representable type
    (a standard-library type such as `color`, `date`, `time`, or `datetime`).
-6. `A` is `list[S]`, `B` is `list[T]`, and `S` is assignable to `T` (lists are
+5. `A` is `list[S]`, `B` is `list[T]`, and `S` is assignable to `T` (lists are
    covariant in their element type).
-7. `A` is `list[S]` and `B` is `iter[T]` with `S` assignable to `T` (the
+6. `A` is `list[S]` and `B` is `iter[T]` with `S` assignable to `T` (the
    conversion that underlies `for` over a list).
-8. `A` is `map[K, S]` and `B` is `map[K, T]` (or `B`'s key type is `dyn`) with
-   `S` assignable to `T`.
-9. `A` is `option[S]` and `B` is `option[T]` with `S` assignable to `T`, or `A`
+7. `A` is `map[K, S]` and `B` is `map[K, T]` with `S` assignable to `T`.
+8. `A` is `option[S]` and `B` is `option[T]` with `S` assignable to `T`, or `A`
    is `T` and `B` is `option[T]` (a bare value auto-wraps into an option).
 
 The auto-wrap stores the value, not a reference to where it was read from: a
@@ -634,8 +623,7 @@ permitted conversions among primitives are:
 - to `bool` — from `bool` or `string`;
 - to a string-representable type — from `string` or from itself.
 
-A `dyn` operand may be converted to any primitive type (this is how `dyn` is
-narrowed). Conversions whose operand is a struct, component, function, list,
+Conversions whose operand is a struct, component, function, list,
 option, or `null` are rejected, and so are `int` and `float` of a multi-base
 unit (see [Unit types](#unit-types)).
 
@@ -686,8 +674,8 @@ Type parameters are introduced by a type-parameter list in brackets
 component. Every type parameter names a **constraint** after its name: what a
 type bound to it must be. A constraint is `any` or an anonymous struct. `any`
 is the constraint that says nothing. A constraint is a constraint only: `any`
-written where a value's type goes is an error, and the type of a value the
-program says nothing about is `dyn`. A type parameter may also carry a default
+written where a value's type goes is an error: every value has a type the
+program can name. A type parameter may also carry a default
 after its constraint (`[T any = struct {}]`), used when nothing binds it; a
 constraint is never a default, so a parameter with no default has none, and
 `[T struct {} = struct {}]` writes both.
@@ -850,7 +838,7 @@ library type, but one the library already declares is a duplicate declaration.
 
 ### Predeclared identifiers and the library tiers
 
-Apart from `bool` and `dyn`, everything predeclared is an ordinary declaration
+Apart from `bool`, everything predeclared is an ordinary declaration
 in `sngl:builtin`: the scalar and collection types (`int`, `float`, `string`,
 `color`, `list`, `map`, `option`, `ref`, `iter`) with their methods; the
 constraint `any`; the constants
@@ -1026,7 +1014,7 @@ function, or a context. Constants may refer to one another in any source order.
 Assigning to a constant is an error.
 
 A `var` declaration binds a mutable name. The type may be given explicitly,
-inferred from the initializer, or — if neither is present — defaults to `dyn`.
+inferred from the initializer; a declaration with neither is an error.
 A variable initializer is evaluated **once**; it provides the initial value
 only and does not establish a reactive dependency. A derived value that should
 recompute when its inputs change must be a function, not a variable (see
@@ -1483,7 +1471,7 @@ rendered, so change the state it reads instead.
 ### The toggle statement
 
 `target!!` negates a boolean lvalue in place; it is equivalent to
-`target = !target` and requires a `bool` (or `dyn`) target.
+`target = !target` and requires a `bool` target.
 
 ### The return statement
 
@@ -1512,7 +1500,7 @@ stream, so there is no iteration for an escape to cut short.
 IfNode = "if" CondExpr StmtBlock [ "else" ( IfNode | StmtBlock ) ]
 ```
 
-The condition must be `bool` (or `dyn`); a parameterless `bool`-returning
+The condition must be `bool`; a parameterless `bool`-returning
 computed is called implicitly. The `if` body and the optional `else` body are
 each their own scope; `else if` chains without nesting braces.
 

@@ -3,8 +3,8 @@ import . "sngl:test"
 
 struct TreeNode {
     value int = 0
-    left  dyn = null
-    right dyn = null
+    left  option[TreeNode] = null
+    right option[TreeNode] = null
 }
 
 component main node {
@@ -21,17 +21,17 @@ component main node {
     var root = TreeNode{value=5, left=node3, right=node8}
 
     // Recursive tree sum
-    func treeSum(node dyn) int {
+    func treeSum(node option[TreeNode]) int {
         return node == null ? 0 : node.value + treeSum(node.left) + treeSum(node.right)
     }
 
     // Recursive tree depth
-    func treeDepth(node dyn) int {
+    func treeDepth(node option[TreeNode]) int {
         return node == null ? 0 : 1 + int.max(treeDepth(node.left), treeDepth(node.right))
     }
 
     // Recursive tree contains
-    func treeContains(node dyn, target int) bool {
+    func treeContains(node option[TreeNode], target int) bool {
         return node == null ? false : node.value == target || treeContains(node.left, target) || treeContains(node.right, target)
     }
 

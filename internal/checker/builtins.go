@@ -30,6 +30,15 @@ func (c *checker) bindBuiltinRole(kind ir.BuiltinKind, sym ir.Symbol) {
 		bound = bindBuiltin(c, &c.boundaryComp, kind, sym) != nil
 	case ir.BuiltinFamilyRoot:
 		bound = bindBuiltin(c, &c.rootFamily, kind, sym) != nil
+	case ir.BuiltinApplication:
+		if app := bindBuiltin(c, &c.applicationComp, kind, sym); app != nil {
+			if fromSource {
+				for _, b := range c.libraryRecords() {
+					b.RegisterApplication(app)
+				}
+			}
+			bound = true
+		}
 	case ir.BuiltinNull:
 		if v := bindBuiltin(c, &c.nullConst, kind, sym); v != nil {
 			// Neither the type nor the value can be spelled, so the written

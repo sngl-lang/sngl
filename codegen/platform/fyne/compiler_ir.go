@@ -83,7 +83,7 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 				// The __root sentinel is built through a native call so that
 				// rendering this init registers the container import.
 				initCall := &ir.Call{
-					Type:     ir.TypDyn,
+					Type:     ir.NativeGoPointerOf("fyne.Container"),
 					Receiver: &ir.Ident{Name: "container"},
 					Func:     &ir.Func{Foreign: ir.Foreign{Path: "fyne.io/fyne/v2/container", Name: "container.NewVBox"}},
 				}
@@ -861,7 +861,7 @@ func topRef(tr *fyneTranslator, name string) ir.Expr {
 		return tr.themeOverrideRef(name)
 	}
 	if tr.isLocalRef(name) {
-		return localElementRef(name)
+		return tr.localElementRef(name)
 	}
 	return elementRef(name)
 }

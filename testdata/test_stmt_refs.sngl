@@ -10,7 +10,7 @@ func testCallExpressionAndCallStatementRefs(t Test, c main) {
 }
 
 func testSubtestCallRefs(t Test, c main) {
-    t.test("nested", func(t, c) {
+    t.test("nested", func(t Test, c main) {
         c.increment(1)
         t.assert(c.count == 1)
     })

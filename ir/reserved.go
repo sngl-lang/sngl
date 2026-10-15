@@ -52,22 +52,6 @@ func ConstStrings(e Expr) ([]string, bool) {
 		if v, ok := x.Sym.(*Var); ok && v.IsConst {
 			return ConstStrings(v.Init)
 		}
-	case *Select:
-		// `js.words`: a const another package declares, reached through the
-		// alias its package is imported under.
-		id, ok := x.Operand.(*Ident)
-		if !ok {
-			return nil, false
-		}
-		ns, ok := id.Sym.(*Namespace)
-		if !ok || ns.Pkg == nil || ns.Pkg.Symbols == nil {
-			return nil, false
-		}
-		if m, found := ns.Pkg.Symbols.LookupMember(x.Field); found {
-			if v, ok := m.(*Var); ok && v.IsConst {
-				return ConstStrings(v.Init)
-			}
-		}
 	}
 	return nil, false
 }

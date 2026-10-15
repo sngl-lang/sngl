@@ -8,7 +8,8 @@
 # The round trip is the assertion worth making, and it is a CLI script rather
 # than a golden because it runs the compiler twice over its own output:
 # dump, check what came back, dump that, and require the two dumps to agree.
-# A rendering that loses a mark checks clean and differs on the second pass.
+# A rendering that loses a mark checks clean and differs on the second pass,
+# and one that spells a type no source can write does not parse.
 
 sngl dump --stage checked app.sngl
 cp stdout first.sngl
@@ -28,6 +29,11 @@ grep '#\[go\.native\("example\.com/todo", "todo\.Fetch", fails, context\)\]' fir
 grep '#\[macro\.unusable\("functions returning multiple values are not supported"\)\]' first.sngl
 grep '#\[go\.native\("example\.com/todo", "todo\.Count"\)\]' first.sngl
 
+# A type SNGL has no name for is written `any` on an unusable declaration,
+# which is the one place the checker reads it as saying so.
+grep '(?s)field Todo\.Extra has type not representable in SNGL"\)\]\s+extra any' first.sngl
+grep 'func Keep\(x any\)' first.sngl
+
 # A declaration the host already has is emitted by nobody, so it prints with
 # no body. The checker synthesizes `return <zero>` for a bodyless func, and
 # printing that back read as a real implementation returning zero -- which,
@@ -43,7 +49,14 @@ import . "sngl:ui"
 struct Todo {
     #[go.native("ID")]
     id int
+    #[go.native("Extra")]
+    #[macro.unusable("field Todo.Extra has type not representable in SNGL")]
+    extra any
 }
+
+#[go.native("example.com/todo", "todo.Keep")]
+#[macro.unusable("parameter \"x\" has type not representable in SNGL")]
+func Keep(x any)
 
 #[go.native("example.com/todo", "todo.Fetch", context, fails)]
 func Fetch(q string) Todo

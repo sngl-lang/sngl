@@ -72,8 +72,8 @@ func paramConstraint(t *ir.Type) *ir.StructDef {
 	return constraintStruct(sym.Constraint)
 }
 
-// unsatisfied says why t does not satisfy constraint, "" where it does. A dyn
-// says nothing to measure, and neither does a type parameter no declaration
+// unsatisfied says why t does not satisfy constraint, "" where it does. An
+// invalid type says nothing to measure, and neither does a type parameter no declaration
 // constrains -- one a substitution made rather than a scope -- so both pass.
 // A type parameter is measured by its own constraint: a T constrained to more
 // fields than a U asks for may be handed on to U.
@@ -83,7 +83,7 @@ func unsatisfied(t, constraint *ir.Type) string {
 		return ""
 	}
 	switch t.Kind {
-	case ir.TypeDyn, ir.TypeInvalid:
+	case ir.TypeInvalid:
 		return ""
 	case ir.TypeTypeParam:
 		if sym, _ := t.Decl.(*ir.TypeParamSym); sym == nil {
@@ -145,7 +145,7 @@ func inferFromConstraints(params []ir.TypeParam, bindings map[string]*ir.Type) {
 				found := map[string]*ir.Type{}
 				ir.BindTypeParams(w.Type, got.Type, found)
 				for name, b := range found {
-					if _, bound := bindings[name]; !bound && own[name] && b.Kind != ir.TypeDyn {
+					if _, bound := bindings[name]; !bound && own[name] && b.Kind != ir.TypeInvalid {
 						bindings[name] = b
 						changed = true
 					}

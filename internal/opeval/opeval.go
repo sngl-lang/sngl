@@ -46,7 +46,7 @@ func Arith(op ast.BinaryOp, left, right any, kind NumKind) (any, error) {
 		return intArith(op, left, right, kind.Bits, kind.Unsigned)
 	}
 	// Unspecified: default int semantics when both operands are integers,
-	// otherwise fall back to float (covers dyn operands whose static type the
+	// otherwise fall back to float (covers operands whose static type the
 	// caller could not pin to a concrete width).
 	if _, ok := asInt64(left); ok {
 		if _, ok := asInt64(right); ok {

@@ -151,13 +151,13 @@ const spanColorHelperJS = `function _snglSpanColor(c) {
 // read is its declaration; a color it cannot is converted where the page runs,
 // the unset one clearing the property rather than painting nothing.
 func (t *htmlTranslator) spanStyleWrites(node ir.Expr, sl *ir.StructLit) []ir.Stmt {
-	style := &ir.Select{Operand: node, Field: "style", Type: ir.TypDyn}
+	style := &ir.Select{Operand: node, Field: "style", Type: ir.NativeNamed("CSSStyleDeclaration")}
 	var out []ir.Stmt
 	for _, f := range sl.Fields {
 		if f.Name == "color" && !codegen.SpanStyleKnownColor(f.Value) {
 			t.jc.Ctx.Helpers[spanColorHelper] = true
 			out = append(out, &ir.Assign{
-				Target: &ir.Select{Operand: style, Field: "color", Type: ir.TypDyn},
+				Target: &ir.Select{Operand: style, Field: "color", Type: ir.TypString},
 				Op:     ast.AssignSet,
 				Value: &ir.Call{
 					Type: ir.TypString,

@@ -1,0 +1,4 @@
+text(value="boxed full")
+text(value="inner")
+text(value="boxed empty")
+button(text="show", @click)

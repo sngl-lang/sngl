@@ -108,6 +108,7 @@ fun _snglSplit(s: String, sep: String): List<String> =
 fun MainScreen() {
     var n__inst0 by remember { mutableStateOf(0) }
     var visible__inst0 by remember { mutableStateOf(true) }
+    var failed__inst0 by remember { mutableStateOf(false) }
 
     if (visible__inst0) {
         val __activity = LocalContext.current as? Activity
@@ -142,8 +143,11 @@ fun MainScreen() {
                 }
             }
             Text(text = "", modifier = Modifier)
-            Box(modifier = Modifier.width(40.dp).height(40.dp)) {
+            if ((failed__inst0 || true)) {
                 Text(text = "JD", modifier = Modifier.width(40.dp).height(40.dp).background(ComposeColor(red = 204, green = 204, blue = 204, alpha = 255)), style = TextStyle(textAlign = TextAlign.Center))
+            } else {
+                Box(modifier = Modifier.width(40.dp).height(40.dp)) {
+                }
             }
         }
     }
@@ -191,4 +195,4 @@ fun SnglAssetImage(url: String) {
     Image(bitmap = bmp, contentDescription = null, modifier = Modifier)
 }
 -- run/kotlin/android --
-pass sha256:11e4c7c8e1c4e9d08356fa7cb6246e33
+pass sha256:855240693f87fd0da863b7ff2f871a48

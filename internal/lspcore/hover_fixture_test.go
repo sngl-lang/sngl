@@ -65,7 +65,7 @@ func TestHoverFixtures(t *testing.T) {
 					}
 					for _, p := range comp.Props {
 						if p.Name == propName {
-							t := "dyn"
+							t := "unknown"
 							if p.Type != nil {
 								t = p.Type.String()
 							}
@@ -89,7 +89,7 @@ func TestHoverFixtures(t *testing.T) {
 					}
 					for _, f := range sd.Fields {
 						if f.Name == fieldName {
-							t := "dyn"
+							t := "unknown"
 							if f.Type != nil {
 								t = f.Type.String()
 							}

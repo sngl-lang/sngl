@@ -203,7 +203,7 @@ func TestGtk4Translator_OnAttachHandler_ButtonClick(t *testing.T) {
 func TestGtk4Translator_OnSlotReset(t *testing.T) {
 	gc := stubGC()
 	tr := newGtk4Translator(gc, func(_, _ string) {})
-	slot := &ir.Var{Name: "__slot0", Synthesized: true, Type: ir.ListOf(ir.TypDyn)}
+	slot := &ir.Var{Name: "__slot0", Synthesized: true, Type: ir.ListOf(&ir.Type{Kind: ir.TypeComponent})}
 	got := renderStmts(gc, tr.OnSlotReset(context.Background(), slot))
 	if !strings.Contains(got, "m.__slot0 = nil") {
 		t.Errorf("expected slot reset to nil; got: %s", got)
@@ -213,7 +213,7 @@ func TestGtk4Translator_OnSlotReset(t *testing.T) {
 func TestGtk4Translator_OnSlotAppend(t *testing.T) {
 	gc := stubGC()
 	tr := newGtk4Translator(gc, func(_, _ string) {})
-	slot := &ir.Var{Name: "__slot0", Synthesized: true, Type: ir.ListOf(ir.TypDyn)}
+	slot := &ir.Var{Name: "__slot0", Synthesized: true, Type: ir.ListOf(&ir.Type{Kind: ir.TypeComponent})}
 	child := &ir.Ident{Name: "__n0", Synthesized: true, IsElementRef: true}
 	got := renderStmts(gc, tr.OnSlotAppend(context.Background(), slot, child))
 	if !strings.Contains(got, "append(m.__slot0") {

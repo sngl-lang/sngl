@@ -167,28 +167,30 @@ window(title="t") {
 	}
 }
 
-// TestUnsettableProp_FailsTheBuild pins the other half of "never emit a call
+// TestUnsettableProp_IsNotDeclared pins the other half of "never emit a call
 // that does not compile": a property whose value type no SNGL value can
-// produce refuses the build, naming the property, rather than emitting a call
-// whose argument is the wrong type.
-func TestUnsettableProp_FailsTheBuild(t *testing.T) {
+// produce is not declared on the widget, so writing it is an unknown prop
+// where it is written rather than a call whose argument is the wrong type.
+func TestUnsettableProp_IsNotDeclared(t *testing.T) {
 	skipWithoutGIR(t)
-	_, err := generateGtk4(t, `
+	doc, err := parser.Parse("t.sngl", []byte(`
 import . "sngl:ui"
 import gtk "gir:Gtk-4.0"
 
 window(title="t") {
     gtk.GtkLabel(label="hi", ellipsize="end") {}
 }
-`)
-	if err == nil {
-		t.Fatal("generate succeeded; GtkLabel.ellipsize takes a Pango.EllipsizeMode, which no SNGL value produces")
+`))
+	if err != nil {
+		t.Fatalf("parse: %v", err)
 	}
-	for _, want := range []string{"GtkLabel", "ellipsize", "Pango.EllipsizeMode"} {
-		if !strings.Contains(err.Error(), want) {
-			t.Errorf("error %q does not name %s", err, want)
+	_, diags := checker.Check(doc, &checker.Config{IsMain: true, Platforms: codegen.CollectPlatforms(), Languages: codegen.CollectLangs(), Targets: []ir.StaticTarget{{Platform: "gtk4", Language: "go"}}})
+	for _, d := range diags {
+		if d.Severity == ir.Error && strings.Contains(d.Msg, `unknown prop "ellipsize" on component GtkLabel`) {
+			return
 		}
 	}
+	t.Fatalf("GtkLabel.ellipsize takes a Pango.EllipsizeMode, which no SNGL value produces, and checked as %v", diags)
 }
 
 // TestEnumProp_RejectsUnknownMember pins that an enum member is resolved from

@@ -222,7 +222,7 @@ func callsFunc(e ir.Expr, target *ir.Func) bool {
 				return true
 			}
 		}
-	case *ir.Literal, *ir.Ident, *ir.ContextRead:
+	case *ir.Literal, *ir.Ident, *ir.ContextRead, *ir.SlotEmpty:
 		// No nested calls possible.
 	default:
 		panic(fmt.Sprintf("callsFunc: unhandled expr %T", x))
@@ -332,6 +332,8 @@ func containsContextRead(e ir.Expr) bool {
 	switch x := e.(type) {
 	case *ir.ContextRead:
 		return true
+	case *ir.SlotEmpty:
+		return false
 	case *ir.Call:
 		if containsContextRead(x.Receiver) || containsContextRead(x.Callee) {
 			return true
@@ -484,7 +486,7 @@ func substituteParams(e ir.Expr, subs map[*ir.Param]ir.Expr) ir.Expr {
 			x.Entries[i].Key = substituteParams(x.Entries[i].Key, subs)
 			x.Entries[i].Value = substituteParams(x.Entries[i].Value, subs)
 		}
-	case *ir.Literal, *ir.ContextRead:
+	case *ir.Literal, *ir.ContextRead, *ir.SlotEmpty:
 		// No parameter references.
 	case *ir.Lambda:
 		// The lambda a body hands to something else closes over the
@@ -607,6 +609,9 @@ func cloneExpr(e ir.Expr) ir.Expr {
 		}
 		return &cp
 	case *ir.ContextRead:
+		cp := *x
+		return &cp
+	case *ir.SlotEmpty:
 		cp := *x
 		return &cp
 	default:

@@ -603,6 +603,12 @@ import (
 	"duckfam.us/sngl/pkg/go/gtk4rt"
 )
 
+type Measurement struct {
+	Px  float64
+	Em  float64
+	Rem float64
+}
+
 type Tab__record struct {
 	Label    string
 	Disabled bool
@@ -1212,7 +1218,7 @@ pass sha256:af7b9e3b6c84b1cb2b6f28bed74dfaab
 -- run/go/fyne --
 pass sha256:1dfc6033a56c43fa2e732b715b4cf180
 -- run/go/gtk4 --
-pass sha256:103dcac124b54cd5bafd2bceb0d3b41a
+pass sha256:c95d7782724c207421aa70000189cfe3
 -- run/kotlin/android --
 pass sha256:225a36a54547a35ba9dcf3b85ffb4903
 -- run/none/html --

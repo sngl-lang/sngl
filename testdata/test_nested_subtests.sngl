@@ -11,11 +11,11 @@ func testThreeLevels(t Test, c nested) {
     c.x = 1
     t.assert(c.x == 1)
 
-    t.test("level 2", func(t, c) {
+    t.test("level 2", func(t Test, c nested) {
         c.x = 2
         t.assert(c.x == 2)
 
-        t.test("level 3", func(t, c) {
+        t.test("level 3", func(t Test, c nested) {
             c.x = 3
             t.assert(c.x == 3)
         })
@@ -29,13 +29,13 @@ func testThreeLevels(t Test, c nested) {
 func testSiblingSubtests(t Test, c nested) {
     c.x = 10
 
-    t.test("first sibling", func(t, c) {
+    t.test("first sibling", func(t Test, c nested) {
         c.y = 1
         t.assert(c.y == 1)
         t.assert(c.x == 10)
     })
 
-    t.test("second sibling", func(t, c) {
+    t.test("second sibling", func(t Test, c nested) {
         t.assert(c.y == 0)
         t.assert(c.x == 10)
     })

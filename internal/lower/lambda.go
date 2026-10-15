@@ -134,7 +134,7 @@ func analyzeCaptures(body []ir.Stmt, params []*ir.Param) []capture {
 				walkExpr(en.Key)
 				walkExpr(en.Value)
 			}
-		case *ir.Literal, *ir.ContextRead:
+		case *ir.Literal, *ir.ContextRead, *ir.SlotEmpty:
 			// Terminal — no captures hidden inside.
 		default:
 			panic(fmt.Sprintf("analyzeCaptures.walkExpr: unhandled %T", x))
@@ -317,7 +317,7 @@ func liftLambdas(e ir.Expr, l *lifter) ir.Expr {
 			x.Entries[i].Value = liftLambdas(x.Entries[i].Value, l)
 		}
 		return x
-	case *ir.Literal, *ir.Ident, *ir.ContextRead, *ir.Closure:
+	case *ir.Literal, *ir.Ident, *ir.ContextRead, *ir.SlotEmpty, *ir.Closure:
 		// Terminal / already-lifted — no nested *ir.Lambda.
 		return x
 	default:
@@ -735,7 +735,7 @@ func (l *lifter) rewriteExpr(e ir.Expr, captureField map[ir.Symbol]ir.Expr, capt
 			x.Entries[i].Value = l.rewriteExpr(x.Entries[i].Value, captureField, captureMutable)
 		}
 		return x
-	case *ir.Literal, *ir.ContextRead:
+	case *ir.Literal, *ir.ContextRead, *ir.SlotEmpty:
 		// Terminal — no Idents to rewrite.
 		return x
 	default:

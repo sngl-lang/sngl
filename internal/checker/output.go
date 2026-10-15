@@ -108,7 +108,7 @@ func (c *checker) unregisteredTargetNode(name string, depth int) *ir.Component {
 	comp := &ir.Component{Name: name, Family: platTree, Gen: &ir.GenCaps{TargetName: name}}
 	if depth == 1 {
 		comp.Family = langTree
-		comp.ChildrenType = &ir.Type{Kind: ir.TypeList, Elems: []*ir.Type{ir.TypDyn}}
+		comp.ChildrenType = &ir.Type{Kind: ir.TypeList, Elems: []*ir.Type{ir.TypInvalid}}
 	}
 	if c.synthTargets == nil {
 		c.synthTargets = map[string]*ir.Component{}

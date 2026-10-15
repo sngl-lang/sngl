@@ -208,7 +208,7 @@ func (c *checker) loadStdlib() (builtinPkg, stdPkg *ir.Package) {
 // resolveMacroSig resolves a macro's declared parameter types, once, the
 // first time a mark of it is applied. Not as the package loads: the mark
 // package loads from inside sngl:builtin's own imports, where `list` names
-// nothing yet and `list[ir.IntrinsicFlag]` would degrade to `list[dyn]`.
+// nothing yet and `list[ir.IntrinsicFlag]` would not resolve.
 func (c *checker) resolveMacroSig(pkg *ir.Package, fn *ir.Func) {
 	if c.libs.macroSigs[fn] || fn.AST == nil || len(fn.Params) != len(fn.AST.Params.Params) {
 		return
@@ -542,11 +542,11 @@ func (c *checker) loadStdlibPackage(pkgName string) *ir.Package {
 
 	// Refine stdlib context types from their default expressions. Context
 	// decls run BEFORE wrapper body checks (so wrapper bodies can read them),
-	// at which point a default like `i18n.defaultLocale()` still types as dyn.
+	// at which point a default like `i18n.defaultLocale()` has no type yet.
 	// Once the bodies are checked the wrapper has its concrete return type,
 	// so re-pull ctx.Typ from the default expression's Call.Func.Return.
 	for _, ctx := range stdlibPkg.Contexts {
-		if ctx.Typ != nil && ctx.Typ.Kind != ir.TypeDyn {
+		if ctx.Typ != nil && ctx.Typ.Kind != ir.TypeInvalid {
 			continue
 		}
 		if call, ok := ctx.Default.(*ir.Call); ok && call.Func != nil && call.Func.Return != nil {
@@ -709,6 +709,7 @@ func (c *checker) publishIntrinsic(fn *ir.Func) {
 		BuildOnly:       fn.BuildOnly,
 		Pkg:             pkg,
 		DeclaredAs:      funcDeclName(fn),
+		Receiver:        fn.Receiver,
 	}
 	ir.MustWriteDecl(fn, "registering "+def.Name)
 	for _, b := range c.libraryRecords() {
@@ -1541,17 +1542,6 @@ func highestCalledPurity(fn *ir.Func) ir.Purity {
 		walkStmt(s)
 	}
 	return maxP
-}
-
-// isPrimitiveTypeKind reports whether k is a simple value-type kind safe to
-// use for inferred wrapper return types. Restricted to dodge the
-// color-struct-vs-primitive ambiguity noted in checkStdlibFuncBody.
-func isPrimitiveTypeKind(k ir.TypeKind) bool {
-	switch k {
-	case ir.TypeBool, ir.TypeInt, ir.TypeFloat, ir.TypeString:
-		return true
-	}
-	return false
 }
 
 // Platform sources use a library import's alias as the `component <alias>.X`

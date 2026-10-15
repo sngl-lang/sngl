@@ -46,18 +46,18 @@ type Bag struct {
 	Bad map[string]int
 }
 
-// Stringer is an interface; fields/params/returns of interface type are
-// exposed to SNGL as explicit dyn (still usable, just opaque).
+// Stringer is an interface; fields/params/returns of interface type have no
+// SNGL type, so they import as invalid and their declaration is unusable.
 type Stringer interface {
 	String() string
 }
 
-// Carrier has an interface-typed field; the field stays usable as dyn.
+// Carrier has an interface-typed field; the field is declared, and unusable.
 type Carrier struct {
 	Handler Stringer
 }
 
-// WithIface takes an interface parameter; usable via dyn.
+// WithIface takes an interface parameter, which makes it unusable.
 func WithIface(h Stringer) string { return "" }
 
 // Count is an exported variable.
