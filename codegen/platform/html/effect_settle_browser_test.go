@@ -58,7 +58,6 @@ component App() node {
 window(title="H") { App() }
 `
 	inBrowser(t, src, func(page *rod.Page) {
-
 		if got := effectLog(page.MustElement("body").MustText()); got != "[1024]" {
 			t.Fatalf("runs after the bound = %s, want [1024]", got)
 		}

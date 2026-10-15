@@ -38,7 +38,6 @@ component App() node {
 window(title="H") { App() }
 `
 	inBrowser(t, src, func(page *rod.Page) {
-
 		got := page.MustEval("() => window.__snglErr").String()
 		want := fmt.Sprintf("chain: recursion exceeded %d nested instances", lower.MaxRecursionDepth)
 		if !strings.Contains(got, want) {

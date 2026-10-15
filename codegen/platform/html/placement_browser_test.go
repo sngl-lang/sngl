@@ -46,7 +46,6 @@ component App() node {
 window(title="H") { App() }
 `
 	inBrowser(t, src, func(page *rod.Page) {
-
 		page.MustEval(`() => {
 		window.__mut = { added: 0, removed: 0 };
 		const target = document.querySelector('[data-sngl-slot="0"]');

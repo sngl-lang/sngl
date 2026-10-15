@@ -42,7 +42,6 @@ component App() node {
 window(title="H") { App() }
 `
 	inBrowser(t, src, func(page *rod.Page) {
-
 		stamped := page.MustEval(`() => {
 		const slot = document.querySelector('[data-sngl-slot="0"]');
 		window.__probe = slot.children[0];
