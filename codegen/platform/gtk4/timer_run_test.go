@@ -3,9 +3,6 @@
 package gtk4
 
 import (
-	"os"
-	"os/exec"
-	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -18,7 +15,8 @@ import (
 // reactive `gtk4rt.LabelSetText` beside it, and the widget it names is built by
 // buildWidgetTree, which is gtk_init and a display. What a tick writes to a
 // widget is a claim the `timer_every_target.txtar` golden makes; what this one
-// makes is that the schedule runs at all, and that has to run in CI.
+// makes is that the schedule runs at all, and that has to run without a
+// display.
 const timerRunSrc = `
 import . "sngl:ui"
 import . "sngl:time"
@@ -105,27 +103,14 @@ func TestTimersTick(t *testing.T) {
 // gtk4rt resolves through the project's go.mod, and runs `go test` there.
 func runGTK4Model(t *testing.T, prefix, model, testSrc string) {
 	t.Helper()
-	tmp, err := os.MkdirTemp(".", "_"+prefix)
-	if err != nil {
-		t.Fatal(err)
+	files := map[string]string{
+		"model.go": model,
+		// The emission is `package main` without a main(), which links only
+		// under `sngl run`'s own scaffold.
+		"entry.go":      "package main\n\nfunc main() {}\n",
+		"timer_test.go": testSrc,
 	}
-	defer os.RemoveAll(tmp)
-	write := func(name, body string) {
-		if err := os.WriteFile(filepath.Join(tmp, name), []byte(body), 0o644); err != nil {
-			t.Fatal(err)
-		}
-	}
-	write("model.go", model)
-	// The emission is `package main` without a main(), which links only under
-	// `sngl run`'s own scaffold.
-	write("entry.go", "package main\n\nfunc main() {}\n")
-	write("timer_test.go", testSrc)
-
-	cmd := exec.Command("go", "test", "-count=1", ".")
-	cmd.Dir = tmp
-	combined, runErr := cmd.CombinedOutput()
-	if runErr != nil {
-		t.Errorf("the emitted program's timers did not run: %v\n--- output ---\n%s\n--- model.go ---\n%s",
-			runErr, combined, model)
+	if out, ok := runGo(t, prefix, files, false, "test", "-count=1", "."); !ok {
+		t.Errorf("the emitted program's timers did not run:\n--- output ---\n%s\n--- model.go ---\n%s", out, model)
 	}
 }

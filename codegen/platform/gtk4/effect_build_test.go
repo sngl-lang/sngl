@@ -1,11 +1,6 @@
 package gtk4
 
-import (
-	"os"
-	"os/exec"
-	"path/filepath"
-	"testing"
-)
+import "testing"
 
 // effectModelSrc puts an effect on the Model, and effectInstanceSrc puts one
 // inside a row the build cannot inline -- the two places a settle func is
@@ -77,23 +72,10 @@ func TestAnEffectCompiles(t *testing.T) {
 // resolves through the project's go.mod.
 func buildGTK4Model(t *testing.T, prefix, model string) {
 	t.Helper()
-	tmp, err := os.MkdirTemp(".", "_"+prefix)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(tmp)
-	if err := os.WriteFile(filepath.Join(tmp, "model.go"), []byte(model), 0o644); err != nil {
-		t.Fatal(err)
-	}
 	// The emission is `package main` without a main(), which links only under
 	// `sngl run`'s own scaffold.
-	if err := os.WriteFile(filepath.Join(tmp, "entry.go"), []byte("package main\n\nfunc main() {}\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	cmd := exec.Command("go", "build", "./...")
-	cmd.Dir = tmp
-	combined, buildErr := cmd.CombinedOutput()
-	if buildErr != nil {
-		t.Errorf("emitted Go failed to compile: %v\n--- output ---\n%s\n--- model.go ---\n%s", buildErr, combined, model)
+	files := map[string]string{"model.go": model, "entry.go": "package main\n\nfunc main() {}\n"}
+	if out, ok := runGo(t, prefix, files, false, "build", "./..."); !ok {
+		t.Errorf("emitted Go failed to compile:\n--- output ---\n%s\n--- model.go ---\n%s", out, model)
 	}
 }

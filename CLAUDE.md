@@ -4305,6 +4305,17 @@ Chromium, through `inBrowser`, and recorded the same way in
 serves and the test's own source file, so an edit to the assertions asks for a
 run too.
 
+**And so is a gtk4 test's `go build` or `go test`** of the program it
+generated (`runGo` in `codegen/platform/gtk4`), recorded in
+`codegen/platform/gtk4/testdata/go_runs/<Test>`: a digest of the files the
+command runs over, its arguments, and the source of every package of this
+module those files import, transitively -- so an edit to `gtk4rt` asks for a
+run as an edit to the codegen does, and only a run that succeeded is recorded.
+The generated program depends on the host's GIR only where a test asks the
+host's whole catalogue: every other program comes out the same from GTK 4.8's
+GIR and 4.24's. `TestWidgetSurface_EitherCompilesOrRefuses` is that exception
+and still builds for real.
+
 A claim of *absence* is the one thing a golden cannot state — it makes
 absence visible, but no reader notices that something is not there. Those are
 written as `deny` lines in the archive comment, naming a golden file (or `*`

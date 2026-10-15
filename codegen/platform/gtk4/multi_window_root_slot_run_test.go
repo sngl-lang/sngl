@@ -2,12 +2,7 @@
 
 package gtk4
 
-import (
-	"os"
-	"os/exec"
-	"path/filepath"
-	"testing"
-)
+import "testing"
 
 // multiWindowRootSlotSrc has two windows, each with a loop at the top of its
 // body between static siblings.
@@ -122,29 +117,11 @@ func TestEachWindowKeepsItsRows(t *testing.T) {
 // renders what it wrote.
 func TestMultiWindowRootSlotsRun(t *testing.T) {
 	skipWithoutGIR(t)
-	if os.Getenv("DISPLAY") == "" && os.Getenv("WAYLAND_DISPLAY") == "" {
-		t.Skip("gtk4 needs an X11/Wayland display")
-	}
-	files := generateGTK4FilesBuilt(t, multiWindowRootSlotSrc)
-	tmp, err := os.MkdirTemp(".", "_gtk4-multi-window-")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(tmp)
+	files := goFiles(generateGTK4FilesBuilt(t, multiWindowRootSlotSrc))
 	files["entry.go"] = "package main\n\nfunc main() {}\n"
 	files["probe.go"] = multiWindowProbe
 	files["windows_test.go"] = multiWindowDriver
-	for name, src := range files {
-		if filepath.Ext(name) != ".go" {
-			continue
-		}
-		if err := os.WriteFile(filepath.Join(tmp, name), []byte(src), 0o644); err != nil {
-			t.Fatal(err)
-		}
-	}
-	cmd := exec.Command("go", "test", "-count=1", ".")
-	cmd.Dir = tmp
-	if out, err := cmd.CombinedOutput(); err != nil {
-		t.Errorf("%v\n%s\n--- model.go ---\n%s", err, out, files["model.go"])
+	if out, ok := runGo(t, "gtk4-multi-window-", files, true, "test", "-count=1", "."); !ok {
+		t.Errorf("%s\n--- model.go ---\n%s", out, files["model.go"])
 	}
 }

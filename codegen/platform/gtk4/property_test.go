@@ -216,7 +216,6 @@ window(title="t") {
 // not a usable property. Builds the emitted cgo against the host's GTK.
 func TestSetterlessProps_GeneratedGoCompiles(t *testing.T) {
 	skipWithoutGIR(t)
-	requireGtk4Toolchain(t)
 	files, err := generateGtk4(t, setterlessSource)
 	if err != nil {
 		t.Fatalf("generate: %v", err)

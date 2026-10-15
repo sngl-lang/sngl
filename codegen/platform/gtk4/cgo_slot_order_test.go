@@ -3,9 +3,6 @@
 package gtk4
 
 import (
-	"os"
-	"os/exec"
-	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -92,32 +89,14 @@ func TestASlotReRendersInPlace(t *testing.T) {
 // wrapped, rather than after every sibling written below it.
 func TestCgoSlotReRendersInPlace(t *testing.T) {
 	skipWithoutGIR(t)
-	if os.Getenv("DISPLAY") == "" && os.Getenv("WAYLAND_DISPLAY") == "" {
-		t.Skip("gtk4 needs an X11/Wayland display")
-	}
-	files := generateGTK4FilesBuilt(t, cgoSlotOrderSrc)
+	files := goFiles(generateGTK4FilesBuilt(t, cgoSlotOrderSrc))
 	if strings.Contains(files["model.go"], "gtk4rt.") {
 		t.Fatalf("expected the cgo path:\n%s", files["model.go"])
 	}
-	tmp, err := os.MkdirTemp(".", "_gtk4-cgo-slot-order-")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(tmp)
 	files["entry.go"] = "package main\n\nfunc main() {}\n"
 	files["probe.go"] = cgoSlotOrderProbe
 	files["order_test.go"] = cgoSlotOrderDriver
-	for name, src := range files {
-		if filepath.Ext(name) != ".go" {
-			continue
-		}
-		if err := os.WriteFile(filepath.Join(tmp, name), []byte(src), 0o644); err != nil {
-			t.Fatal(err)
-		}
-	}
-	cmd := exec.Command("go", "test", "-count=1", ".")
-	cmd.Dir = tmp
-	if out, err := cmd.CombinedOutput(); err != nil {
-		t.Errorf("%v\n%s\n--- model.go ---\n%s", err, out, files["model.go"])
+	if out, ok := runGo(t, "gtk4-cgo-slot-order-", files, true, "test", "-count=1", "."); !ok {
+		t.Errorf("%s\n--- model.go ---\n%s", out, files["model.go"])
 	}
 }

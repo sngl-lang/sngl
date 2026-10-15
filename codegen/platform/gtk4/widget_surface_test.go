@@ -4,9 +4,7 @@ package gtk4
 
 import (
 	"fmt"
-	"os"
 	"os/exec"
-	"path/filepath"
 	"sort"
 	"strings"
 	"testing"
@@ -47,7 +45,6 @@ func TestWidgetSurface_EitherCompilesOrRefuses(t *testing.T) {
 	if testing.Short() {
 		t.Skip("builds the whole widget surface with cgo")
 	}
-	requireGtk4Toolchain(t)
 	g := &Generator{}
 	reg, err := g.gir()
 	if err != nil {
@@ -94,7 +91,10 @@ func TestWidgetSurface_EitherCompilesOrRefuses(t *testing.T) {
 	if err != nil {
 		t.Fatalf("generating all %d buildable widgets together: %v", len(buildable), err)
 	}
-	if out, ok := buildEmittedGo(t, files); !ok {
+	// Not recorded: the program is whatever the host's GIR declares, so a record
+	// made against one GTK would not answer for another.
+	requireGtk4Toolchain(t)
+	if out, ok := execGo(t, "gtk4-surface-", emittedGoModule(files), "build", "./..."); !ok {
 		t.Errorf("the emitted cgo for %d widgets does not build:\n%s", len(buildable), out)
 	}
 }
@@ -111,15 +111,19 @@ func requireGtk4Toolchain(t *testing.T) {
 }
 
 // buildEmittedGo builds the generated files as a module of their own and
-// reports the compiler's output. The emitted package is `main` but carries no
-// entry point unless the main option is set, so one is supplied.
+// reports the compiler's output.
 func buildEmittedGo(t *testing.T, files map[string][]byte) (string, bool) {
 	t.Helper()
-	dir := t.TempDir()
+	return runGo(t, "gtk4-emitted-", emittedGoModule(files), false, "build", "./...")
+}
+
+// emittedGoModule is the generated files as a module of their own. The emitted
+// package is `main` but carries no entry point unless the main option is set,
+// so one is supplied.
+func emittedGoModule(files map[string][]byte) map[string]string {
+	build := map[string]string{"entry.go": "package main\n\nfunc main() {}\n"}
 	for name, data := range files {
-		if err := os.WriteFile(filepath.Join(dir, name), data, 0o644); err != nil {
-			t.Fatal(err)
-		}
+		build[name] = string(data)
 	}
 	goVersion, extra := codegen.DetectHostGoMod()
 	if goVersion == "" {
@@ -129,14 +133,6 @@ func buildEmittedGo(t *testing.T, files map[string][]byte) (string, bool) {
 	if extra != "" {
 		mod += "\n" + extra + "\n"
 	}
-	if err := os.WriteFile(filepath.Join(dir, "go.mod"), []byte(mod), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(dir, "entry.go"), []byte("package main\n\nfunc main() {}\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	cmd := exec.Command("go", "build", "./...")
-	cmd.Dir = dir
-	out, err := cmd.CombinedOutput()
-	return string(out), err == nil
+	build["go.mod"] = mod
+	return build
 }

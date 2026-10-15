@@ -2,7 +2,6 @@ package gtk4
 
 import (
 	"os"
-	"os/exec"
 	"path/filepath"
 	"testing"
 
@@ -117,26 +116,9 @@ func generateGTK4FilesBuilt(t *testing.T, src string) map[string]string {
 // buildGeneratedGo compiles model.go alone.
 func buildGeneratedFiles(t *testing.T, prefix string, files map[string]string) {
 	t.Helper()
-	tmp, err := os.MkdirTemp(".", "_"+prefix)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(tmp)
-	for name, src := range files {
-		if filepath.Ext(name) != ".go" {
-			continue
-		}
-		if err := os.WriteFile(filepath.Join(tmp, name), []byte(src), 0o644); err != nil {
-			t.Fatal(err)
-		}
-	}
-	if err := os.WriteFile(filepath.Join(tmp, "entry.go"), []byte("package main\n\nfunc main() {}\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	cmd := exec.Command("go", "build", "-gcflags=-e", ".")
-	cmd.Dir = tmp
-	out, err := cmd.CombinedOutput()
-	if err != nil {
+	build := goFiles(files)
+	build["entry.go"] = "package main\n\nfunc main() {}\n"
+	if out, ok := runGo(t, prefix, build, false, "build", "-gcflags=-e", "."); !ok {
 		t.Errorf("generated Go does not compile\n--- go build ---\n%s\n--- model.go ---\n%s", out, files["model.go"])
 	}
 }
@@ -176,22 +158,9 @@ func buildGeneratedGo(t *testing.T, prefix, model string) {
 // unrelated defect keeps failing.
 func compileErrors(t *testing.T, prefix, model string) string {
 	t.Helper()
-	tmp, err := os.MkdirTemp(".", "_"+prefix)
-	if err != nil {
-		t.Fatal(err)
+	files := map[string]string{"model.go": model, "entry.go": "package main\n\nfunc main() {}\n"}
+	if out, ok := runGo(t, prefix, files, false, "build", "-gcflags=-e", "."); !ok {
+		return out
 	}
-	defer os.RemoveAll(tmp)
-	if err := os.WriteFile(filepath.Join(tmp, "model.go"), []byte(model), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(tmp, "entry.go"), []byte("package main\n\nfunc main() {}\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	cmd := exec.Command("go", "build", "-gcflags=-e", ".")
-	cmd.Dir = tmp
-	out, err := cmd.CombinedOutput()
-	if err == nil {
-		return ""
-	}
-	return string(out)
+	return ""
 }
