@@ -823,6 +823,9 @@ body { font-family: system-ui, sans-serif; }
 <input id="__n0" data-sngl-id="__n0" type="date"/>
 
 <script>
+window.__snglErrors = [];
+addEventListener("error", (e) => window.__snglErrors.push(String(e.message)));
+addEventListener("unhandledrejection", (e) => window.__snglErrors.push(String(e.reason?.message ?? e.reason)));
 window.__sngl_markup = Array.from(document.body.childNodes)
   .filter((n) => n.nodeName !== "SCRIPT").map((n) => n.cloneNode(true));
 window.__sngl_reset = () => {
@@ -875,7 +878,7 @@ pass sha256:e51d8b87b8ec51806497b14bacdc3719
 -- run/kotlin/android --
 pass sha256:065e25d98e6928fcae22e53208439053
 -- run/none/html --
-pass sha256:0dd52251f239491eadfdb23e5dbe3a22
+pass sha256:9011c410d64a96d08103442769a3c2d7
 -- testrun/html/none/component_datepicker.sngl/main/1 --
 sha256:17576fff8d7ea7c905154db5745bdf3f
 {

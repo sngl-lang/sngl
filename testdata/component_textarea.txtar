@@ -442,6 +442,9 @@ body { font-family: system-ui, sans-serif; }
 <textarea id="$0" placeholder="Notes" rows="4"></textarea>
 
 <script>
+window.__snglErrors = [];
+addEventListener("error", (e) => window.__snglErrors.push(String(e.message)));
+addEventListener("unhandledrejection", (e) => window.__snglErrors.push(String(e.reason?.message ?? e.reason)));
 window.__sngl_markup = Array.from(document.body.childNodes)
   .filter((n) => n.nodeName !== "SCRIPT").map((n) => n.cloneNode(true));
 window.__sngl_reset = () => {
@@ -490,7 +493,7 @@ pass sha256:f11328d7ca282f8825664d4f7c2af8dd
 -- run/kotlin/android --
 pass sha256:59f0c531a4025cbe5b306ec5cb37d34f
 -- run/none/html --
-pass sha256:b19ec53cc064141429bc4e54e032234c
+pass sha256:a003db8795923f922e6817eae91c7382
 -- testrun/html/none/component_textarea.sngl/main/1 --
 sha256:a01b3192e454f8b9fe8c341d937a04c3
 {

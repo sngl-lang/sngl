@@ -114,6 +114,9 @@ body { font-family: system-ui, sans-serif; }
 </span>
 
 <script>
+window.__snglErrors = [];
+addEventListener("error", (e) => window.__snglErrors.push(String(e.message)));
+addEventListener("unhandledrejection", (e) => window.__snglErrors.push(String(e.reason?.message ?? e.reason)));
 window.__sngl_markup = Array.from(document.body.childNodes)
   .filter((n) => n.nodeName !== "SCRIPT").map((n) => n.cloneNode(true));
 window.__sngl_reset = () => {
@@ -538,7 +541,7 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:460ed920f49e993d44f87a4305024cdf
+pass sha256:7d9b4196cfbec39649623f07df18a146
 -- testrun/html/none/component_timer_schedules.sngl/gated/1 --
 sha256:7dbd1af67261d7494c031662c9517a94
 {

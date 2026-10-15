@@ -327,6 +327,9 @@ body { font-family: system-ui, sans-serif; }
 </div>
 
 <script>
+window.__snglErrors = [];
+addEventListener("error", (e) => window.__snglErrors.push(String(e.message)));
+addEventListener("unhandledrejection", (e) => window.__snglErrors.push(String(e.reason?.message ?? e.reason)));
 window.__sngl_markup = Array.from(document.body.childNodes)
   .filter((n) => n.nodeName !== "SCRIPT").map((n) => n.cloneNode(true));
 window.__sngl_reset = () => {
@@ -411,4 +414,4 @@ pass sha256:c8b70784c7b976fcb994df92ca2ee6fc
 -- run/go/gtk4 --
 pass sha256:869db807bb02e2ef31c289fa3ca81e4b
 -- run/none/html --
-pass sha256:3b316f120b369efe26324c63feffd012
+pass sha256:e08d8a04e3457409497c3de9e9b0e86a

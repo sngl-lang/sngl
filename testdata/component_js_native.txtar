@@ -61,6 +61,9 @@ body { font-family: system-ui, sans-serif; }
 </span>
 
 <script>
+window.__snglErrors = [];
+addEventListener("error", (e) => window.__snglErrors.push(String(e.message)));
+addEventListener("unhandledrejection", (e) => window.__snglErrors.push(String(e.reason?.message ?? e.reason)));
 window.__sngl_markup = Array.from(document.body.childNodes)
   .filter((n) => n.nodeName !== "SCRIPT").map((n) => n.cloneNode(true));
 window.__sngl_reset = () => {
@@ -105,7 +108,7 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:902fca957bc2ab233bbc028883884c08
+pass sha256:6da80db83ac6f8e025b5b52cda36bf3f
 -- testrun/html/none/component_js_native.sngl/main/1 --
 sha256:ea10b6e3ee6c52063000bb8ffc7ee296
 {

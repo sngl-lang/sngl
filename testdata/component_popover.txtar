@@ -574,6 +574,9 @@ body { font-family: system-ui, sans-serif; }
 </div>
 
 <script>
+window.__snglErrors = [];
+addEventListener("error", (e) => window.__snglErrors.push(String(e.message)));
+addEventListener("unhandledrejection", (e) => window.__snglErrors.push(String(e.reason?.message ?? e.reason)));
 window.__sngl_markup = Array.from(document.body.childNodes)
   .filter((n) => n.nodeName !== "SCRIPT").map((n) => n.cloneNode(true));
 window.__sngl_reset = () => {
@@ -615,7 +618,7 @@ pass sha256:bb69cd2301b6335989b1739861c1ab5d
 -- run/kotlin/android --
 pass sha256:d141a1982d7b4f387294ee8a86921bc0
 -- run/none/html --
-pass sha256:70dbeb164845ee163a4ad5b5343ce6fd
+pass sha256:0173e2f497cadd6ac4c3ec9d64af2f6f
 -- testrun/html/none/component_popover.sngl/main/1 --
 sha256:412b487c9287d0dd44b501eaa7ae5287
 {

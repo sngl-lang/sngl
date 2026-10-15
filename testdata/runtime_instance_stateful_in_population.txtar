@@ -1059,6 +1059,9 @@ body { font-family: system-ui, sans-serif; }
 </div>
 
 <script>
+window.__snglErrors = [];
+addEventListener("error", (e) => window.__snglErrors.push(String(e.message)));
+addEventListener("unhandledrejection", (e) => window.__snglErrors.push(String(e.reason?.message ?? e.reason)));
 window.__sngl_markup = Array.from(document.body.childNodes)
   .filter((n) => n.nodeName !== "SCRIPT").map((n) => n.cloneNode(true));
 window.__sngl_reset = () => {
@@ -1276,4 +1279,4 @@ pass sha256:ae0bd8bae4c0f55627cda221cacbdae2
 -- run/kotlin/android --
 pass sha256:c3e1a47c5ed99910236c364747976bec
 -- run/none/html --
-pass sha256:3df27cc9b9a4b340783bdc11f7e67d6a
+pass sha256:3dc524d3c2d379ea5ee7acbb2aa447fc

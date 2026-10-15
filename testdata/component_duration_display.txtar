@@ -470,6 +470,9 @@ body { font-family: system-ui, sans-serif; }
 </div>
 
 <script>
+window.__snglErrors = [];
+addEventListener("error", (e) => window.__snglErrors.push(String(e.message)));
+addEventListener("unhandledrejection", (e) => window.__snglErrors.push(String(e.reason?.message ?? e.reason)));
 window.__sngl_markup = Array.from(document.body.childNodes)
   .filter((n) => n.nodeName !== "SCRIPT").map((n) => n.cloneNode(true));
 window.__sngl_reset = () => {
@@ -521,7 +524,7 @@ pass sha256:ea80182dbd02f784eb788e613977344d
 -- run/kotlin/android --
 pass sha256:842637d2d20d0ea0bef0a1ab099846c3
 -- run/none/html --
-pass sha256:340ddfa7e0fc915d7f870c8c83b0deb5
+pass sha256:a7c7d772b6ff3ad95357dcbc4f893be9
 -- testrun/html/none/component_duration_display.sngl/main/1 --
 sha256:843f6e6eb356f6a64be0a385e260f99b
 {
