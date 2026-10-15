@@ -11,7 +11,7 @@ import . "sngl:ui"
 // `.empty` answered where the body is spliced, in each position a body may
 // ask it: a node's prop, a var's initializer, and an `if` head; and asked of
 // content whose loop body renders nothing, where only the else can render.
-component boxed(content ...component option[node]) node {
+component boxed(content option[...component option[node]]) node {
     var started = content.empty
     text(value=content.empty ? "empty" : "has content")
     text(value=started ? "started empty" : "started with content")

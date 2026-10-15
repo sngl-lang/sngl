@@ -449,10 +449,12 @@ component Tour ui.node {
             }
         }
         ui.drawer(open=showDrawer, side="right") {
-            ui.vbox(style={gap=12px, padding=16px}) {
-                ui.text(value="Drawer Content", style={fontWeight=bold})
-                ui.text(value="Slide-out panel")
-                ui.button(text="Close", @click { showDrawer = false })
+            component content {
+                ui.vbox(style={gap=12px, padding=16px}) {
+                    ui.text(value="Drawer Content", style={fontWeight=bold})
+                    ui.text(value="Slide-out panel")
+                    ui.button(text="Close", @click { showDrawer = false })
+                }
             }
         }
         ui.divider

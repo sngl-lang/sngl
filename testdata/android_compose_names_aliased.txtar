@@ -41,7 +41,7 @@ component modifier(label string) ui.node {
     })
 }
 
-component dialog(content ...component ui.node) ui.node {
+component dialog(content option[...component ui.node]) ui.node {
     var open = true
     if open {
         ui.card {
@@ -67,7 +67,9 @@ ui.window(title="Names") {
                 }
             }
             ui.modal(title="m", open=shown) {
-                ui.text(value="inside")
+                component content {
+                    ui.text(value="inside")
+                }
             }
         }
     }

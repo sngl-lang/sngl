@@ -8,7 +8,7 @@ deny * `SlotEmpty` -- every `.empty` is answered before codegen
 -- app.sngl --
 import . "sngl:ui"
 
-component tree(d int, content ...component node) node {
+component tree(d int, content option[...component node]) node {
     text(value=content.empty ? "empty {d}" : "full {d}")
     if d > 0 {
         tree(d=d - 1) {
@@ -24,7 +24,7 @@ component inner(content ...component option[node]) node {
     content
 }
 
-component outer(content ...component option[node]) node {
+component outer(content list[...component option[node]]) node {
     var m = 0
     button(text="{m}", @click { m = m + 1 })
     for var y = [1] {
