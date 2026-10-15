@@ -83,11 +83,6 @@ func Run(ctx context.Context, pkg *ir.Package, cfg Config) (results []*codegen.T
 			testFns = append(testFns, f)
 		}
 	}
-	if os.Getenv("SNGL_DEBUG_LAUNCHER") != "" {
-		for _, f := range pkg.Funcs {
-			fmt.Fprintf(os.Stderr, "DEBUG pkg.Func name=%q receiver=%q isTest=%v\n", f.Name, f.RecvName(), f.IsTest)
-		}
-	}
 	groups := testharness.GroupIR(testFns)
 
 	for _, group := range groups {
@@ -95,7 +90,7 @@ func Run(ctx context.Context, pkg *ir.Package, cfg Config) (results []*codegen.T
 		// pipeline mutates in place, and two groups do not agree on what the
 		// root is.
 		groupPkg := ir.ClonePackageFor(pkg, plat.PlatformIdentifier(), LangIdent(lang))
-		rootForTests(groupPkg, group.Component)
+		build.IsolateRootComponent(groupPkg, group.Component)
 		assets, err := prepareForLaunch(groupPkg, cfg, group.Component)
 		if err != nil {
 			return results, err
@@ -206,12 +201,6 @@ func launchOneGroup(ctx context.Context, cfg Config, launcher codegen.TestLaunch
 }
 
 // LangIdent is the language's name, as `ir.Language` declares it, or "" for none.
-//
-// It probed for two method names a LangTranslator does not have —
-// LangIdentifier and Identifier — so it answered "" for every language there
-// is. The optimizer and the lowering both take that name, and with no name the
-// program under test was optimized differently from the one `sngl generate`
-// builds: `go test` and `go build` disagreed about the same source.
 func LangIdent(lang codegen.LangTranslator) string {
 	if lang == nil {
 		return ""
@@ -233,9 +222,7 @@ func driveRPC(ch codegen.RPCChannel, fixtureDir, fixtureFile string) ([]*codegen
 	}
 
 	current := map[string]*codegen.TestResult{}
-	starts := map[string]time.Time{}
 	var results []*codegen.TestResult
-	_ = starts // reserved for richer per-test timing if Agent omits durationMs
 
 	for {
 		m, err := r.Read()
@@ -336,16 +323,6 @@ func handleSnapshotAssert(w *testrpc.Writer, store *snapshot.Store, m *testrpc.M
 		return
 	}
 	_ = w.Respond(*m.ID, map[string]any{"pass": res.Pass, "diff": res.Diff}, nil)
-}
-
-// rootForTests makes comp the program's only entry point.
-//
-// A group naming no component tests plain functions; there is nothing to make
-// a root of, and the program is left as it is. What isolation means is
-// build.IsolateRootComponent's, shared with `generate --opt rootComponent=`
-// so the two harness paths render the same program.
-func rootForTests(pkg *ir.Package, comp string) {
-	build.IsolateRootComponent(pkg, comp)
 }
 
 // prepareForLaunch runs the generate pipeline's full optimize→lower→optimize
