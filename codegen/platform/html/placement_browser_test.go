@@ -5,6 +5,8 @@ package html
 import (
 	"strings"
 	"testing"
+
+	"github.com/go-rod/rod"
 )
 
 // A row that did not move is not touched.
@@ -43,11 +45,9 @@ component App() node {
 }
 window(title="H") { App() }
 `
-	b := startComponent(t, src)
-	defer b.Close()
-	page := b.Page()
+	inBrowser(t, src, func(page *rod.Page) {
 
-	page.MustEval(`() => {
+		page.MustEval(`() => {
 		window.__mut = { added: 0, removed: 0 };
 		const target = document.querySelector('[data-sngl-slot="0"]');
 		new MutationObserver(records => {
@@ -58,17 +58,18 @@ window(title="H") { App() }
 		}).observe(target, { childList: true });
 	}`)
 
-	all := page.MustElements("button")
-	all[len(all)-1].MustClick()
-	page.MustWaitStable()
+		all := page.MustElements("button")
+		all[len(all)-1].MustClick()
+		page.MustWaitStable()
 
-	if got := page.MustElement("body").MustText(); !strings.Contains(got, "row c") {
-		t.Fatalf("the row should have been added; got %q", got)
-	}
+		if got := page.MustElement("body").MustText(); !strings.Contains(got, "row c") {
+			t.Fatalf("the row should have been added; got %q", got)
+		}
 
-	added := page.MustEval(`() => window.__mut.added`).Int()
-	removed := page.MustEval(`() => window.__mut.removed`).Int()
-	if added != 1 || removed != 0 {
-		t.Errorf("appending a row should add one node and remove none; added %d, removed %d", added, removed)
-	}
+		added := page.MustEval(`() => window.__mut.added`).Int()
+		removed := page.MustEval(`() => window.__mut.removed`).Int()
+		if added != 1 || removed != 0 {
+			t.Errorf("appending a row should add one node and remove none; added %d, removed %d", added, removed)
+		}
+	})
 }

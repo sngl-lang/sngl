@@ -7,6 +7,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/go-rod/rod"
+
 	"duckfam.us/sngl/internal/lower"
 )
 
@@ -35,15 +37,15 @@ component App() node {
 }
 window(title="H") { App() }
 `
-	b := startTrapped(t, src)
-	defer b.Close()
+	inBrowser(t, src, func(page *rod.Page) {
 
-	got := b.Page().MustEval("() => window.__snglErr").String()
-	want := fmt.Sprintf("chain: recursion exceeded %d nested instances", lower.MaxRecursionDepth)
-	if !strings.Contains(got, want) {
-		t.Errorf("page error = %q; want it to name the bound (%q)", got, want)
-	}
-	if strings.Contains(got, "call stack") {
-		t.Errorf("the host stack ran out before the bound did: %q", got)
-	}
+		got := page.MustEval("() => window.__snglErr").String()
+		want := fmt.Sprintf("chain: recursion exceeded %d nested instances", lower.MaxRecursionDepth)
+		if !strings.Contains(got, want) {
+			t.Errorf("page error = %q; want it to name the bound (%q)", got, want)
+		}
+		if strings.Contains(got, "call stack") {
+			t.Errorf("the host stack ran out before the bound did: %q", got)
+		}
+	})
 }

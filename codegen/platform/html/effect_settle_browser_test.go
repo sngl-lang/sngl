@@ -5,6 +5,8 @@ package html
 import (
 	"strings"
 	"testing"
+
+	"github.com/go-rod/rod"
 )
 
 // effectLog is the bracketed text the page is showing.
@@ -55,11 +57,10 @@ component App() node {
 }
 window(title="H") { App() }
 `
-	b := startComponent(t, src)
-	defer b.Close()
-	page := b.Page()
+	inBrowser(t, src, func(page *rod.Page) {
 
-	if got := effectLog(page.MustElement("body").MustText()); got != "[1024]" {
-		t.Fatalf("runs after the bound = %s, want [1024]", got)
-	}
+		if got := effectLog(page.MustElement("body").MustText()); got != "[1024]" {
+			t.Fatalf("runs after the bound = %s, want [1024]", got)
+		}
+	})
 }

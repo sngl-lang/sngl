@@ -4,6 +4,8 @@ package html
 
 import (
 	"testing"
+
+	"github.com/go-rod/rod"
 )
 
 // The placement fast path is actually taken for a slot child.
@@ -39,25 +41,23 @@ component App() node {
 }
 window(title="H") { App() }
 `
-	b := startComponent(t, src)
-	defer b.Close()
-	page := b.Page()
+	inBrowser(t, src, func(page *rod.Page) {
 
-	stamped := page.MustEval(`() => {
+		stamped := page.MustEval(`() => {
 		const slot = document.querySelector('[data-sngl-slot="0"]');
 		window.__probe = slot.children[0];
 		window.__probe.__snglKept = "kept";
 		return slot.children.length;
 	}`).Int()
-	if stamped != 2 {
-		t.Fatalf("the slot should hold two rows before the render; got %d", stamped)
-	}
+		if stamped != 2 {
+			t.Fatalf("the slot should hold two rows before the render; got %d", stamped)
+		}
 
-	all := page.MustElements("button")
-	all[len(all)-1].MustClick() // "add" -- appends a third row
-	page.MustWaitStable()
+		all := page.MustElements("button")
+		all[len(all)-1].MustClick() // "add" -- appends a third row
+		page.MustWaitStable()
 
-	got := page.MustEval(`() => {
+		got := page.MustEval(`() => {
 		const slot = document.querySelector('[data-sngl-slot="0"]');
 		if (slot.children.length !== 3) { return "wrong length: " + slot.children.length; }
 		const now = slot.children[0];
@@ -66,7 +66,8 @@ window(title="H") { App() }
 		return "same";
 	}`).String()
 
-	if got != "same" {
-		t.Errorf("appending a row should have kept the rows already placed; %s", got)
-	}
+		if got != "same" {
+			t.Errorf("appending a row should have kept the rows already placed; %s", got)
+		}
+	})
 }

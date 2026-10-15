@@ -4298,6 +4298,12 @@ record. A moved digest or a missing record fails naming `-update`, and
 `go test ./codegen/platform/html -run TestComponentFixtures -update` reruns
 those in a real browser, `-verify` all of them. On html the digest has no runtime gap: the
 testagent and the i18n runtime are files of the generated page.
+What a SNGL test cannot ask -- a DOM mutation count, a node's identity across
+a render, a raise it has no way to expect -- is still a Go test driving
+Chromium, through `inBrowser`, and recorded the same way in
+`codegen/platform/html/testdata/browser_runs/<Test>`: a digest of the page it
+serves and the test's own source file, so an edit to the assertions asks for a
+run too.
 
 A claim of *absence* is the one thing a golden cannot state — it makes
 absence visible, but no reader notices that something is not there. Those are
