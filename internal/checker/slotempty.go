@@ -18,6 +18,9 @@ func (c *checker) inferSlotEmpty(x *ast.SelectExpr) ir.Expr {
 		return nil
 	}
 	slot := c.enclosingSlot(id.Name)
+	if slot != nil && c.slotShadowed(id.Name) {
+		return nil
+	}
 	if slot == nil && c.funcDepth > 0 && x.Field == ir.SlotEmptyMember {
 		// A handler or a function runs outside any render, where there is no
 		// content to ask about; a name it binds itself is its own.
@@ -42,6 +45,27 @@ func (c *checker) inferSlotEmpty(x *ast.SelectExpr) ir.Expr {
 		return &ir.Literal{Type: TypBool, Value: "false"}
 	}
 	return &ir.SlotEmpty{AST: x, Slot: slot}
+}
+
+// slotShadowed reports whether name is bound between the view being checked
+// and the component body's own scope -- a loop variable, a population's
+// parameter, a local -- which reads as that binding rather than the slot.
+func (c *checker) slotShadowed(name string) bool {
+	if c.componentScope == nil {
+		return false
+	}
+	bound := false
+	for sc := c.scope; sc != nil; sc = sc.Parent {
+		if sc == c.componentScope {
+			return bound
+		}
+		if _, ok := sc.LookupDeclaredLocal(name); ok {
+			bound = true
+		}
+	}
+	// Not under the component's body scope at all: nothing here is the
+	// view's own.
+	return false
 }
 
 // checkSlotEmptyAnswers holds what a call site supplied for each slot its

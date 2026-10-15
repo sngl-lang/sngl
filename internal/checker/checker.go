@@ -516,6 +516,11 @@ type checker struct {
 
 	// Current component (for event validation).
 	currentComponent *ir.Component
+	// componentScope is the scope checkComponentBody pushed for
+	// currentComponent's body: what is bound below it -- a loop variable, a
+	// population's parameter, a local -- is the view's own and shadows a slot
+	// of the same name (slotShadowed).
+	componentScope *ir.Scope
 	// funcDepth is non-zero while a function or handler body is being checked.
 	// A slot insertion renders where it is written, so one reaching a func body
 	// has nowhere to project and is reported rather than built. It is also
@@ -4449,9 +4454,9 @@ func (c *checker) checkComponentBody(comp *ir.Component) {
 	c.scope = ir.NewScopeSize(c.scope, len(comp.Props)+len(comp.Vars)+len(comp.Funcs))
 	defer c.popScope()
 
-	prevComp := c.currentComponent
-	c.currentComponent = comp
-	defer func() { c.currentComponent = prevComp }()
+	prevComp, prevScope := c.currentComponent, c.componentScope
+	c.currentComponent, c.componentScope = comp, c.scope
+	defer func() { c.currentComponent, c.componentScope = prevComp, prevScope }()
 
 	// A body-local component sees the body it was written in: its sibling
 	// declarations, and its props, vars and funcs (#202).
