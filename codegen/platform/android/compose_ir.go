@@ -735,7 +735,7 @@ func (cc *irComposeContext) renderIntrinsic(n *ir.NodeInst, comp *ir.Component, 
 				continue
 			}
 			if lam, ok := v.(*ir.Lambda); ok {
-				args = append(args, cc.lambdaArg(p.Name, lam))
+				args = append(args, cc.lambdaArg(p.Name, lam, funcArity(p.Type)))
 				continue
 			}
 			args = append(args, p.Name+" = "+cc.kc.EvalExpr(v))
@@ -858,10 +858,10 @@ func (cc *irComposeContext) thenChain(v ir.Expr) string {
 // the argument goes and the whole call stays one expression even when the body
 // spans lines.
 //
-// A parameter is declared only where the body reads it: a Compose callback
-// lambda may leave the value it is passed unnamed, and every declaration here
-// is one the stdlib override wrote for whichever handlers a call site turned
-// out to supply.
+// Every parameter the callback takes is listed, arity of them, `_` where the
+// body reads none and where the handler wrote fewer than the callback passes:
+// with none listed, Kotlin names a lone parameter `it`, which hides a
+// program's own `it` in the body.
 //
 // A prop that *returns* something is written as Kotlin's other function
 // literal, the anonymous `fun`, because the lambda form cannot say either half
@@ -869,7 +869,7 @@ func (cc *irComposeContext) thenChain(v ir.Expr) string {
 // from the enclosing function, and the value's type is left to inference --
 // where Compose wants a Float and SNGL's `float` is a Double, inference gives
 // it the wrong one silently. `fun(): Float { return … }` states both.
-func (cc *irComposeContext) lambdaArg(name string, lam *ir.Lambda) string {
+func (cc *irComposeContext) lambdaArg(name string, lam *ir.Lambda, arity int) string {
 	if lam.Func == nil || len(lam.Func.Block) == 0 {
 		return name + " = {}"
 	}
@@ -891,8 +891,6 @@ func (cc *irComposeContext) lambdaArg(name string, lam *ir.Lambda) string {
 		return cc.anonFuncArg(name, lam, body)
 	}
 
-	// Every parameter is listed, `_` where unread: with none listed, Kotlin
-	// names a lone one `it`, which hides a program's own `it` in the body.
 	var params []string
 	for _, p := range lam.Func.Params {
 		if !readsParam(lam.Func.Block, p) {
@@ -900,6 +898,9 @@ func (cc *irComposeContext) lambdaArg(name string, lam *ir.Lambda) string {
 			continue
 		}
 		params = append(params, p.Name)
+	}
+	for len(params) < arity {
+		params = append(params, "_")
 	}
 
 	outer := strings.Repeat("    ", cc.indent)
@@ -1011,4 +1012,12 @@ func counterStmt(s ir.Stmt) bool {
 	}
 	v, ok := sym.(*ir.Var)
 	return ok && v != nil && v.Synthesized
+}
+
+// funcArity is how many parameters a value of the function type t is handed.
+func funcArity(t *ir.Type) int {
+	if t == nil || t.Kind != ir.TypeFunc || t.Sig == nil {
+		return 0
+	}
+	return len(t.Sig.Params)
 }

@@ -1,7 +1,8 @@
 A handler lambda lists every parameter its callback takes, `_` where the
-body reads none: with none listed, Kotlin names a lone parameter `it`, and a
-program's own `it` -- a loop's element, here -- read in the body was the
-checkbox's Boolean instead, which did not compile.
+body reads none and where the handler wrote fewer than the callback passes --
+`@change` with no list at all: with none listed, Kotlin names a lone
+parameter `it`, and a program's own `it` -- a loop's element, here -- read in
+the body was the checkbox's Boolean instead, which did not compile.
 
 deny out/kotlin/android/app/src/main/java/test/sngl/app/MainScreen.kt `onChange = \{\n` -- the callback names its parameter
 -- app.sngl --
@@ -20,6 +21,7 @@ component main node {
     vbox {
         for var it = items {
             checkbox #row(label=it, @change(on) { log = it })
+            checkbox #bare(label=it, @change { log = "{it}!" })
         }
         text(value=log)
     }
@@ -28,6 +30,8 @@ component main node {
 func testHandlerReadsTheLoopsIt(t Test, c main) {
     c.row[1].change(true)
     t.assert(c.log == "b")
+    c.bare[0].change(true)
+    t.assert(c.log == "a!")
 }
 
 window {
@@ -78,6 +82,9 @@ fun MainScreen(state: MainScreenState = remember { MainScreenState() }) {
             __checkbox_state0(label = it, __copy = __copy0.toString(), onChange = { _ ->
                 state.log = it
             })
+            __checkbox_state1(label = it, __copy = __copy0.toString(), onChange = { _ ->
+                state.log = (it + "!")
+            })
         }
         Text(text = state.log, modifier = Modifier)
     }
@@ -88,6 +95,21 @@ fun __checkbox_state0(__start_checked: Boolean = false, label: String, __copy: S
     var checked by remember { mutableStateOf(__start_checked) }
 
     Row(modifier = Modifier.testTag("row").then(__copy.let { __key -> Modifier.semantics { this[SnglCopy] = __key } }), verticalAlignment = Alignment.CenterVertically) {
+        Checkbox(checked = checked, onCheckedChange = { on ->
+            checked = on
+            onChange?.invoke(on)
+        })
+        if ((label != "")) {
+            Text(text = label, modifier = Modifier)
+        }
+    }
+}
+
+@Composable
+fun __checkbox_state1(__start_checked: Boolean = false, label: String, __copy: String = "", onChange: ((Boolean) -> Unit)? = null) {
+    var checked by remember { mutableStateOf(__start_checked) }
+
+    Row(modifier = Modifier.testTag("bare").then(__copy.let { __key -> Modifier.semantics { this[SnglCopy] = __key } }), verticalAlignment = Alignment.CenterVertically) {
         Checkbox(checked = checked, onCheckedChange = { on ->
             checked = on
             onChange?.invoke(on)
@@ -127,8 +149,10 @@ class MainScreenTest {
         composeRule.setContent { MainScreen(c) }
         composeTestRule.onNode(androidx.compose.ui.test.isToggleable() and ((androidx.compose.ui.test.hasTestTag("row") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, "1")) or androidx.compose.ui.test.hasAnyAncestor((androidx.compose.ui.test.hasTestTag("row") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, "1"))))).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick); composeTestRule.waitForIdle()
         org.junit.Assert.assertTrue("(c.log == \"b\")", (c.log == "b"))
+        composeTestRule.onNode(androidx.compose.ui.test.isToggleable() and ((androidx.compose.ui.test.hasTestTag("bare") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, "0")) or androidx.compose.ui.test.hasAnyAncestor((androidx.compose.ui.test.hasTestTag("bare") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, "0"))))).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick); composeTestRule.waitForIdle()
+        org.junit.Assert.assertTrue("(c.log == \"a!\")", (c.log == "a!"))
     }
 
 }
 -- run/kotlin/android --
-pass sha256:b4944a046be764b4dd322e99abd298d5
+pass sha256:160655c202c871704cb8692c8bbfa590
