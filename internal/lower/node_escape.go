@@ -149,8 +149,7 @@ func createdNodeID(lv *ir.LocalVar) string {
 
 // reconcileLocal reports whether lv is one of the locals a slot's instance
 // reconcile declares under the id the program gave the instance: its
-// position, the instance it builds, and the root it binds. Each is a local of
-// the render or none is, since one reads the next.
+// position, the instance it builds, and the root it binds.
 func reconcileLocal(lv *ir.LocalVar) bool {
 	if c, ok := lv.Init.(*ir.Call); ok && c.Func != nil {
 		return c.Func.Intrinsic == ir.NodeOpCreateComponent || c.Func.Intrinsic == ir.NodeOpComponentRoot
