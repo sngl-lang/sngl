@@ -6,14 +6,12 @@ import (
 	"encoding"
 	"encoding/json"
 	"fmt"
-	"path"
 	"reflect"
 	"slices"
 	"strconv"
 	"strings"
 	"sync"
 
-	"duckfam.us/sngl/ast"
 	"duckfam.us/sngl/ir"
 )
 
@@ -41,10 +39,7 @@ func dumpTree(v any, root *ir.Package, omit map[string]bool, spew, pointers bool
 		ids:       map[pointerKey]int{},
 		open:      map[pointerKey]bool{},
 	}
-	if root != nil {
-		d.root = root
-		d.contexts = contextPackages(root)
-	}
+	d.root = root
 	rv := reflect.ValueOf(v)
 	d.mark(rv, true)
 	for i := 0; i < len(d.refs); i++ {
@@ -155,8 +150,7 @@ type dumper struct {
 	root *ir.Package
 	omit map[string]bool
 	// omitted is each struct type's fields without the ones omit names.
-	omitted  map[reflect.Type][]jsonFieldInfo
-	contexts map[*ast.CallStmt]*ir.Package
+	omitted map[reflect.Type][]jsonFieldInfo
 	// stringers writes a value that has a String method as that string, as
 	// spew prints one: a position as file:line:col, an operator as itself.
 	stringers bool
@@ -456,9 +450,6 @@ func (d *dumper) ref(v reflect.Value) *dumpObject {
 }
 
 func (d *dumper) declPkg(v reflect.Value) *ir.Package {
-	if ctx, ok := v.Interface().(*ir.Context); ok {
-		return d.contexts[ctx.AST]
-	}
 	if info := v.Elem().FieldByName("DeclInfo"); info.IsValid() {
 		pkg, _ := info.FieldByName("Pkg").Interface().(*ir.Package)
 		return pkg
@@ -468,11 +459,6 @@ func (d *dumper) declPkg(v reflect.Value) *ir.Package {
 
 func (d *dumper) pkgName(v reflect.Value) string {
 	pkg := d.declPkg(v)
-	if ctx, ok := v.Interface().(*ir.Context); ok && pkg == nil && d.foreign(v) && ctx.AST != nil {
-		// A context a target package declares is adopted without the program
-		// importing it; lib/<path> is sngl:<path>, and its files are named so.
-		return "sngl:" + path.Dir(ctx.AST.Pos.File)
-	}
 	switch {
 	case pkg == nil || pkg == d.root:
 		return ""
@@ -487,58 +473,13 @@ func (d *dumper) pkgName(v reflect.Value) string {
 }
 
 // foreign says another package declares v, so this dump only names it.
-// Nothing is, with no package being dumped. A context a target package
-// declares reaches the program with no import to find it through, and says
-// it came from the library by Stdlib alone.
+// Nothing is, with no package being dumped.
 func (d *dumper) foreign(v reflect.Value) bool {
 	if d.root == nil {
 		return false
 	}
-	if ctx, ok := v.Interface().(*ir.Context); ok {
-		return d.contexts[ctx.AST] != nil || ctx.Stdlib && !d.root.Library
-	}
 	pkg := d.declPkg(v)
 	return pkg != nil && pkg != d.root
-}
-
-// contextPackages is which package declares each context the import graph
-// reaches, by the statement that declares it: the IR keeps no link from a
-// context to its package, and a directory package's contexts are on the
-// program's list rather than its own, so its files are what say. A library
-// package also holds the contexts it adopted from its imports, so each
-// package claims only after its imports have claimed theirs.
-func contextPackages(root *ir.Package) map[*ast.CallStmt]*ir.Package {
-	out := map[*ast.CallStmt]*ir.Package{}
-	claim := func(s *ast.CallStmt, p *ir.Package) {
-		if _, ok := out[s]; s != nil && !ok {
-			out[s] = p
-		}
-	}
-	seen := map[*ir.Package]bool{root: true}
-	var walk func(p *ir.Package)
-	walk = func(p *ir.Package) {
-		for _, imp := range p.Imports {
-			if imp == nil || imp.Pkg == nil || seen[imp.Pkg] {
-				continue
-			}
-			seen[imp.Pkg] = true
-			walk(imp.Pkg)
-			for _, ctx := range imp.Pkg.Contexts {
-				claim(ctx.AST, imp.Pkg)
-			}
-			if o := imp.Pkg.Origin; o != nil {
-				for _, doc := range o.Docs {
-					for _, s := range doc.Stmts {
-						if call, ok := s.(*ast.CallStmt); ok {
-							claim(call, imp.Pkg)
-						}
-					}
-				}
-			}
-		}
-	}
-	walk(root)
-	return out
 }
 
 // declPos is where v's AST says it was written, or "" for a declaration

@@ -59,7 +59,7 @@ func (c *checker) registerRootContextDecl(s *ast.CallStmt) {
 	name := s.Call.ID
 	// Stdlib marks the ones a program did not write: sngl:i18n's `#locale` is
 	// a context the language supplies, and lowering treats it as one.
-	ctx := &ir.Context{AST: s, Name: name, Stdlib: c.inLibSource()}
+	ctx := &ir.Context{AST: s, Name: name, Pkg: c.declPkg(), Stdlib: c.inLibSource()}
 	if name == "" {
 		c.error(s.Pos, "context decl requires #identifier")
 	} else if _, exists := c.scope.LookupLocal(name); exists {

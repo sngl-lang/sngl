@@ -35,6 +35,11 @@ func Freeze(p *Package) {
 	for _, u := range p.Units {
 		u.Frozen = true
 	}
+	for _, ctx := range p.Contexts {
+		if ctx.Pkg == p {
+			ctx.Frozen = true
+		}
+	}
 	for _, vs := range [][]*Var{p.Consts, p.Vars} {
 		for _, v := range vs {
 			v.Frozen = true
@@ -64,6 +69,8 @@ func MustWriteDecl(sym Symbol, what string) {
 	case *Func:
 		d.mustWrite(what)
 	case *Var:
+		d.mustWrite(what)
+	case *Context:
 		d.mustWrite(what)
 	}
 }
