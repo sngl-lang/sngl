@@ -334,6 +334,8 @@ func lowerTestExpr(e ir.Expr, surf TestSurface, compRecvs map[string]bool) strin
 			// An instance built at run time has no node of its own: it
 			// counts itself in PresentRegistry instead.
 			nodes = fmt.Sprintf("(%s || %s.containsValue(%q))", nodes, PresentRegistry, id)
+		} else {
+			nodes = fmt.Sprintf("(%s || %s.containsValue(%s))", nodes, PresentRegistry, PresentCopyEntry(id, lowerTestExpr(ir.CopyKey(path), TestSurface{}, nil)))
 		}
 		if !present {
 			return "!" + nodes
@@ -698,6 +700,13 @@ func copyMatcher(id string, key ir.Expr) string {
 
 // PresentRegistry is the map the screen declares in a test build, holding a
 // token for each instance built at run time that a test null-tests while it is
-// composed, under the id its call site gave it. Each test's state empties it,
-// since a composition an earlier test left is never disposed.
+// composed, under the id its call site gave it -- or for one copy of it,
+// PresentCopyEntry. Each test's state empties it, since a composition an
+// earlier test left is never disposed.
 const PresentRegistry = "SnglPresent"
+
+// PresentCopyEntry is the PresentRegistry entry of one copy of an instance,
+// the Kotlin string naming the id and the key the copy stands in.
+func PresentCopyEntry(id, key string) string {
+	return fmt.Sprintf("%q + %s + \"]\"", id+"[", key)
+}

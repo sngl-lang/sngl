@@ -1240,6 +1240,7 @@ func (m *Model) tickPresentAt(key string) bool {
 package test.sngl.app
 
 import androidx.compose.ui.semantics.SemanticsPropertyKey
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
@@ -1266,7 +1267,10 @@ fun _snglSplit(s: String, sep: String): List<String> =
 
 val SnglCopy = SemanticsPropertyKey<String>("SnglCopy")
 
+val SnglPresent = mutableStateMapOf<Any, String>()
+
 class MainScreenState {
+    init { SnglPresent.clear() }
     val items = mutableStateListOf("a", "b", "c")
     var skip by mutableStateOf("a")
     var log by mutableStateOf("")
@@ -1340,13 +1344,13 @@ class MainScreenTest {
         val c = MainScreenState()
         @Suppress("UNUSED_VARIABLE") val composeTestRule = composeRule
         composeRule.setContent { MainScreen(c) }
-        org.junit.Assert.assertTrue("!composeTestRule.onAllNodes((androidx.compose.ui.test.hasTestTag(\"only\") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, \"0\"))).fetchSemanticsNodes().isNotEmpty()", !composeTestRule.onAllNodes((androidx.compose.ui.test.hasTestTag("only") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, "0"))).fetchSemanticsNodes().isNotEmpty())
-        org.junit.Assert.assertTrue("!composeTestRule.onAllNodes((androidx.compose.ui.test.hasTestTag(\"tick\") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, \"0\"))).fetchSemanticsNodes().isNotEmpty()", !composeTestRule.onAllNodes((androidx.compose.ui.test.hasTestTag("tick") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, "0"))).fetchSemanticsNodes().isNotEmpty())
-        if (composeTestRule.onAllNodes((androidx.compose.ui.test.hasTestTag("only") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, "1"))).fetchSemanticsNodes().isNotEmpty()) {
+        org.junit.Assert.assertTrue("!(composeTestRule.onAllNodes((androidx.compose.ui.test.hasTestTag(\"only\") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, \"0\"))).fetchSemanticsNodes().isNotEmpty() || SnglPresent.containsValue(\"only[\" + \"0\" + \"]\"))", !(composeTestRule.onAllNodes((androidx.compose.ui.test.hasTestTag("only") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, "0"))).fetchSemanticsNodes().isNotEmpty() || SnglPresent.containsValue("only[" + "0" + "]")))
+        org.junit.Assert.assertTrue("!(composeTestRule.onAllNodes((androidx.compose.ui.test.hasTestTag(\"tick\") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, \"0\"))).fetchSemanticsNodes().isNotEmpty() || SnglPresent.containsValue(\"tick[\" + \"0\" + \"]\"))", !(composeTestRule.onAllNodes((androidx.compose.ui.test.hasTestTag("tick") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, "0"))).fetchSemanticsNodes().isNotEmpty() || SnglPresent.containsValue("tick[" + "0" + "]")))
+        if ((composeTestRule.onAllNodes((androidx.compose.ui.test.hasTestTag("only") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, "1"))).fetchSemanticsNodes().isNotEmpty() || SnglPresent.containsValue("only[" + "1" + "]"))) {
             composeTestRule.onNode((androidx.compose.ui.test.hasTestTag("only") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, "1"))).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick); composeTestRule.waitForIdle()
         }
         org.junit.Assert.assertTrue("(c.log == \"b\")", (c.log == "b"))
-        org.junit.Assert.assertTrue("composeTestRule.onAllNodes((androidx.compose.ui.test.hasTestTag(\"tick\") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, \"2\"))).fetchSemanticsNodes().isNotEmpty()", composeTestRule.onAllNodes((androidx.compose.ui.test.hasTestTag("tick") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, "2"))).fetchSemanticsNodes().isNotEmpty())
+        org.junit.Assert.assertTrue("(composeTestRule.onAllNodes((androidx.compose.ui.test.hasTestTag(\"tick\") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, \"2\"))).fetchSemanticsNodes().isNotEmpty() || SnglPresent.containsValue(\"tick[\" + \"2\" + \"]\"))", (composeTestRule.onAllNodes((androidx.compose.ui.test.hasTestTag("tick") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, "2"))).fetchSemanticsNodes().isNotEmpty() || SnglPresent.containsValue("tick[" + "2" + "]")))
     }
 
     @Test fun testAfterTheBranchChanges() {
@@ -1354,10 +1358,10 @@ class MainScreenTest {
         @Suppress("UNUSED_VARIABLE") val composeTestRule = composeRule
         composeRule.setContent { MainScreen(c) }
         composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("change")).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick); composeTestRule.waitForIdle()
-        org.junit.Assert.assertTrue("composeTestRule.onAllNodes((androidx.compose.ui.test.hasTestTag(\"only\") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, \"0\"))).fetchSemanticsNodes().isNotEmpty()", composeTestRule.onAllNodes((androidx.compose.ui.test.hasTestTag("only") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, "0"))).fetchSemanticsNodes().isNotEmpty())
-        org.junit.Assert.assertTrue("!composeTestRule.onAllNodes((androidx.compose.ui.test.hasTestTag(\"only\") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, \"1\"))).fetchSemanticsNodes().isNotEmpty()", !composeTestRule.onAllNodes((androidx.compose.ui.test.hasTestTag("only") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, "1"))).fetchSemanticsNodes().isNotEmpty())
-        org.junit.Assert.assertTrue("!composeTestRule.onAllNodes((androidx.compose.ui.test.hasTestTag(\"tick\") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, \"1\"))).fetchSemanticsNodes().isNotEmpty()", !composeTestRule.onAllNodes((androidx.compose.ui.test.hasTestTag("tick") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, "1"))).fetchSemanticsNodes().isNotEmpty())
-        org.junit.Assert.assertTrue("composeTestRule.onAllNodes((androidx.compose.ui.test.hasTestTag(\"tick\") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, \"0\"))).fetchSemanticsNodes().isNotEmpty()", composeTestRule.onAllNodes((androidx.compose.ui.test.hasTestTag("tick") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, "0"))).fetchSemanticsNodes().isNotEmpty())
+        org.junit.Assert.assertTrue("(composeTestRule.onAllNodes((androidx.compose.ui.test.hasTestTag(\"only\") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, \"0\"))).fetchSemanticsNodes().isNotEmpty() || SnglPresent.containsValue(\"only[\" + \"0\" + \"]\"))", (composeTestRule.onAllNodes((androidx.compose.ui.test.hasTestTag("only") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, "0"))).fetchSemanticsNodes().isNotEmpty() || SnglPresent.containsValue("only[" + "0" + "]")))
+        org.junit.Assert.assertTrue("!(composeTestRule.onAllNodes((androidx.compose.ui.test.hasTestTag(\"only\") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, \"1\"))).fetchSemanticsNodes().isNotEmpty() || SnglPresent.containsValue(\"only[\" + \"1\" + \"]\"))", !(composeTestRule.onAllNodes((androidx.compose.ui.test.hasTestTag("only") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, "1"))).fetchSemanticsNodes().isNotEmpty() || SnglPresent.containsValue("only[" + "1" + "]")))
+        org.junit.Assert.assertTrue("!(composeTestRule.onAllNodes((androidx.compose.ui.test.hasTestTag(\"tick\") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, \"1\"))).fetchSemanticsNodes().isNotEmpty() || SnglPresent.containsValue(\"tick[\" + \"1\" + \"]\"))", !(composeTestRule.onAllNodes((androidx.compose.ui.test.hasTestTag("tick") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, "1"))).fetchSemanticsNodes().isNotEmpty() || SnglPresent.containsValue("tick[" + "1" + "]")))
+        org.junit.Assert.assertTrue("(composeTestRule.onAllNodes((androidx.compose.ui.test.hasTestTag(\"tick\") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, \"0\"))).fetchSemanticsNodes().isNotEmpty() || SnglPresent.containsValue(\"tick[\" + \"0\" + \"]\"))", (composeTestRule.onAllNodes((androidx.compose.ui.test.hasTestTag("tick") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, "0"))).fetchSemanticsNodes().isNotEmpty() || SnglPresent.containsValue("tick[" + "0" + "]")))
     }
 
 }
@@ -1424,8 +1428,8 @@ window.__sngl_boot = () => {
     Object.assign(el, p);
     el.dispatchEvent(Object.assign(new Event("change"), p));
   };
-  state.onlyPresentAt = (k) => document.querySelector('[data-sngl-id="only"][data-sngl-copy="' + k + '"]') !== null;
-  state.tickPresentAt = (k) => document.querySelector('[data-sngl-id="tick"][data-sngl-copy="' + k + '"]') !== null;
+  state.onlyPresentAt = (k) => document.querySelector('[data-sngl-id="only"][data-sngl-copy="' + k + '"], [data-sngl-instance="only"][data-sngl-copy="' + k + '"]') !== null;
+  state.tickPresentAt = (k) => document.querySelector('[data-sngl-id="tick"][data-sngl-copy="' + k + '"], [data-sngl-instance="tick"][data-sngl-copy="' + k + '"]') !== null;
   if (typeof window !== "undefined") {
     window.__sngl_state = state;
   }
@@ -1592,6 +1596,6 @@ pass sha256:eba66abaddb4da57eb5697f242562666
 -- run/go/gtk4 --
 pass sha256:6e839acea2b3cea93f6236c7e2b366fe
 -- run/kotlin/android --
-pass sha256:12ad32084cd77fe45e11eacc8602bf3c
+pass sha256:9305ab7ff0ddc03ca66131b33aedde30
 -- run/none/html --
-pass sha256:99b0f53817be80a6368f23a0e17f4b53
+pass sha256:6f59c5471975d39e613fabbba715fa0a

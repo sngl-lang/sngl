@@ -3677,9 +3677,10 @@ func (g *htmlGen) emitEventInvokers(b *strings.Builder) {
 	for _, id := range slices.Sorted(maps.Keys(ids)) {
 		fmt.Fprintf(b, "state.%s = () => document.querySelector('[data-sngl-id=%q], [%s=%q]') !== null;\n", codegen.PresenceMethod(id), id, instanceMark, id)
 	}
-	// One copy is rendered while an element carries its key.
+	// One copy is rendered while an element carries its key: the node, or the
+	// root of the instance.
 	for _, id := range slices.Sorted(maps.Keys(keyed)) {
-		fmt.Fprintf(b, "state.%s = (k) => document.querySelector(%s) !== null;\n", codegen.PresenceAtMethod(id), copySelector(id, "k"))
+		fmt.Fprintf(b, "state.%s = (k) => document.querySelector(%s + ', ' + %s) !== null;\n", codegen.PresenceAtMethod(id), copySelector(id, "k"), instanceCopySelector(id, "k"))
 	}
 }
 
@@ -4031,6 +4032,12 @@ func (g *htmlGen) windowIDs() map[string]bool {
 // node id whose key the JavaScript expression key holds.
 func copySelector(id, key string) string {
 	return fmt.Sprintf("'[data-sngl-id=%q][%s=\"' + %s + '\"]'", id, copyAttr, key)
+}
+
+// instanceCopySelector is copySelector for the root of an instance built at run
+// time, which carries the instance's name in instanceMark.
+func instanceCopySelector(id, key string) string {
+	return fmt.Sprintf("'[%s=%q][%s=\"' + %s + '\"]'", instanceMark, id, copyAttr, key)
 }
 
 // staticCopy is the element of els -- the listeners the page's markup put on

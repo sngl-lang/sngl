@@ -71,3 +71,28 @@ func emitKeyedPresenceChecks(b *strings.Builder, ids map[string]bool, fields []w
 // null-tests by the id its call site gave it, hands its root to while it is
 // rendered: it has no widget of its own.
 func presentField(id string) string { return "__present_" + id }
+
+// unlistInstance is the Model method taking a destroyed instance's root out
+// of every map of instance copies. The instance cannot know the id its call
+// site gave it, and a destroy reaches it from the live list of a slot or from
+// the instance that built it, neither of which names it either.
+const unlistInstance = "__unlistInstance"
+
+// keyedInstances reports whether some component is handed the key of the copy
+// it stands in, whose record then unlists itself as it is destroyed.
+func keyedInstances(pkg *ir.Package) bool {
+	return pkg != nil && slices.ContainsFunc(pkg.Components, func(c *ir.Component) bool { return c.KeyedCopy })
+}
+
+// emitUnlistInstance writes unlistInstance over the maps of the instance
+// copies the Model declares.
+func emitUnlistInstance(b *strings.Builder, fields []widgetField, wrapped bool) {
+	widget := widgetFieldGoType("GtkWidget", wrapped)
+	fmt.Fprintf(b, "func (m *Model) %s(w %s) {\n", unlistInstance, widget)
+	for _, f := range fields {
+		if strings.HasPrefix(f.name, copiesField("")) && f.goType == widgetFieldGoType(copyMapType("GtkWidget"), wrapped) {
+			fmt.Fprintf(b, "\tfor k, c := range m.%s {\n\t\tif c == w {\n\t\t\tdelete(m.%s, k)\n\t\t}\n\t}\n", f.name, f.name)
+		}
+	}
+	b.WriteString("}\n\n")
+}

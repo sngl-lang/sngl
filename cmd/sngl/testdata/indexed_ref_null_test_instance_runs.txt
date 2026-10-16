@@ -1,0 +1,131 @@
+# One copy of a component instance a loop renders under an `if`, null-tested
+# on every target a test can execute on, including after a click moves which
+# copies the instances stand in: testdata/indexed_ref_null_test_instance.txtar
+# is the code.
+
+sngl test --platform=none app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=html app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=fyne --language=go app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+-- app.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+
+output {
+    go {
+        bubbletea
+        fyne
+        gtk4
+    }
+    kotlin {
+        android
+    }
+    none {
+        html
+    }
+}
+
+component badge(label string) node {
+    var hits = 0
+    button #hit(text="hit {label} {hits}", @click { hits = hits + 1 })
+}
+
+component main node {
+    var names = ["a", "b", "c"]
+    var skip = "b"
+    var open = true
+    vbox {
+        button #move(text="m", @click { skip = "a" })
+        button #shut(text="c", @click { open = false })
+        if open {
+            vbox {
+                for var n = names {
+                    if n != skip {
+                        badge #b(label=n)
+                    }
+                }
+            }
+        }
+    }
+}
+
+func testInstanceCopy(t Test, c main) {
+    t.assert(c.b[0] != null)
+    t.assert(c.b[1] == null)
+    t.assert(c.b[2] != null)
+    c.move.click()
+    t.assert(c.b[0] == null)
+    t.assert(c.b[1] != null)
+    t.assert(c.b[2] != null)
+    c.shut.click()
+    t.assert(c.b[1] == null)
+    t.assert(c.b[2] == null)
+}
+
+window {
+    main
+}
+-- testrun/android/kotlin/app.sngl/main/1 --
+sha256:39312d46cdda466ff5e5689ea3926974
+{
+  "results": [
+    {
+      "Desc": "InstanceCopy",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/main/1 --
+sha256:3d96c884602ad3df3c6b69ad2f27fabd
+{
+  "results": [
+    {
+      "Desc": "InstanceCopy",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/main/1 --
+sha256:71544a805dd6000097eef133076b8a14
+{
+  "results": [
+    {
+      "Desc": "InstanceCopy",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/main/1 --
+sha256:55fa8af36c607612d34e03c5e0f59cfc
+{
+  "results": [
+    {
+      "Desc": "InstanceCopy",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/main/1 --
+sha256:bc47d7491ff7f439d7bbed40d3962489
+{
+  "results": [
+    {
+      "Desc": "InstanceCopy",
+      "Passed": true
+    }
+  ]
+}

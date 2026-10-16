@@ -146,9 +146,16 @@ func NullTestedRef(e Expr) (sel *Select, path []Expr, present, ok bool) {
 	return sel, path, bin.Op == ast.BinNeq, true
 }
 
+// isNullLiteral reports a `null`: a literal once folded, and the universe
+// identifier in checked IR.
 func isNullLiteral(e Expr) bool {
-	lit, ok := stripConversions(e).(*Literal)
-	return ok && lit.Type != nil && lit.Type.Kind == TypeNull
+	switch x := stripConversions(e).(type) {
+	case *Literal:
+		return x.Type != nil && x.Type.Kind == TypeNull
+	case *Ident:
+		return x.Type != nil && x.Type.Kind == TypeNull
+	}
+	return false
 }
 
 func stripConversions(e Expr) Expr {
