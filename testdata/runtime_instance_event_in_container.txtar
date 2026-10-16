@@ -888,12 +888,6 @@ window.__sngl_boot = () => {
   if (typeof window !== "undefined") {
     window.__sngl_state = state;
   }
-  function testEffectReportsThroughItsEvent(t, c) {
-    t.assertTrue(c.total === 3, "(c.total === 3)");
-  }
-  if (typeof window !== "undefined") {
-    Object.assign(window, { testEffectReportsThroughItsEvent });
-  }
   function __cf_Card(props) {
     const __root = document.createElement("div");
     __root.style.display = "contents";
@@ -1045,4 +1039,4 @@ pass sha256:9c922417ebf64545a91bc551ba6f624e
 -- run/kotlin/android --
 pass sha256:02559815f0ba5a01414706f295640298
 -- run/none/html --
-pass sha256:f7cce5831ca1419f5d1ca76766686639
+pass sha256:8406f9bd545aebb9db957a84e3906cd8

@@ -36,7 +36,7 @@ var passNodeEscape = pass{
 // stored back on the right node.
 type scopeRefInfo struct {
 	created map[string]bool // ref ids whose CreateNode/CreateComponent LocalVar lives here
-	used    map[string]bool // ref ids referenced (as #__nN) anywhere in this scope
+	used    map[string]bool // every name read anywhere in this scope
 	setSink *map[string]bool
 	// nested collects scopes for inline closure/lambda bodies discovered
 	// while walking this scope. Each emitted lambda is its own function, so
@@ -93,26 +93,13 @@ func lowerNodeEscape(pkg *ir.Package, _ Features, _ Options) error {
 		addVarHandlerScopes(v, &scopes)
 	}
 
-	// Map each created ref id → its creating scope. A well-formed flattened
-	// tree creates each id exactly once; if two scopes somehow create the
-	// same id we conservatively treat it as escaping (clear the owner).
-	owner := map[string]*scopeRefInfo{}
-	for _, s := range scopes {
-		for id := range s.created {
-			if _, dup := owner[id]; dup {
-				owner[id] = nil // ambiguous → never local
-				continue
-			}
-			owner[id] = s
-		}
-	}
-
-	// A created id ESCAPES if it is used in any scope other than its owner.
+	// A created id ESCAPES if a scope that does not create it uses it. Two
+	// scopes may each create one -- two components each naming an instance
+	// `#b` -- and each is then its own scope's local.
 	escaped := map[string]bool{}
 	for _, s := range scopes {
 		for id := range s.used {
-			o := owner[id]
-			if o == nil || o != s {
+			if !s.created[id] {
 				escaped[id] = true
 			}
 		}
@@ -146,20 +133,36 @@ func addVarHandlerScopes(v *ir.Var, scopes *[]*scopeRefInfo) {
 // isSynthNodeID reports whether id is a synthesized widget ref name (__nN).
 func isSynthNodeID(id string) bool { return strings.HasPrefix(id, "__n") }
 
-// createdNodeID returns the widget ref id a LocalVar declares, else "".
-//
-// The declaration is what decides, not what initialises it. A CreateNode or a
-// CreateComponent is the usual initializer, but a reactive slot's instance
-// reconcile opens each position with `var __nN <Comp> = null` and then binds
-// the node in `var __nN__el <family> = lower.ComponentRoot(__nN)` -- both locals of
-// the render func, and matching only the two call names left them unknown to
-// the pass, so every platform emitted them as shared Model fields that each
-// iteration of the loop overwrote.
+// createdNodeID returns the widget ref id a LocalVar declares, else "": any
+// synthesized `__nN`, whatever initialises it -- a reactive slot's reconcile
+// opens each position with `var __nN <Comp> = null` -- and a reconcile's
+// locals under the id the program gave the instance (reconcileLocal).
 func createdNodeID(lv *ir.LocalVar) string {
-	if lv == nil || !isSynthNodeID(lv.Name) {
+	if lv == nil {
 		return ""
 	}
-	return lv.Name
+	if isSynthNodeID(lv.Name) || reconcileLocal(lv) {
+		return lv.Name
+	}
+	return ""
+}
+
+// reconcileLocal reports whether lv is one of the locals a slot's instance
+// reconcile declares under the id the program gave the instance: its
+// position, the instance it builds, and the root it binds.
+func reconcileLocal(lv *ir.LocalVar) bool {
+	if c, ok := lv.Init.(*ir.Call); ok && c.Func != nil {
+		return c.Func.Intrinsic == ir.NodeOpCreateComponent || c.Func.Intrinsic == ir.NodeOpComponentRoot
+	}
+	if lv.Sym == nil || !lv.Sym.Synthesized || lv.Type == nil || lv.Type.Kind != ir.TypeInstance {
+		return false
+	}
+	return lv.Init == nil || isNullLiteral(lv.Init)
+}
+
+func isNullLiteral(e ir.Expr) bool {
+	lit, ok := e.(*ir.Literal)
+	return ok && lit.Type != nil && lit.Type.Kind == ir.TypeNull
 }
 
 // scopeFromFuncBody builds a scope for a nested inline closure/lambda's Func
@@ -241,9 +244,8 @@ func collectScopeRefsExpr(e ir.Expr, info *scopeRefInfo) {
 		// Any read of the name counts, element ref or not: an instance handle
 		// is reached through a plain ident, and a use that crosses an emitted
 		// function is an escape whichever flag the ident happens to carry.
-		if isSynthNodeID(x.Name) {
-			info.used[x.Name] = true
-		}
+		// Every name is noted, since a reconcile's are the program's ids.
+		info.used[x.Name] = true
 	case *ir.Binary:
 		collectScopeRefsExpr(x.Left, info)
 		collectScopeRefsExpr(x.Right, info)

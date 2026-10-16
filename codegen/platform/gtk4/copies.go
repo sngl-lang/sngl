@@ -2,8 +2,11 @@ package gtk4
 
 import (
 	"fmt"
+	"maps"
+	"slices"
 	"strings"
 
+	"duckfam.us/sngl/codegen"
 	"duckfam.us/sngl/ir"
 )
 
@@ -49,3 +52,22 @@ func emitCopyRegistries(b *strings.Builder, fields []widgetField) {
 		fmt.Fprintf(b, "\tm.%s[key] = w\n}\n\n", f.name)
 	}
 }
+
+// emitKeyedPresenceChecks writes, for each id a test null-tests one copy of,
+// whether a copy with the key is rendered now: whether its map holds one.
+func emitKeyedPresenceChecks(b *strings.Builder, ids map[string]bool, fields []widgetField) {
+	for _, id := range slices.Sorted(maps.Keys(ids)) {
+		name := codegen.PresenceAtMethod(id)
+		fmt.Fprintf(b, "// %s reports whether the copy of #%s with the key is rendered now; for tests.\n", name, id)
+		if !slices.ContainsFunc(fields, func(f widgetField) bool { return f.name == copiesField(id) }) {
+			fmt.Fprintf(b, "func (m *Model) %s(key string) bool {\n\treturn false\n}\n\n", name)
+			continue
+		}
+		fmt.Fprintf(b, "func (m *Model) %s(key string) bool {\n\t_, ok := m.%s[key]\n\treturn ok\n}\n\n", name, copiesField(id))
+	}
+}
+
+// presentField is the Model field an instance built at run time, which a test
+// null-tests by the id its call site gave it, hands its root to while it is
+// rendered: it has no widget of its own.
+func presentField(id string) string { return "__present_" + id }

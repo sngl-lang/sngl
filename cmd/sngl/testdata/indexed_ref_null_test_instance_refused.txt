@@ -1,0 +1,52 @@
+# One copy of a component instance a loop renders under an `if`, null-tested.
+# bubbletea splices the instance into each copy and answers it from the view;
+# the interpreter answers it from the tree it mounted. A target that builds the
+# instance while the program runs has no copy key on it to find, and refuses
+# the test where the instance is written rather than answering wrongly.
+
+sngl test --platform=none app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+! sngl test --platform=html app.sngl
+stderr 'app.sngl:14:21: a test reaches one copy of #b, an instance of badge this target builds while the program runs, which a compiled test cannot do yet'
+
+! sngl test --platform=fyne --language=go app.sngl
+stderr 'a test reaches one copy of #b'
+
+-- app.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+
+component badge(label string) node {
+    var hits = 0
+    button #hit(text="hit {label} {hits}", @click { hits = hits + 1 })
+}
+
+component main node {
+    var names = ["a", "b", "c"]
+    var skip = "b"
+    for var n = names {
+        if n != skip {
+            badge #b(label=n)
+        }
+    }
+}
+
+func testInstanceCopy(t Test, c main) {
+    t.assert(c.b[0] != null)
+    t.assert(c.b[1] == null)
+    t.assert(c.b[2] != null)
+}
+-- testrun/bubbletea/go/app.sngl/main/1 --
+sha256:3204646838cb5dd0ddca9b4354157746
+{
+  "results": [
+    {
+      "Desc": "InstanceCopy",
+      "Passed": true
+    }
+  ]
+}

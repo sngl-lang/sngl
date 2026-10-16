@@ -171,6 +171,12 @@ type gtk4Translator struct {
 	// those of them this slot render func creates, which its reset empties.
 	indexed   map[string]bool
 	slotNamed []string
+	// present are the ids a test null-tests. slotPresent are the fields of
+	// those this slot render func creates -- a widget's own, an instance's
+	// presentField -- which its reset clears: what the render no longer builds
+	// is not rendered, though its field still holds it.
+	present     map[string]bool
+	slotPresent []string
 }
 
 // namedWidgetField is the Model field a widget an instance builds is handed
@@ -183,10 +189,28 @@ func namedWidgetField(id string) string { return "__named_" + id }
 func (t *gtk4Translator) withIndexed(indexed map[string]bool, stmts []ir.Stmt) *gtk4Translator {
 	t.indexed = indexed
 	t.slotNamed = nil
+	t.slotPresent = nil
+	t.present, _ = codegen.NullTestedRefs(t.gc.Ctx.Pkg)
 	_ = ir.Walk(stmts, func(n ir.Node) error {
-		if lv, ok := n.(*ir.LocalVar); ok && indexed[lv.Name] {
-			if c, ok := lv.Init.(*ir.Call); ok && c.Func != nil && c.Func.Intrinsic == ir.NodeOpCreateNode {
+		lv, ok := n.(*ir.LocalVar)
+		if !ok {
+			return nil
+		}
+		c, ok := lv.Init.(*ir.Call)
+		if !ok || c.Func == nil {
+			return nil
+		}
+		switch c.Func.Intrinsic {
+		case ir.NodeOpCreateNode:
+			if indexed[lv.Name] {
 				t.slotNamed = append(t.slotNamed, lv.Name)
+			}
+			if t.present[lv.Name] {
+				t.slotPresent = append(t.slotPresent, lv.Name)
+			}
+		case ir.NodeOpComponentRoot:
+			if inst := codegen.IdentBareName(c.Args[0].Value); t.present[inst] {
+				t.slotPresent = append(t.slotPresent, presentField(inst))
 			}
 		}
 		return nil
@@ -670,15 +694,23 @@ func (t *gtk4Translator) OnComponentRoot(ctx context.Context, id string, inst ir
 		// field the emitted file has.
 		root = &ir.Select{Type: ir.NativeGoNamed(widgetFieldGoType("GtkWidget", t.wrapped)), Operand: root, Field: golang.ComponentRootField}
 	}
+	// An instance a test null-tests hands its root to the Model while it is
+	// rendered, as a widget is its own field.
+	var present []ir.Stmt
+	if name := codegen.IdentBareName(inst); t.present[name] {
+		field := presentField(name)
+		t.sinkField(field, "GtkWidget")
+		present = append(present, &ir.Assign{Target: t.fieldRef(field), Op: ast.AssignSet, Value: root})
+	}
 	if t.isLocalRef(id) {
-		return []ir.Stmt{&ir.LocalVar{
+		return append([]ir.Stmt{&ir.LocalVar{
 			Name: id,
 			Type: ir.NativePointerOf("GtkWidget"),
 			Init: root,
-		}}
+		}}, present...)
 	}
 	t.sinkField(id, "GtkWidget")
-	return []ir.Stmt{&ir.Assign{Target: t.fieldRef(id), Op: ast.AssignSet, Value: root}}
+	return append([]ir.Stmt{&ir.Assign{Target: t.fieldRef(id), Op: ast.AssignSet, Value: root}}, present...)
 }
 
 // OnUpdateComponent patches a prop on a live instance through the setter the
@@ -1329,11 +1361,17 @@ func (t *gtk4Translator) OnSlotReset(ctx context.Context, slot *ir.Var) []ir.Stm
 		anchor = nativeCall("sngl_slot_anchor", ir.NativePointerOf("GtkWidget"), cgoCast("GtkBox", &ir.Ident{Name: "parent"}), t.slotAnchor)
 	}
 	stmts := []ir.Stmt{reset, &ir.Assign{Target: t.slotAnchor, Op: ast.AssignSet, Value: anchor}}
-	// The render builds every copy again, in order, so the list of them
-	// starts over with it.
+	// The render builds every copy again, so the map of them starts over with
+	// it.
 	for _, id := range t.slotNamed {
 		list := copiesField(id)
 		stmts = append(stmts, &ir.Assign{Target: codegen.RecvFieldRef(t.gc.NodeRecvRef(list), list, t.copiesType(id)), Op: ast.AssignSet, Value: &ir.Literal{Type: ir.TypNull}})
+	}
+	for _, id := range t.slotPresent {
+		if t.isLocalRef(id) {
+			continue
+		}
+		stmts = append(stmts, &ir.Assign{Target: codegen.RecvFieldRef(t.gc.NodeRecvRef(id), id, ir.NativeGoNamed(widgetFieldGoType("GtkWidget", t.wrapped))), Op: ast.AssignSet, Value: &ir.Literal{Type: ir.TypNull}})
 	}
 	return stmts
 }

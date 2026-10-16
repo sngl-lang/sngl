@@ -61,7 +61,7 @@ sha256:a4a06539f07bbfadfc787c62e4483058
   ]
 }
 -- testrun/html/none/app.sngl/counts/1 --
-sha256:ade73bba0dbc765e98ff1d4dbe619335
+sha256:74c1e0a32e1b2d0d26a6c43446e14339
 {
   "results": [
     {

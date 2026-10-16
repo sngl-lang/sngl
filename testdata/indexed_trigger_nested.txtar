@@ -2441,7 +2441,7 @@ package test.sngl.app
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
-import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performTextReplacement
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -2461,19 +2461,19 @@ class MainScreenTest {
         val c = MainScreenState()
         @Suppress("UNUSED_VARIABLE") val composeTestRule = composeRule
         composeRule.setContent { MainScreen(c) }
-        composeTestRule.onNode((androidx.compose.ui.test.hasTestTag("cell") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, "1/0"))).performClick(); composeTestRule.waitForIdle()
+        composeTestRule.onNode((androidx.compose.ui.test.hasTestTag("cell") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, "1/0"))).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick); composeTestRule.waitForIdle()
         org.junit.Assert.assertTrue("(c.log == \"c\")", (c.log == "c"))
-        composeTestRule.onNode((androidx.compose.ui.test.hasTestTag("cell") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, "0/1"))).performClick(); composeTestRule.waitForIdle()
+        composeTestRule.onNode((androidx.compose.ui.test.hasTestTag("cell") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, "0/1"))).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick); composeTestRule.waitForIdle()
         org.junit.Assert.assertTrue("(c.log == \"b\")", (c.log == "b"))
-        composeTestRule.onNode(androidx.compose.ui.test.isToggleable() and ((androidx.compose.ui.test.hasTestTag("mark") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, "1/0")) or androidx.compose.ui.test.hasAnyAncestor((androidx.compose.ui.test.hasTestTag("mark") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, "1/0"))))).performClick(); composeTestRule.waitForIdle()
+        composeTestRule.onNode(androidx.compose.ui.test.isToggleable() and ((androidx.compose.ui.test.hasTestTag("mark") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, "1/0")) or androidx.compose.ui.test.hasAnyAncestor((androidx.compose.ui.test.hasTestTag("mark") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, "1/0"))))).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick); composeTestRule.waitForIdle()
         org.junit.Assert.assertTrue("(c.log == \"c true\")", (c.log == "c true"))
-        composeTestRule.onNode((androidx.compose.ui.test.hasTestTag("pin") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, "1/0"))).performClick(); composeTestRule.waitForIdle()
+        composeTestRule.onNode((androidx.compose.ui.test.hasTestTag("pin") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, "1/0"))).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick); composeTestRule.waitForIdle()
         org.junit.Assert.assertTrue("(c.log == \"r\")", (c.log == "r"))
-        composeTestRule.onNode((androidx.compose.ui.test.hasTestTag("tick") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, "1/0"))).performClick(); composeTestRule.waitForIdle()
+        composeTestRule.onNode((androidx.compose.ui.test.hasTestTag("tick") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, "1/0"))).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick); composeTestRule.waitForIdle()
         org.junit.Assert.assertTrue("(c.log == \"10\")", (c.log == "10"))
-        composeTestRule.onNode((androidx.compose.ui.test.hasTestTag("even") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, "1"))).performClick(); composeTestRule.waitForIdle()
+        composeTestRule.onNode((androidx.compose.ui.test.hasTestTag("even") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, "1"))).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick); composeTestRule.waitForIdle()
         org.junit.Assert.assertTrue("(c.log == \"2\")", (c.log == "2"))
-        composeTestRule.onNode((androidx.compose.ui.test.hasTestTag("dot") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, "1"))).performClick(); composeTestRule.waitForIdle()
+        composeTestRule.onNode((androidx.compose.ui.test.hasTestTag("dot") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, "1"))).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick); composeTestRule.waitForIdle()
         org.junit.Assert.assertTrue("(c.log == \"2.\")", (c.log == "2."))
     }
 
@@ -2481,12 +2481,12 @@ class MainScreenTest {
         val c = MainScreenState()
         @Suppress("UNUSED_VARIABLE") val composeTestRule = composeRule
         composeRule.setContent { MainScreen(c) }
-        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("swap")).performClick(); composeTestRule.waitForIdle()
-        composeTestRule.onNode((androidx.compose.ui.test.hasTestTag("cell") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, "1/2"))).performClick(); composeTestRule.waitForIdle()
+        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("swap")).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick); composeTestRule.waitForIdle()
+        composeTestRule.onNode((androidx.compose.ui.test.hasTestTag("cell") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, "1/2"))).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick); composeTestRule.waitForIdle()
         org.junit.Assert.assertTrue("(c.log == \"g\")", (c.log == "g"))
-        composeTestRule.onNode((androidx.compose.ui.test.hasTestTag("cell") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, "0/0"))).performClick(); composeTestRule.waitForIdle()
+        composeTestRule.onNode((androidx.compose.ui.test.hasTestTag("cell") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, "0/0"))).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick); composeTestRule.waitForIdle()
         org.junit.Assert.assertTrue("(c.log == \"d\")", (c.log == "d"))
-        composeTestRule.onNode(androidx.compose.ui.test.isToggleable() and ((androidx.compose.ui.test.hasTestTag("mark") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, "1/1")) or androidx.compose.ui.test.hasAnyAncestor((androidx.compose.ui.test.hasTestTag("mark") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, "1/1"))))).performClick(); composeTestRule.waitForIdle()
+        composeTestRule.onNode(androidx.compose.ui.test.isToggleable() and ((androidx.compose.ui.test.hasTestTag("mark") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, "1/1")) or androidx.compose.ui.test.hasAnyAncestor((androidx.compose.ui.test.hasTestTag("mark") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, "1/1"))))).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick); composeTestRule.waitForIdle()
         org.junit.Assert.assertTrue("(c.log == \"f true\")", (c.log == "f true"))
     }
 
@@ -2618,34 +2618,6 @@ window.__sngl_boot = () => {
   };
   if (typeof window !== "undefined") {
     window.__sngl_state = state;
-  }
-  function testOneCopyOfANestedLoop(t, c) {
-    c.cell[1][0]();
-    t.assertTrue(c.log === "c", '(c.log === "c")');
-    c.cell[0][1]();
-    t.assertTrue(c.log === "b", '(c.log === "b")');
-    c.mark[1][0](true);
-    t.assertTrue(c.log === "c true", '(c.log === "c true")');
-    c.pin[1][0]();
-    t.assertTrue(c.log === "r", '(c.log === "r")');
-    c.tick[1][0]();
-    t.assertTrue(c.log === "10", '(c.log === "10")');
-    c.even[1]();
-    t.assertTrue(c.log === "2", '(c.log === "2")');
-    c.dot[1]();
-    t.assertTrue(c.log === "2.", '(c.log === "2.")');
-  }
-  function testAfterTheLoopsRenderAgain(t, c) {
-    c.swap();
-    c.cell[1][2]();
-    t.assertTrue(c.log === "g", '(c.log === "g")');
-    c.cell[0][0]();
-    t.assertTrue(c.log === "d", '(c.log === "d")');
-    c.mark[1][1](true);
-    t.assertTrue(c.log === "f true", '(c.log === "f true")');
-  }
-  if (typeof window !== "undefined") {
-    Object.assign(window, { testOneCopyOfANestedLoop, testAfterTheLoopsRenderAgain });
   }
   function __cf___checkbox_state0(props) {
     const __root = document.createElement("div");
@@ -3014,6 +2986,6 @@ pass sha256:646543c74b52cfa275b1efd0b339a7a8
 -- run/go/gtk4 --
 pass sha256:5a069e45481759b06ce37a41d9a3c56e
 -- run/kotlin/android --
-pass sha256:ffe9ba1fc64ee468d7fc3a70cf7b402f
+pass sha256:3a02bffd495074297bbe1bec60b2fa34
 -- run/none/html --
-pass sha256:a78c8b03d1af9c597aec72912816460c
+pass sha256:054b736d0dd5abd8086307e786b955c2

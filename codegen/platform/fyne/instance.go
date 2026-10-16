@@ -124,6 +124,14 @@ func emitComponentInstance(
 		inv.Target, inv.List = named, list
 		invokerSink(inv)
 	}
+	// An id a test only null-tests one copy of is kept by key too, with no
+	// invoker to have exposed it.
+	for _, f := range fields {
+		if indexed[f.name] && !slices.Contains(listed, f.name) {
+			modelFieldSink(copiesField(f.name), copyMapType(f.goType))
+			listed = append(listed, f.name)
+		}
+	}
 
 	// A widget a test null-tests is handed over too, and taken back when the
 	// instance goes, so the Model holds it exactly while it is rendered.
@@ -422,6 +430,9 @@ func emitFynePresenceChecks(b *strings.Builder, ids map[string]bool, held map[st
 		field := held[id]
 		if field == "" && slices.ContainsFunc(modelFields, func(f irWidgetField) bool { return f.name == id }) {
 			field = id
+		}
+		if field == "" && slices.ContainsFunc(modelFields, func(f irWidgetField) bool { return f.name == presentField(id) }) {
+			field = presentField(id)
 		}
 		if field == "" {
 			continue

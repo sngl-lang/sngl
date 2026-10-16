@@ -1,6 +1,8 @@
 package lower
 
 import (
+	"fmt"
+
 	"duckfam.us/sngl/ast"
 	"duckfam.us/sngl/ir"
 )
@@ -28,7 +30,7 @@ func lowerCopyKeys(pkg *ir.Package, _ Features, opts Options) error {
 	if pkg == nil || !opts.Tests {
 		return nil
 	}
-	indexed := ir.IndexedTriggerIDs(pkg)
+	indexed := ir.IndexedRefIDs(pkg)
 	if len(indexed) == 0 {
 		return nil
 	}
@@ -74,7 +76,7 @@ func lowerCopyKeys(pkg *ir.Package, _ Features, opts Options) error {
 	for _, c := range pkg.Components {
 		c.Stmts = st.stamp(c.Stmts, nil, st.prefix[c])
 	}
-	return nil
+	return st.err
 }
 
 type copyKeys struct {
@@ -82,6 +84,7 @@ type copyKeys struct {
 	// prefix is the prop of each component built at run time that holds a
 	// node a test indexes, which its instance is handed its own copy's key in.
 	prefix map[*ir.Component]*ir.Param
+	err    error
 }
 
 // holds reports whether stmts render a node a test indexes, directly or in an
@@ -103,6 +106,9 @@ func (st *copyKeys) stamp(stmts []ir.Stmt, loops []*ir.For, prefix *ir.Param) []
 			f.Body = st.stamp(f.Body, append(loops[:len(loops):len(loops)], f), prefix)
 			f.Else = st.stamp(f.Else, loops, prefix)
 			continue
+		}
+		if n, ok := s.(*ir.NodeInst); ok && st.indexed[n.ID] && n.Component != nil && n.Component.RuntimeInstance && hasRealComponentBody(n.Component) && st.err == nil {
+			st.err = fmt.Errorf("%s: a test reaches one copy of #%s, an instance of %s this target builds while the program runs, which a compiled test cannot do yet: reach a node it renders, `c.%s[i].<id>`", nodePos(n), n.ID, n.Component.Name, n.ID)
 		}
 		if n, ok := s.(*ir.NodeInst); ok && (st.indexed[n.ID] || st.prefix[n.Component] != nil) {
 			if key := triggerKey(loops, prefix); key != nil {

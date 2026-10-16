@@ -1755,7 +1755,9 @@ func (g *htmlGen) pkgFuncs() []*ir.Func {
 	seen := make(map[*ir.Func]struct{})
 	var out []*ir.Func
 	add := func(f *ir.Func) {
-		if f.Synthesized || !g.pageOwnsFunc(f) {
+		// A test is the test module's, lowered there with the triggers and
+		// null tests this emitter does not know; the page never calls one.
+		if f.Synthesized || f.IsTest || !g.pageOwnsFunc(f) {
 			return
 		}
 		// A native declaration is not emitted: the identifier already exists,
@@ -3619,7 +3621,7 @@ func (g *htmlGen) emitEventInvokers(b *strings.Builder) {
 		collect(h, h.snglID, false)
 	}
 	// Only an id a test indexes needs the variant, as on fyne and gtk4.
-	indexed := ir.IndexedTriggerIDs(g.pkg)
+	indexed := ir.IndexedRefIDs(g.pkg)
 	for _, name := range order {
 		seen[name] = true
 		els := copies[name]
@@ -3671,8 +3673,13 @@ func (g *htmlGen) emitEventInvokers(b *strings.Builder) {
 	// A node a test null-tests is rendered while an element carries its mark,
 	// which goes with the element when a render slot takes it out; an instance
 	// is while the root it renders does.
-	for _, id := range slices.Sorted(maps.Keys(codegen.NullTestedRefs(g.pkg))) {
+	ids, keyed := codegen.NullTestedRefs(g.pkg)
+	for _, id := range slices.Sorted(maps.Keys(ids)) {
 		fmt.Fprintf(b, "state.%s = () => document.querySelector('[data-sngl-id=%q], [%s=%q]') !== null;\n", codegen.PresenceMethod(id), id, instanceMark, id)
+	}
+	// One copy is rendered while an element carries its key.
+	for _, id := range slices.Sorted(maps.Keys(keyed)) {
+		fmt.Fprintf(b, "state.%s = (k) => document.querySelector(%s) !== null;\n", codegen.PresenceAtMethod(id), copySelector(id, "k"))
 	}
 }
 

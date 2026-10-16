@@ -397,161 +397,11 @@ window.__sngl_boot = () => {
   if (typeof window !== "undefined") {
     window.__sngl_state = state;
   }
-  function testEachInstanceKeepsItsOwnState(t, c) {
-    t.assertTrue(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll('[data-sngl-id="shown"]')[0]) === "[a:0]", '(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll("[data-sngl-id=\\"shown\\"]")[0]) === "[a:0]")');
-    c.b[0].hit();
-    t.assertTrue(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll('[data-sngl-id="shown"]')[0]) === "[a:1]", '(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll("[data-sngl-id=\\"shown\\"]")[0]) === "[a:1]")');
-    t.assertTrue(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll('[data-sngl-id="shown"]')[0]) === "[b:0]", '(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll("[data-sngl-id=\\"shown\\"]")[0]) === "[b:0]")');
-  }
-  function testAPropReachesTheLeaf(t, c) {
-    c.b__1[0].hit();
-    t.assertTrue(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll('[data-sngl-id="shown"]')[0]) === "[ax:1]", '(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll("[data-sngl-id=\\"shown\\"]")[0]) === "[ax:1]")');
-    c.rename();
-    t.assertTrue(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll('[data-sngl-id="shown"]')[0]) === "[ay:1]", '(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll("[data-sngl-id=\\"shown\\"]")[0]) === "[ay:1]")');
-  }
-  function testGrowingTheListKeepsTheOthers(t, c) {
-    c.b__2[0].hit();
-    c.b__2[1].hit();
-    c.b__2[1].hit();
-    c.grow();
-    t.assertTrue(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll('[data-sngl-id="shown"]')[0]) === "[a:1]", '(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll("[data-sngl-id=\\"shown\\"]")[0]) === "[a:1]")');
-    t.assertTrue(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll('[data-sngl-id="shown"]')[0]) === "[b:2]", '(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll("[data-sngl-id=\\"shown\\"]")[0]) === "[b:2]")');
-    t.assertTrue(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll('[data-sngl-id="shown"]')[0]) === "[c:0]", '(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll("[data-sngl-id=\\"shown\\"]")[0]) === "[c:0]")');
-  }
-  function testAKeyedInsertAtTheFrontKeepsTheOthers(t, c) {
-    c.b__3[1].hit();
-    c.b__3[1].hit();
-    c.prepend();
-    t.assertTrue(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll('[data-sngl-id="shown"]')[0]) === "[z:0]", '(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll("[data-sngl-id=\\"shown\\"]")[0]) === "[z:0]")');
-    t.assertTrue(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll('[data-sngl-id="shown"]')[0]) === "[a:0]", '(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll("[data-sngl-id=\\"shown\\"]")[0]) === "[a:0]")');
-    t.assertTrue(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll('[data-sngl-id="shown"]')[0]) === "[b:2]", '(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll("[data-sngl-id=\\"shown\\"]")[0]) === "[b:2]")');
-  }
-  function testDuplicateKeysAreDistinctInstances(t, c) {
-    t.assertTrue(document.querySelectorAll('[data-sngl-id="shown"]').length === 2, '(document.querySelectorAll("[data-sngl-id=\\"shown\\"]").length === 2)');
-    c.b__4[0].hit();
-    c.churn();
-    t.assertTrue(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll('[data-sngl-id="shown"]')[0]) === "[a:1]", '(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll("[data-sngl-id=\\"shown\\"]")[0]) === "[a:1]")');
-    t.assertTrue(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll('[data-sngl-id="shown"]')[0]) === "[a:0]", '(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll("[data-sngl-id=\\"shown\\"]")[0]) === "[a:0]")');
-  }
-  function testReenteringABranchResetsItsInstance(t, c) {
-    t.assertTrue(c.inner !== null, "(c.inner !== null)");
-    if (c.inner !== null) {
-      ;
-      c.inner.hit();
-      t.assertTrue(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll('[data-sngl-id="shown"]')[0]) === "[i:1]", '(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll("[data-sngl-id=\\"shown\\"]")[0]) === "[i:1]")');
-    }
-    ;
-    c.toggle();
-    t.assertTrue(c.inner === null, "(c.inner === null)");
-    c.toggle();
-    t.assertTrue(c.inner !== null, "(c.inner !== null)");
-    if (c.inner !== null) {
-      ;
-      t.assertTrue(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll('[data-sngl-id="shown"]')[0]) === "[i:0]", '(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll("[data-sngl-id=\\"shown\\"]")[0]) === "[i:0]")');
-    }
-    ;
-  }
-  function testAnInstancesEventReachesTheCallSite(t, c) {
-    c.btn[0]();
-    t.assertTrue(state.picked__inst0 === "a", '(state.picked__inst0 === "a")');
-  }
-  function testARetainedRowIsNotStale(t, c) {
-    c.unshift();
-    t.assertTrue(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll('[data-sngl-id="btn"]')[0]) === "pick z:0", '(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll("[data-sngl-id=\\"btn\\"]")[0]) === "pick z:0")');
-    c.btn[0]();
-    t.assertTrue(state.picked__inst0 === "z", '(state.picked__inst0 === "z")');
-  }
-  function testAFreshInstancesCallbackRepaints(t, c) {
-    c.pick[0]();
-    t.assertTrue(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll('[data-sngl-id="out"]')[0]) === "picked=a", '(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll("[data-sngl-id=\\"out\\"]")[0]) === "picked=a")');
-  }
-  function testAChangedConstructPropRebuilds(t, c) {
-    t.assertTrue(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll('[data-sngl-id="shown"]')[0]) === "[ax:10]", '(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll("[data-sngl-id=\\"shown\\"]")[0]) === "[ax:10]")');
-    c.bump[0]();
-    c.rename__1();
-    t.assertTrue(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll('[data-sngl-id="shown"]')[0]) === "[ay:11]", '(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll("[data-sngl-id=\\"shown\\"]")[0]) === "[ay:11]")');
-    c.rebase();
-    t.assertTrue(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll('[data-sngl-id="shown"]')[0]) === "[ay:110]", '(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll("[data-sngl-id=\\"shown\\"]")[0]) === "[ay:110]")');
-  }
-  function testAnUnchangedConstructPropKeepsTheInstance(t, c) {
-    c.bump[0]();
-    c.touch();
-    c.rename__1();
-    t.assertTrue(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll('[data-sngl-id="shown"]')[0]) === "[ay:11]", '(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll("[data-sngl-id=\\"shown\\"]")[0]) === "[ay:11]")');
-  }
   function red(p) {
     return p.a > 200 && p.r > 200 && p.g < 50;
   }
-  function testEachInstancesCanvasDrawsItsOwnState(t, c) {
-    t.assertTrue(red(((el, x, y) => {
-      const src = el.matches("canvas, img") ? el : el.querySelector("canvas, img");
-      if (src.tagName === "IMG" && src.naturalWidth === 0) return { r: 0, g: 0, b: 0, a: 0 };
-      let c2 = src;
-      if (src.tagName === "IMG") {
-        c2 = document.createElement("canvas");
-        c2.width = src.naturalWidth;
-        c2.height = src.naturalHeight;
-        c2.getContext("2d").drawImage(src, 0, 0);
-      }
-      const d = c2.getContext("2d").getImageData(x, y, 1, 1).data;
-      return { r: d[0], g: d[1], b: d[2], a: d[3] };
-    })(document.querySelectorAll('[data-sngl-id="cv"]')[0], 9, 10)), 'red(((el, x, y) => {\n	const src = el.matches("canvas, img") ? el : el.querySelector("canvas, img");\n	if (src.tagName === "IMG" && src.naturalWidth === 0) return { r: 0, g: 0, b: 0, a: 0 };\n	let c = src;\n	if (src.tagName === "IMG") {\n		c = document.createElement("canvas");\n		c.width = src.naturalWidth;\n		c.height = src.naturalHeight;\n		c.getContext("2d").drawImage(src, 0, 0);\n	}\n	const d = c.getContext("2d").getImageData(x, y, 1, 1).data;\n	return { r: d[0], g: d[1], b: d[2], a: d[3] };\n})(document.querySelectorAll("[data-sngl-id=\\"cv\\"]")[0], 9, 10))');
-    t.assertTrue(!red(((el, x, y) => {
-      const src = el.matches("canvas, img") ? el : el.querySelector("canvas, img");
-      if (src.tagName === "IMG" && src.naturalWidth === 0) return { r: 0, g: 0, b: 0, a: 0 };
-      let c2 = src;
-      if (src.tagName === "IMG") {
-        c2 = document.createElement("canvas");
-        c2.width = src.naturalWidth;
-        c2.height = src.naturalHeight;
-        c2.getContext("2d").drawImage(src, 0, 0);
-      }
-      const d = c2.getContext("2d").getImageData(x, y, 1, 1).data;
-      return { r: d[0], g: d[1], b: d[2], a: d[3] };
-    })(document.querySelectorAll('[data-sngl-id="cv"]')[0], 10, 10)), '!red(((el, x, y) => {\n	const src = el.matches("canvas, img") ? el : el.querySelector("canvas, img");\n	if (src.tagName === "IMG" && src.naturalWidth === 0) return { r: 0, g: 0, b: 0, a: 0 };\n	let c = src;\n	if (src.tagName === "IMG") {\n		c = document.createElement("canvas");\n		c.width = src.naturalWidth;\n		c.height = src.naturalHeight;\n		c.getContext("2d").drawImage(src, 0, 0);\n	}\n	const d = c.getContext("2d").getImageData(x, y, 1, 1).data;\n	return { r: d[0], g: d[1], b: d[2], a: d[3] };\n})(document.querySelectorAll("[data-sngl-id=\\"cv\\"]")[0], 10, 10))');
-    t.assertTrue(red(((el, x, y) => {
-      const src = el.matches("canvas, img") ? el : el.querySelector("canvas, img");
-      if (src.tagName === "IMG" && src.naturalWidth === 0) return { r: 0, g: 0, b: 0, a: 0 };
-      let c2 = src;
-      if (src.tagName === "IMG") {
-        c2 = document.createElement("canvas");
-        c2.width = src.naturalWidth;
-        c2.height = src.naturalHeight;
-        c2.getContext("2d").drawImage(src, 0, 0);
-      }
-      const d = c2.getContext("2d").getImageData(x, y, 1, 1).data;
-      return { r: d[0], g: d[1], b: d[2], a: d[3] };
-    })(document.querySelectorAll('[data-sngl-id="cv"]')[1], 19, 10)), 'red(((el, x, y) => {\n	const src = el.matches("canvas, img") ? el : el.querySelector("canvas, img");\n	if (src.tagName === "IMG" && src.naturalWidth === 0) return { r: 0, g: 0, b: 0, a: 0 };\n	let c = src;\n	if (src.tagName === "IMG") {\n		c = document.createElement("canvas");\n		c.width = src.naturalWidth;\n		c.height = src.naturalHeight;\n		c.getContext("2d").drawImage(src, 0, 0);\n	}\n	const d = c.getContext("2d").getImageData(x, y, 1, 1).data;\n	return { r: d[0], g: d[1], b: d[2], a: d[3] };\n})(document.querySelectorAll("[data-sngl-id=\\"cv\\"]")[1], 19, 10))');
-    c.g[0].hit();
-    t.assertTrue(red(((el, x, y) => {
-      const src = el.matches("canvas, img") ? el : el.querySelector("canvas, img");
-      if (src.tagName === "IMG" && src.naturalWidth === 0) return { r: 0, g: 0, b: 0, a: 0 };
-      let c2 = src;
-      if (src.tagName === "IMG") {
-        c2 = document.createElement("canvas");
-        c2.width = src.naturalWidth;
-        c2.height = src.naturalHeight;
-        c2.getContext("2d").drawImage(src, 0, 0);
-      }
-      const d = c2.getContext("2d").getImageData(x, y, 1, 1).data;
-      return { r: d[0], g: d[1], b: d[2], a: d[3] };
-    })(document.querySelectorAll('[data-sngl-id="cv"]')[0], 29, 10)), 'red(((el, x, y) => {\n	const src = el.matches("canvas, img") ? el : el.querySelector("canvas, img");\n	if (src.tagName === "IMG" && src.naturalWidth === 0) return { r: 0, g: 0, b: 0, a: 0 };\n	let c = src;\n	if (src.tagName === "IMG") {\n		c = document.createElement("canvas");\n		c.width = src.naturalWidth;\n		c.height = src.naturalHeight;\n		c.getContext("2d").drawImage(src, 0, 0);\n	}\n	const d = c.getContext("2d").getImageData(x, y, 1, 1).data;\n	return { r: d[0], g: d[1], b: d[2], a: d[3] };\n})(document.querySelectorAll("[data-sngl-id=\\"cv\\"]")[0], 29, 10))');
-    t.assertTrue(!red(((el, x, y) => {
-      const src = el.matches("canvas, img") ? el : el.querySelector("canvas, img");
-      if (src.tagName === "IMG" && src.naturalWidth === 0) return { r: 0, g: 0, b: 0, a: 0 };
-      let c2 = src;
-      if (src.tagName === "IMG") {
-        c2 = document.createElement("canvas");
-        c2.width = src.naturalWidth;
-        c2.height = src.naturalHeight;
-        c2.getContext("2d").drawImage(src, 0, 0);
-      }
-      const d = c2.getContext("2d").getImageData(x, y, 1, 1).data;
-      return { r: d[0], g: d[1], b: d[2], a: d[3] };
-    })(document.querySelectorAll('[data-sngl-id="cv"]')[1], 20, 10)), '!red(((el, x, y) => {\n	const src = el.matches("canvas, img") ? el : el.querySelector("canvas, img");\n	if (src.tagName === "IMG" && src.naturalWidth === 0) return { r: 0, g: 0, b: 0, a: 0 };\n	let c = src;\n	if (src.tagName === "IMG") {\n		c = document.createElement("canvas");\n		c.width = src.naturalWidth;\n		c.height = src.naturalHeight;\n		c.getContext("2d").drawImage(src, 0, 0);\n	}\n	const d = c.getContext("2d").getImageData(x, y, 1, 1).data;\n	return { r: d[0], g: d[1], b: d[2], a: d[3] };\n})(document.querySelectorAll("[data-sngl-id=\\"cv\\"]")[1], 20, 10))');
-  }
   if (typeof window !== "undefined") {
-    Object.assign(window, { testEachInstanceKeepsItsOwnState, testAPropReachesTheLeaf, testGrowingTheListKeepsTheOthers, testAKeyedInsertAtTheFrontKeepsTheOthers, testDuplicateKeysAreDistinctInstances, testReenteringABranchResetsItsInstance, testAnInstancesEventReachesTheCallSite, testARetainedRowIsNotStale, testAFreshInstancesCallbackRepaints, testAChangedConstructPropRebuilds, testAnUnchangedConstructPropKeepsTheInstance, red, testEachInstancesCanvasDrawsItsOwnState });
+    Object.assign(window, { red });
   }
   function __cf_badge(props) {
     const __root = document.createElement("div");
@@ -1439,9 +1289,9 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:cc9f96232a24912ca04e9f5abe24397f
+pass sha256:97c7f5447fe3b02fcd42ea2a68d15b53
 -- testrun/html/none/component_browser_runtime.sngl/branch/1 --
-sha256:c288ae194b7d403df59245d0a4dd0cb2
+sha256:c8461928c3413be88155c0c16376d27c
 {
   "results": [
     {
@@ -1451,7 +1301,7 @@ sha256:c288ae194b7d403df59245d0a4dd0cb2
   ]
 }
 -- testrun/html/none/component_browser_runtime.sngl/callback/1 --
-sha256:632d37b43baa3e58f59807ffd61b2e95
+sha256:d30debe19aeb334c6ac77d98140f4187
 {
   "results": [
     {
@@ -1461,7 +1311,7 @@ sha256:632d37b43baa3e58f59807ffd61b2e95
   ]
 }
 -- testrun/html/none/component_browser_runtime.sngl/duplicates/1 --
-sha256:2e6cb25b773e974b2f7aae3c4c43758b
+sha256:c280bfd7a36a2c9df2c5a017c0ae0243
 {
   "results": [
     {
@@ -1471,7 +1321,7 @@ sha256:2e6cb25b773e974b2f7aae3c4c43758b
   ]
 }
 -- testrun/html/none/component_browser_runtime.sngl/events/1 --
-sha256:d80fd3f68a5b7b0ed39c555626412011
+sha256:07d99fdeaa66385feb96698c20b1e15d
 {
   "results": [
     {
@@ -1485,7 +1335,7 @@ sha256:d80fd3f68a5b7b0ed39c555626412011
   ]
 }
 -- testrun/html/none/component_browser_runtime.sngl/gauges/1 --
-sha256:b36a7038ad9aa54ef3c604d857af3a54
+sha256:34cd55b72404d0e3797ca4a4e1e51a71
 {
   "results": [
     {
@@ -1495,7 +1345,7 @@ sha256:b36a7038ad9aa54ef3c604d857af3a54
   ]
 }
 -- testrun/html/none/component_browser_runtime.sngl/growing/1 --
-sha256:87012b94cc145ebc0a74b9a4935c487f
+sha256:031535acb610515b4381bdfa3ca70311
 {
   "results": [
     {
@@ -1505,7 +1355,7 @@ sha256:87012b94cc145ebc0a74b9a4935c487f
   ]
 }
 -- testrun/html/none/component_browser_runtime.sngl/keyed/1 --
-sha256:0dbf8b2ade83f1cd61c0999f05af3b60
+sha256:813b38b2dc4ea42105d3eeec5c012ada
 {
   "results": [
     {
@@ -1515,7 +1365,7 @@ sha256:0dbf8b2ade83f1cd61c0999f05af3b60
   ]
 }
 -- testrun/html/none/component_browser_runtime.sngl/perElement/1 --
-sha256:a7bbb96ef9e7915623970aa61ea17117
+sha256:51032750c489b3e11695278eaea114df
 {
   "results": [
     {
@@ -1525,7 +1375,7 @@ sha256:a7bbb96ef9e7915623970aa61ea17117
   ]
 }
 -- testrun/html/none/component_browser_runtime.sngl/rebased/1 --
-sha256:dfc9990f2538fb2232d5f861e0e66b56
+sha256:3808a05c107bd2a4b7c85f66db847caa
 {
   "results": [
     {
@@ -1539,7 +1389,7 @@ sha256:dfc9990f2538fb2232d5f861e0e66b56
   ]
 }
 -- testrun/html/none/component_browser_runtime.sngl/renamed/1 --
-sha256:81096cfecf33fbdff7e5ea6bd7b96ecf
+sha256:fb2a564954f5867f80dd8946c524ef2f
 {
   "results": [
     {

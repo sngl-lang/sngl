@@ -649,8 +649,15 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 	}
 
 	nav.emitNavDecls(&body, kc)
-	if testMode && len(ir.IndexedTriggerIDs(ctx.Pkg)) > 0 {
+	if testMode && len(ir.IndexedRefIDs(ctx.Pkg)) > 0 {
 		fmt.Fprintf(&body, "val %s = %s<String>(%q)\n\n", kotlin.CopySemanticsKey, kc.Name(ktSemanticsKey), kotlin.CopySemanticsKey)
+	}
+	var present map[string]bool
+	if testMode {
+		present, _ = codegen.NullTestedRefs(ctx.Pkg)
+	}
+	if len(present) > 0 {
+		fmt.Fprintf(&body, "val %s = %s<Any, String>()\n\n", kotlin.PresentRegistry, kc.Name("androidx.compose.runtime.mutableStateMapOf"))
 	}
 
 	// State hoisting (test mode): emit a MainScreenState class
@@ -660,6 +667,9 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 	// composition.
 	if testMode {
 		body.WriteString("class MainScreenState {\n")
+		if len(present) > 0 {
+			fmt.Fprintf(&body, "    init { %s.clear() }\n", kotlin.PresentRegistry)
+		}
 		// Init expressions inside the class body resolve sibling state vars
 		// via implicit `this`, NOT the `state` parameter (which doesn't exist
 		// here). Use a rewrite-free context so e.g. `__ctx_locale__inst1 =
@@ -819,12 +829,13 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 
 	// Visual tree
 	cc := &irComposeContext{
-		nav:    nav,
-		kc:     kc,
-		ctx:    ctx,
-		buf:    &body,
-		indent: 1,
-		combo:  cfg.combo(),
+		nav:     nav,
+		present: present,
+		kc:      kc,
+		ctx:     ctx,
+		buf:     &body,
+		indent:  1,
+		combo:   cfg.combo(),
 		// This one renders the window's own content. A sub-component's
 		// composable never does, so the cutout padding belongs here alone.
 		atRoot: true,
@@ -851,7 +862,7 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 
 	// User component composables
 	for _, comp := range ctx.NonRootComponents() {
-		emitIRComponentComposable(&body, comp, ctx, kc, cfg, cfg.combo(), screen, nav)
+		emitIRComponentComposable(&body, comp, ctx, kc, cfg, cfg.combo(), screen, nav, present)
 	}
 
 	// User functions (non-GoLib). In test mode the state class holds them,
@@ -908,7 +919,7 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 	return []byte(out.String()), testRewrites
 }
 
-func emitIRComponentComposable(b *strings.Builder, cc *codegen.ComponentCtx, ctx *codegen.CodegenCtx, kc *kotlin.KtIRContext, cfg Config, combo androidtc.Combo, screen *codegen.Screen, nav *androidNav) {
+func emitIRComponentComposable(b *strings.Builder, cc *codegen.ComponentCtx, ctx *codegen.CodegenCtx, kc *kotlin.KtIRContext, cfg Config, combo androidtc.Combo, screen *codegen.Screen, nav *androidNav, present map[string]bool) {
 	fmt.Fprintf(b, "\n@%s\n", kc.Name(ktComposable))
 	var params []string
 	for _, p := range cc.Props {
@@ -981,12 +992,13 @@ func emitIRComponentComposable(b *strings.Builder, cc *codegen.ComponentCtx, ctx
 	emitNavState(b, nav.stacksIn(cc.Body), compKC, false)
 
 	vc := &irComposeContext{
-		nav:    nav,
-		kc:     compKC,
-		ctx:    ctx,
-		buf:    b,
-		indent: 1,
-		combo:  combo,
+		nav:     nav,
+		present: present,
+		kc:      compKC,
+		ctx:     ctx,
+		buf:     b,
+		indent:  1,
+		combo:   combo,
 		// The window, where it is under a reactive `if` and so in a
 		// composable of its own.
 		screen: screen,

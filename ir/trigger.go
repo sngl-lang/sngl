@@ -40,9 +40,10 @@ func TriggerTarget(c *Call) (recv, id string, path []Expr, ok bool) {
 	return base.Name, sel.Field, path, true
 }
 
-// IndexedTriggerIDs is every `#id` a test triggers one copy of --
-// `c.row[1].change(true)`.
-func IndexedTriggerIDs(pkg *Package) map[string]bool {
+// IndexedRefIDs is every `#id` a test reaches one copy of -- triggers,
+// `c.row[1].change(true)`, or null-tests, `c.row[1] == null` -- by an index
+// into a ref to the nodes loops rendered under it.
+func IndexedRefIDs(pkg *Package) map[string]bool {
 	out := map[string]bool{}
 	if pkg == nil {
 		return out
@@ -52,9 +53,14 @@ func IndexedTriggerIDs(pkg *Package) map[string]bool {
 			continue
 		}
 		_ = Walk(fn.Block, func(n Node) error {
-			if c, ok := n.(*Call); ok {
-				if _, id, path, ok := TriggerTarget(c); ok && len(path) > 0 {
+			switch x := n.(type) {
+			case *Call:
+				if _, id, path, ok := TriggerTarget(x); ok && len(path) > 0 {
 					out[id] = true
+				}
+			case *Binary:
+				if sel, path, _, ok := NullTestedRef(x); ok && len(path) > 0 {
+					out[sel.Field] = true
 				}
 			}
 			return nil
@@ -102,4 +108,52 @@ func literalIndices(indices []Expr) []string {
 		out[i] = lit.Value
 	}
 	return out
+}
+
+// NullTestedRef reads a test's `c.x == null` or `c.x != null`, either way
+// round, where `c.x` is a ref to a node that may not be rendered -- or
+// `c.x[1]`, one copy of a node loops rendered under an `if`, whose path holds
+// the index into each loop. present is true for `!=`.
+func NullTestedRef(e Expr) (sel *Select, path []Expr, present, ok bool) {
+	bin, isBin := e.(*Binary)
+	if !isBin || (bin.Op != ast.BinEq && bin.Op != ast.BinNeq) {
+		return nil, nil, false, false
+	}
+	ref, other := bin.Left, bin.Right
+	if isNullLiteral(ref) {
+		ref, other = other, ref
+	}
+	if !isNullLiteral(other) {
+		return nil, nil, false, false
+	}
+	ref = stripConversions(ref)
+	for ix, isIx := ref.(*Index); isIx; ix, isIx = ref.(*Index) {
+		path = append([]Expr{ix.Idx}, path...)
+		ref = stripConversions(ix.Operand)
+	}
+	sel, isSel := ref.(*Select)
+	if !isSel || len(sel.Ref) < len(path)+2 || sel.Ref[len(path)] != RefOption {
+		return nil, nil, false, false
+	}
+	for i := range path {
+		if sel.Ref[i] != RefList {
+			return nil, nil, false, false
+		}
+	}
+	if _, isIdent := sel.Operand.(*Ident); !isIdent {
+		return nil, nil, false, false
+	}
+	return sel, path, bin.Op == ast.BinNeq, true
+}
+
+func isNullLiteral(e Expr) bool {
+	lit, ok := stripConversions(e).(*Literal)
+	return ok && lit.Type != nil && lit.Type.Kind == TypeNull
+}
+
+func stripConversions(e Expr) Expr {
+	for conv, ok := e.(*Conversion); ok; conv, ok = e.(*Conversion) {
+		e = conv.Operand
+	}
+	return e
 }

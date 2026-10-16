@@ -778,9 +778,6 @@ window.__sngl_boot = () => {
   function main_outer(state2, a) {
     return outer__sum(a);
   }
-  function testEachNestedFuncRunsUnderItsOwnBody(t, c) {
-    t.assertTrue(c.total === 22, "(c.total === 22)");
-  }
   function step__mark(k) {
     state.log = state.log + "!";
     __n0.textContent = state.log + String(state.total);
@@ -809,7 +806,7 @@ window.__sngl_boot = () => {
     __n0.textContent = state.log + String(state.total);
   }
   if (typeof window !== "undefined") {
-    Object.assign(window, { main_step, main_reset, main_outer, testEachNestedFuncRunsUnderItsOwnBody, step__mark, reset__mark, outer__sum__note, outer__sum, __effect0_mount });
+    Object.assign(window, { main_step, main_reset, main_outer, step__mark, reset__mark, outer__sum__note, outer__sum, __effect0_mount });
   }
   var __effect0_live = [];
   var __effect0_desired = [];
@@ -874,9 +871,9 @@ pass sha256:bd14a27ec9f6475fe665ba06bed44107
 -- run/kotlin/android --
 pass sha256:5dd1d9c1e179197ee72ad3a5a40ec53a
 -- run/none/html --
-pass sha256:b9482f85d1182c69ecc0dfe000a53e70
+pass sha256:4b96a9e02827b945d6c8abf382f64b38
 -- testrun/html/none/component_nested_func.sngl/main/1 --
-sha256:8a2edabfd281edc95bf5af135c30b8ad
+sha256:febabfc5e4a3a38bccbcf1a4e8be823d
 {
   "results": [
     {

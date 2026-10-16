@@ -8,7 +8,7 @@ test lowerer calls the invoker's `At` variant with it (codegen.InvokerAt).
 html finds the element carrying it in data-sngl-copy, and under it the
 element the listener is on when that is not the named one -- a checkbox's
 `<input>` in the `<label>` its id lands on. fyne and gtk4 keep the copies of
-an id a test indexes in a map, and only such an id (ir.IndexedTriggerIDs).
+an id a test indexes in a map, and only such an id (ir.IndexedRefIDs).
 bubbletea walks the loop as View counts it to find the copy's focus ordinal
 and presses the key with the slot's cursor there. android finds the node
 whose SnglCopy semantics property holds it.
@@ -19,6 +19,7 @@ by the copy (loopwidget.go); it used to keep one model field for every copy.
 cmd/sngl/testdata/indexed_trigger_runs.txt runs it on all six.
 
 deny out/go/bubbletea/model.go `\twidget\d+\s+textinput\.Model` -- a looped input is a model per copy, not one field
+deny out/none/html/index.html `function test` -- a test is the test module's, lowered with its triggers, and the page writes no copy of it
 -- app.sngl --
 import . "sngl:ui"
 import . "sngl:test"
@@ -1838,7 +1839,7 @@ package test.sngl.app
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
-import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performTextReplacement
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -1858,9 +1859,9 @@ class MainScreenTest {
         val c = MainScreenState()
         @Suppress("UNUSED_VARIABLE") val composeTestRule = composeRule
         composeRule.setContent { MainScreen(c) }
-        composeTestRule.onNode((androidx.compose.ui.test.hasTestTag("tap") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, "1"))).performClick(); composeTestRule.waitForIdle()
+        composeTestRule.onNode((androidx.compose.ui.test.hasTestTag("tap") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, "1"))).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick); composeTestRule.waitForIdle()
         org.junit.Assert.assertTrue("(c.log == \"b\")", (c.log == "b"))
-        composeTestRule.onNode(androidx.compose.ui.test.isToggleable() and ((androidx.compose.ui.test.hasTestTag("box") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, "0")) or androidx.compose.ui.test.hasAnyAncestor((androidx.compose.ui.test.hasTestTag("box") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, "0"))))).performClick(); composeTestRule.waitForIdle()
+        composeTestRule.onNode(androidx.compose.ui.test.isToggleable() and ((androidx.compose.ui.test.hasTestTag("box") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, "0")) or androidx.compose.ui.test.hasAnyAncestor((androidx.compose.ui.test.hasTestTag("box") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, "0"))))).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick); composeTestRule.waitForIdle()
         org.junit.Assert.assertTrue("(c.log == \"a true\")", (c.log == "a true"))
         composeTestRule.onNode((androidx.compose.ui.test.hasTestTag("field") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, "1"))).performTextReplacement("x"); composeTestRule.waitForIdle()
         org.junit.Assert.assertTrue("(c.log == \"b=x\")", (c.log == "b=x"))
@@ -1870,10 +1871,10 @@ class MainScreenTest {
         val c = MainScreenState()
         @Suppress("UNUSED_VARIABLE") val composeTestRule = composeRule
         composeRule.setContent { MainScreen(c) }
-        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("swap")).performClick(); composeTestRule.waitForIdle()
-        composeTestRule.onNode((androidx.compose.ui.test.hasTestTag("tap") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, "2"))).performClick(); composeTestRule.waitForIdle()
+        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("swap")).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick); composeTestRule.waitForIdle()
+        composeTestRule.onNode((androidx.compose.ui.test.hasTestTag("tap") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, "2"))).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick); composeTestRule.waitForIdle()
         org.junit.Assert.assertTrue("(c.log == \"e\")", (c.log == "e"))
-        composeTestRule.onNode(androidx.compose.ui.test.isToggleable() and ((androidx.compose.ui.test.hasTestTag("box") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, "1")) or androidx.compose.ui.test.hasAnyAncestor((androidx.compose.ui.test.hasTestTag("box") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, "1"))))).performClick(); composeTestRule.waitForIdle()
+        composeTestRule.onNode(androidx.compose.ui.test.isToggleable() and ((androidx.compose.ui.test.hasTestTag("box") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, "1")) or androidx.compose.ui.test.hasAnyAncestor((androidx.compose.ui.test.hasTestTag("box") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, "1"))))).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick); composeTestRule.waitForIdle()
         org.junit.Assert.assertTrue("(c.log == \"d true\")", (c.log == "d true"))
         composeTestRule.onNode((androidx.compose.ui.test.hasTestTag("field") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, "0"))).performTextReplacement("y"); composeTestRule.waitForIdle()
         org.junit.Assert.assertTrue("(c.log == \"c=y\")", (c.log == "c=y"))
@@ -1965,26 +1966,6 @@ window.__sngl_boot = () => {
   };
   if (typeof window !== "undefined") {
     window.__sngl_state = state;
-  }
-  function testOneCopy(t, c) {
-    c.tap[1]();
-    t.assertTrue(c.log === "b", '(c.log === "b")');
-    c.box[0](true);
-    t.assertTrue(c.log === "a true", '(c.log === "a true")');
-    c.field[1]("x");
-    t.assertTrue(c.log === "b=x", '(c.log === "b=x")');
-  }
-  function testOneCopyAfterTheLoopRendersAgain(t, c) {
-    c.swap();
-    c.tap[2]();
-    t.assertTrue(c.log === "e", '(c.log === "e")');
-    c.box[1](true);
-    t.assertTrue(c.log === "d true", '(c.log === "d true")');
-    c.field[0]("y");
-    t.assertTrue(c.log === "c=y", '(c.log === "c=y")');
-  }
-  if (typeof window !== "undefined") {
-    Object.assign(window, { testOneCopy, testOneCopyAfterTheLoopRendersAgain });
   }
   function __cf___checkbox_state0(props) {
     const __root = document.createElement("div");
@@ -2301,6 +2282,6 @@ pass sha256:729f564db20c0646a8aeb86204de48af
 -- run/go/gtk4 --
 pass sha256:b240c6e609fadcb48fc54f1df6f1fa50
 -- run/kotlin/android --
-pass sha256:b124f620abf4f08f5cf16d92942ea608
+pass sha256:b10b27f2aa09b89de1fe31ec45e0bac8
 -- run/none/html --
-pass sha256:88a0fe0f3ce7cbfb018ec5eddcd00efa
+pass sha256:9255c8dd5817976f977a18de57255542

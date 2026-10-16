@@ -433,7 +433,7 @@ package test.sngl.app
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
-import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performTextReplacement
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -453,7 +453,7 @@ class MainScreenTest {
         val c = MainScreenState()
         @Suppress("UNUSED_VARIABLE") val composeTestRule = composeRule
         composeRule.setContent { MainScreen(c) }
-        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("pick")).performClick(); composeTestRule.waitForIdle()
+        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("pick")).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick); composeTestRule.waitForIdle()
         org.junit.Assert.assertTrue("(c.picks == 1)", (c.picks == 1))
     }
 
@@ -502,12 +502,8 @@ window.__sngl_boot = () => {
   function run(f) {
     f();
   }
-  function testTheEmitReachesTheHandler(t, c) {
-    c.pick();
-    t.assertTrue(c.picks === 1, "(c.picks === 1)");
-  }
   if (typeof window !== "undefined") {
-    Object.assign(window, { run, testTheEmitReachesTheHandler });
+    Object.assign(window, { run });
   }
   function String(v) {
     return "" + v;
@@ -536,11 +532,11 @@ pass sha256:b8652a357d4c9db6e7e2117eb00538b4
 -- run/go/gtk4 --
 pass sha256:dbb945aae844028d0cd009e78aab7350
 -- run/kotlin/android --
-pass sha256:2412ce9ec4040bba8ac2d53af67a1883
+pass sha256:c28ac6eccd4fe53d945ee8df41f274aa
 -- run/none/html --
-pass sha256:4ac0d626249fe6d6e2307b96cc8bab60
+pass sha256:7e1e21952226d9bdd0c210ed1ebbe65e
 -- testrun/html/none/component_emit_in_lambda.sngl/main/1 --
-sha256:8933f98e74d40fd16d3a73cb27c608a0
+sha256:dd68cbd2fa62da28f52138a0a9b2fc62
 {
   "results": [
     {

@@ -12,77 +12,49 @@ import (
 // invokers are named `<id><Event>`, and this is named to sit beside them.
 func PresenceMethod(id string) string { return id + "Present" }
 
-// RefNullTest reads a test's `c.x == null` or `c.x != null`, either way round,
-// where `c.x` is a ref to a node that may not be rendered. present is true for
-// `!=`.
-func RefNullTest(e ir.Expr) (recv, id string, present, ok bool) {
-	sel, present, ok := refNullTest(e)
+// PresenceAtMethod is PresenceMethod for one copy of a node loops rendered,
+// `c.row[1] == null`: whether the copy with the key it is handed
+// (ir.CopyKey) is rendered now.
+func PresenceAtMethod(id string) string { return InvokerAt(PresenceMethod(id)) }
+
+// RefNullTest is ir.NullTestedRef, naming the instance variable and the id.
+func RefNullTest(e ir.Expr) (recv, id string, path []ir.Expr, present, ok bool) {
+	sel, path, present, ok := ir.NullTestedRef(e)
 	if !ok {
-		return "", "", false, false
+		return "", "", nil, false, false
 	}
-	return sel.Operand.(*ir.Ident).Name, sel.Field, present, true
-}
-
-func refNullTest(e ir.Expr) (*ir.Select, bool, bool) {
-	bin, isBin := e.(*ir.Binary)
-	if !isBin || (bin.Op != ast.BinEq && bin.Op != ast.BinNeq) {
-		return nil, false, false
-	}
-	ref, other := bin.Left, bin.Right
-	if isNull(ref) {
-		ref, other = other, ref
-	}
-	if !isNull(other) {
-		return nil, false, false
-	}
-	sel, isSel := stripConversions(ref).(*ir.Select)
-	if !isSel || len(sel.Ref) < 2 || sel.Ref[0] != ir.RefOption {
-		return nil, false, false
-	}
-	if _, isIdent := sel.Operand.(*ir.Ident); !isIdent {
-		return nil, false, false
-	}
-	return sel, bin.Op == ast.BinNeq, true
-}
-
-func isNull(e ir.Expr) bool {
-	lit, ok := stripConversions(e).(*ir.Literal)
-	return ok && lit.Type != nil && lit.Type.Kind == ir.TypeNull
-}
-
-func stripConversions(e ir.Expr) ir.Expr {
-	for {
-		conv, ok := e.(*ir.Conversion)
-		if !ok {
-			return e
-		}
-		e = conv.Operand
-	}
+	return sel.Operand.(*ir.Ident).Name, sel.Field, path, present, true
 }
 
 // NullTestedRefs is every `#id` a test in pkg null-tests, which is what a
-// target generates a presence check for.
-func NullTestedRefs(pkg *ir.Package) map[string]bool {
-	out := map[string]bool{}
+// target generates a presence check for, and keyed those of them it
+// null-tests one copy of, which get the PresenceAtMethod check.
+func NullTestedRefs(pkg *ir.Package) (ids, keyed map[string]bool) {
+	ids, keyed = map[string]bool{}, map[string]bool{}
 	fns, _, _ := CollectTestFuncs(pkg)
 	for _, fn := range fns {
 		_ = ir.Walk(fn.Block, func(n ir.Node) error {
 			if e, ok := n.(ir.Expr); ok {
-				if _, id, _, ok := RefNullTest(e); ok {
-					out[id] = true
+				if _, id, path, _, ok := RefNullTest(e); ok {
+					if len(path) > 0 {
+						keyed[id] = true
+					} else {
+						ids[id] = true
+					}
 				}
 			}
 			return nil
 		})
 	}
-	return out
+	return ids, keyed
 }
 
 // LowerRefNullTests is a test body with each null test of a ref replaced by a
 // read of the presence check, negated for `== null`, for a target whose check
-// is a method on the instance a test holds. methodFields gains the checks, so
-// the read is spelled as the call it is. The body is copied: the test's own IR
-// is shared by every target built from the package.
+// is a method on the instance a test holds -- a call handed the copy's key for
+// one copy. methodFields gains the checks, so the read is spelled as the call
+// it is. The body is copied: the test's own IR is shared by every target built
+// from the package.
 func LowerRefNullTests(stmts []ir.Stmt, methodFields map[string]bool) ([]ir.Stmt, map[string]bool) {
 	fields := maps.Clone(methodFields)
 	if fields == nil {
@@ -90,13 +62,23 @@ func LowerRefNullTests(stmts []ir.Stmt, methodFields map[string]bool) ([]ir.Stmt
 	}
 	out := ir.CloneStmtsSharingDecls(stmts)
 	_ = ir.RewriteExprs(out, func(e ir.Expr) (ir.Expr, error) {
-		sel, present, ok := refNullTest(e)
+		sel, path, present, ok := ir.NullTestedRef(e)
 		if !ok {
 			return e, nil
 		}
-		name := PresenceMethod(sel.Field)
-		fields[name] = true
-		var check ir.Expr = &ir.Select{Type: ir.TypBool, Operand: sel.Operand, Field: name}
+		var check ir.Expr
+		if len(path) == 0 {
+			name := PresenceMethod(sel.Field)
+			fields[name] = true
+			check = &ir.Select{Type: ir.TypBool, Operand: sel.Operand, Field: name}
+		} else {
+			check = &ir.Call{
+				Type:     ir.TypBool,
+				Receiver: sel.Operand,
+				Func:     &ir.Func{Name: PresenceAtMethod(sel.Field), Return: ir.TypBool},
+				Args:     []ir.CallArg{{Value: ir.CopyKey(path)}},
+			}
+		}
 		if !present {
 			check = &ir.Unary{Type: ir.TypBool, Op: ast.UnaryNot, Operand: check}
 		}

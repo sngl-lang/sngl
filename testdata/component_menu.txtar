@@ -420,16 +420,6 @@ window.__sngl_boot = () => {
   if (typeof window !== "undefined") {
     window.__sngl_state = state;
   }
-  function testMenuOpenToggles(t, c) {
-    t.assertTrue(c.open === false, "(c.open === false)");
-    c.open = true;
-    t.assertTrue(c.open === true, "(c.open === true)");
-    c.open = false;
-    t.assertTrue(c.open === false, "(c.open === false)");
-  }
-  if (typeof window !== "undefined") {
-    Object.assign(window, { testMenuOpenToggles });
-  }
   var __slot0 = [];
   function __renderSlot0(parent) {
     let __place0_prev = __slot0;
@@ -485,9 +475,9 @@ pass sha256:17d6fd94936c8122bf533b2208fa4ec4
 -- run/kotlin/android --
 pass sha256:6cfe24e0ce640e7b5df209900992ab96
 -- run/none/html --
-pass sha256:a96ae9e2761dd39f255895b64dfbcfa4
+pass sha256:ba5e9d9fdfb488fc666900019ae83bdb
 -- testrun/html/none/component_menu.sngl/main/1 --
-sha256:396d31b6f1ebbca6a86de96c9d4a8093
+sha256:a85fe4dd3a3b8fd1a145406ed553ef09
 {
   "results": [
     {
