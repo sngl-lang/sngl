@@ -656,7 +656,12 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 	if testMode {
 		var keyed map[string]bool
 		present, keyed = codegen.NullTestedRefs(ctx.Pkg)
-		maps.Copy(present, keyed)
+		instances := codegen.KeyedInstanceIDs(ctx.Pkg)
+		for id := range keyed {
+			if instances[id] {
+				present[id] = true
+			}
+		}
 	}
 	if len(present) > 0 {
 		fmt.Fprintf(&body, "val %s = %s<Any, String>()\n\n", kotlin.PresentRegistry, kc.Name("androidx.compose.runtime.mutableStateMapOf"))

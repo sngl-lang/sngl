@@ -3678,9 +3678,14 @@ func (g *htmlGen) emitEventInvokers(b *strings.Builder) {
 		fmt.Fprintf(b, "state.%s = () => document.querySelector('[data-sngl-id=%q], [%s=%q]') !== null;\n", codegen.PresenceMethod(id), id, instanceMark, id)
 	}
 	// One copy is rendered while an element carries its key: the node, or the
-	// root of the instance.
+	// root of an instance handed one.
+	instances := codegen.KeyedInstanceIDs(g.pkg)
 	for _, id := range slices.Sorted(maps.Keys(keyed)) {
-		fmt.Fprintf(b, "state.%s = (k) => document.querySelector(%s + ', ' + %s) !== null;\n", codegen.PresenceAtMethod(id), copySelector(id, "k"), instanceCopySelector(id, "k"))
+		sel := copySelector(id, "k")
+		if instances[id] {
+			sel += " + ', ' + " + instanceCopySelector(id, "k")
+		}
+		fmt.Fprintf(b, "state.%s = (k) => document.querySelector(%s) !== null;\n", codegen.PresenceAtMethod(id), sel)
 	}
 }
 

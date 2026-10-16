@@ -362,12 +362,13 @@ func (c *compilation) emitIRMode(wrapped bool) (modelSrc []byte, callbacksSrc []
 	var topLevelCType map[string]string
 	// The ids a test drives one copy of, whose copies the Model lists.
 	indexed := ir.IndexedRefIDs(c.ctx.Pkg)
+	presentIDs, keyedPresent := codegen.NullTestedRefs(c.ctx.Pkg)
 	recordInvoker := func(inv gtkEventInvoker) { vc.eventInvokers = append(vc.eventInvokers, inv) }
 	if len(bodyStmts) > 0 {
 		tr := newGtk4Translator(gc, c.widgetFieldSink(&widgetFields)).
 			withPkg(c.ctx.Pkg).withRegistry(c.registry).withShared(c.shared).
 			withLocalRefs(mainComponentLocalRefs(c.ctx)).withWrapped(c.wrapped).
-			withInvokerSink(recordInvoker).withIndexed(indexed, nil)
+			withInvokerSink(recordInvoker).withIndexed(indexed, presentIDs, nil)
 		tr.building = true
 		tr.collectTagComponents(bodyStmts)
 		body := codegen.WalkLowered(context.Background(), bodyStmts, tr)
@@ -410,7 +411,7 @@ func (c *compilation) emitIRMode(wrapped bool) (modelSrc []byte, callbacksSrc []
 			continue
 		}
 		if fn.Synthesized {
-			emitIRSlotFunc(&funcBuf, fn, gc, &widgetFields, c.ctx.Pkg, c.registry, c.shared, c.wrapped, indexed, recordInvoker)
+			emitIRSlotFunc(&funcBuf, fn, gc, &widgetFields, c.ctx.Pkg, c.registry, c.shared, c.wrapped, indexed, presentIDs, recordInvoker)
 			continue
 		}
 		if fn.Lowered.Tag != "" {
@@ -421,7 +422,6 @@ func (c *compilation) emitIRMode(wrapped bool) (modelSrc []byte, callbacksSrc []
 	}
 	emitCanvasDrawFuncs(&funcBuf)
 
-	presentIDs, keyedPresent := codegen.NullTestedRefs(c.ctx.Pkg)
 	presenceFields := map[string]string{}
 	createTargets := collectCreateComponentTargets(c.ctx.Pkg)
 	for _, cc := range c.ctx.NonRootComponents() {
@@ -681,11 +681,11 @@ func (c *compilation) newTemplateData(widgetFields []widgetField, functionCode s
 // A widget a render func builds is one a test drives as much as one BuildUI
 // builds, so the func records its invokers too; one of an id a test indexes
 // is kept by its copy as it is built (withIndexed).
-func emitIRSlotFunc(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext, widgetFields *[]widgetField, pkg *ir.Package, reg *gir.TypeRegistry, shared *emitShared, wrapped bool, indexed map[string]bool, invokerSink func(gtkEventInvoker)) {
+func emitIRSlotFunc(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext, widgetFields *[]widgetField, pkg *ir.Package, reg *gir.TypeRegistry, shared *emitShared, wrapped bool, indexed, present map[string]bool, invokerSink func(gtkEventInvoker)) {
 	tr := newGtk4Translator(gc, func(name, cType string) {
 		*widgetFields = append(*widgetFields, widgetField{name: name, goType: widgetFieldGoType(cType, wrapped)})
 	}).withPkg(pkg).withRegistry(reg).withShared(shared).withLocalRefs(fn.Lowered.LocalRefs).withWrapped(wrapped).
-		withInvokerSink(invokerSink).withIndexed(indexed, fn.Block)
+		withInvokerSink(invokerSink).withIndexed(indexed, present, fn.Block)
 	tr.collectTagComponents(fn.Block)
 	block := readWidgets(fn.Block, widgetReader(wrapped, shared, modelNode(wrapped)))
 	bodyStmts := codegen.WalkLowered(context.Background(), block, tr)
