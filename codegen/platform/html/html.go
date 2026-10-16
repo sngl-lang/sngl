@@ -705,6 +705,11 @@ type htmlGen struct {
 	styleValueDef *ir.StructDef
 
 	handlers []eventHandler
+	// quiet are the events a test fires that an element handles with an
+	// empty handler: no listener, but an invoker.
+	quiet []eventHandler
+	// triggered is codegen.TriggeredEvents, in a test build.
+	triggered map[string]bool
 
 	title string
 
@@ -2133,6 +2138,15 @@ func (g *htmlGen) renderRawElementIR(b *strings.Builder, n *ir.NodeInst, depth i
 		if event == "" {
 			continue
 		}
+		if len(h.Func.Block) == 0 && g.testMode {
+			if g.triggered == nil {
+				g.triggered = codegen.TriggeredEvents(g.pkg)
+			}
+			if g.triggered[n.ID+"."+h.Name] || g.triggered[g.enclosingSnglID+"."+h.Name] {
+				g.quiet = append(g.quiet, eventHandler{elemID: id, event: event, snglID: g.enclosingSnglID})
+			}
+			continue
+		}
 		g.addEventHandler(id, event, h.Func)
 	}
 }
@@ -2761,6 +2775,9 @@ func (g *htmlGen) collectReferencedIDs() []string {
 		}
 	}
 	for _, h := range g.handlers {
+		addID(h.elemID)
+	}
+	for _, h := range g.quiet {
 		addID(h.elemID)
 	}
 
@@ -3614,10 +3631,11 @@ func (g *htmlGen) emitEventInvokers(b *strings.Builder) {
 	}
 	// An element's own id outranks one it inherits, whichever was rendered
 	// first.
-	for _, h := range g.handlers {
+	invokable := slices.Concat(g.handlers, g.quiet)
+	for _, h := range invokable {
 		collect(h, g.snglIDByElem[h.elemID], true)
 	}
-	for _, h := range g.handlers {
+	for _, h := range invokable {
 		collect(h, h.snglID, false)
 	}
 	// Only an id a test indexes needs the variant, as on fyne and gtk4.
