@@ -905,6 +905,10 @@ type Var struct {
 	// getter counterpart to the platform hook the write side uses -- so the
 	// only read that works on those is a native call's receiver.
 	NodeHandle bool `json:"NodeHandle,omitempty"`
+	// Written is the id a program wrote for a node handle a lowering renamed,
+	// which a diagnostic names; empty where it keeps the name it was written
+	// with.
+	Written string `json:"-"`
 
 	// Cell marks the state lowering gives a two-way prop the call site left
 	// unbound (UnboundProps): a var of the component passImplicitState wraps
@@ -915,7 +919,15 @@ type Var struct {
 }
 
 func (v *Var) SymName() string { return v.Name }
-func (v *Var) SymType() *Type  { return v.Type }
+
+// WrittenName is the name the program wrote for v.
+func (v *Var) WrittenName() string {
+	if v.Written != "" {
+		return v.Written
+	}
+	return v.Name
+}
+func (v *Var) SymType() *Type { return v.Type }
 
 // IsExported reports whether the var/const is part of its package's
 // public API.

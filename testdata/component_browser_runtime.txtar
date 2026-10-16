@@ -313,7 +313,7 @@ body { font-family: system-ui, sans-serif; }
 <button id="$8" data-sngl-id="touch">
   <span>touch</span>
 </button>
-<button id="$9" data-sngl-id="rename__1">
+<button id="$9" data-sngl-id="rename__own0">
   <span>rename</span>
 </button>
 <span data-sngl-slot="9" style="display:contents"></span>
@@ -344,7 +344,7 @@ window.__sngl_boot = () => {
   state.unshiftClick = () => $5.click();
   state.rebaseClick = () => $7.click();
   state.touchClick = () => $8.click();
-  state.rename__1Click = () => $9.click();
+  state.rename__own0Click = () => $9.click();
   state.hitClick = () => document.querySelector('[data-sngl-id="hit"]').click();
   state.hitClickAt = (k) => document.querySelector('[data-sngl-id="hit"][data-sngl-copy="' + k + '"]').click();
   state.hitContextmenu = (p) => {
@@ -738,31 +738,31 @@ window.__sngl_boot = () => {
     let __inst3_next = [];
     let __inst3_i = 0;
     for (const n of state.names__inst1) {
-      let b__1 = null;
+      let b__own0 = null;
       if (__inst3_live.length > __inst3_i) {
-        b__1 = __inst3_live[__inst3_i];
-        b__1.__set_label(n + state.tag__inst0);
+        b__own0 = __inst3_live[__inst3_i];
+        b__own0.__set_label(n + state.tag__inst0);
       } else {
         if (__inst3_live.length > __inst3_i) {
           __inst3_live[__inst3_i].__destroy();
         }
-        let b__1__new = __cf_badge({ label: n + state.tag__inst0 });
-        b__1 = b__1__new;
+        let b__own0__new = __cf_badge({ label: n + state.tag__inst0 });
+        b__own0 = b__own0__new;
       }
-      __inst3_next.push(b__1);
+      __inst3_next.push(b__own0);
       __inst3_i = __inst3_i + 1;
-      let b__1__el = b__1.__root;
-      b__1__el.setAttribute("data-sngl-instance", "b__1");
+      let b__own0__el = b__own0.__root;
+      b__own0__el.setAttribute("data-sngl-instance", "b__own0");
       let __place2_i_ref0 = null;
       if (__place2_i < __place2_prev.length) {
         __place2_i_ref0 = __place2_prev[__place2_i];
       }
-      if (__place2_i_ref0 === b__1__el) {
+      if (__place2_i_ref0 === b__own0__el) {
         __place2_i = __place2_i + 1;
       } else {
-        parent.insertBefore(b__1__el, __place2_i_ref0);
+        parent.insertBefore(b__own0__el, __place2_i_ref0);
       }
-      __slot1.push(b__1__el);
+      __slot1.push(b__own0__el);
     }
     for (const [__inst3_i_d, _] of __inst3_live.entries()) {
       let __inst3_i_j = __inst3_live.length - 1 - __inst3_i_d;
@@ -784,31 +784,31 @@ window.__sngl_boot = () => {
     let __inst5_next = [];
     let __inst5_i = 0;
     for (const n of state.names__inst2) {
-      let b__2 = null;
+      let b__own1 = null;
       if (__inst5_live.length > __inst5_i) {
-        b__2 = __inst5_live[__inst5_i];
-        b__2.__set_label(n);
+        b__own1 = __inst5_live[__inst5_i];
+        b__own1.__set_label(n);
       } else {
         if (__inst5_live.length > __inst5_i) {
           __inst5_live[__inst5_i].__destroy();
         }
-        let b__2__new = __cf_badge({ label: n });
-        b__2 = b__2__new;
+        let b__own1__new = __cf_badge({ label: n });
+        b__own1 = b__own1__new;
       }
-      __inst5_next.push(b__2);
+      __inst5_next.push(b__own1);
       __inst5_i = __inst5_i + 1;
-      let b__2__el = b__2.__root;
-      b__2__el.setAttribute("data-sngl-instance", "b__2");
+      let b__own1__el = b__own1.__root;
+      b__own1__el.setAttribute("data-sngl-instance", "b__own1");
       let __place4_i_ref0 = null;
       if (__place4_i < __place4_prev.length) {
         __place4_i_ref0 = __place4_prev[__place4_i];
       }
-      if (__place4_i_ref0 === b__2__el) {
+      if (__place4_i_ref0 === b__own1__el) {
         __place4_i = __place4_i + 1;
       } else {
-        parent.insertBefore(b__2__el, __place4_i_ref0);
+        parent.insertBefore(b__own1__el, __place4_i_ref0);
       }
-      __slot2.push(b__2__el);
+      __slot2.push(b__own1__el);
     }
     for (const [__inst5_i_d, _] of __inst5_live.entries()) {
       let __inst5_i_j = __inst5_live.length - 1 - __inst5_i_d;
@@ -830,7 +830,7 @@ window.__sngl_boot = () => {
     let __inst7_next = /* @__PURE__ */ new Map([]);
     let __inst7_seen = /* @__PURE__ */ new Map([]);
     for (const n of state.names__inst3) {
-      let b__3 = null;
+      let b__own2 = null;
       let __key8 = String(n);
       let __key8_n = __inst7_seen.has(__key8) ? __inst7_seen.get(__key8) : 0;
       __inst7_seen.set(__key8, __key8_n + 1);
@@ -838,28 +838,28 @@ window.__sngl_boot = () => {
         __key8 = __key8 + "#" + String(__key8_n);
       }
       if (__inst7_live.has(__key8)) {
-        b__3 = __inst7_live.has(__key8) ? __inst7_live.get(__key8) : null;
-        b__3.__set_label(n);
+        b__own2 = __inst7_live.has(__key8) ? __inst7_live.get(__key8) : null;
+        b__own2.__set_label(n);
       } else {
         if (__inst7_live.has(__key8)) {
           (__inst7_live.has(__key8) ? __inst7_live.get(__key8) : null).__destroy();
         }
-        let b__3__new = __cf_badge({ label: n });
-        b__3 = b__3__new;
+        let b__own2__new = __cf_badge({ label: n });
+        b__own2 = b__own2__new;
       }
-      __inst7_next.set(__key8, b__3);
-      let b__3__el = b__3.__root;
-      b__3__el.setAttribute("data-sngl-instance", "b__3");
+      __inst7_next.set(__key8, b__own2);
+      let b__own2__el = b__own2.__root;
+      b__own2__el.setAttribute("data-sngl-instance", "b__own2");
       let __place6_i_ref0 = null;
       if (__place6_i < __place6_prev.length) {
         __place6_i_ref0 = __place6_prev[__place6_i];
       }
-      if (__place6_i_ref0 === b__3__el) {
+      if (__place6_i_ref0 === b__own2__el) {
         __place6_i = __place6_i + 1;
       } else {
-        parent.insertBefore(b__3__el, __place6_i_ref0);
+        parent.insertBefore(b__own2__el, __place6_i_ref0);
       }
-      __slot3.push(b__3__el);
+      __slot3.push(b__own2__el);
     }
     for (const [__inst7_live_k, __inst7_live_v] of __inst7_live.entries()) {
       if (!__inst7_next.has(__inst7_live_k)) {
@@ -880,7 +880,7 @@ window.__sngl_boot = () => {
     let __inst9_next = /* @__PURE__ */ new Map([]);
     let __inst9_seen = /* @__PURE__ */ new Map([]);
     for (const n of state.names__inst4) {
-      let b__4 = null;
+      let b__own3 = null;
       let __key10 = String(n);
       let __key10_n = __inst9_seen.has(__key10) ? __inst9_seen.get(__key10) : 0;
       __inst9_seen.set(__key10, __key10_n + 1);
@@ -888,28 +888,28 @@ window.__sngl_boot = () => {
         __key10 = __key10 + "#" + String(__key10_n);
       }
       if (__inst9_live.has(__key10)) {
-        b__4 = __inst9_live.has(__key10) ? __inst9_live.get(__key10) : null;
-        b__4.__set_label(n);
+        b__own3 = __inst9_live.has(__key10) ? __inst9_live.get(__key10) : null;
+        b__own3.__set_label(n);
       } else {
         if (__inst9_live.has(__key10)) {
           (__inst9_live.has(__key10) ? __inst9_live.get(__key10) : null).__destroy();
         }
-        let b__4__new = __cf_badge({ label: n });
-        b__4 = b__4__new;
+        let b__own3__new = __cf_badge({ label: n });
+        b__own3 = b__own3__new;
       }
-      __inst9_next.set(__key10, b__4);
-      let b__4__el = b__4.__root;
-      b__4__el.setAttribute("data-sngl-instance", "b__4");
+      __inst9_next.set(__key10, b__own3);
+      let b__own3__el = b__own3.__root;
+      b__own3__el.setAttribute("data-sngl-instance", "b__own3");
       let __place8_i_ref0 = null;
       if (__place8_i < __place8_prev.length) {
         __place8_i_ref0 = __place8_prev[__place8_i];
       }
-      if (__place8_i_ref0 === b__4__el) {
+      if (__place8_i_ref0 === b__own3__el) {
         __place8_i = __place8_i + 1;
       } else {
-        parent.insertBefore(b__4__el, __place8_i_ref0);
+        parent.insertBefore(b__own3__el, __place8_i_ref0);
       }
-      __slot4.push(b__4__el);
+      __slot4.push(b__own3__el);
     }
     for (const [__inst9_live_k, __inst9_live_v] of __inst9_live.entries()) {
       if (!__inst9_next.has(__inst9_live_k)) {
@@ -1085,33 +1085,33 @@ window.__sngl_boot = () => {
     let __inst17_i = 0;
     let __inst17_now_start = [];
     for (const [__copy0, nm] of state.names__inst5.entries()) {
-      let b__5 = null;
+      let b__own4 = null;
       if (__inst17_live.length > __inst17_i && __inst17_was_start[__inst17_i] === state.base__inst0) {
-        b__5 = __inst17_live[__inst17_i];
-        b__5.__set_label(nm + state.tag__inst1);
-        b__5.__set___copy(String(__copy0));
+        b__own4 = __inst17_live[__inst17_i];
+        b__own4.__set_label(nm + state.tag__inst1);
+        b__own4.__set___copy(String(__copy0));
       } else {
         if (__inst17_live.length > __inst17_i) {
           __inst17_live[__inst17_i].__destroy();
         }
-        let b__5__new = __cf_seededBadge({ start: state.base__inst0, label: nm + state.tag__inst1, __copy: String(__copy0) });
-        b__5 = b__5__new;
+        let b__own4__new = __cf_seededBadge({ start: state.base__inst0, label: nm + state.tag__inst1, __copy: String(__copy0) });
+        b__own4 = b__own4__new;
       }
-      __inst17_next.push(b__5);
+      __inst17_next.push(b__own4);
       __inst17_now_start.push(state.base__inst0);
       __inst17_i = __inst17_i + 1;
-      let b__5__el = b__5.__root;
-      b__5__el.setAttribute("data-sngl-instance", "b__5");
+      let b__own4__el = b__own4.__root;
+      b__own4__el.setAttribute("data-sngl-instance", "b__own4");
       let __place16_i_ref0 = null;
       if (__place16_i < __place16_prev.length) {
         __place16_i_ref0 = __place16_prev[__place16_i];
       }
-      if (__place16_i_ref0 === b__5__el) {
+      if (__place16_i_ref0 === b__own4__el) {
         __place16_i = __place16_i + 1;
       } else {
-        parent.insertBefore(b__5__el, __place16_i_ref0);
+        parent.insertBefore(b__own4__el, __place16_i_ref0);
       }
-      __slot8.push(b__5__el);
+      __slot8.push(b__own4__el);
     }
     for (const [__inst17_i_d, _] of __inst17_live.entries()) {
       let __inst17_i_j = __inst17_live.length - 1 - __inst17_i_d;
@@ -1289,7 +1289,7 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:97c7f5447fe3b02fcd42ea2a68d15b53
+pass sha256:6dbaa61f2dff243bc83e72516a060377
 -- testrun/html/none/component_browser_runtime.sngl/branch/1 --
 sha256:c8461928c3413be88155c0c16376d27c
 {

@@ -2588,9 +2588,15 @@ test answers `c.x == null` with a presence check per id (`codegen.RefNullTest`,
 `codegen.LowerRefNullTests`): html's `data-sngl-id`, fyne's and gtk4's
 `__named_<id>`, bubbletea's conditions around the node, and android's
 semantics tree. Each finds the node by its id alone, so in a test build
-`passTestRefOwner` first renames a node another component writes under an id
-a test reaches on the tested one (`b__own0`), before anything moves a node out
-of the body that wrote it (`testdata/test_ref_owner.txtar`). A slot's reset
+`passTestRefOwner` first renames a node another body writes under an id a test
+reaches on the tested one (`b__own0`), before anything moves a node out of the
+body that wrote it (`testdata/test_ref_owner.txtar`). Another body includes a
+library override the build renders -- gtk4's datepicker writes a `#cal`
+(`test_ref_owner_library.txtar`) -- and in a build of the whole program each
+reached id is kept by the first tested component writing it and renamed in
+the rest, a select off a renamed component's instance following
+(`test_ref_owner_whole_program.txtar`). A diagnostic names a renamed handle by
+`ir.Var.WrittenName`, the id the program wrote. A slot's reset
 clears the field of a widget a test null-tests on fyne and gtk4, which still
 held a widget the branch dropped. An
 instance built at run time has no widget of its own: on fyne and gtk4 it hands
@@ -4749,7 +4755,18 @@ members by name, so the lowering says the rest in those terms:
   renders it**, which is how a golden whose tests take two components is
   compiled: each is spliced, and each test reaches what its splice made of it
   (`testdata/test_reach_two_roots.txtar`). Nothing is refused there, since a
-  build that roots at none emits no test.
+  build that roots at none emits no test. A node the splice put in the
+  package body is no member of its component, so passReservedNodeIDs renames
+  a test's select of a reserved id off its own instance itself
+  (`test_reach_reserved_id_whole_program.txtar`).
+- **A test reaches its instance through its own parameter**, which is all an
+  emitter spells a member off: a local holding the instance, `var held = c`,
+  is replaced by what it holds, and a function the test hands an instance to
+  is inlined into the test, as a statement or, where its body is one
+  `return`, as a value (`passTestInstanceReach`,
+  `testdata/test_instance_reach.txtar`). One that cannot be inlined -- a
+  return from the middle, a call of itself, a local assigned again -- is
+  refused where it is written (`cmd/sngl/testdata/test_instance_refused.txt`).
 - **A trigger is an event of the receiver's type**, so the checker tags one
   through a nested instance (`nestedElementEvent`), and `c.row[1]` types as
   the node's component. html's `At` invoker indexes a constant loop's unrolled

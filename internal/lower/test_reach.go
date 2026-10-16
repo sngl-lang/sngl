@@ -350,13 +350,13 @@ func (r *resolver) runtimeNode(x *ir.Select) (ir.Expr, string) {
 		return nil, ""
 	}
 	if indexed(operand) {
-		return nil, fmt.Sprintf("`#%s` is reached through the copies of more than one loop; a test indexes one", x.Field)
+		return nil, fmt.Sprintf("`#%s` is reached through the copies of more than one loop; a test indexes one", h.WrittenName())
 	}
 	if _, always := ownNode(comp, x.Field); !always {
-		return nil, fmt.Sprintf("`#%s` is not rendered once by every copy of %s, so its copies cannot be told apart by their order on the page", x.Field, comp.Name)
+		return nil, fmt.Sprintf("`#%s` is not rendered once by every copy of %s, so its copies cannot be told apart by their order on the page", h.WrittenName(), comp.Name)
 	}
 	if !r.alone(comp, h.Name) {
-		return nil, fmt.Sprintf("the page renders `#%s` outside %s, or %s at more than one site, so a test cannot tell which copy is which; give each its own id", x.Field, comp.Name, comp.Name)
+		return nil, fmt.Sprintf("the page renders `#%s` outside %s, or %s at more than one site, so a test cannot tell which copy is which; give each its own id", h.WrittenName(), comp.Name, comp.Name)
 	}
 	sel := &ir.Select{AST: x.AST, Type: x.Type, Operand: inst, Field: h.Name}
 	if idx == nil {
@@ -416,14 +416,18 @@ func (r *resolver) refuseUnspliced(x ir.Expr, member string, fail func(ir.Expr, 
 		return
 	}
 	sel, ok := x.(*ir.Select)
-	if !ok || r.nodeIn(sel.Operand, sel.Field) == nil {
+	if !ok {
 		return
 	}
-	if len(r.byHandle[r.nodeIn(sel.Operand, sel.Field)]) > 1 {
-		fail(x, "`#%s` is rendered more than once, so a test cannot say which copy's %s it means; give each copy its own id", sel.Field, member)
+	h := r.nodeIn(sel.Operand, sel.Field)
+	if h == nil {
 		return
 	}
-	fail(x, "`#%s` is built at run time on this target, so there is no one instance whose %s a test can reach", sel.Field, member)
+	if len(r.byHandle[h]) > 1 {
+		fail(x, "`#%s` is rendered more than once, so a test cannot say which copy's %s it means; give each copy its own id", h.WrittenName(), member)
+		return
+	}
+	fail(x, "`#%s` is built at run time on this target, so there is no one instance whose %s a test can reach", h.WrittenName(), member)
 }
 
 // reachesInto reports whether member names something comp declares that a

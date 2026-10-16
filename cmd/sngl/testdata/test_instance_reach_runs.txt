@@ -1,0 +1,184 @@
+# A test reaches its instance through a local holding it and through a
+# function it hands the instance to, on every target: a trigger, a null test,
+# a state read and a one-way prop read, through the instance and through a
+# component it renders. testdata/test_instance_reach.txtar is the code.
+
+sngl test --platform=none app.sngl
+stdout 'ok   2 tests, 0 failures'
+
+sngl test --platform=html app.sngl
+stdout 'ok   2 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout 'ok   2 tests, 0 failures'
+
+sngl test --platform=fyne --language=go app.sngl
+stdout 'ok   2 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go app.sngl
+stdout 'ok   2 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin app.sngl
+stdout 'ok   2 tests, 0 failures'
+
+-- app.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+
+output {
+    go {
+        bubbletea
+        fyne
+        gtk4
+    }
+    kotlin {
+        android
+    }
+    none {
+        html
+    }
+}
+
+component badge(label string) node {
+    var hits = 0
+    button #hit(text="{label}{hits}", @click { hits = hits + 1 })
+}
+
+component main node {
+    var shown = true
+    var hits = 0
+    vbox {
+        button #ts(text="s", @click { shown = !shown })
+        text #label(value="n{hits}")
+        badge #bd(label="b")
+        if shown {
+            button #k(text="k{hits}", @click { hits = hits + 1 })
+        }
+    }
+}
+
+func clickK(c main) {
+    if c.k != null {
+        c.k.click()
+    }
+}
+
+func clickTwice(c main) {
+    clickK(c)
+    clickK(c)
+}
+
+func hitBadge(b badge, times int) {
+    var i = 0
+    for i < times {
+        b.hit.click()
+        i = i + 1
+    }
+}
+
+func shownK(c main) => c.k != null
+
+func labelOf(c main) => c.label.value
+
+func testAlias(t Test, c main) {
+    var held = c
+    t.assert(held.k != null)
+    if held.k != null {
+        held.k.click()
+    }
+    t.assert(held.hits == 1)
+    t.assert(held.label.value == "n1")
+    var b = held.bd
+    b.hit.click()
+    t.assert(b.hits == 1)
+    t.assert(held.bd.hits == 1)
+    held.ts.click()
+    t.assert(held.k == null)
+}
+
+func testHelpers(t Test, c main) {
+    clickK(c)
+    t.assert(c.hits == 1)
+    clickTwice(c)
+    t.assert(c.hits == 3)
+    t.assert(shownK(c))
+    t.assert(labelOf(c) == "n3")
+    hitBadge(c.bd, 2)
+    t.assert(c.bd.hits == 2)
+    c.ts.click()
+    t.assert(!shownK(c))
+}
+
+window {
+    main
+}
+-- testrun/android/kotlin/app.sngl/main/1 --
+sha256:5576d7bc2a8bcf2415c5a40679c31278
+{
+  "results": [
+    {
+      "Desc": "Alias",
+      "Passed": true
+    },
+    {
+      "Desc": "Helpers",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/main/1 --
+sha256:e70253dafa862d3941edd610c2b4b1ca
+{
+  "results": [
+    {
+      "Desc": "Alias",
+      "Passed": true
+    },
+    {
+      "Desc": "Helpers",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/main/1 --
+sha256:a601e21a540fd064d3ad9f7c9263dd46
+{
+  "results": [
+    {
+      "Desc": "Alias",
+      "Passed": true
+    },
+    {
+      "Desc": "Helpers",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/main/1 --
+sha256:5d89fefe7aea8a6a4562e28ce31a2b37
+{
+  "results": [
+    {
+      "Desc": "Alias",
+      "Passed": true
+    },
+    {
+      "Desc": "Helpers",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/main/1 --
+sha256:04a3f65ea0bf5955642c2883106988af
+{
+  "results": [
+    {
+      "Desc": "Alias",
+      "Passed": true
+    },
+    {
+      "Desc": "Helpers",
+      "Passed": true
+    }
+  ]
+}

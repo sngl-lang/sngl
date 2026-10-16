@@ -240,7 +240,7 @@ func uniqueNodeIDs(pkg *ir.Package) error {
 			}
 			if first, ok := rendered[n.Handle]; ok {
 				if r := reads[n.Handle]; len(r) > 0 && dup == nil {
-					dup = fmt.Errorf("%s: `#%s` is read here, and %s renders more than one of it -- the read cannot say which; give each copy its own id, or pass the value it is read for as a prop", identPos(r[0]), n.Handle.Name, nodePos(first))
+					dup = fmt.Errorf("%s: `#%s` is read here, and %s renders more than one of it -- the read cannot say which; give each copy its own id, or pass the value it is read for as a prop", identPos(r[0]), n.Handle.WrittenName(), nodePos(first))
 				}
 				return nil
 			}
@@ -292,10 +292,21 @@ func renameNodeID(n *ir.NodeInst, name string, reads map[*ir.Var][]*ir.Ident) {
 	if n.Handle == nil {
 		return
 	}
+	if n.Handle.Written == "" {
+		n.Handle.Written = n.Handle.Name
+	}
 	for _, id := range reads[n.Handle] {
 		id.Name = name
 	}
 	n.Handle.Name = name
+}
+
+// writtenID is the id the program wrote for n.
+func writtenID(n *ir.NodeInst) string {
+	if n.Handle != nil && n.Handle.Written != "" {
+		return n.Handle.Written
+	}
+	return n.ID
 }
 
 // handleIdents is every read of every `#id` handle, keyed by the binding and in

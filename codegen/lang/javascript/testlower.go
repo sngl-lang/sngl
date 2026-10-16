@@ -164,6 +164,21 @@ func lowerTestStmt(s ir.Stmt, jc *JsIRContext) []string {
 		}
 		return append(out, "}")
 	}
+	if n, ok := s.(*ir.For); ok {
+		iter := ""
+		if n.Iter != nil {
+			iter = jc.EvalExpr(n.Iter)
+		}
+		body := jc.WithLocal(n.Key)
+		if n.Value != "" {
+			body = body.WithLocal(n.Value)
+		}
+		out := []string{jc.ForHead(n, iter)}
+		for _, l := range lowerTestStmts(n.Body, body) {
+			out = append(out, "\t"+l)
+		}
+		return append(out, "}")
+	}
 	return jc.EvalStmt(s)
 }
 

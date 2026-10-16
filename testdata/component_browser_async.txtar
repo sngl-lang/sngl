@@ -72,9 +72,9 @@ body { font-family: system-ui, sans-serif; }
 <button id="$1" data-sngl-id="go">
   <span>Go</span>
 </button>
-<span id="$2" data-sngl-id="out__1">
+<span id="$2" data-sngl-id="out__own0">
 </span>
-<button id="$3" data-sngl-id="go__1">
+<button id="$3" data-sngl-id="go__own0">
   <span>Go</span>
 </button>
 
@@ -103,7 +103,7 @@ window.__sngl_boot = () => {
   var state = { greeting__inst0: "before", handler__inst0: null, greeting__inst1: "before", visible__inst0: true };
   state.handler__inst0 = fetchHello;
   state.goClick = () => $1.click();
-  state.go__1Click = () => $3.click();
+  state.go__own0Click = () => $3.click();
   if (typeof window !== "undefined") {
     window.__sngl_state = state;
   }
@@ -132,7 +132,7 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:23c70b1ed816f97dcdadd9639a27ecc4
+pass sha256:aa45bd86cf34933674ccf78abfeaf8b2
 -- testrun/html/none/component_browser_async.sngl/direct/1 --
 sha256:33788f983303a6bae9da50a32c52224f
 {

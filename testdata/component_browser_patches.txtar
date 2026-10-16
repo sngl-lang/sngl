@@ -236,7 +236,7 @@ dialog { margin: auto; padding: 1em; }
   <span id="$5" data-sngl-id="block">
   </span>
 </div>
-<div style="display:flex;flex-direction:column" data-sngl-id="out__1">
+<div style="display:flex;flex-direction:column" data-sngl-id="out__own0">
   <span data-sngl-slot="1" style="display:contents"></span>
   <span data-sngl-slot="2" style="display:contents"></span>
 </div>
@@ -246,7 +246,7 @@ dialog { margin: auto; padding: 1em; }
 <button id="$8" data-sngl-id="set">
   <span>set</span>
 </button>
-<button id="$9" data-sngl-id="t">
+<button id="$9" data-sngl-id="t__own0">
   <span>toggle</span>
 </button>
 <div style="display:flex;flex-direction:column" data-sngl-id="box">
@@ -261,7 +261,7 @@ dialog { margin: auto; padding: 1em; }
 <button id="$13" data-sngl-id="next">
   <span>next</span>
 </button>
-<div style="position:relative" data-sngl-id="s__1">
+<div style="position:relative" data-sngl-id="s__own0">
   <span data-sngl-slot="5" style="display:contents"></span>
   <span data-sngl-slot="6" style="display:contents"></span>
 </div>
@@ -272,7 +272,7 @@ dialog { margin: auto; padding: 1em; }
       <span>×</span>
     </button>
   </header>
-  <button id="$15" data-sngl-id="t__1">
+  <button id="$15" data-sngl-id="t">
     <span>t</span>
   </button>
   <span data-sngl-slot="7" style="display:contents"></span>
@@ -306,11 +306,11 @@ window.__sngl_boot = () => {
   state.goClick = () => $2.click();
   state.clearClick = () => $7.click();
   state.setClick = () => $8.click();
-  state.tClick = () => $9.click();
+  state.t__own0Click = () => $9.click();
   state.bClick = () => $11.click();
   state.nextClick = () => $13.click();
-  state.t__1Click = () => $15.click();
-  state.shown__1Present = () => document.querySelector('[data-sngl-id="shown__1"], [data-sngl-instance="shown__1"]') !== null;
+  state.tClick = () => $15.click();
+  state.shown__own0Present = () => document.querySelector('[data-sngl-id="shown__own0"], [data-sngl-instance="shown__own0"]') !== null;
   if (typeof window !== "undefined") {
     window.__sngl_state = state;
   }
@@ -730,19 +730,19 @@ window.__sngl_boot = () => {
     let __place11_i = 0;
     __slot7 = [];
     if (state.on__inst1) {
-      let shown__1 = document.createElement("span");
-      shown__1.setAttribute("data-sngl-id", "shown__1");
-      shown__1.textContent = "SHOWN";
+      let shown__own0 = document.createElement("span");
+      shown__own0.setAttribute("data-sngl-id", "shown__own0");
+      shown__own0.textContent = "SHOWN";
       let __place11_i_ref0 = null;
       if (__place11_i < __place11_prev.length) {
         __place11_i_ref0 = __place11_prev[__place11_i];
       }
-      if (__place11_i_ref0 === shown__1) {
+      if (__place11_i_ref0 === shown__own0) {
         __place11_i = __place11_i + 1;
       } else {
-        parent.insertBefore(shown__1, __place11_i_ref0);
+        parent.insertBefore(shown__own0, __place11_i_ref0);
       }
-      __slot7.push(shown__1);
+      __slot7.push(shown__own0);
     }
     for (const __place11_prev_e of __place11_prev) {
       if (__slot7.indexOf(__place11_prev_e) < 0) {
@@ -845,7 +845,7 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:8843aafb45cf1cb738277e056d40351b
+pass sha256:4300268f7f65dbc07c4f8f7e33e3f864
 -- testrun/html/none/component_browser_patches.sngl/app/1 --
 sha256:38139b6e2f2bc2546369849a11da2f34
 {

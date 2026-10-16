@@ -125,6 +125,18 @@ func lowerTestStmt(s ir.Stmt, surf TestSurface, compRecvs map[string]bool, ctxCo
 			}
 		}
 		return append(out, "}")
+	case *ir.For:
+		iter := ""
+		if n.Iter != nil {
+			iter = lowerTestExpr(n.Iter, surf, compRecvs)
+		}
+		out := []string{surf.translator().ForHead(n, iter)}
+		for _, b := range n.Body {
+			for _, l := range lowerTestStmt(b, surf, compRecvs, ctxCounts, mode) {
+				out = append(out, "    "+l)
+			}
+		}
+		return append(out, "}")
 	case *ir.LocalVar:
 		// `var name T [= expr]` inside a test body. `var`, as the ordinary
 		// translator spells it: a SNGL local is mutable, and a test that
