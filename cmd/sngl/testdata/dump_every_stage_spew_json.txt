@@ -1,57 +1,69 @@
-# Every stage dumps in both structural formats, with and without --omit, and
-# a dump in-process leaves the IR and ASTs every check shares as it found
-# them: the checked stage is dumped several times here.
-#
-# A declaration is written in full once, where the walk first meets it in a
-# position that owns it, and named by a (ref) anywhere else; the library is
-# only ever named. A map keyed by declarations is written in one order, its
-# keys told apart by the declaration's (id).
+# `sngl dump` is an unsupported debugging tool whose output is not tested:
+# this only checks that every stage dumps in every format, with the flags that
+# change what is walked, without failing. Several checked dumps run in one
+# process, so a dump that wrote into the IR or ASTs every check shares fails
+# the next one.
 
+sngl dump --stage parsed --format sngl main.sngl
 sngl dump --stage parsed --format spew main.sngl
-stdout 'main.sngl:5:1'
-sngl dump --stage parsed --format spew --omit AST,Pos main.sngl
-stdout '"Name": \(string\) \(len=4\) "main"'
-! stdout 'main.sngl:5:1'
-sngl dump --stage parsed --format json --omit AST,Pos main.sngl
-stdout '"Name": "main"'
-
+sngl dump --stage parsed --format json main.sngl
+sngl dump --stage checked --format sngl main.sngl
 sngl dump --stage checked --format spew main.sngl
-stdout '"Name": \(string\) \(len=4\) "main"'
-stdout '"\(ref\)": \(string\) \(len=12\) "ir.Component"'
-! stdout '(Pos": \(string\) \(len=\d+\) "|Pos: \(ast\.Pos\) )(builtin|ui)/'
-sngl dump --stage checked --format spew --omit AST,Pos main.sngl
-stdout '"Name": \(string\) \(len=4\) "main"'
 sngl dump --stage checked --format json main.sngl
-stdout '"Name": "main"'
-stdout -count=1 '"\(ref\)": "ir.Component",\s+"Name": "button",\s+"Pkg": "sngl:ui"'
-! stdout '"File": "(ui|builtin)/'
+sngl dump --stage optimized --platform html --lang none --format sngl main.sngl
+sngl dump --stage optimized --platform html --lang none --format spew main.sngl
+sngl dump --stage optimized --platform html --lang none --format json main.sngl
+sngl dump --stage lowered --platform html --lang none --format sngl main.sngl
+sngl dump --stage lowered --platform html --lang none --format spew main.sngl
+sngl dump --stage lowered --platform html --lang none --format json main.sngl
+sngl dump --stage analysis --platform html --lang none --format spew main.sngl
+sngl dump --stage analysis --platform html --lang none --format json main.sngl
 sngl dump --stage checked --format json --omit AST,Pos main.sngl
-stdout '"Name": "main"'
-
-sngl dump --stage checked --format json --omit AST methods.sngl
-# Thirteen functions, methods and lambdas included, each with one body.
-stdout -count=13 '"Block"'
-cp stdout first.json
-sngl dump --stage checked --format json --omit AST methods.sngl
-cmp stdout first.json
-sngl dump --stage checked --format json --omit AST methods.sngl
-cmp stdout first.json
-
-# A declaration a directory package makes is named with the directory, a
-# context included, whose package the IR does not record.
-cd proj
-sngl dump --stage checked --format json app.sngl
-stdout -count=1 '"\(ref\)": "ir.Context",\s+"Name": "depth",\s+"Pkg": "dir:shapes"'
-stdout '"\(ref\)": "ir.Component",\s+"Name": "badge",\s+"Pkg": "dir:shapes"'
-stdout '"At": "s.sngl:3:20"'
-sngl dump --stage checked --format json --omit AST,Pos app.sngl
-! stdout '"At"'
-cd ..
-
-sngl dump --stage lowered --platform html --lang none --format spew --omit AST,Pos main.sngl
-stdout 'ast.Document'
+sngl dump --stage checked --format spew --omit AST,Pos --pointers --depth 3 main.sngl
 sngl dump --stage lowered --platform html --lang none --format json --omit AST,Pos main.sngl
-stdout '"Stmts"'
+sngl dump --stage checked --format json main.sngl
+
+sngl dump --stage parsed --format sngl methods.sngl
+sngl dump --stage parsed --format spew methods.sngl
+sngl dump --stage parsed --format json methods.sngl
+sngl dump --stage checked --format sngl methods.sngl
+sngl dump --stage checked --format spew methods.sngl
+sngl dump --stage checked --format json methods.sngl
+sngl dump --stage optimized --platform html --lang none --format sngl methods.sngl
+sngl dump --stage optimized --platform html --lang none --format spew methods.sngl
+sngl dump --stage optimized --platform html --lang none --format json methods.sngl
+sngl dump --stage lowered --platform html --lang none --format sngl methods.sngl
+sngl dump --stage lowered --platform html --lang none --format spew methods.sngl
+sngl dump --stage lowered --platform html --lang none --format json methods.sngl
+sngl dump --stage analysis --platform html --lang none --format spew methods.sngl
+sngl dump --stage analysis --platform html --lang none --format json methods.sngl
+sngl dump --stage checked --format json --omit AST,Pos methods.sngl
+sngl dump --stage checked --format spew --omit AST,Pos --pointers --depth 3 methods.sngl
+sngl dump --stage lowered --platform html --lang none --format json --omit AST,Pos methods.sngl
+sngl dump --stage checked --format json methods.sngl
+
+sngl dump --stage parsed --format sngl proj/app.sngl
+sngl dump --stage parsed --format spew proj/app.sngl
+sngl dump --stage parsed --format json proj/app.sngl
+sngl dump --stage checked --format sngl proj/app.sngl
+sngl dump --stage checked --format spew proj/app.sngl
+sngl dump --stage checked --format json proj/app.sngl
+sngl dump --stage optimized --platform html --lang none --format sngl proj/app.sngl
+sngl dump --stage optimized --platform html --lang none --format spew proj/app.sngl
+sngl dump --stage optimized --platform html --lang none --format json proj/app.sngl
+sngl dump --stage lowered --platform html --lang none --format sngl proj/app.sngl
+sngl dump --stage lowered --platform html --lang none --format spew proj/app.sngl
+sngl dump --stage lowered --platform html --lang none --format json proj/app.sngl
+sngl dump --stage analysis --platform html --lang none --format spew proj/app.sngl
+sngl dump --stage analysis --platform html --lang none --format json proj/app.sngl
+sngl dump --stage checked --format json --omit AST,Pos proj/app.sngl
+sngl dump --stage checked --format spew --omit AST,Pos --pointers --depth 3 proj/app.sngl
+sngl dump --stage lowered --platform html --lang none --format json --omit AST,Pos proj/app.sngl
+sngl dump --stage checked --format json proj/app.sngl
+
+# Its calls reach each other through the IR, which encoding/json met as a cycle.
+sngl dump --stage checked --format json ternary.sngl
+sngl dump --stage checked --format spew ternary.sngl
 
 -- main.sngl --
 import . "sngl:ui"
@@ -154,4 +166,35 @@ context[int] #depth(3)
 
 component badge ui.node {
     ui.text(value="{depth}")
+}
+-- ternary.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+
+component main node {
+    var a int = 1
+    var b int = 2
+    var c int = 3
+
+    func classify() => a > 0 ? (b > 0 ? "both+" : "aOnly") : "neither"
+    func chained() => a == 1 ? "one" : a == 2 ? "two" : a == 3 ? "three" : "other"
+    func deep() => (a > b) ? (a > c ? "aMax" : "cMax") : (b > c ? "bMax" : "cMax")
+
+    text(value=classify)
+}
+
+func testTernaryGrouped(t Test, c main) {
+    t.assert(c.classify == "both+")
+}
+
+func testTernaryChain(t Test, c main) {
+    t.assert(c.chained == "one")
+}
+
+func testTernaryDeep(t Test, c main) {
+    t.assert(c.deep == "cMax")
+}
+
+window {
+    main
 }

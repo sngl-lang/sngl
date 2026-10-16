@@ -24,7 +24,10 @@ var dumpCmd = &cobra.Command{
 	Long: `Dump compiler phase output in various formats.
 
 Use --stage to control how far the compiler runs before dumping.
-Output format is unstable and may change between versions.`,
+
+This is an internal debugging tool and is unsupported. Its output in every
+format may change in any release, nothing tests what it prints, and nothing
+should be built on it.`,
 	Args: cobra.MaximumNArgs(1),
 	RunE: runDump,
 }

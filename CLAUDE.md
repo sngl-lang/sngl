@@ -4925,7 +4925,12 @@ Structured logging via `slog` at three levels controlled by CLI flags:
 - `--debug` — Debug: const folding, dead code elimination, import resolution
 - `-q, --quiet` — Error only
 
-Dump commands inspect each compiler phase:
+`sngl dump` inspects each compiler phase. It ships in release builds but is an
+internal debugging tool and unsupported: its output in every format may change
+in any release, and it is not snapshot tested --
+`cmd/sngl/testdata/dump_every_stage_spew_json.txt` only checks that each stage
+and format runs without error. Assert a compiler property with a golden or a
+`sngl test`, not with a dump.
 
 ```bash
 sngl dump --stage parsed  [file|dir]                              # after parse + merge
@@ -4943,11 +4948,10 @@ those have no source form — `--format sngl` on it is an error naming the two
 that work.
 
 In `json` and `spew` a declaration is written in full once, carrying an
-`"(id)"`, and everywhere else it is a reference: `{"(ref)": "ir.Component", "Name": …, "Pkg": …, "At": …, "(id)": …}`, the id naming the full one. A
-declaration another package makes -- the library, a directory import
-(`"Pkg": "dir:widgets"`) -- is only referenced, never written. A map keyed by
-declarations spells each key as its reference, so the keys are distinct and
-the order fixed (`cmd/sngl/dumpomit.go`).
+`"(id)"`, and everywhere else it is a reference naming it by that id, its
+kind, name and package (`cmd/sngl/dumpomit.go`). A declaration another
+package makes -- the library, a directory import (`dir:widgets`) -- is only
+referenced.
 
 A positional argument may also be a package rather than a path:
 `sngl dump --stage checked sngl:platform/gtk4`. It arrives already checked,
