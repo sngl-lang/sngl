@@ -149,3 +149,38 @@ func InstanceRootIDs(root any) map[string]bool {
 func InstanceRootID(prop string) (string, bool) {
 	return strings.CutPrefix(prop, ir.InstanceRootPrefix)
 }
+
+// RendersNowhere reports whether nothing in pkg but its tests names the `#id`
+// a test null-tests: the build folded away every node that carried it -- a
+// branch on a constant, a context's provided value -- so the node is never
+// rendered and a presence check answers false.
+func RendersNowhere(pkg *ir.Package, id string) bool {
+	if pkg == nil {
+		return false
+	}
+	named := false
+	visit := func(n ir.Node) error {
+		if named {
+			return ir.SkipAll
+		}
+		switch x := n.(type) {
+		case *ir.NodeInst:
+			named = x.ID == id
+		case *ir.Ident:
+			named = x.Name == id
+		case *ir.Select:
+			named = x.Field == id
+		}
+		return nil
+	}
+	for _, c := range pkg.Components {
+		_ = ir.Walk(c, visit)
+	}
+	_ = ir.Walk(pkg.Body, visit)
+	for _, fn := range pkg.Funcs {
+		if !fn.IsTest {
+			_ = ir.Walk(fn, visit)
+		}
+	}
+	return !named
+}

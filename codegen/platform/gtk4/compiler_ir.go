@@ -500,7 +500,7 @@ func (c *compilation) emitIRMode(wrapped bool) (modelSrc []byte, callbacksSrc []
 			c.shared.calendarDate = true
 		}
 	}
-	emitPresenceChecks(&eventInvokersBuf, presentIDs, presenceFields, widgetFields)
+	emitPresenceChecks(&eventInvokersBuf, c.ctx.Pkg, presentIDs, presenceFields, widgetFields)
 	emitCopyRegistries(&eventInvokersBuf, widgetFields)
 	if keyedInstances(c.ctx.Pkg) {
 		emitUnlistInstance(&eventInvokersBuf, widgetFields, c.wrapped, len(codegen.InstanceRootIDs(c.ctx.Pkg)) > 0)

@@ -6,9 +6,15 @@
 # handler under a loop (emptyfocus), a sngl:seq loop's variable in a prop
 # (seq), a handler forwarding what it bound nothing of (forward), a nested
 # list that shrinks (shrink), and an instance whose body renders nothing
-# while its call site is rendered, which is present (present). An event no
-# call site handles is an error (unhandled), and a prop read that reads what
-# a test cannot name through an instance is refused (unnamed).
+# while its call site is rendered, which is present (present). A call site
+# in a page's content, which renders only while the page shows (page), under
+# an `if` on a context (context), under a condition on a prop the test cannot
+# name (unnamedcond), and a copy reached through a copy of an outer loop that
+# shrank away (gone) are each answered by the target or the interpreter. An
+# event no call site handles is an error everywhere (unhandled), and a prop
+# read that reads what a test cannot name through an instance is refused
+# (unnamed). html is left out of page: a navigation ends the document a test
+# runs in.
 
 sngl test --platform=none copies.sngl
 stdout 'ok   2 tests, 0 failures'
@@ -190,8 +196,92 @@ stdout 'ok   2 tests, 0 failures'
 sngl test --platform=android --language=kotlin present.sngl
 stdout 'ok   2 tests, 0 failures'
 
+sngl test --platform=none page.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go page.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=fyne --language=go page.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go page.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin page.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=none context.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=html context.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go context.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=fyne --language=go context.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go context.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin context.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=none unnamedcond.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=html unnamedcond.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go unnamedcond.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=fyne --language=go unnamedcond.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go unnamedcond.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin unnamedcond.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=none gone.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=html gone.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go gone.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=fyne --language=go gone.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go gone.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin gone.sngl
+stdout 'ok   1 tests, 0 failures'
+
 ! sngl test --platform=none unhandled.sngl
 stdout '@tapped fired on tile, whose call site handles none of it'
+
+! sngl test --platform=html unhandled.sngl
+stderr 'unhandled.sngl:15:15: the test fires @tapped on `#z`, whose call site handles none of it'
+
+! sngl test --platform=bubbletea --language=go unhandled.sngl
+stderr 'unhandled.sngl:15:15: the test fires @tapped on `#z`, whose call site handles none of it'
+
+! sngl test --platform=fyne --language=go unhandled.sngl
+stderr 'unhandled.sngl:15:15: the test fires @tapped on `#z`, whose call site handles none of it'
+
+! sngl test --platform=gtk4 --language=go unhandled.sngl
+stderr 'unhandled.sngl:15:15: the test fires @tapped on `#z`, whose call site handles none of it'
+
+! sngl test --platform=android --language=kotlin unhandled.sngl
+stderr 'unhandled.sngl:15:15: the test fires @tapped on `#z`, whose call site handles none of it'
 
 ! sngl test --platform=html unnamed.sngl
 stderr 'unnamed.sngl:22:22: `label` is what its call site wrote, which reads something a test cannot name'
@@ -613,6 +703,153 @@ func testNone(t Test, c main) {
 window {
     main
 }
+-- page.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+import nav "sngl:ui/nav"
+
+component blank node {
+    text(value="y")
+}
+
+component main node {
+    vbox {
+        nav.stack #pages {
+            nav.page #home(href="/", title="Home") {
+                blank #w
+            }
+            nav.page #about(href="/about", title="About") {
+                text(value="about")
+            }
+        }
+        button #go(text="go", @click {
+            pages.go(about)
+        })
+    }
+}
+
+func testPage(t Test, c main) {
+    t.assert(c.w != null)
+    c.go.click()
+    t.assert(c.w == null)
+}
+
+window {
+    main
+}
+-- context.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+
+context #mode(true)
+
+component blank node {
+    text(value="y")
+}
+
+component holder node {
+    vbox {
+        if mode {
+            blank #w
+        }
+        text(value="h")
+    }
+}
+
+component main node {
+    vbox {
+        mode(false) {
+            holder #p
+        }
+    }
+}
+
+func testContext(t Test, c main) {
+    t.assert(c.p.w == null)
+}
+
+window {
+    main
+}
+-- unnamedcond.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+
+component blank node {
+    text(value="y")
+}
+
+component holder(show bool) node {
+    if show {
+        blank #w
+    }
+}
+
+component outer(xs iter[int]) node {
+    vbox {
+        for var x = xs {
+            holder #p(show=x > 1)
+        }
+    }
+}
+
+component main node {
+    var ys = [1, 2]
+    outer #q(xs=ys)
+}
+
+func testNested(t Test, c main) {
+    t.assert(c.q.p[0].w == null)
+    t.assert(c.q.p[1].w != null)
+}
+
+window {
+    main
+}
+-- gone.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+
+component cell(label string) node {
+    var taps = 0
+    button #tap(text="{label}:{taps}", @click {
+        taps = taps + 1
+    })
+}
+
+component row(items list[string]) node {
+    var bump = 0
+    hbox {
+        for var it = items {
+            cell #cl(label=it)
+        }
+        button #b(text="b", @click {
+            bump = bump + 1
+        })
+    }
+}
+
+component main node {
+    var grid list[list[string]] = [["a", "b"], ["c", "d", "e"]]
+    vbox {
+        for var items = grid {
+            row #r(items=items)
+        }
+        button #drop(text="d", @click {
+            grid = [["x"]]
+        })
+    }
+}
+
+func testGone(t Test, c main) {
+    t.assert(c.r[1].cl[0] != null)
+    c.drop.click()
+    t.assert(c.r[1].cl[0] == null)
+}
+
+window {
+    main
+}
 -- unhandled.sngl --
 import . "sngl:ui"
 import . "sngl:test"
@@ -662,6 +899,16 @@ func testUnnamed(t Test, c main) {
 window {
     main
 }
+-- testrun/android/kotlin/context.sngl/main/1 --
+sha256:7e4a0872cc6dfee96c4b1ccd2cd9787f
+{
+  "results": [
+    {
+      "Desc": "Context",
+      "Passed": true
+    }
+  ]
+}
 -- testrun/android/kotlin/copies.sngl/main/1 --
 sha256:7db45416d25cc27d91b178ec9ecb52c8
 {
@@ -706,12 +953,32 @@ sha256:03c777fc859d75de3331003fc4f56579
     }
   ]
 }
+-- testrun/android/kotlin/gone.sngl/main/1 --
+sha256:ae2231eadbebdefda4e4fa1a006b5107
+{
+  "results": [
+    {
+      "Desc": "Gone",
+      "Passed": true
+    }
+  ]
+}
 -- testrun/android/kotlin/nested.sngl/main/1 --
-sha256:e19d3d569fe1f9237c6fe95cd2198b14
+sha256:59bf3e86e4642902ded396b92b779fa3
 {
   "results": [
     {
       "Desc": "Nested",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/android/kotlin/page.sngl/main/1 --
+sha256:19cc94c8e0fa67ba07e94de019c9bedc
+{
+  "results": [
+    {
+      "Desc": "Page",
       "Passed": true
     }
   ]
@@ -751,7 +1018,7 @@ sha256:2727f03d8f95d7e7f43c7ab3cb50c9eb
   ]
 }
 -- testrun/android/kotlin/shrink.sngl/main/1 --
-sha256:90e3b9db03ba626c06e88374e785f361
+sha256:ebd4361526fdaaf01e30feed83933e54
 {
   "results": [
     {
@@ -770,6 +1037,26 @@ sha256:e19fa79781fe109d8c0b28606f2bcf42
   "results": [
     {
       "Desc": "ProgramCall",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/android/kotlin/unnamedcond.sngl/main/1 --
+sha256:402488efbdd177cbc639ada40ba32b19
+{
+  "results": [
+    {
+      "Desc": "Nested",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/context.sngl/main/1 --
+sha256:01752f4e729a24872257a2fef3168ea5
+{
+  "results": [
+    {
+      "Desc": "Context",
       "Passed": true
     }
   ]
@@ -818,12 +1105,32 @@ sha256:b34fd738ce40c70249415a75d6ebd5b5
     }
   ]
 }
+-- testrun/bubbletea/go/gone.sngl/main/1 --
+sha256:0b7641efd1aa5dd8c14987e9ad798ab6
+{
+  "results": [
+    {
+      "Desc": "Gone",
+      "Passed": true
+    }
+  ]
+}
 -- testrun/bubbletea/go/nested.sngl/main/1 --
-sha256:e6adb9b151b761747cf8654dfa246f54
+sha256:a138550f4f67ca9ee40d537d70530a02
 {
   "results": [
     {
       "Desc": "Nested",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/page.sngl/main/1 --
+sha256:63ea49cc390adb4ce86f84d8d8af01e1
+{
+  "results": [
+    {
+      "Desc": "Page",
       "Passed": true
     }
   ]
@@ -863,7 +1170,7 @@ sha256:c12bcf0d5df68d7c254925f21375a44e
   ]
 }
 -- testrun/bubbletea/go/shrink.sngl/main/1 --
-sha256:b734f090bbfb7ef64297d444898ba554
+sha256:f38ebb760069c24f4cf6b5b90a17d15c
 {
   "results": [
     {
@@ -882,6 +1189,26 @@ sha256:23214e8858c35ffc5ec6bd39a4358af1
   "results": [
     {
       "Desc": "ProgramCall",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/unnamedcond.sngl/main/1 --
+sha256:05f390ef1dd0847e065ca3fc8eb24c39
+{
+  "results": [
+    {
+      "Desc": "Nested",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/context.sngl/main/1 --
+sha256:c1918a009604d53b8210696f1b926840
+{
+  "results": [
+    {
+      "Desc": "Context",
       "Passed": true
     }
   ]
@@ -930,12 +1257,32 @@ sha256:05101c7fd067e5a7b07851db47e545d5
     }
   ]
 }
+-- testrun/fyne/go/gone.sngl/main/1 --
+sha256:f48c862e604d079e7fe976d8c7b93f70
+{
+  "results": [
+    {
+      "Desc": "Gone",
+      "Passed": true
+    }
+  ]
+}
 -- testrun/fyne/go/nested.sngl/main/1 --
-sha256:d2b0378b0d324acc7403c56f271c81e4
+sha256:f44e753160228d5a3cc5916586e4372c
 {
   "results": [
     {
       "Desc": "Nested",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/page.sngl/main/1 --
+sha256:041c5782ae896ce9b88245c40066e428
+{
+  "results": [
+    {
+      "Desc": "Page",
       "Passed": true
     }
   ]
@@ -975,7 +1322,7 @@ sha256:2a1faeed3b961834c8b7d67a008ff20a
   ]
 }
 -- testrun/fyne/go/shrink.sngl/main/1 --
-sha256:83b18d8b52535a15a05b7f9a6b6735f7
+sha256:aeee186aaaf9d8aee480c9bf47324bca
 {
   "results": [
     {
@@ -994,6 +1341,26 @@ sha256:9e2929ed7acbd11958c23c91227e538c
   "results": [
     {
       "Desc": "ProgramCall",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/unnamedcond.sngl/main/1 --
+sha256:9fbae394838a0ed2bf5f8f45f7f6223e
+{
+  "results": [
+    {
+      "Desc": "Nested",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/context.sngl/main/1 --
+sha256:71baec21a637bb7dd0edab2f61d2227a
+{
+  "results": [
+    {
+      "Desc": "Context",
       "Passed": true
     }
   ]
@@ -1042,12 +1409,32 @@ sha256:305ca6cf7bf6ab24f141db031f8d37cf
     }
   ]
 }
+-- testrun/gtk4/go/gone.sngl/main/1 --
+sha256:19c33791e7f654b4edb8cf3872c4ddca
+{
+  "results": [
+    {
+      "Desc": "Gone",
+      "Passed": true
+    }
+  ]
+}
 -- testrun/gtk4/go/nested.sngl/main/1 --
-sha256:75619003e45165ff6e0df05d7b8ccab3
+sha256:9218923d1a0e17a3bd12bc075aa3d063
 {
   "results": [
     {
       "Desc": "Nested",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/page.sngl/main/1 --
+sha256:d2e7063681e5361d0a29813f4eb74340
+{
+  "results": [
+    {
+      "Desc": "Page",
       "Passed": true
     }
   ]
@@ -1087,7 +1474,7 @@ sha256:0038f8b37217ee8b763c54915d07c2d6
   ]
 }
 -- testrun/gtk4/go/shrink.sngl/main/1 --
-sha256:a7e175cc1ea2fd1ce9a55a0866934366
+sha256:c7793a04ae9cc2d9541bc6f1956450eb
 {
   "results": [
     {
@@ -1106,6 +1493,26 @@ sha256:f29865d5f569bf765e3a35c7252472e1
   "results": [
     {
       "Desc": "ProgramCall",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/unnamedcond.sngl/main/1 --
+sha256:0c703bcf69b643e85f5059c2fb4b7b6b
+{
+  "results": [
+    {
+      "Desc": "Nested",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/context.sngl/main/1 --
+sha256:f072ee07ab9b63f035e222b041493940
+{
+  "results": [
+    {
+      "Desc": "Context",
       "Passed": true
     }
   ]
@@ -1154,8 +1561,18 @@ sha256:968f54d3bf9edfd001ef917c681a47ff
     }
   ]
 }
+-- testrun/html/none/gone.sngl/main/1 --
+sha256:06449bc348b272c012300997f12579af
+{
+  "results": [
+    {
+      "Desc": "Gone",
+      "Passed": true
+    }
+  ]
+}
 -- testrun/html/none/nested.sngl/main/1 --
-sha256:455b0fb7e5d64b532a79875dc520d8ab
+sha256:34c2258fe6780675154729639ea60858
 {
   "results": [
     {
@@ -1199,7 +1616,7 @@ sha256:52819be2302256a8fbf6a64496a60709
   ]
 }
 -- testrun/html/none/shrink.sngl/main/1 --
-sha256:5d4603cd96ed089f8c05668c1895fa51
+sha256:5f60c7fe3bfaf8ee10002f0a214a39e4
 {
   "results": [
     {
@@ -1218,6 +1635,16 @@ sha256:a36ad1488c512b3da7fd42396a1771eb
   "results": [
     {
       "Desc": "ProgramCall",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/unnamedcond.sngl/main/1 --
+sha256:443936c8f0d1a361f43f35e2752d9fe2
+{
+  "results": [
+    {
+      "Desc": "Nested",
       "Passed": true
     }
   ]

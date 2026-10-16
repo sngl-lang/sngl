@@ -391,7 +391,7 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 		emitUnlistInstance(&funcBuf, widgetFields, len(gc.Ctx.InstanceRootIDs()) > 0)
 	}
 	emitKeyedPresenceChecks(&funcBuf, keyedPresent, widgetFields)
-	emitFynePresenceChecks(&funcBuf, presentIDs, presenceFields, widgetFields)
+	emitFynePresenceChecks(&funcBuf, ctx.Pkg, presentIDs, presenceFields, widgetFields)
 	for _, h := range golang.InstanceHolds(gc.InstanceReads) {
 		widgetFields = append(widgetFields, irWidgetField{name: h[0], goType: h[1]})
 	}

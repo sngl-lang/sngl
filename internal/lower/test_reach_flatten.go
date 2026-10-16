@@ -373,6 +373,7 @@ func (f *reachFlattener) fireTriggers(fn *ir.Func) error {
 			}
 		}
 		if handler == nil {
+			bad = fmt.Errorf("%s: the test fires @%s on `#%s`, whose call site handles none of it", handleCallPos(c), c.Event, writtenID(site))
 			return n, nil
 		}
 		fire, err := f.fireFunc(c, owner, site, handler, loops)
@@ -655,6 +656,12 @@ func callSitePresence(b *ir.Binary, params map[*ir.Param]bool) ir.Expr {
 	if !ok || !rootedAtTest(sel.Operand, params) {
 		return nil
 	}
+	// The instance the call site is written in has to be there first: one
+	// reached through a copy a loop no longer renders reads nothing.
+	outer, ok := throughPresence(sel.Operand, params)
+	if !ok {
+		return nil
+	}
 	comp := componentOf(sel.Operand)
 	if comp == nil {
 		return nil
@@ -695,6 +702,9 @@ func callSitePresence(b *ir.Binary, params map[*ir.Param]bool) ir.Expr {
 		}
 		conds = append(conds, c)
 	}
+	if outer != nil {
+		conds = append([]ir.Expr{outer}, conds...)
+	}
 	var out ir.Expr = &ir.Literal{Type: ir.TypBool, Value: "true"}
 	for i, c := range conds {
 		if i == 0 {
@@ -703,10 +713,55 @@ func callSitePresence(b *ir.Binary, params map[*ir.Param]bool) ir.Expr {
 		}
 		out = &ir.Binary{Type: ir.TypBool, Op: ast.BinAnd, Left: out, Right: c}
 	}
+	// A condition reading a prop whose value the test cannot name leaves the
+	// answer to the target.
+	unnamed := false
+	_ = ir.Walk(out, func(n ir.Node) error {
+		if sel, ok := n.(*ir.Select); ok && unnamedTestPropRead(sel, params) {
+			unnamed = true
+		}
+		return nil
+	})
+	if unnamed {
+		return nil
+	}
 	if !present {
 		out = &ir.Unary{Type: ir.TypBool, Op: ast.UnaryNot, Operand: out}
 	}
 	return out
+}
+
+// throughPresence is whether the instance e names is rendered now, for a
+// call site written in it: nil where the test reaches it directly or it is
+// rendered once wherever its owner is, and not ok where the answer is the
+// target's.
+func throughPresence(e ir.Expr, params map[*ir.Param]bool) (ir.Expr, bool) {
+	if _, through := unnarrowedRef(e).(*ir.Select); !through {
+		return nil, true
+	}
+	if sel, once := unnarrowed(e).(*ir.Select); once && sel.Ref == ir.RefOne {
+		return throughPresence(sel.Operand, params)
+	}
+	c := callSitePresence(&ir.Binary{Type: ir.TypBool, Op: ast.BinNeq, Left: e, Right: &ir.Literal{Type: ir.TypNull}}, params)
+	return c, c != nil
+}
+
+// rendersChildrenOnce reports whether n renders the children written in it
+// wherever n is rendered: not a builtin node, which a target answers -- a
+// page's content is mounted only while its page shows -- and not one whose
+// rest slot is inserted other than once.
+func rendersChildrenOnce(n *ir.NodeInst) bool {
+	c := n.Component
+	if c == nil {
+		return true
+	}
+	if c.Builtin != ir.BuiltinNone {
+		return false
+	}
+	if rest := c.RestSlot(); rest != nil && c.InsertsOf(rest) != ir.InsertOne {
+		return false
+	}
+	return true
 }
 
 // siteWrap is one construct around a call site that decides whether it is
@@ -729,6 +784,9 @@ func callSiteWraps(stmts []ir.Stmt, id string) (*ir.NodeInst, []siteWrap, bool) 
 					return x, wraps, true, true
 				}
 				if n, w, ok, found := walk(x.Children, wraps); found {
+					if !rendersChildrenOnce(x) {
+						return nil, nil, false, true
+					}
 					return n, w, ok, true
 				}
 				for _, name := range ir.SlotNames(x.Slots) {

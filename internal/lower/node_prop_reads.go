@@ -724,6 +724,12 @@ func rebaseOnInstanceUnder(e ir.Expr, comp *ir.Component, inst ir.Expr, env map[
 	})
 	unnamed := false
 	out := newExprWalker(func(x ir.Expr) ir.Expr {
+		// A context answers the provider the instance is under, which the
+		// test has no name for.
+		if _, ok := x.(*ir.ContextRead); ok {
+			unnamed = true
+			return x
+		}
 		id, ok := x.(*ir.Ident)
 		if !ok || id.Sym == nil {
 			return x
@@ -740,7 +746,7 @@ func rebaseOnInstanceUnder(e ir.Expr, comp *ir.Component, inst ir.Expr, env map[
 			return inner
 		}
 		switch id.Sym.(type) {
-		case *ir.Param, *ir.LoopVar:
+		case *ir.Param, *ir.LoopVar, *ir.Context:
 			unnamed = true
 		}
 		return x

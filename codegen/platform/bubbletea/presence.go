@@ -18,7 +18,7 @@ import (
 // node is rendered now. View keeps no tree to look in, so the check is the
 // view with every other node taken out, answering true where View would draw
 // this one.
-func emitPresenceChecks(b *strings.Builder, stmts []ir.Stmt, ids map[string]bool, gc *golang.GoIRContext) {
+func emitPresenceChecks(b *strings.Builder, pkg *ir.Package, stmts []ir.Stmt, ids map[string]bool, gc *golang.GoIRContext) {
 	names := make([]string, 0, len(ids))
 	for id := range ids {
 		names = append(names, id)
@@ -27,7 +27,10 @@ func emitPresenceChecks(b *strings.Builder, stmts []ir.Stmt, ids map[string]bool
 	for _, id := range names {
 		body, found := presencePath(stmts, id)
 		if !found {
-			continue
+			if !codegen.RendersNowhere(pkg, id) {
+				continue
+			}
+			body = nil
 		}
 		fn := &ir.Func{
 			Name:    codegen.PresenceMethod(id),

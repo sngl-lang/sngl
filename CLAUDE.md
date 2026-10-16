@@ -2622,11 +2622,16 @@ its body renders now -- `name.empty` is the separate question of what it
 renders. So a test's null test of a program component's instance is the
 conditions of the `if`s around its call site and, for one copy, whether each
 loop around it renders that copy (`answerInstancePresence`, in passTestReach,
-read through the instance that wrote the call site), on every target alike
+read through the instance that wrote the call site, whose own presence is
+asked first), on every target alike
 (`cmd/sngl/testdata/test_reach_review_runs.txt`'s present.sngl). Where
-something else decides the call site -- a boundary, a slot fallback, a page --
-or the conditions read what a test cannot name, the target's presence check
-answers instead, as follows.
+something else decides the call site -- a boundary, a slot fallback, a
+builtin node such as a page, a container inserting its children other than
+once -- or the conditions read what a test cannot name -- a context, a loop's
+variable, a prop bound to one -- the target's presence check answers instead,
+as follows; one for a node the build folded away answers false
+(`codegen.RendersNowhere`). A test firing an event its call site handles
+none of is refused where it fires it.
 
 **A spliced instance a test null-tests is found by its roots.** A splice
 leaves no node of the instance's own, only the roots of its body -- the nodes

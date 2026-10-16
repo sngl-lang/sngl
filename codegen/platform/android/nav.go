@@ -472,6 +472,7 @@ func (nav *androidNav) stacksIn(stmts []ir.Stmt) []*navStackK {
 func emitNavState(b *strings.Builder, stacks []*navStackK, kc *kotlin.KtIRContext, testMode bool) {
 	for _, st := range stacks {
 		fmt.Fprintf(b, "    val %s__nav = %s()\n", st.name, kc.Name(ktNav+"compose.rememberNavController"))
+		stateDelegate(kc)
 		fmt.Fprintf(b, "    val %s__entry by %s__nav.%s()\n", st.name, st.name, kc.Name(ktNav+"compose.currentBackStackEntryAsState"))
 		if st.startSearch != nil {
 			fmt.Fprintf(b, "    val %s__start = %s\n", st.name, kc.EvalExpr(st.startSearch))

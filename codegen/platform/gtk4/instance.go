@@ -506,7 +506,7 @@ const instanceRootVar = "__root"
 // emitPresenceChecks writes, for each `#id` a test null-tests, whether the
 // widget is rendered now: a widget an instance holds is the Model's while the
 // instance lives, and one the Model builds itself is there from BuildUI on.
-func emitPresenceChecks(b *strings.Builder, ids map[string]bool, held map[string]string, modelFields []widgetField) {
+func emitPresenceChecks(b *strings.Builder, pkg *ir.Package, ids map[string]bool, held map[string]string, modelFields []widgetField) {
 	for _, id := range slices.Sorted(maps.Keys(ids)) {
 		field := held[id]
 		if field == "" && slices.ContainsFunc(modelFields, func(f widgetField) bool { return f.name == id }) {
@@ -515,10 +515,14 @@ func emitPresenceChecks(b *strings.Builder, ids map[string]bool, held map[string
 		if field == "" && slices.ContainsFunc(modelFields, func(f widgetField) bool { return f.name == presentField(id) }) {
 			field = presentField(id)
 		}
+		name := codegen.PresenceMethod(id)
 		if field == "" {
+			if codegen.RendersNowhere(pkg, id) {
+				fmt.Fprintf(b, "// %s reports that the #%s widget is never rendered; for tests.\n", name, id)
+				fmt.Fprintf(b, "func (m *Model) %s() bool {\n\treturn false\n}\n\n", name)
+			}
 			continue
 		}
-		name := codegen.PresenceMethod(id)
 		fmt.Fprintf(b, "// %s reports whether the #%s widget is rendered now; for tests.\n", name, id)
 		fmt.Fprintf(b, "func (m *Model) %s() bool {\n\treturn m.%s != nil\n}\n\n", name, field)
 	}

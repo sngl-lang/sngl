@@ -3338,6 +3338,11 @@ func (env *Env) answerEmpty(x *ir.SlotEmpty, body []ir.Stmt, entries []entryFram
 // copies its loops rendered now is not rendered, which is how every compiled
 // target answers it too, looking the copy up by its key.
 func (env *Env) copyNullTest(sel *ir.Select, path []ir.Expr, present bool) (any, error) {
+	// A copy reached through a copy of an outer loop is absent where that
+	// copy is: `c.r[1].cl[0]` once the rows shrink to one.
+	if there, err := env.refPresent(sel.Operand); err != nil || !there {
+		return !present, err
+	}
 	v, err := env.Eval(sel)
 	if err != nil {
 		return nil, err
@@ -3365,4 +3370,21 @@ func (env *Env) copyNullTest(sel *ir.Select, path []ir.Expr, present bool) (any,
 		}
 	}
 	return (v != nil) == present, nil
+}
+
+// refPresent reports whether the instance e reaches through each copy it
+// indexes is rendered now.
+func (env *Env) refPresent(e ir.Expr) (bool, error) {
+	probe := &ir.Binary{Type: ir.TypBool, Op: ast.BinNeq, Left: e, Right: &ir.Literal{Type: ir.TypNull}}
+	if sel, path, _, ok := ir.NullTestedCopy(probe); ok && len(path) > 0 {
+		v, err := env.copyNullTest(sel, path, true)
+		if err != nil {
+			return false, err
+		}
+		return v == true, nil
+	}
+	if sel, ok := e.(*ir.Select); ok {
+		return env.refPresent(sel.Operand)
+	}
+	return true, nil
 }
