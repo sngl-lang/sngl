@@ -495,6 +495,24 @@ func TriggerArgs(pkg *ir.Package) map[string][]*ir.Type {
 	return out
 }
 
+// TriggeredEvents is every event a test in pkg fires, keyed "<id>.<event>"
+// as TriggerArgs is.
+func TriggeredEvents(pkg *ir.Package) map[string]bool {
+	out := map[string]bool{}
+	fns, _, _ := CollectTestFuncs(pkg)
+	for _, fn := range fns {
+		_ = ir.Walk(fn.Block, func(n ir.Node) error {
+			if c, ok := n.(*ir.Call); ok {
+				if tt, ok := EventTriggerTarget(c); ok {
+					out[tt.ID+"."+c.Event] = true
+				}
+			}
+			return nil
+		})
+	}
+	return out
+}
+
 // StateFieldNames is every name the emitted state object declares as a cell:
 // the vars a window, the package and each component own. A test reads one as
 // an ordinary field -- `c.state.entry` -- so it is what tells that shape from

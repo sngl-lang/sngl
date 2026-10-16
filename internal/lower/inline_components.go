@@ -1008,6 +1008,11 @@ func (st *inlineCompState) inlineStmtCtx(s ir.Stmt, rc reactiveCtx) ([]ir.Stmt, 
 		if !st.instanceState && st.captureOnly == nil && n.Component != nil && (len(n.Component.Vars) > 0 || len(n.Component.Funcs) > 0 || holdsLifetime(n.Component.Stmts)) && !st.cycles[n.Component] && st.inlinable(n.Component) {
 			return st.expandPerCopy(n, rc)
 		}
+		// Nor does its focus order reach a render function of the Model, so a
+		// component rendering a focus stop is spliced too.
+		if !st.instanceState && st.captureOnly == nil && n.Component != nil && rc.perCopy(n.Component) && !st.cycles[n.Component] && st.inlinable(n.Component) && rendersFocusStop(n.Component, map[*ir.Component]bool{}) {
+			return st.expandPerCopy(n, rc)
+		}
 		// A library declaration with no state of its own is spliced even here:
 		// nothing emits a library body as a component built at run time, and
 		// with nothing to keep per copy there is no instance to build. It
@@ -1461,4 +1466,24 @@ func (st *inlineCompState) expandPerCopy(n *ir.NodeInst, rc reactiveCtx) ([]ir.S
 	funcs := slices.Clone((*st.hoist.funcs)[funcStart:])
 	body, err = perCopyCells(nodePos(n), body, vars, funcs, rc.loops)
 	return body, true, err
+}
+
+// rendersFocusStop reports whether c's body, or a component it renders, holds
+// a focusable node.
+func rendersFocusStop(c *ir.Component, seen map[*ir.Component]bool) bool {
+	if seen[c] {
+		return false
+	}
+	seen[c] = true
+	if hasFocusableNodes(c.Stmts) {
+		return true
+	}
+	found := false
+	ir.WalkView(c.Stmts, func(s ir.Stmt) bool {
+		if inst, ok := s.(*ir.NodeInst); ok && inst.Component != nil && !found && rendersFocusStop(inst.Component, seen) {
+			found = true
+		}
+		return !found
+	})
+	return found
 }

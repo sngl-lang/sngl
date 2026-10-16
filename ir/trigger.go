@@ -145,10 +145,10 @@ func NullTestedRef(e Expr) (sel *Select, path []Expr, present, ok bool) {
 	if !isSel || len(sel.Ref) < len(path)+1 {
 		return nil, nil, false, false
 	}
-	// A node is null-tested whether or not anything decides it is rendered:
-	// a copy past the copies its loops rendered is not, and one always
-	// rendered always is.
-	if rest := sel.Ref[len(path):]; rest[0] != RefOption && rest != RefOne {
+	// A copy past the copies its loops rendered is not rendered, so a copy is
+	// null-tested whether or not anything inside the loops decides it. A node
+	// rendered once is RenderedNullTest's.
+	if rest := sel.Ref[len(path):]; rest[0] != RefOption && (len(path) == 0 || rest != RefOne) {
 		return nil, nil, false, false
 	}
 	for i := range path {
@@ -160,6 +160,31 @@ func NullTestedRef(e Expr) (sel *Select, path []Expr, present, ok bool) {
 		return nil, nil, false, false
 	}
 	return sel, path, bin.Op == ast.BinNeq, true
+}
+
+// RenderedNullTest reads a test's null test of a ref to a node its component
+// renders exactly once, whose answer is the operator's: such a ref is never
+// null, and nothing on a target answers for it at run time.
+func RenderedNullTest(e Expr) (present, ok bool) {
+	bin, isBin := e.(*Binary)
+	if !isBin || (bin.Op != ast.BinEq && bin.Op != ast.BinNeq) {
+		return false, false
+	}
+	ref, other := bin.Left, bin.Right
+	if isNullLiteral(ref) {
+		ref, other = other, ref
+	}
+	if !isNullLiteral(other) {
+		return false, false
+	}
+	sel, isSel := stripConversions(ref).(*Select)
+	if !isSel || sel.Ref != RefOne {
+		return false, false
+	}
+	if _, isIdent := sel.Operand.(*Ident); !isIdent {
+		return false, false
+	}
+	return bin.Op == ast.BinNeq, true
 }
 
 // isNullLiteral reports a `null`: a literal once folded, and the universe
