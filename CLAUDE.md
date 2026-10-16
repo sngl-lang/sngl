@@ -3191,7 +3191,10 @@ a single slot whose cursor is an ordinal over those nodes, nested loops and
 taken branches included: the view counts them as it renders (`__focusPosN`),
 `__focusLoopN_len` counts them for Tab, and Update's case for a key walks the
 loop the same way and runs the handler of the node the cursor names
-(`bubbletea/focus.go`). The cursor was the iteration index, so two buttons in
+(`bubbletea/focus.go`). So a component that renders one, in a reactive
+position or under a `for`, is spliced rather than built at run time, as one with
+state is (`rendersFocusStop`, `testdata/bubbletea_focus_component_under_for.txtar`).
+The cursor was the iteration index, so two buttons in
 one iteration -- a spliced card and the child handed to it -- were one stop
 with two `case` arms, and a nested loop's buttons were unreachable
 (`bubbletea/focus_run_test.go`). Content handed to a recursion is rendered
