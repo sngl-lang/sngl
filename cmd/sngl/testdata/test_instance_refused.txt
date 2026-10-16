@@ -2,7 +2,8 @@
 # cannot be inlined is refused where it is called, on every compiled target:
 # a return from the middle, a call of itself, a value it does more than
 # return. A local holding the instance is replaced by it, so one assigned
-# again is refused too. The interpreter answers each, being the reference.
+# again is refused too, and so is one whose copy an index that may change
+# chooses. The interpreter answers each, being the reference.
 
 ! sngl test --platform=bubbletea --language=go mid_return.sngl
 stderr 'mid_return.sngl:29:5: `clickK` is handed the test''s instance, so it is inlined into the test, and cannot return from the middle'
@@ -15,6 +16,9 @@ stderr 'value_block.sngl:26:14: `shown` is handed the test''s instance, so it is
 
 ! sngl test --platform=fyne --language=go reassigned.sngl
 stderr 'reassigned.sngl:20:5: `held` holds the test''s instance and is assigned again'
+
+! sngl test --platform=html alias_index.sngl
+stderr 'alias_index.sngl:20:19: `r` holds a copy of the test''s instance chosen by an index that is not a constant'
 
 sngl test --platform=none mid_return.sngl
 stdout 'ok   1 tests, 0 failures'
@@ -127,4 +131,34 @@ func shown(c main) bool {
 
 func testValue(t Test, c main) {
     t.assert(shown(c))
+}
+-- alias_index.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+
+component item(label string) node {
+    var hits = 0
+    button #hit(text="{label}{hits}", @click { hits = hits + 1 })
+}
+
+component main node {
+    var xs = ["a", "b"]
+    vbox {
+        for var x = xs {
+            item #row(label=x)
+        }
+    }
+}
+
+func testAliasIndex(t Test, c main) {
+    var i = 0
+    var r = c.row[i]
+    i = 1
+    r.hit.click()
+    t.assert(c.row[0].hits == 1)
+    t.assert(c.row[1].hits == 0)
+}
+
+window {
+    main
 }

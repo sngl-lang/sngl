@@ -1,0 +1,253 @@
+# A function a test hands its instance to is inlined as the call would run
+# it, on every target: its locals and loop variables are its own, however
+# often it is inlined and whatever the test's locals are named; an argument
+# is evaluated before the body runs; a parameter the body writes is a copy of
+# its argument; an omitted argument is its default; and a return inside a
+# lambda the body builds is the lambda's.
+
+sngl test --platform=none app.sngl
+stdout 'ok   5 tests, 0 failures'
+
+sngl test --platform=html app.sngl
+stdout 'ok   5 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout 'ok   5 tests, 0 failures'
+
+sngl test --platform=fyne --language=go app.sngl
+stdout 'ok   5 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go app.sngl
+stdout 'ok   5 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin app.sngl
+stdout 'ok   5 tests, 0 failures'
+
+-- app.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+
+output {
+    go {
+        bubbletea
+        fyne
+        gtk4
+    }
+    kotlin {
+        android
+    }
+    none {
+        html
+    }
+}
+
+component badge(label string) node {
+    var hits = 0
+    button #hit(text="{label}{hits}", @click { hits = hits + 1 })
+}
+
+component main node {
+    var hits = 0
+    vbox {
+        badge #bd(label="b")
+        button #k(text="k{hits}", @click { hits = hits + 1 })
+    }
+}
+
+func hitBadge(b badge, times int) {
+    var i = 0
+    for i < times {
+        b.hit.click()
+        i = i + 1
+    }
+}
+
+func clickAndCheck(t Test, c main, before int) {
+    c.k.click()
+    t.assert(before == 0)
+    t.assert(c.hits == 1)
+}
+
+func clickN(c main, n int = 2) {
+    for n > 0 {
+        c.k.click()
+        n = n - 1
+    }
+}
+
+func clickEach(c main, xs list[int]) {
+    var doubled = xs.map(func(x int) int {
+        return x * 2
+    })
+    for var d = doubled {
+        c.k.click()
+    }
+}
+
+func testLambdaReturn(t Test, c main) {
+    clickEach(c, [1, 2])
+    t.assert(c.hits == 2)
+}
+
+func testLocals(t Test, c main) {
+    var i = 2
+    hitBadge(c.bd, i)
+    t.assert(c.bd.hits == 2)
+    hitBadge(c.bd, 1)
+    t.assert(c.bd.hits == 3)
+    t.assert(i == 2)
+}
+
+func testArgsBeforeBody(t Test, c main) {
+    clickAndCheck(t, c, c.hits)
+}
+
+func testParamWrite(t Test, c main) {
+    var m = 2
+    clickN(c, m)
+    t.assert(c.hits == 2)
+    t.assert(m == 2)
+    clickN(c, 1)
+    t.assert(c.hits == 3)
+}
+
+func testDefault(t Test, c main) {
+    clickN(c)
+    t.assert(c.hits == 2)
+    clickN(n=3, c=c)
+    t.assert(c.hits == 5)
+}
+
+window {
+    main
+}
+-- testrun/android/kotlin/app.sngl/main/1 --
+sha256:43f79eafb8751658a196cb7903384d5a
+{
+  "results": [
+    {
+      "Desc": "ArgsBeforeBody",
+      "Passed": true
+    },
+    {
+      "Desc": "Default",
+      "Passed": true
+    },
+    {
+      "Desc": "LambdaReturn",
+      "Passed": true
+    },
+    {
+      "Desc": "Locals",
+      "Passed": true
+    },
+    {
+      "Desc": "ParamWrite",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/main/1 --
+sha256:1f31eedee8cdb03828a7223bd0412b30
+{
+  "results": [
+    {
+      "Desc": "ArgsBeforeBody",
+      "Passed": true
+    },
+    {
+      "Desc": "Default",
+      "Passed": true
+    },
+    {
+      "Desc": "LambdaReturn",
+      "Passed": true
+    },
+    {
+      "Desc": "Locals",
+      "Passed": true
+    },
+    {
+      "Desc": "ParamWrite",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/main/1 --
+sha256:d20e19a8f8b3b1c53d42639483f5dc43
+{
+  "results": [
+    {
+      "Desc": "ArgsBeforeBody",
+      "Passed": true
+    },
+    {
+      "Desc": "Default",
+      "Passed": true
+    },
+    {
+      "Desc": "LambdaReturn",
+      "Passed": true
+    },
+    {
+      "Desc": "Locals",
+      "Passed": true
+    },
+    {
+      "Desc": "ParamWrite",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/main/1 --
+sha256:c20df89aa00285d92367360c580e6471
+{
+  "results": [
+    {
+      "Desc": "ArgsBeforeBody",
+      "Passed": true
+    },
+    {
+      "Desc": "Default",
+      "Passed": true
+    },
+    {
+      "Desc": "LambdaReturn",
+      "Passed": true
+    },
+    {
+      "Desc": "Locals",
+      "Passed": true
+    },
+    {
+      "Desc": "ParamWrite",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/main/1 --
+sha256:05ee22e14383890190753c47f0ccb2a1
+{
+  "results": [
+    {
+      "Desc": "ArgsBeforeBody",
+      "Passed": true
+    },
+    {
+      "Desc": "Default",
+      "Passed": true
+    },
+    {
+      "Desc": "LambdaReturn",
+      "Passed": true
+    },
+    {
+      "Desc": "Locals",
+      "Passed": true
+    },
+    {
+      "Desc": "ParamWrite",
+      "Passed": true
+    }
+  ]
+}

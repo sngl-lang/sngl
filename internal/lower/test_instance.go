@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"slices"
 
+	"duckfam.us/sngl/ast"
 	"duckfam.us/sngl/ir"
 )
 
@@ -108,16 +109,27 @@ func (ti *testInstance) through(stmts []ir.Stmt, env map[ir.Symbol]ir.Expr, inli
 		return out
 	}
 	aliases := map[*ir.LocalVar]bool{}
+	aliasSyms := map[*ir.Var]bool{}
 	for _, s := range stmts {
 		_ = ir.WalkStmts([]ir.Stmt{s}, func(s ir.Stmt) error {
 			lv, ok := s.(*ir.LocalVar)
 			if !ok || lv.Sym == nil || lv.Init == nil {
 				return nil
 			}
-			if init := subst(lv.Init); ti.instanceValued(init) {
-				env[lv.Sym] = init
-				aliases[lv] = true
+			init := subst(lv.Init)
+			if !ti.instanceValued(init) {
+				return nil
 			}
+			// The local stands for its initializer at every read, so an
+			// index that may change between the declaration and a read would
+			// name another copy than the one the local was handed.
+			if ix := variableIndex(init); ix != nil {
+				fail(fmt.Errorf("%s: `%s` holds a copy of the test's instance chosen by an index that is not a constant; a test reaches one copy by indexing where it reads it", localPos(lv, ix), lv.Name))
+				return nil
+			}
+			env[lv.Sym] = init
+			aliases[lv] = true
+			aliasSyms[lv.Sym] = true
 			return nil
 		})
 	}
@@ -132,8 +144,8 @@ func (ti *testInstance) through(stmts []ir.Stmt, env map[ir.Symbol]ir.Expr, inli
 			default:
 				return nil
 			}
-			if id, ok := target.(*ir.Ident); ok && id.Sym != nil {
-				if _, held := env[id.Sym]; held {
+			if id, ok := target.(*ir.Ident); ok {
+				if v, ok := id.Sym.(*ir.Var); ok && aliasSyms[v] {
 					fail(fmt.Errorf("%s: `%s` holds the test's instance and is assigned again; a test reaches its instance through one name", identPos(id), id.Name))
 				}
 			}
@@ -199,6 +211,9 @@ func (ti *testInstance) handsInstance(call *ir.Call) bool {
 	if call.Event != "" || fn == nil || fn.IsTest || len(fn.Block) == 0 || fn.Intrinsic != "" || fn.Foreign.Name != "" || fn.Receiver != nil {
 		return false
 	}
+	// An omitted argument is the parameter's default, which passCallDefaults
+	// writes in later; the binding needs every argument now.
+	fillDefaults(call)
 	params, args := bindings(call)
 	for i := range params {
 		if ti.instanceValued(args[i]) {
@@ -209,22 +224,32 @@ func (ti *testInstance) handsInstance(call *ir.Call) bool {
 }
 
 // bind is the env a callee's body is read under: a parameter handed the
-// instance is that reach, any other the argument itself where duplicating it
-// changes nothing, and otherwise a temp, declared by the returned statements.
-// A value-position call has nowhere to declare one, and refuses.
+// instance is that reach. Inlined as statements, any other parameter is a
+// temp the returned statements declare, holding its argument as the call
+// evaluated it -- a body may change what its argument reads before it reads
+// the parameter -- unless nothing can change it: a literal or a parameter of
+// the caller's, where the body writes no parameter of that name. One the body
+// never reads is dropped where its argument calls nothing, since a temp no
+// statement reads does not compile on Go. Inlined as a value, the body is one
+// expression that writes nothing, so an argument that calls nothing may stand
+// for its parameter.
 func (ti *testInstance) bind(call *ir.Call, inlining []*ir.Func, temps bool) (map[ir.Symbol]ir.Expr, []ir.Stmt, error) {
 	fn := call.Func
 	if slices.Contains(inlining, fn) {
 		return nil, nil, fmt.Errorf("%s: `%s` is handed the test's instance and calls itself; a test inlines what it hands the instance to", calleePos(call), fn.Name)
 	}
 	params, args := bindings(call)
+	read, written := paramUses(fn)
 	env := map[ir.Symbol]ir.Expr{}
 	var decls []ir.Stmt
 	for i, p := range params {
 		arg := args[i]
 		switch {
-		case ti.instanceValued(arg) || duplicable(arg):
+		case ti.instanceValued(arg), !temps && duplicable(arg):
 			env[p] = arg
+		case temps && !written[p] && (isLiteral(arg) || isParamRead(arg)):
+			env[p] = arg
+		case temps && !read[p] && duplicable(arg):
 		case temps:
 			tmp := &ir.Var{Name: ti.names.next(p.Name, "arg"), Type: p.Type, Init: arg, Synthesized: true}
 			decls = append(decls, &ir.LocalVar{Name: tmp.Name, Type: tmp.Type, Init: tmp.Init, Sym: tmp})
@@ -253,8 +278,11 @@ func (ti *testInstance) inlineStmt(call *ir.Call, inlining []*ir.Func) ([]ir.Stm
 		}
 	}
 	var returns bool
-	_ = ir.WalkStmts(body, func(s ir.Stmt) error {
-		if _, ok := s.(*ir.Return); ok {
+	_ = ir.Walk(body, func(n ir.Node) error {
+		switch n.(type) {
+		case *ir.Lambda:
+			return ir.SkipDir
+		case *ir.Return:
 			returns = true
 		}
 		return nil
@@ -262,6 +290,7 @@ func (ti *testInstance) inlineStmt(call *ir.Call, inlining []*ir.Func) ([]ir.Stm
 	if returns {
 		return nil, fmt.Errorf("%s: `%s` is handed the test's instance, so it is inlined into the test, and cannot return from the middle", calleePos(call), fn.Name)
 	}
+	ti.freshLocals(body, env)
 	body, err = ti.through(body, env, append(inlining, fn))
 	if err != nil {
 		return nil, err
@@ -312,4 +341,110 @@ func calleePos(c *ir.Call) string {
 		}
 	}
 	return handleCallPos(c)
+}
+
+// freshLocals gives each local and loop variable an inlined body declares a
+// name of its own, and env the reads of it: the body lands in the test's
+// scope, where a second inlining, or a local of the test's, may hold the
+// name it was written with.
+func (ti *testInstance) freshLocals(body []ir.Stmt, env map[ir.Symbol]ir.Expr) {
+	fresh := func(old ir.Symbol, name string, typ *ir.Type, sym ir.Symbol) string {
+		n := ti.names.next(name, "local")
+		env[old] = &ir.Ident{Name: n, Type: typ, Sym: sym}
+		return n
+	}
+	_ = ir.Walk(body, func(n ir.Node) error {
+		switch x := n.(type) {
+		case *ir.Lambda:
+			return ir.SkipDir
+		case *ir.LocalVar:
+			if x.Sym != nil {
+				v := *x.Sym
+				v.Name = fresh(x.Sym, x.Sym.Name, x.Sym.Type, &v)
+				x.Sym, x.Name = &v, v.Name
+			}
+		case *ir.For:
+			if x.KeySym != nil {
+				k := *x.KeySym
+				k.Name = fresh(x.KeySym, k.Name, k.Type, &k)
+				x.KeySym, x.Key = &k, k.Name
+			}
+			if x.ValueSym != nil {
+				v := *x.ValueSym
+				v.Name = fresh(x.ValueSym, v.Name, v.Type, &v)
+				x.ValueSym, x.Value = &v, v.Name
+			}
+		}
+		return nil
+	})
+}
+
+// variableIndex is the first index in a select chain that is not a literal.
+func variableIndex(e ir.Expr) ir.Expr {
+	for {
+		switch x := e.(type) {
+		case *ir.Select:
+			e = x.Operand
+		case *ir.Conversion:
+			e = x.Operand
+		case *ir.Index:
+			if !isLiteral(x.Idx) {
+				return x.Idx
+			}
+			e = x.Operand
+		default:
+			return nil
+		}
+	}
+}
+
+func isLiteral(e ir.Expr) bool {
+	_, ok := e.(*ir.Literal)
+	return ok
+}
+
+func localPos(lv *ir.LocalVar, at ir.Expr) string {
+	if lv.AST != nil {
+		return lv.AST.Pos.String()
+	}
+	if lv.Sym != nil {
+		if vs, ok := lv.Sym.AST.(*ast.VarStmt); ok {
+			return vs.Pos.String()
+		}
+	}
+	return exprPos(at)
+}
+
+// paramUses is each parameter of fn its body reads, and each it assigns.
+func paramUses(fn *ir.Func) (read, written map[*ir.Param]bool) {
+	read, written = map[*ir.Param]bool{}, map[*ir.Param]bool{}
+	_ = ir.Walk(fn.Block, func(n ir.Node) error {
+		var target ir.Expr
+		switch x := n.(type) {
+		case *ir.Ident:
+			if p, ok := x.Sym.(*ir.Param); ok {
+				read[p] = true
+			}
+		case *ir.Assign:
+			target = x.Target
+		case *ir.Toggle:
+			target = x.Target
+		}
+		if id, ok := target.(*ir.Ident); ok {
+			if p, ok := id.Sym.(*ir.Param); ok {
+				written[p] = true
+			}
+		}
+		return nil
+	})
+	return read, written
+}
+
+func isParamRead(e ir.Expr) bool {
+	id, ok := e.(*ir.Ident)
+	if !ok {
+		return false
+	}
+	_, ok = id.Sym.(*ir.Param)
+	return ok
 }

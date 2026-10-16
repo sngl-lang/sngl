@@ -68,6 +68,19 @@ func testedComponents(pkg *ir.Package, opts Options) []*ir.Component {
 	return out
 }
 
+// testedComponentSet is each component a test is handed in a build of the
+// whole program; a build rooted at one holds its instance as the root.
+func testedComponentSet(pkg *ir.Package, opts Options) map[*ir.Component]bool {
+	out := map[*ir.Component]bool{}
+	if opts.RootComponent != "" {
+		return out
+	}
+	for _, c := range testedComponents(pkg, opts) {
+		out[c] = true
+	}
+	return out
+}
+
 // testReachedIDs is every `#id` comp's body writes that a function selects off
 // an instance of comp.
 func testReachedIDs(pkg *ir.Package, comp *ir.Component) map[string]bool {
