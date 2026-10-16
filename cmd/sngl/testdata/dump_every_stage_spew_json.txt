@@ -1,4 +1,4 @@
-# Every stage dumps in both structural formats, with and without --omit. Three
+# Every stage dumps in both structural formats, with and without --omit. Four
 # things stopped one or another:
 #
 # - --omit zeroed a field of a struct held by value in an interface, which is
@@ -9,6 +9,11 @@
 #   never finished. spew is handed the tree json writes.
 # - json met a cycle at the checked stage through an import's package and
 #   the package's symbol table, which a dump names rather than writes.
+# - both wrote a declaration wherever something referred to it -- a
+#   parameter's type its whole component, a call its callee's body, and the
+#   library behind each -- so the checked json here was 98k lines. One is
+#   written where its package holds it and named by a reference elsewhere;
+#   the library, which no stage here dumps, is only ever named.
 #
 # --omit used to zero the fields in place, which in-process wrote into the
 # library IR and the parsed ASTs every check shares, so the second checked
@@ -17,17 +22,21 @@
 sngl dump --stage parsed --format spew main.sngl
 stdout 'main.sngl:5:1'
 sngl dump --stage parsed --format spew --omit AST,Pos main.sngl
-stdout 'Name: \(string\) \(len=4\) "main"'
+stdout '"Name": \(string\) \(len=4\) "main"'
 ! stdout 'main.sngl:5:1'
 sngl dump --stage parsed --format json --omit AST,Pos main.sngl
 stdout '"Name": "main"'
 
 sngl dump --stage checked --format spew main.sngl
-stdout 'Name: \(string\) \(len=4\) "main"'
+stdout '"Name": \(string\) \(len=4\) "main"'
+stdout 'Ref: \(string\) \(len=12\) "ir.Component",\s+Name: \(string\) \(len=6\) "button"'
+! stdout 'ui/[a-z/]+\.sngl:'
 sngl dump --stage checked --format spew --omit AST,Pos main.sngl
-stdout 'Name: \(string\) \(len=4\) "main"'
+stdout '"Name": \(string\) \(len=4\) "main"'
 sngl dump --stage checked --format json main.sngl
 stdout '"Name": "main"'
+stdout -count=1 '"Ref": "ir.Component",\s+"Name": "button",\s+"Pkg": "sngl:ui"'
+! stdout '"File": "ui/'
 sngl dump --stage checked --format json --omit AST,Pos main.sngl
 stdout '"Name": "main"'
 

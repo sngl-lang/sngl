@@ -58,17 +58,13 @@ func dumpResolveFlags(cmd *cobra.Command, args []string) (dumpFormat, dumpInput,
 	if err != nil {
 		return "", "", err
 	}
-	if ptrs, _ := cmd.Flags().GetBool("pointers"); ptrs {
-		dumpSpew.DisablePointerAddresses = false
-	}
-	if depth, _ := cmd.Flags().GetInt("depth"); depth > 0 {
-		dumpSpew.MaxDepth = depth
-	}
-	if names, _ := cmd.Flags().GetStringSlice("omit"); len(names) > 0 {
-		dumpOmitSet = make(map[string]bool, len(names))
-		for _, name := range names {
-			dumpOmitSet[name] = true
-		}
+	ptrs, _ := cmd.Flags().GetBool("pointers")
+	dumpSpew.DisablePointerAddresses = !ptrs
+	dumpSpew.MaxDepth, _ = cmd.Flags().GetInt("depth")
+	names, _ := cmd.Flags().GetStringSlice("omit")
+	dumpOmitSet = make(map[string]bool, len(names))
+	for _, name := range names {
+		dumpOmitSet[name] = true
 	}
 	return f, i, nil
 }
