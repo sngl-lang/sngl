@@ -68,7 +68,7 @@ func spliceBoundaries(stmts []ir.Stmt) []ir.Stmt {
 	for _, s := range stmts {
 		if n, ok := s.(*ir.ErrorBoundary); ok && n.Handler != nil && len(n.Failed) == 0 {
 			children := spliceBoundaries(n.Children)
-			ir.HandOnInstances(n, children)
+			children = ir.HandOnInstances(n, children)
 			out = append(out, children...)
 			continue
 		}

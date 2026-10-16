@@ -5,7 +5,9 @@ an instance whose body is itself an instance included. A root may be an
 `if`, a `for` or a boundary, and the instance is present where its call site
 is whatever that root decides: `gated` folds its `if` once the call site's
 constant reaches it, and `guarded`'s boundary is spliced into its parent,
-each handing the stamp to what it leaves standing.
+each handing the stamp to what it leaves standing -- or, where `hidden`'s
+fold leaves nothing standing, to an `if true` around nothing: an instance
+that renders nothing is still present.
 
 -- app.sngl --
 import . "sngl:ui"
@@ -52,6 +54,13 @@ component gated(show bool) node {
     }
 }
 
+component hidden(show bool) node {
+    var k = 0
+    if show {
+        text(value="on {k}")
+    }
+}
+
 component guarded node {
     var k = 0
     boundary(@error(e) { k = 1 }) {
@@ -70,6 +79,7 @@ component screen node {
             loopy #lp()
             gated #g(show=true)
             guarded #gd()
+            hidden #h(show=false)
         }
         if (shown ? n : 0) > 0 {
             text #b(value="x")
@@ -84,6 +94,7 @@ func testPresence(t Test, c screen) {
     t.assert(c.lp == null)
     t.assert(c.g == null)
     t.assert(c.gd == null)
+    t.assert(c.h == null)
     c.toggle.click()
     t.assert(c.p != null)
     t.assert(c.b != null)
@@ -91,11 +102,13 @@ func testPresence(t Test, c screen) {
     t.assert(c.lp != null)
     t.assert(c.g != null)
     t.assert(c.gd != null)
+    t.assert(c.h != null)
     c.toggle.click()
     t.assert(c.br == null)
     t.assert(c.lp == null)
     t.assert(c.g == null)
     t.assert(c.gd == null)
+    t.assert(c.h == null)
 }
 
 window {
@@ -123,6 +136,7 @@ type Model struct {
 	xs__inst0 []int
 	k__inst0  int
 	k__inst1  int
+	k__inst2  int
 	n__inst0  int
 	__focusID int
 
@@ -139,6 +153,7 @@ func New() Model {
 	m.xs__inst0 = []int{1, 2}
 	m.k__inst0 = 0
 	m.k__inst1 = 0
+	m.k__inst2 = 0
 	m.n__inst0 = 0
 	m.__focusID = 0
 	return m
@@ -275,6 +290,21 @@ func SetK__inst1Cmd(v int) tea.Cmd {
 	return func() tea.Msg { return setK__inst1Msg{value: v} }
 }
 
+func (m Model) K__inst2() int {
+	return m.k__inst2
+}
+
+func (m Model) SetK__inst2(v int) Model {
+	m.k__inst2 = v
+	return m
+}
+
+type setK__inst2Msg struct{ value int }
+
+func SetK__inst2Cmd(v int) tea.Cmd {
+	return func() tea.Msg { return setK__inst2Msg{value: v} }
+}
+
 func (m Model) N__inst0() int {
 	return m.n__inst0
 }
@@ -313,6 +343,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m = m.SetK__inst0(msg.value)
 	case setK__inst1Msg:
 		m = m.SetK__inst1(msg.value)
+	case setK__inst2Msg:
+		m = m.SetK__inst2(msg.value)
 	case setN__inst0Msg:
 		m = m.SetN__inst0(msg.value)
 	case tea.WindowSizeMsg:
@@ -409,6 +441,20 @@ func (m *Model) gdPresent() bool {
 	return false
 }
 
+func (m *Model) hPresent() bool {
+	if m.shown {
+		return true
+	}
+	var __lt0 int
+	_ = __lt0
+	if m.shown {
+		__lt0 = m.n
+	} else {
+		__lt0 = 0
+	}
+	return false
+}
+
 func (m *Model) lpPresent() bool {
 	if m.shown {
 		return true
@@ -486,6 +532,12 @@ func (m Model) View() tea.View {
 		var content_1Part_4 string
 		content_1Part_4 = lipgloss.NewStyle().Render(fmt.Sprint(("on " + fmt.Sprint(m.k__inst1))))
 		content_1Parts = append(content_1Parts, content_1Part_4)
+		var content_1Part_5 string
+		if true {
+		}
+		if content_1Part_5 != "" {
+			content_1Parts = append(content_1Parts, content_1Part_5)
+		}
 		content_1 = lipgloss.JoinVertical(lipgloss.Left, content_1Parts...)
 	}
 	if content_1 != "" {
@@ -532,6 +584,7 @@ func TestPresence(t *testing.T) {
 	if !(!c.lpPresent()) { t.Errorf("assert failed: %s", "!c.lpPresent()") }
 	if !(!c.gPresent()) { t.Errorf("assert failed: %s", "!c.gPresent()") }
 	if !(!c.gdPresent()) { t.Errorf("assert failed: %s", "!c.gdPresent()") }
+	if !(!c.hPresent()) { t.Errorf("assert failed: %s", "!c.hPresent()") }
 	c.toggleClick()
 	if !(c.pPresent()) { t.Errorf("assert failed: %s", "c.pPresent()") }
 	if !(c.bPresent()) { t.Errorf("assert failed: %s", "c.bPresent()") }
@@ -539,14 +592,16 @@ func TestPresence(t *testing.T) {
 	if !(c.lpPresent()) { t.Errorf("assert failed: %s", "c.lpPresent()") }
 	if !(c.gPresent()) { t.Errorf("assert failed: %s", "c.gPresent()") }
 	if !(c.gdPresent()) { t.Errorf("assert failed: %s", "c.gdPresent()") }
+	if !(c.hPresent()) { t.Errorf("assert failed: %s", "c.hPresent()") }
 	c.toggleClick()
 	if !(!c.brPresent()) { t.Errorf("assert failed: %s", "!c.brPresent()") }
 	if !(!c.lpPresent()) { t.Errorf("assert failed: %s", "!c.lpPresent()") }
 	if !(!c.gPresent()) { t.Errorf("assert failed: %s", "!c.gPresent()") }
 	if !(!c.gdPresent()) { t.Errorf("assert failed: %s", "!c.gdPresent()") }
+	if !(!c.hPresent()) { t.Errorf("assert failed: %s", "!c.hPresent()") }
 }
 
 
 func newTestComponent() Model { return New() }
 -- run/go/bubbletea --
-pass sha256:5ded38f9cf71d50d4b9bbe6c9be395c4
+pass sha256:e7697fc193c5a3440903065e2127bf36

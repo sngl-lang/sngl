@@ -412,18 +412,27 @@ func InstancesOf(s Stmt) *[]string {
 	return nil
 }
 
-// HandOnInstances puts the instances whose spliced bodies from is a root of
-// onto stmts, for a pass replacing from by what it holds.
-func HandOnInstances(from Stmt, stmts []Stmt) {
+// HandOnInstances is stmts, for a pass replacing from by what it holds, with
+// the instances whose spliced bodies from is a root of put onto its roots.
+// Where no root can carry them -- an empty branch, one of locals -- stmts is
+// held in an `if true` that does: the instance is rendered wherever its call
+// site is, rendering nothing included.
+func HandOnInstances(from Stmt, stmts []Stmt) []Stmt {
 	ins := InstancesOf(from)
 	if ins == nil || len(*ins) == 0 {
-		return
+		return stmts
 	}
+	carried := false
 	for _, s := range stmts {
 		if root := InstancesOf(s); root != nil {
 			*root = append(slices.Clone(*ins), *root...)
+			carried = true
 		}
 	}
+	if carried {
+		return stmts
+	}
+	return []Stmt{&If{Cond: &Literal{Type: TypBool, Value: "true"}, Body: stmts, Instances: slices.Clone(*ins)}}
 }
 
 // For is a type-checked for statement with IR bodies and resolved element type.
