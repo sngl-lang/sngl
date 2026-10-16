@@ -244,23 +244,20 @@ func lowerEventTrigger(call *ir.CallStmt) (string, bool) {
 		return "", false
 	}
 	id, event := tt.ID, c.Event
-	// One copy of a node a loop rendered is that one of every node the tag
-	// finds, in composition order, which is render order.
-	nth := func(matcher string) string {
-		if tt.Index == nil {
-			return "composeTestRule.onNode(" + matcher + ")"
-		}
-		return fmt.Sprintf("composeTestRule.onAllNodes(%s)[%s]", matcher, lowerTestExpr(tt.Index, TestSurface{}, nil))
+	// One copy of a node loops rendered is the node carrying its tag and, in
+	// SnglCopy, its copy's key.
+	tag := fmt.Sprintf("androidx.compose.ui.test.hasTestTag(%q)", id)
+	if key := tt.Key(); key != nil {
+		tag = fmt.Sprintf("(%s and androidx.compose.ui.test.SemanticsMatcher.expectValue(%s, %s))", tag, CopySemanticsKey, lowerTestExpr(key, TestSurface{}, nil))
 	}
 	if carriesState(c.Args) {
 		// The tag sits on the override's root, the Row around the control and
 		// its label, so the click targets the toggleable inside it. It flips
 		// the control whatever the test passed: this is the input path, as
 		// bubbletea's key press is.
-		tag := fmt.Sprintf("androidx.compose.ui.test.hasTestTag(%q)", id)
-		return fmt.Sprintf("%s.performClick(); composeTestRule.waitForIdle()", nth(fmt.Sprintf("androidx.compose.ui.test.isToggleable() and (%s or androidx.compose.ui.test.hasAnyAncestor(%s))", tag, tag))), true
+		return fmt.Sprintf("composeTestRule.onNode(androidx.compose.ui.test.isToggleable() and (%s or androidx.compose.ui.test.hasAnyAncestor(%s))).performClick(); composeTestRule.waitForIdle()", tag, tag), true
 	}
-	finder := nth(fmt.Sprintf("androidx.compose.ui.test.hasTestTag(%q)", id))
+	finder := "composeTestRule.onNode(" + tag + ")"
 	action := composeAction(event, c.Args)
 	if action == "" {
 		return fmt.Sprintf("// TODO: no Compose-test action mapped for @%s on #%s", event, id), true
@@ -677,3 +674,7 @@ func (surf TestSurface) translator() *KtIRContext {
 func init() {
 	codegen.DeclareLangImplements("kotlin", ir.TestAssertID, ir.TestSnapshotID, ir.TestSetContextID)
 }
+
+// CopySemanticsKey is the semantics property the screen declares and sets on
+// each copy of a node a test indexes, holding the copy's key (ir.CopyProp).
+const CopySemanticsKey = "SnglCopy"

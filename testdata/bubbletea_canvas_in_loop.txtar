@@ -146,6 +146,18 @@ func (m Model) __canvasTransmit() tea.Cmd {
 			return ctx.Result()
 		}
 		__ctb.WriteString(tui.KittyTransmit(16, 8, 1|(__canvasAt0+1)<<16, __canvasRaster0))
+		var __lt0 float64
+		_ = __lt0
+		if func() bool {
+			if __v, __ok := m.big__inst0[fmt.Sprint(__copy0)]; __ok {
+				return __v
+			}
+			return false
+		}() {
+			__lt0 = (s * 2.0)
+		} else {
+			__lt0 = s
+		}
 	}
 	if __ctb.Len() == 0 {
 		return nil
@@ -534,6 +546,6 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:7f34783a4ef137da2fa8edb11bf23748
+pass sha256:e2b85ff965961e3803a8139081d99c42
 -- run/none/html --
 pass sha256:ea39a50a9fa2f07c2daa74be7f09432c

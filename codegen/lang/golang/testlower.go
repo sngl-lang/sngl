@@ -242,8 +242,8 @@ func lowerTestSetContext(c *ir.Call, gc *GoIRContext) ([]string, bool) {
 // field). Lowers to `<receiver>.<id><Event>()`, which platform codegen
 // (gtk4 today) surfaces as a method on *Model that fires the matching
 // widget signal / event so the test exercises the real bridge. One copy of a
-// node a loop rendered, `c.row[1].change(true)`, is its invoker's `At`
-// variant, handed the index first.
+// node loops rendered, `c.cell[1][0].click()`, is its invoker's `At`
+// variant, handed the copy's key first.
 func lowerEventTrigger(call *ir.CallStmt, gc *GoIRContext) (string, bool) {
 	c := call.Call
 	tt, ok := codegen.EventTriggerTarget(c)
@@ -255,9 +255,9 @@ func lowerEventTrigger(call *ir.CallStmt, gc *GoIRContext) (string, bool) {
 	// takes what the widget would have reported, which is what the event's
 	// parameters are.
 	var args []string
-	if tt.Index != nil {
+	if key := tt.Key(); key != nil {
 		methodName = codegen.InvokerAt(methodName)
-		args = append(args, gc.EvalExpr(tt.Index))
+		args = append(args, gc.EvalExpr(key))
 	}
 	for _, a := range c.Args {
 		args = append(args, gc.EvalExpr(a.Value))

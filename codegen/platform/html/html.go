@@ -3619,22 +3619,23 @@ func (g *htmlGen) emitEventInvokers(b *strings.Builder) {
 		collect(h, h.snglID, false)
 	}
 	// Only an id a test indexes needs the variant, as on fyne and gtk4.
-	indexed := codegen.IndexedTriggerIDs(g.pkg)
+	indexed := ir.IndexedTriggerIDs(g.pkg)
 	for _, name := range order {
 		seen[name] = true
 		els := copies[name]
-		at := indexed[strings.TrimSuffix(name, capitalizeFirst(event[name]))]
+		id := strings.TrimSuffix(name, capitalizeFirst(event[name]))
+		at := indexed[id]
 		all := "[" + strings.Join(els, ", ") + "]"
 		if event[name] == "click" {
 			fmt.Fprintf(b, "state.%s = () => %s.click();\n", name, els[0])
 			if at {
-				fmt.Fprintf(b, "state.%s = (i) => %s[i].click();\n", codegen.InvokerAt(name), all)
+				fmt.Fprintf(b, "state.%s = (k) => %s.click();\n", codegen.InvokerAt(name), staticCopy(all, id, "k"))
 			}
 			continue
 		}
 		fmt.Fprintf(b, "state.%s = (p) => { Object.assign(%s, p); %s.dispatchEvent(Object.assign(new Event(%q), p)); };\n", name, els[0], els[0], event[name])
 		if at {
-			fmt.Fprintf(b, "state.%s = (i, p) => { const el = %s[i]; Object.assign(el, p); el.dispatchEvent(Object.assign(new Event(%q), p)); };\n", codegen.InvokerAt(name), all, event[name])
+			fmt.Fprintf(b, "state.%s = (k, p) => { const el = %s; Object.assign(el, p); el.dispatchEvent(Object.assign(new Event(%q), p)); };\n", codegen.InvokerAt(name), staticCopy(all, id, "k"), event[name])
 		}
 	}
 	// An element built at run time -- inside a component instance or a
@@ -3642,8 +3643,8 @@ func (g *htmlGen) emitEventInvokers(b *strings.Builder) {
 	// finds it when it is called, by the mark OnCreateNode gives it. The
 	// listener may be on an element inside the one the program named -- a
 	// checkbox's `<input>` in the `<label>` its `#id` lands on -- which is
-	// found under it by tag. An id a loop rendered more than once names a
-	// copy through the `At` variant, by its index in document order.
+	// found under it by tag. An id loops rendered more than once names a copy
+	// through the `At` variant, by the key it carries in copyAttr.
 	for _, h := range g.runtimeHandlers() {
 		name := h.id + capitalizeFirst(h.event)
 		if seen[name] {
@@ -3658,14 +3659,14 @@ func (g *htmlGen) emitEventInvokers(b *strings.Builder) {
 			return fmt.Sprintf("%s.querySelector(%q)", root, h.inner)
 		}
 		one := find(fmt.Sprintf("document.querySelector(%s)", sel))
-		nth := find(fmt.Sprintf("document.querySelectorAll(%s)[i]", sel))
+		nth := find(fmt.Sprintf("document.querySelector(%s)", copySelector(h.id, "k")))
 		if h.event == "click" {
 			fmt.Fprintf(b, "state.%s = () => %s.click();\n", name, one)
-			fmt.Fprintf(b, "state.%s = (i) => %s.click();\n", codegen.InvokerAt(name), nth)
+			fmt.Fprintf(b, "state.%s = (k) => %s.click();\n", codegen.InvokerAt(name), nth)
 			continue
 		}
 		fmt.Fprintf(b, "state.%s = (p) => { const el = %s; Object.assign(el, p); el.dispatchEvent(Object.assign(new Event(%q), p)); };\n", name, one, h.event)
-		fmt.Fprintf(b, "state.%s = (i, p) => { const el = %s; Object.assign(el, p); el.dispatchEvent(Object.assign(new Event(%q), p)); };\n", codegen.InvokerAt(name), nth, h.event)
+		fmt.Fprintf(b, "state.%s = (k, p) => { const el = %s; Object.assign(el, p); el.dispatchEvent(Object.assign(new Event(%q), p)); };\n", codegen.InvokerAt(name), nth, h.event)
 	}
 	// A node a test null-tests is rendered while an element carries its mark,
 	// which goes with the element when a render slot takes it out; an instance
@@ -4017,4 +4018,17 @@ func identName(e ir.Expr) string {
 // for the `<dialog>` it is, whichever of them is translated first.
 func (g *htmlGen) windowIDs() map[string]bool {
 	return g.shared.scriptOps(g.pkg).windows
+}
+
+// copySelector is a JavaScript expression of the selector of the copy of the
+// node id whose key the JavaScript expression key holds.
+func copySelector(id, key string) string {
+	return fmt.Sprintf("'[data-sngl-id=%q][%s=\"' + %s + '\"]'", id, copyAttr, key)
+}
+
+// staticCopy is the element of els -- the listeners the page's markup put on
+// the copies of the node id -- on the copy whose key key holds: the named
+// element, or the one inside it the listener is on.
+func staticCopy(els, id, key string) string {
+	return fmt.Sprintf("%s.find((e) => document.querySelector(%s).contains(e))", els, copySelector(id, key))
 }

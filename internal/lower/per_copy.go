@@ -303,17 +303,12 @@ func paramIdent(p *ir.Param) ir.Expr {
 // way the focus lowering gives one a key, so a copy's position does not depend
 // on its elements being distinct.
 func CopyKey(loops []*ir.For) ir.Expr {
-	var key ir.Expr
+	indices := make([]ir.Expr, len(loops))
 	for i, fs := range loops {
 		idx := loopIndex(fs, i)
-		part := ir.Expr(&ir.Conversion{Type: ir.TypString, Operand: &ir.Ident{Name: idx.Name, Type: idx.Type, Sym: idx, Synthesized: true}})
-		if key == nil {
-			key = part
-			continue
-		}
-		key = &ir.Binary{Type: ir.TypString, Op: ast.BinAdd, Left: &ir.Binary{Type: ir.TypString, Op: ast.BinAdd, Left: key, Right: stringLit("/")}, Right: part}
+		indices[i] = &ir.Ident{Name: idx.Name, Type: idx.Type, Sym: idx, Synthesized: true}
 	}
-	return key
+	return ir.CopyKey(indices)
 }
 
 // loopIndex is the loop's index variable, rewriting a single-variable loop
@@ -321,9 +316,21 @@ func CopyKey(loops []*ir.For) ir.Expr {
 // consumer downstream already reads Key off.
 func loopIndex(fs *ir.For, depth int) *ir.LoopVar {
 	if fs.Value == "" {
+		// A list the checker wrapped as a sequence -- a counted one folded to
+		// its elements -- is walked as the list, which hands out an index; a
+		// pull sequence would be given a counter beside the loop, which a
+		// view that unrolls the loop cannot read.
+		if conv, ok := fs.Iter.(*ir.Conversion); ok && conv.Type != nil && conv.Type.Kind == ir.TypeIter {
+			if t := conv.Operand.ExprType(); t != nil && t.Kind == ir.TypeList {
+				fs.Iter = conv.Operand
+			}
+		}
 		fs.Value, fs.ValueSym = fs.Key, fs.KeySym
+		// A loop binding nothing is given an element of its own: a counted
+		// loop counts on its element, and `_` is no counter.
 		if fs.Value == "" {
-			fs.Value = "_"
+			fs.Value = fmt.Sprintf("__copyElem%d", depth)
+			fs.ValueSym = &ir.LoopVar{Name: fs.Value, Type: fs.ElemType}
 		}
 		fs.Key = fmt.Sprintf("__copy%d", depth)
 		fs.KeySym = &ir.LoopVar{Name: fs.Key, Type: ir.TypInt}

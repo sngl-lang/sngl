@@ -474,26 +474,6 @@ func TriggerArgs(pkg *ir.Package) map[string][]*ir.Type {
 	return out
 }
 
-// IndexedTriggerIDs is every `#id` a test triggers one copy of --
-// `c.row[1].change(true)`. A target keeps the copies of such an id in render
-// order and gives it an `At` invoker (InvokerAt); one no test indexes costs a
-// program nothing.
-func IndexedTriggerIDs(pkg *ir.Package) map[string]bool {
-	out := map[string]bool{}
-	fns, _, _ := CollectTestFuncs(pkg)
-	for _, fn := range fns {
-		_ = ir.Walk(fn.Block, func(n ir.Node) error {
-			if c, ok := n.(*ir.Call); ok {
-				if tt, ok := EventTriggerTarget(c); ok && tt.Index != nil {
-					out[tt.ID] = true
-				}
-			}
-			return nil
-		})
-	}
-	return out
-}
-
 // StateFieldNames is every name the emitted state object declares as a cell:
 // the vars a window, the package and each component own. A test reads one as
 // an ordinary field -- `c.state.entry` -- so it is what tells that shape from

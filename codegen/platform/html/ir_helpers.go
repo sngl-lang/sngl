@@ -23,6 +23,10 @@ func nodeProps(n *ir.NodeInst) map[string]ir.Expr {
 		if p.Name == "" {
 			continue
 		}
+		if p.Name == ir.CopyProp {
+			out[copyAttr] = p.Value
+			continue
+		}
 		out[p.Name] = p.Value
 	}
 	// An attribute nobody declared was collected under its wildcard prop's
@@ -88,3 +92,7 @@ func (g *htmlGen) nodeIsReactive(n *ir.NodeInst) bool {
 func exprLiteralAnyIR(e ir.Expr) any {
 	return codegen.IRLiteralAny(e)
 }
+
+// copyAttr is the attribute a copy of a node a test indexes carries its key in
+// (ir.CopyProp), beside the data-sngl-id naming the node.
+const copyAttr = "data-sngl-copy"

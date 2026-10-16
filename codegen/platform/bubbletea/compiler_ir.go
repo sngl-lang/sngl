@@ -1229,9 +1229,12 @@ type btEventInvoker struct {
 	SlotIdx   int    // the focus slot the widget occupies
 	KeyExpr   string // the tea key message that activates it
 	// Cursor is the loop slot's cursor field, for a node a loop renders: its
-	// copies are ordinals of that slot, and Copies is a Go expression of the
-	// ordinal of each, in render order. Empty for a node outside a loop.
+	// copies are ordinals of that slot, and Copies is a Go expression of each
+	// copy's ordinal and key (ir.CopyProp), in render order. Empty for a node
+	// outside a loop.
 	Cursor, Copies string
+	// Keyed says a test indexes the node, so its copies carry keys.
+	Keyed bool
 }
 
 // teaKeyMsg is the message a press of key arrives as. It pairs with
@@ -1285,36 +1288,34 @@ func emitBtEventInvokers(b *strings.Builder, invokers []btEventInvoker, args map
 	}
 }
 
-// emitBtLoopInvokers writes the invokers of a node a loop renders: the copy
-// at an index is the one the slot's cursor names when it is at that copy's
-// ordinal, which the loop is walked to find as View counts it. The plain
-// invoker drives the last copy, as fyne's and gtk4's do. What a test passes
-// is taken and not read, as every invoker here takes it: the key is the
-// input.
+// emitBtLoopInvokers writes the invokers of a node a loop renders: a copy is
+// driven by putting the slot's cursor on that copy's ordinal, which the loop
+// is walked to find as View counts it. The plain invoker drives the last copy
+// -- what a test reaches when it names a node written once that the lowering
+// put under a loop, a tab's panel -- and the `At` one, for a node a test
+// indexes, the copy with a key. What a test passes is taken and not read, as
+// every invoker here takes it: the key press is the input.
 func emitBtLoopInvokers(b *strings.Builder, inv btEventInvoker, name string, params []string) {
-	at := codegen.InvokerAt(name)
-	fmt.Fprintf(b, "// %s activates the copy of #%s at index i, in render order, the way a keypress does; for tests.\n", at, inv.IDLabel)
-	fmt.Fprintf(b, "func (m *Model) %s(%s) {\n", at, strings.Join(append([]string{"i int"}, params...), ", "))
-	fmt.Fprintf(b, "\tat := %s\n", inv.Copies)
-	b.WriteString("\tif i < 0 || i >= len(at) {\n\t\treturn\n\t}\n")
-	fmt.Fprintf(b, "\tprev, prevAt := m.__focusID, m.%s\n", inv.Cursor)
-	fmt.Fprintf(b, "\tm.__focusID, m.%s = %d, at[i]\n", inv.Cursor, inv.SlotIdx)
-	fmt.Fprintf(b, "\tnm, _ := m.Update(%s)\n", inv.KeyExpr)
-	b.WriteString("\t*m = nm.(Model)\n")
-	fmt.Fprintf(b, "\tm.__focusID, m.%s = prev, prevAt\n", inv.Cursor)
-	b.WriteString("}\n\n")
-
-	named := make([]string, len(params))
-	call := []string{fmt.Sprintf("len(%s) - 1", inv.Copies)}
-	for i, p := range params {
-		v := fmt.Sprintf("v%d", i)
-		named[i] = v + strings.TrimPrefix(p, "_")
-		call = append(call, v)
+	drive := func(method string, lead []string, find string) {
+		fmt.Fprintf(b, "func (m *Model) %s(%s) {\n", method, strings.Join(append(lead, params...), ", "))
+		fmt.Fprintf(b, "\tcopies := %s\n\tpos := -1\n", inv.Copies)
+		b.WriteString(find)
+		b.WriteString("\tif pos < 0 {\n\t\treturn\n\t}\n")
+		fmt.Fprintf(b, "\tprev, prevAt := m.__focusID, m.%s\n", inv.Cursor)
+		fmt.Fprintf(b, "\tm.__focusID, m.%s = %d, pos\n", inv.Cursor, inv.SlotIdx)
+		fmt.Fprintf(b, "\tnm, _ := m.Update(%s)\n", inv.KeyExpr)
+		b.WriteString("\t*m = nm.(Model)\n")
+		fmt.Fprintf(b, "\tm.__focusID, m.%s = prev, prevAt\n", inv.Cursor)
+		b.WriteString("}\n\n")
 	}
 	fmt.Fprintf(b, "// %s activates the last copy of #%s the way a keypress does; for tests.\n", name, inv.IDLabel)
-	fmt.Fprintf(b, "func (m *Model) %s(%s) {\n", name, strings.Join(named, ", "))
-	fmt.Fprintf(b, "\tm.%s(%s)\n", at, strings.Join(call, ", "))
-	b.WriteString("}\n\n")
+	drive(name, nil, "\tif len(copies) > 0 {\n\t\tpos = copies[len(copies)-1].pos\n\t}\n")
+	if !inv.Keyed {
+		return
+	}
+	at := codegen.InvokerAt(name)
+	fmt.Fprintf(b, "// %s activates the copy of #%s with the key the way a keypress does; for tests.\n", at, inv.IDLabel)
+	drive(at, []string{"key string"}, "\tfor _, c := range copies {\n\t\tif c.key == key {\n\t\t\tpos = c.pos\n\t\t}\n\t}\n")
 }
 
 // widgetValue is the value a widget's events carry: how it is read back from

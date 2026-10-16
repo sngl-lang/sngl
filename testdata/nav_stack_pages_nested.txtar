@@ -293,6 +293,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						_ = __copy1
 						_ = c
 						if (m.pages__current__inst0.Id == 0) && (((len(m.pages__current__inst0.Copy) == 2) && (m.pages__current__inst0.Copy[0] == __copy)) && (m.pages__current__inst0.Copy[1] == __copy1)) {
+							var __lt3 string
+							_ = __lt3
+							if (m.pages__current__inst0.Id == 0) && (((len(m.pages__current__inst0.Copy) == 2) && (m.pages__current__inst0.Copy[0] == __copy)) && (m.pages__current__inst0.Copy[1] == __copy1)) {
+								__lt3 = "showing"
+							} else {
+								__lt3 = "hidden"
+							}
 							if m.__focusLoop0_cursor == __focusPos0 {
 								m.pages__history__inst0 = append(m.pages__history__inst0, Pages__entry{Page: m.pages__current__inst0, Cell: m.cell__params__inst0})
 								m.cell__params__inst0 = Sel{Pick: "x"}
@@ -326,10 +333,16 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, tea.Batch(cmds...)
 }
 
-// pickClickAt activates the copy of #pick at index i, in render order, the way a keypress does; for tests.
-func (m *Model) pickClickAt(i int) {
-	at := func() []int {
-		var __at []int
+// pickClick activates the last copy of #pick the way a keypress does; for tests.
+func (m *Model) pickClick() {
+	copies := func() []struct {
+		key string
+		pos int
+	} {
+		var __at []struct {
+			key string
+			pos int
+		}
 		__focusPos0 := 0
 		for __copy, r := range m.rows {
 			_ = __copy
@@ -338,42 +351,35 @@ func (m *Model) pickClickAt(i int) {
 				_ = __copy1
 				_ = c
 				if (m.pages__current__inst0.Id == 0) && (((len(m.pages__current__inst0.Copy) == 2) && (m.pages__current__inst0.Copy[0] == __copy)) && (m.pages__current__inst0.Copy[1] == __copy1)) {
-					__at = append(__at, __focusPos0)
+					var __lt3 string
+					_ = __lt3
+					if (m.pages__current__inst0.Id == 0) && (((len(m.pages__current__inst0.Copy) == 2) && (m.pages__current__inst0.Copy[0] == __copy)) && (m.pages__current__inst0.Copy[1] == __copy1)) {
+						__lt3 = "showing"
+					} else {
+						__lt3 = "hidden"
+					}
+					__at = append(__at, struct {
+						key string
+						pos int
+					}{"", __focusPos0})
 					__focusPos0++
 				}
 			}
 		}
 		return __at
 	}()
-	if i < 0 || i >= len(at) {
+	pos := -1
+	if len(copies) > 0 {
+		pos = copies[len(copies)-1].pos
+	}
+	if pos < 0 {
 		return
 	}
 	prev, prevAt := m.__focusID, m.__focusLoop0_cursor
-	m.__focusID, m.__focusLoop0_cursor = 0, at[i]
+	m.__focusID, m.__focusLoop0_cursor = 0, pos
 	nm, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	*m = nm.(Model)
 	m.__focusID, m.__focusLoop0_cursor = prev, prevAt
-}
-
-// pickClick activates the last copy of #pick the way a keypress does; for tests.
-func (m *Model) pickClick() {
-	m.pickClickAt(len(func() []int {
-		var __at []int
-		__focusPos0 := 0
-		for __copy, r := range m.rows {
-			_ = __copy
-			_ = r
-			for __copy1, c := range r.Cols {
-				_ = __copy1
-				_ = c
-				if (m.pages__current__inst0.Id == 0) && (((len(m.pages__current__inst0.Copy) == 2) && (m.pages__current__inst0.Copy[0] == __copy)) && (m.pages__current__inst0.Copy[1] == __copy1)) {
-					__at = append(__at, __focusPos0)
-					__focusPos0++
-				}
-			}
-		}
-		return __at
-	}()) - 1)
 }
 
 // toAboutClick activates the #toAbout widget the way a keypress does; for tests.
@@ -1512,7 +1518,7 @@ fun MainScreen() {
     }
 }
 -- run/go/bubbletea --
-pass sha256:a699a43aedd02e8c7c4e7dbe138efcf5
+pass sha256:c48f08e0377f2228efe7bc9ced86e06b
 -- run/go/fyne --
 pass sha256:40bfc012a6f372829050151f6aa7812d
 -- run/go/gtk4 --

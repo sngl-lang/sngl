@@ -68,6 +68,8 @@ var alwaysOn = []string{
 	"CSE",
 	// Every emitted function takes every parameter it declares.
 	"CallDefaults",
+	// A copy of a node a test indexes carries its key on every target.
+	"CopyKeys",
 	// A call through a name the inliner bound to a declared function.
 	"DirectCalls",
 	// An effect's reports are lowered on every target; one that brackets a

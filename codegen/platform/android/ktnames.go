@@ -56,6 +56,8 @@ const (
 	ktAlpha         = ktUI + "draw.alpha"
 	ktColor         = ktUI + "graphics.Color"
 	ktTestTag       = ktUI + "platform.testTag"
+	ktSemantics     = ktUI + "semantics.semantics"
+	ktSemanticsKey  = ktUI + "semantics.SemanticsPropertyKey"
 	ktLocalContext  = ktUI + "platform.LocalContext"
 	ktTextStyle     = ktUI + "text.TextStyle"
 	ktFontWeight    = ktUI + "text.font.FontWeight"
