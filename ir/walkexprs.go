@@ -405,6 +405,11 @@ func (w *rewriter) pkg(pkg *Package) {
 		}
 	}
 	for _, ctx := range pkg.Contexts {
+		// A library context the build does not reach is the checked one,
+		// shared with every build (ClonePackageFor).
+		if ctx.Frozen {
+			continue
+		}
 		ctx.Default = w.expr(ctx.Default)
 	}
 	for _, o := range pkg.Outputs {

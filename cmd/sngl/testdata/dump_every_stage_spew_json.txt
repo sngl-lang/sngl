@@ -60,6 +60,22 @@ sngl dump --stage checked --format json --omit AST,Pos proj/app.sngl
 sngl dump --stage checked --format spew --omit AST,Pos --pointers --depth 3 proj/app.sngl
 sngl dump --stage lowered --platform html --lang none --format json --omit AST,Pos proj/app.sngl
 sngl dump --stage checked --format json proj/app.sngl
+stdout '"Pkg": "dir:shapes"'
+
+# A check finding the library already loaded adopts the contexts a target
+# package brings as the check that loaded it did.
+sngl dump --stage checked --format json main.sngl
+stdout '"Name": "palette"'
+sngl dump --stage checked --format json main.sngl
+stdout '"Name": "palette"'
+
+# unwrap's parameter is an anonymous struct naming a type parameter, which is
+# interned nowhere: only the types naming it write it, and spew writes as many
+# as JSON does.
+sngl dump --stage checked --format json generic.sngl
+stdout -count=3 '"Anon": true'
+sngl dump --stage checked --format spew generic.sngl
+stdout -count=3 '"Anon": \(bool\) true'
 
 # Its calls reach each other through the IR, which encoding/json met as a cycle.
 sngl dump --stage checked --format json ternary.sngl
@@ -166,6 +182,16 @@ context[int] #depth(3)
 
 component badge ui.node {
     ui.text(value="{depth}")
+}
+-- generic.sngl --
+import . "sngl:ui"
+
+func unwrap[T any](w struct { v T }) T {
+    return w.v
+}
+
+window {
+    text(value="{unwrap({v=2})}")
 }
 -- ternary.sngl --
 import . "sngl:ui"

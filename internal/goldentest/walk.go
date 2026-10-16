@@ -44,13 +44,14 @@ func walkDivergence(pkg *ir.Package) error {
 	return nil
 }
 
-// ownContexts is pkg with only the contexts it declares: a rewrite writes what
-// it visits, and a library's contexts are read by every check in the process.
+// ownContexts is pkg without the frozen contexts it adopted, a library's or a
+// kept directory package's, which ir.Rewrite leaves alone: every check in the
+// process reads them.
 func ownContexts(pkg *ir.Package) *ir.Package {
 	view := *pkg
 	view.Contexts = nil
 	for _, ctx := range pkg.Contexts {
-		if !ctx.Stdlib {
+		if !ctx.Frozen {
 			view.Contexts = append(view.Contexts, ctx)
 		}
 	}

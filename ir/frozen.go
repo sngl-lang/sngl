@@ -35,6 +35,13 @@ func Freeze(p *Package) {
 	for _, u := range p.Units {
 		u.Frozen = true
 	}
+	// A package's Contexts also holds the ones it adopted from its imports,
+	// which their own package freezes.
+	for _, ctx := range p.Contexts {
+		if ctx.Pkg == p {
+			ctx.Frozen = true
+		}
+	}
 	for _, vs := range [][]*Var{p.Consts, p.Vars} {
 		for _, v := range vs {
 			v.Frozen = true

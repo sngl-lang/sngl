@@ -10,9 +10,9 @@ import "duckfam.us/sngl/ast"
 // At source level, `context #name(default)` without a trailing body parses
 // as *ast.CallStmt (not *ast.VisualNode) — see Phase 1 parser note.
 type Context struct {
-	AST  *ast.CallStmt
-	Name string
-	Typ  *Type
+	AST *ast.CallStmt
+	DeclInfo
+	Typ *Type
 	// TypeArgs are the type arguments the declaration wrote,
 	// `context[option[User]] #who(null)`: the first is Typ.
 	TypeArgs []*Type `json:",omitempty"`
