@@ -209,6 +209,9 @@ func passLoopVars(body []ir.Stmt, funcs []*ir.Func, loops []*ir.For) {
 					if lv, ok := x.Sym.(*ir.LoopVar); ok && loopVars[lv] {
 						need = []*ir.LoopVar{lv}
 					}
+					if f, ok := x.Sym.(*ir.Func); ok {
+						need = reads[f]
+					}
 				case *ir.Call:
 					need = reads[x.Func]
 				}
@@ -223,7 +226,9 @@ func passLoopVars(body []ir.Stmt, funcs []*ir.Func, loops []*ir.For) {
 		}
 	}
 	params := map[*ir.Func]map[*ir.LoopVar]*ir.Param{}
+	arity := map[*ir.Func]int{}
 	for fn, lvs := range reads {
+		arity[fn] = len(fn.Params)
 		params[fn] = map[*ir.LoopVar]*ir.Param{}
 		for _, lv := range lvs {
 			p := &ir.Param{Name: lv.Name, Type: lv.Type}
@@ -245,6 +250,11 @@ func passLoopVars(body []ir.Stmt, funcs []*ir.Func, loops []*ir.For) {
 				if lv, ok := x.Sym.(*ir.LoopVar); ok && own[lv] != nil {
 					return paramIdent(own[lv]), nil
 				}
+				// A func taken as a value is bound to the loop variables
+				// where it is taken, as a call passes them where it is made.
+				if f, ok := x.Sym.(*ir.Func); ok && len(reads[f]) > 0 {
+					return loopBoundValue(x, f, arity[f], reads[f], arg), ir.SkipDir
+				}
 			case *ir.Call:
 				for _, lv := range reads[x.Func] {
 					x.Args = append(x.Args, ir.CallArg{Value: arg(lv)})
@@ -259,6 +269,31 @@ func passLoopVars(body []ir.Stmt, funcs []*ir.Func, loops []*ir.For) {
 		}
 	}
 	route(body, nil)
+}
+
+// loopBoundValue is a lambda standing for fn taken as a value: it takes fn's
+// own arity parameters and passes them on, followed by the loop variables fn
+// was given (passLoopVars).
+func loopBoundValue(id *ir.Ident, fn *ir.Func, arity int, lvs []*ir.LoopVar, arg func(*ir.LoopVar) ir.Expr) ir.Expr {
+	wrapper := &ir.Func{Return: fn.Return, Purity: fn.Purity, CanError: fn.CanError, IsAsync: fn.IsAsync}
+	call := &ir.Call{Type: fn.Return, Func: fn}
+	for _, p := range fn.Params[:arity] {
+		if p.Receiver {
+			continue
+		}
+		np := &ir.Param{Name: p.Name, Type: p.Type}
+		wrapper.Params = append(wrapper.Params, np)
+		call.Args = append(call.Args, ir.CallArg{Value: paramIdent(np)})
+	}
+	for _, lv := range lvs {
+		call.Args = append(call.Args, ir.CallArg{Value: arg(lv)})
+	}
+	if fn.Return == nil || fn.Return.Kind == ir.TypeVoid {
+		wrapper.Block = []ir.Stmt{&ir.CallStmt{Call: call}}
+	} else {
+		wrapper.Block = []ir.Stmt{&ir.Return{Value: call}}
+	}
+	return &ir.Lambda{Type: id.Type, Func: wrapper}
 }
 
 // cellFuncs is the funcs that read or write a cell, directly or through one
