@@ -441,14 +441,11 @@ window.__sngl_boot = () => {
   if (typeof window !== "undefined") {
     window.__sngl_state = state;
   }
-  function testBuilds(t, c) {
-    t.assertTrue(c.shown, "c.shown");
-  }
   function panel_tag__inst0(state2, x) {
     return "<" + String(x) + ">";
   }
   if (typeof window !== "undefined") {
-    Object.assign(window, { testBuilds, panel_tag__inst0 });
+    Object.assign(window, { panel_tag__inst0 });
   }
   function String(v) {
     return "" + v;
@@ -475,4 +472,4 @@ pass sha256:c626544d0949868116ee1b956f1e1a7f
 -- run/kotlin/android --
 pass sha256:12c1e50661174edb383339badc838bc2
 -- run/none/html --
-pass sha256:38ee16f3f94e174fec8b839b8c3e9546
+pass sha256:59f292d128828d21e1c77d941bccf84f

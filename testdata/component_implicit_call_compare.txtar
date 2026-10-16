@@ -405,11 +405,8 @@ window.__sngl_boot = () => {
   function main_count(state2) {
     return state2.n;
   }
-  function testImplicitCallCompare(t, c) {
-    t.assertTrue(c.count === 3, "(c.count === 3)");
-  }
   if (typeof window !== "undefined") {
-    Object.assign(window, { main_count, testImplicitCallCompare });
+    Object.assign(window, { main_count });
   }
   var __n0 = document.querySelector('[data-sngl-id="__n0"]');
   function __sngl_init() {
@@ -430,9 +427,9 @@ pass sha256:ab5c2dcd7b69c527c56b358abb73b64e
 -- run/kotlin/android --
 pass sha256:323d48992868031d11600b0112d3e4a9
 -- run/none/html --
-pass sha256:2ac620ce429134409741eaaabef05a07
+pass sha256:dce9f14868eb9dcc6519bb320e6b3c7e
 -- testrun/html/none/component_implicit_call_compare.sngl/main/1 --
-sha256:df74b3e01fc18cc4f51a92ab51453543
+sha256:527f2cd477df1d4f160a64a7f0258b27
 {
   "results": [
     {

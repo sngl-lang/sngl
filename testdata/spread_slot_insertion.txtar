@@ -584,14 +584,6 @@ window.__sngl_boot = () => {
   if (typeof window !== "undefined") {
     window.__sngl_state = state;
   }
-  function testSpreadIntoSlot(t, c) {
-    c.a();
-    c.b();
-    t.assertTrue(c.seen === "row3;part7;", '(c.seen === "row3;part7;")');
-  }
-  if (typeof window !== "undefined") {
-    Object.assign(window, { testSpreadIntoSlot });
-  }
   var $1 = document.getElementById("$1");
   var $3 = document.getElementById("$3");
   $1.addEventListener("click", function() {
@@ -614,4 +606,4 @@ pass sha256:951f40700fa3657a9a550efbd1bdaa81
 -- run/kotlin/android --
 pass sha256:ce0f8e32304c03091e06180b7ae74395
 -- run/none/html --
-pass sha256:3249a875ad60ecb0f052dda318bb9979
+pass sha256:83efe7df38418e137a6cdb1077987ec2

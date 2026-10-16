@@ -695,10 +695,6 @@ window.__sngl_boot = () => {
   if (typeof window !== "undefined") {
     window.__sngl_state = state;
   }
-  function testNestedBodyReadsAndWritesTheOwnersVar(t, c) {
-    t.assertTrue(c.seen === 2, "(c.seen === 2)");
-    t.assertTrue(c.count === 3, "(c.count === 3)");
-  }
   function __effect0_mount() {
     state.renders__inst0 = state.renders__inst0 + 1;
     __n0.textContent = String(state.count) + " " + String(state.renders__inst0);
@@ -709,7 +705,7 @@ window.__sngl_boot = () => {
     __n1.textContent = String(state.count) + ":" + String(state.seen);
   }
   if (typeof window !== "undefined") {
-    Object.assign(window, { testNestedBodyReadsAndWritesTheOwnersVar, __effect0_mount });
+    Object.assign(window, { __effect0_mount });
   }
   var __effect0_live = [];
   var __effect0_desired = [];
@@ -776,9 +772,9 @@ pass sha256:17a07a2681da4c330f675ed090d30af2
 -- run/kotlin/android --
 pass sha256:ce3e2249f524177e27e3a3b1a1913937
 -- run/none/html --
-pass sha256:3aaf20ca177f613d531ad2df9df8ad04
+pass sha256:a80162d97ea072bb5b8a07da1f7351d9
 -- testrun/html/none/component_nested_capture.sngl/main/1 --
-sha256:4c7f43e49aa33855a4eb9bff3e94d30b
+sha256:a8168ddaf9d9c76ca11f5fe111e80e65
 {
   "results": [
     {

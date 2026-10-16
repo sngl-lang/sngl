@@ -1429,27 +1429,6 @@ window.__sngl_boot = () => {
   if (typeof window !== "undefined") {
     window.__sngl_state = state;
   }
-  function testOneCopyIsRendered(t, c) {
-    t.assertTrue(c.only[0] === null, "(c.only[0] === null)");
-    t.assertTrue(c.tick[0] === null, "(c.tick[0] === null)");
-    if (c.only[1] !== null) {
-      ;
-      c.only[1]();
-    }
-    ;
-    t.assertTrue(c.log === "b", '(c.log === "b")');
-    t.assertTrue(c.tick[2] !== null, "(c.tick[2] !== null)");
-  }
-  function testAfterTheBranchChanges(t, c) {
-    c.change();
-    t.assertTrue(c.only[0] !== null, "(c.only[0] !== null)");
-    t.assertTrue(c.only[1] === null, "(c.only[1] === null)");
-    t.assertTrue(c.tick[1] === null, "(c.tick[1] === null)");
-    t.assertTrue(c.tick[0] !== null, "(c.tick[0] !== null)");
-  }
-  if (typeof window !== "undefined") {
-    Object.assign(window, { testOneCopyIsRendered, testAfterTheBranchChanges });
-  }
   function __cf___checkbox_state0(props) {
     const __root = document.createElement("div");
     __root.style.display = "contents";
@@ -1615,4 +1594,4 @@ pass sha256:6e839acea2b3cea93f6236c7e2b366fe
 -- run/kotlin/android --
 pass sha256:12ad32084cd77fe45e11eacc8602bf3c
 -- run/none/html --
-pass sha256:8927639da91cccccbfd3525d196612c0
+pass sha256:99b0f53817be80a6368f23a0e17f4b53

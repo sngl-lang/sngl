@@ -1011,16 +1011,6 @@ window.__sngl_boot = () => {
   if (typeof window !== "undefined") {
     window.__sngl_state = state;
   }
-  function testTabsSelectedMutates(t, c) {
-    t.assertTrue(c.idx === 0, "(c.idx === 0)");
-    c.idx = 2;
-    t.assertTrue(c.idx === 2, "(c.idx === 2)");
-    c.idx = 1;
-    t.assertTrue(c.idx === 1, "(c.idx === 1)");
-  }
-  if (typeof window !== "undefined") {
-    Object.assign(window, { testTabsSelectedMutates });
-  }
   function __cf___child0(props) {
     const __root = document.createElement("div");
     __root.style.display = "contents";
@@ -1232,9 +1222,9 @@ pass sha256:c95d7782724c207421aa70000189cfe3
 -- run/kotlin/android --
 pass sha256:225a36a54547a35ba9dcf3b85ffb4903
 -- run/none/html --
-pass sha256:af69d0794e903b7fd840f74f7e92d625
+pass sha256:138d0438b3230a0e2d138c8506c17d55
 -- testrun/html/none/component_tabs.sngl/main/1 --
-sha256:096a27d532886a1ef402745f036034f8
+sha256:7e18e212ae998bd5e9963781bb6183e7
 {
   "results": [
     {

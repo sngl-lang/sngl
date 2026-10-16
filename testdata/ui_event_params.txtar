@@ -1733,41 +1733,6 @@ window.__sngl_boot = () => {
   if (typeof window !== "undefined") {
     window.__sngl_state = state;
   }
-  function testCheckbox(t, c) {
-    c.box(true);
-    t.assertTrue(c.seen === "box true true", '(c.seen === "box true true")');
-    t.assertTrue(c.on === true, "(c.on === true)");
-    c.box(false);
-    t.assertTrue(c.seen === "box false false", '(c.seen === "box false false")');
-    t.assertTrue(c.on === false, "(c.on === false)");
-  }
-  function testToggle(t, c) {
-    c.sw(true);
-    t.assertTrue(c.seen === "sw true", '(c.seen === "sw true")');
-    t.assertTrue(c.lit === true, "(c.lit === true)");
-    c.sw(false);
-    t.assertTrue(c.seen === "sw false", '(c.seen === "sw false")');
-    t.assertTrue(c.lit === false, "(c.lit === false)");
-  }
-  function testInput(t, c) {
-    c.field("ada");
-    t.assertTrue(c.seen === "input ada ada", '(c.seen === "input ada ada")');
-    t.assertTrue(c.name === "ada", '(c.name === "ada")');
-  }
-  function testDatepicker(t, c) {
-    let d = "2024-03-05";
-    c.day(d);
-    t.assertTrue(c.picked === d, "(c.picked === d)");
-    t.assertTrue(c.seen === "day", '(c.seen === "day")');
-  }
-  function testButton(t, c) {
-    c.press();
-    c.press();
-    t.assertTrue(c.clicks === 2, "(c.clicks === 2)");
-  }
-  if (typeof window !== "undefined") {
-    Object.assign(window, { testCheckbox, testToggle, testInput, testDatepicker, testButton });
-  }
   function String(v) {
     return "" + v;
   }
@@ -1834,4 +1799,4 @@ pass sha256:4a329a2d813e1905a7f682faf39a901c
 -- run/kotlin/android --
 pass sha256:eeedac8ed7bfa9790127488c6bfa0863
 -- run/none/html --
-pass sha256:acb5e74f8dfc29cf6c97f4dba8cbc22e
+pass sha256:39a7ec5df31369c005bacf45496efdcf

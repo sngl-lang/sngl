@@ -1755,7 +1755,9 @@ func (g *htmlGen) pkgFuncs() []*ir.Func {
 	seen := make(map[*ir.Func]struct{})
 	var out []*ir.Func
 	add := func(f *ir.Func) {
-		if f.Synthesized || !g.pageOwnsFunc(f) {
+		// A test is the test module's, lowered there with the triggers and
+		// null tests this emitter does not know; the page never calls one.
+		if f.Synthesized || f.IsTest || !g.pageOwnsFunc(f) {
 			return
 		}
 		// A native declaration is not emitted: the identifier already exists,

@@ -1401,18 +1401,6 @@ window.__sngl_boot = () => {
   if (typeof window !== "undefined") {
     window.__sngl_state = state;
   }
-  function testHandlerReadsItsContentsLoop(t, c) {
-    c.cell[1][0]();
-    t.assertTrue(c.log === "0c", '(c.log === "0c")');
-    c.cell[0][1]();
-    t.assertTrue(c.log === "1b", '(c.log === "1b")');
-    c.swap();
-    c.cell[1][2]();
-    t.assertTrue(c.log === "2g", '(c.log === "2g")');
-  }
-  if (typeof window !== "undefined") {
-    Object.assign(window, { testHandlerReadsItsContentsLoop });
-  }
   function __cf_card__slot0(props) {
     const __root = document.createElement("div");
     __root.style.display = "contents";
@@ -1665,4 +1653,4 @@ pass sha256:f21a49cf6e56372a0d224798bcdd0df7
 -- run/kotlin/android --
 pass sha256:6af813987d93213835fc8a74db71ee48
 -- run/none/html --
-pass sha256:5080e0314927be78dd26272fc729eb71
+pass sha256:ef21294f0224c4061794e29c6784fa10

@@ -76,13 +76,6 @@ window.__sngl_boot = () => {
   if (typeof window !== "undefined") {
     window.__sngl_state = state;
   }
-  function testSecond(t, c) {
-    c.opt[1]();
-    t.assertTrue(c.last === "b", '(c.last === "b")');
-  }
-  if (typeof window !== "undefined") {
-    Object.assign(window, { testSecond });
-  }
   var $0 = document.getElementById("$0");
   var $2 = document.getElementById("$2");
   $0.addEventListener("click", function() {
@@ -97,4 +90,4 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:1d7cb915847860cc5a54588d0756d817
+pass sha256:8dd99ecee0733f0081c91e37d9f239a0

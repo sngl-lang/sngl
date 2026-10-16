@@ -449,17 +449,6 @@ window.__sngl_boot = () => {
   if (typeof window !== "undefined") {
     window.__sngl_state = state;
   }
-  function testScrollOffsetsMutate(t, c) {
-    t.assertTrue(c.x === 0, "(c.x === 0)");
-    t.assertTrue(c.y === 0, "(c.y === 0)");
-    c.x = 12.5;
-    c.y = 42;
-    t.assertTrue(c.x === 12.5, "(c.x === 12.5)");
-    t.assertTrue(c.y === 42, "(c.y === 42)");
-  }
-  if (typeof window !== "undefined") {
-    Object.assign(window, { testScrollOffsetsMutate });
-  }
 })();
 };
 window.__sngl_boot();
@@ -474,9 +463,9 @@ pass sha256:9c70b978d2b2a76d364fd4fcabd36841
 -- run/kotlin/android --
 pass sha256:c9f8500b87ca099648ae5918a799f940
 -- run/none/html --
-pass sha256:1c26fca4e97a7808b9e897e72719a49d
+pass sha256:454ecb483228b6c9ef7d7d96298c3160
 -- testrun/html/none/component_scroll.sngl/main/1 --
-sha256:77b77107ad56398c57abcfd8c948944f
+sha256:bef6cd02eccd0b0c4dd19d41a7f52202
 {
   "results": [
     {

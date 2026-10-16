@@ -788,14 +788,6 @@ window.__sngl_boot = () => {
   if (typeof window !== "undefined") {
     window.__sngl_state = state;
   }
-  function testTableSelectedMutates(t, c) {
-    t.assertTrue(c.idx === 0, "(c.idx === 0)");
-    c.idx = 3;
-    t.assertTrue(c.idx === 3, "(c.idx === 3)");
-  }
-  if (typeof window !== "undefined") {
-    Object.assign(window, { testTableSelectedMutates });
-  }
   var $0 = document.getElementById("$0");
   $0.addEventListener("selected", function(e) {
     state.idx = e;
@@ -814,9 +806,9 @@ pass sha256:b7a0f65a73d21415d39385f2ed019169
 -- run/kotlin/android --
 pass sha256:8024d25df4be54d4cec92f95b445761a
 -- run/none/html --
-pass sha256:ed9885e517aa8e349e7f310602898736
+pass sha256:60a03e7db19649a8d985cd09e52055fe
 -- testrun/html/none/component_table.sngl/main/1 --
-sha256:28df58d90c40e8a9d1b0a266ebbaf0cd
+sha256:de5450ac7bedaf6566c525c418d88880
 {
   "results": [
     {

@@ -574,14 +574,6 @@ window.__sngl_boot = () => {
   if (typeof window !== "undefined") {
     window.__sngl_state = state;
   }
-  function testTooltipTextMutates(t, c) {
-    t.assertTrue(c.msg === "hello", '(c.msg === "hello")');
-    c.msg = "goodbye";
-    t.assertTrue(c.msg === "goodbye", '(c.msg === "goodbye")');
-  }
-  if (typeof window !== "undefined") {
-    Object.assign(window, { testTooltipTextMutates });
-  }
   var __n0 = document.querySelector('[data-sngl-id="__n0"]');
   function __sngl_init() {
     __n0.setAttribute("title", state.msg);
@@ -601,9 +593,9 @@ pass sha256:210aff9c468ebd577aaf15958fdaece2
 -- run/kotlin/android --
 pass sha256:2e89414007758dd41fcc074e1dc48687
 -- run/none/html --
-pass sha256:217831266171538bf9fb06bbf927018e
+pass sha256:69a9b96d7a56ebe55e635ee0c5f6633a
 -- testrun/html/none/component_tooltip.sngl/main/1 --
-sha256:6884ef7ff022272be8b36de677361fb4
+sha256:3b94a6192aec23e2b61737c2af0bb41b
 {
   "results": [
     {

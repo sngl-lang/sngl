@@ -541,14 +541,6 @@ window.__sngl_boot = () => {
   if (typeof window !== "undefined") {
     window.__sngl_state = state;
   }
-  function testThemeToggles(t, c) {
-    t.assertTrue(c.dark === false, "(c.dark === false)");
-    c.dark = true;
-    t.assertTrue(c.dark === true, "(c.dark === true)");
-  }
-  if (typeof window !== "undefined") {
-    Object.assign(window, { testThemeToggles });
-  }
   var $1 = document.getElementById("$1");
   var __n0 = document.querySelector('[data-sngl-id="__n0"]');
   var __n1 = document.querySelector('[data-sngl-id="__n1"]');
@@ -576,9 +568,9 @@ pass sha256:d6b8036338f7da9b587efa0694c9ccc4
 -- run/kotlin/android --
 pass sha256:d7856d7493d22bfc5e861fff278b232e
 -- run/none/html --
-pass sha256:ba4e106c727453ad6f48bae84e106f28
+pass sha256:bfc0b38133928f496a44abb96be06620
 -- testrun/html/none/component_reactive_ternary_context.sngl/main/1 --
-sha256:ea4868639b1d126ae6a9848bd47c25d7
+sha256:786bd013b7b7850e86f1622161ff1b11
 {
   "results": [
     {

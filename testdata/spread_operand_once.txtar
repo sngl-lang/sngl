@@ -707,22 +707,8 @@ window.__sngl_boot = () => {
   function panel_swap(state2, x, y) {
     return { x: y, y: x };
   }
-  function testOperandOnce(t, c) {
-    c.once();
-    t.assertTrue(c.got === 101, "(c.got === 101)");
-    t.assertTrue(c.n === 1, "(c.n === 1)");
-  }
-  function testPathInPlace(t, c) {
-    c.path();
-    t.assertTrue(c.got === 7, "(c.got === 7)");
-  }
-  function testNestedOnce(t, c) {
-    c.nested();
-    t.assertTrue(c.got === 101, "(c.got === 101)");
-    t.assertTrue(c.n === 1, "(c.n === 1)");
-  }
   if (typeof window !== "undefined") {
-    Object.assign(window, { panel_next, panel_add, panel_swap, testOperandOnce, testPathInPlace, testNestedOnce });
+    Object.assign(window, { panel_next, panel_add, panel_swap });
   }
   function String(v) {
     return "" + v;
@@ -762,4 +748,4 @@ pass sha256:3fde783984f22b8cde5f10b6d288701e
 -- run/kotlin/android --
 pass sha256:66d48c0fdb636e19d434a570a8d75e46
 -- run/none/html --
-pass sha256:f097ed2810b7e13f62c10c300b10e792
+pass sha256:5dc05ad6c556193a97b9d14a9c545174

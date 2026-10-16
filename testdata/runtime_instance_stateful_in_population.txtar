@@ -1079,12 +1079,6 @@ window.__sngl_boot = () => {
   if (typeof window !== "undefined") {
     window.__sngl_state = state;
   }
-  function testMounts(t, c) {
-    t.assertTrue(c.foots === "1/2:0 2/4:0 ", '(c.foots === "1/2:0 2/4:0 ")');
-  }
-  if (typeof window !== "undefined") {
-    Object.assign(window, { testMounts });
-  }
   function __cf_Counter(props) {
     const __root = document.createElement("div");
     __root.style.display = "contents";
@@ -1279,4 +1273,4 @@ pass sha256:ae0bd8bae4c0f55627cda221cacbdae2
 -- run/kotlin/android --
 pass sha256:c3e1a47c5ed99910236c364747976bec
 -- run/none/html --
-pass sha256:c248b2c83474de89e94e6ec45469c6d1
+pass sha256:77adc5819bdc49981a0e4ec990b891d0

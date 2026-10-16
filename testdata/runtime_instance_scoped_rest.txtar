@@ -1019,14 +1019,6 @@ window.__sngl_boot = () => {
   if (typeof window !== "undefined") {
     window.__sngl_state = state;
   }
-  function testScopedRestPerCopy(t, c) {
-    t.assertTrue(c.mounted === "1:10 2:20 ", '(c.mounted === "1:10 2:20 ")');
-    c.add();
-    t.assertTrue(c.mounted === "1:10 2:20 3:30 ", '(c.mounted === "1:10 2:20 3:30 ")');
-  }
-  if (typeof window !== "undefined") {
-    Object.assign(window, { testScopedRestPerCopy });
-  }
   function __cf_Card__slot0(props) {
     const __root = document.createElement("div");
     __root.style.display = "contents";
@@ -1193,4 +1185,4 @@ pass sha256:574897b514b04935739884a49ba68a67
 -- run/kotlin/android --
 pass sha256:02353f3f9a6541f79cfa8f44a180a296
 -- run/none/html --
-pass sha256:6acdca73ebe69cf478673b258b747bb6
+pass sha256:c96e991643af44ec3cb81178a9075529

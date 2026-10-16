@@ -1024,14 +1024,6 @@ window.__sngl_boot = () => {
   if (typeof window !== "undefined") {
     window.__sngl_state = state;
   }
-  function testRemount(t, c) {
-    t.assertTrue(c.log === "ax ", '(c.log === "ax ")');
-    c.bump();
-    t.assertTrue(c.log === "ax ay ", '(c.log === "ax ay ")');
-  }
-  if (typeof window !== "undefined") {
-    Object.assign(window, { testRemount });
-  }
   function __cf_Watch(props) {
     const __root = document.createElement("div");
     __root.style.display = "contents";
@@ -1188,4 +1180,4 @@ pass sha256:1ebfd59070656596e6250e4256983f3e
 -- run/kotlin/android --
 pass sha256:db98ec05be1c3ee4879c4059077a57fc
 -- run/none/html --
-pass sha256:0cbffde746cf5f56fd8b6a136d939ff4
+pass sha256:cb857a80397f3eaaf4a67fd8d8bb8769

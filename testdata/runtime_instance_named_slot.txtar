@@ -1717,14 +1717,6 @@ window.__sngl_boot = () => {
   if (typeof window !== "undefined") {
     window.__sngl_state = state;
   }
-  function testEachCopyRendersItsOwnCells(t, c) {
-    t.assertTrue(c.mounted === "1:1 1:11 2:2 2:12 ", '(c.mounted === "1:1 1:11 2:2 2:12 ")');
-    c.add();
-    t.assertTrue(c.mounted === "1:1 1:11 2:2 2:12 3:3 3:13 ", '(c.mounted === "1:1 1:11 2:2 2:12 3:3 3:13 ")');
-  }
-  if (typeof window !== "undefined") {
-    Object.assign(window, { testEachCopyRendersItsOwnCells });
-  }
   function __cf_Card(props) {
     const __root = document.createElement("div");
     __root.style.display = "contents";
@@ -2154,4 +2146,4 @@ pass sha256:3f6c6c2c2aab0dbf6c69a94a50262b4a
 -- run/kotlin/android --
 pass sha256:ea91f6ed5e53287b5fea050065582310
 -- run/none/html --
-pass sha256:370599e9242f69c4de9b74414e65b99c
+pass sha256:65cee73488ba9131fd06a5580070a42a

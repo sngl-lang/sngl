@@ -839,19 +839,6 @@ window.__sngl_boot = () => {
   if (typeof window !== "undefined") {
     window.__sngl_state = state;
   }
-  function testNullTestsFollowTheBranch(t, c) {
-    t.assertTrue(c.b !== null, "(c.b !== null)");
-    t.assertTrue(c.label !== null, "(c.label !== null)");
-    c.toggle();
-    t.assertTrue(c.b === null, "(c.b === null)");
-    t.assertTrue(c.label === null, "(c.label === null)");
-    c.toggle();
-    t.assertTrue(c.b !== null, "(c.b !== null)");
-    t.assertTrue(c.label !== null, "(c.label !== null)");
-  }
-  if (typeof window !== "undefined") {
-    Object.assign(window, { testNullTestsFollowTheBranch });
-  }
   function __cf_badge(props) {
     const __root = document.createElement("div");
     __root.style.display = "contents";
@@ -968,4 +955,4 @@ pass sha256:cb86ae48ff0950f1c4357332726e88ef
 -- run/kotlin/android --
 pass sha256:7c8973f489df07be24b713fe0e1502c1
 -- run/none/html --
-pass sha256:2b4352a676bf1a5e8dd4da2614442f76
+pass sha256:d252f59dc195241a284efb916d2d3cb2

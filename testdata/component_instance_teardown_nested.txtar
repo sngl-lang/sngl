@@ -903,14 +903,6 @@ window.__sngl_boot = () => {
   if (typeof window !== "undefined") {
     window.__sngl_state = state;
   }
-  function testWhatARowHoldsIsDestroyedFirst(t, c) {
-    t.assertTrue(c.log === "", '(c.log === "")');
-    c.drop();
-    t.assertTrue(c.log === "b-;b;", '(c.log === "b-;b;")');
-  }
-  if (typeof window !== "undefined") {
-    Object.assign(window, { testWhatARowHoldsIsDestroyedFirst });
-  }
   function __cf_nest(props) {
     const __root = document.createElement("div");
     __root.style.display = "contents";
@@ -1163,9 +1155,9 @@ pass sha256:069320d79065d7d667531e5f97f5466c
 -- run/kotlin/android --
 pass sha256:b55f19f7cb7dd03838e4446d877c2959
 -- run/none/html --
-pass sha256:88a323c559da08f5c034a7b5228fdfa5
+pass sha256:ee2a38169e78834aeea85de43bf97bf9
 -- testrun/html/none/component_instance_teardown_nested.sngl/main/1 --
-sha256:001e414bbe8ac474739b44858a9a5b14
+sha256:3545478b7d583f6ee46d19a77a9b288c
 {
   "results": [
     {

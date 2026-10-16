@@ -1535,15 +1535,6 @@ window.__sngl_boot = () => {
   if (typeof window !== "undefined") {
     window.__sngl_state = state;
   }
-  function testOneThenOther(t, c) {
-    c.add();
-    t.assertTrue(c.label === "You have 1 item", '(c.label === "You have 1 item")');
-    c.add();
-    t.assertTrue(c.label === "You have 2 items", '(c.label === "You have 2 items")');
-  }
-  if (typeof window !== "undefined") {
-    Object.assign(window, { testOneThenOther });
-  }
   var $0 = document.getElementById("$0");
   var __n0 = document.querySelector('[data-sngl-id="__n0"]');
   $0.addEventListener("click", function() {
@@ -1569,9 +1560,9 @@ pass sha256:ac4f1f2e69efe6b96163c2f50b961f60
 -- run/kotlin/android --
 pass sha256:c525132dbbe79cd5c2b000f4f60917b2
 -- run/none/html --
-pass sha256:603f26ee258d7a920d3eba689c356b04
+pass sha256:f7c63032170d2efbe8656378b0833cfb
 -- testrun/html/none/component_i18n_plural.sngl/main/1 --
-sha256:7b4e05f40b63faca9f4095e647502bcf
+sha256:791b21bf75a995c323ae05679b1026d2
 {
   "results": [
     {

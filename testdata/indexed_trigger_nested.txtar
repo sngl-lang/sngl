@@ -2619,34 +2619,6 @@ window.__sngl_boot = () => {
   if (typeof window !== "undefined") {
     window.__sngl_state = state;
   }
-  function testOneCopyOfANestedLoop(t, c) {
-    c.cell[1][0]();
-    t.assertTrue(c.log === "c", '(c.log === "c")');
-    c.cell[0][1]();
-    t.assertTrue(c.log === "b", '(c.log === "b")');
-    c.mark[1][0](true);
-    t.assertTrue(c.log === "c true", '(c.log === "c true")');
-    c.pin[1][0]();
-    t.assertTrue(c.log === "r", '(c.log === "r")');
-    c.tick[1][0]();
-    t.assertTrue(c.log === "10", '(c.log === "10")');
-    c.even[1]();
-    t.assertTrue(c.log === "2", '(c.log === "2")');
-    c.dot[1]();
-    t.assertTrue(c.log === "2.", '(c.log === "2.")');
-  }
-  function testAfterTheLoopsRenderAgain(t, c) {
-    c.swap();
-    c.cell[1][2]();
-    t.assertTrue(c.log === "g", '(c.log === "g")');
-    c.cell[0][0]();
-    t.assertTrue(c.log === "d", '(c.log === "d")');
-    c.mark[1][1](true);
-    t.assertTrue(c.log === "f true", '(c.log === "f true")');
-  }
-  if (typeof window !== "undefined") {
-    Object.assign(window, { testOneCopyOfANestedLoop, testAfterTheLoopsRenderAgain });
-  }
   function __cf___checkbox_state0(props) {
     const __root = document.createElement("div");
     __root.style.display = "contents";
@@ -3016,4 +2988,4 @@ pass sha256:5a069e45481759b06ce37a41d9a3c56e
 -- run/kotlin/android --
 pass sha256:3a02bffd495074297bbe1bec60b2fa34
 -- run/none/html --
-pass sha256:a78c8b03d1af9c597aec72912816460c
+pass sha256:054b736d0dd5abd8086307e786b955c2

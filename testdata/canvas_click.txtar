@@ -892,19 +892,13 @@ window.__sngl_boot = () => {
   if (typeof window !== "undefined") {
     window.__sngl_state = state;
   }
-  function testClickCounts(t, c) {
-    c.board();
-    t.assertTrue(c.hits === 1, "(c.hits === 1)");
-    c.board();
-    t.assertTrue(c.hits === 2, "(c.hits === 2)");
-  }
   function paintStyle(ctx, style) {
     ctx.fillStyle = "rgba(" + String(style.fill.r) + "," + String(style.fill.g) + "," + String(style.fill.b) + "," + String(parseFloat(style.fill.a) / 255) + ")";
     ctx.strokeStyle = "rgba(" + String(style.stroke.r) + "," + String(style.stroke.g) + "," + String(style.stroke.b) + "," + String(parseFloat(style.stroke.a) / 255) + ")";
     ctx.lineWidth = style.strokeWidth;
   }
   if (typeof window !== "undefined") {
-    Object.assign(window, { testClickCounts, paintStyle });
+    Object.assign(window, { paintStyle });
   }
   function __cf___canvas0(props) {
     const __root = document.createElement("div");
@@ -1074,4 +1068,4 @@ pass sha256:90fb4e6f842c2e9b8095dffe3d6e1227
 -- run/go/gtk4 --
 pass sha256:c5d332148b6f6b4ef4fd91752cb5ce27
 -- run/none/html --
-pass sha256:1b62c2ecc0636a25eaf41d7be01b9d8f
+pass sha256:e9358f99455f373d0d95c86e9afea71f

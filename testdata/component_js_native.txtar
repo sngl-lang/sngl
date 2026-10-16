@@ -82,14 +82,6 @@ window.__sngl_boot = () => {
   if (typeof window !== "undefined") {
     window.__sngl_state = state;
   }
-  function testCallsTheRealGlobal(t, c) {
-    c.go();
-    t.assertTrue(c.same === "aGk=", '(c.same === "aGk=")');
-    t.assertTrue(c.renamed === "aGk=", '(c.renamed === "aGk=")');
-  }
-  if (typeof window !== "undefined") {
-    Object.assign(window, { testCallsTheRealGlobal });
-  }
   var $0 = document.getElementById("$0");
   var __n0 = document.querySelector('[data-sngl-id="__n0"]');
   $0.addEventListener("click", function() {
@@ -108,9 +100,9 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:267b78ab0de9bcc3faac3e90a4ebd2bc
+pass sha256:6e974fe75223a48c1e6b9d5beddd642a
 -- testrun/html/none/component_js_native.sngl/main/1 --
-sha256:d0a86074140f540f4b83c0022fad2f68
+sha256:b74e2d5cfa02aea6001fb205d14be214
 {
   "results": [
     {
