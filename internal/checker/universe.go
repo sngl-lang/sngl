@@ -75,11 +75,11 @@ func writtenBuiltinKind(doc *ast.Document, pkg string, attrs []ast.MacroAttr) ir
 		}
 		switch {
 		case pkg == "sngl:builtin" && a.Alias == "" && a.Name == builtinMark:
-			if id, ok := a.Args[0].(*ast.IdentExpr); ok {
+			if id, ok := a.Args[0].Value.(*ast.IdentExpr); ok {
 				return ir.BuiltinKind(id.Name)
 			}
 		case marksImported && a.Alias == marksAlias && a.Name == "builtin":
-			if lit, ok := a.Args[0].(*ast.LiteralExpr); ok {
+			if lit, ok := a.Args[0].Value.(*ast.LiteralExpr); ok {
 				if v, ok := lit.StringValue(); ok {
 					return ir.BuiltinKind(v)
 				}

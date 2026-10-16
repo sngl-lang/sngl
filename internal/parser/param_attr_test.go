@@ -63,7 +63,7 @@ component element(
 		t.Errorf("param a attrs = %v, want [some.mark]", got)
 	}
 	if len(a.Attrs) == 1 {
-		lit, ok := a.Attrs[0].Args[0].(*ast.LiteralExpr)
+		lit, ok := a.Attrs[0].Args[0].Value.(*ast.LiteralExpr)
 		if !ok || lit.Raw != "x" {
 			t.Errorf("param a attr arg = %#v, want string \"x\"", a.Attrs[0].Args[0])
 		}
@@ -150,9 +150,7 @@ func TestFormatParamAttrs(t *testing.T) {
 // A hand-built AST carries no positions, so the list's own form decides: in a
 // multiline list an attr belongs on its own line above its param.
 func TestFormatParamAttrsMultiline(t *testing.T) {
-	mark := ast.MacroAttr{Name: "mark", Args: []ast.Expr{
-		&ast.LiteralExpr{Kind: ast.LiteralStringQuoted, Raw: "^data-"},
-	}}
+	mark := ast.MacroAttr{Name: "mark", Args: []ast.Arg{{Value: &ast.LiteralExpr{Kind: ast.LiteralStringQuoted, Raw: "^data-"}}}}
 	fn := &ast.FuncDef{
 		Name: "f",
 		Params: ast.ParamList{

@@ -24,7 +24,7 @@ import . "sngl:macro"
 component main node {
     #[foreign("js:example.com/api", "Entry")]
     struct Entry {
-        #[foreign("Title")]
+        #[foreign(name="Title")]
         title string
     }
 

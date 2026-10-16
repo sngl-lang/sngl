@@ -51,7 +51,8 @@ type MacroAttr struct {
 	Pos   Pos
 	Alias string // import alias, e.g. "canvas" in #[canvas.shape]
 	Name  string // macro name, e.g. "shape" in #[canvas.shape]
-	Args  []Expr // optional arguments
+	// Args are the mark's arguments, positional or named as a call's are.
+	Args []Arg
 	// IsMultiline says the author wrote the argument list across lines, which
 	// the formatter keeps: a capability list runs to twenty names and reads as
 	// nothing on one line. Same rule a prop list follows, for the same reason.
@@ -59,12 +60,10 @@ type MacroAttr struct {
 	// ArgTrailing is the comment written after each argument, indexed as Args
 	// is and nil where an argument carries none.
 	//
-	// A mark's arguments are bare enum members, and a multiline list is exactly
-	// where a reader wants a word per member -- which is what the target
-	// packages now write, their capability lists running to twenty names. There
-	// was nowhere to hold one: `Args` is `[]Expr`, so a comment among them was
-	// swept up as the *next mark's* leading comment and re-emitted below the
-	// list, or below the declaration when there was no next mark.
+	// A mark's arguments are often bare enum members, and a multiline list is
+	// exactly where a reader wants a word per member -- the target packages'
+	// capability lists run to twenty names. Without a slot here a comment among
+	// them was swept up as the *next mark's* leading comment.
 	ArgTrailing []*Comment `json:"-"`
 	// EndPos is the `]` this mark closes on, which is Pos for a mark written on
 	// one line and a later line for one written across several.

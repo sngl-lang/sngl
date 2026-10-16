@@ -96,7 +96,7 @@ func nativeIn(docs []*ast.Document) string {
 				if a.Name != "native" || a.Alias != alias || len(a.Args) != 1 {
 					continue
 				}
-				if lit, ok := a.Args[0].(*ast.LiteralExpr); ok {
+				if lit, ok := a.Args[0].Value.(*ast.LiteralExpr); ok {
 					if v, ok := lit.StringValue(); ok {
 						return v
 					}
