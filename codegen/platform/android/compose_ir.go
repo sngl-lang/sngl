@@ -1021,8 +1021,12 @@ func counterStmt(s ir.Stmt) bool {
 	return ok && v != nil && v.Synthesized
 }
 
-// funcArity is how many parameters a value of the function type t is handed.
+// funcArity is how many parameters a value of the function type t is handed,
+// or of the function an optional t holds.
 func funcArity(t *ir.Type) int {
+	if t != nil && t.Kind == ir.TypeOption && len(t.Elems) == 1 {
+		t = t.Elems[0]
+	}
 	if t == nil || t.Kind != ir.TypeFunc || t.Sig == nil {
 		return 0
 	}
