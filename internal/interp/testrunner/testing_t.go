@@ -387,10 +387,18 @@ func (cv *componentValue) ElementRef(id string, supplied *interp.Env) (interp.Re
 		cv.settleErr = nil
 		return interp.RefSet{}, err
 	}
-	view, err := interp.Mount(cv.Env)
+	// A child mounted on its own has no call site, so its slots would show their
+	// fallbacks whatever the caller wrote: its refs are read off the tree the
+	// outermost instance mounts.
+	root := cv
+	for root.by != nil {
+		root = root.by
+	}
+	view, err := interp.Mount(root.Env)
 	if err != nil {
 		return interp.RefSet{}, err
 	}
+	view = view.OwnedBy(cv.Env)
 	set := interp.RefSet{View: view, Supplied: supplied}
 	for _, n := range view.Refs(id, supplied) {
 		switch {

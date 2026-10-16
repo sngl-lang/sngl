@@ -393,6 +393,7 @@ window.__sngl_boot = () => {
     Object.assign(el, p);
     el.dispatchEvent(Object.assign(new Event("contextmenu"), p));
   };
+  state.innerPresent = () => document.querySelector('[data-sngl-id="inner"], [data-sngl-instance="inner"]') !== null;
   if (typeof window !== "undefined") {
     window.__sngl_state = state;
   }
@@ -1411,7 +1412,7 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:3647c3d9546a84c8864a729aeae39a0a
+pass sha256:61cd9fda082eb43e4c7a9a797b700769
 -- testrun/html/none/component_browser_runtime.sngl/branch/1 --
 sha256:71f750302ecf4c5bc0eab9e2f9224b16
 {

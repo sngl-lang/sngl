@@ -58,3 +58,22 @@ func testOptionalRestChildren(t Test, c folded) {
 
 window {
 }
+
+// An unfilled named slot shows its insertion's block, whose nodes may not
+// render, and a population nobody wrote names nothing.
+component titled(head component() node) node {
+    vbox {
+        head {
+            text #dflt(value="Untitled")
+        }
+    }
+}
+
+component untitled node {
+    titled #t
+}
+
+func testUnfilledSlot(t Test, c untitled) {
+    var d text = c.t.dflt // ERROR(check) "cannot initialize text with option[text]"
+    var h = c.t.title     // ERROR(check) "no member \"title\" on component titled"
+}

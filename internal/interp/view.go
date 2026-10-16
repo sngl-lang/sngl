@@ -183,6 +183,18 @@ func (m *mounter) evictUnreached() {
 	}
 }
 
+// OwnedBy is v answering for the nodes owner's body wrote: a read of an
+// instance's refs through the tree an ancestor mounted, where the instance's
+// slots hold what its call site wrote.
+func (v *View) OwnedBy(owner *Env) *View {
+	if v == nil {
+		return nil
+	}
+	cp := *v
+	cp.owner = owner
+	return &cp
+}
+
 // Find returns the element nodes carrying the given #id anywhere in the tree,
 // in mount order, skipping a component instantiation that carries one. A host
 // addresses nodes this way; `c.<id>` is Refs. FindAny is the unfiltered form.

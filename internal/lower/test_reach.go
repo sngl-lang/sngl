@@ -3,7 +3,9 @@ package lower
 import (
 	"fmt"
 	"slices"
+	"strconv"
 
+	"duckfam.us/sngl/ast"
 	"duckfam.us/sngl/ir"
 )
 
@@ -245,6 +247,10 @@ func repointTestReaches(pkg *ir.Package, reach *testReach, splices []splice) err
 		}
 		_ = ir.Rewrite(fn.Block, func(n ir.Node) (ir.Node, error) {
 			switch x := n.(type) {
+			case *ir.Binary:
+				if lit := r.droppedNullTest(x); lit != nil {
+					return lit, ir.SkipDir
+				}
 			case *ir.Call:
 				r.repointCall(x, fail)
 			case *ir.Select:
@@ -266,7 +272,10 @@ func repointTestReaches(pkg *ir.Package, reach *testReach, splices []splice) err
 					return &ir.Ident{Name: v.Name, Type: x.Type, Sym: v}, ir.SkipDir
 				}
 				if h := si.nodes[x.Field]; h != nil && len(r.byHandle[h]) == 0 {
-					return &ir.Select{AST: x.AST, Type: x.Type, Operand: r.instance(x), Field: h.Name}, ir.SkipDir
+					return &ir.Select{AST: x.AST, Type: x.Type, Operand: r.instance(x), Field: h.Name, Ref: x.Ref}, ir.SkipDir
+				}
+				if r.dropped(si, x.Field) && x.Type != nil && x.Type.Kind == ir.TypeList {
+					return &ir.ListLit{Type: x.Type}, ir.SkipDir
 				}
 			}
 			return n, nil
@@ -458,4 +467,41 @@ func unnarrowed(e ir.Expr) ir.Expr {
 		e = conv.Operand
 	}
 	return e
+}
+
+// dropped reports whether id names a node the component's body writes that
+// this splice of it does not hold: the fallback of a slot its call site
+// filled, which renders nowhere in this instance.
+func (r *resolver) dropped(si *splicedInstance, id string) bool {
+	if _, kept := si.nodes[id]; kept {
+		return false
+	}
+	_, declared := bodyNodes(si.comp.Stmts)[id]
+	return declared
+}
+
+// droppedNullTest is the answer to a null test of a node the splice dropped,
+// or nil: it is never rendered, so it is null.
+func (r *resolver) droppedNullTest(b *ir.Binary) *ir.Literal {
+	if b.Op != ast.BinEq && b.Op != ast.BinNeq {
+		return nil
+	}
+	ref, other := b.Left, b.Right
+	if isNullLit(ref) {
+		ref, other = other, ref
+	}
+	sel, ok := unnarrowed(ref).(*ir.Select)
+	if !ok || !isNullLit(other) {
+		return nil
+	}
+	si := r.instOf(sel.Operand)
+	if si == nil || !r.dropped(si, sel.Field) {
+		return nil
+	}
+	return &ir.Literal{Type: ir.TypBool, Value: strconv.FormatBool(b.Op == ast.BinEq)}
+}
+
+func isNullLit(e ir.Expr) bool {
+	lit, ok := unnarrowed(e).(*ir.Literal)
+	return ok && lit.Type != nil && lit.Type.Kind == ir.TypeNull
 }

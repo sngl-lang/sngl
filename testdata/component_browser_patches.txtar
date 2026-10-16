@@ -310,6 +310,7 @@ window.__sngl_boot = () => {
   state.bClick = () => $11.click();
   state.nextClick = () => $13.click();
   state.t__1Click = () => $15.click();
+  state.shown__1Present = () => document.querySelector('[data-sngl-id="shown__1"], [data-sngl-instance="shown__1"]') !== null;
   if (typeof window !== "undefined") {
     window.__sngl_state = state;
   }
@@ -897,7 +898,7 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:d5b7f49aefefa8fda8e4ccfb0904455d
+pass sha256:a8589ea27e9832ff6a2085ad49bc2848
 -- testrun/html/none/component_browser_patches.sngl/app/1 --
 sha256:041cbbb1c388806814d18fe7c8eb503f
 {
