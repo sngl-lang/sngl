@@ -37,6 +37,10 @@ type splicedInstance struct {
 	// self is the call site's handle where the splice moved it onto the body's
 	// root node, which a test names by either id.
 	self *ir.Var
+	// props is what the call site gave each one-way prop, or its default:
+	// the splice substituted it for every read of the prop in the body, and
+	// left nothing a test's read of the prop could name.
+	props map[string]ir.Expr
 }
 
 func (st *inlineCompState) recordInstance(n *ir.NodeInst, symRenames map[ir.Symbol]ir.Symbol, body []ir.Stmt) {
@@ -54,6 +58,17 @@ func (st *inlineCompState) recordInstance(n *ir.NodeInst, symRenames map[ir.Symb
 		}
 	}
 	si.nodes = bodyNodes(body)
+	si.props = map[string]ir.Expr{}
+	for _, pr := range n.Component.Props {
+		if pr.Default != nil {
+			si.props[pr.Name] = pr.Default
+		}
+	}
+	for _, a := range n.Props {
+		if a.Name != "" {
+			si.props[a.Name] = a.Value
+		}
+	}
 	st.insts = append(st.insts, splice{handle: n.Handle, inst: si})
 }
 
@@ -270,6 +285,9 @@ func repointTestReaches(pkg *ir.Package, reach *testReach, splices []splice) err
 				}
 				if v := si.vars[x.Field]; v != nil {
 					return &ir.Ident{Name: v.Name, Type: x.Type, Sym: v}, ir.SkipDir
+				}
+				if e := si.props[x.Field]; e != nil && si.nodes[x.Field] == nil {
+					return ir.CloneExprSharingDecls(e), ir.SkipDir
 				}
 				if h := si.nodes[x.Field]; h != nil && len(r.byHandle[h]) == 0 {
 					return &ir.Select{AST: x.AST, Type: x.Type, Operand: r.instance(x), Field: h.Name, Ref: x.Ref}, ir.SkipDir

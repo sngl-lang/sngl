@@ -1,9 +1,8 @@
 Tests taking two components make this a build of the whole program, and both
 components write a `#b` and a `#k` their tests reach. Each id is kept by the
 component whose test is declared first, main, and renamed in panel, so
-panel's test names `b__own0` and `k__own0`: on bubbletea `c.b` once named
-main's badge for both tests, so panel's `c.b == null` after closing its own
-branch answered for main's.
+panel's test names `b__own0` and `k__own0`, and each test's null tests and
+clicks answer for its own component's nodes.
 
 deny out/go/bubbletea/model_test.go `c\.b__1|c\.k__1` -- each test names its own component's node, not the second one uniqueNodeIDs numbered
 -- app.sngl --

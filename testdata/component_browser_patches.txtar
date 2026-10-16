@@ -295,7 +295,7 @@ window.__sngl_reset = () => {
 window.__sngl_boot = () => {
 (() => {
   // sngl-entry.js
-  var state = { base: 3, fruit__inst0: "apple", n__inst0: 0, handle__inst0: 0, maybe__inst0: null, on__inst0: false, n__inst1: 0, a__inst0: 0, visible__inst0: true, on__inst1: true, visible__inst1: true };
+  var state = { base: 3, fruit__inst0: "apple", n__inst0: 0, handle__inst0: 0, maybe__inst0: null, a__inst0: 0, visible__inst0: true, on__inst0: true, on__inst1: false, n__inst1: 0, visible__inst1: true };
   state.maybe__inst0 = 3;
   state.doubled = () => doubled();
   state.blocky = () => blocky();
@@ -612,7 +612,7 @@ window.__sngl_boot = () => {
     let __place6_prev = __slot3;
     let __place6_i = 0;
     __slot3 = [];
-    if (state.on__inst0) {
+    if (state.on__inst1) {
       let __n10 = document.createElement("span");
       __n10.textContent = "SUPPLIED";
       let __place6_i_ref0 = null;
@@ -729,7 +729,7 @@ window.__sngl_boot = () => {
     let __place11_prev = __slot7;
     let __place11_i = 0;
     __slot7 = [];
-    if (state.on__inst1) {
+    if (state.on__inst0) {
       let shown__own0 = document.createElement("span");
       shown__own0.setAttribute("data-sngl-id", "shown__own0");
       shown__own0.textContent = "SHOWN";
@@ -811,7 +811,7 @@ window.__sngl_boot = () => {
     __renderSlot2(__slotAnchor_2);
   });
   $9.addEventListener("click", function() {
-    state.on__inst0 = !state.on__inst0;
+    state.on__inst1 = !state.on__inst1;
     __renderSlot3(__slotAnchor_3);
   });
   $11.addEventListener("click", function() {
@@ -824,7 +824,7 @@ window.__sngl_boot = () => {
     __renderSlot6(__slotAnchor_6);
   });
   $15.addEventListener("click", function() {
-    state.on__inst1 = !state.on__inst1;
+    state.on__inst0 = !state.on__inst0;
     __renderSlot7(__slotAnchor_7);
   });
   $23.addEventListener("click", function() {
@@ -845,7 +845,7 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:4300268f7f65dbc07c4f8f7e33e3f864
+pass sha256:2ac7ffaa553397da39a7f27f57009986
 -- testrun/html/none/component_browser_patches.sngl/app/1 --
 sha256:38139b6e2f2bc2546369849a11da2f34
 {

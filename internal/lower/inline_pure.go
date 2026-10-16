@@ -43,6 +43,7 @@ func lowerInlinePure(pkg *ir.Package, caps Features, opts Options) error {
 		stack:    nil,
 		owned:    soleInstances(pkg, caps, opts),
 		reached:  ir.ReachedHandles(pkg),
+		tested:   testedComponentSet(pkg, opts),
 	}
 	for _, comp := range pkg.Components {
 		st.hoist = &comp.Vars
@@ -100,6 +101,10 @@ type inlinePureState struct {
 	// left to passNoInlineComponents: it records what its splice made of the
 	// instance's members, which is what such a read is pointed at.
 	reached map[*ir.Var]bool
+	// tested is each component a test is handed in a build of the whole
+	// program, whose instance is left to passNoInlineComponents for the same
+	// reason: the test reaches it where the program renders it.
+	tested map[*ir.Component]bool
 	// loopDepth counts the `for`s the walk is inside. A call site under one
 	// holds many copies of the body and a substitution makes one, so a callee
 	// with state of its own may not be substituted there -- it stays a runtime
@@ -452,7 +457,7 @@ func (st *inlinePureState) inlineNodeInst(n *ir.NodeInst) ([]ir.Stmt, error) {
 
 	pure := st.isPure(comp) || st.constSubstitutable(comp)
 	strictApplies := isPlatformStdlibComponent(st.pkg, comp)
-	if pure && comp.PkgPath() == "" && n.Handle != nil && st.reached[n.Handle] {
+	if pure && comp.PkgPath() == "" && (n.Handle != nil && st.reached[n.Handle] || st.tested[comp]) {
 		pure = false
 	}
 	if strictApplies && !pure {
