@@ -34,14 +34,8 @@ func analyzeEffects(lib *ir.Builtins, f *ir.Func, varSet map[*ir.Var]struct{}) {
 		f.Purity = ir.PurityPure
 	}
 
-	f.Reads = f.Reads[:0]
-	for v := range w.reads {
-		f.Reads = append(f.Reads, v)
-	}
-	f.Writes = f.Writes[:0]
-	for v := range w.writes {
-		f.Writes = append(f.Writes, v)
-	}
+	f.Reads = append(f.Reads[:0], w.readOrder...)
+	f.Writes = append(f.Writes[:0], w.writeOrder...)
 }
 
 type effectWalker struct {
@@ -50,6 +44,9 @@ type effectWalker struct {
 	vars   map[*ir.Var]struct{}
 	reads  map[*ir.Var]struct{}
 	writes map[*ir.Var]struct{}
+	// readOrder and writeOrder are the same vars in the order the body first
+	// names them, so Reads and Writes do not follow map iteration.
+	readOrder, writeOrder []*ir.Var
 	// locals are the vars the function declares itself and starts from a value
 	// nothing else holds (freshValue), so writing into one is no effect.
 	locals  map[*ir.Var]struct{}
@@ -103,13 +100,13 @@ func (w *effectWalker) visit(n ir.Node) error {
 			if def, ok := w.lib.IntrinsicByName(x.Func.Intrinsic); ok && def.MutatesReceiver {
 				if v := w.rootVar(x.Args[0].Value); v != nil {
 					w.mutates = true
-					w.writes[v] = struct{}{}
+					w.write(v)
 				}
 			}
 		}
 	case ir.Expr:
 		if v := w.externalVar(x); v != nil {
-			w.reads[v] = struct{}{}
+			w.read(v)
 		}
 	}
 	return nil
@@ -123,7 +120,7 @@ func (w *effectWalker) visit(n ir.Node) error {
 func (w *effectWalker) recordWrite(target ir.Expr) {
 	if v := w.externalVar(target); v != nil {
 		w.mutates = true
-		w.writes[v] = struct{}{}
+		w.write(v)
 		return
 	}
 	if _, ok := target.(*ir.Ident); ok {
@@ -145,7 +142,7 @@ func (w *effectWalker) recordWrite(target ir.Expr) {
 	// reads it performs (`m[k] = v` reads m and k).
 	w.mutates = true
 	if v := w.rootVar(target); v != nil {
-		w.writes[v] = struct{}{}
+		w.write(v)
 	}
 	ir.Walk(target, w.visit)
 }
@@ -297,4 +294,18 @@ func viewStateVars(stmts []ir.Stmt) []*ir.Var {
 		}
 	}
 	return out
+}
+
+func (w *effectWalker) read(v *ir.Var) {
+	if _, ok := w.reads[v]; !ok {
+		w.reads[v] = struct{}{}
+		w.readOrder = append(w.readOrder, v)
+	}
+}
+
+func (w *effectWalker) write(v *ir.Var) {
+	if _, ok := w.writes[v]; !ok {
+		w.writes[v] = struct{}{}
+		w.writeOrder = append(w.writeOrder, v)
+	}
 }
