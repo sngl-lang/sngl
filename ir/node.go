@@ -151,22 +151,29 @@ func attachNode(body []Stmt, set func(*NodeInst)) bool {
 }
 
 // NodeIDRendersWithBody reports whether the node AttachNodeID picks in body is
-// rendered whenever body is: not one an `if` or a `for` around it decides, so a
-// test's null test of the call site's `#id` is a null test of that node.
+// rendered whenever body is: not one an `if`, a `for` or a boundary's fallback
+// around it decides, so a test's null test of the call site's `#id` is a null
+// test of that node.
 func NodeIDRendersWithBody(body []Stmt) bool {
 	for _, s := range body {
+		decided := false
 		switch n := s.(type) {
 		case *NodeInst:
 			return true
 		case *If, *For:
-			if attachNode([]Stmt{n}, func(*NodeInst) {}) {
+			decided = true
+		case *ErrorBoundary:
+			decided = len(n.Failed) > 0
+		}
+		if decided {
+			if attachNode([]Stmt{s}, func(*NodeInst) {}) {
 				return false
 			}
-		default:
-			for _, block := range TransparentBlocks(s) {
-				if attachNode(*block, func(*NodeInst) {}) {
-					return NodeIDRendersWithBody(*block)
-				}
+			continue
+		}
+		for _, block := range TransparentBlocks(s) {
+			if attachNode(*block, func(*NodeInst) {}) {
+				return NodeIDRendersWithBody(*block)
 			}
 		}
 	}

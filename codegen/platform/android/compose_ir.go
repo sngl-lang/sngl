@@ -376,6 +376,21 @@ func (cc *irComposeContext) modifierRawExcept(n *ir.NodeInst, styleProp string, 
 			parts = append(parts, fmt.Sprintf("then(%s.let { __key -> %s.%s { this[%s] = __key } })", cc.kc.EvalExpr(key), cc.kc.Name(ktModifier), cc.kc.Name(ktSemantics), kotlin.CopySemanticsKey))
 		}
 	}
+	// A root of a spliced instance a test null-tests counts the instance in
+	// PresentRegistry while it is composed, as an instance built at run time
+	// does at its call site.
+	for _, p := range n.Props {
+		id, ok := codegen.InstanceRootID(p.Name)
+		if !ok || !cc.present[id] {
+			continue
+		}
+		entry := fmt.Sprintf("%q", id)
+		if lit, isLit := p.Value.(*ir.Literal); !isLit || lit.Value != "" {
+			entry = kotlin.PresentCopyEntry(id, cc.kc.EvalExpr(p.Value))
+		}
+		parts = append(parts, fmt.Sprintf("then((%s).let { __entry -> %s.%s { %s(__entry) { val __token = Any(); %s[__token] = __entry; onDispose { %s.remove(__token) } }; %s } })",
+			entry, cc.kc.Name(ktModifier), cc.kc.Name(ktComposed), cc.kc.Name(ktDisposableEffect), kotlin.PresentRegistry, kotlin.PresentRegistry, cc.kc.Name(ktModifier)))
+	}
 	for _, sf := range codegen.NodeStyleFieldsOf(n, styleProp) {
 		if skip[sf.Name] {
 			continue

@@ -185,6 +185,10 @@ type gtk4Translator struct {
 	// itself.
 	instanceCopies map[string]bool
 	modelSink      func(name, cType string)
+	// record is set in a component built at run time, which lists the roots
+	// of the spliced instances it renders (listRoot) so its Destroy can take
+	// them out again.
+	record bool
 }
 
 // namedWidgetField is the Model field a widget an instance builds is handed
@@ -225,6 +229,13 @@ func (t *gtk4Translator) withIndexed(indexed, present map[string]bool, stmts []i
 		return nil
 	})
 	return t.withInstanceCopies(indexed, t.sinkField)
+}
+
+// inRecord marks this scope as the body or a method of a component built at
+// run time.
+func (t *gtk4Translator) inRecord() *gtk4Translator {
+	t.record = true
+	return t
 }
 
 // withInstanceCopies has this scope list the instances of the ids a test
@@ -913,6 +924,10 @@ func (t *gtk4Translator) OnRemoveChild(ctx context.Context, parent, child ir.Exp
 	if t.isSkipped(parent) || t.isSkipped(child) {
 		return nil
 	}
+	return append(t.unlistRemoved(child), t.removeChild(parent, child)...)
+}
+
+func (t *gtk4Translator) removeChild(parent, child ir.Expr) []ir.Stmt {
 	if ir.IsAppParent(parent) {
 		return t.appDetach(child)
 	}
@@ -990,6 +1005,9 @@ func (t *gtk4Translator) OnPropAssign(ctx context.Context, node ir.Expr, prop st
 	bare := codegen.IdentBareName(node)
 	if prop == ir.CopyProp {
 		return []ir.Stmt{t.listCopy(bare, node, value)}
+	}
+	if id, ok := codegen.InstanceRootID(prop); ok {
+		return t.listRoot(id, node, value)
 	}
 	if t.isToplevel(bare) {
 		return t.toplevelPropAssign(node, prop, value)

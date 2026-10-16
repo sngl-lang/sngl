@@ -422,6 +422,13 @@ func (g *htmlGen) emitStaticInstances(b *strings.Builder) {
 			si.id, javascript.FactoryName(si.node.Component), strings.Join(fields, ", "))
 		fmt.Fprintf(b, "%s.appendChild(%s.%s);\n",
 			ir.InstancePlaceName(si.id), si.id, instanceRootField)
+		// Marked as OnComponentRoot marks the root of one a slot builds.
+		if isProgramID(si.id) {
+			fmt.Fprintf(b, "%s.%s.setAttribute(%q, %q);\n", si.id, instanceRootField, instanceMark, si.id)
+			if key := si.node.Prop(ir.CopyProp); key != nil && si.node.Component.KeyedCopy {
+				fmt.Fprintf(b, "%s.%s.setAttribute(%q, %s);\n", si.id, instanceRootField, copyAttr, g.exprToJS(key))
+			}
+		}
 	}
 	if len(g.staticInsts) > 0 {
 		b.WriteString("\n")

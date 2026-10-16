@@ -71,7 +71,7 @@ func emitComponentInstance(
 	var invokers []fyneEventInvoker
 	tr := newFyneTranslator(igc, nodeSpecs, sink, importSink, failSink).
 		withLocalRefs(comp.LocalRefs).withSlotRoot(instanceRootVar, comp.Stmts).
-		withInstanceCopies(indexed, modelFieldSink).
+		withInstanceCopies(indexed, modelFieldSink).inRecord().
 		withInvokerSink(func(inv fyneEventInvoker) { invokers = append(invokers, inv) })
 	tr.canvasByID, tr.canvasByNode = canvasByID, canvasByNode
 	bodyStmts := codegen.WalkLowered(context.Background(), comp.Stmts, tr)
@@ -172,6 +172,9 @@ func emitComponentInstance(
 	if comp.KeyedCopy {
 		fmt.Fprintf(&unlisting, "\t%s.%s.%s(%s.%s)\n", instanceReceiver, golang.InstanceModelField, unlistInstance, instanceReceiver, golang.ComponentRootField)
 	}
+	if len(codegen.InstanceRootIDs(comp)) > 0 {
+		fmt.Fprintf(&unlisting, "\tfor _, w := range %s.%s {\n\t\t%s.%s.%s(w)\n\t}\n", instanceReceiver, rootedField, instanceReceiver, golang.InstanceModelField, unlistInstance)
+	}
 
 	// Methods after the body, because the walk is what discovers the widget
 	// fields the struct declares -- and a setter's body carries the same
@@ -183,7 +186,7 @@ func emitComponentInstance(
 			continue
 		}
 		mtr := newFyneTranslator(igc, nodeSpecs, sink, importSink, failSink).withLocalRefs(fn.Lowered.LocalRefs).
-			withInstanceCopies(indexed, modelFieldSink)
+			withInstanceCopies(indexed, modelFieldSink).inRecord()
 		mtr.canvasByNode = canvasByNode
 		params := fn.Params
 		if len(params) > 0 && params[0].Receiver {

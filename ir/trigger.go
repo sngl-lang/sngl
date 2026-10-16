@@ -11,6 +11,16 @@ import (
 // stands in, which its own copies' keys extend.
 const CopyProp = "__copy"
 
+// InstanceRootProp is the prop each root node of a spliced component instance
+// a test null-tests carries, on a target that finds a node by what it carries
+// rather than by the roots NodeInst.Instances names: its value is the key of
+// the copy the instance stands in (CopyKey), "" for one rendered once. A root
+// of several nested instances carries one per id.
+func InstanceRootProp(id string) string { return InstanceRootPrefix + id }
+
+// InstanceRootPrefix is what every InstanceRootProp begins with.
+const InstanceRootPrefix = "__instance_"
+
 // TriggerTarget reads a test's event trigger -- `c.inc.click()`, a call the
 // checker tagged with an Event -- off the call's receiver as the checker
 // resolved it: the variable holding the instance under test, the `#id` of the
@@ -111,9 +121,9 @@ func literalIndices(indices []Expr) []string {
 }
 
 // NullTestedRef reads a test's `c.x == null` or `c.x != null`, either way
-// round, where `c.x` is a ref to a node that may not be rendered -- or
-// `c.x[1]`, one copy of a node loops rendered, under an `if` or not, whose
-// path holds the index into each loop. present is true for `!=`.
+// round, where `c.x` is a ref to a node -- or `c.x[1]`, one copy of a node
+// loops rendered, under an `if` or not, whose path holds the index into each
+// loop. present is true for `!=`.
 func NullTestedRef(e Expr) (sel *Select, path []Expr, present, ok bool) {
 	bin, isBin := e.(*Binary)
 	if !isBin || (bin.Op != ast.BinEq && bin.Op != ast.BinNeq) {
@@ -135,9 +145,10 @@ func NullTestedRef(e Expr) (sel *Select, path []Expr, present, ok bool) {
 	if !isSel || len(sel.Ref) < len(path)+1 {
 		return nil, nil, false, false
 	}
-	// A copy is null-tested past the copies its loops rendered, whether or
-	// not an `if` stands between it and them.
-	if rest := sel.Ref[len(path):]; rest[0] != RefOption && (len(path) == 0 || rest != RefOne) {
+	// A node is null-tested whether or not anything decides it is rendered:
+	// a copy past the copies its loops rendered is not, and one always
+	// rendered always is.
+	if rest := sel.Ref[len(path):]; rest[0] != RefOption && rest != RefOne {
 		return nil, nil, false, false
 	}
 	for i := range path {

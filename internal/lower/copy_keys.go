@@ -1,6 +1,9 @@
 package lower
 
 import (
+	"maps"
+	"slices"
+
 	"duckfam.us/sngl/ast"
 	"duckfam.us/sngl/ir"
 )
@@ -26,15 +29,16 @@ var passCopyKeys = pass{
 	apply:   lowerCopyKeys,
 }
 
-func lowerCopyKeys(pkg *ir.Package, _ Features, opts Options) error {
+func lowerCopyKeys(pkg *ir.Package, feats Features, opts Options) error {
 	if pkg == nil || !opts.Tests {
 		return nil
 	}
 	indexed := ir.IndexedRefIDs(pkg)
-	if len(indexed) == 0 {
+	tested := ir.NullTestedIDs(pkg)
+	if len(indexed) == 0 && len(tested) == 0 {
 		return nil
 	}
-	st := &copyKeys{indexed: indexed, prefix: map[*ir.Component]*ir.Param{}}
+	st := &copyKeys{indexed: indexed, tested: tested, rootProps: feats.InstanceState, prefix: map[*ir.Component]*ir.Param{}}
 	holding := map[*ir.Component]bool{}
 	for changed := true; changed; {
 		changed = false
@@ -75,15 +79,21 @@ func lowerCopyKeys(pkg *ir.Package, _ Features, opts Options) error {
 			st.prefix[c] = sym
 		}
 	}
-	pkg.Body = st.stamp(pkg.Body, nil, nil)
+	pkg.Body = st.stamp(pkg.Body, nil, nil, nil)
 	for _, c := range pkg.Components {
-		c.Stmts = st.stamp(c.Stmts, nil, st.prefix[c])
+		c.Stmts = st.stamp(c.Stmts, nil, st.prefix[c], nil)
 	}
 	return nil
 }
 
 type copyKeys struct {
 	indexed map[string]bool
+	// tested is every id a test null-tests. A spliced instance of one is
+	// found by its roots (ir.InstancesOf): bubbletea reads those, and where
+	// rootProps is set each root node is stamped ir.InstanceRootProp instead,
+	// since the target finds a node only by what it carries.
+	tested    map[string]bool
+	rootProps bool
 	// prefix is the prop of each component built at run time that holds a
 	// node a test indexes, which its instance is handed its own copy's key in.
 	prefix map[*ir.Component]*ir.Param
@@ -97,25 +107,71 @@ func (st *copyKeys) holds(stmts []ir.Stmt, holding map[*ir.Component]bool) bool 
 		if n, ok := s.(*ir.NodeInst); ok && (st.indexed[n.ID] || holding[n.Component]) {
 			found = true
 		}
+		if ins := ir.InstancesOf(s); ins != nil && slices.ContainsFunc(*ins, func(id string) bool { return st.indexed[id] }) {
+			found = true
+		}
 		return !found
 	})
 	return found
 }
 
-func (st *copyKeys) stamp(stmts []ir.Stmt, loops []*ir.For, prefix *ir.Param) []ir.Stmt {
+// stamp keys what stmts render: the copies of a node a test indexes, an
+// instance built at run time that holds one, and the roots of a spliced
+// instance a test null-tests. roots is each such instance whose body stmts
+// are the roots of -- under an `if`, a `for` or a boundary at the root of the
+// body -- with the loops around where it was written, which its key counts
+// and a `for` of its own body does not.
+func (st *copyKeys) stamp(stmts []ir.Stmt, loops []*ir.For, prefix *ir.Param, roots map[string][]*ir.For) []ir.Stmt {
 	for _, s := range stmts {
+		here, cloned := roots, false
+		if ins := ir.InstancesOf(s); ins != nil {
+			for _, id := range *ins {
+				if _, ok := here[id]; ok || !st.tested[id] {
+					continue
+				}
+				if !cloned {
+					here, cloned = maps.Clone(roots), true
+					if here == nil {
+						here = map[string][]*ir.For{}
+					}
+				}
+				// Indexed here, at the lowering, so a target reading the key
+				// off the loops later finds them already indexed.
+				if st.indexed[id] {
+					CopyKey(loops)
+				}
+				here[id] = slices.Clip(loops)
+			}
+		}
 		if f, ok := s.(*ir.For); ok {
-			f.Body = st.stamp(f.Body, append(loops[:len(loops):len(loops)], f), prefix)
-			f.Else = st.stamp(f.Else, loops, prefix)
+			f.Body = st.stamp(f.Body, append(loops[:len(loops):len(loops)], f), prefix, here)
+			f.Else = st.stamp(f.Else, loops, prefix, here)
 			continue
 		}
-		if n, ok := s.(*ir.NodeInst); ok && (st.indexed[n.ID] || st.prefix[n.Component] != nil) {
+		n, isNode := s.(*ir.NodeInst)
+		if isNode && (st.indexed[n.ID] || st.prefix[n.Component] != nil) {
 			if key := triggerKey(loops, prefix); key != nil {
 				setCopyProp(n, key)
 			}
 		}
+		if isNode && st.rootProps {
+			for _, id := range slices.Sorted(maps.Keys(here)) {
+				var key ir.Expr = stringLit("")
+				if st.indexed[id] {
+					if k := triggerKey(here[id], prefix); k != nil {
+						key = k
+					}
+				}
+				setProp(n, ir.InstanceRootProp(id), key)
+			}
+		}
+		// What a node holds is no root of the instance it is one of.
+		inner := here
+		if isNode {
+			inner = nil
+		}
 		for _, b := range ir.ViewBlocks(s) {
-			*b = st.stamp(*b, loops, prefix)
+			*b = st.stamp(*b, loops, prefix, inner)
 		}
 	}
 	return stmts
@@ -139,15 +195,7 @@ func triggerKey(loops []*ir.For, prefix *ir.Param) ir.Expr {
 	}
 }
 
-func setCopyProp(n *ir.NodeInst, key ir.Expr) {
-	for i := range n.Props {
-		if n.Props[i].Name == ir.CopyProp {
-			n.Props[i].Value = key
-			return
-		}
-	}
-	n.Props = append(n.Props, ir.Arg{Name: ir.CopyProp, Value: key})
-}
+func setCopyProp(n *ir.NodeInst, key ir.Expr) { setProp(n, ir.CopyProp, key) }
 
 // placed calls visit on each node of a view with the number of loops around
 // it.

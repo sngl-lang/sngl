@@ -4,6 +4,7 @@ import (
 	_ "embed"
 	"errors"
 	"fmt"
+	"maps"
 	"strings"
 
 	"duckfam.us/sngl/codegen"
@@ -321,7 +322,7 @@ func emitKotlinTestSources(req *codegen.Request, sink codegen.Sink, cfg Config, 
 		Pkg:            req.Pkg,
 		Members:        members,
 		Platform:       "android",
-		KeyedInstances: codegen.KeyedInstanceIDs(req.Pkg),
+		KeyedInstances: keyedInstanceIDs(req.Pkg),
 	}
 	if len(testFns) == 0 {
 		return nil
@@ -606,4 +607,13 @@ object DeviceSnapshotCapture {
     fun attach(a: Activity) { activity = a }
 }
 `)
+}
+
+// keyedInstanceIDs is every id a copy of which may be an instance -- one built
+// at run time and handed its key, or a spliced one whose roots carry it --
+// and so registers in kotlin.PresentRegistry under its key.
+func keyedInstanceIDs(pkg *ir.Package) map[string]bool {
+	ids := codegen.KeyedInstanceIDs(pkg)
+	maps.Copy(ids, codegen.InstanceRootIDs(pkg))
+	return ids
 }

@@ -2604,17 +2604,26 @@ argument, after the setter has re-keyed an instance a slot reuses: html's
 `__copies_<id>`, one map for every record: a re-key replaces the entry and a
 record's `Destroy` takes its root out, and android's `SnglPresent` entry
 `id[key]`, each asked only for an id some such instance carries
-(`codegen.KeyedInstanceIDs`). bubbletea splices it and answers from the view (`testdata/indexed_ref_null_test_instance.txtar`).
+(`codegen.KeyedInstanceIDs`); html places a static instance's root, built
+once at a fixed position, with the same marks. bubbletea splices it and answers from the view (`testdata/indexed_ref_null_test_instance.txtar`).
 
-**An instance a test null-tests keeps a node of its own to be found by.** A
-splice leaves only the roots of its body, which bubbletea's view answers from
-(`ir.InstancesOf`) and no other target reads, so a target holding
-`InstanceState` builds one at run time wherever passNoInlineComponents would
-splice it, unless a test also reaches into it (`ir.NullTestedIDs`,
-`ir.ReachedIDs`). The two splices that move the call site's `#id` onto the
-body's first node leave a program component to it where that node is one an
-`if` or a `for` in the body decides (`ir.NodeIDRendersWithBody`)
-(`testdata/indexed_ref_null_test_spliced.txtar`).
+**A spliced instance a test null-tests is found by its roots.** A splice
+leaves no node of the instance's own, only the roots of its body -- the nodes
+it renders first, through an `if`, a `for` or a boundary there -- which carry
+the instance's id in `NodeInst.Instances` (`ir.InstancesOf`). bubbletea's
+view answers from those. On every other compiled target `passCopyKeys` stamps
+each root node `ir.InstanceRootProp` (`__instance_<id>`), holding the key of
+the copy the instance stands in -- the loops around where it was written,
+not a `for` of its own body -- or "" for one rendered once: html writes it as
+`data-sngl-root-<id>`; fyne and gtk4 list the root in the instance's
+`__copies_<id>` or `__present_<id>`, take it out where a render removes it
+and where a record that listed it is destroyed (`__rooted`,
+`__unlistInstance`); android holds a `SnglPresent` token while the root is
+composed. The two splices that move the call site's `#id` onto the body's
+first node leave a program component to passNoInlineComponents where that
+node is one an `if`, a `for` or a boundary's fallback decides
+(`ir.NodeIDRendersWithBody`). A null test of a node nothing decides is one
+too, answered present (`testdata/indexed_ref_null_test_spliced.txtar`).
 
 **An event's parameters are its declaration's, and an override reads what the
 host reports and writes the prop it reports.** A platform override handles
@@ -3172,7 +3181,8 @@ handed -- and under a `for` gives each of its vars one cell per copy
 `cell.get(key, init)` and written through a temporary stored back. On every
 target a function a splice hoists out of loops takes the loop variables it
 reads as parameters (`passLoopVars`), since a prop bound to one is substituted
-into it as that variable (`testdata/component_func_reads_loop_prop.txtar`). A timer under a loop is then a schedule per copy, which
+into it as that variable, and one taken as a value is a lambda passing them
+(`testdata/component_func_reads_loop_prop.txtar`). A timer under a loop is then a schedule per copy, which
 bubbletea keeps keyed the same way and routes through Update
 (`codegen.CollectLoopTimers`, `bubbletea/timers.go`); it used to be
 collected by nobody and never ran. A timer under no loop is the same
@@ -3184,9 +3194,11 @@ was off, and one a gate did stop was never armed again
 (`bubbletea/timer_gate_run_test.go`). A recursion is never spliced, so state
 inside one -- the recursive component's own vars or lifetime, a stateful
 component written in its body, or a canvas it renders -- has nowhere to live
-there and is refused with a position
+there and is refused with a position, and so is a function of the recursive
+component that reads its props, which would be the Model's
 (`refuseStateInCycles`, `refuseCanvasInCycles`,
-`cmd/sngl/testdata/bubbletea_recursive_state_refused.txt`);
+`cmd/sngl/testdata/bubbletea_recursive_state_refused.txt`,
+`bubbletea_recursive_func_refused.txt`);
 it used to reach the Model as a field nothing declared, or the view as an
 empty string.
 

@@ -91,7 +91,7 @@ func emitComponentInstance(
 	// the Model as it is built: the invoker reaches whichever instance built
 	// it last, which is the one on screen.
 	var invokers []gtkEventInvoker
-	tr := newTr(comp.LocalRefs).withInstanceCopies(indexed, modelSink).withSlotRoot(instanceRootVar, comp.Stmts).
+	tr := newTr(comp.LocalRefs).withInstanceCopies(indexed, modelSink).inRecord().withSlotRoot(instanceRootVar, comp.Stmts).
 		withInvokerSink(func(inv gtkEventInvoker) { invokers = append(invokers, inv) })
 	bodyStmts := codegen.WalkLowered(context.Background(), comp.Stmts, tr)
 
@@ -179,7 +179,7 @@ func emitComponentInstance(
 		if fn == nil || len(fn.Block) == 0 {
 			continue
 		}
-		mtr := newTr(fn.Lowered.LocalRefs).withInstanceCopies(indexed, modelSink)
+		mtr := newTr(fn.Lowered.LocalRefs).withInstanceCopies(indexed, modelSink).inRecord()
 		params := fn.Params
 		if len(params) > 0 && params[0].Receiver {
 			params = params[1:]
@@ -277,6 +277,9 @@ func emitComponentInstance(
 	fmt.Fprintf(b, "func (%s *%s) %s() {\n", instanceReceiver, typeName, golang.ComponentDestroyMethod)
 	if comp.KeyedCopy {
 		fmt.Fprintf(b, "\t%s.%s.%s(%s)\n", instanceReceiver, golang.InstanceModelField, unlistInstance, root)
+	}
+	if len(codegen.InstanceRootIDs(comp)) > 0 {
+		fmt.Fprintf(b, "\tfor _, w := range %s.%s {\n\t\t%s.%s.%s(w)\n\t}\n", instanceReceiver, rootedField, instanceReceiver, golang.InstanceModelField, unlistInstance)
 	}
 	// A destroyed instance's widgets leave the Model's maps of them, so a
 	// map holds the copies on screen.

@@ -63,7 +63,29 @@ component each(label string) node {
     }
 }
 
+component step(n int) node {
+    vbox {
+        text(value="s{n}")
+        if n > 0 {
+            step(n=n - 1)
+        }
+    }
+}
+
+component thrower(label string) node {
+    func check() {
+        if label == "x" {
+            error.raise("empty", "validation")
+        }
+    }
+    button(text=label, @click { check() })
+}
+
+const ok = true
+
 component main node {
+    var depth = 2
+    var problem = "none"
     var names = ["a", "b"]
     var skip = "b"
     var shown = true
@@ -72,6 +94,22 @@ component main node {
         button #hide(text="h", @click { shown = false })
         if shown {
             either #one(label=skip)
+        }
+        shouting #always(label="x")
+        if ok {
+            step #r(n=depth)
+        }
+        boundary(@error(e) {
+            problem = e.message
+        }) {
+            for var n = ["x", "y"] {
+                if n != "y" {
+                    thrower #th(label=n)
+                }
+            }
+        }
+        for var n = names {
+            either #w(label=n)
         }
         for var n = names {
             plain #p(label=n)
@@ -90,6 +128,12 @@ component main node {
 
 func testSplicedCopies(t Test, c main) {
     t.assert(c.one != null)
+    t.assert(c.always != null)
+    t.assert(c.r != null)
+    t.assert(c.th[0] != null)
+    t.assert(c.th[1] == null)
+    t.assert(c.w[1] != null)
+    t.assert(c.w[2] == null)
     t.assert(c.p[1] != null)
     t.assert(c.p[2] == null)
     t.assert(c.s[0] != null)
@@ -113,7 +157,7 @@ window {
     main
 }
 -- testrun/android/kotlin/app.sngl/main/1 --
-sha256:042b0c28056b008ccb9b1c343a027149
+sha256:8a0eeac4df48411d0a9024a0c730fc2a
 {
   "results": [
     {
@@ -123,7 +167,7 @@ sha256:042b0c28056b008ccb9b1c343a027149
   ]
 }
 -- testrun/bubbletea/go/app.sngl/main/1 --
-sha256:cb2a3a0323dc5a05c74fdc3e6de062f8
+sha256:0a8de6842b9da70d036811237a8a8acf
 {
   "results": [
     {
@@ -133,7 +177,7 @@ sha256:cb2a3a0323dc5a05c74fdc3e6de062f8
   ]
 }
 -- testrun/fyne/go/app.sngl/main/1 --
-sha256:da40639f5f8fd3a765f4e67b06d4ee78
+sha256:09debdb0fe7a6b418f6f3eec736ea025
 {
   "results": [
     {
@@ -143,7 +187,7 @@ sha256:da40639f5f8fd3a765f4e67b06d4ee78
   ]
 }
 -- testrun/gtk4/go/app.sngl/main/1 --
-sha256:e0d0b17a10c16fc89eabb41d9f29f3f4
+sha256:f1bf838a26007dbfa00107c4118be5c9
 {
   "results": [
     {
@@ -153,7 +197,7 @@ sha256:e0d0b17a10c16fc89eabb41d9f29f3f4
   ]
 }
 -- testrun/html/none/app.sngl/main/1 --
-sha256:5f8497af1e9b809b1e82eb7771836b28
+sha256:8eaec95a6ff1ddda772e1fb60b6298d8
 {
   "results": [
     {

@@ -2,6 +2,7 @@ package codegen
 
 import (
 	"maps"
+	"strings"
 
 	"duckfam.us/sngl/ast"
 	"duckfam.us/sngl/ir"
@@ -110,4 +111,37 @@ func KeyedInstanceIDs(pkg *ir.Package) map[string]bool {
 		return nil
 	})
 	return out
+}
+
+// InstanceRootIDs is every `#id` of a spliced instance whose root nodes carry
+// ir.InstanceRootProp in root, a lowered package or component: still on a
+// node, or the write of it the node became.
+func InstanceRootIDs(root any) map[string]bool {
+	out := map[string]bool{}
+	if p, ok := root.(*ir.Package); ok && p == nil {
+		return out
+	}
+	_ = ir.Walk(root, func(n ir.Node) error {
+		switch x := n.(type) {
+		case *ir.NodeInst:
+			for _, p := range x.Props {
+				if id, ok := InstanceRootID(p.Name); ok {
+					out[id] = true
+				}
+			}
+		case *ir.Assign:
+			if sel, ok := x.Target.(*ir.Select); ok {
+				if id, ok := InstanceRootID(sel.Field); ok {
+					out[id] = true
+				}
+			}
+		}
+		return nil
+	})
+	return out
+}
+
+// InstanceRootID is the id prop is the ir.InstanceRootProp of.
+func InstanceRootID(prop string) (string, bool) {
+	return strings.CutPrefix(prop, ir.InstanceRootPrefix)
 }
