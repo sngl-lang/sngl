@@ -441,7 +441,7 @@ func cellReadError(w *ir.Component, v *ir.Var, copies int) error {
 	pos, id := "<unknown>", "?"
 	if len(w.Stmts) > 0 {
 		if inner, ok := w.Stmts[0].(*ir.NodeInst); ok {
-			pos, id = nodePos(inner), inner.ID
+			pos, id = nodePos(inner), writtenID(inner)
 		}
 	}
 	why := "is built at run time here"
@@ -483,7 +483,7 @@ func repointHandleCalls(pkg *ir.Package, methods map[*ir.Var]map[*ir.Func][]*ir.
 				call.Args = slices.Delete(slices.Clone(call.Args), 0, 1)
 			}
 		case len(clones) > 1 && bad == nil:
-			bad = fmt.Errorf("%s: `#%s` is rendered more than once, so a call of its %s cannot say which copy it means; give each copy its own id", handleCallPos(call), h.Name, call.Func.Name)
+			bad = fmt.Errorf("%s: `#%s` is rendered more than once, so a call of its %s cannot say which copy it means; give each copy its own id", handleCallPos(call), h.WrittenName(), call.Func.Name)
 		}
 		return n, nil
 	})
@@ -513,7 +513,7 @@ func refuseUnsplicedHandleCalls(pkg *ir.Package) error {
 			return nil
 		}
 		if h, _ := handleReceiver(call); h != nil {
-			bad = fmt.Errorf("%s: `%s.%s()` calls a method of the node `#%s`, which this target does not splice where it is written, so there is no one instance's method to call", handleCallPos(call), h.Name, fn.Name, h.Name)
+			bad = fmt.Errorf("%s: `%s.%s()` calls a method of the node `#%s`, which this target does not splice where it is written, so there is no one instance's method to call", handleCallPos(call), h.WrittenName(), fn.Name, h.WrittenName())
 		}
 		return nil
 	})

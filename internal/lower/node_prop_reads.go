@@ -248,7 +248,7 @@ func refuseNodePropCycle(handles map[*ir.Var]*ir.NodeInst) error {
 			switch state[to] {
 			case onStack:
 				return fmt.Errorf("%s: `#%s` reads its own value back through `#%s`: each prop is the other, so there is nothing to answer with",
-					ir.StmtPos(n), n.ID, to.ID)
+					ir.StmtPos(n), writtenID(n), writtenID(to))
 			case unvisited:
 				if err := walk(to); err != nil {
 					return err

@@ -1,0 +1,42 @@
+# main's own `#hit` keeps its id, and badge's is renamed so that `c.hit` finds
+# main's. A lowering diagnostic about badge's names it as the program wrote it.
+
+! sngl test --platform=html app.sngl
+stderr '`#hit` is not rendered once by every copy of badge'
+! stderr '__own'
+
+-- app.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+
+component badge(label string) node {
+    var hits = 0
+    vbox {
+        if hits < 2 {
+            button #hit(text="{label}{hits}", @click { hits = hits + 1 })
+        }
+    }
+}
+
+component main node {
+    var names = ["a", "b"]
+    var mh = 0
+    vbox {
+        button #hit(text="m{mh}", @click { mh = mh + 1 })
+        for var n = names {
+            badge #b(label=n)
+        }
+    }
+}
+
+func testHit(t Test, c main) {
+    c.hit.click()
+    t.assert(c.mh == 1)
+    if c.b[0].hit != null {
+        c.b[0].hit.click()
+    }
+}
+
+window {
+    main
+}
