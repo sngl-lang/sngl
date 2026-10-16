@@ -2,6 +2,7 @@ package kotlin
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -328,6 +329,9 @@ func lowerTestExpr(e ir.Expr, surf TestSurface, compRecvs map[string]bool) strin
 	// `<recv>.<id> == null` asks whether the node is rendered now, which is
 	// whether the semantics tree holds a node carrying its tag -- and, for
 	// `<recv>.<id>[1] == null`, its copy's key.
+	if present, ok := ir.RenderedNullTest(e); ok {
+		return strconv.FormatBool(present)
+	}
 	if recv, id, path, present, ok := codegen.RefNullTest(e); ok && compRecvs[recv] {
 		nodes := fmt.Sprintf("composeTestRule.onAllNodes(%s).fetchSemanticsNodes().isNotEmpty()", copyMatcher(id, ir.CopyKey(path)))
 		if len(path) == 0 {

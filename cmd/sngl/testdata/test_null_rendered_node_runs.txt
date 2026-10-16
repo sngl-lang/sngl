@@ -1,0 +1,92 @@
+# A node the tested component renders exactly once is never null, so
+# `c.k != null` is true on every target and needs no presence check of its own.
+
+sngl test --platform=none app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=html app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=fyne --language=go app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+-- app.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+
+component main node {
+    var hits = 0
+    vbox {
+        button #k(text="k{hits}", @click { hits = hits + 1 })
+    }
+}
+
+func testRendered(t Test, c main) {
+    t.assert(c.k != null)
+    t.assert(!(c.k == null))
+    c.k.click()
+    t.assert(c.hits == 1)
+}
+
+window {
+    main
+}
+-- testrun/android/kotlin/app.sngl/main/1 --
+sha256:8bdc941ad5c3875789e02cc3299c6fac
+{
+  "results": [
+    {
+      "Desc": "Rendered",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/main/1 --
+sha256:86473f1087a8156af7cc8b0bd2ba4247
+{
+  "results": [
+    {
+      "Desc": "Rendered",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/main/1 --
+sha256:bca51dcfb29a0774339a1774a8d53053
+{
+  "results": [
+    {
+      "Desc": "Rendered",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/main/1 --
+sha256:81b56c1c0479a222ad83e630d304b08b
+{
+  "results": [
+    {
+      "Desc": "Rendered",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/main/1 --
+sha256:94c18f3e09ab136839a28be0969f6f91
+{
+  "results": [
+    {
+      "Desc": "Rendered",
+      "Passed": true
+    }
+  ]
+}

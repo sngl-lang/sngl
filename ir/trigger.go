@@ -146,6 +146,31 @@ func NullTestedRef(e Expr) (sel *Select, path []Expr, present, ok bool) {
 	return sel, path, bin.Op == ast.BinNeq, true
 }
 
+// RenderedNullTest reads a test's null test of a ref to a node its component
+// renders exactly once, whose answer is the operator's: such a ref is never
+// null, and nothing on a target answers for it at run time.
+func RenderedNullTest(e Expr) (present, ok bool) {
+	bin, isBin := e.(*Binary)
+	if !isBin || (bin.Op != ast.BinEq && bin.Op != ast.BinNeq) {
+		return false, false
+	}
+	ref, other := bin.Left, bin.Right
+	if isNullLiteral(ref) {
+		ref, other = other, ref
+	}
+	if !isNullLiteral(other) {
+		return false, false
+	}
+	sel, isSel := stripConversions(ref).(*Select)
+	if !isSel || sel.Ref != RefOne {
+		return false, false
+	}
+	if _, isIdent := sel.Operand.(*Ident); !isIdent {
+		return false, false
+	}
+	return bin.Op == ast.BinNeq, true
+}
+
 func isNullLiteral(e Expr) bool {
 	lit, ok := stripConversions(e).(*Literal)
 	return ok && lit.Type != nil && lit.Type.Kind == TypeNull
