@@ -116,21 +116,18 @@ func emitComponentInstance(
 			continue
 		}
 		named := namedWidgetField(inv.FieldName)
-		// An id a test indexes is every instance's copy, listed in the order
-		// the instances render, which is the order a slot built them in: it
-		// keeps an instance at its position, and one it builds goes at the end.
-		// The copy leaves the list when its instance is destroyed.
+		// An id a test indexes is also every instance's copy, each under the
+		// key its __copy write gave it (listCopy), and it leaves the map when
+		// its instance is destroyed.
 		list := indexed[inv.IDLabel]
 		if !exposed[named] {
 			exposed[named] = true
 			model := instanceReceiver + "." + golang.InstanceModelField + "." + named
+			fmt.Fprintf(&ctorBody, "\t%s = %s.%s\n", model, instanceReceiver, inv.FieldName)
+			modelFieldSink(widgetField{name: named, goType: field.goType})
 			if list {
-				fmt.Fprintf(&ctorBody, "\t%s = append(%s, %s.%s)\n", model, model, instanceReceiver, inv.FieldName)
-				modelFieldSink(widgetField{name: named, goType: "[]" + field.goType})
+				modelFieldSink(widgetField{name: copiesField(inv.FieldName), goType: copyMapType(field.goType)})
 				listed = append(listed, inv.FieldName)
-			} else {
-				fmt.Fprintf(&ctorBody, "\t%s = %s.%s\n", model, instanceReceiver, inv.FieldName)
-				modelFieldSink(widgetField{name: named, goType: field.goType})
 			}
 		}
 		inv.FieldName, inv.List = named, list
@@ -267,12 +264,12 @@ func emitComponentInstance(
 	// reused instance's root would be appended after it was gone.
 	root := instanceReceiver + "." + golang.ComponentRootField
 	fmt.Fprintf(b, "func (%s *%s) %s() {\n", instanceReceiver, typeName, golang.ComponentDestroyMethod)
-	// A destroyed instance's widgets leave the Model's lists of them, so a
-	// list holds the copies on screen.
+	// A destroyed instance's widgets leave the Model's maps of them, so a
+	// map holds the copies on screen.
 	for _, w := range listed {
-		list := instanceReceiver + "." + golang.InstanceModelField + "." + namedWidgetField(w)
-		fmt.Fprintf(b, "\tfor i, w := range %s {\n\t\tif w == %s.%s {\n\t\t\t%s = append(%s[:i], %s[i+1:]...)\n\t\t\tbreak\n\t\t}\n\t}\n",
-			list, instanceReceiver, w, list, list, list)
+		list := instanceReceiver + "." + golang.InstanceModelField + "." + copiesField(w)
+		fmt.Fprintf(b, "\tfor k, w := range %s {\n\t\tif w == %s.%s {\n\t\t\tdelete(%s, k)\n\t\t}\n\t}\n",
+			list, instanceReceiver, w, list)
 	}
 	if componentDeclaresFunc(comp, lower.TeardownFunc) {
 		fmt.Fprintf(b, "\t%s.%s()\n", instanceReceiver, instanceTeardownMethod)

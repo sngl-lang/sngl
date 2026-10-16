@@ -76,9 +76,9 @@ type fyneTranslator struct {
 	// surface -- a slot func, a canvas draw.
 	invokerSink func(fyneEventInvoker)
 	// indexed are the ids a test triggers one copy of (`c.row[1]`), whose
-	// widgets this Model scope lists in render order as it builds them
-	// (namedWidgetField): appended at each create, and emptied where a slot
-	// render starts over. nil in a scope that keeps no such list.
+	// widgets this Model scope keeps by copy (copiesField): put there by
+	// each write of a copy's key (listCopy), and emptied where a slot render
+	// starts over. nil in a scope that keeps no such map.
 	indexed map[string]bool
 	// slotNamed are the indexed ids this slot render func creates, which its
 	// reset empties.
@@ -187,9 +187,8 @@ type fyneEventInvoker struct {
 	// Target is the Model field holding Field when it is not the #id's own
 	// widget -- a canvas's Tap. "" means IDLabel.
 	Target string
-	// List says Target lists every copy of the widget in render order
-	// (namedWidgetField): the invoker drives the last one built, and its `At`
-	// variant the copy it is handed the index of.
+	// List says a test indexes the id, so its copies are kept by key
+	// (copiesField) and an `At` invoker drives the one it is handed the key of.
 	List bool
 }
 
@@ -198,7 +197,7 @@ func (t *fyneTranslator) withInvokerSink(sink func(fyneEventInvoker)) *fyneTrans
 	return t
 }
 
-// withIndexed has this Model scope list the widgets of the ids a test indexes;
+// withIndexed has this Model scope keep the widgets of the ids a test indexes;
 // stmts is the scope's body, whose creates of them a slot's reset empties.
 func (t *fyneTranslator) withIndexed(indexed map[string]bool, stmts []ir.Stmt) *fyneTranslator {
 	t.indexed = indexed
@@ -394,13 +393,7 @@ func (t *fyneTranslator) OnCreateNode(ctx context.Context, id, tag string) []ir.
 		Value:  ctor,
 	})
 	if t.indexed[id] {
-		list := namedWidgetField(id)
-		t.sinkField(list, "[]"+goType)
-		create = append(create, &ir.Assign{
-			Target: t.fieldRef(list),
-			Op:     ast.AssignSet,
-			Value:  nativeCall("append", []ir.Expr{t.fieldRef(list), t.fieldRef(id)}, t.fieldType(list)),
-		})
+		t.sinkField(copiesField(id), copyMapType(goType))
 	}
 	return create
 }
@@ -737,6 +730,9 @@ func (t *fyneTranslator) OnPropAssign(ctx context.Context, node ir.Expr, prop st
 		}
 		return t.setRuntimeThemeFrom(bareID, value)
 	}
+	if prop == ir.CopyProp {
+		return []ir.Stmt{t.listCopy(bareID, value)}
+	}
 	if structuralProp(prop) {
 		// This platform's own props, not the widget's: `spec` is the record
 		// that says which Fyne widget to build, and `style` is forwarded onto
@@ -806,11 +802,11 @@ func (t *fyneTranslator) OnSlotReset(ctx context.Context, slot *ir.Var) []ir.Stm
 		},
 		&ir.Assign{Target: t.slotAnchor, Op: ast.AssignSet, Value: anchor},
 	}
-	// The render builds every copy again, in order, so the list of them
-	// starts over with it.
+	// The render builds every copy again, so the map of them starts over with
+	// it.
 	for _, id := range t.slotNamed {
-		list := namedWidgetField(id)
-		reset = append(reset, &ir.Assign{Target: codegen.RecvFieldRef(t.gc.NodeRecvRef(list), list, t.namedListType(id)), Op: ast.AssignSet, Value: &ir.Literal{Type: ir.TypNull}})
+		list := copiesField(id)
+		reset = append(reset, &ir.Assign{Target: codegen.RecvFieldRef(t.gc.NodeRecvRef(list), list, t.copiesType(id)), Op: ast.AssignSet, Value: &ir.Literal{Type: ir.TypNull}})
 	}
 	return reset
 }
@@ -925,17 +921,19 @@ func (t *fyneTranslator) recordInvoker(id, event string, h fyneHandler) {
 		Field:     h.Field,
 		Params:    params,
 	}
-	if t.indexed[id] {
-		inv.Target, inv.List = namedWidgetField(id), true
-	}
+	inv.List = t.indexed[id]
 	t.invokerSink(inv)
 }
 
 // emitFyneEventInvokers writes one Model method per (id, event) pair, invoking
 // the widget's declared callback field, and for a widget whose copies are
-// listed an `At` method driving the copy at an index.
+// kept by key an `At` method driving the copy with a key.
 func emitFyneEventInvokers(b *strings.Builder, invokers []fyneEventInvoker) {
 	seen := map[string]bool{}
+	keyed := map[string]bool{}
+	for _, inv := range invokers {
+		keyed[inv.IDLabel] = keyed[inv.IDLabel] || inv.List
+	}
 	for _, inv := range invokers {
 		name := inv.IDLabel + golang.ExportName(inv.SnglEvent)
 		if seen[name] {
@@ -948,14 +946,13 @@ func emitFyneEventInvokers(b *strings.Builder, invokers []fyneEventInvoker) {
 		}
 		fmt.Fprintf(b, "// %s invokes the %s callback on the #%s widget; for tests.\n",
 			name, inv.Field, inv.IDLabel)
-		if !inv.List {
-			emitFyneInvoker(b, inv, name, nil, "m."+target)
+		emitFyneInvoker(b, inv, name, nil, "m."+target)
+		if !keyed[inv.IDLabel] {
 			continue
 		}
-		emitFyneInvoker(b, inv, name, nil, fmt.Sprintf("m.%s[len(m.%s)-1]", target, target))
-		fmt.Fprintf(b, "// %s invokes it on the copy of #%s at index i, in render order; for tests.\n",
+		fmt.Fprintf(b, "// %s invokes it on the copy of #%s with the key; for tests.\n",
 			codegen.InvokerAt(name), inv.IDLabel)
-		emitFyneInvoker(b, inv, codegen.InvokerAt(name), []string{"i int"}, fmt.Sprintf("m.%s[i]", target))
+		emitFyneInvoker(b, inv, codegen.InvokerAt(name), []string{"key string"}, fmt.Sprintf("m.%s[key]", copiesField(inv.IDLabel)))
 	}
 }
 
@@ -968,6 +965,9 @@ func emitFyneInvoker(b *strings.Builder, inv fyneEventInvoker, name string, lead
 		call = append(call, p.Name)
 	}
 	fmt.Fprintf(b, "func (m *Model) %s(%s) {\n", name, strings.Join(decl, ", "))
+	if len(lead) > 0 {
+		fmt.Fprintf(b, "\tif %s == nil {\n\t\treturn\n\t}\n", w)
+	}
 	if len(inv.Params) == 0 {
 		fmt.Fprintf(b, "\tif %s.%s != nil {\n\t\t%s.%s()\n\t}\n}\n\n", w, inv.Field, w, inv.Field)
 		return
@@ -1012,11 +1012,10 @@ func (t *fyneTranslator) slotFieldRef(slot *ir.Var) ir.Expr {
 	return codegen.RecvFieldRef(t.gc.NodeRecvRef(slot.Name), slot.Name, slot.Type)
 }
 
-// namedListType is the type of the list a test-indexed widget's copies are
-// kept in: a slice of the widget's own.
-func (t *fyneTranslator) namedListType(id string) *ir.Type {
-	if ft, ok := t.declaredType(namedWidgetField(id)); ok {
+// copiesType is the type of copiesField(id).
+func (t *fyneTranslator) copiesType(id string) *ir.Type {
+	if ft, ok := t.declaredType(copiesField(id)); ok {
 		return ft
 	}
-	return ir.NativeGoNamed("[]" + t.fieldType(id).Meta.(ir.NativeTypeRef).Name)
+	return ir.NativeGoNamed(copyMapType(t.fieldType(id).Meta.(ir.NativeTypeRef).Name))
 }

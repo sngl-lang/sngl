@@ -232,7 +232,7 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 	}
 	var appChildren []string
 	// The ids a test drives one copy of, whose copies the Model lists.
-	indexed := codegen.IndexedTriggerIDs(ctx.Pkg)
+	indexed := ir.IndexedTriggerIDs(ctx.Pkg)
 	recordInvoker := func(inv fyneEventInvoker) { eventInvokers = append(eventInvokers, inv) }
 	if len(bodyStmts) > 0 {
 		tr := newFyneTranslator(gc, nodeSpecs, func(name, goType string) {
@@ -385,6 +385,7 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 	}
 
 	emitFyneEventInvokers(&funcBuf, eventInvokers)
+	emitCopyRegistries(&funcBuf, widgetFields)
 	emitFynePresenceChecks(&funcBuf, presentIDs, presenceFields, widgetFields)
 
 	td, err := newIRTemplateData(info, cfg, widgetFields, entrySync, widgetImports, funcBuf.String(), gc, ctx, lang)

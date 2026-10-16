@@ -266,42 +266,40 @@ func (m *Model) bumpClick() {
 	m.__focusID = prev
 }
 
-// incClickAt activates the copy of #inc at index i, in render order, the way a keypress does; for tests.
-func (m *Model) incClickAt(i int) {
-	at := func() []int {
-		var __at []int
+// incClick activates the last copy of #inc the way a keypress does; for tests.
+func (m *Model) incClick() {
+	copies := func() []struct {
+		key string
+		pos int
+	} {
+		var __at []struct {
+			key string
+			pos int
+		}
 		__focusPos1 := 0
 		for __copy0, x := range m.xs {
 			_ = __copy0
 			_ = x
-			__at = append(__at, __focusPos1)
+			__at = append(__at, struct {
+				key string
+				pos int
+			}{"", __focusPos1})
 			__focusPos1++
 		}
 		return __at
 	}()
-	if i < 0 || i >= len(at) {
+	pos := -1
+	if len(copies) > 0 {
+		pos = copies[len(copies)-1].pos
+	}
+	if pos < 0 {
 		return
 	}
 	prev, prevAt := m.__focusID, m.__focusLoop1_cursor
-	m.__focusID, m.__focusLoop1_cursor = 1, at[i]
+	m.__focusID, m.__focusLoop1_cursor = 1, pos
 	nm, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	*m = nm.(Model)
 	m.__focusID, m.__focusLoop1_cursor = prev, prevAt
-}
-
-// incClick activates the last copy of #inc the way a keypress does; for tests.
-func (m *Model) incClick() {
-	m.incClickAt(len(func() []int {
-		var __at []int
-		__focusPos1 := 0
-		for __copy0, x := range m.xs {
-			_ = __copy0
-			_ = x
-			__at = append(__at, __focusPos1)
-			__focusPos1++
-		}
-		return __at
-	}()) - 1)
 }
 
 func (m Model) View() tea.View {
@@ -788,7 +786,7 @@ func (m *Model) incClick() {
 	gtk4rt.Emit(m.__named_inc, "clicked")
 }
 -- run/go/bubbletea --
-pass sha256:6cd3d98547afeb7fc55e20294033879a
+pass sha256:f20756c8239fa5adaa79d0492dbc8c0c
 -- run/go/fyne --
 pass sha256:056a23bca0a9a8b3478f8d4ba0373c18
 -- run/go/gtk4 --

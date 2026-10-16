@@ -107,21 +107,18 @@ func emitComponentInstance(
 			continue
 		}
 		named := namedWidgetField(widget)
-		// An id a test indexes is every instance's copy, listed in the order
-		// the instances render, which is the order a slot built them in: it
-		// keeps an instance at its position, and one it builds goes at the end.
-		// The copy leaves the list when its instance is destroyed (unlist).
+		// An id a test indexes is also every instance's copy, each under the
+		// key its __copy write gave it (listCopy), and it leaves the map when
+		// its instance is destroyed (unlist).
 		list := indexed[inv.IDLabel] && inv.Target == ""
 		if !exposed[widget] {
 			exposed[widget] = true
 			model := instanceReceiver + "." + golang.InstanceModelField + "." + named
+			fmt.Fprintf(&ctorBody, "\t%s = %s.%s\n", model, instanceReceiver, widget)
+			modelFieldSink(named, goType)
 			if list {
-				fmt.Fprintf(&ctorBody, "\t%s = append(%s, %s.%s)\n", model, model, instanceReceiver, widget)
-				modelFieldSink(named, "[]"+goType)
+				modelFieldSink(copiesField(widget), copyMapType(goType))
 				listed = append(listed, widget)
-			} else {
-				fmt.Fprintf(&ctorBody, "\t%s = %s.%s\n", model, instanceReceiver, widget)
-				modelFieldSink(named, goType)
 			}
 		}
 		inv.Target, inv.List = named, list
@@ -284,14 +281,13 @@ func emitComponentInstance(
 }
 
 // emitUnlist writes the method taking a destroyed instance's widgets out of
-// the Model's lists of them (namedWidgetField), so a list holds the copies on
-// screen.
+// the Model's maps of them (copiesField), so a map holds the copies on screen.
 func emitUnlist(b *strings.Builder, typeName string, widgets []string) {
 	fmt.Fprintf(b, "func (%s *%s) unlist() {\n", instanceReceiver, typeName)
 	for _, w := range widgets {
-		list := instanceReceiver + "." + golang.InstanceModelField + "." + namedWidgetField(w)
-		fmt.Fprintf(b, "\tfor i, w := range %s {\n\t\tif w == %s.%s {\n\t\t\t%s = append(%s[:i], %s[i+1:]...)\n\t\t\tbreak\n\t\t}\n\t}\n",
-			list, instanceReceiver, w, list, list, list)
+		list := instanceReceiver + "." + golang.InstanceModelField + "." + copiesField(w)
+		fmt.Fprintf(b, "\tfor k, w := range %s {\n\t\tif w == %s.%s {\n\t\t\tdelete(%s, k)\n\t\t}\n\t}\n",
+			list, instanceReceiver, w, list)
 	}
 	b.WriteString("}\n\n")
 }

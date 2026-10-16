@@ -69,7 +69,16 @@ func (cc *irComposeContext) renderStmt(stmt ir.Stmt) {
 		for _, child := range s.Children {
 			cc.renderStmt(child)
 		}
-	case *ir.Assign, *ir.CallStmt, *ir.LocalVar, *ir.Return, *ir.Emit, *ir.Toggle, *ir.CanvasRedrawStmt,
+	case *ir.LocalVar, *ir.Assign:
+		// A local the lowering synthesized -- the counter passIndexedIter puts
+		// beside a loop over a held sequence -- which the loop's body reads;
+		// any other write has no rendering.
+		if counterStmt(s) {
+			for _, l := range cc.kc.EvalStmt(s) {
+				cc.line("%s", l)
+			}
+		}
+	case *ir.CallStmt, *ir.Return, *ir.Emit, *ir.Toggle, *ir.CanvasRedrawStmt,
 		*ir.Break, *ir.Continue:
 		// Imperative stmts have no Compose rendering.
 	default:
@@ -343,6 +352,11 @@ func (cc *irComposeContext) modifierRawExcept(n *ir.NodeInst, styleProp string, 
 	parts := []string{cc.kc.Name(ktModifier)}
 	if id := userTestTag(n); id != "" {
 		parts = append(parts, fmt.Sprintf("%s(%q)", cc.kc.Name(ktTestTag), id))
+		// The key is read where the modifier is built: the semantics block runs
+		// later, by when a loop's counter has moved on.
+		if key := n.Prop(ir.CopyProp); key != nil {
+			parts = append(parts, fmt.Sprintf("then(%s.let { __key -> %s.%s { this[%s] = __key } })", cc.kc.EvalExpr(key), cc.kc.Name(ktModifier), cc.kc.Name(ktSemantics), kotlin.CopySemanticsKey))
+		}
 	}
 	for _, sf := range codegen.NodeStyleFieldsOf(n, styleProp) {
 		if skip[sf.Name] {
@@ -967,4 +981,20 @@ func (cc *irComposeContext) colorExpr(e ir.Expr) string {
 		return fmt.Sprintf("(if (%s) %s else %s)", cc.kc.EvalExpr(t.Cond), cc.colorExpr(t.Then), cc.colorExpr(t.Else))
 	}
 	return composeColorExpr(cc.kc, cc.kc.EvalExpr(e))
+}
+
+// counterStmt reports whether s declares or steps a local the lowering
+// synthesized.
+func counterStmt(s ir.Stmt) bool {
+	var sym ir.Symbol
+	switch n := s.(type) {
+	case *ir.LocalVar:
+		sym = n.Sym
+	case *ir.Assign:
+		if id, ok := n.Target.(*ir.Ident); ok {
+			sym = id.Sym
+		}
+	}
+	v, ok := sym.(*ir.Var)
+	return ok && v != nil && v.Synthesized
 }

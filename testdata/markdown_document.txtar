@@ -333,6 +333,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 							_ = __copy1
 							_ = it
 							if it.Task == "none" {
+								var __lt0 string
+								_ = __lt0
+								if it.Marker == "" {
+									__lt0 = "•"
+								} else {
+									__lt0 = it.Marker
+								}
 							} else {
 								if m.__focusLoop0_cursor == __focusPos0 {
 									__cell1_checked__inst0 := func() bool {
@@ -360,6 +367,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 										_ = __copy3
 										_ = it
 										if it.Task == "none" {
+											var __lt1 string
+											_ = __lt1
+											if it.Marker == "" {
+												__lt1 = "◦"
+											} else {
+												__lt1 = it.Marker
+											}
 										} else {
 											if m.__focusLoop0_cursor == __focusPos0 {
 												__cell1_checked__inst1 := func() bool {
@@ -387,6 +401,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 													_ = __copy5
 													_ = it
 													if it.Task == "none" {
+														var __lt2 string
+														_ = __lt2
+														if it.Marker == "" {
+															__lt2 = "▪"
+														} else {
+															__lt2 = it.Marker
+														}
 													} else {
 														if m.__focusLoop0_cursor == __focusPos0 {
 															__cell1_checked__inst2 := func() bool {
@@ -10489,7 +10510,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:eaafd0483d9844e6a0b35c4883bfdd49
+pass sha256:f626076c8aef4202d2c46bc0b73fd285
 -- run/go/fyne --
 pass sha256:84bc28ed81119b0be9ebdd62419bb3d3
 -- run/none/html --

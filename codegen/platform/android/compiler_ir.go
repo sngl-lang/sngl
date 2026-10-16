@@ -649,6 +649,9 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 	}
 
 	nav.emitNavDecls(&body, kc)
+	if testMode && len(ir.IndexedTriggerIDs(ctx.Pkg)) > 0 {
+		fmt.Fprintf(&body, "val %s = %s<String>(%q)\n\n", kotlin.CopySemanticsKey, kc.Name(ktSemanticsKey), kotlin.CopySemanticsKey)
+	}
 
 	// State hoisting (test mode): emit a MainScreenState class
 	// with the binds as `var x by mutableStateOf(...)`. The

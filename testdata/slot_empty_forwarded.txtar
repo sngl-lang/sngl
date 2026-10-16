@@ -328,6 +328,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					__focusPos0++
 					for __copy1, _ := range []int{1} {
 						_ = __copy1
+						__lt1 := "empty"
+						_ = __lt1
 						if m.__focusLoop0_cursor == __focusPos0 {
 							var __cell1_n__inst1 int = func() int {
 								if __v, __ok := m.n__inst1[((fmt.Sprint(__copy0) + "/") + fmt.Sprint(__copy1))]; __ok {
@@ -365,6 +367,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					__focusPos0++
 					for __copy1, _ := range []int{1} {
 						_ = __copy1
+						__lt2 := "has"
+						_ = __lt2
 						if m.__focusLoop0_cursor == __focusPos0 {
 							var __cell1_n__inst2 int = func() int {
 								if __v, __ok := m.n__inst2[((fmt.Sprint(__copy0) + "/") + fmt.Sprint(__copy1))]; __ok {
@@ -2141,7 +2145,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:ffe77e6e8b8e062b22c64a211376b5dc
+pass sha256:e0942f1c37aba7ba8fb345db9054a0ea
 -- run/go/fyne --
 pass sha256:a226ad574f17bc03385e2c96d97e7009
 -- run/kotlin/android --

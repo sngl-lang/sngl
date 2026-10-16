@@ -252,12 +252,12 @@ func lowerEventTrigger(s ir.Stmt, jc *JsIRContext) (string, bool) {
 	// The invoker is handed the event's arguments by their declared names,
 	// `{checked: true}`: it puts each on the element as the user's input would
 	// have, which is where the platform's handler reads it. One copy of a
-	// node a loop rendered is the `At` variant's, handed the index first.
+	// node loops rendered is the `At` variant's, handed the copy's key first.
 	name := tt.ID + exportEventName(c.Event)
 	var args []string
-	if tt.Index != nil {
+	if key := tt.Key(); key != nil {
 		name = codegen.InvokerAt(name)
-		args = append(args, jc.EvalExpr(tt.Index))
+		args = append(args, jc.EvalExpr(key))
 	}
 	if len(c.Args) > 0 {
 		fields := make([]string, len(c.Args))

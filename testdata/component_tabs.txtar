@@ -195,6 +195,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				for k, t__r0 := range []Tab__record{Tab__record{Label: "Overview", Disabled: false, __id: 0}, Tab__record{Label: "Details", Disabled: false, __id: 1}, Tab__record{Label: "Settings", Disabled: true, __id: 2}} {
 					_ = k
 					_ = t__r0
+					var __lt0 string
+					_ = __lt0
+					if k == m.idx {
+						__lt0 = "bold"
+					} else {
+						__lt0 = "normal"
+					}
 					if m.__focusLoop0_cursor == __focusPos0 {
 						m.idx = k
 						m.changed = k
@@ -1217,7 +1224,7 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:af7b9e3b6c84b1cb2b6f28bed74dfaab
+pass sha256:f6d133f9a0a3592cb9c41509a18664a1
 -- run/go/fyne --
 pass sha256:1dfc6033a56c43fa2e732b715b4cf180
 -- run/go/gtk4 --

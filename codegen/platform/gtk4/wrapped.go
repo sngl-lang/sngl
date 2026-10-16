@@ -79,9 +79,9 @@ func slotParentType(wrapped bool) *ir.Type {
 // widgetFieldGoType returns the Go type for a Model widget field: gtk4rt.Handle
 // in wrapped mode, else the per-widget cgo pointer type.
 func widgetFieldGoType(cType string, wrapped bool) string {
-	// A list of widgets (namedWidgetField) is a slice of what one is.
-	if rest, ok := strings.CutPrefix(cType, "[]"); ok {
-		return "[]" + widgetFieldGoType(rest, wrapped)
+	// The copies of a widget (copiesField) are a map of what one is.
+	if rest, ok := strings.CutPrefix(cType, copyMapType("")); ok {
+		return copyMapType(widgetFieldGoType(rest, wrapped))
 	}
 	// A component instance's handle is a generated Go struct, not a GTK class,
 	// so it arrives already spelled as Go and is not a widget in either mode.
