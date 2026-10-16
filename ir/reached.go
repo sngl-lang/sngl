@@ -8,40 +8,78 @@ package ir
 // and reaches into nothing.
 func ReachedHandles(pkg *Package) map[*Var]bool {
 	out := map[*Var]bool{}
-	if pkg == nil {
-		return out
-	}
-	for _, fn := range pkg.Funcs {
-		if fn == nil || !fn.IsTest {
-			continue
-		}
-		_ = Walk(fn.Block, func(n Node) error {
-			var operand Expr
-			switch x := n.(type) {
-			case *Select:
-				operand = x.Operand
-			case *Call:
-				if x.Event == "" {
-					operand = x.Receiver
-				}
-			}
-			if ix, ok := operand.(*Index); ok {
-				operand = ix.Operand
-			}
-			if conv, ok := operand.(*Conversion); ok {
-				operand = conv.Operand
-			}
-			sel, ok := operand.(*Select)
-			if !ok || sel.Ref == RefNone {
-				return nil
-			}
+	walkTests(pkg, func(n Node) {
+		if sel := reachedSelect(n); sel != nil {
 			if h := handleIn(sel.Operand, sel.Field); h != nil {
 				out[h] = true
 			}
-			return nil
-		})
-	}
+		}
+	})
 	return out
+}
+
+// reachedSelect is the ref n reaches into, or nil.
+func reachedSelect(n Node) *Select {
+	var operand Expr
+	switch x := n.(type) {
+	case *Select:
+		operand = x.Operand
+	case *Call:
+		if x.Event == "" {
+			operand = x.Receiver
+		}
+	}
+	if ix, ok := operand.(*Index); ok {
+		operand = ix.Operand
+	}
+	if conv, ok := operand.(*Conversion); ok {
+		operand = conv.Operand
+	}
+	if sel, ok := operand.(*Select); ok && sel.Ref != RefNone {
+		return sel
+	}
+	return nil
+}
+
+// NullTestedIDs is every `#id` a test null-tests -- `c.p == null`, `c.p[1] !=
+// null` -- and ReachedIDs every one it reaches into, `c.p.q`. By id rather
+// than handle, so a node a lowering pass has moved into a body of its own --
+// a block's state, a slot's -- is still found.
+func NullTestedIDs(pkg *Package) map[string]bool {
+	out := map[string]bool{}
+	walkTests(pkg, func(n Node) {
+		if e, ok := n.(Expr); ok {
+			if sel, _, _, ok := NullTestedRef(e); ok {
+				out[sel.Field] = true
+			}
+		}
+	})
+	return out
+}
+
+// ReachedIDs is NullTestedIDs for the ids a test reaches into.
+func ReachedIDs(pkg *Package) map[string]bool {
+	out := map[string]bool{}
+	walkTests(pkg, func(n Node) {
+		if sel := reachedSelect(n); sel != nil {
+			out[sel.Field] = true
+		}
+	})
+	return out
+}
+
+func walkTests(pkg *Package, visit func(Node)) {
+	if pkg == nil {
+		return
+	}
+	for _, fn := range pkg.Funcs {
+		if fn != nil && fn.IsTest {
+			_ = Walk(fn.Block, func(n Node) error {
+				visit(n)
+				return nil
+			})
+		}
+	}
 }
 
 // handleIn is the handle of the node with the id in the body of the component

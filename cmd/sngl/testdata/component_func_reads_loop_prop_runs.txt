@@ -1,0 +1,124 @@
+# A component's function reading a prop bound to a loop variable, on every
+# target a test can execute on: testdata/component_func_reads_loop_prop.txtar
+# is the code.
+
+sngl test --platform=none app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=html app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=fyne --language=go app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+-- app.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+
+output {
+    go {
+        bubbletea
+        fyne
+        gtk4
+    }
+    kotlin {
+        android
+    }
+    none {
+        html
+    }
+}
+
+component row(label string) node {
+    func shout() string {
+        var out = ""
+        for var c = [1, 2] {
+            out = out + label + "{c}"
+        }
+        return out
+    }
+    text(value=shout())
+}
+
+component main node {
+    var shown = true
+    var name = "n"
+    vbox {
+        button #hide(text="h", @click { shown = false })
+        for var x = ["p", "q"] {
+            row(label=x)
+        }
+        if shown {
+            row #only(label=name)
+        }
+    }
+}
+
+func testRowsRender(t Test, c main) {
+    t.assert(c.only != null)
+    c.hide.click()
+    t.assert(c.only == null)
+}
+
+window {
+    main
+}
+-- testrun/android/kotlin/app.sngl/main/1 --
+sha256:214fbb173641561c30f4c711b62c690e
+{
+  "results": [
+    {
+      "Desc": "RowsRender",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/main/1 --
+sha256:ddca6f4d0d88881b6c3f45e9dd5d1bbe
+{
+  "results": [
+    {
+      "Desc": "RowsRender",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/main/1 --
+sha256:2f124e1dd0ff385e780d3b67cd87624b
+{
+  "results": [
+    {
+      "Desc": "RowsRender",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/main/1 --
+sha256:d3578488ad27f4754df999f4694c1802
+{
+  "results": [
+    {
+      "Desc": "RowsRender",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/main/1 --
+sha256:544cd5d021819e3882056437e5ddd4a4
+{
+  "results": [
+    {
+      "Desc": "RowsRender",
+      "Passed": true
+    }
+  ]
+}
