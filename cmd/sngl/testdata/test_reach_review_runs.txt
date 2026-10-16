@@ -13,8 +13,10 @@
 # shrank away (gone) are each answered by the target or the interpreter. An
 # event no call site handles is an error everywhere (unhandled), and a prop
 # read that reads what a test cannot name through an instance is refused
-# (unnamed). html is left out of page: a navigation ends the document a test
-# runs in.
+# (unnamed). A node the build folded away is absent, and a branch on it is
+# decided (folded); held in a local, it is refused on a compiled target
+# (foldedread). html is left out of page: a navigation ends the document a
+# test runs in.
 
 sngl test --platform=none copies.sngl
 stdout 'ok   2 tests, 0 failures'
@@ -264,6 +266,30 @@ stdout 'ok   1 tests, 0 failures'
 
 sngl test --platform=android --language=kotlin gone.sngl
 stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=none folded.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=html folded.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go folded.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=fyne --language=go folded.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go folded.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin folded.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=none foldedread.sngl
+stdout 'ok   1 tests, 0 failures'
+
+! sngl test --platform=html foldedread.sngl
+stderr 'foldedread.sngl:20:16: `#t` is rendered nowhere in this build'
 
 ! sngl test --platform=none unhandled.sngl
 stdout '@tapped fired on tile, whose call site handles none of it'
@@ -850,6 +876,78 @@ func testGone(t Test, c main) {
 window {
     main
 }
+-- folded.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+
+const shown = false
+
+component a node {
+    vbox {
+        if shown {
+            text #t(value="a")
+            button #b(text="b")
+        }
+        text(value="x")
+    }
+}
+
+component b node {
+    text #t(value="b")
+}
+
+component main node {
+    vbox {
+        a #p
+        b #q
+    }
+}
+
+func testFolded(t Test, c main) {
+    t.assert(c.p.t == null)
+    t.assert(c.q.t != null)
+    if c.p.t != null {
+        t.assert(c.p.t.value == "a")
+    }
+    if c.p.b != null {
+        c.p.b.click()
+    } else {
+        t.assert(c.p.b == null)
+    }
+}
+
+window {
+    main
+}
+-- foldedread.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+
+const shown = false
+
+component a node {
+    vbox {
+        if shown {
+            text #t(value="a")
+        }
+        text(value="x")
+    }
+}
+
+component main node {
+    a #p
+}
+
+func testRead(t Test, c main) {
+    var v = c.p.t
+    if v != null {
+        t.assert(v.value == "a")
+    }
+}
+
+window {
+    main
+}
 -- unhandled.sngl --
 import . "sngl:ui"
 import . "sngl:test"
@@ -939,6 +1037,16 @@ sha256:0e9e4caf7e5617ad24254085ea83a41c
   "results": [
     {
       "Desc": "EmptyLoop",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/android/kotlin/folded.sngl/main/1 --
+sha256:49f35b52c7a20584d70a11aa75422e0a
+{
+  "results": [
+    {
+      "Desc": "Folded",
       "Passed": true
     }
   ]
@@ -1095,6 +1203,16 @@ sha256:4c5b1ee94199bd2c3d8c755b91ba0059
     }
   ]
 }
+-- testrun/bubbletea/go/folded.sngl/main/1 --
+sha256:9696b20fdf6e413130cf8c898d96b1da
+{
+  "results": [
+    {
+      "Desc": "Folded",
+      "Passed": true
+    }
+  ]
+}
 -- testrun/bubbletea/go/forward.sngl/main/1 --
 sha256:b34fd738ce40c70249415a75d6ebd5b5
 {
@@ -1243,6 +1361,16 @@ sha256:7ad7c21a67f8b987b68f07dc064d0d74
   "results": [
     {
       "Desc": "EmptyLoop",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/folded.sngl/main/1 --
+sha256:95b035cebcaabc17dd1e4ce5fb289a69
+{
+  "results": [
+    {
+      "Desc": "Folded",
       "Passed": true
     }
   ]
@@ -1399,6 +1527,16 @@ sha256:841b0c23f5de80d87d95a51f90af43c5
     }
   ]
 }
+-- testrun/gtk4/go/folded.sngl/main/1 --
+sha256:7c9313c8f5c133441ff09e114352950b
+{
+  "results": [
+    {
+      "Desc": "Folded",
+      "Passed": true
+    }
+  ]
+}
 -- testrun/gtk4/go/forward.sngl/main/1 --
 sha256:305ca6cf7bf6ab24f141db031f8d37cf
 {
@@ -1547,6 +1685,16 @@ sha256:9a28284c756195f8e32f740e69221648
   "results": [
     {
       "Desc": "EmptyLoop",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/folded.sngl/main/1 --
+sha256:5a5aec0923ac904a0dbd8377ad0ccb10
+{
+  "results": [
+    {
+      "Desc": "Folded",
       "Passed": true
     }
   ]

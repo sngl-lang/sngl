@@ -2630,7 +2630,10 @@ builtin node such as a page, a container inserting its children other than
 once -- or the conditions read what a test cannot name -- a context, a loop's
 variable, a prop bound to one -- the target's presence check answers instead,
 as follows; one for a node the build folded away answers false
-(`codegen.RendersNowhere`). A test firing an event its call site handles
+(`codegen.RendersNowhere`). A node reached through an instance whose body the
+build folded it out of is absent in passTestReach itself: its null test is
+the constant, a branch on one is decided, and any other reach of it is refused
+where it is written. A test firing an event its call site handles
 none of is refused where it fires it.
 
 **A spliced instance a test null-tests is found by its roots.** A splice

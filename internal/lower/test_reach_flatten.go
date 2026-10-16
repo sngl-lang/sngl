@@ -3,6 +3,7 @@ package lower
 import (
 	"fmt"
 	"slices"
+	"strconv"
 
 	"duckfam.us/sngl/ast"
 
@@ -148,6 +149,9 @@ type reached struct {
 	node  *ir.NodeInst
 	// steps is how many instances the ref was reached through.
 	steps int
+	// folded is a ref whose node the build folded away -- a branch on a
+	// constant -- so it is rendered nowhere: node is nil.
+	folded bool
 }
 
 func (f *reachFlattener) testParam(e ir.Expr) *ir.Ident {
@@ -188,6 +192,9 @@ func (f *reachFlattener) ref(e ir.Expr) (*reached, bool, error) {
 		return nil, false, err
 	}
 	node, _ := handleNode(comp.Stmts, sel.Field)
+	if node == nil && !writesNode(comp.Stmts, sel.Field) {
+		return &reached{param: parent.param, field: sel.Field, ref: sel.Ref, steps: parent.steps + 1, folded: true}, true, nil
+	}
 	if node == nil || inSlotFallback(comp.Stmts, node) {
 		return nil, false, nil
 	}
@@ -478,8 +485,29 @@ func (f *reachFlattener) rewrite(fn *ir.Func) error {
 		if bad != nil {
 			return n, ir.SkipDir
 		}
+		// A branch on a node the build rendered nowhere is decided, and what
+		// it reads of the node is never reached.
+		if st, isIf := n.(*ir.If); isIf {
+			if b, isBin := st.Cond.(*ir.Binary); isBin {
+				if lit := f.foldedNullTest(b); lit != nil {
+					st.Cond = lit
+					if lit.Value == "true" {
+						st.Else = nil
+					} else {
+						st.Body = nil
+					}
+				}
+			}
+			return n, nil
+		}
 		e, ok := n.(ir.Expr)
 		if !ok {
+			return n, nil
+		}
+		if b, isBin := e.(*ir.Binary); isBin {
+			if lit := f.foldedNullTest(b); lit != nil {
+				return lit, ir.SkipDir
+			}
 			return n, nil
 		}
 		switch e.(type) {
@@ -490,6 +518,10 @@ func (f *reachFlattener) rewrite(fn *ir.Func) error {
 		r, ok, err := f.ref(e)
 		if err != nil {
 			bad = err
+			return n, ir.SkipDir
+		}
+		if ok && r.folded {
+			bad = fmt.Errorf("%s: `#%s` is rendered nowhere in this build -- the branch holding it is decided by a constant -- so a test can ask only whether it is null", exprPos(e), r.field)
 			return n, ir.SkipDir
 		}
 		if !ok || r.node == nil || r.steps == 1 {
@@ -530,6 +562,35 @@ func handleNode(stmts []ir.Stmt, id string) (*ir.NodeInst, bool) {
 		return out == nil
 	})
 	return out, out != nil
+}
+
+// foldedNullTest is the answer to b where b null-tests a node the build
+// rendered nowhere: absent.
+func (f *reachFlattener) foldedNullTest(b *ir.Binary) *ir.Literal {
+	if _, _, present, isNull := ir.NullTestedCopy(b); isNull {
+		operand := b.Left
+		if isNullLiteral(operand) {
+			operand = b.Right
+		}
+		if r, ok, _ := f.ref(operand); ok && r.folded {
+			return &ir.Literal{Type: ir.TypBool, Value: strconv.FormatBool(!present)}
+		}
+	}
+	return nil
+}
+
+// writesNode reports whether stmts write a node under the id anywhere,
+// handlers and slot populations included.
+func writesNode(stmts []ir.Stmt, id string) bool {
+	found := false
+	_ = ir.Walk(stmts, func(n ir.Node) error {
+		if ni, ok := n.(*ir.NodeInst); ok && ni.ID == id {
+			found = true
+			return ir.SkipAll
+		}
+		return nil
+	})
+	return found
 }
 
 // inSlotFallback reports whether node is written in the fallback of a slot
