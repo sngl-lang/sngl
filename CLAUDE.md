@@ -2590,8 +2590,9 @@ test answers `c.x == null` with a presence check per id (`codegen.RefNullTest`,
 semantics tree. Each finds the node by its id alone, so in a test build
 `passTestRefOwner` first renames a node another component writes under an id
 a test reaches on the tested one (`b__own0`), before anything moves a node out
-of the body that wrote it (`testdata/test_ref_owner.txtar`). A slot's reset clears the field of a widget a test
-null-tests on fyne and gtk4, which still held a widget the branch dropped. An
+of the body that wrote it (`testdata/test_ref_owner.txtar`). A slot's reset
+clears the field of a widget a test null-tests on fyne and gtk4, which still
+held a widget the branch dropped. An
 instance built at run time has no widget of its own: on fyne and gtk4 it hands
 its root to `__present_<id>` where the root is bound, and on android its call
 site holds a token in `SnglPresent` while it is composed

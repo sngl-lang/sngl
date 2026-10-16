@@ -1,38 +1,31 @@
 package lower
 
 import (
-	"slices"
-
 	"duckfam.us/sngl/ir"
 )
 
 // passTestRefOwner gives a node another component writes a name of its own
 // where it carries an `#id` a test reaches on the component under test.
 //
-// `c.b` names the `#b` the tested component's own body wrote, and nothing
-// else. Every target finds what a test names by the id alone -- html's
-// `data-sngl-id`, fyne's and gtk4's `__named_<id>` and `__present_<id>`,
-// bubbletea's spliced instances, android's test tag -- so a `#b` written in a
-// component the tested one renders was found too: whichever was built last,
-// came first on the page, or rendered at all. Renaming the other component's
-// node is what makes every one of those lookups the owner's, without each
-// target learning what an owner is.
+// `c.b` names the `#b` the tested component's own body wrote, and every target
+// finds what a test names by the id alone -- html's `data-sngl-id`, fyne's and
+// gtk4's `__named_<id>` and `__present_<id>`, bubbletea's spliced instances,
+// android's test tag. Renaming the other component's node is what makes each
+// of those lookups the owner's, without any target learning what an owner is.
 //
-// It runs before anything moves a node out of the body it was written in:
-// passHoistState and passImplicitState put one in a component of their own,
-// and the inliners splice bodies into each other, after which the component a
-// node stands in no longer says who wrote it. A handle the optimizer already
-// spliced into the tested component's body is still the declaring
-// component's, since a clone shares it.
+// It runs before anything moves a node out of the body it was written in, after
+// which the component a node stands in no longer says who wrote it. A handle
+// the optimizer already spliced into the tested component's body is still the
+// declaring component's, since a clone shares it.
 var passTestRefOwner = pass{
 	name:    "TestRefOwner",
 	enabled: func(Features) bool { return true },
 	apply: func(pkg *ir.Package, _ Features, opts Options) error {
 		root := rootComponent(pkg, opts)
-		if root == nil {
+		if root == nil || !opts.Tests {
 			return nil
 		}
-		reached := testReachedIDs(pkg, opts, root)
+		reached := testReachedIDs(pkg, root)
 		if len(reached) == 0 {
 			return nil
 		}
@@ -41,24 +34,28 @@ var passTestRefOwner = pass{
 	},
 }
 
-// testReachedIDs is every id a test selects off its instance of root.
-func testReachedIDs(pkg *ir.Package, opts Options, root *ir.Component) map[string]bool {
-	params := testInstances(pkg, opts)
+// testReachedIDs is every `#id` root's body writes that a function selects off
+// an instance of root: a test's own parameter, a local holding it, or a helper
+// it is handed to.
+func testReachedIDs(pkg *ir.Package, root *ir.Component) map[string]bool {
+	written := map[string]bool{}
+	_ = ir.Walk(root, func(n ir.Node) error {
+		if ni, ok := n.(*ir.NodeInst); ok && ni.ID != "" {
+			written[ni.ID] = true
+		}
+		return nil
+	})
 	out := map[string]bool{}
 	for _, fn := range pkg.Funcs {
-		if fn == nil || !fn.IsTest {
+		if fn == nil {
 			continue
 		}
 		_ = ir.Walk(fn.Block, func(n ir.Node) error {
 			sel, ok := n.(*ir.Select)
-			if !ok {
+			if !ok || !written[sel.Field] {
 				return nil
 			}
-			id, ok := unnarrowed(sel.Operand).(*ir.Ident)
-			if !ok {
-				return nil
-			}
-			if p, ok := id.Sym.(*ir.Param); ok && params[p] && p.Type.Decl == root {
+			if t := unnarrowed(sel.Operand).ExprType(); t != nil && t.Kind == ir.TypeComponent && t.Decl == root {
 				out[sel.Field] = true
 			}
 			return nil
@@ -83,7 +80,7 @@ func renameForeignTestIDs(pkg *ir.Package, root *ir.Component, reached map[strin
 	reads := map[*ir.Var][]*ir.Ident{}
 	walkPackageAndComponents(pkg, func(n ir.Node) error {
 		if id, ok := n.(*ir.Ident); ok {
-			if v, ok := id.Sym.(*ir.Var); ok && v.NodeHandle && !slices.Contains(reads[v], id) {
+			if v, ok := id.Sym.(*ir.Var); ok && v.NodeHandle {
 				reads[v] = append(reads[v], id)
 			}
 		}
@@ -93,7 +90,8 @@ func renameForeignTestIDs(pkg *ir.Package, root *ir.Component, reached map[strin
 	renamed := map[*ir.Var]string{}
 	members := map[*ir.Component]map[string]string{}
 	// inRoot is the walk of the tested component, where a node is its own unless
-	// its handle says another body wrote it; one nothing reads has no handle.
+	// its handle says another body wrote it. A node has no handle where its id
+	// was already a name in scope, and is then the body's own.
 	visit := func(owner *ir.Component, inRoot bool) func(ir.Node) error {
 		return func(n ir.Node) error {
 			ni, ok := n.(*ir.NodeInst)
