@@ -350,7 +350,7 @@ func LowerTestFile(pkg string, irPkg *ir.Package, fns []*ir.Func, suffixes []str
 			body.WriteString("\tsetCurrentTestModel(" + instance + ")\n")
 		}
 		body.WriteString("\t_ = " + instance + "\n")
-		block, fields := codegen.LowerRefNullTests(fn.Block, methodFields)
+		block, fields := codegen.LowerRefNullTests(codegen.LowerInstanceReads(fn.Block, irPkg), methodFields)
 		gc := testIRContext(irPkg, fn, fields, instance)
 		for _, s := range block {
 			for _, line := range lowerTestStmt(s, gc) {

@@ -764,7 +764,9 @@ func (st *inlinePureState) substitute(comp *ir.Component, callsite *ir.NodeInst)
 		before = bodyNodes(body)
 	}
 	if callsite.ID != "" {
-		ir.AttachNodeID(body, callsite.ID, callsite.Handle)
+		if was, ok := ir.AttachNodeIDFrom(body, callsite.ID, callsite.Handle); ok && was != "" && was != callsite.ID {
+			followTestNodeID(st.pkg, was, callsite.ID)
+		}
 	}
 	if before != nil {
 		*st.splices = append(*st.splices, pureSplice(comp, callsite.Handle, symRenames, before, body))

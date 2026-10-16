@@ -339,7 +339,12 @@ func (g *htmlGen) emitComponentFactory(b *strings.Builder, comp *ir.Component) {
 		b.WriteString("\t" + line + "\n")
 	}
 
-	b.WriteString("\treturn {\n")
+	reads := g.instanceReadsOf(comp)
+	if len(reads) > 0 {
+		b.WriteString("\tconst __inst = {\n")
+	} else {
+		b.WriteString("\treturn {\n")
+	}
 	fmt.Fprintf(b, "\t\t%s: %s,\n", instanceRootField, instanceRootLocal)
 	fmt.Fprintf(b, "\t\t%s() { %s },\n", instanceDestroyMethod, instanceTeardownCall(comp))
 	for _, p := range comp.Props {
@@ -349,7 +354,56 @@ func (g *htmlGen) emitComponentFactory(b *strings.Builder, comp *ir.Component) {
 		}
 		fmt.Fprintf(b, "\t\t%s: %s,\n", instanceUpdateMethod(p.Name), setter)
 	}
-	b.WriteString("\t};\n}\n")
+	// What a test reads of the instance, which it finds by its root
+	// (emitInstanceReads).
+	for _, r := range reads {
+		if r.Func != nil {
+			fmt.Fprintf(b, "\t\t%s: (...a) => %s(...a),\n", instanceCallMember(r.Member), r.Func.Name)
+			continue
+		}
+		fmt.Fprintf(b, "\t\t%s: () => %s,\n", instanceReadMember(r.Member), r.Var.Name)
+	}
+	b.WriteString("\t};\n")
+	if len(reads) > 0 {
+		fmt.Fprintf(b, "\t%s.%s = __inst;\n\treturn __inst;\n", instanceRootLocal, instanceOnRoot)
+	}
+	b.WriteString("}\n")
+}
+
+// instanceOnRoot is the property of an instance's root element holding the
+// instance, for the reads a test makes through it.
+const instanceOnRoot = "__sngl"
+
+func instanceReadMember(member string) string { return "__read_" + member }
+func instanceCallMember(member string) string { return "__call_" + member }
+
+// instanceReadsOf is each distinct member a test reads or calls through an
+// instance of comp.
+func (g *htmlGen) instanceReadsOf(comp *ir.Component) []codegen.InstanceRead {
+	var out []codegen.InstanceRead
+	seen := map[string]bool{}
+	for _, r := range g.instanceReads() {
+		key := r.Member
+		if r.Func != nil {
+			key = "()" + key
+		}
+		if r.Comp == comp && !seen[key] {
+			seen[key] = true
+			out = append(out, r)
+		}
+	}
+	return out
+}
+
+// instanceReads is codegen.InstanceReads of the package, once per build.
+func (g *htmlGen) instanceReads() []codegen.InstanceRead {
+	if g.reads == nil {
+		g.reads = codegen.InstanceReads(g.pkg)
+		if g.reads == nil {
+			g.reads = []codegen.InstanceRead{}
+		}
+	}
+	return g.reads
 }
 
 // instanceTeardownCall is the body of an instance's __destroy: the teardown

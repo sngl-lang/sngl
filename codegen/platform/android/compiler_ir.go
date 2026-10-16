@@ -444,9 +444,16 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 
 	var stateFuncs []*ir.Func
 	if testMode && !cfg.GoLib {
+		composed := componentOwnedFuncs(ctx)
 		allFuncs := ctx.AllFuncs()
 		for _, fn := range allFuncs {
 			if fn.IsTest || codegen.IsComputed(fn) {
+				continue
+			}
+			// A func of a component composed on its own is a local fun of
+			// that composable, beside the state it reads; on the class it
+			// named state the class does not hold.
+			if composed[fn] && !mainOwnFuncs[fn] {
 				continue
 			}
 			// A method on a struct or an enum is an extension function and
@@ -666,6 +673,13 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 	if len(present) > 0 {
 		fmt.Fprintf(&body, "val %s = %s<Any, String>()\n\n", kotlin.PresentRegistry, kc.Name("androidx.compose.runtime.mutableStateMapOf"))
 	}
+	var reads []codegen.InstanceRead
+	if testMode {
+		reads = codegen.InstanceReads(ctx.Pkg)
+	}
+	if len(reads) > 0 {
+		fmt.Fprintf(&body, "val %s = mutableMapOf<String, Map<String, (List<Any?>) -> Any?>>()\n\n", kotlin.InstanceRegistry)
+	}
 
 	// State hoisting (test mode): emit a MainScreenState class
 	// with the binds as `var x by mutableStateOf(...)`. The
@@ -676,6 +690,9 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 		body.WriteString("class MainScreenState {\n")
 		if len(present) > 0 {
 			fmt.Fprintf(&body, "    init { %s.clear() }\n", kotlin.PresentRegistry)
+		}
+		if len(reads) > 0 {
+			fmt.Fprintf(&body, "    init { %s.clear() }\n", kotlin.InstanceRegistry)
 		}
 		// Init expressions inside the class body resolve sibling state vars
 		// via implicit `this`, NOT the `state` parameter (which doesn't exist
@@ -838,6 +855,7 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 	cc := &irComposeContext{
 		nav:     nav,
 		present: present,
+		reads:   reads,
 		kc:      kc,
 		ctx:     ctx,
 		buf:     &body,
@@ -869,7 +887,7 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 
 	// User component composables
 	for _, comp := range ctx.NonRootComponents() {
-		emitIRComponentComposable(&body, comp, ctx, kc, cfg, cfg.combo(), screen, nav, present)
+		emitIRComponentComposable(&body, comp, ctx, kc, cfg, cfg.combo(), screen, nav, present, reads)
 	}
 
 	// User functions (non-GoLib). In test mode the state class holds them,
@@ -926,7 +944,7 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 	return []byte(out.String()), testRewrites
 }
 
-func emitIRComponentComposable(b *strings.Builder, cc *codegen.ComponentCtx, ctx *codegen.CodegenCtx, kc *kotlin.KtIRContext, cfg Config, combo androidtc.Combo, screen *codegen.Screen, nav *androidNav, present map[string]bool) {
+func emitIRComponentComposable(b *strings.Builder, cc *codegen.ComponentCtx, ctx *codegen.CodegenCtx, kc *kotlin.KtIRContext, cfg Config, combo androidtc.Combo, screen *codegen.Screen, nav *androidNav, present map[string]bool, reads []codegen.InstanceRead) {
 	fmt.Fprintf(b, "\n@%s\n", kc.Name(ktComposable))
 	var params []string
 	for _, p := range cc.Props {
@@ -941,6 +959,10 @@ func emitIRComponentComposable(b *strings.Builder, cc *codegen.ComponentCtx, ctx
 	}
 	params = append(params, slotParams(cc.Component, kc.Name(ktComposable))...)
 	params = append(params, eventParams(cc.Component)...)
+	own := readsOf(reads, cc.Component)
+	if len(own) > 0 {
+		params = append(params, kotlin.InstanceKeyParam+`: String = ""`)
+	}
 	fmt.Fprintf(b, "fun %s(%s) {\n", exportName(cc.Component.Name), strings.Join(params, ", "))
 
 	compKC := kc.ForComponent(cc.Component)
@@ -996,11 +1018,13 @@ func emitIRComponentComposable(b *strings.Builder, cc *codegen.ComponentCtx, ctx
 	if decls > 0 {
 		b.WriteString("\n")
 	}
+	emitInstanceRegistration(b, own, kc)
 	emitNavState(b, nav.stacksIn(cc.Body), compKC, false)
 
 	vc := &irComposeContext{
 		nav:     nav,
 		present: present,
+		reads:   reads,
 		kc:      compKC,
 		ctx:     ctx,
 		buf:     b,
@@ -1016,6 +1040,56 @@ func emitIRComponentComposable(b *strings.Builder, cc *codegen.ComponentCtx, ctx
 	}
 
 	b.WriteString("}\n")
+}
+
+// readsOf is each distinct member reads reads or calls through an instance of
+// comp.
+func readsOf(reads []codegen.InstanceRead, comp *ir.Component) []codegen.InstanceRead {
+	var out []codegen.InstanceRead
+	seen := map[string]bool{}
+	for _, r := range reads {
+		if r.Comp != comp || seen[r.Member] {
+			continue
+		}
+		seen[r.Member] = true
+		out = append(out, r)
+	}
+	return out
+}
+
+// emitInstanceRegistration has a composable whose members a test reads
+// register a closure for each in kotlin.InstanceRegistry while it is
+// composed, under the entry its call site hands it: its state is the
+// composable's own, which nothing outside the composition can name.
+func emitInstanceRegistration(b *strings.Builder, reads []codegen.InstanceRead, kc *kotlin.KtIRContext) {
+	if len(reads) == 0 {
+		return
+	}
+	key := kotlin.InstanceKeyParam
+	fmt.Fprintf(b, "    %s(%s) {\n", kc.Name(ktDisposableEffect), key)
+	fmt.Fprintf(b, "        %s[%s] = mapOf<String, (List<Any?>) -> Any?>(\n", kotlin.InstanceRegistry, key)
+	for _, r := range reads {
+		if r.Func != nil {
+			var args []string
+			i := 0
+			for _, p := range r.Func.Params {
+				if p.Receiver {
+					continue
+				}
+				args = append(args, fmt.Sprintf("a[%d] as %s", i, kotlin.IRTypeToKt(p.Type)))
+				i++
+			}
+			fmt.Fprintf(b, "            %q to { a -> %s(%s) },\n", r.Member, r.Func.Name, strings.Join(args, ", "))
+			continue
+		}
+		name := r.Member
+		if r.Var != nil {
+			name = r.Var.Name
+		}
+		fmt.Fprintf(b, "            %q to { _ -> %s },\n", r.Member, name)
+	}
+	b.WriteString("        )\n")
+	fmt.Fprintf(b, "        onDispose { %s.remove(%s) }\n    }\n\n", kotlin.InstanceRegistry, key)
 }
 
 // emitIRKtMemberFunc emits a user func as a method inside a class

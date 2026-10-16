@@ -321,6 +321,7 @@ func (c *compilation) emitIRMode(wrapped bool) (modelSrc []byte, callbacksSrc []
 	gc := golang.NewIRContext(exprCtx)
 	gc.AlertFunc = gtk4IRAlertFunc
 	gc.InstanceRecords = true
+	gc.InstanceReads = codegen.InstanceReads(c.ctx.Pkg)
 
 	// vc carries the accumulators the phases after the walk read back: the
 	// test invokers the main body's translator records as it connects signals.
@@ -505,6 +506,10 @@ func (c *compilation) emitIRMode(wrapped bool) (modelSrc []byte, callbacksSrc []
 		emitUnlistInstance(&eventInvokersBuf, widgetFields, c.wrapped, len(codegen.InstanceRootIDs(c.ctx.Pkg)) > 0)
 	}
 	emitKeyedPresenceChecks(&eventInvokersBuf, keyedPresent, widgetFields)
+	for _, h := range golang.InstanceHolds(gc.InstanceReads) {
+		widgetFields = append(widgetFields, widgetField{name: h[0], goType: h[1]})
+	}
+	golang.EmitInstanceReads(&eventInvokersBuf, gc.InstanceReads, instanceMethodName, func(v *ir.Var) string { return instanceVarGoType(v, c.wrapped) })
 
 	// The drawing-area trampoline registration emits an `unsafe.Pointer` cast.
 	if hasCanvas {

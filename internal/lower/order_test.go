@@ -132,6 +132,7 @@ var alwaysOn = []string{
 	"SpreadOnce",
 	"StampUsage",
 	"TestInstanceReach",
+	"TestReach",
 	"TestRefOwner",
 	// A context nothing provides is folded to its default on every target: the
 	// ones that lower contexts to state, and the ones that keep them.
@@ -238,7 +239,6 @@ var soleGate = map[string][]string{
 	"InsertBefore": nil,
 	// Read by the test-reach repoint passNoInlineComponents makes, which is no
 	// pass of its own.
-	"RuntimeReach": nil,
 
 	// NoReactivity reads it to choose where a reactive `if` among spans
 	// renders; it turns no pass on.

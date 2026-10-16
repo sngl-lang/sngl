@@ -3950,10 +3950,6 @@ Known gaps, each refused or documented where it bites:
   into the Model, so its state survives the page being left.
 - A page handle read above its `nav.page` does not check
   (`specializeHandle` runs only when the node is).
-- A compiled test cannot reach into a component built at run time, but for
-  a node of one on html, nor read the prop of a node rendered only some of
-  the time (see *A test reaches
-  into what its component renders*).
 - `sngl dump` prints a qualified node by its local name, so a dump of a
   program writing `nav.page` does not check again.
 - A component's props, events and slots keep their names whatever a target
@@ -4758,16 +4754,36 @@ rules keep them agreeing:
   as android's `performTextReplacement` does.
 
 **A test reaches into what its component renders** -- `c.b.hits`,
-`c.b.btn.click()`, `c.b.row[0].click()`, `c.b.reset()` -- and reads a node's
-one-way prop, `c.t.value`. Each emitter reaches only the instance's own
-members by name, so the lowering says the rest in those terms:
+`c.b.btn.click()`, `c.b.row[0].click()`, `c.b.reset()`, `c.r[1].pressed(7)`
+-- and reads a node's one-way prop, `c.t.value`, whether the instance is
+spliced or built at run time. Each emitter reaches only the instance's own
+members by name, so the lowering says the rest in those terms, first in
+`passTestReach` (`internal/lower/test_reach_flatten.go`), before anything
+moves a node out of the body that wrote it:
 
 - **A one-way prop is the expression its call site gave**, read through the
-  instance (`rewriteTestPropRead`, in passNodePropReads, before an override
-  replaces the node with a primitive whose props are its own): `"{hits}"` in
-  `bar`'s body is `"{c.b.hits}"` in the test. A node rendered only some of the
-  time -- under an `if`, in a page's content -- or a prop reading a loop's
-  variable or a slot's parameter is left as written.
+  instance (`rewriteTestPropRead`): `"{hits}"` in `bar`'s body is
+  `"{c.b.hits}"` in the test, and a loop's variable is the copy the test
+  indexed was handed, the loop's list at that index or the index itself
+  (`loopBindings`). A prop reading a slot's parameter, a local or a sequence
+  is left as written.
+- **A node is one of the test's instance's own**: `c.b.hit` becomes `c.hit`,
+  and `c.r[1].tap` the copy of `c.tap` under key "1", the indices of each step
+  kept outermost first -- the copy key a node inside an instance built at run
+  time already carries (see *A test fires an event as the program would*). So
+  a trigger, a null test and a node handed to sngl:test/browser are answered
+  by every target's lookup by id and key. The id is renamed where another node
+  carries it (`hit__reach0`), and a component rendered at more than one site
+  is copied for the site a test reaches into (`badge__site0`), so its nodes
+  are that site's alone (`testdata/test_reach_runtime_instance_sites.txtar`).
+- **A program component's event a test fires runs the handler its call site
+  wrote**, with the test's arguments: the component emits its events from the
+  program's own code, and the test stands in for that emit. The handler
+  becomes a function of the component the call site is written in
+  (`__fire_r_tapped__t0`, taking an index per loop around the site), reached
+  through the instance chain as a method is; the interpreter runs the call
+  site's handler itself (`componentValue.callSite`). A library component's
+  event still enters at the widget its override renders.
 - **A spliced instance's members are what the splice made of them**
   (`internal/lower/test_reach.go`): the inliner records each splice of a node
   carrying an id by its handle, and a test's select through it becomes the
@@ -4775,12 +4791,20 @@ members by name, so the lowering says the rest in those terms:
   or a call of the method's clone. By handle rather than by node, because a
   spliced body may be cloned again -- a population is, where the body inserts
   it -- and every clone shares the handle, which a rename of the id renames
-  too. One built at run time, or rendered more than once, names no one
-  instance, and a build rooted at the component under test refuses the read
-  (`test_reach_runtime_instance_refused.txt`) -- except a node of one on a
-  target granting `runtimeReach`: html finds the element by the id the
-  component gave it, `c.b[1].hit` being the second copy's in render order
-  (`testdata/component_browser_runtime.txtar`).
+  too. A var of one copy of an instance spliced a cell per copy, bubbletea's
+  `c.r[1].taps`, is that copy's cell (`cellRead`). One spliced more than once
+  under one id names no one instance and is refused.
+- **A member of an instance built at run time is read off the instance the
+  target holds** (`codegen.InstanceReads`, lowered by
+  `codegen.LowerInstanceReads` to `<id>Read<Member>`, `<id>Call<Member>` and
+  their `At` variants on the test's surface): fyne's and gtk4's Model holds
+  each such record where its root is bound (`golang.HoldInstance`,
+  `__inst_<id>` or `__insts_<id>` by key) and lets go in its Destroy; html's
+  factory hangs the instance off its root element; android's composable
+  registers a closure per member in `SnglInstances` under the entry its call
+  site hands it. bubbletea builds none of them but a recursion, which keeps no
+  state, and a member read through one is refused
+  (`testdata/test_reach_runtime_instance.txtar`).
 - **A build of the whole program reaches a test's instance where the program
   renders it**, which is how a golden whose tests take two components is
   compiled: each is spliced, and each test reaches what its splice made of it
@@ -4803,7 +4827,8 @@ members by name, so the lowering says the rest in those terms:
   copies as it does the copies built at run time, and the interpreter takes
   `[0]` of a loop that rendered one copy as that copy.
 
-`cmd/sngl/testdata/test_reach_nested_runs.txt` runs it on all six.
+`cmd/sngl/testdata/test_reach_nested_runs.txt` and
+`test_reach_runtime_instance_runs.txt` run it on all six.
 
 `internal/testtargets` is a separate package from `internal/testutil` on purpose — the platform tests are *internal* test packages (`package html`) that import testutil, so putting the codegen/platform dependency in testutil would close an import cycle.
 

@@ -250,6 +250,43 @@ func (t *fyneTranslator) withIndexed(indexed, present map[string]bool, stmts []i
 	return t.withInstanceCopies(indexed, t.sinkField)
 }
 
+// withRecordPresent has this scope of a component built at run time hand the
+// widgets of the ids a test null-tests to the Model (namedWidgetField), which
+// a test reaches no record through; stmts is the scope's body, whose creates
+// of them a slot's reset takes back.
+func (t *fyneTranslator) withRecordPresent(present map[string]bool, stmts []ir.Stmt) *fyneTranslator {
+	t.present = present
+	t.slotPresent = nil
+	_ = ir.Walk(stmts, func(n ir.Node) error {
+		lv, ok := n.(*ir.LocalVar)
+		if !ok {
+			return nil
+		}
+		c, ok := lv.Init.(*ir.Call)
+		if !ok || c.Func == nil {
+			return nil
+		}
+		switch c.Func.Intrinsic {
+		case ir.NodeOpCreateNode:
+			if present[lv.Name] {
+				t.slotPresent = append(t.slotPresent, lv.Name)
+			}
+		case ir.NodeOpComponentRoot:
+			if inst := codegen.IdentBareName(c.Args[0].Value); present[inst] {
+				t.slotPresent = append(t.slotPresent, presentField(inst))
+			}
+		}
+		return nil
+	})
+	return t
+}
+
+// modelPresentRef is the Model field holding the widget a test null-tests by
+// id, for a record's scope: the field a Model scope's own widget is.
+func (t *fyneTranslator) modelPresentRef(field string) ir.Expr {
+	return codegen.RecvFieldRef(&ir.Ident{Name: t.gc.ModelRef()}, field, ir.NativeGoNamed(fyneWidgetHandleType))
+}
+
 // withInstanceCopies has this scope list the instances of the ids a test
 // reaches one copy of, declaring each map through modelSink.
 func (t *fyneTranslator) withInstanceCopies(ids map[string]bool, modelSink func(name, goType string)) *fyneTranslator {
@@ -446,6 +483,11 @@ func (t *fyneTranslator) OnCreateNode(ctx context.Context, id, tag string) []ir.
 	if t.indexed[id] {
 		t.sinkField(copiesField(id), copyMapType(goType))
 	}
+	if t.record && t.present[id] {
+		named := namedWidgetField(id)
+		t.modelSink(named, fyneWidgetHandleType)
+		create = append(create, &ir.Assign{Target: t.modelPresentRef(named), Op: ast.AssignSet, Value: t.fieldRef(id)})
+	}
 	return create
 }
 
@@ -521,8 +563,15 @@ func (t *fyneTranslator) OnComponentRoot(ctx context.Context, id string, inst, k
 	var present []ir.Stmt
 	if name := codegen.IdentBareName(inst); t.present[name] {
 		field := presentField(name)
-		t.sinkField(field, fyneWidgetHandleType)
-		present = append(present, &ir.Assign{Target: t.fieldRef(field), Op: ast.AssignSet, Value: root})
+		var target ir.Expr
+		if t.record {
+			t.modelSink(field, fyneWidgetHandleType)
+			target = t.modelPresentRef(field)
+		} else {
+			t.sinkField(field, fyneWidgetHandleType)
+			target = t.fieldRef(field)
+		}
+		present = append(present, &ir.Assign{Target: target, Op: ast.AssignSet, Value: root})
 	}
 	// One copy of it is found by the key it stands in now, which a reused
 	// instance was handed before its root is bound again.
@@ -530,11 +579,30 @@ func (t *fyneTranslator) OnComponentRoot(ctx context.Context, id string, inst, k
 		t.modelSink(copiesField(name), copyMapType(fyneWidgetHandleType))
 		present = append(present, t.listInstanceCopy(name, key, root))
 	}
+	if hold := t.holdInstance(inst, key); hold != nil {
+		present = append(present, hold)
+	}
 	if t.isLocalRef(id) {
 		return append([]ir.Stmt{&ir.LocalVar{Name: id, Init: root}}, present...)
 	}
 	t.sinkField(id, fyneWidgetHandleType)
 	return append([]ir.Stmt{&ir.Assign{Target: t.fieldRef(id), Op: ast.AssignSet, Value: root}}, present...)
+}
+
+// holdInstance is the Model's hold on the record inst names, where a test
+// reads a member through it (golang.HoldInstance), or nil.
+func (t *fyneTranslator) holdInstance(inst, key ir.Expr) ir.Stmt {
+	name := codegen.IdentBareName(inst)
+	r, ok := t.gc.InstanceRead(name)
+	if !ok || t.plainHandle[name] {
+		return nil
+	}
+	if !r.Keyed {
+		key = nil
+	} else if key == nil {
+		return nil
+	}
+	return golang.HoldInstance(&ir.Ident{Name: t.gc.ModelRef()}, name, r.Comp, t.instanceRef(inst), key)
 }
 
 // instanceRef qualifies the handle an instance op names. The reconcile a
@@ -884,9 +952,28 @@ func (t *fyneTranslator) OnSlotReset(ctx context.Context, slot *ir.Var) []ir.Stm
 		if t.isLocalRef(id) {
 			continue
 		}
+		if t.record {
+			reset = append(reset, t.releasePresent(id))
+			continue
+		}
 		reset = append(reset, &ir.Assign{Target: codegen.RecvFieldRef(t.gc.NodeRecvRef(id), id, ir.NativeGoNamed("fyne.CanvasObject")), Op: ast.AssignSet, Value: &ir.Literal{Type: ir.TypNull}})
 	}
 	return reset
+}
+
+// releasePresent takes back what a record handed the Model for a test's null
+// test of field -- a node's id, or an instance's presentField. A node is taken
+// back only where the Model still holds this record's widget: another record
+// may have handed its own since.
+func (t *fyneTranslator) releasePresent(field string) ir.Stmt {
+	if strings.HasPrefix(field, presentField("")) {
+		return &ir.Assign{Target: t.modelPresentRef(field), Op: ast.AssignSet, Value: &ir.Literal{Type: ir.TypNull}}
+	}
+	held := t.modelPresentRef(namedWidgetField(field))
+	return &ir.If{
+		Cond: &ir.Binary{Type: ir.TypBool, Op: ast.BinEq, Left: held, Right: t.fieldRef(field)},
+		Body: []ir.Stmt{&ir.Assign{Target: t.modelPresentRef(namedWidgetField(field)), Op: ast.AssignSet, Value: &ir.Literal{Type: ir.TypNull}}},
+	}
 }
 
 func (t *fyneTranslator) OnSlotAppend(ctx context.Context, slot *ir.Var, child ir.Expr) []ir.Stmt {

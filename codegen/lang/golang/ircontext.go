@@ -51,6 +51,10 @@ type GoIRContext struct {
 	// inliner for every target, and whether that becomes a record is the
 	// target's answer (see lower.hasInstanceRuntime).
 	InstanceRecords bool
+	// InstanceReads are the members the build's tests read through an
+	// instance it builds at run time, which the Model holds each such
+	// instance for where its root is bound (HoldInstance).
+	InstanceReads []codegen.InstanceRead
 
 	// ModelIsValue says the Go scope this context emits into holds the Model
 	// as a value rather than a pointer, so handing it to something that takes
@@ -1906,6 +1910,7 @@ func (gc *GoIRContext) WithLocal(name string) *GoIRContext {
 		EmitLineDirectives: gc.EmitLineDirectives,
 		LineDirBase:        gc.LineDirBase,
 		InstanceRecords:    gc.InstanceRecords,
+		InstanceReads:      gc.InstanceReads,
 		ModelIsValue:       gc.ModelIsValue,
 		imports:            gc.imports, // shared so child writes propagate
 	}
@@ -1927,6 +1932,7 @@ func (gc *GoIRContext) ForComponent(comp *ir.Component) *GoIRContext {
 		EmitLineDirectives: gc.EmitLineDirectives,
 		LineDirBase:        gc.LineDirBase,
 		InstanceRecords:    gc.InstanceRecords,
+		InstanceReads:      gc.InstanceReads,
 		ModelIsValue:       gc.ModelIsValue,
 		imports:            gc.imports, // shared so child writes propagate
 	}

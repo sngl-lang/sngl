@@ -42,7 +42,7 @@ func lowerInlineComponents(pkg *ir.Package, feats Features, opts Options) error 
 	st := &inlineCompState{pkg: pkg, main: main, cycles: cycles, reactive: reactive, platform: opts.Platform, instanceState: feats.InstanceState, genericComponents: feats.GenericComponents, onList: onList, names: namesOrOwn(opts.names), demoted: map[*ir.Func]bool{}, cells: map[*ir.Var][]*ir.Var{}, compInsts: map[*ir.Component][]componentInstance{}, methods: map[*ir.Var]map[*ir.Func][]*ir.Func{}}
 	cellOwners := implicitCellOwners(pkg)
 	st.reach = testReachRoots(pkg, main, opts)
-	st.reach.runtime = feats.RuntimeReach
+	st.reach.instanceState = feats.InstanceState
 	if err := st.run(); err != nil {
 		return err
 	}
@@ -1464,7 +1464,14 @@ func (st *inlineCompState) expandPerCopy(n *ir.NodeInst, rc reactiveCtx) ([]ir.S
 	}
 	vars := slices.Clone((*st.hoist.vars)[varStart:])
 	funcs := slices.Clone((*st.hoist.funcs)[funcStart:])
+	inits := map[*ir.Var]ir.Expr{}
+	for _, v := range vars {
+		inits[v] = v.Init
+	}
 	body, err = perCopyCells(nodePos(n), body, vars, funcs, rc.loops)
+	if err == nil {
+		st.recordCells(n, inits, rc.loops)
+	}
 	return body, true, err
 }
 

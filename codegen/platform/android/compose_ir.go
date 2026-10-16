@@ -39,6 +39,10 @@ type irComposeContext struct {
 	// built at run time among them is in SnglPresent while it is composed,
 	// having no node of its own a tag could be on.
 	present map[string]bool
+	// reads are what a test reads through an instance built at run time: one
+	// a call site renders is handed the entry it registers under
+	// (emitInstanceRegistration).
+	reads []codegen.InstanceRead
 	// widgetSeq names per-widget local state (e.g. a select's `expanded`)
 	// uniquely within a composable so multiple instances don't collide.
 	widgetSeq int
@@ -329,6 +333,17 @@ func (cc *irComposeContext) renderUserComponent(n *ir.NodeInst) {
 	if n.Component != nil {
 		args = append(args, cc.populationArgs(n)...)
 		args = append(args, cc.handlerArgs(n)...)
+	}
+	for _, r := range cc.reads {
+		if r.ID != n.ID {
+			continue
+		}
+		entry := fmt.Sprintf("%q", n.ID)
+		if k := n.Prop(ir.CopyProp); k != nil && r.Keyed {
+			entry = kotlin.PresentCopyEntry(n.ID, cc.kc.EvalExpr(k))
+		}
+		args = append(args, kotlin.InstanceKeyParam+" = "+entry)
+		break
 	}
 	if cc.present[n.ID] {
 		// One copy is registered under its key, and again when a reused

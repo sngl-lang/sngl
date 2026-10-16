@@ -678,6 +678,9 @@ type htmlGen struct {
 	lang codegen.LangTranslator
 
 	pkg *ir.Package
+	// reads is what the package's tests read through an instance built at
+	// run time (instanceReads).
+	reads []codegen.InstanceRead
 	// written is each element variable an element has been written under,
 	// so a second node carrying the same `#id` gets one of its own (nodeID).
 	written map[string]bool
@@ -3713,6 +3716,29 @@ func (g *htmlGen) emitEventInvokers(b *strings.Builder) {
 			sel += fmt.Sprintf(" + ', [%s=\"' + k + '\"]'", instanceRootAttr(id))
 		}
 		fmt.Fprintf(b, "state.%s = (k) => document.querySelector(%s) !== null;\n", codegen.PresenceAtMethod(id), sel)
+	}
+	g.emitInstanceReads(b)
+}
+
+// emitInstanceReads writes each codegen.InstanceReadMethod a test calls, which
+// reads the member off the instance its root element holds (instanceOnRoot):
+// the instance's root carries its name and, for one copy, its key.
+func (g *htmlGen) emitInstanceReads(b *strings.Builder) {
+	for _, r := range g.instanceReads() {
+		sel := fmt.Sprintf("'[%s=%q]'", instanceMark, r.ID)
+		params := ""
+		if r.Keyed {
+			sel, params = instanceCopySelector(r.ID, "k"), "k"
+		}
+		inst := fmt.Sprintf("document.querySelector(%s)?.%s", sel, instanceOnRoot)
+		if r.Func != nil {
+			if params != "" {
+				params += ", "
+			}
+			fmt.Fprintf(b, "state.%s = (%s...a) => %s?.%s(...a);\n", codegen.InstanceReadMethod(r), params, inst, instanceCallMember(r.Member))
+			continue
+		}
+		fmt.Fprintf(b, "state.%s = (%s) => %s?.%s();\n", codegen.InstanceReadMethod(r), params, inst, instanceReadMember(r.Member))
 	}
 }
 

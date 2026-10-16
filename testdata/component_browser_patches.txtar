@@ -246,16 +246,16 @@ dialog { margin: auto; padding: 1em; }
 <button id="$8" data-sngl-id="set">
   <span>set</span>
 </button>
-<button id="$9" data-sngl-id="t__own0">
+<button id="$9" data-sngl-id="t__reach0">
   <span>toggle</span>
 </button>
-<div style="display:flex;flex-direction:column" data-sngl-id="box">
+<div style="display:flex;flex-direction:column" data-sngl-id="box__reach0">
   <span data-sngl-slot="3" style="display:contents"></span>
 </div>
 <button id="$11" data-sngl-id="b">
   <span>bump</span>
 </button>
-<div style="display:flex;flex-direction:column" data-sngl-id="box__1">
+<div style="display:flex;flex-direction:column" data-sngl-id="box__reach1">
   <span data-sngl-slot="4" style="display:contents"></span>
 </div>
 <button id="$13" data-sngl-id="next">
@@ -306,7 +306,7 @@ window.__sngl_boot = () => {
   state.goClick = () => $2.click();
   state.clearClick = () => $7.click();
   state.setClick = () => $8.click();
-  state.t__own0Click = () => $9.click();
+  state.t__reach0Click = () => $9.click();
   state.bClick = () => $11.click();
   state.nextClick = () => $13.click();
   state.tClick = () => $15.click();
@@ -845,7 +845,7 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:2ac7ffaa553397da39a7f27f57009986
+pass sha256:278e83c5eb6dfbf8d0be1ecc955d4ef7
 -- testrun/html/none/component_browser_patches.sngl/app/1 --
 sha256:38139b6e2f2bc2546369849a11da2f34
 {
@@ -907,7 +907,7 @@ sha256:635bcbd8da770167652086c6d0a7d7d2
   ]
 }
 -- testrun/html/none/component_browser_patches.sngl/slots/1 --
-sha256:2430d6591c2818b6ec1e870c411d271d
+sha256:d0d6d79a8491ba8cade437815dd0b8d1
 {
   "results": [
     {

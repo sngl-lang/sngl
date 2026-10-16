@@ -46,7 +46,6 @@ var capabilityField = map[string]func(*Features) *bool{
 	"navigation":        func(f *Features) *bool { return &f.Navigation },
 	"genericFuncs":      func(f *Features) *bool { return &f.GenericFuncs },
 	"genericComponents": func(f *Features) *bool { return &f.GenericComponents },
-	"runtimeReach":      func(f *Features) *bool { return &f.RuntimeReach },
 }
 
 var passField = map[string]func(*Features) *bool{

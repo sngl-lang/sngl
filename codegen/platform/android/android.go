@@ -323,6 +323,10 @@ func emitKotlinTestSources(req *codegen.Request, sink codegen.Sink, cfg Config, 
 		Members:        members,
 		Platform:       "android",
 		KeyedInstances: keyedInstanceIDs(req.Pkg),
+		InstanceReads:  map[string]codegen.InstanceRead{},
+	}
+	for _, r := range codegen.InstanceReads(req.Pkg) {
+		surf.InstanceReads[codegen.InstanceReadMethod(r)] = r
 	}
 	if len(testFns) == 0 {
 		return nil

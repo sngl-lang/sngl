@@ -3210,8 +3210,16 @@ func (env *Env) underHandler(vals map[*ir.Context]any, fn func() (any, error)) (
 // A component whose call site handled nothing of the event still renders
 // something that reports it: the event reaches that, and the component's own
 // forwarding emit, if it has one, runs the call site's handler from there.
+//
+// A program's component emits its events from the program's own code, so a
+// test firing one stands in for that emit and runs the call site's handler
+// with the test's arguments, as every compiled target does.
 func (env *Env) InvokeElementEvent(m map[string]any, event string, args func() ([]any, error)) (any, bool, error) {
 	n, _ := m["__node"].(*Node)
+	_, handled := m["@"+event].(*ir.Func)
+	if programComponent(n) && handled {
+		return env.runElementHandler(m, event, args)
+	}
 	if d, name := forwardingDescendant(instanceBody(m, n), event); d != nil {
 		return env.InvokeElementEvent(d.Map(), name, args)
 	}
@@ -3225,6 +3233,22 @@ func (env *Env) InvokeElementEvent(m map[string]any, event string, args func() (
 			return nil, false, nil
 		}
 		return env.InvokeElementEvent(d.Map(), event, args)
+	}
+	return env.runElementHandler(m, event, args)
+}
+
+// programComponent reports whether n is an instance of a component the
+// program declares.
+func programComponent(n *Node) bool {
+	return n != nil && n.Component != nil && n.Component.PkgPath() == "" && !n.Component.Primitive()
+}
+
+// runElementHandler runs the handler the node m names carries for event, in the
+// scope its call site was written in.
+func (env *Env) runElementHandler(m map[string]any, event string, args func() ([]any, error)) (any, bool, error) {
+	h, _ := m["@"+event].(*ir.Func)
+	if h == nil {
+		return nil, false, nil
 	}
 	handlerEnv := env
 	if oe, ok := m["__ownerEnv"].(*Env); ok && oe != nil {

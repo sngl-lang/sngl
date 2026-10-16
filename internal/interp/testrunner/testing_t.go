@@ -445,11 +445,59 @@ func (cv *componentValue) SetField(op ast.AssignOp, field string, val any) error
 	return nil
 }
 
+// callSite is the node the instance was rendered from, mounted in the scope of
+// the instance whose body wrote it, or nil for the instance a test was given
+// or a component the program does not declare.
+func (cv *componentValue) callSite() *interp.Node {
+	if cv.by == nil || cv.comp == nil || cv.comp.PkgPath() != "" {
+		return nil
+	}
+	view, err := interp.Mount(cv.by.Env)
+	if err != nil || view == nil {
+		return nil
+	}
+	var found *interp.Node
+	var walk func(ns []*interp.Node)
+	walk = func(ns []*interp.Node) {
+		for _, n := range ns {
+			if found != nil {
+				return
+			}
+			if n.CompEnv == cv.Env {
+				found = n
+				return
+			}
+			walk(n.Children)
+		}
+	}
+	walk(view.Roots)
+	return found
+}
+
 // InvokeMethod dispatches `method` on the component. Returns (nil, false, nil)
 // when the method is not defined on the component; the caller falls back to
 // other dispatch paths in that case.
 func (cv *componentValue) InvokeMethod(env *interp.Env, method string, args []ir.CallArg) (any, bool, error) {
 	if len(method) > 0 && method[0] == '@' {
+		evalArgs := func() ([]any, error) {
+			vals := make([]any, 0, len(args))
+			for _, a := range args {
+				v, err := env.Eval(a.Value)
+				if err != nil {
+					return nil, err
+				}
+				vals = append(vals, v)
+			}
+			return vals, nil
+		}
+		// A program's component emits its events from the program's code,
+		// so the event is the call site's handler, run where the call site
+		// was written.
+		if n := cv.callSite(); n != nil {
+			if res, handled, err := env.InvokeElementEvent(n.Map(), method[1:], evalArgs); handled {
+				return res, true, err
+			}
+		}
 		// The event reaches what the instance renders that reports it, as a
 		// user's click reaches the widget: a `nav.link` is clicked through the
 		// primitive its override renders. An instance rendering nothing that
@@ -459,17 +507,7 @@ func (cv *componentValue) InvokeMethod(env *interp.Env, method string, args []ir
 			return nil, true, err
 		}
 		if n := view.Handling(method[1:]); n != nil {
-			return env.InvokeElementEvent(n.Map(), method[1:], func() ([]any, error) {
-				vals := make([]any, 0, len(args))
-				for _, a := range args {
-					v, err := env.Eval(a.Value)
-					if err != nil {
-						return nil, err
-					}
-					vals = append(vals, v)
-				}
-				return vals, nil
-			})
+			return env.InvokeElementEvent(n.Map(), method[1:], evalArgs)
 		}
 		return nil, true, nil
 	}

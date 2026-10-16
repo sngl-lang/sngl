@@ -51,8 +51,9 @@ func TriggerTarget(c *Call) (recv, id string, path []Expr, ok bool) {
 }
 
 // IndexedRefIDs is every `#id` a test reaches one copy of -- triggers,
-// `c.row[1].change(true)`, or null-tests, `c.row[1] == null` -- by an index
-// into a ref to the nodes loops rendered under it.
+// `c.row[1].change(true)`, null-tests, `c.row[1] == null`, and a member of an
+// instance read or called through one, `c.row[1].hits` -- by an index into a
+// ref to the nodes loops rendered under it.
 func IndexedRefIDs(pkg *Package) map[string]bool {
 	out := map[string]bool{}
 	if pkg == nil {
@@ -72,11 +73,39 @@ func IndexedRefIDs(pkg *Package) map[string]bool {
 				if sel, path, _, ok := NullTestedRef(x); ok && len(path) > 0 {
 					out[sel.Field] = true
 				}
+			case *Select:
+				if id, path, ok := InstanceRef(x.Operand); ok && len(path) > 0 {
+					out[id] = true
+				}
+			}
+			if c, ok := n.(*Call); ok && c.Receiver != nil {
+				if id, path, ok := InstanceRef(c.Receiver); ok && len(path) > 0 {
+					out[id] = true
+				}
 			}
 			return nil
 		})
 	}
 	return out
+}
+
+// InstanceRef reads e as a test's ref to a node, `c.b` or one copy of it,
+// `c.row[1]`, read after a null test or not: its id and the index into each
+// loop around it.
+func InstanceRef(e Expr) (id string, path []Expr, ok bool) {
+	e = stripConversions(e)
+	for ix, isIx := e.(*Index); isIx; ix, isIx = e.(*Index) {
+		path = append([]Expr{ix.Idx}, path...)
+		e = stripConversions(ix.Operand)
+	}
+	sel, isSel := e.(*Select)
+	if !isSel || sel.Ref == RefNone || len(sel.Ref) != len(path)+1 && sel.Ref[len(path)] != RefOption {
+		return "", nil, false
+	}
+	if _, isIdent := sel.Operand.(*Ident); !isIdent {
+		return "", nil, false
+	}
+	return sel.Field, path, true
 }
 
 // CopyKey is the key of one copy of a node loops rendered: the index into each
