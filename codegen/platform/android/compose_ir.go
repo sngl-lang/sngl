@@ -35,6 +35,10 @@ type irComposeContext struct {
 	// nav is the stacks the program renders, answered here rather than
 	// lowered (nav.go).
 	nav *androidNav
+	// present are the ids a test null-tests, in a test build: an instance
+	// built at run time among them is in SnglPresent while it is composed,
+	// having no node of its own a tag could be on.
+	present map[string]bool
 	// widgetSeq names per-widget local state (e.g. a select's `expanded`)
 	// uniquely within a composable so multiple instances don't collide.
 	widgetSeq int
@@ -325,6 +329,13 @@ func (cc *irComposeContext) renderUserComponent(n *ir.NodeInst) {
 	if n.Component != nil {
 		args = append(args, cc.populationArgs(n)...)
 		args = append(args, cc.handlerArgs(n)...)
+	}
+	if cc.present[n.ID] {
+		cc.line("%s(Unit) {", cc.kc.Name(ktDisposableEffect))
+		cc.line("    val __token = Any()")
+		cc.line("    %s[__token] = %q", kotlin.PresentRegistry, n.ID)
+		cc.line("    onDispose { %s.remove(__token) }", kotlin.PresentRegistry)
+		cc.line("}")
 	}
 	cc.line("%s(%s)", exportName(n.Name), strings.Join(args, ", "))
 }

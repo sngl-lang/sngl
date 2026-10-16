@@ -244,12 +244,7 @@ func lowerEventTrigger(call *ir.CallStmt) (string, bool) {
 		return "", false
 	}
 	id, event := tt.ID, c.Event
-	// One copy of a node loops rendered is the node carrying its tag and, in
-	// SnglCopy, its copy's key.
-	tag := fmt.Sprintf("androidx.compose.ui.test.hasTestTag(%q)", id)
-	if key := tt.Key(); key != nil {
-		tag = fmt.Sprintf("(%s and androidx.compose.ui.test.SemanticsMatcher.expectValue(%s, %s))", tag, CopySemanticsKey, lowerTestExpr(key, TestSurface{}, nil))
-	}
+	tag := copyMatcher(id, tt.Key())
 	if carriesState(c.Args) {
 		// The tag sits on the override's root, the Row around the control and
 		// its label, so the click targets the toggleable inside it. It flips
@@ -331,13 +326,19 @@ func extractEventValue(args []ir.CallArg) string {
 // asked the view tree for a tag no widget carries.
 func lowerTestExpr(e ir.Expr, surf TestSurface, compRecvs map[string]bool) string {
 	// `<recv>.<id> == null` asks whether the node is rendered now, which is
-	// whether the semantics tree holds a node carrying its tag.
-	if recv, id, present, ok := codegen.RefNullTest(e); ok && compRecvs[recv] {
-		check := "isEmpty"
-		if present {
-			check = "isNotEmpty"
+	// whether the semantics tree holds a node carrying its tag -- and, for
+	// `<recv>.<id>[1] == null`, its copy's key.
+	if recv, id, path, present, ok := codegen.RefNullTest(e); ok && compRecvs[recv] {
+		nodes := fmt.Sprintf("composeTestRule.onAllNodes(%s).fetchSemanticsNodes().isNotEmpty()", copyMatcher(id, ir.CopyKey(path)))
+		if len(path) == 0 {
+			// An instance built at run time has no node of its own: it
+			// counts itself in PresentRegistry instead.
+			nodes = fmt.Sprintf("(%s || %s.containsValue(%q))", nodes, PresentRegistry, id)
 		}
-		return fmt.Sprintf("composeTestRule.onAllNodesWithTag(%q).fetchSemanticsNodes().%s()", id, check)
+		if !present {
+			return "!" + nodes
+		}
+		return nodes
 	}
 	switch n := e.(type) {
 	case *ir.Binary:
@@ -684,3 +685,19 @@ func init() {
 // CopySemanticsKey is the semantics property the screen declares and sets on
 // each copy of a node a test indexes, holding the copy's key (ir.CopyProp).
 const CopySemanticsKey = "SnglCopy"
+
+// copyMatcher finds the node carrying the tag id, and where key is not nil
+// the copy of it a loop rendered whose SnglCopy holds key.
+func copyMatcher(id string, key ir.Expr) string {
+	tag := fmt.Sprintf("androidx.compose.ui.test.hasTestTag(%q)", id)
+	if key == nil {
+		return tag
+	}
+	return fmt.Sprintf("(%s and androidx.compose.ui.test.SemanticsMatcher.expectValue(%s, %s))", tag, CopySemanticsKey, lowerTestExpr(key, TestSurface{}, nil))
+}
+
+// PresentRegistry is the map the screen declares in a test build, holding a
+// token for each instance built at run time that a test null-tests while it is
+// composed, under the id its call site gave it. Each test's state empties it,
+// since a composition an earlier test left is never disposed.
+const PresentRegistry = "SnglPresent"

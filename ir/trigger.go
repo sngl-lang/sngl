@@ -40,9 +40,10 @@ func TriggerTarget(c *Call) (recv, id string, path []Expr, ok bool) {
 	return base.Name, sel.Field, path, true
 }
 
-// IndexedTriggerIDs is every `#id` a test triggers one copy of --
-// `c.row[1].change(true)`.
-func IndexedTriggerIDs(pkg *Package) map[string]bool {
+// IndexedRefIDs is every `#id` a test reaches one copy of -- triggers,
+// `c.row[1].change(true)`, or null-tests, `c.row[1] == null` -- by an index
+// into a ref to the nodes loops rendered under it.
+func IndexedRefIDs(pkg *Package) map[string]bool {
 	out := map[string]bool{}
 	if pkg == nil {
 		return out
@@ -52,9 +53,14 @@ func IndexedTriggerIDs(pkg *Package) map[string]bool {
 			continue
 		}
 		_ = Walk(fn.Block, func(n Node) error {
-			if c, ok := n.(*Call); ok {
-				if _, id, path, ok := TriggerTarget(c); ok && len(path) > 0 {
+			switch x := n.(type) {
+			case *Call:
+				if _, id, path, ok := TriggerTarget(x); ok && len(path) > 0 {
 					out[id] = true
+				}
+			case *Binary:
+				if sel, ok := nullTestedCopy(x); ok {
+					out[sel.Field] = true
 				}
 			}
 			return nil
@@ -102,4 +108,41 @@ func literalIndices(indices []Expr) []string {
 		out[i] = lit.Value
 	}
 	return out
+}
+
+// nullTestedCopy is the ref b null-tests one copy of, `c.row[1] == null`'s
+// `c.row`, either way round.
+func nullTestedCopy(b *Binary) (*Select, bool) {
+	if b.Op != ast.BinEq && b.Op != ast.BinNeq {
+		return nil, false
+	}
+	e := b.Left
+	if isNullLit(e) {
+		e = b.Right
+	} else if !isNullLit(b.Right) {
+		return nil, false
+	}
+	indexed := false
+	for {
+		switch x := e.(type) {
+		case *Index:
+			indexed = true
+			e = x.Operand
+		case *Conversion:
+			e = x.Operand
+		case *Select:
+			_, isIdent := x.Operand.(*Ident)
+			return x, indexed && isIdent && x.Ref != RefNone
+		default:
+			return nil, false
+		}
+	}
+}
+
+func isNullLit(e Expr) bool {
+	for conv, ok := e.(*Conversion); ok; conv, ok = e.(*Conversion) {
+		e = conv.Operand
+	}
+	lit, ok := e.(*Literal)
+	return ok && lit.Type != nil && lit.Type.Kind == TypeNull
 }

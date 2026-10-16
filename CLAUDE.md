@@ -263,7 +263,7 @@ each loop, outermost first (`codegen.EventTrigger.Path`). No target could turn
 a path into a position among all the copies without knowing how many each
 earlier iteration rendered, so each copy carries its **key** instead:
 `passCopyKeys` writes it into `ir.CopyProp` (`__copy`) on every copy of an id
-a test indexes (`ir.IndexedTriggerIDs`) -- the loop indices joined by `/`,
+a test indexes (`ir.IndexedRefIDs`) -- the loop indices joined by `/`,
 `"1/0"`, a single loop's being the bare index (`ir.CopyKey`) -- and hands a
 component built at run time the key of the copy it stands in through a prop of
 the same name, which its own copies' keys extend. An ordinary prop, so an
@@ -2585,7 +2585,18 @@ whose body wrote the node, nil in a population — and `View.Refs`. A compiled
 test answers `c.x == null` with a presence check per id (`codegen.RefNullTest`,
 `codegen.LowerRefNullTests`): html's `data-sngl-id`, fyne's and gtk4's
 `__named_<id>`, bubbletea's conditions around the node, and android's
-semantics tree.
+semantics tree. A slot's reset clears the field of a widget a test
+null-tests on fyne and gtk4, which still held a widget the branch dropped. An
+instance built at run time has no widget of its own: on fyne and gtk4 it hands
+its root to `__present_<id>` where the root is bound, and on android its call
+site holds a token in `SnglPresent` while it is composed
+(`testdata/ref_null_test_instance.txtar`). `c.x[1] == null` null-tests one
+copy, an iteration of the loop around an `if`, by the copy's key as a trigger
+names one (`<id>PresentAt`, `codegen.PresenceAtMethod`), and `ir.IndexedRefIDs`
+stamps the ids a test reaches either way
+(`testdata/indexed_ref_null_test.txtar`). One copy of an instance built at run
+time carries no key to find, and the test is refused where the instance is
+written (`passCopyKeys`); bubbletea splices it and answers from the view.
 
 **An event's parameters are its declaration's, and an override reads what the
 host reports and writes the prop it reports.** A platform override handles

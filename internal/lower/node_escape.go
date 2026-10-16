@@ -156,10 +156,33 @@ func isSynthNodeID(id string) bool { return strings.HasPrefix(id, "__n") }
 // the pass, so every platform emitted them as shared Model fields that each
 // iteration of the loop overwrote.
 func createdNodeID(lv *ir.LocalVar) string {
-	if lv == nil || !isSynthNodeID(lv.Name) {
+	if lv == nil {
 		return ""
 	}
-	return lv.Name
+	if isSynthNodeID(lv.Name) || reconcileLocal(lv) {
+		return lv.Name
+	}
+	return ""
+}
+
+// reconcileLocal reports whether lv is one of the locals a slot's instance
+// reconcile declares under the id the program gave the instance: its
+// position, the instance it builds, and the root it binds. Matched by name
+// alone, a named instance's position was a local, the instance built into it
+// a Model field, and its root read from a field nothing wrote.
+func reconcileLocal(lv *ir.LocalVar) bool {
+	if c, ok := lv.Init.(*ir.Call); ok && c.Func != nil {
+		return c.Func.Intrinsic == ir.NodeOpCreateComponent || c.Func.Intrinsic == ir.NodeOpComponentRoot
+	}
+	if lv.Sym == nil || !lv.Sym.Synthesized || lv.Type == nil || lv.Type.Kind != ir.TypeInstance {
+		return false
+	}
+	return lv.Init == nil || isNullLiteral(lv.Init)
+}
+
+func isNullLiteral(e ir.Expr) bool {
+	lit, ok := e.(*ir.Literal)
+	return ok && lit.Type != nil && lit.Type.Kind == ir.TypeNull
 }
 
 // scopeFromFuncBody builds a scope for a nested inline closure/lambda's Func
@@ -241,9 +264,8 @@ func collectScopeRefsExpr(e ir.Expr, info *scopeRefInfo) {
 		// Any read of the name counts, element ref or not: an instance handle
 		// is reached through a plain ident, and a use that crosses an emitted
 		// function is an escape whichever flag the ident happens to carry.
-		if isSynthNodeID(x.Name) {
-			info.used[x.Name] = true
-		}
+		// Every name is noted, since a reconcile's are the program's ids.
+		info.used[x.Name] = true
 	case *ir.Binary:
 		collectScopeRefsExpr(x.Left, info)
 		collectScopeRefsExpr(x.Right, info)

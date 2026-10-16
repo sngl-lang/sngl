@@ -83,6 +83,12 @@ type fyneTranslator struct {
 	// slotNamed are the indexed ids this slot render func creates, which its
 	// reset empties.
 	slotNamed []string
+	// present are the ids a test null-tests. slotPresent are the fields of
+	// those this slot render func creates -- a widget's own, an instance's
+	// presentField -- which its reset clears: what the render no longer builds
+	// is not rendered, though its field still holds it.
+	present     map[string]bool
+	slotPresent []string
 	// failSink is where a prop this platform cannot emit is reported. See
 	// withFailSink.
 	failSink func(error)
@@ -202,10 +208,28 @@ func (t *fyneTranslator) withInvokerSink(sink func(fyneEventInvoker)) *fyneTrans
 func (t *fyneTranslator) withIndexed(indexed map[string]bool, stmts []ir.Stmt) *fyneTranslator {
 	t.indexed = indexed
 	t.slotNamed = nil
+	t.slotPresent = nil
+	t.present, _ = codegen.NullTestedRefs(t.gc.Ctx.Pkg)
 	_ = ir.Walk(stmts, func(n ir.Node) error {
-		if lv, ok := n.(*ir.LocalVar); ok && indexed[lv.Name] {
-			if c, ok := lv.Init.(*ir.Call); ok && c.Func != nil && c.Func.Intrinsic == ir.NodeOpCreateNode {
+		lv, ok := n.(*ir.LocalVar)
+		if !ok {
+			return nil
+		}
+		c, ok := lv.Init.(*ir.Call)
+		if !ok || c.Func == nil {
+			return nil
+		}
+		switch c.Func.Intrinsic {
+		case ir.NodeOpCreateNode:
+			if indexed[lv.Name] {
 				t.slotNamed = append(t.slotNamed, lv.Name)
+			}
+			if t.present[lv.Name] {
+				t.slotPresent = append(t.slotPresent, lv.Name)
+			}
+		case ir.NodeOpComponentRoot:
+			if inst := codegen.IdentBareName(c.Args[0].Value); t.present[inst] {
+				t.slotPresent = append(t.slotPresent, presentField(inst))
 			}
 		}
 		return nil
@@ -465,11 +489,19 @@ func (t *fyneTranslator) OnComponentRoot(ctx context.Context, id string, inst ir
 		// no field the emitted file has.
 		root = &ir.Select{Type: fyneObject(), Operand: root, Field: golang.ComponentRootField}
 	}
+	// An instance a test null-tests hands its root to the Model while it is
+	// rendered, as a widget is its own field.
+	var present []ir.Stmt
+	if name := codegen.IdentBareName(inst); t.present[name] {
+		field := presentField(name)
+		t.sinkField(field, fyneWidgetHandleType)
+		present = append(present, &ir.Assign{Target: t.fieldRef(field), Op: ast.AssignSet, Value: root})
+	}
 	if t.isLocalRef(id) {
-		return []ir.Stmt{&ir.LocalVar{Name: id, Init: root}}
+		return append([]ir.Stmt{&ir.LocalVar{Name: id, Init: root}}, present...)
 	}
 	t.sinkField(id, fyneWidgetHandleType)
-	return []ir.Stmt{&ir.Assign{Target: t.fieldRef(id), Op: ast.AssignSet, Value: root}}
+	return append([]ir.Stmt{&ir.Assign{Target: t.fieldRef(id), Op: ast.AssignSet, Value: root}}, present...)
 }
 
 // instanceRef qualifies the handle an instance op names. The reconcile a
@@ -807,6 +839,12 @@ func (t *fyneTranslator) OnSlotReset(ctx context.Context, slot *ir.Var) []ir.Stm
 	for _, id := range t.slotNamed {
 		list := copiesField(id)
 		reset = append(reset, &ir.Assign{Target: codegen.RecvFieldRef(t.gc.NodeRecvRef(list), list, t.copiesType(id)), Op: ast.AssignSet, Value: &ir.Literal{Type: ir.TypNull}})
+	}
+	for _, id := range t.slotPresent {
+		if t.isLocalRef(id) {
+			continue
+		}
+		reset = append(reset, &ir.Assign{Target: codegen.RecvFieldRef(t.gc.NodeRecvRef(id), id, ir.NativeGoNamed("fyne.CanvasObject")), Op: ast.AssignSet, Value: &ir.Literal{Type: ir.TypNull}})
 	}
 	return reset
 }

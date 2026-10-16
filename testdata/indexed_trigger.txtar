@@ -8,7 +8,7 @@ test lowerer calls the invoker's `At` variant with it (codegen.InvokerAt).
 html finds the element carrying it in data-sngl-copy, and under it the
 element the listener is on when that is not the named one -- a checkbox's
 `<input>` in the `<label>` its id lands on. fyne and gtk4 keep the copies of
-an id a test indexes in a map, and only such an id (ir.IndexedTriggerIDs).
+an id a test indexes in a map, and only such an id (ir.IndexedRefIDs).
 bubbletea walks the loop as View counts it to find the copy's focus ordinal
 and presses the key with the slot's cursor there. android finds the node
 whose SnglCopy semantics property holds it.

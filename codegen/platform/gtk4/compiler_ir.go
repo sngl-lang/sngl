@@ -361,7 +361,7 @@ func (c *compilation) emitIRMode(wrapped bool) (modelSrc []byte, callbacksSrc []
 	var topLevelRefs, appChildren []string
 	var topLevelCType map[string]string
 	// The ids a test drives one copy of, whose copies the Model lists.
-	indexed := ir.IndexedTriggerIDs(c.ctx.Pkg)
+	indexed := ir.IndexedRefIDs(c.ctx.Pkg)
 	recordInvoker := func(inv gtkEventInvoker) { vc.eventInvokers = append(vc.eventInvokers, inv) }
 	if len(bodyStmts) > 0 {
 		tr := newGtk4Translator(gc, c.widgetFieldSink(&widgetFields)).
@@ -421,7 +421,7 @@ func (c *compilation) emitIRMode(wrapped bool) (modelSrc []byte, callbacksSrc []
 	}
 	emitCanvasDrawFuncs(&funcBuf)
 
-	presentIDs := codegen.NullTestedRefs(c.ctx.Pkg)
+	presentIDs, keyedPresent := codegen.NullTestedRefs(c.ctx.Pkg)
 	presenceFields := map[string]string{}
 	createTargets := collectCreateComponentTargets(c.ctx.Pkg)
 	for _, cc := range c.ctx.NonRootComponents() {
@@ -501,6 +501,7 @@ func (c *compilation) emitIRMode(wrapped bool) (modelSrc []byte, callbacksSrc []
 	}
 	emitPresenceChecks(&eventInvokersBuf, presentIDs, presenceFields, widgetFields)
 	emitCopyRegistries(&eventInvokersBuf, widgetFields)
+	emitKeyedPresenceChecks(&eventInvokersBuf, keyedPresent, widgetFields)
 
 	// The drawing-area trampoline registration emits an `unsafe.Pointer` cast.
 	if hasCanvas {
