@@ -10,7 +10,9 @@ component main node {
     hbox {
         avatar(initials="JD")
         avatar(initials="AB", variant=square) {
-            remote(url="https://example.com/a.png")
+            component src {
+                remote(url="https://example.com/a.png")
+            }
         }
         avatar(initials="XY", size=large)
     }

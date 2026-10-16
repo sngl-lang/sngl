@@ -52,7 +52,7 @@ func (c *checker) checkSlotInsertCount(comp *ir.Component, slot *ir.SlotDecl) {
 	why := "it is declared to render exactly once; declare it option[…] if the body may leave it out, or list[…] if it may repeat"
 	if slot.Rest {
 		what = fmt.Sprintf("rest slot %q", slot.Name)
-		why = fmt.Sprintf("the children a caller writes bare render where the body inserts %s, exactly once; declare it option[...component …] if the body may leave it out", slot.Name)
+		why = fmt.Sprintf("the children a caller writes bare render where the body inserts %s, exactly once; a slot the body may leave out is a named option[component …]", slot.Name)
 	}
 	switch slot.Inserts {
 	case ir.InsertMany:
@@ -72,7 +72,7 @@ func (c *checker) checkSlotInsertCount(comp *ir.Component, slot *ir.SlotDecl) {
 			// A repeating site is reported for repeating, below.
 			if s.under != "" && s.repeats == "" {
 				if slot.Rest {
-					c.error(s.pos, "%s is inserted under %s: the children a caller writes bare render exactly once, so insert %s where it always renders or declare it option[...component …]", what, s.under, slot.Name)
+					c.error(s.pos, "%s is inserted under %s: the children a caller writes bare render exactly once, so insert %s where it always renders, or make it a named option[component …] slot", what, s.under, slot.Name)
 				} else {
 					c.error(s.pos, "%s is inserted under %s: %s", what, s.under, why)
 				}

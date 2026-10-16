@@ -57,8 +57,10 @@ component gallery ui.node {
             }
         }
         ui.avatar(initials="JD") {
-            if hasPhoto {
-                ui.remote(url=url)
+            component src {
+                if hasPhoto {
+                    ui.remote(url=url)
+                }
             }
         }
         draw.canvas(width=32px, height=32px) {

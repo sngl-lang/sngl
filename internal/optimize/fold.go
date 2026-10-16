@@ -264,6 +264,7 @@ func foldStmts(stmts []ir.Stmt, ctx *evalCtx) []ir.Stmt {
 					branch = ifs.Body
 				}
 				branch = foldStmts(branch, ctx)
+				branch = ir.HandOnInstances(ifs, branch)
 				if ifs.FromTernary {
 					out = initTernaryTemp(out, branch)
 				} else {

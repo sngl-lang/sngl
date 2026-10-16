@@ -41,7 +41,7 @@ component modifier(label string) ui.node {
     })
 }
 
-component dialog(content option[...component ui.node]) ui.node {
+component dialog(content option[component ui.node]) ui.node {
     var open = true
     if open {
         ui.card {
@@ -63,7 +63,9 @@ ui.window(title="Names") {
             ui.text(value="{a.x} {t.size}")
             for var l = ["a", "b"] {
                 dialog {
-                    modifier(label=l)
+                    component content {
+                        modifier(label=l)
+                    }
                 }
             }
             ui.modal(title="m", open=shown) {
@@ -154,7 +156,7 @@ fun MainScreen() {
                 Text(text = "docs", modifier = Modifier_2, color = MaterialTheme.colorScheme.primary)
                 Text(text = ((a.x.toString() + " ") + t.size.toString()), modifier = Modifier_2)
                 for (l in listOf("a", "b")) {
-                    Dialog(slotContent = {
+                    Dialog(content = {
                         Modifier(label = l)
                     })
                 }
@@ -185,14 +187,14 @@ fun Modifier(label: String = "") {
 }
 
 @Composable
-fun Dialog(slotContent: (@Composable () -> Unit)? = null) {
+fun Dialog(content: (@Composable () -> Unit)? = null) {
     var open by remember { mutableStateOf(true) }
 
     if (open) {
         Card(modifier = Modifier_2) {
-            slotContent?.invoke()
+            content?.invoke()
         }
     }
 }
 -- run/kotlin/android --
-pass sha256:7a97dd2b8492f7a6d3884c22ace798a6
+pass sha256:7888eaf0ff173a57190847291ae9b4a0

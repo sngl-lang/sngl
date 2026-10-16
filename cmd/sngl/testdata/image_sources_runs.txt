@@ -64,8 +64,10 @@ component main ui.node {
             }
         }
         ui.avatar(initials="JD", size=large) {
-            if shown {
-                ui.file(path=here.path("logo.png"))
+            component src {
+                if shown {
+                    ui.file(path=here.path("logo.png"))
+                }
             }
         }
         ui.button #grow(text="grow", @click {

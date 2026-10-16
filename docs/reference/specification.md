@@ -1739,13 +1739,18 @@ is a list, one per insertion, and one in `badge`'s an option. The body is held
 to it over every path through it. A caller may leave any named slot
 unpopulated, and the insertion's block renders instead.
 
-The rest slot counts nodes instead, since its fill is the children a caller
-writes bare: `...component` is any number, `...component family.one[ui.node]`
-exactly one (bare `family.one` is exactly one of whatever the slot already
-accepts) and `...component option[ui.node]` none or one. It is inserted exactly
-once, unless an insertion count is written around the `...`:
-`option[...component ui.node]` may be left out, and the children a caller
-writes bare then read as options.
+What the component type holds counts the *nodes* a fill renders, in a named
+slot and the rest slot alike: `component ui.node` is any number,
+`component family.one[ui.node]` exactly one (bare `family.one` is exactly one
+of whatever the slot already accepts) and `component option[ui.node]` none or
+one. So `src option[component option[imageSource]]` is inserted at most once
+and holds at most one source.
+
+The rest slot's fill is the children a caller writes bare. It is inserted exactly
+once, and takes no insertion count: an `#id` a caller writes bare names one
+node at the position it was written. Content the body may leave out or repeat
+is a named slot, `option[component ui.node]` or `list[component ui.node]`,
+whose population is a namespace of its own.
 
 A slot's invocation parameters may be named in the type — `cell component(row Row)` — and the name is **part of the contract**, not documentation: two slot
 types match by name. Renaming one is therefore a breaking change to every

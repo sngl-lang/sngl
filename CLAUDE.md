@@ -2033,15 +2033,19 @@ often as *that* slot is inserted. A caller may still leave a named slot
 unpopulated (its insertion's block is the fallback), so nothing is required at
 the call site.
 
-The rest slot keeps counting nodes, since its fill is the children a caller
-writes bare: `...component` any number, `...component family.one` exactly one,
-`...component option[T]` none or one -- and it is inserted exactly once, so
+The component type itself counts the nodes a fill renders, in a named slot
+and the rest slot alike: `component T` any number, `component family.one`
+exactly one, `component option[T]` none or one, so
+`src option[component option[imageSource]]` is inserted at most once and holds
+at most one source. The two counts are orthogonal, and a population is held
+to the inner one where it is written. The rest slot is inserted exactly once, so
 bare children stay the caller's refs at the position the caller wrote them.
-A rest slot that is not says so outside the `...` (Jonathan's call):
-`src option[...component option[imageSource]]` is inserted at most once and
-holds at most one node, which is avatar's, shown only when there is a picture
-to show; the children a caller hands it read as options. A node count on a
-named slot is refused with the spelling that replaces it. Bare
+A count written around the `...` is refused (Jonathan's call): an `#id` in bare
+children is typed by where the caller wrote it, which only holds if the body
+renders them exactly once. Content the body may leave out or repeat is a named
+`option[component …]` or `list[component …]` slot, whose population is a
+namespace of its own -- avatar's `src`, shown only when there is a picture to
+show. Bare
 `family.one` is a count and no family: "exactly one of whatever this slot
 already accepts", which is the tree the component declaring it belongs to.
 
