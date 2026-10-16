@@ -153,7 +153,7 @@ body { font-family: system-ui, sans-serif; }
   <span id="__n3" data-sngl-id="__n3">
   </span>
 </button>
-<div style="display:flex;flex-direction:column" data-sngl-id="out__1">
+<div style="display:flex;flex-direction:column" data-sngl-id="out__own0">
   <span>[3]</span>
   <span>[2]</span>
   <span>[1]</span>
@@ -162,18 +162,18 @@ body { font-family: system-ui, sans-serif; }
 <button id="$3" data-sngl-id="toggle">
   <span>toggle</span>
 </button>
-<div style="display:flex;flex-direction:column" data-sngl-id="out__2">
+<div style="display:flex;flex-direction:column" data-sngl-id="out__own1">
   <span data-sngl-slot="0" style="display:contents"></span>
 </div>
 <button id="$5" data-sngl-id="bang">
   <span>bang</span>
 </button>
-<div style="display:flex;flex-direction:column" data-sngl-id="out__3">
+<div style="display:flex;flex-direction:column" data-sngl-id="out__own2">
   <span data-sngl-slot="1" style="display:contents"></span>
 </div>
 <span id="__n4" data-sngl-id="__n4">
 </span>
-<div style="display:flex;flex-direction:column" data-sngl-id="out__4">
+<div style="display:flex;flex-direction:column" data-sngl-id="out__own3">
   <span data-sngl-slot="2" style="display:contents"></span>
 </div>
 
@@ -565,7 +565,7 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:ac3989abaea0acd8bc1936545e7789e2
+pass sha256:f423d4ae1a7c5bf6e666494bd234a848
 -- testrun/html/none/component_browser_instances.sngl/decorated/1 --
 sha256:52364bfc896518f189d3b27112abbea2
 {
