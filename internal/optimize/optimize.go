@@ -133,6 +133,10 @@ type evalCtx struct {
 	// until the first splice asks.
 	reachedIDs    map[*ir.Var]bool
 	reachedIDsSet bool
+	// nullTested is every `#id` a test null-tests
+	// (ir.NullTestedIDs). Nil until the first splice asks.
+	nullTested    map[string]bool
+	nullTestedSet bool
 	// foldingProp is the node props currently being folded, so a prop that
 	// reads itself stops rather than recursing. Built in foldPkg so that every
 	// child ctx shares the one map: created on first use instead, a child

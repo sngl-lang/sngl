@@ -213,11 +213,11 @@ func (t *fyneTranslator) withInvokerSink(sink func(fyneEventInvoker)) *fyneTrans
 
 // withIndexed has this Model scope keep the widgets of the ids a test indexes;
 // stmts is the scope's body, whose creates of them a slot's reset empties.
-func (t *fyneTranslator) withIndexed(indexed map[string]bool, stmts []ir.Stmt) *fyneTranslator {
+func (t *fyneTranslator) withIndexed(indexed, present map[string]bool, stmts []ir.Stmt) *fyneTranslator {
 	t.indexed = indexed
 	t.slotNamed = nil
 	t.slotPresent = nil
-	t.present, _ = codegen.NullTestedRefs(t.gc.Ctx.Pkg)
+	t.present = present
 	_ = ir.Walk(stmts, func(n ir.Node) error {
 		lv, ok := n.(*ir.LocalVar)
 		if !ok {

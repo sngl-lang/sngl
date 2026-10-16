@@ -285,6 +285,12 @@ func inlineComponentCall(n *ir.NodeInst, ctx *evalCtx) []ir.Stmt {
 	// `fmt.Sprint(m.dot.R)` against a Model that declares no `dot`, and on html
 	// an element the page never fills.
 	if n.ID != "" {
+		// A test's null test of the id asks after the instance, which a node
+		// an `if` or a `for` in its body decides is not: the lowering keeps
+		// that one.
+		if n.Handle != nil && comp.PkgPath() == "" && ctx.nullTestedIDs()[n.ID] && !ir.NodeIDRendersWithBody(folded) {
+			return nil
+		}
 		ir.AttachNodeID(folded, n.ID, n.Handle)
 	}
 	ir.AttachNodeSite(folded, n)
@@ -602,6 +608,14 @@ func substituteSlots(stmts []ir.Stmt, callsite *ir.NodeInst) []ir.Stmt {
 		},
 	}
 	return sp.Substitute(stmts, callsite)
+}
+
+func (ctx *evalCtx) nullTestedIDs() map[string]bool {
+	if !ctx.nullTestedSet {
+		ctx.nullTestedSet = true
+		ctx.nullTested = ir.NullTestedIDs(ctx.pkg)
+	}
+	return ctx.nullTested
 }
 
 func (ctx *evalCtx) reachedThrough() map[*ir.Var]bool {

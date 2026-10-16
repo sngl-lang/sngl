@@ -86,3 +86,28 @@ func LowerRefNullTests(stmts []ir.Stmt, methodFields map[string]bool) ([]ir.Stmt
 	})
 	return out, fields
 }
+
+// KeyedInstanceIDs is every `#id` naming an instance built at run time that
+// is handed the key of the copy it stands in (ir.Component.KeyedCopy): the
+// ids whose keyed presence check asks after an instance's root as well as a
+// node's key. pkg is lowered, so an instance is either still a node or the
+// ComponentRoot binding its root, which carries the key as a second argument.
+func KeyedInstanceIDs(pkg *ir.Package) map[string]bool {
+	out := map[string]bool{}
+	_ = ir.Walk(pkg, func(n ir.Node) error {
+		switch x := n.(type) {
+		case *ir.NodeInst:
+			if x.ID != "" && x.Component != nil && x.Component.KeyedCopy {
+				out[x.ID] = true
+			}
+		case *ir.Call:
+			if isLowerIntrinsic(x, ir.NodeOpComponentRoot) && len(x.Args) == 2 {
+				if id := IdentBareName(x.Args[0].Value); id != "" {
+					out[id] = true
+				}
+			}
+		}
+		return nil
+	})
+	return out
+}

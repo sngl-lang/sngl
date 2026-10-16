@@ -112,8 +112,8 @@ func literalIndices(indices []Expr) []string {
 
 // NullTestedRef reads a test's `c.x == null` or `c.x != null`, either way
 // round, where `c.x` is a ref to a node that may not be rendered -- or
-// `c.x[1]`, one copy of a node loops rendered under an `if`, whose path holds
-// the index into each loop. present is true for `!=`.
+// `c.x[1]`, one copy of a node loops rendered, under an `if` or not, whose
+// path holds the index into each loop. present is true for `!=`.
 func NullTestedRef(e Expr) (sel *Select, path []Expr, present, ok bool) {
 	bin, isBin := e.(*Binary)
 	if !isBin || (bin.Op != ast.BinEq && bin.Op != ast.BinNeq) {
@@ -132,7 +132,12 @@ func NullTestedRef(e Expr) (sel *Select, path []Expr, present, ok bool) {
 		ref = stripConversions(ix.Operand)
 	}
 	sel, isSel := ref.(*Select)
-	if !isSel || len(sel.Ref) < len(path)+2 || sel.Ref[len(path)] != RefOption {
+	if !isSel || len(sel.Ref) < len(path)+1 {
+		return nil, nil, false, false
+	}
+	// A copy is null-tested past the copies its loops rendered, whether or
+	// not an `if` stands between it and them.
+	if rest := sel.Ref[len(path):]; rest[0] != RefOption && (len(path) == 0 || rest != RefOne) {
 		return nil, nil, false, false
 	}
 	for i := range path {

@@ -194,11 +194,11 @@ func namedWidgetField(id string) string { return "__named_" + id }
 // withIndexed has this Model scope keep the widgets of the ids a test
 // indexes; stmts is the scope's body, whose creates of them a slot's reset
 // empties.
-func (t *gtk4Translator) withIndexed(indexed map[string]bool, stmts []ir.Stmt) *gtk4Translator {
+func (t *gtk4Translator) withIndexed(indexed, present map[string]bool, stmts []ir.Stmt) *gtk4Translator {
 	t.indexed = indexed
 	t.slotNamed = nil
 	t.slotPresent = nil
-	t.present, _ = codegen.NullTestedRefs(t.gc.Ctx.Pkg)
+	t.present = present
 	_ = ir.Walk(stmts, func(n ir.Node) error {
 		lv, ok := n.(*ir.LocalVar)
 		if !ok {

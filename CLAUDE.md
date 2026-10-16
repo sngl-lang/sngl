@@ -2603,8 +2603,8 @@ instance built at run time has no widget of its own: on fyne and gtk4 it hands
 its root to `__present_<id>` where the root is bound, and on android its call
 site holds a token in `SnglPresent` while it is composed
 (`testdata/ref_null_test_instance.txtar`). `c.x[1] == null` null-tests one
-copy, an iteration of the loop around an `if`, by the copy's key as a trigger
-names one (`<id>PresentAt`, `codegen.PresenceAtMethod`), and `ir.IndexedRefIDs`
+copy, an iteration of the loops around the node with or without an `if`
+between, by the copy's key as a trigger names one (`<id>PresentAt`, `codegen.PresenceAtMethod`), and `ir.IndexedRefIDs`
 stamps the ids a test reaches either way
 (`testdata/indexed_ref_null_test.txtar`). One copy of an instance built at run
 time is handed its key in the `__copy` prop (`passCopyKeys`), and the call site
@@ -2613,7 +2613,18 @@ argument, after the setter has re-keyed an instance a slot reuses: html's
 `data-sngl-copy` beside `data-sngl-instance`, fyne's and gtk4's
 `__copies_<id>`, one map for every record: a re-key replaces the entry and a
 record's `Destroy` takes its root out, and android's `SnglPresent` entry
-`id[key]`. bubbletea splices it and answers from the view (`testdata/indexed_ref_null_test_instance.txtar`).
+`id[key]`, each asked only for an id some such instance carries
+(`codegen.KeyedInstanceIDs`). bubbletea splices it and answers from the view (`testdata/indexed_ref_null_test_instance.txtar`).
+
+**An instance a test null-tests keeps a node of its own to be found by.** A
+splice leaves only the roots of its body, which bubbletea's view answers from
+(`ir.InstancesOf`) and no other target reads, so a target holding
+`InstanceState` builds one at run time wherever passNoInlineComponents would
+splice it, unless a test also reaches into it (`ir.NullTestedIDs`,
+`ir.ReachedIDs`). The two splices that move the call site's `#id` onto the
+body's first node leave a program component to it where that node is one an
+`if` or a `for` in the body decides (`ir.NodeIDRendersWithBody`)
+(`testdata/indexed_ref_null_test_spliced.txtar`).
 
 **An event's parameters are its declaration's, and an override reads what the
 host reports and writes the prop it reports.** A platform override handles
@@ -3163,11 +3174,15 @@ that is `Features.InstanceState`, a capability every platform but bubbletea
 declares: a record on fyne and gtk4, a factory closure on html, `remember` on
 android. bubbletea's model keeps every cell in itself, and a component built at
 run time there is a render function with nowhere to put one. So
-`passNoInlineComponents` splices a component that has state or holds a lifetime
-where it is written (`expandPerCopy`), and under a `for` gives each of its vars
-one cell per copy (`perCopyCells`): a map keyed by the loops' indices
-(`lower.CopyKey`), read as `cell.get(key, init)` and written through a
-temporary stored back. A timer under a loop is then a schedule per copy, which
+`passNoInlineComponents` splices a component that has state, holds a lifetime
+or declares a function where it is written (`expandPerCopy`) -- a render
+function's methods would be the Model's, which cannot read the props it is
+handed -- and under a `for` gives each of its vars one cell per copy
+(`perCopyCells`): a map keyed by the loops' indices (`lower.CopyKey`), read as
+`cell.get(key, init)` and written through a temporary stored back. On every
+target a function a splice hoists out of loops takes the loop variables it
+reads as parameters (`passLoopVars`), since a prop bound to one is substituted
+into it as that variable (`testdata/component_func_reads_loop_prop.txtar`). A timer under a loop is then a schedule per copy, which
 bubbletea keeps keyed the same way and routes through Update
 (`codegen.CollectLoopTimers`, `bubbletea/timers.go`); it used to be
 collected by nobody and never ran. A timer under no loop is the same

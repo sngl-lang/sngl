@@ -316,11 +316,12 @@ func (c *compilation) emitKotlin(req *codegen.Request, sink codegen.Sink) error 
 func emitKotlinTestSources(req *codegen.Request, sink codegen.Sink, cfg Config, ktOpts codegen.FileOptions, gradleScaffold bool, members map[string]string) error {
 	testFns, suffixes, methodFields := codegen.CollectTestFuncs(req.Pkg)
 	surf := kotlin.TestSurface{
-		MethodFields: methodFields,
-		StateFields:  codegen.StateFieldNames(req.Pkg),
-		Pkg:          req.Pkg,
-		Members:      members,
-		Platform:     "android",
+		MethodFields:   methodFields,
+		StateFields:    codegen.StateFieldNames(req.Pkg),
+		Pkg:            req.Pkg,
+		Members:        members,
+		Platform:       "android",
+		KeyedInstances: codegen.KeyedInstanceIDs(req.Pkg),
 	}
 	if len(testFns) == 0 {
 		return nil

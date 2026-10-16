@@ -346,7 +346,7 @@ func lowerTestExpr(e ir.Expr, surf TestSurface, compRecvs map[string]bool) strin
 			// An instance built at run time has no node of its own: it
 			// counts itself in PresentRegistry instead.
 			nodes = fmt.Sprintf("(%s || %s.containsValue(%q))", nodes, PresentRegistry, id)
-		} else {
+		} else if surf.KeyedInstances[id] {
 			nodes = fmt.Sprintf("(%s || %s.containsValue(%s))", nodes, PresentRegistry, PresentCopyEntry(id, lowerTestExpr(ir.CopyKey(path), TestSurface{}, nil)))
 		}
 		if !present {
@@ -641,6 +641,10 @@ type TestSurface struct {
 	// keyed by: android answers sngl:ui/nav's `current` that way, read
 	// through the instance as MainScreen reads it.
 	Platform string
+	// KeyedInstances is codegen.KeyedInstanceIDs: the ids a copy of which
+	// may be an instance built at run time, registered in PresentRegistry
+	// under its key.
+	KeyedInstances map[string]bool
 
 	kt *KtIRContext
 }
