@@ -1505,7 +1505,7 @@ package test.sngl.app
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
-import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performTextReplacement
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -1553,9 +1553,9 @@ class MainScreenTest {
         val c = MainScreenState()
         @Suppress("UNUSED_VARIABLE") val composeTestRule = composeRule
         composeRule.setContent { MainScreen(c) }
-        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("tap")).performClick(); composeTestRule.waitForIdle()
+        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("tap")).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick); composeTestRule.waitForIdle()
         org.junit.Assert.assertTrue("(c.clicked == \"d5\")", (c.clicked == "d5"))
-        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("wrap")).performClick(); composeTestRule.waitForIdle()
+        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("wrap")).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick); composeTestRule.waitForIdle()
         org.junit.Assert.assertTrue("(c.provided == \"d7\")", (c.provided == "d7"))
     }
 
@@ -1769,6 +1769,6 @@ pass sha256:9a04e7b97a36402f1adfa0a61d550224
 -- run/go/html --
 pass sha256:88a119efb66ceac5afa42e543804860e
 -- run/kotlin/android --
-pass sha256:89e5a2a096f5b2538079078b60dacddd
+pass sha256:c9f65542cab240a497a059e1b2d90d63
 -- run/none/html --
 pass sha256:41fc851e364b604dd7e95b7aa48f4d06

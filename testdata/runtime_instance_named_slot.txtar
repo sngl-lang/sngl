@@ -1648,7 +1648,7 @@ package test.sngl.app
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
-import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performTextReplacement
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -1669,7 +1669,7 @@ class MainScreenTest {
         @Suppress("UNUSED_VARIABLE") val composeTestRule = composeRule
         composeRule.setContent { MainScreen(c) }
         org.junit.Assert.assertTrue("(c.mounted == \"1:1 1:11 2:2 2:12 \")", (c.mounted == "1:1 1:11 2:2 2:12 "))
-        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("add")).performClick(); composeTestRule.waitForIdle()
+        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("add")).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick); composeTestRule.waitForIdle()
         org.junit.Assert.assertTrue("(c.mounted == \"1:1 1:11 2:2 2:12 3:3 3:13 \")", (c.mounted == "1:1 1:11 2:2 2:12 3:3 3:13 "))
     }
 
@@ -2152,6 +2152,6 @@ pass sha256:0ad9487ac7f6cb8260e3ec1ca725bb0b
 -- run/go/gtk4 --
 pass sha256:3f6c6c2c2aab0dbf6c69a94a50262b4a
 -- run/kotlin/android --
-pass sha256:cf148f18aee3f213cf651fd447df6fa5
+pass sha256:ea91f6ed5e53287b5fea050065582310
 -- run/none/html --
 pass sha256:370599e9242f69c4de9b74414e65b99c

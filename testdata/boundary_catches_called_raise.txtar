@@ -510,7 +510,7 @@ package test.sngl.app
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
-import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performTextReplacement
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -537,7 +537,7 @@ class MainScreenTest {
         val c = MainScreenState()
         @Suppress("UNUSED_VARIABLE") val composeTestRule = composeRule
         composeRule.setContent { MainScreen(c) }
-        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("stmt")).performClick(); composeTestRule.waitForIdle()
+        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("stmt")).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick); composeTestRule.waitForIdle()
         org.junit.Assert.assertTrue("(c.caught == \"too big;too big;\")", (c.caught == "too big;too big;"))
         org.junit.Assert.assertTrue("(c.after == \"\")", (c.after == ""))
     }
@@ -546,7 +546,7 @@ class MainScreenTest {
         val c = MainScreenState()
         @Suppress("UNUSED_VARIABLE") val composeTestRule = composeRule
         composeRule.setContent { MainScreen(c) }
-        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("lam")).performClick(); composeTestRule.waitForIdle()
+        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("lam")).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick); composeTestRule.waitForIdle()
         org.junit.Assert.assertTrue("(c.caught == \"too big;lam:lam;\")", (c.caught == "too big;lam:lam;"))
         org.junit.Assert.assertTrue("(c.after == \"l\")", (c.after == "l"))
     }
@@ -730,6 +730,6 @@ pass sha256:ec01d7ab5554ece5171ca821c1570e25
 -- run/go/html --
 pass sha256:1c0b9b15a10c9409f69b6e1e2dc818b3
 -- run/kotlin/android --
-pass sha256:08b6cc28b69638317960e710699c0ef0
+pass sha256:f993c56d7f6df61ef822c5186107d4ce
 -- run/none/html --
 pass sha256:f9323825d8c32d41ce033de0be856a54

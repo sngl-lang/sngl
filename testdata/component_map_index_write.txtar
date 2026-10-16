@@ -506,7 +506,7 @@ package test.sngl.app
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
-import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performTextReplacement
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -526,9 +526,9 @@ class MainScreenTest {
         val c = MainScreenState()
         @Suppress("UNUSED_VARIABLE") val composeTestRule = composeRule
         composeRule.setContent { MainScreen(c) }
-        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("put")).performClick(); composeTestRule.waitForIdle()
+        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("put")).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick); composeTestRule.waitForIdle()
         org.junit.Assert.assertTrue("(c.counts.getOrDefault(\"a\", 0) == 7)", (c.counts.getOrDefault("a", 0) == 7))
-        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("bump")).performClick(); composeTestRule.waitForIdle()
+        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("bump")).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick); composeTestRule.waitForIdle()
         org.junit.Assert.assertTrue("(c.counts.getOrDefault(\"a\", 0) == 12)", (c.counts.getOrDefault("a", 0) == 12))
         org.junit.Assert.assertTrue("(c.counts.size == 1)", (c.counts.size == 1))
     }
@@ -620,7 +620,7 @@ pass sha256:cf36bd9aa53b32d770ef87feaf4386fc
 -- run/go/gtk4 --
 pass sha256:7b8259bced939e301dc2a2ec7231fb61
 -- run/kotlin/android --
-pass sha256:3ca6b36d17413e8fec4522c70170029a
+pass sha256:0d878d09858440391a03ed5eb65272c7
 -- run/none/html --
 pass sha256:4a3c9c304234929a87d3c65a733effb3
 -- testrun/html/none/component_map_index_write.sngl/main/1 --

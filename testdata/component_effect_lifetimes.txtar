@@ -3035,7 +3035,7 @@ package test.sngl.app
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
-import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performTextReplacement
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -3056,11 +3056,11 @@ class MainScreenTest {
         @Suppress("UNUSED_VARIABLE") val composeTestRule = composeRule
         composeRule.setContent { MainScreen(c) }
         org.junit.Assert.assertTrue("(c.log__inst0.joinToString(\",\") == \"in\")", (c.log__inst0.joinToString(",") == "in"))
-        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("toggle")).performClick(); composeTestRule.waitForIdle()
+        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("toggle")).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick); composeTestRule.waitForIdle()
         org.junit.Assert.assertTrue("(c.log__inst0.joinToString(\",\") == \"in,out\")", (c.log__inst0.joinToString(",") == "in,out"))
-        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("toggle")).performClick(); composeTestRule.waitForIdle()
+        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("toggle")).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick); composeTestRule.waitForIdle()
         org.junit.Assert.assertTrue("(c.log__inst0.joinToString(\",\") == \"in,out,in\")", (c.log__inst0.joinToString(",") == "in,out,in"))
-        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("toggle")).performClick(); composeTestRule.waitForIdle()
+        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("toggle")).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick); composeTestRule.waitForIdle()
         org.junit.Assert.assertTrue("(c.log__inst0.joinToString(\",\") == \"in,out,in,out\")", (c.log__inst0.joinToString(",") == "in,out,in,out"))
     }
 
@@ -3069,7 +3069,7 @@ class MainScreenTest {
         @Suppress("UNUSED_VARIABLE") val composeTestRule = composeRule
         composeRule.setContent { MainScreen(c) }
         org.junit.Assert.assertTrue("(c.log__inst1.joinToString(\",\") == \"+a,+b,+c\")", (c.log__inst1.joinToString(",") == "+a,+b,+c"))
-        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("drop")).performClick(); composeTestRule.waitForIdle()
+        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("drop")).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick); composeTestRule.waitForIdle()
         org.junit.Assert.assertTrue("(c.log__inst1.joinToString(\",\") == \"+a,+b,+c,-c,-b\")", (c.log__inst1.joinToString(",") == "+a,+b,+c,-c,-b"))
     }
 
@@ -3077,7 +3077,7 @@ class MainScreenTest {
         val c = MainScreenState()
         @Suppress("UNUSED_VARIABLE") val composeTestRule = composeRule
         composeRule.setContent { MainScreen(c) }
-        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("add")).performClick(); composeTestRule.waitForIdle()
+        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("add")).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick); composeTestRule.waitForIdle()
         org.junit.Assert.assertTrue("(c.log__inst1.joinToString(\",\") == \"+a,+b,+c,+d\")", (c.log__inst1.joinToString(",") == "+a,+b,+c,+d"))
     }
 
@@ -3086,7 +3086,7 @@ class MainScreenTest {
         @Suppress("UNUSED_VARIABLE") val composeTestRule = composeRule
         composeRule.setContent { MainScreen(c) }
         org.junit.Assert.assertTrue("(c.log__inst2.joinToString(\",\") == \"+A,+B\")", (c.log__inst2.joinToString(",") == "+A,+B"))
-        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("rekey")).performClick(); composeTestRule.waitForIdle()
+        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("rekey")).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick); composeTestRule.waitForIdle()
         org.junit.Assert.assertTrue("(c.log__inst2.joinToString(\",\") == \"+A,+B,-B,-A,+A,+B\")", (c.log__inst2.joinToString(",") == "+A,+B,-B,-A,+A,+B"))
     }
 
@@ -3094,7 +3094,7 @@ class MainScreenTest {
         val c = MainScreenState()
         @Suppress("UNUSED_VARIABLE") val composeTestRule = composeRule
         composeRule.setContent { MainScreen(c) }
-        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("field")).performClick(); composeTestRule.waitForIdle()
+        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("field")).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick); composeTestRule.waitForIdle()
         org.junit.Assert.assertTrue("(c.log__inst3.joinToString(\",\") == \"f+,c+,f-,f+\")", (c.log__inst3.joinToString(",") == "f+,c+,f-,f+"))
     }
 
@@ -3102,7 +3102,7 @@ class MainScreenTest {
         val c = MainScreenState()
         @Suppress("UNUSED_VARIABLE") val composeTestRule = composeRule
         composeRule.setContent { MainScreen(c) }
-        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("called")).performClick(); composeTestRule.waitForIdle()
+        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("called")).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick); composeTestRule.waitForIdle()
         org.junit.Assert.assertTrue("(c.log__inst3.joinToString(\",\") == \"f+,c+,c-,c+\")", (c.log__inst3.joinToString(",") == "f+,c+,c-,c+"))
     }
 
@@ -3110,9 +3110,9 @@ class MainScreenTest {
         val c = MainScreenState()
         @Suppress("UNUSED_VARIABLE") val composeTestRule = composeRule
         composeRule.setContent { MainScreen(c) }
-        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("same")).performClick(); composeTestRule.waitForIdle()
+        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("same")).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick); composeTestRule.waitForIdle()
         org.junit.Assert.assertTrue("(c.log__inst4.joinToString(\",\") == \"m\")", (c.log__inst4.joinToString(",") == "m"))
-        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("bump")).performClick(); composeTestRule.waitForIdle()
+        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("bump")).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick); composeTestRule.waitForIdle()
         org.junit.Assert.assertTrue("(c.log__inst4.joinToString(\",\") == \"m,u,m\")", (c.log__inst4.joinToString(",") == "m,u,m"))
     }
 
@@ -3683,7 +3683,7 @@ pass sha256:4e6ff744e8e05cca44001c9e4fb06083
 -- run/go/gtk4 --
 pass sha256:581656d2de782296f9691e90b0ae7edb
 -- run/kotlin/android --
-pass sha256:dfc7f3a50fdf70556fdca4f8ed32d16d
+pass sha256:0160fc2c3cfdb13a15e3b6ba40d8fd37
 -- run/none/html --
 pass sha256:4b140b663d45909ea1d98f488b99453f
 -- testrun/html/none/component_effect_lifetimes.sngl/branch/1 --

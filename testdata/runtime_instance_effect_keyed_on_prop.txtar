@@ -956,7 +956,7 @@ package test.sngl.app
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
-import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performTextReplacement
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -977,7 +977,7 @@ class MainScreenTest {
         @Suppress("UNUSED_VARIABLE") val composeTestRule = composeRule
         composeRule.setContent { MainScreen(c) }
         org.junit.Assert.assertTrue("(c.log == \"ax \")", (c.log == "ax "))
-        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("bump")).performClick(); composeTestRule.waitForIdle()
+        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("bump")).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick); composeTestRule.waitForIdle()
         org.junit.Assert.assertTrue("(c.log == \"ax ay \")", (c.log == "ax ay "))
     }
 
@@ -1186,6 +1186,6 @@ pass sha256:fa84a985706a61bd761cc6a1ba79738e
 -- run/go/gtk4 --
 pass sha256:1ebfd59070656596e6250e4256983f3e
 -- run/kotlin/android --
-pass sha256:dd711902570959e8b3a99529556c5a24
+pass sha256:db98ec05be1c3ee4879c4059077a57fc
 -- run/none/html --
 pass sha256:0cbffde746cf5f56fd8b6a136d939ff4

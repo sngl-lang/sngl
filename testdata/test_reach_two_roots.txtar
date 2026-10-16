@@ -630,7 +630,7 @@ package test.sngl.app
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
-import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performTextReplacement
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -650,7 +650,7 @@ class MainScreenTest {
         val c = MainScreenState()
         @Suppress("UNUSED_VARIABLE") val composeTestRule = composeRule
         composeRule.setContent { MainScreen(c) }
-        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("b")).performClick(); composeTestRule.waitForIdle()
+        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("b")).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick); composeTestRule.waitForIdle()
         org.junit.Assert.assertTrue("(c.a__inst0 == 1)", (c.a__inst0 == 1))
         c.reset__inst0()
         org.junit.Assert.assertTrue("(c.a__inst0 == 0)", (c.a__inst0 == 0))
@@ -660,7 +660,7 @@ class MainScreenTest {
         val c = MainScreenState()
         @Suppress("UNUSED_VARIABLE") val composeTestRule = composeRule
         composeRule.setContent { MainScreen(c) }
-        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("b__1")).performClick(); composeTestRule.waitForIdle()
+        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("b__1")).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick); composeTestRule.waitForIdle()
         org.junit.Assert.assertTrue("(c.z__inst0 == 11)", (c.z__inst0 == 11))
     }
 
@@ -744,6 +744,6 @@ pass sha256:001caa490406b2b73c4ab361a8925609
 -- run/go/gtk4 --
 pass sha256:e4f837802a546a3a1509288354320fe7
 -- run/kotlin/android --
-pass sha256:448825322f17d12c76824049ab72f06a
+pass sha256:4a0fb982f8e1f7d5a83502ce9adfe136
 -- run/none/html --
 pass sha256:793107be3df981445c8fe222909a40db

@@ -1053,7 +1053,7 @@ package test.sngl.app
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
-import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performTextReplacement
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -1073,7 +1073,7 @@ class MainScreenTest {
         val c = MainScreenState()
         @Suppress("UNUSED_VARIABLE") val composeTestRule = composeRule
         composeRule.setContent { MainScreen(c) }
-        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("inHandler")).performClick(); composeTestRule.waitForIdle()
+        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("inHandler")).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick); composeTestRule.waitForIdle()
         org.junit.Assert.assertTrue("(c.caught == \"too big/range;\")", (c.caught == "too big/range;"))
         org.junit.Assert.assertTrue("(c.after == \"h\")", (c.after == "h"))
     }
@@ -1082,7 +1082,7 @@ class MainScreenTest {
         val c = MainScreenState()
         @Suppress("UNUSED_VARIABLE") val composeTestRule = composeRule
         composeRule.setContent { MainScreen(c) }
-        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("inFunc")).performClick(); composeTestRule.waitForIdle()
+        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("inFunc")).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick); composeTestRule.waitForIdle()
         org.junit.Assert.assertTrue("(c.caught == \"func:too big;\")", (c.caught == "func:too big;"))
         org.junit.Assert.assertTrue("(c.after == \"f\")", (c.after == "f"))
     }
@@ -1091,7 +1091,7 @@ class MainScreenTest {
         val c = MainScreenState()
         @Suppress("UNUSED_VARIABLE") val composeTestRule = composeRule
         composeRule.setContent { MainScreen(c) }
-        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("deep")).performClick(); composeTestRule.waitForIdle()
+        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("deep")).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick); composeTestRule.waitForIdle()
         org.junit.Assert.assertTrue("(c.caught == \"deep:too big;\")", (c.caught == "deep:too big;"))
         org.junit.Assert.assertTrue("(c.after == \"d\")", (c.after == "d"))
     }
@@ -1100,7 +1100,7 @@ class MainScreenTest {
         val c = MainScreenState()
         @Suppress("UNUSED_VARIABLE") val composeTestRule = composeRule
         composeRule.setContent { MainScreen(c) }
-        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("fine")).performClick(); composeTestRule.waitForIdle()
+        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("fine")).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick); composeTestRule.waitForIdle()
         org.junit.Assert.assertTrue("(c.caught == \"\")", (c.caught == ""))
         org.junit.Assert.assertTrue("(c.after == \"ok\")", (c.after == "ok"))
     }
@@ -1283,6 +1283,6 @@ pass sha256:9a4f0c9c943e1aae1f9c16764f97880d
 -- run/go/html --
 pass sha256:0493c49d01197e88e38eb4883b9e7cca
 -- run/kotlin/android --
-pass sha256:8566691325f1be691cb5d24d31f881b3
+pass sha256:b267d70fe1dd4662489a7978d6c7949c
 -- run/none/html --
 pass sha256:04be8f0f191eb78a5e34a0b003ede6a0

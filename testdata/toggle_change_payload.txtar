@@ -886,7 +886,7 @@ package test.sngl.app
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
-import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performTextReplacement
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -906,10 +906,10 @@ class MainScreenTest {
         val c = MainScreenState()
         @Suppress("UNUSED_VARIABLE") val composeTestRule = composeRule
         composeRule.setContent { MainScreen(c) }
-        composeTestRule.onNode(androidx.compose.ui.test.isToggleable() and (androidx.compose.ui.test.hasTestTag("box") or androidx.compose.ui.test.hasAnyAncestor(androidx.compose.ui.test.hasTestTag("box")))).performClick(); composeTestRule.waitForIdle()
+        composeTestRule.onNode(androidx.compose.ui.test.isToggleable() and (androidx.compose.ui.test.hasTestTag("box") or androidx.compose.ui.test.hasAnyAncestor(androidx.compose.ui.test.hasTestTag("box")))).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick); composeTestRule.waitForIdle()
         org.junit.Assert.assertTrue("(c.seen == \"box true true\")", (c.seen == "box true true"))
         org.junit.Assert.assertTrue("(c.on == true)", (c.on == true))
-        composeTestRule.onNode(androidx.compose.ui.test.isToggleable() and (androidx.compose.ui.test.hasTestTag("box") or androidx.compose.ui.test.hasAnyAncestor(androidx.compose.ui.test.hasTestTag("box")))).performClick(); composeTestRule.waitForIdle()
+        composeTestRule.onNode(androidx.compose.ui.test.isToggleable() and (androidx.compose.ui.test.hasTestTag("box") or androidx.compose.ui.test.hasAnyAncestor(androidx.compose.ui.test.hasTestTag("box")))).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick); composeTestRule.waitForIdle()
         org.junit.Assert.assertTrue("(c.seen == \"box false false\")", (c.seen == "box false false"))
         org.junit.Assert.assertTrue("(c.on == false)", (c.on == false))
     }
@@ -918,10 +918,10 @@ class MainScreenTest {
         val c = MainScreenState()
         @Suppress("UNUSED_VARIABLE") val composeTestRule = composeRule
         composeRule.setContent { MainScreen(c) }
-        composeTestRule.onNode(androidx.compose.ui.test.isToggleable() and (androidx.compose.ui.test.hasTestTag("sw") or androidx.compose.ui.test.hasAnyAncestor(androidx.compose.ui.test.hasTestTag("sw")))).performClick(); composeTestRule.waitForIdle()
+        composeTestRule.onNode(androidx.compose.ui.test.isToggleable() and (androidx.compose.ui.test.hasTestTag("sw") or androidx.compose.ui.test.hasAnyAncestor(androidx.compose.ui.test.hasTestTag("sw")))).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick); composeTestRule.waitForIdle()
         org.junit.Assert.assertTrue("(c.seen == \"sw true\")", (c.seen == "sw true"))
         org.junit.Assert.assertTrue("(c.lit == true)", (c.lit == true))
-        composeTestRule.onNode(androidx.compose.ui.test.isToggleable() and (androidx.compose.ui.test.hasTestTag("sw") or androidx.compose.ui.test.hasAnyAncestor(androidx.compose.ui.test.hasTestTag("sw")))).performClick(); composeTestRule.waitForIdle()
+        composeTestRule.onNode(androidx.compose.ui.test.isToggleable() and (androidx.compose.ui.test.hasTestTag("sw") or androidx.compose.ui.test.hasAnyAncestor(androidx.compose.ui.test.hasTestTag("sw")))).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick); composeTestRule.waitForIdle()
         org.junit.Assert.assertTrue("(c.seen == \"sw false\")", (c.seen == "sw false"))
         org.junit.Assert.assertTrue("(c.lit == false)", (c.lit == false))
     }
@@ -1041,6 +1041,6 @@ pass sha256:2c7a1890ee177f43c6a877ff9c369780
 -- run/go/html --
 pass sha256:6aa3a057d8d38a720783272b37f01b86
 -- run/kotlin/android --
-pass sha256:b8e5f21406466775c73bcd9a8f7076f8
+pass sha256:e36074f82ae0a9e7db980d5d83b6fa2a
 -- run/none/html --
 pass sha256:99ffd712d069b88c8a9f76a11cd954e1

@@ -255,7 +255,7 @@ func lowerEventTrigger(call *ir.CallStmt) (string, bool) {
 		// its label, so the click targets the toggleable inside it. It flips
 		// the control whatever the test passed: this is the input path, as
 		// bubbletea's key press is.
-		return fmt.Sprintf("composeTestRule.onNode(androidx.compose.ui.test.isToggleable() and (%s or androidx.compose.ui.test.hasAnyAncestor(%s))).performClick(); composeTestRule.waitForIdle()", tag, tag), true
+		return fmt.Sprintf("composeTestRule.onNode(androidx.compose.ui.test.isToggleable() and (%s or androidx.compose.ui.test.hasAnyAncestor(%s)))%s; composeTestRule.waitForIdle()", tag, tag, clickAction), true
 	}
 	finder := "composeTestRule.onNode(" + tag + ")"
 	action := composeAction(event, c.Args)
@@ -265,12 +265,18 @@ func lowerEventTrigger(call *ir.CallStmt) (string, bool) {
 	return fmt.Sprintf("%s.%s; composeTestRule.waitForIdle()", finder, action), true
 }
 
+// clickAction clicks the node a trigger found by running its click action, as
+// fyne and gtk4 run a widget's callback, rather than by a touch: a touch lands
+// where the node is drawn, and on a node past the bottom of the screen it
+// lands nowhere.
+const clickAction = ".performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick)"
+
 // composeActionImports are what lowerEventTrigger's finder and actions name:
 // extension functions, so a test file that clicks does not compile without
 // them. Written only into a file that triggers an event, at the marker.
 const (
 	composeActionImports = "import androidx.compose.ui.test.onNodeWithTag\n" +
-		"import androidx.compose.ui.test.performClick\n" +
+		"import androidx.compose.ui.test.performSemanticsAction\n" +
 		"import androidx.compose.ui.test.performTextReplacement\n"
 	composeActionMarker = "\x00composeActions\x00"
 )
@@ -283,7 +289,7 @@ const (
 func composeAction(event string, args []ir.CallArg) string {
 	switch event {
 	case "click":
-		return "performClick()"
+		return strings.TrimPrefix(clickAction, ".")
 	case "input", "change", "changed":
 		text := extractEventValue(args)
 		return fmt.Sprintf("performTextReplacement(%s)", text)
@@ -581,7 +587,7 @@ func LowerTestFile(pkg string, fns []*ir.Func, suffixes []string, surf TestSurfa
 	if strings.Contains(src, ".onAllNodesWithTag(") {
 		imports = "import androidx.compose.ui.test.onAllNodesWithTag\n"
 	}
-	if strings.Contains(src, ".onNodeWithTag(") || strings.Contains(src, ".performClick(") || strings.Contains(src, ".performTextReplacement(") {
+	if strings.Contains(src, ".onNodeWithTag(") || strings.Contains(src, ".performSemanticsAction(") || strings.Contains(src, ".performTextReplacement(") {
 		imports += composeActionImports
 	}
 	return strings.Replace(src, composeActionMarker, imports, 1)

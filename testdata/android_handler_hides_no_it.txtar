@@ -105,7 +105,7 @@ package test.sngl.app
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
-import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performTextReplacement
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -125,10 +125,10 @@ class MainScreenTest {
         val c = MainScreenState()
         @Suppress("UNUSED_VARIABLE") val composeTestRule = composeRule
         composeRule.setContent { MainScreen(c) }
-        composeTestRule.onNode(androidx.compose.ui.test.isToggleable() and ((androidx.compose.ui.test.hasTestTag("row") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, "1")) or androidx.compose.ui.test.hasAnyAncestor((androidx.compose.ui.test.hasTestTag("row") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, "1"))))).performClick(); composeTestRule.waitForIdle()
+        composeTestRule.onNode(androidx.compose.ui.test.isToggleable() and ((androidx.compose.ui.test.hasTestTag("row") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, "1")) or androidx.compose.ui.test.hasAnyAncestor((androidx.compose.ui.test.hasTestTag("row") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, "1"))))).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick); composeTestRule.waitForIdle()
         org.junit.Assert.assertTrue("(c.log == \"b\")", (c.log == "b"))
     }
 
 }
 -- run/kotlin/android --
-pass sha256:fec9b34e88b3130628842a79007f950c
+pass sha256:b4944a046be764b4dd322e99abd298d5
