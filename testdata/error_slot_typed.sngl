@@ -3,10 +3,11 @@
 import . "sngl:ui"
 import family "sngl:family"
 
-// A named slot counts its insertions, so a count of nodes is not its to make.
+// A named slot's content type counts the nodes its population renders, as the
+// rest slot's does; the wrapper around it counts the slot's insertions.
 component frame(
-    body  component family.one,   // ERROR(check) "slot \"body\" counts its insertions, not its nodes: write `body component() T`"
-    badge component option[node], // ERROR(check) "slot \"badge\" counts its insertions, not its nodes: write `badge option[component() T]`"
+    body  component family.one,
+    badge option[component option[node]],
 ) node {
     vbox {
         body {}
@@ -27,6 +28,17 @@ component main node {
     // The childless form says what the `one() { }` form has always said: it
     // is one node either way, and one check.
     one() // ERROR(check) "component one requires exactly one child"
+
+    frame() {
+        component body { // ERROR(check) "takes exactly one node, and this renders 2"
+            text(value="one")
+            text(value="two")
+        }
+        component badge { // ERROR(check) "takes at most one node, and this renders 2"
+            text(value="a")
+            text(value="b")
+        }
+    }
 }
 
 window {

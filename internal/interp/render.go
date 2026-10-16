@@ -463,11 +463,7 @@ func refLoops(stmts []ir.Stmt, id string, outer []any) ([]any, bool) {
 			if n.ID == id {
 				return outer, true
 			}
-			inner := outer
-			if rest := restOf(n); rest != nil && n.Component.InsertsOf(rest) == ir.InsertMany {
-				inner = append(slices.Clip(outer), n)
-			}
-			found, ok = try(n.Children, inner)
+			found, ok = try(n.Children, outer)
 		case *ir.If:
 			if found, ok = try(n.Body, outer); !ok {
 				found, ok = try(n.Else, outer)

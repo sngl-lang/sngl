@@ -154,22 +154,18 @@ component shown(on bool, tip option[component], rows list[component]) node {
     rows {}
 }
 
-// A rest slot says how often it is inserted outside the `...`.
-component optionalRest(on bool, children option[...component]) node {
+// The rest slot is inserted exactly once, and takes no count of its own:
+// content the body may leave out or repeat is a named slot.
+component optionalRest(on bool, children option[...component]) node { // ERROR(check) "rest slot \"children\" is inserted exactly once, so it takes no option[…]: declare a named slot, `children option[component …]`"
     if on {
         children
     }
 }
 
-component repeatedRest(children list[...component]) node {
+component repeatedRest(children list[...component]) node { // ERROR(check) "rest slot \"children\" is inserted exactly once, so it takes no list[…]"
     for var i = [1, 2] {
         children
     }
-}
-
-component optionalRestTwice(children option[...component]) node {
-    children
-    children // ERROR(check) "rest slot \"children\" is inserted more than once"
 }
 
 window {

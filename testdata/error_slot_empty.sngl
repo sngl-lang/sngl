@@ -7,10 +7,11 @@
 
 import . "sngl:ui"
 
-component asks(content option[...component option[node]]) node {
+component asks(content ...component option[node]) node {
     if content.length > 0 { // ERROR(check) "content is a slot, which is not a value"
-        content
+        text(value="some")
     }
+    content
 }
 
 component scoped(cell option[component(n int) node]) node {
@@ -19,12 +20,11 @@ component scoped(cell option[component(n int) node]) node {
     }
 }
 
-component boxed(content option[...component node]) node {
+component boxed(content ...component node) node {
     if content.empty {
         text(value="nothing")
-    } else {
-        content
     }
+    content
 }
 
 component forwards(content ...component node) node {

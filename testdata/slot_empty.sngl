@@ -9,7 +9,7 @@
 import . "sngl:ui"
 import . "sngl:test"
 
-component boxed(content option[...component option[node]]) node {
+component boxed(content option[component option[node]]) node {
     if content.empty {
         text(value="nothing")
     } else {
@@ -19,9 +19,11 @@ component boxed(content option[...component option[node]]) node {
     }
 }
 
-component forward(content ...component option[node]) node {
+component forward(content option[component option[node]]) node {
     boxed {
-        content
+        component content {
+            content
+        }
     }
 }
 
@@ -29,12 +31,16 @@ component main node {
     var shown = false
     boxed #none
     boxed #some {
-        if shown {
-            text(value="shown")
+        component content {
+            if shown {
+                text(value="shown")
+            }
         }
     }
     forward #fwd {
-        text(value="forwarded")
+        component content {
+            text(value="forwarded")
+        }
     }
     button #show(text="show", @click { shown = true })
 }

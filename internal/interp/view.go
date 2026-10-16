@@ -913,11 +913,6 @@ func (m *mounter) slotInst(env *Env, si *ir.SlotInst, path string) ([]*Node, err
 			m.view.iterations = append(m.view.iterations, iteration{owner: m.owner, supplied: m.supplied, base: m.base, path: m.iters, loop: sc})
 		}
 	}
-	// Bare children of a list rest slot are the caller's, one copy per insertion.
-	if sc == nil && slotInserts(frame.callsite, si.Name) == ir.InsertMany {
-		m.iters = append(slices.Clip(frame.iters), path)
-		m.view.iterations = append(m.view.iterations, iteration{owner: m.owner, supplied: m.supplied, base: m.base, path: m.iters, loop: frame.callsite})
-	}
 	// The path segment marks these nodes as having come from the call site,
 	// which is what distinguishes them from an insertion point's fallback.
 	nodes, err := m.stmts(cenv, body, path+"/supplied:"+si.Name)

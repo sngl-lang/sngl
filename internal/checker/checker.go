@@ -2979,17 +2979,16 @@ func (c *checker) buildSlotDecl(pd ast.Param, ct *ast.ComponentType, rest bool) 
 		slot.Content, slot.Card = c.resolveSlotContent(ct.Tree)
 	}
 	if w := ast.SlotWrapper(pd.Type); w != nil {
-		slot.Inserts = c.slotInserts(w)
-	}
-	// A named slot is populated once by name, so what it can count is how
-	// often the body inserts that population; a count of nodes is the rest
-	// slot's, whose children a caller writes bare.
-	if !rest && slot.Card != ir.SlotAny {
-		want := "component() T"
-		if slot.Card == ir.SlotOptional {
-			want = "option[component() T]"
+		if rest {
+			// The rest slot is inserted exactly once, so each #id its bare
+			// children carry names one node of the caller's. A slot the body
+			// may leave out or repeat is a named one, whose population is a
+			// namespace of its own.
+			c.error(w.Pos, "rest slot %q is inserted exactly once, so it takes no %s[…]: declare a named slot, `%s %s[component …]`, and populate it by name", pd.Name, w.Name, pd.Name, w.Name)
 		}
-		c.error(pd.Pos, "slot %q counts its insertions, not its nodes: write `%s %s`", pd.Name, pd.Name, want)
+		// Kept on a refused rest slot too, so its body is not reported again
+		// for inserting it the way it was declared.
+		slot.Inserts = c.slotInserts(w)
 	}
 	for i, p := range ct.Params {
 		if vt, ok := p.Type.(*ast.VariadicType); ok {

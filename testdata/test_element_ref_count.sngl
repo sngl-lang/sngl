@@ -144,45 +144,6 @@ func testBareChildrenAreTheCallersRefs(t Test, c filled) {
     t.assert(c.p.title.value == "panel")
 }
 
-// A rest slot declared `option[...]` may leave its children out, so they read
-// as an option where the caller wrote them.
-component foldable(open bool, children option[...component]) node {
-    if open {
-        children
-    }
-}
-
-component folded node {
-    var open = false
-
-    foldable(open=open) {
-        text #inside(value="in")
-    }
-}
-
-func testAnOptionalRestSlotsChildrenAreOptions(t Test, c folded) {
-    t.assert(c.inside == null)
-    c.open = true
-    t.assert(c.inside != null && c.inside.value == "in")
-}
-
-// A rest slot declared `list[...]` hands its children a copy per insertion.
-component repeating(children list[...component]) node {
-    for var i = [1, 2] {
-        children
-    }
-}
-
-component repeated node {
-    repeating {
-        text #each(value="x")
-    }
-}
-
-func testAListRestSlotsChildrenAreAList(t Test, c repeated) {
-    t.assert(c.each.length() == 2)
-}
-
 // A boundary with a fallback stands it in place of its content, so the content
 // is an option, and so is the fallback: `failed` is an option slot, reached
 // through the boundary. Without a fallback the content always renders.
