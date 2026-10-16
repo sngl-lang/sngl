@@ -107,20 +107,6 @@ window.__sngl_boot = () => {
   if (typeof window !== "undefined") {
     window.__sngl_state = state;
   }
-  function testAnAwaitedCallIsPatched(t, c) {
-    t.assertTrue(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll('[data-sngl-id="out"]')[0]) === "before", '(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll("[data-sngl-id=\\"out\\"]")[0]) === "before")');
-    c.go();
-    t.fatal("t.wait waits only as a statement of a test's own body on html");
-    t.assertTrue(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll('[data-sngl-id="out"]')[0]) === "after", '(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll("[data-sngl-id=\\"out\\"]")[0]) === "after")');
-  }
-  function testACallThroughAFuncVarIsAwaited(t, c) {
-    c.go__1();
-    t.fatal("t.wait waits only as a statement of a test's own body on html");
-    t.assertTrue(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll('[data-sngl-id="out__1"]')[0]) === "after", '(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll("[data-sngl-id=\\"out__1\\"]")[0]) === "after")');
-  }
-  if (typeof window !== "undefined") {
-    Object.assign(window, { testAnAwaitedCallIsPatched, testACallThroughAFuncVarIsAwaited });
-  }
   var $0 = document.getElementById("$0");
   var $1 = document.getElementById("$1");
   var $2 = document.getElementById("$2");
@@ -146,9 +132,9 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:ae51ffc7778f250274029c2c26591483
+pass sha256:23c70b1ed816f97dcdadd9639a27ecc4
 -- testrun/html/none/component_browser_async.sngl/direct/1 --
-sha256:be30fd6f00a9abfe26053fa4e8f0124a
+sha256:33788f983303a6bae9da50a32c52224f
 {
   "results": [
     {
@@ -158,7 +144,7 @@ sha256:be30fd6f00a9abfe26053fa4e8f0124a
   ]
 }
 -- testrun/html/none/component_browser_async.sngl/stored/1 --
-sha256:dedbae85e68edba29a2cbb5baf2b01c8
+sha256:ebdd805e6bb1032bb795e7aba7ec9aaa
 {
   "results": [
     {

@@ -18,7 +18,7 @@ sngl test app/
 stdout '2 tests, 0 failures'
 
 sngl generate --platform html --lang none -o out app/
-grep 'twice: 14' out/index.html
+grep '"twice: " \+ String\(state\.n__inst0 \* 2\)' out/index.html
 
 # The same directory named as one file is that file alone, which is what a
 # corpus of one-file programs relies on -- and what makes naming a file mean

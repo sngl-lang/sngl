@@ -2,18 +2,16 @@ A test triggers one of the nodes a loop renders under one `#id` by its
 index, `c.tap[1].click()`, on every target: the copy at that index in render
 order, after the loop has rendered again too.
 
-Each language's test lowerer calls the invoker's `At` variant, handed the
-index first (codegen.InvokerAt), and each platform answers it its own way.
-html finds the i-th element carrying the id, and under it the element the
-listener is on when that is not the named one -- a checkbox's `<input>` in
-the `<label>` its id lands on. fyne and gtk4 list the copies of an id a test
-indexes, and only such an id (codegen.IndexedTriggerIDs): a render func
-empties the list where it starts over and appends as it builds, and an
-instance appends in its constructor and leaves in Destroy, which keeps the
-order a slot renders in since it reuses an instance at its position.
+One loop's copy key is its index (ir.CopyKey), which passCopyKeys writes
+on each copy and hands the checkbox's implicit-state wrapper; each language's
+test lowerer calls the invoker's `At` variant with it (codegen.InvokerAt).
+html finds the element carrying it in data-sngl-copy, and under it the
+element the listener is on when that is not the named one -- a checkbox's
+`<input>` in the `<label>` its id lands on. fyne and gtk4 keep the copies of
+an id a test indexes in a map, and only such an id (ir.IndexedRefIDs).
 bubbletea walks the loop as View counts it to find the copy's focus ordinal
-and presses the key with the slot's cursor there. android takes the i-th node
-the tag finds.
+and presses the key with the slot's cursor there. android finds the node
+whose SnglCopy semantics property holds it.
 
 bubbletea renders a text input per copy, a bubbles model each in a map keyed
 by the copy (loopwidget.go); it used to keep one model field for every copy.
@@ -21,6 +19,7 @@ by the copy (loopwidget.go); it used to keep one model field for every copy.
 cmd/sngl/testdata/indexed_trigger_runs.txt runs it on all six.
 
 deny out/go/bubbletea/model.go `\twidget\d+\s+textinput\.Model` -- a looped input is a model per copy, not one field
+deny out/none/html/index.html `function test` -- a test is the test module's, lowered with its triggers, and the page writes no copy of it
 -- app.sngl --
 import . "sngl:ui"
 import . "sngl:test"
@@ -375,88 +374,160 @@ func (m *Model) swapClick() {
 	m.__focusID = prev
 }
 
-// tapClickAt activates the copy of #tap at index i, in render order, the way a keypress does; for tests.
-func (m *Model) tapClickAt(i int) {
-	at := func() []int {
-		var __at []int
+// tapClick activates the last copy of #tap the way a keypress does; for tests.
+func (m *Model) tapClick() {
+	copies := func() []struct {
+		key string
+		pos int
+	} {
+		var __at []struct {
+			key string
+			pos int
+		}
 		__focusPos1 := 0
 		for __copy0, it := range m.items {
 			_ = __copy0
 			_ = it
-			__at = append(__at, __focusPos1)
+			__at = append(__at, struct {
+				key string
+				pos int
+			}{fmt.Sprint(__copy0), __focusPos1})
 			__focusPos1++
 			__focusPos1++
 			__focusPos1++
 		}
 		return __at
 	}()
-	if i < 0 || i >= len(at) {
+	pos := -1
+	if len(copies) > 0 {
+		pos = copies[len(copies)-1].pos
+	}
+	if pos < 0 {
 		return
 	}
 	prev, prevAt := m.__focusID, m.__focusLoop1_cursor
-	m.__focusID, m.__focusLoop1_cursor = 1, at[i]
+	m.__focusID, m.__focusLoop1_cursor = 1, pos
 	nm, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	*m = nm.(Model)
 	m.__focusID, m.__focusLoop1_cursor = prev, prevAt
 }
 
-// tapClick activates the last copy of #tap the way a keypress does; for tests.
-func (m *Model) tapClick() {
-	m.tapClickAt(len(func() []int {
-		var __at []int
-		__focusPos1 := 0
-		for __copy0, it := range m.items {
-			_ = __copy0
-			_ = it
-			__at = append(__at, __focusPos1)
-			__focusPos1++
-			__focusPos1++
-			__focusPos1++
+// tapClickAt activates the copy of #tap with the key the way a keypress does; for tests.
+func (m *Model) tapClickAt(key string) {
+	copies := func() []struct {
+		key string
+		pos int
+	} {
+		var __at []struct {
+			key string
+			pos int
 		}
-		return __at
-	}()) - 1)
-}
-
-// boxChangeAt activates the copy of #box at index i, in render order, the way a keypress does; for tests.
-func (m *Model) boxChangeAt(i int, _ bool) {
-	at := func() []int {
-		var __at []int
 		__focusPos1 := 0
 		for __copy0, it := range m.items {
 			_ = __copy0
 			_ = it
+			__at = append(__at, struct {
+				key string
+				pos int
+			}{fmt.Sprint(__copy0), __focusPos1})
 			__focusPos1++
-			__at = append(__at, __focusPos1)
 			__focusPos1++
 			__focusPos1++
 		}
 		return __at
 	}()
-	if i < 0 || i >= len(at) {
+	pos := -1
+	for _, c := range copies {
+		if c.key == key {
+			pos = c.pos
+		}
+	}
+	if pos < 0 {
 		return
 	}
 	prev, prevAt := m.__focusID, m.__focusLoop1_cursor
-	m.__focusID, m.__focusLoop1_cursor = 1, at[i]
-	nm, _ := m.Update(tea.KeyPressMsg{Code: tea.KeySpace})
+	m.__focusID, m.__focusLoop1_cursor = 1, pos
+	nm, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	*m = nm.(Model)
 	m.__focusID, m.__focusLoop1_cursor = prev, prevAt
 }
 
 // boxChange activates the last copy of #box the way a keypress does; for tests.
-func (m *Model) boxChange(v0 bool) {
-	m.boxChangeAt(len(func() []int {
-		var __at []int
+func (m *Model) boxChange(_ bool) {
+	copies := func() []struct {
+		key string
+		pos int
+	} {
+		var __at []struct {
+			key string
+			pos int
+		}
 		__focusPos1 := 0
 		for __copy0, it := range m.items {
 			_ = __copy0
 			_ = it
 			__focusPos1++
-			__at = append(__at, __focusPos1)
+			__at = append(__at, struct {
+				key string
+				pos int
+			}{fmt.Sprint(__copy0), __focusPos1})
 			__focusPos1++
 			__focusPos1++
 		}
 		return __at
-	}())-1, v0)
+	}()
+	pos := -1
+	if len(copies) > 0 {
+		pos = copies[len(copies)-1].pos
+	}
+	if pos < 0 {
+		return
+	}
+	prev, prevAt := m.__focusID, m.__focusLoop1_cursor
+	m.__focusID, m.__focusLoop1_cursor = 1, pos
+	nm, _ := m.Update(tea.KeyPressMsg{Code: tea.KeySpace})
+	*m = nm.(Model)
+	m.__focusID, m.__focusLoop1_cursor = prev, prevAt
+}
+
+// boxChangeAt activates the copy of #box with the key the way a keypress does; for tests.
+func (m *Model) boxChangeAt(key string, _ bool) {
+	copies := func() []struct {
+		key string
+		pos int
+	} {
+		var __at []struct {
+			key string
+			pos int
+		}
+		__focusPos1 := 0
+		for __copy0, it := range m.items {
+			_ = __copy0
+			_ = it
+			__focusPos1++
+			__at = append(__at, struct {
+				key string
+				pos int
+			}{fmt.Sprint(__copy0), __focusPos1})
+			__focusPos1++
+			__focusPos1++
+		}
+		return __at
+	}()
+	pos := -1
+	for _, c := range copies {
+		if c.key == key {
+			pos = c.pos
+		}
+	}
+	if pos < 0 {
+		return
+	}
+	prev, prevAt := m.__focusID, m.__focusLoop1_cursor
+	m.__focusID, m.__focusLoop1_cursor = 1, pos
+	nm, _ := m.Update(tea.KeyPressMsg{Code: tea.KeySpace})
+	*m = nm.(Model)
+	m.__focusID, m.__focusLoop1_cursor = prev, prevAt
 }
 
 // widget0Copy is the copy of widget0 the key names, built the first time it renders
@@ -515,15 +586,14 @@ func (m *Model) widget0FocusSync() {
 	}
 }
 
-// fieldInputAt types v into the copy of #field at index i, in render order, and runs
-// its @input; for tests.
-func (m *Model) fieldInputAt(i int, v string) {
-	__n := 0
+// fieldInput types v into the last copy of #field and runs its @input; for tests.
+func (m *Model) fieldInput(v string) {
+	last, __n := m.widget0Count()-1, 0
 	func() {
 		for __copy0, it := range m.items {
 			_ = __copy0
 			_ = it
-			if __n == i {
+			if __n == last {
 				__key := fmt.Sprint(__copy0)
 				w := m.widget0Copy(fmt.Sprint(__copy0), func() string {
 					if __v, __ok := m.value__inst0[fmt.Sprint(__copy0)]; __ok {
@@ -550,20 +620,47 @@ func (m *Model) fieldInputAt(i int, v string) {
 	}()
 }
 
-// fieldInput does it to the last copy of #field; for tests.
-func (m *Model) fieldInput(v string) {
-	m.fieldInputAt(m.widget0Count()-1, v)
-}
-
-// fieldChangeAt types v into the copy of #field at index i, in render order, and runs
-// its @change; for tests.
-func (m *Model) fieldChangeAt(i int, v string) {
-	__n := 0
+// fieldInputAt types v into the copy of #field with the key and runs its @input; for
+// tests.
+func (m *Model) fieldInputAt(key string, v string) {
 	func() {
 		for __copy0, it := range m.items {
 			_ = __copy0
 			_ = it
-			if __n == i {
+			if fmt.Sprint(__copy0) == key {
+				__key := fmt.Sprint(__copy0)
+				w := m.widget0Copy(fmt.Sprint(__copy0), func() string {
+					if __v, __ok := m.value__inst0[fmt.Sprint(__copy0)]; __ok {
+						return __v
+					}
+					return it
+				}())
+				w.SetValue(v)
+				m.widget0[__key] = w
+				__value := v
+				_ = __value
+				__cell1_value__inst0 := func() string {
+					if __v, __ok := m.value__inst0[fmt.Sprint(__copy0)]; __ok {
+						return __v
+					}
+					return it
+				}()
+				__cell1_value__inst0 = __value
+				m.value__inst0[fmt.Sprint(__copy0)] = __cell1_value__inst0
+				return
+			}
+		}
+	}()
+}
+
+// fieldChange types v into the last copy of #field and runs its @change; for tests.
+func (m *Model) fieldChange(v string) {
+	last, __n := m.widget0Count()-1, 0
+	func() {
+		for __copy0, it := range m.items {
+			_ = __copy0
+			_ = it
+			if __n == last {
 				__key := fmt.Sprint(__copy0)
 				w := m.widget0Copy(fmt.Sprint(__copy0), func() string {
 					if __v, __ok := m.value__inst0[fmt.Sprint(__copy0)]; __ok {
@@ -593,9 +690,40 @@ func (m *Model) fieldChangeAt(i int, v string) {
 	}()
 }
 
-// fieldChange does it to the last copy of #field; for tests.
-func (m *Model) fieldChange(v string) {
-	m.fieldChangeAt(m.widget0Count()-1, v)
+// fieldChangeAt types v into the copy of #field with the key and runs its @change; for
+// tests.
+func (m *Model) fieldChangeAt(key string, v string) {
+	func() {
+		for __copy0, it := range m.items {
+			_ = __copy0
+			_ = it
+			if fmt.Sprint(__copy0) == key {
+				__key := fmt.Sprint(__copy0)
+				w := m.widget0Copy(fmt.Sprint(__copy0), func() string {
+					if __v, __ok := m.value__inst0[fmt.Sprint(__copy0)]; __ok {
+						return __v
+					}
+					return it
+				}())
+				w.SetValue(v)
+				m.widget0[__key] = w
+				__value := v
+				_ = __value
+				__cell1_value__inst0 := func() string {
+					if __v, __ok := m.value__inst0[fmt.Sprint(__copy0)]; __ok {
+						return __v
+					}
+					return it
+				}()
+				__cell1_value__inst0 = __value
+				m.value__inst0[fmt.Sprint(__copy0)] = __cell1_value__inst0
+				__change0 := v
+				_ = __change0
+				m.log = ((it + "=") + __change0)
+				return
+			}
+		}
+	}()
 }
 
 func (m Model) View() tea.View {
@@ -673,11 +801,11 @@ import "testing"
 func TestOneCopy(t *testing.T) {
 	c := newTestComponent()
 	_ = c
-	c.tapClickAt(1)
+	c.tapClickAt("1")
 	if !((c.log == "b")) { t.Errorf("assert failed: %s", "(c.log == \"b\")") }
-	c.boxChangeAt(0, true)
+	c.boxChangeAt("0", true)
 	if !((c.log == "a true")) { t.Errorf("assert failed: %s", "(c.log == \"a true\")") }
-	c.fieldChangeAt(1, "x")
+	c.fieldChangeAt("1", "x")
 	if !((c.log == "b=x")) { t.Errorf("assert failed: %s", "(c.log == \"b=x\")") }
 }
 
@@ -685,11 +813,11 @@ func TestOneCopyAfterTheLoopRendersAgain(t *testing.T) {
 	c := newTestComponent()
 	_ = c
 	c.swapClick()
-	c.tapClickAt(2)
+	c.tapClickAt("2")
 	if !((c.log == "e")) { t.Errorf("assert failed: %s", "(c.log == \"e\")") }
-	c.boxChangeAt(1, true)
+	c.boxChangeAt("1", true)
 	if !((c.log == "d true")) { t.Errorf("assert failed: %s", "(c.log == \"d true\")") }
-	c.fieldChangeAt(0, "y")
+	c.fieldChangeAt("0", "y")
 	if !((c.log == "c=y")) { t.Errorf("assert failed: %s", "(c.log == \"c=y\")") }
 }
 
@@ -720,13 +848,15 @@ type Model struct {
 	__inst0_live []*__checkbox_state0Instance
 	__inst1_live []*__input_state1Instance
 
-	__n3          *fyne.Container
-	swap          *widget.Button
-	__n0          *widget.Label
-	__named_box   []*widget.Check
-	__named_field []*widget.Entry
-	tap           *widget.Button
-	__named_tap   []*widget.Button
+	__n3           *fyne.Container
+	swap           *widget.Button
+	__n0           *widget.Label
+	__named_box    *widget.Check
+	__copies_box   map[string]*widget.Check
+	__named_field  *widget.Entry
+	__copies_field map[string]*widget.Entry
+	tap            *widget.Button
+	__copies_tap   map[string]*widget.Button
 }
 
 // New creates a Model with default values.
@@ -748,15 +878,15 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 	}
 	m.__slot0 = nil
 	m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
-	m.__named_tap = nil
+	m.__copies_tap = nil
 	__inst0_next := []*__checkbox_state0Instance{}
 	var __inst0_i int = 0
 	__inst1_next := []*__input_state1Instance{}
 	var __inst1_i int = 0
-	for _, it := range m.items {
+	for __copy0, it := range m.items {
 		m.tap = widget.NewButton("", nil)
-		m.__named_tap = append(m.__named_tap, m.tap)
 		m.tap.SetText(it)
+		m.__list_tap(fmt.Sprint(__copy0), m.tap)
 		m.tap.OnTapped = func() {
 			m.log = it
 			m.__n0.SetText(m.log)
@@ -767,6 +897,7 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 		if len(m.__inst0_live) > __inst0_i {
 			__n1 = m.__inst0_live[__inst0_i]
 			__n1.SetLabel(it)
+			__n1.Set__copy(fmt.Sprint(__copy0))
 			__n1.SetChange(func(on bool) {
 				m.log = ((it + " ") + fmt.Sprint(on))
 				m.__n0.SetText(m.log)
@@ -775,7 +906,7 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 			if len(m.__inst0_live) > __inst0_i {
 				m.__inst0_live[__inst0_i].Destroy()
 			}
-			__n1__new := new__checkbox_state0Instance(m, false, it, func(on bool) {
+			__n1__new := new__checkbox_state0Instance(m, false, it, fmt.Sprint(__copy0), func(on bool) {
 				m.log = ((it + " ") + fmt.Sprint(on))
 				m.__n0.SetText(m.log)
 			})
@@ -790,6 +921,7 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 		if len(m.__inst1_live) > __inst1_i {
 			__n2 = m.__inst1_live[__inst1_i]
 			__n2.Set__start_value(it)
+			__n2.Set__copy(fmt.Sprint(__copy0))
 			__n2.SetChange(func(v string) {
 				m.log = ((it + "=") + v)
 				m.__n0.SetText(m.log)
@@ -798,7 +930,7 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 			if len(m.__inst1_live) > __inst1_i {
 				m.__inst1_live[__inst1_i].Destroy()
 			}
-			__n2__new := new__input_state1Instance(m, it, func(v string) {
+			__n2__new := new__input_state1Instance(m, it, fmt.Sprint(__copy0), func(v string) {
 				m.log = ((it + "=") + v)
 				m.__n0.SetText(m.log)
 			})
@@ -840,80 +972,128 @@ func (m *Model) swapClick() {
 
 // boxChange invokes the OnChanged callback on the #box widget; for tests.
 func (m *Model) boxChange(b bool) {
-	if cb := m.__named_box[len(m.__named_box)-1].OnChanged; cb != nil {
-		m.__named_box[len(m.__named_box)-1].OnChanged = nil
+	if cb := m.__named_box.OnChanged; cb != nil {
+		m.__named_box.OnChanged = nil
 		cb(b)
-		m.__named_box[len(m.__named_box)-1].OnChanged = cb
+		m.__named_box.OnChanged = cb
 	}
 }
 
-// boxChangeAt invokes it on the copy of #box at index i, in render order; for tests.
-func (m *Model) boxChangeAt(i int, b bool) {
-	if cb := m.__named_box[i].OnChanged; cb != nil {
-		m.__named_box[i].OnChanged = nil
+// boxChangeAt invokes it on the copy of #box with the key; for tests.
+func (m *Model) boxChangeAt(key string, b bool) {
+	if m.__copies_box[key] == nil {
+		return
+	}
+	if cb := m.__copies_box[key].OnChanged; cb != nil {
+		m.__copies_box[key].OnChanged = nil
 		cb(b)
-		m.__named_box[i].OnChanged = cb
+		m.__copies_box[key].OnChanged = cb
 	}
 }
 
 // fieldInput invokes the OnChanged callback on the #field widget; for tests.
 func (m *Model) fieldInput(s string) {
-	if cb := m.__named_field[len(m.__named_field)-1].OnChanged; cb != nil {
-		m.__named_field[len(m.__named_field)-1].OnChanged = nil
+	if cb := m.__named_field.OnChanged; cb != nil {
+		m.__named_field.OnChanged = nil
 		cb(s)
-		m.__named_field[len(m.__named_field)-1].OnChanged = cb
+		m.__named_field.OnChanged = cb
 	}
 }
 
-// fieldInputAt invokes it on the copy of #field at index i, in render order; for tests.
-func (m *Model) fieldInputAt(i int, s string) {
-	if cb := m.__named_field[i].OnChanged; cb != nil {
-		m.__named_field[i].OnChanged = nil
+// fieldInputAt invokes it on the copy of #field with the key; for tests.
+func (m *Model) fieldInputAt(key string, s string) {
+	if m.__copies_field[key] == nil {
+		return
+	}
+	if cb := m.__copies_field[key].OnChanged; cb != nil {
+		m.__copies_field[key].OnChanged = nil
 		cb(s)
-		m.__named_field[i].OnChanged = cb
+		m.__copies_field[key].OnChanged = cb
 	}
 }
 
 // fieldChange invokes the OnSubmitted callback on the #field widget; for tests.
 func (m *Model) fieldChange(s string) {
-	if oc := m.__named_field[len(m.__named_field)-1].OnChanged; m.__named_field[len(m.__named_field)-1].Text != s {
-		m.__named_field[len(m.__named_field)-1].OnChanged = nil
-		m.__named_field[len(m.__named_field)-1].SetText(s)
-		m.__named_field[len(m.__named_field)-1].OnChanged = oc
+	if oc := m.__named_field.OnChanged; m.__named_field.Text != s {
+		m.__named_field.OnChanged = nil
+		m.__named_field.SetText(s)
+		m.__named_field.OnChanged = oc
 	}
-	if cb := m.__named_field[len(m.__named_field)-1].OnSubmitted; cb != nil {
-		m.__named_field[len(m.__named_field)-1].OnSubmitted = nil
+	if cb := m.__named_field.OnSubmitted; cb != nil {
+		m.__named_field.OnSubmitted = nil
 		cb(s)
-		m.__named_field[len(m.__named_field)-1].OnSubmitted = cb
+		m.__named_field.OnSubmitted = cb
 	}
 }
 
-// fieldChangeAt invokes it on the copy of #field at index i, in render order; for tests.
-func (m *Model) fieldChangeAt(i int, s string) {
-	if oc := m.__named_field[i].OnChanged; m.__named_field[i].Text != s {
-		m.__named_field[i].OnChanged = nil
-		m.__named_field[i].SetText(s)
-		m.__named_field[i].OnChanged = oc
+// fieldChangeAt invokes it on the copy of #field with the key; for tests.
+func (m *Model) fieldChangeAt(key string, s string) {
+	if m.__copies_field[key] == nil {
+		return
 	}
-	if cb := m.__named_field[i].OnSubmitted; cb != nil {
-		m.__named_field[i].OnSubmitted = nil
+	if oc := m.__copies_field[key].OnChanged; m.__copies_field[key].Text != s {
+		m.__copies_field[key].OnChanged = nil
+		m.__copies_field[key].SetText(s)
+		m.__copies_field[key].OnChanged = oc
+	}
+	if cb := m.__copies_field[key].OnSubmitted; cb != nil {
+		m.__copies_field[key].OnSubmitted = nil
 		cb(s)
-		m.__named_field[i].OnSubmitted = cb
+		m.__copies_field[key].OnSubmitted = cb
 	}
 }
 
 // tapClick invokes the OnTapped callback on the #tap widget; for tests.
 func (m *Model) tapClick() {
-	if m.__named_tap[len(m.__named_tap)-1].OnTapped != nil {
-		m.__named_tap[len(m.__named_tap)-1].OnTapped()
+	if m.tap.OnTapped != nil {
+		m.tap.OnTapped()
 	}
 }
 
-// tapClickAt invokes it on the copy of #tap at index i, in render order; for tests.
-func (m *Model) tapClickAt(i int) {
-	if m.__named_tap[i].OnTapped != nil {
-		m.__named_tap[i].OnTapped()
+// tapClickAt invokes it on the copy of #tap with the key; for tests.
+func (m *Model) tapClickAt(key string) {
+	if m.__copies_tap[key] == nil {
+		return
 	}
+	if m.__copies_tap[key].OnTapped != nil {
+		m.__copies_tap[key].OnTapped()
+	}
+}
+
+func (m *Model) __list_box(key string, w *widget.Check) {
+	for k, c := range m.__copies_box {
+		if c == w {
+			delete(m.__copies_box, k)
+		}
+	}
+	if m.__copies_box == nil {
+		m.__copies_box = map[string]*widget.Check{}
+	}
+	m.__copies_box[key] = w
+}
+
+func (m *Model) __list_field(key string, w *widget.Entry) {
+	for k, c := range m.__copies_field {
+		if c == w {
+			delete(m.__copies_field, k)
+		}
+	}
+	if m.__copies_field == nil {
+		m.__copies_field = map[string]*widget.Entry{}
+	}
+	m.__copies_field[key] = w
+}
+
+func (m *Model) __list_tap(key string, w *widget.Button) {
+	for k, c := range m.__copies_tap {
+		if c == w {
+			delete(m.__copies_tap, k)
+		}
+	}
+	if m.__copies_tap == nil {
+		m.__copies_tap = map[string]*widget.Button{}
+	}
+	m.__copies_tap[key] = w
 }
 
 func (m *Model) Items() []string {
@@ -953,6 +1133,7 @@ type __checkbox_state0Instance struct {
 	__model                *Model
 	__prop___start_checked bool
 	__prop_label           string
+	__prop___copy          string
 	__prop_change          func(bool)
 	checked                bool
 	__root                 *fyne.Container
@@ -961,11 +1142,12 @@ type __checkbox_state0Instance struct {
 	box                    *widget.Check
 }
 
-func new__checkbox_state0Instance(__model *Model, __a___start_checked bool, __a_label string, __a_change func(bool)) *__checkbox_state0Instance {
+func new__checkbox_state0Instance(__model *Model, __a___start_checked bool, __a_label string, __a___copy string, __a_change func(bool)) *__checkbox_state0Instance {
 	c := &__checkbox_state0Instance{}
 	c.__model = __model
 	c.__prop___start_checked = __a___start_checked
 	c.__prop_label = __a_label
+	c.__prop___copy = __a___copy
 	c.__prop_change = __a_change
 	c.checked = c.__prop___start_checked
 	c.__root = container.NewVBox()
@@ -973,13 +1155,14 @@ func new__checkbox_state0Instance(__model *Model, __a___start_checked bool, __a_
 	c.box = widget.NewCheck("", nil)
 	c.box.SetText(c.__prop_label)
 	c.box.SetChecked(c.checked)
+	c.__model.__list_box(c.__prop___copy, c.box)
 	c.box.OnChanged = func(on bool) {
 		c.checked = on
 		c.box.SetChecked(c.checked)
 		c.__prop_change(on)
 	}
 	c.Root = c.box
-	c.__model.__named_box = append(c.__model.__named_box, c.box)
+	c.__model.__named_box = c.box
 	return c
 }
 
@@ -992,6 +1175,11 @@ func (c *__checkbox_state0Instance) SetLabel(__v string) {
 	c.box.SetText(c.__prop_label)
 }
 
+func (c *__checkbox_state0Instance) Set__copy(__v string) {
+	c.__prop___copy = __v
+	c.__model.__list_box(c.__prop___copy, c.box)
+}
+
 func (c *__checkbox_state0Instance) SetChange(__v func(bool)) {
 	c.__prop_change = __v
 }
@@ -1001,10 +1189,9 @@ func (c *__checkbox_state0Instance) Destroy() {
 }
 
 func (c *__checkbox_state0Instance) unlist() {
-	for i, w := range c.__model.__named_box {
+	for k, w := range c.__model.__copies_box {
 		if w == c.box {
-			c.__model.__named_box = append(c.__model.__named_box[:i], c.__model.__named_box[i+1:]...)
-			break
+			delete(c.__model.__copies_box, k)
 		}
 	}
 }
@@ -1014,6 +1201,7 @@ type __input_state1Instance struct {
 	Root                 fyne.CanvasObject
 	__model              *Model
 	__prop___start_value string
+	__prop___copy        string
 	__prop_change        func(string)
 	value                string
 	__root               *fyne.Container
@@ -1022,10 +1210,11 @@ type __input_state1Instance struct {
 	field                *widget.Entry
 }
 
-func new__input_state1Instance(__model *Model, __a___start_value string, __a_change func(string)) *__input_state1Instance {
+func new__input_state1Instance(__model *Model, __a___start_value string, __a___copy string, __a_change func(string)) *__input_state1Instance {
 	c := &__input_state1Instance{}
 	c.__model = __model
 	c.__prop___start_value = __a___start_value
+	c.__prop___copy = __a___copy
 	c.__prop_change = __a_change
 	c.value = c.__prop___start_value
 	c.__root = container.NewVBox()
@@ -1033,6 +1222,7 @@ func new__input_state1Instance(__model *Model, __a___start_value string, __a_cha
 	c.field = widget.NewEntry()
 	c.field.SetText(c.value)
 	c.field.SetPlaceHolder("")
+	c.__model.__list_field(c.__prop___copy, c.field)
 	c.field.OnChanged = func(v string) {
 		c.value = v
 		c.field.SetText(c.value)
@@ -1043,12 +1233,17 @@ func new__input_state1Instance(__model *Model, __a___start_value string, __a_cha
 		c.__prop_change(v)
 	}
 	c.Root = c.field
-	c.__model.__named_field = append(c.__model.__named_field, c.field)
+	c.__model.__named_field = c.field
 	return c
 }
 
 func (c *__input_state1Instance) Set__start_value(__v string) {
 	c.__prop___start_value = __v
+}
+
+func (c *__input_state1Instance) Set__copy(__v string) {
+	c.__prop___copy = __v
+	c.__model.__list_field(c.__prop___copy, c.field)
 }
 
 func (c *__input_state1Instance) SetChange(__v func(string)) {
@@ -1060,10 +1255,9 @@ func (c *__input_state1Instance) Destroy() {
 }
 
 func (c *__input_state1Instance) unlist() {
-	for i, w := range c.__model.__named_field {
+	for k, w := range c.__model.__copies_field {
 		if w == c.field {
-			c.__model.__named_field = append(c.__model.__named_field[:i], c.__model.__named_field[i+1:]...)
-			break
+			delete(c.__model.__copies_field, k)
 		}
 	}
 }
@@ -1085,11 +1279,11 @@ import "testing"
 func TestOneCopy(t *testing.T) {
 	c := newTestComponent()
 	_ = c
-	c.tapClickAt(1)
+	c.tapClickAt("1")
 	if !((c.log == "b")) { t.Errorf("assert failed: %s", "(c.log == \"b\")") }
-	c.boxChangeAt(0, true)
+	c.boxChangeAt("0", true)
 	if !((c.log == "a true")) { t.Errorf("assert failed: %s", "(c.log == \"a true\")") }
-	c.fieldChangeAt(1, "x")
+	c.fieldChangeAt("1", "x")
 	if !((c.log == "b=x")) { t.Errorf("assert failed: %s", "(c.log == \"b=x\")") }
 }
 
@@ -1097,11 +1291,11 @@ func TestOneCopyAfterTheLoopRendersAgain(t *testing.T) {
 	c := newTestComponent()
 	_ = c
 	c.swapClick()
-	c.tapClickAt(2)
+	c.tapClickAt("2")
 	if !((c.log == "e")) { t.Errorf("assert failed: %s", "(c.log == \"e\")") }
-	c.boxChangeAt(1, true)
+	c.boxChangeAt("1", true)
 	if !((c.log == "d true")) { t.Errorf("assert failed: %s", "(c.log == \"d true\")") }
-	c.fieldChangeAt(0, "y")
+	c.fieldChangeAt("0", "y")
 	if !((c.log == "c=y")) { t.Errorf("assert failed: %s", "(c.log == \"c=y\")") }
 }
 
@@ -1140,20 +1334,22 @@ import (
 
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
-	items         []string
-	log           string
-	__root        gtk4rt.Handle
-	__slot0       []gtk4rt.Handle
-	__slot0_at    gtk4rt.Handle
-	__inst0_live  []*__checkbox_state0Instance
-	__inst1_live  []*__input_state1Instance
-	__n3          gtk4rt.Handle
-	swap          gtk4rt.Handle
-	__n0          gtk4rt.Handle
-	tap           gtk4rt.Handle
-	__named_tap   []gtk4rt.Handle
-	__named_box   []gtk4rt.Handle
-	__named_field []gtk4rt.Handle
+	items          []string
+	log            string
+	__root         gtk4rt.Handle
+	__slot0        []gtk4rt.Handle
+	__slot0_at     gtk4rt.Handle
+	__inst0_live   []*__checkbox_state0Instance
+	__inst1_live   []*__input_state1Instance
+	__n3           gtk4rt.Handle
+	swap           gtk4rt.Handle
+	__n0           gtk4rt.Handle
+	tap            gtk4rt.Handle
+	__copies_tap   map[string]gtk4rt.Handle
+	__named_box    gtk4rt.Handle
+	__copies_box   map[string]gtk4rt.Handle
+	__named_field  gtk4rt.Handle
+	__copies_field map[string]gtk4rt.Handle
 }
 
 // New creates a Model with default values. Binds initialize
@@ -1176,15 +1372,15 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 	}
 	m.__slot0 = nil
 	m.__slot0_at = gtk4rt.SlotAnchor(parent, m.__slot0_at)
-	m.__named_tap = nil
+	m.__copies_tap = nil
 	__inst0_next := []*__checkbox_state0Instance{}
 	var __inst0_i int = 0
 	__inst1_next := []*__input_state1Instance{}
 	var __inst1_i int = 0
-	for _, it := range m.items {
+	for __copy0, it := range m.items {
 		m.tap = gtk4rt.ButtonNew()
-		m.__named_tap = append(m.__named_tap, m.tap)
 		gtk4rt.ButtonSetLabel(m.tap, it)
+		m.__list_tap(fmt.Sprint(__copy0), m.tap)
 		gtk4rt.Connect(m.tap, "clicked", func() {
 			m.log = it
 		})
@@ -1194,6 +1390,7 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 		if len(m.__inst0_live) > __inst0_i {
 			__n1 = m.__inst0_live[__inst0_i]
 			__n1.SetLabel(it)
+			__n1.Set__copy(fmt.Sprint(__copy0))
 			__n1.SetChange(func(on bool) {
 				m.log = ((it + " ") + fmt.Sprint(on))
 			})
@@ -1201,7 +1398,7 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 			if len(m.__inst0_live) > __inst0_i {
 				m.__inst0_live[__inst0_i].Destroy()
 			}
-			__n1__new := new__checkbox_state0Instance(m, false, it, func(on bool) {
+			__n1__new := new__checkbox_state0Instance(m, false, it, fmt.Sprint(__copy0), func(on bool) {
 				m.log = ((it + " ") + fmt.Sprint(on))
 			})
 			__n1 = __n1__new
@@ -1215,6 +1412,7 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 		if len(m.__inst1_live) > __inst1_i {
 			__n2 = m.__inst1_live[__inst1_i]
 			__n2.Set__start_value(it)
+			__n2.Set__copy(fmt.Sprint(__copy0))
 			__n2.SetChange(func(v string) {
 				m.log = ((it + "=") + v)
 			})
@@ -1222,7 +1420,7 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 			if len(m.__inst1_live) > __inst1_i {
 				m.__inst1_live[__inst1_i].Destroy()
 			}
-			__n2__new := new__input_state1Instance(m, it, func(v string) {
+			__n2__new := new__input_state1Instance(m, it, fmt.Sprint(__copy0), func(v string) {
 				m.log = ((it + "=") + v)
 			})
 			__n2 = __n2__new
@@ -1260,6 +1458,7 @@ type __checkbox_state0Instance struct {
 	__model                *Model
 	__prop___start_checked bool
 	__prop_label           string
+	__prop___copy          string
 	__prop_change          func(bool)
 	checked                bool
 	__root                 gtk4rt.Handle
@@ -1268,11 +1467,12 @@ type __checkbox_state0Instance struct {
 	box                    gtk4rt.Handle
 }
 
-func new__checkbox_state0Instance(__model *Model, __a___start_checked bool, __a_label string, __a_change func(bool)) *__checkbox_state0Instance {
+func new__checkbox_state0Instance(__model *Model, __a___start_checked bool, __a_label string, __a___copy string, __a_change func(bool)) *__checkbox_state0Instance {
 	c := &__checkbox_state0Instance{}
 	c.__model = __model
 	c.__prop___start_checked = __a___start_checked
 	c.__prop_label = __a_label
+	c.__prop___copy = __a___copy
 	c.__prop_change = __a_change
 	c.checked = c.__prop___start_checked
 	c.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
@@ -1280,13 +1480,14 @@ func new__checkbox_state0Instance(__model *Model, __a___start_checked bool, __a_
 	c.box = gtk4rt.CheckButtonNew()
 	gtk4rt.CheckButtonSetLabel(c.box, c.__prop_label)
 	gtk4rt.CheckButtonSetActive(c.box, c.checked)
+	c.__model.__list_box(c.__prop___copy, c.box)
 	gtk4rt.Connect(c.box, "toggled", func() {
 		c.checked = gtk4rt.CheckButtonGetActive(c.box)
 		gtk4rt.CheckButtonSetActive(c.box, c.checked)
 		c.__prop_change(c.checked)
 	})
 	c.Root = c.box
-	c.__model.__named_box = append(c.__model.__named_box, c.box)
+	c.__model.__named_box = c.box
 	gtk4rt.Retain(c.Root)
 	return c
 }
@@ -1300,15 +1501,19 @@ func (c *__checkbox_state0Instance) SetLabel(__v string) {
 	gtk4rt.CheckButtonSetLabel(c.box, c.__prop_label)
 }
 
+func (c *__checkbox_state0Instance) Set__copy(__v string) {
+	c.__prop___copy = __v
+	c.__model.__list_box(c.__prop___copy, c.box)
+}
+
 func (c *__checkbox_state0Instance) SetChange(__v func(bool)) {
 	c.__prop_change = __v
 }
 
 func (c *__checkbox_state0Instance) Destroy() {
-	for i, w := range c.__model.__named_box {
+	for k, w := range c.__model.__copies_box {
 		if w == c.box {
-			c.__model.__named_box = append(c.__model.__named_box[:i], c.__model.__named_box[i+1:]...)
-			break
+			delete(c.__model.__copies_box, k)
 		}
 	}
 	if c.Root != nil {
@@ -1325,6 +1530,7 @@ type __input_state1Instance struct {
 	Root                 gtk4rt.Handle
 	__model              *Model
 	__prop___start_value string
+	__prop___copy        string
 	__prop_change        func(string)
 	value                string
 	__root               gtk4rt.Handle
@@ -1333,16 +1539,18 @@ type __input_state1Instance struct {
 	field                gtk4rt.Handle
 }
 
-func new__input_state1Instance(__model *Model, __a___start_value string, __a_change func(string)) *__input_state1Instance {
+func new__input_state1Instance(__model *Model, __a___start_value string, __a___copy string, __a_change func(string)) *__input_state1Instance {
 	c := &__input_state1Instance{}
 	c.__model = __model
 	c.__prop___start_value = __a___start_value
+	c.__prop___copy = __a___copy
 	c.__prop_change = __a_change
 	c.value = c.__prop___start_value
 	c.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
 	c.__slot0 = nil
 	c.field = gtk4rt.EntryNew()
 	gtk4rt.EditableSetText(c.field, c.value)
+	c.__model.__list_field(c.__prop___copy, c.field)
 	gtk4rt.Connect(c.field, "changed", func() {
 		c.value = gtk4rt.EditableGetText(c.field)
 		gtk4rt.EditableSetText(c.field, c.value)
@@ -1353,7 +1561,7 @@ func new__input_state1Instance(__model *Model, __a___start_value string, __a_cha
 		c.__prop_change(c.value)
 	})
 	c.Root = c.field
-	c.__model.__named_field = append(c.__model.__named_field, c.field)
+	c.__model.__named_field = c.field
 	gtk4rt.Retain(c.Root)
 	return c
 }
@@ -1362,15 +1570,19 @@ func (c *__input_state1Instance) Set__start_value(__v string) {
 	c.__prop___start_value = __v
 }
 
+func (c *__input_state1Instance) Set__copy(__v string) {
+	c.__prop___copy = __v
+	c.__model.__list_field(c.__prop___copy, c.field)
+}
+
 func (c *__input_state1Instance) SetChange(__v func(string)) {
 	c.__prop_change = __v
 }
 
 func (c *__input_state1Instance) Destroy() {
-	for i, w := range c.__model.__named_field {
+	for k, w := range c.__model.__copies_field {
 		if w == c.field {
-			c.__model.__named_field = append(c.__model.__named_field[:i], c.__model.__named_field[i+1:]...)
-			break
+			delete(c.__model.__copies_field, k)
 		}
 	}
 	if c.Root != nil {
@@ -1433,60 +1645,109 @@ func (m *Model) swapClick() {
 
 // tapClick fires the "clicked" signal on the #tap widget; for tests.
 func (m *Model) tapClick() {
-	gtk4rt.Emit(m.__named_tap[len(m.__named_tap)-1], "clicked")
+	gtk4rt.Emit(m.tap, "clicked")
 }
 
-// tapClickAt fires it on the copy of #tap at index i, in render order; for tests.
-func (m *Model) tapClickAt(i int) {
-	gtk4rt.Emit(m.__named_tap[i], "clicked")
+// tapClickAt fires it on the copy of #tap with the key; for tests.
+func (m *Model) tapClickAt(key string) {
+	if m.__copies_tap[key] == nil {
+		return
+	}
+	gtk4rt.Emit(m.__copies_tap[key], "clicked")
 }
 
 // boxChange fires the "toggled" signal on the #box widget; for tests.
 func (m *Model) boxChange(v bool) {
-	if gtk4rt.CheckButtonGetActive(m.__named_box[len(m.__named_box)-1]) != v {
-		gtk4rt.CheckButtonSetActive(m.__named_box[len(m.__named_box)-1], v)
+	if gtk4rt.CheckButtonGetActive(m.__named_box) != v {
+		gtk4rt.CheckButtonSetActive(m.__named_box, v)
 		return
 	}
-	gtk4rt.Emit(m.__named_box[len(m.__named_box)-1], "toggled")
+	gtk4rt.Emit(m.__named_box, "toggled")
 }
 
-// boxChangeAt fires it on the copy of #box at index i, in render order; for tests.
-func (m *Model) boxChangeAt(i int, v bool) {
-	if gtk4rt.CheckButtonGetActive(m.__named_box[i]) != v {
-		gtk4rt.CheckButtonSetActive(m.__named_box[i], v)
+// boxChangeAt fires it on the copy of #box with the key; for tests.
+func (m *Model) boxChangeAt(key string, v bool) {
+	if m.__copies_box[key] == nil {
 		return
 	}
-	gtk4rt.Emit(m.__named_box[i], "toggled")
+	if gtk4rt.CheckButtonGetActive(m.__copies_box[key]) != v {
+		gtk4rt.CheckButtonSetActive(m.__copies_box[key], v)
+		return
+	}
+	gtk4rt.Emit(m.__copies_box[key], "toggled")
 }
 
 // fieldInput fires the "changed" signal on the #field widget; for tests.
 func (m *Model) fieldInput(v string) {
-	gtk4rt.EditableSetTextQuiet(m.__named_field[len(m.__named_field)-1], v)
-	gtk4rt.Emit(m.__named_field[len(m.__named_field)-1], "changed")
+	gtk4rt.EditableSetTextQuiet(m.__named_field, v)
+	gtk4rt.Emit(m.__named_field, "changed")
 }
 
-// fieldInputAt fires it on the copy of #field at index i, in render order; for tests.
-func (m *Model) fieldInputAt(i int, v string) {
-	gtk4rt.EditableSetTextQuiet(m.__named_field[i], v)
-	gtk4rt.Emit(m.__named_field[i], "changed")
+// fieldInputAt fires it on the copy of #field with the key; for tests.
+func (m *Model) fieldInputAt(key string, v string) {
+	if m.__copies_field[key] == nil {
+		return
+	}
+	gtk4rt.EditableSetTextQuiet(m.__copies_field[key], v)
+	gtk4rt.Emit(m.__copies_field[key], "changed")
 }
 
 // fieldChange fires the "activate" signal on the #field widget; for tests.
 func (m *Model) fieldChange(v string) {
-	gtk4rt.EditableSetTextQuiet(m.__named_field[len(m.__named_field)-1], v)
-	gtk4rt.Emit(m.__named_field[len(m.__named_field)-1], "activate")
+	gtk4rt.EditableSetTextQuiet(m.__named_field, v)
+	gtk4rt.Emit(m.__named_field, "activate")
 }
 
-// fieldChangeAt fires it on the copy of #field at index i, in render order; for tests.
-func (m *Model) fieldChangeAt(i int, v string) {
-	gtk4rt.EditableSetTextQuiet(m.__named_field[i], v)
-	gtk4rt.Emit(m.__named_field[i], "activate")
+// fieldChangeAt fires it on the copy of #field with the key; for tests.
+func (m *Model) fieldChangeAt(key string, v string) {
+	if m.__copies_field[key] == nil {
+		return
+	}
+	gtk4rt.EditableSetTextQuiet(m.__copies_field[key], v)
+	gtk4rt.Emit(m.__copies_field[key], "activate")
+}
+
+func (m *Model) __list_tap(key string, w gtk4rt.Handle) {
+	for k, c := range m.__copies_tap {
+		if c == w {
+			delete(m.__copies_tap, k)
+		}
+	}
+	if m.__copies_tap == nil {
+		m.__copies_tap = map[string]gtk4rt.Handle{}
+	}
+	m.__copies_tap[key] = w
+}
+
+func (m *Model) __list_box(key string, w gtk4rt.Handle) {
+	for k, c := range m.__copies_box {
+		if c == w {
+			delete(m.__copies_box, k)
+		}
+	}
+	if m.__copies_box == nil {
+		m.__copies_box = map[string]gtk4rt.Handle{}
+	}
+	m.__copies_box[key] = w
+}
+
+func (m *Model) __list_field(key string, w gtk4rt.Handle) {
+	for k, c := range m.__copies_field {
+		if c == w {
+			delete(m.__copies_field, k)
+		}
+	}
+	if m.__copies_field == nil {
+		m.__copies_field = map[string]gtk4rt.Handle{}
+	}
+	m.__copies_field[key] = w
 }
 -- out/kotlin/android/app/src/main/java/test/sngl/app/MainScreen.kt --
 // Code generated by sngl (android) from app.sngl; DO NOT EDIT.
 
 package test.sngl.app
 
+import androidx.compose.ui.semantics.SemanticsPropertyKey
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
@@ -1500,6 +1761,7 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.material3.Button
 import androidx.compose.ui.platform.testTag
 import androidx.compose.material3.Text
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.foundation.layout.Row
 import androidx.compose.ui.Alignment
 import androidx.compose.material3.Checkbox
@@ -1510,6 +1772,8 @@ fun _snglFloatStr(v: Double): String =
 
 fun _snglSplit(s: String, sep: String): List<String> =
     if (sep.isEmpty()) s.map { it.toString() } else s.split(sep)
+
+val SnglCopy = SemanticsPropertyKey<String>("SnglCopy")
 
 class MainScreenState {
     val items = mutableStateListOf("a", "b")
@@ -1526,16 +1790,16 @@ fun MainScreen(state: MainScreenState = remember { MainScreenState() }) {
         }, modifier = Modifier.testTag("swap")) {
             Text(text = "swap", modifier = Modifier)
         }
-        for (it in state.items) {
+        for ((__copy0, it) in state.items.withIndex()) {
             Button(onClick = {
                 state.log = it
-            }, modifier = Modifier.testTag("tap")) {
+            }, modifier = Modifier.testTag("tap").then(__copy0.toString().let { __key -> Modifier.semantics { this[SnglCopy] = __key } })) {
                 Text(text = it, modifier = Modifier)
             }
-            __checkbox_state0(label = it, onChange = { on ->
+            __checkbox_state0(label = it, __copy = __copy0.toString(), onChange = { on ->
                 state.log = ((it + " ") + on.toString())
             })
-            __input_state1(__start_value = it, onChange = { v ->
+            __input_state1(__start_value = it, __copy = __copy0.toString(), onChange = { v ->
                 state.log = ((it + "=") + v)
             })
         }
@@ -1544,10 +1808,10 @@ fun MainScreen(state: MainScreenState = remember { MainScreenState() }) {
 }
 
 @Composable
-fun __checkbox_state0(__start_checked: Boolean = false, label: String, onChange: ((Boolean) -> Unit)? = null) {
+fun __checkbox_state0(__start_checked: Boolean = false, label: String, __copy: String = "", onChange: ((Boolean) -> Unit)? = null) {
     var checked by remember { mutableStateOf(__start_checked) }
 
-    Row(modifier = Modifier.testTag("box"), verticalAlignment = Alignment.CenterVertically) {
+    Row(modifier = Modifier.testTag("box").then(__copy.let { __key -> Modifier.semantics { this[SnglCopy] = __key } }), verticalAlignment = Alignment.CenterVertically) {
         Checkbox(checked = checked, onCheckedChange = { on ->
             checked = on
             onChange?.invoke(on)
@@ -1559,10 +1823,10 @@ fun __checkbox_state0(__start_checked: Boolean = false, label: String, onChange:
 }
 
 @Composable
-fun __input_state1(__start_value: String = "", onChange: ((String) -> Unit)? = null) {
+fun __input_state1(__start_value: String = "", __copy: String = "", onChange: ((String) -> Unit)? = null) {
     var value by remember { mutableStateOf(__start_value) }
 
-    OutlinedTextField(value = value, readOnly = false, modifier = Modifier.testTag("field"), onValueChange = { v ->
+    OutlinedTextField(value = value, readOnly = false, modifier = Modifier.testTag("field").then(__copy.let { __key -> Modifier.semantics { this[SnglCopy] = __key } }), onValueChange = { v ->
         value = v
         onChange?.invoke(v)
     })
@@ -1575,7 +1839,7 @@ package test.sngl.app
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
-import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performTextReplacement
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -1595,11 +1859,11 @@ class MainScreenTest {
         val c = MainScreenState()
         @Suppress("UNUSED_VARIABLE") val composeTestRule = composeRule
         composeRule.setContent { MainScreen(c) }
-        composeTestRule.onAllNodes(androidx.compose.ui.test.hasTestTag("tap"))[1].performClick(); composeTestRule.waitForIdle()
+        composeTestRule.onNode((androidx.compose.ui.test.hasTestTag("tap") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, "1"))).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick); composeTestRule.waitForIdle()
         org.junit.Assert.assertTrue("(c.log == \"b\")", (c.log == "b"))
-        composeTestRule.onAllNodes(androidx.compose.ui.test.isToggleable() and (androidx.compose.ui.test.hasTestTag("box") or androidx.compose.ui.test.hasAnyAncestor(androidx.compose.ui.test.hasTestTag("box"))))[0].performClick(); composeTestRule.waitForIdle()
+        composeTestRule.onNode(androidx.compose.ui.test.isToggleable() and ((androidx.compose.ui.test.hasTestTag("box") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, "0")) or androidx.compose.ui.test.hasAnyAncestor((androidx.compose.ui.test.hasTestTag("box") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, "0"))))).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick); composeTestRule.waitForIdle()
         org.junit.Assert.assertTrue("(c.log == \"a true\")", (c.log == "a true"))
-        composeTestRule.onAllNodes(androidx.compose.ui.test.hasTestTag("field"))[1].performTextReplacement("x"); composeTestRule.waitForIdle()
+        composeTestRule.onNode((androidx.compose.ui.test.hasTestTag("field") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, "1"))).performTextReplacement("x"); composeTestRule.waitForIdle()
         org.junit.Assert.assertTrue("(c.log == \"b=x\")", (c.log == "b=x"))
     }
 
@@ -1607,12 +1871,12 @@ class MainScreenTest {
         val c = MainScreenState()
         @Suppress("UNUSED_VARIABLE") val composeTestRule = composeRule
         composeRule.setContent { MainScreen(c) }
-        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("swap")).performClick(); composeTestRule.waitForIdle()
-        composeTestRule.onAllNodes(androidx.compose.ui.test.hasTestTag("tap"))[2].performClick(); composeTestRule.waitForIdle()
+        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("swap")).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick); composeTestRule.waitForIdle()
+        composeTestRule.onNode((androidx.compose.ui.test.hasTestTag("tap") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, "2"))).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick); composeTestRule.waitForIdle()
         org.junit.Assert.assertTrue("(c.log == \"e\")", (c.log == "e"))
-        composeTestRule.onAllNodes(androidx.compose.ui.test.isToggleable() and (androidx.compose.ui.test.hasTestTag("box") or androidx.compose.ui.test.hasAnyAncestor(androidx.compose.ui.test.hasTestTag("box"))))[1].performClick(); composeTestRule.waitForIdle()
+        composeTestRule.onNode(androidx.compose.ui.test.isToggleable() and ((androidx.compose.ui.test.hasTestTag("box") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, "1")) or androidx.compose.ui.test.hasAnyAncestor((androidx.compose.ui.test.hasTestTag("box") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, "1"))))).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick); composeTestRule.waitForIdle()
         org.junit.Assert.assertTrue("(c.log == \"d true\")", (c.log == "d true"))
-        composeTestRule.onAllNodes(androidx.compose.ui.test.hasTestTag("field"))[0].performTextReplacement("y"); composeTestRule.waitForIdle()
+        composeTestRule.onNode((androidx.compose.ui.test.hasTestTag("field") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, "0"))).performTextReplacement("y"); composeTestRule.waitForIdle()
         org.junit.Assert.assertTrue("(c.log == \"c=y\")", (c.log == "c=y"))
     }
 
@@ -1663,8 +1927,8 @@ window.__sngl_boot = () => {
     Object.assign(el, p);
     el.dispatchEvent(Object.assign(new Event("change"), p));
   };
-  state.boxChangeAt = (i, p) => {
-    const el = document.querySelectorAll('[data-sngl-id="box"]')[i].querySelector("input");
+  state.boxChangeAt = (k, p) => {
+    const el = document.querySelector('[data-sngl-id="box"][data-sngl-copy="' + k + '"]').querySelector("input");
     Object.assign(el, p);
     el.dispatchEvent(Object.assign(new Event("change"), p));
   };
@@ -1673,8 +1937,8 @@ window.__sngl_boot = () => {
     Object.assign(el, p);
     el.dispatchEvent(Object.assign(new Event("input"), p));
   };
-  state.fieldInputAt = (i, p) => {
-    const el = document.querySelectorAll('[data-sngl-id="field"]')[i];
+  state.fieldInputAt = (k, p) => {
+    const el = document.querySelector('[data-sngl-id="field"][data-sngl-copy="' + k + '"]');
     Object.assign(el, p);
     el.dispatchEvent(Object.assign(new Event("input"), p));
   };
@@ -1683,55 +1947,37 @@ window.__sngl_boot = () => {
     Object.assign(el, p);
     el.dispatchEvent(Object.assign(new Event("change"), p));
   };
-  state.fieldChangeAt = (i, p) => {
-    const el = document.querySelectorAll('[data-sngl-id="field"]')[i];
+  state.fieldChangeAt = (k, p) => {
+    const el = document.querySelector('[data-sngl-id="field"][data-sngl-copy="' + k + '"]');
     Object.assign(el, p);
     el.dispatchEvent(Object.assign(new Event("change"), p));
   };
   state.tapClick = () => document.querySelector('[data-sngl-id="tap"]').click();
-  state.tapClickAt = (i) => document.querySelectorAll('[data-sngl-id="tap"]')[i].click();
+  state.tapClickAt = (k) => document.querySelector('[data-sngl-id="tap"][data-sngl-copy="' + k + '"]').click();
   state.tapContextmenu = (p) => {
     const el = document.querySelector('[data-sngl-id="tap"]');
     Object.assign(el, p);
     el.dispatchEvent(Object.assign(new Event("contextmenu"), p));
   };
-  state.tapContextmenuAt = (i, p) => {
-    const el = document.querySelectorAll('[data-sngl-id="tap"]')[i];
+  state.tapContextmenuAt = (k, p) => {
+    const el = document.querySelector('[data-sngl-id="tap"][data-sngl-copy="' + k + '"]');
     Object.assign(el, p);
     el.dispatchEvent(Object.assign(new Event("contextmenu"), p));
   };
   if (typeof window !== "undefined") {
     window.__sngl_state = state;
   }
-  function testOneCopy(t, c) {
-    c.tap[1]();
-    t.assertTrue(c.log === "b", '(c.log === "b")');
-    c.box[0](true);
-    t.assertTrue(c.log === "a true", '(c.log === "a true")');
-    c.field[1]("x");
-    t.assertTrue(c.log === "b=x", '(c.log === "b=x")');
-  }
-  function testOneCopyAfterTheLoopRendersAgain(t, c) {
-    c.swap();
-    c.tap[2]();
-    t.assertTrue(c.log === "e", '(c.log === "e")');
-    c.box[1](true);
-    t.assertTrue(c.log === "d true", '(c.log === "d true")');
-    c.field[0]("y");
-    t.assertTrue(c.log === "c=y", '(c.log === "c=y")');
-  }
-  if (typeof window !== "undefined") {
-    Object.assign(window, { testOneCopy, testOneCopyAfterTheLoopRendersAgain });
-  }
   function __cf___checkbox_state0(props) {
     const __root = document.createElement("div");
     __root.style.display = "contents";
     let __start_checked = props.__start_checked ?? false;
     let label = props.label;
+    let __copy = props.__copy ?? "";
     let change = props.change ?? ((__e0) => {
     });
     let __prop___start_checked = __start_checked;
     let __prop_label = label;
+    let __prop___copy = __copy;
     let __prop_change = change;
     let checked = __prop___start_checked;
     let __slot02 = [];
@@ -1742,12 +1988,17 @@ window.__sngl_boot = () => {
       __prop_label = __v;
       __n2.textContent = __prop_label;
     }
+    function __set___copy(__v) {
+      __prop___copy = __v;
+      box.setAttribute("data-sngl-copy", __prop___copy);
+    }
     function __set_change(__v) {
       __prop_change = __v;
     }
     let box = document.createElement("label");
     box.setAttribute("data-sngl-id", "box");
     box.setAttribute("style", "align-items:center;display:inline-flex;gap:4px");
+    box.setAttribute("data-sngl-copy", __prop___copy);
     let __n1 = document.createElement("input");
     __n1.checked = checked;
     __n1.disabled = false;
@@ -1768,6 +2019,7 @@ window.__sngl_boot = () => {
       },
       __set___start_checked,
       __set_label,
+      __set___copy,
       __set_change
     };
   }
@@ -1775,14 +2027,20 @@ window.__sngl_boot = () => {
     const __root = document.createElement("div");
     __root.style.display = "contents";
     let __start_value = props.__start_value ?? "";
+    let __copy = props.__copy ?? "";
     let change = props.change ?? ((__e0) => {
     });
     let __prop___start_value = __start_value;
+    let __prop___copy = __copy;
     let __prop_change = change;
     let value = __prop___start_value;
     let __slot02 = [];
     function __set___start_value(__v) {
       __prop___start_value = __v;
+    }
+    function __set___copy(__v) {
+      __prop___copy = __v;
+      field.setAttribute("data-sngl-copy", __prop___copy);
     }
     function __set_change(__v) {
       __prop_change = __v;
@@ -1794,6 +2052,7 @@ window.__sngl_boot = () => {
     field.readOnly = false;
     field.setAttribute("type", "text");
     field.setAttribute("placeholder", "");
+    field.setAttribute("data-sngl-copy", __prop___copy);
     field.addEventListener("input", (e) => {
       value = e.currentTarget.value;
       field.value = value;
@@ -1809,6 +2068,7 @@ window.__sngl_boot = () => {
       __destroy() {
       },
       __set___start_value,
+      __set___copy,
       __set_change
     };
   }
@@ -1816,14 +2076,20 @@ window.__sngl_boot = () => {
     const __root = document.createElement("div");
     __root.style.display = "contents";
     let __p0 = props.__p0;
+    let __p1 = props.__p1;
     let __on0 = props.__on0 ?? (() => {
     });
     let __prop___p0 = __p0;
+    let __prop___p1 = __p1;
     let __prop___on0 = __on0;
     let __slot02 = [];
     function __set___p0(__v) {
       __prop___p0 = __v;
-      __n3.textContent = __prop___p0;
+      tap.setAttribute("data-sngl-copy", String(__prop___p0));
+    }
+    function __set___p1(__v) {
+      __prop___p1 = __v;
+      __n3.textContent = __prop___p1;
     }
     function __set___on0(__v) {
       __prop___on0 = __v;
@@ -1831,13 +2097,14 @@ window.__sngl_boot = () => {
     let tap = document.createElement("button");
     tap.setAttribute("data-sngl-id", "tap");
     tap.disabled = false;
+    tap.setAttribute("data-sngl-copy", String(__prop___p0));
     tap.addEventListener("click", () => {
       __prop___on0();
     });
     tap.addEventListener("contextmenu", () => {
     });
     let __n3 = document.createElement("span");
-    __n3.textContent = __prop___p0;
+    __n3.textContent = __prop___p1;
     tap.appendChild(__n3);
     __root.appendChild(tap);
     return {
@@ -1845,6 +2112,7 @@ window.__sngl_boot = () => {
       __destroy() {
       },
       __set___p0,
+      __set___p1,
       __set___on0
     };
   }
@@ -1862,11 +2130,12 @@ window.__sngl_boot = () => {
     let __inst2_i = 0;
     let __inst3_next = [];
     let __inst3_i = 0;
-    for (const it of state.items) {
+    for (const [__copy0, it] of state.items.entries()) {
       let __n4 = null;
       if (__inst1_live.length > __inst1_i) {
         __n4 = __inst1_live[__inst1_i];
-        __n4.__set___p0(it);
+        __n4.__set___p0(__copy0);
+        __n4.__set___p1(it);
         __n4.__set___on0(() => {
           state.log = it;
           __n0.textContent = state.log;
@@ -1875,7 +2144,7 @@ window.__sngl_boot = () => {
         if (__inst1_live.length > __inst1_i) {
           __inst1_live[__inst1_i].__destroy();
         }
-        let __n4__new = __cf___child0({ __p0: it, __on0: () => {
+        let __n4__new = __cf___child0({ __p0: __copy0, __p1: it, __on0: () => {
           state.log = it;
           __n0.textContent = state.log;
         } });
@@ -1898,6 +2167,7 @@ window.__sngl_boot = () => {
       if (__inst2_live.length > __inst2_i) {
         __n5 = __inst2_live[__inst2_i];
         __n5.__set_label(it);
+        __n5.__set___copy(String(__copy0));
         __n5.__set_change((on) => {
           state.log = it + " " + String(on);
           __n0.textContent = state.log;
@@ -1906,7 +2176,7 @@ window.__sngl_boot = () => {
         if (__inst2_live.length > __inst2_i) {
           __inst2_live[__inst2_i].__destroy();
         }
-        let __n5__new = __cf___checkbox_state0({ label: it, change: (on) => {
+        let __n5__new = __cf___checkbox_state0({ label: it, __copy: String(__copy0), change: (on) => {
           state.log = it + " " + String(on);
           __n0.textContent = state.log;
         } });
@@ -1929,6 +2199,7 @@ window.__sngl_boot = () => {
       if (__inst3_live.length > __inst3_i) {
         __n6 = __inst3_live[__inst3_i];
         __n6.__set___start_value(it);
+        __n6.__set___copy(String(__copy0));
         __n6.__set_change((v) => {
           state.log = it + "=" + v;
           __n0.textContent = state.log;
@@ -1937,7 +2208,7 @@ window.__sngl_boot = () => {
         if (__inst3_live.length > __inst3_i) {
           __inst3_live[__inst3_i].__destroy();
         }
-        let __n6__new = __cf___input_state1({ __start_value: it, change: (v) => {
+        let __n6__new = __cf___input_state1({ __start_value: it, __copy: String(__copy0), change: (v) => {
           state.log = it + "=" + v;
           __n0.textContent = state.log;
         } });
@@ -2005,12 +2276,12 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:72ee4a12f158d2c7825f08977635abf2
+pass sha256:a0f0829220ba6984811c54dc4cab1b4a
 -- run/go/fyne --
-pass sha256:8cd975b873410e82666354fb80125923
+pass sha256:729f564db20c0646a8aeb86204de48af
 -- run/go/gtk4 --
-pass sha256:a526bea6229df4d18037a12c823d7781
+pass sha256:b240c6e609fadcb48fc54f1df6f1fa50
 -- run/kotlin/android --
-pass sha256:7aa6a0f418c97770eaa09087b0380865
+pass sha256:b10b27f2aa09b89de1fe31ec45e0bac8
 -- run/none/html --
-pass sha256:acedb3f60ca62f78f6d2dfe1bb88e4a4
+pass sha256:9255c8dd5817976f977a18de57255542

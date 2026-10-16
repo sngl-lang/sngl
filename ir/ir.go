@@ -66,8 +66,10 @@ type Package struct {
 	// only ever a component.
 	RootComponent string `json:",omitempty"`
 	Contexts      []*Context
-	Symbols       *SymbolTable
-	Overlay       Overlay `json:"-"`
+	// Symbols is the scope chain the package's names resolve through, an
+	// index over declarations a dump writes where they stand.
+	Symbols *SymbolTable `json:"-"`
+	Overlay Overlay      `json:"-"`
 	// Targets are the overrides the library packages a check loaded declare
 	// of declarations they do not own -- a target package's of sngl:ui --
 	// as the check found them. Each package owns its overrides, so a build
@@ -436,11 +438,13 @@ func (p *Package) UsesDrawShapes() bool { return p.usesFamilyRole(BuiltinFamilyS
 // Import records a resolved import.
 type Import struct {
 	AST     *ast.Import
-	Path    string        // local import path (e.g., "widgets", "go:net/http")
-	Alias   string        // effective namespace name
-	Replace string        // replacement URL (RHS of =>), empty if not a replace
-	Pkg     *Package      // resolved SNGL package (nil for native)
-	Native  *NativeImport // non-nil for scheme imports
+	Path    string // local import path (e.g., "widgets", "go:net/http")
+	Alias   string // effective namespace name
+	Replace string // replacement URL (RHS of =>), empty if not a replace
+	// Pkg is the resolved SNGL package, nil for a native one. Another
+	// package, which a dump of this one names by Path rather than writing.
+	Pkg    *Package      `json:"-"`
+	Native *NativeImport // non-nil for scheme imports
 }
 
 // PackageOrigin is where a package came from.

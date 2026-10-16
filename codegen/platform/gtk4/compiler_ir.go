@@ -245,6 +245,11 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 		}
 		goType := golang.BindGoType(tv.Type(), tv.Init())
 		initVal := golang.LowerBindInit(tv.Type(), tv.Init(), varGC)
+		// A component's var is written in a context of its own, whose imports
+		// are the file's all the same.
+		for _, p := range varGC.Imports() {
+			gc.RequireImport(p)
+		}
 		if strings.HasPrefix(goType, "time.") {
 			gc.RequireImport("time")
 		}
@@ -356,7 +361,7 @@ func (c *compilation) emitIRMode(wrapped bool) (modelSrc []byte, callbacksSrc []
 	var topLevelRefs, appChildren []string
 	var topLevelCType map[string]string
 	// The ids a test drives one copy of, whose copies the Model lists.
-	indexed := codegen.IndexedTriggerIDs(c.ctx.Pkg)
+	indexed := ir.IndexedRefIDs(c.ctx.Pkg)
 	recordInvoker := func(inv gtkEventInvoker) { vc.eventInvokers = append(vc.eventInvokers, inv) }
 	if len(bodyStmts) > 0 {
 		tr := newGtk4Translator(gc, c.widgetFieldSink(&widgetFields)).
@@ -416,7 +421,7 @@ func (c *compilation) emitIRMode(wrapped bool) (modelSrc []byte, callbacksSrc []
 	}
 	emitCanvasDrawFuncs(&funcBuf)
 
-	presentIDs := codegen.NullTestedRefs(c.ctx.Pkg)
+	presentIDs, keyedPresent := codegen.NullTestedRefs(c.ctx.Pkg)
 	presenceFields := map[string]string{}
 	createTargets := collectCreateComponentTargets(c.ctx.Pkg)
 	for _, cc := range c.ctx.NonRootComponents() {
@@ -495,6 +500,8 @@ func (c *compilation) emitIRMode(wrapped bool) (modelSrc []byte, callbacksSrc []
 		}
 	}
 	emitPresenceChecks(&eventInvokersBuf, presentIDs, presenceFields, widgetFields)
+	emitCopyRegistries(&eventInvokersBuf, widgetFields)
+	emitKeyedPresenceChecks(&eventInvokersBuf, keyedPresent, widgetFields)
 
 	// The drawing-area trampoline registration emits an `unsafe.Pointer` cast.
 	if hasCanvas {
@@ -670,7 +677,7 @@ func (c *compilation) newTemplateData(widgetFields []widgetField, functionCode s
 //
 // A widget a render func builds is one a test drives as much as one BuildUI
 // builds, so the func records its invokers too; one of an id a test indexes
-// is listed as it is built (withIndexed).
+// is kept by its copy as it is built (withIndexed).
 func emitIRSlotFunc(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext, widgetFields *[]widgetField, pkg *ir.Package, reg *gir.TypeRegistry, shared *emitShared, wrapped bool, indexed map[string]bool, invokerSink func(gtkEventInvoker)) {
 	tr := newGtk4Translator(gc, func(name, cType string) {
 		*widgetFields = append(*widgetFields, widgetField{name: name, goType: widgetFieldGoType(cType, wrapped)})
@@ -1441,6 +1448,10 @@ func emitIRComponentMethod(b *strings.Builder, cc *codegen.ComponentCtx, gc *gol
 // the trampoline and Go-callback bridge rather than re-running the handler.
 func emitEventInvokers(b *strings.Builder, invokers []gtkEventInvoker, wrapped bool) {
 	seen := map[string]bool{}
+	keyed := map[string]bool{}
+	for _, inv := range invokers {
+		keyed[inv.IDLabel] = keyed[inv.IDLabel] || inv.List
+	}
 	for _, inv := range invokers {
 		methodName := inv.IDLabel + golang.ExportName(inv.SnglEvent)
 		if seen[methodName] {
@@ -1449,18 +1460,13 @@ func emitEventInvokers(b *strings.Builder, invokers []gtkEventInvoker, wrapped b
 		seen[methodName] = true
 		fmt.Fprintf(b, "// %s fires the %q signal on the #%s widget; for tests.\n",
 			methodName, inv.GTKSignal, inv.IDLabel)
-		if !inv.List {
-			emitEventInvoker(b, inv, methodName, "", "m."+inv.FieldName, wrapped)
+		emitEventInvoker(b, inv, methodName, "", "m."+inv.FieldName, wrapped)
+		if !keyed[inv.IDLabel] {
 			continue
 		}
-		// A widget whose copies are listed (the copies of an id a test
-		// indexes): the plain invoker fires the last built, and the `At` one
-		// the copy at an index, in render order.
-		list := "m." + inv.FieldName
-		emitEventInvoker(b, inv, methodName, "", fmt.Sprintf("%s[len(%s)-1]", list, list), wrapped)
-		fmt.Fprintf(b, "// %s fires it on the copy of #%s at index i, in render order; for tests.\n",
+		fmt.Fprintf(b, "// %s fires it on the copy of #%s with the key; for tests.\n",
 			codegen.InvokerAt(methodName), inv.IDLabel)
-		emitEventInvoker(b, inv, codegen.InvokerAt(methodName), "i int", list+"[i]", wrapped)
+		emitEventInvoker(b, inv, codegen.InvokerAt(methodName), "key string", "m."+copiesField(inv.IDLabel)+"[key]", wrapped)
 	}
 }
 
@@ -1500,11 +1506,16 @@ func emitEventInvoker(b *strings.Builder, inv gtkEventInvoker, methodName, lead,
 	switch {
 	case inv.State:
 		fmt.Fprintf(b, "func (m *Model) %s(%s) {\n", methodName, params("v bool"))
-		emitInvokerStateWrite(b, inv, w, wrapped)
 	case valueParam != "":
 		fmt.Fprintf(b, "func (m *Model) %s(%s) {\n", methodName, params(valueParam))
 	default:
 		fmt.Fprintf(b, "func (m *Model) %s(%s) {\n", methodName, params(""))
+	}
+	if lead != "" {
+		fmt.Fprintf(b, "\tif %s == nil {\n\t\treturn\n\t}\n", w)
+	}
+	if inv.State {
+		emitInvokerStateWrite(b, inv, w, wrapped)
 	}
 	if preFire != "" {
 		fmt.Fprintf(b, "\t%s\n", preFire)

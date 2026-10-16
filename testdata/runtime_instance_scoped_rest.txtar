@@ -951,7 +951,7 @@ package test.sngl.app
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
-import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performTextReplacement
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -972,7 +972,7 @@ class MainScreenTest {
         @Suppress("UNUSED_VARIABLE") val composeTestRule = composeRule
         composeRule.setContent { MainScreen(c) }
         org.junit.Assert.assertTrue("(c.mounted == \"1:10 2:20 \")", (c.mounted == "1:10 2:20 "))
-        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("add")).performClick(); composeTestRule.waitForIdle()
+        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("add")).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick); composeTestRule.waitForIdle()
         org.junit.Assert.assertTrue("(c.mounted == \"1:10 2:20 3:30 \")", (c.mounted == "1:10 2:20 3:30 "))
     }
 
@@ -1018,14 +1018,6 @@ window.__sngl_boot = () => {
   state.addClick = () => $0.click();
   if (typeof window !== "undefined") {
     window.__sngl_state = state;
-  }
-  function testScopedRestPerCopy(t, c) {
-    t.assertTrue(c.mounted === "1:10 2:20 ", '(c.mounted === "1:10 2:20 ")');
-    c.add();
-    t.assertTrue(c.mounted === "1:10 2:20 3:30 ", '(c.mounted === "1:10 2:20 3:30 ")');
-  }
-  if (typeof window !== "undefined") {
-    Object.assign(window, { testScopedRestPerCopy });
   }
   function __cf_Card__slot0(props) {
     const __root = document.createElement("div");
@@ -1191,6 +1183,6 @@ pass sha256:1a4121c6a530ca8032df27964d854f49
 -- run/go/gtk4 --
 pass sha256:574897b514b04935739884a49ba68a67
 -- run/kotlin/android --
-pass sha256:a608b2af0f2e56dcd96e066b88b1301e
+pass sha256:02353f3f9a6541f79cfa8f44a180a296
 -- run/none/html --
-pass sha256:6acdca73ebe69cf478673b258b747bb6
+pass sha256:c96e991643af44ec3cb81178a9075529

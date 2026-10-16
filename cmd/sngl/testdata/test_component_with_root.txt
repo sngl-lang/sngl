@@ -193,7 +193,7 @@ sha256:6b83b0b5a30484225dc2f6bd15bdf8c3
   ]
 }
 -- testrun/html/none/alone.sngl/counter/1 --
-sha256:dc7cc9f1e2bf8132e636d1815131c075
+sha256:799582c03d84b8def8bd434342e7ef85
 {
   "results": [
     {
@@ -203,7 +203,7 @@ sha256:dc7cc9f1e2bf8132e636d1815131c075
   ]
 }
 -- testrun/html/none/composed.sngl/counter/1 --
-sha256:dc7cc9f1e2bf8132e636d1815131c075
+sha256:799582c03d84b8def8bd434342e7ef85
 {
   "results": [
     {
@@ -213,7 +213,7 @@ sha256:dc7cc9f1e2bf8132e636d1815131c075
   ]
 }
 -- testrun/html/none/rooted.sngl/counter/1 --
-sha256:dc7cc9f1e2bf8132e636d1815131c075
+sha256:799582c03d84b8def8bd434342e7ef85
 {
   "results": [
     {
@@ -223,7 +223,7 @@ sha256:dc7cc9f1e2bf8132e636d1815131c075
   ]
 }
 -- testrun/html/none/two.sngl/counter/1 --
-sha256:b2412719362e591e071c40e622998342
+sha256:136ad5b540015bc8871ba357a73bee12
 {
   "results": [
     {
@@ -233,7 +233,7 @@ sha256:b2412719362e591e071c40e622998342
   ]
 }
 -- testrun/html/none/two.sngl/greeter/1 --
-sha256:c235b3169c6bfbd7318aee080f51320d
+sha256:3ece626d58becd113e69cfde9b4bc1f5
 {
   "results": [
     {

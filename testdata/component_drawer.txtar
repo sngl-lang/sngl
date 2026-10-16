@@ -354,16 +354,6 @@ window.__sngl_boot = () => {
   if (typeof window !== "undefined") {
     window.__sngl_state = state;
   }
-  function testDrawerOpenToggles(t, c) {
-    t.assertTrue(c.open === false, "(c.open === false)");
-    c.open = true;
-    t.assertTrue(c.open === true, "(c.open === true)");
-    c.open = false;
-    t.assertTrue(c.open === false, "(c.open === false)");
-  }
-  if (typeof window !== "undefined") {
-    Object.assign(window, { testDrawerOpenToggles });
-  }
   function _snglStyleLength(v) {
     if (typeof v === "number") return v + "px";
     const t = Object.keys(v).filter((k) => v[k] !== 0).map((k) => v[k] + k);
@@ -382,9 +372,9 @@ pass sha256:89810bf54a0d7197804a92b1c8885fed
 -- run/kotlin/android --
 pass sha256:d4d82ef97adf6753b81c8f114c749a59
 -- run/none/html --
-pass sha256:d782cf14491ef67e33ba2d406452b078
+pass sha256:9d71932f67022472f1b523833e65bb93
 -- testrun/html/none/component_drawer.sngl/main/1 --
-sha256:60c73b2a239471ac5d8b3c537950387a
+sha256:0664e0fccb6ec068fb87b2fdd8779486
 {
   "results": [
     {

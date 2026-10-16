@@ -1,0 +1,51 @@
+# Every stage dumps in both structural formats, with and without --omit. Three
+# things stopped one or another:
+#
+# - --omit zeroed a field of a struct held by value in an interface, which is
+#   not settable through it, and panicked at the first one: every stage.
+# - spew prints a shared pointer once per path to it, so from the checked
+#   stage on, the back-pointers a package holds -- a name's symbol, a type's
+#   declaration -- printed the library again from every name and the dump
+#   never finished. spew is handed the tree json writes.
+# - json met a cycle at the checked stage through an import's package and
+#   the package's symbol table, which a dump names rather than writes.
+#
+# --omit used to zero the fields in place, which in-process wrote into the
+# library IR and the parsed ASTs every check shares, so the second checked
+# dump here failed its own check: the checked stage is dumped four times.
+
+sngl dump --stage parsed --format spew main.sngl
+stdout 'main.sngl:5:1'
+sngl dump --stage parsed --format spew --omit AST,Pos main.sngl
+stdout 'Name: \(string\) \(len=4\) "main"'
+! stdout 'main.sngl:5:1'
+sngl dump --stage parsed --format json --omit AST,Pos main.sngl
+stdout '"Name": "main"'
+
+sngl dump --stage checked --format spew main.sngl
+stdout 'Name: \(string\) \(len=4\) "main"'
+sngl dump --stage checked --format spew --omit AST,Pos main.sngl
+stdout 'Name: \(string\) \(len=4\) "main"'
+sngl dump --stage checked --format json main.sngl
+stdout '"Name": "main"'
+sngl dump --stage checked --format json --omit AST,Pos main.sngl
+stdout '"Name": "main"'
+
+sngl dump --stage lowered --platform html --lang none --format spew --omit AST,Pos main.sngl
+stdout 'ast.Document'
+sngl dump --stage lowered --platform html --lang none --format json --omit AST,Pos main.sngl
+stdout '"Stmts"'
+
+-- main.sngl --
+import . "sngl:ui"
+
+const greeting = "hi"
+
+component main node {
+    var n = 0
+    button(text="{greeting} {n}", @click { n += 1 })
+}
+
+window {
+    main
+}

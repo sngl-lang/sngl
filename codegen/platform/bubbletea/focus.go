@@ -161,7 +161,7 @@ func emitLoopSlotHandlers(b *strings.Builder, f *ir.For, info *irAnalysis, gc *g
 				}
 				invokerSink(btEventInvoker{
 					IDLabel: n.ID, SnglEvent: ev.On, SlotIdx: lf.slot, KeyExpr: teaKeyMsg(ev.Key),
-					Cursor: lf.cursor, Copies: loopCopies(f, lf, n.ID, isLoopFocus, gc),
+					Cursor: lf.cursor, Copies: loopCopies(f, lf, n, isLoopFocus, gc), Keyed: n.Prop(ir.CopyProp) != nil,
 				})
 			}
 		})
@@ -192,20 +192,28 @@ func emitLoopSlotHandlers(b *strings.Builder, f *ir.For, info *irAnalysis, gc *g
 	}
 }
 
-// loopCopies is a Go expression of the ordinal each copy of the node id has
-// in loop slot lf, in render order: the loop walked as View walks it, counting
-// the slot's focusable nodes, noting where id's copies fall.
-func loopCopies(f *ir.For, lf loopFocus, id string, isLoopFocus func(*ir.NodeInst) bool, gc *golang.GoIRContext) string {
+// copyOrdinal is the Go type of one copy of a looped node in loopCopies.
+const copyOrdinal = "struct{ key string; pos int }"
+
+// loopCopies is a Go expression of the ordinal each copy of the node n has in
+// loop slot lf, in render order, beside the key it carries (ir.CopyProp; ""
+// where no test indexes it): the loop walked as View walks it, counting the
+// slot's focusable nodes, noting where n's copies fall.
+func loopCopies(f *ir.For, lf loopFocus, n *ir.NodeInst, isLoopFocus func(*ir.NodeInst) bool, gc *golang.GoIRContext) string {
 	var b strings.Builder
-	b.WriteString("func() []int {\n")
+	b.WriteString("func() []" + copyOrdinal + " {\n")
 	w := &viewWalk{b: &b, indent: 2, wants: isLoopFocus}
-	w.visit = func(w *viewWalk, n *ir.NodeInst, _ *golang.GoIRContext) {
-		if n.ID == id {
-			w.line("__at = append(__at, %s)", lf.pos)
+	w.visit = func(w *viewWalk, c *ir.NodeInst, gc *golang.GoIRContext) {
+		if c.ID == n.ID {
+			key := `""`
+			if k := c.Prop(ir.CopyProp); k != nil {
+				key = gc.EvalExpr(k)
+			}
+			w.line("__at = append(__at, %s{%s, %s})", copyOrdinal, key, lf.pos)
 		}
 		w.line("%s++", lf.pos)
 	}
-	w.line("var __at []int")
+	w.line("var __at []%s", copyOrdinal)
 	w.line("%s := 0", lf.pos)
 	w.stmts([]ir.Stmt{f}, gc)
 	w.line("return __at")

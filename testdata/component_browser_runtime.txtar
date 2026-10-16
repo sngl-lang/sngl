@@ -346,50 +346,50 @@ window.__sngl_boot = () => {
   state.touchClick = () => $8.click();
   state.rename__1Click = () => $9.click();
   state.hitClick = () => document.querySelector('[data-sngl-id="hit"]').click();
-  state.hitClickAt = (i) => document.querySelectorAll('[data-sngl-id="hit"]')[i].click();
+  state.hitClickAt = (k) => document.querySelector('[data-sngl-id="hit"][data-sngl-copy="' + k + '"]').click();
   state.hitContextmenu = (p) => {
     const el = document.querySelector('[data-sngl-id="hit"]');
     Object.assign(el, p);
     el.dispatchEvent(Object.assign(new Event("contextmenu"), p));
   };
-  state.hitContextmenuAt = (i, p) => {
-    const el = document.querySelectorAll('[data-sngl-id="hit"]')[i];
+  state.hitContextmenuAt = (k, p) => {
+    const el = document.querySelector('[data-sngl-id="hit"][data-sngl-copy="' + k + '"]');
     Object.assign(el, p);
     el.dispatchEvent(Object.assign(new Event("contextmenu"), p));
   };
   state.btnClick = () => document.querySelector('[data-sngl-id="btn"]').click();
-  state.btnClickAt = (i) => document.querySelectorAll('[data-sngl-id="btn"]')[i].click();
+  state.btnClickAt = (k) => document.querySelector('[data-sngl-id="btn"][data-sngl-copy="' + k + '"]').click();
   state.btnContextmenu = (p) => {
     const el = document.querySelector('[data-sngl-id="btn"]');
     Object.assign(el, p);
     el.dispatchEvent(Object.assign(new Event("contextmenu"), p));
   };
-  state.btnContextmenuAt = (i, p) => {
-    const el = document.querySelectorAll('[data-sngl-id="btn"]')[i];
+  state.btnContextmenuAt = (k, p) => {
+    const el = document.querySelector('[data-sngl-id="btn"][data-sngl-copy="' + k + '"]');
     Object.assign(el, p);
     el.dispatchEvent(Object.assign(new Event("contextmenu"), p));
   };
   state.pickClick = () => document.querySelector('[data-sngl-id="pick"]').click();
-  state.pickClickAt = (i) => document.querySelectorAll('[data-sngl-id="pick"]')[i].click();
+  state.pickClickAt = (k) => document.querySelector('[data-sngl-id="pick"][data-sngl-copy="' + k + '"]').click();
   state.pickContextmenu = (p) => {
     const el = document.querySelector('[data-sngl-id="pick"]');
     Object.assign(el, p);
     el.dispatchEvent(Object.assign(new Event("contextmenu"), p));
   };
-  state.pickContextmenuAt = (i, p) => {
-    const el = document.querySelectorAll('[data-sngl-id="pick"]')[i];
+  state.pickContextmenuAt = (k, p) => {
+    const el = document.querySelector('[data-sngl-id="pick"][data-sngl-copy="' + k + '"]');
     Object.assign(el, p);
     el.dispatchEvent(Object.assign(new Event("contextmenu"), p));
   };
   state.bumpClick = () => document.querySelector('[data-sngl-id="bump"]').click();
-  state.bumpClickAt = (i) => document.querySelectorAll('[data-sngl-id="bump"]')[i].click();
+  state.bumpClickAt = (k) => document.querySelector('[data-sngl-id="bump"][data-sngl-copy="' + k + '"]').click();
   state.bumpContextmenu = (p) => {
     const el = document.querySelector('[data-sngl-id="bump"]');
     Object.assign(el, p);
     el.dispatchEvent(Object.assign(new Event("contextmenu"), p));
   };
-  state.bumpContextmenuAt = (i, p) => {
-    const el = document.querySelectorAll('[data-sngl-id="bump"]')[i];
+  state.bumpContextmenuAt = (k, p) => {
+    const el = document.querySelector('[data-sngl-id="bump"][data-sngl-copy="' + k + '"]');
     Object.assign(el, p);
     el.dispatchEvent(Object.assign(new Event("contextmenu"), p));
   };
@@ -397,161 +397,11 @@ window.__sngl_boot = () => {
   if (typeof window !== "undefined") {
     window.__sngl_state = state;
   }
-  function testEachInstanceKeepsItsOwnState(t, c) {
-    t.assertTrue(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll('[data-sngl-id="shown"]')[0]) === "[a:0]", '(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll("[data-sngl-id=\\"shown\\"]")[0]) === "[a:0]")');
-    c.b[0].hit();
-    t.assertTrue(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll('[data-sngl-id="shown"]')[0]) === "[a:1]", '(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll("[data-sngl-id=\\"shown\\"]")[0]) === "[a:1]")');
-    t.assertTrue(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll('[data-sngl-id="shown"]')[0]) === "[b:0]", '(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll("[data-sngl-id=\\"shown\\"]")[0]) === "[b:0]")');
-  }
-  function testAPropReachesTheLeaf(t, c) {
-    c.b__1[0].hit();
-    t.assertTrue(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll('[data-sngl-id="shown"]')[0]) === "[ax:1]", '(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll("[data-sngl-id=\\"shown\\"]")[0]) === "[ax:1]")');
-    c.rename();
-    t.assertTrue(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll('[data-sngl-id="shown"]')[0]) === "[ay:1]", '(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll("[data-sngl-id=\\"shown\\"]")[0]) === "[ay:1]")');
-  }
-  function testGrowingTheListKeepsTheOthers(t, c) {
-    c.b__2[0].hit();
-    c.b__2[1].hit();
-    c.b__2[1].hit();
-    c.grow();
-    t.assertTrue(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll('[data-sngl-id="shown"]')[0]) === "[a:1]", '(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll("[data-sngl-id=\\"shown\\"]")[0]) === "[a:1]")');
-    t.assertTrue(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll('[data-sngl-id="shown"]')[0]) === "[b:2]", '(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll("[data-sngl-id=\\"shown\\"]")[0]) === "[b:2]")');
-    t.assertTrue(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll('[data-sngl-id="shown"]')[0]) === "[c:0]", '(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll("[data-sngl-id=\\"shown\\"]")[0]) === "[c:0]")');
-  }
-  function testAKeyedInsertAtTheFrontKeepsTheOthers(t, c) {
-    c.b__3[1].hit();
-    c.b__3[1].hit();
-    c.prepend();
-    t.assertTrue(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll('[data-sngl-id="shown"]')[0]) === "[z:0]", '(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll("[data-sngl-id=\\"shown\\"]")[0]) === "[z:0]")');
-    t.assertTrue(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll('[data-sngl-id="shown"]')[0]) === "[a:0]", '(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll("[data-sngl-id=\\"shown\\"]")[0]) === "[a:0]")');
-    t.assertTrue(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll('[data-sngl-id="shown"]')[0]) === "[b:2]", '(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll("[data-sngl-id=\\"shown\\"]")[0]) === "[b:2]")');
-  }
-  function testDuplicateKeysAreDistinctInstances(t, c) {
-    t.assertTrue(document.querySelectorAll('[data-sngl-id="shown"]').length === 2, '(document.querySelectorAll("[data-sngl-id=\\"shown\\"]").length === 2)');
-    c.b__4[0].hit();
-    c.churn();
-    t.assertTrue(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll('[data-sngl-id="shown"]')[0]) === "[a:1]", '(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll("[data-sngl-id=\\"shown\\"]")[0]) === "[a:1]")');
-    t.assertTrue(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll('[data-sngl-id="shown"]')[0]) === "[a:0]", '(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll("[data-sngl-id=\\"shown\\"]")[0]) === "[a:0]")');
-  }
-  function testReenteringABranchResetsItsInstance(t, c) {
-    t.assertTrue(c.inner !== null, "(c.inner !== null)");
-    if (c.inner !== null) {
-      ;
-      c.inner.hit();
-      t.assertTrue(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll('[data-sngl-id="shown"]')[0]) === "[i:1]", '(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll("[data-sngl-id=\\"shown\\"]")[0]) === "[i:1]")');
-    }
-    ;
-    c.toggle();
-    t.assertTrue(c.inner === null, "(c.inner === null)");
-    c.toggle();
-    t.assertTrue(c.inner !== null, "(c.inner !== null)");
-    if (c.inner !== null) {
-      ;
-      t.assertTrue(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll('[data-sngl-id="shown"]')[0]) === "[i:0]", '(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll("[data-sngl-id=\\"shown\\"]")[0]) === "[i:0]")');
-    }
-    ;
-  }
-  function testAnInstancesEventReachesTheCallSite(t, c) {
-    c.btn[0]();
-    t.assertTrue(state.picked__inst0 === "a", '(state.picked__inst0 === "a")');
-  }
-  function testARetainedRowIsNotStale(t, c) {
-    c.unshift();
-    t.assertTrue(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll('[data-sngl-id="btn"]')[0]) === "pick z:0", '(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll("[data-sngl-id=\\"btn\\"]")[0]) === "pick z:0")');
-    c.btn[0]();
-    t.assertTrue(state.picked__inst0 === "z", '(state.picked__inst0 === "z")');
-  }
-  function testAFreshInstancesCallbackRepaints(t, c) {
-    c.pick[0]();
-    t.assertTrue(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll('[data-sngl-id="out"]')[0]) === "picked=a", '(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll("[data-sngl-id=\\"out\\"]")[0]) === "picked=a")');
-  }
-  function testAChangedConstructPropRebuilds(t, c) {
-    t.assertTrue(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll('[data-sngl-id="shown"]')[0]) === "[ax:10]", '(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll("[data-sngl-id=\\"shown\\"]")[0]) === "[ax:10]")');
-    c.bump[0]();
-    c.rename__1();
-    t.assertTrue(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll('[data-sngl-id="shown"]')[0]) === "[ay:11]", '(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll("[data-sngl-id=\\"shown\\"]")[0]) === "[ay:11]")');
-    c.rebase();
-    t.assertTrue(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll('[data-sngl-id="shown"]')[0]) === "[ay:110]", '(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll("[data-sngl-id=\\"shown\\"]")[0]) === "[ay:110]")');
-  }
-  function testAnUnchangedConstructPropKeepsTheInstance(t, c) {
-    c.bump[0]();
-    c.touch();
-    c.rename__1();
-    t.assertTrue(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll('[data-sngl-id="shown"]')[0]) === "[ay:11]", '(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll("[data-sngl-id=\\"shown\\"]")[0]) === "[ay:11]")');
-  }
   function red(p) {
     return p.a > 200 && p.r > 200 && p.g < 50;
   }
-  function testEachInstancesCanvasDrawsItsOwnState(t, c) {
-    t.assertTrue(red(((el, x, y) => {
-      const src = el.matches("canvas, img") ? el : el.querySelector("canvas, img");
-      if (src.tagName === "IMG" && src.naturalWidth === 0) return { r: 0, g: 0, b: 0, a: 0 };
-      let c2 = src;
-      if (src.tagName === "IMG") {
-        c2 = document.createElement("canvas");
-        c2.width = src.naturalWidth;
-        c2.height = src.naturalHeight;
-        c2.getContext("2d").drawImage(src, 0, 0);
-      }
-      const d = c2.getContext("2d").getImageData(x, y, 1, 1).data;
-      return { r: d[0], g: d[1], b: d[2], a: d[3] };
-    })(document.querySelectorAll('[data-sngl-id="cv"]')[0], 9, 10)), 'red(((el, x, y) => {\n	const src = el.matches("canvas, img") ? el : el.querySelector("canvas, img");\n	if (src.tagName === "IMG" && src.naturalWidth === 0) return { r: 0, g: 0, b: 0, a: 0 };\n	let c = src;\n	if (src.tagName === "IMG") {\n		c = document.createElement("canvas");\n		c.width = src.naturalWidth;\n		c.height = src.naturalHeight;\n		c.getContext("2d").drawImage(src, 0, 0);\n	}\n	const d = c.getContext("2d").getImageData(x, y, 1, 1).data;\n	return { r: d[0], g: d[1], b: d[2], a: d[3] };\n})(document.querySelectorAll("[data-sngl-id=\\"cv\\"]")[0], 9, 10))');
-    t.assertTrue(!red(((el, x, y) => {
-      const src = el.matches("canvas, img") ? el : el.querySelector("canvas, img");
-      if (src.tagName === "IMG" && src.naturalWidth === 0) return { r: 0, g: 0, b: 0, a: 0 };
-      let c2 = src;
-      if (src.tagName === "IMG") {
-        c2 = document.createElement("canvas");
-        c2.width = src.naturalWidth;
-        c2.height = src.naturalHeight;
-        c2.getContext("2d").drawImage(src, 0, 0);
-      }
-      const d = c2.getContext("2d").getImageData(x, y, 1, 1).data;
-      return { r: d[0], g: d[1], b: d[2], a: d[3] };
-    })(document.querySelectorAll('[data-sngl-id="cv"]')[0], 10, 10)), '!red(((el, x, y) => {\n	const src = el.matches("canvas, img") ? el : el.querySelector("canvas, img");\n	if (src.tagName === "IMG" && src.naturalWidth === 0) return { r: 0, g: 0, b: 0, a: 0 };\n	let c = src;\n	if (src.tagName === "IMG") {\n		c = document.createElement("canvas");\n		c.width = src.naturalWidth;\n		c.height = src.naturalHeight;\n		c.getContext("2d").drawImage(src, 0, 0);\n	}\n	const d = c.getContext("2d").getImageData(x, y, 1, 1).data;\n	return { r: d[0], g: d[1], b: d[2], a: d[3] };\n})(document.querySelectorAll("[data-sngl-id=\\"cv\\"]")[0], 10, 10))');
-    t.assertTrue(red(((el, x, y) => {
-      const src = el.matches("canvas, img") ? el : el.querySelector("canvas, img");
-      if (src.tagName === "IMG" && src.naturalWidth === 0) return { r: 0, g: 0, b: 0, a: 0 };
-      let c2 = src;
-      if (src.tagName === "IMG") {
-        c2 = document.createElement("canvas");
-        c2.width = src.naturalWidth;
-        c2.height = src.naturalHeight;
-        c2.getContext("2d").drawImage(src, 0, 0);
-      }
-      const d = c2.getContext("2d").getImageData(x, y, 1, 1).data;
-      return { r: d[0], g: d[1], b: d[2], a: d[3] };
-    })(document.querySelectorAll('[data-sngl-id="cv"]')[1], 19, 10)), 'red(((el, x, y) => {\n	const src = el.matches("canvas, img") ? el : el.querySelector("canvas, img");\n	if (src.tagName === "IMG" && src.naturalWidth === 0) return { r: 0, g: 0, b: 0, a: 0 };\n	let c = src;\n	if (src.tagName === "IMG") {\n		c = document.createElement("canvas");\n		c.width = src.naturalWidth;\n		c.height = src.naturalHeight;\n		c.getContext("2d").drawImage(src, 0, 0);\n	}\n	const d = c.getContext("2d").getImageData(x, y, 1, 1).data;\n	return { r: d[0], g: d[1], b: d[2], a: d[3] };\n})(document.querySelectorAll("[data-sngl-id=\\"cv\\"]")[1], 19, 10))');
-    c.g[0].hit();
-    t.assertTrue(red(((el, x, y) => {
-      const src = el.matches("canvas, img") ? el : el.querySelector("canvas, img");
-      if (src.tagName === "IMG" && src.naturalWidth === 0) return { r: 0, g: 0, b: 0, a: 0 };
-      let c2 = src;
-      if (src.tagName === "IMG") {
-        c2 = document.createElement("canvas");
-        c2.width = src.naturalWidth;
-        c2.height = src.naturalHeight;
-        c2.getContext("2d").drawImage(src, 0, 0);
-      }
-      const d = c2.getContext("2d").getImageData(x, y, 1, 1).data;
-      return { r: d[0], g: d[1], b: d[2], a: d[3] };
-    })(document.querySelectorAll('[data-sngl-id="cv"]')[0], 29, 10)), 'red(((el, x, y) => {\n	const src = el.matches("canvas, img") ? el : el.querySelector("canvas, img");\n	if (src.tagName === "IMG" && src.naturalWidth === 0) return { r: 0, g: 0, b: 0, a: 0 };\n	let c = src;\n	if (src.tagName === "IMG") {\n		c = document.createElement("canvas");\n		c.width = src.naturalWidth;\n		c.height = src.naturalHeight;\n		c.getContext("2d").drawImage(src, 0, 0);\n	}\n	const d = c.getContext("2d").getImageData(x, y, 1, 1).data;\n	return { r: d[0], g: d[1], b: d[2], a: d[3] };\n})(document.querySelectorAll("[data-sngl-id=\\"cv\\"]")[0], 29, 10))');
-    t.assertTrue(!red(((el, x, y) => {
-      const src = el.matches("canvas, img") ? el : el.querySelector("canvas, img");
-      if (src.tagName === "IMG" && src.naturalWidth === 0) return { r: 0, g: 0, b: 0, a: 0 };
-      let c2 = src;
-      if (src.tagName === "IMG") {
-        c2 = document.createElement("canvas");
-        c2.width = src.naturalWidth;
-        c2.height = src.naturalHeight;
-        c2.getContext("2d").drawImage(src, 0, 0);
-      }
-      const d = c2.getContext("2d").getImageData(x, y, 1, 1).data;
-      return { r: d[0], g: d[1], b: d[2], a: d[3] };
-    })(document.querySelectorAll('[data-sngl-id="cv"]')[1], 20, 10)), '!red(((el, x, y) => {\n	const src = el.matches("canvas, img") ? el : el.querySelector("canvas, img");\n	if (src.tagName === "IMG" && src.naturalWidth === 0) return { r: 0, g: 0, b: 0, a: 0 };\n	let c = src;\n	if (src.tagName === "IMG") {\n		c = document.createElement("canvas");\n		c.width = src.naturalWidth;\n		c.height = src.naturalHeight;\n		c.getContext("2d").drawImage(src, 0, 0);\n	}\n	const d = c.getContext("2d").getImageData(x, y, 1, 1).data;\n	return { r: d[0], g: d[1], b: d[2], a: d[3] };\n})(document.querySelectorAll("[data-sngl-id=\\"cv\\"]")[1], 20, 10))');
-  }
   if (typeof window !== "undefined") {
-    Object.assign(window, { testEachInstanceKeepsItsOwnState, testAPropReachesTheLeaf, testGrowingTheListKeepsTheOthers, testAKeyedInsertAtTheFrontKeepsTheOthers, testDuplicateKeysAreDistinctInstances, testReenteringABranchResetsItsInstance, testAnInstancesEventReachesTheCallSite, testARetainedRowIsNotStale, testAFreshInstancesCallbackRepaints, testAChangedConstructPropRebuilds, testAnUnchangedConstructPropKeepsTheInstance, red, testEachInstancesCanvasDrawsItsOwnState });
+    Object.assign(window, { red });
   }
   function __cf_badge(props) {
     const __root = document.createElement("div");
@@ -602,9 +452,11 @@ window.__sngl_boot = () => {
     const __root = document.createElement("div");
     __root.style.display = "contents";
     let label = props.label ?? "";
+    let __copy = props.__copy ?? "";
     let pick = props.pick ?? ((__e0) => {
     });
     let __prop_label = label;
+    let __prop___copy = __copy;
     let __prop_pick = pick;
     let seen = 0;
     let __slot02 = [];
@@ -621,12 +473,17 @@ window.__sngl_boot = () => {
       __prop_label = __v;
       __n1.textContent = "pick " + __prop_label + ":" + String(seen);
     }
+    function __set___copy(__v) {
+      __prop___copy = __v;
+      btn.setAttribute("data-sngl-copy", __prop___copy);
+    }
     function __set_pick(__v) {
       __prop_pick = __v;
     }
     let btn = document.createElement("button");
     btn.setAttribute("data-sngl-id", "btn");
     btn.disabled = false;
+    btn.setAttribute("data-sngl-copy", __prop___copy);
     btn.addEventListener("click", () => {
       seen = seen + 1;
       __n1.textContent = "pick " + __prop_label + ":" + String(seen);
@@ -643,6 +500,7 @@ window.__sngl_boot = () => {
       __destroy() {
       },
       __set_label,
+      __set___copy,
       __set_pick
     };
   }
@@ -652,8 +510,10 @@ window.__sngl_boot = () => {
     let label = props.label ?? "";
     let onpick = props.onpick ?? ((_) => {
     });
+    let __copy = props.__copy ?? "";
     let __prop_label = label;
     let __prop_onpick = onpick;
+    let __prop___copy = __copy;
     let hits = 0;
     let __slot02 = [];
     let __slot12 = [];
@@ -672,9 +532,14 @@ window.__sngl_boot = () => {
     function __set_onpick(__v) {
       __prop_onpick = __v;
     }
+    function __set___copy(__v) {
+      __prop___copy = __v;
+      pick.setAttribute("data-sngl-copy", __prop___copy);
+    }
     let pick = document.createElement("button");
     pick.setAttribute("data-sngl-id", "pick");
     pick.disabled = false;
+    pick.setAttribute("data-sngl-copy", __prop___copy);
     pick.addEventListener("click", () => {
       __prop_onpick(__prop_label);
     });
@@ -689,7 +554,8 @@ window.__sngl_boot = () => {
       __destroy() {
       },
       __set_label,
-      __set_onpick
+      __set_onpick,
+      __set___copy
     };
   }
   function __cf_seededBadge(props) {
@@ -697,8 +563,10 @@ window.__sngl_boot = () => {
     __root.style.display = "contents";
     let start = props.start ?? 0;
     let label = props.label ?? "";
+    let __copy = props.__copy ?? "";
     let __prop_start = start;
     let __prop_label = label;
+    let __prop___copy = __copy;
     let n = __prop_start;
     let __slot02 = [];
     let __slot12 = [];
@@ -714,12 +582,17 @@ window.__sngl_boot = () => {
       __prop_label = __v;
       shown.textContent = "[" + __prop_label + ":" + String(n) + "]";
     }
+    function __set___copy(__v) {
+      __prop___copy = __v;
+      bump.setAttribute("data-sngl-copy", __prop___copy);
+    }
     let shown = document.createElement("span");
     shown.setAttribute("data-sngl-id", "shown");
     shown.textContent = "[" + __prop_label + ":" + String(n) + "]";
     let bump = document.createElement("button");
     bump.setAttribute("data-sngl-id", "bump");
     bump.disabled = false;
+    bump.setAttribute("data-sngl-copy", __prop___copy);
     bump.addEventListener("click", () => {
       n = n + 1;
       shown.textContent = "[" + __prop_label + ":" + String(n) + "]";
@@ -735,7 +608,8 @@ window.__sngl_boot = () => {
       __root,
       __destroy() {
       },
-      __set_label
+      __set_label,
+      __set___copy
     };
   }
   function __cf_gauge(props) {
@@ -1101,11 +975,12 @@ window.__sngl_boot = () => {
     __slot6 = [];
     let __inst13_next = [];
     let __inst13_i = 0;
-    for (const item of state.items__inst0) {
+    for (const [__copy0, item] of state.items__inst0.entries()) {
       let r = null;
       if (__inst13_live.length > __inst13_i) {
         r = __inst13_live[__inst13_i];
         r.__set_label(item);
+        r.__set___copy(String(__copy0));
         r.__set_pick((_) => {
           state.picked__inst0 = item;
           __n4.textContent = "picked=" + state.picked__inst0;
@@ -1114,7 +989,7 @@ window.__sngl_boot = () => {
         if (__inst13_live.length > __inst13_i) {
           __inst13_live[__inst13_i].__destroy();
         }
-        let r__new = __cf_row({ label: item, pick: (_) => {
+        let r__new = __cf_row({ label: item, __copy: String(__copy0), pick: (_) => {
           state.picked__inst0 = item;
           __n4.textContent = "picked=" + state.picked__inst0;
         } });
@@ -1154,7 +1029,7 @@ window.__sngl_boot = () => {
     __slot7 = [];
     let __inst15_next = [];
     let __inst15_i = 0;
-    for (const item of state.items__inst1) {
+    for (const [__copy0, item] of state.items__inst1.entries()) {
       let ch = null;
       if (__inst15_live.length > __inst15_i) {
         ch = __inst15_live[__inst15_i];
@@ -1163,6 +1038,7 @@ window.__sngl_boot = () => {
           state.picked__inst1 = s;
           $6.textContent = "picked=" + state.picked__inst1;
         });
+        ch.__set___copy(String(__copy0));
       } else {
         if (__inst15_live.length > __inst15_i) {
           __inst15_live[__inst15_i].__destroy();
@@ -1170,7 +1046,7 @@ window.__sngl_boot = () => {
         let ch__new = __cf_choice({ label: item, onpick: (s) => {
           state.picked__inst1 = s;
           $6.textContent = "picked=" + state.picked__inst1;
-        } });
+        }, __copy: String(__copy0) });
         ch = ch__new;
       }
       __inst15_next.push(ch);
@@ -1208,16 +1084,17 @@ window.__sngl_boot = () => {
     let __inst17_next = [];
     let __inst17_i = 0;
     let __inst17_now_start = [];
-    for (const nm of state.names__inst5) {
+    for (const [__copy0, nm] of state.names__inst5.entries()) {
       let b__5 = null;
       if (__inst17_live.length > __inst17_i && __inst17_was_start[__inst17_i] === state.base__inst0) {
         b__5 = __inst17_live[__inst17_i];
         b__5.__set_label(nm + state.tag__inst1);
+        b__5.__set___copy(String(__copy0));
       } else {
         if (__inst17_live.length > __inst17_i) {
           __inst17_live[__inst17_i].__destroy();
         }
-        let b__5__new = __cf_seededBadge({ start: state.base__inst0, label: nm + state.tag__inst1 });
+        let b__5__new = __cf_seededBadge({ start: state.base__inst0, label: nm + state.tag__inst1, __copy: String(__copy0) });
         b__5 = b__5__new;
       }
       __inst17_next.push(b__5);
@@ -1412,9 +1289,9 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:61cd9fda082eb43e4c7a9a797b700769
+pass sha256:97c7f5447fe3b02fcd42ea2a68d15b53
 -- testrun/html/none/component_browser_runtime.sngl/branch/1 --
-sha256:71f750302ecf4c5bc0eab9e2f9224b16
+sha256:c8461928c3413be88155c0c16376d27c
 {
   "results": [
     {
@@ -1424,7 +1301,7 @@ sha256:71f750302ecf4c5bc0eab9e2f9224b16
   ]
 }
 -- testrun/html/none/component_browser_runtime.sngl/callback/1 --
-sha256:bc471823bef688afa86514f25ece1a2e
+sha256:d30debe19aeb334c6ac77d98140f4187
 {
   "results": [
     {
@@ -1434,7 +1311,7 @@ sha256:bc471823bef688afa86514f25ece1a2e
   ]
 }
 -- testrun/html/none/component_browser_runtime.sngl/duplicates/1 --
-sha256:16ed1ba2d66b1a62587c53f82d3120f5
+sha256:c280bfd7a36a2c9df2c5a017c0ae0243
 {
   "results": [
     {
@@ -1444,7 +1321,7 @@ sha256:16ed1ba2d66b1a62587c53f82d3120f5
   ]
 }
 -- testrun/html/none/component_browser_runtime.sngl/events/1 --
-sha256:dce94fd65542c9ef444545fa1a038df7
+sha256:07d99fdeaa66385feb96698c20b1e15d
 {
   "results": [
     {
@@ -1458,7 +1335,7 @@ sha256:dce94fd65542c9ef444545fa1a038df7
   ]
 }
 -- testrun/html/none/component_browser_runtime.sngl/gauges/1 --
-sha256:70e5d3fa406bd0d04aaf1f9b1969a686
+sha256:34cd55b72404d0e3797ca4a4e1e51a71
 {
   "results": [
     {
@@ -1468,7 +1345,7 @@ sha256:70e5d3fa406bd0d04aaf1f9b1969a686
   ]
 }
 -- testrun/html/none/component_browser_runtime.sngl/growing/1 --
-sha256:3f80cf25dcc237af83284c2fb10a9b47
+sha256:031535acb610515b4381bdfa3ca70311
 {
   "results": [
     {
@@ -1478,7 +1355,7 @@ sha256:3f80cf25dcc237af83284c2fb10a9b47
   ]
 }
 -- testrun/html/none/component_browser_runtime.sngl/keyed/1 --
-sha256:4318c391b50f542ab32ddb23377a5aa4
+sha256:813b38b2dc4ea42105d3eeec5c012ada
 {
   "results": [
     {
@@ -1488,7 +1365,7 @@ sha256:4318c391b50f542ab32ddb23377a5aa4
   ]
 }
 -- testrun/html/none/component_browser_runtime.sngl/perElement/1 --
-sha256:05be170f24967174456ed8167eb93d91
+sha256:51032750c489b3e11695278eaea114df
 {
   "results": [
     {
@@ -1498,7 +1375,7 @@ sha256:05be170f24967174456ed8167eb93d91
   ]
 }
 -- testrun/html/none/component_browser_runtime.sngl/rebased/1 --
-sha256:5652a007da8078489dfd695be673c00e
+sha256:3808a05c107bd2a4b7c85f66db847caa
 {
   "results": [
     {
@@ -1512,7 +1389,7 @@ sha256:5652a007da8078489dfd695be673c00e
   ]
 }
 -- testrun/html/none/component_browser_runtime.sngl/renamed/1 --
-sha256:4b19cb7cbb9009e860330b45947252e5
+sha256:fb2a564954f5867f80dd8946c524ef2f
 {
   "results": [
     {

@@ -317,69 +317,16 @@ window.__sngl_boot = () => {
   function doubled() {
     return state.base * 2;
   }
-  function testASelectChangeReachesTheSpan(t, c) {
-    t.assertTrue(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll('[data-sngl-id="shown"]')[0]) === "picked: apple", '(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll("[data-sngl-id=\\"shown\\"]")[0]) === "picked: apple")');
-    c.s("banana");
-    t.assertTrue(state.fruit__inst0 === "banana", '(state.fruit__inst0 === "banana")');
-    t.assertTrue(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll('[data-sngl-id="shown"]')[0]) === "picked: banana", '(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll("[data-sngl-id=\\"shown\\"]")[0]) === "picked: banana")');
-    t.assertTrue(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll('[data-sngl-id="s"]')[0]) === "banana", '(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll("[data-sngl-id=\\"s\\"]")[0]) === "banana")');
-  }
   function run(f) {
     f();
     return 7;
-  }
-  function testAWriteInsideACallbackIsPatched(t, c) {
-    c.go();
-    t.assertTrue(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll('[data-sngl-id="out"]')[0]) === "n=1", '(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll("[data-sngl-id=\\"out\\"]")[0]) === "n=1")');
   }
   function blocky() {
     let x = state.base + 1;
     return x * 3;
   }
-  function testComputedsRender(t, c) {
-    t.assertTrue(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll('[data-sngl-id="expr"]')[0]) === "expr=6", '(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll("[data-sngl-id=\\"expr\\"]")[0]) === "expr=6")');
-    t.assertTrue(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll('[data-sngl-id="block"]')[0]) === "block=12", '(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll("[data-sngl-id=\\"block\\"]")[0]) === "block=12")');
-  }
-  function testANarrowedOptionIsArithmetic(t, c) {
-    t.assertTrue(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll('[data-sngl-id="out__1"]')[0]) === "[6]\n[4]", '(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll("[data-sngl-id=\\"out__1\\"]")[0]) === "[6]\\n[4]")');
-    c.clear();
-    t.assertTrue(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll('[data-sngl-id="out__1"]')[0]) === "[none]", '(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll("[data-sngl-id=\\"out__1\\"]")[0]) === "[none]")');
-    c.set();
-    t.assertTrue(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll('[data-sngl-id="out__1"]')[0]) === "[42]\n[22]", '(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll("[data-sngl-id=\\"out__1\\"]")[0]) === "[42]\\n[22]")');
-  }
-  function testANamedSlotFollowsItsBranch(t, c) {
-    t.assertTrue(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll('[data-sngl-id="box"]')[0]) === "", '(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll("[data-sngl-id=\\"box\\"]")[0]) === "")');
-    c.q.t();
-    t.assertTrue(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll('[data-sngl-id="box"]')[0]) === "SUPPLIED", '(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll("[data-sngl-id=\\"box\\"]")[0]) === "SUPPLIED")');
-    c.q.t();
-    t.assertTrue(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll('[data-sngl-id="box"]')[0]) === "", '(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll("[data-sngl-id=\\"box\\"]")[0]) === "")');
-  }
-  function testAScopedSlotIsHandedItsArgument(t, c) {
-    c.r.b();
-    t.assertTrue(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll('[data-sngl-id="box"]')[0]) === "N=1", '(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll("[data-sngl-id=\\"box\\"]")[0]) === "N=1")');
-    c.r.b();
-    t.assertTrue(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll('[data-sngl-id="box"]')[0]) === "N=2", '(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll("[data-sngl-id=\\"box\\"]")[0]) === "N=2")');
-  }
-  function testACarouselShowsOneAtATime(t, c) {
-    t.assertTrue(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll('[data-sngl-id="s__1"]')[0]) === "ZERO", '(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll("[data-sngl-id=\\"s__1\\"]")[0]) === "ZERO")');
-    c.next();
-    t.assertTrue(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll('[data-sngl-id="s__1"]')[0]) === "ONE", '(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll("[data-sngl-id=\\"s__1\\"]")[0]) === "ONE")');
-    c.next();
-    t.assertTrue(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll('[data-sngl-id="s__1"]')[0]) === "ZERO", '(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll("[data-sngl-id=\\"s__1\\"]")[0]) === "ZERO")');
-  }
-  function testAnIfAtAWindowsRootFollowsItsState(t, c) {
-    t.assertTrue(c.shown__1 !== null, "(c.shown__1 !== null)");
-    if (c.shown__1 !== null) {
-      ;
-      t.assertTrue(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll('[data-sngl-id="shown__1"]')[0]) === "SHOWN", '(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll("[data-sngl-id=\\"shown__1\\"]")[0]) === "SHOWN")');
-    }
-    ;
-    c.t__1();
-    t.assertTrue(state.on__inst1 === false, "(state.on__inst1 === false)");
-    t.assertTrue(c.shown__1 === null, "(c.shown__1 === null)");
-  }
   if (typeof window !== "undefined") {
-    Object.assign(window, { testASelectChangeReachesTheSpan, run, testAWriteInsideACallbackIsPatched, doubled, blocky, testComputedsRender, testANarrowedOptionIsArithmetic, testANamedSlotFollowsItsBranch, testAScopedSlotIsHandedItsArgument, testACarouselShowsOneAtATime, testAnIfAtAWindowsRootFollowsItsState });
+    Object.assign(window, { run, doubled, blocky });
   }
   function __cf___child0(props) {
     const __root = document.createElement("div");
@@ -898,9 +845,9 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:a8589ea27e9832ff6a2085ad49bc2848
+pass sha256:8843aafb45cf1cb738277e056d40351b
 -- testrun/html/none/component_browser_patches.sngl/app/1 --
-sha256:041cbbb1c388806814d18fe7c8eb503f
+sha256:38139b6e2f2bc2546369849a11da2f34
 {
   "results": [
     {
@@ -910,7 +857,7 @@ sha256:041cbbb1c388806814d18fe7c8eb503f
   ]
 }
 -- testrun/html/none/component_browser_patches.sngl/callback/1 --
-sha256:a1f5ef4a46762a6c2c8b615e01a7d9c8
+sha256:6043779985669de34affc95e4c75e4af
 {
   "results": [
     {
@@ -920,7 +867,7 @@ sha256:a1f5ef4a46762a6c2c8b615e01a7d9c8
   ]
 }
 -- testrun/html/none/component_browser_patches.sngl/carousel/1 --
-sha256:3dd2f8e0c75ed328de64c9e18f43f8e6
+sha256:fad7163c0198b5c8b744b8ad47d688fb
 {
   "results": [
     {
@@ -930,7 +877,7 @@ sha256:3dd2f8e0c75ed328de64c9e18f43f8e6
   ]
 }
 -- testrun/html/none/component_browser_patches.sngl/computed/1 --
-sha256:96cb31163c6241a1f1d13772a051ab48
+sha256:e6725cae9508f5e2c97e2d9bc981c05a
 {
   "results": [
     {
@@ -940,7 +887,7 @@ sha256:96cb31163c6241a1f1d13772a051ab48
   ]
 }
 -- testrun/html/none/component_browser_patches.sngl/narrowed/1 --
-sha256:761c3b09088fe8f609064ce0870d81d1
+sha256:213e01d5d019672107de8c723d78f2ee
 {
   "results": [
     {
@@ -950,7 +897,7 @@ sha256:761c3b09088fe8f609064ce0870d81d1
   ]
 }
 -- testrun/html/none/component_browser_patches.sngl/picker/1 --
-sha256:468f8fc3dbec0f02c1e23966e21eaaaa
+sha256:635bcbd8da770167652086c6d0a7d7d2
 {
   "results": [
     {
@@ -960,7 +907,7 @@ sha256:468f8fc3dbec0f02c1e23966e21eaaaa
   ]
 }
 -- testrun/html/none/component_browser_patches.sngl/slots/1 --
-sha256:194766604805a5b5c00ec08f4fbe9cac
+sha256:2430d6591c2818b6ec1e870c411d271d
 {
   "results": [
     {

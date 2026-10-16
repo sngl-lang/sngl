@@ -244,23 +244,15 @@ func lowerEventTrigger(call *ir.CallStmt) (string, bool) {
 		return "", false
 	}
 	id, event := tt.ID, c.Event
-	// One copy of a node a loop rendered is that one of every node the tag
-	// finds, in composition order, which is render order.
-	nth := func(matcher string) string {
-		if tt.Index == nil {
-			return "composeTestRule.onNode(" + matcher + ")"
-		}
-		return fmt.Sprintf("composeTestRule.onAllNodes(%s)[%s]", matcher, lowerTestExpr(tt.Index, TestSurface{}, nil))
-	}
+	tag := copyMatcher(id, tt.Key())
 	if carriesState(c.Args) {
 		// The tag sits on the override's root, the Row around the control and
 		// its label, so the click targets the toggleable inside it. It flips
 		// the control whatever the test passed: this is the input path, as
 		// bubbletea's key press is.
-		tag := fmt.Sprintf("androidx.compose.ui.test.hasTestTag(%q)", id)
-		return fmt.Sprintf("%s.performClick(); composeTestRule.waitForIdle()", nth(fmt.Sprintf("androidx.compose.ui.test.isToggleable() and (%s or androidx.compose.ui.test.hasAnyAncestor(%s))", tag, tag))), true
+		return fmt.Sprintf("composeTestRule.onNode(androidx.compose.ui.test.isToggleable() and (%s or androidx.compose.ui.test.hasAnyAncestor(%s)))%s; composeTestRule.waitForIdle()", tag, tag, clickAction), true
 	}
-	finder := nth(fmt.Sprintf("androidx.compose.ui.test.hasTestTag(%q)", id))
+	finder := "composeTestRule.onNode(" + tag + ")"
 	action := composeAction(event, c.Args)
 	if action == "" {
 		return fmt.Sprintf("// TODO: no Compose-test action mapped for @%s on #%s", event, id), true
@@ -268,12 +260,18 @@ func lowerEventTrigger(call *ir.CallStmt) (string, bool) {
 	return fmt.Sprintf("%s.%s; composeTestRule.waitForIdle()", finder, action), true
 }
 
+// clickAction clicks the node a trigger found by running its click action, as
+// fyne and gtk4 run a widget's callback, rather than by a touch: a touch lands
+// where the node is drawn, and on a node past the bottom of the screen it
+// lands nowhere.
+const clickAction = ".performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick)"
+
 // composeActionImports are what lowerEventTrigger's finder and actions name:
 // extension functions, so a test file that clicks does not compile without
 // them. Written only into a file that triggers an event, at the marker.
 const (
 	composeActionImports = "import androidx.compose.ui.test.onNodeWithTag\n" +
-		"import androidx.compose.ui.test.performClick\n" +
+		"import androidx.compose.ui.test.performSemanticsAction\n" +
 		"import androidx.compose.ui.test.performTextReplacement\n"
 	composeActionMarker = "\x00composeActions\x00"
 )
@@ -286,7 +284,7 @@ const (
 func composeAction(event string, args []ir.CallArg) string {
 	switch event {
 	case "click":
-		return "performClick()"
+		return strings.TrimPrefix(clickAction, ".")
 	case "input", "change", "changed":
 		text := extractEventValue(args)
 		return fmt.Sprintf("performTextReplacement(%s)", text)
@@ -328,13 +326,19 @@ func extractEventValue(args []ir.CallArg) string {
 // asked the view tree for a tag no widget carries.
 func lowerTestExpr(e ir.Expr, surf TestSurface, compRecvs map[string]bool) string {
 	// `<recv>.<id> == null` asks whether the node is rendered now, which is
-	// whether the semantics tree holds a node carrying its tag.
-	if recv, id, present, ok := codegen.RefNullTest(e); ok && compRecvs[recv] {
-		check := "isEmpty"
-		if present {
-			check = "isNotEmpty"
+	// whether the semantics tree holds a node carrying its tag -- and, for
+	// `<recv>.<id>[1] == null`, its copy's key.
+	if recv, id, path, present, ok := codegen.RefNullTest(e); ok && compRecvs[recv] {
+		nodes := fmt.Sprintf("composeTestRule.onAllNodes(%s).fetchSemanticsNodes().isNotEmpty()", copyMatcher(id, ir.CopyKey(path)))
+		if len(path) == 0 {
+			// An instance built at run time has no node of its own: it
+			// counts itself in PresentRegistry instead.
+			nodes = fmt.Sprintf("(%s || %s.containsValue(%q))", nodes, PresentRegistry, id)
 		}
-		return fmt.Sprintf("composeTestRule.onAllNodesWithTag(%q).fetchSemanticsNodes().%s()", id, check)
+		if !present {
+			return "!" + nodes
+		}
+		return nodes
 	}
 	switch n := e.(type) {
 	case *ir.Binary:
@@ -584,7 +588,7 @@ func LowerTestFile(pkg string, fns []*ir.Func, suffixes []string, surf TestSurfa
 	if strings.Contains(src, ".onAllNodesWithTag(") {
 		imports = "import androidx.compose.ui.test.onAllNodesWithTag\n"
 	}
-	if strings.Contains(src, ".onNodeWithTag(") || strings.Contains(src, ".performClick(") || strings.Contains(src, ".performTextReplacement(") {
+	if strings.Contains(src, ".onNodeWithTag(") || strings.Contains(src, ".performSemanticsAction(") || strings.Contains(src, ".performTextReplacement(") {
 		imports += composeActionImports
 	}
 	return strings.Replace(src, composeActionMarker, imports, 1)
@@ -677,3 +681,23 @@ func (surf TestSurface) translator() *KtIRContext {
 func init() {
 	codegen.DeclareLangImplements("kotlin", ir.TestAssertID, ir.TestSnapshotID, ir.TestSetContextID)
 }
+
+// CopySemanticsKey is the semantics property the screen declares and sets on
+// each copy of a node a test indexes, holding the copy's key (ir.CopyProp).
+const CopySemanticsKey = "SnglCopy"
+
+// copyMatcher finds the node carrying the tag id, and where key is not nil
+// the copy of it a loop rendered whose SnglCopy holds key.
+func copyMatcher(id string, key ir.Expr) string {
+	tag := fmt.Sprintf("androidx.compose.ui.test.hasTestTag(%q)", id)
+	if key == nil {
+		return tag
+	}
+	return fmt.Sprintf("(%s and androidx.compose.ui.test.SemanticsMatcher.expectValue(%s, %s))", tag, CopySemanticsKey, lowerTestExpr(key, TestSurface{}, nil))
+}
+
+// PresentRegistry is the map the screen declares in a test build, holding a
+// token for each instance built at run time that a test null-tests while it is
+// composed, under the id its call site gave it. Each test's state empties it,
+// since a composition an earlier test left is never disposed.
+const PresentRegistry = "SnglPresent"

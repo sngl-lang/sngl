@@ -46,10 +46,10 @@ body { font-family: system-ui, sans-serif; }
   </style>
 </head><body>
 
-<button id="$0" data-sngl-id="opt">
+<button id="$0" data-sngl-copy="0" data-sngl-id="opt">
   <span>a</span>
 </button>
-<button id="$2" data-sngl-id="opt">
+<button id="$2" data-sngl-copy="1" data-sngl-id="opt">
   <span>b</span>
 </button>
 
@@ -72,16 +72,9 @@ window.__sngl_boot = () => {
   // sngl-entry.js
   var state = { last: "" };
   state.optClick = () => $0.click();
-  state.optClickAt = (i) => [$0, $2][i].click();
+  state.optClickAt = (k) => [$0, $2].find((e) => document.querySelector('[data-sngl-id="opt"][data-sngl-copy="' + k + '"]').contains(e)).click();
   if (typeof window !== "undefined") {
     window.__sngl_state = state;
-  }
-  function testSecond(t, c) {
-    c.opt[1]();
-    t.assertTrue(c.last === "b", '(c.last === "b")');
-  }
-  if (typeof window !== "undefined") {
-    Object.assign(window, { testSecond });
   }
   var $0 = document.getElementById("$0");
   var $2 = document.getElementById("$2");
@@ -97,4 +90,4 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:34eae53afd25aeff84e7f84395141591
+pass sha256:8dd99ecee0733f0081c91e37d9f239a0

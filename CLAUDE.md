@@ -258,18 +258,33 @@ signature; `testdata/event_params.txtar` and
 `c.f.input(value="x")`, `c.b.click()`: a trigger's arguments bind to the
 event's parameters as an emit's do, positionally or by name, all of them.
 `c.row[1].change(true)` names one of the nodes a loop rendered under one
-id, the copy at that index in render order, on every target
-(`codegen.EventTrigger.Index`): each language's test lowerer calls the
-invoker's `At` variant (`codegen.InvokerAt`) with the index first. html finds
-the i-th element carrying the id and, where the listener is on an element
-inside it, that element by tag. fyne and gtk4 list the copies of an id a test
-indexes, and only such an id (`codegen.IndexedTriggerIDs`): a render func
-empties the list where it starts over and appends as it builds, an instance
-appends in its constructor and leaves in `Destroy`. bubbletea walks the loop
-as View counts it for the copy's focus ordinal and presses the key with the
-slot's cursor there; android takes the i-th node its tag finds.
-`testdata/indexed_trigger.txtar` is the code and
-`cmd/sngl/testdata/indexed_trigger_runs.txt` runs it on all six.
+id, and `c.cell[1][0].click()` one nested loops rendered, by the index into
+each loop, outermost first (`codegen.EventTrigger.Path`). No target could turn
+a path into a position among all the copies without knowing how many each
+earlier iteration rendered, so each copy carries its **key** instead:
+`passCopyKeys` writes it into `ir.CopyProp` (`__copy`) on every copy of an id
+a test indexes (`ir.IndexedRefIDs`) -- the loop indices joined by `/`,
+`"1/0"`, a single loop's being the bare index (`ir.CopyKey`) -- and hands a
+component built at run time the key of the copy it stands in through a prop of
+the same name, which its own copies' keys extend. An ordinary prop, so an
+instance a slot keeps and moves is handed its new key by its setter. Each
+language's test lowerer calls the invoker's `At` variant
+(`codegen.InvokerAt`) with the key first, and each target finds the copy that
+carries it: html writes it as `data-sngl-copy`, in markup and at run time, and
+queries for it; fyne and gtk4 keep a map per id (`__copies_<id>`), put there
+by each write of the key and left in `Destroy`; bubbletea walks the loop as
+View counts it to the copy's focus ordinal, beside the key the walk computes;
+android sets it as a `SnglCopy` semantics property beside the test tag, read
+where the modifier is built. The key is an addition: the plain invoker stays,
+since an id one test indexes may be written once elsewhere, and a node
+written once may sit under a loop after lowering (a tab's panel on
+bubbletea). A component built at run time is handed a key only where one of
+its instances is rendered under a loop. Adding an index to a loop over a list the checker wrapped as a
+sequence walks the list (`loopIndex`), and a loop over a pull sequence keeps
+the counter `passIndexedIter` puts beside it in every view walk.
+`testdata/indexed_trigger.txtar` and `indexed_trigger_nested.txtar` are the
+code, and `cmd/sngl/testdata/indexed_trigger_runs.txt` and
+`indexed_trigger_nested_runs.txt` run them on all six.
 
 ## Loop forms
 
@@ -2311,9 +2326,11 @@ replaced by their fallbacks. A population's parameters are bound where the
 copy inserts it, so they are the callee's; what the content reads from the
 caller crosses the way a slot child does in `passSlotChildInstances` — a
 value becomes a prop the render rewrites per copy, a handler an event whose
-body stays where it was written, handed the host event's payload and any
-population parameter it reads (`EventDecl.Params`, the one event a source
-declaration cannot spell). A call reading a population parameter stays in the
+body stays where it was written, handed the host event's payload, any
+population parameter it reads, and any variable the content binds itself -- a
+loop's, a local -- which nothing binds at the site (`EventDecl.Params`, the
+one event a source declaration cannot spell;
+`testdata/slot_content_handler_reads_its_loop.txtar`). A call reading a population parameter stays in the
 copy, since its arguments name nothing at the site.
 android passes each slot as a nullable composable parameter taking the slot's
 invocation list, an entry being a composable of its own; bubbletea's render
@@ -2570,7 +2587,18 @@ whose body wrote the node, nil in a population — and `View.Refs`. A compiled
 test answers `c.x == null` with a presence check per id (`codegen.RefNullTest`,
 `codegen.LowerRefNullTests`): html's `data-sngl-id`, fyne's and gtk4's
 `__named_<id>`, bubbletea's conditions around the node, and android's
-semantics tree.
+semantics tree. A slot's reset clears the field of a widget a test
+null-tests on fyne and gtk4, which still held a widget the branch dropped. An
+instance built at run time has no widget of its own: on fyne and gtk4 it hands
+its root to `__present_<id>` where the root is bound, and on android its call
+site holds a token in `SnglPresent` while it is composed
+(`testdata/ref_null_test_instance.txtar`). `c.x[1] == null` null-tests one
+copy, an iteration of the loop around an `if`, by the copy's key as a trigger
+names one (`<id>PresentAt`, `codegen.PresenceAtMethod`), and `ir.IndexedRefIDs`
+stamps the ids a test reaches either way
+(`testdata/indexed_ref_null_test.txtar`). One copy of an instance built at run
+time carries no key to find, and the test is refused where the instance is
+written (`passCopyKeys`); bubbletea splices it and answers from the view.
 
 **An event's parameters are its declaration's, and an override reads what the
 host reports and writes the prop it reports.** A platform override handles

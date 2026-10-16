@@ -3035,7 +3035,7 @@ package test.sngl.app
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
-import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performTextReplacement
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -3056,11 +3056,11 @@ class MainScreenTest {
         @Suppress("UNUSED_VARIABLE") val composeTestRule = composeRule
         composeRule.setContent { MainScreen(c) }
         org.junit.Assert.assertTrue("(c.log__inst0.joinToString(\",\") == \"in\")", (c.log__inst0.joinToString(",") == "in"))
-        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("toggle")).performClick(); composeTestRule.waitForIdle()
+        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("toggle")).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick); composeTestRule.waitForIdle()
         org.junit.Assert.assertTrue("(c.log__inst0.joinToString(\",\") == \"in,out\")", (c.log__inst0.joinToString(",") == "in,out"))
-        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("toggle")).performClick(); composeTestRule.waitForIdle()
+        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("toggle")).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick); composeTestRule.waitForIdle()
         org.junit.Assert.assertTrue("(c.log__inst0.joinToString(\",\") == \"in,out,in\")", (c.log__inst0.joinToString(",") == "in,out,in"))
-        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("toggle")).performClick(); composeTestRule.waitForIdle()
+        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("toggle")).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick); composeTestRule.waitForIdle()
         org.junit.Assert.assertTrue("(c.log__inst0.joinToString(\",\") == \"in,out,in,out\")", (c.log__inst0.joinToString(",") == "in,out,in,out"))
     }
 
@@ -3069,7 +3069,7 @@ class MainScreenTest {
         @Suppress("UNUSED_VARIABLE") val composeTestRule = composeRule
         composeRule.setContent { MainScreen(c) }
         org.junit.Assert.assertTrue("(c.log__inst1.joinToString(\",\") == \"+a,+b,+c\")", (c.log__inst1.joinToString(",") == "+a,+b,+c"))
-        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("drop")).performClick(); composeTestRule.waitForIdle()
+        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("drop")).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick); composeTestRule.waitForIdle()
         org.junit.Assert.assertTrue("(c.log__inst1.joinToString(\",\") == \"+a,+b,+c,-c,-b\")", (c.log__inst1.joinToString(",") == "+a,+b,+c,-c,-b"))
     }
 
@@ -3077,7 +3077,7 @@ class MainScreenTest {
         val c = MainScreenState()
         @Suppress("UNUSED_VARIABLE") val composeTestRule = composeRule
         composeRule.setContent { MainScreen(c) }
-        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("add")).performClick(); composeTestRule.waitForIdle()
+        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("add")).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick); composeTestRule.waitForIdle()
         org.junit.Assert.assertTrue("(c.log__inst1.joinToString(\",\") == \"+a,+b,+c,+d\")", (c.log__inst1.joinToString(",") == "+a,+b,+c,+d"))
     }
 
@@ -3086,7 +3086,7 @@ class MainScreenTest {
         @Suppress("UNUSED_VARIABLE") val composeTestRule = composeRule
         composeRule.setContent { MainScreen(c) }
         org.junit.Assert.assertTrue("(c.log__inst2.joinToString(\",\") == \"+A,+B\")", (c.log__inst2.joinToString(",") == "+A,+B"))
-        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("rekey")).performClick(); composeTestRule.waitForIdle()
+        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("rekey")).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick); composeTestRule.waitForIdle()
         org.junit.Assert.assertTrue("(c.log__inst2.joinToString(\",\") == \"+A,+B,-B,-A,+A,+B\")", (c.log__inst2.joinToString(",") == "+A,+B,-B,-A,+A,+B"))
     }
 
@@ -3094,7 +3094,7 @@ class MainScreenTest {
         val c = MainScreenState()
         @Suppress("UNUSED_VARIABLE") val composeTestRule = composeRule
         composeRule.setContent { MainScreen(c) }
-        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("field")).performClick(); composeTestRule.waitForIdle()
+        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("field")).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick); composeTestRule.waitForIdle()
         org.junit.Assert.assertTrue("(c.log__inst3.joinToString(\",\") == \"f+,c+,f-,f+\")", (c.log__inst3.joinToString(",") == "f+,c+,f-,f+"))
     }
 
@@ -3102,7 +3102,7 @@ class MainScreenTest {
         val c = MainScreenState()
         @Suppress("UNUSED_VARIABLE") val composeTestRule = composeRule
         composeRule.setContent { MainScreen(c) }
-        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("called")).performClick(); composeTestRule.waitForIdle()
+        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("called")).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick); composeTestRule.waitForIdle()
         org.junit.Assert.assertTrue("(c.log__inst3.joinToString(\",\") == \"f+,c+,c-,c+\")", (c.log__inst3.joinToString(",") == "f+,c+,c-,c+"))
     }
 
@@ -3110,9 +3110,9 @@ class MainScreenTest {
         val c = MainScreenState()
         @Suppress("UNUSED_VARIABLE") val composeTestRule = composeRule
         composeRule.setContent { MainScreen(c) }
-        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("same")).performClick(); composeTestRule.waitForIdle()
+        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("same")).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick); composeTestRule.waitForIdle()
         org.junit.Assert.assertTrue("(c.log__inst4.joinToString(\",\") == \"m\")", (c.log__inst4.joinToString(",") == "m"))
-        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("bump")).performClick(); composeTestRule.waitForIdle()
+        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("bump")).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick); composeTestRule.waitForIdle()
         org.junit.Assert.assertTrue("(c.log__inst4.joinToString(\",\") == \"m,u,m\")", (c.log__inst4.joinToString(",") == "m,u,m"))
     }
 
@@ -3196,43 +3196,6 @@ window.__sngl_boot = () => {
   if (typeof window !== "undefined") {
     window.__sngl_state = state;
   }
-  function testBranchIsTheLifetime(t, c) {
-    t.assertTrue(state.log__inst0.join(",") === "in", '(state.log__inst0.join(",") === "in")');
-    c.toggle();
-    t.assertTrue(state.log__inst0.join(",") === "in,out", '(state.log__inst0.join(",") === "in,out")');
-    c.toggle();
-    t.assertTrue(state.log__inst0.join(",") === "in,out,in", '(state.log__inst0.join(",") === "in,out,in")');
-    c.toggle();
-    t.assertTrue(state.log__inst0.join(",") === "in,out,in,out", '(state.log__inst0.join(",") === "in,out,in,out")');
-  }
-  function testEndingsRunNewestFirst(t, c) {
-    t.assertTrue(state.log__inst1.join(",") === "+a,+b,+c", '(state.log__inst1.join(",") === "+a,+b,+c")');
-    c.drop();
-    t.assertTrue(state.log__inst1.join(",") === "+a,+b,+c,-c,-b", '(state.log__inst1.join(",") === "+a,+b,+c,-c,-b")');
-  }
-  function testPushMountsTheNewBracket(t, c) {
-    c.add();
-    t.assertTrue(state.log__inst1.join(",") === "+a,+b,+c,+d", '(state.log__inst1.join(",") === "+a,+b,+c,+d")');
-  }
-  function testBothEndBeforeEitherBegins(t, c) {
-    t.assertTrue(state.log__inst2.join(",") === "+A,+B", '(state.log__inst2.join(",") === "+A,+B")');
-    c.rekey();
-    t.assertTrue(state.log__inst2.join(",") === "+A,+B,-B,-A,+A,+B", '(state.log__inst2.join(",") === "+A,+B,-B,-A,+A,+B")');
-  }
-  function testAFieldWriteRekeys(t, c) {
-    c.field();
-    t.assertTrue(state.log__inst3.join(",") === "f+,c+,f-,f+", '(state.log__inst3.join(",") === "f+,c+,f-,f+")');
-  }
-  function testACalledKeyRekeys(t, c) {
-    c.called();
-    t.assertTrue(state.log__inst3.join(",") === "f+,c+,c-,c+", '(state.log__inst3.join(",") === "f+,c+,c-,c+")');
-  }
-  function testAStructKeyComparesFieldByField(t, c) {
-    c.same();
-    t.assertTrue(state.log__inst4.join(",") === "m", '(state.log__inst4.join(",") === "m")');
-    c.bump();
-    t.assertTrue(state.log__inst4.join(",") === "m,u,m", '(state.log__inst4.join(",") === "m,u,m")');
-  }
   function scaled__inst0(m) {
     return m * state.n__inst0;
   }
@@ -3302,7 +3265,7 @@ window.__sngl_boot = () => {
     __effect0_teardown();
   }
   if (typeof window !== "undefined") {
-    Object.assign(window, { testBranchIsTheLifetime, testEndingsRunNewestFirst, testPushMountsTheNewBracket, testBothEndBeforeEitherBegins, testAFieldWriteRekeys, testACalledKeyRekeys, testAStructKeyComparesFieldByField, scaled__inst0, __effect0_mount, __effect0_unmount, __effect1_mount, __effect1_unmount, __effect2_mount, __effect2_unmount, __effect3_mount, __effect3_unmount, __effect4_mount, __effect4_unmount, __effect5_mount, __effect5_unmount, __effect6_mount, __effect6_unmount, __snglTeardown });
+    Object.assign(window, { scaled__inst0, __effect0_mount, __effect0_unmount, __effect1_mount, __effect1_unmount, __effect2_mount, __effect2_unmount, __effect3_mount, __effect3_unmount, __effect4_mount, __effect4_unmount, __effect5_mount, __effect5_unmount, __effect6_mount, __effect6_unmount, __snglTeardown });
   }
   var __effect0_live = [];
   var __effect0_desired = [];
@@ -3683,11 +3646,11 @@ pass sha256:4e6ff744e8e05cca44001c9e4fb06083
 -- run/go/gtk4 --
 pass sha256:581656d2de782296f9691e90b0ae7edb
 -- run/kotlin/android --
-pass sha256:dfc7f3a50fdf70556fdca4f8ed32d16d
+pass sha256:0160fc2c3cfdb13a15e3b6ba40d8fd37
 -- run/none/html --
-pass sha256:4b140b663d45909ea1d98f488b99453f
+pass sha256:570b21801e8e89ad7d93646bd0ec7400
 -- testrun/html/none/component_effect_lifetimes.sngl/branch/1 --
-sha256:44dbde28dae684ef40b2f0d1a187229f
+sha256:faf519a5e578aa5a5d42a49f02a949f9
 {
   "results": [
     {
@@ -3697,7 +3660,7 @@ sha256:44dbde28dae684ef40b2f0d1a187229f
   ]
 }
 -- testrun/html/none/component_effect_lifetimes.sngl/keys/1 --
-sha256:2ec60c42ec7e3d5dac5c86c776c9f7d7
+sha256:8b7253ca662d229bc617bf73f2cfbb1e
 {
   "results": [
     {
@@ -3711,7 +3674,7 @@ sha256:2ec60c42ec7e3d5dac5c86c776c9f7d7
   ]
 }
 -- testrun/html/none/component_effect_lifetimes.sngl/perElement/1 --
-sha256:060ae18736cd6d4821963247d5a89a26
+sha256:2f550b152baafbbdaa89844f67163fa2
 {
   "results": [
     {
@@ -3725,7 +3688,7 @@ sha256:060ae18736cd6d4821963247d5a89a26
   ]
 }
 -- testrun/html/none/component_effect_lifetimes.sngl/structKey/1 --
-sha256:b59d328b7b8ba39bceab28d333aa5a5b
+sha256:fea869eb66069b53585f71b38f67eaaa
 {
   "results": [
     {
@@ -3735,7 +3698,7 @@ sha256:b59d328b7b8ba39bceab28d333aa5a5b
   ]
 }
 -- testrun/html/none/component_effect_lifetimes.sngl/twoPositions/1 --
-sha256:99a4541dfcfdfadac92097b20c02f023
+sha256:2045fec715ccb5ffa1b57b143749b593
 {
   "results": [
     {

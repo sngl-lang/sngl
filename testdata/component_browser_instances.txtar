@@ -205,29 +205,8 @@ window.__sngl_boot = () => {
   function decorate__inst0() {
     return state.suffix__inst0;
   }
-  function testARecursionStopsAtItsCondition(t, c) {
-    t.assertTrue(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll('[data-sngl-id="out"]')[0]) === "<3\n<2\n<1\n<0", '(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll("[data-sngl-id=\\"out\\"]")[0]) === "<3\\n<2\\n<1\\n<0")');
-  }
-  function testAnUnrolledRecursionRendersEveryLevel(t, c) {
-    t.assertTrue(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll('[data-sngl-id="out__1"]')[0]) === "[3]\n[2]\n[1]\n[0]", '(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll("[data-sngl-id=\\"out__1\\"]")[0]) === "[3]\\n[2]\\n[1]\\n[0]")');
-    c.b();
-    t.assertTrue(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll('[data-sngl-id="b"]')[0]) === "went", '(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll("[data-sngl-id=\\"b\\"]")[0]) === "went")');
-  }
-  function testAnInstanceLivesWithItsBranch(t, c) {
-    t.assertTrue(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll('[data-sngl-id="out__2"]')[0]) === "x[+]", '(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll("[data-sngl-id=\\"out__2\\"]")[0]) === "x[+]")');
-    c.toggle();
-    t.assertTrue(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll('[data-sngl-id="out__2"]')[0]) === "", '(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll("[data-sngl-id=\\"out__2\\"]")[0]) === "")');
-  }
-  function testEveryRowRepaintsWhatTheCallReturns(t, c) {
-    t.assertTrue(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll('[data-sngl-id="out__3"]')[0]) === "<a!>\n<b!>", '(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll("[data-sngl-id=\\"out__3\\"]")[0]) === "<a!>\\n<b!>")');
-    c.bang();
-    t.assertTrue(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll('[data-sngl-id="out__3"]')[0]) === "<a?>\n<b?>", '(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll("[data-sngl-id=\\"out__3\\"]")[0]) === "<a?>\\n<b?>")');
-  }
-  function testAFuncPropDefaultBuilds(t, c) {
-    t.assertTrue(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll('[data-sngl-id="out__4"]')[0]) === "pick a:0\npick b:0", '(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll("[data-sngl-id=\\"out__4\\"]")[0]) === "pick a:0\\npick b:0")');
-  }
   if (typeof window !== "undefined") {
-    Object.assign(window, { testARecursionStopsAtItsCondition, testAnUnrolledRecursionRendersEveryLevel, testAnInstanceLivesWithItsBranch, testEveryRowRepaintsWhatTheCallReturns, testAFuncPropDefaultBuilds, decorate__inst0 });
+    Object.assign(window, { decorate__inst0 });
   }
   function __cf_row(props) {
     const __root = document.createElement("div");
@@ -586,9 +565,9 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:c062cb4fdba4294045611864490c2348
+pass sha256:ac3989abaea0acd8bc1936545e7789e2
 -- testrun/html/none/component_browser_instances.sngl/decorated/1 --
-sha256:b33302bd076ac22f3b70babbd1f223f1
+sha256:52364bfc896518f189d3b27112abbea2
 {
   "results": [
     {
@@ -598,7 +577,7 @@ sha256:b33302bd076ac22f3b70babbd1f223f1
   ]
 }
 -- testrun/html/none/component_browser_instances.sngl/factory/1 --
-sha256:85ee802be0ee2dc16d2814a3f82ba7f8
+sha256:8af043eb411fa74d39ea6c64e025c4e0
 {
   "results": [
     {
@@ -608,7 +587,7 @@ sha256:85ee802be0ee2dc16d2814a3f82ba7f8
   ]
 }
 -- testrun/html/none/component_browser_instances.sngl/funcProp/1 --
-sha256:0d8618cfebf97954a5e38b1608066a5a
+sha256:dadc9fc3e21c307735c45049d50d4866
 {
   "results": [
     {
@@ -618,7 +597,7 @@ sha256:0d8618cfebf97954a5e38b1608066a5a
   ]
 }
 -- testrun/html/none/component_browser_instances.sngl/recursive/1 --
-sha256:72f22f7d7702365ce7d6533ddebac514
+sha256:8d5b749fe032d59bf30ae4bf5b341748
 {
   "results": [
     {
@@ -628,7 +607,7 @@ sha256:72f22f7d7702365ce7d6533ddebac514
   ]
 }
 -- testrun/html/none/component_browser_instances.sngl/unrolled/1 --
-sha256:844ceba463573601becde81b0768ce66
+sha256:e73578a1b0596c01e184b43f1b8748e6
 {
   "results": [
     {

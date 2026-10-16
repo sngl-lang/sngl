@@ -604,7 +604,7 @@ package test.sngl.app
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
-import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performTextReplacement
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -624,7 +624,7 @@ class MainScreenTest {
         val c = MainScreenState()
         @Suppress("UNUSED_VARIABLE") val composeTestRule = composeRule
         composeRule.setContent { MainScreen(c) }
-        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("once")).performClick(); composeTestRule.waitForIdle()
+        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("once")).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick); composeTestRule.waitForIdle()
         org.junit.Assert.assertTrue("(c.got == 101)", (c.got == 101))
         org.junit.Assert.assertTrue("(c.n == 1)", (c.n == 1))
     }
@@ -633,7 +633,7 @@ class MainScreenTest {
         val c = MainScreenState()
         @Suppress("UNUSED_VARIABLE") val composeTestRule = composeRule
         composeRule.setContent { MainScreen(c) }
-        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("path")).performClick(); composeTestRule.waitForIdle()
+        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("path")).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick); composeTestRule.waitForIdle()
         org.junit.Assert.assertTrue("(c.got == 7)", (c.got == 7))
     }
 
@@ -641,7 +641,7 @@ class MainScreenTest {
         val c = MainScreenState()
         @Suppress("UNUSED_VARIABLE") val composeTestRule = composeRule
         composeRule.setContent { MainScreen(c) }
-        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("nested")).performClick(); composeTestRule.waitForIdle()
+        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("nested")).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick); composeTestRule.waitForIdle()
         org.junit.Assert.assertTrue("(c.got == 101)", (c.got == 101))
         org.junit.Assert.assertTrue("(c.n == 1)", (c.n == 1))
     }
@@ -707,22 +707,8 @@ window.__sngl_boot = () => {
   function panel_swap(state2, x, y) {
     return { x: y, y: x };
   }
-  function testOperandOnce(t, c) {
-    c.once();
-    t.assertTrue(c.got === 101, "(c.got === 101)");
-    t.assertTrue(c.n === 1, "(c.n === 1)");
-  }
-  function testPathInPlace(t, c) {
-    c.path();
-    t.assertTrue(c.got === 7, "(c.got === 7)");
-  }
-  function testNestedOnce(t, c) {
-    c.nested();
-    t.assertTrue(c.got === 101, "(c.got === 101)");
-    t.assertTrue(c.n === 1, "(c.n === 1)");
-  }
   if (typeof window !== "undefined") {
-    Object.assign(window, { panel_next, panel_add, panel_swap, testOperandOnce, testPathInPlace, testNestedOnce });
+    Object.assign(window, { panel_next, panel_add, panel_swap });
   }
   function String(v) {
     return "" + v;
@@ -760,6 +746,6 @@ pass sha256:014c657c1bf66982ffaf57c452cacc6b
 -- run/go/fyne --
 pass sha256:3fde783984f22b8cde5f10b6d288701e
 -- run/kotlin/android --
-pass sha256:4298f1fc04a3e7cbefbb8f7943002e7e
+pass sha256:66d48c0fdb636e19d434a570a8d75e46
 -- run/none/html --
-pass sha256:f097ed2810b7e13f62c10c300b10e792
+pass sha256:5dc05ad6c556193a97b9d14a9c545174

@@ -584,16 +584,6 @@ window.__sngl_boot = () => {
   if (typeof window !== "undefined") {
     window.__sngl_state = state;
   }
-  function testToggleFlips(t, c) {
-    t.assertTrue(c.on === false, "(c.on === false)");
-    c.on = true;
-    t.assertTrue(c.on === true, "(c.on === true)");
-    c.on = false;
-    t.assertTrue(c.on === false, "(c.on === false)");
-  }
-  if (typeof window !== "undefined") {
-    Object.assign(window, { testToggleFlips });
-  }
   var __n0 = document.querySelector('[data-sngl-id="__n0"]');
   __n0.addEventListener("change", function(e) {
     state.on = e.currentTarget.checked;
@@ -617,9 +607,9 @@ pass sha256:dd7061389f331d479546227d113eb66e
 -- run/kotlin/android --
 pass sha256:b047c58b5fb76b302904b1b225e24e03
 -- run/none/html --
-pass sha256:8342f0a02ef5d576ad6b22fe206fe578
+pass sha256:791200c7e9aefda403d64d2d74cb56a0
 -- testrun/html/none/component_toggle.sngl/main/1 --
-sha256:9a93c6b45e3a0b225d75eda20cbc8139
+sha256:dc42015468963c5bf05ced85b8c4b26c
 {
   "results": [
     {

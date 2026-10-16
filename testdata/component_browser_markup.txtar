@@ -264,29 +264,8 @@ window.__sngl_boot = () => {
     }
     ;
   }
-  function testEachComponentsMarkup(t, c) {
-    has(t, document.querySelectorAll('[data-sngl-id="col"]')[0].outerHTML.replace(/>\s+/g, ">").replace(/\s+</g, "<"), ["flex-direction:column", ">HELLO<"]);
-    has(t, document.querySelectorAll('[data-sngl-id="text"]')[0].outerHTML.replace(/>\s+/g, ">").replace(/\s+</g, "<"), ["<span", "HELLO"]);
-    has(t, document.querySelectorAll('[data-sngl-id="styled"]')[0].outerHTML.replace(/>\s+/g, ">").replace(/\s+</g, "<"), ["flex-direction:column", "gap:8px", "background-color:#ff0000"]);
-    has(t, document.querySelectorAll('[data-sngl-id="colored"]')[0].outerHTML.replace(/>\s+/g, ">").replace(/\s+</g, "<"), ["color:#112233"]);
-    has(t, document.querySelectorAll('[data-sngl-id="row"]')[0].outerHTML.replace(/>\s+/g, ">").replace(/\s+</g, "<"), ["flex-direction:row"]);
-    has(t, document.querySelectorAll('[data-sngl-id="button"]')[0].outerHTML.replace(/>\s+/g, ">").replace(/\s+</g, "<"), ["<button", "CLICK"]);
-    has(t, document.querySelectorAll('[data-sngl-id="input"]')[0].outerHTML.replace(/>\s+/g, ">").replace(/\s+</g, "<"), ["<input"]);
-    has(t, document.querySelectorAll('[data-sngl-id="check"]')[0].outerHTML.replace(/>\s+/g, ">").replace(/\s+</g, "<"), ['type="checkbox"', "ok"]);
-    has(t, document.querySelectorAll('[data-sngl-id="image"]')[0].outerHTML.replace(/>\s+/g, ">").replace(/\s+</g, "<"), ["<img", 'src="/x.png"', 'aria-label="pic"']);
-    has(t, document.querySelectorAll('[data-sngl-id="link"]')[0].outerHTML.replace(/>\s+/g, ">").replace(/\s+</g, "<"), ["<a", 'href="/"', "Home"]);
-    has(t, document.querySelectorAll('[data-sngl-id="select"]')[0].outerHTML.replace(/>\s+/g, ">").replace(/\s+</g, "<"), ["<select", "<option", ">a<", ">b<", ">c<", "pick"]);
-    has(t, document.querySelectorAll('[data-sngl-id="radio"]')[0].outerHTML.replace(/>\s+/g, ">").replace(/\s+</g, "<"), ["<fieldset", 'type="radio"', 'value="x"', 'value="y"']);
-    has(t, document.querySelectorAll('[data-sngl-id="area"]')[0].outerHTML.replace(/>\s+/g, ">").replace(/\s+</g, "<"), ["<textarea", 'rows="3"']);
-    has(t, document.querySelectorAll('[data-sngl-id="tabs"]')[0].outerHTML.replace(/>\s+/g, ">").replace(/\s+</g, "<"), ['role="tablist"', "One", "Two", "panel"]);
-    has(t, document.querySelectorAll('[data-sngl-id="table"]')[0].outerHTML.replace(/>\s+/g, ">").replace(/\s+</g, "<"), ["<table", "<thead", "<tbody", ">A<", ">B<", ">1<", ">4<"]);
-    has(t, document.querySelectorAll('[data-sngl-id="tree"]')[0].outerHTML.replace(/>\s+/g, ">").replace(/\s+</g, "<"), ["<ul", "<li", "root", "child"]);
-    has(t, document.querySelectorAll('[data-sngl-id="modal"]')[0].outerHTML.replace(/>\s+/g, ">").replace(/\s+</g, "<"), ["Dialog", "body"]);
-    has(t, document.querySelectorAll('[data-sngl-id="divider"]')[0].outerHTML.replace(/>\s+/g, ">").replace(/\s+</g, "<"), ["<hr"]);
-    has(t, document.querySelectorAll('[data-sngl-id="badge"]')[0].outerHTML.replace(/>\s+/g, ">").replace(/\s+</g, "<"), ["3"]);
-  }
   if (typeof window !== "undefined") {
-    Object.assign(window, { has, testEachComponentsMarkup });
+    Object.assign(window, { has });
   }
   function __cf___child0(props) {
     const __root = document.createElement("div");
@@ -721,9 +700,9 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:16cc659bb6b730ae196c5c05547910c9
+pass sha256:7d6979a879f2b496caa3731444777659
 -- testrun/html/none/component_browser_markup.sngl/widgets/1 --
-sha256:d32e3a1dac0bc9afbe15c3f05c6644db
+sha256:c0fa37a5ca408923a9a1c89831bc47cc
 {
   "results": [
     {

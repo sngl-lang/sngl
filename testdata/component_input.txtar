@@ -508,16 +508,6 @@ window.__sngl_boot = () => {
   if (typeof window !== "undefined") {
     window.__sngl_state = state;
   }
-  function testInputValueMutates(t, c) {
-    t.assertTrue(c.name === "World", '(c.name === "World")');
-    c.name = "SNGL";
-    t.assertTrue(c.name === "SNGL", '(c.name === "SNGL")');
-    c.name = c.name + "!";
-    t.assertTrue(c.name === "SNGL!", '(c.name === "SNGL!")');
-  }
-  if (typeof window !== "undefined") {
-    Object.assign(window, { testInputValueMutates });
-  }
   var __n0 = document.querySelector('[data-sngl-id="__n0"]');
   var __n1 = document.querySelector('[data-sngl-id="__n1"]');
   __n0.addEventListener("input", function(e) {
@@ -549,9 +539,9 @@ pass sha256:4d512fb2c1d669d4724aa8f30879e2c7
 -- run/kotlin/android --
 pass sha256:4262f40f0fbcb35b9448d273572e9bee
 -- run/none/html --
-pass sha256:2a6b5025f1e0943a6db441f37773a1cd
+pass sha256:e1ba13d732f6bf00dac271a5b3667705
 -- testrun/html/none/component_input.sngl/main/1 --
-sha256:badb233adb43393564679854a95181d1
+sha256:e54308ce3ae95b156e8e2c100ef1eafe
 {
   "results": [
     {

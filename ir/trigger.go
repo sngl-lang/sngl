@@ -1,0 +1,159 @@
+package ir
+
+import (
+	"strings"
+
+	"duckfam.us/sngl/ast"
+)
+
+// CopyProp is the prop a node a test indexes carries the key of its copy in,
+// and the prop a component built at run time is handed the key of the copy it
+// stands in, which its own copies' keys extend.
+const CopyProp = "__copy"
+
+// TriggerTarget reads a test's event trigger -- `c.inc.click()`, a call the
+// checker tagged with an Event -- off the call's receiver as the checker
+// resolved it: the variable holding the instance under test, the `#id` of the
+// node whose event it fires, and the index into each loop around that node,
+// outermost first, for `c.cell[1][0].click()`.
+func TriggerTarget(c *Call) (recv, id string, path []Expr, ok bool) {
+	if c == nil || c.Event == "" {
+		return "", "", nil, false
+	}
+	r := c.Receiver
+	// A receiver read after a null test is the narrowing of it.
+	for conv, narrowed := r.(*Conversion); narrowed; conv, narrowed = r.(*Conversion) {
+		r = conv.Operand
+	}
+	for ix, indexed := r.(*Index); indexed; ix, indexed = r.(*Index) {
+		path = append([]Expr{ix.Idx}, path...)
+		r = ix.Operand
+	}
+	sel, isSel := r.(*Select)
+	if !isSel {
+		return "", "", nil, false
+	}
+	base, isIdent := sel.Operand.(*Ident)
+	if !isIdent {
+		return "", "", nil, false
+	}
+	return base.Name, sel.Field, path, true
+}
+
+// IndexedRefIDs is every `#id` a test reaches one copy of -- triggers,
+// `c.row[1].change(true)`, or null-tests, `c.row[1] == null` -- by an index
+// into a ref to the nodes loops rendered under it.
+func IndexedRefIDs(pkg *Package) map[string]bool {
+	out := map[string]bool{}
+	if pkg == nil {
+		return out
+	}
+	for _, fn := range pkg.Funcs {
+		if fn == nil || !fn.IsTest {
+			continue
+		}
+		_ = Walk(fn.Block, func(n Node) error {
+			switch x := n.(type) {
+			case *Call:
+				if _, id, path, ok := TriggerTarget(x); ok && len(path) > 0 {
+					out[id] = true
+				}
+			case *Binary:
+				if sel, path, _, ok := NullTestedRef(x); ok && len(path) > 0 {
+					out[sel.Field] = true
+				}
+			}
+			return nil
+		})
+	}
+	return out
+}
+
+// CopyKey is the key of one copy of a node loops rendered: the index into each
+// loop, outermost first, joined by "/", so one loop's copy 1 is "1" and the
+// first copy in a nested loop's second iteration is "1/0".
+func CopyKey(indices []Expr) Expr {
+	if len(indices) == 0 {
+		return nil
+	}
+	if lits := literalIndices(indices); lits != nil {
+		return &Literal{Type: TypString, Value: strings.Join(lits, "/")}
+	}
+	var key Expr
+	for _, idx := range indices {
+		part := Expr(&Conversion{Type: TypString, Operand: idx})
+		if key == nil {
+			key = part
+			continue
+		}
+		key = JoinCopyKey(key, part)
+	}
+	return key
+}
+
+// JoinCopyKey is the key of a copy inside the copy prefix names.
+func JoinCopyKey(prefix, key Expr) Expr {
+	return &Binary{Type: TypString, Op: ast.BinAdd, Left: &Binary{Type: TypString, Op: ast.BinAdd, Left: prefix, Right: &Literal{Type: TypString, Value: "/"}}, Right: key}
+}
+
+// literalIndices is each index spelled as written, or nil unless every one is
+// an int literal: a test's path is, and its key is then a literal too.
+func literalIndices(indices []Expr) []string {
+	out := make([]string, len(indices))
+	for i, idx := range indices {
+		lit, ok := idx.(*Literal)
+		if !ok || lit.Type == nil || lit.Type.Kind != TypeInt {
+			return nil
+		}
+		out[i] = lit.Value
+	}
+	return out
+}
+
+// NullTestedRef reads a test's `c.x == null` or `c.x != null`, either way
+// round, where `c.x` is a ref to a node that may not be rendered -- or
+// `c.x[1]`, one copy of a node loops rendered under an `if`, whose path holds
+// the index into each loop. present is true for `!=`.
+func NullTestedRef(e Expr) (sel *Select, path []Expr, present, ok bool) {
+	bin, isBin := e.(*Binary)
+	if !isBin || (bin.Op != ast.BinEq && bin.Op != ast.BinNeq) {
+		return nil, nil, false, false
+	}
+	ref, other := bin.Left, bin.Right
+	if isNullLiteral(ref) {
+		ref, other = other, ref
+	}
+	if !isNullLiteral(other) {
+		return nil, nil, false, false
+	}
+	ref = stripConversions(ref)
+	for ix, isIx := ref.(*Index); isIx; ix, isIx = ref.(*Index) {
+		path = append([]Expr{ix.Idx}, path...)
+		ref = stripConversions(ix.Operand)
+	}
+	sel, isSel := ref.(*Select)
+	if !isSel || len(sel.Ref) < len(path)+2 || sel.Ref[len(path)] != RefOption {
+		return nil, nil, false, false
+	}
+	for i := range path {
+		if sel.Ref[i] != RefList {
+			return nil, nil, false, false
+		}
+	}
+	if _, isIdent := sel.Operand.(*Ident); !isIdent {
+		return nil, nil, false, false
+	}
+	return sel, path, bin.Op == ast.BinNeq, true
+}
+
+func isNullLiteral(e Expr) bool {
+	lit, ok := stripConversions(e).(*Literal)
+	return ok && lit.Type != nil && lit.Type.Kind == TypeNull
+}
+
+func stripConversions(e Expr) Expr {
+	for conv, ok := e.(*Conversion); ok; conv, ok = e.(*Conversion) {
+		e = conv.Operand
+	}
+	return e
+}

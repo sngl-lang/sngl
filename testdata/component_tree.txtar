@@ -372,16 +372,6 @@ window.__sngl_boot = () => {
   if (typeof window !== "undefined") {
     window.__sngl_state = state;
   }
-  function testTreeSelectedMutates(t, c) {
-    t.assertTrue(c.sel === "", '(c.sel === "")');
-    c.sel = "Photos";
-    t.assertTrue(c.sel === "Photos", '(c.sel === "Photos")');
-    c.sel = "Music";
-    t.assertTrue(c.sel === "Music", '(c.sel === "Music")');
-  }
-  if (typeof window !== "undefined") {
-    Object.assign(window, { testTreeSelectedMutates });
-  }
   var $0 = document.getElementById("$0");
   $0.addEventListener("selected", function(e) {
     state.sel = e;
@@ -398,9 +388,9 @@ pass sha256:05fadfb3fa2057fe9e5857358f7c846b
 -- run/kotlin/android --
 pass sha256:6d27e9b7d4857b258f2c97f7cb7ad492
 -- run/none/html --
-pass sha256:a91239d47069e29ad4f7243ae19f9842
+pass sha256:2ec7df8ababc1182bb9914dec323cc9b
 -- testrun/html/none/component_tree.sngl/main/1 --
-sha256:f274216c3a11b456a307b9ae4d55c948
+sha256:1d3da9cc523d8c8420a2d2599d903128
 {
   "results": [
     {
