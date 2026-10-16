@@ -498,16 +498,16 @@ func (st *declarativeState) lowerComponentNodeIntoStmts(n *ir.NodeInst, id strin
 // componentRootLocal binds the node the instance named id renders as.
 func (st *declarativeState) componentRootLocal(n *ir.NodeInst, id string) *ir.LocalVar {
 	t := rendersAsType(n.Component, st.hosted)
+	args := []ir.CallArg{{Value: handleRef(id, handleType(n))}}
+	// The copy an instance stands in is what a test finds one copy of it by,
+	// and a reused instance is handed its new one before its root is bound.
+	if key := n.Prop(ir.CopyProp); key != nil && n.Component.KeyedCopy {
+		args = append(args, ir.CallArg{Value: deepCloneExpr(key)})
+	}
 	return &ir.LocalVar{
 		Name: st.attachName(n),
 		Type: t,
-		Init: &ir.Call{
-			Type: t,
-			Func: st.intrinsics[ir.NodeOpComponentRoot],
-			Args: []ir.CallArg{
-				{Value: handleRef(id, handleType(n))},
-			},
-		},
+		Init: &ir.Call{Type: t, Func: st.intrinsics[ir.NodeOpComponentRoot], Args: args},
 	}
 }
 

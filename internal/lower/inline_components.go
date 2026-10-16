@@ -41,6 +41,7 @@ func lowerInlineComponents(pkg *ir.Package, feats Features, opts Options) error 
 	}
 	st := &inlineCompState{pkg: pkg, main: main, cycles: cycles, reactive: reactive, platform: opts.Platform, instanceState: feats.InstanceState, genericComponents: feats.GenericComponents, onList: onList, names: namesOrOwn(opts.names), demoted: map[*ir.Func]bool{}, cells: map[*ir.Var][]*ir.Var{}, compInsts: map[*ir.Component][]componentInstance{}, methods: map[*ir.Var]map[*ir.Func][]*ir.Func{}}
 	cellOwners := implicitCellOwners(pkg)
+	st.nullTested, st.reachedThrough = ir.NullTestedIDs(pkg), ir.ReachedIDs(pkg)
 	st.reach = testReachRoots(pkg, main, opts)
 	st.reach.runtime = feats.RuntimeReach
 	if err := st.run(); err != nil {
@@ -240,7 +241,7 @@ func uniqueNodeIDs(pkg *ir.Package) error {
 			}
 			if first, ok := rendered[n.Handle]; ok {
 				if r := reads[n.Handle]; len(r) > 0 && dup == nil {
-					dup = fmt.Errorf("%s: `#%s` is read here, and %s renders more than one of it -- the read cannot say which; give each copy its own id, or pass the value it is read for as a prop", identPos(r[0]), n.Handle.Name, nodePos(first))
+					dup = fmt.Errorf("%s: `#%s` is read here, and %s renders more than one of it -- the read cannot say which; give each copy its own id, or pass the value it is read for as a prop", identPos(r[0]), n.Handle.WrittenName(), nodePos(first))
 				}
 				return nil
 			}
@@ -292,10 +293,21 @@ func renameNodeID(n *ir.NodeInst, name string, reads map[*ir.Var][]*ir.Ident) {
 	if n.Handle == nil {
 		return
 	}
+	if n.Handle.Written == "" {
+		n.Handle.Written = n.Handle.Name
+	}
 	for _, id := range reads[n.Handle] {
 		id.Name = name
 	}
 	n.Handle.Name = name
+}
+
+// writtenID is the id the program wrote for n.
+func writtenID(n *ir.NodeInst) string {
+	if n.Handle != nil && n.Handle.Written != "" {
+		return n.Handle.Written
+	}
+	return n.ID
 }
 
 // handleIdents is every read of every `#id` handle, keyed by the binding and in
@@ -349,6 +361,9 @@ type inlineCompState struct {
 	// instanceState is Features.InstanceState: whether a component built at run
 	// time keeps its own state on this target.
 	instanceState bool
+	// nullTested and reachedThrough are the `#id`s a test null-tests
+	// and reaches through (ir.NullTestedIDs, ir.ReachedIDs).
+	nullTested, reachedThrough map[string]bool
 	// genericComponents is Features.GenericComponents: whether the target
 	// emits a generic component once for every instantiation. Where it does
 	// not, compInsts is each generic component's copies (instantiateRuntime),
@@ -877,6 +892,18 @@ func (rc reactiveCtx) perCopy(c *ir.Component) bool {
 	return rc.in || rc.repeated && len(c.Vars) > 0
 }
 
+// nullTestedInstance reports whether n is an instance a test null-tests, which
+// a target that keeps an instance's state builds at run time wherever it would
+// splice it: a splice leaves no node of the instance's own for the target to
+// find it by, only the roots of its body (ir.InstancesOf), which bubbletea's
+// view answers from and no other target reads. One a test also reaches
+// through stays spliced, since a test cannot reach into an instance built at
+// run time.
+func (st *inlineCompState) nullTestedInstance(n *ir.NodeInst) bool {
+	return st.instanceState && n.Handle != nil && st.nullTested[n.ID] && !st.reachedThrough[n.ID] &&
+		n.Component.PkgPath() == "" && hasRealComponentBody(n.Component) && st.inlinable(n.Component)
+}
+
 func (st *inlineCompState) inlineStmtsCtx(stmts []ir.Stmt, rc reactiveCtx) ([]ir.Stmt, bool, error) {
 	changed := false
 	out := make([]ir.Stmt, 0, len(stmts))
@@ -953,8 +980,11 @@ func (st *inlineCompState) inlineStmtCtx(s ir.Stmt, rc reactiveCtx) ([]ir.Stmt, 
 			return nil, false, fmt.Errorf("%s: %q reads the state of the body it is declared in and is instantiated %s, where each copy needs state of its own -- capture would hand every copy the one cell the owner holds; lift it to a top-level component and pass what it reads as props", nodePos(n), n.Component.Name, where)
 		}
 		// A target that keeps no state of an instance's own is given the state
-		// where the component is written instead, one cell per copy.
-		if !st.instanceState && st.captureOnly == nil && n.Component != nil && (len(n.Component.Vars) > 0 || holdsLifetime(n.Component.Stmts)) && !st.cycles[n.Component] && st.inlinable(n.Component) {
+		// where the component is written instead, one cell per copy. Its
+		// functions too: built at run time, a component is a render function
+		// of the Model there, and its functions the Model's, which cannot read
+		// the props the render function is handed.
+		if !st.instanceState && st.captureOnly == nil && n.Component != nil && (len(n.Component.Vars) > 0 || len(n.Component.Funcs) > 0 || holdsLifetime(n.Component.Stmts)) && !st.cycles[n.Component] && st.inlinable(n.Component) {
 			return st.expandPerCopy(n, rc)
 		}
 		// Nor does its focus order reach a render function of the Model, so a
@@ -985,7 +1015,7 @@ func (st *inlineCompState) inlineStmtCtx(s ir.Stmt, rc reactiveCtx) ([]ir.Stmt, 
 		// second mount, so the first schedule can never be stopped. That a
 		// const iterable cannot change says how many copies there are, not
 		// that they may share state.
-		if st.captureOnly == nil && n.Component != nil && (rc.perCopy(n.Component) || st.cycles[n.Component]) {
+		if st.captureOnly == nil && n.Component != nil && (rc.perCopy(n.Component) || st.cycles[n.Component] || st.nullTestedInstance(n)) {
 			if err := st.instantiateRuntime(n); err != nil {
 				return nil, false, err
 			}
@@ -1006,6 +1036,11 @@ func (st *inlineCompState) inlineStmtCtx(s ir.Stmt, rc reactiveCtx) ([]ir.Stmt, 
 				st.keep[n.Component] = true
 			}
 			return []ir.Stmt{n}, chCh || anyHandlerCh, nil
+		}
+		// Its functions are hoisted out of the loops around it, so a prop
+		// bound to a loop variable reaches them as a parameter.
+		if len(n.Component.Funcs) > 0 {
+			return st.expandPerCopy(n, rc)
 		}
 		spliced, err := st.expandCall(n)
 		if err != nil {

@@ -150,6 +150,29 @@ func attachNode(body []Stmt, set func(*NodeInst)) bool {
 	return false
 }
 
+// NodeIDRendersWithBody reports whether the node AttachNodeID picks in body is
+// rendered whenever body is: not one an `if` or a `for` around it decides, so a
+// test's null test of the call site's `#id` is a null test of that node.
+func NodeIDRendersWithBody(body []Stmt) bool {
+	for _, s := range body {
+		switch n := s.(type) {
+		case *NodeInst:
+			return true
+		case *If, *For:
+			if attachNode([]Stmt{n}, func(*NodeInst) {}) {
+				return false
+			}
+		default:
+			for _, block := range TransparentBlocks(s) {
+				if attachNode(*block, func(*NodeInst) {}) {
+					return NodeIDRendersWithBody(*block)
+				}
+			}
+		}
+	}
+	return false
+}
+
 // RepointHandler makes every alias of old under root name repl instead: a
 // catch block (If.Catch) and a raise resolved to it (Call.ResolvedHandler).
 // Both are pointers to a handler a boundary or a window owns, so a clone of

@@ -621,12 +621,20 @@ func (st *reactivityState) recreateStatic(n *ir.NodeInst, declSt *declarativeSta
 	elRef := func(v *ir.Var) ir.Expr {
 		return &ir.Ident{Name: v.Name, Type: v.Type, IsElementRef: true, Sym: v, Synthesized: true}
 	}
-	bindRoot := func(el *ir.Var, inst *ir.Var) ir.Stmt {
+	bindRoot := func(el *ir.Var, inst *ir.Var, key ir.Expr) ir.Stmt {
+		args := []ir.CallArg{{Value: varRef(inst)}}
+		if key != nil {
+			args = append(args, ir.CallArg{Value: key})
+		}
 		return &ir.LocalVar{Name: el.Name, Type: el.Type, Sym: el, Init: &ir.Call{
 			Type: el.Type,
 			Func: st.intrinsics[ir.NodeOpComponentRoot],
-			Args: []ir.CallArg{{Value: varRef(inst)}},
+			Args: args,
 		}}
+	}
+	var key ir.Expr
+	if k := n.Prop(ir.CopyProp); k != nil && n.Component.KeyedCopy {
+		key = deepCloneExpr(k)
 	}
 	op := func(name string, args ...ir.Expr) ir.Stmt {
 		call := &ir.Call{
@@ -656,8 +664,8 @@ func (st *reactivityState) recreateStatic(n *ir.NodeInst, declSt *declarativeSta
 
 	return []ir.Stmt{
 		&ir.LocalVar{Name: fresh.Name, Type: elem, Sym: fresh, Init: declSt.componentCreateCall(built)},
-		bindRoot(freshEl, fresh),
-		bindRoot(prevEl, cur),
+		bindRoot(freshEl, fresh, key),
+		bindRoot(prevEl, cur, nil),
 		op(ir.NodeOpInsertBefore, place, elRef(freshEl), elRef(prevEl)),
 		op(ir.NodeOpRemoveChild, cloneIdent(place), elRef(prevEl)),
 		op(ir.NodeOpDestroyComponent, varRef(cur)),

@@ -30,12 +30,13 @@ type IntrinsicTranslator interface {
 	// build-time `__instN` renaming cannot provide when the count is only
 	// known at runtime. ComponentRoot is how the tree gets a node back.
 	OnCreateComponent(ctx context.Context, id string, call *ir.Call) []ir.Stmt
-	// OnComponentRoot handles `LocalVar id = lower.ComponentRoot(inst)`,
+	// OnComponentRoot handles `LocalVar id = lower.ComponentRoot(inst, key?)`,
 	// binding id to the node an instance renders as, so AppendChild has
 	// something to attach. Separate from CreateComponent because an instance
 	// outlives any one attachment: it is detached and reattached as its
-	// position in the tree comes and goes.
-	OnComponentRoot(ctx context.Context, id string, inst ir.Expr) []ir.Stmt
+	// position in the tree comes and goes. key is the copy the instance stands
+	// in now (ir.CopyKey), nil where a test reaches no one copy of it.
+	OnComponentRoot(ctx context.Context, id string, inst, key ir.Expr) []ir.Stmt
 	// OnUpdateComponent handles `lower.UpdateComponent(inst, "prop", value)`
 	// — a reactive prop crossing into a live instance. The platform patches
 	// whatever inside the instance reads that prop. A prop the instance
@@ -119,8 +120,12 @@ func walkOne(ctx context.Context, s ir.Stmt, t IntrinsicTranslator) []ir.Stmt {
 			if isLowerIntrinsic(call, "CreateComponent") {
 				return t.OnCreateComponent(ctx, n.Name, walkComponentProps(ctx, call, t))
 			}
-			if isLowerIntrinsic(call, ir.NodeOpComponentRoot) && len(call.Args) == 1 {
-				return t.OnComponentRoot(ctx, n.Name, call.Args[0].Value)
+			if isLowerIntrinsic(call, ir.NodeOpComponentRoot) && len(call.Args) >= 1 && len(call.Args) <= 2 {
+				var key ir.Expr
+				if len(call.Args) == 2 {
+					key = call.Args[1].Value
+				}
+				return t.OnComponentRoot(ctx, n.Name, call.Args[0].Value, key)
 			}
 		}
 		if v, changed := walkExprLambdas(ctx, n.Init, t); changed {

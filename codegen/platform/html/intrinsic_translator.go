@@ -297,7 +297,7 @@ func (t *htmlTranslator) OnCreateComponent(ctx context.Context, id string, call 
 // OnComponentRoot binds a name to the node an instance renders as. The record
 // carries it under a fixed field, which is html's own choice of shape: nothing
 // outside this platform names it.
-func (t *htmlTranslator) OnComponentRoot(ctx context.Context, id string, inst ir.Expr) []ir.Stmt {
+func (t *htmlTranslator) OnComponentRoot(ctx context.Context, id string, inst, key ir.Expr) []ir.Stmt {
 	element := ir.NativeNamed("HTMLElement")
 	out := []ir.Stmt{&ir.LocalVar{
 		Name: id,
@@ -316,6 +316,14 @@ func (t *htmlTranslator) OnComponentRoot(ctx context.Context, id string, inst ir
 				{Value: &ir.Literal{Type: ir.TypString, Value: name.Name}},
 			},
 		}})
+		if key != nil {
+			out = append(out, &ir.CallStmt{Call: &ir.Call{
+				Type:     ir.TypVoid,
+				Receiver: &ir.Ident{Name: id},
+				Func:     &ir.Func{Name: "setAttribute"},
+				Args:     []ir.CallArg{{Value: &ir.Literal{Type: ir.TypString, Value: copyAttr}}, {Value: key}},
+			}})
+		}
 	}
 	return out
 }

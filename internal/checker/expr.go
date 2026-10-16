@@ -385,7 +385,8 @@ func (c *checker) unitDeclaring(want *ir.UnitDef, suffix string) *ir.UnitDef {
 // its position. Anything else is reported against the event, because by then
 // the name has resolved and "undefined" would be the wrong thing to say.
 func (c *checker) eventAsFunc(x *ast.IdentExpr) ir.Expr {
-	want := c.expected
+	// An optional callback takes one as readily: the slot wraps it.
+	want := optionElem(c.expected)
 	if want == nil || want.Kind != ir.TypeFunc || want.Sig == nil || c.currentComponent == nil {
 		return nil
 	}

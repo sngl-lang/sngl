@@ -2588,21 +2588,43 @@ test answers `c.x == null` with a presence check per id (`codegen.RefNullTest`,
 `codegen.LowerRefNullTests`): html's `data-sngl-id`, fyne's and gtk4's
 `__named_<id>`, bubbletea's conditions around the node, and android's
 semantics tree. Each finds the node by its id alone, so in a test build
-`passTestRefOwner` first renames a node another component writes under an id
-a test reaches on the tested one (`b__own0`), before anything moves a node out
-of the body that wrote it (`testdata/test_ref_owner.txtar`). A slot's reset
+`passTestRefOwner` first renames a node another body writes under an id a test
+reaches on the tested one (`b__own0`), before anything moves a node out of the
+body that wrote it (`testdata/test_ref_owner.txtar`). Another body includes a
+library override the build renders -- gtk4's datepicker writes a `#cal`
+(`test_ref_owner_library.txtar`) -- and in a build of the whole program each
+reached id is kept by the first tested component writing it and renamed in
+the rest, a select off a renamed component's instance following
+(`test_ref_owner_whole_program.txtar`). A diagnostic names a renamed handle by
+`ir.Var.WrittenName`, the id the program wrote. A slot's reset
 clears the field of a widget a test null-tests on fyne and gtk4, which still
 held a widget the branch dropped. An
 instance built at run time has no widget of its own: on fyne and gtk4 it hands
 its root to `__present_<id>` where the root is bound, and on android its call
 site holds a token in `SnglPresent` while it is composed
 (`testdata/ref_null_test_instance.txtar`). `c.x[1] == null` null-tests one
-copy, an iteration of the loop around an `if`, by the copy's key as a trigger
-names one (`<id>PresentAt`, `codegen.PresenceAtMethod`), and `ir.IndexedRefIDs`
+copy, an iteration of the loops around the node with or without an `if`
+between, by the copy's key as a trigger names one (`<id>PresentAt`, `codegen.PresenceAtMethod`), and `ir.IndexedRefIDs`
 stamps the ids a test reaches either way
 (`testdata/indexed_ref_null_test.txtar`). One copy of an instance built at run
-time carries no key to find, and the test is refused where the instance is
-written (`passCopyKeys`); bubbletea splices it and answers from the view.
+time is handed its key in the `__copy` prop (`passCopyKeys`), and the call site
+lists its root under that key where it binds it -- `ComponentRoot`'s second
+argument, after the setter has re-keyed an instance a slot reuses: html's
+`data-sngl-copy` beside `data-sngl-instance`, fyne's and gtk4's
+`__copies_<id>`, one map for every record: a re-key replaces the entry and a
+record's `Destroy` takes its root out, and android's `SnglPresent` entry
+`id[key]`, each asked only for an id some such instance carries
+(`codegen.KeyedInstanceIDs`). bubbletea splices it and answers from the view (`testdata/indexed_ref_null_test_instance.txtar`).
+
+**An instance a test null-tests keeps a node of its own to be found by.** A
+splice leaves only the roots of its body, which bubbletea's view answers from
+(`ir.InstancesOf`) and no other target reads, so a target holding
+`InstanceState` builds one at run time wherever passNoInlineComponents would
+splice it, unless a test also reaches into it (`ir.NullTestedIDs`,
+`ir.ReachedIDs`). The two splices that move the call site's `#id` onto the
+body's first node leave a program component to it where that node is one an
+`if` or a `for` in the body decides (`ir.NodeIDRendersWithBody`)
+(`testdata/indexed_ref_null_test_spliced.txtar`).
 
 **An event's parameters are its declaration's, and an override reads what the
 host reports and writes the prop it reports.** A platform override handles
@@ -3152,11 +3174,15 @@ that is `Features.InstanceState`, a capability every platform but bubbletea
 declares: a record on fyne and gtk4, a factory closure on html, `remember` on
 android. bubbletea's model keeps every cell in itself, and a component built at
 run time there is a render function with nowhere to put one. So
-`passNoInlineComponents` splices a component that has state or holds a lifetime
-where it is written (`expandPerCopy`), and under a `for` gives each of its vars
-one cell per copy (`perCopyCells`): a map keyed by the loops' indices
-(`lower.CopyKey`), read as `cell.get(key, init)` and written through a
-temporary stored back. A timer under a loop is then a schedule per copy, which
+`passNoInlineComponents` splices a component that has state, holds a lifetime
+or declares a function where it is written (`expandPerCopy`) -- a render
+function's methods would be the Model's, which cannot read the props it is
+handed -- and under a `for` gives each of its vars one cell per copy
+(`perCopyCells`): a map keyed by the loops' indices (`lower.CopyKey`), read as
+`cell.get(key, init)` and written through a temporary stored back. On every
+target a function a splice hoists out of loops takes the loop variables it
+reads as parameters (`passLoopVars`), since a prop bound to one is substituted
+into it as that variable (`testdata/component_func_reads_loop_prop.txtar`). A timer under a loop is then a schedule per copy, which
 bubbletea keeps keyed the same way and routes through Update
 (`codegen.CollectLoopTimers`, `bubbletea/timers.go`); it used to be
 collected by nobody and never ran. A timer under no loop is the same
@@ -4747,7 +4773,18 @@ members by name, so the lowering says the rest in those terms:
   renders it**, which is how a golden whose tests take two components is
   compiled: each is spliced, and each test reaches what its splice made of it
   (`testdata/test_reach_two_roots.txtar`). Nothing is refused there, since a
-  build that roots at none emits no test.
+  build that roots at none emits no test. A node the splice put in the
+  package body is no member of its component, so passReservedNodeIDs renames
+  a test's select of a reserved id off its own instance itself
+  (`test_reach_reserved_id_whole_program.txtar`).
+- **A test reaches its instance through its own parameter**, which is all an
+  emitter spells a member off: a local holding the instance, `var held = c`,
+  is replaced by what it holds, and a function the test hands an instance to
+  is inlined into the test, as a statement or, where its body is one
+  `return`, as a value (`passTestInstanceReach`,
+  `testdata/test_instance_reach.txtar`). One that cannot be inlined -- a
+  return from the middle, a call of itself, a local assigned again -- is
+  refused where it is written (`cmd/sngl/testdata/test_instance_refused.txt`).
 - **A trigger is an event of the receiver's type**, so the checker tags one
   through a nested instance (`nestedElementEvent`), and `c.row[1]` types as
   the node's component. html's `At` invoker indexes a constant loop's unrolled
@@ -4932,7 +4969,12 @@ Structured logging via `slog` at three levels controlled by CLI flags:
 - `--debug` — Debug: const folding, dead code elimination, import resolution
 - `-q, --quiet` — Error only
 
-Dump commands inspect each compiler phase:
+`sngl dump` inspects each compiler phase. It ships in release builds but is an
+internal debugging tool and unsupported: its output in every format may change
+in any release, and it is not snapshot tested --
+`cmd/sngl/testdata/dump_every_stage_spew_json.txt` only checks that each stage
+and format runs without error. Assert a compiler property with a golden or a
+`sngl test`, not with a dump.
 
 ```bash
 sngl dump --stage parsed  [file|dir]                              # after parse + merge
@@ -4948,6 +4990,12 @@ fails with "accepts at most 1 arg(s)". `--format` selects `sngl` (default),
 `json` instead: it dumps facts *about* a program rather than a program, and
 those have no source form — `--format sngl` on it is an error naming the two
 that work.
+
+In `json` and `spew` a declaration is written in full once, carrying an
+`"(id)"`, and everywhere else it is a reference naming it by that id, its
+kind, name and package (`cmd/sngl/dumpomit.go`). A declaration another
+package makes -- the library, a directory import (`dir:widgets`) -- is only
+referenced.
 
 A positional argument may also be a package rather than a path:
 `sngl dump --stage checked sngl:platform/gtk4`. It arrives already checked,

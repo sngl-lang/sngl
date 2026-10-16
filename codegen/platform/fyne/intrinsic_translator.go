@@ -83,6 +83,14 @@ type fyneTranslator struct {
 	// slotNamed are the indexed ids this slot render func creates, which its
 	// reset empties.
 	slotNamed []string
+	// instanceCopies are the ids a test reaches one copy of whose instances,
+	// built at run time, this scope lists by root in a Model map, declared
+	// through modelSink: a record's own fields are not the Model's. No slot
+	// reset empties the map, since one map holds every record's instances:
+	// a re-key replaces an instance's entry, and a destroyed record unlists
+	// itself.
+	instanceCopies map[string]bool
+	modelSink      func(name, goType string)
 	// present are the ids a test null-tests. slotPresent are the fields of
 	// those this slot render func creates -- a widget's own, an instance's
 	// presentField -- which its reset clears: what the render no longer builds
@@ -205,11 +213,11 @@ func (t *fyneTranslator) withInvokerSink(sink func(fyneEventInvoker)) *fyneTrans
 
 // withIndexed has this Model scope keep the widgets of the ids a test indexes;
 // stmts is the scope's body, whose creates of them a slot's reset empties.
-func (t *fyneTranslator) withIndexed(indexed map[string]bool, stmts []ir.Stmt) *fyneTranslator {
+func (t *fyneTranslator) withIndexed(indexed, present map[string]bool, stmts []ir.Stmt) *fyneTranslator {
 	t.indexed = indexed
 	t.slotNamed = nil
 	t.slotPresent = nil
-	t.present, _ = codegen.NullTestedRefs(t.gc.Ctx.Pkg)
+	t.present = present
 	_ = ir.Walk(stmts, func(n ir.Node) error {
 		lv, ok := n.(*ir.LocalVar)
 		if !ok {
@@ -228,12 +236,20 @@ func (t *fyneTranslator) withIndexed(indexed map[string]bool, stmts []ir.Stmt) *
 				t.slotPresent = append(t.slotPresent, lv.Name)
 			}
 		case ir.NodeOpComponentRoot:
-			if inst := codegen.IdentBareName(c.Args[0].Value); t.present[inst] {
+			inst := codegen.IdentBareName(c.Args[0].Value)
+			if t.present[inst] {
 				t.slotPresent = append(t.slotPresent, presentField(inst))
 			}
 		}
 		return nil
 	})
+	return t.withInstanceCopies(indexed, t.sinkField)
+}
+
+// withInstanceCopies has this scope list the instances of the ids a test
+// reaches one copy of, declaring each map through modelSink.
+func (t *fyneTranslator) withInstanceCopies(ids map[string]bool, modelSink func(name, goType string)) *fyneTranslator {
+	t.instanceCopies, t.modelSink = ids, modelSink
 	return t
 }
 
@@ -479,7 +495,7 @@ const fyneWidgetHandleType = "fyne.CanvasObject"
 // Local or field by the same escape analysis every other node id answers to. A
 // local unconditionally is what left `__nN__el := …` declared in the body and
 // `m.__nN__el` read two lines later.
-func (t *fyneTranslator) OnComponentRoot(ctx context.Context, id string, inst ir.Expr) []ir.Stmt {
+func (t *fyneTranslator) OnComponentRoot(ctx context.Context, id string, inst, key ir.Expr) []ir.Stmt {
 	t.topLevel = append(t.topLevel, id)
 	var root ir.Expr = t.instanceRef(inst)
 	if !t.plainHandle[codegen.IdentBareName(inst)] {
@@ -496,6 +512,12 @@ func (t *fyneTranslator) OnComponentRoot(ctx context.Context, id string, inst ir
 		field := presentField(name)
 		t.sinkField(field, fyneWidgetHandleType)
 		present = append(present, &ir.Assign{Target: t.fieldRef(field), Op: ast.AssignSet, Value: root})
+	}
+	// One copy of it is found by the key it stands in now, which a reused
+	// instance was handed before its root is bound again.
+	if name := codegen.IdentBareName(inst); key != nil && t.instanceCopies[name] {
+		t.modelSink(copiesField(name), copyMapType(fyneWidgetHandleType))
+		present = append(present, t.listInstanceCopy(name, key, root))
 	}
 	if t.isLocalRef(id) {
 		return append([]ir.Stmt{&ir.LocalVar{Name: id, Init: root}}, present...)

@@ -331,9 +331,16 @@ func (cc *irComposeContext) renderUserComponent(n *ir.NodeInst) {
 		args = append(args, cc.handlerArgs(n)...)
 	}
 	if cc.present[n.ID] {
-		cc.line("%s(Unit) {", cc.kc.Name(ktDisposableEffect))
+		// One copy is registered under its key, and again when a reused
+		// instance is handed another.
+		key, entry := "Unit", fmt.Sprintf("%q", n.ID)
+		if k := n.Prop(ir.CopyProp); k != nil {
+			key = cc.kc.EvalExpr(k)
+			entry = kotlin.PresentCopyEntry(n.ID, key)
+		}
+		cc.line("%s(%s) {", cc.kc.Name(ktDisposableEffect), key)
 		cc.line("    val __token = Any()")
-		cc.line("    %s[__token] = %q", kotlin.PresentRegistry, n.ID)
+		cc.line("    %s[__token] = %s", kotlin.PresentRegistry, entry)
 		cc.line("    onDispose { %s.remove(__token) }", kotlin.PresentRegistry)
 		cc.line("}")
 	}
@@ -1014,8 +1021,12 @@ func counterStmt(s ir.Stmt) bool {
 	return ok && v != nil && v.Synthesized
 }
 
-// funcArity is how many parameters a value of the function type t is handed.
+// funcArity is how many parameters a value of the function type t is handed,
+// or of the function an optional t holds.
 func funcArity(t *ir.Type) int {
+	if t != nil && t.Kind == ir.TypeOption && len(t.Elems) == 1 {
+		t = t.Elems[0]
+	}
 	if t == nil || t.Kind != ir.TypeFunc || t.Sig == nil {
 		return 0
 	}

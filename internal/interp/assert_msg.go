@@ -22,6 +22,11 @@ import (
 func (env *Env) RunAssert(expr ir.Expr) (*AssertError, error) {
 	switch e := expr.(type) {
 	case *ir.Binary:
+		// A copy's null test is answered whole: its operand alone may index
+		// past the copies rendered now.
+		if _, path, _, ok := ir.NullTestedRef(e); ok && len(path) > 0 {
+			return env.assertDefault(expr)
+		}
 		switch e.Op {
 		case ast.BinEq, ast.BinNeq, ast.BinLt, ast.BinLte, ast.BinGt, ast.BinGte:
 			return env.assertCompare(expr, e)

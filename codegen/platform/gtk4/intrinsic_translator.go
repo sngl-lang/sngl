@@ -177,6 +177,14 @@ type gtk4Translator struct {
 	// is not rendered, though its field still holds it.
 	present     map[string]bool
 	slotPresent []string
+	// instanceCopies are the ids a test reaches one copy of whose instances,
+	// built at run time, this scope lists by root in a Model map, declared
+	// through modelSink: a record's own fields are not the Model's. No slot
+	// reset empties the map, since one map holds every record's instances:
+	// a re-key replaces an instance's entry, and a destroyed record unlists
+	// itself.
+	instanceCopies map[string]bool
+	modelSink      func(name, cType string)
 }
 
 // namedWidgetField is the Model field a widget an instance builds is handed
@@ -186,11 +194,11 @@ func namedWidgetField(id string) string { return "__named_" + id }
 // withIndexed has this Model scope keep the widgets of the ids a test
 // indexes; stmts is the scope's body, whose creates of them a slot's reset
 // empties.
-func (t *gtk4Translator) withIndexed(indexed map[string]bool, stmts []ir.Stmt) *gtk4Translator {
+func (t *gtk4Translator) withIndexed(indexed, present map[string]bool, stmts []ir.Stmt) *gtk4Translator {
 	t.indexed = indexed
 	t.slotNamed = nil
 	t.slotPresent = nil
-	t.present, _ = codegen.NullTestedRefs(t.gc.Ctx.Pkg)
+	t.present = present
 	_ = ir.Walk(stmts, func(n ir.Node) error {
 		lv, ok := n.(*ir.LocalVar)
 		if !ok {
@@ -209,12 +217,20 @@ func (t *gtk4Translator) withIndexed(indexed map[string]bool, stmts []ir.Stmt) *
 				t.slotPresent = append(t.slotPresent, lv.Name)
 			}
 		case ir.NodeOpComponentRoot:
-			if inst := codegen.IdentBareName(c.Args[0].Value); t.present[inst] {
+			inst := codegen.IdentBareName(c.Args[0].Value)
+			if t.present[inst] {
 				t.slotPresent = append(t.slotPresent, presentField(inst))
 			}
 		}
 		return nil
 	})
+	return t.withInstanceCopies(indexed, t.sinkField)
+}
+
+// withInstanceCopies has this scope list the instances of the ids a test
+// reaches one copy of, declaring each map through modelSink.
+func (t *gtk4Translator) withInstanceCopies(ids map[string]bool, modelSink func(name, cType string)) *gtk4Translator {
+	t.instanceCopies, t.modelSink = ids, modelSink
 	return t
 }
 
@@ -683,7 +699,7 @@ func (t *gtk4Translator) OnDetachHandler(ctx context.Context, node ir.Expr, even
 // OnComponentRoot binds a name to the widget an instance renders as. A local,
 // so a recursion frame keeps its own rather than clobbering a shared Model
 // field -- the same reason OnCreateComponent takes the local-ref path.
-func (t *gtk4Translator) OnComponentRoot(ctx context.Context, id string, inst ir.Expr) []ir.Stmt {
+func (t *gtk4Translator) OnComponentRoot(ctx context.Context, id string, inst, key ir.Expr) []ir.Stmt {
 	t.idCTypes[id] = "GtkWidget"
 	t.topLevel = append(t.topLevel, id)
 	var root ir.Expr = t.qualifyNodeExpr(inst)
@@ -701,6 +717,17 @@ func (t *gtk4Translator) OnComponentRoot(ctx context.Context, id string, inst ir
 		field := presentField(name)
 		t.sinkField(field, "GtkWidget")
 		present = append(present, &ir.Assign{Target: t.fieldRef(field), Op: ast.AssignSet, Value: root})
+	}
+	// One copy of it is found by the key it stands in now, which a reused
+	// instance was handed before its root is bound again.
+	if name := codegen.IdentBareName(inst); key != nil && t.instanceCopies[name] {
+		t.modelSink(copiesField(name), copyMapType("GtkWidget"))
+		present = append(present, &ir.CallStmt{Call: &ir.Call{
+			Type:     ir.TypVoid,
+			Receiver: &ir.Ident{Name: t.gc.ModelRef()},
+			Func:     &ir.Func{Name: copyRegistry(name)},
+			Args:     []ir.CallArg{{Value: key}, {Value: root}},
+		}})
 	}
 	if t.isLocalRef(id) {
 		return append([]ir.Stmt{&ir.LocalVar{

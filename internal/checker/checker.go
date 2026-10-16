@@ -1941,10 +1941,11 @@ func (c *checker) checkSchemePackage(docs []*ast.Document, subFS fs.FS, scheme, 
 // loading library's imports to the program's package would put
 // `import std "sngl:ui"` in the IR of every program that reaches i18n.
 //
-// Contexts are the exception and stay on c.pkg. A context is program-global by
-// design -- the `#locale` sngl:i18n declares has to reach the program's own
-// codegen, which reads c.pkg.Contexts -- so it is discovered alongside the
-// user's rather than kept with the package that wrote it.
+// Contexts too: a context lands on the package that declared it, and that
+// package is its Pkg. A context is program-global by design -- the `#locale`
+// sngl:i18n declares has to reach the program's own codegen, which reads
+// c.pkg.Contexts -- so the program also adopts every context its imports
+// reach (adoptLibContexts).
 func (c *checker) declPkg() *ir.Package {
 	if c.libLoadPkg != nil {
 		return c.libLoadPkg

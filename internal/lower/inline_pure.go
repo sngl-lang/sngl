@@ -35,14 +35,15 @@ func lowerInlinePure(pkg *ir.Package, caps Features, opts Options) error {
 		return nil
 	}
 	st := &inlinePureState{
-		pkg:      pkg,
-		names:    namesOrOwn(opts.names),
-		splices:  opts.splices,
-		platform: opts.Platform,
-		inFlight: map[*ir.Component]bool{},
-		stack:    nil,
-		owned:    soleInstances(pkg, caps, opts),
-		reached:  ir.ReachedHandles(pkg),
+		pkg:        pkg,
+		names:      namesOrOwn(opts.names),
+		splices:    opts.splices,
+		platform:   opts.Platform,
+		inFlight:   map[*ir.Component]bool{},
+		stack:      nil,
+		owned:      soleInstances(pkg, caps, opts),
+		reached:    ir.ReachedHandles(pkg),
+		nullTested: ir.NullTestedIDs(pkg),
 	}
 	for _, comp := range pkg.Components {
 		st.hoist = &comp.Vars
@@ -100,6 +101,11 @@ type inlinePureState struct {
 	// left to passNoInlineComponents: it records what its splice made of the
 	// instance's members, which is what such a read is pointed at.
 	reached map[*ir.Var]bool
+	// nullTested is each `#id` a test null-tests. An instance whose body
+	// renders its first node under an `if` or a `for` has no node to take the
+	// call site's `#id`, so it is left to passNoInlineComponents, which records
+	// the instance it splices (ir.InstancesOf) or builds it at run time.
+	nullTested map[string]bool
 	// loopDepth counts the `for`s the walk is inside. A call site under one
 	// holds many copies of the body and a substitution makes one, so a callee
 	// with state of its own may not be substituted there -- it stays a runtime
@@ -452,7 +458,7 @@ func (st *inlinePureState) inlineNodeInst(n *ir.NodeInst) ([]ir.Stmt, error) {
 
 	pure := st.isPure(comp) || st.constSubstitutable(comp)
 	strictApplies := isPlatformStdlibComponent(st.pkg, comp)
-	if pure && comp.PkgPath() == "" && n.Handle != nil && st.reached[n.Handle] {
+	if pure && comp.PkgPath() == "" && n.Handle != nil && (st.reached[n.Handle] || st.nullTested[n.ID] && !ir.NodeIDRendersWithBody(comp.Stmts)) {
 		pure = false
 	}
 	if strictApplies && !pure {

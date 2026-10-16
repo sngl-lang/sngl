@@ -1,0 +1,164 @@
+# One copy of a component instance with no node of its own, null-tested on
+# every target a test can execute on:
+# testdata/indexed_ref_null_test_spliced.txtar is the code.
+
+sngl test --platform=none app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=html app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=fyne --language=go app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+-- app.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+
+output {
+    go {
+        bubbletea
+        fyne
+        gtk4
+    }
+    kotlin {
+        android
+    }
+    none {
+        html
+    }
+}
+
+component plain(label string) node {
+    text(value=label)
+}
+
+component shouting(label string) node {
+    func shout() string {
+        return label + "!"
+    }
+    text(value=shout())
+}
+
+component either(label string) node {
+    if label == "a" {
+        text(value=label)
+    } else {
+        text(value="z")
+    }
+}
+
+component each(label string) node {
+    for var i = [1, 2] {
+        text(value="{label}{i}")
+    }
+}
+
+component main node {
+    var names = ["a", "b"]
+    var skip = "b"
+    var shown = true
+    vbox {
+        button #move(text="m", @click { skip = "a" })
+        button #hide(text="h", @click { shown = false })
+        if shown {
+            either #one(label=skip)
+        }
+        for var n = names {
+            plain #p(label=n)
+            vbox {
+                var local = 0
+                text(value="{local}")
+                if n != skip {
+                    shouting #s(label=n)
+                    either #e(label=n)
+                    each #f(label=n)
+                }
+            }
+        }
+    }
+}
+
+func testSplicedCopies(t Test, c main) {
+    t.assert(c.one != null)
+    t.assert(c.p[1] != null)
+    t.assert(c.p[2] == null)
+    t.assert(c.s[0] != null)
+    t.assert(c.s[1] == null)
+    t.assert(c.e[0] != null)
+    t.assert(c.e[1] == null)
+    t.assert(c.f[0] != null)
+    t.assert(c.f[1] == null)
+    c.move.click()
+    t.assert(c.s[0] == null)
+    t.assert(c.s[1] != null)
+    t.assert(c.e[0] == null)
+    t.assert(c.e[1] != null)
+    t.assert(c.f[0] == null)
+    t.assert(c.f[1] != null)
+    c.hide.click()
+    t.assert(c.one == null)
+}
+
+window {
+    main
+}
+-- testrun/android/kotlin/app.sngl/main/1 --
+sha256:042b0c28056b008ccb9b1c343a027149
+{
+  "results": [
+    {
+      "Desc": "SplicedCopies",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/main/1 --
+sha256:cb2a3a0323dc5a05c74fdc3e6de062f8
+{
+  "results": [
+    {
+      "Desc": "SplicedCopies",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/main/1 --
+sha256:da40639f5f8fd3a765f4e67b06d4ee78
+{
+  "results": [
+    {
+      "Desc": "SplicedCopies",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/main/1 --
+sha256:e0d0b17a10c16fc89eabb41d9f29f3f4
+{
+  "results": [
+    {
+      "Desc": "SplicedCopies",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/main/1 --
+sha256:5f8497af1e9b809b1e82eb7771836b28
+{
+  "results": [
+    {
+      "Desc": "SplicedCopies",
+      "Passed": true
+    }
+  ]
+}

@@ -69,12 +69,15 @@ func resolveColor(cmd *cobra.Command) error {
 }
 
 func dumpDocument(f dumpFormat, doc any) error {
-	// spew prints a shared pointer once per path to it, not once, so the
-	// back-pointers a checked package holds -- a name's symbol, a type's
-	// declaration -- print the library again from every name. It is handed
-	// the tree JSON writes, which leaves them out.
-	if f == dumpFormatSpew || len(dumpOmitSet) > 0 && f != dumpFormatSNGL {
-		doc = omitted(doc, dumpOmitSet, f == dumpFormatSpew)
+	pkg, _ := doc.(*ir.Package)
+	return dumpDocumentOf(f, doc, pkg)
+}
+
+// dumpDocumentOf dumps doc, which describes pkg: what pkg declares is
+// written, and what another package declares is named.
+func dumpDocumentOf(f dumpFormat, doc any, pkg *ir.Package) error {
+	if f != dumpFormatSNGL {
+		doc = dumpTree(doc, pkg, dumpOmitSet, f == dumpFormatSpew, dumpPointers)
 	}
 	var text string
 	var lexer string

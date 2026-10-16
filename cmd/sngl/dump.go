@@ -24,7 +24,10 @@ var dumpCmd = &cobra.Command{
 	Long: `Dump compiler phase output in various formats.
 
 Use --stage to control how far the compiler runs before dumping.
-Output format is unstable and may change between versions.`,
+
+This is an internal debugging tool and is unsupported. Its output in every
+format may change in any release, nothing tests what it prints, and nothing
+should be built on it.`,
 	Args: cobra.MaximumNArgs(1),
 	RunE: runDump,
 }
@@ -34,9 +37,9 @@ func init() {
 	dumpCmd.Flags().String("format", "sngl", "output format for IR stages (spew, json, sngl)")
 	dumpCmd.Flags().String("color", "auto", "colorize output (auto, on, off)")
 	dumpCmd.Flags().String("input", "auto", "input source (auto, sngl, stdin, txtar, markdown)")
-	dumpCmd.Flags().Bool("pointers", false, "show pointer addresses (useful for identifying shared objects)")
+	dumpCmd.Flags().Bool("pointers", false, "write the address of each object read through a pointer as (addr), the same for a declaration and every reference to it")
 	dumpCmd.Flags().Int("depth", 0, "maximum depth for spew output (default unlimited)")
-	dumpCmd.Flags().StringSlice("omit", nil, "omit struct fields by name (comma-separated, e.g. --omit AST,Pos)")
+	dumpCmd.Flags().StringSlice("omit", nil, "omit struct fields by name (comma-separated, e.g. --omit AST,Pos); Pos or At also drops the position a reference to a declaration carries")
 	dumpCmd.Flags().String("lang", "", "target language")
 	dumpCmd.Flags().String("platform", "", "target platform")
 	dumpCmd.Flags().StringSlice("opt", nil, "generator options (key=value, for codegen stage)")
@@ -44,7 +47,10 @@ func init() {
 	dumpCmd.Flags().Bool("list", false, "print resolved feats and pass list, then exit (lowered stage only)")
 }
 
-var dumpOmitSet map[string]bool
+var (
+	dumpOmitSet  map[string]bool
+	dumpPointers bool
+)
 
 func dumpResolveFlags(cmd *cobra.Command, args []string) (dumpFormat, dumpInput, error) {
 	f, err := resolveDumpFormat(cmd)
@@ -58,17 +64,12 @@ func dumpResolveFlags(cmd *cobra.Command, args []string) (dumpFormat, dumpInput,
 	if err != nil {
 		return "", "", err
 	}
-	if ptrs, _ := cmd.Flags().GetBool("pointers"); ptrs {
-		dumpSpew.DisablePointerAddresses = false
-	}
-	if depth, _ := cmd.Flags().GetInt("depth"); depth > 0 {
-		dumpSpew.MaxDepth = depth
-	}
-	if names, _ := cmd.Flags().GetStringSlice("omit"); len(names) > 0 {
-		dumpOmitSet = make(map[string]bool, len(names))
-		for _, name := range names {
-			dumpOmitSet[name] = true
-		}
+	dumpPointers, _ = cmd.Flags().GetBool("pointers")
+	dumpSpew.MaxDepth, _ = cmd.Flags().GetInt("depth")
+	names, _ := cmd.Flags().GetStringSlice("omit")
+	dumpOmitSet = make(map[string]bool, len(names))
+	for _, name := range names {
+		dumpOmitSet[name] = true
 	}
 	return f, i, nil
 }
@@ -221,7 +222,7 @@ func runDump(cmd *cobra.Command, args []string) error {
 				}
 			}
 		}
-		return dumpDocument(f, codegen.AnalyzeCommon(pkg))
+		return dumpDocumentOf(f, codegen.AnalyzeCommon(pkg), pkg)
 
 	case "lowered":
 		return runDumpLowered(cmd, args, f, inp)

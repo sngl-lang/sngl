@@ -1,0 +1,111 @@
+# A trigger and an assertion inside a loop in a test body run once per
+# iteration on every target, for a condition loop and a loop over a list.
+
+sngl test --platform=none app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=html app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=fyne --language=go app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+-- app.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+
+output {
+    go {
+        bubbletea
+        fyne
+        gtk4
+    }
+    kotlin {
+        android
+    }
+    none {
+        html
+    }
+}
+
+component main node {
+    var hits = 0
+    button #k(text="k{hits}", @click { hits = hits + 1 })
+}
+
+func testLoops(t Test, c main) {
+    var i = 0
+    for i < 3 {
+        c.k.click()
+        i = i + 1
+    }
+    t.assert(c.hits == 3)
+    for var n = [1, 2] {
+        c.k.click()
+        t.assert(c.hits == 3 + n)
+    }
+    t.assert(c.hits == 5)
+}
+
+window {
+    main
+}
+-- testrun/android/kotlin/app.sngl/main/1 --
+sha256:aa43b96e89b5e1b627c458fca2a5c870
+{
+  "results": [
+    {
+      "Desc": "Loops",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/main/1 --
+sha256:0060179f47192c01978124a5988198a2
+{
+  "results": [
+    {
+      "Desc": "Loops",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/main/1 --
+sha256:167780475735a4013b26bf275faadb1a
+{
+  "results": [
+    {
+      "Desc": "Loops",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/main/1 --
+sha256:cbb8822cf8d9efe88e5845d135b5178e
+{
+  "results": [
+    {
+      "Desc": "Loops",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/main/1 --
+sha256:5312c3366acde361ad7c86a4f449fde0
+{
+  "results": [
+    {
+      "Desc": "Loops",
+      "Passed": true
+    }
+  ]
+}
