@@ -755,22 +755,29 @@ struct Schedule {
 #[go.native("time", "time.NewTicker")]
 func newTicker(d time.duration) Schedule
 
-// Stop and no Reset: a period change is a *re-key*, which the effect answers by
-// unmounting and mounting, so the ticker built for the old period is stopped
-// rather than reset. A schedule held across that change is what would want one.
 #[go.native("time", "time.Ticker.Stop", method)]
 func Schedule.stop()
 
-// `enabled` is the effect's *position*, not part of its key: an effect lives as
-// long as the branch it is written in, so `if enabled` is what makes toggling
-// the gate a mount and an unmount. `on=interval` is the key, because a running
-// schedule is the same schedule for as long as its period is unchanged.
+#[go.native("time", "time.Ticker.Reset", method)]
+func Schedule.reset(d time.duration)
+
+// Two effects, because a schedule and its period have two lifetimes. The first
+// has no key, so it lives as long as the branch it is written in: it builds
+// the ticker and stops it. The second is keyed on the period and handles only
+// `@update`, so a new period retimes the running ticker in place rather than
+// stopping it and building another -- a rebuilt one would start its period
+// again from zero.
 //
-// A non-positive interval arms nothing, and it has to be tested before
-// `NewTicker` rather than after: that call *panics* on one. The test is in the
-// mount rather than in the position beside `enabled`, because a comparison of
-// two unit constants does not fold and would reach every program's settle as
-// `1000ms > 0ms`, spelled out.
+// `enabled` and a positive interval are the *position*: an effect lives as long
+// as the branch holding it, so toggling the gate is a mount and an unmount, and
+// a non-positive interval arms nothing. That has to be decided before
+// `NewTicker` and `Reset`, which both *panic* on one.
+//
+// `@update` runs on every write to the interval, one of the period already
+// running included, and `Reset` restarts the period even then -- so the period
+// the ticker runs at is held in `period` and only a different one resets it.
+// The `d > 0ms` test is for the write that takes the interval to zero, which
+// `@update` reports before the branch closes.
 //
 // `Ticker.Stop` does not close `C`, so a goroutine parked on a receive from it
 // stays parked for the life of the process. `done` is the second arm that ends
@@ -779,59 +786,56 @@ func Schedule.stop()
 const component time.timer[platform](interval, enabled, @tick) {
     var handle Schedule
     var done go.chan[bool]
-    var live = false
+    var period time.duration
     var gen = 0
 
-    if enabled {
+    if enabled && interval > 0ms {
         effect(
-            on = interval,
-            @mount(d) {
-                if d > 0ms {
-                    live = true
-                    gen = gen + 1
-                    var mine = gen
-                    handle = newTicker(d)
-                    done = go.makeChan(false)
-                    var stopped = done
-                    var ticker = handle
-                    async.start(func() {
-                        for {
-                            go.select([
-                                go.recv(ticker.C, func(at time.datetime) {
-                                    async.do(func() {
-                                        // A post queued before an unmount runs
-                                        // after it. `gen` is what it finds:
-                                        // without it a stale tick writes state
-                                        // the unmount has finished with.
-                                        if gen != mine {
-                                            return
-                                        }
-                                        tick()
-                                    })
-                                }),
-                                go.recv(stopped, func(b bool) {
-                                    return
-                                }),
-                            ])
-                        }
-                    })
-                }
+            @mount {
+                gen = gen + 1
+                var mine = gen
+                period = interval
+                handle = newTicker(interval)
+                done = go.makeChan(false)
+                var stopped = done
+                var ticker = handle
+                async.start(func() {
+                    for {
+                        go.select([
+                            go.recv(ticker.C, func(at time.datetime) {
+                                async.do(func() {
+                                    // A post queued before an unmount runs
+                                    // after it. `gen` is what it finds:
+                                    // without it a stale tick writes state
+                                    // the unmount has finished with.
+                                    if gen != mine {
+                                        return
+                                    }
+                                    tick()
+                                })
+                            }),
+                            go.recv(stopped, func(b bool) {
+                                return
+                            }),
+                        ])
+                    }
+                })
             },
-            @unmount(d) {
-                // `live` is what stands between a non-positive interval and a
-                // crash: the `d > 0ms` test is in the mount, not in the
-                // effect's desired list, so a zero key is still live here with
-                // `handle` never assigned -- and a nil `*time.Ticker` does not
-                // survive `Stop`.
-                //
+            @unmount {
                 // Closing `done` rather than sending on it: a closed channel is
                 // always ready, so the goroutine's second arm is taken on its
                 // very next pass whether or not anything is listening yet.
-                if live {
-                    live = false
-                    gen = gen + 1
-                    handle.stop()
-                    go.closeChan(done)
+                gen = gen + 1
+                handle.stop()
+                go.closeChan(done)
+            },
+        )
+        effect(
+            on = interval,
+            @update(d) {
+                if d > 0ms && d != period {
+                    period = d
+                    handle.reset(d)
                 }
             },
         )
