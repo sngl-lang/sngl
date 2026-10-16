@@ -24,7 +24,7 @@ cmp first.sngl second.sngl
 
 # Each mark survived, with its arguments.
 grep '#\[go\.native\("example\.com/todo", "todo\.Todo"\)\]' first.sngl
-grep '#\[go\.native\("ID"\)\]' first.sngl
+grep '#\[go\.native\(name="ID"\)\]' first.sngl
 grep '#\[go\.native\("example\.com/todo", "todo\.Fetch", fails, context\)\]' first.sngl
 grep '#\[macro\.unusable\("functions returning multiple values are not supported"\)\]' first.sngl
 grep '#\[go\.native\("example\.com/todo", "todo\.Count"\)\]' first.sngl
@@ -47,9 +47,9 @@ import . "sngl:ui"
 
 #[go.native("example.com/todo", "todo.Todo")]
 struct Todo {
-    #[go.native("ID")]
+    #[go.native(name="ID")]
     id int
-    #[go.native("Extra")]
+    #[go.native(name="Extra")]
     #[macro.unusable("field Todo.Extra has type not representable in SNGL")]
     extra any
 }

@@ -104,7 +104,7 @@ func shout(s string) string
 	if len(errs) == 0 {
 		t.Fatal("a native declaration naming no language checked")
 	}
-	// The one-argument form is the struct field's, so the diagnostic names
+	// A name alone is the struct field's, so the diagnostic names
 	// which half is missing and who may leave it out, rather than restating
 	// that both are needed.
 	if got := errs[0].Error(); !strings.Contains(got, "a package path is required") {
