@@ -59,7 +59,7 @@ func IndexedRefIDs(pkg *Package) map[string]bool {
 					out[id] = true
 				}
 			case *Binary:
-				if sel, ok := nullTestedCopy(x); ok {
+				if sel, path, _, ok := NullTestedRef(x); ok && len(path) > 0 {
 					out[sel.Field] = true
 				}
 			}
@@ -110,39 +110,50 @@ func literalIndices(indices []Expr) []string {
 	return out
 }
 
-// nullTestedCopy is the ref b null-tests one copy of, `c.row[1] == null`'s
-// `c.row`, either way round.
-func nullTestedCopy(b *Binary) (*Select, bool) {
-	if b.Op != ast.BinEq && b.Op != ast.BinNeq {
-		return nil, false
+// NullTestedRef reads a test's `c.x == null` or `c.x != null`, either way
+// round, where `c.x` is a ref to a node that may not be rendered -- or
+// `c.x[1]`, one copy of a node loops rendered under an `if`, whose path holds
+// the index into each loop. present is true for `!=`.
+func NullTestedRef(e Expr) (sel *Select, path []Expr, present, ok bool) {
+	bin, isBin := e.(*Binary)
+	if !isBin || (bin.Op != ast.BinEq && bin.Op != ast.BinNeq) {
+		return nil, nil, false, false
 	}
-	e := b.Left
-	if isNullLit(e) {
-		e = b.Right
-	} else if !isNullLit(b.Right) {
-		return nil, false
+	ref, other := bin.Left, bin.Right
+	if isNullLiteral(ref) {
+		ref, other = other, ref
 	}
-	indexed := false
-	for {
-		switch x := e.(type) {
-		case *Index:
-			indexed = true
-			e = x.Operand
-		case *Conversion:
-			e = x.Operand
-		case *Select:
-			_, isIdent := x.Operand.(*Ident)
-			return x, indexed && isIdent && x.Ref != RefNone
-		default:
-			return nil, false
+	if !isNullLiteral(other) {
+		return nil, nil, false, false
+	}
+	ref = stripConversions(ref)
+	for ix, isIx := ref.(*Index); isIx; ix, isIx = ref.(*Index) {
+		path = append([]Expr{ix.Idx}, path...)
+		ref = stripConversions(ix.Operand)
+	}
+	sel, isSel := ref.(*Select)
+	if !isSel || len(sel.Ref) < len(path)+2 || sel.Ref[len(path)] != RefOption {
+		return nil, nil, false, false
+	}
+	for i := range path {
+		if sel.Ref[i] != RefList {
+			return nil, nil, false, false
 		}
 	}
+	if _, isIdent := sel.Operand.(*Ident); !isIdent {
+		return nil, nil, false, false
+	}
+	return sel, path, bin.Op == ast.BinNeq, true
 }
 
-func isNullLit(e Expr) bool {
+func isNullLiteral(e Expr) bool {
+	lit, ok := stripConversions(e).(*Literal)
+	return ok && lit.Type != nil && lit.Type.Kind == TypeNull
+}
+
+func stripConversions(e Expr) Expr {
 	for conv, ok := e.(*Conversion); ok; conv, ok = e.(*Conversion) {
 		e = conv.Operand
 	}
-	lit, ok := e.(*Literal)
-	return ok && lit.Type != nil && lit.Type.Kind == TypeNull
+	return e
 }

@@ -7,7 +7,7 @@ import "reflect"
 // shared: the library IR every check reads and the ASTs parsed once per
 // process, which a dump run in-process must leave as it found them.
 func omitted(v any, omit map[string]bool, hidden bool) any {
-	p := pruner{omit: omit, hidden: hidden, copies: map[uintptr]reflect.Value{}}
+	p := pruner{omit: omit, hidden: hidden, copies: map[pointerKey]reflect.Value{}}
 	return p.copy(reflect.ValueOf(v)).Interface()
 }
 
@@ -15,8 +15,9 @@ type pruner struct {
 	omit   map[string]bool
 	hidden bool
 	// copies is the copy made of each pointer, so a value shared in the
-	// original is one value in the copy, and a cycle ends.
-	copies map[uintptr]reflect.Value
+	// original is one value in the copy, and a cycle ends. Keyed by type as
+	// well, since a struct and its first field share an address.
+	copies map[pointerKey]reflect.Value
 }
 
 func (p pruner) copy(v reflect.Value) reflect.Value {
@@ -25,11 +26,12 @@ func (p pruner) copy(v reflect.Value) reflect.Value {
 		if v.IsNil() {
 			return v
 		}
-		if cp, ok := p.copies[v.Pointer()]; ok {
+		key := pointerKey{v.Pointer(), v.Type()}
+		if cp, ok := p.copies[key]; ok {
 			return cp
 		}
 		cp := reflect.New(v.Type().Elem())
-		p.copies[v.Pointer()] = cp
+		p.copies[key] = cp
 		cp.Elem().Set(p.copy(v.Elem()))
 		return cp
 
@@ -81,4 +83,9 @@ func (p pruner) copy(v reflect.Value) reflect.Value {
 		return cp
 	}
 	return v
+}
+
+type pointerKey struct {
+	addr uintptr
+	typ  reflect.Type
 }

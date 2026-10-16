@@ -17,64 +17,13 @@ func PresenceMethod(id string) string { return id + "Present" }
 // (ir.CopyKey) is rendered now.
 func PresenceAtMethod(id string) string { return InvokerAt(PresenceMethod(id)) }
 
-// RefNullTest reads a test's `c.x == null` or `c.x != null`, either way round,
-// where `c.x` is a ref to a node that may not be rendered -- or `c.x[1]`, one
-// copy of a node loops rendered under an `if`, whose path holds the index into
-// each loop. present is true for `!=`.
+// RefNullTest is ir.NullTestedRef, naming the instance variable and the id.
 func RefNullTest(e ir.Expr) (recv, id string, path []ir.Expr, present, ok bool) {
-	sel, path, present, ok := refNullTest(e)
+	sel, path, present, ok := ir.NullTestedRef(e)
 	if !ok {
 		return "", "", nil, false, false
 	}
 	return sel.Operand.(*ir.Ident).Name, sel.Field, path, present, true
-}
-
-func refNullTest(e ir.Expr) (*ir.Select, []ir.Expr, bool, bool) {
-	bin, isBin := e.(*ir.Binary)
-	if !isBin || (bin.Op != ast.BinEq && bin.Op != ast.BinNeq) {
-		return nil, nil, false, false
-	}
-	ref, other := bin.Left, bin.Right
-	if isNull(ref) {
-		ref, other = other, ref
-	}
-	if !isNull(other) {
-		return nil, nil, false, false
-	}
-	ref = stripConversions(ref)
-	var path []ir.Expr
-	for ix, ok := ref.(*ir.Index); ok; ix, ok = ref.(*ir.Index) {
-		path = append([]ir.Expr{ix.Idx}, path...)
-		ref = stripConversions(ix.Operand)
-	}
-	sel, isSel := ref.(*ir.Select)
-	if !isSel || len(sel.Ref) < len(path)+2 || sel.Ref[len(path)] != ir.RefOption {
-		return nil, nil, false, false
-	}
-	for i := range path {
-		if sel.Ref[i] != ir.RefList {
-			return nil, nil, false, false
-		}
-	}
-	if _, isIdent := sel.Operand.(*ir.Ident); !isIdent {
-		return nil, nil, false, false
-	}
-	return sel, path, bin.Op == ast.BinNeq, true
-}
-
-func isNull(e ir.Expr) bool {
-	lit, ok := stripConversions(e).(*ir.Literal)
-	return ok && lit.Type != nil && lit.Type.Kind == ir.TypeNull
-}
-
-func stripConversions(e ir.Expr) ir.Expr {
-	for {
-		conv, ok := e.(*ir.Conversion)
-		if !ok {
-			return e
-		}
-		e = conv.Operand
-	}
 }
 
 // NullTestedRefs is every `#id` a test in pkg null-tests, which is what a
@@ -113,7 +62,7 @@ func LowerRefNullTests(stmts []ir.Stmt, methodFields map[string]bool) ([]ir.Stmt
 	}
 	out := ir.CloneStmtsSharingDecls(stmts)
 	_ = ir.RewriteExprs(out, func(e ir.Expr) (ir.Expr, error) {
-		sel, path, present, ok := refNullTest(e)
+		sel, path, present, ok := ir.NullTestedRef(e)
 		if !ok {
 			return e, nil
 		}
