@@ -1,0 +1,128 @@
+# Two components each building an instance named `#b` under a reactive `if`
+# compile and run on every target a test can execute on:
+# testdata/instance_id_in_two_components.txtar is the code.
+
+sngl test --platform=none app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=html app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=fyne --language=go app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+-- app.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+
+output {
+    go {
+        bubbletea
+        fyne
+        gtk4
+    }
+    kotlin {
+        android
+    }
+    none {
+        html
+    }
+}
+component badge(label string) node {
+    var hits = 0
+    button #hit(text="{label}{hits}", @click { hits = hits + 1 })
+}
+
+component panel node {
+    var on = true
+    vbox {
+        button #flip(text="f", @click { on = !on })
+        if on {
+            badge #b(label="p")
+        }
+    }
+}
+
+component main node {
+    var shown = true
+    var other = false
+    vbox {
+        button #ts(text="s", @click { shown = !shown })
+        button #to(text="o", @click { other = !other })
+        if shown {
+            badge #b(label="m")
+        }
+        if other {
+            panel
+        }
+    }
+}
+
+func testBothInstancesRender(t Test, c main) {
+    c.ts.click()
+    c.to.click()
+    t.assert(c.other)
+}
+
+window {
+    main
+}
+-- testrun/android/kotlin/app.sngl/main/1 --
+sha256:316975a7b4791798068f689de489a281
+{
+  "results": [
+    {
+      "Desc": "BothInstancesRender",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/main/1 --
+sha256:58ff45f51ca222f63d5c06a4b931bb48
+{
+  "results": [
+    {
+      "Desc": "BothInstancesRender",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/main/1 --
+sha256:e64e6328f867d9361ea189b64d789e8f
+{
+  "results": [
+    {
+      "Desc": "BothInstancesRender",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/main/1 --
+sha256:ef3a08eef09bb4a5f731ad284c9f6a15
+{
+  "results": [
+    {
+      "Desc": "BothInstancesRender",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/main/1 --
+sha256:f26068c0e42e868b0528277adb4f002e
+{
+  "results": [
+    {
+      "Desc": "BothInstancesRender",
+      "Passed": true
+    }
+  ]
+}
