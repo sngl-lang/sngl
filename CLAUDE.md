@@ -2762,8 +2762,10 @@ lives in `sngl:macro` for the same reason `shape` lives in `sngl:ui/draw`, and
 because its users are outside the compiler: a language plugin generating marked
 SNGL to describe a foreign API, a platform package naming its host types.
 `#[foreign("go:example.com/api", "api.Entry")]` gives the import path and the
-name there; one argument is the name alone, which is all a struct field can
-say. A function may add flags — `pure` and `async` — that state what a call
+name there; a struct field writes the name alone, `#[foreign(name="Title")]`,
+having no package of its own. A mark's arguments bind as a call's do --
+positionally or by name, constants only, a trailing flag list being a rest or
+`flags=[…]` (`markArgsFor`). A function may add flags — `pure` and `async` — that state what a call
 costs, because a foreign function's SNGL body describes it rather than
 implementing it and nothing may be inferred from it. `pure` is the sharp edge:
 it lets the compiler evaluate a call at build time, so a wrongly marked

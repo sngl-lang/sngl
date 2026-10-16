@@ -119,14 +119,15 @@ type Model struct {
 	frame               int
 	handle__inst0       *time.Ticker
 	done__inst0         chan bool
-	live__inst0         bool
+	period__inst0       time.Duration
 	gen__inst0          int
 	visible__inst0      bool
 	__effect0_live      []bool
 	__effect0_desired   []bool
-	__effect1_key       time.Duration
-	__effect1_live      []time.Duration
-	__effect1_desired   []time.Duration
+	__effect1_live      []bool
+	__effect1_desired   []bool
+	__effect2_key       time.Duration
+	__effect2_dirty     bool
 	__effects0_settling bool
 	__effects0_pending  bool
 	__effects0_steps    int
@@ -143,14 +144,15 @@ func New() *Model {
 	m.frame = 0
 	m.handle__inst0 = nil
 	m.done__inst0 = nil
-	m.live__inst0 = false
+	m.period__inst0 = 0
 	m.gen__inst0 = 0
 	m.visible__inst0 = true
 	m.__effect0_live = []bool{}
 	m.__effect0_desired = []bool{}
-	m.__effect1_key = (time.Duration(0) * time.Millisecond)
-	m.__effect1_live = []time.Duration{}
-	m.__effect1_desired = []time.Duration{}
+	m.__effect1_live = []bool{}
+	m.__effect1_desired = []bool{}
+	m.__effect2_key = (time.Duration(0) * time.Millisecond)
+	m.__effect2_dirty = false
 	m.__effects0_settling = false
 	m.__effects0_pending = false
 	m.__effects0_steps = 0
@@ -192,56 +194,49 @@ func (m *Model) __effect0_up() {
 }
 
 func (m *Model) __effect1_mount() {
-	if m.__effect1_key > (time.Duration(0) * time.Millisecond) {
-		m.live__inst0 = true
-		m.gen__inst0 = (m.gen__inst0 + 1)
-		var mine int = m.gen__inst0
-		m.handle__inst0 = time.NewTicker(m.__effect1_key)
-		m.done__inst0 = make(chan bool)
-		stopped := m.done__inst0
-		ticker := m.handle__inst0
-		go func() {
-			for {
-				select {
-				case <-ticker.C:
-					fyne.Do(func() {
-						if m.gen__inst0 != mine {
-							return
-						}
-						m.frame = (m.frame + 1)
-						m.__n1Ctx = snglcanvas.New(40, 40)
-						m._canvasDraw0(m.__n1Ctx)
-						m.__n1.Image = m.__n1Ctx.Result()
-						m.__n1.Refresh()
-					})
-				case <-stopped:
-					return
-				}
+	m.gen__inst0 = (m.gen__inst0 + 1)
+	var mine int = m.gen__inst0
+	m.period__inst0 = (time.Duration(100) * time.Millisecond)
+	m.handle__inst0 = time.NewTicker((time.Duration(100) * time.Millisecond))
+	m.done__inst0 = make(chan bool)
+	stopped := m.done__inst0
+	ticker := m.handle__inst0
+	go func() {
+		for {
+			select {
+			case <-ticker.C:
+				fyne.Do(func() {
+					if m.gen__inst0 != mine {
+						return
+					}
+					m.frame = (m.frame + 1)
+					m.__n1Ctx = snglcanvas.New(40, 40)
+					m._canvasDraw0(m.__n1Ctx)
+					m.__n1.Image = m.__n1Ctx.Result()
+					m.__n1.Refresh()
+				})
+			case <-stopped:
+				return
 			}
-		}()
-	}
+		}
+	}()
 }
 
 func (m *Model) __effect1_unmount() {
-	if m.live__inst0 {
-		m.live__inst0 = false
-		m.gen__inst0 = (m.gen__inst0 + 1)
-		m.handle__inst0.Stop()
-		close(m.done__inst0)
-	}
+	m.gen__inst0 = (m.gen__inst0 + 1)
+	m.handle__inst0.Stop()
+	close(m.done__inst0)
 }
 
 func (m *Model) __effect1_down() {
-	m.__effect1_desired = []time.Duration{}
-	m.__effect1_desired = append(m.__effect1_desired, (time.Duration(100) * time.Millisecond))
+	m.__effect1_desired = []bool{}
+	m.__effect1_desired = append(m.__effect1_desired, true)
 	for __effect1_i, _ := range m.__effect1_live {
 		var __effect1_j int = ((len(m.__effect1_live) - 1) - __effect1_i)
 		if __effect1_j >= len(m.__effect1_desired) {
-			m.__effect1_key = m.__effect1_live[__effect1_j]
 			m.__effect1_unmount()
 		} else {
 			if m.__effect1_desired[__effect1_j] != m.__effect1_live[__effect1_j] {
-				m.__effect1_key = m.__effect1_live[__effect1_j]
 				m.__effect1_unmount()
 			}
 		}
@@ -251,11 +246,9 @@ func (m *Model) __effect1_down() {
 func (m *Model) __effect1_up() {
 	for __effect1_i, __effect1_k := range m.__effect1_desired {
 		if __effect1_i >= len(m.__effect1_live) {
-			m.__effect1_key = __effect1_k
 			m.__effect1_mount()
 		} else {
 			if m.__effect1_live[__effect1_i] != __effect1_k {
-				m.__effect1_key = __effect1_k
 				m.__effect1_mount()
 			}
 		}
@@ -264,11 +257,17 @@ func (m *Model) __effect1_up() {
 }
 
 func (m *Model) __effect1_teardown() {
-	for __effect1_ti, _ := range m.__effect1_live {
-		m.__effect1_key = m.__effect1_live[((len(m.__effect1_live) - 1) - __effect1_ti)]
+	for range m.__effect1_live {
 		m.__effect1_unmount()
 	}
-	m.__effect1_live = []time.Duration{}
+	m.__effect1_live = []bool{}
+}
+
+func (m *Model) __effect2_update() {
+	if (m.__effect2_key > (time.Duration(0) * time.Millisecond)) && (m.__effect2_key != m.period__inst0) {
+		m.period__inst0 = m.__effect2_key
+		m.handle__inst0.Reset(m.__effect2_key)
+	}
 }
 
 func (m *Model) __effects0_settle() {
@@ -281,6 +280,11 @@ func (m *Model) __effects0_settle() {
 		for m.__effects0_pending && (m.__effects0_steps < 512) {
 			m.__effects0_pending = false
 			m.__effects0_steps = (m.__effects0_steps + 1)
+			if m.__effect2_dirty {
+				m.__effect2_dirty = false
+				m.__effect2_key = (time.Duration(100) * time.Millisecond)
+				m.__effect2_update()
+			}
 			m.__effect1_down()
 			m.__effect0_down()
 			m.__effect0_up()
@@ -336,12 +340,12 @@ func (m *Model) SetDone__inst0(v chan bool) {
 	m.done__inst0 = v
 }
 
-func (m *Model) Live__inst0() bool {
-	return m.live__inst0
+func (m *Model) Period__inst0() time.Duration {
+	return m.period__inst0
 }
 
-func (m *Model) SetLive__inst0(v bool) {
-	m.live__inst0 = v
+func (m *Model) SetPeriod__inst0(v time.Duration) {
+	m.period__inst0 = v
 }
 
 func (m *Model) Gen__inst0() int {
@@ -569,6 +573,6 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:44ec5fa1395e0596152ae01b2bec20b7
+pass sha256:5a6ff69472149734d12c91db58b7fcfe
 -- run/none/html --
 pass sha256:605647f3bf0f2589139868f92622d51d

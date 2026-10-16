@@ -1406,7 +1406,7 @@ body { font-family: system-ui, sans-serif; }
     history.back();
   });
   function __sngl_init() {
-    $2.textContent = [1].length === 1 && true ? "showing" : "hidden";
+    $2.textContent = [1].length === 1 ? "showing" : "hidden";
   }
   __sngl_init();
 })();
@@ -1452,7 +1452,7 @@ body { font-family: system-ui, sans-serif; }
     history.back();
   });
   function __sngl_init() {
-    $2.textContent = [0].length === 1 && true ? "showing" : "hidden";
+    $2.textContent = [0].length === 1 ? "showing" : "hidden";
   }
   __sngl_init();
 })();
@@ -1467,4 +1467,4 @@ pass sha256:5604ae7acf2823f9c7aa5691c8fb849c
 -- run/kotlin/android --
 pass sha256:dc9fbcbe4e3c45e7d4bf3462c3b0d232
 -- run/none/html --
-pass sha256:70a05d3dccf1e4d4bb3022d0b37088b7
+pass sha256:7f287c5849ab19c1808dda96f4c17b45

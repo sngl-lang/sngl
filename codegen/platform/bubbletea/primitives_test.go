@@ -36,7 +36,7 @@ func TestPrimitivesCarryTheirIntrinsicID(t *testing.T) {
 				if a.Name != "intrinsic" || len(a.Args) != 1 {
 					continue
 				}
-				lit, ok := a.Args[0].(*ast.LiteralExpr)
+				lit, ok := a.Args[0].Value.(*ast.LiteralExpr)
 				if !ok {
 					continue
 				}

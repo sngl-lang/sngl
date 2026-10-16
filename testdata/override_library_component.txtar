@@ -55,7 +55,6 @@ type Measurement struct {
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
 	n              int
-	failed__inst0  bool
 	visible__inst0 bool
 	__focusID      int
 
@@ -66,7 +65,6 @@ type Model struct {
 func New() Model {
 	m := Model{}
 	m.n = 4
-	m.failed__inst0 = false
 	m.visible__inst0 = true
 	m.__focusID = 0
 	return m
@@ -105,21 +103,6 @@ func SetNCmd(v int) tea.Cmd {
 	return func() tea.Msg { return setNMsg{value: v} }
 }
 
-func (m Model) Failed__inst0() bool {
-	return m.failed__inst0
-}
-
-func (m Model) SetFailed__inst0(v bool) Model {
-	m.failed__inst0 = v
-	return m
-}
-
-type setFailed__inst0Msg struct{ value bool }
-
-func SetFailed__inst0Cmd(v bool) tea.Cmd {
-	return func() tea.Msg { return setFailed__inst0Msg{value: v} }
-}
-
 func (m Model) Visible__inst0() bool {
 	return m.visible__inst0
 }
@@ -146,8 +129,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case setNMsg:
 		m = m.SetN(msg.value)
-	case setFailed__inst0Msg:
-		m = m.SetFailed__inst0(msg.value)
 	case setVisible__inst0Msg:
 		m = m.SetVisible__inst0(msg.value)
 	case tea.WindowSizeMsg:
@@ -179,22 +160,12 @@ func (m Model) View() tea.View {
 	if m.visible__inst0 {
 		var contentChildren []string
 		var content_0 string
-		if m.failed__inst0 || true {
-			content_0 = lipgloss.NewStyle().
-				Background(lipgloss.Color("#cccccc")).
-				Height(5).
-				AlignHorizontal(lipgloss.Center).
-				Width(5).Render(fmt.Sprint("AB"))
-		} else {
-			var content_0Children []string
-			content_0 = lipgloss.JoinVertical(lipgloss.Left, content_0Children...)
-			content_0 = lipgloss.NewStyle().
-				Height(5).
-				Width(5).Render(content_0)
-		}
-		if content_0 != "" {
-			contentChildren = append(contentChildren, content_0)
-		}
+		content_0 = lipgloss.NewStyle().
+			Background(lipgloss.Color("#cccccc")).
+			Height(5).
+			AlignHorizontal(lipgloss.Center).
+			Width(5).Render(fmt.Sprint("AB"))
+		contentChildren = append(contentChildren, content_0)
 		var content_1 string
 		content_1 = lipgloss.NewStyle().Render(fmt.Sprint(fmt.Sprint((m.n * 2))))
 		contentChildren = append(contentChildren, content_1)
@@ -265,6 +236,6 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:4eea0b73b37f9f37a43774641cf6206c
+pass sha256:0d26e7b34e25dd72306eb218a6500cf5
 -- run/none/html --
 pass sha256:f1b5c5a7ec8d255c255d52528799a866

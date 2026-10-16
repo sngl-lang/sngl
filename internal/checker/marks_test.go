@@ -104,7 +104,7 @@ func TestBuiltinMarkRejectsTheWrongArity(t *testing.T) {
 #[builtin]
 struct Tiny {}
 `)
-	wantMarkErr(t, errs, "macro builtin: expected 1 argument, got 0")
+	wantMarkErr(t, errs, "macro builtin: missing required argument \"kind\"")
 }
 
 func TestIntrinsicMarkStampsIdAndFlags(t *testing.T) {
@@ -227,7 +227,7 @@ func TestForeignMarksStructAndField(t *testing.T) {
 	pkg, errs := checkForeign(t, `
 #[std.foreign("js:example.com/api", "Entry")]
 struct Post {
-    #[std.foreign("Title")]
+    #[std.foreign(name="Title")]
     heading string = ""
 }
 `)
@@ -236,7 +236,7 @@ struct Post {
 	if sd.Foreign.Scheme != "js" || sd.Foreign.Path != "example.com/api" || sd.Foreign.Name != "Entry" || !sd.Foreign.Marked {
 		t.Errorf("struct foreign = %+v", sd.Foreign)
 	}
-	// One argument is the name alone: a field has no package of its own.
+	// A field names its name alone: it has no package of its own.
 	if f := sd.Fields[0]; f.Foreign.Name != "Title" || f.Foreign.Path != "" {
 		t.Errorf("field foreign = %+v", f.Foreign)
 	}
@@ -255,6 +255,25 @@ const func add(a int, b int) => a + b
 	fn := pkg.Funcs[0]
 	if !fn.IsAsync || fn.Purity != ir.PurityPure || !fn.Const || fn.Foreign.Name != "add" {
 		t.Errorf("func = async %v purity %v foreign %+v", fn.IsAsync, fn.Purity, fn.Foreign)
+	}
+}
+
+// A mark's arguments bind as a call's do: by position, by name in any order,
+// and the trailing flags as a list by name.
+func TestForeignMarkArgsByName(t *testing.T) {
+	pkg, errs := checkForeign(t, `
+#[std.foreign(name="Entry", path="js:example.com/api")]
+struct Post {}
+
+#[std.foreign("js:example.com/api", name="add", flags=[async])]
+const func add(a int, b int) => a + b
+`)
+	wantNoMarkErrs(t, errs)
+	if f := pkg.Structs[0].Foreign; f.Scheme != "js" || f.Path != "example.com/api" || f.Name != "Entry" {
+		t.Errorf("struct foreign = %+v", f)
+	}
+	if fn := pkg.Funcs[0]; !fn.IsAsync || fn.Foreign.Name != "add" {
+		t.Errorf("func = async %v foreign %+v", fn.IsAsync, fn.Foreign)
 	}
 }
 
@@ -291,7 +310,7 @@ component App ui.node {
 func TestForeignRefusesSeveralNames(t *testing.T) {
 	_, errs := checkForeign(t, `
 struct Post {
-    #[std.foreign("Title")]
+    #[std.foreign(name="Title")]
     a, b string = ""
 }
 `)
@@ -303,7 +322,7 @@ func TestForeignRequiresAName(t *testing.T) {
 #[std.foreign]
 struct Post {}
 `)
-	wantMarkErr(t, errs, "macro std.foreign: expected at least 1 argument, got 0")
+	wantMarkErr(t, errs, "#[foreign] requires a non-empty name")
 }
 
 func TestForeignRejectsAnUnknownFlag(t *testing.T) {

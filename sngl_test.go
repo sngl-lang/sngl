@@ -41,7 +41,7 @@ func TestMarkedFieldWithoutMacroPass(t *testing.T) {
 import . "sngl:macro"
 
 struct Entry {
-    #[foreign("Title")]
+    #[foreign(name="Title")]
     title string
 }
 

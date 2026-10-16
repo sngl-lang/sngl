@@ -1,0 +1,64 @@
+// A resource kept across a change of what configures it is two effects: one
+// with no key, which lives as long as its position and holds the resource, and
+// one keyed on the setting, which handles only `@update` and retunes the
+// resource in place. Neither handler changes what the other means, so the
+// keyed effect's `@update` is the whole of what a change does -- no unmount and
+// no mount -- and the resource is torn down only when the position closes.
+
+import . "sngl:test"
+import . "sngl:ui"
+
+component tuned node {
+    var (
+        on = true
+        period = 1
+        log list[string] = []
+    )
+
+    if on {
+        effect(
+            @mount {
+                log.push("open {period}")
+            },
+            @unmount {
+                log.push("close")
+            },
+        )
+        effect(
+            on = period,
+            @update(p) {
+                log.push("retune {p}")
+            },
+        )
+    }
+
+    text #out(value=log.join(","))
+}
+
+func testOpensOnce(t Test, c tuned) {
+    t.assert(c.out.value == "open 1")
+}
+
+func testAChangeRetunesWithoutReopening(t Test, c tuned) {
+    c.period = 2
+    t.assert(c.out.value == "open 1,retune 2")
+    c.period = 3
+    t.assert(c.out.value == "open 1,retune 2,retune 3")
+}
+
+func testClosingThePositionClosesTheResource(t Test, c tuned) {
+    c.period = 2
+    c.on = false
+    t.assert(c.out.value == "open 1,retune 2,close")
+}
+
+func testReopeningReadsTheCurrentSetting(t Test, c tuned) {
+    c.on = false
+    c.period = 5
+    c.on = true
+    t.assert(c.out.value == "open 1,close,open 5")
+}
+
+window {
+    tuned
+}

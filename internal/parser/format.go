@@ -1710,7 +1710,7 @@ func (f *formatter) writeAttr(attr ast.MacroAttr) {
 			f.newline()
 			f.indent++
 			for i, arg := range attr.Args {
-				f.writeExpr(arg)
+				f.writeArgOrHandlerSpaced(arg, true)
 				f.write(",")
 				if i < len(attr.ArgTrailing) && attr.ArgTrailing[i] != nil {
 					f.writeTrailing(attr.ArgTrailing[i])
@@ -1723,7 +1723,7 @@ func (f *formatter) writeAttr(attr ast.MacroAttr) {
 				if i > 0 {
 					f.write(", ")
 				}
-				f.writeExpr(arg)
+				f.writeArgOrHandler(arg)
 			}
 		}
 		f.write(")")

@@ -375,16 +375,14 @@ window.__sngl_boot = () => {
     }
     function __set___p1(__v) {
       __prop___p1 = __v;
-      __n4.setAttribute("style", "border-radius:0px;border:none;cursor:pointer;padding-left:16px;padding-right:16px;padding-top:8px;padding-bottom:8px");
+      __n4.setAttribute("style", "background-color:rgba(0,0,0,0);border-radius:0px;border:none;cursor:pointer;padding-left:16px;padding-right:16px;padding-top:8px;padding-bottom:8px");
       __n4.style.setProperty("border-bottom", __prop___p1 === __prop___p2 ? "2px solid currentColor" : "2px solid transparent");
-      __n4.style.setProperty("background-color", _snglStyleColor(false ? { r: 0, g: 0, b: 0, a: 20 } : { r: 0, g: 0, b: 0, a: 0 }));
       __n4.style.setProperty("font-weight", _snglStyleKeyword(__prop___p1 === __prop___p2 ? "bold" : "normal"));
     }
     function __set___p2(__v) {
       __prop___p2 = __v;
-      __n4.setAttribute("style", "border-radius:0px;border:none;cursor:pointer;padding-left:16px;padding-right:16px;padding-top:8px;padding-bottom:8px");
+      __n4.setAttribute("style", "background-color:rgba(0,0,0,0);border-radius:0px;border:none;cursor:pointer;padding-left:16px;padding-right:16px;padding-top:8px;padding-bottom:8px");
       __n4.style.setProperty("border-bottom", __prop___p1 === __prop___p2 ? "2px solid currentColor" : "2px solid transparent");
-      __n4.style.setProperty("background-color", _snglStyleColor(false ? { r: 0, g: 0, b: 0, a: 20 } : { r: 0, g: 0, b: 0, a: 0 }));
       __n4.style.setProperty("font-weight", _snglStyleKeyword(__prop___p1 === __prop___p2 ? "bold" : "normal"));
     }
     function __set___on0(__v) {
@@ -393,9 +391,8 @@ window.__sngl_boot = () => {
     let __n4 = document.createElement("button");
     __n4.textContent = __prop___p0.label;
     __n4.disabled = __prop___p0.disabled;
-    __n4.setAttribute("style", "border-radius:0px;border:none;cursor:pointer;padding-left:16px;padding-right:16px;padding-top:8px;padding-bottom:8px");
+    __n4.setAttribute("style", "background-color:rgba(0,0,0,0);border-radius:0px;border:none;cursor:pointer;padding-left:16px;padding-right:16px;padding-top:8px;padding-bottom:8px");
     __n4.style.setProperty("border-bottom", __prop___p1 === __prop___p2 ? "2px solid currentColor" : "2px solid transparent");
-    __n4.style.setProperty("background-color", _snglStyleColor(false ? { r: 0, g: 0, b: 0, a: 20 } : { r: 0, g: 0, b: 0, a: 0 }));
     __n4.style.setProperty("font-weight", _snglStyleKeyword(__prop___p1 === __prop___p2 ? "bold" : "normal"));
     __n4.setAttribute("role", "tab");
     __n4.addEventListener("click", () => {
@@ -633,11 +630,6 @@ window.__sngl_boot = () => {
       }
     }
   }
-  function _snglStyleColor(c) {
-    if (typeof c === "string") return c;
-    if (c.a < 255) return "rgba(" + c.r + "," + c.g + "," + c.b + "," + c.a / 255 + ")";
-    return "#" + [c.r, c.g, c.b].map((v) => v.toString(16).padStart(2, "0")).join("");
-  }
   function _snglStyleLength(v) {
     if (typeof v === "number") return v + "px";
     const t = Object.keys(v).filter((k) => v[k] !== 0).map((k) => v[k] + k);
@@ -708,9 +700,9 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:94135728a308bdbefa9667da683bc20c
+pass sha256:7d6979a879f2b496caa3731444777659
 -- testrun/html/none/component_browser_markup.sngl/widgets/1 --
-sha256:b80ee9dbf701a30188a0fc699f4f57ac
+sha256:c0fa37a5ca408923a9a1c89831bc47cc
 {
   "results": [
     {

@@ -1,6 +1,7 @@
 package checker
 
 import (
+	"errors"
 	"fmt"
 	"slices"
 	"strings"
@@ -132,7 +133,11 @@ func (c *checker) applyMark(attr ast.MacroAttr, decl markTarget, sym any, inPara
 	}
 	args, err := markArgsFor(fn, attr.Args, c.markConstValue)
 	if err != nil {
-		c.error(attr.Pos, "macro %s: %s", attr.MacroName(), err)
+		pos := attr.Pos
+		if e, ok := err.(*markArgError); ok {
+			pos = e.pos
+		}
+		c.error(pos, "macro %s: %s", attr.MacroName(), err)
 		return
 	}
 	impl, ok := markImpls[markKey{uri, attr.Name}]
@@ -309,7 +314,7 @@ const (
 	argString                // constant string
 	argInt                   // constant integer
 	argIdent                 // one enum member, written bare
-	argIdents                // the remaining arguments, each an enum member
+	argIdents                // enum members: the remaining positional arguments, or a list by name
 )
 
 // markArgKind reads a parameter's declared type as an argument form, plus the
@@ -347,52 +352,97 @@ func enumMemberNames(t *ir.Type) []string {
 	return names
 }
 
-// markArgsFor checks a mark's raw arguments against the macro's declared
-// parameters and reads each to its form. Arguments are positional; a parameter
-// with a default may be omitted from the tail, and a trailing list parameter
-// takes however many remain.
-func markArgsFor(fn *ir.Func, raw []ast.Expr, constVal func(string) (ast.Expr, bool)) (markArgs, error) {
+// markArgsFor binds a mark's arguments to the macro's declared parameters and
+// reads each to its form. A mark's argument list is a call's: positional
+// arguments fill the parameters in order, a named one the parameter it names,
+// and a parameter with a default may be omitted. A trailing list of enum
+// members is a rest, taking the positional arguments past the others, or a
+// list literal written by name.
+func markArgsFor(fn *ir.Func, raw []ast.Arg, constVal func(string) (ast.Expr, bool)) (markArgs, error) {
 	params := fn.Params
-	required, variadic := 0, false
-	for i, p := range params {
-		kind, _ := markArgKind(p.Type)
-		if kind == argIdents && i == len(params)-1 {
-			variadic = true
-			continue
-		}
-		if p.Default == nil {
-			required++
+	n := len(params)
+	variadic := -1
+	if n > 0 {
+		if kind, _ := markArgKind(params[n-1].Type); kind == argIdents {
+			variadic = n - 1
 		}
 	}
-	if len(raw) < required || (!variadic && len(raw) > len(params)) {
-		return markArgs{}, fmt.Errorf("expected %s, got %d", arityDesc(required, len(params), variadic), len(raw))
-	}
-	vals := make([]markVal, len(params))
-	for i, p := range params {
-		kind, enum := markArgKind(p.Type)
-		if variadic && i == len(params)-1 {
-			rest := raw[min(i, len(raw)):]
-			idents := make([]string, 0, len(rest))
-			for _, e := range rest {
-				v, err := readMarkArg(argIdent, enum, e, constVal)
+	vals := make([]markVal, n)
+	var rest []string
+	var restPos *ast.Pos
+	positional, seenNamed := 0, false
+	for _, a := range raw {
+		pos := a.Value.ExprPos()
+		idx := positional
+		if a.Name == "" {
+			switch {
+			case seenNamed:
+				return markArgs{}, argErr(pos, "positional argument after named argument")
+			case variadic >= 0 && idx >= variadic:
+				_, enum := markArgKind(params[variadic].Type)
+				v, err := readMarkArg(argIdent, enum, a.Value, constVal)
 				if err != nil {
-					return markArgs{}, fmt.Errorf("argument %q: %w", p.Name, err)
+					return markArgs{}, argErr(pos, "argument %q: %s", params[variadic].Name, err)
 				}
-				idents = append(idents, v.ident)
+				rest = append(rest, v.ident)
+				if restPos == nil {
+					restPos = pos
+				}
+				continue
+			case idx >= n:
+				return markArgs{}, argErr(pos, "too many arguments: expected at most %d", n)
 			}
-			vals[i] = markVal{set: true, idents: idents}
-			break
+			positional++
+		} else {
+			seenNamed = true
+			pos = &a.NamePos
+			idx = slices.IndexFunc(params, func(p *ir.Param) bool { return p.Name == a.Name })
+			if idx < 0 {
+				return markArgs{}, argErr(pos, "unknown parameter %q", a.Name)
+			}
+			if vals[idx].set {
+				return markArgs{}, argErr(pos, "parameter %q already provided", a.Name)
+			}
 		}
-		if i >= len(raw) {
-			break // the rest have defaults and were omitted
-		}
-		v, err := readMarkArg(kind, enum, raw[i], constVal)
+		p := params[idx]
+		kind, enum := markArgKind(p.Type)
+		v, err := readMarkArg(kind, enum, a.Value, constVal)
 		if err != nil {
-			return markArgs{}, fmt.Errorf("argument %q: %w", p.Name, err)
+			return markArgs{}, argErr(a.Value.ExprPos(), "argument %q: %s", p.Name, err)
 		}
-		vals[i] = v
+		vals[idx] = v
+	}
+	if variadic >= 0 {
+		if vals[variadic].set && rest != nil {
+			return markArgs{}, argErr(restPos, "parameter %q already provided", params[variadic].Name)
+		}
+		if !vals[variadic].set {
+			vals[variadic] = markVal{set: true, idents: rest}
+		}
+	}
+	for i, p := range params {
+		if !vals[i].set && p.Default == nil {
+			return markArgs{}, fmt.Errorf("missing required argument %q", p.Name)
+		}
 	}
 	return markArgs{params: params, vals: vals}, nil
+}
+
+// markArgError is a mark's argument refused at the argument, where the
+// position is known; an error without one is reported at the mark.
+type markArgError struct {
+	pos ast.Pos
+	msg string
+}
+
+func (e *markArgError) Error() string { return e.msg }
+
+func argErr(pos *ast.Pos, format string, args ...any) error {
+	msg := fmt.Sprintf(format, args...)
+	if pos == nil || !pos.IsSet() {
+		return errors.New(msg)
+	}
+	return &markArgError{*pos, msg}
 }
 
 func readMarkArg(kind argKind, enum []string, e ast.Expr, constVal func(string) (ast.Expr, bool)) (markVal, error) {
@@ -418,6 +468,20 @@ func readMarkArg(kind argKind, enum []string, e ast.Expr, constVal func(string) 
 			return markVal{}, err
 		}
 		return markVal{set: true, num: n}, nil
+	case argIdents:
+		list, ok := e.(*ast.ListExpr)
+		if !ok {
+			return markVal{}, fmt.Errorf("expected a list of identifiers")
+		}
+		idents := make([]string, 0, len(list.Elements))
+		for _, el := range list.Elements {
+			v, err := readMarkArg(argIdent, enum, el, constVal)
+			if err != nil {
+				return markVal{}, err
+			}
+			idents = append(idents, v.ident)
+		}
+		return markVal{set: true, idents: idents}, nil
 	case argIdent:
 		id, ok := e.(*ast.IdentExpr)
 		if !ok {
@@ -430,22 +494,6 @@ func readMarkArg(kind argKind, enum []string, e ast.Expr, constVal func(string) 
 	default:
 		return markVal{set: true, expr: e}, nil
 	}
-}
-
-func arityDesc(required, total int, variadic bool) string {
-	if variadic {
-		if required == 1 {
-			return "at least 1 argument"
-		}
-		return fmt.Sprintf("at least %d arguments", required)
-	}
-	if required == total {
-		if total == 1 {
-			return "1 argument"
-		}
-		return fmt.Sprintf("%d arguments", total)
-	}
-	return fmt.Sprintf("%d to %d arguments", required, total)
 }
 
 // MacroIsImplemented reports whether the compiler implements the macro

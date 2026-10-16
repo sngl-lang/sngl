@@ -200,11 +200,11 @@ func buildModule(dir string, out string, goVersion string, goModExtra string) st
 // and a Go identifier belong — and which a package can now use on its own
 // declarations, since a mark resolves through the scope like any other name.
 //
-// One argument is the identifier alone. That is all a struct *field* can say:
-// a field has no package of its own, and what it records is the Go spelling of
-// a name SNGL writes differently — `#[go.native("ID")] id int`. The two-argument
-// form is everything else, where the path is what the call site has to import.
-func native(path string, name string = "", flags list[NativeFlag] = []) ir.Macro
+// A struct *field* names the identifier alone: a field has no package of its
+// own, and what it records is the Go spelling of a name SNGL writes
+// differently — `#[go.native(name="ID")] id int`. Everything else names a
+// path too, which is what the call site has to import.
+func native(path string = "", name string = "", flags list[NativeFlag] = []) ir.Macro
 
 // Says a call to this function blocks, so a target that draws on one thread
 // must not make the call there.
