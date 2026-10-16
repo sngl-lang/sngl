@@ -121,6 +121,7 @@ var (
 	jsonMarshalerType = reflect.TypeFor[json.Marshaler]()
 	textMarshalerType = reflect.TypeFor[encoding.TextMarshaler]()
 	stringerType      = reflect.TypeFor[fmt.Stringer]()
+	irTypeType        = reflect.TypeFor[*ir.Type]()
 )
 
 // ownership names the fields that break the default, which is that a list
@@ -273,6 +274,9 @@ func (d *dumper) build(v reflect.Value, owning bool) any {
 			}
 			if id, ok := d.ids[k]; ok && isSymbol(v) {
 				head = append(head, dumpField{"(id)", id})
+			}
+			if d.stringers && v.Type() == irTypeType {
+				head = append(head, dumpField{"(string)", v.Interface().(*ir.Type).String()})
 			}
 			o.fields = append(head, o.fields...)
 		}
@@ -508,13 +512,17 @@ func declPos(v reflect.Value) string {
 }
 
 // leaf is what v is written as when nothing inside it is: a value with its
-// own JSON or text encoding, and under spew one with a String method.
+// own JSON or text encoding, and under spew one with a String method. A type
+// is not one: its string does not spell the declaration it names, which may
+// be one nothing else in the dump writes -- an anonymous struct naming a
+// type parameter is interned nowhere -- so spew walks it as JSON does and
+// heads it with the spelling (build).
 func (d *dumper) leaf(v reflect.Value) (any, bool) {
 	t := v.Type()
 	if t.Implements(jsonMarshalerType) || t.Implements(textMarshalerType) {
 		return v.Interface(), true
 	}
-	if d.stringers && v.Kind() != reflect.Interface && t.Implements(stringerType) && !(v.Kind() == reflect.Pointer && v.IsNil()) {
+	if d.stringers && v.Kind() != reflect.Interface && t != irTypeType && t.Implements(stringerType) && !(v.Kind() == reflect.Pointer && v.IsNil()) {
 		return v.Interface().(fmt.Stringer).String(), true
 	}
 	return nil, false
