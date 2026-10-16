@@ -2597,8 +2597,13 @@ copy, an iteration of the loop around an `if`, by the copy's key as a trigger
 names one (`<id>PresentAt`, `codegen.PresenceAtMethod`), and `ir.IndexedRefIDs`
 stamps the ids a test reaches either way
 (`testdata/indexed_ref_null_test.txtar`). One copy of an instance built at run
-time carries no key to find, and the test is refused where the instance is
-written (`passCopyKeys`); bubbletea splices it and answers from the view.
+time is handed its key in the `__copy` prop (`passCopyKeys`), and the call site
+lists its root under that key where it binds it -- `ComponentRoot`'s second
+argument, after the setter has re-keyed an instance a slot reuses: html's
+`data-sngl-copy` beside `data-sngl-instance`, fyne's and gtk4's
+`__copies_<id>`, emptied by the slot's reset and by the record's `Destroy`,
+and android's `SnglPresent` entry `id[key]`. bubbletea splices it and answers
+from the view (`testdata/indexed_ref_null_test_instance.txtar`).
 
 **An event's parameters are its declaration's, and an override reads what the
 host reports and writes the prop it reports.** A platform override handles

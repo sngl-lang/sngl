@@ -177,6 +177,14 @@ type gtk4Translator struct {
 	// is not rendered, though its field still holds it.
 	present     map[string]bool
 	slotPresent []string
+	// instanceCopies are the ids a test reaches one copy of whose instances,
+	// built at run time, this scope lists by root in a Model map, declared
+	// through modelSink: a record's own fields are not the Model's.
+	// slotInstances are those this slot render func builds, whose maps its
+	// reset empties.
+	instanceCopies map[string]bool
+	modelSink      func(name, cType string)
+	slotInstances  []string
 }
 
 // namedWidgetField is the Model field a widget an instance builds is handed
@@ -209,8 +217,27 @@ func (t *gtk4Translator) withIndexed(indexed map[string]bool, stmts []ir.Stmt) *
 				t.slotPresent = append(t.slotPresent, lv.Name)
 			}
 		case ir.NodeOpComponentRoot:
-			if inst := codegen.IdentBareName(c.Args[0].Value); t.present[inst] {
+			inst := codegen.IdentBareName(c.Args[0].Value)
+			if t.present[inst] {
 				t.slotPresent = append(t.slotPresent, presentField(inst))
+			}
+		}
+		return nil
+	})
+	return t.withInstanceCopies(indexed, t.sinkField, stmts)
+}
+
+// withInstanceCopies has this scope list the instances of the ids a test
+// reaches one copy of, declaring each map through modelSink; stmts is the
+// scope's body, whose instances a slot's reset unlists.
+func (t *gtk4Translator) withInstanceCopies(ids map[string]bool, modelSink func(name, cType string), stmts []ir.Stmt) *gtk4Translator {
+	t.instanceCopies, t.modelSink, t.slotInstances = ids, modelSink, nil
+	_ = ir.Walk(stmts, func(n ir.Node) error {
+		if lv, ok := n.(*ir.LocalVar); ok {
+			if c, ok := lv.Init.(*ir.Call); ok && c.Func != nil && c.Func.Intrinsic == ir.NodeOpComponentRoot && len(c.Args) == 2 {
+				if inst := codegen.IdentBareName(c.Args[0].Value); ids[inst] && !slices.Contains(t.slotInstances, inst) {
+					t.slotInstances = append(t.slotInstances, inst)
+				}
 			}
 		}
 		return nil
@@ -683,7 +710,7 @@ func (t *gtk4Translator) OnDetachHandler(ctx context.Context, node ir.Expr, even
 // OnComponentRoot binds a name to the widget an instance renders as. A local,
 // so a recursion frame keeps its own rather than clobbering a shared Model
 // field -- the same reason OnCreateComponent takes the local-ref path.
-func (t *gtk4Translator) OnComponentRoot(ctx context.Context, id string, inst ir.Expr) []ir.Stmt {
+func (t *gtk4Translator) OnComponentRoot(ctx context.Context, id string, inst, key ir.Expr) []ir.Stmt {
 	t.idCTypes[id] = "GtkWidget"
 	t.topLevel = append(t.topLevel, id)
 	var root ir.Expr = t.qualifyNodeExpr(inst)
@@ -701,6 +728,17 @@ func (t *gtk4Translator) OnComponentRoot(ctx context.Context, id string, inst ir
 		field := presentField(name)
 		t.sinkField(field, "GtkWidget")
 		present = append(present, &ir.Assign{Target: t.fieldRef(field), Op: ast.AssignSet, Value: root})
+	}
+	// One copy of it is found by the key it stands in now, which a reused
+	// instance was handed before its root is bound again.
+	if name := codegen.IdentBareName(inst); key != nil && t.instanceCopies[name] {
+		t.modelSink(copiesField(name), copyMapType("GtkWidget"))
+		present = append(present, &ir.CallStmt{Call: &ir.Call{
+			Type:     ir.TypVoid,
+			Receiver: &ir.Ident{Name: t.gc.ModelRef()},
+			Func:     &ir.Func{Name: copyRegistry(name)},
+			Args:     []ir.CallArg{{Value: key}, {Value: root}},
+		}})
 	}
 	if t.isLocalRef(id) {
 		return append([]ir.Stmt{&ir.LocalVar{
@@ -1366,6 +1404,10 @@ func (t *gtk4Translator) OnSlotReset(ctx context.Context, slot *ir.Var) []ir.Stm
 	for _, id := range t.slotNamed {
 		list := copiesField(id)
 		stmts = append(stmts, &ir.Assign{Target: codegen.RecvFieldRef(t.gc.NodeRecvRef(list), list, t.copiesType(id)), Op: ast.AssignSet, Value: &ir.Literal{Type: ir.TypNull}})
+	}
+	for _, id := range t.slotInstances {
+		list := copiesField(id)
+		stmts = append(stmts, &ir.Assign{Target: codegen.RecvFieldRef(&ir.Ident{Name: t.gc.ModelRef()}, list, ir.NativeGoNamed(widgetFieldGoType(copyMapType("GtkWidget"), t.wrapped))), Op: ast.AssignSet, Value: &ir.Literal{Type: ir.TypNull}})
 	}
 	for _, id := range t.slotPresent {
 		if t.isLocalRef(id) {

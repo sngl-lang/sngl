@@ -71,6 +71,7 @@ func emitComponentInstance(
 	var invokers []fyneEventInvoker
 	tr := newFyneTranslator(igc, nodeSpecs, sink, importSink, failSink).
 		withLocalRefs(comp.LocalRefs).withSlotRoot(instanceRootVar, comp.Stmts).
+		withInstanceCopies(indexed, modelFieldSink, comp.Stmts).
 		withInvokerSink(func(inv fyneEventInvoker) { invokers = append(invokers, inv) })
 	tr.canvasByID, tr.canvasByNode = canvasByID, canvasByNode
 	bodyStmts := codegen.WalkLowered(context.Background(), comp.Stmts, tr)
@@ -164,6 +165,13 @@ func emitComponentInstance(
 		presenceSink(id, named)
 	}
 	hasTeardown := componentDeclaresFunc(comp, lower.TeardownFunc)
+	var unlisting strings.Builder
+	if len(listed) > 0 {
+		fmt.Fprintf(&unlisting, "\t%s.unlist()\n", instanceReceiver)
+	}
+	if comp.KeyedCopy {
+		fmt.Fprintf(&unlisting, "\t%s.%s.%s(%s.%s)\n", instanceReceiver, golang.InstanceModelField, unlistInstance, instanceReceiver, golang.ComponentRootField)
+	}
 
 	// Methods after the body, because the walk is what discovers the widget
 	// fields the struct declares -- and a setter's body carries the same
@@ -174,7 +182,8 @@ func emitComponentInstance(
 		if fn == nil || len(fn.Block) == 0 {
 			continue
 		}
-		mtr := newFyneTranslator(igc, nodeSpecs, sink, importSink, failSink).withLocalRefs(fn.Lowered.LocalRefs)
+		mtr := newFyneTranslator(igc, nodeSpecs, sink, importSink, failSink).withLocalRefs(fn.Lowered.LocalRefs).
+			withInstanceCopies(indexed, modelFieldSink, fn.Block)
 		mtr.canvasByNode = canvasByNode
 		params := fn.Params
 		if len(params) > 0 && params[0].Receiver {
@@ -201,8 +210,8 @@ func emitComponentInstance(
 		for i, line := range igc.EmitFuncDef(emitted) {
 			methods.WriteString(line)
 			methods.WriteByte('\n')
-			if i == 0 && fn.Name == lower.TeardownFunc && len(listed) > 0 {
-				fmt.Fprintf(&methods, "\t%s.unlist()\n", instanceReceiver)
+			if i == 0 && fn.Name == lower.TeardownFunc {
+				methods.WriteString(unlisting.String())
 			}
 		}
 		methods.WriteByte('\n')
@@ -274,12 +283,12 @@ func emitComponentInstance(
 		fmt.Fprintf(b, "func (%s *%s) %s() {\n", instanceReceiver, typeName, golang.ComponentDestroyMethod)
 		if hasTeardown {
 			fmt.Fprintf(b, "\t%s.%s()\n", instanceReceiver, instanceTeardownMethod)
-		} else if len(listed) > 0 {
-			fmt.Fprintf(b, "\t%s.unlist()\n", instanceReceiver)
+		} else {
+			b.WriteString(unlisting.String())
 		}
 		fmt.Fprintf(b, "%s}\n\n", release.String())
-	case !hasTeardown && len(listed) > 0:
-		fmt.Fprintf(b, "func (%s *%s) %s() {\n\t%s.unlist()\n}\n\n", instanceReceiver, typeName, golang.ComponentDestroyMethod, instanceReceiver)
+	case !hasTeardown && unlisting.Len() > 0:
+		fmt.Fprintf(b, "func (%s *%s) %s() {\n%s}\n\n", instanceReceiver, typeName, golang.ComponentDestroyMethod, unlisting.String())
 	case !hasTeardown:
 		fmt.Fprintf(b, "func (%s *%s) %s() {}\n\n", instanceReceiver, typeName, golang.ComponentDestroyMethod)
 	}

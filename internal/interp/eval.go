@@ -1673,6 +1673,9 @@ func (env *Env) evalMapLitIR(e *ir.MapLitIR) (any, error) {
 }
 
 func (env *Env) evalBinary(e *ir.Binary) (any, error) {
+	if sel, path, present, ok := ir.NullTestedRef(e); ok && len(path) > 0 {
+		return env.copyNullTest(sel, path, present)
+	}
 	left, err := env.Eval(e.Left)
 	if err != nil {
 		return nil, err
@@ -3305,4 +3308,37 @@ func (env *Env) answerEmpty(x *ir.SlotEmpty, body []ir.Stmt, entries []entryFram
 		env.entries = entries
 	}
 	return env.Eval(answer)
+}
+
+// copyNullTest answers `c.x[i] == null` (or `!=`, present): a copy past the
+// copies its loops rendered now is not rendered, which is how every compiled
+// target answers it too, looking the copy up by its key.
+func (env *Env) copyNullTest(sel *ir.Select, path []ir.Expr, present bool) (any, error) {
+	v, err := env.Eval(sel)
+	if err != nil {
+		return nil, err
+	}
+	for _, ix := range path {
+		idx, err := env.Eval(ix)
+		if err != nil {
+			return nil, err
+		}
+		i := ToInt(idx)
+		switch list := v.(type) {
+		case []any:
+			if i < 0 || i >= len(list) {
+				return !present, nil
+			}
+			v = list[i]
+		case nil:
+			return !present, nil
+		default:
+			// A loop that rendered the node once hands it back as itself
+			// (evalIndex).
+			if i != 0 {
+				return !present, nil
+			}
+		}
+	}
+	return (v != nil) == present, nil
 }

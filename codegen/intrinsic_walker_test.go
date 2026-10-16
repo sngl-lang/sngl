@@ -49,7 +49,7 @@ func (t *trace) OnCreateComponent(_ context.Context, id string, c *ir.Call) []ir
 	t.add("create-component %s", id)
 	return nil
 }
-func (t *trace) OnComponentRoot(_ context.Context, id string, inst ir.Expr) []ir.Stmt {
+func (t *trace) OnComponentRoot(_ context.Context, id string, inst, _ ir.Expr) []ir.Stmt {
 	t.add("component-root %s %s", id, identName(inst))
 	return nil
 }

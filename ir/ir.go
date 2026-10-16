@@ -1010,6 +1010,10 @@ type Component struct {
 	// at run time". Answering the first for the second gave a factory to every
 	// component the page renders as markup.
 	RuntimeInstance bool `json:",omitempty"`
+	// KeyedCopy marks a component built at run time a test reaches one copy
+	// of an instance of, which is handed the copy's key (ir.CopyProp) and
+	// listed under it where its root is bound.
+	KeyedCopy bool `json:",omitempty"`
 	// SpecializedFor is the target whose override body was swapped into Body
 	// and Vars, so a second swap for the same target is a no-op instead of a
 	// reset of everything lowering has since added.

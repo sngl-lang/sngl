@@ -501,6 +501,9 @@ func (c *compilation) emitIRMode(wrapped bool) (modelSrc []byte, callbacksSrc []
 	}
 	emitPresenceChecks(&eventInvokersBuf, presentIDs, presenceFields, widgetFields)
 	emitCopyRegistries(&eventInvokersBuf, widgetFields)
+	if keyedInstances(c.ctx.Pkg) {
+		emitUnlistInstance(&eventInvokersBuf, widgetFields, c.wrapped)
+	}
 	emitKeyedPresenceChecks(&eventInvokersBuf, keyedPresent, widgetFields)
 
 	// The drawing-area trampoline registration emits an `unsafe.Pointer` cast.

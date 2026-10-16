@@ -1,8 +1,6 @@
 package lower
 
 import (
-	"fmt"
-
 	"duckfam.us/sngl/ast"
 	"duckfam.us/sngl/ir"
 )
@@ -17,7 +15,9 @@ import (
 // through a prop, as passRecursionDepth hands one its depth: the loops around
 // a node may be in the body of whatever renders the instance holding it. The
 // prop is an ordinary one, so an instance a render slot keeps and hands a new
-// position re-stamps its nodes through the setter every prop has.
+// position re-stamps its nodes through the setter every prop has. An instance
+// a test reaches one copy of is handed its own key the same way, which the
+// target reads where it binds the instance's root.
 //
 // Always on, and a no-op for a build emitting no test that indexes a node.
 var passCopyKeys = pass{
@@ -50,7 +50,10 @@ func lowerCopyKeys(pkg *ir.Package, _ Features, opts Options) error {
 	needs := map[*ir.Component]bool{}
 	place := func(stmts []ir.Stmt, inCopy bool) (changed bool) {
 		placed(stmts, 0, func(n *ir.NodeInst, loops int) {
-			if holding[n.Component] && !needs[n.Component] && (loops > 0 || inCopy) {
+			if st.keyedInstance(n) && (loops > 0 || inCopy) {
+				n.Component.KeyedCopy = true
+			}
+			if (holding[n.Component] || st.keyedInstance(n)) && !needs[n.Component] && (loops > 0 || inCopy) {
 				needs[n.Component], changed = true, true
 			}
 		})
@@ -76,7 +79,7 @@ func lowerCopyKeys(pkg *ir.Package, _ Features, opts Options) error {
 	for _, c := range pkg.Components {
 		c.Stmts = st.stamp(c.Stmts, nil, st.prefix[c])
 	}
-	return st.err
+	return nil
 }
 
 type copyKeys struct {
@@ -84,7 +87,6 @@ type copyKeys struct {
 	// prefix is the prop of each component built at run time that holds a
 	// node a test indexes, which its instance is handed its own copy's key in.
 	prefix map[*ir.Component]*ir.Param
-	err    error
 }
 
 // holds reports whether stmts render a node a test indexes, directly or in an
@@ -106,9 +108,6 @@ func (st *copyKeys) stamp(stmts []ir.Stmt, loops []*ir.For, prefix *ir.Param) []
 			f.Body = st.stamp(f.Body, append(loops[:len(loops):len(loops)], f), prefix)
 			f.Else = st.stamp(f.Else, loops, prefix)
 			continue
-		}
-		if n, ok := s.(*ir.NodeInst); ok && st.indexed[n.ID] && n.Component != nil && n.Component.RuntimeInstance && hasRealComponentBody(n.Component) && st.err == nil {
-			st.err = fmt.Errorf("%s: a test reaches one copy of #%s, an instance of %s this target builds while the program runs, which a compiled test cannot do yet: reach a node it renders, `c.%s[i].<id>`", nodePos(n), n.ID, n.Component.Name, n.ID)
 		}
 		if n, ok := s.(*ir.NodeInst); ok && (st.indexed[n.ID] || st.prefix[n.Component] != nil) {
 			if key := triggerKey(loops, prefix); key != nil {
@@ -166,4 +165,11 @@ func placed(stmts []ir.Stmt, loops int, visit func(*ir.NodeInst, int)) {
 			placed(*b, loops, visit)
 		}
 	}
+}
+
+// keyedInstance reports whether n is an instance of a component built at run
+// time that a test reaches one copy of, which is handed its key to be found by
+// as a node a test indexes is stamped with one.
+func (st *copyKeys) keyedInstance(n *ir.NodeInst) bool {
+	return st.indexed[n.ID] && n.Component != nil && n.Component.RuntimeInstance && hasRealComponentBody(n.Component)
 }

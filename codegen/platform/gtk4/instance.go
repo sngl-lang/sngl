@@ -65,6 +65,9 @@ func emitComponentInstance(
 	sink := func(name, cType string) {
 		fields = append(fields, widgetField{name: name, goType: widgetFieldGoType(cType, wrapped)})
 	}
+	modelSink := func(name, cType string) {
+		modelFieldSink(widgetField{name: name, goType: widgetFieldGoType(cType, wrapped)})
+	}
 	newTr := func(localRefs map[string]bool) *gtk4Translator {
 		tr := newGtk4Translator(igc, sink).withPkg(pkg).withRegistry(reg).
 			withShared(shared).withLocalRefs(localRefs).withWrapped(wrapped)
@@ -88,7 +91,7 @@ func emitComponentInstance(
 	// the Model as it is built: the invoker reaches whichever instance built
 	// it last, which is the one on screen.
 	var invokers []gtkEventInvoker
-	tr := newTr(comp.LocalRefs).withSlotRoot(instanceRootVar, comp.Stmts).
+	tr := newTr(comp.LocalRefs).withInstanceCopies(indexed, modelSink, comp.Stmts).withSlotRoot(instanceRootVar, comp.Stmts).
 		withInvokerSink(func(inv gtkEventInvoker) { invokers = append(invokers, inv) })
 	bodyStmts := codegen.WalkLowered(context.Background(), comp.Stmts, tr)
 
@@ -176,7 +179,7 @@ func emitComponentInstance(
 		if fn == nil || len(fn.Block) == 0 {
 			continue
 		}
-		mtr := newTr(fn.Lowered.LocalRefs)
+		mtr := newTr(fn.Lowered.LocalRefs).withInstanceCopies(indexed, modelSink, fn.Block)
 		params := fn.Params
 		if len(params) > 0 && params[0].Receiver {
 			params = params[1:]
@@ -272,6 +275,9 @@ func emitComponentInstance(
 	// reused instance's root would be appended after it was gone.
 	root := instanceReceiver + "." + golang.ComponentRootField
 	fmt.Fprintf(b, "func (%s *%s) %s() {\n", instanceReceiver, typeName, golang.ComponentDestroyMethod)
+	if comp.KeyedCopy {
+		fmt.Fprintf(b, "\t%s.%s.%s(%s)\n", instanceReceiver, golang.InstanceModelField, unlistInstance, root)
+	}
 	// A destroyed instance's widgets leave the Model's maps of them, so a
 	// map holds the copies on screen.
 	for _, w := range listed {
