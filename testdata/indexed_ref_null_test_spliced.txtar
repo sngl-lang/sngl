@@ -1,7 +1,8 @@
 One copy of a spliced component instance a test null-tests, where the
 instance has no node of its own: a body that opens with an `if` or a `for`,
 one passNoInlineComponents splices into a block's state record, one under a
-boundary, and one rendered once. bubbletea answers from the roots the splice
+boundary, and one rendered once, whose null test is a constant
+(ir.RenderedNullTest). bubbletea answers the rest from the roots the splice
 records (ir.InstancesOf); html, fyne, gtk4 and android from the
 `__instance_<id>` prop passCopyKeys stamps on each root node, holding the
 copy's key: html's `data-sngl-root-<id>`, fyne's and gtk4's maps of the
@@ -441,11 +442,6 @@ func (m *Model) hideClick() {
 	m.__focusID = prev
 }
 
-func (m *Model) alwaysPresent() bool {
-	return true
-	return false
-}
-
 func (m *Model) onePresent() bool {
 	if m.shown {
 		return true
@@ -695,7 +691,7 @@ func TestSplicedCopies(t *testing.T) {
 	c := newTestComponent()
 	_ = c
 	if !(c.onePresent()) { t.Errorf("assert failed: %s", "c.onePresent()") }
-	if !(c.alwaysPresent()) { t.Errorf("assert failed: %s", "c.alwaysPresent()") }
+	if !(true) { t.Errorf("assert failed: %s", "true") }
 	if !(c.rPresent()) { t.Errorf("assert failed: %s", "c.rPresent()") }
 	if !(c.thPresentAt("0")) { t.Errorf("assert failed: %s", "c.thPresentAt(\"0\")") }
 	if !(!c.thPresentAt("1")) { t.Errorf("assert failed: %s", "!c.thPresentAt(\"1\")") }
@@ -766,23 +762,22 @@ type Model struct {
 	__slot5      []fyne.CanvasObject
 	__slot5_at   fyne.CanvasObject
 
-	__n13            *fyne.Container
-	move             *widget.Button
-	hide             *widget.Button
-	__n19            *widget.Label
-	__present_always fyne.CanvasObject
-	r                *StepInstance
-	__present_r      fyne.CanvasObject
-	r__el            fyne.CanvasObject
-	__n20            *widget.Button
-	__copies_th      map[string]fyne.CanvasObject
-	__copies_s       map[string]fyne.CanvasObject
-	__copies_f       map[string]fyne.CanvasObject
-	__copies_e       map[string]fyne.CanvasObject
-	__present_one    fyne.CanvasObject
-	__copies_w       map[string]fyne.CanvasObject
-	p                *widget.Label
-	__copies_p       map[string]*widget.Label
+	__n13         *fyne.Container
+	move          *widget.Button
+	hide          *widget.Button
+	__n19         *widget.Label
+	r             *StepInstance
+	__present_r   fyne.CanvasObject
+	r__el         fyne.CanvasObject
+	__n20         *widget.Button
+	__copies_th   map[string]fyne.CanvasObject
+	__copies_s    map[string]fyne.CanvasObject
+	__copies_f    map[string]fyne.CanvasObject
+	__copies_e    map[string]fyne.CanvasObject
+	__present_one fyne.CanvasObject
+	__copies_w    map[string]fyne.CanvasObject
+	p             *widget.Label
+	__copies_p    map[string]*widget.Label
 }
 
 // New creates a Model with default values.
@@ -1061,9 +1056,6 @@ func (m *Model) __list_p(key string, w *widget.Label) {
 }
 
 func (m *Model) __unlistInstance(w fyne.CanvasObject) {
-	if m.__present_always == w {
-		m.__present_always = nil
-	}
 	if m.__present_r == w {
 		m.__present_r = nil
 	}
@@ -1142,11 +1134,6 @@ func (m *Model) wPresentAt(key string) bool {
 	return ok
 }
 
-// alwaysPresent reports whether the #always widget is rendered now; for tests.
-func (m *Model) alwaysPresent() bool {
-	return m.__present_always != nil
-}
-
 // onePresent reports whether the #one widget is rendered now; for tests.
 func (m *Model) onePresent() bool {
 	return m.__present_one != nil
@@ -1211,7 +1198,6 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__renderSlot2(m.__n13)
 	m.__n19 = widget.NewLabel("")
 	m.__n19.SetText(m.shout__inst0())
-	m.__present_always = m.__n19
 	m.__n13.Add(m.__n19)
 	m.r = newStepInstance(m, m.depth, 0)
 	m.r__el = m.r.Root
@@ -2059,7 +2045,7 @@ func TestSplicedCopies(t *testing.T) {
 	c := newTestComponent()
 	_ = c
 	if !(c.onePresent()) { t.Errorf("assert failed: %s", "c.onePresent()") }
-	if !(c.alwaysPresent()) { t.Errorf("assert failed: %s", "c.alwaysPresent()") }
+	if !(true) { t.Errorf("assert failed: %s", "true") }
 	if !(c.rPresent()) { t.Errorf("assert failed: %s", "c.rPresent()") }
 	if !(c.thPresentAt("0")) { t.Errorf("assert failed: %s", "c.thPresentAt(\"0\")") }
 	if !(!c.thPresentAt("1")) { t.Errorf("assert failed: %s", "!c.thPresentAt(\"1\")") }
@@ -2124,40 +2110,39 @@ type ErrorEvent struct {
 
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
-	depth            int
-	problem          string
-	names            []string
-	skip             string
-	shown            bool
-	__root           gtk4rt.Handle
-	__slot0          []gtk4rt.Handle
-	__slot0_at       gtk4rt.Handle
-	__slot1          []gtk4rt.Handle
-	__slot1_at       gtk4rt.Handle
-	__slot2          []gtk4rt.Handle
-	__slot2_at       gtk4rt.Handle
-	__inst2_live     []*EitherInstance
-	__slot3          []gtk4rt.Handle
-	__slot3_at       gtk4rt.Handle
-	__inst3_live     []*EitherInstance
-	__slot4          []gtk4rt.Handle
-	__slot4_at       gtk4rt.Handle
-	__inst4_live     []*__child1Instance
-	__slot5          []gtk4rt.Handle
-	__slot5_at       gtk4rt.Handle
-	__n13            gtk4rt.Handle
-	move             gtk4rt.Handle
-	hide             gtk4rt.Handle
-	__present_always gtk4rt.Handle
-	__present_r      gtk4rt.Handle
-	__copies_th      map[string]gtk4rt.Handle
-	__present_one    gtk4rt.Handle
-	__copies_w       map[string]gtk4rt.Handle
-	p                gtk4rt.Handle
-	__copies_p       map[string]gtk4rt.Handle
-	__copies_s       map[string]gtk4rt.Handle
-	__copies_f       map[string]gtk4rt.Handle
-	__copies_e       map[string]gtk4rt.Handle
+	depth         int
+	problem       string
+	names         []string
+	skip          string
+	shown         bool
+	__root        gtk4rt.Handle
+	__slot0       []gtk4rt.Handle
+	__slot0_at    gtk4rt.Handle
+	__slot1       []gtk4rt.Handle
+	__slot1_at    gtk4rt.Handle
+	__slot2       []gtk4rt.Handle
+	__slot2_at    gtk4rt.Handle
+	__inst2_live  []*EitherInstance
+	__slot3       []gtk4rt.Handle
+	__slot3_at    gtk4rt.Handle
+	__inst3_live  []*EitherInstance
+	__slot4       []gtk4rt.Handle
+	__slot4_at    gtk4rt.Handle
+	__inst4_live  []*__child1Instance
+	__slot5       []gtk4rt.Handle
+	__slot5_at    gtk4rt.Handle
+	__n13         gtk4rt.Handle
+	move          gtk4rt.Handle
+	hide          gtk4rt.Handle
+	__present_r   gtk4rt.Handle
+	__copies_th   map[string]gtk4rt.Handle
+	__present_one gtk4rt.Handle
+	__copies_w    map[string]gtk4rt.Handle
+	p             gtk4rt.Handle
+	__copies_p    map[string]gtk4rt.Handle
+	__copies_s    map[string]gtk4rt.Handle
+	__copies_f    map[string]gtk4rt.Handle
+	__copies_e    map[string]gtk4rt.Handle
 }
 
 // New creates a Model with default values. Binds initialize
@@ -3430,7 +3415,6 @@ func (m *Model) buildWidgetTree() {
 	m.__renderSlot2(m.__n13)
 	__n19 := gtk4rt.LabelNew("")
 	gtk4rt.LabelSetText(__n19, m.shout__inst0())
-	m.__present_always = __n19
 	gtk4rt.BoxAppend(m.__n13, __n19)
 	r := newStepInstance(m, m.depth, 0)
 	r__el := r.Root
@@ -3483,11 +3467,6 @@ func (m *Model) moveClick() {
 // hideClick fires the "clicked" signal on the #hide widget; for tests.
 func (m *Model) hideClick() {
 	gtk4rt.Emit(m.hide, "clicked")
-}
-
-// alwaysPresent reports whether the #always widget is rendered now; for tests.
-func (m *Model) alwaysPresent() bool {
-	return m.__present_always != nil
 }
 
 // onePresent reports whether the #one widget is rendered now; for tests.
@@ -3573,9 +3552,6 @@ func (m *Model) __list_e(key string, w gtk4rt.Handle) {
 }
 
 func (m *Model) __unlistInstance(w gtk4rt.Handle) {
-	if m.__present_always == w {
-		m.__present_always = nil
-	}
 	if m.__present_r == w {
 		m.__present_r = nil
 	}
@@ -3735,7 +3711,7 @@ fun MainScreen(state: MainScreenState = remember { MainScreenState() }) {
             }
             Either(label = state.skip)
         }
-        Text(text = state.shout__inst0, modifier = Modifier.then(("always").let { __entry -> Modifier.composed { DisposableEffect(__entry) { val __token = Any(); SnglPresent[__token] = __entry; onDispose { SnglPresent.remove(__token) } }; Modifier } }))
+        Text(text = state.shout__inst0, modifier = Modifier)
         DisposableEffect(Unit) {
             val __token = Any()
             SnglPresent[__token] = "r"
@@ -3844,7 +3820,7 @@ class MainScreenTest {
         @Suppress("UNUSED_VARIABLE") val composeTestRule = composeRule
         composeRule.setContent { MainScreen(c) }
         org.junit.Assert.assertTrue("(composeTestRule.onAllNodes(androidx.compose.ui.test.hasTestTag(\"one\")).fetchSemanticsNodes().isNotEmpty() || SnglPresent.containsValue(\"one\"))", (composeTestRule.onAllNodes(androidx.compose.ui.test.hasTestTag("one")).fetchSemanticsNodes().isNotEmpty() || SnglPresent.containsValue("one")))
-        org.junit.Assert.assertTrue("(composeTestRule.onAllNodes(androidx.compose.ui.test.hasTestTag(\"always\")).fetchSemanticsNodes().isNotEmpty() || SnglPresent.containsValue(\"always\"))", (composeTestRule.onAllNodes(androidx.compose.ui.test.hasTestTag("always")).fetchSemanticsNodes().isNotEmpty() || SnglPresent.containsValue("always")))
+        org.junit.Assert.assertTrue("true", true)
         org.junit.Assert.assertTrue("(composeTestRule.onAllNodes(androidx.compose.ui.test.hasTestTag(\"r\")).fetchSemanticsNodes().isNotEmpty() || SnglPresent.containsValue(\"r\"))", (composeTestRule.onAllNodes(androidx.compose.ui.test.hasTestTag("r")).fetchSemanticsNodes().isNotEmpty() || SnglPresent.containsValue("r")))
         org.junit.Assert.assertTrue("(composeTestRule.onAllNodes((androidx.compose.ui.test.hasTestTag(\"th\") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, \"0\"))).fetchSemanticsNodes().isNotEmpty() || SnglPresent.containsValue(\"th[\" + \"0\" + \"]\"))", (composeTestRule.onAllNodes((androidx.compose.ui.test.hasTestTag("th") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, "0"))).fetchSemanticsNodes().isNotEmpty() || SnglPresent.containsValue("th[" + "0" + "]")))
         org.junit.Assert.assertTrue("!(composeTestRule.onAllNodes((androidx.compose.ui.test.hasTestTag(\"th\") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, \"1\"))).fetchSemanticsNodes().isNotEmpty() || SnglPresent.containsValue(\"th[\" + \"1\" + \"]\"))", !(composeTestRule.onAllNodes((androidx.compose.ui.test.hasTestTag("th") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, "1"))).fetchSemanticsNodes().isNotEmpty() || SnglPresent.containsValue("th[" + "1" + "]")))
@@ -3891,7 +3867,7 @@ body { font-family: system-ui, sans-serif; }
     <span>h</span>
   </button>
   <span data-sngl-slot="2" style="display:contents"></span>
-  <span data-sngl-root-always="">x!</span>
+  <span>x!</span>
   <span data-sngl-inst="r" style="display:contents"></span>
   <button id="$6" data-sngl-root-th="0">
     <span>x</span>
@@ -3921,7 +3897,6 @@ window.__sngl_boot = () => {
   state.shout__inst0 = () => shouting_shout__inst0(state);
   state.moveClick = () => $0.click();
   state.hideClick = () => $1.click();
-  state.alwaysPresent = () => document.querySelector('[data-sngl-id="always"], [data-sngl-instance="always"], [data-sngl-root-always]') !== null;
   state.onePresent = () => document.querySelector('[data-sngl-id="one"], [data-sngl-instance="one"]') !== null;
   state.rPresent = () => document.querySelector('[data-sngl-id="r"], [data-sngl-instance="r"]') !== null;
   state.ePresentAt = (k) => document.querySelector('[data-sngl-id="e"][data-sngl-copy="' + k + '"], [data-sngl-root-e="' + k + '"]') !== null;
@@ -4894,12 +4869,12 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:f51d035aa59ad2ffbfa0bcb943a834da
+pass sha256:8236d23fce78f2fa923624826ce3382a
 -- run/go/fyne --
-pass sha256:a33f6153b57bcaab4ad7f3190809fb21
+pass sha256:c07ee83d6a20769b5c17c0ef689680cf
 -- run/go/gtk4 --
-pass sha256:3b4a0cc0a497689d690177f7348ee684
+pass sha256:15fbaa4f412818e9f9c0c75ebc0b328f
 -- run/kotlin/android --
-pass sha256:542c64c3c3a1618badeae3cd550e2174
+pass sha256:e84222a923eece8ba82b442c2739380e
 -- run/none/html --
-pass sha256:d9df1b8462cd80ba249048fe0b08007d
+pass sha256:7dc3eacdecaa1e1162505ae0a05c331c
