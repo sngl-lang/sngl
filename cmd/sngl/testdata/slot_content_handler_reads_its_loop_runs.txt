@@ -50,14 +50,25 @@ component card(content ...component node) node {
 component main node {
     var rows = [["a", "b"], ["c"]]
     var log = ""
+    var shown = true
     vbox {
         button #swap(text="swap", @click { rows = [["d"], ["e", "f", "g"]] })
         for var row = rows {
             card {
                 for var i, it = row {
                     button #cell(text=it, @click { log = "{i}{it}" })
+                    button #mark(text=it, @click {
+                        var s = "!"
+                        log = "{it}{s}{row.map(func(x string) => x + "").length()}"
+                    })
                 }
             }
+        }
+        if shown {
+            button #tag(text="x{log}", @click {
+                var s = "q"
+                log = log + s
+            })
         }
         text(value=log)
     }
@@ -71,13 +82,19 @@ func testHandlerReadsItsContentsLoop(t Test, c main) {
     c.swap.click()
     c.cell[1][2].click()
     t.assert(c.log == "2g")
+    c.mark[1][1].click()
+    t.assert(c.log == "f!3")
+    if c.tag != null {
+        c.tag.click()
+    }
+    t.assert(c.log == "f!3q")
 }
 
 window {
     main
 }
 -- testrun/android/kotlin/app.sngl/main/1 --
-sha256:a8b5bc7ee87cc25fb2511f9a40f6e06a
+sha256:695621db0999ad1ca1b35b1767008c72
 {
   "results": [
     {
@@ -87,7 +104,7 @@ sha256:a8b5bc7ee87cc25fb2511f9a40f6e06a
   ]
 }
 -- testrun/bubbletea/go/app.sngl/main/1 --
-sha256:77d91bd407887f0b453e173942c55c81
+sha256:7ad7b6a28a2d0e1ad9dc0bef100a8ed5
 {
   "results": [
     {
@@ -97,7 +114,7 @@ sha256:77d91bd407887f0b453e173942c55c81
   ]
 }
 -- testrun/fyne/go/app.sngl/main/1 --
-sha256:d3b3b2812195eedaebae8fdee4fd2062
+sha256:dc86f34077550ddcc5ad9f371c5740a7
 {
   "results": [
     {
@@ -107,7 +124,7 @@ sha256:d3b3b2812195eedaebae8fdee4fd2062
   ]
 }
 -- testrun/gtk4/go/app.sngl/main/1 --
-sha256:b87e59a1720a7e0fbc59ba904eda3bf9
+sha256:16c697b1c4109afe55b2a18db5fc79f3
 {
   "results": [
     {
@@ -117,7 +134,7 @@ sha256:b87e59a1720a7e0fbc59ba904eda3bf9
   ]
 }
 -- testrun/html/none/app.sngl/main/1 --
-sha256:9880417ca54f0117c60d6bc32987ca0a
+sha256:6174192c228452df8a17b638650c8912
 {
   "results": [
     {

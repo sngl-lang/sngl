@@ -509,12 +509,20 @@ func (st *slotChildSynth) readsFree(e ir.Expr, local map[ir.Symbol]bool) bool {
 	return found
 }
 
-// varsWithin is each variable n binds -- a loop's, a local -- in the order
-// written.
+// varsWithin is each variable n's view binds -- a loop's, a local -- in the
+// order written. A handler's or a lambda's own locals are not among them:
+// they are bound in the body that moves to the site with them.
 func varsWithin(n any) []ir.Symbol {
+	var stmts []ir.Stmt
+	switch x := n.(type) {
+	case []ir.Stmt:
+		stmts = x
+	case ir.Stmt:
+		stmts = []ir.Stmt{x}
+	}
 	var out []ir.Symbol
-	_ = ir.Walk(n, func(node ir.Node) error {
-		switch x := node.(type) {
+	ir.WalkView(stmts, func(s ir.Stmt) bool {
+		switch x := s.(type) {
 		case *ir.For:
 			if x.KeySym != nil {
 				out = append(out, x.KeySym)
@@ -527,7 +535,7 @@ func varsWithin(n any) []ir.Symbol {
 				out = append(out, x.Sym)
 			}
 		}
-		return nil
+		return true
 	})
 	return out
 }
