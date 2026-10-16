@@ -1138,7 +1138,7 @@ func emitIRButtonHandlersWalk(b *strings.Builder, stmts []ir.Stmt, info *irAnaly
 			bp := extractBlueprint(n)
 			for _, ev := range bp.Events {
 				h := codegen.NodeHandler(n, ev.On)
-				if h == nil || h.Func == nil || len(h.Func.Block) == 0 {
+				if h == nil || h.Func == nil {
 					continue
 				}
 				guard := teaKeyGuard(ev.Key)
