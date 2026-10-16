@@ -62,8 +62,16 @@ sngl dump --stage lowered --platform html --lang none --format json --omit AST,P
 sngl dump --stage checked --format json proj/app.sngl
 stdout '"Pkg": "dir:shapes"'
 
-# The anonymous struct unwrap's parameter names is interned nowhere, so only
-# the types naming it write it; spew writes as many as JSON does.
+# A check finding the library already loaded adopts the contexts a target
+# package brings as the check that loaded it did.
+sngl dump --stage checked --format json main.sngl
+stdout '"Name": "palette"'
+sngl dump --stage checked --format json main.sngl
+stdout '"Name": "palette"'
+
+# unwrap's parameter is an anonymous struct naming a type parameter, which is
+# interned nowhere: only the types naming it write it, and spew writes as many
+# as JSON does.
 sngl dump --stage checked --format json generic.sngl
 stdout -count=3 '"Anon": true'
 sngl dump --stage checked --format spew generic.sngl

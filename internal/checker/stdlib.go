@@ -860,6 +860,17 @@ func (c *checker) resolvedTargets() []ir.StaticTarget {
 	return declared
 }
 
+// replayMerge is what a check whose library already merged pkgName's
+// overrides does instead: it replays what the merge reported, and adopts the
+// package as the merge's own load of it did, which is what brings its
+// contexts and its imports' onto the program.
+func (c *checker) replayMerge(pkgName string) {
+	c.replayLoad("merge:" + pkgName)
+	if pkg, ok := c.libs.pkgs[pkgName]; ok {
+		c.adoptLib(pkgName, pkg)
+	}
+}
+
 // mergeTargetExtensions collects the overrides one target's package declares --
 // `component sngl.X` and `func pkg.f[target]` alike -- into the declaration
 // each names, under the target it implements. ir.Specialize swaps the entry
@@ -890,12 +901,12 @@ func (c *checker) mergeTargetExtensions(pkgName string) {
 	// no package to load, and loading one anyway caches it empty for every
 	// check that finds the library loaded.
 	if c.libs.extended[pkgName] || !c.hasLibPkg(pkgName) {
-		c.replayLoad("merge:" + pkgName)
+		c.replayMerge(pkgName)
 		return
 	}
 	defer c.loadHold()()
 	if c.libs.extended[pkgName] {
-		c.replayLoad("merge:" + pkgName)
+		c.replayMerge(pkgName)
 		return
 	}
 	c.libs.extended[pkgName] = true
