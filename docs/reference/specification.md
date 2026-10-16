@@ -333,8 +333,14 @@ what follows it: a declaration, a statement, a function parameter or a
 component prop.
 
 ```
-MacroAttr = "#[" IDENT [ "." IDENT ] [ "(" [ Expr { "," Expr } [ "," ] ] ")" ] "]"
+MacroAttr = "#[" IDENT [ "." IDENT ] [ "(" [ ArgList ] ")" ] "]"
 ```
+
+Its arguments are an argument list like a call's, positional or by name —
+`#[macro.foreign("go:strings", name="ToUpper")]` — and bind to the macro's
+declared parameters the way a call's bind to a function's. A mark is read when
+the program is checked, so each argument is a constant, and a binding, a spread
+or a handler is an error.
 
 Brackets nest within the attribute, and the closing `]` suppresses automatic
 semicolon insertion so the decorated construct may begin on the following line.

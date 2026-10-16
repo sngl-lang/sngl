@@ -28,9 +28,9 @@ const _pkg = "example.com/todo"
 
 #[go.native(_pkg, "todo.Todo")]
 struct Todo {
-    #[go.native("ID")]
+    #[go.native(name="ID")]
     id    int
-    #[go.native("Title")]
+    #[go.native(name="Title")]
     title string
 }
 
@@ -41,9 +41,9 @@ struct Handle {}
 
 #[go.native(_pkg, "todo.Bag")]
 struct Bag {
-    #[go.native("OK")]
+    #[go.native(name="OK")]
     ok     string
-    #[go.native("Handle")]
+    #[go.native(name="Handle")]
     handle Handle
 }
 

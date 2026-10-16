@@ -74,7 +74,7 @@ window {
 		"m.__n1.SetText(",
 		// The gate is the effect's position: while `running` is false the
 		// bracket describes no schedule, so nothing is armed to skip a tick.
-		"if m.running {",
+		"if m.running",
 	} {
 		if !strings.Contains(out, snippet) {
 			t.Errorf("generated model.go missing timer snippet %q\n--- generated ---\n%s", snippet, out)

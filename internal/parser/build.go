@@ -113,7 +113,7 @@ func (b *builder) posFromToken(tok Token) ast.Pos {
 // --- MacroAttr ---
 
 func (b *builder) buildMacroAttr(it nodeIter) ast.MacroAttr {
-	// MacroAttr = attr_open ident [ dot ident ] [ lparen [ Expr { comma Expr } ] rparen ] rbracket .
+	// MacroAttr = attr_open ident [ dot ident ] [ lparen [ ArgList ] rparen ] rbracket .
 	attrOpenTok := it.shift() // attr_open
 	pos := b.posFromToken(attrOpenTok)
 
@@ -132,25 +132,24 @@ func (b *builder) buildMacroAttr(it nodeIter) ast.MacroAttr {
 		name = firstName
 	}
 
-	var args []ast.Expr
+	var args []ast.Arg
 	multiline := false
 	if !it.done() && !it.isNonTerminal() && it.tokenType() == LPAREN {
 		lparenLine := it.token().Line
 		it.skip() // lparen
 		for !it.done() {
 			if it.isNonTerminal() {
-				args = append(args, b.buildExpr(it.enter()))
-			} else {
-				tok := it.token()
-				if tok.Type == RPAREN {
-					// The author broke the list across lines, so it stays
-					// broken: a capability list runs to twenty names, and
-					// joining one gives a line no reader can scan.
-					multiline = tok.Line > lparenLine
-					it.skip()
-					break
-				}
-				it.skip() // comma
+				args = b.buildMarkArgs(it.enter(), lparenLine)
+				continue
+			}
+			tok := it.token()
+			it.skip()
+			if tok.Type == RPAREN {
+				// The author broke the list across lines, so it stays
+				// broken: a capability list runs to twenty names, and
+				// joining one gives a line no reader can scan.
+				multiline = tok.Line > lparenLine
+				break
 			}
 		}
 	}
@@ -162,6 +161,35 @@ func (b *builder) buildMacroAttr(it nodeIter) ast.MacroAttr {
 	}
 
 	return ast.MacroAttr{Pos: pos, Alias: alias, Name: name, Args: args, IsMultiline: multiline, EndPos: ast.Pos(endPos)}
+}
+
+// buildMarkArgs builds a mark's argument list, which is a call's: positional
+// or by name. A mark is read at check time, so what a call's list holds beyond
+// values -- a binding, a spread, a handler -- has nothing to mean here and is
+// refused where it is written.
+func (b *builder) buildMarkArgs(it nodeIter, openLine int) []ast.Arg {
+	var args []ast.Arg
+	for _, a := range b.buildArgList(it, openLine).Args {
+		switch v := a.(type) {
+		case ast.EventHandler:
+			b.errorf(v.Pos, "a mark takes values, not a handler")
+		case ast.Arg:
+			switch {
+			case strings.HasPrefix(v.Name, ":"):
+				b.errorf(v.NamePos, "a mark takes values, not a binding")
+			case isSpread(v.Value):
+				b.errorf(*v.Value.ExprPos(), "a mark's arguments cannot be spread")
+			default:
+				args = append(args, v)
+			}
+		}
+	}
+	return args
+}
+
+func isSpread(e ast.Expr) bool {
+	_, ok := e.(*ast.SpreadExpr)
+	return ok
 }
 
 // buildParamAttrs consumes the leading { MacroAttr } of a Param or CompParam.
@@ -410,7 +438,7 @@ func (b *builder) claimArgComment(attr *ast.MacroAttr, tok Token, c *ast.Comment
 		attr.ArgTrailing = make([]*ast.Comment, len(attr.Args))
 	}
 	for i := len(attr.Args) - 1; i >= 0; i-- {
-		if p := attr.Args[i].ExprPos(); p != nil && p.Line <= tok.Line {
+		if p := attr.Args[i].Value.ExprPos(); p != nil && p.Line <= tok.Line {
 			attr.ArgTrailing[i] = c
 			return
 		}

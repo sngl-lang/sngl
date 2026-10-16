@@ -26,7 +26,7 @@ func (c *converter) foreignAttrs(f Foreign, fn *Func) []ast.MacroAttr {
 	if f.Unusable != "" {
 		// Language-neutral, and deliberately a second mark rather than a flag:
 		// a flag carries no payload and the reason is the point.
-		out = append(out, c.attr("macro", "unusable", ast.NewStringLiteral(f.Unusable)))
+		out = append(out, c.attr("macro", "unusable", posArg(ast.NewStringLiteral(f.Unusable))))
 	}
 	return out
 }
@@ -45,43 +45,46 @@ func (c *converter) correspondenceAttr(f Foreign, fn *Func) (ast.MacroAttr, bool
 	if f.Marked {
 		// #[foreign("scheme://path", "Name", flags...)] -- the path carries
 		// its scheme the way the mark writes it, and a field has neither.
-		var args []ast.Expr
-		if f.Path != "" {
-			args = append(args, ast.NewStringLiteral(schemeURI(f.Scheme, f.Path)))
-		}
-		args = append(args, ast.NewStringLiteral(f.Name))
-		args = append(args, foreignFlagIdents(fn)...)
-		return c.attr("macro", "foreign", args...), true
+		return c.attr("macro", "foreign", pathAndName(schemeURI(f.Scheme, f.Path), f, foreignFlagIdents(fn))...), true
 	}
 	switch f.Scheme {
 	case "go":
 		// go.native(path, name): a field names the identifier alone, having no
-		// package of its own, and the mark's one-argument form is that.
-		var args []ast.Expr
-		if f.Path != "" {
-			args = append(args, ast.NewStringLiteral(f.Path))
-		}
-		args = append(args, ast.NewStringLiteral(f.Name))
-		return c.attr("language/go", "native", append(args, nativeFlagIdents(fn)...)...), true
+		// package of its own.
+		return c.attr("language/go", "native", pathAndName(f.Path, f, nativeFlagIdents(fn))...), true
 	case "js", "kotlin":
 		// native(name, module): the opposite order to Go's, which is a wart in
 		// the marks rather than in this rendering -- follow each as declared.
-		args := []ast.Expr{ast.NewStringLiteral(f.Name)}
+		args := []ast.Arg{posArg(ast.NewStringLiteral(f.Name))}
 		if f.Path != "" {
-			args = append(args, ast.NewStringLiteral(f.Path))
+			args = append(args, posArg(ast.NewStringLiteral(f.Path)))
 		}
 		return c.attr("language/"+f.Scheme, "native", append(args, nativeFlagIdents(fn)...)...), true
 	case "c":
 		// cnative(name) and nothing else: C is an ABI rather than a target, so
 		// there is no module to name and Path is the constant "C".
-		return c.attr("macro", "cnative", ast.NewStringLiteral(f.Name)), true
+		return c.attr("macro", "cnative", posArg(ast.NewStringLiteral(f.Name))), true
 	}
 	return ast.MacroAttr{}, false
 }
 
 // attr builds one mark, spelling its package the way this file imported it.
-func (c *converter) attr(uri, name string, args ...ast.Expr) ast.MacroAttr {
+func (c *converter) attr(uri, name string, args ...ast.Arg) ast.MacroAttr {
 	return ast.MacroAttr{Alias: c.aliasFor(uri), Name: name, Args: args}
+}
+
+// posArg is a positional mark argument.
+func posArg(e ast.Expr) ast.Arg { return ast.Arg{Value: e} }
+
+// pathAndName is a `(path, name, flags...)` mark's arguments. Where there is
+// no path -- a struct field has no package of its own -- the name is written
+// by name, since positionally it would be the path.
+func pathAndName(path string, f Foreign, flags []ast.Arg) []ast.Arg {
+	name := ast.NewStringLiteral(f.Name)
+	if f.Path == "" {
+		return append([]ast.Arg{{Name: "name", Value: name}}, flags...)
+	}
+	return append([]ast.Arg{posArg(ast.NewStringLiteral(path)), posArg(name)}, flags...)
 }
 
 // schemeURI rejoins what imports.ParseScheme split: #[foreign] writes the
@@ -95,11 +98,11 @@ func schemeURI(scheme, path string) string {
 
 // nativeFlagIdents renders the flags a language's `native` mark accepts. Only
 // a function carries any: every one describes a call.
-func nativeFlagIdents(fn *Func) []ast.Expr {
+func nativeFlagIdents(fn *Func) []ast.Arg {
 	if fn == nil {
 		return nil
 	}
-	var out []ast.Expr
+	var out []ast.Arg
 	for _, f := range []struct {
 		on   bool
 		name string
@@ -111,7 +114,7 @@ func nativeFlagIdents(fn *Func) []ast.Expr {
 		{fn.HasContextArg, "context"},
 	} {
 		if f.on {
-			out = append(out, &ast.IdentExpr{Name: f.name})
+			out = append(out, posArg(&ast.IdentExpr{Name: f.name}))
 		}
 	}
 	return out
@@ -120,13 +123,13 @@ func nativeFlagIdents(fn *Func) []ast.Expr {
 // foreignFlagIdents renders the flags #[foreign] accepts. `native` is not
 // among them: it is the flag that clears Marked, so a record printing through
 // this branch never carried it.
-func foreignFlagIdents(fn *Func) []ast.Expr {
+func foreignFlagIdents(fn *Func) []ast.Arg {
 	if fn == nil {
 		return nil
 	}
-	var out []ast.Expr
+	var out []ast.Arg
 	if fn.IsAsync {
-		out = append(out, &ast.IdentExpr{Name: "async"})
+		out = append(out, posArg(&ast.IdentExpr{Name: "async"}))
 	}
 	return out
 }

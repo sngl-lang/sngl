@@ -6,7 +6,7 @@ import ir "sngl:internal/ir"
 
 // Records what a declaration corresponds to outside SNGL: the import path it
 // comes from and its name there, written the way an import line writes them.
-// One argument is the name alone, which is all a struct field can say, since a
+// A struct field names its name alone, `#[foreign(name="Title")]`, since a
 // field has no package of its own.
 //
 // The mark imports nothing, resolves nothing and validates nothing — a
@@ -20,7 +20,7 @@ import ir "sngl:internal/ir"
 // redirecting to one the backend did not emit. Struct, struct field and
 // function are the forms that carry it; the others refuse it. The flags that
 // may follow the name are `ir.ForeignFlag`.
-func foreign(path string, name string = "", flags list[ir.ForeignFlag] = []) ir.Macro
+func foreign(path string = "", name string = "", flags list[ir.ForeignFlag] = []) ir.Macro
 
 // Names the C identifier a declaration *is*: a function to call, or a type to
 // spell. The declaration itself is emitted by nobody.
