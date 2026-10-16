@@ -44,11 +44,15 @@ func emitPresenceChecks(b *strings.Builder, stmts []ir.Stmt, ids map[string]bool
 // which returns true where it renders. What is not a node stays, so a
 // condition reads the temps the view computed it from; each local is read once
 // into `_`, since the node that read it may be gone. A spliced instance renders
-// where the roots of its body do.
+// where the roots of its body stand, whatever an `if` or a `for` among them
+// decides.
 func presencePath(stmts []ir.Stmt, id string) ([]ir.Stmt, bool) {
 	var out []ir.Stmt
 	found := false
 	for _, s := range stmts {
+		if ins := ir.InstancesOf(s); ins != nil && slices.Contains(*ins, id) {
+			return append(out, &ir.Return{Value: boolLit(true)}), true
+		}
 		switch n := s.(type) {
 		case *ir.If:
 			body, inBody := presencePath(n.Body, id)
@@ -72,7 +76,7 @@ func presencePath(stmts []ir.Stmt, id string) ([]ir.Stmt, bool) {
 			body, ok := presencePath(n.Children, id)
 			out, found = append(out, body...), found || ok
 		case *ir.NodeInst:
-			if n.ID == id || slices.Contains(n.Instances, id) {
+			if n.ID == id {
 				return append(out, &ir.Return{Value: boolLit(true)}), true
 			}
 			for _, sc := range ir.SuppliedContent(n) {

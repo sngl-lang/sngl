@@ -385,9 +385,27 @@ type If struct {
 	// an alias -- the handler belongs to a call, a boundary or a window, and
 	// walks reach it there.
 	Catch *EventHandler `json:"-"`
+	// Instances is NodeInst.Instances, for an `if` at the root of a spliced
+	// body: the instance renders where the `if` stands, whichever branch it
+	// takes.
+	Instances []string `json:",omitempty"`
 }
 
 func (*If) stmtNode() {}
+
+// InstancesOf is where s records the instances whose spliced bodies it is a
+// root of: a node, an `if` or a `for`. Nil for any other statement.
+func InstancesOf(s Stmt) *[]string {
+	switch s := s.(type) {
+	case *NodeInst:
+		return &s.Instances
+	case *If:
+		return &s.Instances
+	case *For:
+		return &s.Instances
+	}
+	return nil
+}
 
 // For is a type-checked for statement with IR bodies and resolved element type.
 type For struct {
@@ -421,6 +439,10 @@ type For struct {
 	// sees a RefElem loop. The headless interpreter (which does not lower)
 	// reads it directly to bind the element as a reference.
 	RefElem bool
+	// Instances is NodeInst.Instances, for a `for` at the root of a spliced
+	// body: the instance renders where the loop stands, however many copies
+	// it makes.
+	Instances []string `json:",omitempty"`
 	// Counted is the arithmetic sequence this loop walks when its iterable is
 	// a sngl:seq call in a shape a host counting loop can express. Set by the
 	// passIterKind lowering pass alongside IterKind; nil for every other loop.

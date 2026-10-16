@@ -1,7 +1,9 @@
 bubbletea answers a test's null test of a ref with the view's own ifs and
 fors down to the node, so a condition reads the temps the view computed it
 from, and a spliced instance is present where the roots of its body are --
-an instance whose body is itself an instance included.
+an instance whose body is itself an instance included, and one whose body
+starts with an `if` or a `for`, which is present where its call site is
+whatever its own `if` decides.
 
 -- app.sngl --
 import . "sngl:ui"
@@ -23,6 +25,22 @@ component outer node {
     inner #qq()
 }
 
+component branchy node {
+    var on = false
+    if on {
+        text(value="on")
+    } else {
+        text(value="off")
+    }
+}
+
+component loopy node {
+    var xs = [1, 2]
+    for var x = xs {
+        text(value="{x}")
+    }
+}
+
 component screen node {
     var shown = false
     var n = 1
@@ -30,6 +48,8 @@ component screen node {
         button #toggle(text="t", @click { shown = !shown })
         if shown {
             outer #p()
+            branchy #br()
+            loopy #lp()
         }
         if (shown ? n : 0) > 0 {
             text #b(value="x")
@@ -40,9 +60,16 @@ component screen node {
 func testPresence(t Test, c screen) {
     t.assert(c.p == null)
     t.assert(c.b == null)
+    t.assert(c.br == null)
+    t.assert(c.lp == null)
     c.toggle.click()
     t.assert(c.p != null)
     t.assert(c.b != null)
+    t.assert(c.br != null)
+    t.assert(c.lp != null)
+    c.toggle.click()
+    t.assert(c.br == null)
+    t.assert(c.lp == null)
 }
 
 window {
@@ -58,6 +85,7 @@ import (
 	"charm.land/lipgloss/v2"
 	"fmt"
 	"os"
+	"strings"
 )
 
 // Model is the Bubble Tea model for this SNGL UI.
@@ -65,6 +93,8 @@ type Model struct {
 	shown     bool
 	n         int
 	m__inst0  int
+	on__inst0 bool
+	xs__inst0 []int
 	n__inst0  int
 	__focusID int
 
@@ -77,6 +107,8 @@ func New() Model {
 	m.shown = false
 	m.n = 1
 	m.m__inst0 = 0
+	m.on__inst0 = false
+	m.xs__inst0 = []int{1, 2}
 	m.n__inst0 = 0
 	m.__focusID = 0
 	return m
@@ -153,6 +185,36 @@ func SetM__inst0Cmd(v int) tea.Cmd {
 	return func() tea.Msg { return setM__inst0Msg{value: v} }
 }
 
+func (m Model) On__inst0() bool {
+	return m.on__inst0
+}
+
+func (m Model) SetOn__inst0(v bool) Model {
+	m.on__inst0 = v
+	return m
+}
+
+type setOn__inst0Msg struct{ value bool }
+
+func SetOn__inst0Cmd(v bool) tea.Cmd {
+	return func() tea.Msg { return setOn__inst0Msg{value: v} }
+}
+
+func (m Model) Xs__inst0() []int {
+	return m.xs__inst0
+}
+
+func (m Model) SetXs__inst0(v []int) Model {
+	m.xs__inst0 = v
+	return m
+}
+
+type setXs__inst0Msg struct{ value []int }
+
+func SetXs__inst0Cmd(v []int) tea.Cmd {
+	return func() tea.Msg { return setXs__inst0Msg{value: v} }
+}
+
 func (m Model) N__inst0() int {
 	return m.n__inst0
 }
@@ -183,6 +245,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m = m.SetN(msg.value)
 	case setM__inst0Msg:
 		m = m.SetM__inst0(msg.value)
+	case setOn__inst0Msg:
+		m = m.SetOn__inst0(msg.value)
+	case setXs__inst0Msg:
+		m = m.SetXs__inst0(msg.value)
 	case setN__inst0Msg:
 		m = m.SetN__inst0(msg.value)
 	case tea.WindowSizeMsg:
@@ -237,6 +303,34 @@ func (m *Model) bPresent() bool {
 	return false
 }
 
+func (m *Model) brPresent() bool {
+	if m.shown {
+		return true
+	}
+	var __lt0 int
+	_ = __lt0
+	if m.shown {
+		__lt0 = m.n
+	} else {
+		__lt0 = 0
+	}
+	return false
+}
+
+func (m *Model) lpPresent() bool {
+	if m.shown {
+		return true
+	}
+	var __lt0 int
+	_ = __lt0
+	if m.shown {
+		__lt0 = m.n
+	} else {
+		__lt0 = 0
+	}
+	return false
+}
+
 func (m *Model) pPresent() bool {
 	if m.shown {
 		return true
@@ -264,12 +358,37 @@ func (m Model) View() tea.View {
 	contentChildren = append(contentChildren, content_0)
 	var content_1 string
 	if m.shown {
-		content_1Focused := (m.__focusID == 1)
-		content_1Prefix := " "
-		if content_1Focused {
-			content_1Prefix = ">"
+		var content_1Parts []string
+		var content_1Part_0 string
+		content_1Part_0Focused := (m.__focusID == 1)
+		content_1Part_0Prefix := " "
+		if content_1Part_0Focused {
+			content_1Part_0Prefix = ">"
 		}
-		content_1 = lipgloss.NewStyle().Render(content_1Prefix + " " + fmt.Sprint(fmt.Sprint(m.n__inst0)))
+		content_1Part_0 = lipgloss.NewStyle().Render(content_1Part_0Prefix + " " + fmt.Sprint(fmt.Sprint(m.n__inst0)))
+		content_1Parts = append(content_1Parts, content_1Part_0)
+		var content_1Part_1 string
+		if m.on__inst0 {
+			content_1Part_1 = lipgloss.NewStyle().Render(fmt.Sprint("on"))
+		} else {
+			content_1Part_1 = lipgloss.NewStyle().Render(fmt.Sprint("off"))
+		}
+		if content_1Part_1 != "" {
+			content_1Parts = append(content_1Parts, content_1Part_1)
+		}
+		var content_1Part_2 string
+		var content_1Part_2Items []string
+		for _, x := range m.xs__inst0 {
+			_ = x
+			var content_1Part_2Item string
+			content_1Part_2Item = lipgloss.NewStyle().Render(fmt.Sprint(fmt.Sprint(x)))
+			content_1Part_2Items = append(content_1Part_2Items, content_1Part_2Item)
+		}
+		content_1Part_2 = strings.Join(content_1Part_2Items, "\n")
+		if content_1Part_2 != "" {
+			content_1Parts = append(content_1Parts, content_1Part_2)
+		}
+		content_1 = lipgloss.JoinVertical(lipgloss.Left, content_1Parts...)
 	}
 	if content_1 != "" {
 		contentChildren = append(contentChildren, content_1)
@@ -311,12 +430,19 @@ func TestPresence(t *testing.T) {
 	_ = c
 	if !(!c.pPresent()) { t.Errorf("assert failed: %s", "!c.pPresent()") }
 	if !(!c.bPresent()) { t.Errorf("assert failed: %s", "!c.bPresent()") }
+	if !(!c.brPresent()) { t.Errorf("assert failed: %s", "!c.brPresent()") }
+	if !(!c.lpPresent()) { t.Errorf("assert failed: %s", "!c.lpPresent()") }
 	c.toggleClick()
 	if !(c.pPresent()) { t.Errorf("assert failed: %s", "c.pPresent()") }
 	if !(c.bPresent()) { t.Errorf("assert failed: %s", "c.bPresent()") }
+	if !(c.brPresent()) { t.Errorf("assert failed: %s", "c.brPresent()") }
+	if !(c.lpPresent()) { t.Errorf("assert failed: %s", "c.lpPresent()") }
+	c.toggleClick()
+	if !(!c.brPresent()) { t.Errorf("assert failed: %s", "!c.brPresent()") }
+	if !(!c.lpPresent()) { t.Errorf("assert failed: %s", "!c.lpPresent()") }
 }
 
 
 func newTestComponent() Model { return New() }
 -- run/go/bubbletea --
-pass sha256:3dfefad26bb4e937abb67970be9d5848
+pass sha256:4d88307a78671020ec7613946c45a339

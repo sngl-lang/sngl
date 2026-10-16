@@ -1290,8 +1290,8 @@ func (st *inlineCompState) expandCall(n *ir.NodeInst) ([]ir.Stmt, error) {
 	}
 	if len(instances) > 0 {
 		for _, s := range body {
-			if root, ok := s.(*ir.NodeInst); ok {
-				root.Instances = append(slices.Clone(instances), root.Instances...)
+			if root := ir.InstancesOf(s); root != nil {
+				*root = append(slices.Clone(instances), *root...)
 			}
 		}
 	}
