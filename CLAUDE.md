@@ -2601,7 +2601,8 @@ time is handed its key in the `__copy` prop (`passCopyKeys`), and the call site
 lists its root under that key where it binds it -- `ComponentRoot`'s second
 argument, after the setter has re-keyed an instance a slot reuses: html's
 `data-sngl-copy` beside `data-sngl-instance`, fyne's and gtk4's
-`__copies_<id>`, emptied by the slot's reset and by the record's `Destroy`,
+`__copies_<id>`, one map for every record: a re-key replaces the entry and a
+record's `Destroy` takes its root out,
 and android's `SnglPresent` entry `id[key]`. bubbletea splices it and answers
 from the view (`testdata/indexed_ref_null_test_instance.txtar`).
 

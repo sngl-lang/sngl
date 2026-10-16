@@ -50,7 +50,7 @@ component main node {
     var open = true
     vbox {
         button #move(text="m", @click { skip = "a" })
-        button #close(text="c", @click { open = false })
+        button #shut(text="c", @click { open = false })
         if open {
             vbox {
                 for var n = names {
@@ -71,7 +71,7 @@ func testInstanceCopy(t Test, c main) {
     t.assert(c.b[0] == null)
     t.assert(c.b[1] != null)
     t.assert(c.b[2] != null)
-    c.close.click()
+    c.shut.click()
     t.assert(c.b[1] == null)
     t.assert(c.b[2] == null)
 }
@@ -80,7 +80,7 @@ window {
     main
 }
 -- testrun/android/kotlin/app.sngl/main/1 --
-sha256:8475cd054bfc328c7dc270fb2ec42894
+sha256:39312d46cdda466ff5e5689ea3926974
 {
   "results": [
     {
@@ -90,7 +90,7 @@ sha256:8475cd054bfc328c7dc270fb2ec42894
   ]
 }
 -- testrun/bubbletea/go/app.sngl/main/1 --
-sha256:94ca88541cd36850f9fa21fc78959418
+sha256:3d96c884602ad3df3c6b69ad2f27fabd
 {
   "results": [
     {
@@ -100,7 +100,7 @@ sha256:94ca88541cd36850f9fa21fc78959418
   ]
 }
 -- testrun/fyne/go/app.sngl/main/1 --
-sha256:02fb7ca2d257e178ed3440f328539a1d
+sha256:71544a805dd6000097eef133076b8a14
 {
   "results": [
     {
@@ -110,7 +110,7 @@ sha256:02fb7ca2d257e178ed3440f328539a1d
   ]
 }
 -- testrun/gtk4/go/app.sngl/main/1 --
-sha256:b10178d0ada65ea0fde80d2956d6db21
+sha256:55fa8af36c607612d34e03c5e0f59cfc
 {
   "results": [
     {
@@ -120,7 +120,7 @@ sha256:b10178d0ada65ea0fde80d2956d6db21
   ]
 }
 -- testrun/html/none/app.sngl/main/1 --
-sha256:32a7f6547f7b314c23a957c7659c4bdb
+sha256:bc47d7491ff7f439d7bbed40d3962489
 {
   "results": [
     {

@@ -179,12 +179,12 @@ type gtk4Translator struct {
 	slotPresent []string
 	// instanceCopies are the ids a test reaches one copy of whose instances,
 	// built at run time, this scope lists by root in a Model map, declared
-	// through modelSink: a record's own fields are not the Model's.
-	// slotInstances are those this slot render func builds, whose maps its
-	// reset empties.
+	// through modelSink: a record's own fields are not the Model's. No slot
+	// reset empties the map, since one map holds every record's instances:
+	// a re-key replaces an instance's entry, and a destroyed record unlists
+	// itself.
 	instanceCopies map[string]bool
 	modelSink      func(name, cType string)
-	slotInstances  []string
 }
 
 // namedWidgetField is the Model field a widget an instance builds is handed
@@ -224,24 +224,13 @@ func (t *gtk4Translator) withIndexed(indexed map[string]bool, stmts []ir.Stmt) *
 		}
 		return nil
 	})
-	return t.withInstanceCopies(indexed, t.sinkField, stmts)
+	return t.withInstanceCopies(indexed, t.sinkField)
 }
 
 // withInstanceCopies has this scope list the instances of the ids a test
-// reaches one copy of, declaring each map through modelSink; stmts is the
-// scope's body, whose instances a slot's reset unlists.
-func (t *gtk4Translator) withInstanceCopies(ids map[string]bool, modelSink func(name, cType string), stmts []ir.Stmt) *gtk4Translator {
-	t.instanceCopies, t.modelSink, t.slotInstances = ids, modelSink, nil
-	_ = ir.Walk(stmts, func(n ir.Node) error {
-		if lv, ok := n.(*ir.LocalVar); ok {
-			if c, ok := lv.Init.(*ir.Call); ok && c.Func != nil && c.Func.Intrinsic == ir.NodeOpComponentRoot && len(c.Args) == 2 {
-				if inst := codegen.IdentBareName(c.Args[0].Value); ids[inst] && !slices.Contains(t.slotInstances, inst) {
-					t.slotInstances = append(t.slotInstances, inst)
-				}
-			}
-		}
-		return nil
-	})
+// reaches one copy of, declaring each map through modelSink.
+func (t *gtk4Translator) withInstanceCopies(ids map[string]bool, modelSink func(name, cType string)) *gtk4Translator {
+	t.instanceCopies, t.modelSink = ids, modelSink
 	return t
 }
 
@@ -1404,10 +1393,6 @@ func (t *gtk4Translator) OnSlotReset(ctx context.Context, slot *ir.Var) []ir.Stm
 	for _, id := range t.slotNamed {
 		list := copiesField(id)
 		stmts = append(stmts, &ir.Assign{Target: codegen.RecvFieldRef(t.gc.NodeRecvRef(list), list, t.copiesType(id)), Op: ast.AssignSet, Value: &ir.Literal{Type: ir.TypNull}})
-	}
-	for _, id := range t.slotInstances {
-		list := copiesField(id)
-		stmts = append(stmts, &ir.Assign{Target: codegen.RecvFieldRef(&ir.Ident{Name: t.gc.ModelRef()}, list, ir.NativeGoNamed(widgetFieldGoType(copyMapType("GtkWidget"), t.wrapped))), Op: ast.AssignSet, Value: &ir.Literal{Type: ir.TypNull}})
 	}
 	for _, id := range t.slotPresent {
 		if t.isLocalRef(id) {

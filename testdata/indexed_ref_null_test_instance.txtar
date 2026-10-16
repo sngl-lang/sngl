@@ -37,7 +37,7 @@ component main node {
     var open = true
     vbox {
         button #move(text="m", @click { skip = "a" })
-        button #close(text="c", @click { open = false })
+        button #shut(text="c", @click { open = false })
         if open {
             vbox {
                 for var n = names {
@@ -58,7 +58,7 @@ func testInstanceCopy(t Test, c main) {
     t.assert(c.b[0] == null)
     t.assert(c.b[1] != null)
     t.assert(c.b[2] != null)
-    c.close.click()
+    c.shut.click()
     t.assert(c.b[1] == null)
     t.assert(c.b[2] == null)
 }
@@ -292,8 +292,8 @@ func (m *Model) moveClick() {
 	m.__focusID = prev
 }
 
-// close__r0Click activates the #close__r0 widget the way a keypress does; for tests.
-func (m *Model) close__r0Click() {
+// shutClick activates the #shut widget the way a keypress does; for tests.
+func (m *Model) shutClick() {
 	prev := m.__focusID
 	m.__focusID = 1
 	nm, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
@@ -436,7 +436,7 @@ func TestInstanceCopy(t *testing.T) {
 	if !(!c.bPresentAt("0")) { t.Errorf("assert failed: %s", "!c.bPresentAt(\"0\")") }
 	if !(c.bPresentAt("1")) { t.Errorf("assert failed: %s", "c.bPresentAt(\"1\")") }
 	if !(c.bPresentAt("2")) { t.Errorf("assert failed: %s", "c.bPresentAt(\"2\")") }
-	c.close__r0Click()
+	c.shutClick()
 	if !(!c.bPresentAt("1")) { t.Errorf("assert failed: %s", "!c.bPresentAt(\"1\")") }
 	if !(!c.bPresentAt("2")) { t.Errorf("assert failed: %s", "!c.bPresentAt(\"2\")") }
 }
@@ -472,7 +472,7 @@ type Model struct {
 
 	__n1        *fyne.Container
 	move        *widget.Button
-	close__r0   *widget.Button
+	shut        *widget.Button
 	__named_hit *widget.Button
 	__copies_b  map[string]fyne.CanvasObject
 }
@@ -535,7 +535,7 @@ func (m *Model) move_click_handler() {
 	}
 }
 
-func (m *Model) close__r0_click_handler() {
+func (m *Model) shut_click_handler() {
 	m.open = false
 	m.__renderSlot0(m.__n1)
 }
@@ -547,10 +547,10 @@ func (m *Model) moveClick() {
 	}
 }
 
-// close__r0Click invokes the OnTapped callback on the #close__r0 widget; for tests.
-func (m *Model) close__r0Click() {
-	if m.close__r0.OnTapped != nil {
-		m.close__r0.OnTapped()
+// shutClick invokes the OnTapped callback on the #shut widget; for tests.
+func (m *Model) shutClick() {
+	if m.shut.OnTapped != nil {
+		m.shut.OnTapped()
 	}
 }
 
@@ -618,10 +618,10 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.move.SetText("m")
 	m.move.OnTapped = m.move_click_handler
 	m.__n1.Add(m.move)
-	m.close__r0 = widget.NewButton("", nil)
-	m.close__r0.SetText("c")
-	m.close__r0.OnTapped = m.close__r0_click_handler
-	m.__n1.Add(m.close__r0)
+	m.shut = widget.NewButton("", nil)
+	m.shut.SetText("c")
+	m.shut.OnTapped = m.shut_click_handler
+	m.__n1.Add(m.shut)
 	m.__renderSlot0(m.__n1)
 	content := fyne.CanvasObject(m.__n1)
 	return content
@@ -721,7 +721,6 @@ func (c *__child0Instance) __renderSlot1(__parent *fyne.Container) {
 	}
 	c.__slot1 = nil
 	c.__slot1_at = fynelayout.SlotAnchor(__parent, c.__slot1_at)
-	c.__model.__copies_b = nil
 	__inst1_next := []*BadgeInstance{}
 	var __inst1_i int = 0
 	for __copy0, n := range c.__prop___p0 {
@@ -787,7 +786,7 @@ func TestInstanceCopy(t *testing.T) {
 	if !(!c.bPresentAt("0")) { t.Errorf("assert failed: %s", "!c.bPresentAt(\"0\")") }
 	if !(c.bPresentAt("1")) { t.Errorf("assert failed: %s", "c.bPresentAt(\"1\")") }
 	if !(c.bPresentAt("2")) { t.Errorf("assert failed: %s", "c.bPresentAt(\"2\")") }
-	c.close__r0Click()
+	c.shutClick()
 	if !(!c.bPresentAt("1")) { t.Errorf("assert failed: %s", "!c.bPresentAt(\"1\")") }
 	if !(!c.bPresentAt("2")) { t.Errorf("assert failed: %s", "!c.bPresentAt(\"2\")") }
 }
@@ -838,7 +837,7 @@ type Model struct {
 	__slot1_at   gtk4rt.Handle
 	__n1         gtk4rt.Handle
 	move         gtk4rt.Handle
-	close__r0    gtk4rt.Handle
+	shut         gtk4rt.Handle
 	__named_hit  gtk4rt.Handle
 	__copies_b   map[string]gtk4rt.Handle
 }
@@ -902,7 +901,7 @@ func (m *Model) move_clicked_handler() {
 	}
 }
 
-func (m *Model) close__r0_clicked_handler() {
+func (m *Model) shut_clicked_handler() {
 	m.open = false
 	m.__renderSlot0(m.__n1)
 }
@@ -1015,7 +1014,6 @@ func (c *__child0Instance) __renderSlot1(parent gtk4rt.Handle) {
 	}
 	c.__slot1 = nil
 	c.__slot1_at = gtk4rt.SlotAnchor(parent, c.__slot1_at)
-	c.__model.__copies_b = nil
 	__inst1_next := []*BadgeInstance{}
 	var __inst1_i int = 0
 	for __copy0, n := range c.__prop___p0 {
@@ -1107,10 +1105,10 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ButtonSetLabel(m.move, "m")
 	gtk4rt.Connect(m.move, "clicked", m.move_clicked_handler)
 	gtk4rt.BoxAppend(m.__n1, m.move)
-	m.close__r0 = gtk4rt.ButtonNew()
-	gtk4rt.ButtonSetLabel(m.close__r0, "c")
-	gtk4rt.Connect(m.close__r0, "clicked", m.close__r0_clicked_handler)
-	gtk4rt.BoxAppend(m.__n1, m.close__r0)
+	m.shut = gtk4rt.ButtonNew()
+	gtk4rt.ButtonSetLabel(m.shut, "c")
+	gtk4rt.Connect(m.shut, "clicked", m.shut_clicked_handler)
+	gtk4rt.BoxAppend(m.__n1, m.shut)
 	m.__renderSlot0(m.__n1)
 	gtk4rt.BoxAppend(m.__root, m.__n1)
 }
@@ -1129,9 +1127,9 @@ func (m *Model) moveClick() {
 	gtk4rt.Emit(m.move, "clicked")
 }
 
-// close__r0Click fires the "clicked" signal on the #close__r0 widget; for tests.
-func (m *Model) close__r0Click() {
-	gtk4rt.Emit(m.close__r0, "clicked")
+// shutClick fires the "clicked" signal on the #shut widget; for tests.
+func (m *Model) shutClick() {
+	gtk4rt.Emit(m.shut, "clicked")
 }
 
 // hitClick fires the "clicked" signal on the #hit widget; for tests.
@@ -1215,7 +1213,7 @@ fun MainScreen(state: MainScreenState = remember { MainScreenState() }) {
         }
         Button(onClick = {
             state.open = false
-        }, modifier = Modifier.testTag("close")) {
+        }, modifier = Modifier.testTag("shut")) {
             Text(text = "c", modifier = Modifier)
         }
         if (state.open) {
@@ -1280,7 +1278,7 @@ class MainScreenTest {
         org.junit.Assert.assertTrue("!(composeTestRule.onAllNodes((androidx.compose.ui.test.hasTestTag(\"b\") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, \"0\"))).fetchSemanticsNodes().isNotEmpty() || SnglPresent.containsValue(\"b[\" + \"0\" + \"]\"))", !(composeTestRule.onAllNodes((androidx.compose.ui.test.hasTestTag("b") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, "0"))).fetchSemanticsNodes().isNotEmpty() || SnglPresent.containsValue("b[" + "0" + "]")))
         org.junit.Assert.assertTrue("(composeTestRule.onAllNodes((androidx.compose.ui.test.hasTestTag(\"b\") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, \"1\"))).fetchSemanticsNodes().isNotEmpty() || SnglPresent.containsValue(\"b[\" + \"1\" + \"]\"))", (composeTestRule.onAllNodes((androidx.compose.ui.test.hasTestTag("b") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, "1"))).fetchSemanticsNodes().isNotEmpty() || SnglPresent.containsValue("b[" + "1" + "]")))
         org.junit.Assert.assertTrue("(composeTestRule.onAllNodes((androidx.compose.ui.test.hasTestTag(\"b\") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, \"2\"))).fetchSemanticsNodes().isNotEmpty() || SnglPresent.containsValue(\"b[\" + \"2\" + \"]\"))", (composeTestRule.onAllNodes((androidx.compose.ui.test.hasTestTag("b") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, "2"))).fetchSemanticsNodes().isNotEmpty() || SnglPresent.containsValue("b[" + "2" + "]")))
-        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("close")).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick); composeTestRule.waitForIdle()
+        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("shut")).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick); composeTestRule.waitForIdle()
         org.junit.Assert.assertTrue("!(composeTestRule.onAllNodes((androidx.compose.ui.test.hasTestTag(\"b\") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, \"1\"))).fetchSemanticsNodes().isNotEmpty() || SnglPresent.containsValue(\"b[\" + \"1\" + \"]\"))", !(composeTestRule.onAllNodes((androidx.compose.ui.test.hasTestTag("b") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, "1"))).fetchSemanticsNodes().isNotEmpty() || SnglPresent.containsValue("b[" + "1" + "]")))
         org.junit.Assert.assertTrue("!(composeTestRule.onAllNodes((androidx.compose.ui.test.hasTestTag(\"b\") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, \"2\"))).fetchSemanticsNodes().isNotEmpty() || SnglPresent.containsValue(\"b[\" + \"2\" + \"]\"))", !(composeTestRule.onAllNodes((androidx.compose.ui.test.hasTestTag("b") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, "2"))).fetchSemanticsNodes().isNotEmpty() || SnglPresent.containsValue("b[" + "2" + "]")))
     }
@@ -1303,7 +1301,7 @@ body { font-family: system-ui, sans-serif; }
   <button id="$0" data-sngl-id="move">
     <span>m</span>
   </button>
-  <button id="$1" data-sngl-id="close">
+  <button id="$1" data-sngl-id="shut">
     <span>c</span>
   </button>
   <span data-sngl-slot="0" style="display:contents"></span>
@@ -1328,7 +1326,7 @@ window.__sngl_boot = () => {
   // sngl-entry.js
   var state = { names: ["a", "b", "c"], skip: "b", open: true };
   state.moveClick = () => $0.click();
-  state.closeClick = () => $1.click();
+  state.shutClick = () => $1.click();
   state.hitClick = () => document.querySelector('[data-sngl-id="hit"]').click();
   state.hitClickAt = (k) => document.querySelector('[data-sngl-id="hit"][data-sngl-copy="' + k + '"]').click();
   state.hitContextmenu = (p) => {
@@ -1548,12 +1546,12 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:699b04f5081084f0f64d54b3f34486f0
+pass sha256:ae7ea5301b127f1b4ac958385107fcdc
 -- run/go/fyne --
-pass sha256:89032131867669abda3686b20b35f819
+pass sha256:0aa6c9cb5eaa5b064e8f963e3209847b
 -- run/go/gtk4 --
-pass sha256:7d73f13549d681cd0c4e8dc6b15efc55
+pass sha256:a5a01729a2c6022fc9719e87466dc6e1
 -- run/kotlin/android --
-pass sha256:b8bf08b44168ab8cff669394194f94c9
+pass sha256:aeb384cc8db0a258acc1eddc36690364
 -- run/none/html --
-pass sha256:c1a68d7bcbe50d03bd8b158970626037
+pass sha256:8f7a4a067a35a36f4c638c10d726a1ba

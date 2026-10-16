@@ -71,7 +71,7 @@ func emitComponentInstance(
 	var invokers []fyneEventInvoker
 	tr := newFyneTranslator(igc, nodeSpecs, sink, importSink, failSink).
 		withLocalRefs(comp.LocalRefs).withSlotRoot(instanceRootVar, comp.Stmts).
-		withInstanceCopies(indexed, modelFieldSink, comp.Stmts).
+		withInstanceCopies(indexed, modelFieldSink).
 		withInvokerSink(func(inv fyneEventInvoker) { invokers = append(invokers, inv) })
 	tr.canvasByID, tr.canvasByNode = canvasByID, canvasByNode
 	bodyStmts := codegen.WalkLowered(context.Background(), comp.Stmts, tr)
@@ -183,7 +183,7 @@ func emitComponentInstance(
 			continue
 		}
 		mtr := newFyneTranslator(igc, nodeSpecs, sink, importSink, failSink).withLocalRefs(fn.Lowered.LocalRefs).
-			withInstanceCopies(indexed, modelFieldSink, fn.Block)
+			withInstanceCopies(indexed, modelFieldSink)
 		mtr.canvasByNode = canvasByNode
 		params := fn.Params
 		if len(params) > 0 && params[0].Receiver {

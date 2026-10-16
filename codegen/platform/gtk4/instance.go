@@ -91,7 +91,7 @@ func emitComponentInstance(
 	// the Model as it is built: the invoker reaches whichever instance built
 	// it last, which is the one on screen.
 	var invokers []gtkEventInvoker
-	tr := newTr(comp.LocalRefs).withInstanceCopies(indexed, modelSink, comp.Stmts).withSlotRoot(instanceRootVar, comp.Stmts).
+	tr := newTr(comp.LocalRefs).withInstanceCopies(indexed, modelSink).withSlotRoot(instanceRootVar, comp.Stmts).
 		withInvokerSink(func(inv gtkEventInvoker) { invokers = append(invokers, inv) })
 	bodyStmts := codegen.WalkLowered(context.Background(), comp.Stmts, tr)
 
@@ -179,7 +179,7 @@ func emitComponentInstance(
 		if fn == nil || len(fn.Block) == 0 {
 			continue
 		}
-		mtr := newTr(fn.Lowered.LocalRefs).withInstanceCopies(indexed, modelSink, fn.Block)
+		mtr := newTr(fn.Lowered.LocalRefs).withInstanceCopies(indexed, modelSink)
 		params := fn.Params
 		if len(params) > 0 && params[0].Receiver {
 			params = params[1:]
