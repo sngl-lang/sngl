@@ -388,7 +388,7 @@ func (r *reservedRenamer) rewrite(pkg *ir.Package) {
 				if comp, ok := t.Decl.(*ir.Component); ok {
 					if nn, ok := r.members[comp][x.Field]; ok {
 						x.Field = nn
-					} else if nn, ok := r.ids[x.Field]; ok && r.testReach(x) && bodyNodes(comp.Stmts)[x.Field] != nil {
+					} else if nn, ok := r.ids[x.Field]; ok && r.testReach(x) && x.Ref != ir.RefNone {
 						x.Field = nn
 					}
 				}

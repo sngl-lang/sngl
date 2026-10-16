@@ -1,8 +1,7 @@
 # A recursive component whose function reads its props is refused on
-# bubbletea, with a position, rather than emitted: bubbletea makes a
-# component's functions the Model's by splicing the component where it is
-# written, and a recursion is never spliced, so the function read a prop
-# nothing bound (`undefined: n`).
+# bubbletea, with a position: bubbletea makes a component's functions the
+# Model's by splicing the component where it is written, and a recursion is
+# never spliced, so the Model has no prop for the function to read.
 #
 # The same program builds on fyne, which keeps an instance of its own.
 

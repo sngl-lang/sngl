@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"slices"
 
+	"duckfam.us/sngl/ast"
+
 	"duckfam.us/sngl/ir"
 )
 
@@ -40,6 +42,7 @@ var passTestReach = pass{
 			if fn == nil || !fn.IsTest {
 				continue
 			}
+			answerInstancePresence(fn, params)
 			if err := answerTestPropReads(fn, params); err != nil {
 				return err
 			}
@@ -233,7 +236,60 @@ func (f *reachFlattener) siteComponent(at *ir.Select, site *ir.NodeInst) (*ir.Co
 	f.pkg.Components = append(f.pkg.Components, c)
 	f.copied[c] = true
 	site.Component, site.Name = c, c.Name
+	f.repointThroughSite(site, comp, c)
 	return c, nil
+}
+
+// repointThroughSite points what the program reaches through the site's
+// handle -- the handle's type, a method called through it -- at the copy
+// made for the site.
+func (f *reachFlattener) repointThroughSite(site *ir.NodeInst, from, to *ir.Component) {
+	h := site.Handle
+	if h == nil {
+		return
+	}
+	retype := func(t *ir.Type) *ir.Type {
+		if t == nil || t.Decl != ir.Symbol(from) {
+			return t
+		}
+		cp := *t
+		cp.Decl = to
+		return &cp
+	}
+	h.Type = retype(h.Type)
+	funcs := map[*ir.Func]*ir.Func{}
+	for i, fn := range from.Funcs {
+		if i < len(to.Funcs) {
+			funcs[fn] = to.Funcs[i]
+		}
+	}
+	through := func(e ir.Expr) bool {
+		id, ok := unnarrowed(e).(*ir.Ident)
+		return ok && id.Sym == ir.Symbol(h)
+	}
+	visit := func(n ir.Node) error {
+		switch x := n.(type) {
+		case *ir.Ident:
+			if x.Sym == ir.Symbol(h) {
+				x.Type = retype(x.Type)
+			}
+		case *ir.Call:
+			clone := funcs[x.Func]
+			if clone == nil {
+				return nil
+			}
+			if x.Receiver != nil && through(x.Receiver) || x.Receiver == nil && len(x.Args) > 0 && through(x.Args[0].Value) {
+				x.Func = clone
+			}
+		}
+		return nil
+	}
+	_ = ir.Walk(f.pkg, visit)
+	for _, b := range f.bodies {
+		for _, r := range b.roots {
+			_ = ir.Walk(r, visit)
+		}
+	}
 }
 
 // uid is the id node is reached under from the test's instance: its own
@@ -270,9 +326,17 @@ func answerTestPropReads(fn *ir.Func, params map[*ir.Param]bool) error {
 			return err
 		}
 		if !changed {
-			return nil
+			break
 		}
 	}
+	var bad error
+	_ = ir.Walk(fn.Block, func(n ir.Node) error {
+		if sel, ok := n.(*ir.Select); ok && bad == nil && unnamedTestPropRead(sel, params) {
+			bad = fmt.Errorf("%s: `%s` is what its call site wrote, which reads something a test cannot name -- a slot's parameter, a local -- so a test cannot read it through the instance; assert on the state it is written from", exprPos(sel), sel.Field)
+		}
+		return nil
+	})
+	return bad
 }
 
 // fireTriggers makes each event a test fires on an instance of a program
@@ -563,4 +627,150 @@ func followTestNodeID(pkg *ir.Package, was, id string) {
 			return nil
 		})
 	}
+}
+
+// answerInstancePresence answers each null test fn makes of a program
+// component's instance with whether its call site is rendered: an instance is
+// there wherever its call site is, whatever its body renders now. That is the
+// conditions of the `if`s around the call site and, for one copy, whether each
+// loop around it renders that copy, read through the instance that wrote the
+// call site. A call site some other construct decides -- a boundary, a slot
+// fallback, a page -- or whose conditions read what a test cannot name is left
+// to the target's presence check.
+func answerInstancePresence(fn *ir.Func, params map[*ir.Param]bool) {
+	_ = ir.Rewrite(fn.Block, func(n ir.Node) (ir.Node, error) {
+		b, ok := n.(*ir.Binary)
+		if !ok {
+			return n, nil
+		}
+		if e := callSitePresence(b, params); e != nil {
+			return e, ir.SkipDir
+		}
+		return n, nil
+	})
+}
+
+func callSitePresence(b *ir.Binary, params map[*ir.Param]bool) ir.Expr {
+	sel, path, present, ok := ir.NullTestedCopy(b)
+	if !ok || !rootedAtTest(sel.Operand, params) {
+		return nil
+	}
+	comp := componentOf(sel.Operand)
+	if comp == nil {
+		return nil
+	}
+	site, wraps, ok := callSiteWraps(comp.Stmts, sel.Field)
+	if !ok || site.Component == nil || site.Component.PkgPath() != "" || site.Component.Primitive() || site.Component.Builtin != ir.BuiltinNone {
+		return nil
+	}
+	var loops []*ir.For
+	for _, w := range wraps {
+		if w.loop != nil {
+			loops = append(loops, w.loop)
+		}
+	}
+	if len(loops) != len(path) {
+		return nil
+	}
+	env := loopBindings(loops, path)
+	var conds []ir.Expr
+	li := 0
+	for _, w := range wraps {
+		var c ir.Expr
+		if w.loop != nil {
+			c = ir.CopyInRange(w.loop, path[li], ir.CloneExprSharingDecls)
+			li++
+		} else {
+			c = ir.CloneExprSharingDecls(w.cond)
+			if w.negate {
+				c = &ir.Unary{Type: ir.TypBool, Op: ast.UnaryNot, Operand: c}
+			}
+		}
+		if c == nil {
+			return nil
+		}
+		c = rebaseOnInstanceUnder(c, comp, sel.Operand, env)
+		if c == nil {
+			return nil
+		}
+		conds = append(conds, c)
+	}
+	var out ir.Expr = &ir.Literal{Type: ir.TypBool, Value: "true"}
+	for i, c := range conds {
+		if i == 0 {
+			out = c
+			continue
+		}
+		out = &ir.Binary{Type: ir.TypBool, Op: ast.BinAnd, Left: out, Right: c}
+	}
+	if !present {
+		out = &ir.Unary{Type: ir.TypBool, Op: ast.UnaryNot, Operand: out}
+	}
+	return out
+}
+
+// siteWrap is one construct around a call site that decides whether it is
+// rendered: an `if`'s condition, negated in its else, or a loop.
+type siteWrap struct {
+	cond   ir.Expr
+	negate bool
+	loop   *ir.For
+}
+
+// callSiteWraps is the node a body writes under id and the `if`s and loops
+// around it, outermost first, or false where anything else decides it.
+func callSiteWraps(stmts []ir.Stmt, id string) (*ir.NodeInst, []siteWrap, bool) {
+	var walk func(stmts []ir.Stmt, wraps []siteWrap) (*ir.NodeInst, []siteWrap, bool, bool)
+	walk = func(stmts []ir.Stmt, wraps []siteWrap) (*ir.NodeInst, []siteWrap, bool, bool) {
+		for _, s := range stmts {
+			switch x := s.(type) {
+			case *ir.NodeInst:
+				if x.ID == id {
+					return x, wraps, true, true
+				}
+				if n, w, ok, found := walk(x.Children, wraps); found {
+					return n, w, ok, true
+				}
+				for _, name := range ir.SlotNames(x.Slots) {
+					if pop := x.Slots[name]; pop != nil {
+						if _, _, _, found := walk(pop.Body, wraps); found {
+							return nil, nil, false, true
+						}
+					}
+				}
+			case *ir.If:
+				if x.Catch != nil {
+					break
+				}
+				if n, w, ok, found := walk(x.Body, append(slices.Clip(wraps), siteWrap{cond: x.Cond})); found {
+					return n, w, ok, true
+				}
+				if n, w, ok, found := walk(x.Else, append(slices.Clip(wraps), siteWrap{cond: x.Cond, negate: true})); found {
+					return n, w, ok, true
+				}
+				continue
+			case *ir.For:
+				if len(x.Else) > 0 {
+					if _, _, _, found := walk(x.Else, wraps); found {
+						return nil, nil, false, true
+					}
+				}
+				if n, w, ok, found := walk(x.Body, append(slices.Clip(wraps), siteWrap{loop: x})); found {
+					return n, w, ok, true
+				}
+				continue
+			}
+			for _, blk := range ir.ViewBlocks(s) {
+				if _, ok := s.(*ir.NodeInst); ok {
+					break
+				}
+				if _, _, _, found := walk(*blk, wraps); found {
+					return nil, nil, false, true
+				}
+			}
+		}
+		return nil, nil, false, false
+	}
+	n, w, ok, _ := walk(stmts, nil)
+	return n, w, ok
 }

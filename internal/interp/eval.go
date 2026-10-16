@@ -1673,7 +1673,7 @@ func (env *Env) evalMapLitIR(e *ir.MapLitIR) (any, error) {
 }
 
 func (env *Env) evalBinary(e *ir.Binary) (any, error) {
-	if sel, path, present, ok := ir.NullTestedRef(e); ok && len(path) > 0 {
+	if sel, path, present, ok := ir.NullTestedCopy(e); ok && len(path) > 0 {
 		return env.copyNullTest(sel, path, present)
 	}
 	left, err := env.Eval(e.Left)

@@ -464,13 +464,6 @@ func (m *Model) toggleClick() {
 	m.__focusID = prev
 }
 
-func (m *Model) bPresent() bool {
-	if m.show {
-		return true
-	}
-	return false
-}
-
 func (m *Model) donePresent() bool {
 	if m.show {
 		if m.hits__inst0 >= 2 {
@@ -491,15 +484,6 @@ func (m *Model) finPresentAt(key string) bool {
 			if key == fmt.Sprint(i) {
 				return true
 			}
-		}
-	}
-	return false
-}
-
-func (m *Model) rPresentAt(key string) bool {
-	for i, _ := range m.names {
-		if key == fmt.Sprint(i) {
-			return true
 		}
 	}
 	return false
@@ -608,7 +592,7 @@ import (
 func TestReachesOneInstance(t *testing.T) {
 	c := newTestComponent()
 	_ = c
-	if c.bPresent() {
+	if c.show {
 		if !(!c.donePresent()) { t.Errorf("assert failed: %s", "!c.donePresent()") }
 		c.hitClick()
 		if !((c.hits__inst0 == 1)) { t.Errorf("assert failed: %s", "(c.hits__inst0 == 1)") }
@@ -622,13 +606,13 @@ func TestReachesOneInstance(t *testing.T) {
 		if !(false) { t.Errorf("assert failed: %s", "false") }
 	}
 	c.toggleClick()
-	if !(!c.bPresent()) { t.Errorf("assert failed: %s", "!c.bPresent()") }
+	if !(!c.show) { t.Errorf("assert failed: %s", "!c.show") }
 }
 
 func TestReachesOneCopy(t *testing.T) {
 	c := newTestComponent()
 	_ = c
-	if c.rPresentAt("1") {
+	if (1 < len(c.names)) {
 		if !(!c.finPresentAt("1")) { t.Errorf("assert failed: %s", "!c.finPresentAt(\"1\")") }
 		c.tapClickAt("1")
 		if !((func() int { if __v, __ok := c.taps__inst0["1"]; __ok { return __v }; return 0 }() == 1)) { t.Errorf("assert failed: %s", "(func() int { if __v, __ok := c.taps__inst0[\"1\"]; __ok { return __v }; return 0 }() == 1)") }
@@ -693,7 +677,6 @@ type Model struct {
 	__named_tap  *widget.Button
 	__copies_tap map[string]*widget.Button
 	__copies_fin map[string]*widget.Label
-	__present_b  fyne.CanvasObject
 	__copies_r   map[string]fyne.CanvasObject
 	__inst_b     *BadgeInstance
 	__insts_r    map[string]*TileInstance
@@ -729,7 +712,6 @@ func (m *Model) __renderSlot2(__parent *fyne.Container) {
 	}
 	m.__slot2 = nil
 	m.__slot2_at = fynelayout.SlotAnchor(__parent, m.__slot2_at)
-	m.__present_b = nil
 	__inst1_next := []*BadgeInstance{}
 	var __inst1_i int = 0
 	if m.show {
@@ -747,7 +729,6 @@ func (m *Model) __renderSlot2(__parent *fyne.Container) {
 		__inst1_next = append(__inst1_next, b)
 		__inst1_i = (__inst1_i + 1)
 		b__el := b.Root
-		m.__present_b = b.Root
 		m.__inst_b = b
 		fynelayout.InsertBefore(__parent, m.__slot2_at, b__el)
 		m.__slot2 = append(m.__slot2, b__el)
@@ -877,9 +858,6 @@ func (m *Model) __list_r(key string, w fyne.CanvasObject) {
 }
 
 func (m *Model) __unlistInstance(w fyne.CanvasObject) {
-	if m.__present_b == w {
-		m.__present_b = nil
-	}
 	for k, c := range m.__copies_r {
 		if c == w {
 			delete(m.__copies_r, k)
@@ -891,17 +869,6 @@ func (m *Model) __unlistInstance(w fyne.CanvasObject) {
 func (m *Model) finPresentAt(key string) bool {
 	_, ok := m.__copies_fin[key]
 	return ok
-}
-
-// rPresentAt reports whether the copy of #r with the key is rendered now; for tests.
-func (m *Model) rPresentAt(key string) bool {
-	_, ok := m.__copies_r[key]
-	return ok
-}
-
-// bPresent reports whether the #b widget is rendered now; for tests.
-func (m *Model) bPresent() bool {
-	return m.__present_b != nil
 }
 
 // donePresent reports whether the #done widget is rendered now; for tests.
@@ -1177,8 +1144,8 @@ func (c *TileInstance) __renderSlot1(__parent *fyne.Container) {
 func (c *TileInstance) Destroy() {
 	c.unlist()
 	c.__model.__unlistInstance(c.Root)
-	for k, c := range c.__model.__insts_r {
-		if c == c {
+	for k, held := range c.__model.__insts_r {
+		if held == c {
 			delete(c.__model.__insts_r, k)
 		}
 	}
@@ -1267,7 +1234,7 @@ import (
 func TestReachesOneInstance(t *testing.T) {
 	c := newTestComponent()
 	_ = c
-	if c.bPresent() {
+	if c.show {
 		if !(!c.donePresent()) { t.Errorf("assert failed: %s", "!c.donePresent()") }
 		c.hitClick()
 		if !((c.bReadHits() == 1)) { t.Errorf("assert failed: %s", "(c.bReadHits() == 1)") }
@@ -1281,13 +1248,13 @@ func TestReachesOneInstance(t *testing.T) {
 		if !(false) { t.Errorf("assert failed: %s", "false") }
 	}
 	c.toggleClick()
-	if !(!c.bPresent()) { t.Errorf("assert failed: %s", "!c.bPresent()") }
+	if !(!c.show) { t.Errorf("assert failed: %s", "!c.show") }
 }
 
 func TestReachesOneCopy(t *testing.T) {
 	c := newTestComponent()
 	_ = c
-	if c.rPresentAt("1") {
+	if (1 < len(c.names)) {
 		if !(!c.finPresentAt("1")) { t.Errorf("assert failed: %s", "!c.finPresentAt(\"1\")") }
 		c.tapClickAt("1")
 		if !((c.rReadTapsAt("1") == 1)) { t.Errorf("assert failed: %s", "(c.rReadTapsAt(\"1\") == 1)") }
@@ -1362,7 +1329,6 @@ type Model struct {
 	__inst2_live []*TileInstance
 	__n1         gtk4rt.Handle
 	toggle       gtk4rt.Handle
-	__present_b  gtk4rt.Handle
 	__copies_r   map[string]gtk4rt.Handle
 	__named_hit  gtk4rt.Handle
 	__named_done gtk4rt.Handle
@@ -1404,7 +1370,6 @@ func (m *Model) __renderSlot2(parent gtk4rt.Handle) {
 	}
 	m.__slot2 = nil
 	m.__slot2_at = gtk4rt.SlotAnchor(parent, m.__slot2_at)
-	m.__present_b = nil
 	__inst1_next := []*BadgeInstance{}
 	var __inst1_i int = 0
 	if m.show {
@@ -1422,7 +1387,6 @@ func (m *Model) __renderSlot2(parent gtk4rt.Handle) {
 		__inst1_next = append(__inst1_next, b)
 		__inst1_i = (__inst1_i + 1)
 		b__el := b.Root
-		m.__present_b = b.Root
 		m.__inst_b = b
 		gtk4rt.InsertBefore(parent, m.__slot2_at, b__el)
 		m.__slot2 = append(m.__slot2, b__el)
@@ -1703,8 +1667,8 @@ func (c *TileInstance) teardown() {
 
 func (c *TileInstance) Destroy() {
 	c.__model.__unlistInstance(c.Root)
-	for k, c := range c.__model.__insts_r {
-		if c == c {
+	for k, held := range c.__model.__insts_r {
+		if held == c {
 			delete(c.__model.__insts_r, k)
 		}
 	}
@@ -1868,11 +1832,6 @@ func (m *Model) tapClickAt(key string) {
 	gtk4rt.Emit(m.__copies_tap[key], "clicked")
 }
 
-// bPresent reports whether the #b widget is rendered now; for tests.
-func (m *Model) bPresent() bool {
-	return m.__present_b != nil
-}
-
 // donePresent reports whether the #done widget is rendered now; for tests.
 func (m *Model) donePresent() bool {
 	return m.__named_done != nil
@@ -1915,9 +1874,6 @@ func (m *Model) __list_fin(key string, w gtk4rt.Handle) {
 }
 
 func (m *Model) __unlistInstance(w gtk4rt.Handle) {
-	if m.__present_b == w {
-		m.__present_b = nil
-	}
 	for k, c := range m.__copies_r {
 		if c == w {
 			delete(m.__copies_r, k)
@@ -1938,12 +1894,6 @@ func (m *Model) __unlistInstance(w gtk4rt.Handle) {
 // finPresentAt reports whether the copy of #fin with the key is rendered now; for tests.
 func (m *Model) finPresentAt(key string) bool {
 	_, ok := m.__copies_fin[key]
-	return ok
-}
-
-// rPresentAt reports whether the copy of #r with the key is rendered now; for tests.
-func (m *Model) rPresentAt(key string) bool {
-	_, ok := m.__copies_r[key]
 	return ok
 }
 
@@ -2000,10 +1950,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.foundation.layout.Column
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.material3.Button
 import androidx.compose.ui.platform.testTag
 import androidx.compose.material3.Text
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.semantics.semantics
 
 fun _snglFloatStr(v: Double): String =
@@ -2035,19 +1985,9 @@ fun MainScreen(state: MainScreenState = remember { MainScreenState() }) {
 
     Column(modifier = Modifier.safeDrawingPadding()) {
         if (state.show) {
-            DisposableEffect(Unit) {
-                val __token = Any()
-                SnglPresent[__token] = "b"
-                onDispose { SnglPresent.remove(__token) }
-            }
             Badge(label = "one", __sngl = "b")
         }
         for ((i, n) in state.names.withIndex()) {
-            DisposableEffect(i.toString()) {
-                val __token = Any()
-                SnglPresent[__token] = "r[" + i.toString() + "]"
-                onDispose { SnglPresent.remove(__token) }
-            }
             Tile(label = (i.toString() + n), __copy = i.toString(), onTapped = { k ->
                 state.log = (state.log + ((n + k.toString()) + ";"))
             }, __sngl = "r[" + i.toString() + "]")
@@ -2137,7 +2077,7 @@ class MainScreenTest {
         val c = MainScreenState()
         @Suppress("UNUSED_VARIABLE") val composeTestRule = composeRule
         composeRule.setContent { MainScreen(c) }
-        if ((composeTestRule.onAllNodes(androidx.compose.ui.test.hasTestTag("b")).fetchSemanticsNodes().isNotEmpty() || SnglPresent.containsValue("b"))) {
+        if (c.show) {
             org.junit.Assert.assertTrue("!(composeTestRule.onAllNodes(androidx.compose.ui.test.hasTestTag(\"done\")).fetchSemanticsNodes().isNotEmpty() || SnglPresent.containsValue(\"done\"))", !(composeTestRule.onAllNodes(androidx.compose.ui.test.hasTestTag("done")).fetchSemanticsNodes().isNotEmpty() || SnglPresent.containsValue("done")))
             composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("hit")).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick); composeTestRule.waitForIdle()
             org.junit.Assert.assertTrue("((SnglInstances[\"b\"]!![\"hits\"]!!(listOf()) as Int) == 1)", ((SnglInstances["b"]!!["hits"]!!(listOf()) as Int) == 1))
@@ -2154,14 +2094,14 @@ class MainScreenTest {
             org.junit.Assert.assertTrue("false", false)
         }
         composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("toggle")).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick); composeTestRule.waitForIdle()
-        org.junit.Assert.assertTrue("!(composeTestRule.onAllNodes(androidx.compose.ui.test.hasTestTag(\"b\")).fetchSemanticsNodes().isNotEmpty() || SnglPresent.containsValue(\"b\"))", !(composeTestRule.onAllNodes(androidx.compose.ui.test.hasTestTag("b")).fetchSemanticsNodes().isNotEmpty() || SnglPresent.containsValue("b")))
+        org.junit.Assert.assertTrue("!c.show", !c.show)
     }
 
     @Test fun testReachesOneCopy() {
         val c = MainScreenState()
         @Suppress("UNUSED_VARIABLE") val composeTestRule = composeRule
         composeRule.setContent { MainScreen(c) }
-        if ((composeTestRule.onAllNodes((androidx.compose.ui.test.hasTestTag("r") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, "1"))).fetchSemanticsNodes().isNotEmpty() || SnglPresent.containsValue("r[" + "1" + "]"))) {
+        if ((1 < c.names.size)) {
             org.junit.Assert.assertTrue("!composeTestRule.onAllNodes((androidx.compose.ui.test.hasTestTag(\"fin\") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, \"1\"))).fetchSemanticsNodes().isNotEmpty()", !composeTestRule.onAllNodes((androidx.compose.ui.test.hasTestTag("fin") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, "1"))).fetchSemanticsNodes().isNotEmpty())
             composeTestRule.onNode((androidx.compose.ui.test.hasTestTag("tap") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, "1"))).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick); composeTestRule.waitForIdle()
             org.junit.Assert.assertTrue("((SnglInstances[\"r[\" + \"1\" + \"]\"]!![\"taps\"]!!(listOf()) as Int) == 1)", ((SnglInstances["r[" + "1" + "]"]!!["taps"]!!(listOf()) as Int) == 1))
@@ -2254,10 +2194,8 @@ window.__sngl_boot = () => {
     Object.assign(el, p);
     el.dispatchEvent(Object.assign(new Event("contextmenu"), p));
   };
-  state.bPresent = () => document.querySelector('[data-sngl-id="b"], [data-sngl-instance="b"]') !== null;
   state.donePresent = () => document.querySelector('[data-sngl-id="done"], [data-sngl-instance="done"]') !== null;
   state.finPresentAt = (k) => document.querySelector('[data-sngl-id="fin"][data-sngl-copy="' + k + '"]') !== null;
-  state.rPresentAt = (k) => document.querySelector('[data-sngl-id="r"][data-sngl-copy="' + k + '"], [data-sngl-instance="r"][data-sngl-copy="' + k + '"]') !== null;
   state.bCallReset = (...a) => document.querySelector('[data-sngl-instance="b"]')?.__sngl?.__call_reset(...a);
   state.bReadHits = () => document.querySelector('[data-sngl-instance="b"]')?.__sngl?.__read_hits();
   state.rReadTapsAt = (k) => document.querySelector('[data-sngl-instance="r"][data-sngl-copy="' + k + '"]')?.__sngl?.__read_taps();
@@ -2614,12 +2552,12 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:239356377fd8e199cab82eeb84e6203e
+pass sha256:61522eb4b7fb82892adaf71fb365a416
 -- run/go/fyne --
-pass sha256:f9f93d18a277973343466fe8dc9b27b7
+pass sha256:b0e08d977a6208697d89c48f23a199c4
 -- run/go/gtk4 --
-pass sha256:26e5ffb63fd25f3891cef9df274a6961
+pass sha256:3214b3ddefbc0549f2b6ea46d3670e46
 -- run/kotlin/android --
-pass sha256:00e55c17bde07d1f13043564c3127eb7
+pass sha256:fbd2fe87eb06f3855b0822bfd8a7b6a0
 -- run/none/html --
-pass sha256:0a2e2a96e1de4818d8253399ff3c24a8
+pass sha256:37b1e567da4522cee09799a22a4076d4

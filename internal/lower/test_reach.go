@@ -231,11 +231,16 @@ func (r *resolver) nodeIn(x ir.Expr, id string) *ir.Var {
 		}
 		// A node passTestReach made one of the instance's own, reached
 		// through the instances around it, carries an id nothing else does.
+		var found *ir.Var
 		for h := range r.byHandle {
 			if h.Name == id {
-				return h
+				if found != nil {
+					return nil
+				}
+				found = h
 			}
 		}
+		return found
 	}
 	return nil
 }

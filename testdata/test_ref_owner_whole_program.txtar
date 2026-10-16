@@ -390,20 +390,6 @@ func (m *Model) k__own0Click() {
 	m.__focusID = prev
 }
 
-func (m *Model) bPresent() bool {
-	if m.shown__inst0 {
-		return true
-	}
-	return false
-}
-
-func (m *Model) b__own0Present() bool {
-	if m.on__inst0 {
-		return true
-	}
-	return false
-}
-
 func (m *Model) kPresent() bool {
 	if m.shown__inst0 {
 		return true
@@ -522,7 +508,7 @@ func TestMain(t *testing.T) {
 	}
 	if !((c.mh__inst0 == 1)) { t.Errorf("assert failed: %s", "(c.mh__inst0 == 1)") }
 	c.tsClick()
-	if !(!c.bPresent()) { t.Errorf("assert failed: %s", "!c.bPresent()") }
+	if !(!c.shown__inst0) { t.Errorf("assert failed: %s", "!c.shown__inst0") }
 	if !(!c.kPresent()) { t.Errorf("assert failed: %s", "!c.kPresent()") }
 }
 
@@ -534,7 +520,7 @@ func TestPanel(t *testing.T) {
 	}
 	if !((c.ph__inst0 == 1)) { t.Errorf("assert failed: %s", "(c.ph__inst0 == 1)") }
 	c.tpClick()
-	if !(!c.b__own0Present()) { t.Errorf("assert failed: %s", "!c.b__own0Present()") }
+	if !(!c.on__inst0) { t.Errorf("assert failed: %s", "!c.on__inst0") }
 	if !(!c.k__own0Present()) { t.Errorf("assert failed: %s", "!c.k__own0Present()") }
 }
 
@@ -571,17 +557,15 @@ type Model struct {
 	__inst2_live   []*BadgeInstance
 	__inst3_live   []*__child1Instance
 
-	__n0              *fynelayout.Toplevel
-	__n3              *fyne.Container
-	ts                *widget.Button
-	__n4              *fyne.Container
-	tp                *widget.Button
-	__built           bool
-	__named_hit       *widget.Button
-	__named_k         *widget.Button
-	__named_k__own0   *widget.Button
-	__present_b       fyne.CanvasObject
-	__present_b__own0 fyne.CanvasObject
+	__n0            *fynelayout.Toplevel
+	__n3            *fyne.Container
+	ts              *widget.Button
+	__n4            *fyne.Container
+	tp              *widget.Button
+	__built         bool
+	__named_hit     *widget.Button
+	__named_k       *widget.Button
+	__named_k__own0 *widget.Button
 }
 
 // New creates a Model with default values.
@@ -609,7 +593,6 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 	}
 	m.__slot0 = nil
 	m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
-	m.__present_b = nil
 	__inst0_next := []*BadgeInstance{}
 	var __inst0_i int = 0
 	__inst1_next := []*__child0Instance{}
@@ -629,7 +612,6 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 		__inst0_next = append(__inst0_next, b)
 		__inst0_i = (__inst0_i + 1)
 		b__el := b.Root
-		m.__present_b = b.Root
 		fynelayout.InsertBefore(__parent, m.__slot0_at, b__el)
 		m.__slot0 = append(m.__slot0, b__el)
 		var __n1 *__child0Instance
@@ -682,29 +664,27 @@ func (m *Model) __renderSlot1(__parent *fyne.Container) {
 	}
 	m.__slot1 = nil
 	m.__slot1_at = fynelayout.SlotAnchor(__parent, m.__slot1_at)
-	m.__present_b__own0 = nil
 	__inst2_next := []*BadgeInstance{}
 	var __inst2_i int = 0
 	__inst3_next := []*__child1Instance{}
 	var __inst3_i int = 0
 	if m.on__inst0 {
-		var b__own0 *BadgeInstance
+		var b__1 *BadgeInstance
 		if len(m.__inst2_live) > __inst2_i {
-			b__own0 = m.__inst2_live[__inst2_i]
-			b__own0.SetLabel("p")
+			b__1 = m.__inst2_live[__inst2_i]
+			b__1.SetLabel("p")
 		} else {
 			if len(m.__inst2_live) > __inst2_i {
 				m.__inst2_live[__inst2_i].Destroy()
 			}
-			b__own0__new := newBadgeInstance(m, "p")
-			b__own0 = b__own0__new
+			b__1__new := newBadgeInstance(m, "p")
+			b__1 = b__1__new
 		}
-		__inst2_next = append(__inst2_next, b__own0)
+		__inst2_next = append(__inst2_next, b__1)
 		__inst2_i = (__inst2_i + 1)
-		b__own0__el := b__own0.Root
-		m.__present_b__own0 = b__own0.Root
-		fynelayout.InsertBefore(__parent, m.__slot1_at, b__own0__el)
-		m.__slot1 = append(m.__slot1, b__own0__el)
+		b__1__el := b__1.Root
+		fynelayout.InsertBefore(__parent, m.__slot1_at, b__1__el)
+		m.__slot1 = append(m.__slot1, b__1__el)
 		var __n2 *__child1Instance
 		if len(m.__inst3_live) > __inst3_i {
 			__n2 = m.__inst3_live[__inst3_i]
@@ -800,16 +780,6 @@ func (m *Model) k__own0Click() {
 	if m.__named_k__own0.OnTapped != nil {
 		m.__named_k__own0.OnTapped()
 	}
-}
-
-// bPresent reports whether the #b widget is rendered now; for tests.
-func (m *Model) bPresent() bool {
-	return m.__present_b != nil
-}
-
-// b__own0Present reports whether the #b__own0 widget is rendered now; for tests.
-func (m *Model) b__own0Present() bool {
-	return m.__present_b__own0 != nil
 }
 
 // kPresent reports whether the #k widget is rendered now; for tests.
@@ -1044,7 +1014,7 @@ func TestMain(t *testing.T) {
 	}
 	if !((c.mh__inst0 == 1)) { t.Errorf("assert failed: %s", "(c.mh__inst0 == 1)") }
 	c.tsClick()
-	if !(!c.bPresent()) { t.Errorf("assert failed: %s", "!c.bPresent()") }
+	if !(!c.shown__inst0) { t.Errorf("assert failed: %s", "!c.shown__inst0") }
 	if !(!c.kPresent()) { t.Errorf("assert failed: %s", "!c.kPresent()") }
 }
 
@@ -1056,7 +1026,7 @@ func TestPanel(t *testing.T) {
 	}
 	if !((c.ph__inst0 == 1)) { t.Errorf("assert failed: %s", "(c.ph__inst0 == 1)") }
 	c.tpClick()
-	if !(!c.b__own0Present()) { t.Errorf("assert failed: %s", "!c.b__own0Present()") }
+	if !(!c.on__inst0) { t.Errorf("assert failed: %s", "!c.on__inst0") }
 	if !(!c.k__own0Present()) { t.Errorf("assert failed: %s", "!c.k__own0Present()") }
 }
 
@@ -1096,30 +1066,28 @@ import (
 
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
-	shown__inst0      bool
-	mh__inst0         int
-	on__inst0         bool
-	ph__inst0         int
-	visible__inst0    bool
-	__slot0           []gtk4rt.Handle
-	__slot0_at        gtk4rt.Handle
-	__inst0_live      []*BadgeInstance
-	__inst1_live      []*__child0Instance
-	__slot1           []gtk4rt.Handle
-	__slot1_at        gtk4rt.Handle
-	__inst2_live      []*BadgeInstance
-	__inst3_live      []*__child1Instance
-	__n0              gtk4rt.Handle
-	__n3              gtk4rt.Handle
-	ts                gtk4rt.Handle
-	__n4              gtk4rt.Handle
-	tp                gtk4rt.Handle
-	__present_b       gtk4rt.Handle
-	__present_b__own0 gtk4rt.Handle
-	__named_hit       gtk4rt.Handle
-	__named_k         gtk4rt.Handle
-	__named_k__own0   gtk4rt.Handle
-	__built           bool
+	shown__inst0    bool
+	mh__inst0       int
+	on__inst0       bool
+	ph__inst0       int
+	visible__inst0  bool
+	__slot0         []gtk4rt.Handle
+	__slot0_at      gtk4rt.Handle
+	__inst0_live    []*BadgeInstance
+	__inst1_live    []*__child0Instance
+	__slot1         []gtk4rt.Handle
+	__slot1_at      gtk4rt.Handle
+	__inst2_live    []*BadgeInstance
+	__inst3_live    []*__child1Instance
+	__n0            gtk4rt.Handle
+	__n3            gtk4rt.Handle
+	ts              gtk4rt.Handle
+	__n4            gtk4rt.Handle
+	tp              gtk4rt.Handle
+	__named_hit     gtk4rt.Handle
+	__named_k       gtk4rt.Handle
+	__named_k__own0 gtk4rt.Handle
+	__built         bool
 }
 
 // New creates a Model with default values. Binds initialize
@@ -1148,7 +1116,6 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 	}
 	m.__slot0 = nil
 	m.__slot0_at = gtk4rt.SlotAnchor(parent, m.__slot0_at)
-	m.__present_b = nil
 	__inst0_next := []*BadgeInstance{}
 	var __inst0_i int = 0
 	__inst1_next := []*__child0Instance{}
@@ -1168,7 +1135,6 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 		__inst0_next = append(__inst0_next, b)
 		__inst0_i = (__inst0_i + 1)
 		b__el := b.Root
-		m.__present_b = b.Root
 		gtk4rt.InsertBefore(parent, m.__slot0_at, b__el)
 		m.__slot0 = append(m.__slot0, b__el)
 		var __n1 *__child0Instance
@@ -1221,29 +1187,27 @@ func (m *Model) __renderSlot1(parent gtk4rt.Handle) {
 	}
 	m.__slot1 = nil
 	m.__slot1_at = gtk4rt.SlotAnchor(parent, m.__slot1_at)
-	m.__present_b__own0 = nil
 	__inst2_next := []*BadgeInstance{}
 	var __inst2_i int = 0
 	__inst3_next := []*__child1Instance{}
 	var __inst3_i int = 0
 	if m.on__inst0 {
-		var b__own0 *BadgeInstance
+		var b__1 *BadgeInstance
 		if len(m.__inst2_live) > __inst2_i {
-			b__own0 = m.__inst2_live[__inst2_i]
-			b__own0.SetLabel("p")
+			b__1 = m.__inst2_live[__inst2_i]
+			b__1.SetLabel("p")
 		} else {
 			if len(m.__inst2_live) > __inst2_i {
 				m.__inst2_live[__inst2_i].Destroy()
 			}
-			b__own0__new := newBadgeInstance(m, "p")
-			b__own0 = b__own0__new
+			b__1__new := newBadgeInstance(m, "p")
+			b__1 = b__1__new
 		}
-		__inst2_next = append(__inst2_next, b__own0)
+		__inst2_next = append(__inst2_next, b__1)
 		__inst2_i = (__inst2_i + 1)
-		b__own0__el := b__own0.Root
-		m.__present_b__own0 = b__own0.Root
-		gtk4rt.InsertBefore(parent, m.__slot1_at, b__own0__el)
-		m.__slot1 = append(m.__slot1, b__own0__el)
+		b__1__el := b__1.Root
+		gtk4rt.InsertBefore(parent, m.__slot1_at, b__1__el)
+		m.__slot1 = append(m.__slot1, b__1__el)
 		var __n2 *__child1Instance
 		if len(m.__inst3_live) > __inst3_i {
 			__n2 = m.__inst3_live[__inst3_i]
@@ -1576,16 +1540,6 @@ func (m *Model) k__own0Click() {
 	gtk4rt.Emit(m.__named_k__own0, "clicked")
 }
 
-// bPresent reports whether the #b widget is rendered now; for tests.
-func (m *Model) bPresent() bool {
-	return m.__present_b != nil
-}
-
-// b__own0Present reports whether the #b__own0 widget is rendered now; for tests.
-func (m *Model) b__own0Present() bool {
-	return m.__present_b__own0 != nil
-}
-
 // kPresent reports whether the #k widget is rendered now; for tests.
 func (m *Model) kPresent() bool {
 	return m.__named_k != nil
@@ -1616,7 +1570,6 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.material3.Button
 import androidx.compose.ui.platform.testTag
 import androidx.compose.material3.Text
-import androidx.compose.runtime.DisposableEffect
 
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
@@ -1655,11 +1608,6 @@ fun MainScreen(state: MainScreenState = remember { MainScreenState() }) {
                     Text(text = "s", modifier = Modifier)
                 }
                 if (state.shown__inst0) {
-                    DisposableEffect(Unit) {
-                        val __token = Any()
-                        SnglPresent[__token] = "b"
-                        onDispose { SnglPresent.remove(__token) }
-                    }
                     Badge(label = "m")
                     Button(onClick = {
                         state.mh__inst0 = (state.mh__inst0 + 1)
@@ -1675,11 +1623,6 @@ fun MainScreen(state: MainScreenState = remember { MainScreenState() }) {
                     Text(text = "p", modifier = Modifier)
                 }
                 if (state.on__inst0) {
-                    DisposableEffect(Unit) {
-                        val __token = Any()
-                        SnglPresent[__token] = "b__own0"
-                        onDispose { SnglPresent.remove(__token) }
-                    }
                     Badge(label = "p")
                     Button(onClick = {
                         state.ph__inst0 = (state.ph__inst0 + 1)
@@ -1735,7 +1678,7 @@ class MainScreenTest {
         }
         org.junit.Assert.assertTrue("(c.mh__inst0 == 1)", (c.mh__inst0 == 1))
         composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("ts")).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick); composeTestRule.waitForIdle()
-        org.junit.Assert.assertTrue("!(composeTestRule.onAllNodes(androidx.compose.ui.test.hasTestTag(\"b\")).fetchSemanticsNodes().isNotEmpty() || SnglPresent.containsValue(\"b\"))", !(composeTestRule.onAllNodes(androidx.compose.ui.test.hasTestTag("b")).fetchSemanticsNodes().isNotEmpty() || SnglPresent.containsValue("b")))
+        org.junit.Assert.assertTrue("!c.shown__inst0", !c.shown__inst0)
         org.junit.Assert.assertTrue("!(composeTestRule.onAllNodes(androidx.compose.ui.test.hasTestTag(\"k\")).fetchSemanticsNodes().isNotEmpty() || SnglPresent.containsValue(\"k\"))", !(composeTestRule.onAllNodes(androidx.compose.ui.test.hasTestTag("k")).fetchSemanticsNodes().isNotEmpty() || SnglPresent.containsValue("k")))
     }
 
@@ -1748,7 +1691,7 @@ class MainScreenTest {
         }
         org.junit.Assert.assertTrue("(c.ph__inst0 == 1)", (c.ph__inst0 == 1))
         composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("tp")).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick); composeTestRule.waitForIdle()
-        org.junit.Assert.assertTrue("!(composeTestRule.onAllNodes(androidx.compose.ui.test.hasTestTag(\"b__own0\")).fetchSemanticsNodes().isNotEmpty() || SnglPresent.containsValue(\"b__own0\"))", !(composeTestRule.onAllNodes(androidx.compose.ui.test.hasTestTag("b__own0")).fetchSemanticsNodes().isNotEmpty() || SnglPresent.containsValue("b__own0")))
+        org.junit.Assert.assertTrue("!c.on__inst0", !c.on__inst0)
         org.junit.Assert.assertTrue("!(composeTestRule.onAllNodes(androidx.compose.ui.test.hasTestTag(\"k__own0\")).fetchSemanticsNodes().isNotEmpty() || SnglPresent.containsValue(\"k__own0\"))", !(composeTestRule.onAllNodes(androidx.compose.ui.test.hasTestTag("k__own0")).fetchSemanticsNodes().isNotEmpty() || SnglPresent.containsValue("k__own0")))
     }
 
@@ -1835,8 +1778,6 @@ window.__sngl_boot = () => {
     Object.assign(el, p);
     el.dispatchEvent(Object.assign(new Event("contextmenu"), p));
   };
-  state.bPresent = () => document.querySelector('[data-sngl-id="b"], [data-sngl-instance="b"]') !== null;
-  state.b__own0Present = () => document.querySelector('[data-sngl-id="b__own0"], [data-sngl-instance="b__own0"]') !== null;
   state.kPresent = () => document.querySelector('[data-sngl-id="k"], [data-sngl-instance="k"]') !== null;
   state.k__own0Present = () => document.querySelector('[data-sngl-id="k__own0"], [data-sngl-instance="k__own0"]') !== null;
   if (typeof window !== "undefined") {
@@ -2057,31 +1998,31 @@ window.__sngl_boot = () => {
     let __inst5_next = [];
     let __inst5_i = 0;
     if (state.on__inst0) {
-      let b__own0 = null;
+      let b__1 = null;
       if (__inst4_live.length > __inst4_i) {
-        b__own0 = __inst4_live[__inst4_i];
-        b__own0.__set_label("p");
+        b__1 = __inst4_live[__inst4_i];
+        b__1.__set_label("p");
       } else {
         if (__inst4_live.length > __inst4_i) {
           __inst4_live[__inst4_i].__destroy();
         }
-        let b__own0__new = __cf_badge({ label: "p" });
-        b__own0 = b__own0__new;
+        let b__1__new = __cf_badge({ label: "p" });
+        b__1 = b__1__new;
       }
-      __inst4_next.push(b__own0);
+      __inst4_next.push(b__1);
       __inst4_i = __inst4_i + 1;
-      let b__own0__el = b__own0.__root;
-      b__own0__el.setAttribute("data-sngl-instance", "b__own0");
+      let b__1__el = b__1.__root;
+      b__1__el.setAttribute("data-sngl-instance", "b__1");
       let __place3_i_ref0 = null;
       if (__place3_i < __place3_prev.length) {
         __place3_i_ref0 = __place3_prev[__place3_i];
       }
-      if (__place3_i_ref0 === b__own0__el) {
+      if (__place3_i_ref0 === b__1__el) {
         __place3_i = __place3_i + 1;
       } else {
-        parent.insertBefore(b__own0__el, __place3_i_ref0);
+        parent.insertBefore(b__1__el, __place3_i_ref0);
       }
-      __slot1.push(b__own0__el);
+      __slot1.push(b__1__el);
       let __n5 = null;
       if (__inst5_live.length > __inst5_i) {
         __n5 = __inst5_live[__inst5_i];
@@ -2165,12 +2106,12 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:08be4ef727f33b6af887801dcedb194d
+pass sha256:705b16c2a9d5ac73bf85e8d90cfa0e02
 -- run/go/fyne --
-pass sha256:84ac9fa161eeb336f29dfd972f8c10a7
+pass sha256:feb1969ba2e229516a825f1f91c4400a
 -- run/go/gtk4 --
-pass sha256:8f092b1a2da62f494822c15116d938a7
+pass sha256:5d62ed2bfe3027f717b167aabcf095ee
 -- run/kotlin/android --
-pass sha256:084c7007055eebf6c4f146273a5a208c
+pass sha256:5e66a83b718498f23a46f5611056ca0e
 -- run/none/html --
-pass sha256:5149c8d7132be9b131e68a57c6181757
+pass sha256:75378100ec50f0030b2c82d9ee7469d0

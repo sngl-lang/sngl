@@ -138,7 +138,7 @@ func emitComponentInstance(
 	// instance goes, so the Model holds it exactly while it is rendered. One a
 	// slot of the record builds is handed over by that render
 	// (withRecordPresent).
-	slotBuilt := slotCreatedIDs(comp, presentIDs)
+	slotBuilt := codegen.SlotCreatedIDs(comp, presentIDs)
 	var release strings.Builder
 	for _, id := range slices.Sorted(maps.Keys(presentIDs)) {
 		if slotBuilt[id] {
@@ -322,26 +322,6 @@ func emitUnlist(b *strings.Builder, typeName string, widgets []string) {
 			list, instanceReceiver, w, list)
 	}
 	b.WriteString("}\n\n")
-}
-
-// slotCreatedIDs is each id a test null-tests whose widget a slot render of
-// comp creates.
-func slotCreatedIDs(comp *ir.Component, present map[string]bool) map[string]bool {
-	out := map[string]bool{}
-	for _, fn := range comp.Funcs {
-		if fn == nil || !fn.Lowered.SlotRender {
-			continue
-		}
-		_ = ir.Walk(fn.Block, func(n ir.Node) error {
-			if lv, ok := n.(*ir.LocalVar); ok && present[lv.Name] {
-				if c, ok := lv.Init.(*ir.Call); ok && c.Func != nil && c.Func.Intrinsic == ir.NodeOpCreateNode {
-					out[lv.Name] = true
-				}
-			}
-			return nil
-		})
-	}
-	return out
 }
 
 // namedWidgetField is the Model field an instance's program-named widget is

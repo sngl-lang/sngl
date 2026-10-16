@@ -52,11 +52,11 @@ func NullTestedRefs(pkg *ir.Package) (ids, keyed map[string]bool) {
 }
 
 // LowerRefNullTests is a test body with each null test of a ref replaced by a
-// read of the presence check, or by its answer for a node rendered once, negated for `== null`, for a target whose check
-// is a method on the instance a test holds -- a call handed the copy's key for
-// one copy. methodFields gains the checks, so the read is spelled as the call
-// it is. The body is copied: the test's own IR is shared by every target built
-// from the package.
+// read of the presence check, negated for `== null`, or by its answer for a
+// node rendered once, for a target whose check is a method on the instance a
+// test holds -- a call handed the copy's key for one copy. methodFields gains
+// the checks, so the read is spelled as the call it is. The body is copied:
+// the test's own IR is shared by every target built from the package.
 func LowerRefNullTests(stmts []ir.Stmt, methodFields map[string]bool) ([]ir.Stmt, map[string]bool) {
 	fields := maps.Clone(methodFields)
 	if fields == nil {

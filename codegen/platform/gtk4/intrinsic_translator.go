@@ -792,12 +792,7 @@ func (t *gtk4Translator) OnComponentRoot(ctx context.Context, id string, inst, k
 	// instance was handed before its root is bound again.
 	if name := codegen.IdentBareName(inst); key != nil && t.instanceCopies[name] {
 		t.modelSink(copiesField(name), copyMapType("GtkWidget"))
-		present = append(present, &ir.CallStmt{Call: &ir.Call{
-			Type:     ir.TypVoid,
-			Receiver: &ir.Ident{Name: t.gc.ModelRef()},
-			Func:     &ir.Func{Name: copyRegistry(name)},
-			Args:     []ir.CallArg{{Value: key}, {Value: root}},
-		}})
+		present = append(present, golang.CopyCall(&ir.Ident{Name: t.gc.ModelRef()}, name, key, root))
 	}
 	if hold := t.holdInstance(inst, key); hold != nil {
 		present = append(present, hold)

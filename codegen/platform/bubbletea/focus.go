@@ -87,16 +87,23 @@ func firstLoopFocus(stmts []ir.Stmt) (loopFocus, bool) {
 	return found, ok
 }
 
-func nodeKeyHandler(n *ir.NodeInst, guard string) []ir.Stmt {
+// nodeKeyHandler is the body of n's handler for the key guard, and whether n
+// handles it: an empty handler handles the key with nothing.
+func nodeKeyHandler(n *ir.NodeInst, guard string) ([]ir.Stmt, bool) {
 	for _, ev := range extractBlueprint(n).Events {
 		if teaKeyGuard(ev.Key) != guard {
 			continue
 		}
 		if h := codegen.NodeHandler(n, ev.On); h != nil && h.Func != nil {
-			return h.Func.Block
+			return h.Func.Block, true
 		}
 	}
-	return nil
+	return nil, false
+}
+
+func handlesKey(n *ir.NodeInst, guard string) bool {
+	_, ok := nodeKeyHandler(n, guard)
+	return ok
 }
 
 // A nested loop of one slot finds its ordinal already declared.
@@ -142,7 +149,7 @@ func emitLoopSlotHandlers(b *strings.Builder, f *ir.For, info *irAnalysis, gc *g
 			return
 		}
 		for _, ev := range extractBlueprint(n).Events {
-			if k := teaKeyGuard(ev.Key); k != "" && !seen[k] && nodeKeyHandler(n, k) != nil {
+			if k := teaKeyGuard(ev.Key); k != "" && !seen[k] && handlesKey(n, k) {
 				seen[k] = true
 				keys = append(keys, k)
 			}
@@ -156,7 +163,7 @@ func emitLoopSlotHandlers(b *strings.Builder, f *ir.For, info *irAnalysis, gc *g
 				return
 			}
 			for _, ev := range extractBlueprint(n).Events {
-				if teaKeyGuard(ev.Key) == "" || nodeKeyHandler(n, teaKeyGuard(ev.Key)) == nil {
+				if teaKeyGuard(ev.Key) == "" || !handlesKey(n, teaKeyGuard(ev.Key)) {
 					continue
 				}
 				invokerSink(btEventInvoker{
@@ -171,7 +178,7 @@ func emitLoopSlotHandlers(b *strings.Builder, f *ir.For, info *irAnalysis, gc *g
 		b.WriteString("\t\t\tfunc() {\n")
 		w := &viewWalk{b: b, indent: 4, wants: isLoopFocus}
 		w.visit = func(w *viewWalk, n *ir.NodeInst, gc *golang.GoIRContext) {
-			if block := nodeKeyHandler(n, key); block != nil {
+			if block, ok := nodeKeyHandler(n, key); ok {
 				w.line("if m.%s == %s {", lf.cursor, lf.pos)
 				var body strings.Builder
 				for _, stmt := range block {

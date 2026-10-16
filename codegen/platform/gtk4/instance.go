@@ -148,7 +148,7 @@ func emitComponentInstance(
 	// instance goes, so the Model holds it exactly while it is rendered. One a
 	// slot of the record builds is handed over by that render
 	// (withRecordPresent).
-	slotBuilt := slotCreatedIDs(comp, presentIDs)
+	slotBuilt := codegen.SlotCreatedIDs(comp, presentIDs)
 	var release strings.Builder
 	for _, id := range slices.Sorted(maps.Keys(presentIDs)) {
 		if slotBuilt[id] {
@@ -522,24 +522,4 @@ func emitPresenceChecks(b *strings.Builder, ids map[string]bool, held map[string
 		fmt.Fprintf(b, "// %s reports whether the #%s widget is rendered now; for tests.\n", name, id)
 		fmt.Fprintf(b, "func (m *Model) %s() bool {\n\treturn m.%s != nil\n}\n\n", name, field)
 	}
-}
-
-// slotCreatedIDs is each id a test null-tests whose widget a slot render of
-// comp creates.
-func slotCreatedIDs(comp *ir.Component, present map[string]bool) map[string]bool {
-	out := map[string]bool{}
-	for _, fn := range comp.Funcs {
-		if fn == nil || !fn.Lowered.SlotRender {
-			continue
-		}
-		_ = ir.Walk(fn.Block, func(n ir.Node) error {
-			if lv, ok := n.(*ir.LocalVar); ok && present[lv.Name] {
-				if c, ok := lv.Init.(*ir.Call); ok && c.Func != nil && c.Func.Intrinsic == ir.NodeOpCreateNode {
-					out[lv.Name] = true
-				}
-			}
-			return nil
-		})
-	}
-	return out
 }

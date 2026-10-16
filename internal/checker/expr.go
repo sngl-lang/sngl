@@ -5020,6 +5020,11 @@ func (c *checker) checkAndSplitArgs(args ast.ArgList, comp *ir.Component) ([]ir.
 			fn.Block = c.checkBlockIR(&arg.Body)
 			restore()
 			c.popScope()
+			// A primitive's handler is the host callback itself, which hands
+			// a forward what it reports.
+			if comp != nil && !comp.Primitive() {
+				fn.Params = forwardedParams(fn, want, c.eventParamsOf)
+			}
 			handlers = append(handlers, ir.EventHandler{
 				AST:  &arg,
 				Name: arg.Name,
@@ -6213,4 +6218,53 @@ func (c *checker) refuseAmbiguousReach(x *ast.SelectExpr, comp *ir.Component, id
 		c.error(x.Pos, "#%s names %d nodes %s renders (at %s and %s): each is legal in its own scope, but a read from outside reaches a node by the id it renders and cannot say which; give one another name",
 			id, len(at), comp.Name, at[0], at[1])
 	}
+}
+
+// forwardedParams is fn's parameters, with those of want it left unbound
+// added where its body forwards an event (an emit with no arguments of an
+// event that declares some), and each such emit handed them: the forward
+// hands on what the handler received, every parameter of it, which a splice
+// of the handler elsewhere -- into the body of the component it is a handler
+// of -- no longer has to hand. params is the parameters an event declares.
+func forwardedParams(fn *ir.Func, want []*ir.Param, params func(string) []*ir.Param) []*ir.Param {
+	if len(fn.Params) >= len(want) {
+		return fn.Params
+	}
+	var forwards []*ir.Emit
+	_ = ir.WalkStmts(fn.Block, func(s ir.Stmt) error {
+		if e, ok := s.(*ir.Emit); ok && len(e.Args) == 0 {
+			if n := len(params(e.Name)); n > 0 && n <= len(want) {
+				forwards = append(forwards, e)
+			}
+		}
+		return nil
+	})
+	if len(forwards) == 0 {
+		return fn.Params
+	}
+	out := slices.Clone(fn.Params)
+	for i := len(out); i < len(want); i++ {
+		out = append(out, &ir.Param{Name: fmt.Sprintf("__fwd%d", i), Type: want[i].Type})
+	}
+	for _, e := range forwards {
+		n := len(params(e.Name))
+		e.Args = make([]ir.CallArg, n)
+		for i, p := range out[:n] {
+			e.Args[i] = ir.CallArg{Value: &ir.Ident{Name: p.Name, Type: p.Type, Sym: p}}
+		}
+	}
+	return out
+}
+
+// eventParamsOf is the parameters the enclosing component's event declares.
+func (c *checker) eventParamsOf(name string) []*ir.Param {
+	if c.currentComponent == nil {
+		return nil
+	}
+	for _, evt := range c.currentComponent.Events {
+		if evt.Name == name {
+			return evt.Params
+		}
+	}
+	return nil
 }

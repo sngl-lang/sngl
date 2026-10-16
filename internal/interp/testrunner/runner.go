@@ -203,8 +203,9 @@ type componentValue struct {
 	// populations this one was handed; nil for the instance a test was given.
 	by *componentValue
 	// inst is the node that rendered this one, nil for the instance a test was
-	// given.
+	// given, and site the mounted node it was read off.
 	inst *ir.NodeInst
+	site *interp.Node
 
 	// fx is the running set of lifetime brackets, on the root wrapper only:
 	// the mount walk descends through components, so one set covers every

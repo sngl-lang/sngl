@@ -1,6 +1,7 @@
 package lower
 
 import (
+	"duckfam.us/sngl/ast"
 	"fmt"
 	"slices"
 
@@ -307,38 +308,69 @@ func testInstances(pkg *ir.Package, opts Options) map[*ir.Param]bool {
 // through the instance (`hits` in bar's body is `c.b.hits` in the test), which
 // passNoInlineComponents then repoints at the spliced copy as it repoints any
 // other member a test reads. A loop's variable is what the copy the test
-// indexed was handed: the loop's list at that index, or the index itself. What
-// it reads of something else a test cannot name -- a slot's parameter, a
-// local, a sequence -- has no value at the test, and such a read is left as it
-// was.
+// indexed was handed: the loop's list at that index, the number a sngl:seq
+// sequence counts there, or the index itself. What it reads of something else
+// a test cannot name -- a slot's parameter, a local -- has no value at the
+// test: such a read is left as it was, where the node is the test's
+// instance's own, and refused (unnamedTestPropRead) where it is reached
+// through another instance.
 func rewriteTestPropRead(sel *ir.Select, tests map[*ir.Param]bool) ir.Expr {
+	e, _ := answerTestPropRead(sel, tests)
+	return e
+}
+
+// unnamedTestPropRead reports a read rewriteTestPropRead leaves standing that
+// it is reached through an instance, which no target answers.
+func unnamedTestPropRead(sel *ir.Select, tests map[*ir.Param]bool) bool {
+	e, unnamed := answerTestPropRead(sel, tests)
+	if e != nil || !unnamed {
+		return false
+	}
+	inst, _, _, _ := testNodeRef(sel.Operand, tests)
+	_, through := unnarrowedRef(inst).(*ir.Select)
+	return through
+}
+
+// unnarrowedRef is e without its narrowings and indices.
+func unnarrowedRef(e ir.Expr) ir.Expr {
+	e = unnarrowed(e)
+	for ix, ok := e.(*ir.Index); ok; ix, ok = e.(*ir.Index) {
+		e = unnarrowed(ix.Operand)
+	}
+	return e
+}
+
+// answerTestPropRead is rewriteTestPropRead's answer, and whether there is a
+// prop to answer that reads what the test cannot name.
+func answerTestPropRead(sel *ir.Select, tests map[*ir.Param]bool) (ir.Expr, bool) {
 	inst, id, idxs, ok := testNodeRef(sel.Operand, tests)
 	if !ok {
-		return nil
+		return nil, false
 	}
 	comp := componentOf(inst)
 	if comp == nil {
-		return nil
+		return nil, false
 	}
 	node, loops := nodeUnderLoops(comp.Stmts, id)
 	if node == nil || node.Component == nil || len(loops) != len(idxs) {
-		return nil
+		return nil, false
 	}
 	for _, p := range node.Component.Props {
 		if p.Name == sel.Field && p.Bidirectional {
-			return nil
+			return nil, false
 		}
 	}
 	v := nodePropExpr(node, sel.Field)
 	if v == nil {
-		return nil
+		return nil, false
 	}
 	env := loopBindings(loops, idxs)
 	out := rebaseOnInstanceUnder(ir.CloneExprSharingDecls(v), comp, inst, env)
 	if out == nil {
-		return nil
+		return nil, true
 	}
-	return answerTestEmpty(out, inst, tests)
+	out = answerTestEmpty(out, inst, tests)
+	return out, out == nil
 }
 
 // testNodeRef reads e as a node a test reaches through an instance: the
@@ -382,9 +414,10 @@ func nodeUnderLoops(stmts []ir.Stmt, id string) (*ir.NodeInst, []*ir.For) {
 }
 
 // loopBindings is what each loop's variables were bound to in the copy idxs
-// names, one index per loop: the element of a list the loop walks, and the
-// index itself for the loop's ordinal. A loop over anything else binds
-// nothing, and a read of its variable stays unnamed.
+// names, one index per loop: the element of a list the loop walks or the
+// number a sngl:seq sequence counts there, and the index itself for the
+// loop's ordinal. A loop over anything else binds nothing, and a read of its
+// variable stays unnamed.
 func loopBindings(loops []*ir.For, idxs []ir.Expr) map[ir.Symbol]ir.Expr {
 	env := map[ir.Symbol]ir.Expr{}
 	for i, f := range loops {
@@ -396,7 +429,12 @@ func loopBindings(loops []*ir.For, idxs []ir.Expr) map[ir.Symbol]ir.Expr {
 			env[ord] = idxs[i]
 		}
 		iter := unnarrowed(f.Iter)
-		if t := iter.ExprType(); elem != nil && t != nil && t.Kind == ir.TypeList && len(t.Elems) == 1 {
+		if elem == nil {
+			continue
+		}
+		if n := seqElement(iter, idxs[i]); n != nil {
+			env[elem] = n
+		} else if t := iter.ExprType(); t != nil && t.Kind == ir.TypeList && len(t.Elems) == 1 {
 			env[elem] = &ir.Index{Type: t.Elems[0], Operand: iter, Idx: idxs[i]}
 		}
 	}
@@ -637,6 +675,26 @@ func ownNode(comp *ir.Component, id string) (node *ir.NodeInst, always bool) {
 	}
 	walk(comp.Stmts, false, false)
 	return node, always
+}
+
+// seqElement is the number the sngl:seq sequence iter counts at index idx, or
+// nil for any other iterable.
+func seqElement(iter, idx ir.Expr) ir.Expr {
+	c, ok := iter.(*ir.Call)
+	if !ok || c.Func == nil {
+		return nil
+	}
+	arg := func(i int) ir.Expr { return c.Args[i].Value }
+	add := func(l, r ir.Expr) ir.Expr { return &ir.Binary{Type: ir.TypInt, Op: ast.BinAdd, Left: l, Right: r} }
+	switch {
+	case c.Func.Intrinsic == "seq.count" && len(c.Args) == 1:
+		return idx
+	case c.Func.Intrinsic == "seq.range" && len(c.Args) == 2:
+		return add(arg(0), idx)
+	case c.Func.Intrinsic == "seq.step" && len(c.Args) == 3:
+		return add(arg(0), &ir.Binary{Type: ir.TypInt, Op: ast.BinMul, Left: idx, Right: arg(2)})
+	}
+	return nil
 }
 
 // rebaseOnInstance rewrites e, written in comp's body, to read comp's members

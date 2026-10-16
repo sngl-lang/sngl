@@ -154,6 +154,19 @@ func literalIndices(indices []Expr) []string {
 // loops rendered, under an `if` or not, whose path holds the index into each
 // loop. present is true for `!=`.
 func NullTestedRef(e Expr) (sel *Select, path []Expr, present, ok bool) {
+	sel, path, present, ok = NullTestedCopy(e)
+	if !ok {
+		return nil, nil, false, false
+	}
+	if _, isIdent := sel.Operand.(*Ident); !isIdent {
+		return nil, nil, false, false
+	}
+	return sel, path, present, true
+}
+
+// NullTestedCopy is NullTestedRef through any operand: `c.r[1].cl[2] ==
+// null` null-tests a copy of a node an instance a test reached renders.
+func NullTestedCopy(e Expr) (sel *Select, path []Expr, present, ok bool) {
 	bin, isBin := e.(*Binary)
 	if !isBin || (bin.Op != ast.BinEq && bin.Op != ast.BinNeq) {
 		return nil, nil, false, false
@@ -184,9 +197,6 @@ func NullTestedRef(e Expr) (sel *Select, path []Expr, present, ok bool) {
 		if sel.Ref[i] != RefList {
 			return nil, nil, false, false
 		}
-	}
-	if _, isIdent := sel.Operand.(*Ident); !isIdent {
-		return nil, nil, false, false
 	}
 	return sel, path, bin.Op == ast.BinNeq, true
 }

@@ -2617,6 +2617,17 @@ record's `Destroy` takes its root out, and android's `SnglPresent` entry
 (`codegen.KeyedInstanceIDs`); html places a static instance's root, built
 once at a fixed position, with the same marks. bubbletea splices it and answers from the view (`testdata/indexed_ref_null_test_instance.txtar`).
 
+**An instance is present wherever its call site is rendered**, whatever
+its body renders now -- `name.empty` is the separate question of what it
+renders. So a test's null test of a program component's instance is the
+conditions of the `if`s around its call site and, for one copy, whether each
+loop around it renders that copy (`answerInstancePresence`, in passTestReach,
+read through the instance that wrote the call site), on every target alike
+(`cmd/sngl/testdata/test_reach_review_runs.txt`'s present.sngl). Where
+something else decides the call site -- a boundary, a slot fallback, a page --
+or the conditions read what a test cannot name, the target's presence check
+answers instead, as follows.
+
 **A spliced instance a test null-tests is found by its roots.** A splice
 leaves no node of the instance's own, only the roots of its body -- the nodes
 it renders first, through an `if`, a `for` or a boundary there -- which carry
@@ -4764,9 +4775,12 @@ moves a node out of the body that wrote it:
 - **A one-way prop is the expression its call site gave**, read through the
   instance (`rewriteTestPropRead`): `"{hits}"` in `bar`'s body is
   `"{c.b.hits}"` in the test, and a loop's variable is the copy the test
-  indexed was handed, the loop's list at that index or the index itself
-  (`loopBindings`). A prop reading a slot's parameter, a local or a sequence
-  is left as written.
+  indexed was handed -- the loop's list at that index, the number a
+  `sngl:seq` sequence counts there, or the index itself (`loopBindings`). A
+  prop reading what a test cannot name -- a slot's parameter, a local, a pull
+  sequence's element -- is left as written for a node of the test's own
+  instance and refused with a position for one reached through another
+  instance (`unnamedTestPropRead`).
 - **A node is one of the test's instance's own**: `c.b.hit` becomes `c.hit`,
   and `c.r[1].tap` the copy of `c.tap` under key "1", the indices of each step
   kept outermost first -- the copy key a node inside an instance built at run
@@ -4782,8 +4796,12 @@ moves a node out of the body that wrote it:
   becomes a function of the component the call site is written in
   (`__fire_r_tapped__t0`, taking an index per loop around the site), reached
   through the instance chain as a method is; the interpreter runs the call
-  site's handler itself (`componentValue.callSite`). A library component's
-  event still enters at the widget its override renders.
+  site's handler itself (`componentValue.callSite`), and an event no call site
+  handles is an error there. A library component's event still enters at the
+  widget its override renders. A handler that binds fewer of an event's
+  parameters than it declares and forwards (`@chose { picked() }`) is given
+  the rest and hands them on explicitly (`forwardedParams`), since spliced
+  into the component it handles it has no event of its own to forward from.
 - **A spliced instance's members are what the splice made of them**
   (`internal/lower/test_reach.go`): the inliner records each splice of a node
   carrying an id by its handle, and a test's select through it becomes the

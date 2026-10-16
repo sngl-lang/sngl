@@ -1,0 +1,1224 @@
+# A test reaches into instances on every target, each file a shape a review
+# found answered wrongly somewhere: a copy's record released on Destroy alone
+# (copies), a reached node whose id a target reserves (reserved), a copy of a
+# copy (nested), a program's own call through an instance a test reaches
+# into (sitecall), an event fired two instances down (deepfire), an empty
+# handler under a loop (emptyfocus), a sngl:seq loop's variable in a prop
+# (seq), a handler forwarding what it bound nothing of (forward), a nested
+# list that shrinks (shrink), and an instance whose body renders nothing
+# while its call site is rendered, which is present (present). An event no
+# call site handles is an error (unhandled), and a prop read that reads what
+# a test cannot name through an instance is refused (unnamed).
+
+sngl test --platform=none copies.sngl
+stdout 'ok   2 tests, 0 failures'
+
+sngl test --platform=html copies.sngl
+stdout 'ok   2 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go copies.sngl
+stdout 'ok   2 tests, 0 failures'
+
+sngl test --platform=fyne --language=go copies.sngl
+stdout 'ok   2 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go copies.sngl
+stdout 'ok   2 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin copies.sngl
+stdout 'ok   2 tests, 0 failures'
+
+sngl test --platform=none reserved.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=html reserved.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go reserved.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=fyne --language=go reserved.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go reserved.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin reserved.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=none nested.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=html nested.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go nested.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=fyne --language=go nested.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go nested.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin nested.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=none sitecall.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=html sitecall.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go sitecall.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=fyne --language=go sitecall.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go sitecall.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin sitecall.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=none deepfire.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=html deepfire.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go deepfire.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=fyne --language=go deepfire.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go deepfire.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin deepfire.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=none emptyfocus.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=html emptyfocus.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go emptyfocus.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=fyne --language=go emptyfocus.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go emptyfocus.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin emptyfocus.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=none seq.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=html seq.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go seq.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=fyne --language=go seq.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go seq.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin seq.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=none forward.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=html forward.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go forward.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=fyne --language=go forward.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go forward.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin forward.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=none shrink.sngl
+stdout 'ok   2 tests, 0 failures'
+
+sngl test --platform=html shrink.sngl
+stdout 'ok   2 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go shrink.sngl
+stdout 'ok   2 tests, 0 failures'
+
+sngl test --platform=fyne --language=go shrink.sngl
+stdout 'ok   2 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go shrink.sngl
+stdout 'ok   2 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin shrink.sngl
+stdout 'ok   2 tests, 0 failures'
+
+sngl test --platform=none present.sngl
+stdout 'ok   2 tests, 0 failures'
+
+sngl test --platform=html present.sngl
+stdout 'ok   2 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go present.sngl
+stdout 'ok   2 tests, 0 failures'
+
+sngl test --platform=fyne --language=go present.sngl
+stdout 'ok   2 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go present.sngl
+stdout 'ok   2 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin present.sngl
+stdout 'ok   2 tests, 0 failures'
+
+! sngl test --platform=none unhandled.sngl
+stdout '@tapped fired on tile, whose call site handles none of it'
+
+! sngl test --platform=html unnamed.sngl
+stderr 'unnamed.sngl:22:22: `label` is what its call site wrote, which reads something a test cannot name'
+
+-- copies.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+
+component tile(label string, @tapped(n int)) node {
+    var taps = 0
+    text #face(value="<{label}:{taps}>")
+    button #tap(text="tap", @click {
+        taps = taps + 1
+        tapped(taps)
+    })
+}
+
+component main node {
+    var names list[string] = ["a", "b", "c"]
+    var log = ""
+    vbox {
+        for var i, n = names {
+            tile #r(label="{i}{n}", @tapped(k) {
+                log = log + "{n}{k};"
+            })
+        }
+        button #rev(text="rev", @click {
+            names = ["c", "b", "a"]
+        })
+        button #drop(text="drop", @click {
+            names = ["b", "c"]
+        })
+    }
+}
+
+func testReorder(t Test, c main) {
+    c.r[0].tap.click()
+    t.assert(c.r[0].taps == 1)
+    t.assert(c.log == "a1;")
+    c.rev.click()
+    t.assert(c.r[0].label == "0c")
+    t.assert(c.r[0].face.value == "<0c:{c.r[0].taps}>")
+    c.r[0].tap.click()
+    t.assert(c.log == "a1;c{c.r[0].taps};")
+    c.r[2].tapped(9)
+    t.assert(c.log == "a1;c{c.r[0].taps};a9;")
+}
+
+func testDrop(t Test, c main) {
+    c.r[2].tap.click()
+    t.assert(c.r[2].taps == 1)
+    c.drop.click()
+    t.assert(c.r[2] == null)
+    t.assert(c.r[1].label == "1c")
+    c.r[1].tap.click()
+    t.assert(c.log == "c1;c{c.r[1].taps};")
+}
+
+window {
+    main
+}
+-- reserved.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+
+component badge(label string) node {
+    var hits = 0
+    button #m(text="hit", @click {
+        hits = hits + 1
+    })
+}
+
+component main node {
+    var show = true
+    vbox {
+        if show {
+            badge #b(label="one")
+        }
+    }
+}
+
+func testReserved(t Test, c main) {
+    if c.b != null {
+        c.b.m.click()
+        t.assert(c.b.hits == 1)
+    }
+}
+
+window {
+    main
+}
+-- nested.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+
+component cell(label string) node {
+    var taps = 0
+    button #m(text="{label}:{taps}", @click {
+        taps = taps + 1
+    })
+}
+
+component row(items list[string], tag string) node {
+    var bump = 0
+    hbox {
+        for var j, it = items {
+            cell #cl(label="{tag}{j}{it}{bump}")
+        }
+        button #b(text="b", @click {
+            bump = bump + 1
+        })
+    }
+}
+
+component main node {
+    var grid list[list[string]] = [["a", "b"], ["c", "d", "e"]]
+    vbox {
+        for var i, items = grid {
+            row #r(items=items, tag="R{i}")
+        }
+        button #swap(text="s", @click {
+            grid = [["x"], ["y", "z"]]
+        })
+    }
+}
+
+func testNested(t Test, c main) {
+    t.assert(c.r[1].cl[2].label == "R12e0")
+    t.assert(c.r[1].cl[2].m.text == "R12e0:0")
+    c.r[1].cl[2].m.click()
+    t.assert(c.r[1].cl[2].taps == 1)
+    t.assert(c.r[1].cl[2].m.text == "R12e0:1")
+    c.r[1].b.click()
+    t.assert(c.r[1].cl[0].label == "R10c1")
+    c.swap.click()
+    t.assert(c.r[1].cl[1].label == "R11z1")
+    t.assert(c.r[1].cl[2] == null)
+    t.assert(c.r[0].cl[0].label == "R00x0")
+}
+
+window {
+    main
+}
+-- sitecall.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+
+component badge(label string) node {
+    var hits = 0
+    func reset() {
+        hits = 0
+    }
+    button #hit(text="{label}{hits}", @click {
+        hits = hits + 1
+    })
+}
+
+component main node {
+    var show = true
+    vbox {
+        badge #b(label="one")
+        badge #o(label="two")
+        button #clear(text="c", @click {
+            b.reset()
+            o.reset()
+        })
+    }
+}
+
+func testProgramCall(t Test, c main) {
+    c.b.hit.click()
+    c.b.hit.click()
+    t.assert(c.b.hits == 2)
+    c.clear.click()
+    t.assert(c.b.hits == 0)
+    t.assert(c.b.hit.text == "one0")
+}
+
+window {
+    main
+}
+-- deepfire.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+
+component tile(label string, @tapped(n int)) node {
+    var taps = 0
+    button #tap(text="tap", @click {
+        taps = taps + 1
+        tapped(taps)
+    })
+}
+
+component panel(tag string) node {
+    var log = ""
+    vbox {
+        tile #t(label="x", @tapped(k) {
+            log = log + "{tag}{k};"
+        })
+        for var n = ["a", "b"] {
+            tile #u(label=n, @tapped(k) {
+                log = log + "{n}{k};"
+            })
+        }
+    }
+}
+
+component main node {
+    var show = true
+    vbox {
+        if show {
+            panel #p(tag="P")
+        }
+        panel #q(tag="Q")
+    }
+}
+
+func testFire(t Test, c main) {
+    if c.p != null {
+        c.p.t.tapped(5)
+        t.assert(c.p.log == "P5;")
+        c.p.u[1].tapped(6)
+        t.assert(c.p.log == "P5;b6;")
+        c.p.t.tap.click()
+        t.assert(c.p.log == "P5;b6;P1;")
+    } else {
+        t.assert(false)
+    }
+    c.q.u[0].tapped(2)
+    t.assert(c.q.log == "a2;")
+    t.assert(c.q.t.taps == 0)
+}
+
+window {
+    main
+}
+-- emptyfocus.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+
+component main node {
+    var xs list[int] = [1, 2]
+    vbox {
+        for var x = xs {
+            button #k(text="k", @click {})
+        }
+    }
+}
+
+func testEmptyLoop(t Test, c main) {
+    c.k[1].click()
+    t.assert(c.xs.length() == 2)
+}
+
+window {
+    main
+}
+-- seq.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+import seq "sngl:seq"
+
+component tile(label string) node {
+    var taps = 0
+    button #tap(text="{label}", @click {
+        taps = taps + 1
+    })
+}
+
+component main node {
+    var k = 3
+    vbox {
+        for var i = seq.count(k) {
+            tile #r(label="L{i}")
+        }
+    }
+}
+
+func testSeq(t Test, c main) {
+    t.assert(c.r[1].label == "L1")
+    c.r[1].tap.click()
+    t.assert(c.r[1].taps == 1)
+    t.assert(c.r[1].tap.text == "L1")
+}
+
+window {
+    main
+}
+-- forward.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+
+component pick(@chose(a int, b string)) node {
+    button #go(text="go", @click {
+        chose(1, "x")
+    })
+}
+
+component wrap(@picked(a int, b string)) node {
+    var on = true
+    if on {
+        pick #p(@chose {
+            picked()
+        })
+    }
+}
+
+component main node {
+    var log = ""
+    vbox {
+        wrap #w(@picked(n, s) {
+            log = log + "{n}{s};"
+        })
+    }
+}
+
+func testForward(t Test, c main) {
+    if c.w.p != null {
+        c.w.p.go.click()
+        t.assert(c.log == "1x;")
+    }
+}
+
+window {
+    main
+}
+-- shrink.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+
+component cell(label string) node {
+    var taps = 0
+    button #tap(text="{label}:{taps}", @click {
+        taps = taps + 1
+    })
+}
+
+component row(items list[string], tag string) node {
+    var bump = 0
+    hbox {
+        for var j, it = items {
+            cell #cl(label="{tag}{j}{it}{bump}")
+        }
+        button #b(text="b", @click {
+            bump = bump + 1
+        })
+    }
+}
+
+component main node {
+    var grid list[list[string]] = [["a", "b"], ["c", "d", "e"]]
+    vbox {
+        for var i, items = grid {
+            row #r(items=items, tag="R{i}")
+        }
+        button #swap(text="s", @click {
+            grid = [["x"], ["y", "z"]]
+        })
+    }
+}
+
+func testNested(t Test, c main) {
+    t.assert(c.r[1].cl[2] != null)
+    c.swap.click()
+    t.assert(c.r[1].cl[2] == null)
+}
+
+func testNested2(t Test, c main) {
+    c.swap.click()
+    t.assert(c.r[1].cl[1].label == "R11z0")
+}
+
+window {
+    main
+}
+-- present.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+
+component two(a bool, b bool) node {
+    if a {
+        text(value="y")
+    }
+    if b {
+        text(value="z")
+    }
+}
+
+const xs list[int] = [1, 2]
+
+component main node {
+    var fa = true
+    var fb = true
+    vbox {
+        for var x = xs {
+            two #w(a=fa, b=fb)
+        }
+        button #offb(text="b", @click {
+            fb = false
+        })
+        button #offa(text="a", @click {
+            fa = false
+        })
+    }
+}
+
+func testTwoRoots(t Test, c main) {
+    t.assert(c.w[0] != null)
+    c.offb.click()
+    t.assert(c.w[0] != null)
+}
+
+func testNone(t Test, c main) {
+    c.offb.click()
+    c.offa.click()
+    t.assert(c.w[0] != null)
+}
+
+window {
+    main
+}
+-- unhandled.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+
+component tile(@tapped(n int)) node {
+    button #tap(text="tap", @click {
+        tapped(1)
+    })
+}
+
+component main node {
+    tile #z
+}
+
+func testUnhandled(t Test, c main) {
+    c.z.tapped(5)
+}
+
+window {
+    main
+}
+-- unnamed.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+
+component tile(label string) node {
+    text #face(value=label)
+}
+
+component strip(xs iter[string]) node {
+    vbox {
+        for var x = xs {
+            tile #r(label=x)
+        }
+    }
+}
+
+component main node {
+    var names list[string] = ["a", "b"]
+    strip #s(xs=names)
+}
+
+func testUnnamed(t Test, c main) {
+    t.assert(c.s.r[0].label == "a")
+}
+
+window {
+    main
+}
+-- testrun/android/kotlin/copies.sngl/main/1 --
+sha256:7db45416d25cc27d91b178ec9ecb52c8
+{
+  "results": [
+    {
+      "Desc": "Drop",
+      "Passed": true
+    },
+    {
+      "Desc": "Reorder",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/android/kotlin/deepfire.sngl/main/1 --
+sha256:9efc23f059b6ec215ac5017710656f40
+{
+  "results": [
+    {
+      "Desc": "Fire",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/android/kotlin/emptyfocus.sngl/main/1 --
+sha256:0e9e4caf7e5617ad24254085ea83a41c
+{
+  "results": [
+    {
+      "Desc": "EmptyLoop",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/android/kotlin/forward.sngl/main/1 --
+sha256:03c777fc859d75de3331003fc4f56579
+{
+  "results": [
+    {
+      "Desc": "Forward",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/android/kotlin/nested.sngl/main/1 --
+sha256:e19d3d569fe1f9237c6fe95cd2198b14
+{
+  "results": [
+    {
+      "Desc": "Nested",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/android/kotlin/present.sngl/main/1 --
+sha256:e8757dce47fe708f01aa167ee90946fa
+{
+  "results": [
+    {
+      "Desc": "None",
+      "Passed": true
+    },
+    {
+      "Desc": "TwoRoots",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/android/kotlin/reserved.sngl/main/1 --
+sha256:16b186cf36c73549d8506008db63f77e
+{
+  "results": [
+    {
+      "Desc": "Reserved",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/android/kotlin/seq.sngl/main/1 --
+sha256:2727f03d8f95d7e7f43c7ab3cb50c9eb
+{
+  "results": [
+    {
+      "Desc": "Seq",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/android/kotlin/shrink.sngl/main/1 --
+sha256:90e3b9db03ba626c06e88374e785f361
+{
+  "results": [
+    {
+      "Desc": "Nested",
+      "Passed": true
+    },
+    {
+      "Desc": "Nested2",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/android/kotlin/sitecall.sngl/main/1 --
+sha256:e19fa79781fe109d8c0b28606f2bcf42
+{
+  "results": [
+    {
+      "Desc": "ProgramCall",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/copies.sngl/main/1 --
+sha256:015d258e87fddc253ac16ef3b0ed86ce
+{
+  "results": [
+    {
+      "Desc": "Drop",
+      "Passed": true
+    },
+    {
+      "Desc": "Reorder",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/deepfire.sngl/main/1 --
+sha256:1f44a544d24d52c3af53ca6f5eb66d83
+{
+  "results": [
+    {
+      "Desc": "Fire",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/emptyfocus.sngl/main/1 --
+sha256:4c5b1ee94199bd2c3d8c755b91ba0059
+{
+  "results": [
+    {
+      "Desc": "EmptyLoop",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/forward.sngl/main/1 --
+sha256:b34fd738ce40c70249415a75d6ebd5b5
+{
+  "results": [
+    {
+      "Desc": "Forward",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/nested.sngl/main/1 --
+sha256:e6adb9b151b761747cf8654dfa246f54
+{
+  "results": [
+    {
+      "Desc": "Nested",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/present.sngl/main/1 --
+sha256:c414254ba493ffbf938b58193897696b
+{
+  "results": [
+    {
+      "Desc": "None",
+      "Passed": true
+    },
+    {
+      "Desc": "TwoRoots",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/reserved.sngl/main/1 --
+sha256:c6bfe3799bfd357b00f2d7d00e16f005
+{
+  "results": [
+    {
+      "Desc": "Reserved",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/seq.sngl/main/1 --
+sha256:c12bcf0d5df68d7c254925f21375a44e
+{
+  "results": [
+    {
+      "Desc": "Seq",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/shrink.sngl/main/1 --
+sha256:b734f090bbfb7ef64297d444898ba554
+{
+  "results": [
+    {
+      "Desc": "Nested",
+      "Passed": true
+    },
+    {
+      "Desc": "Nested2",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/sitecall.sngl/main/1 --
+sha256:23214e8858c35ffc5ec6bd39a4358af1
+{
+  "results": [
+    {
+      "Desc": "ProgramCall",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/copies.sngl/main/1 --
+sha256:4232b5ebf2e720059f9b81168b4f306b
+{
+  "results": [
+    {
+      "Desc": "Drop",
+      "Passed": true
+    },
+    {
+      "Desc": "Reorder",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/deepfire.sngl/main/1 --
+sha256:0d55f05829bdcbdda2e1bcbad43d0030
+{
+  "results": [
+    {
+      "Desc": "Fire",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/emptyfocus.sngl/main/1 --
+sha256:7ad7c21a67f8b987b68f07dc064d0d74
+{
+  "results": [
+    {
+      "Desc": "EmptyLoop",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/forward.sngl/main/1 --
+sha256:05101c7fd067e5a7b07851db47e545d5
+{
+  "results": [
+    {
+      "Desc": "Forward",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/nested.sngl/main/1 --
+sha256:d2b0378b0d324acc7403c56f271c81e4
+{
+  "results": [
+    {
+      "Desc": "Nested",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/present.sngl/main/1 --
+sha256:89ba612007ed72590a14181ec75f1c2a
+{
+  "results": [
+    {
+      "Desc": "None",
+      "Passed": true
+    },
+    {
+      "Desc": "TwoRoots",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/reserved.sngl/main/1 --
+sha256:fcd49bdb53bc22389c7c646045de7eef
+{
+  "results": [
+    {
+      "Desc": "Reserved",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/seq.sngl/main/1 --
+sha256:2a1faeed3b961834c8b7d67a008ff20a
+{
+  "results": [
+    {
+      "Desc": "Seq",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/shrink.sngl/main/1 --
+sha256:83b18d8b52535a15a05b7f9a6b6735f7
+{
+  "results": [
+    {
+      "Desc": "Nested",
+      "Passed": true
+    },
+    {
+      "Desc": "Nested2",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/sitecall.sngl/main/1 --
+sha256:9e2929ed7acbd11958c23c91227e538c
+{
+  "results": [
+    {
+      "Desc": "ProgramCall",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/copies.sngl/main/1 --
+sha256:14e2d498c0261635deae9aadb52ac86d
+{
+  "results": [
+    {
+      "Desc": "Drop",
+      "Passed": true
+    },
+    {
+      "Desc": "Reorder",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/deepfire.sngl/main/1 --
+sha256:a10151568c491ca03111043a6508bcf4
+{
+  "results": [
+    {
+      "Desc": "Fire",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/emptyfocus.sngl/main/1 --
+sha256:841b0c23f5de80d87d95a51f90af43c5
+{
+  "results": [
+    {
+      "Desc": "EmptyLoop",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/forward.sngl/main/1 --
+sha256:305ca6cf7bf6ab24f141db031f8d37cf
+{
+  "results": [
+    {
+      "Desc": "Forward",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/nested.sngl/main/1 --
+sha256:75619003e45165ff6e0df05d7b8ccab3
+{
+  "results": [
+    {
+      "Desc": "Nested",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/present.sngl/main/1 --
+sha256:750b1d4408895cb57074b95b892efae1
+{
+  "results": [
+    {
+      "Desc": "None",
+      "Passed": true
+    },
+    {
+      "Desc": "TwoRoots",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/reserved.sngl/main/1 --
+sha256:c0ebdbf66acfe295dd7e61352bb38fe6
+{
+  "results": [
+    {
+      "Desc": "Reserved",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/seq.sngl/main/1 --
+sha256:0038f8b37217ee8b763c54915d07c2d6
+{
+  "results": [
+    {
+      "Desc": "Seq",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/shrink.sngl/main/1 --
+sha256:a7e175cc1ea2fd1ce9a55a0866934366
+{
+  "results": [
+    {
+      "Desc": "Nested",
+      "Passed": true
+    },
+    {
+      "Desc": "Nested2",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/sitecall.sngl/main/1 --
+sha256:f29865d5f569bf765e3a35c7252472e1
+{
+  "results": [
+    {
+      "Desc": "ProgramCall",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/copies.sngl/main/1 --
+sha256:06d9475e02afd75cf4f790ed0bb48287
+{
+  "results": [
+    {
+      "Desc": "Drop",
+      "Passed": true
+    },
+    {
+      "Desc": "Reorder",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/deepfire.sngl/main/1 --
+sha256:576198d20006268e5ca5fd5f77770f5d
+{
+  "results": [
+    {
+      "Desc": "Fire",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/emptyfocus.sngl/main/1 --
+sha256:9a28284c756195f8e32f740e69221648
+{
+  "results": [
+    {
+      "Desc": "EmptyLoop",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/forward.sngl/main/1 --
+sha256:968f54d3bf9edfd001ef917c681a47ff
+{
+  "results": [
+    {
+      "Desc": "Forward",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/nested.sngl/main/1 --
+sha256:455b0fb7e5d64b532a79875dc520d8ab
+{
+  "results": [
+    {
+      "Desc": "Nested",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/present.sngl/main/1 --
+sha256:98851c4a84f5fe7b4101e556a72e24a8
+{
+  "results": [
+    {
+      "Desc": "None",
+      "Passed": true
+    },
+    {
+      "Desc": "TwoRoots",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/reserved.sngl/main/1 --
+sha256:ec68271a35d7543513c516f54ac01cbf
+{
+  "results": [
+    {
+      "Desc": "Reserved",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/seq.sngl/main/1 --
+sha256:52819be2302256a8fbf6a64496a60709
+{
+  "results": [
+    {
+      "Desc": "Seq",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/shrink.sngl/main/1 --
+sha256:5d4603cd96ed089f8c05668c1895fa51
+{
+  "results": [
+    {
+      "Desc": "Nested",
+      "Passed": true
+    },
+    {
+      "Desc": "Nested2",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/sitecall.sngl/main/1 --
+sha256:a36ad1488c512b3da7fd42396a1771eb
+{
+  "results": [
+    {
+      "Desc": "ProgramCall",
+      "Passed": true
+    }
+  ]
+}

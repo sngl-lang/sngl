@@ -339,19 +339,6 @@ func (m *Model) hitClick() {
 	m.__focusID, m.__focusLoop2_cursor = prev, prevAt
 }
 
-func (m *Model) bPresentAt(key string) bool {
-	if m.open {
-		for __copy0, n := range m.names {
-			if n != m.skip {
-				if key == fmt.Sprint(__copy0) {
-					return true
-				}
-			}
-		}
-	}
-	return false
-}
-
 func (m Model) View() tea.View {
 	var content string
 	var contentChildren []string
@@ -429,16 +416,16 @@ import "testing"
 func TestInstanceCopy(t *testing.T) {
 	c := newTestComponent()
 	_ = c
-	if !(c.bPresentAt("0")) { t.Errorf("assert failed: %s", "c.bPresentAt(\"0\")") }
-	if !(!c.bPresentAt("1")) { t.Errorf("assert failed: %s", "!c.bPresentAt(\"1\")") }
-	if !(c.bPresentAt("2")) { t.Errorf("assert failed: %s", "c.bPresentAt(\"2\")") }
+	if !(((c.open && (0 < len(c.names))) && (c.names[0] != c.skip))) { t.Errorf("assert failed: %s", "((c.open && (0 < len(c.names))) && (c.names[0] != c.skip))") }
+	if !(!((c.open && (1 < len(c.names))) && (c.names[1] != c.skip))) { t.Errorf("assert failed: %s", "!((c.open && (1 < len(c.names))) && (c.names[1] != c.skip))") }
+	if !(((c.open && (2 < len(c.names))) && (c.names[2] != c.skip))) { t.Errorf("assert failed: %s", "((c.open && (2 < len(c.names))) && (c.names[2] != c.skip))") }
 	c.moveClick()
-	if !(!c.bPresentAt("0")) { t.Errorf("assert failed: %s", "!c.bPresentAt(\"0\")") }
-	if !(c.bPresentAt("1")) { t.Errorf("assert failed: %s", "c.bPresentAt(\"1\")") }
-	if !(c.bPresentAt("2")) { t.Errorf("assert failed: %s", "c.bPresentAt(\"2\")") }
+	if !(!((c.open && (0 < len(c.names))) && (c.names[0] != c.skip))) { t.Errorf("assert failed: %s", "!((c.open && (0 < len(c.names))) && (c.names[0] != c.skip))") }
+	if !(((c.open && (1 < len(c.names))) && (c.names[1] != c.skip))) { t.Errorf("assert failed: %s", "((c.open && (1 < len(c.names))) && (c.names[1] != c.skip))") }
+	if !(((c.open && (2 < len(c.names))) && (c.names[2] != c.skip))) { t.Errorf("assert failed: %s", "((c.open && (2 < len(c.names))) && (c.names[2] != c.skip))") }
 	c.shutClick()
-	if !(!c.bPresentAt("1")) { t.Errorf("assert failed: %s", "!c.bPresentAt(\"1\")") }
-	if !(!c.bPresentAt("2")) { t.Errorf("assert failed: %s", "!c.bPresentAt(\"2\")") }
+	if !(!((c.open && (1 < len(c.names))) && (c.names[1] != c.skip))) { t.Errorf("assert failed: %s", "!((c.open && (1 < len(c.names))) && (c.names[1] != c.skip))") }
+	if !(!((c.open && (2 < len(c.names))) && (c.names[2] != c.skip))) { t.Errorf("assert failed: %s", "!((c.open && (2 < len(c.names))) && (c.names[2] != c.skip))") }
 }
 
 
@@ -474,7 +461,6 @@ type Model struct {
 	move        *widget.Button
 	shut        *widget.Button
 	__named_hit *widget.Button
-	__copies_b  map[string]fyne.CanvasObject
 }
 
 // New creates a Model with default values.
@@ -561,32 +547,6 @@ func (m *Model) hitClick() {
 	}
 }
 
-func (m *Model) __list_b(key string, w fyne.CanvasObject) {
-	for k, c := range m.__copies_b {
-		if c == w {
-			delete(m.__copies_b, k)
-		}
-	}
-	if m.__copies_b == nil {
-		m.__copies_b = map[string]fyne.CanvasObject{}
-	}
-	m.__copies_b[key] = w
-}
-
-func (m *Model) __unlistInstance(w fyne.CanvasObject) {
-	for k, c := range m.__copies_b {
-		if c == w {
-			delete(m.__copies_b, k)
-		}
-	}
-}
-
-// bPresentAt reports whether the copy of #b with the key is rendered now; for tests.
-func (m *Model) bPresentAt(key string) bool {
-	_, ok := m.__copies_b[key]
-	return ok
-}
-
 func (m *Model) Names() []string {
 	return m.names
 }
@@ -629,24 +589,22 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 
 // BadgeInstance is one live instance of the badge component.
 type BadgeInstance struct {
-	Root          fyne.CanvasObject
-	__model       *Model
-	__prop_label  string
-	__prop___copy string
-	hits          int
-	__root        *fyne.Container
-	__slot0       []fyne.CanvasObject
-	__slot0_at    fyne.CanvasObject
-	__slot1       []fyne.CanvasObject
-	__slot1_at    fyne.CanvasObject
-	hit           *widget.Button
+	Root         fyne.CanvasObject
+	__model      *Model
+	__prop_label string
+	hits         int
+	__root       *fyne.Container
+	__slot0      []fyne.CanvasObject
+	__slot0_at   fyne.CanvasObject
+	__slot1      []fyne.CanvasObject
+	__slot1_at   fyne.CanvasObject
+	hit          *widget.Button
 }
 
-func newBadgeInstance(__model *Model, __a_label string, __a___copy string) *BadgeInstance {
+func newBadgeInstance(__model *Model, __a_label string) *BadgeInstance {
 	c := &BadgeInstance{}
 	c.__model = __model
 	c.__prop_label = __a_label
-	c.__prop___copy = __a___copy
 	c.hits = 0
 	c.__root = container.NewVBox()
 	c.__slot0 = nil
@@ -667,13 +625,7 @@ func (c *BadgeInstance) SetLabel(__v string) {
 	c.hit.SetText(((("hit " + c.__prop_label) + " ") + fmt.Sprint(c.hits)))
 }
 
-func (c *BadgeInstance) Set__copy(__v string) {
-	c.__prop___copy = __v
-}
-
-func (c *BadgeInstance) Destroy() {
-	c.__model.__unlistInstance(c.Root)
-}
+func (c *BadgeInstance) Destroy() {}
 
 // __child0Instance is one live instance of the __child0 component.
 type __child0Instance struct {
@@ -723,24 +675,22 @@ func (c *__child0Instance) __renderSlot1(__parent *fyne.Container) {
 	c.__slot1_at = fynelayout.SlotAnchor(__parent, c.__slot1_at)
 	__inst1_next := []*BadgeInstance{}
 	var __inst1_i int = 0
-	for __copy0, n := range c.__prop___p0 {
+	for _, n := range c.__prop___p0 {
 		if n != c.__prop___p1 {
 			var b *BadgeInstance
 			if len(c.__inst1_live) > __inst1_i {
 				b = c.__inst1_live[__inst1_i]
 				b.SetLabel(n)
-				b.Set__copy(fmt.Sprint(__copy0))
 			} else {
 				if len(c.__inst1_live) > __inst1_i {
 					c.__inst1_live[__inst1_i].Destroy()
 				}
-				b__new := newBadgeInstance(c.__model, n, fmt.Sprint(__copy0))
+				b__new := newBadgeInstance(c.__model, n)
 				b = b__new
 			}
 			__inst1_next = append(__inst1_next, b)
 			__inst1_i = (__inst1_i + 1)
 			b__el := b.Root
-			c.__model.__list_b(fmt.Sprint(__copy0), b.Root)
 			fynelayout.InsertBefore(__parent, c.__slot1_at, b__el)
 			c.__slot1 = append(c.__slot1, b__el)
 		}
@@ -779,16 +729,16 @@ import "testing"
 func TestInstanceCopy(t *testing.T) {
 	c := newTestComponent()
 	_ = c
-	if !(c.bPresentAt("0")) { t.Errorf("assert failed: %s", "c.bPresentAt(\"0\")") }
-	if !(!c.bPresentAt("1")) { t.Errorf("assert failed: %s", "!c.bPresentAt(\"1\")") }
-	if !(c.bPresentAt("2")) { t.Errorf("assert failed: %s", "c.bPresentAt(\"2\")") }
+	if !(((c.open && (0 < len(c.names))) && (c.names[0] != c.skip))) { t.Errorf("assert failed: %s", "((c.open && (0 < len(c.names))) && (c.names[0] != c.skip))") }
+	if !(!((c.open && (1 < len(c.names))) && (c.names[1] != c.skip))) { t.Errorf("assert failed: %s", "!((c.open && (1 < len(c.names))) && (c.names[1] != c.skip))") }
+	if !(((c.open && (2 < len(c.names))) && (c.names[2] != c.skip))) { t.Errorf("assert failed: %s", "((c.open && (2 < len(c.names))) && (c.names[2] != c.skip))") }
 	c.moveClick()
-	if !(!c.bPresentAt("0")) { t.Errorf("assert failed: %s", "!c.bPresentAt(\"0\")") }
-	if !(c.bPresentAt("1")) { t.Errorf("assert failed: %s", "c.bPresentAt(\"1\")") }
-	if !(c.bPresentAt("2")) { t.Errorf("assert failed: %s", "c.bPresentAt(\"2\")") }
+	if !(!((c.open && (0 < len(c.names))) && (c.names[0] != c.skip))) { t.Errorf("assert failed: %s", "!((c.open && (0 < len(c.names))) && (c.names[0] != c.skip))") }
+	if !(((c.open && (1 < len(c.names))) && (c.names[1] != c.skip))) { t.Errorf("assert failed: %s", "((c.open && (1 < len(c.names))) && (c.names[1] != c.skip))") }
+	if !(((c.open && (2 < len(c.names))) && (c.names[2] != c.skip))) { t.Errorf("assert failed: %s", "((c.open && (2 < len(c.names))) && (c.names[2] != c.skip))") }
 	c.shutClick()
-	if !(!c.bPresentAt("1")) { t.Errorf("assert failed: %s", "!c.bPresentAt(\"1\")") }
-	if !(!c.bPresentAt("2")) { t.Errorf("assert failed: %s", "!c.bPresentAt(\"2\")") }
+	if !(!((c.open && (1 < len(c.names))) && (c.names[1] != c.skip))) { t.Errorf("assert failed: %s", "!((c.open && (1 < len(c.names))) && (c.names[1] != c.skip))") }
+	if !(!((c.open && (2 < len(c.names))) && (c.names[2] != c.skip))) { t.Errorf("assert failed: %s", "!((c.open && (2 < len(c.names))) && (c.names[2] != c.skip))") }
 }
 
 -- out/go/fyne/testcomponent_test.go --
@@ -839,7 +789,6 @@ type Model struct {
 	move         gtk4rt.Handle
 	shut         gtk4rt.Handle
 	__named_hit  gtk4rt.Handle
-	__copies_b   map[string]gtk4rt.Handle
 }
 
 // New creates a Model with default values. Binds initialize
@@ -908,24 +857,22 @@ func (m *Model) shut_clicked_handler() {
 
 // BadgeInstance is one live instance of the badge component.
 type BadgeInstance struct {
-	Root          gtk4rt.Handle
-	__model       *Model
-	__prop_label  string
-	__prop___copy string
-	hits          int
-	__root        gtk4rt.Handle
-	__slot0       []gtk4rt.Handle
-	__slot0_at    gtk4rt.Handle
-	__slot1       []gtk4rt.Handle
-	__slot1_at    gtk4rt.Handle
-	hit           gtk4rt.Handle
+	Root         gtk4rt.Handle
+	__model      *Model
+	__prop_label string
+	hits         int
+	__root       gtk4rt.Handle
+	__slot0      []gtk4rt.Handle
+	__slot0_at   gtk4rt.Handle
+	__slot1      []gtk4rt.Handle
+	__slot1_at   gtk4rt.Handle
+	hit          gtk4rt.Handle
 }
 
-func newBadgeInstance(__model *Model, __a_label string, __a___copy string) *BadgeInstance {
+func newBadgeInstance(__model *Model, __a_label string) *BadgeInstance {
 	c := &BadgeInstance{}
 	c.__model = __model
 	c.__prop_label = __a_label
-	c.__prop___copy = __a___copy
 	c.hits = 0
 	c.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
 	c.__slot0 = nil
@@ -947,12 +894,7 @@ func (c *BadgeInstance) SetLabel(__v string) {
 	gtk4rt.ButtonSetLabel(c.hit, ((("hit " + c.__prop_label) + " ") + fmt.Sprint(c.hits)))
 }
 
-func (c *BadgeInstance) Set__copy(__v string) {
-	c.__prop___copy = __v
-}
-
 func (c *BadgeInstance) Destroy() {
-	c.__model.__unlistInstance(c.Root)
 	if c.Root != nil {
 		gtk4rt.Release(c.Root)
 		c.Root = nil
@@ -1016,24 +958,22 @@ func (c *__child0Instance) __renderSlot1(parent gtk4rt.Handle) {
 	c.__slot1_at = gtk4rt.SlotAnchor(parent, c.__slot1_at)
 	__inst1_next := []*BadgeInstance{}
 	var __inst1_i int = 0
-	for __copy0, n := range c.__prop___p0 {
+	for _, n := range c.__prop___p0 {
 		if n != c.__prop___p1 {
 			var b *BadgeInstance
 			if len(c.__inst1_live) > __inst1_i {
 				b = c.__inst1_live[__inst1_i]
 				b.SetLabel(n)
-				b.Set__copy(fmt.Sprint(__copy0))
 			} else {
 				if len(c.__inst1_live) > __inst1_i {
 					c.__inst1_live[__inst1_i].Destroy()
 				}
-				b__new := newBadgeInstance(c.__model, n, fmt.Sprint(__copy0))
+				b__new := newBadgeInstance(c.__model, n)
 				b = b__new
 			}
 			__inst1_next = append(__inst1_next, b)
 			__inst1_i = (__inst1_i + 1)
 			b__el := b.Root
-			c.__model.__list_b(fmt.Sprint(__copy0), b.Root)
 			gtk4rt.InsertBefore(parent, c.__slot1_at, b__el)
 			c.__slot1 = append(c.__slot1, b__el)
 		}
@@ -1136,39 +1076,11 @@ func (m *Model) shutClick() {
 func (m *Model) hitClick() {
 	gtk4rt.Emit(m.__named_hit, "clicked")
 }
-
-func (m *Model) __list_b(key string, w gtk4rt.Handle) {
-	for k, c := range m.__copies_b {
-		if c == w {
-			delete(m.__copies_b, k)
-		}
-	}
-	if m.__copies_b == nil {
-		m.__copies_b = map[string]gtk4rt.Handle{}
-	}
-	m.__copies_b[key] = w
-}
-
-func (m *Model) __unlistInstance(w gtk4rt.Handle) {
-	for k, c := range m.__copies_b {
-		if c == w {
-			delete(m.__copies_b, k)
-		}
-	}
-}
-
-// bPresentAt reports whether the copy of #b with the key is rendered now; for tests.
-func (m *Model) bPresentAt(key string) bool {
-	_, ok := m.__copies_b[key]
-	return ok
-}
 -- out/kotlin/android/app/src/main/java/test/sngl/app/MainScreen.kt --
 // Code generated by sngl (android) from app.sngl; DO NOT EDIT.
 
 package test.sngl.app
 
-import androidx.compose.ui.semantics.SemanticsPropertyKey
-import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
@@ -1182,7 +1094,6 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.material3.Button
 import androidx.compose.ui.platform.testTag
 import androidx.compose.material3.Text
-import androidx.compose.runtime.DisposableEffect
 
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
@@ -1190,12 +1101,7 @@ fun _snglFloatStr(v: Double): String =
 fun _snglSplit(s: String, sep: String): List<String> =
     if (sep.isEmpty()) s.map { it.toString() } else s.split(sep)
 
-val SnglCopy = SemanticsPropertyKey<String>("SnglCopy")
-
-val SnglPresent = mutableStateMapOf<Any, String>()
-
 class MainScreenState {
-    init { SnglPresent.clear() }
     val names = mutableStateListOf("a", "b", "c")
     var skip by mutableStateOf("b")
     var open by mutableStateOf(true)
@@ -1218,14 +1124,9 @@ fun MainScreen(state: MainScreenState = remember { MainScreenState() }) {
         }
         if (state.open) {
             Column(modifier = Modifier) {
-                for ((__copy0, n) in state.names.withIndex()) {
+                for (n in state.names) {
                     if ((n != state.skip)) {
-                        DisposableEffect(__copy0.toString()) {
-                            val __token = Any()
-                            SnglPresent[__token] = "b[" + __copy0.toString() + "]"
-                            onDispose { SnglPresent.remove(__token) }
-                        }
-                        Badge(label = n, __copy = __copy0.toString())
+                        Badge(label = n)
                     }
                 }
             }
@@ -1234,7 +1135,7 @@ fun MainScreen(state: MainScreenState = remember { MainScreenState() }) {
 }
 
 @Composable
-fun Badge(label: String = "", __copy: String = "") {
+fun Badge(label: String = "") {
     var hits by remember { mutableStateOf(0) }
 
     Button(onClick = {
@@ -1271,16 +1172,16 @@ class MainScreenTest {
         val c = MainScreenState()
         @Suppress("UNUSED_VARIABLE") val composeTestRule = composeRule
         composeRule.setContent { MainScreen(c) }
-        org.junit.Assert.assertTrue("(composeTestRule.onAllNodes((androidx.compose.ui.test.hasTestTag(\"b\") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, \"0\"))).fetchSemanticsNodes().isNotEmpty() || SnglPresent.containsValue(\"b[\" + \"0\" + \"]\"))", (composeTestRule.onAllNodes((androidx.compose.ui.test.hasTestTag("b") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, "0"))).fetchSemanticsNodes().isNotEmpty() || SnglPresent.containsValue("b[" + "0" + "]")))
-        org.junit.Assert.assertTrue("!(composeTestRule.onAllNodes((androidx.compose.ui.test.hasTestTag(\"b\") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, \"1\"))).fetchSemanticsNodes().isNotEmpty() || SnglPresent.containsValue(\"b[\" + \"1\" + \"]\"))", !(composeTestRule.onAllNodes((androidx.compose.ui.test.hasTestTag("b") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, "1"))).fetchSemanticsNodes().isNotEmpty() || SnglPresent.containsValue("b[" + "1" + "]")))
-        org.junit.Assert.assertTrue("(composeTestRule.onAllNodes((androidx.compose.ui.test.hasTestTag(\"b\") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, \"2\"))).fetchSemanticsNodes().isNotEmpty() || SnglPresent.containsValue(\"b[\" + \"2\" + \"]\"))", (composeTestRule.onAllNodes((androidx.compose.ui.test.hasTestTag("b") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, "2"))).fetchSemanticsNodes().isNotEmpty() || SnglPresent.containsValue("b[" + "2" + "]")))
+        org.junit.Assert.assertTrue("((c.open && (0 < c.names.size)) && (c.names[0] != c.skip))", ((c.open && (0 < c.names.size)) && (c.names[0] != c.skip)))
+        org.junit.Assert.assertTrue("!((c.open && (1 < c.names.size)) && (c.names[1] != c.skip))", !((c.open && (1 < c.names.size)) && (c.names[1] != c.skip)))
+        org.junit.Assert.assertTrue("((c.open && (2 < c.names.size)) && (c.names[2] != c.skip))", ((c.open && (2 < c.names.size)) && (c.names[2] != c.skip)))
         composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("move")).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick); composeTestRule.waitForIdle()
-        org.junit.Assert.assertTrue("!(composeTestRule.onAllNodes((androidx.compose.ui.test.hasTestTag(\"b\") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, \"0\"))).fetchSemanticsNodes().isNotEmpty() || SnglPresent.containsValue(\"b[\" + \"0\" + \"]\"))", !(composeTestRule.onAllNodes((androidx.compose.ui.test.hasTestTag("b") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, "0"))).fetchSemanticsNodes().isNotEmpty() || SnglPresent.containsValue("b[" + "0" + "]")))
-        org.junit.Assert.assertTrue("(composeTestRule.onAllNodes((androidx.compose.ui.test.hasTestTag(\"b\") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, \"1\"))).fetchSemanticsNodes().isNotEmpty() || SnglPresent.containsValue(\"b[\" + \"1\" + \"]\"))", (composeTestRule.onAllNodes((androidx.compose.ui.test.hasTestTag("b") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, "1"))).fetchSemanticsNodes().isNotEmpty() || SnglPresent.containsValue("b[" + "1" + "]")))
-        org.junit.Assert.assertTrue("(composeTestRule.onAllNodes((androidx.compose.ui.test.hasTestTag(\"b\") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, \"2\"))).fetchSemanticsNodes().isNotEmpty() || SnglPresent.containsValue(\"b[\" + \"2\" + \"]\"))", (composeTestRule.onAllNodes((androidx.compose.ui.test.hasTestTag("b") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, "2"))).fetchSemanticsNodes().isNotEmpty() || SnglPresent.containsValue("b[" + "2" + "]")))
+        org.junit.Assert.assertTrue("!((c.open && (0 < c.names.size)) && (c.names[0] != c.skip))", !((c.open && (0 < c.names.size)) && (c.names[0] != c.skip)))
+        org.junit.Assert.assertTrue("((c.open && (1 < c.names.size)) && (c.names[1] != c.skip))", ((c.open && (1 < c.names.size)) && (c.names[1] != c.skip)))
+        org.junit.Assert.assertTrue("((c.open && (2 < c.names.size)) && (c.names[2] != c.skip))", ((c.open && (2 < c.names.size)) && (c.names[2] != c.skip)))
         composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("shut")).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick); composeTestRule.waitForIdle()
-        org.junit.Assert.assertTrue("!(composeTestRule.onAllNodes((androidx.compose.ui.test.hasTestTag(\"b\") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, \"1\"))).fetchSemanticsNodes().isNotEmpty() || SnglPresent.containsValue(\"b[\" + \"1\" + \"]\"))", !(composeTestRule.onAllNodes((androidx.compose.ui.test.hasTestTag("b") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, "1"))).fetchSemanticsNodes().isNotEmpty() || SnglPresent.containsValue("b[" + "1" + "]")))
-        org.junit.Assert.assertTrue("!(composeTestRule.onAllNodes((androidx.compose.ui.test.hasTestTag(\"b\") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, \"2\"))).fetchSemanticsNodes().isNotEmpty() || SnglPresent.containsValue(\"b[\" + \"2\" + \"]\"))", !(composeTestRule.onAllNodes((androidx.compose.ui.test.hasTestTag("b") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, "2"))).fetchSemanticsNodes().isNotEmpty() || SnglPresent.containsValue("b[" + "2" + "]")))
+        org.junit.Assert.assertTrue("!((c.open && (1 < c.names.size)) && (c.names[1] != c.skip))", !((c.open && (1 < c.names.size)) && (c.names[1] != c.skip)))
+        org.junit.Assert.assertTrue("!((c.open && (2 < c.names.size)) && (c.names[2] != c.skip))", !((c.open && (2 < c.names.size)) && (c.names[2] != c.skip)))
     }
 
 }
@@ -1339,7 +1240,6 @@ window.__sngl_boot = () => {
     Object.assign(el, p);
     el.dispatchEvent(Object.assign(new Event("contextmenu"), p));
   };
-  state.bPresentAt = (k) => document.querySelector('[data-sngl-id="b"][data-sngl-copy="' + k + '"], [data-sngl-instance="b"][data-sngl-copy="' + k + '"]') !== null;
   if (typeof window !== "undefined") {
     window.__sngl_state = state;
   }
@@ -1347,18 +1247,13 @@ window.__sngl_boot = () => {
     const __root = document.createElement("div");
     __root.style.display = "contents";
     let label = props.label ?? "";
-    let __copy = props.__copy ?? "";
     let __prop_label = label;
-    let __prop___copy = __copy;
     let hits = 0;
     let __slot02 = [];
     let __slot12 = [];
     function __set_label(__v) {
       __prop_label = __v;
       __n0.textContent = "hit " + __prop_label + " " + String(hits);
-    }
-    function __set___copy(__v) {
-      __prop___copy = __v;
     }
     let hit = document.createElement("button");
     hit.setAttribute("data-sngl-id", "hit");
@@ -1377,8 +1272,7 @@ window.__sngl_boot = () => {
       __root,
       __destroy() {
       },
-      __set_label,
-      __set___copy
+      __set_label
     };
   }
   function __cf___child0(props) {
@@ -1405,25 +1299,23 @@ window.__sngl_boot = () => {
       __slot12 = [];
       let __inst3_next = [];
       let __inst3_i = 0;
-      for (const [__copy0, n] of __prop___p0.entries()) {
+      for (const n of __prop___p0) {
         if (n !== __prop___p1) {
           let b = null;
           if (__inst3_live.length > __inst3_i) {
             b = __inst3_live[__inst3_i];
             b.__set_label(n);
-            b.__set___copy(String(__copy0));
           } else {
             if (__inst3_live.length > __inst3_i) {
               __inst3_live[__inst3_i].__destroy();
             }
-            let b__new = __cf_badge({ label: n, __copy: String(__copy0) });
+            let b__new = __cf_badge({ label: n });
             b = b__new;
           }
           __inst3_next.push(b);
           __inst3_i = __inst3_i + 1;
           let b__el = b.__root;
           b__el.setAttribute("data-sngl-instance", "b");
-          b__el.setAttribute("data-sngl-copy", String(__copy0));
           let __place2_i_ref0 = null;
           if (__place2_i < __place2_prev.length) {
             __place2_i_ref0 = __place2_prev[__place2_i];
@@ -1546,12 +1438,12 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:ae7ea5301b127f1b4ac958385107fcdc
+pass sha256:c9b65788e9d9b0973a3b32e8c5798977
 -- run/go/fyne --
-pass sha256:0aa6c9cb5eaa5b064e8f963e3209847b
+pass sha256:70a9d7e8790d49c3a31666ca125262ef
 -- run/go/gtk4 --
-pass sha256:a5a01729a2c6022fc9719e87466dc6e1
+pass sha256:3c80e44b029efe4861c3bbf182efa643
 -- run/kotlin/android --
-pass sha256:aeb384cc8db0a258acc1eddc36690364
+pass sha256:ff194a86b0f23359cab63459d7d282e8
 -- run/none/html --
-pass sha256:8f7a4a067a35a36f4c638c10d726a1ba
+pass sha256:428c292d088d7f39e9fcb7c0912ca91e

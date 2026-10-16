@@ -235,3 +235,23 @@ func instanceBase(e ir.Expr) ir.Expr {
 		}
 	}
 }
+
+// SlotCreatedIDs is each id of present whose node a slot render of comp
+// creates.
+func SlotCreatedIDs(comp *ir.Component, present map[string]bool) map[string]bool {
+	out := map[string]bool{}
+	for _, fn := range comp.Funcs {
+		if fn == nil || !fn.Lowered.SlotRender {
+			continue
+		}
+		_ = ir.Walk(fn.Block, func(n ir.Node) error {
+			if lv, ok := n.(*ir.LocalVar); ok && present[lv.Name] {
+				if c, ok := lv.Init.(*ir.Call); ok && c.Func != nil && c.Func.Intrinsic == ir.NodeOpCreateNode {
+					out[lv.Name] = true
+				}
+			}
+			return nil
+		})
+	}
+	return out
+}

@@ -85,7 +85,7 @@ func InstanceRelease(reads []codegen.InstanceRead, comp *ir.Component, recv stri
 			field := recv + "." + InstanceModelField + "." + InstancesField(r.ID)
 			if !seen[field] {
 				seen[field] = true
-				fmt.Fprintf(&b, "\tfor k, c := range %s {\n\t\tif c == %s {\n\t\t\tdelete(%s, k)\n\t\t}\n\t}\n", field, recv, field)
+				fmt.Fprintf(&b, "\tfor k, held := range %s {\n\t\tif held == %s {\n\t\t\tdelete(%s, k)\n\t\t}\n\t}\n", field, recv, field)
 			}
 			continue
 		}

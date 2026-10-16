@@ -1,6 +1,10 @@
 package ir
 
-import "duckfam.us/sngl/ast"
+import (
+	"strconv"
+
+	"duckfam.us/sngl/ast"
+)
 
 // EmptyTest returns a bool expression that holds exactly when n's loop body
 // would not run — the iterable yields nothing — or nil when the loop's head is
@@ -109,4 +113,33 @@ func Reevaluable(e Expr) bool {
 		return nil
 	})
 	return ok
+}
+
+// CopyInRange is whether the loop n renders a copy at index idx: the index
+// below the list's length, or the counted sequence's number there short of its
+// end. Nil for any other iterable.
+func CopyInRange(n *For, idx Expr, clone func(Expr) Expr) Expr {
+	if n == nil || n.Iter == nil {
+		return nil
+	}
+	if clone == nil {
+		clone = func(e Expr) Expr { return e }
+	}
+	if c := CountedSeq(n); c != nil {
+		at := &Binary{Type: TypInt, Op: ast.BinAdd, Left: clone(c.Start), Right: &Binary{Type: TypInt, Op: ast.BinMul, Left: idx, Right: &Literal{Type: TypInt, Value: strconv.Itoa(c.Step)}}}
+		op := ast.BinLt
+		if c.Step < 0 {
+			op = ast.BinGt
+		}
+		return &Binary{Type: TypBool, Op: op, Left: at, Right: clone(c.End)}
+	}
+	t := n.Iter.ExprType()
+	if t == nil || t.Kind != TypeList {
+		return nil
+	}
+	empty, _ := EmptyTest(n, clone).(*Binary)
+	if empty == nil {
+		return nil
+	}
+	return &Binary{Type: TypBool, Op: ast.BinLt, Left: idx, Right: empty.Left}
 }
