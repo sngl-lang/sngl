@@ -508,6 +508,9 @@ func (t *htmlTranslator) OnPropAssign(ctx context.Context, node ir.Expr, prop st
 	if prop == ir.CopyProp {
 		return setAttr(copyAttr, value)
 	}
+	if id, ok := codegen.InstanceRootID(prop); ok {
+		return setAttr(instanceRootAttr(id), value)
+	}
 	// A `style={...}` struct is a set of CSS declarations, not a value any
 	// DOM sink accepts: passed through it stringifies to "[object Object]".
 	if prop == "style" {

@@ -6,6 +6,7 @@ import (
 	"slices"
 	"strings"
 
+	"duckfam.us/sngl/ast"
 	"duckfam.us/sngl/codegen"
 	"duckfam.us/sngl/ir"
 )
@@ -79,20 +80,106 @@ func presentField(id string) string { return "__present_" + id }
 const unlistInstance = "__unlistInstance"
 
 // keyedInstances reports whether some component is handed the key of the copy
-// it stands in, whose record then unlists itself as it is destroyed.
+// it stands in, whose record then unlists itself as it is destroyed, or some
+// spliced instance's roots are listed (listRoot).
 func keyedInstances(pkg *ir.Package) bool {
-	return pkg != nil && slices.ContainsFunc(pkg.Components, func(c *ir.Component) bool { return c.KeyedCopy })
+	return pkg != nil && (slices.ContainsFunc(pkg.Components, func(c *ir.Component) bool { return c.KeyedCopy }) ||
+		len(codegen.InstanceRootIDs(pkg)) > 0)
 }
 
 // emitUnlistInstance writes unlistInstance over the maps of the instance
-// copies the Model declares.
-func emitUnlistInstance(b *strings.Builder, fields []widgetField, wrapped bool) {
+// copies and the instance widgets the Model declares, and keepRoot where a
+// record lists a spliced instance's roots.
+func emitUnlistInstance(b *strings.Builder, fields []widgetField, wrapped, roots bool) {
 	widget := widgetFieldGoType("GtkWidget", wrapped)
 	fmt.Fprintf(b, "func (m *Model) %s(w %s) {\n", unlistInstance, widget)
+	seen := map[string]bool{}
 	for _, f := range fields {
+		if seen[f.name] {
+			continue
+		}
+		seen[f.name] = true
 		if strings.HasPrefix(f.name, copiesField("")) && f.goType == widgetFieldGoType(copyMapType("GtkWidget"), wrapped) {
 			fmt.Fprintf(b, "\tfor k, c := range m.%s {\n\t\tif c == w {\n\t\t\tdelete(m.%s, k)\n\t\t}\n\t}\n", f.name, f.name)
 		}
+		if strings.HasPrefix(f.name, presentField("")) && f.goType == widget {
+			fmt.Fprintf(b, "\tif m.%s == w {\n\t\tm.%s = nil\n\t}\n", f.name, f.name)
+		}
 	}
 	b.WriteString("}\n\n")
+	if !roots {
+		return
+	}
+	fmt.Fprintf(b, "func (m *Model) %s(roots []%s, w %s) []%s {\n", keepRoot, widget, widget, widget)
+	b.WriteString("\tfor _, r := range roots {\n\t\tif r == w {\n\t\t\treturn roots\n\t\t}\n\t}\n\treturn append(roots, w)\n}\n\n")
+}
+
+// keepRoot is the Model method returning a record's rootedField with a root
+// added once.
+const keepRoot = "__keepRoot"
+
+// rootedField is the field of a component built at run time holding the roots
+// of the spliced instances it rendered and listed, which its Destroy unlists.
+const rootedField = "__rooted"
+
+// listRoot lists node, a root of the spliced instance id, as the instance: in
+// its map of copies under key where a test reaches one copy, as its
+// presentField otherwise. It is the instance's while it is on screen: a
+// removal unlists it (unlistRemoved), and so does the Destroy of a record
+// that rendered it.
+func (t *gtk4Translator) listRoot(id string, node, key ir.Expr) []ir.Stmt {
+	model := &ir.Ident{Name: t.gc.ModelRef()}
+	declare := t.modelSink
+	if declare == nil {
+		declare = t.sinkField
+	}
+	w := t.asWidget(node)
+	var out []ir.Stmt
+	if t.indexed[id] || t.instanceCopies[id] {
+		declare(copiesField(id), copyMapType("GtkWidget"))
+		out = append(out, &ir.CallStmt{Call: &ir.Call{
+			Type:     ir.TypVoid,
+			Receiver: model,
+			Func:     &ir.Func{Name: copyRegistry(id)},
+			Args:     []ir.CallArg{{Value: key}, {Value: w}},
+		}})
+	} else {
+		declare(presentField(id), "GtkWidget")
+		out = append(out, &ir.Assign{Target: codegen.RecvFieldRef(model, presentField(id), ir.NativeGoNamed(widgetFieldGoType("GtkWidget", t.wrapped))), Op: ast.AssignSet, Value: w})
+	}
+	if t.record {
+		t.sinkField(rootedField, "[]GtkWidget")
+		rooted := t.fieldRef(rootedField)
+		out = append(out, &ir.Assign{Target: rooted, Op: ast.AssignSet, Value: &ir.Call{
+			Type:     rooted.ExprType(),
+			Receiver: model,
+			Func:     &ir.Func{Name: keepRoot},
+			Args:     []ir.CallArg{{Value: t.fieldRef(rootedField)}, {Value: w}},
+		}})
+	}
+	return out
+}
+
+// unlistRemoved takes a widget a render removes out of the instance lists, in
+// a build listing a spliced instance's roots: an instance built at run time is
+// unlisted as it is destroyed.
+func (t *gtk4Translator) unlistRemoved(child ir.Expr) []ir.Stmt {
+	if len(t.gc.Ctx.InstanceRootIDs()) == 0 {
+		return nil
+	}
+	return []ir.Stmt{&ir.CallStmt{Call: &ir.Call{
+		Type:     ir.TypVoid,
+		Receiver: &ir.Ident{Name: t.gc.ModelRef()},
+		Func:     &ir.Func{Name: unlistInstance},
+		Args:     []ir.CallArg{{Value: t.asWidget(child)}},
+	}}}
+}
+
+// asWidget is node as the GtkWidget the instance lists hold: a cgo cast to
+// one inline, and the handle every widget already is wrapped.
+func (t *gtk4Translator) asWidget(node ir.Expr) ir.Expr {
+	if t.wrapped {
+		return t.qualifyNodeExpr(node)
+	}
+	return cgoCast("GtkWidget", t.qualifyNodeExpr(node))
 }

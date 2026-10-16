@@ -91,6 +91,10 @@ type fyneTranslator struct {
 	// itself.
 	instanceCopies map[string]bool
 	modelSink      func(name, goType string)
+	// record is set in a component built at run time, which lists the roots
+	// of the spliced instances it renders (listRoot) so its Destroy can take
+	// them out again.
+	record bool
 	// present are the ids a test null-tests. slotPresent are the fields of
 	// those this slot render func creates -- a widget's own, an instance's
 	// presentField -- which its reset clears: what the render no longer builds
@@ -250,6 +254,13 @@ func (t *fyneTranslator) withIndexed(indexed, present map[string]bool, stmts []i
 // reaches one copy of, declaring each map through modelSink.
 func (t *fyneTranslator) withInstanceCopies(ids map[string]bool, modelSink func(name, goType string)) *fyneTranslator {
 	t.instanceCopies, t.modelSink = ids, modelSink
+	return t
+}
+
+// inRecord marks this scope as the body or a method of a component built at
+// run time.
+func (t *fyneTranslator) inRecord() *fyneTranslator {
+	t.record = true
 	return t
 }
 
@@ -586,6 +597,10 @@ func (t *fyneTranslator) OnAppendChild(ctx context.Context, parent, child ir.Exp
 }
 
 func (t *fyneTranslator) OnRemoveChild(ctx context.Context, parent, child ir.Expr) []ir.Stmt {
+	return append(t.removeChild(parent, child), t.unlistRemoved(child)...)
+}
+
+func (t *fyneTranslator) removeChild(parent, child ir.Expr) []ir.Stmt {
 	if ir.IsAppParent(parent) {
 		return []ir.Stmt{&ir.CallStmt{Call: nativeCallAt("fynelayout.AppDetach", fyneLayoutImportPath,
 			[]ir.Expr{t.qualifyChildExpr(child)}, ir.TypVoid)}}
@@ -786,6 +801,9 @@ func (t *fyneTranslator) OnPropAssign(ctx context.Context, node ir.Expr, prop st
 	}
 	if prop == ir.CopyProp {
 		return []ir.Stmt{t.listCopy(bareID, value)}
+	}
+	if id, ok := codegen.InstanceRootID(prop); ok {
+		return t.listRoot(id, t.nodeRefFor(bareID), value)
 	}
 	if structuralProp(prop) {
 		// This platform's own props, not the widget's: `spec` is the record

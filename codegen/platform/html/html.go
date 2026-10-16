@@ -3673,17 +3673,26 @@ func (g *htmlGen) emitEventInvokers(b *strings.Builder) {
 	// A node a test null-tests is rendered while an element carries its mark,
 	// which goes with the element when a render slot takes it out; an instance
 	// is while the root it renders does.
+	// So is a spliced instance, while one of its roots is.
 	ids, keyed := codegen.NullTestedRefs(g.pkg)
+	roots := codegen.InstanceRootIDs(g.pkg)
 	for _, id := range slices.Sorted(maps.Keys(ids)) {
-		fmt.Fprintf(b, "state.%s = () => document.querySelector('[data-sngl-id=%q], [%s=%q]') !== null;\n", codegen.PresenceMethod(id), id, instanceMark, id)
+		sel := fmt.Sprintf("[data-sngl-id=%q], [%s=%q]", id, instanceMark, id)
+		if roots[id] {
+			sel += fmt.Sprintf(", [%s]", instanceRootAttr(id))
+		}
+		fmt.Fprintf(b, "state.%s = () => document.querySelector('%s') !== null;\n", codegen.PresenceMethod(id), sel)
 	}
-	// One copy is rendered while an element carries its key: the node, or the
-	// root of an instance handed one.
+	// One copy is rendered while an element carries its key: the node, the
+	// root of an instance handed one, or a root of a spliced one.
 	instances := codegen.KeyedInstanceIDs(g.pkg)
 	for _, id := range slices.Sorted(maps.Keys(keyed)) {
 		sel := copySelector(id, "k")
 		if instances[id] {
 			sel += " + ', ' + " + instanceCopySelector(id, "k")
+		}
+		if roots[id] {
+			sel += fmt.Sprintf(" + ', [%s=\"' + k + '\"]'", instanceRootAttr(id))
 		}
 		fmt.Fprintf(b, "state.%s = (k) => document.querySelector(%s) !== null;\n", codegen.PresenceAtMethod(id), sel)
 	}

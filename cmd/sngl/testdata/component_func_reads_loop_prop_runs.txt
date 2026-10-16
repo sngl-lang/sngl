@@ -49,6 +49,13 @@ component row(label string) node {
     text(value=shout())
 }
 
+component tagged(label string) node {
+    func suffix(s string) string {
+        return s + label
+    }
+    text(value=["q"].map(suffix)[0])
+}
+
 component main node {
     var shown = true
     var name = "n"
@@ -56,6 +63,7 @@ component main node {
         button #hide(text="h", @click { shown = false })
         for var x = ["p", "q"] {
             row(label=x)
+            tagged(label=x)
         }
         if shown {
             row #only(label=name)
@@ -73,7 +81,7 @@ window {
     main
 }
 -- testrun/android/kotlin/app.sngl/main/1 --
-sha256:214fbb173641561c30f4c711b62c690e
+sha256:570015867bb74733fa363be1275e93c5
 {
   "results": [
     {
@@ -83,7 +91,7 @@ sha256:214fbb173641561c30f4c711b62c690e
   ]
 }
 -- testrun/bubbletea/go/app.sngl/main/1 --
-sha256:ddca6f4d0d88881b6c3f45e9dd5d1bbe
+sha256:1628304298dc0a40463fe28da8b76214
 {
   "results": [
     {
@@ -93,7 +101,7 @@ sha256:ddca6f4d0d88881b6c3f45e9dd5d1bbe
   ]
 }
 -- testrun/fyne/go/app.sngl/main/1 --
-sha256:2f124e1dd0ff385e780d3b67cd87624b
+sha256:f52062d5ef939dc14c8779589c770f2e
 {
   "results": [
     {
@@ -103,7 +111,7 @@ sha256:2f124e1dd0ff385e780d3b67cd87624b
   ]
 }
 -- testrun/gtk4/go/app.sngl/main/1 --
-sha256:d3578488ad27f4754df999f4694c1802
+sha256:99fcf7dc47c14e4c970f54c4b349b0fa
 {
   "results": [
     {
@@ -113,7 +121,7 @@ sha256:d3578488ad27f4754df999f4694c1802
   ]
 }
 -- testrun/html/none/app.sngl/main/1 --
-sha256:544cd5d021819e3882056437e5ddd4a4
+sha256:056ead444b41fb61e6ada5d1083df2a7
 {
   "results": [
     {

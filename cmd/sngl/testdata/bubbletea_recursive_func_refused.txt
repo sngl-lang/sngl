@@ -1,0 +1,39 @@
+# A recursive component whose function reads its props is refused on
+# bubbletea, with a position, rather than emitted: bubbletea makes a
+# component's functions the Model's by splicing the component where it is
+# written, and a recursion is never spliced, so the function read a prop
+# nothing bound (`undefined: n`).
+#
+# The same program builds on fyne, which keeps an instance of its own.
+
+! sngl generate --lang go --platform bubbletea --out out app.sngl
+stderr 'app.sngl:4:5: the recursive component "step" declares "lbl", which reads its props'
+
+sngl generate --lang go --platform fyne --out out2 app.sngl
+
+-- app.sngl --
+import . "sngl:ui"
+
+component step(n int) node {
+    func lbl() string {
+        return "s{n}"
+    }
+    vbox {
+        text(value=lbl())
+        if n > 0 {
+            step(n=n - 1)
+        }
+    }
+}
+
+component main node {
+    var depth = 2
+    vbox {
+        button #b(text="+", @click { depth = depth + 1 })
+        step(n=depth)
+    }
+}
+
+window {
+    main
+}

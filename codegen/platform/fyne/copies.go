@@ -6,6 +6,7 @@ import (
 	"slices"
 	"strings"
 
+	"duckfam.us/sngl/ast"
 	"duckfam.us/sngl/codegen"
 	"duckfam.us/sngl/ir"
 )
@@ -90,19 +91,90 @@ func (t *fyneTranslator) listInstanceCopy(id string, key, root ir.Expr) ir.Stmt 
 const unlistInstance = "__unlistInstance"
 
 // keyedInstances reports whether some component is handed the key of the copy
-// it stands in, whose record then unlists itself as it is destroyed.
+// it stands in, whose record then unlists itself as it is destroyed, or some
+// spliced instance's roots are listed (listRoot).
 func keyedInstances(pkg *ir.Package) bool {
-	return pkg != nil && slices.ContainsFunc(pkg.Components, func(c *ir.Component) bool { return c.KeyedCopy })
+	return pkg != nil && (slices.ContainsFunc(pkg.Components, func(c *ir.Component) bool { return c.KeyedCopy }) ||
+		len(codegen.InstanceRootIDs(pkg)) > 0)
 }
 
 // emitUnlistInstance writes unlistInstance over the maps of the instance
-// copies the Model declares.
-func emitUnlistInstance(b *strings.Builder, fields []irWidgetField) {
+// copies and the instance widgets the Model declares, and keepRoot where a
+// record lists a spliced instance's roots.
+func emitUnlistInstance(b *strings.Builder, fields []irWidgetField, roots bool) {
 	fmt.Fprintf(b, "func (m *Model) %s(w %s) {\n", unlistInstance, fyneWidgetHandleType)
+	seen := map[string]bool{}
 	for _, f := range fields {
+		if seen[f.name] {
+			continue
+		}
+		seen[f.name] = true
 		if strings.HasPrefix(f.name, copiesField("")) && f.goType == copyMapType(fyneWidgetHandleType) {
 			fmt.Fprintf(b, "\tfor k, c := range m.%s {\n\t\tif c == w {\n\t\t\tdelete(m.%s, k)\n\t\t}\n\t}\n", f.name, f.name)
 		}
+		if strings.HasPrefix(f.name, presentField("")) && f.goType == fyneWidgetHandleType {
+			fmt.Fprintf(b, "\tif m.%s == w {\n\t\tm.%s = nil\n\t}\n", f.name, f.name)
+		}
 	}
 	b.WriteString("}\n\n")
+	if !roots {
+		return
+	}
+	fmt.Fprintf(b, "func (m *Model) %s(roots []%s, w %s) []%s {\n", keepRoot, fyneWidgetHandleType, fyneWidgetHandleType, fyneWidgetHandleType)
+	b.WriteString("\tfor _, r := range roots {\n\t\tif r == w {\n\t\t\treturn roots\n\t\t}\n\t}\n\treturn append(roots, w)\n}\n\n")
+}
+
+// keepRoot is the Model method returning a record's rootedField with a root
+// added once.
+const keepRoot = "__keepRoot"
+
+// rootedField is the field of a component built at run time holding the roots
+// of the spliced instances it rendered and listed, which its Destroy unlists.
+const rootedField = "__rooted"
+
+// listRoot lists w, a root of the spliced instance id, as the instance: in its
+// map of copies under key where a test reaches one copy, as its presentField
+// otherwise. It is the instance's while it is on screen: a removal unlists it
+// (unlistRemoved), and so does the Destroy of a record that rendered it.
+func (t *fyneTranslator) listRoot(id string, w, key ir.Expr) []ir.Stmt {
+	model := &ir.Ident{Name: t.gc.ModelRef()}
+	declare := t.modelSink
+	if declare == nil {
+		declare = t.sinkField
+	}
+	handle := ir.NativeGoNamed(fyneWidgetHandleType)
+	var out []ir.Stmt
+	if t.indexed[id] || t.instanceCopies[id] {
+		declare(copiesField(id), copyMapType(fyneWidgetHandleType))
+		out = append(out, t.listInstanceCopy(id, key, w))
+	} else {
+		declare(presentField(id), fyneWidgetHandleType)
+		out = append(out, &ir.Assign{Target: codegen.RecvFieldRef(model, presentField(id), handle), Op: ast.AssignSet, Value: w})
+	}
+	if t.record {
+		t.sinkField(rootedField, "[]"+fyneWidgetHandleType)
+		rooted := t.fieldRef(rootedField)
+		out = append(out, &ir.Assign{Target: rooted, Op: ast.AssignSet, Value: &ir.Call{
+			Type:     rooted.ExprType(),
+			Receiver: model,
+			Func:     &ir.Func{Name: keepRoot},
+			Args:     []ir.CallArg{{Value: t.fieldRef(rootedField)}, {Value: w}},
+		}})
+	}
+	return out
+}
+
+// unlistRemoved takes a widget a render removed out of the instance lists, in
+// a build listing a spliced instance's roots: an instance built at run time is
+// unlisted as it is destroyed.
+func (t *fyneTranslator) unlistRemoved(child ir.Expr) []ir.Stmt {
+	if len(t.gc.Ctx.InstanceRootIDs()) == 0 {
+		return nil
+	}
+	return []ir.Stmt{&ir.CallStmt{Call: &ir.Call{
+		Type:     ir.TypVoid,
+		Receiver: &ir.Ident{Name: t.gc.ModelRef()},
+		Func:     &ir.Func{Name: unlistInstance},
+		Args:     []ir.CallArg{{Value: t.qualifyChildExpr(child)}},
+	}}}
 }

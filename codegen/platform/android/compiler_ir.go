@@ -656,7 +656,7 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 	if testMode {
 		var keyed map[string]bool
 		present, keyed = codegen.NullTestedRefs(ctx.Pkg)
-		instances := codegen.KeyedInstanceIDs(ctx.Pkg)
+		instances := keyedInstanceIDs(ctx.Pkg)
 		for id := range keyed {
 			if instances[id] {
 				present[id] = true

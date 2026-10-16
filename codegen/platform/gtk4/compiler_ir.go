@@ -502,7 +502,7 @@ func (c *compilation) emitIRMode(wrapped bool) (modelSrc []byte, callbacksSrc []
 	emitPresenceChecks(&eventInvokersBuf, presentIDs, presenceFields, widgetFields)
 	emitCopyRegistries(&eventInvokersBuf, widgetFields)
 	if keyedInstances(c.ctx.Pkg) {
-		emitUnlistInstance(&eventInvokersBuf, widgetFields, c.wrapped)
+		emitUnlistInstance(&eventInvokersBuf, widgetFields, c.wrapped, len(codegen.InstanceRootIDs(c.ctx.Pkg)) > 0)
 	}
 	emitKeyedPresenceChecks(&eventInvokersBuf, keyedPresent, widgetFields)
 

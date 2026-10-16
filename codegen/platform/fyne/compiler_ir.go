@@ -387,7 +387,7 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 	emitFyneEventInvokers(&funcBuf, eventInvokers)
 	emitCopyRegistries(&funcBuf, widgetFields)
 	if keyedInstances(ctx.Pkg) {
-		emitUnlistInstance(&funcBuf, widgetFields)
+		emitUnlistInstance(&funcBuf, widgetFields, len(gc.Ctx.InstanceRootIDs()) > 0)
 	}
 	emitKeyedPresenceChecks(&funcBuf, keyedPresent, widgetFields)
 	emitFynePresenceChecks(&funcBuf, presentIDs, presenceFields, widgetFields)
