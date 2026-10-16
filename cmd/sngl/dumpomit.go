@@ -13,6 +13,7 @@ import (
 	"strings"
 	"sync"
 
+	"duckfam.us/sngl/ast"
 	"duckfam.us/sngl/ir"
 )
 
@@ -28,9 +29,10 @@ import (
 // nothing in the dump owns -- a node's handle, an interned anonymous struct --
 // is written at its first reference instead. One another package declares is
 // only ever named: a program's dump does not write the library.
-func dumpTree(v any, omit map[string]bool, spew, pointers bool) any {
+func dumpTree(v any, root *ir.Package, omit map[string]bool, spew, pointers bool) any {
 	d := &dumper{
 		omit:      omit,
+		omitted:   map[reflect.Type][]jsonFieldInfo{},
 		stringers: spew,
 		pointers:  pointers,
 		owned:     map[pointerKey]bool{},
@@ -39,9 +41,9 @@ func dumpTree(v any, omit map[string]bool, spew, pointers bool) any {
 		ids:       map[pointerKey]int{},
 		open:      map[pointerKey]bool{},
 	}
-	if pkg, ok := v.(*ir.Package); ok && pkg != nil {
-		d.root = pkg
-		d.contexts = contextPackages(pkg)
+	if root != nil {
+		d.root = root
+		d.contexts = contextPackages(root)
 	}
 	rv := reflect.ValueOf(v)
 	d.mark(rv, true)
@@ -150,9 +152,11 @@ func owns(parent reflect.Type, f jsonFieldInfo) bool {
 }
 
 type dumper struct {
-	root     *ir.Package
-	omit     map[string]bool
-	contexts map[*ir.Context]*ir.Package
+	root *ir.Package
+	omit map[string]bool
+	// omitted is each struct type's fields without the ones omit names.
+	omitted  map[reflect.Type][]jsonFieldInfo
+	contexts map[*ast.CallStmt]*ir.Package
 	// stringers writes a value that has a String method as that string, as
 	// spew prints one: a position as file:line:col, an operator as itself.
 	stringers bool
@@ -321,10 +325,10 @@ func (d *dumper) build(v reflect.Value, owning bool) any {
 
 // buildMap writes a map's entries in an order its keys' spelling decides,
 // which a map keyed by pointers needs: its iteration order is random, and
-// which entry first references a declaration decides where it is written.
-// Keys spelled alike are ordered by their values. The keys are spelled again
-// once every declaration has its id (number), which tells apart two of one
-// name.
+// which entry first references a declaration decides where it is written,
+// and so its id. A run of keys spelled alike -- two declarations of one name
+// -- is ordered by the entries' values. Once every declaration has its id
+// the keys are spelled again with it (number), which tells such keys apart.
 func (d *dumper) buildMap(v reflect.Value, owning bool) *dumpObject {
 	type entry struct {
 		key, tie string
@@ -335,6 +339,7 @@ func (d *dumper) buildMap(v reflect.Value, owning bool) *dumpObject {
 	for iter.Next() {
 		entries = append(entries, entry{key: d.mapKey(iter.Key()), k: iter.Key(), value: iter.Value()})
 	}
+	slices.SortFunc(entries, func(a, b entry) int { return strings.Compare(a.key, b.key) })
 	for i := range entries {
 		if i > 0 && entries[i].key == entries[i-1].key || i+1 < len(entries) && entries[i].key == entries[i+1].key {
 			entries[i].tie = d.spell(entries[i].value)
@@ -436,7 +441,7 @@ func (d *dumper) ref(v reflect.Value) *dumpObject {
 	if pkg := d.pkgName(v); pkg != "" {
 		o.add("Pkg", pkg)
 	}
-	if at := declPos(v); at != "" {
+	if at := declPos(v); at != "" && !d.omit["Pos"] && !d.omit["At"] {
 		o.add("At", at)
 	}
 	switch k := keyOf(v); {
@@ -452,7 +457,7 @@ func (d *dumper) ref(v reflect.Value) *dumpObject {
 
 func (d *dumper) declPkg(v reflect.Value) *ir.Package {
 	if ctx, ok := v.Interface().(*ir.Context); ok {
-		return d.contexts[ctx]
+		return d.contexts[ctx.AST]
 	}
 	if info := v.Elem().FieldByName("DeclInfo"); info.IsValid() {
 		pkg, _ := info.FieldByName("Pkg").Interface().(*ir.Package)
@@ -469,7 +474,7 @@ func (d *dumper) pkgName(v reflect.Value) string {
 		return "sngl:" + path.Dir(ctx.AST.Pos.File)
 	}
 	switch {
-	case pkg == nil || pkg == d.root || d.root == nil && pkg.Path == "":
+	case pkg == nil || pkg == d.root:
 		return ""
 	case pkg.Path != "":
 		return pkg.Path
@@ -481,26 +486,34 @@ func (d *dumper) pkgName(v reflect.Value) string {
 	return "(unnamed package)"
 }
 
-// foreign says another package declares v, so this dump only names it. A
-// context the program adopted from a library says so by Stdlib alone, and
-// with no package dumped -- an analysis -- a library declaration by its path.
+// foreign says another package declares v, so this dump only names it.
+// Nothing is, with no package being dumped. A context a target package
+// declares reaches the program with no import to find it through, and says
+// it came from the library by Stdlib alone.
 func (d *dumper) foreign(v reflect.Value) bool {
+	if d.root == nil {
+		return false
+	}
 	if ctx, ok := v.Interface().(*ir.Context); ok {
-		return ctx.Stdlib && (d.root == nil || !d.root.Library)
+		return d.contexts[ctx.AST] != nil || ctx.Stdlib && !d.root.Library
 	}
 	pkg := d.declPkg(v)
-	if d.root == nil {
-		return pkg != nil && pkg.Path != ""
-	}
 	return pkg != nil && pkg != d.root
 }
 
 // contextPackages is which package declares each context the import graph
-// reaches, the IR keeping no link from a context to its package. A package
-// also holds the contexts it adopted from its imports, so the walk claims
-// for each package only after its imports have claimed theirs.
-func contextPackages(root *ir.Package) map[*ir.Context]*ir.Package {
-	out := map[*ir.Context]*ir.Package{}
+// reaches, by the statement that declares it: the IR keeps no link from a
+// context to its package, and a directory package's contexts are on the
+// program's list rather than its own, so its files are what say. A library
+// package also holds the contexts it adopted from its imports, so each
+// package claims only after its imports have claimed theirs.
+func contextPackages(root *ir.Package) map[*ast.CallStmt]*ir.Package {
+	out := map[*ast.CallStmt]*ir.Package{}
+	claim := func(s *ast.CallStmt, p *ir.Package) {
+		if _, ok := out[s]; s != nil && !ok {
+			out[s] = p
+		}
+	}
 	seen := map[*ir.Package]bool{root: true}
 	var walk func(p *ir.Package)
 	walk = func(p *ir.Package) {
@@ -511,8 +524,15 @@ func contextPackages(root *ir.Package) map[*ir.Context]*ir.Package {
 			seen[imp.Pkg] = true
 			walk(imp.Pkg)
 			for _, ctx := range imp.Pkg.Contexts {
-				if _, ok := out[ctx]; !ok {
-					out[ctx] = imp.Pkg
+				claim(ctx.AST, imp.Pkg)
+			}
+			if o := imp.Pkg.Origin; o != nil {
+				for _, doc := range o.Docs {
+					for _, s := range doc.Stmts {
+						if call, ok := s.(*ast.CallStmt); ok {
+							claim(call, imp.Pkg)
+						}
+					}
 				}
 			}
 		}
@@ -586,12 +606,16 @@ func (d *dumper) typeFields(t reflect.Type) []jsonFieldInfo {
 	if len(d.omit) == 0 {
 		return all
 	}
+	if out, ok := d.omitted[t]; ok {
+		return out
+	}
 	out := make([]jsonFieldInfo, 0, len(all))
 	for _, f := range all {
 		if !d.omit[f.goName] {
 			out = append(out, f)
 		}
 	}
+	d.omitted[t] = out
 	return out
 }
 

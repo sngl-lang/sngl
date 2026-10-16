@@ -37,6 +37,17 @@ cmp stdout first.json
 sngl dump --stage checked --format json --omit AST methods.sngl
 cmp stdout first.json
 
+# A declaration a directory package makes is named with the directory, a
+# context included, whose package the IR does not record.
+cd proj
+sngl dump --stage checked --format json app.sngl
+stdout -count=1 '"\(ref\)": "ir.Context",\s+"Name": "depth",\s+"Pkg": "dir:shapes"'
+stdout '"\(ref\)": "ir.Component",\s+"Name": "badge",\s+"Pkg": "dir:shapes"'
+stdout '"At": "s.sngl:3:20"'
+sngl dump --stage checked --format json --omit AST,Pos app.sngl
+! stdout '"At"'
+cd ..
+
 sngl dump --stage lowered --platform html --lang none --format spew --omit AST,Pos main.sngl
 stdout 'ast.Document'
 sngl dump --stage lowered --platform html --lang none --format json --omit AST,Pos main.sngl
@@ -123,4 +134,24 @@ func testACallbackEmits(t Test, c main) {
 
 window {
     main
+}
+-- proj/app.sngl --
+import . "sngl:ui"
+import "./shapes"
+
+component badge node {
+    text(value="mine")
+}
+
+window {
+    badge
+    shapes.badge
+}
+-- proj/shapes/s.sngl --
+import ui "sngl:ui"
+
+context[int] #depth(3)
+
+component badge ui.node {
+    ui.text(value="{depth}")
 }

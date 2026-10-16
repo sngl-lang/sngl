@@ -4942,6 +4942,13 @@ fails with "accepts at most 1 arg(s)". `--format` selects `sngl` (default),
 those have no source form — `--format sngl` on it is an error naming the two
 that work.
 
+In `json` and `spew` a declaration is written in full once, carrying an
+`"(id)"`, and everywhere else it is a reference: `{"(ref)": "ir.Component", "Name": …, "Pkg": …, "At": …, "(id)": …}`, the id naming the full one. A
+declaration another package makes -- the library, a directory import
+(`"Pkg": "dir:widgets"`) -- is only referenced, never written. A map keyed by
+declarations spells each key as its reference, so the keys are distinct and
+the order fixed (`cmd/sngl/dumpomit.go`).
+
 A positional argument may also be a package rather than a path:
 `sngl dump --stage checked sngl:platform/gtk4`. It arrives already checked,
 because a library package loads under the rules that permit its own

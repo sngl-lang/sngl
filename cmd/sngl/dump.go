@@ -36,7 +36,7 @@ func init() {
 	dumpCmd.Flags().String("input", "auto", "input source (auto, sngl, stdin, txtar, markdown)")
 	dumpCmd.Flags().Bool("pointers", false, "write the address of each object read through a pointer as (addr), the same for a declaration and every reference to it")
 	dumpCmd.Flags().Int("depth", 0, "maximum depth for spew output (default unlimited)")
-	dumpCmd.Flags().StringSlice("omit", nil, "omit struct fields by name (comma-separated, e.g. --omit AST,Pos)")
+	dumpCmd.Flags().StringSlice("omit", nil, "omit struct fields by name (comma-separated, e.g. --omit AST,Pos); Pos or At also drops the position a reference to a declaration carries")
 	dumpCmd.Flags().String("lang", "", "target language")
 	dumpCmd.Flags().String("platform", "", "target platform")
 	dumpCmd.Flags().StringSlice("opt", nil, "generator options (key=value, for codegen stage)")
@@ -219,7 +219,7 @@ func runDump(cmd *cobra.Command, args []string) error {
 				}
 			}
 		}
-		return dumpDocument(f, codegen.AnalyzeCommon(pkg))
+		return dumpDocumentOf(f, codegen.AnalyzeCommon(pkg), pkg)
 
 	case "lowered":
 		return runDumpLowered(cmd, args, f, inp)
