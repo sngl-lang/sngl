@@ -70,7 +70,7 @@ func resolveColor(cmd *cobra.Command) error {
 
 func dumpDocument(f dumpFormat, doc any) error {
 	if f != dumpFormatSNGL {
-		doc = dumpTree(doc, dumpOmitSet, f == dumpFormatSpew)
+		doc = dumpTree(doc, dumpOmitSet, f == dumpFormatSpew, dumpPointers)
 	}
 	var text string
 	var lexer string
