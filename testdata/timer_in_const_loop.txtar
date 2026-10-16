@@ -547,11 +547,12 @@ type TimerInstance struct {
 	__prop_tick         func()
 	handle              *time.Ticker
 	done                chan bool
-	live                bool
+	period              time.Duration
 	gen                 int
-	__effect0_key       time.Duration
-	__effect0_live      []time.Duration
-	__effect0_desired   []time.Duration
+	__effect0_live      []bool
+	__effect0_desired   []bool
+	__effect1_key       time.Duration
+	__effect1_dirty     bool
 	__effects0_settling bool
 	__effects0_pending  bool
 	__effects0_steps    int
@@ -570,11 +571,12 @@ func newTimerInstance(__model *Model, __a_interval time.Duration, __a_enabled bo
 	c.__prop_tick = __a_tick
 	c.handle = nil
 	c.done = nil
-	c.live = false
+	c.period = 0
 	c.gen = 0
-	c.__effect0_key = (time.Duration(0) * time.Millisecond)
-	c.__effect0_live = []time.Duration{}
-	c.__effect0_desired = []time.Duration{}
+	c.__effect0_live = []bool{}
+	c.__effect0_desired = []bool{}
+	c.__effect1_key = (time.Duration(0) * time.Millisecond)
+	c.__effect1_dirty = false
 	c.__effects0_settling = false
 	c.__effects0_pending = false
 	c.__effects0_steps = 0
@@ -587,54 +589,47 @@ func newTimerInstance(__model *Model, __a_interval time.Duration, __a_enabled bo
 }
 
 func (c *TimerInstance) __effect0_mount() {
-	if c.__effect0_key > (time.Duration(0) * time.Millisecond) {
-		c.live = true
-		c.gen = (c.gen + 1)
-		var mine int = c.gen
-		c.handle = time.NewTicker(c.__effect0_key)
-		c.done = make(chan bool)
-		stopped := c.done
-		ticker := c.handle
-		go func() {
-			for {
-				select {
-				case <-ticker.C:
-					fyne.Do(func() {
-						if c.gen != mine {
-							return
-						}
-						c.__prop_tick()
-					})
-				case <-stopped:
-					return
-				}
+	c.gen = (c.gen + 1)
+	var mine int = c.gen
+	c.period = c.__prop_interval
+	c.handle = time.NewTicker(c.__prop_interval)
+	c.done = make(chan bool)
+	stopped := c.done
+	ticker := c.handle
+	go func() {
+		for {
+			select {
+			case <-ticker.C:
+				fyne.Do(func() {
+					if c.gen != mine {
+						return
+					}
+					c.__prop_tick()
+				})
+			case <-stopped:
+				return
 			}
-		}()
-	}
+		}
+	}()
 }
 
 func (c *TimerInstance) __effect0_unmount() {
-	if c.live {
-		c.live = false
-		c.gen = (c.gen + 1)
-		c.handle.Stop()
-		close(c.done)
-	}
+	c.gen = (c.gen + 1)
+	c.handle.Stop()
+	close(c.done)
 }
 
 func (c *TimerInstance) __effect0_down() {
-	c.__effect0_desired = []time.Duration{}
-	if c.__prop_enabled {
-		c.__effect0_desired = append(c.__effect0_desired, c.__prop_interval)
+	c.__effect0_desired = []bool{}
+	if c.__prop_enabled && (c.__prop_interval > (time.Duration(0) * time.Millisecond)) {
+		c.__effect0_desired = append(c.__effect0_desired, true)
 	}
 	for __effect0_i, _ := range c.__effect0_live {
 		var __effect0_j int = ((len(c.__effect0_live) - 1) - __effect0_i)
 		if __effect0_j >= len(c.__effect0_desired) {
-			c.__effect0_key = c.__effect0_live[__effect0_j]
 			c.__effect0_unmount()
 		} else {
 			if c.__effect0_desired[__effect0_j] != c.__effect0_live[__effect0_j] {
-				c.__effect0_key = c.__effect0_live[__effect0_j]
 				c.__effect0_unmount()
 			}
 		}
@@ -644,11 +639,9 @@ func (c *TimerInstance) __effect0_down() {
 func (c *TimerInstance) __effect0_up() {
 	for __effect0_i, __effect0_k := range c.__effect0_desired {
 		if __effect0_i >= len(c.__effect0_live) {
-			c.__effect0_key = __effect0_k
 			c.__effect0_mount()
 		} else {
 			if c.__effect0_live[__effect0_i] != __effect0_k {
-				c.__effect0_key = __effect0_k
 				c.__effect0_mount()
 			}
 		}
@@ -657,11 +650,17 @@ func (c *TimerInstance) __effect0_up() {
 }
 
 func (c *TimerInstance) __effect0_teardown() {
-	for __effect0_ti, _ := range c.__effect0_live {
-		c.__effect0_key = c.__effect0_live[((len(c.__effect0_live) - 1) - __effect0_ti)]
+	for range c.__effect0_live {
 		c.__effect0_unmount()
 	}
-	c.__effect0_live = []time.Duration{}
+	c.__effect0_live = []bool{}
+}
+
+func (c *TimerInstance) __effect1_update() {
+	if (c.__effect1_key > (time.Duration(0) * time.Millisecond)) && (c.__effect1_key != c.period) {
+		c.period = c.__effect1_key
+		c.handle.Reset(c.__effect1_key)
+	}
 }
 
 func (c *TimerInstance) __effects0_settle() {
@@ -674,6 +673,13 @@ func (c *TimerInstance) __effects0_settle() {
 		for c.__effects0_pending && (c.__effects0_steps < 512) {
 			c.__effects0_pending = false
 			c.__effects0_steps = (c.__effects0_steps + 1)
+			if c.__effect1_dirty {
+				c.__effect1_dirty = false
+				if c.__prop_enabled && (c.__prop_interval > (time.Duration(0) * time.Millisecond)) {
+					c.__effect1_key = c.__prop_interval
+					c.__effect1_update()
+				}
+			}
 			c.__effect0_down()
 			c.__effect0_up()
 		}
@@ -1323,7 +1329,7 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:1175eb003e4c2d53bf835e1ed3c765a0
 -- run/go/fyne --
-pass sha256:c6f9d83cdd6909da1c861baad716e40e
+pass sha256:d97bbc42c73a1fc2a4e70108e3b766d7
 -- run/go/gtk4 --
 pass sha256:595788b2a4fee455aa1b62bca087f8d1
 -- run/none/html --

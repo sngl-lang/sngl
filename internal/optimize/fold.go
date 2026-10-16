@@ -65,6 +65,9 @@ func foldExpr(e ir.Expr, ctx *evalCtx) ir.Expr {
 		if lit := settledNullTest(x); lit != nil {
 			return lit
 		}
+		if settled := settledLogic(x); settled != nil {
+			return settled
+		}
 	case *ir.Unary:
 		// Reference operations (&x, *p) are never const — the underlying
 		// storage may be mutated through aliases, and `&literal` is not a
@@ -536,6 +539,47 @@ func settledNullTest(x *ir.Binary) *ir.Literal {
 		return nil
 	}
 	return &ir.Literal{Type: ir.TypBool, Value: strconv.FormatBool(x.Op == ast.BinNeq)}
+}
+
+// settledLogic answers `&&` and `||` where one operand folded to a bool and
+// the other did not: a literal that cannot decide the answer leaves the other
+// operand as the whole of it (`x && true` is `x`), and one that decides it is
+// the answer, provided what it replaces is never evaluated or is droppable --
+// `false && x` never reads x, `x && false` does.
+func settledLogic(x *ir.Binary) ir.Expr {
+	var decides bool
+	switch x.Op {
+	case ast.BinAnd:
+		decides = false
+	case ast.BinOr:
+		decides = true
+	default:
+		return nil
+	}
+	if b, ok := boolLiteral(x.Left); ok {
+		if b == decides {
+			return x.Left
+		}
+		return x.Right
+	}
+	if b, ok := boolLiteral(x.Right); ok {
+		if b != decides {
+			return x.Left
+		}
+		if droppable(x.Left) {
+			return x.Right
+		}
+	}
+	return nil
+}
+
+func boolLiteral(e ir.Expr) (bool, bool) {
+	lit, ok := e.(*ir.Literal)
+	if !ok || lit.Type == nil || lit.Type.Kind != ir.TypeBool {
+		return false, false
+	}
+	b, err := strconv.ParseBool(lit.Value)
+	return b, err == nil
 }
 
 // alwaysPresent reports whether a value of t is necessarily there, so that

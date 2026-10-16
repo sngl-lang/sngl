@@ -1,0 +1,14 @@
+// A mark is read at check time, so a binding, a spread and a handler -- the
+// forms a call's argument list holds beyond values -- mean nothing in one.
+import macro "sngl:macro"
+
+const parts = {path="js:x", name="A"}
+
+#[macro.foreign(:path)] // ERROR(parse) "a mark takes values, not a binding"
+struct A {}
+
+#[macro.foreign(...parts)] // ERROR(parse) "a mark's arguments cannot be spread"
+struct B {}
+
+#[macro.foreign(@run { })] // ERROR(parse) "a mark takes values, not a handler"
+struct C {}
