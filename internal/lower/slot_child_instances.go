@@ -206,21 +206,23 @@ func (st *slotChildSynth) synthesize(n *ir.NodeInst) *ir.NodeInst {
 // declares and the instantiation subscribes to.
 //
 // The body stays at the site it was written, so what it closes over is still
-// in scope; the event carries the host payload and whichever of bound (a
-// scoped slot's parameters) the body reads.
+// in scope; the event carries the host payload, whichever of bound (a scoped
+// slot's parameters) the body reads, and whichever variable the lifted
+// subtree binds itself -- a loop's, a local -- since the site does not bind it.
 func (st *slotChildSynth) liftHandlers(n any, l *lift, bound []*ir.Param) {
+	inner := varsWithin(n)
 	_ = ir.Walk(n, func(node ir.Node) error {
 		switch x := node.(type) {
 		case *ir.NodeInst:
 			if !isDrawShape(x) {
-				liftNodeHandlers(x, l, bound)
+				liftNodeHandlers(x, l, bound, inner)
 			}
 		case *ir.ErrorBoundary:
 			// A boundary's handler is a body written at the site like a
 			// node's, and a raise reaches it through Call.ResolvedHandler,
 			// which still names this handler once its body is the relay.
 			if x.Handler != nil {
-				liftHandler(x.Handler, l, bound)
+				liftHandler(x.Handler, l, bound, inner)
 			}
 		}
 		return nil
@@ -287,15 +289,17 @@ func (st *slotChildSynth) liftConstructProps(n *ir.NodeInst, l *lift, local map[
 }
 
 // liftNodeHandlers is liftHandlers for host's own handlers alone.
-func liftNodeHandlers(host *ir.NodeInst, l *lift, bound []*ir.Param) {
+func liftNodeHandlers(host *ir.NodeInst, l *lift, bound []*ir.Param, inner []ir.Symbol) {
 	for i := range host.Handlers {
-		liftHandler(&host.Handlers[i], l, bound)
+		liftHandler(&host.Handlers[i], l, bound, inner)
 	}
 }
 
 // liftHandler makes h an event the component declares, the body staying at the
-// site, and leaves the relay that fires it in h's place.
-func liftHandler(h *ir.EventHandler, l *lift, bound []*ir.Param) {
+// site, and leaves the relay that fires it in h's place. A variable of inner
+// the body reads is bound where the relay fires, so the event carries it and
+// the body reads it as a parameter of its own.
+func liftHandler(h *ir.EventHandler, l *lift, bound []*ir.Param, inner []ir.Symbol) {
 	if h.Func == nil || len(h.Func.Block) == 0 {
 		return
 	}
@@ -314,6 +318,12 @@ func liftHandler(h *ir.EventHandler, l *lift, bound []*ir.Param) {
 	}
 	for _, p := range reads {
 		emit.Args = append(emit.Args, ir.CallArg{Value: &ir.Ident{Name: p.Name, Type: p.Type, Sym: p}})
+	}
+	for _, v := range symsRead(h.Func.Block, inner) {
+		p := &ir.Param{Name: name + "_" + v.SymName(), Type: v.SymType()}
+		rebind(h.Func.Block, v, p)
+		reads = append(reads, p)
+		emit.Args = append(emit.Args, ir.CallArg{Value: &ir.Ident{Name: v.SymName(), Type: v.SymType(), Sym: v}})
 	}
 	decl := &ir.EventDecl{Name: name}
 	lifted := h.Func
@@ -497,4 +507,58 @@ func (st *slotChildSynth) readsFree(e ir.Expr, local map[ir.Symbol]bool) bool {
 		return nil
 	})
 	return found
+}
+
+// varsWithin is each variable n binds -- a loop's, a local -- in the order
+// written.
+func varsWithin(n any) []ir.Symbol {
+	var out []ir.Symbol
+	_ = ir.Walk(n, func(node ir.Node) error {
+		switch x := node.(type) {
+		case *ir.For:
+			if x.KeySym != nil {
+				out = append(out, x.KeySym)
+			}
+			if x.ValueSym != nil {
+				out = append(out, x.ValueSym)
+			}
+		case *ir.LocalVar:
+			if x.Sym != nil {
+				out = append(out, x.Sym)
+			}
+		}
+		return nil
+	})
+	return out
+}
+
+// symsRead is each of syms that stmts reads, in syms' order.
+func symsRead(stmts []ir.Stmt, syms []ir.Symbol) []ir.Symbol {
+	if len(syms) == 0 {
+		return nil
+	}
+	read := map[ir.Symbol]bool{}
+	_ = ir.WalkExprs(stmts, func(e ir.Expr) error {
+		if id, ok := e.(*ir.Ident); ok && id.Sym != nil {
+			read[id.Sym] = true
+		}
+		return nil
+	})
+	var out []ir.Symbol
+	for _, s := range syms {
+		if read[s] {
+			out = append(out, s)
+		}
+	}
+	return out
+}
+
+// rebind makes every read of from in stmts a read of to.
+func rebind(stmts []ir.Stmt, from ir.Symbol, to *ir.Param) {
+	_ = ir.WalkExprs(stmts, func(e ir.Expr) error {
+		if id, ok := e.(*ir.Ident); ok && id.Sym == from {
+			id.Sym, id.Name = to, to.Name
+		}
+		return nil
+	})
 }

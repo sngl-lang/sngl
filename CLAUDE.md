@@ -2326,9 +2326,11 @@ replaced by their fallbacks. A population's parameters are bound where the
 copy inserts it, so they are the callee's; what the content reads from the
 caller crosses the way a slot child does in `passSlotChildInstances` — a
 value becomes a prop the render rewrites per copy, a handler an event whose
-body stays where it was written, handed the host event's payload and any
-population parameter it reads (`EventDecl.Params`, the one event a source
-declaration cannot spell). A call reading a population parameter stays in the
+body stays where it was written, handed the host event's payload, any
+population parameter it reads, and any variable the content binds itself -- a
+loop's, a local -- which nothing binds at the site (`EventDecl.Params`, the
+one event a source declaration cannot spell;
+`testdata/slot_content_handler_reads_its_loop.txtar`). A call reading a population parameter stays in the
 copy, since its arguments name nothing at the site.
 android passes each slot as a nullable composable parameter taking the slot's
 invocation list, an entry being a composable of its own; bubbletea's render
