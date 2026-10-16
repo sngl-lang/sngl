@@ -57,7 +57,7 @@ func init() {
 // domElement is the element a node expression names: `c.label`, or the i-th
 // copy `c.row[i]`.
 func domElement(e ir.Expr, tr func(ir.Expr) string) string {
-	if cv, ok := e.(*ir.Conversion); ok {
+	for cv, ok := e.(*ir.Conversion); ok; cv, ok = e.(*ir.Conversion) {
 		e = cv.Operand
 	}
 	index := "0"
@@ -74,7 +74,7 @@ func domElement(e ir.Expr, tr func(ir.Expr) string) string {
 // domSelector is the selector matching every element rendered for the node's
 // id.
 func domSelector(e ir.Expr) string {
-	if cv, ok := e.(*ir.Conversion); ok {
+	for cv, ok := e.(*ir.Conversion); ok; cv, ok = e.(*ir.Conversion) {
 		e = cv.Operand
 	}
 	if ix, ok := e.(*ir.Index); ok {

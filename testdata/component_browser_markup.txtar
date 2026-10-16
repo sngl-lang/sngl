@@ -62,7 +62,9 @@ component widgets node {
         }
     }
     modal #modal(open=open, title="Dialog") {
-        text(value="body")
+        component content {
+            text(value="body")
+        }
     }
     divider #divider()
     badge #badge(value="3")

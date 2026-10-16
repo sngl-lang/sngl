@@ -3,6 +3,7 @@ package fyne
 import (
 	"context"
 	"fmt"
+	"maps"
 	"slices"
 	"strings"
 
@@ -39,6 +40,8 @@ func emitComponentInstance(
 	invokerSink func(fyneEventInvoker),
 	modelFieldSink func(name, goType string),
 	indexed map[string]bool,
+	presentIDs map[string]bool,
+	presenceSink func(id, field string),
 ) {
 	comp := cc.Component
 	typeName := golang.ComponentInstanceType(comp.Name)
@@ -125,6 +128,38 @@ func emitComponentInstance(
 		invokerSink(inv)
 	}
 
+	// A widget a test null-tests is handed over too, and taken back when the
+	// instance goes, so the Model holds it exactly while it is rendered.
+	var release strings.Builder
+	for _, id := range slices.Sorted(maps.Keys(presentIDs)) {
+		widget := id
+		for _, inv := range invokers {
+			if inv.IDLabel == id && inv.Target != "" {
+				widget = inv.Target
+			}
+		}
+		goType := ""
+		for _, f := range fields {
+			if f.name == widget {
+				goType = f.goType
+				break
+			}
+		}
+		if goType == "" || presenceSink == nil {
+			continue
+		}
+		named := namedWidgetField(widget)
+		if !exposed[widget] {
+			exposed[widget] = true
+			fmt.Fprintf(&ctorBody, "\t%s.%s.%s = %s.%s\n", instanceReceiver, golang.InstanceModelField, named, instanceReceiver, widget)
+			modelFieldSink(named, goType)
+		}
+		held := instanceReceiver + "." + golang.InstanceModelField + "." + named
+		fmt.Fprintf(&release, "\tif %s == %s.%s {\n\t\t%s = nil\n\t}\n", held, instanceReceiver, widget, held)
+		presenceSink(id, named)
+	}
+	hasTeardown := componentDeclaresFunc(comp, lower.TeardownFunc)
+
 	// Methods after the body, because the walk is what discovers the widget
 	// fields the struct declares -- and a setter's body carries the same
 	// injected widget updates a handler's does, so it goes through a
@@ -148,8 +183,12 @@ func emitComponentInstance(
 			// body names a package instead of its argument.
 			params = []*ir.Param{{Name: slotParentParam, Type: ir.NativeGoPointerOf("fyne.Container")}}
 		}
+		name := instanceMethodName(fn)
+		if fn.Name == lower.TeardownFunc && release.Len() > 0 {
+			name = instanceTeardownMethod
+		}
 		emitted := &ir.Func{
-			Name:   instanceMethodName(fn),
+			Name:   name,
 			Params: params,
 			Return: fn.Return,
 			Block:  codegen.WalkLowered(context.Background(), fn.Block, mtr),
@@ -225,12 +264,19 @@ func emitComponentInstance(
 	// Always present, and empty when the component holds nothing: the
 	// destroy is emitted at every site a render stops describing a position,
 	// so the shape of a record cannot vary with what it happens to hold.
-	if !componentDeclaresFunc(comp, lower.TeardownFunc) {
-		if len(listed) > 0 {
-			fmt.Fprintf(b, "func (%s *%s) %s() {\n\t%s.unlist()\n}\n\n", instanceReceiver, typeName, golang.ComponentDestroyMethod, instanceReceiver)
-		} else {
-			fmt.Fprintf(b, "func (%s *%s) %s() {}\n\n", instanceReceiver, typeName, golang.ComponentDestroyMethod)
+	switch {
+	case release.Len() > 0:
+		fmt.Fprintf(b, "func (%s *%s) %s() {\n", instanceReceiver, typeName, golang.ComponentDestroyMethod)
+		if hasTeardown {
+			fmt.Fprintf(b, "\t%s.%s()\n", instanceReceiver, instanceTeardownMethod)
+		} else if len(listed) > 0 {
+			fmt.Fprintf(b, "\t%s.unlist()\n", instanceReceiver)
 		}
+		fmt.Fprintf(b, "%s}\n\n", release.String())
+	case !hasTeardown && len(listed) > 0:
+		fmt.Fprintf(b, "func (%s *%s) %s() {\n\t%s.unlist()\n}\n\n", instanceReceiver, typeName, golang.ComponentDestroyMethod, instanceReceiver)
+	case !hasTeardown:
+		fmt.Fprintf(b, "func (%s *%s) %s() {}\n\n", instanceReceiver, typeName, golang.ComponentDestroyMethod)
 	}
 	if len(listed) > 0 {
 		emitUnlist(b, typeName, listed)
@@ -253,6 +299,10 @@ func emitUnlist(b *strings.Builder, typeName string, widgets []string) {
 // namedWidgetField is the Model field an instance's program-named widget is
 // handed to, for the test invoker that drives it.
 func namedWidgetField(widget string) string { return "__named_" + widget }
+
+// instanceTeardownMethod is what the lowered teardown is emitted as when
+// Destroy has more to do than run it.
+const instanceTeardownMethod = "teardown"
 
 // instanceMethodName is the name one of a component's funcs carries as a
 // method on its record. Two of them the lowering dispatches to by name from
@@ -366,4 +416,22 @@ func instanceOwnsFunc(pkg *ir.Package, fn *ir.Func) bool {
 		}
 	}
 	return false
+}
+
+// emitFynePresenceChecks writes, for each `#id` a test null-tests, whether the
+// widget is rendered now: a widget an instance holds is the Model's while the
+// instance lives, and one the Model builds itself is there from BuildUI on.
+func emitFynePresenceChecks(b *strings.Builder, ids map[string]bool, held map[string]string, modelFields []irWidgetField) {
+	for _, id := range slices.Sorted(maps.Keys(ids)) {
+		field := held[id]
+		if field == "" && slices.ContainsFunc(modelFields, func(f irWidgetField) bool { return f.name == id }) {
+			field = id
+		}
+		if field == "" {
+			continue
+		}
+		name := codegen.PresenceMethod(id)
+		fmt.Fprintf(b, "// %s reports whether the #%s widget is rendered now; for tests.\n", name, id)
+		fmt.Fprintf(b, "func (m *Model) %s() bool {\n\treturn m.%s != nil\n}\n\n", name, field)
+	}
 }

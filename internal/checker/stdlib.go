@@ -1381,8 +1381,10 @@ func (c *checker) checkOverride(pe pendingExtension, libBodyScope *ir.Scope) {
 	if pe.user {
 		c.overrideFile = overrideFile{comp: ov, pos: pe.pos}
 	}
+	c.overrideAt = pe.pos
 	c.checkComponentBody(ov)
 	c.overrideFile = overrideFile{}
+	c.overrideAt = ast.Pos{}
 	// While the override is still installed, because that is the body
 	// a component nested in it was written in.
 	c.checkOverrideNestedBodies(bodyDecls)

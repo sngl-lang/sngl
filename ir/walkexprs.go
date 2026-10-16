@@ -181,6 +181,7 @@ func (w *rewriter) expr(e Expr) Expr {
 		x.Operand = w.expr(x.Operand)
 	case *Select:
 		x.Operand = w.expr(x.Operand)
+		x.Via = w.expr(x.Via)
 	case *Index:
 		x.Operand = w.expr(x.Operand)
 		x.Idx = w.expr(x.Idx)

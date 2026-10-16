@@ -131,8 +131,8 @@ type ComponentType struct {
 	// on its own.
 	HasParens bool
 	// Tree is what the slot accepts: the tree each supplied node belongs to,
-	// wrapped in whatever bounds the count. Nil accepts any number of the tree
-	// the declaring component itself belongs to.
+	// wrapped, on a rest slot, in whatever bounds the count of nodes. Nil
+	// accepts the tree the declaring component itself belongs to.
 	Tree TypeExpr
 }
 
@@ -153,12 +153,36 @@ type VariadicType struct {
 // ComponentDecl's parameter list has to tell a slot from a prop, and the docs
 // site and the CLI walk one without a checker in reach.
 func SlotType(t TypeExpr) (ct *ComponentType, rest, ok bool) {
+	if w := SlotWrapper(t); w != nil {
+		t = w.TypeArgs[0]
+	}
 	if v, isVariadic := t.(*VariadicType); isVariadic {
 		ct, isComp := v.Elem.(*ComponentType)
 		return ct, true, isComp
 	}
 	ct, isComp := t.(*ComponentType)
 	return ct, false, isComp
+}
+
+// SlotWrapper is the `option[…]` or `list[…]` written around a slot's component
+// type, which counts the slot's insertions, or nil. Written around a rest slot's
+// `...` it is still recognised, so the checker can refuse it: the rest slot is
+// inserted exactly once. Matched by shape: a component
+// type is no type argument anywhere else, so whether the name is the builtin is
+// the checker's question, not this one's.
+func SlotWrapper(t TypeExpr) *NamedType {
+	nt, ok := t.(*NamedType)
+	if !ok || nt.Package != "" || len(nt.TypeArgs) != 1 || (nt.Name != "option" && nt.Name != "list") {
+		return nil
+	}
+	inner := nt.TypeArgs[0]
+	if v, isVariadic := inner.(*VariadicType); isVariadic {
+		inner = v.Elem
+	}
+	if _, isComp := inner.(*ComponentType); !isComp {
+		return nil
+	}
+	return nt
 }
 
 // IsSlot reports whether p declares a slot rather than a prop.

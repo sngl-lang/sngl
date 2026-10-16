@@ -43,13 +43,13 @@ component show(
     b    Boxed = {v=3},
     // family.one's parameter defaults to the tree an ordinary component belongs
     // to, so the wrapper stands on its own.
-    body component family.one,
+    body ...component family.one,
 ) node {
     vbox {
         text(value=p.right)
         text(value="{q.right}")
         text(value="{b.v}")
-        body {}
+        body
     }
 }
 
@@ -69,9 +69,7 @@ component main node {
     var greeting = pick("hi")
 
     show() {
-        component body {
-            text(value="{names.length()}{greeting}")
-        }
+        text(value="{names.length()}{greeting}")
     }
 }
 

@@ -2002,13 +2002,41 @@ checker applies it where it registers the declaration.
 the parameter list beside the props and events, so a component's whole API is
 one list. `slot` is not a keyword. The type carries the whole of a slot's
 contract: `component(Row)`'s parenthesised list is what the slot is *invoked*
-with at its insertion point, and the trailing type is the tree it *accepts*,
-wrapped in whatever bounds the count — bare is any number, `family.one[T]`
-exactly one, `option[T]` none or one. Bare `family.one` is a count and no
-family: "exactly one of whatever this slot already accepts", which is the
-tree the component declaring it belongs to. It used to say that through a
-defaulted type parameter, `one[T = default]`, and there is no default family
-to point one at any more.
+with at its insertion point, and the trailing type is the tree it *accepts*.
+
+**A named slot's count is how often the body inserts it**, written around the
+whole component type (Jonathan's call): bare is exactly once, wherever the body
+goes; `option[component() T]` at most once, possibly under an `if`;
+`list[component() T]` any number of times. It is a count of *insertions*, not
+of the nodes a caller writes, because it is what a ref read through the slot is
+wrapped in -- `c.t.row` is a list for a list slot, `c.guard.gone` an option for
+boundary's `failed` -- and so it has to be true of the body.
+`checkSlotInsertions` holds it, counting every path: each branch of an
+`if`/`else` inserting once is once, a `for` is many, a boundary's fallback or a
+slot fallback may be none, and a population of another node's slot renders as
+often as *that* slot is inserted. A caller may still leave a named slot
+unpopulated (its insertion's block is the fallback), so nothing is required at
+the call site.
+
+The component type itself counts the nodes a fill renders, in a named slot
+and the rest slot alike: `component T` any number, `component family.one`
+exactly one, `component option[T]` none or one, so
+`src option[component option[imageSource]]` is inserted at most once and holds
+at most one source. The two counts are orthogonal, and a population is held
+to the inner one where it is written. The rest slot is inserted exactly once, so
+bare children stay the caller's refs at the position the caller wrote them.
+A count written around the `...` is refused (Jonathan's call): an `#id` in bare
+children is typed by where the caller wrote it, which only holds if the body
+renders them exactly once. Content the body may leave out or repeat is a named
+`option[component …]` or `list[component …]` slot, whose population is a
+namespace of its own -- avatar's `src`, shown only when there is a picture to
+show. Bare
+`family.one` is a count and no family: "exactly one of whatever this slot
+already accepts", which is the tree the component declaring it belongs to.
+
+A builtin's kind can say more than its declaration: a nav page's content is
+mounted only while its stack shows the page, so `ir.Component.InsertsOf`
+reads it as an option, bare children and population alike.
 
 The parenthesised list reuses `FuncTypeParamList`, so a parameter there may be
 named (`cell component(row Row)`) — and **the name is contract, not
@@ -2077,6 +2105,19 @@ comes from. Supplying both a population by name and bare children populates it
 twice. `ir.SlotDecl.Rest` is the flag, `Component.RestSlot()` the lookup; the
 old answer was the name `_`, which is why nothing keys on a slot's name any
 more.
+
+**A body inserts its rest slot exactly once, where it always renders**
+(`checkRestInsertion`, `internal/checker/rest_slot.go`). Not under an `if` or a
+`for`, not in a boundary that has a fallback, a slot fallback, a slot
+population or a window, not twice, and not never — each a positioned error
+(`error_rest_slot_insertion.sngl`). The reason is the element-ref rule below:
+children written bare are the *caller's*, their `#id`s are the caller's refs,
+and the rule is what makes one written node one rendered node without the
+caller having to read the callee's body. Through a callee's own rest slot it
+composes, since that callee is held to the same rule. A signature, a library
+declaration's `{}` (its render is a target's, and the target's override is what
+is asked), and a declaration carrying `#[builtin]`, `#[intrinsic]` or
+`#[wildcard]` have no insertion to hold and are exempt.
 
 **A rest slot may be scoped, and the population written by name is the only
 thing that reaches its arguments.** `children ...component(v T) node` is
@@ -2161,7 +2202,7 @@ child to a field, so the combination is load-bearing rather than tolerated.
 #193 briefly specified it as an error on the grounds that both were count
 bounds; that would have left the contract unspellable and is retracted there.
 
-**A count is what the population renders**, not the statements written in it
+**A rest slot's count is what the children render**, not the statements written
 (`renderedRange`, `internal/checker/family.go`): a node is one, an `if` the
 least and most of its branches, a `for` any number from its body's least, a
 boundary its content or its fallback, an insertion of another slot that slot's
@@ -2169,9 +2210,8 @@ count. So `one { for … }` is refused and `one { if c { a } else { b } }` is no
 counting statements, the first passed and a wrapper assigning its one child to
 a field was handed several. A bare `if` is none or one, which is why `scroll`
 takes `option[node]`: the two goldens putting a reactive `if` in a scroll are
-what the backends render into a box. The count says nothing about how many
-times a body inserts the slot, which is not bounded
-(`testdata/error_children_count_rendered.sngl`).
+what the backends render into a box (`testdata/error_children_count_rendered.sngl`).
+A named slot counts its insertions instead (above).
 
 **A slot's invocation list may declare a component entry**, and it is the same
 slot mechanism one level down: `layout component(page Page, content component ui.node) T` says an insertion of `layout` hands its population a
@@ -2511,6 +2551,26 @@ declaration itself. Two things about the name that are easy to get wrong:
   An **index** is still right where the host's own ABI is an index: a GLib
   callback carries an `int` user_data and cannot hold a Go pointer at all,
   which is what `pkg/go/cbind` is. The test is whether the host asked for it.
+
+**`c.<id>` names the nodes one instance's own body wrote** (`elementRef`,
+Jonathan's call). A node in a component the instance renders is that
+component's ref and is reached through the id of the instance holding it —
+`badge #inbox(…)`, then `c.inbox.lbl` — so two instances never share a ref and
+a recursive component's `c.step` is this level's alone. Children written bare
+are the writer's wherever the callee inserts them, which the rest-slot rule
+above makes a single rendering. A slot population is a declaration with a scope
+of its own, so its ids are reached through the node it populates, wrapped by
+that slot's insertion count. How many nodes the read names is where the node is
+written: `T`, `option[T]` behind a conditional (an `if`, a for-else, a slot
+fallback, a boundary with a fallback), `list[T]` behind a `for` -- a loop
+inside a loop a list of lists, and an `if` inside a `for` an entry per
+iteration -- stamped on `ir.Select.Ref` (`ir.RefCount`, the wrappers outermost
+first). The interpreter agrees through `interp.Node.Owner` — the instance
+whose body wrote the node, nil in a population — and `View.Refs`. A compiled
+test answers `c.x == null` with a presence check per id (`codegen.RefNullTest`,
+`codegen.LowerRefNullTests`): html's `data-sngl-id`, fyne's and gtk4's
+`__named_<id>`, bubbletea's conditions around the node, and android's
+semantics tree.
 
 **An event's parameters are its declaration's, and an override reads what the
 host reports and writes the prop it reports.** A platform override handles
@@ -3590,7 +3650,7 @@ writing none, and the other targets have nothing a link could land on.
   source -- as Go skips one; the docs site's tutorial is `learn/_tour.md`.
 
   The package declares **`Page`** (`href`, `frontmatter`, `children list[Page]`),
-  **`root`**, a const holding the whole tree, and **`site(layout component(page Page, content component ui.node) ui.node)`**, which renders
+  **`root`**, a const holding the whole tree, and **`site(layout list[component(page Page, content component ui.node) ui.node])`**, which renders
   one `nav.page` per file -- at the file's href, titled by the frontmatter's
   `title` where `Frontmatter` has one -- with `layout` inserted around it,
   reading each page out of `root` so the tree is written once, and populates
@@ -4446,9 +4506,10 @@ than over the unit's declared bases disagrees with the other three.
 **A member a type does not have is an error on every kind** -- `o.value` off
 an `option`, `xs.bogus` off a `list`, `s.huh` off a `string`
 (`error_select_unknown_member.sngl`). Only an operand already typed invalid,
-whose error was reported where it was made, selects silently. A list of
-element refs projects a member read over its elements before that
-(`testdata/test_slot_element_ref.sngl`).
+whose error was reported where it was made, selects silently. An element ref
+naming a list or an option is refused a member read rather than reaching
+whichever node a target found: index it, or test it against null first (see
+`elementRef`).
 
 Stdlib collection types support generic methods: `func list[T].filter(f func(T) bool) list[T]`, `func list[T].map[U any](f func(T) U) list[U]`, `func map[K, V].keys() list[K]`, etc. The receiver's type parameters are bound at the call site from the operand's concrete type (e.g. `xs : list[int]` binds `T=int`). Method-level type parameters (the `[U any]` after the method name) are inferred from the call's actual argument types — typically from a lambda's return type.
 

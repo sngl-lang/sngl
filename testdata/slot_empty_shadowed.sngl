@@ -11,7 +11,7 @@ struct Item {
     empty bool
 }
 
-component card(items list[Item], label ...component option[node]) node {
+component card(items list[Item], label option[component option[node]]) node {
     vbox {
         for var label = items {
             text(value=label.empty ? "blank {label.name}" : label.name)

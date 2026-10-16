@@ -4,6 +4,7 @@ component Card(title = "Card", subtitle = "", children ...component) node {
     vbox {
         text(value=title)
         text(value=subtitle)
+        children
     }
 }
 

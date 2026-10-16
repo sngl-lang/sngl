@@ -95,10 +95,7 @@ func LowerTestFile(pkg string, irPkg *ir.Package, fns []*ir.Func, suffixes []str
 
 // lowerTestBody returns the lowered JS source lines for a test body,
 // reusing the existing JS IR translator (same path non-test code
-// takes). methodFields is currently unused on the JS side — agent-mode
-// tests address widgets via DOM tags, not via the model field gate
-// the Kotlin/Go lowerers consult — but accepted in the signature for
-// symmetry and future use.
+// takes).
 func lowerTestBody(irPkg *ir.Package, fn *ir.Func, methodFields map[string]bool, platform string) []string {
 	// The test module is bundled with the emitted program, so it has to name
 	// things the way the emitter named them: a method on a user type as the
@@ -121,34 +118,53 @@ func lowerTestBody(irPkg *ir.Package, fn *ir.Func, methodFields map[string]bool,
 	for _, p := range fn.Params {
 		ctx = ctx.WithLocal(p.Name)
 	}
-	jc := NewIRContext(ctx)
+	block, fields := codegen.LowerRefNullTests(fn.Block, ctx.MethodFields)
+	ctx.MethodFields = fields
+	return lowerTestStmts(block, NewIRContext(ctx))
+}
 
+func lowerTestStmts(stmts []ir.Stmt, jc *JsIRContext) []string {
 	var out []string
-	for _, s := range fn.Block {
-		if line, ok := lowerTestAssert(s, jc); ok {
-			out = append(out, line)
-			continue
-		}
-		if line, ok := lowerTestSnapshot(s, jc); ok {
-			out = append(out, line)
-			continue
-		}
-		if line, ok := lowerTestWait(s, jc); ok {
-			out = append(out, line)
-			continue
-		}
-		if line, ok := lowerEventTrigger(s, jc); ok {
-			out = append(out, line)
-			continue
-		}
-		if name, ok := testSetContext(s); ok {
-			// passContext already passed the value to every call after it.
-			out = append(out, fmt.Sprintf("// t.setContext(%s, ...)", name))
-			continue
-		}
-		out = append(out, jc.EvalStmt(s)...)
+	for _, s := range stmts {
+		out = append(out, lowerTestStmt(s, jc)...)
 	}
 	return out
+}
+
+// lowerTestStmt keeps a test's own statements -- an assertion, a snapshot, a
+// trigger -- recognised inside an `if`, which is where a trigger on a node
+// that may not be rendered is written.
+func lowerTestStmt(s ir.Stmt, jc *JsIRContext) []string {
+	if line, ok := lowerTestAssert(s, jc); ok {
+		return []string{line}
+	}
+	if line, ok := lowerTestSnapshot(s, jc); ok {
+		return []string{line}
+	}
+	if line, ok := lowerTestWait(s, jc); ok {
+		return []string{line}
+	}
+	if line, ok := lowerEventTrigger(s, jc); ok {
+		return []string{line}
+	}
+	if name, ok := testSetContext(s); ok {
+		// passContext already passed the value to every call after it.
+		return []string{fmt.Sprintf("// t.setContext(%s, ...)", name)}
+	}
+	if n, ok := s.(*ir.If); ok {
+		out := []string{jc.IfHead(n, jc.EvalExpr(n.Cond))}
+		for _, l := range lowerTestStmts(n.Body, jc) {
+			out = append(out, "\t"+l)
+		}
+		if len(n.Else) > 0 {
+			out = append(out, "} else {")
+			for _, l := range lowerTestStmts(n.Else, jc) {
+				out = append(out, "\t"+l)
+			}
+		}
+		return append(out, "}")
+	}
+	return jc.EvalStmt(s)
 }
 
 func testSetContext(s ir.Stmt) (string, bool) {

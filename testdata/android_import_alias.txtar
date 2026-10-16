@@ -26,7 +26,7 @@ component text(label string) ui.node {
     })
 }
 
-component card(content ...component ui.node) ui.node {
+component card(content option[component ui.node]) ui.node {
     var open = true
     if open {
         ui.card {
@@ -38,8 +38,10 @@ component card(content ...component ui.node) ui.node {
 ui.window(title="Alias") {
     for var l = ["a", "b"] {
         card {
-            text(label=l)
-            ui.text(value="Material's")
+            component content {
+                text(label=l)
+                ui.text(value="Material's")
+            }
         }
     }
 }
@@ -82,7 +84,7 @@ fun MainScreen() {
             }
         }
         for (l in listOf("a", "b")) {
-            Card(slotContent = {
+            Card(content = {
                 Text(label = l)
                 Text_2(text = "Material's", modifier = Modifier)
             })
@@ -102,14 +104,14 @@ fun Text(label: String = "") {
 }
 
 @Composable
-fun Card(slotContent: (@Composable () -> Unit)? = null) {
+fun Card(content: (@Composable () -> Unit)? = null) {
     var open by remember { mutableStateOf(true) }
 
     if (open) {
         Card_2(modifier = Modifier) {
-            slotContent?.invoke()
+            content?.invoke()
         }
     }
 }
 -- run/kotlin/android --
-pass sha256:1daba929c505efafd234302f9efcd2b3
+pass sha256:3e57c095ae2d621a43ce5a6c814fe866

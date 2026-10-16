@@ -272,6 +272,9 @@ func (c *converter) convertComponent(comp *Component) *ast.ComponentDecl {
 		if s.Rest {
 			typ = &ast.VariadicType{Elem: ct}
 		}
+		if s.Inserts != InsertOne {
+			typ = &ast.NamedType{Name: string(s.Inserts), TypeArgs: []ast.TypeExpr{typ}}
+		}
 		props = append(props, ast.Param{Name: s.Name, Type: typ, Const: s.Const})
 	}
 	if len(props) > 0 {
@@ -755,7 +758,7 @@ func (c *converter) convertErrorBoundary(n *ErrorBoundary) ast.Stmt {
 // whatever the count was read from.
 func (c *converter) convertSlotContent(s *SlotDecl) ast.TypeExpr {
 	if s.Content == nil {
-		// A count with no tree of its own: bare `tree.one` is one of whatever
+		// A count with no tree of its own: bare `family.one` is one of whatever
 		// the slot already accepts, which is its owner's family.
 		if s.Card == SlotOne {
 			return &ast.NamedType{Package: c.familyPkg(), Name: "one"}
@@ -865,8 +868,13 @@ func (c *converter) convertExpr(e Expr) ast.Expr {
 	case *Conversion:
 		return c.convertConversion(e)
 	case *Select:
+		// A node a population declares is read through the node it populates.
+		operand := e.Operand
+		if e.Via != nil {
+			operand = e.Via
+		}
 		return &ast.SelectExpr{
-			Operand: c.convertExpr(e.Operand),
+			Operand: c.convertExpr(operand),
 			Field:   e.Field,
 		}
 	case *Index:

@@ -5,21 +5,24 @@ output {
     none { html }
 }
 
-// What a call site supplies to a user component is part of the rendered tree,
-// so a #id inside it resolves like any other. Both routes in: ordinary
-// children fill the rest slot, `component header { … }` fills a named one.
+// Children written bare are the caller's, wherever the callee inserts them, so
+// #body is main's ref. What the callee writes in its own body is the callee's,
+// reached through the instance's id. A population written by name is a
+// declaration with a scope of its own, reached through the node it populates:
+// `c.shell.head`.
 //
 // Slot content is written in the caller's body, so it reads the caller's
-// scope -- #head interpolates main's `title`, not anything of frame's.
+// scope -- #body interpolates main's `title`, not anything of frame's.
 func testSuppliedSlotContentIsAddressable(t Test, c main) {
-    t.assert(c.body.value == "in the rest slot")
-    t.assert(c.f.head.value == "Hello")
-    t.assert(c.f.own.value == "frame's own")
+    t.assert(c.body.value == "Hello in the rest slot")
+    t.assert(c.shell.head.value == "Hello")
+    t.assert(c.shell.own.value == "frame's own")
 }
 
 // An insertion point the caller supplied nothing for renders its own block.
+// Only there, so a node in it is an option.
 func testUnfilledSlotRendersItsFallback(t Test, c bare) {
-    t.assert(c.fallback.value == "nothing supplied")
+    t.assert(c.fallback != null && c.fallback.value == "nothing supplied")
 }
 
 component frame(children ...component, header component) node {
@@ -41,8 +44,8 @@ component bare(children ...component) node {
 component main node {
     var title = "Hello"
 
-    frame #f {
-        text #body(value="in the rest slot")
+    frame #shell {
+        text #body(value="{title} in the rest slot")
         component header {
             text #head(value=title)
         }

@@ -35,7 +35,7 @@ output {
     }
 }
 
-component frame(result int, m string, part component(depth int) node) node {
+component frame(result int, m string, part list[component(depth int) node]) node {
     vbox {
         text(value="{m}")
         part(result)

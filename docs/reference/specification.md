@@ -905,7 +905,7 @@ within the package.
 
 A library package may carry macros next to the declarations they apply to:
 `import family "sngl:family"` brings the `#[family.crosses]` mark beside the
-`family.one` count it qualifies slots with (see
+`family.one` count it qualifies a rest slot with (see
 [Trees and families](#trees-and-families)).
 
 Packages under `sngl:internal/` are the compiler's own tier. They declare the
@@ -1724,14 +1724,33 @@ A **slot** is a region of UI the caller supplies. It is an ordinary parameter
 whose type is a **component type**, so a component's whole API — props, events
 and slots — is one parameter list:
 
-- `header component` — any number of nodes, of whatever family the component
-  itself belongs to;
-- `shapes component draw.shape` — any number of that family's members;
-- `body component family.one[ui.node]` — exactly one (bare `family.one` is exactly
-  one of whatever the slot already accepts);
-- `badge component option[ui.node]` — zero or one;
-- `cell component(Row)` — a *scoped* slot: the insertion passes a `Row`, and
-  the population binds a name for it.
+- `header component` — inserted exactly once, holding nodes of whatever family
+  the component itself belongs to;
+- `shapes component draw.shape` — inserted exactly once, holding that family's
+  members;
+- `badge option[component ui.node]` — inserted at most once, possibly under an
+  `if`;
+- `cell list[component(Row)]` — a *scoped* slot inserted any number of times:
+  each insertion passes a `Row`, and the population binds a name for it.
+
+The wrapper counts *insertions*, not the nodes a population holds, because a
+ref read through the slot is wrapped the same way: a node in `cell`'s population
+is a list, one per insertion, and one in `badge`'s an option. The body is held
+to it over every path through it. A caller may leave any named slot
+unpopulated, and the insertion's block renders instead.
+
+What the component type holds counts the *nodes* a fill renders, in a named
+slot and the rest slot alike: `component ui.node` is any number,
+`component family.one[ui.node]` exactly one (bare `family.one` is exactly one
+of whatever the slot already accepts) and `component option[ui.node]` none or
+one. So `src option[component option[imageSource]]` is inserted at most once
+and holds at most one source.
+
+The rest slot's fill is the children a caller writes bare. It is inserted exactly
+once, and takes no insertion count: an `#id` a caller writes bare names one
+node at the position it was written. Content the body may leave out or repeat
+is a named slot, `option[component ui.node]` or `list[component ui.node]`,
+whose population is a namespace of its own.
 
 A slot's invocation parameters may be named in the type — `cell component(row Row)` — and the name is **part of the contract**, not documentation: two slot
 types match by name. Renaming one is therefore a breaking change to every
@@ -1747,7 +1766,7 @@ directly in the instantiation's block:
 
 <!-- SNGL-component
 struct Row { title string }
-component table(rows list[Row], cell component(Row)) ui.node { ui.vbox { for var r = rows { cell(r) } } }
+component table(rows list[Row], cell list[component(Row)]) ui.node { ui.vbox { for var r = rows { cell(r) } } }
 var rs list[Row] = []
 -->
 
@@ -2055,13 +2074,17 @@ after the components that name it.
 
 ```sngl
 import build "sngl:build"
+import family "sngl:family"
 import ui "sngl:ui"
 
 component item build.family
 
 component entry(label string) item {}
 
-component menu(items ...component item) ui.node {}
+component menu(items ...component item) ui.node {
+    #[family.crosses]
+    items
+}
 
 ui.window {
     menu {
@@ -2098,12 +2121,13 @@ The rules:
   the tree themselves, so every membership rule looks through them.
 
 A component generic over the family it wraps writes a type parameter where a
-family goes — `component boundary[T any](…, content ...component T, failed component T) T` — and the children written in the slot bind `T`.
+family goes — `component boundary[T any](…, content ...component T, failed option[component(error error) T]) T` — and the children written in the slot bind `T`.
 
-A slot's count is what its population renders, not the statements written in
-it: `family.one` takes one node, so a `for` there is an error and an `if` must
-render one in each branch; `option[T]` takes none or one. How many times a
-body inserts a slot is not bounded.
+A rest slot's count is what the children written bare render, not the
+statements written: `family.one` takes one node, so a `for` there is an error
+and an `if` must render one in each branch; `option[T]` takes none or one. A
+named slot's count is how many times the body inserts it (see *Slots and
+children*).
 
 ### Data components
 

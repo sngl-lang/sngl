@@ -25,6 +25,10 @@ func EventTriggerTarget(c *ir.Call) (EventTrigger, bool) {
 		return EventTrigger{}, false
 	}
 	recv := c.Receiver
+	// A receiver read after a null test is the narrowing of it.
+	for conv, narrowed := recv.(*ir.Conversion); narrowed; conv, narrowed = recv.(*ir.Conversion) {
+		recv = conv.Operand
+	}
 	var index ir.Expr
 	if ix, ok := recv.(*ir.Index); ok {
 		recv, index = ix.Operand, ix.Idx

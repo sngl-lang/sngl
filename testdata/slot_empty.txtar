@@ -11,7 +11,7 @@ import . "sngl:ui"
 // `.empty` answered where the body is spliced, in each position a body may
 // ask it: a node's prop, a var's initializer, and an `if` head; and asked of
 // content whose loop body renders nothing, where only the else can render.
-component boxed(content ...component option[node]) node {
+component boxed(content option[component option[node]]) node {
     var started = content.empty
     text(value=content.empty ? "empty" : "has content")
     text(value=started ? "started empty" : "started with content")
@@ -29,17 +29,23 @@ component main node {
     var shown = false
     boxed
     boxed {
-        text(value="a")
-    }
-    boxed {
-        if shown {
-            text(value="shown")
+        component content {
+            text(value="a")
         }
     }
     boxed {
-        for var x = xs {
-        } else {
-            text(value="no items")
+        component content {
+            if shown {
+                text(value="shown")
+            }
+        }
+    }
+    boxed {
+        component content {
+            for var x = xs {
+            } else {
+                text(value="no items")
+            }
         }
     }
     button(text="show", @click { shown = true })

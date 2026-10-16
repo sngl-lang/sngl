@@ -184,6 +184,8 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 	var buildBuf strings.Builder
 	var widgetFields []irWidgetField
 	var eventInvokers []fyneEventInvoker
+	presentIDs := codegen.NullTestedRefs(ctx.Pkg)
+	presenceFields := map[string]string{}
 	var entrySync []entrySyncRec
 	widgetImports := map[string]bool{}
 	addWidgetImport := func(p string) { widgetImports[p] = true }
@@ -285,7 +287,8 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 				recordInvoker,
 				func(name, goType string) {
 					widgetFields = append(widgetFields, irWidgetField{name: name, goType: goType})
-				}, indexed)
+				},
+				indexed, presentIDs, func(id, field string) { presenceFields[id] = field })
 			componentCodes = append(componentCodes, ib.String())
 			continue
 		}
@@ -382,6 +385,7 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 	}
 
 	emitFyneEventInvokers(&funcBuf, eventInvokers)
+	emitFynePresenceChecks(&funcBuf, presentIDs, presenceFields, widgetFields)
 
 	td, err := newIRTemplateData(info, cfg, widgetFields, entrySync, widgetImports, funcBuf.String(), gc, ctx, lang)
 	if hasCanvas {

@@ -7,7 +7,7 @@
 import d "sngl:ui/draw"
 import ui "sngl:ui"
 
-component pages(art ...component d.shape) root {
+component pages(art component d.shape) root {
     // The slot insertion is a position rather than a node, so the window is
     // where this is reported.
     ui.window #home(title="Home") { // ERROR(check) "expected node component in window, got the shape slot art"
@@ -16,5 +16,7 @@ component pages(art ...component d.shape) root {
 }
 
 pages() {
-    d.circle(cx=1.0, cy=1.0, r=1.0, style={fill=#FF0000})
+    component art {
+        d.circle(cx=1.0, cy=1.0, r=1.0, style={fill=#FF0000})
+    }
 }

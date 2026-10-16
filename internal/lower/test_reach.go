@@ -3,7 +3,9 @@ package lower
 import (
 	"fmt"
 	"slices"
+	"strconv"
 
+	"duckfam.us/sngl/ast"
 	"duckfam.us/sngl/ir"
 )
 
@@ -165,6 +167,7 @@ func (r *resolver) testParam(e ir.Expr) *ir.Param {
 // instOf is what the splice made of the instance e names, or nil: for the
 // root, whose members keep their names, and for anything not spliced.
 func (r *resolver) instOf(e ir.Expr) *splicedInstance {
+	e = unnarrowed(e)
 	if p := r.testParam(e); p != nil {
 		if c, _ := p.Type.Decl.(*ir.Component); c != nil && c != r.root {
 			if copies := r.rendered[c]; len(copies) == 1 {
@@ -202,6 +205,8 @@ func (r *resolver) instance(e ir.Expr) *ir.Ident {
 		case *ir.Select:
 			e = x.Operand
 		case *ir.Index:
+			e = x.Operand
+		case *ir.Conversion:
 			e = x.Operand
 		case *ir.Ident:
 			if r.testParam(x) != nil {
@@ -242,6 +247,10 @@ func repointTestReaches(pkg *ir.Package, reach *testReach, splices []splice) err
 		}
 		_ = ir.Rewrite(fn.Block, func(n ir.Node) (ir.Node, error) {
 			switch x := n.(type) {
+			case *ir.Binary:
+				if lit := r.droppedNullTest(x); lit != nil {
+					return lit, ir.SkipDir
+				}
 			case *ir.Call:
 				r.repointCall(x, fail)
 			case *ir.Select:
@@ -263,7 +272,10 @@ func repointTestReaches(pkg *ir.Package, reach *testReach, splices []splice) err
 					return &ir.Ident{Name: v.Name, Type: x.Type, Sym: v}, ir.SkipDir
 				}
 				if h := si.nodes[x.Field]; h != nil && len(r.byHandle[h]) == 0 {
-					return &ir.Select{AST: x.AST, Type: x.Type, Operand: r.instance(x), Field: h.Name}, ir.SkipDir
+					return &ir.Select{AST: x.AST, Type: x.Type, Operand: r.instance(x), Field: h.Name, Ref: x.Ref}, ir.SkipDir
+				}
+				if r.dropped(si, x.Field) && x.Type != nil && x.Type.Kind == ir.TypeList {
+					return &ir.ListLit{Type: x.Type}, ir.SkipDir
 				}
 			}
 			return n, nil
@@ -323,12 +335,12 @@ func (r *resolver) runtimeNode(x *ir.Select) (ir.Expr, string) {
 	if !r.runtime {
 		return nil, ""
 	}
-	operand := x.Operand
+	comp := componentOf(x.Operand)
+	operand := unnarrowed(x.Operand)
 	var idx ir.Expr
 	if ix, ok := operand.(*ir.Index); ok {
 		operand, idx = ix.Operand, ix.Idx
 	}
-	comp := componentOf(operand)
 	if comp == nil || comp == r.root || r.instOf(operand) != nil {
 		return nil, ""
 	}
@@ -396,6 +408,7 @@ func indexed(e ir.Expr) bool {
 // renders more than once, neither of which a select can name one instance of.
 func (r *resolver) refuseUnspliced(x ir.Expr, member string, fail func(ir.Expr, string, ...any)) {
 	comp := componentOf(x)
+	x = unnarrowed(x)
 	if comp == nil || comp == r.root || !reachesInto(comp, member) {
 		return
 	}
@@ -445,4 +458,50 @@ func exprPos(e ir.Expr) string {
 		}
 	}
 	return "<unknown>"
+}
+
+// unnarrowed is e without the conversion a null test narrows an option ref
+// by, which names the same instance.
+func unnarrowed(e ir.Expr) ir.Expr {
+	for conv, ok := e.(*ir.Conversion); ok; conv, ok = e.(*ir.Conversion) {
+		e = conv.Operand
+	}
+	return e
+}
+
+// dropped reports whether id names a node the component's body writes that
+// this splice of it does not hold: the fallback of a slot its call site
+// filled, which renders nowhere in this instance.
+func (r *resolver) dropped(si *splicedInstance, id string) bool {
+	if _, kept := si.nodes[id]; kept {
+		return false
+	}
+	_, declared := bodyNodes(si.comp.Stmts)[id]
+	return declared
+}
+
+// droppedNullTest is the answer to a null test of a node the splice dropped,
+// or nil: it is never rendered, so it is null.
+func (r *resolver) droppedNullTest(b *ir.Binary) *ir.Literal {
+	if b.Op != ast.BinEq && b.Op != ast.BinNeq {
+		return nil
+	}
+	ref, other := b.Left, b.Right
+	if isNullLit(ref) {
+		ref, other = other, ref
+	}
+	sel, ok := unnarrowed(ref).(*ir.Select)
+	if !ok || !isNullLit(other) {
+		return nil
+	}
+	si := r.instOf(sel.Operand)
+	if si == nil || !r.dropped(si, sel.Field) {
+		return nil
+	}
+	return &ir.Literal{Type: ir.TypBool, Value: strconv.FormatBool(b.Op == ast.BinEq)}
+}
+
+func isNullLit(e ir.Expr) bool {
+	lit, ok := unnarrowed(e).(*ir.Literal)
+	return ok && lit.Type != nil && lit.Type.Kind == ir.TypeNull
 }

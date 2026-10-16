@@ -1,0 +1,112 @@
+# testdata/test_element_ref_count.sngl, executed: nothing runs that fixture's
+# assertions, and what a ref names is the interpreter's answer as much as the
+# checker's. An instance's refs are its own body's, a child's are reached
+# through the child's id, and each instance -- two siblings, the copies a loop
+# renders, the levels of a recursion -- keeps its own.
+
+sngl test --platform none refs.sngl
+stdout '5 tests, 0 failures'
+
+-- refs.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+
+output {
+    none { html }
+}
+
+component child node {
+    var count = 0
+
+    button #bump(text="+", @click { count += 1 })
+    text #shows(value="{count}")
+}
+
+component two node {
+    vbox {
+        child #left()
+        child #right()
+    }
+}
+
+func testSiblingsAreIndependent(t Test, c two) {
+    c.left.bump.click()
+    t.assert(c.left.shows.value == "1")
+    t.assert(c.right.shows.value == "0")
+}
+
+component copies node {
+    for var n = [1, 2, 3] {
+        child #kid()
+    }
+}
+
+func testLoopCopiesAreIndependent(t Test, c copies) {
+    c.kid[1].bump.click()
+    t.assert(c.kid.length() == 3)
+    t.assert(c.kid[0].shows.value == "0")
+    t.assert(c.kid[1].shows.value == "1")
+}
+
+component countdown(n = 0) node {
+    text #step(value=string(n))
+    if n > 0 {
+        countdown #next(n=n - 1)
+    }
+}
+
+component start node {
+    countdown #top(n=2)
+}
+
+func testEachLevelHoldsItsOwn(t Test, c start) {
+    t.assert(c.top.step.value == "2")
+    var one = c.top.next
+    t.assert(one != null)
+    if one != null {
+        t.assert(one.step.value == "1")
+    }
+}
+
+component panel(children ...component) node {
+    vbox {
+        text #title(value="panel")
+        children
+    }
+}
+
+component filled node {
+    var hits = 0
+
+    panel #p {
+        button #go(text="go", @click { hits += 1 })
+    }
+}
+
+func testBareChildrenAreTheWriters(t Test, c filled) {
+    c.go.click()
+    t.assert(c.hits == 1)
+    t.assert(c.p.title.value == "panel")
+}
+
+component maybe node {
+    var open = false
+
+    if open {
+        child #kid()
+    }
+}
+
+func testAnInstanceBehindAnIfIsAnOption(t Test, c maybe) {
+    t.assert(c.kid == null)
+    c.open = true
+    if c.kid != null {
+        c.kid.bump.click()
+        t.assert(c.kid.shows.value == "1")
+    }
+    t.assert(c.kid != null)
+}
+
+window {
+    two()
+}

@@ -107,6 +107,24 @@ func lowerTestStmt(s ir.Stmt, surf TestSurface, compRecvs map[string]bool, ctxCo
 				}
 			}
 		}
+	case *ir.If:
+		// A trigger on a node that may not be rendered is written under the
+		// null test that says it is, so the branches are a test's own lines.
+		out := []string{"if (" + lowerTestExpr(n.Cond, surf, compRecvs) + ") {"}
+		for _, b := range n.Body {
+			for _, l := range lowerTestStmt(b, surf, compRecvs, ctxCounts, mode) {
+				out = append(out, "    "+l)
+			}
+		}
+		if len(n.Else) > 0 {
+			out = append(out, "} else {")
+			for _, b := range n.Else {
+				for _, l := range lowerTestStmt(b, surf, compRecvs, ctxCounts, mode) {
+					out = append(out, "    "+l)
+				}
+			}
+		}
+		return append(out, "}")
 	case *ir.LocalVar:
 		// `var name T [= expr]` inside a test body. `var`, as the ordinary
 		// translator spells it: a SNGL local is mutable, and a test that
@@ -309,26 +327,14 @@ func extractEventValue(args []ir.CallArg) string {
 // read as a node's text, so a test asserting on its component's own state
 // asked the view tree for a tag no widget carries.
 func lowerTestExpr(e ir.Expr, surf TestSurface, compRecvs map[string]bool) string {
-	// Special shape: `<recv>.<id> == null` / `!= null` where <id> is in
-	// methodFields → presence check via Compose finder count. SNGL's
-	// nilable widget semantics maps to "any nodes match this tag?".
-	if bin, ok := e.(*ir.Binary); ok {
-		if bin.Op == ast.BinEq || bin.Op == ast.BinNeq {
-			if id, ok := composeIDRef(bin.Left, surf, compRecvs); ok && isNullLit(bin.Right) {
-				op := "=="
-				if bin.Op == ast.BinNeq {
-					op = "!="
-				}
-				return fmt.Sprintf("(composeNodeCount(composeTestRule, %q) %s 0)", id, op)
-			}
-			if id, ok := composeIDRef(bin.Right, surf, compRecvs); ok && isNullLit(bin.Left) {
-				op := "=="
-				if bin.Op == ast.BinNeq {
-					op = "!="
-				}
-				return fmt.Sprintf("(composeNodeCount(composeTestRule, %q) %s 0)", id, op)
-			}
+	// `<recv>.<id> == null` asks whether the node is rendered now, which is
+	// whether the semantics tree holds a node carrying its tag.
+	if recv, id, present, ok := codegen.RefNullTest(e); ok && compRecvs[recv] {
+		check := "isEmpty"
+		if present {
+			check = "isNotEmpty"
 		}
+		return fmt.Sprintf("composeTestRule.onAllNodesWithTag(%q).fetchSemanticsNodes().%s()", id, check)
 	}
 	switch n := e.(type) {
 	case *ir.Binary:
@@ -416,30 +422,6 @@ func lowerTestExpr(e ir.Expr, surf TestSurface, compRecvs map[string]bool) strin
 	// expressions in lockstep with non-test Kotlin codegen rather than
 	// emitting a TODO placeholder that fails Kotlin compilation.
 	return surf.translator().EvalExpr(e)
-}
-
-// composeIDRef returns the id when e is the bare `<recv>.<id>` shape
-// (where <recv> is a component-typed test param) and <id> is in
-// surf.MethodFields. Used by lowerTestExpr's null-comparison shortcut to
-// detect conditional widget presence checks.
-func composeIDRef(e ir.Expr, surf TestSurface, compRecvs map[string]bool) (string, bool) {
-	sel, ok := e.(*ir.Select)
-	if !ok {
-		return "", false
-	}
-	id, ok := sel.Operand.(*ir.Ident)
-	if !ok || !compRecvs[id.Name] {
-		return "", false
-	}
-	if !surf.MethodFields[sel.Field] {
-		return "", false
-	}
-	return sel.Field, true
-}
-
-func isNullLit(e ir.Expr) bool {
-	lit, ok := e.(*ir.Literal)
-	return ok && lit.Type != nil && lit.Type.Kind == ir.TypeNull
 }
 
 // TestEmitMode selects how LowerTestFile wraps per-test bodies.
@@ -599,8 +581,11 @@ func LowerTestFile(pkg string, fns []*ir.Func, suffixes []string, surf TestSurfa
 
 	src := b.String()
 	imports := ""
+	if strings.Contains(src, ".onAllNodesWithTag(") {
+		imports = "import androidx.compose.ui.test.onAllNodesWithTag\n"
+	}
 	if strings.Contains(src, ".onNodeWithTag(") || strings.Contains(src, ".performClick(") || strings.Contains(src, ".performTextReplacement(") {
-		imports = composeActionImports
+		imports += composeActionImports
 	}
 	return strings.Replace(src, composeActionMarker, imports, 1)
 }

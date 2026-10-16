@@ -8,11 +8,13 @@ deny * `SlotEmpty` -- every `.empty` is answered before codegen
 -- app.sngl --
 import . "sngl:ui"
 
-component tree(d int, content ...component node) node {
+component tree(d int, content option[component node]) node {
     text(value=content.empty ? "empty {d}" : "full {d}")
     if d > 0 {
         tree(d=d - 1) {
-            content
+            component content {
+                content
+            }
         }
     }
 }
@@ -24,7 +26,7 @@ component inner(content ...component option[node]) node {
     content
 }
 
-component outer(content ...component option[node]) node {
+component outer(content list[component option[node]]) node {
     var m = 0
     button(text="{m}", @click { m = m + 1 })
     for var y = [1] {
@@ -38,13 +40,17 @@ component main node {
     var n = 2
     var xs = [1, 2]
     tree(d=n) {
-        text(value="x")
+        component content {
+            text(value="x")
+        }
     }
     tree(d=n)
     for var x = xs {
         outer
         outer {
-            text(value="a{x}")
+            component content {
+                text(value="a{x}")
+            }
         }
     }
 }
@@ -509,7 +515,7 @@ func (m Model) View() tea.View {
 	return v
 }
 
-func (m Model) renderTree(d int, __depth int, __empty_content bool, slotContent func() string) string {
+func (m Model) renderTree(d int, __depth int, __empty_content bool, content func() string) string {
 	var parts []string
 	var __lt0 string
 	if __empty_content {
@@ -526,8 +532,8 @@ func (m Model) renderTree(d int, __depth int, __empty_content bool, slotContent 
 		} else {
 			part3_content := func() string {
 				var result string
-				if slotContent != nil {
-					result = slotContent()
+				if content != nil {
+					result = content()
 				}
 				return result
 			}
@@ -574,16 +580,16 @@ type Model struct {
 	n__inst0       int
 	xs__inst0      []int
 	visible__inst0 bool
-	__slot5        []fyne.CanvasObject
-	__slot5_at     fyne.CanvasObject
-	__inst5_live   []*OuterInstance
-	__inst6_live   []*Outer__slot1Instance
+	__slot7        []fyne.CanvasObject
+	__slot7_at     fyne.CanvasObject
+	__inst7_live   []*OuterInstance
+	__inst8_live   []*Outer__slot1Instance
 
-	__n9      *fynelayout.Toplevel
-	__n10     *Tree__slot0Instance
-	__n10__el fyne.CanvasObject
-	__n11     *TreeInstance
-	__n11__el fyne.CanvasObject
+	__n11     *fynelayout.Toplevel
+	__n12     *Tree__slot0Instance
+	__n12__el fyne.CanvasObject
+	__n13     *TreeInstance
+	__n13__el fyne.CanvasObject
 	__built   bool
 }
 
@@ -593,78 +599,78 @@ func New() *Model {
 	m.n__inst0 = 2
 	m.xs__inst0 = []int{1, 2}
 	m.visible__inst0 = true
-	m.__slot5 = nil
-	m.__slot5_at = nil
-	m.__inst5_live = []*OuterInstance{}
-	m.__inst6_live = []*Outer__slot1Instance{}
+	m.__slot7 = nil
+	m.__slot7_at = nil
+	m.__inst7_live = []*OuterInstance{}
+	m.__inst8_live = []*Outer__slot1Instance{}
 	return m
 }
 
-func (m *Model) __renderSlot5(__parent *fyne.Container) {
-	for _, __entry := range m.__slot5 {
+func (m *Model) __renderSlot7(__parent *fyne.Container) {
+	for _, __entry := range m.__slot7 {
 		fynelayout.Remove(__parent, __entry)
 	}
-	m.__slot5 = nil
-	m.__slot5_at = fynelayout.SlotAnchor(__parent, m.__slot5_at)
-	__inst5_next := []*OuterInstance{}
-	var __inst5_i int = 0
-	__inst6_next := []*Outer__slot1Instance{}
-	var __inst6_i int = 0
+	m.__slot7 = nil
+	m.__slot7_at = fynelayout.SlotAnchor(__parent, m.__slot7_at)
+	__inst7_next := []*OuterInstance{}
+	var __inst7_i int = 0
+	__inst8_next := []*Outer__slot1Instance{}
+	var __inst8_i int = 0
 	for _, x := range m.xs__inst0 {
-		var __n17 *OuterInstance
-		if len(m.__inst5_live) > __inst5_i {
-			__n17 = m.__inst5_live[__inst5_i]
+		var __n21 *OuterInstance
+		if len(m.__inst7_live) > __inst7_i {
+			__n21 = m.__inst7_live[__inst7_i]
 		} else {
-			if len(m.__inst5_live) > __inst5_i {
-				m.__inst5_live[__inst5_i].Destroy()
+			if len(m.__inst7_live) > __inst7_i {
+				m.__inst7_live[__inst7_i].Destroy()
 			}
-			__n17__new := newOuterInstance(m)
-			__n17 = __n17__new
+			__n21__new := newOuterInstance(m)
+			__n21 = __n21__new
 		}
-		__inst5_next = append(__inst5_next, __n17)
-		__inst5_i = (__inst5_i + 1)
-		__n17__el := __n17.Root
-		fynelayout.InsertBefore(__parent, m.__slot5_at, __n17__el)
-		m.__slot5 = append(m.__slot5, __n17__el)
-		var __n18 *Outer__slot1Instance
-		if len(m.__inst6_live) > __inst6_i {
-			__n18 = m.__inst6_live[__inst6_i]
-			__n18.Set__p0(x)
+		__inst7_next = append(__inst7_next, __n21)
+		__inst7_i = (__inst7_i + 1)
+		__n21__el := __n21.Root
+		fynelayout.InsertBefore(__parent, m.__slot7_at, __n21__el)
+		m.__slot7 = append(m.__slot7, __n21__el)
+		var __n22 *Outer__slot1Instance
+		if len(m.__inst8_live) > __inst8_i {
+			__n22 = m.__inst8_live[__inst8_i]
+			__n22.Set__p0(x)
 		} else {
-			if len(m.__inst6_live) > __inst6_i {
-				m.__inst6_live[__inst6_i].Destroy()
+			if len(m.__inst8_live) > __inst8_i {
+				m.__inst8_live[__inst8_i].Destroy()
 			}
-			__n18__new := newOuter__slot1Instance(m, x)
-			__n18 = __n18__new
+			__n22__new := newOuter__slot1Instance(m, x)
+			__n22 = __n22__new
 		}
-		__inst6_next = append(__inst6_next, __n18)
-		__inst6_i = (__inst6_i + 1)
-		__n18__el := __n18.Root
-		fynelayout.InsertBefore(__parent, m.__slot5_at, __n18__el)
-		m.__slot5 = append(m.__slot5, __n18__el)
+		__inst8_next = append(__inst8_next, __n22)
+		__inst8_i = (__inst8_i + 1)
+		__n22__el := __n22.Root
+		fynelayout.InsertBefore(__parent, m.__slot7_at, __n22__el)
+		m.__slot7 = append(m.__slot7, __n22__el)
 	}
-	for __inst5_i_d, _ := range m.__inst5_live {
-		var __inst5_i_j int = ((len(m.__inst5_live) - 1) - __inst5_i_d)
-		if __inst5_i_j >= __inst5_i {
-			m.__inst5_live[__inst5_i_j].Destroy()
-		}
-	}
-	m.__inst5_live = __inst5_next
-	for __inst6_i_d, _ := range m.__inst6_live {
-		var __inst6_i_j int = ((len(m.__inst6_live) - 1) - __inst6_i_d)
-		if __inst6_i_j >= __inst6_i {
-			m.__inst6_live[__inst6_i_j].Destroy()
+	for __inst7_i_d, _ := range m.__inst7_live {
+		var __inst7_i_j int = ((len(m.__inst7_live) - 1) - __inst7_i_d)
+		if __inst7_i_j >= __inst7_i {
+			m.__inst7_live[__inst7_i_j].Destroy()
 		}
 	}
-	m.__inst6_live = __inst6_next
+	m.__inst7_live = __inst7_next
+	for __inst8_i_d, _ := range m.__inst8_live {
+		var __inst8_i_j int = ((len(m.__inst8_live) - 1) - __inst8_i_d)
+		if __inst8_i_j >= __inst8_i {
+			m.__inst8_live[__inst8_i_j].Destroy()
+		}
+	}
+	m.__inst8_live = __inst8_next
 }
 
-func (m *Model) __n9_closed_handler() {
+func (m *Model) __n11_closed_handler() {
 }
 
-func (m *Model) __n9_visible_handler(__visible bool) {
+func (m *Model) __n11_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
-	m.__n9.SetVisible(m.visible__inst0)
+	m.__n11.SetVisible(m.visible__inst0)
 }
 
 func (m *Model) N__inst0() int {
@@ -694,22 +700,22 @@ func (m *Model) SetVisible__inst0(v bool) {
 // BuildUI creates the widget tree and returns the first window's content.
 func (m *Model) BuildUI() fyne.CanvasObject {
 	if m.__built {
-		return m.__n9.Container
+		return m.__n11.Container
 	}
 	m.__built = true
-	m.__n9 = fynelayout.NewToplevel()
-	m.__n9.SetVisible(m.visible__inst0)
-	m.__n9.OnClosed = m.__n9_closed_handler
-	m.__n9.OnVisible = m.__n9_visible_handler
-	m.__n10 = newTree__slot0Instance(m, m.n__inst0, 0)
-	m.__n10__el = m.__n10.Root
-	m.__n9.Add(m.__n10__el)
-	m.__n11 = newTreeInstance(m, m.n__inst0, 0, true)
-	m.__n11__el = m.__n11.Root
-	m.__n9.Add(m.__n11__el)
-	m.__renderSlot5(m.__n9.Container)
-	fynelayout.AppAttach(m.__n9)
-	return m.__n9.Container
+	m.__n11 = fynelayout.NewToplevel()
+	m.__n11.SetVisible(m.visible__inst0)
+	m.__n11.OnClosed = m.__n11_closed_handler
+	m.__n11.OnVisible = m.__n11_visible_handler
+	m.__n12 = newTree__slot0Instance(m, m.n__inst0, 0)
+	m.__n12__el = m.__n12.Root
+	m.__n11.Add(m.__n12__el)
+	m.__n13 = newTreeInstance(m, m.n__inst0, 0, true)
+	m.__n13__el = m.__n13.Root
+	m.__n11.Add(m.__n13__el)
+	m.__renderSlot7(m.__n11.Container)
+	fynelayout.AppAttach(m.__n11)
+	return m.__n11.Container
 }
 
 // TreeInstance is one live instance of the tree component.
@@ -722,7 +728,7 @@ type TreeInstance struct {
 	__root                 *fyne.Container
 	__slot0                []fyne.CanvasObject
 	__slot0_at             fyne.CanvasObject
-	__inst0_live           []*TreeInstance
+	__inst0_live           []*Tree__slot2Instance
 	__slot1                []fyne.CanvasObject
 	__slot1_at             fyne.CanvasObject
 	__slot2                []fyne.CanvasObject
@@ -733,6 +739,10 @@ type TreeInstance struct {
 	__slot4_at             fyne.CanvasObject
 	__slot5                []fyne.CanvasObject
 	__slot5_at             fyne.CanvasObject
+	__slot6                []fyne.CanvasObject
+	__slot6_at             fyne.CanvasObject
+	__slot7                []fyne.CanvasObject
+	__slot7_at             fyne.CanvasObject
 	__n0                   *widget.Label
 }
 
@@ -744,12 +754,14 @@ func newTreeInstance(__model *Model, __a_d int, __a___depth int, __a___empty_con
 	c.__prop___empty_content = __a___empty_content
 	c.__root = container.NewVBox()
 	c.__slot0 = nil
-	c.__inst0_live = []*TreeInstance{}
+	c.__inst0_live = []*Tree__slot2Instance{}
 	c.__slot1 = nil
 	c.__slot2 = nil
 	c.__slot3 = nil
 	c.__slot4 = nil
 	c.__slot5 = nil
+	c.__slot6 = nil
+	c.__slot7 = nil
 	var __lt2 string
 	if c.__prop___empty_content {
 		__lt2 = ("empty " + fmt.Sprint(c.__prop_d))
@@ -798,30 +810,29 @@ func (c *TreeInstance) __renderSlot0(__parent *fyne.Container) {
 	}
 	c.__slot0 = nil
 	c.__slot0_at = fynelayout.SlotAnchor(__parent, c.__slot0_at)
-	__inst0_next := []*TreeInstance{}
+	__inst0_next := []*Tree__slot2Instance{}
 	var __inst0_i int = 0
 	if c.__prop_d > 0 {
 		if c.__prop___depth >= 512 {
 			panic(ErrorEvent{Message: "tree: recursion exceeded 512 nested instances", Kind: "recursion"})
 		} else {
-			var __n12 *TreeInstance
+			var __n14 *Tree__slot2Instance
 			if len(c.__inst0_live) > __inst0_i {
-				__n12 = c.__inst0_live[__inst0_i]
-				__n12.SetD((c.__prop_d - 1))
-				__n12.Set__depth((c.__prop___depth + 1))
-				__n12.Set__empty_content(true)
+				__n14 = c.__inst0_live[__inst0_i]
+				__n14.SetD((c.__prop_d - 1))
+				__n14.Set__depth((c.__prop___depth + 1))
 			} else {
 				if len(c.__inst0_live) > __inst0_i {
 					c.__inst0_live[__inst0_i].Destroy()
 				}
-				__n12__new := newTreeInstance(c.__model, (c.__prop_d - 1), (c.__prop___depth + 1), true)
-				__n12 = __n12__new
+				__n14__new := newTree__slot2Instance(c.__model, (c.__prop_d - 1), (c.__prop___depth + 1))
+				__n14 = __n14__new
 			}
-			__inst0_next = append(__inst0_next, __n12)
+			__inst0_next = append(__inst0_next, __n14)
 			__inst0_i = (__inst0_i + 1)
-			__n12__el := __n12.Root
-			fynelayout.InsertBefore(__parent, c.__slot0_at, __n12__el)
-			c.__slot0 = append(c.__slot0, __n12__el)
+			__n14__el := __n14.Root
+			fynelayout.InsertBefore(__parent, c.__slot0_at, __n14__el)
+			c.__slot0 = append(c.__slot0, __n14__el)
 		}
 	}
 	for __inst0_i_d, _ := range c.__inst0_live {
@@ -838,7 +849,229 @@ func (c *TreeInstance) Destroy() {
 		var __inst0_live_dj int = ((len(c.__inst0_live) - 1) - __inst0_live_di)
 		c.__inst0_live[__inst0_live_dj].Destroy()
 	}
-	c.__inst0_live = []*TreeInstance{}
+	c.__inst0_live = []*Tree__slot2Instance{}
+}
+
+// Tree__slot5Instance is one live instance of the tree__slot5 component.
+type Tree__slot5Instance struct {
+	Root           fyne.CanvasObject
+	__model        *Model
+	__prop_d       int
+	__prop___depth int
+	__root         *fyne.Container
+	__slot0        []fyne.CanvasObject
+	__slot0_at     fyne.CanvasObject
+	__slot1        []fyne.CanvasObject
+	__slot1_at     fyne.CanvasObject
+	__inst1_live   []*Tree__slot5Instance
+	__slot2        []fyne.CanvasObject
+	__slot2_at     fyne.CanvasObject
+	__slot3        []fyne.CanvasObject
+	__slot3_at     fyne.CanvasObject
+	__slot4        []fyne.CanvasObject
+	__slot4_at     fyne.CanvasObject
+	__slot5        []fyne.CanvasObject
+	__slot5_at     fyne.CanvasObject
+	__slot6        []fyne.CanvasObject
+	__slot6_at     fyne.CanvasObject
+	__slot7        []fyne.CanvasObject
+	__slot7_at     fyne.CanvasObject
+	__n1           *widget.Label
+}
+
+func newTree__slot5Instance(__model *Model, __a_d int, __a___depth int) *Tree__slot5Instance {
+	c := &Tree__slot5Instance{}
+	c.__model = __model
+	c.__prop_d = __a_d
+	c.__prop___depth = __a___depth
+	c.__root = container.NewVBox()
+	c.__slot0 = nil
+	c.__slot1 = nil
+	c.__inst1_live = []*Tree__slot5Instance{}
+	c.__slot2 = nil
+	c.__slot3 = nil
+	c.__slot4 = nil
+	c.__slot5 = nil
+	c.__slot6 = nil
+	c.__slot7 = nil
+	__lt4 := ("empty " + fmt.Sprint(c.__prop_d))
+	c.__n1 = widget.NewLabel("")
+	c.__n1.SetText(__lt4)
+	c.__root.Add(c.__n1)
+	c.__renderSlot1(c.__root)
+	c.Root = c.__root
+	return c
+}
+
+func (c *Tree__slot5Instance) SetD(__v int) {
+	c.__prop_d = __v
+	__lt3 := ("empty " + fmt.Sprint(c.__prop_d))
+	c.__n1.SetText(__lt3)
+	c.__renderSlot1(c.__root)
+}
+
+func (c *Tree__slot5Instance) Set__depth(__v int) {
+	c.__prop___depth = __v
+	c.__renderSlot1(c.__root)
+}
+
+func (c *Tree__slot5Instance) __renderSlot1(__parent *fyne.Container) {
+	for _, __entry := range c.__slot1 {
+		fynelayout.Remove(__parent, __entry)
+	}
+	c.__slot1 = nil
+	c.__slot1_at = fynelayout.SlotAnchor(__parent, c.__slot1_at)
+	__inst1_next := []*Tree__slot5Instance{}
+	var __inst1_i int = 0
+	if c.__prop_d > 0 {
+		if c.__prop___depth >= 512 {
+			panic(ErrorEvent{Message: "tree: recursion exceeded 512 nested instances", Kind: "recursion"})
+		} else {
+			var __n15 *Tree__slot5Instance
+			if len(c.__inst1_live) > __inst1_i {
+				__n15 = c.__inst1_live[__inst1_i]
+				__n15.SetD((c.__prop_d - 1))
+				__n15.Set__depth((c.__prop___depth + 1))
+			} else {
+				if len(c.__inst1_live) > __inst1_i {
+					c.__inst1_live[__inst1_i].Destroy()
+				}
+				__n15__new := newTree__slot5Instance(c.__model, (c.__prop_d - 1), (c.__prop___depth + 1))
+				__n15 = __n15__new
+			}
+			__inst1_next = append(__inst1_next, __n15)
+			__inst1_i = (__inst1_i + 1)
+			__n15__el := __n15.Root
+			fynelayout.InsertBefore(__parent, c.__slot1_at, __n15__el)
+			c.__slot1 = append(c.__slot1, __n15__el)
+		}
+	}
+	for __inst1_i_d, _ := range c.__inst1_live {
+		var __inst1_i_j int = ((len(c.__inst1_live) - 1) - __inst1_i_d)
+		if __inst1_i_j >= __inst1_i {
+			c.__inst1_live[__inst1_i_j].Destroy()
+		}
+	}
+	c.__inst1_live = __inst1_next
+}
+
+func (c *Tree__slot5Instance) Destroy() {
+	for __inst1_live_di, _ := range c.__inst1_live {
+		var __inst1_live_dj int = ((len(c.__inst1_live) - 1) - __inst1_live_di)
+		c.__inst1_live[__inst1_live_dj].Destroy()
+	}
+	c.__inst1_live = []*Tree__slot5Instance{}
+}
+
+// Tree__slot3Instance is one live instance of the tree__slot3 component.
+type Tree__slot3Instance struct {
+	Root           fyne.CanvasObject
+	__model        *Model
+	__prop_d       int
+	__prop___depth int
+	__root         *fyne.Container
+	__slot0        []fyne.CanvasObject
+	__slot0_at     fyne.CanvasObject
+	__slot1        []fyne.CanvasObject
+	__slot1_at     fyne.CanvasObject
+	__slot2        []fyne.CanvasObject
+	__slot2_at     fyne.CanvasObject
+	__inst2_live   []*Tree__slot3Instance
+	__slot3        []fyne.CanvasObject
+	__slot3_at     fyne.CanvasObject
+	__slot4        []fyne.CanvasObject
+	__slot4_at     fyne.CanvasObject
+	__slot5        []fyne.CanvasObject
+	__slot5_at     fyne.CanvasObject
+	__slot6        []fyne.CanvasObject
+	__slot6_at     fyne.CanvasObject
+	__slot7        []fyne.CanvasObject
+	__slot7_at     fyne.CanvasObject
+	__n2           *widget.Label
+}
+
+func newTree__slot3Instance(__model *Model, __a_d int, __a___depth int) *Tree__slot3Instance {
+	c := &Tree__slot3Instance{}
+	c.__model = __model
+	c.__prop_d = __a_d
+	c.__prop___depth = __a___depth
+	c.__root = container.NewVBox()
+	c.__slot0 = nil
+	c.__slot1 = nil
+	c.__slot2 = nil
+	c.__inst2_live = []*Tree__slot3Instance{}
+	c.__slot3 = nil
+	c.__slot4 = nil
+	c.__slot5 = nil
+	c.__slot6 = nil
+	c.__slot7 = nil
+	__lt6 := ("full " + fmt.Sprint(c.__prop_d))
+	c.__n2 = widget.NewLabel("")
+	c.__n2.SetText(__lt6)
+	c.__root.Add(c.__n2)
+	c.__renderSlot2(c.__root)
+	c.Root = c.__root
+	return c
+}
+
+func (c *Tree__slot3Instance) SetD(__v int) {
+	c.__prop_d = __v
+	__lt5 := ("full " + fmt.Sprint(c.__prop_d))
+	c.__n2.SetText(__lt5)
+	c.__renderSlot2(c.__root)
+}
+
+func (c *Tree__slot3Instance) Set__depth(__v int) {
+	c.__prop___depth = __v
+	c.__renderSlot2(c.__root)
+}
+
+func (c *Tree__slot3Instance) __renderSlot2(__parent *fyne.Container) {
+	for _, __entry := range c.__slot2 {
+		fynelayout.Remove(__parent, __entry)
+	}
+	c.__slot2 = nil
+	c.__slot2_at = fynelayout.SlotAnchor(__parent, c.__slot2_at)
+	__inst2_next := []*Tree__slot3Instance{}
+	var __inst2_i int = 0
+	if c.__prop_d > 0 {
+		if c.__prop___depth >= 512 {
+			panic(ErrorEvent{Message: "tree: recursion exceeded 512 nested instances", Kind: "recursion"})
+		} else {
+			var __n16 *Tree__slot3Instance
+			if len(c.__inst2_live) > __inst2_i {
+				__n16 = c.__inst2_live[__inst2_i]
+				__n16.SetD((c.__prop_d - 1))
+				__n16.Set__depth((c.__prop___depth + 1))
+			} else {
+				if len(c.__inst2_live) > __inst2_i {
+					c.__inst2_live[__inst2_i].Destroy()
+				}
+				__n16__new := newTree__slot3Instance(c.__model, (c.__prop_d - 1), (c.__prop___depth + 1))
+				__n16 = __n16__new
+			}
+			__inst2_next = append(__inst2_next, __n16)
+			__inst2_i = (__inst2_i + 1)
+			__n16__el := __n16.Root
+			fynelayout.InsertBefore(__parent, c.__slot2_at, __n16__el)
+			c.__slot2 = append(c.__slot2, __n16__el)
+		}
+	}
+	for __inst2_i_d, _ := range c.__inst2_live {
+		var __inst2_i_j int = ((len(c.__inst2_live) - 1) - __inst2_i_d)
+		if __inst2_i_j >= __inst2_i {
+			c.__inst2_live[__inst2_i_j].Destroy()
+		}
+	}
+	c.__inst2_live = __inst2_next
+}
+
+func (c *Tree__slot3Instance) Destroy() {
+	for __inst2_live_di, _ := range c.__inst2_live {
+		var __inst2_live_dj int = ((len(c.__inst2_live) - 1) - __inst2_live_di)
+		c.__inst2_live[__inst2_live_dj].Destroy()
+	}
+	c.__inst2_live = []*Tree__slot3Instance{}
 }
 
 // Tree__slot2Instance is one live instance of the tree__slot2 component.
@@ -852,16 +1085,20 @@ type Tree__slot2Instance struct {
 	__slot0_at     fyne.CanvasObject
 	__slot1        []fyne.CanvasObject
 	__slot1_at     fyne.CanvasObject
-	__inst1_live   []*Tree__slot2Instance
 	__slot2        []fyne.CanvasObject
 	__slot2_at     fyne.CanvasObject
 	__slot3        []fyne.CanvasObject
 	__slot3_at     fyne.CanvasObject
+	__inst3_live   []*Tree__slot5Instance
 	__slot4        []fyne.CanvasObject
 	__slot4_at     fyne.CanvasObject
 	__slot5        []fyne.CanvasObject
 	__slot5_at     fyne.CanvasObject
-	__n1           *widget.Label
+	__slot6        []fyne.CanvasObject
+	__slot6_at     fyne.CanvasObject
+	__slot7        []fyne.CanvasObject
+	__slot7_at     fyne.CanvasObject
+	__n3           *widget.Label
 }
 
 func newTree__slot2Instance(__model *Model, __a_d int, __a___depth int) *Tree__slot2Instance {
@@ -872,78 +1109,80 @@ func newTree__slot2Instance(__model *Model, __a_d int, __a___depth int) *Tree__s
 	c.__root = container.NewVBox()
 	c.__slot0 = nil
 	c.__slot1 = nil
-	c.__inst1_live = []*Tree__slot2Instance{}
 	c.__slot2 = nil
 	c.__slot3 = nil
+	c.__inst3_live = []*Tree__slot5Instance{}
 	c.__slot4 = nil
 	c.__slot5 = nil
-	__lt4 := ("full " + fmt.Sprint(c.__prop_d))
-	c.__n1 = widget.NewLabel("")
-	c.__n1.SetText(__lt4)
-	c.__root.Add(c.__n1)
-	c.__renderSlot1(c.__root)
+	c.__slot6 = nil
+	c.__slot7 = nil
+	__lt8 := ("empty " + fmt.Sprint(c.__prop_d))
+	c.__n3 = widget.NewLabel("")
+	c.__n3.SetText(__lt8)
+	c.__root.Add(c.__n3)
+	c.__renderSlot3(c.__root)
 	c.Root = c.__root
 	return c
 }
 
 func (c *Tree__slot2Instance) SetD(__v int) {
 	c.__prop_d = __v
-	__lt3 := ("full " + fmt.Sprint(c.__prop_d))
-	c.__n1.SetText(__lt3)
-	c.__renderSlot1(c.__root)
+	__lt7 := ("empty " + fmt.Sprint(c.__prop_d))
+	c.__n3.SetText(__lt7)
+	c.__renderSlot3(c.__root)
 }
 
 func (c *Tree__slot2Instance) Set__depth(__v int) {
 	c.__prop___depth = __v
-	c.__renderSlot1(c.__root)
+	c.__renderSlot3(c.__root)
 }
 
-func (c *Tree__slot2Instance) __renderSlot1(__parent *fyne.Container) {
-	for _, __entry := range c.__slot1 {
+func (c *Tree__slot2Instance) __renderSlot3(__parent *fyne.Container) {
+	for _, __entry := range c.__slot3 {
 		fynelayout.Remove(__parent, __entry)
 	}
-	c.__slot1 = nil
-	c.__slot1_at = fynelayout.SlotAnchor(__parent, c.__slot1_at)
-	__inst1_next := []*Tree__slot2Instance{}
-	var __inst1_i int = 0
+	c.__slot3 = nil
+	c.__slot3_at = fynelayout.SlotAnchor(__parent, c.__slot3_at)
+	__inst3_next := []*Tree__slot5Instance{}
+	var __inst3_i int = 0
 	if c.__prop_d > 0 {
 		if c.__prop___depth >= 512 {
 			panic(ErrorEvent{Message: "tree: recursion exceeded 512 nested instances", Kind: "recursion"})
 		} else {
-			var __n13 *Tree__slot2Instance
-			if len(c.__inst1_live) > __inst1_i {
-				__n13 = c.__inst1_live[__inst1_i]
-				__n13.SetD((c.__prop_d - 1))
-				__n13.Set__depth((c.__prop___depth + 1))
+			var __n17 *Tree__slot5Instance
+			if len(c.__inst3_live) > __inst3_i {
+				__n17 = c.__inst3_live[__inst3_i]
+				__n17.SetD((c.__prop_d - 1))
+				__n17.Set__depth((c.__prop___depth + 1))
 			} else {
-				if len(c.__inst1_live) > __inst1_i {
-					c.__inst1_live[__inst1_i].Destroy()
+				if len(c.__inst3_live) > __inst3_i {
+					c.__inst3_live[__inst3_i].Destroy()
 				}
-				__n13__new := newTree__slot2Instance(c.__model, (c.__prop_d - 1), (c.__prop___depth + 1))
-				__n13 = __n13__new
+				__n17__new := newTree__slot5Instance(c.__model, (c.__prop_d - 1), (c.__prop___depth + 1))
+				__n17 = __n17__new
 			}
-			__inst1_next = append(__inst1_next, __n13)
-			__inst1_i = (__inst1_i + 1)
-			__n13__el := __n13.Root
-			fynelayout.InsertBefore(__parent, c.__slot1_at, __n13__el)
-			c.__slot1 = append(c.__slot1, __n13__el)
+			__inst3_next = append(__inst3_next, __n17)
+			__inst3_i = (__inst3_i + 1)
+			__n17__el := __n17.Root
+			fynelayout.InsertBefore(__parent, c.__slot3_at, __n17__el)
+			c.__slot3 = append(c.__slot3, __n17__el)
 		}
 	}
-	for __inst1_i_d, _ := range c.__inst1_live {
-		var __inst1_i_j int = ((len(c.__inst1_live) - 1) - __inst1_i_d)
-		if __inst1_i_j >= __inst1_i {
-			c.__inst1_live[__inst1_i_j].Destroy()
+	for __inst3_i_d, _ := range c.__inst3_live {
+		var __inst3_i_j int = ((len(c.__inst3_live) - 1) - __inst3_i_d)
+		if __inst3_i_j >= __inst3_i {
+			c.__inst3_live[__inst3_i_j].Destroy()
 		}
 	}
-	c.__inst1_live = __inst1_next
+	c.__inst3_live = __inst3_next
 }
 
 func (c *Tree__slot2Instance) Destroy() {
-	for __inst1_live_di, _ := range c.__inst1_live {
-		var __inst1_live_dj int = ((len(c.__inst1_live) - 1) - __inst1_live_di)
-		c.__inst1_live[__inst1_live_dj].Destroy()
+	for __inst3_live_di, _ := range c.__inst3_live {
+		var __inst3_live_dj int = ((len(c.__inst3_live) - 1) - __inst3_live_di)
+		c.__inst3_live[__inst3_live_dj].Destroy()
 	}
-	c.__inst1_live = []*Tree__slot2Instance{}
+	c.__inst3_live = []*Tree__slot5Instance{}
 }
 
 // Tree__slot0Instance is one live instance of the tree__slot0 component.
@@ -959,14 +1198,18 @@ type Tree__slot0Instance struct {
 	__slot1_at     fyne.CanvasObject
 	__slot2        []fyne.CanvasObject
 	__slot2_at     fyne.CanvasObject
-	__inst2_live   []*Tree__slot2Instance
 	__slot3        []fyne.CanvasObject
 	__slot3_at     fyne.CanvasObject
 	__slot4        []fyne.CanvasObject
 	__slot4_at     fyne.CanvasObject
+	__inst4_live   []*Tree__slot3Instance
 	__slot5        []fyne.CanvasObject
 	__slot5_at     fyne.CanvasObject
-	__n2           *widget.Label
+	__slot6        []fyne.CanvasObject
+	__slot6_at     fyne.CanvasObject
+	__slot7        []fyne.CanvasObject
+	__slot7_at     fyne.CanvasObject
+	__n4           *widget.Label
 }
 
 func newTree__slot0Instance(__model *Model, __a_d int, __a___depth int) *Tree__slot0Instance {
@@ -978,77 +1221,79 @@ func newTree__slot0Instance(__model *Model, __a_d int, __a___depth int) *Tree__s
 	c.__slot0 = nil
 	c.__slot1 = nil
 	c.__slot2 = nil
-	c.__inst2_live = []*Tree__slot2Instance{}
 	c.__slot3 = nil
 	c.__slot4 = nil
+	c.__inst4_live = []*Tree__slot3Instance{}
 	c.__slot5 = nil
-	__lt6 := ("full " + fmt.Sprint(c.__prop_d))
-	c.__n2 = widget.NewLabel("")
-	c.__n2.SetText(__lt6)
-	c.__root.Add(c.__n2)
-	c.__renderSlot2(c.__root)
+	c.__slot6 = nil
+	c.__slot7 = nil
+	__lt10 := ("full " + fmt.Sprint(c.__prop_d))
+	c.__n4 = widget.NewLabel("")
+	c.__n4.SetText(__lt10)
+	c.__root.Add(c.__n4)
+	c.__renderSlot4(c.__root)
 	c.Root = c.__root
 	return c
 }
 
 func (c *Tree__slot0Instance) SetD(__v int) {
 	c.__prop_d = __v
-	__lt5 := ("full " + fmt.Sprint(c.__prop_d))
-	c.__n2.SetText(__lt5)
-	c.__renderSlot2(c.__root)
+	__lt9 := ("full " + fmt.Sprint(c.__prop_d))
+	c.__n4.SetText(__lt9)
+	c.__renderSlot4(c.__root)
 }
 
 func (c *Tree__slot0Instance) Set__depth(__v int) {
 	c.__prop___depth = __v
-	c.__renderSlot2(c.__root)
+	c.__renderSlot4(c.__root)
 }
 
-func (c *Tree__slot0Instance) __renderSlot2(__parent *fyne.Container) {
-	for _, __entry := range c.__slot2 {
+func (c *Tree__slot0Instance) __renderSlot4(__parent *fyne.Container) {
+	for _, __entry := range c.__slot4 {
 		fynelayout.Remove(__parent, __entry)
 	}
-	c.__slot2 = nil
-	c.__slot2_at = fynelayout.SlotAnchor(__parent, c.__slot2_at)
-	__inst2_next := []*Tree__slot2Instance{}
-	var __inst2_i int = 0
+	c.__slot4 = nil
+	c.__slot4_at = fynelayout.SlotAnchor(__parent, c.__slot4_at)
+	__inst4_next := []*Tree__slot3Instance{}
+	var __inst4_i int = 0
 	if c.__prop_d > 0 {
 		if c.__prop___depth >= 512 {
 			panic(ErrorEvent{Message: "tree: recursion exceeded 512 nested instances", Kind: "recursion"})
 		} else {
-			var __n14 *Tree__slot2Instance
-			if len(c.__inst2_live) > __inst2_i {
-				__n14 = c.__inst2_live[__inst2_i]
-				__n14.SetD((c.__prop_d - 1))
-				__n14.Set__depth((c.__prop___depth + 1))
+			var __n18 *Tree__slot3Instance
+			if len(c.__inst4_live) > __inst4_i {
+				__n18 = c.__inst4_live[__inst4_i]
+				__n18.SetD((c.__prop_d - 1))
+				__n18.Set__depth((c.__prop___depth + 1))
 			} else {
-				if len(c.__inst2_live) > __inst2_i {
-					c.__inst2_live[__inst2_i].Destroy()
+				if len(c.__inst4_live) > __inst4_i {
+					c.__inst4_live[__inst4_i].Destroy()
 				}
-				__n14__new := newTree__slot2Instance(c.__model, (c.__prop_d - 1), (c.__prop___depth + 1))
-				__n14 = __n14__new
+				__n18__new := newTree__slot3Instance(c.__model, (c.__prop_d - 1), (c.__prop___depth + 1))
+				__n18 = __n18__new
 			}
-			__inst2_next = append(__inst2_next, __n14)
-			__inst2_i = (__inst2_i + 1)
-			__n14__el := __n14.Root
-			fynelayout.InsertBefore(__parent, c.__slot2_at, __n14__el)
-			c.__slot2 = append(c.__slot2, __n14__el)
+			__inst4_next = append(__inst4_next, __n18)
+			__inst4_i = (__inst4_i + 1)
+			__n18__el := __n18.Root
+			fynelayout.InsertBefore(__parent, c.__slot4_at, __n18__el)
+			c.__slot4 = append(c.__slot4, __n18__el)
 		}
 	}
-	for __inst2_i_d, _ := range c.__inst2_live {
-		var __inst2_i_j int = ((len(c.__inst2_live) - 1) - __inst2_i_d)
-		if __inst2_i_j >= __inst2_i {
-			c.__inst2_live[__inst2_i_j].Destroy()
+	for __inst4_i_d, _ := range c.__inst4_live {
+		var __inst4_i_j int = ((len(c.__inst4_live) - 1) - __inst4_i_d)
+		if __inst4_i_j >= __inst4_i {
+			c.__inst4_live[__inst4_i_j].Destroy()
 		}
 	}
-	c.__inst2_live = __inst2_next
+	c.__inst4_live = __inst4_next
 }
 
 func (c *Tree__slot0Instance) Destroy() {
-	for __inst2_live_di, _ := range c.__inst2_live {
-		var __inst2_live_dj int = ((len(c.__inst2_live) - 1) - __inst2_live_di)
-		c.__inst2_live[__inst2_live_dj].Destroy()
+	for __inst4_live_di, _ := range c.__inst4_live {
+		var __inst4_live_dj int = ((len(c.__inst4_live) - 1) - __inst4_live_di)
+		c.__inst4_live[__inst4_live_dj].Destroy()
 	}
-	c.__inst2_live = []*Tree__slot2Instance{}
+	c.__inst4_live = []*Tree__slot3Instance{}
 }
 
 // InnerInstance is one live instance of the inner component.
@@ -1070,8 +1315,12 @@ type InnerInstance struct {
 	__slot4_at             fyne.CanvasObject
 	__slot5                []fyne.CanvasObject
 	__slot5_at             fyne.CanvasObject
-	__n3                   *widget.Label
-	__n4                   *widget.Button
+	__slot6                []fyne.CanvasObject
+	__slot6_at             fyne.CanvasObject
+	__slot7                []fyne.CanvasObject
+	__slot7_at             fyne.CanvasObject
+	__n5                   *widget.Label
+	__n6                   *widget.Button
 }
 
 func newInnerInstance(__model *Model, __a___empty_content bool) *InnerInstance {
@@ -1086,39 +1335,41 @@ func newInnerInstance(__model *Model, __a___empty_content bool) *InnerInstance {
 	c.__slot3 = nil
 	c.__slot4 = nil
 	c.__slot5 = nil
-	var __lt8 string
+	c.__slot6 = nil
+	c.__slot7 = nil
+	var __lt12 string
 	if c.__prop___empty_content {
-		__lt8 = "empty"
+		__lt12 = "empty"
 	} else {
-		__lt8 = "has"
+		__lt12 = "has"
 	}
-	c.__n3 = widget.NewLabel("")
-	c.__n3.SetText(__lt8)
-	c.__n4 = widget.NewButton("", nil)
-	c.__n4.SetText(fmt.Sprint(c.n))
-	c.__n4.OnTapped = func() {
+	c.__n5 = widget.NewLabel("")
+	c.__n5.SetText(__lt12)
+	c.__n6 = widget.NewButton("", nil)
+	c.__n6.SetText(fmt.Sprint(c.n))
+	c.__n6.OnTapped = func() {
 		c.n = (c.n + 1)
-		c.__n4.SetText(fmt.Sprint(c.n))
+		c.__n6.SetText(fmt.Sprint(c.n))
 	}
-	c.Root = container.NewVBox(c.__n3, c.__n4)
+	c.Root = container.NewVBox(c.__n5, c.__n6)
 	return c
 }
 
 func (c *InnerInstance) Set__empty_content(__v bool) {
 	c.__prop___empty_content = __v
-	var __lt7 string
+	var __lt11 string
 	if c.__prop___empty_content {
-		__lt7 = "empty"
+		__lt11 = "empty"
 	} else {
-		__lt7 = "has"
+		__lt11 = "has"
 	}
-	c.__n3.SetText(__lt7)
+	c.__n5.SetText(__lt11)
 }
 
 func (c *InnerInstance) Destroy() {}
 
-// Inner__slot3Instance is one live instance of the inner__slot3 component.
-type Inner__slot3Instance struct {
+// Inner__slot4Instance is one live instance of the inner__slot4 component.
+type Inner__slot4Instance struct {
 	Root        fyne.CanvasObject
 	__model     *Model
 	__prop___p0 int
@@ -1136,12 +1387,16 @@ type Inner__slot3Instance struct {
 	__slot4_at  fyne.CanvasObject
 	__slot5     []fyne.CanvasObject
 	__slot5_at  fyne.CanvasObject
-	__n5        *widget.Button
-	__n6        *widget.Label
+	__slot6     []fyne.CanvasObject
+	__slot6_at  fyne.CanvasObject
+	__slot7     []fyne.CanvasObject
+	__slot7_at  fyne.CanvasObject
+	__n7        *widget.Button
+	__n8        *widget.Label
 }
 
-func newInner__slot3Instance(__model *Model, __a___p0 int) *Inner__slot3Instance {
-	c := &Inner__slot3Instance{}
+func newInner__slot4Instance(__model *Model, __a___p0 int) *Inner__slot4Instance {
+	c := &Inner__slot4Instance{}
 	c.__model = __model
 	c.__prop___p0 = __a___p0
 	c.n = 0
@@ -1152,27 +1407,29 @@ func newInner__slot3Instance(__model *Model, __a___p0 int) *Inner__slot3Instance
 	c.__slot3 = nil
 	c.__slot4 = nil
 	c.__slot5 = nil
-	__lt9 := "has"
-	__n19 := widget.NewLabel("")
-	__n19.SetText(__lt9)
-	c.__n5 = widget.NewButton("", nil)
-	c.__n5.SetText(fmt.Sprint(c.n))
-	c.__n5.OnTapped = func() {
+	c.__slot6 = nil
+	c.__slot7 = nil
+	__lt13 := "has"
+	__n23 := widget.NewLabel("")
+	__n23.SetText(__lt13)
+	c.__n7 = widget.NewButton("", nil)
+	c.__n7.SetText(fmt.Sprint(c.n))
+	c.__n7.OnTapped = func() {
 		c.n = (c.n + 1)
-		c.__n5.SetText(fmt.Sprint(c.n))
+		c.__n7.SetText(fmt.Sprint(c.n))
 	}
-	c.__n6 = widget.NewLabel("")
-	c.__n6.SetText(("a" + fmt.Sprint(c.__prop___p0)))
-	c.Root = container.NewVBox(__n19, c.__n5, c.__n6)
+	c.__n8 = widget.NewLabel("")
+	c.__n8.SetText(("a" + fmt.Sprint(c.__prop___p0)))
+	c.Root = container.NewVBox(__n23, c.__n7, c.__n8)
 	return c
 }
 
-func (c *Inner__slot3Instance) Set__p0(__v int) {
+func (c *Inner__slot4Instance) Set__p0(__v int) {
 	c.__prop___p0 = __v
-	c.__n6.SetText(("a" + fmt.Sprint(c.__prop___p0)))
+	c.__n8.SetText(("a" + fmt.Sprint(c.__prop___p0)))
 }
 
-func (c *Inner__slot3Instance) Destroy() {}
+func (c *Inner__slot4Instance) Destroy() {}
 
 // OuterInstance is one live instance of the outer component.
 type OuterInstance struct {
@@ -1188,12 +1445,16 @@ type OuterInstance struct {
 	__slot2_at   fyne.CanvasObject
 	__slot3      []fyne.CanvasObject
 	__slot3_at   fyne.CanvasObject
-	__inst3_live []*InnerInstance
 	__slot4      []fyne.CanvasObject
 	__slot4_at   fyne.CanvasObject
 	__slot5      []fyne.CanvasObject
 	__slot5_at   fyne.CanvasObject
-	__n7         *widget.Button
+	__inst5_live []*InnerInstance
+	__slot6      []fyne.CanvasObject
+	__slot6_at   fyne.CanvasObject
+	__slot7      []fyne.CanvasObject
+	__slot7_at   fyne.CanvasObject
+	__n9         *widget.Button
 }
 
 func newOuterInstance(__model *Model) *OuterInstance {
@@ -1205,62 +1466,64 @@ func newOuterInstance(__model *Model) *OuterInstance {
 	c.__slot1 = nil
 	c.__slot2 = nil
 	c.__slot3 = nil
-	c.__inst3_live = []*InnerInstance{}
 	c.__slot4 = nil
 	c.__slot5 = nil
-	c.__n7 = widget.NewButton("", nil)
-	c.__n7.SetText(fmt.Sprint(c.m__r0))
-	c.__n7.OnTapped = func() {
+	c.__inst5_live = []*InnerInstance{}
+	c.__slot6 = nil
+	c.__slot7 = nil
+	c.__n9 = widget.NewButton("", nil)
+	c.__n9.SetText(fmt.Sprint(c.m__r0))
+	c.__n9.OnTapped = func() {
 		c.m__r0 = (c.m__r0 + 1)
-		c.__n7.SetText(fmt.Sprint(c.m__r0))
+		c.__n9.SetText(fmt.Sprint(c.m__r0))
 	}
-	c.__root.Add(c.__n7)
-	c.__renderSlot3(c.__root)
+	c.__root.Add(c.__n9)
+	c.__renderSlot5(c.__root)
 	c.Root = c.__root
 	return c
 }
 
-func (c *OuterInstance) __renderSlot3(__parent *fyne.Container) {
-	for _, __entry := range c.__slot3 {
+func (c *OuterInstance) __renderSlot5(__parent *fyne.Container) {
+	for _, __entry := range c.__slot5 {
 		fynelayout.Remove(__parent, __entry)
 	}
-	c.__slot3 = nil
-	c.__slot3_at = fynelayout.SlotAnchor(__parent, c.__slot3_at)
-	__inst3_next := []*InnerInstance{}
-	var __inst3_i int = 0
+	c.__slot5 = nil
+	c.__slot5_at = fynelayout.SlotAnchor(__parent, c.__slot5_at)
+	__inst5_next := []*InnerInstance{}
+	var __inst5_i int = 0
 	for range []int{1} {
-		var __n15 *InnerInstance
-		if len(c.__inst3_live) > __inst3_i {
-			__n15 = c.__inst3_live[__inst3_i]
-			__n15.Set__empty_content(true)
+		var __n19 *InnerInstance
+		if len(c.__inst5_live) > __inst5_i {
+			__n19 = c.__inst5_live[__inst5_i]
+			__n19.Set__empty_content(true)
 		} else {
-			if len(c.__inst3_live) > __inst3_i {
-				c.__inst3_live[__inst3_i].Destroy()
+			if len(c.__inst5_live) > __inst5_i {
+				c.__inst5_live[__inst5_i].Destroy()
 			}
-			__n15__new := newInnerInstance(c.__model, true)
-			__n15 = __n15__new
+			__n19__new := newInnerInstance(c.__model, true)
+			__n19 = __n19__new
 		}
-		__inst3_next = append(__inst3_next, __n15)
-		__inst3_i = (__inst3_i + 1)
-		__n15__el := __n15.Root
-		fynelayout.InsertBefore(__parent, c.__slot3_at, __n15__el)
-		c.__slot3 = append(c.__slot3, __n15__el)
+		__inst5_next = append(__inst5_next, __n19)
+		__inst5_i = (__inst5_i + 1)
+		__n19__el := __n19.Root
+		fynelayout.InsertBefore(__parent, c.__slot5_at, __n19__el)
+		c.__slot5 = append(c.__slot5, __n19__el)
 	}
-	for __inst3_i_d, _ := range c.__inst3_live {
-		var __inst3_i_j int = ((len(c.__inst3_live) - 1) - __inst3_i_d)
-		if __inst3_i_j >= __inst3_i {
-			c.__inst3_live[__inst3_i_j].Destroy()
+	for __inst5_i_d, _ := range c.__inst5_live {
+		var __inst5_i_j int = ((len(c.__inst5_live) - 1) - __inst5_i_d)
+		if __inst5_i_j >= __inst5_i {
+			c.__inst5_live[__inst5_i_j].Destroy()
 		}
 	}
-	c.__inst3_live = __inst3_next
+	c.__inst5_live = __inst5_next
 }
 
 func (c *OuterInstance) Destroy() {
-	for __inst3_live_di, _ := range c.__inst3_live {
-		var __inst3_live_dj int = ((len(c.__inst3_live) - 1) - __inst3_live_di)
-		c.__inst3_live[__inst3_live_dj].Destroy()
+	for __inst5_live_di, _ := range c.__inst5_live {
+		var __inst5_live_dj int = ((len(c.__inst5_live) - 1) - __inst5_live_di)
+		c.__inst5_live[__inst5_live_dj].Destroy()
 	}
-	c.__inst3_live = []*InnerInstance{}
+	c.__inst5_live = []*InnerInstance{}
 }
 
 // Outer__slot1Instance is one live instance of the outer__slot1 component.
@@ -1280,10 +1543,14 @@ type Outer__slot1Instance struct {
 	__slot3_at   fyne.CanvasObject
 	__slot4      []fyne.CanvasObject
 	__slot4_at   fyne.CanvasObject
-	__inst4_live []*Inner__slot3Instance
 	__slot5      []fyne.CanvasObject
 	__slot5_at   fyne.CanvasObject
-	__n8         *widget.Button
+	__slot6      []fyne.CanvasObject
+	__slot6_at   fyne.CanvasObject
+	__inst6_live []*Inner__slot4Instance
+	__slot7      []fyne.CanvasObject
+	__slot7_at   fyne.CanvasObject
+	__n10        *widget.Button
 }
 
 func newOuter__slot1Instance(__model *Model, __a___p0 int) *Outer__slot1Instance {
@@ -1297,68 +1564,70 @@ func newOuter__slot1Instance(__model *Model, __a___p0 int) *Outer__slot1Instance
 	c.__slot2 = nil
 	c.__slot3 = nil
 	c.__slot4 = nil
-	c.__inst4_live = []*Inner__slot3Instance{}
 	c.__slot5 = nil
-	c.__n8 = widget.NewButton("", nil)
-	c.__n8.SetText(fmt.Sprint(c.m__r1))
-	c.__n8.OnTapped = func() {
+	c.__slot6 = nil
+	c.__inst6_live = []*Inner__slot4Instance{}
+	c.__slot7 = nil
+	c.__n10 = widget.NewButton("", nil)
+	c.__n10.SetText(fmt.Sprint(c.m__r1))
+	c.__n10.OnTapped = func() {
 		c.m__r1 = (c.m__r1 + 1)
-		c.__n8.SetText(fmt.Sprint(c.m__r1))
+		c.__n10.SetText(fmt.Sprint(c.m__r1))
 	}
-	c.__root.Add(c.__n8)
-	c.__renderSlot4(c.__root)
+	c.__root.Add(c.__n10)
+	c.__renderSlot6(c.__root)
 	c.Root = c.__root
 	return c
 }
 
 func (c *Outer__slot1Instance) Set__p0(__v int) {
 	c.__prop___p0 = __v
-	for __inst4_live_ui, _ := range c.__inst4_live {
-		c.__inst4_live[__inst4_live_ui].Set__p0(c.__prop___p0)
+	for __inst6_live_ui, _ := range c.__inst6_live {
+		c.__inst6_live[__inst6_live_ui].Set__p0(c.__prop___p0)
 	}
 }
 
-func (c *Outer__slot1Instance) __renderSlot4(__parent *fyne.Container) {
-	for _, __entry := range c.__slot4 {
+func (c *Outer__slot1Instance) __renderSlot6(__parent *fyne.Container) {
+	for _, __entry := range c.__slot6 {
 		fynelayout.Remove(__parent, __entry)
 	}
-	c.__slot4 = nil
-	c.__slot4_at = fynelayout.SlotAnchor(__parent, c.__slot4_at)
-	__inst4_next := []*Inner__slot3Instance{}
-	var __inst4_i int = 0
+	c.__slot6 = nil
+	c.__slot6_at = fynelayout.SlotAnchor(__parent, c.__slot6_at)
+	__inst6_next := []*Inner__slot4Instance{}
+	var __inst6_i int = 0
 	for range []int{1} {
-		var __n16 *Inner__slot3Instance
-		if len(c.__inst4_live) > __inst4_i {
-			__n16 = c.__inst4_live[__inst4_i]
-			__n16.Set__p0(c.__prop___p0)
+		var __n20 *Inner__slot4Instance
+		if len(c.__inst6_live) > __inst6_i {
+			__n20 = c.__inst6_live[__inst6_i]
+			__n20.Set__p0(c.__prop___p0)
 		} else {
-			if len(c.__inst4_live) > __inst4_i {
-				c.__inst4_live[__inst4_i].Destroy()
+			if len(c.__inst6_live) > __inst6_i {
+				c.__inst6_live[__inst6_i].Destroy()
 			}
-			__n16__new := newInner__slot3Instance(c.__model, c.__prop___p0)
-			__n16 = __n16__new
+			__n20__new := newInner__slot4Instance(c.__model, c.__prop___p0)
+			__n20 = __n20__new
 		}
-		__inst4_next = append(__inst4_next, __n16)
-		__inst4_i = (__inst4_i + 1)
-		__n16__el := __n16.Root
-		fynelayout.InsertBefore(__parent, c.__slot4_at, __n16__el)
-		c.__slot4 = append(c.__slot4, __n16__el)
+		__inst6_next = append(__inst6_next, __n20)
+		__inst6_i = (__inst6_i + 1)
+		__n20__el := __n20.Root
+		fynelayout.InsertBefore(__parent, c.__slot6_at, __n20__el)
+		c.__slot6 = append(c.__slot6, __n20__el)
 	}
-	for __inst4_i_d, _ := range c.__inst4_live {
-		var __inst4_i_j int = ((len(c.__inst4_live) - 1) - __inst4_i_d)
-		if __inst4_i_j >= __inst4_i {
-			c.__inst4_live[__inst4_i_j].Destroy()
+	for __inst6_i_d, _ := range c.__inst6_live {
+		var __inst6_i_j int = ((len(c.__inst6_live) - 1) - __inst6_i_d)
+		if __inst6_i_j >= __inst6_i {
+			c.__inst6_live[__inst6_i_j].Destroy()
 		}
 	}
-	c.__inst4_live = __inst4_next
+	c.__inst6_live = __inst6_next
 }
 
 func (c *Outer__slot1Instance) Destroy() {
-	for __inst4_live_di, _ := range c.__inst4_live {
-		var __inst4_live_dj int = ((len(c.__inst4_live) - 1) - __inst4_live_di)
-		c.__inst4_live[__inst4_live_dj].Destroy()
+	for __inst6_live_di, _ := range c.__inst6_live {
+		var __inst6_live_dj int = ((len(c.__inst6_live) - 1) - __inst6_live_di)
+		c.__inst6_live[__inst6_live_dj].Destroy()
 	}
-	c.__inst4_live = []*Inner__slot3Instance{}
+	c.__inst6_live = []*Inner__slot4Instance{}
 }
 
 func main() {
@@ -1414,13 +1683,13 @@ fun MainScreen() {
             }
         }
         Column {
-            Tree(d = n__inst0, __depth = 0, __empty_content = false, slotContent = {
+            Tree(d = n__inst0, __depth = 0, __empty_content = false, content = {
                 Text(text = "x", modifier = Modifier)
             })
             Tree(d = n__inst0, __depth = 0, __empty_content = true)
             for (x in xs__inst0) {
                 Outer(__empty_content = true)
-                Outer(__empty_content = false, slotContent = {
+                Outer(__empty_content = false, content = {
                     Text(text = ("a" + x.toString()), modifier = Modifier)
                 })
             }
@@ -1429,13 +1698,13 @@ fun MainScreen() {
 }
 
 @Composable
-fun Tree(d: Int = 0, __depth: Int = 0, __empty_content: Boolean = true, slotContent: (@Composable () -> Unit)? = null) {
+fun Tree(d: Int = 0, __depth: Int = 0, __empty_content: Boolean = true, content: (@Composable () -> Unit)? = null) {
     Text(text = (if (__empty_content) ("empty " + d.toString()) else ("full " + d.toString())), modifier = Modifier)
     if ((d > 0)) {
         if ((__depth >= 512)) {
         } else {
-            Tree(d = (d - 1), __depth = (__depth + 1), __empty_content = __empty_content, slotContent = {
-                slotContent?.invoke()
+            Tree(d = (d - 1), __depth = (__depth + 1), __empty_content = __empty_content, content = {
+                content?.invoke()
             })
         }
     }
@@ -1455,7 +1724,7 @@ fun Inner(__empty_content: Boolean = true, slotContent: (@Composable () -> Unit)
 }
 
 @Composable
-fun Outer(__empty_content: Boolean = true, slotContent: (@Composable () -> Unit)? = null) {
+fun Outer(__empty_content: Boolean = true, content: (@Composable () -> Unit)? = null) {
     var m by remember { mutableStateOf(0) }
 
     Button(onClick = {
@@ -1465,7 +1734,7 @@ fun Outer(__empty_content: Boolean = true, slotContent: (@Composable () -> Unit)
     }
     for (y in listOf(1)) {
         Inner(__empty_content = __empty_content, slotContent = {
-            slotContent?.invoke()
+            content?.invoke()
         })
     }
 }
@@ -1482,9 +1751,9 @@ body { font-family: system-ui, sans-serif; }
   </style>
 </head><body>
 
-<span data-sngl-inst="__n10" style="display:contents"></span>
-<span data-sngl-inst="__n11" style="display:contents"></span>
-<span data-sngl-slot="5" style="display:contents"></span>
+<span data-sngl-inst="__n12" style="display:contents"></span>
+<span data-sngl-inst="__n13" style="display:contents"></span>
+<span data-sngl-slot="7" style="display:contents"></span>
 
 <script>
 (() => {
@@ -1505,7 +1774,9 @@ body { font-family: system-ui, sans-serif; }
     let __slot2 = [];
     let __slot3 = [];
     let __slot4 = [];
-    let __slot52 = [];
+    let __slot5 = [];
+    let __slot6 = [];
+    let __slot72 = [];
     function __set_d(__v) {
       __prop_d = __v;
       __n0.textContent = __prop___empty_content ? "empty " + String(__prop_d) : "full " + String(__prop_d);
@@ -1529,32 +1800,31 @@ body { font-family: system-ui, sans-serif; }
         if (__prop___depth >= 512) {
           throw Object.assign(new Error("tree: recursion exceeded 512 nested instances"), { kind: "recursion" });
         } else {
-          let __n12 = null;
+          let __n14 = null;
           if (__inst1_live.length > __inst1_i) {
-            __n12 = __inst1_live[__inst1_i];
-            __n12.__set_d(__prop_d - 1);
-            __n12.__set___depth(__prop___depth + 1);
-            __n12.__set___empty_content(true);
+            __n14 = __inst1_live[__inst1_i];
+            __n14.__set_d(__prop_d - 1);
+            __n14.__set___depth(__prop___depth + 1);
           } else {
             if (__inst1_live.length > __inst1_i) {
               __inst1_live[__inst1_i].__destroy();
             }
-            let __n12__new = __cf_tree({ d: __prop_d - 1, __depth: __prop___depth + 1, __empty_content: true });
-            __n12 = __n12__new;
+            let __n14__new = __cf_tree__slot2({ d: __prop_d - 1, __depth: __prop___depth + 1 });
+            __n14 = __n14__new;
           }
-          __inst1_next.push(__n12);
+          __inst1_next.push(__n14);
           __inst1_i = __inst1_i + 1;
-          let __n12__el = __n12.__root;
+          let __n14__el = __n14.__root;
           let __place0_i_ref0 = null;
           if (__place0_i < __place0_prev.length) {
             __place0_i_ref0 = __place0_prev[__place0_i];
           }
-          if (__place0_i_ref0 === __n12__el) {
+          if (__place0_i_ref0 === __n14__el) {
             __place0_i = __place0_i + 1;
           } else {
-            parent.insertBefore(__n12__el, __place0_i_ref0);
+            parent.insertBefore(__n14__el, __place0_i_ref0);
           }
-          __slot0.push(__n12__el);
+          __slot0.push(__n14__el);
         }
       }
       for (const [__inst1_i_d, _] of __inst1_live.entries()) {
@@ -1594,7 +1864,7 @@ body { font-family: system-ui, sans-serif; }
       __set___empty_content
     };
   }
-  function __cf_tree__slot2(props) {
+  function __cf_tree__slot5(props) {
     const __root = document.createElement("div");
     __root.style.display = "contents";
     let d = props.d ?? 0;
@@ -1607,10 +1877,12 @@ body { font-family: system-ui, sans-serif; }
     let __slot2 = [];
     let __slot3 = [];
     let __slot4 = [];
-    let __slot52 = [];
+    let __slot5 = [];
+    let __slot6 = [];
+    let __slot72 = [];
     function __set_d(__v) {
       __prop_d = __v;
-      __n1.textContent = "full " + String(__prop_d);
+      __n1.textContent = "empty " + String(__prop_d);
       __renderSlot1(__slotAnchor_1);
     }
     function __set___depth(__v) {
@@ -1627,31 +1899,31 @@ body { font-family: system-ui, sans-serif; }
         if (__prop___depth >= 512) {
           throw Object.assign(new Error("tree: recursion exceeded 512 nested instances"), { kind: "recursion" });
         } else {
-          let __n13 = null;
+          let __n15 = null;
           if (__inst3_live.length > __inst3_i) {
-            __n13 = __inst3_live[__inst3_i];
-            __n13.__set_d(__prop_d - 1);
-            __n13.__set___depth(__prop___depth + 1);
+            __n15 = __inst3_live[__inst3_i];
+            __n15.__set_d(__prop_d - 1);
+            __n15.__set___depth(__prop___depth + 1);
           } else {
             if (__inst3_live.length > __inst3_i) {
               __inst3_live[__inst3_i].__destroy();
             }
-            let __n13__new = __cf_tree__slot2({ d: __prop_d - 1, __depth: __prop___depth + 1 });
-            __n13 = __n13__new;
+            let __n15__new = __cf_tree__slot5({ d: __prop_d - 1, __depth: __prop___depth + 1 });
+            __n15 = __n15__new;
           }
-          __inst3_next.push(__n13);
+          __inst3_next.push(__n15);
           __inst3_i = __inst3_i + 1;
-          let __n13__el = __n13.__root;
+          let __n15__el = __n15.__root;
           let __place2_i_ref0 = null;
           if (__place2_i < __place2_prev.length) {
             __place2_i_ref0 = __place2_prev[__place2_i];
           }
-          if (__place2_i_ref0 === __n13__el) {
+          if (__place2_i_ref0 === __n15__el) {
             __place2_i = __place2_i + 1;
           } else {
-            parent.insertBefore(__n13__el, __place2_i_ref0);
+            parent.insertBefore(__n15__el, __place2_i_ref0);
           }
-          __slot1.push(__n13__el);
+          __slot1.push(__n15__el);
         }
       }
       for (const [__inst3_i_d, _] of __inst3_live.entries()) {
@@ -1675,7 +1947,7 @@ body { font-family: system-ui, sans-serif; }
       __inst3_live = [];
     }
     let __n1 = document.createElement("span");
-    __n1.textContent = "full " + String(__prop_d);
+    __n1.textContent = "empty " + String(__prop_d);
     const __slotAnchor_1 = document.createElement("span");
     __slotAnchor_1.style.display = "contents";
     __renderSlot1(__slotAnchor_1);
@@ -1690,7 +1962,7 @@ body { font-family: system-ui, sans-serif; }
       __set___depth
     };
   }
-  function __cf_tree__slot0(props) {
+  function __cf_tree__slot3(props) {
     const __root = document.createElement("div");
     __root.style.display = "contents";
     let d = props.d ?? 0;
@@ -1703,7 +1975,9 @@ body { font-family: system-ui, sans-serif; }
     let __inst5_live = [];
     let __slot3 = [];
     let __slot4 = [];
-    let __slot52 = [];
+    let __slot5 = [];
+    let __slot6 = [];
+    let __slot72 = [];
     function __set_d(__v) {
       __prop_d = __v;
       __n2.textContent = "full " + String(__prop_d);
@@ -1723,31 +1997,31 @@ body { font-family: system-ui, sans-serif; }
         if (__prop___depth >= 512) {
           throw Object.assign(new Error("tree: recursion exceeded 512 nested instances"), { kind: "recursion" });
         } else {
-          let __n14 = null;
+          let __n16 = null;
           if (__inst5_live.length > __inst5_i) {
-            __n14 = __inst5_live[__inst5_i];
-            __n14.__set_d(__prop_d - 1);
-            __n14.__set___depth(__prop___depth + 1);
+            __n16 = __inst5_live[__inst5_i];
+            __n16.__set_d(__prop_d - 1);
+            __n16.__set___depth(__prop___depth + 1);
           } else {
             if (__inst5_live.length > __inst5_i) {
               __inst5_live[__inst5_i].__destroy();
             }
-            let __n14__new = __cf_tree__slot2({ d: __prop_d - 1, __depth: __prop___depth + 1 });
-            __n14 = __n14__new;
+            let __n16__new = __cf_tree__slot3({ d: __prop_d - 1, __depth: __prop___depth + 1 });
+            __n16 = __n16__new;
           }
-          __inst5_next.push(__n14);
+          __inst5_next.push(__n16);
           __inst5_i = __inst5_i + 1;
-          let __n14__el = __n14.__root;
+          let __n16__el = __n16.__root;
           let __place4_i_ref0 = null;
           if (__place4_i < __place4_prev.length) {
             __place4_i_ref0 = __place4_prev[__place4_i];
           }
-          if (__place4_i_ref0 === __n14__el) {
+          if (__place4_i_ref0 === __n16__el) {
             __place4_i = __place4_i + 1;
           } else {
-            parent.insertBefore(__n14__el, __place4_i_ref0);
+            parent.insertBefore(__n16__el, __place4_i_ref0);
           }
-          __slot2.push(__n14__el);
+          __slot2.push(__n16__el);
         }
       }
       for (const [__inst5_i_d, _] of __inst5_live.entries()) {
@@ -1786,127 +2060,67 @@ body { font-family: system-ui, sans-serif; }
       __set___depth
     };
   }
-  function __cf_inner(props) {
+  function __cf_tree__slot2(props) {
     const __root = document.createElement("div");
     __root.style.display = "contents";
-    let __empty_content = props.__empty_content ?? true;
-    let __prop___empty_content = __empty_content;
-    let n = 0;
-    let __slot0 = [];
-    let __slot1 = [];
-    let __slot2 = [];
-    let __slot3 = [];
-    let __slot4 = [];
-    let __slot52 = [];
-    function __set___empty_content(__v) {
-      __prop___empty_content = __v;
-      __n3.textContent = __prop___empty_content ? "empty" : "has";
-    }
-    let __n3 = document.createElement("span");
-    __n3.textContent = __prop___empty_content ? "empty" : "has";
-    let __n19 = document.createElement("button");
-    __n19.disabled = false;
-    __n19.addEventListener("click", () => {
-      n = n + 1;
-      __n4.textContent = String(n);
-    });
-    __n19.addEventListener("contextmenu", () => {
-    });
-    let __n4 = document.createElement("span");
-    __n4.textContent = String(n);
-    __n19.appendChild(__n4);
-    __root.appendChild(__n3);
-    __root.appendChild(__n19);
-    return {
-      __root,
-      __destroy() {
-      },
-      __set___empty_content
-    };
-  }
-  function __cf_inner__slot3(props) {
-    const __root = document.createElement("div");
-    __root.style.display = "contents";
-    let __p0 = props.__p0;
-    let __prop___p0 = __p0;
-    let n = 0;
-    let __slot0 = [];
-    let __slot1 = [];
-    let __slot2 = [];
-    let __slot3 = [];
-    let __slot4 = [];
-    let __slot52 = [];
-    function __set___p0(__v) {
-      __prop___p0 = __v;
-      __n6.textContent = "a" + String(__prop___p0);
-    }
-    let __n20 = document.createElement("span");
-    __n20.textContent = "has";
-    let __n21 = document.createElement("button");
-    __n21.disabled = false;
-    __n21.addEventListener("click", () => {
-      n = n + 1;
-      __n5.textContent = String(n);
-    });
-    __n21.addEventListener("contextmenu", () => {
-    });
-    let __n5 = document.createElement("span");
-    __n5.textContent = String(n);
-    __n21.appendChild(__n5);
-    let __n6 = document.createElement("span");
-    __n6.textContent = "a" + String(__prop___p0);
-    __root.appendChild(__n20);
-    __root.appendChild(__n21);
-    __root.appendChild(__n6);
-    return {
-      __root,
-      __destroy() {
-      },
-      __set___p0
-    };
-  }
-  function __cf_outer(props) {
-    const __root = document.createElement("div");
-    __root.style.display = "contents";
-    let m = 0;
+    let d = props.d ?? 0;
+    let __depth = props.__depth ?? 0;
+    let __prop_d = d;
+    let __prop___depth = __depth;
     let __slot0 = [];
     let __slot1 = [];
     let __slot2 = [];
     let __slot3 = [];
     let __inst7_live = [];
     let __slot4 = [];
-    let __slot52 = [];
+    let __slot5 = [];
+    let __slot6 = [];
+    let __slot72 = [];
+    function __set_d(__v) {
+      __prop_d = __v;
+      __n3.textContent = "empty " + String(__prop_d);
+      __renderSlot3(__slotAnchor_3);
+    }
+    function __set___depth(__v) {
+      __prop___depth = __v;
+      __renderSlot3(__slotAnchor_3);
+    }
     function __renderSlot3(parent) {
       let __place6_prev = __slot3;
       let __place6_i = 0;
       __slot3 = [];
       let __inst7_next = [];
       let __inst7_i = 0;
-      for (const y of [1]) {
-        let __n15 = null;
-        if (__inst7_live.length > __inst7_i) {
-          __n15 = __inst7_live[__inst7_i];
-          __n15.__set___empty_content(true);
+      if (__prop_d > 0) {
+        if (__prop___depth >= 512) {
+          throw Object.assign(new Error("tree: recursion exceeded 512 nested instances"), { kind: "recursion" });
         } else {
+          let __n17 = null;
           if (__inst7_live.length > __inst7_i) {
-            __inst7_live[__inst7_i].__destroy();
+            __n17 = __inst7_live[__inst7_i];
+            __n17.__set_d(__prop_d - 1);
+            __n17.__set___depth(__prop___depth + 1);
+          } else {
+            if (__inst7_live.length > __inst7_i) {
+              __inst7_live[__inst7_i].__destroy();
+            }
+            let __n17__new = __cf_tree__slot5({ d: __prop_d - 1, __depth: __prop___depth + 1 });
+            __n17 = __n17__new;
           }
-          let __n15__new = __cf_inner({ __empty_content: true });
-          __n15 = __n15__new;
+          __inst7_next.push(__n17);
+          __inst7_i = __inst7_i + 1;
+          let __n17__el = __n17.__root;
+          let __place6_i_ref0 = null;
+          if (__place6_i < __place6_prev.length) {
+            __place6_i_ref0 = __place6_prev[__place6_i];
+          }
+          if (__place6_i_ref0 === __n17__el) {
+            __place6_i = __place6_i + 1;
+          } else {
+            parent.insertBefore(__n17__el, __place6_i_ref0);
+          }
+          __slot3.push(__n17__el);
         }
-        __inst7_next.push(__n15);
-        __inst7_i = __inst7_i + 1;
-        let __n15__el = __n15.__root;
-        let __place6_i_ref0 = null;
-        if (__place6_i < __place6_prev.length) {
-          __place6_i_ref0 = __place6_prev[__place6_i];
-        }
-        if (__place6_i_ref0 === __n15__el) {
-          __place6_i = __place6_i + 1;
-        } else {
-          parent.insertBefore(__n15__el, __place6_i_ref0);
-        }
-        __slot3.push(__n15__el);
       }
       for (const [__inst7_i_d, _] of __inst7_live.entries()) {
         let __inst7_i_j = __inst7_live.length - 1 - __inst7_i_d;
@@ -1928,47 +2142,46 @@ body { font-family: system-ui, sans-serif; }
       }
       __inst7_live = [];
     }
-    let __n22 = document.createElement("button");
-    __n22.disabled = false;
-    __n22.addEventListener("click", () => {
-      m = m + 1;
-      __n7.textContent = String(m);
-    });
-    __n22.addEventListener("contextmenu", () => {
-    });
-    let __n7 = document.createElement("span");
-    __n7.textContent = String(m);
-    __n22.appendChild(__n7);
+    let __n3 = document.createElement("span");
+    __n3.textContent = "empty " + String(__prop_d);
     const __slotAnchor_3 = document.createElement("span");
     __slotAnchor_3.style.display = "contents";
     __renderSlot3(__slotAnchor_3);
-    __root.appendChild(__n22);
+    __root.appendChild(__n3);
     __root.appendChild(__slotAnchor_3);
     return {
       __root,
       __destroy() {
         __snglTeardown();
-      }
+      },
+      __set_d,
+      __set___depth
     };
   }
-  function __cf_outer__slot1(props) {
+  function __cf_tree__slot0(props) {
     const __root = document.createElement("div");
     __root.style.display = "contents";
-    let __p0 = props.__p0;
-    let __prop___p0 = __p0;
-    let m = 0;
+    let d = props.d ?? 0;
+    let __depth = props.__depth ?? 0;
+    let __prop_d = d;
+    let __prop___depth = __depth;
     let __slot0 = [];
     let __slot1 = [];
     let __slot2 = [];
     let __slot3 = [];
     let __slot4 = [];
     let __inst9_live = [];
-    let __slot52 = [];
-    function __set___p0(__v) {
-      __prop___p0 = __v;
-      for (const [__inst9_live_ui, _] of __inst9_live.entries()) {
-        __inst9_live[__inst9_live_ui].__set___p0(__prop___p0);
-      }
+    let __slot5 = [];
+    let __slot6 = [];
+    let __slot72 = [];
+    function __set_d(__v) {
+      __prop_d = __v;
+      __n4.textContent = "full " + String(__prop_d);
+      __renderSlot4(__slotAnchor_4);
+    }
+    function __set___depth(__v) {
+      __prop___depth = __v;
+      __renderSlot4(__slotAnchor_4);
     }
     function __renderSlot4(parent) {
       let __place8_prev = __slot4;
@@ -1976,31 +2189,36 @@ body { font-family: system-ui, sans-serif; }
       __slot4 = [];
       let __inst9_next = [];
       let __inst9_i = 0;
-      for (const y of [1]) {
-        let __n16 = null;
-        if (__inst9_live.length > __inst9_i) {
-          __n16 = __inst9_live[__inst9_i];
-          __n16.__set___p0(__prop___p0);
+      if (__prop_d > 0) {
+        if (__prop___depth >= 512) {
+          throw Object.assign(new Error("tree: recursion exceeded 512 nested instances"), { kind: "recursion" });
         } else {
+          let __n18 = null;
           if (__inst9_live.length > __inst9_i) {
-            __inst9_live[__inst9_i].__destroy();
+            __n18 = __inst9_live[__inst9_i];
+            __n18.__set_d(__prop_d - 1);
+            __n18.__set___depth(__prop___depth + 1);
+          } else {
+            if (__inst9_live.length > __inst9_i) {
+              __inst9_live[__inst9_i].__destroy();
+            }
+            let __n18__new = __cf_tree__slot3({ d: __prop_d - 1, __depth: __prop___depth + 1 });
+            __n18 = __n18__new;
           }
-          let __n16__new = __cf_inner__slot3({ __p0: __prop___p0 });
-          __n16 = __n16__new;
+          __inst9_next.push(__n18);
+          __inst9_i = __inst9_i + 1;
+          let __n18__el = __n18.__root;
+          let __place8_i_ref0 = null;
+          if (__place8_i < __place8_prev.length) {
+            __place8_i_ref0 = __place8_prev[__place8_i];
+          }
+          if (__place8_i_ref0 === __n18__el) {
+            __place8_i = __place8_i + 1;
+          } else {
+            parent.insertBefore(__n18__el, __place8_i_ref0);
+          }
+          __slot4.push(__n18__el);
         }
-        __inst9_next.push(__n16);
-        __inst9_i = __inst9_i + 1;
-        let __n16__el = __n16.__root;
-        let __place8_i_ref0 = null;
-        if (__place8_i < __place8_prev.length) {
-          __place8_i_ref0 = __place8_prev[__place8_i];
-        }
-        if (__place8_i_ref0 === __n16__el) {
-          __place8_i = __place8_i + 1;
-        } else {
-          parent.insertBefore(__n16__el, __place8_i_ref0);
-        }
-        __slot4.push(__n16__el);
       }
       for (const [__inst9_i_d, _] of __inst9_live.entries()) {
         let __inst9_i_j = __inst9_live.length - 1 - __inst9_i_d;
@@ -2022,22 +2240,282 @@ body { font-family: system-ui, sans-serif; }
       }
       __inst9_live = [];
     }
-    let __n23 = document.createElement("button");
-    __n23.disabled = false;
-    __n23.addEventListener("click", () => {
-      m = m + 1;
-      __n8.textContent = String(m);
-    });
-    __n23.addEventListener("contextmenu", () => {
-    });
-    let __n8 = document.createElement("span");
-    __n8.textContent = String(m);
-    __n23.appendChild(__n8);
+    let __n4 = document.createElement("span");
+    __n4.textContent = "full " + String(__prop_d);
     const __slotAnchor_4 = document.createElement("span");
     __slotAnchor_4.style.display = "contents";
     __renderSlot4(__slotAnchor_4);
-    __root.appendChild(__n23);
+    __root.appendChild(__n4);
     __root.appendChild(__slotAnchor_4);
+    return {
+      __root,
+      __destroy() {
+        __snglTeardown();
+      },
+      __set_d,
+      __set___depth
+    };
+  }
+  function __cf_inner(props) {
+    const __root = document.createElement("div");
+    __root.style.display = "contents";
+    let __empty_content = props.__empty_content ?? true;
+    let __prop___empty_content = __empty_content;
+    let n = 0;
+    let __slot0 = [];
+    let __slot1 = [];
+    let __slot2 = [];
+    let __slot3 = [];
+    let __slot4 = [];
+    let __slot5 = [];
+    let __slot6 = [];
+    let __slot72 = [];
+    function __set___empty_content(__v) {
+      __prop___empty_content = __v;
+      __n5.textContent = __prop___empty_content ? "empty" : "has";
+    }
+    let __n5 = document.createElement("span");
+    __n5.textContent = __prop___empty_content ? "empty" : "has";
+    let __n23 = document.createElement("button");
+    __n23.disabled = false;
+    __n23.addEventListener("click", () => {
+      n = n + 1;
+      __n6.textContent = String(n);
+    });
+    __n23.addEventListener("contextmenu", () => {
+    });
+    let __n6 = document.createElement("span");
+    __n6.textContent = String(n);
+    __n23.appendChild(__n6);
+    __root.appendChild(__n5);
+    __root.appendChild(__n23);
+    return {
+      __root,
+      __destroy() {
+      },
+      __set___empty_content
+    };
+  }
+  function __cf_inner__slot4(props) {
+    const __root = document.createElement("div");
+    __root.style.display = "contents";
+    let __p0 = props.__p0;
+    let __prop___p0 = __p0;
+    let n = 0;
+    let __slot0 = [];
+    let __slot1 = [];
+    let __slot2 = [];
+    let __slot3 = [];
+    let __slot4 = [];
+    let __slot5 = [];
+    let __slot6 = [];
+    let __slot72 = [];
+    function __set___p0(__v) {
+      __prop___p0 = __v;
+      __n8.textContent = "a" + String(__prop___p0);
+    }
+    let __n24 = document.createElement("span");
+    __n24.textContent = "has";
+    let __n25 = document.createElement("button");
+    __n25.disabled = false;
+    __n25.addEventListener("click", () => {
+      n = n + 1;
+      __n7.textContent = String(n);
+    });
+    __n25.addEventListener("contextmenu", () => {
+    });
+    let __n7 = document.createElement("span");
+    __n7.textContent = String(n);
+    __n25.appendChild(__n7);
+    let __n8 = document.createElement("span");
+    __n8.textContent = "a" + String(__prop___p0);
+    __root.appendChild(__n24);
+    __root.appendChild(__n25);
+    __root.appendChild(__n8);
+    return {
+      __root,
+      __destroy() {
+      },
+      __set___p0
+    };
+  }
+  function __cf_outer(props) {
+    const __root = document.createElement("div");
+    __root.style.display = "contents";
+    let m = 0;
+    let __slot0 = [];
+    let __slot1 = [];
+    let __slot2 = [];
+    let __slot3 = [];
+    let __slot4 = [];
+    let __slot5 = [];
+    let __inst11_live = [];
+    let __slot6 = [];
+    let __slot72 = [];
+    function __renderSlot5(parent) {
+      let __place10_prev = __slot5;
+      let __place10_i = 0;
+      __slot5 = [];
+      let __inst11_next = [];
+      let __inst11_i = 0;
+      for (const y of [1]) {
+        let __n19 = null;
+        if (__inst11_live.length > __inst11_i) {
+          __n19 = __inst11_live[__inst11_i];
+          __n19.__set___empty_content(true);
+        } else {
+          if (__inst11_live.length > __inst11_i) {
+            __inst11_live[__inst11_i].__destroy();
+          }
+          let __n19__new = __cf_inner({ __empty_content: true });
+          __n19 = __n19__new;
+        }
+        __inst11_next.push(__n19);
+        __inst11_i = __inst11_i + 1;
+        let __n19__el = __n19.__root;
+        let __place10_i_ref0 = null;
+        if (__place10_i < __place10_prev.length) {
+          __place10_i_ref0 = __place10_prev[__place10_i];
+        }
+        if (__place10_i_ref0 === __n19__el) {
+          __place10_i = __place10_i + 1;
+        } else {
+          parent.insertBefore(__n19__el, __place10_i_ref0);
+        }
+        __slot5.push(__n19__el);
+      }
+      for (const [__inst11_i_d, _] of __inst11_live.entries()) {
+        let __inst11_i_j = __inst11_live.length - 1 - __inst11_i_d;
+        if (__inst11_i_j >= __inst11_i) {
+          __inst11_live[__inst11_i_j].__destroy();
+        }
+      }
+      __inst11_live = __inst11_next;
+      for (const __place10_prev_e of __place10_prev) {
+        if (__slot5.indexOf(__place10_prev_e) < 0) {
+          parent.removeChild(__place10_prev_e);
+        }
+      }
+    }
+    function __snglTeardown() {
+      for (const [__inst11_live_di, _] of __inst11_live.entries()) {
+        let __inst11_live_dj = __inst11_live.length - 1 - __inst11_live_di;
+        __inst11_live[__inst11_live_dj].__destroy();
+      }
+      __inst11_live = [];
+    }
+    let __n26 = document.createElement("button");
+    __n26.disabled = false;
+    __n26.addEventListener("click", () => {
+      m = m + 1;
+      __n9.textContent = String(m);
+    });
+    __n26.addEventListener("contextmenu", () => {
+    });
+    let __n9 = document.createElement("span");
+    __n9.textContent = String(m);
+    __n26.appendChild(__n9);
+    const __slotAnchor_5 = document.createElement("span");
+    __slotAnchor_5.style.display = "contents";
+    __renderSlot5(__slotAnchor_5);
+    __root.appendChild(__n26);
+    __root.appendChild(__slotAnchor_5);
+    return {
+      __root,
+      __destroy() {
+        __snglTeardown();
+      }
+    };
+  }
+  function __cf_outer__slot1(props) {
+    const __root = document.createElement("div");
+    __root.style.display = "contents";
+    let __p0 = props.__p0;
+    let __prop___p0 = __p0;
+    let m = 0;
+    let __slot0 = [];
+    let __slot1 = [];
+    let __slot2 = [];
+    let __slot3 = [];
+    let __slot4 = [];
+    let __slot5 = [];
+    let __slot6 = [];
+    let __inst13_live = [];
+    let __slot72 = [];
+    function __set___p0(__v) {
+      __prop___p0 = __v;
+      for (const [__inst13_live_ui, _] of __inst13_live.entries()) {
+        __inst13_live[__inst13_live_ui].__set___p0(__prop___p0);
+      }
+    }
+    function __renderSlot6(parent) {
+      let __place12_prev = __slot6;
+      let __place12_i = 0;
+      __slot6 = [];
+      let __inst13_next = [];
+      let __inst13_i = 0;
+      for (const y of [1]) {
+        let __n20 = null;
+        if (__inst13_live.length > __inst13_i) {
+          __n20 = __inst13_live[__inst13_i];
+          __n20.__set___p0(__prop___p0);
+        } else {
+          if (__inst13_live.length > __inst13_i) {
+            __inst13_live[__inst13_i].__destroy();
+          }
+          let __n20__new = __cf_inner__slot4({ __p0: __prop___p0 });
+          __n20 = __n20__new;
+        }
+        __inst13_next.push(__n20);
+        __inst13_i = __inst13_i + 1;
+        let __n20__el = __n20.__root;
+        let __place12_i_ref0 = null;
+        if (__place12_i < __place12_prev.length) {
+          __place12_i_ref0 = __place12_prev[__place12_i];
+        }
+        if (__place12_i_ref0 === __n20__el) {
+          __place12_i = __place12_i + 1;
+        } else {
+          parent.insertBefore(__n20__el, __place12_i_ref0);
+        }
+        __slot6.push(__n20__el);
+      }
+      for (const [__inst13_i_d, _] of __inst13_live.entries()) {
+        let __inst13_i_j = __inst13_live.length - 1 - __inst13_i_d;
+        if (__inst13_i_j >= __inst13_i) {
+          __inst13_live[__inst13_i_j].__destroy();
+        }
+      }
+      __inst13_live = __inst13_next;
+      for (const __place12_prev_e of __place12_prev) {
+        if (__slot6.indexOf(__place12_prev_e) < 0) {
+          parent.removeChild(__place12_prev_e);
+        }
+      }
+    }
+    function __snglTeardown() {
+      for (const [__inst13_live_di, _] of __inst13_live.entries()) {
+        let __inst13_live_dj = __inst13_live.length - 1 - __inst13_live_di;
+        __inst13_live[__inst13_live_dj].__destroy();
+      }
+      __inst13_live = [];
+    }
+    let __n27 = document.createElement("button");
+    __n27.disabled = false;
+    __n27.addEventListener("click", () => {
+      m = m + 1;
+      __n10.textContent = String(m);
+    });
+    __n27.addEventListener("contextmenu", () => {
+    });
+    let __n10 = document.createElement("span");
+    __n10.textContent = String(m);
+    __n27.appendChild(__n10);
+    const __slotAnchor_6 = document.createElement("span");
+    __slotAnchor_6.style.display = "contents";
+    __renderSlot6(__slotAnchor_6);
+    __root.appendChild(__n27);
+    __root.appendChild(__slotAnchor_6);
     return {
       __root,
       __destroy() {
@@ -2046,105 +2524,105 @@ body { font-family: system-ui, sans-serif; }
       __set___p0
     };
   }
-  var __slot5 = [];
-  var __inst11_live = [];
-  var __inst12_live = [];
-  function __renderSlot5(parent) {
-    let __place10_prev = __slot5;
-    let __place10_i = 0;
-    __slot5 = [];
-    let __inst11_next = [];
-    let __inst11_i = 0;
-    let __inst12_next = [];
-    let __inst12_i = 0;
+  var __slot7 = [];
+  var __inst15_live = [];
+  var __inst16_live = [];
+  function __renderSlot7(parent) {
+    let __place14_prev = __slot7;
+    let __place14_i = 0;
+    __slot7 = [];
+    let __inst15_next = [];
+    let __inst15_i = 0;
+    let __inst16_next = [];
+    let __inst16_i = 0;
     for (const x of state.xs__inst0) {
-      let __n17 = null;
-      if (__inst11_live.length > __inst11_i) {
-        __n17 = __inst11_live[__inst11_i];
+      let __n21 = null;
+      if (__inst15_live.length > __inst15_i) {
+        __n21 = __inst15_live[__inst15_i];
       } else {
-        if (__inst11_live.length > __inst11_i) {
-          __inst11_live[__inst11_i].__destroy();
+        if (__inst15_live.length > __inst15_i) {
+          __inst15_live[__inst15_i].__destroy();
         }
-        let __n17__new = __cf_outer({});
-        __n17 = __n17__new;
+        let __n21__new = __cf_outer({});
+        __n21 = __n21__new;
       }
-      __inst11_next.push(__n17);
-      __inst11_i = __inst11_i + 1;
-      let __n17__el = __n17.__root;
-      let __place10_i_ref0 = null;
-      if (__place10_i < __place10_prev.length) {
-        __place10_i_ref0 = __place10_prev[__place10_i];
+      __inst15_next.push(__n21);
+      __inst15_i = __inst15_i + 1;
+      let __n21__el = __n21.__root;
+      let __place14_i_ref0 = null;
+      if (__place14_i < __place14_prev.length) {
+        __place14_i_ref0 = __place14_prev[__place14_i];
       }
-      if (__place10_i_ref0 === __n17__el) {
-        __place10_i = __place10_i + 1;
+      if (__place14_i_ref0 === __n21__el) {
+        __place14_i = __place14_i + 1;
       } else {
-        parent.insertBefore(__n17__el, __place10_i_ref0);
+        parent.insertBefore(__n21__el, __place14_i_ref0);
       }
-      __slot5.push(__n17__el);
-      let __n18 = null;
-      if (__inst12_live.length > __inst12_i) {
-        __n18 = __inst12_live[__inst12_i];
-        __n18.__set___p0(x);
+      __slot7.push(__n21__el);
+      let __n22 = null;
+      if (__inst16_live.length > __inst16_i) {
+        __n22 = __inst16_live[__inst16_i];
+        __n22.__set___p0(x);
       } else {
-        if (__inst12_live.length > __inst12_i) {
-          __inst12_live[__inst12_i].__destroy();
+        if (__inst16_live.length > __inst16_i) {
+          __inst16_live[__inst16_i].__destroy();
         }
-        let __n18__new = __cf_outer__slot1({ __p0: x });
-        __n18 = __n18__new;
+        let __n22__new = __cf_outer__slot1({ __p0: x });
+        __n22 = __n22__new;
       }
-      __inst12_next.push(__n18);
-      __inst12_i = __inst12_i + 1;
-      let __n18__el = __n18.__root;
-      let __place10_i_ref1 = null;
-      if (__place10_i < __place10_prev.length) {
-        __place10_i_ref1 = __place10_prev[__place10_i];
+      __inst16_next.push(__n22);
+      __inst16_i = __inst16_i + 1;
+      let __n22__el = __n22.__root;
+      let __place14_i_ref1 = null;
+      if (__place14_i < __place14_prev.length) {
+        __place14_i_ref1 = __place14_prev[__place14_i];
       }
-      if (__place10_i_ref1 === __n18__el) {
-        __place10_i = __place10_i + 1;
+      if (__place14_i_ref1 === __n22__el) {
+        __place14_i = __place14_i + 1;
       } else {
-        parent.insertBefore(__n18__el, __place10_i_ref1);
+        parent.insertBefore(__n22__el, __place14_i_ref1);
       }
-      __slot5.push(__n18__el);
+      __slot7.push(__n22__el);
     }
-    for (const [__inst11_i_d, _] of __inst11_live.entries()) {
-      let __inst11_i_j = __inst11_live.length - 1 - __inst11_i_d;
-      if (__inst11_i_j >= __inst11_i) {
-        __inst11_live[__inst11_i_j].__destroy();
-      }
-    }
-    __inst11_live = __inst11_next;
-    for (const [__inst12_i_d, _] of __inst12_live.entries()) {
-      let __inst12_i_j = __inst12_live.length - 1 - __inst12_i_d;
-      if (__inst12_i_j >= __inst12_i) {
-        __inst12_live[__inst12_i_j].__destroy();
+    for (const [__inst15_i_d, _] of __inst15_live.entries()) {
+      let __inst15_i_j = __inst15_live.length - 1 - __inst15_i_d;
+      if (__inst15_i_j >= __inst15_i) {
+        __inst15_live[__inst15_i_j].__destroy();
       }
     }
-    __inst12_live = __inst12_next;
-    for (const __place10_prev_e of __place10_prev) {
-      if (__slot5.indexOf(__place10_prev_e) < 0) {
-        parent.removeChild(__place10_prev_e);
+    __inst15_live = __inst15_next;
+    for (const [__inst16_i_d, _] of __inst16_live.entries()) {
+      let __inst16_i_j = __inst16_live.length - 1 - __inst16_i_d;
+      if (__inst16_i_j >= __inst16_i) {
+        __inst16_live[__inst16_i_j].__destroy();
+      }
+    }
+    __inst16_live = __inst16_next;
+    for (const __place14_prev_e of __place14_prev) {
+      if (__slot7.indexOf(__place14_prev_e) < 0) {
+        parent.removeChild(__place14_prev_e);
       }
     }
   }
   function String(v) {
     return "" + v;
   }
-  var __n10__pos = document.querySelector('[data-sngl-inst="__n10"]');
-  var __n10 = __cf_tree__slot0({ d: state.n__inst0, __depth: 0 });
-  __n10__pos.appendChild(__n10.__root);
-  var __n11__pos = document.querySelector('[data-sngl-inst="__n11"]');
-  var __n11 = __cf_tree({ d: state.n__inst0, __depth: 0, __empty_content: true });
-  __n11__pos.appendChild(__n11.__root);
-  var __slotAnchor_5 = document.querySelector('[data-sngl-slot="5"]');
-  __renderSlot5(__slotAnchor_5);
+  var __n12__pos = document.querySelector('[data-sngl-inst="__n12"]');
+  var __n12 = __cf_tree__slot0({ d: state.n__inst0, __depth: 0 });
+  __n12__pos.appendChild(__n12.__root);
+  var __n13__pos = document.querySelector('[data-sngl-inst="__n13"]');
+  var __n13 = __cf_tree({ d: state.n__inst0, __depth: 0, __empty_content: true });
+  __n13__pos.appendChild(__n13.__root);
+  var __slotAnchor_7 = document.querySelector('[data-sngl-slot="7"]');
+  __renderSlot7(__slotAnchor_7);
 })();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:ffe77e6e8b8e062b22c64a211376b5dc
+pass sha256:63ec693f3aa2880571a653db068152ba
 -- run/go/fyne --
-pass sha256:a226ad574f17bc03385e2c96d97e7009
+pass sha256:0b7f0d5c1b93d014491b57aa77664d20
 -- run/kotlin/android --
-pass sha256:5fe191ccd562ad47f2578470fc2808ed
+pass sha256:2695c13c02f790a01a15618b095dd7fc
 -- run/none/html --
-pass sha256:81dd0902cc21d14dc4ac0753c227dc44
+pass sha256:63aada8fe3a6e5bab42c0992e8305a96

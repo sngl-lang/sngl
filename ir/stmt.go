@@ -50,6 +50,11 @@ type NodeInst struct {
 	// the program wrote belongs at Site. Nil for a node written where it
 	// stands. NodePos reads it.
 	Site ast.Stmt `json:"-"`
+	// Instances are the `#id`s of the component instances whose spliced bodies
+	// this node is a root of, outermost first, each rendered exactly where the
+	// node is: what a test's null test of one asks, on a target that splices
+	// it. A splice of this node hands them on to the roots of its own body.
+	Instances []string `json:",omitempty"`
 	// Crosses is `#[tree.crosses]` on this placement: the node may stand
 	// where its family is not the one accepted. Only the membership check of
 	// the position is lifted; the node's own body, slots and children are

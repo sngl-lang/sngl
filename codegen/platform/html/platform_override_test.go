@@ -23,7 +23,10 @@ component Layout(children ...component) node {
             children
         }
     } else {
-        vbox { text(value="DEFAULT_BODY") }
+        vbox {
+            text(value="DEFAULT_BODY")
+            children
+        }
     }
 }
 window {

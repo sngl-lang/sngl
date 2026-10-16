@@ -708,6 +708,9 @@ type checker struct {
 	userOverrides        []*ast.ComponentDecl
 	userFuncOverrides    []*ast.FuncDef
 	pendingFuncOverrides []pendingFuncOverride
+	// overrideAt is the override whose body checkComponentBody is reading, or
+	// the zero Pos while it reads a declaration's own.
+	overrideAt ast.Pos
 
 	// The predeclared constants, bound by collectBuiltins. Held so a second
 	// declaration of the same kind is an error rather than a silent
@@ -2931,10 +2934,9 @@ type elementRef struct {
 }
 
 // collectElementRefIDs returns every element id declared in a component body,
-// in source order. It is findHostComponentAST's walk widened from one name to
-// all of them -- ids hide inside if/for branches and inside a slot's block, and
-// the `Comp() #id` call form declares one as much as `Comp #id { }` does. It
-// does not descend into the components the body instantiates: those ids are
+// in source order. Ids hide inside if/for branches and inside a node's block,
+// and the `Comp() #id` call form declares one as much as `Comp #id { }` does.
+// It does not descend into the components the body instantiates: those ids are
 // their own declarations'.
 func collectElementRefIDs(stmts []ast.Stmt) []elementRef {
 	var out []elementRef
@@ -2975,6 +2977,18 @@ func (c *checker) buildSlotDecl(pd ast.Param, ct *ast.ComponentType, rest bool) 
 	slot := &ir.SlotDecl{Name: pd.Name, Rest: rest, Const: pd.Const, Doc: pd.Doc()}
 	if ct.Tree != nil {
 		slot.Content, slot.Card = c.resolveSlotContent(ct.Tree)
+	}
+	if w := ast.SlotWrapper(pd.Type); w != nil {
+		if rest {
+			// The rest slot is inserted exactly once, so each #id its bare
+			// children carry names one node of the caller's. A slot the body
+			// may leave out or repeat is a named one, whose population is a
+			// namespace of its own.
+			c.error(w.Pos, "rest slot %q is inserted exactly once, so it takes no %s[…]: declare a named slot, `%s %s[component …]`, and populate it by name", pd.Name, w.Name, pd.Name, w.Name)
+		}
+		// Kept on a refused rest slot too, so its body is not reported again
+		// for inserting it the way it was declared.
+		slot.Inserts = c.slotInserts(w)
 	}
 	for i, p := range ct.Params {
 		if vt, ok := p.Type.(*ast.VariadicType); ok {
@@ -4611,6 +4625,7 @@ func (c *checker) checkComponentBody(comp *ir.Component) {
 				}
 			}
 		}
+		c.checkSlotInsertions(comp)
 	}
 
 	body := comp.Stmts
@@ -4679,8 +4694,8 @@ func withCount(counts []nodeCount, k nodeCount) []nodeCount {
 
 // declareNodeIDsIn hoists the node ids in block. counts is the chain of scopes
 // crossed to reach it, outermost first, and is what the handle's type is
-// wrapped in: a node written inside a `for` inside an `if` reads from outside
-// both as `option[list[T]]`.
+// counted by: a node written inside a `for` inside an `if` reads from outside
+// both as `list[T]`.
 //
 // Each block's own ids are hoisted again, at their own depth, into the scope
 // checkBlockIR pushes for it — so a read from *inside* the scope is the plain
@@ -4902,7 +4917,7 @@ func (c *checker) declareNodeID(id, target string, counts []nodeCount, mode idMo
 }
 
 // nodeHandleType is what a handle to a rendered instance of target reads at --
-// the same answer inferSelect reaches through findHostComponentAST, arrived at
+// the same answer elementRef reaches for `c.<id>`, arrived at
 // directly because the hoisting pass already has the name.
 func (c *checker) nodeHandleType(target string) *ir.Type {
 	if comp := c.componentNamed(target); comp != nil {
@@ -4913,19 +4928,20 @@ func (c *checker) nodeHandleType(target string) *ir.Type {
 	return TypInvalid
 }
 
-// countedHandleType wraps a handle in the counts of the scopes it was reached
-// through, innermost first: counts is outermost-first, so the last entry is
-// the scope nearest the node and binds tightest.
+// countedHandleType is a handle as read from outside the scopes it was reached
+// through, by the rule a `c.<id>` read follows (elementRef): a list if any of
+// them repeats, an option if any is conditional.
 func (c *checker) countedHandleType(typ *ir.Type, counts []nodeCount) *ir.Type {
-	for _, count := range slices.Backward(counts) {
+	k := ir.RefOne
+	for _, count := range counts {
 		switch count {
 		case countOption:
-			typ = ir.OptionOf(typ)
+			k = k.Inside(ir.RefOption)
 		case countList:
-			typ = c.listOf(typ)
+			k = k.Inside(ir.RefList)
 		}
 	}
-	return typ
+	return k.Wrap(typ, c.listOf)
 }
 
 // componentNamed resolves a visual node's target, bare or `pkg.Name`.

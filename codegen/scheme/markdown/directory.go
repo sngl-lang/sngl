@@ -287,7 +287,7 @@ func site(state *docState, label string, root *page, pages []*page, fields []fie
 		e.component(p.name, p.blocks)
 	}
 	e.line("")
-	e.line("component " + SiteComponent + "(layout component(page Page, content component ui.node) ui.node) {")
+	e.line("component " + SiteComponent + "(layout list[component(page Page, content component ui.node) ui.node]) {")
 	for _, p := range pages {
 		ref := pageRef(root, p)
 		title := ""

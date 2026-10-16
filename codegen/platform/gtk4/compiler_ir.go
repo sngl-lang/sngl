@@ -416,6 +416,8 @@ func (c *compilation) emitIRMode(wrapped bool) (modelSrc []byte, callbacksSrc []
 	}
 	emitCanvasDrawFuncs(&funcBuf)
 
+	presentIDs := codegen.NullTestedRefs(c.ctx.Pkg)
+	presenceFields := map[string]string{}
 	createTargets := collectCreateComponentTargets(c.ctx.Pkg)
 	for _, cc := range c.ctx.NonRootComponents() {
 		// A component the build renders as a live instance gets a record of
@@ -424,7 +426,8 @@ func (c *compilation) emitIRMode(wrapped bool) (modelSrc []byte, callbacksSrc []
 		if isInstanceComponent(cc.Component) {
 			emitComponentInstance(&funcBuf, cc, gc, c.ctx.Pkg, c.registry, c.shared, c.wrapped, c.ctx.Canvases.All(),
 				recordInvoker,
-				func(f widgetField) { widgetFields = appendWidgetFieldOnce(widgetFields, f) }, indexed)
+				func(f widgetField) { widgetFields = appendWidgetFieldOnce(widgetFields, f) },
+				indexed, presentIDs, func(id, field string) { presenceFields[id] = field })
 			continue
 		}
 		if createTargets[cc.Component] {
@@ -491,6 +494,7 @@ func (c *compilation) emitIRMode(wrapped bool) (modelSrc []byte, callbacksSrc []
 			c.shared.calendarDate = true
 		}
 	}
+	emitPresenceChecks(&eventInvokersBuf, presentIDs, presenceFields, widgetFields)
 
 	// The drawing-area trampoline registration emits an `unsafe.Pointer` cast.
 	if hasCanvas {

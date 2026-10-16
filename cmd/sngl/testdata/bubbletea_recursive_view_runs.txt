@@ -8,8 +8,8 @@
 #   and the one registered for the snapshot and the test's own local were two
 #   copies of it, so `c.deeper.click()` changed a copy nobody drew: `level 3`
 #   never appeared.
-# - Children handed to a render method were read for nodes only, so the slot
-#   insertion `frame` forwards down its own recursion rendered nothing, and
+# - Content handed to a render method was read for nodes only, so the slot
+#   insertion `forward` forwards down its own recursion rendered nothing, and
 #   ALPHA appeared once where each of the three levels shows it.
 # - A branch not taken still joined its empty string into the box, which is a
 #   blank line below the innermost level.
@@ -38,12 +38,14 @@ component frame(n int, content ...component node) node {
     }
 }
 
-component forward(n int, content ...component node) node {
+component forward(n int, content list[component node]) node {
     vbox {
-        content
+        content {}
         if n > 0 {
             forward(n=n - 1) {
-                content
+                component content {
+                    content {}
+                }
             }
         }
     }
@@ -65,7 +67,9 @@ component forwarded node {
 
     vbox {
         forward(n=depth) {
-            text(value="ALPHA")
+            component content {
+                text(value="ALPHA")
+            }
         }
     }
 }
@@ -83,7 +87,7 @@ window {
     main
 }
 -- testrun/bubbletea/go/app.sngl/forwarded/1 --
-sha256:cda59b0e45c2df0fcf5cc6b99c865aa1
+sha256:044799e904485fcbff31ffa82974d9b0
 {
   "results": [
     {

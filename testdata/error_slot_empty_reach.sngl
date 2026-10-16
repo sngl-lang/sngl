@@ -22,18 +22,23 @@ component asks(content ...component node) node {
     if content.empty {
         text(value="nothing")
     }
+    content
 }
 
 component first node {
     ping(n=1) {
-        text(value="t")
+        component content {
+            text(value="t")
+        }
     }
 }
 
-component ping(n int, content ...component node) node {
+component ping(n int, content list[component node]) node {
     if n > 0 {
         pong(n=n - 1) {
-            content
+            component content {
+                content
+            }
         }
     }
     asks {
@@ -41,9 +46,11 @@ component ping(n int, content ...component node) node {
     }
 }
 
-component pong(n int, content ...component node) node {
+component pong(n int, content list[component node]) node {
     ping(n=n) {
-        content
+        component content {
+            content
+        }
     }
 }
 
@@ -79,9 +86,11 @@ component main node {
         }
     }
     pong(n=1) { // ERROR(check) "pong asks whether its content renders anything"
-        for var x = xs {
-            if x > 1 {
-                text(value="{x}")
+        component content {
+            for var x = xs {
+                if x > 1 {
+                    text(value="{x}")
+                }
             }
         }
     }

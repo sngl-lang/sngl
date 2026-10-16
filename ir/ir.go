@@ -1174,6 +1174,31 @@ type SlotDecl struct {
 	// populates it at each call site with the content of every record, chosen
 	// by the record's RecordID. Nil on every other slot.
 	Shows *SlotDecl `json:"-"`
+	// Inserts is how many times the body inserts a named slot, and so how many
+	// copies of its population render: what a ref read through it is wrapped
+	// in. A rest slot is inserted exactly once and counts nodes with Card.
+	Inserts SlotInserts `json:",omitempty"`
+}
+
+// SlotInserts is how many times a named slot is inserted: its declared type's
+// `option[…]` or `list[…]` wrapper, or neither.
+type SlotInserts string
+
+const (
+	InsertOne      SlotInserts = ""       // exactly once, where it always renders
+	InsertOptional SlotInserts = "option" // at most once, possibly conditionally
+	InsertMany     SlotInserts = "list"   // any number of times
+)
+
+// InsertsOf is how often c renders what fills slot. That is the slot's
+// declared count, except where c says more: a nav page's content is mounted
+// only while its stack shows the page, and a data record's while its container
+// shows the record.
+func (c *Component) InsertsOf(slot *SlotDecl) SlotInserts {
+	if (c.Builtin == BuiltinNavPage || c.Data) && slot.Rest {
+		return InsertOptional
+	}
+	return slot.Inserts
 }
 
 // RecordID is the field a data family's record carries when the family
@@ -1208,7 +1233,7 @@ type SlotCard string
 
 const (
 	SlotAny      SlotCard = ""         // any number; the default
-	SlotOne      SlotCard = "one"      // exactly one, from tree.one[T]
+	SlotOne      SlotCard = "one"      // exactly one, from family.one[T]
 	SlotOptional SlotCard = "optional" // none or one, from option[T]
 )
 

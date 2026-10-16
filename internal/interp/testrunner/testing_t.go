@@ -302,13 +302,24 @@ func (tv *testingT) recordFailure(ae *interp.AssertError, fatal bool) {
 
 // wrapChildComponent exposes a nested component instance as a value, backed
 // by the env its own state lives in.
-func wrapChildComponent(childEnv *interp.Env, comp *ir.Component) *componentValue {
+func wrapChildComponent(n *interp.Node, by *componentValue) *componentValue {
 	return &componentValue{
-		Env:      childEnv,
-		comp:     comp,
-		compName: comp.Name,
-		body:     comp.Stmts,
+		Env:      n.CompEnv,
+		comp:     n.Component,
+		compName: n.Component.Name,
+		body:     n.Component.Stmts,
+		by:       by,
+		inst:     n.Inst,
 	}
+}
+
+// Populated is the instance this one was read off, this one's scope, and the
+// node that rendered it.
+func (cv *componentValue) Populated() (interp.ComponentValue, *interp.Env, *ir.NodeInst) {
+	if cv.by == nil {
+		return nil, cv.Env, cv.inst
+	}
+	return cv.by, cv.Env, cv.inst
 }
 
 // GetField resolves c.field on a componentValue.
@@ -365,6 +376,42 @@ func (cv *componentValue) GetField(field string) (any, error) {
 		return v, nil
 	}
 	return nil, fmt.Errorf("component has no field %q", field)
+}
+
+// ElementRef returns the nodes carrying #id that this instance's own body
+// wrote, or that a population it wrote supplied to the instance supplied.
+func (cv *componentValue) ElementRef(id string, supplied *interp.Env) (interp.RefSet, error) {
+	cv.settle()
+	if cv.settleErr != nil {
+		err := cv.settleErr
+		cv.settleErr = nil
+		return interp.RefSet{}, err
+	}
+	// A child mounted on its own has no call site, so its slots would show their
+	// fallbacks whatever the caller wrote: its refs are read off the tree the
+	// outermost instance mounts.
+	root := cv
+	for root.by != nil {
+		root = root.by
+	}
+	view, err := interp.Mount(root.Env)
+	if err != nil {
+		return interp.RefSet{}, err
+	}
+	view = view.OwnedBy(cv.Env)
+	set := interp.RefSet{View: view, Supplied: supplied}
+	for _, n := range view.Refs(id, supplied) {
+		switch {
+		case n.Component != nil && n.CompEnv != nil && isUserComponent(n.Component):
+			set.Hits = append(set.Hits, interp.RefHit{Value: wrapChildComponent(n, cv), Node: n})
+		case n.IsComponent() && n.Expanded:
+		default:
+			m := n.Map()
+			stampOwner(m, cv)
+			set.Hits = append(set.Hits, interp.RefHit{Value: m, Node: n})
+		}
+	}
+	return set, nil
 }
 
 // SetField handles c.field = value.
@@ -529,8 +576,7 @@ func (cv *componentValue) FieldCell(field string) (*interp.Env, ir.Symbol, bool)
 
 // childComponentByID returns the live componentValue wrapper for a user
 // component instantiated in the component's body with element id == id (e.g.
-// `main #m()` reached as `c.m`), a list of them where a loop rendered the id
-// more than once, or nil.
+// `main #m()` reached as `c.m`), or nil.
 //
 // It reads the mounted tree rather than walking the IR. The tree keeps a
 // component instantiation as a node carrying its own scope, which is exactly
@@ -541,22 +587,13 @@ func (cv *componentValue) childComponentByID(id string) any {
 	if err != nil {
 		return nil
 	}
-	var found []any
-	for _, n := range view.FindAny(id) {
+	for _, n := range view.Refs(id, nil) {
 		if n.Component == nil || n.CompEnv == nil || !isUserComponent(n.Component) {
 			continue
 		}
-		found = append(found, wrapChildComponent(n.CompEnv, n.Component))
+		return wrapChildComponent(n, cv)
 	}
-	switch len(found) {
-	case 0:
-		return nil
-	case 1:
-		return found[0]
-	}
-	// An id a loop renders more than once names each instance, in mount
-	// order: `c.row[1]` is the second.
-	return found
+	return nil
 }
 
 // stampOwner attaches __ownerComponent to element maps returned by

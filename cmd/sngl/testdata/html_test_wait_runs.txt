@@ -1,11 +1,11 @@
 # html awaits t.wait where a test body writes it as a statement of its own,
-# polling between turns of the page's event loop. Anywhere else -- under an
-# `if`, in a helper the test hands its Test -- the call sits in code that
-# cannot await, and the test fails saying so rather than running on.
+# polling between turns of the page's event loop -- under one of the test's own
+# `if`s too, which is lowered with the test statements in it, the way a trigger
+# under a null test is.
 
-! sngl test --platform=html app.sngl
+sngl test --platform=html app.sngl
 stdout '--- PASS: /WaitsAtTheTop'
-stdout 't.wait waits only as a statement of a test''s own body on html'
+stdout '--- PASS: /WaitsInsideAnIf'
 
 -- app.sngl --
 import . "sngl:test"
@@ -34,7 +34,7 @@ ui.window {
     ticker
 }
 -- testrun/html/none/app.sngl/ticker/1 --
-sha256:ea39a8865eb523298c823f32e53dd250
+sha256:05db40f3210fc104218db206b90017fb
 {
   "results": [
     {
@@ -43,15 +43,7 @@ sha256:ea39a8865eb523298c823f32e53dd250
     },
     {
       "Desc": "WaitsInsideAnIf",
-      "Error": "t.wait waits only as a statement of a test's own body on html",
-      "Failures": [
-        {
-          "Message": "t.wait waits only as a statement of a test's own body on html"
-        }
-      ],
-      "Log": [
-        "t.wait waits only as a statement of a test's own body on html"
-      ]
+      "Passed": true
     }
   ]
 }

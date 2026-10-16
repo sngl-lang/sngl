@@ -11,7 +11,7 @@ var runPlatform = "html"
 var generateTarget = "html"
 var embedTarget = "html"
 
-component whenSelected(selected string, value string, content ...component ui.node) ui.node {
+component whenSelected(selected string, value string, content option[component ui.node]) ui.node {
     if selected == value {
         ui.vbox(style={gap=12px}) {
             content
@@ -90,19 +90,21 @@ ui.hbox(style={gap=8px}) {
 import "sngl:ui/markup"
 
 whenSelected(selected=runPlatform, value="html") {
-    markup.codeBlock {
-        markup.text(value="sngl run hello.sngl --platform html")
-    }
-    markup.paragraph {
-        markup.text(value="Builds a static page and serves it, printing the local URL to open. Pass ")
-        markup.monospace {
-            markup.text(value="--opt listen=:8080")
+    component content {
+        markup.codeBlock {
+            markup.text(value="sngl run hello.sngl --platform html")
         }
-        markup.text(value=" to pick the port. For live reload while you edit, use ")
-        markup.monospace {
-            markup.text(value="sngl preview hello.sngl")
+        markup.paragraph {
+            markup.text(value="Builds a static page and serves it, printing the local URL to open. Pass ")
+            markup.monospace {
+                markup.text(value="--opt listen=:8080")
+            }
+            markup.text(value=" to pick the port. For live reload while you edit, use ")
+            markup.monospace {
+                markup.text(value="sngl preview hello.sngl")
+            }
+            markup.text(value=" instead.")
         }
-        markup.text(value=" instead.")
     }
 }
 ```
@@ -111,11 +113,13 @@ whenSelected(selected=runPlatform, value="html") {
 import "sngl:ui/markup"
 
 whenSelected(selected=runPlatform, value="bubbletea") {
-    markup.codeBlock {
-        markup.text(value="sngl run hello.sngl --platform bubbletea")
-    }
-    markup.paragraph {
-        markup.text(value="Compiles to a Bubble Tea program and runs it inline in your terminal. Tab moves between controls, Enter presses a button, Space toggles a checkbox, and typing goes to the focused input. Quit with Ctrl-C. Needs a Go toolchain.")
+    component content {
+        markup.codeBlock {
+            markup.text(value="sngl run hello.sngl --platform bubbletea")
+        }
+        markup.paragraph {
+            markup.text(value="Compiles to a Bubble Tea program and runs it inline in your terminal. Tab moves between controls, Enter presses a button, Space toggles a checkbox, and typing goes to the focused input. Quit with Ctrl-C. Needs a Go toolchain.")
+        }
     }
 }
 ```
@@ -124,11 +128,13 @@ whenSelected(selected=runPlatform, value="bubbletea") {
 import "sngl:ui/markup"
 
 whenSelected(selected=runPlatform, value="fyne") {
-    markup.codeBlock {
-        markup.text(value="sngl run hello.sngl --platform fyne")
-    }
-    markup.paragraph {
-        markup.text(value="Builds and opens a native desktop window with Fyne. Needs a Go toolchain, a C compiler, and the OpenGL development headers Fyne builds against.")
+    component content {
+        markup.codeBlock {
+            markup.text(value="sngl run hello.sngl --platform fyne")
+        }
+        markup.paragraph {
+            markup.text(value="Builds and opens a native desktop window with Fyne. Needs a Go toolchain, a C compiler, and the OpenGL development headers Fyne builds against.")
+        }
     }
 }
 ```
@@ -137,11 +143,13 @@ whenSelected(selected=runPlatform, value="fyne") {
 import "sngl:ui/markup"
 
 whenSelected(selected=runPlatform, value="gtk4") {
-    markup.codeBlock {
-        markup.text(value="sngl run hello.sngl --platform gtk4")
-    }
-    markup.paragraph {
-        markup.text(value="Builds and opens a native GTK 4 window through cgo. Needs a Go toolchain, a C compiler, and the GTK 4 development files.")
+    component content {
+        markup.codeBlock {
+            markup.text(value="sngl run hello.sngl --platform gtk4")
+        }
+        markup.paragraph {
+            markup.text(value="Builds and opens a native GTK 4 window through cgo. Needs a Go toolchain, a C compiler, and the GTK 4 development files.")
+        }
     }
 }
 ```
@@ -150,11 +158,13 @@ whenSelected(selected=runPlatform, value="gtk4") {
 import "sngl:ui/markup"
 
 whenSelected(selected=runPlatform, value="android") {
-    markup.codeBlock {
-        markup.text(value="sngl run hello.sngl --platform android")
-    }
-    markup.paragraph {
-        markup.text(value="Generates a Jetpack Compose project, builds the APK, and installs it on the connected device or emulator. Needs the Android SDK.")
+    component content {
+        markup.codeBlock {
+            markup.text(value="sngl run hello.sngl --platform android")
+        }
+        markup.paragraph {
+            markup.text(value="Generates a Jetpack Compose project, builds the APK, and installs it on the connected device or emulator. Needs the Android SDK.")
+        }
     }
 }
 ```
@@ -181,15 +191,17 @@ ui.hbox(style={gap=8px}) {
 import "sngl:ui/markup"
 
 whenSelected(selected=generateTarget, value="html") {
-    markup.codeBlock {
-        markup.text(value="sngl generate hello.sngl --platform html -o ./site")
-    }
-    markup.paragraph {
-        markup.text(value="Emits an ")
-        markup.monospace {
-            markup.text(value="index.html")
+    component content {
+        markup.codeBlock {
+            markup.text(value="sngl generate hello.sngl --platform html -o ./site")
         }
-        markup.text(value=" per window with its script inline. Host it on any static server.")
+        markup.paragraph {
+            markup.text(value="Emits an ")
+            markup.monospace {
+                markup.text(value="index.html")
+            }
+            markup.text(value=" per window with its script inline. Host it on any static server.")
+        }
     }
 }
 ```
@@ -198,23 +210,25 @@ whenSelected(selected=generateTarget, value="html") {
 import "sngl:ui/markup"
 
 whenSelected(selected=generateTarget, value="gohtml") {
-    markup.codeBlock {
-        markup.text(value="sngl generate hello.sngl --lang go --platform html -o ./ui")
-    }
-    markup.paragraph {
-        markup.text(value="Emits a Go package ")
-        markup.monospace {
-            markup.text(value="ui")
+    component content {
+        markup.codeBlock {
+            markup.text(value="sngl generate hello.sngl --lang go --platform html -o ./ui")
         }
-        markup.text(value=" whose ")
-        markup.monospace {
-            markup.text(value="Handler()")
+        markup.paragraph {
+            markup.text(value="Emits a Go package ")
+            markup.monospace {
+                markup.text(value="ui")
+            }
+            markup.text(value=" whose ")
+            markup.monospace {
+                markup.text(value="Handler()")
+            }
+            markup.text(value=" returns an ")
+            markup.monospace {
+                markup.text(value="http.Handler")
+            }
+            markup.text(value=" serving one route per page. Event handlers that call into Go run on the server; the rest stay in the browser.")
         }
-        markup.text(value=" returns an ")
-        markup.monospace {
-            markup.text(value="http.Handler")
-        }
-        markup.text(value=" serving one route per page. Event handlers that call into Go run on the server; the rest stay in the browser.")
     }
 }
 ```
@@ -223,51 +237,53 @@ whenSelected(selected=generateTarget, value="gohtml") {
 import "sngl:ui/markup"
 
 whenSelected(selected=generateTarget, value="go") {
-    markup.codeBlock {
-        markup.text(value="sngl generate hello.sngl --lang go --platform bubbletea -o ./ui")
-    }
-    markup.paragraph {
-        markup.text(value="Emits a Go package ")
-        markup.monospace {
-            markup.text(value="ui")
+    component content {
+        markup.codeBlock {
+            markup.text(value="sngl generate hello.sngl --lang go --platform bubbletea -o ./ui")
         }
-        markup.text(value=" with a ")
-        markup.monospace {
-            markup.text(value="Model")
+        markup.paragraph {
+            markup.text(value="Emits a Go package ")
+            markup.monospace {
+                markup.text(value="ui")
+            }
+            markup.text(value=" with a ")
+            markup.monospace {
+                markup.text(value="Model")
+            }
+            markup.text(value=" and a ")
+            markup.monospace {
+                markup.text(value="New()")
+            }
+            markup.text(value=" constructor. The same works with ")
+            markup.monospace {
+                markup.text(value="--platform fyne")
+            }
+            markup.text(value=" or ")
+            markup.monospace {
+                markup.text(value="gtk4")
+            }
+            markup.text(value=". Add ")
+            markup.monospace {
+                markup.text(value="--opt main=true")
+            }
+            markup.text(value=" to get a runnable package main instead of a library; build it from a Go module, after ")
+            markup.monospace {
+                markup.text(value="go mod init")
+            }
+            markup.text(value=" and ")
+            markup.monospace {
+                markup.text(value="go mod tidy")
+            }
+            markup.text(value=". The package is named ")
+            markup.monospace {
+                markup.text(value="ui")
+            }
+            markup.text(value=" whatever the directory; ")
+            markup.monospace {
+                markup.text(value="--opt package=name")
+            }
+            markup.text(value=" changes it.")
         }
-        markup.text(value=" and a ")
-        markup.monospace {
-            markup.text(value="New()")
-        }
-        markup.text(value=" constructor. The same works with ")
-        markup.monospace {
-            markup.text(value="--platform fyne")
-        }
-        markup.text(value=" or ")
-        markup.monospace {
-            markup.text(value="gtk4")
-        }
-        markup.text(value=". Add ")
-        markup.monospace {
-            markup.text(value="--opt main=true")
-        }
-        markup.text(value=" to get a runnable package main instead of a library; build it from a Go module, after ")
-        markup.monospace {
-            markup.text(value="go mod init")
-        }
-        markup.text(value=" and ")
-        markup.monospace {
-            markup.text(value="go mod tidy")
-        }
-        markup.text(value=". The package is named ")
-        markup.monospace {
-            markup.text(value="ui")
-        }
-        markup.text(value=" whatever the directory; ")
-        markup.monospace {
-            markup.text(value="--opt package=name")
-        }
-        markup.text(value=" changes it.")
     }
 }
 ```
@@ -276,23 +292,25 @@ whenSelected(selected=generateTarget, value="go") {
 import "sngl:ui/markup"
 
 whenSelected(selected=generateTarget, value="kotlin") {
-    markup.codeBlock {
-        markup.text(value="sngl generate hello.sngl --lang kotlin --platform android --opt package=com.example.app -o ./app/src/main/java/com/example/app")
-    }
-    markup.paragraph {
-        markup.text(value="Emits Kotlin source with a ")
-        markup.monospace {
-            markup.text(value="MainScreen")
+    component content {
+        markup.codeBlock {
+            markup.text(value="sngl generate hello.sngl --lang kotlin --platform android --opt package=com.example.app -o ./app/src/main/java/com/example/app")
         }
-        markup.text(value=" composable you can call from any Compose ")
-        markup.monospace {
-            markup.text(value="setContent")
+        markup.paragraph {
+            markup.text(value="Emits Kotlin source with a ")
+            markup.monospace {
+                markup.text(value="MainScreen")
+            }
+            markup.text(value=" composable you can call from any Compose ")
+            markup.monospace {
+                markup.text(value="setContent")
+            }
+            markup.text(value=" block. ")
+            markup.monospace {
+                markup.text(value="--opt package")
+            }
+            markup.text(value=" sets the Kotlin package; make it match the directory you generate into.")
         }
-        markup.text(value=" block. ")
-        markup.monospace {
-            markup.text(value="--opt package")
-        }
-        markup.text(value=" sets the Kotlin package; make it match the directory you generate into.")
     }
 }
 ```
@@ -489,26 +507,27 @@ ui.hbox(style={gap=8px}) {
 import "sngl:ui/markup"
 
 whenSelected(selected=embedTarget, value="html") {
-    markup.codeBlock {
-        markup.text(value="sngl generate todo.sngl --lang go --platform html -o ./ui")
-    }
-    markup.paragraph {
-        markup.text(value="Your program is a Go module; the import path below assumes ")
-        markup.monospace {
-            markup.text(value="go mod init example.com/myapp")
+    component content {
+        markup.codeBlock {
+            markup.text(value="sngl generate todo.sngl --lang go --platform html -o ./ui")
         }
-        markup.text(value=". Mount the handler in your own server, then run ")
-        markup.monospace {
-            markup.text(value="go mod tidy")
+        markup.paragraph {
+            markup.text(value="Your program is a Go module; the import path below assumes ")
+            markup.monospace {
+                markup.text(value="go mod init example.com/myapp")
+            }
+            markup.text(value=". Mount the handler in your own server, then run ")
+            markup.monospace {
+                markup.text(value="go mod tidy")
+            }
+            markup.text(value=" and ")
+            markup.monospace {
+                markup.text(value="go build")
+            }
+            markup.text(value=":")
         }
-        markup.text(value=" and ")
-        markup.monospace {
-            markup.text(value="go build")
-        }
-        markup.text(value=":")
-    }
-    markup.codeBlock {
-        markup.text(value=`package main
+        markup.codeBlock {
+            markup.text(value=`package main
 
 import (
     "net/http"
@@ -520,6 +539,7 @@ func main() {
     http.Handle("/", ui.Handler())
     http.ListenAndServe(":8080", nil)
 }`)
+        }
     }
 }
 ```
@@ -528,26 +548,27 @@ func main() {
 import "sngl:ui/markup"
 
 whenSelected(selected=embedTarget, value="fyne") {
-    markup.codeBlock {
-        markup.text(value="sngl generate todo.sngl --lang go --platform fyne -o ./ui")
-    }
-    markup.paragraph {
-        markup.text(value="Your program is a Go module; the import path below assumes ")
-        markup.monospace {
-            markup.text(value="go mod init example.com/myapp")
+    component content {
+        markup.codeBlock {
+            markup.text(value="sngl generate todo.sngl --lang go --platform fyne -o ./ui")
         }
-        markup.text(value=". Put the generated UI in a window of your own Fyne app, then run ")
-        markup.monospace {
-            markup.text(value="go mod tidy")
+        markup.paragraph {
+            markup.text(value="Your program is a Go module; the import path below assumes ")
+            markup.monospace {
+                markup.text(value="go mod init example.com/myapp")
+            }
+            markup.text(value=". Put the generated UI in a window of your own Fyne app, then run ")
+            markup.monospace {
+                markup.text(value="go mod tidy")
+            }
+            markup.text(value=", which adds Fyne and the SNGL runtime package the generated code imports, and ")
+            markup.monospace {
+                markup.text(value="go build")
+            }
+            markup.text(value=":")
         }
-        markup.text(value=", which adds Fyne and the SNGL runtime package the generated code imports, and ")
-        markup.monospace {
-            markup.text(value="go build")
-        }
-        markup.text(value=":")
-    }
-    markup.codeBlock {
-        markup.text(value=`package main
+        markup.codeBlock {
+            markup.text(value=`package main
 
 import (
     "fyne.io/fyne/v2/app"
@@ -561,6 +582,7 @@ func main() {
     w.SetContent(ui.New().BuildUI())
     w.ShowAndRun()
 }`)
+        }
     }
 }
 ```
@@ -569,22 +591,23 @@ func main() {
 import "sngl:ui/markup"
 
 whenSelected(selected=embedTarget, value="kotlin") {
-    markup.codeBlock {
-        markup.text(value="sngl generate todo.sngl --lang kotlin --platform android --opt package=com.example.app -o ./app/src/main/java/com/example/app")
-    }
-    markup.paragraph {
-        markup.text(value="Then call the generated ")
-        markup.monospace {
-            markup.text(value="MainScreen")
+    component content {
+        markup.codeBlock {
+            markup.text(value="sngl generate todo.sngl --lang kotlin --platform android --opt package=com.example.app -o ./app/src/main/java/com/example/app")
         }
-        markup.text(value=" composable from your Activity. The generated code uses Jetpack Compose with Material 3 and ")
-        markup.monospace {
-            markup.text(value="androidx.activity:activity-compose")
+        markup.paragraph {
+            markup.text(value="Then call the generated ")
+            markup.monospace {
+                markup.text(value="MainScreen")
+            }
+            markup.text(value=" composable from your Activity. The generated code uses Jetpack Compose with Material 3 and ")
+            markup.monospace {
+                markup.text(value="androidx.activity:activity-compose")
+            }
+            markup.text(value=", so the app module needs those dependencies and the Compose compiler plugin:")
         }
-        markup.text(value=", so the app module needs those dependencies and the Compose compiler plugin:")
-    }
-    markup.codeBlock {
-        markup.text(value=`package com.example.app
+        markup.codeBlock {
+            markup.text(value=`package com.example.app
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -596,6 +619,7 @@ class MainActivity : ComponentActivity() {
         setContent { MainScreen() }
     }
 }`)
+        }
     }
 }
 ```

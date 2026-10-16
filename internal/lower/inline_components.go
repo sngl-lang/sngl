@@ -1284,6 +1284,17 @@ func (st *inlineCompState) expandCall(n *ir.NodeInst) ([]ir.Stmt, error) {
 	if comp.PkgPath() != "" {
 		ir.AttachNodeSite(body, n)
 	}
+	instances := n.Instances
+	if n.ID != "" {
+		instances = append(slices.Clip(instances), n.ID)
+	}
+	if len(instances) > 0 {
+		for _, s := range body {
+			if root, ok := s.(*ir.NodeInst); ok {
+				root.Instances = append(slices.Clone(instances), root.Instances...)
+			}
+		}
+	}
 	if n.ID != "" || st.reach.takes(comp) {
 		st.recordInstance(n, symRenames, body)
 	}

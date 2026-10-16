@@ -443,14 +443,18 @@ component Tour ui.node {
             )
         }
         ui.modal(closable=true, open=showModal, title="Example Modal") {
-            ui.text(value="This is modal content.")
-            ui.button(text="Close", @click { showModal = false })
+            component content {
+                ui.text(value="This is modal content.")
+                ui.button(text="Close", @click { showModal = false })
+            }
         }
         ui.drawer(open=showDrawer, side="right") {
-            ui.vbox(style={gap=12px, padding=16px}) {
-                ui.text(value="Drawer Content", style={fontWeight=bold})
-                ui.text(value="Slide-out panel")
-                ui.button(text="Close", @click { showDrawer = false })
+            component content {
+                ui.vbox(style={gap=12px, padding=16px}) {
+                    ui.text(value="Drawer Content", style={fontWeight=bold})
+                    ui.text(value="Slide-out panel")
+                    ui.button(text="Close", @click { showDrawer = false })
+                }
             }
         }
         ui.divider

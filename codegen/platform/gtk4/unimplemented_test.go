@@ -105,8 +105,8 @@ window {
         menu(open=shown) { menuItem(label="Open") }
         toolbar { button(text="tool") }
         splitview { text(value="left") }
-        drawer(open=shown) { text(value="drawn") }
-        modal(open=shown, title="Title", closable=true) { text(value="modal") }
+        drawer(open=shown) { component content { text(value="drawn") } }
+        modal(open=shown, title="Title", closable=true) { component content { text(value="modal") } }
     }
 }
 `)

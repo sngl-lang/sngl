@@ -1,0 +1,32 @@
+# A node a population declares is read through the node it populates,
+# `c.m.e`, and the checked dump has to print it that way to check again.
+
+sngl dump --stage checked --format sngl app.sngl
+stdout 'c\.m\.e\.length\(\)'
+cp stdout out.sngl
+sngl check out.sngl
+stdout 'out.sngl: ok'
+
+-- app.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+
+component maybe(extra list[component(i int) node]) node {
+    vbox {
+        for var i = [1, 2] {
+            extra(i)
+        }
+    }
+}
+
+component screen node {
+    maybe #m {
+        component extra(i) {
+            text #e(value="{i}")
+        }
+    }
+}
+
+func testIt(t Test, c screen) {
+    t.assert(c.m.e.length() == 2)
+}

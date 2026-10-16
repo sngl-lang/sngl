@@ -1,0 +1,62 @@
+// The type of `c.<id>` is the node's position: one, an option behind an `if`,
+// a list behind a `for`. Each read below asks for the wrong one of the three.
+
+import . "sngl:ui"
+import . "sngl:test"
+
+component counter node {
+    var shown = false
+    var items list[string] = []
+
+    vbox {
+        text #lbl(value="x")
+        if shown {
+            button #maybe(text="-")
+        }
+        for var it = items {
+            text #row(value=it)
+        }
+    }
+}
+
+component child node {
+    text #shows(value="x")
+}
+
+component once node {
+    child #kid()
+}
+
+func testOwnNodes(t Test, c counter) {
+    var one text = c.lbl
+    var opt text = c.maybe // ERROR(check) "cannot initialize text with option[button]"
+    var many text = c.row  // ERROR(check) "cannot initialize text with list[text]"
+    c.maybe.click()        // ERROR(check) "no method \"click\" on type option[button]"
+}
+
+// A child instance written once is one instance, not a list of them.
+func testChildInstance(t Test, c once) {
+    var xs list[child] = c.kid // ERROR(check) "cannot initialize list[child] with child"
+}
+
+window {
+}
+
+// An unfilled named slot shows its insertion's block, whose nodes may not
+// render, and a population nobody wrote names nothing.
+component titled(head component() node) node {
+    vbox {
+        head {
+            text #dflt(value="Untitled")
+        }
+    }
+}
+
+component untitled node {
+    titled #t
+}
+
+func testUnfilledSlot(t Test, c untitled) {
+    var d text = c.t.dflt // ERROR(check) "cannot initialize text with option[text]"
+    var h = c.t.title     // ERROR(check) "no member \"title\" on component titled"
+}

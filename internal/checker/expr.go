@@ -1646,11 +1646,7 @@ func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) ir.Ex
 	// `c.f.input(value="x")`. A test fires the event as the program would.
 	var argSig *ir.FuncSig
 	event := ""
-	evt := c.elementEvent(sel.Operand, sel.Field)
-	if evt == nil {
-		evt = nestedElementEvent(sel.Operand, receiver, sel.Field)
-	}
-	if evt != nil {
+	if evt := c.elementEvent(receiverExpr, sel.Field); evt != nil {
 		event = evt.Name
 		argSig = &ir.FuncSig{Params: evt.Params}
 	}
@@ -1674,152 +1670,25 @@ func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) ir.Ex
 	}
 }
 
-// elementEvent returns the event declared on the component addressed by
-// `operand` (either `c.<id>` — look up #id inside c's component — or a
-// bare element ref) whose name matches `event`, or nil when `operand`
-// doesn't address a component or the component has no such event. This
-// is how a sigil-free `c.inc.click()` is recognised as an event trigger
-// rather than an ordinary method call.
-func (c *checker) elementEvent(operand ast.Expr, event string) *ir.EventDecl {
-	comp := c.elementHostComponent(operand)
-	if comp == nil {
+// elementEvent returns the event named event declared on the component recv
+// reads by `#id` -- `c.inc`, `c.lbl[0]`, or an option of one narrowed to its
+// node -- or nil. This is how a sigil-free `c.inc.click()` is recognised as an
+// event trigger rather than an ordinary method call.
+func (c *checker) elementEvent(recv ir.Expr, event string) *ir.EventDecl {
+	if !isElementRefRead(recv) {
 		return nil
 	}
-	for _, e := range comp.Events {
-		if e.Name == event {
-			return e
-		}
-	}
-	return nil
-}
-
-// nestedElementEvent is the event a trigger names through a component the
-// one it starts at renders -- `c.b.btn.click()`, or `c.opt[1].click()` for a
-// node a component `c` renders declares -- read off the type the receiver
-// checked as: the shapes elementHostComponent reads off the source stop at
-// the nodes `c`'s own body writes.
-func nestedElementEvent(operand ast.Expr, receiver *ir.Type, event string) *ir.EventDecl {
-	if ix, ok := operand.(*ast.IndexExpr); ok {
-		operand = ix.Operand
-	}
-	if _, ok := operand.(*ast.SelectExpr); !ok {
+	t := exprType(recv)
+	if t == nil || t.Kind != ir.TypeComponent {
 		return nil
 	}
-	if receiver == nil || receiver.Kind != ir.TypeComponent {
-		return nil
-	}
-	comp, ok := receiver.Decl.(*ir.Component)
+	comp, ok := t.Decl.(*ir.Component)
 	if !ok {
 		return nil
 	}
 	for _, e := range comp.Events {
 		if e.Name == event {
 			return e
-		}
-	}
-	return nil
-}
-
-// elementHostComponent resolves `operand` to the component instance
-// hosting the addressed widget. Handles `c.<id>` where c is a
-// component-typed param/var and <id> matches a NodeInst inside c's
-// body. Returns nil for shapes the resolver doesn't recognise.
-func (c *checker) elementHostComponent(operand ast.Expr) *ir.Component {
-	// `c.row[1]`: one of the nodes a loop rendered under one id, which is the
-	// same component as each of the others.
-	if ix, ok := operand.(*ast.IndexExpr); ok {
-		operand = ix.Operand
-	}
-	sel, ok := operand.(*ast.SelectExpr)
-	if !ok {
-		return nil
-	}
-	// `c.card.title`: a node a population at `c`'s `#card` declares, reached
-	// through the node it populates (populationHost).
-	if inner, ok := sel.Operand.(*ast.SelectExpr); ok {
-		if owner := c.componentOfIdent(inner.Operand); owner != nil && owner.AST != nil {
-			return c.populationHost(findNodeAST(owner.AST.Body.Stmts, inner.Field), sel.Field)
-		}
-		return nil
-	}
-	ident, ok := sel.Operand.(*ast.IdentExpr)
-	if !ok {
-		return nil
-	}
-	sym, ok := c.scope.Lookup(ident.Name)
-	if !ok {
-		return nil
-	}
-	var compType *ir.Type
-	switch v := sym.(type) {
-	case *ir.Param:
-		compType = v.Type
-	case *ir.Var:
-		compType = v.Type
-	}
-	if compType == nil || compType.Kind != ir.TypeComponent || compType.Decl == nil {
-		return nil
-	}
-	comp, ok := compType.Decl.(*ir.Component)
-	if !ok {
-		return nil
-	}
-	// Walk the component's AST (its IR body may not be checked yet
-	// at this point in pass2) looking for a visual node with id =
-	// sel.Field. The target's tag identifies the host component
-	// (stdlib `input` → InputEvent on @input, etc.).
-	if comp.AST == nil {
-		return nil
-	}
-	return c.findHostComponentAST(comp.AST.Body.Stmts, sel.Field)
-}
-
-func (c *checker) findHostComponentAST(stmts []ast.Stmt, id string) *ir.Component {
-	for _, s := range stmts {
-		switch n := s.(type) {
-		case *ast.VisualNode:
-			if n.ID == id {
-				name := visualNodeTarget(n)
-				if name == "" {
-					return nil
-				}
-				if sym, ok := c.resolveComponentSymbol(name); ok {
-					if comp, ok := sym.(*ir.Component); ok {
-						return comp
-					}
-				}
-				return nil
-			}
-			// A population in the node's block is a ComponentDecl, which
-			// this does not descend into: it is a scope of its own, as a
-			// component's body is, and its ids are reached through the node it
-			// populates (populationHost), not as this component's.
-			if comp := c.findHostComponentAST(n.Block.Stmts, id); comp != nil {
-				return comp
-			}
-		case *ast.CallStmt:
-			if name, callID, isElem := elementRefCallInfo(n.Call); isElem && callID == id {
-				if sym, ok := c.resolveComponentSymbol(name); ok {
-					if comp, ok := sym.(*ir.Component); ok {
-						return comp
-					}
-				}
-				return nil
-			}
-		case *ast.IfStmt:
-			if comp := c.findHostComponentAST(n.Body.Stmts, id); comp != nil {
-				return comp
-			}
-			if comp := c.findHostComponentAST(n.Else.Stmts, id); comp != nil {
-				return comp
-			}
-		case *ast.ForStmt:
-			if comp := c.findHostComponentAST(n.Body.Stmts, id); comp != nil {
-				return comp
-			}
-			if comp := c.findHostComponentAST(n.Else.Stmts, id); comp != nil {
-				return comp
-			}
 		}
 	}
 	return nil
@@ -1854,131 +1723,6 @@ func findNodeAST(stmts []ast.Stmt, id string) *ast.VisualNode {
 		}
 	}
 	return nil
-}
-
-// populationHost is the component of the node with `#id` id written in one of
-// the populations node's call site wrote, nil for none. That is how a node in
-// a population is reached from outside it: through the node it populates,
-// `c.card.title` for `card #card { component top { text #title } }`, as an
-// instance's own ids are reached through its handle.
-func (c *checker) populationHost(node *ast.VisualNode, id string) *ir.Component {
-	if node == nil {
-		return nil
-	}
-	for _, s := range node.Block.Stmts {
-		if cd, ok := s.(*ast.ComponentDecl); ok {
-			if host := c.findHostComponentAST(cd.Body.Stmts, id); host != nil {
-				return host
-			}
-		}
-	}
-	return nil
-}
-
-// findDescendantHost searches the components instantiated within comp's body
-// (transitively, with cycle detection) for an element ref named id, returning
-// its host component. A ref living inside a child component is collected across
-// the whole rendered subtree, so callers type it as list[host]. Recursion is
-// bounded by `visited` — a self-instantiating component (e.g. a recursive tree
-// view) is searched once. Returns nil if no descendant declares the id.
-func (c *checker) findDescendantHost(comp *ir.Component, id string, visited map[*ir.Component]bool) *ir.Component {
-	if comp == nil || comp.AST == nil || visited[comp] {
-		return nil
-	}
-	visited[comp] = true
-	// Another package's body names things through that package's scope,
-	// which this checker does not hold; its IR is already checked.
-	if !slices.Contains(c.pkg.Components, comp) {
-		host, children := nodesInCheckedBody(comp.Stmts, id)
-		if host != nil {
-			return host
-		}
-		for _, child := range children {
-			if host := c.findDescendantHost(child, id, visited); host != nil {
-				return host
-			}
-		}
-		return nil
-	}
-	restore := c.fileOf(compDeclPos(comp))
-	children := c.childComponents(comp.AST.Body.Stmts)
-	restore()
-	for _, child := range children {
-		if slices.Contains(c.pkg.Components, child) {
-			restore := c.fileOf(compDeclPos(child))
-			host := c.findHostComponentAST(child.AST.Body.Stmts, id)
-			restore()
-			if host != nil {
-				return host
-			}
-		}
-		if host := c.findDescendantHost(child, id, visited); host != nil {
-			return host
-		}
-	}
-	return nil
-}
-
-// nodesInCheckedBody is findHostComponentAST and childComponents over a body
-// that has already been checked.
-func nodesInCheckedBody(body []ir.Stmt, id string) (host *ir.Component, children []*ir.Component) {
-	_ = ir.WalkStmts(body, func(s ir.Stmt) error {
-		n, ok := s.(*ir.NodeInst)
-		if !ok || n.Component == nil {
-			return nil
-		}
-		if n.ID == id {
-			host = n.Component
-			return ir.SkipAll
-		}
-		if n.Component.AST != nil {
-			children = append(children, n.Component)
-		}
-		return nil
-	})
-	return host, children
-}
-
-// childComponents returns the user components instantiated directly in stmts
-// (descending through if/for/platform branches and nested node blocks, but not
-// into the instantiated components' own definitions — that is findDescendantHost's
-// job). Both `Comp()` call-statement and `Comp { }` visual-node forms count.
-func (c *checker) childComponents(stmts []ast.Stmt) []*ir.Component {
-	var out []*ir.Component
-	lookup := func(name string) {
-		if name == "" {
-			return
-		}
-		if sym, ok := c.resolveComponentSymbol(name); ok {
-			if comp, ok := sym.(*ir.Component); ok && comp.AST != nil {
-				out = append(out, comp)
-			}
-		}
-	}
-	var walk func(stmts []ast.Stmt)
-	walk = func(stmts []ast.Stmt) {
-		for _, s := range stmts {
-			switch n := s.(type) {
-			case *ast.VisualNode:
-				lookup(visualNodeTarget(n))
-				walk(n.Block.Stmts)
-			case *ast.CallStmt:
-				if name, _, isElem := elementRefCallInfo(n.Call); isElem {
-					lookup(name)
-				} else {
-					lookup(callTargetName(n.Call.Func))
-				}
-			case *ast.IfStmt:
-				walk(n.Body.Stmts)
-				walk(n.Else.Stmts)
-			case *ast.ForStmt:
-				walk(n.Body.Stmts)
-				walk(n.Else.Stmts)
-			}
-		}
-	}
-	walk(stmts)
-	return out
 }
 
 // isPrimitiveMethodReceiver reports whether a method-call receiver type's full
@@ -2352,48 +2096,37 @@ func (c *checker) inferSelect(x *ast.SelectExpr) ir.Expr {
 				// its value type is the host element's component type. Resolve
 				// against the operand's already-known component type so inline
 				// chains work, not just bare-ident operands.
-				if comp.AST != nil {
-					// The host is named in the component's body, so it resolves
-					// through the imports of the file that body was written in
-					// -- not through this one's. A test naming `c.out` would
-					// otherwise have to import the vocabulary the component
-					// renders with before it could ask about a ref.
-					restore := c.fileOf(compDeclPos(comp))
-					host := c.findHostComponentAST(comp.AST.Body.Stmts, x.Field)
-					// A ref declared inside a child component is collected across
-					// the rendered subtree, so it reads as list[host] (e.g.
-					// `c.lbl[0]`, or `c.val[i]` from a recursive view).
-					var descendant *ir.Component
-					if host == nil {
-						descendant = c.findDescendantHost(comp, x.Field, map[*ir.Component]bool{})
+				if host, k := c.elementRef(comp, x.Field); host != nil {
+					c.refuseAmbiguousReach(x, comp, x.Field)
+					typ := host.SymType()
+					if args, ok := c.handleArgs[handleKey{comp, x.Field}]; ok {
+						typ = withComponentArgs(typ, host, args)
 					}
-					restore()
-					if host != nil {
-						c.refuseAmbiguousReach(x, comp, x.Field)
-						typ := host.SymType()
-						if args, ok := c.handleArgs[handleKey{comp, x.Field}]; ok {
-							typ = withComponentArgs(typ, host, args)
-						}
-						return &ir.Select{AST: x, Type: typ, Operand: operandExpr, Field: x.Field}
-					}
-					// Not the instance's own: a node a population written at
-					// the instance's call site declares. `c.card.title` is the
-					// node `title` in what `c`'s body handed `card #card`, and
-					// it is the same node `c` renders, so it reads as `c`'s
-					// member does -- the reach every target already answers.
-					if sel, ok := operandExpr.(*ir.Select); ok {
-						if owner := handleOwner(sel.Operand); owner != nil && owner.AST != nil {
-							restoreOwner := c.fileOf(compDeclPos(owner))
-							ph := c.populationHost(findNodeAST(owner.AST.Body.Stmts, sel.Field), x.Field)
-							restoreOwner()
-							if ph != nil {
-								c.refuseAmbiguousReach(x, owner, x.Field)
-								return &ir.Select{AST: x, Type: ph.SymType(), Operand: sel.Operand, Field: x.Field}
+					return &ir.Select{AST: x, Type: k.Wrap(typ, c.listOf), Operand: operandExpr, Field: x.Field, Ref: k}
+				}
+				// Not the instance's own: a node a population written at the
+				// instance's call site declares. `c.card.title` is the node
+				// `title` in what `c`'s body handed `card #card`, read through
+				// that one `card`, and counted by how often card inserts the slot.
+				if sel := refSelect(operandExpr); sel != nil {
+					if owner := handleOwner(sel.Operand); owner != nil && owner.AST != nil {
+						restoreOwner := c.fileOf(compDeclPos(owner))
+						ph, k := c.populationRef(owner, findNodeAST(owner.AST.Body.Stmts, sel.Field), x.Field)
+						restoreOwner()
+						if ph != nil {
+							c.refuseAmbiguousReach(x, owner, x.Field)
+							// A boundary is no instance: the compiler places its
+							// fallback in the body that wrote it, so the nodes are
+							// that body's own, and one boundary of it is all a read
+							// can name without the copy an index picked.
+							if comp.Builtin == ir.BuiltinErrorBoundary {
+								if strings.IndexByte(string(sel.Ref), ir.RefList) >= 0 {
+									c.error(x.Pos, "%q is in the fallback of a boundary a loop repeats: read it inside the loop", x.Field)
+								}
+								return &ir.Select{AST: x, Type: k.Wrap(ph.SymType(), c.listOf), Operand: sel.Operand, Field: x.Field, Ref: k, Via: operandExpr}
 							}
+							return &ir.Select{AST: x, Type: k.Wrap(ph.SymType(), c.listOf), Operand: sel.Operand, Field: x.Field, Ref: k, Populated: true, Via: operandExpr}
 						}
-					}
-					if descendant != nil {
-						return &ir.Select{AST: x, Type: c.listOf(descendant.SymType()), Operand: operandExpr, Field: x.Field}
 					}
 				}
 				c.error(x.Pos, "no member %q on component %s", x.Field, comp.Name)
@@ -2402,6 +2135,16 @@ func (c *checker) inferSelect(x *ast.SelectExpr) ir.Expr {
 
 		if x.Field == "length" && (operand.Kind == ir.TypeList || operand.Kind == ir.TypeMap || operand.Kind == ir.TypeString) {
 			return &ir.Select{AST: x, Type: TypInt, Operand: operandExpr, Field: x.Field}
+		}
+		// A ref naming any number of nodes, or maybe none, is not one of them,
+		// and a member read through it would reach whichever a target found.
+		if isElementRefRead(operandExpr) && (operand.Kind == ir.TypeList || operand.Kind == ir.TypeOption) && !c.methodNamed(operand, x.Field) {
+			if operand.Kind == ir.TypeList {
+				c.error(x.Pos, "%q is read through %s, which names one node per copy: index it to pick the copy", x.Field, operand)
+			} else {
+				c.error(x.Pos, "%q is read through %s, which may name no node: test it against null first", x.Field, operand)
+			}
+			return &ir.Select{AST: x, Type: TypInvalid, Operand: operandExpr, Field: x.Field}
 		}
 		if operand.Kind != ir.TypeInvalid {
 			if c.methodNamed(operand, x.Field) {
@@ -4530,7 +4273,7 @@ func (c *checker) errorEventType() *ir.Type {
 func (c *checker) checkVisualNodeIR(vn *ast.VisualNode) ir.Stmt {
 	st := c.checkVisualNode(vn)
 	// The marks a placement carries, applied to what it became: a node or a
-	// slot insertion takes #[tree.crosses], and anything else refuses it.
+	// slot insertion takes #[family.crosses], and anything else refuses it.
 	if len(vn.Attrs) > 0 {
 		c.applyMarks(vn, st)
 	}
@@ -6005,21 +5748,7 @@ func (c *checker) checkSlotPopulations(vn *ast.VisualNode, comp *ir.Component) (
 	if r := comp.RestSlot(); r != nil && content[r.Name] != nil && len(rest.Stmts) > 0 {
 		c.error(vn.Pos, "slot %q is populated by name and by the children written bare on component %s", r.Name, comp.Name)
 	}
-	c.checkRequiredSlots(vn.Pos, comp, content)
 	return content, rest
-}
-
-// checkRequiredSlots reports the named slots a call site left unpopulated whose
-// count gives no way to omit them.
-func (c *checker) checkRequiredSlots(pos ast.Pos, comp *ir.Component, content map[string]*ir.SlotContent) {
-	for _, slot := range comp.Slots {
-		if slot.Rest || content[slot.Name] != nil {
-			continue
-		}
-		if slot.Card == ir.SlotOne {
-			c.error(pos, "component %s requires slot %q to be populated", comp.Name, slot.Name)
-		}
-	}
 }
 
 // checkSlotContent checks one population. The bound names are the caller's own,

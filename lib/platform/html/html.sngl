@@ -271,10 +271,9 @@ const component ui.text[platform](value, style) {
 // fires -- and a right-click, which is not the same gesture. It stands in until
 // html synthesizes the real one from pointerdown and a timer; the alternative
 // was a declared event that reached nothing.
-const component ui.button[platform](text, disabled, style, @click, @longPress, content) {
+const component ui.button[platform](text, disabled, style, @click, @longPress) {
     html.button(disabled=disabled, style={...style}, @click { click() }, @contextmenu { longPress() }) {
         html.span(textContent=text) {}
-        content
     }
 }
 

@@ -114,12 +114,18 @@ component branch node {
 }
 
 func testReenteringABranchResetsItsInstance(t Test, c branch) {
-    c.inner.hit.click()
-    t.assert(browser.text(c.inner.shown) == "[i:1]")
+    t.assert(c.inner != null)
+    if c.inner != null {
+        c.inner.hit.click()
+        t.assert(browser.text(c.inner.shown) == "[i:1]")
+    }
     c.toggle.click()
-    t.assert(browser.count(c.inner.shown) == 0)
+    t.assert(c.inner == null)
     c.toggle.click()
-    t.assert(browser.text(c.inner.shown) == "[i:0]")
+    t.assert(c.inner != null)
+    if c.inner != null {
+        t.assert(browser.text(c.inner.shown) == "[i:0]")
+    }
 }
 
 component row(label string, @pick(v string)) node {
@@ -387,6 +393,7 @@ window.__sngl_boot = () => {
     Object.assign(el, p);
     el.dispatchEvent(Object.assign(new Event("contextmenu"), p));
   };
+  state.innerPresent = () => document.querySelector('[data-sngl-id="inner"], [data-sngl-instance="inner"]') !== null;
   if (typeof window !== "undefined") {
     window.__sngl_state = state;
   }
@@ -427,12 +434,22 @@ window.__sngl_boot = () => {
     t.assertTrue(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll('[data-sngl-id="shown"]')[0]) === "[a:0]", '(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll("[data-sngl-id=\\"shown\\"]")[0]) === "[a:0]")');
   }
   function testReenteringABranchResetsItsInstance(t, c) {
-    c.inner.hit();
-    t.assertTrue(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll('[data-sngl-id="shown"]')[0]) === "[i:1]", '(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll("[data-sngl-id=\\"shown\\"]")[0]) === "[i:1]")');
+    t.assertTrue(c.inner !== null, "(c.inner !== null)");
+    if (c.inner !== null) {
+      ;
+      c.inner.hit();
+      t.assertTrue(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll('[data-sngl-id="shown"]')[0]) === "[i:1]", '(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll("[data-sngl-id=\\"shown\\"]")[0]) === "[i:1]")');
+    }
+    ;
     c.toggle();
-    t.assertTrue(document.querySelectorAll('[data-sngl-id="shown"]').length === 0, '(document.querySelectorAll("[data-sngl-id=\\"shown\\"]").length === 0)');
+    t.assertTrue(c.inner === null, "(c.inner === null)");
     c.toggle();
-    t.assertTrue(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll('[data-sngl-id="shown"]')[0]) === "[i:0]", '(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll("[data-sngl-id=\\"shown\\"]")[0]) === "[i:0]")');
+    t.assertTrue(c.inner !== null, "(c.inner !== null)");
+    if (c.inner !== null) {
+      ;
+      t.assertTrue(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll('[data-sngl-id="shown"]')[0]) === "[i:0]", '(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll("[data-sngl-id=\\"shown\\"]")[0]) === "[i:0]")');
+    }
+    ;
   }
   function testAnInstancesEventReachesTheCallSite(t, c) {
     c.btn[0]();
@@ -815,6 +832,7 @@ window.__sngl_boot = () => {
       __inst1_next.push(b);
       __inst1_i = __inst1_i + 1;
       let b__el = b.__root;
+      b__el.setAttribute("data-sngl-instance", "b");
       let __place0_i_ref0 = null;
       if (__place0_i < __place0_prev.length) {
         __place0_i_ref0 = __place0_prev[__place0_i];
@@ -860,6 +878,7 @@ window.__sngl_boot = () => {
       __inst3_next.push(b__1);
       __inst3_i = __inst3_i + 1;
       let b__1__el = b__1.__root;
+      b__1__el.setAttribute("data-sngl-instance", "b__1");
       let __place2_i_ref0 = null;
       if (__place2_i < __place2_prev.length) {
         __place2_i_ref0 = __place2_prev[__place2_i];
@@ -905,6 +924,7 @@ window.__sngl_boot = () => {
       __inst5_next.push(b__2);
       __inst5_i = __inst5_i + 1;
       let b__2__el = b__2.__root;
+      b__2__el.setAttribute("data-sngl-instance", "b__2");
       let __place4_i_ref0 = null;
       if (__place4_i < __place4_prev.length) {
         __place4_i_ref0 = __place4_prev[__place4_i];
@@ -955,6 +975,7 @@ window.__sngl_boot = () => {
       }
       __inst7_next.set(__key8, b__3);
       let b__3__el = b__3.__root;
+      b__3__el.setAttribute("data-sngl-instance", "b__3");
       let __place6_i_ref0 = null;
       if (__place6_i < __place6_prev.length) {
         __place6_i_ref0 = __place6_prev[__place6_i];
@@ -1004,6 +1025,7 @@ window.__sngl_boot = () => {
       }
       __inst9_next.set(__key10, b__4);
       let b__4__el = b__4.__root;
+      b__4__el.setAttribute("data-sngl-instance", "b__4");
       let __place8_i_ref0 = null;
       if (__place8_i < __place8_prev.length) {
         __place8_i_ref0 = __place8_prev[__place8_i];
@@ -1048,6 +1070,7 @@ window.__sngl_boot = () => {
       __inst11_next.push(inner);
       __inst11_i = __inst11_i + 1;
       let inner__el = inner.__root;
+      inner__el.setAttribute("data-sngl-instance", "inner");
       let __place10_i_ref0 = null;
       if (__place10_i < __place10_prev.length) {
         __place10_i_ref0 = __place10_prev[__place10_i];
@@ -1100,6 +1123,7 @@ window.__sngl_boot = () => {
       __inst13_next.push(r);
       __inst13_i = __inst13_i + 1;
       let r__el = r.__root;
+      r__el.setAttribute("data-sngl-instance", "r");
       let __place12_i_ref0 = null;
       if (__place12_i < __place12_prev.length) {
         __place12_i_ref0 = __place12_prev[__place12_i];
@@ -1152,6 +1176,7 @@ window.__sngl_boot = () => {
       __inst15_next.push(ch);
       __inst15_i = __inst15_i + 1;
       let ch__el = ch.__root;
+      ch__el.setAttribute("data-sngl-instance", "ch");
       let __place14_i_ref0 = null;
       if (__place14_i < __place14_prev.length) {
         __place14_i_ref0 = __place14_prev[__place14_i];
@@ -1199,6 +1224,7 @@ window.__sngl_boot = () => {
       __inst17_now_start.push(state.base__inst0);
       __inst17_i = __inst17_i + 1;
       let b__5__el = b__5.__root;
+      b__5__el.setAttribute("data-sngl-instance", "b__5");
       let __place16_i_ref0 = null;
       if (__place16_i < __place16_prev.length) {
         __place16_i_ref0 = __place16_prev[__place16_i];
@@ -1245,6 +1271,7 @@ window.__sngl_boot = () => {
       __inst19_next.push(g);
       __inst19_i = __inst19_i + 1;
       let g__el = g.__root;
+      g__el.setAttribute("data-sngl-instance", "g");
       let __place18_i_ref0 = null;
       if (__place18_i < __place18_prev.length) {
         __place18_i_ref0 = __place18_prev[__place18_i];
@@ -1385,9 +1412,9 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:dafab5975116ad4848ebf52a525c263f
+pass sha256:61cd9fda082eb43e4c7a9a797b700769
 -- testrun/html/none/component_browser_runtime.sngl/branch/1 --
-sha256:ffb858f3983227919f59a7aa65190097
+sha256:71f750302ecf4c5bc0eab9e2f9224b16
 {
   "results": [
     {
@@ -1397,7 +1424,7 @@ sha256:ffb858f3983227919f59a7aa65190097
   ]
 }
 -- testrun/html/none/component_browser_runtime.sngl/callback/1 --
-sha256:c19e2e3f453535d38e48524e4b23118b
+sha256:bc471823bef688afa86514f25ece1a2e
 {
   "results": [
     {
@@ -1407,7 +1434,7 @@ sha256:c19e2e3f453535d38e48524e4b23118b
   ]
 }
 -- testrun/html/none/component_browser_runtime.sngl/duplicates/1 --
-sha256:ea10996715a5e2fd19ed0b4d6334f2c3
+sha256:16ed1ba2d66b1a62587c53f82d3120f5
 {
   "results": [
     {
@@ -1417,7 +1444,7 @@ sha256:ea10996715a5e2fd19ed0b4d6334f2c3
   ]
 }
 -- testrun/html/none/component_browser_runtime.sngl/events/1 --
-sha256:0806ef2c44f05569d2ea497a0f44c30b
+sha256:dce94fd65542c9ef444545fa1a038df7
 {
   "results": [
     {
@@ -1431,7 +1458,7 @@ sha256:0806ef2c44f05569d2ea497a0f44c30b
   ]
 }
 -- testrun/html/none/component_browser_runtime.sngl/gauges/1 --
-sha256:3494c65a9e946acb2e5eeb3ddad28687
+sha256:70e5d3fa406bd0d04aaf1f9b1969a686
 {
   "results": [
     {
@@ -1441,7 +1468,7 @@ sha256:3494c65a9e946acb2e5eeb3ddad28687
   ]
 }
 -- testrun/html/none/component_browser_runtime.sngl/growing/1 --
-sha256:a30abef818fa46ac893f237d164b3869
+sha256:3f80cf25dcc237af83284c2fb10a9b47
 {
   "results": [
     {
@@ -1451,7 +1478,7 @@ sha256:a30abef818fa46ac893f237d164b3869
   ]
 }
 -- testrun/html/none/component_browser_runtime.sngl/keyed/1 --
-sha256:fc660fa4cfba26230f81d0af80a367f3
+sha256:4318c391b50f542ab32ddb23377a5aa4
 {
   "results": [
     {
@@ -1461,7 +1488,7 @@ sha256:fc660fa4cfba26230f81d0af80a367f3
   ]
 }
 -- testrun/html/none/component_browser_runtime.sngl/perElement/1 --
-sha256:3eaaaaa0a7195366a3cd2c7b7b098203
+sha256:05be170f24967174456ed8167eb93d91
 {
   "results": [
     {
@@ -1471,7 +1498,7 @@ sha256:3eaaaaa0a7195366a3cd2c7b7b098203
   ]
 }
 -- testrun/html/none/component_browser_runtime.sngl/rebased/1 --
-sha256:a3ad7d0b39b7f9bd28ba46cf31f47611
+sha256:5652a007da8078489dfd695be673c00e
 {
   "results": [
     {
@@ -1485,7 +1512,7 @@ sha256:a3ad7d0b39b7f9bd28ba46cf31f47611
   ]
 }
 -- testrun/html/none/component_browser_runtime.sngl/renamed/1 --
-sha256:5c760150384aa2b5e57dd7c41a4a4e34
+sha256:4b19cb7cbb9009e860330b45947252e5
 {
   "results": [
     {

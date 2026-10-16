@@ -3667,6 +3667,12 @@ func (g *htmlGen) emitEventInvokers(b *strings.Builder) {
 		fmt.Fprintf(b, "state.%s = (p) => { const el = %s; Object.assign(el, p); el.dispatchEvent(Object.assign(new Event(%q), p)); };\n", name, one, h.event)
 		fmt.Fprintf(b, "state.%s = (i, p) => { const el = %s; Object.assign(el, p); el.dispatchEvent(Object.assign(new Event(%q), p)); };\n", codegen.InvokerAt(name), nth, h.event)
 	}
+	// A node a test null-tests is rendered while an element carries its mark,
+	// which goes with the element when a render slot takes it out; an instance
+	// is while the root it renders does.
+	for _, id := range slices.Sorted(maps.Keys(codegen.NullTestedRefs(g.pkg))) {
+		fmt.Fprintf(b, "state.%s = () => document.querySelector('[data-sngl-id=%q], [%s=%q]') !== null;\n", codegen.PresenceMethod(id), id, instanceMark, id)
+	}
 }
 
 // runtimeHandler is one listener the lowered IR attaches to an element built

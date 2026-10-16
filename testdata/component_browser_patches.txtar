@@ -97,7 +97,7 @@ func testANarrowedOptionIsArithmetic(t Test, c narrowed) {
     t.assert(browser.text(c.out) == "[42]\n[22]")
 }
 
-component toggled(body component) node {
+component toggled(body option[component]) node {
     var on = false
     button #t(text="toggle", @click { on = !on })
     vbox #box {
@@ -107,7 +107,7 @@ component toggled(body component) node {
     }
 }
 
-component scoped(ready component(int)) node {
+component scoped(ready option[component(int)]) node {
     var n = 0
     button #b(text="bump", @click { n = n + 1 })
     vbox #box {
@@ -181,11 +181,13 @@ component app root {
 }
 
 func testAnIfAtAWindowsRootFollowsItsState(t Test, c app) {
-    t.assert(browser.count(c.shown) == 1)
-    t.assert(browser.text(c.shown) == "SHOWN")
+    t.assert(c.shown != null)
+    if c.shown != null {
+        t.assert(browser.text(c.shown) == "SHOWN")
+    }
     c.t.click()
     t.assert(c.on == false)
-    t.assert(browser.count(c.shown) == 0)
+    t.assert(c.shown == null)
 }
 
 window {
@@ -308,6 +310,7 @@ window.__sngl_boot = () => {
   state.bClick = () => $11.click();
   state.nextClick = () => $13.click();
   state.t__1Click = () => $15.click();
+  state.shown__1Present = () => document.querySelector('[data-sngl-id="shown__1"], [data-sngl-instance="shown__1"]') !== null;
   if (typeof window !== "undefined") {
     window.__sngl_state = state;
   }
@@ -365,11 +368,15 @@ window.__sngl_boot = () => {
     t.assertTrue(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll('[data-sngl-id="s__1"]')[0]) === "ZERO", '(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll("[data-sngl-id=\\"s__1\\"]")[0]) === "ZERO")');
   }
   function testAnIfAtAWindowsRootFollowsItsState(t, c) {
-    t.assertTrue(document.querySelectorAll('[data-sngl-id="shown__1"]').length === 1, '(document.querySelectorAll("[data-sngl-id=\\"shown__1\\"]").length === 1)');
-    t.assertTrue(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll('[data-sngl-id="shown__1"]')[0]) === "SHOWN", '(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll("[data-sngl-id=\\"shown__1\\"]")[0]) === "SHOWN")');
+    t.assertTrue(c.shown__1 !== null, "(c.shown__1 !== null)");
+    if (c.shown__1 !== null) {
+      ;
+      t.assertTrue(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll('[data-sngl-id="shown__1"]')[0]) === "SHOWN", '(((el) => el.matches("input, textarea, select") ? el.value : el.innerText)(document.querySelectorAll("[data-sngl-id=\\"shown__1\\"]")[0]) === "SHOWN")');
+    }
+    ;
     c.t__1();
     t.assertTrue(state.on__inst1 === false, "(state.on__inst1 === false)");
-    t.assertTrue(document.querySelectorAll('[data-sngl-id="shown__1"]').length === 0, '(document.querySelectorAll("[data-sngl-id=\\"shown__1\\"]").length === 0)');
+    t.assertTrue(c.shown__1 === null, "(c.shown__1 === null)");
   }
   if (typeof window !== "undefined") {
     Object.assign(window, { testASelectChangeReachesTheSpan, run, testAWriteInsideACallbackIsPatched, doubled, blocky, testComputedsRender, testANarrowedOptionIsArithmetic, testANamedSlotFollowsItsBranch, testAScopedSlotIsHandedItsArgument, testACarouselShowsOneAtATime, testAnIfAtAWindowsRootFollowsItsState });
@@ -891,9 +898,9 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:83a918b904a3991c75cabb2353842413
+pass sha256:a8589ea27e9832ff6a2085ad49bc2848
 -- testrun/html/none/component_browser_patches.sngl/app/1 --
-sha256:f4e423f0ec54d2fa0d5761cc95cd33b9
+sha256:041cbbb1c388806814d18fe7c8eb503f
 {
   "results": [
     {

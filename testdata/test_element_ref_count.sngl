@@ -1,0 +1,183 @@
+import . "sngl:ui"
+import . "sngl:test"
+
+output {
+    none { html }
+}
+
+// `c.<id>` names the nodes an instance's own body writes, and how many is
+// where the node is written: one where nothing on the way to it is
+// conditional, an option behind an `if`, a list behind a `for`. A node in a
+// component the instance renders is that component's, reached through the id
+// of the instance holding it.
+
+component counter node {
+    var count = 0
+    var shown = false
+    var items list[string] = []
+
+    vbox {
+        button #inc(text="+", @click { count += 1 })
+        text #lbl(value="{count}")
+        if shown {
+            button #maybe(text="-", @click { count -= 1 })
+        }
+        for var it = items {
+            text #row(value=it)
+        }
+    }
+}
+
+func testAnUnconditionalNodeIsOne(t Test, c counter) {
+    c.inc.click()
+    t.assert(c.lbl.value == "1")
+}
+
+func testANodeBehindAnIfIsAnOption(t Test, c counter) {
+    t.assert(c.maybe == null)
+    c.shown = true
+    t.assert(c.maybe != null)
+    if c.maybe != null {
+        c.maybe.click()
+    }
+    t.assert(c.count == -1)
+}
+
+// A list however many rendered: none, and then exactly one.
+func testANodeBehindAForIsAList(t Test, c counter) {
+    t.assert(c.row.length() == 0)
+    c.items = ["a"]
+    t.assert(c.row.length() == 1)
+    t.assert(c.row[0].value == "a")
+}
+
+component child node {
+    var count = 0
+
+    button #bump(text="+", @click { count += 1 })
+    text #shows(value="{count}")
+}
+
+component once node {
+    vbox {
+        child #kid()
+    }
+}
+
+func testAChildsNodesAreReachedThroughItsInstance(t Test, c once) {
+    c.kid.bump.click()
+    t.assert(c.kid.shows.value == "1")
+}
+
+// Two instances of one component each hold their own refs, and driving one
+// leaves the other alone.
+component two node {
+    vbox {
+        child #left()
+        child #right()
+    }
+}
+
+func testTwoInstancesAreIndependent(t Test, c two) {
+    c.left.bump.click()
+    c.left.bump.click()
+    t.assert(c.left.shows.value == "2")
+    t.assert(c.right.shows.value == "0")
+}
+
+component maybeChild node {
+    var open = false
+
+    if open {
+        child #kid()
+    }
+}
+
+func testAnInstanceBehindAnIfIsAnOption(t Test, c maybeChild) {
+    t.assert(c.kid == null)
+    c.open = true
+    t.assert(c.kid != null)
+    if c.kid != null {
+        t.assert(c.kid.shows.value == "0")
+    }
+}
+
+// A conditional inside a loop keeps an entry per iteration, so an index names
+// the iteration it would in the loop, and the one that rendered none is null.
+component children node {
+    var ns list[int] = [1, 2, 3]
+
+    for var n = ns {
+        if n != 2 {
+            child #kid()
+        }
+    }
+}
+
+func testAnInstanceBehindAForIsAList(t Test, c children) {
+    t.assert(c.kid.length() == 3)
+    t.assert(c.kid[1] == null)
+    if c.kid[2] != null {
+        c.kid[2].bump.click()
+    }
+    t.assert(c.kid[2] != null && c.kid[2].shows.value == "1")
+    t.assert(c.kid[0] != null && c.kid[0].shows.value == "0")
+}
+
+// Children written bare belong to the body that wrote them, and a rest slot is
+// inserted exactly once, so they count as written there.
+component panel(children ...component) node {
+    vbox {
+        text #title(value="panel")
+        children
+    }
+}
+
+component filled node {
+    panel #p {
+        text #copy(value="x")
+    }
+}
+
+func testBareChildrenAreTheCallersRefs(t Test, c filled) {
+    t.assert(c.copy.value == "x")
+    t.assert(c.p.title.value == "panel")
+}
+
+// A boundary with a fallback stands it in place of its content, so the content
+// is an option, and so is the fallback: `failed` is an option slot, reached
+// through the boundary. Without a fallback the content always renders.
+component guarded node {
+    boundary #guard {
+        button #go(text="Go", @click { error.raise("boom", "") })
+
+        component failed {
+            text #gone(value="gone")
+        }
+    }
+}
+
+func testABoundaryWithAFallbackMakesBothHalvesOptions(t Test, c guarded) {
+    t.assert(c.guard.gone == null)
+    if c.go != null {
+        c.go.click()
+    }
+    t.assert(c.go == null)
+    t.assert(c.guard.gone != null)
+}
+
+component reporting node {
+    var caught = ""
+
+    boundary(@error(e) { caught = e.message }) {
+        button #go(text="Go", @click { error.raise("boom", "") })
+    }
+}
+
+func testABoundaryWithoutAFallbackLeavesItsContentOne(t Test, c reporting) {
+    c.go.click()
+    t.assert(c.caught == "boom")
+}
+
+window {
+}

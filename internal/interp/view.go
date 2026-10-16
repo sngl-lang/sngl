@@ -47,6 +47,12 @@ type View struct {
 	// byID indexes by #id. A `for` renders one node per iteration, so an id
 	// inside a loop names several.
 	byID map[string][]*Node
+	// owner is the instance the tree was mounted for, whose refs Refs answers.
+	owner *Env
+	// iterations is every loop iteration and list-slot insertion mounted, in
+	// mount order, so a ref through a loop that rendered nothing in one
+	// iteration still has an entry for it.
+	iterations []iteration
 	// Effects are the lifetime brackets this tree holds, in mount order. Not
 	// among the nodes: an effect draws nothing, and what it wants from the
 	// tree is only the lifetime that reaching it at all confers.
@@ -94,6 +100,21 @@ type Node struct {
 	// expansion of that component's body. Kept as a node so one tree serves
 	// both readings: a snapshot descends through it, an inspector stops at it.
 	Component *ir.Component
+	// Owner is the component instance whose body wrote this node, which is
+	// the instance whose `#id` refs it answers to: children a caller wrote
+	// bare are the caller's wherever the callee inserts them, and so are the
+	// nodes of a population the caller wrote, reached through the node it
+	// populates.
+	Owner *Env
+	// Iters names the loop iterations, and list-slot insertions, the node was
+	// mounted under within its owner's body, outermost first: what groups a
+	// ref through nested loops into a list of lists.
+	Iters []string
+	// SuppliedTo is the instance whose slot population wrote the node, nil for
+	// one its owner's body wrote directly; Base is how many of Iters were
+	// already around that instance's call site.
+	SuppliedTo *Env
+	Base       int
 	// Context is the provided values the node was mounted under, which a
 	// handler runs with: by the time one fires every provider has unwound.
 	Context map[*ir.Context]any
@@ -129,7 +150,7 @@ func IsUserComponent(comp *ir.Component) bool {
 
 // Mount builds the retained tree for env's component body.
 func Mount(env *Env) (*View, error) {
-	v := &View{byKey: map[Key]*Node{}, byID: map[string][]*Node{}}
+	v := &View{byKey: map[Key]*Node{}, byID: map[string][]*Node{}, owner: env}
 	if env == nil || env.BodyStmts == nil {
 		return v, nil
 	}
@@ -137,7 +158,7 @@ func Mount(env *Env) (*View, error) {
 	if env.Comp != nil {
 		root = env.Comp.Name
 	}
-	m := &mounter{view: v, root: root, reached: map[childKey]bool{}, visited: map[*Env]bool{}}
+	m := &mounter{view: v, root: root, owner: env, reached: map[childKey]bool{}, visited: map[*Env]bool{}}
 	nodes, err := m.stmts(env, env.BodyStmts, "")
 	if err != nil {
 		return nil, err
@@ -162,12 +183,21 @@ func (m *mounter) evictUnreached() {
 	}
 }
 
-// Find returns the element nodes carrying the given #id, in mount order.
-//
-// A component instantiation is skipped even when it carries an id, which is
-// what ResolveElementRef has always done: `c.<id>` names an element whose
-// props are read, and a component's props are reached through its own fields.
-// FindAny is the unfiltered form.
+// OwnedBy is v answering for the nodes owner's body wrote: a read of an
+// instance's refs through the tree an ancestor mounted, where the instance's
+// slots hold what its call site wrote.
+func (v *View) OwnedBy(owner *Env) *View {
+	if v == nil {
+		return nil
+	}
+	cp := *v
+	cp.owner = owner
+	return &cp
+}
+
+// Find returns the element nodes carrying the given #id anywhere in the tree,
+// in mount order, skipping a component instantiation that carries one. A host
+// addresses nodes this way; `c.<id>` is Refs. FindAny is the unfiltered form.
 func (v *View) Find(id string) []*Node {
 	if v == nil {
 		return nil
@@ -189,6 +219,24 @@ func (v *View) FindAny(id string) []*Node {
 		return nil
 	}
 	return v.byID[id]
+}
+
+// Refs returns the nodes carrying #id that the mounted instance's own body
+// wrote, component instantiations included, in mount order: what `c.<id>`
+// names. A node in a component the instance renders is that component's ref.
+// With supplied set, it is the nodes a population the instance wrote supplied
+// to that instance instead: `c.card.title`, through `card`.
+func (v *View) Refs(id string, supplied *Env) []*Node {
+	if v == nil {
+		return nil
+	}
+	var out []*Node
+	for _, n := range v.byID[id] {
+		if n.Owner == v.owner && n.SuppliedTo == supplied {
+			out = append(out, n)
+		}
+	}
+	return out
 }
 
 // At returns the node at a mounted path.
@@ -356,6 +404,14 @@ type mounter struct {
 	// entries is the stack of insertions whose populations are being mounted,
 	// which is where an insertion of a component entry finds its content.
 	entries []entryFrame
+	// owner is the instance whose body the statements being mounted were
+	// written in, stamped on each node as its Owner.
+	owner *Env
+	// iters, supplied and base are what each node mounted now is stamped with
+	// (Node.Iters, SuppliedTo, Base).
+	iters    []string
+	supplied *Env
+	base     int
 	// navs is the stack of navigators being mounted (nav.go), and byEnv the
 	// node each component instance mounted as, by its scope.
 	navs  []*navFrame
@@ -376,6 +432,26 @@ type mounter struct {
 type slotFrame struct {
 	callsite *ir.NodeInst
 	env      *Env
+	owner    *Env
+	// callee is the instance the call site made, and iters, supplied and
+	// base are the call site's own, which what it supplies is mounted under.
+	callee   *Env
+	iters    []string
+	supplied *Env
+	base     int
+}
+
+// iteration is one loop iteration or list-slot insertion: the owner and
+// population it was mounted in, and its path among Node.Iters, of which the
+// first base were around the population's call site.
+type iteration struct {
+	owner, supplied *Env
+	base            int
+	path            []string
+	// loop is the *ir.For this is an iteration of, the *ir.SlotContent a
+	// list slot inserted, or the *ir.NodeInst whose list rest slot inserted
+	// bare children: what a ref matches it to its own loop by.
+	loop any
 }
 
 // entryFrame is one insertion whose population is being mounted: the content it
@@ -416,6 +492,9 @@ func (m *mounter) drop(n *Node) {
 }
 
 func (m *mounter) add(n *Node) {
+	n.Owner = m.owner
+	n.Iters = slices.Clone(m.iters)
+	n.SuppliedTo, n.Base = m.supplied, m.base
 	if n.Env != nil {
 		n.Context = capturedContext(n.Env)
 	}
@@ -649,10 +728,10 @@ func (m *mounter) nodeInst(env *Env, inst *ir.NodeInst, path string) ([]*Node, e
 			node.Children = kids
 			return []*Node{node}, nil
 		}
-		m.push(slotFrame{callsite: inst, env: env})
+		m.push(slotFrame{callsite: inst, env: env, owner: m.owner, callee: child, iters: m.iters, supplied: m.supplied, base: m.base})
 		defer m.pop()
 		before := len(m.view.Timers)
-		kids, err := m.stmts(child, child.BodyStmts, path)
+		kids, err := m.mountBody(child, path)
 		if err != nil {
 			return nil, err
 		}
@@ -731,9 +810,9 @@ func (m *mounter) callStmt(env *Env, cs *ir.CallStmt, name, id, path string) ([]
 			// The children-less call form supplies nothing, but it still opens
 			// a frame: without one, an insertion point in this component's body
 			// would read the *enclosing* call site's content.
-			m.push(slotFrame{env: env})
+			m.push(slotFrame{env: env, owner: m.owner})
 			defer m.pop()
-			kids, err := m.stmts(child, child.BodyStmts, path)
+			kids, err := m.mountBody(child, path)
 			if err != nil {
 				return nil, err
 			}
@@ -819,9 +898,25 @@ func (m *mounter) slotInst(env *Env, si *ir.SlotInst, path string) ([]*Node, err
 		defer func() { m.entries = m.entries[:len(m.entries)-1] }()
 	}
 	m.pop()
+	// What a call site supplies is the caller's: bare children are its refs, and
+	// a population's nodes are reached through the node it populates, which is
+	// the instance they record as SuppliedTo.
+	prevOwner, prevIters, prevSupplied, prevBase := m.owner, m.iters, m.supplied, m.base
+	m.owner, m.iters, m.supplied, m.base = frame.owner, frame.iters, frame.supplied, frame.base
+	// A record's content is written bare at the call site, so it is the
+	// caller's, as its other bare children are.
+	if sc != nil && (si.Decl == nil || si.Decl.Shows == nil) {
+		m.supplied, m.base = frame.callee, len(frame.iters)
+		// Each insertion of a list slot is one more copy of the population.
+		if slotInserts(frame.callsite, si.Name) == ir.InsertMany {
+			m.iters = append(slices.Clip(frame.iters), path)
+			m.view.iterations = append(m.view.iterations, iteration{owner: m.owner, supplied: m.supplied, base: m.base, path: m.iters, loop: sc})
+		}
+	}
 	// The path segment marks these nodes as having come from the call site,
 	// which is what distinguishes them from an insertion point's fallback.
 	nodes, err := m.stmts(cenv, body, path+"/supplied:"+si.Name)
+	m.owner, m.iters, m.supplied, m.base = prevOwner, prevIters, prevSupplied, prevBase
 	m.push(frame)
 	// Content that renders nothing is the fallback's place as much as no
 	// content is: the branch of an `if` that holds none, a forward of a slot
@@ -873,7 +968,19 @@ func (m *mounter) entryInst(env *Env, x *ir.SlotInst, path string) ([]*Node, err
 	slots, entries := m.slots, m.entries
 	m.slots, m.entries = slices.Clone(f.slots), m.entries[:at]
 	defer func() { m.slots, m.entries = slots, entries }()
+	owner := m.owner
+	m.owner = nil
+	defer func() { m.owner = owner }()
 	return m.stmts(cenv, content.Body, path+"/supplied:"+x.Name)
+}
+
+// mountBody mounts a component instance's own body, whose nodes are that
+// instance's refs.
+func (m *mounter) mountBody(child *Env, path string) ([]*Node, error) {
+	owner, iters, supplied, base := m.owner, m.iters, m.supplied, m.base
+	m.owner, m.iters, m.supplied, m.base = child, nil, nil, 0
+	defer func() { m.owner, m.iters, m.supplied, m.base = owner, iters, supplied, base }()
+	return m.stmts(child, child.BodyStmts, path)
 }
 
 // forStmt mounts one subtree per iteration.
@@ -899,6 +1006,8 @@ func (m *mounter) forStmt(env *Env, f *ir.For, path string) ([]*Node, error) {
 	keyExpr := loopKeyExpr(f.Body)
 	seen := map[string]int{}
 	var out []*Node
+	iters := m.iters
+	defer func() { m.iters = iters }()
 	for i := range n {
 		child := env.Snapshot()
 		child.mountCopy = true
@@ -910,7 +1019,10 @@ func (m *mounter) forStmt(env *Env, f *ir.For, path string) ([]*Node, error) {
 				id = iterationID(fmt.Sprintf("%v", v), seen)
 			}
 		}
-		nodes, err := m.stmts(child, f.Body, fmt.Sprintf("%s:body[%s]", path, id))
+		copyPath := fmt.Sprintf("%s:body[%s]", path, id)
+		m.iters = append(slices.Clip(iters), copyPath)
+		m.view.iterations = append(m.view.iterations, iteration{owner: m.owner, supplied: m.supplied, base: m.base, path: m.iters, loop: f})
+		nodes, err := m.stmts(child, f.Body, copyPath)
 		if err != nil {
 			return nil, err
 		}
@@ -1030,4 +1142,18 @@ func (m *mounter) blockEnv(env *Env, stmts []ir.Stmt, at string) *Env {
 	}
 	env.childEnvs[key] = child
 	return child
+}
+
+// slotInserts is how often the component a call site instantiates inserts
+// its slot name.
+func slotInserts(callsite *ir.NodeInst, name string) ir.SlotInserts {
+	if callsite == nil || callsite.Component == nil {
+		return ir.InsertOne
+	}
+	for _, s := range callsite.Component.Slots {
+		if s.Name == name {
+			return s.Inserts
+		}
+	}
+	return ir.InsertOne
 }
