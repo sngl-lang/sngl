@@ -880,9 +880,12 @@ func (cc *irComposeContext) lambdaArg(name string, lam *ir.Lambda) string {
 		return cc.anonFuncArg(name, lam, body)
 	}
 
+	// Every parameter is listed, `_` where unread: with none listed, Kotlin
+	// names a lone one `it`, which hides a program's own `it` in the body.
 	var params []string
 	for _, p := range lam.Func.Params {
 		if !readsParam(lam.Func.Block, p) {
+			params = append(params, "_")
 			continue
 		}
 		params = append(params, p.Name)
