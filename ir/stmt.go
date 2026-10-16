@@ -274,6 +274,9 @@ type ErrorBoundary struct {
 	// non-rest slot the marked component declares -- so nothing in Go spells
 	// `failed`, and renaming it in the library needs no Go edit.
 	FailedSlot string `json:",omitempty"`
+	// Instances is NodeInst.Instances, for a boundary at the root of a spliced
+	// body.
+	Instances []string `json:",omitempty"`
 }
 
 func (*ErrorBoundary) stmtNode() {}
@@ -394,7 +397,7 @@ type If struct {
 func (*If) stmtNode() {}
 
 // InstancesOf is where s records the instances whose spliced bodies it is a
-// root of: a node, an `if` or a `for`. Nil for any other statement.
+// root of: a node, an `if`, a `for` or a boundary. Nil for any other statement.
 func InstancesOf(s Stmt) *[]string {
 	switch s := s.(type) {
 	case *NodeInst:
@@ -403,8 +406,24 @@ func InstancesOf(s Stmt) *[]string {
 		return &s.Instances
 	case *For:
 		return &s.Instances
+	case *ErrorBoundary:
+		return &s.Instances
 	}
 	return nil
+}
+
+// HandOnInstances puts the instances whose spliced bodies from is a root of
+// onto stmts, for a pass replacing from by what it holds.
+func HandOnInstances(from Stmt, stmts []Stmt) {
+	ins := InstancesOf(from)
+	if ins == nil || len(*ins) == 0 {
+		return
+	}
+	for _, s := range stmts {
+		if root := InstancesOf(s); root != nil {
+			*root = append(slices.Clone(*ins), *root...)
+		}
+	}
 }
 
 // For is a type-checked for statement with IR bodies and resolved element type.
