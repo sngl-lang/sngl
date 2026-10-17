@@ -546,12 +546,17 @@ func (f *reachFlattener) inlineFire(at *ir.Call, inst ir.Expr, site *ir.NodeInst
 		case read[lv.Sym]:
 			used = append(used, d)
 		case callsAnything(lv.Init):
-			// Still evaluated, as the call it was handed to evaluates it.
-			if c, ok := lv.Init.(*ir.Call); ok {
-				used = append(used, &ir.CallStmt{Call: c})
-			} else {
-				used = append(used, d)
+			// Still evaluated, as the call it was handed to evaluates it:
+			// the calls it makes, in order, where nothing decides whether
+			// one runs, and read by a comparison with itself otherwise.
+			if calls, ok := evaluationCalls(lv.Init); ok {
+				for _, c := range calls {
+					used = append(used, &ir.CallStmt{Call: c})
+				}
+				continue
 			}
+			self := func() ir.Expr { return &ir.Ident{Name: lv.Name, Type: lv.Type, Sym: lv.Sym} }
+			used = append(used, d, &ir.If{Cond: &ir.Binary{Op: ast.BinEq, Left: self(), Right: self(), Type: ir.TypBool}})
 		}
 	}
 	body := append(used, block...)
@@ -610,6 +615,37 @@ func endReturns(stmts []ir.Stmt, done *ir.Var, inLoop bool) []ir.Stmt {
 		return out
 	}
 	return out
+}
+
+// evaluationCalls is the calls e makes and none of the calls their arguments
+// make, in the order e makes them, where every one of them runs and is a
+// program's function: false where a `&&`, a `||`, a ternary or a function
+// literal decides that, or a call is the host's.
+func evaluationCalls(e ir.Expr) ([]*ir.Call, bool) {
+	var calls []*ir.Call
+	ok := true
+	_ = ir.Walk(e, func(n ir.Node) error {
+		switch x := n.(type) {
+		case *ir.Call:
+			// A host's call -- `xs.length()` -- may be no statement.
+			if x.Func == nil || x.Func.Intrinsic != "" || x.Func.Foreign.Name != "" || len(x.Func.Block) == 0 {
+				ok = false
+				return ir.SkipAll
+			}
+			calls = append(calls, x)
+			return ir.SkipDir
+		case *ir.Ternary, *ir.Lambda:
+			ok = false
+			return ir.SkipAll
+		case *ir.Binary:
+			if x.Op == ast.BinAnd || x.Op == ast.BinOr {
+				ok = false
+				return ir.SkipAll
+			}
+		}
+		return nil
+	})
+	return calls, ok
 }
 
 // callsAnything reports whether e makes a call, which a binding nothing reads
