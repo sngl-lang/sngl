@@ -4798,6 +4798,11 @@ moves a node out of the body that wrote it:
   carries it (`hit__reach0`), and a component rendered at more than one site
   is copied for the site a test reaches into (`badge__site0`), so its nodes
   are that site's alone (`testdata/test_reach_runtime_instance_sites.txtar`).
+  A library component is copied the same way, on the build's copy of the
+  package, so the declaration every other check reads is left alone
+  (`internal/build/testdata/test_reach_library_sites.txtar`, run on all six
+  by `TestTestReachLibrarySitesRun`, since only a Go test can hand a check
+  library source).
 - **A program component's event a test fires runs the handler its call site
   wrote**, with the test's arguments: the component emits its events from the
   program's own code, and the test stands in for that emit. The handler

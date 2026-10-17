@@ -219,11 +219,11 @@ func (f *reachFlattener) siteComponent(at *ir.Select, site *ir.NodeInst) (*ir.Co
 	if f.copied[comp] || len(f.sites[comp]) <= 1 {
 		return comp, nil
 	}
-	if comp.PkgPath() != "" {
-		return nil, fmt.Errorf("%s: a test reaches into %s, which the program renders at %d sites and another package declares; give the site a component of the program's own", exprPos(at), comp.Name, len(f.sites[comp]))
-	}
+	// A library declaration is copied as a program's is: the copy is the
+	// build's, and the declaration every other check reads is left alone.
 	c := cloneComponent(comp, f.names.next(comp.Name, "site"), comp.Stmts)
 	c.RuntimeInstance = comp.RuntimeInstance
+	c.Frozen = false
 	handles := map[ir.Symbol]ir.Symbol{}
 	_ = ir.Walk(c.Stmts, func(n ir.Node) error {
 		if ni, ok := n.(*ir.NodeInst); ok && ni.Handle != nil {
