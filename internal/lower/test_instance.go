@@ -81,6 +81,11 @@ func (ti *testInstance) instanceValued(e ir.Expr) bool {
 		return false
 	}
 	t := e.ExprType()
+	// A ref read behind a conditional or a loop is an option or a list of
+	// the component, and a local holding one holds the same ref.
+	for t != nil && (t.Kind == ir.TypeOption || t.Kind == ir.TypeList) && len(t.Elems) == 1 {
+		t = t.Elems[0]
+	}
 	return t != nil && t.Kind == ir.TypeComponent && ti.rooted(e)
 }
 

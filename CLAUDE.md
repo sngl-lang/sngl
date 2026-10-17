@@ -2632,8 +2632,9 @@ variable, a prop bound to one -- the target's presence check answers instead,
 as follows; one for a node the build folded away answers false
 (`codegen.RendersNowhere`). A node reached through an instance whose body the
 build folded it out of is absent in passTestReach itself: its null test is
-the constant, a branch on one is decided, and any other reach of it is refused
-where it is written. A test firing an event its call site handles
+the constant, a branch on one is decided -- through a local holding it too,
+which stands for the ref -- and any other reach of it is refused where it is
+written. A test firing an event its call site handles
 none of is refused where it fires it.
 
 **A spliced instance a test null-tests is found by its roots.** A splice
@@ -4846,7 +4847,7 @@ moves a node out of the body that wrote it:
   (`test_reach_reserved_id_whole_program.txtar`).
 - **A test reaches its instance through its own parameter**, which is all an
   emitter spells a member off: a local holding the instance, `var held = c`,
-  is replaced by what it holds, and a function the test hands an instance to
+  or a node reached through it, `var t = c.p.t`, is replaced by what it holds, and a function the test hands an instance to
   is inlined into the test, as a statement or, where its body is one
   `return`, as a value (`passTestInstanceReach`,
   `testdata/test_instance_reach.txtar`). One that cannot be inlined -- a

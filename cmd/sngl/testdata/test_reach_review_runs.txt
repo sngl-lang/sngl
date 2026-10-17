@@ -14,9 +14,9 @@
 # event no call site handles is an error everywhere (unhandled), and a prop
 # read that reads what a test cannot name through an instance is refused
 # (unnamed). A node the build folded away is absent, and a branch on it is
-# decided (folded); held in a local, it is refused on a compiled target
-# (foldedread). html is left out of page: a navigation ends the document a
-# test runs in.
+# decided (folded), held in a local as well (foldedread); a local holding a
+# node that is rendered reads it (heldread). html is left out of page: a
+# navigation ends the document a test runs in.
 
 sngl test --platform=none copies.sngl
 stdout 'ok   2 tests, 0 failures'
@@ -288,8 +288,38 @@ stdout 'ok   1 tests, 0 failures'
 sngl test --platform=none foldedread.sngl
 stdout 'ok   1 tests, 0 failures'
 
-! sngl test --platform=html foldedread.sngl
-stderr 'foldedread.sngl:20:16: `#t` is rendered nowhere in this build'
+sngl test --platform=html foldedread.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go foldedread.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=fyne --language=go foldedread.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go foldedread.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin foldedread.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=none heldread.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=html heldread.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go heldread.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=fyne --language=go heldread.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go heldread.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin heldread.sngl
+stdout 'ok   1 tests, 0 failures'
 
 ! sngl test --platform=none unhandled.sngl
 stdout '@tapped fired on tile, whose call site handles none of it'
@@ -948,6 +978,35 @@ func testRead(t Test, c main) {
 window {
     main
 }
+-- heldread.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+
+var shown = true
+
+component a node {
+    vbox {
+        if shown {
+            text #t(value="a")
+        }
+        text(value="x")
+    }
+}
+
+component main node {
+    a #p
+}
+
+func testRead(t Test, c main) {
+    var v = c.p.t
+    if v != null {
+        t.assert(v.value == "a")
+    }
+}
+
+window {
+    main
+}
 -- unhandled.sngl --
 import . "sngl:ui"
 import . "sngl:test"
@@ -1051,6 +1110,16 @@ sha256:49f35b52c7a20584d70a11aa75422e0a
     }
   ]
 }
+-- testrun/android/kotlin/foldedread.sngl/main/1 --
+sha256:5bf7cc9b159fcabcc122fec3e73c3dda
+{
+  "results": [
+    {
+      "Desc": "Read",
+      "Passed": true
+    }
+  ]
+}
 -- testrun/android/kotlin/forward.sngl/main/1 --
 sha256:03c777fc859d75de3331003fc4f56579
 {
@@ -1067,6 +1136,16 @@ sha256:ae2231eadbebdefda4e4fa1a006b5107
   "results": [
     {
       "Desc": "Gone",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/android/kotlin/heldread.sngl/main/1 --
+sha256:ce94376b1af74b08696f4bd942e42fb2
+{
+  "results": [
+    {
+      "Desc": "Read",
       "Passed": true
     }
   ]
@@ -1213,6 +1292,16 @@ sha256:9696b20fdf6e413130cf8c898d96b1da
     }
   ]
 }
+-- testrun/bubbletea/go/foldedread.sngl/main/1 --
+sha256:08c5ed0b167e64db9052654d92f2d041
+{
+  "results": [
+    {
+      "Desc": "Read",
+      "Passed": true
+    }
+  ]
+}
 -- testrun/bubbletea/go/forward.sngl/main/1 --
 sha256:b34fd738ce40c70249415a75d6ebd5b5
 {
@@ -1229,6 +1318,16 @@ sha256:0b7641efd1aa5dd8c14987e9ad798ab6
   "results": [
     {
       "Desc": "Gone",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/heldread.sngl/main/1 --
+sha256:021830893534000b1a694bab8411b223
+{
+  "results": [
+    {
+      "Desc": "Read",
       "Passed": true
     }
   ]
@@ -1375,6 +1474,16 @@ sha256:95b035cebcaabc17dd1e4ce5fb289a69
     }
   ]
 }
+-- testrun/fyne/go/foldedread.sngl/main/1 --
+sha256:b4351e535b6c5b841e4c366e6ba64f26
+{
+  "results": [
+    {
+      "Desc": "Read",
+      "Passed": true
+    }
+  ]
+}
 -- testrun/fyne/go/forward.sngl/main/1 --
 sha256:05101c7fd067e5a7b07851db47e545d5
 {
@@ -1391,6 +1500,16 @@ sha256:f48c862e604d079e7fe976d8c7b93f70
   "results": [
     {
       "Desc": "Gone",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/heldread.sngl/main/1 --
+sha256:b47fef4365ecbd0d3d901dd4eda8604f
+{
+  "results": [
+    {
+      "Desc": "Read",
       "Passed": true
     }
   ]
@@ -1537,6 +1656,16 @@ sha256:7c9313c8f5c133441ff09e114352950b
     }
   ]
 }
+-- testrun/gtk4/go/foldedread.sngl/main/1 --
+sha256:1983ee1cef8c7b69557f11585a33d0cc
+{
+  "results": [
+    {
+      "Desc": "Read",
+      "Passed": true
+    }
+  ]
+}
 -- testrun/gtk4/go/forward.sngl/main/1 --
 sha256:305ca6cf7bf6ab24f141db031f8d37cf
 {
@@ -1553,6 +1682,16 @@ sha256:19c33791e7f654b4edb8cf3872c4ddca
   "results": [
     {
       "Desc": "Gone",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/heldread.sngl/main/1 --
+sha256:ccda05a93ffb1a97b6ebcc7c045fb94c
+{
+  "results": [
+    {
+      "Desc": "Read",
       "Passed": true
     }
   ]
@@ -1699,6 +1838,16 @@ sha256:5a5aec0923ac904a0dbd8377ad0ccb10
     }
   ]
 }
+-- testrun/html/none/foldedread.sngl/main/1 --
+sha256:f75f04b8c75e9fa59d22c9a20db30263
+{
+  "results": [
+    {
+      "Desc": "Read",
+      "Passed": true
+    }
+  ]
+}
 -- testrun/html/none/forward.sngl/main/1 --
 sha256:968f54d3bf9edfd001ef917c681a47ff
 {
@@ -1715,6 +1864,16 @@ sha256:06449bc348b272c012300997f12579af
   "results": [
     {
       "Desc": "Gone",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/heldread.sngl/main/1 --
+sha256:2868514db24c67ff7c6c563fb8e0d8c7
+{
+  "results": [
+    {
+      "Desc": "Read",
       "Passed": true
     }
   ]
