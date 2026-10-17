@@ -1684,9 +1684,10 @@ own, which is its own instance.
 
 `const` on a declaration an override implements is part of its contract, so
 every override of it is held to the rule. An override of a non-const
-declaration may say `const` itself. A target package's components and overrides
-must all be const, written or inherited: each is inlined into every program
-that renders it.
+declaration may say `const` itself, and one that does not is an ordinary body,
+which may hold state, in a target package as in a program. A target package's
+own components must be const: each is inlined into every program that renders
+it.
 
 A **const slot** holds every population written for it to the same rule, while
 its invocation arguments need not be constant — a slot inserted once per list
