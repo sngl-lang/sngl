@@ -617,11 +617,13 @@ Both start from `codegen.AnalyzeCommon(doc)` which extracts model fields, comput
   - any language whose translator implements `codegen.HTTPCompiler` (today: `--lang go`): route mode. html collects the pages of the stack a window holds -- or a window that holds none -- into `HTTPRoute`s and delegates code gen (mux syntax for dynamic paths, server entry, `main()`/ListenAndServe) to the language via `CompileHTTP`. The platform carries no language- or framework-specific logic. POST actions are emitted only for handlers that transitively call functions imported from the target language (e.g. `go:` funcs under `--lang go`); other handlers stay pure client-side JS. Static mode errors the build if any page's href is a pattern. Two pages whose route patterns conflict -- some path matches both and neither is more specific -- are a build error too, since net/http panics at startup on the second registration (`routesConflict`, held to ServeMux itself by its test).
     Browser testing via CDP (go-rod) is gated behind `//go:build !js` so WASM playground builds exclude it. A `testing_js.go` stub satisfies the interface for WASM.
 - **bubbletea** — generates Go TUI code (`model.go`); supports `golang` lang only.
-  `Update` takes the Model by value and hands back the copy, so a closure
-  reading the Model reads it through `__liveModel`, which `Update` and each
-  method taking the Model by pointer set on entry (`GoIRContext.LiveModel`,
-  `holdLiveModel`): one stored in a var and called from a later `Update` wrote
-  the copy it was made in (`test_reach_review2_runs.txt`'s lat).
+  `Update` takes the Model by value and hands back the copy, so what the
+  program holds lives in a `modelState` the Model embeds by pointer, which
+  every copy shares: a closure captures the Model where it is made and writes
+  the state a later `Update` hands back, and work `async.start` began reads
+  the live state. A write from such work is still the program's data race on
+  this target, which answers no `async.do` to post it back with
+  (`async_run_test.go` runs the emitted program under `-race`).
 - **fyne** — generates Go desktop code; supports `golang` lang only. Its Go emitter knows three `#[intrinsic]` primitives, which differ only in the children contract a declaration cannot express as data: `Widget` (none), `Container` (a default slot, children attach through a method) and `Wrapper` (a default slot bounded to one, the child is assigned to a field). *Which* Fyne widget one becomes is a `Spec` record passed as a prop — Go constructor, its arguments, the Go type, the import paths, the setter behind each value prop, the callback field and Go signature behind each event. `codegen/platform/fyne/spec.go` decodes it and nothing else in the platform names a Fyne type. Label, Button, VBox and the other twelve are ordinary components in `fyne.sngl` carrying a Spec, so wrapping a widget from a Go module the compiler never heard of is writing a thirteenth — `codegen/platform/fyne/third_party_widget_test.go` is that, done in SNGL alone.
 
   A value has to reach the emitter through a *declared* prop, since that is what lowering turns into the `node.prop = expr` assignment the translator sees. `style` is the platform's own and renders nothing, as on gtk4; a temp its value reads -- a ternary passTernary hoisted -- is read into `_` (`codegen.KeepLocalsRead`, `testdata/style_ternary_unrendered.txtar`). So the primitives declare a vocabulary of value props by type (`text`, `placeholder`, `number`, `flag`, `options`) and `Setter` binds one to a Go method — the vocabulary grows with the types a setter takes, not with the widget count. Same for `@click`/`@change`/`@input` and `Handler`.
@@ -4848,7 +4850,9 @@ moves a node out of the body that wrote it:
   answered as a spliced instance's is -- and an event a test fires on one is
   the handler chain its call sites wrote, inlined into the test up to its own
   instance (`inlineRecursiveFires`): a handler's parameter it never reads is
-  bound to nothing, its argument still evaluated where it calls anything; the
+  bound to nothing, its argument still evaluated where it calls anything --
+  as the program functions it calls, in order, or read by a comparison with
+  itself where a `&&`, a ternary or a host call decides that; the
   handler's own locals and loop variables are written in with it, each local
   under a name of its own per fire; and a `return` in it sets a flag the rest
   of the handler is guarded by (`endReturns`), since a return there would end
@@ -4875,10 +4879,12 @@ moves a node out of the body that wrote it:
   of the node -- reads the ref live where it is read, so one read after a
   trigger, an event fired, a method called or a write through the instance is
   refused at the read (`refuseMovedRefLocals`), where the interpreter's local
-  keeps what it was handed. After is execution order: a statement's own reads
-  -- a write's value, a call's arguments -- come before what it moves, and a
-  loop whose body moves anything has moved it for the whole body. One read
-  before anything moves is allowed.
+  keeps what it was handed. After is evaluation order: an expression's
+  operands in the order they run, a call's arguments before the call, a
+  write's value before the write. Each branch of an `if` starts from the state
+  before it and a for-else's else from the state before the loop, what follows
+  is moved where any path moved it, and a loop whose body moves anything has
+  moved it for the whole body. One read before anything moves is allowed.
 - **A trigger is an event of the receiver's type**, so the checker tags one
   through a nested instance (`nestedElementEvent`), and `c.row[1]` types as
   the node's component. html's `At` invoker indexes a constant loop's unrolled
