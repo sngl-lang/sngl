@@ -147,6 +147,13 @@ type Features struct {
 	// platform whose view is host statements can do: Compose's `when` in a
 	// composable. Withheld, passMatch writes those as the chain.
 	ViewMatch bool
+	// OptionMatch says the language's switch compares an option subject as
+	// `==` compares one, so a match over an option of a bool, a number, a
+	// string or an enum is held where Match, MatchValue or ViewMatch holds
+	// it: Kotlin's `when` takes `null ->` beside the element's values. Go's
+	// switch would compare the option's pointer, so Go withholds it, and so
+	// does JavaScript; passMatch writes such a match as the chain.
+	OptionMatch bool
 
 	// The six below are requests rather than capabilities, which is the split
 	// `sngl:x/gen` spells as `#[gen.wants]`: each asks for a pass the target
@@ -225,6 +232,7 @@ func NoLowering() Features {
 		Match:             true,
 		MatchValue:        true,
 		ViewMatch:         true,
+		OptionMatch:       true,
 	}
 }
 
@@ -283,6 +291,7 @@ func (f Features) String() string {
 		{"Match", f.Match},
 		{"MatchValue", f.MatchValue},
 		{"ViewMatch", f.ViewMatch},
+		{"OptionMatch", f.OptionMatch},
 		{"StructComponents", f.StructComponents},
 		{"StdlibContextParam", f.StdlibContextParam},
 		{"FocusOrder", f.FocusOrder},

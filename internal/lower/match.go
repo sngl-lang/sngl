@@ -12,7 +12,8 @@ import (
 // does not declare `matches` (a statement) or `matchValues` (an expression),
 // in a view body for a platform that does not declare `viewMatches`, and
 // anywhere for a match the host's switch would compare differently from `==`
-// (ir.MatchArms.Switchable) or whose arm breaks out of a loop around it, which
+// (ir.MatchArms.Switchable, which an option subject is only where the
+// language declares `optionMatches`) or whose arm breaks out of a loop around it, which
 // Go's and JavaScript's switch take as their own (ir.Match.BreaksOut).
 //
 // A capability not written is not held, so a target that has not heard of
@@ -75,7 +76,7 @@ func lowerMatches(pkg *ir.Package, f Features, _ Options) error {
 		}
 	}
 	held := func(n ir.Node, m *ir.MatchArms, can bool) bool {
-		return can && m.Switchable() && !test[n] && !view[n]
+		return can && m.Switchable(f.OptionMatch) && !test[n] && !view[n]
 	}
 	err := ir.Rewrite(pkg, func(n ir.Node) (ir.Node, error) {
 		switch x := n.(type) {

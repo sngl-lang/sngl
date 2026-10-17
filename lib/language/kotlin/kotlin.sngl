@@ -23,6 +23,7 @@ import gen "sngl:x/gen"
     viewStatements,
     matches,
     matchValues,
+    optionMatches,
 )]
 #[gen.name("kotlin")]
 #[gen.native("kotlin")]

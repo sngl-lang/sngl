@@ -35,6 +35,7 @@ func serve(dir string, listen string)
     viewStatements,
     viewMatches,
     matchValues,
+    optionMatches,
     asyncSpawn,
     asyncReactive,
     implicitRecv,

@@ -20,12 +20,13 @@ import marks "sngl:internal/marks"
 // hold a render slot, the platform can reach its drawing thread, the language
 // can spawn -- and a pass reads each to choose what to emit rather than whether
 // to run.
-// `matches`, `matchValues` and `viewMatches` are passMatch's, which runs on
-// every target: each says which matches the target writes as its own switch --
-// a statement, an expression, either in a view body -- and the pass writes the
-// rest as the if chain.
+// `matches`, `matchValues`, `viewMatches` and `optionMatches` are passMatch's,
+// which runs on every target: the first three say which matches the target
+// writes as its own switch -- a statement, an expression, either in a view
+// body -- and the fourth that its switch compares an option subject as `==`
+// does; the pass writes the rest as the if chain.
 //
-enum Capability { toggle, ternary, lambda, ref, unitType, enumType, asyncReactive, asyncCalls, computed, listLambdas, reactivity, declarative, inlineComponents, implicitRecv, structSpread, viewStatements, instanceState, insertBefore, inlineSlots, asyncPost, asyncSpawn, effects, navigation, genericFuncs, genericComponents, matches, matchValues, viewMatches }
+enum Capability { toggle, ternary, lambda, ref, unitType, enumType, asyncReactive, asyncCalls, computed, listLambdas, reactivity, declarative, inlineComponents, implicitRecv, structSpread, viewStatements, instanceState, insertBefore, inlineSlots, asyncPost, asyncSpawn, effects, navigation, genericFuncs, genericComponents, matches, matchValues, viewMatches, optionMatches }
 
 // What a *primitive* can do with the nodes it renders, as against what a
 // target can do with the language. Written on an `#[intrinsic]` component

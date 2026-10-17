@@ -1,9 +1,11 @@
 Where a match is a switch and where it is still the if chain. A language
 that declares `matches` writes a match statement as its own switch, and one
 that declares `matchValues` a match expression; Go's switch assigning a temp
-stands for the second. What stays the chain on every target: a match over an
-option, which a host's switch compares differently from `==`; one whose arm
-breaks out of a loop, which Go's and JavaScript's switch take as their own;
+stands for the second. A match over an option is a switch only in Kotlin,
+whose when takes `null ->` beside the element's values; Go's switch would
+compare an option's pointer, and JavaScript declares no `optionMatches`, so
+there it is the chain. What stays the chain on every target: one whose arm breaks out of
+a loop, which Go's and JavaScript's switch take as their own;
 and a test's, which each language's test lowering writes out. A headless
 match is a tagless switch in Go and a subjectless when in Kotlin, and the
 chain in JavaScript, which has nothing to switch on. An initializer is no
@@ -12,7 +14,10 @@ statement: Go calls a func literal holding the switch where it stands.
 deny out/go/bubbletea/model.go `switch d \{` -- an arm that breaks out of the loop is the chain
 deny out/go/bubbletea/model.go `if n >= 90` -- a headless match is a tagless switch
 deny out/kotlin/android/app/src/main/java/test/sngl/app/MainScreen.kt `if \(\(n >= 90\)\)` -- a headless match is a subjectless when
-deny out/kotlin/android/app/src/main/java/test/sngl/app/MainScreen.kt `when \(state\.maybe\)` -- an option subject is compared as == compares one
+deny out/kotlin/android/app/src/main/java/test/sngl/app/MainScreen.kt `state\.maybe == null` -- an option subject is a when in Kotlin, not the ternaries
+deny out/kotlin/android/app/src/main/java/test/sngl/app/MainScreen.kt `\(n == null\)` -- an option statement subject is a when in Kotlin, not the chain
+deny out/go/bubbletea/model.go `switch n \{` -- Go's switch compares an option's pointer, so it is the chain
+deny out/none/html/index.html `switch \(n\)` -- JavaScript declares no optionMatches, so an option subject is the chain
 deny * `unfolded` -- a match on a constant folds to the arm it takes
 deny out/none/html/index.html `switch \(true\)` -- a headless match in JavaScript is the chain, not a switch on true
 
@@ -64,11 +69,21 @@ func firstDown(ds list[Dir]) int {
     return at
 }
 
-// An option is compared as `==` compares one: the if chain.
+// An option is compared as `==` compares one: a when in Kotlin, the chain in
+// Go and JavaScript.
 func name(d option[Dir]) => match d {
     null => "none"
     up => "up"
     else => "other"
+}
+
+// The same as a statement, over an option of a number.
+func count(n option[int]) string {
+    match n {
+        null { return "none" }
+        0 { return "zero" }
+        else { return "some" }
+    }
 }
 
 func turned(d Dir) => match d {
@@ -81,6 +96,7 @@ func turned(d Dir) => match d {
 component pad ui.node {
     var d Dir = up
     var maybe option[Dir] = null
+    var tally option[int] = null
     // An initializer holds no statement: a func literal called where it
     // stands in Go, a when in Kotlin.
     var axis = match d {
@@ -100,6 +116,7 @@ component pad ui.node {
     }
     ui.text(value=axis)
     ui.text(value=name(maybe))
+    ui.text(value=count(tally))
     ui.text(value=grade(firstDown(flips) * 60))
     ui.button #turn(text="Turn", @click {
         d = turned(d)
@@ -121,6 +138,9 @@ func testOption(t Test) {
     t.assert(name(null) == "none")
     t.assert(name(Dir.up) == "up")
     t.assert(name(Dir.left) == "other")
+    t.assert(count(null) == "none")
+    t.assert(count(0) == "zero")
+    t.assert(count(3) == "some")
 }
 
 func testComponent(t Test, c pad) {
@@ -163,6 +183,7 @@ type Model struct {
 type modelState struct {
 	d         string
 	maybe     *string
+	tally     *int
 	axis      string
 	flips     []string
 	__focusID int
@@ -175,6 +196,7 @@ func New() Model {
 	m := Model{&modelState{}}
 	m.d = "up"
 	m.maybe = nil
+	m.tally = nil
 	m.axis = func() string {
 		switch m.d {
 		case "up", "down":
@@ -232,6 +254,19 @@ func FirstDown(ds []string) int {
 	return at
 }
 
+func Count(n *int) string {
+	if n == nil {
+		return "none"
+	} else {
+		if snglOptEq(n, 0) {
+			return "zero"
+		} else {
+			return "some"
+		}
+	}
+	return ""
+}
+
 func (m *Model) __focusNext() {
 	if m.__focusID == 0 {
 		m.__focusID = 0
@@ -272,6 +307,21 @@ type setMaybeMsg struct{ value *string }
 
 func SetMaybeCmd(v *string) tea.Cmd {
 	return func() tea.Msg { return setMaybeMsg{value: v} }
+}
+
+func (m Model) Tally() *int {
+	return m.tally
+}
+
+func (m Model) SetTally(v *int) Model {
+	m.tally = v
+	return m
+}
+
+type setTallyMsg struct{ value *int }
+
+func SetTallyCmd(v *int) tea.Cmd {
+	return func() tea.Msg { return setTallyMsg{value: v} }
 }
 
 func (m Model) Axis() string {
@@ -317,6 +367,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m = m.SetD(msg.value)
 	case setMaybeMsg:
 		m = m.SetMaybe(msg.value)
+	case setTallyMsg:
+		m = m.SetTally(msg.value)
 	case setAxisMsg:
 		m = m.SetAxis(msg.value)
 	case setFlipsMsg:
@@ -383,16 +435,19 @@ func (m Model) View() tea.View {
 	part4 = lipgloss.NewStyle().Render(fmt.Sprint(__lt2))
 	parts = append(parts, part4)
 	var part5 string
-	part5 = lipgloss.NewStyle().Render(fmt.Sprint(Grade((FirstDown(m.flips) * 60))))
+	part5 = lipgloss.NewStyle().Render(fmt.Sprint(Count(m.tally)))
 	parts = append(parts, part5)
 	var part6 string
-	part6Focused := (m.__focusID == 0)
-	part6Prefix := " "
-	if part6Focused {
-		part6Prefix = ">"
-	}
-	part6 = lipgloss.NewStyle().Render(part6Prefix + " " + fmt.Sprint("Turn"))
+	part6 = lipgloss.NewStyle().Render(fmt.Sprint(Grade((FirstDown(m.flips) * 60))))
 	parts = append(parts, part6)
+	var part7 string
+	part7Focused := (m.__focusID == 0)
+	part7Prefix := " "
+	if part7Focused {
+		part7Prefix = ">"
+	}
+	part7 = lipgloss.NewStyle().Render(part7Prefix + " " + fmt.Sprint("Turn"))
+	parts = append(parts, part7)
 	content := lipgloss.JoinVertical(lipgloss.Left, parts...)
 	v := tea.NewView(content)
 	v.AltScreen = true
@@ -430,6 +485,9 @@ func TestBreak(t *testing.T) {
 func TestOption(t *testing.T) {
 	__snglTestComponent := newTestComponent()
 	_ = __snglTestComponent
+	if !(true) { t.Errorf("assert failed: %s", "true") }
+	if !(true) { t.Errorf("assert failed: %s", "true") }
+	if !(true) { t.Errorf("assert failed: %s", "true") }
 	if !(true) { t.Errorf("assert failed: %s", "true") }
 	if !(true) { t.Errorf("assert failed: %s", "true") }
 	if !(true) { t.Errorf("assert failed: %s", "true") }
@@ -472,13 +530,15 @@ func snglOptEq[T comparable](p *T, v T) bool {
 type Model struct {
 	d     string
 	maybe *string
+	tally *int
 	axis  string
 	flips []string
 
-	__n3 *widget.Label
+	__n4 *widget.Label
 	__n0 *widget.Label
 	__n1 *widget.Label
 	__n2 *widget.Label
+	__n3 *widget.Label
 	turn *widget.Button
 }
 
@@ -487,6 +547,7 @@ func New() *Model {
 	m := &Model{}
 	m.d = "up"
 	m.maybe = nil
+	m.tally = nil
 	m.axis = func() string {
 		switch m.d {
 		case "up", "down":
@@ -537,6 +598,19 @@ func FirstDown(ds []string) int {
 	return at
 }
 
+func Count(n *int) string {
+	if n == nil {
+		return "none"
+	} else {
+		if snglOptEq(n, 0) {
+			return "zero"
+		} else {
+			return "some"
+		}
+	}
+	return ""
+}
+
 func (m *Model) turn_click_handler() {
 	var __lt3 string
 	switch m.d {
@@ -575,6 +649,14 @@ func (m *Model) SetMaybe(v *string) {
 	m.maybe = v
 }
 
+func (m *Model) Tally() *int {
+	return m.tally
+}
+
+func (m *Model) SetTally(v *int) {
+	m.tally = v
+}
+
 func (m *Model) Axis() string {
 	return m.axis
 }
@@ -593,8 +675,8 @@ func (m *Model) SetFlips(v []string) {
 
 // BuildUI creates the widget tree. Call once; widgets are updated selectively.
 func (m *Model) BuildUI() fyne.CanvasObject {
-	m.__n3 = widget.NewLabel("")
-	m.__n3.SetText("left-handed")
+	m.__n4 = widget.NewLabel("")
+	m.__n4.SetText("left-handed")
 	m.__n0 = widget.NewLabel("")
 	m.__n0.SetText(m.axis)
 	var __lt2 string
@@ -612,15 +694,18 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n1 = widget.NewLabel("")
 	m.__n1.SetText(__lt2)
 	m.__n2 = widget.NewLabel("")
-	m.__n2.SetText(Grade((FirstDown(m.flips) * 60)))
+	m.__n2.SetText(Count(m.tally))
+	m.__n3 = widget.NewLabel("")
+	m.__n3.SetText(Grade((FirstDown(m.flips) * 60)))
 	m.turn = widget.NewButton("", nil)
 	m.turn.SetText("Turn")
 	m.turn.OnTapped = m.turn_click_handler
 	var parts []fyne.CanvasObject
-	parts = append(parts, m.__n3)
+	parts = append(parts, m.__n4)
 	parts = append(parts, m.__n0)
 	parts = append(parts, m.__n1)
 	parts = append(parts, m.__n2)
+	parts = append(parts, m.__n3)
 	parts = append(parts, m.turn)
 	return container.NewVBox(parts...)
 }
@@ -657,6 +742,9 @@ func TestBreak(t *testing.T) {
 func TestOption(t *testing.T) {
 	__snglTestComponent := newTestComponent()
 	_ = __snglTestComponent
+	if !(true) { t.Errorf("assert failed: %s", "true") }
+	if !(true) { t.Errorf("assert failed: %s", "true") }
+	if !(true) { t.Errorf("assert failed: %s", "true") }
 	if !(true) { t.Errorf("assert failed: %s", "true") }
 	if !(true) { t.Errorf("assert failed: %s", "true") }
 	if !(true) { t.Errorf("assert failed: %s", "true") }
@@ -716,6 +804,7 @@ func snglOptEq[T comparable](p *T, v T) bool {
 type Model struct {
 	d      string
 	maybe  *string
+	tally  *int
 	axis   string
 	flips  []string
 	turn   gtk4rt.Handle
@@ -728,6 +817,7 @@ func New() *Model {
 	m := &Model{}
 	m.d = "up"
 	m.maybe = nil
+	m.tally = nil
 	m.axis = func() string {
 		switch m.d {
 		case "up", "down":
@@ -778,6 +868,19 @@ func FirstDown(ds []string) int {
 	return at
 }
 
+func Count(n *int) string {
+	if n == nil {
+		return "none"
+	} else {
+		if snglOptEq(n, 0) {
+			return "zero"
+		} else {
+			return "some"
+		}
+	}
+	return ""
+}
+
 func (m *Model) turn_clicked_handler() {
 	var __lt3 string
 	switch m.d {
@@ -809,6 +912,14 @@ func (m *Model) SetMaybe(v *string) {
 	m.maybe = v
 }
 
+func (m *Model) Tally() *int {
+	return m.tally
+}
+
+func (m *Model) SetTally(v *int) {
+	m.tally = v
+}
+
 func (m *Model) Axis() string {
 	return m.axis
 }
@@ -830,8 +941,8 @@ func (m *Model) buildWidgetTree() {
 		return
 	}
 	m.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
-	__n3 := gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(__n3, "left-handed")
+	__n4 := gtk4rt.LabelNew("")
+	gtk4rt.LabelSetText(__n4, "left-handed")
 	__n0 := gtk4rt.LabelNew("")
 	gtk4rt.LabelSetText(__n0, m.axis)
 	var __lt2 string
@@ -849,14 +960,17 @@ func (m *Model) buildWidgetTree() {
 	__n1 := gtk4rt.LabelNew("")
 	gtk4rt.LabelSetText(__n1, __lt2)
 	__n2 := gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(__n2, Grade((FirstDown(m.flips) * 60)))
+	gtk4rt.LabelSetText(__n2, Count(m.tally))
+	__n3 := gtk4rt.LabelNew("")
+	gtk4rt.LabelSetText(__n3, Grade((FirstDown(m.flips) * 60)))
 	m.turn = gtk4rt.ButtonNew()
 	gtk4rt.ButtonSetLabel(m.turn, "Turn")
 	gtk4rt.Connect(m.turn, "clicked", m.turn_clicked_handler)
-	gtk4rt.BoxAppend(m.__root, __n3)
+	gtk4rt.BoxAppend(m.__root, __n4)
 	gtk4rt.BoxAppend(m.__root, __n0)
 	gtk4rt.BoxAppend(m.__root, __n1)
 	gtk4rt.BoxAppend(m.__root, __n2)
+	gtk4rt.BoxAppend(m.__root, __n3)
 	gtk4rt.BoxAppend(m.__root, m.turn)
 }
 
@@ -910,6 +1024,7 @@ enum class Dir(private val sngl: String) {
 class MainScreenState {
     var d by mutableStateOf(Dir.UP)
     var maybe by mutableStateOf<Dir?>(null)
+    var tally by mutableStateOf<Int?>(null)
     var axis by mutableStateOf((when (d) { Dir.UP, Dir.DOWN -> "vertical"; else -> "horizontal" }))
     val flips = mutableStateListOf(Dir.UP, Dir.LEFT).map({ x: Dir -> (when (x) { Dir.UP -> Dir.DOWN; else -> Dir.UP }) })
     fun firstDown(ds: List<Dir>): Int {
@@ -931,7 +1046,8 @@ fun MainScreen(state: MainScreenState = remember { MainScreenState() }) {
     Column {
         Text(text = "left-handed", modifier = Modifier.safeDrawingPadding())
         Text(text = state.axis, modifier = Modifier.safeDrawingPadding())
-        Text(text = (if ((state.maybe == null)) "none" else (if ((state.maybe == Dir.UP)) "up" else "other")), modifier = Modifier.safeDrawingPadding())
+        Text(text = (when (state.maybe) { null -> "none"; Dir.UP -> "up"; else -> "other" }), modifier = Modifier.safeDrawingPadding())
+        Text(text = count(state.tally), modifier = Modifier.safeDrawingPadding())
         Text(text = grade((state.firstDown(state.flips) * 60)), modifier = Modifier.safeDrawingPadding())
         Button(onClick = {
             state.d = (when (state.d) { Dir.UP -> Dir.RIGHT; Dir.RIGHT -> Dir.DOWN; Dir.DOWN -> Dir.LEFT; Dir.LEFT -> Dir.UP })
@@ -951,6 +1067,21 @@ fun grade(n: Int): String {
     	}
     	else -> {
     		return "c"
+    	}
+    }
+    return ""
+}
+
+fun count(n: Int?): String {
+    when (n) {
+    	null -> {
+    		return "none"
+    	}
+    	0 -> {
+    		return "zero"
+    	}
+    	else -> {
+    		return "some"
     	}
     }
     return ""
@@ -1003,6 +1134,9 @@ class MainScreenTest {
         org.junit.Assert.assertTrue("true", true)
         org.junit.Assert.assertTrue("true", true)
         org.junit.Assert.assertTrue("true", true)
+        org.junit.Assert.assertTrue("true", true)
+        org.junit.Assert.assertTrue("true", true)
+        org.junit.Assert.assertTrue("true", true)
     }
 
     @Test fun testComponent() {
@@ -1041,6 +1175,8 @@ body { font-family: system-ui, sans-serif; }
 </span>
 <span id="__n2" data-sngl-id="__n2">
 </span>
+<span id="__n3" data-sngl-id="__n3">
+</span>
 <button id="$0" data-sngl-id="turn">
   <span>Turn</span>
 </button>
@@ -1062,7 +1198,7 @@ window.__sngl_reset = () => {
 window.__sngl_boot = () => {
 (() => {
   // sngl-entry.js
-  var state = { d: null, maybe: null, axis: null, flips: null };
+  var state = { d: null, maybe: null, tally: null, axis: null, flips: null };
   state.d = "up";
   state.axis = state.d === "up" || state.d === "down" ? "vertical" : "horizontal";
   state.flips = ["up", "left"].map((x) => x === "up" ? "down" : "up");
@@ -1102,20 +1238,40 @@ window.__sngl_boot = () => {
     ;
     return at;
   }
+  function count(n) {
+    if (n === null) {
+      ;
+      return "none";
+    } else {
+      ;
+      if (n === 0) {
+        ;
+        return "zero";
+      } else {
+        ;
+        return "some";
+      }
+      ;
+    }
+    ;
+    return "";
+  }
   if (typeof window !== "undefined") {
-    Object.assign(window, { grade, firstDown });
+    Object.assign(window, { grade, firstDown, count });
   }
   var $0 = document.getElementById("$0");
   var __n0 = document.querySelector('[data-sngl-id="__n0"]');
   var __n1 = document.querySelector('[data-sngl-id="__n1"]');
   var __n2 = document.querySelector('[data-sngl-id="__n2"]');
+  var __n3 = document.querySelector('[data-sngl-id="__n3"]');
   $0.addEventListener("click", function() {
     state.d = state.d === "up" ? "right" : state.d === "right" ? "down" : state.d === "down" ? "left" : "up";
   });
   function __sngl_init() {
     __n0.textContent = state.axis;
     __n1.textContent = state.maybe === null ? "none" : state.maybe === "up" ? "up" : "other";
-    __n2.textContent = grade(firstDown(state.flips) * 60);
+    __n2.textContent = count(state.tally);
+    __n3.textContent = grade(firstDown(state.flips) * 60);
   }
   __sngl_init();
 })();
@@ -1124,12 +1280,12 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:be7e3a5e42c8284b4b887930d4baec2c
+pass sha256:a743fb3fab999efafbeb3f1adf8cc572
 -- run/go/fyne --
-pass sha256:f4198e6dfe70b55a2427c988c8612b85
+pass sha256:8e06532a6f04ca00f4f1d232d5520e0b
 -- run/go/gtk4 --
-pass sha256:8ed9e05e24062daec385f70dd8bb57b6
+pass sha256:d15557a4989ec15d5ba0d67d7da51855
 -- run/kotlin/android --
-pass sha256:891781a70324dfdf9f1d4be48158ac6c
+pass sha256:55be5b4d8f2007e5e8c13cb994085b62
 -- run/none/html --
-pass sha256:36558817d658cb39a45acc180c720085
+pass sha256:f7052b5b39118811d3469fbdeb877de7

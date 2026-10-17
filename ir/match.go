@@ -147,15 +147,24 @@ func (m *MatchExpr) TernaryChain() Expr {
 // Switchable reports whether a target may compare the subject with its
 // patterns by the host's own switch: a headless match, or a subject whose
 // SNGL `==` is the host's equality on every language -- a bool, a number, a
-// string or an enum. Anything else -- an option, a unit, a struct -- is
-// compared the way `==` is written for it, which is the if chain.
-func (m *MatchArms) Switchable() bool {
+// string or an enum. An option of one of those is switchable only where
+// options says the language's switch compares it as `==` does: Kotlin's
+// `when` takes `null ->` beside the element's values, while Go's switch
+// would compare the option's pointer rather than what it points at. Anything else -- a unit, a struct -- is compared the way `==` is
+// written for it, which is the if chain.
+func (m *MatchArms) Switchable(options bool) bool {
 	if m.Subject == nil {
 		return true
 	}
 	t := m.Subject.ExprType()
 	if t == nil {
 		return false
+	}
+	if t.Kind == TypeOption && len(t.Elems) == 1 {
+		if !options {
+			return false
+		}
+		t = t.Elems[0]
 	}
 	switch {
 	case t.Kind == TypeBool, t.Kind == TypeString, t.Kind == TypeEnum:
