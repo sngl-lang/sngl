@@ -155,7 +155,7 @@ deny out/go/bubbletea/model.go `JoinHorizontal` -- a flow concatenates its words
 deny out/go/fyne/model.go `fynetext\.SpanStyle` -- a run's style is a builder chain, so the alias this file gave the runtime package is spent on one name
 deny out/go/fyne/model.go `\.No(Bold|Italic|Mono)\(\)` -- a field the run left alone contributes nothing; `inherit` arriving as `normal` would un-bold the words around it
 deny out/go/gtk4/model.go `Escape\(` -- every run here is a literal, and a literal is escaped where it is written
-deny out/go/gtk4/model.go `LabelSetText` -- a flow's words are markup, and set_text would show the tags rather than obey them
+deny out/go/gtk4/model.go `LabelSetLabel` -- a flow's words are markup, and set_label would show the tags rather than obey them
 deny out/kotlin/android/app/src/main/java/test/sngl/app/MainScreen.kt `(?m)^\s*(Flow|Span)\(` -- a flow is one Text and a span is a piece of its value; neither primitive is a composable
 deny out/kotlin/android/app/src/main/java/test/sngl/app/MainScreen.kt `MaterialTheme.colorScheme.error` -- a scheme's error color is not a syntax color, whatever a token would otherwise have to share
 -- doc.sngl --

@@ -5,7 +5,7 @@ which it found with a walk of its own that skipped a fallback. So `msg` was
 never bound: html read an undeclared `msg`, and gtk4 did not compile.
 
 deny out/none/html/index.html `textContent = msg\b` -- the fallback shows the argument the call site gave
-deny out/go/gtk4/model.go `LabelSetText\(\w+, msg\)` -- likewise
+deny out/go/gtk4/model.go `LabelSetLabel\(\w+, msg\)` -- likewise
 
 -- app.sngl --
 import ui "sngl:ui"

@@ -788,7 +788,7 @@ func girTypeToIR(name string) *ir.Type {
 // prop, or "" where none does.
 func setterNaming(methods map[string]*methodInfo, prop string) string {
 	for _, name := range slices.Sorted(maps.Keys(methods)) {
-		if m := methods[name]; m.setsProperty == prop && !m.skip {
+		if m := methods[name]; m.setsProperty == prop && m.instance && !m.skip {
 			return name
 		}
 	}

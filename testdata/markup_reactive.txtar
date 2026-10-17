@@ -27,7 +27,7 @@ It is not free everywhere, and this fixture is what says so per target.
     once and the handler writes it again, which the two `LabelSetMarkup` calls
     below are.
 
-deny out/go/gtk4/model.go `LabelSetText` -- a flow's words are markup, and set_text would show the tags rather than obey them
+deny out/go/gtk4/model.go `LabelSetLabel` -- a flow's words are markup, and set_label would show the tags rather than obey them
 deny out/go/gtk4/model.go `Escape\("` -- a literal run is escaped where it is written; a page of prose would otherwise be a page of calls
 deny out/kotlin/android/app/src/main/java/test/sngl/app/MainScreen.kt `(?m)^\s*(Flow|Span)\(` -- a run that reads state is still no composable; the whole flow is one Text rebuilt from the state it reads
 -- doc.sngl --
