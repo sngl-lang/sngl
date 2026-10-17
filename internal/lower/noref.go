@@ -281,6 +281,17 @@ func (r *refRewriter) rewriteExpr(e ir.Expr) ir.Expr {
 		x.Then = r.rewriteExpr(x.Then)
 		x.Else = r.rewriteExpr(x.Else)
 		return x
+	case *ir.MatchExpr:
+		if x.Subject != nil {
+			x.Subject = r.rewriteExpr(x.Subject)
+		}
+		for _, arm := range x.Arms {
+			for j := range arm.Patterns {
+				arm.Patterns[j] = r.rewriteExpr(arm.Patterns[j])
+			}
+			arm.Value = r.rewriteExpr(arm.Value)
+		}
+		return x
 	case *ir.Call:
 		x.Receiver = r.rewriteExpr(x.Receiver)
 		for i := range x.Args {
@@ -373,6 +384,16 @@ func (r *refRewriter) rewriteStmt(s ir.Stmt) {
 		n.Cond = r.rewriteExpr(n.Cond)
 		r.rewriteStmts(n.Body)
 		r.rewriteStmts(n.Else)
+	case *ir.Match:
+		if n.Subject != nil {
+			n.Subject = r.rewriteExpr(n.Subject)
+		}
+		for _, arm := range n.Arms {
+			for j := range arm.Patterns {
+				arm.Patterns[j] = r.rewriteExpr(arm.Patterns[j])
+			}
+			r.rewriteStmts(arm.Body)
+		}
 	case *ir.For:
 		n.Iter = r.rewriteExpr(n.Iter)
 		n.ElemType = r.rewriteType(n.ElemType)
@@ -468,6 +489,14 @@ func seedAddressedVarsInExpr(e ir.Expr, set map[*ir.Var]bool) {
 		seedAddressedVarsInExpr(x.Cond, set)
 		seedAddressedVarsInExpr(x.Then, set)
 		seedAddressedVarsInExpr(x.Else, set)
+	case *ir.MatchExpr:
+		seedAddressedVarsInExpr(x.Subject, set)
+		for _, arm := range x.Arms {
+			for _, p := range arm.Patterns {
+				seedAddressedVarsInExpr(p, set)
+			}
+			seedAddressedVarsInExpr(arm.Value, set)
+		}
 	case *ir.Call:
 		seedAddressedVarsInExpr(x.Receiver, set)
 		for i := range x.Args {
@@ -535,6 +564,13 @@ func seedAddressedVarsInStmt(s ir.Stmt, set map[*ir.Var]bool) {
 		}
 		for _, t := range n.Else {
 			seedAddressedVarsInStmt(t, set)
+		}
+	case *ir.Match:
+		seedAddressedVarsInExpr(n.Subject, set)
+		for _, arm := range n.Arms {
+			for _, t := range arm.Body {
+				seedAddressedVarsInStmt(t, set)
+			}
 		}
 	case *ir.For:
 		seedAddressedVarsInExpr(n.Iter, set)

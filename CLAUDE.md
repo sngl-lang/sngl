@@ -375,7 +375,7 @@ the one walk.
 stands -- reads a statement's blocks from `ir.ViewBlocks` (a node's children
 and each population of its slots, a slot insertion's fallback and its entries'
 populations, and `ir.TransparentBlocks`: an `if`'s and a `for`'s body and else,
-a boundary's content and fallback, a provider's content), or `ir.WalkView` for
+a match's arms, a boundary's content and fallback, a provider's content), or `ir.WalkView` for
 a plain visit, and handles a statement's own handlers itself. A pass that
 wants every expression -- props, handlers, lambdas, slot arguments -- is
 `ir.Walk`/`ir.Rewrite`/`ir.RewriteExprs`. A hand-written switch over the
@@ -514,14 +514,43 @@ binding pattern yet; `var name` can be added without breaking anything.
 and is what effective SNGL recommends for a match that should survive the enum
 growing a member.
 
-**The checker turns it into constructs every phase already knows**
-(`internal/checker/match.go`): a statement into an `ir.If`/else-if chain, an
-expression into nested `ir.Ternary`s, each arm's patterns as `==` joined by
-`||`. The last arm of an exhaustive match is a bare `else` with no test. No
-`ir.Match` exists, so the family, slot, element-ref and `.empty` rules, the
-interpreter, the optimizer, the lowering and every backend read a match as the
-if or ternary it is; `ast.BranchBlocks` is the one place an AST walk over a
-view learns an arm is a block.
+**The IR keeps it**: the checker (`internal/checker/match.go`) makes an
+`ir.Match` statement or an `ir.MatchExpr` value, each an `ir.MatchArms` -- the
+subject (nil when headless), the arms' patterns as checked, an arm's block or
+value, and `Exhaustive` when the last arm is taken unasked. Three helpers say
+what it means as the constructs it replaces: `Chain` (the if/else-if chain),
+`TernaryChain` and `Taken(i)`, the condition under which arm i is the one
+taken, which a walk carrying an `if`'s condition down its branches carries
+down an arm. `ir.TransparentBlocks` lists the arms, so every walk asking what
+a view's blocks hold asks a match's; a hand-written switch over the statement
+kinds has a `*ir.Match` case beside its `*ir.If`. The interpreter runs it
+itself (`interp/match.go`, the subject evaluated once), and the optimizer
+folds one whose subject the build knows to the arm it takes (`foldMatchArms`,
+consteval's `evalExpr`).
+
+**`passMatch` writes the chain wherever the target cannot emit a match**
+(`internal/lower/match.go`), first in the pipeline and again before NoTernary
+(`MatchLate`), for one a pass between carried out of an imperative body. Three
+capabilities decide it, and a target that has heard of none gets the chain:
+`matches` (a statement, in a function, a handler or a lambda), `matchValues`
+(an expression there) and `viewMatches` (both in a view body or an
+initializer). Go, Kotlin and JavaScript declare `matches`; Go and Kotlin
+`matchValues`, Go's being a switch assigning a temp that passTernary writes
+(`liftMatch`), and JavaScript, which has no switch expression, withholds it;
+android declares `viewMatches`, and html, whose script is JavaScript under
+`--lang none`, takes back `matches` and withdraws the other two. Whatever is
+declared, three shapes are the chain on every target: a subject a host's
+switch compares differently from `==` (`MatchArms.Switchable`: anything but a
+bool, a number, a string or an enum), an arm that breaks out of a loop around
+the match, which Go's and JavaScript's switch take as their own
+(`Match.BreaksOut`), and a test function's, which each language's test
+lowering writes out. Where the subject is a `__matchN` the checker bound just
+ahead and the match is kept, the binding is undone (`unbindSubjects`): a
+switch evaluates its subject once. Each language renders one through
+`irwalk.Renderer`'s `Match` and `MatchExpr` -- a `switch` with the arm taken
+unasked as its `default`, a `when` whose exhaustive last arm keeps its
+patterns so Kotlin checks it too, a JavaScript headless match written as the
+chain -- and android's composable writes a `when` (`renderWhen`).
 
 **The subject is evaluated once wherever a statement can hold it.** A subject
 that calls anything is bound to `__matchN` ahead of the statement, in an
@@ -533,8 +562,10 @@ branch, a match's own arms, a condition loop's head -- has no such place
 arm tested, and `reportImpureMatchSubjects` refuses one that writes state,
 after the purity fixed point. Binding ahead of the statement evaluates the
 subject before the rest of the statement, as a spread's operand is.
-`testdata/match.sngl`, `error_match.sngl`, `error_match_impure_subject.sngl`,
-`match.txtar` and `cmd/sngl/testdata/match_runs.txt`.
+`testdata/match.sngl`, `match_fold.sngl`, `error_match.sngl`,
+`error_match_impure_subject.sngl`, `match.txtar`, `match_native.txtar`,
+`cmd/sngl/testdata/match_runs.txt`, `match_native_runs.txt` and
+`match_roundtrip.txt`.
 
 ## Contexts
 
@@ -1574,8 +1605,8 @@ which makes `output` and a component returning a type parameter exempt for
 free: both carry a nil `Family`, so the first is never asked and the second is
 left to `checkFamilyParamBody` rather than reported twice.
 
-**Four constructs are reached through, and `familyTransparent` is the one list
-of them.** An `if` and a `for` say when and how many; an `ir.ErrorBoundary`
+**Five constructs are reached through, and `familyTransparent` is the one list
+of them.** An `if`, a `match` and a `for` say when and how many; an `ir.ErrorBoundary`
 says what happens when a raise reaches it; an `ir.ContextProvider` sets a value
 for what is under it. None puts anything in the tree itself, so every tree
 question asked of a block is asked of theirs. After the checker the same list is `ir.TransparentBlocks`, and

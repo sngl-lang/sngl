@@ -110,6 +110,10 @@ func collectCalleesInStmt(out map[*ir.Func]bool, s ir.Stmt) {
 	case *ir.If:
 		collectCalleesInStmts(out, n.Body)
 		collectCalleesInStmts(out, n.Else)
+	case *ir.Match:
+		for _, arm := range n.Arms {
+			collectCalleesInStmts(out, arm.Body)
+		}
 	case *ir.For:
 		collectCalleesInStmts(out, n.Body)
 		collectCalleesInStmts(out, n.Else)
@@ -142,6 +146,11 @@ func collectCalleesInExpr(out map[*ir.Func]bool, e ir.Expr) {
 		collectCalleesInExpr(out, x.Cond)
 		collectCalleesInExpr(out, x.Then)
 		collectCalleesInExpr(out, x.Else)
+	case *ir.MatchExpr:
+		collectCalleesInExpr(out, x.Subject)
+		for _, arm := range x.Arms {
+			collectCalleesInExpr(out, arm.Value)
+		}
 	case *ir.Conversion:
 		collectCalleesInExpr(out, x.Operand)
 	case *ir.Select:
@@ -191,6 +200,11 @@ func collectCalleesInFuncStmt(out map[*ir.Func]bool, s ir.Stmt) {
 		collectCalleesInExpr(out, n.Cond)
 		collectCalleesInFuncBlock(out, n.Body)
 		collectCalleesInFuncBlock(out, n.Else)
+	case *ir.Match:
+		collectCalleesInExpr(out, n.Subject)
+		for _, arm := range n.Arms {
+			collectCalleesInFuncBlock(out, arm.Body)
+		}
 	case *ir.For:
 		collectCalleesInExpr(out, n.Iter)
 		collectCalleesInFuncBlock(out, n.Body)

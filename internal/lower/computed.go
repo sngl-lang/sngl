@@ -120,6 +120,17 @@ func inlineComputedExpr(e ir.Expr, bodies map[*ir.Func]ir.Expr) ir.Expr {
 		x.Then = inlineComputedExpr(x.Then, bodies)
 		x.Else = inlineComputedExpr(x.Else, bodies)
 		return x
+	case *ir.MatchExpr:
+		if x.Subject != nil {
+			x.Subject = inlineComputedExpr(x.Subject, bodies)
+		}
+		for _, arm := range x.Arms {
+			for j := range arm.Patterns {
+				arm.Patterns[j] = inlineComputedExpr(arm.Patterns[j], bodies)
+			}
+			arm.Value = inlineComputedExpr(arm.Value, bodies)
+		}
+		return x
 	case *ir.Conversion:
 		x.Operand = inlineComputedExpr(x.Operand, bodies)
 		return x

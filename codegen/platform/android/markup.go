@@ -152,6 +152,12 @@ func (cc *irComposeContext) renderSpan(stmt ir.Stmt, dec decoration) {
 			cc.indent--
 		}
 		cc.line("%s", cc.kc.BlockEnd())
+	case *ir.Match:
+		cc.renderWhen(s, func(arm []ir.Stmt) {
+			for _, child := range arm {
+				cc.renderSpan(child, dec)
+			}
+		})
 	case *ir.For:
 		cc.renderSpanFor(s, dec)
 	case *ir.ErrorBoundary:

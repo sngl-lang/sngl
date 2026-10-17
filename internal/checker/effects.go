@@ -94,6 +94,15 @@ func stmtHasErrorOp(s ir.Stmt) bool {
 			return true
 		}
 		return blockHasErrorOp(x.Body) || blockHasErrorOp(x.Else)
+	case *ir.Match:
+		if exprContainsFallibleCall(x.Subject, false) {
+			return true
+		}
+		for _, arm := range x.Arms {
+			if blockHasErrorOp(arm.Body) {
+				return true
+			}
+		}
 	case *ir.For:
 		if exprContainsFallibleCall(x.Iter, false) {
 			return true
@@ -137,6 +146,15 @@ func exprContainsFallibleCall(e ir.Expr, skipPerCallAbsorbed bool) bool {
 		return exprContainsFallibleCall(x.Cond, false) ||
 			exprContainsFallibleCall(x.Then, false) ||
 			exprContainsFallibleCall(x.Else, false)
+	case *ir.MatchExpr:
+		if exprContainsFallibleCall(x.Subject, false) {
+			return true
+		}
+		for _, arm := range x.Arms {
+			if exprContainsFallibleCall(arm.Value, false) {
+				return true
+			}
+		}
 	case *ir.Conversion:
 		return exprContainsFallibleCall(x.Operand, false)
 	case *ir.Select:
@@ -262,6 +280,11 @@ func resolveCallsInBlock(stmts []ir.Stmt, scope []*ir.EventHandler, bubble bool)
 			resolveCallsInExpr(x.Cond, scope, bubble)
 			resolveCallsInBlock(x.Body, scope, bubble)
 			resolveCallsInBlock(x.Else, scope, bubble)
+		case *ir.Match:
+			resolveCallsInExpr(x.Subject, scope, bubble)
+			for _, arm := range x.Arms {
+				resolveCallsInBlock(arm.Body, scope, bubble)
+			}
 		case *ir.For:
 			resolveCallsInExpr(x.Iter, scope, bubble)
 			resolveCallsInBlock(x.Body, scope, bubble)
@@ -297,6 +320,11 @@ func resolveCallsInExpr(e ir.Expr, scope []*ir.EventHandler, bubble bool) {
 		resolveCallsInExpr(x.Cond, scope, bubble)
 		resolveCallsInExpr(x.Then, scope, bubble)
 		resolveCallsInExpr(x.Else, scope, bubble)
+	case *ir.MatchExpr:
+		resolveCallsInExpr(x.Subject, scope, bubble)
+		for _, arm := range x.Arms {
+			resolveCallsInExpr(arm.Value, scope, bubble)
+		}
 	case *ir.Conversion:
 		resolveCallsInExpr(x.Operand, scope, bubble)
 	case *ir.Select:

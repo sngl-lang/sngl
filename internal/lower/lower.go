@@ -36,6 +36,7 @@ type pass struct {
 // pass wherever the stated requirements allow; if it has a requirement not yet
 // stated, state it there rather than leaving it to position.
 var passes = []pass{
+	passMatch,
 	passTestInstanceReach,
 	passTestReach,
 	passTestRefOwner,
@@ -111,6 +112,7 @@ var passes = []pass{
 	passInstanceEvents,
 	passComponentProps,
 	passReactivity,
+	passMatchLate,
 	passTernary,
 	passCanvasReactivity,
 	passFocusOrder,

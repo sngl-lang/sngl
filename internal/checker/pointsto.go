@@ -88,6 +88,11 @@ func (w *pointsToWalker) walkStmt(s ir.Stmt) {
 		w.walkExpr(x.Cond)
 		w.walkStmts(x.Body)
 		w.walkStmts(x.Else)
+	case *ir.Match:
+		w.walkExpr(x.Subject)
+		for _, arm := range x.Arms {
+			w.walkStmts(arm.Body)
+		}
 	case *ir.For:
 		w.walkExpr(x.Iter)
 		w.walkStmts(x.Body)
@@ -144,6 +149,11 @@ func (w *pointsToWalker) walkExpr(e ir.Expr) {
 		w.walkExpr(x.Cond)
 		w.walkExpr(x.Then)
 		w.walkExpr(x.Else)
+	case *ir.MatchExpr:
+		w.walkExpr(x.Subject)
+		for _, arm := range x.Arms {
+			w.walkExpr(arm.Value)
+		}
 	case *ir.Conversion:
 		w.walkExpr(x.Operand)
 	case *ir.Select:

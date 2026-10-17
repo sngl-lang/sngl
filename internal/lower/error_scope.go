@@ -69,12 +69,10 @@ func (st *errorScopeState) stmts(stmts []ir.Stmt, scope []*ir.EventHandler) {
 					st.stmts(sc.Body, inner)
 				}
 			}
-		case *ir.If:
-			st.stmts(n.Body, scope)
-			st.stmts(n.Else, scope)
-		case *ir.For:
-			st.stmts(n.Body, scope)
-			st.stmts(n.Else, scope)
+		case *ir.If, *ir.For, *ir.Match:
+			for _, b := range ir.TransparentBlocks(n) {
+				st.stmts(*b, scope)
+			}
 		case *ir.ContextProvider:
 			st.stmts(n.Children, scope)
 		case *ir.SlotInst:

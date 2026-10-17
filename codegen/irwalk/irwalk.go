@@ -40,6 +40,9 @@ type Renderer interface {
 	Call(*ir.Call) string
 	Conversion(*ir.Conversion) string
 	Lambda(*ir.Lambda) string
+	// MatchExpr renders a match expression: the language's own switch
+	// expression, or the ternaries it means (ir.MatchExpr.TernaryChain).
+	MatchExpr(*ir.MatchExpr) string
 
 	// — Stmt single-liners (walker handles StmtPrefix)
 	AssignText(n *ir.Assign, target, value string) string
@@ -56,6 +59,11 @@ type Renderer interface {
 	// and the renderer renders the handler itself.
 	Catch(n *ir.If, body []string) []string
 	ElseHead() string
+	// Match renders a match statement as the language's own switch: its
+	// subject rendered ("" for a headless match), each arm's patterns
+	// rendered, and each arm's body rendered unindented. Nil asks the walker
+	// to write it as the if chain it means (ir.Match.Chain).
+	Match(n *ir.Match, subject string, patterns, bodies [][]string) []string
 	BlockEnd() string
 	Indent() string
 
@@ -118,6 +126,8 @@ func EvalExpr(r Renderer, e ir.Expr) string {
 		return r.Conversion(n)
 	case *ir.Lambda:
 		return r.Lambda(n)
+	case *ir.MatchExpr:
+		return r.MatchExpr(n)
 	default:
 		panic(fmt.Sprintf("irwalk.EvalExpr: unhandled ir.Expr %T", e))
 	}
@@ -173,6 +183,8 @@ func evalStmtImpl(r Renderer, s ir.Stmt) []string {
 		return evalFor(r, n)
 	case *ir.If:
 		return evalIf(r, n)
+	case *ir.Match:
+		return evalMatch(r, n)
 	case *ir.NodeInst:
 		// UI-tree statements are platform-specific; the generic
 		// per-language stmt path emits nothing for them.
@@ -240,6 +252,40 @@ func evalIf(r Renderer, n *ir.If) []string {
 		lines = append(lines, end)
 	}
 	return lines
+}
+
+func evalMatch(r Renderer, n *ir.Match) []string {
+	subject := ""
+	if n.Subject != nil {
+		subject = EvalExpr(r, n.Subject)
+	}
+	patterns := make([][]string, len(n.Arms))
+	bodies := make([][]string, len(n.Arms))
+	for i, arm := range n.Arms {
+		for _, p := range arm.Patterns {
+			patterns[i] = append(patterns[i], EvalExpr(r, p))
+		}
+		for _, s := range arm.Body {
+			bodies[i] = append(bodies[i], EvalStmt(r, s)...)
+		}
+	}
+	if lines := r.Match(n, subject, patterns, bodies); lines != nil {
+		return lines
+	}
+	var lines []string
+	for _, s := range n.Chain() {
+		lines = append(lines, EvalStmt(r, s)...)
+	}
+	return lines
+}
+
+// IndentLines puts indent before each of lines.
+func IndentLines(indent string, lines []string) []string {
+	out := make([]string, len(lines))
+	for i, l := range lines {
+		out[i] = indent + l
+	}
+	return out
 }
 
 // EvalMutTarget renders the left-hand-side of an assignment.

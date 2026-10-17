@@ -596,6 +596,12 @@ func endReturns(stmts []ir.Stmt, done *ir.Var, inLoop bool) []ir.Stmt {
 			cp.Body = endReturns(x.Body, done, inLoop)
 			cp.Else = endReturns(x.Else, done, inLoop)
 			out = append(out, &cp)
+		case *ir.Match:
+			if !returns([]ir.Stmt{x}) {
+				out = append(out, s)
+				continue
+			}
+			out = append(out, matchOver(x, func(arm []ir.Stmt) []ir.Stmt { return endReturns(arm, done, inLoop) }))
 		case *ir.For:
 			if !returns([]ir.Stmt{x}) {
 				out = append(out, s)
@@ -637,7 +643,7 @@ func evaluationCalls(e ir.Expr) ([]*ir.Call, bool) {
 			}
 			calls = append(calls, x)
 			return ir.SkipDir
-		case *ir.Ternary, *ir.Lambda:
+		case *ir.Ternary, *ir.MatchExpr, *ir.Lambda:
 			ok = false
 			return ir.SkipAll
 		case *ir.Binary:
@@ -1231,6 +1237,13 @@ func callSiteWraps(stmts []ir.Stmt, id string) (*ir.NodeInst, []siteWrap, bool) 
 				}
 				if n, w, ok, found := walk(x.Else, append(slices.Clip(wraps), siteWrap{cond: x.Cond, negate: true})); found {
 					return n, w, ok, true
+				}
+				continue
+			case *ir.Match:
+				for i, arm := range x.Arms {
+					if n, w, ok, found := walk(arm.Body, append(slices.Clip(wraps), siteWrap{cond: x.Taken(i)})); found {
+						return n, w, ok, true
+					}
 				}
 				continue
 			case *ir.For:

@@ -24,6 +24,9 @@ import gen "sngl:x/gen"
     viewStatements,
     genericFuncs,
     genericComponents,
+    matches,
+    matchValues,
+    viewMatches,
 )]
 #[gen.name("none")]
 component language(const platforms ...component build.platform) build.language

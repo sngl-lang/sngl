@@ -99,6 +99,11 @@ func viewCalls(stmts []Stmt, site *NodeInst, visit func(*Call, *NodeInst)) {
 			}
 		case *For:
 			own = append(own, n.Iter)
+		case *Match:
+			own = append(own, n.Subject)
+			for _, arm := range n.Arms {
+				own = append(own, arm.Patterns...)
+			}
 		case *ContextProvider:
 			own = append(own, n.Value)
 		}

@@ -1863,3 +1863,75 @@ func (kc *KtIRContext) hostValueIdent(n *ir.Ident) (string, bool) {
 	}
 	return kc.NativeName(v.Foreign.Path, v.Foreign.Name), true
 }
+
+// Match writes a match statement as a when. The last arm of an exhaustive
+// match keeps its patterns, so Kotlin checks the when covers its subject as
+// the checker did; an else arm is the when's else.
+func (kc *KtIRContext) Match(n *ir.Match, subject string, patterns, bodies [][]string) []string {
+	in := kc.Indent()
+	lines := []string{kc.whenHead(&n.MatchArms, subject) + " {"}
+	for i := range n.Arms {
+		lines = append(lines, in+kc.whenCondition(&n.MatchArms, i, patterns[i])+" -> {")
+		lines = append(lines, irwalk.IndentLines(in+in, bodies[i])...)
+		lines = append(lines, in+"}")
+	}
+	return append(lines, "}")
+}
+
+// MatchExpr writes a match expression as a when expression.
+func (kc *KtIRContext) MatchExpr(n *ir.MatchExpr) string {
+	subject := ""
+	if n.Subject != nil {
+		subject = irwalk.EvalExpr(kc, n.Subject)
+	}
+	arms := make([]string, len(n.Arms))
+	for i, arm := range n.Arms {
+		var pats []string
+		for _, p := range arm.Patterns {
+			pats = append(pats, irwalk.EvalExpr(kc, p))
+		}
+		arms[i] = kc.whenCondition(&n.MatchArms, i, pats) + " -> " + irwalk.EvalExpr(kc, arm.Value)
+	}
+	return "(" + kc.whenHead(&n.MatchArms, subject) + " { " + strings.Join(arms, "; ") + " })"
+}
+
+// WhenHead opens a when over m, for a platform rendering a match's arms
+// itself -- Compose's in a composable.
+func (kc *KtIRContext) WhenHead(m *ir.MatchArms) string {
+	subject := ""
+	if m.Subject != nil {
+		subject = irwalk.EvalExpr(kc, m.Subject)
+	}
+	return kc.whenHead(m, subject) + " {"
+}
+
+// WhenArm opens arm i of a when WhenHead opened.
+func (kc *KtIRContext) WhenArm(m *ir.MatchArms, i int) string {
+	var pats []string
+	for _, p := range m.Arms[i].Patterns {
+		pats = append(pats, irwalk.EvalExpr(kc, p))
+	}
+	return kc.whenCondition(m, i, pats) + " -> {"
+}
+
+func (kc *KtIRContext) whenHead(m *ir.MatchArms, subject string) string {
+	if m.Subject == nil {
+		return "when"
+	}
+	return "when (" + subject + ")"
+}
+
+// whenCondition is what selects arm i: its patterns, or else. Headless, the
+// conditions are joined into one, which a subjectless when takes.
+func (kc *KtIRContext) whenCondition(m *ir.MatchArms, i int, patterns []string) string {
+	if m.Arms[i].Else || len(patterns) == 0 || (m.Exhaustive && i == len(m.Arms)-1 && m.Subject == nil) {
+		return "else"
+	}
+	if m.Subject == nil {
+		if len(patterns) == 1 {
+			return patterns[0]
+		}
+		return "(" + strings.Join(patterns, ") || (") + ")"
+	}
+	return strings.Join(patterns, ", ")
+}

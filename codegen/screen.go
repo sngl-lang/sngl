@@ -83,6 +83,12 @@ func SoleScreen(stmts []ir.Stmt, intrinsic, platform string, pos func(*ir.NodeIn
 				if err := walk(n.Else, append(conds[:len(conds):len(conds)], ScreenCond{Cond: n.Cond, Else: true}), inLoop); err != nil {
 					return err
 				}
+			case *ir.Match:
+				for i, arm := range n.Arms {
+					if err := walk(arm.Body, append(conds[:len(conds):len(conds)], ScreenCond{Cond: n.Taken(i)}), inLoop); err != nil {
+						return err
+					}
+				}
 			case *ir.For:
 				if err := walk(n.Body, conds, true); err != nil {
 					return err

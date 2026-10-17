@@ -664,6 +664,9 @@ func ownNode(comp *ir.Component, id string) (node *ir.NodeInst, always bool) {
 			}
 			_, isFor := s.(*ir.For)
 			_, isIf := s.(*ir.If)
+			if _, isMatch := s.(*ir.Match); isMatch {
+				isIf = true
+			}
 			page := false
 			if n, ok := s.(*ir.NodeInst); ok && n.Component != nil && n.Component.Builtin == ir.BuiltinNavPage {
 				page = true

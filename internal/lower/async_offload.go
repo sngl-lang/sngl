@@ -444,14 +444,14 @@ func (st *offloadState) split(s ir.Stmt) (bg, post []ir.Stmt, err error) {
 			Value:  &ir.Ident{Name: name, Type: t, Sym: sym, Synthesized: true},
 		}
 		return []ir.Stmt{tmp}, []ir.Stmt{back}, nil
-	case *ir.If, *ir.For:
+	case *ir.If, *ir.For, *ir.Match:
 		// The split is over one flat run of statements, and the branch a
 		// blocking call sits in is not that run: whether it happens at all is
 		// decided on the drawing thread, and hoisting the whole `if` onto the
 		// goroutine would move its condition -- and anything else in it -- off
 		// that thread with it. Saying so is the honest answer; saying "no
 		// answer to hand back" named the wrong thing entirely.
-		return nil, nil, fmt.Errorf("%s: this blocking call is inside an if or for, and only a call written directly in the body can be moved off the drawing thread -- lift it out, or put it in a function of its own marked as blocking", offloadPos(s))
+		return nil, nil, fmt.Errorf("%s: this blocking call is inside an if, a for or a match, and only a call written directly in the body can be moved off the drawing thread -- lift it out, or put it in a function of its own marked as blocking", offloadPos(s))
 	// An ir.Return is deliberately not here. An entry point returns nothing --
 	// that is what makes it one -- so a `return` in its body carries no value,
 	// and a case for one would be a branch no program can reach.
@@ -487,6 +487,15 @@ func (st *offloadState) stmtWaits(s ir.Stmt) bool {
 		return st.exprWaits(n.Value)
 	case *ir.If:
 		return st.exprWaits(n.Cond) || st.blockWaits(n.Body) || st.blockWaits(n.Else)
+	case *ir.Match:
+		if st.exprWaits(n.Subject) {
+			return true
+		}
+		for _, arm := range n.Arms {
+			if st.blockWaits(arm.Body) {
+				return true
+			}
+		}
 	case *ir.For:
 		return st.exprWaits(n.Iter) || st.blockWaits(n.Body) || st.blockWaits(n.Else)
 	}
@@ -545,6 +554,15 @@ func (st *offloadState) exprWaits(e ir.Expr) bool {
 		return st.exprWaits(x.Operand)
 	case *ir.Ternary:
 		return st.exprWaits(x.Cond) || st.exprWaits(x.Then) || st.exprWaits(x.Else)
+	case *ir.MatchExpr:
+		if st.exprWaits(x.Subject) {
+			return true
+		}
+		for _, arm := range x.Arms {
+			if st.exprWaits(arm.Value) {
+				return true
+			}
+		}
 	case *ir.Conversion:
 		return st.exprWaits(x.Operand)
 	case *ir.Select:

@@ -1081,6 +1081,23 @@ func (st *inlineCompState) inlineStmtCtx(s ir.Stmt, rc reactiveCtx) ([]ir.Stmt, 
 		n.Body = body
 		n.Else = els
 		return []ir.Stmt{n}, ch1 || ch2, nil
+	case *ir.Match:
+		inner := reactiveCtx{in: rc.in || dependsOnReactiveVar(n.Subject, st.reactive), repeated: rc.repeated, loops: rc.loops}
+		for _, arm := range n.Arms {
+			for _, p := range arm.Patterns {
+				inner.in = inner.in || dependsOnReactiveVar(p, st.reactive)
+			}
+		}
+		changed := false
+		for _, arm := range n.Arms {
+			body, ch, err := st.inlineStmtsCtx(arm.Body, inner)
+			if err != nil {
+				return nil, false, err
+			}
+			arm.Body = body
+			changed = changed || ch
+		}
+		return []ir.Stmt{n}, changed, nil
 	case *ir.For:
 		inner := reactiveCtx{in: rc.in || dependsOnReactiveVar(n.Iter, st.reactive), repeated: true, loops: append(slices.Clip(rc.loops), n)}
 		body, ch1, err := st.inlineStmtsCtx(n.Body, inner)
@@ -1173,6 +1190,14 @@ func walkExprIdents(e ir.Expr, visit func(*ir.Ident)) {
 		walkExprIdents(n.Cond, visit)
 		walkExprIdents(n.Then, visit)
 		walkExprIdents(n.Else, visit)
+	case *ir.MatchExpr:
+		walkExprIdents(n.Subject, visit)
+		for _, arm := range n.Arms {
+			for _, p := range arm.Patterns {
+				walkExprIdents(p, visit)
+			}
+			walkExprIdents(arm.Value, visit)
+		}
 	case *ir.Conversion:
 		walkExprIdents(n.Operand, visit)
 	case *ir.Call:

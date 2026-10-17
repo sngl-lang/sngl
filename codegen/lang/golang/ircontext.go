@@ -2552,3 +2552,28 @@ func OptionCompare(n *ir.Binary) (optionLeft, valueRight, ok bool) {
 	}
 	return false, false, false
 }
+
+// Match writes a match statement as a switch: a tagless one for a headless
+// match, and the arm taken unasked as the default.
+func (gc *GoIRContext) Match(n *ir.Match, subject string, patterns, bodies [][]string) []string {
+	head := "switch {"
+	if n.Subject != nil {
+		head = "switch " + subject + " {"
+	}
+	lines := []string{head}
+	for i := range n.Arms {
+		if n.Unasked(i) {
+			lines = append(lines, "default:")
+		} else {
+			lines = append(lines, "case "+strings.Join(patterns[i], ", ")+":")
+		}
+		lines = append(lines, irwalk.IndentLines(gc.Indent(), bodies[i])...)
+	}
+	return append(lines, "}")
+}
+
+// MatchExpr is never reached: Go has no switch expression, and passTernary
+// writes a match expression as a switch assigning a temp.
+func (gc *GoIRContext) MatchExpr(*ir.MatchExpr) string {
+	panic("ir.MatchExpr reached Go codegen — NoTernary lifts it into a switch for every Go platform")
+}

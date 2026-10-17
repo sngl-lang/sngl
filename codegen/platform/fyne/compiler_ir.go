@@ -1001,12 +1001,10 @@ func collectNodes(pkg *ir.Package, funcs []*ir.Func) (map[string]*fyneSpec, erro
 						}
 					}
 				}
-			case *ir.If:
-				walk(n.Body)
-				walk(n.Else)
-			case *ir.For:
-				walk(n.Body)
-				walk(n.Else)
+			case *ir.If, *ir.For, *ir.Match:
+				for _, b := range ir.TransparentBlocks(n) {
+					walk(*b)
+				}
 			case *ir.NodeInst:
 				walk(n.Children)
 			case *ir.CallStmt:
@@ -1136,9 +1134,9 @@ func valueTemp(s ir.Stmt) bool {
 	switch n := s.(type) {
 	case *ir.LocalVar:
 		return n.Init == nil && (n.Type == nil || n.Type.Kind != ir.TypeComponent)
-	case *ir.If:
-		for _, b := range [][]ir.Stmt{n.Body, n.Else} {
-			for _, st := range b {
+	case *ir.If, *ir.Match:
+		for _, b := range ir.TransparentBlocks(n) {
+			for _, st := range *b {
 				if asn, ok := st.(*ir.Assign); ok {
 					if _, plain := asn.Target.(*ir.Ident); plain {
 						continue

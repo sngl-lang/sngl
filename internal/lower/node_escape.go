@@ -217,6 +217,14 @@ func collectScopeRefsStmt(s ir.Stmt, info *scopeRefInfo) {
 		collectScopeRefsExpr(n.Cond, info)
 		collectScopeRefs(n.Body, info)
 		collectScopeRefs(n.Else, info)
+	case *ir.Match:
+		collectScopeRefsExpr(n.Subject, info)
+		for _, arm := range n.Arms {
+			for _, p := range arm.Patterns {
+				collectScopeRefsExpr(p, info)
+			}
+			collectScopeRefs(arm.Body, info)
+		}
 	case *ir.For:
 		collectScopeRefsExpr(n.Iter, info)
 		collectScopeRefs(n.Body, info)
@@ -274,6 +282,14 @@ func collectScopeRefsExpr(e ir.Expr, info *scopeRefInfo) {
 		collectScopeRefsExpr(x.Cond, info)
 		collectScopeRefsExpr(x.Then, info)
 		collectScopeRefsExpr(x.Else, info)
+	case *ir.MatchExpr:
+		collectScopeRefsExpr(x.Subject, info)
+		for _, arm := range x.Arms {
+			for _, p := range arm.Patterns {
+				collectScopeRefsExpr(p, info)
+			}
+			collectScopeRefsExpr(arm.Value, info)
+		}
 	case *ir.Call:
 		collectScopeRefsExpr(x.Receiver, info)
 		collectScopeRefsExpr(x.Callee, info)

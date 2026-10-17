@@ -69,6 +69,8 @@ func (cc *irComposeContext) renderStmt(stmt ir.Stmt) {
 		cc.renderNode(s)
 	case *ir.If:
 		cc.renderIf(s)
+	case *ir.Match:
+		cc.renderMatch(s)
 	case *ir.For:
 		cc.renderFor(s)
 	case *ir.SlotInst:
@@ -110,6 +112,31 @@ func (cc *irComposeContext) renderIf(s *ir.If) {
 		}
 		cc.indent--
 	}
+	cc.line("%s", cc.kc.BlockEnd())
+}
+
+// renderMatch is a when in the composable, each arm composing what it holds.
+func (cc *irComposeContext) renderMatch(s *ir.Match) {
+	cc.renderWhen(s, func(arm []ir.Stmt) {
+		for _, child := range arm {
+			cc.renderStmt(child)
+		}
+	})
+}
+
+// renderWhen writes a match as a when, each arm's body written by arm: a
+// composable's statements, a drawing's, a flow's spans.
+func (cc *irComposeContext) renderWhen(s *ir.Match, arm func([]ir.Stmt)) {
+	cc.line("%s", cc.kc.WhenHead(&s.MatchArms))
+	cc.indent++
+	for i, a := range s.Arms {
+		cc.line("%s", cc.kc.WhenArm(&s.MatchArms, i))
+		cc.indent++
+		arm(a.Body)
+		cc.indent--
+		cc.line("}")
+	}
+	cc.indent--
 	cc.line("%s", cc.kc.BlockEnd())
 }
 

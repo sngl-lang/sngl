@@ -109,6 +109,12 @@ func (w *keyWalk) stmts(stmts []ir.Stmt, prefix string) {
 			w.stmts(n.Body, p+":then")
 			w.stmts(n.Else, p+":else")
 
+		case *ir.Match:
+			p := join(fmt.Sprintf("match@%d", next("match")))
+			for i, arm := range n.Arms {
+				w.stmts(arm.Body, fmt.Sprintf("%s:arm%d", p, i))
+			}
+
 		case *ir.For:
 			p := join(fmt.Sprintf("for@%d", next("for")))
 			w.stmts(n.Body, p+":body")

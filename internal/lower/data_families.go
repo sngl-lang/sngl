@@ -259,6 +259,11 @@ func (d *dataFamilies) elems(fam *ir.Component, stmts []ir.Stmt, depth int) []ir
 				Then: &ir.ListLit{Type: list, Elems: d.elems(fam, n.Body, depth)},
 				Else: &ir.ListLit{Type: list, Elems: d.elems(fam, n.Else, depth)},
 			}})
+		case *ir.Match:
+			// The chain it means, which reads the subject again per arm: a
+			// population is a view, where the checker refused a subject that
+			// writes state.
+			out = append(out, d.elems(fam, n.Chain(), depth)...)
 		case *ir.For:
 			if e := d.loop(fam, n, depth); e != nil {
 				out = append(out, e)

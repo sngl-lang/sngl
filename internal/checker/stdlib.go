@@ -1465,6 +1465,11 @@ func highestCalledPurity(fn *ir.Func) ir.Purity {
 			walkExpr(x.Cond)
 			walkExpr(x.Then)
 			walkExpr(x.Else)
+		case *ir.MatchExpr:
+			walkExpr(x.Subject)
+			for _, arm := range x.Arms {
+				walkExpr(arm.Value)
+			}
 		case *ir.Conversion:
 			walkExpr(x.Operand)
 		case *ir.Select:
@@ -1513,6 +1518,13 @@ func highestCalledPurity(fn *ir.Func) ir.Purity {
 			}
 			for _, c := range x.Else {
 				walkStmt(c)
+			}
+		case *ir.Match:
+			walkExpr(x.Subject)
+			for _, arm := range x.Arms {
+				for _, c := range arm.Body {
+					walkStmt(c)
+				}
 			}
 		case *ir.For:
 			walkExpr(x.Iter)

@@ -526,6 +526,12 @@ func (c *converter) convertStmt(s Stmt) ast.Stmt {
 			is.Else = c.convertStmtBlock(s.Else)
 		}
 		return is
+	case *Match:
+		ms := &ast.MatchStmt{Match: c.convertMatch(&s.MatchArms)}
+		for i, arm := range s.Arms {
+			ms.Arms[i].Body = c.convertStmtBlock(arm.Body)
+		}
+		return ms
 	case *For:
 		fs := &ast.ForStmt{
 			Key:   s.Key,
@@ -863,6 +869,12 @@ func (c *converter) convertExpr(e Expr) ast.Expr {
 			Then: c.convertExpr(e.Then),
 			Else: c.convertExpr(e.Else),
 		}
+	case *MatchExpr:
+		me := &ast.MatchExpr{Match: c.convertMatch(&e.MatchArms)}
+		for i, arm := range e.Arms {
+			me.Arms[i].Value = c.convertExpr(arm.Value)
+		}
+		return me
 	case *Call:
 		return c.convertCallExpr(e)
 	case *Conversion:
@@ -1386,4 +1398,22 @@ func posOfContinue(s *Continue) ast.Pos {
 		return ast.Pos{}
 	}
 	return s.AST.Pos
+}
+
+// convertMatch prints a match's subject and its arms' patterns; the caller
+// fills each arm's block or value. The last arm of an exhaustive match keeps
+// its patterns, which the checker reads as exhaustive again.
+func (c *converter) convertMatch(m *MatchArms) ast.Match {
+	out := ast.Match{}
+	if m.Subject != nil {
+		out.Subject = c.convertExpr(m.Subject)
+	}
+	for _, arm := range m.Arms {
+		a := &ast.MatchArm{Else: arm.Else}
+		for _, p := range arm.Patterns {
+			a.Patterns = append(a.Patterns, c.convertExpr(p))
+		}
+		out.Arms = append(out.Arms, a)
+	}
+	return out
 }

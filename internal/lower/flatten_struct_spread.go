@@ -48,6 +48,16 @@ func flattenSpreadExprCtx(e ir.Expr, pkg *ir.Package) ir.Expr {
 		x.Cond = rewrite(x.Cond)
 		x.Then = rewrite(x.Then)
 		x.Else = rewrite(x.Else)
+	case *ir.MatchExpr:
+		if x.Subject != nil {
+			x.Subject = rewrite(x.Subject)
+		}
+		for _, arm := range x.Arms {
+			for j := range arm.Patterns {
+				arm.Patterns[j] = rewrite(arm.Patterns[j])
+			}
+			arm.Value = rewrite(arm.Value)
+		}
 	case *ir.Call:
 		if x.Receiver != nil {
 			x.Receiver = rewrite(x.Receiver)

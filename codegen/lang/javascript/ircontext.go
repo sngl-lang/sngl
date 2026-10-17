@@ -1206,3 +1206,52 @@ func (jc *JsIRContext) hostValueIdent(n *ir.Ident) (string, bool) {
 	}
 	return v.Foreign.Name, true
 }
+
+// Match writes a match statement as a switch, each arm in a block of its own
+// so its declarations are its own. A headless match is the if chain it means:
+// a switch compares, and there is nothing to compare with.
+//
+// The switch opens on the line of its first case, and an arm's cases share a
+// line: a caller ends every line with a semicolon, and a switch's body holds
+// nothing but case clauses.
+func (jc *JsIRContext) Match(n *ir.Match, subject string, patterns, bodies [][]string) []string {
+	if n.Subject == nil {
+		return nil
+	}
+	in := jc.Indent()
+	var lines []string
+	for i, arm := range n.Arms {
+		head := "default: {"
+		if !n.Unasked(i) {
+			head = "case " + strings.Join(patterns[i], ": case ") + ": {"
+		}
+		if i == 0 {
+			lines = append(lines, "switch ("+subject+") { "+head)
+		} else {
+			lines = append(lines, in+head)
+		}
+		lines = append(lines, irwalk.IndentLines(in+in, bodies[i])...)
+		if i < len(n.Arms)-1 && !endsInReturn(arm.Body) {
+			lines = append(lines, in+in+"break")
+		}
+		lines = append(lines, in+"}")
+	}
+	return append(lines, "}")
+}
+
+// endsInReturn reports whether the last statement of a block is a return,
+// after which a break is unreachable.
+func endsInReturn(stmts []ir.Stmt) bool {
+	if len(stmts) == 0 {
+		return false
+	}
+	_, ok := stmts[len(stmts)-1].(*ir.Return)
+	return ok
+}
+
+// MatchExpr writes a match expression as the ternaries it means: JavaScript
+// has no switch expression, so it declares no `matchValues`, and passMatch
+// writes these before they reach here.
+func (jc *JsIRContext) MatchExpr(n *ir.MatchExpr) string {
+	return irwalk.EvalExpr(jc, n.TernaryChain())
+}

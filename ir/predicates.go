@@ -175,6 +175,10 @@ func StmtPos(s Stmt) ast.Pos {
 		if n.AST != nil {
 			return n.AST.Pos
 		}
+	case *Match:
+		if n.AST != nil {
+			return n.AST.Pos
+		}
 	}
 	return ast.Pos{}
 }

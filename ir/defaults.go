@@ -257,6 +257,14 @@ func normalizeStmt(s Stmt) Stmt {
 		normalizeExpr(n.Iter)
 		n.Body = normalizeStmts(n.Body)
 		n.Else = normalizeStmts(n.Else)
+	case *Match:
+		normalizeExpr(n.Subject)
+		for _, arm := range n.Arms {
+			for _, p := range arm.Patterns {
+				normalizeExpr(p)
+			}
+			arm.Body = normalizeStmts(arm.Body)
+		}
 	case *NodeInst:
 		for i := range n.Props {
 			normalizeExpr(n.Props[i].Value)
@@ -301,6 +309,14 @@ func normalizeExpr(e Expr) {
 		normalizeExpr(n.Cond)
 		normalizeExpr(n.Then)
 		normalizeExpr(n.Else)
+	case *MatchExpr:
+		normalizeExpr(n.Subject)
+		for _, arm := range n.Arms {
+			for _, p := range arm.Patterns {
+				normalizeExpr(p)
+			}
+			normalizeExpr(arm.Value)
+		}
 	case *Call:
 		if n.Callee != nil {
 			normalizeExpr(n.Callee)

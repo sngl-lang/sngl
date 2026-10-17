@@ -952,12 +952,10 @@ func collectNodeTags(pkg *ir.Package) (map[string]string, map[string]string) {
 						}
 					}
 				}
-			case *ir.If:
-				walk(n.Body)
-				walk(n.Else)
-			case *ir.For:
-				walk(n.Body)
-				walk(n.Else)
+			case *ir.If, *ir.For, *ir.Match:
+				for _, b := range ir.TransparentBlocks(n) {
+					walk(*b)
+				}
 			case *ir.NodeInst:
 				walk(n.Children)
 			case *ir.SlotInst, *ir.Assign, *ir.CallStmt, *ir.Return, *ir.Emit, *ir.Toggle, *ir.CanvasRedrawStmt,
@@ -1016,12 +1014,10 @@ func collectCreateComponentTargets(pkg *ir.Package) map[*ir.Component]bool {
 				}
 			case *ir.CallStmt:
 				record(n.Call)
-			case *ir.If:
-				walk(n.Body)
-				walk(n.Else)
-			case *ir.For:
-				walk(n.Body)
-				walk(n.Else)
+			case *ir.If, *ir.For, *ir.Match:
+				for _, b := range ir.TransparentBlocks(n) {
+					walk(*b)
+				}
 			case *ir.NodeInst:
 				walk(n.Children)
 			}

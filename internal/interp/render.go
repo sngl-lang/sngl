@@ -468,6 +468,12 @@ func refLoops(stmts []ir.Stmt, id string, outer []any) ([]any, bool) {
 			if found, ok = try(n.Body, outer); !ok {
 				found, ok = try(n.Else, outer)
 			}
+		case *ir.Match:
+			for _, arm := range n.Arms {
+				if found, ok = try(arm.Body, outer); ok {
+					break
+				}
+			}
 		case *ir.For:
 			if found, ok = try(n.Body, append(slices.Clip(outer), n)); !ok {
 				found, ok = try(n.Else, outer)

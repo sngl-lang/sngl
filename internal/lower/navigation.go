@@ -369,6 +369,16 @@ func (nv *navigation) addPages(st *navStack, o ir.Owner, stmts []ir.Stmt, loops 
 			if err := nv.addPages(st, o, p.Else, loops, append(slices.Clip(conds), not)...); err != nil {
 				return err
 			}
+		case *ir.Match:
+			for i, arm := range p.Arms {
+				taken := p.Taken(i)
+				if !ir.IsConst(taken) {
+					return fmt.Errorf("%s: a stack's pages are fixed when it is built, and this `match` reads state; decide it from constants, or write it inside a page", ir.StmtPos(p))
+				}
+				if err := nv.addPages(st, o, arm.Body, loops, append(slices.Clip(conds), taken)...); err != nil {
+					return err
+				}
+			}
 		case *ir.For:
 			if !constInLoops(p.Iter, loops) {
 				return fmt.Errorf("%s: a stack's pages are fixed when it is built, and this `for` iterates state; iterate a constant", ir.StmtPos(p))
@@ -904,6 +914,13 @@ func (nv *navigation) lowerCalls(stmts []ir.Stmt) ([]ir.Stmt, error) {
 			if n.Else, err = nv.lowerCalls(n.Else); err != nil {
 				return nil, err
 			}
+		case *ir.Match:
+			for _, arm := range n.Arms {
+				var err error
+				if arm.Body, err = nv.lowerCalls(arm.Body); err != nil {
+					return nil, err
+				}
+			}
 		case *ir.For:
 			var err error
 			if n.Body, err = nv.lowerCalls(n.Body); err != nil {
@@ -1127,6 +1144,11 @@ func (nv *navigation) wrappedChain(st *navStack, stmts []ir.Stmt) []ir.Stmt {
 			}
 		case *ir.If:
 			n.Body, n.Else = nv.wrappedChain(st, n.Body), nv.wrappedChain(st, n.Else)
+			out = append(out, n)
+		case *ir.Match:
+			for _, arm := range n.Arms {
+				arm.Body = nv.wrappedChain(st, arm.Body)
+			}
 			out = append(out, n)
 		case *ir.For:
 			n.Body = nv.wrappedChain(st, n.Body)
@@ -1511,6 +1533,10 @@ func spliceComposedPages(pkg *ir.Package) error {
 				}
 			case *ir.If:
 				n.Body, n.Else = pages(n.Body, depth), pages(n.Else, depth)
+			case *ir.Match:
+				for _, arm := range n.Arms {
+					arm.Body = pages(arm.Body, depth)
+				}
 			case *ir.For:
 				n.Body = pages(n.Body, depth)
 			}

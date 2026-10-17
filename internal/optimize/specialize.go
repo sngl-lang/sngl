@@ -377,6 +377,15 @@ func bodyHasFoldableParamUse(stmts []ir.Stmt, propNames map[string]bool) bool {
 			visitExpr(x.Cond)
 			visitExpr(x.Then)
 			visitExpr(x.Else)
+		case *ir.MatchExpr:
+			if isParamIdent(x.Subject) {
+				found = true
+				return
+			}
+			visitExpr(x.Subject)
+			for _, arm := range x.Arms {
+				visitExpr(arm.Value)
+			}
 		case *ir.Conversion:
 			if isParamIdent(x.Operand) {
 				found = true
@@ -448,6 +457,15 @@ func bodyHasFoldableParamUse(stmts []ir.Stmt, propNames map[string]bool) bool {
 				visitExpr(n.Cond)
 				visitStmts(n.Body)
 				visitStmts(n.Else)
+			case *ir.Match:
+				if isParamIdent(n.Subject) {
+					found = true
+					return
+				}
+				visitExpr(n.Subject)
+				for _, arm := range n.Arms {
+					visitStmts(arm.Body)
+				}
 			case *ir.SlotInst:
 				visitStmts(n.Children)
 			case *ir.Assign:

@@ -132,6 +132,21 @@ type Features struct {
 	// `struct { v T }`. A platform holds it apart from its language: html
 	// builds an instance in the page's JavaScript under any --lang.
 	GenericComponents bool
+	// Match says the language emits a match statement as its own switch --
+	// Go's `switch`, Kotlin's `when`, JavaScript's `switch` -- in a function,
+	// a handler or a lambda. Withheld, passMatch writes it as the if chain it
+	// means.
+	Match bool
+	// MatchValue is Match for a match expression: Kotlin's `when` is one, and
+	// Go's switch assigning a temp (passTernary) stands for one. JavaScript
+	// has no switch expression, so it withholds this, and passMatch writes the
+	// ternaries.
+	MatchValue bool
+	// ViewMatch says the platform renders a match in a view body as one, and
+	// a match expression in a view or an initializer, which is what a
+	// platform whose view is host statements can do: Compose's `when` in a
+	// composable. Withheld, passMatch writes those as the chain.
+	ViewMatch bool
 
 	// The six below are requests rather than capabilities, which is the split
 	// `sngl:x/gen` spells as `#[gen.wants]`: each asks for a pass the target
@@ -207,6 +222,9 @@ func NoLowering() Features {
 		Navigation:        true,
 		GenericFuncs:      true,
 		GenericComponents: true,
+		Match:             true,
+		MatchValue:        true,
+		ViewMatch:         true,
 	}
 }
 
@@ -262,6 +280,9 @@ func (f Features) String() string {
 		{"Navigation", f.Navigation},
 		{"GenericFuncs", f.GenericFuncs},
 		{"GenericComponents", f.GenericComponents},
+		{"Match", f.Match},
+		{"MatchValue", f.MatchValue},
+		{"ViewMatch", f.ViewMatch},
 		{"StructComponents", f.StructComponents},
 		{"StdlibContextParam", f.StdlibContextParam},
 		{"FocusOrder", f.FocusOrder},

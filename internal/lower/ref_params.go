@@ -326,6 +326,13 @@ func (rp *refParams) block(stmts []ir.Stmt) ([]ir.Stmt, error) {
 			if x.Else, err = rp.block(x.Else); err != nil {
 				return nil, err
 			}
+		case *ir.Match:
+			for _, arm := range x.Arms {
+				var err error
+				if arm.Body, err = rp.block(arm.Body); err != nil {
+					return nil, err
+				}
+			}
 		case *ir.For:
 			var err error
 			if x.Body, err = rp.block(x.Body); err != nil {
@@ -371,6 +378,8 @@ func (rp *refParams) stmt(s ir.Stmt) (pre, repl []ir.Stmt, err error) {
 		x.Value = h.expr(x.Value)
 	case *ir.If:
 		x.Cond = h.expr(x.Cond)
+	case *ir.Match:
+		x.Subject = h.expr(x.Subject)
 	case *ir.For:
 		if t := x.Iter; t != nil && t.ExprType() != nil && t.ExprType().Kind == ir.TypeBool {
 			h.conditional++
@@ -422,6 +431,13 @@ func (h *refHoister) expr(e ir.Expr) ir.Expr {
 		h.conditional++
 		x.Then = h.expr(x.Then)
 		x.Else = h.expr(x.Else)
+		h.conditional--
+	case *ir.MatchExpr:
+		x.Subject = h.expr(x.Subject)
+		h.conditional++
+		for _, arm := range x.Arms {
+			arm.Value = h.expr(arm.Value)
+		}
 		h.conditional--
 	case *ir.Unary:
 		x.Operand = h.expr(x.Operand)
@@ -764,12 +780,10 @@ func rewriteReturns(stmts []ir.Stmt, handBack func(ir.Expr) ir.Expr) {
 		switch x := s.(type) {
 		case *ir.Return:
 			x.Value = handBack(x.Value)
-		case *ir.If:
-			rewriteReturns(x.Body, handBack)
-			rewriteReturns(x.Else, handBack)
-		case *ir.For:
-			rewriteReturns(x.Body, handBack)
-			rewriteReturns(x.Else, handBack)
+		case *ir.If, *ir.For, *ir.Match:
+			for _, b := range ir.TransparentBlocks(x) {
+				rewriteReturns(*b, handBack)
+			}
 		}
 	}
 }

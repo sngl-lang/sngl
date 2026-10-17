@@ -137,6 +137,10 @@ func (w *codeWalker) walk(stmts []ir.Stmt) ([]codeStmt, error) {
 					nodes = []codeStmt{{at: stmtAt(s.AST), branch: &codeBranch{cond: w.table.expr(w.subst(s.Cond)), then: then, els: els}}}
 				}
 			}
+		case *ir.Match:
+			// Kept as the chain it means: what a member reads is SNGL the
+			// target compiles, and an `if` is what the runner writes.
+			nodes, err = w.walk(s.Chain())
 		case *ir.For:
 			nodes, err = w.walkFor(s)
 		case *ir.SlotInst:

@@ -58,6 +58,10 @@ func collectTimers(stmts []ir.Stmt, gates []ir.Expr, out *[]ScheduledTimer) {
 		case *ir.If:
 			collectTimers(n.Body, append(gates[:len(gates):len(gates)], n.Cond), out)
 			collectTimers(n.Else, append(gates[:len(gates):len(gates)], notExpr(n.Cond)), out)
+		case *ir.Match:
+			for i, arm := range n.Arms {
+				collectTimers(arm.Body, append(gates[:len(gates):len(gates)], n.Taken(i)), out)
+			}
 		case *ir.SlotInst:
 			collectTimers(n.Children, gates, out)
 		case *ir.ErrorBoundary:
@@ -100,6 +104,10 @@ func collectLoopTimers(stmts []ir.Stmt, gates []ir.Expr, loops []*ir.For, out *[
 		case *ir.If:
 			collectLoopTimers(n.Body, append(gates[:len(gates):len(gates)], n.Cond), loops, out)
 			collectLoopTimers(n.Else, append(gates[:len(gates):len(gates)], notExpr(n.Cond)), loops, out)
+		case *ir.Match:
+			for i, arm := range n.Arms {
+				collectLoopTimers(arm.Body, append(gates[:len(gates):len(gates)], n.Taken(i)), loops, out)
+			}
 		case *ir.SlotInst:
 			collectLoopTimers(n.Children, gates, loops, out)
 		case *ir.ErrorBoundary:

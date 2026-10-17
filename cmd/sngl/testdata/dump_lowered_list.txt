@@ -26,7 +26,7 @@
 # and each half of that is checked where it is decided.
 
 sngl dump --stage lowered --lang go --platform bubbletea --list main.sngl
-stdout '^caps: Toggle,Lambda,Ref,Unit,Enum,Computed,Reactivity,Declarative,ViewStatements,AsyncSpawn,StructComponents,StdlibContextParam,FocusOrder,Canvas$'
+stdout '^caps: Toggle,Lambda,Ref,Unit,Enum,Computed,Reactivity,Declarative,ViewStatements,AsyncSpawn,Match,MatchValue,StructComponents,StdlibContextParam,FocusOrder,Canvas$'
 stdout '^passes: \w+( → \w+)+$'
 stdout ' → Effect → '
 
@@ -42,7 +42,7 @@ stdout ' → Effect → '
 # html's alone, on InsertBefore, because retaining those buys the placement
 # match and nothing else -- inside the pass, so the list cannot show it.
 sngl dump --stage lowered --lang go --platform fyne --list main.sngl
-stdout '^caps: Toggle,Lambda,Ref,Unit,Enum,Computed,ImplicitRecv,ViewStatements,InstanceState,AsyncPost,AsyncSpawn,StructComponents,StdlibContextParam,Canvas,ReactiveCanvas$'
+stdout '^caps: Toggle,Lambda,Ref,Unit,Enum,Computed,ImplicitRecv,ViewStatements,InstanceState,AsyncPost,AsyncSpawn,Match,MatchValue,StructComponents,StdlibContextParam,Canvas,ReactiveCanvas$'
 stdout ' → SlotChildInstances → '
 cp stdout fyne.txt
 
@@ -57,7 +57,7 @@ cmp stdout fyne.txt
 # parameter, while a page script is JavaScript, which does -- which is why
 # GenericComponents is held: a component built at run time is the page's.
 sngl dump --stage lowered --lang go --platform html --list main.sngl
-stdout '^caps: Toggle,Ternary,Lambda,Ref,Unit,Enum,AsyncCalls,Computed,ListLambdas,Declarative,InstanceState,InsertBefore,InlineSlots,Navigation,GenericComponents,StructComponents,StdlibContextParam,Canvas,ReactiveCanvas,NavigationHrefs$'
+stdout '^caps: Toggle,Ternary,Lambda,Ref,Unit,Enum,AsyncCalls,Computed,ListLambdas,Declarative,InstanceState,InsertBefore,InlineSlots,Navigation,GenericComponents,Match,StructComponents,StdlibContextParam,Canvas,ReactiveCanvas,NavigationHrefs$'
 stdout ' → SlotChildInstances → '
 stdout ' → CallDefaults → Monomorphize → '
 
@@ -72,7 +72,7 @@ stdout ' → CallDefaults → Navigation → '
 # target, and on one holding the capability lowers only the stacks in a surface
 # other than the document, which android renders none of.
 sngl dump --stage lowered --lang kotlin --platform android --list main.sngl
-stdout '^caps: Toggle,Ternary,Lambda,Ref,Unit,Enum,AsyncReactive,AsyncCalls,Computed,ListLambdas,Reactivity,Declarative,ImplicitRecv,ViewStatements,InstanceState,Effects,Navigation,StructComponents,StdlibContextParam,Canvas$'
+stdout '^caps: Toggle,Ternary,Lambda,Ref,Unit,Enum,AsyncReactive,AsyncCalls,Computed,ListLambdas,Reactivity,Declarative,ImplicitRecv,ViewStatements,InstanceState,Effects,Navigation,Match,MatchValue,ViewMatch,StructComponents,StdlibContextParam,Canvas$'
 stdout ' → Effect → '
 stdout ' → Navigation → '
 

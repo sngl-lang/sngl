@@ -109,6 +109,10 @@ func (sp SlotSplicer) substitute(stmts []Stmt, callsite *NodeInst) []Stmt {
 		case *For:
 			n.Body = sp.substitute(n.Body, callsite)
 			n.Else = sp.substitute(n.Else, callsite)
+		case *Match:
+			for _, arm := range n.Arms {
+				arm.Body = sp.substitute(arm.Body, callsite)
+			}
 		case *NodeInst:
 			n.Children = sp.substitute(n.Children, callsite)
 			for _, name := range SlotNames(n.Slots) {
@@ -177,6 +181,11 @@ func (sp SlotSplicer) withFallback(stmts []Stmt, fallback func() []Stmt) []Stmt 
 				n.Else = sp.withFallback(n.Else, fallback)
 				return stmts
 			}
+		case *Match:
+			for _, arm := range n.Arms {
+				arm.Body = sp.withFallback(arm.Body, fallback)
+			}
+			return stmts
 		case *SlotInst:
 			if n.Entry == nil && len(n.Children) == 0 {
 				n.Children = fallback()
@@ -215,6 +224,10 @@ func (sp SlotSplicer) entries(stmts []Stmt, ins *SlotInst, callsite *NodeInst) [
 		case *For:
 			n.Body = sp.entries(n.Body, ins, callsite)
 			n.Else = sp.entries(n.Else, ins, callsite)
+		case *Match:
+			for _, arm := range n.Arms {
+				arm.Body = sp.entries(arm.Body, ins, callsite)
+			}
 		case *NodeInst:
 			n.Children = sp.entries(n.Children, ins, callsite)
 			for _, name := range SlotNames(n.Slots) {
@@ -386,6 +399,24 @@ func stmtRendersNothing(s Stmt) (Expr, bool) {
 			return nil, false
 		}
 		return foldTernary(n.Cond, then, els), true
+	case *Match:
+		// The arm taken renders nothing, asked of each arm in turn.
+		var out Expr
+		for i, v := range slices.Backward(n.Arms) {
+			arm, ok := RendersNothing(v.Body)
+			if !ok {
+				return nil, false
+			}
+			if out == nil || n.Unasked(i) {
+				out = arm
+				continue
+			}
+			out = foldTernary(n.Test(i), arm, out)
+		}
+		if out == nil {
+			return boolLit(true), true
+		}
+		return out, true
 	case *For:
 		body, ok := RendersNothing(n.Body)
 		if !ok {

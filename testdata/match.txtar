@@ -1,11 +1,20 @@
-`match` is checked into an if/else-if chain where it is a statement and a
-chain of ternaries where it is a value, so no backend learns there was one.
-What the generated code shows is the lowering's two promises: the last arm of
-an exhaustive match is taken unasked, and a subject that calls anything is
-evaluated once in an imperative body, bound to a local ahead of the statement.
+A match is the target's own switch where its language declares one: Go's
+`switch`, Kotlin's `when` -- in a composable too, which android's view renders
+-- and JavaScript's `switch` for a statement, its ternaries for a value. The
+last arm of an exhaustive match is taken unasked, a `default` or an `else`,
+except in Kotlin, which keeps its patterns so the compiler checks the `when`
+covers the enum. A subject that calls anything is evaluated once: a switch
+evaluates its own, and where the ternaries stand for it, it is bound to a
+local ahead of the statement.
 
 deny * `(?:roll__inst0|bump)\(\w*\)\)? ==` -- a subject that calls is evaluated once and its local compared, never called again per arm
 deny * `==+ (?:"pending"|Status\.PENDING)` -- the last arm of an exhaustive match is taken unasked
+deny out/go/bubbletea/model.go `if n == 0` -- describe's match is a switch
+deny out/go/fyne/model.go `if __match` -- a handler's match is a switch on its subject
+deny out/go/gtk4/model.go `__match\d` -- a switch evaluates its subject once, with no local bound for it
+deny out/kotlin/android/app/src/main/java/test/sngl/app/MainScreen.kt `__match\d` -- a when evaluates its subject once, with no local bound for it
+deny out/kotlin/android/app/src/main/java/test/sngl/app/MainScreen.kt `if \(\(status__inst0 == Status\.ACTIVE\)\)` -- a view's match is a when in the composable
+deny out/none/html/index.html `if \(n === 0\)` -- describe's match is a switch
 
 -- app.sngl --
 import ui "sngl:ui"
@@ -144,25 +153,24 @@ func (m *Model) bump(s string) string {
 }
 
 func (m *Model) label(s string) string {
-	__match0 := m.bump(s)
 	var __lt0 string
-	if __match0 == "active" {
+	switch m.bump(s) {
+	case "active":
 		__lt0 = "on"
-	} else {
+	default:
 		__lt0 = "off"
 	}
 	return __lt0
 }
 
 func Describe(n int) string {
-	if n == 0 {
+	switch n {
+	case 0:
 		return "zero"
-	} else {
-		if ((n == 1) || (n == 2)) || (n == 3) {
-			return "few"
-		} else {
-			return "many"
-		}
+	case 1, 2, 3:
+		return "few"
+	default:
+		return "many"
 	}
 	return ""
 }
@@ -296,21 +304,19 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case msg.Code == tea.KeyTab && msg.Mod == tea.ModShift:
 			m.__focusPrev()
 		case msg.Code == tea.KeyEnter && m.__focusID == 0:
-			__match1 := m.roll__inst0()
-			if __match1 == "active" {
+			switch m.roll__inst0() {
+			case "active":
 				m.status__inst0 = "inactive"
-			} else {
-				if __match1 == "inactive" {
-					m.status__inst0 = "pending"
-				} else {
-					m.status__inst0 = "active"
-				}
+			case "inactive":
+				m.status__inst0 = "pending"
+			default:
+				m.status__inst0 = "active"
 			}
-			__match2 := m.roll__inst0()
 			var __lt4 string
-			if __match2 == "active" {
+			switch m.roll__inst0() {
+			case "active":
 				__lt4 = m.label(m.status__inst0)
-			} else {
+			default:
 				__lt4 = "rolled"
 			}
 			m.last__inst0 = __lt4
@@ -436,25 +442,24 @@ func (m *Model) bump(s string) string {
 }
 
 func (m *Model) label(s string) string {
-	__match0 := m.bump(s)
 	var __lt0 string
-	if __match0 == "active" {
+	switch m.bump(s) {
+	case "active":
 		__lt0 = "on"
-	} else {
+	default:
 		__lt0 = "off"
 	}
 	return __lt0
 }
 
 func Describe(n int) string {
-	if n == 0 {
+	switch n {
+	case 0:
 		return "zero"
-	} else {
-		if ((n == 1) || (n == 2)) || (n == 3) {
-			return "few"
-		} else {
-			return "many"
-		}
+	case 1, 2, 3:
+		return "few"
+	default:
+		return "many"
 	}
 	return ""
 }
@@ -512,8 +517,8 @@ func (m *Model) __n0_visible_handler(__visible bool) {
 }
 
 func (m *Model) __n7_click_handler() {
-	__match1 := m.roll__inst0()
-	if __match1 == "active" {
+	switch m.roll__inst0() {
+	case "active":
 		m.status__inst0 = "inactive"
 		var __lt6 string
 		if m.status__inst0 == "active" {
@@ -523,34 +528,32 @@ func (m *Model) __n7_click_handler() {
 		}
 		m.__n1.SetText(__lt6)
 		m.__renderSlot0(m.__n0.Container)
-	} else {
-		if __match1 == "inactive" {
-			m.status__inst0 = "pending"
-			var __lt7 string
-			if m.status__inst0 == "active" {
-				__lt7 = "on"
-			} else {
-				__lt7 = "not on"
-			}
-			m.__n1.SetText(__lt7)
-			m.__renderSlot0(m.__n0.Container)
+	case "inactive":
+		m.status__inst0 = "pending"
+		var __lt7 string
+		if m.status__inst0 == "active" {
+			__lt7 = "on"
 		} else {
-			m.status__inst0 = "active"
-			var __lt8 string
-			if m.status__inst0 == "active" {
-				__lt8 = "on"
-			} else {
-				__lt8 = "not on"
-			}
-			m.__n1.SetText(__lt8)
-			m.__renderSlot0(m.__n0.Container)
+			__lt7 = "not on"
 		}
+		m.__n1.SetText(__lt7)
+		m.__renderSlot0(m.__n0.Container)
+	default:
+		m.status__inst0 = "active"
+		var __lt8 string
+		if m.status__inst0 == "active" {
+			__lt8 = "on"
+		} else {
+			__lt8 = "not on"
+		}
+		m.__n1.SetText(__lt8)
+		m.__renderSlot0(m.__n0.Container)
 	}
-	__match2 := m.roll__inst0()
 	var __lt9 string
-	if __match2 == "active" {
+	switch m.roll__inst0() {
+	case "active":
 		__lt9 = m.label(m.status__inst0)
-	} else {
+	default:
 		__lt9 = "rolled"
 	}
 	m.last__inst0 = __lt9
@@ -709,25 +712,24 @@ func (m *Model) bump(s string) string {
 }
 
 func (m *Model) label(s string) string {
-	__match0 := m.bump(s)
 	var __lt0 string
-	if __match0 == "active" {
+	switch m.bump(s) {
+	case "active":
 		__lt0 = "on"
-	} else {
+	default:
 		__lt0 = "off"
 	}
 	return __lt0
 }
 
 func Describe(n int) string {
-	if n == 0 {
+	switch n {
+	case 0:
 		return "zero"
-	} else {
-		if ((n == 1) || (n == 2)) || (n == 3) {
-			return "few"
-		} else {
-			return "many"
-		}
+	case 1, 2, 3:
+		return "few"
+	default:
+		return "many"
 	}
 	return ""
 }
@@ -785,8 +787,8 @@ func (m *Model) __n0_visible_handler(__visible bool) {
 }
 
 func (m *Model) __n7_clicked_handler() {
-	__match1 := m.roll__inst0()
-	if __match1 == "active" {
+	switch m.roll__inst0() {
+	case "active":
 		m.status__inst0 = "inactive"
 		var __lt6 string
 		if m.status__inst0 == "active" {
@@ -796,34 +798,32 @@ func (m *Model) __n7_clicked_handler() {
 		}
 		gtk4rt.LabelSetText(m.__n1, __lt6)
 		m.__renderSlot0(m.__n0)
-	} else {
-		if __match1 == "inactive" {
-			m.status__inst0 = "pending"
-			var __lt7 string
-			if m.status__inst0 == "active" {
-				__lt7 = "on"
-			} else {
-				__lt7 = "not on"
-			}
-			gtk4rt.LabelSetText(m.__n1, __lt7)
-			m.__renderSlot0(m.__n0)
+	case "inactive":
+		m.status__inst0 = "pending"
+		var __lt7 string
+		if m.status__inst0 == "active" {
+			__lt7 = "on"
 		} else {
-			m.status__inst0 = "active"
-			var __lt8 string
-			if m.status__inst0 == "active" {
-				__lt8 = "on"
-			} else {
-				__lt8 = "not on"
-			}
-			gtk4rt.LabelSetText(m.__n1, __lt8)
-			m.__renderSlot0(m.__n0)
+			__lt7 = "not on"
 		}
+		gtk4rt.LabelSetText(m.__n1, __lt7)
+		m.__renderSlot0(m.__n0)
+	default:
+		m.status__inst0 = "active"
+		var __lt8 string
+		if m.status__inst0 == "active" {
+			__lt8 = "on"
+		} else {
+			__lt8 = "not on"
+		}
+		gtk4rt.LabelSetText(m.__n1, __lt8)
+		m.__renderSlot0(m.__n0)
 	}
-	__match2 := m.roll__inst0()
 	var __lt9 string
-	if __match2 == "active" {
+	switch m.roll__inst0() {
+	case "active":
 		__lt9 = m.label(m.status__inst0)
-	} else {
+	default:
 		__lt9 = "rolled"
 	}
 	m.last__inst0 = __lt9
@@ -970,10 +970,7 @@ fun MainScreen() {
     }
 
 
-    fun label(s: Status): String {
-        var __match0 = bump(s)
-        return (if ((__match0 == Status.ACTIVE)) "on" else "off")
-    }
+    fun label(s: Status): String = (when (bump(s)) { Status.ACTIVE -> "on"; else -> "off" })
 
 
     fun roll__inst0(): Status {
@@ -990,30 +987,32 @@ fun MainScreen() {
             }
         }
         Column {
-            if ((status__inst0 == Status.ACTIVE)) {
-                Text(text = "on", modifier = Modifier.safeDrawingPadding())
-            } else {
-                if ((status__inst0 == Status.INACTIVE)) {
+            when (status__inst0) {
+                Status.ACTIVE -> {
+                    Text(text = "on", modifier = Modifier.safeDrawingPadding())
+                }
+                Status.INACTIVE -> {
                     Text(text = "off", modifier = Modifier.safeDrawingPadding())
-                } else {
+                }
+                Status.PENDING -> {
                     Text(text = "waiting", modifier = Modifier.safeDrawingPadding())
                 }
             }
-            Text(text = (if ((status__inst0 == Status.ACTIVE)) "on" else "not on"), modifier = Modifier.safeDrawingPadding())
-            Text(text = (if ((rolls__inst0 > 10)) "many" else (if ((rolls__inst0 > 0)) describe(rolls__inst0) else "none")), modifier = Modifier.safeDrawingPadding())
+            Text(text = (when (status__inst0) { Status.ACTIVE -> "on"; else -> "not on" }), modifier = Modifier.safeDrawingPadding())
+            Text(text = (when { (rolls__inst0 > 10) -> "many"; (rolls__inst0 > 0) -> describe(rolls__inst0); else -> "none" }), modifier = Modifier.safeDrawingPadding())
             Button(onClick = {
-                var __match1 = roll__inst0()
-                if ((__match1 == Status.ACTIVE)) {
-                	status__inst0 = Status.INACTIVE
-                } else {
-                	if ((__match1 == Status.INACTIVE)) {
+                when (roll__inst0()) {
+                	Status.ACTIVE -> {
+                		status__inst0 = Status.INACTIVE
+                	}
+                	Status.INACTIVE -> {
                 		status__inst0 = Status.PENDING
-                	} else {
+                	}
+                	Status.PENDING -> {
                 		status__inst0 = Status.ACTIVE
                 	}
                 }
-                var __match2 = roll__inst0()
-                last__inst0 = (if ((__match2 == Status.ACTIVE)) label(status__inst0) else "rolled")
+                last__inst0 = (when (roll__inst0()) { Status.ACTIVE -> label(status__inst0); else -> "rolled" })
             }, modifier = Modifier.safeDrawingPadding()) {
                 Text(text = "Roll", modifier = Modifier)
             }
@@ -1023,12 +1022,14 @@ fun MainScreen() {
 }
 
 fun describe(n: Int): String {
-    if ((n == 0)) {
-    	return "zero"
-    } else {
-    	if ((((n == 1) || (n == 2)) || (n == 3))) {
+    when (n) {
+    	0 -> {
+    		return "zero"
+    	}
+    	1, 2, 3 -> {
     		return "few"
-    	} else {
+    	}
+    	else -> {
     		return "many"
     	}
     }
@@ -1072,19 +1073,27 @@ body { font-family: system-ui, sans-serif; }
     return __match0 === "active" ? "on" : "off";
   }
   function describe(n) {
-    if (n === 0) {
-      ;
-      return "zero";
-    } else {
-      ;
-      if (n === 1 || n === 2 || n === 3) {
+    switch (n) {
+      case 0:
+        {
+          ;
+          return "zero";
+        }
         ;
-        return "few";
-      } else {
+      case 1:
+      case 2:
+      case 3:
+        {
+          ;
+          return "few";
+        }
         ;
-        return "many";
-      }
-      ;
+      default:
+        {
+          ;
+          return "many";
+        }
+        ;
     }
     ;
     return "";
@@ -1154,26 +1163,33 @@ body { font-family: system-ui, sans-serif; }
   var __slotAnchor_0 = document.querySelector('[data-sngl-slot="0"]');
   __renderSlot0(__slotAnchor_0);
   $0.addEventListener("click", function() {
-    let __match1 = roll__inst0();
-    if (__match1 === "active") {
-      ;
-      state.status__inst0 = "inactive";
-      __n1.textContent = state.status__inst0 === "active" ? "on" : "not on";
-      __renderSlot0(__slotAnchor_0);
-    } else {
-      ;
-      if (__match1 === "inactive") {
+    switch (roll__inst0()) {
+      case "active":
+        {
+          ;
+          state.status__inst0 = "inactive";
+          __n1.textContent = state.status__inst0 === "active" ? "on" : "not on";
+          __renderSlot0(__slotAnchor_0);
+          break;
+        }
         ;
-        state.status__inst0 = "pending";
-        __n1.textContent = state.status__inst0 === "active" ? "on" : "not on";
-        __renderSlot0(__slotAnchor_0);
-      } else {
+      case "inactive":
+        {
+          ;
+          state.status__inst0 = "pending";
+          __n1.textContent = state.status__inst0 === "active" ? "on" : "not on";
+          __renderSlot0(__slotAnchor_0);
+          break;
+        }
         ;
-        state.status__inst0 = "active";
-        __n1.textContent = state.status__inst0 === "active" ? "on" : "not on";
-        __renderSlot0(__slotAnchor_0);
-      }
-      ;
+      default:
+        {
+          ;
+          state.status__inst0 = "active";
+          __n1.textContent = state.status__inst0 === "active" ? "on" : "not on";
+          __renderSlot0(__slotAnchor_0);
+        }
+        ;
     }
     ;
     let __match2 = roll__inst0();
@@ -1190,12 +1206,12 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:5cb83055c776fa19ea4039802bacfdfa
+pass sha256:7c26edf0beef0c5627cbff45701f0729
 -- run/go/fyne --
-pass sha256:d41e0cc4a3f4d97c60ae54633ddc064e
+pass sha256:1d688cdeaf85089eff18f87d178731e1
 -- run/go/gtk4 --
-pass sha256:0bfebbf1ca7ad320c49570811f40b160
+pass sha256:9617ab6c6cae033c8f10fe55581a83a0
 -- run/kotlin/android --
-pass sha256:1c0440dc2d7e250b92805d64dc35beb6
+pass sha256:3c4f9293678fa2a6a55cdbc93cc2ff0d
 -- run/none/html --
-pass sha256:6917b4143077ba4ba92185a4982ee5eb
+pass sha256:313242e663845cebb24fe505fd4a001d

@@ -183,6 +183,12 @@ func BlockReturns(stmts []Stmt) bool {
 			if BlockReturns(x.Body) || BlockReturns(x.Else) {
 				return true
 			}
+		case *Match:
+			for _, arm := range x.Arms {
+				if BlockReturns(arm.Body) {
+					return true
+				}
+			}
 		}
 	}
 	return false
@@ -428,6 +434,21 @@ func IsConst(e Expr) bool {
 		return IsConst(x.Operand)
 	case *Ternary:
 		return IsConst(x.Cond) && IsConst(x.Then) && IsConst(x.Else)
+	case *MatchExpr:
+		if x.Subject != nil && !IsConst(x.Subject) {
+			return false
+		}
+		for _, arm := range x.Arms {
+			if !IsConst(arm.Value) {
+				return false
+			}
+			for _, p := range arm.Patterns {
+				if !IsConst(p) {
+					return false
+				}
+			}
+		}
+		return true
 	case *Call:
 		for _, a := range x.Args {
 			if !IsConst(a.Value) {

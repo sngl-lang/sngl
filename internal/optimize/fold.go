@@ -95,6 +95,13 @@ func foldExpr(e ir.Expr, ctx *evalCtx) ir.Expr {
 		}
 		x.Then = foldExpr(x.Then, ctx)
 		x.Else = foldExpr(x.Else, ctx)
+	case *ir.MatchExpr:
+		if i := foldMatchArms(&x.MatchArms, ctx); i >= 0 {
+			return foldExpr(x.Arms[i].Value, ctx)
+		}
+		for _, arm := range x.Arms {
+			arm.Value = foldExpr(arm.Value, ctx)
+		}
 	case *ir.Call:
 		if x.Receiver != nil {
 			x.Receiver = foldExpr(x.Receiver, ctx)
@@ -277,6 +284,13 @@ func foldStmts(stmts []ir.Stmt, ctx *evalCtx) []ir.Stmt {
 			}
 			ifs.Cond = cond
 		}
+		if m, ok := s.(*ir.Match); ok {
+			if i := foldMatchArms(&m.MatchArms, ctx); i >= 0 {
+				branch := foldStmts(m.Arms[i].Body, ctx)
+				out = append(out, ir.HandOnInstances(m, branch)...)
+				continue
+			}
+		}
 		result := foldStmt(s, ctx)
 		if result != nil {
 			out = append(out, result)
@@ -318,6 +332,10 @@ func foldStmt(s ir.Stmt, ctx *evalCtx) ir.Stmt {
 	switch n := s.(type) {
 	case *ir.If:
 		return foldIfStmt(n, ctx)
+	case *ir.Match:
+		for _, arm := range n.Arms {
+			arm.Body = foldStmts(arm.Body, ctx)
+		}
 	case *ir.NodeInst:
 		return foldNodeInst(n, ctx)
 	case *ir.For:
@@ -387,6 +405,34 @@ func foldStmt(s ir.Stmt, ctx *evalCtx) ir.Stmt {
 		panic(fmt.Sprintf("foldStmt: unhandled stmt %T", n))
 	}
 	return s
+}
+
+// foldMatchArms folds a match's subject and patterns, and returns the arm it
+// takes when that is settled now -- every arm above it tests false, and it
+// tests true or is taken unasked -- or -1 when it waits for the program to
+// run.
+func foldMatchArms(m *ir.MatchArms, ctx *evalCtx) int {
+	if m.Subject != nil {
+		m.Subject = foldExpr(m.Subject, ctx)
+	}
+	for _, arm := range m.Arms {
+		for j, p := range arm.Patterns {
+			arm.Patterns[j] = foldExpr(p, ctx)
+		}
+	}
+	for i := range m.Arms {
+		if m.Unasked(i) {
+			return i
+		}
+		lit, ok := foldExpr(m.Test(i), ctx).(*ir.Literal)
+		if !ok || lit.Type == nil || lit.Type.Kind != ir.TypeBool {
+			return -1
+		}
+		if lit.Value == "true" {
+			return i
+		}
+	}
+	return -1
 }
 
 func foldIfStmt(s *ir.If, ctx *evalCtx) ir.Stmt {

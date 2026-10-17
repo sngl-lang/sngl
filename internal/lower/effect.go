@@ -271,6 +271,20 @@ func (st *effectState) stmts(stmts []ir.Stmt, o *ir.Owner, frames []effectFrame)
 				continue
 			}
 			out = append(out, n)
+		case *ir.Match:
+			empty := true
+			for i, arm := range n.Arms {
+				b, err := st.stmts(arm.Body, o, pushFrame(frames, effectFrame{cond: n.Taken(i)}))
+				if err != nil {
+					return nil, err
+				}
+				arm.Body = b
+				empty = empty && len(b) == 0
+			}
+			if empty {
+				continue
+			}
+			out = append(out, n)
 		case *ir.For:
 			b, err := st.stmts(n.Body, o, pushFrame(frames, effectFrame{loop: n}))
 			if err != nil {
@@ -1374,10 +1388,8 @@ func isReturnStmt(s ir.Stmt) bool {
 // on its own iteration.
 func nestedBodies(s ir.Stmt) []*[]ir.Stmt {
 	switch n := s.(type) {
-	case *ir.If:
-		return []*[]ir.Stmt{&n.Body, &n.Else}
-	case *ir.For:
-		return []*[]ir.Stmt{&n.Body, &n.Else}
+	case *ir.If, *ir.For, *ir.Match:
+		return ir.TransparentBlocks(n)
 	}
 	return nil
 }

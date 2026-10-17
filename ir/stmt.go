@@ -404,6 +404,8 @@ func InstancesOf(s Stmt) *[]string {
 		return &s.Instances
 	case *If:
 		return &s.Instances
+	case *Match:
+		return &s.Instances
 	case *For:
 		return &s.Instances
 	case *ErrorBoundary:

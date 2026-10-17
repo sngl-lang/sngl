@@ -53,12 +53,10 @@ func walkCanvases(stmts []ir.Stmt, failed *error) {
 				continue
 			}
 			walkCanvases(v.Children, failed)
-		case *ir.If:
-			walkCanvases(v.Body, failed)
-			walkCanvases(v.Else, failed)
-		case *ir.For:
-			walkCanvases(v.Body, failed)
-			walkCanvases(v.Else, failed)
+		case *ir.If, *ir.For, *ir.Match:
+			for _, b := range ir.TransparentBlocks(v) {
+				walkCanvases(*b, failed)
+			}
 		case *ir.ErrorBoundary:
 			// Children alone: passBoundaryFailed has already rewritten the
 			// pair into a reactive `if` over its flag, so walking Failed would
@@ -126,6 +124,12 @@ func emitShapes(children []ir.Stmt, body *[]ir.Stmt, env drawEnv) {
 			emitShapes(v.Body, &then, env)
 			emitShapes(v.Else, &otherwise, env)
 			*body = append(*body, &ir.If{AST: v.AST, Cond: v.Cond, Body: then, Else: otherwise})
+		case *ir.Match:
+			*body = append(*body, matchOver(v, func(arm []ir.Stmt) []ir.Stmt {
+				var out []ir.Stmt
+				emitShapes(arm, &out, env)
+				return out
+			}))
 		case *ir.For:
 			var loop, empty []ir.Stmt
 			emitShapes(v.Body, &loop, env)
@@ -291,6 +295,12 @@ func emitSource(host *ir.NodeInst, stmts []ir.Stmt, body *[]ir.Stmt, env drawEnv
 			emitSource(host, v.Body, &then, env)
 			emitSource(host, v.Else, &otherwise, env)
 			*body = append(*body, &ir.If{AST: v.AST, Cond: v.Cond, Body: then, Else: otherwise})
+		case *ir.Match:
+			*body = append(*body, matchOver(v, func(arm []ir.Stmt) []ir.Stmt {
+				var out []ir.Stmt
+				emitSource(host, arm, &out, env)
+				return out
+			}))
 		case *ir.ErrorBoundary:
 			emitSource(host, v.Children, body, env)
 		case *ir.NodeInst:

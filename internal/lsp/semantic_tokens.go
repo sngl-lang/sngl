@@ -237,6 +237,14 @@ func (w *irTokenWalker) stmt(s ir.Stmt) {
 		w.expr(x.Cond)
 		w.stmts(x.Body)
 		w.stmts(x.Else)
+	case *ir.Match:
+		w.expr(x.Subject)
+		for _, arm := range x.Arms {
+			for _, p := range arm.Patterns {
+				w.expr(p)
+			}
+			w.stmts(arm.Body)
+		}
 	case *ir.For:
 		w.expr(x.Iter)
 		w.stmts(x.Body)
@@ -284,6 +292,14 @@ func (w *irTokenWalker) expr(e ir.Expr) {
 		w.expr(x.Cond)
 		w.expr(x.Then)
 		w.expr(x.Else)
+	case *ir.MatchExpr:
+		w.expr(x.Subject)
+		for _, arm := range x.Arms {
+			for _, p := range arm.Patterns {
+				w.expr(p)
+			}
+			w.expr(arm.Value)
+		}
 	case *ir.Call:
 		if x.Qualifier != nil && x.AST != nil {
 			if sel, ok := x.AST.Func.(*ast.SelectExpr); ok {

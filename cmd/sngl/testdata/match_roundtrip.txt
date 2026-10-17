@@ -1,0 +1,126 @@
+# `dump --stage checked` prints a match back as the match it is, so the dump
+# checks again and prints the same: a statement, an expression, a headless
+# match, an option's, and the last arm of an exhaustive match keeping its
+# patterns.
+
+sngl dump --stage checked app.sngl
+cp stdout first.sngl
+sngl check first.sngl
+sngl dump --stage checked first.sngl
+cp stdout second.sngl
+cmp first.sngl second.sngl
+
+grep 'match d \{ up, down => "vertical"; else => "horizontal" \}' first.sngl
+grep 'match \{' first.sngl
+grep 'match hand \{ left \{' first.sngl
+grep 'null => "none"' first.sngl
+grep 'left => Dir.up' first.sngl
+
+-- app.sngl --
+import . "sngl:test"
+import . "sngl:ui"
+
+enum Dir { up, down, left, right }
+
+const hand = Dir.left
+
+// Headless: a tagless switch in Go and a subjectless when in Kotlin.
+// JavaScript has nothing to switch on and writes the if chain.
+func grade(n int) string {
+    match {
+        n >= 90 { return "a" }
+        n >= 50 { return "b" }
+        else { return "c" }
+    }
+}
+
+// A break in an arm leaves the loop around the match, which Go's and
+// JavaScript's switch would take as their own: the if chain.
+func firstDown(ds list[Dir]) int {
+    var at = -1
+    for var i, d = ds {
+        match d {
+            down {
+                at = i
+                break
+            }
+            else {}
+        }
+    }
+    return at
+}
+
+// An option is compared as `==` compares one: the if chain.
+func name(d option[Dir]) => match d {
+    null => "none"
+    up => "up"
+    else => "other"
+}
+
+func turned(d Dir) => match d {
+    up => Dir.right
+    right => Dir.down
+    down => Dir.left
+    left => Dir.up
+}
+
+component pad node {
+    var d Dir = up
+    var maybe option[Dir] = null
+    // An initializer holds no statement: a func literal called where it
+    // stands in Go, a when in Kotlin.
+    var axis = match d {
+        up, down => "vertical"
+        else => "horizontal"
+    }
+    // A lambda's body is a function's.
+    var flips = [Dir.up, Dir.left].map(func(x Dir) => match x {
+        up => Dir.down
+        else => Dir.up
+    })
+
+    // A match on a constant is the arm it takes.
+    match hand {
+        left { text(value="left-handed") }
+        else { text(value="unfolded") }
+    }
+    text(value=axis)
+    text(value=name(maybe))
+    text(value=grade(firstDown(flips) * 60))
+    button #turn(text="Turn", @click {
+        d = turned(d)
+    })
+}
+
+func testHeadless(t Test) {
+    t.assert(grade(95) == "a")
+    t.assert(grade(60) == "b")
+    t.assert(grade(10) == "c")
+}
+
+func testBreak(t Test) {
+    t.assert(firstDown([Dir.up, Dir.down, Dir.down]) == 1)
+    t.assert(firstDown([Dir.up]) == -1)
+}
+
+func testOption(t Test) {
+    t.assert(name(null) == "none")
+    t.assert(name(Dir.up) == "up")
+    t.assert(name(Dir.left) == "other")
+}
+
+func testComponent(t Test, c pad) {
+    t.assert(c.axis == "vertical")
+    t.assert(c.maybe == null)
+    t.assert(c.flips[0] == Dir.down)
+    c.turn.click()
+    // A test's own match.
+    match c.d {
+        right { t.assert(true) }
+        else { t.assert(false) }
+    }
+}
+
+window {
+    pad
+}

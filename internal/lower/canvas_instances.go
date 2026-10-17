@@ -56,9 +56,10 @@ func (st *slotChildSynth) canvasesUnderLoops(stmts []ir.Stmt, inLoop bool) {
 		case *ir.For:
 			st.canvasesUnderLoops(n.Body, true)
 			st.canvasesUnderLoops(n.Else, inLoop)
-		case *ir.If:
-			st.canvasesUnderLoops(n.Body, inLoop)
-			st.canvasesUnderLoops(n.Else, inLoop)
+		case *ir.If, *ir.Match:
+			for _, b := range ir.TransparentBlocks(n) {
+				st.canvasesUnderLoops(*b, inLoop)
+			}
 		case *ir.ErrorBoundary:
 			st.canvasesUnderLoops(n.Children, inLoop)
 		case *ir.ContextProvider:

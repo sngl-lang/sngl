@@ -4201,6 +4201,15 @@ func stmtAlwaysReturns(s ir.Stmt) bool {
 	case *ir.If:
 		// An if terminates only when it has an else and both arms terminate.
 		return len(n.Else) > 0 && blockAlwaysReturns(n.Body) && blockAlwaysReturns(n.Else)
+	case *ir.Match:
+		// A checked match takes one of its arms, so it terminates when each
+		// does.
+		for _, arm := range n.Arms {
+			if !blockAlwaysReturns(arm.Body) {
+				return false
+			}
+		}
+		return len(n.Arms) > 0
 	case *ir.For:
 		// A loop with no condition never falls out of the bottom, so the only
 		// way past it is a `break` -- and without one, the statement after it
@@ -4245,9 +4254,9 @@ func loopEscapes(stmts []ir.Stmt) (breaks, continues bool) {
 			breaks = true
 		case *ir.Continue:
 			continues = true
-		case *ir.If:
-			for _, block := range [][]ir.Stmt{n.Body, n.Else} {
-				b, c := loopEscapes(block)
+		case *ir.If, *ir.Match:
+			for _, block := range ir.TransparentBlocks(n) {
+				b, c := loopEscapes(*block)
 				breaks, continues = breaks || b, continues || c
 			}
 		case *ir.For:

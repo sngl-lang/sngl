@@ -61,6 +61,21 @@ func isConstExpr(e ir.Expr, ctx *evalCtx) bool {
 		return isConstExpr(x.Operand, ctx)
 	case *ir.Ternary:
 		return isConstExpr(x.Cond, ctx) && isConstExpr(x.Then, ctx) && isConstExpr(x.Else, ctx)
+	case *ir.MatchExpr:
+		if x.Subject != nil && !isConstExpr(x.Subject, ctx) {
+			return false
+		}
+		for _, arm := range x.Arms {
+			if !isConstExpr(arm.Value, ctx) {
+				return false
+			}
+			for _, p := range arm.Patterns {
+				if !isConstExpr(p, ctx) {
+					return false
+				}
+			}
+		}
+		return true
 	case *ir.Call:
 		if x.Func != nil && x.Func.Intrinsic != "" {
 			if _, ok := ctx.answers[x.Func.Intrinsic]; ok {
@@ -190,6 +205,24 @@ func evalExpr(e ir.Expr, ctx *evalCtx) (any, bool) {
 				return evalExpr(x.Then, ctx)
 			}
 			return evalExpr(x.Else, ctx)
+		}
+		return nil, false
+	case *ir.MatchExpr:
+		for i, arm := range x.Arms {
+			if x.Unasked(i) {
+				return evalExpr(arm.Value, ctx)
+			}
+			test, ok := evalExpr(x.Test(i), ctx)
+			if !ok {
+				return nil, false
+			}
+			b, ok := test.(bool)
+			if !ok {
+				return nil, false
+			}
+			if b {
+				return evalExpr(arm.Value, ctx)
+			}
 		}
 		return nil, false
 	case *ir.Call:

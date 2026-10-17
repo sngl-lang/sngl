@@ -1174,6 +1174,12 @@ func (env *Env) Eval(e ir.Expr) (any, error) {
 			return env.Eval(n.Then)
 		}
 		return env.Eval(n.Else)
+	case *ir.MatchExpr:
+		i, err := env.matchArm(&n.MatchArms)
+		if err != nil || i < 0 {
+			return nil, err
+		}
+		return env.Eval(n.Arms[i].Value)
 	case *ir.Select:
 		return env.evalSelect(n)
 	case *ir.Index:
@@ -1691,7 +1697,11 @@ func (env *Env) evalBinary(e *ir.Binary) (any, error) {
 	if err != nil {
 		return nil, err
 	}
+	return env.binaryValues(e, left, right)
+}
 
+// binaryValues is e applied to its operands' values, left and right.
+func (env *Env) binaryValues(e *ir.Binary, left, right any) (any, error) {
 	lu, leftIsUnit := left.(unitValue)
 	ru, rightIsUnit := right.(unitValue)
 
@@ -2836,6 +2846,12 @@ func (env *Env) evalTailAware(e ir.Expr, fn *ir.Func) (any, []any, bool, error) 
 			return env.evalTailAware(n.Then, fn)
 		}
 		return env.evalTailAware(n.Else, fn)
+	case *ir.MatchExpr:
+		i, err := env.matchArm(&n.MatchArms)
+		if err != nil || i < 0 {
+			return nil, nil, false, err
+		}
+		return env.evalTailAware(n.Arms[i].Value, fn)
 	default:
 		result, err := env.Eval(e)
 		return result, nil, false, err

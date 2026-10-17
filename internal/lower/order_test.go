@@ -96,6 +96,10 @@ var alwaysOn = []string{
 	// in pkg.Funcs for any target, because that is what every backend emits
 	// from.
 	"LibFuncs",
+	// A match a target cannot emit as one is the if chain on every target;
+	// which matches those are is what Matches and ViewMatches decide.
+	"Match",
+	"MatchLate",
 	// Which bindings are written is a fact about the finished bodies, and
 	// every target has a backend that may care -- Kotlin copies on binding
 	// unless this says the binding is never written.
@@ -218,6 +222,12 @@ var soleGate = map[string][]string{
 	// component built at run time is emitted once or copied per
 	// instantiation where it is elected.
 	"GenericComponents": nil,
+
+	// Read by passMatch rather than gating it: each says which matches the
+	// target emits as one, and the pass writes the rest as the chain.
+	"Match":      nil,
+	"MatchValue": nil,
+	"ViewMatch":  nil,
 
 	// The pass and the field are named for opposite sides of the same fact:
 	// ReactiveCanvas is the redraw the platform wants, CanvasReactivity is the

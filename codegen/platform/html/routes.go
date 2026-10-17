@@ -214,12 +214,10 @@ func backendHandlerWindow(pkg *ir.Package) (string, bool) {
 						walk(sc.Body, in)
 					}
 				}
-			case *ir.If:
-				walk(n.Body, win)
-				walk(n.Else, win)
-			case *ir.For:
-				walk(n.Body, win)
-				walk(n.Else, win)
+			case *ir.If, *ir.For, *ir.Match:
+				for _, b := range ir.TransparentBlocks(n) {
+					walk(*b, win)
+				}
 			case *ir.ErrorBoundary:
 				walk(n.Children, win)
 			case *ir.ContextProvider:
@@ -552,12 +550,10 @@ func walkInstances(stmts []ir.Stmt, fn func(*ir.NodeInst)) {
 		case *ir.NodeInst:
 			fn(n)
 			walkInstances(n.Children, fn)
-		case *ir.If:
-			walkInstances(n.Body, fn)
-			walkInstances(n.Else, fn)
-		case *ir.For:
-			walkInstances(n.Body, fn)
-			walkInstances(n.Else, fn)
+		case *ir.If, *ir.For, *ir.Match:
+			for _, b := range ir.TransparentBlocks(n) {
+				walkInstances(*b, fn)
+			}
 		case *ir.SlotInst:
 			walkInstances(n.Children, fn)
 		case *ir.ErrorBoundary:

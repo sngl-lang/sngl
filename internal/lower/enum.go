@@ -88,6 +88,14 @@ func rewriteEnumExpr(e ir.Expr, memberOrdinal func(*ir.EnumDef, string) (int, bo
 		x.Cond = rewriteEnumExpr(x.Cond, memberOrdinal)
 		x.Then = rewriteEnumExpr(x.Then, memberOrdinal)
 		x.Else = rewriteEnumExpr(x.Else, memberOrdinal)
+	case *ir.MatchExpr:
+		x.Subject = rewriteEnumExpr(x.Subject, memberOrdinal)
+		for _, arm := range x.Arms {
+			for i := range arm.Patterns {
+				arm.Patterns[i] = rewriteEnumExpr(arm.Patterns[i], memberOrdinal)
+			}
+			arm.Value = rewriteEnumExpr(arm.Value, memberOrdinal)
+		}
 	case *ir.Call:
 		if x.Receiver != nil {
 			x.Receiver = rewriteEnumExpr(x.Receiver, memberOrdinal)

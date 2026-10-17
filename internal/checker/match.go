@@ -2,7 +2,6 @@ package checker
 
 import (
 	"fmt"
-	"slices"
 	"strconv"
 	"strings"
 
@@ -10,135 +9,93 @@ import (
 	"duckfam.us/sngl/ir"
 )
 
-// A match is checked into the constructs every later phase already knows: a
-// statement becomes an if/else-if chain and an expression a chain of
-// ternaries, each arm's patterns compared with `==` and joined by `||`. Nothing
-// after the checker learns there was a match, so the family, slot and
-// element-ref rules, the interpreter, the lowering and every backend read it
-// as the if or the ternary it is.
-//
-// What a match says that the chain does not -- that its arms cover every case,
-// that no pattern is written twice -- is checked here.
+// A match is checked into ir.Match, a statement, or ir.MatchExpr, a value: the
+// subject, each arm's patterns, and whether the last arm is taken unasked.
+// What a match says that an if chain does not -- that its arms cover every
+// case, that no pattern is written twice -- is checked here; a lowering turns
+// it into the chain for a target that cannot switch (lower.passMatch).
 //
 // The subject is evaluated once wherever a statement can hold it: in an
 // imperative block or an expression body, a subject that calls anything is
-// bound to a local ahead of the statement (preludeFor, bodyPrelude). Elsewhere -- a view body, which has nowhere to
-// put the local, or a position evaluated only some of the time -- it is read
-// again for each arm it is tested against, so it must be free of side effects
-// (reportImpureMatchSubjects).
-
-// matchArmIR is one arm, checked: the test that selects it (nil when it is the
-// arm taken whatever the subject is) and what it does.
-type matchArmIR struct {
-	pos   ast.Pos
-	cond  ir.Expr
-	body  []ir.Stmt
-	value ir.Expr
-}
+// bound to a local ahead of the statement (preludeFor, bodyPrelude), and the
+// match reads the local. Elsewhere -- a view body, which has nowhere to put the
+// local, or a position evaluated only some of the time -- the chain a lowering
+// writes reads it again for each arm it is tested against, so it must be free
+// of side effects (reportImpureMatchSubjects).
 
 // checkMatchStmt checks a match written where a statement goes.
 func (c *checker) checkMatchStmt(x *ast.MatchStmt) ir.Stmt {
 	arms := c.checkMatch(&x.Match, false)
-	if len(arms) == 0 {
+	if len(arms.Arms) == 0 {
 		return nil
 	}
-	var chain []ir.Stmt
-	for i, arm := range slices.Backward(arms) {
-		if arm.cond == nil {
-			// The last arm of an exhaustive match is taken unasked. Alone, it
-			// is still a block of its own, which a literal true says without
-			// a construct for it.
-			if i == 0 {
-				chain = []ir.Stmt{&ir.If{AST: &ast.IfStmt{Pos: arm.pos}, Cond: boolLiteral(true), Body: arm.body}}
-				continue
-			}
-			chain = arm.body
-			continue
-		}
-		chain = []ir.Stmt{&ir.If{AST: &ast.IfStmt{Pos: arm.pos}, Cond: arm.cond, Body: arm.body, Else: chain}}
-	}
-	if len(chain) == 1 {
-		return chain[0]
-	}
-	return nil
+	return &ir.Match{AST: x, MatchArms: arms}
 }
 
 // inferMatch checks a match written where a value goes.
 func (c *checker) inferMatch(x *ast.MatchExpr) ir.Expr {
 	expected := c.expected
 	arms := c.checkMatch(&x.Match, true)
-	if len(arms) == 0 {
+	if len(arms.Arms) == 0 {
 		return invalidValue()
 	}
 	// What the arms join to: the type wanted, or the first arm's.
 	want := expected
-	if want == nil {
-		want = exprType(arms[0].value)
+	if want == nil || want.Kind == ir.TypeInvalid {
+		want = exprType(arms.Arms[0].Value)
 	}
-	for _, arm := range arms[1:] {
-		t := exprType(arm.value)
+	for _, arm := range arms.Arms[1:] {
+		t := exprType(arm.Value)
 		if t == nil || want == nil || t.Kind == ir.TypeInvalid || want.Kind == ir.TypeInvalid {
 			continue
 		}
 		if !t.IsAssignableTo(want) {
-			c.error(arm.pos, "match arms have mismatched types %s and %s", want, t)
+			c.error(arm.Pos, "match arms have mismatched types %s and %s", want, t)
 		}
 	}
-	last := arms[len(arms)-1]
-	out := last.value
-	if last.cond != nil {
-		// Only an arm that failed to check leaves the last arm a test; the
-		// diagnostic is already reported, and the chain needs an end.
-		out = invalidValue()
-		out = &ir.Ternary{AST: &ast.TernaryExpr{Pos: last.pos}, Type: want, Cond: last.cond, Then: last.value, Else: out}
-	}
-	for i := len(arms) - 2; i >= 0; i-- {
-		arm := arms[i]
-		out = &ir.Ternary{AST: &ast.TernaryExpr{Pos: arm.pos}, Type: want, Cond: arm.cond, Then: arm.value, Else: out}
-	}
-	return out
+	return &ir.MatchExpr{AST: x, Type: want, MatchArms: arms}
 }
 
-// checkMatch checks a match's subject and arms and the rules a match states,
-// and returns the arms in order. isExpr says which arm form belongs.
-func (c *checker) checkMatch(m *ast.Match, isExpr bool) []matchArmIR {
+// checkMatch checks a match's subject and arms and the rules a match states.
+// isExpr says which arm form belongs.
+func (c *checker) checkMatch(m *ast.Match, isExpr bool) ir.MatchArms {
 	expected := c.expected
 	subject, read := c.matchSubject(m)
 	subjType := exprType(subject)
 	known := subject == nil || (subjType != nil && subjType.Kind != ir.TypeInvalid)
 
+	out := ir.MatchArms{}
+	if read != nil {
+		out.Subject = read()
+	}
 	cov := newMatchCoverage(subjType)
-	var out []matchArmIR
 	var elseAt *ast.MatchArm
 	for _, arm := range m.Arms {
 		if elseAt != nil {
 			c.error(arm.Pos, "arm is unreachable after else: else is taken whenever no arm before it is")
 		}
-		var conds []ir.Expr
+		a := &ir.MatchArm{Pos: arm.Pos, Else: arm.Else}
 		restore := c.noPrelude()
 		for _, p := range arm.Patterns {
-			if cond := c.checkMatchPattern(m, p, subject, read, cov); cond != nil {
-				conds = append(conds, cond)
+			if pat := c.checkMatchPattern(m, p, subject, read, cov); pat != nil {
+				a.Patterns = append(a.Patterns, pat)
 			}
 		}
 		restore()
-		a := matchArmIR{pos: arm.Pos}
 		if arm.Else {
 			elseAt = arm
-		} else {
-			a.cond = orAll(conds)
 		}
 		if isExpr {
 			if arm.IsBlock() {
 				c.error(arm.Pos, "an arm of a match expression is written pattern => value: a block gives the match no value")
-				a.value = invalidValue()
+				a.Value = invalidValue()
 			} else {
 				want := expected
-				if want == nil && len(out) > 0 {
-					want = exprType(out[0].value)
+				if (want == nil || want.Kind == ir.TypeInvalid) && len(out.Arms) > 0 {
+					want = exprType(out.Arms[0].Value)
 				}
 				restore := c.noPrelude()
-				a.value = c.checkExprExpecting(arm.Value, want)
+				a.Value = c.checkExprExpecting(arm.Value, want)
 				restore()
 			}
 		} else {
@@ -148,23 +105,18 @@ func (c *checker) checkMatch(m *ast.Match, isExpr bool) []matchArmIR {
 				c.checkExpr(arm.Value)
 				restore()
 			} else {
-				a.body = c.checkScopeBlockIR(&arm.Body)
+				a.Body = c.checkScopeBlockIR(&arm.Body)
 			}
 		}
-		if a.cond == nil && !arm.Else {
-			// Every pattern failed to check, and each was reported. Keep the
-			// arm a test so that it does not stand in for an else.
-			a.cond = boolLiteral(false)
-		}
-		out = append(out, a)
+		out.Arms = append(out.Arms, a)
 	}
 
 	if elseAt == nil && known {
 		if missing := cov.missing(); missing != "" {
 			c.error(m.Pos, "match is not exhaustive: %s", missing)
-		} else if len(out) > 0 {
+		} else if len(out.Arms) > 0 {
 			// Every case is covered, so the last arm is taken unasked.
-			out[len(out)-1].cond = nil
+			out.Exhaustive = true
 		}
 	}
 	return out
@@ -203,8 +155,9 @@ func (c *checker) matchSubject(m *ast.Match) (ir.Expr, func() ir.Expr) {
 	return subject, func() ir.Expr { return ir.CloneExprSharingDecls(subject) }
 }
 
-// checkMatchPattern checks one pattern and returns the test it makes: the
-// subject compared with it, or the pattern itself in a headless match.
+// checkMatchPattern checks one pattern and returns it as the match holds it:
+// the value the subject is compared with, or the condition itself in a
+// headless match. Nil for one that failed to check, which is reported.
 func (c *checker) checkMatchPattern(m *ast.Match, p ast.Expr, subject ir.Expr, read func() ir.Expr, cov *matchCoverage) ir.Expr {
 	pos := *p.ExprPos()
 	if subject == nil {
@@ -244,8 +197,13 @@ func (c *checker) checkMatchPattern(m *ast.Match, p ast.Expr, subject ir.Expr, r
 			return nil
 		}
 	}
+	// Compared as `==` would compare them, which unifies a numeric literal
+	// with the subject's width.
 	synth := &ast.BinaryExpr{Pos: pos, Op: ast.BinEq, Left: m.Subject, Right: p}
-	return c.finishBinary(synth, read(), pat)
+	if b, ok := c.finishBinary(synth, read(), pat).(*ir.Binary); ok {
+		return b.Right
+	}
+	return pat
 }
 
 // noPrelude marks what is checked next as evaluated only some of the time --
@@ -308,21 +266,6 @@ func callsAnything(e ir.Expr) bool {
 		return nil
 	})
 	return found
-}
-
-func orAll(conds []ir.Expr) ir.Expr {
-	if len(conds) == 0 {
-		return nil
-	}
-	out := conds[0]
-	for _, cond := range conds[1:] {
-		out = &ir.Binary{Type: ir.TypBool, Op: ast.BinOr, Left: out, Right: cond}
-	}
-	return out
-}
-
-func boolLiteral(v bool) ir.Expr {
-	return &ir.Literal{Type: ir.TypBool, Value: strconv.FormatBool(v)}
 }
 
 // patternKey is what two patterns matching the same value share, with the

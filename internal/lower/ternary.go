@@ -99,6 +99,13 @@ func (st *ternState) transformStmt(s ir.Stmt) ([]ir.Stmt, ir.Stmt) {
 		pre, n.Cond = st.transformExpr(n.Cond)
 		n.Body = st.transformBlock(n.Body)
 		n.Else = st.transformBlock(n.Else)
+	case *ir.Match:
+		if n.Subject != nil {
+			pre, n.Subject = st.transformExpr(n.Subject)
+		}
+		for _, arm := range n.Arms {
+			arm.Body = st.transformBlock(arm.Body)
+		}
 	case *ir.For:
 		pre, n.Iter = st.transformExpr(n.Iter)
 		n.Body = st.transformBlock(n.Body)
@@ -173,6 +180,8 @@ func (st *ternState) transformExpr(e ir.Expr) ([]ir.Stmt, ir.Expr) {
 	switch x := e.(type) {
 	case *ir.Ternary:
 		return st.liftTernary(x)
+	case *ir.MatchExpr:
+		return st.liftMatch(x)
 	case *ir.Binary:
 		var pre []ir.Stmt
 		var p []ir.Stmt
@@ -317,10 +326,42 @@ func (st *ternState) liftTernary(t *ir.Ternary) ([]ir.Stmt, ir.Expr) {
 	return pre, tmpRef
 }
 
+// liftMatch is liftTernary for a match expression the language emits as its
+// own switch: a temp declared ahead of the statement, and the match as a
+// statement whose arms assign it. A subject that calls anything is already a
+// local the checker bound, so hoisting it ahead of the statement evaluates
+// nothing earlier than it was.
+func (st *ternState) liftMatch(m *ir.MatchExpr) ([]ir.Stmt, ir.Expr) {
+	var pre []ir.Stmt
+	if m.Subject != nil {
+		var p []ir.Stmt
+		p, m.Subject = st.transformExpr(m.Subject)
+		pre = append(pre, p...)
+	}
+	name := st.freshName()
+	sym := &ir.Var{Name: name, Type: m.Type, Synthesized: true}
+	ref := func() *ir.Ident { return &ir.Ident{Name: name, Type: m.Type, Sym: sym, Synthesized: true} }
+	stmt := &ir.Match{Subject: m.Subject, Exhaustive: m.Exhaustive}
+	if m.AST != nil {
+		stmt.AST = &ast.MatchStmt{Pos: m.AST.Pos}
+	}
+	for _, arm := range m.Arms {
+		valPre, val := st.transformExpr(arm.Value)
+		stmt.Arms = append(stmt.Arms, &ir.MatchArm{
+			Pos:      arm.Pos,
+			Patterns: arm.Patterns,
+			Else:     arm.Else,
+			Body:     append(valPre, &ir.Assign{Target: ref(), Op: ast.AssignSet, Value: val}),
+		})
+	}
+	pre = append(pre, &ir.LocalVar{Name: name, Type: m.Type, Sym: sym}, stmt)
+	return pre, ref()
+}
+
 // immediateTernaries rewrites each ternary left in an expression with no
 // statement list to hoist into -- a var initializer, a prop default -- as a
 // func literal called where it stands, whose body is the If a hoist would
-// have written. Left alone, `var label = on ? "b" : "c"` reached every Go
+// have written, and a match expression likewise, whose body is the switch. Left alone, `var label = on ? "b" : "c"` reached every Go
 // emitter as a Ternary and panicked it. A ternary inside a lambda is not
 // reached here: the lambda's body is a statement list and was hoisted into.
 func (st *ternState) immediateTernaries(e ir.Expr) ir.Expr {
@@ -329,6 +370,16 @@ func (st *ternState) immediateTernaries(e ir.Expr) ir.Expr {
 	}
 	tmp := []ir.Stmt{&ir.LocalVar{Init: e}}
 	w := newExprWalker(func(x ir.Expr) ir.Expr {
+		if m, ok := x.(*ir.MatchExpr); ok {
+			// The switch passTernary writes for one in a statement, its arms
+			// returning their values.
+			stmt := &ir.Match{Subject: m.Subject, Exhaustive: m.Exhaustive}
+			for _, arm := range m.Arms {
+				stmt.Arms = append(stmt.Arms, &ir.MatchArm{Pos: arm.Pos, Patterns: arm.Patterns, Else: arm.Else, Body: []ir.Stmt{&ir.Return{Value: arm.Value}}})
+			}
+			fn := &ir.Func{Return: m.Type, Block: st.transformBlock([]ir.Stmt{stmt})}
+			return &ir.Call{Type: m.Type, Callee: &ir.Lambda{Type: ir.FuncOf(nil, m.Type), Func: fn}}
+		}
 		t, ok := x.(*ir.Ternary)
 		if !ok {
 			return x

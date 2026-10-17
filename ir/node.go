@@ -26,6 +26,7 @@ func (*Lambda) irNode()      {}
 func (*Closure) irNode()     {}
 func (*ContextRead) irNode() {}
 func (*SlotEmpty) irNode()   {}
+func (*MatchExpr) irNode()   {}
 
 // Statements.
 func (*NodeInst) irNode()         {}
@@ -41,6 +42,7 @@ func (*Break) irNode()            {}
 func (*Continue) irNode()         {}
 func (*If) irNode()               {}
 func (*For) irNode()              {}
+func (*Match) irNode()            {}
 func (*ContextProvider) irNode()  {}
 func (*CanvasRedrawStmt) irNode() {}
 
@@ -66,6 +68,8 @@ func TransparentBlocks(st Stmt) []*[]Stmt {
 		return []*[]Stmt{&s.Body, &s.Else}
 	case *For:
 		return []*[]Stmt{&s.Body, &s.Else}
+	case *Match:
+		return s.ArmBlocks()
 	case *ErrorBoundary:
 		return []*[]Stmt{&s.Children, &s.Failed}
 	case *ContextProvider:
@@ -167,7 +171,7 @@ func NodeIDRendersWithBody(body []Stmt) bool {
 		switch n := s.(type) {
 		case *NodeInst:
 			return true
-		case *If, *For:
+		case *If, *For, *Match:
 			decided = true
 		case *ErrorBoundary:
 			decided = len(n.Failed) > 0

@@ -50,6 +50,8 @@ var filledTypes = map[reflect.Type]bool{
 	reflect.TypeFor[StructLit]():    true,
 	reflect.TypeFor[Call]():         true,
 	reflect.TypeFor[NodeInst]():     true,
+	reflect.TypeFor[MatchArms]():    true,
+	reflect.TypeFor[MatchArm]():     true,
 }
 
 const maxFillDepth = 5

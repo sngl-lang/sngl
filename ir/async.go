@@ -32,6 +32,15 @@ func stmtHasFuncvarAsyncCall(s Stmt, pts *PointsToInfo) bool {
 		return exprHasFuncvarAsyncCall(x.Cond, pts) ||
 			BlockHasFuncvarAsyncCall(x.Body, pts) ||
 			BlockHasFuncvarAsyncCall(x.Else, pts)
+	case *Match:
+		if exprHasFuncvarAsyncCall(x.Subject, pts) {
+			return true
+		}
+		for _, arm := range x.Arms {
+			if BlockHasFuncvarAsyncCall(arm.Body, pts) || slices.ContainsFunc(arm.Patterns, func(p Expr) bool { return exprHasFuncvarAsyncCall(p, pts) }) {
+				return true
+			}
+		}
 	case *For:
 		return exprHasFuncvarAsyncCall(x.Iter, pts) ||
 			BlockHasFuncvarAsyncCall(x.Body, pts) ||
@@ -116,6 +125,15 @@ func exprHasFuncvarAsyncCall(e Expr, pts *PointsToInfo) bool {
 		return exprHasFuncvarAsyncCall(x.Cond, pts) ||
 			exprHasFuncvarAsyncCall(x.Then, pts) ||
 			exprHasFuncvarAsyncCall(x.Else, pts)
+	case *MatchExpr:
+		if exprHasFuncvarAsyncCall(x.Subject, pts) {
+			return true
+		}
+		for _, arm := range x.Arms {
+			if exprHasFuncvarAsyncCall(arm.Value, pts) || slices.ContainsFunc(arm.Patterns, func(p Expr) bool { return exprHasFuncvarAsyncCall(p, pts) }) {
+				return true
+			}
+		}
 	case *Conversion:
 		return exprHasFuncvarAsyncCall(x.Operand, pts)
 	case *Select:
@@ -164,6 +182,15 @@ func StmtHasAsyncCall(s Stmt) bool {
 		return ExprHasAsyncCall(x.Value)
 	case *If:
 		return ExprHasAsyncCall(x.Cond) || BlockHasAsyncCall(x.Body) || BlockHasAsyncCall(x.Else)
+	case *Match:
+		if ExprHasAsyncCall(x.Subject) {
+			return true
+		}
+		for _, arm := range x.Arms {
+			if BlockHasAsyncCall(arm.Body) || slices.ContainsFunc(arm.Patterns, ExprHasAsyncCall) {
+				return true
+			}
+		}
 	case *For:
 		return ExprHasAsyncCall(x.Iter) || BlockHasAsyncCall(x.Body) || BlockHasAsyncCall(x.Else)
 	}
@@ -193,6 +220,15 @@ func ExprHasAsyncCall(e Expr) bool {
 		return ExprHasAsyncCall(x.Operand)
 	case *Ternary:
 		return ExprHasAsyncCall(x.Cond) || ExprHasAsyncCall(x.Then) || ExprHasAsyncCall(x.Else)
+	case *MatchExpr:
+		if ExprHasAsyncCall(x.Subject) {
+			return true
+		}
+		for _, arm := range x.Arms {
+			if ExprHasAsyncCall(arm.Value) || slices.ContainsFunc(arm.Patterns, ExprHasAsyncCall) {
+				return true
+			}
+		}
 	case *Conversion:
 		return ExprHasAsyncCall(x.Operand)
 	case *Select:
