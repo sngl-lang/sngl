@@ -1801,7 +1801,7 @@ fun MainScreen() {
 }
 
 @Composable
-fun Avatar(initials: String = "", size: SnglSizePreset, variant: SnglAvatarVariant, alt: String = "", style: Style, src: (@Composable () -> Unit)? = null, fallback: (@Composable () -> Unit)? = null, onClick: (() -> Unit)? = null) {
+fun Avatar(initials: String = "", size: SnglSizePreset = SnglSizePreset.MEDIUM, variant: SnglAvatarVariant = SnglAvatarVariant.CIRCLE, alt: String = "", style: Style = Style(), src: (@Composable () -> Unit)? = null, fallback: (@Composable () -> Unit)? = null, onClick: (() -> Unit)? = null) {
     var failed by remember { mutableStateOf(false) }
     var hits by remember { mutableStateOf(0) }
 
@@ -2201,6 +2201,6 @@ pass sha256:c0719944975ecb942135250457e067a1
 -- run/go/gtk4 --
 pass sha256:4a5ff383fb472aef9f4f6149e0e0ab1b
 -- run/kotlin/android --
-pass sha256:17404b0fb16272838786f7055165cd84
+pass sha256:6333ee4e285bd5b32a48d64927ad0932
 -- run/none/html --
 pass sha256:e6ab84a611d31e46751e853fa1fcb42f

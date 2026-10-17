@@ -818,7 +818,7 @@ fun MainScreen() {
 }
 
 @Composable
-fun Show__int(xs: List<Int>, w: __anon_v_853006, onChose: ((__anon_v_853006) -> Unit)? = null) {
+fun Show__int(xs: List<Int> = listOf<Int>(), w: __anon_v_853006 = __anon_v_853006(), onChose: ((__anon_v_853006) -> Unit)? = null) {
     var held by remember { mutableStateOf(w.copy()) }
     var hits by remember { mutableStateOf(0) }
     val boxed by remember { derivedStateOf { __anon_v_853006(v = held.v) } }
@@ -833,7 +833,7 @@ fun Show__int(xs: List<Int>, w: __anon_v_853006, onChose: ((__anon_v_853006) -> 
 }
 
 @Composable
-fun Show__string(xs: List<String>, w: __anon_v_ba918a, onChose: ((__anon_v_ba918a) -> Unit)? = null) {
+fun Show__string(xs: List<String> = listOf<String>(), w: __anon_v_ba918a = __anon_v_ba918a(), onChose: ((__anon_v_ba918a) -> Unit)? = null) {
     var held by remember { mutableStateOf(w.copy()) }
     var hits by remember { mutableStateOf(0) }
     val boxed by remember { derivedStateOf { __anon_v_ba918a(v = held.v) } }
@@ -1038,6 +1038,6 @@ pass sha256:398834ca83273ace4f1053f95a9d0b36
 -- run/go/gtk4 --
 pass sha256:a5f939994ae7f7edb88692f140b013b3
 -- run/kotlin/android --
-pass sha256:fa3097ad3caadf775345ddf33037d257
+pass sha256:7433f67b32dfff97187f91d303059098
 -- run/none/html --
 pass sha256:ae87f5f31612c7d8013ef138c48e57dd

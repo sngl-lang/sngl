@@ -71,7 +71,8 @@ run after the purity fixpoint, where `const(…)` assertions are judged:
   strict mode found at lowering with no position, so its impure-wrapper branch
   is now unreachable from a checked program. **An override need not be**: one
   that does not say `const` is a body like a program's, and may hold state its
-  render reads. The lowering already answers that for a library body as for a
+  render reads -- android's `ui.select` keeps whether its menu is open in a
+  `var`. The lowering already answers that for a library body as for a
   program's: spliced once, one cell per copy under a `for` or a reactive `if`
   (`testdata/override_holds_state.txtar`). An override that does say `const`
   is held to the render rule, which is why most of `lib/platform/*` still

@@ -375,3 +375,25 @@ component Surface(
     shape    Shape,
     children ...component,
 ) ui.node
+
+#[gen.renders(identity)]
+#[kt.native("OutlinedButton", "androidx.compose.material3.OutlinedButton")]
+component OutlinedButton(
+    onClick  func(),
+    children ...component,
+) ui.node
+
+#[gen.renders(identity)]
+#[kt.native("DropdownMenu", "androidx.compose.material3.DropdownMenu")]
+component DropdownMenu(
+    expanded         bool,
+    onDismissRequest func(),
+    children         ...component,
+) ui.node
+
+#[gen.renders(identity)]
+#[kt.native("DropdownMenuItem", "androidx.compose.material3.DropdownMenuItem")]
+component DropdownMenuItem(
+    onClick func(),
+    text    component ui.node,
+) ui.node

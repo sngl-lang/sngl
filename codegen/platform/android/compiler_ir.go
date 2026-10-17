@@ -953,6 +953,10 @@ func emitIRComponentComposable(b *strings.Builder, cc *codegen.ComponentCtx, ctx
 		if p.Default != nil {
 			if _, ok := p.Default.(*ir.Literal); ok {
 				def = " = " + kotlin.IRLiteralToKt(p.Default)
+			} else if ir.IsConst(p.Default) {
+				// A bodyless declaration's call site omits a defaulted prop and
+				// leaves its default to the body, which is this composable.
+				def = " = " + kc.EvalExpr(p.Default)
 			}
 		}
 		params = append(params, p.Name+": "+ktType+def)

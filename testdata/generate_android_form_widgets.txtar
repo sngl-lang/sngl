@@ -1,7 +1,5 @@
 The four form widgets android renders as a text field, a dropdown and a bar,
-pinned together: three are declared overrides in codegen/platform/android and
-`select` alone is still a case in compose_ir.go, so converting it shows as a
-diff here.
+pinned together, each a declared override in lib/platform/android.
 
 input and datepicker are both Compose's OutlinedTextField. The placeholder is
 its `label`, which takes content rather than a value, so the intrinsic declares
@@ -16,11 +14,11 @@ datepicker's `value` is an `option[date]`, which is what lets the override show
 nothing for a date nobody picked -- a `date`'s zero is the first day of year
 one and would otherwise pre-fill every empty field with it.
 
-select is what is left, and it is left for its state: `expanded` is numbered
-per rendered node, which an override has no way to ask for.
+select is the one that holds state: whether its menu is open, a var of the
+override, which is a cell of each select.
 
 deny out/kotlin/android/app/src/main/java/test/sngl/app/MainScreen.kt `value = plain.*label` -- `plain` is the field given no placeholder: it passes no label argument at all, not an empty one
-deny out/kotlin/android/app/src/main/java/test/sngl/app/MainScreen.kt `!= ""` -- the override's placeholder test is a constant here and folds away; it does not reach the emitted lambda
+deny out/kotlin/android/app/src/main/java/test/sngl/app/MainScreen.kt `"[^"]*" != ""` -- the override's placeholder test is a constant here and folds away; it does not reach the emitted lambda
 
 -- app.sngl --
 import . "sngl:ui"
@@ -96,6 +94,7 @@ fun MainScreen() {
     var value__inst3 by remember { mutableStateOf<String?>(null) }
     var value__inst4 by remember { mutableStateOf<String?>(birthday) }
     var visible__inst0 by remember { mutableStateOf(true) }
+    var expanded__inst0 by remember { mutableStateOf(false) }
 
     if (visible__inst0) {
         val __activity = LocalContext.current as? Activity
@@ -115,16 +114,21 @@ fun MainScreen() {
             OutlinedTextField(value = value__inst1, readOnly = false, modifier = Modifier.safeDrawingPadding(), onValueChange = { v ->
                 value__inst1 = v
             })
-            var expanded1 by remember { mutableStateOf(false) }
-            Box(modifier = Modifier) {
-                OutlinedButton(onClick = { expanded1 = true }) {
-                    Text(if (value__inst2.isNotEmpty()) value__inst2 else "Pick")
+            Box(modifier = Modifier.safeDrawingPadding()) {
+                OutlinedButton(onClick = {
+                    expanded__inst0 = true
+                }) {
+                    Text(text = (if ((value__inst2 != "")) value__inst2 else "Pick"), modifier = Modifier)
                 }
-                DropdownMenu(expanded = expanded1, onDismissRequest = { expanded1 = false }) {
-                    (listOf(Choice__record(label = "Apple"), Choice__record(label = "Banana"))).map { it.label }.forEach { opt ->
-                        DropdownMenuItem(text = { Text(opt) }, onClick = {
-                            value__inst2 = opt
-                            expanded1 = false
+                DropdownMenu(expanded = expanded__inst0, onDismissRequest = {
+                    expanded__inst0 = false
+                }) {
+                    for (opt in listOf(Choice__record(label = "Apple"), Choice__record(label = "Banana"))) {
+                        DropdownMenuItem(onClick = {
+                            value__inst2 = opt.label
+                            expanded__inst0 = false
+                        }, text = {
+                            Text(text = opt.label, modifier = Modifier)
                         })
                     }
                 }
@@ -229,4 +233,4 @@ private fun parseDate(s: String): String? =
         null
     }
 -- run/kotlin/android --
-pass sha256:36c483c5459425fee0ccf486d124a701
+pass sha256:6c6a24b9f5f5790d04926bf75a38ce97

@@ -184,17 +184,28 @@ const component ui.toggle[platform](label, checked, style, @change) {
     }
 }
 
-// Not converted. The menu needs per-call-site state, and an override may
-// declare a var -- passInlinePure hoists one onto the enclosing composable
-// under a `__instN` suffix. What it does not survive is a `for`: two call
-// sites at one level get `__inst0` and `__inst1`, but one inside a loop and
-// one outside both get `__inst0`, and the emitted Kotlin then declares the
-// same name twice. One cell per call site is one cell for every row of the
-// loop besides, which is not what `expanded` means. compose_ir.go numbers
-// `expandedN` per rendered node, which is the thing an override cannot ask
-// for.
-const component ui.select() {
-    OutlinedTextField(value=value, readOnly=true) {}
+// Compose's DropdownMenu leaves whether it is open to its caller, so that is
+// state of each select, and why this override is not const.
+component ui.select[platform](placeholder, value, style, @change, options) {
+    var expanded = false
+    Box(modifier={...style}) {
+        OutlinedButton(onClick=func() { expanded = true }) {
+            Text(text=(value != "" ? value : placeholder)) {}
+        }
+        DropdownMenu(expanded=expanded, onDismissRequest=func() { expanded = false }) {
+            for var opt = options {
+                DropdownMenuItem(onClick=func() {
+                    value = opt.label
+                    change(opt.label)
+                    expanded = false
+                }) {
+                    component text {
+                        Text(text=opt.label) {}
+                    }
+                }
+            }
+        }
+    }
 }
 
 const component ui.textarea[platform](value, style, @input, @change) {
