@@ -97,6 +97,7 @@ func (w *walker) expr(e Expr) {
 		w.expr(x.Operand)
 	case *Select:
 		w.expr(x.Operand)
+		w.expr(x.Via)
 	case *Index:
 		w.expr(x.Operand)
 		w.expr(x.Idx)
@@ -123,7 +124,7 @@ func (w *walker) expr(e Expr) {
 		if x.State != nil {
 			w.expr(x.State)
 		}
-	case *Literal, *Ident, *ContextRead:
+	case *Literal, *Ident, *ContextRead, *SlotEmpty:
 	default:
 		panic(fmt.Sprintf("ir.Walk: unhandled ir.Expr %T", x))
 	}

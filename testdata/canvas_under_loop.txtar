@@ -879,7 +879,10 @@ func new__canvas0Instance(__model *Model, __a___p0 float64, __a___p1 float64, __
 	c.__n3 = (*C.GtkDrawingArea)(unsafe.Pointer(C.gtk_drawing_area_new()))
 	C.gtk_drawing_area_set_content_width(c.__n3, C.int(40))
 	C.gtk_drawing_area_set_content_height(c.__n3, C.int(40))
-	snglDrawFuncs = append(snglDrawFuncs, func(cr *C.cairo_t, pw, ph int) { _snglCairoScale(cr, pw, ph, 40, 40, ""); c._canvasDraw0(cr) })
+	snglDrawFuncs = append(snglDrawFuncs, func(cr *C.cairo_t, pw int, ph int) {
+		_snglCairoScale(cr, pw, ph, 40, 40, "")
+		c._canvasDraw0(cr)
+	})
 	C.sngl_drawing_area_set_draw(unsafe.Pointer(c.__n3), C.int((len(snglDrawFuncs) - 1)))
 	snglCallbacks = append(snglCallbacks, func() {
 		func() {
@@ -950,7 +953,10 @@ func new__canvas1Instance(__model *Model, __a___p0 float64) *__canvas1Instance {
 	c.__n4 = (*C.GtkDrawingArea)(unsafe.Pointer(C.gtk_drawing_area_new()))
 	C.gtk_drawing_area_set_content_width(c.__n4, C.int(40))
 	C.gtk_drawing_area_set_content_height(c.__n4, C.int(40))
-	snglDrawFuncs = append(snglDrawFuncs, func(cr *C.cairo_t, pw, ph int) { _snglCairoScale(cr, pw, ph, 40, 40, ""); c._canvasDraw1(cr) })
+	snglDrawFuncs = append(snglDrawFuncs, func(cr *C.cairo_t, pw int, ph int) {
+		_snglCairoScale(cr, pw, ph, 40, 40, "")
+		c._canvasDraw1(cr)
+	})
 	C.sngl_drawing_area_set_draw(unsafe.Pointer(c.__n4), C.int((len(snglDrawFuncs) - 1)))
 	c.Root = (*C.GtkWidget)(unsafe.Pointer(c.__n4))
 	C.g_object_ref_sink(C.gpointer(unsafe.Pointer(c.Root)))
@@ -1054,6 +1060,9 @@ body { font-family: system-ui, sans-serif; }
 </div>
 
 <script>
+window.__snglErrors = [];
+addEventListener("error", (e) => window.__snglErrors.push(String(e.message)));
+addEventListener("unhandledrejection", (e) => window.__snglErrors.push(String(e.reason?.message ?? e.reason)));
 window.__sngl_markup = Array.from(document.body.childNodes)
   .filter((n) => n.nodeName !== "SCRIPT").map((n) => n.cloneNode(true));
 window.__sngl_reset = () => {
@@ -1072,17 +1081,13 @@ window.__sngl_boot = () => {
   if (typeof window !== "undefined") {
     window.__sngl_state = state;
   }
-  function testGrows(t, c) {
-    c.add();
-    t.assert(c.rs.length === 3);
-  }
   function paintStyle(ctx, style) {
     ctx.fillStyle = "rgba(" + String(style.fill.r) + "," + String(style.fill.g) + "," + String(style.fill.b) + "," + String(parseFloat(style.fill.a) / 255) + ")";
     ctx.strokeStyle = "rgba(" + String(style.stroke.r) + "," + String(style.stroke.g) + "," + String(style.stroke.b) + "," + String(parseFloat(style.stroke.a) / 255) + ")";
     ctx.lineWidth = style.strokeWidth;
   }
   if (typeof window !== "undefined") {
-    Object.assign(window, { testGrows, paintStyle });
+    Object.assign(window, { paintStyle });
   }
   function __cf___canvas0(props) {
     const __root = document.createElement("div");
@@ -1332,6 +1337,6 @@ window.__sngl_boot();
 -- run/go/fyne --
 pass sha256:ed375d7d1b6d0482f640ae132b4c6bfc
 -- run/go/gtk4 --
-pass sha256:37c8ce4ed9cde0760cb0d29adc85e08e
+pass sha256:cf8d66d206dbca7292b6c2f8df9cd94c
 -- run/none/html --
-pass sha256:3a1a766f6f1e8c12f5c245a7ca740121
+pass sha256:60658d65347c6e2535e6aead18c95d44

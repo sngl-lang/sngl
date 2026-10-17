@@ -1,0 +1,127 @@
+# One copy of a component instance held by a record per row, null-tested on
+# every target a test can execute on, after a click re-keys the copies:
+# testdata/indexed_ref_null_test_instance_rows.txtar is the code.
+
+sngl test --platform=none app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=html app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=fyne --language=go app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+-- app.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+
+output {
+    go {
+        bubbletea
+        fyne
+        gtk4
+    }
+    kotlin {
+        android
+    }
+    none {
+        html
+    }
+}
+
+component badge(label string) node {
+    var hits = 0
+    button #hit(text="hit {label} {hits}", @click { hits = hits + 1 })
+}
+
+component main node {
+    var rows = [["a", "b"], ["a", "b"]]
+    var skip = "b"
+    vbox {
+        button #move(text="m", @click { skip = "a" })
+        for var r = rows {
+            vbox {
+                var local = 0
+                text(value="{local}")
+                for var n = r {
+                    if n != skip {
+                        badge #b(label=n)
+                    }
+                }
+            }
+        }
+    }
+}
+
+func testInstanceCopyPerRow(t Test, c main) {
+    t.assert(c.b[0][0] != null)
+    t.assert(c.b[0][1] == null)
+    t.assert(c.b[1][0] != null)
+    c.move.click()
+    t.assert(c.b[0][0] == null)
+    t.assert(c.b[0][1] != null)
+    t.assert(c.b[1][1] != null)
+}
+
+window {
+    main
+}
+-- testrun/android/kotlin/app.sngl/main/1 --
+sha256:d637fd9020d7eef6c0e08f4f13f49436
+{
+  "results": [
+    {
+      "Desc": "InstanceCopyPerRow",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/main/1 --
+sha256:8cbb31ace32c2f8514fb840d13d941bc
+{
+  "results": [
+    {
+      "Desc": "InstanceCopyPerRow",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/main/1 --
+sha256:6b00231581c7459b7cc5e4106236d652
+{
+  "results": [
+    {
+      "Desc": "InstanceCopyPerRow",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/main/1 --
+sha256:76e116971fd6cc7c6949d946d9f0d937
+{
+  "results": [
+    {
+      "Desc": "InstanceCopyPerRow",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/main/1 --
+sha256:afab9496d288cb03176ce058ef42fca8
+{
+  "results": [
+    {
+      "Desc": "InstanceCopyPerRow",
+      "Passed": true
+    }
+  ]
+}

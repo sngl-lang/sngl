@@ -13,6 +13,8 @@ unverifiable out/go/bubbletea -- names example.com/todo, a package written to st
 //   - a field naming its foreign spelling with no package of its own
 //   - `context`, for a Go function whose leading context.Context the SNGL
 //     signature does not carry
+//   - an opaque native struct, for a type that exists over there and has no
+//     spelling here
 //   - `#[unusable]`, for a declaration that exists over there and cannot be
 //     reached from here
 //
@@ -26,20 +28,23 @@ const _pkg = "example.com/todo"
 
 #[go.native(_pkg, "todo.Todo")]
 struct Todo {
-    #[go.native("ID")]
+    #[go.native(name="ID")]
     id    int
-    #[go.native("Title")]
+    #[go.native(name="Title")]
     title string
 }
 
-// Only the field is out of reach; the struct around it is fine.
+// A Go type SNGL has no spelling for is an opaque handle: a native struct
+// with no fields, which a program may hold and hand back but not read into.
+#[go.native(_pkg, "todo.Handle")]
+struct Handle {}
+
 #[go.native(_pkg, "todo.Bag")]
 struct Bag {
-    #[go.native("OK")]
-    ok  string
-    #[go.native("Bad")]
-    #[macro.unusable("field Bag.Bad has type not representable in SNGL")]
-    bad dyn
+    #[go.native(name="OK")]
+    ok     string
+    #[go.native(name="Handle")]
+    handle Handle
 }
 
 // A leading context.Context the signature does not carry, and an error return
@@ -78,6 +83,11 @@ import (
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
+	*modelState
+}
+
+// modelState is what every copy of a Model shares.
+type modelState struct {
 	visible__inst0 bool
 
 	width, height int
@@ -85,7 +95,7 @@ type Model struct {
 
 // New creates a Model with default bind values.
 func New() Model {
-	m := Model{}
+	m := Model{&modelState{}}
 	m.visible__inst0 = true
 	return m
 }

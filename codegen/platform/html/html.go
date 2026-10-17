@@ -68,9 +68,6 @@ func (g *Generator) Generate(req *codegen.Request, sink codegen.Sink) error {
 	}
 
 	if req.Pkg != nil {
-		if err := validateRawElements(req.Pkg); err != nil {
-			return err
-		}
 		if err := firstUnrenderedNode(req.Pkg); err != nil {
 			return err
 		}
@@ -111,8 +108,13 @@ func (g *Generator) Generate(req *codegen.Request, sink codegen.Sink) error {
 }
 
 // testBootOpen and testBootClose make a test page's program re-runnable, so
-// each test starts from a freshly mounted page.
-const testBootOpen = `window.__sngl_markup = Array.from(document.body.childNodes)
+// each test starts from a freshly mounted page. Whatever the page raises outside a
+// test body -- while it loads, or later from a timer -- is kept for the test
+// module to fail on, since nothing else would see it.
+const testBootOpen = `window.__snglErrors = [];
+addEventListener("error", (e) => window.__snglErrors.push(String(e.message)));
+addEventListener("unhandledrejection", (e) => window.__snglErrors.push(String(e.reason?.message ?? e.reason)));
+window.__sngl_markup = Array.from(document.body.childNodes)
   .filter((n) => n.nodeName !== "SCRIPT").map((n) => n.cloneNode(true));
 window.__sngl_reset = () => {
   for (const n of Array.from(document.body.childNodes)) {
@@ -240,6 +242,12 @@ type windowShared struct {
 	// modelVars is derived from dt on first use rather than beside it: only
 	// the mutation model asks for it.
 	modelVars map[string]*ir.Var
+
+	// ops and pkgFuncs are read off the package's script on first use;
+	// respelled is the document ids pkgFuncs has been filtered for.
+	ops       *scriptOps
+	pkgFuncs  []*ir.Func
+	respelled map[string]bool
 }
 
 // derivePackage fills all four on first use. One gate rather than a nil check
@@ -513,10 +521,9 @@ func (c *compilation) BuildMutationModel(req *codegen.Request, analysis *codegen
 		}
 		win := documentView(doc, ctx.Harness())
 		// What the lowering wrote to a Window's props, spelled the way the page
-		// holds them: in the package's funcs, which every document shares and
-		// a second pass finds already spelled, and in this document's body,
-		// which is a clone of its own.
-		respellWindowWrites(req.Pkg, doc.Surface, doc.Body)
+		// holds them: in the package's funcs, which every document shares, and
+		// in this document's body, which is a clone of its own.
+		shared.respellWindowWrites(req.Pkg, doc.Surface, doc.Body)
 		for _, fa := range doc.FileAssets {
 			if !seenAssets[fa.OutPath] {
 				seenAssets[fa.OutPath] = true
@@ -671,6 +678,9 @@ type htmlGen struct {
 	lang codegen.LangTranslator
 
 	pkg *ir.Package
+	// reads is what the package's tests read through an instance built at
+	// run time (instanceReads).
+	reads []codegen.InstanceRead
 	// written is each element variable an element has been written under,
 	// so a second node carrying the same `#id` gets one of its own (nodeID).
 	written map[string]bool
@@ -682,12 +692,27 @@ type htmlGen struct {
 	dt *codegen.DepTracker
 
 	nextID int
+	// scriptErr is the first element the script was asked to build that it
+	// cannot (htmlTranslator.refuse).
+	scriptErr *scriptRefusal
+	// untagged are the translators that created an element no tag had named
+	// yet, asked once the script is written (refuseUntagged).
+	untagged []*htmlTranslator
+	// nodeSites is where each element the script creates was written, shared
+	// by every scope's translator: an updater writes an element another
+	// scope created.
+	nodeSites map[string]ast.Stmt
 
 	initWrites []updateFunc
 
 	styleValueDef *ir.StructDef
 
 	handlers []eventHandler
+	// quiet are the events a test fires that an element handles with an
+	// empty handler: no listener, but an invoker.
+	quiet []eventHandler
+	// triggered is codegen.TriggeredEvents, in a test build.
+	triggered map[string]bool
 
 	title string
 
@@ -746,8 +771,6 @@ type htmlGen struct {
 	// when it is emitting a harness root's body. It carries the route's params
 	// cell, which is per document.
 	irWindow *ir.NodeInst
-	// windowNames is windowIDs' answer, made once.
-	windowNames map[string]bool
 	// page is the page of a nav.stack this document is written for, nil for a
 	// window that holds none.
 	page *ir.NodeInst
@@ -869,9 +892,11 @@ func newHTMLGen(pkg *ir.Package, lang codegen.LangTranslator, opts htmlConfig, s
 	g.ctx = codegen.NewExprCtx(pkg)
 	g.ctx.Platform = "html"
 	if pkg != nil {
-		for _, c := range pkg.Consts {
-			g.ctx.Locals[c.Name] = true
+		consts := make([]string, len(pkg.Consts))
+		for i, c := range pkg.Consts {
+			consts[i] = c.Name
 		}
+		g.ctx = g.ctx.WithLocals(consts...)
 	}
 	if g.ctx.NativeImports == nil {
 		g.ctx.NativeImports = map[string]map[string]bool{}
@@ -1127,9 +1152,10 @@ func retargetSlotCalls(root any) {
 		if n == "" || len(call.Args) != 1 {
 			return nil
 		}
+		// The anchor stands for the container the slot was handed.
 		call.Args[0].Value = &ir.Ident{
 			Name:         slotAnchorVar(n),
-			Type:         ir.TypDyn,
+			Type:         call.Args[0].Value.ExprType(),
 			IsElementRef: true,
 			Synthesized:  true,
 		}
@@ -1263,6 +1289,10 @@ func (g *htmlGen) generate() (string, error) {
 	// class's rule as it is translated.
 	var scriptBuf strings.Builder
 	g.emitScript(&scriptBuf)
+	g.refuseUntagged()
+	if r := g.scriptErr; r != nil {
+		return "", fmt.Errorf("%s: %s", g.scriptNodePos(r.node), r.msg)
+	}
 	if script := scriptBuf.String(); strings.Contains(script, navPageMarker) {
 		decl := ""
 		if strings.Contains(script, "globalThis."+navPageGlobal) {
@@ -1502,8 +1532,8 @@ func nodeFromIRCallStmt(n *ir.CallStmt) *ir.NodeInst {
 }
 
 // irCallName extracts the bare or namespace-qualified name from an IR Call.
-// A namespace-resolved element call leaves Call.Func nil and Call.Receiver set
-// to the namespace ident, so "ns.Foo" is reassembled from the AST back-ref.
+// A namespace-resolved element call leaves Call.Func nil and Call.Qualifier
+// set, so "ns.Foo" is reassembled from the AST back-ref.
 func irCallName(call *ir.Call) string {
 	if call == nil {
 		return ""
@@ -1511,14 +1541,7 @@ func irCallName(call *ir.Call) string {
 	if call.Func != nil {
 		return call.Func.Name
 	}
-	if call.Receiver != nil && call.AST != nil {
-		if sel, ok := call.AST.Func.(*ast.SelectExpr); ok {
-			if id, ok := sel.Operand.(*ast.IdentExpr); ok {
-				return id.Name + "." + sel.Field
-			}
-		}
-	}
-	return ""
+	return call.QualifiedName()
 }
 
 // renderIRNode dispatches a NodeInst to the appropriate renderer: a user
@@ -1740,7 +1763,9 @@ func (g *htmlGen) pkgFuncs() []*ir.Func {
 	seen := make(map[*ir.Func]struct{})
 	var out []*ir.Func
 	add := func(f *ir.Func) {
-		if f.Synthesized || !g.pageOwnsFunc(f) {
+		// A test is the test module's, lowered there with the triggers and
+		// null tests this emitter does not know; the page never calls one.
+		if f.Synthesized || f.IsTest || !g.pageOwnsFunc(f) {
 			return
 		}
 		// A native declaration is not emitted: the identifier already exists,
@@ -2114,6 +2139,15 @@ func (g *htmlGen) renderRawElementIR(b *strings.Builder, n *ir.NodeInst, depth i
 		}
 		event := domEventName(decl, h.Name)
 		if event == "" {
+			continue
+		}
+		if len(h.Func.Block) == 0 && g.testMode {
+			if g.triggered == nil {
+				g.triggered = codegen.TriggeredEvents(g.pkg)
+			}
+			if g.triggered[n.ID+"."+h.Name] || g.triggered[g.enclosingSnglID+"."+h.Name] {
+				g.quiet = append(g.quiet, eventHandler{elemID: id, event: event, snglID: g.enclosingSnglID})
+			}
 			continue
 		}
 		g.addEventHandler(id, event, h.Func)
@@ -2504,7 +2538,7 @@ func (g *htmlGen) emitSynthesizedSlots(b *strings.Builder) {
 		tr := g.newHTMLTranslator(jc)
 		drawn := &ir.Func{
 			Name:   cv.Name,
-			Params: []*ir.Param{{Name: "ctx", Type: ir.TypDyn}},
+			Params: []*ir.Param{{Name: "ctx", Type: drawCtxType(cv.Draw)}},
 			Block:  codegen.WalkLowered(context.Background(), cv.Draw, tr),
 		}
 		for _, line := range jc.EmitFuncDef(drawn) {
@@ -2746,6 +2780,9 @@ func (g *htmlGen) collectReferencedIDs() []string {
 	for _, h := range g.handlers {
 		addID(h.elemID)
 	}
+	for _, h := range g.quiet {
+		addID(h.elemID)
+	}
 
 	sort.Strings(ids)
 	return ids
@@ -2931,7 +2968,7 @@ func exprUsesI18n(expr ir.Expr) bool {
 					walkStmtExprs(s, walk)
 				}
 			}
-		case *ir.Literal, *ir.Ident, *ir.ContextRead:
+		case *ir.Literal, *ir.Ident, *ir.ContextRead, *ir.SlotEmpty:
 		default:
 			panic(fmt.Sprintf("html.exprUsesI18n: unhandled ir.Expr %T", x))
 		}
@@ -3183,7 +3220,7 @@ func (g *htmlGen) collectLoweredRefs(s ir.Stmt) {
 		case *ir.Spread:
 			walkExpr(x.Operand)
 		case *ir.Lambda, *ir.Closure:
-		case *ir.Literal, *ir.ContextRead:
+		case *ir.Literal, *ir.ContextRead, *ir.SlotEmpty:
 		default:
 			panic(fmt.Sprintf("html.collectLoweredRefs.walkExpr: unhandled ir.Expr %T", x))
 		}
@@ -3248,36 +3285,28 @@ func (g *htmlGen) addEventHandler(elemID, event string, fn *ir.Func) {
 	if fn == nil || len(fn.Block) == 0 {
 		return
 	}
-	savedEvent := g.ctx.EventVar
-	savedEventParam := g.ctx.EventParam
+	// The parameter is a local; what it stands for is EventParam's job.
+	// Renaming by name as well would replace a lambda parameter spelled the
+	// same, emitting `e2.target` where the lambda's own value was meant.
+	var params []string
+	for _, p := range fn.Params {
+		if p != nil && p.Name != "" {
+			params = append(params, p.Name)
+		}
+	}
+	outer := g.ctx
+	g.ctx = g.ctx.WithLocals(params...)
 	g.ctx.EventVar = "e"
 	if len(fn.Params) > 0 {
 		g.ctx.EventParam = fn.Params[0]
 	}
-	// The parameter is a local; what it stands for is EventParam's job.
-	// Renaming by name as well would replace a lambda parameter spelled the
-	// same, emitting `e2.target` where the lambda's own value was meant.
-	var savedLocal []string
-	for _, p := range fn.Params {
-		if p == nil || p.Name == "" {
-			continue
-		}
-		if !g.ctx.Locals[p.Name] {
-			savedLocal = append(savedLocal, p.Name)
-			g.ctx.Locals[p.Name] = true
-		}
-	}
 	lines := g.translateBlockJC(fn.Block)
+	g.ctx = outer
 	mutated := make(map[string]bool)
 	for _, s := range fn.Block {
 		for v := range codegen.MutatedFields(g.currentComp, g.dt, s) {
 			mutated[v.SymName()] = true
 		}
-	}
-	g.ctx.EventVar = savedEvent
-	g.ctx.EventParam = savedEventParam
-	for _, n := range savedLocal {
-		delete(g.ctx.Locals, n)
 	}
 	g.handlers = append(g.handlers, eventHandler{
 		elemID: elemID,
@@ -3605,29 +3634,31 @@ func (g *htmlGen) emitEventInvokers(b *strings.Builder) {
 	}
 	// An element's own id outranks one it inherits, whichever was rendered
 	// first.
-	for _, h := range g.handlers {
+	invokable := slices.Concat(g.handlers, g.quiet)
+	for _, h := range invokable {
 		collect(h, g.snglIDByElem[h.elemID], true)
 	}
-	for _, h := range g.handlers {
+	for _, h := range invokable {
 		collect(h, h.snglID, false)
 	}
 	// Only an id a test indexes needs the variant, as on fyne and gtk4.
-	indexed := codegen.IndexedTriggerIDs(g.pkg)
+	indexed := ir.IndexedRefIDs(g.pkg)
 	for _, name := range order {
 		seen[name] = true
 		els := copies[name]
-		at := indexed[strings.TrimSuffix(name, capitalizeFirst(event[name]))]
+		id := strings.TrimSuffix(name, capitalizeFirst(event[name]))
+		at := indexed[id]
 		all := "[" + strings.Join(els, ", ") + "]"
 		if event[name] == "click" {
 			fmt.Fprintf(b, "state.%s = () => %s.click();\n", name, els[0])
 			if at {
-				fmt.Fprintf(b, "state.%s = (i) => %s[i].click();\n", codegen.InvokerAt(name), all)
+				fmt.Fprintf(b, "state.%s = (k) => %s.click();\n", codegen.InvokerAt(name), staticCopy(all, id, "k"))
 			}
 			continue
 		}
 		fmt.Fprintf(b, "state.%s = (p) => { Object.assign(%s, p); %s.dispatchEvent(Object.assign(new Event(%q), p)); };\n", name, els[0], els[0], event[name])
 		if at {
-			fmt.Fprintf(b, "state.%s = (i, p) => { const el = %s[i]; Object.assign(el, p); el.dispatchEvent(Object.assign(new Event(%q), p)); };\n", codegen.InvokerAt(name), all, event[name])
+			fmt.Fprintf(b, "state.%s = (k, p) => { const el = %s; Object.assign(el, p); el.dispatchEvent(Object.assign(new Event(%q), p)); };\n", codegen.InvokerAt(name), staticCopy(all, id, "k"), event[name])
 		}
 	}
 	// An element built at run time -- inside a component instance or a
@@ -3635,8 +3666,8 @@ func (g *htmlGen) emitEventInvokers(b *strings.Builder) {
 	// finds it when it is called, by the mark OnCreateNode gives it. The
 	// listener may be on an element inside the one the program named -- a
 	// checkbox's `<input>` in the `<label>` its `#id` lands on -- which is
-	// found under it by tag. An id a loop rendered more than once names a
-	// copy through the `At` variant, by its index in document order.
+	// found under it by tag. An id loops rendered more than once names a copy
+	// through the `At` variant, by the key it carries in copyAttr.
 	for _, h := range g.runtimeHandlers() {
 		name := h.id + capitalizeFirst(h.event)
 		if seen[name] {
@@ -3651,14 +3682,63 @@ func (g *htmlGen) emitEventInvokers(b *strings.Builder) {
 			return fmt.Sprintf("%s.querySelector(%q)", root, h.inner)
 		}
 		one := find(fmt.Sprintf("document.querySelector(%s)", sel))
-		nth := find(fmt.Sprintf("document.querySelectorAll(%s)[i]", sel))
+		nth := find(fmt.Sprintf("document.querySelector(%s)", copySelector(h.id, "k")))
 		if h.event == "click" {
 			fmt.Fprintf(b, "state.%s = () => %s.click();\n", name, one)
-			fmt.Fprintf(b, "state.%s = (i) => %s.click();\n", codegen.InvokerAt(name), nth)
+			fmt.Fprintf(b, "state.%s = (k) => %s.click();\n", codegen.InvokerAt(name), nth)
 			continue
 		}
 		fmt.Fprintf(b, "state.%s = (p) => { const el = %s; Object.assign(el, p); el.dispatchEvent(Object.assign(new Event(%q), p)); };\n", name, one, h.event)
-		fmt.Fprintf(b, "state.%s = (i, p) => { const el = %s; Object.assign(el, p); el.dispatchEvent(Object.assign(new Event(%q), p)); };\n", codegen.InvokerAt(name), nth, h.event)
+		fmt.Fprintf(b, "state.%s = (k, p) => { const el = %s; Object.assign(el, p); el.dispatchEvent(Object.assign(new Event(%q), p)); };\n", codegen.InvokerAt(name), nth, h.event)
+	}
+	// A node a test null-tests is rendered while an element carries its mark,
+	// which goes with the element when a render slot takes it out; an instance
+	// is while the root it renders does.
+	// So is a spliced instance, while one of its roots is.
+	ids, keyed := codegen.NullTestedRefs(g.pkg)
+	roots := codegen.InstanceRootIDs(g.pkg)
+	for _, id := range slices.Sorted(maps.Keys(ids)) {
+		sel := fmt.Sprintf("[data-sngl-id=%q], [%s=%q]", id, instanceMark, id)
+		if roots[id] {
+			sel += fmt.Sprintf(", [%s]", instanceRootAttr(id))
+		}
+		fmt.Fprintf(b, "state.%s = () => document.querySelector('%s') !== null;\n", codegen.PresenceMethod(id), sel)
+	}
+	// One copy is rendered while an element carries its key: the node, the
+	// root of an instance handed one, or a root of a spliced one.
+	instances := codegen.KeyedInstanceIDs(g.pkg)
+	for _, id := range slices.Sorted(maps.Keys(keyed)) {
+		sel := copySelector(id, "k")
+		if instances[id] {
+			sel += " + ', ' + " + instanceCopySelector(id, "k")
+		}
+		if roots[id] {
+			sel += fmt.Sprintf(" + ', [%s=\"' + k + '\"]'", instanceRootAttr(id))
+		}
+		fmt.Fprintf(b, "state.%s = (k) => document.querySelector(%s) !== null;\n", codegen.PresenceAtMethod(id), sel)
+	}
+	g.emitInstanceReads(b)
+}
+
+// emitInstanceReads writes each codegen.InstanceReadMethod a test calls, which
+// reads the member off the instance its root element holds (instanceOnRoot):
+// the instance's root carries its name and, for one copy, its key.
+func (g *htmlGen) emitInstanceReads(b *strings.Builder) {
+	for _, r := range g.instanceReads() {
+		sel := fmt.Sprintf("'[%s=%q]'", instanceMark, r.ID)
+		params := ""
+		if r.Keyed {
+			sel, params = instanceCopySelector(r.ID, "k"), "k"
+		}
+		inst := fmt.Sprintf("document.querySelector(%s)?.%s", sel, instanceOnRoot)
+		if r.Func != nil {
+			if params != "" {
+				params += ", "
+			}
+			fmt.Fprintf(b, "state.%s = (%s...a) => %s?.%s(...a);\n", codegen.InstanceReadMethod(r), params, inst, instanceCallMember(r.Member))
+			continue
+		}
+		fmt.Fprintf(b, "state.%s = (%s) => %s?.%s();\n", codegen.InstanceReadMethod(r), params, inst, instanceReadMember(r.Member))
 	}
 }
 
@@ -3675,41 +3755,10 @@ func (g *htmlGen) runtimeHandlers() []runtimeHandler {
 	if g.pkg == nil {
 		return nil
 	}
-	tags := map[string]string{}
-	parents := map[string]string{}
-	var attached []*ir.CallStmt
-	identName := func(e ir.Expr) string {
-		if id, ok := e.(*ir.Ident); ok {
-			return id.Name
-		}
-		return ""
-	}
-	_ = walkThroughCatch(g.pkg, func(n ir.Node) error {
-		switch v := n.(type) {
-		case *ir.LocalVar:
-			if c, ok := v.Init.(*ir.Call); ok && c.Func != nil && c.Func.Intrinsic == ir.NodeOpCreateNode && len(c.Args) > 0 {
-				if lit, ok := c.Args[0].Value.(*ir.Literal); ok {
-					tags[v.Name] = lit.Value
-				}
-			}
-		case *ir.CallStmt:
-			c := v.Call
-			if c == nil || c.Func == nil {
-				return nil
-			}
-			switch {
-			case c.Func.Intrinsic == ir.NodeOpAppendChild && len(c.Args) >= 2:
-				if child := identName(c.Args[1].Value); child != "" {
-					parents[child] = identName(c.Args[0].Value)
-				}
-			case c.Func.Intrinsic == ir.NodeOpAttachHandler && len(c.Args) >= 2:
-				attached = append(attached, v)
-			}
-		}
-		return nil
-	})
+	ops := g.shared.scriptOps(g.pkg)
+	tags, parents := ops.tags, ops.parents
 	var out []runtimeHandler
-	for _, cs := range attached {
+	for _, cs := range ops.attached {
 		on := identName(cs.Call.Args[0].Value)
 		lit, ok := cs.Call.Args[1].Value.(*ir.Literal)
 		if on == "" || !ok {
@@ -3881,17 +3930,71 @@ func (g *htmlGen) renderDialog(b *strings.Builder, n *ir.NodeInst, depth int) {
 // through its handle: the document cannot leave the screen, and its title is
 // the page's, written once. A dialog's are written as its element's, a
 // `visible` as its `open` (domPropForProp).
-func respellWindowWrites(pkg *ir.Package, doc *ir.NodeInst, body []ir.Stmt) {
+//
+// The package's funcs are filtered once per document id, since every document
+// shares them; the body is this document's own clone.
+func (s *windowShared) respellWindowWrites(pkg *ir.Package, doc *ir.NodeInst, body []ir.Stmt) {
 	if doc == nil || doc.ID == "" {
 		return
 	}
+	if s.pkgFuncs == nil {
+		s.pkgFuncs = scriptFuncs(pkg)
+		s.respelled = map[string]bool{}
+	}
+	if !s.respelled[doc.ID] {
+		s.respelled[doc.ID] = true
+		dropDocWrites(doc.ID, s.pkgFuncs)
+	}
+	dropDocWrites(doc.ID, scriptFuncs(body))
+}
+
+// scriptFuncs is every func root holds: declared, a handler, a lambda, or a
+// catch block's handler.
+func scriptFuncs(root any) []*ir.Func {
+	var out []*ir.Func
+	seen := map[*ir.Func]bool{}
+	add := func(f *ir.Func) {
+		if f != nil && !seen[f] {
+			seen[f] = true
+			out = append(out, f)
+		}
+	}
+	if pkg, ok := root.(*ir.Package); ok {
+		for _, f := range pkg.Funcs {
+			add(f)
+		}
+		for _, c := range pkg.Components {
+			for _, f := range c.Funcs {
+				add(f)
+			}
+		}
+	}
+	_ = walkThroughCatch(root, func(n ir.Node) error {
+		switch x := n.(type) {
+		case *ir.NodeInst:
+			for i := range x.Handlers {
+				add(x.Handlers[i].Func)
+			}
+		case *ir.Lambda:
+			add(x.Func)
+		case *ir.If:
+			if x.Catch != nil {
+				add(x.Catch.Func)
+			}
+		}
+		return nil
+	})
+	return out
+}
+
+func dropDocWrites(id string, funcs []*ir.Func) {
 	writesDoc := func(a *ir.Assign) bool {
 		sel, ok := a.Target.(*ir.Select)
 		if !ok {
 			return false
 		}
-		id, ok := sel.Operand.(*ir.Ident)
-		return ok && id.Name == doc.ID
+		op, ok := sel.Operand.(*ir.Ident)
+		return ok && op.Name == id
 	}
 	var filter func(stmts []ir.Stmt) []ir.Stmt
 	filter = func(stmts []ir.Stmt) []ir.Stmt {
@@ -3911,61 +4014,93 @@ func respellWindowWrites(pkg *ir.Package, doc *ir.NodeInst, body []ir.Stmt) {
 		}
 		return out
 	}
-	funcs := map[*ir.Func]bool{}
-	add := func(f *ir.Func) {
-		if f != nil {
-			funcs[f] = true
-		}
-	}
-	for _, f := range pkg.Funcs {
-		add(f)
-	}
-	for _, c := range pkg.Components {
-		for _, f := range c.Funcs {
-			add(f)
-		}
-	}
-	for _, root := range []any{pkg, body} {
-		_ = walkThroughCatch(root, func(n ir.Node) error {
-			switch x := n.(type) {
-			case *ir.NodeInst:
-				for i := range x.Handlers {
-					add(x.Handlers[i].Func)
-				}
-			case *ir.Lambda:
-				add(x.Func)
-			case *ir.If:
-				if x.Catch != nil {
-					add(x.Catch.Func)
-				}
-			}
-			return nil
-		})
-	}
-	for f := range funcs {
+	for _, f := range funcs {
 		f.Block = filter(f.Block)
 	}
+}
+
+// scriptOps is what the lowered node ops in the package's script say about
+// the elements they build, read in one walk per compilation: each created
+// element's tag, the parent each is appended to, every handler attached, and
+// the names a Window is created under.
+type scriptOps struct {
+	tags     map[string]string
+	parents  map[string]string
+	attached []*ir.CallStmt
+	windows  map[string]bool
+}
+
+func (s *windowShared) scriptOps(pkg *ir.Package) *scriptOps {
+	if s.ops != nil {
+		return s.ops
+	}
+	ops := &scriptOps{tags: map[string]string{}, parents: map[string]string{}, windows: map[string]bool{}}
+	s.ops = ops
+	_ = walkThroughCatch(pkg, func(n ir.Node) error {
+		switch v := n.(type) {
+		case *ir.LocalVar:
+			c, ok := v.Init.(*ir.Call)
+			if !ok || c.Func == nil || len(c.Args) == 0 {
+				return nil
+			}
+			if c.Func.Intrinsic == ir.NodeOpCreateNode {
+				if lit, ok := c.Args[0].Value.(*ir.Literal); ok {
+					ops.tags[v.Name] = lit.Value
+				}
+			}
+			if c.Func.Name == ir.NodeOpCreateNode {
+				if tag, ok := codegen.IRLiteralString(c.Args[0].Value); ok && tag == windowElement {
+					ops.windows[v.Name] = true
+				}
+			}
+		case *ir.CallStmt:
+			c := v.Call
+			if c == nil || c.Func == nil {
+				return nil
+			}
+			switch {
+			case c.Func.Intrinsic == ir.NodeOpAppendChild && len(c.Args) >= 2:
+				if child := identName(c.Args[1].Value); child != "" {
+					ops.parents[child] = identName(c.Args[0].Value)
+				}
+			case c.Func.Intrinsic == ir.NodeOpAttachHandler && len(c.Args) >= 2:
+				ops.attached = append(ops.attached, v)
+			}
+		}
+		return nil
+	})
+	return ops
+}
+
+func identName(e ir.Expr) string {
+	if id, ok := e.(*ir.Ident); ok {
+		return id.Name
+	}
+	return ""
 }
 
 // windowIDs is the names a lowering creates a Window under in a script --
 // a slot renderer, a component factory -- so the ops naming one are written
 // for the `<dialog>` it is, whichever of them is translated first.
 func (g *htmlGen) windowIDs() map[string]bool {
-	if g.windowNames != nil {
-		return g.windowNames
-	}
-	g.windowNames = map[string]bool{}
-	_ = walkThroughCatch(g.pkg, func(n ir.Node) error {
-		lv, ok := n.(*ir.LocalVar)
-		if !ok {
-			return nil
-		}
-		if call, ok := lv.Init.(*ir.Call); ok && call.Func != nil && call.Func.Name == ir.NodeOpCreateNode && len(call.Args) > 0 {
-			if tag, ok := codegen.IRLiteralString(call.Args[0].Value); ok && tag == windowElement {
-				g.windowNames[lv.Name] = true
-			}
-		}
-		return nil
-	})
-	return g.windowNames
+	return g.shared.scriptOps(g.pkg).windows
+}
+
+// copySelector is a JavaScript expression of the selector of the copy of the
+// node id whose key the JavaScript expression key holds.
+func copySelector(id, key string) string {
+	return fmt.Sprintf("'[data-sngl-id=%q][%s=\"' + %s + '\"]'", id, copyAttr, key)
+}
+
+// instanceCopySelector is copySelector for the root of an instance built at run
+// time, which carries the instance's name in instanceMark.
+func instanceCopySelector(id, key string) string {
+	return fmt.Sprintf("'[%s=%q][%s=\"' + %s + '\"]'", instanceMark, id, copyAttr, key)
+}
+
+// staticCopy is the element of els -- the listeners the page's markup put on
+// the copies of the node id -- on the copy whose key key holds: the named
+// element, or the one inside it the listener is on.
+func staticCopy(els, id, key string) string {
+	return fmt.Sprintf("%s.find((e) => document.querySelector(%s).contains(e))", els, copySelector(id, key))
 }

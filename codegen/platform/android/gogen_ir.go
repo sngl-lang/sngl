@@ -121,7 +121,7 @@ func emitGoLibIR(ctx *codegen.CodegenCtx) []byte {
 		if fn.IsTest || fn.IsMethod() || codegen.IsComputed(fn) {
 			continue
 		}
-		if fn.Return == nil || fn.Return.Kind == ir.TypeDyn {
+		if fn.Return == nil {
 			continue
 		}
 		emitGoLibIRFunc(&discard, fn, gc)
@@ -153,7 +153,7 @@ func emitGoLibIR(ctx *codegen.CodegenCtx) []byte {
 		if fn.IsTest || fn.IsMethod() || codegen.IsComputed(fn) {
 			continue
 		}
-		if fn.Return == nil || fn.Return.Kind == ir.TypeDyn {
+		if fn.Return == nil {
 			continue
 		}
 		emitGoLibIRFunc(&b, fn, gc)
@@ -171,7 +171,7 @@ func goLibConsts(pkg *ir.Package, funcs []*ir.Func) []*ir.Var {
 		if fn.IsTest || fn.IsMethod() || codegen.IsComputed(fn) {
 			continue
 		}
-		if fn.Return == nil || fn.Return.Kind == ir.TypeDyn {
+		if fn.Return == nil {
 			continue
 		}
 		_ = ir.Walk(fn, func(n ir.Node) error {

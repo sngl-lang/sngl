@@ -189,17 +189,13 @@ Any `node` will do. The compiler compiles the module and everything it imports
 itself, so TypeScript is already gone by the time node sees it — a `.ts` with
 an enum folds, and node's own type stripping never comes into it.
 
-Where the function's declared return type says what the value is, that type is
-what makes it well-typed. Where it does not — a Go `[]any`, a TypeScript
-`any[]` — a `go:` value still arrives typed, because the Go runtime can name
-the type it is: `reflect` gives the declaring package and the name in it, which
-is exactly what the `go:` importer keyed its declarations by. It writes that
-as `import("go:path/to/pkg").Type{…}`, which is not source you can write —
-only the reader the compiler points at a folded value accepts an import in
-expression position. A `js:` value cannot. A JavaScript value carries no link to the module that declared its
-type, a class name alone does not identify one, and a TypeScript interface has
-no runtime constructor at all — so an untyped `js:` element stays `dyn`, with
-the field names the source language used.
+The function's declared return type is what makes the value well-typed, and it
+has to say: a Go `[]any` or a TypeScript `any[]` names no SNGL type, so the
+importer marks a function returning one unusable rather than handing the
+program a value it could not type. A `go:` value is written back as
+`import("go:path/to/pkg").Type{…}`, the declaration the importer built for its
+runtime type, which is not source you can write — only the reader the compiler
+points at a folded value accepts an import in expression position.
 
 A folded value crosses as SNGL source, and a class can choose its own form with
 a `[Symbol.for("sngl.marshal")]()` method returning that source; for a class
@@ -214,7 +210,7 @@ The declarations a file holds are `import`, `output`, `struct`, `enum`, `unit`, 
 
 ### Primitives
 
-`bool`, `int`, `float`, `string` work as expected. `dyn` is the escape hatch for untyped values -- use it for host interop, not as a default.
+`bool`, `int`, `float`, `string` work as expected. Every value has a type a program can name: there is no type that accepts anything. A declaration names its type or takes it from its initializer, and a host type SNGL has no spelling for is an opaque native struct.
 
 ### Special types
 
@@ -378,8 +374,6 @@ Narrow list — most type changes are rejected and require an explicit cast.
 | `null`            | `option[T]`   | Assignment: `var x option[int] = null`                      |
 | `null`            | `func(...)`   | Assignment; calling it yields the return type's zero value  |
 | `func() T`        | `T`           | A zero-arg function passed as an argument, prop or `{expr}` |
-| any               | `dyn`         | `dyn` accepts any type                                      |
-| `dyn`             | any           | Escape hatch; no runtime check                              |
 
 `float` → `int` is **not** implicit — write `int(x)` to discard the fractional part. Non-zero `int` → unit is **not** implicit — use unit literals (`5s`) or multiply (`n * 1s`).
 
@@ -703,8 +697,8 @@ what a function handing its argument to something that reads fields by name
 wants: `i18n.format` takes its arguments that way. A constraint's field takes
 no default -- a constraint says what a type has, not what it starts with.
 
-`any` is only a constraint. A value whose type you say nothing about is a
-`dyn`, and `var x any` is an error. Nor is the constraint optional: a bracket
+`any` is only a constraint: `var x any` is an error, since every value has a
+type you can name. Nor is the constraint optional: a bracket
 holding a bare name after a declaration's name is the target an override is
 for, so `func firstOr[T]` is an override for a target called `T`, and the
 error says to write `T any`.
@@ -800,12 +794,12 @@ ui.window {
 }
 ```
 
-A named slot is populated by name with a nested `component`. The slot's type bounds how many: bare is any number, `option[T]` none or one. A slot may also hand its population arguments, declared in its parameter list and bound by position:
+A named slot is populated by name with a nested `component`. Its type says how often the body inserts it: bare is exactly once, `option[…]` at most once, `list[…]` any number of times -- and a node in the population reads the same way through the node it fills. A slot may also hand its population arguments, declared in its parameter list and bound by position:
 
 ```sngl
 import ui "sngl:ui"
 
-component Panel(title string, header component option[ui.node], content ...component ui.node) ui.node {
+component Panel(title string, header option[component ui.node], content ...component ui.node) ui.node {
     ui.vbox {
         header
         ui.text(value=title)
@@ -813,7 +807,7 @@ component Panel(title string, header component option[ui.node], content ...compo
     }
 }
 
-component Rows(items list[string], row component(item string, index int) ui.node) ui.node {
+component Rows(items list[string], row list[component(item string, index int) ui.node]) ui.node {
     ui.vbox {
         for var i, item = items {
             row(item, i)
@@ -1484,7 +1478,7 @@ func testTicks(t test.Test, c Ticker) {
 
 ### Subtests
 
-`t.test(name, func(t, c) { ... })` runs a subtest on its own snapshot of the state. Changes in the subtest do not affect the enclosing test:
+`t.test(name, func(t test.Test, c Box) { ... })` runs a subtest on its own snapshot of the state. Its function takes the subtest's own `Test` and the component the enclosing test took, annotated as a lambda's parameters are when nothing else says their types. Changes in the subtest do not affect the enclosing test:
 
 ```sngl
 import ui "sngl:ui"
@@ -1501,7 +1495,7 @@ ui.window {
 
 func testNesting(t test.Test, c Box) {
     c.x = 1
-    t.test("inner", func(t, c) {
+    t.test("inner", func(t test.Test, c Box) {
         c.x = 5
         t.assert(c.x == 5)
     })
@@ -1603,8 +1597,10 @@ ui.window {
     ui.vbox(style={padding=16px}) {
         ui.button(text="Open", @click { showModal = true })
         ui.modal(open=showModal, title="Settings", @close { showModal = false }) {
-            ui.text(value="Content goes here")
-            ui.button(text="Close", @click { showModal = false })
+            component content {
+                ui.text(value="Content goes here")
+                ui.button(text="Close", @click { showModal = false })
+            }
         }
     }
 }

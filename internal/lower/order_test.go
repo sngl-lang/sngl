@@ -68,6 +68,8 @@ var alwaysOn = []string{
 	"CSE",
 	// Every emitted function takes every parameter it declares.
 	"CallDefaults",
+	// A copy of a node a test indexes carries its key on every target.
+	"CopyKeys",
 	// A call through a name the inliner bound to a declared function.
 	"DirectCalls",
 	// An effect's reports are lowered on every target; one that brackets a
@@ -125,8 +127,13 @@ var alwaysOn = []string{
 	// nothing renames nothing; there is no capability to hold.
 	"ReservedNames",
 	"ReservedNodeIDs",
+	// A slot's `.empty` has no spelling on any target, spliced or not.
+	"SlotEmptyProps",
 	"SpreadOnce",
 	"StampUsage",
+	"TestInstanceReach",
+	"TestReach",
+	"TestRefOwner",
 	// A context nothing provides is folded to its default on every target: the
 	// ones that lower contexts to state, and the ones that keep them.
 	"UnprovidedContext",
@@ -230,6 +237,8 @@ var soleGate = map[string][]string{
 	// match and nothing else, so it is only ever asked alongside an instance
 	// runtime. See TestASlotChildNeedsBothCapabilities.
 	"InsertBefore": nil,
+	// Read by the test-reach repoint passNoInlineComponents makes, which is no
+	// pass of its own.
 
 	// NoReactivity reads it to choose where a reactive `if` among spans
 	// renders; it turns no pass on.

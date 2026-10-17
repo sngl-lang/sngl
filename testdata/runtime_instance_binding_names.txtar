@@ -35,7 +35,7 @@ output {
     }
 }
 
-component frame(result int, m string, part component(depth int) node) node {
+component frame(result int, m string, part list[component(depth int) node]) node {
     vbox {
         text(value="{m}")
         part(result)
@@ -98,6 +98,11 @@ type ErrorEvent struct {
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
+	*modelState
+}
+
+// modelState is what every copy of a Model shares.
+type modelState struct {
 	depth int
 	mark  string
 
@@ -106,7 +111,7 @@ type Model struct {
 
 // New creates a Model with default bind values.
 func New() Model {
-	m := Model{}
+	m := Model{&modelState{}}
 	m.depth = 2
 	m.mark = "*"
 	return m
@@ -2360,6 +2365,9 @@ body { font-family: system-ui, sans-serif; }
 </div>
 
 <script>
+window.__snglErrors = [];
+addEventListener("error", (e) => window.__snglErrors.push(String(e.message)));
+addEventListener("unhandledrejection", (e) => window.__snglErrors.push(String(e.reason?.message ?? e.reason)));
 window.__sngl_markup = Array.from(document.body.childNodes)
   .filter((n) => n.nodeName !== "SCRIPT").map((n) => n.cloneNode(true));
 window.__sngl_reset = () => {
@@ -2376,12 +2384,6 @@ window.__sngl_boot = () => {
   var state = { depth: 2, mark: "*" };
   if (typeof window !== "undefined") {
     window.__sngl_state = state;
-  }
-  function testLevels(t, c) {
-    t.assert(c.depth === 2);
-  }
-  if (typeof window !== "undefined") {
-    Object.assign(window, { testLevels });
   }
   function __cf_frame__slot6(props) {
     const __root = document.createElement("div");
@@ -3151,7 +3153,7 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:e59c453bb16cadfafc0f886e3d7c3dec
+pass sha256:547c0374403b4b2e5b3d56c5be882832
 -- run/go/fyne --
 pass sha256:0527d5d1368d047cb32c086f0753cd73
 -- run/go/gtk4 --
@@ -3159,4 +3161,4 @@ pass sha256:34e4971051a81206c3140b1e0316de52
 -- run/kotlin/android --
 pass sha256:c005defb7c3e2207e03b76a638955650
 -- run/none/html --
-pass sha256:78af8e4ad7d71513c0ffee91e8cfd65e
+pass sha256:daa28130029ec37aefce376f0042a1ba

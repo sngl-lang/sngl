@@ -1,0 +1,252 @@
+# A slot's `.empty` and its fallback, executed on every target rather than
+# read off a golden. fallback.sngl: content of several statements, a loop
+# over nothing and content holding only an effect each show the fallback and
+# answer empty, and the effect still mounts. entry.sngl: a component entry a
+# population forwards is answered by what the component inserting the
+# population populated it with, and a slot that content forwards by the
+# caller's content for it. Each test reads the answer through a prop of the
+# component asking, which a compiled test answers as the splice does.
+#
+# testdata/slot_empty_agrees_with_fallback.txtar and slot_empty_entry.txtar
+# are the code.
+
+sngl test fallback.sngl
+stdout 'PASS'
+sngl test entry.sngl
+stdout 'PASS'
+
+sngl test --platform=html fallback.sngl
+stdout 'PASS'
+sngl test --platform=html entry.sngl
+stdout 'PASS'
+
+sngl test --platform=bubbletea fallback.sngl
+stdout 'PASS'
+sngl test --platform=bubbletea entry.sngl
+stdout 'PASS'
+
+sngl test --platform=fyne fallback.sngl
+stdout 'ok'
+sngl test --platform=fyne entry.sngl
+stdout 'ok'
+
+sngl test --platform=gtk4 fallback.sngl
+stdout 'ok'
+sngl test --platform=gtk4 entry.sngl
+stdout 'ok'
+
+sngl test --platform=android --opt testRunner=robolectric fallback.sngl
+stdout 'PASS'
+sngl test --platform=android --opt testRunner=robolectric entry.sngl
+stdout 'PASS'
+
+-- fallback.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+
+component card(content ...component node) node {
+    text #asked(value=content.empty ? "empty" : "full")
+    vbox {
+        content {
+            text(value="fallback")
+        }
+    }
+}
+
+component main node {
+    var a = false
+    var b = false
+    var xs list[int] = []
+    var mounted = 0
+    card #two {
+        if a {
+            text(value="a")
+        }
+        if b {
+            text(value="b")
+        }
+    }
+    card #loop {
+        for var x = xs {
+            text(value="{x}")
+        }
+    }
+    card #lifetime {
+        effect(@mount { mounted = mounted + 1 })
+    }
+    button #show(text="show", @click {
+        b = true
+        xs = [7]
+    })
+}
+
+func testIt(t Test, c main) {
+    t.assert(c.two.asked.value == "empty")
+    t.assert(c.loop.asked.value == "empty")
+    t.assert(c.lifetime.asked.value == "empty")
+    t.assert(c.mounted == 1)
+    c.show.click()
+    t.assert(c.two.asked.value == "full")
+    t.assert(c.loop.asked.value == "full")
+}
+
+window {
+    main
+}
+-- entry.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+
+component boxed(content ...component node) node {
+    text #asked(value=content.empty ? "empty" : "full")
+    content
+}
+
+component frame(layout component(content component node) node) node {
+    layout {
+        component content {
+            text(value="inner")
+        }
+    }
+}
+
+component framed(inner ...component node, layout component(content component node) node) node {
+    layout {
+        component content {
+            inner
+        }
+    }
+}
+
+component main node {
+    var shown = false
+    frame #f {
+        component layout(content) {
+            boxed #direct {
+                content
+            }
+        }
+    }
+    framed #g {
+        component layout(content) {
+            boxed #forwarded {
+                content
+            }
+        }
+        if shown {
+            text(value="shown")
+        }
+    }
+    button #show(text="show", @click { shown = true })
+}
+
+func testIt(t Test, c main) {
+    t.assert(c.f.direct.asked.value == "full")
+    t.assert(c.g.forwarded.asked.value == "empty")
+    c.show.click()
+    t.assert(c.g.forwarded.asked.value == "full")
+}
+
+window {
+    main
+}
+-- testrun/android/kotlin/entry.sngl/main/1 --
+sha256:98ef449ae4df0221bc8e59c2afad92ae
+{
+  "results": [
+    {
+      "Desc": "It",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/android/kotlin/fallback.sngl/main/1 --
+sha256:aa324bec025c82801240be485d29b7aa
+{
+  "results": [
+    {
+      "Desc": "It",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/entry.sngl/main/1 --
+sha256:107c1321163d1cce38a212cefc1a8d47
+{
+  "results": [
+    {
+      "Desc": "It",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/fallback.sngl/main/1 --
+sha256:1a3f066360a6de43cb66caea5572273e
+{
+  "results": [
+    {
+      "Desc": "It",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/entry.sngl/main/1 --
+sha256:270ef4e104a22b5fbcfbc8723940bf54
+{
+  "results": [
+    {
+      "Desc": "It",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/fallback.sngl/main/1 --
+sha256:0be0368136693d0076b072c6f3f98cd3
+{
+  "results": [
+    {
+      "Desc": "It",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/entry.sngl/main/1 --
+sha256:277ab8cc71b5f25116dfd745c1153f8a
+{
+  "results": [
+    {
+      "Desc": "It",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/fallback.sngl/main/1 --
+sha256:cc1f3c4c65960db9d7c1518850cccaa0
+{
+  "results": [
+    {
+      "Desc": "It",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/entry.sngl/main/1 --
+sha256:908e9753257cd46ccfb4b3966dec8a31
+{
+  "results": [
+    {
+      "Desc": "It",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/fallback.sngl/main/1 --
+sha256:c95fc04dc73b985c9402c7788a6dbd39
+{
+  "results": [
+    {
+      "Desc": "It",
+      "Passed": true
+    }
+  ]
+}

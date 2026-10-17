@@ -21,10 +21,10 @@ const recursiveTreeSrc = `
 import . "sngl:ui"
 struct TreeNode {
     value int = 0
-    left dyn = null
-    right dyn = null
+    left option[TreeNode] = null
+    right option[TreeNode] = null
 }
-component TreeView(node dyn = null) node {
+component TreeView(node TreeNode) node {
     vbox(style={paddingLeft=12px, gap=2px}) {
         text(value=string(node.value))
         if node.left != null { TreeView(node=node.left) }
@@ -100,7 +100,6 @@ func renderTreeViewBody(t *testing.T, src string) string {
 // is `c.__nX` on a record the frame allocated for itself, or a bare local.
 // `m.__nX` is the one spelling that is not.
 func TestNodeEscape_RecursiveRenderUsesLocals(t *testing.T) {
-	skipWithoutGIR(t)
 	model := generateGTK4Model(t, recursiveTreeSrc)
 	body := renderTreeViewBody(t, model)
 

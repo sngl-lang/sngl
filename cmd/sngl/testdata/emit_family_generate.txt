@@ -113,11 +113,11 @@ component block[go.language] {
     })
 }
 
-component text[go.language] {
+component text[go.language](full) {
     gen.node(value=Entry{text=full})
 }
 
-component group[go.language] {
+component group[go.language](name) {
     gen.node(value=Entry{text=name})
 }
 -- up.sngl --
@@ -160,7 +160,7 @@ component loud[go.language] {
     })
 }
 
-component word[go.language] {
+component word[go.language](text) {
     gen.node(value=text)
 }
 -- raise.sngl --

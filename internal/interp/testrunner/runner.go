@@ -199,6 +199,14 @@ type componentValue struct {
 	// settleErr holds the first effect failure, surfaced by the next read.
 	settleErr error
 
+	// by is the instance this one was read off as a ref, whose body wrote the
+	// populations this one was handed; nil for the instance a test was given.
+	by *componentValue
+	// inst is the node that rendered this one, nil for the instance a test was
+	// given, and site the mounted node it was read off.
+	inst *ir.NodeInst
+	site *interp.Node
+
 	// fx is the running set of lifetime brackets, on the root wrapper only:
 	// the mount walk descends through components, so one set covers every
 	// effect in the tree and a child wrapper has nothing of its own to settle.

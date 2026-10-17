@@ -22,6 +22,11 @@ import (
 func (env *Env) RunAssert(expr ir.Expr) (*AssertError, error) {
 	switch e := expr.(type) {
 	case *ir.Binary:
+		// A copy's null test is answered whole: its operand alone may index
+		// past the copies rendered now.
+		if _, path, _, ok := ir.NullTestedCopy(e); ok && len(path) > 0 {
+			return env.assertDefault(expr)
+		}
 		switch e.Op {
 		case ast.BinEq, ast.BinNeq, ast.BinLt, ast.BinLte, ast.BinGt, ast.BinGte:
 			return env.assertCompare(expr, e)
@@ -226,9 +231,8 @@ func binOpSym(op ast.BinaryOp) string {
 //   - receiver-form: Func == nil with Receiver carrying the container value
 //     and the method name reachable via methodNameFromCall; Args=[needle]
 //
-// Receiver-typed dispatch is decided at runtime in assertContains based on
-// the evaluated container — the checker leaves component-field receivers
-// typed Dyn, so a static type guard would miss the most common case.
+// Receiver-typed dispatch is decided at runtime in assertContains, from the
+// evaluated container.
 func containsCallShape(c *ir.Call) (container, needle ir.Expr, ok bool) {
 	if c.Func != nil && c.Func.Name == "contains" &&
 		(c.Func.RecvName() == "list" || c.Func.RecvName() == "string") &&

@@ -1,0 +1,25 @@
+// A mark's argument list binds as a call's does, and refuses what a call's
+// refuses, each at the argument.
+import macro "sngl:macro"
+
+#[macro.foreign("js:x", nope="Y")] // ERROR(check) "unknown parameter \"nope\""
+struct A {}
+
+#[macro.foreign("js:x", path="js:y", name="B")] // ERROR(check) "parameter \"path\" already provided"
+struct B {}
+
+#[macro.foreign(path="js:x", "C")] // ERROR(check) "positional argument after named argument"
+struct C {}
+
+#[macro.foreign("js:x", "d", async, flags=[async])] // ERROR(check) "parameter \"flags\" already provided"
+func d()
+
+#[macro.foreign("js:x", "e", flags=async)] // ERROR(check) "expected a list of identifiers"
+func e()
+
+// One positional argument is the path, so a name alone is written by name.
+struct F {
+    #[macro.foreign("Title")]
+    title string = ""
+}
+// ERROR(check:22) "write name=\"Title\""

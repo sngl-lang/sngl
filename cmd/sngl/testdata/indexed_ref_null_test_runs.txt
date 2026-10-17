@@ -1,0 +1,148 @@
+# One copy of a looped node is null-tested on every target a test can execute
+# on: testdata/indexed_ref_null_test.txtar is the code. The second test moves
+# which iteration the `if` leaves out, so a copy that was rendered is not and
+# one that was not is.
+
+sngl test --platform=none app.sngl
+stdout 'ok   2 tests, 0 failures'
+
+sngl test --platform=html app.sngl
+stdout 'ok   2 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout 'ok   2 tests, 0 failures'
+
+sngl test --platform=fyne --language=go app.sngl
+stdout 'ok   2 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go app.sngl
+stdout 'ok   2 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin app.sngl
+stdout 'ok   2 tests, 0 failures'
+
+-- app.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+
+output {
+    go {
+        bubbletea
+        fyne
+        gtk4
+    }
+    kotlin {
+        android
+    }
+    none {
+        html
+    }
+}
+
+component main node {
+    var items = ["a", "b", "c"]
+    var skip = "a"
+    var log = ""
+    vbox {
+        button #change(text="skip b", @click { skip = "b" })
+        for var it = items {
+            if it != skip {
+                button #only(text=it, @click { log = it })
+                checkbox #tick(label=it, @change(on) { log = "{it} {on}" })
+            }
+        }
+        text(value=log)
+    }
+}
+
+func testOneCopyIsRendered(t Test, c main) {
+    t.assert(c.only[0] == null)
+    t.assert(c.tick[0] == null)
+    if c.only[1] != null {
+        c.only[1].click()
+    }
+    t.assert(c.log == "b")
+    t.assert(c.tick[2] != null)
+}
+
+func testAfterTheBranchChanges(t Test, c main) {
+    c.change.click()
+    t.assert(c.only[0] != null)
+    t.assert(c.only[1] == null)
+    t.assert(c.tick[1] == null)
+    t.assert(c.tick[0] != null)
+}
+
+window {
+    main
+}
+-- testrun/android/kotlin/app.sngl/main/1 --
+sha256:385d64cb6220394f9f8b8d5e58f81b34
+{
+  "results": [
+    {
+      "Desc": "AfterTheBranchChanges",
+      "Passed": true
+    },
+    {
+      "Desc": "OneCopyIsRendered",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/main/1 --
+sha256:040ad977e583e4e478e02fa18c1bd0d5
+{
+  "results": [
+    {
+      "Desc": "AfterTheBranchChanges",
+      "Passed": true
+    },
+    {
+      "Desc": "OneCopyIsRendered",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/main/1 --
+sha256:a644c84704248e27f43171e4ebb70e33
+{
+  "results": [
+    {
+      "Desc": "AfterTheBranchChanges",
+      "Passed": true
+    },
+    {
+      "Desc": "OneCopyIsRendered",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/main/1 --
+sha256:1a5b6ac1724642af5d3ebdb85a0978c6
+{
+  "results": [
+    {
+      "Desc": "AfterTheBranchChanges",
+      "Passed": true
+    },
+    {
+      "Desc": "OneCopyIsRendered",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/main/1 --
+sha256:b9c5862ea80fc01f8433db8cab6f29ab
+{
+  "results": [
+    {
+      "Desc": "AfterTheBranchChanges",
+      "Passed": true
+    },
+    {
+      "Desc": "OneCopyIsRendered",
+      "Passed": true
+    }
+  ]
+}

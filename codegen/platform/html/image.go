@@ -118,7 +118,7 @@ func (t *htmlTranslator) sourcePropAssign(node ir.Expr, prop string, value ir.Ex
 	}
 	switch {
 	case tag == imageURLElement && prop == ir.ImageSourceURL:
-		return []ir.Stmt{&ir.Assign{Target: &ir.Select{Operand: node, Field: "src", Type: ir.TypDyn}, Op: ast.AssignSet, Value: value}}, true
+		return []ir.Stmt{&ir.Assign{Target: &ir.Select{Operand: node, Field: "src", Type: ir.TypString}, Op: ast.AssignSet, Value: value}}, true
 	case tag == imageDrawingElement && (prop == "width" || prop == "height"):
 		return nil, true
 	}

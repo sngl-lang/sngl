@@ -86,7 +86,7 @@ component block[go.language] {
     gen.emit(render=encode)
 }
 
-component text[go.language] {
+component text[go.language](full) {
     gen.node(value=full)
 }
 
@@ -132,7 +132,7 @@ component block[go.language] {
     gen.emit(render=encode)
 }
 
-component text[go.language] {
+component text[go.language](full) {
     gen.node(value=full)
 }
 
@@ -167,7 +167,7 @@ component block[go.language] {
     gen.emit(file="blocks.txt")
 }
 
-component text[go.language] {
+component text[go.language](full) {
     gen.node(open="{full}\n")
 }
 
@@ -202,7 +202,7 @@ component block[go.language] {
     gen.emit(file="blocks.txt")
 }
 
-component text[go.language] {
+component text[go.language](full) {
     gen.node(open="{full}\n")
 }
 
@@ -243,7 +243,7 @@ component block[go.language] {
     gen.emit(file="blocks.txt")
 }
 
-component text[go.language] {
+component text[go.language](full) {
     gen.node(open="{full}\n")
 }
 
@@ -277,7 +277,7 @@ component block[go.language] {
     gen.emit(file="blocks.txt")
 }
 
-component text[go.language] {
+component text[go.language](full) {
     gen.node(open="{full}\n")
 }
 
@@ -312,7 +312,7 @@ component block[go.language] {
     gen.emit(file="blocks.txt")
 }
 
-component text[go.language] {
+component text[go.language](full) {
     gen.node(open="{full}\n")
 }
 
@@ -348,7 +348,7 @@ component block[go.language] {
     gen.emit(file="blocks.txt")
 }
 
-component text[go.language] {
+component text[go.language](full) {
     gen.node(open="{full}\n")
 }
 
@@ -387,7 +387,7 @@ component block[go.language] {
     gen.emit(file="blocks.txt")
 }
 
-component text[go.language] {
+component text[go.language](full) {
     gen.node(open="{full}\n")
 }
 
@@ -423,7 +423,7 @@ component block[go.language] {
     gen.emit(file="blocks.txt")
 }
 
-component text[go.language] {
+component text[go.language](full) {
     gen.node(open="{full}\n")
 }
 
@@ -458,7 +458,7 @@ component block[go.language] {
     gen.emit(file="blocks.txt")
 }
 
-component text[go.language] {
+component text[go.language](full) {
     gen.node(open="{full}\n")
 }
 
@@ -500,7 +500,7 @@ component block[go.language] {
     gen.emit(file="blocks.txt")
 }
 
-component text[go.language] {
+component text[go.language](full) {
     gen.node(open="{full}\n")
 }
 

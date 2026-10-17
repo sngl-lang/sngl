@@ -1,0 +1,59 @@
+// `name.empty` asks whether what the call site supplied for a slot renders
+// nothing, so a body can put something of its own in the content's place
+// rather than inside it -- what an avatar does with its initials, which are
+// no image source and so cannot be the fallback of the image's. It is
+// answered where the body is spliced, from the content itself: none at all,
+// an `if` by its condition, a forward by the forwarded slot's own answer. So
+// it stays as reactive as the content: under `if shown` it is `!shown`.
+
+import . "sngl:ui"
+import . "sngl:test"
+
+component boxed(content option[component option[node]]) node {
+    if content.empty {
+        text(value="nothing")
+    } else {
+        vbox {
+            content
+        }
+    }
+}
+
+component forward(content option[component option[node]]) node {
+    boxed {
+        component content {
+            content
+        }
+    }
+}
+
+component main node {
+    var shown = false
+    boxed #none
+    boxed #some {
+        component content {
+            if shown {
+                text(value="shown")
+            }
+        }
+    }
+    forward #fwd {
+        component content {
+            text(value="forwarded")
+        }
+    }
+    button #show(text="show", @click { shown = true })
+}
+
+func testEmptyWhereNothingRenders(t Test, c main) {
+    t.snapshot("hidden")
+}
+
+func testTheAnswerFollowsTheContent(t Test, c main) {
+    c.show.click()
+    t.snapshot("shown")
+}
+
+window {
+    main
+}

@@ -200,11 +200,11 @@ func buildModule(dir string, out string, goVersion string, goModExtra string) st
 // and a Go identifier belong — and which a package can now use on its own
 // declarations, since a mark resolves through the scope like any other name.
 //
-// One argument is the identifier alone. That is all a struct *field* can say:
-// a field has no package of its own, and what it records is the Go spelling of
-// a name SNGL writes differently — `#[go.native("ID")] id int`. The two-argument
-// form is everything else, where the path is what the call site has to import.
-func native(path string, name string = "", flags list[NativeFlag] = []) ir.Macro
+// A struct *field* names the identifier alone: a field has no package of its
+// own, and what it records is the Go spelling of a name SNGL writes
+// differently — `#[go.native(name="ID")] id int`. Everything else names a
+// path too, which is what the call site has to import.
+func native(path string = "", name string = "", flags list[NativeFlag] = []) ir.Macro
 
 // Says a call to this function blocks, so a target that draws on one thread
 // must not make the call there.
@@ -402,7 +402,7 @@ func applyStyle(ctx DrawContext, style shapes.Style) {
 // alpha, so a fill-only shape does not stroke and a line does not read `fill`
 // at all.
 
-const component shapes.rect[language] {
+const component shapes.rect[language](x, y, w, h, style) {
     draw(@draw(e) {
         e.ctx.save()
         applyStyle(e.ctx, style)
@@ -411,7 +411,7 @@ const component shapes.rect[language] {
     })
 }
 
-const component shapes.circle[language] {
+const component shapes.circle[language](cx, cy, r, style) {
     draw(@draw(e) {
         e.ctx.save()
         applyStyle(e.ctx, style)
@@ -420,7 +420,7 @@ const component shapes.circle[language] {
     })
 }
 
-const component shapes.ellipse[language] {
+const component shapes.ellipse[language](cx, cy, rx, ry, style) {
     draw(@draw(e) {
         e.ctx.save()
         applyStyle(e.ctx, style)
@@ -429,7 +429,7 @@ const component shapes.ellipse[language] {
     })
 }
 
-const component shapes.line[language] {
+const component shapes.line[language](x1, y1, x2, y2, style) {
     draw(@draw(e) {
         e.ctx.save()
         applyStyle(e.ctx, style)
@@ -438,7 +438,7 @@ const component shapes.line[language] {
     })
 }
 
-const component shapes.path[language] {
+const component shapes.path[language](style, steps) {
     draw(@draw(e) {
         e.ctx.save()
         applyStyle(e.ctx, style)
@@ -464,7 +464,7 @@ const component shapes.path[language] {
     })
 }
 
-const component shapes.canvasText[language] {
+const component shapes.canvasText[language](x, y, content, style) {
     draw(@draw(e) {
         e.ctx.save()
         applyStyle(e.ctx, style)
@@ -473,7 +473,7 @@ const component shapes.canvasText[language] {
     })
 }
 
-const component shapes.canvasImage[language] {
+const component shapes.canvasImage[language](x, y, w, h, src) {
     drawSource(
         @url(e) {
             e.ctx.save()

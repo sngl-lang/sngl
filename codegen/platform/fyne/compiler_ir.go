@@ -83,7 +83,7 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 				// The __root sentinel is built through a native call so that
 				// rendering this init registers the container import.
 				initCall := &ir.Call{
-					Type:     ir.TypDyn,
+					Type:     ir.NativeGoPointerOf("fyne.Container"),
 					Receiver: &ir.Ident{Name: "container"},
 					Func:     &ir.Func{Foreign: ir.Foreign{Path: "fyne.io/fyne/v2/container", Name: "container.NewVBox"}},
 				}
@@ -178,12 +178,15 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 	// fyne builds a non-inlinable component as a record, so a CreateComponent
 	// renders as a call to that record's ctor.
 	gc.InstanceRecords = true
+	gc.InstanceReads = codegen.InstanceReads(ctx.Pkg)
 
 	gc.RequireImport("fyne.io/fyne/v2")
 
 	var buildBuf strings.Builder
 	var widgetFields []irWidgetField
 	var eventInvokers []fyneEventInvoker
+	presentIDs, keyedPresent := codegen.NullTestedRefs(ctx.Pkg)
+	presenceFields := map[string]string{}
 	var entrySync []entrySyncRec
 	widgetImports := map[string]bool{}
 	addWidgetImport := func(p string) { widgetImports[p] = true }
@@ -230,13 +233,13 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 	}
 	var appChildren []string
 	// The ids a test drives one copy of, whose copies the Model lists.
-	indexed := codegen.IndexedTriggerIDs(ctx.Pkg)
+	indexed := ir.IndexedRefIDs(ctx.Pkg)
 	recordInvoker := func(inv fyneEventInvoker) { eventInvokers = append(eventInvokers, inv) }
 	if len(bodyStmts) > 0 {
 		tr := newFyneTranslator(gc, nodeSpecs, func(name, goType string) {
 			widgetFields = append(widgetFields, irWidgetField{name: name, goType: goType})
 		}, addWidgetImport, failProp).withLocalRefs(mainScopeLocalRefs(ctx)).
-			withInvokerSink(recordInvoker).withIndexed(indexed, nil)
+			withInvokerSink(recordInvoker).withIndexed(indexed, presentIDs, nil)
 		tr.canvasByID, tr.canvasByNode = canvasByID, canvasByNode
 		body := codegen.WalkLowered(context.Background(), bodyStmts, tr)
 		for _, stmt := range body {
@@ -285,7 +288,8 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 				recordInvoker,
 				func(name, goType string) {
 					widgetFields = append(widgetFields, irWidgetField{name: name, goType: goType})
-				}, indexed)
+				},
+				indexed, presentIDs, func(id, field string) { presenceFields[id] = field })
 			componentCodes = append(componentCodes, ib.String())
 			continue
 		}
@@ -358,7 +362,7 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 			continue
 		}
 		if fn.Synthesized {
-			emitIRSlotFunc(&funcBuf, fn, gc, &widgetFields, nodeSpecs, addWidgetImport, canvasByNode, failProp, indexed, recordInvoker)
+			emitIRSlotFunc(&funcBuf, fn, gc, &widgetFields, nodeSpecs, addWidgetImport, canvasByNode, failProp, indexed, presentIDs, recordInvoker)
 			continue
 		}
 		emitIRFyneModelMethod(&funcBuf, fn, gc, &widgetFields, nodeSpecs, addWidgetImport, canvasByNode, failProp)
@@ -382,6 +386,16 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 	}
 
 	emitFyneEventInvokers(&funcBuf, eventInvokers)
+	emitCopyRegistries(&funcBuf, widgetFields)
+	if keyedInstances(ctx.Pkg) {
+		emitUnlistInstance(&funcBuf, widgetFields, len(gc.Ctx.InstanceRootIDs()) > 0)
+	}
+	emitKeyedPresenceChecks(&funcBuf, keyedPresent, widgetFields)
+	emitFynePresenceChecks(&funcBuf, ctx.Pkg, presentIDs, presenceFields, widgetFields)
+	for _, h := range golang.InstanceHolds(gc.InstanceReads) {
+		widgetFields = append(widgetFields, irWidgetField{name: h[0], goType: h[1]})
+	}
+	golang.EmitInstanceReads(&funcBuf, gc.InstanceReads, instanceMethodName, instanceVarGoType)
 
 	td, err := newIRTemplateData(info, cfg, widgetFields, entrySync, widgetImports, funcBuf.String(), gc, ctx, lang)
 	if hasCanvas {
@@ -861,7 +875,7 @@ func topRef(tr *fyneTranslator, name string) ir.Expr {
 		return tr.themeOverrideRef(name)
 	}
 	if tr.isLocalRef(name) {
-		return localElementRef(name)
+		return tr.localElementRef(name)
 	}
 	return elementRef(name)
 }
@@ -1207,11 +1221,11 @@ func emitIRPromotedHandler(b *strings.Builder, fn *ir.Func, gc *golang.GoIRConte
 // A widget a render func builds is one a test drives as much as one BuildUI
 // builds, so the func records its invokers too; one of an id a test indexes
 // is listed as it is built (withIndexed).
-func emitIRSlotFunc(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext, widgetFields *[]irWidgetField, specs map[string]*fyneSpec, importSink func(string), canvasByNode map[*ir.NodeInst]*canvasMeta, failSink func(error), indexed map[string]bool, invokerSink func(fyneEventInvoker)) {
+func emitIRSlotFunc(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext, widgetFields *[]irWidgetField, specs map[string]*fyneSpec, importSink func(string), canvasByNode map[*ir.NodeInst]*canvasMeta, failSink func(error), indexed, present map[string]bool, invokerSink func(fyneEventInvoker)) {
 	tr := newFyneTranslator(gc, specs, func(name, goType string) {
 		*widgetFields = append(*widgetFields, irWidgetField{name: name, goType: goType})
 	}, importSink, failSink).withLocalRefs(fn.Lowered.LocalRefs).
-		withInvokerSink(invokerSink).withIndexed(indexed, fn.Block)
+		withInvokerSink(invokerSink).withIndexed(indexed, present, fn.Block)
 	tr.canvasByNode = canvasByNode
 
 	bodyStmts := codegen.WalkLowered(context.Background(), fn.Block, tr)

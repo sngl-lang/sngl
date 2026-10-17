@@ -62,6 +62,11 @@ import (
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
+	*modelState
+}
+
+// modelState is what every copy of a Model shares.
+type modelState struct {
 	got       string
 	__focusID int
 
@@ -70,7 +75,7 @@ type Model struct {
 
 // New creates a Model with default bind values.
 func New() Model {
-	m := Model{}
+	m := Model{&modelState{}}
 	m.got = ""
 	m.__focusID = 0
 	return m
@@ -339,7 +344,7 @@ package test.sngl.app
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
-import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performTextReplacement
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -359,7 +364,7 @@ class MainScreenTest {
         val c = MainScreenState()
         @Suppress("UNUSED_VARIABLE") val composeTestRule = composeRule
         composeRule.setContent { MainScreen(c) }
-        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("run")).performClick(); composeTestRule.waitForIdle()
+        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("run")).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick); composeTestRule.waitForIdle()
         org.junit.Assert.assertTrue("(c.got == \"5:2\")", (c.got == "5:2"))
     }
 
@@ -384,6 +389,9 @@ body { font-family: system-ui, sans-serif; }
 </span>
 
 <script>
+window.__snglErrors = [];
+addEventListener("error", (e) => window.__snglErrors.push(String(e.message)));
+addEventListener("unhandledrejection", (e) => window.__snglErrors.push(String(e.reason?.message ?? e.reason)));
 window.__sngl_markup = Array.from(document.body.childNodes)
   .filter((n) => n.nodeName !== "SCRIPT").map((n) => n.cloneNode(true));
 window.__sngl_reset = () => {
@@ -402,13 +410,6 @@ window.__sngl_boot = () => {
   if (typeof window !== "undefined") {
     window.__sngl_state = state;
   }
-  function testFuncValueReadsProvider(t, c) {
-    c.run();
-    t.assert(c.got === "5:2");
-  }
-  if (typeof window !== "undefined") {
-    Object.assign(window, { testFuncValueReadsProvider });
-  }
   var $0 = document.getElementById("$0");
   var __n0 = document.querySelector('[data-sngl-id="__n0"]');
   $0.addEventListener("click", function() {
@@ -425,10 +426,10 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:4fe08cb382ad0a566c3859851a0a7be9
+pass sha256:a794440eee5fb18b5994459276244c95
 -- run/go/fyne --
 pass sha256:2044f3aac50b00cba81ecc6270c8d745
 -- run/kotlin/android --
-pass sha256:e5cd54306bec1bebff12b670860cc6e3
+pass sha256:6544d40a244aabf0a402038b28bd0f05
 -- run/none/html --
-pass sha256:a2f3f29da4e11898d0d2b3f9bc3639dc
+pass sha256:44e373f389e2580df313a94fa458a135

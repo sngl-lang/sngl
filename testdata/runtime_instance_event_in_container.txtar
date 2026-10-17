@@ -80,6 +80,11 @@ type ErrorEvent struct {
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
+	*modelState
+}
+
+// modelState is what every copy of a Model shares.
+type modelState struct {
 	items               []int
 	total               int
 	hits__inst0         map[string]int
@@ -95,7 +100,7 @@ type Model struct {
 
 // New creates a Model with default bind values.
 func New() Model {
-	m := Model{}
+	m := Model{&modelState{}}
 	m.items = []int{1, 2}
 	m.total = 0
 	m.hits__inst0 = map[string]int{}
@@ -868,6 +873,9 @@ body { font-family: system-ui, sans-serif; }
 </div>
 
 <script>
+window.__snglErrors = [];
+addEventListener("error", (e) => window.__snglErrors.push(String(e.message)));
+addEventListener("unhandledrejection", (e) => window.__snglErrors.push(String(e.reason?.message ?? e.reason)));
 window.__sngl_markup = Array.from(document.body.childNodes)
   .filter((n) => n.nodeName !== "SCRIPT").map((n) => n.cloneNode(true));
 window.__sngl_reset = () => {
@@ -884,12 +892,6 @@ window.__sngl_boot = () => {
   var state = { items: [1, 2], total: 0 };
   if (typeof window !== "undefined") {
     window.__sngl_state = state;
-  }
-  function testEffectReportsThroughItsEvent(t, c) {
-    t.assert(c.total === 3);
-  }
-  if (typeof window !== "undefined") {
-    Object.assign(window, { testEffectReportsThroughItsEvent });
   }
   function __cf_Card(props) {
     const __root = document.createElement("div");
@@ -1034,7 +1036,7 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:175364fe25b471fad9147eceb8c89cfb
+pass sha256:a5f1d6365c9c5dc529ae31c1ad72e1ac
 -- run/go/fyne --
 pass sha256:c154d12795a2675de4b8177f8b46ea6f
 -- run/go/gtk4 --
@@ -1042,4 +1044,4 @@ pass sha256:9c922417ebf64545a91bc551ba6f624e
 -- run/kotlin/android --
 pass sha256:02559815f0ba5a01414706f295640298
 -- run/none/html --
-pass sha256:7cfb974a1b89c786332992283815996b
+pass sha256:8406f9bd545aebb9db957a84e3906cd8

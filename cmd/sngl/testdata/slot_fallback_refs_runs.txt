@@ -1,0 +1,157 @@
+# A named slot inserted exactly once may be left unfilled, and its insertion's
+# block renders instead. The block's nodes are the callee's, reached through
+# the instance, and read as options: present where the call site filled
+# nothing, absent where it filled the slot -- a node a splice dropped is null
+# on every target, and the interpreter reads a child's refs off the tree its
+# call site mounted.
+
+sngl test --platform=none app.sngl
+stdout 'ok   2 tests, 0 failures'
+
+sngl test --platform=html app.sngl
+stdout 'ok   2 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout 'ok   2 tests, 0 failures'
+
+sngl test --platform=fyne --language=go app.sngl
+stdout 'ok   2 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go app.sngl
+stdout 'ok   2 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin app.sngl
+stdout 'ok   2 tests, 0 failures'
+
+-- app.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+
+component card(head component() node) node {
+    vbox {
+        head {
+            text #dflt(value="Untitled")
+        }
+    }
+}
+
+component filled node {
+    card #c {
+        component head {
+            text #title(value="Hi")
+        }
+    }
+}
+
+component empty node {
+    card #c
+}
+
+func testFilled(t Test, x filled) {
+    t.assert(x.c.title.value == "Hi")
+    t.assert(x.c.dflt == null)
+}
+
+func testEmpty(t Test, x empty) {
+    t.assert(x.c.dflt != null)
+}
+-- testrun/android/kotlin/app.sngl/empty/1 --
+sha256:988d30ffef26c8912bc50af79b904747
+{
+  "results": [
+    {
+      "Desc": "Empty",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/android/kotlin/app.sngl/filled/1 --
+sha256:dce1caf9036b584cefb00f44fde3533f
+{
+  "results": [
+    {
+      "Desc": "Filled",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/empty/1 --
+sha256:30cae9287977daa5454e97ce3978dffb
+{
+  "results": [
+    {
+      "Desc": "Empty",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/filled/1 --
+sha256:1ab38648a95683828325de1baef08419
+{
+  "results": [
+    {
+      "Desc": "Filled",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/empty/1 --
+sha256:d67cfae34884413d49d4989d0f7ccf45
+{
+  "results": [
+    {
+      "Desc": "Empty",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/filled/1 --
+sha256:d8c4ba5bdb69809b87badf4faab104da
+{
+  "results": [
+    {
+      "Desc": "Filled",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/empty/1 --
+sha256:afd091f2fa113283edf40dd9ac5a7293
+{
+  "results": [
+    {
+      "Desc": "Empty",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/filled/1 --
+sha256:cd42d333c352f0d0bc8602191e81e76d
+{
+  "results": [
+    {
+      "Desc": "Filled",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/empty/1 --
+sha256:2888fffef2a851ee3963cbf3620aa9cb
+{
+  "results": [
+    {
+      "Desc": "Empty",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/filled/1 --
+sha256:7ea7a4059eabc073ae47e1e05beeb6cd
+{
+  "results": [
+    {
+      "Desc": "Filled",
+      "Passed": true
+    }
+  ]
+}

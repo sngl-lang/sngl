@@ -59,6 +59,11 @@ type __anon_v_853006 struct {
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
+	*modelState
+}
+
+// modelState is what every copy of a Model shares.
+type modelState struct {
 	mine           __anon_v_853006
 	theirs         __anon_v_853006
 	visible__inst0 bool
@@ -69,7 +74,7 @@ type Model struct {
 
 // New creates a Model with default bind values.
 func New() Model {
-	m := Model{}
+	m := Model{&modelState{}}
 	m.mine = __anon_v_853006{V: 2}
 	m.theirs = __anon_v_853006{V: 1}
 	m.visible__inst0 = true
@@ -333,7 +338,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:1c26d30e921e1b2ac49e2b489b034a4d
+pass sha256:78f18ec5cff70d1fddd1bb0660c1cb40
 -- run/kotlin/android --
 pass sha256:1b67fa8ea954c1249ac3f62cb40a629c
 -- run/none/html --

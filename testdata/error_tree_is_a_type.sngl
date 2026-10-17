@@ -2,13 +2,20 @@
 
 import . "sngl:ui"
 import build "sngl:build"
+import family "sngl:family"
 
 component block build.family
 
 component inline build.family
 
-component document(children ...component block) node {}
-component para(children ...component inline) block {}
+component document(children ...component block) node {
+    #[family.crosses]
+    children
+}
+component para(children ...component inline) block {
+    #[family.crosses]
+    children
+}
 component bold(weight int) inline {}
 
 component main node {

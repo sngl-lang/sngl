@@ -147,6 +147,8 @@ func (ts *Timers) FireDue(_ *Env) (int, error) {
 		if err := e.Env.ExecBlock(e.Tick.Block); err != nil {
 			return fired, err
 		}
+		// A timer in a loop runs in the iteration's snapshot, as a handler does.
+		e.Env.writeBack()
 		fired++
 	}
 	return fired, nil

@@ -66,13 +66,20 @@ type Package struct {
 	// only ever a component.
 	RootComponent string `json:",omitempty"`
 	Contexts      []*Context
-	Symbols       *SymbolTable
-	Overlay       Overlay `json:"-"`
+	// Symbols is the scope chain the package's names resolve through, an
+	// index over declarations a dump writes where they stand.
+	Symbols *SymbolTable `json:"-"`
+	Overlay Overlay      `json:"-"`
 	// Targets are the overrides the library packages a check loaded declare
 	// of declarations they do not own -- a target package's of sngl:ui --
 	// as the check found them. Each package owns its overrides, so a build
 	// installs these on its copy beside the program's own (InstallOverlay).
 	Targets Overlay `json:"-"`
+	// Overridden is each declaration of a build's copy (ClonePackageFor) that
+	// carries an override for the target OverriddenFor names, in the order
+	// the copy was made. Specialization swaps these and asks no symbol table.
+	Overridden    []Symbol `json:"-"`
+	OverriddenFor string   `json:"-"`
 	// Frozen says the check that loaded the package has ended (Freeze).
 	Frozen bool `json:"-"`
 	// Origin is where a package the program reads by path came from: the
@@ -431,11 +438,13 @@ func (p *Package) UsesDrawShapes() bool { return p.usesFamilyRole(BuiltinFamilyS
 // Import records a resolved import.
 type Import struct {
 	AST     *ast.Import
-	Path    string        // local import path (e.g., "widgets", "go:net/http")
-	Alias   string        // effective namespace name
-	Replace string        // replacement URL (RHS of =>), empty if not a replace
-	Pkg     *Package      // resolved SNGL package (nil for native)
-	Native  *NativeImport // non-nil for scheme imports
+	Path    string // local import path (e.g., "widgets", "go:net/http")
+	Alias   string // effective namespace name
+	Replace string // replacement URL (RHS of =>), empty if not a replace
+	// Pkg is the resolved SNGL package, nil for a native one. Another
+	// package, which a dump of this one names by Path rather than writing.
+	Pkg    *Package      `json:"-"`
+	Native *NativeImport // non-nil for scheme imports
 }
 
 // PackageOrigin is where a package came from.
@@ -845,11 +854,12 @@ func receiverName(t *Type) string {
 	return ""
 }
 
-// ReceiverNamed is a receiver for a function a pass synthesizes on a
-// declaration it holds no handle on: a namespace stand-in carrying the name,
-// which is all a backend reads off one.
+// ReceiverNamed stands in for the receiver of a method whose name resolves to
+// no type -- reported where the method is attached, or a probe asking only
+// what the method is called: invalid, carrying the name, which is all a
+// reader takes off one.
 func ReceiverNamed(name string) *Type {
-	return &Type{Kind: TypeDyn, Decl: &Namespace{Name: name}}
+	return &Type{Kind: TypeInvalid, Decl: &Namespace{Name: name}}
 }
 
 func (f *Func) IsExported() bool {
@@ -895,6 +905,10 @@ type Var struct {
 	// getter counterpart to the platform hook the write side uses -- so the
 	// only read that works on those is a native call's receiver.
 	NodeHandle bool `json:"NodeHandle,omitempty"`
+	// Written is the id a program wrote for a node handle a lowering renamed,
+	// which a diagnostic names; empty where it keeps the name it was written
+	// with.
+	Written string `json:"-"`
 
 	// Cell marks the state lowering gives a two-way prop the call site left
 	// unbound (UnboundProps): a var of the component passImplicitState wraps
@@ -905,7 +919,15 @@ type Var struct {
 }
 
 func (v *Var) SymName() string { return v.Name }
-func (v *Var) SymType() *Type  { return v.Type }
+
+// WrittenName is the name the program wrote for v.
+func (v *Var) WrittenName() string {
+	if v.Written != "" {
+		return v.Written
+	}
+	return v.Name
+}
+func (v *Var) SymType() *Type { return v.Type }
 
 // IsExported reports whether the var/const is part of its package's
 // public API.
@@ -1000,6 +1022,10 @@ type Component struct {
 	// at run time". Answering the first for the second gave a factory to every
 	// component the page renders as markup.
 	RuntimeInstance bool `json:",omitempty"`
+	// KeyedCopy marks a component built at run time a test reaches one copy
+	// of an instance of, which is handed the copy's key (ir.CopyProp) and
+	// listed under it where its root is bound.
+	KeyedCopy bool `json:",omitempty"`
 	// SpecializedFor is the target whose override body was swapped into Body
 	// and Vars, so a second swap for the same target is a no-op instead of a
 	// reset of everything lowering has since added.
@@ -1168,6 +1194,31 @@ type SlotDecl struct {
 	// populates it at each call site with the content of every record, chosen
 	// by the record's RecordID. Nil on every other slot.
 	Shows *SlotDecl `json:"-"`
+	// Inserts is how many times the body inserts a named slot, and so how many
+	// copies of its population render: what a ref read through it is wrapped
+	// in. A rest slot is inserted exactly once and counts nodes with Card.
+	Inserts SlotInserts `json:",omitempty"`
+}
+
+// SlotInserts is how many times a named slot is inserted: its declared type's
+// `option[…]` or `list[…]` wrapper, or neither.
+type SlotInserts string
+
+const (
+	InsertOne      SlotInserts = ""       // exactly once, where it always renders
+	InsertOptional SlotInserts = "option" // at most once, possibly conditionally
+	InsertMany     SlotInserts = "list"   // any number of times
+)
+
+// InsertsOf is how often c renders what fills slot. That is the slot's
+// declared count, except where c says more: a nav page's content is mounted
+// only while its stack shows the page, and a data record's while its container
+// shows the record.
+func (c *Component) InsertsOf(slot *SlotDecl) SlotInserts {
+	if (c.Builtin == BuiltinNavPage || c.Data) && slot.Rest {
+		return InsertOptional
+	}
+	return slot.Inserts
 }
 
 // RecordID is the field a data family's record carries when the family
@@ -1202,7 +1253,7 @@ type SlotCard string
 
 const (
 	SlotAny      SlotCard = ""         // any number; the default
-	SlotOne      SlotCard = "one"      // exactly one, from tree.one[T]
+	SlotOne      SlotCard = "one"      // exactly one, from family.one[T]
 	SlotOptional SlotCard = "optional" // none or one, from option[T]
 )
 

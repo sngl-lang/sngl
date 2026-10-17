@@ -134,7 +134,7 @@ func formatComponentHoverWithDoc(c *ast.ComponentDecl, doc *ast.Document, opts H
 		for _, p := range params {
 			hint := typeExprString(p.Type)
 			if hint == "" {
-				hint = "dyn"
+				hint = "unknown"
 			}
 			line := fmt.Sprintf("- `%s` %s", p.Name, hint)
 			if p.Default == nil {
@@ -448,7 +448,7 @@ func hoverStructFieldAt(doc *ast.Document, line, col int) string {
 				}
 				t := typeExprString(f.Type)
 				if t == "" {
-					t = "dyn"
+					t = "unknown"
 				}
 				owner := sd.Name
 				if owner == "" {

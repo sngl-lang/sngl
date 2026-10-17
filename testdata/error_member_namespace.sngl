@@ -22,7 +22,7 @@ component eventVsFunc(@save) node {
     text(value="x")
 }
 
-component slotVsVar(body component) node {
+component slotVsVar(body option[component]) node {
     var body = 0 // ERROR(check) "var \"body\" on component slotVsVar: name is already declared as a slot"
     text(value=string(body))
 }

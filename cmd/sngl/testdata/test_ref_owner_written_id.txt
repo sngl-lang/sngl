@@ -1,0 +1,45 @@
+# main's own `#hit` keeps its id, and badge's is renamed so that `c.hit` finds
+# main's. A lowering diagnostic about badge's names it as the program wrote it.
+
+! sngl test --platform=html app.sngl
+stderr '`hit.reset\(\)` calls a method of the node `#hit`'
+! stderr '__own'
+
+-- app.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+
+component counter node {
+    var n = 0
+    func reset() {
+        n = 0
+    }
+    button(text="n{n}", @click { n = n + 1 })
+}
+
+component badge node {
+    var open = true
+    vbox {
+        if open {
+            counter #hit
+            button(text="reset", @click { hit.reset() })
+        }
+    }
+}
+
+component main node {
+    var mh = 0
+    vbox {
+        button #hit(text="m{mh}", @click { mh = mh + 1 })
+        badge
+    }
+}
+
+func testHit(t Test, c main) {
+    c.hit.click()
+    t.assert(c.mh == 1)
+}
+
+window {
+    main
+}

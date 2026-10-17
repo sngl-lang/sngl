@@ -61,7 +61,7 @@ func (c *checker) bindWritten(pos ast.Pos, name string, exprs []ast.Expr, own []
 	}
 	bindings := map[string]*ir.Type{}
 	for i, t := range types {
-		if t != nil && t.Kind != ir.TypeDyn {
+		if t != nil && t.Kind != ir.TypeInvalid {
 			bindings[own[i].Name] = t
 		}
 	}
@@ -127,9 +127,7 @@ func (c *checker) namesDeclaration(e ast.Expr) (string, bool) {
 		// What the name resolves to as an expression, quietly: a component's
 		// method named like a type, `list[0]` reading `func list()`, is a
 		// value however the scope spells it.
-		n := len(c.diags)
-		e := c.checkExpr(o)
-		c.diags = c.diags[:n]
+		e := c.checkExprQuietly(o)
 		if id, ok := e.(*ir.Ident); ok && namesItself(id) {
 			return o.Name, true
 		}
@@ -152,9 +150,7 @@ func (c *checker) namesDeclaration(e ast.Expr) (string, bool) {
 		// A method: of a type named statically, `Box.same`, or of a value,
 		// `xs.map`. The operand is checked quietly, since the call checks
 		// it again.
-		n := len(c.diags)
-		t := exprType(c.checkExpr(o.Operand))
-		c.diags = c.diags[:n]
+		t := exprType(c.checkExprQuietly(o.Operand))
 		if c.hasMethod(t, o.Field) {
 			return o.Field, true
 		}

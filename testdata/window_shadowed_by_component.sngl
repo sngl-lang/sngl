@@ -8,6 +8,7 @@ import ui "sngl:ui"
 // reached through the qualified name the shadowing left standing.
 component window(label string, children ...component) node {
     text(value=label)
+    children
 }
 
 component main node {

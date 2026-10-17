@@ -2,25 +2,27 @@ package bubbletea
 
 import "testing"
 
-// Content handed to a recursive component under a loop: bare children that
-// each level forwards, and a population by name that each level re-wraps.
-// Both are rendered once per level.
+// Content handed to a recursive component under a loop: a population each
+// level forwards as it is, and one each level re-wraps. Both are list slots,
+// rendered once per level.
 const focusRecursionRunSrc = `
 import . "sngl:ui"
 
-component frame(n int, children ...component) node {
+component frame(n int, content list[component node]) node {
     vbox {
         text(value="level {n}")
-        children
+        content {}
         if n > 0 {
             frame(n=n - 1) {
-                children
+                component content {
+                    content {}
+                }
             }
         }
     }
 }
 
-component tower(n int, label component(depth int) node) node {
+component tower(n int, label list[component(depth int) node]) node {
     vbox {
         label(n)
         if n > 0 {
@@ -41,7 +43,9 @@ window {
         text(value="hits {hits}")
         for var x = xs {
             frame(n=x) {
-                button(text="b{x}", @click { hits += x })
+                component content {
+                    button(text="b{x}", @click { hits += x })
+                }
             }
             tower(n=x) {
                 component label(d) {

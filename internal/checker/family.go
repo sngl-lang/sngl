@@ -252,7 +252,7 @@ func familyArgsWritten(f *ir.Component, written []*ir.Type) []*ir.Type {
 		case tp.Default != nil:
 			out[i] = tp.Default
 		default:
-			out[i] = ir.TypDyn
+			out[i] = ir.TypInvalid
 		}
 	}
 	return out

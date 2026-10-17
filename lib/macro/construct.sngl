@@ -22,5 +22,8 @@ import ir "sngl:internal/ir"
 // each target.
 //
 // Only a component prop carries it -- a `var` is written by definition, and a
-// declaration outside a component has no instance to rebuild.
+// declaration outside a component has no instance to rebuild. On a primitive,
+// which a target builds rather than instantiates, a prop reading state makes
+// the node a render slot, whose re-render builds it afresh: html's element
+// carries it on `tag`, which a DOM element cannot change.
 func construct() ir.Macro

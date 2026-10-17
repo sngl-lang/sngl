@@ -344,7 +344,7 @@ component OutlinedTextField(
     modifier      ui.Style,
     // Compose passes the new text.
     onValueChange func(value string),
-    label         component ui.node,
+    label         option[component ui.node],
 ) ui.node
 
 // A field a date is typed into, with a button opening Material's date picker.

@@ -1,0 +1,120 @@
+// What a call site supplies for a slot asked `.empty` has to have an answer
+// wherever the question is asked from: in a platform override's body as much
+// as the declaration's, through a recursion whichever member is asked first,
+// and through a component entry a population forwards, whose content the
+// component writes beside the insertion.
+
+import . "sngl:ui"
+import html "sngl:platform/html"
+
+component plain(content ...component node) node {
+    content
+}
+
+component plain[html.platform](content) {
+    if content.empty {
+        text(value="nothing")
+    }
+    content
+}
+
+component asks(content ...component node) node {
+    if content.empty {
+        text(value="nothing")
+    }
+    content
+}
+
+component first node {
+    ping(n=1) {
+        component content {
+            text(value="t")
+        }
+    }
+}
+
+component ping(n int, content list[component node]) node {
+    if n > 0 {
+        pong(n=n - 1) {
+            component content {
+                content
+            }
+        }
+    }
+    asks {
+        content
+    }
+}
+
+component pong(n int, content list[component node]) node {
+    ping(n=n) {
+        component content {
+            content
+        }
+    }
+}
+
+component frame(layout component(content component node) node) node {
+    var xs = [1]
+    layout {
+        component content {
+            for var x = xs {
+                if x > 1 {
+                    text(value="y")
+                }
+            }
+        }
+    }
+}
+
+component handsOn(inner ...component node, layout component(content component node) node) node {
+    layout {
+        component content {
+            inner
+        }
+    }
+}
+
+component main node {
+    var xs = [1, 2]
+    first
+    plain { // ERROR(check) "plain asks whether its content renders anything"
+        for var x = xs {
+            if x > 1 {
+                text(value="{x}")
+            }
+        }
+    }
+    pong(n=1) { // ERROR(check) "pong asks whether its content renders anything"
+        component content {
+            for var x = xs {
+                if x > 1 {
+                    text(value="{x}")
+                }
+            }
+        }
+    }
+    frame { // ERROR(check) "frame populates content with a loop that cannot say"
+        component layout(content) {
+            asks {
+                content
+            }
+        }
+    }
+    handsOn { // ERROR(check) "handsOn asks whether its inner renders anything"
+        component layout(content) {
+            asks {
+                content
+            }
+        }
+        for var x = xs {
+            if x > 1 {
+                text(value="{x}")
+            }
+        }
+    }
+}
+
+window {
+    main
+}

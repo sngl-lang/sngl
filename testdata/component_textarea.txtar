@@ -53,6 +53,11 @@ import (
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
+	*modelState
+}
+
+// modelState is what every copy of a Model shares.
+type modelState struct {
 	text      string
 	__focusID int
 
@@ -63,7 +68,7 @@ type Model struct {
 
 // New creates a Model with default bind values.
 func New() Model {
-	m := Model{}
+	m := Model{&modelState{}}
 	m.text = ""
 	m.__focusID = 0
 	m.widget0 = textarea.New()
@@ -442,6 +447,9 @@ body { font-family: system-ui, sans-serif; }
 <textarea id="$0" placeholder="Notes" rows="4"></textarea>
 
 <script>
+window.__snglErrors = [];
+addEventListener("error", (e) => window.__snglErrors.push(String(e.message)));
+addEventListener("unhandledrejection", (e) => window.__snglErrors.push(String(e.reason?.message ?? e.reason)));
 window.__sngl_markup = Array.from(document.body.childNodes)
   .filter((n) => n.nodeName !== "SCRIPT").map((n) => n.cloneNode(true));
 window.__sngl_reset = () => {
@@ -459,16 +467,6 @@ window.__sngl_boot = () => {
   if (typeof window !== "undefined") {
     window.__sngl_state = state;
   }
-  function testTextareaValueMutates(t, c) {
-    t.assert(c.text === "");
-    c.text = "hello";
-    t.assert(c.text === "hello");
-    c.text = c.text + " world";
-    t.assert(c.text === "hello world");
-  }
-  if (typeof window !== "undefined") {
-    Object.assign(window, { testTextareaValueMutates });
-  }
   var $0 = document.getElementById("$0");
   $0.addEventListener("input", function(e) {
     state.text = e.currentTarget.value;
@@ -482,7 +480,7 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:6cdc6c136e2a92de2d8a30397303737e
+pass sha256:d11931f600bb9031f8244b234d207b16
 -- run/go/fyne --
 pass sha256:ea0928959261ab6c9e224df50539e4d3
 -- run/go/gtk4 --
@@ -490,4 +488,14 @@ pass sha256:f11328d7ca282f8825664d4f7c2af8dd
 -- run/kotlin/android --
 pass sha256:59f0c531a4025cbe5b306ec5cb37d34f
 -- run/none/html --
-pass sha256:b19ec53cc064141429bc4e54e032234c
+pass sha256:9b69b71c0efd09f934030dfb060ecba7
+-- testrun/html/none/component_textarea.sngl/main/1 --
+sha256:edf6db7af9fb3dfefaabed9c575123dc
+{
+  "results": [
+    {
+      "Desc": "TextareaValueMutates",
+      "Passed": true
+    }
+  ]
+}

@@ -4,6 +4,7 @@ import (
 	_ "embed"
 	"errors"
 	"fmt"
+	"maps"
 	"strings"
 
 	"duckfam.us/sngl/codegen"
@@ -316,11 +317,16 @@ func (c *compilation) emitKotlin(req *codegen.Request, sink codegen.Sink) error 
 func emitKotlinTestSources(req *codegen.Request, sink codegen.Sink, cfg Config, ktOpts codegen.FileOptions, gradleScaffold bool, members map[string]string) error {
 	testFns, suffixes, methodFields := codegen.CollectTestFuncs(req.Pkg)
 	surf := kotlin.TestSurface{
-		MethodFields: methodFields,
-		StateFields:  codegen.StateFieldNames(req.Pkg),
-		Pkg:          req.Pkg,
-		Members:      members,
-		Platform:     "android",
+		MethodFields:   methodFields,
+		StateFields:    codegen.StateFieldNames(req.Pkg),
+		Pkg:            req.Pkg,
+		Members:        members,
+		Platform:       "android",
+		KeyedInstances: keyedInstanceIDs(req.Pkg),
+		InstanceReads:  map[string]codegen.InstanceRead{},
+	}
+	for _, r := range codegen.InstanceReads(req.Pkg) {
+		surf.InstanceReads[codegen.InstanceReadMethod(r)] = r
 	}
 	if len(testFns) == 0 {
 		return nil
@@ -605,4 +611,13 @@ object DeviceSnapshotCapture {
     fun attach(a: Activity) { activity = a }
 }
 `)
+}
+
+// keyedInstanceIDs is every id a copy of which may be an instance -- one built
+// at run time and handed its key, or a spliced one whose roots carry it --
+// and so registers in kotlin.PresentRegistry under its key.
+func keyedInstanceIDs(pkg *ir.Package) map[string]bool {
+	ids := codegen.KeyedInstanceIDs(pkg)
+	maps.Copy(ids, codegen.InstanceRootIDs(pkg))
+	return ids
 }

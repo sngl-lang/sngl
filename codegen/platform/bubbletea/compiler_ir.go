@@ -120,6 +120,11 @@ func CompileIR(ctx *codegen.CodegenCtx, cfg Config) ([]byte, error) {
 	cfg = cfg.withDefaults()
 	info := analyzeIR(ctx)
 	body, imports := emitIR(info, ctx, cfg)
+	if info.gc.OffLoop.Used {
+		snap, more := emitSnapshotMethods(info)
+		body += snap
+		imports = append(imports, more...)
+	}
 	body = golang.PruneStructDecls(body, golang.PayloadPruneCandidates(ctx.Pkg, codegen.TriggerArgs(ctx.Pkg)))
 	if err := ctx.Err(); err != nil {
 		return nil, err
@@ -168,6 +173,47 @@ func CompileIR(ctx *codegen.CodegenCtx, cfg Config) ([]byte, error) {
 	return out, nil
 }
 
+// emitSnapshotMethods declares the copies a function literal run off the
+// event loop takes of the Model where it is made (golang.OffLoopSnapshots):
+// state of its own, deep enough that no slice or map is shared with the
+// state the loop goes on owning.
+func emitSnapshotMethods(info *irAnalysis) (string, []string) {
+	var b strings.Builder
+	var imports []string
+	copyOf := codegen.LookupIntrinsic("go", ir.ValueCopyIntrinsic)
+	b.WriteString("\n// " + golang.SnapshotMethod + " is a copy of the Model sharing no state with it,\n// for work that runs off the event loop.\n")
+	fmt.Fprintf(&b, "func (m Model) %s() Model {\n\ts := *m.modelState\n", golang.SnapshotMethod)
+	for _, bind := range info.binds {
+		if bind.typ == nil || ir.SharesNothing(bind.typ) {
+			continue
+		}
+		field := "s." + bind.name
+		code, imps := copyOf([]ir.Expr{&ir.Ident{Name: bind.name, Type: bind.typ}}, func(ir.Expr) string { return field })
+		imports = append(imports, imps...)
+		fmt.Fprintf(&b, "\t%s = %s\n", field, code)
+	}
+	clone := func(field string) {
+		imports = append(imports, "maps")
+		fmt.Fprintf(&b, "\ts.%s = maps.Clone(s.%s)\n", field, field)
+	}
+	for _, w := range info.widgets {
+		if w.loop != nil {
+			clone(w.fieldName)
+		}
+	}
+	for i := range info.timers {
+		clone(timerLive(i))
+		clone(timerSeq(i))
+	}
+	if info.NeedsToast {
+		imports = append(imports, "slices")
+		b.WriteString("\ts.toasts = slices.Clone(s.toasts)\n")
+	}
+	b.WriteString("\treturn Model{&s}\n}\n\n")
+	fmt.Fprintf(&b, "func (m Model) %s() *Model {\n\ts := m.%s()\n\treturn &s\n}\n", golang.SnapshotRefMethod, golang.SnapshotMethod)
+	return b.String(), imports
+}
+
 type irAnalysis struct {
 	*codegen.CommonAnalysis
 	binds     []irBind
@@ -201,6 +247,7 @@ type irBind struct {
 	init        string // Go expression
 	isConst     bool
 	synthesized bool // pass-generated (e.g. NoContext hidden ctx Var); no getter/setter
+	typ         *ir.Type
 }
 
 type irExtern struct {
@@ -227,6 +274,7 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 	// that takes a *Model needs its address here. Every body EmitFuncDef
 	// writes clears it again, those being pointer receivers.
 	gc.ModelIsValue = true
+	gc.OffLoop = &golang.OffLoopSnapshots{}
 	info := &irAnalysis{
 		CommonAnalysis: ctx.Analysis,
 		gc:             gc,
@@ -260,6 +308,7 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 			init:        initVal,
 			isConst:     ov.IsConst(),
 			synthesized: ov.Synthesized(),
+			typ:         ov.Type(),
 		})
 	}
 
@@ -454,8 +503,14 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 		b.WriteString("type toastDismissMsg struct{}\n\n")
 	}
 
+	// Update takes the Model by value and hands back the copy, so what the
+	// program holds is behind a pointer every copy shares: a closure made in
+	// one Update and called from a later one writes the state that one hands
+	// back, not the copy it was made in.
 	b.WriteString("// Model is the Bubble Tea model for this SNGL UI.\n")
-	b.WriteString("type Model struct {\n")
+	b.WriteString("type Model struct {\n\t*modelState\n}\n\n")
+	b.WriteString("// modelState is what every copy of a Model shares.\n")
+	b.WriteString("type modelState struct {\n")
 	for _, bind := range info.binds {
 		fmt.Fprintf(&b, "\t%s %s\n", bind.name, bind.goType)
 	}
@@ -486,7 +541,7 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 	// field as `m.<name>`; a struct-literal init leaves `m` undefined.
 	b.WriteString("// New creates a Model with default bind values.\n")
 	b.WriteString("func New() Model {\n")
-	b.WriteString("\tm := Model{}\n")
+	b.WriteString("\tm := Model{&modelState{}}\n")
 	emitTimerInits(&b, info.timers)
 	for _, bind := range info.binds {
 		fmt.Fprintf(&b, "\tm.%s = %s\n", bind.name, bind.init)
@@ -686,6 +741,9 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 		eventInvokers = append(eventInvokers, inv)
 	})
 	emitBtEventInvokers(&b, eventInvokers, codegen.TriggerArgs(ctx.Pkg))
+	presentIDs, keyedPresent := codegen.NullTestedRefs(ctx.Pkg)
+	emitPresenceChecks(&b, ctx.Pkg, viewStmts(ctx), presentIDs, gc)
+	emitKeyedPresenceChecks(&b, viewStmts(ctx), keyedPresent, gc)
 	emitWidgetPayloadHandlers(&b, info, gc)
 	emitTimerSyncs(&b, info.timers, gc)
 
@@ -1135,7 +1193,7 @@ func emitIRButtonHandlersWalk(b *strings.Builder, stmts []ir.Stmt, info *irAnaly
 			bp := extractBlueprint(n)
 			for _, ev := range bp.Events {
 				h := codegen.NodeHandler(n, ev.On)
-				if h == nil || h.Func == nil || len(h.Func.Block) == 0 {
+				if h == nil || h.Func == nil {
 					continue
 				}
 				guard := teaKeyGuard(ev.Key)
@@ -1228,9 +1286,12 @@ type btEventInvoker struct {
 	SlotIdx   int    // the focus slot the widget occupies
 	KeyExpr   string // the tea key message that activates it
 	// Cursor is the loop slot's cursor field, for a node a loop renders: its
-	// copies are ordinals of that slot, and Copies is a Go expression of the
-	// ordinal of each, in render order. Empty for a node outside a loop.
+	// copies are ordinals of that slot, and Copies is a Go expression of each
+	// copy's ordinal and key (ir.CopyProp), in render order. Empty for a node
+	// outside a loop.
 	Cursor, Copies string
+	// Keyed says a test indexes the node, so its copies carry keys.
+	Keyed bool
 }
 
 // teaKeyMsg is the message a press of key arrives as. It pairs with
@@ -1284,36 +1345,34 @@ func emitBtEventInvokers(b *strings.Builder, invokers []btEventInvoker, args map
 	}
 }
 
-// emitBtLoopInvokers writes the invokers of a node a loop renders: the copy
-// at an index is the one the slot's cursor names when it is at that copy's
-// ordinal, which the loop is walked to find as View counts it. The plain
-// invoker drives the last copy, as fyne's and gtk4's do. What a test passes
-// is taken and not read, as every invoker here takes it: the key is the
-// input.
+// emitBtLoopInvokers writes the invokers of a node a loop renders: a copy is
+// driven by putting the slot's cursor on that copy's ordinal, which the loop
+// is walked to find as View counts it. The plain invoker drives the last copy
+// -- what a test reaches when it names a node written once that the lowering
+// put under a loop, a tab's panel -- and the `At` one, for a node a test
+// indexes, the copy with a key. What a test passes is taken and not read, as
+// every invoker here takes it: the key press is the input.
 func emitBtLoopInvokers(b *strings.Builder, inv btEventInvoker, name string, params []string) {
-	at := codegen.InvokerAt(name)
-	fmt.Fprintf(b, "// %s activates the copy of #%s at index i, in render order, the way a keypress does; for tests.\n", at, inv.IDLabel)
-	fmt.Fprintf(b, "func (m *Model) %s(%s) {\n", at, strings.Join(append([]string{"i int"}, params...), ", "))
-	fmt.Fprintf(b, "\tat := %s\n", inv.Copies)
-	b.WriteString("\tif i < 0 || i >= len(at) {\n\t\treturn\n\t}\n")
-	fmt.Fprintf(b, "\tprev, prevAt := m.__focusID, m.%s\n", inv.Cursor)
-	fmt.Fprintf(b, "\tm.__focusID, m.%s = %d, at[i]\n", inv.Cursor, inv.SlotIdx)
-	fmt.Fprintf(b, "\tnm, _ := m.Update(%s)\n", inv.KeyExpr)
-	b.WriteString("\t*m = nm.(Model)\n")
-	fmt.Fprintf(b, "\tm.__focusID, m.%s = prev, prevAt\n", inv.Cursor)
-	b.WriteString("}\n\n")
-
-	named := make([]string, len(params))
-	call := []string{fmt.Sprintf("len(%s) - 1", inv.Copies)}
-	for i, p := range params {
-		v := fmt.Sprintf("v%d", i)
-		named[i] = v + strings.TrimPrefix(p, "_")
-		call = append(call, v)
+	drive := func(method string, lead []string, find string) {
+		fmt.Fprintf(b, "func (m *Model) %s(%s) {\n", method, strings.Join(append(lead, params...), ", "))
+		fmt.Fprintf(b, "\tcopies := %s\n\tpos := -1\n", inv.Copies)
+		b.WriteString(find)
+		b.WriteString("\tif pos < 0 {\n\t\treturn\n\t}\n")
+		fmt.Fprintf(b, "\tprev, prevAt := m.__focusID, m.%s\n", inv.Cursor)
+		fmt.Fprintf(b, "\tm.__focusID, m.%s = %d, pos\n", inv.Cursor, inv.SlotIdx)
+		fmt.Fprintf(b, "\tnm, _ := m.Update(%s)\n", inv.KeyExpr)
+		b.WriteString("\t*m = nm.(Model)\n")
+		fmt.Fprintf(b, "\tm.__focusID, m.%s = prev, prevAt\n", inv.Cursor)
+		b.WriteString("}\n\n")
 	}
 	fmt.Fprintf(b, "// %s activates the last copy of #%s the way a keypress does; for tests.\n", name, inv.IDLabel)
-	fmt.Fprintf(b, "func (m *Model) %s(%s) {\n", name, strings.Join(named, ", "))
-	fmt.Fprintf(b, "\tm.%s(%s)\n", at, strings.Join(call, ", "))
-	b.WriteString("}\n\n")
+	drive(name, nil, "\tif len(copies) > 0 {\n\t\tpos = copies[len(copies)-1].pos\n\t}\n")
+	if !inv.Keyed {
+		return
+	}
+	at := codegen.InvokerAt(name)
+	fmt.Fprintf(b, "// %s activates the copy of #%s with the key the way a keypress does; for tests.\n", at, inv.IDLabel)
+	drive(at, []string{"key string"}, "\tfor _, c := range copies {\n\t\tif c.key == key {\n\t\t\tpos = c.pos\n\t\t}\n\t}\n")
 }
 
 // widgetValue is the value a widget's events carry: how it is read back from

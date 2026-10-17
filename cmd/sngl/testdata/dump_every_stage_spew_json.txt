@@ -1,0 +1,226 @@
+# `sngl dump` is an unsupported debugging tool whose output is not tested:
+# this only checks that every stage dumps in every format, with the flags that
+# change what is walked, without failing. Several checked dumps run in one
+# process, so a dump that wrote into the IR or ASTs every check shares fails
+# the next one.
+
+sngl dump --stage parsed --format sngl main.sngl
+sngl dump --stage parsed --format spew main.sngl
+sngl dump --stage parsed --format json main.sngl
+sngl dump --stage checked --format sngl main.sngl
+sngl dump --stage checked --format spew main.sngl
+sngl dump --stage checked --format json main.sngl
+sngl dump --stage optimized --platform html --lang none --format sngl main.sngl
+sngl dump --stage optimized --platform html --lang none --format spew main.sngl
+sngl dump --stage optimized --platform html --lang none --format json main.sngl
+sngl dump --stage lowered --platform html --lang none --format sngl main.sngl
+sngl dump --stage lowered --platform html --lang none --format spew main.sngl
+sngl dump --stage lowered --platform html --lang none --format json main.sngl
+sngl dump --stage analysis --platform html --lang none --format spew main.sngl
+sngl dump --stage analysis --platform html --lang none --format json main.sngl
+sngl dump --stage checked --format json --omit AST,Pos main.sngl
+sngl dump --stage checked --format spew --omit AST,Pos --pointers --depth 3 main.sngl
+sngl dump --stage lowered --platform html --lang none --format json --omit AST,Pos main.sngl
+sngl dump --stage checked --format json main.sngl
+
+sngl dump --stage parsed --format sngl methods.sngl
+sngl dump --stage parsed --format spew methods.sngl
+sngl dump --stage parsed --format json methods.sngl
+sngl dump --stage checked --format sngl methods.sngl
+sngl dump --stage checked --format spew methods.sngl
+sngl dump --stage checked --format json methods.sngl
+sngl dump --stage optimized --platform html --lang none --format sngl methods.sngl
+sngl dump --stage optimized --platform html --lang none --format spew methods.sngl
+sngl dump --stage optimized --platform html --lang none --format json methods.sngl
+sngl dump --stage lowered --platform html --lang none --format sngl methods.sngl
+sngl dump --stage lowered --platform html --lang none --format spew methods.sngl
+sngl dump --stage lowered --platform html --lang none --format json methods.sngl
+sngl dump --stage analysis --platform html --lang none --format spew methods.sngl
+sngl dump --stage analysis --platform html --lang none --format json methods.sngl
+sngl dump --stage checked --format json --omit AST,Pos methods.sngl
+sngl dump --stage checked --format spew --omit AST,Pos --pointers --depth 3 methods.sngl
+sngl dump --stage lowered --platform html --lang none --format json --omit AST,Pos methods.sngl
+sngl dump --stage checked --format json methods.sngl
+
+sngl dump --stage parsed --format sngl proj/app.sngl
+sngl dump --stage parsed --format spew proj/app.sngl
+sngl dump --stage parsed --format json proj/app.sngl
+sngl dump --stage checked --format sngl proj/app.sngl
+sngl dump --stage checked --format spew proj/app.sngl
+sngl dump --stage checked --format json proj/app.sngl
+sngl dump --stage optimized --platform html --lang none --format sngl proj/app.sngl
+sngl dump --stage optimized --platform html --lang none --format spew proj/app.sngl
+sngl dump --stage optimized --platform html --lang none --format json proj/app.sngl
+sngl dump --stage lowered --platform html --lang none --format sngl proj/app.sngl
+sngl dump --stage lowered --platform html --lang none --format spew proj/app.sngl
+sngl dump --stage lowered --platform html --lang none --format json proj/app.sngl
+sngl dump --stage analysis --platform html --lang none --format spew proj/app.sngl
+sngl dump --stage analysis --platform html --lang none --format json proj/app.sngl
+sngl dump --stage checked --format json --omit AST,Pos proj/app.sngl
+sngl dump --stage checked --format spew --omit AST,Pos --pointers --depth 3 proj/app.sngl
+sngl dump --stage lowered --platform html --lang none --format json --omit AST,Pos proj/app.sngl
+sngl dump --stage checked --format json proj/app.sngl
+stdout '"Pkg": "dir:shapes"'
+
+# A check finding the library already loaded adopts the contexts a target
+# package brings as the check that loaded it did.
+sngl dump --stage checked --format json main.sngl
+stdout '"Name": "palette"'
+sngl dump --stage checked --format json main.sngl
+stdout '"Name": "palette"'
+
+# unwrap's parameter is an anonymous struct naming a type parameter, which is
+# interned nowhere: only the types naming it write it, and spew writes as many
+# as JSON does.
+sngl dump --stage checked --format json generic.sngl
+stdout -count=3 '"Anon": true'
+sngl dump --stage checked --format spew generic.sngl
+stdout -count=3 '"Anon": \(bool\) true'
+
+# Its calls reach each other through the IR, which encoding/json met as a cycle.
+sngl dump --stage checked --format json ternary.sngl
+sngl dump --stage checked --format spew ternary.sngl
+
+-- main.sngl --
+import . "sngl:ui"
+
+const greeting = "hi"
+
+component main node {
+    var n = 0
+    button(text="{greeting} {n}", @click { n += 1 })
+}
+
+window {
+    main
+}
+-- methods.sngl --
+
+import . "sngl:test"
+import . "sngl:ui"
+
+func run(f func()) {
+    f()
+}
+
+func applied(f func() int) => f()
+
+component inner(@fired) node {
+    var ran = 0
+
+    func go() {
+        run(func() {
+            ran += 1
+            fired()
+        })
+    }
+
+    text(value="{ran}")
+}
+
+component main node {
+    var (
+        viaMethod = 0
+        emitted = 0
+    )
+
+    inner #child(@fired {
+        emitted += 1
+    })
+    func bump() {
+        run(func() {
+            viaMethod += 1
+        })
+    }
+
+    text(value="{viaMethod}:{emitted}")
+}
+
+func testACallbackRuns(t Test, c main) {
+    t.assert(applied(func() => 7) == 7)
+}
+
+func testACallbackWritesALocal(t Test, c main) {
+    var local = 0
+
+    run(func() {
+        local += 1
+    })
+    t.assert(local == 1)
+}
+
+func testACallbackWritesComponentState(t Test, c main) {
+    c.bump()
+    t.assert(c.viaMethod == 1)
+}
+
+func testACallbackEmits(t Test, c main) {
+    c.child.go()
+    t.assert(c.child.ran == 1)
+    t.assert(c.emitted == 1)
+}
+
+window {
+    main
+}
+-- proj/app.sngl --
+import . "sngl:ui"
+import "./shapes"
+
+component badge node {
+    text(value="mine")
+}
+
+window {
+    badge
+    shapes.badge
+}
+-- proj/shapes/s.sngl --
+import ui "sngl:ui"
+
+context[int] #depth(3)
+
+component badge ui.node {
+    ui.text(value="{depth}")
+}
+-- generic.sngl --
+import . "sngl:ui"
+
+func unwrap[T any](w struct { v T }) T {
+    return w.v
+}
+
+window {
+    text(value="{unwrap({v=2})}")
+}
+-- ternary.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+
+component main node {
+    var a int = 1
+    var b int = 2
+    var c int = 3
+
+    func classify() => a > 0 ? (b > 0 ? "both+" : "aOnly") : "neither"
+    func chained() => a == 1 ? "one" : a == 2 ? "two" : a == 3 ? "three" : "other"
+    func deep() => (a > b) ? (a > c ? "aMax" : "cMax") : (b > c ? "bMax" : "cMax")
+
+    text(value=classify)
+}
+
+func testTernaryGrouped(t Test, c main) {
+    t.assert(c.classify == "both+")
+}
+
+func testTernaryChain(t Test, c main) {
+    t.assert(c.chained == "one")
+}
+
+func testTernaryDeep(t Test, c main) {
+    t.assert(c.deep == "cMax")
+}
+
+window {
+    main
+}

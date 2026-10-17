@@ -58,6 +58,11 @@ import (
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
+	*modelState
+}
+
+// modelState is what every copy of a Model shares.
+type modelState struct {
 	sel       string
 	__focusID int
 
@@ -68,7 +73,7 @@ type Model struct {
 
 // New creates a Model with default bind values.
 func New() Model {
-	m := Model{}
+	m := Model{&modelState{}}
 	m.sel = ""
 	m.__focusID = 0
 	m.widget0 = tui.NewList(tui.StringItems([]string{"Documents", "Taxes", "Photos", "Music"}), 40, 10)
@@ -352,6 +357,9 @@ body { font-family: system-ui, sans-serif; }
 </ul>
 
 <script>
+window.__snglErrors = [];
+addEventListener("error", (e) => window.__snglErrors.push(String(e.message)));
+addEventListener("unhandledrejection", (e) => window.__snglErrors.push(String(e.reason?.message ?? e.reason)));
 window.__sngl_markup = Array.from(document.body.childNodes)
   .filter((n) => n.nodeName !== "SCRIPT").map((n) => n.cloneNode(true));
 window.__sngl_reset = () => {
@@ -369,16 +377,6 @@ window.__sngl_boot = () => {
   if (typeof window !== "undefined") {
     window.__sngl_state = state;
   }
-  function testTreeSelectedMutates(t, c) {
-    t.assert(c.sel === "");
-    c.sel = "Photos";
-    t.assert(c.sel === "Photos");
-    c.sel = "Music";
-    t.assert(c.sel === "Music");
-  }
-  if (typeof window !== "undefined") {
-    Object.assign(window, { testTreeSelectedMutates });
-  }
   var $0 = document.getElementById("$0");
   $0.addEventListener("selected", function(e) {
     state.sel = e;
@@ -389,10 +387,20 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:1267e8ec1ae23633f4b5b1475f3d9f87
+pass sha256:459a814118ac3507def7a688c1a2753f
 -- run/go/fyne --
 pass sha256:05fadfb3fa2057fe9e5857358f7c846b
 -- run/kotlin/android --
 pass sha256:6d27e9b7d4857b258f2c97f7cb7ad492
 -- run/none/html --
-pass sha256:33f09fac49655b06aec2311ee9471231
+pass sha256:2ec7df8ababc1182bb9914dec323cc9b
+-- testrun/html/none/component_tree.sngl/main/1 --
+sha256:1d3da9cc523d8c8420a2d2599d903128
+{
+  "results": [
+    {
+      "Desc": "TreeSelectedMutates",
+      "Passed": true
+    }
+  ]
+}

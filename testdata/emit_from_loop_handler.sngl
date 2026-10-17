@@ -1,0 +1,39 @@
+// A handler written in a loop runs in that iteration's scope, which the mount
+// took a copy of the state into. Two of them, run one after the other, each
+// read what the one before wrote: the second `count += 1` sees the first's,
+// and the value each emits is the count it just made.
+
+import ui "sngl:ui"
+import "sngl:test"
+
+component inner(@done()) ui.node {
+    effect(@mount { done() })
+}
+
+component outer(@done(count int)) ui.node {
+    var count = 0
+    ui.vbox {
+        for var j = [1, 2] {
+            inner(@done {
+                count += 1
+                done(count)
+            })
+        }
+    }
+}
+
+component tally ui.node {
+    var peak = 0
+    var sum = 0
+    outer(@done(n) {
+        sum += n
+        if n > peak {
+            peak = n
+        }
+    })
+}
+
+func testEachHandlerReadsTheLastWrite(t test.Test, c tally) {
+    t.assert(c.sum == 3)
+    t.assert(c.peak == 2)
+}

@@ -6,8 +6,8 @@ component real node {
     text(value=string(x))
 }
 
-func testCallsUnknownFunction(t Test, c real) { // ERROR(test) "unsupported method \"bogus\""
-    c.bogus()
+func testCallsUnknownFunction(t Test, c real) {
+    c.bogus() // ERROR(check) "no method \"bogus\" on type real"
 }
 
 window {

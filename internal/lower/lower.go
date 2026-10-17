@@ -36,6 +36,9 @@ type pass struct {
 // pass wherever the stated requirements allow; if it has a requirement not yet
 // stated, state it there rather than leaving it to position.
 var passes = []pass{
+	passTestInstanceReach,
+	passTestReach,
+	passTestRefOwner,
 	passHoistBodyTypes,
 	passHoistState,
 	// Before every pass that writes a store of its own: what it copies is
@@ -87,7 +90,11 @@ var passes = []pass{
 	passErrorScope,
 	passRecursionDepth,
 	passInstanceSlots,
+	// After it, which splices a copy per content and so answers its own.
+	passSlotEmptyProps,
 	passCanvasInstances,
+	// After every pass that elects or copies a component built at run time.
+	passCopyKeys,
 	// After every pass that copies a body at bound types, and before any that
 	// names a struct by its declaration's name: a copy's structs are no
 	// package's until this points them at one.
@@ -192,6 +199,10 @@ type Options struct {
 	// emitted as two `hits__inst0`. Set by Lower; a caller's value is
 	// overwritten.
 	names renamer
+
+	// splices is what passInlinePure spliced of a program component carrying
+	// an id. Set by Lower.
+	splices *[]splice
 }
 
 // renamer numbers renamed declarations per name: `hits__inst0` and
@@ -231,6 +242,7 @@ func Lower(pkg *ir.Package, feats Features, opts Options) error {
 		return nil
 	}
 	opts.names = renamer{}
+	opts.splices = &[]splice{}
 	if opts.StopAfter != "" {
 		known := false
 		for _, p := range passes {

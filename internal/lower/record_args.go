@@ -13,20 +13,18 @@ var passRecordArgs = pass{
 	apply:   func(pkg *ir.Package, _ Features, _ Options) error { return RecordArgs(pkg) },
 }
 
-// RecordArgs rewrites the record a call hands an intrinsic that reads one by
-// field name (ir.RecordArg) into the string-keyed map every runtime takes:
-// `i18n.format(t, {name=n})` reaches each language's emitter as
-// `i18n.format(t, {"name"=n})`, as the checker used to build it.
+// RecordArgs makes the record a call hands an intrinsic that reads one by
+// field name (ir.RecordArg) a struct literal of its own: `i18n.format(t,
+// {name=n})` keeps its literal, and any other operand is read a field at a
+// time. The record stays the struct it was checked as; each language's
+// emitter spells the string-keyed map its runtime takes from the literal's
+// fields (codegen.RegisterRecordSpeller), so the map's catch-all value type
+// exists only in emitted code.
 //
-// A literal's fields become the entries in the order written. Any other
-// operand is read a field at a time, and one that is not a plain path carries
-// a spread site (ir.Select.Spread), so passSpreadOnce evaluates it once ahead
-// of the statement, as it does a spread argument's.
-//
-// It runs on checked IR ahead of the first optimize, beside DataFamilies:
-// converted there, the record's type is named by nothing, and the shake drops
-// an anonymous struct no target has a reason to declare. The interpreter reads
-// a struct as the map itself and needs no rewrite.
+// An operand that is not a plain path carries a spread site
+// (ir.Select.Spread), so passSpreadOnce evaluates it once ahead of the
+// statement, as it does a spread argument's. The interpreter reads a struct as
+// the map itself and needs no rewrite.
 func RecordArgs(pkg *ir.Package) error {
 	return ir.RewriteExprs(pkg, func(e ir.Expr) (ir.Expr, error) {
 		call, ok := e.(*ir.Call)
@@ -37,34 +35,22 @@ func RecordArgs(pkg *ir.Package) error {
 		if i < 0 || i >= len(call.Args) {
 			return e, nil
 		}
-		if m := recordAsMap(call.Args[i].Value); m != nil {
-			call.Args[i].Value = m
+		if lit := recordLiteral(call.Args[i].Value); lit != nil {
+			call.Args[i].Value = lit
 		}
 		return e, nil
 	})
 }
 
-// recordAsMap is the map literal standing for a struct value, or nil where v
-// is not one.
-func recordAsMap(v ir.Expr) *ir.MapLitIR {
+// recordLiteral is the struct literal standing for a struct value, field by
+// field, or nil where v is not one or already is one.
+func recordLiteral(v ir.Expr) *ir.StructLit {
 	t := v.ExprType()
 	if t == nil || t.Kind != ir.TypeStruct {
 		return nil
 	}
-	m := &ir.MapLitIR{Type: ir.MapOf(ir.TypString, ir.TypDyn)}
-	entry := func(name string, value ir.Expr) {
-		m.Entries = append(m.Entries, ir.MapEntry{
-			Key:   &ir.Literal{Type: ir.TypString, Value: name},
-			Value: value,
-		})
-	}
-	// A literal names its own fields, typed by a declaration or not: one
-	// holding a dyn value interns none.
 	if lit, ok := v.(*ir.StructLit); ok && !hasSpreadField(lit) {
-		for _, f := range lit.Fields {
-			entry(f.Name, f.Value)
-		}
-		return m
+		return nil
 	}
 	sd, _ := t.Decl.(*ir.StructDef)
 	if sd == nil {
@@ -81,14 +67,15 @@ func recordAsMap(v ir.Expr) *ir.MapLitIR {
 	if !isPlainPath(v) {
 		site = ir.NewSpreadID()
 	}
+	lit := &ir.StructLit{Type: t, Def: sd}
 	for _, f := range sd.Fields {
 		ft := f.Type
 		if bindings != nil {
 			ft = ft.Substitute(bindings)
 		}
-		entry(f.Name, &ir.Select{Type: ft, Operand: v, Field: f.Name, Spread: site})
+		lit.Fields = append(lit.Fields, ir.FieldInit{Name: f.Name, Value: &ir.Select{Type: ft, Operand: v, Field: f.Name, Spread: site}})
 	}
-	return m
+	return lit
 }
 
 func hasSpreadField(lit *ir.StructLit) bool {

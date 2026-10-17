@@ -65,6 +65,11 @@ func mustParseDate(s string) time.Time {
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
+	*modelState
+}
+
+// modelState is what every copy of a Model shares.
+type modelState struct {
 	d            time.Time
 	value__inst0 *time.Time
 	__focusID    int
@@ -76,7 +81,7 @@ type Model struct {
 
 // New creates a Model with default bind values.
 func New() Model {
-	m := Model{}
+	m := Model{&modelState{}}
 	m.d = mustParseDate("0001-01-01")
 	m.value__inst0 = snglSome(m.d)
 	m.__focusID = 0
@@ -823,6 +828,9 @@ body { font-family: system-ui, sans-serif; }
 <input id="__n0" data-sngl-id="__n0" type="date"/>
 
 <script>
+window.__snglErrors = [];
+addEventListener("error", (e) => window.__snglErrors.push(String(e.message)));
+addEventListener("unhandledrejection", (e) => window.__snglErrors.push(String(e.reason?.message ?? e.reason)));
 window.__sngl_markup = Array.from(document.body.childNodes)
   .filter((n) => n.nodeName !== "SCRIPT").map((n) => n.cloneNode(true));
 window.__sngl_reset = () => {
@@ -840,14 +848,6 @@ window.__sngl_boot = () => {
   state.value__inst0 = state.d;
   if (typeof window !== "undefined") {
     window.__sngl_state = state;
-  }
-  function testDatepickerValueMutates(t, c) {
-    let fresh = "0001-01-01";
-    c.d = fresh;
-    t.assert(true);
-  }
-  if (typeof window !== "undefined") {
-    Object.assign(window, { testDatepickerValueMutates });
   }
   function String(v) {
     return "" + v;
@@ -867,7 +867,7 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:8bed59316559345ca87e78b96994cd6a
+pass sha256:4c0af4220760b1b381b136ac2d5b831e
 -- run/go/fyne --
 pass sha256:2737a66ac82ec597753e3303fcab2e47
 -- run/go/gtk4 --
@@ -875,4 +875,14 @@ pass sha256:50925dec013b33a75c2ff957219d0dee
 -- run/kotlin/android --
 pass sha256:065e25d98e6928fcae22e53208439053
 -- run/none/html --
-pass sha256:0dd52251f239491eadfdb23e5dbe3a22
+pass sha256:6b658df74fddb5b955d97face1817518
+-- testrun/html/none/component_datepicker.sngl/main/1 --
+sha256:ab30d6da86bc0bae4db44f527c4cb306
+{
+  "results": [
+    {
+      "Desc": "DatepickerValueMutates",
+      "Passed": true
+    }
+  ]
+}

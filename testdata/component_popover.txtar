@@ -54,6 +54,11 @@ import (
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
+	*modelState
+}
+
+// modelState is what every copy of a Model shares.
+type modelState struct {
 	visible   bool
 	__focusID int
 
@@ -62,7 +67,7 @@ type Model struct {
 
 // New creates a Model with default bind values.
 func New() Model {
-	m := Model{}
+	m := Model{&modelState{}}
 	m.visible = false
 	m.__focusID = 0
 	return m
@@ -574,6 +579,9 @@ body { font-family: system-ui, sans-serif; }
 </div>
 
 <script>
+window.__snglErrors = [];
+addEventListener("error", (e) => window.__snglErrors.push(String(e.message)));
+addEventListener("unhandledrejection", (e) => window.__snglErrors.push(String(e.reason?.message ?? e.reason)));
 window.__sngl_markup = Array.from(document.body.childNodes)
   .filter((n) => n.nodeName !== "SCRIPT").map((n) => n.cloneNode(true));
 window.__sngl_reset = () => {
@@ -591,23 +599,13 @@ window.__sngl_boot = () => {
   if (typeof window !== "undefined") {
     window.__sngl_state = state;
   }
-  function testPopoverOpenToggles(t, c) {
-    t.assert(c.visible === false);
-    c.visible = true;
-    t.assert(c.visible === true);
-    c.visible = false;
-    t.assert(c.visible === false);
-  }
-  if (typeof window !== "undefined") {
-    Object.assign(window, { testPopoverOpenToggles });
-  }
 })();
 };
 window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:e77e9f8d86b2fc61a7fb49eac1a3c167
+pass sha256:d53219f1225aab62f0acdb98bfea3242
 -- run/go/fyne --
 pass sha256:6b9e53ad4e7409c2b5620b7c1de8cf98
 -- run/go/gtk4 --
@@ -615,4 +613,14 @@ pass sha256:bb69cd2301b6335989b1739861c1ab5d
 -- run/kotlin/android --
 pass sha256:d141a1982d7b4f387294ee8a86921bc0
 -- run/none/html --
-pass sha256:70dbeb164845ee163a4ad5b5343ce6fd
+pass sha256:38c6d2f3f4953b980872c8a9641a800d
+-- testrun/html/none/component_popover.sngl/main/1 --
+sha256:e7b0e23115d65cad515d9559d68fc551
+{
+  "results": [
+    {
+      "Desc": "PopoverOpenToggles",
+      "Passed": true
+    }
+  ]
+}

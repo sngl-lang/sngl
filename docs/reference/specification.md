@@ -333,8 +333,14 @@ what follows it: a declaration, a statement, a function parameter or a
 component prop.
 
 ```
-MacroAttr = "#[" IDENT [ "." IDENT ] [ "(" [ Expr { "," Expr } [ "," ] ] ")" ] "]"
+MacroAttr = "#[" IDENT [ "." IDENT ] [ "(" [ ArgList ] ")" ] "]"
 ```
+
+Its arguments are an argument list like a call's, positional or by name —
+`#[macro.foreign("go:strings", name="ToUpper")]` — and bind to the macro's
+declared parameters the way a call's bind to a function's. A mark is read when
+the program is checked, so each argument is a constant, and a binding, a spread
+or a handler is an error.
 
 Brackets nest within the attribute, and the closing `]` suppresses automatic
 semicolon insertion so the decorated construct may begin on the following line.
@@ -407,13 +413,12 @@ user-defined types.
 
 ### Predeclared types
 
-| Type     | Description                                                  |
-|----------|--------------------------------------------------------------|
-| `bool`   | `true` or `false`.                                           |
-| `int`    | 64-bit signed integer. Division truncates toward zero.       |
-| `float`  | 64-bit IEEE-754 floating point.                              |
-| `string` | Immutable UTF-8 text.                                        |
-| `dyn`    | The dynamic type; see [The dynamic type](#the-dynamic-type). |
+| Type     | Description                                            |
+|----------|--------------------------------------------------------|
+| `bool`   | `true` or `false`.                                     |
+| `int`    | 64-bit signed integer. Division truncates toward zero. |
+| `float`  | 64-bit IEEE-754 floating point.                        |
+| `string` | Immutable UTF-8 text.                                  |
 
 `any` is predeclared beside them and is no type a value may have: it is the
 constraint that says nothing about a type parameter (see
@@ -537,14 +542,6 @@ expects (see [Unit literals](#unit-literals)).
 The integer literal `0` is assignable to any unit type; other bare numbers must
 be scaled by a unit literal (`5 * 1s`).
 
-### The dynamic type
-
-`dyn` is the dynamic type and the type assigned to a binding that has no
-annotation and no inferable initializer. Any value is assignable to `dyn`, a
-`dyn` value is assignable to any type, and operations on a `dyn` operand bypass
-static operand checking. Where the checker knows what a `dyn` binding was
-initialized with, it holds later uses to that type.
-
 ### References
 
 `ref[T]` is a mutable reference to a value of type `T`: what holds one goes on
@@ -583,18 +580,16 @@ A value of type `A` may be used where type `B` is expected when any of the
 following holds:
 
 1. `A` and `B` are identical.
-2. `A` or `B` is `dyn` (see [The dynamic type](#the-dynamic-type)).
-3. `A` is `null` and `B` is an `option` type or a function type.
-4. `A` is `int` and `B` is `float`.
-5. one of `A` and `B` is `string` and the other is a string-representable type
+2. `A` is `null` and `B` is an `option` type or a function type.
+3. `A` is `int` and `B` is `float`.
+4. one of `A` and `B` is `string` and the other is a string-representable type
    (a standard-library type such as `color`, `date`, `time`, or `datetime`).
-6. `A` is `list[S]`, `B` is `list[T]`, and `S` is assignable to `T` (lists are
+5. `A` is `list[S]`, `B` is `list[T]`, and `S` is assignable to `T` (lists are
    covariant in their element type).
-7. `A` is `list[S]` and `B` is `iter[T]` with `S` assignable to `T` (the
+6. `A` is `list[S]` and `B` is `iter[T]` with `S` assignable to `T` (the
    conversion that underlies `for` over a list).
-8. `A` is `map[K, S]` and `B` is `map[K, T]` (or `B`'s key type is `dyn`) with
-   `S` assignable to `T`.
-9. `A` is `option[S]` and `B` is `option[T]` with `S` assignable to `T`, or `A`
+7. `A` is `map[K, S]` and `B` is `map[K, T]` with `S` assignable to `T`.
+8. `A` is `option[S]` and `B` is `option[T]` with `S` assignable to `T`, or `A`
    is `T` and `B` is `option[T]` (a bare value auto-wraps into an option).
 
 The auto-wrap stores the value, not a reference to where it was read from: a
@@ -634,8 +629,7 @@ permitted conversions among primitives are:
 - to `bool` — from `bool` or `string`;
 - to a string-representable type — from `string` or from itself.
 
-A `dyn` operand may be converted to any primitive type (this is how `dyn` is
-narrowed). Conversions whose operand is a struct, component, function, list,
+Conversions whose operand is a struct, component, function, list,
 option, or `null` are rejected, and so are `int` and `float` of a multi-base
 unit (see [Unit types](#unit-types)).
 
@@ -686,8 +680,8 @@ Type parameters are introduced by a type-parameter list in brackets
 component. Every type parameter names a **constraint** after its name: what a
 type bound to it must be. A constraint is `any` or an anonymous struct. `any`
 is the constraint that says nothing. A constraint is a constraint only: `any`
-written where a value's type goes is an error, and the type of a value the
-program says nothing about is `dyn`. A type parameter may also carry a default
+written where a value's type goes is an error: every value has a type the
+program can name. A type parameter may also carry a default
 after its constraint (`[T any = struct {}]`), used when nothing binds it; a
 constraint is never a default, so a parameter with no default has none, and
 `[T struct {} = struct {}]` writes both.
@@ -850,7 +844,7 @@ library type, but one the library already declares is a duplicate declaration.
 
 ### Predeclared identifiers and the library tiers
 
-Apart from `bool` and `dyn`, everything predeclared is an ordinary declaration
+Apart from `bool`, everything predeclared is an ordinary declaration
 in `sngl:builtin`: the scalar and collection types (`int`, `float`, `string`,
 `color`, `list`, `map`, `option`, `ref`, `iter`) with their methods; the
 constraint `any`; the constants
@@ -917,7 +911,7 @@ within the package.
 
 A library package may carry macros next to the declarations they apply to:
 `import family "sngl:family"` brings the `#[family.crosses]` mark beside the
-`family.one` count it qualifies slots with (see
+`family.one` count it qualifies a rest slot with (see
 [Trees and families](#trees-and-families)).
 
 Packages under `sngl:internal/` are the compiler's own tier. They declare the
@@ -1026,7 +1020,7 @@ function, or a context. Constants may refer to one another in any source order.
 Assigning to a constant is an error.
 
 A `var` declaration binds a mutable name. The type may be given explicitly,
-inferred from the initializer, or — if neither is present — defaults to `dyn`.
+inferred from the initializer; a declaration with neither is an error.
 A variable initializer is evaluated **once**; it provides the initial value
 only and does not establish a reactive dependency. A derived value that should
 recompute when its inputs change must be a function, not a variable (see
@@ -1489,7 +1483,7 @@ rendered, so change the state it reads instead.
 ### The toggle statement
 
 `target!!` negates a boolean lvalue in place; it is equivalent to
-`target = !target` and requires a `bool` (or `dyn`) target.
+`target = !target` and requires a `bool` target.
 
 ### The return statement
 
@@ -1518,7 +1512,7 @@ stream, so there is no iteration for an escape to cut short.
 IfNode = "if" CondExpr StmtBlock [ "else" ( IfNode | StmtBlock ) ]
 ```
 
-The condition must be `bool` (or `dyn`); a parameterless `bool`-returning
+The condition must be `bool`; a parameterless `bool`-returning
 computed is called implicitly. The `if` body and the optional `else` body are
 each their own scope; `else if` chains without nesting braces.
 
@@ -1807,14 +1801,33 @@ A **slot** is a region of UI the caller supplies. It is an ordinary parameter
 whose type is a **component type**, so a component's whole API — props, events
 and slots — is one parameter list:
 
-- `header component` — any number of nodes, of whatever family the component
-  itself belongs to;
-- `shapes component draw.shape` — any number of that family's members;
-- `body component family.one[ui.node]` — exactly one (bare `family.one` is exactly
-  one of whatever the slot already accepts);
-- `badge component option[ui.node]` — zero or one;
-- `cell component(Row)` — a *scoped* slot: the insertion passes a `Row`, and
-  the population binds a name for it.
+- `header component` — inserted exactly once, holding nodes of whatever family
+  the component itself belongs to;
+- `shapes component draw.shape` — inserted exactly once, holding that family's
+  members;
+- `badge option[component ui.node]` — inserted at most once, possibly under an
+  `if`;
+- `cell list[component(Row)]` — a *scoped* slot inserted any number of times:
+  each insertion passes a `Row`, and the population binds a name for it.
+
+The wrapper counts *insertions*, not the nodes a population holds, because a
+ref read through the slot is wrapped the same way: a node in `cell`'s population
+is a list, one per insertion, and one in `badge`'s an option. The body is held
+to it over every path through it. A caller may leave any named slot
+unpopulated, and the insertion's block renders instead.
+
+What the component type holds counts the *nodes* a fill renders, in a named
+slot and the rest slot alike: `component ui.node` is any number,
+`component family.one[ui.node]` exactly one (bare `family.one` is exactly one
+of whatever the slot already accepts) and `component option[ui.node]` none or
+one. So `src option[component option[imageSource]]` is inserted at most once
+and holds at most one source.
+
+The rest slot's fill is the children a caller writes bare. It is inserted exactly
+once, and takes no insertion count: an `#id` a caller writes bare names one
+node at the position it was written. Content the body may leave out or repeat
+is a named slot, `option[component ui.node]` or `list[component ui.node]`,
+whose population is a namespace of its own.
 
 A slot's invocation parameters may be named in the type — `cell component(row Row)` — and the name is **part of the contract**, not documentation: two slot
 types match by name. Renaming one is therefore a breaking change to every
@@ -1830,7 +1843,7 @@ directly in the instantiation's block:
 
 <!-- SNGL-component
 struct Row { title string }
-component table(rows list[Row], cell component(Row)) ui.node { ui.vbox { for var r = rows { cell(r) } } }
+component table(rows list[Row], cell list[component(Row)]) ui.node { ui.vbox { for var r = rows { cell(r) } } }
 var rs list[Row] = []
 -->
 
@@ -2138,13 +2151,17 @@ after the components that name it.
 
 ```sngl
 import build "sngl:build"
+import family "sngl:family"
 import ui "sngl:ui"
 
 component item build.family
 
 component entry(label string) item {}
 
-component menu(items ...component item) ui.node {}
+component menu(items ...component item) ui.node {
+    #[family.crosses]
+    items
+}
 
 ui.window {
     menu {
@@ -2181,12 +2198,13 @@ The rules:
   the tree themselves, so every membership rule looks through them.
 
 A component generic over the family it wraps writes a type parameter where a
-family goes — `component boundary[T any](…, content ...component T, failed component T) T` — and the children written in the slot bind `T`.
+family goes — `component boundary[T any](…, content ...component T, failed option[component(error error) T]) T` — and the children written in the slot bind `T`.
 
-A slot's count is what its population renders, not the statements written in
-it: `family.one` takes one node, so a `for` there is an error and an `if` must
-render one in each branch; `option[T]` takes none or one. How many times a
-body inserts a slot is not bounded.
+A rest slot's count is what the children written bare render, not the
+statements written: `family.one` takes one node, so a `for` there is an error
+and an `if` must render one in each branch; `option[T]` takes none or one. A
+named slot's count is how many times the body inserts it (see *Slots and
+children*).
 
 ### Data components
 
@@ -2494,8 +2512,12 @@ ui.window {
 }
 ```
 
-An override's parameter list selects the props of the declaration it overrides
-by name and carries no types of its own. The base may be a signature with no
+An override's parameter list selects by name the parameters of the declaration it overrides — props,
+slots and `@events` of a component, parameters of a function — so every name
+the body reads is written in its header; a body that reads none writes no list,
+or `()`, which is the same. An entry may restate a parameter's
+type only where it matches the declaration's, and takes no default, `const` or
+mark of its own: those are the declaration's. The base may be a signature with no
 body, as `badge` is here; an override satisfies it for every target, so a
 target with no override renders nothing for it. An override may itself not be
 bodyless. A target's raw elements, such as `html.span`, are reached through an

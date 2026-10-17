@@ -408,6 +408,30 @@ func repointCellReads(pkg *ir.Package, owners map[*ir.Var]*ir.Component, clones 
 		}
 	}
 	var bad error
+	// In a test the read is through the test's instance, as every other
+	// read of the instance's state is: a bare write there is the program's,
+	// and passReactivity would patch the nodes reading it from the test.
+	for _, fn := range pkg.Funcs {
+		if fn == nil || !fn.IsTest || len(fn.Params) < 2 {
+			continue
+		}
+		inst := fn.Params[1]
+		err := ir.Rewrite(fn, func(n ir.Node) (ir.Node, error) {
+			id, ok := n.(*ir.Ident)
+			if !ok {
+				return n, nil
+			}
+			v, ok := id.Sym.(*ir.Var)
+			if !ok || owners[v] == nil || len(clones[v]) != 1 {
+				return n, nil
+			}
+			cell := clones[v][0]
+			return &ir.Select{Type: id.Type, Operand: &ir.Ident{Name: inst.Name, Type: inst.Type, Sym: inst}, Field: cell.Name}, ir.SkipDir
+		})
+		if err != nil {
+			return err
+		}
+	}
 	err := ir.Rewrite(pkg, func(n ir.Node) (ir.Node, error) {
 		id, ok := n.(*ir.Ident)
 		if !ok || own[id] {
@@ -441,7 +465,7 @@ func cellReadError(w *ir.Component, v *ir.Var, copies int) error {
 	pos, id := "<unknown>", "?"
 	if len(w.Stmts) > 0 {
 		if inner, ok := w.Stmts[0].(*ir.NodeInst); ok {
-			pos, id = nodePos(inner), inner.ID
+			pos, id = nodePos(inner), writtenID(inner)
 		}
 	}
 	why := "is built at run time here"
@@ -483,7 +507,7 @@ func repointHandleCalls(pkg *ir.Package, methods map[*ir.Var]map[*ir.Func][]*ir.
 				call.Args = slices.Delete(slices.Clone(call.Args), 0, 1)
 			}
 		case len(clones) > 1 && bad == nil:
-			bad = fmt.Errorf("%s: `#%s` is rendered more than once, so a call of its %s cannot say which copy it means; give each copy its own id", handleCallPos(call), h.Name, call.Func.Name)
+			bad = fmt.Errorf("%s: `#%s` is rendered more than once, so a call of its %s cannot say which copy it means; give each copy its own id", handleCallPos(call), h.WrittenName(), call.Func.Name)
 		}
 		return n, nil
 	})
@@ -513,7 +537,7 @@ func refuseUnsplicedHandleCalls(pkg *ir.Package) error {
 			return nil
 		}
 		if h, _ := handleReceiver(call); h != nil {
-			bad = fmt.Errorf("%s: `%s.%s()` calls a method of the node `#%s`, which this target does not splice where it is written, so there is no one instance's method to call", handleCallPos(call), h.Name, fn.Name, h.Name)
+			bad = fmt.Errorf("%s: `%s.%s()` calls a method of the node `#%s`, which this target does not splice where it is written, so there is no one instance's method to call", handleCallPos(call), h.WrittenName(), fn.Name, h.WrittenName())
 		}
 		return nil
 	})

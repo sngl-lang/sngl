@@ -1,0 +1,96 @@
+# Per-copy state two loops deep: each `outer` copy keeps its own `count`, and
+# the handler its call site hands each `inner` -- which `inner`'s effect runs
+# as its @mount's `done()` -- writes that copy's cell. On bubbletea both are
+# cells per copy, and the effect is handed the whole copy key through `on`,
+# the outer copy's index included: each copy's `count` reaches 2, not 6.
+
+sngl test --platform=none app.sngl
+stdout 'PASS'
+! stdout 'FAIL'
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout 'PASS'
+! stdout 'FAIL'
+
+sngl test --platform=fyne --language=go app.sngl
+stdout 'PASS'
+! stdout 'FAIL'
+
+sngl test --platform=html app.sngl
+stdout 'PASS'
+! stdout 'FAIL'
+
+-- app.sngl --
+import ui "sngl:ui"
+import "sngl:test"
+
+component inner(@done()) ui.node {
+    var x = 0
+    effect(@mount {
+        x = x + 1
+        done()
+    })
+}
+
+component outer(@done(count int)) ui.node {
+    var count = 0
+    ui.vbox {
+        for var j = [1, 2] {
+            inner(@done {
+                count += 1
+                done(count)
+            })
+        }
+    }
+}
+
+component nest ui.node {
+    var items = [1, 2, 3]
+    var mounts = 0
+    var peak = 0
+    ui.vbox {
+        for var i = items {
+            outer(@done(n) {
+                mounts += 1
+                if n > peak {
+                    peak = n
+                }
+            })
+        }
+    }
+}
+
+func testEachOuterCopyCountsItsOwn(t test.Test, c nest) {
+    t.assert(c.mounts == 6)
+    t.assert(c.peak == 2)
+}
+-- testrun/bubbletea/go/app.sngl/nest/1 --
+sha256:25b602a5bd3c45f22df235e7fa72602d
+{
+  "results": [
+    {
+      "Desc": "EachOuterCopyCountsItsOwn",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/nest/1 --
+sha256:c54265d7fa37d1b97a265af815d6c6fc
+{
+  "results": [
+    {
+      "Desc": "EachOuterCopyCountsItsOwn",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/nest/1 --
+sha256:98b637833555c835324ab20966b0b5db
+{
+  "results": [
+    {
+      "Desc": "EachOuterCopyCountsItsOwn",
+      "Passed": true
+    }
+  ]
+}

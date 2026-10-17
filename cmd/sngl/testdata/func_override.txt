@@ -18,10 +18,11 @@ sngl generate --platform html --lang none -o out_m method.sngl
 grep 'web 3' out_m/index.html
 ! grep 'tui 3' out_m/index.html
 
-# The signature belongs to the declaration being overridden. Restating either
-# half is declaring a different function, not implementing this one.
+# The signature belongs to the declaration being overridden. The parameter
+# list selects what the body reads and may restate a type only where it
+# matches; a return type it may not restate at all.
 ! sngl check params.sngl
-stderr 'may not declare params'
+stderr 'cannot use string as int for parameter "n" of override "label"'
 
 ! sngl check rettype.sngl
 stderr 'may not declare a return type'
@@ -43,7 +44,7 @@ func label(n int) string {
     return "tui n=" + string(n)
 }
 
-func label[html.platform] {
+func label[html.platform](n) {
     return "web n=" + string(n)
 }
 
@@ -59,7 +60,7 @@ func int.describe(n int) string {
     return "tui " + string(n)
 }
 
-func int.describe[html.platform] {
+func int.describe[html.platform](n) {
     return "web " + string(n)
 }
 
@@ -73,7 +74,7 @@ import "sngl:platform/html"
 
 func label(n int) string { return "base" }
 
-func label[html.platform](n int) { return "x" }
+func label[html.platform](n string) { return "x" }
 
 window #w(title="t") {
     text(value=label(1))

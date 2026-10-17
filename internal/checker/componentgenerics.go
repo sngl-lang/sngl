@@ -36,10 +36,10 @@ func (c *checker) bindComponentTypeParams(pos ast.Pos, comp *ir.Component, args 
 			continue
 		}
 		argType := c.propArgType(args, comp, p)
-		// A dyn argument states nothing: binding T to it would make every
+		// An invalid argument states nothing: binding T to it would make every
 		// other prop typed T accept anything, which is the opposite of what
 		// the annotation asked for. Same rule as inferTypeParams.
-		if argType == nil || argType.Kind == ir.TypeDyn {
+		if argType == nil || argType.Kind == ir.TypeInvalid {
 			continue
 		}
 		ir.BindTypeParams(p.Type, argType, bindings)
@@ -92,10 +92,8 @@ func (c *checker) bindFromHandlers(comp *ir.Component, args ast.ArgList, binding
 			if p.Type == nil || i >= len(ev.Params) || ev.Params[i].Type == nil || !ev.Params[i].Type.HasTypeParam() {
 				continue
 			}
-			n := len(c.diags)
-			got := c.resolveType(p.Type)
-			c.diags = c.diags[:n]
-			if got == nil || got.Kind == ir.TypeDyn {
+			got := c.resolveTypeQuietly(p.Type)
+			if got == nil || got.Kind == ir.TypeInvalid {
 				continue
 			}
 			ir.BindTypeParams(ev.Params[i].Type, got, bindings)
@@ -311,8 +309,10 @@ func withComponentArgs(t *ir.Type, comp *ir.Component, args []*ir.Type) *ir.Type
 // three answered here: a named arg, a positional one, and a field of a struct
 // spread.
 func (c *checker) propArgType(args ast.ArgList, comp *ir.Component, p *ir.Prop) *ir.Type {
+	// Quietly: checkAndSplitArgs checks the argument against what this binds,
+	// and reports it there.
 	if val := propArgValue(args, comp, p); val != nil {
-		return exprType(c.checkExpr(val))
+		return exprType(c.checkExprQuietly(val))
 	}
 	return c.spreadPropType(args, comp, p)
 }
@@ -333,7 +333,7 @@ func (c *checker) spreadPropType(args ast.ArgList, comp *ir.Component, p *ir.Pro
 		if !isSpr {
 			continue
 		}
-		t := exprType(c.checkExpr(spread.Operand))
+		t := exprType(c.checkExprQuietly(spread.Operand))
 		if t == nil || t.Kind != ir.TypeStruct {
 			continue
 		}
@@ -350,53 +350,64 @@ func (c *checker) spreadPropType(args ast.ArgList, comp *ir.Component, p *ir.Pro
 	return nil
 }
 
-// propArgValue is the expression a call site supplied for prop p, or nil.
-// Named args win over position, and a wildcard prop has no position at all --
-// it stands for names, so binding one positionally would give it a name nobody
-// wrote. Mirrors the matching checkAndSplitArgs does.
+// propArgValue is the expression a call site supplied for prop p, or nil:
+// the argument naming it, or else the one bound to it by position.
 func propArgValue(args ast.ArgList, comp *ir.Component, p *ir.Prop) ast.Expr {
-	var ordered []*ir.Prop
-	for _, q := range comp.Props {
-		if q.Wildcard == "" {
-			ordered = append(ordered, q)
-		}
-	}
-	pos := 0
 	var positional ast.Expr
-	for _, a := range args.Args {
-		arg, isArg := a.(ast.Arg)
-		if !isArg || arg.Value == nil {
+	for i, name := range argPropNames(args, comp) {
+		if name != p.Name {
 			continue
 		}
-		if arg.Name == "key" {
+		arg := args.Args[i].(ast.Arg)
+		if arg.Name != "" {
+			return arg.Value
+		}
+		if positional == nil {
+			positional = arg.Value
+		}
+	}
+	return positional
+}
+
+// argPropNames is the prop each of args binds, by index: the name an argument
+// wrote, or the next prop by position for one that wrote none. "" is an
+// argument that binds no one prop -- a handler, `key`, a spread (which
+// expands to named props and takes no position), and a positional argument
+// past the last prop.
+//
+// A binding is the same prop under a different spelling: the leading `:` says
+// the value is written back, not that another name was supplied. And a
+// wildcard prop has no position: it stands for names, and binding one
+// positionally would give it a name nobody wrote.
+func argPropNames(args ast.ArgList, comp *ir.Component) []string {
+	var ordered []*ir.Prop
+	if comp != nil {
+		for _, q := range comp.Props {
+			if q.Wildcard == "" {
+				ordered = append(ordered, q)
+			}
+		}
+	}
+	names := make([]string, len(args.Args))
+	pos := 0
+	for i, a := range args.Args {
+		arg, isArg := a.(ast.Arg)
+		if !isArg || arg.Name == "key" {
 			continue
 		}
 		if arg.Name != "" {
-			// A binding is the same prop under a different spelling: the
-			// leading `:` says the value is written back, not that a different
-			// name was supplied, and checkAndSplitArgs strips it before it
-			// matches. Compared raw, `:on=n` bound no parameter at all, so
-			// every other prop typed T accepted anything -- `T` spelled at
-			// greater length, which is exactly what the annotation exists to
-			// prevent.
-			if strings.TrimPrefix(arg.Name, ":") == p.Name {
-				return arg.Value
-			}
+			names[i] = strings.TrimPrefix(arg.Name, ":")
 			continue
 		}
-		// A spread carries no name and takes no position: it expands to named
-		// props. Read as a positional it bound the first prop's type parameter
-		// to the struct being spread -- `effect(...a)` made T the struct, and
-		// the `@mount(v)` payload with it.
 		if _, isSpr := arg.Value.(*ast.SpreadExpr); isSpr {
 			continue
 		}
-		if pos < len(ordered) && ordered[pos] == p {
-			positional = arg.Value
+		if pos < len(ordered) {
+			names[i] = ordered[pos].Name
 		}
 		pos++
 	}
-	return positional
+	return names
 }
 
 // specializeComponent is comp with bindings applied to everything a call site
@@ -467,21 +478,6 @@ func substituteParams(params []*ir.Param, bindings map[string]*ir.Type) []*ir.Pa
 		out[j] = &q
 	}
 	return out
-}
-
-// checkEffectHandlers reports an effect that handles nothing.
-//
-// Either handler alone is a whole bracket -- a subscription with nothing to
-// give back, or a teardown for something the tree itself set up -- so the rule
-// is that at least one is written. Neither is a node that runs no code and
-// holds no state, which is a program that meant to say something else.
-func (c *checker) checkEffectHandlers(vn *ast.VisualNode) {
-	for _, a := range vn.Args.Args {
-		if _, isHandler := a.(ast.EventHandler); isHandler {
-			return
-		}
-	}
-	c.error(vn.Pos, "effect handles none of its events, so it brackets nothing and reports nothing")
 }
 
 // declTypeBindings is what a component's type parameters stand for where the

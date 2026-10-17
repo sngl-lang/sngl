@@ -114,7 +114,13 @@ func lowerPropBindings(inst *ir.NodeInst) {
 			rewritePropMutationsToEmit(comp, b.PropName, prop.Type)
 		}
 
-		// 3. Synthesize handler on this NodeInst.
+		// 3. Synthesize handler on this NodeInst -- unless step 2 already
+		// did: a component binding its own two-way prop to a recursion of
+		// itself lowers this node from inside its own body, and the handler
+		// that lowering wrote has since become the emit that reports it.
+		if slices.ContainsFunc(inst.Handlers, func(h ir.EventHandler) bool { return h.WriteBack && h.Name == b.PropName }) {
+			continue
+		}
 		paramName := "__" + b.PropName
 		param := &ir.Param{Name: paramName, Type: prop.Type}
 		inst.Handlers = append(inst.Handlers, ir.EventHandler{

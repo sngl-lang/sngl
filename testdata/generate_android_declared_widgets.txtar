@@ -142,9 +142,7 @@ fun MainScreen() {
                 }
             }
             Text(text = "", modifier = Modifier)
-            Box(modifier = Modifier.width(40.dp).height(40.dp)) {
-                Text(text = "JD", modifier = Modifier.width(40.dp).height(40.dp).background(ComposeColor(red = 204, green = 204, blue = 204, alpha = 255)), style = TextStyle(textAlign = TextAlign.Center))
-            }
+            Text(text = "JD", modifier = Modifier.width(40.dp).height(40.dp).background(ComposeColor(red = 204, green = 204, blue = 204, alpha = 255)), style = TextStyle(textAlign = TextAlign.Center))
         }
     }
 }
@@ -191,4 +189,4 @@ fun SnglAssetImage(url: String) {
     Image(bitmap = bmp, contentDescription = null, modifier = Modifier)
 }
 -- run/kotlin/android --
-pass sha256:11e4c7c8e1c4e9d08356fa7cb6246e33
+pass sha256:f06b4998bf30c3056a21db968673c874

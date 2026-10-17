@@ -15,7 +15,7 @@ import marks "sngl:internal/marks"
 //
 // A platform's command wins over its language's, so `go run` is written once
 // on `sngl:language/go` and html says how it serves a site on its own node; an
-// override of the platform's node for one language (`component platform[go.language] { gen.run(…) }`)
+// override of the platform's node for one language (`component platform[go.language](…) { gen.run(…) }`)
 // wins over both. A target that writes none cannot be run. A command is the
 // target package's to write: one in a program is refused.
 #[marks.builtin("genRun")]

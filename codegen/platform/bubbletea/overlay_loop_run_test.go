@@ -13,7 +13,9 @@ component Item(label string) node {
     vbox {
         button(text=label, @click { open = true })
         modal(open=open) {
-            text(value="modal {label}")
+            component content {
+                text(value="modal {label}")
+            }
         }
     }
 }

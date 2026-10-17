@@ -11,7 +11,9 @@ import . "sngl:test"
 component main node {
     var open = false
     modal(open=open, title="Hello", closable=true) {
-        text(value="body")
+        component content {
+            text(value="body")
+        }
     }
 }
 
@@ -54,6 +56,11 @@ import (
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
+	*modelState
+}
+
+// modelState is what every copy of a Model shares.
+type modelState struct {
 	open bool
 
 	width, height int
@@ -61,7 +68,7 @@ type Model struct {
 
 // New creates a Model with default bind values.
 func New() Model {
-	m := Model{}
+	m := Model{&modelState{}}
 	m.open = false
 	return m
 }
@@ -352,6 +359,9 @@ body { font-family: system-ui, sans-serif; }
 </div>
 
 <script>
+window.__snglErrors = [];
+addEventListener("error", (e) => window.__snglErrors.push(String(e.message)));
+addEventListener("unhandledrejection", (e) => window.__snglErrors.push(String(e.reason?.message ?? e.reason)));
 window.__sngl_markup = Array.from(document.body.childNodes)
   .filter((n) => n.nodeName !== "SCRIPT").map((n) => n.cloneNode(true));
 window.__sngl_reset = () => {
@@ -368,16 +378,6 @@ window.__sngl_boot = () => {
   var state = { open: false };
   if (typeof window !== "undefined") {
     window.__sngl_state = state;
-  }
-  function testModalOpenToggles(t, c) {
-    t.assert(c.open === false);
-    c.open = true;
-    t.assert(c.open === true);
-    c.open = false;
-    t.assert(c.open === false);
-  }
-  if (typeof window !== "undefined") {
-    Object.assign(window, { testModalOpenToggles });
   }
   function _snglStyleLength(v) {
     if (typeof v === "number") return v + "px";
@@ -400,10 +400,20 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:1045e0eab0a97a7a53412df4e048229e
+pass sha256:74b8e3c19541aedb3b58e53934c8a295
 -- run/go/fyne --
 pass sha256:58d9771cb302d5848443ba9e68bc4cc0
 -- run/kotlin/android --
 pass sha256:b99865b722a7937119735cb028566f77
 -- run/none/html --
-pass sha256:53c9fc24f9d5aedcfc6668de8807f278
+pass sha256:6586a588b57ff1b386155efb754c061a
+-- testrun/html/none/component_modal.sngl/main/1 --
+sha256:2ea62dd7d5985ab236eea3dfdd440951
+{
+  "results": [
+    {
+      "Desc": "ModalOpenToggles",
+      "Passed": true
+    }
+  ]
+}

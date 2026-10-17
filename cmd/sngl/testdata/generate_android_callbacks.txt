@@ -87,7 +87,9 @@ window {
     toggle(checked=flag, label="Wifi")
     checkbox(:checked=flag, label="Enable")
     modal(open=open, title="Howdy", @close { open = false }) {
-        text(value="body")
+        component content {
+            text(value="body")
+        }
     }
     android.Switch(checked=flag, onCheckedChange=func(v) { flag = v })
     tapper(onTap=func() { label = "hi!" }, decorate=func(s) => s + "!")

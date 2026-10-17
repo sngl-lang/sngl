@@ -157,7 +157,7 @@ func inlineComputedExpr(e ir.Expr, bodies map[*ir.Func]ir.Expr) ir.Expr {
 			x.Entries[i].Value = inlineComputedExpr(x.Entries[i].Value, bodies)
 		}
 		return x
-	case *ir.Literal, *ir.Ident, *ir.ContextRead:
+	case *ir.Literal, *ir.Ident, *ir.ContextRead, *ir.SlotEmpty:
 		// Terminal — no nested Calls to inline.
 		return x
 	default:

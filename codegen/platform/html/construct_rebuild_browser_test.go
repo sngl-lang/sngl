@@ -5,6 +5,8 @@ package html
 import (
 	"strings"
 	"testing"
+
+	"github.com/go-rod/rod"
 )
 
 // A #[construct] prop written from state rebuilds the instance where it
@@ -43,47 +45,45 @@ component App() node {
 }
 window(title="H") { App() }
 `
-	b := startTrapped(t, src)
-	defer b.Close()
-
-	page := b.Page()
-	if got := page.MustEval("() => window.__snglErr").String(); got != "" {
-		t.Fatalf("the page raised on load: %q", got)
-	}
-	body := func() string { return page.MustElement("body").MustText() }
-	click := func(label string) {
-		for _, el := range page.MustElements("button") {
-			if strings.TrimSpace(el.MustText()) == label {
-				el.MustClick()
-				page.MustWaitStable()
-				return
-			}
+	inBrowser(t, src, func(page *rod.Page) {
+		if got := page.MustEval("() => window.__snglErr").String(); got != "" {
+			t.Fatalf("the page raised on load: %q", got)
 		}
-		t.Fatalf("no button labelled %q; body = %q", label, body())
-	}
+		body := func() string { return page.MustElement("body").MustText() }
+		click := func(label string) {
+			for _, el := range page.MustElements("button") {
+				if strings.TrimSpace(el.MustText()) == label {
+					el.MustClick()
+					page.MustWaitStable()
+					return
+				}
+			}
+			t.Fatalf("no button labelled %q; body = %q", label, body())
+		}
 
-	if got := body(); !strings.Contains(got, "s:10") {
-		t.Fatalf("the instance should have been built from start=10; body = %q", got)
-	}
-	click("bump inner")
-	if got := body(); !strings.Contains(got, "s:15") {
-		t.Fatalf("the instance's own state should have moved; body = %q", got)
-	}
+		if got := body(); !strings.Contains(got, "s:10") {
+			t.Fatalf("the instance should have been built from start=10; body = %q", got)
+		}
+		click("bump inner")
+		if got := body(); !strings.Contains(got, "s:15") {
+			t.Fatalf("the instance's own state should have moved; body = %q", got)
+		}
 
-	click("bump")
-	got := body()
-	if !strings.Contains(got, "s:11") {
-		t.Errorf("the rebuilt instance should read start=11; body = %q", got)
-	}
-	if strings.Contains(got, "s:15") {
-		t.Errorf("the old instance's state should be gone with the old instance; body = %q", got)
-	}
-	// One instance at the position, not two: the old root is removed, and the
-	// new one goes in where it was rather than at the end of the flow.
-	if n := strings.Count(got, "s:"); n != 1 {
-		t.Errorf("the position should hold one instance, found %d; body = %q", n, got)
-	}
-	if i, j := strings.Index(got, "s:11"), strings.Index(got, "after"); i < 0 || j < 0 || i > j {
-		t.Errorf("the rebuilt instance should still sit before its next sibling; body = %q", got)
-	}
+		click("bump")
+		got := body()
+		if !strings.Contains(got, "s:11") {
+			t.Errorf("the rebuilt instance should read start=11; body = %q", got)
+		}
+		if strings.Contains(got, "s:15") {
+			t.Errorf("the old instance's state should be gone with the old instance; body = %q", got)
+		}
+		// One instance at the position, not two: the old root is removed, and the
+		// new one goes in where it was rather than at the end of the flow.
+		if n := strings.Count(got, "s:"); n != 1 {
+			t.Errorf("the position should hold one instance, found %d; body = %q", n, got)
+		}
+		if i, j := strings.Index(got, "s:11"), strings.Index(got, "after"); i < 0 || j < 0 || i > j {
+			t.Errorf("the rebuilt instance should still sit before its next sibling; body = %q", got)
+		}
+	})
 }

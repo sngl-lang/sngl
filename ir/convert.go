@@ -272,6 +272,9 @@ func (c *converter) convertComponent(comp *Component) *ast.ComponentDecl {
 		if s.Rest {
 			typ = &ast.VariadicType{Elem: ct}
 		}
+		if s.Inserts != InsertOne {
+			typ = &ast.NamedType{Name: string(s.Inserts), TypeArgs: []ast.TypeExpr{typ}}
+		}
 		props = append(props, ast.Param{Name: s.Name, Type: typ, Const: s.Const})
 	}
 	if len(props) > 0 {
@@ -755,7 +758,7 @@ func (c *converter) convertErrorBoundary(n *ErrorBoundary) ast.Stmt {
 // whatever the count was read from.
 func (c *converter) convertSlotContent(s *SlotDecl) ast.TypeExpr {
 	if s.Content == nil {
-		// A count with no tree of its own: bare `tree.one` is one of whatever
+		// A count with no tree of its own: bare `family.one` is one of whatever
 		// the slot already accepts, which is its owner's family.
 		if s.Card == SlotOne {
 			return &ast.NamedType{Package: c.familyPkg(), Name: "one"}
@@ -865,8 +868,13 @@ func (c *converter) convertExpr(e Expr) ast.Expr {
 	case *Conversion:
 		return c.convertConversion(e)
 	case *Select:
+		// A node a population declares is read through the node it populates.
+		operand := e.Operand
+		if e.Via != nil {
+			operand = e.Via
+		}
 		return &ast.SelectExpr{
-			Operand: c.convertExpr(e.Operand),
+			Operand: c.convertExpr(operand),
 			Field:   e.Field,
 		}
 	case *Index:
@@ -888,6 +896,8 @@ func (c *converter) convertExpr(e Expr) ast.Expr {
 		return c.convertLambda(e)
 	case *ContextRead:
 		return &ast.IdentExpr{Name: e.Ref.Name}
+	case *SlotEmpty:
+		return &ast.SelectExpr{Operand: &ast.IdentExpr{Name: e.Slot.Name}, Field: SlotEmptyMember}
 	case *Closure:
 		// Render as a synthetic call: __closure(funcRef, structLit). Debug-only —
 		// not parseable as user syntax; provides readability for `dump lowered`.
@@ -934,7 +944,7 @@ func (c *converter) convertLiteral(lit *Literal) ast.Expr {
 func (c *converter) convertIdent(id *Ident) ast.Expr {
 	// Synthesized element references (IsElementRef) carry reserved __-prefixed
 	// names and convert to plain identifiers; the checker re-recognizes the
-	// __ prefix as an unresolved dyn reference when the source is reparsed.
+	// __ prefix as an unresolved reference when the source is reparsed.
 	// Bare enum member: Status.active referenced as just "active" in source.
 	if id.Member != "" {
 		if id.Sym != nil {
@@ -945,20 +955,40 @@ func (c *converter) convertIdent(id *Ident) ast.Expr {
 		}
 		return &ast.IdentExpr{Name: id.Member}
 	}
+	if id.Qualifier != nil {
+		return &ast.SelectExpr{Operand: &ast.IdentExpr{Name: id.Qualifier.Name}, Field: id.Name}
+	}
 	return &ast.IdentExpr{Name: id.Name}
 }
 
 func (c *converter) convertCallExpr(call *Call) *ast.CallExpr {
 	var funcExpr ast.Expr
-	if call.Receiver != nil && call.Func != nil {
+	if call.Qualifier != nil {
+		// Named through an import: `math.sqrt(x)`, `html.div(…)`. A member
+		// the package does not declare -- one a wildcard answers to -- is
+		// named by what the call site wrote.
+		name := ""
+		if call.Func != nil {
+			name = call.Func.Name
+		} else if call.AST != nil {
+			if sel, ok := call.AST.Func.(*ast.SelectExpr); ok {
+				name = sel.Field
+			}
+		}
+		funcExpr = &ast.SelectExpr{Operand: &ast.IdentExpr{Name: call.Qualifier.Name}, Field: name}
+	} else if IsNodeOpCall(call) {
+		// A node operation a lowering pass emitted, which no package
+		// declares: printed under the lowering's own name for it.
+		funcExpr = &ast.SelectExpr{Operand: &ast.IdentExpr{Name: "lower"}, Field: call.Func.Name}
+	} else if call.Receiver != nil && call.Func != nil {
 		// Method call: receiver.method(args)
 		funcExpr = &ast.SelectExpr{
 			Operand: c.convertExpr(call.Receiver),
 			Field:   call.Func.Name,
 		}
 	} else if call.Receiver != nil {
-		// Namespaced component/element (html.div, docui.Foo) — preserve the
-		// "ns.Field" select form.
+		// A host call on a value -- `c.label()` on a component-typed param
+		// the checker bound to no func -- preserves the "x.Field" form.
 		if call.AST != nil {
 			if sel, ok := call.AST.Func.(*ast.SelectExpr); ok {
 				funcExpr = &ast.SelectExpr{
@@ -999,13 +1029,6 @@ func (c *converter) convertCallExpr(call *Call) *ast.CallExpr {
 			// and "Type.method(...)" syntaxes collapse to this shape.
 			funcExpr = &ast.SelectExpr{
 				Operand: &ast.IdentExpr{Name: call.Func.RecvName()},
-				Field:   call.Func.Name,
-			}
-		} else if id, ok := call.Receiver.(*Ident); ok && id.Name != "" {
-			// A package function called through its import: the namespace is
-			// the alias at the call site, not a receiver on the declaration.
-			funcExpr = &ast.SelectExpr{
-				Operand: &ast.IdentExpr{Name: id.Name},
 				Field:   call.Func.Name,
 			}
 		} else {
@@ -1143,6 +1166,11 @@ func (c *converter) convertType(t *Type) ast.TypeExpr {
 		return nil
 	}
 	switch t.Kind {
+	case TypeInvalid:
+		// Only a host declaration marked #[macro.unusable] holds one in a
+		// package that checked clean, and its type is SNGL's to have no name
+		// for: the checker accepts `any` written there and reads nothing of it.
+		return &ast.NamedType{Name: "any"}
 	case TypeList:
 		nt := &ast.NamedType{Name: "list"}
 		if len(t.Elems) > 0 {
@@ -1169,7 +1197,7 @@ func (c *converter) convertType(t *Type) ast.TypeExpr {
 		}
 		// Bare `component` carries no declaration — it is the widest component
 		// type, not an unresolved one, so it has a spelling of its own.
-		name := "dyn" // anonymous/unresolved declaration
+		name := "<invalid>" // anonymous/unresolved declaration, which no source names
 		switch {
 		case t.Decl != nil:
 			name = t.Decl.SymName()

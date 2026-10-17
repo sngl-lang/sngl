@@ -55,6 +55,11 @@ import (
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
+	*modelState
+}
+
+// modelState is what every copy of a Model shares.
+type modelState struct {
 	sel string
 
 	width, height int
@@ -62,7 +67,7 @@ type Model struct {
 
 // New creates a Model with default bind values.
 func New() Model {
-	m := Model{}
+	m := Model{&modelState{}}
 	m.sel = "medium"
 	return m
 }
@@ -329,6 +334,9 @@ body { font-family: system-ui, sans-serif; }
 </fieldset>
 
 <script>
+window.__snglErrors = [];
+addEventListener("error", (e) => window.__snglErrors.push(String(e.message)));
+addEventListener("unhandledrejection", (e) => window.__snglErrors.push(String(e.reason?.message ?? e.reason)));
 window.__sngl_markup = Array.from(document.body.childNodes)
   .filter((n) => n.nodeName !== "SCRIPT").map((n) => n.cloneNode(true));
 window.__sngl_reset = () => {
@@ -345,16 +353,6 @@ window.__sngl_boot = () => {
   var state = { sel: "medium" };
   if (typeof window !== "undefined") {
     window.__sngl_state = state;
-  }
-  function testRadioValueMutates(t, c) {
-    t.assert(c.sel === "medium");
-    c.sel = "large";
-    t.assert(c.sel === "large");
-    c.sel = "small";
-    t.assert(c.sel === "small");
-  }
-  if (typeof window !== "undefined") {
-    Object.assign(window, { testRadioValueMutates });
   }
   function __cf___child0(props) {
     const __root = document.createElement("div");
@@ -486,10 +484,20 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:984e7f369b862c28d153b7a804dd078f
+pass sha256:3f15adfd5b9de712ba0a733b8f681412
 -- run/go/fyne --
 pass sha256:be140ef1caa7387aa9b64424900ce3b0
 -- run/kotlin/android --
 pass sha256:35bd17229b7ac76768b744948ef54c50
 -- run/none/html --
-pass sha256:16478333e4be656a63874b423bbab18c
+pass sha256:f63e5f3b471137563af0d2dfda3529da
+-- testrun/html/none/component_radio.sngl/main/1 --
+sha256:3b5a4f03c93bd81c38512c72c8ff5843
+{
+  "results": [
+    {
+      "Desc": "RadioValueMutates",
+      "Passed": true
+    }
+  ]
+}

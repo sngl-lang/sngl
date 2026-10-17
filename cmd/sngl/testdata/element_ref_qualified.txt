@@ -10,7 +10,7 @@ stdout 'pair/testQualifiedRefInAChildIsAddressable'
 # A child in another package, reached through a qualified call statement. Its
 # body is that package's: it imports sngl:ui as `u` and renders its own
 # `inner`, while this package declares an `inner` with a #lbl button. Read in
-# this package's scope, `c.lbl` was either no member of pair or a button.
+# this package's scope, `c.b.core.lbl` would be either no member or a button.
 sngl test --platform none child
 stdout '1 tests, 0 failures'
 stdout 'pair/testQualifiedChildCall'
@@ -38,7 +38,8 @@ func testQualifiedRefIsAddressable(t test.Test, c counter) {
 }
 
 func testQualifiedRefInAChildIsAddressable(t test.Test, c pair) {
-    t.assert(c.lbl[1].value == "b")
+    t.assert(c.first.lbl.value == "a")
+    t.assert(c.second.lbl.value == "b")
 }
 
 component counter ui.node {
@@ -56,8 +57,8 @@ component labelled(label string) ui.node {
 
 component pair ui.node {
     ui.vbox {
-        labelled(label="a")
-        labelled(label="b")
+        labelled #first(label="a")
+        labelled #second(label="b")
     }
 }
 
@@ -74,13 +75,14 @@ output {
 }
 
 func testQualifiedChildCall(t test.Test, c pair) {
-    t.assert(c.lbl[1].value == "b")
+    t.assert(c.a.core.lbl.value == "a")
+    t.assert(c.b.core.lbl.value == "b")
 }
 
 component pair ui.node {
     ui.vbox {
-        w.labelled(label="a")
-        w.labelled(label="b")
+        w.labelled #a(label="a")
+        w.labelled #b(label="b")
     }
 }
 
@@ -99,7 +101,7 @@ component inner(label string) u.node {
 }
 
 component labelled(label string) u.node {
-    inner(label=label)
+    inner #core(label=label)
 }
 -- sibling/main.sngl --
 import test "sngl:test"
@@ -110,13 +112,14 @@ output {
 }
 
 func testSiblingFileChild(t test.Test, c pair) {
-    t.assert(c.lbl[1].value == "b")
+    t.assert(c.a.lbl.value == "a")
+    t.assert(c.b.lbl.value == "b")
 }
 
 component pair ui.node {
     ui.vbox {
-        labelled(label="a")
-        labelled(label="b")
+        labelled #a(label="a")
+        labelled #b(label="b")
     }
 }
 

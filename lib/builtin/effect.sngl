@@ -52,10 +52,22 @@
 // the value it already held, and before the bracket rekeys. No handler may write
 // what `on` reads.
 //
+// **A resource kept across a change is two effects.** Each handler means what it
+// says whichever others are written, so a keyed `@mount` is a new lifetime on
+// every change of key. A resource that should survive one -- a schedule whose
+// period moves, a subscription whose filter does -- is held by an effect with no
+// `on`, which lives as long as its position, and retuned by one keyed on the
+// setting that handles only `@update`:
+//
+//     if enabled {
+//         effect(@mount { handle = newTicker(period) }, @unmount { handle.stop() })
+//         effect(on = period, @update(p) { handle.reset(p) })
+//     }
+//
 // `I` and `E` are what a list's changes are reported in -- its index and its
 // element type -- and are bound from `T` rather than written.
 #[_builtin(effect)]
-component effect[T any = struct {}, I any = int, E any = dyn, F any](
+component effect[T any = struct {}, I any = int, E any = struct {}, F any](
     on T,
     @mount(key T),
     @unmount(key T),

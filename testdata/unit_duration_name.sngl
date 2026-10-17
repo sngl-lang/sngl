@@ -25,7 +25,7 @@ component main node {
     timer(interval=iv, @tick {
         ticks = ticks + 1
     })
-    text(value="{takes(annotated).string()} {sum(zero).string()} {inferred.string()} {ticks}")
+    text(value="{takes(annotated)} {sum(zero)} {inferred} {ticks}")
 }
 
 window {

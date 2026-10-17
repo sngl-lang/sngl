@@ -71,6 +71,9 @@ func reserveNames(pkg *ir.Package, f Features, opts Options, nodeIDs bool) error
 		nodeIDs:  nodeIDs,
 	}
 	r.root = opts.RootComponent
+	if nodeIDs {
+		r.tests = testInstances(pkg, opts)
+	}
 	r.collect(pkg)
 	if len(r.syms) == 0 && len(r.ids) == 0 && len(r.comps) == 0 {
 		return nil
@@ -122,6 +125,11 @@ type reservedRenamer struct {
 	// root is the component a test build is rooted at, which the harness
 	// finds by its name.
 	root string
+	// tests is each test's instance. A test's select of a node an instance
+	// the build spliced renders names the node by the id its splice gave it,
+	// and the node then stands in the body of whatever rendered the instance,
+	// so no member of the instance's component says it was renamed.
+	tests map[*ir.Param]bool
 }
 
 func (r *reservedRenamer) fresh(old string) string { return r.names.next(old, "r") }
@@ -344,6 +352,9 @@ func (r *reservedRenamer) node(n *ir.NodeInst, owner *ir.Component) {
 	if h := n.Handle; h != nil {
 		if _, done := r.syms[h]; !done {
 			r.syms[h] = nn
+			if h.Written == "" {
+				h.Written = h.Name
+			}
 			h.Name = nn
 		}
 	}
@@ -376,6 +387,8 @@ func (r *reservedRenamer) rewrite(pkg *ir.Package) {
 			if t := x.Operand.ExprType(); t != nil && t.Kind == ir.TypeComponent {
 				if comp, ok := t.Decl.(*ir.Component); ok {
 					if nn, ok := r.members[comp][x.Field]; ok {
+						x.Field = nn
+					} else if nn, ok := r.ids[x.Field]; ok && r.testReach(x) && x.Ref != ir.RefNone {
 						x.Field = nn
 					}
 				}
@@ -422,6 +435,16 @@ func (r *reservedRenamer) rewrite(pkg *ir.Package) {
 			}
 		}
 	}
+}
+
+// testReach reports whether sel selects off a test's own instance.
+func (r *reservedRenamer) testReach(sel *ir.Select) bool {
+	id, ok := unnarrowed(sel.Operand).(*ir.Ident)
+	if !ok {
+		return false
+	}
+	p, ok := id.Sym.(*ir.Param)
+	return ok && r.tests[p]
 }
 
 // funcStrings updates what a func holds of a renamed name as a string.

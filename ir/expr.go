@@ -29,6 +29,12 @@ type Ident struct {
 	Sym          Symbol // resolved: *Var, *Func, *Param, *LoopVar, etc.
 	Member       string // non-empty for bare enum member ("active" → Status.active)
 	IsElementRef bool   // true when from #id syntax (ElementRefExpr)
+	// Qualifier is the import a member of another package was named through:
+	// `math.pi` is the Ident of pi qualified by math. A namespace is not a
+	// value, so it is never an operand; SelAST is the select it was written
+	// as, which is where its position is.
+	Qualifier *Namespace      `json:",omitempty"`
+	SelAST    *ast.SelectExpr `json:"-"`
 	// Synthesized marks Idents emitted by a lowering pass for refs to
 	// pass-introduced Vars or Funcs (e.g. __slot<N>, __renderSlot<N>,
 	// __n<N> widget refs). Codegen consumers use this to distinguish
@@ -68,15 +74,20 @@ type Ternary struct {
 //   - Type-attached method (string.upper, list.push, etc.): Func set with
 //     Func.Receiver != "", Receiver nil. The receiver value is Args[0]; both
 //     "x.upper()" and "string.upper(x)" normalize to this shape.
-//   - Namespace call (ns.foo, html.div): Func optionally set, Receiver set to
-//     the namespace ident.
+//   - Qualified call (ns.foo, html.div): Func optionally set, Qualifier set to
+//     the namespace it was named through, Receiver nil. A namespace is not a
+//     value, so it is never an operand.
+//   - Host call on a value (a node handle, a host package alias a codegen
+//     synthesizes): Receiver set.
 type Call struct {
 	AST      *ast.CallExpr
-	Type     *Type     // return type
-	Func     *Func     // resolved function (nil for unresolved/dynamic)
-	Callee   Expr      // callee expression when Func is nil (e.g. func-typed var)
-	Receiver Expr      // non-nil only for namespace/component/element-ref calls
-	Args     []CallArg // resolved arguments (for type-methods, Args[0] is the receiver)
+	Type     *Type // return type
+	Func     *Func // resolved function (nil for unresolved/dynamic)
+	Callee   Expr  // callee expression when Func is nil (e.g. func-typed var)
+	Receiver Expr  // non-nil only for component/element-ref/host calls
+	// Qualifier is the import the callee was named through, `math.sqrt(x)`.
+	Qualifier *Namespace `json:",omitempty"`
+	Args      []CallArg  // resolved arguments (for type-methods, Args[0] is the receiver)
 	// ReceiverArg says Args[0] is the value the method was called on, which
 	// its parameters do not list: a method whose receiver is implicit, as a
 	// `sngl:` one's and one on a generic type's are. ir.Convert prints such a
@@ -103,6 +114,25 @@ type Call struct {
 	ErrorHandler    *EventHandler
 	ResolvedHandler *EventHandler
 	ErrorMode       ErrorMode
+}
+
+// QualifiedName is "ns.member" for a call named through an import, read off
+// what the call site wrote, and "" for any other call. A member a wildcard
+// answers to has no declaration to name it, so the source is the only place
+// its name is.
+func (c *Call) QualifiedName() string {
+	if c == nil || c.Qualifier == nil {
+		return ""
+	}
+	if c.Func != nil {
+		return c.Qualifier.Name + "." + c.Func.Name
+	}
+	if c.AST != nil {
+		if sel, ok := c.AST.Func.(*ast.SelectExpr); ok {
+			return c.Qualifier.Name + "." + sel.Field
+		}
+	}
+	return ""
 }
 
 // ErrorMode describes how a fallible call's error is lowered at the callsite.
@@ -180,10 +210,71 @@ type Select struct {
 	Type    *Type
 	Operand Expr
 	Field   string
+	// Ref is set when Field names a `#id` written in the body of the component
+	// Operand is, and says how many nodes the read names. Type already says
+	// so; this is what tells an evaluator the value is a node lookup rather
+	// than a member.
+	Ref RefCount `json:",omitempty"`
+	// Populated says Field names a node written in a slot population of the
+	// node Via reads -- `c.card.title`, through `card` -- rather than one in
+	// the body of the component Operand is an instance of. Operand is still
+	// the owner, `c`, which is the reach a compiled target answers; Via is
+	// which instance of the populated node, which only an evaluator asks. Via is
+	// also set on a read of a boundary's fallback, which is not Populated, so
+	// the read prints back as written.
+	Populated bool `json:",omitempty"`
+	Via       Expr `json:",omitempty"`
 	// Spread is nonzero on a field read a spread argument expanded to, one id
 	// per site, when its operand is not a plain path and so must be evaluated
 	// once for all of them (StatementSpreads).
 	Spread int
+}
+
+// RefCount is how many nodes an element ref names, which its position
+// decides: the wrappers around one node, outermost first, ending in `1` --
+// `l` for each loop or list slot the node is reached through, `o` for a
+// conditional or option slot. Nested loops are a list of lists, so an index
+// names the iteration it would in the loops. RefNone is no ref at all.
+type RefCount string
+
+const (
+	RefNone RefCount = ""
+	RefOne  RefCount = "1"
+)
+
+// RefOption and RefList are the wrappers a RefCount is spelled with.
+const (
+	RefOption byte = 'o'
+	RefList   byte = 'l'
+)
+
+// Inside is k with w wrapped around the node, inside every wrapper k has. An
+// option inside an option says nothing more, and one directly around a list
+// says nothing an empty list does not; an option inside a list stays, so the
+// list keeps one entry per iteration.
+func (k RefCount) Inside(w byte) RefCount {
+	wraps := string(k[:len(k)-1])
+	if n := len(wraps); n > 0 && wraps[n-1] == RefOption {
+		if w == RefOption {
+			return k
+		}
+		wraps = wraps[:n-1]
+	}
+	return RefCount(wraps + string(w) + "1")
+}
+
+// Wrap is t as a read with this count types it, each list built by listOf:
+// the list a check builds is its own library's.
+func (k RefCount) Wrap(t *Type, listOf func(*Type) *Type) *Type {
+	for i := len(k) - 2; i >= 0; i-- {
+		switch k[i] {
+		case RefOption:
+			t = OptionOf(t)
+		case RefList:
+			t = listOf(t)
+		}
+	}
+	return t
 }
 
 // Index is a resolved index operation: operand[index].
@@ -310,7 +401,8 @@ func IsConst(e Expr) bool {
 		if v, ok := x.Sym.(*Var); ok && v.IsConst {
 			return true
 		}
-		if _, ok := x.Sym.(*Namespace); ok {
+		// A build-target node read as a value is its name.
+		if _, _, ok := TargetNode(x.Sym); ok {
 			return true
 		}
 		if _, ok := x.Sym.(*EnumDef); ok {

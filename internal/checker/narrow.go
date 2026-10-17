@@ -1,6 +1,7 @@
 package checker
 
 import (
+	"fmt"
 	"slices"
 	"strings"
 
@@ -81,15 +82,23 @@ func (c *checker) applyNarrowing(e ir.Expr) ir.Expr {
 }
 
 // narrowKeyOf peels a field path down to the symbol it is rooted at. Only a
-// variable, parameter or loop variable roots one, and only struct field reads
-// extend it: an index cannot, because two spellings may name one element and a
-// write through either would have to invalidate both.
+// variable, parameter or loop variable roots one, and only field reads and
+// literal indexes extend it: two literals name two elements, while any other
+// index could spell one a literal names, so a write through it has no key and
+// invalidates everything under its root.
 func narrowKeyOf(e ir.Expr) (narrowKey, bool) {
 	var segs []string
 	for {
 		switch n := e.(type) {
 		case *ir.Select:
 			segs = append(segs, n.Field)
+			e = n.Operand
+		case *ir.Index:
+			lit, ok := n.Idx.(*ir.Literal)
+			if !ok {
+				return narrowKey{}, false
+			}
+			segs = append(segs, fmt.Sprintf("[%v]", lit.Value))
 			e = n.Operand
 		case *ir.Ident:
 			switch n.Sym.(type) {
@@ -197,7 +206,7 @@ func narrowSpelling(k narrowKey) string {
 	if k.path == "" {
 		return name
 	}
-	return name + "." + k.path
+	return strings.ReplaceAll(name+"."+k.path, ".[", "[")
 }
 
 // pushNarrowings makes a set of facts current and returns the restore. The

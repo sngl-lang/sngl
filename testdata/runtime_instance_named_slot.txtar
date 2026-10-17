@@ -47,7 +47,7 @@ output {
     }
 }
 
-component Card(start int, cell component(row int) node) node {
+component Card(start int, cell list[component(row int) node]) node {
     var rows = [start, start + 10]
 
     vbox {
@@ -109,6 +109,11 @@ type ErrorEvent struct {
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
+	*modelState
+}
+
+// modelState is what every copy of a Model shares.
+type modelState struct {
 	items               []int
 	mounted             string
 	rows__inst0         map[string][]int
@@ -128,7 +133,7 @@ type Model struct {
 
 // New creates a Model with default bind values.
 func New() Model {
-	m := Model{}
+	m := Model{&modelState{}}
 	m.items = []int{1, 2}
 	m.mounted = ""
 	m.rows__inst0 = map[string][]int{}
@@ -1648,7 +1653,7 @@ package test.sngl.app
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
-import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performTextReplacement
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -1669,7 +1674,7 @@ class MainScreenTest {
         @Suppress("UNUSED_VARIABLE") val composeTestRule = composeRule
         composeRule.setContent { MainScreen(c) }
         org.junit.Assert.assertTrue("(c.mounted == \"1:1 1:11 2:2 2:12 \")", (c.mounted == "1:1 1:11 2:2 2:12 "))
-        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("add")).performClick(); composeTestRule.waitForIdle()
+        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("add")).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick); composeTestRule.waitForIdle()
         org.junit.Assert.assertTrue("(c.mounted == \"1:1 1:11 2:2 2:12 3:3 3:13 \")", (c.mounted == "1:1 1:11 2:2 2:12 3:3 3:13 "))
     }
 
@@ -1696,6 +1701,9 @@ body { font-family: system-ui, sans-serif; }
 </div>
 
 <script>
+window.__snglErrors = [];
+addEventListener("error", (e) => window.__snglErrors.push(String(e.message)));
+addEventListener("unhandledrejection", (e) => window.__snglErrors.push(String(e.reason?.message ?? e.reason)));
 window.__sngl_markup = Array.from(document.body.childNodes)
   .filter((n) => n.nodeName !== "SCRIPT").map((n) => n.cloneNode(true));
 window.__sngl_reset = () => {
@@ -1713,14 +1721,6 @@ window.__sngl_boot = () => {
   state.addClick = () => $0.click();
   if (typeof window !== "undefined") {
     window.__sngl_state = state;
-  }
-  function testEachCopyRendersItsOwnCells(t, c) {
-    t.assert(c.mounted === "1:1 1:11 2:2 2:12 ");
-    c.add();
-    t.assert(c.mounted === "1:1 1:11 2:2 2:12 3:3 3:13 ");
-  }
-  if (typeof window !== "undefined") {
-    Object.assign(window, { testEachCopyRendersItsOwnCells });
   }
   function __cf_Card(props) {
     const __root = document.createElement("div");
@@ -2143,12 +2143,12 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:04193e96fdd1d766b7a99a6dc790d48d
+pass sha256:f869938febf27d8d76ce715415fbd59c
 -- run/go/fyne --
 pass sha256:0ad9487ac7f6cb8260e3ec1ca725bb0b
 -- run/go/gtk4 --
 pass sha256:3f6c6c2c2aab0dbf6c69a94a50262b4a
 -- run/kotlin/android --
-pass sha256:cf148f18aee3f213cf651fd447df6fa5
+pass sha256:ea91f6ed5e53287b5fea050065582310
 -- run/none/html --
-pass sha256:f936f199174e002d58ae9cde9c813860
+pass sha256:65cee73488ba9131fd06a5580070a42a

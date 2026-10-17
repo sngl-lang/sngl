@@ -20,3 +20,12 @@ component other(cards list[card]) ui.node {
         c.content // ERROR(check) "c.content is what a card was written with, which only a component taking cards in a slot inserts, in its own body"
     }
 }
+
+// A record's content is shown at most once for the record, which is what a
+// ref into it reads as.
+component twice(cards ...component card) ui.node {
+    for var c = cards {
+        c.content
+        c.content // ERROR(check) "a record's content is inserted more than once"
+    }
+}

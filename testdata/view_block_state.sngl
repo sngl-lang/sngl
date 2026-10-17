@@ -65,11 +65,14 @@ component toggled ui.node {
 }
 
 func testABranchStartsAgain(t Test, c toggled) {
-    c.hit.click()
-    t.assert(c.hits.value == "hits 1")
+    if c.hit != null {
+        c.hit.click()
+    }
+    t.assert(c.hits != null && c.hits.value == "hits 1")
     c.flip.click()
+    t.assert(c.hits == null)
     c.flip.click()
-    t.assert(c.hits.value == "hits 0")
+    t.assert(c.hits != null && c.hits.value == "hits 0")
 }
 
 component paged ui.node {
@@ -88,9 +91,12 @@ component paged ui.node {
 }
 
 func testAPageStartsAgain(t Test, c paged) {
-    c.visit.click()
-    t.assert(c.visits.value == "visits 1")
+    if c.visit != null {
+        c.visit.click()
+    }
+    t.assert(c.visits != null && c.visits.value == "visits 1")
     c.toAbout.click()
+    t.assert(c.visits == null)
     c.back.click()
-    t.assert(c.visits.value == "visits 0")
+    t.assert(c.visits != null && c.visits.value == "visits 0")
 }

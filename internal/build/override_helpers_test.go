@@ -32,7 +32,7 @@ component chip(label string, @hit()) ui.node
 	override := parse("blipchip.sngl", `import ui "sngl:ui"
 import blip "sngl:blip"
 
-const component blip.chip[platform] {
+const component blip.chip[platform](label, @hit) {
     struct ChipTag {
         label string
     }

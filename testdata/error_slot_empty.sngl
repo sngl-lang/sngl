@@ -1,0 +1,76 @@
+// A slot is no value, so its name is read through only to ask `.empty`, and
+// only in the view, where there is content to ask about; a scoped slot's
+// content may turn on the arguments an insertion hands it, which asking hands
+// none; and content whose answer turns on what one copy of a loop renders has
+// no answer at the position, whether handed in directly or forwarded to a
+// component that asks.
+
+import . "sngl:ui"
+
+component asks(content ...component option[node]) node {
+    if content.length > 0 { // ERROR(check) "content is a slot, which is not a value"
+        text(value="some")
+    }
+    content
+}
+
+component scoped(cell option[component(n int) node]) node {
+    if cell.empty { // ERROR(check) "cell is handed arguments where it is inserted"
+        text(value="none")
+    }
+}
+
+component boxed(content ...component node) node {
+    if content.empty {
+        text(value="nothing")
+    }
+    content
+}
+
+component forwards(content ...component node) node {
+    boxed {
+        content
+    }
+}
+
+component inHandler(content ...component node) node {
+    var asked = false
+    button(text="ask", @click {
+        asked = content.empty // ERROR(check) "content.empty asks what the call site rendered, which only the view can ask"
+    })
+    content
+}
+
+component inMethod(content ...component node) node {
+    func ask() bool {
+        return content.empty // ERROR(check) "content.empty asks what the call site rendered, which only the view can ask"
+    }
+    content
+}
+
+component main node {
+    var xs = [1, 2, 3]
+    boxed { // ERROR(check) "boxed asks whether its content renders anything"
+        for var x = xs {
+            if x > 1 {
+                text(value="{x}")
+            }
+        }
+    }
+    boxed {
+        for var x = xs {
+            text(value="{x}")
+        }
+    }
+    forwards { // ERROR(check) "forwards asks whether its content renders anything"
+        for var x = xs {
+            if x > 1 {
+                text(value="{x}")
+            }
+        }
+    }
+}
+
+window {
+    main
+}

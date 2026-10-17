@@ -6,7 +6,7 @@ import marks "sngl:internal/marks"
 // Most name a lowering pass that does *not* run when the target claims it, and
 // the list is closed: a capability nothing reads is a word with no consequence.
 //
-// Six are read somewhere other than a pass gate, and are here because a target
+// Eight are read somewhere other than a pass gate, and are here because a target
 // still has to be able to say them. `viewStatements` is the build's: withheld, it
 // unrolls the target's view loops after lowering, one window at a time.
 // `instanceState` is the inliner's: withheld, a component with state of its own
@@ -216,7 +216,7 @@ struct Member[T any] {
 // children write, then `close`; both are evaluated with the member's props in
 // scope, which is how a member says what it holds:
 //
-//     component text[go.language] {
+//     component text[go.language](name, full) {
 //         gen.node(open="{name}: {full}\n")
 //     }
 //
@@ -224,7 +224,7 @@ struct Member[T any] {
 // in scope -- and its events, each a func running the handler the call site
 // wrote for it, or nothing where it wrote none:
 //
-//     component text[go.language] {
+//     component text[go.language](full, @click) {
 //         gen.node(value=Entry{full=full, click=click})
 //     }
 #[marks.builtin("genNode")]

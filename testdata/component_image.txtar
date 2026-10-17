@@ -54,6 +54,11 @@ import (
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
+	*modelState
+}
+
+// modelState is what every copy of a Model shares.
+type modelState struct {
 	src string
 
 	width, height int
@@ -61,7 +66,7 @@ type Model struct {
 
 // New creates a Model with default bind values.
 func New() Model {
-	m := Model{}
+	m := Model{&modelState{}}
 	m.src = "https://example.com/a.png"
 	return m
 }
@@ -447,6 +452,9 @@ body { font-family: system-ui, sans-serif; }
 </style>
 
 <script>
+window.__snglErrors = [];
+addEventListener("error", (e) => window.__snglErrors.push(String(e.message)));
+addEventListener("unhandledrejection", (e) => window.__snglErrors.push(String(e.reason?.message ?? e.reason)));
 window.__sngl_markup = Array.from(document.body.childNodes)
   .filter((n) => n.nodeName !== "SCRIPT").map((n) => n.cloneNode(true));
 window.__sngl_reset = () => {
@@ -464,14 +472,6 @@ window.__sngl_boot = () => {
   if (typeof window !== "undefined") {
     window.__sngl_state = state;
   }
-  function testImageSrcMutates(t, c) {
-    t.assert(c.src === "https://example.com/a.png");
-    c.src = "https://example.com/b.png";
-    t.assert(c.src === "https://example.com/b.png");
-  }
-  if (typeof window !== "undefined") {
-    Object.assign(window, { testImageSrcMutates });
-  }
   var __n0 = document.querySelector('[data-sngl-id="__n0"]');
   function __sngl_init() {
     __n0.setAttribute("src", state.src);
@@ -483,7 +483,7 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:da00704eae50dd6bd8694ea7db977981
+pass sha256:5f09c359ebca6160f87f48eb3411f4a3
 -- run/go/fyne --
 pass sha256:fea3ccd72fab6dc7be3834a9156a43d4
 -- run/go/gtk4 --
@@ -491,4 +491,14 @@ pass sha256:67ec3e91a8b60e6e941ccd16ee5be6b4
 -- run/kotlin/android --
 pass sha256:a5013d2f0dfbc6c0696e34396ea76c4b
 -- run/none/html --
-pass sha256:239be933fd48476ec4259fdd2ed8d3bb
+pass sha256:39cb31e49e0e1d5d71c35443be794f5f
+-- testrun/html/none/component_image.sngl/main/1 --
+sha256:77f9c725b332d7bbaac57331cece8aab
+{
+  "results": [
+    {
+      "Desc": "ImageSrcMutates",
+      "Passed": true
+    }
+  ]
+}

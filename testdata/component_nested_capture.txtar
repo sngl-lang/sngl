@@ -80,6 +80,11 @@ type ErrorEvent struct {
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
+	*modelState
+}
+
+// modelState is what every copy of a Model shares.
+type modelState struct {
 	count               int
 	seen                int
 	renders__inst0      int
@@ -94,7 +99,7 @@ type Model struct {
 
 // New creates a Model with default bind values.
 func New() Model {
-	m := Model{}
+	m := Model{&modelState{}}
 	m.count = 2
 	m.seen = -1
 	m.renders__inst0 = 0
@@ -675,6 +680,9 @@ body { font-family: system-ui, sans-serif; }
 </span>
 
 <script>
+window.__snglErrors = [];
+addEventListener("error", (e) => window.__snglErrors.push(String(e.message)));
+addEventListener("unhandledrejection", (e) => window.__snglErrors.push(String(e.reason?.message ?? e.reason)));
 window.__sngl_markup = Array.from(document.body.childNodes)
   .filter((n) => n.nodeName !== "SCRIPT").map((n) => n.cloneNode(true));
 window.__sngl_reset = () => {
@@ -692,10 +700,6 @@ window.__sngl_boot = () => {
   if (typeof window !== "undefined") {
     window.__sngl_state = state;
   }
-  function testNestedBodyReadsAndWritesTheOwnersVar(t, c) {
-    t.assert(c.seen === 2);
-    t.assert(c.count === 3);
-  }
   function __effect0_mount() {
     state.renders__inst0 = state.renders__inst0 + 1;
     __n0.textContent = String(state.count) + " " + String(state.renders__inst0);
@@ -706,7 +710,7 @@ window.__sngl_boot = () => {
     __n1.textContent = String(state.count) + ":" + String(state.seen);
   }
   if (typeof window !== "undefined") {
-    Object.assign(window, { testNestedBodyReadsAndWritesTheOwnersVar, __effect0_mount });
+    Object.assign(window, { __effect0_mount });
   }
   var __effect0_live = [];
   var __effect0_desired = [];
@@ -765,7 +769,7 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:e622871c3a8c8ff03440779bb3fc3eb2
+pass sha256:f0b8c215876097803bfcda796687c240
 -- run/go/fyne --
 pass sha256:dd93532445aa07cfad1ca9ff54e148ec
 -- run/go/gtk4 --
@@ -773,4 +777,14 @@ pass sha256:17a07a2681da4c330f675ed090d30af2
 -- run/kotlin/android --
 pass sha256:ce3e2249f524177e27e3a3b1a1913937
 -- run/none/html --
-pass sha256:53b6b8b16ab16c1b8ff0a493bd249660
+pass sha256:a80162d97ea072bb5b8a07da1f7351d9
+-- testrun/html/none/component_nested_capture.sngl/main/1 --
+sha256:a8168ddaf9d9c76ca11f5fe111e80e65
+{
+  "results": [
+    {
+      "Desc": "NestedBodyReadsAndWritesTheOwnersVar",
+      "Passed": true
+    }
+  ]
+}

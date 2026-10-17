@@ -11,7 +11,7 @@ import "testing"
 const namedSlotReactiveSrc = `
 import . "sngl:ui"
 
-component q(body component) node {
+component q(body option[component]) node {
     var on = false
 
     button #t(text="toggle", @click { on = !on })
@@ -34,7 +34,7 @@ window {
 const scopedNamedSlotReactiveSrc = `
 import . "sngl:ui"
 
-component q(ready component(int)) node {
+component q(ready option[component(int)]) node {
     var n = 0
 
     button #b(text="bump", @click { n = n + 1 })
@@ -63,7 +63,6 @@ window {
 // the caller wrote, and lowering refused the program before any code was
 // emitted at all.
 func TestANamedSlotInAReactiveIfCompiles(t *testing.T) {
-	skipWithoutGIR(t)
 	for name, src := range map[string]string{
 		"bare":   namedSlotReactiveSrc,
 		"scoped": scopedNamedSlotReactiveSrc,

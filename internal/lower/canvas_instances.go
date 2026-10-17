@@ -33,11 +33,11 @@ func lowerCanvasInstances(pkg *ir.Package, _ Features, _ Options) error {
 // handlers are the drawing: they stay in the component, and only the canvas's
 // handlers -- what the program wrote on it -- cross as events.
 func (st *slotChildSynth) synthesizeCanvas(n *ir.NodeInst) *ir.NodeInst {
-	comp := &ir.Component{Name: "__canvas" + strconv.Itoa(st.n), RuntimeInstance: true}
+	comp := &ir.Component{Name: "__canvas" + strconv.Itoa(st.n), RuntimeInstance: true, Family: nodeFamily(n)}
 	st.n++
 	inst := &ir.NodeInst{AST: n.AST, Component: comp}
 	l := newLift(comp, inst)
-	liftNodeHandlers(n, l, nil)
+	liftNodeHandlers(n, l, nil, nil)
 	st.liftValues(n, l, handlerParams(n, declaredWithin([]ir.Stmt{n})))
 	comp.Stmts = []ir.Stmt{n}
 	st.pkg.Components = append(st.pkg.Components, comp)

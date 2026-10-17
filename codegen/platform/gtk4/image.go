@@ -44,14 +44,14 @@ func (t *gtk4Translator) imageTagOf(bare string) string {
 
 func (t *gtk4Translator) emitImageCreate(id, tag string) []ir.Stmt {
 	if tag == imageTag {
-		return t.emitConstructorAssign(id, primitiveCType(tag), rtCall("ImageFrameNew"))
+		return t.emitConstructorAssign(id, primitiveCType(tag), rtCall("ImageFrameNew", gtk4rtHandleIRType()))
 	}
 	if tag == imageDrawingTag {
 		// A repaint reaches the source from whatever scope writes what it
 		// reads, which the escape analysis cannot see.
 		t.fieldIDs[id] = true
 	}
-	create := t.emitConstructorAssign(id, primitiveCType(tag), rtCall("ImageSourceNew"))
+	create := t.emitConstructorAssign(id, primitiveCType(tag), rtCall("ImageSourceNew", gtk4rtHandleIRType()))
 	if tag == imageDrawingTag {
 		if m := t.canvasMetaForID(id); m != nil {
 			create = append(create, t.paintImageDrawing(m))
@@ -62,20 +62,24 @@ func (t *gtk4Translator) emitImageCreate(id, tag string) []ir.Stmt {
 
 // paintImageDrawing paints a drawn source's picture afresh and hands it over.
 func (t *gtk4Translator) paintImageDrawing(m *canvasMeta) ir.Stmt {
-	draw := &ir.Ident{
-		Name: fmt.Sprintf("func(cr unsafe.Pointer) { %s.%s((*C.cairo_t)(cr)) }", t.gc.RecvName(), m.DrawName),
-		Type: ir.TypDyn,
-	}
-	return &ir.CallStmt{Call: rtCall("ImagePaint", t.rtHandle(t.fieldRef(m.ID)), intLit(fmt.Sprint(m.Width)), intLit(fmt.Sprint(m.Height)), draw)}
+	cr := &ir.Param{Name: "cr", Type: ir.NativeGoNamed("unsafe.Pointer")}
+	crRef := &ir.Ident{Name: cr.Name, Type: cr.Type, Sym: cr}
+	draw := goClosure([]*ir.Param{cr}, &ir.CallStmt{Call: &ir.Call{
+		Type:     ir.TypVoid,
+		Receiver: t.gc.RecvRef(),
+		Func:     &ir.Func{Name: m.DrawName},
+		Args:     []ir.CallArg{{Value: cgoCast("cairo_t", crRef)}},
+	}})
+	return &ir.CallStmt{Call: rtCall("ImagePaint", ir.TypVoid, t.rtHandle(t.canvasFieldRef(m)), intLit(fmt.Sprint(m.Width)), intLit(fmt.Sprint(m.Height)), draw)}
 }
 
 func (t *gtk4Translator) imagePropAssign(node ir.Expr, tag, prop string, value ir.Expr) []ir.Stmt {
 	ref := t.rtHandle(t.qualifyNodeExpr(node))
 	switch {
 	case tag == imageTag && prop == "fit":
-		return []ir.Stmt{&ir.CallStmt{Call: rtCall("ImageFrameSetFit", ref, value)}}
+		return []ir.Stmt{&ir.CallStmt{Call: rtCall("ImageFrameSetFit", ir.TypVoid, ref, value)}}
 	case tag == imageURLTag && prop == ir.ImageSourceURL:
-		return []ir.Stmt{&ir.CallStmt{Call: rtCall("ImageSourceSetURL", ref, value)}}
+		return []ir.Stmt{&ir.CallStmt{Call: rtCall("ImageSourceSetURL", ir.TypVoid, ref, value)}}
 	}
 	return nil
 }
@@ -95,7 +99,7 @@ func (t *gtk4Translator) imageAttachHandler(node ir.Expr, tag, event string, han
 	default:
 		return nil
 	}
-	return []ir.Stmt{&ir.CallStmt{Call: rtCall(fn, t.rtHandle(t.qualifyNodeExpr(node)), handler)}}
+	return []ir.Stmt{&ir.CallStmt{Call: rtCall(fn, ir.TypVoid, t.rtHandle(t.qualifyNodeExpr(node)), handler)}}
 }
 
 // rtHandle is a widget as gtk4rt takes it, which in an inline-cgo build is a

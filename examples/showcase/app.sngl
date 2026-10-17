@@ -122,22 +122,24 @@ component LabeledCounter(label = "Clicks", start = 0, @changed(v int)) ui.node {
 }
 
 // ----- 10. Recursive components ------------------------------------
-// Components can call themselves. Self-referencing struct fields use
-// `dyn` so the type can refer to itself.
+// Components can call themselves. A struct refers to itself through an
+// `option`, which is how a branch says it may hold nothing.
 struct TreeNode {
     value int = 0
-    left  dyn = null
-    right dyn = null
+    left  option[TreeNode] = null
+    right option[TreeNode] = null
 }
 
-component TreeView(node dyn = null) ui.node {
-    ui.vbox(style={paddingLeft=12px, gap=2px}) {
-        ui.text(value=string(node.value))
-        if node.left != null {
-            TreeView(node=node.left)
-        }
-        if node.right != null {
-            TreeView(node=node.right)
+component TreeView(node option[TreeNode] = null) ui.node {
+    if node != null {
+        ui.vbox(style={paddingLeft=12px, gap=2px}) {
+            ui.text(value=string(node.value))
+            if node.left != null {
+                TreeView(node=node.left)
+            }
+            if node.right != null {
+                TreeView(node=node.right)
+            }
         }
     }
 }
@@ -441,14 +443,18 @@ component Tour ui.node {
             )
         }
         ui.modal(closable=true, open=showModal, title="Example Modal") {
-            ui.text(value="This is modal content.")
-            ui.button(text="Close", @click { showModal = false })
+            component content {
+                ui.text(value="This is modal content.")
+                ui.button(text="Close", @click { showModal = false })
+            }
         }
         ui.drawer(open=showDrawer, side="right") {
-            ui.vbox(style={gap=12px, padding=16px}) {
-                ui.text(value="Drawer Content", style={fontWeight=bold})
-                ui.text(value="Slide-out panel")
-                ui.button(text="Close", @click { showDrawer = false })
+            component content {
+                ui.vbox(style={gap=12px, padding=16px}) {
+                    ui.text(value="Drawer Content", style={fontWeight=bold})
+                    ui.text(value="Slide-out panel")
+                    ui.button(text="Close", @click { showDrawer = false })
+                }
             }
         }
         ui.divider

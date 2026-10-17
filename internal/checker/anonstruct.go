@@ -100,7 +100,7 @@ func (c *checker) anonFieldsFromInits(inits []ir.FieldInit) ([]*ir.StructField, 
 		}
 		seen[fi.Name] = true
 		t := exprType(fi.Value)
-		if t == nil || t.Kind == ir.TypeInvalid || t.Kind == ir.TypeVoid || t.Kind == ir.TypeDyn {
+		if t == nil || t.Kind == ir.TypeInvalid || t.Kind == ir.TypeVoid {
 			return nil, false
 		}
 		fields = append(fields, &ir.StructField{Name: fi.Name, Type: t})

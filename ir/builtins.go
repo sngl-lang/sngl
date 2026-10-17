@@ -34,8 +34,6 @@ func ScalarType(kind BuiltinKind) (*Type, bool) {
 		return TypFloat64, true
 	case BuiltinString:
 		return TypString, true
-	case BuiltinDyn:
-		return TypDyn, true
 	case BuiltinAny:
 		return TypAny, true
 	}
@@ -43,9 +41,8 @@ func ScalarType(kind BuiltinKind) (*Type, bool) {
 }
 
 // IsConvertibleScalar reports whether a scalar kind is a T(x) conversion
-// target. `dyn` is a type and no conversion: anything already is one. `any`
-// is a constraint and no type at all.
+// target. `any` is a constraint and no type at all.
 func (b BuiltinKind) IsConvertibleScalar() bool {
 	_, ok := ScalarType(b)
-	return ok && b != BuiltinDyn && b != BuiltinAny
+	return ok && b != BuiltinAny
 }

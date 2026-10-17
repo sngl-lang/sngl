@@ -181,7 +181,7 @@ func promoteProps(c *ir.Component) []*ir.Func {
 			continue
 		}
 		v := &ir.Var{
-			Name: propVarName(p.Name),
+			Name: PropCell(p.Name),
 			Type: p.Type,
 			// The parameter still carries the value in: promoting the prop
 			// gives it somewhere writable to live, not a second way to arrive.
@@ -240,7 +240,7 @@ func propSetter(p *ir.Prop, v *ir.Var) *ir.Func {
 	}
 }
 
-// propVarName is the cell a prop is promoted to. Prefixed rather than shadowing
+// PropCell is the cell a prop is promoted to. Prefixed rather than shadowing
 // the parameter, because the parameter is still what carries the value in and
 // one name for both would make the initializer read itself.
-func propVarName(prop string) string { return "__prop_" + prop }
+func PropCell(prop string) string { return "__prop_" + prop }

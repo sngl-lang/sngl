@@ -42,6 +42,7 @@ func lowerInlineComponents(pkg *ir.Package, feats Features, opts Options) error 
 	st := &inlineCompState{pkg: pkg, main: main, cycles: cycles, reactive: reactive, platform: opts.Platform, instanceState: feats.InstanceState, genericComponents: feats.GenericComponents, onList: onList, names: namesOrOwn(opts.names), demoted: map[*ir.Func]bool{}, cells: map[*ir.Var][]*ir.Var{}, compInsts: map[*ir.Component][]componentInstance{}, methods: map[*ir.Var]map[*ir.Func][]*ir.Func{}}
 	cellOwners := implicitCellOwners(pkg)
 	st.reach = testReachRoots(pkg, main, opts)
+	st.reach.instanceState = feats.InstanceState
 	if err := st.run(); err != nil {
 		return err
 	}
@@ -65,7 +66,11 @@ func lowerInlineComponents(pkg *ir.Package, feats Features, opts Options) error 
 	if err := uniqueNodeIDs(pkg); err != nil {
 		return err
 	}
-	return repointTestReaches(pkg, st.reach, st.insts)
+	var spliced []splice
+	if opts.splices != nil {
+		spliced = *opts.splices
+	}
+	return repointTestReaches(pkg, st.reach, append(spliced, st.insts...))
 }
 
 // unreachedCycles is every recursive component nothing the program renders
@@ -235,7 +240,7 @@ func uniqueNodeIDs(pkg *ir.Package) error {
 			}
 			if first, ok := rendered[n.Handle]; ok {
 				if r := reads[n.Handle]; len(r) > 0 && dup == nil {
-					dup = fmt.Errorf("%s: `#%s` is read here, and %s renders more than one of it -- the read cannot say which; give each copy its own id, or pass the value it is read for as a prop", identPos(r[0]), n.Handle.Name, nodePos(first))
+					dup = fmt.Errorf("%s: `#%s` is read here, and %s renders more than one of it -- the read cannot say which; give each copy its own id, or pass the value it is read for as a prop", identPos(r[0]), n.Handle.WrittenName(), nodePos(first))
 				}
 				return nil
 			}
@@ -287,10 +292,21 @@ func renameNodeID(n *ir.NodeInst, name string, reads map[*ir.Var][]*ir.Ident) {
 	if n.Handle == nil {
 		return
 	}
+	if n.Handle.Written == "" {
+		n.Handle.Written = n.Handle.Name
+	}
 	for _, id := range reads[n.Handle] {
 		id.Name = name
 	}
 	n.Handle.Name = name
+}
+
+// writtenID is the id the program wrote for n.
+func writtenID(n *ir.NodeInst) string {
+	if n.Handle != nil && n.Handle.Written != "" {
+		return n.Handle.Written
+	}
+	return n.ID
 }
 
 // handleIdents is every read of every `#id` handle, keyed by the binding and in
@@ -591,6 +607,16 @@ func (st *inlineCompState) refuseStateInCycles() error {
 		if v := usedVar(c); v != nil {
 			return fmt.Errorf("%s: the recursive component %q declares state of its own (%q); this target keeps a component's state only by splicing it where it is written, and a recursion is never spliced -- keep the state in what renders %q and pass it in as props", varPos(v), c.Name, v.Name, c.Name)
 		}
+		// A component that is not spliced renders as a function of the Model,
+		// whose methods are the Model's and cannot read the props the render
+		// function is handed.
+		if fn := propReadingFunc(c); fn != nil {
+			pos := compPos(c)
+			if fn.AST != nil {
+				pos = fn.AST.Pos.String()
+			}
+			return fmt.Errorf("%s: the recursive component %q declares %q, which reads its props; this target makes a component's functions the program's own by splicing it where it is written, and a recursion is never spliced -- pass what %q reads as its arguments, or compute it where %q is rendered", pos, c.Name, fn.Name, fn.Name, c.Name)
+		}
 		var found, lifetime *ir.NodeInst
 		_ = ir.WalkStmts(c.Stmts, func(s ir.Stmt) error {
 			n, ok := s.(*ir.NodeInst)
@@ -618,6 +644,33 @@ func (st *inlineCompState) refuseStateInCycles() error {
 		}
 		if found != nil {
 			return fmt.Errorf("%s: %q has state of its own and is written in the recursive component %q; this target keeps a component's state only by splicing it where it is written, and a recursion is never spliced -- keep the state in what renders %q and pass it in as props", nodePos(found), found.Component.Name, c.Name, c.Name)
+		}
+	}
+	return nil
+}
+
+// propReadingFunc is a function c declares that reads one of c's props.
+func propReadingFunc(c *ir.Component) *ir.Func {
+	props := map[ir.Symbol]bool{}
+	for _, p := range c.Props {
+		if p != nil && p.Sym != nil {
+			props[p.Sym] = true
+		}
+	}
+	for _, fn := range c.Funcs {
+		if fn == nil {
+			continue
+		}
+		found := false
+		_ = ir.Walk(fn.Block, func(n ir.Node) error {
+			if id, ok := n.(*ir.Ident); ok && id.Sym != nil && props[id.Sym] {
+				found = true
+				return ir.SkipAll
+			}
+			return nil
+		})
+		if found {
+			return fn
 		}
 	}
 	return nil
@@ -948,8 +1001,16 @@ func (st *inlineCompState) inlineStmtCtx(s ir.Stmt, rc reactiveCtx) ([]ir.Stmt, 
 			return nil, false, fmt.Errorf("%s: %q reads the state of the body it is declared in and is instantiated %s, where each copy needs state of its own -- capture would hand every copy the one cell the owner holds; lift it to a top-level component and pass what it reads as props", nodePos(n), n.Component.Name, where)
 		}
 		// A target that keeps no state of an instance's own is given the state
-		// where the component is written instead, one cell per copy.
-		if !st.instanceState && st.captureOnly == nil && n.Component != nil && (len(n.Component.Vars) > 0 || holdsLifetime(n.Component.Stmts)) && !st.cycles[n.Component] && st.inlinable(n.Component) {
+		// where the component is written instead, one cell per copy. Its
+		// functions too: built at run time, a component is a render function
+		// of the Model there, and its functions the Model's, which cannot read
+		// the props the render function is handed.
+		if !st.instanceState && st.captureOnly == nil && n.Component != nil && (len(n.Component.Vars) > 0 || len(n.Component.Funcs) > 0 || holdsLifetime(n.Component.Stmts)) && !st.cycles[n.Component] && st.inlinable(n.Component) {
+			return st.expandPerCopy(n, rc)
+		}
+		// Nor does its focus order reach a render function of the Model, so a
+		// component rendering a focus stop is spliced too.
+		if !st.instanceState && st.captureOnly == nil && n.Component != nil && rc.perCopy(n.Component) && !st.cycles[n.Component] && st.inlinable(n.Component) && rendersFocusStop(n.Component, map[*ir.Component]bool{}) {
 			return st.expandPerCopy(n, rc)
 		}
 		// A library declaration with no state of its own is spliced even here:
@@ -996,6 +1057,11 @@ func (st *inlineCompState) inlineStmtCtx(s ir.Stmt, rc reactiveCtx) ([]ir.Stmt, 
 				st.keep[n.Component] = true
 			}
 			return []ir.Stmt{n}, chCh || anyHandlerCh, nil
+		}
+		// Its functions are hoisted out of the loops around it, so a prop
+		// bound to a loop variable reaches them as a parameter.
+		if len(n.Component.Funcs) > 0 {
+			return st.expandPerCopy(n, rc)
 		}
 		spliced, err := st.expandCall(n)
 		if err != nil {
@@ -1253,6 +1319,7 @@ func (st *inlineCompState) expandCall(n *ir.NodeInst) ([]ir.Stmt, error) {
 
 	// Prop refs may appear in the hoisted callee-scope Vars/Funcs too.
 	for i := varStart; i < len(*hoist.vars); i++ {
+		(*hoist.vars)[i].Init = answerSlotEmptyIn((*hoist.vars)[i].Init, n)
 		(*hoist.vars)[i].Init = substituteParamsExpr((*hoist.vars)[i].Init, bindings)
 	}
 	for i := funcStart; i < len(*hoist.funcs); i++ {
@@ -1277,6 +1344,17 @@ func (st *inlineCompState) expandCall(n *ir.NodeInst) ([]ir.Stmt, error) {
 	// about what it became belongs where the program wrote the node.
 	if comp.PkgPath() != "" {
 		ir.AttachNodeSite(body, n)
+	}
+	instances := n.Instances
+	if n.ID != "" {
+		instances = append(slices.Clip(instances), n.ID)
+	}
+	if len(instances) > 0 {
+		for _, s := range body {
+			if root := ir.InstancesOf(s); root != nil {
+				*root = append(slices.Clone(instances), *root...)
+			}
+		}
 	}
 	if n.ID != "" || st.reach.takes(comp) {
 		st.recordInstance(n, symRenames, body)
@@ -1386,6 +1464,33 @@ func (st *inlineCompState) expandPerCopy(n *ir.NodeInst, rc reactiveCtx) ([]ir.S
 	}
 	vars := slices.Clone((*st.hoist.vars)[varStart:])
 	funcs := slices.Clone((*st.hoist.funcs)[funcStart:])
+	inits := map[*ir.Var]ir.Expr{}
+	for _, v := range vars {
+		inits[v] = v.Init
+	}
 	body, err = perCopyCells(nodePos(n), body, vars, funcs, rc.loops)
+	if err == nil {
+		st.recordCells(n, inits, rc.loops)
+	}
 	return body, true, err
+}
+
+// rendersFocusStop reports whether c's body, or a component it renders, holds
+// a focusable node.
+func rendersFocusStop(c *ir.Component, seen map[*ir.Component]bool) bool {
+	if seen[c] {
+		return false
+	}
+	seen[c] = true
+	if hasFocusableNodes(c.Stmts) {
+		return true
+	}
+	found := false
+	ir.WalkView(c.Stmts, func(s ir.Stmt) bool {
+		if inst, ok := s.(*ir.NodeInst); ok && inst.Component != nil && !found && rendersFocusStop(inst.Component, seen) {
+			found = true
+		}
+		return !found
+	})
+	return found
 }

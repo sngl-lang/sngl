@@ -1,6 +1,6 @@
 import . "sngl:ui"
 
-component Foo(value) node { // ERROR(check) "must have a type hint or a default value"
+component Foo(value) node { // ERROR(check) "type annotation or default required for parameter \"value\""
     text(value="test")
 }
 

@@ -331,6 +331,14 @@ func (rb *renderBuilder) elementAttrs(n *ir.NodeInst) []*ir.Arg {
 		if isEmptyIDProp(p.Name, p.Value) {
 			continue
 		}
+		if p.Name == ir.CopyProp {
+			out = append(out, &ir.Arg{Name: copyAttr, Value: p.Value})
+			continue
+		}
+		if id, ok := codegen.InstanceRootID(p.Name); ok {
+			out = append(out, &ir.Arg{Name: instanceRootAttr(id), Value: p.Value})
+			continue
+		}
 		out = append(out, p)
 	}
 	extra := codegen.WildcardProps(n)

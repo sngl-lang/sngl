@@ -35,13 +35,13 @@ const gtk4rtHandleType = "gtk4rt.Handle"
 
 // rtCall builds a `gtk4rt.<name>(args...)` call. The non-"C" Foreign.Path makes
 // evalNamespaceCall register the gtk4rt import and emit the Foreign.Name verbatim.
-func rtCall(name string, args ...ir.Expr) *ir.Call {
+func rtCall(name string, ret *ir.Type, args ...ir.Expr) *ir.Call {
 	ca := make([]ir.CallArg, len(args))
 	for i, a := range args {
 		ca[i] = ir.CallArg{Value: a}
 	}
 	return &ir.Call{
-		Type:     ir.TypDyn,
+		Type:     ret,
 		Receiver: &ir.Ident{Name: "gtk4rt"},
 		Func:     &ir.Func{Foreign: ir.Foreign{Path: gtk4rtPkg, Name: "gtk4rt." + name}},
 		Args:     ca,
@@ -50,8 +50,16 @@ func rtCall(name string, args ...ir.Expr) *ir.Call {
 
 // rtConst references an exported gtk4rt identifier (e.g. a constant). The
 // gtk4rt import is registered by the rtCall(s) the same file always emits.
-func rtConst(name string) *ir.Ident {
-	return &ir.Ident{Name: "gtk4rt." + name, Type: ir.TypDyn}
+func rtConst(name string, t *ir.Type) *ir.Ident {
+	return &ir.Ident{Name: "gtk4rt." + name, Type: t}
+}
+
+// rtOrientation is gtk4rt's Orientation, the type of its two constants.
+func rtOrientation() *ir.Type { return ir.NativeGoNamed("gtk4rt.Orientation") }
+
+// cOrientationVertical is the cgo constant a vertical box is built with.
+func cOrientationVertical() *ir.Ident {
+	return &ir.Ident{Name: "C.GTK_ORIENTATION_VERTICAL", Type: ir.NativeGoNamed("C.GtkOrientation")}
 }
 
 func intLit(v string) *ir.Literal { return &ir.Literal{Type: ir.TypInt, Value: v} }
@@ -71,7 +79,10 @@ func slotParentType(wrapped bool) *ir.Type {
 // widgetFieldGoType returns the Go type for a Model widget field: gtk4rt.Handle
 // in wrapped mode, else the per-widget cgo pointer type.
 func widgetFieldGoType(cType string, wrapped bool) string {
-	// A list of widgets (namedWidgetField) is a slice of what one is.
+	// The copies of a widget (copiesField) are a map of what one is.
+	if rest, ok := strings.CutPrefix(cType, copyMapType("")); ok {
+		return copyMapType(widgetFieldGoType(rest, wrapped))
+	}
 	if rest, ok := strings.CutPrefix(cType, "[]"); ok {
 		return "[]" + widgetFieldGoType(rest, wrapped)
 	}
@@ -103,21 +114,21 @@ func bytesUseCgo(src []byte) bool { return cgoRefRE.Match(src) }
 func rtCtorForCType(cType string) (ir.Expr, bool) {
 	switch cType {
 	case "GtkBox":
-		return rtCall("BoxNew", rtConst("OrientationHorizontal"), intLit("0")), true
+		return rtCall("BoxNew", gtk4rtHandleIRType(), rtConst("OrientationHorizontal", rtOrientation()), intLit("0")), true
 	case "GtkLabel":
-		return rtCall("LabelNew", &ir.Literal{Type: ir.TypString, Value: ""}), true
+		return rtCall("LabelNew", gtk4rtHandleIRType(), &ir.Literal{Type: ir.TypString, Value: ""}), true
 	case "GtkButton":
-		return rtCall("ButtonNew"), true
+		return rtCall("ButtonNew", gtk4rtHandleIRType()), true
 	case "GtkCheckButton":
-		return rtCall("CheckButtonNew"), true
+		return rtCall("CheckButtonNew", gtk4rtHandleIRType()), true
 	case "GtkEntry":
-		return rtCall("EntryNew"), true
+		return rtCall("EntryNew", gtk4rtHandleIRType()), true
 	case "GtkImage":
-		return rtCall("ImageNew"), true
+		return rtCall("ImageNew", gtk4rtHandleIRType()), true
 	case "GtkScrolledWindow":
-		return rtCall("ScrolledWindowNew"), true
+		return rtCall("ScrolledWindowNew", gtk4rtHandleIRType()), true
 	case "GtkFrame":
-		return rtCall("FrameNew"), true
+		return rtCall("FrameNew", gtk4rtHandleIRType()), true
 	}
 	return nil, false
 }
@@ -186,14 +197,14 @@ func rtChildAppendCall(adder gir.ChildAdder, parent, child ir.Expr) (ir.Stmt, bo
 	if !ok {
 		return nil, false
 	}
-	return &ir.CallStmt{Call: rtCall(fn, parent, child)}, true
+	return &ir.CallStmt{Call: rtCall(fn, ir.TypVoid, parent, child)}, true
 }
 
 // rtChildRemoveCall returns the gtk4rt call for removing child from a parent of
 // the given C type, and ok=false if unmapped.
 func rtChildRemoveCall(parentCType string, parent, child ir.Expr) (ir.Stmt, bool) {
 	if parentCType == "GtkBox" {
-		return &ir.CallStmt{Call: rtCall("BoxRemove", parent, child)}, true
+		return &ir.CallStmt{Call: rtCall("BoxRemove", ir.TypVoid, parent, child)}, true
 	}
 	return nil, false
 }
@@ -204,11 +215,11 @@ func rtChildRemoveCall(parentCType string, parent, child ir.Expr) (ir.Stmt, bool
 func rtEventGetterExpr(cType string, widgetRef ir.Expr) ir.Expr {
 	switch cType {
 	case "GtkEntry":
-		return rtCall("EditableGetText", widgetRef)
+		return rtCall("EditableGetText", ir.TypString, widgetRef)
 	case "GtkCheckButton":
-		return rtCall("CheckButtonGetActive", widgetRef)
+		return rtCall("CheckButtonGetActive", ir.TypBool, widgetRef)
 	case "GtkCalendar":
-		return rtCall("CalendarGetDate", widgetRef)
+		return rtCall("CalendarGetDate", ir.NativeGoPointerOf("time.Time"), widgetRef)
 	}
 	return nil
 }
@@ -218,9 +229,9 @@ func rtEventGetterExpr(cType string, widgetRef ir.Expr) ir.Expr {
 func rtOrientationConst(value string) (ir.Expr, bool) {
 	switch value {
 	case "vertical":
-		return rtConst("OrientationVertical"), true
+		return rtConst("OrientationVertical", rtOrientation()), true
 	case "horizontal":
-		return rtConst("OrientationHorizontal"), true
+		return rtConst("OrientationHorizontal", rtOrientation()), true
 	}
 	return nil, false
 }

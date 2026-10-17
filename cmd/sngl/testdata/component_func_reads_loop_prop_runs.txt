@@ -1,0 +1,132 @@
+# A component's function reading a prop bound to a loop variable, on every
+# target a test can execute on: testdata/component_func_reads_loop_prop.txtar
+# is the code.
+
+sngl test --platform=none app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=html app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=fyne --language=go app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+-- app.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+
+output {
+    go {
+        bubbletea
+        fyne
+        gtk4
+    }
+    kotlin {
+        android
+    }
+    none {
+        html
+    }
+}
+
+component row(label string) node {
+    func shout() string {
+        var out = ""
+        for var c = [1, 2] {
+            out = out + label + "{c}"
+        }
+        return out
+    }
+    text(value=shout())
+}
+
+component tagged(label string) node {
+    func suffix(s string) string {
+        return s + label
+    }
+    text(value=["q"].map(suffix)[0])
+}
+
+component main node {
+    var shown = true
+    var name = "n"
+    vbox {
+        button #hide(text="h", @click { shown = false })
+        for var x = ["p", "q"] {
+            row(label=x)
+            tagged(label=x)
+        }
+        if shown {
+            row #only(label=name)
+        }
+    }
+}
+
+func testRowsRender(t Test, c main) {
+    t.assert(c.only != null)
+    c.hide.click()
+    t.assert(c.only == null)
+}
+
+window {
+    main
+}
+-- testrun/android/kotlin/app.sngl/main/1 --
+sha256:2e658d6dc3075c7fc833e702ce1d03ab
+{
+  "results": [
+    {
+      "Desc": "RowsRender",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/main/1 --
+sha256:4c3e3444ceb5fab98ba73ac14c8e4dd3
+{
+  "results": [
+    {
+      "Desc": "RowsRender",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/main/1 --
+sha256:7dba8706d1096922493671ce16e2c497
+{
+  "results": [
+    {
+      "Desc": "RowsRender",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/main/1 --
+sha256:2c59291fb0ccb971f02422a154e3de60
+{
+  "results": [
+    {
+      "Desc": "RowsRender",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/main/1 --
+sha256:236e8b658edddd62af47ff4500cfb66d
+{
+  "results": [
+    {
+      "Desc": "RowsRender",
+      "Passed": true
+    }
+  ]
+}

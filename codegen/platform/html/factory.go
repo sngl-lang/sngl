@@ -3,6 +3,7 @@ package html
 import (
 	"context"
 	"fmt"
+	"maps"
 	"slices"
 	"strings"
 
@@ -178,7 +179,8 @@ func factorySlotAnchors(comp *ir.Component) map[string]bool {
 				return nil
 			}
 			if n := slotIndexFromRenderFunc(call.Func.Name); anchored[n] {
-				call.Args[0].Value = &ir.Ident{Name: slotAnchorVar(n), Type: ir.TypDyn, IsElementRef: true, Synthesized: true}
+				// The anchor stands for the container the slot was handed.
+				call.Args[0].Value = &ir.Ident{Name: slotAnchorVar(n), Type: call.Args[0].Value.ExprType(), IsElementRef: true, Synthesized: true}
 			}
 			return nil
 		})
@@ -212,14 +214,15 @@ func (g *htmlGen) emitComponentFactory(b *strings.Builder, comp *ir.Component) {
 	// Props and vars are locals of the call, so every read of one renders as a
 	// bare identifier rather than `state.x` -- which is what makes the closure
 	// the record.
-	ctx := g.ctx.ForComponent(comp)
-	ctx.ClosureMethods = true
+	names := make([]string, 0, len(comp.Props)+len(comp.Vars))
 	for _, p := range comp.Props {
-		ctx = ctx.WithLocal(p.Name)
+		names = append(names, p.Name)
 	}
 	for _, v := range comp.Vars {
-		ctx = ctx.WithLocal(v.Name)
+		names = append(names, v.Name)
 	}
+	ctx := g.ctx.ForComponent(comp).WithLocals(names...)
+	ctx.ClosureMethods = true
 	jc := javascript.NewIRContext(ctx)
 
 	fmt.Fprintf(b, "function %s(props) {\n", javascript.FactoryName(comp))
@@ -253,6 +256,15 @@ func (g *htmlGen) emitComponentFactory(b *strings.Builder, comp *ir.Component) {
 		fmt.Fprintf(b, "\tlet %s = %s;\n", v.Name, init)
 	}
 
+	// What the factory creates is its own, in every function it declares as
+	// well as its body: a setter or a slot renderer naming the factory's `t`
+	// means that one and not an element of the page writing a `#t`.
+	own := codegen.CreatedIDs(comp.Stmts)
+	for _, fn := range comp.Funcs {
+		if fn != nil {
+			maps.Copy(own, codegen.CreatedIDs(fn.Block))
+		}
+	}
 	// Function declarations hoist, so the setters and slot renderers may be
 	// written before the body that calls them without a dead-zone read.
 	for _, fn := range comp.Funcs {
@@ -260,6 +272,7 @@ func (g *htmlGen) emitComponentFactory(b *strings.Builder, comp *ir.Component) {
 			continue
 		}
 		tr := g.newHTMLTranslator(jc)
+		tr.own = maps.Clone(own)
 		params := fn.Params
 		if len(params) > 0 && params[0].Receiver {
 			params = params[1:]
@@ -284,9 +297,10 @@ func (g *htmlGen) emitComponentFactory(b *strings.Builder, comp *ir.Component) {
 			continue
 		}
 		dtr := g.newHTMLTranslator(jc)
+		dtr.own = maps.Clone(own)
 		drawn := &ir.Func{
 			Name:   cv.Name,
-			Params: []*ir.Param{{Name: "ctx", Type: ir.TypDyn}},
+			Params: []*ir.Param{{Name: "ctx", Type: drawCtxType(cv.Draw)}},
 			Block:  codegen.WalkLowered(context.Background(), cv.Draw, dtr),
 		}
 		for _, line := range jc.EmitFuncDef(drawn) {
@@ -295,6 +309,7 @@ func (g *htmlGen) emitComponentFactory(b *strings.Builder, comp *ir.Component) {
 	}
 
 	tr := g.newHTMLTranslator(jc)
+	tr.own = maps.Clone(own)
 	body := codegen.WalkLowered(context.Background(), comp.Stmts, tr)
 	topLevel := make(map[string]bool, len(tr.topLevel))
 	for _, id := range tr.topLevel {
@@ -337,7 +352,12 @@ func (g *htmlGen) emitComponentFactory(b *strings.Builder, comp *ir.Component) {
 		b.WriteString("\t" + line + "\n")
 	}
 
-	b.WriteString("\treturn {\n")
+	reads := g.instanceReadsOf(comp)
+	if len(reads) > 0 {
+		b.WriteString("\tconst __inst = {\n")
+	} else {
+		b.WriteString("\treturn {\n")
+	}
 	fmt.Fprintf(b, "\t\t%s: %s,\n", instanceRootField, instanceRootLocal)
 	fmt.Fprintf(b, "\t\t%s() { %s },\n", instanceDestroyMethod, instanceTeardownCall(comp))
 	for _, p := range comp.Props {
@@ -347,7 +367,56 @@ func (g *htmlGen) emitComponentFactory(b *strings.Builder, comp *ir.Component) {
 		}
 		fmt.Fprintf(b, "\t\t%s: %s,\n", instanceUpdateMethod(p.Name), setter)
 	}
-	b.WriteString("\t};\n}\n")
+	// What a test reads of the instance, which it finds by its root
+	// (emitInstanceReads).
+	for _, r := range reads {
+		if r.Func != nil {
+			fmt.Fprintf(b, "\t\t%s: (...a) => %s(...a),\n", instanceCallMember(r.Member), r.Func.Name)
+			continue
+		}
+		fmt.Fprintf(b, "\t\t%s: () => %s,\n", instanceReadMember(r.Member), r.Var.Name)
+	}
+	b.WriteString("\t};\n")
+	if len(reads) > 0 {
+		fmt.Fprintf(b, "\t%s.%s = __inst;\n\treturn __inst;\n", instanceRootLocal, instanceOnRoot)
+	}
+	b.WriteString("}\n")
+}
+
+// instanceOnRoot is the property of an instance's root element holding the
+// instance, for the reads a test makes through it.
+const instanceOnRoot = "__sngl"
+
+func instanceReadMember(member string) string { return "__read_" + member }
+func instanceCallMember(member string) string { return "__call_" + member }
+
+// instanceReadsOf is each distinct member a test reads or calls through an
+// instance of comp.
+func (g *htmlGen) instanceReadsOf(comp *ir.Component) []codegen.InstanceRead {
+	var out []codegen.InstanceRead
+	seen := map[string]bool{}
+	for _, r := range g.instanceReads() {
+		key := r.Member
+		if r.Func != nil {
+			key = "()" + key
+		}
+		if r.Comp == comp && !seen[key] {
+			seen[key] = true
+			out = append(out, r)
+		}
+	}
+	return out
+}
+
+// instanceReads is codegen.InstanceReads of the package, once per build.
+func (g *htmlGen) instanceReads() []codegen.InstanceRead {
+	if g.reads == nil {
+		g.reads = codegen.InstanceReads(g.pkg)
+		if g.reads == nil {
+			g.reads = []codegen.InstanceRead{}
+		}
+	}
+	return g.reads
 }
 
 // instanceTeardownCall is the body of an instance's __destroy: the teardown
@@ -406,7 +475,7 @@ func (g *htmlGen) emitStaticInstances(b *strings.Builder) {
 			if p.Name == "" {
 				continue
 			}
-			fields = append(fields, fmt.Sprintf("%s: %s", p.Name, g.exprToJS(p.Value)))
+			fields = append(fields, fmt.Sprintf("%s: %s", p.Name, g.instancePropJS(p.Value)))
 		}
 		// The anchor is bound rather than used inline because the position
 		// outlives the instance: a #[construct] prop written from state
@@ -420,10 +489,40 @@ func (g *htmlGen) emitStaticInstances(b *strings.Builder) {
 			si.id, javascript.FactoryName(si.node.Component), strings.Join(fields, ", "))
 		fmt.Fprintf(b, "%s.appendChild(%s.%s);\n",
 			ir.InstancePlaceName(si.id), si.id, instanceRootField)
+		// Marked as OnComponentRoot marks the root of one a slot builds.
+		if isProgramID(si.id) {
+			fmt.Fprintf(b, "%s.%s.setAttribute(%q, %q);\n", si.id, instanceRootField, instanceMark, si.id)
+			if key := si.node.Prop(ir.CopyProp); key != nil && si.node.Component.KeyedCopy {
+				fmt.Fprintf(b, "%s.%s.setAttribute(%q, %s);\n", si.id, instanceRootField, copyAttr, g.exprToJS(key))
+			}
+		}
 	}
 	if len(g.staticInsts) > 0 {
 		b.WriteString("\n")
 	}
+}
+
+// instancePropJS is a static instance's prop value as the page script
+// writes it. A handler it is handed is lowered as the page's own handlers
+// are, so a patch in it writes the page's element by the variable it was
+// emitted as rather than by the `#id` the lowering named it by.
+func (g *htmlGen) instancePropJS(v ir.Expr) string {
+	lam, ok := v.(*ir.Lambda)
+	if !ok || lam.Func == nil {
+		return g.exprToJS(v)
+	}
+	jc := g.scopedJC()
+	for _, p := range lam.Func.Params {
+		jc = jc.WithLocal(p.Name)
+	}
+	fn := *lam.Func
+	fn.Block = codegen.WalkLowered(context.Background(), lam.Func.Block, g.newHTMLTranslator(jc))
+	for _, s := range fn.Block {
+		g.collectLoweredRefs(s)
+	}
+	cp := *lam
+	cp.Func = &fn
+	return jc.EvalExpr(&cp)
 }
 
 // isStaticInstanceID reports whether id names a static instance or the

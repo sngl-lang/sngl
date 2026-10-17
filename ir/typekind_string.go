@@ -9,33 +9,32 @@ func _() {
 	// Re-run the stringer command to generate them again.
 	var x [1]struct{}
 	_ = x[TypeInvalid-0]
-	_ = x[TypeDyn-1]
-	_ = x[TypeBool-2]
-	_ = x[TypeInt-3]
-	_ = x[TypeFloat-4]
-	_ = x[TypeString-5]
-	_ = x[TypeList-6]
-	_ = x[TypeMap-7]
-	_ = x[TypeOption-8]
-	_ = x[TypeStruct-9]
-	_ = x[TypeEnum-10]
-	_ = x[TypeUnit-11]
-	_ = x[TypeFunc-12]
-	_ = x[TypeComponent-13]
-	_ = x[TypeNull-14]
-	_ = x[TypeTypeParam-15]
-	_ = x[TypeVoid-16]
-	_ = x[TypeRef-17]
-	_ = x[TypeIter-18]
-	_ = x[TypeNative-19]
-	_ = x[TypeInstance-20]
-	_ = x[TypeReadonly-21]
-	_ = x[TypeAny-22]
+	_ = x[TypeBool-1]
+	_ = x[TypeInt-2]
+	_ = x[TypeFloat-3]
+	_ = x[TypeString-4]
+	_ = x[TypeList-5]
+	_ = x[TypeMap-6]
+	_ = x[TypeOption-7]
+	_ = x[TypeStruct-8]
+	_ = x[TypeEnum-9]
+	_ = x[TypeUnit-10]
+	_ = x[TypeFunc-11]
+	_ = x[TypeComponent-12]
+	_ = x[TypeNull-13]
+	_ = x[TypeTypeParam-14]
+	_ = x[TypeVoid-15]
+	_ = x[TypeRef-16]
+	_ = x[TypeIter-17]
+	_ = x[TypeNative-18]
+	_ = x[TypeInstance-19]
+	_ = x[TypeReadonly-20]
+	_ = x[TypeAny-21]
 }
 
-const _TypeKind_name = "InvalidDynBoolIntFloatStringListMapOptionStructEnumUnitFuncComponentNullTypeParamVoidRefIterNativeInstanceReadonlyAny"
+const _TypeKind_name = "InvalidBoolIntFloatStringListMapOptionStructEnumUnitFuncComponentNullTypeParamVoidRefIterNativeInstanceReadonlyAny"
 
-var _TypeKind_index = [...]uint8{0, 7, 10, 14, 17, 22, 28, 32, 35, 41, 47, 51, 55, 59, 68, 72, 81, 85, 88, 92, 98, 106, 114, 117}
+var _TypeKind_index = [...]uint8{0, 7, 11, 14, 19, 25, 29, 32, 38, 44, 48, 52, 56, 65, 69, 78, 82, 85, 89, 95, 103, 111, 114}
 
 func (i TypeKind) String() string {
 	idx := int(i) - 0

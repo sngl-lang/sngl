@@ -58,10 +58,11 @@ func eventParams(comp *ir.Component) []string {
 func (cc *irComposeContext) handlerArgs(n *ir.NodeInst) []string {
 	var out []string
 	for _, h := range n.Handlers {
-		if h.Func == nil || !slices.ContainsFunc(n.Component.Events, func(e *ir.EventDecl) bool { return e.Name == h.Name }) {
+		i := slices.IndexFunc(n.Component.Events, func(e *ir.EventDecl) bool { return e.Name == h.Name })
+		if h.Func == nil || i < 0 {
 			continue
 		}
-		out = append(out, cc.lambdaArg(eventParamName(h.Name), &ir.Lambda{Func: h.Func}))
+		out = append(out, cc.lambdaArg(eventParamName(h.Name), &ir.Lambda{Func: h.Func}, len(n.Component.Events[i].Params)))
 	}
 	return out
 }

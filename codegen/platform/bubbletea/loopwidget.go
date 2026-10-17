@@ -255,9 +255,9 @@ func emitLoopWidgetForward(b *strings.Builder, w widgetInfo, info *irAnalysis, g
 }
 
 // emitLoopWidgetInvokers writes a test's invokers for a widget under a loop
-// with an `#id`: the `At` one puts a value in the copy at an index and runs
-// its write-back and handler, as Update does when the user types; the plain
-// one drives the last copy.
+// with an `#id`: each puts a value in a copy and runs its write-back and
+// handler, as Update does when the user types. The plain one drives the last
+// copy, and the `At` one, for an id a test indexes, the copy with a key.
 func emitLoopWidgetInvokers(b *strings.Builder, w widgetInfo, info *irAnalysis, gc *golang.GoIRContext) {
 	if w.node.ID == "" || strings.HasPrefix(w.node.ID, "__n") {
 		return
@@ -266,6 +266,7 @@ func emitLoopWidgetInvokers(b *strings.Builder, w widgetInfo, info *irAnalysis, 
 	if val.get == "" {
 		return
 	}
+	copyKey := w.node.Prop(ir.CopyProp)
 	singleLine := w.model.Type == "textinput.Model" || w.model.Type == "tui.DateInput"
 	for _, ev := range []struct {
 		name string
@@ -274,26 +275,38 @@ func emitLoopWidgetInvokers(b *strings.Builder, w widgetInfo, info *irAnalysis, 
 		if !ev.want {
 			continue
 		}
+		drive := func(method, lead, pre, match string, counted bool) {
+			fmt.Fprintf(b, "func (m *Model) %s(%sv %s) {\n%s\tfunc() {\n", method, lead, val.goType, pre)
+			walkCopies(b, w, gc, 2, func(vw *viewWalk, gc *golang.GoIRContext) {
+				cond := match
+				if !counted {
+					cond = gc.EvalExpr(copyKey) + " == key"
+				}
+				vw.line("if %s {", cond)
+				vw.indent++
+				vw.line("__key := %s", gc.EvalExpr(lower.CopyKey(w.loop.loops)))
+				vw.line("w := %s", copyCall(w, gc))
+				vw.line("w%s(v)", val.set)
+				vw.line("m.%s[__key] = w", w.fieldName)
+				emitCopyHandler(vw, w.loop.bind, "v", info, gc)
+				emitCopyHandler(vw, codegen.NodeHandler(w.node, ev.name), "v", info, gc)
+				vw.line("return")
+				vw.indent--
+				vw.line("}")
+				if counted {
+					vw.line("__n++")
+				}
+			})
+			b.WriteString("\t}()\n}\n\n")
+		}
 		name := w.node.ID + golang.ExportName(ev.name)
+		fmt.Fprintf(b, "// %s types v into the last copy of #%s and runs its @%s; for tests.\n", name, w.node.ID, ev.name)
+		drive(name, "", fmt.Sprintf("\tlast, __n := m.%s()-1, 0\n", loopCountMethod(w)), "__n == last", true)
+		if copyKey == nil {
+			continue
+		}
 		at := codegen.InvokerAt(name)
-		fmt.Fprintf(b, "// %s types v into the copy of #%s at index i, in render order, and runs\n// its @%s; for tests.\n", at, w.node.ID, ev.name)
-		fmt.Fprintf(b, "func (m *Model) %s(i int, v %s) {\n\t__n := 0\n\tfunc() {\n", at, val.goType)
-		walkCopies(b, w, gc, 2, func(vw *viewWalk, gc *golang.GoIRContext) {
-			vw.line("if __n == i {")
-			vw.indent++
-			vw.line("__key := %s", gc.EvalExpr(lower.CopyKey(w.loop.loops)))
-			vw.line("w := %s", copyCall(w, gc))
-			vw.line("w%s(v)", val.set)
-			vw.line("m.%s[__key] = w", w.fieldName)
-			emitCopyHandler(vw, w.loop.bind, "v", info, gc)
-			emitCopyHandler(vw, codegen.NodeHandler(w.node, ev.name), "v", info, gc)
-			vw.line("return")
-			vw.indent--
-			vw.line("}")
-			vw.line("__n++")
-		})
-		b.WriteString("\t}()\n}\n\n")
-		fmt.Fprintf(b, "// %s does it to the last copy of #%s; for tests.\n", name, w.node.ID)
-		fmt.Fprintf(b, "func (m *Model) %s(v %s) {\n\tm.%s(m.%s()-1, v)\n}\n\n", name, val.goType, at, loopCountMethod(w))
+		fmt.Fprintf(b, "// %s types v into the copy of #%s with the key and runs its @%s; for\n// tests.\n", at, w.node.ID, ev.name)
+		drive(at, "key string, ", "", "", false)
 	}
 }

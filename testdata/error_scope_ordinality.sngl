@@ -11,7 +11,8 @@
 //
 // Reported at the read rather than left to the type, because `option` and
 // `list` are both absent from hasNoLegitimateFields -- so `maybe.value` off
-// one degrades to dyn and a loud failure becomes a silent no-op.
+// one degrades to an unreported invalid type and a loud failure becomes a
+// silent no-op.
 
 import ui "sngl:ui"
 

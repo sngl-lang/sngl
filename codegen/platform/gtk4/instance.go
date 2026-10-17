@@ -38,6 +38,8 @@ func emitComponentInstance(
 	invokerSink func(gtkEventInvoker),
 	modelFieldSink func(widgetField),
 	indexed map[string]bool,
+	presentIDs map[string]bool,
+	presenceSink func(id, field string),
 ) {
 	comp := cc.Component
 	typeName := golang.ComponentInstanceType(comp.Name)
@@ -63,6 +65,9 @@ func emitComponentInstance(
 	sink := func(name, cType string) {
 		fields = append(fields, widgetField{name: name, goType: widgetFieldGoType(cType, wrapped)})
 	}
+	modelSink := func(name, cType string) {
+		modelFieldSink(widgetField{name: name, goType: widgetFieldGoType(cType, wrapped)})
+	}
 	newTr := func(localRefs map[string]bool) *gtk4Translator {
 		tr := newGtk4Translator(igc, sink).withPkg(pkg).withRegistry(reg).
 			withShared(shared).withLocalRefs(localRefs).withWrapped(wrapped)
@@ -86,7 +91,7 @@ func emitComponentInstance(
 	// the Model as it is built: the invoker reaches whichever instance built
 	// it last, which is the one on screen.
 	var invokers []gtkEventInvoker
-	tr := newTr(comp.LocalRefs).withSlotRoot(instanceRootVar, comp.Stmts).
+	tr := newTr(comp.LocalRefs).withInstanceCopies(indexed, modelSink).inRecord().withSlotRoot(instanceRootVar, comp.Stmts).
 		withInvokerSink(func(inv gtkEventInvoker) { invokers = append(invokers, inv) })
 	bodyStmts := codegen.WalkLowered(context.Background(), comp.Stmts, tr)
 
@@ -114,25 +119,64 @@ func emitComponentInstance(
 			continue
 		}
 		named := namedWidgetField(inv.FieldName)
-		// An id a test indexes is every instance's copy, listed in the order
-		// the instances render, which is the order a slot built them in: it
-		// keeps an instance at its position, and one it builds goes at the end.
-		// The copy leaves the list when its instance is destroyed.
+		// An id a test indexes is also every instance's copy, each under the
+		// key its __copy write gave it (listCopy), and it leaves the map when
+		// its instance is destroyed.
 		list := indexed[inv.IDLabel]
 		if !exposed[named] {
 			exposed[named] = true
 			model := instanceReceiver + "." + golang.InstanceModelField + "." + named
+			fmt.Fprintf(&ctorBody, "\t%s = %s.%s\n", model, instanceReceiver, inv.FieldName)
+			modelFieldSink(widgetField{name: named, goType: field.goType})
 			if list {
-				fmt.Fprintf(&ctorBody, "\t%s = append(%s, %s.%s)\n", model, model, instanceReceiver, inv.FieldName)
-				modelFieldSink(widgetField{name: named, goType: "[]" + field.goType})
+				modelFieldSink(widgetField{name: copiesField(inv.FieldName), goType: copyMapType(field.goType)})
 				listed = append(listed, inv.FieldName)
-			} else {
-				fmt.Fprintf(&ctorBody, "\t%s = %s.%s\n", model, instanceReceiver, inv.FieldName)
-				modelFieldSink(widgetField{name: named, goType: field.goType})
 			}
 		}
 		inv.FieldName, inv.List = named, list
 		invokerSink(inv)
+	}
+	// An id a test only null-tests one copy of is kept by key too, with no
+	// invoker to have exposed it.
+	for _, f := range fields {
+		if indexed[f.name] && !slices.Contains(listed, f.name) {
+			modelFieldSink(widgetField{name: copiesField(f.name), goType: copyMapType(f.goType)})
+			listed = append(listed, f.name)
+		}
+	}
+	// A widget a test null-tests is handed over too, and taken back when the
+	// instance goes, so the Model holds it exactly while it is rendered. One a
+	// slot of the record builds is handed over by that render
+	// (withRecordPresent).
+	slotBuilt := codegen.SlotCreatedIDs(comp, presentIDs)
+	var release strings.Builder
+	for _, id := range slices.Sorted(maps.Keys(presentIDs)) {
+		if slotBuilt[id] {
+			named := namedWidgetField(id)
+			held := instanceReceiver + "." + golang.InstanceModelField + "." + named
+			fmt.Fprintf(&release, "\tif %s == %s.%s {\n\t\t%s = nil\n\t}\n", held, instanceReceiver, id, held)
+			presenceSink(id, named)
+			continue
+		}
+		widget := id
+		for _, inv := range invokers {
+			if inv.IDLabel == id {
+				widget = inv.FieldName
+			}
+		}
+		i := slices.IndexFunc(fields, func(f widgetField) bool { return f.name == widget })
+		if i < 0 || presenceSink == nil {
+			continue
+		}
+		named := "__named_" + widget
+		if !exposed[named] {
+			exposed[named] = true
+			fmt.Fprintf(&ctorBody, "\t%s.%s.%s = %s.%s\n", instanceReceiver, golang.InstanceModelField, named, instanceReceiver, widget)
+			modelFieldSink(widgetField{name: named, goType: fields[i].goType})
+		}
+		held := instanceReceiver + "." + golang.InstanceModelField + "." + named
+		fmt.Fprintf(&release, "\tif %s == %s.%s {\n\t\t%s = nil\n\t}\n", held, instanceReceiver, widget, held)
+		presenceSink(id, named)
 	}
 	fmt.Fprintf(&ctorBody, "\t%s\n", rootRefLine("g_object_ref_sink", "Retain", wrapped))
 
@@ -145,12 +189,13 @@ func emitComponentInstance(
 		if fn == nil || len(fn.Block) == 0 {
 			continue
 		}
-		mtr := newTr(fn.Lowered.LocalRefs)
+		mtr := newTr(fn.Lowered.LocalRefs).withInstanceCopies(indexed, modelSink).inRecord()
 		params := fn.Params
 		if len(params) > 0 && params[0].Receiver {
 			params = params[1:]
 		}
 		if fn.Lowered.SlotRender {
+			mtr.withRecordPresent(presentIDs, fn.Block)
 			// A reactive slot's render func, whose body was written against
 			// the reactivity pass's `parent` name and is typed the way the
 			// Model's own slot funcs type it (see emitIRSlotFunc).
@@ -241,16 +286,24 @@ func emitComponentInstance(
 	// reused instance's root would be appended after it was gone.
 	root := instanceReceiver + "." + golang.ComponentRootField
 	fmt.Fprintf(b, "func (%s *%s) %s() {\n", instanceReceiver, typeName, golang.ComponentDestroyMethod)
-	// A destroyed instance's widgets leave the Model's lists of them, so a
-	// list holds the copies on screen.
+	if comp.KeyedCopy {
+		fmt.Fprintf(b, "\t%s.%s.%s(%s)\n", instanceReceiver, golang.InstanceModelField, unlistInstance, root)
+	}
+	b.WriteString(golang.InstanceRelease(igc.InstanceReads, comp, instanceReceiver))
+	if len(codegen.InstanceRootIDs(comp)) > 0 {
+		fmt.Fprintf(b, "\tfor _, w := range %s.%s {\n\t\t%s.%s.%s(w)\n\t}\n", instanceReceiver, rootedField, instanceReceiver, golang.InstanceModelField, unlistInstance)
+	}
+	// A destroyed instance's widgets leave the Model's maps of them, so a
+	// map holds the copies on screen.
 	for _, w := range listed {
-		list := instanceReceiver + "." + golang.InstanceModelField + "." + namedWidgetField(w)
-		fmt.Fprintf(b, "\tfor i, w := range %s {\n\t\tif w == %s.%s {\n\t\t\t%s = append(%s[:i], %s[i+1:]...)\n\t\t\tbreak\n\t\t}\n\t}\n",
-			list, instanceReceiver, w, list, list, list)
+		list := instanceReceiver + "." + golang.InstanceModelField + "." + copiesField(w)
+		fmt.Fprintf(b, "\tfor k, w := range %s {\n\t\tif w == %s.%s {\n\t\t\tdelete(%s, k)\n\t\t}\n\t}\n",
+			list, instanceReceiver, w, list)
 	}
 	if componentDeclaresFunc(comp, lower.TeardownFunc) {
 		fmt.Fprintf(b, "\t%s.%s()\n", instanceReceiver, instanceTeardownMethod)
 	}
+	b.WriteString(release.String())
 	fmt.Fprintf(b, "\tif %s != nil {\n\t\t%s\n\t\t%s = nil\n\t}\n", root, rootRefLine("g_object_unref", "Release", wrapped), root)
 	for _, v := range comp.Vars {
 		if !isSlotVar(v) {
@@ -324,15 +377,7 @@ func instanceRootBinding(tr *gtk4Translator, igc *golang.GoIRContext, wrapped bo
 		return b.String()
 	}
 	var b strings.Builder
-	boxInit := &ir.Conversion{Type: ir.NativePointerOf("GtkBox"), Operand: &ir.Call{
-		Type:     ir.TypDyn,
-		Receiver: &ir.Ident{Name: "C"},
-		Func:     nativeFunc("gtk_box_new"),
-		Args: []ir.CallArg{
-			{Value: &ir.Ident{Name: "C.GTK_ORIENTATION_VERTICAL", Type: ir.TypDyn}},
-			{Value: &ir.Literal{Type: ir.TypInt, Value: "6"}},
-		},
-	}}
+	boxInit := &ir.Conversion{Type: ir.NativePointerOf("GtkBox"), Operand: nativeCall("gtk_box_new", ir.NativePointerOf("GtkWidget"), cOrientationVertical(), intLit("6"))}
 	fmt.Fprintf(&b, "\t__box := %s\n", igc.EvalExpr(boxInit))
 	boxRef := &ir.Ident{Name: "__box"}
 	for _, id := range tops {
@@ -422,16 +467,8 @@ func instanceVarInit(v *ir.Var, igc *golang.GoIRContext, wrapped bool) string {
 			return "gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)"
 		}
 		return igc.EvalExpr(&ir.Conversion{
-			Type: ir.NativePointerOf("GtkBox"),
-			Operand: &ir.Call{
-				Type:     ir.TypDyn,
-				Receiver: &ir.Ident{Name: "C"},
-				Func:     nativeFunc("gtk_box_new"),
-				Args: []ir.CallArg{
-					{Value: &ir.Ident{Name: "C.GTK_ORIENTATION_VERTICAL", Type: ir.TypDyn}},
-					{Value: &ir.Literal{Type: ir.TypInt, Value: "6"}},
-				},
-			},
+			Type:    ir.NativePointerOf("GtkBox"),
+			Operand: nativeCall("gtk_box_new", ir.NativePointerOf("GtkWidget"), cOrientationVertical(), intLit("6")),
 		})
 	}
 	return irVarInit(v, igc)
@@ -465,3 +502,28 @@ func instanceOwnsFunc(pkg *ir.Package, fn *ir.Func) bool {
 // instanceRootVar is the container a reactive slot in a component body renders
 // into.
 const instanceRootVar = "__root"
+
+// emitPresenceChecks writes, for each `#id` a test null-tests, whether the
+// widget is rendered now: a widget an instance holds is the Model's while the
+// instance lives, and one the Model builds itself is there from BuildUI on.
+func emitPresenceChecks(b *strings.Builder, pkg *ir.Package, ids map[string]bool, held map[string]string, modelFields []widgetField) {
+	for _, id := range slices.Sorted(maps.Keys(ids)) {
+		field := held[id]
+		if field == "" && slices.ContainsFunc(modelFields, func(f widgetField) bool { return f.name == id }) {
+			field = id
+		}
+		if field == "" && slices.ContainsFunc(modelFields, func(f widgetField) bool { return f.name == presentField(id) }) {
+			field = presentField(id)
+		}
+		name := codegen.PresenceMethod(id)
+		if field == "" {
+			if codegen.RendersNowhere(pkg, id) {
+				fmt.Fprintf(b, "// %s reports that the #%s widget is never rendered; for tests.\n", name, id)
+				fmt.Fprintf(b, "func (m *Model) %s() bool {\n\treturn false\n}\n\n", name)
+			}
+			continue
+		}
+		fmt.Fprintf(b, "// %s reports whether the #%s widget is rendered now; for tests.\n", name, id)
+		fmt.Fprintf(b, "func (m *Model) %s() bool {\n\treturn m.%s != nil\n}\n\n", name, field)
+	}
+}

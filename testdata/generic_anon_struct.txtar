@@ -172,6 +172,11 @@ type __anon_v_ba918a struct {
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
+	*modelState
+}
+
+// modelState is what every copy of a Model shares.
+type modelState struct {
 	n              int
 	box            Box__int
 	outer          __anon_o_0931c3
@@ -189,7 +194,7 @@ type Model struct {
 
 // New creates a Model with default bind values.
 func New() Model {
-	m := Model{}
+	m := Model{&modelState{}}
 	m.n = 1
 	m.box = Box__int{Inner: __anon_v_853006{V: 5}, All: []__anon_v_853006{__anon_v_853006{V: 6}}}
 	m.outer = __anon_o_0931c3{O: __anon_v_853006{V: 1}}
@@ -744,7 +749,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:2c3fb37d1924e2fc7a023a2b3d80a2b7
+pass sha256:e2fda53d8f03c609e16264cd5546ac8b
 -- run/kotlin/android --
 pass sha256:0b3f8d076391d1ec86a61da945ae52e2
 -- run/none/html --

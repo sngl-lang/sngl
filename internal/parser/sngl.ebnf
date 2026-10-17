@@ -205,7 +205,10 @@ MsgBody = i18n_case_full
 
 # ── Document ─────────────────────────────────────────────────────────────────
 
-MacroAttr = attr_open ident [ dot ident ] [ lparen [ Expr { comma Expr } [ comma ] ] rparen ] rbracket .
+# A mark's arguments are an argument list like a call's, positional or by name.
+# The production admits what a call's does; the builder refuses a binding, a
+# spread and a handler, none of which a value read at check time can be.
+MacroAttr = attr_open ident [ dot ident ] [ lparen [ ArgList ] rparen ] rbracket .
 
 # A native value — one expression an encoder wrote, see checker.CheckNativeValue
 # — is the second thing a Document can be. Only the native-value lexer emits the

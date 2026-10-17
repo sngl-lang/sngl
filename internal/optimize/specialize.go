@@ -86,6 +86,11 @@ func inlineComponentCall(n *ir.NodeInst, ctx *evalCtx) []ir.Stmt {
 	if len(comp.Vars) > 0 || len(comp.Funcs) > 0 {
 		return nil
 	}
+	// An instance something reads through is left to passNoInlineComponents,
+	// which records what its splice made of the instance's members.
+	if n.Handle != nil && comp.PkgPath() == "" && ctx.reachedThrough()[n.Handle] {
+		return nil
+	}
 
 	propNames := make(map[string]bool, len(comp.Props))
 	for _, p := range comp.Props {
@@ -280,6 +285,12 @@ func inlineComponentCall(n *ir.NodeInst, ctx *evalCtx) []ir.Stmt {
 	// `fmt.Sprint(m.dot.R)` against a Model that declares no `dot`, and on html
 	// an element the page never fills.
 	if n.ID != "" {
+		// A test's null test of the id asks after the instance, which a node
+		// an `if` or a `for` in its body decides is not: the lowering keeps
+		// that one.
+		if n.Handle != nil && comp.PkgPath() == "" && ctx.nullTestedIDs()[n.ID] && !ir.NodeIDRendersWithBody(folded) {
+			return nil
+		}
 		ir.AttachNodeID(folded, n.ID, n.Handle)
 	}
 	ir.AttachNodeSite(folded, n)
@@ -400,7 +411,7 @@ func bodyHasFoldableParamUse(stmts []ir.Stmt, propNames map[string]bool) bool {
 			}
 		case *ir.Spread:
 			visitExpr(x.Operand)
-		case *ir.Literal, *ir.Ident, *ir.ContextRead, *ir.Lambda, *ir.Closure:
+		case *ir.Literal, *ir.Ident, *ir.ContextRead, *ir.SlotEmpty, *ir.Lambda, *ir.Closure:
 			// Literals/Idents have no param-call shape; lambda bodies
 			// are opaque to this scan (they have their own scope).
 		default:
@@ -597,4 +608,20 @@ func substituteSlots(stmts []ir.Stmt, callsite *ir.NodeInst) []ir.Stmt {
 		},
 	}
 	return sp.Substitute(stmts, callsite)
+}
+
+func (ctx *evalCtx) nullTestedIDs() map[string]bool {
+	if !ctx.nullTestedSet {
+		ctx.nullTestedSet = true
+		ctx.nullTested = ir.NullTestedIDs(ctx.pkg)
+	}
+	return ctx.nullTested
+}
+
+func (ctx *evalCtx) reachedThrough() map[*ir.Var]bool {
+	if !ctx.reachedIDsSet {
+		ctx.reachedIDsSet = true
+		ctx.reachedIDs = ir.ReachedHandles(ctx.pkg)
+	}
+	return ctx.reachedIDs
 }

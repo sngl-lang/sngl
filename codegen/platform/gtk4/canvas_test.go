@@ -16,7 +16,6 @@ import (
 // `canvas` subtree to a cairo-based draw function attached to a
 // GtkDrawingArea, and that a state-mutating handler queues a redraw.
 func TestCanvas_EmitsCairoDrawAndRedraw(t *testing.T) {
-	skipWithoutGIR(t)
 	src := `
 import . "sngl:ui"
 import draw "sngl:ui/draw"
@@ -120,7 +119,6 @@ window {
 // hugely thick outline ~2x the intended size vs other platforms; the Bézier
 // path runs in screen space so the stroke width is uniform.
 func TestCanvas_EllipseUsesBezierPath(t *testing.T) {
-	skipWithoutGIR(t)
 	src := `
 import . "sngl:ui"
 import draw "sngl:ui/draw"

@@ -335,7 +335,16 @@ func (vc *irViewContext) renderStmt(stmt ir.Stmt, resultVar string) {
 		// before the widget consuming it (its FromTernary If assigns it). Emit
 		// so the temp is declared in the view scope.
 		vc.emitIRStmt(s)
-	case *ir.Assign, *ir.CallStmt, *ir.Return, *ir.Emit, *ir.Toggle, *ir.CanvasRedrawStmt,
+	case *ir.Assign:
+		// A write of a local the lowering synthesized -- a step of the counter
+		// passIndexedIter puts beside a loop -- which the view reads; any other
+		// write has no visual rendering.
+		if id, ok := s.Target.(*ir.Ident); ok {
+			if v, ok := id.Sym.(*ir.Var); ok && v.Synthesized {
+				vc.emitIRStmt(s)
+			}
+		}
+	case *ir.CallStmt, *ir.Return, *ir.Emit, *ir.Toggle, *ir.CanvasRedrawStmt,
 		*ir.Break, *ir.Continue:
 		// Imperative stmts have no visual rendering — skipped.
 	default:

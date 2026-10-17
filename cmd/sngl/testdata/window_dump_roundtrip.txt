@@ -32,8 +32,10 @@ stdout 'component content\(v\)'
 -- win.sngl --
 import . "sngl:ui"
 
+var last = ""
+
 window #home(title="Hi", @error(e) {
-    output.print("{e.message}")
+    last = e.message
 }) {
     text(value="hi")
     component favicon {

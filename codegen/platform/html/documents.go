@@ -110,6 +110,10 @@ func yieldDocument(yield func(*codegen.Document, error) bool, doc *codegen.Docum
 		yield(nil, err)
 		return false
 	}
+	if err := validateRawElements(doc.Body); err != nil {
+		yield(nil, err)
+		return false
+	}
 	// A served page renders a loop on the server, over what the request
 	// brought; only a static one has nowhere to run it.
 	if static {

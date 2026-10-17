@@ -50,6 +50,11 @@ type NodeInst struct {
 	// the program wrote belongs at Site. Nil for a node written where it
 	// stands. NodePos reads it.
 	Site ast.Stmt `json:"-"`
+	// Instances are the `#id`s of the component instances whose spliced bodies
+	// this node is a root of, outermost first, each rendered exactly where the
+	// node is: what a test's null test of one asks, on a target that splices
+	// it. A splice of this node hands them on to the roots of its own body.
+	Instances []string `json:",omitempty"`
 	// Crosses is `#[tree.crosses]` on this placement: the node may stand
 	// where its family is not the one accepted. Only the membership check of
 	// the position is lifted; the node's own body, slots and children are
@@ -269,6 +274,9 @@ type ErrorBoundary struct {
 	// non-rest slot the marked component declares -- so nothing in Go spells
 	// `failed`, and renaming it in the library needs no Go edit.
 	FailedSlot string `json:",omitempty"`
+	// Instances is NodeInst.Instances, for a boundary at the root of a spliced
+	// body.
+	Instances []string `json:",omitempty"`
 }
 
 func (*ErrorBoundary) stmtNode() {}
@@ -380,9 +388,52 @@ type If struct {
 	// an alias -- the handler belongs to a call, a boundary or a window, and
 	// walks reach it there.
 	Catch *EventHandler `json:"-"`
+	// Instances is NodeInst.Instances, for an `if` at the root of a spliced
+	// body: the instance renders where the `if` stands, whichever branch it
+	// takes.
+	Instances []string `json:",omitempty"`
 }
 
 func (*If) stmtNode() {}
+
+// InstancesOf is where s records the instances whose spliced bodies it is a
+// root of: a node, an `if`, a `for` or a boundary. Nil for any other statement.
+func InstancesOf(s Stmt) *[]string {
+	switch s := s.(type) {
+	case *NodeInst:
+		return &s.Instances
+	case *If:
+		return &s.Instances
+	case *For:
+		return &s.Instances
+	case *ErrorBoundary:
+		return &s.Instances
+	}
+	return nil
+}
+
+// HandOnInstances is stmts, for a pass replacing from by what it holds, with
+// the instances whose spliced bodies from is a root of put onto its roots.
+// Where no root can carry them -- an empty branch, one of locals -- stmts is
+// held in an `if true` that does: the instance is rendered wherever its call
+// site is, rendering nothing included.
+func HandOnInstances(from Stmt, stmts []Stmt) []Stmt {
+	ins := InstancesOf(from)
+	if ins == nil || len(*ins) == 0 {
+		return stmts
+	}
+	carried := false
+	for _, s := range stmts {
+		if root := InstancesOf(s); root != nil {
+			*root = append(slices.Clone(*ins), *root...)
+			carried = true
+		}
+	}
+	if carried {
+		return stmts
+	}
+	return []Stmt{&If{Cond: &Literal{Type: TypBool, Value: "true"}, Body: stmts, Instances: slices.Clone(*ins)}}
+}
 
 // For is a type-checked for statement with IR bodies and resolved element type.
 type For struct {
@@ -416,6 +467,10 @@ type For struct {
 	// sees a RefElem loop. The headless interpreter (which does not lower)
 	// reads it directly to bind the element as a reference.
 	RefElem bool
+	// Instances is NodeInst.Instances, for a `for` at the root of a spliced
+	// body: the instance renders where the loop stands, however many copies
+	// it makes.
+	Instances []string `json:",omitempty"`
 	// Counted is the arithmetic sequence this loop walks when its iterable is
 	// a sngl:seq call in a shape a host counting loop can express. Set by the
 	// passIterKind lowering pass alongside IterKind; nil for every other loop.

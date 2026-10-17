@@ -140,6 +140,11 @@ type timerTickMsg1 struct {
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
+	*modelState
+}
+
+// modelState is what every copy of a Model shares.
+type modelState struct {
 	seconds__inst0 int
 	running__inst0 bool
 	visible__inst0 bool
@@ -154,7 +159,7 @@ type Model struct {
 
 // New creates a Model with default bind values.
 func New() Model {
-	m := Model{}
+	m := Model{&modelState{}}
 	m.__timer0 = map[string]int{}
 	m.__timer0Seq = map[string]int{}
 	m.__timer1 = map[string]int{}
@@ -375,20 +380,22 @@ type Model struct {
 	running__inst0       bool
 	handle__inst1__inst0 *time.Ticker
 	done__inst1__inst0   chan bool
-	live__inst1__inst0   bool
+	period__inst1__inst0 time.Duration
 	gen__inst1__inst0    int
 	visible__inst0       bool
 	beats__inst0         int
 	handle__inst0__inst0 *time.Ticker
 	done__inst0__inst0   chan bool
-	live__inst0__inst0   bool
+	period__inst0__inst0 time.Duration
 	gen__inst0__inst0    int
-	__effect0_key        time.Duration
-	__effect0_live       []time.Duration
-	__effect0_desired    []time.Duration
+	__effect0_live       []bool
+	__effect0_desired    []bool
 	__effect1_key        time.Duration
-	__effect1_live       []time.Duration
-	__effect1_desired    []time.Duration
+	__effect1_dirty      bool
+	__effect2_live       []bool
+	__effect2_desired    []bool
+	__effect3_key        time.Duration
+	__effect3_dirty      bool
 	__effects0_settling  bool
 	__effects0_pending   bool
 	__effects0_steps     int
@@ -406,20 +413,22 @@ func New() *Model {
 	m.running__inst0 = true
 	m.handle__inst1__inst0 = nil
 	m.done__inst1__inst0 = nil
-	m.live__inst1__inst0 = false
+	m.period__inst1__inst0 = 0
 	m.gen__inst1__inst0 = 0
 	m.visible__inst0 = true
 	m.beats__inst0 = 0
 	m.handle__inst0__inst0 = nil
 	m.done__inst0__inst0 = nil
-	m.live__inst0__inst0 = false
+	m.period__inst0__inst0 = 0
 	m.gen__inst0__inst0 = 0
-	m.__effect0_key = (time.Duration(0) * time.Millisecond)
-	m.__effect0_live = []time.Duration{}
-	m.__effect0_desired = []time.Duration{}
+	m.__effect0_live = []bool{}
+	m.__effect0_desired = []bool{}
 	m.__effect1_key = (time.Duration(0) * time.Millisecond)
-	m.__effect1_live = []time.Duration{}
-	m.__effect1_desired = []time.Duration{}
+	m.__effect1_dirty = false
+	m.__effect2_live = []bool{}
+	m.__effect2_desired = []bool{}
+	m.__effect3_key = (time.Duration(0) * time.Millisecond)
+	m.__effect3_dirty = false
 	m.__effects0_settling = false
 	m.__effects0_pending = false
 	m.__effects0_steps = 0
@@ -427,55 +436,48 @@ func New() *Model {
 }
 
 func (m *Model) __effect0_mount() {
-	if m.__effect0_key > (time.Duration(0) * time.Millisecond) {
-		m.live__inst1__inst0 = true
-		m.gen__inst1__inst0 = (m.gen__inst1__inst0 + 1)
-		var mine int = m.gen__inst1__inst0
-		m.handle__inst1__inst0 = time.NewTicker(m.__effect0_key)
-		m.done__inst1__inst0 = make(chan bool)
-		stopped := m.done__inst1__inst0
-		ticker := m.handle__inst1__inst0
-		go func() {
-			for {
-				select {
-				case <-ticker.C:
-					fyne.Do(func() {
-						if m.gen__inst1__inst0 != mine {
-							return
-						}
-						m.seconds__inst0 += 1
-						m.__n2.SetText(fmt.Sprint(m.seconds__inst0))
-					})
-				case <-stopped:
-					return
-				}
+	m.gen__inst1__inst0 = (m.gen__inst1__inst0 + 1)
+	var mine int = m.gen__inst1__inst0
+	m.period__inst1__inst0 = (time.Duration(1000) * time.Millisecond)
+	m.handle__inst1__inst0 = time.NewTicker((time.Duration(1000) * time.Millisecond))
+	m.done__inst1__inst0 = make(chan bool)
+	stopped := m.done__inst1__inst0
+	ticker := m.handle__inst1__inst0
+	go func() {
+		for {
+			select {
+			case <-ticker.C:
+				fyne.Do(func() {
+					if m.gen__inst1__inst0 != mine {
+						return
+					}
+					m.seconds__inst0 += 1
+					m.__n2.SetText(fmt.Sprint(m.seconds__inst0))
+				})
+			case <-stopped:
+				return
 			}
-		}()
-	}
+		}
+	}()
 }
 
 func (m *Model) __effect0_unmount() {
-	if m.live__inst1__inst0 {
-		m.live__inst1__inst0 = false
-		m.gen__inst1__inst0 = (m.gen__inst1__inst0 + 1)
-		m.handle__inst1__inst0.Stop()
-		close(m.done__inst1__inst0)
-	}
+	m.gen__inst1__inst0 = (m.gen__inst1__inst0 + 1)
+	m.handle__inst1__inst0.Stop()
+	close(m.done__inst1__inst0)
 }
 
 func (m *Model) __effect0_down() {
-	m.__effect0_desired = []time.Duration{}
+	m.__effect0_desired = []bool{}
 	if m.running__inst0 {
-		m.__effect0_desired = append(m.__effect0_desired, (time.Duration(1000) * time.Millisecond))
+		m.__effect0_desired = append(m.__effect0_desired, true)
 	}
 	for __effect0_i, _ := range m.__effect0_live {
 		var __effect0_j int = ((len(m.__effect0_live) - 1) - __effect0_i)
 		if __effect0_j >= len(m.__effect0_desired) {
-			m.__effect0_key = m.__effect0_live[__effect0_j]
 			m.__effect0_unmount()
 		} else {
 			if m.__effect0_desired[__effect0_j] != m.__effect0_live[__effect0_j] {
-				m.__effect0_key = m.__effect0_live[__effect0_j]
 				m.__effect0_unmount()
 			}
 		}
@@ -485,11 +487,9 @@ func (m *Model) __effect0_down() {
 func (m *Model) __effect0_up() {
 	for __effect0_i, __effect0_k := range m.__effect0_desired {
 		if __effect0_i >= len(m.__effect0_live) {
-			m.__effect0_key = __effect0_k
 			m.__effect0_mount()
 		} else {
 			if m.__effect0_live[__effect0_i] != __effect0_k {
-				m.__effect0_key = __effect0_k
 				m.__effect0_mount()
 			}
 		}
@@ -498,88 +498,91 @@ func (m *Model) __effect0_up() {
 }
 
 func (m *Model) __effect0_teardown() {
-	for __effect0_ti, _ := range m.__effect0_live {
-		m.__effect0_key = m.__effect0_live[((len(m.__effect0_live) - 1) - __effect0_ti)]
+	for range m.__effect0_live {
 		m.__effect0_unmount()
 	}
-	m.__effect0_live = []time.Duration{}
+	m.__effect0_live = []bool{}
 }
 
-func (m *Model) __effect1_mount() {
-	if m.__effect1_key > (time.Duration(0) * time.Millisecond) {
-		m.live__inst0__inst0 = true
-		m.gen__inst0__inst0 = (m.gen__inst0__inst0 + 1)
-		var mine int = m.gen__inst0__inst0
-		m.handle__inst0__inst0 = time.NewTicker(m.__effect1_key)
-		m.done__inst0__inst0 = make(chan bool)
-		stopped := m.done__inst0__inst0
-		ticker := m.handle__inst0__inst0
-		go func() {
-			for {
-				select {
-				case <-ticker.C:
-					fyne.Do(func() {
-						if m.gen__inst0__inst0 != mine {
-							return
-						}
-						m.beats__inst0 += 1
-						m.__n1.SetText(("beats " + fmt.Sprint(m.beats__inst0)))
-					})
-				case <-stopped:
-					return
-				}
+func (m *Model) __effect1_update() {
+	if (m.__effect1_key > (time.Duration(0) * time.Millisecond)) && (m.__effect1_key != m.period__inst1__inst0) {
+		m.period__inst1__inst0 = m.__effect1_key
+		m.handle__inst1__inst0.Reset(m.__effect1_key)
+	}
+}
+
+func (m *Model) __effect2_mount() {
+	m.gen__inst0__inst0 = (m.gen__inst0__inst0 + 1)
+	var mine int = m.gen__inst0__inst0
+	m.period__inst0__inst0 = (time.Duration(250) * time.Millisecond)
+	m.handle__inst0__inst0 = time.NewTicker((time.Duration(250) * time.Millisecond))
+	m.done__inst0__inst0 = make(chan bool)
+	stopped := m.done__inst0__inst0
+	ticker := m.handle__inst0__inst0
+	go func() {
+		for {
+			select {
+			case <-ticker.C:
+				fyne.Do(func() {
+					if m.gen__inst0__inst0 != mine {
+						return
+					}
+					m.beats__inst0 += 1
+					m.__n1.SetText(("beats " + fmt.Sprint(m.beats__inst0)))
+				})
+			case <-stopped:
+				return
 			}
-		}()
-	}
+		}
+	}()
 }
 
-func (m *Model) __effect1_unmount() {
-	if m.live__inst0__inst0 {
-		m.live__inst0__inst0 = false
-		m.gen__inst0__inst0 = (m.gen__inst0__inst0 + 1)
-		m.handle__inst0__inst0.Stop()
-		close(m.done__inst0__inst0)
-	}
+func (m *Model) __effect2_unmount() {
+	m.gen__inst0__inst0 = (m.gen__inst0__inst0 + 1)
+	m.handle__inst0__inst0.Stop()
+	close(m.done__inst0__inst0)
 }
 
-func (m *Model) __effect1_down() {
-	m.__effect1_desired = []time.Duration{}
-	m.__effect1_desired = append(m.__effect1_desired, (time.Duration(250) * time.Millisecond))
-	for __effect1_i, _ := range m.__effect1_live {
-		var __effect1_j int = ((len(m.__effect1_live) - 1) - __effect1_i)
-		if __effect1_j >= len(m.__effect1_desired) {
-			m.__effect1_key = m.__effect1_live[__effect1_j]
-			m.__effect1_unmount()
+func (m *Model) __effect2_down() {
+	m.__effect2_desired = []bool{}
+	m.__effect2_desired = append(m.__effect2_desired, true)
+	for __effect2_i, _ := range m.__effect2_live {
+		var __effect2_j int = ((len(m.__effect2_live) - 1) - __effect2_i)
+		if __effect2_j >= len(m.__effect2_desired) {
+			m.__effect2_unmount()
 		} else {
-			if m.__effect1_desired[__effect1_j] != m.__effect1_live[__effect1_j] {
-				m.__effect1_key = m.__effect1_live[__effect1_j]
-				m.__effect1_unmount()
+			if m.__effect2_desired[__effect2_j] != m.__effect2_live[__effect2_j] {
+				m.__effect2_unmount()
 			}
 		}
 	}
 }
 
-func (m *Model) __effect1_up() {
-	for __effect1_i, __effect1_k := range m.__effect1_desired {
-		if __effect1_i >= len(m.__effect1_live) {
-			m.__effect1_key = __effect1_k
-			m.__effect1_mount()
+func (m *Model) __effect2_up() {
+	for __effect2_i, __effect2_k := range m.__effect2_desired {
+		if __effect2_i >= len(m.__effect2_live) {
+			m.__effect2_mount()
 		} else {
-			if m.__effect1_live[__effect1_i] != __effect1_k {
-				m.__effect1_key = __effect1_k
-				m.__effect1_mount()
+			if m.__effect2_live[__effect2_i] != __effect2_k {
+				m.__effect2_mount()
 			}
 		}
 	}
-	m.__effect1_live = m.__effect1_desired
+	m.__effect2_live = m.__effect2_desired
 }
 
-func (m *Model) __effect1_teardown() {
-	for __effect1_ti, _ := range m.__effect1_live {
-		m.__effect1_key = m.__effect1_live[((len(m.__effect1_live) - 1) - __effect1_ti)]
-		m.__effect1_unmount()
+func (m *Model) __effect2_teardown() {
+	for range m.__effect2_live {
+		m.__effect2_unmount()
 	}
-	m.__effect1_live = []time.Duration{}
+	m.__effect2_live = []bool{}
+}
+
+func (m *Model) __effect3_update() {
+	if (m.__effect3_key > (time.Duration(0) * time.Millisecond)) && (m.__effect3_key != m.period__inst0__inst0) {
+		m.period__inst0__inst0 = m.__effect3_key
+		m.handle__inst0__inst0.Reset(m.__effect3_key)
+	}
 }
 
 func (m *Model) __effects0_settle() {
@@ -592,10 +595,22 @@ func (m *Model) __effects0_settle() {
 		for m.__effects0_pending && (m.__effects0_steps < 512) {
 			m.__effects0_pending = false
 			m.__effects0_steps = (m.__effects0_steps + 1)
-			m.__effect1_down()
+			if m.__effect1_dirty {
+				m.__effect1_dirty = false
+				if m.running__inst0 {
+					m.__effect1_key = (time.Duration(1000) * time.Millisecond)
+					m.__effect1_update()
+				}
+			}
+			if m.__effect3_dirty {
+				m.__effect3_dirty = false
+				m.__effect3_key = (time.Duration(250) * time.Millisecond)
+				m.__effect3_update()
+			}
+			m.__effect2_down()
 			m.__effect0_down()
 			m.__effect0_up()
-			m.__effect1_up()
+			m.__effect2_up()
 		}
 		m.__effects0_settling = false
 		if m.__effects0_pending {
@@ -605,7 +620,7 @@ func (m *Model) __effects0_settle() {
 }
 
 func (m *Model) __snglTeardown() {
-	m.__effect1_teardown()
+	m.__effect2_teardown()
 	m.__effect0_teardown()
 }
 
@@ -649,12 +664,12 @@ func (m *Model) SetDone__inst1__inst0(v chan bool) {
 	m.done__inst1__inst0 = v
 }
 
-func (m *Model) Live__inst1__inst0() bool {
-	return m.live__inst1__inst0
+func (m *Model) Period__inst1__inst0() time.Duration {
+	return m.period__inst1__inst0
 }
 
-func (m *Model) SetLive__inst1__inst0(v bool) {
-	m.live__inst1__inst0 = v
+func (m *Model) SetPeriod__inst1__inst0(v time.Duration) {
+	m.period__inst1__inst0 = v
 }
 
 func (m *Model) Gen__inst1__inst0() int {
@@ -697,12 +712,12 @@ func (m *Model) SetDone__inst0__inst0(v chan bool) {
 	m.done__inst0__inst0 = v
 }
 
-func (m *Model) Live__inst0__inst0() bool {
-	return m.live__inst0__inst0
+func (m *Model) Period__inst0__inst0() time.Duration {
+	return m.period__inst0__inst0
 }
 
-func (m *Model) SetLive__inst0__inst0(v bool) {
-	m.live__inst0__inst0 = v
+func (m *Model) SetPeriod__inst0__inst0(v time.Duration) {
+	m.period__inst0__inst0 = v
 }
 
 func (m *Model) Gen__inst0__inst0() int {
@@ -1258,9 +1273,9 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:a25b5824189399732bc98d61137e517a
+pass sha256:311d20ce666f39997897933ff9f2baa2
 -- run/go/fyne --
-pass sha256:c995c1f8d1c4d966c48849a255c61ef7
+pass sha256:c8e6e639ca9885d4203b92c9c282d4bf
 -- run/go/gtk4 --
 pass sha256:7512549b629b383fb372091c88c51672
 -- run/kotlin/android --

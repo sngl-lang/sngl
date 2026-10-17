@@ -16,6 +16,9 @@ type viewWalk struct {
 	indent int
 	wants  func(*ir.NodeInst) bool
 	visit  func(w *viewWalk, n *ir.NodeInst, gc *golang.GoIRContext)
+	// declared is the locals the walk has written, so a loop it starts at
+	// still declares the counter that sits beside it in the view.
+	declared map[string]bool
 }
 
 func (w *viewWalk) line(format string, args ...any) {
@@ -34,6 +37,19 @@ func (w *viewWalk) holds(stmts []ir.Stmt) bool {
 
 func (w *viewWalk) stmts(stmts []ir.Stmt, gc *golang.GoIRContext) {
 	for _, st := range stmts {
+		// A view's locals and its writes of them stay -- a ternary's temp a
+		// condition reads, the counter passIndexedIter puts beside a loop --
+		// each local read once, since what read it may be gone.
+		if keepsTemps(st) {
+			for _, l := range gc.EvalStmt(st) {
+				w.line("%s", l)
+			}
+			if lv, ok := st.(*ir.LocalVar); ok {
+				w.declare(lv.Name)
+				w.line("_ = %s", lv.Name)
+			}
+			continue
+		}
 		if !w.holds([]ir.Stmt{st}) {
 			continue
 		}
@@ -66,6 +82,13 @@ func (w *viewWalk) stmts(stmts []ir.Stmt, gc *golang.GoIRContext) {
 }
 
 func (w *viewWalk) loop(f *ir.For, gc *golang.GoIRContext) {
+	if c := loopCounter(f); c != nil && !w.declared[c.Name] && w.holds(f.Body) {
+		for _, l := range gc.EvalStmt(&ir.LocalVar{Name: c.Name, Type: ir.TypInt, Init: &ir.Unary{Op: ast.UnaryNeg, Operand: &ir.Literal{Type: ir.TypInt, Value: "1"}, Type: ir.TypInt}, Sym: c}) {
+			w.line("%s", l)
+		}
+		w.line("_ = %s", c.Name)
+		w.declare(c.Name)
+	}
 	iter := gc.EvalExpr(f.Iter)
 	loopGC := gc
 	if f.Key != "" && f.Key != "_" {
@@ -175,4 +198,44 @@ func overlayClear(gate *ir.If) ir.Stmt {
 		}
 	}
 	return nil
+}
+
+// keepsTemps reports whether s computes a temp the view reads rather than
+// rendering anything: a local, a write of one, or a ternary's `if`.
+func keepsTemps(s ir.Stmt) bool {
+	switch n := s.(type) {
+	case *ir.LocalVar, *ir.Assign:
+		return true
+	case *ir.If:
+		return n.FromTernary
+	}
+	return false
+}
+
+func (w *viewWalk) declare(name string) {
+	if w.declared == nil {
+		w.declared = map[string]bool{}
+	}
+	w.declared[name] = true
+}
+
+// loopCounter is the counter passIndexedIter gave f, which its body opens by
+// stepping, or nil.
+func loopCounter(f *ir.For) *ir.Var {
+	if len(f.Body) == 0 {
+		return nil
+	}
+	step, ok := f.Body[0].(*ir.Assign)
+	if !ok || step.Op != ast.AssignAdd {
+		return nil
+	}
+	id, ok := step.Target.(*ir.Ident)
+	if !ok {
+		return nil
+	}
+	v, ok := id.Sym.(*ir.Var)
+	if !ok || v == nil || !v.Synthesized {
+		return nil
+	}
+	return v
 }

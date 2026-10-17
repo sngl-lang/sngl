@@ -342,6 +342,11 @@ func CheckPackage(docs []*ast.Document, cfg *Config) (*ir.Package, []ir.Diagnost
 }
 
 type checker struct {
+	// anyWritten collects where `any` is written as a type while a marked
+	// declaration is typed (holdAny), nil otherwise.
+	anyWritten *[]ast.Pos
+	// askedEmpty memoizes slotsAskedEmpty per component.
+	askedEmpty map[*ir.Component]map[*ir.SlotDecl]bool
 	// refBindable is the plain element variables of loops over an addressable
 	// list, which `&` could have bound to write the element.
 	refBindable map[*ir.LoopVar]bool
@@ -511,6 +516,11 @@ type checker struct {
 
 	// Current component (for event validation).
 	currentComponent *ir.Component
+	// componentScope is the scope checkComponentBody pushed for
+	// currentComponent's body: what is bound below it -- a loop variable, a
+	// population's parameter, a local -- is the view's own and shadows a slot
+	// of the same name (slotShadowed).
+	componentScope *ir.Scope
 	// funcDepth is non-zero while a function or handler body is being checked.
 	// A slot insertion renders where it is written, so one reaching a func body
 	// has nowhere to project and is reported rather than built. It is also
@@ -687,6 +697,9 @@ type checker struct {
 	// package body is checked against it, which is the whole of what makes a
 	// window and an output directive top-level: no syntactic rule names them.
 	rootFamily *ir.Component
+	// applicationComp is sngl:builtin's `_application`, the #[builtin
+	// ("application")] the package body's nodes attach to.
+	applicationComp *ir.Component
 	// familyPosition is non-zero while a return position or a slot's content
 	// resolves, where a data family's name is the family rather than its
 	// record (dataRecord).
@@ -704,6 +717,9 @@ type checker struct {
 	userOverrides        []*ast.ComponentDecl
 	userFuncOverrides    []*ast.FuncDef
 	pendingFuncOverrides []pendingFuncOverride
+	// overrideAt is the override whose body checkComponentBody is reading, or
+	// the zero Pos while it reads a declaration's own.
+	overrideAt ast.Pos
 
 	// The predeclared constants, bound by collectBuiltins. Held so a second
 	// declaration of the same kind is an error rather than a silent
@@ -985,9 +1001,9 @@ func (c *checker) ensureReturnType(fn *ir.Func) {
 	}
 	if c.inferring[fn] {
 		// `func f() => f()` has no type to arrive at. Reported here rather
-		// than left to recur, and typed dyn so the rest of the file checks.
+		// than left to recur, and typed invalid so the rest of the file checks.
 		c.error(funcDeclPos(fn), "cannot infer the return type of %q from a body that calls itself; annotate it", fn.Name)
-		fn.Return = TypDyn
+		fn.Return = TypInvalid
 		return
 	}
 	if c.inferring == nil {
@@ -1934,10 +1950,11 @@ func (c *checker) checkSchemePackage(docs []*ast.Document, subFS fs.FS, scheme, 
 // loading library's imports to the program's package would put
 // `import std "sngl:ui"` in the IR of every program that reaches i18n.
 //
-// Contexts are the exception and stay on c.pkg. A context is program-global by
-// design -- the `#locale` sngl:i18n declares has to reach the program's own
-// codegen, which reads c.pkg.Contexts -- so it is discovered alongside the
-// user's rather than kept with the package that wrote it.
+// Contexts too: a context lands on the package that declared it, and that
+// package is its Pkg. A context is program-global by design -- the `#locale`
+// sngl:i18n declares has to reach the program's own codegen, which reads
+// c.pkg.Contexts -- so the program also adopts every context its imports
+// reach (adoptLibContexts).
 func (c *checker) declPkg() *ir.Package {
 	if c.libLoadPkg != nil {
 		return c.libLoadPkg
@@ -2223,7 +2240,7 @@ func (c *checker) registerConstShells(decl *ast.ConstDecl) {
 		// An un-annotated const backed by a literal gets its concrete type on
 		// the shell immediately, so a later `var x = SOME_CONST` (registered
 		// before the deferred checkPendingConstInits runs) infers the const's
-		// type rather than dyn. Non-literal initializers still resolve in the
+		// type rather than none. Non-literal initializers still resolve in the
 		// deferred pass.
 		var typ *ir.Type
 		switch {
@@ -2232,7 +2249,7 @@ func (c *checker) registerConstShells(decl *ast.ConstDecl) {
 		default:
 			typ = literalConstType(spec.Default)
 			if typ == nil {
-				typ = dynDeferred("const type, resolved by checkPendingConstInits")
+				typ = TypInvalid
 			}
 		}
 		vars := make([]*ir.Var, 0, len(spec.Names))
@@ -2383,6 +2400,21 @@ func (c *checker) nonConstRef(e ast.Expr) string {
 			return name
 		}
 		return c.nonConstRef(x.Else)
+	case *ast.MatchExpr:
+		if name := c.nonConstRef(x.Subject); name != "" {
+			return name
+		}
+		for _, arm := range x.Arms {
+			for _, p := range arm.Patterns {
+				if name := c.nonConstRef(p); name != "" {
+					return name
+				}
+			}
+			if name := c.nonConstRef(arm.Value); name != "" {
+				return name
+			}
+		}
+		return ""
 	case *ast.ListExpr:
 		for _, el := range x.Elements {
 			if name := c.nonConstRef(el); name != "" {
@@ -2482,7 +2514,8 @@ func (c *checker) nonConstCallRef(x *ast.CallExpr) string {
 
 func (c *checker) registerVars(decl *ast.VarDecl) {
 	for _, spec := range decl.Specs {
-		typ := c.resolveType(spec.Type)
+		var typ *ir.Type
+		anyAt := c.holdAny(decl, func() { typ = c.varSpecType(spec.Pos, spec.Names, spec.Type, spec.Default) })
 		var vars []*ir.Var
 		for _, name := range spec.Names {
 			if _, exists := c.scope.LookupLocal(name); exists {
@@ -2499,6 +2532,9 @@ func (c *checker) registerVars(decl *ast.VarDecl) {
 			c.declPkg().Vars = append(c.declPkg().Vars, v)
 			c.bindVar(decl.Pos, v)
 			vars = append(vars, v)
+		}
+		if len(vars) > 0 {
+			c.refuseAnyUnlessUnusable(anyAt, &vars[0].Foreign)
 		}
 		c.deferInit(decl.Pos, func() { c.checkVarInit(decl, spec, typ, vars) })
 	}
@@ -2563,7 +2599,7 @@ func (c *checker) checkPendingInits() {
 // that were pre-registered in pass1, and infers types from initializers.
 func (c *checker) checkComponentVars(decl *ast.VarDecl, comp *ir.Component) {
 	for _, spec := range decl.Specs {
-		typ := c.resolveType(spec.Type)
+		typ := c.varSpecType(spec.Pos, spec.Names, spec.Type, spec.Default)
 		var initExpr ir.Expr
 		if spec.Default != nil {
 			initExpr = c.checkExprExpecting(spec.Default, typ)
@@ -2633,7 +2669,8 @@ func (c *checker) registerFunc(f *ast.FuncDef) *ir.Func {
 		c.userFuncOverrides = append(c.userFuncOverrides, f)
 		return nil
 	}
-	fn := c.buildFunc(f)
+	var fn *ir.Func
+	anyAt := c.holdAny(f, func() { fn = c.buildFunc(f) })
 
 	// A macro declaration is not a function -- it is where a `#[...]` mark's
 	// documentation and argument list are written, and a Go handler is what
@@ -2653,18 +2690,13 @@ func (c *checker) registerFunc(f *ast.FuncDef) *ir.Func {
 		c.declPkg().Macros = append(c.declPkg().Macros, fn)
 	}
 	c.applyMarks(f, fn)
+	c.refuseAnyUnlessUnusable(anyAt, &fn.Foreign)
 
-	// Library source is not body-checked by pass2, so two things it would
-	// otherwise infer are stated here. A signature with no return annotation
-	// is dyn rather than void. And a bodied function's purity starts pure
-	// until finishDeclarations reads it off the body.
-	// A bodyless one is pure only where it is declared `const func`, which
-	// buildFunc has already said -- nothing in the program says what a host
-	// does.
+	// A library's bodied function's purity starts pure until
+	// finishDeclarations reads it off the body. A bodyless one is pure only
+	// where it is declared `const func`, which buildFunc has already said --
+	// nothing in the program says what a host does.
 	if c.inLibSource() {
-		if fn.Return == nil && f.Body != nil {
-			fn.Return = dynFallback("library function %q has a body and no return annotation", fn.Name)
-		}
 		if fn.Purity == ir.PurityUnknown && funcHasBody(f) {
 			fn.Purity = ir.PurityPure
 		}
@@ -2927,10 +2959,9 @@ type elementRef struct {
 }
 
 // collectElementRefIDs returns every element id declared in a component body,
-// in source order. It is findHostComponentAST's walk widened from one name to
-// all of them -- ids hide inside if/for branches and inside a slot's block, and
-// the `Comp() #id` call form declares one as much as `Comp #id { }` does. It
-// does not descend into the components the body instantiates: those ids are
+// in source order. Ids hide inside if/for branches and inside a node's block,
+// and the `Comp() #id` call form declares one as much as `Comp #id { }` does.
+// It does not descend into the components the body instantiates: those ids are
 // their own declarations'.
 func collectElementRefIDs(stmts []ast.Stmt) []elementRef {
 	var out []elementRef
@@ -2969,6 +3000,18 @@ func (c *checker) buildSlotDecl(pd ast.Param, ct *ast.ComponentType, rest bool) 
 	slot := &ir.SlotDecl{Name: pd.Name, Rest: rest, Const: pd.Const, Doc: pd.Doc()}
 	if ct.Tree != nil {
 		slot.Content, slot.Card = c.resolveSlotContent(ct.Tree)
+	}
+	if w := ast.SlotWrapper(pd.Type); w != nil {
+		if rest {
+			// The rest slot is inserted exactly once, so each #id its bare
+			// children carry names one node of the caller's. A slot the body
+			// may leave out or repeat is a named one, whose population is a
+			// namespace of its own.
+			c.error(w.Pos, "rest slot %q is inserted exactly once, so it takes no %s[…]: declare a named slot, `%s %s[component …]`, and populate it by name", pd.Name, w.Name, pd.Name, w.Name)
+		}
+		// Kept on a refused rest slot too, so its body is not reported again
+		// for inserting it the way it was declared.
+		slot.Inserts = c.slotInserts(w)
 	}
 	for i, p := range ct.Params {
 		if vt, ok := p.Type.(*ast.VariadicType); ok {
@@ -3014,21 +3057,23 @@ func (c *checker) registerComponent(comp *ast.ComponentDecl) {
 // registerComponentDecl builds and registers one component declaration.
 func (c *checker) registerComponentDecl(comp *ast.ComponentDecl, bodyLocal bool) *ir.Component {
 	// An override implements one declaration for one target, and says which
-	// target on its own name: `component ui.button[platform] { ... }`.
+	// target on its own name: `component ui.button[platform](…) { ... }`.
 	// It is not a declaration of its own, so it registers nothing here --
 	// collectUserOverrides merges it into the declaration it names, after
 	// pass1 has registered everything it might name.
 	//
-	// A parens form with nothing in them is neither: android.sngl writes
-	// `component ui.X() { body }`, whose body the platform reads itself.
-	bare := comp.HasParens && len(comp.Props.Props) == 0 && comp.ChildrenType == nil
+	// A parens form with nothing in them and no target is neither:
+	// android.sngl writes `component ui.X() { body }`, whose body the
+	// platform reads itself. An override may write `()` too, and names
+	// its target.
+	bare := comp.Target == nil && comp.HasParens && len(comp.Props.Props) == 0 && comp.ChildrenType == nil
 	// An override merges into a declaration registered elsewhere in the
 	// package, so there is nothing body-scoped for one to land on.
 	if bodyLocal && (comp.Target != nil || strings.IndexByte(comp.Name, '.') > 0) {
 		c.error(comp.Pos, "an override may only be written at the root of a file")
 		return nil
 	}
-	if comp.Target != nil && !bare {
+	if comp.Target != nil {
 		if c.inLibSource() {
 			// A library package's overrides belong to mergeTargetExtensions,
 			// which resolves each one in that package's own scope -- where the
@@ -3114,11 +3159,9 @@ func (c *checker) registerComponentDecl(comp *ast.ComponentDecl, bodyLocal bool)
 			c.applyParamMarks(pd, prop)
 			c.checkConstProp(pd, prop)
 			// A prop with neither an annotation nor a default says nothing
-			// about what it takes. `dyn` written out is an annotation: it says
-			// the prop takes anything, which is what `context(default dyn)`
-			// means and what a caller reads at the call site.
-			if prop.Type.Kind == ir.TypeDyn && pd.Type == nil && pd.Default == nil {
-				c.error(comp.Pos, "param %q must have a type hint or a default value", pd.Name)
+			// about what it takes.
+			if prop.Type.Kind == ir.TypeInvalid && pd.Type == nil && pd.Default == nil {
+				c.error(pd.Pos, "type annotation or default required for parameter %q", pd.Name)
 			}
 			// Default is checked later in checkComponentBody when scope is
 			// ready.
@@ -3238,11 +3281,25 @@ func (c *checker) collectComponentDecls(comp *ast.ComponentDecl, irComp *ir.Comp
 // annotation is resolved again, and reported, where it is checked. A
 // component's var is registered before its body is read and checked with it,
 // and resolving it loudly in both said everything wrong with its type twice.
-func (c *checker) resolveTypeQuietly(te ast.TypeExpr) *ir.Type {
-	n := len(c.diags)
-	t := c.resolveType(te)
-	c.diags = c.diags[:n]
+func (c *checker) resolveTypeQuietly(te ast.TypeExpr) (t *ir.Type) {
+	c.quietly(func() { t = c.resolveType(te) })
 	return t
+}
+
+// checkExprQuietly checks e and reports nothing, for a read of its type ahead
+// of the check that reports it: a type parameter bound from an argument, a
+// name tested for what it denotes. Checked loudly in both, everything wrong
+// with the expression was said twice.
+func (c *checker) checkExprQuietly(e ast.Expr) (out ir.Expr) {
+	c.quietly(func() { out = c.checkExpr(e) })
+	return out
+}
+
+// quietly runs f and drops whatever it reported.
+func (c *checker) quietly(f func()) {
+	n := len(c.diags)
+	f()
+	c.diags = c.diags[:n]
 }
 
 // collectComponentVarDecl builds the pre-registered ir.Vars for one component
@@ -4072,25 +4129,15 @@ func (c *checker) checkFuncBody(fn *ir.Func) {
 		}
 		bodyType := exprType(bodyExpr)
 		// Infer return type from expression body when there was no annotation.
-		// An explicit `dyn` annotation is kept as-is -- except in library
-		// source, where an unannotated signature was given dyn at
-		// registration rather than left nil, so the annotation and the
-		// absence of one are the same thing by the time this runs. Restricted
-		// to primitives: the `color` struct and the `color` primitive share a
-		// name, so inferring `color.rgb(...) => color{...}` as the struct
-		// makes it collide with the primitive in callers.
 		if fn.Return == nil {
 			fn.Return = c.inferredType(bodyType, *body.ExprPos())
-		} else if c.inLibSource() && fn.Return.Kind == ir.TypeDyn &&
-			bodyType != nil && isPrimitiveTypeKind(bodyType.Kind) {
-			fn.Return = bodyType
 		}
 		fn.Block = append(prelude, &ir.Return{AST: &ast.ReturnStmt{Pos: *body.ExprPos(), Value: body}, Value: bodyExpr})
 	} else if fn.AST != nil && fn.AST.Block.IsDefined() {
 		fn.Block = c.checkBlockIR(&fn.AST.Block)
 		// A block-bodied func with a non-void return type must return on all
 		// paths, an empty `{}` body included.
-		if fn.Return != nil && fn.Return.Kind != ir.TypeVoid && fn.Return.Kind != ir.TypeDyn &&
+		if fn.Return != nil && fn.Return.Kind != ir.TypeVoid && fn.Return.Kind != ir.TypeInvalid &&
 			!blockAlwaysReturns(fn.Block) && !lastStmtMayDiverge(fn.Block) {
 			c.error(fn.AST.Pos, "missing return: %q must return %s on all paths", fn.Name, fn.Return)
 		}
@@ -4231,19 +4278,12 @@ func lastStmtMayDiverge(stmts []ir.Stmt) bool {
 // methods (Receiver == comp.Name) to infer their return types BEFORE any
 // top-level func body that may call them. The pre-pass discards its
 // diagnostics — they may be spurious because component var initializers
-// haven't been checked yet, so var types are Dyn here. The "real" check
+// haven't been checked yet, so an unannotated var has no type here. The "real" check
 // (with refined types and authoritative diagnostics) runs later inside
 // checkComponentBody.
 func (c *checker) preCheckComponentMethods(comp *ir.Component) {
 	defer c.fileOf(compDeclPos(comp))()
-	hasNested := false
-	for _, fn := range comp.Funcs {
-		if fn.RecvName() == comp.Name {
-			hasNested = true
-			break
-		}
-	}
-	if !hasNested {
+	if comp.AST == nil {
 		return
 	}
 
@@ -4254,6 +4294,10 @@ func (c *checker) preCheckComponentMethods(comp *ir.Component) {
 	c.currentComponent = comp
 	defer func() { c.currentComponent = prevComp }()
 
+	// Snapshot diagnostics; discard whatever the pre-pass produces, its
+	// declarations included. The authoritative check runs again in
+	// checkComponentBody.
+	diagMark, deferred, constMark, slotMark := len(c.diags), len(c.treeChecks), len(c.constArgs), len(c.constSlotNodes)
 	for _, p := range comp.Props {
 		c.declare(compDeclPos(comp), propParam(p))
 	}
@@ -4271,9 +4315,18 @@ func (c *checker) preCheckComponentMethods(comp *ir.Component) {
 		}
 	}
 
-	// Snapshot diagnostics; discard whatever the pre-pass produces. The
-	// authoritative method-body check runs again in checkComponentBody.
-	diagMark, deferred, constMark, slotMark := len(c.diags), len(c.treeChecks), len(c.constArgs), len(c.constSlotNodes)
+	// The state's types first, from its initializers: a function checked
+	// before this body -- a method written outside the component's block, a
+	// test -- reads a var through a handle, and an unannotated one has no
+	// type until its initializer is read.
+	for _, stmt := range comp.AST.Body.Stmts {
+		switch d := stmt.(type) {
+		case *ast.VarDecl:
+			c.checkComponentVars(d, comp)
+		case *ast.ConstDecl:
+			c.checkComponentConsts(d, comp)
+		}
+	}
 	for _, fn := range comp.Funcs {
 		if fn.RecvName() == comp.Name {
 			c.checkFuncBody(fn)
@@ -4409,11 +4462,11 @@ func (c *checker) declareBodyDecls(comp *ir.Component) {
 	// The symbols were declared, and a duplicate among them reported, when
 	// pass1 collected the body; this binds them again for every body read in
 	// that scope, and reporting again said it once a read.
-	n := len(c.diags)
-	for _, sym := range comp.BodyDecls {
-		c.declare(declPos(sym), sym)
-	}
-	c.diags = c.diags[:n]
+	c.quietly(func() {
+		for _, sym := range comp.BodyDecls {
+			c.declare(declPos(sym), sym)
+		}
+	})
 }
 
 // declareEnclosingBody declares, into comp's body scope, what the body comp
@@ -4448,9 +4501,9 @@ func (c *checker) checkComponentBody(comp *ir.Component) {
 	c.scope = ir.NewScopeSize(c.scope, len(comp.Props)+len(comp.Vars)+len(comp.Funcs))
 	defer c.popScope()
 
-	prevComp := c.currentComponent
-	c.currentComponent = comp
-	defer func() { c.currentComponent = prevComp }()
+	prevComp, prevScope := c.currentComponent, c.componentScope
+	c.currentComponent, c.componentScope = comp, c.scope
+	defer func() { c.currentComponent, c.componentScope = prevComp, prevScope }()
 
 	// A body-local component sees the body it was written in: its sibling
 	// declarations, and its props, vars and funcs (#202).
@@ -4475,18 +4528,21 @@ func (c *checker) checkComponentBody(comp *ir.Component) {
 	// that an unannotated prop's type can be inferred from its default and the
 	// param entry we declare below picks up the inferred type.
 	if comp.AST != nil {
-		propIdx := 0
+		// Matched by name: an override's copy holds only the props its list
+		// selected, and a slot is a Param too without being a prop.
+		byName := make(map[string]*ir.Prop, len(comp.Props))
+		for _, p := range comp.Props {
+			byName[p.Name] = p
+		}
 		for _, p := range comp.AST.Props.Props {
-			// A slot is a Param too, and is not in comp.Props -- counting one
-			// here walks propIdx off the end of the props it is indexing.
 			if pd, ok := p.(ast.Param); ok && !pd.IsSlot() {
 				// A default is the declaration's, written in its file against
 				// its imports. An override installed on the declaration has
 				// no business reading it again from the override's file, where
 				// `task Task = Task.none` names a type nothing there imports;
 				// once the declaration's own check has set it, it stands.
-				if propIdx < len(comp.Props) && pd.Default != nil && !(c.installedOverride == comp && comp.Props[propIdx].Default != nil) {
-					prop := comp.Props[propIdx]
+				prop := byName[pd.Name]
+				if prop != nil && pd.Default != nil && !(c.installedOverride == comp && prop.Default != nil) {
 					// A default states a value of what the prop takes here,
 					// which for `on T = 0` under `<T = int>` is an int. A
 					// parameter with no default of its own leaves the prop type
@@ -4508,11 +4564,10 @@ func (c *checker) checkComponentBody(comp *ir.Component) {
 						c.inheritDefault(prop)
 					}
 					initType := exprType(prop.Default)
-					if pd.Type == nil && initType.Kind != ir.TypeDyn && initType.Kind != ir.TypeVoid {
+					if pd.Type == nil && initType.Kind != ir.TypeInvalid && initType.Kind != ir.TypeVoid {
 						prop.Type = c.inferredType(initType, *pd.Default.ExprPos())
 					}
 				}
-				propIdx++
 			}
 		}
 	}
@@ -4549,7 +4604,7 @@ func (c *checker) checkComponentBody(comp *ir.Component) {
 	// Declare named-node ids as component-scoped bindings so a bare reference
 	// to a `#id`-tagged node resolves (this is also what lets lowered IR,
 	// whose synthesized node handles are referenced by bare name, round-trip
-	// through reparse + recheck). Node handles are opaque (dyn) and immutable.
+	// through reparse + recheck). Node handles are typed by their component and immutable.
 	if comp.AST != nil {
 		c.declareNodeIDs(&comp.AST.Body)
 	}
@@ -4570,7 +4625,7 @@ func (c *checker) checkComponentBody(comp *ir.Component) {
 	// nested methods (Receiver = comp.Name) were already pre-checked once
 	// in pass2 with provisional var types; running them again here with
 	// fully-typed vars produces the authoritative diagnostics. Reset
-	// fn.Return so the pre-pass's possibly-Dyn inference doesn't shadow
+	// fn.Return so the pre-pass's provisional inference doesn't shadow
 	// the authoritative one.
 	for _, fn := range comp.Funcs {
 		// Foreign-type methods nested inside a component body (e.g.
@@ -4603,6 +4658,7 @@ func (c *checker) checkComponentBody(comp *ir.Component) {
 				}
 			}
 		}
+		c.checkSlotInsertions(comp)
 	}
 
 	body := comp.Stmts
@@ -4620,7 +4676,7 @@ func (c *checker) checkComponentBody(comp *ir.Component) {
 
 // declareNodeIDs declares every named visual node's #id within block as a
 // component/window-scoped binding, so a bare reference to a `#id`-tagged node
-// resolves. Node handles are opaque (dyn) and immutable; this is also the
+// resolves. Node handles are typed by their component and immutable; this is also the
 // mechanism that lets lowered IR — whose synthesized node handles (`__nN`,
 // `__root`) are referenced by bare name — round-trip through reparse + check.
 func (c *checker) declareNodeIDs(block *ast.StmtBlock) {
@@ -4671,8 +4727,8 @@ func withCount(counts []nodeCount, k nodeCount) []nodeCount {
 
 // declareNodeIDsIn hoists the node ids in block. counts is the chain of scopes
 // crossed to reach it, outermost first, and is what the handle's type is
-// wrapped in: a node written inside a `for` inside an `if` reads from outside
-// both as `option[list[T]]`.
+// counted by: a node written inside a `for` inside an `if` reads from outside
+// both as `list[T]`.
 //
 // Each block's own ids are hoisted again, at their own depth, into the scope
 // checkBlockIR pushes for it — so a read from *inside* the scope is the plain
@@ -4899,7 +4955,7 @@ func (c *checker) declareNodeID(id, target string, counts []nodeCount, mode idMo
 }
 
 // nodeHandleType is what a handle to a rendered instance of target reads at --
-// the same answer inferSelect reaches through findHostComponentAST, arrived at
+// the same answer elementRef reaches for `c.<id>`, arrived at
 // directly because the hoisting pass already has the name.
 func (c *checker) nodeHandleType(target string) *ir.Type {
 	if comp := c.componentNamed(target); comp != nil {
@@ -4907,22 +4963,23 @@ func (c *checker) nodeHandleType(target string) *ir.Type {
 			return t
 		}
 	}
-	return dynFallback("node id names an instance of %q, which resolves to no component", target)
+	return TypInvalid
 }
 
-// countedHandleType wraps a handle in the counts of the scopes it was reached
-// through, innermost first: counts is outermost-first, so the last entry is
-// the scope nearest the node and binds tightest.
+// countedHandleType is a handle as read from outside the scopes it was reached
+// through, by the rule a `c.<id>` read follows (elementRef): a list if any of
+// them repeats, an option if any is conditional.
 func (c *checker) countedHandleType(typ *ir.Type, counts []nodeCount) *ir.Type {
-	for _, count := range slices.Backward(counts) {
+	k := ir.RefOne
+	for _, count := range counts {
 		switch count {
 		case countOption:
-			typ = ir.OptionOf(typ)
+			k = k.Inside(ir.RefOption)
 		case countList:
-			typ = c.listOf(typ)
+			k = k.Inside(ir.RefList)
 		}
 	}
-	return typ
+	return k.Wrap(typ, c.listOf)
 }
 
 // componentNamed resolves a visual node's target, bare or `pkg.Name`.

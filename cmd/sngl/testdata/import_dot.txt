@@ -259,9 +259,11 @@ window {
 import s "sngl:ui"
 import d "sngl:ui/draw"
 import "sngl:platform/html"
+import family "sngl:family"
 
-component d.canvas[html.platform] {
+component d.canvas[html.platform](shapes) {
     s.text(value="styled")
+    #[family.crosses] shapes
 }
 
 s.window {

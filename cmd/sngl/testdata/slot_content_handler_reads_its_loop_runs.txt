@@ -1,0 +1,145 @@
+# A handler in a run-time instance's content reads the content's own loop
+# variables, on every target a test can execute on, and again after the rows
+# render in another shape: testdata/slot_content_handler_reads_its_loop.txtar
+# is the code.
+
+sngl test --platform=none app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=html app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=fyne --language=go app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+-- app.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+
+output {
+    go {
+        bubbletea
+        fyne
+        gtk4
+    }
+    kotlin {
+        android
+    }
+    none {
+        html
+    }
+}
+
+component card(content ...component node) node {
+    var open = 0
+    vbox {
+        button(text="t {open}", @click { open = open + 1 })
+        content
+    }
+}
+
+component main node {
+    var rows = [["a", "b"], ["c"]]
+    var log = ""
+    var shown = true
+    vbox {
+        button #swap(text="swap", @click { rows = [["d"], ["e", "f", "g"]] })
+        for var row = rows {
+            card {
+                for var i, it = row {
+                    button #cell(text=it, @click { log = "{i}{it}" })
+                    button #mark(text=it, @click {
+                        var s = "!"
+                        log = "{it}{s}{row.map(func(x string) => x + "").length()}"
+                    })
+                }
+            }
+        }
+        if shown {
+            button #tag(text="x{log}", @click {
+                var s = "q"
+                log = log + s
+            })
+        }
+        text(value=log)
+    }
+}
+
+func testHandlerReadsItsContentsLoop(t Test, c main) {
+    c.cell[1][0].click()
+    t.assert(c.log == "0c")
+    c.cell[0][1].click()
+    t.assert(c.log == "1b")
+    c.swap.click()
+    c.cell[1][2].click()
+    t.assert(c.log == "2g")
+    c.mark[1][1].click()
+    t.assert(c.log == "f!3")
+    if c.tag != null {
+        c.tag.click()
+    }
+    t.assert(c.log == "f!3q")
+}
+
+window {
+    main
+}
+-- testrun/android/kotlin/app.sngl/main/1 --
+sha256:695621db0999ad1ca1b35b1767008c72
+{
+  "results": [
+    {
+      "Desc": "HandlerReadsItsContentsLoop",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/main/1 --
+sha256:af6f60c1023de4ef856611b4cda7ee44
+{
+  "results": [
+    {
+      "Desc": "HandlerReadsItsContentsLoop",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/main/1 --
+sha256:dc86f34077550ddcc5ad9f371c5740a7
+{
+  "results": [
+    {
+      "Desc": "HandlerReadsItsContentsLoop",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/main/1 --
+sha256:16c697b1c4109afe55b2a18db5fc79f3
+{
+  "results": [
+    {
+      "Desc": "HandlerReadsItsContentsLoop",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/main/1 --
+sha256:6174192c228452df8a17b638650c8912
+{
+  "results": [
+    {
+      "Desc": "HandlerReadsItsContentsLoop",
+      "Passed": true
+    }
+  ]
+}

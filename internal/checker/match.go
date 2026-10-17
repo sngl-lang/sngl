@@ -72,12 +72,12 @@ func (c *checker) inferMatch(x *ast.MatchExpr) ir.Expr {
 	}
 	// What the arms join to: the type wanted, or the first arm's.
 	want := expected
-	if want == nil || want.Kind == ir.TypeDyn {
+	if want == nil {
 		want = exprType(arms[0].value)
 	}
 	for _, arm := range arms[1:] {
 		t := exprType(arm.value)
-		if t == nil || want == nil || t.Kind == ir.TypeInvalid || want.Kind == ir.TypeInvalid || t.Kind == ir.TypeDyn || want.Kind == ir.TypeDyn {
+		if t == nil || want == nil || t.Kind == ir.TypeInvalid || want.Kind == ir.TypeInvalid {
 			continue
 		}
 		if !t.IsAssignableTo(want) {
@@ -105,7 +105,7 @@ func (c *checker) checkMatch(m *ast.Match, isExpr bool) []matchArmIR {
 	expected := c.expected
 	subject, read := c.matchSubject(m)
 	subjType := exprType(subject)
-	known := subject == nil || (subjType != nil && subjType.Kind != ir.TypeInvalid && subjType.Kind != ir.TypeDyn)
+	known := subject == nil || (subjType != nil && subjType.Kind != ir.TypeInvalid)
 
 	cov := newMatchCoverage(subjType)
 	var out []matchArmIR
@@ -214,7 +214,7 @@ func (c *checker) checkMatchPattern(m *ast.Match, p ast.Expr, subject ir.Expr, r
 			cond = c.checkExpr(wrapped)
 			t = ret
 		}
-		if t != nil && t.Kind != ir.TypeBool && t.Kind != ir.TypeDyn && t.Kind != ir.TypeInvalid {
+		if t != nil && t.Kind != ir.TypeBool && t.Kind != ir.TypeInvalid {
 			c.error(pos, "a headless match arm is a condition: %s is not bool", t)
 			return nil
 		}

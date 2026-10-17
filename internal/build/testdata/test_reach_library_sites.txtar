@@ -1,0 +1,101 @@
+A test reaching through a library component the program renders at several
+sites reaches that site's copy. TestTestReachLibrarySitesRun runs it on all six
+targets; sngl:blip is handed to the check as library source, which a script
+cannot do.
+
+-- blip.sngl --
+import ui "sngl:ui"
+
+component badge(label string) ui.node {
+    var hits = 0
+    func reset() {
+        hits = 0
+    }
+    ui.text #shown(value="{label}:{hits}")
+    ui.button #hit(text="hit", @click {
+        hits = hits + 1
+    })
+}
+-- main.sngl --
+import ui "sngl:ui"
+import test "sngl:test"
+import blip "sngl:blip"
+
+component main ui.node {
+    var show = true
+    var names list[string] = ["x", "y"]
+    ui.vbox {
+        if show {
+            blip.badge #a(label="a")
+        }
+        blip.badge #b(label="b")
+        for var n = names {
+            blip.badge #r(label=n)
+        }
+    }
+}
+
+func testSites(t test.Test, c main) {
+    if c.a != null {
+        c.a.hit.click()
+        t.assert(c.a.hits == 1)
+    }
+    c.b.reset()
+    t.assert(c.b.shown.value == "b:0")
+    c.r[1].hit.click()
+    t.assert(c.r[1].hits == 1)
+}
+
+ui.window {
+    main
+}
+-- testrun/android/kotlin/main.sngl/main/1 --
+sha256:e4a6fb40acbeba78ccae2da3f805c0ae
+{
+  "results": [
+    {
+      "Desc": "Sites",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/main.sngl/main/1 --
+sha256:be1f17ec23f7162bd6af93f21e201b08
+{
+  "results": [
+    {
+      "Desc": "Sites",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/main.sngl/main/1 --
+sha256:8dc98b16f0bb7bed277c4f8fe02993e1
+{
+  "results": [
+    {
+      "Desc": "Sites",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/main.sngl/main/1 --
+sha256:e1677134e34a738e27b41a03cf38ff80
+{
+  "results": [
+    {
+      "Desc": "Sites",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/main.sngl/main/1 --
+sha256:d10ba8f47905a7f9aff7b1a3840e7770
+{
+  "results": [
+    {
+      "Desc": "Sites",
+      "Passed": true
+    }
+  ]
+}

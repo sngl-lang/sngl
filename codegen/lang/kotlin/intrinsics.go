@@ -16,6 +16,14 @@ const langKt = "kotlin"
 // removeAt. Intrinsics whose native form needs an import flow through
 // ktBuiltinMethodFromArgs until the emitter interface can declare imports.
 func init() {
+	// A record handed to the i18n runtime is the map it takes.
+	codegen.RegisterRecordSpeller(langKt, func(keys, vals []string) string {
+		parts := make([]string, len(keys))
+		for i := range keys {
+			parts[i] = keys[i] + " to " + vals[i]
+		}
+		return "mapOf(" + strings.Join(parts, ", ") + ")"
+	})
 	// Most emissions below are a Kotlin builtin (String members, MutableList
 	// members) or fully qualified (java.lang.Math, auto-imported on the JVM)
 	// and declare no imports; the i18n entry points need the runtime class.

@@ -1,0 +1,258 @@
+# A test triggers one copy of a node nested loops render by its path, on every
+# target a test can execute on: testdata/indexed_trigger_nested.txtar is the
+# code. `c.cell[1][0]` is the first copy in the outer loop's second iteration,
+# which a flat position among all the copies would put at 1, the "b" in the
+# first iteration. The second test renders the loops again first, longer and
+# shaped differently, so the checkbox wrappers kept at their positions are
+# handed new keys. `#pin`, `#tick` and `#even` are the loop shapes
+# testdata/indexed_trigger_nested.txtar describes. `single` writes `#mark` once,
+# an id `main` indexes: it keeps its plain invoker, and its checkbox wrapper,
+# under no loop, is handed no key.
+
+sngl test --platform=none app.sngl
+stdout 'ok   3 tests, 0 failures'
+
+sngl test --platform=html app.sngl
+stdout 'ok   3 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout 'ok   3 tests, 0 failures'
+
+sngl test --platform=fyne --language=go app.sngl
+stdout 'ok   3 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go app.sngl
+stdout 'ok   3 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin app.sngl
+stdout 'ok   3 tests, 0 failures'
+
+-- app.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+import seq "sngl:seq"
+
+output {
+    go {
+        bubbletea
+        fyne
+        gtk4
+    }
+    kotlin {
+        android
+    }
+    none {
+        html
+    }
+}
+
+const grid = [["p", "q"], ["r"]]
+
+component main node {
+    var rows = [["a", "b"], ["c"]]
+    var evens = seq.step(0, 4, 2)
+    var dots = 2
+    var log = ""
+    vbox {
+        button #swap(text="swap", @click { rows = [["d"], ["e", "f", "g"]] })
+        for var row = rows {
+            hbox {
+                for var it = row {
+                    button #cell(text=it, @click { log = it })
+                    checkbox #mark(label=it, @change(on) { log = "{it} {on}" })
+                }
+            }
+        }
+        for var row = grid {
+            hbox {
+                for var it = row {
+                    button #pin(text=it, @click { log = it })
+                }
+            }
+        }
+        for var r = seq.count(2) {
+            hbox {
+                for var k = seq.count(2) {
+                    button #tick(text="{r}{k}", @click { log = "{r}{k}" })
+                }
+            }
+        }
+        hbox {
+            for var e = evens {
+                button #even(text="{e}", @click { log = "{e}" })
+            }
+            for seq.count(dots) {
+                button #dot(text=".", @click { log = "{log}." })
+            }
+        }
+        text(value=log)
+    }
+}
+
+component single node {
+    var show = true
+    var log = ""
+    vbox {
+        if show {
+            checkbox #mark(label="x", @change(on) { log = "x {on}" })
+        }
+    }
+}
+
+func testOneCopyOfANestedLoop(t Test, c main) {
+    c.cell[1][0].click()
+    t.assert(c.log == "c")
+    c.cell[0][1].click()
+    t.assert(c.log == "b")
+    c.mark[1][0].change(true)
+    t.assert(c.log == "c true")
+    c.pin[1][0].click()
+    t.assert(c.log == "r")
+    c.tick[1][0].click()
+    t.assert(c.log == "10")
+    c.even[1].click()
+    t.assert(c.log == "2")
+    c.dot[1].click()
+    t.assert(c.log == "2.")
+}
+
+func testAfterTheLoopsRenderAgain(t Test, c main) {
+    c.swap.click()
+    c.cell[1][2].click()
+    t.assert(c.log == "g")
+    c.cell[0][0].click()
+    t.assert(c.log == "d")
+    c.mark[1][1].change(true)
+    t.assert(c.log == "f true")
+}
+
+func testWhereAnotherComponentLoopsTheId(t Test, c single) {
+    if c.mark != null {
+        c.mark.change(true)
+    }
+    t.assert(c.log == "x true")
+}
+
+window {
+    main
+}
+-- testrun/android/kotlin/app.sngl/main/1 --
+sha256:ecac435ca4412da4e8ef43287c518409
+{
+  "results": [
+    {
+      "Desc": "AfterTheLoopsRenderAgain",
+      "Passed": true
+    },
+    {
+      "Desc": "OneCopyOfANestedLoop",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/android/kotlin/app.sngl/single/1 --
+sha256:7c46e1924f041da56b9dfb02b8359001
+{
+  "results": [
+    {
+      "Desc": "WhereAnotherComponentLoopsTheId",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/main/1 --
+sha256:3385962f5403fe1e0cb943787a638c1a
+{
+  "results": [
+    {
+      "Desc": "AfterTheLoopsRenderAgain",
+      "Passed": true
+    },
+    {
+      "Desc": "OneCopyOfANestedLoop",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/single/1 --
+sha256:bbb9675c72e0ff56955faf44eff9ebab
+{
+  "results": [
+    {
+      "Desc": "WhereAnotherComponentLoopsTheId",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/main/1 --
+sha256:d7e14e6ac8b88b662a82ce2fe2c76e7e
+{
+  "results": [
+    {
+      "Desc": "AfterTheLoopsRenderAgain",
+      "Passed": true
+    },
+    {
+      "Desc": "OneCopyOfANestedLoop",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/single/1 --
+sha256:0c24d8c8c1662158c55e5ca4ba144012
+{
+  "results": [
+    {
+      "Desc": "WhereAnotherComponentLoopsTheId",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/main/1 --
+sha256:5162af98188cba15e5bcc625cc2fd3c9
+{
+  "results": [
+    {
+      "Desc": "AfterTheLoopsRenderAgain",
+      "Passed": true
+    },
+    {
+      "Desc": "OneCopyOfANestedLoop",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/single/1 --
+sha256:ccf3759d513ce5296afdd0ff2f0d8f83
+{
+  "results": [
+    {
+      "Desc": "WhereAnotherComponentLoopsTheId",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/main/1 --
+sha256:d1ba5e64a092193ac92269b01f6fd8a4
+{
+  "results": [
+    {
+      "Desc": "AfterTheLoopsRenderAgain",
+      "Passed": true
+    },
+    {
+      "Desc": "OneCopyOfANestedLoop",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/single/1 --
+sha256:f689bcafd4b2ac7b3f84a6e65e449675
+{
+  "results": [
+    {
+      "Desc": "WhereAnotherComponentLoopsTheId",
+      "Passed": true
+    }
+  ]
+}

@@ -28,5 +28,5 @@ func error.raise(message string, kind string)
 component boundary[T any](
     @error(e error),
     content ...component T,
-    failed  component(error error) T,
+    failed  option[component(error error) T],
 ) T

@@ -602,7 +602,12 @@ func walkExpr(e ir.Expr, used map[ir.Symbol]bool, walk func(ir.Symbol)) {
 // catch block's handler, a node's component, and the types a local or a
 // node's route parameters name. A hand-written descent here missed a node's
 // record and start, which a stack's lowering leaves the page's values in.
+//
+// A record an intrinsic reads by field name (ir.RecordArg) names no
+// declaration: every language spells it as its runtime's map, from the
+// literal's fields.
 func walkNames(root any, walk func(ir.Symbol)) {
+	records := map[*ir.StructLit]bool{}
 	_ = ir.Walk(root, func(n ir.Node) error {
 		switch x := n.(type) {
 		case *ir.Ident:
@@ -613,8 +618,13 @@ func walkNames(root any, walk func(ir.Symbol)) {
 			if x.Func != nil {
 				walk(x.Func)
 			}
+			if i := ir.RecordArg(x.Func); i >= 0 && i < len(x.Args) {
+				if lit, ok := x.Args[i].Value.(*ir.StructLit); ok {
+					records[lit] = true
+				}
+			}
 		case *ir.StructLit:
-			if x.Def != nil {
+			if x.Def != nil && !records[x] {
 				walk(x.Def)
 			}
 		case *ir.ContextRead:

@@ -327,6 +327,9 @@ body { font-family: system-ui, sans-serif; }
 </div>
 
 <script>
+window.__snglErrors = [];
+addEventListener("error", (e) => window.__snglErrors.push(String(e.message)));
+addEventListener("unhandledrejection", (e) => window.__snglErrors.push(String(e.reason?.message ?? e.reason)));
 window.__sngl_markup = Array.from(document.body.childNodes)
   .filter((n) => n.nodeName !== "SCRIPT").map((n) => n.cloneNode(true));
 window.__sngl_reset = () => {
@@ -344,13 +347,6 @@ window.__sngl_boot = () => {
   state.flipClick = () => $0.click();
   if (typeof window !== "undefined") {
     window.__sngl_state = state;
-  }
-  function testFlip(t, c) {
-    c.flip();
-    t.assert(!c.loud);
-  }
-  if (typeof window !== "undefined") {
-    Object.assign(window, { testFlip });
   }
   var __slot0 = [];
   function __renderSlot0(parent) {
@@ -411,4 +407,4 @@ pass sha256:c8b70784c7b976fcb994df92ca2ee6fc
 -- run/go/gtk4 --
 pass sha256:869db807bb02e2ef31c289fa3ca81e4b
 -- run/none/html --
-pass sha256:3b316f120b369efe26324c63feffd012
+pass sha256:711c59bbb6e33f3d05ae8607762739c1

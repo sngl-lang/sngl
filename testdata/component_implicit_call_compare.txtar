@@ -51,6 +51,11 @@ import (
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
+	*modelState
+}
+
+// modelState is what every copy of a Model shares.
+type modelState struct {
 	n int
 
 	width, height int
@@ -58,7 +63,7 @@ type Model struct {
 
 // New creates a Model with default bind values.
 func New() Model {
-	m := Model{}
+	m := Model{&modelState{}}
 	m.n = 3
 	return m
 }
@@ -381,6 +386,9 @@ body { font-family: system-ui, sans-serif; }
 </span>
 
 <script>
+window.__snglErrors = [];
+addEventListener("error", (e) => window.__snglErrors.push(String(e.message)));
+addEventListener("unhandledrejection", (e) => window.__snglErrors.push(String(e.reason?.message ?? e.reason)));
 window.__sngl_markup = Array.from(document.body.childNodes)
   .filter((n) => n.nodeName !== "SCRIPT").map((n) => n.cloneNode(true));
 window.__sngl_reset = () => {
@@ -402,11 +410,8 @@ window.__sngl_boot = () => {
   function main_count(state2) {
     return state2.n;
   }
-  function testImplicitCallCompare(t, c) {
-    t.assert(c.count === 3);
-  }
   if (typeof window !== "undefined") {
-    Object.assign(window, { main_count, testImplicitCallCompare });
+    Object.assign(window, { main_count });
   }
   var __n0 = document.querySelector('[data-sngl-id="__n0"]');
   function __sngl_init() {
@@ -419,7 +424,7 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:78d62257c34ff1eb15124ef6819b778f
+pass sha256:cc916ed04f7e0b090995a2c8d0cdbc9d
 -- run/go/fyne --
 pass sha256:4884bde89effcb938aad265b2ab11bc3
 -- run/go/gtk4 --
@@ -427,4 +432,14 @@ pass sha256:ab5c2dcd7b69c527c56b358abb73b64e
 -- run/kotlin/android --
 pass sha256:323d48992868031d11600b0112d3e4a9
 -- run/none/html --
-pass sha256:7b0b38ee520f5a3f17a91a7ae9181152
+pass sha256:dce9f14868eb9dcc6519bb320e6b3c7e
+-- testrun/html/none/component_implicit_call_compare.sngl/main/1 --
+sha256:527f2cd477df1d4f160a64a7f0258b27
+{
+  "results": [
+    {
+      "Desc": "ImplicitCallCompare",
+      "Passed": true
+    }
+  ]
+}

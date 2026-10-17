@@ -38,7 +38,7 @@ component window(
     @error(e error),
     @closed(),
     content  ...component node,
-    favicon  component option[imageSource],
+    favicon  option[component imageSource],
 ) root
 
 // Puts the window on screen: `visible = true`, which is no change to a window

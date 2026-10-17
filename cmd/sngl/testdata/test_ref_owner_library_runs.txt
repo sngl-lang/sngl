@@ -1,0 +1,112 @@
+# gtk4's datepicker override writes a `#cal` in a library body, and main's
+# own `#cal` is what `c.cal` names: it is null until main renders it, on every
+# target. testdata/test_ref_owner_library.txtar is the gtk4 code.
+
+sngl test --platform=none app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=html app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=fyne --language=go app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+-- app.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+
+output {
+    go {
+        bubbletea
+        fyne
+        gtk4
+    }
+    kotlin {
+        android
+    }
+    none {
+        html
+    }
+}
+
+component main node {
+    var shown = false
+    vbox {
+        datepicker
+        button #t(text="t", @click { shown = !shown })
+        if shown {
+            text #cal(value="c")
+        }
+    }
+}
+
+func testCal(t Test, c main) {
+    t.assert(c.cal == null)
+    c.t.click()
+    t.assert(c.cal != null)
+    c.t.click()
+    t.assert(c.cal == null)
+}
+
+window {
+    main
+}
+-- testrun/android/kotlin/app.sngl/main/1 --
+sha256:3cfb10ce01140d05674cc65745f18114
+{
+  "results": [
+    {
+      "Desc": "Cal",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/main/1 --
+sha256:4d8a031a9a89b5fa03051b4d183683c7
+{
+  "results": [
+    {
+      "Desc": "Cal",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/main/1 --
+sha256:f83b7600fac72228b214a39160379677
+{
+  "results": [
+    {
+      "Desc": "Cal",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/main/1 --
+sha256:1b08d5a6ac8ef0eaa3292c4409251da1
+{
+  "results": [
+    {
+      "Desc": "Cal",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/main/1 --
+sha256:0aa1e080a4638a83e844a319fb1ac05b
+{
+  "results": [
+    {
+      "Desc": "Cal",
+      "Passed": true
+    }
+  ]
+}

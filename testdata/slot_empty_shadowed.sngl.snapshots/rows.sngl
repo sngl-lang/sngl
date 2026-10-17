@@ -1,0 +1,5 @@
+vbox() {
+    text(value="a")
+    text(value="blank b")
+    text(value="no label")
+}

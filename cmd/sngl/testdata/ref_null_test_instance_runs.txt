@@ -1,0 +1,121 @@
+# An instance built at run time and a widget, both under a reactive `if`, are
+# null-tested on every target a test can execute on, before and after the
+# branch closes and opens again: testdata/ref_null_test_instance.txtar is the
+# code.
+
+sngl test --platform=none app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=html app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=fyne --language=go app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+-- app.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+
+output {
+    go {
+        bubbletea
+        fyne
+        gtk4
+    }
+    kotlin {
+        android
+    }
+    none {
+        html
+    }
+}
+
+component badge(label string) node {
+    var hits = 0
+    button #hit(text="hit {label} {hits}", @click { hits = hits + 1 })
+}
+
+component main node {
+    var shown = true
+    vbox {
+        button #toggle(text="t", @click { shown = !shown })
+        if shown {
+            badge #b(label="x")
+            text #label(value="y")
+        }
+    }
+}
+
+func testNullTestsFollowTheBranch(t Test, c main) {
+    t.assert(c.b != null)
+    t.assert(c.label != null)
+    c.toggle.click()
+    t.assert(c.b == null)
+    t.assert(c.label == null)
+    c.toggle.click()
+    t.assert(c.b != null)
+    t.assert(c.label != null)
+}
+
+window {
+    main
+}
+-- testrun/android/kotlin/app.sngl/main/1 --
+sha256:ca5b78aa6f5e6d5ab714da82b1265faa
+{
+  "results": [
+    {
+      "Desc": "NullTestsFollowTheBranch",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/main/1 --
+sha256:f90439f02d7f23a9ed4a97411653ad82
+{
+  "results": [
+    {
+      "Desc": "NullTestsFollowTheBranch",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/main/1 --
+sha256:fc454570408daa61a2e6a96e9dc29229
+{
+  "results": [
+    {
+      "Desc": "NullTestsFollowTheBranch",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/main/1 --
+sha256:146985ab4d03d8fc5c49e6e62a4e214d
+{
+  "results": [
+    {
+      "Desc": "NullTestsFollowTheBranch",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/main/1 --
+sha256:423b970472efb554f9e994ef0335ff29
+{
+  "results": [
+    {
+      "Desc": "NullTestsFollowTheBranch",
+      "Passed": true
+    }
+  ]
+}

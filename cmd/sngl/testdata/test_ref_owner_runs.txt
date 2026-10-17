@@ -1,0 +1,138 @@
+# `c.b` and `c.k` name what main's own body wrote, though panel writes a `#b`
+# and a `#k` too: the null tests and the click answer for main's on every
+# target a test can execute on. testdata/test_ref_owner.txtar is the code.
+
+sngl test --platform=none app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=html app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=fyne --language=go app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+-- app.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+
+output {
+    go {
+        bubbletea
+        fyne
+        gtk4
+    }
+    kotlin {
+        android
+    }
+    none {
+        html
+    }
+}
+
+component badge(label string) node {
+    var hits = 0
+    button #hit(text="{label}{hits}", @click { hits = hits + 1 })
+}
+
+component panel node {
+    var on = true
+    var ph = 0
+    vbox {
+        if on {
+            badge #b(label="p")
+            button #k(text="pk{ph}", @click { ph = ph + 1 })
+        }
+    }
+}
+
+component main node {
+    var shown = true
+    var other = false
+    var mh = 0
+    vbox {
+        button #ts(text="s", @click { shown = !shown })
+        button #to(text="o", @click { other = !other })
+        if other {
+            panel
+        }
+        if shown {
+            badge #b(label="m")
+            button #k(text="mk{mh}", @click { mh = mh + 1 })
+        }
+    }
+}
+
+func testOwnB(t Test, c main) {
+    t.assert(c.b != null)
+    c.to.click()
+    if c.k != null {
+        c.k.click()
+    }
+    t.assert(c.mh == 1)
+    c.ts.click()
+    t.assert(c.b == null)
+    t.assert(c.k == null)
+}
+
+window {
+    main
+}
+-- testrun/android/kotlin/app.sngl/main/1 --
+sha256:9774bf9e0263af8a58399cf9bfb140e2
+{
+  "results": [
+    {
+      "Desc": "OwnB",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/main/1 --
+sha256:60f894d9f757bf87f3e18074655640b1
+{
+  "results": [
+    {
+      "Desc": "OwnB",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/main/1 --
+sha256:ef82f64abee83ada193c1d6c99d271f1
+{
+  "results": [
+    {
+      "Desc": "OwnB",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/main/1 --
+sha256:4409dd03e26dacbeff06ade5473d7f71
+{
+  "results": [
+    {
+      "Desc": "OwnB",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/main/1 --
+sha256:3f0ebe67c029d6182f9dd5f0264430bf
+{
+  "results": [
+    {
+      "Desc": "OwnB",
+      "Passed": true
+    }
+  ]
+}

@@ -223,12 +223,17 @@ func (st *recursionState) here() ir.Expr {
 // @error handler that means to catch one of them should not have to catch the
 // other: a recursion bound and a settle bound come from different mistakes.
 func raiseStmt(msg, kind string, scope []*ir.EventHandler) ir.Stmt {
+	// sngl:builtin's `error`, where a library registered the declaration.
+	var recv *ir.Type
+	if def := ir.LookupIntrinsic("error.raise"); def != nil {
+		recv = def.Receiver
+	}
 	call := &ir.Call{
 		Type: ir.TypVoid,
 		Func: &ir.Func{
 			Name:     "raise",
 			Pkg:      &ir.Package{Path: "sngl:builtin"},
-			Receiver: ir.ReceiverNamed("error"),
+			Receiver: recv,
 			Params: []*ir.Param{
 				{Name: "message", Type: ir.TypString},
 				{Name: "kind", Type: ir.TypString},

@@ -91,13 +91,8 @@ func markGoAsync(m *mark) error {
 // to describe, and a package may use a macro it declares.
 func markGoNative(m *mark) error {
 	path, name := m.args.String("path"), m.args.String("name")
-	if !m.args.Has("name") {
-		// One argument is the identifier alone, which is all a struct field
-		// can say: a field has no package of its own.
-		path, name = "", path
-	}
 	if name == "" {
-		return fmt.Errorf("#[go.native]: an identifier is required")
+		return fmt.Errorf("#[go.native]: an identifier is required%s", nameAloneHint(path))
 	}
 	if _, isField := m.sym.(*ir.StructField); !isField && path == "" {
 		return fmt.Errorf("#[go.native(%q)]: a package path is required; only a struct field may name an identifier alone", name)
@@ -464,12 +459,22 @@ const flagSchedules = "schedules"
 // the Go signature; a hand-written declaration has no signature to read.
 const flagContext = "context"
 
+// nameAloneHint is what a path-and-name mark written with one positional
+// argument wanted, for the error saying it named no identifier: that argument
+// is the path, and a name alone is written by name.
+func nameAloneHint(path string) string {
+	if path == "" {
+		return ""
+	}
+	return fmt.Sprintf("; one argument is the path, so write name=%q for a name alone", path)
+}
+
 // markForeign implements #[foreign("scheme://path", "Name", flags...)].
 //
-// Two arguments are the import path the declaration comes from and its name
-// there, written the way a program's own import line writes them. One argument
-// is the name alone: that is all a struct field can say, since a field has no
-// package of its own. Nothing here inspects either string — the path is not
+// The arguments are the import path the declaration comes from and its name
+// there, written the way a program's own import line writes them. A struct
+// field writes the name alone, `#[foreign(name="Title")]`, since a field has
+// no package of its own. Nothing here inspects either string — the path is not
 // resolved and the name is not checked to exist, because a plugin's output is
 // trusted.
 //
@@ -479,11 +484,8 @@ const flagContext = "context"
 // nothing.
 func markForeign(m *mark) error {
 	path, name := m.args.String("path"), m.args.String("name")
-	if !m.args.Has("name") {
-		path, name = "", path
-	}
 	if name == "" {
-		return fmt.Errorf("#[foreign] requires a non-empty name")
+		return fmt.Errorf("#[foreign] requires a non-empty name%s", nameAloneHint(path))
 	}
 	flags, err := uniqueFlags(m.args.Idents("flags"), fmt.Sprintf("#[foreign(%q)]", name))
 	if err != nil {

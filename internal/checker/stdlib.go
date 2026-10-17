@@ -208,7 +208,7 @@ func (c *checker) loadStdlib() (builtinPkg, stdPkg *ir.Package) {
 // resolveMacroSig resolves a macro's declared parameter types, once, the
 // first time a mark of it is applied. Not as the package loads: the mark
 // package loads from inside sngl:builtin's own imports, where `list` names
-// nothing yet and `list[ir.IntrinsicFlag]` would degrade to `list[dyn]`.
+// nothing yet and `list[ir.IntrinsicFlag]` would not resolve.
 func (c *checker) resolveMacroSig(pkg *ir.Package, fn *ir.Func) {
 	if c.libs.macroSigs[fn] || fn.AST == nil || len(fn.Params) != len(fn.AST.Params.Params) {
 		return
@@ -391,9 +391,7 @@ func (c *checker) libPkg(name string) *ir.Package {
 	// only where it builds for the target or imports its package
 	// (mergeTargetExtensions replays it).
 	if _, _, isTarget := targetTierName(name); isTarget && !c.cfg.noTargets {
-		mark := len(c.diags)
-		c.mergeTargetExtensions(name)
-		c.diags = c.diags[:mark]
+		c.quietly(func() { c.mergeTargetExtensions(name) })
 		delete(c.hold.replayed, "merge:"+name)
 	}
 	return pkg
@@ -547,11 +545,11 @@ func (c *checker) loadStdlibPackage(pkgName string) *ir.Package {
 
 	// Refine stdlib context types from their default expressions. Context
 	// decls run BEFORE wrapper body checks (so wrapper bodies can read them),
-	// at which point a default like `i18n.defaultLocale()` still types as dyn.
+	// at which point a default like `i18n.defaultLocale()` has no type yet.
 	// Once the bodies are checked the wrapper has its concrete return type,
 	// so re-pull ctx.Typ from the default expression's Call.Func.Return.
 	for _, ctx := range stdlibPkg.Contexts {
-		if ctx.Typ != nil && ctx.Typ.Kind != ir.TypeDyn {
+		if ctx.Typ != nil && ctx.Typ.Kind != ir.TypeInvalid {
 			continue
 		}
 		if call, ok := ctx.Default.(*ir.Call); ok && call.Func != nil && call.Func.Return != nil {
@@ -714,6 +712,7 @@ func (c *checker) publishIntrinsic(fn *ir.Func) {
 		BuildOnly:       fn.BuildOnly,
 		Pkg:             pkg,
 		DeclaredAs:      funcDeclName(fn),
+		Receiver:        fn.Receiver,
 	}
 	ir.MustWriteDecl(fn, "registering "+def.Name)
 	for _, b := range c.libraryRecords() {
@@ -864,6 +863,17 @@ func (c *checker) resolvedTargets() []ir.StaticTarget {
 	return declared
 }
 
+// replayMerge is what a check whose library already merged pkgName's
+// overrides does instead: it replays what the merge reported, and adopts the
+// package as the merge's own load of it did, which is what brings its
+// contexts and its imports' onto the program.
+func (c *checker) replayMerge(pkgName string) {
+	c.replayLoad("merge:" + pkgName)
+	if pkg, ok := c.libs.pkgs[pkgName]; ok {
+		c.adoptLib(pkgName, pkg)
+	}
+}
+
 // mergeTargetExtensions collects the overrides one target's package declares --
 // `component sngl.X` and `func pkg.f[target]` alike -- into the declaration
 // each names, under the target it implements. ir.Specialize swaps the entry
@@ -894,12 +904,12 @@ func (c *checker) mergeTargetExtensions(pkgName string) {
 	// no package to load, and loading one anyway caches it empty for every
 	// check that finds the library loaded.
 	if c.libs.extended[pkgName] || !c.hasLibPkg(pkgName) {
-		c.replayLoad("merge:" + pkgName)
+		c.replayMerge(pkgName)
 		return
 	}
 	defer c.loadHold()()
 	if c.libs.extended[pkgName] {
-		c.replayLoad("merge:" + pkgName)
+		c.replayMerge(pkgName)
 		return
 	}
 	c.libs.extended[pkgName] = true
@@ -969,10 +979,9 @@ func (c *checker) mergeTargetExtensions(pkgName string) {
 				// which #213 is deleting. It is recorded as this target's
 				// implementation, since the declaration it names has no body.
 				//
-				// A parens form that *names* props is a prop selection, and
-				// testing HasParens alone dropped one here with no override
-				// registered and no diagnostic: the body simply vanished.
-				if decl.HasParens && len(decl.Props.Props) == 0 && decl.ChildrenType == nil {
+				// It names no target, which is what tells it from an override
+				// written with an empty list.
+				if decl.Target == nil && decl.HasParens && len(decl.Props.Props) == 0 && decl.ChildrenType == nil {
 					c.recordRendersByName(decl, aliases, pkgName)
 					continue
 				}
@@ -1026,10 +1035,7 @@ func (c *checker) mergeTargetExtensions(pkgName string) {
 				// A selection is read the same way a program's override has
 				// it read: the base owns the prop types, and an entry names
 				// one of them.
-				selection, ok := c.overrideSelection(decl, stdComp)
-				if !ok {
-					continue
-				}
+				selection := c.overrideSelection(decl, stdComp)
 				c.addOverrideBody(decl.Pos, stdComp, kind, plat, ns, local, decl.Body, false, selection, decl.Const)
 			}
 		}
@@ -1113,26 +1119,19 @@ func (c *checker) addOverrideBody(pos ast.Pos, comp *ir.Component, kind ir.Built
 	})
 }
 
-// selectProps is the props and events an override named, in the declaring
-// component's order. A name it did not name is not in scope for its body.
-func selectProps(comp *ir.Component, selection []string) ([]*ir.Prop, []*ir.EventDecl) {
+// selectParams is the props, slots and events an override named, in the
+// declaring component's order. A name it did not name is not in scope for its
+// body.
+func selectParams(comp *ir.Component, selection []string) ([]*ir.Prop, []*ir.SlotDecl, []*ir.EventDecl) {
 	want := make(map[string]bool, len(selection))
 	for _, n := range selection {
 		want[n] = true
 	}
-	var props []*ir.Prop
-	for _, p := range comp.Props {
-		if want[p.Name] {
-			props = append(props, p)
-		}
-	}
-	var events []*ir.EventDecl
-	for _, e := range comp.Events {
-		if want["@"+e.Name] {
-			events = append(events, e)
-		}
-	}
-	return props, events
+	return slices.DeleteFunc(slices.Clone(comp.Props), func(p *ir.Prop) bool { return !want[p.Name] }),
+		// A content slot is the compiler's (SlotDecl.Shows), named by no list,
+		// and is what `t.content` inserts.
+		slices.DeleteFunc(slices.Clone(comp.Slots), func(s *ir.SlotDecl) bool { return s.Shows == nil && !want[s.Name] }),
+		slices.DeleteFunc(slices.Clone(comp.Events), func(e *ir.EventDecl) bool { return !want["@"+e.Name] })
 }
 
 // collectExtensionDecls pre-registers what a platform extension body declares
@@ -1237,8 +1236,8 @@ type pendingExtension struct {
 	// and so which of the component's two override maps the checked body
 	// belongs in.
 	kind ir.BuiltinKind
-	// selection is the props the override's body reads, when it listed them.
-	// nil means it listed none and reads all of them.
+	// selection is the props, slots and events the override's body reads:
+	// the names its parameter list wrote, events as `@name`.
 	selection []string
 	// user marks an override a program declared rather than a target package.
 	// Its body is the program's own source and resolves in the program's
@@ -1344,13 +1343,10 @@ func (c *checker) checkOverride(pe pendingExtension, libBodyScope *ir.Scope) {
 	base := pe.comp
 	ov := new(ir.Component)
 	*ov = *base
-	// An override that listed the props it consumes reads those and no
-	// others: the list is what makes the names in its body traceable
-	// to a declaration rather than appearing from the surrounding
-	// component. One that listed none reads them all.
-	if pe.selection != nil {
-		ov.Props, ov.Events = selectProps(base, pe.selection)
-	}
+	// An override reads the parameters it listed and no others: the list
+	// is what makes the names in its body traceable to a declaration
+	// rather than appearing from the surrounding component.
+	ov.Props, ov.Slots, ov.Events = selectParams(base, pe.selection)
 	// The declaration is the library's parsed source, which every check
 	// shares, so the copy is handed a copy of it carrying the
 	// override's body.
@@ -1399,8 +1395,10 @@ func (c *checker) checkOverride(pe pendingExtension, libBodyScope *ir.Scope) {
 	if pe.user {
 		c.overrideFile = overrideFile{comp: ov, pos: pe.pos}
 	}
+	c.overrideAt = pe.pos
 	c.checkComponentBody(ov)
 	c.overrideFile = overrideFile{}
+	c.overrideAt = ast.Pos{}
 	// While the override is still installed, because that is the body
 	// a component nested in it was written in.
 	c.checkOverrideNestedBodies(bodyDecls)
@@ -1560,17 +1558,6 @@ func highestCalledPurity(fn *ir.Func) ir.Purity {
 		walkStmt(s)
 	}
 	return maxP
-}
-
-// isPrimitiveTypeKind reports whether k is a simple value-type kind safe to
-// use for inferred wrapper return types. Restricted to dodge the
-// color-struct-vs-primitive ambiguity noted in checkStdlibFuncBody.
-func isPrimitiveTypeKind(k ir.TypeKind) bool {
-	switch k {
-	case ir.TypeBool, ir.TypeInt, ir.TypeFloat, ir.TypeString:
-		return true
-	}
-	return false
 }
 
 // Platform sources use a library import's alias as the `component <alias>.X`

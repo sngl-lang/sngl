@@ -194,6 +194,9 @@ func (w *wsChannel) Write(p []byte) (int, error) {
 	if len(payload) > 0 && payload[len(payload)-1] == '\n' {
 		payload = payload[:len(payload)-1]
 	}
+	if len(payload) == 0 {
+		return len(p), nil
+	}
 	if err := w.conn.Write(w.ctx, websocket.MessageText, payload); err != nil {
 		return 0, err
 	}

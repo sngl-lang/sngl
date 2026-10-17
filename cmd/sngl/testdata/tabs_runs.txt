@@ -58,20 +58,29 @@ component app ui.node {
 }
 
 func testTheSelectedPanelIsShown(t Test, c app) {
-    c.hit.click()
+    t.assert(c.hit != null)
+    if c.hit != null {
+        c.hit.click()
+    }
     t.assert(c.hits == 1)
 }
 
 func testSwitchingShowsAnotherPanel(t Test, c app) {
     c.second.click()
-    c.twice.click()
+    t.assert(c.twice != null)
+    if c.twice != null {
+        c.twice.click()
+    }
     t.assert(c.hits == 10)
 }
 
 func testAPanelKeepsStateOfItsOwn(t Test, c app) {
     c.second.click()
-    c.twice.click()
-    c.twice.click()
+    t.assert(c.twice != null)
+    if c.twice != null {
+        c.twice.click()
+        c.twice.click()
+    }
     t.assert(c.hits == 20)
 }
 
@@ -79,7 +88,7 @@ ui.window {
     app
 }
 -- testrun/android/kotlin/app.sngl/app/1 --
-sha256:9f083c8953aed9900fd129c23fba2825
+sha256:30097ff341960fc7b8d91526e797fefc
 {
   "results": [
     {
@@ -97,7 +106,7 @@ sha256:9f083c8953aed9900fd129c23fba2825
   ]
 }
 -- testrun/bubbletea/go/app.sngl/app/1 --
-sha256:34ef9d5d139dc7ff25a22590722e9773
+sha256:0da4c790392d9ef3ec3a4f2cc8cea92d
 {
   "results": [
     {
@@ -115,7 +124,7 @@ sha256:34ef9d5d139dc7ff25a22590722e9773
   ]
 }
 -- testrun/fyne/go/app.sngl/app/1 --
-sha256:64e66ac73b31a09886feb30e95cd63ee
+sha256:8453798fc554c102a62dc0c4bce10219
 {
   "results": [
     {
@@ -133,7 +142,7 @@ sha256:64e66ac73b31a09886feb30e95cd63ee
   ]
 }
 -- testrun/gtk4/go/app.sngl/app/1 --
-sha256:00614755dc3e5fa7e2475c2c2160c54e
+sha256:735f8f8be59a729999fdc91d9a8146ba
 {
   "results": [
     {
@@ -151,7 +160,7 @@ sha256:00614755dc3e5fa7e2475c2c2160c54e
   ]
 }
 -- testrun/html/none/app.sngl/app/1 --
-sha256:a13f3a3504b344f2dd6e8c77184336be
+sha256:ffe69595f238c65583a3017b7411ca67
 {
   "results": [
     {

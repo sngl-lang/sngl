@@ -25,12 +25,6 @@ component atMostOne(content ...component option[ui.node]) ui.node {
     }
 }
 
-component named(body component family.one) ui.node {
-    ui.vbox {
-        body
-    }
-}
-
 ui.window {
     one { // ERROR(check) "requires exactly one child"
         for var it = items {
@@ -57,13 +51,6 @@ ui.window {
     atMostOne {
         if shown {
             ui.text(value="maybe")
-        }
-    }
-    named {
-        component body { // ERROR(check) "takes exactly one node"
-            for var it = items {
-                ui.text(value=it)
-            }
         }
     }
 }

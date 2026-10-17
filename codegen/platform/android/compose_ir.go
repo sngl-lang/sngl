@@ -35,6 +35,14 @@ type irComposeContext struct {
 	// nav is the stacks the program renders, answered here rather than
 	// lowered (nav.go).
 	nav *androidNav
+	// present are the ids a test null-tests, in a test build: an instance
+	// built at run time among them is in SnglPresent while it is composed,
+	// having no node of its own a tag could be on.
+	present map[string]bool
+	// reads are what a test reads through an instance built at run time: one
+	// a call site renders is handed the entry it registers under
+	// (emitInstanceRegistration).
+	reads []codegen.InstanceRead
 	// widgetSeq names per-widget local state (e.g. a select's `expanded`)
 	// uniquely within a composable so multiple instances don't collide.
 	widgetSeq int
@@ -69,7 +77,16 @@ func (cc *irComposeContext) renderStmt(stmt ir.Stmt) {
 		for _, child := range s.Children {
 			cc.renderStmt(child)
 		}
-	case *ir.Assign, *ir.CallStmt, *ir.LocalVar, *ir.Return, *ir.Emit, *ir.Toggle, *ir.CanvasRedrawStmt,
+	case *ir.LocalVar, *ir.Assign:
+		// A local the lowering synthesized -- the counter passIndexedIter puts
+		// beside a loop over a held sequence -- which the loop's body reads;
+		// any other write has no rendering.
+		if counterStmt(s) {
+			for _, l := range cc.kc.EvalStmt(s) {
+				cc.line("%s", l)
+			}
+		}
+	case *ir.CallStmt, *ir.Return, *ir.Emit, *ir.Toggle, *ir.CanvasRedrawStmt,
 		*ir.Break, *ir.Continue:
 		// Imperative stmts have no Compose rendering.
 	default:
@@ -317,6 +334,31 @@ func (cc *irComposeContext) renderUserComponent(n *ir.NodeInst) {
 		args = append(args, cc.populationArgs(n)...)
 		args = append(args, cc.handlerArgs(n)...)
 	}
+	for _, r := range cc.reads {
+		if r.ID != n.ID {
+			continue
+		}
+		entry := fmt.Sprintf("%q", n.ID)
+		if k := n.Prop(ir.CopyProp); k != nil && r.Keyed {
+			entry = kotlin.PresentCopyEntry(n.ID, cc.kc.EvalExpr(k))
+		}
+		args = append(args, kotlin.InstanceKeyParam+" = "+entry)
+		break
+	}
+	if cc.present[n.ID] {
+		// One copy is registered under its key, and again when a reused
+		// instance is handed another.
+		key, entry := "Unit", fmt.Sprintf("%q", n.ID)
+		if k := n.Prop(ir.CopyProp); k != nil {
+			key = cc.kc.EvalExpr(k)
+			entry = kotlin.PresentCopyEntry(n.ID, key)
+		}
+		cc.line("%s(%s) {", cc.kc.Name(ktDisposableEffect), key)
+		cc.line("    val __token = Any()")
+		cc.line("    %s[__token] = %s", kotlin.PresentRegistry, entry)
+		cc.line("    onDispose { %s.remove(__token) }", kotlin.PresentRegistry)
+		cc.line("}")
+	}
 	cc.line("%s(%s)", exportName(n.Name), strings.Join(args, ", "))
 }
 
@@ -343,6 +385,26 @@ func (cc *irComposeContext) modifierRawExcept(n *ir.NodeInst, styleProp string, 
 	parts := []string{cc.kc.Name(ktModifier)}
 	if id := userTestTag(n); id != "" {
 		parts = append(parts, fmt.Sprintf("%s(%q)", cc.kc.Name(ktTestTag), id))
+		// The key is read where the modifier is built: the semantics block runs
+		// later, by when a loop's counter has moved on.
+		if key := n.Prop(ir.CopyProp); key != nil {
+			parts = append(parts, fmt.Sprintf("then(%s.let { __key -> %s.%s { this[%s] = __key } })", cc.kc.EvalExpr(key), cc.kc.Name(ktModifier), cc.kc.Name(ktSemantics), kotlin.CopySemanticsKey))
+		}
+	}
+	// A root of a spliced instance a test null-tests counts the instance in
+	// PresentRegistry while it is composed, as an instance built at run time
+	// does at its call site.
+	for _, p := range n.Props {
+		id, ok := codegen.InstanceRootID(p.Name)
+		if !ok || !cc.present[id] {
+			continue
+		}
+		entry := fmt.Sprintf("%q", id)
+		if lit, isLit := p.Value.(*ir.Literal); !isLit || lit.Value != "" {
+			entry = kotlin.PresentCopyEntry(id, cc.kc.EvalExpr(p.Value))
+		}
+		parts = append(parts, fmt.Sprintf("then((%s).let { __entry -> %s.%s { %s(__entry) { val __token = Any(); %s[__token] = __entry; onDispose { %s.remove(__token) } }; %s } })",
+			entry, cc.kc.Name(ktModifier), cc.kc.Name(ktComposed), cc.kc.Name(ktDisposableEffect), kotlin.PresentRegistry, kotlin.PresentRegistry, cc.kc.Name(ktModifier)))
 	}
 	for _, sf := range codegen.NodeStyleFieldsOf(n, styleProp) {
 		if skip[sf.Name] {
@@ -710,7 +772,7 @@ func (cc *irComposeContext) renderIntrinsic(n *ir.NodeInst, comp *ir.Component, 
 				continue
 			}
 			if lam, ok := v.(*ir.Lambda); ok {
-				args = append(args, cc.lambdaArg(p.Name, lam))
+				args = append(args, cc.lambdaArg(p.Name, lam, funcArity(p.Type)))
 				continue
 			}
 			args = append(args, p.Name+" = "+cc.kc.EvalExpr(v))
@@ -833,10 +895,10 @@ func (cc *irComposeContext) thenChain(v ir.Expr) string {
 // the argument goes and the whole call stays one expression even when the body
 // spans lines.
 //
-// A parameter is declared only where the body reads it: a Compose callback
-// lambda may leave the value it is passed unnamed, and every declaration here
-// is one the stdlib override wrote for whichever handlers a call site turned
-// out to supply.
+// Every parameter the callback takes is listed, arity of them, `_` where the
+// body reads none and where the handler wrote fewer than the callback passes:
+// with none listed, Kotlin names a lone parameter `it`, which hides a
+// program's own `it` in the body.
 //
 // A prop that *returns* something is written as Kotlin's other function
 // literal, the anonymous `fun`, because the lambda form cannot say either half
@@ -844,7 +906,7 @@ func (cc *irComposeContext) thenChain(v ir.Expr) string {
 // from the enclosing function, and the value's type is left to inference --
 // where Compose wants a Float and SNGL's `float` is a Double, inference gives
 // it the wrong one silently. `fun(): Float { return … }` states both.
-func (cc *irComposeContext) lambdaArg(name string, lam *ir.Lambda) string {
+func (cc *irComposeContext) lambdaArg(name string, lam *ir.Lambda, arity int) string {
 	if lam.Func == nil || len(lam.Func.Block) == 0 {
 		return name + " = {}"
 	}
@@ -862,16 +924,22 @@ func (cc *irComposeContext) lambdaArg(name string, lam *ir.Lambda) string {
 	if len(body) == 0 {
 		return name + " = {}"
 	}
-	if lam.Func.Return != nil {
+	// A `return` in a lambda would leave the composable it is written in,
+	// which Kotlin refuses; in an anonymous function it leaves the handler.
+	if lam.Func.Return != nil || kotlin.LambdaReturns(lam.Func.Block) {
 		return cc.anonFuncArg(name, lam, body)
 	}
 
 	var params []string
 	for _, p := range lam.Func.Params {
 		if !readsParam(lam.Func.Block, p) {
+			params = append(params, "_")
 			continue
 		}
 		params = append(params, p.Name)
+	}
+	for len(params) < arity {
+		params = append(params, "_")
 	}
 
 	outer := strings.Repeat("    ", cc.indent)
@@ -898,7 +966,11 @@ func (cc *irComposeContext) anonFuncArg(name string, lam *ir.Lambda, body []stri
 	}
 	outer := strings.Repeat("    ", cc.indent)
 	var b strings.Builder
-	fmt.Fprintf(&b, "%s = fun(%s): %s {", name, strings.Join(params, ", "), kotlin.IRTypeToKt(lam.Func.Return))
+	ret := "Unit"
+	if lam.Func.Return != nil {
+		ret = kotlin.IRTypeToKt(lam.Func.Return)
+	}
+	fmt.Fprintf(&b, "%s = fun(%s): %s {", name, strings.Join(params, ", "), ret)
 	for _, line := range body {
 		b.WriteString("\n" + outer + "    " + line)
 	}
@@ -967,4 +1039,32 @@ func (cc *irComposeContext) colorExpr(e ir.Expr) string {
 		return fmt.Sprintf("(if (%s) %s else %s)", cc.kc.EvalExpr(t.Cond), cc.colorExpr(t.Then), cc.colorExpr(t.Else))
 	}
 	return composeColorExpr(cc.kc, cc.kc.EvalExpr(e))
+}
+
+// counterStmt reports whether s declares or steps a local the lowering
+// synthesized.
+func counterStmt(s ir.Stmt) bool {
+	var sym ir.Symbol
+	switch n := s.(type) {
+	case *ir.LocalVar:
+		sym = n.Sym
+	case *ir.Assign:
+		if id, ok := n.Target.(*ir.Ident); ok {
+			sym = id.Sym
+		}
+	}
+	v, ok := sym.(*ir.Var)
+	return ok && v != nil && v.Synthesized
+}
+
+// funcArity is how many parameters a value of the function type t is handed,
+// or of the function an optional t holds.
+func funcArity(t *ir.Type) int {
+	if t != nil && t.Kind == ir.TypeOption && len(t.Elems) == 1 {
+		t = t.Elems[0]
+	}
+	if t == nil || t.Kind != ir.TypeFunc || t.Sig == nil {
+		return 0
+	}
+	return len(t.Sig.Params)
 }

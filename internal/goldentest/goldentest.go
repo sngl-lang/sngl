@@ -100,6 +100,7 @@ import (
 
 	"duckfam.us/sngl/internal/build"
 	"duckfam.us/sngl/internal/parser"
+	"duckfam.us/sngl/internal/testlaunch"
 	"duckfam.us/sngl/internal/testutil"
 	"duckfam.us/sngl/internal/trust"
 
@@ -132,22 +133,29 @@ func Run(t *testing.T, glob string, update, force bool) {
 	if len(files) == 0 {
 		t.Fatalf("no fixtures match %s", glob)
 	}
+	guard, err := newLibraryGuard(*fingerprintMode)
+	if err != nil {
+		t.Fatal(err)
+	}
 	ran, walkedPkgs := 0, 0
 	for _, file := range files {
 		name := strings.TrimSuffix(filepath.Base(file), ".txtar")
 		t.Run(name, func(t *testing.T) {
 			ran++
-			runFixture(t, file, update, force, &walkedPkgs)
+			runFixture(t, file, update, force, guard, &walkedPkgs)
 		})
 	}
 	if ran > 0 && walkedPkgs == 0 {
 		t.Errorf("%d fixtures ran and no package had ir.Walk compared against ir.Rewrite", ran)
 	}
+	if err := guard.finish(); err != nil {
+		t.Error(err)
+	}
 }
 
 // No t.Helper: with one, every failure from any of the four checks below
 // reports this function's caller, and which check fired is the useful part.
-func runFixture(t *testing.T, path string, update, force bool, walkedPkgs *int) {
+func runFixture(t *testing.T, path string, update, force bool, guard *libraryGuard, walkedPkgs *int) {
 	raw, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatalf("read: %v", err)
@@ -163,6 +171,10 @@ func runFixture(t *testing.T, path string, update, force bool, walkedPkgs *int) 
 		t.Fatalf("comment: %v", err)
 	}
 	exempt, err := parseExemptions(string(arc.Comment))
+	if err != nil {
+		t.Fatalf("comment: %v", err)
+	}
+	execs, err := parseExecs(string(arc.Comment), src)
 	if err != nil {
 		t.Fatalf("comment: %v", err)
 	}
@@ -183,7 +195,7 @@ func runFixture(t *testing.T, path string, update, force bool, walkedPkgs *int) 
 	// options on top, so the assertions are compiled and run rather than
 	// merely the program.
 	opts, _ := testutil.TestHarnessBuild(fixtureSource(src))
-	got, boilerplate, walked, err := generate(src, opts, true, "", "")
+	got, boilerplate, walked, err := generate(src, opts, true, "", "", guard)
 	if err != nil {
 		t.Fatalf("generate: %v", err)
 	}
@@ -193,7 +205,7 @@ func runFixture(t *testing.T, path string, update, force bool, walkedPkgs *int) 
 	// cannot compile what it generated leaves the archive as it found it.
 	// Written first, the bad golden would be committed and the record beside
 	// it would be the only thing saying so.
-	kept := verify(t, targetsOf(got), records, exempt, update, force)
+	kept := verify(t, targetsOf(got), records, exempt, execs, src, update, force)
 
 	if update {
 		if t.Failed() {
@@ -234,6 +246,9 @@ func split(arc *txtar.Archive) (src, golden map[string][]byte, records map[strin
 				return fail("golden file %q: expected out/<lang>/<platform>/<path>", f.Name)
 			}
 			golden[name] = f.Data
+			continue
+		}
+		if strings.HasPrefix(name, testlaunch.RecordPrefix) {
 			continue
 		}
 		if rest, ok := strings.CutPrefix(name, recordPrefix); ok {
@@ -312,7 +327,7 @@ func assertFormatted(t *testing.T, src map[string][]byte) {
 //
 // lang and plat select one target, as --lang/--platform do; empty builds every
 // target the output block names.
-func generate(src map[string][]byte, opts map[string]string, main bool, lang, plat string) (files map[string][]byte, boilerplate map[string]bool, walked int, err error) {
+func generate(src map[string][]byte, opts map[string]string, main bool, lang, plat string, guard *libraryGuard) (files map[string][]byte, boilerplate map[string]bool, walked int, err error) {
 	fsys := fstest.MapFS{}
 	for name, data := range src {
 		fsys[name] = &fstest.MapFile{Data: data}
@@ -343,26 +358,24 @@ func generate(src map[string][]byte, opts map[string]string, main bool, lang, pl
 	//
 	// Every target builds from a copy of its own, so the checked package --
 	// and the library it reaches -- is what the next build reads, untouched.
-	prints := testutil.Fingerprinter{Skip: notIR}
-	before := prints.Of(pkg)
-	results, err := build.Emit(pkg, build.Options{
-		Name:      firstRootSNGL(src),
-		Dir:       ".",
-		OutDir:    ".",
-		ProjectFS: fsys,
-		Opts:      opts,
-		Main:      main,
-		Lang:      lang,
-		Platform:  plat,
-		// The fixtures are this repository's own, and evaluating their go:
-		// imports is what a golden of one records.
-		Trust: trust.AllowAll(),
-	})
-	if err != nil {
+	var results []build.Result
+	if err := guard.around(pkg, func() (err error) {
+		results, err = build.Emit(pkg, build.Options{
+			Name:      firstRootSNGL(src),
+			Dir:       ".",
+			OutDir:    ".",
+			ProjectFS: fsys,
+			Opts:      opts,
+			Main:      main,
+			Lang:      lang,
+			Platform:  plat,
+			// The fixtures are this repository's own, and evaluating their go:
+			// imports is what a golden of one records.
+			Trust: trust.AllowAll(),
+		})
+		return err
+	}); err != nil {
 		return nil, nil, 0, err
-	}
-	if prints.Of(pkg) != before {
-		return nil, nil, 0, fmt.Errorf("the build wrote the checked package or the library it reaches")
 	}
 
 	out := map[string][]byte{}
@@ -433,11 +446,20 @@ func compare(t *testing.T, got, golden map[string][]byte) {
 
 func writeGolden(t *testing.T, path string, arc *txtar.Archive, got map[string][]byte, boilerplate map[string]bool, records map[string]record) {
 	t.Helper()
-	var files []txtar.File
+	var files, runs []txtar.File
 	for _, f := range arc.Files {
 		trimmed := strings.TrimPrefix(f.Name, "./")
-		if !strings.HasPrefix(trimmed, goldenPrefix) && !strings.HasPrefix(trimmed, recordPrefix) {
+		if !strings.HasPrefix(trimmed, goldenPrefix) && !strings.HasPrefix(trimmed, recordPrefix) && !strings.HasPrefix(trimmed, testlaunch.RecordPrefix) {
 			files = append(files, f)
+		}
+	}
+	// The component harness rewrites the testrun/ records, perhaps since this
+	// archive was read, so they are taken from the file as it is now.
+	if now, err := txtar.ParseFile(path); err == nil {
+		for _, f := range now.Files {
+			if strings.HasPrefix(strings.TrimPrefix(f.Name, "./"), testlaunch.RecordPrefix) {
+				runs = append(runs, f)
+			}
 		}
 	}
 	for _, name := range sortedKeys(reviewable(got, boilerplate)) {
@@ -446,8 +468,9 @@ func writeGolden(t *testing.T, path string, arc *txtar.Archive, got map[string][
 	for _, name := range sortedStrings(records) {
 		files = append(files, txtar.File{Name: name, Data: []byte(records[name].String())})
 	}
+	files = append(files, runs...)
 	arc.Files = files
-	if err := os.WriteFile(path, txtar.Format(arc), 0o644); err != nil {
+	if err := testlaunch.ReplaceFile(path, txtar.Format(arc)); err != nil {
 		t.Fatalf("write golden: %v", err)
 	}
 }

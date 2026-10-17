@@ -2,6 +2,7 @@ package kotlin
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 
 	"duckfam.us/sngl/ast"
@@ -120,6 +121,10 @@ type KtIRContext struct {
 	// called it. Matched by symbol: IdentRewrites skips parameters.
 	receiver *ir.Param
 	imports  *ktImportSet
+	// returnTo is the label of the lambda a `return` in this scope leaves:
+	// a bare return in a Kotlin lambda would return from the function the
+	// lambda is written in, which Kotlin refuses for one not inlined.
+	returnTo string
 }
 
 // NewIRContext creates a KtIRContext from a codegen ExprCtx.
@@ -260,45 +265,9 @@ func selectField(n *ir.Select) string {
 }
 
 func (kc *KtIRContext) Select(n *ir.Select, operand string) string {
-	// The Kotlin i18n runtime keys plural forms by string category exclusively.
-	if s := snglI18n.PluralKeyConstString(n); s != "" {
-		return s
-	}
-	field := selectField(n)
-	// Field access on a `dyn` operand: Kotlin's `Any` has no user fields.
-	// If exactly one package struct declares this field, emit a safe cast.
-	if t := n.Operand.ExprType(); t != nil && t.Kind == ir.TypeDyn {
-		if name := kc.uniqueStructWithField(n.Field); name != "" {
-			return "(" + operand + " as " + name + ")." + field
-		}
-	}
-	return operand + "." + field
+	return operand + "." + selectField(n)
 }
 
-// uniqueStructWithField returns the Kotlin type name of the sole package
-// struct declaring a field with this SNGL field name, or "" if zero or
-// multiple structs match. Mirrors the Go IRContext equivalent.
-func (kc *KtIRContext) uniqueStructWithField(field string) string {
-	if kc.Ctx == nil || kc.Ctx.Pkg == nil {
-		return ""
-	}
-	var match *ir.StructDef
-	for _, sd := range kc.Ctx.Pkg.Structs {
-		for _, f := range sd.Fields {
-			if f.Name == field {
-				if match != nil {
-					return ""
-				}
-				match = sd
-				break
-			}
-		}
-	}
-	if match == nil {
-		return ""
-	}
-	return exportName(match.Name)
-}
 func (kc *KtIRContext) Index(n *ir.Index, operand, idx string) string {
 	if t := n.Operand.ExprType(); t != nil && t.Kind == ir.TypeMap {
 		valZero := ktMapValZero(t)
@@ -308,12 +277,15 @@ func (kc *KtIRContext) Index(n *ir.Index, operand, idx string) string {
 }
 func (kc *KtIRContext) ListLit(n *ir.ListLit, elems []string) string {
 	// An empty literal says nothing Kotlin can infer its element from.
-	if len(elems) == 0 && n != nil && n.Type != nil && n.Type.Kind == ir.TypeList && len(n.Type.Elems) == 1 && n.Type.Elems[0].Kind != ir.TypeDyn && !n.Type.Elems[0].HasTypeParam() {
+	if len(elems) == 0 && n != nil && n.Type != nil && n.Type.Kind == ir.TypeList && len(n.Type.Elems) == 1 && !n.Type.Elems[0].HasTypeParam() {
 		return "listOf<" + IRTypeToKt(n.Type.Elems[0]) + ">()"
 	}
 	return "listOf(" + strings.Join(elems, ", ") + ")"
 }
-func (kc *KtIRContext) MapLit(_ *ir.MapLitIR, keys, vals []string) string {
+func (kc *KtIRContext) MapLit(n *ir.MapLitIR, keys, vals []string) string {
+	if len(keys) == 0 && n != nil && n.Type != nil && n.Type.Kind == ir.TypeMap && len(n.Type.Elems) == 2 && !slices.ContainsFunc(n.Type.Elems, (*ir.Type).HasTypeParam) {
+		return "mapOf<" + IRTypeToKt(n.Type.Elems[0]) + ", " + IRTypeToKt(n.Type.Elems[1]) + ">()"
+	}
 	var b strings.Builder
 	b.WriteString("mapOf(")
 	for i := range keys {
@@ -608,11 +580,19 @@ func (kc *KtIRContext) catchAtCall(call *ir.Call) []string {
 // ends the handler, not the function it was inlined into, so a body holding
 // one runs as a local fun of its own.
 func (kc *KtIRContext) handlerBody(handler *ir.EventHandler) []string {
+	returns := ir.BlockReturns(handler.Func.Block)
+	inner := kc
+	if returns {
+		// The local fun's own return, not the lambda's it is written in.
+		c := *kc
+		c.returnTo = ""
+		inner = &c
+	}
 	var body []string
 	for _, stmt := range handler.Func.Block {
-		body = append(body, kc.EvalStmt(stmt)...)
+		body = append(body, inner.EvalStmt(stmt)...)
 	}
-	if ir.BlockReturns(handler.Func.Block) {
+	if returns {
 		head := "fun __onError() {"
 		if ir.BlockHasAsyncCall(handler.Func.Block) {
 			head = "suspend " + head
@@ -665,10 +645,14 @@ func (kc *KtIRContext) LocalVarText(n *ir.LocalVar, initStr string) string {
 	return "var " + n.Name + ": " + goType
 }
 func (kc *KtIRContext) ReturnText(n *ir.Return, valueStr string) string {
-	if n.Value != nil {
-		return "return " + valueStr
+	ret := "return"
+	if kc.returnTo != "" {
+		ret += "@" + kc.returnTo
 	}
-	return "return"
+	if n.Value != nil {
+		return ret + " " + valueStr
+	}
+	return ret
 }
 
 func (kc *KtIRContext) ForHead(n *ir.For, iter string) string {
@@ -825,6 +809,10 @@ func ktLiteral(n *ir.Literal) string {
 }
 
 func (kc *KtIRContext) evalIdent(n *ir.Ident) string {
+	// The Kotlin i18n runtime keys plural forms by string category exclusively.
+	if s := snglI18n.PluralKeyConstString(n); s != "" {
+		return s
+	}
 	if n.Member != "" {
 		// Enum member: emit qualified Kotlin enum value (Gender.female)
 		// so the value matches the declared enum type at the use site.
@@ -950,6 +938,16 @@ func (kc *KtIRContext) evalCall(n *ir.Call) string {
 	if out, ok := kc.nativeCall(n); ok {
 		return out
 	}
+	if n.Qualifier != nil && n.Func != nil {
+		if out, ok := kc.evalQualifiedCall(n); ok {
+			return out
+		}
+	}
+	// A member nothing declares -- an import that resolved to no package --
+	// is named as the call site wrote it.
+	if n.Qualifier != nil && n.Func == nil {
+		return n.QualifiedName() + "(" + strings.Join(kc.evalCallArgs(n.Args), ", ") + ")"
+	}
 	if n.Receiver != nil {
 		return kc.evalNamespaceCall(n)
 	}
@@ -997,69 +995,39 @@ func (kc *KtIRContext) evalCall(n *ir.Call) string {
 	return "(" + strings.Join(args, ", ") + ")"
 }
 
+// evalQualifiedCall is a call named through an import, where the import still
+// means something in Kotlin. A SNGL package's declarations are top-level funs
+// of this build, so for one of those the alias names nothing and the call is
+// an ordinary one: false. `readout.cells("1.5")` reached the android test
+// runner verbatim, against a `cells` declared beside it.
+func (kc *KtIRContext) evalQualifiedCall(n *ir.Call) (string, bool) {
+	// An i18n.* entry point maps to the runtime's I18n object.
+	if ir.IsI18nCall(n) {
+		if result := kotlinBuiltinMethodFromArgs("i18n."+n.Func.Name, kc.evalCallArgs(n.Args)); result != "" {
+			kc.RequireImport(SnglI18nKotlinPackage + ".I18n")
+			return result, true
+		}
+	}
+	return "", false
+}
+
 func (kc *KtIRContext) evalNamespaceCall(n *ir.Call) string {
 	receiver := kc.EvalExpr(n.Receiver)
 	args := kc.evalCallArgs(n.Args)
 
 	if n.Func != nil {
 		fname := n.Func.Name
-		// A package function called through its import has no receiver on the
-		// declaration — the namespace is the alias at the call site. Name it
-		// from there so a qualified call reads the same either way.
-		receiverName := n.Func.RecvName()
-		if receiverName == "" {
-			if id, ok := n.Receiver.(*ir.Ident); ok {
-				receiverName = id.Name
-			}
-		}
-		qualName := receiverName + "." + fname
-
-		// Intrinsic dispatch: stdlib intrinsics that map to per-locale
-		// runtime entry points. After NoContext + InlinePure, i18n.*
-		// wrapper calls have been lowered to direct intl.* intrinsic
-		// calls with the locale threaded as the first arg.
-
-		// For i18n.* calls the namespace receiver is the module object, not a
-		// value argument. Pass only the real call args to the builtin dispatcher
-		// so that a(0) is the first semantic argument (matches type-method path).
-		if receiverName == "i18n" {
-			if result := kotlinBuiltinMethodFromArgs(qualName, args); result != "" {
-				kc.RequireImport(SnglI18nKotlinPackage + ".I18n")
-				return result
-			}
-		}
-
 		allArgs := append([]string{receiver}, args...)
-		if result := kotlinBuiltinMethodFromArgs(qualName, allArgs); result != "" {
+		if result := kotlinBuiltinMethodFromArgs(n.Func.RecvName()+"."+fname, allArgs); result != "" {
 			return result
 		}
 		// Only for a receiver whose type the checker could not resolve. With an id
 		// in hand the registry is the answer, and its absence has to reach
 		// RequireIntrinsicFallback rather than be hidden by a name match.
-		if n.Func == nil || n.Func.Intrinsic == "" {
+		if n.Func.Intrinsic == "" {
 			if result := kotlinBuiltinMethodFromArgs("*."+fname, allArgs); result != "" {
 				return result
 			}
-		}
-		// The receiver is an import alias when the declaration carries no
-		// receiver of its own: a directory import qualifies the call in SNGL
-		// and names nothing in the emitted Kotlin, where the function is a
-		// top-level `fun` of its own name. `readout.cells("1.5")` reached the
-		// android test runner verbatim, against a `cells` declared beside it.
-		if !n.Func.IsMethod() {
-			name := fname
-			// Through IdentRewrites like every other bare call: test mode
-			// reaches a hoisted state member as `state.<name>`.
-			if kc.IdentRewrites != nil {
-				if rw, ok := kc.IdentRewrites[name]; ok {
-					name = rw
-				}
-			}
-			if kc.isScopeComputed(fname, n.Func) {
-				return name
-			}
-			codegen.RequireIntrinsicFallback(langKt, n.Func)
-			return name + "(" + strings.Join(args, ", ") + ")"
 		}
 		return receiver + "." + fname + "(" + strings.Join(args, ", ") + ")"
 	}
@@ -1418,7 +1386,7 @@ func (kc *KtIRContext) evalLambda(n *ir.Lambda) string {
 	params := make([]string, len(n.Func.Params))
 	for i, p := range n.Func.Params {
 		params[i] = p.Name
-		if p.Type != nil && p.Type.Kind != ir.TypeDyn {
+		if p.Type != nil {
 			params[i] += ": " + IRTypeToKt(p.Type)
 		}
 	}
@@ -1429,14 +1397,38 @@ func (kc *KtIRContext) evalLambda(n *ir.Lambda) string {
 		}
 	}
 	var b strings.Builder
+	body := kc
+	if LambdaReturns(n.Func.Block) {
+		inner := *kc
+		inner.returnTo = kc.returnTo + "fn"
+		body = &inner
+		b.WriteString(body.returnTo + "@")
+	}
 	b.WriteString("{ " + strings.Join(params, ", ") + " ->\n")
 	for _, stmt := range n.Func.Block {
-		for _, line := range kc.EvalStmt(stmt) {
+		for _, line := range body.EvalStmt(stmt) {
 			b.WriteString("    " + line + "\n")
 		}
 	}
 	b.WriteString("}")
 	return b.String()
+}
+
+// LambdaReturns reports whether a lambda's body returns, outside a lambda of
+// its own.
+func LambdaReturns(stmts []ir.Stmt) bool {
+	found := false
+	_ = ir.Walk(stmts, func(n ir.Node) error {
+		switch n.(type) {
+		case *ir.Lambda:
+			return ir.SkipDir
+		case *ir.Return:
+			found = true
+			return ir.SkipAll
+		}
+		return nil
+	})
+	return found
 }
 
 func (kc *KtIRContext) evalCallArgs(args []ir.CallArg) []string {
@@ -1455,6 +1447,7 @@ func (kc *KtIRContext) WithLocal(name string) *KtIRContext {
 		IdentRewrites: kc.IdentRewrites,
 		receiver:      kc.receiver,
 		imports:       kc.imports,
+		returnTo:      kc.returnTo,
 	}
 }
 
@@ -1589,9 +1582,7 @@ func IRTypeToKt(t *ir.Type) string {
 			ret = IRTypeToKt(t.Sig.Return)
 		}
 		return "(" + strings.Join(params, ", ") + ") -> " + ret
-	case ir.TypeNull, ir.TypeDyn:
-		// dyn holds anything including null (recursive structs like TreeNode
-		// use `dyn = null` for absent children).
+	case ir.TypeNull:
 		return "Any?"
 	case ir.TypeIter:
 		// Iterable<T>, not List<T>: an iter[T] is a sequence something pulls

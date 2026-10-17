@@ -3,9 +3,6 @@
 package gtk4
 
 import (
-	"os"
-	"os/exec"
-	"path/filepath"
 	"regexp"
 	"strings"
 	"testing"
@@ -111,24 +108,15 @@ func TestRootSlotsKeepTheirPlace(t *testing.T) {
 // written between, rather than above all of them. The toggle has no gtk4rt
 // wrapper, which puts the second variant on the cgo path.
 func TestRootSlotsKeepTheirPlaceRuns(t *testing.T) {
-	skipWithoutGIR(t)
-	if os.Getenv("DISPLAY") == "" && os.Getenv("WAYLAND_DISPLAY") == "" {
-		t.Skip("gtk4 needs an X11/Wayland display")
-	}
 	for name, src := range map[string]string{
 		"wrapped": rootSlotOrderSrc,
 		"cgo":     strings.Replace(rootSlotOrderSrc, "    ui.text(value=\"footer\")", "    ui.toggle(checked=true)\n    ui.text(value=\"footer\")", 1),
 	} {
 		t.Run(name, func(t *testing.T) {
-			files := generateGTK4FilesBuilt(t, src)
+			files := goFiles(generateGTK4FilesBuilt(t, src))
 			if cgo := !strings.Contains(files["model.go"], "gtk4rt."); cgo != (name == "cgo") {
 				t.Fatalf("expected the %s path:\n%s", name, files["model.go"])
 			}
-			tmp, err := os.MkdirTemp(".", "_gtk4-root-slot-order-")
-			if err != nil {
-				t.Fatal(err)
-			}
-			defer os.RemoveAll(tmp)
 			files["entry.go"] = "package main\n\nfunc main() {}\n"
 			files["probe.go"] = rootSlotOrderProbe
 			m := windowContentRE.FindStringSubmatch(files["model.go"])
@@ -136,18 +124,8 @@ func TestRootSlotsKeepTheirPlaceRuns(t *testing.T) {
 				t.Fatalf("no window content in BuildUI:\n%s", files["model.go"])
 			}
 			files["order_test.go"] = strings.Replace(rootSlotOrderDriver, "CONTENT", m[1]+m[2], 1)
-			for name, src := range files {
-				if filepath.Ext(name) != ".go" {
-					continue
-				}
-				if err := os.WriteFile(filepath.Join(tmp, name), []byte(src), 0o644); err != nil {
-					t.Fatal(err)
-				}
-			}
-			cmd := exec.Command("go", "test", "-count=1", ".")
-			cmd.Dir = tmp
-			if out, err := cmd.CombinedOutput(); err != nil {
-				t.Errorf("%v\n%s\n--- model.go ---\n%s", err, out, files["model.go"])
+			if out, ok := runGo(t, "gtk4-root-slot-order-", files, true, "test", "-count=1", "."); !ok {
+				t.Errorf("%s\n--- model.go ---\n%s", out, files["model.go"])
 			}
 		})
 	}

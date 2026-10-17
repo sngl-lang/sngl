@@ -1,0 +1,99 @@
+# A trigger fires a node whose handler is empty as it fires any other: it
+# runs nothing, and the test goes on.
+
+sngl test --platform=none app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=html app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=fyne --language=go app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+-- app.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+
+component main node {
+    var hits = 0
+    var shown = true
+    vbox {
+        button #k(text="k", @click {})
+        if shown {
+            button #q(text="q", @click {})
+        }
+        button #j(text="j{hits}", @click { hits = hits + 1 })
+    }
+}
+
+func testEmptyHandlers(t Test, c main) {
+    c.k.click()
+    if c.q != null {
+        c.q.click()
+    }
+    c.j.click()
+    t.assert(c.hits == 1)
+}
+
+window {
+    main
+}
+-- testrun/android/kotlin/app.sngl/main/1 --
+sha256:4bf3093b5ade4796dc1545450f8c8f61
+{
+  "results": [
+    {
+      "Desc": "EmptyHandlers",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/main/1 --
+sha256:0ebc5ed9bbcbf18b913b894b31428bbc
+{
+  "results": [
+    {
+      "Desc": "EmptyHandlers",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/main/1 --
+sha256:98480acd195a45003213cfac833cf9a5
+{
+  "results": [
+    {
+      "Desc": "EmptyHandlers",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/main/1 --
+sha256:a61dce2be35b5d2766a94948f5ed11cc
+{
+  "results": [
+    {
+      "Desc": "EmptyHandlers",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/main/1 --
+sha256:3d663364780dc6acfc5a144e79ec47be
+{
+  "results": [
+    {
+      "Desc": "EmptyHandlers",
+      "Passed": true
+    }
+  ]
+}

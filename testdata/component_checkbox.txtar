@@ -52,6 +52,11 @@ import (
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
+	*modelState
+}
+
+// modelState is what every copy of a Model shares.
+type modelState struct {
 	on        bool
 	__focusID int
 
@@ -60,7 +65,7 @@ type Model struct {
 
 // New creates a Model with default bind values.
 func New() Model {
-	m := Model{}
+	m := Model{&modelState{}}
 	m.on = false
 	m.__focusID = 0
 	return m
@@ -416,6 +421,9 @@ body { font-family: system-ui, sans-serif; }
 </label>
 
 <script>
+window.__snglErrors = [];
+addEventListener("error", (e) => window.__snglErrors.push(String(e.message)));
+addEventListener("unhandledrejection", (e) => window.__snglErrors.push(String(e.reason?.message ?? e.reason)));
 window.__sngl_markup = Array.from(document.body.childNodes)
   .filter((n) => n.nodeName !== "SCRIPT").map((n) => n.cloneNode(true));
 window.__sngl_reset = () => {
@@ -433,16 +441,6 @@ window.__sngl_boot = () => {
   if (typeof window !== "undefined") {
     window.__sngl_state = state;
   }
-  function testCheckboxToggles(t, c) {
-    t.assert(c.on === false);
-    c.on = true;
-    t.assert(c.on === true);
-    c.on = false;
-    t.assert(c.on === false);
-  }
-  if (typeof window !== "undefined") {
-    Object.assign(window, { testCheckboxToggles });
-  }
   var __n0 = document.querySelector('[data-sngl-id="__n0"]');
   __n0.addEventListener("change", function(e) {
     state.on = e.currentTarget.checked;
@@ -458,7 +456,7 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:d6ed113c5ebc3f9a238bf2b53f60f9b1
+pass sha256:1e8601ccb8c9deb2b78a479754002bbd
 -- run/go/fyne --
 pass sha256:730b338d2b83fc8d84da400b942b487b
 -- run/go/gtk4 --
@@ -466,4 +464,14 @@ pass sha256:9e1d7983270278c73310422f51a036d5
 -- run/kotlin/android --
 pass sha256:bf380c48a11746ee4e1db5977e51f3de
 -- run/none/html --
-pass sha256:7dd3e4e2df2f55a744e6b7699b465a34
+pass sha256:27c9e2fe7bbadf5619a97dcc833aac6c
+-- testrun/html/none/component_checkbox.sngl/main/1 --
+sha256:1418f267c1ed353b67ae03f05c201842
+{
+  "results": [
+    {
+      "Desc": "CheckboxToggles",
+      "Passed": true
+    }
+  ]
+}

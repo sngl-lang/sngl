@@ -213,8 +213,7 @@ func girRegistryIn(store *gencache.Store, opt string) (*gir.TypeRegistry, bool, 
 	return decodeRegistry(data)
 }
 
-// usingMinimalGIR reports whether the registry is the bundled subset, which
-// is what a test naming host-only vocabulary skips on.
+// usingMinimalGIR reports whether the registry is the bundled subset.
 func (g *Generator) usingMinimalGIR() bool {
 	g.mu.Lock()
 	defer g.mu.Unlock()

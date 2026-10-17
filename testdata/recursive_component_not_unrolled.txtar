@@ -10,7 +10,7 @@ the passes synthesize gets folded -- and by then `passRecursionDepth` has given
 every recursive component a `__depth int = 0` prop with a literal at the call
 site. That is a prop that folds, which is the whole of what
 `inlineComponentCall` asks before substituting; before it existed, `TreeView`'s
-only prop was a `dyn` that never folds and the call was left alone.
+only prop was a value that never folds and the call was left alone.
 
 `maxInlineDepth` is a backstop and not an answer: it stops at 8, by which point
 a body with *two* self-calls has been copied 2^8 times. examples/showcase built
@@ -39,18 +39,20 @@ output {
 
 struct Node {
     value int = 0
-    left  dyn = null
-    right dyn = null
+    left  option[Node] = null
+    right option[Node] = null
 }
 
-component TreeView(node dyn = null) ui.node {
-    ui.vbox {
-        ui.text(value=string(node.value))
-        if node.left != null {
-            TreeView(node=node.left)
-        }
-        if node.right != null {
-            TreeView(node=node.right)
+component TreeView(node option[Node] = null) ui.node {
+    if node != null {
+        ui.vbox {
+            ui.text(value=string(node.value))
+            if node.left != null {
+                TreeView(node=node.left)
+            }
+            if node.right != null {
+                TreeView(node=node.right)
+            }
         }
     }
 }
@@ -72,10 +74,14 @@ import (
 	"os"
 )
 
+func snglSome[T any](v T) *T {
+	return &v
+}
+
 type Node struct {
 	Value int
-	Left  any
-	Right any
+	Left  *Node
+	Right *Node
 }
 
 type ErrorEvent struct {
@@ -85,6 +91,11 @@ type ErrorEvent struct {
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
+	*modelState
+}
+
+// modelState is what every copy of a Model shares.
+type modelState struct {
 	tree           Node
 	visible__inst0 bool
 
@@ -93,8 +104,8 @@ type Model struct {
 
 // New creates a Model with default bind values.
 func New() Model {
-	m := Model{}
-	m.tree = Node{Value: 5, Left: Node{Value: 3, Left: nil, Right: nil}, Right: Node{Value: 8, Left: nil, Right: nil}}
+	m := Model{&modelState{}}
+	m.tree = Node{Value: 5, Left: snglSome(Node{Value: 3, Left: nil, Right: nil}), Right: snglSome(Node{Value: 8, Left: nil, Right: nil})}
 	m.visible__inst0 = true
 	return m
 }
@@ -169,40 +180,42 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m Model) View() tea.View {
 	var content string
 	if m.visible__inst0 {
-		content = m.renderTreeView(m.tree, 0)
+		content = m.renderTreeView(snglSome(m.tree), 0)
 	}
 	v := tea.NewView(content)
 	v.AltScreen = true
 	return v
 }
 
-func (m Model) renderTreeView(node any, __depth int) string {
+func (m Model) renderTreeView(node *Node, __depth int) string {
 	var result string
-	var resultChildren []string
-	var result_0 string
-	result_0 = lipgloss.NewStyle().Render(fmt.Sprint(fmt.Sprint((node).(Node).Value)))
-	resultChildren = append(resultChildren, result_0)
-	var result_1 string
-	if (node).(Node).Left != nil {
-		if __depth >= 512 {
-		} else {
-			result_1 = m.renderTreeView((node).(Node).Left, (__depth + 1))
+	if node != nil {
+		var resultChildren []string
+		var result_0 string
+		result_0 = lipgloss.NewStyle().Render(fmt.Sprint(fmt.Sprint((*(node)).Value)))
+		resultChildren = append(resultChildren, result_0)
+		var result_1 string
+		if (*(node)).Left != nil {
+			if __depth >= 512 {
+			} else {
+				result_1 = m.renderTreeView((*(node)).Left, (__depth + 1))
+			}
 		}
-	}
-	if result_1 != "" {
-		resultChildren = append(resultChildren, result_1)
-	}
-	var result_2 string
-	if (node).(Node).Right != nil {
-		if __depth >= 512 {
-		} else {
-			result_2 = m.renderTreeView((node).(Node).Right, (__depth + 1))
+		if result_1 != "" {
+			resultChildren = append(resultChildren, result_1)
 		}
+		var result_2 string
+		if (*(node)).Right != nil {
+			if __depth >= 512 {
+			} else {
+				result_2 = m.renderTreeView((*(node)).Right, (__depth + 1))
+			}
+		}
+		if result_2 != "" {
+			resultChildren = append(resultChildren, result_2)
+		}
+		result = lipgloss.JoinVertical(lipgloss.Left, resultChildren...)
 	}
-	if result_2 != "" {
-		resultChildren = append(resultChildren, result_2)
-	}
-	result = lipgloss.JoinVertical(lipgloss.Left, resultChildren...)
 	return result
 }
 
@@ -234,8 +247,8 @@ import androidx.compose.material3.Text
 
 data class Node(
     var value: Int = 0,
-    var left: Any? = null,
-    var right: Any? = null
+    var left: Node? = null,
+    var right: Node? = null
 )
 
 data class ErrorEvent(val message: String = "", val kind: String = "")
@@ -267,24 +280,26 @@ fun MainScreen() {
 }
 
 @Composable
-fun TreeView(node: Any? = null, __depth: Int = 0) {
-    Column(modifier = Modifier) {
-        Text(text = (node as Node).value.toString(), modifier = Modifier)
-        if (((node as Node).left != null)) {
-            if ((__depth >= 512)) {
-            } else {
-                TreeView(node = (node as Node).left, __depth = (__depth + 1))
+fun TreeView(node: Node? = null, __depth: Int = 0) {
+    if ((node != null)) {
+        Column(modifier = Modifier) {
+            Text(text = node!!.value.toString(), modifier = Modifier)
+            if ((node!!.left != null)) {
+                if ((__depth >= 512)) {
+                } else {
+                    TreeView(node = node!!.left, __depth = (__depth + 1))
+                }
             }
-        }
-        if (((node as Node).right != null)) {
-            if ((__depth >= 512)) {
-            } else {
-                TreeView(node = (node as Node).right, __depth = (__depth + 1))
+            if ((node!!.right != null)) {
+                if ((__depth >= 512)) {
+                } else {
+                    TreeView(node = node!!.right, __depth = (__depth + 1))
+                }
             }
         }
     }
 }
 -- run/go/bubbletea --
-pass sha256:97c9b19cdd0204c65fd20c42349d05c8
+pass sha256:99dc68ab1551ca4df169800538a8052c
 -- run/kotlin/android --
-pass sha256:54266e1764e75f4c5decf21b4cf4b97e
+pass sha256:20426487e64840a67af6fca51c76d0fc

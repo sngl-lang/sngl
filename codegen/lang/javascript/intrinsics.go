@@ -1,6 +1,7 @@
 package javascript
 
 import (
+	"strconv"
 	"strings"
 
 	"duckfam.us/sngl/codegen"
@@ -16,6 +17,14 @@ const langJS = "js"
 // names for these — and the dispatch is identical whether a call survives as a
 // type-method call or is inlined to a direct intrinsic call.
 func init() {
+	// A record handed to the i18n runtime is the Map it takes.
+	codegen.RegisterRecordSpeller(langJS, func(keys, vals []string) string {
+		parts := make([]string, len(keys))
+		for i := range keys {
+			parts[i] = "[" + keys[i] + ", " + vals[i] + "]"
+		}
+		return "new Map([" + strings.Join(parts, ", ") + "])"
+	})
 	// reg registers an emitter whose args are rendered positionally; recv is
 	// args[0] for a type-method intrinsic. fn receives the already-translated
 	// argument strings.
@@ -35,7 +44,18 @@ func init() {
 	// A test body is lowered by testlower.go, which answers these first. A
 	// test function emitted into a page as an ordinary function calls the
 	// method on the harness's t object instead.
-	for _, id := range []string{ir.TestAssertID, ir.TestMustID, ir.TestSetLocaleID, ir.TestSetContextID, ir.TestWaitID, ir.TestSnapshotID} {
+	// The agent's T fails a test through assertTrue, which a helper taking a
+	// `Test` reaches here.
+	for _, id := range []string{ir.TestAssertID, ir.TestMustID} {
+		reg(id, func(a []string) string { return a[0] + ".assertTrue(" + a[1] + ", " + strconv.Quote(a[1]) + ")" })
+	}
+	// A test body awaits t.wait where it stands (testlower.go); anywhere else
+	// the call is in a function that cannot await, so the test fails saying so
+	// rather than running on without waiting.
+	reg(ir.TestWaitID, func(a []string) string {
+		return a[0] + `.fatal("t.wait waits only as a statement of a test's own body on html")`
+	})
+	for _, id := range []string{ir.TestSetLocaleID, ir.TestSetContextID, ir.TestSnapshotID, ir.TestTickID, ir.TestSubtestID} {
 		method := strings.TrimPrefix(id, "test.")
 		reg(id, func(a []string) string { return a[0] + "." + method + "(" + strings.Join(a[1:], ", ") + ")" })
 	}

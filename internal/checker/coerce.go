@@ -37,8 +37,8 @@ func adaptLiteralZero(expr ir.Expr, target *ir.Type) (ir.Expr, bool) {
 // from the target under an implicit conversion. Called after an assignability
 // check so every meaningful conversion lands as an explicit ir.Conversion node
 // in the IR. Returns expr unchanged when types already match, when either
-// side is dyn (dyn flows without a conversion — codegen stringifies/casts at
-// its own boundary), when either side is nil, or when expr is already an
+// side is invalid (a mistake reported where it was made), when either side is
+// nil, or when expr is already an
 // ir.Conversion targeting the same type (avoids double-wrapping).
 func wrapIfNeeded(expr ir.Expr, target *ir.Type) ir.Expr {
 	if expr == nil || target == nil {
@@ -48,7 +48,7 @@ func wrapIfNeeded(expr ir.Expr, target *ir.Type) ir.Expr {
 	if actual == nil || actual.Equal(target) {
 		return expr
 	}
-	if actual.Kind == ir.TypeDyn || target.Kind == ir.TypeDyn {
+	if actual.Kind == ir.TypeInvalid || target.Kind == ir.TypeInvalid {
 		return expr
 	}
 	if conv, ok := expr.(*ir.Conversion); ok && conv.Type != nil && conv.Type.Equal(target) {
@@ -84,7 +84,7 @@ func wrapOptionIfNeeded(expr ir.Expr, target *ir.Type) ir.Expr {
 		return expr
 	}
 	switch actual.Kind {
-	case ir.TypeOption, ir.TypeNull, ir.TypeDyn, ir.TypeInvalid:
+	case ir.TypeOption, ir.TypeNull, ir.TypeInvalid:
 		return expr
 	}
 	return wrapIfNeeded(expr, target)
@@ -104,8 +104,8 @@ func primitiveConvertible(from, target *ir.Type) bool {
 	if from == nil || target == nil {
 		return false
 	}
-	if from.Kind == ir.TypeDyn {
-		return true // dyn narrows through any primitive cast
+	if from.Kind == ir.TypeInvalid {
+		return true // reported where it went wrong; nothing more to say
 	}
 	fromStr, targetStr := ir.StringReprStruct(from), ir.StringReprStruct(target)
 	switch {

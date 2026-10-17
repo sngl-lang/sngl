@@ -97,6 +97,11 @@ type Point struct {
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
+	*modelState
+}
+
+// modelState is what every copy of a Model shares.
+type modelState struct {
 	more      []int
 	n__inst0  int
 	xs__inst0 []int
@@ -107,7 +112,7 @@ type Model struct {
 
 // New creates a Model with default bind values.
 func New() Model {
-	m := Model{}
+	m := Model{&modelState{}}
 	m.more = []int{3, 4}
 	m.n__inst0 = 7
 	m.xs__inst0 = []int{9, 4}
@@ -698,6 +703,9 @@ body { font-family: system-ui, sans-serif; }
 </div>
 
 <script>
+window.__snglErrors = [];
+addEventListener("error", (e) => window.__snglErrors.push(String(e.message)));
+addEventListener("unhandledrejection", (e) => window.__snglErrors.push(String(e.reason?.message ?? e.reason)));
 window.__sngl_markup = Array.from(document.body.childNodes)
   .filter((n) => n.nodeName !== "SCRIPT").map((n) => n.cloneNode(true));
 window.__sngl_reset = () => {
@@ -724,20 +732,8 @@ window.__sngl_boot = () => {
     ;
     return total;
   }
-  function testVariadic(t, c) {
-    t.assert(true);
-    t.assert(true);
-    let xs = [2, 3, 4];
-    t.assert(sum(1, [...xs]) === 10);
-    t.assert(sum(1, [2, ...xs, 5]) === 17);
-    t.assert(true);
-    t.assert(true);
-    t.assert(true);
-    let p = { first: 7 };
-    t.assert(sum(p.first, []) === 7);
-  }
   if (typeof window !== "undefined") {
-    Object.assign(window, { sum, testVariadic });
+    Object.assign(window, { sum });
   }
   function String(v) {
     return "" + v;
@@ -762,7 +758,7 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:78ff1395870d8d08a9928a3bf9dbe669
+pass sha256:56e0acb53ad3e553ae0f1bea2319425b
 -- run/go/fyne --
 pass sha256:6267a0f25ea90d371046410c6febe4b4
 -- run/go/gtk4 --
@@ -770,4 +766,4 @@ pass sha256:40d2312160f95546db84a12de459563d
 -- run/kotlin/android --
 pass sha256:ab89d7341a5f43d5622f5888b926e529
 -- run/none/html --
-pass sha256:fab28b758debbb2bced08fe8307e72e5
+pass sha256:37e5d4e347e450d7f3ca36c11c1cf24b

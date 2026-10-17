@@ -67,7 +67,9 @@ func spliceBoundaries(stmts []ir.Stmt) []ir.Stmt {
 	out := stmts[:0:0]
 	for _, s := range stmts {
 		if n, ok := s.(*ir.ErrorBoundary); ok && n.Handler != nil && len(n.Failed) == 0 {
-			out = append(out, spliceBoundaries(n.Children)...)
+			children := spliceBoundaries(n.Children)
+			children = ir.HandOnInstances(n, children)
+			out = append(out, children...)
 			continue
 		}
 		// Every view block: a population, a fallback, a slot insertion's,

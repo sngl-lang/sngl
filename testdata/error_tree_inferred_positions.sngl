@@ -10,7 +10,7 @@
 import d "sngl:ui/draw"
 import ui "sngl:ui"
 
-component holder(art component d.shape, content ...component) ui.node {
+component holder(art option[component d.shape], content ...component) ui.node {
     content
 }
 

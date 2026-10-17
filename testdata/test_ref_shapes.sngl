@@ -1,0 +1,71 @@
+// A ref is typed by where its node is written, one wrapper per thing in the
+// way: nested loops are a list of lists, so an index names the iteration it
+// would in the loops, and an iteration that rendered nothing is still an entry.
+//
+// A node in a slot population is reached through the node it populates, and
+// wrapped by how often that slot is inserted: a list slot once per insertion,
+// an option slot at most once.
+
+import . "sngl:test"
+import . "sngl:ui"
+
+struct Row {
+    name string
+    cols list[string]
+}
+
+const rows list[Row] = [
+    {name="a", cols=["1", "2"]},
+    {name="b", cols=[]},
+    {name="c", cols=["3"]},
+]
+
+component grid node {
+    vbox {
+        for var r = rows {
+            for var col = r.cols {
+                text #cell(value=r.name + col)
+            }
+        }
+    }
+}
+
+func testNestedLoopsAreAListOfLists(t Test, c grid) {
+    t.assert(c.cell.length() == 3)
+    t.assert(c.cell[0].length() == 2 && c.cell[1].length() == 0)
+    t.assert(c.cell[0][1].value == "a2")
+    t.assert(c.cell[2][0].value == "c3")
+}
+
+component table(rows list[component(i int) node], tip option[component node]) node {
+    vbox {
+        for var i = [1, 2] {
+            rows(i)
+        }
+        rows(3)
+    }
+}
+
+component uses node {
+    table #t {
+        component rows(i) {
+            text #row(value="row {i}")
+        }
+        component tip {
+            text #hint(value="hint")
+        }
+    }
+}
+
+func testAListSlotIsAListOfItsInsertions(t Test, c uses) {
+    t.assert(c.t.row.length() == 3)
+    t.assert(c.t.row[0].value == "row 1")
+    t.assert(c.t.row[2].value == "row 3")
+}
+
+func testAnOptionSlotTheBodyLeavesOutIsNull(t Test, c uses) {
+    t.assert(c.t.hint == null)
+}
+
+window {
+}

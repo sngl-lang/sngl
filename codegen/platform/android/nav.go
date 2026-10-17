@@ -472,6 +472,7 @@ func (nav *androidNav) stacksIn(stmts []ir.Stmt) []*navStackK {
 func emitNavState(b *strings.Builder, stacks []*navStackK, kc *kotlin.KtIRContext, testMode bool) {
 	for _, st := range stacks {
 		fmt.Fprintf(b, "    val %s__nav = %s()\n", st.name, kc.Name(ktNav+"compose.rememberNavController"))
+		stateDelegate(kc)
 		fmt.Fprintf(b, "    val %s__entry by %s__nav.%s()\n", st.name, st.name, kc.Name(ktNav+"compose.currentBackStackEntryAsState"))
 		if st.startSearch != nil {
 			fmt.Fprintf(b, "    val %s__start = %s\n", st.name, kc.EvalExpr(st.startSearch))
@@ -773,10 +774,10 @@ func handedParams(e ir.Expr) ir.Expr {
 // stackRef is the name a call reaches a stack's locals by, and the spelling
 // of the receiver they hang off: bare inside the composable, and through the
 // instance a test holds when the handle was reached through it (`c.pages`).
-func stackRef(e ir.Expr, suffix string, tr func(ir.Expr) string) string {
+func stackRef(e ir.Expr, suffix string, t *ir.Type, tr func(ir.Expr) string) string {
 	switch x := e.(type) {
 	case *ir.Ident:
-		return tr(&ir.Ident{Name: x.Name + suffix, Type: ir.TypDyn})
+		return tr(&ir.Ident{Name: x.Name + suffix, Type: t})
 	case *ir.Select:
 		return tr(x.Operand) + "." + x.Field + suffix
 	}
@@ -797,7 +798,7 @@ func emitNavGo(args []ir.Expr, tr func(ir.Expr) string) (string, []string) {
 	if len(args) > 2 {
 		params = args[2]
 	}
-	nav := stackRef(args[0], "__nav", tr)
+	nav := stackRef(args[0], "__nav", ir.NativeNamed("NavHostController"), tr)
 	if nav == "" {
 		return "", nil
 	}
@@ -810,7 +811,7 @@ func emitNavBack(args []ir.Expr, tr func(ir.Expr) string) (string, []string) {
 	if len(args) < 1 {
 		return "", nil
 	}
-	nav := stackRef(args[0], "__nav", tr)
+	nav := stackRef(args[0], "__nav", ir.NativeNamed("NavHostController"), tr)
 	if nav == "" {
 		return "", nil
 	}
@@ -822,7 +823,7 @@ func emitNavCurrent(args []ir.Expr, tr func(ir.Expr) string) (string, []string) 
 	if len(args) < 1 {
 		return "", nil
 	}
-	if ref := stackRef(args[0], "__current", tr); ref != "" {
+	if ref := stackRef(args[0], "__current", currentType(args[0]), tr); ref != "" {
 		return ref, nil
 	}
 	return "", nil
@@ -852,4 +853,22 @@ func constUnder(e ir.Expr, loops []*ir.For) bool {
 		return x, nil
 	})
 	return ir.IsConst(holder.Value)
+}
+
+// currentType is what a stack's `current` reads: a value of the page family,
+// at the type its handle binds.
+func currentType(stack ir.Expr) *ir.Type {
+	t := stack.ExprType()
+	comp, _ := t.Decl.(*ir.Component)
+	fn := comp.MethodByIntrinsic("nav.current")
+	if fn == nil || fn.Return == nil {
+		return nil
+	}
+	bindings := map[string]*ir.Type{}
+	for i, tp := range comp.TypeParams {
+		if i < len(t.Elems) {
+			bindings[tp.Name] = t.Elems[i]
+		}
+	}
+	return fn.Return.Substitute(bindings)
 }

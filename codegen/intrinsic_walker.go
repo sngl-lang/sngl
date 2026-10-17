@@ -3,6 +3,7 @@ package codegen
 import (
 	"context"
 
+	"duckfam.us/sngl/ast"
 	"duckfam.us/sngl/ir"
 )
 
@@ -29,12 +30,13 @@ type IntrinsicTranslator interface {
 	// build-time `__instN` renaming cannot provide when the count is only
 	// known at runtime. ComponentRoot is how the tree gets a node back.
 	OnCreateComponent(ctx context.Context, id string, call *ir.Call) []ir.Stmt
-	// OnComponentRoot handles `LocalVar id = lower.ComponentRoot(inst)`,
+	// OnComponentRoot handles `LocalVar id = lower.ComponentRoot(inst, key?)`,
 	// binding id to the node an instance renders as, so AppendChild has
 	// something to attach. Separate from CreateComponent because an instance
 	// outlives any one attachment: it is detached and reattached as its
-	// position in the tree comes and goes.
-	OnComponentRoot(ctx context.Context, id string, inst ir.Expr) []ir.Stmt
+	// position in the tree comes and goes. key is the copy the instance stands
+	// in now (ir.CopyKey), nil where a test reaches no one copy of it.
+	OnComponentRoot(ctx context.Context, id string, inst, key ir.Expr) []ir.Stmt
 	// OnUpdateComponent handles `lower.UpdateComponent(inst, "prop", value)`
 	// — a reactive prop crossing into a live instance. The platform patches
 	// whatever inside the instance reads that prop. A prop the instance
@@ -60,6 +62,13 @@ type IntrinsicTranslator interface {
 	OnIter(ctx context.Context, iter ir.Expr) ir.Expr
 	OnCond(ctx context.Context, cond ir.Expr) ir.Expr
 	OnDefault(ctx context.Context, stmt ir.Stmt) []ir.Stmt
+}
+
+// NodeSites is implemented by a translator that reports a problem with a node
+// it builds at the source the node was written in: a createNode op carries
+// only the node's name, and its LocalVar the rest.
+type NodeSites interface {
+	NodeSite(id string, at ast.Stmt)
 }
 
 // ChildInserter is implemented by a platform whose container can put a child
@@ -102,14 +111,21 @@ func walkOne(ctx context.Context, s ir.Stmt, t IntrinsicTranslator) []ir.Stmt {
 	case *ir.LocalVar:
 		if call, ok := n.Init.(*ir.Call); ok {
 			if isLowerIntrinsic(call, "CreateNode") {
+				if ns, ok := t.(NodeSites); ok {
+					ns.NodeSite(n.Name, n.NodeAST)
+				}
 				tag, _ := extractStringLit(call.Args[0].Value)
 				return t.OnCreateNode(ctx, n.Name, tag)
 			}
 			if isLowerIntrinsic(call, "CreateComponent") {
 				return t.OnCreateComponent(ctx, n.Name, walkComponentProps(ctx, call, t))
 			}
-			if isLowerIntrinsic(call, ir.NodeOpComponentRoot) && len(call.Args) == 1 {
-				return t.OnComponentRoot(ctx, n.Name, call.Args[0].Value)
+			if isLowerIntrinsic(call, ir.NodeOpComponentRoot) && len(call.Args) >= 1 && len(call.Args) <= 2 {
+				var key ir.Expr
+				if len(call.Args) == 2 {
+					key = call.Args[1].Value
+				}
+				return t.OnComponentRoot(ctx, n.Name, call.Args[0].Value, key)
 			}
 		}
 		if v, changed := walkExprLambdas(ctx, n.Init, t); changed {

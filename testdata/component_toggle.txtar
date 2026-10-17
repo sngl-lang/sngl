@@ -52,6 +52,11 @@ import (
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
+	*modelState
+}
+
+// modelState is what every copy of a Model shares.
+type modelState struct {
 	on        bool
 	__focusID int
 
@@ -60,7 +65,7 @@ type Model struct {
 
 // New creates a Model with default bind values.
 func New() Model {
-	m := Model{}
+	m := Model{&modelState{}}
 	m.on = false
 	m.__focusID = 0
 	return m
@@ -564,6 +569,9 @@ body { font-family: system-ui, sans-serif; }
 </label>
 
 <script>
+window.__snglErrors = [];
+addEventListener("error", (e) => window.__snglErrors.push(String(e.message)));
+addEventListener("unhandledrejection", (e) => window.__snglErrors.push(String(e.reason?.message ?? e.reason)));
 window.__sngl_markup = Array.from(document.body.childNodes)
   .filter((n) => n.nodeName !== "SCRIPT").map((n) => n.cloneNode(true));
 window.__sngl_reset = () => {
@@ -581,16 +589,6 @@ window.__sngl_boot = () => {
   if (typeof window !== "undefined") {
     window.__sngl_state = state;
   }
-  function testToggleFlips(t, c) {
-    t.assert(c.on === false);
-    c.on = true;
-    t.assert(c.on === true);
-    c.on = false;
-    t.assert(c.on === false);
-  }
-  if (typeof window !== "undefined") {
-    Object.assign(window, { testToggleFlips });
-  }
   var __n0 = document.querySelector('[data-sngl-id="__n0"]');
   __n0.addEventListener("change", function(e) {
     state.on = e.currentTarget.checked;
@@ -606,7 +604,7 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:5e967bc24e50d57eb79e3887e8a70966
+pass sha256:21a00d9f00f741a12e7e918365bee443
 -- run/go/fyne --
 pass sha256:2a9a2a10cfedf1cb41348824f1bffa88
 -- run/go/gtk4 --
@@ -614,4 +612,14 @@ pass sha256:dd7061389f331d479546227d113eb66e
 -- run/kotlin/android --
 pass sha256:b047c58b5fb76b302904b1b225e24e03
 -- run/none/html --
-pass sha256:71b4a9745dca5976770419961b8d8624
+pass sha256:791200c7e9aefda403d64d2d74cb56a0
+-- testrun/html/none/component_toggle.sngl/main/1 --
+sha256:dc42015468963c5bf05ced85b8c4b26c
+{
+  "results": [
+    {
+      "Desc": "ToggleFlips",
+      "Passed": true
+    }
+  ]
+}

@@ -80,6 +80,11 @@ type ErrorEvent struct {
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
+	*modelState
+}
+
+// modelState is what every copy of a Model shares.
+type modelState struct {
 	log                 string
 	five__inst0         Len
 	d__inst0            Len
@@ -96,7 +101,7 @@ type Model struct {
 
 // New creates a Model with default bind values.
 func New() Model {
-	m := Model{}
+	m := Model{&modelState{}}
 	m.log = ""
 	m.five__inst0 = Len(5)
 	m.d__inst0 = Len(0)
@@ -684,7 +689,7 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return gtk4rt.ToplevelWindow(app, m.__n0)
 }
 -- run/go/bubbletea --
-pass sha256:2f8ffe30e9ffa430de815a084a7ecb9a
+pass sha256:730f0f757d2b6595be1629ea0ef1d12f
 -- run/go/fyne --
 pass sha256:97422a6be3308836746d4abe8d5384fa
 -- run/go/gtk4 --

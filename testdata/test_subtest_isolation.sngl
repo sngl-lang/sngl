@@ -13,11 +13,20 @@ component main node {
     const LIMIT = 5
     timer(interval=100ms, enabled=true, @tick { p += 1 })
     text(value="{p}")
+    button #bump(text="bump", @click { p += 1 })
 }
 
 func testSubtestTickDoesNotLeak(t Test, c main) {
-    t.test("inner", func(t, c) {
+    t.test("inner", func(t Test, c main) {
         t.tick()
+        t.assert(c.p == 1)
+    })
+    t.assert(c.p == 0)
+}
+
+func testSubtestClickDoesNotLeak(t Test, c main) {
+    t.test("inner", func(t Test, c main) {
+        c.bump.click()
         t.assert(c.p == 1)
     })
     t.assert(c.p == 0)

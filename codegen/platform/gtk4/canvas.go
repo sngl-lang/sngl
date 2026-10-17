@@ -96,8 +96,8 @@ func (t *gtk4Translator) translateCanvasRedraw(rs *ir.CanvasRedrawStmt) []ir.Stm
 	if t.imageTagOf(m.ID) == imageDrawingTag {
 		return []ir.Stmt{t.paintImageDrawing(m)}
 	}
-	widget := cgoCast("GtkWidget", t.fieldRef(m.ID))
-	return []ir.Stmt{&ir.CallStmt{Call: nativeCall("gtk_widget_queue_draw", widget)}}
+	widget := cgoCast("GtkWidget", t.canvasFieldRef(m))
+	return []ir.Stmt{&ir.CallStmt{Call: nativeCall("gtk_widget_queue_draw", ir.TypVoid, widget)}}
 }
 
 // canvasMetaForNode resolves the canvasMeta for a canvas node via the
@@ -125,7 +125,7 @@ func (t *gtk4Translator) emitCanvasCreate(id string) []ir.Stmt {
 	if m == nil {
 		return nil
 	}
-	t.fieldSink(id, "GtkDrawingArea")
+	t.sinkField(id, "GtkDrawingArea")
 	t.fieldIDs[id] = true
 	t.idCTypes[id] = "GtkDrawingArea"
 	t.topLevel = append(t.topLevel, id)
@@ -140,11 +140,11 @@ func (t *gtk4Translator) emitCanvasCreate(id string) []ir.Stmt {
 	daField := t.fieldRef(id)
 
 	// m.<id> = (*C.GtkDrawingArea)(unsafe.Pointer(C.gtk_drawing_area_new()))
-	ctor := cgoCast("GtkDrawingArea", nativeCall("gtk_drawing_area_new"))
+	ctor := cgoCast("GtkDrawingArea", nativeCall("gtk_drawing_area_new", ir.NativePointerOf("GtkWidget")))
 	stmts := []ir.Stmt{
 		&ir.Assign{Target: daField, Op: ast.AssignSet, Value: ctor},
-		&ir.CallStmt{Call: nativeCall("gtk_drawing_area_set_content_width", daField, nativeCall("int", &ir.Literal{Type: ir.TypInt, Value: fmt.Sprint(w)}))},
-		&ir.CallStmt{Call: nativeCall("gtk_drawing_area_set_content_height", daField, nativeCall("int", &ir.Literal{Type: ir.TypInt, Value: fmt.Sprint(h)}))},
+		&ir.CallStmt{Call: nativeCall("gtk_drawing_area_set_content_width", ir.TypVoid, daField, cScalar("int", &ir.Literal{Type: ir.TypInt, Value: fmt.Sprint(w)}))},
+		&ir.CallStmt{Call: nativeCall("gtk_drawing_area_set_content_height", ir.TypVoid, daField, cScalar("int", &ir.Literal{Type: ir.TypInt, Value: fmt.Sprint(h)}))},
 	}
 	if m.Scaling != "" && m.Scaling != canvasutil.ScaleCenter {
 		// The content size stays as the natural one -- it is what the drawing
@@ -152,15 +152,17 @@ func (t *gtk4Translator) emitCanvasCreate(id string) []ir.Stmt {
 		// which is what expanding says in GTK.
 		widget := cgoCast("GtkWidget", daField)
 		stmts = append(stmts,
-			&ir.CallStmt{Call: nativeCall("gtk_widget_set_hexpand", widget, &ir.Ident{Name: "1", Type: ir.TypDyn})},
-			&ir.CallStmt{Call: nativeCall("gtk_widget_set_vexpand", widget, &ir.Ident{Name: "1", Type: ir.TypDyn})},
+			&ir.CallStmt{Call: nativeCall("gtk_widget_set_hexpand", ir.TypVoid, widget, intLit("1"))},
+			&ir.CallStmt{Call: nativeCall("gtk_widget_set_vexpand", ir.TypVoid, widget, intLit("1"))},
 		)
 	}
 
 	// Register the draw callback through the trampoline registry:
 	//   snglDrawFuncs = append(snglDrawFuncs, func(cr *C.cairo_t) { m._canvasDrawN(cr) })
 	//   C.sngl_drawing_area_set_draw(unsafe.Pointer(m.<id>), C.int(len(snglDrawFuncs)-1))
-	cbList := &ir.Ident{Name: "snglDrawFuncs", Type: ir.TypDyn}
+	cairo := ir.NativePointerOf("cairo_t")
+	drawFunc := &ir.Type{Kind: ir.TypeFunc, Sig: &ir.FuncSig{Params: []*ir.Param{{Type: cairo}, {Type: ir.TypInt}, {Type: ir.TypInt}}, Return: ir.TypVoid}}
+	cbList := &ir.Ident{Name: "snglDrawFuncs", Type: ir.ListOf(drawFunc)}
 	// The drawing's own coordinate space is scaled onto the size GTK is
 	// drawing at, so the shapes are rasterised where they land rather than
 	// drawn at one size and stretched from it. cairo is a vector context, so
@@ -168,13 +170,20 @@ func (t *gtk4Translator) emitCanvasCreate(id string) []ir.Stmt {
 	// The draw func is a method of whatever scope owns the canvas -- the Model,
 	// or a component instance's record -- so the receiver is read off the
 	// context rather than spelled `m`.
-	closure := &ir.Ident{
-		Name: fmt.Sprintf("func(cr *C.cairo_t, pw, ph int) { _snglCairoScale(cr, pw, ph, %d, %d, %q); %s.%s(cr) }",
-			w, h, m.Scaling, t.gc.RecvName(), m.DrawName),
-		Type: ir.TypDyn,
-	}
+	cr := &ir.Param{Name: "cr", Type: cairo}
+	pw := &ir.Param{Name: "pw", Type: ir.TypInt}
+	ph := &ir.Param{Name: "ph", Type: ir.TypInt}
+	ref := func(p *ir.Param) ir.Expr { return &ir.Ident{Name: p.Name, Type: p.Type, Sym: p} }
+	closure := goClosure([]*ir.Param{cr, pw, ph},
+		&ir.CallStmt{Call: &ir.Call{Type: ir.TypVoid, Func: &ir.Func{Name: "_snglCairoScale"}, Args: []ir.CallArg{
+			{Value: ref(cr)}, {Value: ref(pw)}, {Value: ref(ph)},
+			{Value: intLit(fmt.Sprint(w))}, {Value: intLit(fmt.Sprint(h))},
+			{Value: &ir.Literal{Type: ir.TypString, Value: m.Scaling}},
+		}}},
+		&ir.CallStmt{Call: &ir.Call{Type: ir.TypVoid, Receiver: t.gc.RecvRef(), Func: &ir.Func{Name: m.DrawName}, Args: []ir.CallArg{{Value: ref(cr)}}}},
+	)
 	appendCall := &ir.Call{
-		Type: ir.TypDyn,
+		Type: cbList.Type,
 		Func: &ir.Func{Name: "append"},
 		Args: []ir.CallArg{{Value: cbList}, {Value: closure}},
 	}
@@ -185,9 +194,9 @@ func (t *gtk4Translator) emitCanvasCreate(id string) []ir.Stmt {
 		Func: &ir.Func{Name: "len"},
 		Args: []ir.CallArg{{Value: cbList}},
 	}
-	idx := nativeCall("int", &ir.Binary{Op: ast.BinSub, Left: lenCall, Right: &ir.Literal{Type: ir.TypInt, Value: "1"}})
+	idx := cScalar("int", &ir.Binary{Op: ast.BinSub, Left: lenCall, Right: &ir.Literal{Type: ir.TypInt, Value: "1"}})
 	widgetPtr := cgoCast("", daField) // unsafe.Pointer(m.<id>)
-	stmts = append(stmts, &ir.CallStmt{Call: nativeCall("sngl_drawing_area_set_draw", widgetPtr, idx)})
+	stmts = append(stmts, &ir.CallStmt{Call: nativeCall("sngl_drawing_area_set_draw", ir.TypVoid, widgetPtr, idx)})
 
 	return stmts
 }
@@ -198,20 +207,20 @@ func (t *gtk4Translator) emitCanvasCreate(id string) []ir.Stmt {
 // declared payload.
 func (t *gtk4Translator) attachCanvasClick(id, event string, handler ir.Expr) []ir.Stmt {
 	gesture := id + "Gesture"
-	t.fieldSink(gesture, "GtkGesture")
+	t.sinkField(gesture, "GtkGesture")
 	t.fieldIDs[gesture] = true
 	if t.invokerSink != nil && !strings.HasPrefix(id, "__n") {
 		t.invokerSink(gtkEventInvoker{IDLabel: id, SnglEvent: codegen.TriggerEventName(handler, event), FieldName: gesture, GTKSignal: "pressed", WidgetType: "GtkGesture"})
 	}
 
-	cbList := &ir.Ident{Name: "snglCallbacks", Type: ir.TypDyn}
-	closure := &ir.Ident{Name: fmt.Sprintf("func() { %s() }", t.gc.EvalExpr(handler)), Type: ir.TypDyn}
-	appendCall := &ir.Call{Type: ir.TypDyn, Func: &ir.Func{Name: "append"}, Args: []ir.CallArg{{Value: cbList}, {Value: closure}}}
+	cbList := snglCallbacksRef()
+	closure := goClosure(nil, &ir.CallStmt{Call: &ir.Call{Type: ir.TypVoid, Callee: handler}})
+	appendCall := &ir.Call{Type: cbList.Type, Func: &ir.Func{Name: "append"}, Args: []ir.CallArg{{Value: cbList}, {Value: closure}}}
 	lenCall := &ir.Call{Type: ir.TypInt, Func: &ir.Func{Name: "len"}, Args: []ir.CallArg{{Value: cbList}}}
-	idx := nativeCall("int", &ir.Binary{Op: ast.BinSub, Left: lenCall, Right: &ir.Literal{Type: ir.TypInt, Value: "1"}})
+	idx := cScalar("int", &ir.Binary{Op: ast.BinSub, Left: lenCall, Right: &ir.Literal{Type: ir.TypInt, Value: "1"}})
 	return []ir.Stmt{
 		&ir.Assign{Target: cbList, Op: ast.AssignSet, Value: appendCall},
-		&ir.Assign{Target: t.fieldRef(gesture), Op: ast.AssignSet, Value: nativeCall("sngl_connect_click", cgoCast("", t.fieldRef(id)), idx)},
+		&ir.Assign{Target: t.fieldRef(gesture), Op: ast.AssignSet, Value: nativeCall("sngl_connect_click", ir.NativePointerOf("GtkGesture"), cgoCast("", t.fieldRef(id)), idx)},
 	}
 }
 
@@ -243,4 +252,28 @@ func emitIRCanvasDraw(b *strings.Builder, cv *codegen.Canvas, gc *golang.GoIRCon
 		b.WriteByte('\n')
 	}
 	b.WriteByte('\n')
+}
+
+// goClosure is a Go closure a translator hands a host API: params, and a body
+// of statements, returning nothing.
+func goClosure(params []*ir.Param, body ...ir.Stmt) *ir.Lambda {
+	sig := &ir.FuncSig{Params: params, Return: ir.TypVoid}
+	return &ir.Lambda{Type: &ir.Type{Kind: ir.TypeFunc, Sig: sig}, Func: &ir.Func{Params: params, Return: ir.TypVoid, Block: body}}
+}
+
+// snglCallbacksRef is the trampoline registry the cgo scaffold declares,
+// `var snglCallbacks []func()`.
+func snglCallbacksRef() *ir.Ident {
+	return &ir.Ident{Name: "snglCallbacks", Type: ir.ListOf(&ir.Type{Kind: ir.TypeFunc, Sig: &ir.FuncSig{Return: ir.TypVoid}})}
+}
+
+// canvasFieldRef is the field a canvas, or a drawn image source, is held in,
+// which a redraw from any scope names: the drawing area, or the source's
+// handle.
+func (t *gtk4Translator) canvasFieldRef(m *canvasMeta) ir.Expr {
+	cType := "GtkDrawingArea"
+	if t.imageTagOf(m.ID) == imageDrawingTag {
+		cType = primitiveCType(imageDrawingTag)
+	}
+	return codegen.RecvFieldRef(t.gc.NodeRecvRef(m.ID), m.ID, ir.NativeGoNamed(widgetFieldGoType(cType, t.wrapped)))
 }

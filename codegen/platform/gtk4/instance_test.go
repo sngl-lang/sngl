@@ -1,9 +1,6 @@
 package gtk4
 
 import (
-	"os"
-	"os/exec"
-	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -43,7 +40,6 @@ window {
 // runs-the-output half, over the same lowering (see
 // codegen/platform/fyne/instance_test.go).
 func TestInstanceRecordIsPerRow(t *testing.T) {
-	skipWithoutGIR(t)
 	model := generateGTK4Model(t, loopComponentSrc)
 
 	for _, want := range []string{
@@ -72,24 +68,5 @@ func TestInstanceRecordIsPerRow(t *testing.T) {
 		}
 	}
 
-	// Under the main module, so gtk4rt resolves through the project's go.mod.
-	tmp, err := os.MkdirTemp(".", "_gtk4-inst-")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(tmp)
-	if err := os.WriteFile(filepath.Join(tmp, "model.go"), []byte(model), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	// The emission is `package main` without a main(), which links only under
-	// `sngl run`'s own scaffold.
-	if err := os.WriteFile(filepath.Join(tmp, "entry.go"), []byte("package main\n\nfunc main() {}\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	cmd := exec.Command("go", "build", "./...")
-	cmd.Dir = tmp
-	combined, buildErr := cmd.CombinedOutput()
-	if buildErr != nil {
-		t.Errorf("emitted Go failed to compile: %v\n--- output ---\n%s\n--- model.go ---\n%s", buildErr, combined, model)
-	}
+	buildGTK4Model(t, "gtk4-inst-", model)
 }

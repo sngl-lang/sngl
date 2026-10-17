@@ -52,6 +52,11 @@ import (
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
+	*modelState
+}
+
+// modelState is what every copy of a Model shares.
+type modelState struct {
 	totals         []int
 	visible__inst0 bool
 
@@ -60,7 +65,7 @@ type Model struct {
 
 // New creates a Model with default bind values.
 func New() Model {
-	m := Model{}
+	m := Model{&modelState{}}
 	m.totals = func() []int {
 		__out := make([]int, len([]int{1}))
 		for __i, __item := range []int{1} {
@@ -166,4 +171,4 @@ func main() {
 	}
 }
 -- run/go/bubbletea --
-pass sha256:83657f38717391fdf1291179cad4403f
+pass sha256:f75726014e7ab46d9f7bb3ccc53ed512

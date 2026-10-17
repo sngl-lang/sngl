@@ -75,11 +75,17 @@ func lowerSlotChildInstances(pkg *ir.Package, caps Features, opts Options) error
 	//
 	// By index, because lifting appends the components it synthesizes and
 	// each of their bodies is a view body with slots of its own.
+	written := len(pkg.Components)
 	for i := 0; i < len(pkg.Components); i++ {
 		if c := pkg.Components[i]; c != nil {
+			// What lifting synthesizes holds its #[construct] props as its own.
+			if i < written {
+				c.Stmts = st.constructSlots(c.Stmts)
+			}
 			st.liftSlotBodies(c.Stmts)
 		}
 	}
+	pkg.Body = st.constructSlots(pkg.Body)
 	st.liftSlotBodies(pkg.Body)
 	if !caps.InsertBefore {
 		return nil
@@ -169,9 +175,11 @@ func (st *slotChildSynth) convertible(n *ir.NodeInst) bool {
 func (st *slotChildSynth) synthesize(n *ir.NodeInst) *ir.NodeInst {
 	id := st.n
 	st.n++
+	// A member of the family of the node it renders, as any component is.
 	comp := &ir.Component{
 		Name:            "__child" + strconv.Itoa(id),
 		RuntimeInstance: true,
+		Family:          nodeFamily(n),
 	}
 
 	inst := &ir.NodeInst{AST: n.AST, Component: comp}
@@ -180,9 +188,13 @@ func (st *slotChildSynth) synthesize(n *ir.NodeInst) *ir.NodeInst {
 	// subtree and the free-value scan should not then see what it reads.
 	l := newLift(comp, inst)
 	st.liftHandlers(n, l, nil)
-	st.liftValues(n, l, handlerParams(n, boundWithin(n)))
+	local := handlerParams(n, boundWithin(n))
+	st.liftConstructProps(n, l, local)
+	st.liftValues(n, l, local)
 	for _, p := range comp.Props {
-		st.cells[p.Sym] = true
+		if !p.Construct {
+			st.cells[p.Sym] = true
+		}
 	}
 
 	comp.Stmts = []ir.Stmt{n}
@@ -194,21 +206,23 @@ func (st *slotChildSynth) synthesize(n *ir.NodeInst) *ir.NodeInst {
 // declares and the instantiation subscribes to.
 //
 // The body stays at the site it was written, so what it closes over is still
-// in scope; the event carries the host payload and whichever of bound (a
-// scoped slot's parameters) the body reads.
+// in scope; the event carries the host payload, whichever of bound (a scoped
+// slot's parameters) the body reads, and whichever variable the lifted
+// subtree binds itself -- a loop's, a local -- since the site does not bind it.
 func (st *slotChildSynth) liftHandlers(n any, l *lift, bound []*ir.Param) {
+	inner := varsWithin(n)
 	_ = ir.Walk(n, func(node ir.Node) error {
 		switch x := node.(type) {
 		case *ir.NodeInst:
 			if !isDrawShape(x) {
-				liftNodeHandlers(x, l, bound)
+				liftNodeHandlers(x, l, bound, inner)
 			}
 		case *ir.ErrorBoundary:
 			// A boundary's handler is a body written at the site like a
 			// node's, and a raise reaches it through Call.ResolvedHandler,
 			// which still names this handler once its body is the relay.
 			if x.Handler != nil {
-				liftHandler(x.Handler, l, bound)
+				liftHandler(x.Handler, l, bound, inner)
 			}
 		}
 		return nil
@@ -245,16 +259,47 @@ func handlerParams(n ir.Node, into map[ir.Symbol]bool) map[ir.Symbol]bool {
 	return into
 }
 
+// liftConstructProps makes each #[construct] prop of a primitive under n that
+// reads a value from outside n a #[construct] prop of the component, the
+// expression lifted whole so the prop keeps the type the checker vetted for
+// comparison. The primitive cannot be handed a new value once built, so
+// neither can the instance holding it: a change rebuilds the instance
+// (reuseOrCreate) where any other prop is patched. A component instance under
+// n rebuilds itself where it stands, and a prop reading what n binds is left
+// to liftValues.
+func (st *slotChildSynth) liftConstructProps(n *ir.NodeInst, l *lift, local map[ir.Symbol]bool) {
+	_ = ir.Walk(n, func(node ir.Node) error {
+		x, ok := node.(*ir.NodeInst)
+		if !ok || isInstanceNode(x) {
+			return nil
+		}
+		for i, a := range x.Props {
+			if a.Name == "" || !propIsConstruct(x.Component, a.Name) || !st.readsFree(a.Value, local) || readsAny(a.Value, local) {
+				continue
+			}
+			t := propValueType(x.Component, a.Name)
+			p := l.prop("construct#"+strconv.Itoa(l.uniq), t, a.Value)
+			l.uniq++
+			l.comp.Props[len(l.comp.Props)-1].Construct = true
+			local[p] = true
+			x.Props[i].Value = &ir.Ident{Name: p.Name, Type: t, Sym: p}
+		}
+		return nil
+	})
+}
+
 // liftNodeHandlers is liftHandlers for host's own handlers alone.
-func liftNodeHandlers(host *ir.NodeInst, l *lift, bound []*ir.Param) {
+func liftNodeHandlers(host *ir.NodeInst, l *lift, bound []*ir.Param, inner []ir.Symbol) {
 	for i := range host.Handlers {
-		liftHandler(&host.Handlers[i], l, bound)
+		liftHandler(&host.Handlers[i], l, bound, inner)
 	}
 }
 
 // liftHandler makes h an event the component declares, the body staying at the
-// site, and leaves the relay that fires it in h's place.
-func liftHandler(h *ir.EventHandler, l *lift, bound []*ir.Param) {
+// site, and leaves the relay that fires it in h's place. A variable of inner
+// the body reads is bound where the relay fires, so the event carries it and
+// the body reads it as a parameter of its own.
+func liftHandler(h *ir.EventHandler, l *lift, bound []*ir.Param, inner []ir.Symbol) {
 	if h.Func == nil || len(h.Func.Block) == 0 {
 		return
 	}
@@ -273,6 +318,12 @@ func liftHandler(h *ir.EventHandler, l *lift, bound []*ir.Param) {
 	}
 	for _, p := range reads {
 		emit.Args = append(emit.Args, ir.CallArg{Value: &ir.Ident{Name: p.Name, Type: p.Type, Sym: p}})
+	}
+	for _, v := range symsRead(h.Func.Block, inner) {
+		p := &ir.Param{Name: name + "_" + v.SymName(), Type: v.SymType()}
+		rebind(h.Func.Block, v, p)
+		reads = append(reads, p)
+		emit.Args = append(emit.Args, ir.CallArg{Value: &ir.Ident{Name: v.SymName(), Type: v.SymType(), Sym: v}})
 	}
 	decl := &ir.EventDecl{Name: name}
 	lifted := h.Func
@@ -419,7 +470,31 @@ func (st *slotChildSynth) readsReactiveState(c *ir.Call) bool {
 	}
 	reads := map[*ir.Var]bool{}
 	gatherFuncReads(c.Func, st.reactive, reads, map[*ir.Func]bool{})
-	return len(reads) > 0
+	return len(reads) > 0 || st.readsCellProps(c.Func, map[*ir.Func]bool{})
+}
+
+// readsCellProps reports whether fn, or a function it calls, reads a prop of a
+// component built at run time (cells): a method of the instance reading its
+// own props, which a call moved into a lifted body could no longer see.
+func (st *slotChildSynth) readsCellProps(fn *ir.Func, visited map[*ir.Func]bool) bool {
+	if fn == nil || visited[fn] || len(st.cells) == 0 {
+		return false
+	}
+	visited[fn] = true
+	found := false
+	_ = ir.Walk(fn.Block, func(n ir.Node) error {
+		switch x := n.(type) {
+		case *ir.Ident:
+			found = x.Sym != nil && st.cells[x.Sym]
+		case *ir.Call:
+			found = st.readsCellProps(x.Func, visited)
+		}
+		if found {
+			return ir.SkipAll
+		}
+		return nil
+	})
+	return found
 }
 
 // liftableSym reports whether a symbol read inside a node is one declared
@@ -435,4 +510,87 @@ func liftableSym(s ir.Symbol) bool {
 		return !v.IsConst
 	}
 	return false
+}
+
+// readsFree reports whether e reads what liftValues would make a prop: a
+// binding declared outside local, or a call reading state.
+func (st *slotChildSynth) readsFree(e ir.Expr, local map[ir.Symbol]bool) bool {
+	found := false
+	_ = ir.WalkExprs(e, func(x ir.Expr) error {
+		switch y := x.(type) {
+		case *ir.Ident:
+			found = y.Sym != nil && liftableSym(y.Sym) && !local[y.Sym]
+		case *ir.Call:
+			found = st.readsReactiveState(y)
+		case *ir.Lambda, *ir.Closure:
+			return ir.SkipDir
+		}
+		if found {
+			return ir.SkipAll
+		}
+		return nil
+	})
+	return found
+}
+
+// varsWithin is each variable n's view binds -- a loop's, a local -- in the
+// order written. A handler's or a lambda's own locals are not among them:
+// they are bound in the body that moves to the site with them.
+func varsWithin(n any) []ir.Symbol {
+	var stmts []ir.Stmt
+	switch x := n.(type) {
+	case []ir.Stmt:
+		stmts = x
+	case ir.Stmt:
+		stmts = []ir.Stmt{x}
+	}
+	var out []ir.Symbol
+	ir.WalkView(stmts, func(s ir.Stmt) bool {
+		switch x := s.(type) {
+		case *ir.For:
+			if x.KeySym != nil {
+				out = append(out, x.KeySym)
+			}
+			if x.ValueSym != nil {
+				out = append(out, x.ValueSym)
+			}
+		case *ir.LocalVar:
+			if x.Sym != nil {
+				out = append(out, x.Sym)
+			}
+		}
+		return true
+	})
+	return out
+}
+
+// symsRead is each of syms that stmts reads, in syms' order.
+func symsRead(stmts []ir.Stmt, syms []ir.Symbol) []ir.Symbol {
+	if len(syms) == 0 {
+		return nil
+	}
+	read := map[ir.Symbol]bool{}
+	_ = ir.WalkExprs(stmts, func(e ir.Expr) error {
+		if id, ok := e.(*ir.Ident); ok && id.Sym != nil {
+			read[id.Sym] = true
+		}
+		return nil
+	})
+	var out []ir.Symbol
+	for _, s := range syms {
+		if read[s] {
+			out = append(out, s)
+		}
+	}
+	return out
+}
+
+// rebind makes every read of from in stmts a read of to.
+func rebind(stmts []ir.Stmt, from ir.Symbol, to *ir.Param) {
+	_ = ir.WalkExprs(stmts, func(e ir.Expr) error {
+		if id, ok := e.(*ir.Ident); ok && id.Sym == from {
+			id.Sym, id.Name = to, to.Name
+		}
+		return nil
+	})
 }

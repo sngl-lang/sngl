@@ -64,6 +64,11 @@ import (
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
+	*modelState
+}
+
+// modelState is what every copy of a Model shares.
+type modelState struct {
 	shown      bool
 	got__inst0 string
 	__focusID  int
@@ -73,7 +78,7 @@ type Model struct {
 
 // New creates a Model with default bind values.
 func New() Model {
-	m := Model{}
+	m := Model{&modelState{}}
 	m.shown = true
 	m.got__inst0 = ""
 	m.__focusID = 0
@@ -420,6 +425,9 @@ body { font-family: system-ui, sans-serif; }
 </span>
 
 <script>
+window.__snglErrors = [];
+addEventListener("error", (e) => window.__snglErrors.push(String(e.message)));
+addEventListener("unhandledrejection", (e) => window.__snglErrors.push(String(e.reason?.message ?? e.reason)));
 window.__sngl_markup = Array.from(document.body.childNodes)
   .filter((n) => n.nodeName !== "SCRIPT").map((n) => n.cloneNode(true));
 window.__sngl_reset = () => {
@@ -438,14 +446,11 @@ window.__sngl_boot = () => {
   if (typeof window !== "undefined") {
     window.__sngl_state = state;
   }
-  function testBuilds(t, c) {
-    t.assert(c.shown);
-  }
   function panel_tag__inst0(state2, x) {
     return "<" + String(x) + ">";
   }
   if (typeof window !== "undefined") {
-    Object.assign(window, { testBuilds, panel_tag__inst0 });
+    Object.assign(window, { panel_tag__inst0 });
   }
   function String(v) {
     return "" + v;
@@ -466,10 +471,10 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:846e44a4337a394a2a7379266cdb4393
+pass sha256:13b35403f265d51bfad19d961df96b39
 -- run/go/fyne --
 pass sha256:c626544d0949868116ee1b956f1e1a7f
 -- run/kotlin/android --
 pass sha256:12c1e50661174edb383339badc838bc2
 -- run/none/html --
-pass sha256:d5fd8994baeca5d947c3e70095e6a381
+pass sha256:59f292d128828d21e1c77d941bccf84f

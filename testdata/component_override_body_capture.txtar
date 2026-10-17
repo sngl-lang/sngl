@@ -46,7 +46,7 @@ component outer(label = "") node {
     text(value="base {label} {count}")
 }
 
-component outer[html.platform] {
+component outer[html.platform](label) {
     var extra = 5
 
     component inner(step = 1) node {
@@ -69,7 +69,7 @@ component outer[html.platform] {
     }
 }
 
-component outer[bubbletea.platform] {
+component outer[bubbletea.platform](label) {
     var extra = 5
 
     component inner(step = 1) node {
@@ -109,6 +109,11 @@ import (
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
+	*modelState
+}
+
+// modelState is what every copy of a Model shares.
+type modelState struct {
 	count__inst0       int
 	extra__inst0       int
 	runs__inst0__inst0 int
@@ -121,7 +126,7 @@ type Model struct {
 
 // New creates a Model with default bind values.
 func New() Model {
-	m := Model{}
+	m := Model{&modelState{}}
 	m.count__inst0 = 0
 	m.extra__inst0 = 5
 	m.runs__inst0__inst0 = 0
@@ -413,6 +418,6 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:2f21bfc8295c4d2092ed45746f73f860
+pass sha256:601431fedb50e47a032e2b87818bf0a4
 -- run/none/html --
 pass sha256:c0e027384958b52ee1282ec734416397

@@ -24,13 +24,13 @@ func testSubtestsGetSnapshots(t Test, c state) {
     c.count = 10
     t.assert(c.count == 10)
 
-    t.test("subtest sees parent state", func(t, c) {
+    t.test("subtest sees parent state", func(t Test, c state) {
         t.assert(c.count == 10)
         c.count = 99
         t.assert(c.count == 99)
     })
 
-    t.test("another subtest also sees parent state", func(t, c) {
+    t.test("another subtest also sees parent state", func(t Test, c state) {
         t.assert(c.count == 10)
     })
 }

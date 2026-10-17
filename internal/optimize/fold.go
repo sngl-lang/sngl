@@ -65,6 +65,9 @@ func foldExpr(e ir.Expr, ctx *evalCtx) ir.Expr {
 		if lit := settledNullTest(x); lit != nil {
 			return lit
 		}
+		if settled := settledLogic(x); settled != nil {
+			return settled
+		}
 	case *ir.Unary:
 		// Reference operations (&x, *p) are never const — the underlying
 		// storage may be mutated through aliases, and `&literal` is not a
@@ -212,7 +215,7 @@ func foldExpr(e ir.Expr, ctx *evalCtx) ir.Expr {
 		if x.Func != nil {
 			x.Func.Block = foldStmts(x.Func.Block, ctx)
 		}
-	case *ir.ContextRead:
+	case *ir.ContextRead, *ir.SlotEmpty:
 		// No subexpressions.
 	default:
 		panic(fmt.Sprintf("foldExpr: unhandled expr %T", x))
@@ -264,6 +267,7 @@ func foldStmts(stmts []ir.Stmt, ctx *evalCtx) []ir.Stmt {
 					branch = ifs.Body
 				}
 				branch = foldStmts(branch, ctx)
+				branch = ir.HandOnInstances(ifs, branch)
 				if ifs.FromTernary {
 					out = initTernaryTemp(out, branch)
 				} else {
@@ -464,7 +468,7 @@ func putsValueInOption(conv *ir.Conversion) bool {
 	if src == nil {
 		return false
 	}
-	return src.Kind != ir.TypeNull && src.Kind != ir.TypeOption && src.Kind != ir.TypeDyn
+	return src.Kind != ir.TypeNull && src.Kind != ir.TypeOption
 }
 
 // unwrappedOptionOperand answers `float(option[float](2))` with `float(2)`,
@@ -495,8 +499,8 @@ func isNullOperand(e ir.Expr) bool {
 }
 
 // settledNullTest folds `x != null` and `x == null` where the type of x says
-// the answer: everything in SNGL is non-nullable but `option[T]`, the `null`
-// literal itself, and `dyn`, which says nothing about what it holds.
+// the answer: everything in SNGL is non-nullable but `option[T]` and the
+// `null` literal itself.
 //
 // The test is written by whoever declared the option and answered by whoever
 // filled it in, and for a component prop those are two different authors. A
@@ -537,11 +541,52 @@ func settledNullTest(x *ir.Binary) *ir.Literal {
 	return &ir.Literal{Type: ir.TypBool, Value: strconv.FormatBool(x.Op == ast.BinNeq)}
 }
 
+// settledLogic answers `&&` and `||` where one operand folded to a bool and
+// the other did not: a literal that cannot decide the answer leaves the other
+// operand as the whole of it (`x && true` is `x`), and one that decides it is
+// the answer, provided what it replaces is never evaluated or is droppable --
+// `false && x` never reads x, `x && false` does.
+func settledLogic(x *ir.Binary) ir.Expr {
+	var decides bool
+	switch x.Op {
+	case ast.BinAnd:
+		decides = false
+	case ast.BinOr:
+		decides = true
+	default:
+		return nil
+	}
+	if b, ok := boolLiteral(x.Left); ok {
+		if b == decides {
+			return x.Left
+		}
+		return x.Right
+	}
+	if b, ok := boolLiteral(x.Right); ok {
+		if b != decides {
+			return x.Left
+		}
+		if droppable(x.Left) {
+			return x.Right
+		}
+	}
+	return nil
+}
+
+func boolLiteral(e ir.Expr) (bool, bool) {
+	lit, ok := e.(*ir.Literal)
+	if !ok || lit.Type == nil || lit.Type.Kind != ir.TypeBool {
+		return false, false
+	}
+	b, err := strconv.ParseBool(lit.Value)
+	return b, err == nil
+}
+
 // alwaysPresent reports whether a value of t is necessarily there, so that
 // comparing one against null has an answer the type already holds.
 //
 // An allowlist, and that direction is the point: the kinds that *can* be
-// absent are not a closed set -- `option`, `dyn` and a func null converts to,
+// absent are not a closed set -- `option` and a func null converts to,
 // but also an unbound type parameter, a foreign handle that is a host pointer,
 // and a `remote` still in flight. Listed the other way round, each new kind
 // would join the fold by default and be wrong there in silence.

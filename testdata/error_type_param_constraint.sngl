@@ -1,6 +1,7 @@
 // What a type parameter's constraint refuses.
 
 import build "sngl:build"
+import family "sngl:family"
 import . "sngl:ui"
 
 struct User {
@@ -62,7 +63,10 @@ component item[M struct {
 component shelf[M struct {
     label string
     name  string
-}](items ...component tagged[M]) node {}
+}](items ...component tagged[M]) node {
+    #[family.crosses]
+    items
+}
 
 // A field naming another parameter is measured with what that one is bound
 // to.

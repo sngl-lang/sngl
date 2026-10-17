@@ -8,7 +8,7 @@ struct Row {
     title string
 }
 
-component table(rows list[Row], cell component(Row)) node {
+component table(rows list[Row], cell list[component(Row)]) node {
     vbox {
         for var r = rows {
             cell(r)
@@ -16,7 +16,7 @@ component table(rows list[Row], cell component(Row)) node {
     }
 }
 
-component grid(rows list[Row], row component(Row, int)) node {
+component grid(rows list[Row], row list[component(Row, int)]) node {
     vbox {
         for var i, r = rows {
             row(r, i)

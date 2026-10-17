@@ -39,14 +39,14 @@ func testIRContext(irPkg *ir.Package, fn *ir.Func, methodFields map[string]bool,
 	// Package state and the funcs reading it are Model members, and a test
 	// holds its Model as the instance rather than as `m`.
 	ctx.StateReceiver = instance
-	gc := NewIRContext(ctx)
+	var params []string
 	for _, p := range fn.Params {
-		gc.Ctx.Locals[p.Name] = true
+		params = append(params, p.Name)
 		if p.Type != nil && p.Type.Kind == ir.TypeComponent {
-			gc.Ctx.RawFieldAccess[p.Name] = true
+			ctx.RawFieldAccess[p.Name] = true
 		}
 	}
-	return gc
+	return NewIRContext(ctx.WithLocals(params...))
 }
 
 // lowerTestStmt translates one statement of a SNGL test body to Go.
@@ -242,8 +242,8 @@ func lowerTestSetContext(c *ir.Call, gc *GoIRContext) ([]string, bool) {
 // field). Lowers to `<receiver>.<id><Event>()`, which platform codegen
 // (gtk4 today) surfaces as a method on *Model that fires the matching
 // widget signal / event so the test exercises the real bridge. One copy of a
-// node a loop rendered, `c.row[1].change(true)`, is its invoker's `At`
-// variant, handed the index first.
+// node loops rendered, `c.cell[1][0].click()`, is its invoker's `At`
+// variant, handed the copy's key first.
 func lowerEventTrigger(call *ir.CallStmt, gc *GoIRContext) (string, bool) {
 	c := call.Call
 	tt, ok := codegen.EventTriggerTarget(c)
@@ -255,9 +255,9 @@ func lowerEventTrigger(call *ir.CallStmt, gc *GoIRContext) (string, bool) {
 	// takes what the widget would have reported, which is what the event's
 	// parameters are.
 	var args []string
-	if tt.Index != nil {
+	if key := tt.Key(); key != nil {
 		methodName = codegen.InvokerAt(methodName)
-		args = append(args, gc.EvalExpr(tt.Index))
+		args = append(args, gc.EvalExpr(key))
 	}
 	for _, a := range c.Args {
 		args = append(args, gc.EvalExpr(a.Value))
@@ -350,8 +350,9 @@ func LowerTestFile(pkg string, irPkg *ir.Package, fns []*ir.Func, suffixes []str
 			body.WriteString("\tsetCurrentTestModel(" + instance + ")\n")
 		}
 		body.WriteString("\t_ = " + instance + "\n")
-		gc := testIRContext(irPkg, fn, methodFields, instance)
-		for _, s := range fn.Block {
+		block, fields := codegen.LowerRefNullTests(codegen.LowerInstanceReads(fn.Block, irPkg), methodFields)
+		gc := testIRContext(irPkg, fn, fields, instance)
+		for _, s := range block {
 			for _, line := range lowerTestStmt(s, gc) {
 				fmt.Fprintf(&body, "\t%s\n", line)
 			}

@@ -79,6 +79,11 @@ type Tab__record struct {
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
+	*modelState
+}
+
+// modelState is what every copy of a Model shares.
+type modelState struct {
 	idx                 int
 	changed             int
 	__focusID           int
@@ -89,7 +94,7 @@ type Model struct {
 
 // New creates a Model with default bind values.
 func New() Model {
-	m := Model{}
+	m := Model{&modelState{}}
 	m.idx = 0
 	m.changed = -1
 	m.__focusID = 0
@@ -195,6 +200,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				for k, t__r0 := range []Tab__record{Tab__record{Label: "Overview", Disabled: false, __id: 0}, Tab__record{Label: "Details", Disabled: false, __id: 1}, Tab__record{Label: "Settings", Disabled: true, __id: 2}} {
 					_ = k
 					_ = t__r0
+					var __lt0 string
+					_ = __lt0
+					if k == m.idx {
+						__lt0 = "bold"
+					} else {
+						__lt0 = "normal"
+					}
 					if m.__focusLoop0_cursor == __focusPos0 {
 						m.idx = k
 						m.changed = k
@@ -603,6 +615,12 @@ import (
 	"duckfam.us/sngl/pkg/go/gtk4rt"
 )
 
+type Measurement struct {
+	Px  float64
+	Em  float64
+	Rem float64
+}
+
 type Tab__record struct {
 	Label    string
 	Disabled bool
@@ -978,6 +996,9 @@ body { font-family: system-ui, sans-serif; }
 </div>
 
 <script>
+window.__snglErrors = [];
+addEventListener("error", (e) => window.__snglErrors.push(String(e.message)));
+addEventListener("unhandledrejection", (e) => window.__snglErrors.push(String(e.reason?.message ?? e.reason)));
 window.__sngl_markup = Array.from(document.body.childNodes)
   .filter((n) => n.nodeName !== "SCRIPT").map((n) => n.cloneNode(true));
 window.__sngl_reset = () => {
@@ -994,16 +1015,6 @@ window.__sngl_boot = () => {
   var state = { idx: 0, changed: -1 };
   if (typeof window !== "undefined") {
     window.__sngl_state = state;
-  }
-  function testTabsSelectedMutates(t, c) {
-    t.assert(c.idx === 0);
-    c.idx = 2;
-    t.assert(c.idx === 2);
-    c.idx = 1;
-    t.assert(c.idx === 1);
-  }
-  if (typeof window !== "undefined") {
-    Object.assign(window, { testTabsSelectedMutates });
   }
   function __cf___child0(props) {
     const __root = document.createElement("div");
@@ -1026,16 +1037,14 @@ window.__sngl_boot = () => {
     }
     function __set___p1(__v) {
       __prop___p1 = __v;
-      __n0.setAttribute("style", "border-radius:0px;border:none;cursor:pointer;padding-left:16px;padding-right:16px;padding-top:8px;padding-bottom:8px");
+      __n0.setAttribute("style", "background-color:rgba(0,0,0,0);border-radius:0px;border:none;cursor:pointer;padding-left:16px;padding-right:16px;padding-top:8px;padding-bottom:8px");
       __n0.style.setProperty("border-bottom", __prop___p1 === __prop___p2 ? "2px solid currentColor" : "2px solid transparent");
-      __n0.style.setProperty("background-color", _snglStyleColor(false ? { r: 0, g: 0, b: 0, a: 20 } : { r: 0, g: 0, b: 0, a: 0 }));
       __n0.style.setProperty("font-weight", _snglStyleKeyword(__prop___p1 === __prop___p2 ? "bold" : "normal"));
     }
     function __set___p2(__v) {
       __prop___p2 = __v;
-      __n0.setAttribute("style", "border-radius:0px;border:none;cursor:pointer;padding-left:16px;padding-right:16px;padding-top:8px;padding-bottom:8px");
+      __n0.setAttribute("style", "background-color:rgba(0,0,0,0);border-radius:0px;border:none;cursor:pointer;padding-left:16px;padding-right:16px;padding-top:8px;padding-bottom:8px");
       __n0.style.setProperty("border-bottom", __prop___p1 === __prop___p2 ? "2px solid currentColor" : "2px solid transparent");
-      __n0.style.setProperty("background-color", _snglStyleColor(false ? { r: 0, g: 0, b: 0, a: 20 } : { r: 0, g: 0, b: 0, a: 0 }));
       __n0.style.setProperty("font-weight", _snglStyleKeyword(__prop___p1 === __prop___p2 ? "bold" : "normal"));
     }
     function __set___on0(__v) {
@@ -1044,9 +1053,8 @@ window.__sngl_boot = () => {
     let __n0 = document.createElement("button");
     __n0.textContent = __prop___p0.label;
     __n0.disabled = __prop___p0.disabled;
-    __n0.setAttribute("style", "border-radius:0px;border:none;cursor:pointer;padding-left:16px;padding-right:16px;padding-top:8px;padding-bottom:8px");
+    __n0.setAttribute("style", "background-color:rgba(0,0,0,0);border-radius:0px;border:none;cursor:pointer;padding-left:16px;padding-right:16px;padding-top:8px;padding-bottom:8px");
     __n0.style.setProperty("border-bottom", __prop___p1 === __prop___p2 ? "2px solid currentColor" : "2px solid transparent");
-    __n0.style.setProperty("background-color", _snglStyleColor(false ? { r: 0, g: 0, b: 0, a: 20 } : { r: 0, g: 0, b: 0, a: 0 }));
     __n0.style.setProperty("font-weight", _snglStyleKeyword(__prop___p1 === __prop___p2 ? "bold" : "normal"));
     __n0.setAttribute("role", "tab");
     __n0.addEventListener("click", () => {
@@ -1190,11 +1198,6 @@ window.__sngl_boot = () => {
       }
     }
   }
-  function _snglStyleColor(c) {
-    if (typeof c === "string") return c;
-    if (c.a < 255) return "rgba(" + c.r + "," + c.g + "," + c.b + "," + c.a / 255 + ")";
-    return "#" + [c.r, c.g, c.b].map((v) => v.toString(16).padStart(2, "0")).join("");
-  }
   function _snglStyleKeyword(m) {
     return m.replace(/[A-Z]/g, (c) => "-" + c.toLowerCase());
   }
@@ -1208,12 +1211,22 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:af7b9e3b6c84b1cb2b6f28bed74dfaab
+pass sha256:440f71bab44e313d99019b4493bee3d2
 -- run/go/fyne --
 pass sha256:1dfc6033a56c43fa2e732b715b4cf180
 -- run/go/gtk4 --
-pass sha256:103dcac124b54cd5bafd2bceb0d3b41a
+pass sha256:c95d7782724c207421aa70000189cfe3
 -- run/kotlin/android --
 pass sha256:225a36a54547a35ba9dcf3b85ffb4903
 -- run/none/html --
-pass sha256:5462306a55a5206695fca38b35d8914c
+pass sha256:43294f1a77359bfce09eced0c9475e59
+-- testrun/html/none/component_tabs.sngl/main/1 --
+sha256:e9abdb3860afca2aa478e63581a6cce4
+{
+  "results": [
+    {
+      "Desc": "TabsSelectedMutates",
+      "Passed": true
+    }
+  ]
+}

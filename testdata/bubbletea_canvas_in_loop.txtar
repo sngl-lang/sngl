@@ -81,6 +81,11 @@ type Style struct {
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
+	*modelState
+}
+
+// modelState is what every copy of a Model shares.
+type modelState struct {
 	sizes               []float64
 	big__inst0          map[string]bool
 	visible__inst0      bool
@@ -92,7 +97,7 @@ type Model struct {
 
 // New creates a Model with default bind values.
 func New() Model {
-	m := Model{}
+	m := Model{&modelState{}}
 	m.sizes = []float64{1.0, 6.0}
 	m.big__inst0 = map[string]bool{}
 	m.visible__inst0 = true
@@ -146,6 +151,18 @@ func (m Model) __canvasTransmit() tea.Cmd {
 			return ctx.Result()
 		}
 		__ctb.WriteString(tui.KittyTransmit(16, 8, 1|(__canvasAt0+1)<<16, __canvasRaster0))
+		var __lt0 float64
+		_ = __lt0
+		if func() bool {
+			if __v, __ok := m.big__inst0[fmt.Sprint(__copy0)]; __ok {
+				return __v
+			}
+			return false
+		}() {
+			__lt0 = (s * 2.0)
+		} else {
+			__lt0 = s
+		}
 	}
 	if __ctb.Len() == 0 {
 		return nil
@@ -534,6 +551,6 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:7f34783a4ef137da2fa8edb11bf23748
+pass sha256:df1c59b2256f19883dcd976a61adfaad
 -- run/none/html --
 pass sha256:ea39a50a9fa2f07c2daa74be7f09432c

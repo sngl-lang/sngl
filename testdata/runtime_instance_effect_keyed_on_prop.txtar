@@ -85,6 +85,11 @@ type ErrorEvent struct {
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
+	*modelState
+}
+
+// modelState is what every copy of a Model shares.
+type modelState struct {
 	items               []string
 	tag                 string
 	log                 string
@@ -102,7 +107,7 @@ type Model struct {
 
 // New creates a Model with default bind values.
 func New() Model {
-	m := Model{}
+	m := Model{&modelState{}}
 	m.items = []string{"a"}
 	m.tag = "x"
 	m.log = ""
@@ -956,7 +961,7 @@ package test.sngl.app
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
-import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performTextReplacement
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -977,7 +982,7 @@ class MainScreenTest {
         @Suppress("UNUSED_VARIABLE") val composeTestRule = composeRule
         composeRule.setContent { MainScreen(c) }
         org.junit.Assert.assertTrue("(c.log == \"ax \")", (c.log == "ax "))
-        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("bump")).performClick(); composeTestRule.waitForIdle()
+        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("bump")).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick); composeTestRule.waitForIdle()
         org.junit.Assert.assertTrue("(c.log == \"ax ay \")", (c.log == "ax ay "))
     }
 
@@ -1003,6 +1008,9 @@ body { font-family: system-ui, sans-serif; }
 </div>
 
 <script>
+window.__snglErrors = [];
+addEventListener("error", (e) => window.__snglErrors.push(String(e.message)));
+addEventListener("unhandledrejection", (e) => window.__snglErrors.push(String(e.reason?.message ?? e.reason)));
 window.__sngl_markup = Array.from(document.body.childNodes)
   .filter((n) => n.nodeName !== "SCRIPT").map((n) => n.cloneNode(true));
 window.__sngl_reset = () => {
@@ -1020,14 +1028,6 @@ window.__sngl_boot = () => {
   state.bumpClick = () => $0.click();
   if (typeof window !== "undefined") {
     window.__sngl_state = state;
-  }
-  function testRemount(t, c) {
-    t.assert(c.log === "ax ");
-    c.bump();
-    t.assert(c.log === "ax ay ");
-  }
-  if (typeof window !== "undefined") {
-    Object.assign(window, { testRemount });
   }
   function __cf_Watch(props) {
     const __root = document.createElement("div");
@@ -1177,12 +1177,12 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:1a6380c2fdc9cea991f156c6db37aee7
+pass sha256:b1e9385cab7579bf0d31d060d86aab57
 -- run/go/fyne --
 pass sha256:fa84a985706a61bd761cc6a1ba79738e
 -- run/go/gtk4 --
 pass sha256:1ebfd59070656596e6250e4256983f3e
 -- run/kotlin/android --
-pass sha256:dd711902570959e8b3a99529556c5a24
+pass sha256:db98ec05be1c3ee4879c4059077a57fc
 -- run/none/html --
-pass sha256:f2c0f1c484d17c6294e6e9ece5f3c129
+pass sha256:cb857a80397f3eaaf4a67fd8d8bb8769

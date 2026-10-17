@@ -10,24 +10,35 @@
 
 import . "sngl:ui"
 import build "sngl:build"
+import family "sngl:family"
 
 // A container that is not itself a member: its rest slot names the family
 // it hosts.
-component document(children ...component block) node {}
+component document(children ...component block) node {
+    #[family.crosses]
+    children
+}
 
 // A member that hosts a different family — the rich-text case the mechanism
 // was generalised for.
-component para(children ...component inline) block {}
+component para(children ...component inline) block {
+    #[family.crosses]
+    children
+}
 
 // A member with no slot hosts nothing.
 component bold(weight int) inline {}
 
 // A member whose slot names no family hosts its own, so this holds inlines.
-component span(children ...component) inline {}
+component span(children ...component) inline {
+    children
+}
 
 // `node` is a family like any other: naming it in a slot says the same thing as
 // naming nothing there, because that is the family this component belongs to.
-component plain(children ...component node) node {}
+component plain(children ...component node) node {
+    children
+}
 
 component block build.family
 

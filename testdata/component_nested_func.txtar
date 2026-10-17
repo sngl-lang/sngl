@@ -98,6 +98,11 @@ type ErrorEvent struct {
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
+	*modelState
+}
+
+// modelState is what every copy of a Model shares.
+type modelState struct {
 	log                 string
 	total               int
 	__effect0_live      []bool
@@ -111,7 +116,7 @@ type Model struct {
 
 // New creates a Model with default bind values.
 func New() Model {
-	m := Model{}
+	m := Model{&modelState{}}
 	m.log = ""
 	m.total = 0
 	m.__effect0_live = []bool{}
@@ -749,6 +754,9 @@ body { font-family: system-ui, sans-serif; }
 </span>
 
 <script>
+window.__snglErrors = [];
+addEventListener("error", (e) => window.__snglErrors.push(String(e.message)));
+addEventListener("unhandledrejection", (e) => window.__snglErrors.push(String(e.reason?.message ?? e.reason)));
 window.__sngl_markup = Array.from(document.body.childNodes)
   .filter((n) => n.nodeName !== "SCRIPT").map((n) => n.cloneNode(true));
 window.__sngl_reset = () => {
@@ -774,9 +782,6 @@ window.__sngl_boot = () => {
   }
   function main_outer(state2, a) {
     return outer__sum(a);
-  }
-  function testEachNestedFuncRunsUnderItsOwnBody(t, c) {
-    t.assert(c.total === 22);
   }
   function step__mark(k) {
     state.log = state.log + "!";
@@ -806,7 +811,7 @@ window.__sngl_boot = () => {
     __n0.textContent = state.log + String(state.total);
   }
   if (typeof window !== "undefined") {
-    Object.assign(window, { main_step, main_reset, main_outer, testEachNestedFuncRunsUnderItsOwnBody, step__mark, reset__mark, outer__sum__note, outer__sum, __effect0_mount });
+    Object.assign(window, { main_step, main_reset, main_outer, step__mark, reset__mark, outer__sum__note, outer__sum, __effect0_mount });
   }
   var __effect0_live = [];
   var __effect0_desired = [];
@@ -863,7 +868,7 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:02b945e591a0a0f07997ec1684216b00
+pass sha256:5884e4fac832464b71fcce1014ca5f43
 -- run/go/fyne --
 pass sha256:5a451ff43b82fd75725f5b5433509613
 -- run/go/gtk4 --
@@ -871,4 +876,14 @@ pass sha256:bd14a27ec9f6475fe665ba06bed44107
 -- run/kotlin/android --
 pass sha256:5dd1d9c1e179197ee72ad3a5a40ec53a
 -- run/none/html --
-pass sha256:a88671f440221b067a627521c800f0ed
+pass sha256:4b96a9e02827b945d6c8abf382f64b38
+-- testrun/html/none/component_nested_func.sngl/main/1 --
+sha256:febabfc5e4a3a38bccbcf1a4e8be823d
+{
+  "results": [
+    {
+      "Desc": "EachNestedFuncRunsUnderItsOwnBody",
+      "Passed": true
+    }
+  ]
+}

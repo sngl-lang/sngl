@@ -61,6 +61,11 @@ import (
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
+	*modelState
+}
+
+// modelState is what every copy of a Model shares.
+type modelState struct {
 	name      string
 	__focusID int
 
@@ -71,7 +76,7 @@ type Model struct {
 
 // New creates a Model with default bind values.
 func New() Model {
-	m := Model{}
+	m := Model{&modelState{}}
 	m.name = "World"
 	m.__focusID = 0
 	m.widget0 = textinput.New()
@@ -488,6 +493,9 @@ body { font-family: system-ui, sans-serif; }
 </div>
 
 <script>
+window.__snglErrors = [];
+addEventListener("error", (e) => window.__snglErrors.push(String(e.message)));
+addEventListener("unhandledrejection", (e) => window.__snglErrors.push(String(e.reason?.message ?? e.reason)));
 window.__sngl_markup = Array.from(document.body.childNodes)
   .filter((n) => n.nodeName !== "SCRIPT").map((n) => n.cloneNode(true));
 window.__sngl_reset = () => {
@@ -504,16 +512,6 @@ window.__sngl_boot = () => {
   var state = { name: "World" };
   if (typeof window !== "undefined") {
     window.__sngl_state = state;
-  }
-  function testInputValueMutates(t, c) {
-    t.assert(c.name === "World");
-    c.name = "SNGL";
-    t.assert(c.name === "SNGL");
-    c.name = c.name + "!";
-    t.assert(c.name === "SNGL!");
-  }
-  if (typeof window !== "undefined") {
-    Object.assign(window, { testInputValueMutates });
   }
   var __n0 = document.querySelector('[data-sngl-id="__n0"]');
   var __n1 = document.querySelector('[data-sngl-id="__n1"]');
@@ -538,7 +536,7 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:844dca6c3b8c9bea1dbe7c7262622a01
+pass sha256:fa09e4ce7301b04d9fb1a2528972ef87
 -- run/go/fyne --
 pass sha256:cb21c479006b58ba5ac9d26a022b8cfc
 -- run/go/gtk4 --
@@ -546,4 +544,14 @@ pass sha256:4d512fb2c1d669d4724aa8f30879e2c7
 -- run/kotlin/android --
 pass sha256:4262f40f0fbcb35b9448d273572e9bee
 -- run/none/html --
-pass sha256:403ff51becc61b003c90cee6a3717eb6
+pass sha256:e1ba13d732f6bf00dac271a5b3667705
+-- testrun/html/none/component_input.sngl/main/1 --
+sha256:e54308ce3ae95b156e8e2c100ef1eafe
+{
+  "results": [
+    {
+      "Desc": "InputValueMutates",
+      "Passed": true
+    }
+  ]
+}

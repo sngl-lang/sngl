@@ -53,6 +53,11 @@ import (
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
+	*modelState
+}
+
+// modelState is what every copy of a Model shares.
+type modelState struct {
 	msg__r0   string
 	__focusID int
 
@@ -61,7 +66,7 @@ type Model struct {
 
 // New creates a Model with default bind values.
 func New() Model {
-	m := Model{}
+	m := Model{&modelState{}}
 	m.msg__r0 = "hello"
 	m.__focusID = 0
 	return m
@@ -554,6 +559,9 @@ body { font-family: system-ui, sans-serif; }
 </div>
 
 <script>
+window.__snglErrors = [];
+addEventListener("error", (e) => window.__snglErrors.push(String(e.message)));
+addEventListener("unhandledrejection", (e) => window.__snglErrors.push(String(e.reason?.message ?? e.reason)));
 window.__sngl_markup = Array.from(document.body.childNodes)
   .filter((n) => n.nodeName !== "SCRIPT").map((n) => n.cloneNode(true));
 window.__sngl_reset = () => {
@@ -571,14 +579,6 @@ window.__sngl_boot = () => {
   if (typeof window !== "undefined") {
     window.__sngl_state = state;
   }
-  function testTooltipTextMutates(t, c) {
-    t.assert(c.msg === "hello");
-    c.msg = "goodbye";
-    t.assert(c.msg === "goodbye");
-  }
-  if (typeof window !== "undefined") {
-    Object.assign(window, { testTooltipTextMutates });
-  }
   var __n0 = document.querySelector('[data-sngl-id="__n0"]');
   function __sngl_init() {
     __n0.setAttribute("title", state.msg);
@@ -590,7 +590,7 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:98e041102b0f6c8790bd5db263bb7f27
+pass sha256:28d0f1f52c3fbe2813aea4b9f6d0ee04
 -- run/go/fyne --
 pass sha256:ea851ea3fcebd9902e20f299e73843cf
 -- run/go/gtk4 --
@@ -598,4 +598,14 @@ pass sha256:210aff9c468ebd577aaf15958fdaece2
 -- run/kotlin/android --
 pass sha256:2e89414007758dd41fcc074e1dc48687
 -- run/none/html --
-pass sha256:e33d56136132efe232961537b71c133e
+pass sha256:69a9b96d7a56ebe55e635ee0c5f6633a
+-- testrun/html/none/component_tooltip.sngl/main/1 --
+sha256:3b94a6192aec23e2b61737c2af0bb41b
+{
+  "results": [
+    {
+      "Desc": "TooltipTextMutates",
+      "Passed": true
+    }
+  ]
+}

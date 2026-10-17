@@ -66,6 +66,11 @@ import (
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
+	*modelState
+}
+
+// modelState is what every copy of a Model shares.
+type modelState struct {
 	dark      bool
 	__focusID int
 
@@ -74,7 +79,7 @@ type Model struct {
 
 // New creates a Model with default bind values.
 func New() Model {
-	m := Model{}
+	m := Model{&modelState{}}
 	m.dark = false
 	m.__focusID = 0
 	return m
@@ -521,6 +526,9 @@ body { font-family: system-ui, sans-serif; }
 </div>
 
 <script>
+window.__snglErrors = [];
+addEventListener("error", (e) => window.__snglErrors.push(String(e.message)));
+addEventListener("unhandledrejection", (e) => window.__snglErrors.push(String(e.reason?.message ?? e.reason)));
 window.__sngl_markup = Array.from(document.body.childNodes)
   .filter((n) => n.nodeName !== "SCRIPT").map((n) => n.cloneNode(true));
 window.__sngl_reset = () => {
@@ -537,14 +545,6 @@ window.__sngl_boot = () => {
   var state = { dark: false };
   if (typeof window !== "undefined") {
     window.__sngl_state = state;
-  }
-  function testThemeToggles(t, c) {
-    t.assert(c.dark === false);
-    c.dark = true;
-    t.assert(c.dark === true);
-  }
-  if (typeof window !== "undefined") {
-    Object.assign(window, { testThemeToggles });
   }
   var $1 = document.getElementById("$1");
   var __n0 = document.querySelector('[data-sngl-id="__n0"]');
@@ -565,7 +565,7 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:8ca3c9728cc71a951a334318688f0408
+pass sha256:11a3245c0a0070a491efeb7c82487bd4
 -- run/go/fyne --
 pass sha256:2adf00c3b18808fb913a5ef8a0b4296b
 -- run/go/gtk4 --
@@ -573,4 +573,14 @@ pass sha256:d6b8036338f7da9b587efa0694c9ccc4
 -- run/kotlin/android --
 pass sha256:d7856d7493d22bfc5e861fff278b232e
 -- run/none/html --
-pass sha256:6d0572bf1ca0febcbcff4bc7c7b8fe60
+pass sha256:bfc0b38133928f496a44abb96be06620
+-- testrun/html/none/component_reactive_ternary_context.sngl/main/1 --
+sha256:786bd013b7b7850e86f1622161ff1b11
+{
+  "results": [
+    {
+      "Desc": "ThemeToggles",
+      "Passed": true
+    }
+  ]
+}

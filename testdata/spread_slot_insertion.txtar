@@ -88,6 +88,11 @@ import (
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
+	*modelState
+}
+
+// modelState is what every copy of a Model shares.
+type modelState struct {
 	seen      string
 	__focusID int
 
@@ -96,7 +101,7 @@ type Model struct {
 
 // New creates a Model with default bind values.
 func New() Model {
-	m := Model{}
+	m := Model{&modelState{}}
 	m.seen = ""
 	m.__focusID = 0
 	return m
@@ -511,7 +516,7 @@ package test.sngl.app
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
-import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performTextReplacement
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -531,8 +536,8 @@ class MainScreenTest {
         val c = MainScreenState()
         @Suppress("UNUSED_VARIABLE") val composeTestRule = composeRule
         composeRule.setContent { MainScreen(c) }
-        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("a")).performClick(); composeTestRule.waitForIdle()
-        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("b")).performClick(); composeTestRule.waitForIdle()
+        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("a")).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick); composeTestRule.waitForIdle()
+        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("b")).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick); composeTestRule.waitForIdle()
         org.junit.Assert.assertTrue("(c.seen == \"row3;part7;\")", (c.seen == "row3;part7;"))
     }
 
@@ -562,6 +567,9 @@ body { font-family: system-ui, sans-serif; }
 </div>
 
 <script>
+window.__snglErrors = [];
+addEventListener("error", (e) => window.__snglErrors.push(String(e.message)));
+addEventListener("unhandledrejection", (e) => window.__snglErrors.push(String(e.reason?.message ?? e.reason)));
 window.__sngl_markup = Array.from(document.body.childNodes)
   .filter((n) => n.nodeName !== "SCRIPT").map((n) => n.cloneNode(true));
 window.__sngl_reset = () => {
@@ -581,14 +589,6 @@ window.__sngl_boot = () => {
   if (typeof window !== "undefined") {
     window.__sngl_state = state;
   }
-  function testSpreadIntoSlot(t, c) {
-    c.a();
-    c.b();
-    t.assert(c.seen === "row3;part7;");
-  }
-  if (typeof window !== "undefined") {
-    Object.assign(window, { testSpreadIntoSlot });
-  }
   var $1 = document.getElementById("$1");
   var $3 = document.getElementById("$3");
   $1.addEventListener("click", function() {
@@ -603,12 +603,12 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:cd613dafad6bdb89e23de6f81cf0c78a
+pass sha256:6c038bc88de73ecd8fbfe3251eb2f6c7
 -- run/go/fyne --
 pass sha256:5af3a45fb14ec5a62ea2ef5e3c72d7f6
 -- run/go/gtk4 --
 pass sha256:951f40700fa3657a9a550efbd1bdaa81
 -- run/kotlin/android --
-pass sha256:6bb056e04ea7a71f58d3f9cb790647c5
+pass sha256:ce0f8e32304c03091e06180b7ae74395
 -- run/none/html --
-pass sha256:459a698e1cde1ca1e17da99c6c256cd3
+pass sha256:83efe7df38418e137a6cdb1077987ec2

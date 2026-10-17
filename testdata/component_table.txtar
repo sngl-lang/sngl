@@ -58,6 +58,11 @@ type TableRow__record struct {
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
+	*modelState
+}
+
+// modelState is what every copy of a Model shares.
+type modelState struct {
 	idx       int
 	__focusID int
 
@@ -68,7 +73,7 @@ type Model struct {
 
 // New creates a Model with default bind values.
 func New() Model {
-	m := Model{}
+	m := Model{&modelState{}}
 	m.idx = 0
 	m.__focusID = 0
 	m.widget0 = tui.NewTable(tui.Columns([]string{"Name", "Role"}), tui.Rows(func() [][]string {
@@ -768,6 +773,9 @@ body { font-family: system-ui, sans-serif; }
 </table>
 
 <script>
+window.__snglErrors = [];
+addEventListener("error", (e) => window.__snglErrors.push(String(e.message)));
+addEventListener("unhandledrejection", (e) => window.__snglErrors.push(String(e.reason?.message ?? e.reason)));
 window.__sngl_markup = Array.from(document.body.childNodes)
   .filter((n) => n.nodeName !== "SCRIPT").map((n) => n.cloneNode(true));
 window.__sngl_reset = () => {
@@ -785,14 +793,6 @@ window.__sngl_boot = () => {
   if (typeof window !== "undefined") {
     window.__sngl_state = state;
   }
-  function testTableSelectedMutates(t, c) {
-    t.assert(c.idx === 0);
-    c.idx = 3;
-    t.assert(c.idx === 3);
-  }
-  if (typeof window !== "undefined") {
-    Object.assign(window, { testTableSelectedMutates });
-  }
   var $0 = document.getElementById("$0");
   $0.addEventListener("selected", function(e) {
     state.idx = e;
@@ -803,7 +803,7 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:df93d47cf3aa143d3e9e9f0087c4fa33
+pass sha256:710f8974f94d19d9fbbedcd3ed548871
 -- run/go/fyne --
 pass sha256:763d453540ed50f5f6aad8cb4f8cdbab
 -- run/go/gtk4 --
@@ -811,4 +811,14 @@ pass sha256:b7a0f65a73d21415d39385f2ed019169
 -- run/kotlin/android --
 pass sha256:8024d25df4be54d4cec92f95b445761a
 -- run/none/html --
-pass sha256:52a182f96961d04bb2bfb1d3bd08dbb5
+pass sha256:60a03e7db19649a8d985cd09e52055fe
+-- testrun/html/none/component_table.sngl/main/1 --
+sha256:de5450ac7bedaf6566c525c418d88880
+{
+  "results": [
+    {
+      "Desc": "TableSelectedMutates",
+      "Passed": true
+    }
+  ]
+}

@@ -237,6 +237,9 @@ body { font-family: system-ui, sans-serif; }
 </div>
 
 <script>
+window.__snglErrors = [];
+addEventListener("error", (e) => window.__snglErrors.push(String(e.message)));
+addEventListener("unhandledrejection", (e) => window.__snglErrors.push(String(e.reason?.message ?? e.reason)));
 window.__sngl_markup = Array.from(document.body.childNodes)
   .filter((n) => n.nodeName !== "SCRIPT").map((n) => n.cloneNode(true));
 window.__sngl_reset = () => {
@@ -255,13 +258,6 @@ window.__sngl_boot = () => {
   if (typeof window !== "undefined") {
     window.__sngl_state = state;
   }
-  function testDeepens(t, c) {
-    c.deeper();
-    t.assert(c.depth === 3);
-  }
-  if (typeof window !== "undefined") {
-    Object.assign(window, { testDeepens });
-  }
   var $0 = document.getElementById("$0");
   $0.addEventListener("click", function() {
     state.depth += 1;
@@ -276,4 +272,4 @@ pass sha256:6c6b353558da56e9390fc13c39597302
 -- run/go/gtk4 --
 pass sha256:911fd8e125c434c7919b6e1fc6ced39b
 -- run/none/html --
-pass sha256:f21fb7470853b228e0eba9cc0300eec1
+pass sha256:03c97ac12720adf0393c81f84f747afa

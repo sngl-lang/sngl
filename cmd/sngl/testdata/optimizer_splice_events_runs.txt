@@ -37,13 +37,13 @@ component pick(items list[string], @chose(s string)) ui.node {
 
 component app ui.node {
     var last = ""
-    pick(items=["a", "b"], @chose(s) {
+    pick #p(items=["a", "b"], @chose(s) {
         last = s
     })
 }
 
 func testTheCallSitesHandlerRuns(t Test, c app) {
-    c.opt[1].click()
+    c.p.opt[1].click()
     t.assert(c.last == "b")
 }
 
@@ -66,7 +66,7 @@ ui.window {
     plain
 }
 -- testrun/android/kotlin/app.sngl/app/1 --
-sha256:be6311607c3d871f3a01b79c22fbbdbd
+sha256:db1c476b9e6dbcf5ed182ad3c5a42e32
 {
   "results": [
     {
@@ -86,7 +86,7 @@ sha256:af82a023a4e8a9c91f3c18ee95235a66
   ]
 }
 -- testrun/bubbletea/go/app.sngl/app/1 --
-sha256:818b1362eb95b8724b15efcd0d6006d5
+sha256:22f7a1574829ef0f1dfd879c5c1e4d5e
 {
   "results": [
     {
@@ -96,7 +96,7 @@ sha256:818b1362eb95b8724b15efcd0d6006d5
   ]
 }
 -- testrun/bubbletea/go/app.sngl/plain/1 --
-sha256:3f77f6b9c22d85cc87bfea3941457a31
+sha256:2ca70914f20bb4581e00c7af4d17bb2f
 {
   "results": [
     {
@@ -106,7 +106,7 @@ sha256:3f77f6b9c22d85cc87bfea3941457a31
   ]
 }
 -- testrun/fyne/go/app.sngl/app/1 --
-sha256:663e994689b9c072dcac81e4fc4890dc
+sha256:b559f8d80fd6c8f7dc9b65bcc2b5f893
 {
   "results": [
     {
@@ -126,7 +126,7 @@ sha256:f979310aca16f53284bba525b90ab207
   ]
 }
 -- testrun/gtk4/go/app.sngl/app/1 --
-sha256:3ed270973c9000f58db8d56b914c338b
+sha256:b27df99e1b82486aa63095cae8649a93
 {
   "results": [
     {
@@ -136,7 +136,7 @@ sha256:3ed270973c9000f58db8d56b914c338b
   ]
 }
 -- testrun/gtk4/go/app.sngl/plain/1 --
-sha256:73c9530239b31a1a823f38b164cdf7cc
+sha256:fb05a1fde17174e65f4de3b52e90c5a2
 {
   "results": [
     {
@@ -146,7 +146,7 @@ sha256:73c9530239b31a1a823f38b164cdf7cc
   ]
 }
 -- testrun/html/none/app.sngl/app/1 --
-sha256:1f39308a2c66a1413979c5b390e3a45e
+sha256:4c89aff06746006e1a86f86c0956cfda
 {
   "results": [
     {
@@ -156,7 +156,7 @@ sha256:1f39308a2c66a1413979c5b390e3a45e
   ]
 }
 -- testrun/html/none/app.sngl/plain/1 --
-sha256:39557372decb33c18bb40421e35de1e6
+sha256:ae43fd20f183bc71b5f0cf6b1c30765e
 {
   "results": [
     {

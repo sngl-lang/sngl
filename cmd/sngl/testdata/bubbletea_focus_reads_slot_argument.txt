@@ -31,7 +31,7 @@ sngl generate --platform html --out out6 own.sngl
 -- handler.sngl --
 import . "sngl:ui"
 
-component frame(n int, label component(depth int) node) node {
+component frame(n int, label list[component(depth int) node]) node {
     vbox {
         label(n)
         if n > 0 {
@@ -62,7 +62,7 @@ window {
 -- branch.sngl --
 import . "sngl:ui"
 
-component frame(n int, label component(depth int) node) node {
+component frame(n int, label list[component(depth int) node]) node {
     vbox {
         label(n)
         if n > 0 {
@@ -95,7 +95,7 @@ window {
 -- prop.sngl --
 import . "sngl:ui"
 
-component frame(n int, label component(depth int) node) node {
+component frame(n int, label list[component(depth int) node]) node {
     vbox {
         label(n)
         if n > 0 {

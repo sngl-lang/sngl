@@ -17,7 +17,12 @@ import ui "sngl:ui"
 component main ui.node {
     var taps = 0
     ui.avatar(initials="JD")
-    ui.avatar(initials="AB", @click { taps = taps + 1 })
+    // A source, so the image -- the node fyne can tap -- is what renders.
+    ui.avatar(initials="AB", @click { taps = taps + 1 }) {
+        component src {
+            ui.remote(url="https://example.com/ab.png")
+        }
+    }
 }
 
 ui.window {

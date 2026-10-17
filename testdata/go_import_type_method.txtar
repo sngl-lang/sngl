@@ -46,6 +46,11 @@ import (
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
+	*modelState
+}
+
+// modelState is what every copy of a Model shares.
+type modelState struct {
 	bonus          int
 	p              image.Point
 	visible__inst0 bool
@@ -56,7 +61,7 @@ type Model struct {
 
 // New creates a Model with default bind values.
 func New() Model {
-	m := Model{}
+	m := Model{&modelState{}}
 	m.bonus = 0
 	m.p = image.Point{X: 1, Y: 2}
 	m.visible__inst0 = true
@@ -424,7 +429,7 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return gtk4rt.ToplevelWindow(app, m.__n0)
 }
 -- run/go/bubbletea --
-pass sha256:c1cda07fc0f8d907a001180b187c6c25
+pass sha256:2cb1f66a4abe828318b1e93ebd11ff37
 -- run/go/fyne --
 pass sha256:752b9f3f3427ccf673de735f078ac504
 -- run/go/gtk4 --

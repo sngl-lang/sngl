@@ -61,6 +61,11 @@ import (
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
+	*modelState
+}
+
+// modelState is what every copy of a Model shares.
+type modelState struct {
 	items               []string
 	hits__inst0         map[string]int
 	visible__inst0      bool
@@ -72,7 +77,7 @@ type Model struct {
 
 // New creates a Model with default bind values.
 func New() Model {
-	m := Model{}
+	m := Model{&modelState{}}
 	m.items = []string{"a", "b"}
 	m.hits__inst0 = map[string]int{}
 	m.visible__inst0 = true
@@ -235,42 +240,40 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, tea.Batch(cmds...)
 }
 
-// bClickAt activates the copy of #b at index i, in render order, the way a keypress does; for tests.
-func (m *Model) bClickAt(i int) {
-	at := func() []int {
-		var __at []int
+// bClick activates the last copy of #b the way a keypress does; for tests.
+func (m *Model) bClick() {
+	copies := func() []struct {
+		key string
+		pos int
+	} {
+		var __at []struct {
+			key string
+			pos int
+		}
 		__focusPos0 := 0
 		for __copy0, it := range m.items {
 			_ = __copy0
 			_ = it
-			__at = append(__at, __focusPos0)
+			__at = append(__at, struct {
+				key string
+				pos int
+			}{"", __focusPos0})
 			__focusPos0++
 		}
 		return __at
 	}()
-	if i < 0 || i >= len(at) {
+	pos := -1
+	if len(copies) > 0 {
+		pos = copies[len(copies)-1].pos
+	}
+	if pos < 0 {
 		return
 	}
 	prev, prevAt := m.__focusID, m.__focusLoop0_cursor
-	m.__focusID, m.__focusLoop0_cursor = 0, at[i]
+	m.__focusID, m.__focusLoop0_cursor = 0, pos
 	nm, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	*m = nm.(Model)
 	m.__focusID, m.__focusLoop0_cursor = prev, prevAt
-}
-
-// bClick activates the last copy of #b the way a keypress does; for tests.
-func (m *Model) bClick() {
-	m.bClickAt(len(func() []int {
-		var __at []int
-		__focusPos0 := 0
-		for __copy0, it := range m.items {
-			_ = __copy0
-			_ = it
-			__at = append(__at, __focusPos0)
-			__focusPos0++
-		}
-		return __at
-	}()) - 1)
 }
 
 func (m Model) View() tea.View {
@@ -423,6 +426,6 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:41ff98011bccebd190b333ffbfee7028
+pass sha256:02291f2c20e9f2b8d496edad09a28fce
 -- run/none/html --
 pass sha256:7f522ea1d90a795dd8f8a520ed2a7ec2

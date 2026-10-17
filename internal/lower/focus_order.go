@@ -645,20 +645,9 @@ func stmtsMoveTo(slots []focusSlot, slotIdx int, focusIDIdent func() *ir.Ident, 
 // callListLength builds a Call for list.length, instantiated at the element
 // type of the list being measured.
 func callListLength(iter ir.Expr) *ir.Call {
-	var params []*ir.Param
-	if def := ir.LookupIntrinsic("list.length"); def != nil {
-		params, _ = def.Instantiate(listElem(iter))
-	}
-	fn := &ir.Func{
-		Name:      "length",
-		Receiver:  ir.ListOf(ir.TypDyn),
-		Intrinsic: "list.length",
-		Return:    ir.TypInt,
-		Params:    params,
-	}
 	return &ir.Call{
 		Type: ir.TypInt,
-		Func: fn,
+		Func: ir.IntrinsicMethod("length", "list.length", iter.ExprType(), ir.TypInt),
 		Args: []ir.CallArg{{Value: iter}},
 	}
 }

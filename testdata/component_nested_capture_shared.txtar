@@ -75,6 +75,11 @@ type ErrorEvent struct {
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
+	*modelState
+}
+
+// modelState is what every copy of a Model shares.
+type modelState struct {
 	count               int
 	runs__inst0         int
 	runs__inst1         int
@@ -91,7 +96,7 @@ type Model struct {
 
 // New creates a Model with default bind values.
 func New() Model {
-	m := Model{}
+	m := Model{&modelState{}}
 	m.count = 0
 	m.runs__inst0 = 0
 	m.runs__inst1 = 0
@@ -770,6 +775,9 @@ body { font-family: system-ui, sans-serif; }
 </span>
 
 <script>
+window.__snglErrors = [];
+addEventListener("error", (e) => window.__snglErrors.push(String(e.message)));
+addEventListener("unhandledrejection", (e) => window.__snglErrors.push(String(e.reason?.message ?? e.reason)));
 window.__sngl_markup = Array.from(document.body.childNodes)
   .filter((n) => n.nodeName !== "SCRIPT").map((n) => n.cloneNode(true));
 window.__sngl_reset = () => {
@@ -787,9 +795,6 @@ window.__sngl_boot = () => {
   if (typeof window !== "undefined") {
     window.__sngl_state = state;
   }
-  function testTwoInstantiationsShareOneCapturedVar(t, c) {
-    t.assert(c.count === 11);
-  }
   function __effect0_mount() {
     state.runs__inst0 = state.runs__inst0 + 1;
     __n0.textContent = String(state.runs__inst0);
@@ -803,7 +808,7 @@ window.__sngl_boot = () => {
     __n2.textContent = String(state.count);
   }
   if (typeof window !== "undefined") {
-    Object.assign(window, { testTwoInstantiationsShareOneCapturedVar, __effect0_mount, __effect1_mount });
+    Object.assign(window, { __effect0_mount, __effect1_mount });
   }
   var __effect0_live = [];
   var __effect0_desired = [];
@@ -884,7 +889,7 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:3b06ab0c5203541a4c1be7361bee069b
+pass sha256:4261bb099516d356652786af1f625c0e
 -- run/go/fyne --
 pass sha256:b010501e28fe060706a65e70a8a44ab8
 -- run/go/gtk4 --
@@ -892,4 +897,14 @@ pass sha256:c814bc4f52f81366a95175d0d2b85f37
 -- run/kotlin/android --
 pass sha256:cd6537e12897e2cccf9de673ec51633a
 -- run/none/html --
-pass sha256:9d8bd1084a33d9a42f46dadf754112a5
+pass sha256:a01fe9523a34e475dbef6cb590aad663
+-- testrun/html/none/component_nested_capture_shared.sngl/main/1 --
+sha256:196139dea742d0804f1e6ee9a2ff8acc
+{
+  "results": [
+    {
+      "Desc": "TwoInstantiationsShareOneCapturedVar",
+      "Passed": true
+    }
+  ]
+}

@@ -11,7 +11,7 @@ struct Row {
     title string
 }
 
-component table(rows list[Row], cell component(Row)) node {
+component table(rows list[Row], cell list[component(Row)]) node {
     vbox {
         for var r = rows {
             cell(r)
@@ -33,6 +33,7 @@ component collidesWithFunc(ping component, children ...component) node {
         ping {
             text(value="fb")
         }
+        children
     }
 }
 

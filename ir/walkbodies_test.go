@@ -44,6 +44,7 @@ var irNodeTypes = map[string]reflect.Type{
 	"Lambda":      reflect.TypeFor[Lambda](),
 	"Closure":     reflect.TypeFor[Closure](),
 	"ContextRead": reflect.TypeFor[ContextRead](),
+	"SlotEmpty":   reflect.TypeFor[SlotEmpty](),
 
 	"NodeInst":         reflect.TypeFor[NodeInst](),
 	"CallStmt":         reflect.TypeFor[CallStmt](),

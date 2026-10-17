@@ -27,9 +27,12 @@ type fyneTranslator struct {
 	// The key is the node id and not the tag: every widget in fyne.sngl lowers
 	// to one of three primitives, so a tag names the children contract rather
 	// than the widget.
-	specs      map[string]*fyneSpec
-	fieldSink  func(name, goType string)
-	importSink func(path string)
+	specs     map[string]*fyneSpec
+	fieldSink func(name, goType string)
+	// fieldGoTypes is what sinkField declared each field this translator
+	// writes as, which is the type a reference to it carries.
+	fieldGoTypes map[string]string
+	importSink   func(path string)
 	// localRefs is the set of synthesized widget ref ids that lower's
 	// passNodeEscape determined do NOT escape this scope. For those ids
 	// OnCreateNode/OnCreateComponent emit a function-local `__nN := ...`
@@ -73,13 +76,31 @@ type fyneTranslator struct {
 	// surface -- a slot func, a canvas draw.
 	invokerSink func(fyneEventInvoker)
 	// indexed are the ids a test triggers one copy of (`c.row[1]`), whose
-	// widgets this Model scope lists in render order as it builds them
-	// (namedWidgetField): appended at each create, and emptied where a slot
-	// render starts over. nil in a scope that keeps no such list.
+	// widgets this Model scope keeps by copy (copiesField): put there by
+	// each write of a copy's key (listCopy), and emptied where a slot render
+	// starts over. nil in a scope that keeps no such map.
 	indexed map[string]bool
 	// slotNamed are the indexed ids this slot render func creates, which its
 	// reset empties.
 	slotNamed []string
+	// instanceCopies are the ids a test reaches one copy of whose instances,
+	// built at run time, this scope lists by root in a Model map, declared
+	// through modelSink: a record's own fields are not the Model's. No slot
+	// reset empties the map, since one map holds every record's instances:
+	// a re-key replaces an instance's entry, and a destroyed record unlists
+	// itself.
+	instanceCopies map[string]bool
+	modelSink      func(name, goType string)
+	// record is set in a component built at run time, which lists the roots
+	// of the spliced instances it renders (listRoot) so its Destroy can take
+	// them out again.
+	record bool
+	// present are the ids a test null-tests. slotPresent are the fields of
+	// those this slot render func creates -- a widget's own, an instance's
+	// presentField -- which its reset clears: what the render no longer builds
+	// is not rendered, though its field still holds it.
+	present     map[string]bool
+	slotPresent []string
 	// failSink is where a prop this platform cannot emit is reported. See
 	// withFailSink.
 	failSink func(error)
@@ -118,7 +139,47 @@ func newFyneTranslator(gc *golang.GoIRContext, specs map[string]*fyneSpec, field
 // here rather than codegen.ModelFieldRef, which names the Model and only the
 // Model.
 func (t *fyneTranslator) fieldRef(name string) ir.Expr {
-	return codegen.RecvFieldRef(t.gc.NodeRecv(name), name)
+	return codegen.RecvFieldRef(t.gc.NodeRecvRef(name), name, t.fieldType(name))
+}
+
+// sinkField declares a field of the Go type goType, and remembers it as the
+// type a reference to the field carries.
+func (t *fyneTranslator) sinkField(name, goType string) {
+	if t.fieldGoTypes == nil {
+		t.fieldGoTypes = map[string]string{}
+	}
+	t.fieldGoTypes[name] = goType
+	t.fieldSink(name, goType)
+}
+
+// fieldType is the host type of the field name: what it was declared as, or
+// for a node another scope created, its spec's widget type.
+func (t *fyneTranslator) fieldType(name string) *ir.Type {
+	if ft, ok := t.declaredType(name); ok {
+		return ft
+	}
+	panic(fmt.Sprintf("fyne: the field %s was declared by no translator", name))
+}
+
+func (t *fyneTranslator) declaredType(name string) (*ir.Type, bool) {
+	if goType, ok := t.fieldGoTypes[name]; ok {
+		return ir.NativeGoNamed(goType), true
+	}
+	if sp := t.specs[name]; sp != nil && sp.GoType.Name != "" {
+		return ir.NativeGoNamed(sp.GoType.qualify(t.gc)), true
+	}
+	return nil, false
+}
+
+// nodeFieldRef is fieldRef for a reference the lowered IR made, which
+// another scope may have declared: typed as the field was declared where this
+// translator knows it, and as the reference is otherwise.
+func (t *fyneTranslator) nodeFieldRef(id *ir.Ident) ir.Expr {
+	ft, ok := t.declaredType(id.Name)
+	if !ok {
+		ft = id.Type
+	}
+	return codegen.RecvFieldRef(t.gc.NodeRecvRef(id.Name), id.Name, ft)
 }
 
 // recvIdent is that receiver as a call target.
@@ -144,9 +205,8 @@ type fyneEventInvoker struct {
 	// Target is the Model field holding Field when it is not the #id's own
 	// widget -- a canvas's Tap. "" means IDLabel.
 	Target string
-	// List says Target lists every copy of the widget in render order
-	// (namedWidgetField): the invoker drives the last one built, and its `At`
-	// variant the copy it is handed the index of.
+	// List says a test indexes the id, so its copies are kept by key
+	// (copiesField) and an `At` invoker drives the one it is handed the key of.
 	List bool
 }
 
@@ -155,19 +215,89 @@ func (t *fyneTranslator) withInvokerSink(sink func(fyneEventInvoker)) *fyneTrans
 	return t
 }
 
-// withIndexed has this Model scope list the widgets of the ids a test indexes;
+// withIndexed has this Model scope keep the widgets of the ids a test indexes;
 // stmts is the scope's body, whose creates of them a slot's reset empties.
-func (t *fyneTranslator) withIndexed(indexed map[string]bool, stmts []ir.Stmt) *fyneTranslator {
+func (t *fyneTranslator) withIndexed(indexed, present map[string]bool, stmts []ir.Stmt) *fyneTranslator {
 	t.indexed = indexed
 	t.slotNamed = nil
+	t.slotPresent = nil
+	t.present = present
 	_ = ir.Walk(stmts, func(n ir.Node) error {
-		if lv, ok := n.(*ir.LocalVar); ok && indexed[lv.Name] {
-			if c, ok := lv.Init.(*ir.Call); ok && c.Func != nil && c.Func.Intrinsic == ir.NodeOpCreateNode {
+		lv, ok := n.(*ir.LocalVar)
+		if !ok {
+			return nil
+		}
+		c, ok := lv.Init.(*ir.Call)
+		if !ok || c.Func == nil {
+			return nil
+		}
+		switch c.Func.Intrinsic {
+		case ir.NodeOpCreateNode:
+			if indexed[lv.Name] {
 				t.slotNamed = append(t.slotNamed, lv.Name)
+			}
+			if t.present[lv.Name] {
+				t.slotPresent = append(t.slotPresent, lv.Name)
+			}
+		case ir.NodeOpComponentRoot:
+			inst := codegen.IdentBareName(c.Args[0].Value)
+			if t.present[inst] {
+				t.slotPresent = append(t.slotPresent, presentField(inst))
 			}
 		}
 		return nil
 	})
+	return t.withInstanceCopies(indexed, t.sinkField)
+}
+
+// withRecordPresent has this scope of a component built at run time hand the
+// widgets of the ids a test null-tests to the Model (namedWidgetField), which
+// a test reaches no record through; stmts is the scope's body, whose creates
+// of them a slot's reset takes back.
+func (t *fyneTranslator) withRecordPresent(present map[string]bool, stmts []ir.Stmt) *fyneTranslator {
+	t.present = present
+	t.slotPresent = nil
+	_ = ir.Walk(stmts, func(n ir.Node) error {
+		lv, ok := n.(*ir.LocalVar)
+		if !ok {
+			return nil
+		}
+		c, ok := lv.Init.(*ir.Call)
+		if !ok || c.Func == nil {
+			return nil
+		}
+		switch c.Func.Intrinsic {
+		case ir.NodeOpCreateNode:
+			if present[lv.Name] {
+				t.slotPresent = append(t.slotPresent, lv.Name)
+			}
+		case ir.NodeOpComponentRoot:
+			if inst := codegen.IdentBareName(c.Args[0].Value); present[inst] {
+				t.slotPresent = append(t.slotPresent, presentField(inst))
+			}
+		}
+		return nil
+	})
+	return t
+}
+
+// modelPresentRef is the Model field holding the widget a test null-tests by
+// id, for a record's scope: the field a Model scope's own widget is.
+func (t *fyneTranslator) modelPresentRef(field string) ir.Expr {
+	return codegen.RecvFieldRef(&ir.Ident{Name: t.gc.ModelRef()}, field, ir.NativeGoNamed(fyneWidgetHandleType))
+}
+
+// withInstanceCopies has this scope list the instances of the ids a test
+// reaches one copy of, declaring each map through modelSink.
+func (t *fyneTranslator) withInstanceCopies(ids map[string]bool, modelSink func(name, goType string)) *fyneTranslator {
+	t.instanceCopies, t.modelSink = ids, modelSink
+	return t
+}
+
+// inRecord marks this scope as the body or a method of a component built at
+// run time.
+func (t *fyneTranslator) inRecord() *fyneTranslator {
+	t.record = true
 	return t
 }
 
@@ -214,9 +344,20 @@ func (t *fyneTranslator) isLocalRef(id string) bool {
 }
 
 // localElementRef renders a bare local-variable reference for a non-escaping
-// widget id (used by the qualify* helpers and return trailers).
-func localElementRef(name string) ir.Expr {
-	return &ir.Ident{Name: name, Type: ir.TypDyn}
+// widget id (used by the qualify* helpers and return trailers), of the host
+// type the field would have had.
+func (t *fyneTranslator) localElementRef(name string) ir.Expr {
+	return &ir.Ident{Name: name, Type: t.fieldType(name)}
+}
+
+// localRef is localElementRef for a reference the lowered IR made, typed as
+// the reference is where this translator did not declare it.
+func (t *fyneTranslator) localRef(id *ir.Ident) ir.Expr {
+	ft, ok := t.declaredType(id.Name)
+	if !ok {
+		ft = id.Type
+	}
+	return &ir.Ident{Name: id.Name, Type: ft}
 }
 
 // fyneFrameworkPkgs maps the fyne package selectors this platform emits
@@ -322,11 +463,11 @@ func (t *fyneTranslator) OnCreateNode(ctx context.Context, id, tag string) []ir.
 	// qualifying it here is what registers its import and fixes its alias.
 	goType := sp.GoType.qualify(t.gc)
 	if !t.isLocalRef(id) {
-		t.fieldSink(id, goType)
+		t.sinkField(id, goType)
 	}
 	ctor := t.flexLayoutCall(sp)
 	if ctor == nil {
-		ctor = nativeCallAt(sp.New.qualify(t.gc), sp.New.Path, sp.ctorArgs(t.gc), ir.TypDyn)
+		ctor = nativeCallAt(sp.New.qualify(t.gc), sp.New.Path, sp.ctorArgs(t.gc), ir.NativeGoNamed(sp.GoType.qualify(t.gc)))
 	}
 	if t.isLocalRef(id) {
 		// Non-escaping: declare a function-local `__nN := <ctor>` so each
@@ -340,13 +481,12 @@ func (t *fyneTranslator) OnCreateNode(ctx context.Context, id, tag string) []ir.
 		Value:  ctor,
 	})
 	if t.indexed[id] {
-		list := namedWidgetField(id)
-		t.fieldSink(list, "[]"+goType)
-		create = append(create, &ir.Assign{
-			Target: t.fieldRef(list),
-			Op:     ast.AssignSet,
-			Value:  nativeCall("append", []ir.Expr{t.fieldRef(list), t.fieldRef(id)}, ir.TypDyn),
-		})
+		t.sinkField(copiesField(id), copyMapType(goType))
+	}
+	if t.record && t.present[id] {
+		named := namedWidgetField(id)
+		t.modelSink(named, fyneWidgetHandleType)
+		create = append(create, &ir.Assign{Target: t.modelPresentRef(named), Op: ast.AssignSet, Value: t.fieldRef(id)})
 	}
 	return create
 }
@@ -378,7 +518,7 @@ func (t *fyneTranslator) OnCreateComponent(ctx context.Context, id string, call 
 		// of a list keeps its own instance.
 		return []ir.Stmt{&ir.LocalVar{Name: id, Init: call}}
 	}
-	t.fieldSink(id, t.instanceGoType(call))
+	t.sinkField(id, t.instanceGoType(call))
 	return []ir.Stmt{&ir.Assign{
 		Target: t.fieldRef(id),
 		Op:     ast.AssignSet,
@@ -408,7 +548,7 @@ const fyneWidgetHandleType = "fyne.CanvasObject"
 // Local or field by the same escape analysis every other node id answers to. A
 // local unconditionally is what left `__nN__el := …` declared in the body and
 // `m.__nN__el` read two lines later.
-func (t *fyneTranslator) OnComponentRoot(ctx context.Context, id string, inst ir.Expr) []ir.Stmt {
+func (t *fyneTranslator) OnComponentRoot(ctx context.Context, id string, inst, key ir.Expr) []ir.Stmt {
 	t.topLevel = append(t.topLevel, id)
 	var root ir.Expr = t.instanceRef(inst)
 	if !t.plainHandle[codegen.IdentBareName(inst)] {
@@ -416,13 +556,53 @@ func (t *fyneTranslator) OnComponentRoot(ctx context.Context, id string, inst ir
 		// component as a method of the enclosing scope instead, the handle IS
 		// the widget it returned -- `__n0.Root` on a fyne.CanvasObject names
 		// no field the emitted file has.
-		root = &ir.Select{Type: ir.TypDyn, Operand: root, Field: golang.ComponentRootField}
+		root = &ir.Select{Type: fyneObject(), Operand: root, Field: golang.ComponentRootField}
+	}
+	// An instance a test null-tests hands its root to the Model while it is
+	// rendered, as a widget is its own field.
+	var present []ir.Stmt
+	if name := codegen.IdentBareName(inst); t.present[name] {
+		field := presentField(name)
+		var target ir.Expr
+		if t.record {
+			t.modelSink(field, fyneWidgetHandleType)
+			target = t.modelPresentRef(field)
+		} else {
+			t.sinkField(field, fyneWidgetHandleType)
+			target = t.fieldRef(field)
+		}
+		present = append(present, &ir.Assign{Target: target, Op: ast.AssignSet, Value: root})
+	}
+	// One copy of it is found by the key it stands in now, which a reused
+	// instance was handed before its root is bound again.
+	if name := codegen.IdentBareName(inst); key != nil && t.instanceCopies[name] {
+		t.modelSink(copiesField(name), copyMapType(fyneWidgetHandleType))
+		present = append(present, t.listInstanceCopy(name, key, root))
+	}
+	if hold := t.holdInstance(inst, key); hold != nil {
+		present = append(present, hold)
 	}
 	if t.isLocalRef(id) {
-		return []ir.Stmt{&ir.LocalVar{Name: id, Init: root}}
+		return append([]ir.Stmt{&ir.LocalVar{Name: id, Init: root}}, present...)
 	}
-	t.fieldSink(id, fyneWidgetHandleType)
-	return []ir.Stmt{&ir.Assign{Target: t.fieldRef(id), Op: ast.AssignSet, Value: root}}
+	t.sinkField(id, fyneWidgetHandleType)
+	return append([]ir.Stmt{&ir.Assign{Target: t.fieldRef(id), Op: ast.AssignSet, Value: root}}, present...)
+}
+
+// holdInstance is the Model's hold on the record inst names, where a test
+// reads a member through it (golang.HoldInstance), or nil.
+func (t *fyneTranslator) holdInstance(inst, key ir.Expr) ir.Stmt {
+	name := codegen.IdentBareName(inst)
+	r, ok := t.gc.InstanceRead(name)
+	if !ok || t.plainHandle[name] {
+		return nil
+	}
+	if !r.Keyed {
+		key = nil
+	} else if key == nil {
+		return nil
+	}
+	return golang.HoldInstance(&ir.Ident{Name: t.gc.ModelRef()}, name, r.Comp, t.instanceRef(inst), key)
 }
 
 // instanceRef qualifies the handle an instance op names. The reconcile a
@@ -470,7 +650,7 @@ func (t *fyneTranslator) OnAppendChild(ctx context.Context, parent, child ir.Exp
 	child = t.themed(t.qualifyChildExpr(child), childSpec, codegen.IdentBareName(child))
 	if sp != nil && sp.isSingleChild() {
 		return []ir.Stmt{&ir.Assign{
-			Target: &ir.Select{Operand: parent, Field: sp.Content, Type: ir.TypDyn},
+			Target: &ir.Select{Operand: parent, Field: sp.Content, Type: fyneObject()},
 			Op:     ast.AssignSet,
 			Value:  child,
 		}}
@@ -485,6 +665,10 @@ func (t *fyneTranslator) OnAppendChild(ctx context.Context, parent, child ir.Exp
 }
 
 func (t *fyneTranslator) OnRemoveChild(ctx context.Context, parent, child ir.Expr) []ir.Stmt {
+	return append(t.removeChild(parent, child), t.unlistRemoved(child)...)
+}
+
+func (t *fyneTranslator) removeChild(parent, child ir.Expr) []ir.Stmt {
 	if ir.IsAppParent(parent) {
 		return []ir.Stmt{&ir.CallStmt{Call: nativeCallAt("fynelayout.AppDetach", fyneLayoutImportPath,
 			[]ir.Expr{t.qualifyChildExpr(child)}, ir.TypVoid)}}
@@ -509,16 +693,16 @@ const slotParentParam = "__parent"
 func (t *fyneTranslator) qualifyParentExpr(e ir.Expr) ir.Expr {
 	if id, ok := e.(*ir.Ident); ok {
 		if id.Name == "parent" {
-			return &ir.Ident{Name: slotParentParam, Type: ir.TypDyn}
+			return &ir.Ident{Name: slotParentParam, Type: ir.NativeGoPointerOf("fyne.Container")}
 		}
 		if t.isLocalRef(id.Name) {
-			return localElementRef(id.Name)
+			return t.localRef(id)
 		}
 		// Synthesized __nN parents from inline AppendChild calls in
 		// window/component bodies need an `m.` qualifier; slot Funcs use
 		// the typed slotParentParam instead.
 		if id.Synthesized && strings.HasPrefix(id.Name, "__n") {
-			return t.fieldRef(id.Name)
+			return t.nodeFieldRef(id)
 		}
 	}
 	return e
@@ -533,10 +717,10 @@ func (t *fyneTranslator) qualifyChildExpr(e ir.Expr) ir.Expr {
 			return t.fieldRef(canvasTapField(id.Name))
 		}
 		if t.isLocalRef(id.Name) {
-			return localElementRef(id.Name)
+			return t.localRef(id)
 		}
 		if id.Synthesized && strings.HasPrefix(id.Name, "__n") {
-			return t.fieldRef(id.Name)
+			return t.nodeFieldRef(id)
 		}
 	}
 	return e
@@ -567,7 +751,7 @@ func (t *fyneTranslator) OnAttachHandler(ctx context.Context, node ir.Expr, even
 		Target: &ir.Select{
 			Operand: nodeRef,
 			Field:   fieldName,
-			Type:    ir.TypDyn,
+			Type:    ir.NativeGoNamed(h.Signature),
 		},
 		Op:    ast.AssignSet,
 		Value: handlerRef,
@@ -630,7 +814,7 @@ func (t *fyneTranslator) OnDetachHandler(ctx context.Context, node ir.Expr, even
 		Target: &ir.Select{
 			Operand: t.qualifyHandlerNode(node, bareID),
 			Field:   h.Field,
-			Type:    ir.TypDyn,
+			Type:    ir.NativeGoNamed(h.Signature),
 		},
 		Op:    ast.AssignSet,
 		Value: &ir.Literal{Type: ir.TypNull},
@@ -641,7 +825,7 @@ func (t *fyneTranslator) OnDetachHandler(ctx context.Context, node ir.Expr, even
 // a bare local for non-escaping ids, else a Model-field selector.
 func (t *fyneTranslator) nodeRefFor(bareID string) ir.Expr {
 	if t.isLocalRef(bareID) {
-		return localElementRef(bareID)
+		return t.localElementRef(bareID)
 	}
 	return t.fieldRef(bareID)
 }
@@ -663,7 +847,7 @@ func (t *fyneTranslator) qualifyHandlerFunc(e ir.Expr) ir.Expr {
 			return e
 		}
 		if strings.HasPrefix(name, "__") {
-			return t.fieldRef(name)
+			return t.nodeFieldRef(id)
 		}
 	}
 	return e
@@ -682,6 +866,12 @@ func (t *fyneTranslator) OnPropAssign(ctx context.Context, node ir.Expr, prop st
 			return t.setRuntimeTheme(bareID, lit)
 		}
 		return t.setRuntimeThemeFrom(bareID, value)
+	}
+	if prop == ir.CopyProp {
+		return []ir.Stmt{t.listCopy(bareID, value)}
+	}
+	if id, ok := codegen.InstanceRootID(prop); ok {
+		return t.listRoot(id, t.nodeRefFor(bareID), value)
 	}
 	if structuralProp(prop) {
 		// This platform's own props, not the widget's: `spec` is the record
@@ -738,27 +928,56 @@ func (t *fyneTranslator) OnPropAssign(ctx context.Context, node ir.Expr, prop st
 }
 
 func (t *fyneTranslator) OnSlotReset(ctx context.Context, slot *ir.Var) []ir.Stmt {
-	t.slotAnchor = codegen.RecvFieldRef(t.gc.NodeRecv(slot.Name), codegen.SlotAnchorField(slot.Name))
+	// A slot's fields are the objects it holds and the anchor it inserts them
+	// before, as the compiler declares them.
+	object := ir.NativeGoNamed("fyne.CanvasObject")
+	t.slotAnchor = codegen.RecvFieldRef(t.gc.NodeRecvRef(slot.Name), codegen.SlotAnchorField(slot.Name), object)
 	anchor := nativeCallAt("fynelayout.SlotAnchor", fyneLayoutImportPath,
-		[]ir.Expr{t.qualifyParentExpr(&ir.Ident{Name: "parent"}), t.slotAnchor}, ir.TypDyn)
+		[]ir.Expr{t.qualifyParentExpr(&ir.Ident{Name: "parent"}), t.slotAnchor}, object)
 	reset := []ir.Stmt{
 		&ir.Assign{
-			Target: t.fieldRef(slot.Name),
+			Target: t.slotFieldRef(slot),
 			Op:     ast.AssignSet,
 			Value:  &ir.Literal{Type: ir.TypNull},
 		},
 		&ir.Assign{Target: t.slotAnchor, Op: ast.AssignSet, Value: anchor},
 	}
-	// The render builds every copy again, in order, so the list of them
-	// starts over with it.
+	// The render builds every copy again, so the map of them starts over with
+	// it.
 	for _, id := range t.slotNamed {
-		reset = append(reset, &ir.Assign{Target: t.fieldRef(namedWidgetField(id)), Op: ast.AssignSet, Value: &ir.Literal{Type: ir.TypNull}})
+		list := copiesField(id)
+		reset = append(reset, &ir.Assign{Target: codegen.RecvFieldRef(t.gc.NodeRecvRef(list), list, t.copiesType(id)), Op: ast.AssignSet, Value: &ir.Literal{Type: ir.TypNull}})
+	}
+	for _, id := range t.slotPresent {
+		if t.isLocalRef(id) {
+			continue
+		}
+		if t.record {
+			reset = append(reset, t.releasePresent(id))
+			continue
+		}
+		reset = append(reset, &ir.Assign{Target: codegen.RecvFieldRef(t.gc.NodeRecvRef(id), id, ir.NativeGoNamed("fyne.CanvasObject")), Op: ast.AssignSet, Value: &ir.Literal{Type: ir.TypNull}})
 	}
 	return reset
 }
 
+// releasePresent takes back what a record handed the Model for a test's null
+// test of field -- a node's id, or an instance's presentField. A node is taken
+// back only where the Model still holds this record's widget: another record
+// may have handed its own since.
+func (t *fyneTranslator) releasePresent(field string) ir.Stmt {
+	if strings.HasPrefix(field, presentField("")) {
+		return &ir.Assign{Target: t.modelPresentRef(field), Op: ast.AssignSet, Value: &ir.Literal{Type: ir.TypNull}}
+	}
+	held := t.modelPresentRef(namedWidgetField(field))
+	return &ir.If{
+		Cond: &ir.Binary{Type: ir.TypBool, Op: ast.BinEq, Left: held, Right: t.fieldRef(field)},
+		Body: []ir.Stmt{&ir.Assign{Target: t.modelPresentRef(namedWidgetField(field)), Op: ast.AssignSet, Value: &ir.Literal{Type: ir.TypNull}}},
+	}
+}
+
 func (t *fyneTranslator) OnSlotAppend(ctx context.Context, slot *ir.Var, child ir.Expr) []ir.Stmt {
-	slotRef := t.fieldRef(slot.Name)
+	slotRef := t.slotFieldRef(slot)
 	if sp := t.specs[codegen.IdentBareName(child)]; sp != nil && sp.RuntimeTheme {
 		child = t.themeOverrideRef(codegen.IdentBareName(child))
 	} else {
@@ -766,7 +985,7 @@ func (t *fyneTranslator) OnSlotAppend(ctx context.Context, slot *ir.Var, child i
 	}
 	appendExpr := nativeCall("append", []ir.Expr{slotRef, child}, slot.Type)
 	return []ir.Stmt{&ir.Assign{
-		Target: t.fieldRef(slot.Name),
+		Target: t.slotFieldRef(slot),
 		Op:     ast.AssignSet,
 		Value:  appendExpr,
 	}}
@@ -774,7 +993,7 @@ func (t *fyneTranslator) OnSlotAppend(ctx context.Context, slot *ir.Var, child i
 
 func (t *fyneTranslator) OnIter(ctx context.Context, iter ir.Expr) ir.Expr {
 	if id, ok := iter.(*ir.Ident); ok && id.Synthesized {
-		return t.fieldRef(id.Name)
+		return t.nodeFieldRef(id)
 	}
 	return iter
 }
@@ -822,14 +1041,14 @@ func (t *fyneTranslator) boxedSlotRenderCall(cs *ir.CallStmt) []ir.Stmt {
 		return nil
 	}
 	boxName := bare + "_box"
-	t.fieldSink(boxName, "*fyne.Container")
+	t.sinkField(boxName, "*fyne.Container")
 	box := t.fieldRef(boxName)
 	call := *cs.Call
 	call.Args = []ir.CallArg{{Value: box}}
 	return []ir.Stmt{
 		&ir.Assign{Target: box, Op: ast.AssignSet,
-			Value: nativeCallAt("fynelayout.SlotBox", fyneLayoutImportPath, []ir.Expr{box}, ir.TypDyn)},
-		&ir.Assign{Target: &ir.Select{Operand: t.nodeRefFor(bare), Field: sp.Content, Type: ir.TypDyn}, Op: ast.AssignSet, Value: box},
+			Value: nativeCallAt("fynelayout.SlotBox", fyneLayoutImportPath, []ir.Expr{box}, ir.NativeGoPointerOf("fyne.Container"))},
+		&ir.Assign{Target: &ir.Select{Operand: t.nodeRefFor(bare), Field: sp.Content, Type: fyneObject()}, Op: ast.AssignSet, Value: box},
 		&ir.CallStmt{Call: &call},
 	}
 }
@@ -846,7 +1065,7 @@ func localSlotRenderCall(cs *ir.CallStmt, isLocal func(string) bool) *ir.CallStm
 		return nil
 	}
 	call := *cs.Call
-	call.Args = []ir.CallArg{{Name: cs.Call.Args[0].Name, Value: localElementRef(id.Name)}}
+	call.Args = []ir.CallArg{{Name: cs.Call.Args[0].Name, Value: &ir.Ident{Name: id.Name, Type: id.Type}}}
 	return &ir.CallStmt{Call: &call}
 }
 
@@ -867,17 +1086,19 @@ func (t *fyneTranslator) recordInvoker(id, event string, h fyneHandler) {
 		Field:     h.Field,
 		Params:    params,
 	}
-	if t.indexed[id] {
-		inv.Target, inv.List = namedWidgetField(id), true
-	}
+	inv.List = t.indexed[id]
 	t.invokerSink(inv)
 }
 
 // emitFyneEventInvokers writes one Model method per (id, event) pair, invoking
 // the widget's declared callback field, and for a widget whose copies are
-// listed an `At` method driving the copy at an index.
+// kept by key an `At` method driving the copy with a key.
 func emitFyneEventInvokers(b *strings.Builder, invokers []fyneEventInvoker) {
 	seen := map[string]bool{}
+	keyed := map[string]bool{}
+	for _, inv := range invokers {
+		keyed[inv.IDLabel] = keyed[inv.IDLabel] || inv.List
+	}
 	for _, inv := range invokers {
 		name := inv.IDLabel + golang.ExportName(inv.SnglEvent)
 		if seen[name] {
@@ -890,14 +1111,13 @@ func emitFyneEventInvokers(b *strings.Builder, invokers []fyneEventInvoker) {
 		}
 		fmt.Fprintf(b, "// %s invokes the %s callback on the #%s widget; for tests.\n",
 			name, inv.Field, inv.IDLabel)
-		if !inv.List {
-			emitFyneInvoker(b, inv, name, nil, "m."+target)
+		emitFyneInvoker(b, inv, name, nil, "m."+target)
+		if !keyed[inv.IDLabel] {
 			continue
 		}
-		emitFyneInvoker(b, inv, name, nil, fmt.Sprintf("m.%s[len(m.%s)-1]", target, target))
-		fmt.Fprintf(b, "// %s invokes it on the copy of #%s at index i, in render order; for tests.\n",
+		fmt.Fprintf(b, "// %s invokes it on the copy of #%s with the key; for tests.\n",
 			codegen.InvokerAt(name), inv.IDLabel)
-		emitFyneInvoker(b, inv, codegen.InvokerAt(name), []string{"i int"}, fmt.Sprintf("m.%s[i]", target))
+		emitFyneInvoker(b, inv, codegen.InvokerAt(name), []string{"key string"}, fmt.Sprintf("m.%s[key]", copiesField(inv.IDLabel)))
 	}
 }
 
@@ -910,6 +1130,9 @@ func emitFyneInvoker(b *strings.Builder, inv fyneEventInvoker, name string, lead
 		call = append(call, p.Name)
 	}
 	fmt.Fprintf(b, "func (m *Model) %s(%s) {\n", name, strings.Join(decl, ", "))
+	if len(lead) > 0 {
+		fmt.Fprintf(b, "\tif %s == nil {\n\t\treturn\n\t}\n", w)
+	}
 	if len(inv.Params) == 0 {
 		fmt.Fprintf(b, "\tif %s.%s != nil {\n\t\t%s.%s()\n\t}\n}\n\n", w, inv.Field, w, inv.Field)
 		return
@@ -943,4 +1166,21 @@ func emitFyneInvoker(b *strings.Builder, inv fyneEventInvoker, name string, lead
 // always right to say nothing about.
 func structuralProp(prop string) bool {
 	return prop == "spec" || prop == "style"
+}
+
+// fyneObject is fyne.CanvasObject, what a container holds and a record's Root
+// is.
+func fyneObject() *ir.Type { return ir.NativeGoNamed("fyne.CanvasObject") }
+
+// slotFieldRef is the field a render slot's var is held in.
+func (t *fyneTranslator) slotFieldRef(slot *ir.Var) ir.Expr {
+	return codegen.RecvFieldRef(t.gc.NodeRecvRef(slot.Name), slot.Name, slot.Type)
+}
+
+// copiesType is the type of copiesField(id).
+func (t *fyneTranslator) copiesType(id string) *ir.Type {
+	if ft, ok := t.declaredType(copiesField(id)); ok {
+		return ft
+	}
+	return ir.NativeGoNamed(copyMapType(t.fieldType(id).Meta.(ir.NativeTypeRef).Name))
 }

@@ -2,6 +2,8 @@ package kotlin
 
 import (
 	"fmt"
+	"maps"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -83,6 +85,9 @@ func lowerTestStmt(s ir.Stmt, surf TestSurface, compRecvs map[string]bool, ctxCo
 		if line, ok := lowerEventTrigger(n); ok {
 			return []string{line}
 		}
+		if line, ok := lowerInstanceRead(n.Call, surf, compRecvs); ok {
+			return []string{"composeTestRule.runOnUiThread {", "    " + line, "}", testIdleLine}
+		}
 		if c := n.Call; ir.IsTestMethodCall(c) {
 			if lines, ok := lowerTestSetContext(c, ctxCounts); ok {
 				return lines
@@ -107,6 +112,36 @@ func lowerTestStmt(s ir.Stmt, surf TestSurface, compRecvs map[string]bool, ctxCo
 				}
 			}
 		}
+	case *ir.If:
+		// A trigger on a node that may not be rendered is written under the
+		// null test that says it is, so the branches are a test's own lines.
+		out := []string{"if (" + lowerTestExpr(n.Cond, surf, compRecvs) + ") {"}
+		for _, b := range n.Body {
+			for _, l := range lowerTestStmt(b, surf, compRecvs, ctxCounts, mode) {
+				out = append(out, "    "+l)
+			}
+		}
+		if len(n.Else) > 0 {
+			out = append(out, "} else {")
+			for _, b := range n.Else {
+				for _, l := range lowerTestStmt(b, surf, compRecvs, ctxCounts, mode) {
+					out = append(out, "    "+l)
+				}
+			}
+		}
+		return append(out, "}")
+	case *ir.For:
+		iter := ""
+		if n.Iter != nil {
+			iter = lowerTestExpr(n.Iter, surf, compRecvs)
+		}
+		out := []string{surf.translator().ForHead(n, iter)}
+		for _, b := range n.Body {
+			for _, l := range lowerTestStmt(b, surf, compRecvs, ctxCounts, mode) {
+				out = append(out, "    "+l)
+			}
+		}
+		return append(out, "}")
 	case *ir.LocalVar:
 		// `var name T [= expr]` inside a test body. `var`, as the ordinary
 		// translator spells it: a SNGL local is mutable, and a test that
@@ -127,6 +162,17 @@ func lowerTestStmt(s ir.Stmt, surf TestSurface, compRecvs map[string]bool, ctxCo
 		// thread so Compose recomposes before the next assertion. The write
 		// itself is the ordinary translator's, which is what knows a list is a
 		// SnapshotStateList and a map a read-only Map.
+		if a, ok := s.(*ir.Assign); ok && writesState(s, surf, compRecvs) && readsRefPresence(a.Value, compRecvs) {
+			// The ordinary translator has no answer for whether a node is
+			// rendered, so the value is the test's own, read first.
+			w := *a
+			w.Value = &ir.Ident{Name: "__value", Type: a.Value.ExprType()}
+			lines := []string{"run {", "    val __value = " + lowerTestExpr(a.Value, surf, compRecvs), "    composeTestRule.runOnUiThread {"}
+			for _, l := range surf.translator().EvalStmt(&w) {
+				lines = append(lines, "        "+l)
+			}
+			return append(lines, "    }", "}", "composeTestRule.waitForIdle()")
+		}
 		if writesState(s, surf, compRecvs) {
 			lines := []string{"composeTestRule.runOnUiThread {"}
 			for _, l := range surf.translator().EvalStmt(s) {
@@ -142,6 +188,20 @@ func lowerTestStmt(s ir.Stmt, surf TestSurface, compRecvs map[string]bool, ctxCo
 	// (`c.press(key)`) lowered to nothing at all, and the assertions after it
 	// ran against a component nobody had touched.
 	return surf.translator().EvalStmt(s)
+}
+
+// readsRefPresence reports whether e asks whether one of a test's refs is
+// rendered.
+func readsRefPresence(e ir.Expr, compRecvs map[string]bool) bool {
+	found := false
+	_ = ir.WalkExprs(e, func(x ir.Expr) error {
+		if recv, _, _, _, ok := codegen.RefNullTest(x); ok && compRecvs[recv] {
+			found = true
+			return ir.SkipAll
+		}
+		return nil
+	})
+	return found
 }
 
 // writesState reports whether an assignment's target is rooted at the
@@ -226,23 +286,15 @@ func lowerEventTrigger(call *ir.CallStmt) (string, bool) {
 		return "", false
 	}
 	id, event := tt.ID, c.Event
-	// One copy of a node a loop rendered is that one of every node the tag
-	// finds, in composition order, which is render order.
-	nth := func(matcher string) string {
-		if tt.Index == nil {
-			return "composeTestRule.onNode(" + matcher + ")"
-		}
-		return fmt.Sprintf("composeTestRule.onAllNodes(%s)[%s]", matcher, lowerTestExpr(tt.Index, TestSurface{}, nil))
-	}
+	tag := copyMatcher(id, tt.Key())
 	if carriesState(c.Args) {
 		// The tag sits on the override's root, the Row around the control and
 		// its label, so the click targets the toggleable inside it. It flips
 		// the control whatever the test passed: this is the input path, as
 		// bubbletea's key press is.
-		tag := fmt.Sprintf("androidx.compose.ui.test.hasTestTag(%q)", id)
-		return fmt.Sprintf("%s.performClick(); composeTestRule.waitForIdle()", nth(fmt.Sprintf("androidx.compose.ui.test.isToggleable() and (%s or androidx.compose.ui.test.hasAnyAncestor(%s))", tag, tag))), true
+		return fmt.Sprintf("composeTestRule.onNode(androidx.compose.ui.test.isToggleable() and (%s or androidx.compose.ui.test.hasAnyAncestor(%s)))%s; composeTestRule.waitForIdle()", tag, tag, clickAction), true
 	}
-	finder := nth(fmt.Sprintf("androidx.compose.ui.test.hasTestTag(%q)", id))
+	finder := "composeTestRule.onNode(" + tag + ")"
 	action := composeAction(event, c.Args)
 	if action == "" {
 		return fmt.Sprintf("// TODO: no Compose-test action mapped for @%s on #%s", event, id), true
@@ -250,12 +302,18 @@ func lowerEventTrigger(call *ir.CallStmt) (string, bool) {
 	return fmt.Sprintf("%s.%s; composeTestRule.waitForIdle()", finder, action), true
 }
 
+// clickAction clicks the node a trigger found by running its click action, as
+// fyne and gtk4 run a widget's callback, rather than by a touch: a touch lands
+// where the node is drawn, and on a node past the bottom of the screen it
+// lands nowhere.
+const clickAction = ".performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick)"
+
 // composeActionImports are what lowerEventTrigger's finder and actions name:
 // extension functions, so a test file that clicks does not compile without
 // them. Written only into a file that triggers an event, at the marker.
 const (
 	composeActionImports = "import androidx.compose.ui.test.onNodeWithTag\n" +
-		"import androidx.compose.ui.test.performClick\n" +
+		"import androidx.compose.ui.test.performSemanticsAction\n" +
 		"import androidx.compose.ui.test.performTextReplacement\n"
 	composeActionMarker = "\x00composeActions\x00"
 )
@@ -268,7 +326,7 @@ const (
 func composeAction(event string, args []ir.CallArg) string {
 	switch event {
 	case "click":
-		return "performClick()"
+		return strings.TrimPrefix(clickAction, ".")
 	case "input", "change", "changed":
 		text := extractEventValue(args)
 		return fmt.Sprintf("performTextReplacement(%s)", text)
@@ -309,26 +367,28 @@ func extractEventValue(args []ir.CallArg) string {
 // read as a node's text, so a test asserting on its component's own state
 // asked the view tree for a tag no widget carries.
 func lowerTestExpr(e ir.Expr, surf TestSurface, compRecvs map[string]bool) string {
-	// Special shape: `<recv>.<id> == null` / `!= null` where <id> is in
-	// methodFields → presence check via Compose finder count. SNGL's
-	// nilable widget semantics maps to "any nodes match this tag?".
-	if bin, ok := e.(*ir.Binary); ok {
-		if bin.Op == ast.BinEq || bin.Op == ast.BinNeq {
-			if id, ok := composeIDRef(bin.Left, surf, compRecvs); ok && isNullLit(bin.Right) {
-				op := "=="
-				if bin.Op == ast.BinNeq {
-					op = "!="
-				}
-				return fmt.Sprintf("(composeNodeCount(composeTestRule, %q) %s 0)", id, op)
-			}
-			if id, ok := composeIDRef(bin.Right, surf, compRecvs); ok && isNullLit(bin.Left) {
-				op := "=="
-				if bin.Op == ast.BinNeq {
-					op = "!="
-				}
-				return fmt.Sprintf("(composeNodeCount(composeTestRule, %q) %s 0)", id, op)
-			}
+	// `<recv>.<id> == null` asks whether the node is rendered now, which is
+	// whether the semantics tree holds a node carrying its tag -- and, for
+	// `<recv>.<id>[1] == null`, its copy's key.
+	if present, ok := ir.RenderedNullTest(e); ok {
+		return strconv.FormatBool(present)
+	}
+	if recv, id, path, present, ok := codegen.RefNullTest(e); ok && compRecvs[recv] {
+		nodes := fmt.Sprintf("composeTestRule.onAllNodes(%s).fetchSemanticsNodes().isNotEmpty()", copyMatcher(id, ir.CopyKey(path)))
+		if len(path) == 0 {
+			// An instance built at run time has no node of its own: it
+			// counts itself in PresentRegistry instead.
+			nodes = fmt.Sprintf("(%s || %s.containsValue(%q))", nodes, PresentRegistry, id)
+		} else if surf.KeyedInstances[id] {
+			nodes = fmt.Sprintf("(%s || %s.containsValue(%s))", nodes, PresentRegistry, PresentCopyEntry(id, lowerTestExpr(ir.CopyKey(path), TestSurface{}, nil)))
 		}
+		if !present {
+			return "!" + nodes
+		}
+		return nodes
+	}
+	if line, ok := lowerInstanceRead(e, surf, compRecvs); ok {
+		return line
 	}
 	switch n := e.(type) {
 	case *ir.Binary:
@@ -416,30 +476,6 @@ func lowerTestExpr(e ir.Expr, surf TestSurface, compRecvs map[string]bool) strin
 	// expressions in lockstep with non-test Kotlin codegen rather than
 	// emitting a TODO placeholder that fails Kotlin compilation.
 	return surf.translator().EvalExpr(e)
-}
-
-// composeIDRef returns the id when e is the bare `<recv>.<id>` shape
-// (where <recv> is a component-typed test param) and <id> is in
-// surf.MethodFields. Used by lowerTestExpr's null-comparison shortcut to
-// detect conditional widget presence checks.
-func composeIDRef(e ir.Expr, surf TestSurface, compRecvs map[string]bool) (string, bool) {
-	sel, ok := e.(*ir.Select)
-	if !ok {
-		return "", false
-	}
-	id, ok := sel.Operand.(*ir.Ident)
-	if !ok || !compRecvs[id.Name] {
-		return "", false
-	}
-	if !surf.MethodFields[sel.Field] {
-		return "", false
-	}
-	return sel.Field, true
-}
-
-func isNullLit(e ir.Expr) bool {
-	lit, ok := e.(*ir.Literal)
-	return ok && lit.Type != nil && lit.Type.Kind == ir.TypeNull
 }
 
 // TestEmitMode selects how LowerTestFile wraps per-test bodies.
@@ -557,7 +593,8 @@ func LowerTestFile(pkg string, fns []*ir.Func, suffixes []string, surf TestSurfa
 			// other so those per-stmt lowerings resolve.
 			b.WriteString("        @Suppress(\"UNUSED_VARIABLE\") val composeTestRule = composeRule\n")
 			fmt.Fprintf(&b, "        composeRule.setContent { MainScreen(%s) }\n", recv)
-			for _, line := range lowerTestBody(fn.Block, surf.forInstance(recv, fn), compRecvs, ctxCounts, TestEmitNative) {
+			block, isurf := spellInstanceReads(codegen.LowerInstanceReads(fn.Block, surf.Pkg), surf.forInstance(recv, fn), compRecvs)
+			for _, line := range lowerTestBody(block, isurf, compRecvs, ctxCounts, TestEmitNative) {
 				fmt.Fprintf(&b, "        %s\n", line)
 			}
 			b.WriteString("    }\n\n")
@@ -570,7 +607,8 @@ func LowerTestFile(pkg string, fns []*ir.Func, suffixes []string, surf TestSurfa
 			if recv := codegen.TestComponentParam(fn); recv != "" {
 				fmt.Fprintf(&b, "    val %s = %s\n", recv, testInstanceVar)
 			}
-			for _, line := range lowerTestBody(fn.Block, surf.forInstance(testInstanceVar, fn), compRecvs, ctxCounts, TestEmitAgent) {
+			block, isurf := spellInstanceReads(codegen.LowerInstanceReads(fn.Block, surf.Pkg), surf.forInstance(testInstanceVar, fn), compRecvs)
+			for _, line := range lowerTestBody(block, isurf, compRecvs, ctxCounts, TestEmitAgent) {
 				fmt.Fprintf(&b, "    %s\n", line)
 			}
 			b.WriteString("}\n\n")
@@ -599,10 +637,77 @@ func LowerTestFile(pkg string, fns []*ir.Func, suffixes []string, surf TestSurfa
 
 	src := b.String()
 	imports := ""
-	if strings.Contains(src, ".onNodeWithTag(") || strings.Contains(src, ".performClick(") || strings.Contains(src, ".performTextReplacement(") {
-		imports = composeActionImports
+	if strings.Contains(src, ".onAllNodesWithTag(") {
+		imports = "import androidx.compose.ui.test.onAllNodesWithTag\n"
+	}
+	if strings.Contains(src, ".onNodeWithTag(") || strings.Contains(src, ".performSemanticsAction(") || strings.Contains(src, ".performTextReplacement(") {
+		imports += composeActionImports
 	}
 	return strings.Replace(src, composeActionMarker, imports, 1)
+}
+
+// lowerInstanceRead spells a codegen.InstanceReadMethod call through the
+// InstanceRegistry entry the instance registered under.
+func lowerInstanceRead(e ir.Expr, surf TestSurface, compRecvs map[string]bool) (string, bool) {
+	c, ok := e.(*ir.Call)
+	if !ok || c.Func == nil {
+		return "", false
+	}
+	r, ok := surf.InstanceReads[c.Func.Name]
+	if !ok {
+		return "", false
+	}
+	args := c.Args
+	entry := fmt.Sprintf("%q", r.ID)
+	if r.Keyed && len(args) > 0 {
+		entry = PresentCopyEntry(r.ID, lowerTestExpr(args[0].Value, surf, compRecvs))
+		args = args[1:]
+	}
+	vals := make([]string, len(args))
+	for i, a := range args {
+		vals[i] = lowerTestExpr(a.Value, surf, compRecvs)
+	}
+	call := InstanceMemberCall(entry, r.Member, "listOf("+strings.Join(vals, ", ")+")")
+	if t := r.Type(); t != nil && t.Kind != ir.TypeVoid {
+		return "(" + call + " as " + IRTypeToKt(t) + ")", true
+	}
+	return call, true
+}
+
+// spellInstanceReads stands each instance read a test's value reads in for a
+// name the translator spells as lowerInstanceRead does, so a read inside an
+// interpolation or a conversion, which reach the translator whole, is spelled
+// too. A call made as a statement is left for lowerTestStmt.
+func spellInstanceReads(block []ir.Stmt, surf TestSurface, compRecvs map[string]bool) ([]ir.Stmt, TestSurface) {
+	if len(surf.InstanceReads) == 0 || surf.kt == nil {
+		return block, surf
+	}
+	rewrites := maps.Clone(surf.kt.IdentRewrites)
+	n := 0
+	_ = ir.Rewrite(block, func(node ir.Node) (ir.Node, error) {
+		if cs, ok := node.(*ir.CallStmt); ok {
+			if _, isRead := lowerInstanceRead(cs.Call, surf, compRecvs); isRead {
+				return node, ir.SkipDir
+			}
+			return node, nil
+		}
+		e, ok := node.(ir.Expr)
+		if !ok {
+			return node, nil
+		}
+		text, isRead := lowerInstanceRead(e, surf, compRecvs)
+		if !isRead {
+			return node, nil
+		}
+		name := fmt.Sprintf("__snglRead%d", n)
+		n++
+		rewrites[name] = text
+		return &ir.Ident{Name: name, Type: e.ExprType()}, ir.SkipDir
+	})
+	kc := *surf.kt
+	kc.IdentRewrites = rewrites
+	surf.kt = &kc
+	return block, surf
 }
 
 // compReceiverSet returns the names of fn's component-typed params. It is what
@@ -638,6 +743,14 @@ type TestSurface struct {
 	// keyed by: android answers sngl:ui/nav's `current` that way, read
 	// through the instance as MainScreen reads it.
 	Platform string
+	// KeyedInstances is codegen.KeyedInstanceIDs: the ids a copy of which
+	// may be an instance built at run time, registered in PresentRegistry
+	// under its key.
+	KeyedInstances map[string]bool
+	// InstanceReads is codegen.InstanceReads by the method each is lowered
+	// to (codegen.LowerInstanceReads): a member read through an instance the
+	// screen composes, which registers in InstanceRegistry.
+	InstanceReads map[string]codegen.InstanceRead
 
 	kt *KtIRContext
 }
@@ -691,4 +804,47 @@ func (surf TestSurface) translator() *KtIRContext {
 // rather than by an emitter.
 func init() {
 	codegen.DeclareLangImplements("kotlin", ir.TestAssertID, ir.TestSnapshotID, ir.TestSetContextID)
+}
+
+// CopySemanticsKey is the semantics property the screen declares and sets on
+// each copy of a node a test indexes, holding the copy's key (ir.CopyProp).
+const CopySemanticsKey = "SnglCopy"
+
+// copyMatcher finds the node carrying the tag id, and where key is not nil
+// the copy of it a loop rendered whose SnglCopy holds key.
+func copyMatcher(id string, key ir.Expr) string {
+	tag := fmt.Sprintf("androidx.compose.ui.test.hasTestTag(%q)", id)
+	if key == nil {
+		return tag
+	}
+	return fmt.Sprintf("(%s and androidx.compose.ui.test.SemanticsMatcher.expectValue(%s, %s))", tag, CopySemanticsKey, lowerTestExpr(key, TestSurface{}, nil))
+}
+
+// PresentRegistry is the map the screen declares in a test build, holding a
+// token for each instance built at run time that a test null-tests while it is
+// composed, under the id its call site gave it -- or for one copy of it,
+// PresentCopyEntry. Each test's state empties it, since a composition an
+// earlier test left is never disposed.
+const PresentRegistry = "SnglPresent"
+
+// InstanceRegistry is the map an instance a test reads a member of registers
+// itself in while it is composed, under its PresentRegistry entry: a closure
+// per member, handed a call's arguments.
+const InstanceRegistry = "SnglInstances"
+
+// InstanceKeyParam is the parameter such an instance's composable is handed
+// its InstanceRegistry entry in.
+const InstanceKeyParam = "__sngl"
+
+// InstanceMemberCall is the registry's closure for r called with args, a
+// Kotlin list of the call's arguments, from the instance registered under
+// entry.
+func InstanceMemberCall(entry, member, args string) string {
+	return fmt.Sprintf("%s[%s]!![%q]!!(%s)", InstanceRegistry, entry, member, args)
+}
+
+// PresentCopyEntry is the PresentRegistry entry of one copy of an instance,
+// the Kotlin string naming the id and the key the copy stands in.
+func PresentCopyEntry(id, key string) string {
+	return fmt.Sprintf("%q + %s + \"]\"", id+"[", key)
 }

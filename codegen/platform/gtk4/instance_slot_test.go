@@ -43,7 +43,6 @@ window {
 // leave unparented, so the slot's entire subtree was built into a container no
 // window ever held.
 func TestInstanceSlotWidgetsAreDiscovered(t *testing.T) {
-	skipWithoutGIR(t)
 	model := generateGTK4Model(t, slotInstanceSrc)
 	ctor := instanceCtorBody(t, model, "newCardInstance")
 
