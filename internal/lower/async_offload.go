@@ -284,6 +284,13 @@ func schedulesItsCallback(fn *ir.Func) bool {
 	return fn.NativeSchedules || fn.Intrinsic == AsyncDoIntrinsic
 }
 
+// LeavesTheLoop reports whether a call of fn runs a function it is handed
+// somewhere other than the code that made the call: async.start's work, or a
+// native that says it schedules its callback.
+func LeavesTheLoop(fn *ir.Func) bool {
+	return fn != nil && (fn.Intrinsic == AsyncStartIntrinsic || fn.NativeSchedules)
+}
+
 // callbackFunc is the body behind a callback argument, through whatever the
 // checker wrapped it in.
 //

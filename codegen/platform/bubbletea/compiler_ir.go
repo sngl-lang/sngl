@@ -120,6 +120,11 @@ func CompileIR(ctx *codegen.CodegenCtx, cfg Config) ([]byte, error) {
 	cfg = cfg.withDefaults()
 	info := analyzeIR(ctx)
 	body, imports := emitIR(info, ctx, cfg)
+	if info.gc.OffLoop.Used {
+		snap, more := emitSnapshotMethods(info)
+		body += snap
+		imports = append(imports, more...)
+	}
 	body = golang.PruneStructDecls(body, golang.PayloadPruneCandidates(ctx.Pkg, codegen.TriggerArgs(ctx.Pkg)))
 	if err := ctx.Err(); err != nil {
 		return nil, err
@@ -168,6 +173,47 @@ func CompileIR(ctx *codegen.CodegenCtx, cfg Config) ([]byte, error) {
 	return out, nil
 }
 
+// emitSnapshotMethods declares the copies a function literal run off the
+// event loop takes of the Model where it is made (golang.OffLoopSnapshots):
+// state of its own, deep enough that no slice or map is shared with the
+// state the loop goes on owning.
+func emitSnapshotMethods(info *irAnalysis) (string, []string) {
+	var b strings.Builder
+	var imports []string
+	copyOf := codegen.LookupIntrinsic("go", ir.ValueCopyIntrinsic)
+	b.WriteString("\n// " + golang.SnapshotMethod + " is a copy of the Model sharing no state with it,\n// for work that runs off the event loop.\n")
+	fmt.Fprintf(&b, "func (m Model) %s() Model {\n\ts := *m.modelState\n", golang.SnapshotMethod)
+	for _, bind := range info.binds {
+		if bind.typ == nil || ir.SharesNothing(bind.typ) {
+			continue
+		}
+		field := "s." + bind.name
+		code, imps := copyOf([]ir.Expr{&ir.Ident{Name: bind.name, Type: bind.typ}}, func(ir.Expr) string { return field })
+		imports = append(imports, imps...)
+		fmt.Fprintf(&b, "\t%s = %s\n", field, code)
+	}
+	clone := func(field string) {
+		imports = append(imports, "maps")
+		fmt.Fprintf(&b, "\ts.%s = maps.Clone(s.%s)\n", field, field)
+	}
+	for _, w := range info.widgets {
+		if w.loop != nil {
+			clone(w.fieldName)
+		}
+	}
+	for i := range info.timers {
+		clone(timerLive(i))
+		clone(timerSeq(i))
+	}
+	if info.NeedsToast {
+		imports = append(imports, "slices")
+		b.WriteString("\ts.toasts = slices.Clone(s.toasts)\n")
+	}
+	b.WriteString("\treturn Model{&s}\n}\n\n")
+	fmt.Fprintf(&b, "func (m Model) %s() *Model {\n\ts := m.%s()\n\treturn &s\n}\n", golang.SnapshotRefMethod, golang.SnapshotMethod)
+	return b.String(), imports
+}
+
 type irAnalysis struct {
 	*codegen.CommonAnalysis
 	binds     []irBind
@@ -201,6 +247,7 @@ type irBind struct {
 	init        string // Go expression
 	isConst     bool
 	synthesized bool // pass-generated (e.g. NoContext hidden ctx Var); no getter/setter
+	typ         *ir.Type
 }
 
 type irExtern struct {
@@ -227,6 +274,7 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 	// that takes a *Model needs its address here. Every body EmitFuncDef
 	// writes clears it again, those being pointer receivers.
 	gc.ModelIsValue = true
+	gc.OffLoop = &golang.OffLoopSnapshots{}
 	info := &irAnalysis{
 		CommonAnalysis: ctx.Analysis,
 		gc:             gc,
@@ -260,6 +308,7 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 			init:        initVal,
 			isConst:     ov.IsConst(),
 			synthesized: ov.Synthesized(),
+			typ:         ov.Type(),
 		})
 	}
 

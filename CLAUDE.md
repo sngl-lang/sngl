@@ -620,11 +620,15 @@ Both start from `codegen.AnalyzeCommon(doc)` which extracts model fields, comput
   `Update` takes the Model by value and hands back the copy, so what the
   program holds lives in a `modelState` the Model embeds by pointer, which
   every copy shares: a closure captures the Model where it is made and writes
-  the state a later `Update` hands back, and work `async.start` began reads
-  the live state. Any access to state from such work races with `Update` on
-  this target, which answers no `async.do` to post it back with; a run test
-  orders the two by hand (`codegen/platform/bubbletea/async_run_test.go`,
-  under `-race`).
+  the state a later `Update` hands back. The event loop owns that state, so a
+  function literal handed to a call that runs it off the loop
+  (`lower.LeavesTheLoop`: `async.start`'s work, a `schedules` native's
+  callback) closes over a snapshot taken where it is made instead -- a deep
+  copy, through the language's value copy, that it reads and writes alone
+  (`golang.OffLoopSnapshots`, `emitSnapshotMethods`). What such work writes
+  reaches nothing the program shows, since this target answers no `async.do`
+  to post it back with (#272). `codegen/platform/bubbletea/async_run_test.go`
+  runs both halves under `-race`.
 - **fyne** — generates Go desktop code; supports `golang` lang only. Its Go emitter knows three `#[intrinsic]` primitives, which differ only in the children contract a declaration cannot express as data: `Widget` (none), `Container` (a default slot, children attach through a method) and `Wrapper` (a default slot bounded to one, the child is assigned to a field). *Which* Fyne widget one becomes is a `Spec` record passed as a prop — Go constructor, its arguments, the Go type, the import paths, the setter behind each value prop, the callback field and Go signature behind each event. `codegen/platform/fyne/spec.go` decodes it and nothing else in the platform names a Fyne type. Label, Button, VBox and the other twelve are ordinary components in `fyne.sngl` carrying a Spec, so wrapping a widget from a Go module the compiler never heard of is writing a thirteenth — `codegen/platform/fyne/third_party_widget_test.go` is that, done in SNGL alone.
 
   A value has to reach the emitter through a *declared* prop, since that is what lowering turns into the `node.prop = expr` assignment the translator sees. `style` is the platform's own and renders nothing, as on gtk4; a temp its value reads -- a ternary passTernary hoisted -- is read into `_` (`codegen.KeepLocalsRead`, `testdata/style_ternary_unrendered.txtar`). So the primitives declare a vocabulary of value props by type (`text`, `placeholder`, `number`, `flag`, `options`) and `Setter` binds one to a Go method — the vocabulary grows with the types a setter takes, not with the widget count. Same for `@click`/`@change`/`@input` and `Handler`.
