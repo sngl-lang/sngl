@@ -9,8 +9,8 @@
 # what it names is refused on a compiled target (alias, list), where it would
 # read the ref live and the interpreter keeps the value it took. A recursion
 # binding its own two-way prop to its next level carries one write-back per
-# level (twoway); fyne and gtk4 do not build it yet, and bubbletea refuses
-# the focus stops in it.
+# level, and its levels each name a node `next` that a spliced copy of the
+# top level names too (twoway); bubbletea refuses the focus stops in it.
 
 sngl test --platform=none chain.sngl
 stdout 'ok   1 tests, 0 failures'
@@ -121,6 +121,12 @@ sngl test --platform=none twoway.sngl
 stdout 'ok   1 tests, 0 failures'
 
 sngl test --platform=html twoway.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=fyne --language=go twoway.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go twoway.sngl
 stdout 'ok   1 tests, 0 failures'
 
 sngl test --platform=android --language=kotlin twoway.sngl
@@ -643,6 +649,16 @@ sha256:f3cc8478d8b62a2647381b33148ae756
     }
   ]
 }
+-- testrun/fyne/go/twoway.sngl/main/1 --
+sha256:d9aba74dc4db1bfecc010c00c2d215cd
+{
+  "results": [
+    {
+      "Desc": "TwoWay",
+      "Passed": true
+    }
+  ]
+}
 -- testrun/fyne/go/unused.sngl/main/1 --
 sha256:3664dc3a4ff85136540c7f05fd820287
 {
@@ -699,6 +715,16 @@ sha256:43ffd926e490c4cde84c054190befa66
   "results": [
     {
       "Desc": "Slot",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/twoway.sngl/main/1 --
+sha256:86675e812813184ab8af3f9e84db716d
+{
+  "results": [
+    {
+      "Desc": "TwoWay",
       "Passed": true
     }
   ]
