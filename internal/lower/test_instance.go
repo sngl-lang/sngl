@@ -2,6 +2,7 @@ package lower
 
 import (
 	"fmt"
+	"maps"
 	"slices"
 
 	"duckfam.us/sngl/ast"
@@ -233,9 +234,12 @@ func (ti *testInstance) refuseMovedRefLocals(stmts []ir.Stmt, aliases map[*ir.Lo
 	return m.bad
 }
 
-// movedRefs follows a test body in the order it runs: what a statement
-// reads is read before what it does moves anything, and a loop whose body
-// moves anything has moved it for every read in the body, the first
+// movedRefs follows a test body in the order it runs: an expression's
+// operands in the order they are evaluated, a call's arguments before the
+// call, a write's value before the write. Each branch of an `if` starts from
+// the state before it, and a for-else's else from the state before the loop,
+// and what follows either is moved where any path moved it. A loop whose
+// body moves anything has moved it for every read in the body, the first
 // iteration's excepted only by the order nothing tracks.
 type movedRefs struct {
 	ti       *testInstance
@@ -252,33 +256,68 @@ func (m *movedRefs) stmts(list []ir.Stmt) {
 		}
 		switch x := s.(type) {
 		case *ir.LocalVar:
-			m.reads(x.Init)
+			m.expr(x.Init)
 			if m.wrapped[x.Sym] != nil {
 				m.declared[x.Sym] = true
 				m.moved[x.Sym] = false
 			}
 		case *ir.If:
-			m.reads(x.Cond)
+			m.expr(x.Cond)
+			before := maps.Clone(m.moved)
 			m.stmts(x.Body)
+			after := m.moved
+			m.moved = before
 			m.stmts(x.Else)
+			m.merge(after)
 		case *ir.For:
-			m.reads(x.Iter)
-			if m.moves(x.Body) {
+			m.expr(x.Iter)
+			before := maps.Clone(m.moved)
+			if m.anyMove(x.Body) {
 				m.moveAll()
 			}
 			m.stmts(x.Body)
+			after := m.moved
+			m.moved = before
 			m.stmts(x.Else)
+			m.merge(after)
+		case *ir.Assign:
+			m.expr(x.Value)
+			m.target(x.Target)
+		case *ir.Toggle:
+			m.target(x.Target)
 		default:
-			m.reads(s)
-			if m.moves(s) {
-				m.moveAll()
-			}
+			m.expr(s)
 		}
 	}
 }
 
-// reads refuses a read of a moved local in root.
-func (m *movedRefs) reads(root any) {
+// merge is what follows two paths: moved where either moved it.
+func (m *movedRefs) merge(other map[ir.Symbol]bool) {
+	for sym, v := range other {
+		if v {
+			m.moved[sym] = true
+		}
+	}
+}
+
+// target reads what a write's target evaluates, then makes the write.
+func (m *movedRefs) target(t ir.Expr) {
+	switch x := t.(type) {
+	case *ir.Select:
+		m.expr(x.Operand)
+	case *ir.Index:
+		m.expr(x.Operand)
+		m.expr(x.Idx)
+	}
+	if m.ti.rooted(t) {
+		m.moveAll()
+	}
+}
+
+// expr reads root in the order it is evaluated, refusing a read of a moved
+// local, and moves at each call that moves anything once its operands are
+// read. A function literal's body runs where it is called, not here.
+func (m *movedRefs) expr(root any) {
 	if root == nil || m.bad != nil {
 		return
 	}
@@ -286,18 +325,48 @@ func (m *movedRefs) reads(root any) {
 		return
 	}
 	_ = ir.Walk(root, func(n ir.Node) error {
-		if id, ok := n.(*ir.Ident); ok {
-			if lv := m.wrapped[id.Sym]; lv != nil && m.moved[id.Sym] && m.bad == nil {
-				m.bad = fmt.Errorf("%s: `%s` holds a ref read when it was declared, and a trigger, a call or a write since may have changed which nodes it names; read the ref again where it is wanted", identPos(id), lv.Name)
+		if m.bad != nil {
+			return ir.SkipAll
+		}
+		switch x := n.(type) {
+		case *ir.Lambda:
+			return ir.SkipDir
+		case *ir.Ident:
+			if lv := m.wrapped[x.Sym]; lv != nil && m.moved[x.Sym] {
+				m.bad = fmt.Errorf("%s: `%s` holds a ref read when it was declared, and a trigger, a call or a write since may have changed which nodes it names; read the ref again where it is wanted", identPos(x), lv.Name)
 			}
+		case *ir.Call:
+			if x.Receiver != nil {
+				m.expr(x.Receiver)
+			}
+			for _, a := range x.Args {
+				m.expr(a.Value)
+			}
+			if m.callMoves(x) {
+				m.moveAll()
+			}
+			return ir.SkipDir
+		case *ir.Assign, *ir.Toggle:
+			m.stmts([]ir.Stmt{x.(ir.Stmt)})
+			return ir.SkipDir
 		}
 		return nil
 	})
 }
 
-// moves reports whether root holds a trigger, an event fired, a method
+// callMoves reports whether call is a trigger, an event fired or a method
+// called through the test's instance.
+func (m *movedRefs) callMoves(call *ir.Call) bool {
+	recv := call.Receiver
+	if recv == nil && call.Func != nil && len(call.Func.Params) > 0 && call.Func.Params[0].Receiver && len(call.Args) > 0 {
+		recv = call.Args[0].Value
+	}
+	return recv != nil && m.ti.rooted(recv)
+}
+
+// anyMove reports whether root holds a trigger, an event fired, a method
 // called or a write through the test's instance.
-func (m *movedRefs) moves(root any) bool {
+func (m *movedRefs) anyMove(root any) bool {
 	found := false
 	_ = ir.Walk(root, func(n ir.Node) error {
 		switch x := n.(type) {
@@ -306,11 +375,7 @@ func (m *movedRefs) moves(root any) bool {
 		case *ir.Toggle:
 			found = found || m.ti.rooted(x.Target)
 		case *ir.Call:
-			recv := x.Receiver
-			if recv == nil && x.Func != nil && len(x.Func.Params) > 0 && x.Func.Params[0].Receiver && len(x.Args) > 0 {
-				recv = x.Args[0].Value
-			}
-			found = found || recv != nil && m.ti.rooted(recv)
+			found = found || m.callMoves(x)
 		}
 		if found {
 			return ir.SkipAll
