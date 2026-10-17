@@ -953,7 +953,7 @@ func emitIRComponentComposable(b *strings.Builder, cc *codegen.ComponentCtx, ctx
 		if p.Default != nil {
 			if _, ok := p.Default.(*ir.Literal); ok {
 				def = " = " + kotlin.IRLiteralToKt(p.Default)
-			} else if ir.IsConst(p.Default) {
+			} else if ir.IsConst(p.Default) && !namesParam(p.Default) {
 				// A bodyless declaration's call site omits a defaulted prop and
 				// leaves its default to the body, which is this composable.
 				def = " = " + kc.EvalExpr(p.Default)
@@ -1514,4 +1514,20 @@ func calleesFirst(fns []*ir.Func) []*ir.Func {
 		visit(fn)
 	}
 	return out
+}
+
+// namesParam reports whether e names a parameter, which a Kotlin default may
+// do only of one declared before it.
+func namesParam(e ir.Expr) bool {
+	found := false
+	_ = ir.WalkExprs(e, func(x ir.Expr) error {
+		if id, ok := x.(*ir.Ident); ok {
+			if _, ok := id.Sym.(*ir.Param); ok {
+				found = true
+				return ir.SkipAll
+			}
+		}
+		return nil
+	})
+	return found
 }
