@@ -1,0 +1,19 @@
+// A handler that forwards hands on what it was handed, so each parameter has
+// to fit the event it forwards to.
+import . "sngl:ui"
+
+component inner(@hit(n int)) node {
+    button #b(text="b", @click {
+        hit(3)
+    })
+}
+
+component outer(@named(s string)) node {
+    inner #i(@hit(n) {
+        named() // ERROR(check) "named() forwards what @hit was handed, and its parameter 1 is int where named takes string"
+    })
+}
+
+window {
+    outer(@named(s) {})
+}

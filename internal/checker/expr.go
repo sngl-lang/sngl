@@ -5023,7 +5023,13 @@ func (c *checker) checkAndSplitArgs(args ast.ArgList, comp *ir.Component) ([]ir.
 			// A primitive's handler is the host callback itself, which hands
 			// a forward what it reports.
 			if comp != nil && !comp.Primitive() {
-				fn.Params = forwardedParams(fn, want, c.eventParamsOf)
+				fn.Params = forwardedParams(fn, want, c.eventParamsOf, func(e *ir.Emit, i int, from, to *ir.Type) {
+					pos := arg.Pos
+					if e.AST != nil {
+						pos = e.AST.Pos
+					}
+					c.error(pos, "%s() forwards what @%s was handed, and its parameter %d is %s where %s takes %s", e.Name, arg.Name, i+1, from, e.Name, to)
+				})
 			}
 			handlers = append(handlers, ir.EventHandler{
 				AST:  &arg,
@@ -6226,7 +6232,7 @@ func (c *checker) refuseAmbiguousReach(x *ast.SelectExpr, comp *ir.Component, id
 // hands on what the handler received, every parameter of it, which a splice
 // of the handler elsewhere -- into the body of the component it is a handler
 // of -- no longer has to hand. params is the parameters an event declares.
-func forwardedParams(fn *ir.Func, want []*ir.Param, params func(string) []*ir.Param) []*ir.Param {
+func forwardedParams(fn *ir.Func, want []*ir.Param, params func(string) []*ir.Param, mismatch func(e *ir.Emit, i int, from, to *ir.Type)) []*ir.Param {
 	var forwards []*ir.Emit
 	_ = ir.WalkStmts(fn.Block, func(s ir.Stmt) error {
 		if e, ok := s.(*ir.Emit); ok && len(e.Args) == 0 {
@@ -6244,9 +6250,13 @@ func forwardedParams(fn *ir.Func, want []*ir.Param, params func(string) []*ir.Pa
 		out = append(out, &ir.Param{Name: fmt.Sprintf("__fwd%d", i), Type: want[i].Type})
 	}
 	for _, e := range forwards {
-		n := len(params(e.Name))
+		to := params(e.Name)
+		n := len(to)
 		e.Args = make([]ir.CallArg, n)
 		for i, p := range out[:n] {
+			if p.Type != nil && to[i].Type != nil && !p.Type.IsAssignableTo(to[i].Type) {
+				mismatch(e, i, p.Type, to[i].Type)
+			}
 			e.Args[i] = ir.CallArg{Value: &ir.Ident{Name: p.Name, Type: p.Type, Sym: p}}
 		}
 	}
