@@ -1131,7 +1131,7 @@ sha256:03c777fc859d75de3331003fc4f56579
   ]
 }
 -- testrun/android/kotlin/gone.sngl/main/1 --
-sha256:ae2231eadbebdefda4e4fa1a006b5107
+sha256:cd1e55e3331740856942a9c346b1a134
 {
   "results": [
     {
@@ -1151,7 +1151,7 @@ sha256:ce94376b1af74b08696f4bd942e42fb2
   ]
 }
 -- testrun/android/kotlin/nested.sngl/main/1 --
-sha256:59bf3e86e4642902ded396b92b779fa3
+sha256:f426807931b760f5bf095ccd6f6426c8
 {
   "results": [
     {
@@ -1205,7 +1205,7 @@ sha256:2727f03d8f95d7e7f43c7ab3cb50c9eb
   ]
 }
 -- testrun/android/kotlin/shrink.sngl/main/1 --
-sha256:ebd4361526fdaaf01e30feed83933e54
+sha256:86350067d0f3525caf03318a76e358b0
 {
   "results": [
     {

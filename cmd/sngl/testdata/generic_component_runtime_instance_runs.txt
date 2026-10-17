@@ -345,7 +345,7 @@ ui.window(title="x") {
     nest(x=1, d=2)
 }
 -- testrun/android/kotlin/app.sngl/main/1 --
-sha256:e9f60340c974498b1384c6d81f04dd08
+sha256:0a74488df83a82854a69e23ec93440c9
 {
   "results": [
     {
@@ -365,7 +365,7 @@ sha256:e5422e3b05abf695a90acf6470dee2d0
   ]
 }
 -- testrun/android/kotlin/list.sngl/main/1 --
-sha256:9fce00a4fd342d32be9c038205e70a85
+sha256:71e86ebe4192883ac93202021ea1b3ab
 {
   "results": [
     {
