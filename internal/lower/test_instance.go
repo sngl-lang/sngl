@@ -274,6 +274,10 @@ func (m *movedRefs) stmts(list []ir.Stmt) {
 			before := maps.Clone(m.moved)
 			if m.anyMove(x.Body) {
 				m.moveAll()
+				// A condition is asked again after every pass.
+				if t := x.Iter.ExprType(); x.KeySym == nil && x.ValueSym == nil && t != nil && t.Kind == ir.TypeBool {
+					m.expr(x.Iter)
+				}
 			}
 			m.stmts(x.Body)
 			after := m.moved
@@ -316,7 +320,9 @@ func (m *movedRefs) target(t ir.Expr) {
 
 // expr reads root in the order it is evaluated, refusing a read of a moved
 // local, and moves at each call that moves anything once its operands are
-// read. A function literal's body runs where it is called, not here.
+// read. A function literal's body runs where it is called, so what it moves
+// counts as moved from where it is written; a ternary's branches each start
+// from the state before them.
 func (m *movedRefs) expr(root any) {
 	if root == nil || m.bad != nil {
 		return
@@ -330,6 +336,32 @@ func (m *movedRefs) expr(root any) {
 		}
 		switch x := n.(type) {
 		case *ir.Lambda:
+			// Its body runs where it is called, which may be anywhere from
+			// here on: what it moves is moved.
+			if x.Func != nil && m.anyMove(x.Func.Block) {
+				m.moveAll()
+			}
+			return ir.SkipDir
+		case *ir.Ternary:
+			m.expr(x.Cond)
+			before := maps.Clone(m.moved)
+			m.expr(x.Then)
+			after := m.moved
+			m.moved = before
+			m.expr(x.Else)
+			m.merge(after)
+			return ir.SkipDir
+		case *ir.Binary:
+			if x.Op != ast.BinAnd && x.Op != ast.BinOr {
+				return nil
+			}
+			// The right operand may not run, and runs after the left.
+			m.expr(x.Left)
+			before := maps.Clone(m.moved)
+			m.expr(x.Right)
+			after := m.moved
+			m.moved = before
+			m.merge(after)
 			return ir.SkipDir
 		case *ir.Ident:
 			if lv := m.wrapped[x.Sym]; lv != nil && m.moved[x.Sym] {
