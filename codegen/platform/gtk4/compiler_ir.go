@@ -590,6 +590,9 @@ func (c *compilation) newTemplateData(widgetFields []widgetField, functionCode s
 	for _, sd := range c.info.Structs {
 		s := structData{Name: golang.ExportName(sd.Name)}
 		for _, f := range sd.Fields {
+			for _, p := range golang.TypeImports(f.Type) {
+				td.Imports[p] = true
+			}
 			s.Fields = append(s.Fields, structFieldData{
 				Name: golang.ExportName(f.Name),
 				Type: golang.IRTypeToGo(f.Type),

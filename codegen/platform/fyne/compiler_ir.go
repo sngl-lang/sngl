@@ -500,6 +500,9 @@ func newIRTemplateData(info *irAnalysis, cfg Config, widgetFields []irWidgetFiel
 	for _, sd := range info.Structs {
 		s := structData{Name: golang.ExportName(sd.Name)}
 		for _, f := range sd.Fields {
+			for _, p := range golang.TypeImports(f.Type) {
+				gc.RequireImport(p)
+			}
 			s.Fields = append(s.Fields, structFieldData{
 				Name: golang.ExportName(f.Name),
 				Type: golang.IRTypeToGo(f.Type),

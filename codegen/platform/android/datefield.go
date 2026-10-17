@@ -10,8 +10,7 @@ import (
 )
 
 // dateFieldKt is SnglDateField's source, the composable `android:SnglDateField`
-// names. A field that opens a dialog keeps whether the dialog is open, which a
-// const override has nowhere to hold, so the composable is Kotlin and the
+// names, which keeps the half-typed text and whether its dialog is open; the
 // override renders it.
 //
 //go:embed datefield.kt

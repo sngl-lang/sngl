@@ -462,6 +462,9 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 		fmt.Fprintf(&b, "type %s struct {\n", golang.ExportName(sd.Name))
 		for _, f := range sd.Fields {
 			goType := golang.IRTypeToGo(f.Type)
+			for _, p := range golang.TypeImports(f.Type) {
+				gc.RequireImport(p)
+			}
 			fmt.Fprintf(&b, "\t%s %s\n", golang.ExportName(f.Name), goType)
 		}
 		b.WriteString("}\n\n")

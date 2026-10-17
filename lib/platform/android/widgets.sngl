@@ -212,10 +212,9 @@ const component ui.textarea[platform](value, style, @input, @change) {
 
 // A date is typed as YYYY-MM-DD, or picked in Material's dialog from the
 // button beside the field. The half-typed text and the dialog's open state are
-// SnglDateField's own, in Kotlin, because a const override has nowhere to hold
-// state its render reads (see select). An
-// unpicked date shows nothing -- the `option` is what distinguishes that from
-// the zero date, the first day of year one.
+// SnglDateField's own, in Kotlin. An unpicked date shows nothing -- the
+// `option` is what distinguishes that from the zero date, the first day of
+// year one.
 const component ui.datepicker[platform](placeholder, value, disabled, style, @change) {
     SnglDateField(
         value = value,

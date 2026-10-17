@@ -216,19 +216,11 @@ func (c *checker) runConstSlotChecksFrom(mark int) {
 // checkOverrideConst holds an override to const where it has to be. `const` on
 // a base declaration is part of its contract, so every override of one is held
 // to the render rule, reported at the override. An override of a non-const
-// base may say const itself.
-//
-// A target package's overrides must end up const, inherited or written: a
-// target package is what a build inlines into every program that renders the
-// component, so its render may depend on nothing but what the call site says.
-// This is what passInlinePure's strict mode used to find out at lowering, with
-// no position.
+// base may say const itself; one that does not, a target package's included,
+// is an ordinary body and may hold state its render reads.
 func (c *checker) checkOverrideConst(pe pendingExtension) {
 	baseConst := pe.comp.AST != nil && pe.comp.AST.Const
 	if !baseConst && !pe.isConst {
-		if !pe.user {
-			c.error(pe.pos, "override %s[%s] in a target package must be const: a target's render depends only on its props; write `const component %s[%s]`", pe.name, pe.platform, pe.name, pe.platform)
-		}
 		return
 	}
 	c.checkConstRender(constComponentLabel(pe.name+"["+pe.platform+"]"), pe.comp.Stmts, pe.pos)
