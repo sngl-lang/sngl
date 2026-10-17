@@ -186,7 +186,7 @@ func TopLevelKeywords() []CompletionItem {
 // ComponentKeywords is what can start a statement in a component body: the
 // keywords, and the components a node could name.
 func ComponentKeywords(content string, doc *ast.Document) []CompletionItem {
-	kws := []string{"var", "const", "if", "for"}
+	kws := []string{"var", "const", "if", "for", "match"}
 	items := make([]CompletionItem, len(kws))
 	for i, kw := range kws {
 		items[i] = CompletionItem{Label: kw, Kind: CIKKeyword}

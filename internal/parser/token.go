@@ -93,10 +93,10 @@ const (
 	KW_ELSE      TokenType = 0x3B
 	KW_FUNC      TokenType = 0x3C
 	KW_UNIT      TokenType = 0x3D
-	// 0x3E freed: slot is now a plain identifier
-	KW_BREAK    TokenType = 0x3F // reserved
-	KW_RETURN   TokenType = 0x40
-	KW_CONTINUE TokenType = 0x41 // reserved
+	KW_MATCH     TokenType = 0x3E
+	KW_BREAK     TokenType = 0x3F // reserved
+	KW_RETURN    TokenType = 0x40
+	KW_CONTINUE  TokenType = 0x41 // reserved
 	// 0x43-0x45 freed: true, false, null are now pre-declared identifiers
 
 	// Special
@@ -145,6 +145,7 @@ var keywords = map[string]TokenType{
 	"if":        KW_IF,
 	"for":       KW_FOR,
 	"else":      KW_ELSE,
+	"match":     KW_MATCH,
 	"func":      KW_FUNC,
 	"unit":      KW_UNIT,
 	"break":     KW_BREAK,

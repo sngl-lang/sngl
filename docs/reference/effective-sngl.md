@@ -995,6 +995,42 @@ if count == 0 {
 
 A map or anonymous-struct literal in an `if` or `for` head has to be parenthesized, because the brace after the head opens the body.
 
+### Matching
+
+When the branches test one value against constants, `match` says so once.
+Where a statement goes, each arm is a block; where a value goes, each arm is
+`=> value`:
+
+<!-- SNGL-component
+enum Status { active, inactive, pending }
+-->
+
+```sngl
+var status Status = Status.pending
+
+match status {
+    active { ui.text(value="Running") }
+    inactive, pending { ui.text(value="Stopped") }
+}
+
+ui.text(value=match status {
+    active => "on"
+    else => "off"
+})
+```
+
+A match must cover every case: each member of an enum, both values of a
+`bool`, `null` for an option. Anything else needs an `else`, and so does a
+headless `match { cond => … }`, whose arms are conditions tested in order.
+
+**Write `else` when a match should keep compiling as the enum grows.** Listing
+every member, and nothing else, makes a new member an error at every match
+that does not handle it, which is what you want inside the package that owns
+the enum. A match over an enum another package owns -- or one you publish for
+others to extend -- reads better with an `else`, for the reason a struct
+literal names its fields: the declaration can grow without breaking the code
+that uses it.
+
 ### Iteration
 
 `for var x = xs` walks a list; `for var i, x = xs` also binds the index, which always comes first:

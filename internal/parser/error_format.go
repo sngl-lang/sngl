@@ -56,6 +56,7 @@ var symbolDisplay = map[string]string{
 	"kw_func":      "func",
 	"kw_if":        "if",
 	"kw_import":    "import",
+	"kw_match":     "match",
 	"kw_return":    "return",
 	"kw_struct":    "struct",
 	"kw_unit":      "unit",

@@ -1,0 +1,146 @@
+// `match` picks the first arm whose pattern equals its subject. An arm is a
+// block where a statement goes and `pattern => expr` where a value does, the
+// two forms a func has. A pattern is a constant or `null`; a bare enum member
+// resolves against the subject's type, commas give an arm several patterns,
+// and `else` is the arm that runs when no other did. Every match is
+// exhaustive.
+
+import . "sngl:test"
+import . "sngl:ui"
+
+enum Status { active, inactive, pending }
+
+component panel node {
+    var status Status = pending
+    var maybe option[Status] = null
+    var n = 0
+
+    // In a view body: a node in an arm is rendered while that arm is taken.
+    match status {
+        active { text #on(value="on") }
+        pending, inactive { text #off(value="not on") }
+    }
+
+    // An expression: every member is covered, so no else.
+    text #label(value=match status {
+        active => "on"
+        pending => "waiting"
+        inactive => "off"
+    })
+
+    // An option: null is one more case to cover.
+    text #shown(value=match maybe {
+        null => "none"
+        active => "on"
+        else => "not on"
+    })
+
+    // Headless: each arm is a condition, tested in order.
+    text #size(value=match {
+        n > 10 => "big"
+        n > 0 => "small"
+        else => "none"
+    })
+
+    var picked = ""
+    var calls = 0
+
+    func count() Status {
+        calls = calls + 1
+        return status
+    }
+
+    // An expression match on a call: the call is made once, not per arm.
+    button #pick(text="Pick", @click {
+        picked = match count() {
+            active => "a"
+            inactive => "i"
+            else => "p"
+        }
+    })
+
+    button #step(text="Step", @click {
+        // In a handler: a subject that is not a plain read is evaluated once.
+        match next(status) {
+            active { n = n + 1 }
+            else {}
+        }
+        status = next(status)
+    })
+}
+
+const func next(s Status) => match s {
+    active => Status.inactive
+    inactive => pending
+    pending => active
+}
+
+var bumps = 0
+
+func bump(s Status) Status {
+    bumps = bumps + 1
+    return s
+}
+
+// An expression body is the statement `return …`, so it binds its subject too.
+func label(s Status) => match bump(s) {
+    active => "on"
+    else => "off"
+}
+
+func describe(n int) string {
+    match n {
+        0 { return "zero" }
+        1, 2, 3 { return "few" }
+        else { return "many" }
+    }
+}
+
+func testViewArm(t Test, c panel) {
+    t.assert(c.on == null)
+    t.assert(c.off != null)
+    t.assert(c.label.value == "waiting")
+}
+
+func testOption(t Test, c panel) {
+    t.assert(c.shown.value == "none")
+    c.maybe = active
+    t.assert(c.shown.value == "on")
+    c.maybe = pending
+    t.assert(c.shown.value == "not on")
+}
+
+func testHeadless(t Test, c panel) {
+    t.assert(c.size.value == "none")
+    c.n = 4
+    t.assert(c.size.value == "small")
+    c.n = 11
+    t.assert(c.size.value == "big")
+}
+
+func testHandler(t Test, c panel) {
+    c.step.click()
+    t.assert(c.status == active)
+    t.assert(c.n == 1)
+    t.assert(c.on != null)
+    t.assert(c.label.value == "on")
+}
+
+func testSubjectOnce(t Test, c panel) {
+    c.pick.click()
+    t.assert(c.picked == "p")
+    t.assert(c.calls == 1)
+    t.assert(label(Status.active) == "on")
+    t.assert(bumps == 1)
+}
+
+func testFunc(t Test) {
+    t.assert(describe(0) == "zero")
+    t.assert(describe(2) == "few")
+    t.assert(describe(9) == "many")
+    t.assert(next(pending) == active)
+}
+
+window {
+    panel
+}

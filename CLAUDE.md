@@ -482,6 +482,44 @@ JavaScript it spread `async` from the arrow up through the settle. The closure's
 own `ir.Func` is coloured in its own right, which is what makes the descent
 redundant as well as wrong.
 
+## Match
+
+`match [subject] { arms }` is a statement and an expression, and an arm takes
+the form of its position, as a function body does: `pattern { … }` where a
+statement goes, `pattern => value` where a value goes, and the checker refuses
+the other (the grammar takes both everywhere). A pattern is a constant -- an
+enum member written bare, a literal, a `const`, `null` -- compared with `==`;
+commas join patterns, `else` is the last arm, and nothing falls through. A
+headless `match { cond => … }` tests `bool` conditions in order. There is no
+binding pattern yet; `var name` can be added without breaking anything.
+
+**Every match is exhaustive**: each enum member, `true` and `false`, and
+`null` for an option, or an `else`. An `else` beside full coverage is allowed
+and is what effective SNGL recommends for a match that should survive the enum
+growing a member.
+
+**The checker turns it into constructs every phase already knows**
+(`internal/checker/match.go`): a statement into an `ir.If`/else-if chain, an
+expression into nested `ir.Ternary`s, each arm's patterns as `==` joined by
+`||`. The last arm of an exhaustive match is a bare `else` with no test. No
+`ir.Match` exists, so the family, slot, element-ref and `.empty` rules, the
+interpreter, the optimizer, the lowering and every backend read a match as the
+if or ternary it is; `ast.BranchBlocks` is the one place an AST walk over a
+view learns an arm is a block.
+
+**The subject is evaluated once wherever a statement can hold it.** A subject
+that calls anything is bound to `__matchN` ahead of the statement, in an
+imperative block (`preludeFor`, set per statement by `checkBlockScoped`) and in
+an expression body, which is the one statement `return …` (`bodyPrelude`). A
+position evaluated only some of the time -- the right of `&&`/`||`, a ternary's
+branch, a match's own arms, a condition loop's head -- has no such place
+(`noPrelude`), and neither has a view body: there the subject is read again per
+arm tested, and `reportImpureMatchSubjects` refuses one that writes state,
+after the purity fixed point. Binding ahead of the statement evaluates the
+subject before the rest of the statement, as a spread's operand is.
+`testdata/match.sngl`, `error_match.sngl`, `error_match_impure_subject.sngl`,
+`match.txtar` and `cmd/sngl/testdata/match_runs.txt`.
+
 ## Contexts
 
 A context is **dynamically scoped**: a read answers the nearest provider the

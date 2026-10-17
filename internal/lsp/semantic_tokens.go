@@ -78,7 +78,7 @@ func scanKeywordTokens(content string) []rawToken {
 	keywords := map[string]bool{
 		"var": true, "const": true, "func": true, "component": true,
 		"struct": true, "enum": true, "unit": true, "window": true,
-		"if": true, "else": true, "for": true, "return": true,
+		"if": true, "else": true, "for": true, "match": true, "return": true,
 		"break": true, "continue": true,
 		"import": true,
 	}

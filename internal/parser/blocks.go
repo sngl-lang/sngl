@@ -25,6 +25,17 @@ func stmtBlocks(s ast.Stmt) (blocks []*ast.StmtBlock, commit func()) {
 	}
 	var walkExpr func(e ast.Expr)
 	var walkArgs func(args *ast.ArgList)
+	var walkMatch func(m *ast.Match)
+	walkMatch = func(m *ast.Match) {
+		walkExpr(m.Subject)
+		for _, arm := range m.Arms {
+			for _, p := range arm.Patterns {
+				walkExpr(p)
+			}
+			add(&arm.Body)
+			walkExpr(arm.Value)
+		}
+	}
 	walkExpr = func(e ast.Expr) {
 		switch x := e.(type) {
 		case nil:
@@ -84,6 +95,8 @@ func stmtBlocks(s ast.Stmt) (blocks []*ast.StmtBlock, commit func()) {
 			walkExpr(x.Operand)
 		case *ast.ConstExpr:
 			walkExpr(x.Operand)
+		case *ast.MatchExpr:
+			walkMatch(&x.Match)
 		}
 	}
 	walkArgs = func(args *ast.ArgList) {
@@ -119,6 +132,8 @@ func stmtBlocks(s ast.Stmt) (blocks []*ast.StmtBlock, commit func()) {
 		walkExpr(x.Iter)
 		add(&x.Body)
 		add(&x.Else)
+	case *ast.MatchStmt:
+		walkMatch(&x.Match)
 	case *ast.VarDecl:
 		for i := range x.Specs {
 			walkExpr(x.Specs[i].Default)

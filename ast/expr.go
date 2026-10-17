@@ -495,6 +495,7 @@ func (x *IdentExpr) ExprPos() *Pos           { return &x.Pos }
 func (x *BinaryExpr) ExprPos() *Pos          { return &x.Pos }
 func (x *UnaryExpr) ExprPos() *Pos           { return &x.Pos }
 func (x *TernaryExpr) ExprPos() *Pos         { return &x.Pos }
+func (x *MatchExpr) ExprPos() *Pos           { return &x.Pos }
 func (x *SelectExpr) ExprPos() *Pos          { return &x.Pos }
 func (x *IndexExpr) ExprPos() *Pos           { return &x.Pos }
 func (x *CallExpr) ExprPos() *Pos            { return &x.Pos }

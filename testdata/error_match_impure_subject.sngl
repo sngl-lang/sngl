@@ -1,0 +1,43 @@
+// A match evaluates its subject once only where a statement can hold it: a
+// local bound ahead of the statement, in an imperative block. Anywhere else it
+// tests its subject once per arm, so a subject that writes state would write
+// it once per arm; it is refused rather than silently repeated, as a view
+// for-else's head is.
+
+import . "sngl:ui"
+
+enum Status { active, inactive }
+
+component main node {
+    var status Status = active
+    var seen = 0
+
+    func read() Status {
+        seen = seen + 1
+        return status
+    }
+
+    // A view body has nowhere to put the local.
+    match read() { // ERROR(check) "the subject must be free of side effects"
+        active { text(value="on") }
+        inactive { text(value="off") }
+    }
+
+    button(text="go", @click {
+        // The right of && is evaluated only some of the time, so binding the
+        // subject ahead of the statement would evaluate it when && did not.
+        var on = seen > 0 && match read() { // ERROR(check) "the subject must be free of side effects"
+            active => true
+            inactive => false
+        }
+        // A ternary's branch is evaluated only some of the time too.
+        var n = seen > 0 ? 0 : match read() { // ERROR(check) "the subject must be free of side effects"
+            active => 1
+            inactive => 2
+        }
+    })
+}
+
+window {
+    main
+}

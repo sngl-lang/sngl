@@ -9,6 +9,16 @@ func WalkLiterals(doc *ast.Document, fn func(*ast.LiteralExpr)) {
 	var walkS func(s ast.Stmt)
 	var walkBlock func(b ast.StmtBlock)
 	var walkArgs func(args ast.ArgList)
+	walkMatch := func(m *ast.Match) {
+		walkE(m.Subject)
+		for _, arm := range m.Arms {
+			for _, p := range arm.Patterns {
+				walkE(p)
+			}
+			walkBlock(arm.Body)
+			walkE(arm.Value)
+		}
+	}
 	walkE = func(e ast.Expr) {
 		switch x := e.(type) {
 		case nil:
@@ -36,6 +46,8 @@ func WalkLiterals(doc *ast.Document, fn func(*ast.LiteralExpr)) {
 			walkE(x.Cond)
 			walkE(x.Then)
 			walkE(x.Else)
+		case *ast.MatchExpr:
+			walkMatch(&x.Match)
 		case *ast.ListExpr:
 			for _, el := range x.Elements {
 				walkE(el)
@@ -112,6 +124,8 @@ func WalkLiterals(doc *ast.Document, fn func(*ast.LiteralExpr)) {
 			walkE(x.Iter)
 			walkBlock(x.Body)
 			walkBlock(x.Else)
+		case *ast.MatchStmt:
+			walkMatch(&x.Match)
 		case *ast.VisualNode:
 			walkArgs(x.Args)
 			walkBlock(x.Block)

@@ -443,6 +443,8 @@ func (c *checker) enterDeclSet() func() {
 	bodyComps, viewSpreads, nestedOrder := c.bodyComps, c.viewSpreads, c.nestedOrder
 	treeChecks, narrowChecks, constAsserts := c.treeChecks, c.narrowChecks, c.constAsserts
 	constArgs, constSlotNodes := c.constArgs, c.constSlotNodes
+	matchSubjects := c.matchSubjects
+	c.matchSubjects = nil
 	c.bodyComps, c.viewSpreads, c.nestedOrder = nil, nil, nil
 	c.treeChecks, c.narrowChecks, c.constAsserts = nil, nil, nil
 	c.constArgs, c.constSlotNodes = nil, nil
@@ -450,6 +452,7 @@ func (c *checker) enterDeclSet() func() {
 		c.bodyComps, c.viewSpreads, c.nestedOrder = bodyComps, viewSpreads, nestedOrder
 		c.treeChecks, c.narrowChecks, c.constAsserts = treeChecks, narrowChecks, constAsserts
 		c.constArgs, c.constSlotNodes = constArgs, constSlotNodes
+		c.matchSubjects = matchSubjects
 	}
 }
 

@@ -173,7 +173,7 @@ type section struct {
 
 var sections = []section{
 	{"document", []string{"Document", "StmtBlock"}},
-	{"statements", []string{"Stmt", "VisualOrStmt", "IfNode", "ForNode", "AssignOp", "IncDecOp"}},
+	{"statements", []string{"Stmt", "VisualOrStmt", "IfNode", "ForNode", "Match", "MatchArm", "AssignOp", "IncDecOp"}},
 	{"imports", []string{"ImportDecl"}},
 	{"type-declarations", []string{"StructDecl", "StructField", "EnumDecl", "UnitDecl"}},
 	{"constants-variables", []string{
@@ -257,7 +257,7 @@ var tokenReplacements = map[string]string{
 	"slash_assign": `"/="`, "pct_assign": `"%="`,
 	"kw_import": `"import"`, "kw_struct": `"struct"`, "kw_enum": `"enum"`,
 	"kw_const": `"const"`, "kw_var": `"var"`, "kw_component": `"component"`,
-	"kw_if": `"if"`, "kw_for": `"for"`, "kw_else": `"else"`,
+	"kw_if": `"if"`, "kw_for": `"for"`, "kw_else": `"else"`, "kw_match": `"match"`,
 	"kw_func": `"func"`, "kw_unit": `"unit"`, "kw_return": `"return"`,
 	"kw_break": `"break"`, "kw_continue": `"continue"`,
 	"slashdash": `"/-"`, "semi": `";"`,

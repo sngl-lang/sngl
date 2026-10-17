@@ -518,6 +518,15 @@ type checker struct {
 	// that iterates nothing -- a condition or a forever loop -- is refused.
 	funcDepth   int
 	viewSpreads []viewSpread
+	// prelude is where an imperative block takes the statements written ahead
+	// of the one being checked -- a match's subject, bound once -- and nil
+	// where there is no such place (preludeFor, noPrelude).
+	prelude *[]ir.Stmt
+	// matchSeq numbers the locals a match binds its subject to.
+	matchSeq int
+	// matchSubjects are the match subjects read once per arm, judged once
+	// purity is known (reportImpureMatchSubjects).
+	matchSubjects []viewSpread
 	// stmtCall is the call a call statement is about to check: the one call
 	// whose @error handler has a statement to be attached to.
 	stmtCall *ast.CallExpr
@@ -1540,7 +1549,7 @@ func (c *checker) pass1() {
 				} else {
 					c.pendingPkgBody = append(c.pendingPkgBody, s)
 				}
-			case *ast.IfStmt, *ast.ForStmt:
+			case *ast.IfStmt, *ast.ForStmt, *ast.MatchStmt:
 				// Part of the package body: an `if` or a `for` is not a node,
 				// it is how the nodes under it got there, and the root tree is
 				// what makes that the shape a program's windows are written in
@@ -2943,12 +2952,10 @@ func collectElementRefIDs(stmts []ast.Stmt) []elementRef {
 				if _, id, isElem := elementRefCallInfo(n.Call); isElem && id != "" {
 					out = append(out, elementRef{id, n.Pos})
 				}
-			case *ast.IfStmt:
-				walk(n.Body.Stmts)
-				walk(n.Else.Stmts)
-			case *ast.ForStmt:
-				walk(n.Body.Stmts)
-				walk(n.Else.Stmts)
+			default:
+				for _, b := range ast.BranchBlocks(n) {
+					walk(b.Stmts)
+				}
 			}
 		}
 	}
@@ -3921,6 +3928,7 @@ func (c *checker) finishDeclarations(pkg *ir.Package) {
 
 	c.checkConstFuncs(allFuncs)
 	c.reportImpureViewSpreads()
+	c.reportImpureMatchSubjects()
 
 	// After the fixpoint, because the rule reads what a handler writes through
 	// the functions it calls and those sets are only complete now.
@@ -3970,11 +3978,15 @@ func (c *checker) enterFuncBody() func() {
 	savedOutput := c.outputDepth
 	c.outputDepth = 0
 	restoreNarrow := c.clearNarrowings()
+	// A body is a block of its own, and an expression body has none: nothing
+	// in it may be bound ahead of the statement it was written in.
+	restorePrelude := c.noPrelude()
 	return func() {
 		c.funcDepth--
 		c.loopDepth = savedLoops
 		c.outputDepth = savedOutput
 		restoreNarrow()
+		restorePrelude()
 	}
 }
 
@@ -4044,7 +4056,12 @@ func (c *checker) checkFuncBody(fn *ir.Func) {
 	if fn.AST != nil && fn.AST.Body != nil {
 		body := fn.AST.Body
 		declared := fn.Return
+		// The body is the one statement `return body`, and what it binds
+		// ahead of itself goes ahead of that.
+		var prelude []ir.Stmt
+		restorePrelude := c.bodyPrelude(&prelude)
 		bodyExpr := c.checkExprExpecting(body, declared)
+		restorePrelude()
 		if bodyExpr == nil {
 			return
 		}
@@ -4068,7 +4085,7 @@ func (c *checker) checkFuncBody(fn *ir.Func) {
 			bodyType != nil && isPrimitiveTypeKind(bodyType.Kind) {
 			fn.Return = bodyType
 		}
-		fn.Block = []ir.Stmt{&ir.Return{AST: &ast.ReturnStmt{Pos: *body.ExprPos(), Value: body}, Value: bodyExpr}}
+		fn.Block = append(prelude, &ir.Return{AST: &ast.ReturnStmt{Pos: *body.ExprPos(), Value: body}, Value: bodyExpr})
 	} else if fn.AST != nil && fn.AST.Block.IsDefined() {
 		fn.Block = c.checkBlockIR(&fn.AST.Block)
 		// A block-bodied func with a non-void return type must return on all
@@ -4800,6 +4817,11 @@ func (c *checker) declareNodeIDsStmt(s ast.Stmt, counts []nodeCount) {
 	case *ast.IfStmt:
 		c.declareNodeIDsIn(&n.Body, withCount(counts, countOption))
 		c.declareNodeIDsIn(&n.Else, withCount(counts, countOption))
+	case *ast.MatchStmt:
+		// A match is an if chain: each arm renders where it is taken.
+		for _, arm := range n.Arms {
+			c.declareNodeIDsIn(&arm.Body, withCount(counts, countOption))
+		}
 	case *ast.ForStmt:
 		c.declareNodeIDsIn(&n.Body, withCount(counts, countList))
 		c.declareNodeIDsIn(&n.Else, withCount(counts, countOption))

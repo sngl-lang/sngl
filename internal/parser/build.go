@@ -463,6 +463,8 @@ func (b *builder) buildStmt(it nodeIter) ast.Stmt {
 			return b.buildIfNode(it.enter())
 		case ForNode:
 			return b.buildForNode(it.enter())
+		case Match:
+			return &ast.MatchStmt{Match: b.buildMatch(it.enter())}
 		case VisualOrStmt:
 			return b.buildVisualOrStmt(it.enter())
 		}
@@ -1908,6 +1910,86 @@ func (b *builder) buildForNode(it nodeIter) *ast.ForStmt {
 	return stmt
 }
 
+func (b *builder) buildMatch(it nodeIter) ast.Match {
+	// Match    = kw_match [ CondExpr ] lbrace [ semi ] [ MatchArm { semi [ MatchArm ] } ] rbrace .
+	// MatchArm = ( kw_else | CondExpr { comma CondExpr } ) ( StmtBlock | fat_arrow Expr ) .
+	m := ast.Match{Pos: b.posFromToken(it.shift())} // kw_match
+	if !it.done() && it.isNonTerminal() && it.symbol() == CondExpr {
+		m.Subject = b.buildExpr(it.enter())
+	}
+	prev := m.Pos.Line
+	var arm *ast.MatchArm
+	// endArm takes the comment written after the arm on the line it ends on,
+	// which is the line of the separator or brace that follows it.
+	endArm := func(line int) {
+		if arm != nil {
+			arm.Trailing = b.claimInlineComment(line)
+			prev = line
+			arm = nil
+		}
+	}
+	for !it.done() {
+		if it.isNonTerminal() {
+			if it.symbol() != MatchArm {
+				it.skip()
+				continue
+			}
+			arm = b.buildMatchArm(it.enter())
+			arm.Leading = b.claimComments(prev, arm.Pos.Line)
+			m.Arms = append(m.Arms, arm)
+			continue
+		}
+		tok := it.shift()
+		switch tok.Type {
+		case LBRACE:
+			m.Head = b.claimInlineComment(tok.Line)
+			prev = tok.Line
+		case SEMICOLON:
+			endArm(tok.Line)
+		case RBRACE:
+			endArm(tok.Line)
+			m.Tail = b.claimComments(prev, tok.Line)
+			m.EndPos = ast.Pos(b.posFromToken(tok))
+		}
+	}
+	return m
+}
+
+func (b *builder) buildMatchArm(it nodeIter) *ast.MatchArm {
+	arm := &ast.MatchArm{}
+	for !it.done() {
+		if !it.isNonTerminal() {
+			tok := it.shift()
+			switch tok.Type {
+			case KW_ELSE:
+				arm.Else = true
+				arm.Pos = b.posFromToken(tok)
+			case FAT_ARROW:
+				if !it.done() && it.isNonTerminal() {
+					arm.Value = b.buildExpr(it.enter())
+				}
+			}
+			continue
+		}
+		switch it.symbol() {
+		case CondExpr:
+			p := b.buildExpr(it.enter())
+			if p == nil {
+				continue
+			}
+			if len(arm.Patterns) == 0 {
+				arm.Pos = *p.ExprPos()
+			}
+			arm.Patterns = append(arm.Patterns, p)
+		case StmtBlock:
+			arm.Body = b.buildStmtBlock(it.enter())
+		default:
+			it.skip()
+		}
+	}
+	return arm
+}
+
 // --- Expressions ---
 
 func (b *builder) buildExpr(it nodeIter) ast.Expr {
@@ -2393,6 +2475,8 @@ func (b *builder) buildPrimaryInner(it nodeIter, exprContext bool) ast.Expr {
 			return b.buildI18nTriple(it.enter())
 		case AnonStructLit:
 			return b.buildAnonStructLit(it.enter())
+		case Match:
+			return &ast.MatchExpr{Match: b.buildMatch(it.enter())}
 		case FuncLit:
 			if exprContext {
 				return b.buildFuncLit(it.enter())
