@@ -215,6 +215,7 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 		gtk4rt.ButtonSetLabel(__n2, it)
 		gtk4rt.Connect(__n2, "clicked", func() {
 			m.picked__inst0 = it
+			gtk4rt.LabelSetText(m.__n1, m.picked__inst0)
 		})
 		gtk4rt.InsertBefore(parent, m.__slot0_at, __n2)
 		m.__slot0 = append(m.__slot0, __n2)
@@ -282,4 +283,4 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 -- run/go/fyne --
 pass sha256:a42bb8acd2853d910a4753a40cf78475
 -- run/go/gtk4 --
-pass sha256:50bcc9ed81dbd64a09b1c19aaa005ca5
+pass sha256:eebf8861db6a00a0224c643fb58a5226

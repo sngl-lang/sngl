@@ -1914,10 +1914,12 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 			m.__list_cell(((fmt.Sprint(__copy0) + "/") + fmt.Sprint(__copy1)), m.cell)
 			gtk4rt.Connect(m.cell, "clicked", func() {
 				m.log = it
+				gtk4rt.LabelSetText(m.__n0, m.log)
 			})
 			gtk4rt.BoxAppend(__n1, m.cell)
 			__n2 := new__checkbox_state0Instance(m, false, it, ((fmt.Sprint(__copy0) + "/") + fmt.Sprint(__copy1)), func(on bool) {
 				m.log = ((it + " ") + fmt.Sprint(on))
+				gtk4rt.LabelSetText(m.__n0, m.log)
 			})
 			__n2__el := __n2.Root
 			gtk4rt.BoxAppend(__n1, __n2__el)
@@ -1942,6 +1944,7 @@ func (m *Model) __renderSlot1(parent gtk4rt.Handle) {
 		m.__list_even(fmt.Sprint(__iterIdx0), m.even)
 		gtk4rt.Connect(m.even, "clicked", func() {
 			m.log = fmt.Sprint(e)
+			gtk4rt.LabelSetText(m.__n0, m.log)
 		})
 		gtk4rt.InsertBefore(parent, m.__slot1_at, m.even)
 		m.__slot1 = append(m.__slot1, m.even)
@@ -1961,6 +1964,7 @@ func (m *Model) __renderSlot2(parent gtk4rt.Handle) {
 		m.__list_dot(fmt.Sprint(__copy0), m.dot)
 		gtk4rt.Connect(m.dot, "clicked", func() {
 			m.log = (m.log + ".")
+			gtk4rt.LabelSetText(m.__n0, m.log)
 		})
 		gtk4rt.InsertBefore(parent, m.__slot2_at, m.dot)
 		m.__slot2 = append(m.__slot2, m.dot)
@@ -2989,7 +2993,7 @@ pass sha256:0d38313e476a3a4aee2ea101acb8d965
 -- run/go/fyne --
 pass sha256:646543c74b52cfa275b1efd0b339a7a8
 -- run/go/gtk4 --
-pass sha256:5a069e45481759b06ce37a41d9a3c56e
+pass sha256:8ebb1204e0e489d2286cd89b40e5d320
 -- run/kotlin/android --
 pass sha256:3a02bffd495074297bbe1bec60b2fa34
 -- run/none/html --

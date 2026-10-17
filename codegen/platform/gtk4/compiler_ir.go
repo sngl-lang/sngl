@@ -691,6 +691,10 @@ func emitIRSlotFunc(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext, wid
 		*widgetFields = append(*widgetFields, widgetField{name: name, goType: widgetFieldGoType(cType, wrapped)})
 	}).withPkg(pkg).withRegistry(reg).withShared(shared).withLocalRefs(fn.Lowered.LocalRefs).withWrapped(wrapped).
 		withInvokerSink(invokerSink).withIndexed(indexed, present, fn.Block)
+	// A handler the slot builds may patch a node BuildUI or another slot
+	// creates, which OnPropAssign can only write knowing its C type; without
+	// it the write was dropped and the node went stale.
+	maps.Copy(tr.idCTypes, collectNodeCTypes(pkg))
 	tr.collectTagComponents(fn.Block)
 	block := readWidgets(fn.Block, widgetReader(wrapped, shared, modelNode(wrapped)))
 	bodyStmts := codegen.WalkLowered(context.Background(), block, tr)
@@ -896,8 +900,8 @@ func cgoGBoolean(getter, cType string, widgetRef ir.Expr) ir.Expr {
 }
 
 // collectNodeCTypes returns a node-id → GTK C type map from every
-// `lower.CreateNode` in the package. A promoted handler needs it to resolve
-// element refs created in a sibling Func.
+// `lower.CreateNode` in the package. A promoted handler and a render slot's
+// handlers need it to resolve element refs created in a sibling Func.
 func collectNodeCTypes(pkg *ir.Package) map[string]string {
 	out, _ := collectNodeTags(pkg)
 	return out

@@ -1066,6 +1066,7 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 						__lt3 = ((("/" + r.Name) + "/") + c__r0)
 					}
 					m.pages__current__inst0 = _page__value{Id: 0, Href: __lt3, Title: (r.Name + c__r0), Meta: __anon_e3b0c4{}, Copy: []int{__copy, __copy1}}
+					gtk4rt.LabelSetText(m.heading, m.pages__current__inst0.Title)
 					m.__renderSlot0(m.__n1)
 					m.__renderSlot1(m.__n1)
 				})
@@ -1527,6 +1528,6 @@ pass sha256:24821bdab5f17c2f9de9f8598925ab16
 -- run/go/fyne --
 pass sha256:40bfc012a6f372829050151f6aa7812d
 -- run/go/gtk4 --
-pass sha256:5539452db21961c44f0109adcfc0cbb2
+pass sha256:63c1cbd979533983ce41f1cfda7728f3
 -- run/kotlin/android --
 pass sha256:ed0cadf815db293c1bc45576c4eec4d0

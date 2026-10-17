@@ -999,6 +999,7 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 			m.__list_only(fmt.Sprint(__copy0), m.only)
 			gtk4rt.Connect(m.only, "clicked", func() {
 				m.log = it
+				gtk4rt.LabelSetText(m.__n0, m.log)
 			})
 			gtk4rt.InsertBefore(parent, m.__slot0_at, m.only)
 			m.__slot0 = append(m.__slot0, m.only)
@@ -1009,6 +1010,7 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 				__n1.Set__copy(fmt.Sprint(__copy0))
 				__n1.SetChange(func(on bool) {
 					m.log = ((it + " ") + fmt.Sprint(on))
+					gtk4rt.LabelSetText(m.__n0, m.log)
 				})
 			} else {
 				if len(m.__inst0_live) > __inst0_i {
@@ -1016,6 +1018,7 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 				}
 				__n1__new := new__checkbox_state0Instance(m, false, it, fmt.Sprint(__copy0), func(on bool) {
 					m.log = ((it + " ") + fmt.Sprint(on))
+					gtk4rt.LabelSetText(m.__n0, m.log)
 				})
 				__n1 = __n1__new
 			}
@@ -1595,7 +1598,7 @@ pass sha256:b50010523636e7b10a04cc161bb6e610
 -- run/go/fyne --
 pass sha256:eba66abaddb4da57eb5697f242562666
 -- run/go/gtk4 --
-pass sha256:6e839acea2b3cea93f6236c7e2b366fe
+pass sha256:49df18785ec621bfdef4e2e2efa83dca
 -- run/kotlin/android --
 pass sha256:12ad32084cd77fe45e11eacc8602bf3c
 -- run/none/html --

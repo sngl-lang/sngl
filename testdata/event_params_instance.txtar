@@ -579,7 +579,9 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 			__n3.SetLabel(n)
 			__n3.SetPick(func(i int, l string) {
 				m.at__inst0 = i
+				gtk4rt.LabelSetText(m.__n2, ((m.picked__inst0 + " at ") + fmt.Sprint(m.at__inst0)))
 				m.picked__inst0 = l
+				gtk4rt.LabelSetText(m.__n2, ((m.picked__inst0 + " at ") + fmt.Sprint(m.at__inst0)))
 			})
 		} else {
 			if len(m.__inst0_live) > __inst0_i {
@@ -587,7 +589,9 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 			}
 			__n3__new := newCardInstance(m, n, func(i int, l string) {
 				m.at__inst0 = i
+				gtk4rt.LabelSetText(m.__n2, ((m.picked__inst0 + " at ") + fmt.Sprint(m.at__inst0)))
 				m.picked__inst0 = l
+				gtk4rt.LabelSetText(m.__n2, ((m.picked__inst0 + " at ") + fmt.Sprint(m.at__inst0)))
 			})
 			__n3 = __n3__new
 		}
@@ -853,6 +857,6 @@ pass sha256:31cb00006613f48fe7f69c4b1b35e41a
 -- run/go/fyne --
 pass sha256:6b34a6caac0971d6179d923362efb7a4
 -- run/go/gtk4 --
-pass sha256:69894c81c8e3ad0279894c29651865c8
+pass sha256:62461e8b941997f6c06686fb477c7111
 -- run/none/html --
 pass sha256:9f36a98190fa9983ed329003d5c25513

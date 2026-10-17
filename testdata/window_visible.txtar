@@ -295,6 +295,7 @@ func (m *Model) details_closed_handler() {
 func (m *Model) details_visible_handler(__visible bool) {
 	m.shown = __visible
 	gtk4rt.ToplevelSetVisible(m.details, m.shown)
+	gtk4rt.LabelSetText(m.__n1, ("shown " + fmt.Sprint(m.shown)))
 }
 
 func (m *Model) __n2_clicked_handler() {
@@ -481,6 +482,6 @@ dialog { margin: auto; padding: 1em; }
 -- run/go/fyne --
 pass sha256:b9dbf3049cced3bf3bb03a3f33727cbf
 -- run/go/gtk4 --
-pass sha256:df413587c904963ed74a18b4f5557342
+pass sha256:64a4b380b36ced9578b7123d436e6aad
 -- run/none/html --
 pass sha256:7a27a764f1c5ac5efcbc6cb8423ca902

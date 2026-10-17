@@ -688,6 +688,7 @@ func (m *Model) __renderSlot0(parent *C.GtkBox) {
 			__n1.Set__p0(x)
 			__n1.Set__on0(func() {
 				m.hits += x
+				C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(m.__n0)), C.CString(("hits " + fmt.Sprint(m.hits))))
 			})
 		} else {
 			if len(m.__inst0_live) > __inst0_i {
@@ -695,6 +696,7 @@ func (m *Model) __renderSlot0(parent *C.GtkBox) {
 			}
 			__n1__new := new__canvas0Instance(m, x, func() {
 				m.hits += x
+				C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(m.__n0)), C.CString(("hits " + fmt.Sprint(m.hits))))
 			})
 			__n1 = __n1__new
 		}
@@ -1066,6 +1068,6 @@ window.__sngl_boot();
 -- run/go/fyne --
 pass sha256:90fb4e6f842c2e9b8095dffe3d6e1227
 -- run/go/gtk4 --
-pass sha256:c5d332148b6f6b4ef4fd91752cb5ce27
+pass sha256:3a24061fe5e5927e3ff533b661377181
 -- run/none/html --
 pass sha256:e9358f99455f373d0d95c86e9afea71f
