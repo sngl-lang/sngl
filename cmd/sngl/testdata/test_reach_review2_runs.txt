@@ -25,7 +25,12 @@
 # under a `&&` or a ternary does not compile there on main either). Each branch
 # of an `if`, and a for-else's else, starts from the state before it
 # (branches), and an expression moves what it moves before the operands after
-# it read it (order).
+# it read it (order). An unread argument of a type Go cannot compare is read
+# into `_` (unused4), and a ternary's branches each start from the state
+# before them (ternary); neither runs on android, where #270 keeps a test's
+# call of its component's method under a literal or a ternary from compiling.
+# A condition is read again after a body that moves (condloop), and a
+# function literal that moves has moved from where it is written (literal).
 
 sngl test --platform=none chain.sngl
 stdout 'ok   1 tests, 0 failures'
@@ -362,6 +367,72 @@ stderr 'order.sngl:19:26: `v` holds a ref read when it was declared'
 
 ! sngl test --platform=android --language=kotlin order.sngl
 stderr 'order.sngl:19:26: `v` holds a ref read when it was declared'
+
+sngl test --platform=none unused4.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=html unused4.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go unused4.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=fyne --language=go unused4.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go unused4.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=none ternary.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=html ternary.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go ternary.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=fyne --language=go ternary.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go ternary.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=none condloop.sngl
+stdout 'ok   1 tests, 0 failures'
+
+! sngl test --platform=html condloop.sngl
+stderr 'condloop.sngl:16:18: `v` holds a ref read when it was declared'
+
+! sngl test --platform=bubbletea --language=go condloop.sngl
+stderr 'condloop.sngl:16:18: `v` holds a ref read when it was declared'
+
+! sngl test --platform=fyne --language=go condloop.sngl
+stderr 'condloop.sngl:16:18: `v` holds a ref read when it was declared'
+
+! sngl test --platform=gtk4 --language=go condloop.sngl
+stderr 'condloop.sngl:16:18: `v` holds a ref read when it was declared'
+
+! sngl test --platform=android --language=kotlin condloop.sngl
+stderr 'condloop.sngl:16:18: `v` holds a ref read when it was declared'
+
+sngl test --platform=none literal.sngl
+stdout 'ok   1 tests, 0 failures'
+
+! sngl test --platform=html literal.sngl
+stderr 'literal.sngl:19:14: `v` holds a ref read when it was declared'
+
+! sngl test --platform=bubbletea --language=go literal.sngl
+stderr 'literal.sngl:19:14: `v` holds a ref read when it was declared'
+
+! sngl test --platform=fyne --language=go literal.sngl
+stderr 'literal.sngl:19:14: `v` holds a ref read when it was declared'
+
+! sngl test --platform=gtk4 --language=go literal.sngl
+stderr 'literal.sngl:19:14: `v` holds a ref read when it was declared'
+
+! sngl test --platform=android --language=kotlin literal.sngl
+stderr 'literal.sngl:19:14: `v` holds a ref read when it was declared'
 
 -- chain.sngl --
 import . "sngl:ui"
@@ -1076,6 +1147,123 @@ func testOrder(t Test, c main) {
 window {
     main
 }
+-- unused4.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+
+component step(depth int, @hit(xs list[int])) node {
+    vbox {
+        text #b(value="{depth}")
+        if depth < 2 {
+            step #next(depth=depth + 1, @hit(xs) {
+                hit([1])
+            })
+        }
+    }
+}
+
+component main node {
+    var last = -1
+    var count = 0
+    func bump() int {
+        count = count + 1
+        return count
+    }
+    vbox {
+        step #s(depth=0, @hit(xs) {
+            last = xs.length()
+        })
+    }
+}
+
+func testChain(t Test, c main) {
+    if c.s.next != null {
+        c.s.next.hit([c.bump()].filter(func(x int) => x > 0))
+        t.assert(c.last == 1)
+        t.assert(c.count == 1)
+    }
+}
+
+window {
+    main
+}
+-- ternary.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+
+component main node {
+    var shown = false
+    var pick = false
+    func show() bool {
+        shown = true
+        return true
+    }
+    vbox {
+        if shown {
+            text #t(value="x")
+        }
+    }
+}
+
+func testTernary(t Test, c main) {
+    var v = c.t
+    t.assert(c.pick ? c.show() : v == null)
+}
+
+window {
+    main
+}
+-- condloop.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+
+component main node {
+    var shown = false
+    vbox {
+        if shown {
+            text #t(value="x")
+        }
+    }
+}
+
+func testCond(t Test, c main) {
+    var v = c.t
+    var k = 0
+    for k < 2 && v == null {
+        c.shown = true
+        k = k + 1
+    }
+    t.assert(k == 2)
+}
+
+window {
+    main
+}
+-- literal.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+
+component main node {
+    var shown = false
+    vbox {
+        if shown {
+            text #t(value="x")
+        }
+    }
+}
+
+func testLambda(t Test, c main) {
+    var v = c.t
+    t.assert([1].map(func(x int) int {
+        c.shown = true
+        return x
+    }).length() == 1)
+    t.assert(v == null)
+}
+
+window {
+    main
+}
 -- testrun/android/kotlin/branches.sngl/main/1 --
 sha256:16e1c1d334e26e8ba2d57e3e213c3693
 {
@@ -1358,6 +1546,16 @@ sha256:c61b0f4c6838b431a2b662ad8bd51e81
     }
   ]
 }
+-- testrun/bubbletea/go/ternary.sngl/main/1 --
+sha256:fc4617247dd769326e2b40e7b39f768d
+{
+  "results": [
+    {
+      "Desc": "Ternary",
+      "Passed": true
+    }
+  ]
+}
 -- testrun/bubbletea/go/unused.sngl/main/1 --
 sha256:4fe1a24af857fa821a2cc82ed4a0c7d6
 {
@@ -1379,7 +1577,7 @@ sha256:7d6b68b1a77e9269224c90f8016e13da
   ]
 }
 -- testrun/bubbletea/go/unused3.sngl/main/1 --
-sha256:1dce317aee1880085181dddfb42f9002
+sha256:de0a2e93500b17567adbdecc0e1ca759
 {
   "results": [
     {
@@ -1388,6 +1586,16 @@ sha256:1dce317aee1880085181dddfb42f9002
     },
     {
       "Desc": "Decided",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/unused4.sngl/main/1 --
+sha256:dceafd2cf9cd8172dfceb1f73ffc2f0e
+{
+  "results": [
+    {
+      "Desc": "Chain",
       "Passed": true
     }
   ]
@@ -1518,6 +1726,16 @@ sha256:f3cc8478d8b62a2647381b33148ae756
     }
   ]
 }
+-- testrun/fyne/go/ternary.sngl/main/1 --
+sha256:99250573791c7a98ae00d082c531e7cb
+{
+  "results": [
+    {
+      "Desc": "Ternary",
+      "Passed": true
+    }
+  ]
+}
 -- testrun/fyne/go/twoway.sngl/main/1 --
 sha256:d9aba74dc4db1bfecc010c00c2d215cd
 {
@@ -1558,6 +1776,16 @@ sha256:04ae0040f3a2ff69e86f2957e4c94356
     },
     {
       "Desc": "Decided",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/unused4.sngl/main/1 --
+sha256:abc29bcfbd6c233d4f625999ed664139
+{
+  "results": [
+    {
+      "Desc": "Chain",
       "Passed": true
     }
   ]
@@ -1688,6 +1916,16 @@ sha256:43ffd926e490c4cde84c054190befa66
     }
   ]
 }
+-- testrun/gtk4/go/ternary.sngl/main/1 --
+sha256:28ed0bb42641c0970a9655afc92cbb5a
+{
+  "results": [
+    {
+      "Desc": "Ternary",
+      "Passed": true
+    }
+  ]
+}
 -- testrun/gtk4/go/twoway.sngl/main/1 --
 sha256:86675e812813184ab8af3f9e84db716d
 {
@@ -1728,6 +1966,16 @@ sha256:39fd25e1e8b7b140828ad81068462c2f
     },
     {
       "Desc": "Decided",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/unused4.sngl/main/1 --
+sha256:ec28c9f2b1a22d46f9e0b6b49c32ae74
+{
+  "results": [
+    {
+      "Desc": "Chain",
       "Passed": true
     }
   ]
@@ -1858,6 +2106,16 @@ sha256:fb9d75ecb4d2bf9f76ba6f9cfd44a364
     }
   ]
 }
+-- testrun/html/none/ternary.sngl/main/1 --
+sha256:07a940687ddf19d8bc3fff91ee910146
+{
+  "results": [
+    {
+      "Desc": "Ternary",
+      "Passed": true
+    }
+  ]
+}
 -- testrun/html/none/twoway.sngl/main/1 --
 sha256:9ca8a82981deb7c1624c775563d12adc
 {
@@ -1898,6 +2156,16 @@ sha256:37336df23faefbb2bcbd044ed7258d1f
     },
     {
       "Desc": "Decided",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/unused4.sngl/main/1 --
+sha256:1e3cf9bcda8d87c3e4672d2c41e731a2
+{
+  "results": [
+    {
+      "Desc": "Chain",
       "Passed": true
     }
   ]
