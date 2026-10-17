@@ -621,11 +621,14 @@ Both start from `codegen.AnalyzeCommon(doc)` which extracts model fields, comput
   program holds lives in a `modelState` the Model embeds by pointer, which
   every copy shares: a closure captures the Model where it is made and writes
   the state a later `Update` hands back. The event loop owns that state, so a
-  function literal handed to a call that runs it off the loop
-  (`lower.LeavesTheLoop`: `async.start`'s work, a `schedules` native's
-  callback) closes over a snapshot taken where it is made instead -- a deep
+  function literal written as the argument of a call that runs it off the
+  loop (`lower.LeavesTheLoop`: `async.start`, a `schedules` native) closes
+  over a snapshot taken where it is made instead -- a deep
   copy, through the language's value copy, that it reads and writes alone
-  (`golang.OffLoopSnapshots`, `emitSnapshotMethods`). What such work writes
+  (`golang.OffLoopSnapshots`, `emitSnapshotMethods`). Only a literal written
+  there: a named function or a func value handed instead runs on the shared
+  state (#273), and so does a func value kept in state that such work calls
+  (#274). What such work writes
   reaches nothing the program shows, since this target answers no `async.do`
   to post it back with (#272). `codegen/platform/bubbletea/async_run_test.go`
   runs both halves under `-race`.
