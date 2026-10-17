@@ -78,9 +78,17 @@ func IndexedRefIDs(pkg *Package) map[string]bool {
 					out[id] = true
 				}
 			}
-			if c, ok := n.(*Call); ok && c.Receiver != nil {
-				if id, path, ok := InstanceRef(c.Receiver); ok && len(path) > 0 {
-					out[id] = true
+			if c, ok := n.(*Call); ok {
+				// A method handed its receiver first -- a function a lowering
+				// made of the instance's component -- is called through it too.
+				recv := c.Receiver
+				if recv == nil && c.Func != nil && len(c.Func.Params) > 0 && c.Func.Params[0].Receiver && len(c.Args) > 0 {
+					recv = c.Args[0].Value
+				}
+				if recv != nil {
+					if id, path, ok := InstanceRef(recv); ok && len(path) > 0 {
+						out[id] = true
+					}
 				}
 			}
 			return nil

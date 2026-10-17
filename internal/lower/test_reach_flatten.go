@@ -29,7 +29,7 @@ import (
 var passTestReach = pass{
 	name:    "TestReach",
 	enabled: func(Features) bool { return true },
-	apply: func(pkg *ir.Package, _ Features, opts Options) error {
+	apply: func(pkg *ir.Package, feats Features, opts Options) error {
 		if pkg == nil {
 			return nil
 		}
@@ -37,11 +37,14 @@ var passTestReach = pass{
 		if len(params) == 0 {
 			return nil
 		}
-		f := &reachFlattener{pkg: pkg, params: params, names: namesOrOwn(opts.names), uids: map[*ir.NodeInst]string{}, copied: map[*ir.Component]bool{}, fires: map[fireKey]*ir.Func{}, owners: map[*ir.NodeInst]*ir.Component{}}
+		f := &reachFlattener{instanceState: feats.InstanceState, pkg: pkg, params: params, names: namesOrOwn(opts.names), uids: map[*ir.NodeInst]string{}, copied: map[*ir.Component]bool{}, fires: map[fireKey]*ir.Func{}, owners: map[*ir.NodeInst]*ir.Component{}}
 		f.index(reachedBodies(renderedBodies(pkg, opts), rootComponent(pkg, opts)))
 		for _, fn := range pkg.Funcs {
 			if fn == nil || !fn.IsTest {
 				continue
+			}
+			if err := f.inlineRecursiveFires(fn); err != nil {
+				return err
 			}
 			answerInstancePresence(fn, params)
 			if err := answerTestPropReads(fn, params); err != nil {
@@ -60,9 +63,12 @@ var passTestReach = pass{
 }
 
 type reachFlattener struct {
-	pkg    *ir.Package
-	params map[*ir.Param]bool
-	names  renamer
+	// instanceState is whether the target keeps an instance's own state,
+	// so that what a test fires on one can be a function of its record.
+	instanceState bool
+	pkg           *ir.Package
+	params        map[*ir.Param]bool
+	names         renamer
 	// sites is each component's instantiations across the bodies the build
 	// renders, and ids each node carrying an id there.
 	sites map[*ir.Component][]*ir.NodeInst
@@ -344,6 +350,177 @@ func answerTestPropReads(fn *ir.Func, params map[*ir.Param]bool) error {
 		return nil
 	})
 	return bad
+}
+
+// inlineRecursiveFires writes each event a test fires on a program
+// component inside a recursion, on a target keeping no state of an
+// instance's own, as the handlers it runs: its call site's, and for each
+// event that one emits, the handler at the call site of the instance it was
+// written in, up to the test's instance. Such a target renders a recursion
+// as a function of the Model, so there is no record to hang a function of
+// the call site's component on; the chain is the test's reach, written out.
+func (f *reachFlattener) inlineRecursiveFires(fn *ir.Func) error {
+	if f.instanceState {
+		return nil
+	}
+	var bad error
+	fn.Block = ir.RewriteBlocks(fn.Block, func(list []ir.Stmt) []ir.Stmt {
+		var out []ir.Stmt
+		for _, s := range list {
+			cs, ok := s.(*ir.CallStmt)
+			if !ok || bad != nil || cs.Call == nil || cs.Call.Event == "" || cs.Call.Receiver == nil {
+				out = append(out, s)
+				continue
+			}
+			c := cs.Call
+			inst, id, idxs, ok := testNodeRef(c.Receiver, f.params)
+			if !ok {
+				out = append(out, s)
+				continue
+			}
+			owner := componentOf(inst)
+			if owner == nil || !rendersItself(owner) {
+				out = append(out, s)
+				continue
+			}
+			site, loops := nodeUnderLoops(owner.Stmts, id)
+			if site == nil || site.Component == nil || site.Component.PkgPath() != "" || site.Component.Primitive() || len(loops) != len(idxs) {
+				out = append(out, s)
+				continue
+			}
+			args := make([]ir.Expr, len(c.Args))
+			for i, a := range c.Args {
+				args[i] = a.Value
+			}
+			body, err := f.inlineFire(c, inst, site, c.Event, args, loopBindings(loops, idxs))
+			if err != nil {
+				bad = err
+				out = append(out, s)
+				continue
+			}
+			out = append(out, &ir.If{Cond: &ir.Literal{Type: ir.TypBool, Value: "true"}, Body: body})
+		}
+		return out
+	})
+	return bad
+}
+
+// inlineFire is what site's handler for event runs with args, written in
+// the test: the handler's body read through inst, the instance whose body
+// wrote site, and each emit of one of that instance's own events the
+// handler its own call site wrote for it, in turn.
+func (f *reachFlattener) inlineFire(at *ir.Call, inst ir.Expr, site *ir.NodeInst, event string, args []ir.Expr, env map[ir.Symbol]ir.Expr) ([]ir.Stmt, error) {
+	var handler *ir.Func
+	for _, h := range site.Handlers {
+		if h.Name == event && h.Func != nil {
+			handler = h.Func
+		}
+	}
+	if handler == nil {
+		return nil, fmt.Errorf("%s: the test fires @%s on `#%s`, whose call site handles none of it", handleCallPos(at), event, writtenID(site))
+	}
+	owner := componentOf(inst)
+	syms := map[ir.Symbol]ir.Symbol{}
+	names := map[ir.Symbol]string{}
+	var decls []ir.Stmt
+	for i, p := range handler.Params {
+		tmp := &ir.Var{Name: f.names.next(p.Name, "fire"), Type: p.Type}
+		names[p] = tmp.Name
+		var val ir.Expr = ir.DeclaredDefault(p.Type)
+		if i < len(args) {
+			val = args[i]
+		}
+		decls = append(decls, &ir.LocalVar{Name: tmp.Name, Type: p.Type, Init: val, Sym: tmp})
+		syms[p] = tmp
+	}
+	block := renameIdents(deepCloneStmts(handler.Block), names, syms)
+	unnamed := false
+	_ = ir.RewriteExprs(block, func(e ir.Expr) (ir.Expr, error) {
+		out := rebaseOnInstanceUnder(e, owner, inst, env)
+		if out == nil {
+			unnamed = true
+			return e, ir.SkipDir
+		}
+		return out, ir.SkipDir
+	})
+	if unnamed {
+		return nil, fmt.Errorf("%s: a test fires @%s on `#%s`, whose handler reads something a test cannot name -- a slot's parameter, a local of the view -- so the test cannot run it through the instance", handleCallPos(at), event, writtenID(site))
+	}
+	declares := func(name string) bool {
+		return slices.ContainsFunc(owner.Events, func(e *ir.EventDecl) bool { return e.Name == name })
+	}
+	var bad error
+	block = ir.RewriteBlocks(block, func(list []ir.Stmt) []ir.Stmt {
+		var out []ir.Stmt
+		for _, s := range list {
+			em, ok := s.(*ir.Emit)
+			if !ok || bad != nil || !declares(em.Name) {
+				out = append(out, s)
+				continue
+			}
+			parent, pid, pidxs, ok := testNodeRef(inst, f.params)
+			if !ok {
+				// The test's own instance has no call site.
+				continue
+			}
+			pcomp := componentOf(parent)
+			if pcomp == nil {
+				continue
+			}
+			psite, ploops := nodeUnderLoops(pcomp.Stmts, pid)
+			if psite == nil || len(ploops) != len(pidxs) {
+				continue
+			}
+			if !slices.ContainsFunc(psite.Handlers, func(h ir.EventHandler) bool { return h.Name == em.Name && h.Func != nil }) {
+				continue
+			}
+			eargs := make([]ir.Expr, len(em.Args))
+			for i, a := range em.Args {
+				eargs[i] = a.Value
+			}
+			sub, err := f.inlineFire(at, parent, psite, em.Name, eargs, loopBindings(ploops, pidxs))
+			if err != nil {
+				bad = err
+				continue
+			}
+			out = append(out, &ir.If{Cond: &ir.Literal{Type: ir.TypBool, Value: "true"}, Body: sub})
+		}
+		return out
+	})
+	if bad != nil {
+		return nil, bad
+	}
+	return append(decls, block...), nil
+}
+
+// rendersItself reports whether comp's body renders comp, however many
+// components down.
+func rendersItself(comp *ir.Component) bool {
+	seen := map[*ir.Component]bool{}
+	var reaches func(c *ir.Component) bool
+	reaches = func(c *ir.Component) bool {
+		found := false
+		_ = ir.Walk(c.Stmts, func(n ir.Node) error {
+			ni, ok := n.(*ir.NodeInst)
+			if !ok || ni.Component == nil || found {
+				return nil
+			}
+			if ni.Component == comp {
+				found = true
+				return ir.SkipAll
+			}
+			if !seen[ni.Component] {
+				seen[ni.Component] = true
+				if reaches(ni.Component) {
+					found = true
+					return ir.SkipAll
+				}
+			}
+			return nil
+		})
+		return found
+	}
+	return reaches(comp)
 }
 
 // fireTriggers makes each event a test fires on an instance of a program

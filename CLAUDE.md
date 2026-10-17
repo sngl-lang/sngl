@@ -4834,9 +4834,13 @@ moves a node out of the body that wrote it:
   `__inst_<id>` or `__insts_<id>` by key) and lets go in its Destroy; html's
   factory hangs the instance off its root element; android's composable
   registers a closure per member in `SnglInstances` under the entry its call
-  site hands it. bubbletea builds none of them but a recursion, which keeps no
-  state, and a member read through one is refused
-  (`testdata/test_reach_runtime_instance.txtar`).
+  site hands it (`testdata/test_reach_runtime_instance.txtar`). bubbletea
+  builds none of them but a recursion, which keeps no state and has only
+  props, nodes and functions reading neither for a test to reach -- each
+  answered as a spliced instance's is -- and an event a test fires on one is
+  the handler chain its call sites wrote, inlined into the test up to its own
+  instance (`inlineRecursiveFires`,
+  `cmd/sngl/testdata/test_reach_recursion_runs.txt`).
 - **A build of the whole program reaches a test's instance where the program
   renders it**, which is how a golden whose tests take two components is
   compiled: each is spliced, and each test reaches what its splice made of it

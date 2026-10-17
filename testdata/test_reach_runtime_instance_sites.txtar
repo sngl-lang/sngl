@@ -2717,13 +2717,13 @@ window.__sngl_boot = () => {
     }
     let shown = document.createElement("span");
     shown.setAttribute("data-sngl-id", "shown");
-    $0.textContent = "[" + __prop_label + ":" + String(hits) + "]";
+    shown.textContent = "[" + __prop_label + ":" + String(hits) + "]";
     let hit__reach0 = document.createElement("button");
     hit__reach0.setAttribute("data-sngl-id", "hit__reach0");
     hit__reach0.disabled = false;
     hit__reach0.addEventListener("click", () => {
       hits = hits + 1;
-      $0.textContent = "[" + __prop_label + ":" + String(hits) + "]";
+      shown.textContent = "[" + __prop_label + ":" + String(hits) + "]";
       __renderSlot4(__slotAnchor_4);
     });
     hit__reach0.addEventListener("contextmenu", () => {
@@ -2828,14 +2828,14 @@ window.__sngl_boot = () => {
     }
     let shown = document.createElement("span");
     shown.setAttribute("data-sngl-id", "shown");
-    $0.textContent = "[" + __prop_label + ":" + String(hits) + "]";
+    shown.textContent = "[" + __prop_label + ":" + String(hits) + "]";
     let hit__reach1 = document.createElement("button");
     hit__reach1.setAttribute("data-sngl-id", "hit__reach1");
     hit__reach1.disabled = false;
     hit__reach1.setAttribute("data-sngl-copy", __prop___copy);
     hit__reach1.addEventListener("click", () => {
       hits = hits + 1;
-      $0.textContent = "[" + __prop_label + ":" + String(hits) + "]";
+      shown.textContent = "[" + __prop_label + ":" + String(hits) + "]";
       __renderSlot5(__slotAnchor_5);
     });
     hit__reach1.addEventListener("contextmenu", () => {
@@ -2905,13 +2905,13 @@ window.__sngl_boot = () => {
     }
     let shown = document.createElement("span");
     shown.setAttribute("data-sngl-id", "shown");
-    $0.textContent = "[" + __prop_label + ":" + String(hits) + "]";
+    shown.textContent = "[" + __prop_label + ":" + String(hits) + "]";
     let hit__reach2 = document.createElement("button");
     hit__reach2.setAttribute("data-sngl-id", "hit__reach2");
     hit__reach2.disabled = false;
     hit__reach2.addEventListener("click", () => {
       hits = hits + 1;
-      $0.textContent = "[" + __prop_label + ":" + String(hits) + "]";
+      shown.textContent = "[" + __prop_label + ":" + String(hits) + "]";
       __renderSlot6(__slotAnchor_6);
     });
     hit__reach2.addEventListener("contextmenu", () => {
@@ -3175,4 +3175,4 @@ pass sha256:4be82356c8c71c2ad4df06306c67293d
 -- run/kotlin/android --
 pass sha256:00fc1dd70079a28150d1abcdfe6e8a7a
 -- run/none/html --
-pass sha256:7c7d7a0c1214429fdcaed99e2b5372ef
+pass sha256:fffd2da33f39fa45649864dfbf6cc2c7

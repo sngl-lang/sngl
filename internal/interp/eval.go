@@ -544,8 +544,15 @@ func (env *Env) RebindFrom(src *Env) {
 	if src == nil {
 		return
 	}
+	// A symbol is rebound in the nearest scope binding it only: a recursive
+	// instance's scope encloses its parent's, which binds the same vars.
+	seen := map[ir.Symbol]bool{}
 	for e := env; e != nil; e = e.parent {
 		for sym := range e.vals {
+			if seen[sym] {
+				continue
+			}
+			seen[sym] = true
 			if !src.wasAssigned(sym) {
 				continue
 			}
