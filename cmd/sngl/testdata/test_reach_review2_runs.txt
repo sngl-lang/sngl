@@ -7,7 +7,10 @@
 # calls through the node it is handed writes the var the node's call site
 # bound (method). A local holding a ref read after something may have moved
 # what it names is refused on a compiled target (alias, list), where it would
-# read the ref live and the interpreter keeps the value it took.
+# read the ref live and the interpreter keeps the value it took. A recursion
+# binding its own two-way prop to its next level carries one write-back per
+# level (twoway); fyne and gtk4 do not build it yet, and bubbletea refuses
+# the focus stops in it.
 
 sngl test --platform=none chain.sngl
 stdout 'ok   1 tests, 0 failures'
@@ -112,6 +115,15 @@ sngl test --platform=gtk4 --language=go slotrec.sngl
 stdout 'ok   1 tests, 0 failures'
 
 sngl test --platform=android --language=kotlin slotrec.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=none twoway.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=html twoway.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin twoway.sngl
 stdout 'ok   1 tests, 0 failures'
 
 sngl test --platform=none alias.sngl
@@ -372,6 +384,41 @@ func testSlot(t Test, c main) {
 window {
     main
 }
+-- twoway.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+
+component step(depth int, :count int, @hit(n int)) node {
+    vbox {
+        button #b(text="{depth}:{count}", @click {
+            count = count + 1
+        })
+        if depth < 2 {
+            step #next(depth=depth + 1, :count=count)
+        }
+    }
+}
+
+component main node {
+    var total = 0
+    vbox {
+        step #s(depth=0, :count=total)
+    }
+}
+
+func testTwoWay(t Test, c main) {
+    c.s.b.click()
+    t.assert(c.total == 1)
+    if c.s.next != null {
+        c.s.next.b.click()
+        t.assert(c.s.count == 2)
+        t.assert(c.total == 2)
+    }
+}
+
+window {
+    main
+}
 -- alias.sngl --
 import . "sngl:ui"
 import . "sngl:test"
@@ -472,6 +519,16 @@ sha256:88e739c58aa055fac60f289c55a9e759
   "results": [
     {
       "Desc": "Slot",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/android/kotlin/twoway.sngl/main/1 --
+sha256:d043a94910c8599857b80bbc475447ba
+{
+  "results": [
+    {
+      "Desc": "TwoWay",
       "Passed": true
     }
   ]
@@ -702,6 +759,16 @@ sha256:fb9d75ecb4d2bf9f76ba6f9cfd44a364
   "results": [
     {
       "Desc": "Slot",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/twoway.sngl/main/1 --
+sha256:9ca8a82981deb7c1624c775563d12adc
+{
+  "results": [
+    {
+      "Desc": "TwoWay",
       "Passed": true
     }
   ]
