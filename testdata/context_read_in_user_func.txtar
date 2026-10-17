@@ -160,6 +160,11 @@ type ErrorEvent struct {
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
+	*modelState
+}
+
+// modelState is what every copy of a Model shares.
+type modelState struct {
 	__ctx_depth         int
 	plain               string
 	under               string
@@ -188,9 +193,7 @@ type Model struct {
 
 // New creates a Model with default bind values.
 func New() Model {
-	m := Model{}
-	defer func(p *Model) { __liveModel = p }(__liveModel)
-	__liveModel = &m
+	m := Model{&modelState{}}
 	m.__ctx_depth = 1
 	m.plain = ""
 	m.under = ""
@@ -219,40 +222,26 @@ func New() Model {
 
 // SetTerminalSize sets the terminal dimensions and resizes widgets.
 func (m *Model) SetTerminalSize(w, h int) {
-	defer func(p *Model) { __liveModel = p }(__liveModel)
-	__liveModel = m
 	m.width = w
 	m.height = h
 }
 
 func (m *Model) twice(__ctx_depth int) string {
-	defer func(p *Model) { __liveModel = p }(__liveModel)
-	__liveModel = m
 	return fmt.Sprint((__ctx_depth * 2))
 }
 
 func (m *Model) __effect0_mount() {
-	defer func(p *Model) { __liveModel = p }(__liveModel)
-	__liveModel = m
 	m.plain = ("d" + fmt.Sprint(m.__ctx_depth))
-	f := func(x int) string {
-		m := __liveModel
-		_ = m
-		return ((fmt.Sprint(x) + ":") + fmt.Sprint(m.__ctx_depth))
-	}
+	f := func(x int) string { return ((fmt.Sprint(x) + ":") + fmt.Sprint(m.__ctx_depth)) }
 	m.taken = f(2)
 }
 
 func (m *Model) __effect0_down() {
-	defer func(p *Model) { __liveModel = p }(__liveModel)
-	__liveModel = m
 	m.__effect0_desired = []bool{}
 	m.__effect0_desired = append(m.__effect0_desired, true)
 }
 
 func (m *Model) __effect0_up() {
-	defer func(p *Model) { __liveModel = p }(__liveModel)
-	__liveModel = m
 	for __effect0_i, __effect0_k := range m.__effect0_desired {
 		if __effect0_i >= len(m.__effect0_live) {
 			m.__effect0_mount()
@@ -266,8 +255,6 @@ func (m *Model) __effect0_up() {
 }
 
 func (m *Model) __effect1_mount() {
-	defer func(p *Model) { __liveModel = p }(__liveModel)
-	__liveModel = m
 	m.under = "d5"
 	m.chained = "rd5"
 	m.recursed = "5"
@@ -285,15 +272,11 @@ func (m *Model) __effect1_mount() {
 }
 
 func (m *Model) __effect1_down() {
-	defer func(p *Model) { __liveModel = p }(__liveModel)
-	__liveModel = m
 	m.__effect1_desired = []bool{}
 	m.__effect1_desired = append(m.__effect1_desired, true)
 }
 
 func (m *Model) __effect1_up() {
-	defer func(p *Model) { __liveModel = p }(__liveModel)
-	__liveModel = m
 	for __effect1_i, __effect1_k := range m.__effect1_desired {
 		if __effect1_i >= len(m.__effect1_live) {
 			m.__effect1_mount()
@@ -307,21 +290,15 @@ func (m *Model) __effect1_up() {
 }
 
 func (m *Model) __effect2_mount() {
-	defer func(p *Model) { __liveModel = p }(__liveModel)
-	__liveModel = m
 	m.inner = "d9"
 }
 
 func (m *Model) __effect2_down() {
-	defer func(p *Model) { __liveModel = p }(__liveModel)
-	__liveModel = m
 	m.__effect2_desired = []bool{}
 	m.__effect2_desired = append(m.__effect2_desired, true)
 }
 
 func (m *Model) __effect2_up() {
-	defer func(p *Model) { __liveModel = p }(__liveModel)
-	__liveModel = m
 	for __effect2_i, __effect2_k := range m.__effect2_desired {
 		if __effect2_i >= len(m.__effect2_live) {
 			m.__effect2_mount()
@@ -335,8 +312,6 @@ func (m *Model) __effect2_up() {
 }
 
 func (m *Model) __effects0_settle() {
-	defer func(p *Model) { __liveModel = p }(__liveModel)
-	__liveModel = m
 	if m.__effects0_settling {
 		m.__effects0_pending = true
 	} else {
@@ -361,8 +336,6 @@ func (m *Model) __effects0_settle() {
 }
 
 func (m *Model) __focusNext() {
-	defer func(p *Model) { __liveModel = p }(__liveModel)
-	__liveModel = m
 	if m.__focusID == 0 {
 		m.__focusID = 1
 	} else {
@@ -373,8 +346,6 @@ func (m *Model) __focusNext() {
 }
 
 func (m *Model) __focusPrev() {
-	defer func(p *Model) { __liveModel = p }(__liveModel)
-	__liveModel = m
 	if m.__focusID == 0 {
 		m.__focusID = 1
 	} else {
@@ -385,14 +356,10 @@ func (m *Model) __focusPrev() {
 }
 
 func (m Model) Plain() string {
-	defer func(p *Model) { __liveModel = p }(__liveModel)
-	__liveModel = &m
 	return m.plain
 }
 
 func (m Model) SetPlain(v string) Model {
-	defer func(p *Model) { __liveModel = p }(__liveModel)
-	__liveModel = &m
 	m.plain = v
 	return m
 }
@@ -404,14 +371,10 @@ func SetPlainCmd(v string) tea.Cmd {
 }
 
 func (m Model) Under() string {
-	defer func(p *Model) { __liveModel = p }(__liveModel)
-	__liveModel = &m
 	return m.under
 }
 
 func (m Model) SetUnder(v string) Model {
-	defer func(p *Model) { __liveModel = p }(__liveModel)
-	__liveModel = &m
 	m.under = v
 	return m
 }
@@ -423,14 +386,10 @@ func SetUnderCmd(v string) tea.Cmd {
 }
 
 func (m Model) Inner() string {
-	defer func(p *Model) { __liveModel = p }(__liveModel)
-	__liveModel = &m
 	return m.inner
 }
 
 func (m Model) SetInner(v string) Model {
-	defer func(p *Model) { __liveModel = p }(__liveModel)
-	__liveModel = &m
 	m.inner = v
 	return m
 }
@@ -442,14 +401,10 @@ func SetInnerCmd(v string) tea.Cmd {
 }
 
 func (m Model) Chained() string {
-	defer func(p *Model) { __liveModel = p }(__liveModel)
-	__liveModel = &m
 	return m.chained
 }
 
 func (m Model) SetChained(v string) Model {
-	defer func(p *Model) { __liveModel = p }(__liveModel)
-	__liveModel = &m
 	m.chained = v
 	return m
 }
@@ -461,14 +416,10 @@ func SetChainedCmd(v string) tea.Cmd {
 }
 
 func (m Model) Recursed() string {
-	defer func(p *Model) { __liveModel = p }(__liveModel)
-	__liveModel = &m
 	return m.recursed
 }
 
 func (m Model) SetRecursed(v string) Model {
-	defer func(p *Model) { __liveModel = p }(__liveModel)
-	__liveModel = &m
 	m.recursed = v
 	return m
 }
@@ -480,14 +431,10 @@ func SetRecursedCmd(v string) tea.Cmd {
 }
 
 func (m Model) Method() string {
-	defer func(p *Model) { __liveModel = p }(__liveModel)
-	__liveModel = &m
 	return m.method
 }
 
 func (m Model) SetMethod(v string) Model {
-	defer func(p *Model) { __liveModel = p }(__liveModel)
-	__liveModel = &m
 	m.method = v
 	return m
 }
@@ -499,14 +446,10 @@ func SetMethodCmd(v string) tea.Cmd {
 }
 
 func (m Model) Lambda() string {
-	defer func(p *Model) { __liveModel = p }(__liveModel)
-	__liveModel = &m
 	return m.lambda
 }
 
 func (m Model) SetLambda(v string) Model {
-	defer func(p *Model) { __liveModel = p }(__liveModel)
-	__liveModel = &m
 	m.lambda = v
 	return m
 }
@@ -518,14 +461,10 @@ func SetLambdaCmd(v string) tea.Cmd {
 }
 
 func (m Model) Mapped() string {
-	defer func(p *Model) { __liveModel = p }(__liveModel)
-	__liveModel = &m
 	return m.mapped
 }
 
 func (m Model) SetMapped(v string) Model {
-	defer func(p *Model) { __liveModel = p }(__liveModel)
-	__liveModel = &m
 	m.mapped = v
 	return m
 }
@@ -537,14 +476,10 @@ func SetMappedCmd(v string) tea.Cmd {
 }
 
 func (m Model) Taken() string {
-	defer func(p *Model) { __liveModel = p }(__liveModel)
-	__liveModel = &m
 	return m.taken
 }
 
 func (m Model) SetTaken(v string) Model {
-	defer func(p *Model) { __liveModel = p }(__liveModel)
-	__liveModel = &m
 	m.taken = v
 	return m
 }
@@ -556,14 +491,10 @@ func SetTakenCmd(v string) tea.Cmd {
 }
 
 func (m Model) Clicked() string {
-	defer func(p *Model) { __liveModel = p }(__liveModel)
-	__liveModel = &m
 	return m.clicked
 }
 
 func (m Model) SetClicked(v string) Model {
-	defer func(p *Model) { __liveModel = p }(__liveModel)
-	__liveModel = &m
 	m.clicked = v
 	return m
 }
@@ -575,14 +506,10 @@ func SetClickedCmd(v string) tea.Cmd {
 }
 
 func (m Model) Provided() string {
-	defer func(p *Model) { __liveModel = p }(__liveModel)
-	__liveModel = &m
 	return m.provided
 }
 
 func (m Model) SetProvided(v string) Model {
-	defer func(p *Model) { __liveModel = p }(__liveModel)
-	__liveModel = &m
 	m.provided = v
 	return m
 }
@@ -594,14 +521,10 @@ func SetProvidedCmd(v string) tea.Cmd {
 }
 
 func (m Model) Init() tea.Cmd {
-	defer func(p *Model) { __liveModel = p }(__liveModel)
-	__liveModel = &m
 	return nil
 }
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	defer func(p *Model) { __liveModel = p }(__liveModel)
-	__liveModel = &m
 	var cmds []tea.Cmd
 	var cmd tea.Cmd
 	_ = cmd
@@ -650,8 +573,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 // tapClick activates the #tap widget the way a keypress does; for tests.
 func (m *Model) tapClick() {
-	defer func(p *Model) { __liveModel = p }(__liveModel)
-	__liveModel = m
 	prev := m.__focusID
 	m.__focusID = 0
 	nm, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
@@ -661,8 +582,6 @@ func (m *Model) tapClick() {
 
 // wrapClick activates the #wrap widget the way a keypress does; for tests.
 func (m *Model) wrapClick() {
-	defer func(p *Model) { __liveModel = p }(__liveModel)
-	__liveModel = m
 	prev := m.__focusID
 	m.__focusID = 1
 	nm, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
@@ -671,8 +590,6 @@ func (m *Model) wrapClick() {
 }
 
 func (m Model) View() tea.View {
-	defer func(p *Model) { __liveModel = p }(__liveModel)
-	__liveModel = &m
 	var parts []string
 	var part0 string
 	part0 = lipgloss.NewStyle().Render(fmt.Sprint("d9"))
@@ -716,8 +633,6 @@ func main() {
 		os.Exit(1)
 	}
 }
-
-var __liveModel *Model
 -- out/go/bubbletea/model_test.go --
 package main
 
@@ -1829,7 +1744,7 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:c2445eb45e8721d94ab27f130374f476
+pass sha256:805321ab5daa372a4c154b0739740407
 -- run/go/fyne --
 pass sha256:5105e2632777986fd627a231aaf0b398
 -- run/go/gtk4 --

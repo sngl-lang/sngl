@@ -112,6 +112,11 @@ func mustParseDateTime(s string) time.Time {
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
+	*modelState
+}
+
+// modelState is what every copy of a Model shares.
+type modelState struct {
 	d__inst0       time.Time
 	t__inst0       time.Time
 	dt__inst0      time.Time
@@ -125,7 +130,7 @@ type Model struct {
 
 // New creates a Model with default bind values.
 func New() Model {
-	m := Model{}
+	m := Model{&modelState{}}
 	m.d__inst0 = mustParseDate("2026-05-09")
 	m.t__inst0 = mustParseTime("14:30:00")
 	m.dt__inst0 = mustParseDateTime("2026-05-09T14:30:00")
@@ -441,7 +446,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:81bb956c3dad5c63ddcc2151fea84059
+pass sha256:9c6c45085098b0fcf1ddfb2997c2fc48
 -- run/kotlin/android --
 pass sha256:fc06a9dfbda7f3415d93d93eca91f6c2
 -- run/none/html --

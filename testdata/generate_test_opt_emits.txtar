@@ -41,6 +41,11 @@ import (
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
+	*modelState
+}
+
+// modelState is what every copy of a Model shares.
+type modelState struct {
 	count     int
 	__focusID int
 
@@ -49,7 +54,7 @@ type Model struct {
 
 // New creates a Model with default bind values.
 func New() Model {
-	m := Model{}
+	m := Model{&modelState{}}
 	m.count = 0
 	m.__focusID = 0
 	return m
@@ -158,4 +163,4 @@ func TestInitialCountIsZero(t *testing.T) {
 
 func newTestComponent() Model { return New() }
 -- run/go/bubbletea --
-pass sha256:02b196fa94abf85ad0e7c25ce337b5dc
+pass sha256:1d444613b7e224b3bcfc0e1e0085d316

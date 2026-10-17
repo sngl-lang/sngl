@@ -91,6 +91,11 @@ type ErrorEvent struct {
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
+	*modelState
+}
+
+// modelState is what every copy of a Model shares.
+type modelState struct {
 	tree           Node
 	visible__inst0 bool
 
@@ -99,7 +104,7 @@ type Model struct {
 
 // New creates a Model with default bind values.
 func New() Model {
-	m := Model{}
+	m := Model{&modelState{}}
 	m.tree = Node{Value: 5, Left: snglSome(Node{Value: 3, Left: nil, Right: nil}), Right: snglSome(Node{Value: 8, Left: nil, Right: nil})}
 	m.visible__inst0 = true
 	return m
@@ -295,6 +300,6 @@ fun TreeView(node: Node? = null, __depth: Int = 0) {
     }
 }
 -- run/go/bubbletea --
-pass sha256:e3dd2de7e6fd871ddfa81eb85f543041
+pass sha256:99dc68ab1551ca4df169800538a8052c
 -- run/kotlin/android --
 pass sha256:20426487e64840a67af6fca51c76d0fc

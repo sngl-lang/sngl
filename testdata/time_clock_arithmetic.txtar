@@ -134,6 +134,11 @@ func snglStrDuration(v time.Duration) string {
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
+	*modelState
+}
+
+// modelState is what every copy of a Model shares.
+type modelState struct {
 	deadline__inst0 time.Time
 	period__inst0   time.Duration
 	offset__inst0   time.Time
@@ -145,7 +150,7 @@ type Model struct {
 
 // New creates a Model with default bind values.
 func New() Model {
-	m := Model{}
+	m := Model{&modelState{}}
 	m.deadline__inst0 = time.Now().UTC()
 	m.period__inst0 = (time.Duration(250) * time.Millisecond)
 	m.offset__inst0 = mustParseDateTime("2024-01-15T10:30:00+05:00")
@@ -437,7 +442,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:9a66b4a38343013b622f5d26b7acf2d0
+pass sha256:6d3ac424cdd9379a11d6c59b60074947
 -- run/kotlin/android --
 pass sha256:1de1042cd06080083e9168fe66ab09bf
 -- run/none/html --

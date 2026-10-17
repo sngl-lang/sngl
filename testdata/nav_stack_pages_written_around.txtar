@@ -129,6 +129,11 @@ var items []Item = []Item{Item{Slug: "one", Title: "One"}, Item{Slug: "", Title:
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
+	*modelState
+}
+
+// modelState is what every copy of a Model shares.
+type modelState struct {
 	pages__current _page__value
 	pages__history []Pages__entry
 	visible__inst0 bool
@@ -140,7 +145,7 @@ type Model struct {
 
 // New creates a Model with default bind values.
 func New() Model {
-	m := Model{}
+	m := Model{&modelState{}}
 	m.pages__current = _page__value{Id: 0, Href: "/", Title: "Two", Meta: __anon_e3b0c4{}, Copy: []int{1}}
 	m.pages__history = []Pages__entry{}
 	m.visible__inst0 = true
@@ -1459,7 +1464,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:d6cbea204ccf1199a38598bab4b4c7b8
+pass sha256:8eae8eb866a56654254751145c9338ed
 -- run/go/fyne --
 pass sha256:d16910a1934607744a725b42acad041a
 -- run/go/gtk4 --

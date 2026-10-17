@@ -20,6 +20,11 @@ type Measurement struct {
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
+	*modelState
+}
+
+// modelState is what every copy of a Model shares.
+type modelState struct {
 	path           string
 	ident1         string
 	ident2         string
@@ -35,7 +40,7 @@ type Model struct {
 
 // New creates a Model with default bind values.
 func New() Model {
-	m := Model{}
+	m := Model{&modelState{}}
 	m.path = "sngl"
 	m.ident1 = ""
 	m.ident2 = ""

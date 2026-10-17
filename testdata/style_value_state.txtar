@@ -391,6 +391,11 @@ func __styleLipgloss(s Style) lipgloss.Style {
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
+	*modelState
+}
+
+// modelState is what every copy of a Model shares.
+type modelState struct {
 	s              Style
 	on             bool
 	kept           []Style
@@ -403,7 +408,7 @@ type Model struct {
 
 // New creates a Model with default bind values.
 func New() Model {
-	m := Model{}
+	m := Model{&modelState{}}
 	m.s = Style{Color: snglcolor.Color{R: 255, G: 0, B: 0, A: 255}, FontSize: Measurement{Px: 14}}
 	m.on = false
 	m.kept = []Style{Style{Background: snglcolor.Color{R: 0, G: 255, B: 255, A: 255}}}
@@ -2216,7 +2221,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:cb43facc7221e21cfdf7e09a00e4d30b
+pass sha256:3635422e5937abb609148151db2b44ad
 -- run/go/fyne --
 pass sha256:4d21de6b4f987c26f51a6fdede8dceeb
 -- run/go/gtk4 --

@@ -60,6 +60,11 @@ type Point struct {
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
+	*modelState
+}
+
+// modelState is what every copy of a Model shares.
+type modelState struct {
 	here__inst0    Point
 	visible__inst0 bool
 
@@ -68,7 +73,7 @@ type Model struct {
 
 // New creates a Model with default bind values.
 func New() Model {
-	m := Model{}
+	m := Model{&modelState{}}
 	m.here__inst0 = Point{Y: 1, X: 7, Tag: "none"}
 	m.visible__inst0 = true
 	return m
@@ -160,4 +165,4 @@ func main() {
 	}
 }
 -- run/go/bubbletea --
-pass sha256:83c2568b5cfadd417c636ea284ca6cba
+pass sha256:4830e5985f7715a3a65e95b8002a2058

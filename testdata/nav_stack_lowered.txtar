@@ -110,6 +110,11 @@ type Pages__entry struct {
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
+	*modelState
+}
+
+// modelState is what every copy of a Model shares.
+type modelState struct {
 	pkg__params    Pkg
 	pages__current _page__value
 	pages__history []Pages__entry
@@ -122,7 +127,7 @@ type Model struct {
 
 // New creates a Model with default bind values.
 func New() Model {
-	m := Model{}
+	m := Model{&modelState{}}
 	m.pkg__params = Pkg{Name: "first"}
 	m.pages__current = _page__value{Id: 0, Href: "/", Title: "Home", Meta: Meta{Label: "home"}}
 	m.pages__history = []Pages__entry{}
@@ -1290,7 +1295,7 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return gtk4rt.ToplevelWindow(app, m.main)
 }
 -- run/go/bubbletea --
-pass sha256:f407e3b5a418e89d3dc0467578219c90
+pass sha256:7cadd084b591c9659e0d834c2f295d8b
 -- run/go/fyne --
 pass sha256:31081a9f3bb8d9a24a1df259349d36a9
 -- run/go/gtk4 --

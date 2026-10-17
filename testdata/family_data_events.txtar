@@ -126,6 +126,11 @@ type ErrorEvent struct {
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
+	*modelState
+}
+
+// modelState is what every copy of a Model shares.
+type modelState struct {
 	count__inst0   int
 	picked__inst0  int
 	names__inst0   []string
@@ -141,9 +146,7 @@ type Model struct {
 
 // New creates a Model with default bind values.
 func New() Model {
-	m := Model{}
-	defer func(p *Model) { __liveModel = p }(__liveModel)
-	__liveModel = &m
+	m := Model{&modelState{}}
 	m.count__inst0 = 0
 	m.picked__inst0 = 0
 	m.names__inst0 = []string{"x", "yy"}
@@ -158,15 +161,11 @@ func New() Model {
 
 // SetTerminalSize sets the terminal dimensions and resizes widgets.
 func (m *Model) SetTerminalSize(w, h int) {
-	defer func(p *Model) { __liveModel = p }(__liveModel)
-	__liveModel = m
 	m.width = w
 	m.height = h
 }
 
 func (m *Model) __focusNext() {
-	defer func(p *Model) { __liveModel = p }(__liveModel)
-	__liveModel = m
 	if m.__focusID == 0 {
 		m.__focusID = 1
 	} else {
@@ -177,8 +176,6 @@ func (m *Model) __focusNext() {
 }
 
 func (m *Model) __focusPrev() {
-	defer func(p *Model) { __liveModel = p }(__liveModel)
-	__liveModel = m
 	if m.__focusID == 0 {
 		m.__focusID = 1
 	} else {
@@ -189,14 +186,10 @@ func (m *Model) __focusPrev() {
 }
 
 func (m Model) Count__inst0() int {
-	defer func(p *Model) { __liveModel = p }(__liveModel)
-	__liveModel = &m
 	return m.count__inst0
 }
 
 func (m Model) SetCount__inst0(v int) Model {
-	defer func(p *Model) { __liveModel = p }(__liveModel)
-	__liveModel = &m
 	m.count__inst0 = v
 	return m
 }
@@ -208,14 +201,10 @@ func SetCount__inst0Cmd(v int) tea.Cmd {
 }
 
 func (m Model) Picked__inst0() int {
-	defer func(p *Model) { __liveModel = p }(__liveModel)
-	__liveModel = &m
 	return m.picked__inst0
 }
 
 func (m Model) SetPicked__inst0(v int) Model {
-	defer func(p *Model) { __liveModel = p }(__liveModel)
-	__liveModel = &m
 	m.picked__inst0 = v
 	return m
 }
@@ -227,14 +216,10 @@ func SetPicked__inst0Cmd(v int) tea.Cmd {
 }
 
 func (m Model) Names__inst0() []string {
-	defer func(p *Model) { __liveModel = p }(__liveModel)
-	__liveModel = &m
 	return m.names__inst0
 }
 
 func (m Model) SetNames__inst0(v []string) Model {
-	defer func(p *Model) { __liveModel = p }(__liveModel)
-	__liveModel = &m
 	m.names__inst0 = v
 	return m
 }
@@ -246,14 +231,10 @@ func SetNames__inst0Cmd(v []string) tea.Cmd {
 }
 
 func (m Model) Caught__inst0() string {
-	defer func(p *Model) { __liveModel = p }(__liveModel)
-	__liveModel = &m
 	return m.caught__inst0
 }
 
 func (m Model) SetCaught__inst0(v string) Model {
-	defer func(p *Model) { __liveModel = p }(__liveModel)
-	__liveModel = &m
 	m.caught__inst0 = v
 	return m
 }
@@ -265,14 +246,10 @@ func SetCaught__inst0Cmd(v string) tea.Cmd {
 }
 
 func (m Model) After__inst0() bool {
-	defer func(p *Model) { __liveModel = p }(__liveModel)
-	__liveModel = &m
 	return m.after__inst0
 }
 
 func (m Model) SetAfter__inst0(v bool) Model {
-	defer func(p *Model) { __liveModel = p }(__liveModel)
-	__liveModel = &m
 	m.after__inst0 = v
 	return m
 }
@@ -284,14 +261,10 @@ func SetAfter__inst0Cmd(v bool) tea.Cmd {
 }
 
 func (m Model) Visible__inst0() bool {
-	defer func(p *Model) { __liveModel = p }(__liveModel)
-	__liveModel = &m
 	return m.visible__inst0
 }
 
 func (m Model) SetVisible__inst0(v bool) Model {
-	defer func(p *Model) { __liveModel = p }(__liveModel)
-	__liveModel = &m
 	m.visible__inst0 = v
 	return m
 }
@@ -303,14 +276,10 @@ func SetVisible__inst0Cmd(v bool) tea.Cmd {
 }
 
 func (m Model) Inner__inst0() string {
-	defer func(p *Model) { __liveModel = p }(__liveModel)
-	__liveModel = &m
 	return m.inner__inst0
 }
 
 func (m Model) SetInner__inst0(v string) Model {
-	defer func(p *Model) { __liveModel = p }(__liveModel)
-	__liveModel = &m
 	m.inner__inst0 = v
 	return m
 }
@@ -322,14 +291,10 @@ func SetInner__inst0Cmd(v string) tea.Cmd {
 }
 
 func (m Model) Inner__inst1() string {
-	defer func(p *Model) { __liveModel = p }(__liveModel)
-	__liveModel = &m
 	return m.inner__inst1
 }
 
 func (m Model) SetInner__inst1(v string) Model {
-	defer func(p *Model) { __liveModel = p }(__liveModel)
-	__liveModel = &m
 	m.inner__inst1 = v
 	return m
 }
@@ -341,14 +306,10 @@ func SetInner__inst1Cmd(v string) tea.Cmd {
 }
 
 func (m Model) Init() tea.Cmd {
-	defer func(p *Model) { __liveModel = p }(__liveModel)
-	__liveModel = &m
 	return nil
 }
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	defer func(p *Model) { __liveModel = p }(__liveModel)
-	__liveModel = &m
 	var cmds []tea.Cmd
 	var cmd tea.Cmd
 	_ = cmd
@@ -388,11 +349,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.__focusPrev()
 		case msg.Code == tea.KeyEnter && m.__focusID == 0:
 			func() {
-				m := __liveModel
-				_ = m
 				for _, a := range slices.Concat([]Action__record{Action__record{Label: "inc", Run: func() {
-					m := __liveModel
-					_ = m
 					m.count__inst0 = (m.count__inst0 + 1)
 				}, Pick: func(__unbound0 int) {
 				}}, Action__record{Label: "none", Run: func() {
@@ -401,12 +358,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					__out := make([]Action__record, len(m.names__inst0))
 					for __i, __item := range m.names__inst0 {
 						__out[__i] = func(n string) Action__record {
-							m := __liveModel
-							_ = m
 							return Action__record{Label: n, Run: func() {
 							}, Pick: func(k int) {
-								m := __liveModel
-								_ = m
 								m.picked__inst0 = ((m.picked__inst0 + (k * 10)) + len(n))
 							}}
 						}(__item)
@@ -419,11 +372,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}()
 		case msg.Code == tea.KeyEnter && m.__focusID == 1:
 			func() {
-				m := __liveModel
-				_ = m
 				for _, a := range []Action__record{Action__record{Label: "boom", Run: func() {
-					m := __liveModel
-					_ = m
 					func() {
 						defer func() {
 							__r := recover()
@@ -453,8 +402,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 // allClick activates the #all widget the way a keypress does; for tests.
 func (m *Model) allClick() {
-	defer func(p *Model) { __liveModel = p }(__liveModel)
-	__liveModel = m
 	prev := m.__focusID
 	m.__focusID = 0
 	nm, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
@@ -464,8 +411,6 @@ func (m *Model) allClick() {
 
 // all__1Click activates the #all__1 widget the way a keypress does; for tests.
 func (m *Model) all__1Click() {
-	defer func(p *Model) { __liveModel = p }(__liveModel)
-	__liveModel = m
 	prev := m.__focusID
 	m.__focusID = 1
 	nm, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
@@ -474,8 +419,6 @@ func (m *Model) all__1Click() {
 }
 
 func (m Model) View() tea.View {
-	defer func(p *Model) { __liveModel = p }(__liveModel)
-	__liveModel = &m
 	var content string
 	if m.visible__inst0 {
 		var contentParts []string
@@ -535,8 +478,6 @@ func main() {
 		os.Exit(1)
 	}
 }
-
-var __liveModel *Model
 -- out/go/fyne/model.go --
 // Code generated by sngl (fyne) from app.sngl; DO NOT EDIT.
 
@@ -1255,7 +1196,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:e72efedf33da1a83f7442fcc8cd8ba9d
+pass sha256:a9e72176877325da428da1616ed9bb31
 -- run/go/fyne --
 pass sha256:7cd567305a5ac00a669f0470a3864ad3
 -- run/go/gtk4 --

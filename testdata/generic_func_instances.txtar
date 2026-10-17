@@ -121,6 +121,11 @@ import (
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
+	*modelState
+}
+
+// modelState is what every copy of a Model shares.
+type modelState struct {
 	n              int
 	xs             []int
 	names          []string
@@ -136,17 +141,13 @@ type Model struct {
 
 // New creates a Model with default bind values.
 func New() Model {
-	m := Model{}
-	defer func(p *Model) { __liveModel = p }(__liveModel)
-	__liveModel = &m
+	m := Model{&modelState{}}
 	m.n = 1
 	m.xs = []int{10, 20, 10}
 	m.names = []string{"a", "b"}
 	m.e = []string{"z"}
 	m.fns = Last__func_int_string([]func(int) string{func(x int) string { return fmt.Sprint(x) }})
 	m.acts = Last__func_int_string_1([]func(int, string){func(x int, s string) {
-		m := __liveModel
-		_ = m
 		m.n = x
 	}})
 	m.k__inst0 = 0
@@ -157,15 +158,11 @@ func New() Model {
 
 // SetTerminalSize sets the terminal dimensions and resizes widgets.
 func (m *Model) SetTerminalSize(w, h int) {
-	defer func(p *Model) { __liveModel = p }(__liveModel)
-	__liveModel = m
 	m.width = w
 	m.height = h
 }
 
 func (m Model) blank__string() []string {
-	defer func(p *Model) { __liveModel = p }(__liveModel)
-	__liveModel = &m
 	out := []string{}
 	if m.n < 0 {
 		return out
@@ -174,8 +171,6 @@ func (m Model) blank__string() []string {
 }
 
 func (m *Model) at__int(xs []int) int {
-	defer func(p *Model) { __liveModel = p }(__liveModel)
-	__liveModel = m
 	var i int = m.n
 	if i >= len(xs) {
 		i = 0
@@ -184,8 +179,6 @@ func (m *Model) at__int(xs []int) int {
 }
 
 func (m *Model) at__string(xs []string) string {
-	defer func(p *Model) { __liveModel = p }(__liveModel)
-	__liveModel = m
 	var i int = m.n
 	if i >= len(xs) {
 		i = 0
@@ -214,15 +207,11 @@ func Count__string(xs []string, want string) int {
 }
 
 func (m *Model) both__int(xs []int, want int) int {
-	defer func(p *Model) { __liveModel = p }(__liveModel)
-	__liveModel = m
 	var c int = Count__int(xs, want)
 	return (c + Count__int([]int{m.at__int(xs)}, want))
 }
 
 func (m *Model) both__string(xs []string, want string) int {
-	defer func(p *Model) { __liveModel = p }(__liveModel)
-	__liveModel = m
 	var c int = Count__string(xs, want)
 	return (c + Count__string([]string{m.at__string(xs)}, want))
 }
@@ -238,29 +227,21 @@ func Last__func_int_string_1(xs []func(int, string)) func(int, string) {
 }
 
 func (m *Model) pad__int(xs []int, extra []int) int {
-	defer func(p *Model) { __liveModel = p }(__liveModel)
-	__liveModel = m
 	var c int = (len(xs) + len(extra))
 	return (c + m.n)
 }
 
 func (m *Model) nth__int__inst0(xs []int) int {
-	defer func(p *Model) { __liveModel = p }(__liveModel)
-	__liveModel = m
 	var i int = m.k__inst0
 	return xs[i]
 }
 
 func (m *Model) nth__string__inst0(xs []string) string {
-	defer func(p *Model) { __liveModel = p }(__liveModel)
-	__liveModel = m
 	var i int = m.k__inst0
 	return xs[i]
 }
 
 func (m *Model) __focusNext() {
-	defer func(p *Model) { __liveModel = p }(__liveModel)
-	__liveModel = m
 	if m.__focusID == 0 {
 		m.__focusID = 1
 	} else {
@@ -271,8 +252,6 @@ func (m *Model) __focusNext() {
 }
 
 func (m *Model) __focusPrev() {
-	defer func(p *Model) { __liveModel = p }(__liveModel)
-	__liveModel = m
 	if m.__focusID == 0 {
 		m.__focusID = 1
 	} else {
@@ -283,14 +262,10 @@ func (m *Model) __focusPrev() {
 }
 
 func (m Model) N() int {
-	defer func(p *Model) { __liveModel = p }(__liveModel)
-	__liveModel = &m
 	return m.n
 }
 
 func (m Model) SetN(v int) Model {
-	defer func(p *Model) { __liveModel = p }(__liveModel)
-	__liveModel = &m
 	m.n = v
 	return m
 }
@@ -302,14 +277,10 @@ func SetNCmd(v int) tea.Cmd {
 }
 
 func (m Model) Xs() []int {
-	defer func(p *Model) { __liveModel = p }(__liveModel)
-	__liveModel = &m
 	return m.xs
 }
 
 func (m Model) SetXs(v []int) Model {
-	defer func(p *Model) { __liveModel = p }(__liveModel)
-	__liveModel = &m
 	m.xs = v
 	return m
 }
@@ -321,14 +292,10 @@ func SetXsCmd(v []int) tea.Cmd {
 }
 
 func (m Model) Names() []string {
-	defer func(p *Model) { __liveModel = p }(__liveModel)
-	__liveModel = &m
 	return m.names
 }
 
 func (m Model) SetNames(v []string) Model {
-	defer func(p *Model) { __liveModel = p }(__liveModel)
-	__liveModel = &m
 	m.names = v
 	return m
 }
@@ -340,14 +307,10 @@ func SetNamesCmd(v []string) tea.Cmd {
 }
 
 func (m Model) E() []string {
-	defer func(p *Model) { __liveModel = p }(__liveModel)
-	__liveModel = &m
 	return m.e
 }
 
 func (m Model) SetE(v []string) Model {
-	defer func(p *Model) { __liveModel = p }(__liveModel)
-	__liveModel = &m
 	m.e = v
 	return m
 }
@@ -359,14 +322,10 @@ func SetECmd(v []string) tea.Cmd {
 }
 
 func (m Model) Fns() func(int) string {
-	defer func(p *Model) { __liveModel = p }(__liveModel)
-	__liveModel = &m
 	return m.fns
 }
 
 func (m Model) SetFns(v func(int) string) Model {
-	defer func(p *Model) { __liveModel = p }(__liveModel)
-	__liveModel = &m
 	m.fns = v
 	return m
 }
@@ -378,14 +337,10 @@ func SetFnsCmd(v func(int) string) tea.Cmd {
 }
 
 func (m Model) Acts() func(int, string) {
-	defer func(p *Model) { __liveModel = p }(__liveModel)
-	__liveModel = &m
 	return m.acts
 }
 
 func (m Model) SetActs(v func(int, string)) Model {
-	defer func(p *Model) { __liveModel = p }(__liveModel)
-	__liveModel = &m
 	m.acts = v
 	return m
 }
@@ -397,14 +352,10 @@ func SetActsCmd(v func(int, string)) tea.Cmd {
 }
 
 func (m Model) K__inst0() int {
-	defer func(p *Model) { __liveModel = p }(__liveModel)
-	__liveModel = &m
 	return m.k__inst0
 }
 
 func (m Model) SetK__inst0(v int) Model {
-	defer func(p *Model) { __liveModel = p }(__liveModel)
-	__liveModel = &m
 	m.k__inst0 = v
 	return m
 }
@@ -416,14 +367,10 @@ func SetK__inst0Cmd(v int) tea.Cmd {
 }
 
 func (m Model) Visible__inst0() bool {
-	defer func(p *Model) { __liveModel = p }(__liveModel)
-	__liveModel = &m
 	return m.visible__inst0
 }
 
 func (m Model) SetVisible__inst0(v bool) Model {
-	defer func(p *Model) { __liveModel = p }(__liveModel)
-	__liveModel = &m
 	m.visible__inst0 = v
 	return m
 }
@@ -435,14 +382,10 @@ func SetVisible__inst0Cmd(v bool) tea.Cmd {
 }
 
 func (m Model) Init() tea.Cmd {
-	defer func(p *Model) { __liveModel = p }(__liveModel)
-	__liveModel = &m
 	return nil
 }
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	defer func(p *Model) { __liveModel = p }(__liveModel)
-	__liveModel = &m
 	var cmds []tea.Cmd
 	var cmd tea.Cmd
 	_ = cmd
@@ -492,8 +435,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m Model) View() tea.View {
-	defer func(p *Model) { __liveModel = p }(__liveModel)
-	__liveModel = &m
 	var content string
 	if m.visible__inst0 {
 		var contentParts []string
@@ -534,8 +475,6 @@ func main() {
 		os.Exit(1)
 	}
 }
-
-var __liveModel *Model
 -- out/go/fyne/model.go --
 // Code generated by sngl (fyne) from app.sngl; DO NOT EDIT.
 
@@ -1302,7 +1241,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:767af3a58859ef9d5f0fd5473fce8571
+pass sha256:706e3d1f06297f9d0ceb9eb3c547ae00
 -- run/go/fyne --
 pass sha256:62564d2b17ea294fec4b0f945c83888b
 -- run/go/gtk4 --

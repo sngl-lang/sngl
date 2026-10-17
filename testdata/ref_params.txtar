@@ -150,6 +150,11 @@ type Stack_pop__result struct {
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
+	*modelState
+}
+
+// modelState is what every copy of a Model shares.
+type modelState struct {
 	st__inst0      Stack
 	all__inst0     []Stack
 	k__inst0       int
@@ -162,7 +167,7 @@ type Model struct {
 
 // New creates a Model with default bind values.
 func New() Model {
-	m := Model{}
+	m := Model{&modelState{}}
 	m.st__inst0 = Stack{Items: []int{}, Pushes: 0}
 	m.all__inst0 = []Stack{Stack{Items: []int{}, Pushes: 0}, Stack{Items: []int{}, Pushes: 0}}
 	m.k__inst0 = 0
@@ -725,7 +730,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:51bc8b43d43abe497c591b7297c01952
+pass sha256:5bcca03912655973619eef7ed234dd27
 -- run/kotlin/android --
 pass sha256:30c2ae31fe0a24f7f4e6e79827224ee5
 -- run/none/html --
