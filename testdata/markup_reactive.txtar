@@ -495,14 +495,18 @@ import androidx.compose.ui.platform.LocalContext
 import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
-import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.withStyle
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.material3.Text
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.foundation.shape.CircleShape
 
 data class Measurement(
     val px: Double = 0.0,
@@ -536,10 +540,10 @@ fun MainScreen() {
                 withStyle(SpanStyle(fontWeight = FontWeight.Bold)) {
                     append(n.toString())
                 }
-            }, modifier = Modifier)
+            }, modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
             Button(onClick = {
                 n += 1
-            }, modifier = Modifier) {
+            }, modifier = Modifier, colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                 Text(text = "+", modifier = Modifier)
             }
         }
@@ -595,6 +599,6 @@ pass sha256:905dfbc6dbbad8d7e969853e0d5070e7
 -- run/go/html --
 pass sha256:2c57f3c5d56df6fe1785ed36ed9b8e8f
 -- run/kotlin/android --
-pass sha256:6343f4820d50d3dd584039314318a1ba
+pass sha256:c429cbdbb9b01d09813197304b116964
 -- run/none/html --
 pass sha256:29a40121654d0eef3cb6aa15104b5990

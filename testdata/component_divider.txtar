@@ -484,9 +484,11 @@ import androidx.compose.ui.platform.LocalContext
 import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
-import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.ui.Modifier
 import androidx.compose.material3.Text
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.material3.HorizontalDivider
 
 fun _snglFloatStr(v: Double): String =
@@ -509,11 +511,11 @@ fun MainScreen() {
             }
         }
         Column(modifier = Modifier.safeDrawingPadding()) {
-            Text(text = "Section 1", modifier = Modifier)
+            Text(text = "Section 1", modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
             HorizontalDivider(modifier = Modifier)
-            Text(text = "Section 2", modifier = Modifier)
+            Text(text = "Section 2", modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
             HorizontalDivider(modifier = Modifier)
-            Text(text = "Section 3", modifier = Modifier)
+            Text(text = "Section 3", modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
         }
     }
 }
@@ -552,6 +554,6 @@ pass sha256:62b64c49302a0f77315e7053470a5797
 -- run/go/gtk4 --
 pass sha256:1b39057ccb845d3da305740b88a443ad
 -- run/kotlin/android --
-pass sha256:89e801964b69f055ea47b176788824ce
+pass sha256:a0e626b9c0fbf42329ac5290f7e14f39
 -- run/none/html --
 pass sha256:12a7910ee1efd1cf46384dfb3cecfc87

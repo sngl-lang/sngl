@@ -1389,7 +1389,11 @@ import androidx.compose.ui.platform.testTag
 import androidx.navigation.compose.composable
 import kotlin.reflect.typeOf
 import androidx.compose.material3.Text
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.layout.safeDrawingPadding
 
 data class Row(
@@ -1495,28 +1499,28 @@ fun MainScreen() {
                     val c = (r.cols).elementAt(__copy1)
                     val s = __r.params ?: Sel(pick = c)
                     Column {
-                        Text(text = ((((r.name + " ") + c) + " picked ") + s.pick), modifier = Modifier.testTag("line"))
-                        Text(text = (if (((pages__current.id == 0) && (((pages__current.copy.size == 2) && (pages__current.copy[0] == __copy)) && (pages__current.copy[1] == __copy1)))) "showing" else "hidden"), modifier = Modifier)
+                        Text(text = ((((r.name + " ") + c) + " picked ") + s.pick), modifier = Modifier.testTag("line"), style = LocalTextStyle.current.merge(TextStyle.Default))
+                        Text(text = (if (((pages__current.id == 0) && (((pages__current.copy.size == 2) && (pages__current.copy[0] == __copy)) && (pages__current.copy[1] == __copy1)))) "showing" else "hidden"), modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
                         Button(onClick = {
                             pages__nav.navigate(_page__valueRoute0(copy = listOf(__copy, __copy1).joinToString("."), params = Sel(pick = "x")))
-                        }, modifier = Modifier.testTag("pick")) {
+                        }, modifier = Modifier.testTag("pick"), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                             Text(text = "pick", modifier = Modifier)
                         }
                     }
                 }
                 composable<_page__valueRoute1> {
-                    Text(text = "about", modifier = Modifier)
+                    Text(text = "about", modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
                 }
             }
-            Text(text = pages__current.title, modifier = Modifier.testTag("heading").safeDrawingPadding())
+            Text(text = pages__current.title, modifier = Modifier.testTag("heading").safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
             Button(onClick = {
                 pages__nav.navigate(_page__valueRoute1())
-            }, modifier = Modifier.testTag("toAbout").safeDrawingPadding()) {
+            }, modifier = Modifier.testTag("toAbout").safeDrawingPadding(), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                 Text(text = "About", modifier = Modifier)
             }
             Button(onClick = {
                 run { if (pages__nav.previousBackStackEntry != null) pages__nav.popBackStack() }
-            }, modifier = Modifier.testTag("back").safeDrawingPadding()) {
+            }, modifier = Modifier.testTag("back").safeDrawingPadding(), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                 Text(text = "Back", modifier = Modifier)
             }
         }
@@ -1529,4 +1533,4 @@ pass sha256:40bfc012a6f372829050151f6aa7812d
 -- run/go/gtk4 --
 pass sha256:54e3fcec3365ec36389a62a8b8befddf
 -- run/kotlin/android --
-pass sha256:ed0cadf815db293c1bc45576c4eec4d0
+pass sha256:f460eed17d6ea5f99cae8ffd6214ec8c

@@ -279,9 +279,13 @@ import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.Button
-import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.ui.Modifier
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.ui.text.TextStyle
 
 data class Box(
     var value: Int = 0
@@ -318,10 +322,10 @@ fun MainScreen() {
                 if ((h__inst0.inner != null)) {
                 	seen__inst0 = h__inst0.inner!!.value
                 }
-            }, modifier = Modifier.safeDrawingPadding()) {
+            }, modifier = Modifier.safeDrawingPadding(), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                 Text(text = "read", modifier = Modifier)
             }
-            Text(text = seen__inst0.toString(), modifier = Modifier.safeDrawingPadding())
+            Text(text = seen__inst0.toString(), modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
         }
     }
 }
@@ -373,6 +377,6 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:f427dc233debd4a013c4fe04a3c101fc
 -- run/kotlin/android --
-pass sha256:8990d8d40fd0ae0a22b383ae540bc7e3
+pass sha256:e2a200b893695f1992b9b922e715f154
 -- run/none/html --
 pass sha256:7cc66f2a6361180dc33077bae8ddf3b6

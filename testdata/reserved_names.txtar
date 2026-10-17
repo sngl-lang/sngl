@@ -1187,11 +1187,14 @@ import androidx.compose.ui.platform.LocalContext
 import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
-import androidx.compose.ui.Modifier as Modifier_2
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.ui.Modifier as Modifier_2
 import androidx.compose.material3.Button
 import androidx.compose.ui.platform.testTag
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
+import androidx.compose.foundation.layout.fillMaxWidth
 
 data class Item(
     var type: String = "",
@@ -1243,15 +1246,15 @@ fun MainScreen() {
                 width = (width + rows.size)
                 it = Item(type = "b", `class` = (it.`class` + 1))
                 mod = Model(n = (mod.n + 1))
-            }, modifier = Modifier_2.testTag("go")) {
+            }, modifier = Modifier_2.testTag("go"), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                 Text(text = ((((((((((((((((("go " + range.toString()) + " ") + chan.toString()) + " ") + m.toString()) + " ") + cmd.toString()) + " ") + object__r0.toString()) + " ") + width.toString()) + " ") + it.type) + " ") + it.`class`.toString()) + " ") + mod.n.toString()), modifier = Modifier_2)
             }
             for (r in rows) {
-                Modifier(label = ("w" + r.toString()))
+                Modifier(label = ("w" + r.toString()), __ctx_flexShare = { w: Float -> Modifier_2.weight(w).fillMaxWidth() })
             }
             Button(onClick = {
                 (listOf(*rows.toTypedArray(), 3)).let { __v -> rows.clear(); rows.addAll(__v) }
-            }, modifier = Modifier_2) {
+            }, modifier = Modifier_2, colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                 Text(text = "more", modifier = Modifier_2)
             }
         }
@@ -1259,12 +1262,12 @@ fun MainScreen() {
 }
 
 @Composable
-fun Modifier(label: String = "") {
+fun Modifier(label: String = "", __ctx_flexShare: (Float) -> androidx.compose.ui.Modifier) {
     var count by remember { mutableStateOf(0) }
 
     Button(onClick = {
         count = (count + 1)
-    }, modifier = Modifier_2) {
+    }, modifier = Modifier_2, colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
         Text(text = ((label + " ") + count.toString()), modifier = Modifier_2)
     }
 }
@@ -1430,6 +1433,6 @@ pass sha256:c858908174f360b4e702635cfacf12df
 -- run/go/gtk4 --
 pass sha256:e22f5e2a38c8aea7462146b0e039a7b7
 -- run/kotlin/android --
-pass sha256:45b8fdea83065b477379d2a8239e1673
+pass sha256:ad8a8ea13fbb9909a52514dcb9e5a288
 -- run/none/html --
 pass sha256:790d90e289c01f04164413ed7046faec

@@ -274,8 +274,10 @@ import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.Text
-import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.ui.Modifier
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.ui.text.TextStyle
 
 data class Who(
     var name: String = "",
@@ -324,11 +326,11 @@ fun MainScreen() {
             }
         }
         Column {
-            Text(text = literal__inst0(__ctx_locale__inst0), modifier = Modifier.safeDrawingPadding())
-            Text(text = named__inst0(__ctx_locale__inst0), modifier = Modifier.safeDrawingPadding())
-            Text(text = computed__inst0(__ctx_locale__inst0), modifier = Modifier.safeDrawingPadding())
-            Text(text = I18n.translate(__ctx_locale__inst0, "Hi {name}", "", mapOf("name" to "Bo")), modifier = Modifier.safeDrawingPadding())
-            Text(text = inline__inst0, modifier = Modifier.safeDrawingPadding())
+            Text(text = literal__inst0(__ctx_locale__inst0), modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
+            Text(text = named__inst0(__ctx_locale__inst0), modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
+            Text(text = computed__inst0(__ctx_locale__inst0), modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
+            Text(text = I18n.translate(__ctx_locale__inst0, "Hi {name}", "", mapOf("name" to "Bo")), modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
+            Text(text = inline__inst0, modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
         }
     }
 }
@@ -1400,6 +1402,6 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:2a7baa5886514a56bd4d361da4ceec2a
 -- run/kotlin/android --
-pass sha256:5c30849522dce4670f06a49617ce972c
+pass sha256:afb8f91a13fa778ede9e08ddcf3951d4
 -- run/none/html --
 pass sha256:15a873d3d6c3eb6e930606c57bea5dbb

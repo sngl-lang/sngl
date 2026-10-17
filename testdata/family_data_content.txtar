@@ -800,10 +800,14 @@ import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.ui.Modifier
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.ui.text.TextStyle
 
 data class Card__record(
     var label: String = "",
@@ -836,7 +840,7 @@ fun MainScreen() {
                 for ((k, c) in listOf(Card__record(label = "one", __id = 0), Card__record(label = "two", __id = 1)).withIndex()) {
                     Button(onClick = {
                         shown = k
-                    }, modifier = Modifier) {
+                    }, modifier = Modifier, colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                         Text(text = c.label, modifier = Modifier)
                     }
                 }
@@ -844,15 +848,15 @@ fun MainScreen() {
             for ((k, c) in listOf(Card__record(label = "one", __id = 0), Card__record(label = "two", __id = 1)).withIndex()) {
                 if ((k == shown)) {
                     if ((c.__id == 0)) {
-                        Text(text = "first", modifier = Modifier.safeDrawingPadding())
+                        Text(text = "first", modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
                     } else {
                         if ((c.__id == 1)) {
                             Button(onClick = {
                                 hits = (hits + 1)
-                            }, modifier = Modifier.safeDrawingPadding()) {
+                            }, modifier = Modifier.safeDrawingPadding(), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                                 Text(text = "hit", modifier = Modifier)
                             }
-                            Text(text = hits.toString(), modifier = Modifier.safeDrawingPadding())
+                            Text(text = hits.toString(), modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
                         }
                     }
                 }
@@ -1023,6 +1027,6 @@ pass sha256:a118d279c113e07ab4545ee98ded1949
 -- run/go/gtk4 --
 pass sha256:5b6155d891f2a264b78dc1c6bcde1179
 -- run/kotlin/android --
-pass sha256:faeeafa26a8f826978e1e52ab1f30409
+pass sha256:83369a1ba44c6bd62c4bfe91d530f8ad
 -- run/none/html --
 pass sha256:835eeae78f471baddd6e1a097b4b44d5

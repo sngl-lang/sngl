@@ -418,19 +418,24 @@ func (m *Model) addClick() {
 
 package test.sngl.app
 
+import us.duckfam.git.jonathan.sngl.i18n.I18n
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.ui.Modifier
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.Text
-import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.material3.Button
-import us.duckfam.git.jonathan.sngl.i18n.I18n
 import androidx.compose.ui.platform.testTag
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.foundation.shape.CircleShape
 
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
@@ -440,6 +445,7 @@ fun _snglSplit(s: String, sep: String): List<String> =
 
 class MainScreenState {
     var __ctx_locale by mutableStateOf(I18n.defaultLocale())
+    var __ctx_flexShare by mutableStateOf<(Float) -> androidx.compose.ui.Modifier>({ w: Float -> Modifier.fillMaxSize() })
     var count by mutableStateOf(0)
     var label by mutableStateOf("")
 }
@@ -449,11 +455,11 @@ class MainScreenState {
 fun MainScreen(state: MainScreenState = remember { MainScreenState() }) {
 
     Column {
-        Text(text = state.label, modifier = Modifier.safeDrawingPadding())
+        Text(text = state.label, modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
         Button(onClick = {
             state.count = (state.count + 1)
             state.label = I18n.translate(state.__ctx_locale, "You have {count, plural, one{# item} other{# items}}", "You have {count, plural, one{# item} other{# items}}", mapOf("count" to state.count))
-        }, modifier = Modifier.testTag("add").safeDrawingPadding()) {
+        }, modifier = Modifier.testTag("add").safeDrawingPadding(), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
             Text(text = "add", modifier = Modifier)
         }
     }
@@ -1563,7 +1569,7 @@ pass sha256:02c29a19d8e168acdd196a917cf1ae21
 -- run/go/gtk4 --
 pass sha256:c852ffca6d47f7170fc35019dcaa3601
 -- run/kotlin/android --
-pass sha256:c525132dbbe79cd5c2b000f4f60917b2
+pass sha256:85c9c1a7721e14d3be0899c4f9ccf773
 -- run/none/html --
 pass sha256:f7c63032170d2efbe8656378b0833cfb
 -- testrun/html/none/component_i18n_plural.sngl/main/1 --

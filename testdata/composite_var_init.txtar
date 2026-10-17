@@ -223,9 +223,11 @@ import androidx.compose.ui.platform.LocalContext
 import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
-import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.ui.Modifier
 import androidx.compose.material3.Text
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.ui.text.TextStyle
 
 data class Node(
     var value: Int = 0,
@@ -255,12 +257,12 @@ fun MainScreen() {
             }
         }
         Column(modifier = Modifier.safeDrawingPadding()) {
-            Text(text = second.label, modifier = Modifier)
-            Text(text = pair.size.toString(), modifier = Modifier)
+            Text(text = second.label, modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
+            Text(text = pair.size.toString(), modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
         }
     }
 }
 -- run/go/bubbletea --
 pass sha256:d4bbf638801c6ab45d9a114109659b4a
 -- run/kotlin/android --
-pass sha256:211699410e3aa6f3e921d8919ffcb670
+pass sha256:02c72d28d8b6fbfb5553b2ab8a414fc4

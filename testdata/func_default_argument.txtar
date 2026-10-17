@@ -1050,9 +1050,14 @@ import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.Text
-import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.ui.Modifier
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.layout.fillMaxSize
 
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
@@ -1099,31 +1104,31 @@ fun MainScreen() {
             }
         }
         Column {
-            Text(text = ((((((plus(1, 2).toString() + " ") + span(1, 1, 5).toString()) + " ") + span(2, 1, (n + 10)).toString()) + " ") + int_bump(n, 3).toString()), modifier = Modifier.safeDrawingPadding())
+            Text(text = ((((((plus(1, 2).toString() + " ") + span(1, 1, 5).toString()) + " ") + span(2, 1, (n + 10)).toString()) + " ") + int_bump(n, 3).toString()), modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
             Button(onClick = {
                 n += 1
-            }, modifier = Modifier.safeDrawingPadding()) {
+            }, modifier = Modifier.safeDrawingPadding(), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                 Text(text = "go", modifier = Modifier)
             }
             Button(onClick = {
                 add__inst0(1, (step__inst0 + 10))
-            }, modifier = Modifier.safeDrawingPadding()) {
+            }, modifier = Modifier.safeDrawingPadding(), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                 Text(text = total__inst0.toString(), modifier = Modifier)
             }
             Button(onClick = {
                 add__inst1(1, (step__inst1 + 20))
-            }, modifier = Modifier.safeDrawingPadding()) {
+            }, modifier = Modifier.safeDrawingPadding(), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                 Text(text = total__inst1.toString(), modifier = Modifier)
             }
             for (r in rows) {
-                Counter(inc = r)
+                Counter(inc = r, __ctx_flexShare = { w: Float -> Modifier.fillMaxSize() })
             }
         }
     }
 }
 
 @Composable
-fun Counter(inc: Int = 0) {
+fun Counter(inc: Int = 0, __ctx_flexShare: (Float) -> androidx.compose.ui.Modifier) {
     var step by remember { mutableStateOf(2) }
     var total by remember { mutableStateOf(0) }
 
@@ -1133,7 +1138,7 @@ fun Counter(inc: Int = 0) {
 
     Button(onClick = {
         add(1, (step + inc))
-    }, modifier = Modifier) {
+    }, modifier = Modifier, colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
         Text(text = total.toString(), modifier = Modifier)
     }
 }
@@ -1304,6 +1309,6 @@ pass sha256:dd402fb679982e24c4149da25a453db1
 -- run/go/gtk4 --
 pass sha256:c61a481e01c830973af35c9f84e6796c
 -- run/kotlin/android --
-pass sha256:45d4f5796404153024769d52605b903a
+pass sha256:c08ec89944be3770104d4eee60053b43
 -- run/none/html --
 pass sha256:9982d0456906afe5a1243c2e22b1b9ad

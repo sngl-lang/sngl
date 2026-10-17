@@ -202,8 +202,10 @@ import androidx.compose.ui.platform.LocalContext
 import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.material3.Text
-import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.ui.Modifier
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.ui.text.TextStyle
 
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
@@ -226,10 +228,10 @@ fun MainScreen() {
                 __activity?.finish()
             }
         }
-        Text(text = ("n is " + _snglFloatStr(n__inst0)), modifier = Modifier.safeDrawingPadding())
+        Text(text = ("n is " + _snglFloatStr(n__inst0)), modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
     }
 }
 -- run/go/bubbletea --
 pass sha256:0651c7111638ceec3c782ee4cb067703
 -- run/kotlin/android --
-pass sha256:07dbd3f52dd3efcd106cab7ba7139076
+pass sha256:6cb2e59c07bacddb9c5314b4b68d7ed0

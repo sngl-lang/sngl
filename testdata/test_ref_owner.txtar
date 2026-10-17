@@ -1641,6 +1641,8 @@ func (m *Model) kPresent() bool {
 package test.sngl.app
 
 import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.ui.Modifier
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
@@ -1648,11 +1650,13 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.foundation.layout.Column
-import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.material3.Button
 import androidx.compose.ui.platform.testTag
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
+import androidx.compose.foundation.layout.fillMaxWidth
 
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
@@ -1664,6 +1668,7 @@ val SnglPresent = mutableStateMapOf<Any, String>()
 
 class MainScreenState {
     init { SnglPresent.clear() }
+    var __ctx_flexShare by mutableStateOf<(Float) -> androidx.compose.ui.Modifier>({ w: Float -> Modifier.fillMaxSize() })
     var shown by mutableStateOf(true)
     var other by mutableStateOf(false)
     var mh by mutableStateOf(0)
@@ -1676,22 +1681,22 @@ fun MainScreen(state: MainScreenState = remember { MainScreenState() }) {
     Column(modifier = Modifier.safeDrawingPadding()) {
         Button(onClick = {
             state.shown = !state.shown
-        }, modifier = Modifier.testTag("ts")) {
+        }, modifier = Modifier.testTag("ts"), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
             Text(text = "s", modifier = Modifier)
         }
         Button(onClick = {
             state.other = !state.other
-        }, modifier = Modifier.testTag("to")) {
+        }, modifier = Modifier.testTag("to"), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
             Text(text = "o", modifier = Modifier)
         }
         if (state.other) {
-            Panel()
+            Panel(__ctx_flexShare = { w: Float -> Modifier.weight(w).fillMaxWidth() })
         }
         if (state.shown) {
-            Badge(label = "m")
+            Badge(label = "m", __ctx_flexShare = { w: Float -> Modifier.weight(w).fillMaxWidth() })
             Button(onClick = {
                 state.mh = (state.mh + 1)
-            }, modifier = Modifier.testTag("k")) {
+            }, modifier = Modifier.testTag("k"), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                 Text(text = ("mk" + state.mh.toString()), modifier = Modifier)
             }
         }
@@ -1699,27 +1704,27 @@ fun MainScreen(state: MainScreenState = remember { MainScreenState() }) {
 }
 
 @Composable
-fun Badge(label: String = "") {
+fun Badge(label: String = "", __ctx_flexShare: (Float) -> androidx.compose.ui.Modifier) {
     var hits by remember { mutableStateOf(0) }
 
     Button(onClick = {
         hits = (hits + 1)
-    }, modifier = Modifier.testTag("hit")) {
+    }, modifier = Modifier.testTag("hit"), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
         Text(text = (label + hits.toString()), modifier = Modifier)
     }
 }
 
 @Composable
-fun Panel() {
+fun Panel(__ctx_flexShare: (Float) -> androidx.compose.ui.Modifier) {
     var on by remember { mutableStateOf(true) }
     var ph by remember { mutableStateOf(0) }
 
     Column(modifier = Modifier) {
         if (on) {
-            Badge(label = "p")
+            Badge(label = "p", __ctx_flexShare = { w: Float -> Modifier.weight(w).fillMaxWidth() })
             Button(onClick = {
                 ph = (ph + 1)
-            }, modifier = Modifier.testTag("k__own0")) {
+            }, modifier = Modifier.testTag("k__own0"), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                 Text(text = ("pk" + ph.toString()), modifier = Modifier)
             }
         }
@@ -2261,6 +2266,6 @@ pass sha256:b0739772a21d6d84c694234d491376e9
 -- run/go/gtk4 --
 pass sha256:d9ef2767339a3ca7ca20955fbc041f00
 -- run/kotlin/android --
-pass sha256:3f797c9fa4f74c4d8c4256c52496fa22
+pass sha256:b0516f62f12a1ab0059d2e0f49f695d1
 -- run/none/html --
 pass sha256:f18599d7bd25523e7c91060be237c5c9

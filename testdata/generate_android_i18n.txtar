@@ -55,9 +55,13 @@ import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.Text
-import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.ui.Modifier
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.foundation.shape.CircleShape
 
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
@@ -82,11 +86,11 @@ fun MainScreen() {
             }
         }
         Column {
-            Text(text = label__inst0, modifier = Modifier.safeDrawingPadding())
+            Text(text = label__inst0, modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
             Button(onClick = {
                 count__inst0 = (count__inst0 + 1)
                 label__inst0 = I18n.translate(__ctx_locale__inst0, "You have {count, plural, one{# item} other{# items}}", "You have {count, plural, one{# item} other{# items}}", mapOf("count" to count__inst0))
-            }, modifier = Modifier.safeDrawingPadding()) {
+            }, modifier = Modifier.safeDrawingPadding(), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                 Text(text = "Add", modifier = Modifier)
             }
         }
@@ -578,4 +582,4 @@ private fun loadManifest(ctx: Context): Manifest {
     }
 }
 -- run/kotlin/android --
-pass sha256:07c07c254a6845970aae749cda03289f
+pass sha256:fed61697f0bfc440cadd4895c22337b0

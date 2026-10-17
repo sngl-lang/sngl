@@ -236,9 +236,11 @@ import androidx.compose.ui.platform.LocalContext
 import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
-import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.ui.Modifier
 import androidx.compose.material3.Text
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.ui.text.TextStyle
 
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
@@ -262,15 +264,15 @@ fun MainScreen() {
         }
         Column(modifier = Modifier.safeDrawingPadding()) {
             Column(modifier = Modifier) {
-                Text(text = "One", modifier = Modifier)
+                Text(text = "One", modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
                 Column(modifier = Modifier) {
-                    Text(text = (("first of " + pages__inst0.toString()) + " pages"), modifier = Modifier)
+                    Text(text = (("first of " + pages__inst0.toString()) + " pages"), modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
                 }
             }
             Column(modifier = Modifier) {
-                Text(text = "Two", modifier = Modifier)
+                Text(text = "Two", modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
                 Column(modifier = Modifier) {
-                    Text(text = "no content supplied", modifier = Modifier)
+                    Text(text = "no content supplied", modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
                 }
             }
         }
@@ -323,6 +325,6 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:4a0012837bc10879ec47b3d86373f700
 -- run/kotlin/android --
-pass sha256:20e696c76fdada8a5ccefb95124715f0
+pass sha256:12da890692e55a4177423d59a11b0908
 -- run/none/html --
 pass sha256:2ea4896f674adb7e7c12f333a8a78283

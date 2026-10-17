@@ -344,6 +344,8 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 
 package test.sngl.app
 
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.ui.Modifier
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
@@ -351,11 +353,12 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.foundation.layout.Column
-import androidx.compose.ui.Modifier
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.material3.Text
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.ui.text.TextStyle
 
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
@@ -364,6 +367,7 @@ fun _snglSplit(s: String, sep: String): List<String> =
     if (sep.isEmpty()) s.map { it.toString() } else s.split(sep)
 
 class MainScreenState {
+    var __ctx_flexShare by mutableStateOf<(Float) -> androidx.compose.ui.Modifier>({ w: Float -> Modifier.fillMaxSize() })
     var x by mutableStateOf(0.0)
     var y by mutableStateOf(0.0)
 }
@@ -373,7 +377,7 @@ class MainScreenState {
 fun MainScreen(state: MainScreenState = remember { MainScreenState() }) {
 
     Column(modifier = Modifier.then(Modifier.verticalScroll(rememberScrollState())).safeDrawingPadding()) {
-        Text(text = "content", modifier = Modifier)
+        Text(text = "content", modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
     }
 }
 -- out/kotlin/android/app/src/test/kotlin/test/sngl/app/MainScreenTest.kt --
@@ -466,7 +470,7 @@ pass sha256:187312da50ab5fda4852a6829244b75d
 -- run/go/gtk4 --
 pass sha256:6f25d1c275b151c007bb7899c409947d
 -- run/kotlin/android --
-pass sha256:c9f8500b87ca099648ae5918a799f940
+pass sha256:06ad18f050ad54d3a28260366bf3a138
 -- run/none/html --
 pass sha256:454ecb483228b6c9ef7d7d96298c3160
 -- testrun/html/none/component_scroll.sngl/main/1 --

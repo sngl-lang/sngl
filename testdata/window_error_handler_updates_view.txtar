@@ -613,10 +613,14 @@ import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.Button
+import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
-import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.ui.text.TextStyle
 
 data class ErrorEvent(val message: String = "", val kind: String = "")
 
@@ -650,7 +654,7 @@ fun MainScreen() {
                 	val e = __e.event
                 	caught = e.message
                 }
-            }, modifier = Modifier.testTag("call").safeDrawingPadding()) {
+            }, modifier = Modifier.testTag("call").safeDrawingPadding(), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                 Text(text = "Call", modifier = Modifier)
             }
             Button(onClick = {
@@ -660,10 +664,10 @@ fun MainScreen() {
                 	val e = __e.event
                 	caught = e.message
                 }
-            }, modifier = Modifier.testTag("direct").safeDrawingPadding()) {
+            }, modifier = Modifier.testTag("direct").safeDrawingPadding(), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                 Text(text = "Raise", modifier = Modifier)
             }
-            Text(text = caught, modifier = Modifier.safeDrawingPadding())
+            Text(text = caught, modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
         }
     }
 }
@@ -757,6 +761,6 @@ pass sha256:791cf7b5b2204ae929220ad3323d3152
 -- run/go/html --
 pass sha256:731ec4f5ee8344a995beb5f57b66abac
 -- run/kotlin/android --
-pass sha256:e2e0a513a6bcb9e2017c8c278f7a14b3
+pass sha256:0fa221d6f37444a9d2cc4d11ddacb8f2
 -- run/none/html --
 pass sha256:f875f6c669a8bf464ecb11916209b395

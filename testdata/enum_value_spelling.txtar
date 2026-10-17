@@ -413,9 +413,14 @@ import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.Button
-import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.ui.Modifier
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.foundation.layout.fillMaxSize
 
 data class Look(
     var weight: SnglFontWeight = SnglFontWeight.NORMAL
@@ -504,13 +509,13 @@ fun MainScreen() {
                 mood = flip(mood)
                 w = SnglFontWeight.NORMAL
                 open = !open
-            }, modifier = Modifier.safeDrawingPadding()) {
+            }, modifier = Modifier.safeDrawingPadding(), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                 Text(text = "next", modifier = Modifier)
             }
-            Text(text = ((((((((mood.toString() + " ") + mood.toString()) + " ") + w.toString()) + " ") + look.weight.toString()) + " ") + shape(none.size)), modifier = Modifier.safeDrawingPadding())
+            Text(text = ((((((((mood.toString() + " ") + mood.toString()) + " ") + w.toString()) + " ") + look.weight.toString()) + " ") + shape(none.size)), modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
             if (open) {
-                Row(label = { a ->
-                    Text(text = a.toString(), modifier = Modifier)
+                Row(__ctx_flexShare = { w: Float -> Modifier.fillMaxSize() }, label = { a ->
+                    Text(text = a.toString(), modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
                 })
             }
         }
@@ -518,12 +523,12 @@ fun MainScreen() {
 }
 
 @Composable
-fun Row(label: (@Composable (SnglTextAlign) -> Unit)? = null) {
+fun Row(__ctx_flexShare: (Float) -> androidx.compose.ui.Modifier, label: (@Composable (SnglTextAlign) -> Unit)? = null) {
     var taps by remember { mutableStateOf(0) }
 
     Button(onClick = {
         taps = (taps + 1)
-    }, modifier = Modifier) {
+    }, modifier = Modifier, colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
         Text(text = taps.toString(), modifier = Modifier)
     }
     label?.invoke(SnglTextAlign.LEFT)
@@ -688,6 +693,6 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:d4c23e8ce3bd222edd85936a5a171c1a
 -- run/kotlin/android --
-pass sha256:087735fa4ad46de84f439568a2a30312
+pass sha256:94569f314e34bdbdf86d99608d107dcc
 -- run/none/html --
 pass sha256:28f76c774e10e181697cde7cf2e27c09

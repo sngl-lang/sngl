@@ -1753,20 +1753,26 @@ func (m *Model) __list_field(key string, w gtk4rt.Handle) {
 package test.sngl.app
 
 import androidx.compose.ui.semantics.SemanticsPropertyKey
-import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.ui.Modifier
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.foundation.layout.Column
-import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.material3.Button
 import androidx.compose.ui.platform.testTag
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.foundation.layout.Row
 import androidx.compose.ui.Alignment
 import androidx.compose.material3.Checkbox
@@ -1781,6 +1787,7 @@ fun _snglSplit(s: String, sep: String): List<String> =
 val SnglCopy = SemanticsPropertyKey<String>("SnglCopy")
 
 class MainScreenState {
+    var __ctx_flexShare by mutableStateOf<(Float) -> androidx.compose.ui.Modifier>({ w: Float -> Modifier.fillMaxSize() })
     val items = mutableStateListOf("a", "b")
     var log by mutableStateOf("")
 }
@@ -1792,28 +1799,28 @@ fun MainScreen(state: MainScreenState = remember { MainScreenState() }) {
     Column(modifier = Modifier.safeDrawingPadding()) {
         Button(onClick = {
             (listOf("c", "d", "e")).let { __v -> state.items.clear(); state.items.addAll(__v) }
-        }, modifier = Modifier.testTag("swap")) {
+        }, modifier = Modifier.testTag("swap"), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
             Text(text = "swap", modifier = Modifier)
         }
         for ((__copy0, it) in state.items.withIndex()) {
             Button(onClick = {
                 state.log = it
-            }, modifier = Modifier.testTag("tap").then(__copy0.toString().let { __key -> Modifier.semantics { this[SnglCopy] = __key } })) {
+            }, modifier = Modifier.testTag("tap").then(__copy0.toString().let { __key -> Modifier.semantics { this[SnglCopy] = __key } }), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                 Text(text = it, modifier = Modifier)
             }
-            __checkbox_state0(label = it, __copy = __copy0.toString(), onChange = { on ->
+            __checkbox_state0(label = it, __ctx_flexShare = { w: Float -> Modifier.weight(w).fillMaxWidth() }, __copy = __copy0.toString(), onChange = { on ->
                 state.log = ((it + " ") + on.toString())
             })
-            __input_state1(__start_value = it, __copy = __copy0.toString(), onChange = { v ->
+            __input_state1(__start_value = it, __ctx_flexShare = { w: Float -> Modifier.weight(w).fillMaxWidth() }, __copy = __copy0.toString(), onChange = { v ->
                 state.log = ((it + "=") + v)
             })
         }
-        Text(text = state.log, modifier = Modifier)
+        Text(text = state.log, modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
     }
 }
 
 @Composable
-fun __checkbox_state0(__start_checked: Boolean = false, label: String, __copy: String = "", onChange: ((Boolean) -> Unit)? = null) {
+fun __checkbox_state0(__start_checked: Boolean = false, label: String, __ctx_flexShare: (Float) -> androidx.compose.ui.Modifier, __copy: String = "", onChange: ((Boolean) -> Unit)? = null) {
     var checked by remember { mutableStateOf(__start_checked) }
 
     Row(modifier = Modifier.testTag("box").then(__copy.let { __key -> Modifier.semantics { this[SnglCopy] = __key } }), verticalAlignment = Alignment.CenterVertically) {
@@ -1828,7 +1835,7 @@ fun __checkbox_state0(__start_checked: Boolean = false, label: String, __copy: S
 }
 
 @Composable
-fun __input_state1(__start_value: String = "", __copy: String = "", onChange: ((String) -> Unit)? = null) {
+fun __input_state1(__start_value: String = "", __ctx_flexShare: (Float) -> androidx.compose.ui.Modifier, __copy: String = "", onChange: ((String) -> Unit)? = null) {
     var value by remember { mutableStateOf(__start_value) }
 
     OutlinedTextField(value = value, readOnly = false, modifier = Modifier.testTag("field").then(__copy.let { __key -> Modifier.semantics { this[SnglCopy] = __key } }), onValueChange = { v ->
@@ -2287,6 +2294,6 @@ pass sha256:729f564db20c0646a8aeb86204de48af
 -- run/go/gtk4 --
 pass sha256:e1b118fb94d830eb0d989f0d67e0c11a
 -- run/kotlin/android --
-pass sha256:b10b27f2aa09b89de1fe31ec45e0bac8
+pass sha256:2d63d37ad4c303e70ccb03f75826fa68
 -- run/none/html --
 pass sha256:9255c8dd5817976f977a18de57255542

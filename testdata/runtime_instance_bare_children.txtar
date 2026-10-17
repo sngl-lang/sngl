@@ -1094,10 +1094,15 @@ import androidx.compose.ui.platform.LocalContext
 import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
-import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.ui.Modifier
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.foundation.layout.fillMaxWidth
 
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
@@ -1123,41 +1128,41 @@ fun MainScreen() {
         Column(modifier = Modifier.safeDrawingPadding()) {
             Button(onClick = {
                 items.add("c")
-            }, modifier = Modifier) {
+            }, modifier = Modifier, colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                 Text(text = "add", modifier = Modifier)
             }
-            Text(text = ("picked " + picked), modifier = Modifier)
+            Text(text = ("picked " + picked), modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
             for (it in items) {
-                Card(slotContent = {
-                    Text(text = ("item " + it), modifier = Modifier)
+                Card(__ctx_flexShare = { w: Float -> Modifier.weight(w).fillMaxWidth() }, slotContent = {
+                    Text(text = ("item " + it), modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
                     Button(onClick = {
                         picked = it
-                    }, modifier = Modifier) {
+                    }, modifier = Modifier, colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                         Text(text = "pick", modifier = Modifier)
                     }
                 })
             }
             for (it in items) {
-                Card()
+                Card(__ctx_flexShare = { w: Float -> Modifier.weight(w).fillMaxWidth() })
             }
         }
     }
 }
 
 @Composable
-fun Card(slotContent: (@Composable () -> Unit)? = null) {
+fun Card(__ctx_flexShare: (Float) -> androidx.compose.ui.Modifier, slotContent: (@Composable () -> Unit)? = null) {
     var hits by remember { mutableStateOf(0) }
 
     Column(modifier = Modifier) {
         Button(onClick = {
             hits = (hits + 1)
-        }, modifier = Modifier) {
+        }, modifier = Modifier, colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
             Text(text = ("hit " + hits.toString()), modifier = Modifier)
         }
         if (slotContent != null) {
             slotContent()
         } else {
-            Text(text = "empty", modifier = Modifier)
+            Text(text = "empty", modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
         }
     }
 }
@@ -1401,6 +1406,6 @@ pass sha256:88282ada95aed18d08eb8509cda4732d
 -- run/go/gtk4 --
 pass sha256:8926878d972f8d542783794afa332f3f
 -- run/kotlin/android --
-pass sha256:9bac4408c0dab1adb46870351c24d34b
+pass sha256:0098aba66c024eb173c58389e67c4348
 -- run/none/html --
 pass sha256:d64a4116d50e30569792a7eddf7f2b1b

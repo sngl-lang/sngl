@@ -879,11 +879,13 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.foundation.layout.Column
-import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.ui.Modifier
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.ui.text.TextStyle
 
 data class Tab__record(
     var label: String = "",
@@ -920,13 +922,13 @@ fun MainScreen(state: MainScreenState = remember { MainScreenState() }) {
         for ((k, t) in listOf(Tab__record(label = "Overview", disabled = false, __id = 0), Tab__record(label = "Details", disabled = false, __id = 1), Tab__record(label = "Settings", disabled = true, __id = 2)).withIndex()) {
             if ((k == state.idx)) {
                 if ((t.__id == 0)) {
-                    Text(text = "Overview content", modifier = Modifier)
+                    Text(text = "Overview content", modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
                 } else {
                     if ((t.__id == 1)) {
-                        Text(text = "Detail content", modifier = Modifier)
+                        Text(text = "Detail content", modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
                     } else {
                         if ((t.__id == 2)) {
-                            Text(text = "Settings content", modifier = Modifier)
+                            Text(text = "Settings content", modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
                         }
                     }
                 }
@@ -1217,7 +1219,7 @@ pass sha256:1dfc6033a56c43fa2e732b715b4cf180
 -- run/go/gtk4 --
 pass sha256:c6a68c7e93065306cea03c8f6b131eb8
 -- run/kotlin/android --
-pass sha256:225a36a54547a35ba9dcf3b85ffb4903
+pass sha256:1d0c145f6153dbed613fd357dccc5244
 -- run/none/html --
 pass sha256:43294f1a77359bfce09eced0c9475e59
 -- testrun/html/none/component_tabs.sngl/main/1 --

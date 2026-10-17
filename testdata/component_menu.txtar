@@ -330,8 +330,8 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.material3.Text
-import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.ui.Modifier
 
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
@@ -478,7 +478,7 @@ pass sha256:e682ea84ad77e181c60f54c0ba5fa431
 -- run/go/fyne --
 pass sha256:17d6fd94936c8122bf533b2208fa4ec4
 -- run/kotlin/android --
-pass sha256:6cfe24e0ce640e7b5df209900992ab96
+pass sha256:410a51af4e9eca3165ea07c7dd17dde0
 -- run/none/html --
 pass sha256:ba5e9d9fdfb488fc666900019ae83bdb
 -- testrun/html/none/component_menu.sngl/main/1 --

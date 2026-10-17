@@ -132,6 +132,12 @@ func NewIRContext(ctx *codegen.ExprCtx) *KtIRContext {
 	return &KtIRContext{Ctx: ctx, imports: newKtImportSet()}
 }
 
+// Unscoped is a context over kc's ExprCtx with none of its rewrites, writing
+// to kc's import set: what a member of a class kc's file declares reads.
+func (kc *KtIRContext) Unscoped() *KtIRContext {
+	return &KtIRContext{Ctx: kc.Ctx, imports: kc.imports}
+}
+
 // RequireImport records that the emitted Kotlin file needs the given import.
 // Safe to call repeatedly; insertion order is preserved, duplicates ignored.
 // Called from emit sites when a native package reference is rendered.
@@ -635,6 +641,12 @@ func (kc *KtIRContext) LocalVarText(n *ir.LocalVar, initStr string) string {
 					return "var " + n.Name + " = mutableListOf<" + elem + ">(" + rest
 				}
 			}
+		}
+		// A host value may be a narrower Kotlin type than the one SNGL declared
+		// -- Compose's empty `Modifier` is its companion object -- and a
+		// later assignment needs the declared one.
+		if sd, ok := hostStruct(n.Type); ok && sd.Foreign.Scheme == "kotlin" {
+			return "var " + n.Name + ": " + IRTypeToKt(n.Type) + " = " + kc.valueCopyFor(n, initStr)
 		}
 		return "var " + n.Name + " = " + kc.valueCopyFor(n, initStr)
 	}
@@ -1862,4 +1874,12 @@ func (kc *KtIRContext) hostValueIdent(n *ir.Ident) (string, bool) {
 		return "", false
 	}
 	return kc.NativeName(v.Foreign.Path, v.Foreign.Name), true
+}
+
+func hostStruct(t *ir.Type) (*ir.StructDef, bool) {
+	if t == nil || t.Kind != ir.TypeStruct {
+		return nil, false
+	}
+	sd, ok := t.Decl.(*ir.StructDef)
+	return sd, ok && sd != nil
 }

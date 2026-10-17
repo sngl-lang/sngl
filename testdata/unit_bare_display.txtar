@@ -359,8 +359,10 @@ import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.Text
-import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.ui.Modifier
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.ui.text.TextStyle
 
 data class Measurement(
     val px: Double = 0.0,
@@ -393,12 +395,12 @@ fun MainScreen() {
             }
         }
         Column {
-            Text(text = ("mix " + ((mix__inst0).let { __u -> listOf(Pair(__u.px, "px"), Pair(__u.em, "em"), Pair(__u.rem, "rem")).filter { it.first != 0.0 }.joinToString(" + ") { _snglFloatStr(it.first) + it.second }.ifEmpty { "0px" } })), modifier = Modifier.safeDrawingPadding())
-            Text(text = ("reduced " + ((reduced__inst0).let { __u -> listOf(Pair(__u.px, "px"), Pair(__u.em, "em"), Pair(__u.rem, "rem")).filter { it.first != 0.0 }.joinToString(" + ") { _snglFloatStr(it.first) + it.second }.ifEmpty { "0px" } })), modifier = Modifier.safeDrawingPadding())
-            Text(text = ("ticks " + (_snglFloatStr((ticks__inst0)) + "tk")), modifier = Modifier.safeDrawingPadding())
-            Text(text = ("half " + ((half__inst0).toString() + "ms")), modifier = Modifier.safeDrawingPadding())
-            Text(text = ("over " + ((over__inst0).toString() + "ms")), modifier = Modifier.safeDrawingPadding())
-            Text(text = "fixed 250ms", modifier = Modifier.safeDrawingPadding())
+            Text(text = ("mix " + ((mix__inst0).let { __u -> listOf(Pair(__u.px, "px"), Pair(__u.em, "em"), Pair(__u.rem, "rem")).filter { it.first != 0.0 }.joinToString(" + ") { _snglFloatStr(it.first) + it.second }.ifEmpty { "0px" } })), modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
+            Text(text = ("reduced " + ((reduced__inst0).let { __u -> listOf(Pair(__u.px, "px"), Pair(__u.em, "em"), Pair(__u.rem, "rem")).filter { it.first != 0.0 }.joinToString(" + ") { _snglFloatStr(it.first) + it.second }.ifEmpty { "0px" } })), modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
+            Text(text = ("ticks " + (_snglFloatStr((ticks__inst0)) + "tk")), modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
+            Text(text = ("half " + ((half__inst0).toString() + "ms")), modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
+            Text(text = ("over " + ((over__inst0).toString() + "ms")), modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
+            Text(text = "fixed 250ms", modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
         }
     }
 }
@@ -451,6 +453,6 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:43627328f5fe9c94ce589f17272ac411
 -- run/kotlin/android --
-pass sha256:fbffce3ac153d9f3baf73859640ea887
+pass sha256:7f3d1f55c95852a7bb1faa5f284516fe
 -- run/none/html --
 pass sha256:137d13a2b6e571346941e62341caa698

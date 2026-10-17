@@ -61,8 +61,10 @@ import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.material3.Button
 import kotlin.math.hypot
-import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.ui.Modifier
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
 
 fun _snglFloatStr(v: Double): String =
@@ -87,10 +89,10 @@ fun MainScreen() {
         }
         Button(onClick = {
             d__inst0 = (kotlin.math.hypot(3.0, 4.0) + kotlin.math.atan2(y = 1.0, x = 2.0))
-        }, modifier = Modifier.safeDrawingPadding()) {
+        }, modifier = Modifier.safeDrawingPadding(), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
             Text(text = "ab".repeat(2), modifier = Modifier)
         }
     }
 }
 -- run/kotlin/android --
-pass sha256:9e4c9f238bd916562d133665853f018d
+pass sha256:bbdd6c02cdf171db096b4eacfe9c2008

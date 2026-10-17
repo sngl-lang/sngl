@@ -212,9 +212,13 @@ import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.Text
-import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.ui.Modifier
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.foundation.shape.CircleShape
 
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
@@ -241,10 +245,10 @@ fun MainScreen() {
             }
         }
         Column {
-            Text(text = (("closed " + closes.toString()) + " times"), modifier = Modifier.safeDrawingPadding())
+            Text(text = (("closed " + closes.toString()) + " times"), modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
             Button(onClick = {
                 shown = false
-            }, modifier = Modifier.safeDrawingPadding()) {
+            }, modifier = Modifier.safeDrawingPadding(), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                 Text(text = "Hide", modifier = Modifier)
             }
         }
@@ -253,4 +257,4 @@ fun MainScreen() {
 -- run/go/bubbletea --
 pass sha256:cc06b635a7a8742a6eedbb8cd5d24f72
 -- run/kotlin/android --
-pass sha256:ff47bfba177eed133d9a8c5a762b6d26
+pass sha256:7eb09c269017d0453ea153f9220fb08d

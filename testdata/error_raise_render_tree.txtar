@@ -373,10 +373,14 @@ import androidx.compose.ui.platform.LocalContext
 import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
-import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.ui.Modifier
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.ui.text.TextStyle
 
 data class ErrorEvent(val message: String = "", val kind: String = "")
 
@@ -409,27 +413,27 @@ fun MainScreen() {
             Button(onClick = {
                 try {
                 	check("")
-                	after__inst0 = true
+                	after__inst1 = true
                 } catch (__e: SnglRaise) {
                 	val e = __e.event
                 	problem__inst0 = ("boundary: " + e.message)
                 }
-            }, modifier = Modifier) {
+            }, modifier = Modifier, colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                 Text(text = "deep", modifier = Modifier)
             }
             Button(onClick = {
                 try {
                 	check("")
-                	after__inst1 = true
+                	after__inst0 = true
                 } catch (__e: SnglRaise) {
                 	val e = __e.event
                 	caught = ("window: " + e.message)
                 }
-            }, modifier = Modifier) {
+            }, modifier = Modifier, colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                 Text(text = "beside", modifier = Modifier)
             }
-            Text(text = problem__inst0, modifier = Modifier)
-            Text(text = caught, modifier = Modifier)
+            Text(text = problem__inst0, modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
+            Text(text = caught, modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
         }
     }
 }
@@ -526,6 +530,6 @@ pass sha256:01415df3ce6e15d54e06a53eb047ac2e
 -- run/go/html --
 pass sha256:3fb453f2be070a9e49a3f236b2834825
 -- run/kotlin/android --
-pass sha256:18f836b4aca001f492ddb84c1e45ce98
+pass sha256:0f2eaaa4fd47cab3f98e8fd1fbf59223
 -- run/none/html --
 pass sha256:7327b8a2f35a86e91293c33e2f1bad64

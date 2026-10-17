@@ -98,14 +98,19 @@ import androidx.compose.ui.platform.LocalContext
 import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
-import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.ui.Modifier
 import androidx.navigation.compose.NavHost
 import androidx.compose.ui.platform.testTag
 import androidx.navigation.compose.composable
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.Text
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.ui.text.TextStyle
 import kotlin.reflect.typeOf
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.foundation.shape.CircleShape
 
 @Serializable
 data class Pkg(
@@ -179,53 +184,53 @@ fun MainScreen() {
         Column(modifier = Modifier.safeDrawingPadding()) {
             NavHost(navController = pages__nav, startDestination = _page__valueRoute0(), modifier = Modifier.testTag("pages")) {
                 composable<_page__valueRoute0> {
-                    Counter()
+                    Counter(__ctx_flexShare = { w: Float -> Modifier.weight(w).fillMaxWidth() })
                 }
                 composable<_page__valueRoute1> {
-                    Text(text = "about", modifier = Modifier)
+                    Text(text = "about", modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
                 }
                 composable<_page__valueRoute2>(typeMap = mapOf(typeOf<Pkg>() to __navType_Pkg)) { __entry ->
                     val p = __entry.toRoute<_page__valueRoute2>().params
-                    Text(text = p.name, modifier = Modifier)
+                    Text(text = p.name, modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
                 }
             }
-            Text(text = pages__current.meta.label, modifier = Modifier)
+            Text(text = pages__current.meta.label, modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
             Button(onClick = {
                 pages__nav.navigate(_page__valueRoute1())
-            }, modifier = Modifier) {
+            }, modifier = Modifier, colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                 Text(text = "About")
             }
             Button(onClick = {
                 pages__nav.navigate(_page__valueRoute2(params = Pkg(name = "sngl")))
-            }, modifier = Modifier) {
+            }, modifier = Modifier, colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                 Text(text = "sngl")
             }
             Button(onClick = {
                 pages__nav.navigate(_page__valueRoute2())
-            }, modifier = Modifier) {
+            }, modifier = Modifier, colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                 Text(text = "First", modifier = Modifier)
             }
             Button(onClick = {
                 run { if (pages__nav.previousBackStackEntry != null) pages__nav.popBackStack() }
-            }, modifier = Modifier) {
+            }, modifier = Modifier, colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                 Text(text = "Back", modifier = Modifier)
             }
             if ((pages__current.id == 1)) {
-                Text(text = "on about", modifier = Modifier)
+                Text(text = "on about", modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
             }
         }
     }
 }
 
 @Composable
-fun Counter() {
+fun Counter(__ctx_flexShare: (Float) -> androidx.compose.ui.Modifier) {
     var hits by remember { mutableStateOf(0) }
 
     Button(onClick = {
         hits += 1
-    }, modifier = Modifier) {
+    }, modifier = Modifier, colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
         Text(text = ("hits " + hits.toString()), modifier = Modifier)
     }
 }
 -- run/kotlin/android --
-pass sha256:39803cf64ee16b64fc35c798ae48862a
+pass sha256:f83030daf0c5e5d94e7a2379a42cbec4

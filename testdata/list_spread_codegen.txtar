@@ -869,19 +869,24 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 
 package test.sngl.app
 
-import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.ui.Modifier
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.toMutableStateList
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.Text
-import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.foundation.shape.CircleShape
 
 data class P(
     var a: Int = 0
@@ -896,6 +901,7 @@ fun _snglSplit(s: String, sep: String): List<String> =
 val folded: List<Int> = listOf(0, 1, 2, 3)
 
 class MainScreenState {
+    var __ctx_flexShare by mutableStateOf<(Float) -> androidx.compose.ui.Modifier>({ w: Float -> Modifier.fillMaxSize() })
     val xs = mutableStateListOf(4, 5)
     val around = mutableStateListOf(0, *xs.toTypedArray(), 9)
     val copied = mutableStateListOf(*xs.toTypedArray())
@@ -921,10 +927,10 @@ class MainScreenState {
 fun MainScreen(state: MainScreenState = remember { MainScreenState() }) {
 
     Column {
-        Text(text = ((state.aroundLen.toString() + " ") + "4"), modifier = Modifier.safeDrawingPadding())
+        Text(text = ((state.aroundLen.toString() + " ") + "4"), modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
         Button(onClick = {
             state.scribble()
-        }, modifier = Modifier.safeDrawingPadding()) {
+        }, modifier = Modifier.safeDrawingPadding(), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
             Text(text = "scribble", modifier = Modifier)
         }
     }
@@ -1069,6 +1075,6 @@ pass sha256:d3464c58dbb8e7de7df35e4adf46a8bf
 -- run/go/gtk4 --
 pass sha256:67fea3a9aa459a4fff5431813a0edc86
 -- run/kotlin/android --
-pass sha256:b6e7d2aaf61bf16463d6929cd426a3da
+pass sha256:d8c92377fde93f38453cccb590d5fbc9
 -- run/none/html --
 pass sha256:1c2cd4295f040a23d40d51b16af7573d

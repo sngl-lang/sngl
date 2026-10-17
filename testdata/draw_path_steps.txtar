@@ -1034,6 +1034,8 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.material3.Button
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
 
 data class Measurement(
@@ -1172,7 +1174,7 @@ fun MainScreen() {
         }
         Column {
             Canvas(modifier = Modifier.size(60.dp, 40.dp)) {
-                var p = Path()
+                var p: androidx.compose.ui.graphics.Path = Path()
                 var at = Point(x = 0.0, y = 0.0)
                 for (c in listOf(_step__record(op = SnglPathOp.MOVETO, x = 4.0, y = 12.0, cx1 = 0.0, cy1 = 0.0, cx2 = 0.0, cy2 = 0.0, r = 0.0), *corners__inst0.map({ c: Point -> _step__record(op = SnglPathOp.LINETO, x = c.x, y = c.y, cx1 = 0.0, cy1 = 0.0, cx2 = 0.0, cy2 = 0.0, r = 0.0) }).toTypedArray(), _step__record(op = SnglPathOp.BEZIERTO, x = 56.0, y = 36.0, cx1 = 34.0, cy1 = 12.0, cx2 = 44.0, cy2 = 12.0, r = 0.0), _step__record(op = SnglPathOp.ARCTO, x = 40.0, y = 12.0, cx1 = 56.0, cy1 = 12.0, cx2 = 0.0, cy2 = 0.0, r = 4.0), *(if (closed__inst0) listOf(_step__record(op = SnglPathOp.CLOSE, x = 0.0, y = 0.0, cx1 = 0.0, cy1 = 0.0, cx2 = 0.0, cy2 = 0.0, r = 0.0)) else listOf<_step__record>()).toTypedArray())) {
                     if ((c.op == SnglPathOp.MOVETO)) {
@@ -1201,7 +1203,7 @@ fun MainScreen() {
             }
             Button(onClick = {
                 closed__inst0 = true
-            }, modifier = Modifier.safeDrawingPadding()) {
+            }, modifier = Modifier.safeDrawingPadding(), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                 Text(text = "close", modifier = Modifier)
             }
         }
@@ -1408,6 +1410,6 @@ pass sha256:1b8523d3c5af0bcc5d0664b7dbef5e58
 -- run/go/gtk4 --
 pass sha256:1c953e350468c0762557c648d1f1e588
 -- run/kotlin/android --
-pass sha256:449e0ae63bfc49e8d2524cab887ce8e1
+pass sha256:8a8875935bea145d4558b1f8c0d95f79
 -- run/none/html --
 pass sha256:1b724ec157a8c3cd94f39feda735322c

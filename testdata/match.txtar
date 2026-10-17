@@ -936,9 +936,13 @@ import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.Text
-import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.ui.Modifier
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.foundation.shape.CircleShape
 
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
@@ -991,16 +995,16 @@ fun MainScreen() {
         }
         Column {
             if ((status__inst0 == Status.ACTIVE)) {
-                Text(text = "on", modifier = Modifier.safeDrawingPadding())
+                Text(text = "on", modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
             } else {
                 if ((status__inst0 == Status.INACTIVE)) {
-                    Text(text = "off", modifier = Modifier.safeDrawingPadding())
+                    Text(text = "off", modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
                 } else {
-                    Text(text = "waiting", modifier = Modifier.safeDrawingPadding())
+                    Text(text = "waiting", modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
                 }
             }
-            Text(text = (if ((status__inst0 == Status.ACTIVE)) "on" else "not on"), modifier = Modifier.safeDrawingPadding())
-            Text(text = (if ((rolls__inst0 > 10)) "many" else (if ((rolls__inst0 > 0)) describe(rolls__inst0) else "none")), modifier = Modifier.safeDrawingPadding())
+            Text(text = (if ((status__inst0 == Status.ACTIVE)) "on" else "not on"), modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
+            Text(text = (if ((rolls__inst0 > 10)) "many" else (if ((rolls__inst0 > 0)) describe(rolls__inst0) else "none")), modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
             Button(onClick = {
                 var __match1 = roll__inst0()
                 if ((__match1 == Status.ACTIVE)) {
@@ -1014,10 +1018,10 @@ fun MainScreen() {
                 }
                 var __match2 = roll__inst0()
                 last__inst0 = (if ((__match2 == Status.ACTIVE)) label(status__inst0) else "rolled")
-            }, modifier = Modifier.safeDrawingPadding()) {
+            }, modifier = Modifier.safeDrawingPadding(), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                 Text(text = "Roll", modifier = Modifier)
             }
-            Text(text = last__inst0, modifier = Modifier.safeDrawingPadding())
+            Text(text = last__inst0, modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
         }
     }
 }
@@ -1196,6 +1200,6 @@ pass sha256:d41e0cc4a3f4d97c60ae54633ddc064e
 -- run/go/gtk4 --
 pass sha256:308cf4b395b15fa0eeb4fb9606dfb84b
 -- run/kotlin/android --
-pass sha256:1c0440dc2d7e250b92805d64dc35beb6
+pass sha256:53358e3ef5f8eb5eca24755f8bfb6af9
 -- run/none/html --
 pass sha256:6917b4143077ba4ba92185a4982ee5eb

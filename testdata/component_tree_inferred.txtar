@@ -292,9 +292,11 @@ import androidx.compose.ui.platform.LocalContext
 import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
-import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.ui.Modifier
 import androidx.compose.material3.Text
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.size
 import androidx.compose.ui.unit.dp
@@ -383,13 +385,13 @@ fun MainScreen() {
             }
         }
         Column(modifier = Modifier.safeDrawingPadding()) {
-            Text(text = "hi", modifier = Modifier)
-            Text(text = "x", modifier = Modifier)
+            Text(text = "hi", modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
+            Text(text = "x", modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
             if (on) {
-                Text(text = "on", modifier = Modifier)
+                Text(text = "on", modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
             }
-            Text(text = "g", modifier = Modifier)
-            Text(text = "three", modifier = Modifier)
+            Text(text = "g", modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
+            Text(text = "three", modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
             Canvas(modifier = Modifier.size(10.dp, 10.dp)) {
                 drawCircle(color = androidx.compose.ui.graphics.Color(red = 255, green = 0, blue = 0, alpha = 255), radius = 2.0.toFloat(), center = Offset(5.0.toFloat(), 5.0.toFloat()))
             }
@@ -555,6 +557,6 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:3567f3b9ab66f55d22072597945e925f
 -- run/kotlin/android --
-pass sha256:922b51a40316a79fcc0a3b69900ce808
+pass sha256:f8788531e28cb87558860c0de833204c
 -- run/none/html --
 pass sha256:809eeaec1ec0c54e2319bdff09ff02f0

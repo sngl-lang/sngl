@@ -241,9 +241,13 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.platform.LocalContext
 import android.app.Activity
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.Text
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.foundation.layout.fillMaxWidth
 
 data class Node(
     var value: Int = 0,
@@ -275,25 +279,25 @@ fun MainScreen() {
                 __activity?.finish()
             }
         }
-        TreeView(node = tree, __depth = 0)
+        TreeView(node = tree, __ctx_flexShare = { w: Float -> Modifier.fillMaxSize() }, __depth = 0)
     }
 }
 
 @Composable
-fun TreeView(node: Node? = null, __depth: Int = 0) {
+fun TreeView(node: Node? = null, __ctx_flexShare: (Float) -> androidx.compose.ui.Modifier, __depth: Int = 0) {
     if ((node != null)) {
         Column(modifier = Modifier) {
-            Text(text = node!!.value.toString(), modifier = Modifier)
+            Text(text = node!!.value.toString(), modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
             if ((node!!.left != null)) {
                 if ((__depth >= 512)) {
                 } else {
-                    TreeView(node = node!!.left, __depth = (__depth + 1))
+                    TreeView(node = node!!.left, __ctx_flexShare = { w: Float -> Modifier.weight(w).fillMaxWidth() }, __depth = (__depth + 1))
                 }
             }
             if ((node!!.right != null)) {
                 if ((__depth >= 512)) {
                 } else {
-                    TreeView(node = node!!.right, __depth = (__depth + 1))
+                    TreeView(node = node!!.right, __ctx_flexShare = { w: Float -> Modifier.weight(w).fillMaxWidth() }, __depth = (__depth + 1))
                 }
             }
         }
@@ -302,4 +306,4 @@ fun TreeView(node: Node? = null, __depth: Int = 0) {
 -- run/go/bubbletea --
 pass sha256:99dc68ab1551ca4df169800538a8052c
 -- run/kotlin/android --
-pass sha256:20426487e64840a67af6fca51c76d0fc
+pass sha256:ccba26962833b2ace744756e9584c4ae

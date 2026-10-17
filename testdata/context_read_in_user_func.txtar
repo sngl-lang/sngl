@@ -260,8 +260,8 @@ func (m *Model) __effect1_mount() {
 	m.recursed = "5"
 	m.method = "10"
 	__list0 := []string{}
-	for _, __item0 := range []int{0} {
-		__list0 = append(__list0, func(x int) string { return "d5" }(__item0))
+	for range []int{0} {
+		__list0 = append(__list0, "d5")
 	}
 	m.lambda = __list0[0]
 	__list1 := []string{}
@@ -786,8 +786,8 @@ func (m *Model) __effect1_mount() {
 	m.recursed = "5"
 	m.method = m.twice(5)
 	__list0 := []string{}
-	for _, __item0 := range []int{0} {
-		__list0 = append(__list0, func(x int) string { return "d5" }(__item0))
+	for range []int{0} {
+		__list0 = append(__list0, "d5")
 	}
 	m.lambda = __list0[0]
 	__list1 := []string{}
@@ -1177,8 +1177,8 @@ func (m *Model) __effect1_mount() {
 	m.recursed = "5"
 	m.method = m.twice(5)
 	__list0 := []string{}
-	for _, __item0 := range []int{0} {
-		__list0 = append(__list0, func(x int) string { return "d5" }(__item0))
+	for range []int{0} {
+		__list0 = append(__list0, "d5")
 	}
 	m.lambda = __list0[0]
 	__list1 := []string{}
@@ -1426,16 +1426,21 @@ package test.sngl.app
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.ui.Modifier
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.foundation.layout.Column
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.material3.Text
-import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.material3.Button
 import androidx.compose.ui.platform.testTag
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.foundation.shape.CircleShape
 
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
@@ -1445,6 +1450,7 @@ fun _snglSplit(s: String, sep: String): List<String> =
 
 class MainScreenState {
     var __ctx_depth by mutableStateOf(1)
+    var __ctx_flexShare by mutableStateOf<(Float) -> androidx.compose.ui.Modifier>({ w: Float -> Modifier.fillMaxSize() })
     var plain by mutableStateOf("")
     var under by mutableStateOf("")
     var inner by mutableStateOf("")
@@ -1486,20 +1492,20 @@ fun MainScreen(state: MainScreenState = remember { MainScreenState() }) {
             onDispose {
             }
         }
-        Text(text = "d9", modifier = Modifier.safeDrawingPadding())
-        Text(text = "d5", modifier = Modifier.safeDrawingPadding())
+        Text(text = "d9", modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
+        Text(text = "d5", modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
         Button(onClick = {
             state.clicked = "d5"
-        }, modifier = Modifier.testTag("tap").safeDrawingPadding()) {
+        }, modifier = Modifier.testTag("tap").safeDrawingPadding(), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
             Text(text = "tap", modifier = Modifier)
         }
         Button(onClick = {
             state.provided = "d7"
-        }, modifier = Modifier.testTag("wrap").safeDrawingPadding()) {
+        }, modifier = Modifier.testTag("wrap").safeDrawingPadding(), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
             Text(text = "wrap", modifier = Modifier)
         }
-        Text(text = ("d" + state.__ctx_depth.toString()), modifier = Modifier.safeDrawingPadding())
-        Text(text = ((state.clicked + " ") + state.provided), modifier = Modifier.safeDrawingPadding())
+        Text(text = ("d" + state.__ctx_depth.toString()), modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
+        Text(text = ((state.clicked + " ") + state.provided), modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
     }
 }
 -- out/kotlin/android/app/src/test/kotlin/test/sngl/app/MainScreenTest.kt --
@@ -1744,14 +1750,14 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:805321ab5daa372a4c154b0739740407
+pass sha256:958fea20b557062902f8be4bbe33e309
 -- run/go/fyne --
-pass sha256:5105e2632777986fd627a231aaf0b398
+pass sha256:8798a8f641c3d5ea448e895df83141a0
 -- run/go/gtk4 --
-pass sha256:a5c865e031bbe53576d2964c2041f8f3
+pass sha256:62f3e93683a1d66c488ec77fc76ec364
 -- run/go/html --
 pass sha256:5b263799f0cd213bc80663b6f8faa85c
 -- run/kotlin/android --
-pass sha256:c9f65542cab240a497a059e1b2d90d63
+pass sha256:e23470379649d1b04341564b6048c8c3
 -- run/none/html --
 pass sha256:fe04109d1c0c32374ad687cdd4ef93ac

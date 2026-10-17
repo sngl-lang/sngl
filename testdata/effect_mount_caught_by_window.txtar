@@ -606,8 +606,10 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.material3.Text
-import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.ui.Modifier
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.ui.text.TextStyle
 
 data class ErrorEvent(val message: String = "", val kind: String = "")
 
@@ -644,7 +646,7 @@ fun MainScreen() {
                 onDispose {
                 }
             }
-            Text(text = caught, modifier = Modifier.safeDrawingPadding())
+            Text(text = caught, modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
         }
     }
 }
@@ -756,6 +758,6 @@ pass sha256:be94c1908f30b28ce6380892f09db747
 -- run/go/html --
 pass sha256:5062ea269e1a450f5882689caa6e46a6
 -- run/kotlin/android --
-pass sha256:fcf6d25d990d814a02c9bb0158dc4b7f
+pass sha256:a383c32288fcc3c24e24c2d248e65642
 -- run/none/html --
 pass sha256:7d0fe632d2cff95fd57650986954a60d

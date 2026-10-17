@@ -493,8 +493,8 @@ import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.ui.Modifier
 
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
@@ -556,6 +556,6 @@ pass sha256:59abfe38f664f8b16684ba4fce7475e2
 -- run/go/gtk4 --
 pass sha256:a2536c742f0767267c9cf46f4c8b0ccb
 -- run/kotlin/android --
-pass sha256:661d93e1a029014a2a96b1a1d85ad104
+pass sha256:2ac8d0e200326579fd996769d47432a4
 -- run/none/html --
 pass sha256:c95b5bab246a9e2d15d850386fa75775

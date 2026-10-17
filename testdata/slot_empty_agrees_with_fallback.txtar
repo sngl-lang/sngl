@@ -1120,11 +1120,15 @@ import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.Text
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.testTag
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.ui.Modifier
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.material3.Button
+import androidx.compose.ui.platform.testTag
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.foundation.shape.CircleShape
 
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
@@ -1150,41 +1154,41 @@ fun MainScreen() {
             }
         }
         Column {
-            Text(text = (if ((!a__inst0 && !b__inst0)) "asks: empty" else "asks: full"), modifier = Modifier.testTag("two").safeDrawingPadding())
+            Text(text = (if ((!a__inst0 && !b__inst0)) "asks: empty" else "asks: full"), modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
             Column(modifier = Modifier.safeDrawingPadding()) {
                 if (a__inst0) {
-                    Text(text = "a", modifier = Modifier)
+                    Text(text = "a", modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
                 }
                 if (b__inst0) {
-                    Text(text = "b", modifier = Modifier)
+                    Text(text = "b", modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
                 }
                 if ((!a__inst0 && !b__inst0)) {
-                    Text(text = "fallback", modifier = Modifier)
+                    Text(text = "fallback", modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
                 }
             }
-            Text(text = (if ((xs__inst0.size == 0)) "asks: empty" else "asks: full"), modifier = Modifier.testTag("loop").safeDrawingPadding())
+            Text(text = (if ((xs__inst0.size == 0)) "asks: empty" else "asks: full"), modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
             Column(modifier = Modifier.safeDrawingPadding()) {
                 for (x in xs__inst0) {
-                    Text(text = x.toString(), modifier = Modifier)
+                    Text(text = x.toString(), modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
                 }
                 if ((xs__inst0.size == 0)) {
-                    Text(text = "fallback", modifier = Modifier)
+                    Text(text = "fallback", modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
                 }
             }
-            Text(text = "asks: empty", modifier = Modifier.testTag("lifetime").safeDrawingPadding())
+            Text(text = "asks: empty", modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
             Column(modifier = Modifier.safeDrawingPadding()) {
                 DisposableEffect(Unit) {
                     mounted__inst0 = (mounted__inst0 + 1)
                     onDispose {
                     }
                 }
-                Text(text = "fallback", modifier = Modifier)
+                Text(text = "fallback", modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
             }
-            Text(text = ("mounted " + mounted__inst0.toString()), modifier = Modifier.safeDrawingPadding())
+            Text(text = ("mounted " + mounted__inst0.toString()), modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
             Button(onClick = {
                 b__inst0 = true
                 (listOf(7)).let { __v -> xs__inst0.clear(); xs__inst0.addAll(__v) }
-            }, modifier = Modifier.testTag("show").safeDrawingPadding()) {
+            }, modifier = Modifier.testTag("show").safeDrawingPadding(), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                 Text(text = "show", modifier = Modifier)
             }
         }
@@ -1491,6 +1495,6 @@ pass sha256:51e30a39996d5eddd910a118b07c9af0
 -- run/go/gtk4 --
 pass sha256:27607b9504cd923b5846218febf0741b
 -- run/kotlin/android --
-pass sha256:515f0d958f9fb8f0032d084f99bd6b08
+pass sha256:a7b7a5d593d243cb98794645a0c2a443
 -- run/none/html --
 pass sha256:659074fdc2f0650d44ce6f3450fe3617

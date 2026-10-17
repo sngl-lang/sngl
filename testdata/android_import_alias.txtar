@@ -59,9 +59,14 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.platform.LocalContext
 import android.app.Activity
 import androidx.activity.compose.BackHandler
-import androidx.compose.material3.Text as Text_2
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.Modifier
+import androidx.compose.material3.Text as Text_2
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Card as Card_2
 
 fun _snglFloatStr(v: Double): String =
@@ -84,27 +89,27 @@ fun MainScreen() {
             }
         }
         for (l in listOf("a", "b")) {
-            Card(content = {
-                Text(label = l)
-                Text_2(text = "Material's", modifier = Modifier)
+            Card(__ctx_flexShare = { w: Float -> Modifier.fillMaxSize() }, content = {
+                Text(label = l, __ctx_flexShare = { w: Float -> Modifier.fillMaxSize() })
+                Text_2(text = "Material's", modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
             })
         }
     }
 }
 
 @Composable
-fun Text(label: String = "") {
+fun Text(label: String = "", __ctx_flexShare: (Float) -> androidx.compose.ui.Modifier) {
     var taps by remember { mutableStateOf(0) }
 
     Button(onClick = {
         taps = (taps + 1)
-    }, modifier = Modifier) {
+    }, modifier = Modifier, colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
         Text_2(text = ((("[" + label) + "] ") + taps.toString()), modifier = Modifier)
     }
 }
 
 @Composable
-fun Card(content: (@Composable () -> Unit)? = null) {
+fun Card(__ctx_flexShare: (Float) -> androidx.compose.ui.Modifier, content: (@Composable () -> Unit)? = null) {
     var open by remember { mutableStateOf(true) }
 
     if (open) {
@@ -114,4 +119,4 @@ fun Card(content: (@Composable () -> Unit)? = null) {
     }
 }
 -- run/kotlin/android --
-pass sha256:3e57c095ae2d621a43ce5a6c814fe866
+pass sha256:b9da1df8b642cb4bf211f8c34123b700

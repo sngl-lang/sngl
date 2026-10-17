@@ -1417,9 +1417,13 @@ import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.Button
-import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.ui.Modifier
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.ui.text.TextStyle
 
 data class Todo(
     var title: String = "",
@@ -1628,46 +1632,46 @@ fun MainScreen() {
         Column {
             Button(onClick = {
                 add__inst0("a")
-            }, modifier = Modifier.safeDrawingPadding()) {
+            }, modifier = Modifier.safeDrawingPadding(), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                 Text(text = "add", modifier = Modifier)
             }
             Button(onClick = {
                 toggle__inst0(0)
-            }, modifier = Modifier.safeDrawingPadding()) {
+            }, modifier = Modifier.safeDrawingPadding(), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                 Text(text = "toggle", modifier = Modifier)
             }
             Button(onClick = {
                 dropLast__inst0()
-            }, modifier = Modifier.safeDrawingPadding()) {
+            }, modifier = Modifier.safeDrawingPadding(), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                 Text(text = "drop", modifier = Modifier)
             }
             Button(onClick = {
                 reset__inst0()
-            }, modifier = Modifier.safeDrawingPadding()) {
+            }, modifier = Modifier.safeDrawingPadding(), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                 Text(text = "reset", modifier = Modifier)
             }
-            Text(text = saved__inst0.joinToString(","), modifier = Modifier.safeDrawingPadding())
+            Text(text = saved__inst0.joinToString(","), modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
             Button(onClick = {
                 h__inst0 = h__inst0.copy(items = h__inst0.items.toMutableList().also { it.add(2) })
                 __effect1_note_append()
                 __effects0_settle()
-            }, modifier = Modifier.safeDrawingPadding()) {
+            }, modifier = Modifier.safeDrawingPadding(), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                 Text(text = "push", modifier = Modifier)
             }
             Button(onClick = {
                 h__inst0 = h__inst0.copy(other = 3)
                 __effects0_settle()
-            }, modifier = Modifier.safeDrawingPadding()) {
+            }, modifier = Modifier.safeDrawingPadding(), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                 Text(text = "sibling", modifier = Modifier)
             }
             Button(onClick = {
                 h__inst0 = Holder(items = listOf(5), other = 0)
                 __effect1_dirty = true
                 __effects0_settle()
-            }, modifier = Modifier.safeDrawingPadding()) {
+            }, modifier = Modifier.safeDrawingPadding(), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                 Text(text = "swap", modifier = Modifier)
             }
-            Text(text = n__inst0.toString(), modifier = Modifier.safeDrawingPadding())
+            Text(text = n__inst0.toString(), modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
         }
     }
 }
@@ -1918,6 +1922,6 @@ pass sha256:ae3a6e0d1b90fad975fe80d48ffb1dd4
 -- run/go/gtk4 --
 pass sha256:03cc5614c96d70ac18eb1509764f46e4
 -- run/kotlin/android --
-pass sha256:4235a22f594a7e427b604999a184bd1b
+pass sha256:bb69605e49011cbce63b44d33cca198c
 -- run/none/html --
 pass sha256:3ea5352d2692327874fbaa65efba0989

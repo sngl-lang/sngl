@@ -290,9 +290,13 @@ import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.Text
-import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.ui.Modifier
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.foundation.shape.CircleShape
 
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
@@ -334,15 +338,15 @@ fun MainScreen() {
             }
         }
         Column {
-            Text(text = (n__inst0.toString() + log__inst0), modifier = Modifier.safeDrawingPadding())
+            Text(text = (n__inst0.toString() + log__inst0), modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
             Button(onClick = {
                 n__inst0 = step__inst0(n__inst0)
-            }, modifier = Modifier.safeDrawingPadding()) {
+            }, modifier = Modifier.safeDrawingPadding(), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                 Text(text = "step", modifier = Modifier)
             }
             Button(onClick = {
                 n__inst0 = reset__inst0(n__inst0)
-            }, modifier = Modifier.safeDrawingPadding()) {
+            }, modifier = Modifier.safeDrawingPadding(), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                 Text(text = "reset", modifier = Modifier)
             }
         }
@@ -414,6 +418,6 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:401f6ea03aeefb3a2123eb9d4b10e01e
 -- run/kotlin/android --
-pass sha256:f473e733ebe850b16bae75a1e2bc0a0a
+pass sha256:aef9d04337aa32f17f3d5d6548fc6e1b
 -- run/none/html --
 pass sha256:63c30c7f8a3f47c88dfeee59683aa878

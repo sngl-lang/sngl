@@ -263,9 +263,13 @@ import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.Button
-import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.ui.Modifier
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.ui.text.TextStyle
 
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
@@ -304,10 +308,10 @@ fun MainScreen() {
                 	}
                 	total__inst0 = (total__inst0 + total__inst0)
                 }
-            }, modifier = Modifier.safeDrawingPadding()) {
+            }, modifier = Modifier.safeDrawingPadding(), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                 Text(text = "run", modifier = Modifier)
             }
-            Text(text = total__inst0.toString(), modifier = Modifier.safeDrawingPadding())
+            Text(text = total__inst0.toString(), modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
         }
     }
 }
@@ -374,6 +378,6 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:fc8658f571a0801ec4c2a23616e707c2
 -- run/kotlin/android --
-pass sha256:0d1bdcb197a499bfb3ae1f9ae12bbef1
+pass sha256:38f7a5a047257bcc3efb2191c39a75c7
 -- run/none/html --
 pass sha256:89eb794d87439e13f66b5b07eb8338da

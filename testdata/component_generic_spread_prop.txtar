@@ -588,8 +588,10 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.material3.Text
-import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.ui.Modifier
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.ui.text.TextStyle
 
 data class PageArgs(
     var on: Int = 0
@@ -626,7 +628,7 @@ fun MainScreen() {
                 onDispose {
                 }
             }
-            Text(text = ("page=" + page__inst0.toString()), modifier = Modifier.safeDrawingPadding())
+            Text(text = ("page=" + page__inst0.toString()), modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
         }
     }
 }
@@ -717,6 +719,6 @@ pass sha256:f2dc8fc9b4f2ae98ff637fcba868ee0f
 -- run/go/gtk4 --
 pass sha256:3b25a986c4a5ace0559174607c9b4555
 -- run/kotlin/android --
-pass sha256:6f836362fa533b6170a2913fc3737e53
+pass sha256:cb1933afc5a5b45c239235ee9dfbe0cf
 -- run/none/html --
 pass sha256:f71606f31a10d0f617f7228c3941bd4c

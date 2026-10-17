@@ -193,6 +193,10 @@ func stateTypeArg(bind irAndroidBind, initVal string) string {
 	if strings.HasSuffix(bind.ktType, "?") {
 		return "<" + bind.ktType + ">"
 	}
+	// A lambda's parameter types are not inferred from the cell it starts.
+	if strings.Contains(bind.ktType, "->") {
+		return "<" + bind.ktType + ">"
+	}
 	if strings.TrimSpace(initVal) == "null" {
 		t := bind.ktType
 		if t == "" {
@@ -512,10 +516,7 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 			kc.IdentRewrites = map[string]string{}
 		}
 		for _, fn := range ctx.AllFuncs() {
-			if fn.IsTest || fn.IsMethod() || codegen.IsComputed(fn) {
-				continue
-			}
-			if fn.Return == nil {
+			if !inGoLib(fn) {
 				continue
 			}
 			kc.IdentRewrites[fn.Name] = "golib.Golib." + exportName(fn.Name)
@@ -698,7 +699,7 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 		// via implicit `this`, NOT the `state` parameter (which doesn't exist
 		// here). Use a rewrite-free context so e.g. `__ctx_locale__inst1 =
 		// __ctx_locale` rather than `state.__ctx_locale`.
-		classKC := kotlin.NewIRContext(exprCtx)
+		classKC := kc.Unscoped()
 		for _, bind := range info.binds {
 			initVal := bind.init
 			if bind.initEx != nil {
@@ -723,7 +724,7 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 		// with no IdentRewrites: inside the class, `__ctx_locale`
 		// resolves via implicit `this`, not `state.__ctx_locale`.
 		if len(stateFuncs) > 0 {
-			memberKC := kotlin.NewIRContext(exprCtx)
+			memberKC := kc.Unscoped()
 			for _, fn := range stateFuncs {
 				emitIRKtMemberFunc(&body, fn, memberKC)
 			}
@@ -896,44 +897,41 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 	// on a value of a user type has nothing to do with it. Skipped in both
 	// places, `Calc.pending` was declared by nobody while every call site
 	// spelled it.
-	if !cfg.GoLib {
-		allFuncs := ctx.AllFuncs()
-		for _, fn := range allFuncs {
-			if fn.IsTest || codegen.IsComputed(fn) {
-				continue
-			}
-			if testMode && stateMembers[fn] {
-				continue
-			}
-			// A method on a user type is called as one -- `state.pending()` --
-			// so it is an extension function, and the receiver passNoImplicitRecv
-			// put in front of the parameters is Kotlin's own `this`. A
-			// component's own func is not that: it is called by bare name from
-			// the composable, and the component is no Kotlin type to extend.
-			if fn.OnType() {
-				emitIRKtMethod(&body, fn, kc)
-				continue
-			}
-			// A component's func reads and writes the component's state, and
-			// on Compose that state is a `remember`ed local of the composable.
-			// So it is a local fun of the composable too; emitted at top level
-			// it named a `state` nothing had declared.
-			//
-			// One that touches no such state is not that, and putting it there
-			// anyway is not free: a method on a user type is an extension
-			// function at top level, so `Calc.pending` calling the pure
-			// `format` found it only inside the composable, or as
-			// `state.format` in test mode.
-			if componentOwnFuncs[fn] && scoped[fn] {
-				continue
-			}
-			emitIRKtFunc(&body, fn, kc)
+	allFuncs := ctx.AllFuncs()
+	for _, fn := range allFuncs {
+		if fn.IsTest || codegen.IsComputed(fn) || cfg.GoLib && !composeSide(fn) {
+			continue
 		}
+		if testMode && stateMembers[fn] {
+			continue
+		}
+		// A method on a user type is called as one -- `state.pending()` --
+		// so it is an extension function, and the receiver passNoImplicitRecv
+		// put in front of the parameters is Kotlin's own `this`. A
+		// component's own func is not that: it is called by bare name from
+		// the composable, and the component is no Kotlin type to extend.
+		if fn.OnType() {
+			emitIRKtMethod(&body, fn, kc)
+			continue
+		}
+		// A component's func reads and writes the component's state, and
+		// on Compose that state is a `remember`ed local of the composable.
+		// So it is a local fun of the composable too; emitted at top level
+		// it named a `state` nothing had declared.
+		//
+		// One that touches no such state is not that, and putting it there
+		// anyway is not free: a method on a user type is an extension
+		// function at top level, so `Calc.pending` calling the pure
+		// `format` found it only inside the composable, or as
+		// `state.format` in test mode.
+		if componentOwnFuncs[fn] && scoped[fn] {
+			continue
+		}
+		emitIRKtFunc(&body, fn, kc)
 	}
 
 	// Assemble final output: package clause + imports (collected during
 	// pass 1 and dynamically during pass 2) + body.
-	body.WriteString(heldStyleDecls(kc, body.String(), info.Structs))
 	var out strings.Builder
 	fmt.Fprintf(&out, "package %s\n\n", cfg.Package)
 	for _, imp := range kc.Imports() {

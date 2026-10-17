@@ -37,6 +37,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.material3.Text
 import androidx.compose.ui.Modifier
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.platform.LocalContext
 import android.app.Activity
 import androidx.activity.compose.BackHandler
@@ -56,8 +58,8 @@ fun MainScreen() {
 
     if (details) {
         __window_state0(title = "Inset", slotContent = {
-            Text(text = "top", modifier = Modifier)
-            Text(text = "below", modifier = Modifier)
+            Text(text = "top", modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
+            Text(text = "below", modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
         })
     }
 }
@@ -80,4 +82,4 @@ fun __window_state0(__start_visible: Boolean = true, title: String, slotContent:
     }
 }
 -- run/kotlin/android --
-pass sha256:5082d02f2c31beed1651cf453a43b6e5
+pass sha256:3697f4d0a46f395ca6f287c189c88bf1

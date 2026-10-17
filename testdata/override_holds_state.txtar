@@ -1489,17 +1489,26 @@ import androidx.compose.ui.platform.LocalContext
 import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
-import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.ui.Modifier
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.unit.Dp
 import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.zIndex
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.height
-import androidx.compose.ui.unit.dp
-import androidx.compose.foundation.background
-import androidx.compose.ui.graphics.Color as ComposeColor
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.border
+import androidx.compose.foundation.background
 
 data class Measurement(
     val px: Double = 0.0,
@@ -1785,17 +1794,17 @@ fun MainScreen() {
         Column(modifier = Modifier.safeDrawingPadding()) {
             Button(onClick = {
                 hits__inst0 = (hits__inst0 + 1)
-            }, modifier = Modifier) {
+            }, modifier = Modifier, colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                 Text(text = ("top " + hits__inst0.toString()), modifier = Modifier)
             }
             for (r in rows) {
-                Avatar(initials = r, size = SnglSizePreset.MEDIUM, variant = SnglAvatarVariant.CIRCLE, alt = "", style = Style())
+                Avatar(initials = r, size = SnglSizePreset.MEDIUM, variant = SnglAvatarVariant.CIRCLE, alt = "", style = Style(), __ctx_flexShare = { w: Float -> Modifier.weight(w).fillMaxWidth() })
             }
             if (shown) {
-                Avatar(initials = "if", size = SnglSizePreset.MEDIUM, variant = SnglAvatarVariant.CIRCLE, alt = "", style = Style())
+                Avatar(initials = "if", size = SnglSizePreset.MEDIUM, variant = SnglAvatarVariant.CIRCLE, alt = "", style = Style(), __ctx_flexShare = { w: Float -> Modifier.weight(w).fillMaxWidth() })
                 Button(onClick = {
                     shown = false
-                }, modifier = Modifier) {
+                }, modifier = Modifier, colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                     Text(text = "hide", modifier = Modifier)
                 }
             }
@@ -1804,30 +1813,71 @@ fun MainScreen() {
 }
 
 @Composable
-fun Avatar(initials: String = "", size: SnglSizePreset = SnglSizePreset.MEDIUM, variant: SnglAvatarVariant = SnglAvatarVariant.CIRCLE, alt: String = "", style: Style = Style(), src: (@Composable () -> Unit)? = null, fallback: (@Composable () -> Unit)? = null, onClick: (() -> Unit)? = null) {
+fun Avatar(initials: String = "", size: SnglSizePreset = SnglSizePreset.MEDIUM, variant: SnglAvatarVariant = SnglAvatarVariant.CIRCLE, alt: String = "", style: Style = Style(), __ctx_flexShare: (Float) -> androidx.compose.ui.Modifier, src: (@Composable () -> Unit)? = null, fallback: (@Composable () -> Unit)? = null, onClick: (() -> Unit)? = null) {
     var failed by remember { mutableStateOf(false) }
     var hits by remember { mutableStateOf(0) }
 
     Button(onClick = {
         hits = (hits + 1)
-    }, modifier = Modifier.snglStyle(__merge_Style(Style(), __merge_Style(Style(), style)), withBackground = false)) {
+    }, modifier = surfaceModifierOf(__merge_Style(Style(), style), __ctx_flexShare), colors = ButtonDefaults.buttonColors(containerColor = colorOf(__merge_Style(Style(), style).background), contentColor = colorOf(__merge_Style(Style(), style).color)), shape = buttonShapeOf(__merge_Style(Style(), style))) {
         Text(text = ((initials + " ") + hits.toString()), modifier = Modifier)
     }
 }
-fun Modifier.snglStyle(s: Style, withBackground: Boolean = true): Modifier {
-    var m = this
-    if (s.padding != Measurement()) m = m.padding(s.padding.px.dp)
-    if (s.paddingTop != Measurement()) m = m.padding(top = s.paddingTop.px.dp)
-    if (s.paddingBottom != Measurement()) m = m.padding(bottom = s.paddingBottom.px.dp)
-    if (s.paddingLeft != Measurement()) m = m.padding(start = s.paddingLeft.px.dp)
-    if (s.paddingRight != Measurement()) m = m.padding(end = s.paddingRight.px.dp)
-    if (s.width != Measurement()) m = m.width(s.width.px.dp)
-    if (s.height != Measurement()) m = m.height(s.height.px.dp)
-    if (withBackground && s.background != Color()) m = m.background(ComposeColor(s.background.r, s.background.g, s.background.b, s.background.a))
-    if (s.opacity != 0.0) m = m.alpha(s.opacity.toFloat())
+
+fun surfaceModifierOf(s: Style, share: (Float) -> androidx.compose.ui.Modifier): androidx.compose.ui.Modifier = (if ((s.flex == 0.0)) (if ((s == Style())) Modifier else styleModifier(s, false)) else (if ((s == Style())) Modifier else styleModifier(s, false)).then(share(s.flex.toFloat())))
+
+fun colorOf(c: Color): androidx.compose.ui.graphics.Color = (if ((c == Color())) androidx.compose.ui.graphics.Color.Unspecified else androidx.compose.ui.graphics.Color(red = c.r.toInt(), green = c.g.toInt(), blue = c.b.toInt(), alpha = c.a.toInt()))
+
+fun buttonShapeOf(s: Style): androidx.compose.ui.graphics.Shape = (if ((s.borderRadius == Measurement(px = 0.0))) CircleShape else RoundedCornerShape(Dp((s.borderRadius.px + (16.0 * (s.borderRadius.em + s.borderRadius.rem))).toFloat())))
+
+fun styleModifier(s: Style, paints: Boolean): androidx.compose.ui.Modifier {
+    var m: androidx.compose.ui.Modifier = Modifier
+    var top = (if ((s.marginTop != Measurement(px = 0.0))) s.marginTop else (if ((s.marginY != Measurement(px = 0.0))) s.marginY else s.margin))
+    var right = (if ((s.marginRight != Measurement(px = 0.0))) s.marginRight else (if ((s.marginX != Measurement(px = 0.0))) s.marginX else s.margin))
+    var bottom = (if ((s.marginBottom != Measurement(px = 0.0))) s.marginBottom else (if ((s.marginY != Measurement(px = 0.0))) s.marginY else s.margin))
+    var left = (if ((s.marginLeft != Measurement(px = 0.0))) s.marginLeft else (if ((s.marginX != Measurement(px = 0.0))) s.marginX else s.margin))
+    if (((((top != Measurement(px = 0.0)) || (right != Measurement(px = 0.0))) || (bottom != Measurement(px = 0.0))) || (left != Measurement(px = 0.0)))) {
+    	m = m.padding(Dp(((if (((left.px + (16.0 * (left.em + left.rem))) < 0.0)) 0.0 else (left.px + (16.0 * (left.em + left.rem)))) + 0.0).toFloat()), Dp(((if (((top.px + (16.0 * (top.em + top.rem))) < 0.0)) 0.0 else (top.px + (16.0 * (top.em + top.rem)))) + 0.0).toFloat()), Dp(((if (((right.px + (16.0 * (right.em + right.rem))) < 0.0)) 0.0 else (right.px + (16.0 * (right.em + right.rem)))) + 0.0).toFloat()), Dp(((if (((bottom.px + (16.0 * (bottom.em + bottom.rem))) < 0.0)) 0.0 else (bottom.px + (16.0 * (bottom.em + bottom.rem)))) + 0.0).toFloat()))
+    }
+    if ((s.zIndex != 0)) {
+    	m = m.zIndex(s.zIndex.toFloat())
+    }
+    if (((s.minWidth != Measurement(px = 0.0)) || (s.maxWidth != Measurement(px = 0.0)))) {
+    	m = m.widthIn((if ((s.minWidth != Measurement(px = 0.0))) Dp((s.minWidth.px + (16.0 * (s.minWidth.em + s.minWidth.rem))).toFloat()) else Dp.Unspecified), (if ((s.maxWidth != Measurement(px = 0.0))) Dp((s.maxWidth.px + (16.0 * (s.maxWidth.em + s.maxWidth.rem))).toFloat()) else Dp.Unspecified))
+    }
+    if ((s.maxHeight != Measurement(px = 0.0))) {
+    	m = m.heightIn(Dp.Unspecified, Dp((s.maxHeight.px + (16.0 * (s.maxHeight.em + s.maxHeight.rem))).toFloat()))
+    }
+    if ((s.width != Measurement(px = 0.0))) {
+    	m = m.width(Dp((s.width.px + (16.0 * (s.width.em + s.width.rem))).toFloat()))
+    }
+    if ((s.height != Measurement(px = 0.0))) {
+    	m = m.height(Dp((s.height.px + (16.0 * (s.height.em + s.height.rem))).toFloat()))
+    }
+    if ((s.opacity != 0.0)) {
+    	m = m.alpha(s.opacity.toFloat())
+    }
+    var shape: androidx.compose.ui.graphics.Shape = (if ((s.borderRadius == Measurement(px = 0.0))) RectangleShape else RoundedCornerShape(Dp((s.borderRadius.px + (16.0 * (s.borderRadius.em + s.borderRadius.rem))).toFloat())))
+    if ((s.borderRadius != Measurement(px = 0.0))) {
+    	m = m.clip(shape)
+    }
+    var edge = 0.0
+    if ((s.borderWidth != Measurement(px = 0.0))) {
+    	edge = (s.borderWidth.px + (16.0 * (s.borderWidth.em + s.borderWidth.rem)))
+    	m = m.border(Dp((s.borderWidth.px + (16.0 * (s.borderWidth.em + s.borderWidth.rem))).toFloat()), androidx.compose.ui.graphics.Color(red = (if ((s.borderColor != Color())) s.borderColor else s.color).r.toInt(), green = (if ((s.borderColor != Color())) s.borderColor else s.color).g.toInt(), blue = (if ((s.borderColor != Color())) s.borderColor else s.color).b.toInt(), alpha = (if ((s.borderColor != Color())) s.borderColor else s.color).a.toInt()), shape)
+    }
+    if ((paints && (s.background != Color()))) {
+    	m = m.background(androidx.compose.ui.graphics.Color(red = s.background.r.toInt(), green = s.background.g.toInt(), blue = s.background.b.toInt(), alpha = s.background.a.toInt()), shape)
+    }
+    top = (if ((s.paddingTop != Measurement(px = 0.0))) s.paddingTop else (if ((s.paddingY != Measurement(px = 0.0))) s.paddingY else s.padding))
+    right = (if ((s.paddingRight != Measurement(px = 0.0))) s.paddingRight else (if ((s.paddingX != Measurement(px = 0.0))) s.paddingX else s.padding))
+    bottom = (if ((s.paddingBottom != Measurement(px = 0.0))) s.paddingBottom else (if ((s.paddingY != Measurement(px = 0.0))) s.paddingY else s.padding))
+    left = (if ((s.paddingLeft != Measurement(px = 0.0))) s.paddingLeft else (if ((s.paddingX != Measurement(px = 0.0))) s.paddingX else s.padding))
+    if ((((((edge != 0.0) || (top != Measurement(px = 0.0))) || (right != Measurement(px = 0.0))) || (bottom != Measurement(px = 0.0))) || (left != Measurement(px = 0.0)))) {
+    	m = m.padding(Dp(((if (((left.px + (16.0 * (left.em + left.rem))) < 0.0)) 0.0 else (left.px + (16.0 * (left.em + left.rem)))) + edge).toFloat()), Dp(((if (((top.px + (16.0 * (top.em + top.rem))) < 0.0)) 0.0 else (top.px + (16.0 * (top.em + top.rem)))) + edge).toFloat()), Dp(((if (((right.px + (16.0 * (right.em + right.rem))) < 0.0)) 0.0 else (right.px + (16.0 * (right.em + right.rem)))) + edge).toFloat()), Dp(((if (((bottom.px + (16.0 * (bottom.em + bottom.rem))) < 0.0)) 0.0 else (bottom.px + (16.0 * (bottom.em + bottom.rem)))) + edge).toFloat()))
+    }
     return m
 }
-
 -- out/none/html/index.html --
 <!-- Code generated by sngl (html) from app.sngl; DO NOT EDIT. -->
 
@@ -2204,6 +2254,6 @@ pass sha256:c0719944975ecb942135250457e067a1
 -- run/go/gtk4 --
 pass sha256:4a5ff383fb472aef9f4f6149e0e0ab1b
 -- run/kotlin/android --
-pass sha256:6333ee4e285bd5b32a48d64927ad0932
+pass sha256:dbd0a3e4cf8f9fc04a25ad1b6e9e0690
 -- run/none/html --
 pass sha256:e6ab84a611d31e46751e853fa1fcb42f

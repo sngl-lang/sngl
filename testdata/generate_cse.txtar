@@ -377,9 +377,13 @@ import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.Button
-import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.ui.Modifier
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.ui.text.TextStyle
 
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
@@ -416,21 +420,21 @@ fun MainScreen() {
             Button(onClick = {
                 var __cse0 = weight(seed__inst0)
                 total__inst0 = (__cse0 + (__cse0 * 2))
-            }, modifier = Modifier.safeDrawingPadding()) {
+            }, modifier = Modifier.safeDrawingPadding(), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                 Text(text = "one", modifier = Modifier)
             }
             Button(onClick = {
                 var __cse1 = weight(a__inst0)
                 total__inst0 = (((__cse1 * 100) + weight(b__inst0)) + __cse1)
-            }, modifier = Modifier.safeDrawingPadding()) {
+            }, modifier = Modifier.safeDrawingPadding(), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                 Text(text = "two", modifier = Modifier)
             }
             Button(onClick = {
                 log__inst0 = (noisy__inst0() + noisy__inst0())
-            }, modifier = Modifier.safeDrawingPadding()) {
+            }, modifier = Modifier.safeDrawingPadding(), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                 Text(text = "three", modifier = Modifier)
             }
-            Text(text = (total__inst0.toString() + log__inst0.toString()), modifier = Modifier.safeDrawingPadding())
+            Text(text = (total__inst0.toString() + log__inst0.toString()), modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
         }
     }
 }
@@ -513,6 +517,6 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:1ff895012a02af80c19c41787ae18c65
 -- run/kotlin/android --
-pass sha256:d45cff923f85710abd5e2329e261b61a
+pass sha256:6a7f91d9fa23025fea603b595e72a242
 -- run/none/html --
 pass sha256:bb35d65e33179dbf269d1a4164804c15

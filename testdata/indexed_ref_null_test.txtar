@@ -1245,20 +1245,26 @@ func (m *Model) tickPresentAt(key string) bool {
 package test.sngl.app
 
 import androidx.compose.ui.semantics.SemanticsPropertyKey
-import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.ui.Modifier
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.foundation.layout.Column
-import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.material3.Button
 import androidx.compose.ui.platform.testTag
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.foundation.layout.Row
 import androidx.compose.ui.Alignment
 import androidx.compose.material3.Checkbox
@@ -1272,6 +1278,7 @@ fun _snglSplit(s: String, sep: String): List<String> =
 val SnglCopy = SemanticsPropertyKey<String>("SnglCopy")
 
 class MainScreenState {
+    var __ctx_flexShare by mutableStateOf<(Float) -> androidx.compose.ui.Modifier>({ w: Float -> Modifier.fillMaxSize() })
     val items = mutableStateListOf("a", "b", "c")
     var skip by mutableStateOf("a")
     var log by mutableStateOf("")
@@ -1284,27 +1291,27 @@ fun MainScreen(state: MainScreenState = remember { MainScreenState() }) {
     Column(modifier = Modifier.safeDrawingPadding()) {
         Button(onClick = {
             state.skip = "b"
-        }, modifier = Modifier.testTag("change")) {
+        }, modifier = Modifier.testTag("change"), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
             Text(text = "skip b", modifier = Modifier)
         }
         for ((__copy0, it) in state.items.withIndex()) {
             if ((it != state.skip)) {
                 Button(onClick = {
                     state.log = it
-                }, modifier = Modifier.testTag("only").then(__copy0.toString().let { __key -> Modifier.semantics { this[SnglCopy] = __key } })) {
+                }, modifier = Modifier.testTag("only").then(__copy0.toString().let { __key -> Modifier.semantics { this[SnglCopy] = __key } }), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                     Text(text = it, modifier = Modifier)
                 }
-                __checkbox_state0(label = it, __copy = __copy0.toString(), onChange = { on ->
+                __checkbox_state0(label = it, __ctx_flexShare = { w: Float -> Modifier.weight(w).fillMaxWidth() }, __copy = __copy0.toString(), onChange = { on ->
                     state.log = ((it + " ") + on.toString())
                 })
             }
         }
-        Text(text = state.log, modifier = Modifier)
+        Text(text = state.log, modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
     }
 }
 
 @Composable
-fun __checkbox_state0(__start_checked: Boolean = false, label: String, __copy: String = "", onChange: ((Boolean) -> Unit)? = null) {
+fun __checkbox_state0(__start_checked: Boolean = false, label: String, __ctx_flexShare: (Float) -> androidx.compose.ui.Modifier, __copy: String = "", onChange: ((Boolean) -> Unit)? = null) {
     var checked by remember { mutableStateOf(__start_checked) }
 
     Row(modifier = Modifier.testTag("tick").then(__copy.let { __key -> Modifier.semantics { this[SnglCopy] = __key } }), verticalAlignment = Alignment.CenterVertically) {
@@ -1597,6 +1604,6 @@ pass sha256:eba66abaddb4da57eb5697f242562666
 -- run/go/gtk4 --
 pass sha256:a432a99cd5b38c7c5f7166f45b9bf8b4
 -- run/kotlin/android --
-pass sha256:12ad32084cd77fe45e11eacc8602bf3c
+pass sha256:b89ad142e963e674300dcfd4e3ca9fc4
 -- run/none/html --
 pass sha256:99b0f53817be80a6368f23a0e17f4b53

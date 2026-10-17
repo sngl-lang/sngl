@@ -856,9 +856,13 @@ import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.Text
-import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.ui.Modifier
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.foundation.shape.CircleShape
 
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
@@ -886,39 +890,39 @@ fun MainScreen() {
             }
         }
         Column {
-            Text(text = "empty", modifier = Modifier.safeDrawingPadding())
-            Text(text = (if (started__inst0) "started empty" else "started with content"), modifier = Modifier.safeDrawingPadding())
-            Text(text = "nothing", modifier = Modifier.safeDrawingPadding())
-            Text(text = "has content", modifier = Modifier.safeDrawingPadding())
-            Text(text = (if (started__inst1) "started empty" else "started with content"), modifier = Modifier.safeDrawingPadding())
+            Text(text = "empty", modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
+            Text(text = (if (started__inst0) "started empty" else "started with content"), modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
+            Text(text = "nothing", modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
+            Text(text = "has content", modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
+            Text(text = (if (started__inst1) "started empty" else "started with content"), modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
             Column(modifier = Modifier.safeDrawingPadding()) {
-                Text(text = "a", modifier = Modifier)
+                Text(text = "a", modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
             }
-            Text(text = (if (!shown__inst0) "empty" else "has content"), modifier = Modifier.safeDrawingPadding())
-            Text(text = (if (started__inst2) "started empty" else "started with content"), modifier = Modifier.safeDrawingPadding())
+            Text(text = (if (!shown__inst0) "empty" else "has content"), modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
+            Text(text = (if (started__inst2) "started empty" else "started with content"), modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
             if (!shown__inst0) {
-                Text(text = "nothing", modifier = Modifier.safeDrawingPadding())
+                Text(text = "nothing", modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
             } else {
                 Column(modifier = Modifier.safeDrawingPadding()) {
                     if (shown__inst0) {
-                        Text(text = "shown", modifier = Modifier)
+                        Text(text = "shown", modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
                     }
                 }
             }
-            Text(text = (if (!(xs__inst0.size == 0)) "empty" else "has content"), modifier = Modifier.safeDrawingPadding())
-            Text(text = (if (started__inst3) "started empty" else "started with content"), modifier = Modifier.safeDrawingPadding())
+            Text(text = (if (!(xs__inst0.size == 0)) "empty" else "has content"), modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
+            Text(text = (if (started__inst3) "started empty" else "started with content"), modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
             if (!(xs__inst0.size == 0)) {
-                Text(text = "nothing", modifier = Modifier.safeDrawingPadding())
+                Text(text = "nothing", modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
             } else {
                 Column(modifier = Modifier.safeDrawingPadding()) {
                     if ((xs__inst0.size == 0)) {
-                        Text(text = "no items", modifier = Modifier)
+                        Text(text = "no items", modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
                     }
                 }
             }
             Button(onClick = {
                 shown__inst0 = true
-            }, modifier = Modifier.safeDrawingPadding()) {
+            }, modifier = Modifier.safeDrawingPadding(), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                 Text(text = "show", modifier = Modifier)
             }
         }
@@ -1222,6 +1226,6 @@ pass sha256:92908dfae67ea67d3df93c8a4a558edc
 -- run/go/fyne --
 pass sha256:7a7b2f6892da717ab69b54a94be097d1
 -- run/kotlin/android --
-pass sha256:e7488bcaaaa835a645877416b8003412
+pass sha256:78ac092a368a07c9cdca40e21d131255
 -- run/none/html --
 pass sha256:46edf6c323e53f4b077f77eb3540ac61

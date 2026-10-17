@@ -385,9 +385,13 @@ import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.Button
-import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.ui.Modifier
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.ui.text.TextStyle
 
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
@@ -412,10 +416,10 @@ fun MainScreen() {
         Column {
             Button(onClick = {
                 count__inst0 += 1
-            }, modifier = Modifier.safeDrawingPadding()) {
+            }, modifier = Modifier.safeDrawingPadding(), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                 Text(text = "Click me", modifier = Modifier)
             }
-            Text(text = count__inst0.toString(), modifier = Modifier.safeDrawingPadding())
+            Text(text = count__inst0.toString(), modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
         }
     }
 }
@@ -465,6 +469,6 @@ pass sha256:807482192c44013bcb927e0b5a94bc66
 -- run/go/gtk4 --
 pass sha256:51011d86728d8208b6ade898a14329d2
 -- run/kotlin/android --
-pass sha256:e6ecff21382e772327a549d037bd7686
+pass sha256:094048cdddabe6b980d7f2685c2660af
 -- run/none/html --
 pass sha256:d0cfebd6c3c5247410be39c35ee6d346

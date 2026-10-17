@@ -1004,11 +1004,16 @@ import androidx.compose.ui.platform.LocalContext
 import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
-import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.ui.Modifier
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.Text
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.foundation.shape.CircleShape
 
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
@@ -1036,16 +1041,16 @@ fun MainScreen() {
         }
         Column(modifier = Modifier.safeDrawingPadding()) {
             for (l in labels) {
-                Row(name = l)
+                Row(name = l, __ctx_flexShare = { w: Float -> Modifier.weight(w).fillMaxWidth() })
             }
-            Text(text = total.toString(), modifier = Modifier)
-            Text(text = ("from " + start.toString()), modifier = Modifier)
+            Text(text = total.toString(), modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
+            Text(text = ("from " + start.toString()), modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
         }
     }
 }
 
 @Composable
-fun Row(name: String = "") {
+fun Row(name: String = "", __ctx_flexShare: (Float) -> androidx.compose.ui.Modifier) {
     var label by remember { mutableStateOf((name + ":")) }
 
     DisposableEffect(name) {
@@ -1056,7 +1061,7 @@ fun Row(name: String = "") {
     }
     Button(onClick = {
         total = (total + 10)
-    }, modifier = Modifier) {
+    }, modifier = Modifier, colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
         Text(text = ((label + " ") + total.toString()), modifier = Modifier)
     }
 }
@@ -1263,6 +1268,6 @@ pass sha256:89d46588feaab23bbab3bc9dc719f71c
 -- run/go/gtk4 --
 pass sha256:88be5710ae194a34509f2e664181a62c
 -- run/kotlin/android --
-pass sha256:0b25a8edf50332706ae661f2b9c06444
+pass sha256:29582df8f2760ec3368edfce1b34107b
 -- run/none/html --
 pass sha256:12cab8b7b1d961811790cde0cc361022

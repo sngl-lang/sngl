@@ -334,8 +334,10 @@ import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.Text
-import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.ui.Modifier
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.ui.text.TextStyle
 
 data class Measurement(
     val px: Double = 0.0,
@@ -369,13 +371,13 @@ fun MainScreen() {
             }
         }
         Column {
-            Text(text = ("px is " + _snglFloatStr(m__inst0.px)), modifier = Modifier.safeDrawingPadding())
-            Text(text = ("w is " + _snglFloatStr(w__inst0)), modifier = Modifier.safeDrawingPadding())
-            Text(text = ("em is " + _snglFloatStr(m__inst0.em)), modifier = Modifier.safeDrawingPadding())
-            Text(text = ("sum px is " + _snglFloatStr(sum__inst0.px)), modifier = Modifier.safeDrawingPadding())
-            Text(text = ("sum em is " + _snglFloatStr(sum__inst0.em)), modifier = Modifier.safeDrawingPadding())
-            Text(text = ("tk is " + _snglFloatStr(t__inst0.toDouble())), modifier = Modifier.safeDrawingPadding())
-            Text(text = ("ms is " + d__inst0.toInt().toString()), modifier = Modifier.safeDrawingPadding())
+            Text(text = ("px is " + _snglFloatStr(m__inst0.px)), modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
+            Text(text = ("w is " + _snglFloatStr(w__inst0)), modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
+            Text(text = ("em is " + _snglFloatStr(m__inst0.em)), modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
+            Text(text = ("sum px is " + _snglFloatStr(sum__inst0.px)), modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
+            Text(text = ("sum em is " + _snglFloatStr(sum__inst0.em)), modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
+            Text(text = ("tk is " + _snglFloatStr(t__inst0.toDouble())), modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
+            Text(text = ("ms is " + d__inst0.toInt().toString()), modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
         }
     }
 }
@@ -438,6 +440,6 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:28ad96df6ebd2be7c7a007ba7065adcf
 -- run/kotlin/android --
-pass sha256:2c377567faae36e5f2dbe0117120f745
+pass sha256:ec12f91c523e5089dc2aa6a49cdfe89d
 -- run/none/html --
 pass sha256:4d5f529ef80a4f6bc16bf48ca993d78a

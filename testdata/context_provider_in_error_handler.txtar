@@ -336,10 +336,14 @@ import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.Button
+import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
-import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.ui.text.TextStyle
 
 data class ErrorEvent(val message: String = "", val kind: String = "")
 
@@ -374,10 +378,10 @@ fun MainScreen() {
                 	val e = __e.event
                 	fromWindow = "7"
                 }
-            }, modifier = Modifier.testTag("fail").safeDrawingPadding()) {
+            }, modifier = Modifier.testTag("fail").safeDrawingPadding(), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                 Text(text = "Fail", modifier = Modifier)
             }
-            Text(text = fromWindow, modifier = Modifier.safeDrawingPadding())
+            Text(text = fromWindow, modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
             Button(onClick = {
                 try {
                 	throw SnglRaise(ErrorEvent("boom", ""))
@@ -385,10 +389,10 @@ fun MainScreen() {
                 	val e = __e.event
                 	fromBoundary__inst0 = "5"
                 }
-            }, modifier = Modifier.testTag("go").safeDrawingPadding()) {
+            }, modifier = Modifier.testTag("go").safeDrawingPadding(), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                 Text(text = "Go", modifier = Modifier)
             }
-            Text(text = fromBoundary__inst0, modifier = Modifier.safeDrawingPadding())
+            Text(text = fromBoundary__inst0, modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
         }
     }
 }
@@ -467,6 +471,6 @@ pass sha256:e3fc7bead014fccaf7e77cf7761b1a10
 -- run/go/html --
 pass sha256:5e8c7743ea6d22e28d1c9e431846dafb
 -- run/kotlin/android --
-pass sha256:5cc16a8adbffde35cea510a19fd001da
+pass sha256:b21a9e2125d622309475fee3baa7a642
 -- run/none/html --
 pass sha256:f03980dddf9536fa2eb117d23c9de5e1

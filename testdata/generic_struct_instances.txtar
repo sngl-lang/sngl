@@ -296,9 +296,13 @@ import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.Text
-import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.ui.Modifier
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.foundation.shape.CircleShape
 
 data class Box__int(
     var value: Int = 0
@@ -352,10 +356,10 @@ fun MainScreen() {
             }
         }
         Column {
-            Text(text = (((((((box.value + 1).toString() + " ") + (Box__int_get__int(box) * 2).toString()) + " ") + Box__string_get__string(label)) + " ") + nested.value.value.toString()), modifier = Modifier.safeDrawingPadding())
+            Text(text = (((((((box.value + 1).toString() + " ") + (Box__int_get__int(box) * 2).toString()) + " ") + Box__string_get__string(label)) + " ") + nested.value.value.toString()), modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
             Button(onClick = {
                 box = Box__int(value = n)
-            }, modifier = Modifier.safeDrawingPadding()) {
+            }, modifier = Modifier.safeDrawingPadding(), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                 Text(text = "go", modifier = Modifier)
             }
         }
@@ -415,6 +419,6 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:41c01f22e3c4a2fb34af62147cfe64f9
 -- run/kotlin/android --
-pass sha256:727d35ee07c18330f2c11ec1d0a6e609
+pass sha256:85b0538d0f6f27e0e7360ab3e30971e0
 -- run/none/html --
 pass sha256:e68f5cdf1969057bceb711ea917e6e60

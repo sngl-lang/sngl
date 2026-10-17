@@ -379,10 +379,14 @@ import androidx.compose.ui.platform.LocalContext
 import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
-import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.ui.Modifier
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.ui.text.TextStyle
 
 data class ErrorEvent(val message: String = "", val kind: String = "")
 
@@ -418,7 +422,7 @@ fun MainScreen() {
                 	val e = __e.event
                 	problem__inst0 = e.message
                 }
-            }, modifier = Modifier) {
+            }, modifier = Modifier, colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                 Text(text = "Save", modifier = Modifier)
             }
             Button(onClick = {
@@ -429,7 +433,7 @@ fun MainScreen() {
                 	problem__inst0 = ("call: " + e.kind)
                 }
                 age__inst0 = 0
-            }, modifier = Modifier) {
+            }, modifier = Modifier, colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                 Text(text = "Check", modifier = Modifier)
             }
             Button(onClick = {
@@ -445,10 +449,10 @@ fun MainScreen() {
                 	val e = __e.event
                 	problem__inst0 = e.message
                 }
-            }, modifier = Modifier) {
+            }, modifier = Modifier, colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                 Text(text = "Argument", modifier = Modifier)
             }
-            Text(text = ((("problem=" + problem__inst0) + " age=") + age__inst0.toString()), modifier = Modifier)
+            Text(text = ((("problem=" + problem__inst0) + " age=") + age__inst0.toString()), modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
         }
     }
 }
@@ -586,6 +590,6 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:1981fb7c35f69102a218ec81a8d3a2ba
 -- run/kotlin/android --
-pass sha256:f58da1de3f33cb101b5d4bb8fefba7a4
+pass sha256:e54bfe2b34d14bc3b453345915ba8565
 -- run/none/html --
 pass sha256:77220ab0c5ff68b9db3f7f34f26491a7

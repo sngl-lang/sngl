@@ -97,9 +97,9 @@ func (cc *irComposeContext) renderFlow(n *ir.NodeInst, comp *ir.Component) {
 	build := cc.kc.Name(ktBuildAnnotated)
 	body := cc.renderAnnotated(n.Children)
 	args := []string{"text = " + build + " {\n" + body + strings.Repeat("    ", cc.indent) + "}"}
-	args = append(args, "modifier = "+cc.intrinsicModifier(n, comp))
-	if ts := cc.textStyleExpr(n, "style"); ts != "" {
-		args = append(args, "style = "+ts)
+	args = append(args, "modifier = "+cc.intrinsicModifier(n))
+	if ts := codegen.NodeProp(n, "style"); ts != nil {
+		args = append(args, "style = "+cc.kc.EvalExpr(ts))
 	}
 	cc.line("%s(%s)", cc.kc.Name(ktText), strings.Join(args, ", "))
 }
@@ -107,15 +107,15 @@ func (cc *irComposeContext) renderFlow(n *ir.NodeInst, comp *ir.Component) {
 // renderAnnotated renders the spans of a flow into a buffer of their own, one
 // level in. Mirrors renderNested, which does the same for a Compose slot.
 func (cc *irComposeContext) renderAnnotated(stmts []ir.Stmt) string {
-	savedBuf, savedAxis, savedRoot := cc.buf, cc.parentAxis, cc.atRoot
-	cc.buf, cc.parentAxis, cc.atRoot = &strings.Builder{}, "", false
+	savedBuf, savedRoot := cc.buf, cc.atRoot
+	cc.buf, cc.atRoot = &strings.Builder{}, false
 	cc.indent++
 	for _, stmt := range stmts {
 		cc.renderSpan(stmt, decoration{})
 	}
 	cc.indent--
 	body := cc.buf.String()
-	cc.buf, cc.parentAxis, cc.atRoot = savedBuf, savedAxis, savedRoot
+	cc.buf, cc.atRoot = savedBuf, savedRoot
 	return body
 }
 

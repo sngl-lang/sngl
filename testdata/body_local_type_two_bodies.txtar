@@ -450,8 +450,10 @@ import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.Text
-import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.ui.Modifier
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.ui.text.TextStyle
 
 data class Local(
     var a: Int = 0
@@ -506,18 +508,18 @@ fun MainScreen() {
             }
         }
         Column {
-            Text(text = (here__inst0.a * 2).toString(), modifier = Modifier.safeDrawingPadding())
-            Text(text = elapsed__inst0.toInt().toString(), modifier = Modifier.safeDrawingPadding())
+            Text(text = (here__inst0.a * 2).toString(), modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
+            Text(text = elapsed__inst0.toInt().toString(), modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
             if ((p__inst0 == Phase.DONE)) {
-                Text(text = "first done", modifier = Modifier.safeDrawingPadding())
+                Text(text = "first done", modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
             }
-            Text(text = here__inst1.shout(2), modifier = Modifier.safeDrawingPadding())
-            Text(text = rows__inst0.size.toString(), modifier = Modifier.safeDrawingPadding())
-            Text(text = elapsed__inst1.toInt().toString(), modifier = Modifier.safeDrawingPadding())
+            Text(text = here__inst1.shout(2), modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
+            Text(text = rows__inst0.size.toString(), modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
+            Text(text = elapsed__inst1.toInt().toString(), modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
             if ((p__inst1 == Phase__second.READY)) {
-                Text(text = "second ready", modifier = Modifier.safeDrawingPadding())
+                Text(text = "second ready", modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
             }
-            Text(text = pick(seed__inst0).toString(), modifier = Modifier.safeDrawingPadding())
+            Text(text = pick(seed__inst0).toString(), modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
         }
     }
 }
@@ -659,6 +661,6 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:a38f2361edcec2ce6c212fc3ca5d97de
 -- run/kotlin/android --
-pass sha256:0aa467548ed12b06265cbc7a0fc89336
+pass sha256:62cdb85aae4378c42db9c0753c652a4a
 -- run/none/html --
 pass sha256:527dc24582c4772e2b371ba4b7717eb5

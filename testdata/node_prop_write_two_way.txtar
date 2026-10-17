@@ -645,14 +645,18 @@ import androidx.compose.ui.platform.LocalContext
 import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
-import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.Row
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.Alignment
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Text
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.foundation.shape.CircleShape
 
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
@@ -688,11 +692,11 @@ fun MainScreen() {
                 })
                 Text(text = "free", modifier = Modifier)
             }
-            Text(text = (if (checked__inst0) "on" else "off"), modifier = Modifier.testTag("seen"))
+            Text(text = (if (checked__inst0) "on" else "off"), modifier = Modifier.testTag("seen"), style = LocalTextStyle.current.merge(TextStyle.Default))
             Button(onClick = {
                 shown__inst0 = false
                 checked__inst0 = !checked__inst0
-            }, modifier = Modifier.testTag("flip")) {
+            }, modifier = Modifier.testTag("flip"), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                 Text(text = "flip", modifier = Modifier)
             }
         }
@@ -769,6 +773,6 @@ pass sha256:12cec83ffa3572d42dafbd38c3462c9b
 -- run/go/gtk4 --
 pass sha256:f3b57428b171ef9971aa63e76af105af
 -- run/kotlin/android --
-pass sha256:927019c200ecd918b1e97bf826fb03f3
+pass sha256:9d93ee45e508e6794f5a0afd686d332f
 -- run/none/html --
 pass sha256:0decffcc8482052c4a18e3935ce4fa5b

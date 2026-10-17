@@ -293,9 +293,13 @@ import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.Button
-import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.ui.Modifier
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.ui.text.TextStyle
 
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
@@ -335,10 +339,10 @@ fun MainScreen() {
                 }
                 var ys = mutableListOf<Int>(1, 2, 3)
                 total2__inst0 = (total2__inst0 + total(ys))
-            }, modifier = Modifier.safeDrawingPadding()) {
+            }, modifier = Modifier.safeDrawingPadding(), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                 Text(text = "sum", modifier = Modifier)
             }
-            Text(text = total2__inst0.toString(), modifier = Modifier.safeDrawingPadding())
+            Text(text = total2__inst0.toString(), modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
         }
     }
 }
@@ -433,6 +437,6 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:4dbdf8ee84c1999bbaacd85766c5edcb
 -- run/kotlin/android --
-pass sha256:87aed185ea349295f645ab55920f89bf
+pass sha256:d6b1a26ae6724407df26af76ff6fb209
 -- run/none/html --
 pass sha256:f210dfe1cecc0d909b1679d6b82b97c4

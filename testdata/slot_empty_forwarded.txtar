@@ -1662,9 +1662,14 @@ import androidx.compose.ui.platform.LocalContext
 import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
-import androidx.compose.material3.Text
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.Modifier
+import androidx.compose.material3.Text
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.foundation.shape.CircleShape
 
 data class ErrorEvent(val message: String = "", val kind: String = "")
 
@@ -1692,14 +1697,14 @@ fun MainScreen() {
             }
         }
         Column {
-            Tree(d = n__inst0, __depth = 0, __empty_content = false, content = {
-                Text(text = "x", modifier = Modifier)
+            Tree(d = n__inst0, __ctx_flexShare = { w: Float -> Modifier.fillMaxSize() }, __depth = 0, __empty_content = false, content = {
+                Text(text = "x", modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
             })
-            Tree(d = n__inst0, __depth = 0, __empty_content = true)
+            Tree(d = n__inst0, __ctx_flexShare = { w: Float -> Modifier.fillMaxSize() }, __depth = 0, __empty_content = true)
             for (x in xs__inst0) {
-                Outer(__empty_content = true)
-                Outer(__empty_content = false, content = {
-                    Text(text = ("a" + x.toString()), modifier = Modifier)
+                Outer(__ctx_flexShare = { w: Float -> Modifier.fillMaxSize() }, __empty_content = true)
+                Outer(__ctx_flexShare = { w: Float -> Modifier.fillMaxSize() }, __empty_content = false, content = {
+                    Text(text = ("a" + x.toString()), modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
                 })
             }
         }
@@ -1707,12 +1712,12 @@ fun MainScreen() {
 }
 
 @Composable
-fun Tree(d: Int = 0, __depth: Int = 0, __empty_content: Boolean = true, content: (@Composable () -> Unit)? = null) {
-    Text(text = (if (__empty_content) ("empty " + d.toString()) else ("full " + d.toString())), modifier = Modifier)
+fun Tree(d: Int = 0, __ctx_flexShare: (Float) -> androidx.compose.ui.Modifier, __depth: Int = 0, __empty_content: Boolean = true, content: (@Composable () -> Unit)? = null) {
+    Text(text = (if (__empty_content) ("empty " + d.toString()) else ("full " + d.toString())), modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
     if ((d > 0)) {
         if ((__depth >= 512)) {
         } else {
-            Tree(d = (d - 1), __depth = (__depth + 1), __empty_content = __empty_content, content = {
+            Tree(d = (d - 1), __ctx_flexShare = __ctx_flexShare, __depth = (__depth + 1), __empty_content = __empty_content, content = {
                 content?.invoke()
             })
         }
@@ -1720,29 +1725,29 @@ fun Tree(d: Int = 0, __depth: Int = 0, __empty_content: Boolean = true, content:
 }
 
 @Composable
-fun Inner(__empty_content: Boolean = true, slotContent: (@Composable () -> Unit)? = null) {
+fun Inner(__ctx_flexShare: (Float) -> androidx.compose.ui.Modifier, __empty_content: Boolean = true, slotContent: (@Composable () -> Unit)? = null) {
     var n by remember { mutableStateOf(0) }
 
-    Text(text = (if (__empty_content) "empty" else "has"), modifier = Modifier)
+    Text(text = (if (__empty_content) "empty" else "has"), modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
     Button(onClick = {
         n = (n + 1)
-    }, modifier = Modifier) {
+    }, modifier = Modifier, colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
         Text(text = n.toString(), modifier = Modifier)
     }
     slotContent?.invoke()
 }
 
 @Composable
-fun Outer(__empty_content: Boolean = true, content: (@Composable () -> Unit)? = null) {
+fun Outer(__ctx_flexShare: (Float) -> androidx.compose.ui.Modifier, __empty_content: Boolean = true, content: (@Composable () -> Unit)? = null) {
     var m by remember { mutableStateOf(0) }
 
     Button(onClick = {
         m = (m + 1)
-    }, modifier = Modifier) {
+    }, modifier = Modifier, colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
         Text(text = m.toString(), modifier = Modifier)
     }
     for (y in listOf(1)) {
-        Inner(__empty_content = __empty_content, slotContent = {
+        Inner(__ctx_flexShare = __ctx_flexShare, __empty_content = __empty_content, slotContent = {
             content?.invoke()
         })
     }
@@ -2632,6 +2637,6 @@ pass sha256:ef7476d941c76900c7a24ac4bad695c1
 -- run/go/fyne --
 pass sha256:0b7f0d5c1b93d014491b57aa77664d20
 -- run/kotlin/android --
-pass sha256:2695c13c02f790a01a15618b095dd7fc
+pass sha256:127a381678093727df9602fba5af0430
 -- run/none/html --
 pass sha256:63aada8fe3a6e5bab42c0992e8305a96

@@ -222,7 +222,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.material3.Text
 import androidx.compose.ui.Modifier
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.platform.LocalContext
 import android.app.Activity
 import androidx.activity.compose.BackHandler
@@ -243,10 +247,10 @@ fun MainScreen() {
 
     if (details) {
         __window_state0(title = "Load", slotContent = {
-            Text(text = n.toString(), modifier = Modifier)
+            Text(text = n.toString(), modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
             Button(onClick = {
                 n += 1
-            }, modifier = Modifier) {
+            }, modifier = Modifier, colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                 Text(text = "+", modifier = Modifier)
             }
         }, onClosed = {
@@ -276,4 +280,4 @@ fun __window_state0(__start_visible: Boolean = true, title: String, slotContent:
 -- run/go/bubbletea --
 pass sha256:dede24178c74660d785bb220a63a10dc
 -- run/kotlin/android --
-pass sha256:90d7580d4f17737ce6b6b893cbf4624f
+pass sha256:52613bad0249c35e2d87823a35756eb5

@@ -667,6 +667,8 @@ func (m *Model) labelPresent() bool {
 package test.sngl.app
 
 import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.ui.Modifier
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
@@ -674,11 +676,15 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.foundation.layout.Column
-import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.material3.Button
 import androidx.compose.ui.platform.testTag
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.ui.text.TextStyle
 
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
@@ -690,6 +696,7 @@ val SnglPresent = mutableStateMapOf<Any, String>()
 
 class MainScreenState {
     init { SnglPresent.clear() }
+    var __ctx_flexShare by mutableStateOf<(Float) -> androidx.compose.ui.Modifier>({ w: Float -> Modifier.fillMaxSize() })
     var shown by mutableStateOf(true)
 }
 
@@ -700,23 +707,23 @@ fun MainScreen(state: MainScreenState = remember { MainScreenState() }) {
     Column(modifier = Modifier.safeDrawingPadding()) {
         Button(onClick = {
             state.shown = !state.shown
-        }, modifier = Modifier.testTag("toggle")) {
+        }, modifier = Modifier.testTag("toggle"), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
             Text(text = "t", modifier = Modifier)
         }
         if (state.shown) {
-            Badge(label = "x")
-            Text(text = "y", modifier = Modifier.testTag("label"))
+            Badge(label = "x", __ctx_flexShare = { w: Float -> Modifier.weight(w).fillMaxWidth() })
+            Text(text = "y", modifier = Modifier.testTag("label"), style = LocalTextStyle.current.merge(TextStyle.Default))
         }
     }
 }
 
 @Composable
-fun Badge(label: String = "") {
+fun Badge(label: String = "", __ctx_flexShare: (Float) -> androidx.compose.ui.Modifier) {
     var hits by remember { mutableStateOf(0) }
 
     Button(onClick = {
         hits = (hits + 1)
-    }, modifier = Modifier.testTag("hit")) {
+    }, modifier = Modifier.testTag("hit"), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
         Text(text = ((("hit " + label) + " ") + hits.toString()), modifier = Modifier)
     }
 }
@@ -928,6 +935,6 @@ pass sha256:5db41f9a6bf523b0bdb775603508a582
 -- run/go/gtk4 --
 pass sha256:e8c8641c675cfe0fdbca50bc4566859a
 -- run/kotlin/android --
-pass sha256:76f20c8913171924274cc5c2b6a16a4c
+pass sha256:0985e4f94b7ece4a36ba476545690539
 -- run/none/html --
 pass sha256:0538af5bc1d94cf77c365c1f409bc2f9

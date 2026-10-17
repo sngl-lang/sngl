@@ -343,8 +343,10 @@ import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.Text
-import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.ui.Modifier
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.ui.text.TextStyle
 
 data class Measurement(
     val px: Double = 0.0,
@@ -378,10 +380,10 @@ fun MainScreen() {
             }
         }
         Column {
-            Text(text = ((samebase__inst0).let { __u -> listOf(Pair(__u.px, "px"), Pair(__u.em, "em"), Pair(__u.rem, "rem")).filter { it.first != 0.0 }.joinToString(" + ") { _snglFloatStr(it.first) + it.second }.ifEmpty { "0px" } }), modifier = Modifier.safeDrawingPadding())
-            Text(text = ((reduced__inst0).toString() + "ms"), modifier = Modifier.safeDrawingPadding())
-            Text(text = ((mixed__inst0).let { __u -> listOf(Pair(__u.px, "px"), Pair(__u.em, "em"), Pair(__u.rem, "rem")).filter { it.first != 0.0 }.joinToString(" + ") { _snglFloatStr(it.first) + it.second }.ifEmpty { "0px" } }), modifier = Modifier.safeDrawingPadding())
-            Text(text = ((total__inst0).toString() + "ms"), modifier = Modifier.safeDrawingPadding())
+            Text(text = ((samebase__inst0).let { __u -> listOf(Pair(__u.px, "px"), Pair(__u.em, "em"), Pair(__u.rem, "rem")).filter { it.first != 0.0 }.joinToString(" + ") { _snglFloatStr(it.first) + it.second }.ifEmpty { "0px" } }), modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
+            Text(text = ((reduced__inst0).toString() + "ms"), modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
+            Text(text = ((mixed__inst0).let { __u -> listOf(Pair(__u.px, "px"), Pair(__u.em, "em"), Pair(__u.rem, "rem")).filter { it.first != 0.0 }.joinToString(" + ") { _snglFloatStr(it.first) + it.second }.ifEmpty { "0px" } }), modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
+            Text(text = ((total__inst0).toString() + "ms"), modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
         }
     }
 }
@@ -430,6 +432,6 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:2e1b378c14f07209e8fe74045d254765
 -- run/kotlin/android --
-pass sha256:730f52150e7206f71132093c834b7c8d
+pass sha256:bb4c7e76754af2844f4b850f16c54984
 -- run/none/html --
 pass sha256:8da9195ef7f59c65947c071e6c46de98

@@ -2321,21 +2321,27 @@ func (m *Model) __list_mark(key string, w gtk4rt.Handle) {
 package test.sngl.app
 
 import androidx.compose.ui.semantics.SemanticsPropertyKey
-import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.ui.Modifier
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.foundation.layout.Column
-import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.material3.Button
 import androidx.compose.ui.platform.testTag
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
 import androidx.compose.foundation.layout.Row
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.Alignment
 import androidx.compose.material3.Checkbox
 
@@ -2350,6 +2356,7 @@ val grid: List<List<String>> = listOf(listOf("p", "q"), listOf("r"))
 val SnglCopy = SemanticsPropertyKey<String>("SnglCopy")
 
 class MainScreenState {
+    var __ctx_flexShare by mutableStateOf<(Float) -> androidx.compose.ui.Modifier>({ w: Float -> Modifier.fillMaxSize() })
     val rows = mutableStateListOf(listOf("a", "b"), listOf("c"))
     var evens by mutableStateOf(listOf(0, 2))
     var dots by mutableStateOf(2)
@@ -2363,7 +2370,7 @@ fun MainScreen(state: MainScreenState = remember { MainScreenState() }) {
     Column(modifier = Modifier.safeDrawingPadding()) {
         Button(onClick = {
             (listOf(listOf("d"), listOf("e", "f", "g"))).let { __v -> state.rows.clear(); state.rows.addAll(__v) }
-        }, modifier = Modifier.testTag("swap")) {
+        }, modifier = Modifier.testTag("swap"), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
             Text(text = "swap", modifier = Modifier)
         }
         for ((__copy0, row) in state.rows.withIndex()) {
@@ -2371,10 +2378,10 @@ fun MainScreen(state: MainScreenState = remember { MainScreenState() }) {
                 for ((__copy1, it) in row.withIndex()) {
                     Button(onClick = {
                         state.log = it
-                    }, modifier = Modifier.testTag("cell").then(((__copy0.toString() + "/") + __copy1.toString()).let { __key -> Modifier.semantics { this[SnglCopy] = __key } })) {
+                    }, modifier = Modifier.testTag("cell").then(((__copy0.toString() + "/") + __copy1.toString()).let { __key -> Modifier.semantics { this[SnglCopy] = __key } }), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                         Text(text = it, modifier = Modifier)
                     }
-                    __checkbox_state0(label = it, __copy = ((__copy0.toString() + "/") + __copy1.toString()), onChange = { on ->
+                    __checkbox_state0(label = it, __ctx_flexShare = { w: Float -> Modifier.weight(w).fillMaxHeight() }, __copy = ((__copy0.toString() + "/") + __copy1.toString()), onChange = { on ->
                         state.log = ((it + " ") + on.toString())
                     })
                 }
@@ -2385,7 +2392,7 @@ fun MainScreen(state: MainScreenState = remember { MainScreenState() }) {
                 for ((__copy1, it) in row.withIndex()) {
                     Button(onClick = {
                         state.log = it
-                    }, modifier = Modifier.testTag("pin").then(((__copy0.toString() + "/") + __copy1.toString()).let { __key -> Modifier.semantics { this[SnglCopy] = __key } })) {
+                    }, modifier = Modifier.testTag("pin").then(((__copy0.toString() + "/") + __copy1.toString()).let { __key -> Modifier.semantics { this[SnglCopy] = __key } }), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                         Text(text = it, modifier = Modifier)
                     }
                 }
@@ -2396,7 +2403,7 @@ fun MainScreen(state: MainScreenState = remember { MainScreenState() }) {
                 for ((__copy1, k) in listOf(0, 1).withIndex()) {
                     Button(onClick = {
                         state.log = (r.toString() + k.toString())
-                    }, modifier = Modifier.testTag("tick").then(((__copy0.toString() + "/") + __copy1.toString()).let { __key -> Modifier.semantics { this[SnglCopy] = __key } })) {
+                    }, modifier = Modifier.testTag("tick").then(((__copy0.toString() + "/") + __copy1.toString()).let { __key -> Modifier.semantics { this[SnglCopy] = __key } }), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                         Text(text = (r.toString() + k.toString()), modifier = Modifier)
                     }
                 }
@@ -2408,24 +2415,24 @@ fun MainScreen(state: MainScreenState = remember { MainScreenState() }) {
                 __iterIdx0 += 1
                 Button(onClick = {
                     state.log = e.toString()
-                }, modifier = Modifier.testTag("even").then(__iterIdx0.toString().let { __key -> Modifier.semantics { this[SnglCopy] = __key } })) {
+                }, modifier = Modifier.testTag("even").then(__iterIdx0.toString().let { __key -> Modifier.semantics { this[SnglCopy] = __key } }), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                     Text(text = e.toString(), modifier = Modifier)
                 }
             }
             for ((__copy0, __copyElem0) in (0 until state.dots).withIndex()) {
                 Button(onClick = {
                     state.log = (state.log + ".")
-                }, modifier = Modifier.testTag("dot").then(__copy0.toString().let { __key -> Modifier.semantics { this[SnglCopy] = __key } })) {
+                }, modifier = Modifier.testTag("dot").then(__copy0.toString().let { __key -> Modifier.semantics { this[SnglCopy] = __key } }), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                     Text(text = ".", modifier = Modifier)
                 }
             }
         }
-        Text(text = state.log, modifier = Modifier)
+        Text(text = state.log, modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
     }
 }
 
 @Composable
-fun __checkbox_state0(__start_checked: Boolean = false, label: String, __copy: String = "", onChange: ((Boolean) -> Unit)? = null) {
+fun __checkbox_state0(__start_checked: Boolean = false, label: String, __ctx_flexShare: (Float) -> androidx.compose.ui.Modifier, __copy: String = "", onChange: ((Boolean) -> Unit)? = null) {
     var checked by remember { mutableStateOf(__start_checked) }
 
     Row(modifier = Modifier.testTag("mark").then(__copy.let { __key -> Modifier.semantics { this[SnglCopy] = __key } }), verticalAlignment = Alignment.CenterVertically) {
@@ -2991,6 +2998,6 @@ pass sha256:646543c74b52cfa275b1efd0b339a7a8
 -- run/go/gtk4 --
 pass sha256:fc08723045b896f09cb9045039f1651b
 -- run/kotlin/android --
-pass sha256:3a02bffd495074297bbe1bec60b2fa34
+pass sha256:b78fa7c681b15e3756d51f9622dede68
 -- run/none/html --
 pass sha256:054b736d0dd5abd8086307e786b955c2

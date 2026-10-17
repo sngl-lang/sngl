@@ -860,13 +860,16 @@ import androidx.compose.ui.platform.LocalContext
 import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
-import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.Row
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.Alignment
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Text
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.foundation.layout.fillMaxWidth
 
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
@@ -897,7 +900,7 @@ fun MainScreen() {
                 })
                 Text(text = "alone", modifier = Modifier)
             }
-            Text(text = (if (checked__inst0) "on" else "off"), modifier = Modifier)
+            Text(text = (if (checked__inst0) "on" else "off"), modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
             Row(modifier = Modifier, verticalAlignment = Alignment.CenterVertically) {
                 Checkbox(checked = checked__inst1, onCheckedChange = { on ->
                     checked__inst1 = on
@@ -905,14 +908,14 @@ fun MainScreen() {
                 Text(text = "starts on", modifier = Modifier)
             }
             for (it in items__inst0) {
-                __checkbox_state3(label = it)
+                __checkbox_state3(label = it, __ctx_flexShare = { w: Float -> Modifier.weight(w).fillMaxWidth() })
             }
         }
     }
 }
 
 @Composable
-fun __checkbox_state3(__start_checked: Boolean = false, label: String) {
+fun __checkbox_state3(__start_checked: Boolean = false, label: String, __ctx_flexShare: (Float) -> androidx.compose.ui.Modifier) {
     var checked by remember { mutableStateOf(__start_checked) }
 
     Row(modifier = Modifier, verticalAlignment = Alignment.CenterVertically) {
@@ -1071,6 +1074,6 @@ pass sha256:655dfb02a272d12f4957f54a9deef398
 -- run/go/gtk4 --
 pass sha256:a41236fba7612c7abfa5d98288843ed1
 -- run/kotlin/android --
-pass sha256:5630ced9a0e6f0c8b6debe42f6958c87
+pass sha256:5d6ef00cc90ab5655053a71429501171
 -- run/none/html --
 pass sha256:b8779496cbbf4bac312f49ceb23262d6

@@ -284,8 +284,8 @@ import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.ui.Modifier
 
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
@@ -345,6 +345,6 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/gtk4 --
 pass sha256:fc279347053e0c3858d86356a4e4aecb
 -- run/kotlin/android --
-pass sha256:28c37cf95facdfcda618491aab3e7bbf
+pass sha256:1164ebb94377d4ebeb6a03e5aa392a4f
 -- run/none/html --
 pass sha256:0879ff7e5cdd75bbcc289d54c8a7c1aa

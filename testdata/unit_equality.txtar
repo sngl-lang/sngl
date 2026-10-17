@@ -331,8 +331,10 @@ import androidx.compose.ui.platform.LocalContext
 import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.material3.Text
-import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.ui.Modifier
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.ui.text.TextStyle
 
 data class Measurement(
     val px: Double = 0.0,
@@ -367,7 +369,7 @@ fun MainScreen() {
                 __activity?.finish()
             }
         }
-        Text(text = ((((same__inst0.toString() + " ") + apart__inst0.toString()) + " ") + single__inst0.toString()), modifier = Modifier.safeDrawingPadding())
+        Text(text = ((((same__inst0.toString() + " ") + apart__inst0.toString()) + " ") + single__inst0.toString()), modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
     }
 }
 -- out/none/html/index.html --
@@ -408,6 +410,6 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:73f5899cee1ca6c4c268ac67d464a637
 -- run/kotlin/android --
-pass sha256:1c16c6524cfcca11d86446c03426d7ce
+pass sha256:4ac54a9319805362435e57baaaa8e6c3
 -- run/none/html --
 pass sha256:c7ba55962893031309d866f6604cefed

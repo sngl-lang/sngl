@@ -629,9 +629,11 @@ import androidx.compose.ui.platform.LocalContext
 import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
-import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.ui.Modifier
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
@@ -639,6 +641,8 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.withStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.graphics.Color as ComposeColor
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.ui.text.TextStyle
 
 data class Measurement(
     val px: Double = 0.0,
@@ -709,7 +713,7 @@ fun MainScreen() {
         Column(modifier = Modifier.safeDrawingPadding()) {
             Button(onClick = {
                 pal = Palette(keyword = Color(r = 255, g = 123, b = 114, a = 255), type = Color(r = 255, g = 166, b = 87, a = 255), function = Color(r = 210, g = 168, b = 255, a = 255), constant = Color(r = 121, g = 192, b = 255, a = 255), string = Color(r = 165, g = 214, b = 255, a = 255), number = Color(r = 121, g = 192, b = 255, a = 255), comment = Color(r = 139, g = 148, b = 158, a = 255), plain = Color(a = 0, r = 0, g = 0, b = 0), variable = Color(a = 0, r = 0, g = 0, b = 0), operator = Color(a = 0, r = 0, g = 0, b = 0), punctuation = Color(a = 0, r = 0, g = 0, b = 0))
-            }, modifier = Modifier) {
+            }, modifier = Modifier, colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                 Text(text = "theme", modifier = Modifier)
             }
             Text(text = buildAnnotatedString {
@@ -718,7 +722,7 @@ fun MainScreen() {
                         append("func")
                     }
                 }
-            }, modifier = Modifier)
+            }, modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
         }
     }
 }
@@ -864,6 +868,6 @@ pass sha256:50ad3d5fbea6be79b5c8614600cd3971
 -- run/go/gtk4 --
 pass sha256:4d08ac5ff904730f25fe73a3015552a4
 -- run/kotlin/android --
-pass sha256:95f5b42f3f5c3ba7436a835b4f72aa59
+pass sha256:35e8f7643dc99638ab12209ca8dd11bf
 -- run/none/html --
 pass sha256:d226a21ec189c973db38fbe636e5ad6e

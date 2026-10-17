@@ -601,10 +601,14 @@ import androidx.compose.ui.platform.LocalContext
 import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
-import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.ui.Modifier
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.ui.text.TextStyle
 
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
@@ -631,21 +635,21 @@ fun MainScreen() {
             Button(onClick = {
                 (listOf("one", "two")).let { __v -> rows__inst0.clear(); rows__inst0.addAll(__v) }
                 n__inst0 = 2
-            }, modifier = Modifier) {
+            }, modifier = Modifier, colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                 Text(text = "load", modifier = Modifier)
             }
             if ((rows__inst0.size == 0)) {
-                Text(text = "NOTHING YET", modifier = Modifier)
+                Text(text = "NOTHING YET", modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
             } else {
                 for (row in rows__inst0) {
-                    Text(text = row, modifier = Modifier)
+                    Text(text = row, modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
                 }
             }
             if ((0 >= n__inst0)) {
-                Text(text = "NO TICKS", modifier = Modifier)
+                Text(text = "NO TICKS", modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
             } else {
                 for (__x in 0 until n__inst0) {
-                    Text(text = "tick", modifier = Modifier)
+                    Text(text = "tick", modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
                 }
             }
         }
@@ -855,6 +859,6 @@ pass sha256:a86f9ff63bc75db386fd7984983e4f3f
 -- run/go/gtk4 --
 pass sha256:8093b03dfa0d55914eb421b5168de494
 -- run/kotlin/android --
-pass sha256:1eb6aec7f7a0942572e258713f7d926d
+pass sha256:33599c5d05a3dc7a7f26f8f800750868
 -- run/none/html --
 pass sha256:28242c6206fb309f2eee2d0202e324bb

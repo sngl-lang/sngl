@@ -57,21 +57,30 @@ import androidx.compose.ui.platform.LocalContext
 import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
-import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.Box
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.zIndex
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.height
-import androidx.compose.ui.unit.dp
-import androidx.compose.foundation.background
-import androidx.compose.ui.graphics.Color as ComposeColor
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.border
+import androidx.compose.foundation.background
 
 data class Measurement(
     val px: Double = 0.0,
@@ -153,62 +162,6 @@ fun _snglFloatStr(v: Double): String =
 
 fun _snglSplit(s: String, sep: String): List<String> =
     if (sep.isEmpty()) s.map { it.toString() } else s.split(sep)
-
-fun __merge_Style(base: Style, ov: Style): Style =
-    base.copy(
-        padding = if (ov.padding != Measurement()) ov.padding else base.padding,
-        paddingTop = if (ov.paddingTop != Measurement()) ov.paddingTop else base.paddingTop,
-        paddingRight = if (ov.paddingRight != Measurement()) ov.paddingRight else base.paddingRight,
-        paddingBottom = if (ov.paddingBottom != Measurement()) ov.paddingBottom else base.paddingBottom,
-        paddingLeft = if (ov.paddingLeft != Measurement()) ov.paddingLeft else base.paddingLeft,
-        paddingX = if (ov.paddingX != Measurement()) ov.paddingX else base.paddingX,
-        paddingY = if (ov.paddingY != Measurement()) ov.paddingY else base.paddingY,
-        margin = if (ov.margin != Measurement()) ov.margin else base.margin,
-        marginTop = if (ov.marginTop != Measurement()) ov.marginTop else base.marginTop,
-        marginRight = if (ov.marginRight != Measurement()) ov.marginRight else base.marginRight,
-        marginBottom = if (ov.marginBottom != Measurement()) ov.marginBottom else base.marginBottom,
-        marginLeft = if (ov.marginLeft != Measurement()) ov.marginLeft else base.marginLeft,
-        marginX = if (ov.marginX != Measurement()) ov.marginX else base.marginX,
-        marginY = if (ov.marginY != Measurement()) ov.marginY else base.marginY,
-        gap = if (ov.gap != Measurement()) ov.gap else base.gap,
-        width = if (ov.width != Measurement()) ov.width else base.width,
-        minWidth = if (ov.minWidth != Measurement()) ov.minWidth else base.minWidth,
-        height = if (ov.height != Measurement()) ov.height else base.height,
-        maxWidth = if (ov.maxWidth != Measurement()) ov.maxWidth else base.maxWidth,
-        maxHeight = if (ov.maxHeight != Measurement()) ov.maxHeight else base.maxHeight,
-        flex = if (ov.flex != 0.0) ov.flex else base.flex,
-        flexDirection = if (ov.flexDirection != SnglFlexDirection.ROW) ov.flexDirection else base.flexDirection,
-        alignItems = if (ov.alignItems != SnglAlignment.START) ov.alignItems else base.alignItems,
-        justifyContent = if (ov.justifyContent != SnglJustification.START) ov.justifyContent else base.justifyContent,
-        position = if (ov.position != SnglPosition.STATIC) ov.position else base.position,
-        top = if (ov.top != Measurement()) ov.top else base.top,
-        bottom = if (ov.bottom != Measurement()) ov.bottom else base.bottom,
-        left = if (ov.left != Measurement()) ov.left else base.left,
-        right = if (ov.right != Measurement()) ov.right else base.right,
-        zIndex = if (ov.zIndex != 0) ov.zIndex else base.zIndex,
-        color = if (ov.color != Color()) ov.color else base.color,
-        fontSize = if (ov.fontSize != Measurement()) ov.fontSize else base.fontSize,
-        fontFamily = if (ov.fontFamily != "") ov.fontFamily else base.fontFamily,
-        fontWeight = if (ov.fontWeight != SnglFontWeight.NORMAL) ov.fontWeight else base.fontWeight,
-        fontStyle = if (ov.fontStyle != SnglFontStyle.NORMAL) ov.fontStyle else base.fontStyle,
-        textAlign = if (ov.textAlign != SnglTextAlign.LEFT) ov.textAlign else base.textAlign,
-        maxLines = if (ov.maxLines != 0) ov.maxLines else base.maxLines,
-        whiteSpace = if (ov.whiteSpace != SnglWhiteSpace.NORMAL) ov.whiteSpace else base.whiteSpace,
-        background = if (ov.background != Color()) ov.background else base.background,
-        borderRadius = if (ov.borderRadius != Measurement()) ov.borderRadius else base.borderRadius,
-        borderColor = if (ov.borderColor != Color()) ov.borderColor else base.borderColor,
-        borderWidth = if (ov.borderWidth != Measurement()) ov.borderWidth else base.borderWidth,
-        border = if (ov.border != "") ov.border else base.border,
-        borderBottom = if (ov.borderBottom != "") ov.borderBottom else base.borderBottom,
-        borderLeft = if (ov.borderLeft != "") ov.borderLeft else base.borderLeft,
-        borderCollapse = if (ov.borderCollapse != "") ov.borderCollapse else base.borderCollapse,
-        borderStyle = if (ov.borderStyle != SnglBorderStyle.NONE) ov.borderStyle else base.borderStyle,
-        opacity = if (ov.opacity != 0.0) ov.opacity else base.opacity,
-        cursor = if (ov.cursor != "") ov.cursor else base.cursor,
-        display = if (ov.display != SnglDisplay.FLEX) ov.display else base.display,
-        overflow = if (ov.overflow != SnglOverflow.VISIBLE) ov.overflow else base.overflow,
-        listStyleType = if (ov.listStyleType != SnglListStyle.NONE) ov.listStyleType else base.listStyleType,
-    )
 
 enum class SnglFlexDirection(private val sngl: String) {
     ROW("row"),
@@ -366,18 +319,18 @@ fun MainScreen() {
                 }
             }
             for ((i, r) in rows.withIndex()) {
-                __select_state0(placeholder = r, options = listOf(Choice__record(label = "x"), Choice__record(label = "y")), onChange = { v ->
+                __select_state0(placeholder = r, options = listOf(Choice__record(label = "x"), Choice__record(label = "y")), __ctx_flexShare = { w: Float -> Modifier.weight(w).fillMaxWidth() }, onChange = { v ->
                     picks[i] = v
                 })
             }
             if (shown) {
-                Select(value = one, options = listOf(Choice__record(label = "z")), onValue = { __value ->
+                Select(value = one, options = listOf(Choice__record(label = "z")), __ctx_flexShare = { w: Float -> Modifier.weight(w).fillMaxWidth() }, onValue = { __value ->
                     one = __value
                 })
             }
             Button(onClick = {
                 shown = !shown
-            }, modifier = Modifier) {
+            }, modifier = Modifier, colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                 Text(text = "t", modifier = Modifier)
             }
         }
@@ -385,10 +338,10 @@ fun MainScreen() {
 }
 
 @Composable
-fun Select(placeholder: String = "", value: String, disabled: Boolean = false, multiple: Boolean = false, focusable: Boolean = true, style: Style = Style(), options: List<Choice__record> = listOf<Choice__record>(), slotContent: (@Composable () -> Unit)? = null, onChange: ((String) -> Unit)? = null, onFocus: (() -> Unit)? = null, onBlur: (() -> Unit)? = null, onValue: ((String) -> Unit)? = null) {
+fun Select(placeholder: String = "", value: String, disabled: Boolean = false, multiple: Boolean = false, focusable: Boolean = true, style: Style = Style(), options: List<Choice__record> = listOf<Choice__record>(), __ctx_flexShare: (Float) -> androidx.compose.ui.Modifier, slotContent: (@Composable () -> Unit)? = null, onChange: ((String) -> Unit)? = null, onFocus: (() -> Unit)? = null, onBlur: (() -> Unit)? = null, onValue: ((String) -> Unit)? = null) {
     var expanded by remember { mutableStateOf(false) }
 
-    Box(modifier = Modifier.snglStyle(__merge_Style(Style(), style))) {
+    Box(modifier = (if ((style.flex == 0.0)) (if ((style == Style())) Modifier else styleModifier(style, true)) else (if ((style == Style())) Modifier else styleModifier(style, true)).then(__ctx_flexShare(style.flex.toFloat())))) {
         OutlinedButton(onClick = {
             expanded = true
         }) {
@@ -411,7 +364,7 @@ fun Select(placeholder: String = "", value: String, disabled: Boolean = false, m
 }
 
 @Composable
-fun __select_state0(__start_value: String = "", placeholder: String, options: List<Choice__record>, onChange: ((String) -> Unit)? = null) {
+fun __select_state0(__start_value: String = "", placeholder: String, options: List<Choice__record>, __ctx_flexShare: (Float) -> androidx.compose.ui.Modifier, onChange: ((String) -> Unit)? = null) {
     var value by remember { mutableStateOf(__start_value) }
     var expanded__inst1 by remember { mutableStateOf(false) }
 
@@ -436,19 +389,54 @@ fun __select_state0(__start_value: String = "", placeholder: String, options: Li
         }
     }
 }
-fun Modifier.snglStyle(s: Style, withBackground: Boolean = true): Modifier {
-    var m = this
-    if (s.padding != Measurement()) m = m.padding(s.padding.px.dp)
-    if (s.paddingTop != Measurement()) m = m.padding(top = s.paddingTop.px.dp)
-    if (s.paddingBottom != Measurement()) m = m.padding(bottom = s.paddingBottom.px.dp)
-    if (s.paddingLeft != Measurement()) m = m.padding(start = s.paddingLeft.px.dp)
-    if (s.paddingRight != Measurement()) m = m.padding(end = s.paddingRight.px.dp)
-    if (s.width != Measurement()) m = m.width(s.width.px.dp)
-    if (s.height != Measurement()) m = m.height(s.height.px.dp)
-    if (withBackground && s.background != Color()) m = m.background(ComposeColor(s.background.r, s.background.g, s.background.b, s.background.a))
-    if (s.opacity != 0.0) m = m.alpha(s.opacity.toFloat())
+
+fun styleModifier(s: Style, paints: Boolean): androidx.compose.ui.Modifier {
+    var m: androidx.compose.ui.Modifier = Modifier
+    var top = (if ((s.marginTop != Measurement(px = 0.0))) s.marginTop else (if ((s.marginY != Measurement(px = 0.0))) s.marginY else s.margin))
+    var right = (if ((s.marginRight != Measurement(px = 0.0))) s.marginRight else (if ((s.marginX != Measurement(px = 0.0))) s.marginX else s.margin))
+    var bottom = (if ((s.marginBottom != Measurement(px = 0.0))) s.marginBottom else (if ((s.marginY != Measurement(px = 0.0))) s.marginY else s.margin))
+    var left = (if ((s.marginLeft != Measurement(px = 0.0))) s.marginLeft else (if ((s.marginX != Measurement(px = 0.0))) s.marginX else s.margin))
+    if (((((top != Measurement(px = 0.0)) || (right != Measurement(px = 0.0))) || (bottom != Measurement(px = 0.0))) || (left != Measurement(px = 0.0)))) {
+    	m = m.padding(Dp(((if (((left.px + (16.0 * (left.em + left.rem))) < 0.0)) 0.0 else (left.px + (16.0 * (left.em + left.rem)))) + 0.0).toFloat()), Dp(((if (((top.px + (16.0 * (top.em + top.rem))) < 0.0)) 0.0 else (top.px + (16.0 * (top.em + top.rem)))) + 0.0).toFloat()), Dp(((if (((right.px + (16.0 * (right.em + right.rem))) < 0.0)) 0.0 else (right.px + (16.0 * (right.em + right.rem)))) + 0.0).toFloat()), Dp(((if (((bottom.px + (16.0 * (bottom.em + bottom.rem))) < 0.0)) 0.0 else (bottom.px + (16.0 * (bottom.em + bottom.rem)))) + 0.0).toFloat()))
+    }
+    if ((s.zIndex != 0)) {
+    	m = m.zIndex(s.zIndex.toFloat())
+    }
+    if (((s.minWidth != Measurement(px = 0.0)) || (s.maxWidth != Measurement(px = 0.0)))) {
+    	m = m.widthIn((if ((s.minWidth != Measurement(px = 0.0))) Dp((s.minWidth.px + (16.0 * (s.minWidth.em + s.minWidth.rem))).toFloat()) else Dp.Unspecified), (if ((s.maxWidth != Measurement(px = 0.0))) Dp((s.maxWidth.px + (16.0 * (s.maxWidth.em + s.maxWidth.rem))).toFloat()) else Dp.Unspecified))
+    }
+    if ((s.maxHeight != Measurement(px = 0.0))) {
+    	m = m.heightIn(Dp.Unspecified, Dp((s.maxHeight.px + (16.0 * (s.maxHeight.em + s.maxHeight.rem))).toFloat()))
+    }
+    if ((s.width != Measurement(px = 0.0))) {
+    	m = m.width(Dp((s.width.px + (16.0 * (s.width.em + s.width.rem))).toFloat()))
+    }
+    if ((s.height != Measurement(px = 0.0))) {
+    	m = m.height(Dp((s.height.px + (16.0 * (s.height.em + s.height.rem))).toFloat()))
+    }
+    if ((s.opacity != 0.0)) {
+    	m = m.alpha(s.opacity.toFloat())
+    }
+    var shape: androidx.compose.ui.graphics.Shape = (if ((s.borderRadius == Measurement(px = 0.0))) RectangleShape else RoundedCornerShape(Dp((s.borderRadius.px + (16.0 * (s.borderRadius.em + s.borderRadius.rem))).toFloat())))
+    if ((s.borderRadius != Measurement(px = 0.0))) {
+    	m = m.clip(shape)
+    }
+    var edge = 0.0
+    if ((s.borderWidth != Measurement(px = 0.0))) {
+    	edge = (s.borderWidth.px + (16.0 * (s.borderWidth.em + s.borderWidth.rem)))
+    	m = m.border(Dp((s.borderWidth.px + (16.0 * (s.borderWidth.em + s.borderWidth.rem))).toFloat()), androidx.compose.ui.graphics.Color(red = (if ((s.borderColor != Color())) s.borderColor else s.color).r.toInt(), green = (if ((s.borderColor != Color())) s.borderColor else s.color).g.toInt(), blue = (if ((s.borderColor != Color())) s.borderColor else s.color).b.toInt(), alpha = (if ((s.borderColor != Color())) s.borderColor else s.color).a.toInt()), shape)
+    }
+    if ((paints && (s.background != Color()))) {
+    	m = m.background(androidx.compose.ui.graphics.Color(red = s.background.r.toInt(), green = s.background.g.toInt(), blue = s.background.b.toInt(), alpha = s.background.a.toInt()), shape)
+    }
+    top = (if ((s.paddingTop != Measurement(px = 0.0))) s.paddingTop else (if ((s.paddingY != Measurement(px = 0.0))) s.paddingY else s.padding))
+    right = (if ((s.paddingRight != Measurement(px = 0.0))) s.paddingRight else (if ((s.paddingX != Measurement(px = 0.0))) s.paddingX else s.padding))
+    bottom = (if ((s.paddingBottom != Measurement(px = 0.0))) s.paddingBottom else (if ((s.paddingY != Measurement(px = 0.0))) s.paddingY else s.padding))
+    left = (if ((s.paddingLeft != Measurement(px = 0.0))) s.paddingLeft else (if ((s.paddingX != Measurement(px = 0.0))) s.paddingX else s.padding))
+    if ((((((edge != 0.0) || (top != Measurement(px = 0.0))) || (right != Measurement(px = 0.0))) || (bottom != Measurement(px = 0.0))) || (left != Measurement(px = 0.0)))) {
+    	m = m.padding(Dp(((if (((left.px + (16.0 * (left.em + left.rem))) < 0.0)) 0.0 else (left.px + (16.0 * (left.em + left.rem)))) + edge).toFloat()), Dp(((if (((top.px + (16.0 * (top.em + top.rem))) < 0.0)) 0.0 else (top.px + (16.0 * (top.em + top.rem)))) + edge).toFloat()), Dp(((if (((right.px + (16.0 * (right.em + right.rem))) < 0.0)) 0.0 else (right.px + (16.0 * (right.em + right.rem)))) + edge).toFloat()), Dp(((if (((bottom.px + (16.0 * (bottom.em + bottom.rem))) < 0.0)) 0.0 else (bottom.px + (16.0 * (bottom.em + bottom.rem)))) + edge).toFloat()))
+    }
     return m
 }
-
 -- run/kotlin/android --
-pass sha256:1cf048e513196cef1219a003d857d38b
+pass sha256:822477afdfe3bb8d29fbb7c21aeda0f9

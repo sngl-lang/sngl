@@ -44,6 +44,8 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material3.Text
 import androidx.compose.ui.Modifier
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.ui.text.TextStyle
 
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
@@ -65,9 +67,9 @@ fun MainScreen() {
             }
         }
         SelectionContainer() {
-            Text(text = "copy me", modifier = Modifier)
+            Text(text = "copy me", modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
         }
     }
 }
 -- run/kotlin/android --
-pass sha256:1107f118f36afc7b8814ee5956bc692f
+pass sha256:3154dcd20654525d81f9b5d79a45498c

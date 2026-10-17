@@ -937,10 +937,14 @@ import androidx.compose.ui.platform.LocalContext
 import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
-import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.ui.Modifier
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.ui.text.TextStyle
 
 data class Row(
     var items: List<Int> = listOf(),
@@ -1069,30 +1073,30 @@ fun MainScreen() {
                 xs__inst0[1] = xs__inst0[1].copy(items = xs__inst0[1].items.toMutableList().also { it.add(5) })
                 __effect0_note_append(1)
                 __effects0_settle()
-            }, modifier = Modifier.safeDrawingPadding()) {
+            }, modifier = Modifier.safeDrawingPadding(), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                 Text(text = "grow", modifier = Modifier)
             }
             Button(onClick = {
                 xs__inst0[1] = xs__inst0[1].copy(items = listOf(2))
                 __effect0_note_mark(1)
                 __effects0_settle()
-            }, modifier = Modifier.safeDrawingPadding()) {
+            }, modifier = Modifier.safeDrawingPadding(), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                 Text(text = "same", modifier = Modifier)
             }
             Button(onClick = {
                 xs__inst0.add(Row(items = listOf<Int>(), n = 0))
                 __effects0_settle()
-            }, modifier = Modifier.safeDrawingPadding()) {
+            }, modifier = Modifier.safeDrawingPadding(), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                 Text(text = "push", modifier = Modifier)
             }
             Button(onClick = {
                 __effect0_note_shift(0)
                 run { val __l = xs__inst0; val __i = 0; if (__i >= 0 && __i <= __l.size) __l.add(__i, Row(items = listOf(9), n = 0)) }
                 __effects0_settle()
-            }, modifier = Modifier.safeDrawingPadding()) {
+            }, modifier = Modifier.safeDrawingPadding(), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                 Text(text = "first", modifier = Modifier)
             }
-            Text(text = log__inst0.joinToString(","), modifier = Modifier.safeDrawingPadding())
+            Text(text = log__inst0.joinToString(","), modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
         }
     }
 }
@@ -1255,6 +1259,6 @@ pass sha256:e1055289e2cae79715d0f8100297a5af
 -- run/go/gtk4 --
 pass sha256:4d38e8915bc294f9e9b0c7726353d685
 -- run/kotlin/android --
-pass sha256:f10e8d5f78a1ddef1e100ec58a974943
+pass sha256:21c877e3fbabeef56f773fe370e1d9f1
 -- run/none/html --
 pass sha256:73acd352c4bab0db689a61d559f28679

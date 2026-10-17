@@ -533,9 +533,13 @@ import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.Text
-import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.ui.Modifier
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.foundation.shape.CircleShape
 
 data class Box__int(
     var inner: __anon_v_853006 = __anon_v_853006(),
@@ -636,10 +640,10 @@ fun MainScreen() {
             }
         }
         Column {
-            Text(text = (((((((((((((((unwrap__int(__anon_v_853006(v = 1)) + 1).toString() + " ") + unwrap__string(wrap__string("w"))) + " ") + Box__int_get__int(box).toString()) + " ") + box.all[0].v.toString()) + " ") + outer.o.v.toString()) + " ") + (opt.v == 3).toString()) + " ") + (absent.v == null).toString()) + " ") + nums.v.size.toString()), modifier = Modifier.safeDrawingPadding())
+            Text(text = (((((((((((((((unwrap__int(__anon_v_853006(v = 1)) + 1).toString() + " ") + unwrap__string(wrap__string("w"))) + " ") + Box__int_get__int(box).toString()) + " ") + box.all[0].v.toString()) + " ") + outer.o.v.toString()) + " ") + (opt.v == 3).toString()) + " ") + (absent.v == null).toString()) + " ") + nums.v.size.toString()), modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
             Button(onClick = {
                 got = __anon_v_853006(v = held__inst0.v).v
-            }, modifier = Modifier.safeDrawingPadding()) {
+            }, modifier = Modifier.safeDrawingPadding(), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                 Text(text = "pick", modifier = Modifier)
             }
             Button(onClick = {
@@ -648,7 +652,7 @@ fun MainScreen() {
                 absent = (__anon_v_10e6ee(v = n)).copy()
                 nums = nums.copy(v = nums.v.toMutableList().also { it.add(n) })
                 n = (n + 1)
-            }, modifier = Modifier.safeDrawingPadding()) {
+            }, modifier = Modifier.safeDrawingPadding(), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                 Text(text = "go", modifier = Modifier)
             }
         }
@@ -751,6 +755,6 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:e2fda53d8f03c609e16264cd5546ac8b
 -- run/kotlin/android --
-pass sha256:0b3f8d076391d1ec86a61da945ae52e2
+pass sha256:1d7d04905cfaa76ff352a2f7d6d694cb
 -- run/none/html --
 pass sha256:a12fb5b902e6fd9e85b7e02051196e52

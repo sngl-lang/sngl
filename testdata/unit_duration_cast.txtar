@@ -274,8 +274,10 @@ import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.Text
-import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.ui.Modifier
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.ui.text.TextStyle
 
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
@@ -301,13 +303,13 @@ fun MainScreen() {
             }
         }
         Column {
-            Text(text = ("i " + d__inst0.toInt().toString()), modifier = Modifier.safeDrawingPadding())
-            Text(text = ("f " + _snglFloatStr(d__inst0.toDouble())), modifier = Modifier.safeDrawingPadding())
-            Text(text = ("sum " + (d__inst0 + 100L).toInt().toString()), modifier = Modifier.safeDrawingPadding())
-            Text(text = ("secs " + (d__inst0 + 1000L).toInt().toString()), modifier = Modifier.safeDrawingPadding())
-            Text(text = ("scaled " + (d__inst0 * 2).toInt().toString()), modifier = Modifier.safeDrawingPadding())
-            Text(text = ("built " + (one__inst0 * n__inst0).toInt().toString()), modifier = Modifier.safeDrawingPadding())
-            Text(text = ((("halved " + _snglFloatStr((one__inst0 * half__inst0).toDouble())) + " ") + _snglFloatStr((d__inst0 * 1.5).toDouble())), modifier = Modifier.safeDrawingPadding())
+            Text(text = ("i " + d__inst0.toInt().toString()), modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
+            Text(text = ("f " + _snglFloatStr(d__inst0.toDouble())), modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
+            Text(text = ("sum " + (d__inst0 + 100L).toInt().toString()), modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
+            Text(text = ("secs " + (d__inst0 + 1000L).toInt().toString()), modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
+            Text(text = ("scaled " + (d__inst0 * 2).toInt().toString()), modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
+            Text(text = ("built " + (one__inst0 * n__inst0).toInt().toString()), modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
+            Text(text = ((("halved " + _snglFloatStr((one__inst0 * half__inst0).toDouble())) + " ") + _snglFloatStr((d__inst0 * 1.5).toDouble())), modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
         }
     }
 }
@@ -369,6 +371,6 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:56a8949e374e3078e7edc0b55651991f
 -- run/kotlin/android --
-pass sha256:c7111a495177893e4cf271a0c7def0f0
+pass sha256:23842773a93ea1fa9e626da21fa17b27
 -- run/none/html --
 pass sha256:c0172f14de6b2a71b3dd8035c7bd9b05

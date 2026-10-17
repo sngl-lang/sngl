@@ -619,9 +619,12 @@ import androidx.compose.ui.platform.LocalContext
 import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
-import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.ui.Modifier
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
 
 fun _snglFloatStr(v: Double): String =
@@ -647,20 +650,20 @@ fun MainScreen() {
         }
         Column(modifier = Modifier.safeDrawingPadding()) {
             for (l in labels) {
-                Counter(label = l)
+                Counter(label = l, __ctx_flexShare = { w: Float -> Modifier.weight(w).fillMaxWidth() })
             }
         }
     }
 }
 
 @Composable
-fun Counter(label: String = "") {
+fun Counter(label: String = "", __ctx_flexShare: (Float) -> androidx.compose.ui.Modifier) {
     var hits by remember { mutableStateOf(0) }
 
     Button(onClick = {
         hits = (hits + 1)
         hits = (hits % 10)
-    }, modifier = Modifier) {
+    }, modifier = Modifier, colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
         Text(text = ((label + " ") + hits.toString()), modifier = Modifier)
     }
 }
@@ -779,6 +782,6 @@ pass sha256:440f6d8184e1637e7a4a41fb5ab485d1
 -- run/go/gtk4 --
 pass sha256:3ec17d2563d1f01c678d10ef651a1583
 -- run/kotlin/android --
-pass sha256:8a988825006555dbc27ffeb2b336aa4c
+pass sha256:8c0141170558e750336b11d1686187fa
 -- run/none/html --
 pass sha256:422f14c544d1cbe6db47f98f90d49098

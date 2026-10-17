@@ -987,10 +987,15 @@ import androidx.compose.ui.platform.LocalContext
 import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
-import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.ui.Modifier
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.ui.text.TextStyle
 
 data class ErrorEvent(val message: String = "", val kind: String = "")
 
@@ -1023,24 +1028,24 @@ fun MainScreen() {
         Column(modifier = Modifier.safeDrawingPadding()) {
             Button(onClick = {
                 depth = (depth + 1)
-            }, modifier = Modifier) {
+            }, modifier = Modifier, colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                 Text(text = "deeper", modifier = Modifier)
             }
-            Frame(n = depth, __depth = 0, label = { d ->
-                Text(text = ((("level " + describe(d)) + " of ") + depth.toString()), modifier = Modifier)
+            Frame(n = depth, __ctx_flexShare = { w: Float -> Modifier.weight(w).fillMaxWidth() }, __depth = 0, label = { d ->
+                Text(text = ((("level " + describe(d)) + " of ") + depth.toString()), modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
             })
         }
     }
 }
 
 @Composable
-fun Frame(n: Int = 0, __depth: Int = 0, label: (@Composable (Int) -> Unit)? = null) {
+fun Frame(n: Int = 0, __ctx_flexShare: (Float) -> androidx.compose.ui.Modifier, __depth: Int = 0, label: (@Composable (Int) -> Unit)? = null) {
     Column(modifier = Modifier) {
         label?.invoke(n)
         if ((n > 0)) {
             if ((__depth >= 512)) {
             } else {
-                Frame(n = (n - 1), __depth = (__depth + 1), label = { d ->
+                Frame(n = (n - 1), __ctx_flexShare = { w: Float -> Modifier.weight(w).fillMaxWidth() }, __depth = (__depth + 1), label = { d ->
                     label?.invoke(d)
                 })
             }
@@ -1308,6 +1313,6 @@ pass sha256:ba15fedcde9ee7fbc00e14d3b1cf059d
 -- run/go/gtk4 --
 pass sha256:e58be028cada5575ccf6d0371dcac02d
 -- run/kotlin/android --
-pass sha256:9b81985d611382ff949fedc255f0ae38
+pass sha256:6701d3a8ca7f04bf39a150e41f99a5e7
 -- run/none/html --
 pass sha256:1106bb612afae6aa5c8cd080a5bfed55

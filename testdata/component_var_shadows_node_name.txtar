@@ -684,10 +684,12 @@ import androidx.compose.ui.platform.LocalContext
 import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
-import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.ui.Modifier
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Text
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.ui.text.TextStyle
 
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
@@ -713,7 +715,7 @@ fun MainScreen() {
             LinearProgressIndicator(progress = fun(): Float {
                 return (progress__inst0 / 1.0).toFloat()
             }, modifier = Modifier)
-            Text(text = _snglFloatStr(progress__inst0), modifier = Modifier)
+            Text(text = _snglFloatStr(progress__inst0), modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
         }
     }
 }
@@ -826,6 +828,6 @@ pass sha256:01d6c8e75c67a3662f9b9a4dbf590910
 -- run/go/gtk4 --
 pass sha256:b5d4fadbb2df5c5145a3a73e0a77e89e
 -- run/kotlin/android --
-pass sha256:1656784ad20d65497bf75239140c166b
+pass sha256:939f656de216aaa1a7e51a4af58e017b
 -- run/none/html --
 pass sha256:f9ce9c55b4a6a2ebf5840b45aa0673ac

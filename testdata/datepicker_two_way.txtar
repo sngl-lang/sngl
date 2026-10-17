@@ -778,10 +778,12 @@ import androidx.compose.ui.platform.LocalContext
 import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
-import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.material3.Text
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.ui.text.TextStyle
 
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
@@ -809,7 +811,7 @@ fun MainScreen() {
                 picked__inst0 = v
                 changes__inst0 += 1
             })
-            Text(text = (if ((picked__inst0 != null)) picked__inst0!!.toString() else "none"), modifier = Modifier)
+            Text(text = (if ((picked__inst0 != null)) picked__inst0!!.toString() else "none"), modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
         }
     }
 }
@@ -950,6 +952,6 @@ pass sha256:fe601aba4571496d0b2b8851461872f4
 -- run/go/gtk4 --
 pass sha256:c40a5e40b3a7e274e501124ff0eebdca
 -- run/kotlin/android --
-pass sha256:55d388f0330aff011e985b915c03281c
+pass sha256:c530c691e3a12d52429748c8a05b18de
 -- run/none/html --
 pass sha256:031f772045d960a22cd5ce09a09e4fa5

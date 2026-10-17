@@ -374,9 +374,11 @@ import androidx.compose.ui.platform.LocalContext
 import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
-import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.ui.Modifier
 import androidx.compose.material3.Text
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.ui.text.TextStyle
 
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
@@ -399,8 +401,8 @@ fun MainScreen() {
             }
         }
         Column(modifier = Modifier.safeDrawingPadding()) {
-            Text(text = name, modifier = Modifier)
-            Text(text = "light", modifier = Modifier)
+            Text(text = name, modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
+            Text(text = "light", modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
         }
     }
 }
@@ -411,4 +413,4 @@ pass sha256:e36a5e2896438528e3c077490b08d907
 -- run/go/gtk4 --
 pass sha256:c014de2f1a102c159871e144fd4411eb
 -- run/kotlin/android --
-pass sha256:516b68a57cb2f70c7c3bd698f17edb47
+pass sha256:21246d251175ab1666efdf6c4313b3a1

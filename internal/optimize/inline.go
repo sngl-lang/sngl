@@ -862,3 +862,28 @@ func repointRedraws(orig, cp []ir.Stmt) {
 	}
 	repoint(cp)
 }
+
+// inlineLambdaCall replaces a call of a function literal with its result,
+// where the literal is the callee as written: a closure a context provided,
+// called where the context was read. The body runs where the call did, once,
+// so what has to hold is what inlineCall asks of the arguments, and of a body
+// reading a context: a literal reads the one where it was written.
+func inlineLambdaCall(call *ir.Call) ir.Expr {
+	lam, ok := call.Callee.(*ir.Lambda)
+	if !ok || call.Func != nil || lam.Func == nil || len(lam.Func.Block) != 1 || len(call.Args) != len(lam.Func.Params) {
+		return nil
+	}
+	ret, ok := lam.Func.Block[0].(*ir.Return)
+	if !ok || ret.Value == nil || containsContextRead(ret.Value) {
+		return nil
+	}
+	subs := make(map[*ir.Param]ir.Expr, len(call.Args))
+	for i, p := range lam.Func.Params {
+		arg := call.Args[i].Value
+		if !effectFree(arg) && paramReads(ret.Value, p) != 1 {
+			return nil
+		}
+		subs[p] = arg
+	}
+	return substituteParams(cloneExpr(ret.Value), subs)
+}

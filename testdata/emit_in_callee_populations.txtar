@@ -988,11 +988,16 @@ import androidx.compose.ui.platform.LocalContext
 import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
-import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.ui.Modifier
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.Row
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.ui.text.TextStyle
 
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
@@ -1019,41 +1024,41 @@ fun MainScreen() {
         }
         Column(modifier = Modifier.safeDrawingPadding()) {
             for (x in xs) {
-                Picker(onPicked = { v ->
+                Picker(__ctx_flexShare = { w: Float -> Modifier.weight(w).fillMaxWidth() }, onPicked = { v ->
                     got = (v + x)
                 })
             }
             Row(modifier = Modifier) {
                 Button(onClick = {
                     got = 8
-                }, modifier = Modifier) {
+                }, modifier = Modifier, colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                     Text(text = "done", modifier = Modifier)
                 }
             }
             Column(modifier = Modifier) {
-                Text(text = ("opened " + opened__inst0.toString()), modifier = Modifier)
+                Text(text = ("opened " + opened__inst0.toString()), modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
                 Button(onClick = {
                     got = 9
-                }, modifier = Modifier) {
+                }, modifier = Modifier, colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                     Text(text = ("named " + hits__inst0.toString()), modifier = Modifier)
                 }
             }
-            Text(text = ("got=" + got.toString()), modifier = Modifier)
+            Text(text = ("got=" + got.toString()), modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
         }
     }
 }
 
 @Composable
-fun Picker(onPicked: ((Int) -> Unit)? = null) {
+fun Picker(__ctx_flexShare: (Float) -> androidx.compose.ui.Modifier, onPicked: ((Int) -> Unit)? = null) {
     var taps by remember { mutableStateOf(0) }
     var width__inst0 by remember { mutableStateOf(1) }
 
     Row(modifier = Modifier) {
-        Text(text = ("w" + width__inst0.toString()), modifier = Modifier)
+        Text(text = ("w" + width__inst0.toString()), modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
         Button(onClick = {
             taps = (taps + 1)
             onPicked?.invoke(7)
-        }, modifier = Modifier) {
+        }, modifier = Modifier, colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
             Text(text = ("tap " + taps.toString()), modifier = Modifier)
         }
     }
@@ -1224,6 +1229,6 @@ pass sha256:be16a61765da9ba5a4dc4b6e0ffff3b2
 -- run/go/gtk4 --
 pass sha256:ab0d9be3f9be19ab5a86972cd6467972
 -- run/kotlin/android --
-pass sha256:4818d7ba061034f5b32f062d93fedf5c
+pass sha256:49e1b0084a724cac6e0ec058cc99e430
 -- run/none/html --
 pass sha256:6e5060aa3944a920827f315beba24675

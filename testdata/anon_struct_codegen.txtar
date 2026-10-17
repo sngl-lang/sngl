@@ -414,8 +414,10 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.material3.Text
-import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.ui.Modifier
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.ui.text.TextStyle
 
 data class __anon_a_b_8dc8a4(
     var a: Int = 0,
@@ -464,10 +466,10 @@ fun MainScreen() {
                 onDispose {
                 }
             }
-            Text(text = total__inst0.toString(), modifier = Modifier.safeDrawingPadding())
-            Text(text = pair__inst0.a.toString(), modifier = Modifier.safeDrawingPadding())
-            Text(text = ((pair__inst0.a + pair__inst0.b) + 0).toString(), modifier = Modifier.safeDrawingPadding())
-            Text(text = mounts__inst0.toString(), modifier = Modifier.safeDrawingPadding())
+            Text(text = total__inst0.toString(), modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
+            Text(text = pair__inst0.a.toString(), modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
+            Text(text = ((pair__inst0.a + pair__inst0.b) + 0).toString(), modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
+            Text(text = mounts__inst0.toString(), modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
         }
     }
 }
@@ -566,6 +568,6 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:c20c6a2e6462ddf15491a1c5607b66e0
 -- run/kotlin/android --
-pass sha256:e2cb8b19b925bc9b6d2c8d9541bb29e4
+pass sha256:d63f4920be9bd43653abd8a5f01ae65d
 -- run/none/html --
 pass sha256:ff67317c5570fac83443f0f2a9f08d97

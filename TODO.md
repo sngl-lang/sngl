@@ -25,16 +25,15 @@ What each platform answers today:
 | Platform  | Fields it maps (of 52)                                     |
 |-----------|------------------------------------------------------------|
 | html      | all, to the CSS property of the same name                  |
-| android   | ~20                                                        |
+| android   | done in SNGL (style.sngl); `unstyled` lists the rest       |
 | bubbletea | ~25; a `Widget` drops its style whole                      |
 | fyne      | ~9, through theme overrides and the flex layout            |
 | gtk4      | none; only a markup flow reads color, size, family, weight |
 
 The places to read first: `codegen/iterate.go` (`NodeStyleFieldsOf`, which
-decides literal vs held), `codegen/measurement.go`, android's
-`compose_ir.go` (`modifierRawExcept`, `composeModifier`, `textStyleExpr`,
-`buttonColorsExpr`, `cornerShapeExpr`, `flexModifier`) and `style_value.go`,
-bubbletea's `view_ir.go` (`irStyleCall`) and `style_value.go`, fyne's
+decides literal vs held), `codegen/measurement.go`, android's finished
+`lib/platform/android/style.sngl` as the pattern, bubbletea's `view_ir.go`
+(`irStyleCall`) and `style_value.go`, fyne's
 `spec.go`, `layout.go`, `theme.go` and `pkg/go/fynetheme`, gtk4's
 `intrinsic_translator.go` (`stylePropName`) and `markup.go` (`flowTags`),
 and `internal/htmlutil/style.go`.
@@ -81,7 +80,13 @@ Each is a commit series on the branch; one MR, so CI runs once.
    written on android, both dropped today. Then `modifier`, `textStyle`,
    `buttonColors` and `shape` functions in `lib/platform/android/style.sngl`,
    the axis context on vbox/hbox, the overrides calling them, and the Go
-   above deleted.
+   above deleted. Done. The axis is a closure rather than an enum: vbox
+   and hbox provide `flexShare`, a `func(float32) Modifier` written in the
+   Column's or Row's content, so a component built at run time -- a
+   composable of its own, outside that scope -- still calls `weight` through
+   it. Nothing in style.sngl reads a composable: under `--lang go` a ternary
+   splits a function into statements no splice takes, so the theme's text
+   style and a button's default colors are read in the overrides.
 2. **bubbletea**, the lipgloss chain; a `Widget`'s style answered or listed.
 3. **fyne**, with the fynelayout change for flex and margin.
 4. **gtk4**, with the gtk4rt CSS setter.
@@ -90,6 +95,18 @@ Each is a commit series on the branch; one MR, so CI runs once.
 
 ### Found on the way, not yet fixed
 
+- A literal Style's Modifier is built at run time on android,
+  `styleModifier(Style(…))`: the optimizer splices single-expression
+  functions only, and the Modifier builder is a block.
+- android's `unstyled` still lists fields Compose can express: `gap`,
+  `alignItems` and `justifyContent` (Column and Row arguments), `maxLines` and
+  `whiteSpace` (Text arguments). Each would put an argument on every node.
+- On android a Column the Go writes rather than an override -- a window's
+  content arriving through a slot, a nav page of several nodes -- provides no
+  `flexShare`, so a `flex` child there fills the screen; a page under an hbox
+  inherits the Row's closure. Both took a Column weight before.
+- A side written `0px` beside a non-zero whole (`{padding=16px, paddingTop=0px}`) reads as unset, so it is 16 on android and 0 on html: zero
+  is unset in every Style.
 - On clean main, `ui.select` does not compile on bubbletea under a `for`
   (`too many arguments in call to m.widget0Copy`), nor on fyne or gtk4 under
   a reactive `if` (`undefined: o`; a missing `c.__n1`).

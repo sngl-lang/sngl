@@ -313,7 +313,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 							s := "!"
 							__list0 := []string{}
 							for _, __item0 := range row {
-								__list0 = append(__list0, func(x string) string { return (x + "") }(__item0))
+								__list0 = append(__list0, (__item0 + ""))
 							}
 							m.log = ((it + s) + fmt.Sprint(len(__list0)))
 							return
@@ -733,7 +733,7 @@ func (m *Model) __renderSlot1(__parent *fyne.Container) {
 				s := "!"
 				__list0 := []string{}
 				for _, __item0 := range row {
-					__list0 = append(__list0, func(x string) string { return (x + "") }(__item0))
+					__list0 = append(__list0, (__item0 + ""))
 				}
 				m.log = ((__on1_it + s) + fmt.Sprint(len(__list0)))
 				m.__n1.SetText(m.log)
@@ -755,7 +755,7 @@ func (m *Model) __renderSlot1(__parent *fyne.Container) {
 				s := "!"
 				__list0 := []string{}
 				for _, __item0 := range row {
-					__list0 = append(__list0, func(x string) string { return (x + "") }(__item0))
+					__list0 = append(__list0, (__item0 + ""))
 				}
 				m.log = ((__on1_it + s) + fmt.Sprint(len(__list0)))
 				m.__n1.SetText(m.log)
@@ -1471,7 +1471,7 @@ func (m *Model) __renderSlot1(parent gtk4rt.Handle) {
 				s := "!"
 				__list0 := []string{}
 				for _, __item0 := range row {
-					__list0 = append(__list0, func(x string) string { return (x + "") }(__item0))
+					__list0 = append(__list0, (__item0 + ""))
 				}
 				m.log = ((__on1_it + s) + fmt.Sprint(len(__list0)))
 				for __inst3_live_ui, _ := range m.__inst3_live {
@@ -1491,7 +1491,7 @@ func (m *Model) __renderSlot1(parent gtk4rt.Handle) {
 				s := "!"
 				__list0 := []string{}
 				for _, __item0 := range row {
-					__list0 = append(__list0, func(x string) string { return (x + "") }(__item0))
+					__list0 = append(__list0, (__item0 + ""))
 				}
 				m.log = ((__on1_it + s) + fmt.Sprint(len(__list0)))
 				for __inst3_live_ui, _ := range m.__inst3_live {
@@ -2133,20 +2133,26 @@ package test.sngl.app
 
 import androidx.compose.ui.semantics.SemanticsPropertyKey
 import androidx.compose.runtime.mutableStateMapOf
-import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.ui.Modifier
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.foundation.layout.Column
-import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.material3.Button
 import androidx.compose.ui.platform.testTag
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.ui.text.TextStyle
 
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
@@ -2160,6 +2166,7 @@ val SnglPresent = mutableStateMapOf<Any, String>()
 
 class MainScreenState {
     init { SnglPresent.clear() }
+    var __ctx_flexShare by mutableStateOf<(Float) -> androidx.compose.ui.Modifier>({ w: Float -> Modifier.fillMaxSize() })
     val rows = mutableStateListOf(listOf("a", "b"), listOf("c"))
     var log by mutableStateOf("")
     var shown by mutableStateOf(true)
@@ -2172,21 +2179,21 @@ fun MainScreen(state: MainScreenState = remember { MainScreenState() }) {
     Column(modifier = Modifier.safeDrawingPadding()) {
         Button(onClick = {
             (listOf(listOf("d"), listOf("e", "f", "g"))).let { __v -> state.rows.clear(); state.rows.addAll(__v) }
-        }, modifier = Modifier.testTag("swap")) {
+        }, modifier = Modifier.testTag("swap"), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
             Text(text = "swap", modifier = Modifier)
         }
         for ((__copy0, row) in state.rows.withIndex()) {
-            Card(slotContent = {
+            Card(__ctx_flexShare = { w: Float -> Modifier.weight(w).fillMaxWidth() }, slotContent = {
                 for ((i, it) in row.withIndex()) {
                     Button(onClick = {
                         state.log = (i.toString() + it)
-                    }, modifier = Modifier.testTag("cell").then(((__copy0.toString() + "/") + i.toString()).let { __key -> Modifier.semantics { this[SnglCopy] = __key } })) {
+                    }, modifier = Modifier.testTag("cell").then(((__copy0.toString() + "/") + i.toString()).let { __key -> Modifier.semantics { this[SnglCopy] = __key } }), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                         Text(text = it, modifier = Modifier)
                     }
                     Button(onClick = {
                         var s = "!"
                         state.log = ((it + s) + row.map({ x: String -> (x + "") }).size.toString())
-                    }, modifier = Modifier.testTag("mark").then(((__copy0.toString() + "/") + i.toString()).let { __key -> Modifier.semantics { this[SnglCopy] = __key } })) {
+                    }, modifier = Modifier.testTag("mark").then(((__copy0.toString() + "/") + i.toString()).let { __key -> Modifier.semantics { this[SnglCopy] = __key } }), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                         Text(text = it, modifier = Modifier)
                     }
                 }
@@ -2196,22 +2203,22 @@ fun MainScreen(state: MainScreenState = remember { MainScreenState() }) {
             Button(onClick = {
                 var s = "q"
                 state.log = (state.log + s)
-            }, modifier = Modifier.testTag("tag")) {
+            }, modifier = Modifier.testTag("tag"), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                 Text(text = ("x" + state.log), modifier = Modifier)
             }
         }
-        Text(text = state.log, modifier = Modifier)
+        Text(text = state.log, modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
     }
 }
 
 @Composable
-fun Card(slotContent: (@Composable () -> Unit)? = null) {
+fun Card(__ctx_flexShare: (Float) -> androidx.compose.ui.Modifier, slotContent: (@Composable () -> Unit)? = null) {
     var open by remember { mutableStateOf(0) }
 
     Column(modifier = Modifier) {
         Button(onClick = {
             open = (open + 1)
-        }, modifier = Modifier) {
+        }, modifier = Modifier, colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
             Text(text = ("t " + open.toString()), modifier = Modifier)
         }
         slotContent?.invoke()
@@ -2833,12 +2840,12 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:2b0c068413eff4f43f915aa32eaed7ef
+pass sha256:f0843cdab287b2d08a7b1b34d761a7c0
 -- run/go/fyne --
-pass sha256:e279be27345458030f48270753c9f74d
+pass sha256:731ebb2bf08640daca1fa8d6ea100d35
 -- run/go/gtk4 --
-pass sha256:f3b8cf667d6026807ce17fbcd3b598fd
+pass sha256:e13366c1230223ffd90b7e4d9f58ba4f
 -- run/kotlin/android --
-pass sha256:2c245760f15bd6145ecb1c823158dade
+pass sha256:63e0b98c741ad12155e5a99da3a3cddc
 -- run/none/html --
 pass sha256:8b54e44c2488f536b727349236a57374

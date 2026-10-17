@@ -471,9 +471,11 @@ import androidx.compose.ui.platform.LocalContext
 import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Row
-import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.ui.Modifier
 import androidx.compose.material3.Text
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.foundation.layout.Spacer
 
 fun _snglFloatStr(v: Double): String =
@@ -496,9 +498,9 @@ fun MainScreen() {
             }
         }
         Row(modifier = Modifier.safeDrawingPadding()) {
-            Text(text = "left", modifier = Modifier)
+            Text(text = "left", modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
             Spacer(modifier = Modifier)
-            Text(text = "right", modifier = Modifier)
+            Text(text = "right", modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
         }
     }
 }
@@ -536,6 +538,6 @@ pass sha256:7d934b8493e0d0bec13b43c9c2d5007b
 -- run/go/gtk4 --
 pass sha256:cd479bb3732c7a4f7527a5479ae773c2
 -- run/kotlin/android --
-pass sha256:729e274cc33069789c622a2e6495ef18
+pass sha256:3dedb98bc1733ec1ce4e0b012972c257
 -- run/none/html --
 pass sha256:697fe50a7651e8d70ca2cdf176305238

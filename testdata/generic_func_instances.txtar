@@ -999,9 +999,13 @@ import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.Text
-import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.ui.Modifier
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.foundation.shape.CircleShape
 
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
@@ -1016,8 +1020,8 @@ fun MainScreen() {
     val xs = remember { mutableStateListOf(10, 20, 10) }
     val names = remember { mutableStateListOf("a", "b") }
     val e = remember { mutableStateListOf("z") }
-    var fns by remember { mutableStateOf(last__func_int_string(listOf({ x: Int -> x.toString() }))) }
-    var acts by remember { mutableStateOf(last__func_int_string_1(listOf({ x: Int, s: String ->
+    var fns by remember { mutableStateOf<(Int) -> String>(last__func_int_string(listOf({ x: Int -> x.toString() }))) }
+    var acts by remember { mutableStateOf<(Int, String) -> Unit>(last__func_int_string_1(listOf({ x: Int, s: String ->
     n = x
 }))) }
     var k__inst0 by remember { mutableStateOf(0) }
@@ -1087,18 +1091,18 @@ fun MainScreen() {
             }
         }
         Column {
-            Text(text = ((((((((both__int(xs, 10).toString() + " ") + both__string(names, "b").toString()) + " ") + e.size.toString()) + " ") + pad__int(listOf(1), listOf<Int>()).toString()) + " ") + fns(1)), modifier = Modifier.safeDrawingPadding())
-            Text(text = ((nth__int__inst0(listOf(1, 2)).toString() + " ") + nth__string__inst0(listOf("a", "b"))), modifier = Modifier.safeDrawingPadding())
+            Text(text = ((((((((both__int(xs, 10).toString() + " ") + both__string(names, "b").toString()) + " ") + e.size.toString()) + " ") + pad__int(listOf(1), listOf<Int>()).toString()) + " ") + fns(1)), modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
+            Text(text = ((nth__int__inst0(listOf(1, 2)).toString() + " ") + nth__string__inst0(listOf("a", "b"))), modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
             Button(onClick = {
                 k__inst0 = 1
-            }, modifier = Modifier.safeDrawingPadding()) {
+            }, modifier = Modifier.safeDrawingPadding(), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                 Text(text = "k", modifier = Modifier)
             }
             Button(onClick = {
                 n = 2
                 (blank__string.toMutableList()).let { __v -> e.clear(); e.addAll(__v) }
                 acts(1, "s")
-            }, modifier = Modifier.safeDrawingPadding()) {
+            }, modifier = Modifier.safeDrawingPadding(), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                 Text(text = "go", modifier = Modifier)
             }
         }
@@ -1247,6 +1251,6 @@ pass sha256:62564d2b17ea294fec4b0f945c83888b
 -- run/go/gtk4 --
 pass sha256:ac628daf4c4bcf70d19d494710abe217
 -- run/kotlin/android --
-pass sha256:44960e3d6ccf360cf716b42a6cc36704
+pass sha256:30e2f5324b0f34c466be00ae88511840
 -- run/none/html --
 pass sha256:7f5a9824a25d979cb2f39360fcc1ae48

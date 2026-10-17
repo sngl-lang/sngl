@@ -378,8 +378,10 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.withStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.graphics.Color as ComposeColor
-import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.ui.Modifier
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.material3.Text
 
 data class Measurement(
@@ -417,7 +419,7 @@ fun MainScreen() {
                     append("main")
                 }
             }
-        }, modifier = Modifier.safeDrawingPadding())
+        }, modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
     }
 }
 -- out/none/html/index.html --
@@ -456,6 +458,6 @@ pass sha256:a79d939b64ce247762514a9270744153
 -- run/go/gtk4 --
 pass sha256:e063396b738a0abd95cfe093183b929f
 -- run/kotlin/android --
-pass sha256:c3562326c5f045f8f85df3d545f495be
+pass sha256:9cf8a636cca238ddc00b6d251344f373
 -- run/none/html --
 pass sha256:c1eb89b2beb06ae7bd1a87647a2ffd85

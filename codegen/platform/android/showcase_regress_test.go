@@ -132,8 +132,8 @@ ui.window {
 	if strings.Contains(out, "parseColor") {
 		t.Errorf("parseColor should not appear:\n%s", out)
 	}
-	if !strings.Contains(out, "ComposeColor(red = ") {
-		t.Errorf("expected ComposeColor(red = ...) form:\n%s", out)
+	if !strings.Contains(out, "Color(red = ") {
+		t.Errorf("expected Color(red = ...) form:\n%s", out)
 	}
 }
 
@@ -260,9 +260,9 @@ ui.window {
 }`
 	out := compileSrc(t, src, false)
 	for _, want := range []string{
-		"HorizontalDivider(modifier = Modifier)",
-		"CircularProgressIndicator(modifier = Modifier)",
-		"Card(modifier = Modifier) {",
+		"HorizontalDivider(modifier = ",
+		"CircularProgressIndicator(modifier = ",
+		"Card(modifier = ",
 		"TabRow(selectedTabIndex = idx) {",
 		"Tab(selected = ",
 	} {

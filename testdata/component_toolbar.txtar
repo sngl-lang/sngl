@@ -296,9 +296,11 @@ import androidx.compose.ui.platform.LocalContext
 import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
-import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.ui.Modifier
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
 
 fun _snglFloatStr(v: Double): String =
@@ -321,13 +323,13 @@ fun MainScreen() {
             }
         }
         Column(modifier = Modifier.safeDrawingPadding()) {
-            Button(onClick = {}, modifier = Modifier) {
+            Button(onClick = {}, modifier = Modifier, colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                 Text(text = "New", modifier = Modifier)
             }
-            Button(onClick = {}, modifier = Modifier) {
+            Button(onClick = {}, modifier = Modifier, colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                 Text(text = "Open", modifier = Modifier)
             }
-            Button(onClick = {}, modifier = Modifier) {
+            Button(onClick = {}, modifier = Modifier, colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                 Text(text = "Save", modifier = Modifier)
             }
         }
@@ -370,6 +372,6 @@ pass sha256:5958354f56cc80d2c2f7da37577cb92c
 -- run/go/fyne --
 pass sha256:caf4747238207fc34f42be732d7066b6
 -- run/kotlin/android --
-pass sha256:5393dcbe93e298639db7262e238760a6
+pass sha256:fc2d71b299078a03ab5c89a702c67ae0
 -- run/none/html --
 pass sha256:ed86c8c65a5ce0789d86cf18cc918403

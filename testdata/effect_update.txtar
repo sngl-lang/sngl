@@ -736,9 +736,13 @@ import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.Button
-import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.ui.Modifier
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.runtime.DisposableEffect
 
 data class Todo(
@@ -830,10 +834,10 @@ fun MainScreen() {
         Column {
             Button(onClick = {
                 addTwo__inst0()
-            }, modifier = Modifier.safeDrawingPadding()) {
+            }, modifier = Modifier.safeDrawingPadding(), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                 Text(text = "add", modifier = Modifier)
             }
-            Text(text = saved__inst0.toString(), modifier = Modifier.safeDrawingPadding())
+            Text(text = saved__inst0.toString(), modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
             DisposableEffect(n__inst0) {
                 val __snglEffectKey = n__inst0
                 run {
@@ -851,10 +855,10 @@ fun MainScreen() {
                 n__inst0 += 1
                 __effect1_dirty = true
                 __effects0_settle()
-            }, modifier = Modifier.safeDrawingPadding()) {
+            }, modifier = Modifier.safeDrawingPadding(), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                 Text(text = "bump", modifier = Modifier)
             }
-            Text(text = log__inst0.joinToString(","), modifier = Modifier.safeDrawingPadding())
+            Text(text = log__inst0.joinToString(","), modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
         }
     }
 }
@@ -1017,6 +1021,6 @@ pass sha256:f6cebbb691d12d1e8e52af896f1e052f
 -- run/go/fyne --
 pass sha256:0cf437b94efc6f4a538684b2300447ba
 -- run/kotlin/android --
-pass sha256:28315d49c60a7a437c40b0745fd292c2
+pass sha256:8f0023bc7a63b4ce380edda3bf72fe2e
 -- run/none/html --
 pass sha256:f9bdc7d44259b2c6e9a540694f233ee7

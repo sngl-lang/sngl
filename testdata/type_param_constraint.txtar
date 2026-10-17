@@ -392,9 +392,13 @@ import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.Text
-import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.ui.Modifier
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.foundation.shape.CircleShape
 
 data class User(
     var name: String = "",
@@ -480,11 +484,11 @@ fun MainScreen() {
             }
         }
         Column {
-            Text(text = ((((((((nameOf__User(user) + " ") + nameOf__Pet(pet)) + " ") + greetAll__User(user)) + " ") + Holder__Pet_label__Pet(held)) + " ") + (valueOf__int_Cell(cell) + 1).toString()), modifier = Modifier.safeDrawingPadding())
+            Text(text = ((((((((nameOf__User(user) + " ") + nameOf__Pet(pet)) + " ") + greetAll__User(user)) + " ") + Holder__Pet_label__Pet(held)) + " ") + (valueOf__int_Cell(cell) + 1).toString()), modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
             Button(onClick = {
                 user = User(name = nameOf__Pet(pet), age = 30)
                 n = (n + 1)
-            }, modifier = Modifier.safeDrawingPadding()) {
+            }, modifier = Modifier.safeDrawingPadding(), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                 Text(text = "go", modifier = Modifier)
             }
         }
@@ -571,6 +575,6 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:980f4d04c619cf988d317f918952477a
 -- run/kotlin/android --
-pass sha256:9ef6320585f1cbd9efe9fd52e1e85b6b
+pass sha256:3887e2a356b538d019c1aee641a3269d
 -- run/none/html --
 pass sha256:b316a89fb34066b2bada2a3f67d6f4d5

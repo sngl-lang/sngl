@@ -533,7 +533,7 @@ func (cc *irComposeContext) renderNavStack(n *ir.NodeInst) {
 	case st.start.looped() && st.startRecord != nil:
 		startRoute = fmt.Sprintf("%s(copy = %q)", st.start.route(), strings.Join(st.startCopy, "."))
 	}
-	cc.line("%s(navController = %s__nav, startDestination = %s, %s) {", cc.kc.Name(ktNav+"compose.NavHost"), st.name, startRoute, cc.buildModifier(n))
+	cc.line("%s(navController = %s__nav, startDestination = %s, modifier = %s) {", cc.kc.Name(ktNav+"compose.NavHost"), st.name, startRoute, cc.nodeModifier(n, nil, ""))
 	cc.indent++
 	composable := cc.kc.Name(ktNav + "compose.composable")
 	for _, pg := range st.pages {
@@ -575,13 +575,12 @@ func (cc *irComposeContext) renderNavStack(n *ir.NodeInst) {
 			}
 			cc.kc = cc.kc.WithLocal(param.Name)
 		}
-		outerAxis, outerRoot := cc.parentAxis, cc.atRoot
-		cc.parentAxis, cc.atRoot = "", false
+		outerRoot := cc.atRoot
+		cc.atRoot = false
 		body := pageContent(pg.node)
 		if len(body) > 1 {
 			cc.line("%s {", cc.kc.Name(ktColumn))
 			cc.indent++
-			cc.parentAxis = "Column"
 		}
 		for _, s := range body {
 			cc.renderStmt(s)
@@ -590,7 +589,7 @@ func (cc *irComposeContext) renderNavStack(n *ir.NodeInst) {
 			cc.indent--
 			cc.line("}")
 		}
-		cc.parentAxis, cc.atRoot = outerAxis, outerRoot
+		cc.atRoot = outerRoot
 		cc.kc = saved
 		cc.indent--
 		cc.line("}")
@@ -673,7 +672,13 @@ func (cc *irComposeContext) renderNavLink(n *ir.NodeInst) {
 		cc.line("%s", navigateTo(st.name+"__nav", pg, params, cc.kc.EvalExpr))
 	}
 	cc.indent--
-	cc.line("}, %s) {", cc.buildModifier(n))
+	args := []string{"modifier = " + cc.nodeModifier(n, codegen.NodeProp(n, "modifier"), "")}
+	for _, p := range []string{"colors", "shape"} {
+		if v := codegen.NodeProp(n, p); v != nil {
+			args = append(args, p+" = "+cc.kc.EvalExpr(v))
+		}
+	}
+	cc.line("}, %s) {", strings.Join(args, ", "))
 	cc.indent++
 	text := `""`
 	if t := n.Prop(ir.NavLinkText); t != nil {

@@ -1399,14 +1399,20 @@ import androidx.compose.ui.platform.LocalContext
 import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
-import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.ui.Modifier
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.navigation.compose.NavHost
 import androidx.compose.ui.platform.testTag
 import androidx.navigation.compose.composable
+import androidx.compose.foundation.layout.fillMaxWidth
 
 class __anon_e3b0c4 {
     override fun equals(other: Any?) = other is __anon_e3b0c4
@@ -1468,29 +1474,29 @@ fun MainScreen() {
         Column(modifier = Modifier.safeDrawingPadding()) {
             Button(onClick = {
                 opened += 1
-            }, modifier = Modifier) {
+            }, modifier = Modifier, colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                 Text(text = "open", modifier = Modifier)
             }
-            Text(text = ((("opened " + opened.toString()) + " visits ") + visits.toString()), modifier = Modifier)
+            Text(text = ((("opened " + opened.toString()) + " visits ") + visits.toString()), modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
             for (it in items) {
                 Row(modifier = Modifier) {
-                    __block_state1(it = it, total = total__inst0, onTotal = { __total ->
+                    __block_state1(it = it, total = total__inst0, __ctx_flexShare = { w: Float -> Modifier.weight(w).fillMaxHeight() }, onTotal = { __total ->
                         total__inst0 = __total
                     })
                 }
             }
-            Text(text = ("total " + total__inst0.toString()), modifier = Modifier)
+            Text(text = ("total " + total__inst0.toString()), modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
             NavHost(navController = pages__nav, startDestination = _page__valueRoute0(), modifier = Modifier.testTag("pages")) {
                 composable<_page__valueRoute0> {
-                    __block_state0()
+                    __block_state0(__ctx_flexShare = { w: Float -> Modifier.weight(w).fillMaxWidth() })
                 }
                 composable<_page__valueRoute1> {
-                    Text(text = "about", modifier = Modifier)
+                    Text(text = "about", modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
                 }
             }
             Button(onClick = {
                 pages__nav.navigate(_page__valueRoute1())
-            }, modifier = Modifier) {
+            }, modifier = Modifier, colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                 Text(text = "about", modifier = Modifier)
             }
         }
@@ -1498,29 +1504,29 @@ fun MainScreen() {
 }
 
 @Composable
-fun __block_state0() {
+fun __block_state0(__ctx_flexShare: (Float) -> androidx.compose.ui.Modifier) {
     var hits by remember { mutableStateOf(0) }
 
     Button(onClick = {
         hits += 1
         visits += 1
-    }, modifier = Modifier) {
+    }, modifier = Modifier, colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
         Text(text = "hit", modifier = Modifier)
     }
-    Text(text = ("hits " + hits.toString()), modifier = Modifier)
+    Text(text = ("hits " + hits.toString()), modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
 }
 
 @Composable
-fun __block_state1(it: String, total: Int, onTotal: ((Int) -> Unit)? = null) {
+fun __block_state1(it: String, total: Int, __ctx_flexShare: (Float) -> androidx.compose.ui.Modifier, onTotal: ((Int) -> Unit)? = null) {
     var n by remember { mutableStateOf(0) }
 
     Button(onClick = {
         n += 1
         onTotal?.invoke((total + 1))
-    }, modifier = Modifier) {
+    }, modifier = Modifier, colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
         Text(text = it, modifier = Modifier)
     }
-    Text(text = ((it + " ") + n.toString()), modifier = Modifier)
+    Text(text = ((it + " ") + n.toString()), modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
 }
 -- out/none/html/about/index.html --
 <!-- Code generated by sngl (html) from app.sngl; DO NOT EDIT. -->
@@ -1967,6 +1973,6 @@ pass sha256:b7cb56d4b752d7f932a6a4252fe69d42
 -- run/go/gtk4 --
 pass sha256:eeee2377af6771ad40a57e91aafe9ffe
 -- run/kotlin/android --
-pass sha256:5606f57685a627cf98c73ed3b004bd29
+pass sha256:892ae17d777e2a31ca75d236012a2947
 -- run/none/html --
 pass sha256:eef101e912ae0877c33c32cb93bd476c

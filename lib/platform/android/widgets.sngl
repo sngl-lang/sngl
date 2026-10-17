@@ -27,44 +27,57 @@ const component ui.window[platform](visible, @error, @closed, content) {
 // --- Core Layout ---
 
 const component ui.vbox[platform](style, children) {
-    Column(modifier={...style}) {
-        children
+    Column(modifier=modifierOf(style, flexShare)) {
+        flexShare(func(w float32) => modifier.weight(w).fillMaxWidth()) {
+            children
+        }
     }
 }
 
 const component ui.hbox[platform](style, children) {
-    Row(modifier={...style}) {
-        children
+    Row(modifier=modifierOf(style, flexShare)) {
+        flexShare(func(w float32) => modifier.weight(w).fillMaxHeight()) {
+            children
+        }
     }
 }
 
 const component ui.stack[platform](style, layers) {
-    Box(modifier={...style}) {
-        layers
+    Box(modifier=modifierOf(style, flexShare)) {
+        flexShare(func(w float32) => modifier.fillMaxSize()) {
+            layers
+        }
     }
 }
 
 const component ui.spacer[platform](style) {
-    Spacer(modifier={...style}) {}
+    Spacer(modifier=modifierOf(style, flexShare)) {}
 }
 
 const component ui.scroll[platform](style, content) {
     Column(
-        modifier = {...style},
+        modifier = modifierOf(style, flexShare),
         then = [modifier.verticalScroll(rememberScrollState())],
     ) {
-        content
+        flexShare(func(w float32) => modifier.weight(w).fillMaxWidth()) {
+            content
+        }
     }
 }
 
 // --- Core Text & Media ---
 
 const component ui.text[platform](value, style) {
-    Text(text=value, modifier={...style}, style={...style}) {}
+    Text(text=value, modifier=modifierOf(style, flexShare), style=mergeTextStyle(localTextStyle, textStyle(style))) {}
 }
 
 const component ui.button[platform](text, style, @click) {
-    Button(onClick=func() { click() }, modifier={...style}, colors={...style}, shape={...style}) {
+    Button(
+        onClick = func() { click() },
+        modifier = surfaceModifierOf(style, flexShare),
+        colors = buttonColorsOf(containerColor=colorOf(style.background), contentColor=colorOf(style.color)),
+        shape = buttonShapeOf(style),
+    ) {
         Text(text=text) {}
     }
 }
@@ -75,7 +88,7 @@ const component ui.button[platform](text, style, @click) {
 // assets; a drawing is a Canvas. Compose has no image loader in the box, so a
 // picture a URL names draws nothing.
 const component ui.image[platform](style, src) {
-    Box(modifier={...style}) {
+    Box(modifier=modifierOf(style, flexShare)) {
         #[family.crosses]
         src
     }
@@ -111,7 +124,7 @@ const component ui.input[platform](placeholder, readonly, value, style, @input, 
     OutlinedTextField(
         value = value,
         readOnly = readonly,
-        modifier = {...style},
+        modifier = modifierOf(style, flexShare),
         onValueChange = func(v) {
             value = v
             input(v)
@@ -127,7 +140,7 @@ const component ui.input[platform](placeholder, readonly, value, style, @input, 
 }
 
 const component ui.checkbox[platform](label, checked, style, @change) {
-    Row(modifier={...style}, verticalAlignment=alignCenterVertically) {
+    Row(modifier=modifierOf(style, flexShare), verticalAlignment=alignCenterVertically) {
         Checkbox(checked=checked, onCheckedChange=func(on) {
             checked = on
             change(on)
@@ -146,7 +159,7 @@ const component ui.checkbox[platform](label, checked, style, @change) {
 // option it looped over.
 const component ui.radio[platform](value, direction, style, @change, options) {
     if direction == ui.Orientation.horizontal {
-        Row(modifier={...style}) {
+        Row(modifier=modifierOf(style, flexShare)) {
             for var opt = options {
                 Row(verticalAlignment=alignCenterVertically) {
                     RadioButton(selected=(value == opt.label), onClick=func() {
@@ -158,7 +171,7 @@ const component ui.radio[platform](value, direction, style, @change, options) {
             }
         }
     } else {
-        Column(modifier={...style}) {
+        Column(modifier=modifierOf(style, flexShare)) {
             for var opt = options {
                 Row(verticalAlignment=alignCenterVertically) {
                     RadioButton(selected=(value == opt.label), onClick=func() {
@@ -173,7 +186,7 @@ const component ui.radio[platform](value, direction, style, @change, options) {
 }
 
 const component ui.toggle[platform](label, checked, style, @change) {
-    Row(modifier={...style}, verticalAlignment=alignCenterVertically) {
+    Row(modifier=modifierOf(style, flexShare), verticalAlignment=alignCenterVertically) {
         Switch(checked=checked, onCheckedChange=func(on) {
             checked = on
             change(on)
@@ -188,7 +201,7 @@ const component ui.toggle[platform](label, checked, style, @change) {
 // state of each select, and why this override is not const.
 component ui.select[platform](placeholder, value, style, @change, options) {
     var expanded = false
-    Box(modifier={...style}) {
+    Box(modifier=modifierOf(style, flexShare)) {
         OutlinedButton(onClick=func() { expanded = true }) {
             Text(text=(value != "" ? value : placeholder)) {}
         }
@@ -212,7 +225,7 @@ const component ui.textarea[platform](value, style, @input, @change) {
     OutlinedTextField(
         value = value,
         minLines = 3,
-        modifier = {...style},
+        modifier = modifierOf(style, flexShare),
         onValueChange = func(v) {
             value = v
             input(v)
@@ -231,7 +244,7 @@ const component ui.datepicker[platform](placeholder, value, disabled, style, @ch
         value = value,
         label = placeholder,
         enabled = disabled == false,
-        modifier = {...style},
+        modifier = modifierOf(style, flexShare),
         onValueChange = func(v) {
             value = v
             change(v)
@@ -252,44 +265,47 @@ const component ui.progress[platform](style, value, max) {
         // branch the outer `if` already settled is the unreachable one.
         LinearProgressIndicator(
             progress = func() => (value != null ? float32(value / max) : float32(0.0)),
-            modifier = {...style},
+            modifier = modifierOf(style, flexShare),
         ) {}
     } else {
-        LinearProgressIndicator(modifier={...style}) {}
+        LinearProgressIndicator(modifier=modifierOf(style, flexShare)) {}
     }
 }
 
 const component ui.spinner[platform](style) {
-    CircularProgressIndicator(modifier={...style}) {}
+    CircularProgressIndicator(modifier=modifierOf(style, flexShare)) {}
 }
 
 const component ui.badge[platform](value, style) {
-    Badge(modifier={...style}) {
+    Badge(modifier=modifierOf(style, flexShare)) {
         Text(text=value) {}
     }
 }
 
 const component ui.divider[platform](style) {
-    HorizontalDivider(modifier={...style}) {}
+    HorizontalDivider(modifier=modifierOf(style, flexShare)) {}
 }
 
 const component ui.card[platform](style, content) {
-    Card(modifier={...style}) {
-        content
+    Card(modifier=modifierOf(style, flexShare)) {
+        flexShare(func(w float32) => modifier.fillMaxSize()) {
+            content
+        }
     }
 }
 
 const component ui.link[platform](text, style) {
     Text(
         text = text,
-        style = {...style},
+        modifier = modifierOf(style, flexShare),
+        style = mergeTextStyle(localTextStyle, textStyle(style)),
         color = primaryColor,
     ) {}
 }
 
 // Material's TabRow of a Tab per tab, and the selected one's content under it.
 const component ui.tabs[platform](selected, style, @change, items) {
-    Column(modifier={...style}) {
+    Column(modifier=modifierOf(style, flexShare)) {
         TabRow(selectedTabIndex=selected) {
             for var k, t = items {
                 Tab(selected=(k == selected), enabled=!t.disabled, onClick=func() {
@@ -304,7 +320,9 @@ const component ui.tabs[platform](selected, style, @change, items) {
         }
         for var k, t = items {
             if k == selected {
-                t.content
+                flexShare(func(w float32) => modifier.weight(w).fillMaxWidth()) {
+                    t.content
+                }
             }
         }
     }
@@ -314,11 +332,13 @@ const component ui.modal[platform](open, title, @close, content) {
     if open {
         Dialog(onDismissRequest=func() { close() }) {
             Surface(shape=mediumShape) {
-                Column(modifier={padding=16px}) {
+                Column(modifier=styleModifier({padding=16px}, true)) {
                     if title != "" {
                         Text(text=title) {}
                     }
-                    content
+                    flexShare(func(w float32) => modifier.weight(w).fillMaxWidth()) {
+                        content
+                    }
                 }
             }
         }
@@ -326,26 +346,34 @@ const component ui.modal[platform](open, title, @close, content) {
 }
 
 const component ui.drawer[platform](style, content) {
-    Column(modifier={...style}) {
-        content
+    Column(modifier=modifierOf(style, flexShare)) {
+        flexShare(func(w float32) => modifier.weight(w).fillMaxWidth()) {
+            content
+        }
     }
 }
 
 const component ui.tooltip[platform](style, trigger) {
-    Column(modifier={...style}) {
-        trigger
+    Column(modifier=modifierOf(style, flexShare)) {
+        flexShare(func(w float32) => modifier.weight(w).fillMaxWidth()) {
+            trigger
+        }
     }
 }
 
 const component ui.popover[platform](style, content) {
-    Column(modifier={...style}) {
-        content
+    Column(modifier=modifierOf(style, flexShare)) {
+        flexShare(func(w float32) => modifier.weight(w).fillMaxWidth()) {
+            content
+        }
     }
 }
 
 const component ui.splitview[platform](style, panes) {
-    Column(modifier={...style}) {
-        panes
+    Column(modifier=modifierOf(style, flexShare)) {
+        flexShare(func(w float32) => modifier.weight(w).fillMaxWidth()) {
+            panes
+        }
     }
 }
 
@@ -366,8 +394,10 @@ const component ui.menubar[platform] {
 }
 
 const component ui.toolbar[platform](style, controls) {
-    Column(modifier={...style}) {
-        controls
+    Column(modifier=modifierOf(style, flexShare)) {
+        flexShare(func(w float32) => modifier.weight(w).fillMaxWidth()) {
+            controls
+        }
     }
 }
 

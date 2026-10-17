@@ -1005,11 +1005,15 @@ import androidx.compose.ui.platform.LocalContext
 import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
-import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.ui.Modifier
 import androidx.compose.material3.Button
 import androidx.compose.ui.platform.testTag
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.ui.text.TextStyle
 
 data class Action__record(
     var label: String = "",
@@ -1065,12 +1069,12 @@ fun MainScreen() {
     	a.pick(a.label.length)
     }
 }()
-                    }, modifier = Modifier.testTag("all")) {
+                    }, modifier = Modifier.testTag("all"), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                         Text(text = "all", modifier = Modifier)
                     }
-                    Text(text = inner__inst0, modifier = Modifier)
+                    Text(text = inner__inst0, modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
                 }
-                Text(text = ((count__inst0.toString() + " ") + picked__inst0.toString()), modifier = Modifier)
+                Text(text = ((count__inst0.toString() + " ") + picked__inst0.toString()), modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
             }
             Column(modifier = Modifier.safeDrawingPadding()) {
                 Column(modifier = Modifier) {
@@ -1090,10 +1094,10 @@ fun MainScreen() {
     	a.pick(a.label.length)
     }
 }()
-                    }, modifier = Modifier.testTag("all__1")) {
+                    }, modifier = Modifier.testTag("all__1"), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                         Text(text = "all", modifier = Modifier)
                     }
-                    Text(text = inner__inst1, modifier = Modifier)
+                    Text(text = inner__inst1, modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
                 }
             }
         }
@@ -1202,6 +1206,6 @@ pass sha256:7cd567305a5ac00a669f0470a3864ad3
 -- run/go/gtk4 --
 pass sha256:5ac51c6265dff2276cc953dbb0e01cd1
 -- run/kotlin/android --
-pass sha256:e87c27a9f1293e16d13743bf68d99c62
+pass sha256:c1ceb3e4f7a170d633cb5baa10561640
 -- run/none/html --
 pass sha256:37be6b2f07366eb29feb3b22acd130fc

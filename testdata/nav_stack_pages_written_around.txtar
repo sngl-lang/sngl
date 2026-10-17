@@ -1092,13 +1092,17 @@ import androidx.compose.ui.platform.LocalContext
 import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
-import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.ui.Modifier
 import androidx.navigation.compose.NavHost
 import androidx.compose.ui.platform.testTag
 import androidx.navigation.compose.composable
 import androidx.compose.material3.Text
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.foundation.shape.CircleShape
 
 data class Item(
     var slug: String = "",
@@ -1185,31 +1189,31 @@ fun MainScreen() {
                     val __copy = __c[0]
                     val it = (items).elementAt(__copy)
                     Column {
-                        Text(text = it.title, modifier = Modifier)
-                        Text(text = (if (((pages__current.id == 0) && ((pages__current.copy.size == 1) && (pages__current.copy[0] == __copy)))) "showing" else "hidden"), modifier = Modifier)
+                        Text(text = it.title, modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
+                        Text(text = (if (((pages__current.id == 0) && ((pages__current.copy.size == 1) && (pages__current.copy[0] == __copy)))) "showing" else "hidden"), modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
                     }
                 }
                 composable<_page__valueRoute1> {
-                    Text(text = "about", modifier = Modifier)
+                    Text(text = "about", modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
                 }
                 composable<_page__valueRoute2> {
-                    Text(text = "FAQ only", modifier = Modifier)
+                    Text(text = "FAQ only", modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
                 }
                 composable<_page__valueRoute3> {
-                    Text(text = "[inside]", modifier = Modifier)
+                    Text(text = "[inside]", modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
                 }
                 composable<_page__valueRoute4> {
-                    Text(text = "contact", modifier = Modifier)
+                    Text(text = "contact", modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
                 }
             }
             Button(onClick = {
                 pages__nav.navigate(_page__valueRoute4())
-            }, modifier = Modifier) {
+            }, modifier = Modifier, colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                 Text(text = "Contact", modifier = Modifier)
             }
             Button(onClick = {
                 run { if (pages__nav.previousBackStackEntry != null) pages__nav.popBackStack() }
-            }, modifier = Modifier) {
+            }, modifier = Modifier, colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                 Text(text = "Back", modifier = Modifier)
             }
         }
@@ -1470,6 +1474,6 @@ pass sha256:d16910a1934607744a725b42acad041a
 -- run/go/gtk4 --
 pass sha256:a09810f5f861ba6939e52051a3044da6
 -- run/kotlin/android --
-pass sha256:dc9fbcbe4e3c45e7d4bf3462c3b0d232
+pass sha256:212324a6d8f7bd59c859efff09d0ef57
 -- run/none/html --
 pass sha256:7f287c5849ab19c1808dda96f4c17b45

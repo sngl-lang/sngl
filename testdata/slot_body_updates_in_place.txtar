@@ -955,11 +955,15 @@ import androidx.compose.ui.platform.LocalContext
 import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
-import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.ui.Modifier
 import androidx.compose.material3.Button
 import androidx.compose.ui.platform.testTag
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.ui.text.TextStyle
 
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
@@ -986,22 +990,22 @@ fun MainScreen() {
         Column(modifier = Modifier.safeDrawingPadding()) {
             Button(onClick = {
                 uptime__inst0 += 1
-            }, modifier = Modifier.testTag("tick")) {
+            }, modifier = Modifier.testTag("tick"), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                 Text(text = "tick", modifier = Modifier)
             }
             Button(onClick = {
                 shown__inst0 = !shown__inst0
-            }, modifier = Modifier.testTag("flip")) {
+            }, modifier = Modifier.testTag("flip"), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                 Text(text = "flip", modifier = Modifier)
             }
             if (shown__inst0) {
                 Column(modifier = Modifier) {
-                    Text(text = "static", modifier = Modifier)
-                    Text(text = ("up " + uptime__inst0.toString()), modifier = Modifier)
+                    Text(text = "static", modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
+                    Text(text = ("up " + uptime__inst0.toString()), modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
                 }
             }
             for (it in items__inst0) {
-                Text(text = ((it + " at ") + uptime__inst0.toString()), modifier = Modifier)
+                Text(text = ((it + " at ") + uptime__inst0.toString()), modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
             }
         }
     }
@@ -1220,6 +1224,6 @@ pass sha256:7a26f91137a62134f1768c69b29cf158
 -- run/go/gtk4 --
 pass sha256:65992eed49fcd5c6a341ca49c8c29a13
 -- run/kotlin/android --
-pass sha256:9d3b1814d9ed95184f42f0322e376e32
+pass sha256:f1faccdfe692a9e350a7912e5c13aa24
 -- run/none/html --
 pass sha256:7ef8d087f99a06029cd0fab7e35a5b96

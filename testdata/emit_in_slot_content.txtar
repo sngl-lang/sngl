@@ -398,11 +398,15 @@ import androidx.compose.ui.platform.LocalContext
 import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
-import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.Row
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.ui.text.TextStyle
 
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
@@ -429,16 +433,16 @@ fun MainScreen() {
                 for (i in listOf(1, 2, 3)) {
                     Button(onClick = {
                         got = i
-                    }, modifier = Modifier) {
+                    }, modifier = Modifier, colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                         Text(text = ("p" + i.toString()), modifier = Modifier)
                     }
                 }
             }
-            Text(text = ("got=" + got.toString()), modifier = Modifier)
+            Text(text = ("got=" + got.toString()), modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
             Row(modifier = Modifier) {
                 Button(onClick = {
                     got = 5
-                }, modifier = Modifier) {
+                }, modifier = Modifier, colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                     Text(text = "inc", modifier = Modifier)
                 }
             }
@@ -519,6 +523,6 @@ pass sha256:334bc633341269387b32f6a27788ded8
 -- run/go/fyne --
 pass sha256:7226f3b4e59cad5ffbde7bcc1cce231f
 -- run/kotlin/android --
-pass sha256:6a0576a59354215714eb8e4f89c55c64
+pass sha256:b1cd7122af1b6d04c4405027c1801ffd
 -- run/none/html --
 pass sha256:e062eb15bbca01392e58af8c753422a6

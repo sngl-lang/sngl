@@ -243,10 +243,14 @@ import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.Button
+import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
-import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.ui.text.TextStyle
 
 data class ErrorEvent(val message: String = "", val kind: String = "")
 
@@ -280,10 +284,10 @@ fun MainScreen() {
                 	val e = __e.event
                 	caught__inst0 = "light"
                 }
-            }, modifier = Modifier.testTag("go").safeDrawingPadding()) {
+            }, modifier = Modifier.testTag("go").safeDrawingPadding(), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                 Text(text = "Go", modifier = Modifier)
             }
-            Text(text = caught__inst0, modifier = Modifier.safeDrawingPadding())
+            Text(text = caught__inst0, modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
         }
     }
 }
@@ -337,6 +341,6 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:9047bc55f8e7e39718a1406f21e58e47
 -- run/kotlin/android --
-pass sha256:e8f0293587c3abb1081c44c43659c2a2
+pass sha256:4c5c0fb4da8c2a825df4b9a0425fc210
 -- run/none/html --
 pass sha256:cf66c4520ada91fa1c4d32a15861ba18

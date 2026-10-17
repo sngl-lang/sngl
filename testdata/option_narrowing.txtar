@@ -225,9 +225,13 @@ import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.Button
-import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.ui.Modifier
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.ui.text.TextStyle
 
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
@@ -252,14 +256,14 @@ fun MainScreen() {
         Column {
             Button(onClick = {
                 maybe__inst0 = null
-            }, modifier = Modifier.safeDrawingPadding()) {
+            }, modifier = Modifier.safeDrawingPadding(), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                 Text(text = "clear", modifier = Modifier)
             }
             if ((maybe__inst0 != null)) {
-                Text(text = (maybe__inst0!! * 2).toString(), modifier = Modifier.safeDrawingPadding())
+                Text(text = (maybe__inst0!! * 2).toString(), modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
             }
             if (((maybe__inst0 != null) && (maybe__inst0!! > 2))) {
-                Text(text = "big", modifier = Modifier.safeDrawingPadding())
+                Text(text = "big", modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
             }
         }
     }
@@ -399,6 +403,6 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:f96706ee6f1e8e7b25073bea4af2a9fb
 -- run/kotlin/android --
-pass sha256:fd9b7e9773bd62cb2fe3dd4ff01e9640
+pass sha256:591aaac793c10ef0a21f7f5e075953a1
 -- run/none/html --
 pass sha256:b4c13ba550204e930871665b298f1fce

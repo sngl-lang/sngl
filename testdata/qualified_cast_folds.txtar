@@ -356,8 +356,10 @@ import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.Text
-import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.ui.Modifier
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.ui.text.TextStyle
 
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
@@ -385,12 +387,12 @@ fun MainScreen() {
             }
         }
         Column {
-            Text(text = d__inst0.toString(), modifier = Modifier.safeDrawingPadding())
-            Text(text = t__inst0.toString(), modifier = Modifier.safeDrawingPadding())
-            Text(text = dt__inst0.toString(), modifier = Modifier.safeDrawingPadding())
-            Text(text = d__inst1.toString(), modifier = Modifier.safeDrawingPadding())
-            Text(text = t__inst1.toString(), modifier = Modifier.safeDrawingPadding())
-            Text(text = dt__inst1.toString(), modifier = Modifier.safeDrawingPadding())
+            Text(text = d__inst0.toString(), modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
+            Text(text = t__inst0.toString(), modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
+            Text(text = dt__inst0.toString(), modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
+            Text(text = d__inst1.toString(), modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
+            Text(text = t__inst1.toString(), modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
+            Text(text = dt__inst1.toString(), modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
         }
     }
 }
@@ -448,6 +450,6 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:9c6c45085098b0fcf1ddfb2997c2fc48
 -- run/kotlin/android --
-pass sha256:fc06a9dfbda7f3415d93d93eca91f6c2
+pass sha256:d48150943d3a91a21aeeb45abcf02049
 -- run/none/html --
 pass sha256:766bb573d298714397de0d1b031c76fc

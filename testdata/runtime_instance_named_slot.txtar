@@ -1570,19 +1570,25 @@ func (m *Model) addClick() {
 
 package test.sngl.app
 
-import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.ui.Modifier
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.foundation.layout.Column
-import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.material3.Button
 import androidx.compose.ui.platform.testTag
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.runtime.DisposableEffect
 
 fun _snglFloatStr(v: Double): String =
@@ -1592,6 +1598,7 @@ fun _snglSplit(s: String, sep: String): List<String> =
     if (sep.isEmpty()) s.map { it.toString() } else s.split(sep)
 
 class MainScreenState {
+    var __ctx_flexShare by mutableStateOf<(Float) -> androidx.compose.ui.Modifier>({ w: Float -> Modifier.fillMaxSize() })
     val items = mutableStateListOf(1, 2)
     var mounted by mutableStateOf("")
 }
@@ -1603,12 +1610,12 @@ fun MainScreen(state: MainScreenState = remember { MainScreenState() }) {
     Column(modifier = Modifier.safeDrawingPadding()) {
         Button(onClick = {
             state.items.add(3)
-        }, modifier = Modifier.testTag("add")) {
+        }, modifier = Modifier.testTag("add"), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
             Text(text = "add", modifier = Modifier)
         }
         for (i in state.items) {
-            Card(start = i, cell = { row ->
-                Text(text = ((("item " + i.toString()) + " row ") + row.toString()), modifier = Modifier)
+            Card(start = i, __ctx_flexShare = { w: Float -> Modifier.weight(w).fillMaxWidth() }, cell = { row ->
+                Text(text = ((("item " + i.toString()) + " row ") + row.toString()), modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
                 DisposableEffect(((i.toString() + ":") + row.toString())) {
                     val __snglEffectKey = ((i.toString() + ":") + row.toString())
                     run {
@@ -1621,26 +1628,26 @@ fun MainScreen(state: MainScreenState = remember { MainScreenState() }) {
             })
         }
         for (i in state.items) {
-            Card(start = i)
+            Card(start = i, __ctx_flexShare = { w: Float -> Modifier.weight(w).fillMaxWidth() })
         }
     }
 }
 
 @Composable
-fun Card(start: Int = 0, cell: (@Composable (Int) -> Unit)? = null) {
+fun Card(start: Int = 0, __ctx_flexShare: (Float) -> androidx.compose.ui.Modifier, cell: (@Composable (Int) -> Unit)? = null) {
     val rows = remember { mutableStateListOf(start, (start + 10)) }
 
     Column(modifier = Modifier) {
         Button(onClick = {
             rows.add((start + 100))
-        }, modifier = Modifier) {
+        }, modifier = Modifier, colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
             Text(text = "more", modifier = Modifier)
         }
         for (r in rows) {
             if (cell != null) {
                 cell(r)
             } else {
-                Text(text = "empty", modifier = Modifier)
+                Text(text = "empty", modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
             }
         }
     }
@@ -2149,6 +2156,6 @@ pass sha256:0ad9487ac7f6cb8260e3ec1ca725bb0b
 -- run/go/gtk4 --
 pass sha256:6f8267f71508bba23a113016abf0b673
 -- run/kotlin/android --
-pass sha256:ea91f6ed5e53287b5fea050065582310
+pass sha256:4f1cc2a545184803f2fb3f6a6eee39d6
 -- run/none/html --
 pass sha256:65cee73488ba9131fd06a5580070a42a

@@ -238,9 +238,13 @@ import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.Text
-import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.ui.Modifier
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.foundation.shape.CircleShape
 
 data class __anon_v_853006(
     var v: Int = 0
@@ -268,11 +272,11 @@ fun MainScreen() {
             }
         }
         Column {
-            Text(text = ((mine.v.toString() + " ") + theirs.v.toString()), modifier = Modifier.safeDrawingPadding())
+            Text(text = ((mine.v.toString() + " ") + theirs.v.toString()), modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
             Button(onClick = {
                 mine = theirs.copy()
                 theirs = (made((mine.v + 1))).copy()
-            }, modifier = Modifier.safeDrawingPadding()) {
+            }, modifier = Modifier.safeDrawingPadding(), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                 Text(text = "go", modifier = Modifier)
             }
         }
@@ -340,6 +344,6 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:78f18ec5cff70d1fddd1bb0660c1cb40
 -- run/kotlin/android --
-pass sha256:1b67fa8ea954c1249ac3f62cb40a629c
+pass sha256:d9c331d42db44fb43cf3a9995b0bfbff
 -- run/none/html --
 pass sha256:dd369d5e76df7b5f631c18f99e1f80fc

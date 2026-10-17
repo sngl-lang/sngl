@@ -468,8 +468,10 @@ import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.Text
-import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.ui.Modifier
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.material3.OutlinedTextField
 
 fun _snglFloatStr(v: Double): String =
@@ -494,7 +496,7 @@ fun MainScreen() {
             }
         }
         Column {
-            Text(text = "user widget", modifier = Modifier.safeDrawingPadding())
+            Text(text = "user widget", modifier = Modifier.safeDrawingPadding(), style = LocalTextStyle.current.merge(TextStyle.Default))
             OutlinedTextField(value = value__inst0, readOnly = false, modifier = Modifier.safeDrawingPadding(), onValueChange = { v ->
                 value__inst0 = v
             })
@@ -545,6 +547,6 @@ pass sha256:c94dcd7144d45fd68c19963b4579087d
 -- run/go/gtk4 --
 pass sha256:1c6f356ed5efd55ab273f0525753bba1
 -- run/kotlin/android --
-pass sha256:f19548d805a1228d182f618c05603c63
+pass sha256:97e998e6e24225868ecc51875072673e
 -- run/none/html --
 pass sha256:f39fdae2d442a337629e986f0f3199e3

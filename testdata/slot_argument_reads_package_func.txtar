@@ -825,9 +825,12 @@ import androidx.compose.ui.platform.LocalContext
 import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
-import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.ui.Modifier
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.Text
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.ui.text.TextStyle
 
 data class ErrorEvent(val message: String = "", val kind: String = "")
 
@@ -854,21 +857,21 @@ fun MainScreen() {
             }
         }
         Column(modifier = Modifier.safeDrawingPadding()) {
-            Frame(n = depth, __depth = 0, label = { d ->
-                Text(text = ("level " + d.toString()), modifier = Modifier)
+            Frame(n = depth, __ctx_flexShare = { w: Float -> Modifier.weight(w).fillMaxWidth() }, __depth = 0, label = { d ->
+                Text(text = ("level " + d.toString()), modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
             })
         }
     }
 }
 
 @Composable
-fun Frame(n: Int = 0, __depth: Int = 0, label: (@Composable (Int) -> Unit)? = null) {
+fun Frame(n: Int = 0, __ctx_flexShare: (Float) -> androidx.compose.ui.Modifier, __depth: Int = 0, label: (@Composable (Int) -> Unit)? = null) {
     Column(modifier = Modifier) {
         label?.invoke(twice(n))
         if ((n > 0)) {
             if ((__depth >= 512)) {
             } else {
-                Frame(n = (n - 1), __depth = (__depth + 1), label = { d ->
+                Frame(n = (n - 1), __ctx_flexShare = { w: Float -> Modifier.weight(w).fillMaxWidth() }, __depth = (__depth + 1), label = { d ->
                     label?.invoke(d)
                 })
             }
@@ -1104,6 +1107,6 @@ pass sha256:df22cbf5474833c2ef3809f51d7439ed
 -- run/go/gtk4 --
 pass sha256:56fa400b7ed8e22d014afcabab67a89e
 -- run/kotlin/android --
-pass sha256:fc7f7a10fe40a2750260503938746eb1
+pass sha256:c47f6583480ea4240eeae9ed6b0fac50
 -- run/none/html --
 pass sha256:39324f7d17b4023e76f6b6f6beb67576

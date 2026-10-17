@@ -44,12 +44,12 @@ func (cc *irComposeContext) renderContent(stmts []ir.Stmt) {
 	if slices.ContainsFunc(stmts, func(s ir.Stmt) bool { _, ok := s.(*ir.SlotInst); return ok }) {
 		cc.line("%s(modifier = %s.%s()) {", cc.kc.Name(ktColumn), cc.kc.Name(ktModifier), cc.kc.Name(ktSafeDrawingPadding))
 		cc.indent++
-		outerAxis, outerRoot := cc.parentAxis, cc.atRoot
-		cc.parentAxis, cc.atRoot = "Column", false
+		outerRoot := cc.atRoot
+		cc.atRoot = false
 		for _, s := range stmts {
 			cc.renderStmt(s)
 		}
-		cc.parentAxis, cc.atRoot = outerAxis, outerRoot
+		cc.atRoot = outerRoot
 		cc.indent--
 		cc.line("}")
 		return

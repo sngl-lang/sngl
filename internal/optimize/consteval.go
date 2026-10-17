@@ -173,6 +173,12 @@ func evalExpr(e ir.Expr, ctx *evalCtx) (any, bool) {
 		if !lok || !rok {
 			return nil, false
 		}
+		if ls, ok := left.(*interp.Struct); ok {
+			if rs, ok := right.(*interp.Struct); ok {
+				fillOmittedFields(ls, ls.Def, ctx)
+				fillOmittedFields(rs, rs.Def, ctx)
+			}
+		}
 		return evalBinaryOp(x.Op, left, right, numKindOf(x.Type))
 	case *ir.Unary:
 		operand, ok := evalExpr(x.Operand, ctx)
@@ -256,12 +262,20 @@ func evalExpr(e ir.Expr, ctx *evalCtx) (any, bool) {
 			if v, exists := s.Get(x.Field); exists {
 				return v, true
 			}
+			fillOmittedFields(s, s.Def, ctx)
+			if v, exists := s.Get(x.Field); exists {
+				return v, true
+			}
 		}
 		if m, ok := recv.(map[string]any); ok {
 			v, exists := m[x.Field]
 			if exists {
 				return v, true
 			}
+		}
+		// A base of a multi-base unit; one the value does not carry is zero.
+		if amounts, ok := interp.UnitAmounts(recv); ok {
+			return amounts[x.Field], true
 		}
 		return nil, false
 	case *ir.Index:
@@ -1460,4 +1474,33 @@ func evalListLambda(id string, args []any, ctx *evalCtx) (any, bool) {
 		}
 	}
 	return out, true
+}
+
+// fillOmittedFields gives each field a literal left out the value the
+// declaration means by omitting it, as the interpreter's literal does, so a
+// read of one folds and two literals compare. Done where one is read or
+// compared rather than for every literal: a Style has fifty fields. Marked omitted, irFromValue
+// writes the literal back as it was written. A field whose value does not
+// evaluate stays absent, and a read of it does not fold.
+func fillOmittedFields(s *interp.Struct, def *ir.StructDef, ctx *evalCtx) {
+	if def == nil {
+		return
+	}
+	for _, f := range def.Fields {
+		if _, ok := s.Get(f.Name); ok {
+			continue
+		}
+		init := f.Default
+		if init == nil {
+			init = ir.ZeroExpr(f.Type)
+		}
+		if init == nil {
+			continue
+		}
+		v, ok := evalExpr(init, ctx)
+		if !ok {
+			continue
+		}
+		s.Fields = append(s.Fields, interp.Field{Name: f.Name, Value: v, Omitted: true, Filled: interp.DeepCopy(v)})
+	}
 }
