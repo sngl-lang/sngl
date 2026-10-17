@@ -548,15 +548,18 @@ func (f *reachFlattener) inlineFire(at *ir.Call, inst ir.Expr, site *ir.NodeInst
 		case callsAnything(lv.Init):
 			// Still evaluated, as the call it was handed to evaluates it:
 			// the calls it makes, in order, where nothing decides whether
-			// one runs, and read by a comparison with itself otherwise.
+			// one runs, and read into `_` otherwise -- only a target
+			// keeping no instance state inlines a fire, and that is Go.
 			if calls, ok := evaluationCalls(lv.Init); ok {
 				for _, c := range calls {
 					used = append(used, &ir.CallStmt{Call: c})
 				}
 				continue
 			}
-			self := func() ir.Expr { return &ir.Ident{Name: lv.Name, Type: lv.Type, Sym: lv.Sym} }
-			used = append(used, d, &ir.If{Cond: &ir.Binary{Op: ast.BinEq, Left: self(), Right: self(), Type: ir.TypBool}})
+			used = append(used, d, &ir.Assign{
+				Target: &ir.Ident{Name: "_", Type: lv.Type, Synthesized: true},
+				Value:  &ir.Ident{Name: lv.Name, Type: lv.Type, Sym: lv.Sym},
+			})
 		}
 	}
 	body := append(used, block...)
