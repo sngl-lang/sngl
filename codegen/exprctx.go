@@ -118,6 +118,8 @@ type ExprCtx struct {
 	// function translating it -- an html instance factory -- so a call to one
 	// names it bare and hands it no receiver.
 	ClosureMethods bool
+	// memo is shared by every clone (exprMemo).
+	memo *exprMemo
 }
 
 // NewExprCtx creates an ExprCtx for a package.
@@ -125,7 +127,25 @@ func NewExprCtx(pkg *ir.Package) *ExprCtx {
 	return &ExprCtx{
 		Pkg:     pkg,
 		Helpers: make(map[string]bool),
+		memo:    &exprMemo{},
 	}
+}
+
+// exprMemo is what an ExprCtx and every clone of it compute once per build.
+type exprMemo struct {
+	instanceRoots map[string]bool
+}
+
+// InstanceRootIDs is InstanceRootIDs of the package, walked once per build.
+// The map is shared, so a caller does not write to it.
+func (ctx *ExprCtx) InstanceRootIDs() map[string]bool {
+	if ctx.memo == nil {
+		return InstanceRootIDs(ctx.Pkg)
+	}
+	if ctx.memo.instanceRoots == nil {
+		ctx.memo.instanceRoots = InstanceRootIDs(ctx.Pkg)
+	}
+	return ctx.memo.instanceRoots
 }
 
 // ForComponent returns a new ExprCtx scoped to a component.
@@ -305,6 +325,7 @@ func (ctx *ExprCtx) Clone() *ExprCtx {
 		OuterReceiver:       ctx.OuterReceiver,
 		OuterNodes:          ctx.OuterNodes,
 		ClosureMethods:      ctx.ClosureMethods,
+		memo:                ctx.memo,
 	}
 }
 

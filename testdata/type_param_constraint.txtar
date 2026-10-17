@@ -128,6 +128,11 @@ type Holder__Pet struct {
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
+	*modelState
+}
+
+// modelState is what every copy of a Model shares.
+type modelState struct {
 	n              int
 	user           User
 	pet            Pet
@@ -141,7 +146,7 @@ type Model struct {
 
 // New creates a Model with default bind values.
 func New() Model {
-	m := Model{}
+	m := Model{&modelState{}}
 	m.n = 1
 	m.user = User{Name: "ann", Age: 30}
 	m.pet = Pet{Name: "rex", Legs: 4}
@@ -564,7 +569,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:e88f477a55b937a2135c6f3c834a6b39
+pass sha256:980f4d04c619cf988d317f918952477a
 -- run/kotlin/android --
 pass sha256:9ef6320585f1cbd9efe9fd52e1e85b6b
 -- run/none/html --

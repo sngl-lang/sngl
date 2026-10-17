@@ -129,6 +129,11 @@ import (
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
+	*modelState
+}
+
+// modelState is what every copy of a Model shares.
+type modelState struct {
 	shown     bool
 	n         int
 	m__inst0  int
@@ -145,7 +150,7 @@ type Model struct {
 
 // New creates a Model with default bind values.
 func New() Model {
-	m := Model{}
+	m := Model{&modelState{}}
 	m.shown = false
 	m.n = 1
 	m.m__inst0 = 0
@@ -399,90 +404,6 @@ func (m *Model) bPresent() bool {
 	return false
 }
 
-func (m *Model) brPresent() bool {
-	if m.shown {
-		return true
-	}
-	var __lt0 int
-	_ = __lt0
-	if m.shown {
-		__lt0 = m.n
-	} else {
-		__lt0 = 0
-	}
-	return false
-}
-
-func (m *Model) gPresent() bool {
-	if m.shown {
-		return true
-	}
-	var __lt0 int
-	_ = __lt0
-	if m.shown {
-		__lt0 = m.n
-	} else {
-		__lt0 = 0
-	}
-	return false
-}
-
-func (m *Model) gdPresent() bool {
-	if m.shown {
-		return true
-	}
-	var __lt0 int
-	_ = __lt0
-	if m.shown {
-		__lt0 = m.n
-	} else {
-		__lt0 = 0
-	}
-	return false
-}
-
-func (m *Model) hPresent() bool {
-	if m.shown {
-		return true
-	}
-	var __lt0 int
-	_ = __lt0
-	if m.shown {
-		__lt0 = m.n
-	} else {
-		__lt0 = 0
-	}
-	return false
-}
-
-func (m *Model) lpPresent() bool {
-	if m.shown {
-		return true
-	}
-	var __lt0 int
-	_ = __lt0
-	if m.shown {
-		__lt0 = m.n
-	} else {
-		__lt0 = 0
-	}
-	return false
-}
-
-func (m *Model) pPresent() bool {
-	if m.shown {
-		return true
-	}
-	var __lt0 int
-	_ = __lt0
-	if m.shown {
-		__lt0 = m.n
-	} else {
-		__lt0 = 0
-	}
-	return false
-}
-
 func (m Model) View() tea.View {
 	var content string
 	var contentChildren []string
@@ -578,30 +499,30 @@ import "testing"
 func TestPresence(t *testing.T) {
 	c := newTestComponent()
 	_ = c
-	if !(!c.pPresent()) { t.Errorf("assert failed: %s", "!c.pPresent()") }
+	if !(!c.shown) { t.Errorf("assert failed: %s", "!c.shown") }
 	if !(!c.bPresent()) { t.Errorf("assert failed: %s", "!c.bPresent()") }
-	if !(!c.brPresent()) { t.Errorf("assert failed: %s", "!c.brPresent()") }
-	if !(!c.lpPresent()) { t.Errorf("assert failed: %s", "!c.lpPresent()") }
-	if !(!c.gPresent()) { t.Errorf("assert failed: %s", "!c.gPresent()") }
-	if !(!c.gdPresent()) { t.Errorf("assert failed: %s", "!c.gdPresent()") }
-	if !(!c.hPresent()) { t.Errorf("assert failed: %s", "!c.hPresent()") }
+	if !(!c.shown) { t.Errorf("assert failed: %s", "!c.shown") }
+	if !(!c.shown) { t.Errorf("assert failed: %s", "!c.shown") }
+	if !(!c.shown) { t.Errorf("assert failed: %s", "!c.shown") }
+	if !(!c.shown) { t.Errorf("assert failed: %s", "!c.shown") }
+	if !(!c.shown) { t.Errorf("assert failed: %s", "!c.shown") }
 	c.toggleClick()
-	if !(c.pPresent()) { t.Errorf("assert failed: %s", "c.pPresent()") }
+	if !(c.shown) { t.Errorf("assert failed: %s", "c.shown") }
 	if !(c.bPresent()) { t.Errorf("assert failed: %s", "c.bPresent()") }
-	if !(c.brPresent()) { t.Errorf("assert failed: %s", "c.brPresent()") }
-	if !(c.lpPresent()) { t.Errorf("assert failed: %s", "c.lpPresent()") }
-	if !(c.gPresent()) { t.Errorf("assert failed: %s", "c.gPresent()") }
-	if !(c.gdPresent()) { t.Errorf("assert failed: %s", "c.gdPresent()") }
-	if !(c.hPresent()) { t.Errorf("assert failed: %s", "c.hPresent()") }
+	if !(c.shown) { t.Errorf("assert failed: %s", "c.shown") }
+	if !(c.shown) { t.Errorf("assert failed: %s", "c.shown") }
+	if !(c.shown) { t.Errorf("assert failed: %s", "c.shown") }
+	if !(c.shown) { t.Errorf("assert failed: %s", "c.shown") }
+	if !(c.shown) { t.Errorf("assert failed: %s", "c.shown") }
 	c.toggleClick()
-	if !(!c.brPresent()) { t.Errorf("assert failed: %s", "!c.brPresent()") }
-	if !(!c.lpPresent()) { t.Errorf("assert failed: %s", "!c.lpPresent()") }
-	if !(!c.gPresent()) { t.Errorf("assert failed: %s", "!c.gPresent()") }
-	if !(!c.gdPresent()) { t.Errorf("assert failed: %s", "!c.gdPresent()") }
-	if !(!c.hPresent()) { t.Errorf("assert failed: %s", "!c.hPresent()") }
+	if !(!c.shown) { t.Errorf("assert failed: %s", "!c.shown") }
+	if !(!c.shown) { t.Errorf("assert failed: %s", "!c.shown") }
+	if !(!c.shown) { t.Errorf("assert failed: %s", "!c.shown") }
+	if !(!c.shown) { t.Errorf("assert failed: %s", "!c.shown") }
+	if !(!c.shown) { t.Errorf("assert failed: %s", "!c.shown") }
 }
 
 
 func newTestComponent() Model { return New() }
 -- run/go/bubbletea --
-pass sha256:e7697fc193c5a3440903065e2127bf36
+pass sha256:b73d96b6745ec9129ef8a4fd566f4889

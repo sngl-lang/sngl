@@ -470,7 +470,31 @@ func (st *slotChildSynth) readsReactiveState(c *ir.Call) bool {
 	}
 	reads := map[*ir.Var]bool{}
 	gatherFuncReads(c.Func, st.reactive, reads, map[*ir.Func]bool{})
-	return len(reads) > 0
+	return len(reads) > 0 || st.readsCellProps(c.Func, map[*ir.Func]bool{})
+}
+
+// readsCellProps reports whether fn, or a function it calls, reads a prop of a
+// component built at run time (cells): a method of the instance reading its
+// own props, which a call moved into a lifted body could no longer see.
+func (st *slotChildSynth) readsCellProps(fn *ir.Func, visited map[*ir.Func]bool) bool {
+	if fn == nil || visited[fn] || len(st.cells) == 0 {
+		return false
+	}
+	visited[fn] = true
+	found := false
+	_ = ir.Walk(fn.Block, func(n ir.Node) error {
+		switch x := n.(type) {
+		case *ir.Ident:
+			found = x.Sym != nil && st.cells[x.Sym]
+		case *ir.Call:
+			found = st.readsCellProps(x.Func, visited)
+		}
+		if found {
+			return ir.SkipAll
+		}
+		return nil
+	})
+	return found
 }
 
 // liftableSym reports whether a symbol read inside a node is one declared

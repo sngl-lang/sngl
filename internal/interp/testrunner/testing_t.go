@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"time"
 
 	"duckfam.us/sngl/ast"
@@ -310,6 +311,7 @@ func wrapChildComponent(n *interp.Node, by *componentValue) *componentValue {
 		body:     n.Component.Stmts,
 		by:       by,
 		inst:     n.Inst,
+		site:     n,
 	}
 }
 
@@ -433,6 +435,10 @@ func (cv *componentValue) SetField(op ast.AssignOp, field string, val any) error
 	}
 	cv.Env.Set(sym, nv)
 	cv.Env.NoteReplace(sym)
+	// A two-way prop's cell is the var its call site bound, where it bound one.
+	if err := cv.Env.WriteBound(sym, nv); err != nil {
+		return err
+	}
 	// After the write, not before: the assignment is what the new lifetimes are
 	// keyed on, so settling first would reconcile against the old value and
 	// leave the change to whatever read came next.
@@ -445,33 +451,57 @@ func (cv *componentValue) SetField(op ast.AssignOp, field string, val any) error
 	return nil
 }
 
+// callSite is the node the instance was rendered from, or nil for the
+// instance a test was given or a component the program does not declare.
+func (cv *componentValue) callSite() *interp.Node {
+	if cv.site == nil || cv.comp == nil || cv.comp.PkgPath() != "" {
+		return nil
+	}
+	return cv.site
+}
+
+// declaresEvent reports whether the instance's component declares the event.
+func (cv *componentValue) declaresEvent(name string) bool {
+	return cv.comp != nil && slices.ContainsFunc(cv.comp.Events, func(e *ir.EventDecl) bool { return e.Name == name })
+}
+
 // InvokeMethod dispatches `method` on the component. Returns (nil, false, nil)
 // when the method is not defined on the component; the caller falls back to
 // other dispatch paths in that case.
 func (cv *componentValue) InvokeMethod(env *interp.Env, method string, args []ir.CallArg) (any, bool, error) {
 	if len(method) > 0 && method[0] == '@' {
+		evalArgs := func() ([]any, error) {
+			vals := make([]any, 0, len(args))
+			for _, a := range args {
+				v, err := env.Eval(a.Value)
+				if err != nil {
+					return nil, err
+				}
+				vals = append(vals, v)
+			}
+			return vals, nil
+		}
+		// A program's component emits its events from the program's code,
+		// so the event is the call site's handler, run where the call site
+		// was written.
+		if n := cv.callSite(); n != nil && cv.declaresEvent(method[1:]) {
+			m := n.Map()
+			if _, ok := m[method].(*ir.Func); !ok {
+				return nil, true, fmt.Errorf("@%s fired on %s, whose call site handles none of it", method[1:], cv.compName)
+			}
+			return env.InvokeElementEvent(m, method[1:], evalArgs)
+		}
 		// The event reaches what the instance renders that reports it, as a
 		// user's click reaches the widget: a `nav.link` is clicked through the
-		// primitive its override renders. An instance rendering nothing that
-		// handles it takes the event as a no-op.
+		// primitive its override renders.
 		view, err := interp.Mount(cv.Env)
 		if err != nil {
 			return nil, true, err
 		}
 		if n := view.Handling(method[1:]); n != nil {
-			return env.InvokeElementEvent(n.Map(), method[1:], func() ([]any, error) {
-				vals := make([]any, 0, len(args))
-				for _, a := range args {
-					v, err := env.Eval(a.Value)
-					if err != nil {
-						return nil, err
-					}
-					vals = append(vals, v)
-				}
-				return vals, nil
-			})
+			return env.InvokeElementEvent(n.Map(), method[1:], evalArgs)
 		}
-		return nil, true, nil
+		return nil, true, fmt.Errorf("@%s fired on %s reaches nothing that handles it", method[1:], cv.compName)
 	}
 	fn := cv.funcNamed(method)
 	if fn == nil {

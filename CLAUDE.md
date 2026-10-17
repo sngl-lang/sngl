@@ -617,6 +617,21 @@ Both start from `codegen.AnalyzeCommon(doc)` which extracts model fields, comput
   - any language whose translator implements `codegen.HTTPCompiler` (today: `--lang go`): route mode. html collects the pages of the stack a window holds -- or a window that holds none -- into `HTTPRoute`s and delegates code gen (mux syntax for dynamic paths, server entry, `main()`/ListenAndServe) to the language via `CompileHTTP`. The platform carries no language- or framework-specific logic. POST actions are emitted only for handlers that transitively call functions imported from the target language (e.g. `go:` funcs under `--lang go`); other handlers stay pure client-side JS. Static mode errors the build if any page's href is a pattern. Two pages whose route patterns conflict -- some path matches both and neither is more specific -- are a build error too, since net/http panics at startup on the second registration (`routesConflict`, held to ServeMux itself by its test).
     Browser testing via CDP (go-rod) is gated behind `//go:build !js` so WASM playground builds exclude it. A `testing_js.go` stub satisfies the interface for WASM.
 - **bubbletea** — generates Go TUI code (`model.go`); supports `golang` lang only.
+  `Update` takes the Model by value and hands back the copy, so what the
+  program holds lives in a `modelState` the Model embeds by pointer, which
+  every copy shares: a closure captures the Model where it is made and writes
+  the state a later `Update` hands back. The event loop owns that state, so a
+  function literal written as the argument of a call that runs it off the
+  loop (`lower.LeavesTheLoop`: `async.start`, a `schedules` native) closes
+  over a snapshot taken where it is made instead -- a deep
+  copy, through the language's value copy, that it reads and writes alone
+  (`golang.OffLoopSnapshots`, `emitSnapshotMethods`). Only a literal written
+  there: a named function or a func value handed instead runs on the shared
+  state (#273), and so does a func value kept in state that such work calls
+  (#274). What such work writes
+  reaches nothing the program shows, since this target answers no `async.do`
+  to post it back with (#272). `codegen/platform/bubbletea/async_run_test.go`
+  runs both halves under `-race`.
 - **fyne** — generates Go desktop code; supports `golang` lang only. Its Go emitter knows three `#[intrinsic]` primitives, which differ only in the children contract a declaration cannot express as data: `Widget` (none), `Container` (a default slot, children attach through a method) and `Wrapper` (a default slot bounded to one, the child is assigned to a field). *Which* Fyne widget one becomes is a `Spec` record passed as a prop — Go constructor, its arguments, the Go type, the import paths, the setter behind each value prop, the callback field and Go signature behind each event. `codegen/platform/fyne/spec.go` decodes it and nothing else in the platform names a Fyne type. Label, Button, VBox and the other twelve are ordinary components in `fyne.sngl` carrying a Spec, so wrapping a widget from a Go module the compiler never heard of is writing a thirteenth — `codegen/platform/fyne/third_party_widget_test.go` is that, done in SNGL alone.
 
   A value has to reach the emitter through a *declared* prop, since that is what lowering turns into the `node.prop = expr` assignment the translator sees. `style` is the platform's own and renders nothing, as on gtk4; a temp its value reads -- a ternary passTernary hoisted -- is read into `_` (`codegen.KeepLocalsRead`, `testdata/style_ternary_unrendered.txtar`). So the primitives declare a vocabulary of value props by type (`text`, `placeholder`, `number`, `flag`, `options`) and `Setter` binds one to a Go method — the vocabulary grows with the types a setter takes, not with the widget count. Same for `@click`/`@change`/`@input` and `Handler`.
@@ -842,7 +857,7 @@ declared it `Any = null` (`testdata/generic_struct_instances.txtar`).
 
 **A bodyless function's purity is its declaration's.** `analyzeEffects` and the fixpoint skip a func with no body (`hasDeclaredBody`): an empty block calls nothing, and read as a body it lifted an undeclared native from unknown to pure -- `error.raise` became foldable the moment library funcs joined the program's fixpoint. And **a write into a value the function built itself is no effect**: one field or element of a local initialized from a literal and never reassigned whole (`freshLocals`), which is how `color.lighten` fills its result. Deeper, or through a local that may share another value (a Go slice, a JavaScript object), stays a mutation.
 - **`internal/optimize/`** — constant folding, dead code elimination with platform/language awareness. The optimizer unrolls no loop, for any target: a language target emits the loop and its own compiler decides whether to unroll one whose bounds it can see — three copies of a Compose `RadioButton` were what the loop is. A target whose view is markup (html, which withholds `viewStatements`) has nowhere to run one, and a **`Fold`** (`optimize.NewFold`, handed to a platform as `codegen.Fold` on `Request.Fold`) unrolls its loops after lowering, one document at a time as the platform decides them -- html's `documentsOf`: each is a clone of the lowered window with the loops around it bound for its iteration and its constant view loops unrolled, so a site of a thousand pages holds one page's expanded tree at a time (the docs site peaked at 9 GB holding all of them). A loop in a handler or other script stays a JS loop. A const only such a view loop reads is a build value rather than the page's, and shake keeps it on `ir.Package.BuildConsts`, where the Fold evaluates it and no backend declares it. A static unroll is bounded (`maxStaticUnroll`) and reports rather than writing a page nobody asked for. A read of a root-package list or map const stays a reference to the declaration (`sharedAggregateConsts`) and folds through it where the value is needed; it is copied only where it becomes storage the program may write (`foldOwned`), so every backend must declare its package consts. html's static mode writes such a const once to `assets/consts/` when it emits more than one page. A body the optimizer splices into its caller (`inlineComponentCall`) answers its emits with the call site's handlers, as the lowering's inliners do (`lower.SubstituteEvents`): left standing, a handler the call site wrote never ran, and an event it did not handle became one of the caller's own -- `emit("change", k)` in a build rooted at a component declaring none (`cmd/sngl/testdata/optimizer_splice_events_runs.txt`).
-- **`internal/lower/`** — capability-driven IR→IR transformation passes, running between optimizer and codegen. Each pass is gated by a `lower.Features` flag. Languages declare their native capabilities via `Capabilities() lower.Features`; platforms combine that with their own restrictions. Passes include: PropBindings, RefLoop, NoTernary, NoLambda, NoReactivity, etc. Several run always and are not capability-gated because they answer for every target: `ValueCopy` (a store of a struct, list or map -- an assignment, an initializer, a push or insert, a literal's element -- copies what it stores, and a function that modifies such a named parameter binds its own copy at entry while one that only reads it copies nothing, written out by each language from the value's type, since Go shares a slice's storage and JavaScript and Kotlin every object; `ir/valuecopy.go`, `testdata/value_copy.txtar`, `cmd/sngl/testdata/value_copy_runs.txt`), `RefParams` (a method's ambient `this` and a `ref[T]` parameter are passed by reference, copy-in and copy-out: a function writing one hands back what it wrote, in a record beside its own result where it has one, and each call assigns it to the place it passed, so `q.add(1)` is `q = add(q, 1)` -- a pointer would not reach Compose, which recomposes on a reassignment to a value that differs; the interpreter runs it in `Prepare`; `testdata/ref_params.txtar`, `cmd/sngl/testdata/ref_params_runs.txt`), `Effect` (an effect's `@update` and list change events, which every target reports the same way, android's `DisposableEffect` keeping only `@mount`/`@unmount`), `HandleParams` (a program's write of a node's two-way prop lands where the host's report does: through the `#id`, `bound.checked = false` writes the var `:checked` bound, and a call handing the `#id` to a function that writes one through the parameter, `details.open()`, is inlined so its writes are such writes), `ImplicitState` (a two-way prop the call site left unbound, which is a cell of the instance), `DirectCalls` (a call through a name the inliner bound to a declared function -- a func-typed prop given `render=encode` -- becomes a call of that function, since every analysis following the call graph reads `Call.Func`, and an effect keyed on one was settled by no write), `RecordArgs` (an i18n call's struct of arguments, which every runtime takes as a string-keyed map; see *i18n*), `SpreadOnce` (a spread's computed operand, which every field read would otherwise evaluate again), `IndexedIter` (a two-variable loop over a pull sequence, which hands out no ordinal), `ReceiverParam` (the implicit `this` of a method on a generic built-in, which the checker keeps off the parameters for the inliner and which every call already passes first), `CallDefaults` (an omitted argument, whose default no emitted function declares), `ForElse` (an imperative for-else, which no host loop expresses), `ViewForElse` (the same construct in a view body, which no platform emitter rendered), `BoundaryFailed` (a boundary's fallback slot, which no platform emitter rendered either), `CSE` (a pure call a statement makes twice), `HoistBodyTypes` (a body-local type whose name another body claims — a component body is not a function scope on any host, so Go and Kotlin need it as much as JavaScript does), `UnprovidedContext` (a context nothing provides, whose constant default is folded into every read — lowered as state instead it is a field nothing writes, and a platform override reading `markup.palette` handed each token a runtime value where a literal was there to be had), `ErrorScope` (a raise resolved against the render tree once each component is spliced where it is rendered) `ErrorCatch` (the catch block a handler body resolved to a boundary becomes, so the raise ends the handler), `NavigationValues` (a `nav.page` read as a value is its record whichever target shows it; see *Navigation*) and `Navigation` (the structure half, which on a target holding `navigation` lowers only the stacks in a surface other than the document). A nineteenth runs always and late: `BoundaryPassthrough`, which splices a boundary with no fallback into what it holds once every pass that reaches a handler through it has run -- a boundary's meaning does not turn on its `@error`, but one with no fallback has nothing left to say once each raise is a catch block, and spliced earlier a handler survived only as a catch block's alias, which no walk follows. `StampUsage` runs after it, so a boundary that only forwarded a raise declares no `ErrorEvent`; `ReservedNames` runs after that, last of all, renaming what every pass above declared (see *A target reserves names*), and its node-ID half `ReservedNodeIDs` right after `NoInlineComponents`. After it a catch block is the only route to the boundary's handler, so an edit codegen makes in every handler walks one (html's `walkThroughCatch`): its slot retargets missed it, and a fallback a runtime instance's mount raised into rendered at the wrong parent. `CSE` is statement-local and imperative-only on purpose — the temp it binds has to be a statement the target can hold, and a view body on `--lang none` cannot hold one. Entry point: `lower.Lower(pkg, caps, opts)`.
+- **`internal/lower/`** — capability-driven IR→IR transformation passes, running between optimizer and codegen. Each pass is gated by a `lower.Features` flag. Languages declare their native capabilities via `Capabilities() lower.Features`; platforms combine that with their own restrictions. Passes include: PropBindings, RefLoop, NoTernary, NoLambda, NoReactivity, etc. Several run always and are not capability-gated because they answer for every target: `ValueCopy` (a store of a struct, list or map -- an assignment, an initializer, a push or insert, a literal's element -- copies what it stores, and a function that modifies such a named parameter binds its own copy at entry while one that only reads it copies nothing, written out by each language from the value's type, since Go shares a slice's storage and JavaScript and Kotlin every object; `ir/valuecopy.go`, `testdata/value_copy.txtar`, `cmd/sngl/testdata/value_copy_runs.txt`), `RefParams` (a method's ambient `this` and a `ref[T]` parameter are passed by reference, copy-in and copy-out: a function writing one hands back what it wrote, in a record beside its own result where it has one, and each call assigns it to the place it passed, so `q.add(1)` is `q = add(q, 1)` -- a pointer would not reach Compose, which recomposes on a reassignment to a value that differs; the interpreter runs it in `Prepare`; `testdata/ref_params.txtar`, `cmd/sngl/testdata/ref_params_runs.txt`), `Effect` (an effect's `@update` and list change events, which every target reports the same way, android's `DisposableEffect` keeping only `@mount`/`@unmount`), `HandleParams` (a program's write of a node's two-way prop lands where the host's report does: through the `#id`, `bound.checked = false` writes the var `:checked` bound, and a call handing the `#id` to a function that writes one through the parameter, `details.open()`, is inlined so its writes are such writes -- a test's `c.b.reset()` too, the bound var, or the unbound prop's cell, read through the test's instance), `ImplicitState` (a two-way prop the call site left unbound, which is a cell of the instance), `DirectCalls` (a call through a name the inliner bound to a declared function -- a func-typed prop given `render=encode` -- becomes a call of that function, since every analysis following the call graph reads `Call.Func`, and an effect keyed on one was settled by no write), `RecordArgs` (an i18n call's struct of arguments, which every runtime takes as a string-keyed map; see *i18n*), `SpreadOnce` (a spread's computed operand, which every field read would otherwise evaluate again), `IndexedIter` (a two-variable loop over a pull sequence, which hands out no ordinal), `ReceiverParam` (the implicit `this` of a method on a generic built-in, which the checker keeps off the parameters for the inliner and which every call already passes first), `CallDefaults` (an omitted argument, whose default no emitted function declares), `ForElse` (an imperative for-else, which no host loop expresses), `ViewForElse` (the same construct in a view body, which no platform emitter rendered), `BoundaryFailed` (a boundary's fallback slot, which no platform emitter rendered either), `CSE` (a pure call a statement makes twice), `HoistBodyTypes` (a body-local type whose name another body claims — a component body is not a function scope on any host, so Go and Kotlin need it as much as JavaScript does), `UnprovidedContext` (a context nothing provides, whose constant default is folded into every read — lowered as state instead it is a field nothing writes, and a platform override reading `markup.palette` handed each token a runtime value where a literal was there to be had), `ErrorScope` (a raise resolved against the render tree once each component is spliced where it is rendered) `ErrorCatch` (the catch block a handler body resolved to a boundary becomes, so the raise ends the handler), `NavigationValues` (a `nav.page` read as a value is its record whichever target shows it; see *Navigation*) and `Navigation` (the structure half, which on a target holding `navigation` lowers only the stacks in a surface other than the document). A nineteenth runs always and late: `BoundaryPassthrough`, which splices a boundary with no fallback into what it holds once every pass that reaches a handler through it has run -- a boundary's meaning does not turn on its `@error`, but one with no fallback has nothing left to say once each raise is a catch block, and spliced earlier a handler survived only as a catch block's alias, which no walk follows. `StampUsage` runs after it, so a boundary that only forwarded a raise declares no `ErrorEvent`; `ReservedNames` runs after that, last of all, renaming what every pass above declared (see *A target reserves names*), and its node-ID half `ReservedNodeIDs` right after `NoInlineComponents`. After it a catch block is the only route to the boundary's handler, so an edit codegen makes in every handler walks one (html's `walkThroughCatch`): its slot retargets missed it, and a fallback a runtime instance's mount raised into rendered at the wrong parent. `CSE` is statement-local and imperative-only on purpose — the temp it binds has to be a statement the target can hold, and a view body on `--lang none` cannot hold one. Entry point: `lower.Lower(pkg, caps, opts)`.
 - **`internal/lsp/`** + **`internal/lspcore/`** — Language Server Protocol implementation (hover, completion, diagnostics)
 
 ### Stdlib
@@ -2614,17 +2629,46 @@ argument, after the setter has re-keyed an instance a slot reuses: html's
 `__copies_<id>`, one map for every record: a re-key replaces the entry and a
 record's `Destroy` takes its root out, and android's `SnglPresent` entry
 `id[key]`, each asked only for an id some such instance carries
-(`codegen.KeyedInstanceIDs`). bubbletea splices it and answers from the view (`testdata/indexed_ref_null_test_instance.txtar`).
+(`codegen.KeyedInstanceIDs`); html places a static instance's root, built
+once at a fixed position, with the same marks. bubbletea splices it and answers from the view (`testdata/indexed_ref_null_test_instance.txtar`).
 
-**An instance a test null-tests keeps a node of its own to be found by.** A
-splice leaves only the roots of its body, which bubbletea's view answers from
-(`ir.InstancesOf`) and no other target reads, so a target holding
-`InstanceState` builds one at run time wherever passNoInlineComponents would
-splice it, unless a test also reaches into it (`ir.NullTestedIDs`,
-`ir.ReachedIDs`). The two splices that move the call site's `#id` onto the
-body's first node leave a program component to it where that node is one an
-`if` or a `for` in the body decides (`ir.NodeIDRendersWithBody`)
-(`testdata/indexed_ref_null_test_spliced.txtar`).
+**An instance is present wherever its call site is rendered**, whatever
+its body renders now -- `name.empty` is the separate question of what it
+renders. So a test's null test of a program component's instance is the
+conditions of the `if`s around its call site and, for one copy, whether each
+loop around it renders that copy (`answerInstancePresence`, in passTestReach,
+read through the instance that wrote the call site, whose own presence is
+asked first), on every target alike
+(`cmd/sngl/testdata/test_reach_review_runs.txt`'s present.sngl). Where
+something else decides the call site -- a boundary, a slot fallback, a
+builtin node such as a page, a container inserting its children other than
+once -- or the conditions read what a test cannot name -- a context, a loop's
+variable, a prop bound to one -- the target's presence check answers instead,
+as follows; one for a node the build folded away answers false
+(`codegen.RendersNowhere`). A node reached through an instance whose body the
+build folded it out of is absent in passTestReach itself: its null test is
+the constant, a branch on one is decided -- through a local holding it too,
+which stands for the ref -- and any other reach of it is refused where it is
+written. A test firing an event its call site handles
+none of is refused where it fires it.
+
+**A spliced instance a test null-tests is found by its roots.** A splice
+leaves no node of the instance's own, only the roots of its body -- the nodes
+it renders first, through an `if`, a `for` or a boundary there -- which carry
+the instance's id in `NodeInst.Instances` (`ir.InstancesOf`). bubbletea's
+view answers from those. On every other compiled target `passCopyKeys` stamps
+each root node `ir.InstanceRootProp` (`__instance_<id>`), holding the key of
+the copy the instance stands in -- the loops around where it was written,
+not a `for` of its own body -- or "" for one rendered once: html writes it as
+`data-sngl-root-<id>`; fyne and gtk4 list the root in the instance's
+`__copies_<id>` or `__present_<id>`, take it out where a render removes it
+and where a record that listed it is destroyed (`__rooted`,
+`__unlistInstance`); android holds a `SnglPresent` token while the root is
+composed. The two splices that move the call site's `#id` onto the body's
+first node leave a program component to passNoInlineComponents where that
+node is one an `if`, a `for` or a boundary's fallback decides
+(`ir.NodeIDRendersWithBody`). A null test of a node nothing decides is one
+too, answered present (`testdata/indexed_ref_null_test_spliced.txtar`).
 
 **An event's parameters are its declaration's, and an override reads what the
 host reports and writes the prop it reports.** A platform override handles
@@ -3182,7 +3226,8 @@ handed -- and under a `for` gives each of its vars one cell per copy
 `cell.get(key, init)` and written through a temporary stored back. On every
 target a function a splice hoists out of loops takes the loop variables it
 reads as parameters (`passLoopVars`), since a prop bound to one is substituted
-into it as that variable (`testdata/component_func_reads_loop_prop.txtar`). A timer under a loop is then a schedule per copy, which
+into it as that variable, and one taken as a value is a lambda passing them
+(`testdata/component_func_reads_loop_prop.txtar`). A timer under a loop is then a schedule per copy, which
 bubbletea keeps keyed the same way and routes through Update
 (`codegen.CollectLoopTimers`, `bubbletea/timers.go`); it used to be
 collected by nobody and never ran. A timer under no loop is the same
@@ -3194,9 +3239,11 @@ was off, and one a gate did stop was never armed again
 (`bubbletea/timer_gate_run_test.go`). A recursion is never spliced, so state
 inside one -- the recursive component's own vars or lifetime, a stateful
 component written in its body, or a canvas it renders -- has nowhere to live
-there and is refused with a position
+there and is refused with a position, and so is a function of the recursive
+component that reads its props, which would be the Model's
 (`refuseStateInCycles`, `refuseCanvasInCycles`,
-`cmd/sngl/testdata/bubbletea_recursive_state_refused.txt`);
+`cmd/sngl/testdata/bubbletea_recursive_state_refused.txt`,
+`bubbletea_recursive_func_refused.txt`);
 it used to reach the Model as a field nothing declared, or the view as an
 empty string.
 
@@ -3938,10 +3985,6 @@ Known gaps, each refused or documented where it bites:
   into the Model, so its state survives the page being left.
 - A page handle read above its `nav.page` does not check
   (`specializeHandle` runs only when the node is).
-- A compiled test cannot reach into a component built at run time, but for
-  a node of one on html, nor read the prop of a node rendered only some of
-  the time (see *A test reaches
-  into what its component renders*).
 - `sngl dump` prints a qualified node by its local name, so a dump of a
   program writing `nav.page` does not check again.
 - A component's props, events and slots keep their names whatever a target
@@ -4746,16 +4789,51 @@ rules keep them agreeing:
   as android's `performTextReplacement` does.
 
 **A test reaches into what its component renders** -- `c.b.hits`,
-`c.b.btn.click()`, `c.b.row[0].click()`, `c.b.reset()` -- and reads a node's
-one-way prop, `c.t.value`. Each emitter reaches only the instance's own
-members by name, so the lowering says the rest in those terms:
+`c.b.btn.click()`, `c.b.row[0].click()`, `c.b.reset()`, `c.r[1].pressed(7)`
+-- and reads a node's one-way prop, `c.t.value`, whether the instance is
+spliced or built at run time. Each emitter reaches only the instance's own
+members by name, so the lowering says the rest in those terms, first in
+`passTestReach` (`internal/lower/test_reach_flatten.go`), before anything
+moves a node out of the body that wrote it:
 
 - **A one-way prop is the expression its call site gave**, read through the
-  instance (`rewriteTestPropRead`, in passNodePropReads, before an override
-  replaces the node with a primitive whose props are its own): `"{hits}"` in
-  `bar`'s body is `"{c.b.hits}"` in the test. A node rendered only some of the
-  time -- under an `if`, in a page's content -- or a prop reading a loop's
-  variable or a slot's parameter is left as written.
+  instance (`rewriteTestPropRead`): `"{hits}"` in `bar`'s body is
+  `"{c.b.hits}"` in the test, and a loop's variable is the copy the test
+  indexed was handed -- the loop's list at that index, the number a
+  `sngl:seq` sequence counts there, or the index itself (`loopBindings`). A
+  prop reading what a test cannot name -- a slot's parameter, a local, a pull
+  sequence's element -- is left as written for a node of the test's own
+  instance and refused with a position for one reached through another
+  instance (`unnamedTestPropRead`).
+- **A node is one of the test's instance's own**: `c.b.hit` becomes `c.hit`,
+  and `c.r[1].tap` the copy of `c.tap` under key "1", the indices of each step
+  kept outermost first -- the copy key a node inside an instance built at run
+  time already carries (see *A test fires an event as the program would*). So
+  a trigger, a null test and a node handed to sngl:test/browser are answered
+  by every target's lookup by id and key. The id is renamed where another node
+  carries it (`hit__reach0`), and a component rendered at more than one site
+  is copied for the site a test reaches into (`badge__site0`), so its nodes
+  are that site's alone (`testdata/test_reach_runtime_instance_sites.txtar`).
+  A library component is copied the same way, on the build's copy of the
+  package, so the declaration every other check reads is left alone
+  (`internal/build/testdata/test_reach_library_sites.txtar`, run on all six
+  by `TestTestReachLibrarySitesRun`, since only a Go test can hand a check
+  library source).
+- **A program component's event a test fires runs the handler its call site
+  wrote**, with the test's arguments: the component emits its events from the
+  program's own code, and the test stands in for that emit. The handler
+  becomes a function of the component the call site is written in
+  (`__fire_r_tapped__t0`, taking an index per loop around the site), reached
+  through the instance chain as a method is; the interpreter runs the call
+  site's handler itself (`componentValue.callSite`), and an event no call site
+  handles is an error there. A library component's event still enters at the
+  widget its override renders. A handler on any component but a primitive --
+  a library body's and an override's included -- that forwards
+  (`@chose { picked() }`) hands on explicitly what it was handed, given the
+  parameters it left unbound (`forwardedParams`), since spliced into the
+  component it handles, or copied into a test, it has no event of its own to
+  forward from. Each parameter is held to the one it is handed to, a mismatch
+  refused at the emit (`error_emit_forward_type_mismatch.sngl`).
 - **A spliced instance's members are what the splice made of them**
   (`internal/lower/test_reach.go`): the inliner records each splice of a node
   carrying an id by its handle, and a test's select through it becomes the
@@ -4763,12 +4841,32 @@ members by name, so the lowering says the rest in those terms:
   or a call of the method's clone. By handle rather than by node, because a
   spliced body may be cloned again -- a population is, where the body inserts
   it -- and every clone shares the handle, which a rename of the id renames
-  too. One built at run time, or rendered more than once, names no one
-  instance, and a build rooted at the component under test refuses the read
-  (`test_reach_runtime_instance_refused.txt`) -- except a node of one on a
-  target granting `runtimeReach`: html finds the element by the id the
-  component gave it, `c.b[1].hit` being the second copy's in render order
-  (`testdata/component_browser_runtime.txtar`).
+  too. A var of one copy of an instance spliced a cell per copy, bubbletea's
+  `c.r[1].taps`, is that copy's cell (`cellRead`). One spliced more than once
+  under one id names no one instance and is refused.
+- **A member of an instance built at run time is read off the instance the
+  target holds** (`codegen.InstanceReads`, lowered by
+  `codegen.LowerInstanceReads` to `<id>Read<Member>`, `<id>Call<Member>` and
+  their `At` variants on the test's surface): fyne's and gtk4's Model holds
+  each such record where its root is bound (`golang.HoldInstance`,
+  `__inst_<id>` or `__insts_<id>` by key) and lets go in its Destroy; html's
+  factory hangs the instance off its root element; android's composable
+  registers a closure per member in `SnglInstances` under the entry its call
+  site hands it (`testdata/test_reach_runtime_instance.txtar`). bubbletea
+  builds none of them but a recursion, which keeps no state and has only
+  props, nodes and functions reading neither for a test to reach -- each
+  answered as a spliced instance's is -- and an event a test fires on one is
+  the handler chain its call sites wrote, inlined into the test up to its own
+  instance (`inlineRecursiveFires`): a handler's parameter it never reads is
+  bound to nothing, its argument still evaluated where it calls anything --
+  as the program functions it calls, in order, or bound and read into `_`
+  where a `&&`, a ternary or a host call decides that; the
+  handler's own locals and loop variables are written in with it, each local
+  under a name of its own per fire; and a `return` in it sets a flag the rest
+  of the handler is guarded by (`endReturns`), since a return there would end
+  the test
+  (`cmd/sngl/testdata/test_reach_recursion_runs.txt`,
+  `test_reach_review2_runs.txt`).
 - **A build of the whole program reaches a test's instance where the program
   renders it**, which is how a golden whose tests take two components is
   compiled: each is spliced, and each test reaches what its splice made of it
@@ -4779,19 +4877,33 @@ members by name, so the lowering says the rest in those terms:
   (`test_reach_reserved_id_whole_program.txtar`).
 - **A test reaches its instance through its own parameter**, which is all an
   emitter spells a member off: a local holding the instance, `var held = c`,
-  is replaced by what it holds, and a function the test hands an instance to
+  or a node reached through it, `var t = c.p.t`, is replaced by what it holds, and a function the test hands an instance to
   is inlined into the test, as a statement or, where its body is one
   `return`, as a value (`passTestInstanceReach`,
   `testdata/test_instance_reach.txtar`). One that cannot be inlined -- a
   return from the middle, a call of itself, a local assigned again -- is
   refused where it is written (`cmd/sngl/testdata/test_instance_refused.txt`).
+  A local holding a ref a conditional or a loop wraps -- an option or a list
+  of the node -- reads the ref live where it is read, so one read after a
+  trigger, an event fired, a method called or a write through the instance is
+  refused at the read (`refuseMovedRefLocals`), where the interpreter's local
+  keeps what it was handed. After is evaluation order: an expression's
+  operands in the order they run, a call's arguments before the call, a
+  write's value before the write. Each branch of an `if` or a ternary, the
+  right operand of a `&&` or `||`, and a for-else's else start from the state
+  before them, and what follows is moved where any path moved it. A loop
+  whose body moves anything has moved it for the whole body and for a
+  condition asked again, and a function literal that moves anything has moved
+  it from where it is written, since it may be called anywhere after. One
+  read before anything moves is allowed.
 - **A trigger is an event of the receiver's type**, so the checker tags one
   through a nested instance (`nestedElementEvent`), and `c.row[1]` types as
   the node's component. html's `At` invoker indexes a constant loop's unrolled
   copies as it does the copies built at run time, and the interpreter takes
   `[0]` of a loop that rendered one copy as that copy.
 
-`cmd/sngl/testdata/test_reach_nested_runs.txt` runs it on all six.
+`cmd/sngl/testdata/test_reach_nested_runs.txt` and
+`test_reach_runtime_instance_runs.txt` run it on all six.
 
 `internal/testtargets` is a separate package from `internal/testutil` on purpose — the platform tests are *internal* test packages (`package html`) that import testutil, so putting the codegen/platform dependency in testutil would close an import cycle.
 

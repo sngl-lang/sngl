@@ -11,6 +11,16 @@ import (
 // stands in, which its own copies' keys extend.
 const CopyProp = "__copy"
 
+// InstanceRootProp is the prop each root node of a spliced component instance
+// a test null-tests carries, on a target that finds a node by what it carries
+// rather than by the roots NodeInst.Instances names: its value is the key of
+// the copy the instance stands in (CopyKey), "" for one rendered once. A root
+// of several nested instances carries one per id.
+func InstanceRootProp(id string) string { return InstanceRootPrefix + id }
+
+// InstanceRootPrefix is what every InstanceRootProp begins with.
+const InstanceRootPrefix = "__instance_"
+
 // TriggerTarget reads a test's event trigger -- `c.inc.click()`, a call the
 // checker tagged with an Event -- off the call's receiver as the checker
 // resolved it: the variable holding the instance under test, the `#id` of the
@@ -41,8 +51,9 @@ func TriggerTarget(c *Call) (recv, id string, path []Expr, ok bool) {
 }
 
 // IndexedRefIDs is every `#id` a test reaches one copy of -- triggers,
-// `c.row[1].change(true)`, or null-tests, `c.row[1] == null` -- by an index
-// into a ref to the nodes loops rendered under it.
+// `c.row[1].change(true)`, null-tests, `c.row[1] == null`, and a member of an
+// instance read or called through one, `c.row[1].hits` -- by an index into a
+// ref to the nodes loops rendered under it.
 func IndexedRefIDs(pkg *Package) map[string]bool {
 	out := map[string]bool{}
 	if pkg == nil {
@@ -62,11 +73,47 @@ func IndexedRefIDs(pkg *Package) map[string]bool {
 				if sel, path, _, ok := NullTestedRef(x); ok && len(path) > 0 {
 					out[sel.Field] = true
 				}
+			case *Select:
+				if id, path, ok := InstanceRef(x.Operand); ok && len(path) > 0 {
+					out[id] = true
+				}
+			}
+			if c, ok := n.(*Call); ok {
+				// A method handed its receiver first -- a function a lowering
+				// made of the instance's component -- is called through it too.
+				recv := c.Receiver
+				if recv == nil && c.Func != nil && len(c.Func.Params) > 0 && c.Func.Params[0].Receiver && len(c.Args) > 0 {
+					recv = c.Args[0].Value
+				}
+				if recv != nil {
+					if id, path, ok := InstanceRef(recv); ok && len(path) > 0 {
+						out[id] = true
+					}
+				}
 			}
 			return nil
 		})
 	}
 	return out
+}
+
+// InstanceRef reads e as a test's ref to a node, `c.b` or one copy of it,
+// `c.row[1]`, read after a null test or not: its id and the index into each
+// loop around it.
+func InstanceRef(e Expr) (id string, path []Expr, ok bool) {
+	e = stripConversions(e)
+	for ix, isIx := e.(*Index); isIx; ix, isIx = e.(*Index) {
+		path = append([]Expr{ix.Idx}, path...)
+		e = stripConversions(ix.Operand)
+	}
+	sel, isSel := e.(*Select)
+	if !isSel || sel.Ref == RefNone || len(sel.Ref) != len(path)+1 && sel.Ref[len(path)] != RefOption {
+		return "", nil, false
+	}
+	if _, isIdent := sel.Operand.(*Ident); !isIdent {
+		return "", nil, false
+	}
+	return sel.Field, path, true
 }
 
 // CopyKey is the key of one copy of a node loops rendered: the index into each
@@ -111,10 +158,23 @@ func literalIndices(indices []Expr) []string {
 }
 
 // NullTestedRef reads a test's `c.x == null` or `c.x != null`, either way
-// round, where `c.x` is a ref to a node that may not be rendered -- or
-// `c.x[1]`, one copy of a node loops rendered, under an `if` or not, whose
-// path holds the index into each loop. present is true for `!=`.
+// round, where `c.x` is a ref to a node -- or `c.x[1]`, one copy of a node
+// loops rendered, under an `if` or not, whose path holds the index into each
+// loop. present is true for `!=`.
 func NullTestedRef(e Expr) (sel *Select, path []Expr, present, ok bool) {
+	sel, path, present, ok = NullTestedCopy(e)
+	if !ok {
+		return nil, nil, false, false
+	}
+	if _, isIdent := sel.Operand.(*Ident); !isIdent {
+		return nil, nil, false, false
+	}
+	return sel, path, present, true
+}
+
+// NullTestedCopy is NullTestedRef through any operand: `c.r[1].cl[2] ==
+// null` null-tests a copy of a node an instance a test reached renders.
+func NullTestedCopy(e Expr) (sel *Select, path []Expr, present, ok bool) {
 	bin, isBin := e.(*Binary)
 	if !isBin || (bin.Op != ast.BinEq && bin.Op != ast.BinNeq) {
 		return nil, nil, false, false
@@ -135,8 +195,9 @@ func NullTestedRef(e Expr) (sel *Select, path []Expr, present, ok bool) {
 	if !isSel || len(sel.Ref) < len(path)+1 {
 		return nil, nil, false, false
 	}
-	// A copy is null-tested past the copies its loops rendered, whether or
-	// not an `if` stands between it and them.
+	// A copy past the copies its loops rendered is not rendered, so a copy is
+	// null-tested whether or not anything inside the loops decides it. A node
+	// rendered once is RenderedNullTest's.
 	if rest := sel.Ref[len(path):]; rest[0] != RefOption && (len(path) == 0 || rest != RefOne) {
 		return nil, nil, false, false
 	}
@@ -144,9 +205,6 @@ func NullTestedRef(e Expr) (sel *Select, path []Expr, present, ok bool) {
 		if sel.Ref[i] != RefList {
 			return nil, nil, false, false
 		}
-	}
-	if _, isIdent := sel.Operand.(*Ident); !isIdent {
-		return nil, nil, false, false
 	}
 	return sel, path, bin.Op == ast.BinNeq, true
 }
@@ -176,6 +234,8 @@ func RenderedNullTest(e Expr) (present, ok bool) {
 	return bin.Op == ast.BinNeq, true
 }
 
+// isNullLiteral reports a `null`: a literal once folded, and the universe
+// identifier in checked IR.
 func isNullLiteral(e Expr) bool {
 	switch x := stripConversions(e).(type) {
 	case *Literal:

@@ -42,9 +42,8 @@ func reachedSelect(n Node) *Select {
 }
 
 // NullTestedIDs is every `#id` a test null-tests -- `c.p == null`, `c.p[1] !=
-// null` -- and ReachedIDs every one it reaches into, `c.p.q`. By id rather
-// than handle, so a node a lowering pass has moved into a body of its own --
-// a block's state, a slot's -- is still found.
+// null`. By id rather than handle, so a node a lowering pass has moved into a
+// body of its own -- a block's state, a slot's -- is still found.
 func NullTestedIDs(pkg *Package) map[string]bool {
 	out := map[string]bool{}
 	walkTests(pkg, func(n Node) {
@@ -52,17 +51,6 @@ func NullTestedIDs(pkg *Package) map[string]bool {
 			if sel, _, _, ok := NullTestedRef(e); ok {
 				out[sel.Field] = true
 			}
-		}
-	})
-	return out
-}
-
-// ReachedIDs is NullTestedIDs for the ids a test reaches into.
-func ReachedIDs(pkg *Package) map[string]bool {
-	out := map[string]bool{}
-	walkTests(pkg, func(n Node) {
-		if sel := reachedSelect(n); sel != nil {
-			out[sel.Field] = true
 		}
 	})
 	return out

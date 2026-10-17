@@ -37,6 +37,11 @@ import (
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
+	*modelState
+}
+
+// modelState is what every copy of a Model shares.
+type modelState struct {
 	__ctx_locale__inst0 string
 	n__inst0            int
 	s__inst0            string
@@ -47,7 +52,7 @@ type Model struct {
 
 // New creates a Model with default bind values.
 func New() Model {
-	m := Model{}
+	m := Model{&modelState{}}
 	m.__ctx_locale__inst0 = i18n.DefaultLocale()
 	m.n__inst0 = 1234
 	m.s__inst0 = i18n.NumberInt(m.__ctx_locale__inst0, m.n__inst0, "decimal")
@@ -158,4 +163,4 @@ func main() {
 	}
 }
 -- run/go/bubbletea --
-pass sha256:2275d17e5a63a3d5ae3d3b3b3fb844b4
+pass sha256:75abb549a6c1b7234c641e8d26ecdfa7

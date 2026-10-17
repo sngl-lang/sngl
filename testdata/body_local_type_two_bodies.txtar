@@ -151,6 +151,11 @@ type Local__pick struct {
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
+	*modelState
+}
+
+// modelState is what every copy of a Model shares.
+type modelState struct {
 	seed__inst0    int
 	visible__inst0 bool
 	here__inst0    Local
@@ -166,7 +171,7 @@ type Model struct {
 
 // New creates a Model with default bind values.
 func New() Model {
-	m := Model{}
+	m := Model{&modelState{}}
 	m.seed__inst0 = 2
 	m.visible__inst0 = true
 	m.here__inst0 = Local{A: 1}
@@ -652,7 +657,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:622abc11dbee993d5a8b88f77fecad4d
+pass sha256:a38f2361edcec2ce6c212fc3ca5d97de
 -- run/kotlin/android --
 pass sha256:0aa467548ed12b06265cbc7a0fc89336
 -- run/none/html --

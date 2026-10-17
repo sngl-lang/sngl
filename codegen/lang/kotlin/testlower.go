@@ -2,6 +2,7 @@ package kotlin
 
 import (
 	"fmt"
+	"maps"
 	"strconv"
 	"strings"
 	"sync"
@@ -84,6 +85,9 @@ func lowerTestStmt(s ir.Stmt, surf TestSurface, compRecvs map[string]bool, ctxCo
 		if line, ok := lowerEventTrigger(n); ok {
 			return []string{line}
 		}
+		if line, ok := lowerInstanceRead(n.Call, surf, compRecvs); ok {
+			return []string{"composeTestRule.runOnUiThread {", "    " + line, "}", testIdleLine}
+		}
 		if c := n.Call; ir.IsTestMethodCall(c) {
 			if lines, ok := lowerTestSetContext(c, ctxCounts); ok {
 				return lines
@@ -158,6 +162,17 @@ func lowerTestStmt(s ir.Stmt, surf TestSurface, compRecvs map[string]bool, ctxCo
 		// thread so Compose recomposes before the next assertion. The write
 		// itself is the ordinary translator's, which is what knows a list is a
 		// SnapshotStateList and a map a read-only Map.
+		if a, ok := s.(*ir.Assign); ok && writesState(s, surf, compRecvs) && readsRefPresence(a.Value, compRecvs) {
+			// The ordinary translator has no answer for whether a node is
+			// rendered, so the value is the test's own, read first.
+			w := *a
+			w.Value = &ir.Ident{Name: "__value", Type: a.Value.ExprType()}
+			lines := []string{"run {", "    val __value = " + lowerTestExpr(a.Value, surf, compRecvs), "    composeTestRule.runOnUiThread {"}
+			for _, l := range surf.translator().EvalStmt(&w) {
+				lines = append(lines, "        "+l)
+			}
+			return append(lines, "    }", "}", "composeTestRule.waitForIdle()")
+		}
 		if writesState(s, surf, compRecvs) {
 			lines := []string{"composeTestRule.runOnUiThread {"}
 			for _, l := range surf.translator().EvalStmt(s) {
@@ -173,6 +188,20 @@ func lowerTestStmt(s ir.Stmt, surf TestSurface, compRecvs map[string]bool, ctxCo
 	// (`c.press(key)`) lowered to nothing at all, and the assertions after it
 	// ran against a component nobody had touched.
 	return surf.translator().EvalStmt(s)
+}
+
+// readsRefPresence reports whether e asks whether one of a test's refs is
+// rendered.
+func readsRefPresence(e ir.Expr, compRecvs map[string]bool) bool {
+	found := false
+	_ = ir.WalkExprs(e, func(x ir.Expr) error {
+		if recv, _, _, _, ok := codegen.RefNullTest(x); ok && compRecvs[recv] {
+			found = true
+			return ir.SkipAll
+		}
+		return nil
+	})
+	return found
 }
 
 // writesState reports whether an assignment's target is rooted at the
@@ -357,6 +386,9 @@ func lowerTestExpr(e ir.Expr, surf TestSurface, compRecvs map[string]bool) strin
 			return "!" + nodes
 		}
 		return nodes
+	}
+	if line, ok := lowerInstanceRead(e, surf, compRecvs); ok {
+		return line
 	}
 	switch n := e.(type) {
 	case *ir.Binary:
@@ -561,7 +593,8 @@ func LowerTestFile(pkg string, fns []*ir.Func, suffixes []string, surf TestSurfa
 			// other so those per-stmt lowerings resolve.
 			b.WriteString("        @Suppress(\"UNUSED_VARIABLE\") val composeTestRule = composeRule\n")
 			fmt.Fprintf(&b, "        composeRule.setContent { MainScreen(%s) }\n", recv)
-			for _, line := range lowerTestBody(fn.Block, surf.forInstance(recv, fn), compRecvs, ctxCounts, TestEmitNative) {
+			block, isurf := spellInstanceReads(codegen.LowerInstanceReads(fn.Block, surf.Pkg), surf.forInstance(recv, fn), compRecvs)
+			for _, line := range lowerTestBody(block, isurf, compRecvs, ctxCounts, TestEmitNative) {
 				fmt.Fprintf(&b, "        %s\n", line)
 			}
 			b.WriteString("    }\n\n")
@@ -574,7 +607,8 @@ func LowerTestFile(pkg string, fns []*ir.Func, suffixes []string, surf TestSurfa
 			if recv := codegen.TestComponentParam(fn); recv != "" {
 				fmt.Fprintf(&b, "    val %s = %s\n", recv, testInstanceVar)
 			}
-			for _, line := range lowerTestBody(fn.Block, surf.forInstance(testInstanceVar, fn), compRecvs, ctxCounts, TestEmitAgent) {
+			block, isurf := spellInstanceReads(codegen.LowerInstanceReads(fn.Block, surf.Pkg), surf.forInstance(testInstanceVar, fn), compRecvs)
+			for _, line := range lowerTestBody(block, isurf, compRecvs, ctxCounts, TestEmitAgent) {
 				fmt.Fprintf(&b, "    %s\n", line)
 			}
 			b.WriteString("}\n\n")
@@ -610,6 +644,70 @@ func LowerTestFile(pkg string, fns []*ir.Func, suffixes []string, surf TestSurfa
 		imports += composeActionImports
 	}
 	return strings.Replace(src, composeActionMarker, imports, 1)
+}
+
+// lowerInstanceRead spells a codegen.InstanceReadMethod call through the
+// InstanceRegistry entry the instance registered under.
+func lowerInstanceRead(e ir.Expr, surf TestSurface, compRecvs map[string]bool) (string, bool) {
+	c, ok := e.(*ir.Call)
+	if !ok || c.Func == nil {
+		return "", false
+	}
+	r, ok := surf.InstanceReads[c.Func.Name]
+	if !ok {
+		return "", false
+	}
+	args := c.Args
+	entry := fmt.Sprintf("%q", r.ID)
+	if r.Keyed && len(args) > 0 {
+		entry = PresentCopyEntry(r.ID, lowerTestExpr(args[0].Value, surf, compRecvs))
+		args = args[1:]
+	}
+	vals := make([]string, len(args))
+	for i, a := range args {
+		vals[i] = lowerTestExpr(a.Value, surf, compRecvs)
+	}
+	call := InstanceMemberCall(entry, r.Member, "listOf("+strings.Join(vals, ", ")+")")
+	if t := r.Type(); t != nil && t.Kind != ir.TypeVoid {
+		return "(" + call + " as " + IRTypeToKt(t) + ")", true
+	}
+	return call, true
+}
+
+// spellInstanceReads stands each instance read a test's value reads in for a
+// name the translator spells as lowerInstanceRead does, so a read inside an
+// interpolation or a conversion, which reach the translator whole, is spelled
+// too. A call made as a statement is left for lowerTestStmt.
+func spellInstanceReads(block []ir.Stmt, surf TestSurface, compRecvs map[string]bool) ([]ir.Stmt, TestSurface) {
+	if len(surf.InstanceReads) == 0 || surf.kt == nil {
+		return block, surf
+	}
+	rewrites := maps.Clone(surf.kt.IdentRewrites)
+	n := 0
+	_ = ir.Rewrite(block, func(node ir.Node) (ir.Node, error) {
+		if cs, ok := node.(*ir.CallStmt); ok {
+			if _, isRead := lowerInstanceRead(cs.Call, surf, compRecvs); isRead {
+				return node, ir.SkipDir
+			}
+			return node, nil
+		}
+		e, ok := node.(ir.Expr)
+		if !ok {
+			return node, nil
+		}
+		text, isRead := lowerInstanceRead(e, surf, compRecvs)
+		if !isRead {
+			return node, nil
+		}
+		name := fmt.Sprintf("__snglRead%d", n)
+		n++
+		rewrites[name] = text
+		return &ir.Ident{Name: name, Type: e.ExprType()}, ir.SkipDir
+	})
+	kc := *surf.kt
+	kc.IdentRewrites = rewrites
+	surf.kt = &kc
+	return block, surf
 }
 
 // compReceiverSet returns the names of fn's component-typed params. It is what
@@ -649,6 +747,10 @@ type TestSurface struct {
 	// may be an instance built at run time, registered in PresentRegistry
 	// under its key.
 	KeyedInstances map[string]bool
+	// InstanceReads is codegen.InstanceReads by the method each is lowered
+	// to (codegen.LowerInstanceReads): a member read through an instance the
+	// screen composes, which registers in InstanceRegistry.
+	InstanceReads map[string]codegen.InstanceRead
 
 	kt *KtIRContext
 }
@@ -724,6 +826,22 @@ func copyMatcher(id string, key ir.Expr) string {
 // PresentCopyEntry. Each test's state empties it, since a composition an
 // earlier test left is never disposed.
 const PresentRegistry = "SnglPresent"
+
+// InstanceRegistry is the map an instance a test reads a member of registers
+// itself in while it is composed, under its PresentRegistry entry: a closure
+// per member, handed a call's arguments.
+const InstanceRegistry = "SnglInstances"
+
+// InstanceKeyParam is the parameter such an instance's composable is handed
+// its InstanceRegistry entry in.
+const InstanceKeyParam = "__sngl"
+
+// InstanceMemberCall is the registry's closure for r called with args, a
+// Kotlin list of the call's arguments, from the instance registered under
+// entry.
+func InstanceMemberCall(entry, member, args string) string {
+	return fmt.Sprintf("%s[%s]!![%q]!!(%s)", InstanceRegistry, entry, member, args)
+}
 
 // PresentCopyEntry is the PresentRegistry entry of one copy of an instance,
 // the Kotlin string naming the id and the key the copy stands in.

@@ -37,6 +37,7 @@ type pass struct {
 // stated, state it there rather than leaving it to position.
 var passes = []pass{
 	passTestInstanceReach,
+	passTestReach,
 	passTestRefOwner,
 	passHoistBodyTypes,
 	passHoistState,

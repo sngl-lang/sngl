@@ -20,8 +20,10 @@ import (
 // instance's own. That is what repointCellReads does for an implicit cell and
 // repointHandleCalls for a program's method call, said of a test's selects.
 //
-// A component built at run time is not spliced and has no one instance a
-// select could name, so a test reaching into one is refused.
+// A member of a component built at run time is the target's to read, off the
+// instance it holds for the copy (codegen.InstanceReads), on a target that
+// keeps an instance's state; elsewhere such a component is a recursion, which
+// holds no state, and a reach into it is refused.
 
 // splicedInstance is what one spliced node carrying an id became.
 type splicedInstance struct {
@@ -37,6 +39,26 @@ type splicedInstance struct {
 	// self is the call site's handle where the splice moved it onto the body's
 	// root node, which a test names by either id.
 	self *ir.Var
+	// props is what the call site gave each one-way prop, or its default:
+	// the splice substituted it for every read of the prop in the body, and
+	// left nothing a test's read of the prop could name.
+	props map[string]ir.Expr
+	// cells is the initializer of each var the splice keeps a cell per copy
+	// of (perCopyCells), under the loops around the splice: a copy nothing
+	// has written reads it.
+	cells map[*ir.Var]ir.Expr
+	loops []*ir.For
+}
+
+// recordCells notes on the splice of n that its vars are a cell per copy of
+// the loops around it, each starting from its initializer.
+func (st *inlineCompState) recordCells(n *ir.NodeInst, inits map[*ir.Var]ir.Expr, loops []*ir.For) {
+	for _, sp := range slices.Backward(st.insts) {
+		if sp.handle != nil && sp.handle == n.Handle {
+			sp.inst.cells, sp.inst.loops = inits, slices.Clone(loops)
+			return
+		}
+	}
 }
 
 func (st *inlineCompState) recordInstance(n *ir.NodeInst, symRenames map[ir.Symbol]ir.Symbol, body []ir.Stmt) {
@@ -54,6 +76,17 @@ func (st *inlineCompState) recordInstance(n *ir.NodeInst, symRenames map[ir.Symb
 		}
 	}
 	si.nodes = bodyNodes(body)
+	si.props = map[string]ir.Expr{}
+	for _, pr := range n.Component.Props {
+		if pr.Default != nil {
+			si.props[pr.Name] = pr.Default
+		}
+	}
+	for _, a := range n.Props {
+		if a.Name != "" {
+			si.props[a.Name] = a.Value
+		}
+	}
 	st.insts = append(st.insts, splice{handle: n.Handle, inst: si})
 }
 
@@ -115,9 +148,9 @@ type testReach struct {
 	params map[*ir.Param]bool
 	root   *ir.Component
 	nodes  map[*ir.Component]map[string]*ir.Var
-	// runtime is the target's RuntimeReach: a node of a component built at
-	// run time is reached by its id rather than refused.
-	runtime bool
+	// instanceState is the target's InstanceState: it holds each instance
+	// built at run time, and answers a member read through one.
+	instanceState bool
 }
 
 func testReachRoots(pkg *ir.Package, root *ir.Component, opts Options) *testReach {
@@ -192,8 +225,22 @@ func (r *resolver) nodeIn(x ir.Expr, id string) *ir.Var {
 	}
 	if p := r.testParam(x); p != nil {
 		if c, _ := p.Type.Decl.(*ir.Component); c != nil {
-			return r.nodes[c][id]
+			if h := r.nodes[c][id]; h != nil {
+				return h
+			}
 		}
+		// A node passTestReach made one of the instance's own, reached
+		// through the instances around it, carries an id nothing else does.
+		var found *ir.Var
+		for h := range r.byHandle {
+			if h.Name == id {
+				if found != nil {
+					return nil
+				}
+				found = h
+			}
+		}
+		return found
 	}
 	return nil
 }
@@ -256,11 +303,11 @@ func repointTestReaches(pkg *ir.Package, reach *testReach, splices []splice) err
 			case *ir.Select:
 				si := r.instOf(x.Operand)
 				if si == nil {
-					if e, why := r.runtimeNode(x); e != nil {
-						return e, ir.SkipDir
-					} else if why != "" {
-						fail(x, "%s", why)
+					if e, err := r.cellRead(x); err != nil {
+						fail(x, "%s", err)
 						return n, nil
+					} else if e != nil {
+						return e, ir.SkipDir
 					}
 					r.refuseUnspliced(x.Operand, x.Field, fail)
 					return n, nil
@@ -270,6 +317,9 @@ func repointTestReaches(pkg *ir.Package, reach *testReach, splices []splice) err
 				}
 				if v := si.vars[x.Field]; v != nil {
 					return &ir.Ident{Name: v.Name, Type: x.Type, Sym: v}, ir.SkipDir
+				}
+				if e := si.props[x.Field]; e != nil && si.nodes[x.Field] == nil {
+					return ir.CloneExprSharingDecls(e), ir.SkipDir
 				}
 				if h := si.nodes[x.Field]; h != nil && len(r.byHandle[h]) == 0 {
 					return &ir.Select{AST: x.AST, Type: x.Type, Operand: r.instance(x), Field: h.Name, Ref: x.Ref}, ir.SkipDir
@@ -304,6 +354,15 @@ func (r *resolver) repointCall(c *ir.Call, fail func(ir.Expr, string, ...any)) {
 	}
 	clone := si.funcs[c.Func]
 	if clone == nil {
+		// A component copied for one site (passTestReach) holds a copy of
+		// each of its funcs, which a test still names by the original.
+		for from, to := range si.funcs {
+			if from.Name == c.Func.Name {
+				clone = to
+			}
+		}
+	}
+	if clone == nil {
 		return
 	}
 	c.Func = clone
@@ -324,83 +383,39 @@ func (r *resolver) repointCall(c *ir.Call, fail func(ir.Expr, string, ...any)) {
 	}
 }
 
-// runtimeNode is a node x selects from a component built at run time, as the
-// target finds it: by the id the component gave it, among every element the
-// page renders under that id, at the copy x indexed or the first. That order is
-// the copies' only where each copy renders the node once and nothing else on
-// the page carries the id, so a reach the order cannot answer is refused,
-// saying why. Nil and no reason where the target has no such reach, or x
-// selects no such node.
-func (r *resolver) runtimeNode(x *ir.Select) (ir.Expr, string) {
-	if !r.runtime {
-		return nil, ""
-	}
-	comp := componentOf(x.Operand)
+// cellRead is a test's read of a var through one copy of a spliced instance
+// whose vars are a cell per copy -- `c.r[1].taps` -- as the copy reads it:
+// its cell under the copy's key, or the var's initializer where nothing wrote
+// one. Nil where x is no such read.
+func (r *resolver) cellRead(x *ir.Select) (ir.Expr, error) {
 	operand := unnarrowed(x.Operand)
-	var idx ir.Expr
-	if ix, ok := operand.(*ir.Index); ok {
-		operand, idx = ix.Operand, ix.Idx
+	var idxs []ir.Expr
+	for ix, ok := operand.(*ir.Index); ok; ix, ok = operand.(*ir.Index) {
+		idxs = append([]ir.Expr{ix.Idx}, idxs...)
+		operand = unnarrowed(ix.Operand)
 	}
-	if comp == nil || comp == r.root || r.instOf(operand) != nil {
-		return nil, ""
+	si := r.instOf(operand)
+	if si == nil || si.cells == nil || len(idxs) != len(si.loops) {
+		return nil, nil
 	}
-	h := bodyNodes(comp.Stmts)[x.Field]
+	v := si.vars[x.Field]
+	init, ok := si.cells[v]
+	if v == nil || !ok {
+		return nil, nil
+	}
+	if init == nil {
+		init = ir.DeclaredDefault(x.Type)
+	}
 	inst := r.instance(operand)
-	if h == nil || inst == nil {
-		return nil, ""
+	owner := componentOf(inst)
+	if owner == nil {
+		return nil, nil
 	}
-	if indexed(operand) {
-		return nil, fmt.Sprintf("`#%s` is reached through the copies of more than one loop; a test indexes one", h.WrittenName())
+	start := rebaseOnInstanceUnder(ir.CloneExprSharingDecls(init), owner, inst, loopBindings(si.loops, idxs))
+	if start == nil {
+		return nil, fmt.Errorf("`%s` starts from what the copy was handed, which a test cannot name; read it once the copy has written it", x.Field)
 	}
-	if _, always := ownNode(comp, x.Field); !always {
-		return nil, fmt.Sprintf("`#%s` is not rendered once by every copy of %s, so its copies cannot be told apart by their order on the page", h.WrittenName(), comp.Name)
-	}
-	if !r.alone(comp, h.Name) {
-		return nil, fmt.Sprintf("the page renders `#%s` outside %s, or %s at more than one site, so a test cannot tell which copy is which; give each its own id", h.WrittenName(), comp.Name, comp.Name)
-	}
-	sel := &ir.Select{AST: x.AST, Type: x.Type, Operand: inst, Field: h.Name}
-	if idx == nil {
-		return sel, ""
-	}
-	return &ir.Index{Type: x.Type, Operand: sel, Idx: idx}, ""
-}
-
-// alone reports whether comp is rendered at one site and the id it gives a
-// node is carried by that node alone.
-func (r *resolver) alone(comp *ir.Component, id string) bool {
-	ids, sites := 0, 0
-	visit := func(stmts []ir.Stmt) {
-		_ = ir.Walk(stmts, func(n ir.Node) error {
-			if ni, ok := n.(*ir.NodeInst); ok {
-				if ni.ID == id {
-					ids++
-				}
-				if ni.Component == comp {
-					sites++
-				}
-			}
-			return nil
-		})
-	}
-	for _, c := range r.pkg.Components {
-		visit(c.Stmts)
-	}
-	visit(r.pkg.Body)
-	return ids == 1 && sites == 1
-}
-
-// indexed reports whether a select chain indexes a loop's copies anywhere.
-func indexed(e ir.Expr) bool {
-	for {
-		switch x := e.(type) {
-		case *ir.Select:
-			e = x.Operand
-		case *ir.Index:
-			return true
-		default:
-			return false
-		}
-	}
+	return cellGet(v, start, ir.CopyKey(idxs)), nil
 }
 
 // refuseUnspliced reports a test reaching through x for a member of a
@@ -427,7 +442,9 @@ func (r *resolver) refuseUnspliced(x ir.Expr, member string, fail func(ir.Expr, 
 		fail(x, "`#%s` is rendered more than once, so a test cannot say which copy's %s it means; give each copy its own id", h.WrittenName(), member)
 		return
 	}
-	fail(x, "`#%s` is built at run time on this target, so there is no one instance whose %s a test can reach", h.WrittenName(), member)
+	if !r.instanceState {
+		fail(x, "`#%s` is a recursion on this target, which keeps no state of an instance's own, so there is no one instance whose %s a test can reach", h.WrittenName(), member)
+	}
 }
 
 // reachesInto reports whether member names something comp declares that a

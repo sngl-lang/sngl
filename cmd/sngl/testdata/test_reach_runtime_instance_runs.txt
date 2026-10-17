@@ -1,0 +1,417 @@
+# A test reaches into a component built at run time on every target, through
+# a named instance and through one copy of one: a trigger, a null test, a
+# one-way prop read, a var read, a method call and the instance's own event
+# (app.sngl), through a component rendered at several sites and through two
+# instances (sites.sngl), and on html a node of a copy whose id another loop's
+# component renders too (twice.sngl). testdata/test_reach_runtime_instance.txtar
+# and test_reach_runtime_instance_sites.txtar are the code.
+
+sngl test --platform=none app.sngl
+stdout 'ok   3 tests, 0 failures'
+
+sngl test --platform=html app.sngl
+stdout 'ok   3 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout 'ok   3 tests, 0 failures'
+
+sngl test --platform=fyne --language=go app.sngl
+stdout 'ok   3 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go app.sngl
+stdout 'ok   3 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin app.sngl
+stdout 'ok   3 tests, 0 failures'
+
+sngl test --platform=none sites.sngl
+stdout 'ok   2 tests, 0 failures'
+
+sngl test --platform=html sites.sngl
+stdout 'ok   2 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go sites.sngl
+stdout 'ok   2 tests, 0 failures'
+
+sngl test --platform=fyne --language=go sites.sngl
+stdout 'ok   2 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go sites.sngl
+stdout 'ok   2 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin sites.sngl
+stdout 'ok   2 tests, 0 failures'
+
+sngl test --platform=html twice.sngl
+stdout 'ok   1 tests, 0 failures'
+
+-- app.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+
+component badge(label string) node {
+    var hits = 0
+    func reset() {
+        hits = 0
+    }
+    text #shown(value="[{label}:{hits}]")
+    button #hit(text="hit", @click {
+        hits = hits + 1
+    })
+    if hits >= 2 {
+        text #done(value="done")
+    }
+}
+
+component tile(label string, @tapped(n int)) node {
+    var taps = 0
+    text #face(value="<{label}:{taps}>")
+    button #tap(text="tap", @click {
+        taps = taps + 1
+        tapped(taps)
+    })
+    if taps >= 2 {
+        text #fin(value="fin")
+    }
+}
+
+component main node {
+    var show = true
+    var names list[string] = ["a", "b"]
+    var log = ""
+    vbox {
+        if show {
+            badge #b(label="one")
+        }
+        for var i, n = names {
+            tile #r(label="{i}{n}", @tapped(k) {
+                log = log + "{n}{k};"
+            })
+        }
+        button #toggle(text="t", @click {
+            show = !show
+        })
+    }
+}
+
+func testReachesOneInstance(t Test, c main) {
+    if c.b != null {
+        t.assert(c.b.done == null)
+        c.b.hit.click()
+        t.assert(c.b.hits == 1)
+        t.assert(c.b.label == "one")
+        t.assert(c.b.shown.value == "[one:1]")
+        c.b.hit.click()
+        t.assert(c.b.done != null)
+        c.b.reset()
+        t.assert(c.b.hits == 0)
+    } else {
+        t.assert(false)
+    }
+    c.toggle.click()
+    t.assert(c.b == null)
+}
+
+func testReachesOneCopy(t Test, c main) {
+    if c.r[1] != null {
+        t.assert(c.r[1].fin == null)
+        c.r[1].tap.click()
+        t.assert(c.r[1].taps == 1)
+        t.assert(c.r[0].taps == 0)
+        t.assert(c.r[1].label == "1b")
+        t.assert(c.r[1].face.value == "<1b:1>")
+        c.r[1].tap.click()
+        t.assert(c.r[1].fin != null)
+        t.assert(c.r[0].fin == null)
+        t.assert(c.log == "b1;b2;")
+    } else {
+        t.assert(false)
+    }
+}
+
+func testFiresACopysEvent(t Test, c main) {
+    c.r[0].tapped(7)
+    t.assert(c.log == "a7;")
+    t.assert(c.r[0].taps == 0)
+}
+
+window {
+    main
+}
+-- sites.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+
+component badge(label string) node {
+    var hits = 0
+    text #shown(value="[{label}:{hits}]")
+    button #hit(text="hit", @click {
+        hits = hits + 1
+    })
+    if hits >= 2 {
+        text #done(value="done")
+    }
+}
+
+component panel node {
+    var open = true
+    vbox {
+        if open {
+            badge #inner(label="in")
+        }
+        badge #fixed(label="fixed")
+    }
+}
+
+component main node {
+    var show = true
+    var names list[string] = ["a", "b"]
+    vbox {
+        if show {
+            badge #b(label="one")
+        }
+        for var n = names {
+            badge #r(label=n)
+        }
+        panel #p
+    }
+}
+
+func testEachSiteIsItsOwn(t Test, c main) {
+    if c.b != null {
+        c.b.hit.click()
+        t.assert(c.b.hits == 1)
+    }
+    if c.r[1] != null {
+        c.r[1].hit.click()
+        c.r[1].hit.click()
+        t.assert(c.r[1].hits == 2)
+        t.assert(c.r[1].done != null)
+        t.assert(c.r[0].done == null)
+        t.assert(c.r[1].shown.value == "[b:2]")
+    }
+    if c.b != null {
+        t.assert(c.b.done == null)
+        t.assert(c.b.hits == 1)
+    }
+}
+
+func testReachesThroughTwoInstances(t Test, c main) {
+    if c.p.inner != null {
+        c.p.inner.hit.click()
+        t.assert(c.p.inner.hits == 1)
+        t.assert(c.p.inner.label == "in")
+        t.assert(c.p.fixed.hits == 0)
+    } else {
+        t.assert(false)
+    }
+    c.p.fixed.hit.click()
+    t.assert(c.p.fixed.hits == 1)
+    t.assert(c.p.fixed.shown.value == "[fixed:1]")
+}
+
+window {
+    main
+}
+-- twice.sngl --
+import "sngl:test/browser"
+import . "sngl:test"
+import . "sngl:ui"
+
+component other(label string) node {
+    var seen = 0
+    text #shown(value="other {label}:{seen}")
+}
+
+component badge(label string) node {
+    var hits = 0
+    text #shown(value="[{label}:{hits}]")
+}
+
+component main node {
+    var names list[string] = ["a"]
+    for var n = names {
+        other #o(label=n)
+    }
+    for var n = names {
+        badge #b(label=n)
+    }
+}
+
+func testTheSecondLoopsCopy(t Test, c main) {
+    t.assert(browser.text(c.b[0].shown) == "[a:0]")
+}
+
+window {
+    main
+}
+-- testrun/android/kotlin/app.sngl/main/1 --
+sha256:7421195662d508265bad74aa0ce01464
+{
+  "results": [
+    {
+      "Desc": "FiresACopysEvent",
+      "Passed": true
+    },
+    {
+      "Desc": "ReachesOneCopy",
+      "Passed": true
+    },
+    {
+      "Desc": "ReachesOneInstance",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/android/kotlin/sites.sngl/main/1 --
+sha256:65361b2e75e011959ee54e88bf03d67d
+{
+  "results": [
+    {
+      "Desc": "EachSiteIsItsOwn",
+      "Passed": true
+    },
+    {
+      "Desc": "ReachesThroughTwoInstances",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/main/1 --
+sha256:e222f2010b9728a639d96331e8757538
+{
+  "results": [
+    {
+      "Desc": "FiresACopysEvent",
+      "Passed": true
+    },
+    {
+      "Desc": "ReachesOneCopy",
+      "Passed": true
+    },
+    {
+      "Desc": "ReachesOneInstance",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/sites.sngl/main/1 --
+sha256:03234dc644c54593da843b9847f2ec0b
+{
+  "results": [
+    {
+      "Desc": "EachSiteIsItsOwn",
+      "Passed": true
+    },
+    {
+      "Desc": "ReachesThroughTwoInstances",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/main/1 --
+sha256:1ab7830bb4abb1bc0c02219d056189f2
+{
+  "results": [
+    {
+      "Desc": "FiresACopysEvent",
+      "Passed": true
+    },
+    {
+      "Desc": "ReachesOneCopy",
+      "Passed": true
+    },
+    {
+      "Desc": "ReachesOneInstance",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/sites.sngl/main/1 --
+sha256:f4eb588ca9a13055b23fbe2ea48592b1
+{
+  "results": [
+    {
+      "Desc": "EachSiteIsItsOwn",
+      "Passed": true
+    },
+    {
+      "Desc": "ReachesThroughTwoInstances",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/main/1 --
+sha256:4391eb1f11ab8f4de418558fbc3975cf
+{
+  "results": [
+    {
+      "Desc": "FiresACopysEvent",
+      "Passed": true
+    },
+    {
+      "Desc": "ReachesOneCopy",
+      "Passed": true
+    },
+    {
+      "Desc": "ReachesOneInstance",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/sites.sngl/main/1 --
+sha256:68a5774aef655f6147d608bab09bea77
+{
+  "results": [
+    {
+      "Desc": "EachSiteIsItsOwn",
+      "Passed": true
+    },
+    {
+      "Desc": "ReachesThroughTwoInstances",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/main/1 --
+sha256:4c8478d7ec7728902faee5e7891d5ef7
+{
+  "results": [
+    {
+      "Desc": "FiresACopysEvent",
+      "Passed": true
+    },
+    {
+      "Desc": "ReachesOneCopy",
+      "Passed": true
+    },
+    {
+      "Desc": "ReachesOneInstance",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/sites.sngl/main/1 --
+sha256:aeb143b57ca806ca7a4e28cb220cde83
+{
+  "results": [
+    {
+      "Desc": "EachSiteIsItsOwn",
+      "Passed": true
+    },
+    {
+      "Desc": "ReachesThroughTwoInstances",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/twice.sngl/main/1 --
+sha256:4ac0b96408bf7153b21b1dfef7c74f63
+{
+  "results": [
+    {
+      "Desc": "TheSecondLoopsCopy",
+      "Passed": true
+    }
+  ]
+}

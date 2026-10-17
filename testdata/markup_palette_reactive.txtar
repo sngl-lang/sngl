@@ -87,6 +87,11 @@ type Color struct {
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
+	*modelState
+}
+
+// modelState is what every copy of a Model shares.
+type modelState struct {
 	pal            Palette
 	visible__inst0 bool
 	__focusID      int
@@ -96,7 +101,7 @@ type Model struct {
 
 // New creates a Model with default bind values.
 func New() Model {
-	m := Model{}
+	m := Model{&modelState{}}
 	m.pal = Palette{Keyword: snglcolor.Color{R: 207, G: 34, B: 46, A: 255}, Type: snglcolor.Color{R: 149, G: 56, B: 0, A: 255}, Function: snglcolor.Color{R: 130, G: 80, B: 223, A: 255}, Constant: snglcolor.Color{R: 5, G: 80, B: 174, A: 255}, String: snglcolor.Color{R: 10, G: 48, B: 105, A: 255}, Number: snglcolor.Color{R: 5, G: 80, B: 174, A: 255}, Comment: snglcolor.Color{R: 110, G: 119, B: 129, A: 255}, Plain: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, Variable: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, Operator: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, Punctuation: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}}
 	m.visible__inst0 = true
 	m.__focusID = 0
@@ -853,7 +858,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:770a795f8f275430b650b57f6adca16f
+pass sha256:af6ff25d4443cbf4a1c678b8203ee6df
 -- run/go/fyne --
 pass sha256:50ad3d5fbea6be79b5c8614600cd3971
 -- run/go/gtk4 --

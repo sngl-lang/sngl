@@ -133,13 +133,6 @@ type Features struct {
 	// builds an instance in the page's JavaScript under any --lang.
 	GenericComponents bool
 
-	// RuntimeReach grants a test the nodes of a component built at run time, by
-	// the id it gave each one and, under a loop, the copy's index among every
-	// element the page renders under that id -- which test_reach allows only
-	// where the id is the one component's, rendered once per copy. Withheld, such
-	// a reach is refused, there being no one instance to name.
-	RuntimeReach bool
-
 	// The six below are requests rather than capabilities, which is the split
 	// `sngl:x/gen` spells as `#[gen.wants]`: each asks for a pass the target
 	// wants run, so a platform asking for Canvas is not confessing to
@@ -269,7 +262,6 @@ func (f Features) String() string {
 		{"Navigation", f.Navigation},
 		{"GenericFuncs", f.GenericFuncs},
 		{"GenericComponents", f.GenericComponents},
-		{"RuntimeReach", f.RuntimeReach},
 		{"StructComponents", f.StructComponents},
 		{"StdlibContextParam", f.StdlibContextParam},
 		{"FocusOrder", f.FocusOrder},

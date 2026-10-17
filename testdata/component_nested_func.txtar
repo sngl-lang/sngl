@@ -98,6 +98,11 @@ type ErrorEvent struct {
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
+	*modelState
+}
+
+// modelState is what every copy of a Model shares.
+type modelState struct {
 	log                 string
 	total               int
 	__effect0_live      []bool
@@ -111,7 +116,7 @@ type Model struct {
 
 // New creates a Model with default bind values.
 func New() Model {
-	m := Model{}
+	m := Model{&modelState{}}
 	m.log = ""
 	m.total = 0
 	m.__effect0_live = []bool{}
@@ -863,7 +868,7 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:02b945e591a0a0f07997ec1684216b00
+pass sha256:5884e4fac832464b71fcce1014ca5f43
 -- run/go/fyne --
 pass sha256:5a451ff43b82fd75725f5b5433509613
 -- run/go/gtk4 --

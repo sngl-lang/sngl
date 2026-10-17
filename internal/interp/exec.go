@@ -725,6 +725,10 @@ func (env *Env) execCatch(s *ir.If) error {
 	return nil
 }
 
+// WriteBound is writeBound for a write made through the instance from
+// outside its body: a method a test calls on it, handed it as its receiver.
+func (env *Env) WriteBound(sym ir.Symbol, val any) error { return env.writeBound(sym, val) }
+
 // writeBound carries a write of one of this instance's two-way props out to
 // the var its call site bound it to, `:checked=on`: a component writing its
 // own prop -- an override reporting what its control now holds -- writes the

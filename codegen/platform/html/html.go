@@ -678,6 +678,9 @@ type htmlGen struct {
 	lang codegen.LangTranslator
 
 	pkg *ir.Package
+	// reads is what the package's tests read through an instance built at
+	// run time (instanceReads).
+	reads []codegen.InstanceRead
 	// written is each element variable an element has been written under,
 	// so a second node carrying the same `#id` gets one of its own (nodeID).
 	written map[string]bool
@@ -3691,19 +3694,51 @@ func (g *htmlGen) emitEventInvokers(b *strings.Builder) {
 	// A node a test null-tests is rendered while an element carries its mark,
 	// which goes with the element when a render slot takes it out; an instance
 	// is while the root it renders does.
+	// So is a spliced instance, while one of its roots is.
 	ids, keyed := codegen.NullTestedRefs(g.pkg)
+	roots := codegen.InstanceRootIDs(g.pkg)
 	for _, id := range slices.Sorted(maps.Keys(ids)) {
-		fmt.Fprintf(b, "state.%s = () => document.querySelector('[data-sngl-id=%q], [%s=%q]') !== null;\n", codegen.PresenceMethod(id), id, instanceMark, id)
+		sel := fmt.Sprintf("[data-sngl-id=%q], [%s=%q]", id, instanceMark, id)
+		if roots[id] {
+			sel += fmt.Sprintf(", [%s]", instanceRootAttr(id))
+		}
+		fmt.Fprintf(b, "state.%s = () => document.querySelector('%s') !== null;\n", codegen.PresenceMethod(id), sel)
 	}
-	// One copy is rendered while an element carries its key: the node, or the
-	// root of an instance handed one.
+	// One copy is rendered while an element carries its key: the node, the
+	// root of an instance handed one, or a root of a spliced one.
 	instances := codegen.KeyedInstanceIDs(g.pkg)
 	for _, id := range slices.Sorted(maps.Keys(keyed)) {
 		sel := copySelector(id, "k")
 		if instances[id] {
 			sel += " + ', ' + " + instanceCopySelector(id, "k")
 		}
+		if roots[id] {
+			sel += fmt.Sprintf(" + ', [%s=\"' + k + '\"]'", instanceRootAttr(id))
+		}
 		fmt.Fprintf(b, "state.%s = (k) => document.querySelector(%s) !== null;\n", codegen.PresenceAtMethod(id), sel)
+	}
+	g.emitInstanceReads(b)
+}
+
+// emitInstanceReads writes each codegen.InstanceReadMethod a test calls, which
+// reads the member off the instance its root element holds (instanceOnRoot):
+// the instance's root carries its name and, for one copy, its key.
+func (g *htmlGen) emitInstanceReads(b *strings.Builder) {
+	for _, r := range g.instanceReads() {
+		sel := fmt.Sprintf("'[%s=%q]'", instanceMark, r.ID)
+		params := ""
+		if r.Keyed {
+			sel, params = instanceCopySelector(r.ID, "k"), "k"
+		}
+		inst := fmt.Sprintf("document.querySelector(%s)?.%s", sel, instanceOnRoot)
+		if r.Func != nil {
+			if params != "" {
+				params += ", "
+			}
+			fmt.Fprintf(b, "state.%s = (%s...a) => %s?.%s(...a);\n", codegen.InstanceReadMethod(r), params, inst, instanceCallMember(r.Member))
+			continue
+		}
+		fmt.Fprintf(b, "state.%s = (%s) => %s?.%s();\n", codegen.InstanceReadMethod(r), params, inst, instanceReadMember(r.Member))
 	}
 }
 

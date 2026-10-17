@@ -9,6 +9,7 @@ import (
 	"duckfam.us/sngl/ast"
 	"duckfam.us/sngl/codegen"
 	"duckfam.us/sngl/codegen/irwalk"
+	"duckfam.us/sngl/internal/lower"
 	"duckfam.us/sngl/ir"
 )
 
@@ -51,6 +52,10 @@ type GoIRContext struct {
 	// inliner for every target, and whether that becomes a record is the
 	// target's answer (see lower.hasInstanceRuntime).
 	InstanceRecords bool
+	// InstanceReads are the members the build's tests read through an
+	// instance it builds at run time, which the Model holds each such
+	// instance for where its root is bound (HoldInstance).
+	InstanceReads []codegen.InstanceRead
 
 	// ModelIsValue says the Go scope this context emits into holds the Model
 	// as a value rather than a pointer, so handing it to something that takes
@@ -59,6 +64,13 @@ type GoIRContext struct {
 	// EmitFuncDef writes takes a pointer, which is why it clears this for the
 	// bodies it emits.
 	ModelIsValue bool
+
+	// OffLoop, where set, makes a function literal handed to a call that
+	// runs it off the event loop (lower.LeavesTheLoop) take a snapshot of the
+	// Model where it is made, and read and write that. bubbletea sets it:
+	// its Model's state is shared between the copies Update makes, and the
+	// event loop owns it.
+	OffLoop *OffLoopSnapshots
 
 	// ExtraParam is appended verbatim to the signature EmitFuncDef writes, for
 	// a parameter whose Go type no ir.Type spells -- today the `m *Model` a
@@ -910,7 +922,33 @@ func (gc *GoIRContext) maybeWrapErrorReturn(n *ir.Call, raw string) string {
 	return fmt.Sprintf("func() %s { v, _ := %s; return v }()", rt, raw)
 }
 
+// OffLoopSnapshots is the function literals a scope hands to work leaving
+// the event loop, and whether any took a snapshot (OffLoop).
+type OffLoopSnapshots struct {
+	lambdas map[*ir.Lambda]bool
+	// Used says a literal spelled the Model's snapshot methods, which the
+	// platform then declares.
+	Used bool
+}
+
+// SnapshotMethod and SnapshotRefMethod are the Model's methods copying it
+// for an off-loop literal, by value and by pointer.
+const (
+	SnapshotMethod    = "snapshot"
+	SnapshotRefMethod = "snapshotRef"
+)
+
 func (gc *GoIRContext) evalCall(n *ir.Call) string {
+	if gc.OffLoop != nil && lower.LeavesTheLoop(n.Func) {
+		if gc.OffLoop.lambdas == nil {
+			gc.OffLoop.lambdas = map[*ir.Lambda]bool{}
+		}
+		for _, a := range n.Args {
+			if l, ok := a.Value.(*ir.Lambda); ok {
+				gc.OffLoop.lambdas[l] = true
+			}
+		}
+	}
 	// Ahead of the registry, because make's spelling comes from the call's
 	// return type and an emitter is handed only its arguments.
 	if out, ok := gc.MakeChanText(n); ok {
@@ -1851,6 +1889,23 @@ func (gc *GoIRContext) evalLambda(n *ir.Lambda) string {
 	if n.Func == nil {
 		return "func() any { return nil }"
 	}
+	if gc.OffLoop != nil && gc.OffLoop.lambdas[n] && (gc.Ctx == nil || gc.Ctx.StateReceiver == "") && gc.RecvName() == codegen.ModelReceiver {
+		// Made on the event loop, run off it: the literal closes over a
+		// copy of the Model taken here rather than the state the loop owns.
+		delete(gc.OffLoop.lambdas, n)
+		gc.OffLoop.Used = true
+		snap := SnapshotRefMethod
+		if gc.ModelIsValue {
+			snap = SnapshotMethod
+		}
+		params := make([]string, len(n.Func.Params))
+		for i, p := range n.Func.Params {
+			params[i] = p.Name + " " + IRTypeToGo(p.Type)
+		}
+		ft := "func(" + strings.Join(params, ", ") + ")" + goReturnType(n.Func.Return)
+		m := codegen.ModelReceiver
+		return "func() " + ft + " {\n\t\t" + m + " := " + m + "." + snap + "()\n\t\treturn " + gc.evalLambda(n) + "\n\t}()"
+	}
 	params := make([]string, len(n.Func.Params))
 	for i, p := range n.Func.Params {
 		goType := "any"
@@ -1906,7 +1961,9 @@ func (gc *GoIRContext) WithLocal(name string) *GoIRContext {
 		EmitLineDirectives: gc.EmitLineDirectives,
 		LineDirBase:        gc.LineDirBase,
 		InstanceRecords:    gc.InstanceRecords,
+		InstanceReads:      gc.InstanceReads,
 		ModelIsValue:       gc.ModelIsValue,
+		OffLoop:            gc.OffLoop,
 		imports:            gc.imports, // shared so child writes propagate
 	}
 }
@@ -1927,7 +1984,9 @@ func (gc *GoIRContext) ForComponent(comp *ir.Component) *GoIRContext {
 		EmitLineDirectives: gc.EmitLineDirectives,
 		LineDirBase:        gc.LineDirBase,
 		InstanceRecords:    gc.InstanceRecords,
+		InstanceReads:      gc.InstanceReads,
 		ModelIsValue:       gc.ModelIsValue,
+		OffLoop:            gc.OffLoop,
 		imports:            gc.imports, // shared so child writes propagate
 	}
 }

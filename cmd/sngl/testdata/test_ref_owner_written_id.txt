@@ -2,39 +2,42 @@
 # main's. A lowering diagnostic about badge's names it as the program wrote it.
 
 ! sngl test --platform=html app.sngl
-stderr '`#hit` is not rendered once by every copy of badge'
+stderr '`hit.reset\(\)` calls a method of the node `#hit`'
 ! stderr '__own'
 
 -- app.sngl --
 import . "sngl:ui"
 import . "sngl:test"
 
-component badge(label string) node {
-    var hits = 0
+component counter node {
+    var n = 0
+    func reset() {
+        n = 0
+    }
+    button(text="n{n}", @click { n = n + 1 })
+}
+
+component badge node {
+    var open = true
     vbox {
-        if hits < 2 {
-            button #hit(text="{label}{hits}", @click { hits = hits + 1 })
+        if open {
+            counter #hit
+            button(text="reset", @click { hit.reset() })
         }
     }
 }
 
 component main node {
-    var names = ["a", "b"]
     var mh = 0
     vbox {
         button #hit(text="m{mh}", @click { mh = mh + 1 })
-        for var n = names {
-            badge #b(label=n)
-        }
+        badge
     }
 }
 
 func testHit(t Test, c main) {
     c.hit.click()
     t.assert(c.mh == 1)
-    if c.b[0].hit != null {
-        c.b[0].hit.click()
-    }
 }
 
 window {

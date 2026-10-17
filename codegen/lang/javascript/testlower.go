@@ -118,7 +118,7 @@ func lowerTestBody(irPkg *ir.Package, fn *ir.Func, methodFields map[string]bool,
 	for _, p := range fn.Params {
 		ctx = ctx.WithLocal(p.Name)
 	}
-	block, fields := codegen.LowerRefNullTests(fn.Block, ctx.MethodFields)
+	block, fields := codegen.LowerRefNullTests(codegen.LowerInstanceReads(fn.Block, irPkg), ctx.MethodFields)
 	ctx.MethodFields = fields
 	return lowerTestStmts(block, NewIRContext(ctx))
 }

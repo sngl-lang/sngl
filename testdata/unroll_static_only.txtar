@@ -60,6 +60,11 @@ var rows []string = []string{"alpha", "beta", "gamma"}
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
+	*modelState
+}
+
+// modelState is what every copy of a Model shares.
+type modelState struct {
 	visible__inst0 bool
 	rows           []string
 
@@ -68,7 +73,7 @@ type Model struct {
 
 // New creates a Model with default bind values.
 func New() Model {
-	m := Model{}
+	m := Model{&modelState{}}
 	m.visible__inst0 = true
 	m.rows = []string{"alpha", "beta", "gamma"}
 	return m
@@ -306,7 +311,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:259be9de090b2f7044af524a4aaa8dff
+pass sha256:e9a76606e68ab3c08358da133228bbda
 -- run/go/fyne --
 pass sha256:fe47dd917ad0626a5770f552c783dd7f
 -- run/kotlin/android --

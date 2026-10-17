@@ -104,6 +104,11 @@ var items []string = []string{"a", "b"}
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
+	*modelState
+}
+
+// modelState is what every copy of a Model shares.
+type modelState struct {
 	visits              int
 	opened              int
 	pages__current      _page__value
@@ -121,7 +126,7 @@ type Model struct {
 
 // New creates a Model with default bind values.
 func New() Model {
-	m := Model{}
+	m := Model{&modelState{}}
 	m.visits = 0
 	m.opened = 0
 	m.pages__current = _page__value{Id: 0, Href: "/", Title: "Home", Meta: __anon_e3b0c4{}}
@@ -1956,7 +1961,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:f47273cdb6faf736d1ba99f8004fc208
+pass sha256:ed1ddf66dedc767b584e59cbca6aa4d1
 -- run/go/fyne --
 pass sha256:b7cb56d4b752d7f932a6a4252fe69d42
 -- run/go/gtk4 --

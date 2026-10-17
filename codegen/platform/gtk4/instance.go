@@ -91,7 +91,7 @@ func emitComponentInstance(
 	// the Model as it is built: the invoker reaches whichever instance built
 	// it last, which is the one on screen.
 	var invokers []gtkEventInvoker
-	tr := newTr(comp.LocalRefs).withInstanceCopies(indexed, modelSink).withSlotRoot(instanceRootVar, comp.Stmts).
+	tr := newTr(comp.LocalRefs).withInstanceCopies(indexed, modelSink).inRecord().withSlotRoot(instanceRootVar, comp.Stmts).
 		withInvokerSink(func(inv gtkEventInvoker) { invokers = append(invokers, inv) })
 	bodyStmts := codegen.WalkLowered(context.Background(), comp.Stmts, tr)
 
@@ -145,9 +145,19 @@ func emitComponentInstance(
 		}
 	}
 	// A widget a test null-tests is handed over too, and taken back when the
-	// instance goes, so the Model holds it exactly while it is rendered.
+	// instance goes, so the Model holds it exactly while it is rendered. One a
+	// slot of the record builds is handed over by that render
+	// (withRecordPresent).
+	slotBuilt := codegen.SlotCreatedIDs(comp, presentIDs)
 	var release strings.Builder
 	for _, id := range slices.Sorted(maps.Keys(presentIDs)) {
+		if slotBuilt[id] {
+			named := namedWidgetField(id)
+			held := instanceReceiver + "." + golang.InstanceModelField + "." + named
+			fmt.Fprintf(&release, "\tif %s == %s.%s {\n\t\t%s = nil\n\t}\n", held, instanceReceiver, id, held)
+			presenceSink(id, named)
+			continue
+		}
 		widget := id
 		for _, inv := range invokers {
 			if inv.IDLabel == id {
@@ -179,12 +189,13 @@ func emitComponentInstance(
 		if fn == nil || len(fn.Block) == 0 {
 			continue
 		}
-		mtr := newTr(fn.Lowered.LocalRefs).withInstanceCopies(indexed, modelSink)
+		mtr := newTr(fn.Lowered.LocalRefs).withInstanceCopies(indexed, modelSink).inRecord()
 		params := fn.Params
 		if len(params) > 0 && params[0].Receiver {
 			params = params[1:]
 		}
 		if fn.Lowered.SlotRender {
+			mtr.withRecordPresent(presentIDs, fn.Block)
 			// A reactive slot's render func, whose body was written against
 			// the reactivity pass's `parent` name and is typed the way the
 			// Model's own slot funcs type it (see emitIRSlotFunc).
@@ -277,6 +288,10 @@ func emitComponentInstance(
 	fmt.Fprintf(b, "func (%s *%s) %s() {\n", instanceReceiver, typeName, golang.ComponentDestroyMethod)
 	if comp.KeyedCopy {
 		fmt.Fprintf(b, "\t%s.%s.%s(%s)\n", instanceReceiver, golang.InstanceModelField, unlistInstance, root)
+	}
+	b.WriteString(golang.InstanceRelease(igc.InstanceReads, comp, instanceReceiver))
+	if len(codegen.InstanceRootIDs(comp)) > 0 {
+		fmt.Fprintf(b, "\tfor _, w := range %s.%s {\n\t\t%s.%s.%s(w)\n\t}\n", instanceReceiver, rootedField, instanceReceiver, golang.InstanceModelField, unlistInstance)
 	}
 	// A destroyed instance's widgets leave the Model's maps of them, so a
 	// map holds the copies on screen.
@@ -491,7 +506,7 @@ const instanceRootVar = "__root"
 // emitPresenceChecks writes, for each `#id` a test null-tests, whether the
 // widget is rendered now: a widget an instance holds is the Model's while the
 // instance lives, and one the Model builds itself is there from BuildUI on.
-func emitPresenceChecks(b *strings.Builder, ids map[string]bool, held map[string]string, modelFields []widgetField) {
+func emitPresenceChecks(b *strings.Builder, pkg *ir.Package, ids map[string]bool, held map[string]string, modelFields []widgetField) {
 	for _, id := range slices.Sorted(maps.Keys(ids)) {
 		field := held[id]
 		if field == "" && slices.ContainsFunc(modelFields, func(f widgetField) bool { return f.name == id }) {
@@ -500,10 +515,14 @@ func emitPresenceChecks(b *strings.Builder, ids map[string]bool, held map[string
 		if field == "" && slices.ContainsFunc(modelFields, func(f widgetField) bool { return f.name == presentField(id) }) {
 			field = presentField(id)
 		}
+		name := codegen.PresenceMethod(id)
 		if field == "" {
+			if codegen.RendersNowhere(pkg, id) {
+				fmt.Fprintf(b, "// %s reports that the #%s widget is never rendered; for tests.\n", name, id)
+				fmt.Fprintf(b, "func (m *Model) %s() bool {\n\treturn false\n}\n\n", name)
+			}
 			continue
 		}
-		name := codegen.PresenceMethod(id)
 		fmt.Fprintf(b, "// %s reports whether the #%s widget is rendered now; for tests.\n", name, id)
 		fmt.Fprintf(b, "func (m *Model) %s() bool {\n\treturn m.%s != nil\n}\n\n", name, field)
 	}

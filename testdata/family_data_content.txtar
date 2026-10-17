@@ -77,6 +77,11 @@ type Card__record struct {
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
+	*modelState
+}
+
+// modelState is what every copy of a Model shares.
+type modelState struct {
 	shown               int
 	hits                int
 	visible__inst0      bool
@@ -89,7 +94,7 @@ type Model struct {
 
 // New creates a Model with default bind values.
 func New() Model {
-	m := Model{}
+	m := Model{&modelState{}}
 	m.shown = 0
 	m.hits = 0
 	m.visible__inst0 = true
@@ -1012,7 +1017,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:6f82d6d360bc494afaa43d879ff597df
+pass sha256:bdd02ae07bf076dfda0dbf716850457c
 -- run/go/fyne --
 pass sha256:a118d279c113e07ab4545ee98ded1949
 -- run/go/gtk4 --

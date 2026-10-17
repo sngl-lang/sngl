@@ -178,6 +178,7 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 	// fyne builds a non-inlinable component as a record, so a CreateComponent
 	// renders as a call to that record's ctor.
 	gc.InstanceRecords = true
+	gc.InstanceReads = codegen.InstanceReads(ctx.Pkg)
 
 	gc.RequireImport("fyne.io/fyne/v2")
 
@@ -387,10 +388,14 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 	emitFyneEventInvokers(&funcBuf, eventInvokers)
 	emitCopyRegistries(&funcBuf, widgetFields)
 	if keyedInstances(ctx.Pkg) {
-		emitUnlistInstance(&funcBuf, widgetFields)
+		emitUnlistInstance(&funcBuf, widgetFields, len(gc.Ctx.InstanceRootIDs()) > 0)
 	}
 	emitKeyedPresenceChecks(&funcBuf, keyedPresent, widgetFields)
-	emitFynePresenceChecks(&funcBuf, presentIDs, presenceFields, widgetFields)
+	emitFynePresenceChecks(&funcBuf, ctx.Pkg, presentIDs, presenceFields, widgetFields)
+	for _, h := range golang.InstanceHolds(gc.InstanceReads) {
+		widgetFields = append(widgetFields, irWidgetField{name: h[0], goType: h[1]})
+	}
+	golang.EmitInstanceReads(&funcBuf, gc.InstanceReads, instanceMethodName, instanceVarGoType)
 
 	td, err := newIRTemplateData(info, cfg, widgetFields, entrySync, widgetImports, funcBuf.String(), gc, ctx, lang)
 	if hasCanvas {

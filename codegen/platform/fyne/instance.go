@@ -71,7 +71,7 @@ func emitComponentInstance(
 	var invokers []fyneEventInvoker
 	tr := newFyneTranslator(igc, nodeSpecs, sink, importSink, failSink).
 		withLocalRefs(comp.LocalRefs).withSlotRoot(instanceRootVar, comp.Stmts).
-		withInstanceCopies(indexed, modelFieldSink).
+		withInstanceCopies(indexed, modelFieldSink).inRecord().
 		withInvokerSink(func(inv fyneEventInvoker) { invokers = append(invokers, inv) })
 	tr.canvasByID, tr.canvasByNode = canvasByID, canvasByNode
 	bodyStmts := codegen.WalkLowered(context.Background(), comp.Stmts, tr)
@@ -135,9 +135,19 @@ func emitComponentInstance(
 	}
 
 	// A widget a test null-tests is handed over too, and taken back when the
-	// instance goes, so the Model holds it exactly while it is rendered.
+	// instance goes, so the Model holds it exactly while it is rendered. One a
+	// slot of the record builds is handed over by that render
+	// (withRecordPresent).
+	slotBuilt := codegen.SlotCreatedIDs(comp, presentIDs)
 	var release strings.Builder
 	for _, id := range slices.Sorted(maps.Keys(presentIDs)) {
+		if slotBuilt[id] {
+			named := namedWidgetField(id)
+			held := instanceReceiver + "." + golang.InstanceModelField + "." + named
+			fmt.Fprintf(&release, "\tif %s == %s.%s {\n\t\t%s = nil\n\t}\n", held, instanceReceiver, id, held)
+			presenceSink(id, named)
+			continue
+		}
 		widget := id
 		for _, inv := range invokers {
 			if inv.IDLabel == id && inv.Target != "" {
@@ -172,6 +182,10 @@ func emitComponentInstance(
 	if comp.KeyedCopy {
 		fmt.Fprintf(&unlisting, "\t%s.%s.%s(%s.%s)\n", instanceReceiver, golang.InstanceModelField, unlistInstance, instanceReceiver, golang.ComponentRootField)
 	}
+	unlisting.WriteString(golang.InstanceRelease(gc.InstanceReads, comp, instanceReceiver))
+	if len(codegen.InstanceRootIDs(comp)) > 0 {
+		fmt.Fprintf(&unlisting, "\tfor _, w := range %s.%s {\n\t\t%s.%s.%s(w)\n\t}\n", instanceReceiver, rootedField, instanceReceiver, golang.InstanceModelField, unlistInstance)
+	}
 
 	// Methods after the body, because the walk is what discovers the widget
 	// fields the struct declares -- and a setter's body carries the same
@@ -183,13 +197,14 @@ func emitComponentInstance(
 			continue
 		}
 		mtr := newFyneTranslator(igc, nodeSpecs, sink, importSink, failSink).withLocalRefs(fn.Lowered.LocalRefs).
-			withInstanceCopies(indexed, modelFieldSink)
+			withInstanceCopies(indexed, modelFieldSink).inRecord()
 		mtr.canvasByNode = canvasByNode
 		params := fn.Params
 		if len(params) > 0 && params[0].Receiver {
 			params = params[1:]
 		}
 		if fn.Lowered.SlotRender {
+			mtr.withRecordPresent(presentIDs, fn.Block)
 			// A reactive slot's render func. Its body was written against the
 			// reactivity pass's `parent` name, which the translator rewrites
 			// to slotParentParam -- so the parameter has to be spelled the way
@@ -434,7 +449,7 @@ func instanceOwnsFunc(pkg *ir.Package, fn *ir.Func) bool {
 // emitFynePresenceChecks writes, for each `#id` a test null-tests, whether the
 // widget is rendered now: a widget an instance holds is the Model's while the
 // instance lives, and one the Model builds itself is there from BuildUI on.
-func emitFynePresenceChecks(b *strings.Builder, ids map[string]bool, held map[string]string, modelFields []irWidgetField) {
+func emitFynePresenceChecks(b *strings.Builder, pkg *ir.Package, ids map[string]bool, held map[string]string, modelFields []irWidgetField) {
 	for _, id := range slices.Sorted(maps.Keys(ids)) {
 		field := held[id]
 		if field == "" && slices.ContainsFunc(modelFields, func(f irWidgetField) bool { return f.name == id }) {
@@ -443,10 +458,14 @@ func emitFynePresenceChecks(b *strings.Builder, ids map[string]bool, held map[st
 		if field == "" && slices.ContainsFunc(modelFields, func(f irWidgetField) bool { return f.name == presentField(id) }) {
 			field = presentField(id)
 		}
+		name := codegen.PresenceMethod(id)
 		if field == "" {
+			if codegen.RendersNowhere(pkg, id) {
+				fmt.Fprintf(b, "// %s reports that the #%s widget is never rendered; for tests.\n", name, id)
+				fmt.Fprintf(b, "func (m *Model) %s() bool {\n\treturn false\n}\n\n", name)
+			}
 			continue
 		}
-		name := codegen.PresenceMethod(id)
 		fmt.Fprintf(b, "// %s reports whether the #%s widget is rendered now; for tests.\n", name, id)
 		fmt.Fprintf(b, "func (m *Model) %s() bool {\n\treturn m.%s != nil\n}\n\n", name, field)
 	}

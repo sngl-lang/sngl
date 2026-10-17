@@ -83,6 +83,9 @@ func widgetFieldGoType(cType string, wrapped bool) string {
 	if rest, ok := strings.CutPrefix(cType, copyMapType("")); ok {
 		return copyMapType(widgetFieldGoType(rest, wrapped))
 	}
+	if rest, ok := strings.CutPrefix(cType, "[]"); ok {
+		return "[]" + widgetFieldGoType(rest, wrapped)
+	}
 	// A component instance's handle is a generated Go struct, not a GTK class,
 	// so it arrives already spelled as Go and is not a widget in either mode.
 	if strings.HasPrefix(cType, "*") {

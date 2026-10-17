@@ -3,6 +3,7 @@ package codegen
 import (
 	"maps"
 	"strconv"
+	"strings"
 
 	"duckfam.us/sngl/ast"
 	"duckfam.us/sngl/ir"
@@ -51,11 +52,11 @@ func NullTestedRefs(pkg *ir.Package) (ids, keyed map[string]bool) {
 }
 
 // LowerRefNullTests is a test body with each null test of a ref replaced by a
-// read of the presence check, or by its answer for a node rendered once, negated for `== null`, for a target whose check
-// is a method on the instance a test holds -- a call handed the copy's key for
-// one copy. methodFields gains the checks, so the read is spelled as the call
-// it is. The body is copied: the test's own IR is shared by every target built
-// from the package.
+// read of the presence check, negated for `== null`, or by its answer for a
+// node rendered once, for a target whose check is a method on the instance a
+// test holds -- a call handed the copy's key for one copy. methodFields gains
+// the checks, so the read is spelled as the call it is. The body is copied:
+// the test's own IR is shared by every target built from the package.
 func LowerRefNullTests(stmts []ir.Stmt, methodFields map[string]bool) ([]ir.Stmt, map[string]bool) {
 	fields := maps.Clone(methodFields)
 	if fields == nil {
@@ -114,4 +115,72 @@ func KeyedInstanceIDs(pkg *ir.Package) map[string]bool {
 		return nil
 	})
 	return out
+}
+
+// InstanceRootIDs is every `#id` of a spliced instance whose root nodes carry
+// ir.InstanceRootProp in root, a lowered package or component: still on a
+// node, or the write of it the node became.
+func InstanceRootIDs(root any) map[string]bool {
+	out := map[string]bool{}
+	if p, ok := root.(*ir.Package); ok && p == nil {
+		return out
+	}
+	_ = ir.Walk(root, func(n ir.Node) error {
+		switch x := n.(type) {
+		case *ir.NodeInst:
+			for _, p := range x.Props {
+				if id, ok := InstanceRootID(p.Name); ok {
+					out[id] = true
+				}
+			}
+		case *ir.Assign:
+			if sel, ok := x.Target.(*ir.Select); ok {
+				if id, ok := InstanceRootID(sel.Field); ok {
+					out[id] = true
+				}
+			}
+		}
+		return nil
+	})
+	return out
+}
+
+// InstanceRootID is the id prop is the ir.InstanceRootProp of.
+func InstanceRootID(prop string) (string, bool) {
+	return strings.CutPrefix(prop, ir.InstanceRootPrefix)
+}
+
+// RendersNowhere reports whether nothing in pkg but its tests names the `#id`
+// a test null-tests: the build folded away every node that carried it -- a
+// branch on a constant, a context's provided value -- so the node is never
+// rendered and a presence check answers false.
+func RendersNowhere(pkg *ir.Package, id string) bool {
+	if pkg == nil {
+		return false
+	}
+	named := false
+	visit := func(n ir.Node) error {
+		if named {
+			return ir.SkipAll
+		}
+		switch x := n.(type) {
+		case *ir.NodeInst:
+			named = x.ID == id
+		case *ir.Ident:
+			named = x.Name == id
+		case *ir.Select:
+			named = x.Field == id
+		}
+		return nil
+	}
+	for _, c := range pkg.Components {
+		_ = ir.Walk(c, visit)
+	}
+	_ = ir.Walk(pkg.Body, visit)
+	for _, fn := range pkg.Funcs {
+		if !fn.IsTest {
+			_ = ir.Walk(fn, visit)
+		}
+	}
+	return !named
 }

@@ -48,6 +48,9 @@ type htmlTranslator struct {
 	// identifier nothing declares, and the page throws on the first
 	// interaction that fires it.
 	refToVar map[string]string
+	// own is each element this translator's code created under its own name:
+	// a factory's `let b`, which the page may also write a `#b` of.
+	own map[string]bool
 	// canvasByID and canvasByNode are the canvas metadata the flattening
 	// into the lowered body this translator walks. The page's own markup path
 	// never gets here -- it meets the canvas as an ir.NodeInst and registers a
@@ -139,7 +142,7 @@ func (t *htmlTranslator) nodeRef(node ir.Expr) ir.Expr {
 		return node
 	}
 	v, mapped := t.refToVar[id.Name]
-	if !mapped || v == id.Name {
+	if !mapped || v == id.Name || t.own[id.Name] {
 		return node
 	}
 	clone := *id
@@ -226,6 +229,10 @@ func (t *htmlTranslator) OnCreateNode(ctx context.Context, id, tag string) []ir.
 
 	// A Window built at run time is a `<dialog>` with its chrome: the title
 	// and a close button, which _snglDialog makes.
+	if t.own == nil {
+		t.own = map[string]bool{}
+	}
+	t.own[id] = true
 	if tag == windowElement {
 		t.jc.Ctx.Helpers[dialogHelper] = true
 		dialog := ir.NativeNamed("HTMLDialogElement")
@@ -507,6 +514,9 @@ func (t *htmlTranslator) OnPropAssign(ctx context.Context, node ir.Expr, prop st
 	}
 	if prop == ir.CopyProp {
 		return setAttr(copyAttr, value)
+	}
+	if id, ok := codegen.InstanceRootID(prop); ok {
+		return setAttr(instanceRootAttr(id), value)
 	}
 	// A `style={...}` struct is a set of CSS declarations, not a value any
 	// DOM sink accepts: passed through it stringifies to "[object Object]".

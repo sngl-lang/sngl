@@ -27,6 +27,10 @@ func nodeProps(n *ir.NodeInst) map[string]ir.Expr {
 			out[copyAttr] = p.Value
 			continue
 		}
+		if id, ok := codegen.InstanceRootID(p.Name); ok {
+			out[instanceRootAttr(id)] = p.Value
+			continue
+		}
 		out[p.Name] = p.Value
 	}
 	// An attribute nobody declared was collected under its wildcard prop's
@@ -96,3 +100,9 @@ func exprLiteralAnyIR(e ir.Expr) any {
 // copyAttr is the attribute a copy of a node a test indexes carries its key in
 // (ir.CopyProp), beside the data-sngl-id naming the node.
 const copyAttr = "data-sngl-copy"
+
+// instanceRootAttr is the attribute a root element of a spliced instance a
+// test null-tests carries (ir.InstanceRootProp), holding the instance's copy
+// key. An attribute per instance, since one element may be a root of several
+// nested ones and carry a copy key of its own besides.
+func instanceRootAttr(id string) string { return "data-sngl-root-" + id }

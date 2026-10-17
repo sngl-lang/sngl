@@ -58,6 +58,11 @@ type TableRow__record struct {
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
+	*modelState
+}
+
+// modelState is what every copy of a Model shares.
+type modelState struct {
 	idx       int
 	__focusID int
 
@@ -68,7 +73,7 @@ type Model struct {
 
 // New creates a Model with default bind values.
 func New() Model {
-	m := Model{}
+	m := Model{&modelState{}}
 	m.idx = 0
 	m.__focusID = 0
 	m.widget0 = tui.NewTable(tui.Columns([]string{"Name", "Role"}), tui.Rows(func() [][]string {
@@ -798,7 +803,7 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:df93d47cf3aa143d3e9e9f0087c4fa33
+pass sha256:710f8974f94d19d9fbbedcd3ed548871
 -- run/go/fyne --
 pass sha256:763d453540ed50f5f6aad8cb4f8cdbab
 -- run/go/gtk4 --

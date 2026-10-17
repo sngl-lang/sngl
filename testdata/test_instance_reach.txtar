@@ -114,6 +114,11 @@ import (
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
+	*modelState
+}
+
+// modelState is what every copy of a Model shares.
+type modelState struct {
 	shown       bool
 	hits        int
 	hits__inst0 int
@@ -124,7 +129,7 @@ type Model struct {
 
 // New creates a Model with default bind values.
 func New() Model {
-	m := Model{}
+	m := Model{&modelState{}}
 	m.shown = true
 	m.hits = 0
 	m.hits__inst0 = 0
@@ -370,10 +375,10 @@ func TestHelpers(t *testing.T) {
 	if !((c.hits == 3)) { t.Errorf("assert failed: %s", "(c.hits == 3)") }
 	if !(c.kPresent()) { t.Errorf("assert failed: %s", "c.kPresent()") }
 	if !((("n" + fmt.Sprint(c.hits)) == "n3")) { t.Errorf("assert failed: %s", "((\"n\" + fmt.Sprint(c.hits)) == \"n3\")") }
-	var i int = 0
-	for (i < 2) {
+	var i__local0 int = 0
+	for (i__local0 < 2) {
 		c.hitClick()
-		i = (i + 1)
+		i__local0 = (i__local0 + 1)
 	}
 	if !((c.hits__inst0 == 2)) { t.Errorf("assert failed: %s", "(c.hits__inst0 == 2)") }
 	c.tsClick()
@@ -647,10 +652,10 @@ func TestHelpers(t *testing.T) {
 	if !((c.hits == 3)) { t.Errorf("assert failed: %s", "(c.hits == 3)") }
 	if !(c.kPresent()) { t.Errorf("assert failed: %s", "c.kPresent()") }
 	if !((("n" + fmt.Sprint(c.hits)) == "n3")) { t.Errorf("assert failed: %s", "((\"n\" + fmt.Sprint(c.hits)) == \"n3\")") }
-	var i int = 0
-	for (i < 2) {
+	var i__local0 int = 0
+	for (i__local0 < 2) {
 		c.hitClick()
-		i = (i + 1)
+		i__local0 = (i__local0 + 1)
 	}
 	if !((c.hits__inst0 == 2)) { t.Errorf("assert failed: %s", "(c.hits__inst0 == 2)") }
 	c.tsClick()
@@ -1020,10 +1025,10 @@ class MainScreenTest {
         org.junit.Assert.assertTrue("(c.hits == 3)", (c.hits == 3))
         org.junit.Assert.assertTrue("(composeTestRule.onAllNodes(androidx.compose.ui.test.hasTestTag(\"k\")).fetchSemanticsNodes().isNotEmpty() || SnglPresent.containsValue(\"k\"))", (composeTestRule.onAllNodes(androidx.compose.ui.test.hasTestTag("k")).fetchSemanticsNodes().isNotEmpty() || SnglPresent.containsValue("k")))
         org.junit.Assert.assertTrue("((\"n\" + c.hits.toString()) == \"n3\")", (("n" + c.hits.toString()) == "n3"))
-        var i = 0
-        while ((i < 2)) {
+        var i__local0 = 0
+        while ((i__local0 < 2)) {
             composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("hit")).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick); composeTestRule.waitForIdle()
-            i = (i + 1)
+            i__local0 = (i__local0 + 1)
         }
         org.junit.Assert.assertTrue("(c.hits__inst0 == 2)", (c.hits__inst0 == 2))
         composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("ts")).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick); composeTestRule.waitForIdle()
@@ -1221,12 +1226,12 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:1823c401f591a220d33a2c3a1e157b3e
+pass sha256:0bd805c618f79552be75402078e9160a
 -- run/go/fyne --
-pass sha256:579fdc0cfc974d45b671357a48b6790f
+pass sha256:81a6a97fa97ef8970a999eeeb4e9da76
 -- run/go/gtk4 --
 pass sha256:9eee3af270d2701fad135d87424b9bfd
 -- run/kotlin/android --
-pass sha256:7fba4a9c24d260708d7153770828b1ef
+pass sha256:87bee0cc89775eacb07eafca995daa33
 -- run/none/html --
 pass sha256:9f41e8d7c74f47538f052b0a721ebee3

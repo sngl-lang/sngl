@@ -78,6 +78,11 @@ import (
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
+	*modelState
+}
+
+// modelState is what every copy of a Model shares.
+type modelState struct {
 	shown       bool
 	hits__inst0 int
 	__focusID   int
@@ -87,7 +92,7 @@ type Model struct {
 
 // New creates a Model with default bind values.
 func New() Model {
-	m := Model{}
+	m := Model{&modelState{}}
 	m.shown = true
 	m.hits__inst0 = 0
 	m.__focusID = 0
@@ -201,13 +206,6 @@ func (m *Model) hitClick() {
 	m.__focusID = prev
 }
 
-func (m *Model) bPresent() bool {
-	if m.shown {
-		return true
-	}
-	return false
-}
-
 func (m *Model) labelPresent() bool {
 	if m.shown {
 		return true
@@ -267,13 +265,13 @@ import "testing"
 func TestNullTestsFollowTheBranch(t *testing.T) {
 	c := newTestComponent()
 	_ = c
-	if !(c.bPresent()) { t.Errorf("assert failed: %s", "c.bPresent()") }
+	if !(c.shown) { t.Errorf("assert failed: %s", "c.shown") }
 	if !(c.labelPresent()) { t.Errorf("assert failed: %s", "c.labelPresent()") }
 	c.toggleClick()
-	if !(!c.bPresent()) { t.Errorf("assert failed: %s", "!c.bPresent()") }
+	if !(!c.shown) { t.Errorf("assert failed: %s", "!c.shown") }
 	if !(!c.labelPresent()) { t.Errorf("assert failed: %s", "!c.labelPresent()") }
 	c.toggleClick()
-	if !(c.bPresent()) { t.Errorf("assert failed: %s", "c.bPresent()") }
+	if !(c.shown) { t.Errorf("assert failed: %s", "c.shown") }
 	if !(c.labelPresent()) { t.Errorf("assert failed: %s", "c.labelPresent()") }
 }
 
@@ -305,7 +303,6 @@ type Model struct {
 	__n0        *fyne.Container
 	toggle      *widget.Button
 	__named_hit *widget.Button
-	__present_b fyne.CanvasObject
 	label       *widget.Label
 }
 
@@ -326,7 +323,6 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 	}
 	m.__slot0 = nil
 	m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
-	m.__present_b = nil
 	m.label = nil
 	__inst0_next := []*BadgeInstance{}
 	var __inst0_i int = 0
@@ -345,7 +341,6 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 		__inst0_next = append(__inst0_next, b)
 		__inst0_i = (__inst0_i + 1)
 		b__el := b.Root
-		m.__present_b = b.Root
 		fynelayout.InsertBefore(__parent, m.__slot0_at, b__el)
 		m.__slot0 = append(m.__slot0, b__el)
 		m.label = widget.NewLabel("")
@@ -379,11 +374,6 @@ func (m *Model) hitClick() {
 	if m.__named_hit.OnTapped != nil {
 		m.__named_hit.OnTapped()
 	}
-}
-
-// bPresent reports whether the #b widget is rendered now; for tests.
-func (m *Model) bPresent() bool {
-	return m.__present_b != nil
 }
 
 // labelPresent reports whether the #label widget is rendered now; for tests.
@@ -465,13 +455,13 @@ import "testing"
 func TestNullTestsFollowTheBranch(t *testing.T) {
 	c := newTestComponent()
 	_ = c
-	if !(c.bPresent()) { t.Errorf("assert failed: %s", "c.bPresent()") }
+	if !(c.shown) { t.Errorf("assert failed: %s", "c.shown") }
 	if !(c.labelPresent()) { t.Errorf("assert failed: %s", "c.labelPresent()") }
 	c.toggleClick()
-	if !(!c.bPresent()) { t.Errorf("assert failed: %s", "!c.bPresent()") }
+	if !(!c.shown) { t.Errorf("assert failed: %s", "!c.shown") }
 	if !(!c.labelPresent()) { t.Errorf("assert failed: %s", "!c.labelPresent()") }
 	c.toggleClick()
-	if !(c.bPresent()) { t.Errorf("assert failed: %s", "c.bPresent()") }
+	if !(c.shown) { t.Errorf("assert failed: %s", "c.shown") }
 	if !(c.labelPresent()) { t.Errorf("assert failed: %s", "c.labelPresent()") }
 }
 
@@ -517,7 +507,6 @@ type Model struct {
 	__inst0_live []*BadgeInstance
 	__n0         gtk4rt.Handle
 	toggle       gtk4rt.Handle
-	__present_b  gtk4rt.Handle
 	label        gtk4rt.Handle
 	__named_hit  gtk4rt.Handle
 }
@@ -540,7 +529,6 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 	}
 	m.__slot0 = nil
 	m.__slot0_at = gtk4rt.SlotAnchor(parent, m.__slot0_at)
-	m.__present_b = nil
 	m.label = nil
 	__inst0_next := []*BadgeInstance{}
 	var __inst0_i int = 0
@@ -559,7 +547,6 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 		__inst0_next = append(__inst0_next, b)
 		__inst0_i = (__inst0_i + 1)
 		b__el := b.Root
-		m.__present_b = b.Root
 		gtk4rt.InsertBefore(parent, m.__slot0_at, b__el)
 		m.__slot0 = append(m.__slot0, b__el)
 		m.label = gtk4rt.LabelNew("")
@@ -670,11 +657,6 @@ func (m *Model) hitClick() {
 	gtk4rt.Emit(m.__named_hit, "clicked")
 }
 
-// bPresent reports whether the #b widget is rendered now; for tests.
-func (m *Model) bPresent() bool {
-	return m.__present_b != nil
-}
-
 // labelPresent reports whether the #label widget is rendered now; for tests.
 func (m *Model) labelPresent() bool {
 	return m.label != nil
@@ -697,7 +679,6 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.material3.Button
 import androidx.compose.ui.platform.testTag
 import androidx.compose.material3.Text
-import androidx.compose.runtime.DisposableEffect
 
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
@@ -723,11 +704,6 @@ fun MainScreen(state: MainScreenState = remember { MainScreenState() }) {
             Text(text = "t", modifier = Modifier)
         }
         if (state.shown) {
-            DisposableEffect(Unit) {
-                val __token = Any()
-                SnglPresent[__token] = "b"
-                onDispose { SnglPresent.remove(__token) }
-            }
             Badge(label = "x")
             Text(text = "y", modifier = Modifier.testTag("label"))
         }
@@ -772,13 +748,13 @@ class MainScreenTest {
         val c = MainScreenState()
         @Suppress("UNUSED_VARIABLE") val composeTestRule = composeRule
         composeRule.setContent { MainScreen(c) }
-        org.junit.Assert.assertTrue("(composeTestRule.onAllNodes(androidx.compose.ui.test.hasTestTag(\"b\")).fetchSemanticsNodes().isNotEmpty() || SnglPresent.containsValue(\"b\"))", (composeTestRule.onAllNodes(androidx.compose.ui.test.hasTestTag("b")).fetchSemanticsNodes().isNotEmpty() || SnglPresent.containsValue("b")))
+        org.junit.Assert.assertTrue("c.shown", c.shown)
         org.junit.Assert.assertTrue("(composeTestRule.onAllNodes(androidx.compose.ui.test.hasTestTag(\"label\")).fetchSemanticsNodes().isNotEmpty() || SnglPresent.containsValue(\"label\"))", (composeTestRule.onAllNodes(androidx.compose.ui.test.hasTestTag("label")).fetchSemanticsNodes().isNotEmpty() || SnglPresent.containsValue("label")))
         composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("toggle")).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick); composeTestRule.waitForIdle()
-        org.junit.Assert.assertTrue("!(composeTestRule.onAllNodes(androidx.compose.ui.test.hasTestTag(\"b\")).fetchSemanticsNodes().isNotEmpty() || SnglPresent.containsValue(\"b\"))", !(composeTestRule.onAllNodes(androidx.compose.ui.test.hasTestTag("b")).fetchSemanticsNodes().isNotEmpty() || SnglPresent.containsValue("b")))
+        org.junit.Assert.assertTrue("!c.shown", !c.shown)
         org.junit.Assert.assertTrue("!(composeTestRule.onAllNodes(androidx.compose.ui.test.hasTestTag(\"label\")).fetchSemanticsNodes().isNotEmpty() || SnglPresent.containsValue(\"label\"))", !(composeTestRule.onAllNodes(androidx.compose.ui.test.hasTestTag("label")).fetchSemanticsNodes().isNotEmpty() || SnglPresent.containsValue("label")))
         composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("toggle")).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick); composeTestRule.waitForIdle()
-        org.junit.Assert.assertTrue("(composeTestRule.onAllNodes(androidx.compose.ui.test.hasTestTag(\"b\")).fetchSemanticsNodes().isNotEmpty() || SnglPresent.containsValue(\"b\"))", (composeTestRule.onAllNodes(androidx.compose.ui.test.hasTestTag("b")).fetchSemanticsNodes().isNotEmpty() || SnglPresent.containsValue("b")))
+        org.junit.Assert.assertTrue("c.shown", c.shown)
         org.junit.Assert.assertTrue("(composeTestRule.onAllNodes(androidx.compose.ui.test.hasTestTag(\"label\")).fetchSemanticsNodes().isNotEmpty() || SnglPresent.containsValue(\"label\"))", (composeTestRule.onAllNodes(androidx.compose.ui.test.hasTestTag("label")).fetchSemanticsNodes().isNotEmpty() || SnglPresent.containsValue("label")))
     }
 
@@ -834,7 +810,6 @@ window.__sngl_boot = () => {
     Object.assign(el, p);
     el.dispatchEvent(Object.assign(new Event("contextmenu"), p));
   };
-  state.bPresent = () => document.querySelector('[data-sngl-id="b"], [data-sngl-instance="b"]') !== null;
   state.labelPresent = () => document.querySelector('[data-sngl-id="label"], [data-sngl-instance="label"]') !== null;
   if (typeof window !== "undefined") {
     window.__sngl_state = state;
@@ -947,12 +922,12 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:55cfc2d8effb80eeaf9540e72e428881
+pass sha256:0fe1200cc4c82d4779f132f3adad2d22
 -- run/go/fyne --
-pass sha256:cbdcf3e780b8c72df1fd3e9b6da3844c
+pass sha256:5db41f9a6bf523b0bdb775603508a582
 -- run/go/gtk4 --
-pass sha256:cb86ae48ff0950f1c4357332726e88ef
+pass sha256:b87a5b3e37e7cfffe28a40a86bc6dc7c
 -- run/kotlin/android --
-pass sha256:7c8973f489df07be24b713fe0e1502c1
+pass sha256:76f20c8913171924274cc5c2b6a16a4c
 -- run/none/html --
-pass sha256:d252f59dc195241a284efb916d2d3cb2
+pass sha256:0538af5bc1d94cf77c365c1f409bc2f9

@@ -87,9 +87,16 @@ func TransparentBlocks(st Stmt) []*[]Stmt {
 // read of the id resolves to that binding, and separating them leaves a rename
 // with nothing to repoint and uniqueNodeIDs with nothing to key on.
 func AttachNodeID(body []Stmt, id string, handle *Var) bool {
+	_, ok := AttachNodeIDFrom(body, id, handle)
+	return ok
+}
+
+// AttachNodeIDFrom is AttachNodeID, reporting the id the node carried before.
+func AttachNodeIDFrom(body []Stmt, id string, handle *Var) (string, bool) {
 	var own *Var
+	was := ""
 	ok := attachNode(body, func(ni *NodeInst) {
-		own = ni.Handle
+		own, was = ni.Handle, ni.ID
 		ni.ID, ni.Handle = id, handle
 	})
 	// A body that named the node itself -- an override's `#cal`, read by an
@@ -103,7 +110,7 @@ func AttachNodeID(body []Stmt, id string, handle *Var) bool {
 			return nil
 		})
 	}
-	return ok
+	return was, ok
 }
 
 // AttachNodeSite records on the node AttachNodeID picks that it stands for
@@ -151,22 +158,29 @@ func attachNode(body []Stmt, set func(*NodeInst)) bool {
 }
 
 // NodeIDRendersWithBody reports whether the node AttachNodeID picks in body is
-// rendered whenever body is: not one an `if` or a `for` around it decides, so a
-// test's null test of the call site's `#id` is a null test of that node.
+// rendered whenever body is: not one an `if`, a `for` or a boundary's fallback
+// around it decides, so a test's null test of the call site's `#id` is a null
+// test of that node.
 func NodeIDRendersWithBody(body []Stmt) bool {
 	for _, s := range body {
+		decided := false
 		switch n := s.(type) {
 		case *NodeInst:
 			return true
 		case *If, *For:
-			if attachNode([]Stmt{n}, func(*NodeInst) {}) {
+			decided = true
+		case *ErrorBoundary:
+			decided = len(n.Failed) > 0
+		}
+		if decided {
+			if attachNode([]Stmt{s}, func(*NodeInst) {}) {
 				return false
 			}
-		default:
-			for _, block := range TransparentBlocks(s) {
-				if attachNode(*block, func(*NodeInst) {}) {
-					return NodeIDRendersWithBody(*block)
-				}
+			continue
+		}
+		for _, block := range TransparentBlocks(s) {
+			if attachNode(*block, func(*NodeInst) {}) {
+				return NodeIDRendersWithBody(*block)
 			}
 		}
 	}

@@ -24,7 +24,7 @@ func (env *Env) RunAssert(expr ir.Expr) (*AssertError, error) {
 	case *ir.Binary:
 		// A copy's null test is answered whole: its operand alone may index
 		// past the copies rendered now.
-		if _, path, _, ok := ir.NullTestedRef(e); ok && len(path) > 0 {
+		if _, path, _, ok := ir.NullTestedCopy(e); ok && len(path) > 0 {
 			return env.assertDefault(expr)
 		}
 		switch e.Op {

@@ -1,0 +1,357 @@
+# A test reaches through a recursive component -- `c.s.next`, and the same
+# through one copy of it, `c.r[1].next` -- for a prop, a node's prop, a
+# method, a trigger and an event fired on the instance, on every target. On
+# bubbletea a recursion keeps no state and renders no focus stop, so what
+# reaches it there is the stateless half (recursion); an event fired on such
+# an instance runs the handler chain its call sites wrote, up to the test's
+# instance. The rest of the six take the stateful halves too (counters, an
+# instance's own vars and methods, and buttons a trigger clicks).
+
+sngl test --platform=none recursion.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=html recursion.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go recursion.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=fyne --language=go recursion.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go recursion.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin recursion.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=none counters.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=html counters.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=fyne --language=go counters.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go counters.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin counters.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=none buttons.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=html buttons.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=fyne --language=go buttons.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go buttons.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin buttons.sngl
+stdout 'ok   1 tests, 0 failures'
+
+! sngl test --platform=bubbletea --language=go counters.sngl
+stderr 'the recursive component "step" declares state of its own'
+
+-- recursion.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+
+component step(depth int, label string, @hit(n int)) node {
+    func twice(n int) int {
+        return n * 2
+    }
+    vbox {
+        text #b(value="{label}{depth}")
+        if depth < 2 {
+            step #next(depth=depth + 1, label=label, @hit(n) {
+                hit(n)
+            })
+        }
+    }
+}
+
+component main node {
+    var last = -1
+    vbox {
+        step #s(depth=0, label="s", @hit(n) {
+            last = n
+        })
+        for var d = ["x", "y"] {
+            step #r(depth=0, label=d, @hit(n) {
+                last = n + 10
+            })
+        }
+    }
+}
+
+func testRecursion(t Test, c main) {
+    t.assert(c.s.depth == 0)
+    if c.s.next != null {
+        t.assert(c.s.next.depth == 1)
+        t.assert(c.s.next.label == "s")
+        t.assert(c.s.next.twice(4) == 8)
+        t.assert(c.s.next.b.value == "s1")
+        c.s.next.hit(7)
+        t.assert(c.last == 7)
+    }
+    t.assert(c.r[1].label == "y")
+    t.assert(c.r[1].twice(3) == 6)
+    if c.r[1].next != null {
+        t.assert(c.r[1].next.label == "y")
+        t.assert(c.r[1].next.b.value == "y1")
+        c.r[1].next.hit(3)
+        t.assert(c.last == 13)
+    }
+}
+
+window {
+    main
+}
+-- counters.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+
+component step(depth int, @hit(n int)) node {
+    var hits = 0
+    func bump() {
+        hits = hits + 1
+    }
+    vbox {
+        button #b(text="{depth}:{hits}", @click {
+            bump()
+            hit(depth)
+        })
+        if depth < 2 {
+            step #next(depth=depth + 1)
+        }
+    }
+}
+
+component main node {
+    var last = -1
+    vbox {
+        step #s(depth=0, @hit(n) {
+            last = n
+        })
+        for var d = [5, 6] {
+            step #r(depth=d)
+        }
+    }
+}
+
+func testRecursion(t Test, c main) {
+    c.s.b.click()
+    t.assert(c.s.hits == 1)
+    t.assert(c.last == 0)
+    if c.s.next != null {
+        c.s.next.b.click()
+        c.s.next.b.click()
+        t.assert(c.s.next.hits == 2)
+        t.assert(c.s.next.depth == 1)
+        c.s.next.bump()
+        t.assert(c.s.next.hits == 3)
+        t.assert(c.s.hits == 1)
+    }
+    c.r[1].bump()
+    t.assert(c.r[1].hits == 1)
+    t.assert(c.r[0].hits == 0)
+    c.s.hit(9)
+    t.assert(c.last == 9)
+}
+
+window {
+    main
+}
+-- buttons.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+
+component step(depth int, label string, @hit(n int)) node {
+    func twice(n int) int {
+        return n * 2
+    }
+    vbox {
+        button #b(text="{label}{depth}", @click {
+            hit(depth)
+        })
+        if depth < 2 {
+            step #next(depth=depth + 1, label=label, @hit(n) {
+                hit(n)
+            })
+        }
+    }
+}
+
+component main node {
+    var last = -1
+    vbox {
+        step #s(depth=0, label="s", @hit(n) {
+            last = n
+        })
+        for var d = ["x", "y"] {
+            step #r(depth=0, label=d, @hit(n) {
+                last = n + 10
+            })
+        }
+    }
+}
+
+func testRecursion(t Test, c main) {
+    t.assert(c.s.depth == 0)
+    if c.s.next != null {
+        t.assert(c.s.next.depth == 1)
+        t.assert(c.s.next.label == "s")
+        t.assert(c.s.next.twice(4) == 8)
+        c.s.next.b.click()
+        t.assert(c.last == 1)
+        c.s.next.hit(7)
+        t.assert(c.last == 7)
+    }
+    t.assert(c.r[1].label == "y")
+    t.assert(c.r[1].twice(3) == 6)
+    if c.r[1].next != null {
+        t.assert(c.r[1].next.label == "y")
+        c.r[1].next.b.click()
+        t.assert(c.last == 11)
+    }
+}
+
+window {
+    main
+}
+-- testrun/android/kotlin/buttons.sngl/main/1 --
+sha256:f4ec540356c4c26ab36c106d88979b7d
+{
+  "results": [
+    {
+      "Desc": "Recursion",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/android/kotlin/counters.sngl/main/1 --
+sha256:34e9bd594e648c84d06a8e4f3e11e8b4
+{
+  "results": [
+    {
+      "Desc": "Recursion",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/android/kotlin/recursion.sngl/main/1 --
+sha256:bb250c4f872c4323650efca16ffe5191
+{
+  "results": [
+    {
+      "Desc": "Recursion",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/recursion.sngl/main/1 --
+sha256:6af4096e88461abf3988ba82c32c8806
+{
+  "results": [
+    {
+      "Desc": "Recursion",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/buttons.sngl/main/1 --
+sha256:008a3bc02e6383fdcd874d1af6c32bd5
+{
+  "results": [
+    {
+      "Desc": "Recursion",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/counters.sngl/main/1 --
+sha256:181278424b1daf2d11bcbb7e2d9285c6
+{
+  "results": [
+    {
+      "Desc": "Recursion",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/recursion.sngl/main/1 --
+sha256:a7954c0bc583575ff1dd23dd9b5d2904
+{
+  "results": [
+    {
+      "Desc": "Recursion",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/buttons.sngl/main/1 --
+sha256:d94e66e3b4afa60e41f6d29705bc2c49
+{
+  "results": [
+    {
+      "Desc": "Recursion",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/counters.sngl/main/1 --
+sha256:2fa073d9e3c9189dcf9baba0d2d5d342
+{
+  "results": [
+    {
+      "Desc": "Recursion",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/recursion.sngl/main/1 --
+sha256:7aa55eaa77bd342d5b8cbf27e70e6262
+{
+  "results": [
+    {
+      "Desc": "Recursion",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/buttons.sngl/main/1 --
+sha256:8fd41c115f1cd6d1fae7fbf0b3ea97aa
+{
+  "results": [
+    {
+      "Desc": "Recursion",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/counters.sngl/main/1 --
+sha256:b4dae5555b944e16c690232fa9072ecd
+{
+  "results": [
+    {
+      "Desc": "Recursion",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/recursion.sngl/main/1 --
+sha256:2525ce60e41bf76a12de6f551ad36567
+{
+  "results": [
+    {
+      "Desc": "Recursion",
+      "Passed": true
+    }
+  ]
+}

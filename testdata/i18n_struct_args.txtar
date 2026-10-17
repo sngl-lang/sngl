@@ -79,6 +79,11 @@ type Who struct {
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
+	*modelState
+}
+
+// modelState is what every copy of a Model shares.
+type modelState struct {
 	__ctx_locale__inst0 string
 	who__inst0          Who
 	calls__inst0        int
@@ -90,7 +95,7 @@ type Model struct {
 
 // New creates a Model with default bind values.
 func New() Model {
-	m := Model{}
+	m := Model{&modelState{}}
 	m.__ctx_locale__inst0 = i18n.DefaultLocale()
 	m.who__inst0 = Who{Name: "Ada", Count: 3}
 	m.calls__inst0 = 0
@@ -1393,7 +1398,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:2a61e7291245a9752637e4da0f50e823
+pass sha256:2a7baa5886514a56bd4d361da4ceec2a
 -- run/kotlin/android --
 pass sha256:5c30849522dce4670f06a49617ce972c
 -- run/none/html --

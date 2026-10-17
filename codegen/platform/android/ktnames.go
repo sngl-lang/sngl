@@ -53,6 +53,7 @@ const (
 	ktToMutableStateList = ktRT + "toMutableStateList"
 
 	ktModifier      = ktUI + "Modifier"
+	ktComposed      = ktUI + "composed"
 	ktAlpha         = ktUI + "draw.alpha"
 	ktColor         = ktUI + "graphics.Color"
 	ktTestTag       = ktUI + "platform.testTag"

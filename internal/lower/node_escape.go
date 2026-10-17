@@ -69,10 +69,20 @@ func lowerNodeEscape(pkg *ir.Package, _ Features, _ Options) error {
 			flatten(n)
 		}
 	}
+	// A component built at run time is a record of its own: the nodes it
+	// creates are its fields or its locals, and nothing outside the record
+	// names them. A scope outside it using a node of the same name -- the
+	// page's, a spliced copy of the same component's -- is using that one.
+	var group *ir.Component
+	groupOf := map[*scopeRefInfo]*ir.Component{}
 	addScope := func(stmts []ir.Stmt, sink *map[string]bool) {
 		s := newScopeRefInfo(sink)
 		collectScopeRefs(stmts, s)
+		start := len(scopes)
 		flatten(s)
+		for _, sc := range scopes[start:] {
+			groupOf[sc] = group
+		}
 	}
 
 	// Top-level funcs (handlers promoted by passDeclarative, reactive
@@ -81,10 +91,15 @@ func lowerNodeEscape(pkg *ir.Package, _ Features, _ Options) error {
 		addScope(f.Block, &f.Lowered.LocalRefs)
 	}
 	for _, comp := range pkg.Components {
+		group = nil
+		if comp.RuntimeInstance {
+			group = comp
+		}
 		addScope(comp.Stmts, &comp.LocalRefs)
 		for _, f := range comp.Funcs {
 			addScope(f.Block, &f.Lowered.LocalRefs)
 		}
+		group = nil
 		for _, v := range comp.Vars {
 			addVarHandlerScopes(v, &scopes)
 		}
@@ -96,11 +111,15 @@ func lowerNodeEscape(pkg *ir.Package, _ Features, _ Options) error {
 	// A created id ESCAPES if a scope that does not create it uses it. Two
 	// scopes may each create one -- two components each naming an instance
 	// `#b` -- and each is then its own scope's local.
-	escaped := map[string]bool{}
+	type groupID struct {
+		group *ir.Component
+		id    string
+	}
+	escaped := map[groupID]bool{}
 	for _, s := range scopes {
 		for id := range s.used {
 			if !s.created[id] {
-				escaped[id] = true
+				escaped[groupID{groupOf[s], id}] = true
 			}
 		}
 	}
@@ -109,7 +128,7 @@ func lowerNodeEscape(pkg *ir.Package, _ Features, _ Options) error {
 	for _, s := range scopes {
 		local := map[string]bool{}
 		for id := range s.created {
-			if !escaped[id] {
+			if !escaped[groupID{groupOf[s], id}] {
 				local[id] = true
 			}
 		}

@@ -185,6 +185,10 @@ type gtk4Translator struct {
 	// itself.
 	instanceCopies map[string]bool
 	modelSink      func(name, cType string)
+	// record is set in a component built at run time, which lists the roots
+	// of the spliced instances it renders (listRoot) so its Destroy can take
+	// them out again.
+	record bool
 }
 
 // namedWidgetField is the Model field a widget an instance builds is handed
@@ -225,6 +229,65 @@ func (t *gtk4Translator) withIndexed(indexed, present map[string]bool, stmts []i
 		return nil
 	})
 	return t.withInstanceCopies(indexed, t.sinkField)
+}
+
+// withRecordPresent has this scope of a component built at run time hand the
+// widgets of the ids a test null-tests to the Model (namedWidgetField), which
+// a test reaches no record through; stmts is the scope's body, whose creates
+// of them a slot's reset takes back.
+func (t *gtk4Translator) withRecordPresent(present map[string]bool, stmts []ir.Stmt) *gtk4Translator {
+	t.present = present
+	t.slotPresent = nil
+	_ = ir.Walk(stmts, func(n ir.Node) error {
+		lv, ok := n.(*ir.LocalVar)
+		if !ok {
+			return nil
+		}
+		c, ok := lv.Init.(*ir.Call)
+		if !ok || c.Func == nil {
+			return nil
+		}
+		switch c.Func.Intrinsic {
+		case ir.NodeOpCreateNode:
+			if present[lv.Name] {
+				t.slotPresent = append(t.slotPresent, lv.Name)
+			}
+		case ir.NodeOpComponentRoot:
+			if inst := codegen.IdentBareName(c.Args[0].Value); present[inst] {
+				t.slotPresent = append(t.slotPresent, presentField(inst))
+			}
+		}
+		return nil
+	})
+	return t
+}
+
+// modelPresentRef is the Model field holding what a test null-tests by id,
+// for a record's scope: the field a Model scope's own widget is.
+func (t *gtk4Translator) modelPresentRef(field, cType string) ir.Expr {
+	return codegen.RecvFieldRef(&ir.Ident{Name: t.gc.ModelRef()}, field, ir.NativeGoNamed(widgetFieldGoType(cType, t.wrapped)))
+}
+
+// releasePresent takes back what a record handed the Model for a test's null
+// test of field -- a node's id, or an instance's presentField. A node is taken
+// back only where the Model still holds this record's widget: another record
+// may have handed its own since.
+func (t *gtk4Translator) releasePresent(field string) ir.Stmt {
+	if strings.HasPrefix(field, presentField("")) {
+		return &ir.Assign{Target: t.modelPresentRef(field, "GtkWidget"), Op: ast.AssignSet, Value: &ir.Literal{Type: ir.TypNull}}
+	}
+	cType := t.idCTypes[field]
+	return &ir.If{
+		Cond: &ir.Binary{Type: ir.TypBool, Op: ast.BinEq, Left: t.modelPresentRef(namedWidgetField(field), cType), Right: t.fieldRef(field)},
+		Body: []ir.Stmt{&ir.Assign{Target: t.modelPresentRef(namedWidgetField(field), cType), Op: ast.AssignSet, Value: &ir.Literal{Type: ir.TypNull}}},
+	}
+}
+
+// inRecord marks this scope as the body or a method of a component built at
+// run time.
+func (t *gtk4Translator) inRecord() *gtk4Translator {
+	t.record = true
+	return t
 }
 
 // withInstanceCopies has this scope list the instances of the ids a test
@@ -715,19 +778,24 @@ func (t *gtk4Translator) OnComponentRoot(ctx context.Context, id string, inst, k
 	var present []ir.Stmt
 	if name := codegen.IdentBareName(inst); t.present[name] {
 		field := presentField(name)
-		t.sinkField(field, "GtkWidget")
-		present = append(present, &ir.Assign{Target: t.fieldRef(field), Op: ast.AssignSet, Value: root})
+		var target ir.Expr
+		if t.record {
+			t.modelSink(field, "GtkWidget")
+			target = t.modelPresentRef(field, "GtkWidget")
+		} else {
+			t.sinkField(field, "GtkWidget")
+			target = t.fieldRef(field)
+		}
+		present = append(present, &ir.Assign{Target: target, Op: ast.AssignSet, Value: root})
 	}
 	// One copy of it is found by the key it stands in now, which a reused
 	// instance was handed before its root is bound again.
 	if name := codegen.IdentBareName(inst); key != nil && t.instanceCopies[name] {
 		t.modelSink(copiesField(name), copyMapType("GtkWidget"))
-		present = append(present, &ir.CallStmt{Call: &ir.Call{
-			Type:     ir.TypVoid,
-			Receiver: &ir.Ident{Name: t.gc.ModelRef()},
-			Func:     &ir.Func{Name: copyRegistry(name)},
-			Args:     []ir.CallArg{{Value: key}, {Value: root}},
-		}})
+		present = append(present, golang.CopyCall(&ir.Ident{Name: t.gc.ModelRef()}, name, key, root))
+	}
+	if hold := t.holdInstance(inst, key); hold != nil {
+		present = append(present, hold)
 	}
 	if t.isLocalRef(id) {
 		return append([]ir.Stmt{&ir.LocalVar{
@@ -738,6 +806,22 @@ func (t *gtk4Translator) OnComponentRoot(ctx context.Context, id string, inst, k
 	}
 	t.sinkField(id, "GtkWidget")
 	return append([]ir.Stmt{&ir.Assign{Target: t.fieldRef(id), Op: ast.AssignSet, Value: root}}, present...)
+}
+
+// holdInstance is the Model's hold on the record inst names, where a test
+// reads a member through it (golang.HoldInstance), or nil.
+func (t *gtk4Translator) holdInstance(inst, key ir.Expr) ir.Stmt {
+	name := codegen.IdentBareName(inst)
+	r, ok := t.gc.InstanceRead(name)
+	if !ok || t.plainHandle[name] {
+		return nil
+	}
+	if !r.Keyed {
+		key = nil
+	} else if key == nil {
+		return nil
+	}
+	return golang.HoldInstance(&ir.Ident{Name: t.gc.ModelRef()}, name, r.Comp, t.qualifyNodeExpr(inst), key)
 }
 
 // OnUpdateComponent patches a prop on a live instance through the setter the
@@ -789,6 +873,11 @@ func (t *gtk4Translator) emitConstructorAssign(id, cType string, ctor ir.Expr) [
 	}}
 	if t.indexed[id] {
 		t.sinkField(copiesField(id), copyMapType(cType))
+	}
+	if t.record && t.present[id] {
+		named := namedWidgetField(id)
+		t.modelSink(named, cType)
+		create = append(create, &ir.Assign{Target: t.modelPresentRef(named, cType), Op: ast.AssignSet, Value: t.fieldRef(id)})
 	}
 	return create
 }
@@ -913,6 +1002,10 @@ func (t *gtk4Translator) OnRemoveChild(ctx context.Context, parent, child ir.Exp
 	if t.isSkipped(parent) || t.isSkipped(child) {
 		return nil
 	}
+	return append(t.unlistRemoved(child), t.removeChild(parent, child)...)
+}
+
+func (t *gtk4Translator) removeChild(parent, child ir.Expr) []ir.Stmt {
 	if ir.IsAppParent(parent) {
 		return t.appDetach(child)
 	}
@@ -990,6 +1083,9 @@ func (t *gtk4Translator) OnPropAssign(ctx context.Context, node ir.Expr, prop st
 	bare := codegen.IdentBareName(node)
 	if prop == ir.CopyProp {
 		return []ir.Stmt{t.listCopy(bare, node, value)}
+	}
+	if id, ok := codegen.InstanceRootID(prop); ok {
+		return t.listRoot(id, node, value)
 	}
 	if t.isToplevel(bare) {
 		return t.toplevelPropAssign(node, prop, value)
@@ -1396,6 +1492,10 @@ func (t *gtk4Translator) OnSlotReset(ctx context.Context, slot *ir.Var) []ir.Stm
 	}
 	for _, id := range t.slotPresent {
 		if t.isLocalRef(id) {
+			continue
+		}
+		if t.record {
+			stmts = append(stmts, t.releasePresent(id))
 			continue
 		}
 		stmts = append(stmts, &ir.Assign{Target: codegen.RecvFieldRef(t.gc.NodeRecvRef(id), id, ir.NativeGoNamed(widgetFieldGoType("GtkWidget", t.wrapped))), Op: ast.AssignSet, Value: &ir.Literal{Type: ir.TypNull}})

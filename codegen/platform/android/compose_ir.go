@@ -39,6 +39,10 @@ type irComposeContext struct {
 	// built at run time among them is in SnglPresent while it is composed,
 	// having no node of its own a tag could be on.
 	present map[string]bool
+	// reads are what a test reads through an instance built at run time: one
+	// a call site renders is handed the entry it registers under
+	// (emitInstanceRegistration).
+	reads []codegen.InstanceRead
 	// widgetSeq names per-widget local state (e.g. a select's `expanded`)
 	// uniquely within a composable so multiple instances don't collide.
 	widgetSeq int
@@ -330,6 +334,17 @@ func (cc *irComposeContext) renderUserComponent(n *ir.NodeInst) {
 		args = append(args, cc.populationArgs(n)...)
 		args = append(args, cc.handlerArgs(n)...)
 	}
+	for _, r := range cc.reads {
+		if r.ID != n.ID {
+			continue
+		}
+		entry := fmt.Sprintf("%q", n.ID)
+		if k := n.Prop(ir.CopyProp); k != nil && r.Keyed {
+			entry = kotlin.PresentCopyEntry(n.ID, cc.kc.EvalExpr(k))
+		}
+		args = append(args, kotlin.InstanceKeyParam+" = "+entry)
+		break
+	}
 	if cc.present[n.ID] {
 		// One copy is registered under its key, and again when a reused
 		// instance is handed another.
@@ -375,6 +390,21 @@ func (cc *irComposeContext) modifierRawExcept(n *ir.NodeInst, styleProp string, 
 		if key := n.Prop(ir.CopyProp); key != nil {
 			parts = append(parts, fmt.Sprintf("then(%s.let { __key -> %s.%s { this[%s] = __key } })", cc.kc.EvalExpr(key), cc.kc.Name(ktModifier), cc.kc.Name(ktSemantics), kotlin.CopySemanticsKey))
 		}
+	}
+	// A root of a spliced instance a test null-tests counts the instance in
+	// PresentRegistry while it is composed, as an instance built at run time
+	// does at its call site.
+	for _, p := range n.Props {
+		id, ok := codegen.InstanceRootID(p.Name)
+		if !ok || !cc.present[id] {
+			continue
+		}
+		entry := fmt.Sprintf("%q", id)
+		if lit, isLit := p.Value.(*ir.Literal); !isLit || lit.Value != "" {
+			entry = kotlin.PresentCopyEntry(id, cc.kc.EvalExpr(p.Value))
+		}
+		parts = append(parts, fmt.Sprintf("then((%s).let { __entry -> %s.%s { %s(__entry) { val __token = Any(); %s[__token] = __entry; onDispose { %s.remove(__token) } }; %s } })",
+			entry, cc.kc.Name(ktModifier), cc.kc.Name(ktComposed), cc.kc.Name(ktDisposableEffect), kotlin.PresentRegistry, kotlin.PresentRegistry, cc.kc.Name(ktModifier)))
 	}
 	for _, sf := range codegen.NodeStyleFieldsOf(n, styleProp) {
 		if skip[sf.Name] {
@@ -894,7 +924,9 @@ func (cc *irComposeContext) lambdaArg(name string, lam *ir.Lambda, arity int) st
 	if len(body) == 0 {
 		return name + " = {}"
 	}
-	if lam.Func.Return != nil {
+	// A `return` in a lambda would leave the composable it is written in,
+	// which Kotlin refuses; in an anonymous function it leaves the handler.
+	if lam.Func.Return != nil || kotlin.LambdaReturns(lam.Func.Block) {
 		return cc.anonFuncArg(name, lam, body)
 	}
 
@@ -934,7 +966,11 @@ func (cc *irComposeContext) anonFuncArg(name string, lam *ir.Lambda, body []stri
 	}
 	outer := strings.Repeat("    ", cc.indent)
 	var b strings.Builder
-	fmt.Fprintf(&b, "%s = fun(%s): %s {", name, strings.Join(params, ", "), kotlin.IRTypeToKt(lam.Func.Return))
+	ret := "Unit"
+	if lam.Func.Return != nil {
+		ret = kotlin.IRTypeToKt(lam.Func.Return)
+	}
+	fmt.Fprintf(&b, "%s = fun(%s): %s {", name, strings.Join(params, ", "), ret)
 	for _, line := range body {
 		b.WriteString("\n" + outer + "    " + line)
 	}

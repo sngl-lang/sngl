@@ -44,6 +44,7 @@ func lowerInlinePure(pkg *ir.Package, caps Features, opts Options) error {
 		owned:      soleInstances(pkg, caps, opts),
 		reached:    ir.ReachedHandles(pkg),
 		nullTested: ir.NullTestedIDs(pkg),
+		tested:     testedComponentSet(pkg, opts),
 	}
 	for _, comp := range pkg.Components {
 		st.hoist = &comp.Vars
@@ -106,6 +107,10 @@ type inlinePureState struct {
 	// call site's `#id`, so it is left to passNoInlineComponents, which records
 	// the instance it splices (ir.InstancesOf) or builds it at run time.
 	nullTested map[string]bool
+	// tested is each component a test is handed in a build of the whole
+	// program, whose instance is left to passNoInlineComponents for the same
+	// reason: the test reaches it where the program renders it.
+	tested map[*ir.Component]bool
 	// loopDepth counts the `for`s the walk is inside. A call site under one
 	// holds many copies of the body and a substitution makes one, so a callee
 	// with state of its own may not be substituted there -- it stays a runtime
@@ -458,7 +463,7 @@ func (st *inlinePureState) inlineNodeInst(n *ir.NodeInst) ([]ir.Stmt, error) {
 
 	pure := st.isPure(comp) || st.constSubstitutable(comp)
 	strictApplies := isPlatformStdlibComponent(st.pkg, comp)
-	if pure && comp.PkgPath() == "" && n.Handle != nil && (st.reached[n.Handle] || st.nullTested[n.ID] && !ir.NodeIDRendersWithBody(comp.Stmts)) {
+	if pure && comp.PkgPath() == "" && (n.Handle != nil && (st.reached[n.Handle] || st.nullTested[n.ID] && !ir.NodeIDRendersWithBody(comp.Stmts)) || st.tested[comp]) {
 		pure = false
 	}
 	if strictApplies && !pure {
@@ -759,7 +764,9 @@ func (st *inlinePureState) substitute(comp *ir.Component, callsite *ir.NodeInst)
 		before = bodyNodes(body)
 	}
 	if callsite.ID != "" {
-		ir.AttachNodeID(body, callsite.ID, callsite.Handle)
+		if was, ok := ir.AttachNodeIDFrom(body, callsite.ID, callsite.Handle); ok && was != "" && was != callsite.ID {
+			followTestNodeID(st.pkg, was, callsite.ID)
+		}
 	}
 	if before != nil {
 		*st.splices = append(*st.splices, pureSplice(comp, callsite.Handle, symRenames, before, body))

@@ -56,6 +56,11 @@ import (
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
+	*modelState
+}
+
+// modelState is what every copy of a Model shares.
+type modelState struct {
 	open bool
 
 	width, height int
@@ -63,7 +68,7 @@ type Model struct {
 
 // New creates a Model with default bind values.
 func New() Model {
-	m := Model{}
+	m := Model{&modelState{}}
 	m.open = false
 	return m
 }
@@ -395,7 +400,7 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:1045e0eab0a97a7a53412df4e048229e
+pass sha256:74b8e3c19541aedb3b58e53934c8a295
 -- run/go/fyne --
 pass sha256:58d9771cb302d5848443ba9e68bc4cc0
 -- run/kotlin/android --

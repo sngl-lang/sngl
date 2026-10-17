@@ -388,7 +388,7 @@ func (r *reservedRenamer) rewrite(pkg *ir.Package) {
 				if comp, ok := t.Decl.(*ir.Component); ok {
 					if nn, ok := r.members[comp][x.Field]; ok {
 						x.Field = nn
-					} else if nn, ok := r.ids[x.Field]; ok && r.testReach(x) && !declaresMember(comp, x.Field) {
+					} else if nn, ok := r.ids[x.Field]; ok && r.testReach(x) && x.Ref != ir.RefNone {
 						x.Field = nn
 					}
 				}
@@ -445,22 +445,6 @@ func (r *reservedRenamer) testReach(sel *ir.Select) bool {
 	}
 	p, ok := id.Sym.(*ir.Param)
 	return ok && r.tests[p]
-}
-
-// declaresMember reports whether comp declares a var or func named name,
-// which a select of name off one of its instances names rather than a node.
-func declaresMember(comp *ir.Component, name string) bool {
-	for _, v := range comp.Vars {
-		if v.Name == name {
-			return true
-		}
-	}
-	for _, f := range comp.Funcs {
-		if f.Name == name {
-			return true
-		}
-	}
-	return false
 }
 
 // funcStrings updates what a func holds of a renamed name as a string.

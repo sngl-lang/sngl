@@ -544,8 +544,15 @@ func (env *Env) RebindFrom(src *Env) {
 	if src == nil {
 		return
 	}
+	// A symbol is rebound in the nearest scope binding it only: a recursive
+	// instance's scope encloses its parent's, which binds the same vars.
+	seen := map[ir.Symbol]bool{}
 	for e := env; e != nil; e = e.parent {
 		for sym := range e.vals {
+			if seen[sym] {
+				continue
+			}
+			seen[sym] = true
 			if !src.wasAssigned(sym) {
 				continue
 			}
@@ -1673,7 +1680,7 @@ func (env *Env) evalMapLitIR(e *ir.MapLitIR) (any, error) {
 }
 
 func (env *Env) evalBinary(e *ir.Binary) (any, error) {
-	if sel, path, present, ok := ir.NullTestedRef(e); ok && len(path) > 0 {
+	if sel, path, present, ok := ir.NullTestedCopy(e); ok && len(path) > 0 {
 		return env.copyNullTest(sel, path, present)
 	}
 	left, err := env.Eval(e.Left)
@@ -3210,8 +3217,16 @@ func (env *Env) underHandler(vals map[*ir.Context]any, fn func() (any, error)) (
 // A component whose call site handled nothing of the event still renders
 // something that reports it: the event reaches that, and the component's own
 // forwarding emit, if it has one, runs the call site's handler from there.
+//
+// A program's component emits its events from the program's own code, so a
+// test firing one stands in for that emit and runs the call site's handler
+// with the test's arguments, as every compiled target does.
 func (env *Env) InvokeElementEvent(m map[string]any, event string, args func() ([]any, error)) (any, bool, error) {
 	n, _ := m["__node"].(*Node)
+	_, handled := m["@"+event].(*ir.Func)
+	if programComponent(n) && handled {
+		return env.runElementHandler(m, event, args)
+	}
 	if d, name := forwardingDescendant(instanceBody(m, n), event); d != nil {
 		return env.InvokeElementEvent(d.Map(), name, args)
 	}
@@ -3225,6 +3240,22 @@ func (env *Env) InvokeElementEvent(m map[string]any, event string, args func() (
 			return nil, false, nil
 		}
 		return env.InvokeElementEvent(d.Map(), event, args)
+	}
+	return env.runElementHandler(m, event, args)
+}
+
+// programComponent reports whether n is an instance of a component the
+// program declares.
+func programComponent(n *Node) bool {
+	return n != nil && n.Component != nil && n.Component.PkgPath() == "" && !n.Component.Primitive()
+}
+
+// runElementHandler runs the handler the node m names carries for event, in the
+// scope its call site was written in.
+func (env *Env) runElementHandler(m map[string]any, event string, args func() ([]any, error)) (any, bool, error) {
+	h, _ := m["@"+event].(*ir.Func)
+	if h == nil {
+		return nil, false, nil
 	}
 	handlerEnv := env
 	if oe, ok := m["__ownerEnv"].(*Env); ok && oe != nil {
@@ -3314,6 +3345,11 @@ func (env *Env) answerEmpty(x *ir.SlotEmpty, body []ir.Stmt, entries []entryFram
 // copies its loops rendered now is not rendered, which is how every compiled
 // target answers it too, looking the copy up by its key.
 func (env *Env) copyNullTest(sel *ir.Select, path []ir.Expr, present bool) (any, error) {
+	// A copy reached through a copy of an outer loop is absent where that
+	// copy is: `c.r[1].cl[0]` once the rows shrink to one.
+	if there, err := env.refPresent(sel.Operand); err != nil || !there {
+		return !present, err
+	}
 	v, err := env.Eval(sel)
 	if err != nil {
 		return nil, err
@@ -3341,4 +3377,21 @@ func (env *Env) copyNullTest(sel *ir.Select, path []ir.Expr, present bool) (any,
 		}
 	}
 	return (v != nil) == present, nil
+}
+
+// refPresent reports whether the instance e reaches through each copy it
+// indexes is rendered now.
+func (env *Env) refPresent(e ir.Expr) (bool, error) {
+	probe := &ir.Binary{Type: ir.TypBool, Op: ast.BinNeq, Left: e, Right: &ir.Literal{Type: ir.TypNull}}
+	if sel, path, _, ok := ir.NullTestedCopy(probe); ok && len(path) > 0 {
+		v, err := env.copyNullTest(sel, path, true)
+		if err != nil {
+			return false, err
+		}
+		return v == true, nil
+	}
+	if sel, ok := e.(*ir.Select); ok {
+		return env.refPresent(sel.Operand)
+	}
+	return true, nil
 }

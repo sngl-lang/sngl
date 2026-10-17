@@ -1,6 +1,7 @@
 package lower
 
 import (
+	"duckfam.us/sngl/ast"
 	"fmt"
 	"slices"
 
@@ -297,51 +298,147 @@ func testInstances(pkg *ir.Package, opts Options) map[*ir.Param]bool {
 }
 
 // rewriteTestPropRead answers a test's read of a node's one-way prop --
-// `c.t.value`, `c.b.shown.value` -- with the expression the node's call site
-// gave it, read through the instance the node belongs to. A one-way prop says
-// what the node shows for as long as it is rendered, so that expression is
-// what the node holds; and no target's test reaches the host widget to ask it,
-// which spells the prop its own way, if it keeps it at all.
+// `c.t.value`, `c.b.shown.value`, `c.row[1].label` -- with the expression the
+// node's call site gave it, read through the instance the node belongs to. A
+// one-way prop says what the node shows for as long as it is rendered, so that
+// expression is what the node holds; and no target's test reaches the host
+// widget to ask it, which spells the prop its own way, if it keeps it at all.
 //
 // What the expression reads of the component that renders the node is read
 // through the instance (`hits` in bar's body is `c.b.hits` in the test), which
 // passNoInlineComponents then repoints at the spliced copy as it repoints any
-// other member a test reads. What it reads of something a test cannot name --
-// a loop's variable, a slot's parameter -- has no value at the test, and such
-// a read is left as it was.
+// other member a test reads. A loop's variable is what the copy the test
+// indexed was handed: the loop's list at that index, the number a sngl:seq
+// sequence counts there, or the index itself. What it reads of something else
+// a test cannot name -- a slot's parameter, a local -- has no value at the
+// test: such a read is left as it was, where the node is the test's
+// instance's own, and refused (unnamedTestPropRead) where it is reached
+// through another instance.
 func rewriteTestPropRead(sel *ir.Select, tests map[*ir.Param]bool) ir.Expr {
-	inner, ok := sel.Operand.(*ir.Select)
-	if !ok || !rootedAtTest(inner.Operand, tests) {
-		return nil
+	e, _ := answerTestPropRead(sel, tests)
+	return e
+}
+
+// unnamedTestPropRead reports a read rewriteTestPropRead leaves standing that
+// it is reached through an instance, which no target answers.
+func unnamedTestPropRead(sel *ir.Select, tests map[*ir.Param]bool) bool {
+	e, unnamed := answerTestPropRead(sel, tests)
+	if e != nil || !unnamed {
+		return false
 	}
-	comp := componentOf(inner.Operand)
+	inst, _, _, _ := testNodeRef(sel.Operand, tests)
+	_, through := unnarrowedRef(inst).(*ir.Select)
+	return through
+}
+
+// unnarrowedRef is e without its narrowings and indices.
+func unnarrowedRef(e ir.Expr) ir.Expr {
+	e = unnarrowed(e)
+	for ix, ok := e.(*ir.Index); ok; ix, ok = e.(*ir.Index) {
+		e = unnarrowed(ix.Operand)
+	}
+	return e
+}
+
+// answerTestPropRead is rewriteTestPropRead's answer, and whether there is a
+// prop to answer that reads what the test cannot name.
+func answerTestPropRead(sel *ir.Select, tests map[*ir.Param]bool) (ir.Expr, bool) {
+	inst, id, idxs, ok := testNodeRef(sel.Operand, tests)
+	if !ok {
+		return nil, false
+	}
+	comp := componentOf(inst)
 	if comp == nil {
-		return nil
+		return nil, false
 	}
-	node, always := ownNode(comp, inner.Field)
-	if node == nil || node.Component == nil {
-		return nil
+	node, loops := nodeUnderLoops(comp.Stmts, id)
+	if node == nil || node.Component == nil || len(loops) != len(idxs) {
+		return nil, false
 	}
 	for _, p := range node.Component.Props {
 		if p.Name == sel.Field && p.Bidirectional {
-			return nil
+			return nil, false
 		}
 	}
 	v := nodePropExpr(node, sel.Field)
 	if v == nil {
-		return nil
+		return nil, false
 	}
-	// One rendered only some of the time has the expression's value only
-	// while it is, and the interpreter answers nothing while it is not; a
-	// read of it is left to the targets that keep the node.
-	if !always {
-		return nil
-	}
-	out := rebaseOnInstance(ir.CloneExprSharingDecls(v), comp, inner.Operand)
+	env := loopBindings(loops, idxs)
+	out := rebaseOnInstanceUnder(ir.CloneExprSharingDecls(v), comp, inst, env)
 	if out == nil {
-		return nil
+		return nil, true
 	}
-	return answerTestEmpty(out, inner.Operand, tests)
+	out = answerTestEmpty(out, inst, tests)
+	return out, out == nil
+}
+
+// testNodeRef reads e as a node a test reaches through an instance: the
+// instance, the node's id in that instance's body, and the index into each
+// loop around it there.
+func testNodeRef(e ir.Expr, tests map[*ir.Param]bool) (inst ir.Expr, id string, idxs []ir.Expr, ok bool) {
+	e = unnarrowed(e)
+	for ix, isIx := e.(*ir.Index); isIx; ix, isIx = e.(*ir.Index) {
+		idxs = append([]ir.Expr{ix.Idx}, idxs...)
+		e = unnarrowed(ix.Operand)
+	}
+	sel, isSel := e.(*ir.Select)
+	if !isSel || sel.Ref == ir.RefNone || !rootedAtTest(sel.Operand, tests) {
+		return nil, "", nil, false
+	}
+	return sel.Operand, sel.Field, idxs, true
+}
+
+// nodeUnderLoops is the node a body renders under the id, as far as its own
+// view reaches, and the loops around it there, outermost first.
+func nodeUnderLoops(stmts []ir.Stmt, id string) (*ir.NodeInst, []*ir.For) {
+	var walk func(stmts []ir.Stmt, loops []*ir.For) (*ir.NodeInst, []*ir.For)
+	walk = func(stmts []ir.Stmt, loops []*ir.For) (*ir.NodeInst, []*ir.For) {
+		for _, s := range stmts {
+			if n, ok := s.(*ir.NodeInst); ok && n.ID == id {
+				return n, loops
+			}
+			inner := loops
+			if f, ok := s.(*ir.For); ok {
+				inner = append(slices.Clip(loops), f)
+			}
+			for _, b := range ir.ViewBlocks(s) {
+				if n, at := walk(*b, inner); n != nil {
+					return n, at
+				}
+			}
+		}
+		return nil, nil
+	}
+	return walk(stmts, nil)
+}
+
+// loopBindings is what each loop's variables were bound to in the copy idxs
+// names, one index per loop: the element of a list the loop walks or the
+// number a sngl:seq sequence counts there, and the index itself for the
+// loop's ordinal. A loop over anything else binds nothing, and a read of its
+// variable stays unnamed.
+func loopBindings(loops []*ir.For, idxs []ir.Expr) map[ir.Symbol]ir.Expr {
+	env := map[ir.Symbol]ir.Expr{}
+	for i, f := range loops {
+		elem, ord := f.KeySym, (*ir.LoopVar)(nil)
+		if f.ValueSym != nil {
+			elem, ord = f.ValueSym, f.KeySym
+		}
+		if ord != nil {
+			env[ord] = idxs[i]
+		}
+		iter := unnarrowed(f.Iter)
+		if elem == nil {
+			continue
+		}
+		if n := seqElement(iter, idxs[i]); n != nil {
+			env[elem] = n
+		} else if t := iter.ExprType(); t != nil && t.Kind == ir.TypeList && len(t.Elems) == 1 {
+			env[elem] = &ir.Index{Type: t.Elems[0], Operand: iter, Idx: idxs[i]}
+		}
+	}
+	return env
 }
 
 // answerTestEmpty answers each `.empty` e asks of the slots of the component
@@ -424,6 +521,10 @@ type testNode struct {
 }
 
 func testInstanceNode(inst ir.Expr, tests map[*ir.Param]bool) testNode {
+	inst = unnarrowed(inst)
+	for ix, isIx := inst.(*ir.Index); isIx; ix, isIx = inst.(*ir.Index) {
+		inst = unnarrowed(ix.Operand)
+	}
 	sel, ok := inst.(*ir.Select)
 	if !ok {
 		return testNode{root: rootedAtTest(inst, tests)}
@@ -522,11 +623,15 @@ func (at testNode) answerEntries(answer ir.Expr, tests map[*ir.Param]bool) ir.Ex
 	return out
 }
 
-// rootedAtTest reports whether e is a test's instance or a select through it.
+// rootedAtTest reports whether e is a test's instance or reached through it.
 func rootedAtTest(e ir.Expr, tests map[*ir.Param]bool) bool {
 	for {
 		switch x := e.(type) {
 		case *ir.Select:
+			e = x.Operand
+		case *ir.Index:
+			e = x.Operand
+		case *ir.Conversion:
 			e = x.Operand
 		case *ir.Ident:
 			p, ok := x.Sym.(*ir.Param)
@@ -572,9 +677,43 @@ func ownNode(comp *ir.Component, id string) (node *ir.NodeInst, always bool) {
 	return node, always
 }
 
+// seqElement is the number the sngl:seq sequence iter counts at index idx, or
+// nil for any other iterable.
+func seqElement(iter, idx ir.Expr) ir.Expr {
+	c, ok := iter.(*ir.Call)
+	if !ok || c.Func == nil {
+		return nil
+	}
+	arg := func(i int) ir.Expr { return c.Args[i].Value }
+	add := func(l, r ir.Expr) ir.Expr { return &ir.Binary{Type: ir.TypInt, Op: ast.BinAdd, Left: l, Right: r} }
+	switch {
+	case c.Func.Intrinsic == "seq.count" && len(c.Args) == 1:
+		return idx
+	case c.Func.Intrinsic == "seq.range" && len(c.Args) == 2:
+		return add(arg(0), idx)
+	case c.Func.Intrinsic == "seq.step" && len(c.Args) == 3:
+		return add(arg(0), &ir.Binary{Type: ir.TypInt, Op: ast.BinMul, Left: idx, Right: arg(2)})
+	}
+	return nil
+}
+
 // rebaseOnInstance rewrites e, written in comp's body, to read comp's members
 // through inst, or nil where e reads what a test cannot name.
 func rebaseOnInstance(e ir.Expr, comp *ir.Component, inst ir.Expr) ir.Expr {
+	return rebaseOnInstanceUnder(e, comp, inst, nil)
+}
+
+// rebaseOnInstanceUnder is rebaseOnInstance where the loop variables env names
+// are bound: each to an expression written in comp's body too, rebased in
+// turn.
+func rebaseOnInstanceUnder(e ir.Expr, comp *ir.Component, inst ir.Expr, env map[ir.Symbol]ir.Expr) ir.Expr {
+	return rebaseKeeping(e, comp, inst, env, nil)
+}
+
+// rebaseKeeping is rebaseOnInstanceUnder where keep names what the rebased
+// code binds itself -- a handler's own locals and loop variables, written
+// into a test with it -- and so may read as it stands.
+func rebaseKeeping(e ir.Expr, comp *ir.Component, inst ir.Expr, env map[ir.Symbol]ir.Expr, keep map[ir.Symbol]bool) ir.Expr {
 	own := map[ir.Symbol]bool{}
 	for _, v := range comp.Vars {
 		own[v] = true
@@ -592,6 +731,12 @@ func rebaseOnInstance(e ir.Expr, comp *ir.Component, inst ir.Expr) ir.Expr {
 	})
 	unnamed := false
 	out := newExprWalker(func(x ir.Expr) ir.Expr {
+		// A context answers the provider the instance is under, which the
+		// test has no name for.
+		if _, ok := x.(*ir.ContextRead); ok {
+			unnamed = true
+			return x
+		}
 		id, ok := x.(*ir.Ident)
 		if !ok || id.Sym == nil {
 			return x
@@ -599,8 +744,19 @@ func rebaseOnInstance(e ir.Expr, comp *ir.Component, inst ir.Expr) ir.Expr {
 		if own[id.Sym] {
 			return &ir.Select{Type: id.Type, Operand: ir.CloneExprSharingDecls(inst), Field: id.Name}
 		}
+		if keep[id.Sym] {
+			return x
+		}
+		if bound, ok := env[id.Sym]; ok {
+			inner := rebaseOnInstanceUnder(ir.CloneExprSharingDecls(bound), comp, inst, env)
+			if inner == nil {
+				unnamed = true
+				return x
+			}
+			return inner
+		}
 		switch id.Sym.(type) {
-		case *ir.Param, *ir.LoopVar:
+		case *ir.Param, *ir.LoopVar, *ir.Context:
 			unnamed = true
 		}
 		return x

@@ -140,6 +140,11 @@ type timerTickMsg1 struct {
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
+	*modelState
+}
+
+// modelState is what every copy of a Model shares.
+type modelState struct {
 	seconds__inst0 int
 	running__inst0 bool
 	visible__inst0 bool
@@ -154,7 +159,7 @@ type Model struct {
 
 // New creates a Model with default bind values.
 func New() Model {
-	m := Model{}
+	m := Model{&modelState{}}
 	m.__timer0 = map[string]int{}
 	m.__timer0Seq = map[string]int{}
 	m.__timer1 = map[string]int{}
@@ -1268,7 +1273,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:a25b5824189399732bc98d61137e517a
+pass sha256:311d20ce666f39997897933ff9f2baa2
 -- run/go/fyne --
 pass sha256:c8e6e639ca9885d4203b92c9c282d4bf
 -- run/go/gtk4 --

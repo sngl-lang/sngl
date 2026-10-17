@@ -69,6 +69,11 @@ var two []string = []string{"a", "b"}
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
+	*modelState
+}
+
+// modelState is what every copy of a Model shares.
+type modelState struct {
 	visible__inst0 bool
 	two            []string
 
@@ -77,7 +82,7 @@ type Model struct {
 
 // New creates a Model with default bind values.
 func New() Model {
-	m := Model{}
+	m := Model{&modelState{}}
 	m.visible__inst0 = true
 	m.two = []string{"a", "b"}
 	return m
@@ -194,6 +199,6 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:737cdbf8c6eaec47be046f5298100bcd
+pass sha256:4aaba93756e869d8f682dc65336cf3ea
 -- run/none/html --
 pass sha256:3a006014a174cf6a0dc9a0dcbcfdedc5

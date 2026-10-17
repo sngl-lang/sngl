@@ -30,7 +30,7 @@ func serve(dir string, listen string)
 // withdrawn again: what html spawns work onto is the browser, which has none. And
 // a DOM parent can put a child at a position, so a keyed run moves one child
 // rather than rebuilding from the first change.
-#[gen.can(ternary, listLambdas, asyncCalls, insertBefore, inlineSlots, instanceState, navigation, genericComponents, runtimeReach)]
+#[gen.can(ternary, listLambdas, asyncCalls, insertBefore, inlineSlots, instanceState, navigation, genericComponents)]
 #[gen.cannot(
     viewStatements,
     asyncSpawn,
