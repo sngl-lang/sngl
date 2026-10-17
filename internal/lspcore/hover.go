@@ -550,6 +550,17 @@ func walkStructExprs(doc *ast.Document, fn func(*ast.StructExpr)) {
 			walkE(x.Cond)
 			walkE(x.Then)
 			walkE(x.Else)
+		case *ast.MatchExpr:
+			walkE(x.Subject)
+			for _, arm := range x.Arms {
+				for _, p := range arm.Patterns {
+					walkE(p)
+				}
+				for _, st := range arm.Body.Stmts {
+					walkS(st)
+				}
+				walkE(arm.Value)
+			}
 		case *ast.ListExpr:
 			for _, el := range x.Elements {
 				walkE(el)
@@ -591,6 +602,17 @@ func walkStructExprs(doc *ast.Document, fn func(*ast.StructExpr)) {
 			walkE(x.Iter)
 			for _, c := range x.Body.Stmts {
 				walkS(c)
+			}
+		case *ast.MatchStmt:
+			walkE(x.Subject)
+			for _, arm := range x.Arms {
+				for _, p := range arm.Patterns {
+					walkE(p)
+				}
+				for _, c := range arm.Body.Stmts {
+					walkS(c)
+				}
+				walkE(arm.Value)
 			}
 		case *ast.VisualNode:
 			for _, a := range x.Args.Args {
@@ -689,6 +711,12 @@ func visitArgListSites(doc *ast.Document, fn func(compName string, args ast.ArgL
 		case *ast.ForStmt:
 			for _, c := range x.Body.Stmts {
 				walkStmt(c)
+			}
+		case *ast.MatchStmt:
+			for _, arm := range x.Arms {
+				for _, c := range arm.Body.Stmts {
+					walkStmt(c)
+				}
 			}
 		}
 	}

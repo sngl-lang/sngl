@@ -365,6 +365,15 @@ func qualifyNodes(stmts []ast.Stmt, alias string, own map[string]bool) []ast.Stm
 			n.Body.Stmts = qualifyNodes(s.Body.Stmts, alias, own)
 			n.Else.Stmts = qualifyNodes(s.Else.Stmts, alias, own)
 			out[i] = &n
+		case *ast.MatchStmt:
+			n := *s
+			n.Arms = make([]*ast.MatchArm, len(s.Arms))
+			for j, arm := range s.Arms {
+				a := *arm
+				a.Body.Stmts = qualifyNodes(arm.Body.Stmts, alias, own)
+				n.Arms[j] = &a
+			}
+			out[i] = &n
 		case *ast.ComponentDecl:
 			n := *s
 			n.Body.Stmts = qualifyNodes(s.Body.Stmts, alias, own)

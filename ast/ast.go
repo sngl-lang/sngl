@@ -534,6 +534,62 @@ type ForStmt struct {
 	Else     StmtBlock // zero value if no else
 }
 
+// Match is `match [subject] { arms }`, shared by the statement and the
+// expression a match may be. Subject is nil for a headless match, whose arms
+// are conditions. The grammar takes either arm form in either position, and
+// the checker refuses the one that does not belong where the match is written.
+type Match struct {
+	Pos     Pos
+	Subject Expr
+	Arms    []*MatchArm
+	// Head is the comment written after the opening brace on its line.
+	Head *Comment `json:",omitempty"`
+	// Tail holds the comments after the last arm, inside the braces.
+	Tail   []*Comment `json:",omitempty"`
+	EndPos Pos
+}
+
+// MatchArm is one arm: its patterns, or else, and what it does -- a block
+// (Body) or a value (Value, written after `=>`).
+type MatchArm struct {
+	Pos      Pos
+	Else     bool
+	Patterns []Expr
+	Body     StmtBlock  // defined for a block arm
+	Value    Expr       // set for a `=> value` arm
+	Leading  []*Comment `json:",omitempty"`
+	Trailing *Comment   `json:",omitempty"`
+}
+
+// IsBlock reports whether the arm is written with a block rather than `=>`.
+func (a *MatchArm) IsBlock() bool { return a.Value == nil }
+
+// BranchBlocks returns the blocks a control statement holds -- an if's body
+// and else, a for's body and else, a match's arms -- and nil for any other
+// statement. None of them is a node: they are how the nodes under them got
+// there, which is what a walk over a view asks of them.
+func BranchBlocks(s Stmt) []*StmtBlock {
+	switch x := s.(type) {
+	case *IfStmt:
+		return []*StmtBlock{&x.Body, &x.Else}
+	case *ForStmt:
+		return []*StmtBlock{&x.Body, &x.Else}
+	case *MatchStmt:
+		out := make([]*StmtBlock, len(x.Arms))
+		for i, arm := range x.Arms {
+			out[i] = &arm.Body
+		}
+		return out
+	}
+	return nil
+}
+
+// MatchStmt is a match written where a statement goes.
+type MatchStmt struct{ Match }
+
+// MatchExpr is a match written where a value goes.
+type MatchExpr struct{ Match }
+
 // --- StmtPos implementations ---
 
 func (s *StructDef) StmtPos() *Pos { return &s.Pos }
@@ -551,5 +607,6 @@ func (c *ComponentDecl) StmtPos() *Pos { return &c.Pos }
 func (vn *VisualNode) StmtPos() *Pos   { return &vn.Pos }
 func (s *IfStmt) StmtPos() *Pos        { return &s.Pos }
 func (s *ForStmt) StmtPos() *Pos       { return &s.Pos }
+func (s *MatchStmt) StmtPos() *Pos     { return &s.Pos }
 func (c *Comment) StmtPos() *Pos       { return &c.Pos }
 func (d *DisabledDecl) StmtPos() *Pos  { return &d.Pos }

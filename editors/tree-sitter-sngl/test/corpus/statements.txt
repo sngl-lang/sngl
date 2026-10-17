@@ -286,3 +286,88 @@ func countTo(n int) string {
             (string_literal))))
       (return_statement
         (string_literal)))))
+
+================
+Match statement
+================
+
+func describe(n int) string {
+    match n {
+        0 { return "zero" }
+        1, 2, 3 { return "few" }
+        else { return "many" }
+    }
+}
+
+---
+
+(source_file
+  (func_declaration
+    (func_name
+      (identifier))
+    (func_param
+      (identifier)
+      (type_identifier
+        (identifier)))
+    (type_identifier
+      (identifier))
+    (statement_block
+      (match_expression
+        (identifier)
+        (match_arm
+          (integer_literal)
+          (statement_block
+            (return_statement
+              (string_literal))))
+        (match_arm
+          (integer_literal)
+          (integer_literal)
+          (integer_literal)
+          (statement_block
+            (return_statement
+              (string_literal))))
+        (match_arm
+          (statement_block
+            (return_statement
+              (string_literal))))))))
+
+================
+Match expression
+================
+
+var label = match status {
+    active => "on"
+    else => "off"
+}
+
+var size = match {
+    n > 10 => "big"
+    else => "small"
+}
+
+---
+
+(source_file
+  (var_declaration
+    (var_spec
+      (identifier_list
+        (identifier))
+      (match_expression
+        (identifier)
+        (match_arm
+          (identifier)
+          (string_literal))
+        (match_arm
+          (string_literal)))))
+  (var_declaration
+    (var_spec
+      (identifier_list
+        (identifier))
+      (match_expression
+        (match_arm
+          (binary_expression
+            (identifier)
+            (integer_literal))
+          (string_literal))
+        (match_arm
+          (string_literal))))))

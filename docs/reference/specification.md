@@ -175,7 +175,7 @@ The following words are reserved and may not be used as identifiers:
 
 <!-- BEGIN GENERATED: keywords -->
 
-`break` `component` `const` `continue` `else` `enum` `for` `func` `if` `import` `return` `struct` `unit` `var`
+`break` `component` `const` `continue` `else` `enum` `for` `func` `if` `import` `match` `return` `struct` `unit` `var`
 
 `true`, `false` and `null` are **predeclared identifiers**, not keywords, and may be shadowed by user declarations. Every other name a program uses without importing it — `int`, `string`, `list`, `output`, `effect`, `boundary` — is declared in `sngl:builtin`.
 
@@ -1230,6 +1230,7 @@ PrimaryExpr =
     | "[" ListBody "]"
     | AnonStructLit
     | FuncLit
+    | Match
     | StructDecl [ StructLitBody ]
     | ImportExpr StructLitBody
     | IDENT [ StructLitBody ]
@@ -1446,6 +1447,7 @@ Stmt =
     | "continue"
     | IfNode
     | ForNode
+    | Match
     | VisualOrStmt
 
 VisualOrStmt = StatementPrimary { StmtPostfixOp } [ AssignOp Expr | "!!" | IncDecOp ]
@@ -1453,6 +1455,10 @@ VisualOrStmt = StatementPrimary { StmtPostfixOp } [ AssignOp Expr | "!!" | IncDe
 IfNode = "if" CondExpr StmtBlock [ "else" ( IfNode | StmtBlock ) ]
 
 ForNode = "for" ( "var" [ "&" ] IDENT [ "," [ "&" ] IDENT ] "=" CondExpr | [ CondExpr ] ) StmtBlock [ "else" StmtBlock ]
+
+Match = "match" [ CondExpr ] "{" [ ";" ] [ MatchArm { ";" [ MatchArm ] } ] "}"
+
+MatchArm = ( "else" | CondExpr { "," CondExpr } ) ( StmtBlock | "=>" Expr )
 
 AssignOp = "=" | "+=" | "-=" | "*=" | "/=" | "%="
 
@@ -1620,6 +1626,71 @@ In a view body the emptiness is asked of the iterable on every render, so the
 head of a view loop with an `else` must be **measurable** — a list, a map, or a
 `sngl:seq` range, whose emptiness is known without consuming an element; a
 general `iter[T]` is an error there — and must be safe to evaluate twice.
+
+### The match statement
+
+```
+Match    = "match" [ CondExpr ] "{" [ ";" ] [ MatchArm { ";" [ MatchArm ] } ] "}"
+MatchArm = ( "else" | CondExpr { "," CondExpr } ) ( StmtBlock | "=>" Expr )
+```
+
+A **match** compares its subject with each arm's patterns in order and takes
+the first arm with a pattern equal to it. It is a statement and an expression,
+and the arm says which, as the two forms of a function body do: where a
+statement goes an arm is a block, and where a value goes it is `=> value`.
+Writing the other form is an error.
+
+<!-- SNGL-component
+enum Status { active, inactive, pending }
+-->
+
+```sngl
+var status Status = Status.pending
+
+match status {
+    active { ui.text(value="on") }
+    inactive, pending { ui.text(value="off") }
+}
+
+ui.text(value=match status {
+    active => "on"
+    else => "not on"
+})
+```
+
+A pattern is a constant — an enum member, written bare as it is in a
+comparison, a literal, a `const`, or `null` — of a type the subject compares
+with by `==`. Commas give one arm several patterns. `else` is the arm taken
+when no other was, and must be the last; no arm falls through to the next.
+
+With no subject, each arm's patterns are conditions of type `bool`, tested in
+order:
+
+<!-- SNGL-component -->
+
+```sngl
+var n = 0
+
+ui.text(value=match {
+    n > 10 => "many"
+    n > 0 => "some"
+    else => "none"
+})
+```
+
+Every match is **exhaustive**. A subject of an enum type has an arm for each
+member, a `bool` one for `true` and for `false`, and an `option[T]` one for
+`null` as well as `T`'s; any other subject, and every match without one, has
+an `else`. A pattern written twice is an error.
+
+An `else` beside patterns that cover every case is allowed, and is how a match
+over an enum keeps compiling when the enum gains a member. Leaving it out is
+how a match asks to be revisited when it does.
+
+The subject is evaluated once. In a view body there is nowhere to hold it, so
+it is evaluated again for each arm tested, and a subject there that writes
+state is an error. Like an `if` head, a subject may not begin with `{`, and a
+match in the head of an `if` or `for` is written parenthesized.
 
 ### The emit statement
 
@@ -2524,6 +2595,7 @@ Stmt =
     | "continue"
     | IfNode
     | ForNode
+    | Match
     | VisualOrStmt
 
 VisualOrStmt = StatementPrimary { StmtPostfixOp } [ AssignOp Expr | "!!" | IncDecOp ]
@@ -2531,6 +2603,10 @@ VisualOrStmt = StatementPrimary { StmtPostfixOp } [ AssignOp Expr | "!!" | IncDe
 IfNode = "if" CondExpr StmtBlock [ "else" ( IfNode | StmtBlock ) ]
 
 ForNode = "for" ( "var" [ "&" ] IDENT [ "," [ "&" ] IDENT ] "=" CondExpr | [ CondExpr ] ) StmtBlock [ "else" StmtBlock ]
+
+Match = "match" [ CondExpr ] "{" [ ";" ] [ MatchArm { ";" [ MatchArm ] } ] "}"
+
+MatchArm = ( "else" | CondExpr { "," CondExpr } ) ( StmtBlock | "=>" Expr )
 
 AssignOp = "=" | "+=" | "-=" | "*=" | "/=" | "%="
 
@@ -2658,6 +2734,7 @@ PrimaryExpr =
     | "[" ListBody "]"
     | AnonStructLit
     | FuncLit
+    | Match
     | StructDecl [ StructLitBody ]
     | ImportExpr StructLitBody
     | IDENT [ StructLitBody ]

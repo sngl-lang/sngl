@@ -1,0 +1,351 @@
+# A match is checked into an if/else-if chain or a chain of ternaries, so every
+# target runs it as the if or the ternary it is. The program covers a view
+# body's match, an expression match, an option, the headless form, and a
+# subject that calls -- made once where a statement can hold it, and asserted
+# so by counting the calls.
+
+sngl test --platform=none app.sngl
+stdout '6 tests, 0 failures'
+
+sngl test --platform=html app.sngl
+stdout '6 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout '6 tests, 0 failures'
+
+sngl test --platform=fyne --language=go app.sngl
+stdout '6 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go app.sngl
+stdout '6 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin app.sngl
+stdout '6 tests, 0 failures'
+
+-- app.sngl --
+// `match` picks the first arm whose pattern equals its subject. An arm is a
+// block where a statement goes and `pattern => expr` where a value does, the
+// two forms a func has. A pattern is a constant or `null`; a bare enum member
+// resolves against the subject's type, commas give an arm several patterns,
+// and `else` is the arm that runs when no other did. Every match is
+// exhaustive.
+
+import . "sngl:test"
+import . "sngl:ui"
+
+enum Status { active, inactive, pending }
+
+component panel node {
+    var status Status = pending
+    var maybe option[Status] = null
+    var n = 0
+
+    // In a view body: a node in an arm is rendered while that arm is taken.
+    match status {
+        active { text #on(value="on") }
+        pending, inactive { text #off(value="not on") }
+    }
+
+    // An expression: every member is covered, so no else.
+    text #label(value=match status {
+        active => "on"
+        pending => "waiting"
+        inactive => "off"
+    })
+
+    // An option: null is one more case to cover.
+    text #shown(value=match maybe {
+        null => "none"
+        active => "on"
+        else => "not on"
+    })
+
+    // Headless: each arm is a condition, tested in order.
+    text #size(value=match {
+        n > 10 => "big"
+        n > 0 => "small"
+        else => "none"
+    })
+
+    var picked = ""
+    var calls = 0
+
+    func count() Status {
+        calls = calls + 1
+        return status
+    }
+
+    // An expression match on a call: the call is made once, not per arm.
+    button #pick(text="Pick", @click {
+        picked = match count() {
+            active => "a"
+            inactive => "i"
+            else => "p"
+        }
+    })
+
+    button #step(text="Step", @click {
+        // In a handler: a subject that is not a plain read is evaluated once.
+        match next(status) {
+            active { n = n + 1 }
+            else {}
+        }
+        status = next(status)
+    })
+}
+
+const func next(s Status) => match s {
+    active => Status.inactive
+    inactive => pending
+    pending => active
+}
+
+var bumps = 0
+
+func bump(s Status) Status {
+    bumps = bumps + 1
+    return s
+}
+
+// An expression body is the statement `return …`, so it binds its subject too.
+func label(s Status) => match bump(s) {
+    active => "on"
+    else => "off"
+}
+
+func describe(n int) string {
+    match n {
+        0 { return "zero" }
+        1, 2, 3 { return "few" }
+        else { return "many" }
+    }
+}
+
+func testViewArm(t Test, c panel) {
+    t.assert(c.on == null)
+    t.assert(c.off != null)
+    t.assert(c.label.value == "waiting")
+}
+
+func testOption(t Test, c panel) {
+    t.assert(c.shown.value == "none")
+    c.maybe = active
+    t.assert(c.shown.value == "on")
+    c.maybe = pending
+    t.assert(c.shown.value == "not on")
+}
+
+func testHeadless(t Test, c panel) {
+    t.assert(c.size.value == "none")
+    c.n = 4
+    t.assert(c.size.value == "small")
+    c.n = 11
+    t.assert(c.size.value == "big")
+}
+
+func testHandler(t Test, c panel) {
+    c.step.click()
+    t.assert(c.status == active)
+    t.assert(c.n == 1)
+    t.assert(c.on != null)
+    t.assert(c.label.value == "on")
+}
+
+func testSubjectOnce(t Test, c panel) {
+    c.pick.click()
+    t.assert(c.picked == "p")
+    t.assert(c.calls == 1)
+    t.assert(label(Status.active) == "on")
+    t.assert(bumps == 1)
+}
+
+func testFunc(t Test) {
+    t.assert(describe(0) == "zero")
+    t.assert(describe(2) == "few")
+    t.assert(describe(9) == "many")
+    t.assert(next(pending) == active)
+}
+
+window {
+    panel
+}
+-- testrun/android/kotlin/app.sngl/_/1 --
+sha256:039ca7d3c3f27ec852da1fad4d3eb19f
+{
+  "results": [
+    {
+      "Desc": "Func",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/android/kotlin/app.sngl/panel/1 --
+sha256:7c3979cf0aea85fd63a1d1025ea57c61
+{
+  "results": [
+    {
+      "Desc": "Handler",
+      "Passed": true
+    },
+    {
+      "Desc": "Headless",
+      "Passed": true
+    },
+    {
+      "Desc": "Option",
+      "Passed": true
+    },
+    {
+      "Desc": "SubjectOnce",
+      "Passed": true
+    },
+    {
+      "Desc": "ViewArm",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/_/1 --
+sha256:44a58cbf9a592ca279b221f0b787595d
+{
+  "results": [
+    {
+      "Desc": "Func",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/panel/1 --
+sha256:24fcc6d2f14393fc6a99908fafcb9c4a
+{
+  "results": [
+    {
+      "Desc": "Handler",
+      "Passed": true
+    },
+    {
+      "Desc": "Headless",
+      "Passed": true
+    },
+    {
+      "Desc": "Option",
+      "Passed": true
+    },
+    {
+      "Desc": "SubjectOnce",
+      "Passed": true
+    },
+    {
+      "Desc": "ViewArm",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/_/1 --
+sha256:65854104ab97735fbd84430fd2ebdf0c
+{
+  "results": [
+    {
+      "Desc": "Func",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/panel/1 --
+sha256:ba8aa44fbf5badc4e651275957501fcf
+{
+  "results": [
+    {
+      "Desc": "Handler",
+      "Passed": true
+    },
+    {
+      "Desc": "Headless",
+      "Passed": true
+    },
+    {
+      "Desc": "Option",
+      "Passed": true
+    },
+    {
+      "Desc": "SubjectOnce",
+      "Passed": true
+    },
+    {
+      "Desc": "ViewArm",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/_/1 --
+sha256:d8627a87d1df84d71e1ca26ce1a5ce75
+{
+  "results": [
+    {
+      "Desc": "Func",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/panel/1 --
+sha256:9b3364073597c61839eafc9a8e66c35a
+{
+  "results": [
+    {
+      "Desc": "Handler",
+      "Passed": true
+    },
+    {
+      "Desc": "Headless",
+      "Passed": true
+    },
+    {
+      "Desc": "Option",
+      "Passed": true
+    },
+    {
+      "Desc": "SubjectOnce",
+      "Passed": true
+    },
+    {
+      "Desc": "ViewArm",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/_/1 --
+sha256:18085e3167bb4d49aaff19cad42386eb
+{
+  "results": [
+    {
+      "Desc": "Func",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/panel/1 --
+sha256:3d8a42a6e03a04be342d7aa9fb7d5e7f
+{
+  "results": [
+    {
+      "Desc": "Handler",
+      "Passed": true
+    },
+    {
+      "Desc": "Headless",
+      "Passed": true
+    },
+    {
+      "Desc": "Option",
+      "Passed": true
+    },
+    {
+      "Desc": "SubjectOnce",
+      "Passed": true
+    },
+    {
+      "Desc": "ViewArm",
+      "Passed": true
+    }
+  ]
+}

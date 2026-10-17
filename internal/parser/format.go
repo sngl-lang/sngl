@@ -317,6 +317,8 @@ func (f *formatter) formatStmt(s ast.Stmt) {
 		f.writeIfStmt(x)
 	case *ast.ForStmt:
 		f.writeForStmt(x)
+	case *ast.MatchStmt:
+		f.writeMatch(&x.Match)
 	case *ast.AssignStmt:
 		f.writeAssignStmt(x)
 	case *ast.ToggleStmt:
@@ -889,6 +891,74 @@ func (f *formatter) writeForStmt(s *ast.ForStmt) {
 	}
 }
 
+// writeMatch writes a match, statement or expression. One written on a line
+// with no comments stays on it; otherwise each arm takes a line of its own.
+func (f *formatter) writeMatch(m *ast.Match) {
+	f.write("match ")
+	if m.Subject != nil {
+		f.writeExpr(m.Subject)
+		f.write(" ")
+	}
+	f.write("{")
+	if len(m.Arms) == 0 && len(m.Tail) == 0 {
+		f.write("}")
+		return
+	}
+	oneLine := m.EndPos.Line == m.Pos.Line && len(m.Tail) == 0 && m.Head == nil
+	for _, arm := range m.Arms {
+		oneLine = oneLine && len(arm.Leading) == 0 && arm.Trailing == nil
+	}
+	if oneLine {
+		f.write(" ")
+		for i, arm := range m.Arms {
+			if i > 0 {
+				f.write("; ")
+			}
+			f.writeMatchArm(arm)
+		}
+		f.write(" }")
+		return
+	}
+	f.writeTrailing(m.Head)
+	f.newline()
+	f.indent++
+	lines := make([]int, len(m.Arms))
+	for i, arm := range m.Arms {
+		lines[i] = leadLine(arm.Pos.Line, arm.Leading, nil)
+	}
+	for i, arm := range m.Arms {
+		if f.blankBeforeListItem(lines, i) {
+			f.blankLine()
+		}
+		f.writeLeadingComments(arm.Leading)
+		f.writeMatchArm(arm)
+		f.writeTrailing(arm.Trailing)
+		f.newline()
+	}
+	f.writeLeadingComments(m.Tail)
+	f.indent--
+	f.write("}")
+}
+
+func (f *formatter) writeMatchArm(arm *ast.MatchArm) {
+	if arm.Else {
+		f.write("else")
+	}
+	for i, p := range arm.Patterns {
+		if i > 0 {
+			f.write(", ")
+		}
+		f.writeExpr(p)
+	}
+	if arm.IsBlock() {
+		f.write(" ")
+		f.writeBlock(&arm.Body)
+		return
+	}
+	f.write(" => ")
+	f.writeExpr(arm.Value)
+}
+
 // --- block statements ---
 
 func (f *formatter) writeAssignStmt(s *ast.AssignStmt) {
@@ -1276,6 +1346,8 @@ func (f *formatter) writeExpr(e ast.Expr) {
 	case *ast.UnaryExpr:
 		f.write(unaryOpStr[x.Op])
 		f.writeExpr(x.Operand)
+	case *ast.MatchExpr:
+		f.writeMatch(&x.Match)
 	case *ast.TernaryExpr:
 		f.writeExpr(x.Cond)
 		f.write(" ? ")

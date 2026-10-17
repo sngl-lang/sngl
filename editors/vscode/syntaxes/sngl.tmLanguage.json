@@ -95,7 +95,7 @@
         },
         {
           "name": "keyword.control.sngl",
-          "match": "\\b(if|for|in)\\b"
+          "match": "\\b(if|else|for|match|in)\\b"
         },
         {
           "name": "keyword.other.sngl",

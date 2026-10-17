@@ -121,6 +121,8 @@ func (c *checker) inferExpr(e ast.Expr) ir.Expr {
 		return c.inferUnary(x)
 	case *ast.TernaryExpr:
 		return c.inferTernary(x)
+	case *ast.MatchExpr:
+		return c.inferMatch(x)
 	case *ast.CallExpr:
 		return c.inferCall(x)
 	case *ast.SelectExpr:
@@ -705,7 +707,9 @@ func (c *checker) inferBinary(x *ast.BinaryExpr) ir.Expr {
 		var right ir.Expr
 		restoreNarrow = c.pushNarrowings(facts, nil, &right)
 		defer func() { restoreNarrow() }()
+		restorePrelude := c.noPrelude()
 		rightExpr := c.checkExpr(x.Right)
+		restorePrelude()
 		right = rightExpr
 		return c.finishBinary(x, leftExpr, rightExpr)
 	}
@@ -1011,6 +1015,8 @@ func (c *checker) inferTernary(x *ast.TernaryExpr) ir.Expr {
 	narrowingsFrom(condExpr, true, thenFacts)
 	var thenRegion ir.Expr
 	restoreThen := c.pushNarrowings(thenFacts, nil, &thenRegion)
+	restorePrelude := c.noPrelude()
+	defer restorePrelude()
 	thenExpr := c.checkExprExpecting(x.Then, c.expected)
 	thenRegion = thenExpr
 	restoreThen()
@@ -1707,19 +1713,11 @@ func findNodeAST(stmts []ast.Stmt, id string) *ast.VisualNode {
 			if found := findNodeAST(n.Block.Stmts, id); found != nil {
 				return found
 			}
-		case *ast.IfStmt:
-			if found := findNodeAST(n.Body.Stmts, id); found != nil {
-				return found
-			}
-			if found := findNodeAST(n.Else.Stmts, id); found != nil {
-				return found
-			}
-		case *ast.ForStmt:
-			if found := findNodeAST(n.Body.Stmts, id); found != nil {
-				return found
-			}
-			if found := findNodeAST(n.Else.Stmts, id); found != nil {
-				return found
+		default:
+			for _, b := range ast.BranchBlocks(n) {
+				if found := findNodeAST(b.Stmts, id); found != nil {
+					return found
+				}
 			}
 		}
 	}
@@ -2783,7 +2781,10 @@ func (c *checker) inferLambda(x *ast.LambdaExpr) ir.Expr {
 		// form gets this from enterFuncBody; an expression body never reaches
 		// one, so it says the same thing here.
 		restoreNarrow := c.clearNarrowings()
+		var prelude []ir.Stmt
+		restorePrelude := c.bodyPrelude(&prelude)
 		bodyExpr := c.checkExprExpecting(x.Body, fn.Return)
+		restorePrelude()
 		if fn.Return != nil && fn.Return.Kind != ir.TypeVoid {
 			// A return type taken from context may still name a parameter the
 			// call is inferring.
@@ -2801,7 +2802,7 @@ func (c *checker) inferLambda(x *ast.LambdaExpr) ir.Expr {
 			fn.Return = c.inferredType(exprType(bodyExpr), *x.Body.ExprPos())
 			c.returnType = fn.Return
 		}
-		fn.Block = []ir.Stmt{&ir.Return{AST: &ast.ReturnStmt{Pos: *x.Body.ExprPos(), Value: x.Body}, Value: bodyExpr}}
+		fn.Block = append(prelude, &ir.Return{AST: &ast.ReturnStmt{Pos: *x.Body.ExprPos(), Value: x.Body}, Value: bodyExpr})
 	}
 	if x.Block.IsDefined() {
 		restore := c.enterFuncBody()
@@ -3387,13 +3388,17 @@ func (c *checker) checkBlockScoped(block *ast.StmtBlock, isScope bool, headNames
 	}
 	var out []ir.Stmt
 	for _, stmt := range block.Stmts {
+		var prelude []ir.Stmt
+		restore := c.preludeFor(&prelude)
+		var checked []ir.Stmt
 		if vd, ok := stmt.(*ast.VarDecl); ok {
-			out = append(out, c.checkLocalVarDecl(vd)...)
-			continue
+			checked = c.checkLocalVarDecl(vd)
+		} else if s := c.checkStmt(stmt); s != nil {
+			checked = []ir.Stmt{s}
 		}
-		if s := c.checkStmt(stmt); s != nil {
-			out = append(out, s)
-		}
+		restore()
+		out = append(out, prelude...)
+		out = append(out, checked...)
 	}
 	return out
 }
@@ -3737,7 +3742,12 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 			restoreElse()
 		}
 		return &ir.If{AST: x, Cond: condExpr, Body: body, Else: elseBody}
+	case *ast.MatchStmt:
+		return c.checkMatchStmt(x)
 	case *ast.ForStmt:
+		// A condition loop's head is evaluated every iteration, so nothing in
+		// it may be bound once ahead of the loop.
+		defer c.noPrelude()()
 		// No head at all is the forever loop. A head is checked before it is
 		// classified, because what it *evaluates to* is what the loop does:
 		// a bool is a condition tested before each iteration, anything else
@@ -6208,12 +6218,10 @@ func (c *checker) refuseAmbiguousReach(x *ast.SelectExpr, comp *ir.Component, id
 						}
 					}
 					pops(n.Block.Stmts)
-				case *ast.IfStmt:
-					pops(n.Body.Stmts)
-					pops(n.Else.Stmts)
-				case *ast.ForStmt:
-					pops(n.Body.Stmts)
-					pops(n.Else.Stmts)
+				default:
+					for _, b := range ast.BranchBlocks(n) {
+						pops(b.Stmts)
+					}
 				}
 			}
 		}
