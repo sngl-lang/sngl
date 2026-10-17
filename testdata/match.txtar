@@ -1,11 +1,11 @@
 A match is the target's own switch where its language declares one: Go's
-`switch`, Kotlin's `when` -- in a composable too, which android's view renders
--- and JavaScript's `switch` for a statement, its ternaries for a value. The
-last arm of an exhaustive match is taken unasked, a `default` or an `else`,
-except in Kotlin, which keeps its patterns so the compiler checks the `when`
-covers the enum. A subject that calls anything is evaluated once: a switch
-evaluates its own, and where the ternaries stand for it, it is bound to a
-local ahead of the statement.
+`switch` -- in bubbletea's View too -- Kotlin's `when` -- in a composable too,
+which android's view renders -- and JavaScript's `switch` for a statement, its
+ternaries for a value. The last arm of an exhaustive match is taken unasked, a
+`default` or an `else`, except in Kotlin, which keeps its patterns so the
+compiler checks the `when` covers the enum. A subject that calls anything is
+evaluated once: a switch evaluates its own, and where the ternaries stand for
+it, it is bound to a local ahead of the statement.
 
 deny * `(?:roll__inst0|bump)\(\w*\)\)? ==` -- a subject that calls is evaluated once and its local compared, never called again per arm
 deny * `==+ (?:"pending"|Status\.PENDING)` -- the last arm of an exhaustive match is taken unasked
@@ -14,6 +14,7 @@ deny out/go/fyne/model.go `if __match` -- a handler's match is a switch on its s
 deny out/go/gtk4/model.go `__match\d` -- a switch evaluates its subject once, with no local bound for it
 deny out/kotlin/android/app/src/main/java/test/sngl/app/MainScreen.kt `__match\d` -- a when evaluates its subject once, with no local bound for it
 deny out/kotlin/android/app/src/main/java/test/sngl/app/MainScreen.kt `if \(\(status__inst0 == Status\.ACTIVE\)\)` -- a view's match is a when in the composable
+deny out/go/bubbletea/model.go `if m\.status__inst0 == "active"` -- a view's match is a switch in View
 deny out/none/html/index.html `if \(n === 0\)` -- describe's match is a switch
 
 -- app.sngl --
@@ -312,14 +313,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			default:
 				m.status__inst0 = "active"
 			}
-			var __lt4 string
+			var __lt3 string
 			switch m.roll__inst0() {
 			case "active":
-				__lt4 = m.label(m.status__inst0)
+				__lt3 = m.label(m.status__inst0)
 			default:
-				__lt4 = "rolled"
+				__lt3 = "rolled"
 			}
-			m.last__inst0 = __lt4
+			m.last__inst0 = __lt3
 		}
 	}
 	return m, tea.Batch(cmds...)
@@ -330,41 +331,38 @@ func (m Model) View() tea.View {
 	if m.visible__inst0 {
 		var contentParts []string
 		var contentPart_0 string
-		if m.status__inst0 == "active" {
+		switch m.status__inst0 {
+		case "active":
 			contentPart_0 = lipgloss.NewStyle().Render(fmt.Sprint("on"))
-		} else {
-			if m.status__inst0 == "inactive" {
-				contentPart_0 = lipgloss.NewStyle().Render(fmt.Sprint("off"))
-			} else {
-				contentPart_0 = lipgloss.NewStyle().Render(fmt.Sprint("waiting"))
-			}
+		case "inactive":
+			contentPart_0 = lipgloss.NewStyle().Render(fmt.Sprint("off"))
+		default:
+			contentPart_0 = lipgloss.NewStyle().Render(fmt.Sprint("waiting"))
 		}
 		if contentPart_0 != "" {
 			contentParts = append(contentParts, contentPart_0)
 		}
 		var __lt1 string
-		if m.status__inst0 == "active" {
+		switch m.status__inst0 {
+		case "active":
 			__lt1 = "on"
-		} else {
+		default:
 			__lt1 = "not on"
 		}
 		var contentPart_3 string
 		contentPart_3 = lipgloss.NewStyle().Render(fmt.Sprint(__lt1))
 		contentParts = append(contentParts, contentPart_3)
-		var __lt3 string
-		if m.rolls__inst0 > 10 {
-			__lt3 = "many"
-		} else {
-			var __lt2 string
-			if m.rolls__inst0 > 0 {
-				__lt2 = Describe(m.rolls__inst0)
-			} else {
-				__lt2 = "none"
-			}
-			__lt3 = __lt2
+		var __lt2 string
+		switch {
+		case (m.rolls__inst0 > 10):
+			__lt2 = "many"
+		case (m.rolls__inst0 > 0):
+			__lt2 = Describe(m.rolls__inst0)
+		default:
+			__lt2 = "none"
 		}
 		var contentPart_6 string
-		contentPart_6 = lipgloss.NewStyle().Render(fmt.Sprint(__lt3))
+		contentPart_6 = lipgloss.NewStyle().Render(fmt.Sprint(__lt2))
 		contentParts = append(contentParts, contentPart_6)
 		var contentPart_7 string
 		contentPart_7Focused := (m.__focusID == 0)
@@ -1206,7 +1204,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:7c26edf0beef0c5627cbff45701f0729
+pass sha256:2de932ad600580347c33371a20f59362
 -- run/go/fyne --
 pass sha256:1d688cdeaf85089eff18f87d178731e1
 -- run/go/gtk4 --

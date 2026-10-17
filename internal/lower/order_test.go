@@ -225,9 +225,10 @@ var soleGate = map[string][]string{
 
 	// Read by passMatch rather than gating it: each says which matches the
 	// target emits as one, and the pass writes the rest as the chain.
-	"Match":      nil,
-	"MatchValue": nil,
-	"ViewMatch":  nil,
+	"Match":       nil,
+	"MatchValue":  nil,
+	"ViewMatch":   nil,
+	"OptionMatch": nil,
 
 	// The pass and the field are named for opposite sides of the same fact:
 	// ReactiveCanvas is the redraw the platform wants, CanvasReactivity is the

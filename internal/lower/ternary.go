@@ -341,7 +341,7 @@ func (st *ternState) liftMatch(m *ir.MatchExpr) ([]ir.Stmt, ir.Expr) {
 	name := st.freshName()
 	sym := &ir.Var{Name: name, Type: m.Type, Synthesized: true}
 	ref := func() *ir.Ident { return &ir.Ident{Name: name, Type: m.Type, Sym: sym, Synthesized: true} }
-	stmt := &ir.Match{Subject: m.Subject, Exhaustive: m.Exhaustive}
+	stmt := &ir.Match{Subject: m.Subject, Exhaustive: m.Exhaustive, FromValue: true}
 	if m.AST != nil {
 		stmt.AST = &ast.MatchStmt{Pos: m.AST.Pos}
 	}

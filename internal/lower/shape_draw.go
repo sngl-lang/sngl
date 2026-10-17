@@ -125,7 +125,7 @@ func emitShapes(children []ir.Stmt, body *[]ir.Stmt, env drawEnv) {
 			emitShapes(v.Else, &otherwise, env)
 			*body = append(*body, &ir.If{AST: v.AST, Cond: v.Cond, Body: then, Else: otherwise})
 		case *ir.Match:
-			*body = append(*body, matchOver(v, func(arm []ir.Stmt) []ir.Stmt {
+			*body = append(*body, v.Over(func(_ int, arm []ir.Stmt) []ir.Stmt {
 				var out []ir.Stmt
 				emitShapes(arm, &out, env)
 				return out
@@ -296,7 +296,7 @@ func emitSource(host *ir.NodeInst, stmts []ir.Stmt, body *[]ir.Stmt, env drawEnv
 			emitSource(host, v.Else, &otherwise, env)
 			*body = append(*body, &ir.If{AST: v.AST, Cond: v.Cond, Body: then, Else: otherwise})
 		case *ir.Match:
-			*body = append(*body, matchOver(v, func(arm []ir.Stmt) []ir.Stmt {
+			*body = append(*body, v.Over(func(_ int, arm []ir.Stmt) []ir.Stmt {
 				var out []ir.Stmt
 				emitSource(host, arm, &out, env)
 				return out

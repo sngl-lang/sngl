@@ -1,6 +1,10 @@
 package lower
 
-import "duckfam.us/sngl/ir"
+import (
+	"slices"
+
+	"duckfam.us/sngl/ir"
+)
 
 // slotFlows makes the flow itself the render slot when a reactive `if` or
 // `for` sits among its spans, for a target with no container a span can be
@@ -14,16 +18,10 @@ func (st *reactivityState) slotFlows(stmts []ir.Stmt) []ir.Stmt {
 				continue
 			}
 			n.Children = st.slotFlows(n.Children)
-		case *ir.If:
-			n.Body = st.slotFlows(n.Body)
-			n.Else = st.slotFlows(n.Else)
-		case *ir.For:
-			n.Body = st.slotFlows(n.Body)
-			n.Else = st.slotFlows(n.Else)
-		case *ir.ErrorBoundary:
-			n.Children = st.slotFlows(n.Children)
-		case *ir.ContextProvider:
-			n.Children = st.slotFlows(n.Children)
+		case *ir.If, *ir.Match, *ir.For, *ir.ErrorBoundary, *ir.ContextProvider:
+			for _, b := range ir.TransparentBlocks(n) {
+				*b = st.slotFlows(*b)
+			}
 		case *ir.SlotInst:
 			n.Children = st.slotFlows(n.Children)
 		}
@@ -65,6 +63,13 @@ func (st *reactivityState) reactiveAmongSpans(stmts []ir.Stmt, inSpan bool) bool
 			if st.reactiveAmongSpans(n.Body, inSpan) || st.reactiveAmongSpans(n.Else, inSpan) {
 				return true
 			}
+		case *ir.Match:
+			reactive := slices.ContainsFunc(n.Heads(), func(h ir.Expr) bool { return len(st.exprDeps(h)) > 0 })
+			for _, b := range n.ArmBlocks() {
+				if reactive && (inSpan || holdsSpan(*b)) || st.reactiveAmongSpans(*b, inSpan) {
+					return true
+				}
+			}
 		case *ir.For:
 			reactive := len(st.exprDeps(n.Iter)) > 0 || st.bodyNeedsSlot(n.Body)
 			if reactive && (inSpan || holdsSpan(n.Body)) {
@@ -85,9 +90,11 @@ func holdsSpan(stmts []ir.Stmt) bool {
 			if isSpanNode(n) {
 				return true
 			}
-		case *ir.If:
-			if holdsSpan(n.Body) || holdsSpan(n.Else) {
-				return true
+		case *ir.If, *ir.Match:
+			for _, b := range ir.TransparentBlocks(n) {
+				if holdsSpan(*b) {
+					return true
+				}
 			}
 		case *ir.For:
 			if holdsSpan(n.Body) {

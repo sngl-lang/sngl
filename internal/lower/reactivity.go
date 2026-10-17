@@ -1078,7 +1078,9 @@ func eachCallInStmt(s ir.Stmt, fn func(*ir.Call)) {
 			eachCallInStmt(c, fn)
 		}
 	case *ir.Match:
-		eachCallInExpr(n.Subject, fn)
+		for _, h := range n.Heads() {
+			eachCallInExpr(h, fn)
+		}
 		for _, arm := range n.Arms {
 			for _, c := range arm.Body {
 				eachCallInStmt(c, fn)

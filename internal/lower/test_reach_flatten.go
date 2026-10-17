@@ -601,7 +601,7 @@ func endReturns(stmts []ir.Stmt, done *ir.Var, inLoop bool) []ir.Stmt {
 				out = append(out, s)
 				continue
 			}
-			out = append(out, matchOver(x, func(arm []ir.Stmt) []ir.Stmt { return endReturns(arm, done, inLoop) }))
+			out = append(out, x.Over(func(_ int, arm []ir.Stmt) []ir.Stmt { return endReturns(arm, done, inLoop) }))
 		case *ir.For:
 			if !returns([]ir.Stmt{x}) {
 				out = append(out, s)

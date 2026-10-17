@@ -346,6 +346,21 @@ func (vc *irViewContext) renderSpan(stmt ir.Stmt, accVar string, c spanCascade) 
 			vc.indent--
 		}
 		vc.line("%s", vc.gc.BlockEnd())
+	case *ir.Match:
+		if s.FromValue {
+			vc.emitIRStmt(s)
+			return
+		}
+		vc.line("%s", vc.gc.SwitchHead(&s.MatchArms))
+		for i, arm := range s.Arms {
+			vc.line("%s", vc.gc.SwitchCase(&s.MatchArms, i))
+			vc.indent++
+			for _, child := range arm.Body {
+				vc.renderSpan(child, accVar, c)
+			}
+			vc.indent--
+		}
+		vc.line("%s", vc.gc.BlockEnd())
 	case *ir.For:
 		vc.renderSpanFor(s, accVar, c)
 	case *ir.ErrorBoundary:

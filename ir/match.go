@@ -46,6 +46,24 @@ type Match struct {
 	// Instances is NodeInst.Instances, for a match at the root of a spliced
 	// body, as If.Instances is.
 	Instances []string `json:",omitempty"`
+	// FromValue marks the match passTernary writes for a match expression,
+	// as If.FromTernary marks the if it writes for a ternary: its arms assign
+	// a sibling temp and render nothing.
+	FromValue bool `json:"-"`
+}
+
+// ComputesValue reports whether s is a statement passTernary wrote to compute
+// an expression's value into a temp -- an if for a ternary, a match for a
+// match expression -- which a view emits as imperative code rather than as a
+// conditional over what it renders.
+func ComputesValue(s Stmt) bool {
+	switch n := s.(type) {
+	case *If:
+		return n.FromTernary
+	case *Match:
+		return n.FromValue
+	}
+	return false
 }
 
 // MatchExpr is a match expression, whose value is the taken arm's Value.
@@ -64,6 +82,19 @@ func (x *MatchExpr) ExprType() *Type { return x.Type }
 // last arm of an exhaustive match.
 func (m *MatchArms) Unasked(i int) bool {
 	return m.Arms[i].Else || (m.Exhaustive && i == len(m.Arms)-1)
+}
+
+// Heads are what a match evaluates to choose an arm: the subject, where it
+// has one, and every arm's patterns -- the conditions of a headless match.
+func (m *MatchArms) Heads() []Expr {
+	var out []Expr
+	if m.Subject != nil {
+		out = append(out, m.Subject)
+	}
+	for _, arm := range m.Arms {
+		out = append(out, arm.Patterns...)
+	}
+	return out
 }
 
 // Headless reports whether the arms are conditions rather than values the
@@ -199,6 +230,20 @@ func (m *Match) BreaksOut() bool {
 		walk(arm.Body)
 	}
 	return found
+}
+
+// Over is a copy of m whose arms hold what each arm's body becomes under f,
+// handed the arm's index, for a walk that rebuilds the control flow around
+// what it keeps. The subject and patterns are shared.
+func (m *Match) Over(f func(i int, body []Stmt) []Stmt) *Match {
+	out := *m
+	out.Arms = make([]*MatchArm, len(m.Arms))
+	for i, arm := range m.Arms {
+		a := *arm
+		a.Body = f(i, arm.Body)
+		out.Arms[i] = &a
+	}
+	return &out
 }
 
 // Taken is the condition under which arm i is the one taken: its own test,

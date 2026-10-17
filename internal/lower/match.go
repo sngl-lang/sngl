@@ -168,16 +168,3 @@ func reads(stmts []ir.Stmt, sym *ir.Var) int {
 	})
 	return n
 }
-
-// matchOver is a copy of m whose arms hold what each arm's body becomes under
-// f, for a pass that rebuilds the control flow around what it emits.
-func matchOver(m *ir.Match, f func([]ir.Stmt) []ir.Stmt) *ir.Match {
-	out := *m
-	out.Arms = make([]*ir.MatchArm, len(m.Arms))
-	for i, arm := range m.Arms {
-		a := *arm
-		a.Body = f(arm.Body)
-		out.Arms[i] = &a
-	}
-	return &out
-}

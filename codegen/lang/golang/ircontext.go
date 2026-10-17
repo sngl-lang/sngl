@@ -2556,20 +2556,46 @@ func OptionCompare(n *ir.Binary) (optionLeft, valueRight, ok bool) {
 // Match writes a match statement as a switch: a tagless one for a headless
 // match, and the arm taken unasked as the default.
 func (gc *GoIRContext) Match(n *ir.Match, subject string, patterns, bodies [][]string) []string {
-	head := "switch {"
-	if n.Subject != nil {
-		head = "switch " + subject + " {"
-	}
-	lines := []string{head}
+	lines := []string{switchHead(&n.MatchArms, subject)}
 	for i := range n.Arms {
-		if n.Unasked(i) {
-			lines = append(lines, "default:")
-		} else {
-			lines = append(lines, "case "+strings.Join(patterns[i], ", ")+":")
-		}
+		lines = append(lines, switchCase(&n.MatchArms, i, patterns[i]))
 		lines = append(lines, irwalk.IndentLines(gc.Indent(), bodies[i])...)
 	}
 	return append(lines, "}")
+}
+
+// SwitchHead opens a switch over m, for a platform writing a match's arms
+// itself -- bubbletea's view and the walks that follow it. Each arm opens
+// with SwitchCase, and the switch closes with BlockEnd.
+func (gc *GoIRContext) SwitchHead(m *ir.MatchArms) string {
+	subject := ""
+	if m.Subject != nil {
+		subject = gc.EvalExpr(m.Subject)
+	}
+	return switchHead(m, subject)
+}
+
+// SwitchCase opens arm i of a switch SwitchHead opened.
+func (gc *GoIRContext) SwitchCase(m *ir.MatchArms, i int) string {
+	var pats []string
+	for _, p := range m.Arms[i].Patterns {
+		pats = append(pats, gc.EvalExpr(p))
+	}
+	return switchCase(m, i, pats)
+}
+
+func switchHead(m *ir.MatchArms, subject string) string {
+	if m.Subject == nil {
+		return "switch {"
+	}
+	return "switch " + subject + " {"
+}
+
+func switchCase(m *ir.MatchArms, i int, patterns []string) string {
+	if m.Unasked(i) {
+		return "default:"
+	}
+	return "case " + strings.Join(patterns, ", ") + ":"
 }
 
 // MatchExpr is never reached: Go has no switch expression, and passTernary
