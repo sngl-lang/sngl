@@ -580,11 +580,19 @@ func (kc *KtIRContext) catchAtCall(call *ir.Call) []string {
 // ends the handler, not the function it was inlined into, so a body holding
 // one runs as a local fun of its own.
 func (kc *KtIRContext) handlerBody(handler *ir.EventHandler) []string {
+	returns := ir.BlockReturns(handler.Func.Block)
+	inner := kc
+	if returns {
+		// The local fun's own return, not the lambda's it is written in.
+		c := *kc
+		c.returnTo = ""
+		inner = &c
+	}
 	var body []string
 	for _, stmt := range handler.Func.Block {
-		body = append(body, kc.EvalStmt(stmt)...)
+		body = append(body, inner.EvalStmt(stmt)...)
 	}
-	if ir.BlockReturns(handler.Func.Block) {
+	if returns {
 		head := "fun __onError() {"
 		if ir.BlockHasAsyncCall(handler.Func.Block) {
 			head = "suspend " + head

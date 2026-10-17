@@ -2,6 +2,7 @@ package bubbletea
 
 import (
 	"fmt"
+	"regexp"
 	"slices"
 	"strconv"
 	"strings"
@@ -120,6 +121,7 @@ func CompileIR(ctx *codegen.CodegenCtx, cfg Config) ([]byte, error) {
 	cfg = cfg.withDefaults()
 	info := analyzeIR(ctx)
 	body, imports := emitIR(info, ctx, cfg)
+	body = holdLiveModel(body)
 	body = golang.PruneStructDecls(body, golang.PayloadPruneCandidates(ctx.Pkg, codegen.TriggerArgs(ctx.Pkg)))
 	if err := ctx.Err(); err != nil {
 		return nil, err
@@ -166,6 +168,31 @@ func CompileIR(ctx *codegen.CodegenCtx, cfg Config) ([]byte, error) {
 		return nil, fmt.Errorf("bubbletea: emitter produced no model.go")
 	}
 	return out, nil
+}
+
+// liveModel is the Model the running method works on, which a closure reads
+// its state through (GoIRContext.LiveModel).
+const liveModel = "__liveModel"
+
+var modelEntry = regexp.MustCompile(`(?m)^func \(m (\*?)Model\) [^\n]*\{\n|^\tm := Model\{\}\n`)
+
+// holdLiveModel declares liveModel and, where a closure in body reads it,
+// points it at the Model each method works on -- the receiver, or New's -- for
+// as long as the method runs. A closure called from a later Update then
+// writes the Model that Update hands back rather than the copy it was made
+// in, and one a method taking the Model by value calls reads that method's.
+func holdLiveModel(body string) string {
+	if !strings.Contains(body, " := "+liveModel+"\n") {
+		return body
+	}
+	body = modelEntry.ReplaceAllStringFunc(body, func(entry string) string {
+		ref := "&m"
+		if strings.HasPrefix(entry, "func (m *Model)") {
+			ref = "m"
+		}
+		return entry + "\tdefer func(p *Model) { " + liveModel + " = p }(" + liveModel + ")\n\t" + liveModel + " = " + ref + "\n"
+	})
+	return body + "\nvar " + liveModel + " *Model\n"
 }
 
 type irAnalysis struct {
@@ -227,6 +254,7 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 	// that takes a *Model needs its address here. Every body EmitFuncDef
 	// writes clears it again, those being pointer receivers.
 	gc.ModelIsValue = true
+	gc.LiveModel = liveModel
 	info := &irAnalysis{
 		CommonAnalysis: ctx.Analysis,
 		gc:             gc,

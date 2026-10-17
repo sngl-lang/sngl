@@ -71,6 +71,8 @@ type Model struct {
 // New creates a Model with default bind values.
 func New() Model {
 	m := Model{}
+	defer func(p *Model) { __liveModel = p }(__liveModel)
+	__liveModel = &m
 	m.picks = 0
 	m.__focusID = 0
 	return m
@@ -78,6 +80,8 @@ func New() Model {
 
 // SetTerminalSize sets the terminal dimensions and resizes widgets.
 func (m *Model) SetTerminalSize(w, h int) {
+	defer func(p *Model) { __liveModel = p }(__liveModel)
+	__liveModel = m
 	m.width = w
 	m.height = h
 }
@@ -87,22 +91,30 @@ func Run(f func()) {
 }
 
 func (m *Model) __focusNext() {
+	defer func(p *Model) { __liveModel = p }(__liveModel)
+	__liveModel = m
 	if m.__focusID == 0 {
 		m.__focusID = 0
 	}
 }
 
 func (m *Model) __focusPrev() {
+	defer func(p *Model) { __liveModel = p }(__liveModel)
+	__liveModel = m
 	if m.__focusID == 0 {
 		m.__focusID = 0
 	}
 }
 
 func (m Model) Picks() int {
+	defer func(p *Model) { __liveModel = p }(__liveModel)
+	__liveModel = &m
 	return m.picks
 }
 
 func (m Model) SetPicks(v int) Model {
+	defer func(p *Model) { __liveModel = p }(__liveModel)
+	__liveModel = &m
 	m.picks = v
 	return m
 }
@@ -114,10 +126,14 @@ func SetPicksCmd(v int) tea.Cmd {
 }
 
 func (m Model) Init() tea.Cmd {
+	defer func(p *Model) { __liveModel = p }(__liveModel)
+	__liveModel = &m
 	return nil
 }
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	defer func(p *Model) { __liveModel = p }(__liveModel)
+	__liveModel = &m
 	var cmds []tea.Cmd
 	var cmd tea.Cmd
 	_ = cmd
@@ -137,6 +153,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.__focusPrev()
 		case msg.Code == tea.KeyEnter && m.__focusID == 0:
 			Run(func() {
+				m := __liveModel
+				_ = m
 				m.picks += 1
 			})
 		}
@@ -146,6 +164,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 // chClick activates the #ch widget the way a keypress does; for tests.
 func (m *Model) chClick() {
+	defer func(p *Model) { __liveModel = p }(__liveModel)
+	__liveModel = m
 	prev := m.__focusID
 	m.__focusID = 0
 	nm, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
@@ -154,6 +174,8 @@ func (m *Model) chClick() {
 }
 
 func (m Model) View() tea.View {
+	defer func(p *Model) { __liveModel = p }(__liveModel)
+	__liveModel = &m
 	var parts []string
 	var part0 string
 	part0Focused := (m.__focusID == 0)
@@ -180,6 +202,8 @@ func main() {
 		os.Exit(1)
 	}
 }
+
+var __liveModel *Model
 -- out/go/bubbletea/model_test.go --
 package main
 
@@ -544,7 +568,7 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:b4dc4795ce4e68e6e58fcebfe601e0c9
+pass sha256:e324526c24a14ebaf30380ea249faa26
 -- run/go/fyne --
 pass sha256:c6cc9b9db77905000ba43c973ddfed42
 -- run/go/gtk4 --

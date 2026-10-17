@@ -3,6 +3,7 @@ package golang
 import (
 	"fmt"
 	"path/filepath"
+	"regexp"
 	"slices"
 	"strings"
 
@@ -63,6 +64,13 @@ type GoIRContext struct {
 	// EmitFuncDef writes takes a pointer, which is why it clears this for the
 	// bodies it emits.
 	ModelIsValue bool
+
+	// LiveModel, when set, names the package variable holding the Model the
+	// running Update or method works on. A closure stored in the Model and
+	// called from a later Update must write that one: bubbletea's Update takes
+	// the Model by value, so the `m` a closure captures where it is made is a
+	// copy no later Update sees.
+	LiveModel string
 
 	// ExtraParam is appended verbatim to the signature EmitFuncDef writes, for
 	// a parameter whose Go type no ir.Type spells -- today the `m *Model` a
@@ -1875,24 +1883,43 @@ func (gc *GoIRContext) evalLambda(n *ir.Lambda) string {
 	for _, p := range n.Func.Params {
 		gc = gc.WithLocal(p.Name)
 	}
+	live := gc.LiveModel != "" && (gc.Ctx == nil || gc.Ctx.StateReceiver == "") && gc.RecvName() == codegen.ModelReceiver
+	if live {
+		inner := *gc
+		inner.ModelIsValue = false
+		gc = &inner
+	}
 
+	var lines []string
 	if len(n.Func.Block) == 1 {
 		if ret, ok := n.Func.Block[0].(*ir.Return); ok && ret.Value != nil {
 			body := gc.EvalExpr(ret.Value)
-			return "func(" + strings.Join(params, ", ") + ")" + retType + " { return " + body + " }"
+			if !live || !readsModel.MatchString(body) {
+				return "func(" + strings.Join(params, ", ") + ")" + retType + " { return " + body + " }"
+			}
+			lines = []string{"return " + body}
 		}
+	}
+	if lines == nil {
+		for _, stmt := range n.Func.Block {
+			lines = append(lines, gc.EvalStmt(stmt)...)
+		}
+	}
+	if live && readsModel.MatchString(strings.Join(lines, "\n")) {
+		lines = append([]string{codegen.ModelReceiver + " := " + gc.LiveModel, "_ = " + codegen.ModelReceiver}, lines...)
 	}
 
 	var b strings.Builder
 	b.WriteString("func(" + strings.Join(params, ", ") + ")" + retType + " {\n")
-	for _, stmt := range n.Func.Block {
-		for _, line := range gc.EvalStmt(stmt) {
-			b.WriteString("\t\t" + line + "\n")
-		}
+	for _, line := range lines {
+		b.WriteString("\t\t" + line + "\n")
 	}
 	b.WriteString("\t}")
 	return b.String()
 }
+
+// readsModel is whether emitted Go names the Model receiver.
+var readsModel = regexp.MustCompile(`\b` + codegen.ModelReceiver + `\b`)
 
 func (gc *GoIRContext) evalCallArgs(args []ir.CallArg) []string {
 	out := make([]string, len(args))
@@ -1912,6 +1939,7 @@ func (gc *GoIRContext) WithLocal(name string) *GoIRContext {
 		InstanceRecords:    gc.InstanceRecords,
 		InstanceReads:      gc.InstanceReads,
 		ModelIsValue:       gc.ModelIsValue,
+		LiveModel:          gc.LiveModel,
 		imports:            gc.imports, // shared so child writes propagate
 	}
 }
@@ -1934,6 +1962,7 @@ func (gc *GoIRContext) ForComponent(comp *ir.Component) *GoIRContext {
 		InstanceRecords:    gc.InstanceRecords,
 		InstanceReads:      gc.InstanceReads,
 		ModelIsValue:       gc.ModelIsValue,
+		LiveModel:          gc.LiveModel,
 		imports:            gc.imports, // shared so child writes propagate
 	}
 }

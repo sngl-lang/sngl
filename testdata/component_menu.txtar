@@ -80,19 +80,29 @@ type Model struct {
 // New creates a Model with default bind values.
 func New() Model {
 	m := Model{}
+	defer func(p *Model) { __liveModel = p }(__liveModel)
+	__liveModel = &m
 	m.open = false
 	m.last = ""
 	m.__focusID = 0
 	m.widget0 = tui.NewList(tui.StringItems(func() []string {
 		__out := make([]string, len([]MenuItem__record{MenuItem__record{Label: "Cut", Disabled: false, Children: []MenuItem__record{}, Select: func() {
+			m := __liveModel
+			_ = m
 			m.last = "cut"
 		}}, MenuItem__record{Label: "Copy", Disabled: false, Children: []MenuItem__record{}, Select: func() {
+			m := __liveModel
+			_ = m
 			m.last = "copy"
 		}}, MenuItem__record{Label: "Paste", Disabled: true, Children: []MenuItem__record{}, Select: func() {
 		}}}))
 		for __i, __item := range []MenuItem__record{MenuItem__record{Label: "Cut", Disabled: false, Children: []MenuItem__record{}, Select: func() {
+			m := __liveModel
+			_ = m
 			m.last = "cut"
 		}}, MenuItem__record{Label: "Copy", Disabled: false, Children: []MenuItem__record{}, Select: func() {
+			m := __liveModel
+			_ = m
 			m.last = "copy"
 		}}, MenuItem__record{Label: "Paste", Disabled: true, Children: []MenuItem__record{}, Select: func() {
 		}}} {
@@ -106,6 +116,8 @@ func New() Model {
 
 // SetTerminalSize sets the terminal dimensions and resizes widgets.
 func (m *Model) SetTerminalSize(w, h int) {
+	defer func(p *Model) { __liveModel = p }(__liveModel)
+	__liveModel = m
 	m.width = w
 	m.height = h
 	m.resizeWidgets()
@@ -113,26 +125,36 @@ func (m *Model) SetTerminalSize(w, h int) {
 
 // resizeWidgets sizes each bubbles widget to the current terminal extent.
 func (m *Model) resizeWidgets() {
+	defer func(p *Model) { __liveModel = p }(__liveModel)
+	__liveModel = m
 	m.widget0.SetSize(tui.WidgetWidth(m.width), tui.WidgetHeight(m.height))
 }
 
 func (m *Model) __focusNext() {
+	defer func(p *Model) { __liveModel = p }(__liveModel)
+	__liveModel = m
 	if m.__focusID == 0 {
 		m.__focusID = 0
 	}
 }
 
 func (m *Model) __focusPrev() {
+	defer func(p *Model) { __liveModel = p }(__liveModel)
+	__liveModel = m
 	if m.__focusID == 0 {
 		m.__focusID = 0
 	}
 }
 
 func (m Model) Open() bool {
+	defer func(p *Model) { __liveModel = p }(__liveModel)
+	__liveModel = &m
 	return m.open
 }
 
 func (m Model) SetOpen(v bool) Model {
+	defer func(p *Model) { __liveModel = p }(__liveModel)
+	__liveModel = &m
 	m.open = v
 	return m
 }
@@ -144,10 +166,14 @@ func SetOpenCmd(v bool) tea.Cmd {
 }
 
 func (m Model) Last() string {
+	defer func(p *Model) { __liveModel = p }(__liveModel)
+	__liveModel = &m
 	return m.last
 }
 
 func (m Model) SetLast(v string) Model {
+	defer func(p *Model) { __liveModel = p }(__liveModel)
+	__liveModel = &m
 	m.last = v
 	return m
 }
@@ -159,10 +185,14 @@ func SetLastCmd(v string) tea.Cmd {
 }
 
 func (m Model) Init() tea.Cmd {
+	defer func(p *Model) { __liveModel = p }(__liveModel)
+	__liveModel = &m
 	return nil
 }
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	defer func(p *Model) { __liveModel = p }(__liveModel)
+	__liveModel = &m
 	var cmds []tea.Cmd
 	var cmd tea.Cmd
 	_ = cmd
@@ -193,6 +223,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m Model) View() tea.View {
+	defer func(p *Model) { __liveModel = p }(__liveModel)
+	__liveModel = &m
 	var content string
 	if m.open {
 		content = m.widget0.View()
@@ -210,6 +242,8 @@ func main() {
 		os.Exit(1)
 	}
 }
+
+var __liveModel *Model
 -- out/go/bubbletea/model_test.go --
 package main
 
@@ -469,7 +503,7 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:95f83ddde8cbef64250a41cc961359de
+pass sha256:52ebbfc64b3305467ea2317d8cda1999
 -- run/go/fyne --
 pass sha256:17d6fd94936c8122bf533b2208fa4ec4
 -- run/kotlin/android --
