@@ -227,7 +227,8 @@ func (c *checker) checkOverrideConst(pe pendingExtension) {
 }
 
 // checkTargetComponentsConst holds a target package's own bodied components to
-// const, for the reason checkOverrideConst gives. A primitive -- #[intrinsic],
+// const: each is inlined into every program that renders it, which
+// passInlinePure's strict mode requires of them. A primitive -- #[intrinsic],
 // a wildcard, #[builtin] -- has no body and is exempt.
 func (c *checker) checkTargetComponentsConst(pkg *ir.Package) {
 	for _, comp := range pkg.Components {

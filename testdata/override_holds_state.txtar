@@ -1,7 +1,10 @@
 An override that does not say const is an ordinary body, and may hold state its
-render reads -- a target package's as well as a program's. Its var is a cell of
-the instance: spliced once where it is written, and one per copy under a `for`
-and under an `if` over state, as a program component's var is.
+render reads. The overrides here are the program's, which is how a fixture can
+write one; a target package's lowers the same way. Its var is a cell of the
+instance: spliced once where it is written, and one per copy under a `for` and
+under an `if` over state, as a program component's var is. Selecting `style`
+hands each instance a ui.Style, which gtk4 declares as a struct whose color
+fields need snglcolor imported.
 
 -- app.sngl --
 import "sngl:platform/android"
