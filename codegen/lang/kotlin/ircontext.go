@@ -655,6 +655,11 @@ func (kc *KtIRContext) ReturnText(n *ir.Return, valueStr string) string {
 	return ret
 }
 
+// BreakText is a bare break whatever its label: Kotlin's when takes no break
+// of its own, so one in a when leaves the loop around it, and the loop needs
+// no label (ForHead writes none).
+func (kc *KtIRContext) BreakText(*ir.Break) string { return "break" }
+
 func (kc *KtIRContext) ForHead(n *ir.For, iter string) string {
 	// A loop that declared no variable still binds one: Kotlin's `_` is for
 	// destructuring, and an unused loop variable is only a warning.

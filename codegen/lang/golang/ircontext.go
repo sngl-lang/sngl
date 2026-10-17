@@ -542,6 +542,22 @@ func (gc *GoIRContext) ReturnText(n *ir.Return, valueStr string) string {
 }
 
 func (gc *GoIRContext) ForHead(n *ir.For, iter string) string {
+	if n.Label != "" {
+		return n.Label + ": " + gc.forHead(n, iter)
+	}
+	return gc.forHead(n, iter)
+}
+
+// BreakText names the loop a labelled break leaves: Go's switch takes a bare
+// break as its own.
+func (gc *GoIRContext) BreakText(n *ir.Break) string {
+	if n.Label != "" {
+		return "break " + n.Label
+	}
+	return "break"
+}
+
+func (gc *GoIRContext) forHead(n *ir.For, iter string) string {
 	// A loop that declared no variable still needs a counter where Go has no
 	// discard for one: `for range xs` covers the element and map forms, but a
 	// counted loop counts, so it names a variable the condition reads -- which

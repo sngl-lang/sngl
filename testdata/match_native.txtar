@@ -1,19 +1,22 @@
-Where a match is a switch and where it is still the if chain. A language
-that declares `matches` writes a match statement as its own switch, and one
-that declares `matchValues` a match expression; Go's switch assigning a temp
-stands for the second. A match over an option is a switch only in Kotlin,
-whose when takes `null ->` beside the element's values; Go's switch would
-compare an option's pointer, and JavaScript declares no `optionMatches`, so
-there it is the chain. What stays the chain on every target: one whose arm breaks out of
-a loop, which Go's and JavaScript's switch take as their own;
-and a test's, which each language's test lowering writes out. A headless
-match is a tagless switch in Go and a subjectless when in Kotlin, and the
-chain in JavaScript, which has nothing to switch on. A view body's match is a
-switch in bubbletea's View, and in every walk Update and the test surface
-make of the view, as it is a when in android's composable. An initializer is no
-statement: Go calls a func literal holding the switch where it stands.
+Where a match is a switch and where it is still the if chain. A language that
+declares `matches` writes a match statement as its own switch, and one that
+declares `matchValues` a match expression; Go's switch assigning a temp stands
+for the second. A match over an option is a switch only in Kotlin, whose when
+takes `null ->` beside the element's values; Go's switch would compare an
+option's pointer, and JavaScript declares no `optionMatches`, so there it is
+the chain. An arm that breaks out of a loop around the match names the loop in
+Go and JavaScript, whose switch takes a bare break as its own; Kotlin's when
+takes none, so its break is bare. What stays the chain on every target is a
+test's, which each language's test lowering writes out. A headless match is a
+tagless switch in Go and a subjectless when in Kotlin, and the chain in
+JavaScript, which has nothing to switch on. A view body's match is a switch in
+bubbletea's View, and in every walk Update and the test surface make of the
+view, as it is a when in android's composable. An initializer is no statement:
+Go calls a func literal holding the switch where it stands.
 
-deny out/go/bubbletea/model.go `switch d \{` -- an arm that breaks out of the loop is the chain
+deny out/go/bubbletea/model.go `if d == "down"` -- an arm that breaks out of the loop is a switch, the loop labelled
+deny out/none/html/index.html `if \(d === "down"\)` -- an arm that breaks out of the loop is a switch, the loop labelled
+deny out/kotlin/android/app/src/main/java/test/sngl/app/MainScreen.kt `__loop|break@` -- Kotlin's when takes no break of its own, so the loop needs no label
 deny out/go/bubbletea/model.go `if n >= 90` -- a headless match is a tagless switch
 deny out/kotlin/android/app/src/main/java/test/sngl/app/MainScreen.kt `if \(\(n >= 90\)\)` -- a headless match is a subjectless when
 deny out/kotlin/android/app/src/main/java/test/sngl/app/MainScreen.kt `state\.maybe == null` -- an option subject is a when in Kotlin, not the ternaries
@@ -58,7 +61,8 @@ func grade(n int) string {
 }
 
 // A break in an arm leaves the loop around the match, which Go's and
-// JavaScript's switch would take as their own: the if chain.
+// JavaScript's switch would take as their own: the loop is labelled and the
+// break names it.
 func firstDown(ds list[Dir]) int {
     var at = -1
     for var i, d = ds {
@@ -310,10 +314,13 @@ func Grade(n int) string {
 
 func FirstDown(ds []string) int {
 	var at int = -1
+__loop0:
 	for i, d := range ds {
-		if d == "down" {
+		switch d {
+		case "down":
 			at = i
-			break
+			break __loop0
+		default:
 		}
 	}
 	return at
@@ -1113,10 +1120,13 @@ func Grade(n int) string {
 
 func FirstDown(ds []string) int {
 	var at int = -1
+__loop0:
 	for i, d := range ds {
-		if d == "down" {
+		switch d {
+		case "down":
 			at = i
-			break
+			break __loop0
+		default:
 		}
 	}
 	return at
@@ -1630,10 +1640,13 @@ func Grade(n int) string {
 
 func FirstDown(ds []string) int {
 	var at int = -1
+__loop0:
 	for i, d := range ds {
-		if d == "down" {
+		switch d {
+		case "down":
 			at = i
-			break
+			break __loop0
+		default:
 		}
 	}
 	return at
@@ -2084,9 +2097,13 @@ fun grade(n: Int): String {
 fun firstDown(ds: List<Dir>): Int {
     var at = -1
     for ((i, d) in ds.withIndex()) {
-    	if ((d == Dir.DOWN)) {
-    		at = i
-    		break
+    	when (d) {
+    		Dir.DOWN -> {
+    			at = i
+    			break
+    		}
+    		else -> {
+    		}
     	}
     }
     return at
@@ -2301,12 +2318,21 @@ window.__sngl_boot = () => {
   }
   function firstDown(ds) {
     let at = -1;
-    for (const [i, d] of ds.entries()) {
+    __loop0: for (const [i, d] of ds.entries()) {
       ;
-      if (d === "down") {
-        ;
-        at = i;
-        break;
+      switch (d) {
+        case "down":
+          {
+            ;
+            at = i;
+            break __loop0;
+          }
+          ;
+        default:
+          {
+            ;
+          }
+          ;
       }
       ;
     }
@@ -2483,12 +2509,12 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:cc126c86bd77e07313dd4293cea3df52
+pass sha256:27c1a298415f9acc74a3b69e796cf60b
 -- run/go/fyne --
-pass sha256:9ddb5dca700482d48423d73d36903d9c
+pass sha256:59fc179e430b489b635dbb954293092c
 -- run/go/gtk4 --
-pass sha256:a1955a22f8099ac4f726a8e8207f3693
+pass sha256:901c40235591efd37dce64c18b3a1e87
 -- run/kotlin/android --
-pass sha256:914b81197a68e9abcb3b85cc5bf35342
+pass sha256:786ce8850af9894990ad9eef016d4423
 -- run/none/html --
-pass sha256:79f103e5a417cfe175d117b8b0272755
+pass sha256:f952c5e709d7fc2c2bab8bf083ab1664

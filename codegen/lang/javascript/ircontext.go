@@ -310,6 +310,22 @@ func (jc *JsIRContext) ReturnText(n *ir.Return, valueStr string) string {
 }
 
 func (jc *JsIRContext) ForHead(n *ir.For, iter string) string {
+	if n.Label != "" {
+		return n.Label + ": " + jc.forHead(n, iter)
+	}
+	return jc.forHead(n, iter)
+}
+
+// BreakText names the loop a labelled break leaves: JavaScript's switch takes
+// a bare break as its own.
+func (jc *JsIRContext) BreakText(n *ir.Break) string {
+	if n.Label != "" {
+		return "break " + n.Label
+	}
+	return "break"
+}
+
+func (jc *JsIRContext) forHead(n *ir.For, iter string) string {
 	// A loop that declared no variable still binds one here: JS has no
 	// discard in a binding position, and an unused const is not an error.
 	key, valueVar := n.Key, n.Value
@@ -1231,7 +1247,7 @@ func (jc *JsIRContext) Match(n *ir.Match, subject string, patterns, bodies [][]s
 			lines = append(lines, in+head)
 		}
 		lines = append(lines, irwalk.IndentLines(in+in, bodies[i])...)
-		if i < len(n.Arms)-1 && !endsInReturn(arm.Body) {
+		if i < len(n.Arms)-1 && !endsInJump(arm.Body) {
 			lines = append(lines, in+in+"break")
 		}
 		lines = append(lines, in+"}")
@@ -1239,14 +1255,19 @@ func (jc *JsIRContext) Match(n *ir.Match, subject string, patterns, bodies [][]s
 	return append(lines, "}")
 }
 
-// endsInReturn reports whether the last statement of a block is a return,
-// after which a break is unreachable.
-func endsInReturn(stmts []ir.Stmt) bool {
+// endsInJump reports whether the last statement of a block leaves it -- a
+// return, a labelled break, a continue -- after which a break is unreachable.
+func endsInJump(stmts []ir.Stmt) bool {
 	if len(stmts) == 0 {
 		return false
 	}
-	_, ok := stmts[len(stmts)-1].(*ir.Return)
-	return ok
+	switch s := stmts[len(stmts)-1].(type) {
+	case *ir.Return, *ir.Continue:
+		return true
+	case *ir.Break:
+		return s.Label != ""
+	}
+	return false
 }
 
 // MatchExpr writes a match expression as the ternaries it means: JavaScript

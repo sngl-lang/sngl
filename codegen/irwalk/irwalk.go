@@ -51,8 +51,13 @@ type Renderer interface {
 	EmitText(n *ir.Emit, argStrs []string) string
 	LocalVarText(n *ir.LocalVar, initStr string) string
 	ReturnText(n *ir.Return, valueStr string) string
+	// BreakText is a break, naming its Label where the language's switch
+	// would otherwise take it as its own.
+	BreakText(n *ir.Break) string
 
 	// — Stmt blocks (walker controls body recursion, indent, close)
+	// ForHead opens a loop, labelled with n.Label where the language's
+	// BreakText names one.
 	ForHead(n *ir.For, iterStr string) string
 	IfHead(n *ir.If, condStr string) string
 	// Catch renders a catch block (If.Catch set): body is the rendered Body,
@@ -174,9 +179,7 @@ func evalStmtImpl(r Renderer, s ir.Stmt) []string {
 		}
 		return []string{r.ReturnText(n, valueStr)}
 	case *ir.Break:
-		// Spelled the same in every language a backend targets, and carrying
-		// nothing for a renderer to encode -- so there is no hook for one.
-		return []string{"break"}
+		return []string{r.BreakText(n)}
 	case *ir.Continue:
 		return []string{"continue"}
 	case *ir.For:

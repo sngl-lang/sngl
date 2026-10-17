@@ -208,7 +208,7 @@ func (m *MatchArms) Switchable(options bool) bool {
 
 // BreaksOut reports whether an arm holds a `break` that leaves a loop around
 // the match. Go's and JavaScript's switch take a bare break as their own, so
-// such a match is written as the if chain there.
+// such a break names the loop it leaves (Break.Label).
 func (m *Match) BreaksOut() bool {
 	found := false
 	var walk func([]Stmt)

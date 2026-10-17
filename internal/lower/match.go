@@ -1,6 +1,7 @@
 package lower
 
 import (
+	"fmt"
 	"strings"
 
 	"duckfam.us/sngl/ast"
@@ -13,8 +14,13 @@ import (
 // in a view body for a platform that does not declare `viewMatches`, and
 // anywhere for a match the host's switch would compare differently from `==`
 // (ir.MatchArms.Switchable, which an option subject is only where the
-// language declares `optionMatches`) or whose arm breaks out of a loop around it, which
-// Go's and JavaScript's switch take as their own (ir.Match.BreaksOut).
+// language declares `optionMatches`).
+//
+// A kept match whose arm breaks out of a loop around it (ir.Match.BreaksOut)
+// labels the loop and names it in each such break (labelLoops), since Go's
+// and JavaScript's switch take a bare break as their own. The late run does
+// that, once every inliner has copied what it copies, so no function holds
+// two loops of one label.
 //
 // A capability not written is not held, so a target that has not heard of
 // match gets the chain, which is what the checker used to write for every
@@ -29,16 +35,20 @@ import (
 var passMatch = pass{
 	name:    "Match",
 	enabled: func(Features) bool { return true },
-	apply:   lowerMatches,
+	apply: func(pkg *ir.Package, f Features, _ Options) error {
+		return lowerMatches(pkg, f, false)
+	},
 }
 
 var passMatchLate = pass{
 	name:    "MatchLate",
 	enabled: func(Features) bool { return true },
-	apply:   lowerMatches,
+	apply: func(pkg *ir.Package, f Features, _ Options) error {
+		return lowerMatches(pkg, f, true)
+	},
 }
 
-func lowerMatches(pkg *ir.Package, f Features, _ Options) error {
+func lowerMatches(pkg *ir.Package, f Features, late bool) error {
 	if pkg == nil {
 		return nil
 	}
@@ -81,7 +91,7 @@ func lowerMatches(pkg *ir.Package, f Features, _ Options) error {
 	err := ir.Rewrite(pkg, func(n ir.Node) (ir.Node, error) {
 		switch x := n.(type) {
 		case *ir.Match:
-			if held(x, &x.MatchArms, f.Match) && !x.BreaksOut() {
+			if held(x, &x.MatchArms, f.Match) {
 				return x, nil
 			}
 			chain := x.Chain()
@@ -101,7 +111,60 @@ func lowerMatches(pkg *ir.Package, f Features, _ Options) error {
 	for _, b := range imperativeBlocks(pkg) {
 		unbindSubjects(b)
 	}
+	if late {
+		labelLoops(pkg)
+	}
 	return nil
+}
+
+// labelLoops gives each loop a match in it breaks out of a label, and names
+// it in every break that leaves the loop from inside such a match. Only a
+// match passMatch kept is left by then, so each one found is a switch.
+func labelLoops(pkg *ir.Package) {
+	n := 0
+	_ = ir.Walk(pkg, func(node ir.Node) error {
+		loop, ok := node.(*ir.For)
+		if !ok {
+			return nil
+		}
+		var visit func([]ir.Stmt)
+		visit = func(stmts []ir.Stmt) {
+			for _, s := range stmts {
+				if _, inner := s.(*ir.For); inner {
+					// Its breaks are its own, and the walk reaches it.
+					continue
+				}
+				if m, ok := s.(*ir.Match); ok && m.BreaksOut() {
+					if loop.Label == "" {
+						loop.Label = fmt.Sprintf("__loop%d", n)
+						n++
+					}
+					nameBreaks(m.ArmBlocks(), loop.Label)
+					continue
+				}
+				for _, b := range ir.TransparentBlocks(s) {
+					visit(*b)
+				}
+			}
+		}
+		visit(loop.Body)
+		return nil
+	})
+}
+
+// nameBreaks labels every break in blocks that is not an inner loop's.
+func nameBreaks(blocks []*[]ir.Stmt, label string) {
+	for _, b := range blocks {
+		for _, s := range *b {
+			switch x := s.(type) {
+			case *ir.Break:
+				x.Label = label
+			case *ir.For:
+			default:
+				nameBreaks(ir.TransparentBlocks(x), label)
+			}
+		}
+	}
 }
 
 // unbindSubjects puts back the call the checker bound to a `__matchN` ahead

@@ -530,27 +530,41 @@ consteval's `evalExpr`).
 
 **`passMatch` writes the chain wherever the target cannot emit a match**
 (`internal/lower/match.go`), first in the pipeline and again before NoTernary
-(`MatchLate`), for one a pass between carried out of an imperative body. Three
+(`MatchLate`), for one a pass between carried out of an imperative body. Four
 capabilities decide it, and a target that has heard of none gets the chain:
 `matches` (a statement, in a function, a handler or a lambda), `matchValues`
-(an expression there) and `viewMatches` (both in a view body or an
-initializer). Go, Kotlin and JavaScript declare `matches`; Go and Kotlin
-`matchValues`, Go's being a switch assigning a temp that passTernary writes
-(`liftMatch`), and JavaScript, which has no switch expression, withholds it;
-android declares `viewMatches`, and html, whose script is JavaScript under
-`--lang none`, takes back `matches` and withdraws the other two. Whatever is
-declared, three shapes are the chain on every target: a subject a host's
-switch compares differently from `==` (`MatchArms.Switchable`: anything but a
-bool, a number, a string or an enum), an arm that breaks out of a loop around
-the match, which Go's and JavaScript's switch take as their own
-(`Match.BreaksOut`), and a test function's, which each language's test
-lowering writes out. Where the subject is a `__matchN` the checker bound just
+(an expression there), `viewMatches` (both in a view body or an initializer)
+and `optionMatches` (a subject that is an option). Go, Kotlin and JavaScript
+declare `matches`; Go and Kotlin `matchValues`, Go's being a switch assigning a
+temp that passTernary writes (`liftMatch`, marked `Match.FromValue` as the if a
+ternary becomes is `If.FromTernary`; `ir.ComputesValue` asks either), and
+JavaScript, which has no switch expression, withholds it; android and
+bubbletea declare `viewMatches`, and html, whose script is JavaScript under
+`--lang none`, takes back `matches` and withdraws the other three. Only Kotlin
+declares `optionMatches`: its `when` takes `null ->` beside the element's
+values, where Go's switch would compare an option's pointer. Whatever is
+declared, two shapes are the chain on every target: a subject a host's switch
+compares differently from `==` (`MatchArms.Switchable`: anything but a bool, a
+number, a string or an enum, or an option of one where the language declares
+`optionMatches`), and a test function's, which each language's test lowering
+writes out. An arm that breaks out of a loop around the match
+(`Match.BreaksOut`) names the loop: the late run labels it (`For.Label`,
+`Break.Label`, `labelLoops`, after every inliner has copied what it copies),
+which Go and JavaScript write as `__loopN:` and `break __loopN`, since their
+switch takes a bare break as its own, and Kotlin as a bare break, since its
+`when` takes none. Where the subject is a `__matchN` the checker bound just
 ahead and the match is kept, the binding is undone (`unbindSubjects`): a
 switch evaluates its subject once. Each language renders one through
 `irwalk.Renderer`'s `Match` and `MatchExpr` -- a `switch` with the arm taken
 unasked as its `default`, a `when` whose exhaustive last arm keeps its
 patterns so Kotlin checks it too, a JavaScript headless match written as the
-chain -- and android's composable writes a `when` (`renderWhen`).
+chain -- android's composable writes a `when` (`renderWhen`), and bubbletea's
+View a `switch` (`renderMatch`, through `GoIRContext.SwitchHead` and
+`SwitchCase`), as does every walk Update and the test surface make of the
+view: focus order, loop widgets, presence, overlays. A walk that only descends
+reads `ir.TransparentBlocks`; one carrying a condition down carries
+`MatchArms.Taken(i)`, and one reading what a match evaluates reads
+`MatchArms.Heads`.
 
 **The subject is evaluated once wherever a statement can hold it.** A subject
 that calls anything is bound to `__matchN` ahead of the statement, in an

@@ -353,6 +353,10 @@ func (*Return) stmtNode() {}
 // expression; the AST node is kept for the position a diagnostic needs.
 type Break struct {
 	AST *ast.BreakStmt
+	// Label is the loop's For.Label where the break stands in a match the
+	// target writes as its switch: Go's and JavaScript's switch take a bare
+	// break as their own, so the break names the loop it leaves.
+	Label string `json:",omitempty"`
 }
 
 func (*Break) stmtNode() {}
@@ -473,6 +477,10 @@ type For struct {
 	// body: the instance renders where the loop stands, however many copies
 	// it makes.
 	Instances []string `json:",omitempty"`
+	// Label names the loop for a Break.Label, which passMatch gives a break
+	// that leaves it from inside a match the target writes as its switch.
+	// A language whose switch takes no break of its own needs neither.
+	Label string `json:",omitempty"`
 	// Counted is the arithmetic sequence this loop walks when its iterable is
 	// a sngl:seq call in a shape a host counting loop can express. Set by the
 	// passIterKind lowering pass alongside IterKind; nil for every other loop.

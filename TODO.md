@@ -6,23 +6,21 @@ the longer road.
 
 ## Generated code a person would write
 
-A target that declares `matches`, `matchValues` or `viewMatches` writes its
-own switch; everything else gets the if chain or the ternaries. The shapes
-still written as the chain where a host has a construct for them:
+A target that declares `matches`, `matchValues`, `viewMatches` or
+`optionMatches` writes its own switch; everything else gets the if chain or the
+ternaries. The shapes still written as the chain where a host has a construct
+for them:
 
-- **An option subject.** Kotlin's `when` takes `null ->` beside the element's
-  values; Go and JavaScript compare an option differently from its element, so
-  `Switchable` refuses every option today. A per-language answer needs the
-  capability to say which subject types a language switches on.
-- **A view body on bubbletea.** Its view is Go statements, so a `switch` could
-  stand there as a `when` does on android; its view walks (focus order, loop
-  widgets, presence, overlays) each need a match case before it can declare
-  `viewMatches`.
 - **A JavaScript match expression.** There is no switch expression, so it is
   the ternaries, and a subject that calls is bound to a local ahead of the
   statement.
-- **An arm that breaks out of a loop** in Go and JavaScript, which a labelled
-  loop would let stay a switch.
+- **An option subject in JavaScript.** An option of a scalar is the bare value
+  or `null` there, so a `switch` would compare it as the chain's `===` does.
+  html withdraws `optionMatches` for its script, since under `--lang go` the
+  same capability would reach Go's server half, where an option is a pointer.
+- **A view body on html, fyne and gtk4.** Their views are a tree built once
+  and patched, so a match there is the `if` chain a render slot re-renders;
+  `viewMatches` would need each to render the arms as a slot of its own.
 
 ## Language
 
