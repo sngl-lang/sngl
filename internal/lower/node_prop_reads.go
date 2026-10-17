@@ -707,6 +707,13 @@ func rebaseOnInstance(e ir.Expr, comp *ir.Component, inst ir.Expr) ir.Expr {
 // are bound: each to an expression written in comp's body too, rebased in
 // turn.
 func rebaseOnInstanceUnder(e ir.Expr, comp *ir.Component, inst ir.Expr, env map[ir.Symbol]ir.Expr) ir.Expr {
+	return rebaseKeeping(e, comp, inst, env, nil)
+}
+
+// rebaseKeeping is rebaseOnInstanceUnder where keep names what the rebased
+// code binds itself -- a handler's own locals and loop variables, written
+// into a test with it -- and so may read as it stands.
+func rebaseKeeping(e ir.Expr, comp *ir.Component, inst ir.Expr, env map[ir.Symbol]ir.Expr, keep map[ir.Symbol]bool) ir.Expr {
 	own := map[ir.Symbol]bool{}
 	for _, v := range comp.Vars {
 		own[v] = true
@@ -736,6 +743,9 @@ func rebaseOnInstanceUnder(e ir.Expr, comp *ir.Component, inst ir.Expr, env map[
 		}
 		if own[id.Sym] {
 			return &ir.Select{Type: id.Type, Operand: ir.CloneExprSharingDecls(inst), Field: id.Name}
+		}
+		if keep[id.Sym] {
+			return x
 		}
 		if bound, ok := env[id.Sym]; ok {
 			inner := rebaseOnInstanceUnder(ir.CloneExprSharingDecls(bound), comp, inst, env)

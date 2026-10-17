@@ -434,9 +434,50 @@ func (f *reachFlattener) inlineFire(at *ir.Call, inst ir.Expr, site *ir.NodeInst
 		syms[p] = tmp
 	}
 	block := renameIdents(deepCloneStmts(handler.Block), names, syms)
+	// What the handler binds itself is written into the test with it, each
+	// local under a name of its own: two fires are written into one body.
+	locals := map[ir.Symbol]ir.Symbol{}
+	localNames := map[ir.Symbol]string{}
+	_ = ir.Walk(block, func(n ir.Node) error {
+		if lv, ok := n.(*ir.LocalVar); ok && lv.Sym != nil {
+			cp := *lv.Sym
+			cp.Name = f.names.next(lv.Name, "fire")
+			locals[lv.Sym] = &cp
+			localNames[lv.Sym] = cp.Name
+		}
+		return nil
+	})
+	if len(locals) > 0 {
+		block = renameIdents(block, localNames, locals)
+		_ = ir.Walk(block, func(n ir.Node) error {
+			if lv, ok := n.(*ir.LocalVar); ok {
+				if to, ok := locals[lv.Sym].(*ir.Var); ok {
+					lv.Sym, lv.Name = to, to.Name
+				}
+			}
+			return nil
+		})
+	}
+	keep := map[ir.Symbol]bool{}
+	_ = ir.Walk(block, func(n ir.Node) error {
+		switch x := n.(type) {
+		case *ir.LocalVar:
+			if x.Sym != nil {
+				keep[x.Sym] = true
+			}
+		case *ir.For:
+			if x.KeySym != nil {
+				keep[x.KeySym] = true
+			}
+			if x.ValueSym != nil {
+				keep[x.ValueSym] = true
+			}
+		}
+		return nil
+	})
 	unnamed := false
 	_ = ir.RewriteExprs(block, func(e ir.Expr) (ir.Expr, error) {
-		out := rebaseOnInstanceUnder(e, owner, inst, env)
+		out := rebaseKeeping(e, owner, inst, env, keep)
 		if out == nil {
 			unnamed = true
 			return e, ir.SkipDir
@@ -500,8 +541,17 @@ func (f *reachFlattener) inlineFire(at *ir.Call, inst ir.Expr, site *ir.NodeInst
 	})
 	var used []ir.Stmt
 	for _, d := range decls {
-		if lv := d.(*ir.LocalVar); read[lv.Sym] {
+		lv := d.(*ir.LocalVar)
+		switch {
+		case read[lv.Sym]:
 			used = append(used, d)
+		case callsAnything(lv.Init):
+			// Still evaluated, as the call it was handed to evaluates it.
+			if c, ok := lv.Init.(*ir.Call); ok {
+				used = append(used, &ir.CallStmt{Call: c})
+			} else {
+				used = append(used, d)
+			}
 		}
 	}
 	body := append(used, block...)
@@ -560,6 +610,20 @@ func endReturns(stmts []ir.Stmt, done *ir.Var, inLoop bool) []ir.Stmt {
 		return out
 	}
 	return out
+}
+
+// callsAnything reports whether e makes a call, which a binding nothing reads
+// still has to make.
+func callsAnything(e ir.Expr) bool {
+	found := false
+	_ = ir.Walk(e, func(n ir.Node) error {
+		if _, ok := n.(*ir.Call); ok {
+			found = true
+			return ir.SkipAll
+		}
+		return nil
+	})
+	return found
 }
 
 // returns reports whether stmts return, outside any function literal.

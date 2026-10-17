@@ -162,6 +162,17 @@ func lowerTestStmt(s ir.Stmt, surf TestSurface, compRecvs map[string]bool, ctxCo
 		// thread so Compose recomposes before the next assertion. The write
 		// itself is the ordinary translator's, which is what knows a list is a
 		// SnapshotStateList and a map a read-only Map.
+		if a, ok := s.(*ir.Assign); ok && writesState(s, surf, compRecvs) && readsRefPresence(a.Value, compRecvs) {
+			// The ordinary translator has no answer for whether a node is
+			// rendered, so the value is the test's own, read first.
+			w := *a
+			w.Value = &ir.Ident{Name: "__value", Type: a.Value.ExprType()}
+			lines := []string{"run {", "    val __value = " + lowerTestExpr(a.Value, surf, compRecvs), "    composeTestRule.runOnUiThread {"}
+			for _, l := range surf.translator().EvalStmt(&w) {
+				lines = append(lines, "        "+l)
+			}
+			return append(lines, "    }", "}", "composeTestRule.waitForIdle()")
+		}
 		if writesState(s, surf, compRecvs) {
 			lines := []string{"composeTestRule.runOnUiThread {"}
 			for _, l := range surf.translator().EvalStmt(s) {
@@ -177,6 +188,20 @@ func lowerTestStmt(s ir.Stmt, surf TestSurface, compRecvs map[string]bool, ctxCo
 	// (`c.press(key)`) lowered to nothing at all, and the assertions after it
 	// ran against a component nobody had touched.
 	return surf.translator().EvalStmt(s)
+}
+
+// readsRefPresence reports whether e asks whether one of a test's refs is
+// rendered.
+func readsRefPresence(e ir.Expr, compRecvs map[string]bool) bool {
+	found := false
+	_ = ir.WalkExprs(e, func(x ir.Expr) error {
+		if recv, _, _, _, ok := codegen.RefNullTest(x); ok && compRecvs[recv] {
+			found = true
+			return ir.SkipAll
+		}
+		return nil
+	})
+	return found
 }
 
 // writesState reports whether an assignment's target is rooted at the

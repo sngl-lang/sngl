@@ -408,6 +408,30 @@ func repointCellReads(pkg *ir.Package, owners map[*ir.Var]*ir.Component, clones 
 		}
 	}
 	var bad error
+	// In a test the read is through the test's instance, as every other
+	// read of the instance's state is: a bare write there is the program's,
+	// and passReactivity would patch the nodes reading it from the test.
+	for _, fn := range pkg.Funcs {
+		if fn == nil || !fn.IsTest || len(fn.Params) < 2 {
+			continue
+		}
+		inst := fn.Params[1]
+		err := ir.Rewrite(fn, func(n ir.Node) (ir.Node, error) {
+			id, ok := n.(*ir.Ident)
+			if !ok {
+				return n, nil
+			}
+			v, ok := id.Sym.(*ir.Var)
+			if !ok || owners[v] == nil || len(clones[v]) != 1 {
+				return n, nil
+			}
+			cell := clones[v][0]
+			return &ir.Select{Type: id.Type, Operand: &ir.Ident{Name: inst.Name, Type: inst.Type, Sym: inst}, Field: cell.Name}, ir.SkipDir
+		})
+		if err != nil {
+			return err
+		}
+	}
 	err := ir.Rewrite(pkg, func(n ir.Node) (ir.Node, error) {
 		id, ok := n.(*ir.Ident)
 		if !ok || own[id] {

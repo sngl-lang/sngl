@@ -228,49 +228,101 @@ func (ti *testInstance) refuseMovedRefLocals(stmts []ir.Stmt, aliases map[*ir.Lo
 	if len(wrapped) == 0 {
 		return nil
 	}
-	declared := map[ir.Symbol]bool{}
-	moved := map[ir.Symbol]bool{}
-	var bad error
-	_ = ir.Walk(stmts, func(n ir.Node) error {
-		if bad != nil {
-			return ir.SkipAll
+	m := &movedRefs{ti: ti, wrapped: wrapped, declared: map[ir.Symbol]bool{}, moved: map[ir.Symbol]bool{}}
+	m.stmts(stmts)
+	return m.bad
+}
+
+// movedRefs follows a test body in the order it runs: what a statement
+// reads is read before what it does moves anything, and a loop whose body
+// moves anything has moved it for every read in the body, the first
+// iteration's excepted only by the order nothing tracks.
+type movedRefs struct {
+	ti       *testInstance
+	wrapped  map[ir.Symbol]*ir.LocalVar
+	declared map[ir.Symbol]bool
+	moved    map[ir.Symbol]bool
+	bad      error
+}
+
+func (m *movedRefs) stmts(list []ir.Stmt) {
+	for _, s := range list {
+		if m.bad != nil {
+			return
 		}
-		switch x := n.(type) {
+		switch x := s.(type) {
 		case *ir.LocalVar:
-			if wrapped[x.Sym] != nil {
-				declared[x.Sym] = true
-				moved[x.Sym] = false
+			m.reads(x.Init)
+			if m.wrapped[x.Sym] != nil {
+				m.declared[x.Sym] = true
+				m.moved[x.Sym] = false
 			}
-		case *ir.Ident:
-			if lv := wrapped[x.Sym]; lv != nil && moved[x.Sym] {
-				bad = fmt.Errorf("%s: `%s` holds a ref read when it was declared, and a trigger, a call or a write since may have changed which nodes it names; read the ref again where it is wanted", identPos(x), lv.Name)
+		case *ir.If:
+			m.reads(x.Cond)
+			m.stmts(x.Body)
+			m.stmts(x.Else)
+		case *ir.For:
+			m.reads(x.Iter)
+			if m.moves(x.Body) {
+				m.moveAll()
 			}
+			m.stmts(x.Body)
+			m.stmts(x.Else)
+		default:
+			m.reads(s)
+			if m.moves(s) {
+				m.moveAll()
+			}
+		}
+	}
+}
+
+// reads refuses a read of a moved local in root.
+func (m *movedRefs) reads(root any) {
+	if root == nil || m.bad != nil {
+		return
+	}
+	if e, ok := root.(ir.Expr); ok && e == nil {
+		return
+	}
+	_ = ir.Walk(root, func(n ir.Node) error {
+		if id, ok := n.(*ir.Ident); ok {
+			if lv := m.wrapped[id.Sym]; lv != nil && m.moved[id.Sym] && m.bad == nil {
+				m.bad = fmt.Errorf("%s: `%s` holds a ref read when it was declared, and a trigger, a call or a write since may have changed which nodes it names; read the ref again where it is wanted", identPos(id), lv.Name)
+			}
+		}
+		return nil
+	})
+}
+
+// moves reports whether root holds a trigger, an event fired, a method
+// called or a write through the test's instance.
+func (m *movedRefs) moves(root any) bool {
+	found := false
+	_ = ir.Walk(root, func(n ir.Node) error {
+		switch x := n.(type) {
 		case *ir.Assign:
-			if ti.rooted(x.Target) {
-				ti.moveAll(declared, moved)
-			}
+			found = found || m.ti.rooted(x.Target)
 		case *ir.Toggle:
-			if ti.rooted(x.Target) {
-				ti.moveAll(declared, moved)
-			}
+			found = found || m.ti.rooted(x.Target)
 		case *ir.Call:
 			recv := x.Receiver
 			if recv == nil && x.Func != nil && len(x.Func.Params) > 0 && x.Func.Params[0].Receiver && len(x.Args) > 0 {
 				recv = x.Args[0].Value
 			}
-			if recv != nil && ti.rooted(recv) {
-				ti.moveAll(declared, moved)
-			}
+			found = found || recv != nil && m.ti.rooted(recv)
+		}
+		if found {
+			return ir.SkipAll
 		}
 		return nil
 	})
-	return bad
+	return found
 }
 
-// moveAll marks every declared ref local as possibly stale.
-func (ti *testInstance) moveAll(declared, moved map[ir.Symbol]bool) {
-	for sym := range declared {
-		moved[sym] = true
+func (m *movedRefs) moveAll() {
+	for sym := range m.declared {
+		m.moved[sym] = true
 	}
 }
 
