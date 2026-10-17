@@ -1484,12 +1484,12 @@ func newBadgeInstance(__model *Model, __a_label string) *BadgeInstance {
 	c.__slot2 = nil
 	c.__slot3 = nil
 	c.shown = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(c.shown, (((("[" + c.__prop_label) + ":") + fmt.Sprint(c.hits)) + "]"))
+	gtk4rt.LabelSetLabel(c.shown, (((("[" + c.__prop_label) + ":") + fmt.Sprint(c.hits)) + "]"))
 	c.hit = gtk4rt.ButtonNew()
 	gtk4rt.ButtonSetLabel(c.hit, "hit")
 	gtk4rt.Connect(c.hit, "clicked", func() {
 		c.hits = (c.hits + 1)
-		gtk4rt.LabelSetText(c.shown, (((("[" + c.__prop_label) + ":") + fmt.Sprint(c.hits)) + "]"))
+		gtk4rt.LabelSetLabel(c.shown, (((("[" + c.__prop_label) + ":") + fmt.Sprint(c.hits)) + "]"))
 		c.__renderSlot0(c.__root)
 	})
 	gtk4rt.BoxAppend(c.__root, c.shown)
@@ -1503,13 +1503,13 @@ func newBadgeInstance(__model *Model, __a_label string) *BadgeInstance {
 
 func (c *BadgeInstance) reset() {
 	c.hits = 0
-	gtk4rt.LabelSetText(c.shown, (((("[" + c.__prop_label) + ":") + fmt.Sprint(c.hits)) + "]"))
+	gtk4rt.LabelSetLabel(c.shown, (((("[" + c.__prop_label) + ":") + fmt.Sprint(c.hits)) + "]"))
 	c.__renderSlot0(c.__root)
 }
 
 func (c *BadgeInstance) SetLabel(__v string) {
 	c.__prop_label = __v
-	gtk4rt.LabelSetText(c.shown, (((("[" + c.__prop_label) + ":") + fmt.Sprint(c.hits)) + "]"))
+	gtk4rt.LabelSetLabel(c.shown, (((("[" + c.__prop_label) + ":") + fmt.Sprint(c.hits)) + "]"))
 }
 
 func (c *BadgeInstance) __renderSlot0(parent gtk4rt.Handle) {
@@ -1524,7 +1524,7 @@ func (c *BadgeInstance) __renderSlot0(parent gtk4rt.Handle) {
 	if c.hits >= 2 {
 		c.done = gtk4rt.LabelNew("")
 		c.__model.__named_done = c.done
-		gtk4rt.LabelSetText(c.done, "done")
+		gtk4rt.LabelSetLabel(c.done, "done")
 		gtk4rt.InsertBefore(parent, c.__slot0_at, c.done)
 		c.__slot0 = append(c.__slot0, c.done)
 	}
@@ -1591,13 +1591,13 @@ func newTileInstance(__model *Model, __a_label string, __a___copy string, __a_ta
 	c.__slot2 = nil
 	c.__slot3 = nil
 	c.face = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(c.face, (((("<" + c.__prop_label) + ":") + fmt.Sprint(c.taps)) + ">"))
+	gtk4rt.LabelSetLabel(c.face, (((("<" + c.__prop_label) + ":") + fmt.Sprint(c.taps)) + ">"))
 	c.tap = gtk4rt.ButtonNew()
 	gtk4rt.ButtonSetLabel(c.tap, "tap")
 	c.__model.__list_tap(c.__prop___copy, c.tap)
 	gtk4rt.Connect(c.tap, "clicked", func() {
 		c.taps = (c.taps + 1)
-		gtk4rt.LabelSetText(c.face, (((("<" + c.__prop_label) + ":") + fmt.Sprint(c.taps)) + ">"))
+		gtk4rt.LabelSetLabel(c.face, (((("<" + c.__prop_label) + ":") + fmt.Sprint(c.taps)) + ">"))
 		c.__renderSlot1(c.__root)
 		c.__prop_tapped(c.taps)
 	})
@@ -1612,7 +1612,7 @@ func newTileInstance(__model *Model, __a_label string, __a___copy string, __a_ta
 
 func (c *TileInstance) SetLabel(__v string) {
 	c.__prop_label = __v
-	gtk4rt.LabelSetText(c.face, (((("<" + c.__prop_label) + ":") + fmt.Sprint(c.taps)) + ">"))
+	gtk4rt.LabelSetLabel(c.face, (((("<" + c.__prop_label) + ":") + fmt.Sprint(c.taps)) + ">"))
 }
 
 func (c *TileInstance) Set__copy(__v string) {
@@ -1728,7 +1728,7 @@ func new__child0Instance(__model *Model, __a___p0 string) *__child0Instance {
 	c.__slot2 = nil
 	c.__slot3 = nil
 	c.fin = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(c.fin, "fin")
+	gtk4rt.LabelSetLabel(c.fin, "fin")
 	c.__model.__list_fin(c.__prop___p0, c.fin)
 	c.Root = c.fin
 	gtk4rt.Retain(c.Root)
@@ -2561,7 +2561,7 @@ pass sha256:589fed6e730e316fb5e4d8f4dbb2898f
 -- run/go/fyne --
 pass sha256:b0e08d977a6208697d89c48f23a199c4
 -- run/go/gtk4 --
-pass sha256:3214b3ddefbc0549f2b6ea46d3670e46
+pass sha256:f54abb0666778306c24ff64ed26c8374
 -- run/kotlin/android --
 pass sha256:fbd2fe87eb06f3855b0822bfd8a7b6a0
 -- run/none/html --

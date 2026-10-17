@@ -750,12 +750,12 @@ func New() *Model {
 
 func (m *Model) __effect0_update() {
 	m.log__inst0 = append(m.log__inst0, ("update " + fmt.Sprint(len(m.__effect0_key))))
-	gtk4rt.LabelSetText(m.__n1, strings.Join(m.log__inst0, ","))
+	gtk4rt.LabelSetLabel(m.__n1, strings.Join(m.log__inst0, ","))
 }
 
 func (m *Model) __effect0_insert() {
 	m.log__inst0 = append(m.log__inst0, ((("insert " + fmt.Sprint(m.__effect0_at)) + " ") + fmt.Sprint(m.__effect0_item)))
-	gtk4rt.LabelSetText(m.__n1, strings.Join(m.log__inst0, ","))
+	gtk4rt.LabelSetLabel(m.__n1, strings.Join(m.log__inst0, ","))
 }
 
 func (m *Model) __effects0_settle() {
@@ -910,7 +910,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.Connect(m.__n6, "clicked", m.__n6_clicked_handler)
 	gtk4rt.BoxAppend(m.__n0, m.__n6)
 	m.__n1 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.__n1, strings.Join(m.log__inst0, ","))
+	gtk4rt.LabelSetLabel(m.__n1, strings.Join(m.log__inst0, ","))
 	gtk4rt.BoxAppend(m.__n0, m.__n1)
 	gtk4rt.AppAttach(m.__n0)
 }
@@ -1253,7 +1253,7 @@ pass sha256:b84775808416e06018a72326981f7490
 -- run/go/fyne --
 pass sha256:e1055289e2cae79715d0f8100297a5af
 -- run/go/gtk4 --
-pass sha256:8896a3a9513592537dfaf3551579e054
+pass sha256:4d38e8915bc294f9e9b0c7726353d685
 -- run/kotlin/android --
 pass sha256:f10e8d5f78a1ddef1e100ec58a974943
 -- run/none/html --

@@ -358,7 +358,7 @@ func (m *Model) home_visible_handler(__visible bool) {
 
 func (m *Model) __n2_clicked_handler() {
 	m.txt = "c"
-	gtk4rt.LabelSetText(m.__n0, m.txt)
+	gtk4rt.LabelSetLabel(m.__n0, m.txt)
 }
 
 func (m *Model) Txt() string {
@@ -395,7 +395,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.Connect(m.__n2, "clicked", m.__n2_clicked_handler)
 	gtk4rt.BoxAppend(m.__n1, m.__n2)
 	m.__n0 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.__n0, m.txt)
+	gtk4rt.LabelSetLabel(m.__n0, m.txt)
 	gtk4rt.BoxAppend(m.__n1, m.__n0)
 	gtk4rt.BoxAppend(m.home, m.__n1)
 	gtk4rt.AppAttach(m.home)
@@ -501,7 +501,7 @@ pass sha256:8f2650fff9a7a90e2bed281452284de7
 -- run/go/fyne --
 pass sha256:b55c8125d6686e1a4e871d68451aec05
 -- run/go/gtk4 --
-pass sha256:f828c666a5367aa0ad514b7dfc04f400
+pass sha256:785d44c30f14ada0df40d7cb03f5e8aa
 -- run/kotlin/android --
 pass sha256:64df192920a158b814139e74cdd8f04b
 -- run/none/html --

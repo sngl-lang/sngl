@@ -350,7 +350,7 @@ func new__child0Instance(__model *Model, __a___p0 string) *__child0Instance {
 	c.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
 	c.__slot0 = nil
 	c.__n0 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(c.__n0, c.__prop___p0)
+	gtk4rt.LabelSetLabel(c.__n0, c.__prop___p0)
 	c.Root = c.__n0
 	gtk4rt.Retain(c.Root)
 	return c
@@ -358,7 +358,7 @@ func new__child0Instance(__model *Model, __a___p0 string) *__child0Instance {
 
 func (c *__child0Instance) Set__p0(__v string) {
 	c.__prop___p0 = __v
-	gtk4rt.LabelSetText(c.__n0, c.__prop___p0)
+	gtk4rt.LabelSetLabel(c.__n0, c.__prop___p0)
 }
 
 func (c *__child0Instance) Destroy() {
@@ -546,6 +546,6 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:d7704b15a02ddd3d61115b72ef3c63e7
 -- run/go/gtk4 --
-pass sha256:c17b08d5ea2c5f81675cc7042b34280d
+pass sha256:8e065cbef2ba4821bfdedccaa8af4a02
 -- run/none/html --
 pass sha256:bd475fdef0eb7b62b5b1d05e519e5565

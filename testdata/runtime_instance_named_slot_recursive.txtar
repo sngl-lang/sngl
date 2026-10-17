@@ -708,7 +708,7 @@ func newFrame__slot2Instance(__model *Model, __a_n int, __a___depth int, __a___p
 	gtk4rt.OrientableSetOrientation(c.__n5, gtk4rt.OrientationVertical)
 	gtk4rt.BoxSetSpacing(c.__n5, 6)
 	c.__n0 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(c.__n0, ((("level " + c.__model.describe(c.__prop_n)) + " of ") + fmt.Sprint(c.__prop___p0)))
+	gtk4rt.LabelSetLabel(c.__n0, ((("level " + c.__model.describe(c.__prop_n)) + " of ") + fmt.Sprint(c.__prop___p0)))
 	gtk4rt.BoxAppend(c.__n5, c.__n0)
 	c.__renderSlot0(c.__n5)
 	c.Root = c.__n5
@@ -718,7 +718,7 @@ func newFrame__slot2Instance(__model *Model, __a_n int, __a___depth int, __a___p
 
 func (c *Frame__slot2Instance) SetN(__v int) {
 	c.__prop_n = __v
-	gtk4rt.LabelSetText(c.__n0, ((("level " + c.__model.describe(c.__prop_n)) + " of ") + fmt.Sprint(c.__prop___p0)))
+	gtk4rt.LabelSetLabel(c.__n0, ((("level " + c.__model.describe(c.__prop_n)) + " of ") + fmt.Sprint(c.__prop___p0)))
 	c.__renderSlot0(c.__n5)
 }
 
@@ -729,7 +729,7 @@ func (c *Frame__slot2Instance) Set__depth(__v int) {
 
 func (c *Frame__slot2Instance) Set__p0(__v int) {
 	c.__prop___p0 = __v
-	gtk4rt.LabelSetText(c.__n0, ((("level " + c.__model.describe(c.__prop_n)) + " of ") + fmt.Sprint(c.__prop___p0)))
+	gtk4rt.LabelSetLabel(c.__n0, ((("level " + c.__model.describe(c.__prop_n)) + " of ") + fmt.Sprint(c.__prop___p0)))
 	for __inst0_live_ui, _ := range c.__inst0_live {
 		c.__inst0_live[__inst0_live_ui].Set__p0(c.__prop___p0)
 	}
@@ -829,7 +829,7 @@ func newFrame__slot0Instance(__model *Model, __a_n int, __a___depth int, __a___p
 	gtk4rt.OrientableSetOrientation(c.__n7, gtk4rt.OrientationVertical)
 	gtk4rt.BoxSetSpacing(c.__n7, 6)
 	c.__n1 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(c.__n1, ((("level " + c.__model.describe(c.__prop_n)) + " of ") + fmt.Sprint(c.__prop___p0)))
+	gtk4rt.LabelSetLabel(c.__n1, ((("level " + c.__model.describe(c.__prop_n)) + " of ") + fmt.Sprint(c.__prop___p0)))
 	gtk4rt.BoxAppend(c.__n7, c.__n1)
 	c.__renderSlot1(c.__n7)
 	c.Root = c.__n7
@@ -839,7 +839,7 @@ func newFrame__slot0Instance(__model *Model, __a_n int, __a___depth int, __a___p
 
 func (c *Frame__slot0Instance) SetN(__v int) {
 	c.__prop_n = __v
-	gtk4rt.LabelSetText(c.__n1, ((("level " + c.__model.describe(c.__prop_n)) + " of ") + fmt.Sprint(c.__prop___p0)))
+	gtk4rt.LabelSetLabel(c.__n1, ((("level " + c.__model.describe(c.__prop_n)) + " of ") + fmt.Sprint(c.__prop___p0)))
 	c.__renderSlot1(c.__n7)
 }
 
@@ -850,7 +850,7 @@ func (c *Frame__slot0Instance) Set__depth(__v int) {
 
 func (c *Frame__slot0Instance) Set__p0(__v int) {
 	c.__prop___p0 = __v
-	gtk4rt.LabelSetText(c.__n1, ((("level " + c.__model.describe(c.__prop_n)) + " of ") + fmt.Sprint(c.__prop___p0)))
+	gtk4rt.LabelSetLabel(c.__n1, ((("level " + c.__model.describe(c.__prop_n)) + " of ") + fmt.Sprint(c.__prop___p0)))
 	for __inst1_live_ui, _ := range c.__inst1_live {
 		c.__inst1_live[__inst1_live_ui].Set__p0(c.__prop___p0)
 	}
@@ -1306,7 +1306,7 @@ pass sha256:933672198218c953c29493d65dd9be06
 -- run/go/fyne --
 pass sha256:ba15fedcde9ee7fbc00e14d3b1cf059d
 -- run/go/gtk4 --
-pass sha256:7ae23531542c54e801c288890080b340
+pass sha256:e58be028cada5575ccf6d0371dcac02d
 -- run/kotlin/android --
 pass sha256:9b81985d611382ff949fedc255f0ae38
 -- run/none/html --

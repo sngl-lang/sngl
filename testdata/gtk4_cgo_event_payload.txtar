@@ -597,7 +597,7 @@ func (m *Model) box_changed_handler() {
 func (m *Model) box_activate_handler() {
 	m.value__inst0 = C.GoString(C.gtk_editable_get_text((*C.GtkEditable)(unsafe.Pointer(m.box))))
 	m.last = ("got " + m.value__inst0)
-	C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(m.__n4)), C.CString(m.last))
+	C.gtk_label_set_label((*C.GtkLabel)(unsafe.Pointer(m.__n4)), C.CString(m.last))
 }
 
 func (m *Model) __n3_notifyActive_handler() {
@@ -643,7 +643,7 @@ func newRowInstance(__model *Model, __a_label string) *RowInstance {
 		c.value__inst1 = C.GoString(C.gtk_editable_get_text((*C.GtkEditable)(unsafe.Pointer(c.__n0))))
 		C.gtk_editable_set_text((*C.GtkEditable)(unsafe.Pointer(c.__n0)), C.CString(c.value__inst1))
 		c.got = ((c.__prop_label + " ") + c.value__inst1)
-		C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(c.__n2)), C.CString(c.got))
+		C.gtk_label_set_label((*C.GtkLabel)(unsafe.Pointer(c.__n2)), C.CString(c.got))
 	})
 	C.sngl_connect(unsafe.Pointer(c.__n0), C.CString("activate"), C.int((len(snglCallbacks) - 1)))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(__n7)), (*C.GtkWidget)(unsafe.Pointer(c.__n0)))
@@ -657,7 +657,7 @@ func newRowInstance(__model *Model, __a_label string) *RowInstance {
 	C.sngl_connect(unsafe.Pointer(c.__n1), C.CString("notify::active"), C.int((len(snglCallbacks) - 1)))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(__n7)), (*C.GtkWidget)(unsafe.Pointer(c.__n1)))
 	c.__n2 = (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
-	C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(c.__n2)), C.CString(c.got))
+	C.gtk_label_set_label((*C.GtkLabel)(unsafe.Pointer(c.__n2)), C.CString(c.got))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(__n7)), (*C.GtkWidget)(unsafe.Pointer(c.__n2)))
 	c.Root = (*C.GtkWidget)(unsafe.Pointer(__n7))
 	C.g_object_ref_sink(C.gpointer(unsafe.Pointer(c.Root)))
@@ -740,7 +740,7 @@ func (m *Model) buildWidgetTree() {
 	C.sngl_connect(unsafe.Pointer(m.__n3), C.CString("notify::active"), C.int((len(snglCallbacks) - 1)))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(__n6)), (*C.GtkWidget)(unsafe.Pointer(m.__n3)))
 	m.__n4 = (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
-	C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(m.__n4)), C.CString(m.last))
+	C.gtk_label_set_label((*C.GtkLabel)(unsafe.Pointer(m.__n4)), C.CString(m.last))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(__n6)), (*C.GtkWidget)(unsafe.Pointer(m.__n4)))
 	m.__renderSlot0(__n6)
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__root)), (*C.GtkWidget)(unsafe.Pointer(__n6)))
@@ -777,4 +777,4 @@ func (m *Model) boxChange(v string) {
 -- run/go/fyne --
 pass sha256:b70e0b272bca6e8e133a05c292a288f9
 -- run/go/gtk4 --
-pass sha256:f712ad4dcc40256692fc8f8aa0b7b2f3
+pass sha256:a3ef7db73c0f21829af1e432abdcee9d

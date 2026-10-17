@@ -820,17 +820,17 @@ func (m *Model) __n2_visible_handler(__visible bool) {
 
 func (m *Model) __n9_done_handler(v int) {
 	m.got = v
-	gtk4rt.LabelSetText(m.__n5, ("got=" + fmt.Sprint(m.got)))
+	gtk4rt.LabelSetLabel(m.__n5, ("got=" + fmt.Sprint(m.got)))
 }
 
 func (m *Model) __n10_clicked_handler() {
 	m.got = 8
-	gtk4rt.LabelSetText(m.__n5, ("got=" + fmt.Sprint(m.got)))
+	gtk4rt.LabelSetLabel(m.__n5, ("got=" + fmt.Sprint(m.got)))
 }
 
 func (m *Model) __n4_clicked_handler() {
 	m.got = 9
-	gtk4rt.LabelSetText(m.__n5, ("got=" + fmt.Sprint(m.got)))
+	gtk4rt.LabelSetLabel(m.__n5, ("got=" + fmt.Sprint(m.got)))
 }
 
 // PickerInstance is one live instance of the Picker component.
@@ -858,7 +858,7 @@ func newPickerInstance(__model *Model, __a_picked func(int)) *PickerInstance {
 	gtk4rt.OrientableSetOrientation(__n8, gtk4rt.OrientationHorizontal)
 	gtk4rt.BoxSetSpacing(__n8, 6)
 	__n0 := gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(__n0, ("w" + fmt.Sprint(c.width__inst0)))
+	gtk4rt.LabelSetLabel(__n0, ("w" + fmt.Sprint(c.width__inst0)))
 	gtk4rt.BoxAppend(__n8, __n0)
 	c.__n1 = gtk4rt.ButtonNew()
 	gtk4rt.ButtonSetLabel(c.__n1, ("tap " + fmt.Sprint(c.taps)))
@@ -952,7 +952,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.OrientableSetOrientation(m.__n11, gtk4rt.OrientationVertical)
 	gtk4rt.BoxSetSpacing(m.__n11, 6)
 	m.__n3 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.__n3, ("opened " + fmt.Sprint(m.opened__inst0)))
+	gtk4rt.LabelSetLabel(m.__n3, ("opened " + fmt.Sprint(m.opened__inst0)))
 	gtk4rt.BoxAppend(m.__n11, m.__n3)
 	m.__n4 = gtk4rt.ButtonNew()
 	gtk4rt.ButtonSetLabel(m.__n4, ("named " + fmt.Sprint(m.hits__inst0)))
@@ -960,7 +960,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.BoxAppend(m.__n11, m.__n4)
 	gtk4rt.BoxAppend(m.__n7, m.__n11)
 	m.__n5 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.__n5, ("got=" + fmt.Sprint(m.got)))
+	gtk4rt.LabelSetLabel(m.__n5, ("got=" + fmt.Sprint(m.got)))
 	gtk4rt.BoxAppend(m.__n7, m.__n5)
 	gtk4rt.BoxAppend(m.__n2, m.__n7)
 	gtk4rt.AppAttach(m.__n2)
@@ -1222,7 +1222,7 @@ pass sha256:0cc96d64cb9d268c348c42a21e16ef10
 -- run/go/fyne --
 pass sha256:be16a61765da9ba5a4dc4b6e0ffff3b2
 -- run/go/gtk4 --
-pass sha256:c860da87d23820385f4222ddafd44b27
+pass sha256:ab0d9be3f9be19ab5a86972cd6467972
 -- run/kotlin/android --
 pass sha256:4818d7ba061034f5b32f062d93fedf5c
 -- run/none/html --

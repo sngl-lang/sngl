@@ -436,7 +436,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelOnClosed(m.__n0, m.__n0_closed_handler)
 	gtk4rt.ToplevelOnVisible(m.__n0, m.__n0_visible_handler)
 	m.__n2 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.__n2, "user widget")
+	gtk4rt.LabelSetLabel(m.__n2, "user widget")
 	gtk4rt.BoxAppend(m.__n0, m.__n2)
 	m.__n1 = gtk4rt.EntryNew()
 	gtk4rt.EditableSetText(m.__n1, m.value__inst0)
@@ -543,7 +543,7 @@ pass sha256:5c0d287bf4b918c49e5bbc610ebc211d
 -- run/go/fyne --
 pass sha256:c94dcd7144d45fd68c19963b4579087d
 -- run/go/gtk4 --
-pass sha256:c5b74a86db12bba7545d233f01dae3b0
+pass sha256:1c6f356ed5efd55ab273f0525753bba1
 -- run/kotlin/android --
 pass sha256:f19548d805a1228d182f618c05603c63
 -- run/none/html --

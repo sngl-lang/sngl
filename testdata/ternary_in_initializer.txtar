@@ -484,7 +484,7 @@ func (m *Model) __n3_clicked_handler() {
 	} else {
 		__lt1 = "y"
 	}
-	gtk4rt.LabelSetText(m.__n1, __lt1)
+	gtk4rt.LabelSetLabel(m.__n1, __lt1)
 }
 
 func (m *Model) On() bool {
@@ -537,7 +537,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.Connect(m.__n3, "clicked", m.__n3_clicked_handler)
 	gtk4rt.BoxAppend(m.__n2, m.__n3)
 	m.__n0 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.__n0, m.greeting)
+	gtk4rt.LabelSetLabel(m.__n0, m.greeting)
 	gtk4rt.BoxAppend(m.__n2, m.__n0)
 	var __lt2 string
 	if m.on {
@@ -546,7 +546,7 @@ func (m *Model) buildWidgetTree() {
 		__lt2 = "y"
 	}
 	m.__n1 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.__n1, __lt2)
+	gtk4rt.LabelSetLabel(m.__n1, __lt2)
 	gtk4rt.BoxAppend(m.__n2, m.__n1)
 	gtk4rt.BoxAppend(m.home, m.__n2)
 	gtk4rt.AppAttach(m.home)
@@ -563,4 +563,4 @@ pass sha256:7a4e112e96aa75a26f09195c2451d1d0
 -- run/go/fyne --
 pass sha256:3abeb1b560847f1578f5cfe7996bed85
 -- run/go/gtk4 --
-pass sha256:dff851c0a42e2027d97da0eb77ff508c
+pass sha256:8568c5117b5c71e521354876cf7f605e

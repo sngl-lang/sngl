@@ -639,7 +639,7 @@ func newTickerInstance(__model *Model, __a_period time.Duration) *TickerInstance
 	c.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
 	c.__slot0 = nil
 	c.__n0 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(c.__n0, ((snglStrDuration(c.__prop_period) + ": ") + fmt.Sprint(c.ticks)))
+	gtk4rt.LabelSetLabel(c.__n0, ((snglStrDuration(c.__prop_period) + ": ") + fmt.Sprint(c.ticks)))
 	c.__effects0_settle()
 	c.Root = c.__n0
 	gtk4rt.Retain(c.Root)
@@ -649,7 +649,7 @@ func newTickerInstance(__model *Model, __a_period time.Duration) *TickerInstance
 func (c *TickerInstance) __effect0_mount() {
 	c.handle__inst0 = gtk4rt.Every(int(c.__effect0_key/time.Millisecond), func() {
 		c.ticks = (c.ticks + 1)
-		gtk4rt.LabelSetText(c.__n0, ((snglStrDuration(c.__prop_period) + ": ") + fmt.Sprint(c.ticks)))
+		gtk4rt.LabelSetLabel(c.__n0, ((snglStrDuration(c.__prop_period) + ": ") + fmt.Sprint(c.ticks)))
 	})
 }
 
@@ -723,7 +723,7 @@ func (c *TickerInstance) teardown() {
 
 func (c *TickerInstance) SetPeriod(__v time.Duration) {
 	c.__prop_period = __v
-	gtk4rt.LabelSetText(c.__n0, ((snglStrDuration(c.__prop_period) + ": ") + fmt.Sprint(c.ticks)))
+	gtk4rt.LabelSetLabel(c.__n0, ((snglStrDuration(c.__prop_period) + ": ") + fmt.Sprint(c.ticks)))
 	c.__effects0_settle()
 }
 
@@ -945,6 +945,6 @@ pass sha256:c3560649d8a0cfdafdeb591f6a0d957d
 -- run/go/fyne --
 pass sha256:4d0366aac4e6fdeb5971dd014410df79
 -- run/go/gtk4 --
-pass sha256:c2cc90448ece5940f37cc04e062f2436
+pass sha256:f7c74648e0da8ca58ca06c1aa81b2a25
 -- run/none/html --
 pass sha256:0505301a708e989283f7fc9ca82628b6

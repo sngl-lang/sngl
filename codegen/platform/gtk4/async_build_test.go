@@ -52,7 +52,7 @@ func TestABlockingCallCompilesIntoAPostedUpdate(t *testing.T) {
 	for _, want := range []string{
 		"go func() {",
 		"gtk4rt.Post(func() {",
-		"gtk4rt.LabelSetText(",
+		"gtk4rt.LabelSetLabel(",
 	} {
 		if !strings.Contains(model, want) {
 			t.Errorf("emitted model has no %q\n--- model.go ---\n%s", want, model)

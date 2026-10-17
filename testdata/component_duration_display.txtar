@@ -364,13 +364,13 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.OrientableSetOrientation(__n0, gtk4rt.OrientationVertical)
 	gtk4rt.BoxSetSpacing(__n0, 6)
 	m.sum = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.sum, snglStrDuration((m.short + m.long)))
+	gtk4rt.LabelSetLabel(m.sum, snglStrDuration((m.short + m.long)))
 	gtk4rt.BoxAppend(__n0, m.sum)
 	m.trunc = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.trunc, fmt.Sprint(int((m.short+m.long)/time.Millisecond)))
+	gtk4rt.LabelSetLabel(m.trunc, fmt.Sprint(int((m.short+m.long)/time.Millisecond)))
 	gtk4rt.BoxAppend(__n0, m.trunc)
 	m.scaled = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.scaled, fmt.Sprint(int((m.short*3)/time.Millisecond)))
+	gtk4rt.LabelSetLabel(m.scaled, fmt.Sprint(int((m.short*3)/time.Millisecond)))
 	gtk4rt.BoxAppend(__n0, m.scaled)
 	gtk4rt.BoxAppend(m.__root, __n0)
 }
@@ -517,7 +517,7 @@ pass sha256:bf5fc299b07cbe2ec9058c11b7d8d579
 -- run/go/fyne --
 pass sha256:e03b5a95c6ac4231199379b94b1a2fd9
 -- run/go/gtk4 --
-pass sha256:ea80182dbd02f784eb788e613977344d
+pass sha256:8ba60f72398f9b18f4457f33942f2372
 -- run/kotlin/android --
 pass sha256:842637d2d20d0ea0bef0a1ab099846c3
 -- run/none/html --

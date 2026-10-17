@@ -5,7 +5,7 @@ which it found with a walk of its own that skipped a fallback. So `msg` was
 never bound: html read an undeclared `msg`, and gtk4 did not compile.
 
 deny out/none/html/index.html `textContent = msg\b` -- the fallback shows the argument the call site gave
-deny out/go/gtk4/model.go `LabelSetText\(\w+, msg\)` -- likewise
+deny out/go/gtk4/model.go `LabelSetLabel\(\w+, msg\)` -- likewise
 
 -- app.sngl --
 import ui "sngl:ui"
@@ -262,7 +262,7 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 	m.__slot0_at = gtk4rt.SlotAnchor(parent, m.__slot0_at)
 	if m.__failed0 {
 		__n1 := gtk4rt.LabelNew("")
-		gtk4rt.LabelSetText(__n1, "sorry it broke")
+		gtk4rt.LabelSetLabel(__n1, "sorry it broke")
 		gtk4rt.InsertBefore(parent, m.__slot0_at, __n1)
 		m.__slot0 = append(m.__slot0, __n1)
 	} else {
@@ -321,7 +321,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.BoxSetSpacing(m.__n3, 6)
 	for _, x := range []string{"a", "b"} {
 		m.__n4 = gtk4rt.LabelNew("")
-		gtk4rt.LabelSetText(m.__n4, x)
+		gtk4rt.LabelSetLabel(m.__n4, x)
 		gtk4rt.BoxAppend(m.__n3, m.__n4)
 	}
 	m.__renderSlot0(m.__n3)
@@ -424,6 +424,6 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:1652cd54d2cc7c27d4bf21bfb5fd30c2
 -- run/go/gtk4 --
-pass sha256:44c142da16c8465f7679933e851bcdac
+pass sha256:429664d2a862c6a3f3a2d601e2d995e9
 -- run/none/html --
 pass sha256:d714f611d400dab9b62029144a21b7d9

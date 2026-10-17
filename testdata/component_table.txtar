@@ -612,7 +612,7 @@ func (c *__child0Instance) __renderSlot1(parent *C.GtkBox) {
 	c.__slot1_at = C.sngl_slot_anchor((*C.GtkBox)(unsafe.Pointer(parent)), c.__slot1_at)
 	for _, cell := range c.__prop___p2.Cells {
 		__n3 := (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
-		C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(__n3)), C.CString(cell))
+		C.gtk_label_set_label((*C.GtkLabel)(unsafe.Pointer(__n3)), C.CString(cell))
 		C.gtk_label_set_xalign((*C.GtkLabel)(unsafe.Pointer(__n3)), C.float(0.0))
 		C.sngl_insert_before((*C.GtkBox)(unsafe.Pointer(parent)), c.__slot1_at, (*C.GtkWidget)(unsafe.Pointer(__n3)))
 		c.__slot1 = append(c.__slot1, (*C.GtkWidget)(unsafe.Pointer(__n3)))
@@ -652,11 +652,11 @@ func (m *Model) buildWidgetTree() {
 	C.gtk_orientable_set_orientation((*C.GtkOrientable)(unsafe.Pointer(__n5)), C.GTK_ORIENTATION_HORIZONTAL)
 	C.gtk_box_set_homogeneous((*C.GtkBox)(unsafe.Pointer(__n5)), C.gboolean(boolToInt(true)))
 	__n6 := (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
-	C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(__n6)), C.CString(""))
+	C.gtk_label_set_label((*C.GtkLabel)(unsafe.Pointer(__n6)), C.CString(""))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(__n5)), (*C.GtkWidget)(unsafe.Pointer(__n6)))
 	for _, col := range []string{"Name", "Role"} {
 		__n8 := (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
-		C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(__n8)), C.CString(col))
+		C.gtk_label_set_label((*C.GtkLabel)(unsafe.Pointer(__n8)), C.CString(col))
 		C.gtk_label_set_xalign((*C.GtkLabel)(unsafe.Pointer(__n8)), C.float(0.0))
 		C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(__n5)), (*C.GtkWidget)(unsafe.Pointer(__n8)))
 	}
@@ -807,7 +807,7 @@ pass sha256:710f8974f94d19d9fbbedcd3ed548871
 -- run/go/fyne --
 pass sha256:763d453540ed50f5f6aad8cb4f8cdbab
 -- run/go/gtk4 --
-pass sha256:b7a0f65a73d21415d39385f2ed019169
+pass sha256:2f4acd47ff916f6779d79c25f6a70ff7
 -- run/kotlin/android --
 pass sha256:8024d25df4be54d4cec92f95b445761a
 -- run/none/html --

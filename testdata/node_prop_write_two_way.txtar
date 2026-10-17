@@ -521,7 +521,7 @@ func (m *Model) free_toggled_handler() {
 	} else {
 		__lt0 = "off"
 	}
-	gtk4rt.LabelSetText(m.seen, __lt0)
+	gtk4rt.LabelSetLabel(m.seen, __lt0)
 }
 
 func (m *Model) flip_clicked_handler() {
@@ -535,7 +535,7 @@ func (m *Model) flip_clicked_handler() {
 	} else {
 		__lt2 = "off"
 	}
-	gtk4rt.LabelSetText(m.seen, __lt2)
+	gtk4rt.LabelSetLabel(m.seen, __lt2)
 }
 
 func (m *Model) Shown__inst0() bool {
@@ -591,7 +591,7 @@ func (m *Model) buildWidgetTree() {
 		__lt1 = "off"
 	}
 	m.seen = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.seen, __lt1)
+	gtk4rt.LabelSetLabel(m.seen, __lt1)
 	gtk4rt.BoxAppend(m.__n1, m.seen)
 	m.flip = gtk4rt.ButtonNew()
 	gtk4rt.ButtonSetLabel(m.flip, "flip")
@@ -767,7 +767,7 @@ pass sha256:e58e728500f708e3dbb41746d06f3a35
 -- run/go/fyne --
 pass sha256:12cec83ffa3572d42dafbd38c3462c9b
 -- run/go/gtk4 --
-pass sha256:904bb788fa93c9866d6fe7ffadb5f8c1
+pass sha256:f3b57428b171ef9971aa63e76af105af
 -- run/kotlin/android --
 pass sha256:927019c200ecd918b1e97bf826fb03f3
 -- run/none/html --

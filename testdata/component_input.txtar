@@ -350,13 +350,13 @@ func New() *Model {
 func (m *Model) __n0_changed_handler() {
 	m.name = gtk4rt.EditableGetText(m.__n0)
 	gtk4rt.EditableSetText(m.__n0, m.name)
-	gtk4rt.LabelSetText(m.__n1, (("Hello, " + m.name) + "!"))
+	gtk4rt.LabelSetLabel(m.__n1, (("Hello, " + m.name) + "!"))
 }
 
 func (m *Model) __n0_activate_handler() {
 	m.name = gtk4rt.EditableGetText(m.__n0)
 	gtk4rt.EditableSetText(m.__n0, m.name)
-	gtk4rt.LabelSetText(m.__n1, (("Hello, " + m.name) + "!"))
+	gtk4rt.LabelSetLabel(m.__n1, (("Hello, " + m.name) + "!"))
 }
 
 func (m *Model) Name() string {
@@ -381,7 +381,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.Connect(m.__n0, "activate", m.__n0_activate_handler)
 	gtk4rt.BoxAppend(__n2, m.__n0)
 	m.__n1 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.__n1, (("Hello, " + m.name) + "!"))
+	gtk4rt.LabelSetLabel(m.__n1, (("Hello, " + m.name) + "!"))
 	gtk4rt.BoxAppend(__n2, m.__n1)
 	gtk4rt.BoxAppend(m.__root, __n2)
 }
@@ -540,7 +540,7 @@ pass sha256:fa09e4ce7301b04d9fb1a2528972ef87
 -- run/go/fyne --
 pass sha256:cb21c479006b58ba5ac9d26a022b8cfc
 -- run/go/gtk4 --
-pass sha256:4d512fb2c1d669d4724aa8f30879e2c7
+pass sha256:386e5a3009991777c8562b94d604545d
 -- run/kotlin/android --
 pass sha256:4262f40f0fbcb35b9448d273572e9bee
 -- run/none/html --

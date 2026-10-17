@@ -289,7 +289,7 @@ func New() *Model {
 
 func (m *Model) details_closed_handler() {
 	m.closes += 1
-	gtk4rt.LabelSetText(m.__n0, (("closed " + fmt.Sprint(m.closes)) + " times"))
+	gtk4rt.LabelSetLabel(m.__n0, (("closed " + fmt.Sprint(m.closes)) + " times"))
 }
 
 func (m *Model) details_visible_handler(__visible bool) {
@@ -300,7 +300,7 @@ func (m *Model) details_visible_handler(__visible bool) {
 func (m *Model) __n2_clicked_handler() {
 	m.shown = false
 	gtk4rt.ToplevelSetVisible(m.details, m.shown)
-	gtk4rt.LabelSetText(m.__n1, ("shown " + fmt.Sprint(m.shown)))
+	gtk4rt.LabelSetLabel(m.__n1, ("shown " + fmt.Sprint(m.shown)))
 }
 
 func (m *Model) __n3_clicked_handler() {
@@ -324,7 +324,7 @@ func (m *Model) other_visible_handler(__visible bool) {
 func (m *Model) __n4_clicked_handler() {
 	m.shown = true
 	gtk4rt.ToplevelSetVisible(m.details, m.shown)
-	gtk4rt.LabelSetText(m.__n1, ("shown " + fmt.Sprint(m.shown)))
+	gtk4rt.LabelSetLabel(m.__n1, ("shown " + fmt.Sprint(m.shown)))
 }
 
 func (m *Model) Shown() bool {
@@ -362,7 +362,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelOnClosed(m.details, m.details_closed_handler)
 	gtk4rt.ToplevelOnVisible(m.details, m.details_visible_handler)
 	m.__n0 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.__n0, (("closed " + fmt.Sprint(m.closes)) + " times"))
+	gtk4rt.LabelSetLabel(m.__n0, (("closed " + fmt.Sprint(m.closes)) + " times"))
 	gtk4rt.BoxAppend(m.details, m.__n0)
 	m.__n2 = gtk4rt.ButtonNew()
 	gtk4rt.ButtonSetLabel(m.__n2, "Hide")
@@ -379,7 +379,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelOnClosed(m.other, m.other_closed_handler)
 	gtk4rt.ToplevelOnVisible(m.other, m.other_visible_handler)
 	m.__n1 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.__n1, ("shown " + fmt.Sprint(m.shown)))
+	gtk4rt.LabelSetLabel(m.__n1, ("shown " + fmt.Sprint(m.shown)))
 	gtk4rt.BoxAppend(m.other, m.__n1)
 	m.__n4 = gtk4rt.ButtonNew()
 	gtk4rt.ButtonSetLabel(m.__n4, "Details")
@@ -481,6 +481,6 @@ dialog { margin: auto; padding: 1em; }
 -- run/go/fyne --
 pass sha256:b9dbf3049cced3bf3bb03a3f33727cbf
 -- run/go/gtk4 --
-pass sha256:df413587c904963ed74a18b4f5557342
+pass sha256:a0351f3489f481cbbcac3f12dfbc099c
 -- run/none/html --
 pass sha256:7a27a764f1c5ac5efcbc6cb8423ca902

@@ -785,10 +785,10 @@ func new__child0Instance(__model *Model, __a___p0 int) *__child0Instance {
 	gtk4rt.OrientableSetOrientation(__n6, gtk4rt.OrientationVertical)
 	gtk4rt.BoxSetSpacing(__n6, 6)
 	__n7 := gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(__n7, "static")
+	gtk4rt.LabelSetLabel(__n7, "static")
 	gtk4rt.BoxAppend(__n6, __n7)
 	c.__n0 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(c.__n0, ("up " + fmt.Sprint(c.__prop___p0)))
+	gtk4rt.LabelSetLabel(c.__n0, ("up " + fmt.Sprint(c.__prop___p0)))
 	gtk4rt.BoxAppend(__n6, c.__n0)
 	c.Root = __n6
 	gtk4rt.Retain(c.Root)
@@ -797,7 +797,7 @@ func new__child0Instance(__model *Model, __a___p0 int) *__child0Instance {
 
 func (c *__child0Instance) Set__p0(__v int) {
 	c.__prop___p0 = __v
-	gtk4rt.LabelSetText(c.__n0, ("up " + fmt.Sprint(c.__prop___p0)))
+	gtk4rt.LabelSetLabel(c.__n0, ("up " + fmt.Sprint(c.__prop___p0)))
 }
 
 func (c *__child0Instance) Destroy() {
@@ -836,7 +836,7 @@ func new__child1Instance(__model *Model, __a___p0 string, __a___p1 int) *__child
 	c.__slot0 = nil
 	c.__slot1 = nil
 	c.__n1 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(c.__n1, ((c.__prop___p0 + " at ") + fmt.Sprint(c.__prop___p1)))
+	gtk4rt.LabelSetLabel(c.__n1, ((c.__prop___p0 + " at ") + fmt.Sprint(c.__prop___p1)))
 	c.Root = c.__n1
 	gtk4rt.Retain(c.Root)
 	return c
@@ -844,12 +844,12 @@ func new__child1Instance(__model *Model, __a___p0 string, __a___p1 int) *__child
 
 func (c *__child1Instance) Set__p0(__v string) {
 	c.__prop___p0 = __v
-	gtk4rt.LabelSetText(c.__n1, ((c.__prop___p0 + " at ") + fmt.Sprint(c.__prop___p1)))
+	gtk4rt.LabelSetLabel(c.__n1, ((c.__prop___p0 + " at ") + fmt.Sprint(c.__prop___p1)))
 }
 
 func (c *__child1Instance) Set__p1(__v int) {
 	c.__prop___p1 = __v
-	gtk4rt.LabelSetText(c.__n1, ((c.__prop___p0 + " at ") + fmt.Sprint(c.__prop___p1)))
+	gtk4rt.LabelSetLabel(c.__n1, ((c.__prop___p0 + " at ") + fmt.Sprint(c.__prop___p1)))
 }
 
 func (c *__child1Instance) Destroy() {
@@ -1218,7 +1218,7 @@ pass sha256:0843315b1ebd9c3144e005cb379e7d5c
 -- run/go/fyne --
 pass sha256:7a26f91137a62134f1768c69b29cf158
 -- run/go/gtk4 --
-pass sha256:4837d37e28868d8d633ccbc556049d31
+pass sha256:65992eed49fcd5c6a341ca49c8c29a13
 -- run/kotlin/android --
 pass sha256:9d3b1814d9ed95184f42f0322e376e32
 -- run/none/html --

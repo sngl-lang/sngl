@@ -1018,7 +1018,7 @@ func (m *Model) __renderSlot1(parent gtk4rt.Handle) {
 	m.__slot1_at = gtk4rt.SlotAnchor(parent, m.__slot1_at)
 	if m.pages__current.Id == 1 {
 		__n7 := gtk4rt.LabelNew("")
-		gtk4rt.LabelSetText(__n7, "on about")
+		gtk4rt.LabelSetLabel(__n7, "on about")
 		gtk4rt.InsertBefore(parent, m.__slot1_at, __n7)
 		m.__slot1 = append(m.__slot1, __n7)
 	}
@@ -1036,7 +1036,7 @@ func (m *Model) __n9_clicked_handler() {
 	m.pages__history = append(m.pages__history, Pages__entry{Page: m.pages__current, Pkg: m.pkg__params})
 	m.pages__current = _page__value{Id: 1, Href: "/about", Title: "About", Meta: Meta{Label: "about"}}
 	gtk4rt.ToplevelSetTitle(m.main, ("Docs - " + m.pages__current.Title))
-	gtk4rt.LabelSetText(m.__n3, m.pages__current.Meta.Label)
+	gtk4rt.LabelSetLabel(m.__n3, m.pages__current.Meta.Label)
 	m.__renderSlot0(m.__n8)
 	m.__renderSlot1(m.__n8)
 }
@@ -1049,7 +1049,7 @@ func (m *Model) __n10_clicked_handler() {
 	}
 	m.pages__current = _page__value{Id: 2, Href: "/p/{name}", Title: "Package", Meta: Meta{Label: "pkg"}}
 	gtk4rt.ToplevelSetTitle(m.main, ("Docs - " + m.pages__current.Title))
-	gtk4rt.LabelSetText(m.__n3, m.pages__current.Meta.Label)
+	gtk4rt.LabelSetLabel(m.__n3, m.pages__current.Meta.Label)
 	m.__renderSlot0(m.__n8)
 	m.__renderSlot1(m.__n8)
 }
@@ -1062,7 +1062,7 @@ func (m *Model) __n11_clicked_handler() {
 	}
 	m.pages__current = _page__value{Id: 2, Href: "/p/{name}", Title: "Package", Meta: Meta{Label: "pkg"}}
 	gtk4rt.ToplevelSetTitle(m.main, ("Docs - " + m.pages__current.Title))
-	gtk4rt.LabelSetText(m.__n3, m.pages__current.Meta.Label)
+	gtk4rt.LabelSetLabel(m.__n3, m.pages__current.Meta.Label)
 	m.__renderSlot0(m.__n8)
 	m.__renderSlot1(m.__n8)
 }
@@ -1075,7 +1075,7 @@ func (m *Model) __n12_clicked_handler() {
 		}
 		m.pages__current = m.pages__history[(len(m.pages__history) - 1)].Page
 		gtk4rt.ToplevelSetTitle(m.main, ("Docs - " + m.pages__current.Title))
-		gtk4rt.LabelSetText(m.__n3, m.pages__current.Meta.Label)
+		gtk4rt.LabelSetLabel(m.__n3, m.pages__current.Meta.Label)
 		m.__renderSlot0(m.__n8)
 		m.__renderSlot1(m.__n8)
 		if __i := (len(m.pages__history) - 1); __i >= 0 && __i < len(m.pages__history) {
@@ -1149,7 +1149,7 @@ func new__child0Instance(__model *Model, __a___p0 _page__value) *__child0Instanc
 	c.__slot0 = nil
 	c.__slot1 = nil
 	c.__n1 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(c.__n1, ("at " + c.__prop___p0.Title))
+	gtk4rt.LabelSetLabel(c.__n1, ("at " + c.__prop___p0.Title))
 	c.Root = c.__n1
 	gtk4rt.Retain(c.Root)
 	return c
@@ -1157,7 +1157,7 @@ func new__child0Instance(__model *Model, __a___p0 _page__value) *__child0Instanc
 
 func (c *__child0Instance) Set__p0(__v _page__value) {
 	c.__prop___p0 = __v
-	gtk4rt.LabelSetText(c.__n1, ("at " + c.__prop___p0.Title))
+	gtk4rt.LabelSetLabel(c.__n1, ("at " + c.__prop___p0.Title))
 }
 
 func (c *__child0Instance) Destroy() {
@@ -1194,7 +1194,7 @@ func new__child1Instance(__model *Model, __a___p0 Pkg) *__child1Instance {
 	c.__slot0 = nil
 	c.__slot1 = nil
 	c.__n2 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(c.__n2, c.__prop___p0.Name)
+	gtk4rt.LabelSetLabel(c.__n2, c.__prop___p0.Name)
 	c.Root = c.__n2
 	gtk4rt.Retain(c.Root)
 	return c
@@ -1202,7 +1202,7 @@ func new__child1Instance(__model *Model, __a___p0 Pkg) *__child1Instance {
 
 func (c *__child1Instance) Set__p0(__v Pkg) {
 	c.__prop___p0 = __v
-	gtk4rt.LabelSetText(c.__n2, c.__prop___p0.Name)
+	gtk4rt.LabelSetLabel(c.__n2, c.__prop___p0.Name)
 }
 
 func (c *__child1Instance) Destroy() {
@@ -1265,7 +1265,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.BoxSetSpacing(m.__n8, 6)
 	m.__renderSlot0(m.__n8)
 	m.__n3 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.__n3, m.pages__current.Meta.Label)
+	gtk4rt.LabelSetLabel(m.__n3, m.pages__current.Meta.Label)
 	gtk4rt.BoxAppend(m.__n8, m.__n3)
 	m.__n9 = gtk4rt.ButtonNew()
 	gtk4rt.ButtonSetLabel(m.__n9, "About")
@@ -1299,4 +1299,4 @@ pass sha256:7cadd084b591c9659e0d834c2f295d8b
 -- run/go/fyne --
 pass sha256:31081a9f3bb8d9a24a1df259349d36a9
 -- run/go/gtk4 --
-pass sha256:5cebfe2b3572d782221149344e8a1236
+pass sha256:d7ec17aff4d3962ece5e3eb9bf8c840e

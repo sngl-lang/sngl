@@ -1100,25 +1100,16 @@ func (t *gtk4Translator) OnPropAssign(ctx context.Context, node ir.Expr, prop st
 	info := t.classFor(cType)
 	p, hasProp := girProp(info, prop)
 
-	// gtkSetterTable wins over GIR's `setter=`: it is the platform's deliberate
-	// choice of gtk_label_set_text over gtk_label_set_label, and it answers for
-	// props GIR names no setter for.
-	entry := gtkSetterFor(cType, prop)
-	if entry.Setter == "" {
-		switch prop {
-		case "value", "text":
-			entry = gtkSetterFor(cType, "label")
-		}
-	}
 	// A construct-only property has no reachable write — the widget exists by
 	// the time any prop is assigned, and GObject answers with a g_critical.
 	// declgen withholds these, so reaching here means the prop arrived some
 	// other way; refuse rather than emit a call that silently does nothing.
-	if entry.Setter == "" && hasProp && p.ConstructOnly {
+	if hasProp && p.ConstructOnly {
 		t.shared.fail(fmt.Errorf("gtk4: %s.%s is construct-only: GTK accepts it only when the widget is created, and nothing can set it afterwards", cType, p.Name))
 		return nil
 	}
-	if entry.Setter == "" && hasProp {
+	var entry gtkSetterEntry
+	if hasProp {
 		entry = girSetter(info, p)
 	}
 	// Before anything cgo-shaped is built: a coercion records that its helper
@@ -1135,25 +1126,17 @@ func (t *gtk4Translator) OnPropAssign(ctx context.Context, node ir.Expr, prop st
 		recvType = entry.RecvType
 	}
 	if !hasProp {
-		if entry.Setter == "" {
-			if t.canvasMetaForID(bare) != nil {
-				// A canvas's own width and height, which emitCanvasCreate
-				// already read off the drawing to size the GtkDrawingArea.
-				// They arrive here as ordinary props because that is what they
-				// are in the tree; there is nothing further to write.
-				return nil
-			}
-			// GIR describes no property of this name on the class, and the
-			// setter table names none either -- so there is nothing to write
-			// and the value reaches the widget not at all. Reported for the
-			// reason the construct-only and unsettable cases above are: a
-			// write that goes missing is a rendering bug with nothing said.
-			t.shared.fail(fmt.Errorf("gtk4: %s has no property or setter named %q: GIR describes none for the class and gtkSetterTable names none, so the value reaches the widget not at all", cType, prop))
+		if t.canvasMetaForID(bare) != nil {
+			// A canvas's own width and height, which emitCanvasCreate already
+			// read off the drawing to size the GtkDrawingArea. They arrive
+			// here as ordinary props because that is what they are in the
+			// tree; there is nothing further to write.
 			return nil
 		}
-		// The parse merges interface properties but not inherited ones, so the
-		// SNGL value type is all there is to coerce by.
-		return t.emitSetterCall(node, recvType, entry.Setter, t.coerceSetterValue(entry.Setter, value))
+		// A write that goes missing is a rendering bug with nothing said, as
+		// the construct-only and unsettable cases are.
+		t.shared.fail(fmt.Errorf("gtk4: %s has no property named %q: GIR describes none for the class, so the value reaches the widget not at all", cType, prop))
+		return nil
 	}
 	kind := propKind(t.registry, p)
 	if kind == propUnsettable {

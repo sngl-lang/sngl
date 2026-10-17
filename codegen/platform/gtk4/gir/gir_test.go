@@ -308,6 +308,19 @@ const setterGIR = `<?xml version="1.0"?>
           </parameter>
         </parameters>
       </method>
+      <method name="set_from_resource" c:identifier="gtk_image_set_from_resource" glib:set-property="resource">
+        <parameters>
+          <instance-parameter name="image">
+            <type name="Image" c:type="GtkImage*"/>
+          </instance-parameter>
+          <parameter name="resource_path" transfer-ownership="none">
+            <type name="utf8" c:type="const char*"/>
+          </parameter>
+        </parameters>
+      </method>
+      <property name="resource" writable="1">
+        <type name="utf8" c:type="gchar*"/>
+      </property>
       <property name="icon-name" writable="1" setter="set_from_icon_name">
         <type name="utf8" c:type="gchar*"/>
       </property>
@@ -348,6 +361,10 @@ func TestParseGIR_SetterIsRead(t *testing.T) {
 	// satisfy — here a guint against a gint property.
 	if got := props["column-spacing"].SetterCType; got != "guint" {
 		t.Errorf("column-spacing setter value C type = %q; want guint", got)
+	}
+	// A property may be named only by its setter, as glib:set-property.
+	if got := props["resource"].Setter; got != "gtk_image_set_from_resource" {
+		t.Errorf("resource setter = %q; want gtk_image_set_from_resource", got)
 	}
 	// A property GIR names no setter for has none, and one whose reference
 	// resolves to no method has none either.

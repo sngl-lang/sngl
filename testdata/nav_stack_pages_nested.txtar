@@ -1098,7 +1098,7 @@ func (m *Model) __renderSlot1(parent gtk4rt.Handle) {
 	m.__slot1_at = gtk4rt.SlotAnchor(parent, m.__slot1_at)
 	if m.pages__current__inst0.Id == 1 {
 		__n4 := gtk4rt.LabelNew("")
-		gtk4rt.LabelSetText(__n4, "about")
+		gtk4rt.LabelSetLabel(__n4, "about")
 		gtk4rt.InsertBefore(parent, m.__slot1_at, __n4)
 		m.__slot1 = append(m.__slot1, __n4)
 	}
@@ -1115,7 +1115,7 @@ func (m *Model) __n1_visible_handler(__visible bool) {
 func (m *Model) toAbout_clicked_handler() {
 	m.pages__history__inst0 = append(m.pages__history__inst0, Pages__entry{Page: m.pages__current__inst0, Cell: m.cell__params__inst0})
 	m.pages__current__inst0 = _page__value{Id: 1, Href: "/about", Title: "About", Meta: __anon_e3b0c4{}, Copy: []int{}}
-	gtk4rt.LabelSetText(m.heading, m.pages__current__inst0.Title)
+	gtk4rt.LabelSetLabel(m.heading, m.pages__current__inst0.Title)
 	m.__renderSlot0(m.__n1)
 	m.__renderSlot1(m.__n1)
 }
@@ -1127,7 +1127,7 @@ func (m *Model) back_clicked_handler() {
 			m.__inst0_live[__inst0_live_ui].Set__p2(m.cell__params__inst0)
 		}
 		m.pages__current__inst0 = m.pages__history__inst0[(len(m.pages__history__inst0) - 1)].Page
-		gtk4rt.LabelSetText(m.heading, m.pages__current__inst0.Title)
+		gtk4rt.LabelSetLabel(m.heading, m.pages__current__inst0.Title)
 		m.__renderSlot0(m.__n1)
 		m.__renderSlot1(m.__n1)
 		if __i := (len(m.pages__history__inst0) - 1); __i >= 0 && __i < len(m.pages__history__inst0) {
@@ -1161,7 +1161,7 @@ func new__child0Instance(__model *Model, __a___p0 Row, __a___p1 string, __a___p2
 	c.__slot0 = nil
 	c.__slot1 = nil
 	c.line = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(c.line, ((((c.__prop___p0.Name + " ") + c.__prop___p1) + " picked ") + c.__prop___p2.Pick))
+	gtk4rt.LabelSetLabel(c.line, ((((c.__prop___p0.Name + " ") + c.__prop___p1) + " picked ") + c.__prop___p2.Pick))
 	c.Root = c.line
 	gtk4rt.Retain(c.Root)
 	return c
@@ -1169,17 +1169,17 @@ func new__child0Instance(__model *Model, __a___p0 Row, __a___p1 string, __a___p2
 
 func (c *__child0Instance) Set__p0(__v Row) {
 	c.__prop___p0 = __v
-	gtk4rt.LabelSetText(c.line, ((((c.__prop___p0.Name + " ") + c.__prop___p1) + " picked ") + c.__prop___p2.Pick))
+	gtk4rt.LabelSetLabel(c.line, ((((c.__prop___p0.Name + " ") + c.__prop___p1) + " picked ") + c.__prop___p2.Pick))
 }
 
 func (c *__child0Instance) Set__p1(__v string) {
 	c.__prop___p1 = __v
-	gtk4rt.LabelSetText(c.line, ((((c.__prop___p0.Name + " ") + c.__prop___p1) + " picked ") + c.__prop___p2.Pick))
+	gtk4rt.LabelSetLabel(c.line, ((((c.__prop___p0.Name + " ") + c.__prop___p1) + " picked ") + c.__prop___p2.Pick))
 }
 
 func (c *__child0Instance) Set__p2(__v Sel) {
 	c.__prop___p2 = __v
-	gtk4rt.LabelSetText(c.line, ((((c.__prop___p0.Name + " ") + c.__prop___p1) + " picked ") + c.__prop___p2.Pick))
+	gtk4rt.LabelSetLabel(c.line, ((((c.__prop___p0.Name + " ") + c.__prop___p1) + " picked ") + c.__prop___p2.Pick))
 }
 
 func (c *__child0Instance) Destroy() {
@@ -1226,7 +1226,7 @@ func new__child1Instance(__model *Model, __a___p0 _page__value, __a___p1 int, __
 		__lt7 = "hidden"
 	}
 	c.__n0 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(c.__n0, __lt7)
+	gtk4rt.LabelSetLabel(c.__n0, __lt7)
 	c.Root = c.__n0
 	gtk4rt.Retain(c.Root)
 	return c
@@ -1240,7 +1240,7 @@ func (c *__child1Instance) Set__p0(__v _page__value) {
 	} else {
 		__lt4 = "hidden"
 	}
-	gtk4rt.LabelSetText(c.__n0, __lt4)
+	gtk4rt.LabelSetLabel(c.__n0, __lt4)
 }
 
 func (c *__child1Instance) Set__p1(__v int) {
@@ -1251,7 +1251,7 @@ func (c *__child1Instance) Set__p1(__v int) {
 	} else {
 		__lt5 = "hidden"
 	}
-	gtk4rt.LabelSetText(c.__n0, __lt5)
+	gtk4rt.LabelSetLabel(c.__n0, __lt5)
 }
 
 func (c *__child1Instance) Set__p2(__v int) {
@@ -1262,7 +1262,7 @@ func (c *__child1Instance) Set__p2(__v int) {
 	} else {
 		__lt6 = "hidden"
 	}
-	gtk4rt.LabelSetText(c.__n0, __lt6)
+	gtk4rt.LabelSetLabel(c.__n0, __lt6)
 }
 
 func (c *__child1Instance) Destroy() {
@@ -1323,7 +1323,7 @@ func (m *Model) buildWidgetTree() {
 	m.__renderSlot0(m.__n1)
 	m.__renderSlot1(m.__n1)
 	m.heading = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.heading, m.pages__current__inst0.Title)
+	gtk4rt.LabelSetLabel(m.heading, m.pages__current__inst0.Title)
 	gtk4rt.BoxAppend(m.__n1, m.heading)
 	m.toAbout = gtk4rt.ButtonNew()
 	gtk4rt.ButtonSetLabel(m.toAbout, "About")
@@ -1527,6 +1527,6 @@ pass sha256:24821bdab5f17c2f9de9f8598925ab16
 -- run/go/fyne --
 pass sha256:40bfc012a6f372829050151f6aa7812d
 -- run/go/gtk4 --
-pass sha256:5539452db21961c44f0109adcfc0cbb2
+pass sha256:54e3fcec3365ec36389a62a8b8befddf
 -- run/kotlin/android --
 pass sha256:ed0cadf815db293c1bc45576c4eec4d0

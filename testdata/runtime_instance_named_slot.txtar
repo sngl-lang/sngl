@@ -1239,7 +1239,7 @@ func (c *CardInstance) __renderSlot0(parent gtk4rt.Handle) {
 	c.__slot0_at = gtk4rt.SlotAnchor(parent, c.__slot0_at)
 	for range c.rows {
 		__n1 := gtk4rt.LabelNew("")
-		gtk4rt.LabelSetText(__n1, "empty")
+		gtk4rt.LabelSetLabel(__n1, "empty")
 		gtk4rt.InsertBefore(parent, c.__slot0_at, __n1)
 		c.__slot0 = append(c.__slot0, __n1)
 	}
@@ -1484,7 +1484,7 @@ func new__child0Instance(__model *Model, __a___p0 int, __a___p1 int) *__child0In
 	c.__slot2 = nil
 	c.__slot3 = nil
 	c.__n0 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(c.__n0, ((("item " + fmt.Sprint(c.__prop___p0)) + " row ") + fmt.Sprint(c.__prop___p1)))
+	gtk4rt.LabelSetLabel(c.__n0, ((("item " + fmt.Sprint(c.__prop___p0)) + " row ") + fmt.Sprint(c.__prop___p1)))
 	c.Root = c.__n0
 	gtk4rt.Retain(c.Root)
 	return c
@@ -1492,12 +1492,12 @@ func new__child0Instance(__model *Model, __a___p0 int, __a___p1 int) *__child0In
 
 func (c *__child0Instance) Set__p0(__v int) {
 	c.__prop___p0 = __v
-	gtk4rt.LabelSetText(c.__n0, ((("item " + fmt.Sprint(c.__prop___p0)) + " row ") + fmt.Sprint(c.__prop___p1)))
+	gtk4rt.LabelSetLabel(c.__n0, ((("item " + fmt.Sprint(c.__prop___p0)) + " row ") + fmt.Sprint(c.__prop___p1)))
 }
 
 func (c *__child0Instance) Set__p1(__v int) {
 	c.__prop___p1 = __v
-	gtk4rt.LabelSetText(c.__n0, ((("item " + fmt.Sprint(c.__prop___p0)) + " row ") + fmt.Sprint(c.__prop___p1)))
+	gtk4rt.LabelSetLabel(c.__n0, ((("item " + fmt.Sprint(c.__prop___p0)) + " row ") + fmt.Sprint(c.__prop___p1)))
 }
 
 func (c *__child0Instance) Destroy() {
@@ -2147,7 +2147,7 @@ pass sha256:f869938febf27d8d76ce715415fbd59c
 -- run/go/fyne --
 pass sha256:0ad9487ac7f6cb8260e3ec1ca725bb0b
 -- run/go/gtk4 --
-pass sha256:3f6c6c2c2aab0dbf6c69a94a50262b4a
+pass sha256:6f8267f71508bba23a113016abf0b673
 -- run/kotlin/android --
 pass sha256:ea91f6ed5e53287b5fea050065582310
 -- run/none/html --

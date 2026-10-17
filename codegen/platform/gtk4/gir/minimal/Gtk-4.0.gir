@@ -321,10 +321,20 @@ relations from @child to @button.</doc>
           </parameter>
         </parameters>
       </method>
+      <method name="set_label" c:identifier="gtk_check_button_set_label" glib:set-property="label">
+        <parameters>
+          <instance-parameter name="self">
+            <type name="CheckButton" c:type="GtkCheckButton*"/>
+          </instance-parameter>
+          <parameter name="label" nullable="1">
+            <type name="utf8" c:type="const char*"/>
+          </parameter>
+        </parameters>
+      </method>
       <property name="active" writable="1" setter="set_active">
         <type name="gboolean" c:type="gboolean"/>
       </property>
-      <property name="label" writable="1">
+      <property name="label" writable="1" setter="set_label">
         <type name="utf8" c:type="gchar*"/>
       </property>
       <glib:signal name="toggled">
@@ -382,6 +392,16 @@ relations from @child to @button.</doc>
     </class>
     <class name="Image" c:type="GtkImage" parent="Widget">
       <constructor name="new" c:identifier="gtk_image_new"/>
+      <method name="set_from_file" c:identifier="gtk_image_set_from_file" glib:set-property="file">
+        <parameters>
+          <instance-parameter name="image">
+            <type name="Image" c:type="GtkImage*"/>
+          </instance-parameter>
+          <parameter name="filename" nullable="1">
+            <type name="filename" c:type="const char*"/>
+          </parameter>
+        </parameters>
+      </method>
       <property name="file" writable="1">
         <type name="utf8" c:type="gchar*"/>
       </property>

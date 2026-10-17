@@ -394,7 +394,7 @@ func (c *__child0Instance) __renderSlot0(parent gtk4rt.Handle) {
 	c.__slot0_at = gtk4rt.SlotAnchor(parent, c.__slot0_at)
 	for _, cell := range c.__prop___p0 {
 		__n1 := gtk4rt.LabelNew("")
-		gtk4rt.LabelSetText(__n1, ((cell + " ") + fmt.Sprint(c.__prop___p1)))
+		gtk4rt.LabelSetLabel(__n1, ((cell + " ") + fmt.Sprint(c.__prop___p1)))
 		gtk4rt.InsertBefore(parent, c.__slot0_at, __n1)
 		c.__slot0 = append(c.__slot0, __n1)
 	}
@@ -617,6 +617,6 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/fyne --
 pass sha256:4c018976672de5b0d05821308fd5198b
 -- run/go/gtk4 --
-pass sha256:451887046b6d957a4ef0cb5052c0b3dd
+pass sha256:7dd4910c59bf76195821135420f03c46
 -- run/none/html --
 pass sha256:82912b1cbccf8a9e2efc860bf21ee4ad

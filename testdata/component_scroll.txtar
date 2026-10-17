@@ -326,7 +326,7 @@ func (m *Model) buildWidgetTree() {
 	m.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
 	__n0 := gtk4rt.ScrolledWindowNew()
 	__n1 := gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(__n1, "content")
+	gtk4rt.LabelSetLabel(__n1, "content")
 	gtk4rt.ScrolledWindowSetChild(__n0, __n1)
 	gtk4rt.BoxAppend(m.__root, __n0)
 }
@@ -464,7 +464,7 @@ pass sha256:0a9ec9967212380d234ea9e4d686719e
 -- run/go/fyne --
 pass sha256:187312da50ab5fda4852a6829244b75d
 -- run/go/gtk4 --
-pass sha256:9c70b978d2b2a76d364fd4fcabd36841
+pass sha256:6f25d1c275b151c007bb7899c409947d
 -- run/kotlin/android --
 pass sha256:c9f8500b87ca099648ae5918a799f940
 -- run/none/html --

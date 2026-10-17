@@ -690,7 +690,7 @@ func new__child0Instance(__model *Model, __a___p0 string) *__child0Instance {
 	c.__slot1 = nil
 	c.__slot2 = nil
 	c.__n0 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(c.__n0, c.__prop___p0)
+	gtk4rt.LabelSetLabel(c.__n0, c.__prop___p0)
 	c.Root = c.__n0
 	gtk4rt.Retain(c.Root)
 	return c
@@ -698,7 +698,7 @@ func new__child0Instance(__model *Model, __a___p0 string) *__child0Instance {
 
 func (c *__child0Instance) Set__p0(__v string) {
 	c.__prop___p0 = __v
-	gtk4rt.LabelSetText(c.__n0, c.__prop___p0)
+	gtk4rt.LabelSetLabel(c.__n0, c.__prop___p0)
 }
 
 func (c *__child0Instance) Destroy() {
@@ -741,7 +741,7 @@ func new__child1Instance(__model *Model, __a___p0 int) *__child1Instance {
 	c.__slot1 = nil
 	c.__slot2 = nil
 	c.__n1 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(c.__n1, ("p " + fmt.Sprint(c.__prop___p0)))
+	gtk4rt.LabelSetLabel(c.__n1, ("p " + fmt.Sprint(c.__prop___p0)))
 	c.Root = c.__n1
 	gtk4rt.Retain(c.Root)
 	return c
@@ -749,7 +749,7 @@ func new__child1Instance(__model *Model, __a___p0 int) *__child1Instance {
 
 func (c *__child1Instance) Set__p0(__v int) {
 	c.__prop___p0 = __v
-	gtk4rt.LabelSetText(c.__n1, ("p " + fmt.Sprint(c.__prop___p0)))
+	gtk4rt.LabelSetLabel(c.__n1, ("p " + fmt.Sprint(c.__prop___p0)))
 }
 
 func (c *__child1Instance) Destroy() {
@@ -817,4 +817,4 @@ func (m *Model) bumpClick() {
 -- run/go/fyne --
 pass sha256:0f8009fa5ee48b282e181a1653f9ac19
 -- run/go/gtk4 --
-pass sha256:b1779452220086f3f64b321c8075425f
+pass sha256:b6ab380076031cb7159093704a8764b5

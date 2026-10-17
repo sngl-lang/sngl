@@ -575,9 +575,9 @@ func IntTwice(n int, m *Model) int {
 
 func (m *Model) __effect0_mount() {
 	m.d__inst0 = LenDoubled(m.five__inst0, m)
-	gtk4rt.LabelSetText(m.__n1, (snglStrLen(m.d__inst0) + fmt.Sprint(m.t2__inst0)))
+	gtk4rt.LabelSetLabel(m.__n1, (snglStrLen(m.d__inst0) + fmt.Sprint(m.t2__inst0)))
 	m.t2__inst0 = IntTwice(3, m)
-	gtk4rt.LabelSetText(m.__n1, (snglStrLen(m.d__inst0) + fmt.Sprint(m.t2__inst0)))
+	gtk4rt.LabelSetLabel(m.__n1, (snglStrLen(m.d__inst0) + fmt.Sprint(m.t2__inst0)))
 }
 
 func (m *Model) __effect0_down() {
@@ -676,7 +676,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelOnClosed(m.__n0, m.__n0_closed_handler)
 	gtk4rt.ToplevelOnVisible(m.__n0, m.__n0_visible_handler)
 	m.__n1 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.__n1, (snglStrLen(m.d__inst0) + fmt.Sprint(m.t2__inst0)))
+	gtk4rt.LabelSetLabel(m.__n1, (snglStrLen(m.d__inst0) + fmt.Sprint(m.t2__inst0)))
 	gtk4rt.BoxAppend(m.__n0, m.__n1)
 	gtk4rt.AppAttach(m.__n0)
 	m.__effects0_settle()
@@ -693,4 +693,4 @@ pass sha256:730f0f757d2b6595be1629ea0ef1d12f
 -- run/go/fyne --
 pass sha256:97422a6be3308836746d4abe8d5384fa
 -- run/go/gtk4 --
-pass sha256:66d03a55488ea79e2b77623232e6438f
+pass sha256:2e2462500cbd5cd7b8eaff1d30200036

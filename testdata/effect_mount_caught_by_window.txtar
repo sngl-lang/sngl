@@ -477,7 +477,7 @@ func (m *Model) __effect0_mount() {
 			}
 			_ = e
 			m.caught = e.Message
-			gtk4rt.LabelSetText(m.__n1, m.caught)
+			gtk4rt.LabelSetLabel(m.__n1, m.caught)
 		}()
 		Risky(3)
 	}()
@@ -555,7 +555,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelOnClosed(m.__n0, m.__n0_closed_handler)
 	gtk4rt.ToplevelOnVisible(m.__n0, m.__n0_visible_handler)
 	m.__n1 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.__n1, m.caught)
+	gtk4rt.LabelSetLabel(m.__n1, m.caught)
 	gtk4rt.BoxAppend(m.__n0, m.__n1)
 	gtk4rt.AppAttach(m.__n0)
 	m.__effects0_settle()
@@ -752,7 +752,7 @@ pass sha256:17ed37365ed5e8fdbce14bc40a2415c0
 -- run/go/fyne --
 pass sha256:5f06153e3d28985c96c4e4dd3bdd3a59
 -- run/go/gtk4 --
-pass sha256:e8378ba926ff1ec439de2216a6d030a7
+pass sha256:be94c1908f30b28ce6380892f09db747
 -- run/go/html --
 pass sha256:5062ea269e1a450f5882689caa6e46a6
 -- run/kotlin/android --

@@ -373,7 +373,7 @@ func (m *Model) home_visible_handler(__visible bool) {
 
 func (m *Model) inc_clicked_handler() {
 	m.n = (m.n + 1)
-	gtk4rt.LabelSetText(m.__n0, fmt.Sprint(m.n))
+	gtk4rt.LabelSetLabel(m.__n0, fmt.Sprint(m.n))
 }
 
 func (m *Model) N() int {
@@ -406,7 +406,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.OrientableSetOrientation(m.__n1, gtk4rt.OrientationVertical)
 	gtk4rt.BoxSetSpacing(m.__n1, 6)
 	m.__n0 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.__n0, fmt.Sprint(m.n))
+	gtk4rt.LabelSetLabel(m.__n0, fmt.Sprint(m.n))
 	gtk4rt.BoxAppend(m.__n1, m.__n0)
 	m.inc = gtk4rt.ButtonNew()
 	gtk4rt.ButtonSetLabel(m.inc, "+")
@@ -525,7 +525,7 @@ pass sha256:bb76a85f1e04aed505811929c14c1bff
 -- run/go/fyne --
 pass sha256:a2e7a8ab7e50bce87a49904604f4469d
 -- run/go/gtk4 --
-pass sha256:9a20dccccd142938cb03c0fd9bae15c6
+pass sha256:c63648e03ca6bbebb0781a41d7564192
 -- run/kotlin/android --
 pass sha256:b5492067a58ca3898c7e77649f3a5e80
 -- run/none/html --

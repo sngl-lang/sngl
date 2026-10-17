@@ -364,7 +364,7 @@ func (m *Model) __renderSlot0(parent *C.GtkBox) {
 	m.cal = nil
 	if m.shown {
 		m.cal = (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
-		C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(m.cal)), C.CString("c"))
+		C.gtk_label_set_label((*C.GtkLabel)(unsafe.Pointer(m.cal)), C.CString("c"))
 		C.sngl_insert_before((*C.GtkBox)(unsafe.Pointer(parent)), m.__slot0_at, (*C.GtkWidget)(unsafe.Pointer(m.cal)))
 		m.__slot0 = append(m.__slot0, (*C.GtkWidget)(unsafe.Pointer(m.cal)))
 	}
@@ -448,4 +448,4 @@ func (m *Model) calPresent() bool {
 	return m.cal != nil
 }
 -- run/go/gtk4 --
-pass sha256:3f8def7f1c99b575c53bb8c99a8d933a
+pass sha256:47aea4d54071b31321ef80e36863970f
