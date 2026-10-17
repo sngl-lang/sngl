@@ -275,7 +275,7 @@ func (m *movedRefs) stmts(list []ir.Stmt) {
 			if m.anyMove(x.Body) {
 				m.moveAll()
 				// A condition is asked again after every pass.
-				if t := x.Iter.ExprType(); x.KeySym == nil && x.ValueSym == nil && t != nil && t.Kind == ir.TypeBool {
+				if x.Iter != nil && x.KeySym == nil && x.ValueSym == nil && x.Iter.ExprType() != nil && x.Iter.ExprType().Kind == ir.TypeBool {
 					m.expr(x.Iter)
 				}
 			}

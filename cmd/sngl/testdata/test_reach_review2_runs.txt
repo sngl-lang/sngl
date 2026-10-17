@@ -30,7 +30,8 @@
 # before them (ternary); neither runs on android, where #270 keeps a test's
 # call of its component's method under a literal or a ternary from compiling.
 # A condition is read again after a body that moves (condloop), and a
-# function literal that moves has moved from where it is written (literal).
+# function literal that moves has moved from where it is written (literal), and a
+# loop with no head whose body moves asks no condition again (headless).
 
 sngl test --platform=none chain.sngl
 stdout 'ok   1 tests, 0 failures'
@@ -433,6 +434,24 @@ stderr 'literal.sngl:19:14: `v` holds a ref read when it was declared'
 
 ! sngl test --platform=android --language=kotlin literal.sngl
 stderr 'literal.sngl:19:14: `v` holds a ref read when it was declared'
+
+sngl test --platform=none headless.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=html headless.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go headless.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=fyne --language=go headless.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go headless.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin headless.sngl
+stdout 'ok   1 tests, 0 failures'
 
 -- chain.sngl --
 import . "sngl:ui"
@@ -1264,6 +1283,30 @@ func testLambda(t Test, c main) {
 window {
     main
 }
+-- headless.sngl --
+import test "sngl:test"
+import ui "sngl:ui"
+
+component box() {
+    var shown = true
+    if shown {
+        ui.text #lbl(value="hi")
+    }
+    ui.button #b(text="t", @click { shown = !shown })
+}
+
+func testLoop(t test.Test, c box) {
+    var v = c.lbl
+    t.assert(v != null)
+    for {
+        c.b.click()
+        break
+    }
+}
+
+ui.window(title="x") {
+    box()
+}
 -- testrun/android/kotlin/branches.sngl/main/1 --
 sha256:16e1c1d334e26e8ba2d57e3e213c3693
 {
@@ -1298,6 +1341,16 @@ sha256:b30a0d32c93952419aafb42dd0c824a9
     },
     {
       "Desc": "Fp",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/android/kotlin/headless.sngl/box/1 --
+sha256:d9a066d2695197318b81f931ae19cd6d
+{
+  "results": [
+    {
+      "Desc": "Loop",
       "Passed": true
     }
   ]
@@ -1468,6 +1521,16 @@ sha256:509a89f4a91639b30fc91a74ba83fd6a
     }
   ]
 }
+-- testrun/bubbletea/go/headless.sngl/box/1 --
+sha256:e7df52344991f1ef0bac210c8f5e10e3
+{
+  "results": [
+    {
+      "Desc": "Loop",
+      "Passed": true
+    }
+  ]
+}
 -- testrun/bubbletea/go/kret.sngl/main/1 --
 sha256:a8cff8c830140da4895bfa12047b39be
 {
@@ -1634,6 +1697,16 @@ sha256:d4d44b18006a5d5826e3e0d6d43dd120
     },
     {
       "Desc": "Fp",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/headless.sngl/box/1 --
+sha256:c430fd57ecfbd442679d9e6822915c28
+{
+  "results": [
+    {
+      "Desc": "Loop",
       "Passed": true
     }
   ]
@@ -1828,6 +1901,16 @@ sha256:78af2290d046dea6ddb1cf7c82b450ae
     }
   ]
 }
+-- testrun/gtk4/go/headless.sngl/box/1 --
+sha256:739ca86cd12c6bcbc13ab90764f6ba85
+{
+  "results": [
+    {
+      "Desc": "Loop",
+      "Passed": true
+    }
+  ]
+}
 -- testrun/gtk4/go/kret.sngl/main/1 --
 sha256:4726b04846663b1aee18c7e19e7fa55e
 {
@@ -2014,6 +2097,16 @@ sha256:c062f8a7beaf435f03e59bd13bae14f0
     },
     {
       "Desc": "Fp",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/headless.sngl/box/1 --
+sha256:fc401c5fb862937bc7e1e44fc1b68210
+{
+  "results": [
+    {
+      "Desc": "Loop",
       "Passed": true
     }
   ]
