@@ -449,7 +449,7 @@ func newFrame__slot2Instance(__model *Model, __a_n int, __a___depth int, __a___p
 	gtk4rt.OrientableSetOrientation(c.__n4, gtk4rt.OrientationVertical)
 	gtk4rt.BoxSetSpacing(c.__n4, 6)
 	c.__n0 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(c.__n0, ("level " + fmt.Sprint(c.__prop___p0)))
+	gtk4rt.LabelSetLabel(c.__n0, ("level " + fmt.Sprint(c.__prop___p0)))
 	gtk4rt.BoxAppend(c.__n4, c.__n0)
 	c.__renderSlot0(c.__n4)
 	c.Root = c.__n4
@@ -469,7 +469,7 @@ func (c *Frame__slot2Instance) Set__depth(__v int) {
 
 func (c *Frame__slot2Instance) Set__p0(__v int) {
 	c.__prop___p0 = __v
-	gtk4rt.LabelSetText(c.__n0, ("level " + fmt.Sprint(c.__prop___p0)))
+	gtk4rt.LabelSetLabel(c.__n0, ("level " + fmt.Sprint(c.__prop___p0)))
 }
 
 func (c *Frame__slot2Instance) __renderSlot0(parent gtk4rt.Handle) {
@@ -565,7 +565,7 @@ func newFrame__slot0Instance(__model *Model, __a_n int, __a___depth int) *Frame_
 	gtk4rt.OrientableSetOrientation(c.__n6, gtk4rt.OrientationVertical)
 	gtk4rt.BoxSetSpacing(c.__n6, 6)
 	__n7 := gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(__n7, "top")
+	gtk4rt.LabelSetLabel(__n7, "top")
 	gtk4rt.BoxAppend(c.__n6, __n7)
 	c.__renderSlot1(c.__n6)
 	c.Root = c.__n6
@@ -931,6 +931,6 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/fyne --
 pass sha256:b3831447037d68ced4d6f49e5d68adfe
 -- run/go/gtk4 --
-pass sha256:01f5363a912c810156bb0749031e8991
+pass sha256:06ba767735c07499d72d78a71346cf69
 -- run/none/html --
 pass sha256:7dd33bdd7bcab0c3fd2d8a4ea5623a2a

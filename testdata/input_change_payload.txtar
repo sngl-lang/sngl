@@ -373,7 +373,7 @@ func (m *Model) __n3_activate_handler() {
 	m.value__inst0 = gtk4rt.EditableGetText(m.__n3)
 	gtk4rt.EditableSetText(m.__n3, m.value__inst0)
 	m.last = ("got " + m.value__inst0)
-	gtk4rt.LabelSetText(m.__n4, m.last)
+	gtk4rt.LabelSetLabel(m.__n4, m.last)
 }
 
 // RowInstance is one live instance of the Row component.
@@ -414,7 +414,7 @@ func newRowInstance(__model *Model, __a_label string) *RowInstance {
 		c.value__inst1 = gtk4rt.EditableGetText(c.__n0)
 		gtk4rt.EditableSetText(c.__n0, c.value__inst1)
 		c.committed = c.value__inst1
-		gtk4rt.LabelSetText(c.__n2, c.committed)
+		gtk4rt.LabelSetLabel(c.__n2, c.committed)
 	})
 	gtk4rt.BoxAppend(__n7, c.__n0)
 	c.__n1 = gtk4rt.EntryNew()
@@ -427,11 +427,11 @@ func newRowInstance(__model *Model, __a_label string) *RowInstance {
 		c.value__inst2 = gtk4rt.EditableGetText(c.__n1)
 		gtk4rt.EditableSetText(c.__n1, c.value__inst2)
 		c.committed = ((c.__prop_label + ":") + c.value__inst2)
-		gtk4rt.LabelSetText(c.__n2, c.committed)
+		gtk4rt.LabelSetLabel(c.__n2, c.committed)
 	})
 	gtk4rt.BoxAppend(__n7, c.__n1)
 	c.__n2 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(c.__n2, c.committed)
+	gtk4rt.LabelSetLabel(c.__n2, c.committed)
 	gtk4rt.BoxAppend(__n7, c.__n2)
 	c.Root = __n7
 	gtk4rt.Retain(c.Root)
@@ -490,7 +490,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.Connect(m.__n3, "activate", m.__n3_activate_handler)
 	gtk4rt.BoxAppend(__n6, m.__n3)
 	m.__n4 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.__n4, m.last)
+	gtk4rt.LabelSetLabel(m.__n4, m.last)
 	gtk4rt.BoxAppend(__n6, m.__n4)
 	m.__renderSlot0(__n6)
 	gtk4rt.BoxAppend(m.__root, __n6)
@@ -507,4 +507,4 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 -- run/go/fyne --
 pass sha256:ec52da820ad1c8d97f47160f021e680d
 -- run/go/gtk4 --
-pass sha256:f84e1e7cdb9facb96fc535e2b2e323ba
+pass sha256:ef7a9ea3c0b7d4d35ca2c8097cab0905

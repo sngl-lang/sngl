@@ -756,10 +756,10 @@ func newCard__slot0Instance(__model *Model, __a_start int, __a___p0 int, __a___o
 	gtk4rt.OrientableSetOrientation(__n4, gtk4rt.OrientationVertical)
 	gtk4rt.BoxSetSpacing(__n4, 6)
 	__n0 := gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(__n0, ("card " + fmt.Sprint(c.k)))
+	gtk4rt.LabelSetLabel(__n0, ("card " + fmt.Sprint(c.k)))
 	gtk4rt.BoxAppend(__n4, __n0)
 	c.__n1 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(c.__n1, ((("scoped " + fmt.Sprint(c.__prop___p0)) + " ") + fmt.Sprint(c.k)))
+	gtk4rt.LabelSetLabel(c.__n1, ((("scoped " + fmt.Sprint(c.__prop___p0)) + " ") + fmt.Sprint(c.k)))
 	gtk4rt.BoxAppend(__n4, c.__n1)
 	c.__effects0_settle()
 	c.Root = __n4
@@ -817,7 +817,7 @@ func (c *Card__slot0Instance) SetStart(__v int) {
 
 func (c *Card__slot0Instance) Set__p0(__v int) {
 	c.__prop___p0 = __v
-	gtk4rt.LabelSetText(c.__n1, ((("scoped " + fmt.Sprint(c.__prop___p0)) + " ") + fmt.Sprint(c.k)))
+	gtk4rt.LabelSetLabel(c.__n1, ((("scoped " + fmt.Sprint(c.__prop___p0)) + " ") + fmt.Sprint(c.k)))
 	c.__effects0_settle()
 }
 
@@ -1186,7 +1186,7 @@ pass sha256:6903359e591904ad79e1da8bfdc093f0
 -- run/go/fyne --
 pass sha256:1a4121c6a530ca8032df27964d854f49
 -- run/go/gtk4 --
-pass sha256:574897b514b04935739884a49ba68a67
+pass sha256:659b1d84aef2fb00e630eea227d65a5c
 -- run/kotlin/android --
 pass sha256:02353f3f9a6541f79cfa8f44a180a296
 -- run/none/html --

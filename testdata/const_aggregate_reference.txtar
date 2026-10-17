@@ -468,7 +468,7 @@ func (m *Model) __n0_visible_handler(__visible bool) {
 
 func (m *Model) __n5_clicked_handler() {
 	m.pick = ((m.pick + 1) % 2)
-	gtk4rt.LabelSetText(m.__n1, m.entries[m.pick].Title)
+	gtk4rt.LabelSetLabel(m.__n1, m.entries[m.pick].Title)
 	var __lt0 string
 	if m.pick == 0 {
 		__lt0 = "home"
@@ -476,7 +476,7 @@ func (m *Model) __n5_clicked_handler() {
 		__lt0 = "about"
 	}
 	m.key = __lt0
-	gtk4rt.LabelSetText(m.__n2, func() string {
+	gtk4rt.LabelSetLabel(m.__n2, func() string {
 		if __v, __ok := m.labels[m.key]; __ok {
 			return __v
 		}
@@ -522,14 +522,14 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.BoxSetSpacing(m.__n3, 6)
 	for _, e := range m.entries {
 		m.__n4 = gtk4rt.LabelNew("")
-		gtk4rt.LabelSetText(m.__n4, e.Title)
+		gtk4rt.LabelSetLabel(m.__n4, e.Title)
 		gtk4rt.BoxAppend(m.__n3, m.__n4)
 	}
 	m.__n1 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.__n1, m.entries[m.pick].Title)
+	gtk4rt.LabelSetLabel(m.__n1, m.entries[m.pick].Title)
 	gtk4rt.BoxAppend(m.__n3, m.__n1)
 	m.__n2 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.__n2, func() string {
+	gtk4rt.LabelSetLabel(m.__n2, func() string {
 		if __v, __ok := m.labels[m.key]; __ok {
 			return __v
 		}
@@ -603,6 +603,6 @@ pass sha256:e89838f515c0ca6c94a4b65dbd9f7cee
 -- run/go/fyne --
 pass sha256:7ce8666bdfda1b891f4b76af6080b335
 -- run/go/gtk4 --
-pass sha256:2f5a1085aae9e279cec470307004a350
+pass sha256:dc8073fe71d999a9f1967374f2985a24
 -- run/none/html --
 pass sha256:2608b26bd2bc03c32f990746024e9d6e

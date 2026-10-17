@@ -715,7 +715,7 @@ func (m *Model) __renderSlot0(parent *C.GtkBox) {
 
 func (m *Model) board_click_handler() {
 	m.hits += 1
-	C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(m.__n0)), C.CString(("hits " + fmt.Sprint(m.hits))))
+	C.gtk_label_set_label((*C.GtkLabel)(unsafe.Pointer(m.__n0)), C.CString(("hits " + fmt.Sprint(m.hits))))
 }
 
 func (m *Model) _canvasDraw0(ctx *C.cairo_t) {
@@ -817,7 +817,7 @@ func (m *Model) buildWidgetTree() {
 	C.gtk_orientable_set_orientation((*C.GtkOrientable)(unsafe.Pointer(__n2)), C.GTK_ORIENTATION_VERTICAL)
 	C.gtk_box_set_spacing((*C.GtkBox)(unsafe.Pointer(__n2)), C.int(6))
 	m.__n0 = (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
-	C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(m.__n0)), C.CString(("hits " + fmt.Sprint(m.hits))))
+	C.gtk_label_set_label((*C.GtkLabel)(unsafe.Pointer(m.__n0)), C.CString(("hits " + fmt.Sprint(m.hits))))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(__n2)), (*C.GtkWidget)(unsafe.Pointer(m.__n0)))
 	m.board = (*C.GtkDrawingArea)(unsafe.Pointer(C.gtk_drawing_area_new()))
 	C.gtk_drawing_area_set_content_width(m.board, C.int(40))
@@ -1066,6 +1066,6 @@ window.__sngl_boot();
 -- run/go/fyne --
 pass sha256:90fb4e6f842c2e9b8095dffe3d6e1227
 -- run/go/gtk4 --
-pass sha256:c5d332148b6f6b4ef4fd91752cb5ce27
+pass sha256:6cd2bfe5617dc0a14dd6d285ef9bc354
 -- run/none/html --
 pass sha256:e9358f99455f373d0d95c86e9afea71f

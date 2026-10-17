@@ -558,7 +558,7 @@ func newNestInstance(__model *Model, __a_tag string, __a_depth int, __a_note fun
 	c.__inst0_live = []*NestInstance{}
 	c.__slot1 = nil
 	c.__n0 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(c.__n0, (("[" + c.__prop_tag) + "]"))
+	gtk4rt.LabelSetLabel(c.__n0, (("[" + c.__prop_tag) + "]"))
 	gtk4rt.BoxAppend(c.__root, c.__n0)
 	c.__renderSlot0(c.__root)
 	c.__effects0_settle()
@@ -631,7 +631,7 @@ func (c *NestInstance) teardown() {
 
 func (c *NestInstance) SetTag(__v string) {
 	c.__prop_tag = __v
-	gtk4rt.LabelSetText(c.__n0, (("[" + c.__prop_tag) + "]"))
+	gtk4rt.LabelSetLabel(c.__n0, (("[" + c.__prop_tag) + "]"))
 	c.__effects0_settle()
 }
 
@@ -736,7 +736,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ButtonSetLabel(m.drop, "drop")
 	gtk4rt.Connect(m.drop, "clicked", m.drop_clicked_handler)
 	m.__n1 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.__n1, ("log=" + m.log))
+	gtk4rt.LabelSetLabel(m.__n1, ("log=" + m.log))
 	m.__renderSlot1(m.__root)
 	gtk4rt.BoxAppend(m.__root, m.drop)
 	gtk4rt.BoxAppend(m.__root, m.__n1)
@@ -1151,7 +1151,7 @@ window.__sngl_boot();
 -- run/go/fyne --
 pass sha256:1061789981fd0c8137785b1d122a73d0
 -- run/go/gtk4 --
-pass sha256:069320d79065d7d667531e5f97f5466c
+pass sha256:178b446352bd3256319f57065f8463ff
 -- run/kotlin/android --
 pass sha256:b55f19f7cb7dd03838e4446d877c2959
 -- run/none/html --

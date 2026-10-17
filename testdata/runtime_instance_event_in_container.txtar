@@ -658,7 +658,7 @@ func newCardInstance(__model *Model, __a_n int, __a_report func(int)) *CardInsta
 	gtk4rt.OrientableSetOrientation(__n3, gtk4rt.OrientationVertical)
 	gtk4rt.BoxSetSpacing(__n3, 6)
 	c.__n0 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(c.__n0, ((fmt.Sprint(c.__prop_n) + " ") + fmt.Sprint(c.hits)))
+	gtk4rt.LabelSetLabel(c.__n0, ((fmt.Sprint(c.__prop_n) + " ") + fmt.Sprint(c.hits)))
 	gtk4rt.BoxAppend(__n3, c.__n0)
 	c.__effects0_settle()
 	c.Root = __n3
@@ -712,7 +712,7 @@ func (c *CardInstance) __effects0_settle() {
 
 func (c *CardInstance) SetN(__v int) {
 	c.__prop_n = __v
-	gtk4rt.LabelSetText(c.__n0, ((fmt.Sprint(c.__prop_n) + " ") + fmt.Sprint(c.hits)))
+	gtk4rt.LabelSetLabel(c.__n0, ((fmt.Sprint(c.__prop_n) + " ") + fmt.Sprint(c.hits)))
 	c.__effects0_settle()
 }
 
@@ -1040,7 +1040,7 @@ pass sha256:a5f1d6365c9c5dc529ae31c1ad72e1ac
 -- run/go/fyne --
 pass sha256:c154d12795a2675de4b8177f8b46ea6f
 -- run/go/gtk4 --
-pass sha256:9c922417ebf64545a91bc551ba6f624e
+pass sha256:d753011b68dd44f6fd3d2b9f7d80ee6f
 -- run/kotlin/android --
 pass sha256:02559815f0ba5a01414706f295640298
 -- run/none/html --

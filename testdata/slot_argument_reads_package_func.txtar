@@ -578,7 +578,7 @@ func newFrame__slot2Instance(__model *Model, __a_n int, __a___depth int) *Frame_
 	gtk4rt.OrientableSetOrientation(c.__n5, gtk4rt.OrientationVertical)
 	gtk4rt.BoxSetSpacing(c.__n5, 6)
 	c.__n0 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(c.__n0, ("level " + fmt.Sprint((c.__prop_n * 2))))
+	gtk4rt.LabelSetLabel(c.__n0, ("level " + fmt.Sprint((c.__prop_n * 2))))
 	gtk4rt.BoxAppend(c.__n5, c.__n0)
 	c.__renderSlot0(c.__n5)
 	c.Root = c.__n5
@@ -588,7 +588,7 @@ func newFrame__slot2Instance(__model *Model, __a_n int, __a___depth int) *Frame_
 
 func (c *Frame__slot2Instance) SetN(__v int) {
 	c.__prop_n = __v
-	gtk4rt.LabelSetText(c.__n0, ("level " + fmt.Sprint((c.__prop_n * 2))))
+	gtk4rt.LabelSetLabel(c.__n0, ("level " + fmt.Sprint((c.__prop_n * 2))))
 	c.__renderSlot0(c.__n5)
 }
 
@@ -688,7 +688,7 @@ func newFrame__slot0Instance(__model *Model, __a_n int, __a___depth int) *Frame_
 	gtk4rt.OrientableSetOrientation(c.__n7, gtk4rt.OrientationVertical)
 	gtk4rt.BoxSetSpacing(c.__n7, 6)
 	c.__n1 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(c.__n1, ("level " + fmt.Sprint((c.__prop_n * 2))))
+	gtk4rt.LabelSetLabel(c.__n1, ("level " + fmt.Sprint((c.__prop_n * 2))))
 	gtk4rt.BoxAppend(c.__n7, c.__n1)
 	c.__renderSlot1(c.__n7)
 	c.Root = c.__n7
@@ -698,7 +698,7 @@ func newFrame__slot0Instance(__model *Model, __a_n int, __a___depth int) *Frame_
 
 func (c *Frame__slot0Instance) SetN(__v int) {
 	c.__prop_n = __v
-	gtk4rt.LabelSetText(c.__n1, ("level " + fmt.Sprint((c.__prop_n * 2))))
+	gtk4rt.LabelSetLabel(c.__n1, ("level " + fmt.Sprint((c.__prop_n * 2))))
 	c.__renderSlot1(c.__n7)
 }
 
@@ -1102,7 +1102,7 @@ pass sha256:72ce48707e9b40159ac31d5ee6e20c73
 -- run/go/fyne --
 pass sha256:df22cbf5474833c2ef3809f51d7439ed
 -- run/go/gtk4 --
-pass sha256:98c8ff5bf23fc981394d855a195deb1f
+pass sha256:56fa400b7ed8e22d014afcabab67a89e
 -- run/kotlin/android --
 pass sha256:fc7f7a10fe40a2750260503938746eb1
 -- run/none/html --

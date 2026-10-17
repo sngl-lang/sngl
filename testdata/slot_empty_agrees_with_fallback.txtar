@@ -848,7 +848,7 @@ func New() *Model {
 
 func (m *Model) __effect0_mount() {
 	m.mounted__inst0 = (m.mounted__inst0 + 1)
-	gtk4rt.LabelSetText(m.__n1, ("mounted " + fmt.Sprint(m.mounted__inst0)))
+	gtk4rt.LabelSetLabel(m.__n1, ("mounted " + fmt.Sprint(m.mounted__inst0)))
 }
 
 func (m *Model) __effect0_down() {
@@ -897,7 +897,7 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 	m.__slot0_at = gtk4rt.SlotAnchor(parent, m.__slot0_at)
 	if m.a__inst0 {
 		__n2 := gtk4rt.LabelNew("")
-		gtk4rt.LabelSetText(__n2, "a")
+		gtk4rt.LabelSetLabel(__n2, "a")
 		gtk4rt.InsertBefore(parent, m.__slot0_at, __n2)
 		m.__slot0 = append(m.__slot0, __n2)
 	}
@@ -911,7 +911,7 @@ func (m *Model) __renderSlot1(parent gtk4rt.Handle) {
 	m.__slot1_at = gtk4rt.SlotAnchor(parent, m.__slot1_at)
 	if m.b__inst0 {
 		__n3 := gtk4rt.LabelNew("")
-		gtk4rt.LabelSetText(__n3, "b")
+		gtk4rt.LabelSetLabel(__n3, "b")
 		gtk4rt.InsertBefore(parent, m.__slot1_at, __n3)
 		m.__slot1 = append(m.__slot1, __n3)
 	}
@@ -925,7 +925,7 @@ func (m *Model) __renderSlot2(parent gtk4rt.Handle) {
 	m.__slot2_at = gtk4rt.SlotAnchor(parent, m.__slot2_at)
 	if !m.a__inst0 && !m.b__inst0 {
 		__n4 := gtk4rt.LabelNew("")
-		gtk4rt.LabelSetText(__n4, "fallback")
+		gtk4rt.LabelSetLabel(__n4, "fallback")
 		gtk4rt.InsertBefore(parent, m.__slot2_at, __n4)
 		m.__slot2 = append(m.__slot2, __n4)
 	}
@@ -939,7 +939,7 @@ func (m *Model) __renderSlot3(parent gtk4rt.Handle) {
 	m.__slot3_at = gtk4rt.SlotAnchor(parent, m.__slot3_at)
 	for _, x := range m.xs__inst0 {
 		__n5 := gtk4rt.LabelNew("")
-		gtk4rt.LabelSetText(__n5, fmt.Sprint(x))
+		gtk4rt.LabelSetLabel(__n5, fmt.Sprint(x))
 		gtk4rt.InsertBefore(parent, m.__slot3_at, __n5)
 		m.__slot3 = append(m.__slot3, __n5)
 	}
@@ -953,7 +953,7 @@ func (m *Model) __renderSlot4(parent gtk4rt.Handle) {
 	m.__slot4_at = gtk4rt.SlotAnchor(parent, m.__slot4_at)
 	if len(m.xs__inst0) == 0 {
 		__n6 := gtk4rt.LabelNew("")
-		gtk4rt.LabelSetText(__n6, "fallback")
+		gtk4rt.LabelSetLabel(__n6, "fallback")
 		gtk4rt.InsertBefore(parent, m.__slot4_at, __n6)
 		m.__slot4 = append(m.__slot4, __n6)
 	}
@@ -975,7 +975,7 @@ func (m *Model) show_clicked_handler() {
 	} else {
 		__lt3 = "asks: full"
 	}
-	gtk4rt.LabelSetText(m.two, __lt3)
+	gtk4rt.LabelSetLabel(m.two, __lt3)
 	m.__renderSlot1(m.__n7)
 	m.__renderSlot2(m.__n7)
 	m.xs__inst0 = []int{7}
@@ -985,7 +985,7 @@ func (m *Model) show_clicked_handler() {
 	} else {
 		__lt4 = "asks: full"
 	}
-	gtk4rt.LabelSetText(m.loop, __lt4)
+	gtk4rt.LabelSetLabel(m.loop, __lt4)
 	m.__renderSlot3(m.__n8)
 	m.__renderSlot4(m.__n8)
 }
@@ -1046,7 +1046,7 @@ func (m *Model) buildWidgetTree() {
 		__lt0 = "asks: full"
 	}
 	m.two = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.two, __lt0)
+	gtk4rt.LabelSetLabel(m.two, __lt0)
 	gtk4rt.BoxAppend(m.__n0, m.two)
 	m.__n7 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
 	gtk4rt.OrientableSetOrientation(m.__n7, gtk4rt.OrientationVertical)
@@ -1062,7 +1062,7 @@ func (m *Model) buildWidgetTree() {
 		__lt1 = "asks: full"
 	}
 	m.loop = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.loop, __lt1)
+	gtk4rt.LabelSetLabel(m.loop, __lt1)
 	gtk4rt.BoxAppend(m.__n0, m.loop)
 	m.__n8 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
 	gtk4rt.OrientableSetOrientation(m.__n8, gtk4rt.OrientationVertical)
@@ -1072,17 +1072,17 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.BoxAppend(m.__n0, m.__n8)
 	__lt2 := "asks: empty"
 	m.lifetime = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.lifetime, __lt2)
+	gtk4rt.LabelSetLabel(m.lifetime, __lt2)
 	gtk4rt.BoxAppend(m.__n0, m.lifetime)
 	m.__n9 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
 	gtk4rt.OrientableSetOrientation(m.__n9, gtk4rt.OrientationVertical)
 	gtk4rt.BoxSetSpacing(m.__n9, 6)
 	m.__n10 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.__n10, "fallback")
+	gtk4rt.LabelSetLabel(m.__n10, "fallback")
 	gtk4rt.BoxAppend(m.__n9, m.__n10)
 	gtk4rt.BoxAppend(m.__n0, m.__n9)
 	m.__n1 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.__n1, ("mounted " + fmt.Sprint(m.mounted__inst0)))
+	gtk4rt.LabelSetLabel(m.__n1, ("mounted " + fmt.Sprint(m.mounted__inst0)))
 	gtk4rt.BoxAppend(m.__n0, m.__n1)
 	m.show = gtk4rt.ButtonNew()
 	gtk4rt.ButtonSetLabel(m.show, "show")
@@ -1489,7 +1489,7 @@ pass sha256:e40a491e52176ffb6af6a99321e43b3a
 -- run/go/fyne --
 pass sha256:51e30a39996d5eddd910a118b07c9af0
 -- run/go/gtk4 --
-pass sha256:64c56f495498cabf8720a92bdd60bcda
+pass sha256:27607b9504cd923b5846218febf0741b
 -- run/kotlin/android --
 pass sha256:515f0d958f9fb8f0032d084f99bd6b08
 -- run/none/html --

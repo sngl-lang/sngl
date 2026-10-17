@@ -484,13 +484,13 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 	m.__slot0_at = gtk4rt.SlotAnchor(parent, m.__slot0_at)
 	if len(m.rows__inst0) == 0 {
 		__n1 := gtk4rt.LabelNew("")
-		gtk4rt.LabelSetText(__n1, "NOTHING YET")
+		gtk4rt.LabelSetLabel(__n1, "NOTHING YET")
 		gtk4rt.InsertBefore(parent, m.__slot0_at, __n1)
 		m.__slot0 = append(m.__slot0, __n1)
 	} else {
 		for _, row := range m.rows__inst0 {
 			__n2 := gtk4rt.LabelNew("")
-			gtk4rt.LabelSetText(__n2, row)
+			gtk4rt.LabelSetLabel(__n2, row)
 			gtk4rt.InsertBefore(parent, m.__slot0_at, __n2)
 			m.__slot0 = append(m.__slot0, __n2)
 		}
@@ -505,13 +505,13 @@ func (m *Model) __renderSlot1(parent gtk4rt.Handle) {
 	m.__slot1_at = gtk4rt.SlotAnchor(parent, m.__slot1_at)
 	if 0 >= m.n__inst0 {
 		__n3 := gtk4rt.LabelNew("")
-		gtk4rt.LabelSetText(__n3, "NO TICKS")
+		gtk4rt.LabelSetLabel(__n3, "NO TICKS")
 		gtk4rt.InsertBefore(parent, m.__slot1_at, __n3)
 		m.__slot1 = append(m.__slot1, __n3)
 	} else {
 		for range m.n__inst0 {
 			__n4 := gtk4rt.LabelNew("")
-			gtk4rt.LabelSetText(__n4, "tick")
+			gtk4rt.LabelSetLabel(__n4, "tick")
 			gtk4rt.InsertBefore(parent, m.__slot1_at, __n4)
 			m.__slot1 = append(m.__slot1, __n4)
 		}
@@ -853,7 +853,7 @@ pass sha256:eb2589c0f4399e45c9f424f71fd9a2d8
 -- run/go/fyne --
 pass sha256:a86f9ff63bc75db386fd7984983e4f3f
 -- run/go/gtk4 --
-pass sha256:0db310b6f050c58575ca5aa50dbdaa68
+pass sha256:8093b03dfa0d55914eb421b5168de494
 -- run/kotlin/android --
 pass sha256:1eb6aec7f7a0942572e258713f7d926d
 -- run/none/html --

@@ -474,7 +474,7 @@ func New() *Model {
 
 func (m *Model) __effect0_mount() {
 	m.page__inst0 = (m.__effect0_key + 1)
-	gtk4rt.LabelSetText(m.__n1, ("page=" + fmt.Sprint(m.page__inst0)))
+	gtk4rt.LabelSetLabel(m.__n1, ("page=" + fmt.Sprint(m.page__inst0)))
 }
 
 func (m *Model) __effect0_down() {
@@ -559,7 +559,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelOnClosed(m.__n0, m.__n0_closed_handler)
 	gtk4rt.ToplevelOnVisible(m.__n0, m.__n0_visible_handler)
 	m.__n1 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.__n1, ("page=" + fmt.Sprint(m.page__inst0)))
+	gtk4rt.LabelSetLabel(m.__n1, ("page=" + fmt.Sprint(m.page__inst0)))
 	gtk4rt.BoxAppend(m.__n0, m.__n1)
 	gtk4rt.AppAttach(m.__n0)
 	m.__effects0_settle()
@@ -715,7 +715,7 @@ pass sha256:0de036d6d9ec3208b6fa01ba121df31b
 -- run/go/fyne --
 pass sha256:f2dc8fc9b4f2ae98ff637fcba868ee0f
 -- run/go/gtk4 --
-pass sha256:049f4ee7f6b6cb453a4633825e9f2036
+pass sha256:3b25a986c4a5ace0559174607c9b4555
 -- run/kotlin/android --
 pass sha256:6f836362fa533b6170a2913fc3737e53
 -- run/none/html --

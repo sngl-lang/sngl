@@ -353,7 +353,7 @@ func New() *Model {
 
 func (m *Model) bump(k int) int {
 	m.log = (m.log + "!")
-	gtk4rt.LabelSetText(m.__n1, ((fmt.Sprint(m.viaBump(m.n)) + fmt.Sprint(Countdown(m.n))) + m.log))
+	gtk4rt.LabelSetLabel(m.__n1, ((fmt.Sprint(m.viaBump(m.n)) + fmt.Sprint(Countdown(m.n))) + m.log))
 	return (k * 2)
 }
 
@@ -410,7 +410,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelOnClosed(m.__n0, m.__n0_closed_handler)
 	gtk4rt.ToplevelOnVisible(m.__n0, m.__n0_visible_handler)
 	m.__n1 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.__n1, ((fmt.Sprint(m.viaBump(m.n)) + fmt.Sprint(Countdown(m.n))) + m.log))
+	gtk4rt.LabelSetLabel(m.__n1, ((fmt.Sprint(m.viaBump(m.n)) + fmt.Sprint(Countdown(m.n))) + m.log))
 	gtk4rt.BoxAppend(m.__n0, m.__n1)
 	gtk4rt.AppAttach(m.__n0)
 }
@@ -426,4 +426,4 @@ pass sha256:788c61185efe76af49276669d1026e36
 -- run/go/fyne --
 pass sha256:2c988456caf0e1ee9299f41db00f6fe9
 -- run/go/gtk4 --
-pass sha256:9d1ae24351e3dbccf768f3b914d6db68
+pass sha256:f58d9dd1359a537b5c33cd3247adb112

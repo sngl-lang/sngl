@@ -1066,7 +1066,7 @@ func (m *Model) __renderSlot1(parent gtk4rt.Handle) {
 	} else {
 		if m.pages__current.Id == 1 {
 			__n9 := gtk4rt.LabelNew("")
-			gtk4rt.LabelSetText(__n9, "about")
+			gtk4rt.LabelSetLabel(__n9, "about")
 			gtk4rt.InsertBefore(parent, m.__slot1_at, __n9)
 			m.__slot1 = append(m.__slot1, __n9)
 		}
@@ -1090,7 +1090,7 @@ func (m *Model) __n4_visible_handler(__visible bool) {
 
 func (m *Model) __n13_clicked_handler() {
 	m.opened += 1
-	gtk4rt.LabelSetText(m.__n5, ((("opened " + fmt.Sprint(m.opened)) + " visits ") + fmt.Sprint(m.visits)))
+	gtk4rt.LabelSetLabel(m.__n5, ((("opened " + fmt.Sprint(m.opened)) + " visits ") + fmt.Sprint(m.visits)))
 }
 
 func (m *Model) __n14_clicked_handler() {
@@ -1124,12 +1124,12 @@ func new__block_state0Instance(__model *Model) *__block_state0Instance {
 	gtk4rt.ButtonSetLabel(__n11, "hit")
 	gtk4rt.Connect(__n11, "clicked", func() {
 		c.hits += 1
-		gtk4rt.LabelSetText(c.__n0, ("hits " + fmt.Sprint(c.hits)))
+		gtk4rt.LabelSetLabel(c.__n0, ("hits " + fmt.Sprint(c.hits)))
 		c.__model.visits += 1
-		gtk4rt.LabelSetText(c.__model.__n5, ((("opened " + fmt.Sprint(c.__model.opened)) + " visits ") + fmt.Sprint(c.__model.visits)))
+		gtk4rt.LabelSetLabel(c.__model.__n5, ((("opened " + fmt.Sprint(c.__model.opened)) + " visits ") + fmt.Sprint(c.__model.visits)))
 	})
 	c.__n0 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(c.__n0, ("hits " + fmt.Sprint(c.hits)))
+	gtk4rt.LabelSetLabel(c.__n0, ("hits " + fmt.Sprint(c.hits)))
 	__box := gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
 	gtk4rt.BoxAppend(__box, __n11)
 	gtk4rt.BoxAppend(__box, c.__n0)
@@ -1182,11 +1182,11 @@ func new__block_state1Instance(__model *Model, __a_it string, __a_total int, __a
 	gtk4rt.ButtonSetLabel(c.__n1, c.__prop_it)
 	gtk4rt.Connect(c.__n1, "clicked", func() {
 		c.n += 1
-		gtk4rt.LabelSetText(c.__n2, ((c.__prop_it + " ") + fmt.Sprint(c.n)))
+		gtk4rt.LabelSetLabel(c.__n2, ((c.__prop_it + " ") + fmt.Sprint(c.n)))
 		c.__prop___on_total((c.__prop_total + 1))
 	})
 	c.__n2 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(c.__n2, ((c.__prop_it + " ") + fmt.Sprint(c.n)))
+	gtk4rt.LabelSetLabel(c.__n2, ((c.__prop_it + " ") + fmt.Sprint(c.n)))
 	__box := gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
 	gtk4rt.BoxAppend(__box, c.__n1)
 	gtk4rt.BoxAppend(__box, c.__n2)
@@ -1198,7 +1198,7 @@ func new__block_state1Instance(__model *Model, __a_it string, __a_total int, __a
 func (c *__block_state1Instance) SetIt(__v string) {
 	c.__prop_it = __v
 	gtk4rt.ButtonSetLabel(c.__n1, c.__prop_it)
-	gtk4rt.LabelSetText(c.__n2, ((c.__prop_it + " ") + fmt.Sprint(c.n)))
+	gtk4rt.LabelSetLabel(c.__n2, ((c.__prop_it + " ") + fmt.Sprint(c.n)))
 }
 
 func (c *__block_state1Instance) SetTotal(__v int) {
@@ -1357,11 +1357,11 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.Connect(m.__n13, "clicked", m.__n13_clicked_handler)
 	gtk4rt.BoxAppend(m.__n10, m.__n13)
 	m.__n5 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.__n5, ((("opened " + fmt.Sprint(m.opened)) + " visits ") + fmt.Sprint(m.visits)))
+	gtk4rt.LabelSetLabel(m.__n5, ((("opened " + fmt.Sprint(m.opened)) + " visits ") + fmt.Sprint(m.visits)))
 	gtk4rt.BoxAppend(m.__n10, m.__n5)
 	m.__renderSlot0(m.__n10)
 	m.__n6 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.__n6, ("total " + fmt.Sprint(m.total__inst0)))
+	gtk4rt.LabelSetLabel(m.__n6, ("total " + fmt.Sprint(m.total__inst0)))
 	gtk4rt.BoxAppend(m.__n10, m.__n6)
 	m.__renderSlot1(m.__n10)
 	m.__n14 = gtk4rt.ButtonNew()
@@ -1965,7 +1965,7 @@ pass sha256:ed1ddf66dedc767b584e59cbca6aa4d1
 -- run/go/fyne --
 pass sha256:b7cb56d4b752d7f932a6a4252fe69d42
 -- run/go/gtk4 --
-pass sha256:803d9da4bafb52f310ceb82b5728f6ce
+pass sha256:eeee2377af6771ad40a57e91aafe9ffe
 -- run/kotlin/android --
 pass sha256:5606f57685a627cf98c73ed3b004bd29
 -- run/none/html --

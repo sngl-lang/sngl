@@ -319,20 +319,15 @@ func TestGirSetter_ReadsMetadataBack(t *testing.T) {
 		}
 	}
 
-	// A property GIR names no setter for has none — there is no derived
-	// spelling to fall back on, and gtk_image_set_file does not exist.
+	// GtkImage.file names no setter; the method names the property it sets,
+	// and gtk_image_set_from_file is no spelling derived from the name.
 	img := girClassInfoFor(t, "GtkImage")
 	p, ok = girProp(img, "file")
 	if !ok {
 		t.Fatal("girProp(GtkImage, file) not found")
 	}
-	if got := girSetter(img, p).Setter; got != "" {
-		t.Errorf("girSetter(GtkImage.file) = %q; want none", got)
-	}
-	// It is the static table that answers for it, and that answer is the
-	// setter the gtk4 override bodies rely on.
-	if got := gtkSetterFor("GtkImage", "file").Setter; got != "gtk_image_set_from_file" {
-		t.Errorf("gtkSetterFor(GtkImage.file) = %q; want gtk_image_set_from_file", got)
+	if got := girSetter(img, p).Setter; got != "gtk_image_set_from_file" {
+		t.Errorf("girSetter(GtkImage.file) = %q; want gtk_image_set_from_file", got)
 	}
 	// The event a body writes is the SNGL spelling of a GLib signal name.
 	if got, ok := girSignal(girClassInfoFor(t, "GtkButton"), "clicked"); !ok || got.Name != "clicked" {

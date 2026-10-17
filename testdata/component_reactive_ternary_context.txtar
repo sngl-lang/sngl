@@ -368,14 +368,14 @@ func (m *Model) __n3_clicked_handler() {
 	} else {
 		__lt0 = "light"
 	}
-	gtk4rt.LabelSetText(m.__n0, ("outer: " + __lt0))
+	gtk4rt.LabelSetLabel(m.__n0, ("outer: " + __lt0))
 	var __lt1 string
 	if m.dark {
 		__lt1 = "dark"
 	} else {
 		__lt1 = "light"
 	}
-	gtk4rt.LabelSetText(m.__n1, ("sibling: " + __lt1))
+	gtk4rt.LabelSetLabel(m.__n1, ("sibling: " + __lt1))
 }
 
 func (m *Model) Dark() bool {
@@ -405,7 +405,7 @@ func (m *Model) buildWidgetTree() {
 		__lt2 = "light"
 	}
 	m.__n0 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.__n0, ("outer: " + __lt2))
+	gtk4rt.LabelSetLabel(m.__n0, ("outer: " + __lt2))
 	gtk4rt.BoxAppend(__n2, m.__n0)
 	var __lt3 string
 	if m.dark {
@@ -414,7 +414,7 @@ func (m *Model) buildWidgetTree() {
 		__lt3 = "light"
 	}
 	m.__n1 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.__n1, ("sibling: " + __lt3))
+	gtk4rt.LabelSetLabel(m.__n1, ("sibling: " + __lt3))
 	gtk4rt.BoxAppend(__n2, m.__n1)
 	gtk4rt.BoxAppend(m.__root, __n2)
 }
@@ -569,7 +569,7 @@ pass sha256:11a3245c0a0070a491efeb7c82487bd4
 -- run/go/fyne --
 pass sha256:2adf00c3b18808fb913a5ef8a0b4296b
 -- run/go/gtk4 --
-pass sha256:d6b8036338f7da9b587efa0694c9ccc4
+pass sha256:67d131cb2309463a513790589e13a59d
 -- run/kotlin/android --
 pass sha256:d7856d7493d22bfc5e861fff278b232e
 -- run/none/html --

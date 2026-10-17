@@ -494,12 +494,12 @@ func New() *Model {
 
 func (m *Model) __effect0_mount() {
 	m.renders__inst0 = (m.renders__inst0 + 1)
-	gtk4rt.LabelSetText(m.__n0, ((fmt.Sprint(m.count) + " ") + fmt.Sprint(m.renders__inst0)))
+	gtk4rt.LabelSetLabel(m.__n0, ((fmt.Sprint(m.count) + " ") + fmt.Sprint(m.renders__inst0)))
 	m.seen = m.count
-	gtk4rt.LabelSetText(m.__n1, ((fmt.Sprint(m.count) + ":") + fmt.Sprint(m.seen)))
+	gtk4rt.LabelSetLabel(m.__n1, ((fmt.Sprint(m.count) + ":") + fmt.Sprint(m.seen)))
 	m.count = (m.count + 1)
-	gtk4rt.LabelSetText(m.__n0, ((fmt.Sprint(m.count) + " ") + fmt.Sprint(m.renders__inst0)))
-	gtk4rt.LabelSetText(m.__n1, ((fmt.Sprint(m.count) + ":") + fmt.Sprint(m.seen)))
+	gtk4rt.LabelSetLabel(m.__n0, ((fmt.Sprint(m.count) + " ") + fmt.Sprint(m.renders__inst0)))
+	gtk4rt.LabelSetLabel(m.__n1, ((fmt.Sprint(m.count) + ":") + fmt.Sprint(m.seen)))
 }
 
 func (m *Model) __effect0_down() {
@@ -570,9 +570,9 @@ func (m *Model) buildWidgetTree() {
 	}
 	m.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
 	m.__n0 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.__n0, ((fmt.Sprint(m.count) + " ") + fmt.Sprint(m.renders__inst0)))
+	gtk4rt.LabelSetLabel(m.__n0, ((fmt.Sprint(m.count) + " ") + fmt.Sprint(m.renders__inst0)))
 	m.__n1 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.__n1, ((fmt.Sprint(m.count) + ":") + fmt.Sprint(m.seen)))
+	gtk4rt.LabelSetLabel(m.__n1, ((fmt.Sprint(m.count) + ":") + fmt.Sprint(m.seen)))
 	m.__effects0_settle()
 	gtk4rt.BoxAppend(m.__root, m.__n0)
 	gtk4rt.BoxAppend(m.__root, m.__n1)
@@ -773,7 +773,7 @@ pass sha256:f0b8c215876097803bfcda796687c240
 -- run/go/fyne --
 pass sha256:dd93532445aa07cfad1ca9ff54e148ec
 -- run/go/gtk4 --
-pass sha256:17a07a2681da4c330f675ed090d30af2
+pass sha256:b3d8b1d143ea493f3738e0b0d9dba60a
 -- run/kotlin/android --
 pass sha256:ce3e2249f524177e27e3a3b1a1913937
 -- run/none/html --

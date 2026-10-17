@@ -637,7 +637,7 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 		if k == m.shown {
 			if c__r0.__id == 0 {
 				__n2 := gtk4rt.LabelNew("")
-				gtk4rt.LabelSetText(__n2, "first")
+				gtk4rt.LabelSetLabel(__n2, "first")
 				gtk4rt.InsertBefore(parent, m.__slot0_at, __n2)
 				m.__slot0 = append(m.__slot0, __n2)
 			} else {
@@ -707,7 +707,7 @@ func new__child0Instance(__model *Model, __a___p0 int) *__child0Instance {
 	c.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
 	c.__slot0 = nil
 	c.__n0 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(c.__n0, fmt.Sprint(c.__prop___p0))
+	gtk4rt.LabelSetLabel(c.__n0, fmt.Sprint(c.__prop___p0))
 	c.Root = c.__n0
 	gtk4rt.Retain(c.Root)
 	return c
@@ -715,7 +715,7 @@ func new__child0Instance(__model *Model, __a___p0 int) *__child0Instance {
 
 func (c *__child0Instance) Set__p0(__v int) {
 	c.__prop___p0 = __v
-	gtk4rt.LabelSetText(c.__n0, fmt.Sprint(c.__prop___p0))
+	gtk4rt.LabelSetLabel(c.__n0, fmt.Sprint(c.__prop___p0))
 }
 
 func (c *__child0Instance) Destroy() {
@@ -1021,7 +1021,7 @@ pass sha256:bdd02ae07bf076dfda0dbf716850457c
 -- run/go/fyne --
 pass sha256:a118d279c113e07ab4545ee98ded1949
 -- run/go/gtk4 --
-pass sha256:71bae377dba342f72ca79144bf36e388
+pass sha256:5b6155d891f2a264b78dc1c6bcde1179
 -- run/kotlin/android --
 pass sha256:faeeafa26a8f826978e1e52ab1f30409
 -- run/none/html --

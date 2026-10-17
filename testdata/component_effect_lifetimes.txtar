@@ -2225,12 +2225,12 @@ func (m *Model) scaled__inst0(m__r0 int) int {
 
 func (m *Model) __effect0_mount() {
 	m.log__inst0 = append(m.log__inst0, "in")
-	gtk4rt.LabelSetText(m.__n1, strings.Join(m.log__inst0, ","))
+	gtk4rt.LabelSetLabel(m.__n1, strings.Join(m.log__inst0, ","))
 }
 
 func (m *Model) __effect0_unmount() {
 	m.log__inst0 = append(m.log__inst0, "out")
-	gtk4rt.LabelSetText(m.__n1, strings.Join(m.log__inst0, ","))
+	gtk4rt.LabelSetLabel(m.__n1, strings.Join(m.log__inst0, ","))
 }
 
 func (m *Model) __effect0_down() {
@@ -2272,12 +2272,12 @@ func (m *Model) __effect0_teardown() {
 
 func (m *Model) __effect1_mount() {
 	m.log__inst1 = append(m.log__inst1, ("+" + m.__effect1_key))
-	gtk4rt.LabelSetText(m.__n2, strings.Join(m.log__inst1, ","))
+	gtk4rt.LabelSetLabel(m.__n2, strings.Join(m.log__inst1, ","))
 }
 
 func (m *Model) __effect1_unmount() {
 	m.log__inst1 = append(m.log__inst1, ("-" + m.__effect1_key))
-	gtk4rt.LabelSetText(m.__n2, strings.Join(m.log__inst1, ","))
+	gtk4rt.LabelSetLabel(m.__n2, strings.Join(m.log__inst1, ","))
 }
 
 func (m *Model) __effect1_down() {
@@ -2324,12 +2324,12 @@ func (m *Model) __effect1_teardown() {
 
 func (m *Model) __effect2_mount() {
 	m.log__inst2 = append(m.log__inst2, "+A")
-	gtk4rt.LabelSetText(m.__n3, strings.Join(m.log__inst2, ","))
+	gtk4rt.LabelSetLabel(m.__n3, strings.Join(m.log__inst2, ","))
 }
 
 func (m *Model) __effect2_unmount() {
 	m.log__inst2 = append(m.log__inst2, "-A")
-	gtk4rt.LabelSetText(m.__n3, strings.Join(m.log__inst2, ","))
+	gtk4rt.LabelSetLabel(m.__n3, strings.Join(m.log__inst2, ","))
 }
 
 func (m *Model) __effect2_down() {
@@ -2374,12 +2374,12 @@ func (m *Model) __effect2_teardown() {
 
 func (m *Model) __effect3_mount() {
 	m.log__inst2 = append(m.log__inst2, "+B")
-	gtk4rt.LabelSetText(m.__n3, strings.Join(m.log__inst2, ","))
+	gtk4rt.LabelSetLabel(m.__n3, strings.Join(m.log__inst2, ","))
 }
 
 func (m *Model) __effect3_unmount() {
 	m.log__inst2 = append(m.log__inst2, "-B")
-	gtk4rt.LabelSetText(m.__n3, strings.Join(m.log__inst2, ","))
+	gtk4rt.LabelSetLabel(m.__n3, strings.Join(m.log__inst2, ","))
 }
 
 func (m *Model) __effect3_down() {
@@ -2424,12 +2424,12 @@ func (m *Model) __effect3_teardown() {
 
 func (m *Model) __effect4_mount() {
 	m.log__inst3 = append(m.log__inst3, "f+")
-	gtk4rt.LabelSetText(m.__n4, strings.Join(m.log__inst3, ","))
+	gtk4rt.LabelSetLabel(m.__n4, strings.Join(m.log__inst3, ","))
 }
 
 func (m *Model) __effect4_unmount() {
 	m.log__inst3 = append(m.log__inst3, "f-")
-	gtk4rt.LabelSetText(m.__n4, strings.Join(m.log__inst3, ","))
+	gtk4rt.LabelSetLabel(m.__n4, strings.Join(m.log__inst3, ","))
 }
 
 func (m *Model) __effect4_down() {
@@ -2474,12 +2474,12 @@ func (m *Model) __effect4_teardown() {
 
 func (m *Model) __effect5_mount() {
 	m.log__inst3 = append(m.log__inst3, "c+")
-	gtk4rt.LabelSetText(m.__n4, strings.Join(m.log__inst3, ","))
+	gtk4rt.LabelSetLabel(m.__n4, strings.Join(m.log__inst3, ","))
 }
 
 func (m *Model) __effect5_unmount() {
 	m.log__inst3 = append(m.log__inst3, "c-")
-	gtk4rt.LabelSetText(m.__n4, strings.Join(m.log__inst3, ","))
+	gtk4rt.LabelSetLabel(m.__n4, strings.Join(m.log__inst3, ","))
 }
 
 func (m *Model) __effect5_down() {
@@ -2524,12 +2524,12 @@ func (m *Model) __effect5_teardown() {
 
 func (m *Model) __effect6_mount() {
 	m.log__inst4 = append(m.log__inst4, "m")
-	gtk4rt.LabelSetText(m.__n5, strings.Join(m.log__inst4, ","))
+	gtk4rt.LabelSetLabel(m.__n5, strings.Join(m.log__inst4, ","))
 }
 
 func (m *Model) __effect6_unmount() {
 	m.log__inst4 = append(m.log__inst4, "u")
-	gtk4rt.LabelSetText(m.__n5, strings.Join(m.log__inst4, ","))
+	gtk4rt.LabelSetLabel(m.__n5, strings.Join(m.log__inst4, ","))
 }
 
 func (m *Model) __effect6_down() {
@@ -2772,7 +2772,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.Connect(m.toggle, "clicked", m.toggle_clicked_handler)
 	gtk4rt.BoxAppend(m.__n0, m.toggle)
 	m.__n1 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.__n1, strings.Join(m.log__inst0, ","))
+	gtk4rt.LabelSetLabel(m.__n1, strings.Join(m.log__inst0, ","))
 	gtk4rt.BoxAppend(m.__n0, m.__n1)
 	m.drop = gtk4rt.ButtonNew()
 	gtk4rt.ButtonSetLabel(m.drop, "drop")
@@ -2783,14 +2783,14 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.Connect(m.add, "clicked", m.add_clicked_handler)
 	gtk4rt.BoxAppend(m.__n0, m.add)
 	m.__n2 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.__n2, strings.Join(m.log__inst1, ","))
+	gtk4rt.LabelSetLabel(m.__n2, strings.Join(m.log__inst1, ","))
 	gtk4rt.BoxAppend(m.__n0, m.__n2)
 	m.rekey = gtk4rt.ButtonNew()
 	gtk4rt.ButtonSetLabel(m.rekey, "rekey")
 	gtk4rt.Connect(m.rekey, "clicked", m.rekey_clicked_handler)
 	gtk4rt.BoxAppend(m.__n0, m.rekey)
 	m.__n3 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.__n3, strings.Join(m.log__inst2, ","))
+	gtk4rt.LabelSetLabel(m.__n3, strings.Join(m.log__inst2, ","))
 	gtk4rt.BoxAppend(m.__n0, m.__n3)
 	m.field = gtk4rt.ButtonNew()
 	gtk4rt.ButtonSetLabel(m.field, "field")
@@ -2801,7 +2801,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.Connect(m.called, "clicked", m.called_clicked_handler)
 	gtk4rt.BoxAppend(m.__n0, m.called)
 	m.__n4 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.__n4, strings.Join(m.log__inst3, ","))
+	gtk4rt.LabelSetLabel(m.__n4, strings.Join(m.log__inst3, ","))
 	gtk4rt.BoxAppend(m.__n0, m.__n4)
 	m.same = gtk4rt.ButtonNew()
 	gtk4rt.ButtonSetLabel(m.same, "same")
@@ -2812,7 +2812,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.Connect(m.bump, "clicked", m.bump_clicked_handler)
 	gtk4rt.BoxAppend(m.__n0, m.bump)
 	m.__n5 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.__n5, strings.Join(m.log__inst4, ","))
+	gtk4rt.LabelSetLabel(m.__n5, strings.Join(m.log__inst4, ","))
 	gtk4rt.BoxAppend(m.__n0, m.__n5)
 	gtk4rt.AppAttach(m.__n0)
 	m.__effects0_settle()
@@ -3649,7 +3649,7 @@ pass sha256:bbc8448f3d9d420995459cdec2ff5052
 -- run/go/fyne --
 pass sha256:4e6ff744e8e05cca44001c9e4fb06083
 -- run/go/gtk4 --
-pass sha256:581656d2de782296f9691e90b0ae7edb
+pass sha256:8c6b8e8edf8f345ee02975d475b54dc0
 -- run/kotlin/android --
 pass sha256:0160fc2c3cfdb13a15e3b6ba40d8fd37
 -- run/none/html --

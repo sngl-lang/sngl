@@ -1435,7 +1435,7 @@ func new__block_state0Instance(__model *Model) *__block_state0Instance {
 func (c *__block_state0Instance) __effect2_mount() {
 	c.seen = (c.seen + 1)
 	c.__model.total = (c.__model.total + 1)
-	gtk4rt.LabelSetText(c.__model.__n1, fmt.Sprint(c.__model.total))
+	gtk4rt.LabelSetLabel(c.__model.__n1, fmt.Sprint(c.__model.total))
 }
 
 func (c *__block_state0Instance) __effect2_down() {
@@ -1533,7 +1533,7 @@ func new__block_state1Instance(__model *Model) *__block_state1Instance {
 func (c *__block_state1Instance) __effect3_mount() {
 	c.held = (c.held + 1)
 	c.__model.total = (c.__model.total + c.held)
-	gtk4rt.LabelSetText(c.__model.__n1, fmt.Sprint(c.__model.total))
+	gtk4rt.LabelSetLabel(c.__model.__n1, fmt.Sprint(c.__model.total))
 }
 
 func (c *__block_state1Instance) __effect3_down() {
@@ -1631,7 +1631,7 @@ func new__block_state2Instance(__model *Model) *__block_state2Instance {
 func (c *__block_state2Instance) __effect4_mount() {
 	c.kept = (c.kept + 1)
 	c.__model.total = (c.__model.total + c.kept)
-	gtk4rt.LabelSetText(c.__model.__n1, fmt.Sprint(c.__model.total))
+	gtk4rt.LabelSetLabel(c.__model.__n1, fmt.Sprint(c.__model.total))
 }
 
 func (c *__block_state2Instance) __effect4_down() {
@@ -1749,7 +1749,7 @@ func (m *Model) buildWidgetTree() {
 	m.__renderSlot2(m.__n6)
 	gtk4rt.BoxAppend(m.__n5, m.__n6)
 	m.__n1 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.__n1, fmt.Sprint(m.total))
+	gtk4rt.LabelSetLabel(m.__n1, fmt.Sprint(m.total))
 	gtk4rt.BoxAppend(m.__n5, m.__n1)
 	gtk4rt.BoxAppend(m.__n0, m.__n5)
 	gtk4rt.AppAttach(m.__n0)
@@ -2194,6 +2194,6 @@ pass sha256:e242263dff7f302abf9ed24389d1e84e
 -- run/go/fyne --
 pass sha256:ea55d2503e95304c59a0cc4ce1266d72
 -- run/go/gtk4 --
-pass sha256:883f0ccffb50c6c42477ebbfd3af79cc
+pass sha256:7e7d0db13ed9b6505c46b2ca2bf7dd2f
 -- run/none/html --
 pass sha256:02a7c195e71a301281bb22a193e7ead2

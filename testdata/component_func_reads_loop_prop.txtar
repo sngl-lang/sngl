@@ -613,7 +613,7 @@ func newRowInstance(__model *Model, __a_label string) *RowInstance {
 	c.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
 	c.__slot0 = nil
 	__n1 := gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(__n1, c.shout())
+	gtk4rt.LabelSetLabel(__n1, c.shout())
 	c.Root = __n1
 	gtk4rt.Retain(c.Root)
 	return c
@@ -671,10 +671,10 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.BoxAppend(m.__n0, m.hide)
 	for _, x := range []string{"p", "q"} {
 		__n2 := gtk4rt.LabelNew("")
-		gtk4rt.LabelSetText(__n2, m.shout__inst0(x))
+		gtk4rt.LabelSetLabel(__n2, m.shout__inst0(x))
 		gtk4rt.BoxAppend(m.__n0, __n2)
 		__n3 := gtk4rt.LabelNew("")
-		gtk4rt.LabelSetText(__n3, func() []string {
+		gtk4rt.LabelSetLabel(__n3, func() []string {
 			__out := make([]string, len([]string{"q"}))
 			for __i, __item := range []string{"q"} {
 				__out[__i] = func(s string) string { return m.suffix__inst0(s, x) }(__item)
@@ -961,7 +961,7 @@ pass sha256:8737f5f95ba21b98c6c66e3ba12cdc51
 -- run/go/fyne --
 pass sha256:35f61eb0690686ce9521334085ad2b31
 -- run/go/gtk4 --
-pass sha256:f497d39e8d350ceabeb118aeab7c7550
+pass sha256:a26b520f886167f07b319a3e4e9efafa
 -- run/kotlin/android --
 pass sha256:5896387bc79784b42a6347d21c5ddc74
 -- run/none/html --

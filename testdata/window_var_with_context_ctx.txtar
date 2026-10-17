@@ -344,10 +344,10 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.OrientableSetOrientation(m.__n1, gtk4rt.OrientationVertical)
 	gtk4rt.BoxSetSpacing(m.__n1, 6)
 	m.__n0 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.__n0, m.name)
+	gtk4rt.LabelSetLabel(m.__n0, m.name)
 	gtk4rt.BoxAppend(m.__n1, m.__n0)
 	m.__n2 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.__n2, "light")
+	gtk4rt.LabelSetLabel(m.__n2, "light")
 	gtk4rt.BoxAppend(m.__n1, m.__n2)
 	gtk4rt.BoxAppend(m.home, m.__n1)
 	gtk4rt.AppAttach(m.home)
@@ -409,6 +409,6 @@ pass sha256:46e488bea79059a5c3136cb5560a08ea
 -- run/go/fyne --
 pass sha256:e36a5e2896438528e3c077490b08d907
 -- run/go/gtk4 --
-pass sha256:550e0453f6b427f3c83b96765d32a8e7
+pass sha256:c014de2f1a102c159871e144fd4411eb
 -- run/kotlin/android --
 pass sha256:516b68a57cb2f70c7c3bd698f17edb47

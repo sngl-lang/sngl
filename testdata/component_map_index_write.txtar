@@ -390,7 +390,7 @@ func New() *Model {
 
 func (m *Model) put_clicked_handler() {
 	m.counts["a"] = 7
-	gtk4rt.LabelSetText(m.__n0, ((fmt.Sprint(len(m.counts)) + ":") + fmt.Sprint(func() int {
+	gtk4rt.LabelSetLabel(m.__n0, ((fmt.Sprint(len(m.counts)) + ":") + fmt.Sprint(func() int {
 		if __v, __ok := m.counts["a"]; __ok {
 			return __v
 		}
@@ -400,7 +400,7 @@ func (m *Model) put_clicked_handler() {
 
 func (m *Model) bump_clicked_handler() {
 	m.counts["a"] += 5
-	gtk4rt.LabelSetText(m.__n0, ((fmt.Sprint(len(m.counts)) + ":") + fmt.Sprint(func() int {
+	gtk4rt.LabelSetLabel(m.__n0, ((fmt.Sprint(len(m.counts)) + ":") + fmt.Sprint(func() int {
 		if __v, __ok := m.counts["a"]; __ok {
 			return __v
 		}
@@ -422,7 +422,7 @@ func (m *Model) buildWidgetTree() {
 	}
 	m.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
 	m.__n0 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.__n0, ((fmt.Sprint(len(m.counts)) + ":") + fmt.Sprint(func() int {
+	gtk4rt.LabelSetLabel(m.__n0, ((fmt.Sprint(len(m.counts)) + ":") + fmt.Sprint(func() int {
 		if __v, __ok := m.counts["a"]; __ok {
 			return __v
 		}
@@ -613,7 +613,7 @@ pass sha256:8ebca368c478f689adebdd68af121a44
 -- run/go/fyne --
 pass sha256:cf36bd9aa53b32d770ef87feaf4386fc
 -- run/go/gtk4 --
-pass sha256:7b8259bced939e301dc2a2ec7231fb61
+pass sha256:4d1ed47c7c1f34dad8896360c6d1d99c
 -- run/kotlin/android --
 pass sha256:0d878d09858440391a03ed5eb65272c7
 -- run/none/html --

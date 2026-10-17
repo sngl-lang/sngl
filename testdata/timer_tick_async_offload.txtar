@@ -439,7 +439,7 @@ func (m *Model) __effect0_mount() {
 				__async_off0 := func() string { v, _ := os.Hostname(); return v }()
 				gtk4rt.Post(func() {
 					m.name__inst0 = __async_off0
-					gtk4rt.LabelSetText(m.__n0, m.name__inst0)
+					gtk4rt.LabelSetLabel(m.__n0, m.name__inst0)
 				})
 			}()
 		}()
@@ -557,7 +557,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelOnClosed(m.main, m.main_closed_handler)
 	gtk4rt.ToplevelOnVisible(m.main, m.main_visible_handler)
 	m.__n0 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.__n0, m.name__inst0)
+	gtk4rt.LabelSetLabel(m.__n0, m.name__inst0)
 	gtk4rt.BoxAppend(m.main, m.__n0)
 	gtk4rt.AppAttach(m.main)
 	m.__effects0_settle()
@@ -572,4 +572,4 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 -- run/go/fyne --
 pass sha256:6db6e2ca3b0a9d0ec3744911d97615e2
 -- run/go/gtk4 --
-pass sha256:d4ac6dde754bed07c5af3711d40c2da3
+pass sha256:983c977fdade31eccf73d6a57a802a15

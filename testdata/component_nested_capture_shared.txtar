@@ -555,9 +555,9 @@ func New() *Model {
 
 func (m *Model) __effect0_mount() {
 	m.runs__inst0 = (m.runs__inst0 + 1)
-	gtk4rt.LabelSetText(m.__n0, fmt.Sprint(m.runs__inst0))
+	gtk4rt.LabelSetLabel(m.__n0, fmt.Sprint(m.runs__inst0))
 	m.count = (m.count + 1)
-	gtk4rt.LabelSetText(m.__n2, fmt.Sprint(m.count))
+	gtk4rt.LabelSetLabel(m.__n2, fmt.Sprint(m.count))
 }
 
 func (m *Model) __effect0_down() {
@@ -580,9 +580,9 @@ func (m *Model) __effect0_up() {
 
 func (m *Model) __effect1_mount() {
 	m.runs__inst1 = (m.runs__inst1 + 1)
-	gtk4rt.LabelSetText(m.__n1, fmt.Sprint(m.runs__inst1))
+	gtk4rt.LabelSetLabel(m.__n1, fmt.Sprint(m.runs__inst1))
 	m.count = (m.count + 10)
-	gtk4rt.LabelSetText(m.__n2, fmt.Sprint(m.count))
+	gtk4rt.LabelSetLabel(m.__n2, fmt.Sprint(m.count))
 }
 
 func (m *Model) __effect1_down() {
@@ -655,11 +655,11 @@ func (m *Model) buildWidgetTree() {
 	}
 	m.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
 	m.__n0 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.__n0, fmt.Sprint(m.runs__inst0))
+	gtk4rt.LabelSetLabel(m.__n0, fmt.Sprint(m.runs__inst0))
 	m.__n1 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.__n1, fmt.Sprint(m.runs__inst1))
+	gtk4rt.LabelSetLabel(m.__n1, fmt.Sprint(m.runs__inst1))
 	m.__n2 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.__n2, fmt.Sprint(m.count))
+	gtk4rt.LabelSetLabel(m.__n2, fmt.Sprint(m.count))
 	m.__effects0_settle()
 	gtk4rt.BoxAppend(m.__root, m.__n0)
 	gtk4rt.BoxAppend(m.__root, m.__n1)
@@ -893,7 +893,7 @@ pass sha256:4261bb099516d356652786af1f625c0e
 -- run/go/fyne --
 pass sha256:b010501e28fe060706a65e70a8a44ab8
 -- run/go/gtk4 --
-pass sha256:c814bc4f52f81366a95175d0d2b85f37
+pass sha256:83cbbd8dafcb0d40073af720ad36c688
 -- run/kotlin/android --
 pass sha256:cd6537e12897e2cccf9de673ec51633a
 -- run/none/html --

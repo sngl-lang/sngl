@@ -217,7 +217,7 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 	m.__slot0_at = gtk4rt.SlotAnchor(parent, m.__slot0_at)
 	if m.on {
 		__n0 := gtk4rt.LabelNew("")
-		gtk4rt.LabelSetText(__n0, "on")
+		gtk4rt.LabelSetLabel(__n0, "on")
 		gtk4rt.InsertBefore(parent, m.__slot0_at, __n0)
 		m.__slot0 = append(m.__slot0, __n0)
 	}
@@ -278,4 +278,4 @@ func (m *Model) flipClick() {
 -- run/go/fyne --
 pass sha256:6f45895dc2370cadbe701ed69ffcf102
 -- run/go/gtk4 --
-pass sha256:db7d0ec960136d05d1b273857026d43c
+pass sha256:c5948a0b4c183618306409693f1ad271

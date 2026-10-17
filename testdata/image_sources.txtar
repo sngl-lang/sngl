@@ -1222,7 +1222,7 @@ func (m *Model) __renderSlot1(parent *C.GtkBox) {
 	var __inst0_i int = 0
 	if m.failed__inst0 || !m.hasPhoto__inst0 {
 		__n4 := (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
-		C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(__n4)), C.CString("JD"))
+		C.gtk_label_set_label((*C.GtkLabel)(unsafe.Pointer(__n4)), C.CString("JD"))
 		C.sngl_insert_before((*C.GtkBox)(unsafe.Pointer(parent)), m.__slot1_at, (*C.GtkWidget)(unsafe.Pointer(__n4)))
 		m.__slot1 = append(m.__slot1, (*C.GtkWidget)(unsafe.Pointer(__n4)))
 	} else {
@@ -2052,7 +2052,7 @@ pass sha256:4e1e85f17b4a2065817399c5fe88588a
 -- run/go/fyne --
 pass sha256:14793d5bfd1c6d64b6f880f5eb76ec14
 -- run/go/gtk4 --
-pass sha256:c4d48dc6f95de5f34281902d85095458
+pass sha256:90c51cc74bfb1d1e4c19a51a583413ae
 -- run/kotlin/android --
 pass sha256:a9f41c50f197408490a7fc019ef70d13
 -- run/none/html --

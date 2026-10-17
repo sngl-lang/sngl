@@ -698,14 +698,14 @@ func New() *Model {
 func (m *Model) box_toggled_handler() {
 	m.on = (C.gtk_check_button_get_active((*C.GtkCheckButton)(unsafe.Pointer(m.box))) != 0)
 	m.seen = ((("box " + fmt.Sprint(m.on)) + " ") + fmt.Sprint(m.on))
-	C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(m.__n0)), C.CString(m.seen))
+	C.gtk_label_set_label((*C.GtkLabel)(unsafe.Pointer(m.__n0)), C.CString(m.seen))
 }
 
 func (m *Model) sw_notifyActive_handler() {
 	m.checked__inst0 = (C.gtk_switch_get_active((*C.GtkSwitch)(unsafe.Pointer(m.sw))) != 0)
 	m.lit = m.checked__inst0
 	m.seen = ("sw " + fmt.Sprint(m.checked__inst0))
-	C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(m.__n0)), C.CString(m.seen))
+	C.gtk_label_set_label((*C.GtkLabel)(unsafe.Pointer(m.__n0)), C.CString(m.seen))
 }
 
 func (m *Model) On() bool {
@@ -761,7 +761,7 @@ func (m *Model) buildWidgetTree() {
 	C.sngl_connect(unsafe.Pointer(m.sw), C.CString("notify::active"), C.int((len(snglCallbacks) - 1)))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(__n1)), (*C.GtkWidget)(unsafe.Pointer(m.sw)))
 	m.__n0 = (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
-	C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(m.__n0)), C.CString(m.seen))
+	C.gtk_label_set_label((*C.GtkLabel)(unsafe.Pointer(m.__n0)), C.CString(m.seen))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(__n1)), (*C.GtkWidget)(unsafe.Pointer(m.__n0)))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__root)), (*C.GtkWidget)(unsafe.Pointer(__n1)))
 }
@@ -1023,7 +1023,7 @@ pass sha256:194eb8e87cf2927e1c40666982c3b77e
 -- run/go/fyne --
 pass sha256:40ebe27760c9a1ecb25870601de61d4f
 -- run/go/gtk4 --
-pass sha256:2c7a1890ee177f43c6a877ff9c369780
+pass sha256:7df52e19904d5420a57f8931ddaac927
 -- run/go/html --
 pass sha256:299fd0606c3b9b7f1c96605654863c50
 -- run/kotlin/android --

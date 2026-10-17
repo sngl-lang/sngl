@@ -297,13 +297,13 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.OrientableSetOrientation(m.__n1, gtk4rt.OrientationVertical)
 	gtk4rt.BoxSetSpacing(m.__n1, 6)
 	m.__n2 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.__n2, "header")
+	gtk4rt.LabelSetLabel(m.__n2, "header")
 	gtk4rt.BoxAppend(m.__n1, m.__n2)
 	m.__n3 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.__n3, "projected child")
+	gtk4rt.LabelSetLabel(m.__n3, "projected child")
 	gtk4rt.BoxAppend(m.__n1, m.__n3)
 	m.__n4 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.__n4, "footer")
+	gtk4rt.LabelSetLabel(m.__n4, "footer")
 	gtk4rt.BoxAppend(m.__n1, m.__n4)
 	gtk4rt.BoxAppend(m.__n0, m.__n1)
 	gtk4rt.AppAttach(m.__n0)
@@ -391,7 +391,7 @@ pass sha256:979dad5c8527d5bd4356aa5f30094b31
 -- run/go/fyne --
 pass sha256:e926725b74d46f596f3f0c4fbfa7e0dd
 -- run/go/gtk4 --
-pass sha256:1283bb0d9504e8b277d31048c5d05efd
+pass sha256:e48500dc628763eede19c1a4cc80f432
 -- run/kotlin/android --
 pass sha256:241c279aec933d7679c7f9347dfa37e3
 -- run/none/html --

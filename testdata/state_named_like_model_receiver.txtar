@@ -677,7 +677,7 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 
 func (m *Model) bump_clicked_handler() {
 	m.m__r1 += 1
-	gtk4rt.LabelSetText(m.__n1, ("page " + fmt.Sprint(m.m__r1)))
+	gtk4rt.LabelSetLabel(m.__n1, ("page " + fmt.Sprint(m.m__r1)))
 }
 
 // CounterInstance is one live instance of the counter component.
@@ -706,15 +706,15 @@ func newCounterInstance(__model *Model, __a_start int) *CounterInstance {
 	gtk4rt.OrientableSetOrientation(__n4, gtk4rt.OrientationHorizontal)
 	gtk4rt.BoxSetSpacing(__n4, 6)
 	c.__n0 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(c.__n0, ((("m " + fmt.Sprint(c.m__r0)) + " c ") + fmt.Sprint(c.c__r0)))
+	gtk4rt.LabelSetLabel(c.__n0, ((("m " + fmt.Sprint(c.m__r0)) + " c ") + fmt.Sprint(c.c__r0)))
 	gtk4rt.BoxAppend(__n4, c.__n0)
 	c.inc = gtk4rt.ButtonNew()
 	gtk4rt.ButtonSetLabel(c.inc, "inc")
 	gtk4rt.Connect(c.inc, "clicked", func() {
 		c.m__r0 += 1
-		gtk4rt.LabelSetText(c.__n0, ((("m " + fmt.Sprint(c.m__r0)) + " c ") + fmt.Sprint(c.c__r0)))
+		gtk4rt.LabelSetLabel(c.__n0, ((("m " + fmt.Sprint(c.m__r0)) + " c ") + fmt.Sprint(c.c__r0)))
 		c.c__r0 += 1
-		gtk4rt.LabelSetText(c.__n0, ((("m " + fmt.Sprint(c.m__r0)) + " c ") + fmt.Sprint(c.c__r0)))
+		gtk4rt.LabelSetLabel(c.__n0, ((("m " + fmt.Sprint(c.m__r0)) + " c ") + fmt.Sprint(c.c__r0)))
 	})
 	gtk4rt.BoxAppend(__n4, c.inc)
 	c.Root = __n4
@@ -762,7 +762,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.OrientableSetOrientation(__n3, gtk4rt.OrientationVertical)
 	gtk4rt.BoxSetSpacing(__n3, 6)
 	m.__n1 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.__n1, ("page " + fmt.Sprint(m.m__r1)))
+	gtk4rt.LabelSetLabel(m.__n1, ("page " + fmt.Sprint(m.m__r1)))
 	gtk4rt.BoxAppend(__n3, m.__n1)
 	m.bump = gtk4rt.ButtonNew()
 	gtk4rt.ButtonSetLabel(m.bump, "bump")
@@ -795,4 +795,4 @@ pass sha256:b7f705f23da3b6f663af5f75abed7937
 -- run/go/fyne --
 pass sha256:056a23bca0a9a8b3478f8d4ba0373c18
 -- run/go/gtk4 --
-pass sha256:1405bbcde263119fb0518cc7ab45ed2c
+pass sha256:5e2a975432ac410706f46930a28eb184

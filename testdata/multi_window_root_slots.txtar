@@ -452,7 +452,7 @@ func (m *Model) __renderSlot1(parent gtk4rt.Handle) {
 	m.__slot1_at = gtk4rt.SlotAnchor(parent, m.__slot1_at)
 	for _, it := range m.notes {
 		__n2 := gtk4rt.LabelNew("")
-		gtk4rt.LabelSetText(__n2, it)
+		gtk4rt.LabelSetLabel(__n2, it)
 		gtk4rt.InsertBefore(parent, m.__slot1_at, __n2)
 		m.__slot1 = append(m.__slot1, __n2)
 	}
@@ -580,11 +580,11 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelOnClosed(m.one, m.one_closed_handler)
 	gtk4rt.ToplevelOnVisible(m.one, m.one_visible_handler)
 	m.__n3 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.__n3, "one head")
+	gtk4rt.LabelSetLabel(m.__n3, "one head")
 	gtk4rt.BoxAppend(m.one, m.__n3)
 	m.__renderSlot0(m.one)
 	m.__n4 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.__n4, "one foot")
+	gtk4rt.LabelSetLabel(m.__n4, "one foot")
 	gtk4rt.BoxAppend(m.one, m.__n4)
 	m.more = gtk4rt.ButtonNew()
 	gtk4rt.ButtonSetLabel(m.more, "more")
@@ -597,11 +597,11 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelOnClosed(m.two, m.two_closed_handler)
 	gtk4rt.ToplevelOnVisible(m.two, m.two_visible_handler)
 	m.__n5 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.__n5, "two head")
+	gtk4rt.LabelSetLabel(m.__n5, "two head")
 	gtk4rt.BoxAppend(m.two, m.__n5)
 	m.__renderSlot1(m.two)
 	m.__n6 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.__n6, "two foot")
+	gtk4rt.LabelSetLabel(m.__n6, "two foot")
 	gtk4rt.BoxAppend(m.two, m.__n6)
 	m.note = gtk4rt.ButtonNew()
 	gtk4rt.ButtonSetLabel(m.note, "note")
@@ -629,4 +629,4 @@ func (m *Model) noteClick() {
 -- run/go/fyne --
 pass sha256:0325ec412450be53d52d2967b5e29f14
 -- run/go/gtk4 --
-pass sha256:92bd4d76ae1d31653e4a17bb516aea8c
+pass sha256:824aa04df9664bf7d6a343ec3ab1aaef

@@ -690,7 +690,7 @@ func (m *Model) d_daySelected_handler() {
 	} else {
 		__lt0 = "none"
 	}
-	C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(m.__n1)), C.CString(__lt0))
+	C.gtk_label_set_label((*C.GtkLabel)(unsafe.Pointer(m.__n1)), C.CString(__lt0))
 	m.changes__inst0 += 1
 	m.__effects0_settle()
 }
@@ -740,7 +740,7 @@ func (m *Model) buildWidgetTree() {
 		__lt1 = "none"
 	}
 	m.__n1 = (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
-	C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(m.__n1)), C.CString(__lt1))
+	C.gtk_label_set_label((*C.GtkLabel)(unsafe.Pointer(m.__n1)), C.CString(__lt1))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n2)), (*C.GtkWidget)(unsafe.Pointer(m.__n1)))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n0)), (*C.GtkWidget)(unsafe.Pointer(m.__n2)))
 	m.__effects0_settle()
@@ -948,7 +948,7 @@ pass sha256:ad538e920261cc371fe575c447db6768
 -- run/go/fyne --
 pass sha256:fe601aba4571496d0b2b8851461872f4
 -- run/go/gtk4 --
-pass sha256:b8ca0c289812145186e54cdce2e863e0
+pass sha256:c40a5e40b3a7e274e501124ff0eebdca
 -- run/kotlin/android --
 pass sha256:55d388f0330aff011e985b915c03281c
 -- run/none/html --

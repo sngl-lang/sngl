@@ -1721,7 +1721,7 @@ func (m *Model) __renderSlot1(parent gtk4rt.Handle) {
 			m.__slot1 = append(m.__slot1, __n6__el)
 		} else {
 			__n7 := gtk4rt.LabelNew("")
-			gtk4rt.LabelSetText(__n7, "z")
+			gtk4rt.LabelSetLabel(__n7, "z")
 			gtk4rt.InsertBefore(parent, m.__slot1_at, __n7)
 			m.__slot1 = append(m.__slot1, __n7)
 		}
@@ -1745,12 +1745,12 @@ func (m *Model) __renderSlot2(parent gtk4rt.Handle) {
 	for _, n := range m.names {
 		if n == "a" {
 			m.w = gtk4rt.LabelNew("")
-			gtk4rt.LabelSetText(m.w, n)
+			gtk4rt.LabelSetLabel(m.w, n)
 			gtk4rt.InsertBefore(parent, m.__slot2_at, m.w)
 			m.__slot2 = append(m.__slot2, m.w)
 		} else {
 			__n8 := gtk4rt.LabelNew("")
-			gtk4rt.LabelSetText(__n8, "z")
+			gtk4rt.LabelSetLabel(__n8, "z")
 			gtk4rt.InsertBefore(parent, m.__slot2_at, __n8)
 			m.__slot2 = append(m.__slot2, __n8)
 		}
@@ -1768,7 +1768,7 @@ func (m *Model) __renderSlot3(parent gtk4rt.Handle) {
 	var __inst2_i int = 0
 	for _, n := range m.names {
 		m.p = gtk4rt.LabelNew("")
-		gtk4rt.LabelSetText(m.p, n)
+		gtk4rt.LabelSetLabel(m.p, n)
 		gtk4rt.InsertBefore(parent, m.__slot3_at, m.p)
 		m.__slot3 = append(m.__slot3, m.p)
 		var __n9 *__child1Instance
@@ -1863,7 +1863,7 @@ func newStepInstance(__model *Model, __a_n int, __a___depth int) *StepInstance {
 	gtk4rt.OrientableSetOrientation(c.__n5, gtk4rt.OrientationVertical)
 	gtk4rt.BoxSetSpacing(c.__n5, 6)
 	c.__n0 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(c.__n0, ("s" + fmt.Sprint(c.__prop_n)))
+	gtk4rt.LabelSetLabel(c.__n0, ("s" + fmt.Sprint(c.__prop_n)))
 	gtk4rt.BoxAppend(c.__n5, c.__n0)
 	c.__renderSlot0(c.__n5)
 	c.Root = c.__n5
@@ -1873,7 +1873,7 @@ func newStepInstance(__model *Model, __a_n int, __a___depth int) *StepInstance {
 
 func (c *StepInstance) SetN(__v int) {
 	c.__prop_n = __v
-	gtk4rt.LabelSetText(c.__n0, ("s" + fmt.Sprint(c.__prop_n)))
+	gtk4rt.LabelSetLabel(c.__n0, ("s" + fmt.Sprint(c.__prop_n)))
 	c.__renderSlot0(c.__n5)
 }
 
@@ -1997,7 +1997,7 @@ func new__block_state0Instance(__model *Model, __a_n string, __a_skip string, __
 	c.__inst4_live = []*__child4Instance{}
 	c.__inst5_live = []*__child3Instance{}
 	__n1 := gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(__n1, fmt.Sprint(c.local))
+	gtk4rt.LabelSetLabel(__n1, fmt.Sprint(c.local))
 	gtk4rt.BoxAppend(c.__root, __n1)
 	c.__renderSlot4(c.__root)
 	c.Root = c.__root
@@ -2073,7 +2073,7 @@ func (c *__block_state0Instance) __renderSlot4(parent gtk4rt.Handle) {
 			c.__slot4 = append(c.__slot4, __n12__el)
 		} else {
 			__n13 := gtk4rt.LabelNew("")
-			gtk4rt.LabelSetText(__n13, "z")
+			gtk4rt.LabelSetLabel(__n13, "z")
 			gtk4rt.InsertBefore(parent, c.__slot4_at, __n13)
 			c.__slot4 = append(c.__slot4, __n13)
 		}
@@ -2191,7 +2191,7 @@ func new__child0Instance(__model *Model, __a___p0 string) *__child0Instance {
 	c.__slot3 = nil
 	c.__slot4 = nil
 	c.one = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(c.one, c.__prop___p0)
+	gtk4rt.LabelSetLabel(c.one, c.__prop___p0)
 	c.Root = c.one
 	gtk4rt.Retain(c.Root)
 	return c
@@ -2199,7 +2199,7 @@ func new__child0Instance(__model *Model, __a___p0 string) *__child0Instance {
 
 func (c *__child0Instance) Set__p0(__v string) {
 	c.__prop___p0 = __v
-	gtk4rt.LabelSetText(c.one, c.__prop___p0)
+	gtk4rt.LabelSetLabel(c.one, c.__prop___p0)
 }
 
 func (c *__child0Instance) Destroy() {
@@ -2341,7 +2341,7 @@ func new__child2Instance(__model *Model, __a___p0 string) *__child2Instance {
 	c.__slot3 = nil
 	c.__slot4 = nil
 	c.__n3 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(c.__n3, c.__prop___p0)
+	gtk4rt.LabelSetLabel(c.__n3, c.__prop___p0)
 	c.Root = c.__n3
 	gtk4rt.Retain(c.Root)
 	return c
@@ -2349,7 +2349,7 @@ func new__child2Instance(__model *Model, __a___p0 string) *__child2Instance {
 
 func (c *__child2Instance) Set__p0(__v string) {
 	c.__prop___p0 = __v
-	gtk4rt.LabelSetText(c.__n3, c.__prop___p0)
+	gtk4rt.LabelSetLabel(c.__n3, c.__prop___p0)
 }
 
 func (c *__child2Instance) Destroy() {
@@ -2406,7 +2406,7 @@ func new__child3Instance(__model *Model, __a___p0 string, __a___p1 int) *__child
 	c.__slot3 = nil
 	c.__slot4 = nil
 	c.f = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(c.f, (c.__prop___p0 + fmt.Sprint(c.__prop___p1)))
+	gtk4rt.LabelSetLabel(c.f, (c.__prop___p0 + fmt.Sprint(c.__prop___p1)))
 	c.Root = c.f
 	gtk4rt.Retain(c.Root)
 	return c
@@ -2414,12 +2414,12 @@ func new__child3Instance(__model *Model, __a___p0 string, __a___p1 int) *__child
 
 func (c *__child3Instance) Set__p0(__v string) {
 	c.__prop___p0 = __v
-	gtk4rt.LabelSetText(c.f, (c.__prop___p0 + fmt.Sprint(c.__prop___p1)))
+	gtk4rt.LabelSetLabel(c.f, (c.__prop___p0 + fmt.Sprint(c.__prop___p1)))
 }
 
 func (c *__child3Instance) Set__p1(__v int) {
 	c.__prop___p1 = __v
-	gtk4rt.LabelSetText(c.f, (c.__prop___p0 + fmt.Sprint(c.__prop___p1)))
+	gtk4rt.LabelSetLabel(c.f, (c.__prop___p0 + fmt.Sprint(c.__prop___p1)))
 }
 
 func (c *__child3Instance) Destroy() {
@@ -2474,7 +2474,7 @@ func new__child4Instance(__model *Model, __a___p0 string) *__child4Instance {
 	c.__slot3 = nil
 	c.__slot4 = nil
 	c.e = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(c.e, c.__prop___p0)
+	gtk4rt.LabelSetLabel(c.e, c.__prop___p0)
 	c.Root = c.e
 	gtk4rt.Retain(c.Root)
 	return c
@@ -2482,7 +2482,7 @@ func new__child4Instance(__model *Model, __a___p0 string) *__child4Instance {
 
 func (c *__child4Instance) Set__p0(__v string) {
 	c.__prop___p0 = __v
-	gtk4rt.LabelSetText(c.e, c.__prop___p0)
+	gtk4rt.LabelSetLabel(c.e, c.__prop___p0)
 }
 
 func (c *__child4Instance) Destroy() {
@@ -2565,7 +2565,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.BoxAppend(m.__n10, m.hide)
 	m.__renderSlot1(m.__n10)
 	__n16 := gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(__n16, m.shout__inst0())
+	gtk4rt.LabelSetLabel(__n16, m.shout__inst0())
 	gtk4rt.BoxAppend(m.__n10, __n16)
 	r := newStepInstance(m, m.depth, 0)
 	r__el := r.Root
@@ -3650,7 +3650,7 @@ pass sha256:41b95f2cf9fab5f5ea05e4871f5ec2aa
 -- run/go/fyne --
 pass sha256:e7a0c47beb4bd77bff710e748d90cb3b
 -- run/go/gtk4 --
-pass sha256:0c85990f5bc79621f105a30a8f58859f
+pass sha256:cb5030a7b26d9cf4524504c003d7db3e
 -- run/kotlin/android --
 pass sha256:a0d2754faa2a533d366e3b21df86758f
 -- run/none/html --

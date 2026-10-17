@@ -717,19 +717,19 @@ func (m *Model) __renderSlot1(parent gtk4rt.Handle) {
 		if k == m.idx {
 			if t.__id == 0 {
 				__n2 := gtk4rt.LabelNew("")
-				gtk4rt.LabelSetText(__n2, "Overview content")
+				gtk4rt.LabelSetLabel(__n2, "Overview content")
 				gtk4rt.InsertBefore(parent, m.__slot1_at, __n2)
 				m.__slot1 = append(m.__slot1, __n2)
 			} else {
 				if t.__id == 1 {
 					__n3 := gtk4rt.LabelNew("")
-					gtk4rt.LabelSetText(__n3, "Detail content")
+					gtk4rt.LabelSetLabel(__n3, "Detail content")
 					gtk4rt.InsertBefore(parent, m.__slot1_at, __n3)
 					m.__slot1 = append(m.__slot1, __n3)
 				} else {
 					if t.__id == 2 {
 						__n4 := gtk4rt.LabelNew("")
-						gtk4rt.LabelSetText(__n4, "Settings content")
+						gtk4rt.LabelSetLabel(__n4, "Settings content")
 						gtk4rt.InsertBefore(parent, m.__slot1_at, __n4)
 						m.__slot1 = append(m.__slot1, __n4)
 					}
@@ -1215,7 +1215,7 @@ pass sha256:440f71bab44e313d99019b4493bee3d2
 -- run/go/fyne --
 pass sha256:1dfc6033a56c43fa2e732b715b4cf180
 -- run/go/gtk4 --
-pass sha256:c95d7782724c207421aa70000189cfe3
+pass sha256:c6a68c7e93065306cea03c8f6b131eb8
 -- run/kotlin/android --
 pass sha256:225a36a54547a35ba9dcf3b85ffb4903
 -- run/none/html --

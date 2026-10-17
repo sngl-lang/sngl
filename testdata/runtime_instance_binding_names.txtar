@@ -1295,10 +1295,10 @@ func newFrame__slot6Instance(__model *Model, __a_result int, __a_m string, __a__
 	gtk4rt.OrientableSetOrientation(c.__n16, gtk4rt.OrientationVertical)
 	gtk4rt.BoxSetSpacing(c.__n16, 6)
 	c.__n0 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(c.__n0, c.__prop_m)
+	gtk4rt.LabelSetLabel(c.__n0, c.__prop_m)
 	gtk4rt.BoxAppend(c.__n16, c.__n0)
 	c.__n1 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(c.__n1, ((("in " + fmt.Sprint(c.__prop_result)) + " ") + c.__prop___p0))
+	gtk4rt.LabelSetLabel(c.__n1, ((("in " + fmt.Sprint(c.__prop_result)) + " ") + c.__prop___p0))
 	gtk4rt.BoxAppend(c.__n16, c.__n1)
 	c.__renderSlot0(c.__n16)
 	c.Root = c.__n16
@@ -1308,13 +1308,13 @@ func newFrame__slot6Instance(__model *Model, __a_result int, __a_m string, __a__
 
 func (c *Frame__slot6Instance) SetResult(__v int) {
 	c.__prop_result = __v
-	gtk4rt.LabelSetText(c.__n1, ((("in " + fmt.Sprint(c.__prop_result)) + " ") + c.__prop___p0))
+	gtk4rt.LabelSetLabel(c.__n1, ((("in " + fmt.Sprint(c.__prop_result)) + " ") + c.__prop___p0))
 	c.__renderSlot0(c.__n16)
 }
 
 func (c *Frame__slot6Instance) SetM(__v string) {
 	c.__prop_m = __v
-	gtk4rt.LabelSetText(c.__n0, c.__prop_m)
+	gtk4rt.LabelSetLabel(c.__n0, c.__prop_m)
 	for __inst0_live_ui, _ := range c.__inst0_live {
 		c.__inst0_live[__inst0_live_ui].SetM(c.__prop_m)
 	}
@@ -1327,7 +1327,7 @@ func (c *Frame__slot6Instance) Set__depth(__v int) {
 
 func (c *Frame__slot6Instance) Set__p0(__v string) {
 	c.__prop___p0 = __v
-	gtk4rt.LabelSetText(c.__n1, ((("in " + fmt.Sprint(c.__prop_result)) + " ") + c.__prop___p0))
+	gtk4rt.LabelSetLabel(c.__n1, ((("in " + fmt.Sprint(c.__prop_result)) + " ") + c.__prop___p0))
 	for __inst0_live_ui, _ := range c.__inst0_live {
 		c.__inst0_live[__inst0_live_ui].Set__p0(c.__prop___p0)
 	}
@@ -1455,10 +1455,10 @@ func newFrame__slot5Instance(__model *Model, __a_result int, __a_m string, __a__
 	gtk4rt.OrientableSetOrientation(c.__n18, gtk4rt.OrientationVertical)
 	gtk4rt.BoxSetSpacing(c.__n18, 6)
 	c.__n2 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(c.__n2, c.__prop_m)
+	gtk4rt.LabelSetLabel(c.__n2, c.__prop_m)
 	gtk4rt.BoxAppend(c.__n18, c.__n2)
 	c.__n3 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(c.__n3, ((("r " + fmt.Sprint(c.__prop_result)) + " ") + c.__prop___p0))
+	gtk4rt.LabelSetLabel(c.__n3, ((("r " + fmt.Sprint(c.__prop_result)) + " ") + c.__prop___p0))
 	gtk4rt.BoxAppend(c.__n18, c.__n3)
 	c.__renderSlot1(c.__n18)
 	c.Root = c.__n18
@@ -1468,13 +1468,13 @@ func newFrame__slot5Instance(__model *Model, __a_result int, __a_m string, __a__
 
 func (c *Frame__slot5Instance) SetResult(__v int) {
 	c.__prop_result = __v
-	gtk4rt.LabelSetText(c.__n3, ((("r " + fmt.Sprint(c.__prop_result)) + " ") + c.__prop___p0))
+	gtk4rt.LabelSetLabel(c.__n3, ((("r " + fmt.Sprint(c.__prop_result)) + " ") + c.__prop___p0))
 	c.__renderSlot1(c.__n18)
 }
 
 func (c *Frame__slot5Instance) SetM(__v string) {
 	c.__prop_m = __v
-	gtk4rt.LabelSetText(c.__n2, c.__prop_m)
+	gtk4rt.LabelSetLabel(c.__n2, c.__prop_m)
 	for __inst1_live_ui, _ := range c.__inst1_live {
 		c.__inst1_live[__inst1_live_ui].SetM(c.__prop_m)
 	}
@@ -1487,7 +1487,7 @@ func (c *Frame__slot5Instance) Set__depth(__v int) {
 
 func (c *Frame__slot5Instance) Set__p0(__v string) {
 	c.__prop___p0 = __v
-	gtk4rt.LabelSetText(c.__n3, ((("r " + fmt.Sprint(c.__prop_result)) + " ") + c.__prop___p0))
+	gtk4rt.LabelSetLabel(c.__n3, ((("r " + fmt.Sprint(c.__prop_result)) + " ") + c.__prop___p0))
 	for __inst1_live_ui, _ := range c.__inst1_live {
 		c.__inst1_live[__inst1_live_ui].Set__p0(c.__prop___p0)
 	}
@@ -1615,10 +1615,10 @@ func newFrame__slot4Instance(__model *Model, __a_result int, __a_m string, __a__
 	gtk4rt.OrientableSetOrientation(c.__n20, gtk4rt.OrientationVertical)
 	gtk4rt.BoxSetSpacing(c.__n20, 6)
 	c.__n4 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(c.__n4, c.__prop_m)
+	gtk4rt.LabelSetLabel(c.__n4, c.__prop_m)
 	gtk4rt.BoxAppend(c.__n20, c.__n4)
 	c.__n5 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(c.__n5, ((("level " + fmt.Sprint(c.__prop_result)) + " ") + c.__prop___p0))
+	gtk4rt.LabelSetLabel(c.__n5, ((("level " + fmt.Sprint(c.__prop_result)) + " ") + c.__prop___p0))
 	gtk4rt.BoxAppend(c.__n20, c.__n5)
 	c.__renderSlot2(c.__n20)
 	c.Root = c.__n20
@@ -1628,13 +1628,13 @@ func newFrame__slot4Instance(__model *Model, __a_result int, __a_m string, __a__
 
 func (c *Frame__slot4Instance) SetResult(__v int) {
 	c.__prop_result = __v
-	gtk4rt.LabelSetText(c.__n5, ((("level " + fmt.Sprint(c.__prop_result)) + " ") + c.__prop___p0))
+	gtk4rt.LabelSetLabel(c.__n5, ((("level " + fmt.Sprint(c.__prop_result)) + " ") + c.__prop___p0))
 	c.__renderSlot2(c.__n20)
 }
 
 func (c *Frame__slot4Instance) SetM(__v string) {
 	c.__prop_m = __v
-	gtk4rt.LabelSetText(c.__n4, c.__prop_m)
+	gtk4rt.LabelSetLabel(c.__n4, c.__prop_m)
 	for __inst2_live_ui, _ := range c.__inst2_live {
 		c.__inst2_live[__inst2_live_ui].SetM(c.__prop_m)
 	}
@@ -1647,7 +1647,7 @@ func (c *Frame__slot4Instance) Set__depth(__v int) {
 
 func (c *Frame__slot4Instance) Set__p0(__v string) {
 	c.__prop___p0 = __v
-	gtk4rt.LabelSetText(c.__n5, ((("level " + fmt.Sprint(c.__prop_result)) + " ") + c.__prop___p0))
+	gtk4rt.LabelSetLabel(c.__n5, ((("level " + fmt.Sprint(c.__prop_result)) + " ") + c.__prop___p0))
 	for __inst2_live_ui, _ := range c.__inst2_live {
 		c.__inst2_live[__inst2_live_ui].Set__p0(c.__prop___p0)
 	}
@@ -1775,10 +1775,10 @@ func newFrame__slot2Instance(__model *Model, __a_result int, __a_m string, __a__
 	gtk4rt.OrientableSetOrientation(c.__n22, gtk4rt.OrientationVertical)
 	gtk4rt.BoxSetSpacing(c.__n22, 6)
 	c.__n6 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(c.__n6, c.__prop_m)
+	gtk4rt.LabelSetLabel(c.__n6, c.__prop_m)
 	gtk4rt.BoxAppend(c.__n22, c.__n6)
 	c.__n7 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(c.__n7, ((("in " + fmt.Sprint(c.__prop_result)) + " ") + c.__prop___p0))
+	gtk4rt.LabelSetLabel(c.__n7, ((("in " + fmt.Sprint(c.__prop_result)) + " ") + c.__prop___p0))
 	gtk4rt.BoxAppend(c.__n22, c.__n7)
 	c.__renderSlot3(c.__n22)
 	c.Root = c.__n22
@@ -1788,13 +1788,13 @@ func newFrame__slot2Instance(__model *Model, __a_result int, __a_m string, __a__
 
 func (c *Frame__slot2Instance) SetResult(__v int) {
 	c.__prop_result = __v
-	gtk4rt.LabelSetText(c.__n7, ((("in " + fmt.Sprint(c.__prop_result)) + " ") + c.__prop___p0))
+	gtk4rt.LabelSetLabel(c.__n7, ((("in " + fmt.Sprint(c.__prop_result)) + " ") + c.__prop___p0))
 	c.__renderSlot3(c.__n22)
 }
 
 func (c *Frame__slot2Instance) SetM(__v string) {
 	c.__prop_m = __v
-	gtk4rt.LabelSetText(c.__n6, c.__prop_m)
+	gtk4rt.LabelSetLabel(c.__n6, c.__prop_m)
 	for __inst3_live_ui, _ := range c.__inst3_live {
 		c.__inst3_live[__inst3_live_ui].SetM(c.__prop_m)
 	}
@@ -1807,7 +1807,7 @@ func (c *Frame__slot2Instance) Set__depth(__v int) {
 
 func (c *Frame__slot2Instance) Set__p0(__v string) {
 	c.__prop___p0 = __v
-	gtk4rt.LabelSetText(c.__n7, ((("in " + fmt.Sprint(c.__prop_result)) + " ") + c.__prop___p0))
+	gtk4rt.LabelSetLabel(c.__n7, ((("in " + fmt.Sprint(c.__prop_result)) + " ") + c.__prop___p0))
 	for __inst3_live_ui, _ := range c.__inst3_live {
 		c.__inst3_live[__inst3_live_ui].Set__p0(c.__prop___p0)
 	}
@@ -1935,10 +1935,10 @@ func newFrame__slot1Instance(__model *Model, __a_result int, __a_m string, __a__
 	gtk4rt.OrientableSetOrientation(c.__n24, gtk4rt.OrientationVertical)
 	gtk4rt.BoxSetSpacing(c.__n24, 6)
 	c.__n8 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(c.__n8, c.__prop_m)
+	gtk4rt.LabelSetLabel(c.__n8, c.__prop_m)
 	gtk4rt.BoxAppend(c.__n24, c.__n8)
 	c.__n9 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(c.__n9, ((("r " + fmt.Sprint(c.__prop_result)) + " ") + c.__prop___p0))
+	gtk4rt.LabelSetLabel(c.__n9, ((("r " + fmt.Sprint(c.__prop_result)) + " ") + c.__prop___p0))
 	gtk4rt.BoxAppend(c.__n24, c.__n9)
 	c.__renderSlot4(c.__n24)
 	c.Root = c.__n24
@@ -1948,13 +1948,13 @@ func newFrame__slot1Instance(__model *Model, __a_result int, __a_m string, __a__
 
 func (c *Frame__slot1Instance) SetResult(__v int) {
 	c.__prop_result = __v
-	gtk4rt.LabelSetText(c.__n9, ((("r " + fmt.Sprint(c.__prop_result)) + " ") + c.__prop___p0))
+	gtk4rt.LabelSetLabel(c.__n9, ((("r " + fmt.Sprint(c.__prop_result)) + " ") + c.__prop___p0))
 	c.__renderSlot4(c.__n24)
 }
 
 func (c *Frame__slot1Instance) SetM(__v string) {
 	c.__prop_m = __v
-	gtk4rt.LabelSetText(c.__n8, c.__prop_m)
+	gtk4rt.LabelSetLabel(c.__n8, c.__prop_m)
 	for __inst4_live_ui, _ := range c.__inst4_live {
 		c.__inst4_live[__inst4_live_ui].SetM(c.__prop_m)
 	}
@@ -1967,7 +1967,7 @@ func (c *Frame__slot1Instance) Set__depth(__v int) {
 
 func (c *Frame__slot1Instance) Set__p0(__v string) {
 	c.__prop___p0 = __v
-	gtk4rt.LabelSetText(c.__n9, ((("r " + fmt.Sprint(c.__prop_result)) + " ") + c.__prop___p0))
+	gtk4rt.LabelSetLabel(c.__n9, ((("r " + fmt.Sprint(c.__prop_result)) + " ") + c.__prop___p0))
 	for __inst4_live_ui, _ := range c.__inst4_live {
 		c.__inst4_live[__inst4_live_ui].Set__p0(c.__prop___p0)
 	}
@@ -2095,10 +2095,10 @@ func newFrame__slot0Instance(__model *Model, __a_result int, __a_m string, __a__
 	gtk4rt.OrientableSetOrientation(c.__n26, gtk4rt.OrientationVertical)
 	gtk4rt.BoxSetSpacing(c.__n26, 6)
 	c.__n10 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(c.__n10, c.__prop_m)
+	gtk4rt.LabelSetLabel(c.__n10, c.__prop_m)
 	gtk4rt.BoxAppend(c.__n26, c.__n10)
 	c.__n11 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(c.__n11, ((("level " + fmt.Sprint(c.__prop_result)) + " ") + c.__prop___p0))
+	gtk4rt.LabelSetLabel(c.__n11, ((("level " + fmt.Sprint(c.__prop_result)) + " ") + c.__prop___p0))
 	gtk4rt.BoxAppend(c.__n26, c.__n11)
 	c.__renderSlot5(c.__n26)
 	c.Root = c.__n26
@@ -2108,13 +2108,13 @@ func newFrame__slot0Instance(__model *Model, __a_result int, __a_m string, __a__
 
 func (c *Frame__slot0Instance) SetResult(__v int) {
 	c.__prop_result = __v
-	gtk4rt.LabelSetText(c.__n11, ((("level " + fmt.Sprint(c.__prop_result)) + " ") + c.__prop___p0))
+	gtk4rt.LabelSetLabel(c.__n11, ((("level " + fmt.Sprint(c.__prop_result)) + " ") + c.__prop___p0))
 	c.__renderSlot5(c.__n26)
 }
 
 func (c *Frame__slot0Instance) SetM(__v string) {
 	c.__prop_m = __v
-	gtk4rt.LabelSetText(c.__n10, c.__prop_m)
+	gtk4rt.LabelSetLabel(c.__n10, c.__prop_m)
 	for __inst5_live_ui, _ := range c.__inst5_live {
 		c.__inst5_live[__inst5_live_ui].SetM(c.__prop_m)
 	}
@@ -2127,7 +2127,7 @@ func (c *Frame__slot0Instance) Set__depth(__v int) {
 
 func (c *Frame__slot0Instance) Set__p0(__v string) {
 	c.__prop___p0 = __v
-	gtk4rt.LabelSetText(c.__n11, ((("level " + fmt.Sprint(c.__prop_result)) + " ") + c.__prop___p0))
+	gtk4rt.LabelSetLabel(c.__n11, ((("level " + fmt.Sprint(c.__prop_result)) + " ") + c.__prop___p0))
 	for __inst5_live_ui, _ := range c.__inst5_live {
 		c.__inst5_live[__inst5_live_ui].Set__p0(c.__prop___p0)
 	}
@@ -3157,7 +3157,7 @@ pass sha256:547c0374403b4b2e5b3d56c5be882832
 -- run/go/fyne --
 pass sha256:0527d5d1368d047cb32c086f0753cd73
 -- run/go/gtk4 --
-pass sha256:34e4971051a81206c3140b1e0316de52
+pass sha256:243098f69503977c27f966426bb381fd
 -- run/kotlin/android --
 pass sha256:c005defb7c3e2207e03b76a638955650
 -- run/none/html --

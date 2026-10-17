@@ -465,10 +465,10 @@ func (m *Model) bad_clicked_handler() {
 		e := ErrorEvent{Message: __err.Error()}
 		_ = e
 		m.caught = e.Message
-		gtk4rt.LabelSetText(m.__n0, ((m.caught + "|") + m.after))
+		gtk4rt.LabelSetLabel(m.__n0, ((m.caught + "|") + m.after))
 	}
 	m.after = (m.after + "b")
-	gtk4rt.LabelSetText(m.__n0, ((m.caught + "|") + m.after))
+	gtk4rt.LabelSetLabel(m.__n0, ((m.caught + "|") + m.after))
 }
 
 func (m *Model) good_clicked_handler() {
@@ -476,10 +476,10 @@ func (m *Model) good_clicked_handler() {
 		e := ErrorEvent{Message: __err.Error()}
 		_ = e
 		m.caught = "never"
-		gtk4rt.LabelSetText(m.__n0, ((m.caught + "|") + m.after))
+		gtk4rt.LabelSetLabel(m.__n0, ((m.caught + "|") + m.after))
 	}
 	m.after = (m.after + "g")
-	gtk4rt.LabelSetText(m.__n0, ((m.caught + "|") + m.after))
+	gtk4rt.LabelSetLabel(m.__n0, ((m.caught + "|") + m.after))
 }
 
 func (m *Model) Caught() string {
@@ -510,7 +510,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ButtonSetLabel(m.good, "Good")
 	gtk4rt.Connect(m.good, "clicked", m.good_clicked_handler)
 	m.__n0 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.__n0, ((m.caught + "|") + m.after))
+	gtk4rt.LabelSetLabel(m.__n0, ((m.caught + "|") + m.after))
 	gtk4rt.BoxAppend(m.__root, m.bad)
 	gtk4rt.BoxAppend(m.__root, m.good)
 	gtk4rt.BoxAppend(m.__root, m.__n0)
@@ -539,4 +539,4 @@ pass sha256:e2318c5d1a93e67f0ad09d9e850d5cd5
 -- run/go/fyne --
 pass sha256:fcab6d3387f571e63ded96227a7f36d3
 -- run/go/gtk4 --
-pass sha256:30bf878b07840f43e005275c7656d21e
+pass sha256:7733d64eec2f0f8c13452e5d395d91bb

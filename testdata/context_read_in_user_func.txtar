@@ -1254,12 +1254,12 @@ func (m *Model) __effects0_settle() {
 
 func (m *Model) tap_clicked_handler() {
 	m.clicked = "d5"
-	gtk4rt.LabelSetText(m.__n1, ((m.clicked + " ") + m.provided))
+	gtk4rt.LabelSetLabel(m.__n1, ((m.clicked + " ") + m.provided))
 }
 
 func (m *Model) wrap_clicked_handler() {
 	m.provided = "d7"
-	gtk4rt.LabelSetText(m.__n1, ((m.clicked + " ") + m.provided))
+	gtk4rt.LabelSetLabel(m.__n1, ((m.clicked + " ") + m.provided))
 }
 
 func (m *Model) Plain() string {
@@ -1356,9 +1356,9 @@ func (m *Model) buildWidgetTree() {
 	}
 	m.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
 	__n2 := gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(__n2, "d9")
+	gtk4rt.LabelSetLabel(__n2, "d9")
 	__n3 := gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(__n3, "d5")
+	gtk4rt.LabelSetLabel(__n3, "d5")
 	m.tap = gtk4rt.ButtonNew()
 	gtk4rt.ButtonSetLabel(m.tap, "tap")
 	gtk4rt.Connect(m.tap, "clicked", m.tap_clicked_handler)
@@ -1366,9 +1366,9 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ButtonSetLabel(m.wrap, "wrap")
 	gtk4rt.Connect(m.wrap, "clicked", m.wrap_clicked_handler)
 	__n0 := gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(__n0, ("d" + fmt.Sprint(m.__ctx_depth)))
+	gtk4rt.LabelSetLabel(__n0, ("d" + fmt.Sprint(m.__ctx_depth)))
 	m.__n1 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.__n1, ((m.clicked + " ") + m.provided))
+	gtk4rt.LabelSetLabel(m.__n1, ((m.clicked + " ") + m.provided))
 	m.__effects0_settle()
 	gtk4rt.BoxAppend(m.__root, __n2)
 	gtk4rt.BoxAppend(m.__root, __n3)
@@ -1748,7 +1748,7 @@ pass sha256:805321ab5daa372a4c154b0739740407
 -- run/go/fyne --
 pass sha256:5105e2632777986fd627a231aaf0b398
 -- run/go/gtk4 --
-pass sha256:9a04e7b97a36402f1adfa0a61d550224
+pass sha256:a5c865e031bbe53576d2964c2041f8f3
 -- run/go/html --
 pass sha256:5b263799f0cd213bc80663b6f8faa85c
 -- run/kotlin/android --
