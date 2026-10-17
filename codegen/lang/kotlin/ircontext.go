@@ -121,6 +121,10 @@ type KtIRContext struct {
 	// called it. Matched by symbol: IdentRewrites skips parameters.
 	receiver *ir.Param
 	imports  *ktImportSet
+	// returnTo is the label of the lambda a `return` in this scope leaves:
+	// a bare return in a Kotlin lambda would return from the function the
+	// lambda is written in, which Kotlin refuses for one not inlined.
+	returnTo string
 }
 
 // NewIRContext creates a KtIRContext from a codegen ExprCtx.
@@ -633,10 +637,14 @@ func (kc *KtIRContext) LocalVarText(n *ir.LocalVar, initStr string) string {
 	return "var " + n.Name + ": " + goType
 }
 func (kc *KtIRContext) ReturnText(n *ir.Return, valueStr string) string {
-	if n.Value != nil {
-		return "return " + valueStr
+	ret := "return"
+	if kc.returnTo != "" {
+		ret += "@" + kc.returnTo
 	}
-	return "return"
+	if n.Value != nil {
+		return ret + " " + valueStr
+	}
+	return ret
 }
 
 func (kc *KtIRContext) ForHead(n *ir.For, iter string) string {
@@ -1381,14 +1389,38 @@ func (kc *KtIRContext) evalLambda(n *ir.Lambda) string {
 		}
 	}
 	var b strings.Builder
+	body := kc
+	if LambdaReturns(n.Func.Block) {
+		inner := *kc
+		inner.returnTo = kc.returnTo + "fn"
+		body = &inner
+		b.WriteString(body.returnTo + "@")
+	}
 	b.WriteString("{ " + strings.Join(params, ", ") + " ->\n")
 	for _, stmt := range n.Func.Block {
-		for _, line := range kc.EvalStmt(stmt) {
+		for _, line := range body.EvalStmt(stmt) {
 			b.WriteString("    " + line + "\n")
 		}
 	}
 	b.WriteString("}")
 	return b.String()
+}
+
+// LambdaReturns reports whether a lambda's body returns, outside a lambda of
+// its own.
+func LambdaReturns(stmts []ir.Stmt) bool {
+	found := false
+	_ = ir.Walk(stmts, func(n ir.Node) error {
+		switch n.(type) {
+		case *ir.Lambda:
+			return ir.SkipDir
+		case *ir.Return:
+			found = true
+			return ir.SkipAll
+		}
+		return nil
+	})
+	return found
 }
 
 func (kc *KtIRContext) evalCallArgs(args []ir.CallArg) []string {
@@ -1407,6 +1439,7 @@ func (kc *KtIRContext) WithLocal(name string) *KtIRContext {
 		IdentRewrites: kc.IdentRewrites,
 		receiver:      kc.receiver,
 		imports:       kc.imports,
+		returnTo:      kc.returnTo,
 	}
 }
 

@@ -733,6 +733,10 @@ func (env *Env) execCatch(s *ir.If) error {
 // was; the node's `#id` is bound to what the last mount showed (bindHandle),
 // and a handler about to run reads it before the next mount does, so it is
 // written there too.
+// WriteBound is writeBound for a write made through the instance from
+// outside its body: a method a test calls on it, handed it as its receiver.
+func (env *Env) WriteBound(sym ir.Symbol, val any) error { return env.writeBound(sym, val) }
+
 func (env *Env) writeBound(sym ir.Symbol, val any) error {
 	if env.inst == nil || env.Comp == nil || env.parent == nil {
 		return nil

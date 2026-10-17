@@ -3,6 +3,7 @@ package html
 import (
 	"context"
 	"fmt"
+	"maps"
 	"slices"
 	"strings"
 
@@ -255,6 +256,15 @@ func (g *htmlGen) emitComponentFactory(b *strings.Builder, comp *ir.Component) {
 		fmt.Fprintf(b, "\tlet %s = %s;\n", v.Name, init)
 	}
 
+	// What the factory creates is its own, in every function it declares as
+	// well as its body: a setter or a slot renderer naming the factory's `t`
+	// means that one and not an element of the page writing a `#t`.
+	own := codegen.CreatedIDs(comp.Stmts)
+	for _, fn := range comp.Funcs {
+		if fn != nil {
+			maps.Copy(own, codegen.CreatedIDs(fn.Block))
+		}
+	}
 	// Function declarations hoist, so the setters and slot renderers may be
 	// written before the body that calls them without a dead-zone read.
 	for _, fn := range comp.Funcs {
@@ -262,6 +272,7 @@ func (g *htmlGen) emitComponentFactory(b *strings.Builder, comp *ir.Component) {
 			continue
 		}
 		tr := g.newHTMLTranslator(jc)
+		tr.own = maps.Clone(own)
 		params := fn.Params
 		if len(params) > 0 && params[0].Receiver {
 			params = params[1:]
@@ -286,6 +297,7 @@ func (g *htmlGen) emitComponentFactory(b *strings.Builder, comp *ir.Component) {
 			continue
 		}
 		dtr := g.newHTMLTranslator(jc)
+		dtr.own = maps.Clone(own)
 		drawn := &ir.Func{
 			Name:   cv.Name,
 			Params: []*ir.Param{{Name: "ctx", Type: drawCtxType(cv.Draw)}},
@@ -297,6 +309,7 @@ func (g *htmlGen) emitComponentFactory(b *strings.Builder, comp *ir.Component) {
 	}
 
 	tr := g.newHTMLTranslator(jc)
+	tr.own = maps.Clone(own)
 	body := codegen.WalkLowered(context.Background(), comp.Stmts, tr)
 	topLevel := make(map[string]bool, len(tr.topLevel))
 	for _, id := range tr.topLevel {
@@ -462,7 +475,7 @@ func (g *htmlGen) emitStaticInstances(b *strings.Builder) {
 			if p.Name == "" {
 				continue
 			}
-			fields = append(fields, fmt.Sprintf("%s: %s", p.Name, g.exprToJS(p.Value)))
+			fields = append(fields, fmt.Sprintf("%s: %s", p.Name, g.instancePropJS(p.Value)))
 		}
 		// The anchor is bound rather than used inline because the position
 		// outlives the instance: a #[construct] prop written from state
@@ -487,6 +500,29 @@ func (g *htmlGen) emitStaticInstances(b *strings.Builder) {
 	if len(g.staticInsts) > 0 {
 		b.WriteString("\n")
 	}
+}
+
+// instancePropJS is a static instance's prop value as the page script
+// writes it. A handler it is handed is lowered as the page's own handlers
+// are, so a patch in it writes the page's element by the variable it was
+// emitted as rather than by the `#id` the lowering named it by.
+func (g *htmlGen) instancePropJS(v ir.Expr) string {
+	lam, ok := v.(*ir.Lambda)
+	if !ok || lam.Func == nil {
+		return g.exprToJS(v)
+	}
+	jc := g.scopedJC()
+	for _, p := range lam.Func.Params {
+		jc = jc.WithLocal(p.Name)
+	}
+	fn := *lam.Func
+	fn.Block = codegen.WalkLowered(context.Background(), lam.Func.Block, g.newHTMLTranslator(jc))
+	for _, s := range fn.Block {
+		g.collectLoweredRefs(s)
+	}
+	cp := *lam
+	cp.Func = &fn
+	return jc.EvalExpr(&cp)
 }
 
 // isStaticInstanceID reports whether id names a static instance or the

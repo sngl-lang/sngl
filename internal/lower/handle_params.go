@@ -50,7 +50,12 @@ func lowerHandleParams(pkg *ir.Package, _ Features, _ Options) error {
 	if len(nodes) == 0 {
 		return nil
 	}
-	st := &handleParams{nodes: nodes, writes: map[*ir.Func]map[*ir.Param]bool{}}
+	st := &handleParams{nodes: nodes, writes: map[*ir.Func]map[*ir.Param]bool{}, tests: map[*ir.Param]bool{}}
+	for _, fn := range pkg.Funcs {
+		if fn != nil && fn.IsTest && len(fn.Params) > 1 {
+			st.tests[fn.Params[1]] = true
+		}
+	}
 	err := ir.Rewrite(pkg, func(n ir.Node) (ir.Node, error) {
 		switch x := n.(type) {
 		case *ir.Assign:
@@ -102,7 +107,10 @@ func (st *handleParams) boundTarget(target ir.Expr) ir.Expr {
 }
 
 type handleParams struct {
-	nodes  map[*ir.Var]*ir.NodeInst
+	nodes map[*ir.Var]*ir.NodeInst
+	// tests is each test's instance, through which a test hands a node of
+	// it as `c.b`: the handle as a test reaches it.
+	tests  map[*ir.Param]bool
 	writes map[*ir.Func]map[*ir.Param]bool
 	temps  int
 	err    error
@@ -180,6 +188,9 @@ func (st *handleParams) handsHandle(call *ir.Call) bool {
 }
 
 func (st *handleParams) handleOf(e ir.Expr) *ir.NodeInst {
+	if sel, ok := e.(*ir.Select); ok {
+		return st.testHandle(sel)
+	}
 	id, ok := e.(*ir.Ident)
 	if !ok {
 		return nil
@@ -189,6 +200,45 @@ func (st *handleParams) handleOf(e ir.Expr) *ir.NodeInst {
 		return nil
 	}
 	return st.nodes[h]
+}
+
+// testHandle is the node `c.b` names, a test's reach of a node its own
+// instance's body writes, or nil.
+func (st *handleParams) testHandle(sel *ir.Select) *ir.NodeInst {
+	id, ok := sel.Operand.(*ir.Ident)
+	if !ok || sel.Ref == ir.RefNone {
+		return nil
+	}
+	if p, ok := id.Sym.(*ir.Param); !ok || !st.tests[p] {
+		return nil
+	}
+	comp := componentOf(id)
+	if comp == nil {
+		return nil
+	}
+	n, _ := handleNode(comp.Stmts, sel.Field)
+	if n == nil || n.Handle == nil || st.nodes[n.Handle] != n {
+		return nil
+	}
+	return n
+}
+
+// boundThrough is target, a var a node's call site binds a prop to, as the
+// code handing the node reaches it: through the test's instance where arg
+// is a test's reach of the node.
+func boundThrough(target, arg ir.Expr) ir.Expr {
+	sel, ok := arg.(*ir.Select)
+	if !ok {
+		return ir.CloneExprSharingDecls(target)
+	}
+	comp := componentOf(sel.Operand)
+	if comp == nil {
+		return ir.CloneExprSharingDecls(target)
+	}
+	if out := rebaseOnInstance(ir.CloneExprSharingDecls(target), comp, sel.Operand); out != nil {
+		return out
+	}
+	return ir.CloneExprSharingDecls(target)
 }
 
 // inline is the callee's body where call is made: each parameter its
@@ -214,10 +264,12 @@ func (st *handleParams) inline(call *ir.Call) ([]ir.Stmt, bool, error) {
 	var out []ir.Stmt
 	subst := map[*ir.Param]func() ir.Expr{}
 	nodeOf := map[*ir.Param]*ir.NodeInst{}
+	argOf := map[*ir.Param]ir.Expr{}
 	for i, p := range params {
 		arg := args[i]
 		if n := st.handleOf(arg); n != nil {
 			nodeOf[p] = n
+			argOf[p] = arg
 			subst[p] = func() ir.Expr { return ir.CloneExprSharingDecls(arg) }
 			continue
 		}
@@ -244,7 +296,7 @@ func (st *handleParams) inline(call *ir.Call) ([]ir.Stmt, bool, error) {
 		}
 		for _, b := range nodeOf[p].Bindings {
 			if b.PropName == sel.Field {
-				return ir.CloneExprSharingDecls(b.Target)
+				return boundThrough(b.Target, argOf[p])
 			}
 		}
 		return nil

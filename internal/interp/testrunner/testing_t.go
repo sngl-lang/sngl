@@ -435,6 +435,10 @@ func (cv *componentValue) SetField(op ast.AssignOp, field string, val any) error
 	}
 	cv.Env.Set(sym, nv)
 	cv.Env.NoteReplace(sym)
+	// A two-way prop's cell is the var its call site bound, where it bound one.
+	if err := cv.Env.WriteBound(sym, nv); err != nil {
+		return err
+	}
 	// After the write, not before: the assignment is what the new lifetimes are
 	// keyed on, so settling first would reconcile against the old value and
 	// leave the change to whatever read came next.

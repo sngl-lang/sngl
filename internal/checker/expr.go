@@ -6227,9 +6227,6 @@ func (c *checker) refuseAmbiguousReach(x *ast.SelectExpr, comp *ir.Component, id
 // of the handler elsewhere -- into the body of the component it is a handler
 // of -- no longer has to hand. params is the parameters an event declares.
 func forwardedParams(fn *ir.Func, want []*ir.Param, params func(string) []*ir.Param) []*ir.Param {
-	if len(fn.Params) >= len(want) {
-		return fn.Params
-	}
 	var forwards []*ir.Emit
 	_ = ir.WalkStmts(fn.Block, func(s ir.Stmt) error {
 		if e, ok := s.(*ir.Emit); ok && len(e.Args) == 0 {

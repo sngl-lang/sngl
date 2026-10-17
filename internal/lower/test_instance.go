@@ -138,6 +138,9 @@ func (ti *testInstance) through(stmts []ir.Stmt, env map[ir.Symbol]ir.Expr, inli
 			return nil
 		})
 	}
+	if err := ti.refuseMovedRefLocals(stmts, aliases); err != nil {
+		fail(err)
+	}
 	if len(aliases) > 0 {
 		_ = ir.Walk(stmts, func(n ir.Node) error {
 			var target ir.Expr
@@ -207,6 +210,68 @@ func (ti *testInstance) through(stmts []ir.Stmt, env map[ir.Symbol]ir.Expr, inli
 		return nil, err
 	}
 	return out, bad
+}
+
+// refuseMovedRefLocals refuses a local holding a ref a conditional or a loop
+// wraps -- `var v = c.t`, an option or a list of the node -- read after
+// something that may change what the ref names: a trigger, an event fired,
+// a method called or a write. The local stands for the ref at every read,
+// so it reads the nodes rendered then, where the interpreter's local keeps
+// what it was handed.
+func (ti *testInstance) refuseMovedRefLocals(stmts []ir.Stmt, aliases map[*ir.LocalVar]bool) error {
+	wrapped := map[ir.Symbol]*ir.LocalVar{}
+	for lv := range aliases {
+		if t := lv.Init.ExprType(); t != nil && (t.Kind == ir.TypeOption || t.Kind == ir.TypeList) {
+			wrapped[lv.Sym] = lv
+		}
+	}
+	if len(wrapped) == 0 {
+		return nil
+	}
+	declared := map[ir.Symbol]bool{}
+	moved := map[ir.Symbol]bool{}
+	var bad error
+	_ = ir.Walk(stmts, func(n ir.Node) error {
+		if bad != nil {
+			return ir.SkipAll
+		}
+		switch x := n.(type) {
+		case *ir.LocalVar:
+			if wrapped[x.Sym] != nil {
+				declared[x.Sym] = true
+				moved[x.Sym] = false
+			}
+		case *ir.Ident:
+			if lv := wrapped[x.Sym]; lv != nil && moved[x.Sym] {
+				bad = fmt.Errorf("%s: `%s` holds a ref read when it was declared, and a trigger, a call or a write since may have changed which nodes it names; read the ref again where it is wanted", identPos(x), lv.Name)
+			}
+		case *ir.Assign:
+			if ti.rooted(x.Target) {
+				ti.moveAll(declared, moved)
+			}
+		case *ir.Toggle:
+			if ti.rooted(x.Target) {
+				ti.moveAll(declared, moved)
+			}
+		case *ir.Call:
+			recv := x.Receiver
+			if recv == nil && x.Func != nil && len(x.Func.Params) > 0 && x.Func.Params[0].Receiver && len(x.Args) > 0 {
+				recv = x.Args[0].Value
+			}
+			if recv != nil && ti.rooted(recv) {
+				ti.moveAll(declared, moved)
+			}
+		}
+		return nil
+	})
+	return bad
+}
+
+// moveAll marks every declared ref local as possibly stale.
+func (ti *testInstance) moveAll(declared, moved map[ir.Symbol]bool) {
+	for sym := range declared {
+		moved[sym] = true
+	}
 }
 
 // handsInstance reports whether call hands the test's instance, or a

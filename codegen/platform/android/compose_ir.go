@@ -924,7 +924,9 @@ func (cc *irComposeContext) lambdaArg(name string, lam *ir.Lambda, arity int) st
 	if len(body) == 0 {
 		return name + " = {}"
 	}
-	if lam.Func.Return != nil {
+	// A `return` in a lambda would leave the composable it is written in,
+	// which Kotlin refuses; in an anonymous function it leaves the handler.
+	if lam.Func.Return != nil || kotlin.LambdaReturns(lam.Func.Block) {
 		return cc.anonFuncArg(name, lam, body)
 	}
 
@@ -964,7 +966,11 @@ func (cc *irComposeContext) anonFuncArg(name string, lam *ir.Lambda, body []stri
 	}
 	outer := strings.Repeat("    ", cc.indent)
 	var b strings.Builder
-	fmt.Fprintf(&b, "%s = fun(%s): %s {", name, strings.Join(params, ", "), kotlin.IRTypeToKt(lam.Func.Return))
+	ret := "Unit"
+	if lam.Func.Return != nil {
+		ret = kotlin.IRTypeToKt(lam.Func.Return)
+	}
+	fmt.Fprintf(&b, "%s = fun(%s): %s {", name, strings.Join(params, ", "), ret)
 	for _, line := range body {
 		b.WriteString("\n" + outer + "    " + line)
 	}

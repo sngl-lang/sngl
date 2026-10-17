@@ -2688,7 +2688,7 @@ window.__sngl_boot = () => {
     let __slot62 = [];
     function __set_label(__v) {
       __prop_label = __v;
-      $0.textContent = "[" + __prop_label + ":" + String(hits) + "]";
+      shown.textContent = "[" + __prop_label + ":" + String(hits) + "]";
     }
     function __renderSlot4(parent) {
       let __place7_prev = __slot42;
@@ -2765,7 +2765,7 @@ window.__sngl_boot = () => {
     let __slot62 = [];
     function __set_label(__v) {
       __prop_label = __v;
-      $0.textContent = "[" + __prop_label + ":" + String(hits) + "]";
+      shown.textContent = "[" + __prop_label + ":" + String(hits) + "]";
     }
     function __set___copy(__v) {
       __prop___copy = __v;
@@ -2876,7 +2876,7 @@ window.__sngl_boot = () => {
     let __slot62 = [];
     function __set_label(__v) {
       __prop_label = __v;
-      $0.textContent = "[" + __prop_label + ":" + String(hits) + "]";
+      shown.textContent = "[" + __prop_label + ":" + String(hits) + "]";
     }
     function __renderSlot6(parent) {
       let __place10_prev = __slot62;
@@ -3175,4 +3175,4 @@ pass sha256:4be82356c8c71c2ad4df06306c67293d
 -- run/kotlin/android --
 pass sha256:00fc1dd70079a28150d1abcdfe6e8a7a
 -- run/none/html --
-pass sha256:fffd2da33f39fa45649864dfbf6cc2c7
+pass sha256:716d9746647d3ec7609e7e87f4bedcc2

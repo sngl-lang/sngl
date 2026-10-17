@@ -255,3 +255,18 @@ func SlotCreatedIDs(comp *ir.Component, present map[string]bool) map[string]bool
 	}
 	return out
 }
+
+// CreatedIDs is each id a node op in root creates its node under: what a
+// scope emitted as code holds as locals of its own.
+func CreatedIDs(root any) map[string]bool {
+	out := map[string]bool{}
+	_ = ir.Walk(root, func(n ir.Node) error {
+		if lv, ok := n.(*ir.LocalVar); ok {
+			if c, ok := lv.Init.(*ir.Call); ok && c.Func != nil && c.Func.Intrinsic == ir.NodeOpCreateNode {
+				out[lv.Name] = true
+			}
+		}
+		return nil
+	})
+	return out
+}

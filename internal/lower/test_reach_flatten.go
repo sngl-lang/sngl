@@ -490,7 +490,92 @@ func (f *reachFlattener) inlineFire(at *ir.Call, inst ir.Expr, site *ir.NodeInst
 	if bad != nil {
 		return nil, bad
 	}
-	return append(decls, block...), nil
+	// A parameter the body never reads binds nothing, which Go refuses.
+	read := map[ir.Symbol]bool{}
+	_ = ir.Walk(block, func(n ir.Node) error {
+		if id, ok := n.(*ir.Ident); ok && id.Sym != nil {
+			read[id.Sym] = true
+		}
+		return nil
+	})
+	var used []ir.Stmt
+	for _, d := range decls {
+		if lv := d.(*ir.LocalVar); read[lv.Sym] {
+			used = append(used, d)
+		}
+	}
+	body := append(used, block...)
+	// The handler is a function: a `return` in it ends the handler, not the
+	// test it is written into.
+	if returns(block) {
+		done := &ir.Var{Name: f.names.next("__returned", "fire"), Type: ir.TypBool, Synthesized: true}
+		decl := &ir.LocalVar{Name: done.Name, Type: ir.TypBool, Init: &ir.Literal{Type: ir.TypBool, Value: "false"}, Sym: done}
+		body = append([]ir.Stmt{decl}, endReturns(body, done, false)...)
+	}
+	return body, nil
+}
+
+// endReturns is stmts with each `return` the flag done set instead, a loop
+// it is in left, and what follows it run only while done is unset: a
+// handler's body written into a test, where a return would end the test.
+func endReturns(stmts []ir.Stmt, done *ir.Var, inLoop bool) []ir.Stmt {
+	flag := func() *ir.Ident { return &ir.Ident{Name: done.Name, Type: ir.TypBool, Sym: done} }
+	var out []ir.Stmt
+	for i, s := range stmts {
+		switch x := s.(type) {
+		case *ir.Return:
+			out = append(out, &ir.Assign{Target: flag(), Op: ast.AssignSet, Value: &ir.Literal{Type: ir.TypBool, Value: "true"}})
+			if inLoop {
+				out = append(out, &ir.Break{})
+			}
+			return out
+		case *ir.If:
+			if !returns([]ir.Stmt{x}) {
+				out = append(out, s)
+				continue
+			}
+			cp := *x
+			cp.Body = endReturns(x.Body, done, inLoop)
+			cp.Else = endReturns(x.Else, done, inLoop)
+			out = append(out, &cp)
+		case *ir.For:
+			if !returns([]ir.Stmt{x}) {
+				out = append(out, s)
+				continue
+			}
+			cp := *x
+			cp.Body = endReturns(x.Body, done, true)
+			cp.Else = endReturns(x.Else, done, inLoop)
+			out = append(out, &cp)
+		default:
+			out = append(out, s)
+			continue
+		}
+		if inLoop {
+			out = append(out, &ir.If{Cond: flag(), Body: []ir.Stmt{&ir.Break{}}})
+		}
+		if rest := endReturns(stmts[i+1:], done, inLoop); len(rest) > 0 {
+			out = append(out, &ir.If{Cond: &ir.Unary{Type: ir.TypBool, Op: ast.UnaryNot, Operand: flag()}, Body: rest})
+		}
+		return out
+	}
+	return out
+}
+
+// returns reports whether stmts return, outside any function literal.
+func returns(stmts []ir.Stmt) bool {
+	found := false
+	_ = ir.Walk(stmts, func(n ir.Node) error {
+		switch n.(type) {
+		case *ir.Lambda:
+			return ir.SkipDir
+		case *ir.Return:
+			found = true
+			return ir.SkipAll
+		}
+		return nil
+	})
+	return found
 }
 
 // rendersItself reports whether comp's body renders comp, however many

@@ -1,0 +1,718 @@
+# A second review of the test reach, each file a shape it found answered
+# wrongly somewhere. On a recursive instance an event fired from a test runs
+# its call sites' handlers: one forwarding what it was handed (chain), one
+# that binds a parameter it never reads (unused), one that returns from the
+# middle (ret). A component built at run time names a node of its own under
+# an id the page also writes (same, slotrec). An out-of-block method a test
+# calls through the node it is handed writes the var the node's call site
+# bound (method). A local holding a ref read after something may have moved
+# what it names is refused on a compiled target (alias, list), where it would
+# read the ref live and the interpreter keeps the value it took.
+
+sngl test --platform=none chain.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=html chain.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go chain.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=fyne --language=go chain.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go chain.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin chain.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=none unused.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=html unused.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go unused.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=fyne --language=go unused.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go unused.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin unused.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=none ret.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=html ret.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go ret.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=fyne --language=go ret.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go ret.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin ret.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=none same.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=html same.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go same.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=fyne --language=go same.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go same.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin same.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=none method.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=html method.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go method.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=fyne --language=go method.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go method.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin method.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=none slotrec.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=html slotrec.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=fyne --language=go slotrec.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go slotrec.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin slotrec.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=none alias.sngl
+stdout 'ok   1 tests, 0 failures'
+
+! sngl test --platform=html alias.sngl
+stderr 'alias.sngl:21:14: `v` holds a ref read when it was declared'
+
+! sngl test --platform=bubbletea --language=go alias.sngl
+stderr 'alias.sngl:21:14: `v` holds a ref read when it was declared'
+
+! sngl test --platform=fyne --language=go alias.sngl
+stderr 'alias.sngl:21:14: `v` holds a ref read when it was declared'
+
+! sngl test --platform=gtk4 --language=go alias.sngl
+stderr 'alias.sngl:21:14: `v` holds a ref read when it was declared'
+
+! sngl test --platform=android --language=kotlin alias.sngl
+stderr 'alias.sngl:21:14: `v` holds a ref read when it was declared'
+
+sngl test --platform=none list.sngl
+stdout 'ok   1 tests, 0 failures'
+
+! sngl test --platform=html list.sngl
+stderr 'list.sngl:21:14: `ts` holds a ref read when it was declared'
+
+! sngl test --platform=bubbletea --language=go list.sngl
+stderr 'list.sngl:21:14: `ts` holds a ref read when it was declared'
+
+! sngl test --platform=fyne --language=go list.sngl
+stderr 'list.sngl:21:14: `ts` holds a ref read when it was declared'
+
+! sngl test --platform=gtk4 --language=go list.sngl
+stderr 'list.sngl:21:14: `ts` holds a ref read when it was declared'
+
+! sngl test --platform=android --language=kotlin list.sngl
+stderr 'list.sngl:21:14: `ts` holds a ref read when it was declared'
+
+-- chain.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+
+component step(depth int, @hit(n int)) node {
+    vbox {
+        text #b(value="{depth}")
+        if depth < 2 {
+            step #next(depth=depth + 1, @hit(n) {
+                hit()
+            })
+        }
+    }
+}
+
+component main node {
+    var last = -1
+    vbox {
+        step #s(depth=0, @hit(n) {
+            last = n
+        })
+    }
+}
+
+func testChain(t Test, c main) {
+    if c.s.next != null {
+        c.s.next.hit(7)
+        t.assert(c.last == 7)
+    }
+}
+
+window {
+    main
+}
+-- unused.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+
+component step(depth int, @hit(n int)) node {
+    vbox {
+        text #b(value="{depth}")
+        if depth < 2 {
+            step #next(depth=depth + 1, @hit(n) {
+                hit(1)
+            })
+        }
+    }
+}
+
+component main node {
+    var last = -1
+    vbox {
+        step #s(depth=0, @hit(n) {
+            last = n
+        })
+    }
+}
+
+func testChain(t Test, c main) {
+    if c.s.next != null {
+        c.s.next.hit(7)
+        t.assert(c.last == 1)
+    }
+}
+
+window {
+    main
+}
+-- ret.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+
+component step(depth int, @hit(n int)) node {
+    vbox {
+        text #b(value="{depth}")
+        if depth < 2 {
+            step #next(depth=depth + 1, @hit(n) {
+                if n > 5 {
+                    return
+                }
+                hit(n)
+            })
+        }
+    }
+}
+
+component main node {
+    var last = -1
+    vbox {
+        step #s(depth=0, @hit(n) {
+            last = n
+        })
+    }
+}
+
+func testChain(t Test, c main) {
+    if c.s.next != null {
+        c.s.next.hit(7)
+        t.assert(c.last == -1)
+        c.s.next.hit(3)
+        t.assert(c.last == 3)
+    }
+}
+
+window {
+    main
+}
+-- same.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+
+component step(depth int, label string) node {
+    vbox {
+        text #t(value="{label}{depth}")
+        if depth < 1 {
+            step(depth=depth + 1, label=label)
+        }
+    }
+}
+
+component main node {
+    var name = "a"
+    var d = 0
+    vbox {
+        text #t(value="main")
+        button #go(text="go", @click {
+            name = "b"
+        })
+        step(depth=d, label=name)
+    }
+}
+
+func testSame(t Test, c main) {
+    t.assert(c.t.value == "main")
+    c.go.click()
+    t.assert(c.t.value == "main")
+}
+
+window {
+    main
+}
+-- method.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+
+component box(:count int) node {
+    text #shown(value="{count}")
+}
+
+func box.twice(b box) int {
+    return b.count * 2
+}
+
+func box.reset(b box) {
+    b.count = 0
+}
+
+component main node {
+    var total = 3
+    vbox {
+        box #b(:count=total)
+        button #go(text="r", @click {
+            b.reset()
+        })
+    }
+}
+
+func testOutOfBlock(t Test, c main) {
+    t.assert(c.b.twice() == 6)
+    c.go.click()
+    t.assert(c.total == 0)
+    c.total = 2
+    c.b.reset()
+    t.assert(c.total == 0)
+}
+
+window {
+    main
+}
+-- slotrec.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+
+component card(depth int, content ...component node) node {
+    var hits = 0
+    vbox {
+        text #t(value="{depth}:{hits}")
+        content
+        if depth < 1 {
+            card #inner(depth=depth + 1) {
+                button #b(text="x", @click {
+                    hits = hits + 1
+                })
+            }
+        }
+    }
+}
+
+component main node {
+    vbox {
+        card #c0(depth=0) {
+            text(value="top")
+        }
+    }
+}
+
+func testSlot(t Test, c main) {
+    if c.c0.b != null {
+        c.c0.b.click()
+        t.assert(c.c0.hits == 1)
+
+        t.assert(c.c0.t.value == "0:1")
+    }
+    if c.c0.inner != null {
+        t.assert(c.c0.inner.hits == 0)
+        t.assert(c.c0.inner.depth == 1)
+    }
+}
+
+window {
+    main
+}
+-- alias.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+
+component main node {
+    var shown = false
+    vbox {
+        button #go(text="go", @click {
+            shown = !shown
+        })
+        if shown {
+            text #t(value="x")
+        }
+    }
+}
+
+func testAlias(t Test, c main) {
+    var v = c.t
+    t.assert(v == null)
+    c.go.click()
+    t.assert(c.t != null)
+    t.assert(v == null)
+}
+
+window {
+    main
+}
+-- list.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+
+component main node {
+    var names list[string] = ["x", "y", "z"]
+    vbox {
+        button #go(text="go", @click {
+            names = ["x"]
+        })
+        for var n = names {
+            text #t(value=n)
+        }
+    }
+}
+
+func testList(t Test, c main) {
+    var ts = c.t
+    t.assert(ts.length() == 3)
+    c.go.click()
+    t.assert(c.t.length() == 1)
+    t.assert(ts.length() == 3)
+}
+
+window {
+    main
+}
+-- testrun/android/kotlin/chain.sngl/main/1 --
+sha256:b557378e392ccf2db48945712b8c0436
+{
+  "results": [
+    {
+      "Desc": "Chain",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/android/kotlin/method.sngl/main/1 --
+sha256:c57735dd3eb16afefe997ff1b799904a
+{
+  "results": [
+    {
+      "Desc": "OutOfBlock",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/android/kotlin/ret.sngl/main/1 --
+sha256:27ba68170f46b97ed6cb7fca0534376e
+{
+  "results": [
+    {
+      "Desc": "Chain",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/android/kotlin/same.sngl/main/1 --
+sha256:8bac7b5375bcf1dc8f989b0608fa5b38
+{
+  "results": [
+    {
+      "Desc": "Same",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/android/kotlin/slotrec.sngl/main/1 --
+sha256:88e739c58aa055fac60f289c55a9e759
+{
+  "results": [
+    {
+      "Desc": "Slot",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/android/kotlin/unused.sngl/main/1 --
+sha256:a138396d4812dd14b96c82fb89373c7b
+{
+  "results": [
+    {
+      "Desc": "Chain",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/chain.sngl/main/1 --
+sha256:ccdbeecbfd90394422b01b0725bac083
+{
+  "results": [
+    {
+      "Desc": "Chain",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/method.sngl/main/1 --
+sha256:676ac7cfae57a40d43f99151f8b77256
+{
+  "results": [
+    {
+      "Desc": "OutOfBlock",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/ret.sngl/main/1 --
+sha256:e7b2da692f825465553486d74442000c
+{
+  "results": [
+    {
+      "Desc": "Chain",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/same.sngl/main/1 --
+sha256:4134dd6fb64f90836a48b3dc2fdaa311
+{
+  "results": [
+    {
+      "Desc": "Same",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/unused.sngl/main/1 --
+sha256:04b8bd0eb24ea78191fbd56c330f9af6
+{
+  "results": [
+    {
+      "Desc": "Chain",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/chain.sngl/main/1 --
+sha256:dca91ee9be80ad921c85bc87526956c8
+{
+  "results": [
+    {
+      "Desc": "Chain",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/method.sngl/main/1 --
+sha256:da4fbb71962069e0308f1f5e961be3c0
+{
+  "results": [
+    {
+      "Desc": "OutOfBlock",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/ret.sngl/main/1 --
+sha256:99a7eae122030d3585ff5370992920d6
+{
+  "results": [
+    {
+      "Desc": "Chain",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/same.sngl/main/1 --
+sha256:610e6a29cb608676fbb8ddbbcf1ae5f0
+{
+  "results": [
+    {
+      "Desc": "Same",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/slotrec.sngl/main/1 --
+sha256:f3cc8478d8b62a2647381b33148ae756
+{
+  "results": [
+    {
+      "Desc": "Slot",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/unused.sngl/main/1 --
+sha256:3664dc3a4ff85136540c7f05fd820287
+{
+  "results": [
+    {
+      "Desc": "Chain",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/chain.sngl/main/1 --
+sha256:cc8f4778f24d94257c141c18743bbb82
+{
+  "results": [
+    {
+      "Desc": "Chain",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/method.sngl/main/1 --
+sha256:77e02e2c7f8973469a24f047cdd76de6
+{
+  "results": [
+    {
+      "Desc": "OutOfBlock",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/ret.sngl/main/1 --
+sha256:13b0abb2ae13ac8ab4ae1e9cd8eeb009
+{
+  "results": [
+    {
+      "Desc": "Chain",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/same.sngl/main/1 --
+sha256:3a1c46784737d72253507462a58722c3
+{
+  "results": [
+    {
+      "Desc": "Same",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/slotrec.sngl/main/1 --
+sha256:43ffd926e490c4cde84c054190befa66
+{
+  "results": [
+    {
+      "Desc": "Slot",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/unused.sngl/main/1 --
+sha256:a40dfa46ab0d129922131bd6d2d1031c
+{
+  "results": [
+    {
+      "Desc": "Chain",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/chain.sngl/main/1 --
+sha256:d4560f3bdb71fb56cebdaf1adba150ba
+{
+  "results": [
+    {
+      "Desc": "Chain",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/method.sngl/main/1 --
+sha256:5d35b642cb0ffcc764b1707f9d6f6e12
+{
+  "results": [
+    {
+      "Desc": "OutOfBlock",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/ret.sngl/main/1 --
+sha256:970feeefb77a5cd952048868bd3f263c
+{
+  "results": [
+    {
+      "Desc": "Chain",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/same.sngl/main/1 --
+sha256:18d4cfd529be7d23d84f1bd7eb1fb0cf
+{
+  "results": [
+    {
+      "Desc": "Same",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/slotrec.sngl/main/1 --
+sha256:fb9d75ecb4d2bf9f76ba6f9cfd44a364
+{
+  "results": [
+    {
+      "Desc": "Slot",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/unused.sngl/main/1 --
+sha256:06d9241374092cfbd0aa6c6810f219db
+{
+  "results": [
+    {
+      "Desc": "Chain",
+      "Passed": true
+    }
+  ]
+}
