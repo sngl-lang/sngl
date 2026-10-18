@@ -459,7 +459,6 @@ import (
 	"duckfam.us/sngl/pkg/go/fynelayout"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
-	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
 	"os"
 	"time"
@@ -506,13 +505,13 @@ func (m *Model) __n0_visible_handler(__visible bool) {
 func (m *Model) d_pick_handler(d *time.Time) {
 	m.picked__inst0 = d
 	m.d.SetDate(m.picked__inst0)
-	var __lt0 string
+	var __lt15 string
 	if m.picked__inst0 != nil {
-		__lt0 = (*(m.picked__inst0)).Format("2006-01-02")
+		__lt15 = (*(m.picked__inst0)).Format("2006-01-02")
 	} else {
-		__lt0 = "none"
+		__lt15 = "none"
 	}
-	m.__n1.SetText(__lt0)
+	m.__n1.SetText(__lt15)
 	m.changes__inst0 += 1
 }
 
@@ -559,20 +558,20 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n0.SetVisible(m.visible__inst0)
 	m.__n0.OnClosed = m.__n0_closed_handler
 	m.__n0.OnVisible = m.__n0_visible_handler
-	m.__n2 = container.NewVBox()
+	m.__n2 = fynelayout.NewVBox()
 	m.d = widget.NewDateEntry()
 	m.d.SetDate(m.picked__inst0)
 	m.d.SetPlaceHolder("")
 	m.d.OnChanged = m.d_pick_handler
 	m.__n2.Add(m.d)
-	var __lt1 string
+	var __lt16 string
 	if m.picked__inst0 != nil {
-		__lt1 = (*(m.picked__inst0)).Format("2006-01-02")
+		__lt16 = (*(m.picked__inst0)).Format("2006-01-02")
 	} else {
-		__lt1 = "none"
+		__lt16 = "none"
 	}
 	m.__n1 = widget.NewLabel("")
-	m.__n1.SetText(__lt1)
+	m.__n1.SetText(__lt16)
 	m.__n2.Add(m.__n1)
 	m.__n0.Add(m.__n2)
 	fynelayout.AppAttach(m.__n0)
@@ -1150,7 +1149,7 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:7f4bf7f2d11a95b4652f3c0324f334ec
 -- run/go/fyne --
-pass sha256:fe601aba4571496d0b2b8851461872f4
+pass sha256:01bc62072ed8bb56f2785930471cc1f4
 -- run/go/gtk4 --
 pass sha256:c40a5e40b3a7e274e501124ff0eebdca
 -- run/kotlin/android --

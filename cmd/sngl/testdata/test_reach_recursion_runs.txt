@@ -266,7 +266,7 @@ sha256:9d1cdd3536e7c42a26931ab53238d56b
   ]
 }
 -- testrun/fyne/go/buttons.sngl/main/1 --
-sha256:008a3bc02e6383fdcd874d1af6c32bd5
+sha256:a546a9461c85fb3f51ddf9b9f972e9ad
 {
   "results": [
     {
@@ -276,7 +276,7 @@ sha256:008a3bc02e6383fdcd874d1af6c32bd5
   ]
 }
 -- testrun/fyne/go/counters.sngl/main/1 --
-sha256:181278424b1daf2d11bcbb7e2d9285c6
+sha256:bf9a0ede48614ddd1b8bee50c1c52bf8
 {
   "results": [
     {
@@ -286,7 +286,7 @@ sha256:181278424b1daf2d11bcbb7e2d9285c6
   ]
 }
 -- testrun/fyne/go/recursion.sngl/main/1 --
-sha256:a7954c0bc583575ff1dd23dd9b5d2904
+sha256:739fca1ee4eecbf520daed665e6c39f3
 {
   "results": [
     {

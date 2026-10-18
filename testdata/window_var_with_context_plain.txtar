@@ -367,7 +367,6 @@ import (
 	"duckfam.us/sngl/pkg/go/fynelayout"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
-	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
 	"os"
 )
@@ -442,7 +441,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.home.SetVisible(m.visible__inst0)
 	m.home.OnClosed = m.home_closed_handler
 	m.home.OnVisible = m.home_visible_handler
-	m.__n1 = container.NewVBox()
+	m.__n1 = fynelayout.NewVBox()
 	m.__n0 = widget.NewLabel("")
 	m.__n0.SetText(m.name)
 	m.__n1.Add(m.__n0)
@@ -598,7 +597,7 @@ fun MainScreen() {
 -- run/go/bubbletea --
 pass sha256:6fd3499201d4d7a1a394ad37f5dbf83b
 -- run/go/fyne --
-pass sha256:8b0ea0913bfef76a61e2009a279fe82a
+pass sha256:82436a286d876a6c95409af598ff5310
 -- run/go/gtk4 --
 pass sha256:8fbe24abe9d3ce7c28a4344acd729f6a
 -- run/kotlin/android --

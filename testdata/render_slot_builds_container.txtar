@@ -62,12 +62,6 @@ import (
 	"os"
 )
 
-type Measurement struct {
-	Px  float64
-	Em  float64
-	Rem float64
-}
-
 // Model holds the state for this SNGL UI.
 type Model struct {
 	__ctx_listDepth int
@@ -78,9 +72,10 @@ type Model struct {
 	__slot1         []fyne.CanvasObject
 	__slot1_at      fyne.CanvasObject
 
-	__n7 *fyne.Container
-	__n8 *fyne.Container
-	more *widget.Button
+	__n7      *fyne.Container
+	__n8      *fyne.Container
+	__n8__box *fynelayout.Box
+	more      *widget.Button
 }
 
 // New creates a Model with default values.
@@ -103,7 +98,7 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 	m.__slot0 = nil
 	m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
 	for _, it := range m.items {
-		__n1 := container.NewHBox()
+		__n1 := fynelayout.NewHBox()
 		__n2 := widget.NewLabel("")
 		__n2.SetText(it)
 		__n1.Add(__n2)
@@ -119,17 +114,19 @@ func (m *Model) __renderSlot1(__parent *fyne.Container) {
 	m.__slot1 = nil
 	m.__slot1_at = fynelayout.SlotAnchor(__parent, m.__slot1_at)
 	for _, it := range m.items {
-		__n3 := container.NewHBox()
+		__n3 := fynelayout.NewHBox()
+		__n3__box := fynelayout.NewBox(__n3)
+		__n3__box.SetLook(fynelayout.Look{Gap: 8.0})
 		__n4 := new__checkbox_state0Instance(m, true, true)
 		__n4__el := __n4.Root
 		__n3.Add(__n4__el)
-		__n5 := container.NewVBox()
+		__n5 := fynelayout.NewVBox()
 		__n6 := widget.NewLabel("")
 		__n6.SetText(it)
 		__n5.Add(__n6)
 		__n3.Add(__n5)
-		fynelayout.InsertBefore(__parent, m.__slot1_at, __n3)
-		m.__slot1 = append(m.__slot1, __n3)
+		fynelayout.InsertBefore(__parent, m.__slot1_at, __n3__box)
+		m.__slot1 = append(m.__slot1, __n3__box)
 	}
 }
 
@@ -156,11 +153,13 @@ func (m *Model) SetItems(v []string) {
 
 // BuildUI creates the widget tree. Call once; widgets are updated selectively.
 func (m *Model) BuildUI() fyne.CanvasObject {
-	m.__n7 = container.NewVBox()
+	m.__n7 = fynelayout.NewVBox()
 	m.__renderSlot0(m.__n7)
-	m.__n8 = container.NewVBox()
+	m.__n8 = fynelayout.NewVBox()
+	m.__n8__box = fynelayout.NewBox(m.__n8)
+	m.__n8__box.SetLook(fynelayout.Look{PaddingLeft: 20.0, Gap: 4.0})
 	m.__renderSlot1(m.__n8)
-	m.__n7.Add(m.__n8)
+	m.__n7.Add(m.__n8__box)
 	m.more = widget.NewButton("", nil)
 	m.more.SetText("more")
 	m.more.OnTapped = m.more_click_handler
@@ -450,6 +449,6 @@ func (m *Model) moreClick() {
 	gtk4rt.Emit(m.more, "clicked")
 }
 -- run/go/fyne --
-pass sha256:8fea2a771c66a3fa4d260ba37e0bc462
+pass sha256:206154438b7941999fb4335ee9924e6b
 -- run/go/gtk4 --
 pass sha256:c9229a63f01f62939f4a30f5440faedc

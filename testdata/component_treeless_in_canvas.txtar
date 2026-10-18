@@ -528,7 +528,6 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/canvas"
-	"fyne.io/fyne/v2/container"
 	"os"
 	"time"
 )
@@ -816,7 +815,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n0.SetVisible(m.visible__inst0)
 	m.__n0.OnClosed = m.__n0_closed_handler
 	m.__n0.OnVisible = m.__n0_visible_handler
-	m.__n1 = container.NewVBox()
+	m.__n1 = fynelayout.NewVBox()
 	m.__n2Ctx = snglcanvas.New(40, 40)
 	m._canvasDraw0(m.__n2Ctx)
 	m.__n2 = canvas.NewImageFromImage(m.__n2Ctx.Result())
@@ -1099,13 +1098,6 @@ type Style struct {
 	LineJoin    string
 	FontSize    float64
 	FontFamily  string
-}
-
-type Color struct {
-	R uint8
-	G uint8
-	B uint8
-	A uint8
 }
 
 // Model holds the state and widget references for this SNGL UI.
@@ -1709,9 +1701,9 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:820960377abfbc4e4698783c169ed6ad
 -- run/go/fyne --
-pass sha256:ca561bd28ec33c7638ded0900d79428c
+pass sha256:f786401916f4a4c27afff7eea817c5cb
 -- run/go/gtk4 --
-pass sha256:8dc14a737989d687e368a68a7c96eec0
+pass sha256:9a9d9bd327f2c9f84874af65a088072d
 -- run/kotlin/android --
 pass sha256:64926c3737d2f5556fc05166af6bd093
 -- run/none/html --

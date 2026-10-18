@@ -542,10 +542,10 @@ func newTestComponent() Model { return New() }
 package main
 
 import (
+	"duckfam.us/sngl/pkg/go/fynelayout"
 	"fmt"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
-	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
 	"os"
 )
@@ -640,7 +640,7 @@ func (m *Model) SetChecked__inst0(v bool) {
 
 // BuildUI creates the widget tree. Call once; widgets are updated selectively.
 func (m *Model) BuildUI() fyne.CanvasObject {
-	m.__n1 = container.NewVBox()
+	m.__n1 = fynelayout.NewVBox()
 	m.box = widget.NewCheck("", nil)
 	m.box.SetText("a")
 	m.box.SetChecked(m.on)
@@ -1228,7 +1228,7 @@ window.__sngl_boot();
 -- run/go/bubbletea --
 pass sha256:44c626e32709a0588fa9ac6bf40528c3
 -- run/go/fyne --
-pass sha256:40ebe27760c9a1ecb25870601de61d4f
+pass sha256:139ed0b1f80296192a4f18960188845a
 -- run/go/gtk4 --
 pass sha256:7df52e19904d5420a57f8931ddaac927
 -- run/go/html --

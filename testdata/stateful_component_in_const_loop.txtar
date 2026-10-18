@@ -587,7 +587,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n1.SetVisible(m.visible__inst0)
 	m.__n1.OnClosed = m.__n1_closed_handler
 	m.__n1.OnVisible = m.__n1_visible_handler
-	m.__n3 = container.NewVBox()
+	m.__n3 = fynelayout.NewVBox()
 	m.__renderSlot0(m.__n3)
 	m.__n1.Add(m.__n3)
 	fynelayout.AppAttach(m.__n1)
@@ -981,7 +981,7 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:d163e37fb455aad71779d21959f07954
 -- run/go/fyne --
-pass sha256:440f6d8184e1637e7a4a41fb5ab485d1
+pass sha256:b042a80f202fc3f561dd029bbd2eab9b
 -- run/go/gtk4 --
 pass sha256:3ec17d2563d1f01c678d10ef651a1583
 -- run/kotlin/android --

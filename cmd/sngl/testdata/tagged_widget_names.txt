@@ -66,7 +66,7 @@ sha256:aa03c6352afe9964e296cd5037d39d47
   ]
 }
 -- testrun/fyne/go/tagged.sngl/counter/1 --
-sha256:d6c3176092bf7bd955616a5af64bd64c
+sha256:8522c5d4fc31d799265e0f57b1ed68f9
 {
   "results": [
     {

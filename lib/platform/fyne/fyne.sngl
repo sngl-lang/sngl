@@ -144,13 +144,6 @@ struct Handler {
 // one of them applies: `add` is the method a Container calls per child
 // (default `Add`), `content` the field a Wrapper assigns its single child to
 // (default `Content`).
-//
-// `axis` is "horizontal" or "vertical" on a container that lays its children
-// out along one, and empty on everything else. It is the one thing a Spec says
-// about a widget rather than about its construction, and it is here because a
-// child asking for a share of its parent (`style.flex`) is answered by the
-// parent's layout: a container with an axis and a flexing child is built with
-// the weighted layout instead of the constructor `new` names.
 // A Go declaration this platform emits a reference to: the import path it
 // lives in, and its identifier there.
 //
@@ -172,7 +165,41 @@ struct Spec {
     content  string
     setters  list[Setter]
     handlers list[Handler]
-    axis     string
+}
+
+// The box a primitive is shown in, which style.sngl's lookOf builds from a
+// ui.Style. Its fields are fynelayout.Look's; see that type.
+#[go.native("duckfam.us/sngl/pkg/go/fynelayout", "fynelayout.Look")]
+struct Look {
+    marginTop     float32
+    marginRight   float32
+    marginBottom  float32
+    marginLeft    float32
+    paddingTop    float32
+    paddingRight  float32
+    paddingBottom float32
+    paddingLeft   float32
+    width         float32
+    height        float32
+    minWidth      float32
+    maxWidth      float32
+    maxHeight     float32
+    grow          float32
+    gap           float32
+    cross         int
+    justify       int
+    fill          color
+    stroke        color
+    strokeWidth   float32
+    radius        float32
+    textColor     color
+    textSize      float32
+    bold          bool
+    italic        bool
+    monospace     bool
+    textAlign     int
+    wrap          int
+    hidden        bool
 }
 
 // --- The primitives ---
@@ -191,7 +218,7 @@ component Widget(
     flag        bool,
     options     list[string],
     date        option[time.date],
-    style       ui.Style,
+    look        Look,
     @click(),
     @change(text string),
     @input(text string),
@@ -209,7 +236,7 @@ component Container(
     number      int,
     flag        bool,
     options     list[string],
-    style       ui.Style,
+    look        Look,
     @click(),
     @change(text string),
     @input(text string),
@@ -225,7 +252,7 @@ component Wrapper(
     number      int,
     flag        bool,
     options     list[string],
-    style       ui.Style,
+    look        Look,
     @click(),
     @change(text string),
     @input(text string),
@@ -249,7 +276,7 @@ const component Label(text string = "", style ui.Style = ui.Style{}) ui.node {
             setters = [Setter{prop="text", call="SetText"}],
         },
         text = text,
-        style = {...style},
+        look = lookOf(style),
     ) {}
 }
 
@@ -263,7 +290,7 @@ const component Button(text string = "", style ui.Style = ui.Style{}, @click()) 
             handlers = [Handler{on="click", field="OnTapped", signature="func()"}],
         },
         text = text,
-        style = {...style},
+        look = lookOf(style),
         @click { click() },
     ) {}
 }
@@ -284,7 +311,7 @@ const component Entry(text string = "", placeholder string = "", style ui.Style 
         },
         text = text,
         placeholder = placeholder,
-        style = {...style},
+        look = lookOf(style),
         @input { input() },
         @change { change() },
     ) {}
@@ -315,7 +342,7 @@ const component MultiLineEntry(
         text = text,
         placeholder = placeholder,
         number = rows,
-        style = {...style},
+        look = lookOf(style),
         @input { input() },
         @change { change() },
     ) {}
@@ -335,7 +362,7 @@ const component Check(text string = "", checked bool = false, style ui.Style = u
         },
         text = text,
         flag = checked,
-        style = {...style},
+        look = lookOf(style),
         @toggle { change() },
     ) {}
 }
@@ -363,7 +390,7 @@ const component Select(
         },
         options = options,
         text = selected,
-        style = {...style},
+        look = lookOf(style),
         @change { change() },
     ) {}
 }
@@ -378,7 +405,7 @@ const component Hyperlink(style ui.Style = ui.Style{}) ui.node {
             args = [Arg{raw=`""`}, Arg{raw="nil"}],
             goType = Native{path="fyne.io/fyne/v2/widget", name="*Hyperlink"},
         },
-        style = {...style},
+        look = lookOf(style),
     ) {}
 }
 
@@ -388,19 +415,18 @@ const component Spacer(style ui.Style = ui.Style{}) ui.node {
             new = Native{path="fyne.io/fyne/v2/layout", name="NewSpacer"},
             goType = Native{path="fyne.io/fyne/v2", name="CanvasObject"},
         },
-        style = {...style},
+        look = lookOf(style),
     ) {}
 }
 
 const component VBox(style ui.Style = ui.Style{}, children ...component) ui.node {
     Container(
         spec = Spec{
-            new = Native{path="fyne.io/fyne/v2/container", name="NewVBox"},
+            new = Native{path="duckfam.us/sngl/pkg/go/fynelayout", name="NewVBox"},
             goType = Native{path="fyne.io/fyne/v2", name="*Container"},
             add = "Add",
-            axis = "vertical",
         },
-        style = {...style},
+        look = lookOf(style),
     ) {
         children
     }
@@ -409,12 +435,11 @@ const component VBox(style ui.Style = ui.Style{}, children ...component) ui.node
 const component HBox(style ui.Style = ui.Style{}, children ...component) ui.node {
     Container(
         spec = Spec{
-            new = Native{path="fyne.io/fyne/v2/container", name="NewHBox"},
+            new = Native{path="duckfam.us/sngl/pkg/go/fynelayout", name="NewHBox"},
             goType = Native{path="fyne.io/fyne/v2", name="*Container"},
             add = "Add",
-            axis = "horizontal",
         },
-        style = {...style},
+        look = lookOf(style),
     ) {
         children
     }
@@ -428,7 +453,7 @@ const component VScroll(style ui.Style = ui.Style{}, content ...component option
             goType = Native{path="fyne.io/fyne/v2/container", name="*Scroll"},
             content = "Content",
         },
-        style = {...style},
+        look = lookOf(style),
     ) {
         content
     }
@@ -437,13 +462,13 @@ const component VScroll(style ui.Style = ui.Style{}, content ...component option
 // --- Layout containers ---
 
 const component ui.vbox[platform](style, children) {
-    VBox(style={...style}) {
+    VBox(style=style) {
         children
     }
 }
 
 const component ui.hbox[platform](style, children) {
-    HBox(style={...style}) {
+    HBox(style=style) {
         children
     }
 }
@@ -452,29 +477,29 @@ const component ui.hbox[platform](style, children) {
 // so a stack is a vertical box: the children are all present and in order,
 // they just do not overlap.
 const component ui.stack[platform](style, layers) {
-    VBox(style={...style}) {
+    VBox(style=style) {
         layers
     }
 }
 
 const component ui.scroll[platform](style, content) {
-    VScroll(style={...style}) {
+    VScroll(style=style) {
         content
     }
 }
 
 const component ui.spacer[platform](style) {
-    Spacer(style={...style}) {}
+    Spacer(style=style) {}
 }
 
 const component ui.card[platform](style, content) {
-    VBox(style={...style}) {
+    VBox(style=style) {
         content
     }
 }
 
 const component ui.splitview[platform](style, panes) {
-    HBox(style={...style}) {
+    HBox(style=style) {
         panes
     }
 }
@@ -487,19 +512,19 @@ const component ui.splitview[platform](style, panes) {
 // visible.
 
 const component ui.modal[platform](style, content) {
-    VBox(style={...style}) {
+    VBox(style=style) {
         content
     }
 }
 
 const component ui.drawer[platform](style, content) {
-    VBox(style={...style}) {
+    VBox(style=style) {
         content
     }
 }
 
 const component ui.popover[platform](style, content) {
-    VBox(style={...style}) {
+    VBox(style=style) {
         content
     }
 }
@@ -507,7 +532,7 @@ const component ui.popover[platform](style, content) {
 // The shape html uses: a box carrying the tooltip text, with the wrapped
 // content inside it.
 const component ui.tooltip[platform](style, trigger) {
-    VBox(style={...style}) {
+    VBox(style=style) {
         trigger
     }
 }
@@ -520,17 +545,17 @@ const component ui.tooltip[platform](style, trigger) {
 // `Arg` can build out of a SNGL prop.
 
 const component ui.toolbar[platform](style, controls) {
-    HBox(style={...style}) {
+    HBox(style=style) {
         controls
     }
 }
 
 const component ui.menubar[platform](style) {
-    HBox(style={...style}) {}
+    HBox(style=style) {}
 }
 
 const component ui.menu[platform](style) {
-    VBox(style={...style}) {}
+    VBox(style=style) {}
 }
 
 // --- Data display ---
@@ -540,29 +565,29 @@ const component ui.menu[platform](style) {
 // no way to spell. Each renders as its container, empty.
 
 const component ui.table[platform](style) {
-    VBox(style={...style}) {}
+    VBox(style=style) {}
 }
 
 const component ui.tree[platform](style) {
-    VBox(style={...style}) {}
+    VBox(style=style) {}
 }
 
 const component ui.radio[platform](style) {
-    VBox(style={...style}) {}
+    VBox(style=style) {}
 }
 
 // --- Text ---
 
 const component ui.text[platform](value, style) {
-    Label(text=value, style={...style}) {}
+    Label(text=value, style=style) {}
 }
 
 const component ui.divider[platform](style, label) {
-    Label(text=label, style={...style}) {}
+    Label(text=label, style=style) {}
 }
 
 const component ui.spinner[platform](label, style) {
-    Label(text=label, style={...style}) {}
+    Label(text=label, style=style) {}
 }
 
 // `value` is a float and the label is text, so the conversion is spelled
@@ -571,9 +596,9 @@ const component ui.spinner[platform](label, style) {
 // to its `label`, which is the only other thing it was told.
 const component ui.progress[platform](style, value, label) {
     if value != null {
-        Label(text=string(value), style={...style}) {}
+        Label(text=string(value), style=style) {}
     } else {
-        Label(text=label, style={...style}) {}
+        Label(text=label, style=style) {}
     }
 }
 
@@ -601,13 +626,13 @@ const component DateEntry(
         },
         date = value,
         placeholder = placeholder,
-        style = {...style},
+        look = lookOf(style),
         @pick { change() },
     ) {}
 }
 
 const component ui.datepicker[platform](placeholder, value, style, @change) {
-    DateEntry(value=value, placeholder=placeholder, style={...style}, @change(d) {
+    DateEntry(value=value, placeholder=placeholder, style=style, @change(d) {
         value = d
         change(d)
     }) {}
@@ -616,12 +641,12 @@ const component ui.datepicker[platform](placeholder, value, style, @change) {
 // --- Controls ---
 
 const component ui.button[platform](text, style, @click) {
-    Button(text=text, style={...style}, @click { click() }) {}
+    Button(text=text, style=style, @click { click() }) {}
 }
 
 // `href` and `text` are not forwarded — see the Hyperlink declaration.
 const component ui.link[platform](style) {
-    Hyperlink(style={...style}) {}
+    Hyperlink(style=style) {}
 }
 
 // --- Images ---
@@ -634,7 +659,7 @@ const component ui.link[platform](style) {
 #[intrinsic("fyne:Image")]
 component Image(
     fit     string,
-    style   ui.Style,
+    look    Look,
     @click(),
     @load(),
     @failed(message string),
@@ -650,7 +675,7 @@ component ImageDrawing(width float, height float, shapes ...component shapes.sha
 const component ui.image[platform](fit, style, @click, @load, @error, src) {
     Image(
         fit = string(fit),
-        style = {...style},
+        look = lookOf(style),
         @click {
             click()
         },
@@ -680,7 +705,7 @@ const component shapes.image[platform](width, height, shapes) {
 }
 
 const component ui.checkbox[platform](label, checked, style, @change) {
-    Check(text=label, checked=checked, style={...style}, @change(on) {
+    Check(text=label, checked=checked, style=style, @change(on) {
         checked = on
         change(on)
     }) {}
@@ -689,14 +714,14 @@ const component ui.checkbox[platform](label, checked, style, @change) {
 // Fyne's Check is the switch affordance too: `widget.Switch` is not in the
 // widget set this platform builds from.
 const component ui.toggle[platform](label, checked, style, @change) {
-    Check(text=label, checked=checked, style={...style}, @change(on) {
+    Check(text=label, checked=checked, style=style, @change(on) {
         checked = on
         change(on)
     }) {}
 }
 
 const component ui.select[platform](value, style, @change, options) {
-    Select(selected=value, options=options.map(func(o) => o.label), style={...style}, @change(v) {
+    Select(selected=value, options=options.map(func(o) => o.label), style=style, @change(v) {
         value = v
         change(v)
     }) {}
@@ -708,7 +733,7 @@ const component ui.input[platform](placeholder, value, style, @input, @change) {
     Entry(
         text = value,
         placeholder = placeholder,
-        style = {...style},
+        style = style,
         @input(v) {
             value = v
             input(v)
@@ -725,7 +750,7 @@ const component ui.textarea[platform](placeholder, value, rows, style, @input, @
         text = value,
         placeholder = placeholder,
         rows = rows,
-        style = {...style},
+        style = style,
         @input(v) {
             value = v
             input(v)
@@ -864,13 +889,12 @@ const component time.timer[platform](interval, enabled, @tick) {
 // is a `ui.node` whose slot is the span family -- so something has to join the
 // widget family and host the span one.
 //
-// Its `style` is read the way every other node's is: the block styling a
-// document's headings and quotes ask for becomes this flow's theme, through
-// `styleFromProps` and the override `themed` wraps it in. The role is not
-// taken, there being nothing in Fyne that a heading announces itself to.
+// Its `look` is every node's: the block styling a document's headings and
+// quotes ask for is the box it is shown in. The role is not taken, there
+// being nothing in Fyne that a heading announces itself to.
 #[intrinsic("fyne:Flow")]
 component Flow(
-    style   ui.Style,
+    look    Look,
     content ...component markup.span,
 ) ui.node
 
@@ -890,7 +914,7 @@ component Span(
 ) markup.span
 
 const component markup.richText[platform](style, content) {
-    Flow(style={...style}) {
+    Flow(look=lookOf(style)) {
         content
     }
 }

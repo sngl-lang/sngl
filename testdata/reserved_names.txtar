@@ -1086,7 +1086,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n1.SetVisible(m.visible__inst0)
 	m.__n1.OnClosed = m.__n1_closed_handler
 	m.__n1.OnVisible = m.__n1_visible_handler
-	m.__n3 = container.NewVBox()
+	m.__n3 = fynelayout.NewVBox()
 	m.go__r0 = widget.NewButton("", nil)
 	m.go__r0.SetText(((((((((((((((((("go " + fmt.Sprint(m.range__r0)) + " ") + fmt.Sprint(m.chan__r0)) + " ") + fmt.Sprint(m.m__r0)) + " ") + fmt.Sprint(m.cmd)) + " ") + fmt.Sprint(m.object)) + " ") + fmt.Sprint(m.width)) + " ") + m.it.Type) + " ") + fmt.Sprint(m.it.Class)) + " ") + fmt.Sprint(m.mod.N)))
 	m.go__r0.OnTapped = m.go__r0_click_handler
@@ -1712,7 +1712,7 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:9520e9cf210b84cc1c0c09a422198719
 -- run/go/fyne --
-pass sha256:c858908174f360b4e702635cfacf12df
+pass sha256:377661d3e9208b5a043948d35e00469c
 -- run/go/gtk4 --
 pass sha256:e22f5e2a38c8aea7462146b0e039a7b7
 -- run/kotlin/android --

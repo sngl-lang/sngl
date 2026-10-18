@@ -2,6 +2,7 @@ package fyne
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	"duckfam.us/sngl/codegen"
@@ -41,9 +42,6 @@ func markupSpec(tag string, props map[string]ir.Expr) (*fyneSpec, error) {
 	case "Flow":
 		sp.New = fyneNative{Path: fynetextPath, Name: "NewFlow"}
 		sp.GoType = fyneNative{Path: fynetextPath, Name: "*Flow"}
-		// A flow's block styling is read the way every node's is, which is
-		// what gives a heading its size and a code sample its background.
-		sp.Style = styleFromProps(props)
 	case "Span":
 		sp.New = fyneNative{Path: fynetextPath, Name: "NewSpan"}
 		sp.GoType = fyneNative{Path: fynetextPath, Name: "*Span"}
@@ -200,4 +198,10 @@ func spanStyleChain(props map[string]ir.Expr) string {
 		}
 	}
 	return b.String()
+}
+
+// float32Lit writes a value as an untyped Go float literal, which takes the
+// float32 of the argument it lands in.
+func float32Lit(v float64) string {
+	return strconv.FormatFloat(v, 'f', -1, 32)
 }

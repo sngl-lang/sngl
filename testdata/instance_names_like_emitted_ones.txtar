@@ -211,7 +211,7 @@ func (m *Model) SetXs(v []string) {
 
 // BuildUI creates the widget tree. Call once; widgets are updated selectively.
 func (m *Model) BuildUI() fyne.CanvasObject {
-	m.__n6 = container.NewVBox()
+	m.__n6 = fynelayout.NewVBox()
 	m.__renderSlot1(m.__n6)
 	m.bump = widget.NewButton("", nil)
 	m.bump.SetText("bump")
@@ -251,7 +251,7 @@ func newRowInstance(__model *Model, __a_container string) *RowInstance {
 	c.__inst0_live = []*__child0Instance{}
 	c.__slot1 = nil
 	c.__slot2 = nil
-	c.__n3 = container.NewHBox()
+	c.__n3 = fynelayout.NewHBox()
 	c.__renderSlot0(c.__n3)
 	__n7 := widget.NewButton("", nil)
 	__n7.SetText("hit")
@@ -815,6 +815,6 @@ func (m *Model) bumpClick() {
 	gtk4rt.Emit(m.bump, "clicked")
 }
 -- run/go/fyne --
-pass sha256:0f8009fa5ee48b282e181a1653f9ac19
+pass sha256:7ae94687d531bc8a47446e3394847da4
 -- run/go/gtk4 --
 pass sha256:b6ab380076031cb7159093704a8764b5

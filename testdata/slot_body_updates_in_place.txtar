@@ -711,7 +711,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n2.SetVisible(m.visible__inst0)
 	m.__n2.OnClosed = m.__n2_closed_handler
 	m.__n2.OnVisible = m.__n2_visible_handler
-	m.__n5 = container.NewVBox()
+	m.__n5 = fynelayout.NewVBox()
 	m.tick = widget.NewButton("", nil)
 	m.tick.SetText("tick")
 	m.tick.OnTapped = m.tick_click_handler
@@ -747,7 +747,7 @@ func new__child0Instance(__model *Model, __a___p0 int) *__child0Instance {
 	c.__root = container.NewVBox()
 	c.__slot0 = nil
 	c.__slot1 = nil
-	__n6 := container.NewVBox()
+	__n6 := fynelayout.NewVBox()
 	__n7 := widget.NewLabel("")
 	__n7.SetText("static")
 	__n6.Add(__n7)
@@ -1424,7 +1424,7 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:2dcb93344ab58d39c4ab06032568121d
 -- run/go/fyne --
-pass sha256:7a26f91137a62134f1768c69b29cf158
+pass sha256:a3f0ab168a0b792829dce29ed06708b2
 -- run/go/gtk4 --
 pass sha256:65992eed49fcd5c6a341ca49c8c29a13
 -- run/kotlin/android --

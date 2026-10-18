@@ -610,34 +610,34 @@ func (m *Model) __n2_click_handler() {
 func (m *Model) _canvasDraw0(ctx *snglcanvas.Context) {
 	ctx.Save()
 	ApplyStyle(ctx, Style{Stroke: snglcolor.Color{R: 153, G: 51, B: 102, A: 255}, StrokeWidth: 2.0, Fill: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, LineCap: "butt", LineJoin: "miter", FontSize: 16.0, FontFamily: "sans-serif"})
-	var __lt0 []_step__record
+	var __lt15 []_step__record
 	if m.closed__inst0 {
-		__lt0 = []_step__record{_step__record{Op: "close", X: 0.0, Y: 0.0, Cx1: 0.0, Cy1: 0.0, Cx2: 0.0, Cy2: 0.0, R: 0.0}}
+		__lt15 = []_step__record{_step__record{Op: "close", X: 0.0, Y: 0.0, Cx1: 0.0, Cy1: 0.0, Cx2: 0.0, Cy2: 0.0, R: 0.0}}
 	} else {
-		__lt0 = []_step__record{}
+		__lt15 = []_step__record{}
 	}
-	for _, c__r0 := range slices.Concat([]_step__record{_step__record{Op: "moveTo", X: 4.0, Y: 12.0, Cx1: 0.0, Cy1: 0.0, Cx2: 0.0, Cy2: 0.0, R: 0.0}}, func() []_step__record {
+	for _, c__r1 := range slices.Concat([]_step__record{_step__record{Op: "moveTo", X: 4.0, Y: 12.0, Cx1: 0.0, Cy1: 0.0, Cx2: 0.0, Cy2: 0.0, R: 0.0}}, func() []_step__record {
 		__out := make([]_step__record, len(m.corners__inst0))
 		for __i, __item := range m.corners__inst0 {
-			__out[__i] = func(c__r1 Point) _step__record {
-				return _step__record{Op: "lineTo", X: c__r1.X, Y: c__r1.Y, Cx1: 0.0, Cy1: 0.0, Cx2: 0.0, Cy2: 0.0, R: 0.0}
+			__out[__i] = func(c__r2 Point) _step__record {
+				return _step__record{Op: "lineTo", X: c__r2.X, Y: c__r2.Y, Cx1: 0.0, Cy1: 0.0, Cx2: 0.0, Cy2: 0.0, R: 0.0}
 			}(__item)
 		}
 		return __out
-	}(), []_step__record{_step__record{Op: "bezierTo", X: 56.0, Y: 36.0, Cx1: 34.0, Cy1: 12.0, Cx2: 44.0, Cy2: 12.0, R: 0.0}, _step__record{Op: "arcTo", X: 40.0, Y: 12.0, Cx1: 56.0, Cy1: 12.0, Cx2: 0.0, Cy2: 0.0, R: 4.0}}, __lt0) {
-		if c__r0.Op == "moveTo" {
-			ctx.MoveTo(c__r0.X, c__r0.Y)
+	}(), []_step__record{_step__record{Op: "bezierTo", X: 56.0, Y: 36.0, Cx1: 34.0, Cy1: 12.0, Cx2: 44.0, Cy2: 12.0, R: 0.0}, _step__record{Op: "arcTo", X: 40.0, Y: 12.0, Cx1: 56.0, Cy1: 12.0, Cx2: 0.0, Cy2: 0.0, R: 4.0}}, __lt15) {
+		if c__r1.Op == "moveTo" {
+			ctx.MoveTo(c__r1.X, c__r1.Y)
 		}
-		if c__r0.Op == "lineTo" {
-			ctx.LineTo(c__r0.X, c__r0.Y)
+		if c__r1.Op == "lineTo" {
+			ctx.LineTo(c__r1.X, c__r1.Y)
 		}
-		if c__r0.Op == "bezierTo" {
-			ctx.CubicTo(c__r0.Cx1, c__r0.Cy1, c__r0.Cx2, c__r0.Cy2, c__r0.X, c__r0.Y)
+		if c__r1.Op == "bezierTo" {
+			ctx.CubicTo(c__r1.Cx1, c__r1.Cy1, c__r1.Cx2, c__r1.Cy2, c__r1.X, c__r1.Y)
 		}
-		if c__r0.Op == "arcTo" {
-			ctx.ArcTo(c__r0.Cx1, c__r0.Cy1, c__r0.X, c__r0.Y, c__r0.R)
+		if c__r1.Op == "arcTo" {
+			ctx.ArcTo(c__r1.Cx1, c__r1.Cy1, c__r1.X, c__r1.Y, c__r1.R)
 		}
-		if c__r0.Op == "close" {
+		if c__r1.Op == "close" {
 			ctx.ClosePath()
 		}
 	}
@@ -976,13 +976,6 @@ type Arc struct {
 	Center     Point
 	Start      float64
 	Sweep      float64
-}
-
-type Color struct {
-	R uint8
-	G uint8
-	B uint8
-	A uint8
 }
 
 // Model holds the state and widget references for this SNGL UI.
@@ -1600,9 +1593,9 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:0307b401cb7d00ce2c6af5a2f3e61f0e
 -- run/go/fyne --
-pass sha256:1b8523d3c5af0bcc5d0664b7dbef5e58
+pass sha256:7f8ebc182546f371ad0782279fdabe87
 -- run/go/gtk4 --
-pass sha256:1c953e350468c0762557c648d1f1e588
+pass sha256:c3ef81237339070d737a7aa246c2235e
 -- run/kotlin/android --
 pass sha256:8a8875935bea145d4558b1f8c0d95f79
 -- run/none/html --

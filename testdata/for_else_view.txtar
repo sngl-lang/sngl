@@ -484,7 +484,6 @@ import (
 	"duckfam.us/sngl/pkg/go/fynelayout"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
-	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
 	"os"
 )
@@ -609,7 +608,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n0.SetVisible(m.visible__inst0)
 	m.__n0.OnClosed = m.__n0_closed_handler
 	m.__n0.OnVisible = m.__n0_visible_handler
-	m.__n5 = container.NewVBox()
+	m.__n5 = fynelayout.NewVBox()
 	m.__n6 = widget.NewButton("", nil)
 	m.__n6.SetText("load")
 	m.__n6.OnTapped = m.__n6_click_handler
@@ -1058,7 +1057,7 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:50a71640658577be068d0e339fc6a098
 -- run/go/fyne --
-pass sha256:a86f9ff63bc75db386fd7984983e4f3f
+pass sha256:ed727da2e70944ece844355f0abf0f3a
 -- run/go/gtk4 --
 pass sha256:8093b03dfa0d55914eb421b5168de494
 -- run/kotlin/android --

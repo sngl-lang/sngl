@@ -672,7 +672,7 @@ func (m *Model) SetMounted(v string) {
 
 // BuildUI creates the widget tree. Call once; widgets are updated selectively.
 func (m *Model) BuildUI() fyne.CanvasObject {
-	m.__n3 = container.NewVBox()
+	m.__n3 = fynelayout.NewVBox()
 	m.add = widget.NewButton("", nil)
 	m.add.SetText("add")
 	m.add.OnTapped = m.add_click_handler
@@ -717,7 +717,7 @@ func newCard__slot0Instance(__model *Model, __a_start int, __a___p0 int, __a___o
 	c.__effects0_steps = 0
 	c.__root = container.NewVBox()
 	c.__slot0 = nil
-	__n4 := container.NewVBox()
+	__n4 := fynelayout.NewVBox()
 	__n0 := widget.NewLabel("")
 	__n0.SetText(("card " + fmt.Sprint(c.k)))
 	__n4.Add(__n0)
@@ -1395,7 +1395,7 @@ window.__sngl_boot();
 -- run/go/bubbletea --
 pass sha256:16ef2f06c84fb1f7ed8afeb193f8705f
 -- run/go/fyne --
-pass sha256:1a4121c6a530ca8032df27964d854f49
+pass sha256:0cb23adfd54bf578f52ec2aaadfb2e8d
 -- run/go/gtk4 --
 pass sha256:659b1d84aef2fb00e630eea227d65a5c
 -- run/kotlin/android --

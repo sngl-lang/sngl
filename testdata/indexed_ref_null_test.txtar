@@ -1003,7 +1003,7 @@ func (m *Model) SetLog(v string) {
 
 // BuildUI creates the widget tree. Call once; widgets are updated selectively.
 func (m *Model) BuildUI() fyne.CanvasObject {
-	m.__n2 = container.NewVBox()
+	m.__n2 = fynelayout.NewVBox()
 	m.change = widget.NewButton("", nil)
 	m.change.SetText("skip b")
 	m.change.OnTapped = m.change_click_handler
@@ -1803,7 +1803,7 @@ window.__sngl_boot();
 -- run/go/bubbletea --
 pass sha256:c2a8dbee802488ae61793a87e32c943b
 -- run/go/fyne --
-pass sha256:eba66abaddb4da57eb5697f242562666
+pass sha256:f2892e24fae29d46876a9e8fb4f7095a
 -- run/go/gtk4 --
 pass sha256:a432a99cd5b38c7c5f7166f45b9bf8b4
 -- run/kotlin/android --

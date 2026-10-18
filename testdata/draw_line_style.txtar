@@ -614,13 +614,6 @@ type _step__record struct {
 	R   float64
 }
 
-type Color struct {
-	R uint8
-	G uint8
-	B uint8
-	A uint8
-}
-
 type Point struct {
 	X float64
 	Y float64
@@ -1201,7 +1194,7 @@ pass sha256:bef5265104d4e60d2f9d9ceb2d57b856
 -- run/go/fyne --
 pass sha256:9ed6653bc2c74513345c5f750d86a689
 -- run/go/gtk4 --
-pass sha256:08358ff383a0694149dee5b485acfc41
+pass sha256:72c884fd52ad054cb98ad21c649c4c62
 -- run/kotlin/android --
 pass sha256:14ed8fa920c86d30749d4f0b2166c2ac
 -- run/none/html --

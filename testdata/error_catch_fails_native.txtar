@@ -476,7 +476,6 @@ import (
 	"duckfam.us/sngl/pkg/go/fynelayout"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
-	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
 	"os"
 )
@@ -607,7 +606,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.home.SetVisible(m.visible__inst0)
 	m.home.OnClosed = m.home_closed_handler
 	m.home.OnVisible = m.home_visible_handler
-	m.__n2 = container.NewVBox()
+	m.__n2 = fynelayout.NewVBox()
 	m.__n3 = widget.NewButton("", nil)
 	m.__n3.SetText("go")
 	m.__n3.OnTapped = m.__n3_click_handler
@@ -633,4 +632,4 @@ func main() {
 -- run/go/bubbletea --
 pass sha256:3e35cf2275fdefdf2c2c6649f06cfe63
 -- run/go/fyne --
-pass sha256:5640e074f51a42730d098956fa7f80d9
+pass sha256:9655226913c127fdb0a4b3e64a7e115f

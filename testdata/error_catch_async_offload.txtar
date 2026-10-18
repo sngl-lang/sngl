@@ -53,7 +53,6 @@ import (
 	"duckfam.us/sngl/pkg/go/fynelayout"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
-	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
 	"os"
 	"time"
@@ -181,7 +180,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.home.SetVisible(m.visible__inst0)
 	m.home.OnClosed = m.home_closed_handler
 	m.home.OnVisible = m.home_visible_handler
-	m.__n2 = container.NewVBox()
+	m.__n2 = fynelayout.NewVBox()
 	m.__n3 = widget.NewButton("", nil)
 	m.__n3.SetText("go")
 	m.__n3.OnTapped = m.__n3_click_handler
@@ -356,6 +355,6 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return gtk4rt.ToplevelWindow(app, m.home)
 }
 -- run/go/fyne --
-pass sha256:65781fb121db4a2d334b6997d187927a
+pass sha256:18a78df2d00b0a884bb2d6be4fe41093
 -- run/go/gtk4 --
 pass sha256:fa657b3c362579610adceb9dbc74106e

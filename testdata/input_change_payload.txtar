@@ -167,7 +167,7 @@ func (m *Model) SetValue__inst0(v string) {
 
 // BuildUI creates the widget tree. Call once; widgets are updated selectively.
 func (m *Model) BuildUI() fyne.CanvasObject {
-	m.__n6 = container.NewVBox()
+	m.__n6 = fynelayout.NewVBox()
 	m.__n3 = widget.NewEntry()
 	m.__n3.SetText(m.value__inst0)
 	m.__n3.SetPlaceHolder("")
@@ -207,7 +207,7 @@ func newRowInstance(__model *Model, __a_label string) *RowInstance {
 	c.value__inst2 = ""
 	c.__root = container.NewVBox()
 	c.__slot0 = nil
-	__n7 := container.NewVBox()
+	__n7 := fynelayout.NewVBox()
 	c.__n0 = widget.NewEntry()
 	c.__n0.SetText(c.value__inst1)
 	c.__n0.SetPlaceHolder("")
@@ -505,6 +505,6 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return win
 }
 -- run/go/fyne --
-pass sha256:ec52da820ad1c8d97f47160f021e680d
+pass sha256:617e621f46d4fef350cac9becb791be8
 -- run/go/gtk4 --
 pass sha256:ef7a9ea3c0b7d4d35ca2c8097cab0905

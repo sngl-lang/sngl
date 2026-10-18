@@ -35,7 +35,6 @@ import (
 	"duckfam.us/sngl/pkg/go/fynelayout"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
-	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
 	"os"
 )
@@ -138,7 +137,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.app__r0.SetVisible(m.visible__inst0)
 	m.app__r0.OnClosed = m.app__r0_closed_handler
 	m.app__r0.OnVisible = m.app__r0_visible_handler
-	m.__n0 = container.NewVBox()
+	m.__n0 = fynelayout.NewVBox()
 	m.__n1 = widget.NewLabel("")
 	m.__n1.SetText("App page")
 	m.__n0.Add(m.__n1)
@@ -151,7 +150,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.settings.SetVisible(m.visible__inst1)
 	m.settings.OnClosed = m.settings_closed_handler
 	m.settings.OnVisible = m.settings_visible_handler
-	m.__n3 = container.NewVBox()
+	m.__n3 = fynelayout.NewVBox()
 	m.__n4 = widget.NewLabel("")
 	m.__n4.SetText("Settings page")
 	m.__n3.Add(m.__n4)
@@ -168,4 +167,4 @@ func main() {
 	_ = os.Stderr
 }
 -- run/go/fyne --
-pass sha256:9ead94a53b59bcb63a17e4d44aa74e34
+pass sha256:daa04818e4815c25878a69ed5f5e9601

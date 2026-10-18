@@ -55,7 +55,7 @@ var (
 // NewToplevel makes a toplevel and its content box. The window is made when
 // the node is attached to the application and the loop is running.
 func NewToplevel() *Toplevel {
-	return &Toplevel{Container: container.NewVBox(), visible: true}
+	return &Toplevel{Container: NewVBox(), visible: true}
 }
 
 // SetTitle sets the title the window shows.

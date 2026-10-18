@@ -372,7 +372,6 @@ import (
 	"duckfam.us/sngl/pkg/go/fynelayout"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
-	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
 	"os"
 )
@@ -422,7 +421,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n0.SetVisible(m.visible__inst0)
 	m.__n0.OnClosed = m.__n0_closed_handler
 	m.__n0.OnVisible = m.__n0_visible_handler
-	m.__n1 = container.NewVBox()
+	m.__n1 = fynelayout.NewVBox()
 	for _, row := range m.rows {
 		m.__n2 = widget.NewLabel("")
 		m.__n2.SetText(row)
@@ -518,7 +517,7 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:b2e9a6e5b29cb6f0a1487d2d55263d2c
 -- run/go/fyne --
-pass sha256:fe47dd917ad0626a5770f552c783dd7f
+pass sha256:ef8dfb186343620695fc30a319ece4e4
 -- run/kotlin/android --
 pass sha256:ad0bb61e684152e4e2521f1cc5aab5d8
 -- run/none/html --

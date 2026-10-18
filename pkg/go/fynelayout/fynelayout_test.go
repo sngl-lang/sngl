@@ -1,14 +1,20 @@
 package fynelayout_test
 
 import (
+	"image/color"
 	"os"
 	"testing"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
+	"fyne.io/fyne/v2/container"
+	"fyne.io/fyne/v2/layout"
 	fynetest "fyne.io/fyne/v2/test"
+	"fyne.io/fyne/v2/theme"
+	"fyne.io/fyne/v2/widget"
 
 	"duckfam.us/sngl/pkg/go/fynelayout"
+	"duckfam.us/sngl/pkg/go/fynetheme"
 )
 
 // A canvas object refreshes itself when its minimum changes, and that reaches
@@ -25,87 +31,185 @@ func box(w, h float32) fyne.CanvasObject {
 	return r
 }
 
-func TestWeightsSplitTheSurplus(t *testing.T) {
-	a, b := box(10, 10), box(10, 10)
-	l := fynelayout.New(true, []float32{1, 3}, nil, 0, 0)
-	l.Layout([]fyne.CanvasObject{a, b}, fyne.NewSize(400, 50))
+func grown(w, h, grow float32) *fynelayout.Box {
+	b := fynelayout.NewBox(box(w, h))
+	b.SetLook(fynelayout.Look{Grow: grow})
+	return b
+}
+
+func TestGrowsSplitTheSurplus(t *testing.T) {
+	a, b := grown(10, 10, 1), grown(10, 10, 3)
+	l := &fynelayout.Weighted{Horizontal: true, Gap: 10}
+	l.Layout([]fyne.CanvasObject{a, b}, fyne.NewSize(410, 50))
 
 	if got := a.Size().Width; got != 100 {
-		t.Errorf("weight 1 of 4 got width %v, want 100", got)
+		t.Errorf("grow 1 of 4 got width %v, want 100", got)
 	}
 	if got := b.Size().Width; got != 300 {
-		t.Errorf("weight 3 of 4 got width %v, want 300", got)
+		t.Errorf("grow 3 of 4 got width %v, want 300", got)
 	}
-	if got := b.Position().X; got != 100 {
-		t.Errorf("second child starts at %v, want 100", got)
+	if got := b.Position().X; got != 110 {
+		t.Errorf("second child starts at %v, want 110", got)
 	}
-	// The cross axis is the box: that is what "fill" means.
+	// Stretch, the zero Cross, fills the box across.
 	if got := a.Size().Height; got != 50 {
 		t.Errorf("cross axis got %v, want 50", got)
 	}
 }
 
-// A weight of zero keeps the child's minimum, and only what is left over is
+// A child that does not grow keeps its minimum, and only what is left over is
 // shared -- which is what makes a fixed header above a flexing body work.
-func TestUnweightedChildrenKeepTheirMinimum(t *testing.T) {
-	fixed, grows := box(10, 30), box(10, 10)
-	l := fynelayout.New(false, []float32{0, 1}, nil, 0, 0)
+func TestUngrownChildrenKeepTheirMinimum(t *testing.T) {
+	fixed, grows := box(10, 30), grown(10, 10, 1)
+	l := &fynelayout.Weighted{Gap: 10}
 	l.Layout([]fyne.CanvasObject{fixed, grows}, fyne.NewSize(100, 200))
 
 	if got := fixed.Size().Height; got != 30 {
-		t.Errorf("unweighted child got height %v, want its minimum 30", got)
+		t.Errorf("fixed child got height %v, want its minimum 30", got)
 	}
-	if got := grows.Size().Height; got != 170 {
-		t.Errorf("weighted child got height %v, want the remaining 170", got)
-	}
-}
-
-// Padding insets every child, gap separates two of them, and a margin insets
-// one -- all three come out of the space the weights then divide.
-func TestPaddingGapAndMarginComeOutOfTheShare(t *testing.T) {
-	a, b := box(10, 10), box(10, 10)
-	l := fynelayout.New(true, []float32{1, 1}, []float32{5, 0}, 10, 20)
-	l.Layout([]fyne.CanvasObject{a, b}, fyne.NewSize(200, 50))
-
-	// 200 - 2*20 padding - 10 gap - 2*5 margin = 140, split evenly.
-	if got := a.Size().Width; got != 70 {
-		t.Errorf("first child got width %v, want 70", got)
-	}
-	if got := b.Size().Width; got != 70 {
-		t.Errorf("second child got width %v, want 70", got)
-	}
-	if got := a.Position().X; got != 25 {
-		t.Errorf("first child starts at %v, want padding 20 + margin 5", got)
-	}
-	if got := b.Position().X; got != 110 {
-		t.Errorf("second child starts at %v, want 25 + 70 + 5 + 10", got)
+	if got := grows.Size().Height; got != 160 {
+		t.Errorf("growing child got height %v, want the remaining 160", got)
 	}
 }
 
-// MinSize is every child at its own minimum: a weight asks for a share of the
-// surplus and says nothing about the floor.
+func TestCrossAndJustifyPlaceFixedChildren(t *testing.T) {
+	a, b := box(10, 10), box(10, 20)
+	l := &fynelayout.Weighted{Horizontal: true, Gap: 10, Cross: fynelayout.CrossCenter, Justify: fynelayout.JustifyEnd}
+	l.Layout([]fyne.CanvasObject{a, b}, fyne.NewSize(100, 40))
+
+	if got := a.Position(); got != fyne.NewPos(70, 15) {
+		t.Errorf("first child at %v, want (70, 15)", got)
+	}
+	if got := b.Position(); got != fyne.NewPos(90, 10) {
+		t.Errorf("second child at %v, want (90, 10)", got)
+	}
+	if got := a.Size(); got != fyne.NewSize(10, 10) {
+		t.Errorf("a centered child keeps its own size, got %v", got)
+	}
+}
+
 func TestMinSizeSumsTheChildren(t *testing.T) {
-	l := fynelayout.New(false, []float32{1, 1}, []float32{2, 2}, 6, 4)
-	got := l.MinSize([]fyne.CanvasObject{box(30, 10), box(50, 20)})
-
-	// main: 10 + 4 + 20 + 4 + 6 gap + 2*4 padding
-	if got.Height != 52 {
-		t.Errorf("min height %v, want 52", got.Height)
-	}
-	// cross: widest child 50 + its 2*2 margin + 2*4 padding
-	if got.Width != 62 {
-		t.Errorf("min width %v, want 62", got.Width)
+	l := &fynelayout.Weighted{Gap: 6}
+	got := l.MinSize([]fyne.CanvasObject{box(30, 10), grown(50, 20, 1)})
+	if got != fyne.NewSize(50, 36) {
+		t.Errorf("min size %v, want 50x36", got)
 	}
 }
 
-// A box too small for its children hands out nothing rather than negative
-// sizes, which Fyne would carry into a renderer.
-func TestOverflowNeverGoesNegative(t *testing.T) {
-	a, b := box(100, 10), box(100, 10)
-	l := fynelayout.New(true, []float32{0, 1}, nil, 0, 0)
-	l.Layout([]fyne.CanvasObject{a, b}, fyne.NewSize(50, 50))
+// A growing child is never given less than its own minimum, as CSS clamps a
+// flex item, and what that costs the others is shared among them.
+func TestAGrowingChildKeepsItsMinimum(t *testing.T) {
+	tall, short := grown(10, 100, 1), grown(10, 10, 1)
+	l := &fynelayout.Weighted{Gap: 4}
+	l.Layout([]fyne.CanvasObject{tall, short}, fyne.NewSize(50, 114))
+	if got := tall.Size().Height; got != 100 {
+		t.Errorf("the tall child got %v, want its minimum 100", got)
+	}
+	if got := short.Size().Height; got != 10 {
+		t.Errorf("the short child got %v, want the 10 left", got)
+	}
+}
 
-	if got := b.Size().Width; got != 0 {
-		t.Errorf("overflowing weighted child got width %v, want 0", got)
+// Fyne's own boxes give a spacer the free space, and ui.spacer is one.
+func TestASpacerGrows(t *testing.T) {
+	a, b := box(10, 10), box(10, 10)
+	l := &fynelayout.Weighted{Gap: 4}
+	l.Layout([]fyne.CanvasObject{a, layout.NewSpacer(), b}, fyne.NewSize(50, 200))
+	if got := b.Position().Y; got != 190 {
+		t.Errorf("the child after a spacer is at %v, want the bottom, 190", got)
+	}
+}
+
+// The margin lies outside the border, the padding inside it, as CSS's
+// border-box lays them out.
+func TestBoxInsetsItsContent(t *testing.T) {
+	content := box(20, 10)
+	b := fynelayout.NewBox(content)
+	b.SetLook(fynelayout.Look{
+		MarginTop: 5, MarginRight: 5, MarginBottom: 5, MarginLeft: 5,
+		PaddingTop: 3, PaddingRight: 3, PaddingBottom: 3, PaddingLeft: 3,
+		StrokeWidth: 2,
+	})
+	if got := b.MinSize(); got != fyne.NewSize(40, 30) {
+		t.Errorf("min size %v, want 40x30", got)
+	}
+	b.Resize(fyne.NewSize(100, 50))
+	r := fynetest.WidgetRenderer(b)
+	r.Layout(fyne.NewSize(100, 50))
+	themed := r.Objects()[1]
+	if got := themed.Position(); got != fyne.NewPos(10, 10) {
+		t.Errorf("content at %v, want (10, 10)", got)
+	}
+	if got := themed.Size(); got != fyne.NewSize(80, 30) {
+		t.Errorf("content size %v, want 80x30", got)
+	}
+}
+
+func TestBoxSizeBounds(t *testing.T) {
+	b := fynelayout.NewBox(box(20, 10))
+	b.SetLook(fynelayout.Look{Width: 60, MaxHeight: 4})
+	if got := b.MinSize(); got != fyne.NewSize(60, 4) {
+		t.Errorf("min size %v, want 60x4", got)
+	}
+}
+
+// A width is the box's whatever its parent stretches it to.
+func TestBoxKeepsItsWidthWhenStretched(t *testing.T) {
+	b := fynelayout.NewBox(box(20, 10))
+	b.SetLook(fynelayout.Look{Width: 50})
+	r := fynetest.WidgetRenderer(b)
+	r.Layout(fyne.NewSize(300, 10))
+	if got := r.Objects()[1].Size().Width; got != 50 {
+		t.Errorf("content width %v, want 50", got)
+	}
+}
+
+// A Look that leaves a field alone inherits it from whatever the box is under.
+func TestBoxInheritsWhatItsLookLeavesAlone(t *testing.T) {
+	label := widget.NewLabel("x")
+	b := fynelayout.NewBox(label)
+	b.SetLook(fynelayout.Look{PaddingTop: 4})
+	red := color.NRGBA{R: 255, A: 255}
+	outer := container.NewThemeOverride(b, fynetheme.Theme{Theme: theme.DefaultTheme(), Foreground: red})
+	w := fynetest.NewWindow(outer)
+	defer w.Close()
+	b.Refresh()
+	if got := theme.CurrentForWidget(label).Color(theme.ColorNameForeground, theme.VariantLight); got != red {
+		t.Errorf("the boxed label's foreground is %v, want the enclosing %v", got, red)
+	}
+}
+
+// Back to no alignment is back to the widget's own.
+func TestBoxRestoresTheWidgetsAlignment(t *testing.T) {
+	btn := widget.NewButton("x", nil)
+	b := fynelayout.NewBox(btn)
+	b.SetLook(fynelayout.Look{TextAlign: fynelayout.TextAlignLeading})
+	b.SetLook(fynelayout.Look{PaddingTop: 1})
+	if btn.Alignment != widget.ButtonAlignCenter {
+		t.Errorf("the button's alignment is %v, want its own center", btn.Alignment)
+	}
+}
+
+// An override re-measures its whole subtree on every refresh, so a box asking
+// for no theme puts its widget under none.
+func TestBoxWithNoThemeHoldsNoOverride(t *testing.T) {
+	content := box(20, 10)
+	b := fynelayout.NewBox(content)
+	b.SetLook(fynelayout.Look{PaddingTop: 2, Grow: 1})
+	if got := fynetest.WidgetRenderer(b).Objects()[1]; got != content {
+		t.Errorf("the box shows a %T, want its widget", got)
+	}
+}
+
+// A share that changes while the program runs lays the parent out again.
+func TestAChangedGrowRelaysTheParent(t *testing.T) {
+	a := grown(10, 10, 0)
+	c := fynelayout.NewVBox(a, box(10, 10))
+	w := fynetest.NewWindow(c)
+	defer w.Close()
+	w.Resize(fyne.NewSize(100, 300))
+	a.SetLook(fynelayout.Look{Grow: 1})
+	if got := a.Size().Height; got <= 10 {
+		t.Errorf("the child that now grows is %v high, want the free space", got)
 	}
 }

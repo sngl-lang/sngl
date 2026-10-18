@@ -34,28 +34,7 @@ window {
     button(text="Grow", @click { radius = radius + 10.0 })
 }
 `
-	pkg := checkForFyne(t, src)
-
-	g := &Generator{}
-	lang := codegen.LookupLang("go")
-	if lang == nil {
-		t.Fatal("go lang not registered")
-	}
-	caps := codegen.CapsOrNone(lang.LanguageIdentifier(), g.PlatformIdentifier())
-	pkg = ir.ClonePackage(pkg)
-	if err := lower.Lower(pkg, caps, lower.Options{Platform: "fyne", Language: "go"}); err != nil {
-		t.Fatalf("lower: %v", err)
-	}
-	mem := codegen.NewMemSink()
-	if err := g.Generate(&codegen.Request{Pkg: pkg, Lang: lang, Source: "t.sngl"}, mem); err != nil {
-		t.Fatalf("generate: %v", err)
-	}
-	files := mem.Files()
-	modelSrc, ok := files["model.go"]
-	if !ok {
-		t.Fatal("model.go not found in generated files")
-	}
-	out := string(modelSrc)
+	out := generateFyneModelBuilt(t, src)
 
 	for _, snippet := range []string{
 		// draw func signature uses the shared *snglcanvas.Context runtime.

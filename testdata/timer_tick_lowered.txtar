@@ -531,13 +531,13 @@ func (m *Model) __effect0_mount() {
 					if m.gen__inst0__inst0 != mine {
 						return
 					}
-					var __lt0 float64
+					var __lt15 float64
 					if m.level__inst0 >= 1.0 {
-						__lt0 = 0.0
+						__lt15 = 0.0
 					} else {
-						__lt0 = (m.level__inst0 + 0.01)
+						__lt15 = (m.level__inst0 + 0.01)
 					}
-					m.level__inst0 = __lt0
+					m.level__inst0 = __lt15
 					m.__n0.SetText(((fmt.Sprint(m.level__inst0) + " ") + fmt.Sprint(m.rung__inst0)))
 					var __iterIdx0 int = -1
 					for x := range slices.Values([]int{0, 1, 2}) {
@@ -740,4 +740,4 @@ func main() {
 -- run/go/bubbletea --
 pass sha256:7e722750ce492ed62f1668ca1c9a0389
 -- run/go/fyne --
-pass sha256:d8b91ff6c3a6bc5f1a2df50908215937
+pass sha256:fb29f3e60854f345b58a000b7a7b57bd

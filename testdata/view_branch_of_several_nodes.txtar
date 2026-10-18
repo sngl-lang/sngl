@@ -807,7 +807,7 @@ func (m *Model) SetXs(v []int) {
 
 // BuildUI creates the widget tree. Call once; widgets are updated selectively.
 func (m *Model) BuildUI() fyne.CanvasObject {
-	m.__n6 = container.NewVBox()
+	m.__n6 = fynelayout.NewVBox()
 	m.__renderSlot0(m.__n6)
 	m.__renderSlot1(m.__n6)
 	m.__renderSlot2(m.__n6)
@@ -1657,7 +1657,7 @@ window.__sngl_boot();
 -- run/go/bubbletea --
 pass sha256:6cbadfca9711ea678e77ae755d495b95
 -- run/go/fyne --
-pass sha256:d24a8c182c2ba39ec4990f94c35abc1d
+pass sha256:ec25e318af643efe23dd0896f43e4f21
 -- run/go/gtk4 --
 pass sha256:693d20c3608cae7beaf00a91d13d20e0
 -- run/kotlin/android --

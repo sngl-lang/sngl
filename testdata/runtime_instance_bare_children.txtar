@@ -845,7 +845,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n3.SetVisible(m.visible__inst0)
 	m.__n3.OnClosed = m.__n3_closed_handler
 	m.__n3.OnVisible = m.__n3_visible_handler
-	m.__n7 = container.NewVBox()
+	m.__n7 = fynelayout.NewVBox()
 	m.__n12 = widget.NewButton("", nil)
 	m.__n12.SetText("add")
 	m.__n12.OnTapped = m.__n12_click_handler
@@ -880,7 +880,7 @@ func newCardInstance(__model *Model) *CardInstance {
 	c.__root = container.NewVBox()
 	c.__slot0 = nil
 	c.__slot1 = nil
-	__n8 := container.NewVBox()
+	__n8 := fynelayout.NewVBox()
 	c.__n0 = widget.NewButton("", nil)
 	c.__n0.SetText(("hit " + fmt.Sprint(c.hits)))
 	c.__n0.OnTapped = func() {
@@ -922,7 +922,7 @@ func newCard__slot0Instance(__model *Model, __a___p0 string, __a___on0 func()) *
 	c.__root = container.NewVBox()
 	c.__slot0 = nil
 	c.__slot1 = nil
-	__n10 := container.NewVBox()
+	__n10 := fynelayout.NewVBox()
 	c.__n1 = widget.NewButton("", nil)
 	c.__n1.SetText(("hit " + fmt.Sprint(c.hits)))
 	c.__n1.OnTapped = func() {
@@ -1607,7 +1607,7 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:c526927e7cb09995aa8f9e7465a735d3
 -- run/go/fyne --
-pass sha256:88282ada95aed18d08eb8509cda4732d
+pass sha256:194b141ceb2faf235c91279f90674492
 -- run/go/gtk4 --
 pass sha256:8926878d972f8d542783794afa332f3f
 -- run/kotlin/android --

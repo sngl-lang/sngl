@@ -1,10 +1,12 @@
-A ui.Style on fyne, written as a literal and held in a var and a prop. The
-held ones went through a Go helper, __styleTheme, that read `1em` of
-fontSize as `.px` alone, so as nothing; both paths dropped paddingX, a
-label's background, the border, the width, textAlign and fontFamily. A vbox
-with no `flex` child was container.NewVBox, which dropped its gap, padding
-and alignItems and every child's margin, and the weighted layout read only
-`margin`, so `marginLeft` went too.
+A ui.Style on fyne, written as a literal and held in a var and a prop, takes
+one function, style.sngl's lookOf, and each node it asks anything of is
+shown in a fynelayout.Box carrying the Look it built. The held ones went
+through a Go helper, __styleTheme, that read a `1em` fontSize as `.px` alone,
+so as nothing, and both paths dropped paddingX, a label's background, the
+border, the width, textAlign and fontFamily. A vbox with no `flex` child was
+container.NewVBox, which dropped its gap, padding and alignItems and every
+child's margin, and the weighted layout read only `margin`, so `marginLeft`
+went too. Every box is fynelayout's now, reading a child's share off its Box.
 
 deny out/go/fyne/model.go `__styleTheme` -- a held Style takes the function a literal does
 deny out/go/fyne/model.go `container\.NewVBox\(\)` -- a vbox reads its gap, padding and alignment and its children's margins
@@ -47,190 +49,12 @@ package main
 
 import (
 	"duckfam.us/sngl/pkg/go/fynelayout"
-	"duckfam.us/sngl/pkg/go/fynetheme"
 	"duckfam.us/sngl/pkg/go/snglcolor"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
-	"fyne.io/fyne/v2/container"
-	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
-	"image/color"
 	"os"
 )
-
-func __merge_Style(base, ov Style) Style {
-	if ov.Padding != (Measurement{}) {
-		base.Padding = ov.Padding
-	}
-	if ov.PaddingTop != (Measurement{}) {
-		base.PaddingTop = ov.PaddingTop
-	}
-	if ov.PaddingRight != (Measurement{}) {
-		base.PaddingRight = ov.PaddingRight
-	}
-	if ov.PaddingBottom != (Measurement{}) {
-		base.PaddingBottom = ov.PaddingBottom
-	}
-	if ov.PaddingLeft != (Measurement{}) {
-		base.PaddingLeft = ov.PaddingLeft
-	}
-	if ov.PaddingX != (Measurement{}) {
-		base.PaddingX = ov.PaddingX
-	}
-	if ov.PaddingY != (Measurement{}) {
-		base.PaddingY = ov.PaddingY
-	}
-	if ov.Margin != (Measurement{}) {
-		base.Margin = ov.Margin
-	}
-	if ov.MarginTop != (Measurement{}) {
-		base.MarginTop = ov.MarginTop
-	}
-	if ov.MarginRight != (Measurement{}) {
-		base.MarginRight = ov.MarginRight
-	}
-	if ov.MarginBottom != (Measurement{}) {
-		base.MarginBottom = ov.MarginBottom
-	}
-	if ov.MarginLeft != (Measurement{}) {
-		base.MarginLeft = ov.MarginLeft
-	}
-	if ov.MarginX != (Measurement{}) {
-		base.MarginX = ov.MarginX
-	}
-	if ov.MarginY != (Measurement{}) {
-		base.MarginY = ov.MarginY
-	}
-	if ov.Gap != (Measurement{}) {
-		base.Gap = ov.Gap
-	}
-	if ov.Width != (Measurement{}) {
-		base.Width = ov.Width
-	}
-	if ov.MinWidth != (Measurement{}) {
-		base.MinWidth = ov.MinWidth
-	}
-	if ov.Height != (Measurement{}) {
-		base.Height = ov.Height
-	}
-	if ov.MaxWidth != (Measurement{}) {
-		base.MaxWidth = ov.MaxWidth
-	}
-	if ov.MaxHeight != (Measurement{}) {
-		base.MaxHeight = ov.MaxHeight
-	}
-	if ov.Flex != 0 {
-		base.Flex = ov.Flex
-	}
-	if ov.FlexDirection != "" {
-		base.FlexDirection = ov.FlexDirection
-	}
-	if ov.AlignItems != "" {
-		base.AlignItems = ov.AlignItems
-	}
-	if ov.JustifyContent != "" {
-		base.JustifyContent = ov.JustifyContent
-	}
-	if ov.Position != "" {
-		base.Position = ov.Position
-	}
-	if ov.Top != (Measurement{}) {
-		base.Top = ov.Top
-	}
-	if ov.Bottom != (Measurement{}) {
-		base.Bottom = ov.Bottom
-	}
-	if ov.Left != (Measurement{}) {
-		base.Left = ov.Left
-	}
-	if ov.Right != (Measurement{}) {
-		base.Right = ov.Right
-	}
-	if ov.ZIndex != 0 {
-		base.ZIndex = ov.ZIndex
-	}
-	if ov.Color != (snglcolor.Color{}) {
-		base.Color = ov.Color
-	}
-	if ov.FontSize != (Measurement{}) {
-		base.FontSize = ov.FontSize
-	}
-	if ov.FontFamily != "" {
-		base.FontFamily = ov.FontFamily
-	}
-	if ov.FontWeight != "" {
-		base.FontWeight = ov.FontWeight
-	}
-	if ov.FontStyle != "" {
-		base.FontStyle = ov.FontStyle
-	}
-	if ov.TextAlign != "" {
-		base.TextAlign = ov.TextAlign
-	}
-	if ov.MaxLines != 0 {
-		base.MaxLines = ov.MaxLines
-	}
-	if ov.WhiteSpace != "" {
-		base.WhiteSpace = ov.WhiteSpace
-	}
-	if ov.Background != (snglcolor.Color{}) {
-		base.Background = ov.Background
-	}
-	if ov.BorderRadius != (Measurement{}) {
-		base.BorderRadius = ov.BorderRadius
-	}
-	if ov.BorderColor != (snglcolor.Color{}) {
-		base.BorderColor = ov.BorderColor
-	}
-	if ov.BorderWidth != (Measurement{}) {
-		base.BorderWidth = ov.BorderWidth
-	}
-	if ov.Border != "" {
-		base.Border = ov.Border
-	}
-	if ov.BorderBottom != "" {
-		base.BorderBottom = ov.BorderBottom
-	}
-	if ov.BorderLeft != "" {
-		base.BorderLeft = ov.BorderLeft
-	}
-	if ov.BorderCollapse != "" {
-		base.BorderCollapse = ov.BorderCollapse
-	}
-	if ov.BorderStyle != "" {
-		base.BorderStyle = ov.BorderStyle
-	}
-	if ov.Opacity != 0 {
-		base.Opacity = ov.Opacity
-	}
-	if ov.Cursor != "" {
-		base.Cursor = ov.Cursor
-	}
-	if ov.Display != "" {
-		base.Display = ov.Display
-	}
-	if ov.Overflow != "" {
-		base.Overflow = ov.Overflow
-	}
-	if ov.ListStyleType != "" {
-		base.ListStyleType = ov.ListStyleType
-	}
-	return base
-}
-
-var _snglTheme0 = fynetheme.Theme{Theme: theme.DefaultTheme(), Background: color.NRGBA{R: 238, G: 238, B: 238, A: 255}, Foreground: color.NRGBA{R: 51, G: 102, B: 153, A: 255}, TextSize: 14}
-var _snglTheme1 = fynetheme.Theme{Theme: theme.DefaultTheme(), Radius: 4}
-
-func __styleTheme(s Style) fynetheme.Theme {
-	t := fynetheme.New(theme.DefaultTheme())
-	if s.Background != (snglcolor.Color{}) {
-		t = t.WithBackground(s.Background)
-	}
-	if s.Color != (snglcolor.Color{}) {
-		t = t.WithForeground(s.Color)
-	}
-	return t.WithTextSize(s.FontSize.Px).WithRadius(s.BorderRadius.Px).WithWeight(s.FontWeight).WithSlant(s.FontStyle)
-}
 
 type Measurement struct {
 	Px  float64
@@ -298,21 +122,27 @@ type Model struct {
 	held           Style
 	visible__inst0 bool
 
-	__n0        *fynelayout.Toplevel
-	__n3        *fyne.Container
-	__n4        *widget.Label
-	__n1        *widget.Label
-	__n1__theme *container.ThemeOverride
-	__n2        *widget.Label
-	__n2__theme *container.ThemeOverride
-	__n5        *widget.Label
-	__n6        *fyne.Container
-	__n7        *widget.Button
-	__n8        *widget.Button
-	__n9        *fyne.Container
-	__n10       *widget.Label
-	__n11       *widget.Label
-	__built     bool
+	__n0       *fynelayout.Toplevel
+	__n3       *fyne.Container
+	__n3__box  *fynelayout.Box
+	__n4       *widget.Label
+	__n4__box  *fynelayout.Box
+	__n1       *widget.Label
+	__n1__box  *fynelayout.Box
+	__n2       *widget.Label
+	__n2__box  *fynelayout.Box
+	__n5       *widget.Label
+	__n5__box  *fynelayout.Box
+	__n6       *fyne.Container
+	__n7       *widget.Button
+	__n7__box  *fynelayout.Box
+	__n8       *widget.Button
+	__n8__box  *fynelayout.Box
+	__n9       *fyne.Container
+	__n10      *widget.Label
+	__n10__box *fynelayout.Box
+	__n11      *widget.Label
+	__built    bool
 }
 
 // New creates a Model with default values.
@@ -321,6 +151,125 @@ func New() *Model {
 	m.held = Style{Color: snglcolor.Color{R: 51, G: 102, B: 153, A: 255}, FontSize: Measurement{Em: 1}, PaddingX: Measurement{Px: 8}, Background: snglcolor.Color{R: 238, G: 238, B: 238, A: 255}}
 	m.visible__inst0 = true
 	return m
+}
+
+func LookOf(s Style) fynelayout.Look {
+	look := fynelayout.Look{MarginTop: Side(s.Margin, s.MarginY, s.MarginTop), MarginRight: Side(s.Margin, s.MarginX, s.MarginRight), MarginBottom: Side(s.Margin, s.MarginY, s.MarginBottom), MarginLeft: Side(s.Margin, s.MarginX, s.MarginLeft), PaddingTop: Side(s.Padding, s.PaddingY, s.PaddingTop), PaddingRight: Side(s.Padding, s.PaddingX, s.PaddingRight), PaddingBottom: Side(s.Padding, s.PaddingY, s.PaddingBottom), PaddingLeft: Side(s.Padding, s.PaddingX, s.PaddingLeft), Width: float32(max((s.Width.Px + (14.0 * (s.Width.Em + s.Width.Rem))), 0.0)), Height: float32(max((s.Height.Px + (14.0 * (s.Height.Em + s.Height.Rem))), 0.0)), MinWidth: float32(max((s.MinWidth.Px + (14.0 * (s.MinWidth.Em + s.MinWidth.Rem))), 0.0)), MaxWidth: float32(max((s.MaxWidth.Px + (14.0 * (s.MaxWidth.Em + s.MaxWidth.Rem))), 0.0)), MaxHeight: float32(max((s.MaxHeight.Px + (14.0 * (s.MaxHeight.Em + s.MaxHeight.Rem))), 0.0)), Grow: float32(s.Flex), Gap: float32(max((s.Gap.Px + (14.0 * (s.Gap.Em + s.Gap.Rem))), 0.0)), Cross: CrossOf(s.AlignItems), Justify: JustifyOf(s.JustifyContent), Fill: Paint(s.Background), Stroke: Paint(s.BorderColor), StrokeWidth: float32(max((s.BorderWidth.Px + (14.0 * (s.BorderWidth.Em + s.BorderWidth.Rem))), 0.0)), Radius: float32(max((s.BorderRadius.Px + (14.0 * (s.BorderRadius.Em + s.BorderRadius.Rem))), 0.0)), TextColor: Paint(s.Color), TextSize: float32(max((s.FontSize.Px + (14.0 * (s.FontSize.Em + s.FontSize.Rem))), 0.0)), Bold: ((s.FontWeight == "bold") || (s.FontWeight == "bolder")), Italic: ((s.FontStyle == "italic") || (s.FontStyle == "oblique")), Monospace: (s.FontFamily == "monospace"), TextAlign: TextAlignOf(s.TextAlign), Wrap: WrapOf(s.WhiteSpace), Hidden: (s.Display == "none")}
+	return look
+}
+
+func Side(all Measurement, axis Measurement, own Measurement) float32 {
+	var __lt1 Measurement
+	if (own != Measurement{Px: 0}) {
+		__lt1 = own
+	} else {
+		var __lt0 Measurement
+		if (axis != Measurement{Px: 0}) {
+			__lt0 = axis
+		} else {
+			__lt0 = all
+		}
+		__lt1 = __lt0
+	}
+	return float32(max((__lt1.Px + (14.0 * (__lt1.Em + __lt1.Rem))), 0.0))
+}
+
+func CrossOf(a string) int {
+	var __lt3 int
+	if a == "center" {
+		__lt3 = 2
+	} else {
+		var __lt2 int
+		if a == "end" {
+			__lt2 = 3
+		} else {
+			__lt2 = 0
+		}
+		__lt3 = __lt2
+	}
+	return __lt3
+}
+
+func JustifyOf(j string) int {
+	var __lt8 int
+	if j == "center" {
+		__lt8 = 1
+	} else {
+		var __lt7 int
+		if j == "end" {
+			__lt7 = 2
+		} else {
+			var __lt6 int
+			if j == "spaceBetween" {
+				__lt6 = 3
+			} else {
+				var __lt5 int
+				if j == "spaceAround" {
+					__lt5 = 4
+				} else {
+					var __lt4 int
+					if j == "spaceEvenly" {
+						__lt4 = 5
+					} else {
+						__lt4 = 0
+					}
+					__lt5 = __lt4
+				}
+				__lt6 = __lt5
+			}
+			__lt7 = __lt6
+		}
+		__lt8 = __lt7
+	}
+	return __lt8
+}
+
+func Paint(c__r0 snglcolor.Color) snglcolor.Color {
+	var __lt9 snglcolor.Color
+	if (c__r0.A == 0) || (c__r0 == snglcolor.Color{R: 0, G: 0, B: 0, A: 255}) {
+		__lt9 = snglcolor.Color{A: 0, R: 0, G: 0, B: 0}
+	} else {
+		__lt9 = c__r0
+	}
+	return __lt9
+}
+
+func TextAlignOf(a string) int {
+	var __lt12 int
+	if a == "center" {
+		__lt12 = 2
+	} else {
+		var __lt11 int
+		if a == "right" {
+			__lt11 = 3
+		} else {
+			var __lt10 int
+			if a == "justify" {
+				__lt10 = 1
+			} else {
+				__lt10 = 0
+			}
+			__lt11 = __lt10
+		}
+		__lt12 = __lt11
+	}
+	return __lt12
+}
+
+func WrapOf(w string) int {
+	var __lt14 int
+	if (w == "pre") || (w == "nowrap") {
+		__lt14 = 1
+	} else {
+		var __lt13 int
+		if (w == "preWrap") || (w == "preLine") {
+			__lt13 = 2
+		} else {
+			__lt13 = 0
+		}
+		__lt14 = __lt13
+	}
+	return __lt14
 }
 
 func (m *Model) __n0_closed_handler() {
@@ -364,44 +313,54 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n0.SetVisible(m.visible__inst0)
 	m.__n0.OnClosed = m.__n0_closed_handler
 	m.__n0.OnVisible = m.__n0_visible_handler
-	m.__n3 = container.NewVBox()
+	m.__n3 = fynelayout.NewVBox()
+	m.__n3__box = fynelayout.NewBox(m.__n3)
+	m.__n3__box.SetLook(fynelayout.Look{PaddingTop: 14.0, PaddingRight: 14.0, PaddingBottom: 14.0, PaddingLeft: 14.0, Gap: 6.0, Cross: 2})
 	m.__n4 = widget.NewLabel("")
+	m.__n4__box = fynelayout.NewBox(m.__n4)
 	m.__n4.SetText("literal")
-	m.__n3.Add(container.NewThemeOverride(m.__n4, _snglTheme0))
+	m.__n4__box.SetLook(fynelayout.Look{PaddingRight: 8.0, PaddingLeft: 8.0, Fill: snglcolor.Color{R: 238, G: 238, B: 238, A: 255}, TextColor: snglcolor.Color{R: 51, G: 102, B: 153, A: 255}, TextSize: 14.0})
+	m.__n3.Add(m.__n4__box)
 	m.__n1 = widget.NewLabel("")
-	m.__n1__theme = container.NewThemeOverride(m.__n1, fynetheme.New(theme.DefaultTheme()))
+	m.__n1__box = fynelayout.NewBox(m.__n1)
 	m.__n1.SetText("var")
-	m.__n1__theme.Theme = __styleTheme(__merge_Style(Style{}, __merge_Style(Style{}, m.held)))
-	m.__n1__theme.Refresh()
-	m.__n3.Add(m.__n1__theme)
+	m.__n1__box.SetLook(LookOf(m.held))
+	m.__n3.Add(m.__n1__box)
 	m.__n2 = widget.NewLabel("")
-	m.__n2__theme = container.NewThemeOverride(m.__n2, fynetheme.New(theme.DefaultTheme()))
+	m.__n2__box = fynelayout.NewBox(m.__n2)
 	m.__n2.SetText("prop")
-	m.__n2__theme.Theme = __styleTheme(__merge_Style(Style{}, __merge_Style(Style{}, m.held)))
-	m.__n2__theme.Refresh()
-	m.__n3.Add(m.__n2__theme)
+	m.__n2__box.SetLook(LookOf(m.held))
+	m.__n3.Add(m.__n2__box)
 	m.__n5 = widget.NewLabel("")
+	m.__n5__box = fynelayout.NewBox(m.__n5)
 	m.__n5.SetText("dropped")
-	m.__n3.Add(container.NewThemeOverride(m.__n5, _snglTheme1))
-	m.__n6 = container.New(fynelayout.New(true, []float32{1, 2}, []float32{4, 0}, 0, 0))
+	m.__n5__box.SetLook(fynelayout.Look{Width: 200.0, Stroke: snglcolor.Color{R: 255, G: 0, B: 0, A: 255}, StrokeWidth: 2.0, Radius: 4.0, Monospace: true, TextAlign: 2})
+	m.__n3.Add(m.__n5__box)
+	m.__n6 = fynelayout.NewHBox()
 	m.__n7 = widget.NewButton("", nil)
+	m.__n7__box = fynelayout.NewBox(m.__n7)
 	m.__n7.SetText("one")
+	m.__n7__box.SetLook(fynelayout.Look{MarginTop: 4.0, MarginRight: 4.0, MarginBottom: 4.0, MarginLeft: 4.0, Grow: 1.0})
 	m.__n7.OnTapped = m.__n7_click_handler
-	m.__n6.Add(m.__n7)
+	m.__n6.Add(m.__n7__box)
 	m.__n8 = widget.NewButton("", nil)
+	m.__n8__box = fynelayout.NewBox(m.__n8)
 	m.__n8.SetText("two")
+	m.__n8__box.SetLook(fynelayout.Look{MarginLeft: 14.0, Grow: 2.0})
 	m.__n8.OnTapped = m.__n8_click_handler
-	m.__n6.Add(m.__n8)
+	m.__n6.Add(m.__n8__box)
 	m.__n3.Add(m.__n6)
-	m.__n9 = container.NewVBox()
+	m.__n9 = fynelayout.NewVBox()
 	m.__n10 = widget.NewLabel("")
+	m.__n10__box = fynelayout.NewBox(m.__n10)
 	m.__n10.SetText("kept apart")
-	m.__n9.Add(m.__n10)
+	m.__n10__box.SetLook(fynelayout.Look{MarginTop: 8.0, MarginRight: 8.0, MarginBottom: 8.0, MarginLeft: 8.0})
+	m.__n9.Add(m.__n10__box)
 	m.__n11 = widget.NewLabel("")
 	m.__n11.SetText("beside")
 	m.__n9.Add(m.__n11)
 	m.__n3.Add(m.__n9)
-	m.__n0.Add(m.__n3)
+	m.__n0.Add(m.__n3__box)
 	fynelayout.AppAttach(m.__n0)
 	return m.__n0.Container
 }
@@ -414,4 +373,4 @@ func main() {
 	_ = os.Stderr
 }
 -- run/go/fyne --
-pass sha256:c07fa60ee278b8fb662b2266b5232a1c
+pass sha256:7df602dc1cad04978df76703cba7f381

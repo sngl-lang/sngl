@@ -1567,7 +1567,7 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 	m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
 	m.__copies_cell = nil
 	for __copy0, row := range m.rows {
-		__n1 := container.NewHBox()
+		__n1 := fynelayout.NewHBox()
 		for __copy1, it := range row {
 			m.cell = widget.NewButton("", nil)
 			m.cell.SetText(it)
@@ -1855,14 +1855,14 @@ func (m *Model) SetLog(v string) {
 
 // BuildUI creates the widget tree. Call once; widgets are updated selectively.
 func (m *Model) BuildUI() fyne.CanvasObject {
-	m.__n3 = container.NewVBox()
+	m.__n3 = fynelayout.NewVBox()
 	m.swap = widget.NewButton("", nil)
 	m.swap.SetText("swap")
 	m.swap.OnTapped = m.swap_click_handler
 	m.__n3.Add(m.swap)
 	m.__renderSlot0(m.__n3)
 	for __copy0, row := range m.grid {
-		m.__n5 = container.NewHBox()
+		m.__n5 = fynelayout.NewHBox()
 		for __copy1, it := range row {
 			m.pin = widget.NewButton("", nil)
 			m.pin.SetText(it)
@@ -1876,7 +1876,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 		m.__n3.Add(m.__n5)
 	}
 	for __copy0, r := range []int{0, 1} {
-		m.__n6 = container.NewHBox()
+		m.__n6 = fynelayout.NewHBox()
 		for __copy1, k := range []int{0, 1} {
 			m.tick = widget.NewButton("", nil)
 			m.tick.SetText((fmt.Sprint(r) + fmt.Sprint(k)))
@@ -1889,7 +1889,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 		}
 		m.__n3.Add(m.__n6)
 	}
-	m.__n4 = container.NewHBox()
+	m.__n4 = fynelayout.NewHBox()
 	m.__renderSlot1(m.__n4)
 	m.__renderSlot2(m.__n4)
 	m.__n3.Add(m.__n4)
@@ -3201,7 +3201,7 @@ window.__sngl_boot();
 -- run/go/bubbletea --
 pass sha256:1fc4f0e30b63693139fa5ec6a98c912f
 -- run/go/fyne --
-pass sha256:646543c74b52cfa275b1efd0b339a7a8
+pass sha256:7caf5e81a602dc330c41188a8c85f317
 -- run/go/gtk4 --
 pass sha256:fc08723045b896f09cb9045039f1651b
 -- run/kotlin/android --

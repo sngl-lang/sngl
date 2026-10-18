@@ -1,11 +1,11 @@
 A ternary in a style prop on a target that renders no `style`: passTernary
-hoists the `c ? a : b` into a temp declared ahead of the node, and fyne and gtk4
-write nothing for `style`, the platform's own prop rather than a widget's. With
-the one statement reading it dropped, Go refused the temp as declared and not
-used; the translator reads it into the blank identifier instead
-(codegen.KeepLocalsRead).
+hoists the `c ? a : b` into a temp declared ahead of the node, and gtk4 writes
+nothing for `style`, the platform's own prop rather than a widget's. With the
+one statement reading it dropped, Go refused the temp as declared and not used;
+the translator reads it into the blank identifier instead
+(codegen.KeepLocalsRead). fyne reads it, into the look its box is set to.
 
-deny out/go/fyne/model.go `__n\d+\.Style|SetStyle` -- fyne still renders nothing for style
+deny out/go/fyne/model.go `__n\d+\.Style|SetStyle` -- fyne sets a style on the box it is shown in, never on the widget
 -- app.sngl --
 import ui "sngl:ui"
 
@@ -29,24 +29,83 @@ package main
 
 import (
 	"duckfam.us/sngl/pkg/go/fynelayout"
-	"duckfam.us/sngl/pkg/go/fynetheme"
+	"duckfam.us/sngl/pkg/go/snglcolor"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
-	"fyne.io/fyne/v2/container"
-	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 	"os"
 )
+
+type Measurement struct {
+	Px  float64
+	Em  float64
+	Rem float64
+}
+
+type Style struct {
+	Padding        Measurement
+	PaddingTop     Measurement
+	PaddingRight   Measurement
+	PaddingBottom  Measurement
+	PaddingLeft    Measurement
+	PaddingX       Measurement
+	PaddingY       Measurement
+	Margin         Measurement
+	MarginTop      Measurement
+	MarginRight    Measurement
+	MarginBottom   Measurement
+	MarginLeft     Measurement
+	MarginX        Measurement
+	MarginY        Measurement
+	Gap            Measurement
+	Width          Measurement
+	MinWidth       Measurement
+	Height         Measurement
+	MaxWidth       Measurement
+	MaxHeight      Measurement
+	Flex           float64
+	FlexDirection  string
+	AlignItems     string
+	JustifyContent string
+	Position       string
+	Top            Measurement
+	Bottom         Measurement
+	Left           Measurement
+	Right          Measurement
+	ZIndex         int
+	Color          snglcolor.Color
+	FontSize       Measurement
+	FontFamily     string
+	FontWeight     string
+	FontStyle      string
+	TextAlign      string
+	MaxLines       int
+	WhiteSpace     string
+	Background     snglcolor.Color
+	BorderRadius   Measurement
+	BorderColor    snglcolor.Color
+	BorderWidth    Measurement
+	Border         string
+	BorderBottom   string
+	BorderLeft     string
+	BorderCollapse string
+	BorderStyle    string
+	Opacity        float64
+	Cursor         string
+	Display        string
+	Overflow       string
+	ListStyleType  string
+}
 
 // Model holds the state for this SNGL UI.
 type Model struct {
 	on             bool
 	visible__inst0 bool
 
-	__n0        *fynelayout.Toplevel
-	__n1        *widget.Button
-	__n1__theme *container.ThemeOverride
-	__built     bool
+	__n0      *fynelayout.Toplevel
+	__n1      *widget.Button
+	__n1__box *fynelayout.Box
+	__built   bool
 }
 
 // New creates a Model with default values.
@@ -55,6 +114,125 @@ func New() *Model {
 	m.on = false
 	m.visible__inst0 = true
 	return m
+}
+
+func LookOf(s Style) fynelayout.Look {
+	look := fynelayout.Look{MarginTop: Side(s.Margin, s.MarginY, s.MarginTop), MarginRight: Side(s.Margin, s.MarginX, s.MarginRight), MarginBottom: Side(s.Margin, s.MarginY, s.MarginBottom), MarginLeft: Side(s.Margin, s.MarginX, s.MarginLeft), PaddingTop: Side(s.Padding, s.PaddingY, s.PaddingTop), PaddingRight: Side(s.Padding, s.PaddingX, s.PaddingRight), PaddingBottom: Side(s.Padding, s.PaddingY, s.PaddingBottom), PaddingLeft: Side(s.Padding, s.PaddingX, s.PaddingLeft), Width: float32(max((s.Width.Px + (14.0 * (s.Width.Em + s.Width.Rem))), 0.0)), Height: float32(max((s.Height.Px + (14.0 * (s.Height.Em + s.Height.Rem))), 0.0)), MinWidth: float32(max((s.MinWidth.Px + (14.0 * (s.MinWidth.Em + s.MinWidth.Rem))), 0.0)), MaxWidth: float32(max((s.MaxWidth.Px + (14.0 * (s.MaxWidth.Em + s.MaxWidth.Rem))), 0.0)), MaxHeight: float32(max((s.MaxHeight.Px + (14.0 * (s.MaxHeight.Em + s.MaxHeight.Rem))), 0.0)), Grow: float32(s.Flex), Gap: float32(max((s.Gap.Px + (14.0 * (s.Gap.Em + s.Gap.Rem))), 0.0)), Cross: CrossOf(s.AlignItems), Justify: JustifyOf(s.JustifyContent), Fill: Paint(s.Background), Stroke: Paint(s.BorderColor), StrokeWidth: float32(max((s.BorderWidth.Px + (14.0 * (s.BorderWidth.Em + s.BorderWidth.Rem))), 0.0)), Radius: float32(max((s.BorderRadius.Px + (14.0 * (s.BorderRadius.Em + s.BorderRadius.Rem))), 0.0)), TextColor: Paint(s.Color), TextSize: float32(max((s.FontSize.Px + (14.0 * (s.FontSize.Em + s.FontSize.Rem))), 0.0)), Bold: ((s.FontWeight == "bold") || (s.FontWeight == "bolder")), Italic: ((s.FontStyle == "italic") || (s.FontStyle == "oblique")), Monospace: (s.FontFamily == "monospace"), TextAlign: TextAlignOf(s.TextAlign), Wrap: WrapOf(s.WhiteSpace), Hidden: (s.Display == "none")}
+	return look
+}
+
+func Side(all Measurement, axis Measurement, own Measurement) float32 {
+	var __lt1 Measurement
+	if (own != Measurement{Px: 0}) {
+		__lt1 = own
+	} else {
+		var __lt0 Measurement
+		if (axis != Measurement{Px: 0}) {
+			__lt0 = axis
+		} else {
+			__lt0 = all
+		}
+		__lt1 = __lt0
+	}
+	return float32(max((__lt1.Px + (14.0 * (__lt1.Em + __lt1.Rem))), 0.0))
+}
+
+func CrossOf(a string) int {
+	var __lt3 int
+	if a == "center" {
+		__lt3 = 2
+	} else {
+		var __lt2 int
+		if a == "end" {
+			__lt2 = 3
+		} else {
+			__lt2 = 0
+		}
+		__lt3 = __lt2
+	}
+	return __lt3
+}
+
+func JustifyOf(j string) int {
+	var __lt8 int
+	if j == "center" {
+		__lt8 = 1
+	} else {
+		var __lt7 int
+		if j == "end" {
+			__lt7 = 2
+		} else {
+			var __lt6 int
+			if j == "spaceBetween" {
+				__lt6 = 3
+			} else {
+				var __lt5 int
+				if j == "spaceAround" {
+					__lt5 = 4
+				} else {
+					var __lt4 int
+					if j == "spaceEvenly" {
+						__lt4 = 5
+					} else {
+						__lt4 = 0
+					}
+					__lt5 = __lt4
+				}
+				__lt6 = __lt5
+			}
+			__lt7 = __lt6
+		}
+		__lt8 = __lt7
+	}
+	return __lt8
+}
+
+func Paint(c__r0 snglcolor.Color) snglcolor.Color {
+	var __lt9 snglcolor.Color
+	if (c__r0.A == 0) || (c__r0 == snglcolor.Color{R: 0, G: 0, B: 0, A: 255}) {
+		__lt9 = snglcolor.Color{A: 0, R: 0, G: 0, B: 0}
+	} else {
+		__lt9 = c__r0
+	}
+	return __lt9
+}
+
+func TextAlignOf(a string) int {
+	var __lt12 int
+	if a == "center" {
+		__lt12 = 2
+	} else {
+		var __lt11 int
+		if a == "right" {
+			__lt11 = 3
+		} else {
+			var __lt10 int
+			if a == "justify" {
+				__lt10 = 1
+			} else {
+				__lt10 = 0
+			}
+			__lt11 = __lt10
+		}
+		__lt12 = __lt11
+	}
+	return __lt12
+}
+
+func WrapOf(w string) int {
+	var __lt14 int
+	if (w == "pre") || (w == "nowrap") {
+		__lt14 = 1
+	} else {
+		var __lt13 int
+		if (w == "preWrap") || (w == "preLine") {
+			__lt13 = 2
+		} else {
+			__lt13 = 0
+		}
+		__lt14 = __lt13
+	}
+	return __lt14
 }
 
 func (m *Model) __n0_closed_handler() {
@@ -67,14 +245,13 @@ func (m *Model) __n0_visible_handler(__visible bool) {
 
 func (m *Model) __n1_click_handler() {
 	m.on = !m.on
-	var __lt1 string
+	var __lt16 string
 	if m.on {
-		__lt1 = "bold"
+		__lt16 = "bold"
 	} else {
-		__lt1 = "normal"
+		__lt16 = "normal"
 	}
-	m.__n1__theme.Theme = fynetheme.New(theme.DefaultTheme()).WithWeight(__lt1)
-	m.__n1__theme.Refresh()
+	m.__n1__box.SetLook(LookOf(Style{FontWeight: __lt16}))
 }
 
 func (m *Model) On() bool {
@@ -103,19 +280,18 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n0.SetVisible(m.visible__inst0)
 	m.__n0.OnClosed = m.__n0_closed_handler
 	m.__n0.OnVisible = m.__n0_visible_handler
-	var __lt0 string
+	var __lt15 string
 	if m.on {
-		__lt0 = "bold"
+		__lt15 = "bold"
 	} else {
-		__lt0 = "normal"
+		__lt15 = "normal"
 	}
 	m.__n1 = widget.NewButton("", nil)
-	m.__n1__theme = container.NewThemeOverride(m.__n1, fynetheme.New(theme.DefaultTheme()))
+	m.__n1__box = fynelayout.NewBox(m.__n1)
 	m.__n1.SetText("x")
-	m.__n1__theme.Theme = fynetheme.New(theme.DefaultTheme()).WithWeight(__lt0)
-	m.__n1__theme.Refresh()
+	m.__n1__box.SetLook(LookOf(Style{FontWeight: __lt15}))
 	m.__n1.OnTapped = m.__n1_click_handler
-	m.__n0.Add(m.__n1__theme)
+	m.__n0.Add(m.__n1__box)
 	fynelayout.AppAttach(m.__n0)
 	return m.__n0.Container
 }
@@ -232,6 +408,6 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return gtk4rt.ToplevelWindow(app, m.__n0)
 }
 -- run/go/fyne --
-pass sha256:fe51515a95d9fda96c2e6230dc9807de
+pass sha256:c3af5c120aafe0d1e6c1ba95f7fe8585
 -- run/go/gtk4 --
 pass sha256:4ce60298927023dbf610068087c4d880

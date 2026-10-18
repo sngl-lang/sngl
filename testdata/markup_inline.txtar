@@ -596,19 +596,11 @@ package main
 import (
 	"duckfam.us/sngl/pkg/go/fynelayout"
 	"duckfam.us/sngl/pkg/go/fynetext"
-	"duckfam.us/sngl/pkg/go/fynetheme"
+	"duckfam.us/sngl/pkg/go/snglcolor"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
-	"fyne.io/fyne/v2/container"
-	"fyne.io/fyne/v2/theme"
-	"image/color"
 	"os"
 )
-
-var _snglTheme0 = fynetheme.Theme{Theme: theme.DefaultTheme(), TextSize: 32, Bold: true}
-var _snglTheme1 = fynetheme.Theme{Theme: theme.DefaultTheme(), Background: color.NRGBA{R: 245, G: 245, B: 245, A: 255}, Radius: 4}
-var _snglTheme2 = fynetheme.Theme{Theme: theme.DefaultTheme(), Italic: true}
-var _snglTheme3 = fynetheme.Theme{Theme: theme.DefaultTheme(), Foreground: color.NRGBA{R: 102, G: 102, B: 102, A: 255}, TextSize: 13}
 
 type Measurement struct {
 	Px  float64
@@ -620,43 +612,47 @@ type Measurement struct {
 type Model struct {
 	visible__inst0 bool
 
-	home    *fynelayout.Toplevel
-	__n0    *fyne.Container
-	__n1    *fynetext.Flow
-	__n2    *fynetext.Span
-	__n3    *fynetext.Flow
-	__n4    *fynetext.Span
-	__n5    *fynetext.Flow
-	__n6    *fynetext.Span
-	__n7    *fynetext.Span
-	__n8    *fynetext.Span
-	__n9    *fynetext.Span
-	__n10   *fynetext.Span
-	__n11   *fynetext.Span
-	__n12   *fynetext.Flow
-	__n13   *fynetext.Span
-	__n14   *fynetext.Span
-	__n15   *fynetext.Span
-	__n16   *fynetext.Span
-	__n17   *fynetext.Span
-	__n18   *fynetext.Span
-	__n19   *fynetext.Flow
-	__n20   *fynetext.Span
-	__n21   *fynetext.Span
-	__n22   *fynetext.Span
-	__n23   *fynetext.Span
-	__n24   *fynetext.Flow
-	__n25   *fynetext.Span
-	__n26   *fynetext.Span
-	__n27   *fynetext.Span
-	__n28   *fynetext.Flow
-	__n29   *fynetext.Span
-	__n30   *fynetext.Span
-	__n31   *fynetext.Flow
-	__n32   *fynetext.Span
-	__n33   *fynetext.Flow
-	__n34   *fynetext.Span
-	__built bool
+	home       *fynelayout.Toplevel
+	__n0       *fyne.Container
+	__n1       *fynetext.Flow
+	__n1__box  *fynelayout.Box
+	__n2       *fynetext.Span
+	__n3       *fynetext.Flow
+	__n4       *fynetext.Span
+	__n5       *fynetext.Flow
+	__n6       *fynetext.Span
+	__n7       *fynetext.Span
+	__n8       *fynetext.Span
+	__n9       *fynetext.Span
+	__n10      *fynetext.Span
+	__n11      *fynetext.Span
+	__n12      *fynetext.Flow
+	__n12__box *fynelayout.Box
+	__n13      *fynetext.Span
+	__n14      *fynetext.Span
+	__n15      *fynetext.Span
+	__n16      *fynetext.Span
+	__n17      *fynetext.Span
+	__n18      *fynetext.Span
+	__n19      *fynetext.Flow
+	__n20      *fynetext.Span
+	__n21      *fynetext.Span
+	__n22      *fynetext.Span
+	__n23      *fynetext.Span
+	__n24      *fynetext.Flow
+	__n25      *fynetext.Span
+	__n26      *fynetext.Span
+	__n27      *fynetext.Span
+	__n28      *fynetext.Flow
+	__n29      *fynetext.Span
+	__n30      *fynetext.Span
+	__n31      *fynetext.Flow
+	__n31__box *fynelayout.Box
+	__n32      *fynetext.Span
+	__n33      *fynetext.Flow
+	__n33__box *fynelayout.Box
+	__n34      *fynetext.Span
+	__built    bool
 }
 
 // New creates a Model with default values.
@@ -709,12 +705,14 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.home.SetVisible(m.visible__inst0)
 	m.home.OnClosed = m.home_closed_handler
 	m.home.OnVisible = m.home_visible_handler
-	m.__n0 = container.NewVBox()
+	m.__n0 = fynelayout.NewVBox()
 	m.__n1 = fynetext.NewFlow()
+	m.__n1__box = fynelayout.NewBox(m.__n1)
+	m.__n1__box.SetLook(fynelayout.Look{TextSize: 32.0, Bold: true})
 	m.__n2 = fynetext.NewSpan(fynetext.Style())
 	m.__n2.SetText("Title")
 	m.__n1.Add(m.__n2)
-	m.__n0.Add(container.NewThemeOverride(m.__n1, _snglTheme0))
+	m.__n0.Add(m.__n1__box)
 	m.__n3 = fynetext.NewFlow()
 	m.__n4 = fynetext.NewSpan(fynetext.Style())
 	m.__n4.SetText("a < b & \"c\"  two spaces\nand a newline")
@@ -739,6 +737,8 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n5.Add(m.__n9)
 	m.__n0.Add(m.__n5)
 	m.__n12 = fynetext.NewFlow()
+	m.__n12__box = fynelayout.NewBox(m.__n12)
+	m.__n12__box.SetLook(fynelayout.Look{PaddingTop: 12.0, PaddingRight: 12.0, PaddingBottom: 12.0, PaddingLeft: 12.0, Fill: snglcolor.Color{R: 245, G: 245, B: 245, A: 255}, Radius: 4.0})
 	m.__n13 = fynetext.NewSpan(fynetext.Style().WithMono())
 	m.__n14 = fynetext.NewSpan(fynetext.Style().WithToken("keyword"))
 	m.__n15 = fynetext.NewSpan(fynetext.Style())
@@ -754,7 +754,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n17.Add(m.__n18)
 	m.__n13.Add(m.__n17)
 	m.__n12.Add(m.__n13)
-	m.__n0.Add(container.NewThemeOverride(m.__n12, _snglTheme1))
+	m.__n0.Add(m.__n12__box)
 	m.__n19 = fynetext.NewFlow()
 	m.__n20 = fynetext.NewSpan(fynetext.Style().WithUnderline())
 	m.__n21 = fynetext.NewSpan(fynetext.Style().WithStrike())
@@ -785,15 +785,19 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n28.Add(m.__n29)
 	m.__n0.Add(m.__n28)
 	m.__n31 = fynetext.NewFlow()
+	m.__n31__box = fynelayout.NewBox(m.__n31)
+	m.__n31__box.SetLook(fynelayout.Look{PaddingLeft: 12.0, Italic: true})
 	m.__n32 = fynetext.NewSpan(fynetext.Style())
 	m.__n32.SetText("quoted")
 	m.__n31.Add(m.__n32)
-	m.__n0.Add(container.NewThemeOverride(m.__n31, _snglTheme2))
+	m.__n0.Add(m.__n31__box)
 	m.__n33 = fynetext.NewFlow()
+	m.__n33__box = fynelayout.NewBox(m.__n33)
+	m.__n33__box.SetLook(fynelayout.Look{TextColor: snglcolor.Color{R: 102, G: 102, B: 102, A: 255}, TextSize: 13.0})
 	m.__n34 = fynetext.NewSpan(fynetext.Style())
 	m.__n34.SetText("a caption")
 	m.__n33.Add(m.__n34)
-	m.__n0.Add(container.NewThemeOverride(m.__n33, _snglTheme3))
+	m.__n0.Add(m.__n33__box)
 	m.home.Add(m.__n0)
 	fynelayout.AppAttach(m.home)
 	return m.home.Container
@@ -1382,7 +1386,7 @@ and a newline</span></p>
 -- run/go/bubbletea --
 pass sha256:c5f1066313ab3e18974fbe883a8aa041
 -- run/go/fyne --
-pass sha256:da666f806c26644d4cc61e533ab18468
+pass sha256:6a987ac968e79ca19d189eb5b90f44a7
 -- run/go/gtk4 --
 pass sha256:4ab1fa4ac449e1c1cd975f287c00cfdd
 -- run/go/html --

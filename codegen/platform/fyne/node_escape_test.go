@@ -5,10 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"duckfam.us/sngl/codegen"
 	_ "duckfam.us/sngl/codegen/lang"
-	"duckfam.us/sngl/internal/lower"
-	"duckfam.us/sngl/ir"
 )
 
 const recursiveTreeSrc = `
@@ -37,25 +34,7 @@ window {
 
 func generateFyneModel(t *testing.T, src string) string {
 	t.Helper()
-	pkg := checkForFyne(t, src)
-	g := &Generator{}
-	lang := codegen.LookupLang("go")
-	if lang == nil {
-		t.Fatal("go lang not registered")
-	}
-	pkg = ir.ClonePackage(pkg)
-	if err := lower.Lower(pkg, codegen.CapsOrNone(lang.LanguageIdentifier(), g.PlatformIdentifier()), lower.Options{Platform: "fyne", Language: "go"}); err != nil {
-		t.Fatalf("lower: %v", err)
-	}
-	mem := codegen.NewMemSink()
-	if err := g.Generate(&codegen.Request{Pkg: pkg, Lang: lang, Source: "t.sngl"}, mem); err != nil {
-		t.Fatalf("generate: %v", err)
-	}
-	modelSrc, ok := mem.Files()["model.go"]
-	if !ok {
-		t.Fatal("model.go not found in generated files")
-	}
-	return string(modelSrc)
+	return generateFyneModelBuilt(t, src)
 }
 
 func renderTreeViewBodyFyne(t *testing.T, src string) string {

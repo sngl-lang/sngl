@@ -99,13 +99,6 @@ type Palette struct {
 	Punctuation snglcolor.Color
 }
 
-type Color struct {
-	R uint8
-	G uint8
-	B uint8
-	A uint8
-}
-
 type Style struct {
 	Padding        Measurement
 	PaddingTop     Measurement
@@ -4172,26 +4165,13 @@ package main
 import (
 	"duckfam.us/sngl/pkg/go/fynelayout"
 	"duckfam.us/sngl/pkg/go/fynetext"
-	"duckfam.us/sngl/pkg/go/fynetheme"
 	"duckfam.us/sngl/pkg/go/snglcolor"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
-	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
-	"image/color"
 	"os"
 )
-
-var _snglTheme0 = fynetheme.Theme{Theme: theme.DefaultTheme(), TextSize: 18, Bold: true}
-var _snglTheme1 = fynetheme.Theme{Theme: theme.DefaultTheme(), TextSize: 16, Bold: true}
-var _snglTheme2 = fynetheme.Theme{Theme: theme.DefaultTheme(), TextSize: 14, Bold: true}
-var _snglTheme3 = fynetheme.Theme{Theme: theme.DefaultTheme(), Italic: true}
-var _snglTheme4 = fynetheme.Theme{Theme: theme.DefaultTheme(), Background: color.NRGBA{R: 245, G: 245, B: 245, A: 255}, Radius: 4}
-var _snglTheme5 = fynetheme.Theme{Theme: theme.DefaultTheme(), Bold: true}
-var _snglTheme6 = fynetheme.Theme{Theme: theme.DefaultTheme(), TextSize: 32, Bold: true}
-var _snglTheme7 = fynetheme.Theme{Theme: theme.DefaultTheme(), TextSize: 26, Bold: true}
-var _snglTheme8 = fynetheme.Theme{Theme: theme.DefaultTheme(), TextSize: 21, Bold: true}
 
 type Measurement struct {
 	Px  float64
@@ -4242,22 +4222,16 @@ type Palette struct {
 	Punctuation snglcolor.Color
 }
 
-type Color struct {
-	R uint8
-	G uint8
-	B uint8
-	A uint8
-}
-
 // Model holds the state for this SNGL UI.
 type Model struct {
 	visible__inst0 bool
 	__slot0        []fyne.CanvasObject
 	__slot0_at     fyne.CanvasObject
 
-	__n1    *fynelayout.Toplevel
-	__n857  *fyne.Container
-	__built bool
+	__n1        *fynelayout.Toplevel
+	__n857      *fyne.Container
+	__n857__box *fynelayout.Box
+	__built     bool
 }
 
 // New creates a Model with default values.
@@ -4311,67 +4285,79 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 	m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
 	for _, b := range []_Block{_Block{Kind: "heading1", Anchor: "guide", Runs: []_Run{_Run{Text: "Guide", Bold: false, Italic: false, Strike: false, Mono: false, Href: "", Image: "", Token: "plain", Parts: []_Run{}}}, Ordered: false, Start: 0, Items: []_Item{}, Columns: []string{}, Rows: [][]string{}}, _Block{Kind: "paragraph", Anchor: "", Runs: []_Run{_Run{Text: "Some ", Bold: false, Italic: false, Strike: false, Mono: false, Href: "", Image: "", Token: "plain", Parts: []_Run{}}, _Run{Text: "emphasis", Bold: false, Italic: true, Strike: false, Mono: false, Href: "", Image: "", Token: "plain", Parts: []_Run{}}, _Run{Text: ", ", Bold: false, Italic: false, Strike: false, Mono: false, Href: "", Image: "", Token: "plain", Parts: []_Run{}}, _Run{Text: "weight", Bold: true, Italic: false, Strike: false, Mono: false, Href: "", Image: "", Token: "plain", Parts: []_Run{}}, _Run{Text: " and ", Bold: false, Italic: false, Strike: false, Mono: false, Href: "", Image: "", Token: "plain", Parts: []_Run{}}, _Run{Text: "code", Bold: false, Italic: false, Strike: false, Mono: true, Href: "", Image: "", Token: "plain", Parts: []_Run{}}, _Run{Text: ", with ", Bold: false, Italic: false, Strike: false, Mono: false, Href: "", Image: "", Token: "plain", Parts: []_Run{}}, _Run{Text: "", Bold: false, Italic: false, Strike: false, Mono: false, Href: "/x", Image: "", Token: "plain", Parts: []_Run{_Run{Text: "a link", Bold: false, Italic: false, Strike: false, Mono: false, Href: "", Image: "", Token: "plain", Parts: []_Run{}}}}, _Run{Text: " and ", Bold: false, Italic: false, Strike: false, Mono: false, Href: "", Image: "", Token: "plain", Parts: []_Run{}}, _Run{Text: "both", Bold: true, Italic: true, Strike: false, Mono: false, Href: "", Image: "", Token: "plain", Parts: []_Run{}}, _Run{Text: ".", Bold: false, Italic: false, Strike: false, Mono: false, Href: "", Image: "", Token: "plain", Parts: []_Run{}}}, Ordered: false, Start: 0, Items: []_Item{}, Columns: []string{}, Rows: [][]string{}}, _Block{Kind: "list", Anchor: "", Runs: []_Run{}, Ordered: false, Start: 1, Items: []_Item{_Item{Marker: "", Task: "none", Blocks: []_Block{_Block{Kind: "paragraph", Anchor: "", Runs: []_Run{_Run{Text: "one", Bold: false, Italic: false, Strike: false, Mono: false, Href: "", Image: "", Token: "plain", Parts: []_Run{}}}, Ordered: false, Start: 0, Items: []_Item{}, Columns: []string{}, Rows: [][]string{}}}}, _Item{Marker: "", Task: "none", Blocks: []_Block{_Block{Kind: "paragraph", Anchor: "", Runs: []_Run{_Run{Text: "two", Bold: false, Italic: false, Strike: false, Mono: false, Href: "", Image: "", Token: "plain", Parts: []_Run{}}}, Ordered: false, Start: 0, Items: []_Item{}, Columns: []string{}, Rows: [][]string{}}, _Block{Kind: "list", Anchor: "", Runs: []_Run{}, Ordered: true, Start: 1, Items: []_Item{_Item{Marker: "1.", Task: "none", Blocks: []_Block{_Block{Kind: "paragraph", Anchor: "", Runs: []_Run{_Run{Text: "nested", Bold: false, Italic: false, Strike: false, Mono: false, Href: "", Image: "", Token: "plain", Parts: []_Run{}}}, Ordered: false, Start: 0, Items: []_Item{}, Columns: []string{}, Rows: [][]string{}}}}}, Columns: []string{}, Rows: [][]string{}}}}, _Item{Marker: "", Task: "done", Blocks: []_Block{_Block{Kind: "paragraph", Anchor: "", Runs: []_Run{_Run{Text: "done", Bold: false, Italic: false, Strike: false, Mono: false, Href: "", Image: "", Token: "plain", Parts: []_Run{}}}, Ordered: false, Start: 0, Items: []_Item{}, Columns: []string{}, Rows: [][]string{}}}}}, Columns: []string{}, Rows: [][]string{}}, _Block{Kind: "code", Anchor: "", Runs: []_Run{_Run{Text: "x", Bold: false, Italic: false, Strike: false, Mono: false, Href: "", Image: "", Token: "variable", Parts: []_Run{}}, _Run{Text: " ", Bold: false, Italic: false, Strike: false, Mono: false, Href: "", Image: "", Token: "plain", Parts: []_Run{}}, _Run{Text: ":=", Bold: false, Italic: false, Strike: false, Mono: false, Href: "", Image: "", Token: "operator", Parts: []_Run{}}, _Run{Text: " ", Bold: false, Italic: false, Strike: false, Mono: false, Href: "", Image: "", Token: "plain", Parts: []_Run{}}, _Run{Text: "1", Bold: false, Italic: false, Strike: false, Mono: false, Href: "", Image: "", Token: "number", Parts: []_Run{}}}, Ordered: false, Start: 0, Items: []_Item{}, Columns: []string{}, Rows: [][]string{}}, _Block{Kind: "table", Anchor: "", Runs: []_Run{}, Ordered: false, Start: 0, Items: []_Item{}, Columns: []string{"a", "b"}, Rows: [][]string{[]string{"1", "2"}}}} {
 		if b.Kind == "list" {
-			__n2 := container.NewVBox()
+			__n2 := fynelayout.NewVBox()
+			__n2__box := fynelayout.NewBox(__n2)
+			__n2__box.SetLook(fynelayout.Look{PaddingLeft: 20.0, Gap: 4.0})
 			for _, it := range b.Items {
-				__n3 := container.NewHBox()
+				__n3 := fynelayout.NewHBox()
+				__n3__box := fynelayout.NewBox(__n3)
+				__n3__box.SetLook(fynelayout.Look{Gap: 8.0})
 				if it.Task == "none" {
 					__n4 := widget.NewLabel("")
-					var __lt0 string
+					var __lt15 string
 					if it.Marker == "" {
-						__lt0 = "•"
+						__lt15 = "•"
 					} else {
-						__lt0 = it.Marker
+						__lt15 = it.Marker
 					}
-					__n4.SetText(__lt0)
+					__n4.SetText(__lt15)
 					__n3.Add(__n4)
 				} else {
 					__n5 := new__checkbox_state1Instance(m, (it.Task == "done"), true)
 					__n5__el := __n5.Root
 					__n3.Add(__n5__el)
 				}
-				__n6 := container.NewVBox()
+				__n6 := fynelayout.NewVBox()
 				for _, inner := range it.Blocks {
 					if inner.Kind == "list" {
-						__n7 := container.NewVBox()
+						__n7 := fynelayout.NewVBox()
+						__n7__box := fynelayout.NewBox(__n7)
+						__n7__box.SetLook(fynelayout.Look{PaddingLeft: 20.0, Gap: 4.0})
 						for _, it := range inner.Items {
-							__n8 := container.NewHBox()
+							__n8 := fynelayout.NewHBox()
+							__n8__box := fynelayout.NewBox(__n8)
+							__n8__box.SetLook(fynelayout.Look{Gap: 8.0})
 							if it.Task == "none" {
 								__n9 := widget.NewLabel("")
-								var __lt1 string
+								var __lt16 string
 								if it.Marker == "" {
-									__lt1 = "◦"
+									__lt16 = "◦"
 								} else {
-									__lt1 = it.Marker
+									__lt16 = it.Marker
 								}
-								__n9.SetText(__lt1)
+								__n9.SetText(__lt16)
 								__n8.Add(__n9)
 							} else {
 								__n10 := new__checkbox_state1Instance(m, (it.Task == "done"), true)
 								__n10__el := __n10.Root
 								__n8.Add(__n10__el)
 							}
-							__n11 := container.NewVBox()
+							__n11 := fynelayout.NewVBox()
 							for _, inner := range it.Blocks {
 								if inner.Kind == "list" {
-									__n12 := container.NewVBox()
+									__n12 := fynelayout.NewVBox()
+									__n12__box := fynelayout.NewBox(__n12)
+									__n12__box.SetLook(fynelayout.Look{PaddingLeft: 20.0, Gap: 4.0})
 									for _, it := range inner.Items {
-										__n13 := container.NewHBox()
+										__n13 := fynelayout.NewHBox()
+										__n13__box := fynelayout.NewBox(__n13)
+										__n13__box.SetLook(fynelayout.Look{Gap: 8.0})
 										if it.Task == "none" {
 											__n14 := widget.NewLabel("")
-											var __lt2 string
+											var __lt17 string
 											if it.Marker == "" {
-												__lt2 = "▪"
+												__lt17 = "▪"
 											} else {
-												__lt2 = it.Marker
+												__lt17 = it.Marker
 											}
-											__n14.SetText(__lt2)
+											__n14.SetText(__lt17)
 											__n13.Add(__n14)
 										} else {
 											__n15 := new__checkbox_state1Instance(m, (it.Task == "done"), true)
 											__n15__el := __n15.Root
 											__n13.Add(__n15__el)
 										}
-										__n16 := container.NewVBox()
+										__n16 := fynelayout.NewVBox()
 										for _, inner := range it.Blocks {
 											if inner.Kind == "paragraph" {
 												__n17 := fynetext.NewFlow()
@@ -4419,25 +4405,25 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 																					__n19.Add(__n27)
 																				} else {
 																					__n29 := fynetext.NewSpan(fynetext.Style())
-																					var __lt3 string
+																					var __lt18 string
 																					if p.Bold {
-																						__lt3 = "bold"
+																						__lt18 = "bold"
 																					} else {
-																						__lt3 = "inherit"
+																						__lt18 = "inherit"
 																					}
-																					var __lt4 string
+																					var __lt19 string
 																					if p.Italic {
-																						__lt4 = "italic"
+																						__lt19 = "italic"
 																					} else {
-																						__lt4 = "inherit"
+																						__lt19 = "inherit"
 																					}
-																					var __lt5 string
+																					var __lt20 string
 																					if p.Mono {
-																						__lt5 = "monospace"
+																						__lt20 = "monospace"
 																					} else {
-																						__lt5 = ""
+																						__lt20 = ""
 																					}
-																					__n29.SetSpanStyle(__lt3, __lt4, __lt5, false, p.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
+																					__n29.SetSpanStyle(__lt18, __lt19, __lt20, false, p.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
 																					__n30 := fynetext.NewSpan(fynetext.Style())
 																					__n30.SetText(p.Text)
 																					__n29.Add(__n30)
@@ -4484,25 +4470,25 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 																				__n17.Add(__n38)
 																			} else {
 																				__n40 := fynetext.NewSpan(fynetext.Style())
-																				var __lt6 string
+																				var __lt21 string
 																				if r.Bold {
-																					__lt6 = "bold"
+																					__lt21 = "bold"
 																				} else {
-																					__lt6 = "inherit"
+																					__lt21 = "inherit"
 																				}
-																				var __lt7 string
+																				var __lt22 string
 																				if r.Italic {
-																					__lt7 = "italic"
+																					__lt22 = "italic"
 																				} else {
-																					__lt7 = "inherit"
+																					__lt22 = "inherit"
 																				}
-																				var __lt8 string
+																				var __lt23 string
 																				if r.Mono {
-																					__lt8 = "monospace"
+																					__lt23 = "monospace"
 																				} else {
-																					__lt8 = ""
+																					__lt23 = ""
 																				}
-																				__n40.SetSpanStyle(__lt6, __lt7, __lt8, false, r.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
+																				__n40.SetSpanStyle(__lt21, __lt22, __lt23, false, r.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
 																				__n41 := fynetext.NewSpan(fynetext.Style())
 																				__n41.SetText(r.Text)
 																				__n40.Add(__n41)
@@ -4519,6 +4505,8 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 											} else {
 												if inner.Kind == "heading1" {
 													__n42 := fynetext.NewFlow()
+													__n42__box := fynelayout.NewBox(__n42)
+													__n42__box.SetLook(fynelayout.Look{TextSize: 32.0, Bold: true})
 													for _, r := range inner.Runs {
 														if r.Image != "" {
 															__n43 := fynetext.NewSpan(fynetext.Style())
@@ -4563,25 +4551,25 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 																						__n44.Add(__n52)
 																					} else {
 																						__n54 := fynetext.NewSpan(fynetext.Style())
-																						var __lt9 string
+																						var __lt24 string
 																						if p.Bold {
-																							__lt9 = "bold"
+																							__lt24 = "bold"
 																						} else {
-																							__lt9 = "inherit"
+																							__lt24 = "inherit"
 																						}
-																						var __lt10 string
+																						var __lt25 string
 																						if p.Italic {
-																							__lt10 = "italic"
+																							__lt25 = "italic"
 																						} else {
-																							__lt10 = "inherit"
+																							__lt25 = "inherit"
 																						}
-																						var __lt11 string
+																						var __lt26 string
 																						if p.Mono {
-																							__lt11 = "monospace"
+																							__lt26 = "monospace"
 																						} else {
-																							__lt11 = ""
+																							__lt26 = ""
 																						}
-																						__n54.SetSpanStyle(__lt9, __lt10, __lt11, false, p.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
+																						__n54.SetSpanStyle(__lt24, __lt25, __lt26, false, p.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
 																						__n55 := fynetext.NewSpan(fynetext.Style())
 																						__n55.SetText(p.Text)
 																						__n54.Add(__n55)
@@ -4628,25 +4616,25 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 																					__n42.Add(__n63)
 																				} else {
 																					__n65 := fynetext.NewSpan(fynetext.Style())
-																					var __lt12 string
+																					var __lt27 string
 																					if r.Bold {
-																						__lt12 = "bold"
+																						__lt27 = "bold"
 																					} else {
-																						__lt12 = "inherit"
+																						__lt27 = "inherit"
 																					}
-																					var __lt13 string
+																					var __lt28 string
 																					if r.Italic {
-																						__lt13 = "italic"
+																						__lt28 = "italic"
 																					} else {
-																						__lt13 = "inherit"
+																						__lt28 = "inherit"
 																					}
-																					var __lt14 string
+																					var __lt29 string
 																					if r.Mono {
-																						__lt14 = "monospace"
+																						__lt29 = "monospace"
 																					} else {
-																						__lt14 = ""
+																						__lt29 = ""
 																					}
-																					__n65.SetSpanStyle(__lt12, __lt13, __lt14, false, r.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
+																					__n65.SetSpanStyle(__lt27, __lt28, __lt29, false, r.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
 																					__n66 := fynetext.NewSpan(fynetext.Style())
 																					__n66.SetText(r.Text)
 																					__n65.Add(__n66)
@@ -4659,10 +4647,12 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 															}
 														}
 													}
-													__n16.Add(container.NewThemeOverride(__n42, _snglTheme6))
+													__n16.Add(__n42__box)
 												} else {
 													if inner.Kind == "heading2" {
 														__n67 := fynetext.NewFlow()
+														__n67__box := fynelayout.NewBox(__n67)
+														__n67__box.SetLook(fynelayout.Look{TextSize: 26.0, Bold: true})
 														for _, r := range inner.Runs {
 															if r.Image != "" {
 																__n68 := fynetext.NewSpan(fynetext.Style())
@@ -4707,25 +4697,25 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 																							__n69.Add(__n77)
 																						} else {
 																							__n79 := fynetext.NewSpan(fynetext.Style())
-																							var __lt15 string
+																							var __lt30 string
 																							if p.Bold {
-																								__lt15 = "bold"
+																								__lt30 = "bold"
 																							} else {
-																								__lt15 = "inherit"
+																								__lt30 = "inherit"
 																							}
-																							var __lt16 string
+																							var __lt31 string
 																							if p.Italic {
-																								__lt16 = "italic"
+																								__lt31 = "italic"
 																							} else {
-																								__lt16 = "inherit"
+																								__lt31 = "inherit"
 																							}
-																							var __lt17 string
+																							var __lt32 string
 																							if p.Mono {
-																								__lt17 = "monospace"
+																								__lt32 = "monospace"
 																							} else {
-																								__lt17 = ""
+																								__lt32 = ""
 																							}
-																							__n79.SetSpanStyle(__lt15, __lt16, __lt17, false, p.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
+																							__n79.SetSpanStyle(__lt30, __lt31, __lt32, false, p.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
 																							__n80 := fynetext.NewSpan(fynetext.Style())
 																							__n80.SetText(p.Text)
 																							__n79.Add(__n80)
@@ -4772,25 +4762,25 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 																						__n67.Add(__n88)
 																					} else {
 																						__n90 := fynetext.NewSpan(fynetext.Style())
-																						var __lt18 string
+																						var __lt33 string
 																						if r.Bold {
-																							__lt18 = "bold"
+																							__lt33 = "bold"
 																						} else {
-																							__lt18 = "inherit"
+																							__lt33 = "inherit"
 																						}
-																						var __lt19 string
+																						var __lt34 string
 																						if r.Italic {
-																							__lt19 = "italic"
+																							__lt34 = "italic"
 																						} else {
-																							__lt19 = "inherit"
+																							__lt34 = "inherit"
 																						}
-																						var __lt20 string
+																						var __lt35 string
 																						if r.Mono {
-																							__lt20 = "monospace"
+																							__lt35 = "monospace"
 																						} else {
-																							__lt20 = ""
+																							__lt35 = ""
 																						}
-																						__n90.SetSpanStyle(__lt18, __lt19, __lt20, false, r.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
+																						__n90.SetSpanStyle(__lt33, __lt34, __lt35, false, r.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
 																						__n91 := fynetext.NewSpan(fynetext.Style())
 																						__n91.SetText(r.Text)
 																						__n90.Add(__n91)
@@ -4803,10 +4793,12 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 																}
 															}
 														}
-														__n16.Add(container.NewThemeOverride(__n67, _snglTheme7))
+														__n16.Add(__n67__box)
 													} else {
 														if inner.Kind == "heading3" {
 															__n92 := fynetext.NewFlow()
+															__n92__box := fynelayout.NewBox(__n92)
+															__n92__box.SetLook(fynelayout.Look{TextSize: 21.0, Bold: true})
 															for _, r := range inner.Runs {
 																if r.Image != "" {
 																	__n93 := fynetext.NewSpan(fynetext.Style())
@@ -4851,25 +4843,25 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 																								__n94.Add(__n102)
 																							} else {
 																								__n104 := fynetext.NewSpan(fynetext.Style())
-																								var __lt21 string
+																								var __lt36 string
 																								if p.Bold {
-																									__lt21 = "bold"
+																									__lt36 = "bold"
 																								} else {
-																									__lt21 = "inherit"
+																									__lt36 = "inherit"
 																								}
-																								var __lt22 string
+																								var __lt37 string
 																								if p.Italic {
-																									__lt22 = "italic"
+																									__lt37 = "italic"
 																								} else {
-																									__lt22 = "inherit"
+																									__lt37 = "inherit"
 																								}
-																								var __lt23 string
+																								var __lt38 string
 																								if p.Mono {
-																									__lt23 = "monospace"
+																									__lt38 = "monospace"
 																								} else {
-																									__lt23 = ""
+																									__lt38 = ""
 																								}
-																								__n104.SetSpanStyle(__lt21, __lt22, __lt23, false, p.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
+																								__n104.SetSpanStyle(__lt36, __lt37, __lt38, false, p.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
 																								__n105 := fynetext.NewSpan(fynetext.Style())
 																								__n105.SetText(p.Text)
 																								__n104.Add(__n105)
@@ -4916,25 +4908,25 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 																							__n92.Add(__n113)
 																						} else {
 																							__n115 := fynetext.NewSpan(fynetext.Style())
-																							var __lt24 string
+																							var __lt39 string
 																							if r.Bold {
-																								__lt24 = "bold"
+																								__lt39 = "bold"
 																							} else {
-																								__lt24 = "inherit"
+																								__lt39 = "inherit"
 																							}
-																							var __lt25 string
+																							var __lt40 string
 																							if r.Italic {
-																								__lt25 = "italic"
+																								__lt40 = "italic"
 																							} else {
-																								__lt25 = "inherit"
+																								__lt40 = "inherit"
 																							}
-																							var __lt26 string
+																							var __lt41 string
 																							if r.Mono {
-																								__lt26 = "monospace"
+																								__lt41 = "monospace"
 																							} else {
-																								__lt26 = ""
+																								__lt41 = ""
 																							}
-																							__n115.SetSpanStyle(__lt24, __lt25, __lt26, false, r.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
+																							__n115.SetSpanStyle(__lt39, __lt40, __lt41, false, r.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
 																							__n116 := fynetext.NewSpan(fynetext.Style())
 																							__n116.SetText(r.Text)
 																							__n115.Add(__n116)
@@ -4947,10 +4939,12 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 																	}
 																}
 															}
-															__n16.Add(container.NewThemeOverride(__n92, _snglTheme8))
+															__n16.Add(__n92__box)
 														} else {
 															if inner.Kind == "heading4" {
 																__n117 := fynetext.NewFlow()
+																__n117__box := fynelayout.NewBox(__n117)
+																__n117__box.SetLook(fynelayout.Look{TextSize: 18.0, Bold: true})
 																for _, r := range inner.Runs {
 																	if r.Image != "" {
 																		__n118 := fynetext.NewSpan(fynetext.Style())
@@ -4995,25 +4989,25 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 																									__n119.Add(__n127)
 																								} else {
 																									__n129 := fynetext.NewSpan(fynetext.Style())
-																									var __lt27 string
+																									var __lt42 string
 																									if p.Bold {
-																										__lt27 = "bold"
+																										__lt42 = "bold"
 																									} else {
-																										__lt27 = "inherit"
+																										__lt42 = "inherit"
 																									}
-																									var __lt28 string
+																									var __lt43 string
 																									if p.Italic {
-																										__lt28 = "italic"
+																										__lt43 = "italic"
 																									} else {
-																										__lt28 = "inherit"
+																										__lt43 = "inherit"
 																									}
-																									var __lt29 string
+																									var __lt44 string
 																									if p.Mono {
-																										__lt29 = "monospace"
+																										__lt44 = "monospace"
 																									} else {
-																										__lt29 = ""
+																										__lt44 = ""
 																									}
-																									__n129.SetSpanStyle(__lt27, __lt28, __lt29, false, p.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
+																									__n129.SetSpanStyle(__lt42, __lt43, __lt44, false, p.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
 																									__n130 := fynetext.NewSpan(fynetext.Style())
 																									__n130.SetText(p.Text)
 																									__n129.Add(__n130)
@@ -5060,25 +5054,25 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 																								__n117.Add(__n138)
 																							} else {
 																								__n140 := fynetext.NewSpan(fynetext.Style())
-																								var __lt30 string
+																								var __lt45 string
 																								if r.Bold {
-																									__lt30 = "bold"
+																									__lt45 = "bold"
 																								} else {
-																									__lt30 = "inherit"
+																									__lt45 = "inherit"
 																								}
-																								var __lt31 string
+																								var __lt46 string
 																								if r.Italic {
-																									__lt31 = "italic"
+																									__lt46 = "italic"
 																								} else {
-																									__lt31 = "inherit"
+																									__lt46 = "inherit"
 																								}
-																								var __lt32 string
+																								var __lt47 string
 																								if r.Mono {
-																									__lt32 = "monospace"
+																									__lt47 = "monospace"
 																								} else {
-																									__lt32 = ""
+																									__lt47 = ""
 																								}
-																								__n140.SetSpanStyle(__lt30, __lt31, __lt32, false, r.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
+																								__n140.SetSpanStyle(__lt45, __lt46, __lt47, false, r.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
 																								__n141 := fynetext.NewSpan(fynetext.Style())
 																								__n141.SetText(r.Text)
 																								__n140.Add(__n141)
@@ -5091,10 +5085,12 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 																		}
 																	}
 																}
-																__n16.Add(container.NewThemeOverride(__n117, _snglTheme0))
+																__n16.Add(__n117__box)
 															} else {
 																if inner.Kind == "heading5" {
 																	__n142 := fynetext.NewFlow()
+																	__n142__box := fynelayout.NewBox(__n142)
+																	__n142__box.SetLook(fynelayout.Look{TextSize: 16.0, Bold: true})
 																	for _, r := range inner.Runs {
 																		if r.Image != "" {
 																			__n143 := fynetext.NewSpan(fynetext.Style())
@@ -5139,25 +5135,25 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 																										__n144.Add(__n152)
 																									} else {
 																										__n154 := fynetext.NewSpan(fynetext.Style())
-																										var __lt33 string
+																										var __lt48 string
 																										if p.Bold {
-																											__lt33 = "bold"
+																											__lt48 = "bold"
 																										} else {
-																											__lt33 = "inherit"
+																											__lt48 = "inherit"
 																										}
-																										var __lt34 string
+																										var __lt49 string
 																										if p.Italic {
-																											__lt34 = "italic"
+																											__lt49 = "italic"
 																										} else {
-																											__lt34 = "inherit"
+																											__lt49 = "inherit"
 																										}
-																										var __lt35 string
+																										var __lt50 string
 																										if p.Mono {
-																											__lt35 = "monospace"
+																											__lt50 = "monospace"
 																										} else {
-																											__lt35 = ""
+																											__lt50 = ""
 																										}
-																										__n154.SetSpanStyle(__lt33, __lt34, __lt35, false, p.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
+																										__n154.SetSpanStyle(__lt48, __lt49, __lt50, false, p.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
 																										__n155 := fynetext.NewSpan(fynetext.Style())
 																										__n155.SetText(p.Text)
 																										__n154.Add(__n155)
@@ -5204,25 +5200,25 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 																									__n142.Add(__n163)
 																								} else {
 																									__n165 := fynetext.NewSpan(fynetext.Style())
-																									var __lt36 string
+																									var __lt51 string
 																									if r.Bold {
-																										__lt36 = "bold"
+																										__lt51 = "bold"
 																									} else {
-																										__lt36 = "inherit"
+																										__lt51 = "inherit"
 																									}
-																									var __lt37 string
+																									var __lt52 string
 																									if r.Italic {
-																										__lt37 = "italic"
+																										__lt52 = "italic"
 																									} else {
-																										__lt37 = "inherit"
+																										__lt52 = "inherit"
 																									}
-																									var __lt38 string
+																									var __lt53 string
 																									if r.Mono {
-																										__lt38 = "monospace"
+																										__lt53 = "monospace"
 																									} else {
-																										__lt38 = ""
+																										__lt53 = ""
 																									}
-																									__n165.SetSpanStyle(__lt36, __lt37, __lt38, false, r.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
+																									__n165.SetSpanStyle(__lt51, __lt52, __lt53, false, r.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
 																									__n166 := fynetext.NewSpan(fynetext.Style())
 																									__n166.SetText(r.Text)
 																									__n165.Add(__n166)
@@ -5235,10 +5231,12 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 																			}
 																		}
 																	}
-																	__n16.Add(container.NewThemeOverride(__n142, _snglTheme1))
+																	__n16.Add(__n142__box)
 																} else {
 																	if inner.Kind == "heading6" {
 																		__n167 := fynetext.NewFlow()
+																		__n167__box := fynelayout.NewBox(__n167)
+																		__n167__box.SetLook(fynelayout.Look{TextSize: 14.0, Bold: true})
 																		for _, r := range inner.Runs {
 																			if r.Image != "" {
 																				__n168 := fynetext.NewSpan(fynetext.Style())
@@ -5283,25 +5281,25 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 																											__n169.Add(__n177)
 																										} else {
 																											__n179 := fynetext.NewSpan(fynetext.Style())
-																											var __lt39 string
+																											var __lt54 string
 																											if p.Bold {
-																												__lt39 = "bold"
+																												__lt54 = "bold"
 																											} else {
-																												__lt39 = "inherit"
+																												__lt54 = "inherit"
 																											}
-																											var __lt40 string
+																											var __lt55 string
 																											if p.Italic {
-																												__lt40 = "italic"
+																												__lt55 = "italic"
 																											} else {
-																												__lt40 = "inherit"
+																												__lt55 = "inherit"
 																											}
-																											var __lt41 string
+																											var __lt56 string
 																											if p.Mono {
-																												__lt41 = "monospace"
+																												__lt56 = "monospace"
 																											} else {
-																												__lt41 = ""
+																												__lt56 = ""
 																											}
-																											__n179.SetSpanStyle(__lt39, __lt40, __lt41, false, p.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
+																											__n179.SetSpanStyle(__lt54, __lt55, __lt56, false, p.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
 																											__n180 := fynetext.NewSpan(fynetext.Style())
 																											__n180.SetText(p.Text)
 																											__n179.Add(__n180)
@@ -5348,25 +5346,25 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 																										__n167.Add(__n188)
 																									} else {
 																										__n190 := fynetext.NewSpan(fynetext.Style())
-																										var __lt42 string
+																										var __lt57 string
 																										if r.Bold {
-																											__lt42 = "bold"
+																											__lt57 = "bold"
 																										} else {
-																											__lt42 = "inherit"
+																											__lt57 = "inherit"
 																										}
-																										var __lt43 string
+																										var __lt58 string
 																										if r.Italic {
-																											__lt43 = "italic"
+																											__lt58 = "italic"
 																										} else {
-																											__lt43 = "inherit"
+																											__lt58 = "inherit"
 																										}
-																										var __lt44 string
+																										var __lt59 string
 																										if r.Mono {
-																											__lt44 = "monospace"
+																											__lt59 = "monospace"
 																										} else {
-																											__lt44 = ""
+																											__lt59 = ""
 																										}
-																										__n190.SetSpanStyle(__lt42, __lt43, __lt44, false, r.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
+																										__n190.SetSpanStyle(__lt57, __lt58, __lt59, false, r.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
 																										__n191 := fynetext.NewSpan(fynetext.Style())
 																										__n191.SetText(r.Text)
 																										__n190.Add(__n191)
@@ -5379,10 +5377,12 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 																				}
 																			}
 																		}
-																		__n16.Add(container.NewThemeOverride(__n167, _snglTheme2))
+																		__n16.Add(__n167__box)
 																	} else {
 																		if inner.Kind == "quote" {
 																			__n192 := fynetext.NewFlow()
+																			__n192__box := fynelayout.NewBox(__n192)
+																			__n192__box.SetLook(fynelayout.Look{PaddingLeft: 12.0, Italic: true})
 																			for _, r := range inner.Runs {
 																				if r.Image != "" {
 																					__n193 := fynetext.NewSpan(fynetext.Style())
@@ -5427,25 +5427,25 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 																												__n194.Add(__n202)
 																											} else {
 																												__n204 := fynetext.NewSpan(fynetext.Style())
-																												var __lt45 string
+																												var __lt60 string
 																												if p.Bold {
-																													__lt45 = "bold"
+																													__lt60 = "bold"
 																												} else {
-																													__lt45 = "inherit"
+																													__lt60 = "inherit"
 																												}
-																												var __lt46 string
+																												var __lt61 string
 																												if p.Italic {
-																													__lt46 = "italic"
+																													__lt61 = "italic"
 																												} else {
-																													__lt46 = "inherit"
+																													__lt61 = "inherit"
 																												}
-																												var __lt47 string
+																												var __lt62 string
 																												if p.Mono {
-																													__lt47 = "monospace"
+																													__lt62 = "monospace"
 																												} else {
-																													__lt47 = ""
+																													__lt62 = ""
 																												}
-																												__n204.SetSpanStyle(__lt45, __lt46, __lt47, false, p.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
+																												__n204.SetSpanStyle(__lt60, __lt61, __lt62, false, p.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
 																												__n205 := fynetext.NewSpan(fynetext.Style())
 																												__n205.SetText(p.Text)
 																												__n204.Add(__n205)
@@ -5492,25 +5492,25 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 																											__n192.Add(__n213)
 																										} else {
 																											__n215 := fynetext.NewSpan(fynetext.Style())
-																											var __lt48 string
+																											var __lt63 string
 																											if r.Bold {
-																												__lt48 = "bold"
+																												__lt63 = "bold"
 																											} else {
-																												__lt48 = "inherit"
+																												__lt63 = "inherit"
 																											}
-																											var __lt49 string
+																											var __lt64 string
 																											if r.Italic {
-																												__lt49 = "italic"
+																												__lt64 = "italic"
 																											} else {
-																												__lt49 = "inherit"
+																												__lt64 = "inherit"
 																											}
-																											var __lt50 string
+																											var __lt65 string
 																											if r.Mono {
-																												__lt50 = "monospace"
+																												__lt65 = "monospace"
 																											} else {
-																												__lt50 = ""
+																												__lt65 = ""
 																											}
-																											__n215.SetSpanStyle(__lt48, __lt49, __lt50, false, r.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
+																											__n215.SetSpanStyle(__lt63, __lt64, __lt65, false, r.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
 																											__n216 := fynetext.NewSpan(fynetext.Style())
 																											__n216.SetText(r.Text)
 																											__n215.Add(__n216)
@@ -5523,10 +5523,12 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 																					}
 																				}
 																			}
-																			__n16.Add(container.NewThemeOverride(__n192, _snglTheme3))
+																			__n16.Add(__n192__box)
 																		} else {
 																			if inner.Kind == "code" {
 																				__n217 := fynetext.NewFlow()
+																				__n217__box := fynelayout.NewBox(__n217)
+																				__n217__box.SetLook(fynelayout.Look{PaddingTop: 12.0, PaddingRight: 12.0, PaddingBottom: 12.0, PaddingLeft: 12.0, Fill: snglcolor.Color{R: 245, G: 245, B: 245, A: 255}, Radius: 4.0})
 																				__n218 := fynetext.NewSpan(fynetext.Style().WithMono())
 																				for _, r := range inner.Runs {
 																					__n219 := fynetext.NewSpan(fynetext.Style())
@@ -5537,7 +5539,7 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 																					__n218.Add(__n219)
 																				}
 																				__n217.Add(__n218)
-																				__n16.Add(container.NewThemeOverride(__n217, _snglTheme4))
+																				__n16.Add(__n217__box)
 																			} else {
 																				if inner.Kind == "rule" {
 																					__n221 := widget.NewLabel("")
@@ -5545,24 +5547,34 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 																					__n16.Add(__n221)
 																				} else {
 																					if inner.Kind == "table" {
-																						__n222 := container.NewVBox()
-																						__n223 := container.NewHBox()
+																						__n222 := fynelayout.NewVBox()
+																						__n222__box := fynelayout.NewBox(__n222)
+																						__n222__box.SetLook(fynelayout.Look{Gap: 4.0})
+																						__n223 := fynelayout.NewHBox()
+																						__n223__box := fynelayout.NewBox(__n223)
+																						__n223__box.SetLook(fynelayout.Look{Gap: 16.0})
 																						for _, cell := range inner.Columns {
 																							__n224 := widget.NewLabel("")
+																							__n224__box := fynelayout.NewBox(__n224)
 																							__n224.SetText(cell)
-																							__n223.Add(container.NewThemeOverride(__n224, _snglTheme5))
+																							__n224__box.SetLook(fynelayout.Look{MinWidth: 80.0, Bold: true})
+																							__n223.Add(__n224__box)
 																						}
-																						__n222.Add(__n223)
+																						__n222.Add(__n223__box)
 																						for _, r := range inner.Rows {
-																							__n225 := container.NewHBox()
+																							__n225 := fynelayout.NewHBox()
+																							__n225__box := fynelayout.NewBox(__n225)
+																							__n225__box.SetLook(fynelayout.Look{Gap: 16.0})
 																							for _, cell := range r {
 																								__n226 := widget.NewLabel("")
+																								__n226__box := fynelayout.NewBox(__n226)
 																								__n226.SetText(cell)
-																								__n225.Add(__n226)
+																								__n226__box.SetLook(fynelayout.Look{MinWidth: 80.0})
+																								__n225.Add(__n226__box)
 																							}
-																							__n222.Add(__n225)
+																							__n222.Add(__n225__box)
 																						}
-																						__n16.Add(__n222)
+																						__n16.Add(__n222__box)
 																					}
 																				}
 																			}
@@ -5576,9 +5588,9 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 											}
 										}
 										__n13.Add(__n16)
-										__n12.Add(__n13)
+										__n12.Add(__n13__box)
 									}
-									__n11.Add(__n12)
+									__n11.Add(__n12__box)
 								} else {
 									if inner.Kind == "paragraph" {
 										__n227 := fynetext.NewFlow()
@@ -5626,25 +5638,25 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 																			__n229.Add(__n237)
 																		} else {
 																			__n239 := fynetext.NewSpan(fynetext.Style())
-																			var __lt51 string
+																			var __lt66 string
 																			if p.Bold {
-																				__lt51 = "bold"
+																				__lt66 = "bold"
 																			} else {
-																				__lt51 = "inherit"
+																				__lt66 = "inherit"
 																			}
-																			var __lt52 string
+																			var __lt67 string
 																			if p.Italic {
-																				__lt52 = "italic"
+																				__lt67 = "italic"
 																			} else {
-																				__lt52 = "inherit"
+																				__lt67 = "inherit"
 																			}
-																			var __lt53 string
+																			var __lt68 string
 																			if p.Mono {
-																				__lt53 = "monospace"
+																				__lt68 = "monospace"
 																			} else {
-																				__lt53 = ""
+																				__lt68 = ""
 																			}
-																			__n239.SetSpanStyle(__lt51, __lt52, __lt53, false, p.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
+																			__n239.SetSpanStyle(__lt66, __lt67, __lt68, false, p.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
 																			__n240 := fynetext.NewSpan(fynetext.Style())
 																			__n240.SetText(p.Text)
 																			__n239.Add(__n240)
@@ -5691,25 +5703,25 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 																		__n227.Add(__n248)
 																	} else {
 																		__n250 := fynetext.NewSpan(fynetext.Style())
-																		var __lt54 string
+																		var __lt69 string
 																		if r.Bold {
-																			__lt54 = "bold"
+																			__lt69 = "bold"
 																		} else {
-																			__lt54 = "inherit"
+																			__lt69 = "inherit"
 																		}
-																		var __lt55 string
+																		var __lt70 string
 																		if r.Italic {
-																			__lt55 = "italic"
+																			__lt70 = "italic"
 																		} else {
-																			__lt55 = "inherit"
+																			__lt70 = "inherit"
 																		}
-																		var __lt56 string
+																		var __lt71 string
 																		if r.Mono {
-																			__lt56 = "monospace"
+																			__lt71 = "monospace"
 																		} else {
-																			__lt56 = ""
+																			__lt71 = ""
 																		}
-																		__n250.SetSpanStyle(__lt54, __lt55, __lt56, false, r.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
+																		__n250.SetSpanStyle(__lt69, __lt70, __lt71, false, r.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
 																		__n251 := fynetext.NewSpan(fynetext.Style())
 																		__n251.SetText(r.Text)
 																		__n250.Add(__n251)
@@ -5726,6 +5738,8 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 									} else {
 										if inner.Kind == "heading1" {
 											__n252 := fynetext.NewFlow()
+											__n252__box := fynelayout.NewBox(__n252)
+											__n252__box.SetLook(fynelayout.Look{TextSize: 32.0, Bold: true})
 											for _, r := range inner.Runs {
 												if r.Image != "" {
 													__n253 := fynetext.NewSpan(fynetext.Style())
@@ -5770,25 +5784,25 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 																				__n254.Add(__n262)
 																			} else {
 																				__n264 := fynetext.NewSpan(fynetext.Style())
-																				var __lt57 string
+																				var __lt72 string
 																				if p.Bold {
-																					__lt57 = "bold"
+																					__lt72 = "bold"
 																				} else {
-																					__lt57 = "inherit"
+																					__lt72 = "inherit"
 																				}
-																				var __lt58 string
+																				var __lt73 string
 																				if p.Italic {
-																					__lt58 = "italic"
+																					__lt73 = "italic"
 																				} else {
-																					__lt58 = "inherit"
+																					__lt73 = "inherit"
 																				}
-																				var __lt59 string
+																				var __lt74 string
 																				if p.Mono {
-																					__lt59 = "monospace"
+																					__lt74 = "monospace"
 																				} else {
-																					__lt59 = ""
+																					__lt74 = ""
 																				}
-																				__n264.SetSpanStyle(__lt57, __lt58, __lt59, false, p.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
+																				__n264.SetSpanStyle(__lt72, __lt73, __lt74, false, p.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
 																				__n265 := fynetext.NewSpan(fynetext.Style())
 																				__n265.SetText(p.Text)
 																				__n264.Add(__n265)
@@ -5835,25 +5849,25 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 																			__n252.Add(__n273)
 																		} else {
 																			__n275 := fynetext.NewSpan(fynetext.Style())
-																			var __lt60 string
+																			var __lt75 string
 																			if r.Bold {
-																				__lt60 = "bold"
+																				__lt75 = "bold"
 																			} else {
-																				__lt60 = "inherit"
+																				__lt75 = "inherit"
 																			}
-																			var __lt61 string
+																			var __lt76 string
 																			if r.Italic {
-																				__lt61 = "italic"
+																				__lt76 = "italic"
 																			} else {
-																				__lt61 = "inherit"
+																				__lt76 = "inherit"
 																			}
-																			var __lt62 string
+																			var __lt77 string
 																			if r.Mono {
-																				__lt62 = "monospace"
+																				__lt77 = "monospace"
 																			} else {
-																				__lt62 = ""
+																				__lt77 = ""
 																			}
-																			__n275.SetSpanStyle(__lt60, __lt61, __lt62, false, r.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
+																			__n275.SetSpanStyle(__lt75, __lt76, __lt77, false, r.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
 																			__n276 := fynetext.NewSpan(fynetext.Style())
 																			__n276.SetText(r.Text)
 																			__n275.Add(__n276)
@@ -5866,10 +5880,12 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 													}
 												}
 											}
-											__n11.Add(container.NewThemeOverride(__n252, _snglTheme6))
+											__n11.Add(__n252__box)
 										} else {
 											if inner.Kind == "heading2" {
 												__n277 := fynetext.NewFlow()
+												__n277__box := fynelayout.NewBox(__n277)
+												__n277__box.SetLook(fynelayout.Look{TextSize: 26.0, Bold: true})
 												for _, r := range inner.Runs {
 													if r.Image != "" {
 														__n278 := fynetext.NewSpan(fynetext.Style())
@@ -5914,25 +5930,25 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 																					__n279.Add(__n287)
 																				} else {
 																					__n289 := fynetext.NewSpan(fynetext.Style())
-																					var __lt63 string
+																					var __lt78 string
 																					if p.Bold {
-																						__lt63 = "bold"
+																						__lt78 = "bold"
 																					} else {
-																						__lt63 = "inherit"
+																						__lt78 = "inherit"
 																					}
-																					var __lt64 string
+																					var __lt79 string
 																					if p.Italic {
-																						__lt64 = "italic"
+																						__lt79 = "italic"
 																					} else {
-																						__lt64 = "inherit"
+																						__lt79 = "inherit"
 																					}
-																					var __lt65 string
+																					var __lt80 string
 																					if p.Mono {
-																						__lt65 = "monospace"
+																						__lt80 = "monospace"
 																					} else {
-																						__lt65 = ""
+																						__lt80 = ""
 																					}
-																					__n289.SetSpanStyle(__lt63, __lt64, __lt65, false, p.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
+																					__n289.SetSpanStyle(__lt78, __lt79, __lt80, false, p.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
 																					__n290 := fynetext.NewSpan(fynetext.Style())
 																					__n290.SetText(p.Text)
 																					__n289.Add(__n290)
@@ -5979,25 +5995,25 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 																				__n277.Add(__n298)
 																			} else {
 																				__n300 := fynetext.NewSpan(fynetext.Style())
-																				var __lt66 string
+																				var __lt81 string
 																				if r.Bold {
-																					__lt66 = "bold"
+																					__lt81 = "bold"
 																				} else {
-																					__lt66 = "inherit"
+																					__lt81 = "inherit"
 																				}
-																				var __lt67 string
+																				var __lt82 string
 																				if r.Italic {
-																					__lt67 = "italic"
+																					__lt82 = "italic"
 																				} else {
-																					__lt67 = "inherit"
+																					__lt82 = "inherit"
 																				}
-																				var __lt68 string
+																				var __lt83 string
 																				if r.Mono {
-																					__lt68 = "monospace"
+																					__lt83 = "monospace"
 																				} else {
-																					__lt68 = ""
+																					__lt83 = ""
 																				}
-																				__n300.SetSpanStyle(__lt66, __lt67, __lt68, false, r.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
+																				__n300.SetSpanStyle(__lt81, __lt82, __lt83, false, r.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
 																				__n301 := fynetext.NewSpan(fynetext.Style())
 																				__n301.SetText(r.Text)
 																				__n300.Add(__n301)
@@ -6010,10 +6026,12 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 														}
 													}
 												}
-												__n11.Add(container.NewThemeOverride(__n277, _snglTheme7))
+												__n11.Add(__n277__box)
 											} else {
 												if inner.Kind == "heading3" {
 													__n302 := fynetext.NewFlow()
+													__n302__box := fynelayout.NewBox(__n302)
+													__n302__box.SetLook(fynelayout.Look{TextSize: 21.0, Bold: true})
 													for _, r := range inner.Runs {
 														if r.Image != "" {
 															__n303 := fynetext.NewSpan(fynetext.Style())
@@ -6058,25 +6076,25 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 																						__n304.Add(__n312)
 																					} else {
 																						__n314 := fynetext.NewSpan(fynetext.Style())
-																						var __lt69 string
+																						var __lt84 string
 																						if p.Bold {
-																							__lt69 = "bold"
+																							__lt84 = "bold"
 																						} else {
-																							__lt69 = "inherit"
+																							__lt84 = "inherit"
 																						}
-																						var __lt70 string
+																						var __lt85 string
 																						if p.Italic {
-																							__lt70 = "italic"
+																							__lt85 = "italic"
 																						} else {
-																							__lt70 = "inherit"
+																							__lt85 = "inherit"
 																						}
-																						var __lt71 string
+																						var __lt86 string
 																						if p.Mono {
-																							__lt71 = "monospace"
+																							__lt86 = "monospace"
 																						} else {
-																							__lt71 = ""
+																							__lt86 = ""
 																						}
-																						__n314.SetSpanStyle(__lt69, __lt70, __lt71, false, p.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
+																						__n314.SetSpanStyle(__lt84, __lt85, __lt86, false, p.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
 																						__n315 := fynetext.NewSpan(fynetext.Style())
 																						__n315.SetText(p.Text)
 																						__n314.Add(__n315)
@@ -6123,25 +6141,25 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 																					__n302.Add(__n323)
 																				} else {
 																					__n325 := fynetext.NewSpan(fynetext.Style())
-																					var __lt72 string
+																					var __lt87 string
 																					if r.Bold {
-																						__lt72 = "bold"
+																						__lt87 = "bold"
 																					} else {
-																						__lt72 = "inherit"
+																						__lt87 = "inherit"
 																					}
-																					var __lt73 string
+																					var __lt88 string
 																					if r.Italic {
-																						__lt73 = "italic"
+																						__lt88 = "italic"
 																					} else {
-																						__lt73 = "inherit"
+																						__lt88 = "inherit"
 																					}
-																					var __lt74 string
+																					var __lt89 string
 																					if r.Mono {
-																						__lt74 = "monospace"
+																						__lt89 = "monospace"
 																					} else {
-																						__lt74 = ""
+																						__lt89 = ""
 																					}
-																					__n325.SetSpanStyle(__lt72, __lt73, __lt74, false, r.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
+																					__n325.SetSpanStyle(__lt87, __lt88, __lt89, false, r.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
 																					__n326 := fynetext.NewSpan(fynetext.Style())
 																					__n326.SetText(r.Text)
 																					__n325.Add(__n326)
@@ -6154,10 +6172,12 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 															}
 														}
 													}
-													__n11.Add(container.NewThemeOverride(__n302, _snglTheme8))
+													__n11.Add(__n302__box)
 												} else {
 													if inner.Kind == "heading4" {
 														__n327 := fynetext.NewFlow()
+														__n327__box := fynelayout.NewBox(__n327)
+														__n327__box.SetLook(fynelayout.Look{TextSize: 18.0, Bold: true})
 														for _, r := range inner.Runs {
 															if r.Image != "" {
 																__n328 := fynetext.NewSpan(fynetext.Style())
@@ -6202,25 +6222,25 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 																							__n329.Add(__n337)
 																						} else {
 																							__n339 := fynetext.NewSpan(fynetext.Style())
-																							var __lt75 string
+																							var __lt90 string
 																							if p.Bold {
-																								__lt75 = "bold"
+																								__lt90 = "bold"
 																							} else {
-																								__lt75 = "inherit"
+																								__lt90 = "inherit"
 																							}
-																							var __lt76 string
+																							var __lt91 string
 																							if p.Italic {
-																								__lt76 = "italic"
+																								__lt91 = "italic"
 																							} else {
-																								__lt76 = "inherit"
+																								__lt91 = "inherit"
 																							}
-																							var __lt77 string
+																							var __lt92 string
 																							if p.Mono {
-																								__lt77 = "monospace"
+																								__lt92 = "monospace"
 																							} else {
-																								__lt77 = ""
+																								__lt92 = ""
 																							}
-																							__n339.SetSpanStyle(__lt75, __lt76, __lt77, false, p.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
+																							__n339.SetSpanStyle(__lt90, __lt91, __lt92, false, p.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
 																							__n340 := fynetext.NewSpan(fynetext.Style())
 																							__n340.SetText(p.Text)
 																							__n339.Add(__n340)
@@ -6267,25 +6287,25 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 																						__n327.Add(__n348)
 																					} else {
 																						__n350 := fynetext.NewSpan(fynetext.Style())
-																						var __lt78 string
+																						var __lt93 string
 																						if r.Bold {
-																							__lt78 = "bold"
+																							__lt93 = "bold"
 																						} else {
-																							__lt78 = "inherit"
+																							__lt93 = "inherit"
 																						}
-																						var __lt79 string
+																						var __lt94 string
 																						if r.Italic {
-																							__lt79 = "italic"
+																							__lt94 = "italic"
 																						} else {
-																							__lt79 = "inherit"
+																							__lt94 = "inherit"
 																						}
-																						var __lt80 string
+																						var __lt95 string
 																						if r.Mono {
-																							__lt80 = "monospace"
+																							__lt95 = "monospace"
 																						} else {
-																							__lt80 = ""
+																							__lt95 = ""
 																						}
-																						__n350.SetSpanStyle(__lt78, __lt79, __lt80, false, r.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
+																						__n350.SetSpanStyle(__lt93, __lt94, __lt95, false, r.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
 																						__n351 := fynetext.NewSpan(fynetext.Style())
 																						__n351.SetText(r.Text)
 																						__n350.Add(__n351)
@@ -6298,10 +6318,12 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 																}
 															}
 														}
-														__n11.Add(container.NewThemeOverride(__n327, _snglTheme0))
+														__n11.Add(__n327__box)
 													} else {
 														if inner.Kind == "heading5" {
 															__n352 := fynetext.NewFlow()
+															__n352__box := fynelayout.NewBox(__n352)
+															__n352__box.SetLook(fynelayout.Look{TextSize: 16.0, Bold: true})
 															for _, r := range inner.Runs {
 																if r.Image != "" {
 																	__n353 := fynetext.NewSpan(fynetext.Style())
@@ -6346,25 +6368,25 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 																								__n354.Add(__n362)
 																							} else {
 																								__n364 := fynetext.NewSpan(fynetext.Style())
-																								var __lt81 string
+																								var __lt96 string
 																								if p.Bold {
-																									__lt81 = "bold"
+																									__lt96 = "bold"
 																								} else {
-																									__lt81 = "inherit"
+																									__lt96 = "inherit"
 																								}
-																								var __lt82 string
+																								var __lt97 string
 																								if p.Italic {
-																									__lt82 = "italic"
+																									__lt97 = "italic"
 																								} else {
-																									__lt82 = "inherit"
+																									__lt97 = "inherit"
 																								}
-																								var __lt83 string
+																								var __lt98 string
 																								if p.Mono {
-																									__lt83 = "monospace"
+																									__lt98 = "monospace"
 																								} else {
-																									__lt83 = ""
+																									__lt98 = ""
 																								}
-																								__n364.SetSpanStyle(__lt81, __lt82, __lt83, false, p.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
+																								__n364.SetSpanStyle(__lt96, __lt97, __lt98, false, p.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
 																								__n365 := fynetext.NewSpan(fynetext.Style())
 																								__n365.SetText(p.Text)
 																								__n364.Add(__n365)
@@ -6411,25 +6433,25 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 																							__n352.Add(__n373)
 																						} else {
 																							__n375 := fynetext.NewSpan(fynetext.Style())
-																							var __lt84 string
+																							var __lt99 string
 																							if r.Bold {
-																								__lt84 = "bold"
+																								__lt99 = "bold"
 																							} else {
-																								__lt84 = "inherit"
+																								__lt99 = "inherit"
 																							}
-																							var __lt85 string
+																							var __lt100 string
 																							if r.Italic {
-																								__lt85 = "italic"
+																								__lt100 = "italic"
 																							} else {
-																								__lt85 = "inherit"
+																								__lt100 = "inherit"
 																							}
-																							var __lt86 string
+																							var __lt101 string
 																							if r.Mono {
-																								__lt86 = "monospace"
+																								__lt101 = "monospace"
 																							} else {
-																								__lt86 = ""
+																								__lt101 = ""
 																							}
-																							__n375.SetSpanStyle(__lt84, __lt85, __lt86, false, r.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
+																							__n375.SetSpanStyle(__lt99, __lt100, __lt101, false, r.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
 																							__n376 := fynetext.NewSpan(fynetext.Style())
 																							__n376.SetText(r.Text)
 																							__n375.Add(__n376)
@@ -6442,10 +6464,12 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 																	}
 																}
 															}
-															__n11.Add(container.NewThemeOverride(__n352, _snglTheme1))
+															__n11.Add(__n352__box)
 														} else {
 															if inner.Kind == "heading6" {
 																__n377 := fynetext.NewFlow()
+																__n377__box := fynelayout.NewBox(__n377)
+																__n377__box.SetLook(fynelayout.Look{TextSize: 14.0, Bold: true})
 																for _, r := range inner.Runs {
 																	if r.Image != "" {
 																		__n378 := fynetext.NewSpan(fynetext.Style())
@@ -6490,25 +6514,25 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 																									__n379.Add(__n387)
 																								} else {
 																									__n389 := fynetext.NewSpan(fynetext.Style())
-																									var __lt87 string
+																									var __lt102 string
 																									if p.Bold {
-																										__lt87 = "bold"
+																										__lt102 = "bold"
 																									} else {
-																										__lt87 = "inherit"
+																										__lt102 = "inherit"
 																									}
-																									var __lt88 string
+																									var __lt103 string
 																									if p.Italic {
-																										__lt88 = "italic"
+																										__lt103 = "italic"
 																									} else {
-																										__lt88 = "inherit"
+																										__lt103 = "inherit"
 																									}
-																									var __lt89 string
+																									var __lt104 string
 																									if p.Mono {
-																										__lt89 = "monospace"
+																										__lt104 = "monospace"
 																									} else {
-																										__lt89 = ""
+																										__lt104 = ""
 																									}
-																									__n389.SetSpanStyle(__lt87, __lt88, __lt89, false, p.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
+																									__n389.SetSpanStyle(__lt102, __lt103, __lt104, false, p.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
 																									__n390 := fynetext.NewSpan(fynetext.Style())
 																									__n390.SetText(p.Text)
 																									__n389.Add(__n390)
@@ -6555,25 +6579,25 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 																								__n377.Add(__n398)
 																							} else {
 																								__n400 := fynetext.NewSpan(fynetext.Style())
-																								var __lt90 string
+																								var __lt105 string
 																								if r.Bold {
-																									__lt90 = "bold"
+																									__lt105 = "bold"
 																								} else {
-																									__lt90 = "inherit"
+																									__lt105 = "inherit"
 																								}
-																								var __lt91 string
+																								var __lt106 string
 																								if r.Italic {
-																									__lt91 = "italic"
+																									__lt106 = "italic"
 																								} else {
-																									__lt91 = "inherit"
+																									__lt106 = "inherit"
 																								}
-																								var __lt92 string
+																								var __lt107 string
 																								if r.Mono {
-																									__lt92 = "monospace"
+																									__lt107 = "monospace"
 																								} else {
-																									__lt92 = ""
+																									__lt107 = ""
 																								}
-																								__n400.SetSpanStyle(__lt90, __lt91, __lt92, false, r.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
+																								__n400.SetSpanStyle(__lt105, __lt106, __lt107, false, r.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
 																								__n401 := fynetext.NewSpan(fynetext.Style())
 																								__n401.SetText(r.Text)
 																								__n400.Add(__n401)
@@ -6586,10 +6610,12 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 																		}
 																	}
 																}
-																__n11.Add(container.NewThemeOverride(__n377, _snglTheme2))
+																__n11.Add(__n377__box)
 															} else {
 																if inner.Kind == "quote" {
 																	__n402 := fynetext.NewFlow()
+																	__n402__box := fynelayout.NewBox(__n402)
+																	__n402__box.SetLook(fynelayout.Look{PaddingLeft: 12.0, Italic: true})
 																	for _, r := range inner.Runs {
 																		if r.Image != "" {
 																			__n403 := fynetext.NewSpan(fynetext.Style())
@@ -6634,25 +6660,25 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 																										__n404.Add(__n412)
 																									} else {
 																										__n414 := fynetext.NewSpan(fynetext.Style())
-																										var __lt93 string
+																										var __lt108 string
 																										if p.Bold {
-																											__lt93 = "bold"
+																											__lt108 = "bold"
 																										} else {
-																											__lt93 = "inherit"
+																											__lt108 = "inherit"
 																										}
-																										var __lt94 string
+																										var __lt109 string
 																										if p.Italic {
-																											__lt94 = "italic"
+																											__lt109 = "italic"
 																										} else {
-																											__lt94 = "inherit"
+																											__lt109 = "inherit"
 																										}
-																										var __lt95 string
+																										var __lt110 string
 																										if p.Mono {
-																											__lt95 = "monospace"
+																											__lt110 = "monospace"
 																										} else {
-																											__lt95 = ""
+																											__lt110 = ""
 																										}
-																										__n414.SetSpanStyle(__lt93, __lt94, __lt95, false, p.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
+																										__n414.SetSpanStyle(__lt108, __lt109, __lt110, false, p.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
 																										__n415 := fynetext.NewSpan(fynetext.Style())
 																										__n415.SetText(p.Text)
 																										__n414.Add(__n415)
@@ -6699,25 +6725,25 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 																									__n402.Add(__n423)
 																								} else {
 																									__n425 := fynetext.NewSpan(fynetext.Style())
-																									var __lt96 string
+																									var __lt111 string
 																									if r.Bold {
-																										__lt96 = "bold"
+																										__lt111 = "bold"
 																									} else {
-																										__lt96 = "inherit"
+																										__lt111 = "inherit"
 																									}
-																									var __lt97 string
+																									var __lt112 string
 																									if r.Italic {
-																										__lt97 = "italic"
+																										__lt112 = "italic"
 																									} else {
-																										__lt97 = "inherit"
+																										__lt112 = "inherit"
 																									}
-																									var __lt98 string
+																									var __lt113 string
 																									if r.Mono {
-																										__lt98 = "monospace"
+																										__lt113 = "monospace"
 																									} else {
-																										__lt98 = ""
+																										__lt113 = ""
 																									}
-																									__n425.SetSpanStyle(__lt96, __lt97, __lt98, false, r.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
+																									__n425.SetSpanStyle(__lt111, __lt112, __lt113, false, r.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
 																									__n426 := fynetext.NewSpan(fynetext.Style())
 																									__n426.SetText(r.Text)
 																									__n425.Add(__n426)
@@ -6730,10 +6756,12 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 																			}
 																		}
 																	}
-																	__n11.Add(container.NewThemeOverride(__n402, _snglTheme3))
+																	__n11.Add(__n402__box)
 																} else {
 																	if inner.Kind == "code" {
 																		__n427 := fynetext.NewFlow()
+																		__n427__box := fynelayout.NewBox(__n427)
+																		__n427__box.SetLook(fynelayout.Look{PaddingTop: 12.0, PaddingRight: 12.0, PaddingBottom: 12.0, PaddingLeft: 12.0, Fill: snglcolor.Color{R: 245, G: 245, B: 245, A: 255}, Radius: 4.0})
 																		__n428 := fynetext.NewSpan(fynetext.Style().WithMono())
 																		for _, r := range inner.Runs {
 																			__n429 := fynetext.NewSpan(fynetext.Style())
@@ -6744,7 +6772,7 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 																			__n428.Add(__n429)
 																		}
 																		__n427.Add(__n428)
-																		__n11.Add(container.NewThemeOverride(__n427, _snglTheme4))
+																		__n11.Add(__n427__box)
 																	} else {
 																		if inner.Kind == "rule" {
 																			__n431 := widget.NewLabel("")
@@ -6752,24 +6780,34 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 																			__n11.Add(__n431)
 																		} else {
 																			if inner.Kind == "table" {
-																				__n432 := container.NewVBox()
-																				__n433 := container.NewHBox()
+																				__n432 := fynelayout.NewVBox()
+																				__n432__box := fynelayout.NewBox(__n432)
+																				__n432__box.SetLook(fynelayout.Look{Gap: 4.0})
+																				__n433 := fynelayout.NewHBox()
+																				__n433__box := fynelayout.NewBox(__n433)
+																				__n433__box.SetLook(fynelayout.Look{Gap: 16.0})
 																				for _, cell := range inner.Columns {
 																					__n434 := widget.NewLabel("")
+																					__n434__box := fynelayout.NewBox(__n434)
 																					__n434.SetText(cell)
-																					__n433.Add(container.NewThemeOverride(__n434, _snglTheme5))
+																					__n434__box.SetLook(fynelayout.Look{MinWidth: 80.0, Bold: true})
+																					__n433.Add(__n434__box)
 																				}
-																				__n432.Add(__n433)
+																				__n432.Add(__n433__box)
 																				for _, r := range inner.Rows {
-																					__n435 := container.NewHBox()
+																					__n435 := fynelayout.NewHBox()
+																					__n435__box := fynelayout.NewBox(__n435)
+																					__n435__box.SetLook(fynelayout.Look{Gap: 16.0})
 																					for _, cell := range r {
 																						__n436 := widget.NewLabel("")
+																						__n436__box := fynelayout.NewBox(__n436)
 																						__n436.SetText(cell)
-																						__n435.Add(__n436)
+																						__n436__box.SetLook(fynelayout.Look{MinWidth: 80.0})
+																						__n435.Add(__n436__box)
 																					}
-																					__n432.Add(__n435)
+																					__n432.Add(__n435__box)
 																				}
-																				__n11.Add(__n432)
+																				__n11.Add(__n432__box)
 																			}
 																		}
 																	}
@@ -6784,9 +6822,9 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 								}
 							}
 							__n8.Add(__n11)
-							__n7.Add(__n8)
+							__n7.Add(__n8__box)
 						}
-						__n6.Add(__n7)
+						__n6.Add(__n7__box)
 					} else {
 						if inner.Kind == "paragraph" {
 							__n437 := fynetext.NewFlow()
@@ -6834,25 +6872,25 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 																__n439.Add(__n447)
 															} else {
 																__n449 := fynetext.NewSpan(fynetext.Style())
-																var __lt99 string
+																var __lt114 string
 																if p.Bold {
-																	__lt99 = "bold"
+																	__lt114 = "bold"
 																} else {
-																	__lt99 = "inherit"
+																	__lt114 = "inherit"
 																}
-																var __lt100 string
+																var __lt115 string
 																if p.Italic {
-																	__lt100 = "italic"
+																	__lt115 = "italic"
 																} else {
-																	__lt100 = "inherit"
+																	__lt115 = "inherit"
 																}
-																var __lt101 string
+																var __lt116 string
 																if p.Mono {
-																	__lt101 = "monospace"
+																	__lt116 = "monospace"
 																} else {
-																	__lt101 = ""
+																	__lt116 = ""
 																}
-																__n449.SetSpanStyle(__lt99, __lt100, __lt101, false, p.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
+																__n449.SetSpanStyle(__lt114, __lt115, __lt116, false, p.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
 																__n450 := fynetext.NewSpan(fynetext.Style())
 																__n450.SetText(p.Text)
 																__n449.Add(__n450)
@@ -6899,25 +6937,25 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 															__n437.Add(__n458)
 														} else {
 															__n460 := fynetext.NewSpan(fynetext.Style())
-															var __lt102 string
+															var __lt117 string
 															if r.Bold {
-																__lt102 = "bold"
+																__lt117 = "bold"
 															} else {
-																__lt102 = "inherit"
+																__lt117 = "inherit"
 															}
-															var __lt103 string
+															var __lt118 string
 															if r.Italic {
-																__lt103 = "italic"
+																__lt118 = "italic"
 															} else {
-																__lt103 = "inherit"
+																__lt118 = "inherit"
 															}
-															var __lt104 string
+															var __lt119 string
 															if r.Mono {
-																__lt104 = "monospace"
+																__lt119 = "monospace"
 															} else {
-																__lt104 = ""
+																__lt119 = ""
 															}
-															__n460.SetSpanStyle(__lt102, __lt103, __lt104, false, r.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
+															__n460.SetSpanStyle(__lt117, __lt118, __lt119, false, r.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
 															__n461 := fynetext.NewSpan(fynetext.Style())
 															__n461.SetText(r.Text)
 															__n460.Add(__n461)
@@ -6934,6 +6972,8 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 						} else {
 							if inner.Kind == "heading1" {
 								__n462 := fynetext.NewFlow()
+								__n462__box := fynelayout.NewBox(__n462)
+								__n462__box.SetLook(fynelayout.Look{TextSize: 32.0, Bold: true})
 								for _, r := range inner.Runs {
 									if r.Image != "" {
 										__n463 := fynetext.NewSpan(fynetext.Style())
@@ -6978,25 +7018,25 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 																	__n464.Add(__n472)
 																} else {
 																	__n474 := fynetext.NewSpan(fynetext.Style())
-																	var __lt105 string
+																	var __lt120 string
 																	if p.Bold {
-																		__lt105 = "bold"
+																		__lt120 = "bold"
 																	} else {
-																		__lt105 = "inherit"
+																		__lt120 = "inherit"
 																	}
-																	var __lt106 string
+																	var __lt121 string
 																	if p.Italic {
-																		__lt106 = "italic"
+																		__lt121 = "italic"
 																	} else {
-																		__lt106 = "inherit"
+																		__lt121 = "inherit"
 																	}
-																	var __lt107 string
+																	var __lt122 string
 																	if p.Mono {
-																		__lt107 = "monospace"
+																		__lt122 = "monospace"
 																	} else {
-																		__lt107 = ""
+																		__lt122 = ""
 																	}
-																	__n474.SetSpanStyle(__lt105, __lt106, __lt107, false, p.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
+																	__n474.SetSpanStyle(__lt120, __lt121, __lt122, false, p.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
 																	__n475 := fynetext.NewSpan(fynetext.Style())
 																	__n475.SetText(p.Text)
 																	__n474.Add(__n475)
@@ -7043,25 +7083,25 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 																__n462.Add(__n483)
 															} else {
 																__n485 := fynetext.NewSpan(fynetext.Style())
-																var __lt108 string
+																var __lt123 string
 																if r.Bold {
-																	__lt108 = "bold"
+																	__lt123 = "bold"
 																} else {
-																	__lt108 = "inherit"
+																	__lt123 = "inherit"
 																}
-																var __lt109 string
+																var __lt124 string
 																if r.Italic {
-																	__lt109 = "italic"
+																	__lt124 = "italic"
 																} else {
-																	__lt109 = "inherit"
+																	__lt124 = "inherit"
 																}
-																var __lt110 string
+																var __lt125 string
 																if r.Mono {
-																	__lt110 = "monospace"
+																	__lt125 = "monospace"
 																} else {
-																	__lt110 = ""
+																	__lt125 = ""
 																}
-																__n485.SetSpanStyle(__lt108, __lt109, __lt110, false, r.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
+																__n485.SetSpanStyle(__lt123, __lt124, __lt125, false, r.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
 																__n486 := fynetext.NewSpan(fynetext.Style())
 																__n486.SetText(r.Text)
 																__n485.Add(__n486)
@@ -7074,10 +7114,12 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 										}
 									}
 								}
-								__n6.Add(container.NewThemeOverride(__n462, _snglTheme6))
+								__n6.Add(__n462__box)
 							} else {
 								if inner.Kind == "heading2" {
 									__n487 := fynetext.NewFlow()
+									__n487__box := fynelayout.NewBox(__n487)
+									__n487__box.SetLook(fynelayout.Look{TextSize: 26.0, Bold: true})
 									for _, r := range inner.Runs {
 										if r.Image != "" {
 											__n488 := fynetext.NewSpan(fynetext.Style())
@@ -7122,25 +7164,25 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 																		__n489.Add(__n497)
 																	} else {
 																		__n499 := fynetext.NewSpan(fynetext.Style())
-																		var __lt111 string
+																		var __lt126 string
 																		if p.Bold {
-																			__lt111 = "bold"
+																			__lt126 = "bold"
 																		} else {
-																			__lt111 = "inherit"
+																			__lt126 = "inherit"
 																		}
-																		var __lt112 string
+																		var __lt127 string
 																		if p.Italic {
-																			__lt112 = "italic"
+																			__lt127 = "italic"
 																		} else {
-																			__lt112 = "inherit"
+																			__lt127 = "inherit"
 																		}
-																		var __lt113 string
+																		var __lt128 string
 																		if p.Mono {
-																			__lt113 = "monospace"
+																			__lt128 = "monospace"
 																		} else {
-																			__lt113 = ""
+																			__lt128 = ""
 																		}
-																		__n499.SetSpanStyle(__lt111, __lt112, __lt113, false, p.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
+																		__n499.SetSpanStyle(__lt126, __lt127, __lt128, false, p.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
 																		__n500 := fynetext.NewSpan(fynetext.Style())
 																		__n500.SetText(p.Text)
 																		__n499.Add(__n500)
@@ -7187,25 +7229,25 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 																	__n487.Add(__n508)
 																} else {
 																	__n510 := fynetext.NewSpan(fynetext.Style())
-																	var __lt114 string
+																	var __lt129 string
 																	if r.Bold {
-																		__lt114 = "bold"
+																		__lt129 = "bold"
 																	} else {
-																		__lt114 = "inherit"
+																		__lt129 = "inherit"
 																	}
-																	var __lt115 string
+																	var __lt130 string
 																	if r.Italic {
-																		__lt115 = "italic"
+																		__lt130 = "italic"
 																	} else {
-																		__lt115 = "inherit"
+																		__lt130 = "inherit"
 																	}
-																	var __lt116 string
+																	var __lt131 string
 																	if r.Mono {
-																		__lt116 = "monospace"
+																		__lt131 = "monospace"
 																	} else {
-																		__lt116 = ""
+																		__lt131 = ""
 																	}
-																	__n510.SetSpanStyle(__lt114, __lt115, __lt116, false, r.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
+																	__n510.SetSpanStyle(__lt129, __lt130, __lt131, false, r.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
 																	__n511 := fynetext.NewSpan(fynetext.Style())
 																	__n511.SetText(r.Text)
 																	__n510.Add(__n511)
@@ -7218,10 +7260,12 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 											}
 										}
 									}
-									__n6.Add(container.NewThemeOverride(__n487, _snglTheme7))
+									__n6.Add(__n487__box)
 								} else {
 									if inner.Kind == "heading3" {
 										__n512 := fynetext.NewFlow()
+										__n512__box := fynelayout.NewBox(__n512)
+										__n512__box.SetLook(fynelayout.Look{TextSize: 21.0, Bold: true})
 										for _, r := range inner.Runs {
 											if r.Image != "" {
 												__n513 := fynetext.NewSpan(fynetext.Style())
@@ -7266,25 +7310,25 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 																			__n514.Add(__n522)
 																		} else {
 																			__n524 := fynetext.NewSpan(fynetext.Style())
-																			var __lt117 string
+																			var __lt132 string
 																			if p.Bold {
-																				__lt117 = "bold"
+																				__lt132 = "bold"
 																			} else {
-																				__lt117 = "inherit"
+																				__lt132 = "inherit"
 																			}
-																			var __lt118 string
+																			var __lt133 string
 																			if p.Italic {
-																				__lt118 = "italic"
+																				__lt133 = "italic"
 																			} else {
-																				__lt118 = "inherit"
+																				__lt133 = "inherit"
 																			}
-																			var __lt119 string
+																			var __lt134 string
 																			if p.Mono {
-																				__lt119 = "monospace"
+																				__lt134 = "monospace"
 																			} else {
-																				__lt119 = ""
+																				__lt134 = ""
 																			}
-																			__n524.SetSpanStyle(__lt117, __lt118, __lt119, false, p.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
+																			__n524.SetSpanStyle(__lt132, __lt133, __lt134, false, p.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
 																			__n525 := fynetext.NewSpan(fynetext.Style())
 																			__n525.SetText(p.Text)
 																			__n524.Add(__n525)
@@ -7331,25 +7375,25 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 																		__n512.Add(__n533)
 																	} else {
 																		__n535 := fynetext.NewSpan(fynetext.Style())
-																		var __lt120 string
+																		var __lt135 string
 																		if r.Bold {
-																			__lt120 = "bold"
+																			__lt135 = "bold"
 																		} else {
-																			__lt120 = "inherit"
+																			__lt135 = "inherit"
 																		}
-																		var __lt121 string
+																		var __lt136 string
 																		if r.Italic {
-																			__lt121 = "italic"
+																			__lt136 = "italic"
 																		} else {
-																			__lt121 = "inherit"
+																			__lt136 = "inherit"
 																		}
-																		var __lt122 string
+																		var __lt137 string
 																		if r.Mono {
-																			__lt122 = "monospace"
+																			__lt137 = "monospace"
 																		} else {
-																			__lt122 = ""
+																			__lt137 = ""
 																		}
-																		__n535.SetSpanStyle(__lt120, __lt121, __lt122, false, r.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
+																		__n535.SetSpanStyle(__lt135, __lt136, __lt137, false, r.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
 																		__n536 := fynetext.NewSpan(fynetext.Style())
 																		__n536.SetText(r.Text)
 																		__n535.Add(__n536)
@@ -7362,10 +7406,12 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 												}
 											}
 										}
-										__n6.Add(container.NewThemeOverride(__n512, _snglTheme8))
+										__n6.Add(__n512__box)
 									} else {
 										if inner.Kind == "heading4" {
 											__n537 := fynetext.NewFlow()
+											__n537__box := fynelayout.NewBox(__n537)
+											__n537__box.SetLook(fynelayout.Look{TextSize: 18.0, Bold: true})
 											for _, r := range inner.Runs {
 												if r.Image != "" {
 													__n538 := fynetext.NewSpan(fynetext.Style())
@@ -7410,25 +7456,25 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 																				__n539.Add(__n547)
 																			} else {
 																				__n549 := fynetext.NewSpan(fynetext.Style())
-																				var __lt123 string
+																				var __lt138 string
 																				if p.Bold {
-																					__lt123 = "bold"
+																					__lt138 = "bold"
 																				} else {
-																					__lt123 = "inherit"
+																					__lt138 = "inherit"
 																				}
-																				var __lt124 string
+																				var __lt139 string
 																				if p.Italic {
-																					__lt124 = "italic"
+																					__lt139 = "italic"
 																				} else {
-																					__lt124 = "inherit"
+																					__lt139 = "inherit"
 																				}
-																				var __lt125 string
+																				var __lt140 string
 																				if p.Mono {
-																					__lt125 = "monospace"
+																					__lt140 = "monospace"
 																				} else {
-																					__lt125 = ""
+																					__lt140 = ""
 																				}
-																				__n549.SetSpanStyle(__lt123, __lt124, __lt125, false, p.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
+																				__n549.SetSpanStyle(__lt138, __lt139, __lt140, false, p.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
 																				__n550 := fynetext.NewSpan(fynetext.Style())
 																				__n550.SetText(p.Text)
 																				__n549.Add(__n550)
@@ -7475,25 +7521,25 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 																			__n537.Add(__n558)
 																		} else {
 																			__n560 := fynetext.NewSpan(fynetext.Style())
-																			var __lt126 string
+																			var __lt141 string
 																			if r.Bold {
-																				__lt126 = "bold"
+																				__lt141 = "bold"
 																			} else {
-																				__lt126 = "inherit"
+																				__lt141 = "inherit"
 																			}
-																			var __lt127 string
+																			var __lt142 string
 																			if r.Italic {
-																				__lt127 = "italic"
+																				__lt142 = "italic"
 																			} else {
-																				__lt127 = "inherit"
+																				__lt142 = "inherit"
 																			}
-																			var __lt128 string
+																			var __lt143 string
 																			if r.Mono {
-																				__lt128 = "monospace"
+																				__lt143 = "monospace"
 																			} else {
-																				__lt128 = ""
+																				__lt143 = ""
 																			}
-																			__n560.SetSpanStyle(__lt126, __lt127, __lt128, false, r.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
+																			__n560.SetSpanStyle(__lt141, __lt142, __lt143, false, r.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
 																			__n561 := fynetext.NewSpan(fynetext.Style())
 																			__n561.SetText(r.Text)
 																			__n560.Add(__n561)
@@ -7506,10 +7552,12 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 													}
 												}
 											}
-											__n6.Add(container.NewThemeOverride(__n537, _snglTheme0))
+											__n6.Add(__n537__box)
 										} else {
 											if inner.Kind == "heading5" {
 												__n562 := fynetext.NewFlow()
+												__n562__box := fynelayout.NewBox(__n562)
+												__n562__box.SetLook(fynelayout.Look{TextSize: 16.0, Bold: true})
 												for _, r := range inner.Runs {
 													if r.Image != "" {
 														__n563 := fynetext.NewSpan(fynetext.Style())
@@ -7554,25 +7602,25 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 																					__n564.Add(__n572)
 																				} else {
 																					__n574 := fynetext.NewSpan(fynetext.Style())
-																					var __lt129 string
+																					var __lt144 string
 																					if p.Bold {
-																						__lt129 = "bold"
+																						__lt144 = "bold"
 																					} else {
-																						__lt129 = "inherit"
+																						__lt144 = "inherit"
 																					}
-																					var __lt130 string
+																					var __lt145 string
 																					if p.Italic {
-																						__lt130 = "italic"
+																						__lt145 = "italic"
 																					} else {
-																						__lt130 = "inherit"
+																						__lt145 = "inherit"
 																					}
-																					var __lt131 string
+																					var __lt146 string
 																					if p.Mono {
-																						__lt131 = "monospace"
+																						__lt146 = "monospace"
 																					} else {
-																						__lt131 = ""
+																						__lt146 = ""
 																					}
-																					__n574.SetSpanStyle(__lt129, __lt130, __lt131, false, p.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
+																					__n574.SetSpanStyle(__lt144, __lt145, __lt146, false, p.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
 																					__n575 := fynetext.NewSpan(fynetext.Style())
 																					__n575.SetText(p.Text)
 																					__n574.Add(__n575)
@@ -7619,25 +7667,25 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 																				__n562.Add(__n583)
 																			} else {
 																				__n585 := fynetext.NewSpan(fynetext.Style())
-																				var __lt132 string
+																				var __lt147 string
 																				if r.Bold {
-																					__lt132 = "bold"
+																					__lt147 = "bold"
 																				} else {
-																					__lt132 = "inherit"
+																					__lt147 = "inherit"
 																				}
-																				var __lt133 string
+																				var __lt148 string
 																				if r.Italic {
-																					__lt133 = "italic"
+																					__lt148 = "italic"
 																				} else {
-																					__lt133 = "inherit"
+																					__lt148 = "inherit"
 																				}
-																				var __lt134 string
+																				var __lt149 string
 																				if r.Mono {
-																					__lt134 = "monospace"
+																					__lt149 = "monospace"
 																				} else {
-																					__lt134 = ""
+																					__lt149 = ""
 																				}
-																				__n585.SetSpanStyle(__lt132, __lt133, __lt134, false, r.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
+																				__n585.SetSpanStyle(__lt147, __lt148, __lt149, false, r.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
 																				__n586 := fynetext.NewSpan(fynetext.Style())
 																				__n586.SetText(r.Text)
 																				__n585.Add(__n586)
@@ -7650,10 +7698,12 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 														}
 													}
 												}
-												__n6.Add(container.NewThemeOverride(__n562, _snglTheme1))
+												__n6.Add(__n562__box)
 											} else {
 												if inner.Kind == "heading6" {
 													__n587 := fynetext.NewFlow()
+													__n587__box := fynelayout.NewBox(__n587)
+													__n587__box.SetLook(fynelayout.Look{TextSize: 14.0, Bold: true})
 													for _, r := range inner.Runs {
 														if r.Image != "" {
 															__n588 := fynetext.NewSpan(fynetext.Style())
@@ -7698,25 +7748,25 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 																						__n589.Add(__n597)
 																					} else {
 																						__n599 := fynetext.NewSpan(fynetext.Style())
-																						var __lt135 string
+																						var __lt150 string
 																						if p.Bold {
-																							__lt135 = "bold"
+																							__lt150 = "bold"
 																						} else {
-																							__lt135 = "inherit"
+																							__lt150 = "inherit"
 																						}
-																						var __lt136 string
+																						var __lt151 string
 																						if p.Italic {
-																							__lt136 = "italic"
+																							__lt151 = "italic"
 																						} else {
-																							__lt136 = "inherit"
+																							__lt151 = "inherit"
 																						}
-																						var __lt137 string
+																						var __lt152 string
 																						if p.Mono {
-																							__lt137 = "monospace"
+																							__lt152 = "monospace"
 																						} else {
-																							__lt137 = ""
+																							__lt152 = ""
 																						}
-																						__n599.SetSpanStyle(__lt135, __lt136, __lt137, false, p.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
+																						__n599.SetSpanStyle(__lt150, __lt151, __lt152, false, p.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
 																						__n600 := fynetext.NewSpan(fynetext.Style())
 																						__n600.SetText(p.Text)
 																						__n599.Add(__n600)
@@ -7763,25 +7813,25 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 																					__n587.Add(__n608)
 																				} else {
 																					__n610 := fynetext.NewSpan(fynetext.Style())
-																					var __lt138 string
+																					var __lt153 string
 																					if r.Bold {
-																						__lt138 = "bold"
+																						__lt153 = "bold"
 																					} else {
-																						__lt138 = "inherit"
+																						__lt153 = "inherit"
 																					}
-																					var __lt139 string
+																					var __lt154 string
 																					if r.Italic {
-																						__lt139 = "italic"
+																						__lt154 = "italic"
 																					} else {
-																						__lt139 = "inherit"
+																						__lt154 = "inherit"
 																					}
-																					var __lt140 string
+																					var __lt155 string
 																					if r.Mono {
-																						__lt140 = "monospace"
+																						__lt155 = "monospace"
 																					} else {
-																						__lt140 = ""
+																						__lt155 = ""
 																					}
-																					__n610.SetSpanStyle(__lt138, __lt139, __lt140, false, r.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
+																					__n610.SetSpanStyle(__lt153, __lt154, __lt155, false, r.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
 																					__n611 := fynetext.NewSpan(fynetext.Style())
 																					__n611.SetText(r.Text)
 																					__n610.Add(__n611)
@@ -7794,10 +7844,12 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 															}
 														}
 													}
-													__n6.Add(container.NewThemeOverride(__n587, _snglTheme2))
+													__n6.Add(__n587__box)
 												} else {
 													if inner.Kind == "quote" {
 														__n612 := fynetext.NewFlow()
+														__n612__box := fynelayout.NewBox(__n612)
+														__n612__box.SetLook(fynelayout.Look{PaddingLeft: 12.0, Italic: true})
 														for _, r := range inner.Runs {
 															if r.Image != "" {
 																__n613 := fynetext.NewSpan(fynetext.Style())
@@ -7842,25 +7894,25 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 																							__n614.Add(__n622)
 																						} else {
 																							__n624 := fynetext.NewSpan(fynetext.Style())
-																							var __lt141 string
+																							var __lt156 string
 																							if p.Bold {
-																								__lt141 = "bold"
+																								__lt156 = "bold"
 																							} else {
-																								__lt141 = "inherit"
+																								__lt156 = "inherit"
 																							}
-																							var __lt142 string
+																							var __lt157 string
 																							if p.Italic {
-																								__lt142 = "italic"
+																								__lt157 = "italic"
 																							} else {
-																								__lt142 = "inherit"
+																								__lt157 = "inherit"
 																							}
-																							var __lt143 string
+																							var __lt158 string
 																							if p.Mono {
-																								__lt143 = "monospace"
+																								__lt158 = "monospace"
 																							} else {
-																								__lt143 = ""
+																								__lt158 = ""
 																							}
-																							__n624.SetSpanStyle(__lt141, __lt142, __lt143, false, p.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
+																							__n624.SetSpanStyle(__lt156, __lt157, __lt158, false, p.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
 																							__n625 := fynetext.NewSpan(fynetext.Style())
 																							__n625.SetText(p.Text)
 																							__n624.Add(__n625)
@@ -7907,25 +7959,25 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 																						__n612.Add(__n633)
 																					} else {
 																						__n635 := fynetext.NewSpan(fynetext.Style())
-																						var __lt144 string
+																						var __lt159 string
 																						if r.Bold {
-																							__lt144 = "bold"
+																							__lt159 = "bold"
 																						} else {
-																							__lt144 = "inherit"
+																							__lt159 = "inherit"
 																						}
-																						var __lt145 string
+																						var __lt160 string
 																						if r.Italic {
-																							__lt145 = "italic"
+																							__lt160 = "italic"
 																						} else {
-																							__lt145 = "inherit"
+																							__lt160 = "inherit"
 																						}
-																						var __lt146 string
+																						var __lt161 string
 																						if r.Mono {
-																							__lt146 = "monospace"
+																							__lt161 = "monospace"
 																						} else {
-																							__lt146 = ""
+																							__lt161 = ""
 																						}
-																						__n635.SetSpanStyle(__lt144, __lt145, __lt146, false, r.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
+																						__n635.SetSpanStyle(__lt159, __lt160, __lt161, false, r.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
 																						__n636 := fynetext.NewSpan(fynetext.Style())
 																						__n636.SetText(r.Text)
 																						__n635.Add(__n636)
@@ -7938,10 +7990,12 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 																}
 															}
 														}
-														__n6.Add(container.NewThemeOverride(__n612, _snglTheme3))
+														__n6.Add(__n612__box)
 													} else {
 														if inner.Kind == "code" {
 															__n637 := fynetext.NewFlow()
+															__n637__box := fynelayout.NewBox(__n637)
+															__n637__box.SetLook(fynelayout.Look{PaddingTop: 12.0, PaddingRight: 12.0, PaddingBottom: 12.0, PaddingLeft: 12.0, Fill: snglcolor.Color{R: 245, G: 245, B: 245, A: 255}, Radius: 4.0})
 															__n638 := fynetext.NewSpan(fynetext.Style().WithMono())
 															for _, r := range inner.Runs {
 																__n639 := fynetext.NewSpan(fynetext.Style())
@@ -7952,7 +8006,7 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 																__n638.Add(__n639)
 															}
 															__n637.Add(__n638)
-															__n6.Add(container.NewThemeOverride(__n637, _snglTheme4))
+															__n6.Add(__n637__box)
 														} else {
 															if inner.Kind == "rule" {
 																__n641 := widget.NewLabel("")
@@ -7960,24 +8014,34 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 																__n6.Add(__n641)
 															} else {
 																if inner.Kind == "table" {
-																	__n642 := container.NewVBox()
-																	__n643 := container.NewHBox()
+																	__n642 := fynelayout.NewVBox()
+																	__n642__box := fynelayout.NewBox(__n642)
+																	__n642__box.SetLook(fynelayout.Look{Gap: 4.0})
+																	__n643 := fynelayout.NewHBox()
+																	__n643__box := fynelayout.NewBox(__n643)
+																	__n643__box.SetLook(fynelayout.Look{Gap: 16.0})
 																	for _, cell := range inner.Columns {
 																		__n644 := widget.NewLabel("")
+																		__n644__box := fynelayout.NewBox(__n644)
 																		__n644.SetText(cell)
-																		__n643.Add(container.NewThemeOverride(__n644, _snglTheme5))
+																		__n644__box.SetLook(fynelayout.Look{MinWidth: 80.0, Bold: true})
+																		__n643.Add(__n644__box)
 																	}
-																	__n642.Add(__n643)
+																	__n642.Add(__n643__box)
 																	for _, r := range inner.Rows {
-																		__n645 := container.NewHBox()
+																		__n645 := fynelayout.NewHBox()
+																		__n645__box := fynelayout.NewBox(__n645)
+																		__n645__box.SetLook(fynelayout.Look{Gap: 16.0})
 																		for _, cell := range r {
 																			__n646 := widget.NewLabel("")
+																			__n646__box := fynelayout.NewBox(__n646)
 																			__n646.SetText(cell)
-																			__n645.Add(__n646)
+																			__n646__box.SetLook(fynelayout.Look{MinWidth: 80.0})
+																			__n645.Add(__n646__box)
 																		}
-																		__n642.Add(__n645)
+																		__n642.Add(__n645__box)
 																	}
-																	__n6.Add(__n642)
+																	__n6.Add(__n642__box)
 																}
 															}
 														}
@@ -7992,10 +8056,10 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 					}
 				}
 				__n3.Add(__n6)
-				__n2.Add(__n3)
+				__n2.Add(__n3__box)
 			}
-			fynelayout.InsertBefore(__parent, m.__slot0_at, __n2)
-			m.__slot0 = append(m.__slot0, __n2)
+			fynelayout.InsertBefore(__parent, m.__slot0_at, __n2__box)
+			m.__slot0 = append(m.__slot0, __n2__box)
 		} else {
 			if b.Kind == "paragraph" {
 				__n647 := fynetext.NewFlow()
@@ -8043,25 +8107,25 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 													__n649.Add(__n657)
 												} else {
 													__n659 := fynetext.NewSpan(fynetext.Style())
-													var __lt147 string
+													var __lt162 string
 													if p.Bold {
-														__lt147 = "bold"
+														__lt162 = "bold"
 													} else {
-														__lt147 = "inherit"
+														__lt162 = "inherit"
 													}
-													var __lt148 string
+													var __lt163 string
 													if p.Italic {
-														__lt148 = "italic"
+														__lt163 = "italic"
 													} else {
-														__lt148 = "inherit"
+														__lt163 = "inherit"
 													}
-													var __lt149 string
+													var __lt164 string
 													if p.Mono {
-														__lt149 = "monospace"
+														__lt164 = "monospace"
 													} else {
-														__lt149 = ""
+														__lt164 = ""
 													}
-													__n659.SetSpanStyle(__lt147, __lt148, __lt149, false, p.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
+													__n659.SetSpanStyle(__lt162, __lt163, __lt164, false, p.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
 													__n660 := fynetext.NewSpan(fynetext.Style())
 													__n660.SetText(p.Text)
 													__n659.Add(__n660)
@@ -8108,25 +8172,25 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 												__n647.Add(__n668)
 											} else {
 												__n670 := fynetext.NewSpan(fynetext.Style())
-												var __lt150 string
+												var __lt165 string
 												if r.Bold {
-													__lt150 = "bold"
+													__lt165 = "bold"
 												} else {
-													__lt150 = "inherit"
+													__lt165 = "inherit"
 												}
-												var __lt151 string
+												var __lt166 string
 												if r.Italic {
-													__lt151 = "italic"
+													__lt166 = "italic"
 												} else {
-													__lt151 = "inherit"
+													__lt166 = "inherit"
 												}
-												var __lt152 string
+												var __lt167 string
 												if r.Mono {
-													__lt152 = "monospace"
+													__lt167 = "monospace"
 												} else {
-													__lt152 = ""
+													__lt167 = ""
 												}
-												__n670.SetSpanStyle(__lt150, __lt151, __lt152, false, r.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
+												__n670.SetSpanStyle(__lt165, __lt166, __lt167, false, r.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
 												__n671 := fynetext.NewSpan(fynetext.Style())
 												__n671.SetText(r.Text)
 												__n670.Add(__n671)
@@ -8144,6 +8208,8 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 			} else {
 				if b.Kind == "heading1" {
 					__n672 := fynetext.NewFlow()
+					__n672__box := fynelayout.NewBox(__n672)
+					__n672__box.SetLook(fynelayout.Look{TextSize: 32.0, Bold: true})
 					for _, r := range b.Runs {
 						if r.Image != "" {
 							__n673 := fynetext.NewSpan(fynetext.Style())
@@ -8188,25 +8254,25 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 														__n674.Add(__n682)
 													} else {
 														__n684 := fynetext.NewSpan(fynetext.Style())
-														var __lt153 string
+														var __lt168 string
 														if p.Bold {
-															__lt153 = "bold"
+															__lt168 = "bold"
 														} else {
-															__lt153 = "inherit"
+															__lt168 = "inherit"
 														}
-														var __lt154 string
+														var __lt169 string
 														if p.Italic {
-															__lt154 = "italic"
+															__lt169 = "italic"
 														} else {
-															__lt154 = "inherit"
+															__lt169 = "inherit"
 														}
-														var __lt155 string
+														var __lt170 string
 														if p.Mono {
-															__lt155 = "monospace"
+															__lt170 = "monospace"
 														} else {
-															__lt155 = ""
+															__lt170 = ""
 														}
-														__n684.SetSpanStyle(__lt153, __lt154, __lt155, false, p.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
+														__n684.SetSpanStyle(__lt168, __lt169, __lt170, false, p.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
 														__n685 := fynetext.NewSpan(fynetext.Style())
 														__n685.SetText(p.Text)
 														__n684.Add(__n685)
@@ -8253,25 +8319,25 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 													__n672.Add(__n693)
 												} else {
 													__n695 := fynetext.NewSpan(fynetext.Style())
-													var __lt156 string
+													var __lt171 string
 													if r.Bold {
-														__lt156 = "bold"
+														__lt171 = "bold"
 													} else {
-														__lt156 = "inherit"
+														__lt171 = "inherit"
 													}
-													var __lt157 string
+													var __lt172 string
 													if r.Italic {
-														__lt157 = "italic"
+														__lt172 = "italic"
 													} else {
-														__lt157 = "inherit"
+														__lt172 = "inherit"
 													}
-													var __lt158 string
+													var __lt173 string
 													if r.Mono {
-														__lt158 = "monospace"
+														__lt173 = "monospace"
 													} else {
-														__lt158 = ""
+														__lt173 = ""
 													}
-													__n695.SetSpanStyle(__lt156, __lt157, __lt158, false, r.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
+													__n695.SetSpanStyle(__lt171, __lt172, __lt173, false, r.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
 													__n696 := fynetext.NewSpan(fynetext.Style())
 													__n696.SetText(r.Text)
 													__n695.Add(__n696)
@@ -8284,11 +8350,13 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 							}
 						}
 					}
-					fynelayout.InsertBefore(__parent, m.__slot0_at, container.NewThemeOverride(__n672, _snglTheme6))
-					m.__slot0 = append(m.__slot0, __n672)
+					fynelayout.InsertBefore(__parent, m.__slot0_at, __n672__box)
+					m.__slot0 = append(m.__slot0, __n672__box)
 				} else {
 					if b.Kind == "heading2" {
 						__n697 := fynetext.NewFlow()
+						__n697__box := fynelayout.NewBox(__n697)
+						__n697__box.SetLook(fynelayout.Look{TextSize: 26.0, Bold: true})
 						for _, r := range b.Runs {
 							if r.Image != "" {
 								__n698 := fynetext.NewSpan(fynetext.Style())
@@ -8333,25 +8401,25 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 															__n699.Add(__n707)
 														} else {
 															__n709 := fynetext.NewSpan(fynetext.Style())
-															var __lt159 string
+															var __lt174 string
 															if p.Bold {
-																__lt159 = "bold"
+																__lt174 = "bold"
 															} else {
-																__lt159 = "inherit"
+																__lt174 = "inherit"
 															}
-															var __lt160 string
+															var __lt175 string
 															if p.Italic {
-																__lt160 = "italic"
+																__lt175 = "italic"
 															} else {
-																__lt160 = "inherit"
+																__lt175 = "inherit"
 															}
-															var __lt161 string
+															var __lt176 string
 															if p.Mono {
-																__lt161 = "monospace"
+																__lt176 = "monospace"
 															} else {
-																__lt161 = ""
+																__lt176 = ""
 															}
-															__n709.SetSpanStyle(__lt159, __lt160, __lt161, false, p.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
+															__n709.SetSpanStyle(__lt174, __lt175, __lt176, false, p.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
 															__n710 := fynetext.NewSpan(fynetext.Style())
 															__n710.SetText(p.Text)
 															__n709.Add(__n710)
@@ -8398,25 +8466,25 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 														__n697.Add(__n718)
 													} else {
 														__n720 := fynetext.NewSpan(fynetext.Style())
-														var __lt162 string
+														var __lt177 string
 														if r.Bold {
-															__lt162 = "bold"
+															__lt177 = "bold"
 														} else {
-															__lt162 = "inherit"
+															__lt177 = "inherit"
 														}
-														var __lt163 string
+														var __lt178 string
 														if r.Italic {
-															__lt163 = "italic"
+															__lt178 = "italic"
 														} else {
-															__lt163 = "inherit"
+															__lt178 = "inherit"
 														}
-														var __lt164 string
+														var __lt179 string
 														if r.Mono {
-															__lt164 = "monospace"
+															__lt179 = "monospace"
 														} else {
-															__lt164 = ""
+															__lt179 = ""
 														}
-														__n720.SetSpanStyle(__lt162, __lt163, __lt164, false, r.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
+														__n720.SetSpanStyle(__lt177, __lt178, __lt179, false, r.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
 														__n721 := fynetext.NewSpan(fynetext.Style())
 														__n721.SetText(r.Text)
 														__n720.Add(__n721)
@@ -8429,11 +8497,13 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 								}
 							}
 						}
-						fynelayout.InsertBefore(__parent, m.__slot0_at, container.NewThemeOverride(__n697, _snglTheme7))
-						m.__slot0 = append(m.__slot0, __n697)
+						fynelayout.InsertBefore(__parent, m.__slot0_at, __n697__box)
+						m.__slot0 = append(m.__slot0, __n697__box)
 					} else {
 						if b.Kind == "heading3" {
 							__n722 := fynetext.NewFlow()
+							__n722__box := fynelayout.NewBox(__n722)
+							__n722__box.SetLook(fynelayout.Look{TextSize: 21.0, Bold: true})
 							for _, r := range b.Runs {
 								if r.Image != "" {
 									__n723 := fynetext.NewSpan(fynetext.Style())
@@ -8478,25 +8548,25 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 																__n724.Add(__n732)
 															} else {
 																__n734 := fynetext.NewSpan(fynetext.Style())
-																var __lt165 string
+																var __lt180 string
 																if p.Bold {
-																	__lt165 = "bold"
+																	__lt180 = "bold"
 																} else {
-																	__lt165 = "inherit"
+																	__lt180 = "inherit"
 																}
-																var __lt166 string
+																var __lt181 string
 																if p.Italic {
-																	__lt166 = "italic"
+																	__lt181 = "italic"
 																} else {
-																	__lt166 = "inherit"
+																	__lt181 = "inherit"
 																}
-																var __lt167 string
+																var __lt182 string
 																if p.Mono {
-																	__lt167 = "monospace"
+																	__lt182 = "monospace"
 																} else {
-																	__lt167 = ""
+																	__lt182 = ""
 																}
-																__n734.SetSpanStyle(__lt165, __lt166, __lt167, false, p.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
+																__n734.SetSpanStyle(__lt180, __lt181, __lt182, false, p.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
 																__n735 := fynetext.NewSpan(fynetext.Style())
 																__n735.SetText(p.Text)
 																__n734.Add(__n735)
@@ -8543,25 +8613,25 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 															__n722.Add(__n743)
 														} else {
 															__n745 := fynetext.NewSpan(fynetext.Style())
-															var __lt168 string
+															var __lt183 string
 															if r.Bold {
-																__lt168 = "bold"
+																__lt183 = "bold"
 															} else {
-																__lt168 = "inherit"
+																__lt183 = "inherit"
 															}
-															var __lt169 string
+															var __lt184 string
 															if r.Italic {
-																__lt169 = "italic"
+																__lt184 = "italic"
 															} else {
-																__lt169 = "inherit"
+																__lt184 = "inherit"
 															}
-															var __lt170 string
+															var __lt185 string
 															if r.Mono {
-																__lt170 = "monospace"
+																__lt185 = "monospace"
 															} else {
-																__lt170 = ""
+																__lt185 = ""
 															}
-															__n745.SetSpanStyle(__lt168, __lt169, __lt170, false, r.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
+															__n745.SetSpanStyle(__lt183, __lt184, __lt185, false, r.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
 															__n746 := fynetext.NewSpan(fynetext.Style())
 															__n746.SetText(r.Text)
 															__n745.Add(__n746)
@@ -8574,11 +8644,13 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 									}
 								}
 							}
-							fynelayout.InsertBefore(__parent, m.__slot0_at, container.NewThemeOverride(__n722, _snglTheme8))
-							m.__slot0 = append(m.__slot0, __n722)
+							fynelayout.InsertBefore(__parent, m.__slot0_at, __n722__box)
+							m.__slot0 = append(m.__slot0, __n722__box)
 						} else {
 							if b.Kind == "heading4" {
 								__n747 := fynetext.NewFlow()
+								__n747__box := fynelayout.NewBox(__n747)
+								__n747__box.SetLook(fynelayout.Look{TextSize: 18.0, Bold: true})
 								for _, r := range b.Runs {
 									if r.Image != "" {
 										__n748 := fynetext.NewSpan(fynetext.Style())
@@ -8623,25 +8695,25 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 																	__n749.Add(__n757)
 																} else {
 																	__n759 := fynetext.NewSpan(fynetext.Style())
-																	var __lt171 string
+																	var __lt186 string
 																	if p.Bold {
-																		__lt171 = "bold"
+																		__lt186 = "bold"
 																	} else {
-																		__lt171 = "inherit"
+																		__lt186 = "inherit"
 																	}
-																	var __lt172 string
+																	var __lt187 string
 																	if p.Italic {
-																		__lt172 = "italic"
+																		__lt187 = "italic"
 																	} else {
-																		__lt172 = "inherit"
+																		__lt187 = "inherit"
 																	}
-																	var __lt173 string
+																	var __lt188 string
 																	if p.Mono {
-																		__lt173 = "monospace"
+																		__lt188 = "monospace"
 																	} else {
-																		__lt173 = ""
+																		__lt188 = ""
 																	}
-																	__n759.SetSpanStyle(__lt171, __lt172, __lt173, false, p.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
+																	__n759.SetSpanStyle(__lt186, __lt187, __lt188, false, p.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
 																	__n760 := fynetext.NewSpan(fynetext.Style())
 																	__n760.SetText(p.Text)
 																	__n759.Add(__n760)
@@ -8688,25 +8760,25 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 																__n747.Add(__n768)
 															} else {
 																__n770 := fynetext.NewSpan(fynetext.Style())
-																var __lt174 string
+																var __lt189 string
 																if r.Bold {
-																	__lt174 = "bold"
+																	__lt189 = "bold"
 																} else {
-																	__lt174 = "inherit"
+																	__lt189 = "inherit"
 																}
-																var __lt175 string
+																var __lt190 string
 																if r.Italic {
-																	__lt175 = "italic"
+																	__lt190 = "italic"
 																} else {
-																	__lt175 = "inherit"
+																	__lt190 = "inherit"
 																}
-																var __lt176 string
+																var __lt191 string
 																if r.Mono {
-																	__lt176 = "monospace"
+																	__lt191 = "monospace"
 																} else {
-																	__lt176 = ""
+																	__lt191 = ""
 																}
-																__n770.SetSpanStyle(__lt174, __lt175, __lt176, false, r.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
+																__n770.SetSpanStyle(__lt189, __lt190, __lt191, false, r.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
 																__n771 := fynetext.NewSpan(fynetext.Style())
 																__n771.SetText(r.Text)
 																__n770.Add(__n771)
@@ -8719,11 +8791,13 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 										}
 									}
 								}
-								fynelayout.InsertBefore(__parent, m.__slot0_at, container.NewThemeOverride(__n747, _snglTheme0))
-								m.__slot0 = append(m.__slot0, __n747)
+								fynelayout.InsertBefore(__parent, m.__slot0_at, __n747__box)
+								m.__slot0 = append(m.__slot0, __n747__box)
 							} else {
 								if b.Kind == "heading5" {
 									__n772 := fynetext.NewFlow()
+									__n772__box := fynelayout.NewBox(__n772)
+									__n772__box.SetLook(fynelayout.Look{TextSize: 16.0, Bold: true})
 									for _, r := range b.Runs {
 										if r.Image != "" {
 											__n773 := fynetext.NewSpan(fynetext.Style())
@@ -8768,25 +8842,25 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 																		__n774.Add(__n782)
 																	} else {
 																		__n784 := fynetext.NewSpan(fynetext.Style())
-																		var __lt177 string
+																		var __lt192 string
 																		if p.Bold {
-																			__lt177 = "bold"
+																			__lt192 = "bold"
 																		} else {
-																			__lt177 = "inherit"
+																			__lt192 = "inherit"
 																		}
-																		var __lt178 string
+																		var __lt193 string
 																		if p.Italic {
-																			__lt178 = "italic"
+																			__lt193 = "italic"
 																		} else {
-																			__lt178 = "inherit"
+																			__lt193 = "inherit"
 																		}
-																		var __lt179 string
+																		var __lt194 string
 																		if p.Mono {
-																			__lt179 = "monospace"
+																			__lt194 = "monospace"
 																		} else {
-																			__lt179 = ""
+																			__lt194 = ""
 																		}
-																		__n784.SetSpanStyle(__lt177, __lt178, __lt179, false, p.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
+																		__n784.SetSpanStyle(__lt192, __lt193, __lt194, false, p.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
 																		__n785 := fynetext.NewSpan(fynetext.Style())
 																		__n785.SetText(p.Text)
 																		__n784.Add(__n785)
@@ -8833,25 +8907,25 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 																	__n772.Add(__n793)
 																} else {
 																	__n795 := fynetext.NewSpan(fynetext.Style())
-																	var __lt180 string
+																	var __lt195 string
 																	if r.Bold {
-																		__lt180 = "bold"
+																		__lt195 = "bold"
 																	} else {
-																		__lt180 = "inherit"
+																		__lt195 = "inherit"
 																	}
-																	var __lt181 string
+																	var __lt196 string
 																	if r.Italic {
-																		__lt181 = "italic"
+																		__lt196 = "italic"
 																	} else {
-																		__lt181 = "inherit"
+																		__lt196 = "inherit"
 																	}
-																	var __lt182 string
+																	var __lt197 string
 																	if r.Mono {
-																		__lt182 = "monospace"
+																		__lt197 = "monospace"
 																	} else {
-																		__lt182 = ""
+																		__lt197 = ""
 																	}
-																	__n795.SetSpanStyle(__lt180, __lt181, __lt182, false, r.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
+																	__n795.SetSpanStyle(__lt195, __lt196, __lt197, false, r.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
 																	__n796 := fynetext.NewSpan(fynetext.Style())
 																	__n796.SetText(r.Text)
 																	__n795.Add(__n796)
@@ -8864,11 +8938,13 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 											}
 										}
 									}
-									fynelayout.InsertBefore(__parent, m.__slot0_at, container.NewThemeOverride(__n772, _snglTheme1))
-									m.__slot0 = append(m.__slot0, __n772)
+									fynelayout.InsertBefore(__parent, m.__slot0_at, __n772__box)
+									m.__slot0 = append(m.__slot0, __n772__box)
 								} else {
 									if b.Kind == "heading6" {
 										__n797 := fynetext.NewFlow()
+										__n797__box := fynelayout.NewBox(__n797)
+										__n797__box.SetLook(fynelayout.Look{TextSize: 14.0, Bold: true})
 										for _, r := range b.Runs {
 											if r.Image != "" {
 												__n798 := fynetext.NewSpan(fynetext.Style())
@@ -8913,25 +8989,25 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 																			__n799.Add(__n807)
 																		} else {
 																			__n809 := fynetext.NewSpan(fynetext.Style())
-																			var __lt183 string
+																			var __lt198 string
 																			if p.Bold {
-																				__lt183 = "bold"
+																				__lt198 = "bold"
 																			} else {
-																				__lt183 = "inherit"
+																				__lt198 = "inherit"
 																			}
-																			var __lt184 string
+																			var __lt199 string
 																			if p.Italic {
-																				__lt184 = "italic"
+																				__lt199 = "italic"
 																			} else {
-																				__lt184 = "inherit"
+																				__lt199 = "inherit"
 																			}
-																			var __lt185 string
+																			var __lt200 string
 																			if p.Mono {
-																				__lt185 = "monospace"
+																				__lt200 = "monospace"
 																			} else {
-																				__lt185 = ""
+																				__lt200 = ""
 																			}
-																			__n809.SetSpanStyle(__lt183, __lt184, __lt185, false, p.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
+																			__n809.SetSpanStyle(__lt198, __lt199, __lt200, false, p.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
 																			__n810 := fynetext.NewSpan(fynetext.Style())
 																			__n810.SetText(p.Text)
 																			__n809.Add(__n810)
@@ -8978,25 +9054,25 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 																		__n797.Add(__n818)
 																	} else {
 																		__n820 := fynetext.NewSpan(fynetext.Style())
-																		var __lt186 string
+																		var __lt201 string
 																		if r.Bold {
-																			__lt186 = "bold"
+																			__lt201 = "bold"
 																		} else {
-																			__lt186 = "inherit"
+																			__lt201 = "inherit"
 																		}
-																		var __lt187 string
+																		var __lt202 string
 																		if r.Italic {
-																			__lt187 = "italic"
+																			__lt202 = "italic"
 																		} else {
-																			__lt187 = "inherit"
+																			__lt202 = "inherit"
 																		}
-																		var __lt188 string
+																		var __lt203 string
 																		if r.Mono {
-																			__lt188 = "monospace"
+																			__lt203 = "monospace"
 																		} else {
-																			__lt188 = ""
+																			__lt203 = ""
 																		}
-																		__n820.SetSpanStyle(__lt186, __lt187, __lt188, false, r.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
+																		__n820.SetSpanStyle(__lt201, __lt202, __lt203, false, r.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
 																		__n821 := fynetext.NewSpan(fynetext.Style())
 																		__n821.SetText(r.Text)
 																		__n820.Add(__n821)
@@ -9009,11 +9085,13 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 												}
 											}
 										}
-										fynelayout.InsertBefore(__parent, m.__slot0_at, container.NewThemeOverride(__n797, _snglTheme2))
-										m.__slot0 = append(m.__slot0, __n797)
+										fynelayout.InsertBefore(__parent, m.__slot0_at, __n797__box)
+										m.__slot0 = append(m.__slot0, __n797__box)
 									} else {
 										if b.Kind == "quote" {
 											__n822 := fynetext.NewFlow()
+											__n822__box := fynelayout.NewBox(__n822)
+											__n822__box.SetLook(fynelayout.Look{PaddingLeft: 12.0, Italic: true})
 											for _, r := range b.Runs {
 												if r.Image != "" {
 													__n823 := fynetext.NewSpan(fynetext.Style())
@@ -9058,25 +9136,25 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 																				__n824.Add(__n832)
 																			} else {
 																				__n834 := fynetext.NewSpan(fynetext.Style())
-																				var __lt189 string
+																				var __lt204 string
 																				if p.Bold {
-																					__lt189 = "bold"
+																					__lt204 = "bold"
 																				} else {
-																					__lt189 = "inherit"
+																					__lt204 = "inherit"
 																				}
-																				var __lt190 string
+																				var __lt205 string
 																				if p.Italic {
-																					__lt190 = "italic"
+																					__lt205 = "italic"
 																				} else {
-																					__lt190 = "inherit"
+																					__lt205 = "inherit"
 																				}
-																				var __lt191 string
+																				var __lt206 string
 																				if p.Mono {
-																					__lt191 = "monospace"
+																					__lt206 = "monospace"
 																				} else {
-																					__lt191 = ""
+																					__lt206 = ""
 																				}
-																				__n834.SetSpanStyle(__lt189, __lt190, __lt191, false, p.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
+																				__n834.SetSpanStyle(__lt204, __lt205, __lt206, false, p.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
 																				__n835 := fynetext.NewSpan(fynetext.Style())
 																				__n835.SetText(p.Text)
 																				__n834.Add(__n835)
@@ -9123,25 +9201,25 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 																			__n822.Add(__n843)
 																		} else {
 																			__n845 := fynetext.NewSpan(fynetext.Style())
-																			var __lt192 string
+																			var __lt207 string
 																			if r.Bold {
-																				__lt192 = "bold"
+																				__lt207 = "bold"
 																			} else {
-																				__lt192 = "inherit"
+																				__lt207 = "inherit"
 																			}
-																			var __lt193 string
+																			var __lt208 string
 																			if r.Italic {
-																				__lt193 = "italic"
+																				__lt208 = "italic"
 																			} else {
-																				__lt193 = "inherit"
+																				__lt208 = "inherit"
 																			}
-																			var __lt194 string
+																			var __lt209 string
 																			if r.Mono {
-																				__lt194 = "monospace"
+																				__lt209 = "monospace"
 																			} else {
-																				__lt194 = ""
+																				__lt209 = ""
 																			}
-																			__n845.SetSpanStyle(__lt192, __lt193, __lt194, false, r.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
+																			__n845.SetSpanStyle(__lt207, __lt208, __lt209, false, r.Strike, 0.0, snglcolor.Color{A: 0, R: 0, G: 0, B: 0})
 																			__n846 := fynetext.NewSpan(fynetext.Style())
 																			__n846.SetText(r.Text)
 																			__n845.Add(__n846)
@@ -9154,11 +9232,13 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 													}
 												}
 											}
-											fynelayout.InsertBefore(__parent, m.__slot0_at, container.NewThemeOverride(__n822, _snglTheme3))
-											m.__slot0 = append(m.__slot0, __n822)
+											fynelayout.InsertBefore(__parent, m.__slot0_at, __n822__box)
+											m.__slot0 = append(m.__slot0, __n822__box)
 										} else {
 											if b.Kind == "code" {
 												__n847 := fynetext.NewFlow()
+												__n847__box := fynelayout.NewBox(__n847)
+												__n847__box.SetLook(fynelayout.Look{PaddingTop: 12.0, PaddingRight: 12.0, PaddingBottom: 12.0, PaddingLeft: 12.0, Fill: snglcolor.Color{R: 245, G: 245, B: 245, A: 255}, Radius: 4.0})
 												__n848 := fynetext.NewSpan(fynetext.Style().WithMono())
 												for _, r := range b.Runs {
 													__n849 := fynetext.NewSpan(fynetext.Style())
@@ -9169,8 +9249,8 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 													__n848.Add(__n849)
 												}
 												__n847.Add(__n848)
-												fynelayout.InsertBefore(__parent, m.__slot0_at, container.NewThemeOverride(__n847, _snglTheme4))
-												m.__slot0 = append(m.__slot0, __n847)
+												fynelayout.InsertBefore(__parent, m.__slot0_at, __n847__box)
+												m.__slot0 = append(m.__slot0, __n847__box)
 											} else {
 												if b.Kind == "rule" {
 													__n851 := widget.NewLabel("")
@@ -9179,25 +9259,35 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 													m.__slot0 = append(m.__slot0, __n851)
 												} else {
 													if b.Kind == "table" {
-														__n852 := container.NewVBox()
-														__n853 := container.NewHBox()
+														__n852 := fynelayout.NewVBox()
+														__n852__box := fynelayout.NewBox(__n852)
+														__n852__box.SetLook(fynelayout.Look{Gap: 4.0})
+														__n853 := fynelayout.NewHBox()
+														__n853__box := fynelayout.NewBox(__n853)
+														__n853__box.SetLook(fynelayout.Look{Gap: 16.0})
 														for _, cell := range b.Columns {
 															__n854 := widget.NewLabel("")
+															__n854__box := fynelayout.NewBox(__n854)
 															__n854.SetText(cell)
-															__n853.Add(container.NewThemeOverride(__n854, _snglTheme5))
+															__n854__box.SetLook(fynelayout.Look{MinWidth: 80.0, Bold: true})
+															__n853.Add(__n854__box)
 														}
-														__n852.Add(__n853)
+														__n852.Add(__n853__box)
 														for _, r := range b.Rows {
-															__n855 := container.NewHBox()
+															__n855 := fynelayout.NewHBox()
+															__n855__box := fynelayout.NewBox(__n855)
+															__n855__box.SetLook(fynelayout.Look{Gap: 16.0})
 															for _, cell := range r {
 																__n856 := widget.NewLabel("")
+																__n856__box := fynelayout.NewBox(__n856)
 																__n856.SetText(cell)
-																__n855.Add(__n856)
+																__n856__box.SetLook(fynelayout.Look{MinWidth: 80.0})
+																__n855.Add(__n856__box)
 															}
-															__n852.Add(__n855)
+															__n852.Add(__n855__box)
 														}
-														fynelayout.InsertBefore(__parent, m.__slot0_at, __n852)
-														m.__slot0 = append(m.__slot0, __n852)
+														fynelayout.InsertBefore(__parent, m.__slot0_at, __n852__box)
+														m.__slot0 = append(m.__slot0, __n852__box)
 													}
 												}
 											}
@@ -9240,9 +9330,11 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n1.SetVisible(m.visible__inst0)
 	m.__n1.OnClosed = m.__n1_closed_handler
 	m.__n1.OnVisible = m.__n1_visible_handler
-	m.__n857 = container.NewVBox()
+	m.__n857 = fynelayout.NewVBox()
+	m.__n857__box = fynelayout.NewBox(m.__n857)
+	m.__n857__box.SetLook(fynelayout.Look{Gap: 12.0})
 	m.__renderSlot0(m.__n857)
-	m.__n1.Add(m.__n857)
+	m.__n1.Add(m.__n857__box)
 	fynelayout.AppAttach(m.__n1)
 	return m.__n1.Container
 }
@@ -9359,8 +9451,8 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:e9de9bb4c47d98a98f3019dbd8a47189
+pass sha256:90ac6c10f1bf3b318d90cf1f05196805
 -- run/go/fyne --
-pass sha256:0df084a36c94bf112dea6c644b5f1ce7
+pass sha256:3536b0b7954a32cb3cf3f0ce28ccb79e
 -- run/none/html --
 pass sha256:53fea75bee1b71a439deb5ec23e8e4bd

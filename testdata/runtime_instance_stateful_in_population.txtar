@@ -658,7 +658,7 @@ func (m *Model) SetFoots(v string) {
 
 // BuildUI creates the widget tree. Call once; widgets are updated selectively.
 func (m *Model) BuildUI() fyne.CanvasObject {
-	m.__n4 = container.NewVBox()
+	m.__n4 = fynelayout.NewVBox()
 	m.__renderSlot0(m.__n4)
 	content := fyne.CanvasObject(m.__n4)
 	return content
@@ -697,7 +697,7 @@ func newCounterInstance(__model *Model, __a_tag string, __a_seen func(string)) *
 	c.__effects0_steps = 0
 	c.__root = container.NewVBox()
 	c.__slot0 = nil
-	__n5 := container.NewVBox()
+	__n5 := fynelayout.NewVBox()
 	c.__n0 = widget.NewLabel("")
 	c.__n0.SetText(((("counter " + c.__prop_tag) + " ") + fmt.Sprint(c.n)))
 	__n5.Add(c.__n0)
@@ -786,7 +786,7 @@ func newCard__slot0Instance(__model *Model, __a_start int, __a___p0 int, __a___o
 	c.k = (c.__prop_start * 2)
 	c.__root = container.NewVBox()
 	c.__slot0 = nil
-	__n6 := container.NewVBox()
+	__n6 := fynelayout.NewVBox()
 	__n1 := widget.NewLabel("")
 	__n1.SetText(("card " + fmt.Sprint(c.k)))
 	__n6.Add(__n1)
@@ -1482,7 +1482,7 @@ window.__sngl_boot();
 -- run/go/bubbletea --
 pass sha256:8f2e6bb51a1d837e9df674bf4450fcbf
 -- run/go/fyne --
-pass sha256:360bab527a04497227ca15b7bd9a1962
+pass sha256:eb3d8232de4e37cb9f694ccee65ee1b6
 -- run/go/gtk4 --
 pass sha256:7e4e06e1a7a58708ee0c659a9bfdcc8d
 -- run/kotlin/android --

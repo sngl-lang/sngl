@@ -493,7 +493,6 @@ import (
 	"duckfam.us/sngl/pkg/go/fynelayout"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
-	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
 	"os"
 )
@@ -538,13 +537,13 @@ func (m *Model) bound_toggle_handler(on bool) {
 func (m *Model) free_toggle_handler(on bool) {
 	m.checked__inst0 = on
 	m.free.SetChecked(m.checked__inst0)
-	var __lt0 string
+	var __lt15 string
 	if m.checked__inst0 {
-		__lt0 = "on"
+		__lt15 = "on"
 	} else {
-		__lt0 = "off"
+		__lt15 = "off"
 	}
-	m.seen.SetText(__lt0)
+	m.seen.SetText(__lt15)
 }
 
 func (m *Model) flip_click_handler() {
@@ -552,13 +551,13 @@ func (m *Model) flip_click_handler() {
 	m.bound.SetChecked(m.shown__inst0)
 	m.checked__inst0 = !m.checked__inst0
 	m.free.SetChecked(m.checked__inst0)
-	var __lt2 string
+	var __lt17 string
 	if m.checked__inst0 {
-		__lt2 = "on"
+		__lt17 = "on"
 	} else {
-		__lt2 = "off"
+		__lt17 = "off"
 	}
-	m.seen.SetText(__lt2)
+	m.seen.SetText(__lt17)
 }
 
 // boundChange invokes the OnChanged callback on the #bound widget; for tests.
@@ -620,7 +619,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n0.SetVisible(m.visible__inst0)
 	m.__n0.OnClosed = m.__n0_closed_handler
 	m.__n0.OnVisible = m.__n0_visible_handler
-	m.__n1 = container.NewVBox()
+	m.__n1 = fynelayout.NewVBox()
 	m.bound = widget.NewCheck("", nil)
 	m.bound.SetText("bound")
 	m.bound.SetChecked(m.shown__inst0)
@@ -631,14 +630,14 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.free.SetChecked(m.checked__inst0)
 	m.free.OnChanged = m.free_toggle_handler
 	m.__n1.Add(m.free)
-	var __lt1 string
+	var __lt16 string
 	if m.checked__inst0 {
-		__lt1 = "on"
+		__lt16 = "on"
 	} else {
-		__lt1 = "off"
+		__lt16 = "off"
 	}
 	m.seen = widget.NewLabel("")
-	m.seen.SetText(__lt1)
+	m.seen.SetText(__lt16)
 	m.__n1.Add(m.seen)
 	m.flip = widget.NewButton("", nil)
 	m.flip.SetText("flip")
@@ -972,7 +971,7 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:979d67305474b644b5f40177129f0202
 -- run/go/fyne --
-pass sha256:12cec83ffa3572d42dafbd38c3462c9b
+pass sha256:b657698984b87cd2d1ce24737eeb9ae7
 -- run/go/gtk4 --
 pass sha256:f3b57428b171ef9971aa63e76af105af
 -- run/kotlin/android --

@@ -686,7 +686,7 @@ func (m *Model) SetLog(v string) {
 
 // BuildUI creates the widget tree. Call once; widgets are updated selectively.
 func (m *Model) BuildUI() fyne.CanvasObject {
-	m.__n2 = container.NewVBox()
+	m.__n2 = fynelayout.NewVBox()
 	m.bump = widget.NewButton("", nil)
 	m.bump.SetText("go")
 	m.bump.OnTapped = m.bump_click_handler
@@ -729,7 +729,7 @@ func newWatchInstance(__model *Model, __a_tag string, __a_seen func(string)) *Wa
 	c.__effects0_steps = 0
 	c.__root = container.NewVBox()
 	c.__slot0 = nil
-	__n3 := container.NewVBox()
+	__n3 := fynelayout.NewVBox()
 	c.__n0 = widget.NewLabel("")
 	c.__n0.SetText(((("watch " + c.__prop_tag) + " ") + fmt.Sprint(c.n)))
 	__n3.Add(c.__n0)
@@ -1390,7 +1390,7 @@ window.__sngl_boot();
 -- run/go/bubbletea --
 pass sha256:55b4980d1dc49a13bcac429124e5d29b
 -- run/go/fyne --
-pass sha256:fa84a985706a61bd761cc6a1ba79738e
+pass sha256:e835ebae0a2162034de937438a08f901
 -- run/go/gtk4 --
 pass sha256:472863ff2376a7f81b0357be9f4fe562
 -- run/kotlin/android --

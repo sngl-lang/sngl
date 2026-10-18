@@ -10,6 +10,7 @@ import (
 	"duckfam.us/sngl/codegen"
 	_ "duckfam.us/sngl/codegen/lang"
 	"duckfam.us/sngl/internal/lower"
+	"duckfam.us/sngl/internal/optimize"
 	"duckfam.us/sngl/ir"
 )
 
@@ -33,9 +34,18 @@ window {
 	// other, which is the inliner this platform withholds inlineComponents
 	// to ask for.
 	feats.InlineComponents = false
+	// Go has no ternary, and the library's style function holds one.
+	feats.Ternary = false
 	pkg = ir.ClonePackage(pkg)
+	optCfg := &optimize.Config{Platform: "fyne", Language: "go"}
+	if err := optimize.Optimize(pkg, optCfg); err != nil {
+		t.Fatalf("optimize: %v", err)
+	}
 	if err := lower.Lower(pkg, feats, lower.Options{Platform: "fyne", Language: "go"}); err != nil {
 		t.Fatalf("lower: %v", err)
+	}
+	if err := optimize.Optimize(pkg, optCfg); err != nil {
+		t.Fatalf("optimize2: %v", err)
 	}
 
 	g := &Generator{}

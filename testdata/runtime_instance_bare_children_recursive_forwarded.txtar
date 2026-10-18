@@ -139,7 +139,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n0.SetVisible(m.visible__inst0)
 	m.__n0.OnClosed = m.__n0_closed_handler
 	m.__n0.OnVisible = m.__n0_visible_handler
-	m.__n15 = container.NewVBox()
+	m.__n15 = fynelayout.NewVBox()
 	m.__n1 = newFrame__slot0Instance(m, m.depth, 0)
 	m.__n1__el = m.__n1.Root
 	m.__n15.Add(m.__n1__el)
@@ -187,7 +187,7 @@ func newFrame__slot4Instance(__model *Model, __a_n int, __a___depth int) *Frame_
 	c.__slot1 = nil
 	c.__slot2 = nil
 	c.__slot3 = nil
-	c.__n4 = container.NewVBox()
+	c.__n4 = fynelayout.NewVBox()
 	__n11 := widget.NewLabel("")
 	__n11.SetText("BETA")
 	c.__n4.Add(__n11)
@@ -286,7 +286,7 @@ func newFrame__slot3Instance(__model *Model, __a_n int, __a___depth int) *Frame_
 	c.__inst1_live = []*Frame__slot3Instance{}
 	c.__slot2 = nil
 	c.__slot3 = nil
-	c.__n6 = container.NewVBox()
+	c.__n6 = fynelayout.NewVBox()
 	__n12 := widget.NewLabel("")
 	__n12.SetText("ALPHA")
 	c.__n6.Add(__n12)
@@ -385,7 +385,7 @@ func newFrame__slot1Instance(__model *Model, __a_n int, __a___depth int) *Frame_
 	c.__slot2 = nil
 	c.__inst2_live = []*Frame__slot4Instance{}
 	c.__slot3 = nil
-	c.__n8 = container.NewVBox()
+	c.__n8 = fynelayout.NewVBox()
 	__n13 := widget.NewLabel("")
 	__n13.SetText("BETA")
 	c.__n8.Add(__n13)
@@ -484,7 +484,7 @@ func newFrame__slot0Instance(__model *Model, __a_n int, __a___depth int) *Frame_
 	c.__slot2 = nil
 	c.__slot3 = nil
 	c.__inst3_live = []*Frame__slot3Instance{}
-	c.__n10 = container.NewVBox()
+	c.__n10 = fynelayout.NewVBox()
 	__n14 := widget.NewLabel("")
 	__n14.SetText("ALPHA")
 	c.__n10.Add(__n14)
@@ -1587,7 +1587,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:7406b6842247cc6d8082e85d855c9e42
+pass sha256:943f9dc04ae0d02cb412365ebefe3f82
 -- run/go/gtk4 --
 pass sha256:dd670a66561ba09b0db76d995113c97d
 -- run/none/html --

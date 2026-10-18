@@ -264,7 +264,7 @@ func collectScopeRefsExpr(e ir.Expr, info *scopeRefInfo) {
 		// is reached through a plain ident, and a use that crosses an emitted
 		// function is an escape whichever flag the ident happens to carry.
 		// Every name is noted, since a reconcile's are the program's ids, but a
-		// function's parameter is no node: `textAlignOf(a string)` made `#a` escape.
+		// function's parameter is no node, though it may share a node's name.
 		if _, param := x.Sym.(*ir.Param); !param {
 			info.used[x.Name] = true
 		}

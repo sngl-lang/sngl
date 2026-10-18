@@ -385,25 +385,12 @@ package main
 
 import (
 	"duckfam.us/sngl/pkg/go/fynelayout"
-	"duckfam.us/sngl/pkg/go/fynetheme"
+	"duckfam.us/sngl/pkg/go/snglcolor"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
-	"fyne.io/fyne/v2/container"
-	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
-	"image/color"
 	"os"
 )
-
-var _snglTheme0 = fynetheme.Theme{Theme: theme.DefaultTheme(), Background: color.NRGBA{R: 204, G: 204, B: 204, A: 255}, Radius: 20}
-var _snglTheme1 = fynetheme.Theme{Theme: theme.DefaultTheme(), Background: color.NRGBA{R: 204, G: 204, B: 204, A: 255}, Radius: 4}
-var _snglTheme2 = fynetheme.Theme{Theme: theme.DefaultTheme(), Background: color.NRGBA{R: 204, G: 204, B: 204, A: 255}, Radius: 32}
-
-type Measurement struct {
-	Px  float64
-	Em  float64
-	Rem float64
-}
 
 // Model holds the state for this SNGL UI.
 type Model struct {
@@ -442,9 +429,11 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 	m.__slot0 = nil
 	m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
 	__n1 := widget.NewLabel("")
+	__n1__box := fynelayout.NewBox(__n1)
 	__n1.SetText("JD")
-	fynelayout.InsertBefore(__parent, m.__slot0_at, container.NewThemeOverride(__n1, _snglTheme0))
-	m.__slot0 = append(m.__slot0, __n1)
+	__n1__box.SetLook(fynelayout.Look{Width: 40.0, Height: 40.0, Cross: 2, Justify: 1, Fill: snglcolor.Color{R: 204, G: 204, B: 204, A: 255}, Radius: 20.0, TextAlign: 2})
+	fynelayout.InsertBefore(__parent, m.__slot0_at, __n1__box)
+	m.__slot0 = append(m.__slot0, __n1__box)
 }
 
 func (m *Model) __renderSlot1(__parent *fyne.Container) {
@@ -455,25 +444,29 @@ func (m *Model) __renderSlot1(__parent *fyne.Container) {
 	m.__slot1_at = fynelayout.SlotAnchor(__parent, m.__slot1_at)
 	if m.failed__inst1 {
 		__n3 := widget.NewLabel("")
+		__n3__box := fynelayout.NewBox(__n3)
 		__n3.SetText("AB")
-		fynelayout.InsertBefore(__parent, m.__slot1_at, container.NewThemeOverride(__n3, _snglTheme1))
-		m.__slot1 = append(m.__slot1, __n3)
+		__n3__box.SetLook(fynelayout.Look{Width: 40.0, Height: 40.0, Cross: 2, Justify: 1, Fill: snglcolor.Color{R: 204, G: 204, B: 204, A: 255}, Radius: 4.0, TextAlign: 2})
+		fynelayout.InsertBefore(__parent, m.__slot1_at, __n3__box)
+		m.__slot1 = append(m.__slot1, __n3__box)
 	} else {
 		__n4 := fynelayout.NewImage()
+		__n4__box := fynelayout.NewBox(__n4)
 		__n4.SetFit("cover")
+		__n4__box.SetLook(fynelayout.Look{Width: 40.0, Height: 40.0, Radius: 4.0})
 		__n4.OnTapped = func() {
 		}
 		__n4.OnLoad = func() {
 		}
-		__n4.OnError = func(m__r0 string) {
+		__n4.OnError = func(m__r2 string) {
 			m.failed__inst1 = true
 			m.__renderSlot1(m.__n8)
 		}
 		__n5 := fynelayout.NewImageSource()
 		__n5.SetURL("https://example.com/a.png")
 		__n4.Add(__n5)
-		fynelayout.InsertBefore(__parent, m.__slot1_at, __n4)
-		m.__slot1 = append(m.__slot1, __n4)
+		fynelayout.InsertBefore(__parent, m.__slot1_at, __n4__box)
+		m.__slot1 = append(m.__slot1, __n4__box)
 	}
 }
 
@@ -484,9 +477,11 @@ func (m *Model) __renderSlot2(__parent *fyne.Container) {
 	m.__slot2 = nil
 	m.__slot2_at = fynelayout.SlotAnchor(__parent, m.__slot2_at)
 	__n6 := widget.NewLabel("")
+	__n6__box := fynelayout.NewBox(__n6)
 	__n6.SetText("XY")
-	fynelayout.InsertBefore(__parent, m.__slot2_at, container.NewThemeOverride(__n6, _snglTheme2))
-	m.__slot2 = append(m.__slot2, __n6)
+	__n6__box.SetLook(fynelayout.Look{Width: 64.0, Height: 64.0, Cross: 2, Justify: 1, Fill: snglcolor.Color{R: 204, G: 204, B: 204, A: 255}, Radius: 32.0, TextAlign: 2})
+	fynelayout.InsertBefore(__parent, m.__slot2_at, __n6__box)
+	m.__slot2 = append(m.__slot2, __n6__box)
 }
 
 func (m *Model) __n0_closed_handler() {
@@ -523,7 +518,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n0.SetVisible(m.visible__inst0)
 	m.__n0.OnClosed = m.__n0_closed_handler
 	m.__n0.OnVisible = m.__n0_visible_handler
-	m.__n8 = container.NewHBox()
+	m.__n8 = fynelayout.NewHBox()
 	m.__renderSlot0(m.__n8)
 	m.__renderSlot1(m.__n8)
 	m.__renderSlot2(m.__n8)
@@ -1036,7 +1031,7 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:9e87330f7c91d8718797310af1be96a0
 -- run/go/fyne --
-pass sha256:9ee85c2b1dadd58c770c9193bb5f3711
+pass sha256:93b7999a835e8c362f6e862c7bf835c2
 -- run/kotlin/android --
 pass sha256:f7e32f4f6310d69e258db37966a6c487
 -- run/none/html --

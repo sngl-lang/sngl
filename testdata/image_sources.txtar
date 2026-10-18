@@ -651,19 +651,14 @@ import (
 	snglcanvas "duckfam.us/sngl/pkg/go/canvas"
 	"duckfam.us/sngl/pkg/go/fynelayout"
 	"duckfam.us/sngl/pkg/go/fynetext"
-	"duckfam.us/sngl/pkg/go/fynetheme"
 	"duckfam.us/sngl/pkg/go/snglcolor"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
-	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
-	"image/color"
 	"os"
 )
-
-var _snglTheme0 = fynetheme.Theme{Theme: theme.DefaultTheme(), Background: color.NRGBA{R: 204, G: 204, B: 204, A: 255}, Radius: 20}
 
 type Measurement struct {
 	Px  float64
@@ -744,16 +739,18 @@ func (m *Model) __renderSlot1(__parent *fyne.Container) {
 	var __inst0_i int = 0
 	if m.failed__inst0 || !m.hasPhoto__inst0 {
 		__n4 := widget.NewLabel("")
+		__n4__box := fynelayout.NewBox(__n4)
 		__n4.SetText("JD")
-		fynelayout.InsertBefore(__parent, m.__slot1_at, container.NewThemeOverride(__n4, _snglTheme0))
-		m.__slot1 = append(m.__slot1, __n4)
+		__n4__box.SetLook(fynelayout.Look{Width: 40.0, Height: 40.0, Cross: 2, Justify: 1, Fill: snglcolor.Color{R: 204, G: 204, B: 204, A: 255}, Radius: 20.0, TextAlign: 2})
+		fynelayout.InsertBefore(__parent, m.__slot1_at, __n4__box)
+		m.__slot1 = append(m.__slot1, __n4__box)
 	} else {
 		var __n5 *__child0Instance
 		if len(m.__inst0_live) > __inst0_i {
 			__n5 = m.__inst0_live[__inst0_i]
 			__n5.Set__p0(m.hasPhoto__inst0)
 			__n5.Set__p1(m.url__inst0)
-			__n5.Set__on0(func(m__r0 string) {
+			__n5.Set__on0(func(m__r2 string) {
 				m.failed__inst0 = true
 				m.__renderSlot1(m.__n6)
 			})
@@ -761,7 +758,7 @@ func (m *Model) __renderSlot1(__parent *fyne.Container) {
 			if len(m.__inst0_live) > __inst0_i {
 				m.__inst0_live[__inst0_i].Destroy()
 			}
-			__n5__new := new__child0Instance(m, m.hasPhoto__inst0, m.url__inst0, func(m__r0 string) {
+			__n5__new := new__child0Instance(m, m.hasPhoto__inst0, m.url__inst0, func(m__r2 string) {
 				m.failed__inst0 = true
 				m.__renderSlot1(m.__n6)
 			})
@@ -796,7 +793,7 @@ func (m *Model) __n7_click_handler() {
 func (m *Model) __n7_load_handler() {
 }
 
-func (m *Model) __n7_failed_handler(m__r0 string) {
+func (m *Model) __n7_failed_handler(m__r2 string) {
 }
 
 func (m *Model) __n9_click_handler() {
@@ -805,7 +802,7 @@ func (m *Model) __n9_click_handler() {
 func (m *Model) __n9_load_handler() {
 }
 
-func (m *Model) __n9_failed_handler(m__r0 string) {
+func (m *Model) __n9_failed_handler(m__r2 string) {
 }
 
 func (m *Model) __n10_click_handler() {
@@ -814,7 +811,7 @@ func (m *Model) __n10_click_handler() {
 func (m *Model) __n10_load_handler() {
 }
 
-func (m *Model) __n10_failed_handler(m__r0 string) {
+func (m *Model) __n10_failed_handler(m__r2 string) {
 }
 
 func (m *Model) __n16_click_handler() {
@@ -906,7 +903,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n0.SetVisible(m.visible__inst0)
 	m.__n0.OnClosed = m.__n0_closed_handler
 	m.__n0.OnVisible = m.__n0_visible_handler
-	m.__n6 = container.NewVBox()
+	m.__n6 = fynelayout.NewVBox()
 	m.__n7 = fynelayout.NewImage()
 	m.__n7.SetFit("cover")
 	m.__n7.OnTapped = m.__n7_click_handler
@@ -978,6 +975,7 @@ type __child0Instance struct {
 	__slot1      []fyne.CanvasObject
 	__slot1_at   fyne.CanvasObject
 	__n3         *fynelayout.Image
+	__n3__box    *fynelayout.Box
 }
 
 func new__child0Instance(__model *Model, __a___p0 bool, __a___p1 string, __a___on0 func(string)) *__child0Instance {
@@ -990,7 +988,9 @@ func new__child0Instance(__model *Model, __a___p0 bool, __a___p1 string, __a___o
 	c.__slot0 = nil
 	c.__slot1 = nil
 	c.__n3 = fynelayout.NewImage()
+	c.__n3__box = fynelayout.NewBox(c.__n3)
 	c.__n3.SetFit("cover")
+	c.__n3__box.SetLook(fynelayout.Look{Width: 40.0, Height: 40.0, Radius: 20.0})
 	c.__n3.OnTapped = func() {
 	}
 	c.__n3.OnLoad = func() {
@@ -999,7 +999,7 @@ func new__child0Instance(__model *Model, __a___p0 bool, __a___p1 string, __a___o
 		c.__prop___on0(__on0_0)
 	}
 	c.__renderSlot0(c.__n3.Box)
-	c.Root = c.__n3
+	c.Root = c.__n3__box
 	return c
 }
 
@@ -1314,13 +1314,6 @@ type Style struct {
 	LineJoin    string
 	FontSize    float64
 	FontFamily  string
-}
-
-type Color struct {
-	R uint8
-	G uint8
-	B uint8
-	A uint8
 }
 
 // Model holds the state and widget references for this SNGL UI.
@@ -2468,9 +2461,9 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:0b2838c2b9187cbe846913ab66135039
 -- run/go/fyne --
-pass sha256:14793d5bfd1c6d64b6f880f5eb76ec14
+pass sha256:41e8b9a4f83136a056ea66dcad2bdb11
 -- run/go/gtk4 --
-pass sha256:90c51cc74bfb1d1e4c19a51a583413ae
+pass sha256:0c4073786463174d92b4d438bc32bea4
 -- run/kotlin/android --
 pass sha256:0421e342c0d503dbc2d9813f9f1fc9c8
 -- run/none/html --

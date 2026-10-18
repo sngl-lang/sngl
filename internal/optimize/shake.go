@@ -175,9 +175,13 @@ func promoteForeignStructs(pkg *ir.Package) error {
 			continue
 		}
 		for _, p := range fn.Params {
-			want(p.Type)
+			if !namesBuiltinStruct(p.Type) {
+				want(p.Type)
+			}
 		}
-		want(fn.Return)
+		if !namesBuiltinStruct(fn.Return) {
+			want(fn.Return)
+		}
 	}
 	// A data component's record (Component.Data) is built at each call site,
 	// where nothing else may name its type, and a literal spells it.

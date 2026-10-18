@@ -973,14 +973,14 @@ func newTreeInstance(__model *Model, __a_d int, __a___depth int, __a___empty_con
 	c.__slot5 = nil
 	c.__slot6 = nil
 	c.__slot7 = nil
-	var __lt2 string
+	var __lt17 string
 	if c.__prop___empty_content {
-		__lt2 = ("empty " + fmt.Sprint(c.__prop_d))
+		__lt17 = ("empty " + fmt.Sprint(c.__prop_d))
 	} else {
-		__lt2 = ("full " + fmt.Sprint(c.__prop_d))
+		__lt17 = ("full " + fmt.Sprint(c.__prop_d))
 	}
 	c.__n0 = widget.NewLabel("")
-	c.__n0.SetText(__lt2)
+	c.__n0.SetText(__lt17)
 	c.__root.Add(c.__n0)
 	c.__renderSlot0(c.__root)
 	c.Root = c.__root
@@ -989,13 +989,13 @@ func newTreeInstance(__model *Model, __a_d int, __a___depth int, __a___empty_con
 
 func (c *TreeInstance) SetD(__v int) {
 	c.__prop_d = __v
-	var __lt0 string
+	var __lt15 string
 	if c.__prop___empty_content {
-		__lt0 = ("empty " + fmt.Sprint(c.__prop_d))
+		__lt15 = ("empty " + fmt.Sprint(c.__prop_d))
 	} else {
-		__lt0 = ("full " + fmt.Sprint(c.__prop_d))
+		__lt15 = ("full " + fmt.Sprint(c.__prop_d))
 	}
-	c.__n0.SetText(__lt0)
+	c.__n0.SetText(__lt15)
 	c.__renderSlot0(c.__root)
 }
 
@@ -1006,13 +1006,13 @@ func (c *TreeInstance) Set__depth(__v int) {
 
 func (c *TreeInstance) Set__empty_content(__v bool) {
 	c.__prop___empty_content = __v
-	var __lt1 string
+	var __lt16 string
 	if c.__prop___empty_content {
-		__lt1 = ("empty " + fmt.Sprint(c.__prop_d))
+		__lt16 = ("empty " + fmt.Sprint(c.__prop_d))
 	} else {
-		__lt1 = ("full " + fmt.Sprint(c.__prop_d))
+		__lt16 = ("full " + fmt.Sprint(c.__prop_d))
 	}
-	c.__n0.SetText(__lt1)
+	c.__n0.SetText(__lt16)
 }
 
 func (c *TreeInstance) __renderSlot0(__parent *fyne.Container) {
@@ -1105,9 +1105,9 @@ func newTree__slot5Instance(__model *Model, __a_d int, __a___depth int) *Tree__s
 	c.__slot5 = nil
 	c.__slot6 = nil
 	c.__slot7 = nil
-	__lt4 := ("empty " + fmt.Sprint(c.__prop_d))
+	__lt19 := ("empty " + fmt.Sprint(c.__prop_d))
 	c.__n1 = widget.NewLabel("")
-	c.__n1.SetText(__lt4)
+	c.__n1.SetText(__lt19)
 	c.__root.Add(c.__n1)
 	c.__renderSlot1(c.__root)
 	c.Root = c.__root
@@ -1116,8 +1116,8 @@ func newTree__slot5Instance(__model *Model, __a_d int, __a___depth int) *Tree__s
 
 func (c *Tree__slot5Instance) SetD(__v int) {
 	c.__prop_d = __v
-	__lt3 := ("empty " + fmt.Sprint(c.__prop_d))
-	c.__n1.SetText(__lt3)
+	__lt18 := ("empty " + fmt.Sprint(c.__prop_d))
+	c.__n1.SetText(__lt18)
 	c.__renderSlot1(c.__root)
 }
 
@@ -1216,9 +1216,9 @@ func newTree__slot3Instance(__model *Model, __a_d int, __a___depth int) *Tree__s
 	c.__slot5 = nil
 	c.__slot6 = nil
 	c.__slot7 = nil
-	__lt6 := ("full " + fmt.Sprint(c.__prop_d))
+	__lt21 := ("full " + fmt.Sprint(c.__prop_d))
 	c.__n2 = widget.NewLabel("")
-	c.__n2.SetText(__lt6)
+	c.__n2.SetText(__lt21)
 	c.__root.Add(c.__n2)
 	c.__renderSlot2(c.__root)
 	c.Root = c.__root
@@ -1227,8 +1227,8 @@ func newTree__slot3Instance(__model *Model, __a_d int, __a___depth int) *Tree__s
 
 func (c *Tree__slot3Instance) SetD(__v int) {
 	c.__prop_d = __v
-	__lt5 := ("full " + fmt.Sprint(c.__prop_d))
-	c.__n2.SetText(__lt5)
+	__lt20 := ("full " + fmt.Sprint(c.__prop_d))
+	c.__n2.SetText(__lt20)
 	c.__renderSlot2(c.__root)
 }
 
@@ -1327,9 +1327,9 @@ func newTree__slot2Instance(__model *Model, __a_d int, __a___depth int) *Tree__s
 	c.__slot5 = nil
 	c.__slot6 = nil
 	c.__slot7 = nil
-	__lt8 := ("empty " + fmt.Sprint(c.__prop_d))
+	__lt23 := ("empty " + fmt.Sprint(c.__prop_d))
 	c.__n3 = widget.NewLabel("")
-	c.__n3.SetText(__lt8)
+	c.__n3.SetText(__lt23)
 	c.__root.Add(c.__n3)
 	c.__renderSlot3(c.__root)
 	c.Root = c.__root
@@ -1338,8 +1338,8 @@ func newTree__slot2Instance(__model *Model, __a_d int, __a___depth int) *Tree__s
 
 func (c *Tree__slot2Instance) SetD(__v int) {
 	c.__prop_d = __v
-	__lt7 := ("empty " + fmt.Sprint(c.__prop_d))
-	c.__n3.SetText(__lt7)
+	__lt22 := ("empty " + fmt.Sprint(c.__prop_d))
+	c.__n3.SetText(__lt22)
 	c.__renderSlot3(c.__root)
 }
 
@@ -1438,9 +1438,9 @@ func newTree__slot0Instance(__model *Model, __a_d int, __a___depth int) *Tree__s
 	c.__slot5 = nil
 	c.__slot6 = nil
 	c.__slot7 = nil
-	__lt10 := ("full " + fmt.Sprint(c.__prop_d))
+	__lt25 := ("full " + fmt.Sprint(c.__prop_d))
 	c.__n4 = widget.NewLabel("")
-	c.__n4.SetText(__lt10)
+	c.__n4.SetText(__lt25)
 	c.__root.Add(c.__n4)
 	c.__renderSlot4(c.__root)
 	c.Root = c.__root
@@ -1449,8 +1449,8 @@ func newTree__slot0Instance(__model *Model, __a_d int, __a___depth int) *Tree__s
 
 func (c *Tree__slot0Instance) SetD(__v int) {
 	c.__prop_d = __v
-	__lt9 := ("full " + fmt.Sprint(c.__prop_d))
-	c.__n4.SetText(__lt9)
+	__lt24 := ("full " + fmt.Sprint(c.__prop_d))
+	c.__n4.SetText(__lt24)
 	c.__renderSlot4(c.__root)
 }
 
@@ -1548,14 +1548,14 @@ func newInnerInstance(__model *Model, __a___empty_content bool) *InnerInstance {
 	c.__slot5 = nil
 	c.__slot6 = nil
 	c.__slot7 = nil
-	var __lt12 string
+	var __lt27 string
 	if c.__prop___empty_content {
-		__lt12 = "empty"
+		__lt27 = "empty"
 	} else {
-		__lt12 = "has"
+		__lt27 = "has"
 	}
 	c.__n5 = widget.NewLabel("")
-	c.__n5.SetText(__lt12)
+	c.__n5.SetText(__lt27)
 	c.__n6 = widget.NewButton("", nil)
 	c.__n6.SetText(fmt.Sprint(c.n))
 	c.__n6.OnTapped = func() {
@@ -1568,13 +1568,13 @@ func newInnerInstance(__model *Model, __a___empty_content bool) *InnerInstance {
 
 func (c *InnerInstance) Set__empty_content(__v bool) {
 	c.__prop___empty_content = __v
-	var __lt11 string
+	var __lt26 string
 	if c.__prop___empty_content {
-		__lt11 = "empty"
+		__lt26 = "empty"
 	} else {
-		__lt11 = "has"
+		__lt26 = "has"
 	}
-	c.__n5.SetText(__lt11)
+	c.__n5.SetText(__lt26)
 }
 
 func (c *InnerInstance) Destroy() {}
@@ -1620,9 +1620,9 @@ func newInner__slot4Instance(__model *Model, __a___p0 int) *Inner__slot4Instance
 	c.__slot5 = nil
 	c.__slot6 = nil
 	c.__slot7 = nil
-	__lt13 := "has"
+	__lt28 := "has"
 	__n23 := widget.NewLabel("")
-	__n23.SetText(__lt13)
+	__n23.SetText(__lt28)
 	c.__n7 = widget.NewButton("", nil)
 	c.__n7.SetText(fmt.Sprint(c.n))
 	c.__n7.OnTapped = func() {
@@ -1646,7 +1646,7 @@ func (c *Inner__slot4Instance) Destroy() {}
 type OuterInstance struct {
 	Root         fyne.CanvasObject
 	__model      *Model
-	m__r0        int
+	m__r2        int
 	__root       *fyne.Container
 	__slot0      []fyne.CanvasObject
 	__slot0_at   fyne.CanvasObject
@@ -1671,7 +1671,7 @@ type OuterInstance struct {
 func newOuterInstance(__model *Model) *OuterInstance {
 	c := &OuterInstance{}
 	c.__model = __model
-	c.m__r0 = 0
+	c.m__r2 = 0
 	c.__root = container.NewVBox()
 	c.__slot0 = nil
 	c.__slot1 = nil
@@ -1683,10 +1683,10 @@ func newOuterInstance(__model *Model) *OuterInstance {
 	c.__slot6 = nil
 	c.__slot7 = nil
 	c.__n9 = widget.NewButton("", nil)
-	c.__n9.SetText(fmt.Sprint(c.m__r0))
+	c.__n9.SetText(fmt.Sprint(c.m__r2))
 	c.__n9.OnTapped = func() {
-		c.m__r0 = (c.m__r0 + 1)
-		c.__n9.SetText(fmt.Sprint(c.m__r0))
+		c.m__r2 = (c.m__r2 + 1)
+		c.__n9.SetText(fmt.Sprint(c.m__r2))
 	}
 	c.__root.Add(c.__n9)
 	c.__renderSlot5(c.__root)
@@ -1742,7 +1742,7 @@ type Outer__slot1Instance struct {
 	Root         fyne.CanvasObject
 	__model      *Model
 	__prop___p0  int
-	m__r1        int
+	m__r3        int
 	__root       *fyne.Container
 	__slot0      []fyne.CanvasObject
 	__slot0_at   fyne.CanvasObject
@@ -1768,7 +1768,7 @@ func newOuter__slot1Instance(__model *Model, __a___p0 int) *Outer__slot1Instance
 	c := &Outer__slot1Instance{}
 	c.__model = __model
 	c.__prop___p0 = __a___p0
-	c.m__r1 = 0
+	c.m__r3 = 0
 	c.__root = container.NewVBox()
 	c.__slot0 = nil
 	c.__slot1 = nil
@@ -1780,10 +1780,10 @@ func newOuter__slot1Instance(__model *Model, __a___p0 int) *Outer__slot1Instance
 	c.__inst6_live = []*Inner__slot4Instance{}
 	c.__slot7 = nil
 	c.__n10 = widget.NewButton("", nil)
-	c.__n10.SetText(fmt.Sprint(c.m__r1))
+	c.__n10.SetText(fmt.Sprint(c.m__r3))
 	c.__n10.OnTapped = func() {
-		c.m__r1 = (c.m__r1 + 1)
-		c.__n10.SetText(fmt.Sprint(c.m__r1))
+		c.m__r3 = (c.m__r3 + 1)
+		c.__n10.SetText(fmt.Sprint(c.m__r3))
 	}
 	c.__root.Add(c.__n10)
 	c.__renderSlot6(c.__root)
@@ -2837,7 +2837,7 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:a2f36909a3309cb58bf5c61fa0a37435
 -- run/go/fyne --
-pass sha256:0b7f0d5c1b93d014491b57aa77664d20
+pass sha256:1c8f958c5e3d4f6b5e20b1e1082862ed
 -- run/kotlin/android --
 pass sha256:127a381678093727df9602fba5af0430
 -- run/none/html --

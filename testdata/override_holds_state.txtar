@@ -713,13 +713,11 @@ package main
 
 import (
 	"duckfam.us/sngl/pkg/go/fynelayout"
-	"duckfam.us/sngl/pkg/go/fynetheme"
 	"duckfam.us/sngl/pkg/go/snglcolor"
 	"fmt"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
-	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 	"os"
 )
@@ -884,17 +882,6 @@ func __merge_Style(base, ov Style) Style {
 	return base
 }
 
-func __styleTheme(s Style) fynetheme.Theme {
-	t := fynetheme.New(theme.DefaultTheme())
-	if s.Background != (snglcolor.Color{}) {
-		t = t.WithBackground(s.Background)
-	}
-	if s.Color != (snglcolor.Color{}) {
-		t = t.WithForeground(s.Color)
-	}
-	return t.WithTextSize(s.FontSize.Px).WithRadius(s.BorderRadius.Px).WithWeight(s.FontWeight).WithSlant(s.FontStyle)
-}
-
 type Measurement struct {
 	Px  float64
 	Em  float64
@@ -989,6 +976,389 @@ func New() *Model {
 	m.__slot1_at = nil
 	m.__inst1_live = []*AvatarInstance{}
 	return m
+}
+
+func LookOf(s Style) fynelayout.Look {
+	var __lt1 Measurement
+	if (s.MarginTop != Measurement{Px: 0}) {
+		__lt1 = s.MarginTop
+	} else {
+		var __lt0 Measurement
+		if (s.MarginY != Measurement{Px: 0}) {
+			__lt0 = s.MarginY
+		} else {
+			__lt0 = s.Margin
+		}
+		__lt1 = __lt0
+	}
+	var __lt3 Measurement
+	if (s.MarginTop != Measurement{Px: 0}) {
+		__lt3 = s.MarginTop
+	} else {
+		var __lt2 Measurement
+		if (s.MarginY != Measurement{Px: 0}) {
+			__lt2 = s.MarginY
+		} else {
+			__lt2 = s.Margin
+		}
+		__lt3 = __lt2
+	}
+	var __lt5 Measurement
+	if (s.MarginTop != Measurement{Px: 0}) {
+		__lt5 = s.MarginTop
+	} else {
+		var __lt4 Measurement
+		if (s.MarginY != Measurement{Px: 0}) {
+			__lt4 = s.MarginY
+		} else {
+			__lt4 = s.Margin
+		}
+		__lt5 = __lt4
+	}
+	var __lt7 Measurement
+	if (s.MarginRight != Measurement{Px: 0}) {
+		__lt7 = s.MarginRight
+	} else {
+		var __lt6 Measurement
+		if (s.MarginX != Measurement{Px: 0}) {
+			__lt6 = s.MarginX
+		} else {
+			__lt6 = s.Margin
+		}
+		__lt7 = __lt6
+	}
+	var __lt9 Measurement
+	if (s.MarginRight != Measurement{Px: 0}) {
+		__lt9 = s.MarginRight
+	} else {
+		var __lt8 Measurement
+		if (s.MarginX != Measurement{Px: 0}) {
+			__lt8 = s.MarginX
+		} else {
+			__lt8 = s.Margin
+		}
+		__lt9 = __lt8
+	}
+	var __lt11 Measurement
+	if (s.MarginRight != Measurement{Px: 0}) {
+		__lt11 = s.MarginRight
+	} else {
+		var __lt10 Measurement
+		if (s.MarginX != Measurement{Px: 0}) {
+			__lt10 = s.MarginX
+		} else {
+			__lt10 = s.Margin
+		}
+		__lt11 = __lt10
+	}
+	var __lt13 Measurement
+	if (s.MarginBottom != Measurement{Px: 0}) {
+		__lt13 = s.MarginBottom
+	} else {
+		var __lt12 Measurement
+		if (s.MarginY != Measurement{Px: 0}) {
+			__lt12 = s.MarginY
+		} else {
+			__lt12 = s.Margin
+		}
+		__lt13 = __lt12
+	}
+	var __lt15 Measurement
+	if (s.MarginBottom != Measurement{Px: 0}) {
+		__lt15 = s.MarginBottom
+	} else {
+		var __lt14 Measurement
+		if (s.MarginY != Measurement{Px: 0}) {
+			__lt14 = s.MarginY
+		} else {
+			__lt14 = s.Margin
+		}
+		__lt15 = __lt14
+	}
+	var __lt17 Measurement
+	if (s.MarginBottom != Measurement{Px: 0}) {
+		__lt17 = s.MarginBottom
+	} else {
+		var __lt16 Measurement
+		if (s.MarginY != Measurement{Px: 0}) {
+			__lt16 = s.MarginY
+		} else {
+			__lt16 = s.Margin
+		}
+		__lt17 = __lt16
+	}
+	var __lt19 Measurement
+	if (s.MarginLeft != Measurement{Px: 0}) {
+		__lt19 = s.MarginLeft
+	} else {
+		var __lt18 Measurement
+		if (s.MarginX != Measurement{Px: 0}) {
+			__lt18 = s.MarginX
+		} else {
+			__lt18 = s.Margin
+		}
+		__lt19 = __lt18
+	}
+	var __lt21 Measurement
+	if (s.MarginLeft != Measurement{Px: 0}) {
+		__lt21 = s.MarginLeft
+	} else {
+		var __lt20 Measurement
+		if (s.MarginX != Measurement{Px: 0}) {
+			__lt20 = s.MarginX
+		} else {
+			__lt20 = s.Margin
+		}
+		__lt21 = __lt20
+	}
+	var __lt23 Measurement
+	if (s.MarginLeft != Measurement{Px: 0}) {
+		__lt23 = s.MarginLeft
+	} else {
+		var __lt22 Measurement
+		if (s.MarginX != Measurement{Px: 0}) {
+			__lt22 = s.MarginX
+		} else {
+			__lt22 = s.Margin
+		}
+		__lt23 = __lt22
+	}
+	var __lt25 Measurement
+	if (s.PaddingTop != Measurement{Px: 0}) {
+		__lt25 = s.PaddingTop
+	} else {
+		var __lt24 Measurement
+		if (s.PaddingY != Measurement{Px: 0}) {
+			__lt24 = s.PaddingY
+		} else {
+			__lt24 = s.Padding
+		}
+		__lt25 = __lt24
+	}
+	var __lt27 Measurement
+	if (s.PaddingTop != Measurement{Px: 0}) {
+		__lt27 = s.PaddingTop
+	} else {
+		var __lt26 Measurement
+		if (s.PaddingY != Measurement{Px: 0}) {
+			__lt26 = s.PaddingY
+		} else {
+			__lt26 = s.Padding
+		}
+		__lt27 = __lt26
+	}
+	var __lt29 Measurement
+	if (s.PaddingTop != Measurement{Px: 0}) {
+		__lt29 = s.PaddingTop
+	} else {
+		var __lt28 Measurement
+		if (s.PaddingY != Measurement{Px: 0}) {
+			__lt28 = s.PaddingY
+		} else {
+			__lt28 = s.Padding
+		}
+		__lt29 = __lt28
+	}
+	var __lt31 Measurement
+	if (s.PaddingRight != Measurement{Px: 0}) {
+		__lt31 = s.PaddingRight
+	} else {
+		var __lt30 Measurement
+		if (s.PaddingX != Measurement{Px: 0}) {
+			__lt30 = s.PaddingX
+		} else {
+			__lt30 = s.Padding
+		}
+		__lt31 = __lt30
+	}
+	var __lt33 Measurement
+	if (s.PaddingRight != Measurement{Px: 0}) {
+		__lt33 = s.PaddingRight
+	} else {
+		var __lt32 Measurement
+		if (s.PaddingX != Measurement{Px: 0}) {
+			__lt32 = s.PaddingX
+		} else {
+			__lt32 = s.Padding
+		}
+		__lt33 = __lt32
+	}
+	var __lt35 Measurement
+	if (s.PaddingRight != Measurement{Px: 0}) {
+		__lt35 = s.PaddingRight
+	} else {
+		var __lt34 Measurement
+		if (s.PaddingX != Measurement{Px: 0}) {
+			__lt34 = s.PaddingX
+		} else {
+			__lt34 = s.Padding
+		}
+		__lt35 = __lt34
+	}
+	var __lt37 Measurement
+	if (s.PaddingBottom != Measurement{Px: 0}) {
+		__lt37 = s.PaddingBottom
+	} else {
+		var __lt36 Measurement
+		if (s.PaddingY != Measurement{Px: 0}) {
+			__lt36 = s.PaddingY
+		} else {
+			__lt36 = s.Padding
+		}
+		__lt37 = __lt36
+	}
+	var __lt39 Measurement
+	if (s.PaddingBottom != Measurement{Px: 0}) {
+		__lt39 = s.PaddingBottom
+	} else {
+		var __lt38 Measurement
+		if (s.PaddingY != Measurement{Px: 0}) {
+			__lt38 = s.PaddingY
+		} else {
+			__lt38 = s.Padding
+		}
+		__lt39 = __lt38
+	}
+	var __lt41 Measurement
+	if (s.PaddingBottom != Measurement{Px: 0}) {
+		__lt41 = s.PaddingBottom
+	} else {
+		var __lt40 Measurement
+		if (s.PaddingY != Measurement{Px: 0}) {
+			__lt40 = s.PaddingY
+		} else {
+			__lt40 = s.Padding
+		}
+		__lt41 = __lt40
+	}
+	var __lt43 Measurement
+	if (s.PaddingLeft != Measurement{Px: 0}) {
+		__lt43 = s.PaddingLeft
+	} else {
+		var __lt42 Measurement
+		if (s.PaddingX != Measurement{Px: 0}) {
+			__lt42 = s.PaddingX
+		} else {
+			__lt42 = s.Padding
+		}
+		__lt43 = __lt42
+	}
+	var __lt45 Measurement
+	if (s.PaddingLeft != Measurement{Px: 0}) {
+		__lt45 = s.PaddingLeft
+	} else {
+		var __lt44 Measurement
+		if (s.PaddingX != Measurement{Px: 0}) {
+			__lt44 = s.PaddingX
+		} else {
+			__lt44 = s.Padding
+		}
+		__lt45 = __lt44
+	}
+	var __lt47 Measurement
+	if (s.PaddingLeft != Measurement{Px: 0}) {
+		__lt47 = s.PaddingLeft
+	} else {
+		var __lt46 Measurement
+		if (s.PaddingX != Measurement{Px: 0}) {
+			__lt46 = s.PaddingX
+		} else {
+			__lt46 = s.Padding
+		}
+		__lt47 = __lt46
+	}
+	var __lt49 int
+	if s.AlignItems == "center" {
+		__lt49 = 2
+	} else {
+		var __lt48 int
+		if s.AlignItems == "end" {
+			__lt48 = 3
+		} else {
+			__lt48 = 0
+		}
+		__lt49 = __lt48
+	}
+	var __lt54 int
+	if s.JustifyContent == "center" {
+		__lt54 = 1
+	} else {
+		var __lt53 int
+		if s.JustifyContent == "end" {
+			__lt53 = 2
+		} else {
+			var __lt52 int
+			if s.JustifyContent == "spaceBetween" {
+				__lt52 = 3
+			} else {
+				var __lt51 int
+				if s.JustifyContent == "spaceAround" {
+					__lt51 = 4
+				} else {
+					var __lt50 int
+					if s.JustifyContent == "spaceEvenly" {
+						__lt50 = 5
+					} else {
+						__lt50 = 0
+					}
+					__lt51 = __lt50
+				}
+				__lt52 = __lt51
+			}
+			__lt53 = __lt52
+		}
+		__lt54 = __lt53
+	}
+	var __lt55 snglcolor.Color
+	if (s.Background.A == 0) || (s.Background == snglcolor.Color{R: 0, G: 0, B: 0, A: 255}) {
+		__lt55 = snglcolor.Color{A: 0, R: 0, G: 0, B: 0}
+	} else {
+		__lt55 = s.Background
+	}
+	var __lt56 snglcolor.Color
+	if (s.BorderColor.A == 0) || (s.BorderColor == snglcolor.Color{R: 0, G: 0, B: 0, A: 255}) {
+		__lt56 = snglcolor.Color{A: 0, R: 0, G: 0, B: 0}
+	} else {
+		__lt56 = s.BorderColor
+	}
+	var __lt57 snglcolor.Color
+	if (s.Color.A == 0) || (s.Color == snglcolor.Color{R: 0, G: 0, B: 0, A: 255}) {
+		__lt57 = snglcolor.Color{A: 0, R: 0, G: 0, B: 0}
+	} else {
+		__lt57 = s.Color
+	}
+	var __lt60 int
+	if s.TextAlign == "center" {
+		__lt60 = 2
+	} else {
+		var __lt59 int
+		if s.TextAlign == "right" {
+			__lt59 = 3
+		} else {
+			var __lt58 int
+			if s.TextAlign == "justify" {
+				__lt58 = 1
+			} else {
+				__lt58 = 0
+			}
+			__lt59 = __lt58
+		}
+		__lt60 = __lt59
+	}
+	var __lt62 int
+	if (s.WhiteSpace == "pre") || (s.WhiteSpace == "nowrap") {
+		__lt62 = 1
+	} else {
+		var __lt61 int
+		if (s.WhiteSpace == "preWrap") || (s.WhiteSpace == "preLine") {
+			__lt61 = 2
+		} else {
+			__lt61 = 0
+		}
+		__lt62 = __lt61
+	}
+	look := fynelayout.Look{MarginTop: float32(max((__lt1.Px + (14.0 * (__lt3.Em + __lt5.Rem))), 0.0)), MarginRight: float32(max((__lt7.Px + (14.0 * (__lt9.Em + __lt11.Rem))), 0.0)), MarginBottom: float32(max((__lt13.Px + (14.0 * (__lt15.Em + __lt17.Rem))), 0.0)), MarginLeft: float32(max((__lt19.Px + (14.0 * (__lt21.Em + __lt23.Rem))), 0.0)), PaddingTop: float32(max((__lt25.Px + (14.0 * (__lt27.Em + __lt29.Rem))), 0.0)), PaddingRight: float32(max((__lt31.Px + (14.0 * (__lt33.Em + __lt35.Rem))), 0.0)), PaddingBottom: float32(max((__lt37.Px + (14.0 * (__lt39.Em + __lt41.Rem))), 0.0)), PaddingLeft: float32(max((__lt43.Px + (14.0 * (__lt45.Em + __lt47.Rem))), 0.0)), Width: float32(max((s.Width.Px + (14.0 * (s.Width.Em + s.Width.Rem))), 0.0)), Height: float32(max((s.Height.Px + (14.0 * (s.Height.Em + s.Height.Rem))), 0.0)), MinWidth: float32(max((s.MinWidth.Px + (14.0 * (s.MinWidth.Em + s.MinWidth.Rem))), 0.0)), MaxWidth: float32(max((s.MaxWidth.Px + (14.0 * (s.MaxWidth.Em + s.MaxWidth.Rem))), 0.0)), MaxHeight: float32(max((s.MaxHeight.Px + (14.0 * (s.MaxHeight.Em + s.MaxHeight.Rem))), 0.0)), Grow: float32(s.Flex), Gap: float32(max((s.Gap.Px + (14.0 * (s.Gap.Em + s.Gap.Rem))), 0.0)), Cross: __lt49, Justify: __lt54, Fill: __lt55, Stroke: __lt56, StrokeWidth: float32(max((s.BorderWidth.Px + (14.0 * (s.BorderWidth.Em + s.BorderWidth.Rem))), 0.0)), Radius: float32(max((s.BorderRadius.Px + (14.0 * (s.BorderRadius.Em + s.BorderRadius.Rem))), 0.0)), TextColor: __lt57, TextSize: float32(max((s.FontSize.Px + (14.0 * (s.FontSize.Em + s.FontSize.Rem))), 0.0)), Bold: ((s.FontWeight == "bold") || (s.FontWeight == "bolder")), Italic: ((s.FontStyle == "italic") || (s.FontStyle == "oblique")), Monospace: (s.FontFamily == "monospace"), TextAlign: __lt60, Wrap: __lt62, Hidden: (s.Display == "none")}
+	return look
 }
 
 func (m *Model) __renderSlot0(__parent *fyne.Container) {
@@ -1135,7 +1505,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n1.SetVisible(m.visible__inst0)
 	m.__n1.OnClosed = m.__n1_closed_handler
 	m.__n1.OnVisible = m.__n1_visible_handler
-	m.__n6 = container.NewVBox()
+	m.__n6 = fynelayout.NewVBox()
 	m.__n2 = widget.NewButton("", nil)
 	m.__n2.SetText(("top " + fmt.Sprint(m.hits__inst0)))
 	m.__n2.OnTapped = m.__n2_click_handler
@@ -1165,7 +1535,7 @@ type AvatarInstance struct {
 	__slot1         []fyne.CanvasObject
 	__slot1_at      fyne.CanvasObject
 	__n0            *widget.Button
-	__n0__theme     *container.ThemeOverride
+	__n0__box       *fynelayout.Box
 }
 
 func newAvatarInstance(__model *Model, __a_initials string, __a_size string, __a_variant string, __a_alt string, __a_style Style, __a_click func()) *AvatarInstance {
@@ -1183,15 +1553,14 @@ func newAvatarInstance(__model *Model, __a_initials string, __a_size string, __a
 	c.__slot0 = nil
 	c.__slot1 = nil
 	c.__n0 = widget.NewButton("", nil)
-	c.__n0__theme = container.NewThemeOverride(c.__n0, fynetheme.New(theme.DefaultTheme()))
+	c.__n0__box = fynelayout.NewBox(c.__n0)
 	c.__n0.SetText(((c.__prop_initials + " ") + fmt.Sprint(c.hits)))
-	c.__n0__theme.Theme = __styleTheme(__merge_Style(Style{}, __merge_Style(Style{}, __merge_Style(Style{}, c.__prop_style))))
-	c.__n0__theme.Refresh()
+	c.__n0__box.SetLook(LookOf(__merge_Style(Style{}, c.__prop_style)))
 	c.__n0.OnTapped = func() {
 		c.hits = (c.hits + 1)
 		c.__n0.SetText(((c.__prop_initials + " ") + fmt.Sprint(c.hits)))
 	}
-	c.Root = c.__n0__theme
+	c.Root = c.__n0__box
 	return c
 }
 
@@ -1214,8 +1583,7 @@ func (c *AvatarInstance) SetAlt(__v string) {
 
 func (c *AvatarInstance) SetStyle(__v Style) {
 	c.__prop_style = __v
-	c.__n0__theme.Theme = __styleTheme(__merge_Style(Style{}, __merge_Style(Style{}, __merge_Style(Style{}, c.__prop_style))))
-	c.__n0__theme.Refresh()
+	c.__n0__box.SetLook(LookOf(__merge_Style(Style{}, c.__prop_style)))
 }
 
 func (c *AvatarInstance) SetClick(__v func()) {
@@ -2533,7 +2901,7 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:a7d4d2b5006fd2b1445fe6a16ccf5770
 -- run/go/fyne --
-pass sha256:c0719944975ecb942135250457e067a1
+pass sha256:3cb60290ac8d82a53f802f8a4594f1ea
 -- run/go/gtk4 --
 pass sha256:4a5ff383fb472aef9f4f6149e0e0ab1b
 -- run/kotlin/android --

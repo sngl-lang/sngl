@@ -23,11 +23,11 @@ import (
 // rebuild rather than an impossibility.
 func Ctors() map[string]any {
 	return map[string]any{
+		"duckfam.us/sngl/pkg/go/fynelayout.NewHBox":        fynelayout.NewHBox,
 		"duckfam.us/sngl/pkg/go/fynelayout.NewImage":       fynelayout.NewImage,
 		"duckfam.us/sngl/pkg/go/fynelayout.NewImageSource": fynelayout.NewImageSource,
 		"duckfam.us/sngl/pkg/go/fynelayout.NewToplevel":    fynelayout.NewToplevel,
-		"fyne.io/fyne/v2/container.NewHBox":                container.NewHBox,
-		"fyne.io/fyne/v2/container.NewVBox":                container.NewVBox,
+		"duckfam.us/sngl/pkg/go/fynelayout.NewVBox":        fynelayout.NewVBox,
 		"fyne.io/fyne/v2/container.NewVScroll":             container.NewVScroll,
 		"fyne.io/fyne/v2/layout.NewSpacer":                 layout.NewSpacer,
 		"fyne.io/fyne/v2/widget.NewButton":                 widget.NewButton,

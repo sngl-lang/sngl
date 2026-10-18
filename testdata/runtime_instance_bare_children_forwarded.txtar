@@ -221,7 +221,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n3.SetVisible(m.visible__inst0)
 	m.__n3.OnClosed = m.__n3_closed_handler
 	m.__n3.OnVisible = m.__n3_visible_handler
-	m.__n10 = container.NewVBox()
+	m.__n10 = fynelayout.NewVBox()
 	m.__renderSlot2(m.__n10)
 	m.__renderSlot3(m.__n10)
 	m.__n3.Add(m.__n10)
@@ -255,7 +255,7 @@ func newCard__slot3Instance(__model *Model) *Card__slot3Instance {
 	c.__slot1 = nil
 	c.__slot2 = nil
 	c.__slot3 = nil
-	__n11 := container.NewVBox()
+	__n11 := fynelayout.NewVBox()
 	c.__n0 = widget.NewButton("", nil)
 	c.__n0.SetText(("hit " + fmt.Sprint(c.hits)))
 	c.__n0.OnTapped = func() {
@@ -303,7 +303,7 @@ func newCard__slot2Instance(__model *Model, __a___p0 string) *Card__slot2Instanc
 	c.__slot1 = nil
 	c.__slot2 = nil
 	c.__slot3 = nil
-	__n13 := container.NewVBox()
+	__n13 := fynelayout.NewVBox()
 	c.__n1 = widget.NewButton("", nil)
 	c.__n1.SetText(("hit " + fmt.Sprint(c.hits)))
 	c.__n1.OnTapped = func() {
@@ -352,7 +352,7 @@ func newRow__slot1Instance(__model *Model) *Row__slot1Instance {
 	c.__slot1 = nil
 	c.__slot2 = nil
 	c.__slot3 = nil
-	__n5 := container.NewHBox()
+	__n5 := fynelayout.NewHBox()
 	c.__renderSlot0(__n5)
 	c.Root = __n5
 	return c
@@ -429,7 +429,7 @@ func newRow__slot0Instance(__model *Model, __a___p0 string) *Row__slot0Instance 
 	c.__inst1_live = []*Card__slot2Instance{}
 	c.__slot2 = nil
 	c.__slot3 = nil
-	__n7 := container.NewHBox()
+	__n7 := fynelayout.NewHBox()
 	c.__renderSlot1(__n7)
 	c.Root = __n7
 	return c
@@ -1366,7 +1366,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:0f8d024739f1b96fa42b4d40de51200d
+pass sha256:0ee5aa976f6258afc142c733f97addd2
 -- run/go/gtk4 --
 pass sha256:ca7fc0643b2fe3c233442651eaeb01e5
 -- run/none/html --

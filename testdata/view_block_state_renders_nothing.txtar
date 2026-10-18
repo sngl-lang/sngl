@@ -1065,10 +1065,10 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n0.SetVisible(m.visible__inst0)
 	m.__n0.OnClosed = m.__n0_closed_handler
 	m.__n0.OnVisible = m.__n0_visible_handler
-	m.__n5 = container.NewVBox()
+	m.__n5 = fynelayout.NewVBox()
 	m.__renderSlot0(m.__n5)
 	m.__renderSlot1(m.__n5)
-	m.__n6 = container.NewVBox()
+	m.__n6 = fynelayout.NewVBox()
 	m.__renderSlot2(m.__n6)
 	m.__n5.Add(m.__n6)
 	m.__n1 = widget.NewLabel("")
@@ -2396,7 +2396,7 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:ddb5be96283820657c9946ee40630aec
 -- run/go/fyne --
-pass sha256:ea55d2503e95304c59a0cc4ce1266d72
+pass sha256:b22b8bd0712fbf6d02e951ce3ca7d20b
 -- run/go/gtk4 --
 pass sha256:7e7d0db13ed9b6505c46b2ca2bf7dd2f
 -- run/none/html --

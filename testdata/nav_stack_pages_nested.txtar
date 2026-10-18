@@ -788,19 +788,19 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 	__inst1_next := []*__child1Instance{}
 	var __inst1_i int = 0
 	for __copy, r := range m.rows {
-		for __copy1, c__r0 := range r.Cols {
+		for __copy1, c__r1 := range r.Cols {
 			if (m.pages__current__inst0.Id == 0) && (((len(m.pages__current__inst0.Copy) == 2) && (m.pages__current__inst0.Copy[0] == __copy)) && (m.pages__current__inst0.Copy[1] == __copy1)) {
 				var __n2 *__child0Instance
 				if len(m.__inst0_live) > __inst0_i {
 					__n2 = m.__inst0_live[__inst0_i]
 					__n2.Set__p0(r)
-					__n2.Set__p1(c__r0)
+					__n2.Set__p1(c__r1)
 					__n2.Set__p2(m.cell__params__inst0)
 				} else {
 					if len(m.__inst0_live) > __inst0_i {
 						m.__inst0_live[__inst0_i].Destroy()
 					}
-					__n2__new := new__child0Instance(m, r, c__r0, m.cell__params__inst0)
+					__n2__new := new__child0Instance(m, r, c__r1, m.cell__params__inst0)
 					__n2 = __n2__new
 				}
 				__inst0_next = append(__inst0_next, __n2)
@@ -834,13 +834,13 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 					for __inst0_live_ui, _ := range m.__inst0_live {
 						m.__inst0_live[__inst0_live_ui].Set__p2(m.cell__params__inst0)
 					}
-					var __lt3 string
-					if c__r0 == "3" {
-						__lt3 = "/"
+					var __lt18 string
+					if c__r1 == "3" {
+						__lt18 = "/"
 					} else {
-						__lt3 = ((("/" + r.Name) + "/") + c__r0)
+						__lt18 = ((("/" + r.Name) + "/") + c__r1)
 					}
-					m.pages__current__inst0 = _page__value{Id: 0, Href: __lt3, Title: (r.Name + c__r0), Meta: __anon_e3b0c4{}, Copy: []int{__copy, __copy1}}
+					m.pages__current__inst0 = _page__value{Id: 0, Href: __lt18, Title: (r.Name + c__r1), Meta: __anon_e3b0c4{}, Copy: []int{__copy, __copy1}}
 					m.heading.SetText(m.pages__current__inst0.Title)
 					m.__renderSlot0(m.__n1.Container)
 					m.__renderSlot1(m.__n1.Container)
@@ -1064,49 +1064,49 @@ func new__child1Instance(__model *Model, __a___p0 _page__value, __a___p1 int, __
 	c.__root = container.NewVBox()
 	c.__slot0 = nil
 	c.__slot1 = nil
-	var __lt7 string
+	var __lt22 string
 	if (c.__prop___p0.Id == 0) && (((len(c.__prop___p0.Copy) == 2) && (c.__prop___p0.Copy[0] == c.__prop___p1)) && (c.__prop___p0.Copy[1] == c.__prop___p2)) {
-		__lt7 = "showing"
+		__lt22 = "showing"
 	} else {
-		__lt7 = "hidden"
+		__lt22 = "hidden"
 	}
 	c.__n0 = widget.NewLabel("")
-	c.__n0.SetText(__lt7)
+	c.__n0.SetText(__lt22)
 	c.Root = c.__n0
 	return c
 }
 
 func (c *__child1Instance) Set__p0(__v _page__value) {
 	c.__prop___p0 = __v
-	var __lt4 string
+	var __lt19 string
 	if (c.__prop___p0.Id == 0) && (((len(c.__prop___p0.Copy) == 2) && (c.__prop___p0.Copy[0] == c.__prop___p1)) && (c.__prop___p0.Copy[1] == c.__prop___p2)) {
-		__lt4 = "showing"
+		__lt19 = "showing"
 	} else {
-		__lt4 = "hidden"
+		__lt19 = "hidden"
 	}
-	c.__n0.SetText(__lt4)
+	c.__n0.SetText(__lt19)
 }
 
 func (c *__child1Instance) Set__p1(__v int) {
 	c.__prop___p1 = __v
-	var __lt5 string
+	var __lt20 string
 	if (c.__prop___p0.Id == 0) && (((len(c.__prop___p0.Copy) == 2) && (c.__prop___p0.Copy[0] == c.__prop___p1)) && (c.__prop___p0.Copy[1] == c.__prop___p2)) {
-		__lt5 = "showing"
+		__lt20 = "showing"
 	} else {
-		__lt5 = "hidden"
+		__lt20 = "hidden"
 	}
-	c.__n0.SetText(__lt5)
+	c.__n0.SetText(__lt20)
 }
 
 func (c *__child1Instance) Set__p2(__v int) {
 	c.__prop___p2 = __v
-	var __lt6 string
+	var __lt21 string
 	if (c.__prop___p0.Id == 0) && (((len(c.__prop___p0.Copy) == 2) && (c.__prop___p0.Copy[0] == c.__prop___p1)) && (c.__prop___p0.Copy[1] == c.__prop___p2)) {
-		__lt6 = "showing"
+		__lt21 = "showing"
 	} else {
-		__lt6 = "hidden"
+		__lt21 = "hidden"
 	}
-	c.__n0.SetText(__lt6)
+	c.__n0.SetText(__lt21)
 }
 
 func (c *__child1Instance) Destroy() {}
@@ -1731,7 +1731,7 @@ fun MainScreen() {
 -- run/go/bubbletea --
 pass sha256:741562fdf89460fd980733a885ba7673
 -- run/go/fyne --
-pass sha256:40bfc012a6f372829050151f6aa7812d
+pass sha256:8dd8d6443f23170c3855d57d3dbd9da6
 -- run/go/gtk4 --
 pass sha256:54e3fcec3365ec36389a62a8b8befddf
 -- run/kotlin/android --

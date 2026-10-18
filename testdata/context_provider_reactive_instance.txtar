@@ -574,7 +574,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.home.SetVisible(m.visible__inst0)
 	m.home.OnClosed = m.home_closed_handler
 	m.home.OnVisible = m.home_visible_handler
-	m.__n2 = container.NewVBox()
+	m.__n2 = fynelayout.NewVBox()
 	m.__n3 = widget.NewButton("", nil)
 	m.__n3.SetText("flip")
 	m.__n3.OnTapped = m.__n3_click_handler
@@ -1012,7 +1012,7 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:a4213c712ffdf76597ae6036f729c51a
 -- run/go/fyne --
-pass sha256:a9913d84a3553801216cc6bfecb7c20a
+pass sha256:421b9d30f02e0070c45b2a9c040f1b8e
 -- run/go/gtk4 --
 pass sha256:7a9b6b27c20e27eccd87b07f520d33ae
 -- run/kotlin/android --

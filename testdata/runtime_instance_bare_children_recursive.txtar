@@ -138,7 +138,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n1.SetVisible(m.visible__inst0)
 	m.__n1.OnClosed = m.__n1_closed_handler
 	m.__n1.OnVisible = m.__n1_visible_handler
-	m.__n8 = container.NewVBox()
+	m.__n8 = fynelayout.NewVBox()
 	m.__n2 = newFrame__slot0Instance(m, m.depth, 0)
 	m.__n2__el = m.__n2.Root
 	m.__n8.Add(m.__n2__el)
@@ -180,7 +180,7 @@ func newFrame__slot2Instance(__model *Model, __a_n int, __a___depth int, __a___p
 	c.__slot0 = nil
 	c.__inst0_live = []*Frame__slot2Instance{}
 	c.__slot1 = nil
-	c.__n4 = container.NewVBox()
+	c.__n4 = fynelayout.NewVBox()
 	c.__n0 = widget.NewLabel("")
 	c.__n0.SetText(("level " + fmt.Sprint(c.__prop___p0)))
 	c.__n4.Add(c.__n0)
@@ -279,7 +279,7 @@ func newFrame__slot0Instance(__model *Model, __a_n int, __a___depth int) *Frame_
 	c.__slot0 = nil
 	c.__slot1 = nil
 	c.__inst1_live = []*Frame__slot2Instance{}
-	c.__n6 = container.NewVBox()
+	c.__n6 = fynelayout.NewVBox()
 	__n7 := widget.NewLabel("")
 	__n7.SetText("top")
 	c.__n6.Add(__n7)
@@ -929,7 +929,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:b3831447037d68ced4d6f49e5d68adfe
+pass sha256:5ec6254ad1a72763007c33201f6fe74e
 -- run/go/gtk4 --
 pass sha256:06ba767735c07499d72d78a71346cf69
 -- run/none/html --

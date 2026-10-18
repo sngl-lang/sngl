@@ -594,7 +594,7 @@ func (m *Model) SetShown(v bool) {
 
 // BuildUI creates the widget tree. Call once; widgets are updated selectively.
 func (m *Model) BuildUI() fyne.CanvasObject {
-	m.__n0 = container.NewVBox()
+	m.__n0 = fynelayout.NewVBox()
 	m.toggle = widget.NewButton("", nil)
 	m.toggle.SetText("t")
 	m.toggle.OnTapped = m.toggle_click_handler
@@ -1134,7 +1134,7 @@ window.__sngl_boot();
 -- run/go/bubbletea --
 pass sha256:80a9d9f99709296fd24487fea392c1ad
 -- run/go/fyne --
-pass sha256:5db41f9a6bf523b0bdb775603508a582
+pass sha256:701862bff85f67605cd0768aba4def70
 -- run/go/gtk4 --
 pass sha256:e8c8641c675cfe0fdbca50bc4566859a
 -- run/kotlin/android --

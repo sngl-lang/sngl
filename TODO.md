@@ -27,7 +27,7 @@ What each platform answers today:
 | html      | all, to the CSS property of the same name                  |
 | android   | done in SNGL (style.sngl); `unstyled` lists the rest       |
 | bubbletea | done in SNGL (style.sngl); `unstyled` lists the rest       |
-| fyne      | ~9, through theme overrides and the flex layout            |
+| fyne      | done in SNGL (style.sngl); `unstyled` lists the rest       |
 | gtk4      | none; only a markup flow reads color, size, family, weight |
 
 The places to read first: `codegen/iterate.go` (`NodeStyleFieldsOf`, which
@@ -95,7 +95,16 @@ Each is a commit series on the branch; one MR, so CI runs once.
    its parent's, else the terminal's (`tui.Join`). A context was no use here:
    a share depends on the siblings' rendered sizes, which only the Layout
    sees.
-3. **fyne**, with the fynelayout change for flex and margin.
+3. **fyne**, with the fynelayout change for flex and margin. Done:
+   `lib/platform/fyne/style.sngl`'s `lookOf` builds a `Look`, a
+   `#[go.native]` record that is `fynelayout.Look`, in plain SNGL, so a
+   literal Style folds to a Go literal and the interpreted host is handed
+   the same record. A node whose look asks for anything is shown in a
+   `fynelayout.Box`, which draws the margin, border, fill and padding and
+   puts the widget under a theme of its own only where the look sets one.
+   `flex` is read by the parent off the child: every vbox and hbox is
+   fynelayout's `Weighted` layout, which takes each child's share from its
+   Box, and a margin is the child's own Box's.
 4. **gtk4**, with the gtk4rt CSS setter.
 5. **html**, last, since it already maps every field.
 6. The coverage test across all six, and CLAUDE.md's platform sections.
@@ -136,6 +145,12 @@ Each is a commit series on the branch; one MR, so CI runs once.
   leaves another unbound.
 - android's select honors none of `disabled`, `multiple`, `@focus`,
   `@blur`.
+- On fyne a widget added to a container already under a Box's theme keeps
+  the theme it had until that Box refreshes, Fyne's ThemeOverride rule; a
+  render slot appending into a styled vbox meets it.
+- On fyne an explicit `#000000` is unset, as the color zero is, and so are
+  `alignItems=start` (stretches) and `textAlign=left` (a button stays
+  centered): each is its type's zero.
 
 ## `match`, later
 

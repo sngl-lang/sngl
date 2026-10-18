@@ -511,13 +511,13 @@ func (m *Model) __n0_visible_handler(__visible bool) {
 
 func (m *Model) show_click_handler() {
 	m.shown__inst0 = true
-	var __lt2 string
+	var __lt17 string
 	if !m.shown__inst0 {
-		__lt2 = "boxed empty"
+		__lt17 = "boxed empty"
 	} else {
-		__lt2 = "boxed full"
+		__lt17 = "boxed full"
 	}
-	m.__n1.SetText(__lt2)
+	m.__n1.SetText(__lt17)
 	m.__renderSlot0(m.__n0.Container)
 }
 
@@ -554,21 +554,21 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n0.SetVisible(m.visible__inst0)
 	m.__n0.OnClosed = m.__n0_closed_handler
 	m.__n0.OnVisible = m.__n0_visible_handler
-	__lt0 := "boxed full"
+	__lt15 := "boxed full"
 	m.__n3 = widget.NewLabel("")
-	m.__n3.SetText(__lt0)
+	m.__n3.SetText(__lt15)
 	m.__n0.Add(m.__n3)
 	m.__n4 = widget.NewLabel("")
 	m.__n4.SetText("inner")
 	m.__n0.Add(m.__n4)
-	var __lt1 string
+	var __lt16 string
 	if !m.shown__inst0 {
-		__lt1 = "boxed empty"
+		__lt16 = "boxed empty"
 	} else {
-		__lt1 = "boxed full"
+		__lt16 = "boxed full"
 	}
 	m.__n1 = widget.NewLabel("")
-	m.__n1.SetText(__lt1)
+	m.__n1.SetText(__lt16)
 	m.__n0.Add(m.__n1)
 	m.__renderSlot0(m.__n0.Container)
 	m.show = widget.NewButton("", nil)
@@ -857,7 +857,7 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:06593b37767576b9ded90f47eeb68daa
 -- run/go/fyne --
-pass sha256:326279f2ebaff9afdaa1abd6beaf0ed7
+pass sha256:e19089af24168f17dcb96baa56333401
 -- run/go/gtk4 --
 pass sha256:77215050e0784573059717a5bdef2926
 -- run/kotlin/android --

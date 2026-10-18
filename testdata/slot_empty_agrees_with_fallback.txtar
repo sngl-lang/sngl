@@ -633,7 +633,6 @@ import (
 	"fmt"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
-	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
 	"os"
 )
@@ -828,23 +827,23 @@ func (m *Model) __n0_visible_handler(__visible bool) {
 
 func (m *Model) show_click_handler() {
 	m.b__inst0 = true
-	var __lt3 string
+	var __lt18 string
 	if !m.a__inst0 && !m.b__inst0 {
-		__lt3 = "asks: empty"
+		__lt18 = "asks: empty"
 	} else {
-		__lt3 = "asks: full"
+		__lt18 = "asks: full"
 	}
-	m.two.SetText(__lt3)
+	m.two.SetText(__lt18)
 	m.__renderSlot1(m.__n7)
 	m.__renderSlot2(m.__n7)
 	m.xs__inst0 = []int{7}
-	var __lt4 string
+	var __lt19 string
 	if len(m.xs__inst0) == 0 {
-		__lt4 = "asks: empty"
+		__lt19 = "asks: empty"
 	} else {
-		__lt4 = "asks: full"
+		__lt19 = "asks: full"
 	}
-	m.loop.SetText(__lt4)
+	m.loop.SetText(__lt19)
 	m.__renderSlot3(m.__n8)
 	m.__renderSlot4(m.__n8)
 }
@@ -906,38 +905,38 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n0.SetVisible(m.visible__inst0)
 	m.__n0.OnClosed = m.__n0_closed_handler
 	m.__n0.OnVisible = m.__n0_visible_handler
-	var __lt0 string
+	var __lt15 string
 	if !m.a__inst0 && !m.b__inst0 {
-		__lt0 = "asks: empty"
+		__lt15 = "asks: empty"
 	} else {
-		__lt0 = "asks: full"
+		__lt15 = "asks: full"
 	}
 	m.two = widget.NewLabel("")
-	m.two.SetText(__lt0)
+	m.two.SetText(__lt15)
 	m.__n0.Add(m.two)
-	m.__n7 = container.NewVBox()
+	m.__n7 = fynelayout.NewVBox()
 	m.__renderSlot0(m.__n7)
 	m.__renderSlot1(m.__n7)
 	m.__renderSlot2(m.__n7)
 	m.__n0.Add(m.__n7)
-	var __lt1 string
+	var __lt16 string
 	if len(m.xs__inst0) == 0 {
-		__lt1 = "asks: empty"
+		__lt16 = "asks: empty"
 	} else {
-		__lt1 = "asks: full"
+		__lt16 = "asks: full"
 	}
 	m.loop = widget.NewLabel("")
-	m.loop.SetText(__lt1)
+	m.loop.SetText(__lt16)
 	m.__n0.Add(m.loop)
-	m.__n8 = container.NewVBox()
+	m.__n8 = fynelayout.NewVBox()
 	m.__renderSlot3(m.__n8)
 	m.__renderSlot4(m.__n8)
 	m.__n0.Add(m.__n8)
-	__lt2 := "asks: empty"
+	__lt17 := "asks: empty"
 	m.lifetime = widget.NewLabel("")
-	m.lifetime.SetText(__lt2)
+	m.lifetime.SetText(__lt17)
 	m.__n0.Add(m.lifetime)
-	m.__n9 = container.NewVBox()
+	m.__n9 = fynelayout.NewVBox()
 	m.__n10 = widget.NewLabel("")
 	m.__n10.SetText("fallback")
 	m.__n9.Add(m.__n10)
@@ -1696,7 +1695,7 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:5f3f497223290126b415fb3a5b208c8c
 -- run/go/fyne --
-pass sha256:51e30a39996d5eddd910a118b07c9af0
+pass sha256:be0507e296a784dd9e6bb17c6e7eff78
 -- run/go/gtk4 --
 pass sha256:27607b9504cd923b5846218febf0741b
 -- run/kotlin/android --

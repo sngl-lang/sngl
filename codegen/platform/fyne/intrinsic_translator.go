@@ -465,17 +465,14 @@ func (t *fyneTranslator) OnCreateNode(ctx context.Context, id, tag string) []ir.
 	if !t.isLocalRef(id) {
 		t.sinkField(id, goType)
 	}
-	ctor := t.flexLayoutCall(sp)
-	if ctor == nil {
-		ctor = nativeCallAt(sp.New.qualify(t.gc), sp.New.Path, sp.ctorArgs(t.gc), ir.NativeGoNamed(sp.GoType.qualify(t.gc)))
-	}
+	ctor := nativeCallAt(sp.New.qualify(t.gc), sp.New.Path, sp.ctorArgs(t.gc), ir.NativeGoNamed(sp.GoType.qualify(t.gc)))
 	if t.isLocalRef(id) {
 		// Non-escaping: declare a function-local `__nN := <ctor>` so each
 		// call frame (notably a recursive render method) keeps its own
 		// widget temp rather than clobbering a shared Model field.
-		return t.withThemeOverride(id, sp, &ir.LocalVar{Name: id, Init: ctor})
+		return t.withBox(id, sp, &ir.LocalVar{Name: id, Init: ctor})
 	}
-	create := t.withThemeOverride(id, sp, &ir.Assign{
+	create := t.withBox(id, sp, &ir.Assign{
 		Target: t.fieldRef(id),
 		Op:     ast.AssignSet,
 		Value:  ctor,
@@ -491,11 +488,11 @@ func (t *fyneTranslator) OnCreateNode(ctx context.Context, id, tag string) []ir.
 	return create
 }
 
-func (t *fyneTranslator) withThemeOverride(id string, sp *fyneSpec, create ir.Stmt) []ir.Stmt {
-	if !sp.RuntimeTheme {
+func (t *fyneTranslator) withBox(id string, sp *fyneSpec, create ir.Stmt) []ir.Stmt {
+	if !sp.Boxed {
 		return []ir.Stmt{create}
 	}
-	return []ir.Stmt{create, t.createThemeOverride(id, t.nodeRefFor(id))}
+	return []ir.Stmt{create, t.createBox(id, t.nodeRefFor(id))}
 }
 
 // OnCreateComponent binds a name to a live instance of a non-inlinable user
@@ -644,10 +641,10 @@ func (t *fyneTranslator) OnAppendChild(ctx context.Context, parent, child ir.Exp
 	childSpec := t.specs[codegen.IdentBareName(child)]
 	if id, ok := parent.(*ir.Ident); ok && id.Name == "parent" && t.slotAnchor != nil {
 		return []ir.Stmt{&ir.CallStmt{Call: nativeCallAt("fynelayout.InsertBefore", fyneLayoutImportPath,
-			[]ir.Expr{t.qualifyParentExpr(parent), t.slotAnchor, t.themed(t.qualifyChildExpr(child), childSpec, codegen.IdentBareName(child))}, ir.TypVoid)}}
+			[]ir.Expr{t.qualifyParentExpr(parent), t.slotAnchor, t.shown(t.qualifyChildExpr(child), childSpec, codegen.IdentBareName(child))}, ir.TypVoid)}}
 	}
 	parent = t.qualifyParentExpr(parent)
-	child = t.themed(t.qualifyChildExpr(child), childSpec, codegen.IdentBareName(child))
+	child = t.shown(t.qualifyChildExpr(child), childSpec, codegen.IdentBareName(child))
 	if sp != nil && sp.isSingleChild() {
 		return []ir.Stmt{&ir.Assign{
 			Target: &ir.Select{Operand: parent, Field: sp.Content, Type: fyneObject()},
@@ -669,18 +666,18 @@ func (t *fyneTranslator) OnRemoveChild(ctx context.Context, parent, child ir.Exp
 }
 
 func (t *fyneTranslator) removeChild(parent, child ir.Expr) []ir.Stmt {
+	child = t.shown(t.qualifyChildExpr(child), t.specs[codegen.IdentBareName(child)], codegen.IdentBareName(child))
 	if ir.IsAppParent(parent) {
 		return []ir.Stmt{&ir.CallStmt{Call: nativeCallAt("fynelayout.AppDetach", fyneLayoutImportPath,
-			[]ir.Expr{t.qualifyChildExpr(child)}, ir.TypVoid)}}
+			[]ir.Expr{child}, ir.TypVoid)}}
 	}
 	// A render slot's container may be the application, which only the
 	// runtime can tell from the value it is handed.
 	if id, ok := parent.(*ir.Ident); ok && id.Name == "parent" {
 		return []ir.Stmt{&ir.CallStmt{Call: nativeCallAt("fynelayout.Remove", fyneLayoutImportPath,
-			[]ir.Expr{t.qualifyParentExpr(parent), t.qualifyChildExpr(child)}, ir.TypVoid)}}
+			[]ir.Expr{t.qualifyParentExpr(parent), child}, ir.TypVoid)}}
 	}
 	parent = t.qualifyParentExpr(parent)
-	child = t.qualifyChildExpr(child)
 	return []ir.Stmt{&ir.CallStmt{Call: methodCall(parent, "Remove", []ir.Expr{child}, ir.TypVoid)}}
 }
 
@@ -861,11 +858,11 @@ func (t *fyneTranslator) OnPropAssign(ctx context.Context, node ir.Expr, prop st
 		// translator owns. Nothing to say about it here.
 		return nil
 	}
-	if prop == stylePropName && sp.RuntimeTheme {
-		if lit, ok := value.(*ir.StructLit); ok {
-			return t.setRuntimeTheme(bareID, lit)
+	if prop == lookPropName {
+		if !sp.Boxed {
+			return codegen.KeepLocalsRead(value)
 		}
-		return t.setRuntimeThemeFrom(bareID, value)
+		return []ir.Stmt{&ir.CallStmt{Call: methodCall(t.boxRef(bareID), "SetLook", []ir.Expr{written(value)}, ir.TypVoid)}}
 	}
 	if prop == ir.CopyProp {
 		return []ir.Stmt{t.listCopy(bareID, value)}
@@ -873,12 +870,7 @@ func (t *fyneTranslator) OnPropAssign(ctx context.Context, node ir.Expr, prop st
 	if id, ok := codegen.InstanceRootID(prop); ok {
 		return t.listRoot(id, t.nodeRefFor(bareID), value)
 	}
-	if structuralProp(prop) {
-		// This platform's own props, not the widget's: `spec` is the record
-		// that says which Fyne widget to build, and `style` is forwarded onto
-		// the widget root by the override bodies. Neither is a value with a
-		// setter behind it, which is the same exemption gtk4 makes for its
-		// `style`.
+	if prop == specPropName {
 		return codegen.KeepLocalsRead(value)
 	}
 	if sp.CtorOnly[prop] && value == sp.CtorProps[prop] {
@@ -978,8 +970,8 @@ func (t *fyneTranslator) releasePresent(field string) ir.Stmt {
 
 func (t *fyneTranslator) OnSlotAppend(ctx context.Context, slot *ir.Var, child ir.Expr) []ir.Stmt {
 	slotRef := t.slotFieldRef(slot)
-	if sp := t.specs[codegen.IdentBareName(child)]; sp != nil && sp.RuntimeTheme {
-		child = t.themeOverrideRef(codegen.IdentBareName(child))
+	if sp := t.specs[codegen.IdentBareName(child)]; sp != nil && sp.Boxed {
+		child = t.boxRef(codegen.IdentBareName(child))
 	} else {
 		child = t.qualifyChildExpr(child)
 	}
@@ -1151,21 +1143,6 @@ func emitFyneInvoker(b *strings.Builder, inv fyneEventInvoker, name string, lead
 	// would set a new value and fire the callback again.
 	fmt.Fprintf(b, "\tif cb := %s.%s; cb != nil {\n\t\t%s.%s = nil\n\t\tcb(%s)\n\t\t%s.%s = cb\n\t}\n}\n\n",
 		w, inv.Field, w, inv.Field, strings.Join(call, ", "), w, inv.Field)
-}
-
-// structuralProp reports whether prop is one of this platform's own props
-// rather than a value the widget shows.
-//
-// `spec` is the record naming the Fyne widget to construct, read by
-// OnCreateNode; `style` is forwarded onto the widget root by the override
-// bodies. Neither has a setter and neither should: they are how a declaration
-// reaches the emitter, not something the emitter writes.
-//
-// Named here rather than left to fall through the setter lookup, because that
-// lookup now reports what it cannot emit -- and these are the two it was
-// always right to say nothing about.
-func structuralProp(prop string) bool {
-	return prop == "spec" || prop == "style"
 }
 
 // fyneObject is fyne.CanvasObject, what a container holds and a record's Root

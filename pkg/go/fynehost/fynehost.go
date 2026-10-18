@@ -18,8 +18,8 @@ import (
 	"strings"
 
 	fyne "fyne.io/fyne/v2"
-	"fyne.io/fyne/v2/container"
 
+	"duckfam.us/sngl/pkg/go/fynelayout"
 	"duckfam.us/sngl/pkg/go/snglhost"
 )
 
@@ -35,9 +35,6 @@ type spec struct {
 	handlers map[string]string
 	// add is a container's attach method, content a wrapper's child field.
 	add, content string
-	// axis is "horizontal" or "vertical" on a container that lays its children
-	// out along one, which is what tells a layout which way to measure.
-	axis string
 }
 
 // SpecProp is the prop a primitive carries its Spec in. Renaming it here means
@@ -61,7 +58,6 @@ func decodeSpec(props []snglhost.PropVal) (spec, bool) {
 		sp.ctor = str(structField(n, "path")) + "." + str(structField(n, "name"))
 	}
 	sp.add = str(structField(rec, "add"))
-	sp.axis = str(structField(rec, "axis"))
 	sp.content = str(structField(rec, "content"))
 	sp.setters = pairs(structField(rec, "setters"), "prop", "call")
 	sp.handlers = pairs(structField(rec, "handlers"), "on", "field")
@@ -142,12 +138,12 @@ type Host struct {
 }
 
 type mounted struct {
-	key   snglhost.Key
-	name  string
-	obj   fyne.CanvasObject
-	spec  spec
-	style style
-	// view is what is actually mounted: obj, or obj inside a theme override.
+	key  snglhost.Key
+	name string
+	obj  fyne.CanvasObject
+	spec spec
+	box  *fynelayout.Box
+	// view is what is actually mounted: obj, or obj inside the Box showing its look.
 	// The parent holds this, the tree holds obj.
 	view     fyne.CanvasObject
 	parent   snglhost.Key
@@ -165,7 +161,7 @@ func New(ctors map[string]any) *Host {
 		nodes:       map[snglhost.Key]*mounted{},
 		missing:     map[snglhost.Key]bool{},
 		seenMissing: map[string]bool{},
-		Root:        container.NewVBox(),
+		Root:        fynelayout.NewVBox(),
 	}
 }
 
@@ -199,7 +195,7 @@ func (h *Host) Create(d snglhost.NodeDesc, parent snglhost.Key, index int) error
 	// the box its content is laid out in there, as a window was before it
 	// was a node.
 	if !ok && d.Name == ToplevelName {
-		m := &mounted{key: d.Key, name: d.Name, obj: container.NewVBox(), spec: spec{add: "Add", axis: "vertical"}, parent: parent}
+		m := &mounted{key: d.Key, name: d.Name, obj: fynelayout.NewVBox(), spec: spec{add: "Add"}, parent: parent}
 		m.view = m.obj
 		h.nodes[d.Key] = m
 		return h.insert(m, parent, index)
@@ -221,13 +217,12 @@ func (h *Host) Create(d snglhost.NodeDesc, parent snglhost.Key, index int) error
 	if err != nil {
 		return fmt.Errorf("%s: %w", d.Name, err)
 	}
-	st := decodeStyle(d.Props)
-	m := &mounted{key: d.Key, name: d.Name, obj: obj, spec: sp, style: st, parent: parent}
-	m.view = themed(obj, st)
+	m := &mounted{key: d.Key, name: d.Name, obj: obj, spec: sp, parent: parent}
+	m.view, m.box = boxed(obj, d.Props)
 	h.nodes[d.Key] = m
 	for _, p := range d.Props {
-		if p.Name == SpecProp || p.Name == "style" {
-			continue // metadata and paint, not values the widget takes
+		if p.Name == SpecProp {
+			continue
 		}
 		if err := applyProp(m, p.Name, p.Value); err != nil {
 			return fmt.Errorf("%s.%s: %w", d.Name, p.Name, err)
@@ -270,6 +265,11 @@ func (h *Host) SetProp(key snglhost.Key, prop string, v any) error {
 	if !ok {
 		return nil
 	}
+	if prop == LookProp && m.box == nil && decodeLook(v) != (fynelayout.Look{}) {
+		if err := h.rebox(m); err != nil {
+			return err
+		}
+	}
 	return applyProp(m, prop, v)
 }
 
@@ -294,8 +294,8 @@ func (h *Host) Object(key snglhost.Key) (fyne.CanvasObject, bool) {
 	return m.obj, true
 }
 
-// ViewOf returns what is actually mounted for a key: the widget, or the theme
-// override wrapping it. Object returns the widget itself.
+// ViewOf returns what is actually mounted for a key: the widget, or the Box
+// showing its look. Object returns the widget itself.
 func (h *Host) ViewOf(key snglhost.Key) fyne.CanvasObject {
 	m, ok := h.nodes[key]
 	if !ok {
@@ -369,6 +369,12 @@ func construct(ctor any) (obj fyne.CanvasObject, err error) {
 // applyProp assigns through the declared setter. The method's own parameter
 // type is what the value is converted to, so nothing here names a Fyne type.
 func applyProp(m *mounted, prop string, v any) error {
+	if prop == LookProp {
+		if m.box != nil {
+			m.box.SetLook(decodeLook(v))
+		}
+		return nil
+	}
 	method, ok := m.spec.setters[prop]
 	if !ok {
 		return nil // no surface to reach; the emitter drops it too
@@ -437,7 +443,6 @@ func (h *Host) insert(m *mounted, parent snglhost.Key, index int) error {
 	if err := h.setContent(parent); err != nil {
 		return err
 	}
-	h.relayout(parent)
 	return nil
 }
 
@@ -448,7 +453,6 @@ func (h *Host) detach(m *mounted) {
 			*siblings = append((*siblings)[:i], (*siblings)[i+1:]...)
 			*objs = append((*objs)[:i], (*objs)[i+1:]...)
 			_ = h.setContent(m.parent)
-			h.relayout(m.parent)
 			return
 		}
 	}
@@ -489,9 +493,9 @@ func (h *Host) setContent(parent snglhost.Key) error {
 	if len(p.children) == 0 {
 		f.Set(reflect.Zero(f.Type()))
 	} else {
-		child := reflect.ValueOf(p.children[0].obj)
+		child := reflect.ValueOf(p.children[0].view)
 		if !child.Type().AssignableTo(f.Type()) {
-			return fmt.Errorf("cannot put a %T in %s.%s", p.children[0].obj, p.name, p.spec.content)
+			return fmt.Errorf("cannot put a %T in %s.%s", p.children[0].view, p.name, p.spec.content)
 		}
 		f.Set(child)
 	}

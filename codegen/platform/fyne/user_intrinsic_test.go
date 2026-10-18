@@ -4,10 +4,6 @@ import (
 	"regexp"
 	"strings"
 	"testing"
-
-	"duckfam.us/sngl/codegen"
-	"duckfam.us/sngl/internal/lower"
-	"duckfam.us/sngl/ir"
 )
 
 // A fyne widget written directly in user code must build its widget — issue
@@ -38,21 +34,7 @@ window {
     }
 }
 `
-	pkg := checkForFyne(t, src)
-	g := &Generator{}
-	lang := codegen.LookupLang("go")
-	if lang == nil {
-		t.Fatal("go lang not registered")
-	}
-	pkg = ir.ClonePackage(pkg)
-	if err := lower.Lower(pkg, codegen.CapsOrNone(lang.LanguageIdentifier(), g.PlatformIdentifier()), lower.Options{Platform: "fyne", Language: "go"}); err != nil {
-		t.Fatalf("lower: %v", err)
-	}
-	mem := codegen.NewMemSink()
-	if err := g.Generate(&codegen.Request{Pkg: pkg, Lang: lang, Source: "t.sngl"}, mem); err != nil {
-		t.Fatalf("generate: %v", err)
-	}
-	out := string(mem.Files()["model.go"])
+	out := generateFyneModelBuilt(t, src)
 
 	for _, want := range []string{
 		"widget.NewLabel(",

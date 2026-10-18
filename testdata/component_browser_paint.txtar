@@ -142,9 +142,6 @@ window.__sngl_boot = () => {
   if (typeof window !== "undefined") {
     window.__sngl_state = state;
   }
-  function color(r, g, b, a) {
-    return { r, g, b, a };
-  }
   function red(p) {
     return p.a > 200 && p.r > 200 && p.g < 50;
   }
@@ -276,7 +273,7 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:0d847a1a5045e4c4b731b6136a310c7f
+pass sha256:30bd8b9b33723802c20bf4f69ff4f682
 -- testrun/html/none/component_browser_paint.sngl/lengths/1 --
 sha256:3bbf475b70db18015fe50166c6a56957
 {

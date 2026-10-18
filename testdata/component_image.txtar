@@ -386,7 +386,7 @@ func (m *Model) __n1_click_handler() {
 func (m *Model) __n1_load_handler() {
 }
 
-func (m *Model) __n1_failed_handler(m__r0 string) {
+func (m *Model) __n1_failed_handler(m__r2 string) {
 }
 
 func (m *Model) Src() string {
@@ -689,7 +689,7 @@ window.__sngl_boot();
 -- run/go/bubbletea --
 pass sha256:ce8172da4c086c25343f2f715b428a47
 -- run/go/fyne --
-pass sha256:fea3ccd72fab6dc7be3834a9156a43d4
+pass sha256:04d9788d26d2f126511f55531eb43846
 -- run/go/gtk4 --
 pass sha256:67ec3e91a8b60e6e941ccd16ee5be6b4
 -- run/kotlin/android --

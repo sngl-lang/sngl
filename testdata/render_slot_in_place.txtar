@@ -164,7 +164,7 @@ func (m *Model) SetItems(v []string) {
 
 // BuildUI creates the widget tree. Call once; widgets are updated selectively.
 func (m *Model) BuildUI() fyne.CanvasObject {
-	m.__n2 = container.NewVBox()
+	m.__n2 = fynelayout.NewVBox()
 	m.__n3 = widget.NewLabel("")
 	m.__n3.SetText("head")
 	m.__n2.Add(m.__n3)
@@ -368,6 +368,6 @@ func (m *Model) moreClick() {
 	gtk4rt.Emit(m.more, "clicked")
 }
 -- run/go/fyne --
-pass sha256:1b6c461aee4a917cd3938f022c5aaa3a
+pass sha256:246bffd6973cc68ef10b7641de22b400
 -- run/go/gtk4 --
 pass sha256:815d5c210999f508fb288f648754789c

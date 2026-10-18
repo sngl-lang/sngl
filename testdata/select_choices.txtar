@@ -468,7 +468,6 @@ import (
 	"duckfam.us/sngl/pkg/go/fynelayout"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
-	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
 	"os"
 	"slices"
@@ -572,7 +571,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n0.SetVisible(m.visible__inst0)
 	m.__n0.OnClosed = m.__n0_closed_handler
 	m.__n0.OnVisible = m.__n0_visible_handler
-	m.__n2 = container.NewVBox()
+	m.__n2 = fynelayout.NewVBox()
 	m.__n1 = widget.NewSelect(nil, nil)
 	m.__n1.SetOptions(func() []string {
 		__out := make([]string, len(slices.Concat([]Choice__record{Choice__record{Label: "None"}}, func() []Choice__record {
@@ -823,7 +822,7 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:852b0eb338d2ba50ecdde29e7327c6cf
 -- run/go/fyne --
-pass sha256:5c9f1f4c66647146331e5d05cde19f28
+pass sha256:a9f8d8d657e27f20321f8a64c06b8d2f
 -- run/kotlin/android --
 pass sha256:9de70ea065cbd4f2ef44fd1a433b55f9
 -- run/none/html --

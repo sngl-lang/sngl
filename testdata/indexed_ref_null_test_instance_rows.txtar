@@ -759,7 +759,7 @@ func (m *Model) SetSkip(v string) {
 
 // BuildUI creates the widget tree. Call once; widgets are updated selectively.
 func (m *Model) BuildUI() fyne.CanvasObject {
-	m.__n3 = container.NewVBox()
+	m.__n3 = fynelayout.NewVBox()
 	m.move = widget.NewButton("", nil)
 	m.move.SetText("m")
 	m.move.OnTapped = m.move_click_handler
@@ -927,7 +927,7 @@ func new__child0Instance(__model *Model, __a___p0 []string, __a___p1 string, __a
 	c.__root = container.NewVBox()
 	c.__slot0 = nil
 	c.__slot1 = nil
-	__n4 := container.NewVBox()
+	__n4 := fynelayout.NewVBox()
 	c.__n1 = new__block_state0Instance(c.__model, c.__prop___p0, c.__prop___p1, func(__on0_0 string) {
 		c.__prop___on0(__on0_0)
 	})
@@ -1803,7 +1803,7 @@ window.__sngl_boot();
 -- run/go/bubbletea --
 pass sha256:5339298c0cd5ef07c0e0e95297407315
 -- run/go/fyne --
-pass sha256:d49e4485f48af2326509879d4ea5754d
+pass sha256:45cf0c7a42675f0195af1957ad67187f
 -- run/go/gtk4 --
 pass sha256:9b3309bf297cfcfa4be062c746b0bcd4
 -- run/kotlin/android --

@@ -608,7 +608,7 @@ import (
 
 // Model holds the state for this SNGL UI.
 type Model struct {
-	m__r1        int
+	m__r3        int
 	xs           []int
 	__root       *fyne.Container
 	__slot0      []fyne.CanvasObject
@@ -624,7 +624,7 @@ type Model struct {
 // New creates a Model with default values.
 func New() *Model {
 	m := &Model{}
-	m.m__r1 = 1
+	m.m__r3 = 1
 	m.xs = []int{1, 2}
 	m.__root = container.NewVBox()
 	m.__slot0 = nil
@@ -669,8 +669,8 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 }
 
 func (m *Model) bump_click_handler() {
-	m.m__r1 += 1
-	m.__n1.SetText(("page " + fmt.Sprint(m.m__r1)))
+	m.m__r3 += 1
+	m.__n1.SetText(("page " + fmt.Sprint(m.m__r3)))
 }
 
 // bumpClick invokes the OnTapped callback on the #bump widget; for tests.
@@ -687,12 +687,12 @@ func (m *Model) incClick() {
 	}
 }
 
-func (m *Model) M__r1() int {
-	return m.m__r1
+func (m *Model) M__r3() int {
+	return m.m__r3
 }
 
-func (m *Model) SetM__r1(v int) {
-	m.m__r1 = v
+func (m *Model) SetM__r3(v int) {
+	m.m__r3 = v
 }
 
 func (m *Model) Xs() []int {
@@ -705,9 +705,9 @@ func (m *Model) SetXs(v []int) {
 
 // BuildUI creates the widget tree. Call once; widgets are updated selectively.
 func (m *Model) BuildUI() fyne.CanvasObject {
-	m.__n3 = container.NewVBox()
+	m.__n3 = fynelayout.NewVBox()
 	m.__n1 = widget.NewLabel("")
-	m.__n1.SetText(("page " + fmt.Sprint(m.m__r1)))
+	m.__n1.SetText(("page " + fmt.Sprint(m.m__r3)))
 	m.__n3.Add(m.__n1)
 	m.bump = widget.NewButton("", nil)
 	m.bump.SetText("bump")
@@ -723,8 +723,8 @@ type CounterInstance struct {
 	Root         fyne.CanvasObject
 	__model      *Model
 	__prop_start int
-	m__r0        int
-	c__r0        int
+	m__r2        int
+	c__r1        int
 	__root       *fyne.Container
 	__slot0      []fyne.CanvasObject
 	__slot0_at   fyne.CanvasObject
@@ -736,21 +736,21 @@ func newCounterInstance(__model *Model, __a_start int) *CounterInstance {
 	c := &CounterInstance{}
 	c.__model = __model
 	c.__prop_start = __a_start
-	c.m__r0 = c.__prop_start
-	c.c__r0 = 0
+	c.m__r2 = c.__prop_start
+	c.c__r1 = 0
 	c.__root = container.NewVBox()
 	c.__slot0 = nil
-	__n4 := container.NewHBox()
+	__n4 := fynelayout.NewHBox()
 	c.__n0 = widget.NewLabel("")
-	c.__n0.SetText(((("m " + fmt.Sprint(c.m__r0)) + " c ") + fmt.Sprint(c.c__r0)))
+	c.__n0.SetText(((("m " + fmt.Sprint(c.m__r2)) + " c ") + fmt.Sprint(c.c__r1)))
 	__n4.Add(c.__n0)
 	c.inc = widget.NewButton("", nil)
 	c.inc.SetText("inc")
 	c.inc.OnTapped = func() {
-		c.m__r0 += 1
-		c.__n0.SetText(((("m " + fmt.Sprint(c.m__r0)) + " c ") + fmt.Sprint(c.c__r0)))
-		c.c__r0 += 1
-		c.__n0.SetText(((("m " + fmt.Sprint(c.m__r0)) + " c ") + fmt.Sprint(c.c__r0)))
+		c.m__r2 += 1
+		c.__n0.SetText(((("m " + fmt.Sprint(c.m__r2)) + " c ") + fmt.Sprint(c.c__r1)))
+		c.c__r1 += 1
+		c.__n0.SetText(((("m " + fmt.Sprint(c.m__r2)) + " c ") + fmt.Sprint(c.c__r1)))
 	}
 	__n4.Add(c.inc)
 	c.Root = __n4
@@ -782,7 +782,7 @@ func TestBump(t *testing.T) {
 	c := newTestComponent()
 	_ = c
 	c.bumpClick()
-	if !((c.m__r1 == 2)) { t.Errorf("assert failed: %s", "(c.m__r1 == 2)") }
+	if !((c.m__r3 == 2)) { t.Errorf("assert failed: %s", "(c.m__r3 == 2)") }
 }
 
 -- out/go/fyne/testcomponent_test.go --
@@ -997,6 +997,6 @@ func (m *Model) incClick() {
 -- run/go/bubbletea --
 pass sha256:6610b9add912bcddbccbcc8882ea322f
 -- run/go/fyne --
-pass sha256:056a23bca0a9a8b3478f8d4ba0373c18
+pass sha256:e090ee5b1f37e772983293ce4739deac
 -- run/go/gtk4 --
 pass sha256:5e2a975432ac410706f46930a28eb184

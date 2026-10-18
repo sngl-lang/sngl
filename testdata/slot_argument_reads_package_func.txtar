@@ -495,7 +495,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n2.SetVisible(m.visible__inst0)
 	m.__n2.OnClosed = m.__n2_closed_handler
 	m.__n2.OnVisible = m.__n2_visible_handler
-	m.__n8 = container.NewVBox()
+	m.__n8 = fynelayout.NewVBox()
 	m.__n3 = newFrame__slot0Instance(m, m.depth, 0)
 	m.__n3__el = m.__n3.Root
 	m.__n8.Add(m.__n3__el)
@@ -529,7 +529,7 @@ func newFrame__slot2Instance(__model *Model, __a_n int, __a___depth int) *Frame_
 	c.__slot0 = nil
 	c.__inst0_live = []*Frame__slot2Instance{}
 	c.__slot1 = nil
-	c.__n5 = container.NewVBox()
+	c.__n5 = fynelayout.NewVBox()
 	c.__n0 = widget.NewLabel("")
 	c.__n0.SetText(("level " + fmt.Sprint((c.__prop_n * 2))))
 	c.__n5.Add(c.__n0)
@@ -622,7 +622,7 @@ func newFrame__slot0Instance(__model *Model, __a_n int, __a___depth int) *Frame_
 	c.__slot0 = nil
 	c.__slot1 = nil
 	c.__inst1_live = []*Frame__slot2Instance{}
-	c.__n7 = container.NewVBox()
+	c.__n7 = fynelayout.NewVBox()
 	c.__n1 = widget.NewLabel("")
 	c.__n1.SetText(("level " + fmt.Sprint((c.__prop_n * 2))))
 	c.__n7.Add(c.__n1)
@@ -1307,7 +1307,7 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:9b740492af9acc5250376ed95dc99dab
 -- run/go/fyne --
-pass sha256:df22cbf5474833c2ef3809f51d7439ed
+pass sha256:7f39d10df1fbe9120f7575e851019de2
 -- run/go/gtk4 --
 pass sha256:56fa400b7ed8e22d014afcabab67a89e
 -- run/kotlin/android --

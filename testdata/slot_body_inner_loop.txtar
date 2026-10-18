@@ -172,7 +172,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n0.SetVisible(m.visible__inst0)
 	m.__n0.OnClosed = m.__n0_closed_handler
 	m.__n0.OnVisible = m.__n0_visible_handler
-	m.__n4 = container.NewVBox()
+	m.__n4 = fynelayout.NewVBox()
 	m.bump = widget.NewButton("", nil)
 	m.bump.SetText("bump")
 	m.bump.OnTapped = m.bump_click_handler
@@ -205,7 +205,7 @@ func new__child0Instance(__model *Model, __a___p0 []string, __a___p1 int) *__chi
 	c.__root = container.NewVBox()
 	c.__slot0 = nil
 	c.__slot1 = nil
-	c.__n2 = container.NewHBox()
+	c.__n2 = fynelayout.NewHBox()
 	c.__renderSlot0(c.__n2)
 	c.Root = c.__n2
 	return c
@@ -615,7 +615,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:4c018976672de5b0d05821308fd5198b
+pass sha256:557885522a98b7ef9c01b52a8a5d513f
 -- run/go/gtk4 --
 pass sha256:7dd4910c59bf76195821135420f03c46
 -- run/none/html --

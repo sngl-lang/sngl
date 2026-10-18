@@ -775,13 +775,13 @@ func (m *Model) __n0_visible_handler(__visible bool) {
 
 func (m *Model) __n22_click_handler() {
 	m.shown__inst0 = true
-	var __lt8 string
+	var __lt23 string
 	if !m.shown__inst0 {
-		__lt8 = "empty"
+		__lt23 = "empty"
 	} else {
-		__lt8 = "has content"
+		__lt23 = "has content"
 	}
-	m.__n3.SetText(__lt8)
+	m.__n3.SetText(__lt23)
 	m.__renderSlot2(m.__n0.Container)
 }
 
@@ -851,76 +851,76 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n0.SetVisible(m.visible__inst0)
 	m.__n0.OnClosed = m.__n0_closed_handler
 	m.__n0.OnVisible = m.__n0_visible_handler
-	__lt0 := "empty"
+	__lt15 := "empty"
 	m.__n15 = widget.NewLabel("")
-	m.__n15.SetText(__lt0)
+	m.__n15.SetText(__lt15)
 	m.__n0.Add(m.__n15)
-	var __lt1 string
+	var __lt16 string
 	if m.started__inst0 {
-		__lt1 = "started empty"
+		__lt16 = "started empty"
 	} else {
-		__lt1 = "started with content"
+		__lt16 = "started with content"
 	}
 	m.__n1 = widget.NewLabel("")
-	m.__n1.SetText(__lt1)
+	m.__n1.SetText(__lt16)
 	m.__n0.Add(m.__n1)
 	m.__n16 = widget.NewLabel("")
 	m.__n16.SetText("nothing")
 	m.__n0.Add(m.__n16)
-	__lt2 := "has content"
+	__lt17 := "has content"
 	m.__n18 = widget.NewLabel("")
-	m.__n18.SetText(__lt2)
+	m.__n18.SetText(__lt17)
 	m.__n0.Add(m.__n18)
-	var __lt3 string
+	var __lt18 string
 	if m.started__inst1 {
-		__lt3 = "started empty"
+		__lt18 = "started empty"
 	} else {
-		__lt3 = "started with content"
+		__lt18 = "started with content"
 	}
 	m.__n2 = widget.NewLabel("")
-	m.__n2.SetText(__lt3)
+	m.__n2.SetText(__lt18)
 	m.__n0.Add(m.__n2)
-	m.__n20 = container.NewVBox()
+	m.__n20 = fynelayout.NewVBox()
 	m.__n21 = widget.NewLabel("")
 	m.__n21.SetText("a")
 	m.__n20.Add(m.__n21)
 	m.__n0.Add(m.__n20)
-	var __lt4 string
+	var __lt19 string
 	if !m.shown__inst0 {
-		__lt4 = "empty"
+		__lt19 = "empty"
 	} else {
-		__lt4 = "has content"
+		__lt19 = "has content"
 	}
 	m.__n3 = widget.NewLabel("")
-	m.__n3.SetText(__lt4)
+	m.__n3.SetText(__lt19)
 	m.__n0.Add(m.__n3)
-	var __lt5 string
+	var __lt20 string
 	if m.started__inst2 {
-		__lt5 = "started empty"
+		__lt20 = "started empty"
 	} else {
-		__lt5 = "started with content"
+		__lt20 = "started with content"
 	}
 	m.__n4 = widget.NewLabel("")
-	m.__n4.SetText(__lt5)
+	m.__n4.SetText(__lt20)
 	m.__n0.Add(m.__n4)
 	m.__renderSlot2(m.__n0.Container)
-	var __lt6 string
+	var __lt21 string
 	if !(len(m.xs__inst0) == 0) {
-		__lt6 = "empty"
+		__lt21 = "empty"
 	} else {
-		__lt6 = "has content"
+		__lt21 = "has content"
 	}
 	m.__n5 = widget.NewLabel("")
-	m.__n5.SetText(__lt6)
+	m.__n5.SetText(__lt21)
 	m.__n0.Add(m.__n5)
-	var __lt7 string
+	var __lt22 string
 	if m.started__inst3 {
-		__lt7 = "started empty"
+		__lt22 = "started empty"
 	} else {
-		__lt7 = "started with content"
+		__lt22 = "started with content"
 	}
 	m.__n6 = widget.NewLabel("")
-	m.__n6.SetText(__lt7)
+	m.__n6.SetText(__lt22)
 	m.__n0.Add(m.__n6)
 	m.__renderSlot3(m.__n0.Container)
 	m.__n22 = widget.NewButton("", nil)
@@ -957,7 +957,7 @@ func new__child0Instance(__model *Model, __a___p0 bool) *__child0Instance {
 	c.__slot1 = nil
 	c.__slot2 = nil
 	c.__slot3 = nil
-	c.__n8 = container.NewVBox()
+	c.__n8 = fynelayout.NewVBox()
 	c.__renderSlot0(c.__n8)
 	c.Root = c.__n8
 	return c
@@ -1010,7 +1010,7 @@ func new__child1Instance(__model *Model, __a___p0 []int) *__child1Instance {
 	c.__slot1 = nil
 	c.__slot2 = nil
 	c.__slot3 = nil
-	c.__n10 = container.NewVBox()
+	c.__n10 = fynelayout.NewVBox()
 	c.__renderSlot1(c.__n10)
 	c.Root = c.__n10
 	return c
@@ -1429,7 +1429,7 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:06c3f40f6a042488306ab631fc93d341
 -- run/go/fyne --
-pass sha256:7a7b2f6892da717ab69b54a94be097d1
+pass sha256:fb9b8078d95fc0671fa31260c2d7174f
 -- run/kotlin/android --
 pass sha256:78ac092a368a07c9cdca40e21d131255
 -- run/none/html --

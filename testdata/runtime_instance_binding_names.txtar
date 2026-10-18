@@ -554,7 +554,7 @@ func (m *Model) SetMark(v string) {
 
 // BuildUI creates the widget tree. Call once; widgets are updated selectively.
 func (m *Model) BuildUI() fyne.CanvasObject {
-	m.__n27 = container.NewVBox()
+	m.__n27 = fynelayout.NewVBox()
 	m.__n12 = newFrame__slot0Instance(m, m.depth, "top", 0, m.mark)
 	m.__n12__el = m.__n12.Root
 	m.__n27.Add(m.__n12__el)
@@ -610,7 +610,7 @@ func newFrame__slot6Instance(__model *Model, __a_result int, __a_m string, __a__
 	c.__slot3 = nil
 	c.__slot4 = nil
 	c.__slot5 = nil
-	c.__n16 = container.NewVBox()
+	c.__n16 = fynelayout.NewVBox()
 	c.__n0 = widget.NewLabel("")
 	c.__n0.SetText(c.__prop_m)
 	c.__n16.Add(c.__n0)
@@ -741,7 +741,7 @@ func newFrame__slot5Instance(__model *Model, __a_result int, __a_m string, __a__
 	c.__slot3 = nil
 	c.__slot4 = nil
 	c.__slot5 = nil
-	c.__n18 = container.NewVBox()
+	c.__n18 = fynelayout.NewVBox()
 	c.__n2 = widget.NewLabel("")
 	c.__n2.SetText(c.__prop_m)
 	c.__n18.Add(c.__n2)
@@ -872,7 +872,7 @@ func newFrame__slot4Instance(__model *Model, __a_result int, __a_m string, __a__
 	c.__slot3 = nil
 	c.__slot4 = nil
 	c.__slot5 = nil
-	c.__n20 = container.NewVBox()
+	c.__n20 = fynelayout.NewVBox()
 	c.__n4 = widget.NewLabel("")
 	c.__n4.SetText(c.__prop_m)
 	c.__n20.Add(c.__n4)
@@ -1003,7 +1003,7 @@ func newFrame__slot2Instance(__model *Model, __a_result int, __a_m string, __a__
 	c.__inst3_live = []*Frame__slot6Instance{}
 	c.__slot4 = nil
 	c.__slot5 = nil
-	c.__n22 = container.NewVBox()
+	c.__n22 = fynelayout.NewVBox()
 	c.__n6 = widget.NewLabel("")
 	c.__n6.SetText(c.__prop_m)
 	c.__n22.Add(c.__n6)
@@ -1134,7 +1134,7 @@ func newFrame__slot1Instance(__model *Model, __a_result int, __a_m string, __a__
 	c.__slot4 = nil
 	c.__inst4_live = []*Frame__slot5Instance{}
 	c.__slot5 = nil
-	c.__n24 = container.NewVBox()
+	c.__n24 = fynelayout.NewVBox()
 	c.__n8 = widget.NewLabel("")
 	c.__n8.SetText(c.__prop_m)
 	c.__n24.Add(c.__n8)
@@ -1265,7 +1265,7 @@ func newFrame__slot0Instance(__model *Model, __a_result int, __a_m string, __a__
 	c.__slot4 = nil
 	c.__slot5 = nil
 	c.__inst5_live = []*Frame__slot4Instance{}
-	c.__n26 = container.NewVBox()
+	c.__n26 = fynelayout.NewVBox()
 	c.__n10 = widget.NewLabel("")
 	c.__n10.SetText(c.__prop_m)
 	c.__n26.Add(c.__n10)
@@ -3364,7 +3364,7 @@ window.__sngl_boot();
 -- run/go/bubbletea --
 pass sha256:27329bc7c1d94206af30047be0aeae2e
 -- run/go/fyne --
-pass sha256:0527d5d1368d047cb32c086f0753cd73
+pass sha256:d475b60580e7b14df183110e25119290
 -- run/go/gtk4 --
 pass sha256:243098f69503977c27f966426bb381fd
 -- run/kotlin/android --

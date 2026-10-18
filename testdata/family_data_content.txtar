@@ -630,15 +630,15 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 	m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
 	__inst0_next := []*__child0Instance{}
 	var __inst0_i int = 0
-	for k, c__r0 := range []Card__record{Card__record{Label: "one", __id: 0}, Card__record{Label: "two", __id: 1}} {
+	for k, c__r1 := range []Card__record{Card__record{Label: "one", __id: 0}, Card__record{Label: "two", __id: 1}} {
 		if k == m.shown {
-			if c__r0.__id == 0 {
+			if c__r1.__id == 0 {
 				__n2 := widget.NewLabel("")
 				__n2.SetText("first")
 				fynelayout.InsertBefore(__parent, m.__slot0_at, __n2)
 				m.__slot0 = append(m.__slot0, __n2)
 			} else {
-				if c__r0.__id == 1 {
+				if c__r1.__id == 1 {
 					__n3 := widget.NewButton("", nil)
 					__n3.SetText("hit")
 					__n3.OnTapped = func() {
@@ -720,10 +720,10 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n1.SetVisible(m.visible__inst0)
 	m.__n1.OnClosed = m.__n1_closed_handler
 	m.__n1.OnVisible = m.__n1_visible_handler
-	m.__n5 = container.NewHBox()
-	for k, c__r1 := range []Card__record{Card__record{Label: "one", __id: 0}, Card__record{Label: "two", __id: 1}} {
+	m.__n5 = fynelayout.NewHBox()
+	for k, c__r2 := range []Card__record{Card__record{Label: "one", __id: 0}, Card__record{Label: "two", __id: 1}} {
 		m.__n6 = widget.NewButton("", nil)
-		m.__n6.SetText(c__r1.Label)
+		m.__n6.SetText(c__r2.Label)
 		m.__n6.OnTapped = func() {
 			m.shown = k
 			m.__renderSlot0(m.__n1.Container)
@@ -1226,7 +1226,7 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:60cb5a507263bb33ecad901dbc78a94f
 -- run/go/fyne --
-pass sha256:a118d279c113e07ab4545ee98ded1949
+pass sha256:c94d02c473486921ab43c1b910e1b77a
 -- run/go/gtk4 --
 pass sha256:5b6155d891f2a264b78dc1c6bcde1179
 -- run/kotlin/android --
