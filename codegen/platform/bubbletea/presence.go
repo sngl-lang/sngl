@@ -75,6 +75,18 @@ func presenceWalk(stmts []ir.Stmt, id string, loops []*ir.For, answer func([]*ir
 				out = append(out, &cp)
 			}
 			found = found || inBody || inElse
+		case *ir.Match:
+			arms := make([][]ir.Stmt, len(n.Arms))
+			held := false
+			for i, arm := range n.Arms {
+				var in bool
+				arms[i], in = presenceWalk(arm.Body, id, loops, answer)
+				found = found || in
+				held = held || len(arms[i]) > 0
+			}
+			if held {
+				out = append(out, n.Over(func(i int, _ []ir.Stmt) []ir.Stmt { return arms[i] }))
+			}
 		case *ir.For:
 			body, inBody := presenceWalk(n.Body, id, append(loops[:len(loops):len(loops)], n), answer)
 			els, inElse := presenceWalk(n.Else, id, loops, answer)

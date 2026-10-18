@@ -28,6 +28,15 @@ func LogicalMutations(block []ir.Stmt) []ir.Stmt {
 			cp := *n
 			cp.Body, cp.Else = LogicalMutations(n.Body), LogicalMutations(n.Else)
 			s = &cp
+		case *ir.Match:
+			cp := *n
+			cp.Arms = make([]*ir.MatchArm, len(n.Arms))
+			for i, arm := range n.Arms {
+				a := *arm
+				a.Body = LogicalMutations(arm.Body)
+				cp.Arms[i] = &a
+			}
+			s = &cp
 		}
 		out = append(out, s)
 	}

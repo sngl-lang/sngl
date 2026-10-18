@@ -1,0 +1,40 @@
+// A match whose subject the build knows is the arm it takes: the optimizer
+// folds it away, as it folds an `if` on a constant.
+
+import . "sngl:test"
+import . "sngl:ui"
+
+enum Size { small, medium, large }
+
+const size = Size.medium
+const limit = 3
+
+component fold node {
+    var label = match size { // FOLD "medium"
+        small => "small"
+        medium => "medium"
+        large => "large"
+    }
+    var count = match limit { // FOLD "few"
+        0 => "none"
+        1, 2, 3 => "few"
+        else => "many"
+    }
+    var headless = match { // FOLD 2
+        limit > 5 => 1
+        limit > 2 => 2
+        else => 3
+    }
+
+    text(value=label)
+}
+
+func testFolded(t Test, c fold) {
+    t.assert(c.label == "medium")
+    t.assert(c.count == "few")
+    t.assert(c.headless == 2)
+}
+
+window {
+    fold
+}

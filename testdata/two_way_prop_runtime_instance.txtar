@@ -321,6 +321,7 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 			__n3.SetLabel(it)
 			__n3.Set__on_n(func(__n int) {
 				m.total = __n
+				gtk4rt.LabelSetText(m.__n2, ("total " + fmt.Sprint(m.total)))
 				for __inst0_live_ui, _ := range m.__inst0_live {
 					m.__inst0_live[__inst0_live_ui].SetN(m.total)
 				}
@@ -331,6 +332,7 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 			}
 			__n3__new := newCounterInstance(m, m.total, it, func(__n int) {
 				m.total = __n
+				gtk4rt.LabelSetText(m.__n2, ("total " + fmt.Sprint(m.total)))
 				for __inst0_live_ui, _ := range m.__inst0_live {
 					m.__inst0_live[__inst0_live_ui].SetN(m.total)
 				}
@@ -635,6 +637,6 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/fyne --
 pass sha256:c7ab26133d1ed88dc8d7ba924b76f793
 -- run/go/gtk4 --
-pass sha256:bcbbca440d74af8aaa1ac348646dfe5f
+pass sha256:43e9ec200b841d6dfd93e5aef9277829
 -- run/none/html --
 pass sha256:ed4fc2826ba0fc5dae45dcf779e8fcac

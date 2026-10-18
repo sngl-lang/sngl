@@ -49,6 +49,16 @@ func rewriteUnitExpr(e ir.Expr) ir.Expr {
 		x.Cond = rewriteUnitExpr(x.Cond)
 		x.Then = rewriteUnitExpr(x.Then)
 		x.Else = rewriteUnitExpr(x.Else)
+	case *ir.MatchExpr:
+		if x.Subject != nil {
+			x.Subject = rewriteUnitExpr(x.Subject)
+		}
+		for _, arm := range x.Arms {
+			for j := range arm.Patterns {
+				arm.Patterns[j] = rewriteUnitExpr(arm.Patterns[j])
+			}
+			arm.Value = rewriteUnitExpr(arm.Value)
+		}
 	case *ir.Call:
 		if x.Receiver != nil {
 			x.Receiver = rewriteUnitExpr(x.Receiver)

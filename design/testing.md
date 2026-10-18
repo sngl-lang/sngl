@@ -13,7 +13,10 @@
 from the root `TestGolden`): the archive's root-level files are one SNGL
 package, `out/<lang>/<platform>/` is the generated code, and which targets run
 is the source's own `output` block rather than a harness header. Seed or
-refresh with `go test . -run TestGolden -update`. The compile is
+refresh with `go test . -run TestGolden -update`. A `written <import path>`
+line in the archive's comment adds what that import's plugin wrote, as its
+store holds it, under `written/<scheme>/` -- the package an `openapi:`
+import resolves to -- with its notes in `written/<scheme>/notes`. The compile is
 `internal/build`'s — the same code `sngl generate` runs, which is why that
 package exists.
 
@@ -123,8 +126,8 @@ to exercise: generated output is identical either way. Confirm a new fixture
 **A test body is lowered by each language's own test emitter**
 (`codegen/lang/{golang,javascript,kotlin}/testlower.go`), and the interpreter
 is the reference every target is held to — `cmd/sngl/testdata/test_component_surface*.txt`
-runs one program through every form of access a test body has on all six. Four
-rules keep them agreeing:
+runs one program through every form of access a test body has on all six.
+These rules keep them agreeing:
 
 - **Test bodies are checked last**, after every component and window body:
   an unannotated component var has no type until its body is read.
@@ -140,6 +143,15 @@ rules keep them agreeing:
 - **An event invoker takes the event's arguments**: `c.f.input("v")` hands
   the invoker `"v"`, which it puts in the widget before firing the one event,
   as android's `performTextReplacement` does.
+- **Effects settle after every statement**: a compiled test settles after
+  each write (`settleAfterWrites`), and the interpreter's runner after each
+  statement as well as on each read through the instance, since a read of
+  package state goes through none -- a click that unmounted and remounted a
+  branch left `asked.length()` unsettled (`testdata/async_query_loop.sngl`).
+- **A member named `length` is a list's, a map's or a string's measure only
+  on one of those** (`ir.HasLength`): read off an instance it is the
+  program's var, which Go wrote as `len(c)`
+  (`cmd/sngl/testdata/test_reads_var_named_length_runs.txt`).
 
 **A test reaches into what its component renders** -- `c.b.hits`,
 `c.b.btn.click()`, `c.b.row[0].click()`, `c.b.reset()`, `c.r[1].pressed(7)`

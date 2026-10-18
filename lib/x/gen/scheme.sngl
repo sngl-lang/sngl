@@ -40,3 +40,10 @@ struct Out {}
 // nothing, since it is the output.
 #[marks.intrinsic("gen.Out.write", build)]
 func Out.write(name string, src string)
+
+// Says something about what the import resolved to that its author should
+// read: a construct the plugin left out, a name it changed. Each note is a
+// warning at the import, given every time the import is checked, the stored
+// package's included. It records nothing, since it is part of the output.
+#[marks.intrinsic("gen.Out.note", build)]
+func Out.note(message string)

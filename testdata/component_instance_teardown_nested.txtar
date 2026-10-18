@@ -478,6 +478,7 @@ func (m *Model) __renderSlot1(parent gtk4rt.Handle) {
 			__n3.SetDepth(1)
 			__n3.SetNote(func(s string) {
 				m.log = ((m.log + s) + ";")
+				gtk4rt.LabelSetText(m.__n1, ("log=" + m.log))
 			})
 			__n3.Set__depth(0)
 		} else {
@@ -486,6 +487,7 @@ func (m *Model) __renderSlot1(parent gtk4rt.Handle) {
 			}
 			__n3__new := newNestInstance(m, r, 1, func(s string) {
 				m.log = ((m.log + s) + ";")
+				gtk4rt.LabelSetText(m.__n1, ("log=" + m.log))
 			}, 0)
 			__n3 = __n3__new
 		}
@@ -1151,7 +1153,7 @@ window.__sngl_boot();
 -- run/go/fyne --
 pass sha256:1061789981fd0c8137785b1d122a73d0
 -- run/go/gtk4 --
-pass sha256:069320d79065d7d667531e5f97f5466c
+pass sha256:a0b82e6eb40d185bf2025b02318719b3
 -- run/kotlin/android --
 pass sha256:b55f19f7cb7dd03838e4446d877c2959
 -- run/none/html --

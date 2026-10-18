@@ -267,6 +267,8 @@ func (env *Env) exec(s ir.Stmt) error {
 		return nil
 	case *ir.If:
 		return env.execIf(n)
+	case *ir.Match:
+		return env.execMatch(n)
 	case *ir.For:
 		return env.execFor(n)
 	case *ir.Break:

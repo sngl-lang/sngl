@@ -53,11 +53,10 @@ func widgetLoops(stmts []ir.Stmt) map[*ir.NodeInst][]*ir.For {
 				inner := append(append([]*ir.For{}, loops...), n)
 				walk(n.Body, inner)
 				walk(n.Else, loops)
-			case *ir.If:
-				walk(n.Body, loops)
-				walk(n.Else, loops)
-			case *ir.ErrorBoundary:
-				walk(n.Children, loops)
+			case *ir.If, *ir.Match, *ir.ErrorBoundary:
+				for _, b := range ir.TransparentBlocks(n) {
+					walk(*b, loops)
+				}
 			}
 		}
 	}

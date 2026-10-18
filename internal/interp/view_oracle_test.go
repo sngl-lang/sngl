@@ -60,6 +60,10 @@ func oracleByStmts(env *Env, stmts []ir.Stmt, id string, out *[]map[string]any) 
 				continue
 			}
 			oracleByStmts(env, n.Body, id, out)
+		case *ir.Match:
+			if i, err := env.matchArm(&n.MatchArms); err == nil && i >= 0 {
+				oracleByStmts(env, n.Arms[i].Body, id, out)
+			}
 		case *ir.For:
 			iterVal, err := env.Eval(n.Iter)
 			if err != nil {

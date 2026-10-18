@@ -1942,7 +1942,7 @@ sha256:77e02e2c7f8973469a24f047cdd76de6
   ]
 }
 -- testrun/gtk4/go/method2.sngl/main/1 --
-sha256:62a3c16a5837918e64f2c386e184ea5a
+sha256:4976641888d177ed1c0c86004d0e4252
 {
   "results": [
     {

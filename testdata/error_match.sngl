@@ -1,0 +1,65 @@
+// What a match refuses, each at its position.
+
+import . "sngl:ui"
+
+enum Status { active, inactive, pending }
+
+func missing(s Status) => match s { // ERROR(check) "match is not exhaustive: missing pending"
+    active => 1
+    inactive => 2
+}
+
+func openEnded(n int) => match n { // ERROR(check) "match is not exhaustive: add an else arm"
+    0 => "zero"
+}
+
+func headless(n int) => match { // ERROR(check) "match is not exhaustive: add an else arm"
+    n > 0 => "positive"
+}
+
+func optionHalf(o option[Status]) => match o { // ERROR(check) "match is not exhaustive: missing null"
+    active => 1
+    inactive => 2
+    pending => 3
+}
+
+func twice(s Status) => match s {
+    active => 1
+    active => 2 // ERROR(check) "pattern active is already matched"
+    else => 3
+}
+
+func afterElse(s Status) => match s {
+    else => 1
+    active => 2 // ERROR(check) "arm is unreachable after else"
+}
+
+func wrongType(s Status) => match s {
+    "active" => 1 // ERROR(check) "pattern of type string cannot match Status"
+    else => 2
+}
+
+func notConst(s Status, t Status) => match s {
+    t => 1 // ERROR(check) "a pattern must be a constant"
+    else => 2
+}
+
+func blockInExpr(s Status) => match s {
+    active {} // ERROR(check) "an arm of a match expression is written pattern => value"
+    else => 2
+}
+
+func headlessNotBool(n int) => match {
+    n => "n" // ERROR(check) "a headless match arm is a condition: int is not bool"
+    else => "no"
+}
+
+func exprInStmt(s Status) {
+    match s {
+        active => 1 // ERROR(check) "an arm of a match statement is a block"
+        else {}
+    }
+}
+
+window {
+}

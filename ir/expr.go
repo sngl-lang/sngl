@@ -88,6 +88,13 @@ type Call struct {
 	// Qualifier is the import the callee was named through, `math.sqrt(x)`.
 	Qualifier *Namespace `json:",omitempty"`
 	Args      []CallArg  // resolved arguments (for type-methods, Args[0] is the receiver)
+	// Detached says the call starts its callee and does not wait for it: the
+	// caller goes on while an async callee waits, and reads no answer. So the
+	// call colours nothing async, and a language that awaits writes it
+	// without. The effect lowering makes its calls of a bracket's handlers
+	// detached, since a lifetime begins when its mount starts, and a settle
+	// waiting on one request would hold every other bracket with it.
+	Detached bool `json:",omitempty"`
 	// ReceiverArg says Args[0] is the value the method was called on, which
 	// its parameters do not list: a method whose receiver is implicit, as a
 	// `sngl:` one's and one on a generic type's are. ir.Convert prints such a
@@ -182,6 +189,12 @@ func BlockReturns(stmts []Stmt) bool {
 		case *For:
 			if BlockReturns(x.Body) || BlockReturns(x.Else) {
 				return true
+			}
+		case *Match:
+			for _, arm := range x.Arms {
+				if BlockReturns(arm.Body) {
+					return true
+				}
 			}
 		}
 	}
@@ -428,6 +441,21 @@ func IsConst(e Expr) bool {
 		return IsConst(x.Operand)
 	case *Ternary:
 		return IsConst(x.Cond) && IsConst(x.Then) && IsConst(x.Else)
+	case *MatchExpr:
+		if x.Subject != nil && !IsConst(x.Subject) {
+			return false
+		}
+		for _, arm := range x.Arms {
+			if !IsConst(arm.Value) {
+				return false
+			}
+			for _, p := range arm.Patterns {
+				if !IsConst(p) {
+					return false
+				}
+			}
+		}
+		return true
 	case *Call:
 		for _, a := range x.Args {
 			if !IsConst(a.Value) {

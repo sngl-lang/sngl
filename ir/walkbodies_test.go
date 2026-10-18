@@ -45,6 +45,7 @@ var irNodeTypes = map[string]reflect.Type{
 	"Closure":     reflect.TypeFor[Closure](),
 	"ContextRead": reflect.TypeFor[ContextRead](),
 	"SlotEmpty":   reflect.TypeFor[SlotEmpty](),
+	"MatchExpr":   reflect.TypeFor[MatchExpr](),
 
 	"NodeInst":         reflect.TypeFor[NodeInst](),
 	"CallStmt":         reflect.TypeFor[CallStmt](),
@@ -59,6 +60,7 @@ var irNodeTypes = map[string]reflect.Type{
 	"Continue":         reflect.TypeFor[Continue](),
 	"If":               reflect.TypeFor[If](),
 	"For":              reflect.TypeFor[For](),
+	"Match":            reflect.TypeFor[Match](),
 	"ContextProvider":  reflect.TypeFor[ContextProvider](),
 	"CanvasRedrawStmt": reflect.TypeFor[CanvasRedrawStmt](),
 }

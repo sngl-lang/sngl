@@ -431,7 +431,11 @@ bound one and the window's own cell (passImplicitState) where nothing did; a
 read `details.visible` names the same. A method called through a component's
 `#id` is repointed at the clone the inliner made where it spliced the node
 (`repointHandleCalls`, beside repointCellReads) -- before, `p.open()` came out
-as `m.p.open()` and the method was shaken away -- and the inliner now
+as `m.p.open()` and the method was shaken away. One no splice answered is
+refused (`refuseUnsplicedHandleCalls`) once the components nothing renders are
+dropped, since a test build rooted at one component leaves its siblings'
+calls emitted nowhere
+(`cmd/sngl/testdata/test_root_sibling_handle_call_runs.txt`) -- and the inliner now
 substitutes a component's events into its hoisted methods too, which is how a
 method's write of a bound prop reaches the caller. The override binds the prop
 through (`Toplevel(:visible=visible)`), which works because passPropBindings

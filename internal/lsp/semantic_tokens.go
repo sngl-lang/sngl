@@ -78,7 +78,7 @@ func scanKeywordTokens(content string) []rawToken {
 	keywords := map[string]bool{
 		"var": true, "const": true, "func": true, "component": true,
 		"struct": true, "enum": true, "unit": true, "window": true,
-		"if": true, "else": true, "for": true, "return": true,
+		"if": true, "else": true, "for": true, "match": true, "return": true,
 		"break": true, "continue": true,
 		"import": true,
 	}
@@ -237,6 +237,14 @@ func (w *irTokenWalker) stmt(s ir.Stmt) {
 		w.expr(x.Cond)
 		w.stmts(x.Body)
 		w.stmts(x.Else)
+	case *ir.Match:
+		w.expr(x.Subject)
+		for _, arm := range x.Arms {
+			for _, p := range arm.Patterns {
+				w.expr(p)
+			}
+			w.stmts(arm.Body)
+		}
 	case *ir.For:
 		w.expr(x.Iter)
 		w.stmts(x.Body)
@@ -284,6 +292,14 @@ func (w *irTokenWalker) expr(e ir.Expr) {
 		w.expr(x.Cond)
 		w.expr(x.Then)
 		w.expr(x.Else)
+	case *ir.MatchExpr:
+		w.expr(x.Subject)
+		for _, arm := range x.Arms {
+			for _, p := range arm.Patterns {
+				w.expr(p)
+			}
+			w.expr(arm.Value)
+		}
 	case *ir.Call:
 		if x.Qualifier != nil && x.AST != nil {
 			if sel, ok := x.AST.Func.(*ast.SelectExpr); ok {

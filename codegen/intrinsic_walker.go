@@ -262,6 +262,18 @@ func walkOne(ctx context.Context, s ir.Stmt, t IntrinsicTranslator) []ir.Stmt {
 			cp.Catch = &h
 		}
 		return []ir.Stmt{&cp}
+	case *ir.Match:
+		cp := *n
+		if n.Subject != nil {
+			cp.Subject = t.OnCond(ctx, n.Subject)
+		}
+		cp.Arms = make([]*ir.MatchArm, len(n.Arms))
+		for i, arm := range n.Arms {
+			a := *arm
+			a.Body = WalkLowered(ctx, arm.Body, t)
+			cp.Arms[i] = &a
+		}
+		return []ir.Stmt{&cp}
 	}
 	return t.OnDefault(ctx, s)
 }
@@ -383,6 +395,21 @@ func walkExprLambdas(ctx context.Context, e ir.Expr, t IntrinsicTranslator) (ir.
 		if movedThen || movedElse {
 			cp := *x
 			cp.Then, cp.Else = then, els
+			return &cp, true
+		}
+	case *ir.MatchExpr:
+		changed := false
+		arms := make([]*ir.MatchArm, len(x.Arms))
+		for i, arm := range x.Arms {
+			a := *arm
+			if v, moved := walkExprLambdas(ctx, arm.Value, t); moved {
+				a.Value, changed = v, true
+			}
+			arms[i] = &a
+		}
+		if changed {
+			cp := *x
+			cp.Arms = arms
 			return &cp, true
 		}
 	case *ir.Conversion:

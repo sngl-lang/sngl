@@ -57,12 +57,10 @@ func (st *errorCatchState) perCall(block *[]ir.Stmt) {
 	out := make([]ir.Stmt, 0, len(*block))
 	for _, s := range *block {
 		switch n := s.(type) {
-		case *ir.If:
-			st.perCall(&n.Body)
-			st.perCall(&n.Else)
-		case *ir.For:
-			st.perCall(&n.Body)
-			st.perCall(&n.Else)
+		case *ir.If, *ir.For, *ir.Match:
+			for _, b := range ir.TransparentBlocks(n) {
+				st.perCall(b)
+			}
 		case *ir.CallStmt:
 			c := n.Call
 			if c != nil && c.ErrorMode == ir.ErrorPerCall && c.ErrorHandler != nil && !ir.IsErrorRaiseFunc(c.Func) {

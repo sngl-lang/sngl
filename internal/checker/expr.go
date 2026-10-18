@@ -121,6 +121,8 @@ func (c *checker) inferExpr(e ast.Expr) ir.Expr {
 		return c.inferUnary(x)
 	case *ast.TernaryExpr:
 		return c.inferTernary(x)
+	case *ast.MatchExpr:
+		return c.inferMatch(x)
 	case *ast.CallExpr:
 		return c.inferCall(x)
 	case *ast.SelectExpr:
@@ -441,6 +443,10 @@ func (c *checker) inferIdent(x *ast.IdentExpr) ir.Expr {
 		// option of one wants a member as readily: the slot wraps it.
 		if want := optionElem(c.expected); want != nil {
 			if ed := expectedEnumDef(want); ed != nil && c.enumMember(x.Pos, ed, x.Name) {
+				if m := ed.Member(x.Name); m.Payload != nil {
+					c.error(x.Pos, "member %s carries a payload: write {%s=…}", m.Name, m.Name)
+					return &ir.Literal{Type: TypInvalid}
+				}
 				return &ir.Ident{AST: x, Type: want, Name: x.Name, Member: x.Name}
 			}
 		}
@@ -705,7 +711,9 @@ func (c *checker) inferBinary(x *ast.BinaryExpr) ir.Expr {
 		var right ir.Expr
 		restoreNarrow = c.pushNarrowings(facts, nil, &right)
 		defer func() { restoreNarrow() }()
+		restorePrelude := c.noPrelude()
 		rightExpr := c.checkExpr(x.Right)
+		restorePrelude()
 		right = rightExpr
 		return c.finishBinary(x, leftExpr, rightExpr)
 	}
@@ -792,6 +800,8 @@ func (c *checker) finishBinary(x *ast.BinaryExpr, leftExpr, rightExpr ir.Expr) i
 	case ast.BinEq, ast.BinNeq:
 		if !skip && !comparableEq(left, right) {
 			c.error(x.Pos, "operator %s not defined for %s and %s", x.Op, left, right)
+		} else if !skip {
+			c.refuseIncomparableEnum(x.Pos, left, right)
 		}
 		typ = TypBool
 	case ast.BinLt, ast.BinLte, ast.BinGt, ast.BinGte:
@@ -1011,6 +1021,8 @@ func (c *checker) inferTernary(x *ast.TernaryExpr) ir.Expr {
 	narrowingsFrom(condExpr, true, thenFacts)
 	var thenRegion ir.Expr
 	restoreThen := c.pushNarrowings(thenFacts, nil, &thenRegion)
+	restorePrelude := c.noPrelude()
+	defer restorePrelude()
 	thenExpr := c.checkExprExpecting(x.Then, c.expected)
 	thenRegion = thenExpr
 	restoreThen()
@@ -1043,6 +1055,7 @@ func (c *checker) inferCall(x *ast.CallExpr) (out ir.Expr) {
 	defer func() {
 		c.refuseSetContextName(out)
 		c.checkI18nCall(x, out)
+		c.checkCodecCall(x, out)
 	}()
 	stmtCall := c.stmtCall
 	c.stmtCall = nil
@@ -1707,19 +1720,11 @@ func findNodeAST(stmts []ast.Stmt, id string) *ast.VisualNode {
 			if found := findNodeAST(n.Block.Stmts, id); found != nil {
 				return found
 			}
-		case *ast.IfStmt:
-			if found := findNodeAST(n.Body.Stmts, id); found != nil {
-				return found
-			}
-			if found := findNodeAST(n.Else.Stmts, id); found != nil {
-				return found
-			}
-		case *ast.ForStmt:
-			if found := findNodeAST(n.Body.Stmts, id); found != nil {
-				return found
-			}
-			if found := findNodeAST(n.Else.Stmts, id); found != nil {
-				return found
+		default:
+			for _, b := range ast.BranchBlocks(n) {
+				if found := findNodeAST(b.Stmts, id); found != nil {
+					return found
+				}
 			}
 		}
 	}
@@ -1958,8 +1963,22 @@ func (c *checker) inferSelect(x *ast.SelectExpr) ir.Expr {
 		// EnumType.member select that the target language doesn't define.
 		if operand.Kind == ir.TypeEnum && operand.Decl != nil {
 			if ed, ok := operand.Decl.(*ir.EnumDef); ok {
+				// Off a value, a member is read: what the value holds.
+				if !namesEnumType(operandExpr, ed) {
+					return c.enumMemberRead(x, operandExpr, operand, ed)
+				}
 				if c.enumMember(x.Pos, ed, x.Field) {
-					return &ir.Ident{Type: operand, Name: x.Field, Member: x.Field, Sym: ed}
+					if m := ed.Member(x.Field); m.Payload != nil {
+						c.error(x.Pos, "member %s carries a payload: write %s{%s=…}", m.Name, ed.Name, m.Name)
+						return &ir.Literal{Type: TypInvalid}
+					}
+					// A generic enum's member takes its arguments from where
+					// it is wanted.
+					typ := operand
+					if want := optionElem(c.expected); want != nil && want.Kind == ir.TypeEnum && want.Decl == ed {
+						typ = want
+					}
+					return &ir.Ident{Type: typ, Name: x.Field, Member: x.Field, Sym: ed}
 				}
 				if isExportedMemberName(x.Field) {
 					c.error(x.Pos, "no member %q on enum %s", x.Field, ed.Name)
@@ -2247,6 +2266,9 @@ func (c *checker) inferStructLit(x *ast.StructExpr) ir.Expr {
 			c.expected = c.resolveType(nt)
 		}
 		defer func() { c.expected = saved }()
+	}
+	if ed := c.literalEnum(x); ed != nil {
+		return c.inferEnumLit(x, ed)
 	}
 	var sd *ir.StructDef
 	if c.nativeValues {
@@ -2658,6 +2680,10 @@ func interpPartPrimitive(t *ir.Type) bool {
 	if ir.StringReprStruct(t) {
 		return true
 	}
+	// A value holding a payload is spelled by a string() method, or matched.
+	if ir.PayloadEnum(t) != nil {
+		return false
+	}
 	switch t.Kind {
 	case ir.TypeInt, ir.TypeFloat, ir.TypeBool,
 		ir.TypeEnum, ir.TypeUnit, ir.TypeNull:
@@ -2783,7 +2809,10 @@ func (c *checker) inferLambda(x *ast.LambdaExpr) ir.Expr {
 		// form gets this from enterFuncBody; an expression body never reaches
 		// one, so it says the same thing here.
 		restoreNarrow := c.clearNarrowings()
+		var prelude []ir.Stmt
+		restorePrelude := c.bodyPrelude(&prelude)
 		bodyExpr := c.checkExprExpecting(x.Body, fn.Return)
+		restorePrelude()
 		if fn.Return != nil && fn.Return.Kind != ir.TypeVoid {
 			// A return type taken from context may still name a parameter the
 			// call is inferring.
@@ -2801,7 +2830,7 @@ func (c *checker) inferLambda(x *ast.LambdaExpr) ir.Expr {
 			fn.Return = c.inferredType(exprType(bodyExpr), *x.Body.ExprPos())
 			c.returnType = fn.Return
 		}
-		fn.Block = []ir.Stmt{&ir.Return{AST: &ast.ReturnStmt{Pos: *x.Body.ExprPos(), Value: x.Body}, Value: bodyExpr}}
+		fn.Block = append(prelude, &ir.Return{AST: &ast.ReturnStmt{Pos: *x.Body.ExprPos(), Value: x.Body}, Value: bodyExpr})
 	}
 	if x.Block.IsDefined() {
 		restore := c.enterFuncBody()
@@ -2830,9 +2859,18 @@ func (c *checker) inferTypeParams(at ast.Pos, sig *ir.FuncSig, args ast.ArgList,
 	// nothing to bind, and its argument is checked against that type when the
 	// call is: checked here with nothing expected, `apply[F]([])` met an
 	// empty list it could not type.
+	//
+	// So has one whose type names no type parameter at all: checked here
+	// with nothing expected, `headers={"X-Sngl" = "on"}` was an anonymous map
+	// literal with no type to read.
 	settled := func(p *ir.Param) bool {
-		return p == nil || len(written) > 0 && !p.Type.Substitute(bindings).HasTypeParam()
+		return p == nil || !p.Type.Substitute(bindings).HasTypeParam()
 	}
+	// An argument is read for what it states, not for what the call's result
+	// is wanted as: under that expectation `b(http.get(query={n=2}))` read
+	// the query literal as b's parameter's type.
+	expected := c.expected
+	c.expected = nil
 	pos := 0
 	for _, a := range args.Args {
 		arg, ok := a.(ast.Arg)
@@ -2859,6 +2897,7 @@ func (c *checker) inferTypeParams(at ast.Pos, sig *ir.FuncSig, args ast.ArgList,
 		}
 		pos++
 	}
+	c.expected = expected
 	// What the arguments bound binds what its constraint names:
 	// `[T any, U struct { value T }]` handed a U binds T.
 	inferFromConstraints(sig.TypeParams, bindings)
@@ -3387,13 +3426,17 @@ func (c *checker) checkBlockScoped(block *ast.StmtBlock, isScope bool, headNames
 	}
 	var out []ir.Stmt
 	for _, stmt := range block.Stmts {
+		var prelude []ir.Stmt
+		restore := c.preludeFor(&prelude)
+		var checked []ir.Stmt
 		if vd, ok := stmt.(*ast.VarDecl); ok {
-			out = append(out, c.checkLocalVarDecl(vd)...)
-			continue
+			checked = c.checkLocalVarDecl(vd)
+		} else if s := c.checkStmt(stmt); s != nil {
+			checked = []ir.Stmt{s}
 		}
-		if s := c.checkStmt(stmt); s != nil {
-			out = append(out, s)
-		}
+		restore()
+		out = append(out, prelude...)
+		out = append(out, checked...)
 	}
 	return out
 }
@@ -3737,7 +3780,12 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 			restoreElse()
 		}
 		return &ir.If{AST: x, Cond: condExpr, Body: body, Else: elseBody}
+	case *ast.MatchStmt:
+		return c.checkMatchStmt(x)
 	case *ast.ForStmt:
+		// A condition loop's head is evaluated every iteration, so nothing in
+		// it may be bound once ahead of the loop.
+		defer c.noPrelude()()
 		// No head at all is the forever loop. A head is checked before it is
 		// classified, because what it *evaluates to* is what the loop does:
 		// a bool is a condition tested before each iteration, anything else
@@ -4163,12 +4211,21 @@ func (c *checker) refuseReadonlyWrite(target ir.Expr, pos ast.Pos, verb string) 
 	for {
 		switch n := target.(type) {
 		case *ir.Select:
+			if ir.PayloadEnum(n.Operand.ExprType()) != nil && n.AST != nil {
+				operand := exprSpelling(n.AST.Operand)
+				c.error(pos, "%s.%s is read off the member %s holds and cannot be assigned: assign %s a new value", operand, n.Field, operand, operand)
+				return
+			}
 			target = n.Operand
 			continue
 		case *ir.Index:
 			target = n.Operand
 			continue
 		case *ir.Ident:
+			if v, ok := n.Sym.(*ir.Var); ok && c.matchBinds[v] {
+				c.error(pos, "%s is named by match var and is read-only here: only an arm that is a block in a function may write it", n.Name)
+				return
+			}
 			lv, isLoop := n.Sym.(*ir.LoopVar)
 			if !isLoop || !lv.Type.IsReadonly() {
 				return
@@ -6208,12 +6265,10 @@ func (c *checker) refuseAmbiguousReach(x *ast.SelectExpr, comp *ir.Component, id
 						}
 					}
 					pops(n.Block.Stmts)
-				case *ast.IfStmt:
-					pops(n.Body.Stmts)
-					pops(n.Else.Stmts)
-				case *ast.ForStmt:
-					pops(n.Body.Stmts)
-					pops(n.Else.Stmts)
+				default:
+					for _, b := range ast.BranchBlocks(n) {
+						pops(b.Stmts)
+					}
 				}
 			}
 		}

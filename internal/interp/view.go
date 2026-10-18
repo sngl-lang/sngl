@@ -575,6 +575,18 @@ func (m *mounter) stmts(env *Env, stmts []ir.Stmt, prefix string) ([]*Node, erro
 			}
 			out = append(out, nodes...)
 
+		case *ir.Match:
+			p := join(fmt.Sprintf("match@%d", next("match")))
+			i, err := env.matchArm(&n.MatchArms)
+			if err != nil || i < 0 {
+				continue
+			}
+			nodes, err := m.stmts(env, n.Arms[i].Body, fmt.Sprintf("%s:arm%d", p, i))
+			if err != nil {
+				return nil, err
+			}
+			out = append(out, nodes...)
+
 		case *ir.For:
 			nodes, err := m.forStmt(env, n, join(fmt.Sprintf("for@%d", next("for"))))
 			if err != nil {

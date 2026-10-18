@@ -1,0 +1,61 @@
+import async "sngl:async"
+import ir "sngl:internal/ir"
+import marks "sngl:internal/marks"
+
+// Names a field of a query struct where the parameter's name is no SNGL
+// identifier: `#[http.identifier("page-size")] pageSize option[int]`.
+func identifier(name string) ir.Macro
+
+// What a request asks the server to do.
+enum Method { get, head, post, put, patch, delete }
+
+// What a server answered: its status, its headers -- each name lowercased,
+// and a header sent more than once joined by ", " -- and its body as text.
+struct Response {
+    status  int
+    headers map[string, string]
+    body    string
+}
+
+// Sends one request to url, with query's fields added to it. Answers a
+// failure only where no response arrived -- `transport` or `timeout`, the
+// host's own message beside it; a 404 is a response, and its status is read
+// off it.
+#[marks.intrinsic("http.send", async)]
+func send[Q struct {} = struct {}](
+    method  Method,
+    url     string,
+    query   Q = Q{},
+    headers map[string, string] = {},
+    body    option[string] = null,
+) async.Result[Response]
+
+// Sends a `get` to url, with query's fields added to it: `send` with the
+// method a read takes.
+#[marks.intrinsic("http.get", async)]
+func get[Q struct {} = struct {}](url string, query Q = Q{}) async.Result[Response]
+
+// The response, for a 2xx status; otherwise the failure the status says --
+// 401 and 403 `auth`, any other 4xx `request`, a 5xx `server` and anything
+// else `transport` -- with the status as its code. Written here rather than
+// answered by each host, so every target classifies alike.
+const func Response.checked(r Response) async.Result[Response] {
+    if r.status >= 200 && r.status < 300 {
+        return {ok=r}
+    }
+    var kind = async.FailureKind.transport
+    if r.status == 401 || r.status == 403 {
+        kind = async.FailureKind.auth
+    } else if r.status >= 400 && r.status < 500 {
+        kind = async.FailureKind.request
+    } else if r.status >= 500 && r.status < 600 {
+        kind = async.FailureKind.server
+    }
+    return {failed={kind=kind, message="HTTP {r.status}", code="{r.status}"}}
+}
+
+// segment written so it stays one segment of a path: every byte but an ASCII
+// letter, a digit and `-`, `.`, `_` and `~` percent-encoded, as a query's
+// values are.
+#[marks.intrinsic("http.pathEscape")]
+const func pathEscape(segment string) string

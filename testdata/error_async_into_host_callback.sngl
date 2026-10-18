@@ -1,0 +1,28 @@
+// An async function handed to a callback a host calls is refused where the
+// host uses what the callback returns: it calls without waiting, so it would
+// use a promise of the answer rather than the answer. A callback whose result
+// the host ignores may wait as long as it likes.
+
+import macro "sngl:macro"
+
+#[macro.foreign("js:./api", "fetchName", async)]
+func fetchName(id int) string {
+    return ""
+}
+
+func names(ids list[int]) list[string] {
+    return ids.map(fetchName) // ERROR(check) "fetchName waits for an async call, so it cannot be handed to map, which uses what it returns without waiting"
+}
+
+func lengths(ids list[int]) list[int] {
+    return ids.map(func(id int) => fetchName(id).length) // ERROR(check) "this function waits for an async call, so it cannot be handed to map, which uses what it returns without waiting"
+}
+
+func held(ids list[int]) list[string] {
+    var f = fetchName
+    return ids.map(f) // ERROR(check) "f may hold a function that waits for an async call, so it cannot be handed to map, which uses what it returns without waiting"
+}
+
+func synchronous(ids list[int]) list[string] {
+    return ids.map(func(id int) => "{id}")
+}

@@ -162,7 +162,7 @@ func (st *slotChildSynth) convertible(n *ir.NodeInst) bool {
 	simple := true
 	_ = ir.Walk(n, func(node ir.Node) error {
 		switch node.(type) {
-		case *ir.If, *ir.For, *ir.SlotInst, *ir.ErrorBoundary:
+		case *ir.If, *ir.Match, *ir.For, *ir.SlotInst, *ir.ErrorBoundary:
 			simple = false
 		}
 		return nil

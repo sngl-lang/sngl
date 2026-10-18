@@ -455,6 +455,7 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 			})
 			__n3.Set__on0(func() {
 				m.shown += 1
+				gtk4rt.LabelSetText(m.__n2, (("shown " + fmt.Sprint(m.shown)) + " times"))
 			})
 		} else {
 			if len(m.__inst0_live) > __inst0_i {
@@ -465,6 +466,7 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 				m.__renderSlot0(gtk4rt.App)
 			}, func() {
 				m.shown += 1
+				gtk4rt.LabelSetText(m.__n2, (("shown " + fmt.Sprint(m.shown)) + " times"))
 			})
 			__n3 = __n3__new
 		}
@@ -943,6 +945,6 @@ dialog { margin: auto; padding: 1em; }
 -- run/go/fyne --
 pass sha256:45ce3a6ddd6739451319bd68d1bb232a
 -- run/go/gtk4 --
-pass sha256:5ad801b9c933629f161fb9928f32ddd2
+pass sha256:4cfad4fd84ba871647ae0904be93f43e
 -- run/none/html --
 pass sha256:5fae861cd67403c23eeb925fa649db51

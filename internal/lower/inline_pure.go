@@ -231,6 +231,14 @@ func viewReadVars(comp *ir.Component) map[*ir.Var]bool {
 				read(n.Cond)
 				visit(n.Body)
 				visit(n.Else)
+			case *ir.Match:
+				read(n.Subject)
+				for _, arm := range n.Arms {
+					for _, p := range arm.Patterns {
+						read(p)
+					}
+					visit(arm.Body)
+				}
 			case *ir.For:
 				read(n.Iter)
 				visit(n.Body)
@@ -363,6 +371,15 @@ func (st *inlinePureState) inlineStmt(s ir.Stmt) ([]ir.Stmt, error) {
 		}
 		n.Body = body
 		n.Else = els
+		return []ir.Stmt{n}, nil
+	case *ir.Match:
+		for _, arm := range n.Arms {
+			body, err := st.inlineStmts(arm.Body)
+			if err != nil {
+				return nil, err
+			}
+			arm.Body = body
+		}
 		return []ir.Stmt{n}, nil
 	case *ir.For:
 		st.loopDepth++
@@ -829,12 +846,10 @@ func emittedHandlerNames(stmts []ir.Stmt) map[string]struct{} {
 				for _, f := range propLambdas(n) {
 					visit(f.Block)
 				}
-			case *ir.If:
-				visit(n.Body)
-				visit(n.Else)
-			case *ir.For:
-				visit(n.Body)
-				visit(n.Else)
+			case *ir.If, *ir.For, *ir.Match:
+				for _, b := range ir.TransparentBlocks(n) {
+					visit(*b)
+				}
 			case *ir.SlotInst:
 				visit(n.Children)
 			case *ir.ErrorBoundary:
@@ -1010,12 +1025,10 @@ func substituteEventsUnder(stmts []ir.Stmt, handlers []ir.EventHandler, enclosin
 			continue
 		}
 		switch n := s.(type) {
-		case *ir.If:
-			n.Body = substituteEventsUnder(n.Body, handlers, enclosing, under)
-			n.Else = substituteEventsUnder(n.Else, handlers, enclosing, under)
-		case *ir.For:
-			n.Body = substituteEventsUnder(n.Body, handlers, enclosing, under)
-			n.Else = substituteEventsUnder(n.Else, handlers, enclosing, under)
+		case *ir.If, *ir.For, *ir.Match:
+			for _, b := range ir.TransparentBlocks(n) {
+				*b = substituteEventsUnder(*b, handlers, enclosing, under)
+			}
 		case *ir.NodeInst:
 			n.Children = substituteEventsUnder(n.Children, handlers, enclosing, under)
 			substituteEventsInPopulations(n.Slots, handlers, enclosing, under)
@@ -1314,6 +1327,10 @@ func deepCloneStmt(s ir.Stmt) ir.Stmt {
 		clone.Body = deepCloneStmts(n.Body)
 		clone.Else = deepCloneStmts(n.Else)
 		return &clone
+	case *ir.Match:
+		clone := *n
+		clone.MatchArms = deepCloneMatchArms(n.MatchArms, func(a *ir.MatchArm) { a.Body = deepCloneStmts(a.Body) })
+		return &clone
 	case *ir.For:
 		clone := *n
 		clone.Iter = deepCloneExpr(n.Iter)
@@ -1397,6 +1414,24 @@ func deepCloneStmt(s ir.Stmt) ir.Stmt {
 	panic(fmt.Sprintf("deepCloneStmt: unhandled %T", s))
 }
 
+// deepCloneMatchArms copies a match's subject and arms, each arm's patterns
+// copied and what it does handed to own to copy.
+func deepCloneMatchArms(m ir.MatchArms, own func(*ir.MatchArm)) ir.MatchArms {
+	out := m
+	out.Subject = deepCloneExpr(m.Subject)
+	out.Arms = make([]*ir.MatchArm, len(m.Arms))
+	for i, arm := range m.Arms {
+		a := *arm
+		a.Patterns = make([]ir.Expr, len(arm.Patterns))
+		for j, p := range arm.Patterns {
+			a.Patterns[j] = deepCloneExpr(p)
+		}
+		own(&a)
+		out.Arms[i] = &a
+	}
+	return out
+}
+
 // deepCloneExpr is the expression analog of deepCloneStmt.
 func deepCloneExpr(e ir.Expr) ir.Expr {
 	if e == nil {
@@ -1423,6 +1458,10 @@ func deepCloneExpr(e ir.Expr) ir.Expr {
 		clone.Cond = deepCloneExpr(n.Cond)
 		clone.Then = deepCloneExpr(n.Then)
 		clone.Else = deepCloneExpr(n.Else)
+		return &clone
+	case *ir.MatchExpr:
+		clone := *n
+		clone.MatchArms = deepCloneMatchArms(n.MatchArms, func(a *ir.MatchArm) { a.Value = deepCloneExpr(a.Value) })
 		return &clone
 	case *ir.Select:
 		clone := *n

@@ -177,6 +177,8 @@ func (cc *irComposeContext) emitDrawStmts(stmts []ir.Stmt) {
 			cc.emitDrawFor(s)
 		case *ir.If:
 			cc.emitDrawIf(s)
+		case *ir.Match:
+			cc.renderWhen(s, cc.emitDrawStmts)
 		}
 	}
 }

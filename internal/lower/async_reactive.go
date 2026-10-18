@@ -215,6 +215,16 @@ func hoistChildren(h *hoister, e ir.Expr) ir.Expr {
 		cp.Then = hoistExpr(h, x.Then)
 		cp.Else = hoistExpr(h, x.Else)
 		return &cp
+	case *ir.MatchExpr:
+		cp := *x
+		cp.Subject = hoistExpr(h, x.Subject)
+		cp.Arms = make([]*ir.MatchArm, len(x.Arms))
+		for i, arm := range x.Arms {
+			a := *arm
+			a.Value = hoistExpr(h, arm.Value)
+			cp.Arms[i] = &a
+		}
+		return &cp
 	case *ir.Call:
 		cp := *x
 		if cp.Receiver != nil {
@@ -293,6 +303,16 @@ func exprHasLocals(e ir.Expr) bool {
 		return exprHasLocals(x.Operand)
 	case *ir.Ternary:
 		return exprHasLocals(x.Cond) || exprHasLocals(x.Then) || exprHasLocals(x.Else)
+	case *ir.MatchExpr:
+		if exprHasLocals(x.Subject) {
+			return true
+		}
+		for _, arm := range x.Arms {
+			if exprHasLocals(arm.Value) || slices.ContainsFunc(arm.Patterns, exprHasLocals) {
+				return true
+			}
+		}
+		return false
 	case *ir.Call:
 		if x.Receiver != nil && exprHasLocals(x.Receiver) {
 			return true

@@ -1,0 +1,45 @@
+# A context a directory package declares is part of what it exports, as a
+# library's is: `p.server(v) { … }` provides it, a test sets it with
+# `t.setContext(p.server, v)`, and a function of the package reads whichever
+# is active. The package's view used to hold every declaration but its
+# contexts, so the provider was an unknown component.
+
+sngl test --platform=none app.sngl
+stdout '2 tests, 0 failures'
+
+sngl generate --lang=none --platform=html -o out app.sngl
+grep 'p_where\(\)|where\(' out/index.html
+
+-- app.sngl --
+import p "./p"
+import . "sngl:test"
+import . "sngl:ui"
+
+component page node {
+    var got = "-"
+    p.server("mirror") {
+        button #ask(text="ask", @click { got = p.where() })
+    }
+    text(value=got)
+}
+
+func testProvided(t Test, c page) {
+    c.ask.click()
+    t.assert(c.got == "mirror")
+}
+
+func testSet(t Test) {
+    t.assert(p.where() == "default")
+    t.setContext(p.server, "set")
+    t.assert(p.where() == "set")
+}
+
+window {
+    page
+}
+-- p/p.sngl --
+context #server("default")
+
+func where() string {
+    return server
+}

@@ -193,6 +193,16 @@ func (r *refLoopRewriter) expr(e ir.Expr) ir.Expr {
 		x.Cond = r.expr(x.Cond)
 		x.Then = r.expr(x.Then)
 		x.Else = r.expr(x.Else)
+	case *ir.MatchExpr:
+		if x.Subject != nil {
+			x.Subject = r.expr(x.Subject)
+		}
+		for _, arm := range x.Arms {
+			for j := range arm.Patterns {
+				arm.Patterns[j] = r.expr(arm.Patterns[j])
+			}
+			arm.Value = r.expr(arm.Value)
+		}
 	case *ir.Conversion:
 		x.Operand = r.expr(x.Operand)
 	case *ir.Select:
@@ -259,6 +269,16 @@ func (r *refLoopRewriter) stmt(s ir.Stmt) ir.Stmt {
 		n.Cond = r.expr(n.Cond)
 		r.stmtSlice(n.Body)
 		r.stmtSlice(n.Else)
+	case *ir.Match:
+		if n.Subject != nil {
+			n.Subject = r.expr(n.Subject)
+		}
+		for _, arm := range n.Arms {
+			for j := range arm.Patterns {
+				arm.Patterns[j] = r.expr(arm.Patterns[j])
+			}
+			r.stmtSlice(arm.Body)
+		}
 	case *ir.For:
 		// A nested loop: rewrite its Iter (may reference the outer element),
 		// and descend into its body. If the nested loop shadows the element

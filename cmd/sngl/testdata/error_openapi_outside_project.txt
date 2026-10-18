@@ -1,0 +1,33 @@
+# The document is one of the project's own files, read through the project:
+# a path outside it is refused before anything is read, and a symlink inside
+# it that points out is refused where it is opened. The import is the
+# repository's to write, and the plugin is the library's, which reads
+# without asking: the project is what holds the read.
+env SNGL_GENCACHE=off
+symlink proj/link.yml -> ../outside/secret.yml
+
+! sngl check proj/abs.sngl
+stderr 'import "openapi:/etc/hostname": scheme "openapi": openapi:/etc/hostname is outside the project'
+
+! sngl check proj/up.sngl
+stderr 'import "openapi:../outside/secret.yml": scheme "openapi": openapi:../outside/secret.yml is outside the project'
+
+! sngl check proj/link.sngl
+stderr 'import "openapi:./link.yml": .*gen.lines: openat link.yml: path escapes from parent'
+
+-- proj/abs.sngl --
+import api "openapi:/etc/hostname"
+
+const x = 1
+-- proj/up.sngl --
+import api "openapi:../outside/secret.yml"
+
+const x = 1
+-- proj/link.sngl --
+import api "openapi:./link.yml"
+
+const x = 1
+-- outside/secret.yml --
+openapi: 3.1.0
+info: {title: Secret, version: "1"}
+paths: {}

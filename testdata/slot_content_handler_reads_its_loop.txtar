@@ -1463,6 +1463,7 @@ func (m *Model) __renderSlot1(parent gtk4rt.Handle) {
 			__n5.Set__copy(fmt.Sprint(__copy0))
 			__n5.Set__on0(func(__on0_i int, __on0_it string) {
 				m.log = (fmt.Sprint(__on0_i) + __on0_it)
+				gtk4rt.LabelSetText(m.__n1, m.log)
 				for __inst3_live_ui, _ := range m.__inst3_live {
 					m.__inst3_live[__inst3_live_ui].Set__p0(m.log)
 				}
@@ -1474,6 +1475,7 @@ func (m *Model) __renderSlot1(parent gtk4rt.Handle) {
 					__list0 = append(__list0, func(x string) string { return (x + "") }(__item0))
 				}
 				m.log = ((__on1_it + s) + fmt.Sprint(len(__list0)))
+				gtk4rt.LabelSetText(m.__n1, m.log)
 				for __inst3_live_ui, _ := range m.__inst3_live {
 					m.__inst3_live[__inst3_live_ui].Set__p0(m.log)
 				}
@@ -1484,6 +1486,7 @@ func (m *Model) __renderSlot1(parent gtk4rt.Handle) {
 			}
 			__n5__new := newCard__slot0Instance(m, row, fmt.Sprint(__copy0), func(__on0_i int, __on0_it string) {
 				m.log = (fmt.Sprint(__on0_i) + __on0_it)
+				gtk4rt.LabelSetText(m.__n1, m.log)
 				for __inst3_live_ui, _ := range m.__inst3_live {
 					m.__inst3_live[__inst3_live_ui].Set__p0(m.log)
 				}
@@ -1494,6 +1497,7 @@ func (m *Model) __renderSlot1(parent gtk4rt.Handle) {
 					__list0 = append(__list0, func(x string) string { return (x + "") }(__item0))
 				}
 				m.log = ((__on1_it + s) + fmt.Sprint(len(__list0)))
+				gtk4rt.LabelSetText(m.__n1, m.log)
 				for __inst3_live_ui, _ := range m.__inst3_live {
 					m.__inst3_live[__inst3_live_ui].Set__p0(m.log)
 				}
@@ -1531,6 +1535,7 @@ func (m *Model) __renderSlot2(parent gtk4rt.Handle) {
 			__n6.Set__on0(func() {
 				s := "q"
 				m.log = (m.log + s)
+				gtk4rt.LabelSetText(m.__n1, m.log)
 				for __inst3_live_ui, _ := range m.__inst3_live {
 					m.__inst3_live[__inst3_live_ui].Set__p0(m.log)
 				}
@@ -1542,6 +1547,7 @@ func (m *Model) __renderSlot2(parent gtk4rt.Handle) {
 			__n6__new := new__child2Instance(m, m.log, func() {
 				s := "q"
 				m.log = (m.log + s)
+				gtk4rt.LabelSetText(m.__n1, m.log)
 				for __inst3_live_ui, _ := range m.__inst3_live {
 					m.__inst3_live[__inst3_live_ui].Set__p0(m.log)
 				}
@@ -2837,7 +2843,7 @@ pass sha256:2b0c068413eff4f43f915aa32eaed7ef
 -- run/go/fyne --
 pass sha256:e279be27345458030f48270753c9f74d
 -- run/go/gtk4 --
-pass sha256:05ae847639923fbac09de6cff5182a5a
+pass sha256:08ce07a89920790b3ad0c53afacd9091
 -- run/kotlin/android --
 pass sha256:2c245760f15bd6145ecb1c823158dade
 -- run/none/html --

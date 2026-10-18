@@ -680,6 +680,14 @@ func walkViewStmts(stmts []ir.Stmt, walk, buildWalk func(ir.Symbol)) {
 			walkExpr(n.Cond, nil, buildWalk)
 			walkViewStmts(n.Body, walk, buildWalk)
 			walkViewStmts(n.Else, walk, buildWalk)
+		case *ir.Match:
+			walkExpr(n.Subject, nil, buildWalk)
+			for _, arm := range n.Arms {
+				for _, p := range arm.Patterns {
+					walkExpr(p, nil, buildWalk)
+				}
+				walkViewStmts(arm.Body, walk, buildWalk)
+			}
 		case *ir.For:
 			walkExpr(n.Iter, nil, buildWalk)
 			walkViewStmts(n.Body, walk, buildWalk)

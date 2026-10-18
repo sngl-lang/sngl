@@ -21,6 +21,9 @@ import gen "sngl:x/gen"
     implicitRecv,
     structSpread,
     viewStatements,
+    matches,
+    matchValues,
+    optionMatches,
 )]
 #[gen.name("kotlin")]
 #[gen.native("kotlin")]

@@ -740,6 +740,7 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 			__n0.Set__p0(m.hits)
 			__n0.Set__on0(func() {
 				m.hits = (m.hits + 1)
+				gtk4rt.LabelSetText(m.label, ("n" + fmt.Sprint(m.hits)))
 				for __inst0_live_ui, _ := range m.__inst0_live {
 					m.__inst0_live[__inst0_live_ui].Set__p0(m.hits)
 				}
@@ -750,6 +751,7 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 			}
 			__n0__new := new__child0Instance(m, m.hits, func() {
 				m.hits = (m.hits + 1)
+				gtk4rt.LabelSetText(m.label, ("n" + fmt.Sprint(m.hits)))
 				for __inst0_live_ui, _ := range m.__inst0_live {
 					m.__inst0_live[__inst0_live_ui].Set__p0(m.hits)
 				}
@@ -1230,7 +1232,7 @@ pass sha256:0bd805c618f79552be75402078e9160a
 -- run/go/fyne --
 pass sha256:81a6a97fa97ef8970a999eeeb4e9da76
 -- run/go/gtk4 --
-pass sha256:9eee3af270d2701fad135d87424b9bfd
+pass sha256:1ea26e5f9bb4d7a189889700ca7630e7
 -- run/kotlin/android --
 pass sha256:87bee0cc89775eacb07eafca995daa33
 -- run/none/html --

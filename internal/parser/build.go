@@ -491,6 +491,8 @@ func (b *builder) buildStmt(it nodeIter) ast.Stmt {
 			return b.buildIfNode(it.enter())
 		case ForNode:
 			return b.buildForNode(it.enter())
+		case Match:
+			return &ast.MatchStmt{Match: b.buildMatch(it.enter())}
 		case VisualOrStmt:
 			return b.buildVisualOrStmt(it.enter())
 		}
@@ -702,11 +704,14 @@ func (b *builder) buildStructField(it nodeIter) *ast.StructField {
 // --- Enum declaration ---
 
 func (b *builder) buildEnumDecl(it nodeIter) *ast.EnumDef {
-	// EnumDecl = kw_enum [ ident ] lbrace { EnumBodyItem (comma|semi) } rbrace .
+	// EnumDecl = kw_enum [ ident ] [ TypeParamList ] lbrace { EnumBodyItem (comma|semi) } rbrace .
 	pos := b.posFromToken(it.shift()) // kw_enum
 	e := &ast.EnumDef{Pos: pos}
 	if !it.done() && !it.isNonTerminal() && it.tokenType() == IDENT {
 		e.Name = it.shift().Literal
+	}
+	if !it.done() && it.isNonTerminal() && it.symbol() == TypeParamList {
+		e.TypeParams = b.buildTypeParams(it.enter())
 	}
 	lbraceLine, rbraceLine := 0, 0
 	if !it.done() && !it.isNonTerminal() && it.tokenType() == LBRACE {
@@ -715,21 +720,8 @@ func (b *builder) buildEnumDecl(it nodeIter) *ast.EnumDef {
 	it.skip() // lbrace
 	for !it.done() {
 		if it.isNonTerminal() && it.symbol() == EnumBodyItem {
-			sub := it.enter()
-			if !sub.done() && sub.isNonTerminal() {
-				switch sub.symbol() {
-				case FuncDecl:
-					e.Body = append(e.Body, b.buildFuncDecl(sub.enter()))
-				case EnumMember:
-					e.Body = append(e.Body, b.buildEnumMember(sub.enter()))
-				}
-			} else if !sub.done() && sub.tokenType() == KW_CONST {
-				sub.skip() // kw_const
-				if !sub.done() && sub.isNonTerminal() && sub.symbol() == FuncDecl {
-					f := b.buildFuncDecl(sub.enter())
-					f.Const = true
-					e.Body = append(e.Body, f)
-				}
+			if item := b.buildEnumBodyItem(it.enter()); item != nil {
+				e.Body = append(e.Body, item)
 			}
 		} else {
 			if !it.isNonTerminal() {
@@ -755,12 +747,47 @@ func (b *builder) buildEnumDecl(it nodeIter) *ast.EnumDef {
 	return e
 }
 
+func (b *builder) buildEnumBodyItem(it nodeIter) ast.EnumBodyItem {
+	// EnumBodyItem = { MacroAttr } EnumBodyDecl .
+	var attrs []ast.MacroAttr
+	for !it.done() && it.isNonTerminal() && it.symbol() == MacroAttr {
+		attrs = append(attrs, b.buildMacroAttr(it.enter()))
+	}
+	var inner ast.EnumBodyItem
+	if !it.done() && it.isNonTerminal() && it.symbol() == EnumBodyDecl {
+		sub := it.enter()
+		if !sub.done() && sub.isNonTerminal() {
+			switch sub.symbol() {
+			case FuncDecl:
+				inner = b.buildFuncDecl(sub.enter())
+			case EnumMember:
+				inner = b.buildEnumMember(sub.enter())
+			}
+		} else if !sub.done() && sub.tokenType() == KW_CONST {
+			sub.skip() // kw_const
+			if !sub.done() && sub.isNonTerminal() && sub.symbol() == FuncDecl {
+				f := b.buildFuncDecl(sub.enter())
+				f.Const = true
+				inner = f
+			}
+		}
+	}
+	if len(attrs) == 0 || inner == nil {
+		return inner
+	}
+	item, _ := b.attach(attrs, inner.(ast.Stmt)).(ast.EnumBodyItem)
+	return item
+}
+
 func (b *builder) buildEnumMember(it nodeIter) *ast.EnumMember {
 	m := &ast.EnumMember{}
 	if !it.done() && !it.isNonTerminal() && it.tokenType() == IDENT {
 		nameTok := it.shift()
 		m.Pos = b.posFromToken(nameTok)
 		m.Name = nameTok.Literal
+	}
+	if !it.done() && it.isNonTerminal() && it.symbol() == Type {
+		m.Payload = b.buildType(it.enter())
 	}
 	if !it.done() && !it.isNonTerminal() && it.tokenType() == ASSIGN {
 		it.skip() // assign
@@ -1936,6 +1963,96 @@ func (b *builder) buildForNode(it nodeIter) *ast.ForStmt {
 	return stmt
 }
 
+func (b *builder) buildMatch(it nodeIter) ast.Match {
+	// Match    = kw_match [ kw_var ident assign CondExpr | CondExpr ] lbrace [ semi ] [ MatchArm { semi [ MatchArm ] } ] rbrace .
+	// MatchArm = ( kw_else | CondExpr { comma CondExpr } ) ( StmtBlock | fat_arrow Expr ) .
+	m := ast.Match{Pos: b.posFromToken(it.shift())} // kw_match
+	if !it.done() && !it.isNonTerminal() && it.tokenType() == KW_VAR {
+		it.skip() // kw_var
+		if !it.done() && !it.isNonTerminal() && it.tokenType() == IDENT {
+			tok := it.shift()
+			m.Bind, m.BindPos = tok.Literal, ast.Pos(b.posFromToken(tok))
+		}
+		if !it.done() && !it.isNonTerminal() && it.tokenType() == ASSIGN {
+			it.skip() // assign
+		}
+	}
+	if !it.done() && it.isNonTerminal() && it.symbol() == CondExpr {
+		m.Subject = b.buildExpr(it.enter())
+	}
+	prev := m.Pos.Line
+	var arm *ast.MatchArm
+	// endArm takes the comment written after the arm on the line it ends on,
+	// which is the line of the separator or brace that follows it.
+	endArm := func(line int) {
+		if arm != nil {
+			arm.Trailing = b.claimInlineComment(line)
+			prev = line
+			arm = nil
+		}
+	}
+	for !it.done() {
+		if it.isNonTerminal() {
+			if it.symbol() != MatchArm {
+				it.skip()
+				continue
+			}
+			arm = b.buildMatchArm(it.enter())
+			arm.Leading = b.claimComments(prev, arm.Pos.Line)
+			m.Arms = append(m.Arms, arm)
+			continue
+		}
+		tok := it.shift()
+		switch tok.Type {
+		case LBRACE:
+			m.Head = b.claimInlineComment(tok.Line)
+			prev = tok.Line
+		case SEMICOLON:
+			endArm(tok.Line)
+		case RBRACE:
+			endArm(tok.Line)
+			m.Tail = b.claimComments(prev, tok.Line)
+			m.EndPos = ast.Pos(b.posFromToken(tok))
+		}
+	}
+	return m
+}
+
+func (b *builder) buildMatchArm(it nodeIter) *ast.MatchArm {
+	arm := &ast.MatchArm{}
+	for !it.done() {
+		if !it.isNonTerminal() {
+			tok := it.shift()
+			switch tok.Type {
+			case KW_ELSE:
+				arm.Else = true
+				arm.Pos = b.posFromToken(tok)
+			case FAT_ARROW:
+				if !it.done() && it.isNonTerminal() {
+					arm.Value = b.buildExpr(it.enter())
+				}
+			}
+			continue
+		}
+		switch it.symbol() {
+		case CondExpr:
+			p := b.buildExpr(it.enter())
+			if p == nil {
+				continue
+			}
+			if len(arm.Patterns) == 0 {
+				arm.Pos = *p.ExprPos()
+			}
+			arm.Patterns = append(arm.Patterns, p)
+		case StmtBlock:
+			arm.Body = b.buildStmtBlock(it.enter())
+		default:
+			it.skip()
+		}
+	}
+	return arm
+}
+
 // --- Expressions ---
 
 func (b *builder) buildExpr(it nodeIter) ast.Expr {
@@ -2421,6 +2538,8 @@ func (b *builder) buildPrimaryInner(it nodeIter, exprContext bool) ast.Expr {
 			return b.buildI18nTriple(it.enter())
 		case AnonStructLit:
 			return b.buildAnonStructLit(it.enter())
+		case Match:
+			return &ast.MatchExpr{Match: b.buildMatch(it.enter())}
 		case FuncLit:
 			if exprContext {
 				return b.buildFuncLit(it.enter())

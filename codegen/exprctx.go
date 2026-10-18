@@ -214,9 +214,12 @@ func (ctx *ExprCtx) Resolve(name string) (ir.Symbol, NameKind) {
 		}
 	}
 
-	// Package-level funcs.
+	// Package-level funcs. A method of a struct or an enum is reached through
+	// its receiver and never by bare name, so a local named like one -- a
+	// match binding called `checked` beside http.Response's method -- stays
+	// the local.
 	for _, f := range ctx.Pkg.Funcs {
-		if f.Name == name {
+		if f.Name == name && !typeMethod(f) {
 			if IsComputed(f) {
 				return f, NameComputed
 			}
@@ -251,6 +254,15 @@ func (ctx *ExprCtx) Resolve(name string) (ir.Symbol, NameKind) {
 	}
 
 	return nil, NameUnknown
+}
+
+// typeMethod reports whether f is a method declared on a struct or an enum.
+func typeMethod(f *ir.Func) bool {
+	switch f.RecvDecl().(type) {
+	case *ir.StructDef, *ir.EnumDef:
+		return true
+	}
+	return false
 }
 
 // RenamedName returns the renamed name for a local var, or the original if no rename.

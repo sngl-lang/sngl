@@ -1,0 +1,2520 @@
+Where a match is a switch and where it is still the if chain. A language that
+declares `matches` writes a match statement as its own switch, and one that
+declares `matchValues` a match expression; Go's switch assigning a temp stands
+for the second. A match over an option is a switch only in Kotlin, whose when
+takes `null ->` beside the element's values; Go's switch would compare an
+option's pointer, and JavaScript declares no `optionMatches`, so there it is
+the chain. An arm that breaks out of a loop around the match names the loop in
+Go and JavaScript, whose switch takes a bare break as its own; Kotlin's when
+takes none, so its break is bare. What stays the chain on every target is a
+test's, which each language's test lowering writes out. A headless match is a
+tagless switch in Go and a subjectless when in Kotlin, and the chain in
+JavaScript, which has nothing to switch on. A view body's match is a switch in
+bubbletea's View, and in every walk Update and the test surface make of the
+view, as it is a when in android's composable. An initializer is no statement:
+Go calls a func literal holding the switch where it stands.
+
+deny out/go/bubbletea/model.go `if d == "down"` -- an arm that breaks out of the loop is a switch, the loop labelled
+deny out/none/html/index.html `if \(d === "down"\)` -- an arm that breaks out of the loop is a switch, the loop labelled
+deny out/kotlin/android/app/src/main/java/test/sngl/app/MainScreen.kt `__loop|break@` -- Kotlin's when takes no break of its own, so the loop needs no label
+deny out/go/bubbletea/model.go `if n >= 90` -- a headless match is a tagless switch
+deny out/kotlin/android/app/src/main/java/test/sngl/app/MainScreen.kt `if \(\(n >= 90\)\)` -- a headless match is a subjectless when
+deny out/kotlin/android/app/src/main/java/test/sngl/app/MainScreen.kt `state\.maybe == null` -- an option subject is a when in Kotlin, not the ternaries
+deny out/kotlin/android/app/src/main/java/test/sngl/app/MainScreen.kt `\(n == null\)` -- an option statement subject is a when in Kotlin, not the chain
+deny out/go/bubbletea/model.go `switch n \{` -- Go's switch compares an option's pointer, so it is the chain
+deny out/none/html/index.html `switch \(n\)` -- JavaScript declares no optionMatches, so an option subject is the chain
+deny out/go/bubbletea/model.go `if m\.d__inst1 == "up"` -- a view-body match is a switch in View and in the presence walks
+deny out/go/bubbletea/model.go `if p == "up"` -- a match in a view loop is a switch in View, the focus count and the loop walks
+deny * `unfolded` -- a match on a constant folds to the arm it takes
+deny out/none/html/index.html `switch \(true\)` -- a headless match in JavaScript is the chain, not a switch on true
+
+-- app.sngl --
+import . "sngl:test"
+import ui "sngl:ui"
+
+output {
+    none {
+        html
+    }
+    go {
+        gtk4
+        fyne
+        bubbletea
+    }
+    kotlin {
+        android
+    }
+}
+
+enum Dir { up, down, left, right }
+
+const hand = Dir.left
+
+// Headless: a tagless switch in Go and a subjectless when in Kotlin.
+// JavaScript has nothing to switch on and writes the if chain.
+func grade(n int) string {
+    match {
+        n >= 90 { return "a" }
+        n >= 50 { return "b" }
+        else { return "c" }
+    }
+}
+
+// A break in an arm leaves the loop around the match, which Go's and
+// JavaScript's switch would take as their own: the loop is labelled and the
+// break names it.
+func firstDown(ds list[Dir]) int {
+    var at = -1
+    for var i, d = ds {
+        match d {
+            down {
+                at = i
+                break
+            }
+            else {}
+        }
+    }
+    return at
+}
+
+// An option is compared as `==` compares one: a when in Kotlin, the chain in
+// Go and JavaScript.
+func name(d option[Dir]) => match d {
+    null => "none"
+    up => "up"
+    else => "other"
+}
+
+// The same as a statement, over an option of a number.
+func count(n option[int]) string {
+    match n {
+        null { return "none" }
+        0 { return "zero" }
+        else { return "some" }
+    }
+}
+
+func turned(d Dir) => match d {
+    up => Dir.right
+    right => Dir.down
+    down => Dir.left
+    left => Dir.up
+}
+
+component pad ui.node {
+    var d Dir = up
+    var maybe option[Dir] = null
+    var tally option[int] = null
+    // An initializer holds no statement: a func literal called where it
+    // stands in Go, a when in Kotlin.
+    var axis = match d {
+        up, down => "vertical"
+        else => "horizontal"
+    }
+    // A lambda's body is a function's.
+    var flips = [Dir.up, Dir.left].map(func(x Dir) => match x {
+        up => Dir.down
+        else => Dir.up
+    })
+
+    // A match on a constant is the arm it takes.
+    match hand {
+        left { ui.text(value="left-handed") }
+        else { ui.text(value="unfolded") }
+    }
+    ui.text(value=axis)
+    ui.text(value=name(maybe))
+    ui.text(value=count(tally))
+    ui.text(value=grade(firstDown(flips) * 60))
+    ui.button #turn(text="Turn", @click {
+        d = turned(d)
+    })
+}
+
+// A match in a view body: a switch in bubbletea's View and in every walk
+// that follows the view, as it is a when in a composable.
+component dial ui.node {
+    var d Dir = up
+    var picks = [Dir.up, Dir.down]
+    var taps = 0
+    match d {
+        up { ui.text #north(value="north") }
+        down, left {
+            ui.button #back(text="Back", @click {
+                taps += 1
+            })
+        }
+        else { ui.text(value="east") }
+    }
+    for var p = picks {
+        match p {
+            up {
+                ui.button #pick(text="Up", @click {
+                    taps += 1
+                })
+            }
+            else { ui.text(value="other") }
+        }
+    }
+    ui.text(value=match d {
+        up => "facing up"
+        else => "turned"
+    })
+    ui.button #spin(text="Spin", @click {
+        d = turned(d)
+    })
+}
+
+func testHeadless(t Test) {
+    t.assert(grade(95) == "a")
+    t.assert(grade(60) == "b")
+    t.assert(grade(10) == "c")
+}
+
+func testBreak(t Test) {
+    t.assert(firstDown([Dir.up, Dir.down, Dir.down]) == 1)
+    t.assert(firstDown([Dir.up]) == -1)
+}
+
+func testOption(t Test) {
+    t.assert(name(null) == "none")
+    t.assert(name(Dir.up) == "up")
+    t.assert(name(Dir.left) == "other")
+    t.assert(count(null) == "none")
+    t.assert(count(0) == "zero")
+    t.assert(count(3) == "some")
+}
+
+func testComponent(t Test, c pad) {
+    t.assert(c.axis == "vertical")
+    t.assert(c.maybe == null)
+    t.assert(c.flips[0] == Dir.down)
+    c.turn.click()
+    // A test's own match.
+    match c.d {
+        right { t.assert(true) }
+        else { t.assert(false) }
+    }
+}
+
+func testDial(t Test, c dial) {
+    t.assert(c.north != null)
+    t.assert(c.back == null)
+    t.assert(c.pick[0] != null)
+    t.assert(c.pick[1] == null)
+    c.spin.click()
+    t.assert(c.north == null)
+    c.spin.click()
+    t.assert(c.back != null)
+    c.spin.click()
+    c.spin.click()
+    t.assert(c.d == Dir.up)
+    t.assert(c.north != null)
+}
+
+ui.window {
+    pad
+    dial
+}
+-- out/go/bubbletea/model.go --
+// Code generated by sngl (bubbletea) from app.sngl; DO NOT EDIT.
+
+package main
+
+import (
+	"charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
+	"fmt"
+	"os"
+	"strings"
+)
+
+func snglOptEq[T comparable](p *T, v T) bool {
+	return p != nil && *p == v
+}
+
+// Model is the Bubble Tea model for this SNGL UI.
+type Model struct {
+	*modelState
+}
+
+// modelState is what every copy of a Model shares.
+type modelState struct {
+	d__inst0            string
+	maybe__inst0        *string
+	tally__inst0        *int
+	axis__inst0         string
+	flips__inst0        []string
+	d__inst1            string
+	picks__inst0        []string
+	taps__inst0         int
+	visible__inst0      bool
+	__focusID           int
+	__focusLoop2_cursor int
+
+	width, height int
+}
+
+// New creates a Model with default bind values.
+func New() Model {
+	m := Model{&modelState{}}
+	m.d__inst0 = "up"
+	m.maybe__inst0 = nil
+	m.tally__inst0 = nil
+	m.axis__inst0 = func() string {
+		switch m.d__inst0 {
+		case "up", "down":
+			return "vertical"
+		default:
+			return "horizontal"
+		}
+	}()
+	m.flips__inst0 = func() []string {
+		__out := make([]string, len([]string{"up", "left"}))
+		for __i, __item := range []string{"up", "left"} {
+			__out[__i] = func(x string) string {
+				var __lt0 string
+				switch x {
+				case "up":
+					__lt0 = "down"
+				default:
+					__lt0 = "up"
+				}
+				return __lt0
+			}(__item)
+		}
+		return __out
+	}()
+	m.d__inst1 = "up"
+	m.picks__inst0 = []string{"up", "down"}
+	m.taps__inst0 = 0
+	m.visible__inst0 = true
+	m.__focusID = 0
+	m.__focusLoop2_cursor = 0
+	return m
+}
+
+// SetTerminalSize sets the terminal dimensions and resizes widgets.
+func (m *Model) SetTerminalSize(w, h int) {
+	m.width = w
+	m.height = h
+}
+
+func Grade(n int) string {
+	switch {
+	case (n >= 90):
+		return "a"
+	case (n >= 50):
+		return "b"
+	default:
+		return "c"
+	}
+	return ""
+}
+
+func FirstDown(ds []string) int {
+	var at int = -1
+__loop0:
+	for i, d := range ds {
+		switch d {
+		case "down":
+			at = i
+			break __loop0
+		default:
+		}
+	}
+	return at
+}
+
+func Count(n *int) string {
+	if n == nil {
+		return "none"
+	} else {
+		if snglOptEq(n, 0) {
+			return "zero"
+		} else {
+			return "some"
+		}
+	}
+	return ""
+}
+
+func (m *Model) __focusLoop2_len() int {
+	var __focusCount int = 0
+	for _, p := range m.picks__inst0 {
+		switch p {
+		case "up":
+			__focusCount = (__focusCount + 1)
+		default:
+		}
+	}
+	return __focusCount
+}
+
+func (m *Model) __focusNext() {
+	if m.__focusID == 0 {
+		m.__focusID = 1
+	} else {
+		if m.__focusID == 1 {
+			m.__focusID = 2
+			m.__focusLoop2_cursor = 0
+		} else {
+			if m.__focusID == 2 {
+				var __focusLen int = m.__focusLoop2_len()
+				if (m.__focusLoop2_cursor + 1) < __focusLen {
+					m.__focusLoop2_cursor = (m.__focusLoop2_cursor + 1)
+				} else {
+					m.__focusID = 3
+				}
+			} else {
+				if m.__focusID == 3 {
+					m.__focusID = 0
+				}
+			}
+		}
+	}
+}
+
+func (m *Model) __focusPrev() {
+	if m.__focusID == 0 {
+		m.__focusID = 3
+	} else {
+		if m.__focusID == 1 {
+			m.__focusID = 0
+		} else {
+			if m.__focusID == 2 {
+				if m.__focusLoop2_cursor > 0 {
+					m.__focusLoop2_cursor = (m.__focusLoop2_cursor - 1)
+				} else {
+					m.__focusID = 1
+				}
+			} else {
+				if m.__focusID == 3 {
+					var __focusLen int = m.__focusLoop2_len()
+					m.__focusID = 2
+					m.__focusLoop2_cursor = (__focusLen - 1)
+				}
+			}
+		}
+	}
+}
+
+func (m Model) D__inst0() string {
+	return m.d__inst0
+}
+
+func (m Model) SetD__inst0(v string) Model {
+	m.d__inst0 = v
+	return m
+}
+
+type setD__inst0Msg struct{ value string }
+
+func SetD__inst0Cmd(v string) tea.Cmd {
+	return func() tea.Msg { return setD__inst0Msg{value: v} }
+}
+
+func (m Model) Maybe__inst0() *string {
+	return m.maybe__inst0
+}
+
+func (m Model) SetMaybe__inst0(v *string) Model {
+	m.maybe__inst0 = v
+	return m
+}
+
+type setMaybe__inst0Msg struct{ value *string }
+
+func SetMaybe__inst0Cmd(v *string) tea.Cmd {
+	return func() tea.Msg { return setMaybe__inst0Msg{value: v} }
+}
+
+func (m Model) Tally__inst0() *int {
+	return m.tally__inst0
+}
+
+func (m Model) SetTally__inst0(v *int) Model {
+	m.tally__inst0 = v
+	return m
+}
+
+type setTally__inst0Msg struct{ value *int }
+
+func SetTally__inst0Cmd(v *int) tea.Cmd {
+	return func() tea.Msg { return setTally__inst0Msg{value: v} }
+}
+
+func (m Model) Axis__inst0() string {
+	return m.axis__inst0
+}
+
+func (m Model) SetAxis__inst0(v string) Model {
+	m.axis__inst0 = v
+	return m
+}
+
+type setAxis__inst0Msg struct{ value string }
+
+func SetAxis__inst0Cmd(v string) tea.Cmd {
+	return func() tea.Msg { return setAxis__inst0Msg{value: v} }
+}
+
+func (m Model) Flips__inst0() []string {
+	return m.flips__inst0
+}
+
+func (m Model) SetFlips__inst0(v []string) Model {
+	m.flips__inst0 = v
+	return m
+}
+
+type setFlips__inst0Msg struct{ value []string }
+
+func SetFlips__inst0Cmd(v []string) tea.Cmd {
+	return func() tea.Msg { return setFlips__inst0Msg{value: v} }
+}
+
+func (m Model) D__inst1() string {
+	return m.d__inst1
+}
+
+func (m Model) SetD__inst1(v string) Model {
+	m.d__inst1 = v
+	return m
+}
+
+type setD__inst1Msg struct{ value string }
+
+func SetD__inst1Cmd(v string) tea.Cmd {
+	return func() tea.Msg { return setD__inst1Msg{value: v} }
+}
+
+func (m Model) Picks__inst0() []string {
+	return m.picks__inst0
+}
+
+func (m Model) SetPicks__inst0(v []string) Model {
+	m.picks__inst0 = v
+	return m
+}
+
+type setPicks__inst0Msg struct{ value []string }
+
+func SetPicks__inst0Cmd(v []string) tea.Cmd {
+	return func() tea.Msg { return setPicks__inst0Msg{value: v} }
+}
+
+func (m Model) Taps__inst0() int {
+	return m.taps__inst0
+}
+
+func (m Model) SetTaps__inst0(v int) Model {
+	m.taps__inst0 = v
+	return m
+}
+
+type setTaps__inst0Msg struct{ value int }
+
+func SetTaps__inst0Cmd(v int) tea.Cmd {
+	return func() tea.Msg { return setTaps__inst0Msg{value: v} }
+}
+
+func (m Model) Visible__inst0() bool {
+	return m.visible__inst0
+}
+
+func (m Model) SetVisible__inst0(v bool) Model {
+	m.visible__inst0 = v
+	return m
+}
+
+type setVisible__inst0Msg struct{ value bool }
+
+func SetVisible__inst0Cmd(v bool) tea.Cmd {
+	return func() tea.Msg { return setVisible__inst0Msg{value: v} }
+}
+
+func (m Model) Init() tea.Cmd {
+	return nil
+}
+
+func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	var cmds []tea.Cmd
+	var cmd tea.Cmd
+	_ = cmd
+	switch msg := msg.(type) {
+	case setD__inst0Msg:
+		m = m.SetD__inst0(msg.value)
+	case setMaybe__inst0Msg:
+		m = m.SetMaybe__inst0(msg.value)
+	case setTally__inst0Msg:
+		m = m.SetTally__inst0(msg.value)
+	case setAxis__inst0Msg:
+		m = m.SetAxis__inst0(msg.value)
+	case setFlips__inst0Msg:
+		m = m.SetFlips__inst0(msg.value)
+	case setD__inst1Msg:
+		m = m.SetD__inst1(msg.value)
+	case setPicks__inst0Msg:
+		m = m.SetPicks__inst0(msg.value)
+	case setTaps__inst0Msg:
+		m = m.SetTaps__inst0(msg.value)
+	case setVisible__inst0Msg:
+		m = m.SetVisible__inst0(msg.value)
+	case tea.WindowSizeMsg:
+		m.width = msg.Width
+		m.height = msg.Height
+	case tea.KeyPressMsg:
+		switch {
+		case msg.Code == 'c' && msg.Mod == tea.ModCtrl:
+			if m.visible__inst0 {
+				m.visible__inst0 = false
+			}
+			if !(m.visible__inst0) {
+				return m, tea.Quit
+			}
+			return m, nil
+		case msg.Code == tea.KeyTab && msg.Mod == 0:
+			m.__focusNext()
+		case msg.Code == tea.KeyTab && msg.Mod == tea.ModShift:
+			m.__focusPrev()
+		case msg.Code == tea.KeyEnter && m.__focusID == 0:
+			var __lt3 string
+			switch m.d__inst0 {
+			case "up":
+				__lt3 = "right"
+			case "right":
+				__lt3 = "down"
+			case "down":
+				__lt3 = "left"
+			default:
+				__lt3 = "up"
+			}
+			m.d__inst0 = __lt3
+		case msg.Code == tea.KeyEnter && m.__focusID == 1:
+			m.taps__inst0 += 1
+		case msg.Code == tea.KeyEnter && m.__focusID == 2:
+			func() {
+				__focusPos2 := 0
+				for __copy0, p := range m.picks__inst0 {
+					_ = __copy0
+					_ = p
+					switch p {
+					case "up":
+						if m.__focusLoop2_cursor == __focusPos2 {
+							m.taps__inst0 += 1
+							return
+						}
+						__focusPos2++
+					default:
+					}
+				}
+			}()
+		case msg.Code == tea.KeyEnter && m.__focusID == 3:
+			var __lt5 string
+			switch m.d__inst1 {
+			case "up":
+				__lt5 = "right"
+			case "right":
+				__lt5 = "down"
+			case "down":
+				__lt5 = "left"
+			default:
+				__lt5 = "up"
+			}
+			m.d__inst1 = __lt5
+		}
+	}
+	return m, tea.Batch(cmds...)
+}
+
+// turnClick activates the #turn widget the way a keypress does; for tests.
+func (m *Model) turnClick() {
+	prev := m.__focusID
+	m.__focusID = 0
+	nm, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	*m = nm.(Model)
+	m.__focusID = prev
+}
+
+// backClick activates the #back widget the way a keypress does; for tests.
+func (m *Model) backClick() {
+	prev := m.__focusID
+	m.__focusID = 1
+	nm, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	*m = nm.(Model)
+	m.__focusID = prev
+}
+
+// pickClick activates the last copy of #pick the way a keypress does; for tests.
+func (m *Model) pickClick() {
+	copies := func() []struct {
+		key string
+		pos int
+	} {
+		var __at []struct {
+			key string
+			pos int
+		}
+		__focusPos2 := 0
+		for __copy0, p := range m.picks__inst0 {
+			_ = __copy0
+			_ = p
+			switch p {
+			case "up":
+				__at = append(__at, struct {
+					key string
+					pos int
+				}{fmt.Sprint(__copy0), __focusPos2})
+				__focusPos2++
+			default:
+			}
+		}
+		return __at
+	}()
+	pos := -1
+	if len(copies) > 0 {
+		pos = copies[len(copies)-1].pos
+	}
+	if pos < 0 {
+		return
+	}
+	prev, prevAt := m.__focusID, m.__focusLoop2_cursor
+	m.__focusID, m.__focusLoop2_cursor = 2, pos
+	nm, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	*m = nm.(Model)
+	m.__focusID, m.__focusLoop2_cursor = prev, prevAt
+}
+
+// pickClickAt activates the copy of #pick with the key the way a keypress does; for tests.
+func (m *Model) pickClickAt(key string) {
+	copies := func() []struct {
+		key string
+		pos int
+	} {
+		var __at []struct {
+			key string
+			pos int
+		}
+		__focusPos2 := 0
+		for __copy0, p := range m.picks__inst0 {
+			_ = __copy0
+			_ = p
+			switch p {
+			case "up":
+				__at = append(__at, struct {
+					key string
+					pos int
+				}{fmt.Sprint(__copy0), __focusPos2})
+				__focusPos2++
+			default:
+			}
+		}
+		return __at
+	}()
+	pos := -1
+	for _, c := range copies {
+		if c.key == key {
+			pos = c.pos
+		}
+	}
+	if pos < 0 {
+		return
+	}
+	prev, prevAt := m.__focusID, m.__focusLoop2_cursor
+	m.__focusID, m.__focusLoop2_cursor = 2, pos
+	nm, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	*m = nm.(Model)
+	m.__focusID, m.__focusLoop2_cursor = prev, prevAt
+}
+
+// spinClick activates the #spin widget the way a keypress does; for tests.
+func (m *Model) spinClick() {
+	prev := m.__focusID
+	m.__focusID = 3
+	nm, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	*m = nm.(Model)
+	m.__focusID = prev
+}
+
+func (m *Model) backPresent() bool {
+	var __lt2 string
+	_ = __lt2
+	if m.maybe__inst0 == nil {
+		__lt2 = "none"
+	} else {
+		var __lt1 string
+		_ = __lt1
+		if snglOptEq(m.maybe__inst0, "up") {
+			__lt1 = "up"
+		} else {
+			__lt1 = "other"
+		}
+		__lt2 = __lt1
+	}
+	switch m.d__inst1 {
+	case "up":
+	case "down", "left":
+		return true
+	default:
+	}
+	var __lt4 string
+	_ = __lt4
+	switch m.d__inst1 {
+	case "up":
+		__lt4 = "facing up"
+	default:
+		__lt4 = "turned"
+	}
+	return false
+}
+
+func (m *Model) northPresent() bool {
+	var __lt2 string
+	_ = __lt2
+	if m.maybe__inst0 == nil {
+		__lt2 = "none"
+	} else {
+		var __lt1 string
+		_ = __lt1
+		if snglOptEq(m.maybe__inst0, "up") {
+			__lt1 = "up"
+		} else {
+			__lt1 = "other"
+		}
+		__lt2 = __lt1
+	}
+	switch m.d__inst1 {
+	case "up":
+		return true
+	case "down", "left":
+	default:
+	}
+	var __lt4 string
+	_ = __lt4
+	switch m.d__inst1 {
+	case "up":
+		__lt4 = "facing up"
+	default:
+		__lt4 = "turned"
+	}
+	return false
+}
+
+func (m *Model) pickPresentAt(key string) bool {
+	var __lt2 string
+	_ = __lt2
+	if m.maybe__inst0 == nil {
+		__lt2 = "none"
+	} else {
+		var __lt1 string
+		_ = __lt1
+		if snglOptEq(m.maybe__inst0, "up") {
+			__lt1 = "up"
+		} else {
+			__lt1 = "other"
+		}
+		__lt2 = __lt1
+	}
+	for __copy0, p := range m.picks__inst0 {
+		switch p {
+		case "up":
+			if key == fmt.Sprint(__copy0) {
+				return true
+			}
+		default:
+		}
+	}
+	var __lt4 string
+	_ = __lt4
+	switch m.d__inst1 {
+	case "up":
+		__lt4 = "facing up"
+	default:
+		__lt4 = "turned"
+	}
+	return false
+}
+
+func (m Model) View() tea.View {
+	var content string
+	if m.visible__inst0 {
+		var contentParts []string
+		var contentPart_0 string
+		contentPart_0 = lipgloss.NewStyle().Render(fmt.Sprint("left-handed"))
+		contentParts = append(contentParts, contentPart_0)
+		var contentPart_1 string
+		contentPart_1 = lipgloss.NewStyle().Render(fmt.Sprint(m.axis__inst0))
+		contentParts = append(contentParts, contentPart_1)
+		var __lt2 string
+		if m.maybe__inst0 == nil {
+			__lt2 = "none"
+		} else {
+			var __lt1 string
+			if snglOptEq(m.maybe__inst0, "up") {
+				__lt1 = "up"
+			} else {
+				__lt1 = "other"
+			}
+			__lt2 = __lt1
+		}
+		var contentPart_4 string
+		contentPart_4 = lipgloss.NewStyle().Render(fmt.Sprint(__lt2))
+		contentParts = append(contentParts, contentPart_4)
+		var contentPart_5 string
+		contentPart_5 = lipgloss.NewStyle().Render(fmt.Sprint(Count(m.tally__inst0)))
+		contentParts = append(contentParts, contentPart_5)
+		var contentPart_6 string
+		contentPart_6 = lipgloss.NewStyle().Render(fmt.Sprint(Grade((FirstDown(m.flips__inst0) * 60))))
+		contentParts = append(contentParts, contentPart_6)
+		var contentPart_7 string
+		contentPart_7Focused := (m.__focusID == 0)
+		contentPart_7Prefix := " "
+		if contentPart_7Focused {
+			contentPart_7Prefix = ">"
+		}
+		contentPart_7 = lipgloss.NewStyle().Render(contentPart_7Prefix + " " + fmt.Sprint("Turn"))
+		contentParts = append(contentParts, contentPart_7)
+		var contentPart_8 string
+		switch m.d__inst1 {
+		case "up":
+			contentPart_8 = lipgloss.NewStyle().Render(fmt.Sprint("north"))
+		case "down", "left":
+			contentPart_8Focused := (m.__focusID == 1)
+			contentPart_8Prefix := " "
+			if contentPart_8Focused {
+				contentPart_8Prefix = ">"
+			}
+			contentPart_8 = lipgloss.NewStyle().Render(contentPart_8Prefix + " " + fmt.Sprint("Back"))
+		default:
+			contentPart_8 = lipgloss.NewStyle().Render(fmt.Sprint("east"))
+		}
+		if contentPart_8 != "" {
+			contentParts = append(contentParts, contentPart_8)
+		}
+		var contentPart_9 string
+		__focusPos2 := 0
+		_ = __focusPos2
+		var contentPart_9Items []string
+		for __copy0, p := range m.picks__inst0 {
+			_ = __copy0
+			_ = p
+			var contentPart_9Item string
+			switch p {
+			case "up":
+				contentPart_9ItemFocused := ((m.__focusID == 2) && (m.__focusLoop2_cursor == __focusPos2))
+				contentPart_9ItemPrefix := " "
+				if contentPart_9ItemFocused {
+					contentPart_9ItemPrefix = ">"
+				}
+				contentPart_9Item = lipgloss.NewStyle().Render(contentPart_9ItemPrefix + " " + fmt.Sprint("Up"))
+				__focusPos2++
+			default:
+				contentPart_9Item = lipgloss.NewStyle().Render(fmt.Sprint("other"))
+			}
+			contentPart_9Items = append(contentPart_9Items, contentPart_9Item)
+		}
+		contentPart_9 = strings.Join(contentPart_9Items, "")
+		if contentPart_9 != "" {
+			contentParts = append(contentParts, contentPart_9)
+		}
+		var __lt4 string
+		switch m.d__inst1 {
+		case "up":
+			__lt4 = "facing up"
+		default:
+			__lt4 = "turned"
+		}
+		var contentPart_12 string
+		contentPart_12 = lipgloss.NewStyle().Render(fmt.Sprint(__lt4))
+		contentParts = append(contentParts, contentPart_12)
+		var contentPart_13 string
+		contentPart_13Focused := (m.__focusID == 3)
+		contentPart_13Prefix := " "
+		if contentPart_13Focused {
+			contentPart_13Prefix = ">"
+		}
+		contentPart_13 = lipgloss.NewStyle().Render(contentPart_13Prefix + " " + fmt.Sprint("Spin"))
+		contentParts = append(contentParts, contentPart_13)
+		content = lipgloss.JoinVertical(lipgloss.Left, contentParts...)
+	}
+	v := tea.NewView(content)
+	v.AltScreen = true
+	return v
+}
+
+func main() {
+	p := tea.NewProgram(New())
+	_, err := p.Run()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		os.Exit(1)
+	}
+}
+-- out/go/bubbletea/model_test.go --
+package main
+
+import "testing"
+
+func TestHeadless(t *testing.T) {
+	__snglTestComponent := newTestComponent()
+	_ = __snglTestComponent
+	if !(true) { t.Errorf("assert failed: %s", "true") }
+	if !(true) { t.Errorf("assert failed: %s", "true") }
+	if !(true) { t.Errorf("assert failed: %s", "true") }
+}
+
+func TestBreak(t *testing.T) {
+	__snglTestComponent := newTestComponent()
+	_ = __snglTestComponent
+	if !(true) { t.Errorf("assert failed: %s", "true") }
+	if !(true) { t.Errorf("assert failed: %s", "true") }
+}
+
+func TestOption(t *testing.T) {
+	__snglTestComponent := newTestComponent()
+	_ = __snglTestComponent
+	if !(true) { t.Errorf("assert failed: %s", "true") }
+	if !(true) { t.Errorf("assert failed: %s", "true") }
+	if !(true) { t.Errorf("assert failed: %s", "true") }
+	if !(true) { t.Errorf("assert failed: %s", "true") }
+	if !(true) { t.Errorf("assert failed: %s", "true") }
+	if !(true) { t.Errorf("assert failed: %s", "true") }
+}
+
+func TestComponent(t *testing.T) {
+	c := newTestComponent()
+	_ = c
+	if !((c.axis__inst0 == "vertical")) { t.Errorf("assert failed: %s", "(c.axis__inst0 == \"vertical\")") }
+	if !((c.maybe__inst0 == nil)) { t.Errorf("assert failed: %s", "(c.maybe__inst0 == nil)") }
+	if !((c.flips__inst0[0] == "down")) { t.Errorf("assert failed: %s", "(c.flips__inst0[0] == \"down\")") }
+	c.turnClick()
+	if (c.d__inst0 == "right") {
+		if !(true) { t.Errorf("assert failed: %s", "true") }
+	} else {
+		if !(false) { t.Errorf("assert failed: %s", "false") }
+	}
+}
+
+func TestDial(t *testing.T) {
+	c := newTestComponent()
+	_ = c
+	if !(c.northPresent()) { t.Errorf("assert failed: %s", "c.northPresent()") }
+	if !(!c.backPresent()) { t.Errorf("assert failed: %s", "!c.backPresent()") }
+	if !(c.pickPresentAt("0")) { t.Errorf("assert failed: %s", "c.pickPresentAt(\"0\")") }
+	if !(!c.pickPresentAt("1")) { t.Errorf("assert failed: %s", "!c.pickPresentAt(\"1\")") }
+	c.spinClick()
+	if !(!c.northPresent()) { t.Errorf("assert failed: %s", "!c.northPresent()") }
+	c.spinClick()
+	if !(c.backPresent()) { t.Errorf("assert failed: %s", "c.backPresent()") }
+	c.spinClick()
+	c.spinClick()
+	if !((c.d__inst1 == "up")) { t.Errorf("assert failed: %s", "(c.d__inst1 == \"up\")") }
+	if !(c.northPresent()) { t.Errorf("assert failed: %s", "c.northPresent()") }
+}
+
+
+func newTestComponent() Model { return New() }
+-- out/go/fyne/model.go --
+// Code generated by sngl (fyne) from app.sngl; DO NOT EDIT.
+
+package main
+
+import (
+	"duckfam.us/sngl/pkg/go/fynelayout"
+	"fmt"
+	"fyne.io/fyne/v2"
+	"fyne.io/fyne/v2/app"
+	"fyne.io/fyne/v2/widget"
+	"os"
+)
+
+func snglOptEq[T comparable](p *T, v T) bool {
+	return p != nil && *p == v
+}
+
+// Model holds the state for this SNGL UI.
+type Model struct {
+	d__inst0       string
+	maybe__inst0   *string
+	tally__inst0   *int
+	axis__inst0    string
+	flips__inst0   []string
+	d__inst1       string
+	picks__inst0   []string
+	taps__inst0    int
+	visible__inst0 bool
+	__slot0        []fyne.CanvasObject
+	__slot0_at     fyne.CanvasObject
+	__slot1        []fyne.CanvasObject
+	__slot1_at     fyne.CanvasObject
+
+	__n0          *fynelayout.Toplevel
+	__n8          *widget.Label
+	__n1          *widget.Label
+	__n2          *widget.Label
+	__n3          *widget.Label
+	__n4          *widget.Label
+	turn          *widget.Button
+	__n5          *widget.Label
+	spin          *widget.Button
+	__built       bool
+	north         *widget.Label
+	back          *widget.Button
+	pick          *widget.Button
+	__copies_pick map[string]*widget.Button
+}
+
+// New creates a Model with default values.
+func New() *Model {
+	m := &Model{}
+	m.d__inst0 = "up"
+	m.maybe__inst0 = nil
+	m.tally__inst0 = nil
+	m.axis__inst0 = func() string {
+		switch m.d__inst0 {
+		case "up", "down":
+			return "vertical"
+		default:
+			return "horizontal"
+		}
+	}()
+	m.flips__inst0 = func() []string {
+		__out := make([]string, len([]string{"up", "left"}))
+		for __i, __item := range []string{"up", "left"} {
+			__out[__i] = func(x string) string {
+				var __lt0 string
+				switch x {
+				case "up":
+					__lt0 = "down"
+				default:
+					__lt0 = "up"
+				}
+				return __lt0
+			}(__item)
+		}
+		return __out
+	}()
+	m.d__inst1 = "up"
+	m.picks__inst0 = []string{"up", "down"}
+	m.taps__inst0 = 0
+	m.visible__inst0 = true
+	m.__slot0 = nil
+	m.__slot0_at = nil
+	m.__slot1 = nil
+	m.__slot1_at = nil
+	return m
+}
+
+func Grade(n int) string {
+	switch {
+	case (n >= 90):
+		return "a"
+	case (n >= 50):
+		return "b"
+	default:
+		return "c"
+	}
+	return ""
+}
+
+func FirstDown(ds []string) int {
+	var at int = -1
+__loop0:
+	for i, d := range ds {
+		switch d {
+		case "down":
+			at = i
+			break __loop0
+		default:
+		}
+	}
+	return at
+}
+
+func Count(n *int) string {
+	if n == nil {
+		return "none"
+	} else {
+		if snglOptEq(n, 0) {
+			return "zero"
+		} else {
+			return "some"
+		}
+	}
+	return ""
+}
+
+func (m *Model) __renderSlot0(__parent *fyne.Container) {
+	for _, __entry := range m.__slot0 {
+		fynelayout.Remove(__parent, __entry)
+	}
+	m.__slot0 = nil
+	m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
+	m.north = nil
+	m.back = nil
+	if m.d__inst1 == "up" {
+		m.north = widget.NewLabel("")
+		m.north.SetText("north")
+		fynelayout.InsertBefore(__parent, m.__slot0_at, m.north)
+		m.__slot0 = append(m.__slot0, m.north)
+	} else {
+		if (m.d__inst1 == "down") || (m.d__inst1 == "left") {
+			m.back = widget.NewButton("", nil)
+			m.back.SetText("Back")
+			m.back.OnTapped = func() {
+				m.taps__inst0 += 1
+			}
+			fynelayout.InsertBefore(__parent, m.__slot0_at, m.back)
+			m.__slot0 = append(m.__slot0, m.back)
+		} else {
+			__n6 := widget.NewLabel("")
+			__n6.SetText("east")
+			fynelayout.InsertBefore(__parent, m.__slot0_at, __n6)
+			m.__slot0 = append(m.__slot0, __n6)
+		}
+	}
+}
+
+func (m *Model) __renderSlot1(__parent *fyne.Container) {
+	for _, __entry := range m.__slot1 {
+		fynelayout.Remove(__parent, __entry)
+	}
+	m.__slot1 = nil
+	m.__slot1_at = fynelayout.SlotAnchor(__parent, m.__slot1_at)
+	m.__copies_pick = nil
+	for __copy0, p := range m.picks__inst0 {
+		if p == "up" {
+			m.pick = widget.NewButton("", nil)
+			m.pick.SetText("Up")
+			m.__list_pick(fmt.Sprint(__copy0), m.pick)
+			m.pick.OnTapped = func() {
+				m.taps__inst0 += 1
+			}
+			fynelayout.InsertBefore(__parent, m.__slot1_at, m.pick)
+			m.__slot1 = append(m.__slot1, m.pick)
+		} else {
+			__n7 := widget.NewLabel("")
+			__n7.SetText("other")
+			fynelayout.InsertBefore(__parent, m.__slot1_at, __n7)
+			m.__slot1 = append(m.__slot1, __n7)
+		}
+	}
+}
+
+func (m *Model) __n0_closed_handler() {
+}
+
+func (m *Model) __n0_visible_handler(__visible bool) {
+	m.visible__inst0 = __visible
+	m.__n0.SetVisible(m.visible__inst0)
+}
+
+func (m *Model) turn_click_handler() {
+	var __lt3 string
+	switch m.d__inst0 {
+	case "up":
+		__lt3 = "right"
+	case "right":
+		__lt3 = "down"
+	case "down":
+		__lt3 = "left"
+	default:
+		__lt3 = "up"
+	}
+	m.d__inst0 = __lt3
+}
+
+func (m *Model) spin_click_handler() {
+	var __lt5 string
+	switch m.d__inst1 {
+	case "up":
+		__lt5 = "right"
+	case "right":
+		__lt5 = "down"
+	case "down":
+		__lt5 = "left"
+	default:
+		__lt5 = "up"
+	}
+	m.d__inst1 = __lt5
+	var __lt6 string
+	if m.d__inst1 == "up" {
+		__lt6 = "facing up"
+	} else {
+		__lt6 = "turned"
+	}
+	m.__n5.SetText(__lt6)
+	m.__renderSlot0(m.__n0.Container)
+}
+
+// turnClick invokes the OnTapped callback on the #turn widget; for tests.
+func (m *Model) turnClick() {
+	if m.turn.OnTapped != nil {
+		m.turn.OnTapped()
+	}
+}
+
+// spinClick invokes the OnTapped callback on the #spin widget; for tests.
+func (m *Model) spinClick() {
+	if m.spin.OnTapped != nil {
+		m.spin.OnTapped()
+	}
+}
+
+// backClick invokes the OnTapped callback on the #back widget; for tests.
+func (m *Model) backClick() {
+	if m.back.OnTapped != nil {
+		m.back.OnTapped()
+	}
+}
+
+// pickClick invokes the OnTapped callback on the #pick widget; for tests.
+func (m *Model) pickClick() {
+	if m.pick.OnTapped != nil {
+		m.pick.OnTapped()
+	}
+}
+
+// pickClickAt invokes it on the copy of #pick with the key; for tests.
+func (m *Model) pickClickAt(key string) {
+	if m.__copies_pick[key] == nil {
+		return
+	}
+	if m.__copies_pick[key].OnTapped != nil {
+		m.__copies_pick[key].OnTapped()
+	}
+}
+
+func (m *Model) __list_pick(key string, w *widget.Button) {
+	for k, c := range m.__copies_pick {
+		if c == w {
+			delete(m.__copies_pick, k)
+		}
+	}
+	if m.__copies_pick == nil {
+		m.__copies_pick = map[string]*widget.Button{}
+	}
+	m.__copies_pick[key] = w
+}
+
+// pickPresentAt reports whether the copy of #pick with the key is rendered now; for tests.
+func (m *Model) pickPresentAt(key string) bool {
+	_, ok := m.__copies_pick[key]
+	return ok
+}
+
+// backPresent reports whether the #back widget is rendered now; for tests.
+func (m *Model) backPresent() bool {
+	return m.back != nil
+}
+
+// northPresent reports whether the #north widget is rendered now; for tests.
+func (m *Model) northPresent() bool {
+	return m.north != nil
+}
+
+func (m *Model) D__inst0() string {
+	return m.d__inst0
+}
+
+func (m *Model) SetD__inst0(v string) {
+	m.d__inst0 = v
+}
+
+func (m *Model) Maybe__inst0() *string {
+	return m.maybe__inst0
+}
+
+func (m *Model) SetMaybe__inst0(v *string) {
+	m.maybe__inst0 = v
+}
+
+func (m *Model) Tally__inst0() *int {
+	return m.tally__inst0
+}
+
+func (m *Model) SetTally__inst0(v *int) {
+	m.tally__inst0 = v
+}
+
+func (m *Model) Axis__inst0() string {
+	return m.axis__inst0
+}
+
+func (m *Model) SetAxis__inst0(v string) {
+	m.axis__inst0 = v
+}
+
+func (m *Model) Flips__inst0() []string {
+	return m.flips__inst0
+}
+
+func (m *Model) SetFlips__inst0(v []string) {
+	m.flips__inst0 = v
+}
+
+func (m *Model) D__inst1() string {
+	return m.d__inst1
+}
+
+func (m *Model) SetD__inst1(v string) {
+	m.d__inst1 = v
+}
+
+func (m *Model) Picks__inst0() []string {
+	return m.picks__inst0
+}
+
+func (m *Model) SetPicks__inst0(v []string) {
+	m.picks__inst0 = v
+}
+
+func (m *Model) Taps__inst0() int {
+	return m.taps__inst0
+}
+
+func (m *Model) SetTaps__inst0(v int) {
+	m.taps__inst0 = v
+}
+
+func (m *Model) Visible__inst0() bool {
+	return m.visible__inst0
+}
+
+func (m *Model) SetVisible__inst0(v bool) {
+	m.visible__inst0 = v
+}
+
+// BuildUI creates the widget tree and returns the first window's content.
+func (m *Model) BuildUI() fyne.CanvasObject {
+	if m.__built {
+		return m.__n0.Container
+	}
+	m.__built = true
+	m.__n0 = fynelayout.NewToplevel()
+	m.__n0.SetVisible(m.visible__inst0)
+	m.__n0.OnClosed = m.__n0_closed_handler
+	m.__n0.OnVisible = m.__n0_visible_handler
+	m.__n8 = widget.NewLabel("")
+	m.__n8.SetText("left-handed")
+	m.__n0.Add(m.__n8)
+	m.__n1 = widget.NewLabel("")
+	m.__n1.SetText(m.axis__inst0)
+	m.__n0.Add(m.__n1)
+	var __lt2 string
+	if m.maybe__inst0 == nil {
+		__lt2 = "none"
+	} else {
+		var __lt1 string
+		if snglOptEq(m.maybe__inst0, "up") {
+			__lt1 = "up"
+		} else {
+			__lt1 = "other"
+		}
+		__lt2 = __lt1
+	}
+	m.__n2 = widget.NewLabel("")
+	m.__n2.SetText(__lt2)
+	m.__n0.Add(m.__n2)
+	m.__n3 = widget.NewLabel("")
+	m.__n3.SetText(Count(m.tally__inst0))
+	m.__n0.Add(m.__n3)
+	m.__n4 = widget.NewLabel("")
+	m.__n4.SetText(Grade((FirstDown(m.flips__inst0) * 60)))
+	m.__n0.Add(m.__n4)
+	m.turn = widget.NewButton("", nil)
+	m.turn.SetText("Turn")
+	m.turn.OnTapped = m.turn_click_handler
+	m.__n0.Add(m.turn)
+	m.__renderSlot0(m.__n0.Container)
+	m.__renderSlot1(m.__n0.Container)
+	var __lt4 string
+	if m.d__inst1 == "up" {
+		__lt4 = "facing up"
+	} else {
+		__lt4 = "turned"
+	}
+	m.__n5 = widget.NewLabel("")
+	m.__n5.SetText(__lt4)
+	m.__n0.Add(m.__n5)
+	m.spin = widget.NewButton("", nil)
+	m.spin.SetText("Spin")
+	m.spin.OnTapped = m.spin_click_handler
+	m.__n0.Add(m.spin)
+	fynelayout.AppAttach(m.__n0)
+	return m.__n0.Container
+}
+
+func main() {
+	a := app.New()
+	m := New()
+	m.BuildUI()
+	fynelayout.RunWindows(a, true)
+	_ = os.Stderr
+}
+-- out/go/fyne/model_test.go --
+package main
+
+import "testing"
+
+func TestHeadless(t *testing.T) {
+	__snglTestComponent := newTestComponent()
+	_ = __snglTestComponent
+	if !(true) { t.Errorf("assert failed: %s", "true") }
+	if !(true) { t.Errorf("assert failed: %s", "true") }
+	if !(true) { t.Errorf("assert failed: %s", "true") }
+}
+
+func TestBreak(t *testing.T) {
+	__snglTestComponent := newTestComponent()
+	_ = __snglTestComponent
+	if !(true) { t.Errorf("assert failed: %s", "true") }
+	if !(true) { t.Errorf("assert failed: %s", "true") }
+}
+
+func TestOption(t *testing.T) {
+	__snglTestComponent := newTestComponent()
+	_ = __snglTestComponent
+	if !(true) { t.Errorf("assert failed: %s", "true") }
+	if !(true) { t.Errorf("assert failed: %s", "true") }
+	if !(true) { t.Errorf("assert failed: %s", "true") }
+	if !(true) { t.Errorf("assert failed: %s", "true") }
+	if !(true) { t.Errorf("assert failed: %s", "true") }
+	if !(true) { t.Errorf("assert failed: %s", "true") }
+}
+
+func TestComponent(t *testing.T) {
+	c := newTestComponent()
+	_ = c
+	if !((c.axis__inst0 == "vertical")) { t.Errorf("assert failed: %s", "(c.axis__inst0 == \"vertical\")") }
+	if !((c.maybe__inst0 == nil)) { t.Errorf("assert failed: %s", "(c.maybe__inst0 == nil)") }
+	if !((c.flips__inst0[0] == "down")) { t.Errorf("assert failed: %s", "(c.flips__inst0[0] == \"down\")") }
+	c.turnClick()
+	if (c.d__inst0 == "right") {
+		if !(true) { t.Errorf("assert failed: %s", "true") }
+	} else {
+		if !(false) { t.Errorf("assert failed: %s", "false") }
+	}
+}
+
+func TestDial(t *testing.T) {
+	c := newTestComponent()
+	_ = c
+	if !(c.northPresent()) { t.Errorf("assert failed: %s", "c.northPresent()") }
+	if !(!c.backPresent()) { t.Errorf("assert failed: %s", "!c.backPresent()") }
+	if !(c.pickPresentAt("0")) { t.Errorf("assert failed: %s", "c.pickPresentAt(\"0\")") }
+	if !(!c.pickPresentAt("1")) { t.Errorf("assert failed: %s", "!c.pickPresentAt(\"1\")") }
+	c.spinClick()
+	if !(!c.northPresent()) { t.Errorf("assert failed: %s", "!c.northPresent()") }
+	c.spinClick()
+	if !(c.backPresent()) { t.Errorf("assert failed: %s", "c.backPresent()") }
+	c.spinClick()
+	c.spinClick()
+	if !((c.d__inst1 == "up")) { t.Errorf("assert failed: %s", "(c.d__inst1 == \"up\")") }
+	if !(c.northPresent()) { t.Errorf("assert failed: %s", "c.northPresent()") }
+}
+
+-- out/go/fyne/testcomponent_test.go --
+package main
+
+import "fyne.io/fyne/v2/test"
+
+func newTestComponent() *Model {
+	test.NewApp()
+	m := New()
+	m.BuildUI()
+	return m
+}
+-- out/go/gtk4/callbacks.go --
+// Code generated by sngl (gtk4) from app.sngl; DO NOT EDIT.
+
+package main
+
+import "duckfam.us/sngl/pkg/go/gtk4rt"
+
+func main() {
+	gtk4rt.Init()
+	m := New()
+	m.buildWidgetTree()
+	gtk4rt.RunWindows(true)
+}
+-- out/go/gtk4/model.go --
+// Code generated by sngl (gtk4) from app.sngl; DO NOT EDIT.
+
+package main
+
+import (
+	"duckfam.us/sngl/pkg/go/gtk4rt"
+	"fmt"
+)
+
+func snglOptEq[T comparable](p *T, v T) bool {
+	return p != nil && *p == v
+}
+
+// Model holds the state and widget references for this SNGL UI.
+type Model struct {
+	d__inst0       string
+	maybe__inst0   *string
+	tally__inst0   *int
+	axis__inst0    string
+	flips__inst0   []string
+	d__inst1       string
+	picks__inst0   []string
+	taps__inst0    int
+	visible__inst0 bool
+	__slot0        []gtk4rt.Handle
+	__slot0_at     gtk4rt.Handle
+	__slot1        []gtk4rt.Handle
+	__slot1_at     gtk4rt.Handle
+	__n0           gtk4rt.Handle
+	__n8           gtk4rt.Handle
+	__n1           gtk4rt.Handle
+	__n2           gtk4rt.Handle
+	__n3           gtk4rt.Handle
+	__n4           gtk4rt.Handle
+	turn           gtk4rt.Handle
+	__n5           gtk4rt.Handle
+	spin           gtk4rt.Handle
+	north          gtk4rt.Handle
+	back           gtk4rt.Handle
+	pick           gtk4rt.Handle
+	__copies_pick  map[string]gtk4rt.Handle
+	__built        bool
+}
+
+// New creates a Model with default values. Binds initialize
+// sequentially so later inits can reference earlier `m.<name>` fields.
+func New() *Model {
+	m := &Model{}
+	m.d__inst0 = "up"
+	m.maybe__inst0 = nil
+	m.tally__inst0 = nil
+	m.axis__inst0 = func() string {
+		switch m.d__inst0 {
+		case "up", "down":
+			return "vertical"
+		default:
+			return "horizontal"
+		}
+	}()
+	m.flips__inst0 = func() []string {
+		__out := make([]string, len([]string{"up", "left"}))
+		for __i, __item := range []string{"up", "left"} {
+			__out[__i] = func(x string) string {
+				var __lt0 string
+				switch x {
+				case "up":
+					__lt0 = "down"
+				default:
+					__lt0 = "up"
+				}
+				return __lt0
+			}(__item)
+		}
+		return __out
+	}()
+	m.d__inst1 = "up"
+	m.picks__inst0 = []string{"up", "down"}
+	m.taps__inst0 = 0
+	m.visible__inst0 = true
+	m.__slot0 = nil
+	m.__slot0_at = nil
+	m.__slot1 = nil
+	m.__slot1_at = nil
+	return m
+}
+
+func Grade(n int) string {
+	switch {
+	case (n >= 90):
+		return "a"
+	case (n >= 50):
+		return "b"
+	default:
+		return "c"
+	}
+	return ""
+}
+
+func FirstDown(ds []string) int {
+	var at int = -1
+__loop0:
+	for i, d := range ds {
+		switch d {
+		case "down":
+			at = i
+			break __loop0
+		default:
+		}
+	}
+	return at
+}
+
+func Count(n *int) string {
+	if n == nil {
+		return "none"
+	} else {
+		if snglOptEq(n, 0) {
+			return "zero"
+		} else {
+			return "some"
+		}
+	}
+	return ""
+}
+
+func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
+	for _, __entry := range m.__slot0 {
+		gtk4rt.BoxRemove(parent, __entry)
+	}
+	m.__slot0 = nil
+	m.__slot0_at = gtk4rt.SlotAnchor(parent, m.__slot0_at)
+	m.north = nil
+	m.back = nil
+	if m.d__inst1 == "up" {
+		m.north = gtk4rt.LabelNew("")
+		gtk4rt.LabelSetText(m.north, "north")
+		gtk4rt.InsertBefore(parent, m.__slot0_at, m.north)
+		m.__slot0 = append(m.__slot0, m.north)
+	} else {
+		if (m.d__inst1 == "down") || (m.d__inst1 == "left") {
+			m.back = gtk4rt.ButtonNew()
+			gtk4rt.ButtonSetLabel(m.back, "Back")
+			gtk4rt.Connect(m.back, "clicked", func() {
+				m.taps__inst0 += 1
+			})
+			gtk4rt.InsertBefore(parent, m.__slot0_at, m.back)
+			m.__slot0 = append(m.__slot0, m.back)
+		} else {
+			__n6 := gtk4rt.LabelNew("")
+			gtk4rt.LabelSetText(__n6, "east")
+			gtk4rt.InsertBefore(parent, m.__slot0_at, __n6)
+			m.__slot0 = append(m.__slot0, __n6)
+		}
+	}
+}
+
+func (m *Model) __renderSlot1(parent gtk4rt.Handle) {
+	for _, __entry := range m.__slot1 {
+		gtk4rt.BoxRemove(parent, __entry)
+	}
+	m.__slot1 = nil
+	m.__slot1_at = gtk4rt.SlotAnchor(parent, m.__slot1_at)
+	m.__copies_pick = nil
+	for __copy0, p := range m.picks__inst0 {
+		if p == "up" {
+			m.pick = gtk4rt.ButtonNew()
+			gtk4rt.ButtonSetLabel(m.pick, "Up")
+			m.__list_pick(fmt.Sprint(__copy0), m.pick)
+			gtk4rt.Connect(m.pick, "clicked", func() {
+				m.taps__inst0 += 1
+			})
+			gtk4rt.InsertBefore(parent, m.__slot1_at, m.pick)
+			m.__slot1 = append(m.__slot1, m.pick)
+		} else {
+			__n7 := gtk4rt.LabelNew("")
+			gtk4rt.LabelSetText(__n7, "other")
+			gtk4rt.InsertBefore(parent, m.__slot1_at, __n7)
+			m.__slot1 = append(m.__slot1, __n7)
+		}
+	}
+}
+
+func (m *Model) __n0_closed_handler() {
+}
+
+func (m *Model) __n0_visible_handler(__visible bool) {
+	m.visible__inst0 = __visible
+	gtk4rt.ToplevelSetVisible(m.__n0, m.visible__inst0)
+}
+
+func (m *Model) turn_clicked_handler() {
+	var __lt3 string
+	switch m.d__inst0 {
+	case "up":
+		__lt3 = "right"
+	case "right":
+		__lt3 = "down"
+	case "down":
+		__lt3 = "left"
+	default:
+		__lt3 = "up"
+	}
+	m.d__inst0 = __lt3
+}
+
+func (m *Model) spin_clicked_handler() {
+	var __lt5 string
+	switch m.d__inst1 {
+	case "up":
+		__lt5 = "right"
+	case "right":
+		__lt5 = "down"
+	case "down":
+		__lt5 = "left"
+	default:
+		__lt5 = "up"
+	}
+	m.d__inst1 = __lt5
+	var __lt6 string
+	if m.d__inst1 == "up" {
+		__lt6 = "facing up"
+	} else {
+		__lt6 = "turned"
+	}
+	gtk4rt.LabelSetText(m.__n5, __lt6)
+	m.__renderSlot0(m.__n0)
+}
+
+func (m *Model) D__inst0() string {
+	return m.d__inst0
+}
+
+func (m *Model) SetD__inst0(v string) {
+	m.d__inst0 = v
+}
+
+func (m *Model) Maybe__inst0() *string {
+	return m.maybe__inst0
+}
+
+func (m *Model) SetMaybe__inst0(v *string) {
+	m.maybe__inst0 = v
+}
+
+func (m *Model) Tally__inst0() *int {
+	return m.tally__inst0
+}
+
+func (m *Model) SetTally__inst0(v *int) {
+	m.tally__inst0 = v
+}
+
+func (m *Model) Axis__inst0() string {
+	return m.axis__inst0
+}
+
+func (m *Model) SetAxis__inst0(v string) {
+	m.axis__inst0 = v
+}
+
+func (m *Model) Flips__inst0() []string {
+	return m.flips__inst0
+}
+
+func (m *Model) SetFlips__inst0(v []string) {
+	m.flips__inst0 = v
+}
+
+func (m *Model) D__inst1() string {
+	return m.d__inst1
+}
+
+func (m *Model) SetD__inst1(v string) {
+	m.d__inst1 = v
+}
+
+func (m *Model) Picks__inst0() []string {
+	return m.picks__inst0
+}
+
+func (m *Model) SetPicks__inst0(v []string) {
+	m.picks__inst0 = v
+}
+
+func (m *Model) Taps__inst0() int {
+	return m.taps__inst0
+}
+
+func (m *Model) SetTaps__inst0(v int) {
+	m.taps__inst0 = v
+}
+
+func (m *Model) Visible__inst0() bool {
+	return m.visible__inst0
+}
+
+func (m *Model) SetVisible__inst0(v bool) {
+	m.visible__inst0 = v
+}
+
+func (m *Model) buildWidgetTree() {
+	if m.__built {
+		return
+	}
+	m.__built = true
+	m.__n0 = gtk4rt.ToplevelNew()
+	gtk4rt.ToplevelSetVisible(m.__n0, m.visible__inst0)
+	gtk4rt.ToplevelOnClosed(m.__n0, m.__n0_closed_handler)
+	gtk4rt.ToplevelOnVisible(m.__n0, m.__n0_visible_handler)
+	m.__n8 = gtk4rt.LabelNew("")
+	gtk4rt.LabelSetText(m.__n8, "left-handed")
+	gtk4rt.BoxAppend(m.__n0, m.__n8)
+	m.__n1 = gtk4rt.LabelNew("")
+	gtk4rt.LabelSetText(m.__n1, m.axis__inst0)
+	gtk4rt.BoxAppend(m.__n0, m.__n1)
+	var __lt2 string
+	if m.maybe__inst0 == nil {
+		__lt2 = "none"
+	} else {
+		var __lt1 string
+		if snglOptEq(m.maybe__inst0, "up") {
+			__lt1 = "up"
+		} else {
+			__lt1 = "other"
+		}
+		__lt2 = __lt1
+	}
+	m.__n2 = gtk4rt.LabelNew("")
+	gtk4rt.LabelSetText(m.__n2, __lt2)
+	gtk4rt.BoxAppend(m.__n0, m.__n2)
+	m.__n3 = gtk4rt.LabelNew("")
+	gtk4rt.LabelSetText(m.__n3, Count(m.tally__inst0))
+	gtk4rt.BoxAppend(m.__n0, m.__n3)
+	m.__n4 = gtk4rt.LabelNew("")
+	gtk4rt.LabelSetText(m.__n4, Grade((FirstDown(m.flips__inst0) * 60)))
+	gtk4rt.BoxAppend(m.__n0, m.__n4)
+	m.turn = gtk4rt.ButtonNew()
+	gtk4rt.ButtonSetLabel(m.turn, "Turn")
+	gtk4rt.Connect(m.turn, "clicked", m.turn_clicked_handler)
+	gtk4rt.BoxAppend(m.__n0, m.turn)
+	m.__renderSlot0(m.__n0)
+	m.__renderSlot1(m.__n0)
+	var __lt4 string
+	if m.d__inst1 == "up" {
+		__lt4 = "facing up"
+	} else {
+		__lt4 = "turned"
+	}
+	m.__n5 = gtk4rt.LabelNew("")
+	gtk4rt.LabelSetText(m.__n5, __lt4)
+	gtk4rt.BoxAppend(m.__n0, m.__n5)
+	m.spin = gtk4rt.ButtonNew()
+	gtk4rt.ButtonSetLabel(m.spin, "Spin")
+	gtk4rt.Connect(m.spin, "clicked", m.spin_clicked_handler)
+	gtk4rt.BoxAppend(m.__n0, m.spin)
+	gtk4rt.AppAttach(m.__n0)
+}
+
+// BuildUI constructs the widget tree and returns a window showing the first
+// window's content.
+func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
+	m.buildWidgetTree()
+	return gtk4rt.ToplevelWindow(app, m.__n0)
+}
+
+// turnClick fires the "clicked" signal on the #turn widget; for tests.
+func (m *Model) turnClick() {
+	gtk4rt.Emit(m.turn, "clicked")
+}
+
+// spinClick fires the "clicked" signal on the #spin widget; for tests.
+func (m *Model) spinClick() {
+	gtk4rt.Emit(m.spin, "clicked")
+}
+
+// backClick fires the "clicked" signal on the #back widget; for tests.
+func (m *Model) backClick() {
+	gtk4rt.Emit(m.back, "clicked")
+}
+
+// pickClick fires the "clicked" signal on the #pick widget; for tests.
+func (m *Model) pickClick() {
+	gtk4rt.Emit(m.pick, "clicked")
+}
+
+// pickClickAt fires it on the copy of #pick with the key; for tests.
+func (m *Model) pickClickAt(key string) {
+	if m.__copies_pick[key] == nil {
+		return
+	}
+	gtk4rt.Emit(m.__copies_pick[key], "clicked")
+}
+
+// backPresent reports whether the #back widget is rendered now; for tests.
+func (m *Model) backPresent() bool {
+	return m.back != nil
+}
+
+// northPresent reports whether the #north widget is rendered now; for tests.
+func (m *Model) northPresent() bool {
+	return m.north != nil
+}
+
+func (m *Model) __list_pick(key string, w gtk4rt.Handle) {
+	for k, c := range m.__copies_pick {
+		if c == w {
+			delete(m.__copies_pick, k)
+		}
+	}
+	if m.__copies_pick == nil {
+		m.__copies_pick = map[string]gtk4rt.Handle{}
+	}
+	m.__copies_pick[key] = w
+}
+
+// pickPresentAt reports whether the copy of #pick with the key is rendered now; for tests.
+func (m *Model) pickPresentAt(key string) bool {
+	_, ok := m.__copies_pick[key]
+	return ok
+}
+-- out/kotlin/android/app/src/main/java/test/sngl/app/MainScreen.kt --
+// Code generated by sngl (android) from app.sngl; DO NOT EDIT.
+
+package test.sngl.app
+
+import androidx.compose.ui.semantics.SemanticsPropertyKey
+import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.LocalContext
+import android.app.Activity
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.layout.Column
+import androidx.compose.material3.Text
+import androidx.compose.ui.Modifier
+import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.material3.Button
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.semantics
+
+fun _snglFloatStr(v: Double): String =
+    if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
+
+fun _snglSplit(s: String, sep: String): List<String> =
+    if (sep.isEmpty()) s.map { it.toString() } else s.split(sep)
+
+enum class Dir(private val sngl: String) {
+    UP("up"),
+    DOWN("down"),
+    LEFT("left"),
+    RIGHT("right");
+
+    override fun toString(): String = sngl
+}
+
+val SnglCopy = SemanticsPropertyKey<String>("SnglCopy")
+
+val SnglPresent = mutableStateMapOf<Any, String>()
+
+class MainScreenState {
+    init { SnglPresent.clear() }
+    var d__inst0 by mutableStateOf(Dir.UP)
+    var maybe__inst0 by mutableStateOf<Dir?>(null)
+    var tally__inst0 by mutableStateOf<Int?>(null)
+    var axis__inst0 by mutableStateOf((when (d__inst0) { Dir.UP, Dir.DOWN -> "vertical"; else -> "horizontal" }))
+    val flips__inst0 = mutableStateListOf(Dir.UP, Dir.LEFT).map({ x: Dir -> (when (x) { Dir.UP -> Dir.DOWN; else -> Dir.UP }) })
+    var d__inst1 by mutableStateOf(Dir.UP)
+    val picks__inst0 = mutableStateListOf(Dir.UP, Dir.DOWN)
+    var taps__inst0 by mutableStateOf(0)
+    var visible__inst0 by mutableStateOf(true)
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun MainScreen(state: MainScreenState = remember { MainScreenState() }) {
+
+    if (state.visible__inst0) {
+        val __activity = LocalContext.current as? Activity
+        BackHandler {
+            state.visible__inst0 = false
+            if (!(state.visible__inst0)) {
+                __activity?.finish()
+            }
+        }
+        Column {
+            Text(text = "left-handed", modifier = Modifier.safeDrawingPadding())
+            Text(text = state.axis__inst0, modifier = Modifier.safeDrawingPadding())
+            Text(text = (when (state.maybe__inst0) { null -> "none"; Dir.UP -> "up"; else -> "other" }), modifier = Modifier.safeDrawingPadding())
+            Text(text = count(state.tally__inst0), modifier = Modifier.safeDrawingPadding())
+            Text(text = grade((firstDown(state.flips__inst0) * 60)), modifier = Modifier.safeDrawingPadding())
+            Button(onClick = {
+                state.d__inst0 = (when (state.d__inst0) { Dir.UP -> Dir.RIGHT; Dir.RIGHT -> Dir.DOWN; Dir.DOWN -> Dir.LEFT; Dir.LEFT -> Dir.UP })
+            }, modifier = Modifier.testTag("turn").safeDrawingPadding()) {
+                Text(text = "Turn", modifier = Modifier)
+            }
+            when (state.d__inst1) {
+                Dir.UP -> {
+                    Text(text = "north", modifier = Modifier.testTag("north").safeDrawingPadding())
+                }
+                Dir.DOWN, Dir.LEFT -> {
+                    Button(onClick = {
+                        state.taps__inst0 += 1
+                    }, modifier = Modifier.testTag("back").safeDrawingPadding()) {
+                        Text(text = "Back", modifier = Modifier)
+                    }
+                }
+                else -> {
+                    Text(text = "east", modifier = Modifier.safeDrawingPadding())
+                }
+            }
+            for ((__copy0, p) in state.picks__inst0.withIndex()) {
+                when (p) {
+                    Dir.UP -> {
+                        Button(onClick = {
+                            state.taps__inst0 += 1
+                        }, modifier = Modifier.testTag("pick").then(__copy0.toString().let { __key -> Modifier.semantics { this[SnglCopy] = __key } }).safeDrawingPadding()) {
+                            Text(text = "Up", modifier = Modifier)
+                        }
+                    }
+                    else -> {
+                        Text(text = "other", modifier = Modifier.safeDrawingPadding())
+                    }
+                }
+            }
+            Text(text = (when (state.d__inst1) { Dir.UP -> "facing up"; else -> "turned" }), modifier = Modifier.safeDrawingPadding())
+            Button(onClick = {
+                state.d__inst1 = (when (state.d__inst1) { Dir.UP -> Dir.RIGHT; Dir.RIGHT -> Dir.DOWN; Dir.DOWN -> Dir.LEFT; Dir.LEFT -> Dir.UP })
+            }, modifier = Modifier.testTag("spin").safeDrawingPadding()) {
+                Text(text = "Spin", modifier = Modifier)
+            }
+        }
+    }
+}
+
+fun grade(n: Int): String {
+    when {
+    	(n >= 90) -> {
+    		return "a"
+    	}
+    	(n >= 50) -> {
+    		return "b"
+    	}
+    	else -> {
+    		return "c"
+    	}
+    }
+    return ""
+}
+
+fun firstDown(ds: List<Dir>): Int {
+    var at = -1
+    for ((i, d) in ds.withIndex()) {
+    	when (d) {
+    		Dir.DOWN -> {
+    			at = i
+    			break
+    		}
+    		else -> {
+    		}
+    	}
+    }
+    return at
+}
+
+fun count(n: Int?): String {
+    when (n) {
+    	null -> {
+    		return "none"
+    	}
+    	0 -> {
+    		return "zero"
+    	}
+    	else -> {
+    		return "some"
+    	}
+    }
+    return ""
+}
+-- out/kotlin/android/app/src/test/kotlin/test/sngl/app/MainScreenTest.kt --
+// Code generated by sngl (android) from app.sngl; DO NOT EDIT.
+
+package test.sngl.app
+
+import androidx.activity.ComponentActivity
+import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.performSemanticsAction
+import androidx.compose.ui.test.performTextReplacement
+import org.junit.Assert.assertTrue
+import org.junit.Rule
+import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
+import org.robolectric.annotation.GraphicsMode
+
+@RunWith(RobolectricTestRunner::class)
+@Config(sdk = [33])
+@GraphicsMode(GraphicsMode.Mode.NATIVE)
+class MainScreenTest {
+    @get:Rule val composeRule = createAndroidComposeRule<ComponentActivity>()
+
+    @Test fun testHeadless() {
+        val c = MainScreenState()
+        @Suppress("UNUSED_VARIABLE") val composeTestRule = composeRule
+        composeRule.setContent { MainScreen(c) }
+        org.junit.Assert.assertTrue("true", true)
+        org.junit.Assert.assertTrue("true", true)
+        org.junit.Assert.assertTrue("true", true)
+    }
+
+    @Test fun testBreak() {
+        val c = MainScreenState()
+        @Suppress("UNUSED_VARIABLE") val composeTestRule = composeRule
+        composeRule.setContent { MainScreen(c) }
+        org.junit.Assert.assertTrue("true", true)
+        org.junit.Assert.assertTrue("true", true)
+    }
+
+    @Test fun testOption() {
+        val c = MainScreenState()
+        @Suppress("UNUSED_VARIABLE") val composeTestRule = composeRule
+        composeRule.setContent { MainScreen(c) }
+        org.junit.Assert.assertTrue("true", true)
+        org.junit.Assert.assertTrue("true", true)
+        org.junit.Assert.assertTrue("true", true)
+        org.junit.Assert.assertTrue("true", true)
+        org.junit.Assert.assertTrue("true", true)
+        org.junit.Assert.assertTrue("true", true)
+    }
+
+    @Test fun testComponent() {
+        val c = MainScreenState()
+        @Suppress("UNUSED_VARIABLE") val composeTestRule = composeRule
+        composeRule.setContent { MainScreen(c) }
+        org.junit.Assert.assertTrue("(c.axis__inst0 == \"vertical\")", (c.axis__inst0 == "vertical"))
+        org.junit.Assert.assertTrue("(c.maybe__inst0 == null)", (c.maybe__inst0 == null))
+        org.junit.Assert.assertTrue("(c.flips__inst0[0] == Dir.DOWN)", (c.flips__inst0[0] == Dir.DOWN))
+        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("turn")).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick); composeTestRule.waitForIdle()
+        if ((c.d__inst0 == Dir.RIGHT)) {
+            org.junit.Assert.assertTrue("true", true)
+        } else {
+            org.junit.Assert.assertTrue("false", false)
+        }
+    }
+
+    @Test fun testDial() {
+        val c = MainScreenState()
+        @Suppress("UNUSED_VARIABLE") val composeTestRule = composeRule
+        composeRule.setContent { MainScreen(c) }
+        org.junit.Assert.assertTrue("(composeTestRule.onAllNodes(androidx.compose.ui.test.hasTestTag(\"north\")).fetchSemanticsNodes().isNotEmpty() || SnglPresent.containsValue(\"north\"))", (composeTestRule.onAllNodes(androidx.compose.ui.test.hasTestTag("north")).fetchSemanticsNodes().isNotEmpty() || SnglPresent.containsValue("north")))
+        org.junit.Assert.assertTrue("!(composeTestRule.onAllNodes(androidx.compose.ui.test.hasTestTag(\"back\")).fetchSemanticsNodes().isNotEmpty() || SnglPresent.containsValue(\"back\"))", !(composeTestRule.onAllNodes(androidx.compose.ui.test.hasTestTag("back")).fetchSemanticsNodes().isNotEmpty() || SnglPresent.containsValue("back")))
+        org.junit.Assert.assertTrue("composeTestRule.onAllNodes((androidx.compose.ui.test.hasTestTag(\"pick\") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, \"0\"))).fetchSemanticsNodes().isNotEmpty()", composeTestRule.onAllNodes((androidx.compose.ui.test.hasTestTag("pick") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, "0"))).fetchSemanticsNodes().isNotEmpty())
+        org.junit.Assert.assertTrue("!composeTestRule.onAllNodes((androidx.compose.ui.test.hasTestTag(\"pick\") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, \"1\"))).fetchSemanticsNodes().isNotEmpty()", !composeTestRule.onAllNodes((androidx.compose.ui.test.hasTestTag("pick") and androidx.compose.ui.test.SemanticsMatcher.expectValue(SnglCopy, "1"))).fetchSemanticsNodes().isNotEmpty())
+        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("spin")).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick); composeTestRule.waitForIdle()
+        org.junit.Assert.assertTrue("!(composeTestRule.onAllNodes(androidx.compose.ui.test.hasTestTag(\"north\")).fetchSemanticsNodes().isNotEmpty() || SnglPresent.containsValue(\"north\"))", !(composeTestRule.onAllNodes(androidx.compose.ui.test.hasTestTag("north")).fetchSemanticsNodes().isNotEmpty() || SnglPresent.containsValue("north")))
+        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("spin")).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick); composeTestRule.waitForIdle()
+        org.junit.Assert.assertTrue("(composeTestRule.onAllNodes(androidx.compose.ui.test.hasTestTag(\"back\")).fetchSemanticsNodes().isNotEmpty() || SnglPresent.containsValue(\"back\"))", (composeTestRule.onAllNodes(androidx.compose.ui.test.hasTestTag("back")).fetchSemanticsNodes().isNotEmpty() || SnglPresent.containsValue("back")))
+        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("spin")).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick); composeTestRule.waitForIdle()
+        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("spin")).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick); composeTestRule.waitForIdle()
+        org.junit.Assert.assertTrue("(c.d__inst1 == Dir.UP)", (c.d__inst1 == Dir.UP))
+        org.junit.Assert.assertTrue("(composeTestRule.onAllNodes(androidx.compose.ui.test.hasTestTag(\"north\")).fetchSemanticsNodes().isNotEmpty() || SnglPresent.containsValue(\"north\"))", (composeTestRule.onAllNodes(androidx.compose.ui.test.hasTestTag("north")).fetchSemanticsNodes().isNotEmpty() || SnglPresent.containsValue("north")))
+    }
+
+}
+-- out/none/html/index.html --
+<!-- Code generated by sngl (html) from app.sngl; DO NOT EDIT. -->
+
+<!DOCTYPE html>
+<html><head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: system-ui, sans-serif; }
+  </style>
+</head><body>
+
+<span>left-handed</span>
+<span id="__n1" data-sngl-id="__n1">
+</span>
+<span id="__n2" data-sngl-id="__n2">
+</span>
+<span id="__n3" data-sngl-id="__n3">
+</span>
+<span id="__n4" data-sngl-id="__n4">
+</span>
+<button id="$0" data-sngl-id="turn">
+  <span>Turn</span>
+</button>
+<span data-sngl-slot="0" style="display:contents"></span>
+<span data-sngl-slot="1" style="display:contents"></span>
+<span id="__n5" data-sngl-id="__n5">
+</span>
+<button id="$1" data-sngl-id="spin">
+  <span>Spin</span>
+</button>
+
+<script>
+window.__snglErrors = [];
+addEventListener("error", (e) => window.__snglErrors.push(String(e.message)));
+addEventListener("unhandledrejection", (e) => window.__snglErrors.push(String(e.reason?.message ?? e.reason)));
+window.__sngl_markup = Array.from(document.body.childNodes)
+  .filter((n) => n.nodeName !== "SCRIPT").map((n) => n.cloneNode(true));
+window.__sngl_reset = () => {
+  for (const n of Array.from(document.body.childNodes)) {
+    if (n.nodeName !== "SCRIPT") n.remove();
+  }
+  const first = document.body.firstChild;
+  for (const n of window.__sngl_markup) document.body.insertBefore(n.cloneNode(true), first);
+  window.__sngl_boot();
+};
+window.__sngl_boot = () => {
+(() => {
+  // sngl-entry.js
+  var state = { d__inst0: null, maybe__inst0: null, tally__inst0: null, axis__inst0: null, flips__inst0: null, d__inst1: null, picks__inst0: null, taps__inst0: 0, visible__inst0: true };
+  state.d__inst0 = "up";
+  state.axis__inst0 = state.d__inst0 === "up" || state.d__inst0 === "down" ? "vertical" : "horizontal";
+  state.flips__inst0 = ["up", "left"].map((x) => x === "up" ? "down" : "up");
+  state.d__inst1 = "up";
+  state.picks__inst0 = ["up", "down"];
+  state.turnClick = () => $0.click();
+  state.spinClick = () => $1.click();
+  state.backClick = () => document.querySelector('[data-sngl-id="back"]').click();
+  state.backClickAt = (k) => document.querySelector('[data-sngl-id="back"][data-sngl-copy="' + k + '"]').click();
+  state.backContextmenu = (p) => {
+    const el = document.querySelector('[data-sngl-id="back"]');
+    Object.assign(el, p);
+    el.dispatchEvent(Object.assign(new Event("contextmenu"), p));
+  };
+  state.backContextmenuAt = (k, p) => {
+    const el = document.querySelector('[data-sngl-id="back"][data-sngl-copy="' + k + '"]');
+    Object.assign(el, p);
+    el.dispatchEvent(Object.assign(new Event("contextmenu"), p));
+  };
+  state.pickClick = () => document.querySelector('[data-sngl-id="pick"]').click();
+  state.pickClickAt = (k) => document.querySelector('[data-sngl-id="pick"][data-sngl-copy="' + k + '"]').click();
+  state.pickContextmenu = (p) => {
+    const el = document.querySelector('[data-sngl-id="pick"]');
+    Object.assign(el, p);
+    el.dispatchEvent(Object.assign(new Event("contextmenu"), p));
+  };
+  state.pickContextmenuAt = (k, p) => {
+    const el = document.querySelector('[data-sngl-id="pick"][data-sngl-copy="' + k + '"]');
+    Object.assign(el, p);
+    el.dispatchEvent(Object.assign(new Event("contextmenu"), p));
+  };
+  state.backPresent = () => document.querySelector('[data-sngl-id="back"], [data-sngl-instance="back"]') !== null;
+  state.northPresent = () => document.querySelector('[data-sngl-id="north"], [data-sngl-instance="north"]') !== null;
+  state.pickPresentAt = (k) => document.querySelector('[data-sngl-id="pick"][data-sngl-copy="' + k + '"]') !== null;
+  if (typeof window !== "undefined") {
+    window.__sngl_state = state;
+  }
+  function grade(n) {
+    if (n >= 90) {
+      ;
+      return "a";
+    } else {
+      ;
+      if (n >= 50) {
+        ;
+        return "b";
+      } else {
+        ;
+        return "c";
+      }
+      ;
+    }
+    ;
+    return "";
+  }
+  function firstDown(ds) {
+    let at = -1;
+    __loop0: for (const [i, d] of ds.entries()) {
+      ;
+      switch (d) {
+        case "down":
+          {
+            ;
+            at = i;
+            break __loop0;
+          }
+          ;
+        default:
+          {
+            ;
+          }
+          ;
+      }
+      ;
+    }
+    ;
+    return at;
+  }
+  function count(n) {
+    if (n === null) {
+      ;
+      return "none";
+    } else {
+      ;
+      if (n === 0) {
+        ;
+        return "zero";
+      } else {
+        ;
+        return "some";
+      }
+      ;
+    }
+    ;
+    return "";
+  }
+  if (typeof window !== "undefined") {
+    Object.assign(window, { grade, firstDown, count });
+  }
+  var __slot0 = [];
+  var __slot1 = [];
+  function __renderSlot0(parent) {
+    let __place0_prev = __slot0;
+    let __place0_i = 0;
+    __slot0 = [];
+    if (state.d__inst1 === "up") {
+      let north = document.createElement("span");
+      north.setAttribute("data-sngl-id", "north");
+      north.textContent = "north";
+      let __place0_i_ref0 = null;
+      if (__place0_i < __place0_prev.length) {
+        __place0_i_ref0 = __place0_prev[__place0_i];
+      }
+      if (__place0_i_ref0 === north) {
+        __place0_i = __place0_i + 1;
+      } else {
+        parent.insertBefore(north, __place0_i_ref0);
+      }
+      __slot0.push(north);
+    } else {
+      if (state.d__inst1 === "down" || state.d__inst1 === "left") {
+        let back = document.createElement("button");
+        back.setAttribute("data-sngl-id", "back");
+        back.disabled = false;
+        back.addEventListener("click", () => {
+          state.taps__inst0 += 1;
+        });
+        back.addEventListener("contextmenu", () => {
+        });
+        let __n6 = document.createElement("span");
+        __n6.textContent = "Back";
+        back.appendChild(__n6);
+        let __place0_i_ref1 = null;
+        if (__place0_i < __place0_prev.length) {
+          __place0_i_ref1 = __place0_prev[__place0_i];
+        }
+        if (__place0_i_ref1 === back) {
+          __place0_i = __place0_i + 1;
+        } else {
+          parent.insertBefore(back, __place0_i_ref1);
+        }
+        __slot0.push(back);
+      } else {
+        let __n7 = document.createElement("span");
+        __n7.textContent = "east";
+        let __place0_i_ref2 = null;
+        if (__place0_i < __place0_prev.length) {
+          __place0_i_ref2 = __place0_prev[__place0_i];
+        }
+        if (__place0_i_ref2 === __n7) {
+          __place0_i = __place0_i + 1;
+        } else {
+          parent.insertBefore(__n7, __place0_i_ref2);
+        }
+        __slot0.push(__n7);
+      }
+    }
+    for (const __place0_prev_e of __place0_prev) {
+      if (__slot0.indexOf(__place0_prev_e) < 0) {
+        parent.removeChild(__place0_prev_e);
+      }
+    }
+  }
+  function __renderSlot1(parent) {
+    let __place1_prev = __slot1;
+    let __place1_i = 0;
+    __slot1 = [];
+    for (const [__copy0, p] of state.picks__inst0.entries()) {
+      if (p === "up") {
+        let pick = document.createElement("button");
+        pick.setAttribute("data-sngl-id", "pick");
+        pick.disabled = false;
+        pick.setAttribute("data-sngl-copy", String(__copy0));
+        pick.addEventListener("click", () => {
+          state.taps__inst0 += 1;
+        });
+        pick.addEventListener("contextmenu", () => {
+        });
+        let __n8 = document.createElement("span");
+        __n8.textContent = "Up";
+        pick.appendChild(__n8);
+        let __place1_i_ref0 = null;
+        if (__place1_i < __place1_prev.length) {
+          __place1_i_ref0 = __place1_prev[__place1_i];
+        }
+        if (__place1_i_ref0 === pick) {
+          __place1_i = __place1_i + 1;
+        } else {
+          parent.insertBefore(pick, __place1_i_ref0);
+        }
+        __slot1.push(pick);
+      } else {
+        let __n9 = document.createElement("span");
+        __n9.textContent = "other";
+        let __place1_i_ref1 = null;
+        if (__place1_i < __place1_prev.length) {
+          __place1_i_ref1 = __place1_prev[__place1_i];
+        }
+        if (__place1_i_ref1 === __n9) {
+          __place1_i = __place1_i + 1;
+        } else {
+          parent.insertBefore(__n9, __place1_i_ref1);
+        }
+        __slot1.push(__n9);
+      }
+    }
+    for (const __place1_prev_e of __place1_prev) {
+      if (__slot1.indexOf(__place1_prev_e) < 0) {
+        parent.removeChild(__place1_prev_e);
+      }
+    }
+  }
+  function String(v) {
+    return "" + v;
+  }
+  var $0 = document.getElementById("$0");
+  var $1 = document.getElementById("$1");
+  var __n1 = document.querySelector('[data-sngl-id="__n1"]');
+  var __n2 = document.querySelector('[data-sngl-id="__n2"]');
+  var __n3 = document.querySelector('[data-sngl-id="__n3"]');
+  var __n4 = document.querySelector('[data-sngl-id="__n4"]');
+  var __n5 = document.querySelector('[data-sngl-id="__n5"]');
+  var __slotAnchor_0 = document.querySelector('[data-sngl-slot="0"]');
+  __renderSlot0(__slotAnchor_0);
+  var __slotAnchor_1 = document.querySelector('[data-sngl-slot="1"]');
+  __renderSlot1(__slotAnchor_1);
+  $0.addEventListener("click", function() {
+    state.d__inst0 = state.d__inst0 === "up" ? "right" : state.d__inst0 === "right" ? "down" : state.d__inst0 === "down" ? "left" : "up";
+  });
+  $1.addEventListener("click", function() {
+    state.d__inst1 = state.d__inst1 === "up" ? "right" : state.d__inst1 === "right" ? "down" : state.d__inst1 === "down" ? "left" : "up";
+    __n5.textContent = state.d__inst1 === "up" ? "facing up" : "turned";
+    __renderSlot0(__slotAnchor_0);
+  });
+  function __sngl_init() {
+    __n1.textContent = state.axis__inst0;
+    __n2.textContent = state.maybe__inst0 === null ? "none" : state.maybe__inst0 === "up" ? "up" : "other";
+    __n3.textContent = count(state.tally__inst0);
+    __n4.textContent = grade(firstDown(state.flips__inst0) * 60);
+    __n5.textContent = state.d__inst1 === "up" ? "facing up" : "turned";
+  }
+  __sngl_init();
+})();
+};
+window.__sngl_boot();
+</script>
+</body></html>
+-- run/go/bubbletea --
+pass sha256:27c1a298415f9acc74a3b69e796cf60b
+-- run/go/fyne --
+pass sha256:59fc179e430b489b635dbb954293092c
+-- run/go/gtk4 --
+pass sha256:901c40235591efd37dce64c18b3a1e87
+-- run/kotlin/android --
+pass sha256:786ce8850af9894990ad9eef016d4423
+-- run/none/html --
+pass sha256:f952c5e709d7fc2c2bab8bf083ab1664

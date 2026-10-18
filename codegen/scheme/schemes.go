@@ -9,4 +9,5 @@ import (
 	_ "duckfam.us/sngl/codegen/scheme/http"
 	_ "duckfam.us/sngl/codegen/scheme/js"
 	_ "duckfam.us/sngl/codegen/scheme/markdown"
+	_ "duckfam.us/sngl/codegen/scheme/openapi"
 )

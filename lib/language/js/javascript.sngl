@@ -87,6 +87,7 @@ const words = [
     viewStatements,
     genericFuncs,
     genericComponents,
+    matches,
 )]
 #[gen.name("js")]
 #[gen.native("js")]

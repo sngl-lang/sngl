@@ -457,6 +457,7 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 	b.WriteString(golang.EmitMergeFuncs(ctx.Pkg.MergeStructs))
 
 	b.WriteString(golang.EmitUnitTypeDecls(info.Units))
+	b.WriteString(golang.EmitEnumTypeDecls(info.Enums))
 
 	for _, sd := range info.Structs {
 		fmt.Fprintf(&b, "type %s struct {\n", golang.ExportName(sd.Name))
@@ -1179,9 +1180,10 @@ func emitIRButtonHandlersWalk(b *strings.Builder, stmts []ir.Stmt, info *irAnaly
 		switch n := s.(type) {
 		case *ir.For:
 			emitLoopSlotHandlers(b, n, info, gc, overlayGuard, invokerSink)
-		case *ir.If:
-			emitIRButtonHandlersWalk(b, n.Body, info, gc, bgGuard, inOverlay, invokerSink)
-			emitIRButtonHandlersWalk(b, n.Else, info, gc, bgGuard, inOverlay, invokerSink)
+		case *ir.If, *ir.Match:
+			for _, blk := range ir.TransparentBlocks(n) {
+				emitIRButtonHandlersWalk(b, *blk, info, gc, bgGuard, inOverlay, invokerSink)
+			}
 		case *ir.ErrorBoundary:
 			emitIRButtonHandlersWalk(b, n.Children, info, gc, bgGuard, inOverlay, invokerSink)
 		case *ir.NodeInst:
@@ -1240,6 +1242,10 @@ func collectOverlays(stmts []ir.Stmt, gate *ir.If, gc *golang.GoIRContext, out *
 			// Overlay directly inside picks up `if open` as its open condition.
 			collectOverlays(n.Body, n, gc, out)
 			collectOverlays(n.Else, gate, gc, out)
+		case *ir.Match:
+			for i, arm := range n.Arms {
+				collectOverlays(arm.Body, armGate(n, i), gc, out)
+			}
 		case *ir.For:
 			collectLoopOverlays(n, gate, gc, out)
 		case *ir.ErrorBoundary:

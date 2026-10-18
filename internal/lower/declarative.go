@@ -146,6 +146,10 @@ func (st *declarativeState) scanStmts(stmts []ir.Stmt) {
 		case *ir.If:
 			st.scanStmts(n.Body)
 			st.scanStmts(n.Else)
+		case *ir.Match:
+			for _, arm := range n.Arms {
+				st.scanStmts(arm.Body)
+			}
 		case *ir.For:
 			st.scanStmts(n.Body)
 			st.scanStmts(n.Else)
@@ -211,6 +215,11 @@ func (st *declarativeState) processStmtsForParent(stmts []ir.Stmt, funcs *[]*ir.
 		case *ir.If:
 			n.Body = st.processStmtsForParent(n.Body, funcs, parent)
 			n.Else = st.processStmtsForParent(n.Else, funcs, parent)
+			out = append(out, n)
+		case *ir.Match:
+			for _, arm := range n.Arms {
+				arm.Body = st.processStmtsForParent(arm.Body, funcs, parent)
+			}
 			out = append(out, n)
 		case *ir.For:
 			n.Body = st.processStmtsForParent(n.Body, funcs, parent)

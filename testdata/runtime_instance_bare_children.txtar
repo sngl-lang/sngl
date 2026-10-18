@@ -828,6 +828,7 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 			__n5.Set__p0(it)
 			__n5.Set__on0(func() {
 				m.picked = it
+				gtk4rt.LabelSetText(m.__n4, ("picked " + m.picked))
 			})
 		} else {
 			if len(m.__inst0_live) > __inst0_i {
@@ -835,6 +836,7 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 			}
 			__n5__new := newCard__slot0Instance(m, it, func() {
 				m.picked = it
+				gtk4rt.LabelSetText(m.__n4, ("picked " + m.picked))
 			})
 			__n5 = __n5__new
 		}
@@ -1399,7 +1401,7 @@ pass sha256:59cb41713c704fdadf2321872f85d78f
 -- run/go/fyne --
 pass sha256:88282ada95aed18d08eb8509cda4732d
 -- run/go/gtk4 --
-pass sha256:6497542ed691e8401e3ee84947f2ca0b
+pass sha256:3d04c37c62d782858357aa520208f215
 -- run/kotlin/android --
 pass sha256:9bac4408c0dab1adb46870351c24d34b
 -- run/none/html --

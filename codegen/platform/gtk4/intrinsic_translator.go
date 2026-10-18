@@ -398,6 +398,12 @@ func (t *gtk4Translator) collectFromStmt(s ir.Stmt) {
 		for _, c := range n.Else {
 			t.collectFromStmt(c)
 		}
+	case *ir.Match:
+		for _, arm := range n.Arms {
+			for _, c := range arm.Body {
+				t.collectFromStmt(c)
+			}
+		}
 	case *ir.NodeInst:
 		for _, c := range n.Children {
 			t.collectFromStmt(c)

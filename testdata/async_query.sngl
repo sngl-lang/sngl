@@ -1,0 +1,75 @@
+// `async.query` brackets a request with the tree: asked when it mounts and
+// again whenever its key changes, abandoned when it unmounts. A failure is a
+// value beside the last answer, not a raise, and `refresh` asks again without
+// a change of key.
+//
+// The interpreter runs `fetch` at mount, so a test reads the answer as there.
+
+import async "sngl:async"
+import . "sngl:test"
+import . "sngl:ui"
+
+var asked list[string] = []
+
+func lookup(name string) async.Result[int] {
+    asked.push(name)
+    if name == "" {
+        return {failed={kind=async.FailureKind.request, message="no name", code="400"}}
+    }
+    return {ok=name.length()}
+}
+
+component detail node {
+    var name = "pikachu"
+    var length option[int] = null
+    var loading = false
+    var failure option[async.Failure] = null
+    var loads = 0
+
+    async.query #q(
+        on = name,
+        fetch = lookup,
+        :value = length,
+        :pending = loading,
+        :failure = failure,
+        @load { loads += 1 },
+    )
+
+    text #err(value=failure != null ? "could not load {name}: {failure.message}" : "")
+    text #len(value=length != null ? "{length}" : "-")
+    text #pending(value="{loading}")
+    button #retry(text="Retry", @click { q.refresh() })
+}
+
+func testAsksAtMount(t Test, c detail) {
+    t.assert(c.len.value == "7")
+    t.assert(c.pending.value == "false")
+    t.assert(c.err.value == "")
+    t.assert(c.loads == 1)
+}
+
+func testAsksAgainOnAChangeOfKey(t Test, c detail) {
+    c.name = "mew"
+    t.assert(c.len.value == "3")
+    t.assert(c.loads == 2)
+}
+
+func testAFailureKeepsTheLastAnswer(t Test, c detail) {
+    c.name = ""
+    t.assert(c.err.value == "could not load : no name")
+    t.assert(c.len.value == "7")
+    t.assert(c.loads == 1)
+    c.name = "eevee"
+    t.assert(c.err.value == "")
+    t.assert(c.len.value == "5")
+}
+
+func testRefreshAsksAgain(t Test, c detail) {
+    c.retry.click()
+    t.assert(c.loads == 2)
+    t.assert(c.len.value == "7")
+}
+
+window {
+    detail
+}

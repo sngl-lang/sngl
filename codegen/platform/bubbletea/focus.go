@@ -65,10 +65,11 @@ func eachRenderedNode(stmts []ir.Stmt, fn func(*ir.NodeInst)) {
 		case *ir.For:
 			eachRenderedNode(n.Body, fn)
 			eachRenderedNode(n.Else, fn)
-		case *ir.If:
-			if !n.FromTernary {
-				eachRenderedNode(n.Body, fn)
-				eachRenderedNode(n.Else, fn)
+		case *ir.If, *ir.Match:
+			if !ir.ComputesValue(n) {
+				for _, b := range ir.TransparentBlocks(n) {
+					eachRenderedNode(*b, fn)
+				}
 			}
 		case *ir.ErrorBoundary:
 			eachRenderedNode(n.Children, fn)

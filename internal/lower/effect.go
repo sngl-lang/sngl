@@ -271,6 +271,20 @@ func (st *effectState) stmts(stmts []ir.Stmt, o *ir.Owner, frames []effectFrame)
 				continue
 			}
 			out = append(out, n)
+		case *ir.Match:
+			empty := true
+			for i, arm := range n.Arms {
+				b, err := st.stmts(arm.Body, o, pushFrame(frames, effectFrame{cond: n.Taken(i)}))
+				if err != nil {
+					return nil, err
+				}
+				arm.Body = b
+				empty = empty && len(b) == 0
+			}
+			if empty {
+				continue
+			}
+			out = append(out, n)
 		case *ir.For:
 			b, err := st.stmts(n.Body, o, pushFrame(frames, effectFrame{loop: n}))
 			if err != nil {
@@ -478,7 +492,7 @@ func (st *effectState) downFunc(prefix string, fx *loweredEffect, key ir.Expr, f
 		}
 		run := []ir.Stmt{
 			&ir.Assign{Target: st.varIdent(fx.keyVar), Op: ast.AssignSet, Value: &ir.Index{Type: fx.elem, Operand: st.varIdent(fx.live), Idx: j()}},
-			callOf(fx.unmount),
+			startOf(fx.unmount),
 		}
 		if fx.keyVar == nil {
 			run = run[1:]
@@ -547,7 +561,7 @@ func (st *effectState) upFunc(prefix string, fx *loweredEffect) *ir.Func {
 		}
 		run := []ir.Stmt{
 			&ir.Assign{Target: st.varIdent(fx.keyVar), Op: ast.AssignSet, Value: elemRef()},
-			callOf(fx.mount),
+			startOf(fx.mount),
 		}
 		if fx.keyVar == nil {
 			run = run[1:]
@@ -605,7 +619,7 @@ func (st *effectState) tearFunc(prefix string, fx *loweredEffect) *ir.Func {
 				Right: &ir.Ident{Name: idx.Name, Type: ir.TypInt, Sym: idx, Synthesized: true},
 			},
 		}},
-		callOf(fx.unmount),
+		startOf(fx.unmount),
 	}
 	loop := &ir.For{Key: idx.Name, KeySym: idx, Value: "_", Iter: st.varIdent(fx.live), ElemType: fx.elem}
 	if fx.keyVar == nil {
@@ -1374,10 +1388,8 @@ func isReturnStmt(s ir.Stmt) bool {
 // on its own iteration.
 func nestedBodies(s ir.Stmt) []*[]ir.Stmt {
 	switch n := s.(type) {
-	case *ir.If:
-		return []*[]ir.Stmt{&n.Body, &n.Else}
-	case *ir.For:
-		return []*[]ir.Stmt{&n.Body, &n.Else}
+	case *ir.If, *ir.For, *ir.Match:
+		return ir.TransparentBlocks(n)
 	}
 	return nil
 }
@@ -1548,6 +1560,14 @@ func callHandler(fn *ir.Func) []ir.Stmt {
 
 func callOf(fn *ir.Func) ir.Stmt {
 	return &ir.CallStmt{Call: &ir.Call{Type: ir.TypVoid, Func: fn}}
+}
+
+// startOf is a call of one of a bracket's handlers: started, not waited for
+// (ir.Call.Detached). A lifetime begins when its mount starts, and a mount that
+// waits on a request must not hold the settle -- every other bracket's mount,
+// the next key's included -- until the answer comes.
+func startOf(fn *ir.Func) ir.Stmt {
+	return &ir.CallStmt{Call: &ir.Call{Type: ir.TypVoid, Func: fn, Detached: true}}
 }
 
 // isEffectNode reports whether a node is a lifetime bracket, by the kind its

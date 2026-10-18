@@ -1409,15 +1409,30 @@ type StructField struct {
 	// on meaning unset to a backend that reads presence.
 	DefaultWritten bool `json:",omitempty"`
 	Foreign        `json:"Foreign,omitzero"`
+	// JSON and HTTP are the field's name on the wire in each format, as
+	// `#[json.identifier]` and `#[http.identifier]` give it; empty is the
+	// field's own name (WireName). Only an encoder reads them: a field keeps
+	// its SNGL name in the IR and on every host.
+	JSON string `json:",omitempty"`
+	HTTP string `json:",omitempty"`
 }
 
 // EnumDef is a resolved enum type declaration.
 type EnumDef struct {
 	AST *ast.EnumDef
 	DeclInfo
-	Members   []*EnumMember
-	BodyOwner string           `json:",omitempty"` // see StructDef.BodyOwner
-	Methods   map[string]*Func `json:"-"`
+	// TypeParams are what a member's payload may name, as a struct's fields
+	// may: `enum Result[T any] { ok T, failed Failure }`.
+	TypeParams []TypeParam `json:",omitempty"`
+	Members    []*EnumMember
+	BodyOwner  string           `json:",omitempty"` // see StructDef.BodyOwner
+	Methods    map[string]*Func `json:"-"`
+	// InstanceOf and InstanceArgs are the generic enum this one is a copy of
+	// and the type arguments it was copied at, on a target that copies a
+	// generic per instantiation: what lets a later copying find this one
+	// rather than declaring the same instantiation twice.
+	InstanceOf   *EnumDef `json:"-"`
+	InstanceArgs []*Type  `json:"-"`
 }
 
 func (e *EnumDef) SymName() string { return e.Name }
@@ -1426,10 +1441,16 @@ func (e *EnumDef) SymType() *Type  { return &Type{Kind: TypeEnum, Decl: e} }
 // IsExported reports whether the enum is part of its package's public API.
 func (e *EnumDef) IsExported() bool { return isExportedName(e.Name) }
 
-// EnumMember is a single value in an enum.
+// EnumMember is a single value in an enum. Payload is the type the member
+// carries, nil for one that carries none; a member with a payload has no
+// Value.
 type EnumMember struct {
-	Name  string
-	Value Expr // nil for bare members
+	Name    string
+	Payload *Type `json:",omitempty"`
+	Value   Expr  // nil for bare members
+	// JSON is the member's name on the wire, as `#[json.identifier]` gives
+	// it; empty is the member's own name.
+	JSON string `json:",omitempty"`
 }
 
 // UnitDef is a resolved unit type declaration with conversion table.

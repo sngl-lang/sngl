@@ -191,12 +191,10 @@ func collectCanvases(stmts []ir.Stmt, out *[]Canvas) {
 			if v.CanvasNode != nil {
 				*out = append(*out, Canvas{Node: v.CanvasNode, Local: v})
 			}
-		case *ir.If:
-			collectCanvases(v.Body, out)
-			collectCanvases(v.Else, out)
-		case *ir.For:
-			collectCanvases(v.Body, out)
-			collectCanvases(v.Else, out)
+		case *ir.If, *ir.For, *ir.Match:
+			for _, b := range ir.TransparentBlocks(v) {
+				collectCanvases(*b, out)
+			}
 		case *ir.ErrorBoundary:
 			// Children alone: passBoundaryFailed has already rewritten the
 			// pair into a reactive `if` over its flag, so walking Failed would

@@ -70,12 +70,10 @@ func (st *cseState) imperative(block *[]ir.Stmt) {
 	out := make([]ir.Stmt, 0, len(*block))
 	for _, s := range *block {
 		switch n := s.(type) {
-		case *ir.If:
-			st.imperative(&n.Body)
-			st.imperative(&n.Else)
-		case *ir.For:
-			st.imperative(&n.Body)
-			st.imperative(&n.Else)
+		case *ir.If, *ir.For, *ir.Match:
+			for _, b := range ir.TransparentBlocks(n) {
+				st.imperative(b)
+			}
 		}
 		out = append(out, st.hoist(s)...)
 		out = append(out, s)
@@ -242,6 +240,14 @@ func visitExprCalls(e ir.Expr, fn func(*ir.Call)) {
 		visitExprCalls(x.Cond, fn)
 		visitExprCalls(x.Then, fn)
 		visitExprCalls(x.Else, fn)
+	case *ir.MatchExpr:
+		visitExprCalls(x.Subject, fn)
+		for _, arm := range x.Arms {
+			for _, p := range arm.Patterns {
+				visitExprCalls(p, fn)
+			}
+			visitExprCalls(arm.Value, fn)
+		}
 	case *ir.Select:
 		visitExprCalls(x.Operand, fn)
 	case *ir.Index:
@@ -283,6 +289,8 @@ func stmtOwnExprs(s ir.Stmt) []ir.Expr {
 		return []ir.Expr{n.Call}
 	case *ir.If:
 		return []ir.Expr{n.Cond}
+	case *ir.Match:
+		return []ir.Expr{n.Subject}
 	case *ir.For:
 		return []ir.Expr{n.Iter}
 	case *ir.Emit:

@@ -161,10 +161,14 @@ func (c *converter) convertAnonStructType(sd *StructDef) ast.TypeExpr {
 func (c *converter) convertEnumDef(e *EnumDef) *ast.EnumDef {
 	def := &ast.EnumDef{
 		Name:        e.Name,
+		TypeParams:  c.convertTypeParams(e.TypeParams),
 		IsMultiline: len(e.Members) > 1,
 	}
 	for _, m := range e.Members {
 		em := ast.EnumMember{Name: m.Name}
+		if m.Payload != nil {
+			em.Payload = c.convertType(m.Payload)
+		}
 		if m.Value != nil {
 			em.Value = c.convertExpr(m.Value)
 		}
@@ -526,6 +530,12 @@ func (c *converter) convertStmt(s Stmt) ast.Stmt {
 			is.Else = c.convertStmtBlock(s.Else)
 		}
 		return is
+	case *Match:
+		ms := &ast.MatchStmt{Match: c.convertMatch(&s.MatchArms)}
+		for i, arm := range s.Arms {
+			ms.Arms[i].Body = c.convertStmtBlock(arm.Body)
+		}
+		return ms
 	case *For:
 		fs := &ast.ForStmt{
 			Key:   s.Key,
@@ -863,7 +873,23 @@ func (c *converter) convertExpr(e Expr) ast.Expr {
 			Then: c.convertExpr(e.Then),
 			Else: c.convertExpr(e.Else),
 		}
+	case *MatchExpr:
+		me := &ast.MatchExpr{Match: c.convertMatch(&e.MatchArms)}
+		for i, arm := range e.Arms {
+			me.Arms[i].Value = c.convertExpr(arm.Value)
+		}
+		return me
 	case *Call:
+		// An enum read is spelled as the selector it was checked from: the
+		// test as the option's null test, or the member's bool, and the
+		// payload as the option a narrowing would read.
+		if operand, member, id, ok := EnumRead(e); ok {
+			sel := &ast.SelectExpr{Operand: c.convertExpr(operand), Field: member}
+			if id == EnumIsIntrinsic && MemberPayload(operand.ExprType(), member) != nil {
+				return &ast.BinaryExpr{Op: ast.BinNeq, Left: sel, Right: &ast.LiteralExpr{Kind: ast.LiteralNull, Raw: "null"}}
+			}
+			return sel
+		}
 		return c.convertCallExpr(e)
 	case *Conversion:
 		return c.convertConversion(e)
@@ -1111,6 +1137,9 @@ func (c *converter) convertStructLit(sl *StructLit) *ast.StructExpr {
 		}
 	} else if sl.Type != nil && sl.Type.Decl != nil {
 		se.Name = sl.Type.Decl.SymName()
+		if ed, ok := sl.Type.Decl.(*EnumDef); ok && len(ed.TypeParams) > 0 && len(sl.Type.Elems) == len(ed.TypeParams) {
+			se.TypeArgs = c.typeArgExprs(sl.Type.Elems)
+		}
 	}
 	for _, f := range sl.Fields {
 		sf := ast.StructFieldLit{
@@ -1211,6 +1240,11 @@ func (c *converter) convertType(t *Type) ast.TypeExpr {
 		// A parameterized struct holds its bound arguments in Elems, in the
 		// declaration order the spelling wants them back in.
 		if sd, ok := t.Decl.(*StructDef); ok && len(sd.TypeParams) > 0 {
+			for _, e := range t.Elems {
+				nt.TypeArgs = append(nt.TypeArgs, c.convertType(e))
+			}
+		}
+		if ed, ok := t.Decl.(*EnumDef); ok && len(ed.TypeParams) > 0 {
 			for _, e := range t.Elems {
 				nt.TypeArgs = append(nt.TypeArgs, c.convertType(e))
 			}
@@ -1386,4 +1420,22 @@ func posOfContinue(s *Continue) ast.Pos {
 		return ast.Pos{}
 	}
 	return s.AST.Pos
+}
+
+// convertMatch prints a match's subject and its arms' patterns; the caller
+// fills each arm's block or value. The last arm of an exhaustive match keeps
+// its patterns, which the checker reads as exhaustive again.
+func (c *converter) convertMatch(m *MatchArms) ast.Match {
+	out := ast.Match{}
+	if m.Subject != nil {
+		out.Subject = c.convertExpr(m.Subject)
+	}
+	for _, arm := range m.Arms {
+		a := &ast.MatchArm{Else: arm.Else}
+		for _, p := range arm.Patterns {
+			a.Patterns = append(a.Patterns, c.convertExpr(p))
+		}
+		out.Arms = append(out.Arms, a)
+	}
+	return out
 }

@@ -150,6 +150,16 @@ func (st *blockState) walk(o *stateOwner, stmts []ir.Stmt, dyn, top bool, host *
 			d := dyn || !ir.IsConst(n.Cond)
 			n.Body = st.walk(o, n.Body, d, false, host)
 			n.Else = st.walk(o, n.Else, d, false, host)
+		case *ir.Match:
+			d := dyn || (n.Subject != nil && !ir.IsConst(n.Subject))
+			for _, arm := range n.Arms {
+				for _, p := range arm.Patterns {
+					d = d || !ir.IsConst(p)
+				}
+			}
+			for _, arm := range n.Arms {
+				arm.Body = st.walk(o, arm.Body, d, false, host)
+			}
 		case *ir.For:
 			n.Body = st.walk(o, n.Body, true, false, host)
 			n.Else = st.walk(o, n.Else, dyn, false, host)

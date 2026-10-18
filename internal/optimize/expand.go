@@ -113,6 +113,14 @@ func walkAllExprs(e ir.Expr, visit func(ir.Expr)) {
 		walkAllExprs(x.Cond, visit)
 		walkAllExprs(x.Then, visit)
 		walkAllExprs(x.Else, visit)
+	case *ir.MatchExpr:
+		walkAllExprs(x.Subject, visit)
+		for _, arm := range x.Arms {
+			for _, p := range arm.Patterns {
+				walkAllExprs(p, visit)
+			}
+			walkAllExprs(arm.Value, visit)
+		}
 	case *ir.Call:
 		walkAllExprs(x.Receiver, visit)
 		for _, a := range x.Args {

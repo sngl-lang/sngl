@@ -15,7 +15,7 @@ import gen "sngl:x/gen"
 // Compose state directly, so a recomposition already redraws. `navigation`
 // because sngl:ui/nav is a NavHost here (nav.go): each page a destination with
 // a typed route, the back stack Compose's.
-#[gen.can(effects, instanceState, navigation)]
+#[gen.can(effects, instanceState, navigation, viewMatches)]
 #[gen.cannot(inlineComponents, structSpread)]
 #[gen.wants(structComponents, stdlibContextParam, canvas)]
 #[gen.name("android")]

@@ -52,6 +52,10 @@ module.exports = grammar({
     // StructDecl in StatementPrimary at all; here the statement wins on
     // dynamic precedence.
     [$._stmt, $.anon_struct_type_literal],
+    // `match {` opens the arms of a headless match or a brace literal that is
+    // the subject; the headless alternative's dynamic precedence picks the
+    // arms, as the compiler's grammar does by keeping a brace out of a head.
+    [$._match_arms, $.anon_struct_literal],
   ],
 
   supertypes: ($) => [$._stmt, $._expression],
@@ -263,6 +267,38 @@ module.exports = grammar({
       $.statement_block,
       optional(seq("else", $.statement_block))
     )
+    ),
+
+    // A match is a statement and an expression, as in the compiler's grammar,
+    // and an arm is a block or `=> value` in either position. The headless
+    // form takes a dynamic precedence over a subject for the reason the
+    // headless `for` does: a `{` right after `match` opens the arms.
+    // `match var v = subject` names the subject for the arms, as a `for`
+    // head names its element.
+    match_expression: ($) =>
+      choice(
+      prec.dynamic(1, seq("match", $._match_arms)),
+      seq(
+        "match",
+        optional(seq("var", field("name", $.identifier), "=")),
+        field("subject", $._expression),
+        $._match_arms
+      )
+    ),
+
+    // Never two terminators in a row: the automatic one is zero-width, and a
+    // rule that took any number of them would take it forever.
+    _match_arms: ($) =>
+      seq(
+      "{",
+      optional(seq($.match_arm, repeat(seq($._terminator, $.match_arm)), optional($._terminator))),
+      "}"
+    ),
+
+    match_arm: ($) =>
+      seq(
+      choice("else", seq(field("pattern", $._expression), repeat(seq(",", field("pattern", $._expression))))),
+      choice($.statement_block, seq("=>", field("value", $._expression)))
     ),
 
     assignment_operator: ($) =>
@@ -491,6 +527,7 @@ module.exports = grammar({
 
     _expression: ($) =>
       choice(
+        $.match_expression,
         $.ternary_expression,
         $.binary_expression,
         $.unary_expression,

@@ -41,12 +41,10 @@ func rewriteToggleStmts(stmts []ir.Stmt) []ir.Stmt {
 					Operand: n.Target,
 				},
 			}
-		case *ir.If:
-			n.Body = rewriteToggleStmts(n.Body)
-			n.Else = rewriteToggleStmts(n.Else)
-		case *ir.For:
-			n.Body = rewriteToggleStmts(n.Body)
-			n.Else = rewriteToggleStmts(n.Else)
+		case *ir.If, *ir.For, *ir.Match:
+			for _, b := range ir.TransparentBlocks(n) {
+				*b = rewriteToggleStmts(*b)
+			}
 		case *ir.NodeInst:
 			n.Children = rewriteToggleStmts(n.Children)
 			for j := range n.Handlers {

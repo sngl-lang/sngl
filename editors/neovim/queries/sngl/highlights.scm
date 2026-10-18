@@ -10,6 +10,7 @@
   "if"
   "else"
   "for"
+  "match"
   "func"
   "return"
 ] @keyword

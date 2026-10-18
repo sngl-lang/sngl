@@ -182,6 +182,15 @@ func callsFunc(e ir.Expr, target *ir.Func) bool {
 		return callsFunc(x.Operand, target)
 	case *ir.Ternary:
 		return callsFunc(x.Cond, target) || callsFunc(x.Then, target) || callsFunc(x.Else, target)
+	case *ir.MatchExpr:
+		if callsFunc(x.Subject, target) {
+			return true
+		}
+		for _, arm := range x.Arms {
+			if callsFunc(arm.Value, target) || slices.ContainsFunc(arm.Patterns, func(p ir.Expr) bool { return callsFunc(p, target) }) {
+				return true
+			}
+		}
 	case *ir.Conversion:
 		return callsFunc(x.Operand, target)
 	case *ir.Select:
@@ -246,6 +255,17 @@ func callsFuncStmt(s ir.Stmt, target *ir.Func) bool {
 		for _, s := range n.Else {
 			if callsFuncStmt(s, target) {
 				return true
+			}
+		}
+	case *ir.Match:
+		if callsFunc(n.Subject, target) {
+			return true
+		}
+		for _, arm := range n.Arms {
+			for _, s := range arm.Body {
+				if callsFuncStmt(s, target) {
+					return true
+				}
 			}
 		}
 	case *ir.For:
@@ -349,6 +369,15 @@ func containsContextRead(e ir.Expr) bool {
 		return containsContextRead(x.Operand)
 	case *ir.Ternary:
 		return containsContextRead(x.Cond) || containsContextRead(x.Then) || containsContextRead(x.Else)
+	case *ir.MatchExpr:
+		if containsContextRead(x.Subject) {
+			return true
+		}
+		for _, arm := range x.Arms {
+			if containsContextRead(arm.Value) || slices.ContainsFunc(arm.Patterns, containsContextRead) {
+				return true
+			}
+		}
 	case *ir.Conversion:
 		return containsContextRead(x.Operand)
 	case *ir.Select:
@@ -456,6 +485,14 @@ func substituteParams(e ir.Expr, subs map[*ir.Param]ir.Expr) ir.Expr {
 		x.Cond = substituteParams(x.Cond, subs)
 		x.Then = substituteParams(x.Then, subs)
 		x.Else = substituteParams(x.Else, subs)
+	case *ir.MatchExpr:
+		x.Subject = substituteParams(x.Subject, subs)
+		for _, arm := range x.Arms {
+			for i := range arm.Patterns {
+				arm.Patterns[i] = substituteParams(arm.Patterns[i], subs)
+			}
+			arm.Value = substituteParams(arm.Value, subs)
+		}
 	case *ir.Call:
 		// A call through a func-typed parameter names it as its callee:
 		// `f()` in `func call(f func() T) => f()`.
@@ -544,6 +581,20 @@ func cloneExpr(e ir.Expr) ir.Expr {
 		cp.Cond = cloneExpr(x.Cond)
 		cp.Then = cloneExpr(x.Then)
 		cp.Else = cloneExpr(x.Else)
+		return &cp
+	case *ir.MatchExpr:
+		cp := *x
+		cp.Subject = cloneExpr(x.Subject)
+		cp.Arms = make([]*ir.MatchArm, len(x.Arms))
+		for i, arm := range x.Arms {
+			a := *arm
+			a.Patterns = make([]ir.Expr, len(arm.Patterns))
+			for j, p := range arm.Patterns {
+				a.Patterns[j] = cloneExpr(p)
+			}
+			a.Value = cloneExpr(arm.Value)
+			cp.Arms[i] = &a
+		}
 		return &cp
 	case *ir.Call:
 		cp := *x
@@ -670,6 +721,20 @@ func (c *stmtCloner) stmt(s ir.Stmt) ir.Stmt {
 		cp.Cond = cloneExpr(n.Cond)
 		cp.Body = c.stmts(n.Body)
 		cp.Else = c.stmts(n.Else)
+		return &cp
+	case *ir.Match:
+		cp := *n
+		cp.Subject = cloneExpr(n.Subject)
+		cp.Arms = make([]*ir.MatchArm, len(n.Arms))
+		for i, arm := range n.Arms {
+			a := *arm
+			a.Patterns = make([]ir.Expr, len(arm.Patterns))
+			for j, p := range arm.Patterns {
+				a.Patterns[j] = cloneExpr(p)
+			}
+			a.Body = c.stmts(arm.Body)
+			cp.Arms[i] = &a
+		}
 		return &cp
 	case *ir.For:
 		cp := *n

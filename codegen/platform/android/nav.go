@@ -135,9 +135,10 @@ func collectAndroidNav(ctx *codegen.CodegenCtx) (*androidNav, error) {
 				case *ir.For:
 					add(n.Body, append(loops[:len(loops):len(loops)], n))
 					continue
-				case *ir.If:
-					add(n.Body, loops)
-					add(n.Else, loops)
+				case *ir.If, *ir.Match:
+					for _, b := range ir.TransparentBlocks(n) {
+						add(*b, loops)
+					}
 					continue
 				}
 				p, ok := s.(*ir.NodeInst)
@@ -448,12 +449,10 @@ func (nav *androidNav) stacksIn(stmts []ir.Stmt) []*navStackK {
 				for _, name := range ir.SlotNames(n.Slots) {
 					walk(n.Slots[name].Body)
 				}
-			case *ir.If:
-				walk(n.Body)
-				walk(n.Else)
-			case *ir.For:
-				walk(n.Body)
-				walk(n.Else)
+			case *ir.If, *ir.For, *ir.Match:
+				for _, b := range ir.TransparentBlocks(n) {
+					walk(*b)
+				}
 			case *ir.ErrorBoundary:
 				walk(n.Children)
 				walk(n.Failed)

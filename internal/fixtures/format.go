@@ -99,8 +99,22 @@ func commentTexts(doc *ast.Document) []string {
 			take(p.Trailing)
 		}
 	}
+	match := func(m *ast.Match) {
+		within("match", func() {
+			take(m.Head)
+			for _, arm := range m.Arms {
+				take(arm.Leading...)
+				take(arm.Trailing)
+				stmts(arm.Body.Stmts)
+				expr(arm.Value)
+			}
+			take(m.Tail...)
+		})
+	}
 	expr = func(e ast.Expr) {
 		switch x := e.(type) {
+		case *ast.MatchExpr:
+			match(&x.Match)
 		case *ast.I18nInterpExpr:
 			for _, p := range x.Parts {
 				expr(p)
@@ -169,6 +183,8 @@ func commentTexts(doc *ast.Document) []string {
 			case *ast.ForStmt:
 				stmts(x.Body.Stmts)
 				stmts(x.Else.Stmts)
+			case *ast.MatchStmt:
+				match(&x.Match)
 			case *ast.VarDecl:
 				for _, sp := range x.Specs {
 					expr(sp.Default)

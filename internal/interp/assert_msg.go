@@ -369,6 +369,10 @@ func IRASTOf(e ir.Expr) ast.Expr {
 		if x.AST != nil {
 			return x.AST
 		}
+	case *ir.MatchExpr:
+		if x.AST != nil {
+			return x.AST
+		}
 	case *ir.Call:
 		if x.AST != nil {
 			return x.AST

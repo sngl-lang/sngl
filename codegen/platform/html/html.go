@@ -1064,12 +1064,10 @@ func prewalkOrder(out []*ir.NodeInst, stmts []ir.Stmt) []*ir.NodeInst {
 					visitStmts(h.Func.Block)
 				}
 			}
-		case *ir.If:
-			visitStmts(n.Body)
-			visitStmts(n.Else)
-		case *ir.For:
-			visitStmts(n.Body)
-			visitStmts(n.Else)
+		case *ir.If, *ir.For, *ir.Match:
+			for _, b := range ir.TransparentBlocks(n) {
+				visitStmts(*b)
+			}
 		case *ir.SlotInst:
 			visitStmts(n.Children)
 		case *ir.ErrorBoundary:
@@ -1485,6 +1483,12 @@ func (g *htmlGen) renderIRStmt(b *strings.Builder, s ir.Stmt, depth int) {
 		}
 		for _, child := range n.Else {
 			g.renderIRStmt(b, child, depth)
+		}
+	case *ir.Match:
+		for _, arm := range n.Arms {
+			for _, child := range arm.Body {
+				g.renderIRStmt(b, child, depth)
+			}
 		}
 	case *ir.For:
 		for _, child := range n.Body {
@@ -2402,6 +2406,15 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 	if g.ctx.Helpers[dialogHelper] {
 		b.WriteString(dialogHelperJS + "\n")
 	}
+	// A test calling a codec intrinsic runs in a module bundled beside the
+	// page, which finds the runtime on window.
+	testCodec := g.testsCallCodec()
+	if g.ctx.Helpers[javascript.CodecHelper] || testCodec {
+		b.WriteString(javascript.CodecHelperJS + "\n")
+	}
+	if testCodec {
+		b.WriteString("if (typeof window !== 'undefined') { Object.assign(window, { _snglJSONDecode, _snglJSONEncode, _snglWithQuery, _snglHTTPSend }); }\n\n")
+	}
 
 	// Before the refs below, which is where a handler's binding for the
 	// instance would otherwise be written as an element lookup.
@@ -2574,6 +2587,27 @@ func (g *htmlGen) emitSynthesizedSlots(b *strings.Builder) {
 	}
 	g.exportTestCalled(b, synthFuncs)
 
+}
+
+// testsCallCodec reports whether, in test mode, a test calls json.decode,
+// json.encode, http.send or http.get itself.
+func (g *htmlGen) testsCallCodec() bool {
+	if !g.testMode {
+		return false
+	}
+	found := false
+	for _, fn := range g.pkg.Funcs {
+		if !fn.IsTest {
+			continue
+		}
+		_ = ir.Walk(fn.Block, func(n ir.Node) error {
+			if c, ok := n.(*ir.Call); ok && codegen.IsCodecCall(c) {
+				found = true
+			}
+			return nil
+		})
+	}
+	return found
 }
 
 // exportTestCalled publishes, in test mode, the synthesized functions a test
@@ -2934,6 +2968,14 @@ func exprUsesI18n(expr ir.Expr) bool {
 			walk(x.Cond)
 			walk(x.Then)
 			walk(x.Else)
+		case *ir.MatchExpr:
+			walk(x.Subject)
+			for _, arm := range x.Arms {
+				for _, p := range arm.Patterns {
+					walk(p)
+				}
+				walk(arm.Value)
+			}
 		case *ir.Conversion:
 			walk(x.Operand)
 		case *ir.Select:
@@ -2997,6 +3039,15 @@ func walkStmtExprs(s ir.Stmt, walk func(ir.Expr)) {
 		}
 		for _, c := range n.Else {
 			walkStmtExprs(c, walk)
+		}
+	case *ir.Match:
+		if n.Subject != nil {
+			walk(n.Subject)
+		}
+		for _, arm := range n.Arms {
+			for _, c := range arm.Body {
+				walkStmtExprs(c, walk)
+			}
 		}
 	case *ir.For:
 		walk(n.Iter)
@@ -3191,6 +3242,14 @@ func (g *htmlGen) collectLoweredRefs(s ir.Stmt) {
 			walkExpr(x.Cond)
 			walkExpr(x.Then)
 			walkExpr(x.Else)
+		case *ir.MatchExpr:
+			walkExpr(x.Subject)
+			for _, arm := range x.Arms {
+				for _, p := range arm.Patterns {
+					walkExpr(p)
+				}
+				walkExpr(arm.Value)
+			}
 		case *ir.Select:
 			walkExpr(x.Operand)
 		case *ir.Index:
@@ -3240,6 +3299,13 @@ func (g *htmlGen) collectLoweredRefs(s ir.Stmt) {
 		}
 		for _, b := range n.Else {
 			g.collectLoweredRefs(b)
+		}
+	case *ir.Match:
+		walkExpr(n.Subject)
+		for _, arm := range n.Arms {
+			for _, b := range arm.Body {
+				g.collectLoweredRefs(b)
+			}
 		}
 	case *ir.For:
 		walkExpr(n.Iter)
@@ -4009,6 +4075,10 @@ func dropDocWrites(id string, funcs []*ir.Func) {
 				x.Body, x.Else = filter(x.Body), filter(x.Else)
 			case *ir.For:
 				x.Body, x.Else = filter(x.Body), filter(x.Else)
+			case *ir.Match:
+				for _, arm := range x.Arms {
+					arm.Body = filter(arm.Body)
+				}
 			}
 			out = append(out, s)
 		}

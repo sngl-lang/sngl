@@ -36,6 +36,24 @@ path, and is stored as `sngl.scheme` (see *Performance*). Fixtures:
 `cmd/sngl/testdata/scheme_order.txt`, `scheme_errors.txt`,
 `scheme_store.txt`, `c_pkgconfig.txt`, and `testdata/c_link.txtar`.
 
+**`out.note(message)` is a warning at the import** -- what a handler left
+out, a name it changed -- given on every check, a replay from the store
+included: the notes are stored ahead of the files (`// sngl:note`), and
+`SchemeRunner.GenerateScheme` hands them back beside the documents. A failing
+check prints its warnings before its error (`build.Check`), since a note is
+usually why a read of the package fails.
+
+**A handler's relative read inside the project goes through the project's
+FS** (`Host.ReadThrough`, from `Resolver.FS`): on disk that is an `os.Root`,
+so a symlink out of the project is refused where it is opened, and the file
+is recorded at its place under the import root; in memory -- the golden
+harness's `MapFS` -- nothing is recorded and the output is not stored, since
+no store could read the file again.
+
+**What a SNGL-writing scheme's package declares is the program's own**
+(`lower.userPackages`): its structs are declared and its functions emitted
+like a directory package's, `sngl:` and a native scheme's package excepted.
+
 **`c:` declares nothing a program calls.** `c:pkg:<library>/<header>` asks
 pkg-config for flags and includes `<header>`; anything else is a header
 included as written. What it writes is one `c.link`, and the program declares
@@ -43,3 +61,62 @@ each function with `#[cnative]` -- GTK's headers take a C parser minutes, which
 is why the Go importer that parsed them went rather than moved. A `#[cnative]`
 call returning an int or a float is converted to Go's type at the call, as its
 arguments are to C's.
+
+## The `openapi:` scheme
+
+**`import poke "openapi:./pokeapi.yml"` writes a package from an OpenAPI 3
+document**, YAML or JSON: a declaration per schema, a `…Call` function per
+operation answering `async.Result`, a component over `async.query` per `GET`,
+and `server`, a context defaulting to the spec's first server
+(`lib/x/scheme/openapi`). The path is the project's own file, read through
+the project; one outside it is refused before anything is read.
+
+**Go reads the document and writes the package.** The SNGL handler reads
+the file -- its lines joined once, since `s = s + line` in a loop copies the
+string every time -- and
+hands it to `openapi.generate` (`codegen/scheme/openapi`), which answers the
+file, its source and the notes. `Parse` reads the document into a `Spec`,
+every reference resolved, every name a SNGL identifier and every construct
+with no declaration left out with a note; `Write` writes the source and
+prints it through `parser.Format`, so it reads as `sngl fmt` writes it and a
+mistake there is a parse error rather than a package saying something else.
+An object is a struct, a string enum an enum, a property neither
+required nor nullable, or nullable (`nullable: true`, `type: [T, 'null']`,
+`oneOf: [$ref, {type: 'null'}]`) an option, an array a list,
+`additionalProperties` of a schema a `map[string, V]`, `allOf` its parts'
+fields merged, and an inline object or enum a declaration named for where it
+stands. An integer is `int` whatever its format -- the sized ints mix with
+nothing -- and a `date`/`date-time` string `time.date`/`time.datetime`. A
+key that is no SNGL name is camelCased, carrying `#[json.identifier]`; a
+query parameter likewise carries `#[http.identifier]` on a declared
+`<Op>Query` struct, and the query is an anonymous literal where every name
+is its own. Names collide into a `2` -- two differing only in their first
+letter's case are one, since Go exports both -- a keyword takes a `_`, and a parameter
+named like an adapter's own prop (`value`, `pending`, `failure`, `load`,
+`fail`) or like `server` is renamed; each is a note.
+
+**Left out, and said**: an `anyOf`, a `oneOf` that is not one schema or
+null, a `discriminator` (a payload enum once sngl:json reads that layout), a
+map of any value, an enum of anything but strings, a `$ref` outside the
+document -- each leaves out the field reaching it, or the schema, and
+whatever names that -- and a header or cookie parameter, a body that is not
+JSON or a success with no JSON, which leave out the operation. A `GET` with a
+list parameter keeps its function and has no adapter, since a list cannot be
+an effect's key. A Swagger 2 or OpenAPI 4 document, and text that is not
+YAML, are errors at the import.
+
+**What the package composes** (`testdata/openapi_pokeapi.txtar`, its
+`written` package shown in the archive): each function is
+`_answered(http.get(…))` -- the package's one helper, the response where it
+arrived with a 2xx status -- then `json.decode[T]` of its body. The
+codec refuses a type parameter, so there is no generic `getJSON[T, Q]`: the
+decode is written per operation. The URL is `"{server}…"` with each path
+parameter escaped by `http.pathEscape`, so a provider of `server` around a
+component reaches its request. The adapter's key is its one parameter, with
+the function as `fetch`, or an anonymous struct of several with a lambda
+spreading it back out; it renders nothing, so its family is `F`.
+
+The runs are `cmd/sngl/testdata/openapi_runs.txt`, against the script
+harness's server on all five targets that answer a request; the refusals
+`cmd/sngl/testdata/error_openapi_*.txt`, the renames `openapi_renamed.txt`
+and the store `openapi_store.txt`.

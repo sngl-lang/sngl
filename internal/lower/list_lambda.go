@@ -97,6 +97,13 @@ func (st *listLambdaState) transformStmt(s ir.Stmt) ([]ir.Stmt, ir.Stmt) {
 		pre, n.Cond = st.transformExpr(n.Cond)
 		n.Body = st.transformBlock(n.Body)
 		n.Else = st.transformBlock(n.Else)
+	case *ir.Match:
+		if n.Subject != nil {
+			pre, n.Subject = st.transformExpr(n.Subject)
+		}
+		for _, arm := range n.Arms {
+			arm.Body = st.transformBlock(arm.Body)
+		}
 	case *ir.For:
 		pre, n.Iter = st.transformExpr(n.Iter)
 		n.Body = st.transformBlock(n.Body)
@@ -202,6 +209,19 @@ func (st *listLambdaState) transformExpr(e ir.Expr) ([]ir.Stmt, ir.Expr) {
 		p, el := st.transformExpr(x.Else)
 		pre = append(pre, p...)
 		x.Else = el
+		return pre, x
+	case *ir.MatchExpr:
+		var pre []ir.Stmt
+		if x.Subject != nil {
+			p, s := st.transformExpr(x.Subject)
+			pre = append(pre, p...)
+			x.Subject = s
+		}
+		for _, arm := range x.Arms {
+			p, v := st.transformExpr(arm.Value)
+			pre = append(pre, p...)
+			arm.Value = v
+		}
 		return pre, x
 	case *ir.Conversion:
 		p, op := st.transformExpr(x.Operand)

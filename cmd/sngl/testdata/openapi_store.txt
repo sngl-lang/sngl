@@ -1,0 +1,57 @@
+# What the openapi: plugin writes is stored behind the document it read, so a
+# second check reads the package from the store and runs nothing, the notes
+# included, and an edit to the document writes it again.
+env SNGL_GENCACHE_DIR=$WORK/store
+
+sngl check --debug app.sngl
+! stderr 'gencache hit" req="sngl.scheme'
+stderr 'field loose of Thing is left out'
+
+sngl check --debug app.sngl
+stderr 'gencache hit" req="sngl.scheme'
+stderr 'field loose of Thing is left out'
+
+# The program reads a field only the edited document declares.
+! sngl check named.sngl
+stderr 'no field "name" on struct Thing'
+cp api2.yml api.yml
+sngl check --debug named.sngl
+! stderr 'gencache hit" req="sngl.scheme'
+! stderr 'field loose of Thing is left out'
+
+-- app.sngl --
+import api "openapi:./api.yml"
+
+func idOf(t api.Thing) int {
+    return t.id
+}
+-- named.sngl --
+import api "openapi:./api.yml"
+
+func nameOf(t api.Thing) string {
+    return t.name
+}
+-- api.yml --
+openapi: 3.1.0
+info: {title: T, version: "1"}
+paths: {}
+components:
+  schemas:
+    Thing:
+      type: object
+      required: [id]
+      properties:
+        id: {type: integer}
+        loose: {type: object, additionalProperties: {}}
+-- api2.yml --
+openapi: 3.1.0
+info: {title: T, version: "1"}
+paths: {}
+components:
+  schemas:
+    Thing:
+      type: object
+      required: [id, name]
+      properties:
+        id: {type: integer}
+        name: {type: string}

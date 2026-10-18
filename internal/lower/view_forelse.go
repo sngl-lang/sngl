@@ -59,6 +59,12 @@ func rewriteViewForElse(block *[]ir.Stmt, unmeasured **ir.For) {
 			rewriteViewForElse(&x.Else, unmeasured)
 			continue
 		}
+		if x, ok := s.(*ir.Match); ok {
+			for _, arm := range x.Arms {
+				rewriteViewForElse(&arm.Body, unmeasured)
+			}
+			continue
+		}
 		n, ok := s.(*ir.For)
 		if !ok {
 			continue

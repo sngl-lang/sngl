@@ -505,6 +505,15 @@ func walkCallExprs(doc *ast.Document, fn func(*ast.CallExpr)) {
 			walkE(x.Cond)
 			walkE(x.Then)
 			walkE(x.Else)
+		case *ast.MatchExpr:
+			walkE(x.Subject)
+			for _, arm := range x.Arms {
+				for _, p := range arm.Patterns {
+					walkE(p)
+				}
+				walkBlock(arm.Body)
+				walkE(arm.Value)
+			}
 		case *ast.ListExpr:
 			for _, el := range x.Elements {
 				walkE(el)
@@ -570,6 +579,15 @@ func walkCallExprs(doc *ast.Document, fn func(*ast.CallExpr)) {
 			walkE(x.Iter)
 			walkBlock(x.Body)
 			walkBlock(x.Else)
+		case *ast.MatchStmt:
+			walkE(x.Subject)
+			for _, arm := range x.Arms {
+				for _, p := range arm.Patterns {
+					walkE(p)
+				}
+				walkBlock(arm.Body)
+				walkE(arm.Value)
+			}
 		case *ast.VisualNode:
 			walkArgs(x.Args)
 			walkBlock(x.Block)

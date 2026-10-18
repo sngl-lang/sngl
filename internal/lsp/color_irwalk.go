@@ -108,6 +108,11 @@ func (w *irLitWalker) stmt(s ir.Stmt) {
 		w.expr(x.Cond)
 		w.stmts(x.Body)
 		w.stmts(x.Else)
+	case *ir.Match:
+		w.expr(x.Subject)
+		for _, arm := range x.Arms {
+			w.stmts(arm.Body)
+		}
 	case *ir.For:
 		w.expr(x.Iter)
 		w.stmts(x.Body)
@@ -132,6 +137,11 @@ func (w *irLitWalker) expr(e ir.Expr) {
 		w.expr(x.Cond)
 		w.expr(x.Then)
 		w.expr(x.Else)
+	case *ir.MatchExpr:
+		w.expr(x.Subject)
+		for _, arm := range x.Arms {
+			w.expr(arm.Value)
+		}
 	case *ir.Call:
 		w.expr(x.Callee)
 		w.expr(x.Receiver)

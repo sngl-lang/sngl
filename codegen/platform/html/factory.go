@@ -128,12 +128,10 @@ func (g *htmlGen) adoptElemDecl(comp *ir.Component) {
 						g.elemDecl = c
 					}
 				}
-			case *ir.If:
-				scan(n.Body)
-				scan(n.Else)
-			case *ir.For:
-				scan(n.Body)
-				scan(n.Else)
+			case *ir.If, *ir.For, *ir.Match:
+				for _, b := range ir.TransparentBlocks(n) {
+					scan(*b)
+				}
 			}
 		}
 	}

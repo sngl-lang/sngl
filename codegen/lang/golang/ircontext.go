@@ -324,8 +324,11 @@ func (gc *GoIRContext) Ternary(_ *ir.Ternary, _, _, _ string) string {
 }
 
 func (gc *GoIRContext) Select(n *ir.Select, operand string) string {
-	if n.Field == "length" {
+	if n.Field == "length" && ir.HasLength(n.Operand.ExprType()) {
 		return "len(" + operand + ")"
+	}
+	if t := n.Operand.ExprType(); ir.PayloadEnum(t) != nil {
+		return enumSelectGo(t, n.Field, operand)
 	}
 	// A Select on a RawFieldAccess ident reads the unexported field directly,
 	// so a generated `_test.go` in the same package can touch Model fields.
@@ -417,6 +420,9 @@ func (gc *GoIRContext) MapLit(n *ir.MapLitIR, keys, vals []string) string {
 }
 
 func (gc *GoIRContext) StructLit(n *ir.StructLit, fieldStrs []string) string {
+	if member, _, ok := ir.EnumLitMember(n); ok {
+		return enumLitGo(n.Type, member, fieldStrs[0])
+	}
 	if isColorStructLit(n) {
 		gc.RequireImport(colorImportPath)
 	}
@@ -542,6 +548,22 @@ func (gc *GoIRContext) ReturnText(n *ir.Return, valueStr string) string {
 }
 
 func (gc *GoIRContext) ForHead(n *ir.For, iter string) string {
+	if n.Label != "" {
+		return n.Label + ": " + gc.forHead(n, iter)
+	}
+	return gc.forHead(n, iter)
+}
+
+// BreakText names the loop a labelled break leaves: Go's switch takes a bare
+// break as its own.
+func (gc *GoIRContext) BreakText(n *ir.Break) string {
+	if n.Label != "" {
+		return "break " + n.Label
+	}
+	return "break"
+}
+
+func (gc *GoIRContext) forHead(n *ir.For, iter string) string {
 	// A loop that declared no variable still needs a counter where Go has no
 	// discard for one: `for range xs` covers the element and map forms, but a
 	// counted loop counts, so it names a variable the condition reads -- which
@@ -816,6 +838,9 @@ func (gc *GoIRContext) evalLiteral(n *ir.Literal) string {
 
 func (gc *GoIRContext) evalIdent(n *ir.Ident) string {
 	if n.Member != "" {
+		if ir.PayloadEnum(n.Type) != nil {
+			return enumLitGo(n.Type, n.Member, "")
+		}
 		return fmt.Sprintf("%q", n.Member)
 	}
 	// i18n plural-category constants: map SNGL names (zero/one/…/other) to
@@ -952,6 +977,11 @@ func (gc *GoIRContext) evalCall(n *ir.Call) string {
 	// Ahead of the registry, because make's spelling comes from the call's
 	// return type and an emitter is handed only its arguments.
 	if out, ok := gc.MakeChanText(n); ok {
+		return out
+	}
+	// Ahead of the registry too: a codec call reads the type it reads or
+	// writes, which is the call's and not its arguments'.
+	if out, ok := gc.codecCall(n); ok {
 		return out
 	}
 	// Dispatch by intrinsic ID, never by method name. An unregistered ID falls
@@ -2080,6 +2110,9 @@ func IRTypeToGo(t *ir.Type) string {
 		}
 		return "any"
 	case ir.TypeEnum:
+		if ed := ir.PayloadEnum(t); ed != nil {
+			return ExportName(ed.Name)
+		}
 		return "string"
 	case ir.TypeUnit:
 		if ud := ir.UnitDeclOf(t); ud != nil {
@@ -2551,4 +2584,55 @@ func OptionCompare(n *ir.Binary) (optionLeft, valueRight, ok bool) {
 		return false, true, true
 	}
 	return false, false, false
+}
+
+// Match writes a match statement as a switch: a tagless one for a headless
+// match, and the arm taken unasked as the default.
+func (gc *GoIRContext) Match(n *ir.Match, subject string, patterns, bodies [][]string) []string {
+	lines := []string{switchHead(&n.MatchArms, subject)}
+	for i := range n.Arms {
+		lines = append(lines, switchCase(&n.MatchArms, i, patterns[i]))
+		lines = append(lines, irwalk.IndentLines(gc.Indent(), bodies[i])...)
+	}
+	return append(lines, "}")
+}
+
+// SwitchHead opens a switch over m, for a platform writing a match's arms
+// itself -- bubbletea's view and the walks that follow it. Each arm opens
+// with SwitchCase, and the switch closes with BlockEnd.
+func (gc *GoIRContext) SwitchHead(m *ir.MatchArms) string {
+	subject := ""
+	if m.Subject != nil {
+		subject = gc.EvalExpr(m.Subject)
+	}
+	return switchHead(m, subject)
+}
+
+// SwitchCase opens arm i of a switch SwitchHead opened.
+func (gc *GoIRContext) SwitchCase(m *ir.MatchArms, i int) string {
+	var pats []string
+	for _, p := range m.Arms[i].Patterns {
+		pats = append(pats, gc.EvalExpr(p))
+	}
+	return switchCase(m, i, pats)
+}
+
+func switchHead(m *ir.MatchArms, subject string) string {
+	if m.Subject == nil {
+		return "switch {"
+	}
+	return "switch " + subject + " {"
+}
+
+func switchCase(m *ir.MatchArms, i int, patterns []string) string {
+	if m.Unasked(i) {
+		return "default:"
+	}
+	return "case " + strings.Join(patterns, ", ") + ":"
+}
+
+// MatchExpr is never reached: Go has no switch expression, and passTernary
+// writes a match expression as a switch assigning a temp.
+func (gc *GoIRContext) MatchExpr(*ir.MatchExpr) string {
+	panic("ir.MatchExpr reached Go codegen — NoTernary lifts it into a switch for every Go platform")
 }

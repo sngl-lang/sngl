@@ -1388,6 +1388,7 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 		m.__list_tap(fmt.Sprint(__copy0), m.tap)
 		gtk4rt.Connect(m.tap, "clicked", func() {
 			m.log = it
+			gtk4rt.LabelSetText(m.__n0, m.log)
 		})
 		gtk4rt.InsertBefore(parent, m.__slot0_at, m.tap)
 		m.__slot0 = append(m.__slot0, m.tap)
@@ -1398,6 +1399,7 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 			__n1.Set__copy(fmt.Sprint(__copy0))
 			__n1.SetChange(func(on bool) {
 				m.log = ((it + " ") + fmt.Sprint(on))
+				gtk4rt.LabelSetText(m.__n0, m.log)
 			})
 		} else {
 			if len(m.__inst0_live) > __inst0_i {
@@ -1405,6 +1407,7 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 			}
 			__n1__new := new__checkbox_state0Instance(m, false, it, fmt.Sprint(__copy0), func(on bool) {
 				m.log = ((it + " ") + fmt.Sprint(on))
+				gtk4rt.LabelSetText(m.__n0, m.log)
 			})
 			__n1 = __n1__new
 		}
@@ -1420,6 +1423,7 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 			__n2.Set__copy(fmt.Sprint(__copy0))
 			__n2.SetChange(func(v string) {
 				m.log = ((it + "=") + v)
+				gtk4rt.LabelSetText(m.__n0, m.log)
 			})
 		} else {
 			if len(m.__inst1_live) > __inst1_i {
@@ -1427,6 +1431,7 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 			}
 			__n2__new := new__input_state1Instance(m, it, fmt.Sprint(__copy0), func(v string) {
 				m.log = ((it + "=") + v)
+				gtk4rt.LabelSetText(m.__n0, m.log)
 			})
 			__n2 = __n2__new
 		}
@@ -2285,7 +2290,7 @@ pass sha256:4663150d762c81154da52d2c7afca73e
 -- run/go/fyne --
 pass sha256:729f564db20c0646a8aeb86204de48af
 -- run/go/gtk4 --
-pass sha256:b240c6e609fadcb48fc54f1df6f1fa50
+pass sha256:b61a2ecfd7f7c06f905c4c01e88bb3b0
 -- run/kotlin/android --
 pass sha256:b10b27f2aa09b89de1fe31ec45e0bac8
 -- run/none/html --

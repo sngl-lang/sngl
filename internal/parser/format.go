@@ -276,6 +276,18 @@ func markLine(s ast.Stmt) int {
 	return attrs[len(attrs)-1].EndPos.Line
 }
 
+// markTrailer is the trailing comment c written after a struct or enum body
+// item, or nil where c was written on the item's mark's line: that one is
+// held for the mark, as a declaration's is, since a diagnostic about the mark
+// lands there.
+func (f *formatter) markTrailer(item any, c *ast.Comment) *ast.Comment {
+	if s, ok := item.(ast.Stmt); ok && markLine(s) == c.Pos.Line {
+		f.attrTrailer = c
+		return nil
+	}
+	return c
+}
+
 // trailingComment returns the comment written after stmts[i] on its line.
 func trailingComment(stmts []ast.Stmt, i int) (*ast.Comment, bool) {
 	if i+1 >= len(stmts) {
@@ -317,6 +329,8 @@ func (f *formatter) formatStmt(s ast.Stmt) {
 		f.writeIfStmt(x)
 	case *ast.ForStmt:
 		f.writeForStmt(x)
+	case *ast.MatchStmt:
+		f.writeMatch(&x.Match)
 	case *ast.AssignStmt:
 		f.writeAssignStmt(x)
 	case *ast.ToggleStmt:
@@ -381,13 +395,16 @@ func (f *formatter) writeStructDef(s *ast.StructDef) {
 		if f.writeBodyComment(body[i]) {
 			continue
 		}
-		f.writeStructBodyItemPadded(body[i], widths[i])
+		item, width := body[i], widths[i]
+		var trailer *ast.Comment
 		if i+1 < len(body) {
 			if c, ok := body[i+1].(*ast.Comment); ok && c.Inline {
-				f.writeTrailing(c)
+				trailer = f.markTrailer(item, c)
 				i++
 			}
 		}
+		f.writeStructBodyItemPadded(item, width)
+		f.writeTrailing(trailer)
 		f.newline()
 	}
 	f.indent--
@@ -517,13 +534,19 @@ func (f *formatter) writeEnumDef(e *ast.EnumDef) {
 	f.write("enum ")
 	if e.Name != "" {
 		f.write(e.Name)
+		f.writeTypeParams(e.TypeParams)
 		f.write(" ")
 	}
 	f.write("{")
-	// Funcs in the body force multiline form regardless of IsMultiline.
+	// Funcs in the body force multiline form regardless of IsMultiline, and
+	// so does a mark, which takes a line of its own.
 	hasFuncs := false
 	for _, it := range e.Body {
 		if _, ok := it.(*ast.FuncDef); ok {
+			hasFuncs = true
+			break
+		}
+		if m, ok := it.(*ast.EnumMember); ok && len(m.Attrs) > 0 {
 			hasFuncs = true
 			break
 		}
@@ -531,6 +554,7 @@ func (f *formatter) writeEnumDef(e *ast.EnumDef) {
 	body := e.Body
 	if e.IsMultiline || hasFuncs {
 		body = takeHeaderComment(f, body)
+		widths := f.memberWidths(body)
 		f.newline()
 		f.indent++
 		for i := 0; i < len(body); i++ {
@@ -538,23 +562,24 @@ func (f *formatter) writeEnumDef(e *ast.EnumDef) {
 			if f.writeBodyComment(body[i]) {
 				continue
 			}
-			item := body[i]
-			switch it := item.(type) {
-			case *ast.EnumMember:
-				f.write(it.Name)
-				if it.Value != nil {
-					f.write(" = ")
-					f.writeExpr(it.Value)
-				}
-			case *ast.FuncDef:
-				f.writeFuncDef(it)
-			}
+			item, width := body[i], widths[i]
+			var trailer *ast.Comment
 			if i+1 < len(body) {
 				if c, ok := body[i+1].(*ast.Comment); ok && c.Inline {
-					f.writeTrailing(c)
+					trailer = f.markTrailer(item, c)
 					i++
 				}
 			}
+			if a, ok := item.(ast.Attributed); ok {
+				f.writeAttrs(a.MacroAttrs())
+			}
+			switch it := item.(type) {
+			case *ast.EnumMember:
+				f.writeEnumMember(it, width)
+			case *ast.FuncDef:
+				f.writeFuncDef(it)
+			}
+			f.writeTrailing(trailer)
 			f.newline()
 		}
 		f.indent--
@@ -572,13 +597,61 @@ func (f *formatter) writeEnumDef(e *ast.EnumDef) {
 		if i > 0 {
 			f.write(", ")
 		}
-		f.write(m.Name)
-		if m.Value != nil {
-			f.write(" = ")
-			f.writeExpr(m.Value)
-		}
+		f.writeEnumMember(m, 0)
 	}
 	f.write(" }")
+}
+
+// writeEnumMember writes a member, its payload's type aligned at width as a
+// struct field's is.
+func (f *formatter) writeEnumMember(m *ast.EnumMember, width int) {
+	f.write(m.Name)
+	if m.Payload != nil {
+		f.write(strings.Repeat(" ", max(1, width-len(m.Name)+1)))
+		f.writeType(m.Payload)
+	}
+	if m.Value != nil {
+		f.write(" = ")
+		f.writeExpr(m.Value)
+	}
+}
+
+// memberWidths is fieldWidths for an enum body: a run of members carrying a
+// payload aligns their types, and a member with none, a method or a blank
+// line ends the run.
+func (f *formatter) memberWidths(body []ast.EnumBodyItem) []int {
+	out := make([]int, len(body))
+	start := 0
+	flush := func(end int) {
+		w := 0
+		for _, item := range body[start:end] {
+			if m, ok := item.(*ast.EnumMember); ok && m.Payload != nil {
+				w = max(w, len(m.Name))
+			}
+		}
+		for i := start; i < end; i++ {
+			if m, ok := body[i].(*ast.EnumMember); ok && m.Payload != nil {
+				out[i] = w
+			}
+		}
+		start = end
+	}
+	for i := range body {
+		if m, ok := body[i].(*ast.EnumMember); !ok || m.Payload == nil {
+			if _, isComment := body[i].(*ast.Comment); !isComment {
+				flush(i)
+				start = i + 1
+				continue
+			}
+		}
+		if i > start {
+			if line := bodyItemLine(body[i]); line > 0 && f.doc != nil && f.doc.BlankBefore(line) {
+				flush(i)
+			}
+		}
+	}
+	flush(len(body))
+	return out
 }
 
 // --- unit ---
@@ -887,6 +960,77 @@ func (f *formatter) writeForStmt(s *ast.ForStmt) {
 		f.write(" else ")
 		f.writeBlock(&s.Else)
 	}
+}
+
+// writeMatch writes a match, statement or expression. One written on a line
+// with no comments stays on it; otherwise each arm takes a line of its own.
+func (f *formatter) writeMatch(m *ast.Match) {
+	f.write("match ")
+	if m.Bind != "" {
+		f.write("var " + m.Bind + " = ")
+	}
+	if m.Subject != nil {
+		f.writeExpr(m.Subject)
+		f.write(" ")
+	}
+	f.write("{")
+	if len(m.Arms) == 0 && len(m.Tail) == 0 {
+		f.write("}")
+		return
+	}
+	oneLine := m.EndPos.Line == m.Pos.Line && len(m.Tail) == 0 && m.Head == nil
+	for _, arm := range m.Arms {
+		oneLine = oneLine && len(arm.Leading) == 0 && arm.Trailing == nil
+	}
+	if oneLine {
+		f.write(" ")
+		for i, arm := range m.Arms {
+			if i > 0 {
+				f.write("; ")
+			}
+			f.writeMatchArm(arm)
+		}
+		f.write(" }")
+		return
+	}
+	f.writeTrailing(m.Head)
+	f.newline()
+	f.indent++
+	lines := make([]int, len(m.Arms))
+	for i, arm := range m.Arms {
+		lines[i] = leadLine(arm.Pos.Line, arm.Leading, nil)
+	}
+	for i, arm := range m.Arms {
+		if f.blankBeforeListItem(lines, i) {
+			f.blankLine()
+		}
+		f.writeLeadingComments(arm.Leading)
+		f.writeMatchArm(arm)
+		f.writeTrailing(arm.Trailing)
+		f.newline()
+	}
+	f.writeLeadingComments(m.Tail)
+	f.indent--
+	f.write("}")
+}
+
+func (f *formatter) writeMatchArm(arm *ast.MatchArm) {
+	if arm.Else {
+		f.write("else")
+	}
+	for i, p := range arm.Patterns {
+		if i > 0 {
+			f.write(", ")
+		}
+		f.writeExpr(p)
+	}
+	if arm.IsBlock() {
+		f.write(" ")
+		f.writeBlock(&arm.Body)
+		return
+	}
+	f.write(" => ")
+	f.writeExpr(arm.Value)
 }
 
 // --- block statements ---
@@ -1276,6 +1420,8 @@ func (f *formatter) writeExpr(e ast.Expr) {
 	case *ast.UnaryExpr:
 		f.write(unaryOpStr[x.Op])
 		f.writeExpr(x.Operand)
+	case *ast.MatchExpr:
+		f.writeMatch(&x.Match)
 	case *ast.TernaryExpr:
 		f.writeExpr(x.Cond)
 		f.write(" ? ")

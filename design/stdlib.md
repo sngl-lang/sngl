@@ -62,7 +62,10 @@ The tiers, and the split between them is the whole point of the system:
   value: a magnitude per base has no one ratio to report.
 - **`lib/math/` → `sngl:math`** — mathematical constants and functions: `pi` and `tau`, `sqrt`, `pow` and the trigonometry. A package rather than methods on `float`, because a constant has no receiver and nothing to fold — a zero-parameter static method survived only where the optimizer ran. The functions moved here from `float`: each takes a float without being about one, so a call reads `math.sin(x)`, and their intrinsic ids are `math.<name>`.
 - **`lib/seq/` → `sngl:seq`** — integer sequences: `count`, `range` and `step`, the `iter[int]` a counting loop iterates. Nothing else can produce one, since building a range in SNGL would need a loop and a loop needs a range; a sequence in a loop head lowers to the host's counting loop (`ir.IterCounted`), and anywhere else it is the pull sequence `iter[T]` is spelled as -- `func(func(T) bool)` in Go, a generator in JS, `Iterable<T>` in Kotlin -- so no list is built to iterate one. A list reaching an iter[T] position is wrapped by the conversion the checker already inserts there (`wrapIfNeeded`); a two-variable loop over one gets its ordinal from a counter (`passIndexedIter`), since a pull sequence hands out no index.
-- **`lib/async/` → `sngl:async`** — `start` and `do`: handing a closure somewhere else to run. They are each other's halves — `start` begins work that must not block the caller, `do` brings the answer back to the thread the target draws on — and **each is answered by a different half of the build**, which is why they are two declarations. Starting work is the host *language*'s (`go func(){}()`); reaching the drawing thread is the *platform*'s, because there is no such thread in general. `passAsyncOffload` has always written both for a blocking call on a language that cannot suspend; they are *declared* because a platform package needs to name one — a platform whose own `.sngl` describes a schedule (a timer handing its tick to a host scheduler) has to be back on the drawing thread before it touches a widget, and with no declaration has nothing to write but that platform's own spelling of `fyne.Do`, in its own package. A generator reaching its own thread from hand-written Go needs no name; a platform *package* does. That is the line against `ir.NodeOps`, which stay undeclared precisely because nothing can name them. A target that answers neither is refused at the call by `passAsyncCapable` rather than emitting code that does not compile: `async.do` on bubbletea used to come out as `m.post(...)`, a method on the model that does not exist.
+- **`lib/async/` → `sngl:async`** — `start` and `do`: handing a closure somewhere else to run. They are each other's halves — `start` begins work that must not block the caller, `do` brings the answer back to the thread the target draws on — and **each is answered by a different half of the build**, which is why they are two declarations. Starting work is the host *language*'s (`go func(){}()`); reaching the drawing thread is the *platform*'s, because there is no such thread in general. `passAsyncOffload` has always written both for a blocking call on a language that cannot suspend; they are *declared* because a platform package needs to name one — a platform whose own `.sngl` describes a schedule (a timer handing its tick to a host scheduler) has to be back on the drawing thread before it touches a widget, and with no declaration has nothing to write but that platform's own spelling of `fyne.Do`, in its own package. A generator reaching its own thread from hand-written Go needs no name; a platform *package* does. That is the line against `ir.NodeOps`, which stay undeclared precisely because nothing can name them. `query`, `Result` and `Failure` sit beside them: a request bracketed by the tree is the two one level up (see *Queries* in `design/language.md`). A target that answers neither is refused at the call by `passAsyncCapable` rather than emitting code that does not compile: `async.do` on bubbletea used to come out as `m.post(...)`, a method on the model that does not exist.
+- **`lib/http/` → `sngl:http`** and **`lib/json/` → `sngl:json`** — a
+  request while the program runs, and a declared type read from and written
+  as JSON. Neither knows the other; see **HTTP and JSON** below.
 - **`lib/dialog/` → `sngl:dialog`** — `Alert` and `File`: host-native modal surfaces. Not components — a component is placed in a tree and rendered, whereas `Alert.confirm` hands control to the host and returns what the user chose.
 - **`lib/test/` → `sngl:test`** — `Test`, the receiver a test function's first parameter carries.
 - **`lib/test/browser/` → `sngl:test/browser`** — what a page shows, read in the browser a test runs in: an element's text, attribute, markup and computed style, how many elements a node renders, and a pixel it paints. Each takes the node a test reaches by its `#id` and is answered by html's JavaScript alone, so a fixture importing it builds for html only -- `sngl:test` stays portable, and a question about the document is asked where only a document answers it.
@@ -85,7 +88,7 @@ The tiers, and the split between them is the whole point of the system:
   would read it, and a repository may not choose what `sngl build` runs. A
   build node is never rendered, which is why it may have a body and is exempt
   from the const-component rule.
-- **`lib/x/scheme/<name>/` → `sngl:x/scheme/<name>`** — the library's own import-scheme plugins, each serving `<name>:` with no import (see *Import schemes*). `c` runs pkg-config and writes a `c.link`; `gir` writes gtk4's widget declarations from GIR through a build intrinsic gtk4's Go answers (`buildhost.RegisterIntrinsic`). Checked as a package of its own when its scheme is first asked for -- against no target, since it is a build tool -- and left out of the merged stdlib documents. It may import `sngl:internal/`, and what it writes is library source in all but origin (`Config.byLibrary`): it may too. A check with no build resolver -- `sngl doc`, the LSP's library path, `CapsFor` -- still resolves one, through the runner `internal/plugin` registers with `checker.RegisterLibraryRunner`, which is what lets library source import a library scheme.
+- **`lib/x/scheme/<name>/` → `sngl:x/scheme/<name>`** — the library's own import-scheme plugins, each serving `<name>:` with no import (see *Import schemes*). `c` runs pkg-config and writes a `c.link`; `gir` writes gtk4's widget declarations from GIR through a build intrinsic gtk4's Go answers (`buildhost.RegisterIntrinsic`); `openapi` writes a package from an OpenAPI 3 document (see *The `openapi:` scheme* in `design/import-schemes.md`). Checked as a package of its own when its scheme is first asked for -- against no target, since it is a build tool -- and left out of the merged stdlib documents. It may import `sngl:internal/`, and what it writes is library source in all but origin (`Config.byLibrary`): it may too. A check with no build resolver -- `sngl doc`, the LSP's library path, `CapsFor` -- still resolves one, through the runner `internal/plugin` registers with `checker.RegisterLibraryRunner`, which is what lets library source import a library scheme.
 - **`lib/x/c/` → `sngl:x/c`** — `link`, the directive a package writes to say which C header its `#[cnative]` declarations come from and the flags compiling and linking against it need; read onto `ir.Package.CLinks`, from which a Go target writes its cgo preamble (`ir.ReachedCLinks`).
 - **`lib/internal/` → `sngl:internal/<name>`** — the compiler's own tier, importable only from lib source.
 
@@ -395,3 +398,89 @@ Notable stdlib packages:
   runtime on `window` in test mode, as it does the page's functions: a test
   module is bundled beside the page, and an i18n call the optimizer inlined
   into a test body named nothing there.
+
+## HTTP and JSON
+
+**`sngl:json` reads text as a declared type and writes a value back**:
+`json.decode[T](text) async.Result[T]` and `json.encode[T](v) string`. The
+type is its own schema -- a struct an object of its fields, an `option` a key
+that may be missing or `null`, a `list` an array, a `map[string, V]` an
+object of any keys, an enum carrying nothing its member's name, `datetime`
+and `time.date` RFC 3339 text. A key the type does not name is ignored, a
+field that is no option and has no key fails, writing leaves an absent
+option's key out and visits a map's keys in order. A failure is a `decode`
+`async.Failure` whose message every target words alike: `not JSON`,
+`$.types[0].slot: want an integer`, `$.name: missing`
+(`testdata/json.sngl`, `cmd/sngl/testdata/json_runs.txt` on all six).
+
+**A name on the wire is a fact about the format**, so it is the format's
+mark: `#[json.identifier("base_experience")]` on a struct field or an enum
+member, `#[http.identifier("page-size")]` on a query struct's field, landing
+on `ir.StructField.JSON`/`.HTTP` and `ir.EnumMember.JSON` and read by an
+encoder alone (`WireName`). An enum member takes marks as a struct field does
+(`EnumBodyItem = { MacroAttr } EnumBodyDecl`), and a comment on a body item's
+mark line stays on it, as a declaration's does.
+
+**`sngl:http` makes a request**: `send(method, url, query, headers, body)`
+and `get(url, query)`, both `#[intrinsic(…, async)]` and answering
+`async.Result[Response]`, a failure only where no response arrived
+(`transport`, `timeout`); a status is read off the `Response`, whose header
+names are lowercased. `Response.checked()` is SNGL -- 2xx the response,
+401/403 `auth`, other 4xx `request`, 5xx `server` -- so every target
+classifies alike, and `pathEscape` is a `const func` the optimizer folds.
+**A query is a struct**, a field per parameter: an absent option left off, a
+list repeating its key, everything else written once, every byte but the
+unreserved characters percent-encoded. `get` is an intrinsic rather than a
+SNGL wrapper over `send` because a generic wrapper hands the intrinsic a `Q`
+that names a type parameter on a target that emits generics, and the encoder
+needs the struct.
+
+**What has no wire form is refused at the call** (`checkCodecCall`,
+`ir.CodecProblem`): a function, a unit, a payload enum (not yet), a map keyed
+by anything but a string, two fields written under one name, a query field
+holding a struct -- and a type parameter, since the type has to be known where
+the call is (`testdata/error_json.sngl`).
+
+**Every language renders one plan** (`ir.PlanCodec`): the type's shape and
+each field's and member's wire name, every struct and enum once so a type
+holding itself points back at its own. Go hands it to `pkg/go/sngljson`,
+which reads and writes the program's own types by reflection, and makes the
+request with `pkg/go/snglhttp`; JavaScript to a page helper
+(`javascript.CodecHelperJS`, published on `window` where a test calls it);
+Kotlin to `SnglCodec`, written beside MainScreen.kt
+(`codegen/platform/android/codec.kt`, org.json and `HttpURLConnection` on
+`Dispatchers.IO`), whose descriptor also builds and reads each struct; the
+interpreter walks the plan over its own values (`internal/interp/codec.go`).
+The `Result` the call answers is built by translating IR around the names
+the runtime handed back (`codegen.ResultOK`, `ResultFailed`, `HostValue`), so
+each language's own spelling names the Result, Failure and Response.
+
+**A call that waits waits as an async function does.** Go runs it off the
+drawing thread through passAsyncOffload (a test waits where it calls, being
+entered by the harness), JavaScript awaits it, and **Kotlin suspends**: an
+async function is a `suspend fun`, an async test body runs in `runBlocking`,
+and a handler lambda or an effect's mount that waits is started on the main
+dispatcher by `SnglCodec.start`, whose `return` leaves the coroutine; a
+function literal that waits, called where it stands -- an adapter's
+`fetch=func(k) => call(k.a, k.b)` spliced into the mount -- is written in
+place as a `run` block binding its parameters (`waitingLiteralCall`), since a
+Kotlin lambda is no suspend function; and a test build's wait for idle also
+waits for what `start` began. bubbletea answers no
+`async.do` (#272) and refuses the request at the call that waits. A test
+waits for what a handler's request writes with `t.wait`, which Go now lowers
+too (gtk4 pumping its loop meanwhile, `golang.LowerTestFile` being handed the
+platform). `cmd/sngl/testdata/http_runs.txt` runs requests, a waiting
+handler and an `async.query` over a request on five targets against the
+server the script harness runs at `127.0.0.1:47819`
+(`cmd/sngl/httpserver_test.go`), and `testdata/http_json.txtar` is the code.
+
+Three general things it needed. A method a library declares on a struct of
+its own is promoted into the program like a library helper (`passLibFuncs`),
+and `ExprCtx.Resolve` never answers a bare name with a struct's or an enum's
+method, which made a local `checked` a Model field. **A generic library body
+spliced at bound types names enum instantiations Monomorphize never saw**,
+so `MonomorphizeEnums` copies them after the inliners, finding a copy the
+first run made through `EnumDef.InstanceOf`. And a generic call's arguments
+are inferred from what they state rather than under the call's own expected
+type, an argument whose parameter names no type parameter binding nothing
+(`testdata/generic_call_argument_unexpected.sngl`).

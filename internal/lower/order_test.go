@@ -75,6 +75,9 @@ var alwaysOn = []string{
 	// An effect's reports are lowered on every target; one that brackets a
 	// lifetime itself keeps the node with its @mount and @unmount.
 	"Effect",
+	// A payload enum's selector read is the member test or the payload on
+	// every target.
+	"EnumReads",
 	// A raise is a raise on every target, and the catch it unwinds to is a block
 	// every language renders.
 	"ErrorCatch",
@@ -96,6 +99,10 @@ var alwaysOn = []string{
 	// in pkg.Funcs for any target, because that is what every backend emits
 	// from.
 	"LibFuncs",
+	// A match a target cannot emit as one is the if chain on every target;
+	// which matches those are is what Matches and ViewMatches decide.
+	"Match",
+	"MatchLate",
 	// Which bindings are written is a fact about the finished bodies, and
 	// every target has a backend that may care -- Kotlin copies on binding
 	// unless this says the binding is never written.
@@ -201,7 +208,7 @@ var soleGate = map[string][]string{
 	"InlineComponents": {"NoInlineComponents"},
 	"ImplicitRecv":     {"NoImplicitRecv"},
 	"StructSpread":     {"NoStructSpread"},
-	"GenericFuncs":     {"Monomorphize"},
+	"GenericFuncs":     {"Monomorphize", "MonomorphizeEnums"},
 	"FocusOrder":       {"FocusOrder"},
 	"Canvas":           {"Canvas"},
 
@@ -218,6 +225,13 @@ var soleGate = map[string][]string{
 	// component built at run time is emitted once or copied per
 	// instantiation where it is elected.
 	"GenericComponents": nil,
+
+	// Read by passMatch rather than gating it: each says which matches the
+	// target emits as one, and the pass writes the rest as the chain.
+	"Match":       nil,
+	"MatchValue":  nil,
+	"ViewMatch":   nil,
+	"OptionMatch": nil,
 
 	// The pass and the field are named for opposite sides of the same fact:
 	// ReactiveCanvas is the redraw the platform wants, CanvasReactivity is the

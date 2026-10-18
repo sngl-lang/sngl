@@ -296,8 +296,8 @@ which makes `output` and a component returning a type parameter exempt for
 free: both carry a nil `Family`, so the first is never asked and the second is
 left to `checkFamilyParamBody` rather than reported twice.
 
-**Four constructs are reached through, and `familyTransparent` is the one list
-of them.** An `if` and a `for` say when and how many; an `ir.ErrorBoundary`
+**Five constructs are reached through, and `familyTransparent` is the one list
+of them.** An `if`, a `match` and a `for` say when and how many; an `ir.ErrorBoundary`
 says what happens when a raise reaches it; an `ir.ContextProvider` sets a value
 for what is under it. None puts anything in the tree itself, so every tree
 question asked of a block is asked of theirs. After the checker the same list is `ir.TransparentBlocks`, and

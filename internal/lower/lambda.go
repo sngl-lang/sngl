@@ -87,6 +87,11 @@ func analyzeCaptures(body []ir.Stmt, params []*ir.Param) []capture {
 			walkExpr(x.Cond)
 			walkExpr(x.Then)
 			walkExpr(x.Else)
+		case *ir.MatchExpr:
+			walkExpr(x.Subject)
+			for _, arm := range x.Arms {
+				walkExpr(arm.Value)
+			}
 		case *ir.Call:
 			walkExpr(x.Callee)
 			walkExpr(x.Receiver)
@@ -176,6 +181,11 @@ func analyzeCaptures(body []ir.Stmt, params []*ir.Param) []capture {
 			walkExpr(n.Cond)
 			walkStmts(n.Body)
 			walkStmts(n.Else)
+		case *ir.Match:
+			walkExpr(n.Subject)
+			for _, arm := range n.Arms {
+				walkStmts(arm.Body)
+			}
 		case *ir.For:
 			walkExpr(n.Iter)
 			walkStmts(n.Body)
@@ -282,6 +292,12 @@ func liftLambdas(e ir.Expr, l *lifter) ir.Expr {
 		x.Then = liftLambdas(x.Then, l)
 		x.Else = liftLambdas(x.Else, l)
 		return x
+	case *ir.MatchExpr:
+		x.Subject = liftLambdas(x.Subject, l)
+		for _, arm := range x.Arms {
+			arm.Value = liftLambdas(arm.Value, l)
+		}
+		return x
 	case *ir.Call:
 		x.Receiver = liftLambdas(x.Receiver, l)
 		for i := range x.Args {
@@ -345,6 +361,11 @@ func liftLambdasInStmt(s ir.Stmt, l *lifter) {
 		n.Cond = liftLambdas(n.Cond, l)
 		liftLambdasInStmts(n.Body, l)
 		liftLambdasInStmts(n.Else, l)
+	case *ir.Match:
+		n.Subject = liftLambdas(n.Subject, l)
+		for _, arm := range n.Arms {
+			liftLambdasInStmts(arm.Body, l)
+		}
 	case *ir.For:
 		n.Iter = liftLambdas(n.Iter, l)
 		liftLambdasInStmts(n.Body, l)
@@ -625,6 +646,11 @@ func (l *lifter) rewriteStmt(s ir.Stmt, captureField map[ir.Symbol]ir.Expr, capt
 		n.Cond = l.rewriteExpr(n.Cond, captureField, captureMutable)
 		l.rewriteStmts(n.Body, captureField, captureMutable)
 		l.rewriteStmts(n.Else, captureField, captureMutable)
+	case *ir.Match:
+		n.Subject = l.rewriteExpr(n.Subject, captureField, captureMutable)
+		for _, arm := range n.Arms {
+			l.rewriteStmts(arm.Body, captureField, captureMutable)
+		}
 	case *ir.For:
 		n.Iter = l.rewriteExpr(n.Iter, captureField, captureMutable)
 		l.rewriteStmts(n.Body, captureField, captureMutable)
@@ -691,6 +717,12 @@ func (l *lifter) rewriteExpr(e ir.Expr, captureField map[ir.Symbol]ir.Expr, capt
 		x.Cond = l.rewriteExpr(x.Cond, captureField, captureMutable)
 		x.Then = l.rewriteExpr(x.Then, captureField, captureMutable)
 		x.Else = l.rewriteExpr(x.Else, captureField, captureMutable)
+		return x
+	case *ir.MatchExpr:
+		x.Subject = l.rewriteExpr(x.Subject, captureField, captureMutable)
+		for _, arm := range x.Arms {
+			arm.Value = l.rewriteExpr(arm.Value, captureField, captureMutable)
+		}
 		return x
 	case *ir.Call:
 		x.Receiver = l.rewriteExpr(x.Receiver, captureField, captureMutable)

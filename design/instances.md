@@ -301,10 +301,15 @@ one built at run time, or rendered more than once, cannot say which copy it
 means and is refused with a position, on the terms `uniqueNodeIDs` holds a
 handle to. That is also why `box.checked` beside an input under a reactive `if`
 is refused: the wrapper there is an instance of its own. Bare children stay at
-the call site and reach the node through the wrapper's own rest slot; two
-shapes are refused, neither reachable from `sngl:ui`, whose components carry
-one two-way prop and take no content: a call site binding one two-way prop and
-not another, and one populating a named slot.
+the call site and reach the node through the wrapper's own rest slot. A
+two-way prop the call site did bind is the wrapper's own two-way prop, bound to
+what the call site bound and through to the node, as an override binds its
+base's prop through to a primitive -- `async.query(:value=v)` keeps `pending`
+and `failure` and hands `value` on. A generic node's wrapper declares
+everything at the types its call site bound (`ir.ComponentBindings`,
+`ir.InstantiateExpr` for a default). One shape is refused, which no `sngl:ui`
+component reaches: a call site populating a named slot the node does not
+declare.
 
 A `const` component keeps no state, so a two-way prop of one left unbound is a
 checker error at the call site (`refuseUnboundConstProps`); a one-way value is

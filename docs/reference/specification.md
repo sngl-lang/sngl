@@ -175,7 +175,7 @@ The following words are reserved and may not be used as identifiers:
 
 <!-- BEGIN GENERATED: keywords -->
 
-`break` `component` `const` `continue` `else` `enum` `for` `func` `if` `import` `return` `struct` `unit` `var`
+`break` `component` `const` `continue` `else` `enum` `for` `func` `if` `import` `match` `return` `struct` `unit` `var`
 
 `true`, `false` and `null` are **predeclared identifiers**, not keywords, and may be shadowed by user declarations. Every other name a program uses without importing it — `int`, `string`, `list`, `output`, `effect`, `boundary` — is declared in `sngl:builtin`.
 
@@ -506,6 +506,29 @@ enum type's namespace
 (`Status.active`) or, where the expected type makes the enum unambiguous, by
 its bare name. Enums are comparable and may be used as map keys. An enum may
 also carry methods.
+
+A member may carry a type, its **payload**, and an enum may take type
+parameters; a value then holds exactly one member and that member's payload:
+
+```
+enum Result[T any] {
+    ok     T
+    failed Failure
+}
+```
+
+- A value is built as a struct literal naming one member,
+  `Result[int]{ok=2}`, or `{ok=2}` where the type is expected. A member with
+  no payload is written as any member is, `Shape.empty`.
+- `r.ok` is an `option` of the payload, present only where `r` holds `ok`,
+  so a null test narrows it; a member with no payload reads as a `bool`.
+- `match var v = r { ok { … } failed { … } }` takes the arm of the member
+  held, and in each arm `v` is that member's payload (see *The match
+  statement*). Every match is exhaustive.
+- The zero value is the first member's, with its payload's zero.
+- Two values are equal when they hold one member with equal payloads; an
+  enum whose payloads do not all compare is not comparable, and one carrying
+  payloads has no string form unless it declares `string()`.
 
 #### Unit types
 
@@ -1230,6 +1253,7 @@ PrimaryExpr =
     | "[" ListBody "]"
     | AnonStructLit
     | FuncLit
+    | Match
     | StructDecl [ StructLitBody ]
     | ImportExpr StructLitBody
     | IDENT [ StructLitBody ]
@@ -1446,6 +1470,7 @@ Stmt =
     | "continue"
     | IfNode
     | ForNode
+    | Match
     | VisualOrStmt
 
 VisualOrStmt = StatementPrimary { StmtPostfixOp } [ AssignOp Expr | "!!" | IncDecOp ]
@@ -1453,6 +1478,10 @@ VisualOrStmt = StatementPrimary { StmtPostfixOp } [ AssignOp Expr | "!!" | IncDe
 IfNode = "if" CondExpr StmtBlock [ "else" ( IfNode | StmtBlock ) ]
 
 ForNode = "for" ( "var" [ "&" ] IDENT [ "," [ "&" ] IDENT ] "=" CondExpr | [ CondExpr ] ) StmtBlock [ "else" StmtBlock ]
+
+Match = "match" [ "var" IDENT "=" CondExpr | CondExpr ] "{" [ ";" ] [ MatchArm { ";" [ MatchArm ] } ] "}"
+
+MatchArm = ( "else" | CondExpr { "," CondExpr } ) ( StmtBlock | "=>" Expr )
 
 AssignOp = "=" | "+=" | "-=" | "*=" | "/=" | "%="
 
@@ -1620,6 +1649,105 @@ In a view body the emptiness is asked of the iterable on every render, so the
 head of a view loop with an `else` must be **measurable** — a list, a map, or a
 `sngl:seq` range, whose emptiness is known without consuming an element; a
 general `iter[T]` is an error there — and must be safe to evaluate twice.
+
+### The match statement
+
+```
+Match    = "match" [ "var" identifier "=" CondExpr | CondExpr ] "{" [ ";" ] [ MatchArm { ";" [ MatchArm ] } ] "}"
+MatchArm = ( "else" | CondExpr { "," CondExpr } ) ( StmtBlock | "=>" Expr )
+```
+
+A **match** compares its subject with each arm's patterns in order and takes
+the first arm with a pattern equal to it. It is a statement and an expression,
+and the arm says which, as the two forms of a function body do: where a
+statement goes an arm is a block, and where a value goes it is `=> value`.
+Writing the other form is an error.
+
+<!-- SNGL-component
+enum Status { active, inactive, pending }
+-->
+
+```sngl
+var status Status = Status.pending
+
+match status {
+    active { ui.text(value="on") }
+    inactive, pending { ui.text(value="off") }
+}
+
+ui.text(value=match status {
+    active => "on"
+    else => "not on"
+})
+```
+
+A pattern is a constant — an enum member, written bare as it is in a
+comparison, a literal, a `const`, or `null` — of a type the subject compares
+with by `==`. Commas give one arm several patterns. `else` is the arm taken
+when no other was, and must be the last; no arm falls through to the next.
+
+With no subject, each arm's patterns are conditions of type `bool`, tested in
+order:
+
+<!-- SNGL-component -->
+
+```sngl
+var n = 0
+
+ui.text(value=match {
+    n > 10 => "many"
+    n > 0 => "some"
+    else => "none"
+})
+```
+
+Every match is **exhaustive**. A subject of an enum type has an arm for each
+member, a `bool` one for `true` and for `false`, and an `option[T]` one for
+`null` as well as `T`'s; any other subject, and every match without one, has
+an `else`. A pattern written twice is an error.
+
+An `else` beside patterns that cover every case is allowed, and is how a match
+over an enum keeps compiling when the enum gains a member. Leaving it out is
+how a match asks to be revisited when it does.
+
+The subject is evaluated once. In a view body there is nowhere to hold it, so
+it is evaluated again for each arm tested, and a subject there that writes
+state is an error. Like an `if` head, a subject may not begin with `{`, and a
+match in the head of an `if` or `for` is written parenthesized.
+
+`match var v = subject` names the subject for the arms, as `for var x = xs`
+names the element. What the name holds is what the arm knows the subject to
+be: in an arm whose one pattern is an enum member carrying a payload, it is
+that payload; in every other arm it is the subject, and where the subject is
+an `option[T]` and the arm cannot be taken on `null` -- its patterns are not
+`null`, or it is an `else` after the `null` arm -- it is the `T`.
+
+<!-- SNGL-component
+struct Size {
+    w float
+    h float
+}
+
+enum Shape {
+    empty
+    circle float
+    rect Size
+}
+-->
+
+```sngl
+var shape Shape = Shape.empty
+
+ui.text(value=match var v = shape {
+    circle => "radius {v}"
+    rect => "{v.w} by {v.h}"
+    else => "nothing"
+})
+```
+
+In a block run imperatively the name is a local the arm may write; anywhere
+else -- a view, a match expression -- it is read off the subject where it is
+read, and may not be written.
 
 ### The emit statement
 
@@ -2523,6 +2651,7 @@ Stmt =
     | "continue"
     | IfNode
     | ForNode
+    | Match
     | VisualOrStmt
 
 VisualOrStmt = StatementPrimary { StmtPostfixOp } [ AssignOp Expr | "!!" | IncDecOp ]
@@ -2530,6 +2659,10 @@ VisualOrStmt = StatementPrimary { StmtPostfixOp } [ AssignOp Expr | "!!" | IncDe
 IfNode = "if" CondExpr StmtBlock [ "else" ( IfNode | StmtBlock ) ]
 
 ForNode = "for" ( "var" [ "&" ] IDENT [ "," [ "&" ] IDENT ] "=" CondExpr | [ CondExpr ] ) StmtBlock [ "else" StmtBlock ]
+
+Match = "match" [ "var" IDENT "=" CondExpr | CondExpr ] "{" [ ";" ] [ MatchArm { ";" [ MatchArm ] } ] "}"
+
+MatchArm = ( "else" | CondExpr { "," CondExpr } ) ( StmtBlock | "=>" Expr )
 
 AssignOp = "=" | "+=" | "-=" | "*=" | "/=" | "%="
 
@@ -2547,7 +2680,7 @@ StructDecl = "struct" [ IDENT ] [ TypeParamList ] "{" { StructBodyItem [ ";" ] }
 
 StructField = IdentList Type [ "=" Expr ]
 
-EnumDecl = "enum" [ IDENT ] "{" [ EnumBodyItem { ("," | ";") EnumBodyItem } [ "," | ";" ] ] "}"
+EnumDecl = "enum" [ IDENT ] [ TypeParamList ] "{" [ EnumBodyItem { ("," | ";") EnumBodyItem } [ "," | ";" ] ] "}"
 
 UnitDecl = "unit" [ IDENT ] "{" [ ArgList ] "}"
 
@@ -2657,6 +2790,7 @@ PrimaryExpr =
     | "[" ListBody "]"
     | AnonStructLit
     | FuncLit
+    | Match
     | StructDecl [ StructLitBody ]
     | ImportExpr StructLitBody
     | IDENT [ StructLitBody ]

@@ -145,6 +145,13 @@ func refuseStacksUnderReactiveIf(pkg *ir.Package, skip func(*ir.NodeInst) bool) 
 			switch n := s.(type) {
 			case *ir.If:
 				r = reactive || len(fx.reactiveVarsIn(n.Cond)) > 0
+			case *ir.Match:
+				r = reactive || (n.Subject != nil && len(fx.reactiveVarsIn(n.Subject)) > 0)
+				for _, arm := range n.Arms {
+					for _, p := range arm.Patterns {
+						r = r || len(fx.reactiveVarsIn(p)) > 0
+					}
+				}
 			case *ir.NodeInst:
 				if skip(n) {
 					continue
@@ -243,6 +250,12 @@ func (h *navHrefs) calls(stmts []ir.Stmt) error {
 			}
 			if err := h.calls(n.Else); err != nil {
 				return err
+			}
+		case *ir.Match:
+			for _, arm := range n.Arms {
+				if err := h.calls(arm.Body); err != nil {
+					return err
+				}
 			}
 		case *ir.For:
 			if err := h.calls(n.Body); err != nil {

@@ -29,9 +29,9 @@ it**, and grep `design/` for a function or pass name before concluding nothing
 explains it. A note there that only says what a construct means belongs in the
 spec instead.
 
-- `design/language.md` — `const`; bodyless components and overrides; events; loops and for-else; view walks (`ir.ViewBlocks`, `blocks.go`); lambda bodies; contexts
+- `design/language.md` — `const`; bodyless components and overrides; events; loops and for-else; view walks (`ir.ViewBlocks`, `blocks.go`); lambda bodies; `match`; payload enums; `async.query`; contexts
 - `design/architecture.md` — codegen registry and models, per-platform details, `ir`/`checker`/`optimize`/`lower` packages and the always-on passes, runtime `pkg/` packages, AST
-- `design/stdlib.md` — `lib/` tiers and what each package holds, package docs, library loading/caching/freezing, clones, target nodes and reserved names, `#[builtin]`, marks, scalars, macros, i18n
+- `design/stdlib.md` — `lib/` tiers and what each package holds, package docs, library loading/caching/freezing, clones, target nodes and reserved names, `#[builtin]`, marks, scalars, macros, i18n; `sngl:http` and `sngl:json`
 - `design/families.md` — families, data components and records, generated families (`gen.emit`), family inference and membership, `#[family.crosses]`, boundaries and raises
 - `design/windows.md` — `root`, windows, prop reads through an `#id`, self-reference and declarative cycles, view-block state, root components, `output` and `@run`, how each platform shows windows, unavailable targets
 - `design/slots.md` — slot types and counts, spreads and variadics, rest slots, entries, fallbacks, `.empty`, slots in runtime instances, populations
@@ -40,7 +40,7 @@ spec instead.
 - `design/markup.md` — `sngl:ui/markup`, the `md:` scheme, `md.document`
 - `design/images.md` — `ui.imageSource` and each target's answer
 - `design/plugins.md` — plugin principles and known gaps
-- `design/import-schemes.md` — plugin schemes and `c:`
+- `design/import-schemes.md` — plugin schemes, `c:` and `openapi:`
 - `design/navigation.md` — `sngl:ui/nav` on each target
 - `design/types.md` — anonymous and generic structs, monomorphization, units and their display, member lookup
 - `design/testing.md` — fixture directives, goldens and `deny`, recorded runs, the two harnesses, test lowering and test reach

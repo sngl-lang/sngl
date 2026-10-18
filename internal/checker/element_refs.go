@@ -64,6 +64,10 @@ func (s *refSearch) walk(stmts []ast.Stmt, k ir.RefCount) {
 		case *ast.ForStmt:
 			s.walk(n.Body.Stmts, k.Inside(ir.RefList))
 			s.walk(n.Else.Stmts, k.Inside(ir.RefOption))
+		case *ast.MatchStmt:
+			for _, arm := range n.Arms {
+				s.walk(arm.Body.Stmts, k.Inside(ir.RefOption))
+			}
 		}
 	}
 }
@@ -161,6 +165,10 @@ func (s *refSearch) walkIR(stmts []ir.Stmt, k ir.RefCount) {
 		case *ir.If:
 			s.walkIR(n.Body, k.Inside(ir.RefOption))
 			s.walkIR(n.Else, k.Inside(ir.RefOption))
+		case *ir.Match:
+			for _, arm := range n.Arms {
+				s.walkIR(arm.Body, k.Inside(ir.RefOption))
+			}
 		case *ir.For:
 			s.walkIR(n.Body, k.Inside(ir.RefList))
 			s.walkIR(n.Else, k.Inside(ir.RefOption))

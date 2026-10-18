@@ -30,6 +30,16 @@ func rewriteStmtExprs(stmts []ir.Stmt, rewrite func(ir.Expr) ir.Expr) []ir.Stmt 
 			n.Cond = rewrite(n.Cond)
 			n.Body = rewriteStmtExprs(n.Body, rewrite)
 			n.Else = rewriteStmtExprs(n.Else, rewrite)
+		case *ir.Match:
+			if n.Subject != nil {
+				n.Subject = rewrite(n.Subject)
+			}
+			for _, arm := range n.Arms {
+				for i := range arm.Patterns {
+					arm.Patterns[i] = rewrite(arm.Patterns[i])
+				}
+				arm.Body = rewriteStmtExprs(arm.Body, rewrite)
+			}
 		case *ir.For:
 			n.Iter = rewrite(n.Iter)
 			n.Body = rewriteStmtExprs(n.Body, rewrite)

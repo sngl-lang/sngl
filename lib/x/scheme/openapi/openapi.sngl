@@ -1,0 +1,76 @@
+import gen "sngl:x/gen"
+import marks "sngl:internal/marks"
+
+// `openapi:` imports an OpenAPI 3 document, YAML or JSON, as a package of
+// the types it declares and the requests it describes:
+//
+//     import poke "openapi:./pokeapi.yml"
+//
+// The path is the project's own file, relative to the import root, read
+// through the project: one outside it, or a symlink out of it, is refused.
+// What the package holds:
+//
+//   - **A declaration per schema**: an object is a struct, a string enum an
+//     enum; a property neither required nor nullable, or nullable, is an
+//     option, an array a list, `additionalProperties` a map keyed by
+//     string, a `$ref` the declaration it names and an `allOf` its parts'
+//     fields merged. An integer is an `int` whatever its format, a number a
+//     float, a `date` or `date-time` string a `time.date` or a `datetime`.
+//     A field's name is its key in camelCase, with `#[json.identifier]`
+//     naming the key where the two differ.
+//   - **A function per operation**, named for its `operationId` with `Call`
+//     after it, `pokemonRetrieveCall`: its path parameters, then its query's
+//     -- with the spec's default, or as an option -- then a JSON body. It
+//     answers `async.Result` of the response's type: the value, or the
+//     failure that kept it from arriving, the status said, or its JSON did
+//     not match.
+//   - **A component per `GET`**, named for the bare `operationId`, over
+//     `async.query`: asked when it mounts and whenever a parameter changes,
+//     its `value`, `pending` and `failure` the query's, handed through. It
+//     renders nothing, so it goes in any tree.
+//   - **`server`**, a context holding the spec's first server: provide
+//     another around a subtree, or in a test with `t.setContext`, to send
+//     its requests somewhere else.
+//
+// Reading the document and writing the package is Go's, through
+// `generate`: the package is written as source and printed by the
+// formatter, so it reads as `sngl fmt` writes it.
+//
+// What no declaration spells -- an `anyOf`, a `oneOf` other than a schema
+// or null, a discriminator, a header or cookie parameter, a body that is
+// not JSON -- leaves out the field or the operation that reaches it, and
+// the import says so in a warning. So does a name the import had to change.
+gen.scheme(name="openapi", @generate(out, importPath) {
+    // The document is one of the project's own files, read through the
+    // project, so the repository naming it reaches nothing outside it.
+    if importPath.startsWith("/") || importPath == ".." || importPath.startsWith("../") || importPath.contains("/../") {
+        error.raise("openapi:" + importPath + " is outside the project: the document is read from the project's own files", "import")
+        return
+    }
+    // Lines joined once: adding each to a string copies it every time.
+    var lines list[string] = []
+    for var line = gen.lines(importPath) {
+        lines.push(line)
+    }
+    var pkg = generate(lines.join("\n"), importPath)
+    for var n = pkg.notes {
+        out.note(n)
+    }
+    out.write(pkg.file, pkg.source)
+})
+
+// What an import resolves to.
+struct Package {
+    // The file to write: the document's own name, as a .sngl file.
+    file   string
+    // Its source.
+    source string
+    // What the import says: what was left out, and why, and what was renamed.
+    notes  list[string]
+}
+
+// The package for a document's text, read from the file named from. Answered
+// by Go, which reads YAML and JSON, decides what each schema is and writes the
+// source.
+#[marks.intrinsic("openapi.generate", build)]
+func generate(text string, from string) Package

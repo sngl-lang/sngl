@@ -42,3 +42,23 @@
 // That is also the line between these and the node operations a visual tree
 // lowers to, which are deliberately *not* a package: nothing can name those,
 // so a declaration would describe nobody's contract. These have a caller.
+//
+// **`query` is the two bracketed by the tree.** A request asked when its node
+// mounts and again whenever its key changes, abandoned when the node leaves:
+//
+//	var mon option[Pokemon] = null
+//	var loading = false
+//	var failure option[async.Failure] = null
+//	async.query(on=name, fetch=pokemon, :value=mon, :pending=loading, :failure=failure)
+//
+// It is ordinary SNGL over `effect`, and what it keeps are three independent
+// facts, each a two-way prop the call site binds or leaves to the instance:
+// the last answer, an attempt in flight, and how the last attempt failed. An
+// answer to a key asked before the current one writes nothing, nor does one
+// arriving after the node unmounts, so a screen never shows what it has
+// stopped asking about; `refresh` asks again without a change of key.
+//
+// `fetch` answers a `Result`: the value, or the `Failure` that kept it from
+// arriving. A failure is a value a screen renders beside the stale answer it
+// still has, not a raise -- a 404 is a response that arrived -- and a program
+// that wants the boundary raises from `@fail`.

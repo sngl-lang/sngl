@@ -56,6 +56,9 @@ func (jc *JsIRContext) Binary(n *ir.Binary, left, right string) string {
 	if out, ok := multiBaseUnitBinaryJS(n, left, right); ok {
 		return out
 	}
+	if out, ok := enumEqualJS(n, left, right); ok {
+		return out
+	}
 	if n.Op == ast.BinDiv && isIntIR(n.Left) && isIntIR(n.Right) {
 		// BigInt division truncates toward zero natively; Number division needs
 		// an explicit Math.trunc to match integer semantics.
@@ -88,6 +91,9 @@ func (jc *JsIRContext) Select(n *ir.Select, operand string) string {
 		if t := n.Operand.ExprType(); t != nil && t.Kind == ir.TypeMap {
 			return operand + ".size"
 		}
+	}
+	if ir.PayloadEnum(n.Operand.ExprType()) != nil {
+		return enumSelectJS(n.Field, operand)
 	}
 	return operand + "." + jc.fieldKey(n)
 }
@@ -143,6 +149,9 @@ func (jc *JsIRContext) MapLit(n *ir.MapLitIR, keys, vals []string) string {
 	return b.String()
 }
 func (jc *JsIRContext) StructLit(n *ir.StructLit, fieldStrs []string) string {
+	if member, _, ok := ir.EnumLitMember(n); ok {
+		return enumLitJS(member, fieldStrs[0])
+	}
 	parts := make([]string, len(n.Fields))
 	for i, f := range n.Fields {
 		if f.Spread {
@@ -310,6 +319,22 @@ func (jc *JsIRContext) ReturnText(n *ir.Return, valueStr string) string {
 }
 
 func (jc *JsIRContext) ForHead(n *ir.For, iter string) string {
+	if n.Label != "" {
+		return n.Label + ": " + jc.forHead(n, iter)
+	}
+	return jc.forHead(n, iter)
+}
+
+// BreakText names the loop a labelled break leaves: JavaScript's switch takes
+// a bare break as its own.
+func (jc *JsIRContext) BreakText(n *ir.Break) string {
+	if n.Label != "" {
+		return "break " + n.Label
+	}
+	return "break"
+}
+
+func (jc *JsIRContext) forHead(n *ir.For, iter string) string {
 	// A loop that declared no variable still binds one here: JS has no
 	// discard in a binding position, and an unused const is not an error.
 	key, valueVar := n.Key, n.Value
@@ -493,6 +518,9 @@ func (jc *JsIRContext) evalIdent(n *ir.Ident) string {
 		}
 	}
 	if n.Member != "" {
+		if ir.PayloadEnum(n.Type) != nil {
+			return enumLitJS(n.Member, "")
+		}
 		if src, ok := nativeEnumMemberJS(n.Type, n.Member); ok {
 			return src
 		}
@@ -588,6 +616,11 @@ func (jc *JsIRContext) evalCall(n *ir.Call) string {
 	// the call reached codegen as a type-method call or was inlined to a direct
 	// intrinsic call. Must precede every other branch so e.g. an inlined
 	// `stdlib.StrUpper(s)` is emitted as `s.toUpperCase()`, not a bare call.
+	// A codec call reads the type it reads or writes, which is the call's,
+	// and names the page's runtime.
+	if out, ok := jc.codecCall(n); ok {
+		return out
+	}
 	if out, _, ok := codegen.EmitIntrinsicCall(langJS, jc.Ctx.Platform, n, jc.EvalExpr); ok {
 		// The style intrinsic's expansion names a page helper. Recorded here
 		// because the expansion is a package-level registration with no access
@@ -629,7 +662,7 @@ func (jc *JsIRContext) evalCall(n *ir.Call) string {
 		args := jc.evalCallArgs(n.Args)
 		codegen.RequireIntrinsicFallback(langJS, n.Func)
 		call := fname + "(" + strings.Join(args, ", ") + ")"
-		if n.Func.IsAsync {
+		if n.Func.IsAsync && !n.Detached {
 			call = "await " + call
 		}
 		return call
@@ -674,7 +707,7 @@ func (jc *JsIRContext) evalNativeCall(n *ir.Call) string {
 	default:
 		call = name + "(" + strings.Join(args, ", ") + ")"
 	}
-	if n.Func.IsAsync {
+	if n.Func.IsAsync && !n.Detached {
 		call = "await " + call
 	}
 	return call
@@ -702,6 +735,12 @@ func (jc *JsIRContext) evalFuncvarCall(n *ir.Call) string {
 	args := jc.evalCallArgs(n.Args)
 	call := calleeJS + "(" + strings.Join(args, ", ") + ")"
 
+	if n.Detached {
+		return call
+	}
+	if ir.CallsAsyncValue(n) {
+		return "await " + call
+	}
 	if jc.Ctx.Pkg != nil && jc.Ctx.Pkg.PointsTo != nil {
 		if k, ok := ir.CalleeSlotKey(n.Callee); ok {
 			pts := jc.Ctx.Pkg.PointsTo
@@ -773,7 +812,7 @@ func (jc *JsIRContext) evalQualifiedCall(n *ir.Call) (string, bool) {
 	// A native import JavaScript does not call here: named through its alias.
 	codegen.RequireIntrinsicFallback(langJS, n.Func)
 	call := qualName + "(" + strings.Join(args, ", ") + ")"
-	if n.Func.IsAsync {
+	if n.Func.IsAsync && !n.Detached {
 		call = "await " + call
 	}
 	return call, true
@@ -820,7 +859,7 @@ func (jc *JsIRContext) evalNamespaceCall(n *ir.Call) string {
 		} else {
 			call = receiver + "." + fname + "(" + strings.Join(args, ", ") + ")"
 		}
-		if n.Func.IsAsync {
+		if n.Func.IsAsync && !n.Detached {
 			call = "await " + call
 		}
 		return call
@@ -873,7 +912,7 @@ func (jc *JsIRContext) evalTypeMethodCall(n *ir.Call) string {
 	if jc.Ctx != nil && jc.Ctx.ClosureMethods && jc.Ctx.Component != nil &&
 		slices.Contains(jc.Ctx.Component.Funcs, n.Func) && len(args) > 0 {
 		call := method + "(" + strings.Join(args[1:], ", ") + ")"
-		if n.Func.IsAsync {
+		if n.Func.IsAsync && !n.Detached {
 			call = "await " + call
 		}
 		return call
@@ -992,7 +1031,9 @@ func (jc *JsIRContext) evalLambda(n *ir.Lambda) string {
 		params[i] = p.Name
 	}
 	asyncPrefix := ""
-	if n.Func.IsAsync {
+	// A handler a lowering made a lambda of was coloured nowhere: what it
+	// awaits says so.
+	if n.Func.IsAsync || ir.BlockHasAsyncCall(n.Func.Block) {
 		asyncPrefix = "async "
 	}
 	bodyJC := jc
@@ -1205,4 +1246,58 @@ func (jc *JsIRContext) hostValueIdent(n *ir.Ident) (string, bool) {
 		return codegen.NativeAlias(v.Foreign.Path) + "." + v.Foreign.Name, true
 	}
 	return v.Foreign.Name, true
+}
+
+// Match writes a match statement as a switch, each arm in a block of its own
+// so its declarations are its own. A headless match is the if chain it means:
+// a switch compares, and there is nothing to compare with.
+//
+// The switch opens on the line of its first case, and an arm's cases share a
+// line: a caller ends every line with a semicolon, and a switch's body holds
+// nothing but case clauses.
+func (jc *JsIRContext) Match(n *ir.Match, subject string, patterns, bodies [][]string) []string {
+	if n.Subject == nil {
+		return nil
+	}
+	in := jc.Indent()
+	var lines []string
+	for i, arm := range n.Arms {
+		head := "default: {"
+		if !n.Unasked(i) {
+			head = "case " + strings.Join(patterns[i], ": case ") + ": {"
+		}
+		if i == 0 {
+			lines = append(lines, "switch ("+subject+") { "+head)
+		} else {
+			lines = append(lines, in+head)
+		}
+		lines = append(lines, irwalk.IndentLines(in+in, bodies[i])...)
+		if i < len(n.Arms)-1 && !endsInJump(arm.Body) {
+			lines = append(lines, in+in+"break")
+		}
+		lines = append(lines, in+"}")
+	}
+	return append(lines, "}")
+}
+
+// endsInJump reports whether the last statement of a block leaves it -- a
+// return, a labelled break, a continue -- after which a break is unreachable.
+func endsInJump(stmts []ir.Stmt) bool {
+	if len(stmts) == 0 {
+		return false
+	}
+	switch s := stmts[len(stmts)-1].(type) {
+	case *ir.Return, *ir.Continue:
+		return true
+	case *ir.Break:
+		return s.Label != ""
+	}
+	return false
+}
+
+// MatchExpr writes a match expression as the ternaries it means: JavaScript
+// has no switch expression, so it declares no `matchValues`, and passMatch
+// writes these before they reach here.
+func (jc *JsIRContext) MatchExpr(n *ir.MatchExpr) string {
+	return irwalk.EvalExpr(jc, n.TernaryChain())
 }

@@ -99,12 +99,10 @@ func collectCanvases(stmts []ir.Stmt, stateVars map[*ir.Var]bool, out *[]canvasE
 			collectCanvases(n.Children, stateVars, out)
 		// A canvas is as likely to be one arm of a target test or an entry in
 		// a list as it is to be a plain child.
-		case *ir.If:
-			collectCanvases(n.Body, stateVars, out)
-			collectCanvases(n.Else, stateVars, out)
-		case *ir.For:
-			collectCanvases(n.Body, stateVars, out)
-			collectCanvases(n.Else, stateVars, out)
+		case *ir.If, *ir.For, *ir.Match:
+			for _, b := range ir.TransparentBlocks(n) {
+				collectCanvases(*b, stateVars, out)
+			}
 		// And under a wrapper, which every window's content is: each
 		// override puts it in the boundary its @error is.
 		case *ir.ErrorBoundary:
@@ -158,6 +156,14 @@ func canvasStateVars(canvas *ir.NodeInst, stateVars map[*ir.Var]bool) map[*ir.Va
 				gatherStateVarRefs(n.Cond, stateVars, out)
 				walk(n.Body)
 				walk(n.Else)
+			case *ir.Match:
+				gatherStateVarRefs(n.Subject, stateVars, out)
+				for _, arm := range n.Arms {
+					for _, p := range arm.Patterns {
+						gatherStateVarRefs(p, stateVars, out)
+					}
+					walk(arm.Body)
+				}
 			case *ir.For:
 				gatherStateVarRefs(n.Iter, stateVars, out)
 				walk(n.Body)
@@ -191,6 +197,14 @@ func gatherStateVarRefs(e ir.Expr, stateVars map[*ir.Var]bool, out map[*ir.Var]b
 		gatherStateVarRefs(x.Cond, stateVars, out)
 		gatherStateVarRefs(x.Then, stateVars, out)
 		gatherStateVarRefs(x.Else, stateVars, out)
+	case *ir.MatchExpr:
+		gatherStateVarRefs(x.Subject, stateVars, out)
+		for _, arm := range x.Arms {
+			for _, p := range arm.Patterns {
+				gatherStateVarRefs(p, stateVars, out)
+			}
+			gatherStateVarRefs(arm.Value, stateVars, out)
+		}
 	case *ir.Conversion:
 		gatherStateVarRefs(x.Operand, stateVars, out)
 	case *ir.Select:
@@ -273,12 +287,10 @@ func gatherBlockMutations(stmts []ir.Stmt, stateVars map[*ir.Var]bool, out map[*
 					}
 				}
 			}
-		case *ir.If:
-			gatherBlockMutations(n.Body, stateVars, out)
-			gatherBlockMutations(n.Else, stateVars, out)
-		case *ir.For:
-			gatherBlockMutations(n.Body, stateVars, out)
-			gatherBlockMutations(n.Else, stateVars, out)
+		case *ir.If, *ir.For, *ir.Match:
+			for _, b := range ir.TransparentBlocks(n) {
+				gatherBlockMutations(*b, stateVars, out)
+			}
 		}
 	}
 }

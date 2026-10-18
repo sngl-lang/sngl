@@ -313,6 +313,15 @@ func (s *stripper) stripStmt(st Stmt) {
 		s.stripExpr(st.Cond)
 		s.stripStmts(st.Body)
 		s.stripStmts(st.Else)
+	case *Match:
+		st.AST = nil
+		s.stripExpr(st.Subject)
+		for _, arm := range st.Arms {
+			for _, p := range arm.Patterns {
+				s.stripExpr(p)
+			}
+			s.stripStmts(arm.Body)
+		}
 	case *For:
 		st.AST = nil
 		s.stripExpr(st.Iter)
@@ -352,6 +361,16 @@ func (s *stripper) stripExpr(e Expr) {
 		s.stripExpr(e.Cond)
 		s.stripExpr(e.Then)
 		s.stripExpr(e.Else)
+	case *MatchExpr:
+		e.AST = nil
+		e.Type = nil
+		s.stripExpr(e.Subject)
+		for _, arm := range e.Arms {
+			for _, p := range arm.Patterns {
+				s.stripExpr(p)
+			}
+			s.stripExpr(arm.Value)
+		}
 	case *Call:
 		e.AST = nil
 		e.Func = nil     // cross-reference

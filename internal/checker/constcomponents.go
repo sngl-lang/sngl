@@ -78,6 +78,11 @@ func (r *renderCheck) stmt(s ir.Stmt, at ast.Pos) {
 		r.expr(n.Cond, at)
 		r.stmts(n.Body, at)
 		r.stmts(n.Else, at)
+	case *ir.Match:
+		r.expr(n.Subject, at)
+		for _, arm := range n.Arms {
+			r.stmts(arm.Body, at)
+		}
 	case *ir.For:
 		r.expr(n.Iter, at)
 		r.stmts(n.Body, at)

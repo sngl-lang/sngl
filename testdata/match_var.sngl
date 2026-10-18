@@ -1,0 +1,96 @@
+// `match var v = subject` names the subject for the arms, as `for var x = xs`
+// names the element. In an arm whose one pattern is a member carrying a
+// payload the name is that payload (enum_payload.sngl); in every other arm it
+// is the subject, and the subject's element where the subject is an option
+// the arm is not taken on null.
+
+import . "sngl:test"
+import . "sngl:ui"
+
+enum Status { active, inactive, pending }
+
+func name(s Status) => match s {
+    active => "on"
+    inactive => "off"
+    pending => "waiting"
+}
+
+var rolls = 0
+
+func roll() int {
+    rolls = rolls + 1
+    return rolls * 7
+}
+
+// A subject that calls something is called once, and the name reads that.
+func describe() => match var n = roll() {
+    7 => "seven"
+    else => "rolled {n}"
+}
+
+// Past the null arm the name is the element, which name() takes.
+func show(s option[Status]) => match var v = s {
+    null => "none"
+    else => name(v)
+}
+
+// An arm whose patterns cannot be null narrows as well.
+func onOrNot(s option[Status]) => match var v = s {
+    active => name(v)
+    else => "not on"
+}
+
+// In a block run imperatively the name is a local the arm may write.
+func clamp(n int) int {
+    match var v = n {
+        0 { return 1 }
+        else {
+            if v > 10 {
+                v = 10
+            }
+            return v
+        }
+    }
+}
+
+component panel node {
+    var maybe option[Status] = null
+
+    text #shown(value=match var v = maybe {
+        null => "none"
+        else => name(v)
+    })
+    match var v = maybe {
+        null {}
+        else { text #named(value=name(v)) }
+    }
+
+    button #set(text="Set", @click { maybe = Status.pending })
+}
+
+func testOnce(t Test, c panel) {
+    t.assert(describe() == "seven")
+    t.assert(describe() == "rolled 14")
+    t.assert(rolls == 2)
+}
+
+func testNarrow(t Test, c panel) {
+    t.assert(show(null) == "none")
+    t.assert(show(Status.inactive) == "off")
+    t.assert(onOrNot(Status.active) == "on")
+    t.assert(onOrNot(null) == "not on")
+}
+
+func testLocal(t Test, c panel) {
+    t.assert(clamp(0) == 1)
+    t.assert(clamp(4) == 4)
+    t.assert(clamp(40) == 10)
+}
+
+func testView(t Test, c panel) {
+    t.assert(c.shown.value == "none")
+    t.assert(c.named == null)
+    c.set.click()
+    t.assert(c.shown.value == "waiting")
+    t.assert(c.named != null)
+}

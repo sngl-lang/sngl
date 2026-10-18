@@ -1174,6 +1174,12 @@ func (env *Env) Eval(e ir.Expr) (any, error) {
 			return env.Eval(n.Then)
 		}
 		return env.Eval(n.Else)
+	case *ir.MatchExpr:
+		i, err := env.matchArm(&n.MatchArms)
+		if err != nil || i < 0 {
+			return nil, err
+		}
+		return env.Eval(n.Arms[i].Value)
 	case *ir.Select:
 		return env.evalSelect(n)
 	case *ir.Index:
@@ -1247,6 +1253,9 @@ func (env *Env) evalLiteral(e *ir.Literal) (any, error) {
 
 func (env *Env) evalIdent(e *ir.Ident) (any, error) {
 	if e.Member != "" {
+		if ir.PayloadEnum(e.Type) != nil {
+			return EnumValue{Type: e.Type, Member: e.Member}, nil
+		}
 		return e.Member, nil
 	}
 	// i18n's predeclared PluralKey constants, whose value is the runtime's.
@@ -1440,6 +1449,9 @@ func (env *Env) evalSelect(e *ir.Select) (any, error) {
 			return intrinsics[id]([]any{obj})
 		}
 	}
+	if v, ok := enumMemberRead(obj, e.Field); ok {
+		return v, nil
+	}
 	if s, ok := obj.(*Struct); ok {
 		v, _ := s.Get(e.Field)
 		return v, nil
@@ -1600,6 +1612,13 @@ func (env *Env) evalListLit(e *ir.ListLit) (any, error) {
 }
 
 func (env *Env) evalStructLit(e *ir.StructLit) (any, error) {
+	if member, payload, ok := ir.EnumLitMember(e); ok {
+		v, err := env.Eval(payload)
+		if err != nil {
+			return nil, err
+		}
+		return EnumValue{Type: e.Type, Member: member, Payload: copyOf(v, payload.ExprType())}, nil
+	}
 	s := NewStruct(e.Def, e.Type)
 	for _, f := range e.Fields {
 		v, err := env.Eval(f.Value)
@@ -1691,7 +1710,11 @@ func (env *Env) evalBinary(e *ir.Binary) (any, error) {
 	if err != nil {
 		return nil, err
 	}
+	return env.binaryValues(e, left, right)
+}
 
+// binaryValues is e applied to its operands' values, left and right.
+func (env *Env) binaryValues(e *ir.Binary, left, right any) (any, error) {
 	lu, leftIsUnit := left.(unitValue)
 	ru, rightIsUnit := right.(unitValue)
 
@@ -1881,6 +1904,10 @@ func (env *Env) evalCallSite(call *ir.Call) (any, error) {
 				return result, err
 			}
 		}
+	}
+
+	if result, handled, err := env.evalCodecCall(call); handled {
+		return result, err
 	}
 
 	// Namespace call (ns.foo / html.div) — receiver preserved.
@@ -2836,6 +2863,12 @@ func (env *Env) evalTailAware(e ir.Expr, fn *ir.Func) (any, []any, bool, error) 
 			return env.evalTailAware(n.Then, fn)
 		}
 		return env.evalTailAware(n.Else, fn)
+	case *ir.MatchExpr:
+		i, err := env.matchArm(&n.MatchArms)
+		if err != nil || i < 0 {
+			return nil, nil, false, err
+		}
+		return env.evalTailAware(n.Arms[i].Value, fn)
 	default:
 		result, err := env.Eval(e)
 		return result, nil, false, err
@@ -2961,6 +2994,12 @@ func Equal(a, b any) (eq, ok bool) {
 		return isUnit && au.Equal(bu), true
 	}
 	switch x := a.(type) {
+	case EnumValue:
+		y, isEnum := b.(EnumValue)
+		if !isEnum || x.Member != y.Member {
+			return false, isEnum
+		}
+		return Equal(x.Payload, y.Payload)
 	case *Struct:
 		y, isStruct := b.(*Struct)
 		if !isStruct || len(x.Fields) != len(y.Fields) {

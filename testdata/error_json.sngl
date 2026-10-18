@@ -1,0 +1,56 @@
+// What sngl:json and sngl:http's query refuse, each at the call that reaches
+// a type with no form on the wire, and the marks written where they name
+// nothing.
+
+import http "sngl:http"
+import json "sngl:json"
+
+struct Handler {
+    run func()
+}
+
+struct Clash {
+    a string
+    #[json.identifier("a")]
+    b string
+}
+
+struct Nested {
+    inner Clash
+}
+
+enum Shape {
+    empty
+    circle float
+}
+
+unit tick { tk }
+
+func handler(t string) => json.decode[Handler](t) // ERROR(check) "json.decode cannot read func(), which has no JSON form"
+
+func keyed(m map[int, string]) => json.encode(m) // ERROR(check) "json.encode cannot write map[int, string], whose keys are not strings"
+
+func clash(c Clash) => json.encode(c) // ERROR(check) "json.encode cannot write Clash, whose fields a and b are both written \"a\""
+
+func shape(s Shape) => json.encode(s) // ERROR(check) "json.encode cannot write Shape, an enum whose members carry payloads, which has no JSON form yet"
+
+func ticks(t tick) => json.encode(t) // ERROR(check) "json.encode cannot write tick, which has no JSON form"
+
+func generic[T any](t string) => json.decode[T](t) // ERROR(check) "json.decode cannot read T, a type parameter: the type has to be known where the call is"
+
+func nested() => http.get(url="http://example.com", query=Nested{inner=Clash{a="", b=""}}) // ERROR(check) "http.get cannot send a query of field inner of Nested, a Clash, which has no place in a URL"
+
+func scalar() => http.get(url="http://example.com", query=3) // ERROR(check) "int does not satisfy struct {}, the constraint on Q: it is no struct"
+
+#[json.identifier("x")] // ERROR(check) "#[json.identifier] cannot mark a struct; only a struct field or an enum member has a name in JSON"
+struct Marked {}
+
+struct Two {
+    #[json.identifier("both")] // ERROR(check) "#[json.identifier(\"both\")] marks 2 fields at once; one key cannot name several fields"
+    a, b string
+}
+
+enum Query {
+    #[http.identifier("x")] // ERROR(check) "#[http.identifier] cannot mark an enum member; only a struct field is a query parameter"
+    one
+}

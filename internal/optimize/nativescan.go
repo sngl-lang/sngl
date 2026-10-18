@@ -138,6 +138,14 @@ func scanStmt(s ir.Stmt, visit func(ir.Expr)) {
 		scanExpr(n.Cond, visit)
 		scanStmts(n.Body, visit)
 		scanStmts(n.Else, visit)
+	case *ir.Match:
+		scanExpr(n.Subject, visit)
+		for _, arm := range n.Arms {
+			for _, p := range arm.Patterns {
+				scanExpr(p, visit)
+			}
+			scanStmts(arm.Body, visit)
+		}
 	case *ir.For:
 		scanExpr(n.Iter, visit)
 		scanStmts(n.Body, visit)
@@ -182,6 +190,14 @@ func scanExpr(e ir.Expr, visit func(ir.Expr)) {
 		scanExpr(x.Cond, visit)
 		scanExpr(x.Then, visit)
 		scanExpr(x.Else, visit)
+	case *ir.MatchExpr:
+		scanExpr(x.Subject, visit)
+		for _, arm := range x.Arms {
+			for _, p := range arm.Patterns {
+				scanExpr(p, visit)
+			}
+			scanExpr(arm.Value, visit)
+		}
 	case *ir.Call:
 		scanExpr(x.Receiver, visit)
 		for _, a := range x.Args {

@@ -283,6 +283,14 @@ func (w *depExtractor) walkExpr(e ir.Expr) {
 		w.walkExpr(n.Cond)
 		w.walkExpr(n.Then)
 		w.walkExpr(n.Else)
+	case *ir.MatchExpr:
+		w.walkExpr(n.Subject)
+		for _, arm := range n.Arms {
+			for _, p := range arm.Patterns {
+				w.walkExpr(p)
+			}
+			w.walkExpr(arm.Value)
+		}
 	case *ir.Conversion:
 		w.walkExpr(n.Operand)
 	case *ir.ListLit:
@@ -390,6 +398,13 @@ func (w *depExtractor) walkStmt(s ir.Stmt) {
 		// walk reaches through the tree once the boundary is spliced away.
 		if h := n.Catch; h != nil && h.Func != nil {
 			for _, c := range h.Func.Block {
+				w.walkStmt(c)
+			}
+		}
+	case *ir.Match:
+		w.walkExpr(n.Subject)
+		for _, arm := range n.Arms {
+			for _, c := range arm.Body {
 				w.walkStmt(c)
 			}
 		}

@@ -36,12 +36,10 @@ func (st *spreadOnceState) block(block *[]ir.Stmt) {
 	out := make([]ir.Stmt, 0, len(*block))
 	for _, s := range *block {
 		switch n := s.(type) {
-		case *ir.If:
-			st.block(&n.Body)
-			st.block(&n.Else)
-		case *ir.For:
-			st.block(&n.Body)
-			st.block(&n.Else)
+		case *ir.If, *ir.For, *ir.Match:
+			for _, b := range ir.TransparentBlocks(n) {
+				st.block(b)
+			}
 		}
 		for _, g := range ir.StatementSpreads(s) {
 			name := "__spread" + strconv.Itoa(st.counter)

@@ -46,6 +46,9 @@ func rebuildCompare(a, b ir.Expr, t *ir.Type, same bool) ir.Expr {
 		op, join = ast.BinEq, ast.BinAnd
 		empty = "true"
 	}
+	if t != nil && t.Kind == ir.TypeOption && len(t.Elems) == 1 {
+		return optionCompare(a, b, t.Elems[0], same)
+	}
 	if t != nil && t.Kind == ir.TypeStruct {
 		if sd, _ := t.Decl.(*ir.StructDef); sd != nil && !(sd.Builtin != ir.BuiltinNone && len(sd.Fields) == 0) {
 			var out ir.Expr
@@ -75,4 +78,28 @@ func rebuildCompare(a, b ir.Expr, t *ir.Type, same bool) ir.Expr {
 		}
 	}
 	return &ir.Binary{Type: ir.TypBool, Op: op, Left: deepCloneExpr(a), Right: deepCloneExpr(b)}
+}
+
+// optionCompare compares two options by presence and then by element, never
+// with the option's own ==: Go's option is a pointer, and two reads of one
+// value are two pointers.
+//
+//	same:    a == null && b == null || a != null && b != null && same(a!, b!)
+//	differs: a == null && b != null || a != null && (b == null || differs(a!, b!))
+func optionCompare(a, b ir.Expr, elem *ir.Type, same bool) ir.Expr {
+	null := func(e ir.Expr, is bool) ir.Expr {
+		op := ast.BinNeq
+		if is {
+			op = ast.BinEq
+		}
+		return &ir.Binary{Type: ir.TypBool, Op: op, Left: deepCloneExpr(e), Right: &ir.Literal{Type: ir.TypNull}}
+	}
+	unwrap := func(e ir.Expr) ir.Expr { return &ir.Conversion{Type: elem, Operand: deepCloneExpr(e)} }
+	and := func(l, r ir.Expr) ir.Expr { return &ir.Binary{Type: ir.TypBool, Op: ast.BinAnd, Left: l, Right: r} }
+	or := func(l, r ir.Expr) ir.Expr { return &ir.Binary{Type: ir.TypBool, Op: ast.BinOr, Left: l, Right: r} }
+	elems := rebuildCompare(unwrap(a), unwrap(b), elem, same)
+	if same {
+		return or(and(null(a, true), null(b, true)), and(and(null(a, false), null(b, false)), elems))
+	}
+	return or(and(null(a, true), null(b, false)), and(null(a, false), or(null(b, true), elems)))
 }

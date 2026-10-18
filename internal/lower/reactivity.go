@@ -383,6 +383,11 @@ func (st *reactivityState) rewriteReactiveStructures(stmts []ir.Stmt, parentRef 
 			}
 			n.Body = st.rewriteReactiveStructures(n.Body, parentRef)
 			n.Else = st.rewriteReactiveStructures(n.Else, parentRef)
+		case *ir.Match:
+			// Imperative: passMatch wrote a view's as the chain here.
+			for _, arm := range n.Arms {
+				arm.Body = st.rewriteReactiveStructures(arm.Body, parentRef)
+			}
 		case *ir.For:
 			if n.LoweredSlotID != "" {
 				ref := parentRef
@@ -643,6 +648,10 @@ func (st *reactivityState) collectFromStmt(s ir.Stmt) {
 			// or re-fires the slot where it cannot.
 			st.registerSlotBodyDeps(n, n.LoweredSlotID)
 		}
+	case *ir.Match:
+		for _, arm := range n.Arms {
+			st.collectFromStmts(arm.Body)
+		}
 	case *ir.For:
 		st.collectFromFor(n)
 		if n.LoweredSlotID == "" {
@@ -777,6 +786,14 @@ func (st *reactivityState) registerSlotBodyDeps(s ir.Stmt, slotID string) {
 				slotDeps(n.Cond)
 				walk(n.Body)
 				walk(n.Else)
+			case *ir.Match:
+				slotDeps(n.Subject)
+				for _, arm := range n.Arms {
+					for _, p := range arm.Patterns {
+						slotDeps(p)
+					}
+					walk(arm.Body)
+				}
 			case *ir.For:
 				slotDeps(n.Iter)
 				walk(n.Body)
@@ -949,6 +966,14 @@ func slotBodyExprs(stmts []ir.Stmt, addDep func(ir.Expr)) {
 				addDep(n.Cond)
 				walk(n.Body)
 				walk(n.Else)
+			case *ir.Match:
+				addDep(n.Subject)
+				for _, arm := range n.Arms {
+					for _, p := range arm.Patterns {
+						addDep(p)
+					}
+					walk(arm.Body)
+				}
 			case *ir.For:
 				addDep(n.Iter)
 				walk(n.Body)
@@ -1052,6 +1077,15 @@ func eachCallInStmt(s ir.Stmt, fn func(*ir.Call)) {
 		for _, c := range n.Else {
 			eachCallInStmt(c, fn)
 		}
+	case *ir.Match:
+		for _, h := range n.Heads() {
+			eachCallInExpr(h, fn)
+		}
+		for _, arm := range n.Arms {
+			for _, c := range arm.Body {
+				eachCallInStmt(c, fn)
+			}
+		}
 	case *ir.For:
 		eachCallInExpr(n.Iter, fn)
 		for _, c := range n.Body {
@@ -1083,6 +1117,14 @@ func eachCallInExpr(e ir.Expr, fn func(*ir.Call)) {
 		eachCallInExpr(x.Cond, fn)
 		eachCallInExpr(x.Then, fn)
 		eachCallInExpr(x.Else, fn)
+	case *ir.MatchExpr:
+		eachCallInExpr(x.Subject, fn)
+		for _, arm := range x.Arms {
+			for _, p := range arm.Patterns {
+				eachCallInExpr(p, fn)
+			}
+			eachCallInExpr(arm.Value, fn)
+		}
 	case *ir.Conversion:
 		eachCallInExpr(x.Operand, fn)
 	case *ir.Select:
@@ -1126,6 +1168,14 @@ func (st *reactivityState) gatherDeps(e ir.Expr, out map[*ir.Var]bool) {
 		st.gatherDeps(x.Cond, out)
 		st.gatherDeps(x.Then, out)
 		st.gatherDeps(x.Else, out)
+	case *ir.MatchExpr:
+		st.gatherDeps(x.Subject, out)
+		for _, arm := range x.Arms {
+			for _, p := range arm.Patterns {
+				st.gatherDeps(p, out)
+			}
+			st.gatherDeps(arm.Value, out)
+		}
 	case *ir.Call:
 		if x.Receiver != nil {
 			st.gatherDeps(x.Receiver, out)
@@ -1233,6 +1283,10 @@ func (st *reactivityState) injectIntoStmts(stmts []ir.Stmt) []ir.Stmt {
 		case *ir.If:
 			n.Body = st.injectIntoStmts(n.Body)
 			n.Else = st.injectIntoStmts(n.Else)
+		case *ir.Match:
+			for _, arm := range n.Arms {
+				arm.Body = st.injectIntoStmts(arm.Body)
+			}
 		case *ir.For:
 			n.Body = st.injectIntoStmts(n.Body)
 			n.Else = st.injectIntoStmts(n.Else)
@@ -1641,6 +1695,20 @@ func rewriteIdentsToCaptures(e ir.Expr, rewrite map[ir.Symbol]ir.Expr) ir.Expr {
 		cp.Then = rewriteIdentsToCaptures(x.Then, rewrite)
 		cp.Else = rewriteIdentsToCaptures(x.Else, rewrite)
 		return &cp
+	case *ir.MatchExpr:
+		cp := *x
+		cp.Subject = rewriteIdentsToCaptures(x.Subject, rewrite)
+		cp.Arms = make([]*ir.MatchArm, len(x.Arms))
+		for i, arm := range x.Arms {
+			a := *arm
+			a.Patterns = make([]ir.Expr, len(arm.Patterns))
+			for j, p := range arm.Patterns {
+				a.Patterns[j] = rewriteIdentsToCaptures(p, rewrite)
+			}
+			a.Value = rewriteIdentsToCaptures(arm.Value, rewrite)
+			cp.Arms[i] = &a
+		}
+		return &cp
 	case *ir.Call:
 		cp := *x
 		cp.Receiver = rewriteIdentsToCaptures(x.Receiver, rewrite)
@@ -1883,6 +1951,15 @@ func (st *reactivityState) renderSlotBody(declSt *declarativeState, parentParam 
 					inner.Else = emitStmts(sx.Else)
 				}
 				out = append(out, inner)
+			case *ir.Match:
+				inner := *sx
+				inner.Arms = make([]*ir.MatchArm, len(sx.Arms))
+				for i, arm := range sx.Arms {
+					a := *arm
+					a.Body = emitStmts(arm.Body)
+					inner.Arms[i] = &a
+				}
+				out = append(out, &inner)
 			case *ir.For:
 				if sx.LoweredSlotID != "" {
 					var pos ast.Pos
@@ -1999,6 +2076,10 @@ func (st *reactivityState) buildRenderSlotFor(slotID string, stmts []ir.Stmt) *i
 				}
 				walk(n.Body)
 				walk(n.Else)
+			case *ir.Match:
+				for _, arm := range n.Arms {
+					walk(arm.Body)
+				}
 			case *ir.NodeInst:
 				walk(ir.WidgetChildren(n))
 				for _, h := range n.Handlers {

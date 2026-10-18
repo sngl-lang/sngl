@@ -512,6 +512,14 @@ func recordStmtHelpers(h *HelperSet, stmts []ir.Stmt) {
 			recordExprHelpers(h, n.Cond)
 			recordStmtHelpers(h, n.Body)
 			recordStmtHelpers(h, n.Else)
+		case *ir.Match:
+			recordExprHelpers(h, n.Subject)
+			for _, arm := range n.Arms {
+				for _, p := range arm.Patterns {
+					recordExprHelpers(h, p)
+				}
+				recordStmtHelpers(h, arm.Body)
+			}
 		case *ir.For:
 			recordExprHelpers(h, n.Iter)
 			recordStmtHelpers(h, n.Body)

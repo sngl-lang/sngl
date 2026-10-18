@@ -107,6 +107,11 @@ func collectLambdaFuncs(stmts []ir.Stmt, out *[]*ir.Func, seen map[*ir.Func]bool
 			collectLambdasInExpr(x.Cond, out, seen)
 			collectLambdaFuncs(x.Body, out, seen)
 			collectLambdaFuncs(x.Else, out, seen)
+		case *ir.Match:
+			collectLambdasInExpr(x.Subject, out, seen)
+			for _, arm := range x.Arms {
+				collectLambdaFuncs(arm.Body, out, seen)
+			}
 		case *ir.For:
 			collectLambdasInExpr(x.Iter, out, seen)
 			collectLambdaFuncs(x.Body, out, seen)
@@ -138,6 +143,11 @@ func collectLambdasInExpr(e ir.Expr, out *[]*ir.Func, seen map[*ir.Func]bool) {
 		collectLambdasInExpr(x.Cond, out, seen)
 		collectLambdasInExpr(x.Then, out, seen)
 		collectLambdasInExpr(x.Else, out, seen)
+	case *ir.MatchExpr:
+		collectLambdasInExpr(x.Subject, out, seen)
+		for _, arm := range x.Arms {
+			collectLambdasInExpr(arm.Value, out, seen)
+		}
 	case *ir.Select:
 		collectLambdasInExpr(x.Operand, out, seen)
 	case *ir.Index:

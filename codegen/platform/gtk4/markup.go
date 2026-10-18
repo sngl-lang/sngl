@@ -125,6 +125,10 @@ func collectMarkup(pkg *ir.Package) *markupTrees {
 				if len(n.Else) > 0 {
 					guarded(&ir.Unary{Type: ir.TypBool, Op: ast.UnaryNot, Operand: n.Cond}, n.Else)
 				}
+			case *ir.Match:
+				for i, arm := range n.Arms {
+					guarded(n.Taken(i), arm.Body)
+				}
 			case *ir.For:
 				loops++
 				walk(n.Body)

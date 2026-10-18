@@ -124,7 +124,7 @@ func TestIntrinsicMarkRejectsAnUnknownFlag(t *testing.T) {
 #[intrinsic("markstub.shout", nosuch)]
 func shout(s string) => s
 `)
-	wantMarkErr(t, errs, `unknown value "nosuch" (want one of: mutates, readonly, mutatesReceiver, build)`)
+	wantMarkErr(t, errs, `unknown value "nosuch" (want one of: mutates, readonly, mutatesReceiver, build, async)`)
 }
 
 func TestIntrinsicMarkRejectsContradictoryFlags(t *testing.T) {

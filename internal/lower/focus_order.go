@@ -218,6 +218,19 @@ func focusReadsParam(stmts []ir.Stmt, params map[ir.Symbol]bool) (*ir.NodeInst, 
 					return at, p
 				}
 			}
+		case *ir.Match:
+			for _, h := range n.Heads() {
+				if p := reads(h); p != nil {
+					if at := firstFocusable([]ir.Stmt{n}); at != nil {
+						return at, p
+					}
+				}
+			}
+			for _, arm := range n.Arms {
+				if at, p := focusReadsParam(arm.Body, params); at != nil {
+					return at, p
+				}
+			}
 		case *ir.For:
 			if p := reads(n.Iter); p != nil {
 				if at := firstFocusable(append(slices.Clip(n.Body), n.Else...)); at != nil {
@@ -266,9 +279,10 @@ func walkForSlots(stmts []ir.Stmt, slots *[]focusSlot) {
 					loop:    &loopSlotInfo{forStmt: n},
 				})
 			}
-		case *ir.If:
-			walkForSlots(n.Body, slots)
-			walkForSlots(n.Else, slots)
+		case *ir.If, *ir.Match:
+			for _, b := range ir.TransparentBlocks(n) {
+				walkForSlots(*b, slots)
+			}
 		case *ir.SlotInst:
 			walkForSlots(n.Children, slots)
 		case *ir.ErrorBoundary:
@@ -291,9 +305,11 @@ func hasFocusableNodes(stmts []ir.Stmt) bool {
 			if hasFocusableNodes(n.Body) || hasFocusableNodes(n.Else) {
 				return true
 			}
-		case *ir.If:
-			if hasFocusableNodes(n.Body) || hasFocusableNodes(n.Else) {
-				return true
+		case *ir.If, *ir.Match:
+			for _, b := range ir.TransparentBlocks(n) {
+				if hasFocusableNodes(*b) {
+					return true
+				}
 			}
 		case *ir.SlotInst:
 			if hasFocusableNodes(n.Children) {
@@ -368,9 +384,10 @@ func walkInjectFocused(
 			walkInjectFocused(n.Body, focusIDIdent, loopSlots, staticSlots, slot)
 			walkInjectFocused(n.Else, focusIDIdent, loopSlots, staticSlots, slot)
 
-		case *ir.If:
-			walkInjectFocused(n.Body, focusIDIdent, loopSlots, staticSlots, inLoop)
-			walkInjectFocused(n.Else, focusIDIdent, loopSlots, staticSlots, inLoop)
+		case *ir.If, *ir.Match:
+			for _, b := range ir.TransparentBlocks(n) {
+				walkInjectFocused(*b, focusIDIdent, loopSlots, staticSlots, inLoop)
+			}
 
 		case *ir.SlotInst:
 			walkInjectFocused(n.Children, focusIDIdent, loopSlots, staticSlots, inLoop)
@@ -441,6 +458,22 @@ func focusCountStmts(stmts []ir.Stmt, count func() *ir.Ident) []ir.Stmt {
 				continue
 			}
 			out = append(out, &ir.If{Cond: deepCloneExpr(n.Cond), Body: body, Else: els})
+		case *ir.Match:
+			if n.FromValue {
+				continue
+			}
+			arms := make([][]ir.Stmt, len(n.Arms))
+			counts := false
+			for i, arm := range n.Arms {
+				arms[i] = focusCountStmts(arm.Body, count)
+				counts = counts || len(arms[i]) > 0
+			}
+			if !counts {
+				continue
+			}
+			m := n.Over(func(i int, _ []ir.Stmt) []ir.Stmt { return arms[i] })
+			m.Subject = deepCloneExpr(n.Subject)
+			out = append(out, m)
 		case *ir.ErrorBoundary:
 			out = append(out, focusCountStmts(n.Children, count)...)
 		case *ir.ContextProvider:
