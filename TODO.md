@@ -106,6 +106,21 @@ enum Result[T any] {
   once there is a spec that wants it.
 - **Out of scope**: making `option[T]` one, which is #275.
 
+Step 1 left for later:
+
+- A match over a payload enum is a headless chain of `enum.is` tests on every
+  target; a tag `switch` (Go) or `when (r) { is … }` (Kotlin) would read
+  better and is a rendering change only.
+- `sngl dump` prints a payload match back as the headless chain of selector
+  tests, which does not check again.
+- The tree-sitter grammar (`editors/tree-sitter-sngl`) does not know a
+  member's payload, an enum's type parameters or `var name` in a pattern; no
+  tree-sitter CLI was at hand to regenerate it.
+- bubbletea fails to build a test group that takes no component when another
+  test takes one with focusable nodes: the build emits that component's view
+  and focus helpers against a Model holding none of its state (pre-existing;
+  `enum_payload_runs.txt` has every test take the component to avoid it).
+
 ## `async.query`: the shape
 
 `sngl:remote` was a three-state box (`Value[T]`) and a query store keyed by
@@ -198,7 +213,14 @@ func query.refresh(q query) { … }
 
 Each is general, and each is a fixture of its own before `async.query` lands.
 
-- **A func type that may be async.** `checkAsyncRules`' rule 3 is deferred
+- ✓ **A func type that may be async** (step 1): async is inferred, never
+  written. Points-to follows a component's func-typed props, and a slot an
+  async function flows into has its `FuncSig.Color` stamped, so a call
+  through it waits after lowering. What step 2 still needs: points-to runs
+  over the program's package only, so `fetch` as a prop of the *library*
+  component `async.query` is coloured by nothing yet -- the analysis has to
+  see the call site's argument flow into a library prop.
+  Was: `checkAsyncRules`' rule 3 is deferred
   because `ir.FuncSig` carries no colour, so handing an async
   function to `fetch` is invisible to `passAsyncOffload`, and the effect's
   `@mount` is not coloured async. Give the signature the flag rule 3 asks for.
@@ -531,7 +553,7 @@ never finishes one of them.
 
 | # | Branch                    | Delivers                                                                                                                                                                                                                                                                                                          |
 |---|---------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| 1 | `pokedex-1-payload-enums` | *Payload enums*: an enum member carrying a type, enum type parameters, struct-literal construction, the selector read, `match` binding (`ok(var v)`); the interpreter and Go, JavaScript and Kotlin. And an async flag on a func type (`checkAsyncRules`' rule 3), so an async function can be handed as a value. |
+| ✓ | `pokedex-1-payload-enums` | *Payload enums*: an enum member carrying a type, enum type parameters, struct-literal construction, the selector read, `match` binding (`ok(var v)`); the interpreter and Go, JavaScript and Kotlin. And an async flag on a func type (`checkAsyncRules`' rule 3), so an async function can be handed as a value. |
 | 2 | `pokedex-2-async-query`   | *`async.query`*: `Result`, `Failure` and the component over `effect`, against a hand-written `fetch` -- latest wins, unmount drops the answer, `refresh`, a query under a `for`. bubbletea refuses it at the call.                                                                                                |
 | 3 | `pokedex-3-http-json`     | *`sngl:http`* (`send`, `get`, `Response.checked`, `pathEscape`, `http.identifier`) and *`sngl:json`* (`json.identifier`, `decode`, `encode`), against a local server, on every language.                                                                                                                          |
 | 4 | `pokedex-4-openapi`       | *The `openapi:` scheme*: `openapi.parse`, the plugin, the written package (structs, enums, `…Call` functions, a component per `GET`, `server`, `getJSON`) over a trimmed PokéAPI spec.                                                                                                                            |
