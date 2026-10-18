@@ -71,7 +71,7 @@ const func string.endsWith(s string, suffix string) bool { return string.substri
 // to the copy leaves the original as it was. It is not state -- a component's
 // or the package's var may not hold one -- since what a view shows is the
 // string, and a builder is how a function makes one.
-#[_intrinsic("builder")]
+#[_intrinsic("builtin:builder")]
 struct builder {}
 
 // Puts text on the end of the receiver, in place.

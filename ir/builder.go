@@ -3,7 +3,7 @@ package ir
 // BuilderIntrinsic is sngl:builtin's `builder`: text built a piece at a time.
 // It is an intrinsic struct with no fields, so to the checker an ordinary
 // value; what holds the text is each target's.
-const BuilderIntrinsic = "builder"
+const BuilderIntrinsic = "builtin:builder"
 
 // The builder's methods, as their intrinsic ids.
 const (

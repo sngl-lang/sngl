@@ -46,7 +46,7 @@ func Out.file(name string) File
 
 // A file a handler is writing, which `Out.file` opens. A handle: storing one
 // stores the handle, and what is added through either copy is the file's.
-#[marks.intrinsic("gen.File")]
+#[marks.intrinsic("gen:File")]
 struct File {}
 
 // Puts text on the end of the file.
