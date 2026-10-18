@@ -5,6 +5,11 @@
 # type parameter F, which the call site leaves to the position: the wrapper
 # had no family, and once built at run time with the query's effect in it no
 # pass could type its root. It is a member of the family the position takes.
+#
+# The fetch waits on a request to the script harness's server, and html's
+# factory for a component built at run time wrote each of its functions
+# without its colour: the query's mount, which awaits, was a sync function
+# holding an `await`, which esbuild refused.
 
 sngl test --platform=none app.sngl
 stdout '1 tests, 0 failures'
@@ -26,11 +31,15 @@ stdout '1 tests, 0 failures'
 
 -- app.sngl --
 import async "sngl:async"
+import http "sngl:http"
 import test "sngl:test"
 import ui "sngl:ui"
 
 func lookup(k string) async.Result[string] {
-    return {ok=k + "!"}
+    match var r = http.get(url="http://127.0.0.1:47819/status/200") {
+        failed { return {failed=r} }
+        ok { return {ok=r.status == 200 ? k + "!" : "-"} }
+    }
 }
 
 component second(s string) ui.node {
@@ -65,7 +74,7 @@ ui.window {
     page()
 }
 -- testrun/android/kotlin/app.sngl/page/1 --
-sha256:0259d0ad7669d529039fa55c820e0867
+sha256:7656a1bb20b47b42a9b9a2b8fd41e016
 {
   "results": [
     {
@@ -75,7 +84,7 @@ sha256:0259d0ad7669d529039fa55c820e0867
   ]
 }
 -- testrun/bubbletea/go/app.sngl/page/1 --
-sha256:94684861b8c501747ca277bd7b1bbc63
+sha256:6e2d13b346c6c114c3a494001ea81ad6
 {
   "results": [
     {
@@ -85,7 +94,7 @@ sha256:94684861b8c501747ca277bd7b1bbc63
   ]
 }
 -- testrun/fyne/go/app.sngl/page/1 --
-sha256:c36302425135208449398a78a6d6a98e
+sha256:38d66430f2a1c15fc815583205db4170
 {
   "results": [
     {
@@ -95,7 +104,7 @@ sha256:c36302425135208449398a78a6d6a98e
   ]
 }
 -- testrun/gtk4/go/app.sngl/page/1 --
-sha256:70ce53ac092f7f0ffe68b00a227c7bc4
+sha256:b143bcad4f5a5f6f7031942283ca449c
 {
   "results": [
     {
@@ -105,7 +114,7 @@ sha256:70ce53ac092f7f0ffe68b00a227c7bc4
   ]
 }
 -- testrun/html/none/app.sngl/page/1 --
-sha256:f182873eb533536bd7327f7944d1b4e6
+sha256:e765d77f781e7674ae060bc38ec6339d
 {
   "results": [
     {
