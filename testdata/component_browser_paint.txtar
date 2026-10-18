@@ -95,7 +95,7 @@ body { font-family: system-ui, sans-serif; }
   </style>
 </head><body>
 
-<div style="display:flex;flex-direction:column;gap:calc(2em + 1rem);padding:7px;width:2rem" data-sngl-id="box">
+<div style="padding:7px;display:flex;flex-direction:column;gap:calc(2em + 1rem);width:2rem" data-sngl-id="box">
   <span>x</span>
 </div>
 <div style="display:flex;flex-direction:column">
@@ -273,9 +273,9 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:30bd8b9b33723802c20bf4f69ff4f682
+pass sha256:ef322a738592d0c37db63ee5df889277
 -- testrun/html/none/component_browser_paint.sngl/lengths/1 --
-sha256:3bbf475b70db18015fe50166c6a56957
+sha256:220ce85f36fdbf994d55b4b9b80b4faa
 {
   "results": [
     {

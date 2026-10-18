@@ -958,18 +958,18 @@ body { font-family: system-ui, sans-serif; }
 <table id="$0" style="border-collapse:collapse;width:100%" width="100%">
   <thead>
     <tr>
-      <th style="border-bottom:2px solid #ddd;padding:8px;text-align:left">Name</th>
-      <th style="border-bottom:2px solid #ddd;padding:8px;text-align:left">Role</th>
+      <th style="padding:8px;text-align:left;border-bottom:2px solid #ddd">Name</th>
+      <th style="padding:8px;text-align:left;border-bottom:2px solid #ddd">Role</th>
     </tr>
   </thead>
   <tbody>
     <tr>
-      <td style="border-bottom:1px solid #eee;padding:8px">Ada</td>
-      <td style="border-bottom:1px solid #eee;padding:8px">Engineer</td>
+      <td style="padding:8px;border-bottom:1px solid #eee">Ada</td>
+      <td style="padding:8px;border-bottom:1px solid #eee">Engineer</td>
     </tr>
     <tr>
-      <td style="border-bottom:1px solid #eee;padding:8px">Grace</td>
-      <td style="border-bottom:1px solid #eee;padding:8px">Admiral</td>
+      <td style="padding:8px;border-bottom:1px solid #eee">Grace</td>
+      <td style="padding:8px;border-bottom:1px solid #eee">Admiral</td>
     </tr>
   </tbody>
 </table>
@@ -1013,9 +1013,9 @@ pass sha256:2f4acd47ff916f6779d79c25f6a70ff7
 -- run/kotlin/android --
 pass sha256:5e16a0d6d27b5eab0eb4b9b2a2418ff1
 -- run/none/html --
-pass sha256:60a03e7db19649a8d985cd09e52055fe
+pass sha256:75cd3f2fc1c0ec8ca17e4543b8ed49f0
 -- testrun/html/none/component_table.sngl/main/1 --
-sha256:de5450ac7bedaf6566c525c418d88880
+sha256:31e89a387c11524a869e725f24770788
 {
   "results": [
     {

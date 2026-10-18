@@ -1651,7 +1651,7 @@ body { font-family: system-ui, sans-serif; }
 </head><body>
 
 <div style="display:flex;flex-direction:column">
-  <div id="__n5" data-sngl-id="__n5" style="border-bottom:1px solid #ccc;display:flex;gap:4px" role="tablist">
+  <div id="__n5" data-sngl-id="__n5" style="display:flex;gap:4px;border-bottom:1px solid #ccc" role="tablist">
     <span data-sngl-slot="0" style="display:contents"></span>
   </div>
   <div id="__n6" data-sngl-id="__n6" role="tabpanel">
@@ -1701,13 +1701,13 @@ window.__sngl_boot = () => {
     }
     function __set___p1(__v) {
       __prop___p1 = __v;
-      __n0.setAttribute("style", "background-color:rgba(0,0,0,0);border-radius:0px;border:none;cursor:pointer;padding-left:16px;padding-right:16px;padding-top:8px;padding-bottom:8px");
+      __n0.setAttribute("style", "border:none;padding-left:16px;padding-right:16px;padding-top:8px;padding-bottom:8px;background-color:rgba(0,0,0,0);border-radius:0px;cursor:pointer");
       __n0.style.setProperty("border-bottom", __prop___p1 === __prop___p2 ? "2px solid currentColor" : "2px solid transparent");
       __n0.style.setProperty("font-weight", _snglStyleKeyword(__prop___p1 === __prop___p2 ? "bold" : "normal"));
     }
     function __set___p2(__v) {
       __prop___p2 = __v;
-      __n0.setAttribute("style", "background-color:rgba(0,0,0,0);border-radius:0px;border:none;cursor:pointer;padding-left:16px;padding-right:16px;padding-top:8px;padding-bottom:8px");
+      __n0.setAttribute("style", "border:none;padding-left:16px;padding-right:16px;padding-top:8px;padding-bottom:8px;background-color:rgba(0,0,0,0);border-radius:0px;cursor:pointer");
       __n0.style.setProperty("border-bottom", __prop___p1 === __prop___p2 ? "2px solid currentColor" : "2px solid transparent");
       __n0.style.setProperty("font-weight", _snglStyleKeyword(__prop___p1 === __prop___p2 ? "bold" : "normal"));
     }
@@ -1717,7 +1717,7 @@ window.__sngl_boot = () => {
     let __n0 = document.createElement("button");
     __n0.textContent = __prop___p0.label;
     __n0.disabled = __prop___p0.disabled;
-    __n0.setAttribute("style", "background-color:rgba(0,0,0,0);border-radius:0px;border:none;cursor:pointer;padding-left:16px;padding-right:16px;padding-top:8px;padding-bottom:8px");
+    __n0.setAttribute("style", "border:none;padding-left:16px;padding-right:16px;padding-top:8px;padding-bottom:8px;background-color:rgba(0,0,0,0);border-radius:0px;cursor:pointer");
     __n0.style.setProperty("border-bottom", __prop___p1 === __prop___p2 ? "2px solid currentColor" : "2px solid transparent");
     __n0.style.setProperty("font-weight", _snglStyleKeyword(__prop___p1 === __prop___p2 ? "bold" : "normal"));
     __n0.setAttribute("role", "tab");
@@ -1883,9 +1883,9 @@ pass sha256:64f3e9a7f513468b2e20a7878f17b4cb
 -- run/kotlin/android --
 pass sha256:1d0c145f6153dbed613fd357dccc5244
 -- run/none/html --
-pass sha256:43294f1a77359bfce09eced0c9475e59
+pass sha256:94c746fec9059c9fc7deaa72732bf5db
 -- testrun/html/none/component_tabs.sngl/main/1 --
-sha256:e9abdb3860afca2aa478e63581a6cce4
+sha256:392e53a004b621a5bef9ad5824878071
 {
   "results": [
     {

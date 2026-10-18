@@ -80,9 +80,9 @@ body { font-family: system-ui, sans-serif; }
 <div style="display:flex;flex-direction:column">
   <div class="via-scheme">
     <div style="display:flex;flex-direction:column;gap:12px">
-      <h1 style="font-size:32px;font-weight:bold;margin:0px;white-space:pre-wrap" id="guide"><span>Guide</span></h1>
+      <h1 style="margin:0px;font-size:32px;font-weight:bold;white-space:pre-wrap" id="guide"><span>Guide</span></h1>
       <p style="margin:0px;white-space:pre-wrap"><span>Some </span><em><span>emphasis</span></em><span>, </span><strong><span>strong</span></strong><span> and </span><code><span>code</span></code><span>, with a </span><a href="https://example.com"><span>link</span></a><span>.</span></p>
-      <h2 style="font-size:26px;font-weight:bold;margin:0px;white-space:pre-wrap" id="lists"><span>Lists</span></h2>
+      <h2 style="margin:0px;font-size:26px;font-weight:bold;white-space:pre-wrap" id="lists"><span>Lists</span></h2>
       <ul style="display:flex;flex-direction:column;gap:4px;padding-left:2em">
         <li>
           <p style="margin:0px;white-space:pre-wrap"><span>one</span></p>
@@ -118,18 +118,18 @@ body { font-family: system-ui, sans-serif; }
           <p style="margin:0px;white-space:pre-wrap"><span>second</span></p>
         </li>
       </ol>
-      <blockquote style="border-left:3px solid #CCCCCC;font-style:italic;margin:0px;padding-left:12px;white-space:pre-wrap"><span>A quotation.</span></blockquote>
+      <blockquote style="margin:0px;font-style:italic;padding-left:12px;white-space:pre-wrap;border-left:3px solid #CCCCCC"><span>A quotation.</span></blockquote>
       <pre class="sngl-code" style="margin:0px;white-space:pre-wrap"><code><span class="sngl-tok-keyword"><span>func</span></span><span class="sngl-tok-plain"><span> </span></span><span class="sngl-tok-variable"><span>main</span></span><span class="sngl-tok-punctuation"><span>()</span></span><span class="sngl-tok-plain"><span> </span></span><span class="sngl-tok-punctuation"><span>{}</span></span></code></pre>
       <hr/>
-      <h2 style="font-size:26px;font-weight:bold;margin:0px;white-space:pre-wrap" id="lists-1"><span>Lists</span></h2>
+      <h2 style="margin:0px;font-size:26px;font-weight:bold;white-space:pre-wrap" id="lists-1"><span>Lists</span></h2>
       <p style="margin:0px;white-space:pre-wrap"><span>The second heading of one name.</span></p>
     </div>
   </div>
   <div class="via-document">
     <div style="display:flex;flex-direction:column;gap:12px">
-      <h1 style="font-size:32px;font-weight:bold;margin:0px;white-space:pre-wrap" id="guide"><span>Guide</span></h1>
+      <h1 style="margin:0px;font-size:32px;font-weight:bold;white-space:pre-wrap" id="guide"><span>Guide</span></h1>
       <p style="margin:0px;white-space:pre-wrap"><span>Some </span><em><span>emphasis</span></em><span>, </span><strong><span>strong</span></strong><span> and </span><code><span>code</span></code><span>, with a </span><a href="https://example.com"><span>link</span></a><span>.</span></p>
-      <h2 style="font-size:26px;font-weight:bold;margin:0px;white-space:pre-wrap" id="lists"><span>Lists</span></h2>
+      <h2 style="margin:0px;font-size:26px;font-weight:bold;white-space:pre-wrap" id="lists"><span>Lists</span></h2>
       <ul style="display:flex;flex-direction:column;gap:4px;padding-left:2em">
         <li>
           <p style="margin:0px;white-space:pre-wrap"><span>one</span></p>
@@ -165,10 +165,10 @@ body { font-family: system-ui, sans-serif; }
           <p style="margin:0px;white-space:pre-wrap"><span>second</span></p>
         </li>
       </ol>
-      <blockquote style="border-left:3px solid #CCCCCC;font-style:italic;margin:0px;padding-left:12px;white-space:pre-wrap"><span>A quotation.</span></blockquote>
+      <blockquote style="margin:0px;font-style:italic;padding-left:12px;white-space:pre-wrap;border-left:3px solid #CCCCCC"><span>A quotation.</span></blockquote>
       <pre class="sngl-code" style="margin:0px;white-space:pre-wrap"><code><span class="sngl-tok-keyword"><span>func</span></span><span class="sngl-tok-plain"><span> </span></span><span class="sngl-tok-variable"><span>main</span></span><span class="sngl-tok-punctuation"><span>()</span></span><span class="sngl-tok-plain"><span> </span></span><span class="sngl-tok-punctuation"><span>{}</span></span></code></pre>
       <hr/>
-      <h2 style="font-size:26px;font-weight:bold;margin:0px;white-space:pre-wrap" id="lists-1"><span>Lists</span></h2>
+      <h2 style="margin:0px;font-size:26px;font-weight:bold;white-space:pre-wrap" id="lists-1"><span>Lists</span></h2>
       <p style="margin:0px;white-space:pre-wrap"><span>The second heading of one name.</span></p>
     </div>
   </div>
@@ -188,4 +188,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:fc9d039415f2f62583262dc954cb496a
+pass sha256:145c09966943f8f2685b4b8ae7112850

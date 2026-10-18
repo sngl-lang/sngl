@@ -9403,7 +9403,7 @@ body { font-family: system-ui, sans-serif; }
 </head><body>
 
 <div style="display:flex;flex-direction:column;gap:12px">
-  <h1 style="font-size:32px;font-weight:bold;margin:0px;white-space:pre-wrap" id="guide"><span>Guide</span></h1>
+  <h1 style="margin:0px;font-size:32px;font-weight:bold;white-space:pre-wrap" id="guide"><span>Guide</span></h1>
   <p style="margin:0px;white-space:pre-wrap"><span>Some </span><em><span>emphasis</span></em><span>, </span><strong><span>weight</span></strong><span> and </span><code><span>code</span></code><span>, with </span><a href="/x"><span>a link</span></a><span> and </span><span style="font-weight:bold;font-style:italic"><span>both</span></span><span>.</span></p>
   <ul style="display:flex;flex-direction:column;gap:4px;padding-left:2em">
     <li>
@@ -9455,4 +9455,4 @@ pass sha256:90ac6c10f1bf3b318d90cf1f05196805
 -- run/go/fyne --
 pass sha256:3536b0b7954a32cb3cf3f0ce28ccb79e
 -- run/none/html --
-pass sha256:53fea75bee1b71a439deb5ec23e8e4bd
+pass sha256:9595013f7c586214d068bf318bf0adb2

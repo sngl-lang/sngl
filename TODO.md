@@ -24,7 +24,7 @@ What each platform answers today:
 
 | Platform  | Fields it maps (of 52)                               |
 |-----------|------------------------------------------------------|
-| html      | all, to the CSS property of the same name            |
+| html      | all, in Go (htmlutil); stays there, see step 5       |
 | android   | done in SNGL (style.sngl); `unstyled` lists the rest |
 | bubbletea | done in SNGL (style.sngl); `unstyled` lists the rest |
 | fyne      | done in SNGL (style.sngl); `unstyled` lists the rest |
@@ -45,8 +45,7 @@ No new language feature. Each platform package translates a Style with a
 lipgloss methods on bubbletea, fynetheme on fyne -- and every override calls
 it on its `style`. `match` reads an enum field (fontWeight, textAlign) into
 the host's constant. One function serves a literal and a held Style alike, so
-the two copies above become one; for html, a pure function building CSS text
-folds at build time and a literal still becomes static markup.
+the two copies above become one. html is the exception (step 5).
 
 Fields a parent consumes -- `flex`, fyne's `margin`, Compose's
 `Modifier.weight`, which exists only in a Row or Column scope -- are answered
@@ -120,7 +119,20 @@ Each is a commit series on the branch; one MR, so CI runs once.
    when the widget lands there, and GTK splits the free space evenly: a
    weighted share is a layout of gtk4rt's own. A box's `alignItems` is put
    on each child it holds, later ones included.
-5. **html**, last, since it already maps every field.
+5. **html** stays in Go until a Style can say "unset". Tried and dropped: a
+   `css` function in SNGL answered every field, but a function of a Style
+   cannot tell a written `0px` from an omitted one, and on html, where the
+   browser has defaults of its own, that is a loss rather than a no-op --
+   `padding=0px` on a card, `alignItems=start`, `display=flex` on a text,
+   `listStyleType=none`, `fontWeight=normal` on a header cell and black
+   would each write nothing. A style reading state would also ship with none
+   of its static CSS in the markup, since the whole call runs where the page
+   does, and a held literal carries all 52 fields. Folding the function per
+   node per page cost the docs site 35% more allocation (12.6 GB against
+   9.3), most of it the interpreter rebinding an environment per call. The
+   way back: option fields, or an `unset` member leading each Style enum as
+   `markup.SpanStyle`'s `inherit` does, which every target would gain from
+   too; then a fold cache keyed on a const call's arguments.
 6. The coverage test across all six, and CLAUDE.md's platform sections.
 
 ### Found on the way, not yet fixed
@@ -176,6 +188,17 @@ Each is a commit series on the branch; one MR, so CI runs once.
 - The shake keeps a library body reachable through a node handle's component
   type, so a program holding `#d` on a datepicker keeps `LookOf` and its
   helpers on gtk4 though nothing calls them.
+- A JavaScript struct literal writes only the fields it names, so an omitted
+  one reads undefined where Go and Kotlin read its zero
+  (`testdata/js_struct_omitted_fields.txtar`). Writing every field is a
+  small change in the JS emitter, but html's held-Style helper reads a
+  field's presence as having been set, so it waits on step 5.
+- html writes a Style field the build cannot fold with `setProperty` after the
+  static attribute, in the literal's field order: `{padding=p, paddingTop=4px}`
+  with `p` state resets the side on every write.
+- The optimizer interprets a const function per call, and a lambda call
+  snapshots the environment: a `.filter(func…)` in a function folded per node
+  was most of a 7 GB increase on the docs site.
 
 ## `match`, later
 

@@ -48,25 +48,25 @@ body { font-family: system-ui, sans-serif; }
   <table style="border-collapse:collapse;width:100%" width="100%">
     <thead>
       <tr>
-        <th style="border-bottom:2px solid #ddd;padding:8px;text-align:left">name</th>
+        <th style="padding:8px;text-align:left;border-bottom:2px solid #ddd">name</th>
       </tr>
     </thead>
     <tbody>
       <tr>
-        <td style="border-bottom:1px solid #eee;padding:8px">a</td>
-        <td style="border-bottom:1px solid #eee;padding:8px">b</td>
+        <td style="padding:8px;border-bottom:1px solid #eee">a</td>
+        <td style="padding:8px;border-bottom:1px solid #eee">b</td>
       </tr>
     </tbody>
   </table>
   <table style="border-collapse:collapse;width:100%" width="100%">
     <thead>
       <tr>
-        <th style="border-bottom:2px solid #ddd;padding:8px;text-align:left">name</th>
+        <th style="padding:8px;text-align:left;border-bottom:2px solid #ddd">name</th>
       </tr>
     </thead>
     <tbody>
       <tr>
-        <td style="border-bottom:1px solid #eee;padding:8px">c</td>
+        <td style="padding:8px;border-bottom:1px solid #eee">c</td>
       </tr>
     </tbody>
   </table>
@@ -80,4 +80,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:44c8b2f5f59be8787a9e7db1e5814c0b
+pass sha256:9f96cc9ecf2e0e55f7d95df3901ab758

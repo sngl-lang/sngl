@@ -2000,23 +2000,24 @@ body { font-family: system-ui, sans-serif; }
   function _snglStyleCSS(s) {
     const d = [];
     if (s.padding != null) d.push("padding:" + _snglStyleLength(s.padding));
-    if (s.paddingTop != null) d.push("padding-top:" + _snglStyleLength(s.paddingTop));
-    if (s.paddingRight != null) d.push("padding-right:" + _snglStyleLength(s.paddingRight));
-    if (s.paddingBottom != null) d.push("padding-bottom:" + _snglStyleLength(s.paddingBottom));
-    if (s.paddingLeft != null) d.push("padding-left:" + _snglStyleLength(s.paddingLeft));
+    if (s.margin != null) d.push("margin:" + _snglStyleLength(s.margin));
+    if (s.border != null) d.push("border:" + s.border);
     if (s.paddingX != null) d.push("padding-left:" + _snglStyleLength(s.paddingX));
     if (s.paddingX != null) d.push("padding-right:" + _snglStyleLength(s.paddingX));
     if (s.paddingY != null) d.push("padding-top:" + _snglStyleLength(s.paddingY));
     if (s.paddingY != null) d.push("padding-bottom:" + _snglStyleLength(s.paddingY));
-    if (s.margin != null) d.push("margin:" + _snglStyleLength(s.margin));
-    if (s.marginTop != null) d.push("margin-top:" + _snglStyleLength(s.marginTop));
-    if (s.marginRight != null) d.push("margin-right:" + _snglStyleLength(s.marginRight));
-    if (s.marginBottom != null) d.push("margin-bottom:" + _snglStyleLength(s.marginBottom));
-    if (s.marginLeft != null) d.push("margin-left:" + _snglStyleLength(s.marginLeft));
     if (s.marginX != null) d.push("margin-left:" + _snglStyleLength(s.marginX));
     if (s.marginX != null) d.push("margin-right:" + _snglStyleLength(s.marginX));
     if (s.marginY != null) d.push("margin-top:" + _snglStyleLength(s.marginY));
     if (s.marginY != null) d.push("margin-bottom:" + _snglStyleLength(s.marginY));
+    if (s.paddingTop != null) d.push("padding-top:" + _snglStyleLength(s.paddingTop));
+    if (s.paddingRight != null) d.push("padding-right:" + _snglStyleLength(s.paddingRight));
+    if (s.paddingBottom != null) d.push("padding-bottom:" + _snglStyleLength(s.paddingBottom));
+    if (s.paddingLeft != null) d.push("padding-left:" + _snglStyleLength(s.paddingLeft));
+    if (s.marginTop != null) d.push("margin-top:" + _snglStyleLength(s.marginTop));
+    if (s.marginRight != null) d.push("margin-right:" + _snglStyleLength(s.marginRight));
+    if (s.marginBottom != null) d.push("margin-bottom:" + _snglStyleLength(s.marginBottom));
+    if (s.marginLeft != null) d.push("margin-left:" + _snglStyleLength(s.marginLeft));
     if (s.gap != null) d.push("gap:" + _snglStyleLength(s.gap));
     if (s.width != null) d.push("width:" + _snglStyleLength(s.width));
     if (s.minWidth != null) d.push("min-width:" + _snglStyleLength(s.minWidth));
@@ -2048,10 +2049,7 @@ body { font-family: system-ui, sans-serif; }
     if (s.borderRadius != null) d.push("border-radius:" + _snglStyleLength(s.borderRadius));
     if (s.borderColor != null) d.push("border-color:" + _snglStyleColor(s.borderColor));
     if (s.borderWidth != null) d.push("border-width:" + _snglStyleLength(s.borderWidth));
-    if (s.borderWidth != null && s.borderStyle == null) d.push("border-style:solid");
-    if (s.border != null) d.push("border:" + s.border);
-    if (s.borderBottom != null) d.push("border-bottom:" + s.borderBottom);
-    if (s.borderLeft != null) d.push("border-left:" + s.borderLeft);
+    if (s.borderWidth != null && s.borderStyle == null && s.border == null) d.push("border-style:solid");
     if (s.borderCollapse != null) d.push("border-collapse:" + s.borderCollapse);
     if (s.borderStyle != null) d.push("border-style:" + _snglStyleKeyword(s.borderStyle));
     if (s.opacity != null) d.push("opacity:" + s.opacity);
@@ -2059,6 +2057,8 @@ body { font-family: system-ui, sans-serif; }
     if (s.display != null) d.push("display:" + _snglStyleKeyword(s.display));
     if (s.overflow != null) d.push("overflow:" + _snglStyleKeyword(s.overflow));
     if (s.listStyleType != null) d.push("list-style-type:" + _snglStyleKeyword(s.listStyleType));
+    if (s.borderBottom != null) d.push("border-bottom:" + s.borderBottom);
+    if (s.borderLeft != null) d.push("border-left:" + s.borderLeft);
     return d.join(";");
   }
   function _snglStyleColor(c) {
@@ -2122,4 +2122,4 @@ pass sha256:3b3869cef9db748d12b810fb89a5e298
 -- run/kotlin/android --
 pass sha256:0f3de36ed943d10323ec01d8fb904511
 -- run/none/html --
-pass sha256:d9801df94901c89f1e43b3578fee1deb
+pass sha256:7d18a93d0855b2c9a20b316963a20732

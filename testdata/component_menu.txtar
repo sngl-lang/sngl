@@ -634,7 +634,7 @@ window.__sngl_boot = () => {
     __slot0 = [];
     if (state.open) {
       let __n0 = document.createElement("div");
-      __n0.setAttribute("style", "background-color:#ffffff;border-radius:4px;border:1px solid #ddd;display:flex;flex-direction:column;padding:4px;position:absolute;z-index:100");
+      __n0.setAttribute("style", "border:1px solid #ddd;padding:4px;background-color:#ffffff;border-radius:4px;display:flex;flex-direction:column;position:absolute;z-index:100");
       __n0.setAttribute("role", "menu");
       for (const it of [{ label: "Cut", disabled: false, children: [], select: () => {
         state.last = "cut";
@@ -682,9 +682,9 @@ pass sha256:528678124fa3dca5f88bc002825cca96
 -- run/kotlin/android --
 pass sha256:410a51af4e9eca3165ea07c7dd17dde0
 -- run/none/html --
-pass sha256:12fd9dacf859f91a8ce12963f30ad472
+pass sha256:c3ea4f696ba3d04205bff60415a05c1e
 -- testrun/html/none/component_menu.sngl/main/1 --
-sha256:8f2ed9e53709c2fc21e9634385bb2ce9
+sha256:7fd75650311c14d3b7d91a5c781af424
 {
   "results": [
     {

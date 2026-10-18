@@ -63,7 +63,7 @@ body { font-family: system-ui, sans-serif; }
   </style>
 </head><body>
 
-<div style="align-items:stretch;border-bottom:1px solid #ccc;border-collapse:collapse;border-left:2px solid #000;border-style:dashed;cursor:pointer;display:inline-block;flex-direction:row-reverse;font-family:Iosevka, monospace;justify-content:space-between;min-width:120px">
+<div style="align-items:stretch;border-collapse:collapse;border-style:dashed;cursor:pointer;display:inline-block;flex-direction:row-reverse;font-family:Iosevka, monospace;justify-content:space-between;min-width:120px;border-bottom:1px solid #ccc;border-left:2px solid #000">
 </div>
 <span data-sngl-slot="0" style="display:contents"></span>
 
@@ -145,4 +145,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:3e4d8d33ee8852c105d63283e3b42f5f
+pass sha256:ab3065fa5b16655fecad96f46c73180d

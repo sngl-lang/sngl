@@ -830,14 +830,14 @@ body { font-family: system-ui, sans-serif; }
 </head><body>
 
 <div style="display:flex;flex-direction:row">
-  <span class="sngl-chip" style="align-items:center;border-color:#cccccc;border-radius:16px;border-width:1px;border-style:solid;display:inline-flex;gap:4px;opacity:1;padding-left:12px;padding-right:12px;padding-top:4px;padding-bottom:4px">
+  <span class="sngl-chip" style="padding-left:12px;padding-right:12px;padding-top:4px;padding-bottom:4px;align-items:center;border-color:#cccccc;border-radius:16px;border-width:1px;border-style:solid;display:inline-flex;gap:4px;opacity:1">
     <span>Tag</span>
   </span>
-  <span class="sngl-chip" style="align-items:center;border-color:#cccccc;border-radius:16px;border-width:1px;border-style:solid;display:inline-flex;gap:4px;opacity:1;padding-left:12px;padding-right:12px;padding-top:4px;padding-bottom:4px">
+  <span class="sngl-chip" style="padding-left:12px;padding-right:12px;padding-top:4px;padding-bottom:4px;align-items:center;border-color:#cccccc;border-radius:16px;border-width:1px;border-style:solid;display:inline-flex;gap:4px;opacity:1">
     <span>Removable</span>
     <button class="sngl-chip-remove">×</button>
   </span>
-  <span class="sngl-chip sngl-chip-success" style="align-items:center;border-color:#cccccc;border-radius:16px;border-width:1px;border-style:solid;display:inline-flex;gap:4px;opacity:1;padding-left:12px;padding-right:12px;padding-top:4px;padding-bottom:4px">
+  <span class="sngl-chip sngl-chip-success" style="padding-left:12px;padding-right:12px;padding-top:4px;padding-bottom:4px;align-items:center;border-color:#cccccc;border-radius:16px;border-width:1px;border-style:solid;display:inline-flex;gap:4px;opacity:1">
     <span>Success</span>
   </span>
 </div>
@@ -856,4 +856,4 @@ pass sha256:f7fa9fcf41b544e670a68409334fa1f3
 -- run/kotlin/android --
 pass sha256:1834acddc945c5af2f9420620648494d
 -- run/none/html --
-pass sha256:be53fdf14e7d01ce332e06ea00848b80
+pass sha256:d9f9c23faa1596a97ee3e8e770046892
