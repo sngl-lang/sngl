@@ -216,14 +216,9 @@ Each is general, and each is a fixture of its own before `async.query` lands.
 - ✓ **A func type that may be async** (step 1): async is inferred, never
   written. Points-to follows a component's func-typed props, and a slot an
   async function flows into has its `FuncSig.Color` stamped, so a call
-  through it waits after lowering. What step 2 still needs: points-to runs
-  over the program's package only, so `fetch` as a prop of the *library*
-  component `async.query` is coloured by nothing yet -- the analysis has to
-  see the call site's argument flow into a library prop.
-  Was: `checkAsyncRules`' rule 3 is deferred
-  because `ir.FuncSig` carries no colour, so handing an async
-  function to `fetch` is invisible to `passAsyncOffload`, and the effect's
-  `@mount` is not coloured async. Give the signature the flag rule 3 asks for.
+  through it waits after lowering. A library component's prop is not
+  coloured (step 2): its body is spliced, and the call through `fetch`
+  becomes a direct or a literal call, which waits where its function does.
 - **An async `@mount` that writes state after it waits.** A handler may call
   an async function already; the writes after the wait have to reach the
   drawing thread (`async.do` on fyne and gtk4, nothing on html, a coroutine on
@@ -241,6 +236,22 @@ Each is general, and each is a fixture of its own before `async.query` lands.
 - **The interpreter** runs `fetch` at mount, synchronously, and again when
   `on` changes, so `sngl test` is deterministic: a test reads `pending` as
   false and the answer as there.
+
+Step 2 left for later:
+
+- Kotlin declares no async native, so on android a `fetch` cannot wait yet;
+  step 3's `http.send` on a coroutine is the first that does, and the
+  effect's mount has to be started on the main dispatcher there as html
+  starts it without `await` (`ir.Call.Detached`).
+- bubbletea refuses a `fetch` that waits at the call that waits (#272, step
+  5), and refuses a query in a component built per copy of a loop (an effect
+  reading state there), so `testdata/async_query_loop.sngl` is
+  `SKIP(codegen)`.
+- Latest-wins and unmount-drops are run in Chromium only
+  (`testdata/component_async_query.txtar`); on fyne and gtk4 the golden pins
+  the code (`async_query_go.txtar`) and nothing runs a waiting fetch.
+- A compiled test's raw write (`c.names.push(…)`) re-renders nothing; a test
+  drives structure through events, as `async_query_loop.sngl` does.
 
 ## The `openapi:` scheme
 
@@ -554,7 +565,7 @@ never finishes one of them.
 | # | Branch                    | Delivers                                                                                                                                                                                                                                                                                                          |
 |---|---------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | ✓ | `pokedex-1-payload-enums` | *Payload enums*: an enum member carrying a type, enum type parameters, struct-literal construction, the selector read, `match` binding (`ok(var v)`); the interpreter and Go, JavaScript and Kotlin. And an async flag on a func type (`checkAsyncRules`' rule 3), so an async function can be handed as a value. |
-| 2 | `pokedex-2-async-query`   | *`async.query`*: `Result`, `Failure` and the component over `effect`, against a hand-written `fetch` -- latest wins, unmount drops the answer, `refresh`, a query under a `for`. bubbletea refuses it at the call.                                                                                                |
+| ✓ | `pokedex-2-async-query`   | *`async.query`*: `Result`, `Failure` and the component over `effect`, against a hand-written `fetch` -- latest wins, unmount drops the answer, `refresh`, a query under a `for`. bubbletea refuses it at the call.                                                                                                |
 | 3 | `pokedex-3-http-json`     | *`sngl:http`* (`send`, `get`, `Response.checked`, `pathEscape`, `http.identifier`) and *`sngl:json`* (`json.identifier`, `decode`, `encode`), against a local server, on every language.                                                                                                                          |
 | 4 | `pokedex-4-openapi`       | *The `openapi:` scheme*: `openapi.parse`, the plugin, the written package (structs, enums, `…Call` functions, a component per `GET`, `server`, `getJSON`) over a trimmed PokéAPI spec.                                                                                                                            |
 | 5 | `pokedex-5-targets`       | What steps 2--4 refused: bubbletea's post-back through `Update` (#272) so a query runs there, android's `INTERNET` permission and a loader so `ui.remote` draws.                                                                                                                                                  |
