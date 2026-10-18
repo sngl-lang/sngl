@@ -579,7 +579,7 @@ func (m *Model) __effect0_up() {
 			m.__effect0_key = __effect0_k
 			m.__effect0_mount()
 		} else {
-			if m.__effect0_live[__effect0_i] != __effect0_k {
+			if ((m.__effect0_live[__effect0_i] == nil) && (__effect0_k != nil)) || ((m.__effect0_live[__effect0_i] != nil) && ((__effect0_k == nil) || ((*(m.__effect0_live[__effect0_i])) != (*(__effect0_k))))) {
 				m.__effect0_key = __effect0_k
 				m.__effect0_mount()
 			}
@@ -871,7 +871,7 @@ pass sha256:4c0af4220760b1b381b136ac2d5b831e
 -- run/go/fyne --
 pass sha256:2737a66ac82ec597753e3303fcab2e47
 -- run/go/gtk4 --
-pass sha256:50925dec013b33a75c2ff957219d0dee
+pass sha256:1e5d7e762464ce7bbe00d6a00a08a37f
 -- run/kotlin/android --
 pass sha256:065e25d98e6928fcae22e53208439053
 -- run/none/html --

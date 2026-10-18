@@ -374,9 +374,11 @@ func addForeignTypes(pkg *ir.Package) {
 	}
 }
 
-// userPackages is every package the program imports by directory, transitively:
-// its own source, split across directories. A `sngl:` import is a library and
-// is not one of these -- what it declares is the target's to provide.
+// userPackages is every package the program imports by directory, or by a
+// scheme that writes SNGL -- `md:`, `openapi:` -- transitively: its own source,
+// split across directories or generated for it. A `sngl:` import is a library
+// and is not one of these -- what it declares is the target's to provide --
+// and nor is a scheme's native package, whose declarations are the host's.
 func userPackages(pkg *ir.Package) []*ir.Package {
 	var out []*ir.Package
 	seen := map[*ir.Package]bool{pkg: true}
@@ -386,7 +388,7 @@ func userPackages(pkg *ir.Package) []*ir.Package {
 			if imp == nil || imp.Pkg == nil || seen[imp.Pkg] {
 				continue
 			}
-			if scheme, _ := imports.ParseScheme(imp.Path); scheme != "" {
+			if scheme, _ := imports.ParseScheme(imp.Path); scheme == "sngl" || imp.Native != nil {
 				continue
 			}
 			seen[imp.Pkg] = true

@@ -15,6 +15,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"log/slog"
 	"os"
 	"os/exec"
@@ -152,7 +153,17 @@ type Host struct {
 	rec *Recorder
 	// out is what a scheme handler writes; nil outside one.
 	out *Output
+	// fsys is the project a handler reads a relative path through: an
+	// os.Root on disk, so a symlink out of the project is refused, or an
+	// in-memory FS.
+	fsys fs.FS
 }
+
+// ReadThrough makes fsys where a handler's relative read inside the project
+// goes. Where there is an import root on disk the file is recorded at its
+// place there; where there is none -- an in-memory FS -- nothing is, and the
+// producer reading it is not stored.
+func (h *Host) ReadThrough(fsys fs.FS) { h.fsys = fsys }
 
 // New indexes which package declares each function reachable from root,
 // which is who a host call written in it is asked of. dir is the import root,
@@ -297,6 +308,9 @@ func (h *Host) call(id string, ow *Owner, call *ir.Call, args []any) (any, error
 	}
 	switch id {
 	case "gen.lines":
+		if name, ok := h.inFS(str(0)); ok {
+			return rec.linesFS(h.fsys, name, h.root)
+		}
 		p, err := h.readable(ow, str(0), trust.File)
 		if err != nil {
 			return nil, err
@@ -344,6 +358,12 @@ func (h *Host) call(id string, ow *Owner, call *ir.Call, args []any) (any, error
 		if id == "gen.File.line" {
 			f.buf.WriteByte('\n')
 		}
+		return nil, nil
+	case "gen.Out.note":
+		if h.out == nil {
+			return nil, errors.New("out.note answers only in a gen.scheme's @generate handler")
+		}
+		h.out.Notes = append(h.out.Notes, str(1))
 		return nil, nil
 	case "gen.Process.code":
 		p, _ := args[0].(*interp.Struct)
@@ -605,7 +625,10 @@ type Output struct {
 	Names []string
 	// Files is each file's text, once Close has written what the handler
 	// added to it.
-	Files  map[string]string
+	Files map[string]string
+	// Notes are what the handler said about its output, in the order it said
+	// them: each a warning at the import.
+	Notes  []string
 	opened []*File
 }
 
@@ -663,6 +686,51 @@ type Recorder struct {
 }
 
 func (r *Recorder) Add(ins ...gencache.Input) { r.inputs = append(r.inputs, ins...) }
+
+// Unrecordable reports a read nothing could record, which keeps the value
+// from being stored.
+func (r *Recorder) Unrecordable() bool { return r.unrecordable }
+
+// inFS is p as a name in the project FS, where there is one and p names a
+// file inside it.
+func (h *Host) inFS(p string) (string, bool) {
+	if h.fsys == nil || path.IsAbs(p) {
+		return "", false
+	}
+	name := path.Clean(p)
+	return name, fs.ValidPath(name)
+}
+
+// linesFS reads name out of fsys a line at a time. It is recorded at its
+// place under root, or, with no root on disk, not at all: the FS is in
+// memory, and no store could read it again.
+func (r *Recorder) linesFS(fsys fs.FS, name, root string) (any, error) {
+	data, err := fs.ReadFile(fsys, name)
+	if err != nil {
+		return nil, fmt.Errorf("gen.lines: %w", err)
+	}
+	if root == "" {
+		r.unrecordable = true
+	} else {
+		sum := sha256.Sum256(data)
+		r.Add(gencache.Input{Kind: "file", Props: []gencache.Prop{{Name: "path", Value: filepath.Join(root, filepath.FromSlash(name))}, {Name: "sha256", Value: hex.EncodeToString(sum[:])}}})
+	}
+	lines := strings.Split(strings.TrimSuffix(string(data), "\n"), "\n")
+	if len(data) == 0 {
+		lines = nil
+	}
+	i := 0
+	return &interp.Stream{
+		Next: func() (any, bool, error) {
+			if i >= len(lines) {
+				return nil, false, nil
+			}
+			i++
+			return strings.TrimSuffix(lines[i-1], "\r"), true, nil
+		},
+		Stop: func() error { return nil },
+	}, nil
+}
 
 func (r *Recorder) lines(p string) (any, error) {
 	f, err := os.Open(p)

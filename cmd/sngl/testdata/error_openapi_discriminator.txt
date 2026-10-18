@@ -1,0 +1,41 @@
+# A oneOf with a discriminator is a payload enum once sngl:json reads that
+# layout; until then the schema is left out, and so is every field naming it.
+env SNGL_GENCACHE=off
+
+! sngl check app.sngl
+stderr 'import "openapi:./api.yml": schema Pet is left out: a oneOf with a discriminator, which sngl:json does not read yet'
+stderr 'app.sngl:8:14: no field'
+
+-- app.sngl --
+import api "openapi:./api.yml"
+
+func idOf(c api.Thing) int {
+    return c.id
+}
+
+func gone(c api.Thing) {
+    var x = c.pet
+}
+-- api.yml --
+openapi: 3.1.0
+info: {title: T, version: "1"}
+servers:
+- url: https://api.example
+paths:
+  /thing:
+    get:
+      operationId: getThing
+      responses:
+        '200': {description: '', content: {application/json: {schema: {$ref: '#/components/schemas/Thing'}}}}
+components:
+  schemas:
+    Thing:
+      type: object
+      required: [id]
+      properties:
+        id: {type: integer}
+        pet: {$ref: '#/components/schemas/Pet'}
+    Pet:
+      oneOf:
+      - {$ref: '#/components/schemas/Thing'}
+      discriminator: {propertyName: kind}

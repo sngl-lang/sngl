@@ -99,6 +99,7 @@ import (
 	"golang.org/x/tools/txtar"
 
 	"duckfam.us/sngl/internal/build"
+	"duckfam.us/sngl/internal/buildhost"
 	"duckfam.us/sngl/internal/parser"
 	"duckfam.us/sngl/internal/testlaunch"
 	"duckfam.us/sngl/internal/testutil"
@@ -115,6 +116,12 @@ import (
 // goldenPrefix is the archive directory holding generated output. Everything
 // outside it is the package's own source.
 const goldenPrefix = "out/"
+
+// writtenPrefix holds what an import scheme's plugin wrote for an import the
+// archive's comment names with `written <import path>`: the package as its
+// store holds it, `written/<scheme>/<file>`, and the notes it gave beside it
+// in `written/<scheme>/notes`.
+const writtenPrefix = "written/"
 
 // Run runs every archive matching glob as a subtest. update rewrites each
 // archive's golden instead of comparing against it.
@@ -178,6 +185,7 @@ func runFixture(t *testing.T, path string, update, force bool, guard *libraryGua
 	if err != nil {
 		t.Fatalf("comment: %v", err)
 	}
+	written := parseWritten(string(arc.Comment))
 
 	assertFormatted(t, src)
 
@@ -195,7 +203,7 @@ func runFixture(t *testing.T, path string, update, force bool, guard *libraryGua
 	// options on top, so the assertions are compiled and run rather than
 	// merely the program.
 	opts, _ := testutil.TestHarnessBuild(fixtureSource(src))
-	got, boilerplate, walked, err := generate(src, opts, true, "", "", guard)
+	got, boilerplate, walked, err := generate(src, opts, true, "", "", guard, written)
 	if err != nil {
 		t.Fatalf("generate: %v", err)
 	}
@@ -245,6 +253,10 @@ func split(arc *txtar.Archive) (src, golden map[string][]byte, records map[strin
 			if strings.Count(rest, "/") < 2 {
 				return fail("golden file %q: expected out/<lang>/<platform>/<path>", f.Name)
 			}
+			golden[name] = f.Data
+			continue
+		}
+		if strings.HasPrefix(name, writtenPrefix) {
 			golden[name] = f.Data
 			continue
 		}
@@ -327,7 +339,7 @@ func assertFormatted(t *testing.T, src map[string][]byte) {
 //
 // lang and plat select one target, as --lang/--platform do; empty builds every
 // target the output block names.
-func generate(src map[string][]byte, opts map[string]string, main bool, lang, plat string, guard *libraryGuard) (files map[string][]byte, boilerplate map[string]bool, walked int, err error) {
+func generate(src map[string][]byte, opts map[string]string, main bool, lang, plat string, guard *libraryGuard, written []string) (files map[string][]byte, boilerplate map[string]bool, walked int, err error) {
 	fsys := fstest.MapFS{}
 	for name, data := range src {
 		fsys[name] = &fstest.MapFile{Data: data}
@@ -337,14 +349,37 @@ func generate(src map[string][]byte, opts map[string]string, main bool, lang, pl
 	if err != nil {
 		return nil, nil, 0, err
 	}
+	resolver := build.NewFSResolver(fsys)
+	wrote := map[string]*buildhost.Output{}
+	resolver.Wrote = func(scheme, uri string, out *buildhost.Output) {
+		wrote[scheme+":"+uri] = out
+	}
 	pkg, err := build.Check(doc, build.CheckConfig{
 		Dir:      ".",
 		FS:       fsys,
-		Resolver: build.NewFSResolver(fsys),
+		Resolver: resolver,
 		IsMain:   true,
 	})
 	if err != nil {
 		return nil, nil, 0, fmt.Errorf("check: %w", err)
+	}
+	out := map[string][]byte{}
+	for _, imp := range written {
+		w := wrote[imp]
+		if w == nil {
+			return nil, nil, 0, fmt.Errorf("written %s: no plugin wrote a package for that import", imp)
+		}
+		scheme, _, _ := strings.Cut(imp, ":")
+		dir := writtenPrefix + scheme + "/"
+		for _, name := range w.Names {
+			if _, dup := out[dir+name]; dup {
+				return nil, nil, 0, fmt.Errorf("written %s: %s%s is written by two imports", imp, dir, name)
+			}
+			out[dir+name] = []byte(w.Files[name])
+		}
+		if len(w.Notes) > 0 {
+			out[dir+"notes"] = []byte(strings.Join(w.Notes, "\n") + "\n")
+		}
 	}
 	if err := walkDivergence(ownContexts(pkg)); err != nil {
 		return nil, nil, 0, fmt.Errorf("checked IR: %w", err)
@@ -378,7 +413,6 @@ func generate(src map[string][]byte, opts map[string]string, main bool, lang, pl
 		return nil, nil, 0, err
 	}
 
-	out := map[string][]byte{}
 	boiler := map[string]bool{}
 	seen := map[string]bool{}
 	// txtar has no spelling for a file that does not end in a newline --
@@ -449,7 +483,7 @@ func writeGolden(t *testing.T, path string, arc *txtar.Archive, got map[string][
 	var files, runs []txtar.File
 	for _, f := range arc.Files {
 		trimmed := strings.TrimPrefix(f.Name, "./")
-		if !strings.HasPrefix(trimmed, goldenPrefix) && !strings.HasPrefix(trimmed, recordPrefix) && !strings.HasPrefix(trimmed, testlaunch.RecordPrefix) {
+		if !strings.HasPrefix(trimmed, goldenPrefix) && !strings.HasPrefix(trimmed, writtenPrefix) && !strings.HasPrefix(trimmed, recordPrefix) && !strings.HasPrefix(trimmed, testlaunch.RecordPrefix) {
 			files = append(files, f)
 		}
 	}
@@ -548,4 +582,18 @@ func reviewable(files map[string][]byte, boilerplate map[string]bool) map[string
 // holds immutable.
 func notIR(v reflect.Value) bool {
 	return v.Type().Elem().PkgPath() == "duckfam.us/sngl/ast"
+}
+
+// parseWritten reads the `written <import path>` lines of an archive's
+// comment: the imports whose plugin output the golden shows.
+func parseWritten(comment string) []string {
+	var out []string
+	for raw := range strings.SplitSeq(comment, "\n") {
+		// Exactly `written <import path>`, so a line of prose starting with
+		// the word is prose.
+		if f := strings.Fields(raw); len(f) == 2 && f[0] == "written" && strings.Contains(f[1], ":") {
+			out = append(out, f[1])
+		}
+	}
+	return out
 }

@@ -15,6 +15,7 @@ import (
 	"crypto/sha256"
 	"errors"
 	"fmt"
+	"io/fs"
 	"log/slog"
 	"path/filepath"
 	"sort"
@@ -41,7 +42,7 @@ func init() {
 
 type libraryRunner struct{ r *Runner }
 
-func (l libraryRunner) GenerateScheme(s *ir.Scheme, uri string) ([]*ast.Document, error) {
+func (l libraryRunner) GenerateScheme(s *ir.Scheme, uri string) ([]*ast.Document, []string, error) {
 	return l.r.Generate(s, uri)
 }
 
@@ -58,19 +59,32 @@ type Runner struct {
 	Root string
 	// Store holds outputs between builds; nil asks gencache.Default.
 	Store *gencache.Store
+	// FS is the project, which a handler's relative read inside it goes
+	// through (buildhost.Host.ReadThrough). Where Root is "" -- an in-memory
+	// FS -- what is read through it is not stored, since nothing recorded of
+	// it could be checked again.
+	FS fs.FS
+	// Wrote, where set, is told what each Generate answered: the files and
+	// notes, run or replayed.
+	Wrote func(scheme, uri string, out *buildhost.Output)
 }
 
-// fileMark separates the files of one stored output.
-const fileMark = "// sngl:file "
+// fileMark separates the files of one stored output, and noteMark, ahead of
+// the first, carries one of the handler's notes.
+const (
+	fileMark = "// sngl:file "
+	noteMark = "// sngl:note "
+)
 
 // Generate runs s's handler for uri, or replays what it wrote last time, and
-// returns the files parsed.
-func (r *Runner) Generate(s *ir.Scheme, uri string) ([]*ast.Document, error) {
+// returns the files parsed and the notes the handler wrote beside them.
+func (r *Runner) Generate(s *ir.Scheme, uri string) ([]*ast.Document, []string, error) {
 	var ow *buildhost.Owner
 	if s.Library && s.Pkg.Origin != nil {
 		ow = buildhost.NewOwner(s.Pkg, s.Pkg.Origin.URI, "", "", true)
 	}
 	host := buildhost.New(r.Trust, r.Root, s.Pkg, ow)
+	host.ReadThrough(r.FS)
 	ow = host.OwnerFor(nil)
 	req := gencache.Request{Producer: Producer, Params: append(host.Key(ow), s.Name, uri), Identity: ow.Closure()}
 	store := r.Store
@@ -78,28 +92,39 @@ func (r *Runner) Generate(s *ir.Scheme, uri string) ([]*ast.Document, error) {
 		store = gencache.Default()
 	}
 	if data, ok := store.Lookup(req); ok {
-		if docs, err := parseStored(gencache.Body(data)); err == nil {
-			return docs, nil
+		if docs, notes, err := parseStored(gencache.Body(data)); err == nil {
+			r.wrote(s, uri, gencache.Body(data))
+			return docs, notes, nil
 		} else {
 			slog.Debug("sngl.scheme stored output", "scheme", s.Name, "uri", uri, "err", err)
 		}
 	}
 
-	out, inputs, err := run(host, s, uri)
+	out, inputs, stored, err := run(host, s, uri)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	body := joinFiles(out)
-	docs, err := parseStored(body)
+	docs, notes, err := parseStored(body)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
+	}
+	r.wrote(s, uri, body)
+	if !stored {
+		return docs, notes, nil
 	}
 	literal, err := r.literalInputs(host, ow, store, out)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	store.Put(req, gencache.Output{Inputs: append(inputs, literal...), Body: body})
-	return docs, nil
+	return docs, notes, nil
+}
+
+func (r *Runner) wrote(s *ir.Scheme, uri string, body []byte) {
+	if r.Wrote != nil {
+		r.Wrote(s.Name, uri, splitFiles(body))
+	}
 }
 
 // parsed holds the documents of the outputs this process has parsed, by the
@@ -108,42 +133,49 @@ func (r *Runner) Generate(s *ir.Scheme, uri string) ([]*ast.Document, error) {
 // SNGL, and every check that registers the platform imports it.
 var parsed = struct {
 	sync.Mutex
-	docs map[[sha256.Size]byte][]*ast.Document
-}{docs: map[[sha256.Size]byte][]*ast.Document{}}
+	docs map[[sha256.Size]byte]parsedOutput
+}{docs: map[[sha256.Size]byte]parsedOutput{}}
+
+type parsedOutput struct {
+	docs  []*ast.Document
+	notes []string
+}
 
 // maxParsed bounds what a long-lived process (the LSP) keeps of outputs that
 // a plugin's edits have since replaced.
 const maxParsed = 16
 
-func parseStored(body []byte) ([]*ast.Document, error) {
+func parseStored(body []byte) ([]*ast.Document, []string, error) {
 	key := sha256.Sum256(body)
 	parsed.Lock()
-	docs, ok := parsed.docs[key]
+	got, ok := parsed.docs[key]
 	parsed.Unlock()
 	if ok {
-		return docs, nil
+		return got.docs, got.notes, nil
 	}
-	docs, err := parseFiles(splitFiles(body))
+	out := splitFiles(body)
+	docs, err := parseFiles(out)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	parsed.Lock()
 	defer parsed.Unlock()
 	if len(parsed.docs) >= maxParsed {
 		clear(parsed.docs)
 	}
-	parsed.docs[key] = docs
-	return docs, nil
+	parsed.docs[key] = parsedOutput{docs, out.Notes}
+	return docs, out.Notes, nil
 }
 
 // run calls the handler with the output it writes to and the import's path.
-func run(host *buildhost.Host, s *ir.Scheme, uri string) (*buildhost.Output, []gencache.Input, error) {
+// stored is false where the handler read something no input could record.
+func run(host *buildhost.Host, s *ir.Scheme, uri string) (out *buildhost.Output, inputs []gencache.Input, stored bool, err error) {
 	env, err := interp.BuildEnv(s.Pkg, "", nil)
 	if err != nil {
-		return nil, nil, fmt.Errorf("scheme %q: %w", s.Name, err)
+		return nil, nil, false, fmt.Errorf("scheme %q: %w", s.Name, err)
 	}
 	env.SetBuildHost(host)
-	out := &buildhost.Output{}
+	out = &buildhost.Output{}
 	host.Writing(out)
 	rec := buildhost.NewRecorder()
 	restore := host.Recording(rec)
@@ -167,15 +199,15 @@ func run(host *buildhost.Host, s *ir.Scheme, uri string) (*buildhost.Output, []g
 	restore()
 	if raised, ok := errors.AsType[*interp.RaisedError](err); ok {
 		msg, _ := raised.Event["message"].(string)
-		return nil, nil, fmt.Errorf("scheme %q: %s", s.Name, msg)
+		return nil, nil, false, fmt.Errorf("scheme %q: %s", s.Name, msg)
 	}
 	if err != nil && !interp.IsReturn(err) {
-		return nil, nil, err
+		return nil, nil, false, err
 	}
 	if ferr != nil {
-		return nil, nil, ferr
+		return nil, nil, false, ferr
 	}
-	return out, inputs, nil
+	return out, inputs, !rec.Unrecordable(), nil
 }
 
 // literalInputs reads the directive each written file carries, if any, with
@@ -227,6 +259,9 @@ func joinFiles(out *buildhost.Output) []byte {
 	names := append([]string(nil), out.Names...)
 	sort.Strings(names)
 	var b bytes.Buffer
+	for _, note := range out.Notes {
+		b.WriteString(noteMark + strings.ReplaceAll(note, "\n", " ") + "\n")
+	}
 	for _, name := range names {
 		b.WriteString(fileMark + name + "\n")
 		src := out.Files[name]
@@ -250,6 +285,10 @@ func splitFiles(body []byte) *buildhost.Output {
 		b.Reset()
 	}
 	for line := range strings.Lines(string(body)) {
+		if note, ok := strings.CutPrefix(line, noteMark); ok && cur == "" {
+			out.Notes = append(out.Notes, strings.TrimSuffix(note, "\n"))
+			continue
+		}
 		if name, ok := strings.CutPrefix(line, fileMark); ok {
 			flush()
 			cur = strings.TrimSpace(name)
