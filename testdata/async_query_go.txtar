@@ -190,8 +190,8 @@ func (m *Model) __effect0_mount() {
 			m.__n3.SetText(fmt.Sprint(m.loading__inst0))
 			switch {
 			case (r.tag == 0):
-				var v int = r.Ok
-				m.length__inst0 = snglSome(v)
+				var got int = r.Ok
+				m.length__inst0 = snglSome(got)
 				var __lt0 string
 				if m.length__inst0 != nil {
 					__lt0 = fmt.Sprint((*(m.length__inst0)))
@@ -208,14 +208,14 @@ func (m *Model) __effect0_mount() {
 				}
 				m.__n4.SetText(__lt1)
 			default:
-				f := r.Failed
+				got := r.Failed
 				m.failure__inst0 = func(_p1 *Failure) *Failure {
 					if _p1 == nil {
 						return nil
 					}
 					_v2 := *_p1
 					return &_v2
-				}(snglSome(f))
+				}(snglSome(got))
 				var __lt2 string
 				if m.failure__inst0 != nil {
 					__lt2 = (*(m.failure__inst0)).Message
@@ -537,8 +537,8 @@ func (c *CardInstance) __effect1_mount() {
 			c.pending__inst0 = false
 			switch {
 			case (r.tag == 0):
-				var v int = r.Ok
-				c.length = snglSome(v)
+				var got int = r.Ok
+				c.length = snglSome(got)
 				var __lt3 string
 				if c.length != nil {
 					__lt3 = ((c.__prop_name + " ") + fmt.Sprint((*(c.length))))
@@ -548,14 +548,14 @@ func (c *CardInstance) __effect1_mount() {
 				c.__n0.SetText(__lt3)
 				c.failure__inst1 = nil
 			default:
-				f := r.Failed
+				got := r.Failed
 				c.failure__inst1 = func(_p1 *Failure) *Failure {
 					if _p1 == nil {
 						return nil
 					}
 					_v2 := *_p1
 					return &_v2
-				}(snglSome(f))
+				}(snglSome(got))
 			}
 		})
 	}()
@@ -783,8 +783,8 @@ func (m *Model) __effect0_mount() {
 			gtk4rt.LabelSetText(m.__n3, fmt.Sprint(m.loading__inst0))
 			switch {
 			case (r.tag == 0):
-				var v int = r.Ok
-				m.length__inst0 = snglSome(v)
+				var got int = r.Ok
+				m.length__inst0 = snglSome(got)
 				var __lt0 string
 				if m.length__inst0 != nil {
 					__lt0 = fmt.Sprint((*(m.length__inst0)))
@@ -801,14 +801,14 @@ func (m *Model) __effect0_mount() {
 				}
 				gtk4rt.LabelSetText(m.__n4, __lt1)
 			default:
-				f := r.Failed
+				got := r.Failed
 				m.failure__inst0 = func(_p1 *Failure) *Failure {
 					if _p1 == nil {
 						return nil
 					}
 					_v2 := *_p1
 					return &_v2
-				}(snglSome(f))
+				}(snglSome(got))
 				var __lt2 string
 				if m.failure__inst0 != nil {
 					__lt2 = (*(m.failure__inst0)).Message
@@ -1018,8 +1018,8 @@ func (c *CardInstance) __effect1_mount() {
 			c.pending__inst0 = false
 			switch {
 			case (r.tag == 0):
-				var v int = r.Ok
-				c.length = snglSome(v)
+				var got int = r.Ok
+				c.length = snglSome(got)
 				var __lt3 string
 				if c.length != nil {
 					__lt3 = ((c.__prop_name + " ") + fmt.Sprint((*(c.length))))
@@ -1029,14 +1029,14 @@ func (c *CardInstance) __effect1_mount() {
 				gtk4rt.LabelSetText(c.__n0, __lt3)
 				c.failure__inst1 = nil
 			default:
-				f := r.Failed
+				got := r.Failed
 				c.failure__inst1 = func(_p1 *Failure) *Failure {
 					if _p1 == nil {
 						return nil
 					}
 					_v2 := *_p1
 					return &_v2
-				}(snglSome(f))
+				}(snglSome(got))
 			}
 		})
 	}()
@@ -1251,6 +1251,6 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return gtk4rt.ToplevelWindow(app, m.__n1)
 }
 -- run/go/fyne --
-pass sha256:b11ff95e31f0fe188ce0eb2c1bb68765
+pass sha256:3eb61f89d2443efd2eeb8ae02bf0c6b1
 -- run/go/gtk4 --
-pass sha256:03aa65237d7cf6f8f307654dbbd54284
+pass sha256:7c0fc8f608e456a34cff4b8286971c87
