@@ -3854,6 +3854,7 @@ func (c *checker) pass2() {
 	c.inferComponentFamilies()
 
 	c.finishDeclarations(c.pkg)
+	c.refuseBuilderState()
 }
 
 // hasDeclaredBody reports whether fn has a body of its own to analyze: one

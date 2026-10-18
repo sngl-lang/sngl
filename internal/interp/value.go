@@ -65,6 +65,9 @@ func NewStruct(def *ir.StructDef, typ *ir.Type) *Struct {
 // value, so storing one -- a local, a field, a parameter -- stores a copy, and
 // editing it does not edit what the caller still holds.
 func CopyValue(v any) any {
+	if b, ok := v.(*Builder); ok {
+		return b.clone()
+	}
 	s, ok := v.(*Struct)
 	if !ok || s == nil {
 		return v
@@ -100,6 +103,9 @@ func copyOf(v any, t *ir.Type) any {
 	}
 	if !ir.HoldsValue(t) {
 		return v
+	}
+	if b, ok := v.(*Builder); ok {
+		return b.clone()
 	}
 	switch t.Kind {
 	case ir.TypeList:
