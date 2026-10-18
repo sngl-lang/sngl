@@ -86,7 +86,7 @@ enum Result[T any] {
   `option[T]`, present only when that member is the one held, so the existing
   narrowing does the rest (`if r.ok != null { … r.ok … }`); a member with no
   payload reads as a `bool`.
-- **Matched by member, binding the payload**: `match r { ok(var v) { … } failed(var f) { … } }`. Exhaustive as every match is, so an arm per
+- **Matched by member, naming the payload**: `match var v = r { ok { … } failed { … } }`, where `v` is the payload of the member an arm names. Exhaustive as every match is, so an arm per
   member or an `else`. This is the binding pattern the match work deferred
   "until there is a use beyond unwrapping an option"; this is that use.
 - **The zero value is the first member's**, with its payload's zero, as Go's
@@ -157,15 +157,15 @@ component query[K any, T any, F any](
             var r = fetch(k)
             if mine != attempt { return }   // a later key asked since: latest wins
             pending = false
-            match r {
-                ok(var v) {
-                    value = v
+            match var got = r {
+                ok {
+                    value = got
                     failure = null
-                    load(v)
+                    load(got)
                 }
-                failed(var f) {
-                    failure = f
-                    fail(f)
+                failed {
+                    failure = got
+                    fail(got)
                 }
             }
         },
@@ -540,11 +540,11 @@ shipped, since it is the only place that knows both halves:
 
 ```sngl
 func getJSON[T any, Q struct {} = struct {}](url string, query Q = Q{}) async.Result[T] {
-    match http.get(url=url, query=query) {
-        failed(var f) => {failed=f}
-        ok(var r) => match r.checked() {
-            failed(var f) => {failed=f}
-            ok(var r) => json.decode[T](r.body)
+    match var r = http.get(url=url, query=query) {
+        failed => {failed=r}
+        ok => match var c = r.checked() {
+            failed => {failed=c}
+            ok => json.decode[T](c.body)
         }
     }
 }
@@ -593,14 +593,14 @@ with its fixtures, its CLAUDE.md section, and every target either doing it or
 refusing it with a position. A later step builds on the earlier ones and
 never finishes one of them.
 
-| # | Branch                    | Delivers                                                                                                                                                                                                                                                                                                          |
-|---|---------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| ✓ | `pokedex-1-payload-enums` | *Payload enums*: an enum member carrying a type, enum type parameters, struct-literal construction, the selector read, `match` binding (`ok(var v)`); the interpreter and Go, JavaScript and Kotlin. And an async flag on a func type (`checkAsyncRules`' rule 3), so an async function can be handed as a value. |
-| ✓ | `pokedex-2-async-query`   | *`async.query`*: `Result`, `Failure` and the component over `effect`, against a hand-written `fetch` -- latest wins, unmount drops the answer, `refresh`, a query under a `for`. bubbletea refuses it at the call.                                                                                                |
-| ✓ | `pokedex-3-http-json`     | *`sngl:http`* (`send`, `get`, `Response.checked`, `pathEscape`, `http.identifier`) and *`sngl:json`* (`json.identifier`, `decode`, `encode`), against a local server, on every language.                                                                                                                          |
-| 4 | `pokedex-4-openapi`       | *The `openapi:` scheme*: `openapi.parse`, the plugin, the written package (structs, enums, `…Call` functions, a component per `GET`, `server`, `getJSON`) over a trimmed PokéAPI spec.                                                                                                                            |
-| 5 | `pokedex-5-targets`       | What steps 2--4 refused: bubbletea's post-back through `Update` (#272) so a query runs there, android's `INTERNET` permission and a loader so `ui.remote` draws.                                                                                                                                                  |
-| 6 | `pokedex-6-example`       | *The example*: `examples/pokedex` over the vendored spec, `cmd/sngl/testdata/pokedex_runs.txt` against a recorded local server on every target, and a page on the docs site.                                                                                                                                      |
+| # | Branch                    | Delivers                                                                                                                                                                                                                                                                                                                           |
+|---|---------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| ✓ | `pokedex-1-payload-enums` | *Payload enums*: an enum member carrying a type, enum type parameters, struct-literal construction, the selector read, `match` naming the payload (`match var v = r`); the interpreter and Go, JavaScript and Kotlin. And an async flag on a func type (`checkAsyncRules`' rule 3), so an async function can be handed as a value. |
+| ✓ | `pokedex-2-async-query`   | *`async.query`*: `Result`, `Failure` and the component over `effect`, against a hand-written `fetch` -- latest wins, unmount drops the answer, `refresh`, a query under a `for`. bubbletea refuses it at the call.                                                                                                                 |
+| ✓ | `pokedex-3-http-json`     | *`sngl:http`* (`send`, `get`, `Response.checked`, `pathEscape`, `http.identifier`) and *`sngl:json`* (`json.identifier`, `decode`, `encode`), against a local server, on every language.                                                                                                                                           |
+| 4 | `pokedex-4-openapi`       | *The `openapi:` scheme*: `openapi.parse`, the plugin, the written package (structs, enums, `…Call` functions, a component per `GET`, `server`, `getJSON`) over a trimmed PokéAPI spec.                                                                                                                                             |
+| 5 | `pokedex-5-targets`       | What steps 2--4 refused: bubbletea's post-back through `Update` (#272) so a query runs there, android's `INTERNET` permission and a loader so `ui.remote` draws.                                                                                                                                                                   |
+| 6 | `pokedex-6-example`       | *The example*: `examples/pokedex` over the vendored spec, `cmd/sngl/testdata/pokedex_runs.txt` against a recorded local server on every target, and a page on the docs site.                                                                                                                                                       |
 
 ## Working this plan
 

@@ -1964,9 +1964,19 @@ func (b *builder) buildForNode(it nodeIter) *ast.ForStmt {
 }
 
 func (b *builder) buildMatch(it nodeIter) ast.Match {
-	// Match    = kw_match [ CondExpr ] lbrace [ semi ] [ MatchArm { semi [ MatchArm ] } ] rbrace .
+	// Match    = kw_match [ kw_var ident assign CondExpr | CondExpr ] lbrace [ semi ] [ MatchArm { semi [ MatchArm ] } ] rbrace .
 	// MatchArm = ( kw_else | CondExpr { comma CondExpr } ) ( StmtBlock | fat_arrow Expr ) .
 	m := ast.Match{Pos: b.posFromToken(it.shift())} // kw_match
+	if !it.done() && !it.isNonTerminal() && it.tokenType() == KW_VAR {
+		it.skip() // kw_var
+		if !it.done() && !it.isNonTerminal() && it.tokenType() == IDENT {
+			tok := it.shift()
+			m.Bind, m.BindPos = tok.Literal, ast.Pos(b.posFromToken(tok))
+		}
+		if !it.done() && !it.isNonTerminal() && it.tokenType() == ASSIGN {
+			it.skip() // assign
+		}
+	}
 	if !it.done() && it.isNonTerminal() && it.symbol() == CondExpr {
 		m.Subject = b.buildExpr(it.enter())
 	}
@@ -3324,13 +3334,6 @@ func (b *builder) buildArg(it nodeIter) ast.ArgOrEventHandler {
 			base := &ast.ConstExpr{Pos: ast.Pos(pos), Operand: operand}
 			expr := b.applyArgExprCont(&it, base)
 			return ast.Arg{Value: expr}
-		case KW_VAR:
-			pos := b.posFromToken(it.shift())
-			bind := &ast.BindExpr{Pos: ast.Pos(pos)}
-			if !it.done() && !it.isNonTerminal() && it.tokenType() == IDENT {
-				bind.Name = it.shift().Literal
-			}
-			return ast.Arg{Value: bind}
 		}
 	}
 

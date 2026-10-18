@@ -175,15 +175,15 @@ window.__sngl_boot = () => {
     $1.textContent = String(state.loading__inst0);
     if (r.tag === "ok") {
       ;
-      let v = r.value;
-      state.length__inst0 = v;
+      let got = r.value;
+      state.length__inst0 = got;
       $0.textContent = state.length__inst0 !== null ? String(state.length__inst0) : "-";
       state.failure__inst0 = null;
       state.loads__inst0 += 1;
     } else {
       ;
-      let f = r.value;
-      state.failure__inst0 = ((_o1) => _o1 == null ? _o1 : { ..._o1 })(f);
+      let got = r.value;
+      state.failure__inst0 = ((_o1) => _o1 == null ? _o1 : { ..._o1 })(got);
     }
     ;
   }
@@ -203,14 +203,14 @@ window.__sngl_boot = () => {
     state.pending__inst0 = false;
     if (r.tag === "ok") {
       ;
-      let v = r.value;
-      state.value__inst0 = v;
+      let got = r.value;
+      state.value__inst0 = got;
       state.failure__inst1 = null;
       state.loads__inst1 += 1;
     } else {
       ;
-      let f = r.value;
-      state.failure__inst1 = ((_o1) => _o1 == null ? _o1 : { ..._o1 })(f);
+      let got = r.value;
+      state.failure__inst1 = ((_o1) => _o1 == null ? _o1 : { ..._o1 })(got);
     }
     ;
   }
@@ -362,9 +362,9 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:233b012cdf428433bbc9e7cc6e1cb6da
+pass sha256:b1311241a4d825a501194b6a0691009b
 -- testrun/html/none/component_async_query.sngl/dropped/1 --
-sha256:17a2bec0892f9d9eee7abaef5974522e
+sha256:0ce3fb1fdff82a62fb920f92f7cbc9ea
 {
   "results": [
     {
@@ -374,7 +374,7 @@ sha256:17a2bec0892f9d9eee7abaef5974522e
   ]
 }
 -- testrun/html/none/component_async_query.sngl/latest/1 --
-sha256:26169cfd446ba3a4ba8e7e3ff447f306
+sha256:9b0835d7b980f990220777152b5d6d20
 {
   "results": [
     {

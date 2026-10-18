@@ -89,15 +89,15 @@ component query[K any, T any, F any](
                 return
             }
             pending = false
-            match r {
-                ok(var v) {
-                    value = v
+            match var got = r {
+                ok {
+                    value = got
                     failure = null
-                    load(v)
+                    load(got)
                 }
-                failed(var f) {
-                    failure = f
-                    fail(f)
+                failed {
+                    failure = got
+                    fail(got)
                 }
             }
         },
