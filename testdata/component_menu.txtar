@@ -684,7 +684,7 @@ pass sha256:410a51af4e9eca3165ea07c7dd17dde0
 -- run/none/html --
 pass sha256:12fd9dacf859f91a8ce12963f30ad472
 -- testrun/html/none/component_menu.sngl/main/1 --
-sha256:a85fe4dd3a3b8fd1a145406ed553ef09
+sha256:8f2ed9e53709c2fc21e9634385bb2ce9
 {
   "results": [
     {
