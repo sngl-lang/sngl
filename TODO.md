@@ -614,6 +614,27 @@ spelling as it is today; only the encoding asks the mark.
   one (no loader shipped). The demo wants that fixed or the detail page is
   blank there.
 
+### What step 5 left
+
+- **bubbletea still refuses a query in a component built per copy of a loop**
+  (an effect reading that component's state), so
+  `testdata/async_query_loop.sngl` stays `SKIP(codegen)`. The example's card
+  per Pokémon is that shape: step 6 keys one query on the list, or lifts the
+  per-copy effect on bubbletea.
+- **A program var named like a local of a library body** reads the var on the
+  Go targets (the known `ExprCtx.Resolve` gap): `var got` beside an
+  `async.query` broke the query's own `match var got`. The example avoids
+  `got`.
+- **A ternary handed to a native taking a Go `time.Duration`** is hoisted to
+  an `int` temp that does not convert (`sleep(c ? a : b)`).
+- **A URL in a `canvasImage` paints nothing on android**: the canvas reads
+  `SnglAssets.bitmap`, which fetches nothing.
+- **html, bubbletea and none report no image `@error`**; android now does.
+- bubbletea snapshots the Model for every off-loop literal, a deep copy per
+  request even when the goroutine reads no state.
+- #273 and #274 are untouched: a post from such work carries the shared Model
+  it already wrote.
+
 ## Deliverables
 
 Six, in this order, each its own MR and each complete on its own: it lands
@@ -627,7 +648,7 @@ never finishes one of them.
 | ✓ | `pokedex-2-async-query`   | *`async.query`*: `Result`, `Failure` and the component over `effect`, against a hand-written `fetch` -- latest wins, unmount drops the answer, `refresh`, a query under a `for`. bubbletea refuses it at the call.                                                                                                                 |
 | ✓ | `pokedex-3-http-json`     | *`sngl:http`* (`send`, `get`, `Response.checked`, `pathEscape`, `http.identifier`) and *`sngl:json`* (`json.identifier`, `decode`, `encode`), against a local server, on every language.                                                                                                                                           |
 | ✓ | `pokedex-4-openapi`       | *The `openapi:` scheme*: `openapi.parse`, the plugin, the written package (structs, enums, `…Call` functions, a component per `GET`, `server`, `getJSON`) over a trimmed PokéAPI spec.                                                                                                                                             |
-| 5 | `pokedex-5-targets`       | What steps 2--4 refused: bubbletea's post-back through `Update` (#272) so a query runs there, android's `INTERNET` permission and a loader so `ui.remote` draws.                                                                                                                                                                   |
+| ✓ | `pokedex-5-targets`       | What steps 2--4 refused: bubbletea's post-back through `Update` (#272) so a query runs there, android's `INTERNET` permission and a loader so `ui.remote` draws.                                                                                                                                                                   |
 | 6 | `pokedex-6-example`       | *The example*: `examples/pokedex` over the vendored spec, `cmd/sngl/testdata/pokedex_runs.txt` against a recorded local server on every target, and a page on the docs site.                                                                                                                                                       |
 
 ## Working this plan
