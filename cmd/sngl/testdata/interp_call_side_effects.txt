@@ -48,7 +48,7 @@ func testArgumentEvaluatedOnce(t Test, c panel) {
     t.assert(c.got == 11)
 }
 -- testrun/bubbletea/go/app.sngl/panel/1 --
-sha256:5ffb0e2ff6d5d02fb48ff48b5e4ae73d
+sha256:73fc5039a470e3de827d0fed709682cd
 {
   "results": [
     {

@@ -61,7 +61,7 @@ func testInitial(t Test, c counter) {
 window {
 }
 -- testrun/bubbletea/go/counter.sngl/main/1 --
-sha256:8eb5bbd7765fa1d79c40c415067f7902
+sha256:faaa47f0a8c99d5f87c2c42444c0d87c
 {
   "results": [
     {
@@ -71,7 +71,7 @@ sha256:8eb5bbd7765fa1d79c40c415067f7902
   ]
 }
 -- testrun/bubbletea/go/renamed.sngl/counter/1 --
-sha256:8eb5bbd7765fa1d79c40c415067f7902
+sha256:faaa47f0a8c99d5f87c2c42444c0d87c
 {
   "results": [
     {
