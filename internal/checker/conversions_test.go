@@ -326,19 +326,19 @@ component main node {
 `)
 }
 
-func TestStringToColorAssignment(t *testing.T) {
-	expectNoErrors(t, `
+func TestStringIsNoColor(t *testing.T) {
+	expectError(t, `
 component main node {
     var c color = "#ff0000"
     text(value="hi")
 }
-`)
+`, "cannot initialize color with string")
 }
 
 func TestStringDomainToStringInterp(t *testing.T) {
 	expectNoErrors(t, `
 component main node {
-    var c color = "#ff0000"
+    var c color = #ff0000
     var d date = "2026-03-12"
     text(value="c={c} d={d}")
 }

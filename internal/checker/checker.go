@@ -5020,14 +5020,9 @@ func (c *checker) validateStringDomainLiteral(pos ast.Pos, typ *ir.Type, initExp
 	}
 	val := lit.Value
 
-	// color/date/time/datetime are StructDef-backed; detect by name and apply
-	// the same canonical-form validation that the kind-based types use below.
+	// A color is never a string; the token `#…` is validated where it is built,
+	// in lowerHexLiteral.
 	switch {
-	case ir.IsColorStruct(typ):
-		if !isValidColor(val) {
-			c.error(pos, "invalid color literal %q", val)
-		}
-		return
 	case ir.IsDateStruct(typ):
 		if !regexp.MustCompile(`^\d{4}-\d{2}-\d{2}$`).MatchString(val) {
 			c.error(pos, "invalid date literal %q", val)
@@ -5044,29 +5039,6 @@ func (c *checker) validateStringDomainLiteral(pos ast.Pos, typ *ir.Type, initExp
 		}
 		return
 	}
-
-	// A colour is validated where it is built, in lowerHexLiteral: what
-	// reaches here is already a color StructLit, never a literal of a colour
-	// kind.
-}
-
-func isValidColor(s string) bool {
-	if len(s) == 0 {
-		return false
-	}
-	if s[0] == '#' {
-		hex := s[1:]
-		if len(hex) != 3 && len(hex) != 6 && len(hex) != 8 {
-			return false
-		}
-		for _, c := range hex {
-			if !((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F')) {
-				return false
-			}
-		}
-		return true
-	}
-	return false
 }
 
 // flattenDotImport lifts an imported package's exported declarations into the

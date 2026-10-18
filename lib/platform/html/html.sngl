@@ -549,7 +549,7 @@ const component ui.window[platform](title, visible, @error, @closed, content, fa
 
 const component ui.modal[platform](style, open, title, content) {
     html.div(class="modal-overlay", hidden=(open == false), style={...style, position=fixed, top=0, left=0, right=0, bottom=0, background=#00000080, display=flex, alignItems=center, justifyContent=center, zIndex=1000}) {
-        html.div(class="modal-content", style={background="#fff", borderRadius=8px, padding=24px}) {
+        html.div(class="modal-content", style={background=#fff, borderRadius=8px, padding=24px}) {
             if title != "" {
                 html.h3(textContent=title, style={marginTop=0, marginX=0, marginBottom=16px})
             }
@@ -559,7 +559,7 @@ const component ui.modal[platform](style, open, title, content) {
 }
 
 const component ui.drawer[platform](style, content) {
-    html.div(style={...style, position=fixed, top=0, bottom=0, background="#fff", zIndex=1000}) {
+    html.div(style={...style, position=fixed, top=0, bottom=0, background=#fff, zIndex=1000}) {
         content
     }
 }
@@ -631,7 +631,7 @@ const component ui.tree[platform](style, items) {
 
 const component ui.menu[platform](style, open, items) {
     if open {
-        html.div(role="menu", style={...style, position=absolute, display=flex, flexDirection=column, background="#fff", border="1px solid #ddd", borderRadius=4px, padding=4px, zIndex=100}) {
+        html.div(role="menu", style={...style, position=absolute, display=flex, flexDirection=column, background=#fff, border="1px solid #ddd", borderRadius=4px, padding=4px, zIndex=100}) {
             for var it = items {
                 html.button(role="menuitem", disabled=it.disabled, textContent=it.label, @click {
                     it.select()

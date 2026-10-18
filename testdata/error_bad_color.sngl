@@ -1,7 +1,7 @@
 import . "sngl:ui"
 
 component main node {
-    var bg color = "not-a-color" // ERROR(check) "invalid color literal"
+    var bg color = "not-a-color" // ERROR(check) "cannot initialize color with string"
 
     text(value=bg)
 }

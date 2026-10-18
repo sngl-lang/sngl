@@ -125,7 +125,7 @@ func TestColorToComposeColor(t *testing.T) {
 import ui "sngl:ui"
 ui.window {
     vbox {
-        text(value="hi", style={color="#216"})
+        text(value="hi", style={color=#216})
     }
 }`
 	out := compileSrc(t, src, false)
