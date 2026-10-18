@@ -233,6 +233,8 @@ var soleGate = map[string][]string{
 	"ViewMatch":   nil,
 	"OptionMatch": nil,
 
+	"StringBuilders": {"StringBuilders"},
+
 	// The pass and the field are named for opposite sides of the same fact:
 	// ReactiveCanvas is the redraw the platform wants, CanvasReactivity is the
 	// pass that injects it. Effects is the same shape inverted -- withholding

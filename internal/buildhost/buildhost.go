@@ -214,7 +214,7 @@ func (h *Host) Recording(rec *Recorder) func() {
 // Recorder is the producer recording now, or nil.
 func (h *Host) Recorder() *Recorder { return h.rec }
 
-// Writing makes out what a handler's out.write calls write.
+// Writing makes out what a handler's out.file calls open.
 func (h *Host) Writing(out *Output) { h.out = out }
 
 // OwnerOf is pkg as the host sees it, by its origin.
@@ -326,12 +326,25 @@ func (h *Host) call(id string, ow *Owner, call *ir.Call, args []any) (any, error
 		return nil, nil
 	case "gen.exec":
 		return h.exec(rec, ow, call, strs(0), strs(1), strs(2), str(3), str(4))
-	case "gen.Out.write":
+	case "gen.Out.file":
 		if h.out == nil {
-			return nil, errors.New("out.write answers only in a gen.scheme's or a gen.emit's @generate handler")
+			return nil, errors.New("out.file answers only in a gen.scheme's or a gen.emit's @generate handler")
 		}
 		// args[0] is the receiver.
-		return nil, h.out.write(str(1), str(2))
+		return h.out.open(str(1))
+	case "gen.File.add", "gen.File.line":
+		f, ok := args[0].(*File)
+		if !ok {
+			return nil, fmt.Errorf("%s: not a file out.file opened", id)
+		}
+		if f.out != h.out {
+			return nil, fmt.Errorf("%s: %s was opened by a handler that has returned", id, f.name)
+		}
+		f.buf.WriteString(str(1))
+		if id == "gen.File.line" {
+			f.buf.WriteByte('\n')
+		}
+		return nil, nil
 	case "gen.Process.code":
 		p, _ := args[0].(*interp.Struct)
 		st, _ := p.Get("stdout")
@@ -590,28 +603,50 @@ type Output struct {
 	// package, whose files are .sngl names with no directory.
 	Paths bool
 	Names []string
-	Files map[string]string
+	// Files is each file's text, once Close has written what the handler
+	// added to it.
+	Files  map[string]string
+	opened []*File
 }
 
-func (o *Output) write(name, src string) error {
+// File is a file a handler opened with out.file: the text added to it, which
+// Close writes into the Output. The handler holds it as a gen.File.
+type File struct {
+	out  *Output
+	name string
+	buf  strings.Builder
+}
+
+func (o *Output) open(name string) (*File, error) {
 	if o.Paths {
 		clean := path.Clean(name)
 		if name == "" || path.IsAbs(name) || clean == "." || clean == ".." || strings.HasPrefix(clean, "../") {
-			return fmt.Errorf("out.write: %q is not a path inside the output directory", name)
+			return nil, fmt.Errorf("out.file: %q is not a path inside the output directory", name)
 		}
 		name = clean
 	} else if name == "" || path.Base(name) != name || !strings.HasSuffix(name, ".sngl") {
-		return fmt.Errorf("out.write: %q is not a file name: want a .sngl name with no directory", name)
+		return nil, fmt.Errorf("out.file: %q is not a file name: want a .sngl name with no directory", name)
 	}
+	if slices.Contains(o.Names, name) {
+		return nil, fmt.Errorf("out.file: %s opened twice", name)
+	}
+	o.Names = append(o.Names, name)
+	f := &File{out: o, name: name}
+	o.opened = append(o.opened, f)
+	return f, nil
+}
+
+// Close writes each file the handler opened, once it has returned. A handle
+// it kept somewhere writes nothing after.
+func (o *Output) Close() {
 	if o.Files == nil {
 		o.Files = map[string]string{}
 	}
-	if _, dup := o.Files[name]; dup {
-		return fmt.Errorf("out.write: %s written twice", name)
+	for _, f := range o.opened {
+		o.Files[f.name] = f.buf.String()
+		f.out = nil
 	}
-	o.Names = append(o.Names, name)
-	o.Files[name] = src
-	return nil
+	o.opened = nil
 }
 
 // NewRecorder is a recorder with nothing recorded.

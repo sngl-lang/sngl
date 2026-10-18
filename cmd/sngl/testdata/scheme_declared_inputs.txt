@@ -28,7 +28,7 @@ const v = x.v
 import gen "sngl:x/gen"
 
 gen.scheme(name="w", @generate(out, importPath) {
-    out.write("x.sngl", "import cache \"sngl:x/gen/cache\"\n\ncache.inputs \{\n    cache.env(name=\"SNGL_SECRET\")\n\}\n\nconst v = 1\n")
+    out.file("x.sngl").add("import cache \"sngl:x/gen/cache\"\n\ncache.inputs \{\n    cache.env(name=\"SNGL_SECRET\")\n\}\n\nconst v = 1\n")
 })
 -- file/app.sngl --
 import x "w:x"
@@ -39,7 +39,7 @@ const v = x.v
 import gen "sngl:x/gen"
 
 gen.scheme(name="w", @generate(out, importPath) {
-    out.write("x.sngl", "import cache \"sngl:x/gen/cache\"\n\ncache.inputs \{\n    cache.file(path=\"/etc/hostname\")\n\}\n\nconst v = 1\n")
+    out.file("x.sngl").add("import cache \"sngl:x/gen/cache\"\n\ncache.inputs \{\n    cache.file(path=\"/etc/hostname\")\n\}\n\nconst v = 1\n")
 })
 -- entry/app.sngl --
 import x "w:x"
@@ -50,7 +50,7 @@ const v = x.v
 import gen "sngl:x/gen"
 
 gen.scheme(name="w", @generate(out, importPath) {
-    out.write("x.sngl", "import cache \"sngl:x/gen/cache\"\n\ncache.inputs \{\n    cache.entry(producer=\"go.deps\", params=[\"/\", \"x\"])\n\}\n\nconst v = 1\n")
+    out.file("x.sngl").add("import cache \"sngl:x/gen/cache\"\n\ncache.inputs \{\n    cache.entry(producer=\"go.deps\", params=[\"/\", \"x\"])\n\}\n\nconst v = 1\n")
 })
 -- inroot/app.sngl --
 import x "w:x"
@@ -63,5 +63,5 @@ hi
 import gen "sngl:x/gen"
 
 gen.scheme(name="w", @generate(out, importPath) {
-    out.write("x.sngl", "import cache \"sngl:x/gen/cache\"\n\ncache.inputs \{\n    cache.file(path=\"data.txt\")\n\}\n\nconst v = 1\n")
+    out.file("x.sngl").add("import cache \"sngl:x/gen/cache\"\n\ncache.inputs \{\n    cache.file(path=\"data.txt\")\n\}\n\nconst v = 1\n")
 })

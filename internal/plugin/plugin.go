@@ -162,6 +162,7 @@ func run(host *buildhost.Host, s *ir.Scheme, uri string) (*buildhost.Output, []g
 		args = append(args, uri)
 	}
 	_, err = env.CallUserFuncValues(fn, args)
+	out.Close()
 	inputs, ferr := rec.Finish()
 	restore()
 	if raised, ok := errors.AsType[*interp.RaisedError](err); ok {

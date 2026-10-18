@@ -6,7 +6,7 @@ gen.scheme(name="gir", @generate(out, importPath) {
         error.raise("gir:" + importPath + ": only gir:Gtk-4.0 is read", "import")
         return
     }
-    out.write("widgets.sngl", widgets(importPath))
+    out.file("widgets.sngl").add(widgets(importPath))
 })
 
 // The SNGL source declaring every class of the namespace, from the

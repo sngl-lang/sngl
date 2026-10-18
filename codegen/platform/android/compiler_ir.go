@@ -1306,6 +1306,8 @@ func listElementTypeKt(ktType string) string {
 func literalStructLit(n *ir.StructLit) string {
 	name := ""
 	switch {
+	case ir.IsBuilder(n.Type):
+		return "StringBuilder()"
 	case n.Type != nil && ir.IsColorStruct(n.Type):
 		name = "Color"
 	case n.Def != nil:
