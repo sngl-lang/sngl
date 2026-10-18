@@ -204,18 +204,19 @@ func promoteForeignStructs(pkg *ir.Package) error {
 	// the later package's taking its last segment (draw.Style is Style__draw
 	// beside ui.Style), so the pair is the same whichever was promoted first.
 	//
-	// A program's own is reported rather than renamed: it is the author's name,
-	// and the one a test or a host reads it by.
+	// The program's own, or a directory's, is reported rather than renamed: it
+	// is the author's name, and the one a test or a host reads it by.
 	for _, sd := range added {
-		if other, clash := byName[sd.Name]; clash && other.PkgPath() != "" && !other.Frozen && !sd.Frozen {
-			later := sd
+		if other, clash := byName[sd.Name]; clash && fromLibrary(other) && fromLibrary(sd) {
+			later, kept := sd, other
 			if other.PkgPath() > sd.PkgPath() {
-				later, byName[sd.Name] = other, sd
+				later, kept = other, sd
 			}
 			_, rest, _ := strings.Cut(later.PkgPath(), ":")
-			later.Name += "__" + strings.Map(identRune, path.Base(rest))
-			if _, taken := byName[later.Name]; !taken {
-				byName[later.Name] = later
+			renamed := sd.Name + "__" + strings.Map(identRune, path.Base(rest))
+			if _, taken := byName[renamed]; !taken {
+				later.Name = renamed
+				byName[sd.Name], byName[renamed] = kept, later
 				continue
 			}
 		}
@@ -762,4 +763,8 @@ func identRune(r rune) rune {
 		return r
 	}
 	return '_'
+}
+
+func fromLibrary(sd *ir.StructDef) bool {
+	return strings.HasPrefix(sd.PkgPath(), "sngl:") && !sd.Frozen
 }

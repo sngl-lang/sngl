@@ -227,11 +227,9 @@ func bodyUsesNativeCall(fn *ir.Func) bool {
 				hasNative = true
 				return
 			}
-			if !seen[x.Func] && hasWrittenBody(x.Func) {
-				seen[x.Func] = true
-				for _, s := range x.Func.Block {
-					walkStmt(s)
-				}
+			if calleeCallsNative(x.Func, seen) {
+				hasNative = true
+				return
 			}
 			if x.Receiver != nil {
 				walkExpr(x.Receiver)
@@ -494,4 +492,27 @@ func unitValueExpr(amounts map[string]float64, typ *ir.Type) ir.Expr {
 		return &ir.Literal{Type: typ, Value: "0", Suffix: bases[0].Name}
 	}
 	return sum
+}
+
+// calleeCallsNative reports whether f's body, or a body it calls, calls a
+// declared native. A call there with no Func is through a value, which the
+// caller's own walk answers for where the value is written.
+func calleeCallsNative(f *ir.Func, seen map[*ir.Func]bool) bool {
+	if seen[f] || !hasWrittenBody(f) {
+		return false
+	}
+	seen[f] = true
+	found := false
+	_ = ir.Walk(f.Block, func(n ir.Node) error {
+		c, ok := n.(*ir.Call)
+		if !ok || c.Func == nil {
+			return nil
+		}
+		if c.Func.Foreign.Path != "" || isUnfoldableNative(c.Func) || calleeCallsNative(c.Func, seen) {
+			found = true
+			return ir.SkipAll
+		}
+		return nil
+	})
+	return found
 }

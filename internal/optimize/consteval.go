@@ -1483,7 +1483,10 @@ func evalListLambda(id string, args []any, ctx *evalCtx) (any, bool) {
 // whether every field now has a value.
 func fillOmittedFields(s *interp.Struct, def *ir.StructDef, ctx *evalCtx) bool {
 	if def == nil {
-		return true
+		def = expectedStructDef(s.Type)
+	}
+	if def == nil {
+		return false
 	}
 	complete := true
 	for _, f := range def.Fields {
