@@ -544,7 +544,11 @@ type ForStmt struct {
 // are conditions. The grammar takes either arm form in either position, and
 // the checker refuses the one that does not belong where the match is written.
 type Match struct {
-	Pos     Pos
+	Pos Pos
+	// Bind is the name `match var v = subject` gives the subject for the
+	// arms, at BindPos; "" where the head names nothing.
+	Bind    string
+	BindPos Pos
 	Subject Expr
 	Arms    []*MatchArm
 	// Head is the comment written after the opening brace on its line.

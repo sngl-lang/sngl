@@ -1,8 +1,9 @@
 // An enum member may carry a type, its payload: a value of the enum holds
 // exactly one member, and that member's payload with it. It is built as a
 // struct literal naming the one member, read by a selector that is present
-// only when the member is the one held, and matched by member, binding the
-// payload. A member with no payload is written as every member is.
+// only when the member is the one held, and matched by member, where
+// `match var v = s` names the payload of the member an arm names. A member
+// with no payload is written as every member is.
 
 import . "sngl:test"
 import . "sngl:ui"
@@ -32,21 +33,27 @@ enum Shape {
 var held Shape
 
 func area(s Shape) float {
-    match s {
+    match var v = s {
         empty { return 0.0 }
-        circle(var r) { return 3.0 * r * r }
-        rect(var r) { return r.w * r.h }
+        circle { return 3.0 * v * v }
+        rect { return v.w * v.h }
     }
 }
 
-func label(r Result[int]) => match r {
-    ok(var v) => "ok {v}"
-    failed(var f) => "failed: {f.message}"
+func label(r Result[int]) => match var v = r {
+    ok => "ok {v}"
+    failed => "failed: {v.message}"
 }
 
 func describe(s Shape) => match s {
     circle => "round"
     else => "not round"
+}
+
+// In an arm that names no member carrying a payload, the name is the subject.
+func kind(s Shape) => match var v = s {
+    circle => "round"
+    else => "area {area(v)}"
 }
 
 func half(n int) Result[int] {
@@ -70,19 +77,19 @@ component panel node {
 
     text #area(value="{area(shape)}")
     text #outcome(value=label(result))
-    text #radius(value=match shape {
-        circle(var r) => "{r}"
+    text #radius(value=match var r = shape {
+        circle => "{r}"
         else => "none"
     })
-    match shape {
-        circle(var r) { text #round(value="radius {r}") }
+    match var r = shape {
+        circle { text #round(value="radius {r}") }
         else {}
     }
 
     button #grow(text="Grow", @click {
-        shape = match shape {
+        shape = match var r = shape {
             empty => {circle=1.0}
-            circle(var r) => {circle=r + 1.0}
+            circle => {circle=r + 1.0}
             rect => Shape.empty
         }
     })
@@ -115,6 +122,8 @@ func testMatch(t Test, c panel) {
     t.assert(label(half(5)) == "failed: odd")
     t.assert(describe({circle=1.0}) == "round")
     t.assert(describe(Shape.empty) == "not round")
+    t.assert(kind({rect={w=2.0, h=3.0}}) == "area 6")
+    t.assert(kind(Shape.empty) == "area 0")
 }
 
 func testEquality(t Test, c panel) {

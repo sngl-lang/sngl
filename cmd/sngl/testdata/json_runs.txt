@@ -66,14 +66,14 @@ const sample = `{"id": 1, "name": "bulba", "kind": "fire-type", "extra": [1, 2],
     "stats": [{"base_stat": 45, "name": "hp"}, {"base_stat": 49, "name": "attack"}],
     "weight": 6.9, "tags": {"b": 2, "a": 0.5}, "caught": null, "seen": "2024-03-01T12:00:00Z"}`
 
-func failure[T any](r async.Result[T]) => match r {
+func failure[T any](r async.Result[T]) => match var f = r {
     ok => ""
-    failed(var f) => "{f.kind}: {f.message}"
+    failed => "{f.kind}: {f.message}"
 }
 
 func testDecode(t Test) {
-    match json.decode[Mon](sample) {
-        ok(var m) {
+    match var m = json.decode[Mon](sample) {
+        ok {
             t.assert(m.id == 1)
             t.assert(m.name == "bulba")
             t.assert(m.exp == null)
@@ -84,7 +84,7 @@ func testDecode(t Test) {
             t.assert(m.tags.get("a", 0.0) == 0.5)
             t.assert(m.caught == null)
         }
-        failed(var f) { t.assert(f.message == "") }
+        failed { t.assert(m.message == "") }
     }
 }
 
@@ -114,12 +114,12 @@ func testRoundTrip(t Test) {
     var tree = Tree{label="root", children=[Tree{label="a", children=[]}, Tree{label="b", children=[Tree{label="c", children=[]}]}]}
     var out = json.encode(tree)
     t.assert(out == `{"label":"root","children":[{"label":"a","children":[]},{"label":"b","children":[{"label":"c","children":[]}]}]}`)
-    match json.decode[Tree](out) {
-        ok(var back) {
+    match var back = json.decode[Tree](out) {
+        ok {
             t.assert(back.children[1].children[0].label == "c")
             t.assert(json.encode(back) == out)
         }
-        failed(var f) { t.assert(f.message == "") }
+        failed { t.assert(back.message == "") }
     }
 }
 
@@ -138,9 +138,9 @@ component panel node {
     var shown = "-"
     text #result(value=shown)
     button #run(text="Decode", @click {
-        match json.decode[Stat](`{"base_stat": 3, "name": "speed"}`) {
-            ok(var s) { shown = "{s.name} {s.baseStat}" }
-            failed(var f) { shown = f.message }
+        match var s = json.decode[Stat](`{"base_stat": 3, "name": "speed"}`) {
+            ok { shown = "{s.name} {s.baseStat}" }
+            failed { shown = s.message }
         }
     })
 }
@@ -154,7 +154,7 @@ window {
     panel
 }
 -- testrun/android/kotlin/app.sngl/_/1 --
-sha256:3c9b004728bf7ce292a88e61fc1e6906
+sha256:aa651966b4b60c471f19e955a04021e6
 {
   "results": [
     {
@@ -176,7 +176,7 @@ sha256:3c9b004728bf7ce292a88e61fc1e6906
   ]
 }
 -- testrun/android/kotlin/app.sngl/panel/1 --
-sha256:da004a0a47fdea0366e4af0d8b1982e4
+sha256:8f79b59bec93e7a54e8ecd021a2c3e15
 {
   "results": [
     {
@@ -186,7 +186,7 @@ sha256:da004a0a47fdea0366e4af0d8b1982e4
   ]
 }
 -- testrun/bubbletea/go/app.sngl/_/1 --
-sha256:8bd737f36fdd05bdb945c89bb678341a
+sha256:f74f27d836497132f0254397e6a78be3
 {
   "results": [
     {
@@ -208,7 +208,7 @@ sha256:8bd737f36fdd05bdb945c89bb678341a
   ]
 }
 -- testrun/bubbletea/go/app.sngl/panel/1 --
-sha256:c8794097f8abf9f218bb77636fa232e3
+sha256:1c0eee5e8503ba78f66661f401028ed6
 {
   "results": [
     {
@@ -218,7 +218,7 @@ sha256:c8794097f8abf9f218bb77636fa232e3
   ]
 }
 -- testrun/fyne/go/app.sngl/_/1 --
-sha256:6ea4d7546904999d7b1037d6ba0a5a23
+sha256:83cbe8d0069551a350ef95782b3b816c
 {
   "results": [
     {
@@ -240,7 +240,7 @@ sha256:6ea4d7546904999d7b1037d6ba0a5a23
   ]
 }
 -- testrun/fyne/go/app.sngl/panel/1 --
-sha256:a957a034de4dd7cfdc31c970309b9955
+sha256:8d85f5cf29167a99460e90c545231db7
 {
   "results": [
     {
@@ -250,7 +250,7 @@ sha256:a957a034de4dd7cfdc31c970309b9955
   ]
 }
 -- testrun/gtk4/go/app.sngl/_/1 --
-sha256:f73cd1a6dca80dd7f23cd5f4fee2453c
+sha256:e4083e6d6fe16b33bd18ffbe72f83cf0
 {
   "results": [
     {
@@ -272,7 +272,7 @@ sha256:f73cd1a6dca80dd7f23cd5f4fee2453c
   ]
 }
 -- testrun/gtk4/go/app.sngl/panel/1 --
-sha256:bd9b0d51bc2d71d2ce07a272e93929bd
+sha256:b219b17e2881dd4659a177f940c7ddec
 {
   "results": [
     {
@@ -282,7 +282,7 @@ sha256:bd9b0d51bc2d71d2ce07a272e93929bd
   ]
 }
 -- testrun/html/none/app.sngl/_/1 --
-sha256:4281ab988c432edd49008ca5e7b3186e
+sha256:876af0afb50916377b5a4844a14d6dd7
 {
   "results": [
     {
@@ -304,7 +304,7 @@ sha256:4281ab988c432edd49008ca5e7b3186e
   ]
 }
 -- testrun/html/none/app.sngl/panel/1 --
-sha256:9d078d3f902c615e6e54b18d8a7a7349
+sha256:f11eee25cb52a650ca6406ebddeeabb8
 {
   "results": [
     {

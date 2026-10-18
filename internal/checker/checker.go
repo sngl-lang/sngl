@@ -548,9 +548,9 @@ type checker struct {
 	// matchSubjects are the match subjects read once per arm, judged once
 	// purity is known (reportImpureMatchSubjects).
 	matchSubjects []viewSpread
-	// matchBinds are the payloads a match pattern binds where the arm reads
-	// the payload off the subject in place of a local, so it may not be
-	// written (match.go's bindPayload).
+	// matchBinds are the names `match var` gives where the arm reads off the
+	// subject in place of a local, so they may not be written (match.go's
+	// matchBind).
 	matchBinds map[*ir.Var]bool
 	// stmtCall is the call a call statement is about to check: the one call
 	// whose @error handler has a statement to be attached to.

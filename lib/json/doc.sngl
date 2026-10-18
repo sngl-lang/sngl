@@ -7,9 +7,9 @@
 //	    baseExperience option[int]
 //	}
 //
-//	match json.decode[Pokemon](text) {
-//	    ok(var p) { … }
-//	    failed(var f) { … }   // f.kind is decode
+//	match var p = json.decode[Pokemon](text) {
+//	    ok { … }
+//	    failed { … }   // p.kind is decode
 //	}
 //
 // `decode` answers an `async.Result`, the value or the failure that kept it

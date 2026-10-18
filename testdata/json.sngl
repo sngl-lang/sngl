@@ -28,21 +28,21 @@ struct Mon {
     tags  map[string, float]
 }
 
-func message[T any](r async.Result[T]) => match r {
+func message[T any](r async.Result[T]) => match var f = r {
     ok => ""
-    failed(var f) => f.message
+    failed => f.message
 }
 
 func testDecode(t Test) {
-    match json.decode[Mon](`{"id": 1, "kind": "fire-type", "stats": [{"base_stat": 45, "name": "hp"}], "tags": {"a": 0.5}, "x": 1}`) {
-        ok(var m) {
+    match var m = json.decode[Mon](`{"id": 1, "kind": "fire-type", "stats": [{"base_stat": 45, "name": "hp"}], "tags": {"a": 0.5}, "x": 1}`) {
+        ok {
             t.assert(m.id == 1)
             t.assert(m.exp == null)
             t.assert(m.kind == Kind.fire)
             t.assert(m.stats[0].baseStat == 45)
             t.assert(m.tags.get("a", 0.0) == 0.5)
         }
-        failed(var f) { t.assert(f.message == "") }
+        failed { t.assert(m.message == "") }
     }
 }
 
@@ -56,8 +56,8 @@ func testFailures(t Test) {
     t.assert(message(json.decode[Mon](`{"id": 1}`)) == "$.kind: missing")
     t.assert(message(json.decode[Kind](`"grass"`)) == "$: want one of fire-type, water")
     t.assert(message(json.decode[int](`{`)) == "not JSON")
-    match json.decode[Stat](`[]`) {
+    match var f = json.decode[Stat](`[]`) {
         ok { t.assert(false) }
-        failed(var f) { t.assert(f.kind == async.FailureKind.decode) }
+        failed { t.assert(f.kind == async.FailureKind.decode) }
     }
 }

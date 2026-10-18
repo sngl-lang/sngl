@@ -1,9 +1,9 @@
 // Making a request while the program runs, and the vocabulary of the URL it is
 // made to.
 //
-//	match http.get(url="{server}/api/v2/pokemon/", query={limit=20, offset=offset}) {
-//	    ok(var r) { … r.status, r.body … }
-//	    failed(var f) { … }   // f.kind is transport or timeout
+//	match var r = http.get(url="{server}/api/v2/pokemon/", query={limit=20, offset=offset}) {
+//	    ok { … r.status, r.body … }
+//	    failed { … }   // r.kind is transport or timeout
 //	}
 //
 // `send` answers an `async.Result`, and a failure only where no response

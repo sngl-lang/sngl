@@ -49,12 +49,12 @@ struct Page {
 }
 
 func lookup(name string) async.Result[Echo] {
-    match http.get(url="{server}/echo/{http.pathEscape(name)}", query=Page{size=20, tags=["a"]}) {
-        failed(var f) { return {failed=f} }
-        ok(var r) {
-            match r.checked() {
-                failed(var f) { return {failed=f} }
-                ok(var checked) { return json.decode[Echo](checked.body) }
+    match var r = http.get(url="{server}/echo/{http.pathEscape(name)}", query=Page{size=20, tags=["a"]}) {
+        failed { return {failed=r} }
+        ok {
+            match var checked = r.checked() {
+                failed { return {failed=checked} }
+                ok { return json.decode[Echo](checked.body) }
             }
         }
     }
@@ -67,8 +67,8 @@ component panel node {
     async.query(on=key, fetch=lookup, :value=answer)
     text(value=answer != null ? json.encode(answer) : "-")
     button(text="Send", @click {
-        match http.send(method=http.Method.post, url="{server}/echo", headers={"X-Sngl"="on"}, body=json.encode(Echo{method="m", query=null, kind=Kind.fire})) {
-            ok(var r) { sent = r.status }
+        match var r = http.send(method=http.Method.post, url="{server}/echo", headers={"X-Sngl"="on"}, body=json.encode(Echo{method="m", query=null, kind=Kind.fire})) {
+            ok { sent = r.status }
             failed { sent = -1 }
         }
     })
@@ -205,15 +205,15 @@ func Lookup(name string) Result__Echo {
 	}()
 	switch {
 	case (__match0.tag == 1):
-		f := __match0.Failed
-		return Result__Echo{tag: 1, Failed: f}
+		r := __match0.Failed
+		return Result__Echo{tag: 1, Failed: r}
 	default:
 		r := __match0.Ok
 		__match1 := ResponseChecked(r)
 		switch {
 		case (__match1.tag == 1):
-			f := __match1.Failed
-			return Result__Echo{tag: 1, Failed: f}
+			checked := __match1.Failed
+			return Result__Echo{tag: 1, Failed: checked}
 		default:
 			checked := __match1.Ok
 			return func() Result__Echo {
@@ -266,8 +266,8 @@ func (m *Model) __effect0_mount() {
 			m.pending__inst0 = false
 			switch {
 			case (r.tag == 0):
-				v := r.Ok
-				m.answer__inst0 = snglSome(v)
+				got := r.Ok
+				m.answer__inst0 = snglSome(got)
 				var __lt0 string
 				if m.answer__inst0 != nil {
 					__lt0 = sngljson.Encode[Echo]((*(m.answer__inst0)), func() *sngljson.Codec {
@@ -282,14 +282,14 @@ func (m *Model) __effect0_mount() {
 				m.__n1.SetText(__lt0)
 				m.failure__inst0 = nil
 			default:
-				f := r.Failed
+				got := r.Failed
 				m.failure__inst0 = func(_p1 *Failure) *Failure {
 					if _p1 == nil {
 						return nil
 					}
 					_v2 := *_p1
 					return &_v2
-				}(snglSome(f))
+				}(snglSome(got))
 			}
 		})
 	}()
@@ -640,13 +640,13 @@ fun MainScreen() {
                     	pending__inst0 = false
                     	when {
                     		(r is SnglResult__Echo.Ok) -> {
-                    			var v = (r as SnglResult__Echo.Ok).value
-                    			answer__inst0 = v
+                    			var got = (r as SnglResult__Echo.Ok).value
+                    			answer__inst0 = got
                     			failure__inst0 = null
                     		}
                     		else -> {
-                    			var f = (r as SnglResult__Echo.Failed).value
-                    			failure__inst0 = f?.let { _o1 -> _o1.copy() }
+                    			var got = (r as SnglResult__Echo.Failed).value
+                    			failure__inst0 = got?.let { _o1 -> _o1.copy() }
                     		}
                     	}
                     }
@@ -680,16 +680,16 @@ suspend fun lookup(name: String): SnglResult__Echo {
     var __match0: SnglResult__Response = run { val __r = SnglCodec.send("get", SnglCodec.withQuery(("http://127.0.0.1:47819/echo/" + SnglCodec.escape(name)), Page(size = 20, tags = listOf("a")), run { val c0 = SnglCodec(SnglCodec.STRUCT); c0.fields = listOf(SnglCodecField("page-size", SnglCodec.of(SnglCodec.OPTION, SnglCodec.of(SnglCodec.INT))), SnglCodecField("tags", SnglCodec.of(SnglCodec.LIST, SnglCodec.of(SnglCodec.STRING)))); c0.make = { a -> Page(size = a[0] as Int?, tags = a[1] as List<String>) }; c0.read = { v -> (v as Page).let { listOf<Any?>(it.size, it.tags) } }; c0 }), emptyMap(), null); if (__r.failed) (if (__r.timeout) SnglResult__Response.Failed(Failure(kind = SnglFailureKind.TIMEOUT, message = __r.message, code = "")) else SnglResult__Response.Failed(Failure(kind = SnglFailureKind.TRANSPORT, message = __r.message, code = ""))) else SnglResult__Response.Ok(Response(status = __r.status, headers = __r.headers, body = __r.body)) }
     when {
     	(__match0 is SnglResult__Response.Failed) -> {
-    		var f = (__match0 as SnglResult__Response.Failed).value
-    		return SnglResult__Echo.Failed(f.copy())
+    		var r = (__match0 as SnglResult__Response.Failed).value
+    		return SnglResult__Echo.Failed(r.copy())
     	}
     	else -> {
     		var r = (__match0 as SnglResult__Response.Ok).value
     		var __match1: SnglResult__Response = r.checked()
     		when {
     			(__match1 is SnglResult__Response.Failed) -> {
-    				var f = (__match1 as SnglResult__Response.Failed).value
-    				return SnglResult__Echo.Failed(f.copy())
+    				var checked = (__match1 as SnglResult__Response.Failed).value
+    				return SnglResult__Echo.Failed(checked.copy())
     			}
     			else -> {
     				var checked = (__match1 as SnglResult__Response.Ok).value
@@ -1078,16 +1078,16 @@ body { font-family: system-ui, sans-serif; }
     })()), null, null));
     if (__match0.tag === "failed") {
       ;
-      let f = __match0.value;
-      return { tag: "failed", value: { ...f } };
+      let r = __match0.value;
+      return { tag: "failed", value: { ...r } };
     } else {
       ;
       let r = __match0.value;
       let __match1 = Response_checked(r);
       if (__match1.tag === "failed") {
         ;
-        let f = __match1.value;
-        return { tag: "failed", value: { ...f } };
+        let checked = __match1.value;
+        return { tag: "failed", value: { ...checked } };
       } else {
         ;
         let checked = __match1.value;
@@ -1144,8 +1144,8 @@ body { font-family: system-ui, sans-serif; }
     state.pending__inst0 = false;
     if (r.tag === "ok") {
       ;
-      let v = r.value;
-      state.answer__inst0 = v;
+      let got = r.value;
+      state.answer__inst0 = got;
       __n1.textContent = state.answer__inst0 !== null ? _snglJSONEncode(state.answer__inst0, (() => {
         const c0 = { k: "s" };
         const c1 = { k: "e", w: ["fire-type", "water"], n: ["fire", "water"] };
@@ -1155,8 +1155,8 @@ body { font-family: system-ui, sans-serif; }
       state.failure__inst0 = null;
     } else {
       ;
-      let f = r.value;
-      state.failure__inst0 = ((_o1) => _o1 == null ? _o1 : { ..._o1 })(f);
+      let got = r.value;
+      state.failure__inst0 = ((_o1) => _o1 == null ? _o1 : { ..._o1 })(got);
     }
     ;
   }
@@ -1450,8 +1450,8 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:6e88668a14ca2f6bd1fcd1abdd606af9
+pass sha256:c41fce6783825607ba23bd69f327e550
 -- run/kotlin/android --
-pass sha256:77842a39db9aecb281cc75202eb8bc4d
+pass sha256:98eb7f312f8fc1642e871a6d3d4f4e32
 -- run/none/html --
-pass sha256:46274c2da3b4c5dbffd4a231c303fd52
+pass sha256:89b0dd3ce830178e4c0c7be72720447a

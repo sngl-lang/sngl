@@ -150,9 +150,6 @@ func (c *checker) inferExpr(e ast.Expr) ir.Expr {
 		return c.checkExpr(x.Inner)
 	case *ast.ConstExpr:
 		return c.inferConstExpr(x)
-	case *ast.BindExpr:
-		c.error(x.Pos, "var %s binds a payload in a match pattern and nowhere else", x.Name)
-		return invalidValue()
 	default:
 		// Every ast.Expr the parser builds in a value position has a rule
 		// above; a new node type without one is a compiler bug.
@@ -4226,7 +4223,7 @@ func (c *checker) refuseReadonlyWrite(target ir.Expr, pos ast.Pos, verb string) 
 			continue
 		case *ir.Ident:
 			if v, ok := n.Sym.(*ir.Var); ok && c.matchBinds[v] {
-				c.error(pos, "%s is bound by a match pattern and is read-only here: only an arm that is a block in a function may write it", n.Name)
+				c.error(pos, "%s is named by match var and is read-only here: only an arm that is a block in a function may write it", n.Name)
 				return
 			}
 			lv, isLoop := n.Sym.(*ir.LoopVar)
