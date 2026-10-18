@@ -1627,7 +1627,7 @@ sha256:d7fb885174c86a542916cc2055cd8ecc
   ]
 }
 -- testrun/gtk4/go/deepfire.sngl/main/1 --
-sha256:a10151568c491ca03111043a6508bcf4
+sha256:024dc266bb16d6b88e0f1ca5c4a972ac
 {
   "results": [
     {
@@ -1697,7 +1697,7 @@ sha256:dfd750bf9d586eb7f28ba3cdc36d305d
   ]
 }
 -- testrun/gtk4/go/nested.sngl/main/1 --
-sha256:9218923d1a0e17a3bd12bc075aa3d063
+sha256:d72f3879e0355992ee1292c454bee813
 {
   "results": [
     {
@@ -1765,7 +1765,7 @@ sha256:c7793a04ae9cc2d9541bc6f1956450eb
   ]
 }
 -- testrun/gtk4/go/sitecall.sngl/main/1 --
-sha256:f29865d5f569bf765e3a35c7252472e1
+sha256:ecebf1192489cc6ec79f4d9b8174fbdf
 {
   "results": [
     {
