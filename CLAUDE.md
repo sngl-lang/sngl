@@ -658,6 +658,52 @@ result of, `xs.map(fetch)`, since the host would read the wait rather than
 the answer (`refuseAsyncIntoHostCallbacks`,
 `testdata/error_async_into_host_callback.sngl`).
 
+## Queries
+
+**`async.query` is a request bracketed by the tree** (`lib/async/query.sngl`):
+asked when its node mounts and whenever `on` changes, abandoned when the node
+unmounts. It is ordinary SNGL over `effect` -- no mark, no intrinsic, no pass
+-- holding three two-way props a call site binds or leaves to the instance
+(`value`, `pending`, `failure`), firing `@load` and `@fail`, with `refresh()`
+re-keying the effect on a counter beside `on`. `fetch` answers
+`async.Result[T]`, the payload enum `{ ok T, failed Failure }`; a failure is a
+value, never a raise, and `Failure` is `kind` (`async.FailureKind`), `message`
+and the adapter's own `code`. **The latest attempt wins**: each mount numbers
+its attempt, an unmount bumps the number, and an answer whose number is stale
+writes nothing.
+
+Three general things it needed, each of its own:
+
+- **An effect's handler is started, not awaited** (`ir.Call.Detached`, written
+  by `startOf` in the effect lowering). A call marked so colours nothing async
+  (`ExprHasAsyncCall`, `exprHasFuncvarAsyncCall`, passAsyncOffload's
+  `callWaits`) and JavaScript writes it without `await`, so a mount runs to
+  its first wait and the settle goes on. Awaited, the settle held every other
+  bracket and the next key's mount until a request answered, so a stale answer
+  landed first and an unmounted query's answer landed at all
+  (`testdata/component_async_query.txtar`, run in Chromium, fails all three of
+  its tests without it).
+- **A blocking call's arguments are read on the drawing thread**
+  (`offloadState.bindArgs`): passAsyncOffload binds each argument of the first
+  waiting statement's waiting calls to an `__async_argN` ahead of the
+  goroutine, which read `m.__effect0_key` -- what the next settle overwrites --
+  off the thread that owns it (`testdata/async_query_go.txtar`).
+- **A function literal called where it stands waits where its function does**
+  (`ir.CallsAsyncValue`): an adapter's `fetch=func(k K) => call(k)` is
+  substituted into the mount as `(lambda)(key)`, which was neither awaited nor
+  offloaded. And rule 2 of `checkAsyncRules` does not read a lambda handed to a
+  prop as a call made by the render. Points-to binds no library component's
+  prop, so `fetch`'s signature is never coloured: it is every check's
+  declaration, and the call through it is a direct or a literal call by the
+  time it is emitted.
+
+bubbletea answers no `async.do` (#272), so a fetch that waits is refused at
+the call that waits (`cmd/sngl/testdata/async_query_bubbletea_refused.txt`);
+one that answers at once runs there as everywhere. Kotlin declares no async
+native, so on android a fetch answers at once. The interpreter runs `fetch` at
+mount, so a test reads the answer as there (`testdata/async_query.sngl`,
+and `async_query_loop.sngl` for a query per copy of a loop).
+
 ## Contexts
 
 A context is **dynamically scoped**: a read answers the nearest provider the
@@ -1082,7 +1128,7 @@ The tiers, and the split between them is the whole point of the system:
   value: a magnitude per base has no one ratio to report.
 - **`lib/math/` → `sngl:math`** — mathematical constants and functions: `pi` and `tau`, `sqrt`, `pow` and the trigonometry. A package rather than methods on `float`, because a constant has no receiver and nothing to fold — a zero-parameter static method survived only where the optimizer ran. The functions moved here from `float`: each takes a float without being about one, so a call reads `math.sin(x)`, and their intrinsic ids are `math.<name>`.
 - **`lib/seq/` → `sngl:seq`** — integer sequences: `count`, `range` and `step`, the `iter[int]` a counting loop iterates. Nothing else can produce one, since building a range in SNGL would need a loop and a loop needs a range; a sequence in a loop head lowers to the host's counting loop (`ir.IterCounted`), and anywhere else it is the pull sequence `iter[T]` is spelled as -- `func(func(T) bool)` in Go, a generator in JS, `Iterable<T>` in Kotlin -- so no list is built to iterate one. A list reaching an iter[T] position is wrapped by the conversion the checker already inserts there (`wrapIfNeeded`); a two-variable loop over one gets its ordinal from a counter (`passIndexedIter`), since a pull sequence hands out no index.
-- **`lib/async/` → `sngl:async`** — `start` and `do`: handing a closure somewhere else to run. They are each other's halves — `start` begins work that must not block the caller, `do` brings the answer back to the thread the target draws on — and **each is answered by a different half of the build**, which is why they are two declarations. Starting work is the host *language*'s (`go func(){}()`); reaching the drawing thread is the *platform*'s, because there is no such thread in general. `passAsyncOffload` has always written both for a blocking call on a language that cannot suspend; they are *declared* because a platform package needs to name one — a platform whose own `.sngl` describes a schedule (a timer handing its tick to a host scheduler) has to be back on the drawing thread before it touches a widget, and with no declaration has nothing to write but that platform's own spelling of `fyne.Do`, in its own package. A generator reaching its own thread from hand-written Go needs no name; a platform *package* does. That is the line against `ir.NodeOps`, which stay undeclared precisely because nothing can name them. A target that answers neither is refused at the call by `passAsyncCapable` rather than emitting code that does not compile: `async.do` on bubbletea used to come out as `m.post(...)`, a method on the model that does not exist.
+- **`lib/async/` → `sngl:async`** — `start` and `do`: handing a closure somewhere else to run. They are each other's halves — `start` begins work that must not block the caller, `do` brings the answer back to the thread the target draws on — and **each is answered by a different half of the build**, which is why they are two declarations. Starting work is the host *language*'s (`go func(){}()`); reaching the drawing thread is the *platform*'s, because there is no such thread in general. `passAsyncOffload` has always written both for a blocking call on a language that cannot suspend; they are *declared* because a platform package needs to name one — a platform whose own `.sngl` describes a schedule (a timer handing its tick to a host scheduler) has to be back on the drawing thread before it touches a widget, and with no declaration has nothing to write but that platform's own spelling of `fyne.Do`, in its own package. A generator reaching its own thread from hand-written Go needs no name; a platform *package* does. That is the line against `ir.NodeOps`, which stay undeclared precisely because nothing can name them. `query`, `Result` and `Failure` sit beside them: a request bracketed by the tree is the two one level up (see *Queries*). A target that answers neither is refused at the call by `passAsyncCapable` rather than emitting code that does not compile: `async.do` on bubbletea used to come out as `m.post(...)`, a method on the model that does not exist.
 - **`lib/dialog/` → `sngl:dialog`** — `Alert` and `File`: host-native modal surfaces. Not components — a component is placed in a tree and rendered, whereas `Alert.confirm` hands control to the host and returns what the user chose.
 - **`lib/test/` → `sngl:test`** — `Test`, the receiver a test function's first parameter carries.
 - **`lib/test/browser/` → `sngl:test/browser`** — what a page shows, read in the browser a test runs in: an element's text, attribute, markup and computed style, how many elements a node renders, and a pixel it paints. Each takes the node a test reaches by its `#id` and is answered by html's JavaScript alone, so a fixture importing it builds for html only -- `sngl:test` stays portable, and a question about the document is asked where only a document answers it.
@@ -3325,10 +3371,15 @@ one built at run time, or rendered more than once, cannot say which copy it
 means and is refused with a position, on the terms `uniqueNodeIDs` holds a
 handle to. That is also why `box.checked` beside an input under a reactive `if`
 is refused: the wrapper there is an instance of its own. Bare children stay at
-the call site and reach the node through the wrapper's own rest slot; two
-shapes are refused, neither reachable from `sngl:ui`, whose components carry
-one two-way prop and take no content: a call site binding one two-way prop and
-not another, and one populating a named slot.
+the call site and reach the node through the wrapper's own rest slot. A
+two-way prop the call site did bind is the wrapper's own two-way prop, bound to
+what the call site bound and through to the node, as an override binds its
+base's prop through to a primitive -- `async.query(:value=v)` keeps `pending`
+and `failure` and hands `value` on. A generic node's wrapper declares
+everything at the types its call site bound (`ir.ComponentBindings`,
+`ir.InstantiateExpr` for a default). One shape is refused, which no `sngl:ui`
+component reaches: a call site populating a named slot the node does not
+declare.
 
 A `const` component keeps no state, so a two-way prop of one left unbound is a
 checker error at the call site (`refuseUnboundConstProps`); a one-way value is
@@ -3728,7 +3779,11 @@ bound one and the window's own cell (passImplicitState) where nothing did; a
 read `details.visible` names the same. A method called through a component's
 `#id` is repointed at the clone the inliner made where it spliced the node
 (`repointHandleCalls`, beside repointCellReads) -- before, `p.open()` came out
-as `m.p.open()` and the method was shaken away -- and the inliner now
+as `m.p.open()` and the method was shaken away. One no splice answered is
+refused (`refuseUnsplicedHandleCalls`) once the components nothing renders are
+dropped, since a test build rooted at one component leaves its siblings'
+calls emitted nowhere
+(`cmd/sngl/testdata/test_root_sibling_handle_call_runs.txt`) -- and the inliner now
 substitutes a component's events into its hoisted methods too, which is how a
 method's write of a bound prop reaches the caller. The override binds the prop
 through (`Toplevel(:visible=visible)`), which works because passPropBindings
@@ -4930,8 +4985,8 @@ to exercise: generated output is identical either way. Confirm a new fixture
 **A test body is lowered by each language's own test emitter**
 (`codegen/lang/{golang,javascript,kotlin}/testlower.go`), and the interpreter
 is the reference every target is held to — `cmd/sngl/testdata/test_component_surface*.txt`
-runs one program through every form of access a test body has on all six. Four
-rules keep them agreeing:
+runs one program through every form of access a test body has on all six.
+These rules keep them agreeing:
 
 - **Test bodies are checked last**, after every component and window body:
   an unannotated component var has no type until its body is read.
@@ -4947,6 +5002,15 @@ rules keep them agreeing:
 - **An event invoker takes the event's arguments**: `c.f.input("v")` hands
   the invoker `"v"`, which it puts in the widget before firing the one event,
   as android's `performTextReplacement` does.
+- **Effects settle after every statement**: a compiled test settles after
+  each write (`settleAfterWrites`), and the interpreter's runner after each
+  statement as well as on each read through the instance, since a read of
+  package state goes through none -- a click that unmounted and remounted a
+  branch left `asked.length()` unsettled (`testdata/async_query_loop.sngl`).
+- **A member named `length` is a list's, a map's or a string's measure only
+  on one of those** (`ir.HasLength`): read off an instance it is the
+  program's var, which Go wrote as `len(c)`
+  (`cmd/sngl/testdata/test_reads_var_named_length_runs.txt`).
 
 **A test reaches into what its component renders** -- `c.b.hits`,
 `c.b.btn.click()`, `c.b.row[0].click()`, `c.b.reset()`, `c.r[1].pressed(7)`

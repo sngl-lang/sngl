@@ -324,7 +324,7 @@ func (gc *GoIRContext) Ternary(_ *ir.Ternary, _, _, _ string) string {
 }
 
 func (gc *GoIRContext) Select(n *ir.Select, operand string) string {
-	if n.Field == "length" {
+	if n.Field == "length" && ir.HasLength(n.Operand.ExprType()) {
 		return "len(" + operand + ")"
 	}
 	if t := n.Operand.ExprType(); ir.PayloadEnum(t) != nil {

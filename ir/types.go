@@ -853,3 +853,10 @@ func sameFields(a, b []*StructField) bool {
 	}
 	return true
 }
+
+// HasLength is whether t is a type whose `length` is its built-in measure --
+// a list, a map or a string -- rather than a member of that name. A type the
+// IR did not record is taken to have one, as every reader assumed before.
+func HasLength(t *Type) bool {
+	return t == nil || t.Kind == TypeList || t.Kind == TypeMap || t.Kind == TypeString
+}

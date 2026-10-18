@@ -109,6 +109,12 @@ func collectCalleesInStmt(out map[*ir.Func]bool, s ir.Stmt) {
 	switch n := s.(type) {
 	case *ir.NodeInst:
 		for _, prop := range n.Props {
+			// A function literal handed to a prop is a value the component
+			// calls where it means to -- a handler, a query's `fetch` -- and
+			// the render does not call it.
+			if _, isLambda := prop.Value.(*ir.Lambda); isLambda {
+				continue
+			}
 			collectCalleesInExpr(out, prop.Value)
 		}
 		collectCalleesInStmts(out, n.Children)
