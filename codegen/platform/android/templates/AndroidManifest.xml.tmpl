@@ -4,11 +4,8 @@
     android:versionCode="1"
     android:versionName="1.0">
     <uses-sdk android:minSdkVersion="{{.MinSdk}}" android:targetSdkVersion="{{.TargetSdk}}" />
-{{- if or .HasTestAgentBootstrap .HasInternet}}
-    <!-- INTERNET: the program reaches the network, or the on-device test
-         agent listens on a loopback ServerSocket (the host driver
-         adb-forwards a TCP port to it). -->
-    <uses-permission android:name="android.permission.INTERNET" />
+{{- range .Permissions}}
+    <uses-permission android:name="{{.}}" />
 {{- end}}
     <application
         android:allowBackup="true"

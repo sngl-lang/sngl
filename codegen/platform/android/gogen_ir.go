@@ -62,7 +62,7 @@ func (c *compilation) emitGo(req *codegen.Request, sink codegen.Sink) error {
 		if err := writeAndroidFile(sink, "golib/go.mod", goMod); err != nil {
 			return err
 		}
-		for _, f := range scaffoldFiles(cfg, false, false, usesNetwork(req.Pkg), false, "", false) {
+		for _, f := range scaffoldFiles(cfg, false, false, permissions(req.Pkg), false, "", false) {
 			if err := writeOutputFile(sink, f); err != nil {
 				return err
 			}
@@ -84,7 +84,7 @@ func (c *compilation) emitGo(req *codegen.Request, sink codegen.Sink) error {
 		if err := writeAndroidFile(sink, "golib/go.mod", goMod); err != nil {
 			return err
 		}
-		for _, f := range directBuildFiles(cfg, false, false, usesNetwork(req.Pkg), false) {
+		for _, f := range directBuildFiles(cfg, false, false, permissions(req.Pkg), false) {
 			if err := writeOutputFile(sink, f); err != nil {
 				return err
 			}

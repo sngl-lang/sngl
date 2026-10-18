@@ -1,0 +1,27 @@
+import async "sngl:async"
+import http "sngl:http"
+import ir "sngl:internal/ir"
+import marks "sngl:internal/marks"
+
+// A permission the app asks for wherever the marked declaration is reached:
+// `#[permission("android.permission.INTERNET")]` on the native an override
+// calls, so the manifest asks for what the program uses and nothing else.
+func permission(name string) ir.Macro
+
+// A request reaches the network. sngl:http's two are answered by the
+// language, so this package restates each intrinsic to say what a call of it
+// needs here: the build reads the permissions a call's id carries.
+
+#[permission("android.permission.INTERNET")]
+#[marks.intrinsic("http.send", async)]
+func send[Q struct {} = struct {}](
+    method  http.Method,
+    url     string,
+    query   Q = Q{},
+    headers map[string, string] = {},
+    body    option[string] = null,
+) async.Result[http.Response]
+
+#[permission("android.permission.INTERNET")]
+#[marks.intrinsic("http.get", async)]
+func get[Q struct {} = struct {}](url string, query Q = Q{}) async.Result[http.Response]

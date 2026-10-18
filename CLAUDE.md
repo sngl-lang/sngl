@@ -874,6 +874,19 @@ Both start from `codegen.AnalyzeCommon(doc)` which extracts model fields, comput
   A value has to reach the emitter through a *declared* prop, since that is what lowering turns into the `node.prop = expr` assignment the translator sees. `style` is the platform's own and renders nothing, as on gtk4; a temp its value reads -- a ternary passTernary hoisted -- is read into `_` (`codegen.KeepLocalsRead`, `testdata/style_ternary_unrendered.txtar`). So the primitives declare a vocabulary of value props by type (`text`, `placeholder`, `number`, `flag`, `options`) and `Setter` binds one to a Go method — the vocabulary grows with the types a setter takes, not with the widget count. Same for `@click`/`@change`/`@input` and `Handler`.
 - **android** — generates Android app code; supports `kotlin` and `golang`. Declares `navigation`: `sngl:ui/nav` is a Compose `NavHost` with typed routes (see *Navigation*), Kotlin only. A window's content that reaches its Screen through a slot -- a window under a reactive `if`, an instance of its own -- is wrapped in a `Column` carrying `safeDrawingPadding`, the inset the direct route puts on each root node (`testdata/android_window_slot_inset.txtar`). A method on a type that reads the page's state is a function of the page taking its receiver first (`pageTypeMethods`, `Pt_sum(p)`), since that state is MainScreen's locals or its test state class's members; one that reads none is an extension (`testdata/type_method_receiver.txtar`).
 
+  **An android app asks for what it reaches.** `#[android.permission("…")]`
+  (`lib/platform/android/http.sngl`) is written on the native an override
+  calls -- `SnglRemoteImage` for `ui.remote` -- and lands on
+  `ir.DeclInfo.Permissions`; the manifest asks for each one on a function
+  the program calls or a component it renders (`permissions`), so a program
+  that reaches no network asks for no `INTERNET`
+  (`cmd/sngl/testdata/android_internet_permission.txt`). A call the language
+  answers by intrinsic id has no android declaration to mark, so android
+  **restates the id** -- `#[permission(…)] #[marks.intrinsic("http.send")] func send(…)` -- which `ir.Builtins.RegisterIntrinsic` allows a target
+  package alone, where the parameters agree by name: the declaring package's
+  signature stays, and the restatement adds its permissions to the
+  `IntrinsicDef` a call's id finds.
+
   **The screen imports every name explicitly, and never a star**
   (`kotlin.KtIRContext.Name`, the counterpart of Go's `AliasFor`). In Kotlin
   an explicit import outranks a declaration of the file's own package, which
@@ -4158,10 +4171,9 @@ does with it is each target's:
   `Dispatchers.IO` and kept once it arrives, and counted in
   `SnglAssets.active` while it is fetched, which a Robolectric test's wait for
   idle waits on as it does `SnglCodec.active` (`activeCounters`). A URL in a
-  `canvasImage` still paints nothing. The manifest asks for `INTERNET` only
-  for a program that reaches the network -- a request or a URL's picture
-  (`usesNetwork`, `cmd/sngl/testdata/android_internet_permission.txt`). A
-  drawing is a `Canvas`.
+  `canvasImage` still paints nothing. A drawing is a `Canvas`. The manifest's
+  permissions are android's own mark (see *An android app asks for what it
+  reaches*).
 - none: the image holds its source, which a snapshot prints.
 
 **An avatar is a wrapper on `ui.image` that does the fallback**: its

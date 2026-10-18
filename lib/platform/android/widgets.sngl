@@ -96,6 +96,7 @@ component SnglImage(
 #[intrinsic("android:SnglAssetImage")]
 component SnglAssetImage(url string) ui.imageSource
 
+#[permission("android.permission.INTERNET")]
 #[intrinsic("android:SnglRemoteImage")]
 component SnglRemoteImage(url string) ui.imageSource
 

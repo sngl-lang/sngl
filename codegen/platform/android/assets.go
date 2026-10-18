@@ -46,23 +46,6 @@ func usesAssets(pkg *ir.Package) bool {
 	})
 }
 
-// usesNetwork reports whether the program reaches the network, which is
-// what the app asks the INTERNET permission for: a request through
-// sngl:http, or a picture a URL names.
-func usesNetwork(pkg *ir.Package) bool {
-	return reaches(pkg, func(n ir.Node) bool {
-		switch x := n.(type) {
-		case *ir.Call:
-			if x.Func != nil {
-				return x.Func.Intrinsic == ir.HTTPSendIntrinsic || x.Func.Intrinsic == ir.HTTPGetIntrinsic
-			}
-		case *ir.NodeInst:
-			return x.Component != nil && x.Component.Intrinsic == remoteImageIntrinsic
-		}
-		return false
-	})
-}
-
 // reaches reports whether any node of pkg satisfies is.
 func reaches(pkg *ir.Package, is func(ir.Node) bool) bool {
 	found := false

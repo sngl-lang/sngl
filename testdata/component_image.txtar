@@ -591,7 +591,7 @@ pass sha256:fea3ccd72fab6dc7be3834a9156a43d4
 -- run/go/gtk4 --
 pass sha256:67ec3e91a8b60e6e941ccd16ee5be6b4
 -- run/kotlin/android --
-pass sha256:eaef4ed8d6d212da1be165b9db8eca39
+pass sha256:cfbd712a18f0c8042f09448cfcde0699
 -- run/none/html --
 pass sha256:39cb31e49e0e1d5d71c35443be794f5f
 -- testrun/html/none/component_image.sngl/main/1 --

@@ -43,7 +43,7 @@ window {
     pictures
 }
 -- testrun/android/kotlin/app.sngl/pictures/1 --
-sha256:c914acbf0fd19db0d8f4bbec91e6187b
+sha256:41d39020035e840aa7fe46dd504f3020
 {
   "results": [
     {

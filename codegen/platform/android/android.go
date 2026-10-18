@@ -244,7 +244,7 @@ func (c *compilation) emitKotlin(req *codegen.Request, sink codegen.Sink) error 
 		// this since instrumented tests live in androidTest sourceset
 		// with a different dep set.
 		templateTestMode := robolectricAgent || (testMode && cfg.TestRunner != "device")
-		for _, f := range scaffoldFiles(cfg, usesI18n, usesAssets(req.Pkg), usesNetwork(req.Pkg), deviceAgent, testAgentInc, templateTestMode) {
+		for _, f := range scaffoldFiles(cfg, usesI18n, usesAssets(req.Pkg), permissions(req.Pkg), deviceAgent, testAgentInc, templateTestMode) {
 			if err := writeOutputFile(sink, f); err != nil {
 				return err
 			}
@@ -274,7 +274,7 @@ func (c *compilation) emitKotlin(req *codegen.Request, sink codegen.Sink) error 
 		if err := emitAssetsFile(req, sink, "MainScreen.kt", cfg.Package, ""); err != nil {
 			return err
 		}
-		for _, f := range directBuildFiles(cfg, usesI18n, usesAssets(req.Pkg), usesNetwork(req.Pkg), deviceAgent) {
+		for _, f := range directBuildFiles(cfg, usesI18n, usesAssets(req.Pkg), permissions(req.Pkg), deviceAgent) {
 			if err := writeOutputFile(sink, f); err != nil {
 				return err
 			}
