@@ -180,6 +180,10 @@ type irAndroidBind struct {
 	init   string  // pre-computed literal init (used for simple values)
 	initEx ir.Expr // raw IR when init is anything but a scalar literal
 	isList bool
+	// sealed says the type is a sealed class, an enum carrying payloads,
+	// whose initializer is one variant: inferred from it, the state could
+	// hold that variant and no other.
+	sealed bool
 }
 
 // stateTypeArg returns an explicit type argument ("<String?>") for
@@ -190,7 +194,7 @@ func stateTypeArg(bind irAndroidBind, initVal string) string {
 	// An option var starts from whatever its initializer is, which may be a
 	// value: Kotlin infers the state's type from it, and a later write of null
 	// does not compile. `datepicker(value=d)` keeps such a cell.
-	if strings.HasSuffix(bind.ktType, "?") {
+	if strings.HasSuffix(bind.ktType, "?") || bind.sealed {
 		return "<" + bind.ktType + ">"
 	}
 	if strings.TrimSpace(initVal) == "null" {
@@ -339,6 +343,7 @@ func bindFor(name string, typ *ir.Type, init ir.Expr) irAndroidBind {
 		init:   initVal,
 		initEx: initEx,
 		isList: isList,
+		sealed: ir.PayloadEnum(typ) != nil,
 	}
 }
 

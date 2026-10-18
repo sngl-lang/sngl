@@ -584,7 +584,7 @@ func (c *compilation) newTemplateData(widgetFields []widgetField, functionCode s
 	td.LangHelpers = helpers.Emit() + golang.EmitMergeFuncs(c.ctx.Pkg.MergeStructs)
 
 	// Units (excluding the special-cased `duration`).
-	td.UnitDecls = golang.EmitUnitTypeDecls(c.info.Units)
+	td.UnitDecls = golang.EmitUnitTypeDecls(c.info.Units) + golang.EmitEnumTypeDecls(c.info.Enums)
 
 	// Structs
 	for _, sd := range c.info.Structs {

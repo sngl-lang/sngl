@@ -489,7 +489,7 @@ func newIRTemplateData(info *irAnalysis, cfg Config, widgetFields []irWidgetFiel
 	}
 
 	// `duration` is special-cased to time.Duration.
-	td.UnitDecls = golang.EmitUnitTypeDecls(info.Units)
+	td.UnitDecls = golang.EmitUnitTypeDecls(info.Units) + golang.EmitEnumTypeDecls(info.Enums)
 
 	helpers := golang.HelpersNeeded(ctx.Pkg)
 	for _, imp := range helpers.Imports() {

@@ -224,7 +224,22 @@ func rebuildIncomparable(t *Type, seen []*StructDef) (string, []string) {
 		return "an unknown type", nil
 	}
 	switch t.Kind {
-	case TypeBool, TypeInt, TypeFloat, TypeString, TypeEnum, TypeUnit:
+	case TypeEnum:
+		// A value compares as the member it holds and that member's payload.
+		ed := PayloadEnum(t)
+		if ed == nil {
+			return "", nil
+		}
+		for _, m := range ed.Members {
+			if m.Payload == nil {
+				continue
+			}
+			if bad, path := rebuildIncomparable(MemberPayload(t, m.Name), seen); bad != "" {
+				return bad, append(path, fmt.Sprintf("payload of member %s of enum %s", m.Name, ed.Name))
+			}
+		}
+		return "", nil
+	case TypeBool, TypeInt, TypeFloat, TypeString, TypeUnit:
 		return "", nil
 	case TypeTypeParam:
 		// Judged where the parameter is bound to a concrete type. Answering

@@ -1253,6 +1253,9 @@ func (env *Env) evalLiteral(e *ir.Literal) (any, error) {
 
 func (env *Env) evalIdent(e *ir.Ident) (any, error) {
 	if e.Member != "" {
+		if ir.PayloadEnum(e.Type) != nil {
+			return EnumValue{Type: e.Type, Member: e.Member}, nil
+		}
 		return e.Member, nil
 	}
 	// i18n's predeclared PluralKey constants, whose value is the runtime's.
@@ -1446,6 +1449,9 @@ func (env *Env) evalSelect(e *ir.Select) (any, error) {
 			return intrinsics[id]([]any{obj})
 		}
 	}
+	if v, ok := enumMemberRead(obj, e.Field); ok {
+		return v, nil
+	}
 	if s, ok := obj.(*Struct); ok {
 		v, _ := s.Get(e.Field)
 		return v, nil
@@ -1606,6 +1612,13 @@ func (env *Env) evalListLit(e *ir.ListLit) (any, error) {
 }
 
 func (env *Env) evalStructLit(e *ir.StructLit) (any, error) {
+	if member, payload, ok := ir.EnumLitMember(e); ok {
+		v, err := env.Eval(payload)
+		if err != nil {
+			return nil, err
+		}
+		return EnumValue{Type: e.Type, Member: member, Payload: copyOf(v, payload.ExprType())}, nil
+	}
 	s := NewStruct(e.Def, e.Type)
 	for _, f := range e.Fields {
 		v, err := env.Eval(f.Value)
@@ -2977,6 +2990,12 @@ func Equal(a, b any) (eq, ok bool) {
 		return isUnit && au.Equal(bu), true
 	}
 	switch x := a.(type) {
+	case EnumValue:
+		y, isEnum := b.(EnumValue)
+		if !isEnum || x.Member != y.Member {
+			return false, isEnum
+		}
+		return Equal(x.Payload, y.Payload)
 	case *Struct:
 		y, isStruct := b.(*Struct)
 		if !isStruct || len(x.Fields) != len(y.Fields) {

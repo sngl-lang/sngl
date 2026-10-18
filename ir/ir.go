@@ -1415,9 +1415,12 @@ type StructField struct {
 type EnumDef struct {
 	AST *ast.EnumDef
 	DeclInfo
-	Members   []*EnumMember
-	BodyOwner string           `json:",omitempty"` // see StructDef.BodyOwner
-	Methods   map[string]*Func `json:"-"`
+	// TypeParams are what a member's payload may name, as a struct's fields
+	// may: `enum Result[T any] { ok T, failed Failure }`.
+	TypeParams []TypeParam `json:",omitempty"`
+	Members    []*EnumMember
+	BodyOwner  string           `json:",omitempty"` // see StructDef.BodyOwner
+	Methods    map[string]*Func `json:"-"`
 }
 
 func (e *EnumDef) SymName() string { return e.Name }
@@ -1426,10 +1429,13 @@ func (e *EnumDef) SymType() *Type  { return &Type{Kind: TypeEnum, Decl: e} }
 // IsExported reports whether the enum is part of its package's public API.
 func (e *EnumDef) IsExported() bool { return isExportedName(e.Name) }
 
-// EnumMember is a single value in an enum.
+// EnumMember is a single value in an enum. Payload is the type the member
+// carries, nil for one that carries none; a member with a payload has no
+// Value.
 type EnumMember struct {
-	Name  string
-	Value Expr // nil for bare members
+	Name    string
+	Payload *Type `json:",omitempty"`
+	Value   Expr  // nil for bare members
 }
 
 // UnitDef is a resolved unit type declaration with conversion table.

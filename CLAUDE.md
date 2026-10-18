@@ -506,8 +506,18 @@ statement goes, `pattern => value` where a value goes, and the checker refuses
 the other (the grammar takes both everywhere). A pattern is a constant -- an
 enum member written bare, a literal, a `const`, `null` -- compared with `==`;
 commas join patterns, `else` is the last arm, and nothing falls through. A
-headless `match { cond => … }` tests `bool` conditions in order. There is no
-binding pattern yet; `var name` can be added without breaking anything.
+headless `match { cond => … }` tests `bool` conditions in order.
+
+**`match var v = subject` names the subject for the arms** (`ast.Match.Bind`,
+`matchBind` in `internal/checker/match.go`), as Go's type switch does: in an
+arm whose one pattern is a member carrying a payload, `v` is that payload; in
+every other arm it is the subject, narrowed to its element where the subject
+is an option and the arm cannot be taken on `null` (`subjectBind`). In a block
+run imperatively `v` is a local ahead of the block, declared only where the
+arm names it, since Go refuses one unused; anywhere else -- a view, a match
+expression -- each read of `v` is the read off the subject in place, which
+may then not be written (`matchBinds`). Nothing after the checker sees the
+name (`testdata/match_var.sngl`, `cmd/sngl/testdata/match_var_runs.txt`).
 
 **Every match is exhaustive**: each enum member, `true` and `false`, and
 `null` for an option, or an `else`. An `else` beside full coverage is allowed
@@ -580,6 +590,80 @@ subject before the rest of the statement, as a spread's operand is.
 `error_match_impure_subject.sngl`, `match.txtar`, `match_native.txtar`,
 `cmd/sngl/testdata/match_runs.txt`, `match_native_runs.txt` and
 `match_roundtrip.txt`.
+
+## Payload enums
+
+**An enum member may carry a type, its payload**, and a value of such an
+enum holds exactly one member and that member's payload:
+`enum Result[T any] { ok T, failed Failure }`. An enum takes type parameters
+as a struct does (`EnumDecl = kw_enum [ ident ] [ TypeParamList ] …`,
+`EnumMember = ident [ Type ] [ assign Expr ]`), and a member with a payload
+takes no `= value`. An enum whose members carry nothing is every enum there
+was before and every target emits it as it always has; `ir.PayloadEnum` is
+the question "does this one carry anything", and `ir.MemberPayload` the
+payload's type at a value's type arguments. A top-level enum's payloads
+resolve after every type's shell, as a struct's fields do
+(`resolveEnumBody`).
+
+The IR spells what a program does with one in constructs every walk already
+reaches (`ir/enums.go`), so no pass learned a node:
+
+- **Construction is a struct literal naming one member**, `Result[int]{ok=2}`
+  or `{ok=2}` where the type is expected: an `ir.StructLit` of the enum's
+  type with one field and no `Def` (`inferEnumLit`, `ir.EnumLitMember`). A
+  member with no payload is its `Ident`, `Shape.empty`, as it always was.
+  Naming two, none, an unknown member or one with no payload is a positioned
+  error.
+- **`r.ok` is an `ir.Select` typed `option[payload]`**, present only where r
+  holds the member, so the null test that narrows any option narrows it. A
+  member with no payload reads as a `bool`, `ir.EnumIs`. A payload that is
+  itself an option is refused a selector (Kotlin and JavaScript have no
+  option of an option) and is matched instead; the read is refused as an
+  assignment target.
+- **Whether r holds a member is `enum.is(r, "ok")` and the payload
+  `enum.payload(r, "ok")`**, two compiler-synthesized intrinsics
+  (`EnumIsIntrinsic`, `EnumPayloadIntrinsic`) each language and the
+  interpreter answer. The always-on `passEnumReads` writes a selector's null
+  test as the first and a narrowed read as the second, so what a target
+  meets of the selector is only a read whose option is used as one.
+- **A match over one is headless**: `match var v = r { ok { … } failed { … } }`
+  is checked (`checkMemberMatch`) into arms each taken on `enum.is` of the
+  subject, so `Chain`, `TernaryChain`, `Taken` and every target's rendering
+  of a headless match serve it unchanged. `v` is the payload in an arm whose
+  one pattern names a member carrying one (see *Match*). Exhaustive as every
+  match is.
+- **The zero is the first member's, with its payload's zero** (`ZeroExpr`).
+- **`==` compares member and payload**, and is refused where a payload does
+  not compare alike on every target (`ir.RebuildIncomparable`, which an
+  effect's key asks too). A payload enum has no string form: `string(r)` and
+  `"{r}"` are refused unless it declares `string()`.
+
+Each target: **Go** a struct of an unexported `tag int` (the member's
+position, so the struct's zero is the first member's) and an exported field
+per payload member, compared with `==`; a selector is an inline function
+returning the payload's address. **JavaScript** `{tag, value}`, the tag the
+member's name, compared by an expression written out from the type
+(`jsEqualExpr`). **Kotlin** a sealed class of a `data class` per payload
+member holding `value` and a `data object` per atom, a `mutableStateOf` and a
+local of one given the sealed type. **The interpreter** an `interp.EnumValue`.
+Go and Kotlin copy a generic enum per instantiation, a library's into the
+program, on each side of the struct pass (`monomorphizeEnums`).
+`testdata/enum_payload.sngl`, `error_enum_payload.sngl`,
+`error_enum_payload_value.sngl`, `enum_payload.txtar` and
+`cmd/sngl/testdata/enum_payload_runs.txt`.
+
+**Async is inferred, never written.** A function is async when its body
+waits for an async call (`ir.Func.IsAsync`), and a func-typed slot -- a var,
+a parameter, a component's prop -- is coloured async when points-to says an
+async function may flow into it (`colorAsyncSlots`, stamping
+`FuncSig.Color`). The colour travels with the type, so a call through the
+slot waits (`ir.CallsAsyncValue`) after a lowering has moved it somewhere
+points-to never saw, as an instance built at run time does with its props
+(`testdata/funcvar_prop_async.txtar`). The one refusal is rule 3: a function
+that waits, handed to a callback a native or an intrinsic calls and uses the
+result of, `xs.map(fetch)`, since the host would read the wait rather than
+the answer (`refuseAsyncIntoHostCallbacks`,
+`testdata/error_async_into_host_callback.sngl`).
 
 ## Contexts
 

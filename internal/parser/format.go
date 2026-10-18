@@ -519,6 +519,7 @@ func (f *formatter) writeEnumDef(e *ast.EnumDef) {
 	f.write("enum ")
 	if e.Name != "" {
 		f.write(e.Name)
+		f.writeTypeParams(e.TypeParams)
 		f.write(" ")
 	}
 	f.write("{")
@@ -533,6 +534,7 @@ func (f *formatter) writeEnumDef(e *ast.EnumDef) {
 	body := e.Body
 	if e.IsMultiline || hasFuncs {
 		body = takeHeaderComment(f, body)
+		widths := f.memberWidths(body)
 		f.newline()
 		f.indent++
 		for i := 0; i < len(body); i++ {
@@ -543,11 +545,7 @@ func (f *formatter) writeEnumDef(e *ast.EnumDef) {
 			item := body[i]
 			switch it := item.(type) {
 			case *ast.EnumMember:
-				f.write(it.Name)
-				if it.Value != nil {
-					f.write(" = ")
-					f.writeExpr(it.Value)
-				}
+				f.writeEnumMember(it, widths[i])
 			case *ast.FuncDef:
 				f.writeFuncDef(it)
 			}
@@ -574,13 +572,61 @@ func (f *formatter) writeEnumDef(e *ast.EnumDef) {
 		if i > 0 {
 			f.write(", ")
 		}
-		f.write(m.Name)
-		if m.Value != nil {
-			f.write(" = ")
-			f.writeExpr(m.Value)
-		}
+		f.writeEnumMember(m, 0)
 	}
 	f.write(" }")
+}
+
+// writeEnumMember writes a member, its payload's type aligned at width as a
+// struct field's is.
+func (f *formatter) writeEnumMember(m *ast.EnumMember, width int) {
+	f.write(m.Name)
+	if m.Payload != nil {
+		f.write(strings.Repeat(" ", max(1, width-len(m.Name)+1)))
+		f.writeType(m.Payload)
+	}
+	if m.Value != nil {
+		f.write(" = ")
+		f.writeExpr(m.Value)
+	}
+}
+
+// memberWidths is fieldWidths for an enum body: a run of members carrying a
+// payload aligns their types, and a member with none, a method or a blank
+// line ends the run.
+func (f *formatter) memberWidths(body []ast.EnumBodyItem) []int {
+	out := make([]int, len(body))
+	start := 0
+	flush := func(end int) {
+		w := 0
+		for _, item := range body[start:end] {
+			if m, ok := item.(*ast.EnumMember); ok && m.Payload != nil {
+				w = max(w, len(m.Name))
+			}
+		}
+		for i := start; i < end; i++ {
+			if m, ok := body[i].(*ast.EnumMember); ok && m.Payload != nil {
+				out[i] = w
+			}
+		}
+		start = end
+	}
+	for i := range body {
+		if m, ok := body[i].(*ast.EnumMember); !ok || m.Payload == nil {
+			if _, isComment := body[i].(*ast.Comment); !isComment {
+				flush(i)
+				start = i + 1
+				continue
+			}
+		}
+		if i > start {
+			if line := bodyItemLine(body[i]); line > 0 && f.doc != nil && f.doc.BlankBefore(line) {
+				flush(i)
+			}
+		}
+	}
+	flush(len(body))
+	return out
 }
 
 // --- unit ---
@@ -895,6 +941,9 @@ func (f *formatter) writeForStmt(s *ast.ForStmt) {
 // with no comments stays on it; otherwise each arm takes a line of its own.
 func (f *formatter) writeMatch(m *ast.Match) {
 	f.write("match ")
+	if m.Bind != "" {
+		f.write("var " + m.Bind + " = ")
+	}
 	if m.Subject != nil {
 		f.writeExpr(m.Subject)
 		f.write(" ")

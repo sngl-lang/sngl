@@ -704,11 +704,14 @@ func (b *builder) buildStructField(it nodeIter) *ast.StructField {
 // --- Enum declaration ---
 
 func (b *builder) buildEnumDecl(it nodeIter) *ast.EnumDef {
-	// EnumDecl = kw_enum [ ident ] lbrace { EnumBodyItem (comma|semi) } rbrace .
+	// EnumDecl = kw_enum [ ident ] [ TypeParamList ] lbrace { EnumBodyItem (comma|semi) } rbrace .
 	pos := b.posFromToken(it.shift()) // kw_enum
 	e := &ast.EnumDef{Pos: pos}
 	if !it.done() && !it.isNonTerminal() && it.tokenType() == IDENT {
 		e.Name = it.shift().Literal
+	}
+	if !it.done() && it.isNonTerminal() && it.symbol() == TypeParamList {
+		e.TypeParams = b.buildTypeParams(it.enter())
 	}
 	lbraceLine, rbraceLine := 0, 0
 	if !it.done() && !it.isNonTerminal() && it.tokenType() == LBRACE {
@@ -763,6 +766,9 @@ func (b *builder) buildEnumMember(it nodeIter) *ast.EnumMember {
 		nameTok := it.shift()
 		m.Pos = b.posFromToken(nameTok)
 		m.Name = nameTok.Literal
+	}
+	if !it.done() && it.isNonTerminal() && it.symbol() == Type {
+		m.Payload = b.buildType(it.enter())
 	}
 	if !it.done() && !it.isNonTerminal() && it.tokenType() == ASSIGN {
 		it.skip() // assign
@@ -1939,9 +1945,19 @@ func (b *builder) buildForNode(it nodeIter) *ast.ForStmt {
 }
 
 func (b *builder) buildMatch(it nodeIter) ast.Match {
-	// Match    = kw_match [ CondExpr ] lbrace [ semi ] [ MatchArm { semi [ MatchArm ] } ] rbrace .
+	// Match    = kw_match [ kw_var ident assign CondExpr | CondExpr ] lbrace [ semi ] [ MatchArm { semi [ MatchArm ] } ] rbrace .
 	// MatchArm = ( kw_else | CondExpr { comma CondExpr } ) ( StmtBlock | fat_arrow Expr ) .
 	m := ast.Match{Pos: b.posFromToken(it.shift())} // kw_match
+	if !it.done() && !it.isNonTerminal() && it.tokenType() == KW_VAR {
+		it.skip() // kw_var
+		if !it.done() && !it.isNonTerminal() && it.tokenType() == IDENT {
+			tok := it.shift()
+			m.Bind, m.BindPos = tok.Literal, ast.Pos(b.posFromToken(tok))
+		}
+		if !it.done() && !it.isNonTerminal() && it.tokenType() == ASSIGN {
+			it.skip() // assign
+		}
+	}
 	if !it.done() && it.isNonTerminal() && it.symbol() == CondExpr {
 		m.Subject = b.buildExpr(it.enter())
 	}

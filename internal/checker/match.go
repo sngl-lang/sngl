@@ -62,6 +62,9 @@ func (c *checker) checkMatch(m *ast.Match, isExpr bool) ir.MatchArms {
 	expected := c.expected
 	subject, read := c.matchSubject(m)
 	subjType := exprType(subject)
+	if ed := ir.PayloadEnum(optionElem(subjType)); ed != nil {
+		return c.checkMemberMatch(m, isExpr, expected, read, subjType, ed)
+	}
 	known := subject == nil || (subjType != nil && subjType.Kind != ir.TypeInvalid)
 
 	out := ir.MatchArms{}
@@ -75,39 +78,27 @@ func (c *checker) checkMatch(m *ast.Match, isExpr bool) ir.MatchArms {
 			c.error(arm.Pos, "arm is unreachable after else: else is taken whenever no arm before it is")
 		}
 		a := &ir.MatchArm{Pos: arm.Pos, Else: arm.Else}
+		nullSeen := cov.seen["null"]
+		takesNull := false
 		restore := c.noPrelude()
 		for _, p := range arm.Patterns {
 			if pat := c.checkMatchPattern(m, p, subject, read, cov); pat != nil {
 				a.Patterns = append(a.Patterns, pat)
+				if key, _, ok := patternKey(pat); ok && key == "null" {
+					takesNull = true
+				}
 			}
 		}
 		restore()
 		if arm.Else {
 			elseAt = arm
+			takesNull = !nullSeen
 		}
-		if isExpr {
-			if arm.IsBlock() {
-				c.error(arm.Pos, "an arm of a match expression is written pattern => value: a block gives the match no value")
-				a.Value = invalidValue()
-			} else {
-				want := expected
-				if (want == nil || want.Kind == ir.TypeInvalid) && len(out.Arms) > 0 {
-					want = exprType(out.Arms[0].Value)
-				}
-				restore := c.noPrelude()
-				a.Value = c.checkExprExpecting(arm.Value, want)
-				restore()
-			}
-		} else {
-			if !arm.IsBlock() {
-				c.error(arm.Pos, "an arm of a match statement is a block: write the pattern followed by { … }")
-				restore := c.noPrelude()
-				c.checkExpr(arm.Value)
-				restore()
-			} else {
-				a.Body = c.checkScopeBlockIR(&arm.Body)
-			}
+		var bind *matchBind
+		if m.Bind != "" && read != nil {
+			bind = c.subjectBind(m, isExpr, subjType, read, takesNull)
 		}
+		c.checkArmBody(a, arm, isExpr, expected, out.Arms, bind)
 		out.Arms = append(out.Arms, a)
 	}
 
@@ -120,6 +111,80 @@ func (c *checker) checkMatch(m *ast.Match, isExpr bool) ir.MatchArms {
 		}
 	}
 	return out
+}
+
+// checkArmBody checks what an arm does -- its value in a match expression, its
+// block in a statement -- with bind, the name `match var` gives the subject,
+// in scope.
+func (c *checker) checkArmBody(a *ir.MatchArm, arm *ast.MatchArm, isExpr bool, expected *ir.Type, done []*ir.MatchArm, bind *matchBind) {
+	if bind != nil {
+		c.pushScope()
+		defer c.popScope()
+		c.declare(bind.pos, bind.sym)
+		if !bind.local {
+			if c.matchBinds == nil {
+				c.matchBinds = map[*ir.Var]bool{}
+			}
+			c.matchBinds[bind.sym] = true
+		}
+	}
+	{
+		if isExpr {
+			if arm.IsBlock() {
+				c.error(arm.Pos, "an arm of a match expression is written pattern => value: a block gives the match no value")
+				a.Value = invalidValue()
+			} else {
+				want := expected
+				if (want == nil || want.Kind == ir.TypeInvalid) && len(done) > 0 {
+					want = exprType(done[0].Value)
+				}
+				restore := c.noPrelude()
+				a.Value = c.checkExprExpecting(arm.Value, want)
+				restore()
+			}
+		} else {
+			if !arm.IsBlock() {
+				c.error(arm.Pos, "an arm of a match statement is a block: write the pattern followed by { … }")
+				restore := c.noPrelude()
+				c.checkExpr(arm.Value)
+				restore()
+			} else {
+				var head []string
+				if bind != nil {
+					head = []string{bind.sym.Name}
+				}
+				a.Body = c.checkScopeBlockIR(&arm.Body, head...)
+			}
+		}
+	}
+	if bind == nil {
+		return
+	}
+	if bind.local {
+		// Declared only where the arm names it: an arm that does not would
+		// hand a host a local it never uses, which Go refuses.
+		if blockNames(a.Body, bind.sym) {
+			a.Body = append([]ir.Stmt{&ir.LocalVar{Name: bind.sym.Name, Type: bind.sym.Type, Init: bind.read(), Sym: bind.sym}}, a.Body...)
+		}
+		return
+	}
+	// Read in place: each read of the binding is a read off the subject,
+	// which a match may read again (matchSubject).
+	subst := func(e ir.Expr) (ir.Expr, error) {
+		if id, ok := e.(*ir.Ident); ok && id.Sym == ir.Symbol(bind.sym) {
+			return bind.read(), nil
+		}
+		return e, nil
+	}
+	if a.Value != nil {
+		a.Value, _ = ir.RewriteExpr(a.Value, func(n ir.Node) (ir.Node, error) {
+			if e, ok := n.(ir.Expr); ok {
+				return subst(e)
+			}
+			return n, nil
+		})
+	}
+	_ = ir.RewriteExprs(a.Body, subst)
 }
 
 // matchSubject checks the subject, and returns it with the function each arm
@@ -389,3 +454,167 @@ func (m *matchCoverage) missing() string {
 
 // invalidValue stands where a value failed to check and was reported.
 func invalidValue() ir.Expr { return &ir.Literal{Type: &ir.Type{}} }
+
+// matchBind is what `match var v = subject` names in one arm: sym, declared
+// in the arm, and read, what it reads off the subject. In an arm whose one
+// pattern is a member carrying a payload that is the payload; in every other
+// arm it is the subject, and the subject's element where the subject is an
+// option the arm is not taken on null. A local holds it in a block run
+// imperatively, which the arm may write like any other; anywhere else -- a
+// view, a match expression -- there is no statement to hold one, so each read
+// of sym is that read in place and sym may not be written.
+type matchBind struct {
+	pos   ast.Pos
+	sym   *ir.Var
+	read  func() ir.Expr
+	local bool
+}
+
+// subjectBind names the subject in an arm, narrowed to its element where the
+// subject is an option and the arm is not taken on null.
+func (c *checker) subjectBind(m *ast.Match, isExpr bool, subjType *ir.Type, read func() ir.Expr, takesNull bool) *matchBind {
+	typ, at := subjType, read
+	if subjType != nil && subjType.Kind == ir.TypeOption && !takesNull {
+		typ = optionElem(subjType)
+		at = func() ir.Expr { return &ir.Conversion{Type: typ, Operand: read()} }
+	}
+	return c.newMatchBind(m, isExpr, typ, at)
+}
+
+func (c *checker) newMatchBind(m *ast.Match, isExpr bool, typ *ir.Type, read func() ir.Expr) *matchBind {
+	return &matchBind{
+		pos:   m.BindPos,
+		sym:   &ir.Var{Name: m.Bind, Type: typ},
+		read:  read,
+		local: !isExpr && c.funcDepth > 0,
+	}
+}
+
+// blockNames reports whether a block refers to sym anywhere.
+func blockNames(block []ir.Stmt, sym *ir.Var) bool {
+	found := false
+	_ = ir.WalkExprs(block, func(e ir.Expr) error {
+		if id, ok := e.(*ir.Ident); ok && id.Sym == ir.Symbol(sym) {
+			found = true
+		}
+		return nil
+	})
+	return found
+}
+
+// checkMemberMatch checks a match over an enum whose members carry payloads.
+// A pattern names a member, `ok`, and `match var v = r` names the payload of
+// the member an arm's one pattern names. The match it makes is headless: each arm is taken on whether
+// the subject holds its member, which reads the subject however a pattern
+// compared against it would.
+func (c *checker) checkMemberMatch(m *ast.Match, isExpr bool, expected *ir.Type, read func() ir.Expr, subjType *ir.Type, ed *ir.EnumDef) ir.MatchArms {
+	optional := subjType.Kind == ir.TypeOption
+	enumType := optionElem(subjType)
+	// held is the subject as the enum, where it is known to be present.
+	held := func() ir.Expr {
+		if optional {
+			return &ir.Conversion{Type: enumType, Operand: read()}
+		}
+		return read()
+	}
+	out := ir.MatchArms{}
+	cov := newMatchCoverage(subjType)
+	var elseAt *ast.MatchArm
+	for _, arm := range m.Arms {
+		if elseAt != nil {
+			c.error(arm.Pos, "arm is unreachable after else: else is taken whenever no arm before it is")
+		}
+		a := &ir.MatchArm{Pos: arm.Pos, Else: arm.Else}
+		nullSeen := cov.seen["null"]
+		takesNull := false
+		var payloadOf *ir.EnumMember
+		for _, p := range arm.Patterns {
+			member, isNull, ok := c.memberPattern(p, ed, optional)
+			if !ok {
+				continue
+			}
+			if isNull {
+				takesNull = true
+				if !cov.add("null") {
+					c.error(*p.ExprPos(), "pattern null is already matched by an arm above")
+					continue
+				}
+				a.Patterns = append(a.Patterns, &ir.Binary{Type: TypBool, Op: ast.BinEq, Left: read(), Right: &ir.Literal{Type: ir.TypNull, Value: "null"}})
+				continue
+			}
+			if !cov.add("member:" + member.Name) {
+				c.error(*p.ExprPos(), "pattern %s is already matched by an arm above", member.Name)
+				continue
+			}
+			var test ir.Expr = ir.EnumIs(held(), member.Name)
+			if optional {
+				test = &ir.Binary{Type: TypBool, Op: ast.BinAnd,
+					Left:  &ir.Binary{Type: TypBool, Op: ast.BinNeq, Left: read(), Right: &ir.Literal{Type: ir.TypNull, Value: "null"}},
+					Right: test}
+			}
+			a.Patterns = append(a.Patterns, test)
+			if member.Payload != nil && len(arm.Patterns) == 1 {
+				payloadOf = member
+			}
+		}
+		if arm.Else {
+			elseAt = arm
+			takesNull = !nullSeen
+		}
+		var bind *matchBind
+		switch {
+		case m.Bind == "":
+		case payloadOf != nil:
+			name := payloadOf.Name
+			bind = c.newMatchBind(m, isExpr, ir.MemberPayload(enumType, name), func() ir.Expr { return ir.EnumPayloadRead(held(), name) })
+		default:
+			bind = c.subjectBind(m, isExpr, subjType, read, takesNull)
+		}
+		c.checkArmBody(a, arm, isExpr, expected, out.Arms, bind)
+		out.Arms = append(out.Arms, a)
+	}
+	if elseAt == nil {
+		if missing := cov.missing(); missing != "" {
+			c.error(m.Pos, "match is not exhaustive: %s", missing)
+		} else if len(out.Arms) > 0 {
+			out.Exhaustive = true
+		}
+	}
+	return out
+}
+
+// memberPattern reads one pattern of a match over ed: a member, written bare
+// or through the enum's name, or null where the subject is an option.
+func (c *checker) memberPattern(p ast.Expr, ed *ir.EnumDef, optional bool) (member *ir.EnumMember, isNull, ok bool) {
+	var name string
+	switch h := p.(type) {
+	case *ast.LiteralExpr:
+		if h.Kind == ast.LiteralNull {
+			if !optional {
+				c.error(h.Pos, "pattern of type null cannot match %s", ed.Name)
+				return nil, false, false
+			}
+			return nil, true, true
+		}
+	case *ast.IdentExpr:
+		name = h.Name
+	case *ast.SelectExpr:
+		if id, isIdent := h.Operand.(*ast.IdentExpr); isIdent {
+			if sym, found := c.scope.Lookup(id.Name); found && sym == ir.Symbol(ed) {
+				name = h.Field
+			}
+		}
+	}
+	if name == "" {
+		c.error(*p.ExprPos(), "a pattern of a match over %s names one of its members", ed.Name)
+		return nil, false, false
+	}
+	member = ed.Member(name)
+	if member == nil || !c.enumMember(*p.ExprPos(), ed, name) {
+		if member == nil {
+			c.error(*p.ExprPos(), "%s has no member %s", ed.Name, name)
+		}
+		return nil, false, false
+	}
+	return member, false, true
+}

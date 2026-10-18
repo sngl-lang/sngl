@@ -75,6 +75,9 @@ var alwaysOn = []string{
 	// An effect's reports are lowered on every target; one that brackets a
 	// lifetime itself keeps the node with its @mount and @unmount.
 	"Effect",
+	// A payload enum's selector read is the member test or the payload on
+	// every target.
+	"EnumReads",
 	// A raise is a raise on every target, and the catch it unwinds to is a block
 	// every language renders.
 	"ErrorCatch",

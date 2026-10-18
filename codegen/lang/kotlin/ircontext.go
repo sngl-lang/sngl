@@ -265,6 +265,9 @@ func selectField(n *ir.Select) string {
 }
 
 func (kc *KtIRContext) Select(n *ir.Select, operand string) string {
+	if t := n.Operand.ExprType(); ir.PayloadEnum(t) != nil {
+		return "(" + operand + " as? " + enumVariant(t, n.Field) + ")?.value"
+	}
 	return operand + "." + selectField(n)
 }
 
@@ -300,6 +303,9 @@ func (kc *KtIRContext) MapLit(n *ir.MapLitIR, keys, vals []string) string {
 	return b.String()
 }
 func (kc *KtIRContext) StructLit(n *ir.StructLit, fieldStrs []string) string {
+	if member, _, ok := ir.EnumLitMember(n); ok {
+		return enumLitKt(n.Type, member, fieldStrs[0])
+	}
 	name := "Any"
 	if n.Def != nil {
 		name = exportName(n.Def.Name)
@@ -636,6 +642,11 @@ func (kc *KtIRContext) LocalVarText(n *ir.LocalVar, initStr string) string {
 				}
 			}
 		}
+		// A variant's class is narrower than the sealed class a later write
+		// may hold another variant of.
+		if ir.PayloadEnum(n.Type) != nil {
+			return "var " + n.Name + ": " + IRTypeToKt(n.Type) + " = " + kc.valueCopyFor(n, initStr)
+		}
 		return "var " + n.Name + " = " + kc.valueCopyFor(n, initStr)
 	}
 	goType := "Any"
@@ -819,6 +830,9 @@ func (kc *KtIRContext) evalIdent(n *ir.Ident) string {
 		return s
 	}
 	if n.Member != "" {
+		if ir.PayloadEnum(n.Type) != nil {
+			return enumLitKt(n.Type, n.Member, "")
+		}
 		// Enum member: emit qualified Kotlin enum value (Gender.female)
 		// so the value matches the declared enum type at the use site.
 		if n.Type != nil && n.Type.Kind == ir.TypeEnum && n.Type.Decl != nil {
@@ -1322,6 +1336,9 @@ func ktZeroFor(t *ir.Type) string {
 	case ir.TypeList:
 		return "listOf()"
 	case ir.TypeEnum:
+		if ir.PayloadEnum(t) != nil {
+			return enumZeroKt(t)
+		}
 		// An enum's zero is its first member, as it is on every other target.
 		// `null` is not a value of a non-nullable Kotlin enum, so a struct
 		// field left at its default did not compile.
@@ -1372,7 +1389,16 @@ func EnumName(decl ir.Symbol) string {
 // EnumDecl declares ed as a Kotlin enum class. Each entry carries the member's
 // SNGL name as its string form, because the entry's own name is upper-cased
 // and a program printing a member prints it as declared on every target.
+//
+// An enum carrying payloads is a sealed class instead (PayloadEnumDecl), and a
+// generic one is declared per instantiation passMonomorphize made.
 func EnumDecl(ed *ir.EnumDef) string {
+	if len(ed.TypeParams) > 0 {
+		return ""
+	}
+	if ed.Carries() {
+		return PayloadEnumDecl(ed)
+	}
 	var b strings.Builder
 	fmt.Fprintf(&b, "enum class %s(private val sngl: String) {\n", EnumName(ed))
 	entries := make([]string, len(ed.Members))
@@ -1645,6 +1671,9 @@ func IRLiteralToKt(e ir.Expr) string {
 		b.WriteString(")")
 		return b.String()
 	case *ir.StructLit:
+		if member, payload, ok := ir.EnumLitMember(n); ok {
+			return enumLitKt(n.Type, member, IRLiteralToKt(payload))
+		}
 		name := "Any"
 		if n.Def != nil {
 			name = exportName(n.Def.Name)
@@ -1661,6 +1690,9 @@ func IRLiteralToKt(e ir.Expr) string {
 		// an identifier. Falling through to the empty string put `op = ""` in
 		// a constructor call whose parameter is an enum.
 		if n.Member != "" {
+			if ir.PayloadEnum(n.Type) != nil {
+				return enumLitKt(n.Type, n.Member, "")
+			}
 			if n.Type != nil && n.Type.Kind == ir.TypeEnum && n.Type.Decl != nil {
 				return EnumName(n.Type.Decl) + "." + EnumEntry(n.Member)
 			}

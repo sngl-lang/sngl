@@ -1,0 +1,7 @@
+// A member carrying a payload is a value of the enum only with that payload,
+// so it takes no fixed value of its own.
+
+enum Shape {
+    empty
+    sized int = 3 // ERROR(check) "member sized carries a payload, so it takes no value"
+}
