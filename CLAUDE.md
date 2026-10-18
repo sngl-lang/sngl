@@ -2803,9 +2803,9 @@ declaration itself. Two things about the name that are easy to get wrong:
   unless this pass takes the closure as an entry point. There is no *one*
   declaration to put the flag on -- the pass synthesizes calls to the id
   itself, and a platform package may declare its own -- so the pass names it.
-  fyne, gtk4 and bubbletea answer the id; bubbletea's answer is spelled by
-  the Go emitter itself (`GoIRContext.evalPost`) rather than registered, since
-  which Model a post writes depends on the scope it is written in.
+  fyne, gtk4 and bubbletea answer the id; inside a literal bubbletea runs off
+  its loop, the Go emitter spells the post itself (`GoIRContext.evalPost`),
+  since the Model the post writes is the one the literal was made from.
 
   **Two shapes make Go's select behave unexpectedly, and both are written on the
   declaration.** A *closed* channel is always ready and yields the zero value

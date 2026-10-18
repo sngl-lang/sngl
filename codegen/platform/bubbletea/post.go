@@ -24,6 +24,15 @@ const (
 // A test waiting for a request's answer runs on the goroutine that owns the
 // Model, as Update does, so it runs what was posted while it waits.
 func init() {
+	// The post outside an off-loop literal, whose closure already holds the
+	// Model the loop owns; inside one, golang's evalPost hands the closure
+	// that Model in place of the snapshot.
+	codegen.RegisterPlatformIntrinsic("bubbletea", lower.AsyncDoIntrinsic, func(args []ir.Expr, tr func(ir.Expr) string) (string, []string) {
+		if len(args) != 1 {
+			return "", nil
+		}
+		return golang.PostFunc + "(" + tr(args[0]) + ")", nil
+	})
 	codegen.RegisterPlatformIntrinsic("bubbletea", ir.TestWaitID, func(args []ir.Expr, tr func(ir.Expr) string) (string, []string) {
 		if len(args) != 3 {
 			return "", nil

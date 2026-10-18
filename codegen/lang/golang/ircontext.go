@@ -990,17 +990,18 @@ const PostFunc = "__snglPost"
 // was posted: it runs the posts that arrive within a duration.
 const RunPostsFunc = "__snglRunPosts"
 
-// evalPost spells async.do where the event loop owns the Model: the closure
-// is handed to the loop, and inside an off-loop literal it runs against the
-// Model the literal was made from rather than the snapshot the literal reads,
-// since what it writes is what the loop shows.
+// evalPost spells async.do inside an off-loop literal where the event loop
+// owns the Model: the closure runs against the Model the literal was made
+// from rather than the snapshot the literal reads, since what it writes is
+// what the loop shows. Anywhere else the platform's registered emitter
+// spells the post.
 func (gc *GoIRContext) evalPost(n *ir.Call) (string, bool) {
-	if gc.OffLoop == nil || n.Func == nil || n.Func.Intrinsic != lower.AsyncDoIntrinsic || len(n.Args) != 1 {
+	if gc.OffLoop == nil || gc.LiveModel == "" || n.Func == nil || n.Func.Intrinsic != lower.AsyncDoIntrinsic || len(n.Args) != 1 {
 		return "", false
 	}
 	l, ok := n.Args[0].Value.(*ir.Lambda)
-	if !ok || gc.LiveModel == "" {
-		return PostFunc + "(" + gc.EvalExpr(n.Args[0].Value) + ")", true
+	if !ok {
+		return "", false
 	}
 	inner := *gc
 	inner.LiveModel = ""
