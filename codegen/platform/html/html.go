@@ -2406,6 +2406,15 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 	if g.ctx.Helpers[dialogHelper] {
 		b.WriteString(dialogHelperJS + "\n")
 	}
+	// A test calling a codec intrinsic runs in a module bundled beside the
+	// page, which finds the runtime on window.
+	testCodec := g.testsCallCodec()
+	if g.ctx.Helpers[javascript.CodecHelper] || testCodec {
+		b.WriteString(javascript.CodecHelperJS + "\n")
+	}
+	if testCodec {
+		b.WriteString("if (typeof window !== 'undefined') { Object.assign(window, { _snglJSONDecode, _snglJSONEncode, _snglWithQuery, _snglHTTPSend }); }\n\n")
+	}
 
 	// Before the refs below, which is where a handler's binding for the
 	// instance would otherwise be written as an element lookup.
@@ -2578,6 +2587,27 @@ func (g *htmlGen) emitSynthesizedSlots(b *strings.Builder) {
 	}
 	g.exportTestCalled(b, synthFuncs)
 
+}
+
+// testsCallCodec reports whether, in test mode, a test calls json.decode,
+// json.encode, http.send or http.get itself.
+func (g *htmlGen) testsCallCodec() bool {
+	if !g.testMode {
+		return false
+	}
+	found := false
+	for _, fn := range g.pkg.Funcs {
+		if !fn.IsTest {
+			continue
+		}
+		_ = ir.Walk(fn.Block, func(n ir.Node) error {
+			if c, ok := n.(*ir.Call); ok && codegen.IsCodecCall(c) {
+				found = true
+			}
+			return nil
+		})
+	}
+	return found
 }
 
 // exportTestCalled publishes, in test mode, the synthesized functions a test

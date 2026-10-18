@@ -253,6 +253,37 @@ Step 2 left for later:
 - A compiled test's raw write (`c.names.push(…)`) re-renders nothing; a test
   drives structure through events, as `async_query_loop.sngl` does.
 
+Step 3 left for later:
+
+- **A codec call in a generic function is refused** (`json.decode[T]` with T
+  a type parameter): the encoder reads the type at the call. The generated
+  `getJSON[T, Q]` is exactly that, so step 4 needs a generic function reaching
+  a codec intrinsic copied per instantiation on every target (Monomorphize
+  runs only where `genericFuncs` is withheld, and JavaScript holds it) and the
+  interpreter to know the binding -- or the generated package to write a
+  `…Call` body per operation instead of one `getJSON`.
+- An anonymous struct's fields are separated by `;`, not `,`: the example
+  above writes `struct { limit option[int], offset option[int] }`, which does
+  not parse.
+- JSON of a payload enum (externally tagged) is refused at the call, and so is
+  `time` (of day) and `color`.
+- Kotlin decodes a sized int other than `int32`/`int64`, or a `float32`,
+  through a cast SnglCodec does not make; nothing tests one.
+- On the Go platforms a match expression in a function literal called where it
+  stands reaches codegen unlifted (`ir.MatchExpr reached Go codegen`) when the
+  literal is an effect's spliced `fetch`; a literal calling a function, which
+  is what an adapter writes, is fine.
+- A function and a struct whose names differ only in the first letter
+  (`pokemon`, `Pokemon`) collide on Go, which exports both
+  (`http_runs.txt` names its helpers around it).
+- A Go test file does not parse a date written as text in a struct literal in
+  the test body itself, nor import `time` for one (`json_runs.txt` builds its
+  value in program code).
+- `t.wait` on fyne reads the Model from the test's goroutine while posted
+  closures write it on fyne's.
+- The tree-sitter grammar does not know a mark on an enum member.
+- android's `INTERNET` permission is still step 5's.
+
 ## The `openapi:` scheme
 
 A library plugin at `lib/x/scheme/openapi`, served like `c:` and `gir:` with
@@ -566,7 +597,7 @@ never finishes one of them.
 |---|---------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | ✓ | `pokedex-1-payload-enums` | *Payload enums*: an enum member carrying a type, enum type parameters, struct-literal construction, the selector read, `match` binding (`ok(var v)`); the interpreter and Go, JavaScript and Kotlin. And an async flag on a func type (`checkAsyncRules`' rule 3), so an async function can be handed as a value. |
 | ✓ | `pokedex-2-async-query`   | *`async.query`*: `Result`, `Failure` and the component over `effect`, against a hand-written `fetch` -- latest wins, unmount drops the answer, `refresh`, a query under a `for`. bubbletea refuses it at the call.                                                                                                |
-| 3 | `pokedex-3-http-json`     | *`sngl:http`* (`send`, `get`, `Response.checked`, `pathEscape`, `http.identifier`) and *`sngl:json`* (`json.identifier`, `decode`, `encode`), against a local server, on every language.                                                                                                                          |
+| ✓ | `pokedex-3-http-json`     | *`sngl:http`* (`send`, `get`, `Response.checked`, `pathEscape`, `http.identifier`) and *`sngl:json`* (`json.identifier`, `decode`, `encode`), against a local server, on every language.                                                                                                                          |
 | 4 | `pokedex-4-openapi`       | *The `openapi:` scheme*: `openapi.parse`, the plugin, the written package (structs, enums, `…Call` functions, a component per `GET`, `server`, `getJSON`) over a trimmed PokéAPI spec.                                                                                                                            |
 | 5 | `pokedex-5-targets`       | What steps 2--4 refused: bubbletea's post-back through `Update` (#272) so a query runs there, android's `INTERNET` permission and a loader so `ui.remote` draws.                                                                                                                                                  |
 | 6 | `pokedex-6-example`       | *The example*: `examples/pokedex` over the vendored spec, `cmd/sngl/testdata/pokedex_runs.txt` against a recorded local server on every target, and a page on the docs site.                                                                                                                                      |

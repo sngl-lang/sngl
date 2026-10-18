@@ -1,6 +1,7 @@
 package optimize
 
 import (
+	"duckfam.us/sngl/pkg/go/sngljson"
 	"fmt"
 	"log/slog"
 	"math"
@@ -992,6 +993,10 @@ func evalQualifiedMethod(qualName string, args []any) (any, bool) {
 		x, ok := toFloat(args[0])
 		if ok {
 			return int(math.Round(x)), true
+		}
+	case "http.pathEscape":
+		if s, ok := args[0].(string); ok {
+			return sngljson.Escape(s), true
 		}
 	case "math.sqrt":
 		x, ok := toFloat(args[0])

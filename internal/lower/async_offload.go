@@ -97,10 +97,27 @@ func refuseAsyncOffload(pkg *ir.Package, opts Options, st *offloadState) error {
 			if !st.stmtWaits(s) {
 				continue
 			}
-			return fmt.Errorf("%s: this call blocks and %s has no way to run anything back on the thread it draws on, so there is nowhere for the answer to land -- the call would freeze the interface", ir.StmtPos(s), platformOrThis(opts.Platform))
+			return fmt.Errorf("%s: this call blocks and %s has no way to run anything back on the thread it draws on, so there is nowhere for the answer to land -- the call would freeze the interface", waitingCallPos(s), platformOrThis(opts.Platform))
 		}
 	}
 	return nil
+}
+
+// waitingCallPos is where s makes the call that waits, or s's own position:
+// a statement a pass synthesized -- the binding a match's subject became --
+// has none, and the call it holds was written somewhere.
+func waitingCallPos(s ir.Stmt) ast.Pos {
+	var at ast.Pos
+	_ = ir.Walk(s, func(n ir.Node) error {
+		if c, ok := n.(*ir.Call); ok && at.Line == 0 && c.AST != nil && !c.Detached && c.Func != nil && c.Func.IsAsync {
+			at = c.AST.Pos
+		}
+		return nil
+	})
+	if at.Line == 0 {
+		return ir.StmtPos(s)
+	}
+	return at
 }
 
 func platformOrThis(name string) string {
@@ -154,8 +171,9 @@ func offloadEntryPoints(pkg *ir.Package) []*ir.Func {
 	var cands []*ir.Func
 	for _, fn := range offloadableFuncs(pkg) {
 		// A bodyless declaration is the blocking function itself, not a place
-		// one is called from.
-		if fn.IsAsync && returnsNothing(fn) && len(fn.Block) > 0 {
+		// one is called from. A test is entered by the harness, which runs it
+		// to its end and draws nothing meanwhile, so it waits where it calls.
+		if fn.IsAsync && returnsNothing(fn) && len(fn.Block) > 0 && !fn.IsTest {
 			cands = append(cands, fn)
 		}
 	}

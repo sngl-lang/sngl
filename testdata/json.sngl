@@ -1,0 +1,63 @@
+// sngl:json reads text as a declared type and writes a value back. A field or
+// an enum member is named on the wire by #[json.identifier]; an option is a
+// key that may be missing or null; a failure is a value saying where the text
+// did not match. The interpreter answers it as every target does.
+
+import async "sngl:async"
+import json "sngl:json"
+import . "sngl:test"
+
+enum Kind {
+    #[json.identifier("fire-type")]
+    fire
+    water
+}
+
+struct Stat {
+    #[json.identifier("base_stat")]
+    baseStat int
+    name     string
+}
+
+struct Mon {
+    id    int
+    #[json.identifier("base_experience")]
+    exp   option[int]
+    kind  Kind
+    stats list[Stat]
+    tags  map[string, float]
+}
+
+func message[T any](r async.Result[T]) => match r {
+    ok => ""
+    failed(var f) => f.message
+}
+
+func testDecode(t Test) {
+    match json.decode[Mon](`{"id": 1, "kind": "fire-type", "stats": [{"base_stat": 45, "name": "hp"}], "tags": {"a": 0.5}, "x": 1}`) {
+        ok(var m) {
+            t.assert(m.id == 1)
+            t.assert(m.exp == null)
+            t.assert(m.kind == Kind.fire)
+            t.assert(m.stats[0].baseStat == 45)
+            t.assert(m.tags.get("a", 0.0) == 0.5)
+        }
+        failed(var f) { t.assert(f.message == "") }
+    }
+}
+
+func testEncode(t Test) {
+    var m = Mon{id=2, exp=null, kind=Kind.water, stats=[Stat{baseStat=1, name="hp"}], tags={"b"=1.5, "a"=2.0}}
+    t.assert(json.encode(m) == `{"id":2,"kind":"water","stats":[{"base_stat":1,"name":"hp"}],"tags":{"a":2,"b":1.5}}`)
+}
+
+func testFailures(t Test) {
+    t.assert(message(json.decode[Mon](`{"id": 1.5}`)) == "$.id: want an integer")
+    t.assert(message(json.decode[Mon](`{"id": 1}`)) == "$.kind: missing")
+    t.assert(message(json.decode[Kind](`"grass"`)) == "$: want one of fire-type, water")
+    t.assert(message(json.decode[int](`{`)) == "not JSON")
+    match json.decode[Stat](`[]`) {
+        ok { t.assert(false) }
+        failed(var f) { t.assert(f.kind == async.FailureKind.decode) }
+    }
+}

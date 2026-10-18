@@ -979,6 +979,11 @@ func (gc *GoIRContext) evalCall(n *ir.Call) string {
 	if out, ok := gc.MakeChanText(n); ok {
 		return out
 	}
+	// Ahead of the registry too: a codec call reads the type it reads or
+	// writes, which is the call's and not its arguments'.
+	if out, ok := gc.codecCall(n); ok {
+		return out
+	}
 	// Dispatch by intrinsic ID, never by method name. An unregistered ID falls
 	// through to the paths below.
 	if out, imports, ok := codegen.EmitIntrinsicCall(langGo, gc.Ctx.Platform, n, gc.EvalExpr); ok {

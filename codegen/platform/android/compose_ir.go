@@ -944,8 +944,15 @@ func (cc *irComposeContext) lambdaArg(name string, lam *ir.Lambda, arity int) st
 	saved := cc.kc
 	cc.kc = kc
 	var body []string
-	for _, stmt := range lam.Func.Block {
-		body = append(body, cc.kc.EvalStmt(stmt)...)
+	// A handler that waits is started rather than run: the host calls it with
+	// nowhere to wait. Its `return` then leaves the coroutine.
+	waits := lam.Func.Return == nil && ir.BlockHasAsyncCall(lam.Func.Block)
+	if waits {
+		body = cc.kc.Coroutine(lam.Func.Block)
+	} else {
+		for _, stmt := range lam.Func.Block {
+			body = append(body, cc.kc.EvalStmt(stmt)...)
+		}
 	}
 	cc.kc = saved
 	if len(body) == 0 {
@@ -953,7 +960,7 @@ func (cc *irComposeContext) lambdaArg(name string, lam *ir.Lambda, arity int) st
 	}
 	// A `return` in a lambda would leave the composable it is written in,
 	// which Kotlin refuses; in an anonymous function it leaves the handler.
-	if lam.Func.Return != nil || kotlin.LambdaReturns(lam.Func.Block) {
+	if !waits && (lam.Func.Return != nil || kotlin.LambdaReturns(lam.Func.Block)) {
 		return cc.anonFuncArg(name, lam, body)
 	}
 

@@ -277,7 +277,9 @@ StructField = IdentList Type [ assign Expr ] .
 # Enum body accepts members and nested funcs, separated by comma or semi.
 EnumDecl = kw_enum [ ident ] [ TypeParamList ] lbrace [ EnumBodyItem { (comma | semi) EnumBodyItem } [ comma | semi ] ] rbrace .
 
-EnumBodyItem = FuncDecl | kw_const FuncDecl | EnumMember .
+EnumBodyItem = { MacroAttr } EnumBodyDecl .
+
+EnumBodyDecl = FuncDecl | kw_const FuncDecl | EnumMember .
 
 # A member may carry a type, its payload; one that does takes no value.
 EnumMember = ident [ Type ] [ assign Expr ] .

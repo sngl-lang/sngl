@@ -55,6 +55,8 @@ var orderConstraints = []orderConstraint{
 		"a generic component is spliced at the types its call site bound, and the spliced body's structs are concrete only from then"},
 	{"AnonStructs", "NoStructSpread",
 		"a spread's merge helper is named for its struct's declaration, which an un-interned struct has no name for until AnonStructs points it at the package's"},
+	{"NoInlineComponents", "MonomorphizeEnums",
+		"a generic library body is spliced at the types its call site bound, and an enum instantiation it names has no declaration until it is copied"},
 	{"Monomorphize", "NoInlineComponents",
 		"a component's generic method is copied per instantiation into the component, and the splice renames the copies with the rest of its methods"},
 	{"TestInstanceReach", "TestRefOwner",

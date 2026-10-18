@@ -575,6 +575,7 @@ func (c *checker) buildEnumDef(e *ast.EnumDef) *ir.EnumDef {
 			Name:  m.Name,
 			Value: val,
 		}
+		c.applyMarks(m, members[i])
 	}
 	return &ir.EnumDef{
 		AST:        e,

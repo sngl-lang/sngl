@@ -840,6 +840,10 @@ func (kc *KtIRContext) evalIdent(n *ir.Ident) string {
 		}
 		return fmt.Sprintf("%q", n.Member)
 	}
+	// A name the emitted code bound itself (codegen.HostValue).
+	if _, ok := n.Sym.(*codegen.Receiver); ok {
+		return n.Name
+	}
 	name := n.Name
 	if host, ok := kc.hostValueIdent(n); ok {
 		return host
@@ -942,6 +946,10 @@ func ktMethodTail(name string) string {
 }
 
 func (kc *KtIRContext) evalCall(n *ir.Call) string {
+	// A codec call reads the type it reads or writes, which is the call's.
+	if out, ok := kc.codecCall(n); ok {
+		return out
+	}
 	// Intrinsic dispatch by ID — never by method name. Backends register only
 	// the intrinsics they emit; unregistered IDs fall through.
 	if out, imports, ok := codegen.EmitIntrinsicCall(langKt, kc.Ctx.Platform, n, kc.EvalExpr); ok {
@@ -1008,10 +1016,42 @@ func (kc *KtIRContext) evalCall(n *ir.Call) string {
 		return fname + "(" + strings.Join(args, ", ") + ")"
 	}
 	args := kc.evalCallArgs(n.Args)
+	if lam, ok := n.Callee.(*ir.Lambda); ok && lam.Func != nil && ir.BlockHasAsyncCall(lam.Func.Block) {
+		return kc.waitingLiteralCall(lam, args)
+	}
 	if n.Callee != nil {
 		return kc.EvalExpr(n.Callee) + "(" + strings.Join(args, ", ") + ")"
 	}
 	return "(" + strings.Join(args, ", ") + ")"
+}
+
+// waitingLiteralCall is a function literal that waits, called where it
+// stands -- an adapter's `fetch=func(k) => call(k)` spliced into the mount
+// that calls it. A Kotlin lambda is no suspend function, so the body is
+// written in place as a block its parameters are bound in, which waits
+// wherever its caller does, and whose `return` leaves the block.
+func (kc *KtIRContext) waitingLiteralCall(lam *ir.Lambda, args []string) string {
+	inner := *kc
+	inner.returnTo = "run"
+	lines := []string{"run {"}
+	for i, a := range args {
+		lines = append(lines, fmt.Sprintf("\tval __arg%d = %s", i, a))
+	}
+	for i, p := range lam.Func.Params {
+		if i < len(args) {
+			lines = append(lines, fmt.Sprintf("\tval %s = __arg%d", SafeIdent(p.Name), i))
+		}
+	}
+	body := &inner
+	for _, p := range lam.Func.Params {
+		body = body.WithLocal(p.Name)
+	}
+	for _, stmt := range lam.Func.Block {
+		for _, line := range body.EvalStmt(stmt) {
+			lines = append(lines, "\t"+line)
+		}
+	}
+	return strings.Join(append(lines, "}"), "\n")
 }
 
 // evalQualifiedCall is a call named through an import, where the import still
@@ -1427,6 +1467,17 @@ func (kc *KtIRContext) evalLambda(n *ir.Lambda) string {
 			return "{ " + strings.Join(params, ", ") + " -> " + body + " }"
 		}
 	}
+	// A handler that waits is started rather than run: the host calls it
+	// with nowhere to wait, so its body is a coroutine of its own.
+	if ir.BlockHasAsyncCall(n.Func.Block) && (n.Func.Return == nil || n.Func.Return.Kind == ir.TypeVoid) {
+		var b strings.Builder
+		b.WriteString("{ " + strings.Join(params, ", ") + " ->\n")
+		for _, line := range kc.Coroutine(n.Func.Block) {
+			b.WriteString("    " + line + "\n")
+		}
+		b.WriteString("}")
+		return b.String()
+	}
 	var b strings.Builder
 	body := kc
 	if LambdaReturns(n.Func.Block) {
@@ -1443,6 +1494,36 @@ func (kc *KtIRContext) evalLambda(n *ir.Lambda) string {
 	}
 	b.WriteString("}")
 	return b.String()
+}
+
+// Coroutine is a body that waits, started on the thread the target draws on
+// where nothing waits for it -- a handler, an effect's mount -- so what it
+// writes after a wait lands where every write does. A `return` in it leaves
+// the coroutine.
+func (kc *KtIRContext) Coroutine(block []ir.Stmt) []string {
+	inner := *kc
+	inner.returnTo = "start"
+	out := []string{"SnglCodec.start {"}
+	for _, stmt := range block {
+		for _, line := range inner.EvalStmt(stmt) {
+			out = append(out, "\t"+line)
+		}
+	}
+	return append(out, "}")
+}
+
+// Labeled is a body run where it stands whose `return` leaves the body
+// alone, as a handler's does: an effect's mount inlined into the bracket.
+func (kc *KtIRContext) Labeled(block []ir.Stmt) []string {
+	inner := *kc
+	inner.returnTo = "run"
+	out := []string{"run {"}
+	for _, stmt := range block {
+		for _, line := range inner.EvalStmt(stmt) {
+			out = append(out, "\t"+line)
+		}
+	}
+	return append(out, "}")
 }
 
 // LambdaReturns reports whether a lambda's body returns, outside a lambda of

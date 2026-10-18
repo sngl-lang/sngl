@@ -616,6 +616,11 @@ func (jc *JsIRContext) evalCall(n *ir.Call) string {
 	// the call reached codegen as a type-method call or was inlined to a direct
 	// intrinsic call. Must precede every other branch so e.g. an inlined
 	// `stdlib.StrUpper(s)` is emitted as `s.toUpperCase()`, not a bare call.
+	// A codec call reads the type it reads or writes, which is the call's,
+	// and names the page's runtime.
+	if out, ok := jc.codecCall(n); ok {
+		return out
+	}
 	if out, _, ok := codegen.EmitIntrinsicCall(langJS, jc.Ctx.Platform, n, jc.EvalExpr); ok {
 		// The style intrinsic's expansion names a page helper. Recorded here
 		// because the expansion is a package-level registration with no access

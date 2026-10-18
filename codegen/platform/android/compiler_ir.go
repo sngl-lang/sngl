@@ -1131,13 +1131,13 @@ func emitIRKtMemberFunc(b *strings.Builder, fn *ir.Func, kc *kotlin.KtIRContext)
 	if len(fn.Block) == 1 {
 		if ret, ok := fn.Block[0].(*ir.Return); ok && ret.Value != nil {
 			body := localKC.EvalExpr(ret.Value)
-			fmt.Fprintf(b, "    fun %s(%s)%s = %s\n", fn.Name, paramStr, retType, body)
+			fmt.Fprintf(b, "    %sfun %s(%s)%s = %s\n", ktSuspend(fn), fn.Name, paramStr, retType, body)
 			return
 		}
 	}
 
 	if len(fn.Block) > 0 {
-		fmt.Fprintf(b, "    fun %s(%s)%s {\n", fn.Name, paramStr, retType)
+		fmt.Fprintf(b, "    %sfun %s(%s)%s {\n", ktSuspend(fn), fn.Name, paramStr, retType)
 		for _, stmt := range fn.Block {
 			for _, line := range localKC.EvalStmt(stmt) {
 				fmt.Fprintf(b, "        %s\n", line)
@@ -1145,6 +1145,16 @@ func emitIRKtMemberFunc(b *strings.Builder, fn *ir.Func, kc *kotlin.KtIRContext)
 		}
 		b.WriteString("    }\n")
 	}
+}
+
+// ktSuspend is the modifier an async function is declared with: a call that
+// waits is a call of a suspend function, made from another or from a
+// coroutine the caller started.
+func ktSuspend(fn *ir.Func) string {
+	if fn.IsAsync {
+		return "suspend "
+	}
+	return ""
 }
 
 // isReceiverParam reports whether p is fn's receiver, which the checker marks
@@ -1217,14 +1227,14 @@ func emitIRKtFunc(b *strings.Builder, fn *ir.Func, kc *kotlin.KtIRContext) {
 	if len(fn.Block) == 1 {
 		if ret, ok := fn.Block[0].(*ir.Return); ok && ret.Value != nil {
 			body := localKC.EvalExpr(ret.Value)
-			fmt.Fprintf(b, "\nfun %s(%s)%s = %s\n", fn.Name, paramStr, retType, body)
+			fmt.Fprintf(b, "\n%sfun %s(%s)%s = %s\n", ktSuspend(fn), fn.Name, paramStr, retType, body)
 			return
 		}
 	}
 
 	// Block body
 	if len(fn.Block) > 0 {
-		fmt.Fprintf(b, "\nfun %s(%s)%s {\n", fn.Name, paramStr, retType)
+		fmt.Fprintf(b, "\n%sfun %s(%s)%s {\n", ktSuspend(fn), fn.Name, paramStr, retType)
 		for _, stmt := range fn.Block {
 			for _, line := range localKC.EvalStmt(stmt) {
 				fmt.Fprintf(b, "    %s\n", line)

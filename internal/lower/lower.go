@@ -97,6 +97,8 @@ var passes = []pass{
 	passCanvasInstances,
 	// After every pass that elects or copies a component built at run time.
 	passCopyKeys,
+	// After the inliners, which splice a generic library body at bound types.
+	passMonomorphizeEnums,
 	// After every pass that copies a body at bound types, and before any that
 	// names a struct by its declaration's name: a copy's structs are no
 	// package's until this points them at one.

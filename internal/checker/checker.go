@@ -350,6 +350,9 @@ func CheckPackage(docs []*ast.Document, cfg *Config) (*ir.Package, []ir.Diagnost
 }
 
 type checker struct {
+	// codecReported is the calls checkCodecCall has refused, since a
+	// component body is read twice.
+	codecReported map[ast.Pos]bool
 	// anyWritten collects where `any` is written as a type while a marked
 	// declaration is typed (holdAny), nil otherwise.
 	anyWritten *[]ast.Pos

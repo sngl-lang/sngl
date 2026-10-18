@@ -720,21 +720,8 @@ func (b *builder) buildEnumDecl(it nodeIter) *ast.EnumDef {
 	it.skip() // lbrace
 	for !it.done() {
 		if it.isNonTerminal() && it.symbol() == EnumBodyItem {
-			sub := it.enter()
-			if !sub.done() && sub.isNonTerminal() {
-				switch sub.symbol() {
-				case FuncDecl:
-					e.Body = append(e.Body, b.buildFuncDecl(sub.enter()))
-				case EnumMember:
-					e.Body = append(e.Body, b.buildEnumMember(sub.enter()))
-				}
-			} else if !sub.done() && sub.tokenType() == KW_CONST {
-				sub.skip() // kw_const
-				if !sub.done() && sub.isNonTerminal() && sub.symbol() == FuncDecl {
-					f := b.buildFuncDecl(sub.enter())
-					f.Const = true
-					e.Body = append(e.Body, f)
-				}
+			if item := b.buildEnumBodyItem(it.enter()); item != nil {
+				e.Body = append(e.Body, item)
 			}
 		} else {
 			if !it.isNonTerminal() {
@@ -758,6 +745,38 @@ func (b *builder) buildEnumDecl(it nodeIter) *ast.EnumDef {
 		}
 	}
 	return e
+}
+
+func (b *builder) buildEnumBodyItem(it nodeIter) ast.EnumBodyItem {
+	// EnumBodyItem = { MacroAttr } EnumBodyDecl .
+	var attrs []ast.MacroAttr
+	for !it.done() && it.isNonTerminal() && it.symbol() == MacroAttr {
+		attrs = append(attrs, b.buildMacroAttr(it.enter()))
+	}
+	var inner ast.EnumBodyItem
+	if !it.done() && it.isNonTerminal() && it.symbol() == EnumBodyDecl {
+		sub := it.enter()
+		if !sub.done() && sub.isNonTerminal() {
+			switch sub.symbol() {
+			case FuncDecl:
+				inner = b.buildFuncDecl(sub.enter())
+			case EnumMember:
+				inner = b.buildEnumMember(sub.enter())
+			}
+		} else if !sub.done() && sub.tokenType() == KW_CONST {
+			sub.skip() // kw_const
+			if !sub.done() && sub.isNonTerminal() && sub.symbol() == FuncDecl {
+				f := b.buildFuncDecl(sub.enter())
+				f.Const = true
+				inner = f
+			}
+		}
+	}
+	if len(attrs) == 0 || inner == nil {
+		return inner
+	}
+	item, _ := b.attach(attrs, inner.(ast.Stmt)).(ast.EnumBodyItem)
+	return item
 }
 
 func (b *builder) buildEnumMember(it nodeIter) *ast.EnumMember {

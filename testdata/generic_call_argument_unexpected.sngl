@@ -1,0 +1,19 @@
+// A generic call's arguments are read for what they state while its type
+// parameters are inferred, not as what the call's own result is wanted as:
+// handed straight to `size`, `{n=1}` binds Q rather than being read as an
+// int. An argument whose parameter names no type parameter binds nothing,
+// and is read against its parameter's type once the call is bound -- which
+// is what lets an anonymous map literal be one.
+
+import . "sngl:test"
+
+func count[Q struct {}](q Q, labels map[string, string]) int {
+    return labels.length()
+}
+
+func size(n int) => n
+
+func testArgumentsStateTheirOwnType(t Test) {
+    t.assert(size(count(q={n=1}, labels={"a"="b"})) == 1)
+    t.assert(size(count({n=1, m=2}, {"a"="b", "c"="d"})) == 2)
+}

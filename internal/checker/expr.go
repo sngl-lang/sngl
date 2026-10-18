@@ -1058,6 +1058,7 @@ func (c *checker) inferCall(x *ast.CallExpr) (out ir.Expr) {
 	defer func() {
 		c.refuseSetContextName(out)
 		c.checkI18nCall(x, out)
+		c.checkCodecCall(x, out)
 	}()
 	stmtCall := c.stmtCall
 	c.stmtCall = nil
@@ -2861,9 +2862,18 @@ func (c *checker) inferTypeParams(at ast.Pos, sig *ir.FuncSig, args ast.ArgList,
 	// nothing to bind, and its argument is checked against that type when the
 	// call is: checked here with nothing expected, `apply[F]([])` met an
 	// empty list it could not type.
+	//
+	// So has one whose type names no type parameter at all: checked here
+	// with nothing expected, `headers={"X-Sngl" = "on"}` was an anonymous map
+	// literal with no type to read.
 	settled := func(p *ir.Param) bool {
-		return p == nil || len(written) > 0 && !p.Type.Substitute(bindings).HasTypeParam()
+		return p == nil || !p.Type.Substitute(bindings).HasTypeParam()
 	}
+	// An argument is read for what it states, not for what the call's result
+	// is wanted as: under that expectation `b(http.get(query={n=2}))` read
+	// the query literal as b's parameter's type.
+	expected := c.expected
+	c.expected = nil
 	pos := 0
 	for _, a := range args.Args {
 		arg, ok := a.(ast.Arg)
@@ -2890,6 +2900,7 @@ func (c *checker) inferTypeParams(at ast.Pos, sig *ir.FuncSig, args ast.ArgList,
 		}
 		pos++
 	}
+	c.expected = expected
 	// What the arguments bound binds what its constraint names:
 	// `[T any, U struct { value T }]` handed a U binds T.
 	inferFromConstraints(sig.TypeParams, bindings)
