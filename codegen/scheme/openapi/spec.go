@@ -1,8 +1,6 @@
-// Package openapi reads an OpenAPI 3 document into the data the `openapi:`
-// scheme's handler writes a package from (lib/x/scheme/openapi). It answers
-// the build intrinsic `openapi.parse`: what is the spec's, and only Go can
-// read -- YAML, references, a schema's shape -- is decided here, and what the
-// written package spells is the handler's.
+// Package openapi writes the package an `openapi:` import resolves to
+// (lib/x/scheme/openapi), answering the build intrinsic `openapi.generate`:
+// Parse reads an OpenAPI 3 document into a Spec, and Write writes the source.
 package openapi
 
 import (
@@ -32,82 +30,82 @@ const (
 // Type is a schema as the type a declaration spells: a scalar, a declaration
 // the package writes, or a list or string-keyed map of one.
 type Type struct {
-	Kind  Kind   `sngl:"kind"`
-	Name  string `sngl:"name"`  // KindNamed: the declaration's SNGL name
-	Elems []Type `sngl:"elems"` // KindList, KindDict: the element
+	Kind  Kind
+	Name  string // KindNamed: the declaration's SNGL name
+	Elems []Type // KindList, KindDict: the element
 }
 
 // Field is one property of an object schema.
 type Field struct {
-	Wire     string `sngl:"wire"` // the key in JSON
-	Name     string `sngl:"name"` // the SNGL field name
-	Type     Type   `sngl:"type"`
-	Optional bool   `sngl:"optional"` // may be absent or null
-	Doc      string `sngl:"doc"`
+	Wire     string // the key in JSON
+	Name     string // the SNGL field name
+	Type     Type
+	Optional bool // may be absent or null
+	Doc      string
 }
 
 // Member is one value of a string enum.
 type Member struct {
-	Wire string `sngl:"wire"`
-	Name string `sngl:"name"`
+	Wire string
+	Name string
 }
 
 // Schema is one declaration the package writes: a struct, or an enum when
 // Members is set.
 type Schema struct {
-	Name    string   `sngl:"name"`
-	Doc     string   `sngl:"doc"`
-	Enum    bool     `sngl:"isEnum"`
-	Fields  []Field  `sngl:"fields"`
-	Members []Member `sngl:"members"`
+	Name    string
+	Doc     string
+	Enum    bool
+	Fields  []Field
+	Members []Member
 }
 
 // Segment is one piece of an operation's path: text as written, or the
 // parameter it is filled from.
 type Segment struct {
-	Text  string `sngl:"text"`
-	Param string `sngl:"param"` // the parameter's SNGL name
-	Kind  Kind   `sngl:"kind"`  // the parameter's kind, where Param is set
+	Text  string
+	Param string // the parameter's SNGL name
+	Kind  Kind   // the parameter's kind, where Param is set
 }
 
 // Param is one parameter of an operation, in the path or the query.
 type Param struct {
-	Wire     string  `sngl:"wire"`
-	Name     string  `sngl:"name"`
-	Path     bool    `sngl:"inPath"`
-	Type     Type    `sngl:"type"`
-	Optional bool    `sngl:"optional"` // may be left out: an option defaulting to null
-	Default  *string `sngl:"default"`  // the spec's default, as YAML spells the scalar
-	Doc      string  `sngl:"doc"`
+	Wire     string
+	Name     string
+	Path     bool
+	Type     Type
+	Optional bool    // may be left out: an option defaulting to null
+	Default  *string // the spec's default, as YAML spells the scalar
+	Doc      string
 }
 
 // Operation is one request the package can make.
 type Operation struct {
-	Method    string    `sngl:"method"` // a member of http.Method
-	PathText  string    `sngl:"path"`   // the path as the spec writes it
-	Path      []Segment `sngl:"segments"`
-	Func      string    `sngl:"call"`    // the function's name, `pokemonRetrieveCall`
-	Component string    `sngl:"adapter"` // the adapter's name, `pokemonRetrieve`; "" for none
-	Summary   string    `sngl:"summary"`
-	Doc       string    `sngl:"doc"`
-	Params    []Param   `sngl:"params"`
-	Query     string    `sngl:"query"`    // the declared struct holding the query; "" for an anonymous one
-	Body      *Type     `sngl:"body"`     // a JSON request body, sent last
-	BodyName  string    `sngl:"bodyName"` // the parameter it is
-	Result    Type      `sngl:"result"`
+	Method    string // a member of http.Method
+	PathText  string // the path as the spec writes it
+	Path      []Segment
+	Func      string // the function's name, `pokemonRetrieveCall`
+	Component string // the adapter's name, `pokemonRetrieve`; "" for none
+	Summary   string
+	Doc       string
+	Params    []Param
+	Query     string // the declared struct holding the query; "" for an anonymous one
+	Body      *Type  // a JSON request body, sent last
+	BodyName  string // the parameter it is
+	Result    Type
 }
 
 // Spec is what the handler is handed.
 type Spec struct {
-	Title      string      `sngl:"title"`
-	Server     string      `sngl:"server"`
-	Schemas    []Schema    `sngl:"schemas"`
-	Operations []Operation `sngl:"operations"`
+	Title      string
+	Server     string
+	Schemas    []Schema
+	Operations []Operation
 	// Notes are what the import says: what was left out, and why, and what
 	// was renamed.
-	Notes []string `sngl:"notes"`
+	Notes []string
 	// Time is whether a type names time.date or datetime.
-	Time bool `sngl:"usesTime"`
+	Time bool
 }
 
 // reservedPackage are the names the written package declares beside the

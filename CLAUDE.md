@@ -4392,12 +4392,16 @@ and `server`, a context defaulting to the spec's first server
 (`lib/x/scheme/openapi`). The path is the project's own file, read through
 the project; one outside it is refused before anything is read.
 
-**Go decides, SNGL spells.** `openapi.parse` (`codegen/scheme/openapi`)
-reads the document into typed data -- `Spec`, `Schema`, `Field`, `Type`,
-`Operation`, `Param`, `Segment` -- with every reference resolved, every
-name a SNGL identifier, and every construct that has no declaration left out
-with a note; the handler writes the source from it, formatted as `sngl fmt`
-writes it. An object is a struct, a string enum an enum, a property neither
+**Go reads the document and writes the package.** The SNGL handler reads
+the file -- its lines joined once, since `s = s + line` in a loop copies the
+string every time -- and
+hands it to `openapi.generate` (`codegen/scheme/openapi`), which answers the
+file, its source and the notes. `Parse` reads the document into a `Spec`,
+every reference resolved, every name a SNGL identifier and every construct
+with no declaration left out with a note; `Write` writes the source and
+prints it through `parser.Format`, so it reads as `sngl fmt` writes it and a
+mistake there is a parse error rather than a package saying something else.
+An object is a struct, a string enum an enum, a property neither
 required nor nullable, or nullable (`nullable: true`, `type: [T, 'null']`,
 `oneOf: [$ref, {type: 'null'}]`) an option, an array a list,
 `additionalProperties` of a schema a `map[string, V]`, `allOf` its parts'

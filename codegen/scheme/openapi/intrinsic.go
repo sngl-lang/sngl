@@ -2,94 +2,59 @@ package openapi
 
 import (
 	"errors"
-	"fmt"
-	"reflect"
+	"path"
+	"strings"
 
 	"duckfam.us/sngl/internal/buildhost"
 	"duckfam.us/sngl/internal/interp"
 	"duckfam.us/sngl/ir"
 )
 
-// The openapi: scheme's handler (lib/x/scheme/openapi) parses the document it
-// read through this.
+// The openapi: scheme's handler (lib/x/scheme/openapi) hands the document it
+// read to this, which answers the package it resolves to.
 func init() {
-	buildhost.RegisterIntrinsic("openapi.parse", parseIntrinsic)
+	buildhost.RegisterIntrinsic("openapi.generate", generateIntrinsic)
 }
 
-// parseIntrinsic answers openapi.parse: the document read into values of the
-// declaration's return type. It reads nothing but its argument -- the handler
-// read the file, which recorded it -- so it records nothing.
-func parseIntrinsic(_ *buildhost.Recorder, call *ir.Call, args []any) (any, error) {
-	src, _ := args[0].(string)
+// generateIntrinsic answers openapi.generate(text, from): an
+// `openapi.Package` holding the file to write, its source and the notes the
+// import gives. It reads nothing but its arguments -- the handler read the
+// file, which recorded it -- so it records nothing.
+func generateIntrinsic(_ *buildhost.Recorder, call *ir.Call, args []any) (any, error) {
+	text, _ := args[0].(string)
+	from, _ := args[1].(string)
 	if call == nil || call.Func == nil || call.Func.Return == nil {
-		return nil, errors.New("openapi.parse: no declared return type")
+		return nil, errors.New("openapi.generate: no declared return type")
 	}
-	spec, err := Parse([]byte(src))
+	def, _ := call.Func.Return.Decl.(*ir.StructDef)
+	if def == nil {
+		return nil, errors.New("openapi.generate: the declared return type is no struct")
+	}
+	spec, err := Parse([]byte(text))
 	if err != nil {
 		return nil, err
 	}
-	return value(reflect.ValueOf(*spec), call.Func.Return)
+	src, err := Write(spec, from)
+	if err != nil {
+		return nil, err
+	}
+	notes := make([]any, len(spec.Notes))
+	for i, n := range spec.Notes {
+		notes[i] = n
+	}
+	pkg := interp.NewStruct(def, call.Func.Return)
+	pkg.Set("file", FileName(from))
+	pkg.Set("source", src)
+	pkg.Set("notes", notes)
+	return pkg, nil
 }
 
-// value is v built as a value of t: a struct by its fields' `sngl` tags, a
-// slice as a list, a pointer as an option, and a string, a bool or a Kind as
-// itself -- an atom enum's value is its member's name.
-func value(v reflect.Value, t *ir.Type) (any, error) {
-	switch v.Kind() {
-	case reflect.String:
-		return v.String(), nil
-	case reflect.Bool:
-		return v.Bool(), nil
-	case reflect.Int:
-		return int(v.Int()), nil
-	case reflect.Pointer:
-		if v.IsNil() {
-			return nil, nil
-		}
-		if t.Kind != ir.TypeOption || len(t.Elems) != 1 {
-			return nil, fmt.Errorf("openapi.parse: %s is no option", t)
-		}
-		return value(v.Elem(), t.Elems[0])
-	case reflect.Slice:
-		if t.Kind != ir.TypeList || len(t.Elems) != 1 {
-			return nil, fmt.Errorf("openapi.parse: %s is no list", t)
-		}
-		out := make([]any, v.Len())
-		for i := range out {
-			x, err := value(v.Index(i), t.Elems[0])
-			if err != nil {
-				return nil, err
-			}
-			out[i] = x
-		}
-		return out, nil
-	case reflect.Struct:
-		def, _ := t.Decl.(*ir.StructDef)
-		if def == nil {
-			return nil, fmt.Errorf("openapi.parse: %s is no struct", t)
-		}
-		s := interp.NewStruct(def, t)
-		for i := range v.NumField() {
-			name := v.Type().Field(i).Tag.Get("sngl")
-			if name == "" {
-				continue
-			}
-			var ft *ir.Type
-			for _, f := range def.Fields {
-				if f.Name == name {
-					ft = f.Type
-				}
-			}
-			if ft == nil {
-				return nil, fmt.Errorf("openapi.parse: %s declares no field %s", def.Name, name)
-			}
-			x, err := value(v.Field(i), ft)
-			if err != nil {
-				return nil, err
-			}
-			s.Set(name, x)
-		}
-		return s, nil
+// FileName is the file an import of from writes: the document's own name,
+// as a .sngl file.
+func FileName(from string) string {
+	base := path.Base(from)
+	if i := strings.IndexByte(base, '.'); i > 0 {
+		base = base[:i]
 	}
-	return nil, fmt.Errorf("openapi.parse: a Go %s has no SNGL value", v.Type())
+	return base + ".sngl"
 }

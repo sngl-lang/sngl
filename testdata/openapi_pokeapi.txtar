@@ -1,6 +1,6 @@
 An `openapi:` import resolves through the library's own plugin,
-`sngl:x/scheme/openapi`: `openapi.parse` reads the spec in Go and hands the
-handler typed data, and the handler writes the package -- a declaration per
+`sngl:x/scheme/openapi`, whose handler hands the spec to `openapi.generate`,
+which reads it and writes the package in Go -- a declaration per
 schema, a `…Call` function per operation and a component over `async.query`
 per GET, and `server`, the context the spec's first server defaults. The spec
 is PokéAPI's own, trimmed: its 3.1 null unions in both spellings, an `allOf`
