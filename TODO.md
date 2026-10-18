@@ -130,10 +130,19 @@ Each is a commit series on the branch; one MR, so CI runs once.
    does, and a held literal carries all 52 fields. Folding the function per
    node per page cost the docs site 35% more allocation (12.6 GB against
    9.3), most of it the interpreter rebinding an environment per call. The
-   way back: option fields, or an `unset` member leading each Style enum as
-   `markup.SpanStyle`'s `inherit` does, which every target would gain from
-   too; then a fold cache keyed on a const call's arguments.
+   way back is step 7, then a fold cache keyed on a const call's arguments.
 6. The coverage test across all six, and CLAUDE.md's platform sections.
+7. **A Style that can say "unset".** Every style function reads a field at
+   its type's zero as unset, so a written zero and an enum's first member are
+   lost: `alignItems=start` stretches on fyne and gtk4, `textAlign=left` leaves
+   a fyne button centered, an explicit `#000000` is unset everywhere, a side
+   written `0px` beside a non-zero whole takes the whole, and html cannot move
+   at all (step 5). An `unset` member leading each Style enum, as
+   `markup.SpanStyle`'s `inherit` does, answers the enums; a measurement and
+   a color need option fields or an unset value of their own. With it, a
+   JavaScript struct literal can write every field
+   (`js_struct_omitted_fields`), since nothing would read a field's presence
+   any more.
 
 ### Found on the way, not yet fixed
 
