@@ -52,7 +52,7 @@ func (*CanvasRedrawStmt) irNode() {}
 //
 // Nil for anything else, which is what "not transparent" means.
 //
-// CLAUDE.md records this walk being written five times with a different member
+// design/families.md records this walk being written five times with a different member
 // missing from each. The checker's treeTransparent is deliberately not this: it
 // returns a second list as well, the blocks that may *supply* a family rather
 // than merely be held to one, and that distinction belongs where the rule it

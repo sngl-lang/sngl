@@ -320,7 +320,7 @@ func evalIdent(x *ir.Ident, ctx *evalCtx) (any, bool) {
 			// -- what a const the optimizer cannot evaluate already does. It
 			// is not the right answer, only a survivable one: the rule that a
 			// declaration may not read itself belongs in the checker, where it
-			// reaches a program this pass never folds. See CLAUDE.md.
+			// reaches a program this pass never folds. See design/windows.md.
 			//
 			// Survivable rests on something in another package. The standing
 			// expression reaches JavaScript as `var a = a`, which is benign
