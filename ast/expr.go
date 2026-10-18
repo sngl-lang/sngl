@@ -377,15 +377,6 @@ type ConstExpr struct {
 	Operand Expr
 }
 
-// BindExpr is `var name` written as an argument: in a match pattern,
-// `ok(var v)`, it binds the payload of the member the pattern names. Written
-// anywhere else it is refused, which the grammar leaves to the checker so that
-// the diagnostic can say where it belongs.
-type BindExpr struct {
-	Pos  Pos
-	Name string
-}
-
 // --- Statements ---
 
 // Stmt is any node valid inside a StmtBlock: declarations, statements, expressions.
@@ -540,7 +531,6 @@ func (x *InterpolationExpr) ExprPos() *Pos   { return &x.Pos }
 func (x *LambdaExpr) ExprPos() *Pos          { return &x.Pos }
 func (x *ParenExpr) ExprPos() *Pos           { return &x.Pos }
 func (x *ConstExpr) ExprPos() *Pos           { return &x.Pos }
-func (x *BindExpr) ExprPos() *Pos            { return &x.Pos }
 func (x *I18nInterpExpr) ExprPos() *Pos      { return &x.Pos }
 func (x *I18nPlaceholderExpr) ExprPos() *Pos { return &x.Pos }
 func (x *NamedType) ExprPos() *Pos           { return &x.Pos }

@@ -44,36 +44,20 @@ func nested(m Maybe) int {
     return 0
 }
 
-func missing(s Shape) => match s { // ERROR(check) "match is not exhaustive: missing sized"
+func missing(s Shape) => match var r = s { // ERROR(check) "match is not exhaustive: missing sized"
     empty => 0.0
-    circle(var r) => r
+    circle => r
 }
 
-func atomBinding(s Shape) => match s {
-    empty(var x) => 0.0 // ERROR(check) "member empty carries no payload to bind"
-    else => 1.0
-}
-
-func twoBindings(s Shape) => match s {
-    circle(var r), sized(var n) => 1.0 // ERROR(check) "an arm binding a payload has one pattern"
+// An arm naming two members takes the subject under the name, whatever the
+// members carry.
+func twoMembers(s Shape) => match var v = s {
+    circle, sized => v + 1.0 // ERROR(check) "operator + not defined for Shape and float"
     else => 0.0
 }
 
-func notEnum(n int) => match n {
-    circle(var r) => 1 // ERROR(check) "a pattern binding a payload names a member of the enum the match is over"
-    else => 0
-}
-
-func loose(s Shape) float {
-    return area(var r) // ERROR(check) "var r binds a payload in a match pattern and nowhere else"
-}
-
-func area(s Shape) float {
-    return 0.0
-}
-
-func bound(s Shape) => match s {
-    circle(var r) => func() { r = 2.0 } // ERROR(check) "r is bound by a match pattern and is read-only here: only an arm that is a block in a function may write it"
+func bound(s Shape) => match var r = s {
+    circle => func() { r = 2.0 } // ERROR(check) "r is named by match var and is read-only here: only an arm that is a block in a function may write it"
     else => func() {}
 }
 

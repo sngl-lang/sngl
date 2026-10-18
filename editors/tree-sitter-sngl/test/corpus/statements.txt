@@ -332,6 +332,45 @@ func describe(n int) string {
               (string_literal))))))))
 
 ================
+Match naming its subject
+================
+
+func area(s Shape) float {
+    match var v = s {
+        circle { return v * v }
+        else { return 0.0 }
+    }
+}
+
+---
+
+(source_file
+  (func_declaration
+    (func_name
+      (identifier))
+    (func_param
+      (identifier)
+      (type_identifier
+        (identifier)))
+    (type_identifier
+      (identifier))
+    (statement_block
+      (match_expression
+        (identifier)
+        (identifier)
+        (match_arm
+          (identifier)
+          (statement_block
+            (return_statement
+              (binary_expression
+                (identifier)
+                (identifier)))))
+        (match_arm
+          (statement_block
+            (return_statement
+              (float_literal))))))))
+
+================
 Match expression
 ================
 

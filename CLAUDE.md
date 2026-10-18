@@ -506,8 +506,18 @@ statement goes, `pattern => value` where a value goes, and the checker refuses
 the other (the grammar takes both everywhere). A pattern is a constant -- an
 enum member written bare, a literal, a `const`, `null` -- compared with `==`;
 commas join patterns, `else` is the last arm, and nothing falls through. A
-headless `match { cond => … }` tests `bool` conditions in order. There is no
-binding pattern yet; `var name` can be added without breaking anything.
+headless `match { cond => … }` tests `bool` conditions in order.
+
+**`match var v = subject` names the subject for the arms** (`ast.Match.Bind`,
+`matchBind` in `internal/checker/match.go`), as Go's type switch does: in an
+arm whose one pattern is a member carrying a payload, `v` is that payload; in
+every other arm it is the subject, narrowed to its element where the subject
+is an option and the arm cannot be taken on `null` (`subjectBind`). In a block
+run imperatively `v` is a local ahead of the block, declared only where the
+arm names it, since Go refuses one unused; anywhere else -- a view, a match
+expression -- each read of `v` is the read off the subject in place, which
+may then not be written (`matchBinds`). Nothing after the checker sees the
+name (`testdata/match_var.sngl`, `cmd/sngl/testdata/match_var_runs.txt`).
 
 **Every match is exhaustive**: each enum member, `true` and `false`, and
 `null` for an option, or an `else`. An `else` beside full coverage is allowed
@@ -616,15 +626,12 @@ reaches (`ir/enums.go`), so no pass learned a node:
   interpreter answer. The always-on `passEnumReads` writes a selector's null
   test as the first and a narrowed read as the second, so what a target
   meets of the selector is only a read whose option is used as one.
-- **A match over one is headless**: `match r { ok(var v) { … } failed { … } }`
+- **A match over one is headless**: `match var v = r { ok { … } failed { … } }`
   is checked (`checkMemberMatch`) into arms each taken on `enum.is` of the
   subject, so `Chain`, `TernaryChain`, `Taken` and every target's rendering
-  of a headless match serve it unchanged. `var v` binds the payload: a local
-  ahead of the arm's block where the block runs imperatively, and anywhere
-  else -- a view, a match expression -- each read of v is the payload read
-  off the subject in place, which may then not be written (`matchBinds`).
-  `var name` is an `ast.BindExpr`, an argument the grammar admits anywhere
-  and the checker refuses outside a pattern. Exhaustive as every match is.
+  of a headless match serve it unchanged. `v` is the payload in an arm whose
+  one pattern names a member carrying one (see *Match*). Exhaustive as every
+  match is.
 - **The zero is the first member's, with its payload's zero** (`ZeroExpr`).
 - **`==` compares member and payload**, and is refused where a payload does
   not compare alike on every target (`ir.RebuildIncomparable`, which an

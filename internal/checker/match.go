@@ -2,7 +2,6 @@ package checker
 
 import (
 	"fmt"
-	"slices"
 	"strconv"
 	"strings"
 
@@ -79,17 +78,27 @@ func (c *checker) checkMatch(m *ast.Match, isExpr bool) ir.MatchArms {
 			c.error(arm.Pos, "arm is unreachable after else: else is taken whenever no arm before it is")
 		}
 		a := &ir.MatchArm{Pos: arm.Pos, Else: arm.Else}
+		nullSeen := cov.seen["null"]
+		takesNull := false
 		restore := c.noPrelude()
 		for _, p := range arm.Patterns {
 			if pat := c.checkMatchPattern(m, p, subject, read, cov); pat != nil {
 				a.Patterns = append(a.Patterns, pat)
+				if key, _, ok := patternKey(pat); ok && key == "null" {
+					takesNull = true
+				}
 			}
 		}
 		restore()
 		if arm.Else {
 			elseAt = arm
+			takesNull = !nullSeen
 		}
-		c.checkArmBody(a, arm, isExpr, expected, out.Arms, nil)
+		var bind *matchBind
+		if m.Bind != "" && read != nil {
+			bind = c.subjectBind(m, isExpr, subjType, read, takesNull)
+		}
+		c.checkArmBody(a, arm, isExpr, expected, out.Arms, bind)
 		out.Arms = append(out.Arms, a)
 	}
 
@@ -105,9 +114,9 @@ func (c *checker) checkMatch(m *ast.Match, isExpr bool) ir.MatchArms {
 }
 
 // checkArmBody checks what an arm does -- its value in a match expression, its
-// block in a statement -- with bind, where the arm's pattern binds a payload,
+// block in a statement -- with bind, the name `match var` gives the subject,
 // in scope.
-func (c *checker) checkArmBody(a *ir.MatchArm, arm *ast.MatchArm, isExpr bool, expected *ir.Type, done []*ir.MatchArm, bind *payloadBind) {
+func (c *checker) checkArmBody(a *ir.MatchArm, arm *ast.MatchArm, isExpr bool, expected *ir.Type, done []*ir.MatchArm, bind *matchBind) {
 	if bind != nil {
 		c.pushScope()
 		defer c.popScope()
@@ -152,11 +161,15 @@ func (c *checker) checkArmBody(a *ir.MatchArm, arm *ast.MatchArm, isExpr bool, e
 		return
 	}
 	if bind.local {
-		a.Body = append([]ir.Stmt{&ir.LocalVar{Name: bind.sym.Name, Type: bind.sym.Type, Init: bind.read(), Sym: bind.sym}}, a.Body...)
+		// Declared only where the arm names it: an arm that does not would
+		// hand a host a local it never uses, which Go refuses.
+		if blockNames(a.Body, bind.sym) {
+			a.Body = append([]ir.Stmt{&ir.LocalVar{Name: bind.sym.Name, Type: bind.sym.Type, Init: bind.read(), Sym: bind.sym}}, a.Body...)
+		}
 		return
 	}
-	// Read in place: each read of the binding is a read of the payload off
-	// the subject, which a match may read again (matchSubject).
+	// Read in place: each read of the binding is a read off the subject,
+	// which a match may read again (matchSubject).
 	subst := func(e ir.Expr) (ir.Expr, error) {
 		if id, ok := e.(*ir.Ident); ok && id.Sym == ir.Symbol(bind.sym) {
 			return bind.read(), nil
@@ -226,10 +239,6 @@ func (c *checker) checkMatchPattern(m *ast.Match, p ast.Expr, subject ir.Expr, r
 		return cond
 	}
 	subjType := exprType(subject)
-	if call, ok := p.(*ast.CallExpr); ok && slices.ContainsFunc(call.Args.Args, isBindArg) {
-		c.error(pos, "a pattern binding a payload names a member of the enum the match is over")
-		return nil
-	}
 	want := optionElem(subjType)
 	if e := comparedEnum(subjType); e != nil {
 		want = e
@@ -446,21 +455,56 @@ func (m *matchCoverage) missing() string {
 // invalidValue stands where a value failed to check and was reported.
 func invalidValue() ir.Expr { return &ir.Literal{Type: &ir.Type{}} }
 
-// payloadBind is the payload an arm's pattern binds: `ok(var v)` declares sym
-// in the arm, and read is the payload off the subject. A local holds it in a
-// block run imperatively, which the arm may write like any other; anywhere
-// else -- a view, a match expression -- there is no statement to hold one, so
-// each read of sym reads the payload in place and sym may not be written.
-type payloadBind struct {
+// matchBind is what `match var v = subject` names in one arm: sym, declared
+// in the arm, and read, what it reads off the subject. In an arm whose one
+// pattern is a member carrying a payload that is the payload; in every other
+// arm it is the subject, and the subject's element where the subject is an
+// option the arm is not taken on null. A local holds it in a block run
+// imperatively, which the arm may write like any other; anywhere else -- a
+// view, a match expression -- there is no statement to hold one, so each read
+// of sym is that read in place and sym may not be written.
+type matchBind struct {
 	pos   ast.Pos
 	sym   *ir.Var
 	read  func() ir.Expr
 	local bool
 }
 
+// subjectBind names the subject in an arm, narrowed to its element where the
+// subject is an option and the arm is not taken on null.
+func (c *checker) subjectBind(m *ast.Match, isExpr bool, subjType *ir.Type, read func() ir.Expr, takesNull bool) *matchBind {
+	typ, at := subjType, read
+	if subjType != nil && subjType.Kind == ir.TypeOption && !takesNull {
+		typ = optionElem(subjType)
+		at = func() ir.Expr { return &ir.Conversion{Type: typ, Operand: read()} }
+	}
+	return c.newMatchBind(m, isExpr, typ, at)
+}
+
+func (c *checker) newMatchBind(m *ast.Match, isExpr bool, typ *ir.Type, read func() ir.Expr) *matchBind {
+	return &matchBind{
+		pos:   m.BindPos,
+		sym:   &ir.Var{Name: m.Bind, Type: typ},
+		read:  read,
+		local: !isExpr && c.funcDepth > 0,
+	}
+}
+
+// blockNames reports whether a block refers to sym anywhere.
+func blockNames(block []ir.Stmt, sym *ir.Var) bool {
+	found := false
+	_ = ir.WalkExprs(block, func(e ir.Expr) error {
+		if id, ok := e.(*ir.Ident); ok && id.Sym == ir.Symbol(sym) {
+			found = true
+		}
+		return nil
+	})
+	return found
+}
+
 // checkMemberMatch checks a match over an enum whose members carry payloads.
-// A pattern names a member, `ok`, and one carrying a payload may bind it,
-// `ok(var v)`. The match it makes is headless: each arm is taken on whether
+// A pattern names a member, `ok`, and `match var v = r` names the payload of
+// the member an arm's one pattern names. The match it makes is headless: each arm is taken on whether
 // the subject holds its member, which reads the subject however a pattern
 // compared against it would.
 func (c *checker) checkMemberMatch(m *ast.Match, isExpr bool, expected *ir.Type, read func() ir.Expr, subjType *ir.Type, ed *ir.EnumDef) ir.MatchArms {
@@ -481,14 +525,16 @@ func (c *checker) checkMemberMatch(m *ast.Match, isExpr bool, expected *ir.Type,
 			c.error(arm.Pos, "arm is unreachable after else: else is taken whenever no arm before it is")
 		}
 		a := &ir.MatchArm{Pos: arm.Pos, Else: arm.Else}
-		var bind *payloadBind
-		var binds int
+		nullSeen := cov.seen["null"]
+		takesNull := false
+		var payloadOf *ir.EnumMember
 		for _, p := range arm.Patterns {
-			member, bindAt, bindName, isNull, ok := c.memberPattern(p, ed, optional)
+			member, isNull, ok := c.memberPattern(p, ed, optional)
 			if !ok {
 				continue
 			}
 			if isNull {
+				takesNull = true
 				if !cov.add("null") {
 					c.error(*p.ExprPos(), "pattern null is already matched by an arm above")
 					continue
@@ -507,23 +553,22 @@ func (c *checker) checkMemberMatch(m *ast.Match, isExpr bool, expected *ir.Type,
 					Right: test}
 			}
 			a.Patterns = append(a.Patterns, test)
-			if bindName != "" {
-				binds++
-				name := member.Name
-				bind = &payloadBind{
-					pos:   bindAt,
-					sym:   &ir.Var{Name: bindName, Type: ir.MemberPayload(enumType, name)},
-					read:  func() ir.Expr { return ir.EnumPayloadRead(held(), name) },
-					local: !isExpr && c.funcDepth > 0,
-				}
+			if member.Payload != nil && len(arm.Patterns) == 1 {
+				payloadOf = member
 			}
-		}
-		if binds > 0 && len(arm.Patterns) > 1 {
-			c.error(arm.Pos, "an arm binding a payload has one pattern: the members it names carry different payloads")
-			bind = nil
 		}
 		if arm.Else {
 			elseAt = arm
+			takesNull = !nullSeen
+		}
+		var bind *matchBind
+		switch {
+		case m.Bind == "":
+		case payloadOf != nil:
+			name := payloadOf.Name
+			bind = c.newMatchBind(m, isExpr, ir.MemberPayload(enumType, name), func() ir.Expr { return ir.EnumPayloadRead(held(), name) })
+		default:
+			bind = c.subjectBind(m, isExpr, subjType, read, takesNull)
 		}
 		c.checkArmBody(a, arm, isExpr, expected, out.Arms, bind)
 		out.Arms = append(out.Arms, a)
@@ -539,33 +584,17 @@ func (c *checker) checkMemberMatch(m *ast.Match, isExpr bool, expected *ir.Type,
 }
 
 // memberPattern reads one pattern of a match over ed: a member, written bare
-// or through the enum's name, optionally binding its payload -- `ok(var v)` --
-// or null where the subject is an option.
-func (c *checker) memberPattern(p ast.Expr, ed *ir.EnumDef, optional bool) (member *ir.EnumMember, bindAt ast.Pos, bindName string, isNull, ok bool) {
-	head := p
-	if call, isCall := p.(*ast.CallExpr); isCall {
-		head = call.Func
-		if len(call.Args.Args) != 1 {
-			c.error(call.Pos, "a pattern binds a payload as member(var name)")
-			return nil, ast.Pos{}, "", false, false
-		}
-		arg, isArg := call.Args.Args[0].(ast.Arg)
-		b, isBind := arg.Value.(*ast.BindExpr)
-		if !isArg || arg.Name != "" || !isBind {
-			c.error(call.Pos, "a pattern binds a payload as member(var name)")
-			return nil, ast.Pos{}, "", false, false
-		}
-		bindAt, bindName = b.Pos, b.Name
-	}
+// or through the enum's name, or null where the subject is an option.
+func (c *checker) memberPattern(p ast.Expr, ed *ir.EnumDef, optional bool) (member *ir.EnumMember, isNull, ok bool) {
 	var name string
-	switch h := head.(type) {
+	switch h := p.(type) {
 	case *ast.LiteralExpr:
-		if h.Kind == ast.LiteralNull && bindName == "" {
+		if h.Kind == ast.LiteralNull {
 			if !optional {
 				c.error(h.Pos, "pattern of type null cannot match %s", ed.Name)
-				return nil, ast.Pos{}, "", false, false
+				return nil, false, false
 			}
-			return nil, ast.Pos{}, "", true, true
+			return nil, true, true
 		}
 	case *ast.IdentExpr:
 		name = h.Name
@@ -578,28 +607,14 @@ func (c *checker) memberPattern(p ast.Expr, ed *ir.EnumDef, optional bool) (memb
 	}
 	if name == "" {
 		c.error(*p.ExprPos(), "a pattern of a match over %s names one of its members", ed.Name)
-		return nil, ast.Pos{}, "", false, false
+		return nil, false, false
 	}
 	member = ed.Member(name)
-	if member == nil || !c.enumMember(*head.ExprPos(), ed, name) {
+	if member == nil || !c.enumMember(*p.ExprPos(), ed, name) {
 		if member == nil {
-			c.error(*head.ExprPos(), "%s has no member %s", ed.Name, name)
+			c.error(*p.ExprPos(), "%s has no member %s", ed.Name, name)
 		}
-		return nil, ast.Pos{}, "", false, false
+		return nil, false, false
 	}
-	if bindName != "" && member.Payload == nil {
-		c.error(*p.ExprPos(), "member %s carries no payload to bind", name)
-		return member, ast.Pos{}, "", false, true
-	}
-	return member, bindAt, bindName, false, true
-}
-
-// isBindArg reports whether an argument is `var name`.
-func isBindArg(a ast.ArgOrEventHandler) bool {
-	arg, ok := a.(ast.Arg)
-	if !ok {
-		return false
-	}
-	_, ok = arg.Value.(*ast.BindExpr)
-	return ok
+	return member, false, true
 }
