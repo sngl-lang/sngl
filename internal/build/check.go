@@ -13,6 +13,7 @@ import (
 
 	"duckfam.us/sngl/ast"
 	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/internal/buildhost"
 	"duckfam.us/sngl/internal/checker"
 	"duckfam.us/sngl/internal/parser"
 	"duckfam.us/sngl/internal/plugin"
@@ -86,6 +87,16 @@ func Check(doc *ast.Document, cfg CheckConfig) (*ir.Package, error) {
 	if pkg != nil {
 		pkg.Origin = &ir.PackageOrigin{Dir: ".", Docs: []*ast.Document{doc}}
 	}
+	// Warnings first, and whether or not the check failed: one may say why
+	// it did -- a field an import left out, and the read of it that is then
+	// an error.
+	if cfg.Warn != nil {
+		for _, d := range diags {
+			if d.Severity == ir.Warning {
+				cfg.Warn(d)
+			}
+		}
+	}
 	for _, d := range diags {
 		if d.Severity == ir.Error {
 			if os.Getenv("SNGL_DEBUG_CHECK") != "" {
@@ -94,13 +105,6 @@ func Check(doc *ast.Document, cfg CheckConfig) (*ir.Package, error) {
 				}
 			}
 			return pkg, d
-		}
-	}
-	if cfg.Warn != nil {
-		for _, d := range diags {
-			if d.Severity == ir.Warning {
-				cfg.Warn(d)
-			}
 		}
 	}
 	return pkg, nil
@@ -211,6 +215,9 @@ type Resolver struct {
 	// import of a package its cache does not hold asks it for the host. Nil
 	// refuses, so a resolver nobody thought about fetches nothing.
 	Trust *trust.Policy
+	// Wrote, where set, is told what each plugin's handler answered for an
+	// import -- what the golden harness shows of a scheme's package.
+	Wrote func(scheme, uri string, out *buildhost.Output)
 
 	mu       sync.Mutex
 	sessions map[string]codegen.SchemeImporter
@@ -324,8 +331,8 @@ func (r *Resolver) HasScheme(name string) bool {
 
 // GenerateScheme runs a plugin's handler for uri, gated by r.Trust and stored
 // in the default store, and returns the files it wrote.
-func (r *Resolver) GenerateScheme(s *ir.Scheme, uri string) ([]*ast.Document, error) {
-	run := &plugin.Runner{Trust: r.Trust, Root: r.RootDir}
+func (r *Resolver) GenerateScheme(s *ir.Scheme, uri string) ([]*ast.Document, []string, error) {
+	run := &plugin.Runner{Trust: r.Trust, Root: r.RootDir, FS: r.FS, Wrote: r.Wrote}
 	return run.Generate(s, uri)
 }
 

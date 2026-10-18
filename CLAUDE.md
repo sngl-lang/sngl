@@ -635,7 +635,10 @@ reaches (`ir/enums.go`), so no pass learned a node:
 - **The zero is the first member's, with its payload's zero** (`ZeroExpr`).
 - **`==` compares member and payload**, and is refused where a payload does
   not compare alike on every target (`ir.RebuildIncomparable`, which an
-  effect's key asks too). A payload enum has no string form: `string(r)` and
+  effect's key asks too). An option compares there by presence and then by
+  element (`optionCompare` in `internal/lower/rebuildcompare.go`), never with
+  its own `==`, which on Go compares two pointers
+  (`testdata/effect_key_option.txtar`). A payload enum has no string form: `string(r)` and
   `"{r}"` are refused unless it declares `string()`.
 
 Each target: **Go** a struct of an unexported `tag int` (the member's
@@ -738,7 +741,16 @@ taken as a value in a lambda passing the values active there, and a lambda's
 body is lowered where it is written. The interpreter agrees by capturing the
 provided values when a `LambdaValue` is made. Passing the invoker's values
 instead would need every function type to carry the contexts, which a host
-callback cannot supply.
+callback cannot supply. So **taking a function is reading what it reads**:
+`callsIn` counts an `ir.Ident` naming a function as an edge beside a call,
+or a component that takes one (an adapter's `fetch=lookup`) under a provider
+its caller wrote was no reader of the context, was handed no value, and bound
+the default (`testdata/context_func_value_under_provider.txtar`).
+
+**A context a directory or scheme package declares is part of what it
+exports** (`mergePkgInto`), as a library's is: `p.server(v) { … }` provides
+it and `t.setContext(p.server, v)` sets it
+(`cmd/sngl/testdata/context_from_directory_package_runs.txt`).
 
 The interpreter is dynamic by construction — a provider pushes onto the scope
 for its subtree — so what it has to carry explicitly is what runs after the
@@ -1161,7 +1173,7 @@ The tiers, and the split between them is the whole point of the system:
   would read it, and a repository may not choose what `sngl build` runs. A
   build node is never rendered, which is why it may have a body and is exempt
   from the const-component rule.
-- **`lib/x/scheme/<name>/` → `sngl:x/scheme/<name>`** — the library's own import-scheme plugins, each serving `<name>:` with no import (see *Import schemes*). `c` runs pkg-config and writes a `c.link`; `gir` writes gtk4's widget declarations from GIR through a build intrinsic gtk4's Go answers (`buildhost.RegisterIntrinsic`). Checked as a package of its own when its scheme is first asked for -- against no target, since it is a build tool -- and left out of the merged stdlib documents. It may import `sngl:internal/`, and what it writes is library source in all but origin (`Config.byLibrary`): it may too. A check with no build resolver -- `sngl doc`, the LSP's library path, `CapsFor` -- still resolves one, through the runner `internal/plugin` registers with `checker.RegisterLibraryRunner`, which is what lets library source import a library scheme.
+- **`lib/x/scheme/<name>/` → `sngl:x/scheme/<name>`** — the library's own import-scheme plugins, each serving `<name>:` with no import (see *Import schemes*). `c` runs pkg-config and writes a `c.link`; `gir` writes gtk4's widget declarations from GIR through a build intrinsic gtk4's Go answers (`buildhost.RegisterIntrinsic`); `openapi` writes a package from an OpenAPI 3 document (see *The `openapi:` scheme*). Checked as a package of its own when its scheme is first asked for -- against no target, since it is a build tool -- and left out of the merged stdlib documents. It may import `sngl:internal/`, and what it writes is library source in all but origin (`Config.byLibrary`): it may too. A check with no build resolver -- `sngl doc`, the LSP's library path, `CapsFor` -- still resolves one, through the runner `internal/plugin` registers with `checker.RegisterLibraryRunner`, which is what lets library source import a library scheme.
 - **`lib/x/c/` → `sngl:x/c`** — `link`, the directive a package writes to say which C header its `#[cnative]` declarations come from and the flags compiling and linking against it need; read onto `ir.Package.CLinks`, from which a Go target writes its cgo preamble (`ir.ReachedCLinks`).
 - **`lib/internal/` → `sngl:internal/<name>`** — the compiler's own tier, importable only from lib source.
 
@@ -4345,6 +4357,24 @@ path, and is stored as `sngl.scheme` (see *Performance*). Fixtures:
 `cmd/sngl/testdata/scheme_order.txt`, `scheme_errors.txt`,
 `scheme_store.txt`, `c_pkgconfig.txt`, and `testdata/c_link.txtar`.
 
+**`out.note(message)` is a warning at the import** -- what a handler left
+out, a name it changed -- given on every check, a replay from the store
+included: the notes are stored ahead of the files (`// sngl:note`), and
+`SchemeRunner.GenerateScheme` hands them back beside the documents. A failing
+check prints its warnings before its error (`build.Check`), since a note is
+usually why a read of the package fails.
+
+**A handler's relative read inside the project goes through the project's
+FS** (`Host.ReadThrough`, from `Resolver.FS`): on disk that is an `os.Root`,
+so a symlink out of the project is refused where it is opened, and the file
+is recorded at its place under the import root; in memory -- the golden
+harness's `MapFS` -- nothing is recorded and the output is not stored, since
+no store could read the file again.
+
+**What a SNGL-writing scheme's package declares is the program's own**
+(`lower.userPackages`): its structs are declared and its functions emitted
+like a directory package's, `sngl:` and a native scheme's package excepted.
+
 **`c:` declares nothing a program calls.** `c:pkg:<library>/<header>` asks
 pkg-config for flags and includes `<header>`; anything else is a header
 included as written. What it writes is one `c.link`, and the program declares
@@ -4352,6 +4382,65 @@ each function with `#[cnative]` -- GTK's headers take a C parser minutes, which
 is why the Go importer that parsed them went rather than moved. A `#[cnative]`
 call returning an int or a float is converted to Go's type at the call, as its
 arguments are to C's.
+
+### The `openapi:` scheme
+
+**`import poke "openapi:./pokeapi.yml"` writes a package from an OpenAPI 3
+document**, YAML or JSON: a declaration per schema, a `…Call` function per
+operation answering `async.Result`, a component over `async.query` per `GET`,
+and `server`, a context defaulting to the spec's first server
+(`lib/x/scheme/openapi`). The path is the project's own file, read through
+the project; one outside it is refused before anything is read.
+
+**Go reads the document and writes the package.** The SNGL handler reads
+the file -- its lines joined once, since `s = s + line` in a loop copies the
+string every time -- and
+hands it to `openapi.generate` (`codegen/scheme/openapi`), which answers the
+file, its source and the notes. `Parse` reads the document into a `Spec`,
+every reference resolved, every name a SNGL identifier and every construct
+with no declaration left out with a note; `Write` writes the source and
+prints it through `parser.Format`, so it reads as `sngl fmt` writes it and a
+mistake there is a parse error rather than a package saying something else.
+An object is a struct, a string enum an enum, a property neither
+required nor nullable, or nullable (`nullable: true`, `type: [T, 'null']`,
+`oneOf: [$ref, {type: 'null'}]`) an option, an array a list,
+`additionalProperties` of a schema a `map[string, V]`, `allOf` its parts'
+fields merged, and an inline object or enum a declaration named for where it
+stands. An integer is `int` whatever its format -- the sized ints mix with
+nothing -- and a `date`/`date-time` string `time.date`/`time.datetime`. A
+key that is no SNGL name is camelCased, carrying `#[json.identifier]`; a
+query parameter likewise carries `#[http.identifier]` on a declared
+`<Op>Query` struct, and the query is an anonymous literal where every name
+is its own. Names collide into a `2` -- two differing only in their first
+letter's case are one, since Go exports both -- a keyword takes a `_`, and a parameter
+named like an adapter's own prop (`value`, `pending`, `failure`, `load`,
+`fail`) or like `server` is renamed; each is a note.
+
+**Left out, and said**: an `anyOf`, a `oneOf` that is not one schema or
+null, a `discriminator` (a payload enum once sngl:json reads that layout), a
+map of any value, an enum of anything but strings, a `$ref` outside the
+document -- each leaves out the field reaching it, or the schema, and
+whatever names that -- and a header or cookie parameter, a body that is not
+JSON or a success with no JSON, which leave out the operation. A `GET` with a
+list parameter keeps its function and has no adapter, since a list cannot be
+an effect's key. A Swagger 2 or OpenAPI 4 document, and text that is not
+YAML, are errors at the import.
+
+**What the package composes** (`testdata/openapi_pokeapi.txtar`, its
+`written` package shown in the archive): each function is
+`_answered(http.get(…))` -- the package's one helper, the response where it
+arrived with a 2xx status -- then `json.decode[T]` of its body. The
+codec refuses a type parameter, so there is no generic `getJSON[T, Q]`: the
+decode is written per operation. The URL is `"{server}…"` with each path
+parameter escaped by `http.pathEscape`, so a provider of `server` around a
+component reaches its request. The adapter's key is its one parameter, with
+the function as `fetch`, or an anonymous struct of several with a lambda
+spreading it back out; it renders nothing, so its family is `F`.
+
+The runs are `cmd/sngl/testdata/openapi_runs.txt`, against the script
+harness's server on all five targets that answer a request; the refusals
+`cmd/sngl/testdata/error_openapi_*.txt`, the renames `openapi_renamed.txt`
+and the store `openapi_store.txt`.
 
 ### Navigation
 
@@ -4971,7 +5060,10 @@ after the check works on a copy*).
 from the root `TestGolden`): the archive's root-level files are one SNGL
 package, `out/<lang>/<platform>/` is the generated code, and which targets run
 is the source's own `output` block rather than a harness header. Seed or
-refresh with `go test . -run TestGolden -update`. The compile is
+refresh with `go test . -run TestGolden -update`. A `written <import path>`
+line in the archive's comment adds what that import's plugin wrote, as its
+store holds it, under `written/<scheme>/` -- the package an `openapi:`
+import resolves to -- with its notes in `written/<scheme>/notes`. The compile is
 `internal/build`'s — the same code `sngl generate` runs, which is why that
 package exists.
 

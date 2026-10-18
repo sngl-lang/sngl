@@ -326,7 +326,7 @@ func (m *Model) __effect0_up() {
 			m.__effect0_key = __effect0_k
 			m.__effect0_mount()
 		} else {
-			if m.__effect0_live[__effect0_i] != __effect0_k {
+			if ((m.__effect0_live[__effect0_i] == nil) && (__effect0_k != nil)) || ((m.__effect0_live[__effect0_i] != nil) && ((__effect0_k == nil) || ((*(m.__effect0_live[__effect0_i])) != (*(__effect0_k))))) {
 				m.__effect0_key = __effect0_k
 				m.__effect0_mount()
 			}
@@ -448,4 +448,4 @@ func (m *Model) calPresent() bool {
 	return m.cal != nil
 }
 -- run/go/gtk4 --
-pass sha256:3f8def7f1c99b575c53bb8c99a8d933a
+pass sha256:6e6339abf901cca5bd3d5d638ad6b82f

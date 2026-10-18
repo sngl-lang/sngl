@@ -397,6 +397,13 @@ func callsIn(root any, shadow map[*ir.Context]bool) []callEdge {
 			if x.Func != nil {
 				calls = append(calls, callEdge{fn: x.Func, shadowed: shadow})
 			}
+		case *ir.Ident:
+			// A function taken as a value is bound where it is taken
+			// (funcValueUnder), so the scope taking it reads what it reads:
+			// `fetch=lookup` under a provider passes the provider's value.
+			if fn, ok := x.Sym.(*ir.Func); ok {
+				calls = append(calls, callEdge{fn: fn, shadowed: shadow})
+			}
 		case *ir.ContextProvider:
 			inner := copyContextShadow(shadow)
 			inner[x.Ref] = true

@@ -2105,6 +2105,18 @@ func (c *checker) mergePkgInto(dst, src *ir.Package) {
 	for _, v := range src.Consts {
 		c.mergeInto(declPos(v), dst.Symbols.Root, v)
 	}
+	// A context the package declared, and not one it adopted from its own
+	// imports: `p.server(url) { … }` provides it, and `p.server` reads it.
+	for _, ctx := range src.Contexts {
+		if ctx.Pkg != src || ctx.Name == "" {
+			continue
+		}
+		var pos ast.Pos
+		if ctx.AST != nil {
+			pos = ctx.AST.Pos
+		}
+		c.mergeInto(pos, dst.Symbols.Root, ctx)
+	}
 }
 
 // registerEnum registers an enum's name and members; what a member carries

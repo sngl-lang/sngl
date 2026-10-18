@@ -1,0 +1,25 @@
+# An operation whose success holds no JSON answers nothing a function could
+# return: left out.
+env SNGL_GENCACHE=off
+
+! sngl check app.sngl
+stderr 'import "openapi:./api.yml": DELETE /thing is left out: its 204 response holds no JSON'
+stderr 'app.sngl:4:16: unknown component'
+
+-- app.sngl --
+import api "openapi:./api.yml"
+
+func ask() {
+    var r = api.deleteThingCall()
+}
+-- api.yml --
+openapi: 3.1.0
+info: {title: T, version: "1"}
+servers:
+- url: https://api.example
+paths:
+  /thing:
+    delete:
+      operationId: deleteThing
+      responses:
+        '204': {description: ''}

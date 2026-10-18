@@ -241,6 +241,17 @@ func rebuildIncomparable(t *Type, seen []*StructDef) (string, []string) {
 		return "", nil
 	case TypeBool, TypeInt, TypeFloat, TypeString, TypeUnit:
 		return "", nil
+	case TypeOption:
+		// Absent against absent, and otherwise the element: emitted as a null
+		// test of each side and the element's own comparison, since an
+		// option is a pointer on Go and its == is the pointer's.
+		if len(t.Elems) != 1 {
+			return t.String(), nil
+		}
+		if bad, path := rebuildIncomparable(t.Elems[0], seen); bad != "" {
+			return bad, append(path, "element of "+t.String())
+		}
+		return "", nil
 	case TypeTypeParam:
 		// Judged where the parameter is bound to a concrete type. Answering
 		// here would make a generic declaration undeclarable.

@@ -1,0 +1,36 @@
+# Only an OpenAPI 3 document is read. A Swagger 2.0 one, or a document with
+# no version at all, is an error at the import.
+env SNGL_GENCACHE=off
+
+! sngl check swagger.sngl
+stderr 'swagger.sngl:1:1: import "openapi:./swagger.yml": .*a Swagger 2.0 document: only OpenAPI 3 is read'
+
+! sngl check bare.sngl
+stderr 'bare.sngl:1:1: import "openapi:./bare.yml": .*not an OpenAPI document: it has no `openapi` version'
+
+! sngl check four.sngl
+stderr 'four.sngl:1:1: import "openapi:./four.yml": .*OpenAPI 4.0.0: only OpenAPI 3 is read'
+
+-- swagger.sngl --
+import api "openapi:./swagger.yml"
+
+const x = 1
+-- bare.sngl --
+import api "openapi:./bare.yml"
+
+const x = 1
+-- four.sngl --
+import api "openapi:./four.yml"
+
+const x = 1
+-- swagger.yml --
+swagger: "2.0"
+info: {title: T, version: "1"}
+paths: {}
+-- bare.yml --
+info: {title: T, version: "1"}
+paths: {}
+-- four.yml --
+openapi: 4.0.0
+info: {title: T, version: "1"}
+paths: {}

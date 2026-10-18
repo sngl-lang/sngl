@@ -39,7 +39,9 @@ type SchemeKnower interface {
 // SchemeRunner is implemented by a resolver that can run a plugin's handler:
 // what it writes for uri, parsed, is the package the import resolves to.
 type SchemeRunner interface {
-	GenerateScheme(s *ir.Scheme, uri string) ([]*ast.Document, error)
+	// GenerateScheme answers the files it wrote, parsed, and the notes it
+	// wrote beside them: each is a warning at the import.
+	GenerateScheme(s *ir.Scheme, uri string) ([]*ast.Document, []string, error)
 }
 
 // The runner a library plugin's handler runs through when the check has no
@@ -383,10 +385,13 @@ func (c *checker) generateScheme(imp *ast.Import, s *ir.Scheme, uri string) []*a
 	}
 	c.generating[key] = true
 	defer delete(c.generating, key)
-	docs, err := runner.GenerateScheme(s, uri)
+	docs, notes, err := runner.GenerateScheme(s, uri)
 	if err != nil {
 		c.error(imp.Pos, "import %q: %v", imp.Path, err)
 		return nil
+	}
+	for _, n := range notes {
+		c.warn(imp.Pos, "import %q: %s", imp.Path, n)
 	}
 	if len(docs) == 0 {
 		c.error(imp.Pos, "import %q: scheme %q wrote no file", imp.Path, s.Name)
