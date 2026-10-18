@@ -559,7 +559,9 @@ file.
    3. On this step's branch, `git rm TODO.md`, commit ("Drop the plan from
       the branch"), push, and open the MR against `main`. CI refuses an MR
       that still carries `TODO.md`.
-   4. Hand back the MR link and the next branch's name.
+   4. Hand back the MR link, and the prompt for the next session in a code
+      block, ready to paste: the next branch's name, the step it is, and an
+      instruction to read this file and follow *Working this plan*.
 4. A follow-up found on review goes on the step's own branch, never on the
    next one.
 5. The last step deletes this file in its MR and makes no next branch.
