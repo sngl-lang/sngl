@@ -48,8 +48,8 @@ func touched(b builder) string {
     return b.string()
 }
 
-func pages(title string) string {
-    var p = Page{title=title}
+func pages() string {
+    var p = Page{title="t"}
     p.body.line("one")
     var q = p
     q.body.line("two")
@@ -66,7 +66,7 @@ component main node {
         heading(&b, "T")
         var c = b
         c.add("y")
-        shown = string(b) + "|" + touched(c) + "|" + lines(["a", "b"]) + "|" + pages("t")
+        shown = string(b) + "|" + touched(c) + "|" + lines(["a", "b"]) + "|" + pages()
     })
     text(value=shown)
 }
@@ -133,8 +133,8 @@ func Touched(b []byte) string {
 	return string(b__own)
 }
 
-func Pages(title string) string {
-	p := Page{Title: title}
+func Pages() string {
+	p := Page{Title: "t"}
 	p.Body = append(append(p.Body, "one"...), '\n')
 	q := func(_s1 Page) Page { _s1.Body = append([]byte(nil), _s1.Body...); return _s1 }(p)
 	q.Body = append(append(q.Body, "two"...), '\n')
@@ -148,7 +148,7 @@ func (m *Model) go__r0_click_handler() {
 	b = Heading(b, "T")
 	c__r0 := append([]byte(nil), b...)
 	c__r0 = append(c__r0, "y"...)
-	m.shown = ((((((string(b) + "|") + Touched(c__r0)) + "|") + Lines([]string{"a", "b"})) + "|") + Pages("t"))
+	m.shown = ((((((string(b) + "|") + Touched(c__r0)) + "|") + Lines([]string{"a", "b"})) + "|") + Pages())
 	m.__n0.SetText(m.shown)
 }
 
@@ -257,7 +257,7 @@ fun MainScreen(state: MainScreenState = remember { MainScreenState() }) {
             b = heading(b, "T")
             var c = StringBuilder(b)
             c.append("y")
-            state.shown = ((((((b.toString() + "|") + touched(c)) + "|") + lines(listOf("a", "b"))) + "|") + pages("t"))
+            state.shown = ((((((b.toString() + "|") + touched(c)) + "|") + lines(listOf("a", "b"))) + "|") + pages())
         }, modifier = Modifier.testTag("go").safeDrawingPadding()) {
             Text(text = "Go", modifier = Modifier)
         }
@@ -286,8 +286,8 @@ fun touched(b: StringBuilder): String {
     return b__own.toString()
 }
 
-fun pages(title: String): String {
-    var p = Page(title = title)
+fun pages(): String {
+    var p = Page(title = "t")
     p.body.append("one").append('\n')
     var q = p.let { _s1 -> _s1.copy(body = StringBuilder(_s1.body)) }
     q.body.append("two").append('\n')
@@ -386,8 +386,8 @@ window.__sngl_boot = () => {
     b += "!";
     return b;
   }
-  function pages(title) {
-    let p = { title };
+  function pages() {
+    let p = { title: "t" };
     p.body += "one\n";
     let q = { ...p };
     q.body += "two\n";
@@ -405,7 +405,7 @@ window.__sngl_boot = () => {
     b = heading(b, "T");
     let c = b;
     c += "y";
-    state.shown = b + "|" + touched(c) + "|" + lines(["a", "b"]) + "|" + pages("t");
+    state.shown = b + "|" + touched(c) + "|" + lines(["a", "b"]) + "|" + pages();
     __n0.textContent = state.shown;
   });
   function __sngl_init() {
@@ -418,8 +418,8 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:73f686f71c93a4c82d648b742cedd261
+pass sha256:ffe26c42d02459e89b49028db8c9c609
 -- run/kotlin/android --
-pass sha256:e2782b169ba8c09ae203d0fd116af3b9
+pass sha256:3d3fa5c8ad0377f8f779a47b0b6b154a
 -- run/none/html --
-pass sha256:8b1400f742fbb3d46db09410e6b32e17
+pass sha256:40377bfa35505c0ab86451ad6653efe0
