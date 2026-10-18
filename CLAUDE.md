@@ -707,9 +707,12 @@ Three general things it needed, each of its own:
   declaration, and the call through it is a direct or a literal call by the
   time it is emitted.
 
-bubbletea answers no `async.do` (#272), so a fetch that waits is refused at
-the call that waits (`cmd/sngl/testdata/async_query_bubbletea_refused.txt`);
-one that answers at once runs there as everywhere. Kotlin declares no async
+On bubbletea the mount's tail is posted back through Update like any other
+`async.do` (see the bubbletea platform), so a fetch that waits runs there too
+(`testdata/async_query_bubbletea.txtar`,
+`cmd/sngl/testdata/async_query_bubbletea_runs.txt`); a query in a component
+built per copy of a loop is still refused there, an effect reading that
+component's state. Kotlin declares no async
 native, so on android a fetch answers at once. The interpreter runs `fetch` at
 mount, so a test reads the answer as there (`testdata/async_query.sngl`,
 and `async_query_loop.sngl` for a query per copy of a loop).
@@ -853,10 +856,19 @@ Both start from `codegen.AnalyzeCommon(doc)` which extracts model fields, comput
   (`golang.OffLoopSnapshots`, `emitSnapshotMethods`). Only a literal written
   there: a named function or a func value handed instead runs on the shared
   state (#273), and so does a func value kept in state that such work calls
-  (#274). What such work writes
-  reaches nothing the program shows, since this target answers no `async.do`
-  to post it back with (#272). `codegen/platform/bubbletea/async_run_test.go`
-  runs both halves under `-race`.
+  (#274). What such work writes reaches nothing the program shows; it
+  reaches the program by **posting back**: `async.do` is a closure sent on
+  `__snglPosts`, which Init and every Update after one listen on with a
+  `tea.Cmd` and Update runs as a `__snglPostMsg` (`bubbletea/post.go`). The
+  closure carries the Model it writes: inside an off-loop literal that is the
+  Model the literal was made from, kept beside the snapshot as `__live`
+  (`GoIRContext.LiveModel`, `evalPost`), so a post writes the state the loop
+  shows and never the copy the work read. A test's `t.wait` runs the posts as
+  they arrive, on the goroutine that owns the Model as Update does, and a post
+  a finished test left behind writes only that test's Model. Posting touches
+  neither #273 nor #274: a post from such work carries the shared Model it
+  already wrote. `codegen/platform/bubbletea/async_run_test.go` runs the
+  snapshot halves under `-race`.
 - **fyne** — generates Go desktop code; supports `golang` lang only. Its Go emitter knows three `#[intrinsic]` primitives, which differ only in the children contract a declaration cannot express as data: `Widget` (none), `Container` (a default slot, children attach through a method) and `Wrapper` (a default slot bounded to one, the child is assigned to a field). *Which* Fyne widget one becomes is a `Spec` record passed as a prop — Go constructor, its arguments, the Go type, the import paths, the setter behind each value prop, the callback field and Go signature behind each event. `codegen/platform/fyne/spec.go` decodes it and nothing else in the platform names a Fyne type. Label, Button, VBox and the other twelve are ordinary components in `fyne.sngl` carrying a Spec, so wrapping a widget from a Go module the compiler never heard of is writing a thirteenth — `codegen/platform/fyne/third_party_widget_test.go` is that, done in SNGL alone.
 
   A value has to reach the emitter through a *declared* prop, since that is what lowering turns into the `node.prop = expr` assignment the translator sees. `style` is the platform's own and renders nothing, as on gtk4; a temp its value reads -- a ternary passTernary hoisted -- is read into `_` (`codegen.KeepLocalsRead`, `testdata/style_ternary_unrendered.txtar`). So the primitives declare a vocabulary of value props by type (`text`, `placeholder`, `number`, `flag`, `options`) and `Setter` binds one to a Go method — the vocabulary grows with the types a setter takes, not with the widget count. Same for `@click`/`@change`/`@input` and `Handler`.
@@ -2791,8 +2803,9 @@ declaration itself. Two things about the name that are easy to get wrong:
   unless this pass takes the closure as an entry point. There is no *one*
   declaration to put the flag on -- the pass synthesizes calls to the id
   itself, and a platform package may declare its own -- so the pass names it.
-  Only fyne and gtk4 answer the id at all, which is what stops the declaration
-  being lifted somewhere portable.
+  fyne, gtk4 and bubbletea answer the id; bubbletea's answer is spelled by
+  the Go emitter itself (`GoIRContext.evalPost`) rather than registered, since
+  which Model a post writes depends on the scope it is written in.
 
   **Two shapes make Go's select behave unexpectedly, and both are written on the
   declaration.** A *closed* channel is always ready and yields the zero value
@@ -4226,12 +4239,12 @@ function literal that waits, called where it stands -- an adapter's
 `fetch=func(k) => call(k.a, k.b)` spliced into the mount -- is written in
 place as a `run` block binding its parameters (`waitingLiteralCall`), since a
 Kotlin lambda is no suspend function; and a test build's wait for idle also
-waits for what `start` began. bubbletea answers no
-`async.do` (#272) and refuses the request at the call that waits. A test
+waits for what `start` began. A test
 waits for what a handler's request writes with `t.wait`, which Go now lowers
-too (gtk4 pumping its loop meanwhile, `golang.LowerTestFile` being handed the
-platform). `cmd/sngl/testdata/http_runs.txt` runs requests, a waiting
-handler and an `async.query` over a request on five targets against the
+too (gtk4 pumping its loop meanwhile and bubbletea running what was posted,
+`golang.LowerTestFile` being handed the platform).
+`cmd/sngl/testdata/http_runs.txt` runs requests, a waiting handler and an
+`async.query` over a request on six targets against the
 server the script harness runs at `127.0.0.1:47819`
 (`cmd/sngl/httpserver_test.go`), and `testdata/http_json.txtar` is the code.
 
@@ -4438,7 +4451,7 @@ the function as `fetch`, or an anonymous struct of several with a lambda
 spreading it back out; it renders nothing, so its family is `F`.
 
 The runs are `cmd/sngl/testdata/openapi_runs.txt`, against the script
-harness's server on all five targets that answer a request; the refusals
+harness's server on all six targets; the refusals
 `cmd/sngl/testdata/error_openapi_*.txt`, the renames `openapi_renamed.txt`
 and the store `openapi_store.txt`.
 

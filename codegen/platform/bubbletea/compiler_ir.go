@@ -709,6 +709,13 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 		}
 	}
 
+	posts := usesPosts(ctx.Pkg)
+	if posts {
+		gc.RequireImport("time")
+		emitPostDecls(&b)
+		widgetInits = append(widgetInits, awaitPost)
+	}
+
 	b.WriteString("func (m Model) Init() tea.Cmd {\n")
 	if len(info.timers) > 0 {
 		b.WriteString("\tvar cmds []tea.Cmd\n")
@@ -989,6 +996,11 @@ func emitIRUpdate(b *strings.Builder, info *irAnalysis, ctx *codegen.CodegenCtx,
 		getter := golang.ExportName(bind.name)
 		fmt.Fprintf(b, "\tcase set%sMsg:\n", getter)
 		fmt.Fprintf(b, "\t\tm = m.Set%s(msg.value)\n", getter)
+	}
+
+	// A closure posted back to the loop, and the wait for the next.
+	if usesPosts(ctx.Pkg) {
+		fmt.Fprintf(b, "\tcase %s:\n\t\tmsg()\n\t\tcmds = append(cmds, %s)\n", postMsgType, awaitPost)
 	}
 
 	// Timer ticks

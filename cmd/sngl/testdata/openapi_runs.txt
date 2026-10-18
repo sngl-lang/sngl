@@ -1,7 +1,6 @@
 # The package an openapi: import writes, run against the local server the
 # script harness runs at 127.0.0.1:47819 (cmd/sngl/httpserver_test.go) on
-# every target that can wait for a request. bubbletea answers no async.do yet
-# (#272), so a request there is refused at the call that waits.
+# every target.
 
 sngl test --platform=none app.sngl
 stdout '4 tests, 0 failures'
@@ -19,8 +18,8 @@ stdout '4 tests, 0 failures'
 sngl test --platform=android --language=kotlin app.sngl
 stdout '4 tests, 0 failures'
 
-! sngl test --platform=bubbletea --language=go app.sngl
-stderr 'app.sngl:15:43: this call blocks and bubbletea has no way to run anything back'
+sngl test --platform=bubbletea --language=go app.sngl
+stdout '4 tests, 0 failures'
 
 -- app.sngl --
 // The package an openapi: import writes, run against the local server: a
@@ -344,6 +343,34 @@ sha256:8dc5bae6bc5f66a4ce73ba4fdd0ce869
 }
 -- testrun/android/kotlin/app.sngl/pager/1 --
 sha256:f00c7afcc404179d04a32394f4f76d59
+{
+  "results": [
+    {
+      "Desc": "AdapterAsksAgain",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/_/1 --
+sha256:ea63e50eacecb949c3e14ee31422f1ab
+{
+  "results": [
+    {
+      "Desc": "ListQuery",
+      "Passed": true
+    },
+    {
+      "Desc": "NotFound",
+      "Passed": true
+    },
+    {
+      "Desc": "Retrieve",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/pager/1 --
+sha256:bac01233f80db2a55a186c54b8c9d18a
 {
   "results": [
     {

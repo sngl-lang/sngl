@@ -12,7 +12,8 @@ import gen "sngl:x/gen"
 // the keyboard. No reactiveCanvas: View() re-runs on every update and
 // re-rasterises with it, so an explicit redraw would be the second of two.
 // viewMatches: View() is Go statements, so a match there is a switch.
-#[gen.can(viewMatches)]
+// asyncPost: a closure posted back to the loop is a message Update runs.
+#[gen.can(viewMatches, asyncPost)]
 #[gen.cannot(inlineComponents, implicitRecv, structSpread)]
 #[gen.wants(structComponents, stdlibContextParam, focusOrder, canvas)]
 #[gen.name("bubbletea")]

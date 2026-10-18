@@ -1,7 +1,6 @@
 # sngl:http against the local server the script harness runs at
 # 127.0.0.1:47819 (cmd/sngl/httpserver_test.go), decoded with sngl:json, on
-# every target that can wait for a request. bubbletea answers no async.do
-# yet (#272), so a request there is refused at the call that waits.
+# every target.
 
 sngl test --platform=none app.sngl
 stdout '10 tests, 0 failures'
@@ -18,8 +17,8 @@ stdout '10 tests, 0 failures'
 sngl test --platform=android --language=kotlin app.sngl
 stdout '10 tests, 0 failures'
 
-! sngl test --platform=bubbletea --language=go app.sngl
-stderr 'app.sngl:56:27: this call blocks and bubbletea has no way to run anything back'
+sngl test --platform=bubbletea --language=go app.sngl
+stdout '10 tests, 0 failures'
 
 -- app.sngl --
 // Requests to a local server, decoded into declared types: a path segment
@@ -303,6 +302,64 @@ sha256:4f2a3a0df695138498917abbd1937b42
 }
 -- testrun/android/kotlin/app.sngl/panel/1 --
 sha256:00d6317f3145ac4e67a29c606d871442
+{
+  "results": [
+    {
+      "Desc": "HandlerWaits",
+      "Passed": true
+    },
+    {
+      "Desc": "QueryAsks",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/_/1 --
+sha256:47a765021c34ff8eeebf698eab9ef79d
+{
+  "results": [
+    {
+      "Desc": "GetDecodes",
+      "Passed": true
+    },
+    {
+      "Desc": "NotFound",
+      "Passed": true
+    },
+    {
+      "Desc": "PathEscape",
+      "Passed": true
+    },
+    {
+      "Desc": "Query",
+      "Passed": true
+    },
+    {
+      "Desc": "Send",
+      "Passed": true
+    },
+    {
+      "Desc": "Status",
+      "Passed": true
+    },
+    {
+      "Desc": "Transport",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/adapter/1 --
+sha256:966b0fd470a934cde60c8edac84ee380
+{
+  "results": [
+    {
+      "Desc": "AdapterSpreadsItsKey",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/panel/1 --
+sha256:99c98b45b25e7ae7092a5aae0868daf8
 {
   "results": [
     {
