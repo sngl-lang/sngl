@@ -800,7 +800,7 @@ body { font-family: system-ui, sans-serif; }
 </head><body>
 
 <div id="__n0" data-sngl-id="__n0" class="modal-overlay" style="align-items:center;background-color:rgba(0,0,0,0.5019607843137255);display:flex;justify-content:center;position:fixed;z-index:1000" class="modal-overlay">
-  <div class="modal-content" style="background-color:#fff;border-radius:8px;padding:24px" class="modal-content">
+  <div class="modal-content" style="background-color:#ffffff;border-radius:8px;padding:24px" class="modal-content">
     <h3 style="margin-bottom:16px">Hello</h3>
     <span>body</span>
   </div>
@@ -854,7 +854,7 @@ pass sha256:58d9771cb302d5848443ba9e68bc4cc0
 -- run/kotlin/android --
 pass sha256:fa4e78349f4b567a142ec40e27e50d5c
 -- run/none/html --
-pass sha256:6586a588b57ff1b386155efb754c061a
+pass sha256:ef1c53d8315c7401b661bd843a87b0c4
 -- testrun/html/none/component_modal.sngl/main/1 --
 sha256:2ea62dd7d5985ab236eea3dfdd440951
 {

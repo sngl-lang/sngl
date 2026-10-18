@@ -3,6 +3,7 @@ package checker
 import (
 	"duckfam.us/sngl/ast"
 	"duckfam.us/sngl/ir"
+	"strconv"
 )
 
 // A slot is a position a value is written into: an initializer, an argument,
@@ -87,7 +88,35 @@ func (c *checker) coerce(written ast.Expr, val ir.Expr, want *ir.Type, s slot) i
 		return val
 	}
 	c.validateStringDomainLiteral(pos, want, val)
+	if col := colorOfString(val, want); col != nil {
+		val = col
+	}
 	return c.shape(val, want, s)
+}
+
+// colorOfString is a string written where a color goes as the color it spells,
+// the struct a `#888` token is: left a string, a target holding colors as
+// values was handed text.
+func colorOfString(val ir.Expr, want *ir.Type) ir.Expr {
+	lit, ok := val.(*ir.Literal)
+	if !ok || lit.Type == nil || lit.Type.Kind != ir.TypeString || !ir.IsColorStruct(want) {
+		return nil
+	}
+	sd, ok := want.Decl.(*ir.StructDef)
+	r, g, b, a, hex := ir.HexChannels(lit.Value)
+	if !ok || sd == nil || !hex {
+		return nil
+	}
+	channel := func(name string, n int) ir.FieldInit {
+		return ir.FieldInit{Name: name, Value: &ir.Literal{Type: TypInt, Value: strconv.Itoa(n)}}
+	}
+	written := &ast.StructExpr{Name: "color"}
+	if lit.AST != nil {
+		written.Pos = lit.AST.Pos
+	}
+	return &ir.StructLit{AST: written, Type: want, Def: sd, Fields: []ir.FieldInit{
+		channel("r", r), channel("g", g), channel("b", b), channel("a", a),
+	}}
 }
 
 // shape is the conversion a value that reached want is wrapped in, if any.

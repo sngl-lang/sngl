@@ -46,6 +46,7 @@ ui.window(title="Style") {
             }
         }
         ui.text(value="capped", style={maxLines=2, borderWidth=1px})
+        ui.text(value="a string color", style={color="#888"})
     }
 }
 -- out/go/bubbletea/model.go --
@@ -559,6 +560,9 @@ func (m Model) View() tea.View {
 		var content_7 string
 		content_7 = BoxLook(Style{MaxLines: 2, BorderWidth: Measurement{Px: 1}}, true).Render(fmt.Sprint("capped"))
 		contentChildren = append(contentChildren, tui.Fixed(content_7))
+		var content_8 string
+		content_8 = BoxLook(Style{Color: snglcolor.Color{R: 136, G: 136, B: 136, A: 255}}, true).Render(fmt.Sprint("a string color"))
+		contentChildren = append(contentChildren, tui.Fixed(content_8))
 		content = tui.Join(false, lipgloss.Left, 0, contentH, contentChildren)
 		content = contentLook.Render(content)
 	}
@@ -576,4 +580,4 @@ func main() {
 	}
 }
 -- run/go/bubbletea --
-pass sha256:97191769e94bd0b54e86c2b3d12b3ab1
+pass sha256:eb09485213279514f79e2fd29372f777

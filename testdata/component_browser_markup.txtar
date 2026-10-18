@@ -185,7 +185,7 @@ body { font-family: system-ui, sans-serif; }
   <li style="padding-left:16px">child</li>
 </ul>
 <div id="$16" class="modal-overlay" style="align-items:center;background-color:rgba(0,0,0,0.5019607843137255);display:flex;justify-content:center;position:fixed;z-index:1000" class="modal-overlay" data-sngl-id="modal">
-  <div class="modal-content" style="background-color:#fff;border-radius:8px;padding:24px" class="modal-content">
+  <div class="modal-content" style="background-color:#ffffff;border-radius:8px;padding:24px" class="modal-content">
     <h3 style="margin-bottom:16px">Dialog</h3>
     <span>body</span>
   </div>
@@ -700,7 +700,7 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:7d6979a879f2b496caa3731444777659
+pass sha256:d7be8f177438d354db3519fdc142cc18
 -- testrun/html/none/component_browser_markup.sngl/widgets/1 --
 sha256:c0fa37a5ca408923a9a1c89831bc47cc
 {

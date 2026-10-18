@@ -540,7 +540,7 @@ body { font-family: system-ui, sans-serif; }
   </style>
 </head><body>
 
-<div style="background-color:#fff;position:fixed;z-index:1000">
+<div style="background-color:#ffffff;position:fixed;z-index:1000">
   <span>drawer content</span>
 </div>
 
@@ -583,7 +583,7 @@ pass sha256:89810bf54a0d7197804a92b1c8885fed
 -- run/kotlin/android --
 pass sha256:ddebb29b7b844dce8e5143009f3d87c1
 -- run/none/html --
-pass sha256:9d71932f67022472f1b523833e65bb93
+pass sha256:9f19aaaf67e22e813c231a349db16074
 -- testrun/html/none/component_drawer.sngl/main/1 --
 sha256:0664e0fccb6ec068fb87b2fdd8779486
 {
