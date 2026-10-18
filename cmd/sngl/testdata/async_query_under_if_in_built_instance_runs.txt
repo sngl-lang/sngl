@@ -1,0 +1,116 @@
+# An async.query under an `if` reading the state of a component that is
+# itself built at run time, under an `if` of its own: the shape of a detail
+# page asking for a second answer keyed on the first. Its unbound two-way
+# props are cells of a wrapper ImplicitState writes, and query's family is its
+# type parameter F, which the call site leaves to the position: the wrapper
+# had no family, and once built at run time with the query's effect in it no
+# pass could type its root. It is a member of the family the position takes.
+
+sngl test --platform=none app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=fyne --language=go app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=html app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin app.sngl
+stdout '1 tests, 0 failures'
+
+-- app.sngl --
+import async "sngl:async"
+import test "sngl:test"
+import ui "sngl:ui"
+
+func lookup(k string) async.Result[string] {
+    return {ok=k + "!"}
+}
+
+component second(s string) ui.node {
+    var first = ""
+    var answer option[string] = null
+    if first != "" {
+        async.query(on=first, fetch=lookup, :value=answer)
+    }
+    ui.button #ask(text="ask", @click { first = s })
+    ui.text(value=answer != null ? answer : "-")
+}
+
+component page ui.node {
+    var open = false
+    if open {
+        second #inner(s="b")
+    }
+    ui.button #show(text="show", @click { open = true })
+}
+
+func testTheSecondQueryAnswers(t test.Test, c page) {
+    c.show.click()
+    t.assert(c.inner != null)
+    if c.inner != null {
+        c.inner.ask.click()
+        t.wait(func() => c.inner != null && c.inner.answer == "b!", 5000)
+        t.assert(c.inner.answer == "b!")
+    }
+}
+
+ui.window {
+    page()
+}
+-- testrun/android/kotlin/app.sngl/page/1 --
+sha256:0259d0ad7669d529039fa55c820e0867
+{
+  "results": [
+    {
+      "Desc": "TheSecondQueryAnswers",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/page/1 --
+sha256:94684861b8c501747ca277bd7b1bbc63
+{
+  "results": [
+    {
+      "Desc": "TheSecondQueryAnswers",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/page/1 --
+sha256:c36302425135208449398a78a6d6a98e
+{
+  "results": [
+    {
+      "Desc": "TheSecondQueryAnswers",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/page/1 --
+sha256:70ce53ac092f7f0ffe68b00a227c7bc4
+{
+  "results": [
+    {
+      "Desc": "TheSecondQueryAnswers",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/page/1 --
+sha256:f182873eb533536bd7327f7944d1b4e6
+{
+  "results": [
+    {
+      "Desc": "TheSecondQueryAnswers",
+      "Passed": true
+    }
+  ]
+}

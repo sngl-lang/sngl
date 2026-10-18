@@ -307,7 +307,12 @@ what the call site bound and through to the node, as an override binds its
 base's prop through to a primitive -- `async.query(:value=v)` keeps `pending`
 and `failure` and hands `value` on. A generic node's wrapper declares
 everything at the types its call site bound (`ir.ComponentBindings`,
-`ir.InstantiateExpr` for a default). One shape is refused, which no `sngl:ui`
+`ir.InstantiateExpr` for a default), and is a member of the family it was
+bound, or, for a node whose family is a type parameter the call site leaves
+to the position -- `async.query`'s `F` -- of the family that position takes
+(`wrapperFamily`): with none, a wrapper built at run time holding the query's
+effect was a root no pass could type
+(`cmd/sngl/testdata/async_query_under_if_in_built_instance_runs.txt`). One shape is refused, which no `sngl:ui`
 component reaches: a call site populating a named slot the node does not
 declare.
 

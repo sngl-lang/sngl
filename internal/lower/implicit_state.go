@@ -53,7 +53,11 @@ func lowerImplicitState(pkg *ir.Package, _ Features, _ Options) error {
 	st := &implicitState{pkg: pkg, reads: map[*ir.Var]map[string]*ir.Var{}, through: map[*ir.Component]map[string]*ir.Var{}}
 	for _, o := range ir.Owners(pkg) {
 		st.owner = o.Comp
-		if err := st.stmts(*o.Body); err != nil {
+		var hosted *ir.Component
+		if o.Comp != nil {
+			hosted = o.Comp.Family
+		}
+		if err := st.stmts(*o.Body, hosted); err != nil {
 			return err
 		}
 	}
@@ -147,15 +151,22 @@ type implicitState struct {
 	reads map[*ir.Var]map[string]*ir.Var
 }
 
-func (st *implicitState) stmts(stmts []ir.Stmt) error {
+// stmts wraps each node in stmts that leaves a two-way prop unbound. hosted is
+// the family the position accepts, which a component taking the family it is
+// placed in is a member of (rendersAsType).
+func (st *implicitState) stmts(stmts []ir.Stmt, hosted *ir.Component) error {
 	for i, s := range stmts {
+		inner := hosted
+		if n, ok := s.(*ir.NodeInst); ok {
+			inner = hostedBy(handleType(n))
+		}
 		for _, b := range ir.ViewBlocks(s) {
-			if err := st.stmts(*b); err != nil {
+			if err := st.stmts(*b, inner); err != nil {
 				return err
 			}
 		}
 		if n, ok := s.(*ir.NodeInst); ok {
-			w, err := st.wrap(n)
+			w, err := st.wrap(n, hosted)
 			if err != nil {
 				return err
 			}
@@ -169,7 +180,7 @@ func (st *implicitState) stmts(stmts []ir.Stmt) error {
 
 // wrap is the instantiation that takes n's place, or nil when n leaves no
 // two-way prop unbound.
-func (st *implicitState) wrap(n *ir.NodeInst) (*ir.NodeInst, error) {
+func (st *implicitState) wrap(n *ir.NodeInst, hosted *ir.Component) (*ir.NodeInst, error) {
 	comp := n.Component
 	if comp == nil {
 		return nil, nil
@@ -186,9 +197,12 @@ func (st *implicitState) wrap(n *ir.NodeInst) (*ir.NodeInst, error) {
 		return nil, fmt.Errorf("%s: %s is given content and leaves :%s unbound, which is not supported yet; bind :%s", nodePos(n), comp.DisplayName(), unbound[0].Name, unbound[0].Name)
 	}
 
+	// The wrapper is no generic: what it declares is at the types the call
+	// site bound.
+	bound := ir.ComponentBindings(n)
 	w := &ir.Component{
 		Name:   "__" + identSafe(comp.Name) + "_state" + strconv.Itoa(len(st.made)),
-		Family: comp.Family,
+		Family: wrapperFamily(comp, bound, hosted),
 	}
 	st.made = append(st.made, w)
 
@@ -203,9 +217,6 @@ func (st *implicitState) wrap(n *ir.NodeInst) (*ir.NodeInst, error) {
 		Document: n.Document,
 		TypeArgs: n.TypeArgs,
 	}
-	// The wrapper is no generic: what it declares is at the types the call
-	// site bound.
-	bound := ir.ComponentBindings(n)
 	cells := map[string]*ir.Var{}
 	for _, p := range unbound {
 		typ := p.Type.Substitute(bound)
@@ -354,6 +365,24 @@ func (st *implicitState) wrap(n *ir.NodeInst) (*ir.NodeInst, error) {
 // name, so the handler's `visible = __visible` read the start instead of what
 // the host reported.
 func cellStartProp(prop string) string { return "__start_" + prop }
+
+// wrapperFamily is the family a wrapper of comp is a member of: comp's own,
+// or, for a comp whose family is a type parameter of its own -- async.query,
+// effect -- what the call site bound it to, or else the family of the
+// position it stands in. A wrapper with none is a root no later pass can
+// type once it is built at run time and holds a render slot of its own, as
+// a query under an `if` of a component under another `if` is.
+func wrapperFamily(comp *ir.Component, bound map[string]*ir.Type, hosted *ir.Component) *ir.Component {
+	if comp.Family != nil || comp.FamilyParam == nil {
+		return comp.Family
+	}
+	if t := comp.FamilyParam.Substitute(bound); t != nil {
+		if f, ok := t.Decl.(*ir.Component); ok {
+			return f
+		}
+	}
+	return hosted
+}
 
 func declaredPropOf(comp *ir.Component, name string) *ir.Prop {
 	for _, p := range comp.Props {
