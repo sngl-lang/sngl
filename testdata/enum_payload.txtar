@@ -47,21 +47,27 @@ enum Shape {
 var held Shape
 
 func area(s Shape) float {
-    match s {
+    match var v = s {
         empty { return 0.0 }
-        circle(var r) { return 3.0 * r * r }
-        rect(var r) { return r.w * r.h }
+        circle { return 3.0 * v * v }
+        rect { return v.w * v.h }
     }
 }
 
-func label(r Result[int]) => match r {
-    ok(var v) => "ok {v}"
-    failed(var f) => "failed: {f.message}"
+func label(r Result[int]) => match var v = r {
+    ok => "ok {v}"
+    failed => "failed: {v.message}"
 }
 
 func describe(s Shape) => match s {
     circle => "round"
     else => "not round"
+}
+
+// In an arm that names no member carrying a payload, the name is the subject.
+func kind(s Shape) => match var v = s {
+    circle => "round"
+    else => "area {area(v)}"
 }
 
 func half(n int) Result[int] {
@@ -86,19 +92,19 @@ component panel node {
     text #area(value="{area(shape)}")
     text #outcome(value=label(result))
     text #facts(value="{area(held)} {orZero(result)} {describe(shape)} {result == Result[int]{ok=2}}")
-    text #radius(value=match shape {
-        circle(var r) => "{r}"
+    text #radius(value=match var r = shape {
+        circle => "{r}"
         else => "none"
     })
-    match shape {
-        circle(var r) { text #round(value="radius {r}") }
+    match var r = shape {
+        circle { text #round(value="radius {r}") }
         else {}
     }
 
     button #grow(text="Grow", @click {
-        shape = match shape {
+        shape = match var r = shape {
             empty => {circle=1.0}
-            circle(var r) => {circle=r + 1.0}
+            circle => {circle=r + 1.0}
             rect => Shape.empty
         }
     })
@@ -180,11 +186,11 @@ func Area(s Shape) float64 {
 	case (s.tag == 0):
 		return 0.0
 	case (s.tag == 1):
-		var r float64 = s.Circle
-		return ((3.0 * r) * r)
+		var v__r0 float64 = s.Circle
+		return ((3.0 * v__r0) * v__r0)
 	default:
-		r := s.Rect
-		return (r.W * r.H)
+		v__r1 := s.Rect
+		return (v__r1.W * v__r1.H)
 	}
 	return 0.0
 }
@@ -505,11 +511,11 @@ func Area(s Shape) float64 {
 	case (s.tag == 0):
 		return 0.0
 	case (s.tag == 1):
-		var r float64 = s.Circle
-		return ((3.0 * r) * r)
+		var v float64 = s.Circle
+		return ((3.0 * v) * v)
 	default:
-		r := s.Rect
-		return (r.W * r.H)
+		v := s.Rect
+		return (v.W * v.H)
 	}
 	return 0.0
 }
@@ -837,11 +843,11 @@ func Area(s Shape) float64 {
 	case (s.tag == 0):
 		return 0.0
 	case (s.tag == 1):
-		var r float64 = s.Circle
-		return ((3.0 * r) * r)
+		var v float64 = s.Circle
+		return ((3.0 * v) * v)
 	default:
-		r := s.Rect
-		return (r.W * r.H)
+		v := s.Rect
+		return (v.W * v.H)
 	}
 	return 0.0
 }
@@ -1184,12 +1190,12 @@ fun area(s: Shape): Double {
     		return 0.0
     	}
     	(s is Shape.Circle) -> {
-    		var r = (s as Shape.Circle).value
-    		return ((3.0 * r) * r)
+    		var v = (s as Shape.Circle).value
+    		return ((3.0 * v) * v)
     	}
     	else -> {
-    		var r = (s as Shape.Rect).value
-    		return (r.w * r.h)
+    		var v = (s as Shape.Rect).value
+    		return (v.w * v.h)
     	}
     }
     return 0.0
@@ -1252,12 +1258,12 @@ body { font-family: system-ui, sans-serif; }
       ;
       if (s.tag === "circle") {
         ;
-        let r = s.value;
-        return 3 * r * r;
+        let v = s.value;
+        return 3 * v * v;
       } else {
         ;
-        let r = s.value;
-        return r.w * r.h;
+        let v = s.value;
+        return v.w * v.h;
       }
       ;
     }
@@ -1387,12 +1393,12 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:9389af585779be91cf38c927fe366dfe
+pass sha256:097d9fdb28ec3feb8205bfc469d1dc5f
 -- run/go/fyne --
-pass sha256:25de72cbf5e0c312a197c74c07997fb5
+pass sha256:b3dee89f89e4be2048e71f5cffe3d6d2
 -- run/go/gtk4 --
-pass sha256:4345ac95b8b96a61b54eec9de3a44324
+pass sha256:add0b4277e613cc55e1283fc666a04bb
 -- run/kotlin/android --
-pass sha256:f39d14fe90a42c03cc1c064f527478a5
+pass sha256:d5615a804eab7a7580290a4f309b2519
 -- run/none/html --
-pass sha256:9a3e2f4b388e771fac5e67e109b044f7
+pass sha256:f77f085c1f76f94c530ccfa6093eaa8a

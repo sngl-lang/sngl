@@ -941,6 +941,9 @@ func (f *formatter) writeForStmt(s *ast.ForStmt) {
 // with no comments stays on it; otherwise each arm takes a line of its own.
 func (f *formatter) writeMatch(m *ast.Match) {
 	f.write("match ")
+	if m.Bind != "" {
+		f.write("var " + m.Bind + " = ")
+	}
 	if m.Subject != nil {
 		f.writeExpr(m.Subject)
 		f.write(" ")
@@ -1439,8 +1442,6 @@ func (f *formatter) writeExpr(e ast.Expr) {
 	case *ast.ConstExpr:
 		f.write("const ")
 		f.writeExpr(x.Operand)
-	case *ast.BindExpr:
-		f.write("var " + x.Name)
 	}
 }
 

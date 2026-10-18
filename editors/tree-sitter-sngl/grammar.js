@@ -273,10 +273,17 @@ module.exports = grammar({
     // and an arm is a block or `=> value` in either position. The headless
     // form takes a dynamic precedence over a subject for the reason the
     // headless `for` does: a `{` right after `match` opens the arms.
+    // `match var v = subject` names the subject for the arms, as a `for`
+    // head names its element.
     match_expression: ($) =>
       choice(
       prec.dynamic(1, seq("match", $._match_arms)),
-      seq("match", field("subject", $._expression), $._match_arms)
+      seq(
+        "match",
+        optional(seq("var", field("name", $.identifier), "=")),
+        field("subject", $._expression),
+        $._match_arms
+      )
     ),
 
     // Never two terminators in a row: the automatic one is zero-width, and a
