@@ -327,6 +327,9 @@ func (gc *GoIRContext) Select(n *ir.Select, operand string) string {
 	if n.Field == "length" {
 		return "len(" + operand + ")"
 	}
+	if t := n.Operand.ExprType(); ir.PayloadEnum(t) != nil {
+		return enumSelectGo(t, n.Field, operand)
+	}
 	// A Select on a RawFieldAccess ident reads the unexported field directly,
 	// so a generated `_test.go` in the same package can touch Model fields.
 	if gc.rawFieldAccess(n.Operand) {
@@ -417,6 +420,9 @@ func (gc *GoIRContext) MapLit(n *ir.MapLitIR, keys, vals []string) string {
 }
 
 func (gc *GoIRContext) StructLit(n *ir.StructLit, fieldStrs []string) string {
+	if member, _, ok := ir.EnumLitMember(n); ok {
+		return enumLitGo(n.Type, member, fieldStrs[0])
+	}
 	if isColorStructLit(n) {
 		gc.RequireImport(colorImportPath)
 	}
@@ -832,6 +838,9 @@ func (gc *GoIRContext) evalLiteral(n *ir.Literal) string {
 
 func (gc *GoIRContext) evalIdent(n *ir.Ident) string {
 	if n.Member != "" {
+		if ir.PayloadEnum(n.Type) != nil {
+			return enumLitGo(n.Type, n.Member, "")
+		}
 		return fmt.Sprintf("%q", n.Member)
 	}
 	// i18n plural-category constants: map SNGL names (zero/one/…/other) to
@@ -2096,6 +2105,9 @@ func IRTypeToGo(t *ir.Type) string {
 		}
 		return "any"
 	case ir.TypeEnum:
+		if ed := ir.PayloadEnum(t); ed != nil {
+			return ExportName(ed.Name)
+		}
 		return "string"
 	case ir.TypeUnit:
 		if ud := ir.UnitDeclOf(t); ud != nil {

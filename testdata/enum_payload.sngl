@@ -1,0 +1,143 @@
+// An enum member may carry a type, its payload: a value of the enum holds
+// exactly one member, and that member's payload with it. It is built as a
+// struct literal naming the one member, read by a selector that is present
+// only when the member is the one held, and matched by member, binding the
+// payload. A member with no payload is written as every member is.
+
+import . "sngl:test"
+import . "sngl:ui"
+
+struct Size {
+    w float
+    h float
+}
+
+struct Failure {
+    message string
+    code    int
+}
+
+enum Result[T any] {
+    ok     T
+    failed Failure
+}
+
+enum Shape {
+    empty
+    circle float
+    rect   Size
+}
+
+// The first member is the zero value, with its payload's zero.
+var held Shape
+
+func area(s Shape) float {
+    match s {
+        empty { return 0.0 }
+        circle(var r) { return 3.0 * r * r }
+        rect(var r) { return r.w * r.h }
+    }
+}
+
+func label(r Result[int]) => match r {
+    ok(var v) => "ok {v}"
+    failed(var f) => "failed: {f.message}"
+}
+
+func describe(s Shape) => match s {
+    circle => "round"
+    else => "not round"
+}
+
+func half(n int) Result[int] {
+    if n % 2 != 0 {
+        return {failed={message="odd", code=n}}
+    }
+    return Result[int]{ok=n / 2}
+}
+
+func orZero(r Result[int]) int {
+    // The selector is an option, so the null test narrows it.
+    if r.ok != null {
+        return r.ok
+    }
+    return 0
+}
+
+component panel node {
+    var shape Shape = Shape.empty
+    var result = half(4)
+
+    text #area(value="{area(shape)}")
+    text #outcome(value=label(result))
+    text #radius(value=match shape {
+        circle(var r) => "{r}"
+        else => "none"
+    })
+    match shape {
+        circle(var r) { text #round(value="radius {r}") }
+        else {}
+    }
+
+    button #grow(text="Grow", @click {
+        shape = match shape {
+            empty => {circle=1.0}
+            circle(var r) => {circle=r + 1.0}
+            rect => Shape.empty
+        }
+    })
+    button #odd(text="Odd", @click { result = half(3) })
+}
+
+func testZero(t Test, c panel) {
+    t.assert(held == Shape.empty)
+    t.assert(held.empty)
+    t.assert(area(held) == 0.0)
+}
+
+func testConstruct(t Test, c panel) {
+    var s Shape = {circle=2.0}
+    t.assert(area(s) == 12.0)
+    t.assert(area(Shape{rect={w=2.0, h=3.0}}) == 6.0)
+    t.assert(!s.empty)
+}
+
+func testSelector(t Test, c panel) {
+    t.assert(half(4).ok == 2)
+    t.assert(half(3).ok == null)
+    t.assert(half(3).failed != null)
+    t.assert(orZero(half(10)) == 5)
+    t.assert(orZero(half(1)) == 0)
+}
+
+func testMatch(t Test, c panel) {
+    t.assert(label(half(6)) == "ok 3")
+    t.assert(label(half(5)) == "failed: odd")
+    t.assert(describe({circle=1.0}) == "round")
+    t.assert(describe(Shape.empty) == "not round")
+}
+
+func testEquality(t Test, c panel) {
+    t.assert(half(4) == Result[int]{ok=2})
+    t.assert(half(4) != Result[int]{ok=3})
+    t.assert(half(3) != Result[int]{ok=3})
+    var a Shape = {circle=1.0}
+    var b Shape = {circle=1.0}
+    t.assert(a == b)
+    t.assert(a != Shape.empty)
+}
+
+func testComponent(t Test, c panel) {
+    t.assert(c.area.value == "0")
+    t.assert(c.outcome.value == "ok 2")
+    t.assert(c.radius.value == "none")
+    t.assert(c.round == null)
+    c.grow.click()
+    t.assert(c.area.value == "3")
+    t.assert(c.radius.value == "1")
+    t.assert(c.round != null)
+    c.grow.click()
+    t.assert(c.radius.value == "2")
+    c.odd.click()
+    t.assert(c.outcome.value == "failed: odd")
+}

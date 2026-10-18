@@ -507,6 +507,28 @@ enum type's namespace
 its bare name. Enums are comparable and may be used as map keys. An enum may
 also carry methods.
 
+A member may carry a type, its **payload**, and an enum may take type
+parameters; a value then holds exactly one member and that member's payload:
+
+```
+enum Result[T any] {
+    ok     T
+    failed Failure
+}
+```
+
+- A value is built as a struct literal naming one member,
+  `Result[int]{ok=2}`, or `{ok=2}` where the type is expected. A member with
+  no payload is written as any member is, `Shape.empty`.
+- `r.ok` is an `option` of the payload, present only where `r` holds `ok`,
+  so a null test narrows it; a member with no payload reads as a `bool`.
+- `match r { ok(var v) { … } failed(var f) { … } }` takes the arm of the
+  member held and binds its payload. Every match is exhaustive.
+- The zero value is the first member's, with its payload's zero.
+- Two values are equal when they hold one member with equal payloads; an
+  enum whose payloads do not all compare is not comparable, and one carrying
+  payloads has no string form unless it declares `string()`.
+
 #### Unit types
 
 A unit type declares a set of suffixes. A suffix written bare is a **base**; a
@@ -1354,6 +1376,7 @@ Arg =
     | "&" UnaryExpr ArgExprCont
     | "*" UnaryExpr ArgExprCont
     | "const" UnaryExpr ArgExprCont
+    | "var" IDENT
     | NonIdentPrimary { StmtPostfixOp } ArgExprCont
 
 EventArg = "@" IDENT [ "(" [ ParamList ] ")" ] StmtBlock
@@ -2623,7 +2646,7 @@ StructDecl = "struct" [ IDENT ] [ TypeParamList ] "{" { StructBodyItem [ ";" ] }
 
 StructField = IdentList Type [ "=" Expr ]
 
-EnumDecl = "enum" [ IDENT ] "{" [ EnumBodyItem { ("," | ";") EnumBodyItem } [ "," | ";" ] ] "}"
+EnumDecl = "enum" [ IDENT ] [ TypeParamList ] "{" [ EnumBodyItem { ("," | ";") EnumBodyItem } [ "," | ";" ] ] "}"
 
 UnitDecl = "unit" [ IDENT ] "{" [ ArgList ] "}"
 
@@ -2765,6 +2788,7 @@ Arg =
     | "&" UnaryExpr ArgExprCont
     | "*" UnaryExpr ArgExprCont
     | "const" UnaryExpr ArgExprCont
+    | "var" IDENT
     | NonIdentPrimary { StmtPostfixOp } ArgExprCont
 
 EventArg = "@" IDENT [ "(" [ ParamList ] ")" ] StmtBlock

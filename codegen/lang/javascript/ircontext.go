@@ -56,6 +56,9 @@ func (jc *JsIRContext) Binary(n *ir.Binary, left, right string) string {
 	if out, ok := multiBaseUnitBinaryJS(n, left, right); ok {
 		return out
 	}
+	if out, ok := enumEqualJS(n, left, right); ok {
+		return out
+	}
 	if n.Op == ast.BinDiv && isIntIR(n.Left) && isIntIR(n.Right) {
 		// BigInt division truncates toward zero natively; Number division needs
 		// an explicit Math.trunc to match integer semantics.
@@ -88,6 +91,9 @@ func (jc *JsIRContext) Select(n *ir.Select, operand string) string {
 		if t := n.Operand.ExprType(); t != nil && t.Kind == ir.TypeMap {
 			return operand + ".size"
 		}
+	}
+	if ir.PayloadEnum(n.Operand.ExprType()) != nil {
+		return enumSelectJS(n.Field, operand)
 	}
 	return operand + "." + jc.fieldKey(n)
 }
@@ -143,6 +149,9 @@ func (jc *JsIRContext) MapLit(n *ir.MapLitIR, keys, vals []string) string {
 	return b.String()
 }
 func (jc *JsIRContext) StructLit(n *ir.StructLit, fieldStrs []string) string {
+	if member, _, ok := ir.EnumLitMember(n); ok {
+		return enumLitJS(member, fieldStrs[0])
+	}
 	parts := make([]string, len(n.Fields))
 	for i, f := range n.Fields {
 		if f.Spread {
@@ -509,6 +518,9 @@ func (jc *JsIRContext) evalIdent(n *ir.Ident) string {
 		}
 	}
 	if n.Member != "" {
+		if ir.PayloadEnum(n.Type) != nil {
+			return enumLitJS(n.Member, "")
+		}
 		if src, ok := nativeEnumMemberJS(n.Type, n.Member); ok {
 			return src
 		}
@@ -718,6 +730,9 @@ func (jc *JsIRContext) evalFuncvarCall(n *ir.Call) string {
 	args := jc.evalCallArgs(n.Args)
 	call := calleeJS + "(" + strings.Join(args, ", ") + ")"
 
+	if ir.CallsAsyncValue(n) {
+		return "await " + call
+	}
 	if jc.Ctx.Pkg != nil && jc.Ctx.Pkg.PointsTo != nil {
 		if k, ok := ir.CalleeSlotKey(n.Callee); ok {
 			pts := jc.Ctx.Pkg.PointsTo
@@ -1008,7 +1023,9 @@ func (jc *JsIRContext) evalLambda(n *ir.Lambda) string {
 		params[i] = p.Name
 	}
 	asyncPrefix := ""
-	if n.Func.IsAsync {
+	// A handler a lowering made a lambda of was coloured nowhere: what it
+	// awaits says so.
+	if n.Func.IsAsync || ir.BlockHasAsyncCall(n.Func.Block) {
 		asyncPrefix = "async "
 	}
 	bodyJC := jc

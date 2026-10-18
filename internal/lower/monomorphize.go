@@ -74,7 +74,9 @@ func lowerMonomorphize(pkg *ir.Package, _ Features, _ Options) error {
 	}
 	// The structs after the functions: a function's copy names the struct
 	// instantiations its bindings make, which the struct pass then finds.
+	defer monomorphizeEnums(pkg, m.names)
 	defer monomorphizeStructs(pkg, m.names)
+	defer monomorphizeEnums(pkg, m.names)
 	if len(m.slot) == 0 {
 		return nil
 	}

@@ -150,6 +150,9 @@ func (c *checker) inferExpr(e ast.Expr) ir.Expr {
 		return c.checkExpr(x.Inner)
 	case *ast.ConstExpr:
 		return c.inferConstExpr(x)
+	case *ast.BindExpr:
+		c.error(x.Pos, "var %s binds a payload in a match pattern and nowhere else", x.Name)
+		return invalidValue()
 	default:
 		// Every ast.Expr the parser builds in a value position has a rule
 		// above; a new node type without one is a compiler bug.
@@ -443,6 +446,10 @@ func (c *checker) inferIdent(x *ast.IdentExpr) ir.Expr {
 		// option of one wants a member as readily: the slot wraps it.
 		if want := optionElem(c.expected); want != nil {
 			if ed := expectedEnumDef(want); ed != nil && c.enumMember(x.Pos, ed, x.Name) {
+				if m := ed.Member(x.Name); m.Payload != nil {
+					c.error(x.Pos, "member %s carries a payload: write {%s=…}", m.Name, m.Name)
+					return &ir.Literal{Type: TypInvalid}
+				}
 				return &ir.Ident{AST: x, Type: want, Name: x.Name, Member: x.Name}
 			}
 		}
@@ -796,6 +803,8 @@ func (c *checker) finishBinary(x *ast.BinaryExpr, leftExpr, rightExpr ir.Expr) i
 	case ast.BinEq, ast.BinNeq:
 		if !skip && !comparableEq(left, right) {
 			c.error(x.Pos, "operator %s not defined for %s and %s", x.Op, left, right)
+		} else if !skip {
+			c.refuseIncomparableEnum(x.Pos, left, right)
 		}
 		typ = TypBool
 	case ast.BinLt, ast.BinLte, ast.BinGt, ast.BinGte:
@@ -1956,8 +1965,22 @@ func (c *checker) inferSelect(x *ast.SelectExpr) ir.Expr {
 		// EnumType.member select that the target language doesn't define.
 		if operand.Kind == ir.TypeEnum && operand.Decl != nil {
 			if ed, ok := operand.Decl.(*ir.EnumDef); ok {
+				// Off a value, a member is read: what the value holds.
+				if !namesEnumType(operandExpr, ed) {
+					return c.enumMemberRead(x, operandExpr, operand, ed)
+				}
 				if c.enumMember(x.Pos, ed, x.Field) {
-					return &ir.Ident{Type: operand, Name: x.Field, Member: x.Field, Sym: ed}
+					if m := ed.Member(x.Field); m.Payload != nil {
+						c.error(x.Pos, "member %s carries a payload: write %s{%s=…}", m.Name, ed.Name, m.Name)
+						return &ir.Literal{Type: TypInvalid}
+					}
+					// A generic enum's member takes its arguments from where
+					// it is wanted.
+					typ := operand
+					if want := optionElem(c.expected); want != nil && want.Kind == ir.TypeEnum && want.Decl == ed {
+						typ = want
+					}
+					return &ir.Ident{Type: typ, Name: x.Field, Member: x.Field, Sym: ed}
 				}
 				if isExportedMemberName(x.Field) {
 					c.error(x.Pos, "no member %q on enum %s", x.Field, ed.Name)
@@ -2245,6 +2268,9 @@ func (c *checker) inferStructLit(x *ast.StructExpr) ir.Expr {
 			c.expected = c.resolveType(nt)
 		}
 		defer func() { c.expected = saved }()
+	}
+	if ed := c.literalEnum(x); ed != nil {
+		return c.inferEnumLit(x, ed)
 	}
 	var sd *ir.StructDef
 	if c.nativeValues {
@@ -2655,6 +2681,10 @@ func interpPartPrimitive(t *ir.Type) bool {
 	// string-domain primitives in interpolation.
 	if ir.StringReprStruct(t) {
 		return true
+	}
+	// A value holding a payload is spelled by a string() method, or matched.
+	if ir.PayloadEnum(t) != nil {
+		return false
 	}
 	switch t.Kind {
 	case ir.TypeInt, ir.TypeFloat, ir.TypeBool,
@@ -4173,12 +4203,21 @@ func (c *checker) refuseReadonlyWrite(target ir.Expr, pos ast.Pos, verb string) 
 	for {
 		switch n := target.(type) {
 		case *ir.Select:
+			if ir.PayloadEnum(n.Operand.ExprType()) != nil && n.AST != nil {
+				operand := exprSpelling(n.AST.Operand)
+				c.error(pos, "%s.%s is read off the member %s holds and cannot be assigned: assign %s a new value", operand, n.Field, operand, operand)
+				return
+			}
 			target = n.Operand
 			continue
 		case *ir.Index:
 			target = n.Operand
 			continue
 		case *ir.Ident:
+			if v, ok := n.Sym.(*ir.Var); ok && c.matchBinds[v] {
+				c.error(pos, "%s is bound by a match pattern and is read-only here: only an arm that is a block in a function may write it", n.Name)
+				return
+			}
 			lv, isLoop := n.Sym.(*ir.LoopVar)
 			if !isLoop || !lv.Type.IsReadonly() {
 				return

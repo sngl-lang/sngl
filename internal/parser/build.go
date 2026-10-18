@@ -704,11 +704,14 @@ func (b *builder) buildStructField(it nodeIter) *ast.StructField {
 // --- Enum declaration ---
 
 func (b *builder) buildEnumDecl(it nodeIter) *ast.EnumDef {
-	// EnumDecl = kw_enum [ ident ] lbrace { EnumBodyItem (comma|semi) } rbrace .
+	// EnumDecl = kw_enum [ ident ] [ TypeParamList ] lbrace { EnumBodyItem (comma|semi) } rbrace .
 	pos := b.posFromToken(it.shift()) // kw_enum
 	e := &ast.EnumDef{Pos: pos}
 	if !it.done() && !it.isNonTerminal() && it.tokenType() == IDENT {
 		e.Name = it.shift().Literal
+	}
+	if !it.done() && it.isNonTerminal() && it.symbol() == TypeParamList {
+		e.TypeParams = b.buildTypeParams(it.enter())
 	}
 	lbraceLine, rbraceLine := 0, 0
 	if !it.done() && !it.isNonTerminal() && it.tokenType() == LBRACE {
@@ -763,6 +766,9 @@ func (b *builder) buildEnumMember(it nodeIter) *ast.EnumMember {
 		nameTok := it.shift()
 		m.Pos = b.posFromToken(nameTok)
 		m.Name = nameTok.Literal
+	}
+	if !it.done() && it.isNonTerminal() && it.symbol() == Type {
+		m.Payload = b.buildType(it.enter())
 	}
 	if !it.done() && !it.isNonTerminal() && it.tokenType() == ASSIGN {
 		it.skip() // assign
@@ -3299,6 +3305,13 @@ func (b *builder) buildArg(it nodeIter) ast.ArgOrEventHandler {
 			base := &ast.ConstExpr{Pos: ast.Pos(pos), Operand: operand}
 			expr := b.applyArgExprCont(&it, base)
 			return ast.Arg{Value: expr}
+		case KW_VAR:
+			pos := b.posFromToken(it.shift())
+			bind := &ast.BindExpr{Pos: ast.Pos(pos)}
+			if !it.done() && !it.isNonTerminal() && it.tokenType() == IDENT {
+				bind.Name = it.shift().Literal
+			}
+			return ast.Arg{Value: bind}
 		}
 	}
 

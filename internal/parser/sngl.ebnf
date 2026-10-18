@@ -275,11 +275,12 @@ StructBodyDecl = FuncDecl | kw_const FuncDecl | StructField .
 StructField = IdentList Type [ assign Expr ] .
 
 # Enum body accepts members and nested funcs, separated by comma or semi.
-EnumDecl = kw_enum [ ident ] lbrace [ EnumBodyItem { (comma | semi) EnumBodyItem } [ comma | semi ] ] rbrace .
+EnumDecl = kw_enum [ ident ] [ TypeParamList ] lbrace [ EnumBodyItem { (comma | semi) EnumBodyItem } [ comma | semi ] ] rbrace .
 
 EnumBodyItem = FuncDecl | kw_const FuncDecl | EnumMember .
 
-EnumMember = ident [ assign Expr ] .
+# A member may carry a type, its payload; one that does takes no value.
+EnumMember = ident [ Type ] [ assign Expr ] .
 
 # Unit suffixes use the same brace list: unit Length{px, em, rem=16}
 UnitDecl = kw_unit [ ident ] lbrace [ ArgList ] rbrace .
@@ -706,6 +707,7 @@ Arg =
     | amp UnaryExpr ArgExprCont
     | star UnaryExpr ArgExprCont
     | kw_const UnaryExpr ArgExprCont
+    | kw_var ident
     | NonIdentPrimary { StmtPostfixOp } ArgExprCont
     .
 

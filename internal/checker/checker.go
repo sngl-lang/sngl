@@ -321,7 +321,15 @@ func CheckPackage(docs []*ast.Document, cfg *Config) (*ir.Package, []ir.Diagnost
 	c.analyzeErrors()
 	c.analyzeAsync()
 	analyzePointsTo(c.pkg)
-	c.analyzeAsyncWithPointsTo()
+	// A slot coloured async makes a call through it async, which may make
+	// another function async and so colour another slot.
+	for {
+		c.analyzeAsyncWithPointsTo()
+		if !colorAsyncSlots(c.pkg.PointsTo) {
+			break
+		}
+		c.analyzeAsync()
+	}
 	c.checkAsyncRules()
 	c.pkg.Symbols = c.symtab
 	// Last, because it needs every lib package loaded and every target's
@@ -537,6 +545,10 @@ type checker struct {
 	// matchSubjects are the match subjects read once per arm, judged once
 	// purity is known (reportImpureMatchSubjects).
 	matchSubjects []viewSpread
+	// matchBinds are the payloads a match pattern binds where the arm reads
+	// the payload off the subject in place of a local, so it may not be
+	// written (match.go's bindPayload).
+	matchBinds map[*ir.Var]bool
 	// stmtCall is the call a call statement is about to check: the one call
 	// whose @error handler has a statement to be attached to.
 	stmtCall *ast.CallExpr
@@ -1505,7 +1517,12 @@ func (c *checker) pass1() {
 		doc  *ast.Document
 		decl *ast.ComponentDecl
 	}
+	type pendingEnum struct {
+		doc *ast.Document
+		ed  *ir.EnumDef
+	}
 	var structShells []pendingShell
+	var enumShells []pendingEnum
 	var pendingComponents []pendingComp
 	c.pendingMarks = &[]pendingMark{}
 	c.pendingInits = &[]pendingInit{}
@@ -1516,7 +1533,7 @@ func (c *checker) pass1() {
 			case *ast.StructDef:
 				structShells = append(structShells, pendingShell{d, c.registerStructShell(s)})
 			case *ast.EnumDef:
-				c.registerEnum(s)
+				enumShells = append(enumShells, pendingEnum{d, c.registerEnum(s)})
 			case *ast.UnitDef:
 				c.registerUnit(s)
 			case *ast.ComponentDecl:
@@ -1534,6 +1551,10 @@ func (c *checker) pass1() {
 	for _, p := range structShells {
 		c.resumeFile(p.doc)
 		c.resolveStructBody(p.sd)
+	}
+	for _, p := range enumShells {
+		c.resumeFile(p.doc)
+		c.resolveEnumBody(p.ed)
 	}
 
 	for _, d := range c.docs {
@@ -2083,13 +2104,16 @@ func (c *checker) mergePkgInto(dst, src *ir.Package) {
 	}
 }
 
-func (c *checker) registerEnum(e *ast.EnumDef) {
+// registerEnum registers an enum's name and members; what a member carries
+// is resolved by resolveEnumBody once every type's shell exists.
+func (c *checker) registerEnum(e *ast.EnumDef) *ir.EnumDef {
 	claimed := c.claimTopLevel(e.Name, e.Pos, bindDecl, "")
 	ed := c.buildEnumDef(e)
 	c.applyMarks(e, ed)
 	c.declPkg().Enums = append(c.declPkg().Enums, ed)
 	c.bindDeclared(claimed, ed)
-	c.registerNestedMethods(ed.Name, nil, e.Funcs())
+	c.registerNestedMethods(ed.Name, e.TypeParams, e.Funcs())
+	return ed
 }
 
 // registerStructShell registers a struct's name and type parameters without
@@ -2170,7 +2194,8 @@ func (c *checker) registerBodyDecl(stmt ast.Stmt, owner string) ir.Symbol {
 		c.applyMarks(s, ed)
 		c.declPkg().Enums = append(c.declPkg().Enums, ed)
 		c.declare(s.Pos, ed)
-		c.registerNestedMethods(ed.Name, nil, s.Funcs())
+		c.resolveEnumBody(ed)
+		c.registerNestedMethods(ed.Name, s.TypeParams, s.Funcs())
 		return ed
 	case *ast.UnitDef:
 		ud := c.buildUnitDef(s)

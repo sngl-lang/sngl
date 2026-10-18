@@ -217,10 +217,10 @@ func (s Symbol) String() string {
 var errorSets = [...][]Symbol{
 	{},
 	{ident, amp},
-	{NonIdentPrimary, EventArg, Arg, FuncLit, AnonStructLit, I18nTriple, I18nInterpStr, TripleInterp, InterpStr, unit_lit, triple_start, triple_full, str_start, str_full, star, rbrace, raw_str, minus, lparen, lbracket, lbrace, kw_func, kw_const, int_lit, ident, i18n_triple_start, i18n_triple_full, i18n_str_start, i18n_str_full, hash, float_lit, ellipsis, colon, bang, at, amp},
-	{NonIdentPrimary, EventArg, Arg, FuncLit, AnonStructLit, I18nTriple, I18nInterpStr, TripleInterp, InterpStr, unit_lit, triple_start, triple_full, str_start, str_full, star, rparen, raw_str, minus, lparen, lbracket, lbrace, kw_func, kw_const, int_lit, ident, i18n_triple_start, i18n_triple_full, i18n_str_start, i18n_str_full, hash, float_lit, ellipsis, colon, bang, at, amp},
-	{NonIdentPrimary, EventArg, FuncLit, AnonStructLit, I18nTriple, I18nInterpStr, TripleInterp, InterpStr, unit_lit, triple_start, triple_full, str_start, str_full, star, raw_str, minus, lparen, lbracket, lbrace, kw_func, kw_const, int_lit, ident, i18n_triple_start, i18n_triple_full, i18n_str_start, i18n_str_full, hash, float_lit, ellipsis, colon, bang, at, amp},
-	{FuncLit, AnonStructLit, I18nTriple, I18nInterpStr, TripleInterp, InterpStr, unit_lit, triple_start, triple_full, str_start, str_full, star, raw_str, minus, lparen, lbracket, lbrace, kw_func, kw_const, int_lit, ident, i18n_triple_start, i18n_triple_full, i18n_str_start, i18n_str_full, hash, float_lit, ellipsis, colon, bang, at, amp},
+	{NonIdentPrimary, EventArg, Arg, FuncLit, AnonStructLit, I18nTriple, I18nInterpStr, TripleInterp, InterpStr, unit_lit, triple_start, triple_full, str_start, str_full, star, rbrace, raw_str, minus, lparen, lbracket, lbrace, kw_var, kw_func, kw_const, int_lit, ident, i18n_triple_start, i18n_triple_full, i18n_str_start, i18n_str_full, hash, float_lit, ellipsis, colon, bang, at, amp},
+	{NonIdentPrimary, EventArg, Arg, FuncLit, AnonStructLit, I18nTriple, I18nInterpStr, TripleInterp, InterpStr, unit_lit, triple_start, triple_full, str_start, str_full, star, rparen, raw_str, minus, lparen, lbracket, lbrace, kw_var, kw_func, kw_const, int_lit, ident, i18n_triple_start, i18n_triple_full, i18n_str_start, i18n_str_full, hash, float_lit, ellipsis, colon, bang, at, amp},
+	{NonIdentPrimary, EventArg, FuncLit, AnonStructLit, I18nTriple, I18nInterpStr, TripleInterp, InterpStr, unit_lit, triple_start, triple_full, str_start, str_full, star, raw_str, minus, lparen, lbracket, lbrace, kw_var, kw_func, kw_const, int_lit, ident, i18n_triple_start, i18n_triple_full, i18n_str_start, i18n_str_full, hash, float_lit, ellipsis, colon, bang, at, amp},
+	{FuncLit, AnonStructLit, I18nTriple, I18nInterpStr, TripleInterp, InterpStr, unit_lit, triple_start, triple_full, str_start, str_full, star, raw_str, minus, lparen, lbracket, lbrace, kw_var, kw_func, kw_const, int_lit, ident, i18n_triple_start, i18n_triple_full, i18n_str_start, i18n_str_full, hash, float_lit, ellipsis, colon, bang, at, amp},
 	{FuncLit, AnonStructLit, ImportExpr, PrimaryExpr, IndexElem, PostfixExpr, UnaryExpr, MulExpr, AddExpr, CmpExpr, EqExpr, AndExpr, OrExpr, TernaryExpr, Expr, Match, UnitDecl, EnumDecl, StructDecl, I18nTriple, I18nInterpStr, TripleInterp, InterpStr, unit_lit, triple_start, triple_full, str_start, str_full, star, raw_str, minus, lparen, lbracket, lbrace, kw_unit, kw_struct, kw_match, kw_import, kw_func, kw_enum, kw_const, kw_component, int_lit, ident, i18n_triple_start, i18n_triple_full, i18n_str_start, i18n_str_full, hash, float_lit, ellipsis, bang, amp},
 	{FuncLit, AnonStructLit, ImportExpr, PrimaryExpr, PostfixExpr, UnaryExpr, MulExpr, AddExpr, CmpExpr, EqExpr, AndExpr, OrExpr, TernaryExpr, Expr, Match, UnitDecl, EnumDecl, StructDecl, I18nTriple, I18nInterpStr, TripleInterp, InterpStr, unit_lit, triple_start, triple_full, str_start, str_full, star, raw_str, minus, lparen, lbracket, lbrace, kw_unit, kw_struct, kw_match, kw_import, kw_func, kw_enum, kw_const, kw_component, int_lit, ident, i18n_triple_start, i18n_triple_full, i18n_str_start, i18n_str_full, hash, float_lit, ellipsis, bang, amp},
 	{FuncLit, AnonStructLit, ImportExpr, PrimaryExpr, PostfixExpr, UnaryExpr, MulExpr, AddExpr, CmpExpr, EqExpr, AndExpr, OrExpr, TernaryExpr, Match, StructDecl, I18nTriple, I18nInterpStr, TripleInterp, InterpStr, unit_lit, triple_start, triple_full, str_start, str_full, star, raw_str, minus, lparen, lbracket, lbrace, kw_unit, kw_struct, kw_match, kw_import, kw_func, kw_enum, kw_const, kw_component, int_lit, ident, i18n_triple_start, i18n_triple_full, i18n_str_start, i18n_str_full, hash, float_lit, ellipsis, bang, amp},
@@ -1278,6 +1278,7 @@ state3:
 //	    | amp UnaryExpr ArgExprCont
 //	    | star UnaryExpr ArgExprCont
 //	    | kw_const UnaryExpr ArgExprCont
+//	    | kw_var ident
 //	    | NonIdentPrimary { StmtPostfixOp } ArgExprCont
 //	    .
 //
@@ -1290,10 +1291,12 @@ state3:
 //			shift and goto state 6
 //		on  ident
 //			shift and goto state 8
+//		on  kw_var
+//			shift and goto state 9
 //		on  at
 //			call EventArg and goto state 3
 //		on  float_lit, hash, i18n_str_full, i18n_str_start, i18n_triple_full, i18n_triple_start, int_lit, kw_func, lbrace, lbracket, lparen, raw_str, str_full, str_start, triple_full, triple_start, unit_lit
-//			call NonIdentPrimary and goto state 9
+//			call NonIdentPrimary and goto state 10
 //	State 1
 //		on  amp, bang, float_lit, hash, i18n_str_full, i18n_str_start, i18n_triple_full, i18n_triple_start, ident, int_lit, kw_const, kw_func, kw_import, kw_match, kw_struct, lbrace, lbracket, lparen, minus, raw_str, star, str_full, str_start, triple_full, triple_start, unit_lit
 //			call UnaryExpr and goto state 2
@@ -1324,9 +1327,12 @@ state3:
 //		on  assign, dot, eq, gt, gte, land, lbrace, lbracket, lor, lparen, lt, lte, minus, neq, percent, plus, question, slash, star
 //			call IdentArgCont and goto state 3
 //	State 9
+//		on  ident
+//			shift and goto state 3
+//	State 10
 //		Accept
 //		on  dot, hash, lbrace, lbracket, lparen
-//			call StmtPostfixOp and goto state 9
+//			call StmtPostfixOp and goto state 10
 //		on  eq, gt, gte, land, lor, lt, lte, minus, neq, percent, plus, question, slash, star
 //			call ArgExprCont and goto state 3
 //
@@ -1349,12 +1355,15 @@ func (p *Parser) Arg() []int32 {
 	case ident:
 		p.push(p.shift())
 		goto state8
+	case kw_var:
+		p.push(p.shift())
+		goto state9
 	case at:
 		p.EventArg()
 		goto state3
 	case float_lit, hash, i18n_str_full, i18n_str_start, i18n_triple_full, i18n_triple_start, int_lit, kw_func, lbrace, lbracket, lparen, raw_str, str_full, str_start, triple_full, triple_start, unit_lit:
 		p.NonIdentPrimary()
-		goto state9
+		goto state10
 	}
 	return p.stop(start, accept, errorSet)
 state1:
@@ -1420,11 +1429,19 @@ state8:
 	}
 	return p.stop(start, accept, errorSet)
 state9:
+	accept, errorSet = false, 97
+	switch Symbol(p.tok.Ch) {
+	case ident:
+		p.push(p.shift())
+		goto state3
+	}
+	return p.stop(start, accept, errorSet)
+state10:
 	accept, errorSet = true, 163
 	switch Symbol(p.tok.Ch) {
 	case dot, hash, lbrace, lbracket, lparen:
 		p.StmtPostfixOp()
-		goto state9
+		goto state10
 	case eq, gt, gte, land, lor, lt, lte, minus, neq, percent, plus, question, slash, star:
 		p.ArgExprCont()
 		goto state3
@@ -1791,7 +1808,7 @@ state16:
 //	ArgList = Arg { (comma | semi) Arg } [ comma | semi ] .
 //
 //	State 0
-//		on  amp, at, bang, colon, ellipsis, float_lit, hash, i18n_str_full, i18n_str_start, i18n_triple_full, i18n_triple_start, ident, int_lit, kw_const, kw_func, lbrace, lbracket, lparen, minus, raw_str, star, str_full, str_start, triple_full, triple_start, unit_lit
+//		on  amp, at, bang, colon, ellipsis, float_lit, hash, i18n_str_full, i18n_str_start, i18n_triple_full, i18n_triple_start, ident, int_lit, kw_const, kw_func, kw_var, lbrace, lbracket, lparen, minus, raw_str, star, str_full, str_start, triple_full, triple_start, unit_lit
 //			call Arg and goto state 1
 //	State 1
 //		Accept
@@ -1799,7 +1816,7 @@ state16:
 //			shift and goto state 2
 //	State 2
 //		Accept
-//		on  amp, at, bang, colon, ellipsis, float_lit, hash, i18n_str_full, i18n_str_start, i18n_triple_full, i18n_triple_start, ident, int_lit, kw_const, kw_func, lbrace, lbracket, lparen, minus, raw_str, star, str_full, str_start, triple_full, triple_start, unit_lit
+//		on  amp, at, bang, colon, ellipsis, float_lit, hash, i18n_str_full, i18n_str_start, i18n_triple_full, i18n_triple_start, ident, int_lit, kw_const, kw_func, kw_var, lbrace, lbracket, lparen, minus, raw_str, star, str_full, str_start, triple_full, triple_start, unit_lit
 //			call Arg and goto state 1
 //
 // ArgList is used internally from Parse.
@@ -1809,7 +1826,7 @@ func (p *Parser) ArgList() []int32 {
 	// state0:
 	accept, errorSet = false, 4
 	switch Symbol(p.tok.Ch) {
-	case amp, at, bang, colon, ellipsis, float_lit, hash, i18n_str_full, i18n_str_start, i18n_triple_full, i18n_triple_start, ident, int_lit, kw_const, kw_func, lbrace, lbracket, lparen, minus, raw_str, star, str_full, str_start, triple_full, triple_start, unit_lit:
+	case amp, at, bang, colon, ellipsis, float_lit, hash, i18n_str_full, i18n_str_start, i18n_triple_full, i18n_triple_start, ident, int_lit, kw_const, kw_func, kw_var, lbrace, lbracket, lparen, minus, raw_str, star, str_full, str_start, triple_full, triple_start, unit_lit:
 		p.Arg()
 		goto state1
 	}
@@ -1825,7 +1842,7 @@ state1:
 state2:
 	accept, errorSet = true, 4
 	switch Symbol(p.tok.Ch) {
-	case amp, at, bang, colon, ellipsis, float_lit, hash, i18n_str_full, i18n_str_start, i18n_triple_full, i18n_triple_start, ident, int_lit, kw_const, kw_func, lbrace, lbracket, lparen, minus, raw_str, star, str_full, str_start, triple_full, triple_start, unit_lit:
+	case amp, at, bang, colon, ellipsis, float_lit, hash, i18n_str_full, i18n_str_start, i18n_triple_full, i18n_triple_start, ident, int_lit, kw_const, kw_func, kw_var, lbrace, lbracket, lparen, minus, raw_str, star, str_full, str_start, triple_full, triple_start, unit_lit:
 		p.Arg()
 		goto state1
 	}
@@ -2457,7 +2474,7 @@ state1:
 //	State 5
 //		on  rparen
 //			shift and goto state 2
-//		on  amp, at, bang, colon, ellipsis, float_lit, hash, i18n_str_full, i18n_str_start, i18n_triple_full, i18n_triple_start, ident, int_lit, kw_const, kw_func, lbrace, lbracket, lparen, minus, raw_str, star, str_full, str_start, triple_full, triple_start, unit_lit
+//		on  amp, at, bang, colon, ellipsis, float_lit, hash, i18n_str_full, i18n_str_start, i18n_triple_full, i18n_triple_start, ident, int_lit, kw_const, kw_func, kw_var, lbrace, lbracket, lparen, minus, raw_str, star, str_full, str_start, triple_full, triple_start, unit_lit
 //			call ArgList and goto state 6
 //	State 6
 //		on  rparen
@@ -2514,7 +2531,7 @@ state5:
 	case rparen:
 		p.push(p.shift())
 		goto state2
-	case amp, at, bang, colon, ellipsis, float_lit, hash, i18n_str_full, i18n_str_start, i18n_triple_full, i18n_triple_start, ident, int_lit, kw_const, kw_func, lbrace, lbracket, lparen, minus, raw_str, star, str_full, str_start, triple_full, triple_start, unit_lit:
+	case amp, at, bang, colon, ellipsis, float_lit, hash, i18n_str_full, i18n_str_start, i18n_triple_full, i18n_triple_start, ident, int_lit, kw_const, kw_func, kw_var, lbrace, lbracket, lparen, minus, raw_str, star, str_full, str_start, triple_full, triple_start, unit_lit:
 		p.ArgList()
 		goto state6
 	}
@@ -3072,7 +3089,7 @@ state2:
 // EnumDecl grammar:
 //
 //	# Enum body accepts members and nested funcs, separated by comma or semi.
-//	EnumDecl = kw_enum [ ident ] lbrace [ EnumBodyItem { (comma | semi) EnumBodyItem } [ comma | semi ] ] rbrace .
+//	EnumDecl = kw_enum [ ident ] [ TypeParamList ] lbrace [ EnumBodyItem { (comma | semi) EnumBodyItem } [ comma | semi ] ] rbrace .
 //
 //	State 0
 //		on  kw_enum
@@ -3082,9 +3099,13 @@ state2:
 //			shift and goto state 2
 //		on  lbrace
 //			shift and goto state 3
+//		on  lbracket
+//			call TypeParamList and goto state 6
 //	State 2
 //		on  lbrace
 //			shift and goto state 3
+//		on  lbracket
+//			call TypeParamList and goto state 6
 //	State 3
 //		on  rbrace
 //			shift and goto state 4
@@ -3097,6 +3118,9 @@ state2:
 //			shift and goto state 3
 //		on  rbrace
 //			shift and goto state 4
+//	State 6
+//		on  lbrace
+//			shift and goto state 3
 //
 // EnumDecl is used internally from Parse.
 func (p *Parser) EnumDecl() []int32 {
@@ -3111,7 +3135,7 @@ func (p *Parser) EnumDecl() []int32 {
 	}
 	return p.stop(start, accept, errorSet)
 state1:
-	accept, errorSet = false, 94
+	accept, errorSet = false, 93
 	switch Symbol(p.tok.Ch) {
 	case ident:
 		p.push(p.shift())
@@ -3119,14 +3143,20 @@ state1:
 	case lbrace:
 		p.push(p.shift())
 		goto state3
+	case lbracket:
+		p.TypeParamList()
+		goto state6
 	}
 	return p.stop(start, accept, errorSet)
 state2:
-	accept, errorSet = false, 130
+	accept, errorSet = false, 128
 	switch Symbol(p.tok.Ch) {
 	case lbrace:
 		p.push(p.shift())
 		goto state3
+	case lbracket:
+		p.TypeParamList()
+		goto state6
 	}
 	return p.stop(start, accept, errorSet)
 state3:
@@ -3154,11 +3184,20 @@ state5:
 		goto state4
 	}
 	return p.stop(start, accept, errorSet)
+state6:
+	accept, errorSet = false, 130
+	switch Symbol(p.tok.Ch) {
+	case lbrace:
+		p.push(p.shift())
+		goto state3
+	}
+	return p.stop(start, accept, errorSet)
 }
 
 // EnumMember grammar:
 //
-//	EnumMember = ident [ assign Expr ] .
+//	# A member may carry a type, its payload; one that does takes no value.
+//	EnumMember = ident [ Type ] [ assign Expr ] .
 //
 //	State 0
 //		on  ident
@@ -3167,11 +3206,17 @@ state5:
 //		Accept
 //		on  assign
 //			shift and goto state 2
+//		on  ellipsis, ident, kw_component, kw_enum, kw_func, kw_struct, kw_unit
+//			call Type and goto state 4
 //	State 2
 //		on  amp, bang, float_lit, hash, i18n_str_full, i18n_str_start, i18n_triple_full, i18n_triple_start, ident, int_lit, kw_const, kw_func, kw_import, kw_match, kw_struct, lbrace, lbracket, lparen, minus, raw_str, star, str_full, str_start, triple_full, triple_start, unit_lit
 //			call Expr and goto state 3
 //	State 3
 //		Accept
+//	State 4
+//		Accept
+//		on  assign
+//			shift and goto state 2
 //
 // EnumMember is used internally from Parse.
 func (p *Parser) EnumMember() []int32 {
@@ -3186,11 +3231,14 @@ func (p *Parser) EnumMember() []int32 {
 	}
 	return p.stop(start, accept, errorSet)
 state1:
-	accept, errorSet = true, 99
+	accept, errorSet = true, 72
 	switch Symbol(p.tok.Ch) {
 	case assign:
 		p.push(p.shift())
 		goto state2
+	case ellipsis, ident, kw_component, kw_enum, kw_func, kw_struct, kw_unit:
+		p.Type()
+		goto state4
 	}
 	return p.stop(start, accept, errorSet)
 state2:
@@ -3203,6 +3251,14 @@ state2:
 	return p.stop(start, accept, errorSet)
 state3:
 	accept, errorSet = true, 0
+	return p.stop(start, accept, errorSet)
+state4:
+	accept, errorSet = true, 99
+	switch Symbol(p.tok.Ch) {
+	case assign:
+		p.push(p.shift())
+		goto state2
+	}
 	return p.stop(start, accept, errorSet)
 }
 
@@ -3482,7 +3538,7 @@ state1:
 //	State 6
 //		on  rparen
 //			shift and goto state 3
-//		on  amp, at, bang, colon, ellipsis, float_lit, hash, i18n_str_full, i18n_str_start, i18n_triple_full, i18n_triple_start, ident, int_lit, kw_const, kw_func, lbrace, lbracket, lparen, minus, raw_str, star, str_full, str_start, triple_full, triple_start, unit_lit
+//		on  amp, at, bang, colon, ellipsis, float_lit, hash, i18n_str_full, i18n_str_start, i18n_triple_full, i18n_triple_start, ident, int_lit, kw_const, kw_func, kw_var, lbrace, lbracket, lparen, minus, raw_str, star, str_full, str_start, triple_full, triple_start, unit_lit
 //			call ArgList and goto state 7
 //	State 7
 //		on  rparen
@@ -3547,7 +3603,7 @@ state6:
 	case rparen:
 		p.push(p.shift())
 		goto state3
-	case amp, at, bang, colon, ellipsis, float_lit, hash, i18n_str_full, i18n_str_start, i18n_triple_full, i18n_triple_start, ident, int_lit, kw_const, kw_func, lbrace, lbracket, lparen, minus, raw_str, star, str_full, str_start, triple_full, triple_start, unit_lit:
+	case amp, at, bang, colon, ellipsis, float_lit, hash, i18n_str_full, i18n_str_start, i18n_triple_full, i18n_triple_start, ident, int_lit, kw_const, kw_func, kw_var, lbrace, lbracket, lparen, minus, raw_str, star, str_full, str_start, triple_full, triple_start, unit_lit:
 		p.ArgList()
 		goto state7
 	}
@@ -5622,7 +5678,7 @@ state2:
 //	State 5
 //		on  rparen
 //			shift and goto state 6
-//		on  amp, at, bang, colon, ellipsis, float_lit, hash, i18n_str_full, i18n_str_start, i18n_triple_full, i18n_triple_start, ident, int_lit, kw_const, kw_func, lbrace, lbracket, lparen, minus, raw_str, star, str_full, str_start, triple_full, triple_start, unit_lit
+//		on  amp, at, bang, colon, ellipsis, float_lit, hash, i18n_str_full, i18n_str_start, i18n_triple_full, i18n_triple_start, ident, int_lit, kw_const, kw_func, kw_var, lbrace, lbracket, lparen, minus, raw_str, star, str_full, str_start, triple_full, triple_start, unit_lit
 //			call ArgList and goto state 8
 //	State 6
 //		on  rbracket
@@ -5692,7 +5748,7 @@ state5:
 	case rparen:
 		p.push(p.shift())
 		goto state6
-	case amp, at, bang, colon, ellipsis, float_lit, hash, i18n_str_full, i18n_str_start, i18n_triple_full, i18n_triple_start, ident, int_lit, kw_const, kw_func, lbrace, lbracket, lparen, minus, raw_str, star, str_full, str_start, triple_full, triple_start, unit_lit:
+	case amp, at, bang, colon, ellipsis, float_lit, hash, i18n_str_full, i18n_str_start, i18n_triple_full, i18n_triple_start, ident, int_lit, kw_const, kw_func, kw_var, lbrace, lbracket, lparen, minus, raw_str, star, str_full, str_start, triple_full, triple_start, unit_lit:
 		p.ArgList()
 		goto state8
 	}
@@ -7375,7 +7431,7 @@ state4:
 //	State 5
 //		on  rparen
 //			shift and goto state 6
-//		on  amp, at, bang, colon, ellipsis, float_lit, hash, i18n_str_full, i18n_str_start, i18n_triple_full, i18n_triple_start, ident, int_lit, kw_const, kw_func, lbrace, lbracket, lparen, minus, raw_str, star, str_full, str_start, triple_full, triple_start, unit_lit
+//		on  amp, at, bang, colon, ellipsis, float_lit, hash, i18n_str_full, i18n_str_start, i18n_triple_full, i18n_triple_start, ident, int_lit, kw_const, kw_func, kw_var, lbrace, lbracket, lparen, minus, raw_str, star, str_full, str_start, triple_full, triple_start, unit_lit
 //			call ArgList and goto state 7
 //	State 6
 //		Accept
@@ -7442,7 +7498,7 @@ state5:
 	case rparen:
 		p.push(p.shift())
 		goto state6
-	case amp, at, bang, colon, ellipsis, float_lit, hash, i18n_str_full, i18n_str_start, i18n_triple_full, i18n_triple_start, ident, int_lit, kw_const, kw_func, lbrace, lbracket, lparen, minus, raw_str, star, str_full, str_start, triple_full, triple_start, unit_lit:
+	case amp, at, bang, colon, ellipsis, float_lit, hash, i18n_str_full, i18n_str_start, i18n_triple_full, i18n_triple_start, ident, int_lit, kw_const, kw_func, kw_var, lbrace, lbracket, lparen, minus, raw_str, star, str_full, str_start, triple_full, triple_start, unit_lit:
 		p.ArgList()
 		goto state7
 	}
@@ -8544,7 +8600,7 @@ state2:
 //	State 3
 //		on  rbrace
 //			shift and goto state 4
-//		on  amp, at, bang, colon, ellipsis, float_lit, hash, i18n_str_full, i18n_str_start, i18n_triple_full, i18n_triple_start, ident, int_lit, kw_const, kw_func, lbrace, lbracket, lparen, minus, raw_str, star, str_full, str_start, triple_full, triple_start, unit_lit
+//		on  amp, at, bang, colon, ellipsis, float_lit, hash, i18n_str_full, i18n_str_start, i18n_triple_full, i18n_triple_start, ident, int_lit, kw_const, kw_func, kw_var, lbrace, lbracket, lparen, minus, raw_str, star, str_full, str_start, triple_full, triple_start, unit_lit
 //			call ArgList and goto state 5
 //	State 4
 //		Accept
@@ -8589,7 +8645,7 @@ state3:
 	case rbrace:
 		p.push(p.shift())
 		goto state4
-	case amp, at, bang, colon, ellipsis, float_lit, hash, i18n_str_full, i18n_str_start, i18n_triple_full, i18n_triple_start, ident, int_lit, kw_const, kw_func, lbrace, lbracket, lparen, minus, raw_str, star, str_full, str_start, triple_full, triple_start, unit_lit:
+	case amp, at, bang, colon, ellipsis, float_lit, hash, i18n_str_full, i18n_str_start, i18n_triple_full, i18n_triple_start, ident, int_lit, kw_const, kw_func, kw_var, lbrace, lbracket, lparen, minus, raw_str, star, str_full, str_start, triple_full, triple_start, unit_lit:
 		p.ArgList()
 		goto state5
 	}

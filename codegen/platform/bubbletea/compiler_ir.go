@@ -457,6 +457,7 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 	b.WriteString(golang.EmitMergeFuncs(ctx.Pkg.MergeStructs))
 
 	b.WriteString(golang.EmitUnitTypeDecls(info.Units))
+	b.WriteString(golang.EmitEnumTypeDecls(info.Enums))
 
 	for _, sd := range info.Structs {
 		fmt.Fprintf(&b, "type %s struct {\n", golang.ExportName(sd.Name))

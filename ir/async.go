@@ -89,8 +89,9 @@ func exprHasFuncvarAsyncCall(e Expr, pts *PointsToInfo) bool {
 	}
 	switch x := e.(type) {
 	case *Call:
-		// Direct call to a known async func.
-		if x.Func != nil && x.Func.IsAsync {
+		// Direct call to a known async func, or through a value whose
+		// signature is coloured async.
+		if x.Func != nil && x.Func.IsAsync || CallsAsyncValue(x) {
 			return true
 		}
 		// Funcvar call: Func is nil, Callee carries the funcvar expression.
@@ -203,7 +204,7 @@ func ExprHasAsyncCall(e Expr) bool {
 	}
 	switch x := e.(type) {
 	case *Call:
-		if x.Func != nil && x.Func.IsAsync {
+		if x.Func != nil && x.Func.IsAsync || CallsAsyncValue(x) {
 			return true
 		}
 		for _, a := range x.Args {
@@ -251,4 +252,15 @@ func ExprHasAsyncCall(e Expr) bool {
 		// See exprHasFuncvarAsyncCall: a closure is handed over, not called.
 	}
 	return false
+}
+
+// CallsAsyncValue reports whether call is a call through a func value whose
+// signature the checker coloured async: an async function may flow into the
+// slot it reads (checker.colorAsyncSlots).
+func CallsAsyncValue(call *Call) bool {
+	if call.Func != nil || call.Callee == nil {
+		return false
+	}
+	t := call.Callee.ExprType()
+	return t != nil && t.Sig != nil && t.Sig.Color == ColorAsync
 }

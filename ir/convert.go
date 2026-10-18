@@ -161,10 +161,14 @@ func (c *converter) convertAnonStructType(sd *StructDef) ast.TypeExpr {
 func (c *converter) convertEnumDef(e *EnumDef) *ast.EnumDef {
 	def := &ast.EnumDef{
 		Name:        e.Name,
+		TypeParams:  c.convertTypeParams(e.TypeParams),
 		IsMultiline: len(e.Members) > 1,
 	}
 	for _, m := range e.Members {
 		em := ast.EnumMember{Name: m.Name}
+		if m.Payload != nil {
+			em.Payload = c.convertType(m.Payload)
+		}
 		if m.Value != nil {
 			em.Value = c.convertExpr(m.Value)
 		}
@@ -876,6 +880,16 @@ func (c *converter) convertExpr(e Expr) ast.Expr {
 		}
 		return me
 	case *Call:
+		// An enum read is spelled as the selector it was checked from: the
+		// test as the option's null test, or the member's bool, and the
+		// payload as the option a narrowing would read.
+		if operand, member, id, ok := EnumRead(e); ok {
+			sel := &ast.SelectExpr{Operand: c.convertExpr(operand), Field: member}
+			if id == EnumIsIntrinsic && MemberPayload(operand.ExprType(), member) != nil {
+				return &ast.BinaryExpr{Op: ast.BinNeq, Left: sel, Right: &ast.LiteralExpr{Kind: ast.LiteralNull, Raw: "null"}}
+			}
+			return sel
+		}
 		return c.convertCallExpr(e)
 	case *Conversion:
 		return c.convertConversion(e)
@@ -1123,6 +1137,9 @@ func (c *converter) convertStructLit(sl *StructLit) *ast.StructExpr {
 		}
 	} else if sl.Type != nil && sl.Type.Decl != nil {
 		se.Name = sl.Type.Decl.SymName()
+		if ed, ok := sl.Type.Decl.(*EnumDef); ok && len(ed.TypeParams) > 0 && len(sl.Type.Elems) == len(ed.TypeParams) {
+			se.TypeArgs = c.typeArgExprs(sl.Type.Elems)
+		}
 	}
 	for _, f := range sl.Fields {
 		sf := ast.StructFieldLit{
@@ -1223,6 +1240,11 @@ func (c *converter) convertType(t *Type) ast.TypeExpr {
 		// A parameterized struct holds its bound arguments in Elems, in the
 		// declaration order the spelling wants them back in.
 		if sd, ok := t.Decl.(*StructDef); ok && len(sd.TypeParams) > 0 {
+			for _, e := range t.Elems {
+				nt.TypeArgs = append(nt.TypeArgs, c.convertType(e))
+			}
+		}
+		if ed, ok := t.Decl.(*EnumDef); ok && len(ed.TypeParams) > 0 {
 			for _, e := range t.Elems {
 				nt.TypeArgs = append(nt.TypeArgs, c.convertType(e))
 			}

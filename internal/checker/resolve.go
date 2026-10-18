@@ -176,6 +176,11 @@ func (c *checker) resolveNamedType(t *ast.NamedType) *ir.Type {
 					return c.applyComponentTypeArgs(t.Pos, typ, comp, t.TypeArgs)
 				}
 			}
+			if typ.Kind == ir.TypeEnum {
+				if ed, ok := typ.Decl.(*ir.EnumDef); ok && len(ed.TypeParams) > 0 {
+					return c.applyEnumTypeArgs(t.Pos, typ, ed, t.TypeArgs)
+				}
+			}
 			return c.dataRecord(typ)
 		}
 	}
@@ -359,6 +364,11 @@ func (c *checker) resolveAnonStruct(s *ast.StructDef) *ir.Type {
 
 func (c *checker) resolveAnonEnum(e *ast.EnumDef) *ir.Type {
 	ed := c.buildEnumDef(e)
+	if len(e.TypeParams) > 0 {
+		c.error(e.Pos, "an enum written in place takes no type parameters: declare it with a name")
+		ed.TypeParams = nil
+	}
+	c.resolveEnumBody(ed)
 	return ed.SymType()
 }
 
@@ -562,11 +572,47 @@ func (c *checker) buildEnumDef(e *ast.EnumDef) *ir.EnumDef {
 		}
 	}
 	return &ir.EnumDef{
-		AST:     e,
-		Name:    e.Name,
-		Pkg:     c.declPkg(),
-		Members: members,
+		AST:        e,
+		Name:       e.Name,
+		Pkg:        c.declPkg(),
+		TypeParams: typeParamShells(e.TypeParams),
+		Members:    members,
 	}
+}
+
+// resolveEnumBody resolves what each member carries, which may name any
+// type the package declares -- so a top-level enum's body waits for every
+// type's shell, as a struct's fields do -- and the enum's own type
+// parameters.
+func (c *checker) resolveEnumBody(ed *ir.EnumDef) {
+	defer pushTypeParams(c, ed.AST.TypeParams)()
+	ed.TypeParams = c.resolveTypeParams(ed.AST.TypeParams)
+	for i, m := range ed.AST.Members() {
+		if m.Payload == nil {
+			continue
+		}
+		ed.Members[i].Payload = c.resolveType(m.Payload)
+		if m.Value != nil {
+			c.error(m.Pos, "member %s carries a payload, so it takes no value", m.Name)
+			ed.Members[i].Value = nil
+		}
+	}
+}
+
+// applyEnumTypeArgs is a generic enum's type at the arguments it was written
+// with, `Result[int]`: Elems holds them in declaration order, as a struct
+// type's do.
+func (c *checker) applyEnumTypeArgs(pos ast.Pos, base *ir.Type, ed *ir.EnumDef, args []ast.TypeExpr) *ir.Type {
+	if len(args) != len(ed.TypeParams) {
+		c.error(pos, "type %s takes %d type argument(s), got %d", ed.Name, len(ed.TypeParams), len(args))
+		return base
+	}
+	elems := make([]*ir.Type, len(args))
+	for i, a := range args {
+		elems[i] = c.resolveType(a)
+	}
+	c.checkWrittenArgs(ed.TypeParams, elems, args)
+	return &ir.Type{Kind: ir.TypeEnum, Decl: ed, Elems: elems}
 }
 
 // buildUnitDef builds an IR UnitDef from an AST UnitDef,

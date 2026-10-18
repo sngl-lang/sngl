@@ -156,6 +156,9 @@ func lowerTestStmt(s ir.Stmt, surf TestSurface, compRecvs map[string]bool, ctxCo
 		} else {
 			init = "null"
 		}
+		if ir.PayloadEnum(n.Type) != nil {
+			return []string{fmt.Sprintf("var %s: %s = %s", n.Name, IRTypeToKt(n.Type), init)}
+		}
 		return []string{fmt.Sprintf("var %s = %s", n.Name, init)}
 	case *ir.Assign, *ir.Toggle:
 		// A write to state -- `c.<var>…`, or a package var -- runs on the UI
@@ -445,6 +448,9 @@ func lowerTestExpr(e ir.Expr, surf TestSurface, compRecvs map[string]bool) strin
 		}
 		if id, ok := n.Operand.(*ir.Ident); ok && compRecvs[id.Name] {
 			return id.Name + "." + SafeIdent(n.Field)
+		}
+		if t := n.Operand.ExprType(); ir.PayloadEnum(t) != nil {
+			return "(" + lowerTestExpr(n.Operand, surf, compRecvs) + " as? " + enumVariant(t, n.Field) + ")?.value"
 		}
 		return lowerTestExpr(n.Operand, surf, compRecvs) + "." + selectField(n)
 	case *ir.Index:

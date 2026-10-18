@@ -40,6 +40,14 @@ func ZeroExpr(t *Type) Expr {
 		if ed == nil || len(ed.Members) == 0 {
 			return nil
 		}
+		// A member carrying a payload is zero with its payload's zero.
+		if first := ed.Members[0]; first.Payload != nil {
+			payload := ZeroExpr(MemberPayload(t, first.Name))
+			if payload == nil {
+				return nil
+			}
+			return &StructLit{Type: t, Fields: []FieldInit{{Name: first.Name, Value: payload}}}
+		}
 		return &Ident{Type: t, Name: ed.Members[0].Name, Member: ed.Members[0].Name, Sym: ed}
 	case TypeUnit:
 		ud, _ := t.Decl.(*UnitDef)

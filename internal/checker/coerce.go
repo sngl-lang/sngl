@@ -107,6 +107,10 @@ func primitiveConvertible(from, target *ir.Type) bool {
 	if from.Kind == ir.TypeInvalid {
 		return true // reported where it went wrong; nothing more to say
 	}
+	// A value holding a payload has no one scalar to be: it is matched.
+	if ir.PayloadEnum(from) != nil || ir.PayloadEnum(target) != nil {
+		return from.Equal(target)
+	}
 	fromStr, targetStr := ir.StringReprStruct(from), ir.StringReprStruct(target)
 	switch {
 	case fromStr:
