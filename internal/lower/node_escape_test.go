@@ -104,3 +104,27 @@ func TestNodeEscape_RecursiveComponentRefsAreLocal(t *testing.T) {
 		t.Errorf("expected __n1 to ESCAPE (referenced by updater func), but it was marked local; LocalRefs=%v", main.LocalRefs)
 	}
 }
+
+// A function reading its own parameter reads no node, whatever the two are
+// named.
+func TestNodeEscape_AParameterIsNoNodeOfItsName(t *testing.T) {
+	main := &ir.Component{Name: "main"}
+	main.Stmts = []ir.Stmt{
+		createNodeLV("__n0", "vbox"),
+		&ir.LocalVar{Name: "a", Init: &ir.Call{Func: &ir.Func{Intrinsic: ir.NodeOpCreateComponent}}},
+		appendChildStmt("__n0", "a"),
+	}
+	param := &ir.Param{Name: "a", Type: ir.TypString}
+	align := &ir.Func{
+		Name:   "textAlignOf",
+		Params: []*ir.Param{param},
+		Block:  []ir.Stmt{&ir.Return{Value: &ir.Ident{Name: "a", Sym: param, Type: ir.TypString}}},
+	}
+	pkg := &ir.Package{Components: []*ir.Component{main}, Funcs: []*ir.Func{align}}
+	if err := lowerNodeEscape(pkg, without("declarative"), Options{}); err != nil {
+		t.Fatalf("node escape: %v", err)
+	}
+	if !main.LocalRefs["a"] {
+		t.Errorf("#a escaped through a parameter of its name; LocalRefs=%v", main.LocalRefs)
+	}
+}
