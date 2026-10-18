@@ -244,7 +244,7 @@ func (c *compilation) emitKotlin(req *codegen.Request, sink codegen.Sink) error 
 		// this since instrumented tests live in androidTest sourceset
 		// with a different dep set.
 		templateTestMode := robolectricAgent || (testMode && cfg.TestRunner != "device")
-		for _, f := range scaffoldFiles(cfg, usesI18n, usesAssets(req.Pkg), deviceAgent, testAgentInc, templateTestMode) {
+		for _, f := range scaffoldFiles(cfg, usesI18n, usesAssets(req.Pkg), usesNetwork(req.Pkg), deviceAgent, testAgentInc, templateTestMode) {
 			if err := writeOutputFile(sink, f); err != nil {
 				return err
 			}
@@ -274,7 +274,7 @@ func (c *compilation) emitKotlin(req *codegen.Request, sink codegen.Sink) error 
 		if err := emitAssetsFile(req, sink, "MainScreen.kt", cfg.Package, ""); err != nil {
 			return err
 		}
-		for _, f := range directBuildFiles(cfg, usesI18n, usesAssets(req.Pkg), deviceAgent) {
+		for _, f := range directBuildFiles(cfg, usesI18n, usesAssets(req.Pkg), usesNetwork(req.Pkg), deviceAgent) {
 			if err := writeOutputFile(sink, f); err != nil {
 				return err
 			}
@@ -427,7 +427,7 @@ fun newTestComponent(): MainScreenState = MainScreenState()
 		// kotlin/<pkg>/ regardless of where the rest of the sources go
 		// (AGP scans only that sourceset for unit tests).
 		testPrefix := "app/src/test/kotlin/" + pkgToPath(cfg.Package) + "/"
-		if err := writeAndroidSourceFile(sink, testPrefix+"MainScreenAgentTest.kt", req.Lang, ktOpts, robolectricAgentTestKotlin(cfg.Package, kotlin.UsesCodec(req.Pkg))); err != nil {
+		if err := writeAndroidSourceFile(sink, testPrefix+"MainScreenAgentTest.kt", req.Lang, ktOpts, robolectricAgentTestKotlin(cfg.Package, activeCounters(req.Pkg))); err != nil {
 			return err
 		}
 	case "device":
@@ -458,20 +458,39 @@ fun newTestComponent(): MainScreenState = MainScreenState()
 // test infra, etc. all resolve to real implementations on the JVM.
 //
 // A program that waits on a request has a test's wait for idle wait for the
-// bodies SnglCodec.start began as well, so a test reads what an effect's
-// answer wrote rather than what was there before it arrived.
-func robolectricAgentTestKotlin(pkg string, codec bool) []byte {
+// work each runtime counts as well -- the bodies SnglCodec.start began, the
+// pictures SnglAssets is fetching -- so a test reads what an answer wrote
+// rather than what was there before it arrived.
+// activeCounters is the counter of work in flight each runtime the program
+// carries keeps.
+func activeCounters(pkg *ir.Package) []string {
+	var out []string
+	if kotlin.UsesCodec(pkg) {
+		out = append(out, "SnglCodec.active")
+	}
+	if usesAssets(pkg) {
+		out = append(out, "SnglAssets.active")
+	}
+	return out
+}
+
+func robolectricAgentTestKotlin(pkg string, counters []string) []byte {
 	rule, waiter := "composeRule", "composeRule"
-	if codec {
+	if len(counters) > 0 {
+		busy := make([]string, len(counters))
+		for i, c := range counters {
+			busy[i] = c + ".get() > 0"
+		}
+		running := strings.Join(busy, " || ")
 		waiter = "composeTestRule"
 		rule = `object : androidx.compose.ui.test.junit4.ComposeContentTestRule by composeRule {
             override fun waitForIdle() {
                 composeRule.waitForIdle()
                 val deadline = System.currentTimeMillis() + 10_000
-                while (SnglCodec.active.get() > 0 && System.currentTimeMillis() < deadline) {
+                while ((` + running + `) && System.currentTimeMillis() < deadline) {
                     shadowOf(Looper.getMainLooper()).idle()
                     Thread.sleep(1)
-                    if (SnglCodec.active.get() == 0) composeRule.waitForIdle()
+                    if (!(` + running + `)) composeRule.waitForIdle()
                 }
             }
         }`

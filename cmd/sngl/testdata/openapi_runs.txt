@@ -324,7 +324,7 @@ components:
       - name
       - evolves_from_species
 -- testrun/android/kotlin/app.sngl/_/1 --
-sha256:8dc5bae6bc5f66a4ce73ba4fdd0ce869
+sha256:e0d47f088c4226fdce3f920c0a36e950
 {
   "results": [
     {
@@ -342,7 +342,7 @@ sha256:8dc5bae6bc5f66a4ce73ba4fdd0ce869
   ]
 }
 -- testrun/android/kotlin/app.sngl/pager/1 --
-sha256:f00c7afcc404179d04a32394f4f76d59
+sha256:f28cc9cb732b42d0ce36835c6ce0b071
 {
   "results": [
     {

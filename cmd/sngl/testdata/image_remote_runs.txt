@@ -1,0 +1,86 @@
+# An image fetched while the program runs, from the local server the script
+# harness runs at 127.0.0.1:47819 (cmd/sngl/httpserver_test.go): the image
+# reports @load when its picture arrives and @error when the fetch fails, on
+# every target that fetches one. android ships its own loader for it.
+
+sngl test --platform=android --language=kotlin app.sngl
+stdout '2 tests, 0 failures'
+
+sngl test --platform=fyne --language=go app.sngl
+stdout '2 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go app.sngl
+stdout '2 tests, 0 failures'
+
+-- app.sngl --
+import . "sngl:test"
+import . "sngl:ui"
+
+const server = "http://127.0.0.1:47819"
+
+component pictures node {
+    var loaded = false
+    var failed = ""
+    image(@load { loaded = true }) {
+        remote(url="{server}/dot.png")
+    }
+    image(@error(e) { failed = e.message }) {
+        remote(url="{server}/status/404")
+    }
+}
+
+func testRemoteLoads(t Test, c pictures) {
+    t.wait(func() => c.loaded, 5000)
+    t.assert(c.loaded)
+}
+
+func testRemoteFails(t Test, c pictures) {
+    t.wait(func() => c.failed != "", 5000)
+    t.assert(c.failed != "")
+}
+
+window {
+    pictures
+}
+-- testrun/android/kotlin/app.sngl/pictures/1 --
+sha256:c914acbf0fd19db0d8f4bbec91e6187b
+{
+  "results": [
+    {
+      "Desc": "RemoteFails",
+      "Passed": true
+    },
+    {
+      "Desc": "RemoteLoads",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/pictures/1 --
+sha256:21ceab2749b7172ffe2f9f7bf078be19
+{
+  "results": [
+    {
+      "Desc": "RemoteFails",
+      "Passed": true
+    },
+    {
+      "Desc": "RemoteLoads",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/pictures/1 --
+sha256:0bde4a3708ec65dc98af3fca104a1833
+{
+  "results": [
+    {
+      "Desc": "RemoteFails",
+      "Passed": true
+    },
+    {
+      "Desc": "RemoteLoads",
+      "Passed": true
+    }
+  ]
+}

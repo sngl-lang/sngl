@@ -4,9 +4,10 @@
     android:versionCode="1"
     android:versionName="1.0">
     <uses-sdk android:minSdkVersion="{{.MinSdk}}" android:targetSdkVersion="{{.TargetSdk}}" />
-{{- if .HasTestAgentBootstrap}}
-    <!-- INTERNET is required for the on-device test agent's loopback
-         ServerSocket (the host driver adb-forwards a TCP port to it). -->
+{{- if or .HasTestAgentBootstrap .HasInternet}}
+    <!-- INTERNET: the program reaches the network, or the on-device test
+         agent listens on a loopback ServerSocket (the host driver
+         adb-forwards a TCP port to it). -->
     <uses-permission android:name="android.permission.INTERNET" />
 {{- end}}
     <application
