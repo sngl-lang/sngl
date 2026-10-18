@@ -1,0 +1,438 @@
+# The package an openapi: import writes, run against the local server the
+# script harness runs at 127.0.0.1:47819 (cmd/sngl/httpserver_test.go) on
+# every target that can wait for a request. bubbletea answers no async.do yet
+# (#272), so a request there is refused at the call that waits.
+
+sngl test --platform=none app.sngl
+stdout '4 tests, 0 failures'
+stderr 'import "openapi:./pokeapi.yml": field evolution_chain of PokemonSpeciesDetail is left out: a map of any value'
+
+sngl test --platform=fyne --language=go app.sngl
+stdout '4 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go app.sngl
+stdout '4 tests, 0 failures'
+
+sngl test --platform=html app.sngl
+stdout '4 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin app.sngl
+stdout '4 tests, 0 failures'
+
+! sngl test --platform=bubbletea --language=go app.sngl
+stderr 'app.sngl:15:43: this call blocks and bubbletea has no way to run anything back'
+
+-- app.sngl --
+// The package an openapi: import writes, run against the local server: a
+// function called from a test with server set for it, a 404 classified, a
+// query written from a function's parameters, and the adapter component
+// asking again when its key changes.
+
+import async "sngl:async"
+import poke "openapi:./pokeapi.yml"
+import . "sngl:test"
+import . "sngl:ui"
+
+const local = "http://127.0.0.1:47819"
+
+func testRetrieve(t Test) {
+    t.setContext(poke.server, local)
+    match var p = poke.pokemonRetrieveCall(id="bulbasaur") {
+        ok {
+            t.assert(p.id == 1)
+            t.assert(p.baseExperience == 64)
+            t.assert(p.types.length() == 2)
+            t.assert(p.types[1].type.name == "poison")
+            t.assert(p.sprites.frontDefault == "https://example.com/1.png")
+            t.assert(p.stats[0].baseStat == 45)
+        }
+        failed { t.assert(p.message == "") }
+    }
+}
+
+func testNotFound(t Test) {
+    t.setContext(poke.server, local)
+    match var f = poke.pokemonRetrieveCall(id="missingno") {
+        ok { t.assert(false) }
+        failed {
+            t.assert(f.kind == async.FailureKind.request)
+            t.assert(f.code == "404")
+        }
+    }
+}
+
+func testListQuery(t Test) {
+    t.setContext(poke.server, local)
+    match var page = poke.pokemonListCall(limit=2, offset=1) {
+        ok {
+            t.assert(page.count == 5)
+            t.assert(page.results.length() == 2)
+            t.assert(page.results[0].name == "ivysaur")
+            t.assert(page.next != null)
+            t.assert(page.previous != null)
+        }
+        failed { t.assert(page.message == "") }
+    }
+}
+
+component pager node {
+    var offset = 0
+    var page option[poke.PaginatedPokemonSummaryList] = null
+    poke.server(local) {
+        poke.pokemonList(limit=2, offset=offset, :value=page)
+    }
+    text #first(value=page != null && page.results.length() > 0 ? page.results[0].name : "-")
+    button #more(text="More", @click { offset += 2 })
+}
+
+func testAdapterAsksAgain(t Test, c pager) {
+    t.wait(func() => c.first.value == "bulbasaur", 5000)
+    t.assert(c.first.value == "bulbasaur")
+    c.more.click()
+    t.wait(func() => c.first.value == "venusaur", 5000)
+    t.assert(c.first.value == "venusaur")
+}
+
+window {
+    pager
+}
+-- pokeapi.yml --
+openapi: 3.1.0
+info:
+  title: PokéAPI
+  version: 2.10.0
+servers:
+- url: https://pokeapi.co
+paths:
+  /api/v2/pokemon/:
+    get:
+      operationId: pokemon_list
+      summary: List pokemon
+      parameters:
+      - name: limit
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: offset
+        required: false
+        in: query
+        description: The initial index from which to return the results.
+        schema:
+          type: integer
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedPokemonSummaryList'
+          description: ''
+  /api/v2/pokemon/{id}/:
+    get:
+      operationId: pokemon_retrieve
+      summary: Get pokemon
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        description: This parameter can be a string or an integer.
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PokemonDetail'
+          description: ''
+  /api/v2/pokemon-species/{id}/:
+    get:
+      operationId: pokemon_species_retrieve
+      summary: Get pokemon species
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PokemonSpeciesDetail'
+          description: ''
+components:
+  schemas:
+    PaginatedPokemonSummaryList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+        previous:
+          type: string
+          nullable: true
+          format: uri
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/PokemonSummary'
+    PokemonSummary:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 200
+        url:
+          type: string
+          format: uri
+          readOnly: true
+      required:
+      - name
+      - url
+    PokemonDetail:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 200
+        base_experience:
+          type:
+          - integer
+          - 'null'
+        height:
+          type:
+          - integer
+          - 'null'
+        is_default:
+          type: boolean
+        species:
+          $ref: '#/components/schemas/PokemonSpeciesSummary'
+        sprites:
+          allOf:
+          - $ref: '#/components/schemas/PokemonSprites'
+          readOnly: true
+        stats:
+          type: array
+          items:
+            $ref: '#/components/schemas/PokemonStat'
+          readOnly: true
+        types:
+          type: array
+          items:
+            $ref: '#/components/schemas/PokemonType'
+          readOnly: true
+      required:
+      - id
+      - name
+      - species
+      - sprites
+      - stats
+      - types
+    PokemonSprites:
+      type: object
+      properties:
+        front_default:
+          type:
+          - string
+          - 'null'
+      required:
+      - front_default
+    PokemonStat:
+      type: object
+      properties:
+        base_stat:
+          type: integer
+        effort:
+          type: integer
+        stat:
+          $ref: '#/components/schemas/StatSummary'
+      required:
+      - base_stat
+      - effort
+      - stat
+    StatSummary:
+      type: object
+      properties:
+        name:
+          type: string
+        url:
+          type: string
+          format: uri
+      required:
+      - name
+      - url
+    PokemonType:
+      type: object
+      properties:
+        slot:
+          type: integer
+        type:
+          $ref: '#/components/schemas/TypeSummary'
+      required:
+      - slot
+      - type
+    TypeSummary:
+      type: object
+      properties:
+        name:
+          type: string
+        url:
+          type: string
+          format: uri
+      required:
+      - name
+      - url
+    PokemonSpeciesSummary:
+      type: object
+      properties:
+        name:
+          type: string
+        url:
+          type: string
+          format: uri
+      required:
+      - name
+      - url
+    PokemonSpeciesDetail:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        evolves_from_species:
+          oneOf:
+          - $ref: '#/components/schemas/PokemonSpeciesSummary'
+          - type: 'null'
+        evolution_chain:
+          type: object
+          additionalProperties: {}
+      required:
+      - id
+      - name
+      - evolves_from_species
+-- testrun/android/kotlin/app.sngl/_/1 --
+sha256:8dc5bae6bc5f66a4ce73ba4fdd0ce869
+{
+  "results": [
+    {
+      "Desc": "ListQuery",
+      "Passed": true
+    },
+    {
+      "Desc": "NotFound",
+      "Passed": true
+    },
+    {
+      "Desc": "Retrieve",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/android/kotlin/app.sngl/pager/1 --
+sha256:f00c7afcc404179d04a32394f4f76d59
+{
+  "results": [
+    {
+      "Desc": "AdapterAsksAgain",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/_/1 --
+sha256:13463965215a51f888be368d2d96ed34
+{
+  "results": [
+    {
+      "Desc": "ListQuery",
+      "Passed": true
+    },
+    {
+      "Desc": "NotFound",
+      "Passed": true
+    },
+    {
+      "Desc": "Retrieve",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/pager/1 --
+sha256:bb9372875bd4252f6b99aa16dcf89983
+{
+  "results": [
+    {
+      "Desc": "AdapterAsksAgain",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/_/1 --
+sha256:2aa42adc044f87287f9fb8884ddf6fc5
+{
+  "results": [
+    {
+      "Desc": "ListQuery",
+      "Passed": true
+    },
+    {
+      "Desc": "NotFound",
+      "Passed": true
+    },
+    {
+      "Desc": "Retrieve",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/pager/1 --
+sha256:1e537e3b36a8b086f11f3695a28802cc
+{
+  "results": [
+    {
+      "Desc": "AdapterAsksAgain",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/_/1 --
+sha256:ba9a68f966c4e8c080e1523e2bb58150
+{
+  "results": [
+    {
+      "Desc": "ListQuery",
+      "Passed": true
+    },
+    {
+      "Desc": "NotFound",
+      "Passed": true
+    },
+    {
+      "Desc": "Retrieve",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/pager/1 --
+sha256:3f64334a9327d0b9d04d60abdb59e46f
+{
+  "results": [
+    {
+      "Desc": "AdapterAsksAgain",
+      "Passed": true
+    }
+  ]
+}

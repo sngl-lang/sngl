@@ -1,0 +1,36 @@
+# Only a string enum is a declaration: an enum of integers is left out.
+env SNGL_GENCACHE=off
+
+! sngl check app.sngl
+stderr 'import "openapi:./api.yml": field level of Thing is left out: an enum of integer, and only a string enum is a declaration'
+stderr 'app.sngl:8:14: no field'
+
+-- app.sngl --
+import api "openapi:./api.yml"
+
+func idOf(c api.Thing) int {
+    return c.id
+}
+
+func gone(c api.Thing) {
+    var x = c.level
+}
+-- api.yml --
+openapi: 3.1.0
+info: {title: T, version: "1"}
+servers:
+- url: https://api.example
+paths:
+  /thing:
+    get:
+      operationId: getThing
+      responses:
+        '200': {description: '', content: {application/json: {schema: {$ref: '#/components/schemas/Thing'}}}}
+components:
+  schemas:
+    Thing:
+      type: object
+      required: [id]
+      properties:
+        id: {type: integer}
+        level: {type: integer, enum: [1, 2]}

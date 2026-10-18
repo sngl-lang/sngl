@@ -1,0 +1,4 @@
+// Package openapi serves the `openapi:` import scheme: the library's own
+// plugin, which a program reaches by importing `openapi:…` and never by
+// importing this package. See the scheme's declaration for what an import
+// resolves to.

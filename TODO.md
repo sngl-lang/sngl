@@ -330,6 +330,34 @@ read off the document.
   the written package (through the scheme store), and an `error_openapi_*`
   for each refused construct.
 
+### What step 4 left
+
+- **No generic `getJSON[T, Q]`**: the codec refuses a type parameter where
+  the call is, so each `…Call` function writes its own `json.decode[T]` after
+  `_answered(http.get(…))`, the package's one helper (see CLAUDE.md, *The
+  `openapi:` scheme*). Lifting the refusal would let the helper be written
+  once.
+- **A spec at a URL** is not read yet: it needs a recorded network read in
+  `sngl:x/gen`, through the `NetGate` a `git:` import asks. The path is the
+  project's own file, relative to the import root rather than to the
+  importing package.
+- **A `oneOf` with a discriminator** is left out until sngl:json reads that
+  layout into a payload enum.
+- **PokéAPI's own spec leaves three fields out**, each said at the import:
+  `EvolutionChainLink.evolves_to` (items `{type: object, additionalProperties: {}}`, a map of any value) and `sprites` on
+  `PokemonFormSprites` and `TypeSprite` (a schema saying nothing of its
+  type). The evolution chain the example's detail page links through is the
+  first: step 6 reads it some other way, or the spec is patched beside it.
+- **html renders an empty text** where a view reads a context through a
+  function handed in a func-typed prop (`user(f=where)`, `ui.text(value=f(1))`
+  under a provider); the request path the adapter takes is an effect and is
+  unaffected. Go and Kotlin write the provided value.
+- **A test reaching two instances deep** (`c.a.u.got`) does not compile on
+  Go or Kotlin (`u__reach0Got undefined`, `composeNodeText`), and a test
+  reaching one declaration rendered at two sites of one root fires the first
+  site's handler.
+- A generated adapter has no `refresh()` of its own to hand through.
+
 ### What it writes
 
 For two of PokéAPI's operations, abridged:
@@ -598,7 +626,7 @@ never finishes one of them.
 | ✓ | `pokedex-1-payload-enums` | *Payload enums*: an enum member carrying a type, enum type parameters, struct-literal construction, the selector read, `match` naming the payload (`match var v = r`); the interpreter and Go, JavaScript and Kotlin. And an async flag on a func type (`checkAsyncRules`' rule 3), so an async function can be handed as a value. |
 | ✓ | `pokedex-2-async-query`   | *`async.query`*: `Result`, `Failure` and the component over `effect`, against a hand-written `fetch` -- latest wins, unmount drops the answer, `refresh`, a query under a `for`. bubbletea refuses it at the call.                                                                                                                 |
 | ✓ | `pokedex-3-http-json`     | *`sngl:http`* (`send`, `get`, `Response.checked`, `pathEscape`, `http.identifier`) and *`sngl:json`* (`json.identifier`, `decode`, `encode`), against a local server, on every language.                                                                                                                                           |
-| 4 | `pokedex-4-openapi`       | *The `openapi:` scheme*: `openapi.parse`, the plugin, the written package (structs, enums, `…Call` functions, a component per `GET`, `server`, `getJSON`) over a trimmed PokéAPI spec.                                                                                                                                             |
+| ✓ | `pokedex-4-openapi`       | *The `openapi:` scheme*: `openapi.parse`, the plugin, the written package (structs, enums, `…Call` functions, a component per `GET`, `server`, `getJSON`) over a trimmed PokéAPI spec.                                                                                                                                             |
 | 5 | `pokedex-5-targets`       | What steps 2--4 refused: bubbletea's post-back through `Update` (#272) so a query runs there, android's `INTERNET` permission and a loader so `ui.remote` draws.                                                                                                                                                                   |
 | 6 | `pokedex-6-example`       | *The example*: `examples/pokedex` over the vendored spec, `cmd/sngl/testdata/pokedex_runs.txt` against a recorded local server on every target, and a page on the docs site.                                                                                                                                                       |
 

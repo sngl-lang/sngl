@@ -1,0 +1,37 @@
+# A oneOf of two schemas is a union no struct spells: left out. A oneOf of
+# one schema and null is an option, which openapi_pokeapi.txtar writes.
+env SNGL_GENCACHE=off
+
+! sngl check app.sngl
+stderr 'import "openapi:./api.yml": field one of Thing is left out: a oneOf that is not one schema or null'
+stderr 'app.sngl:8:14: no field'
+
+-- app.sngl --
+import api "openapi:./api.yml"
+
+func idOf(c api.Thing) int {
+    return c.id
+}
+
+func gone(c api.Thing) {
+    var x = c.one
+}
+-- api.yml --
+openapi: 3.1.0
+info: {title: T, version: "1"}
+servers:
+- url: https://api.example
+paths:
+  /thing:
+    get:
+      operationId: getThing
+      responses:
+        '200': {description: '', content: {application/json: {schema: {$ref: '#/components/schemas/Thing'}}}}
+components:
+  schemas:
+    Thing:
+      type: object
+      required: [id]
+      properties:
+        id: {type: integer}
+        one: {oneOf: [{type: string}, {type: integer}]}
