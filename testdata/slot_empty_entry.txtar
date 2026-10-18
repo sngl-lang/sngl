@@ -657,13 +657,13 @@ func (m *Model) __n0_visible_handler(__visible bool) {
 
 func (m *Model) show_clicked_handler() {
 	m.shown__inst0 = true
-	var __lt2 string
+	var __lt28 string
 	if !m.shown__inst0 {
-		__lt2 = "boxed empty"
+		__lt28 = "boxed empty"
 	} else {
-		__lt2 = "boxed full"
+		__lt28 = "boxed full"
 	}
-	gtk4rt.LabelSetLabel(m.__n1, __lt2)
+	gtk4rt.LabelSetLabel(m.__n1, __lt28)
 	m.__renderSlot0(m.__n0)
 }
 
@@ -692,21 +692,21 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelSetVisible(m.__n0, m.visible__inst0)
 	gtk4rt.ToplevelOnClosed(m.__n0, m.__n0_closed_handler)
 	gtk4rt.ToplevelOnVisible(m.__n0, m.__n0_visible_handler)
-	__lt0 := "boxed full"
+	__lt26 := "boxed full"
 	m.__n3 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetLabel(m.__n3, __lt0)
+	gtk4rt.LabelSetLabel(m.__n3, __lt26)
 	gtk4rt.BoxAppend(m.__n0, m.__n3)
 	m.__n4 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetLabel(m.__n4, "inner")
 	gtk4rt.BoxAppend(m.__n0, m.__n4)
-	var __lt1 string
+	var __lt27 string
 	if !m.shown__inst0 {
-		__lt1 = "boxed empty"
+		__lt27 = "boxed empty"
 	} else {
-		__lt1 = "boxed full"
+		__lt27 = "boxed full"
 	}
 	m.__n1 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetLabel(m.__n1, __lt1)
+	gtk4rt.LabelSetLabel(m.__n1, __lt27)
 	gtk4rt.BoxAppend(m.__n0, m.__n1)
 	m.__renderSlot0(m.__n0)
 	m.show = gtk4rt.ButtonNew()
@@ -859,7 +859,7 @@ pass sha256:06593b37767576b9ded90f47eeb68daa
 -- run/go/fyne --
 pass sha256:e19089af24168f17dcb96baa56333401
 -- run/go/gtk4 --
-pass sha256:77215050e0784573059717a5bdef2926
+pass sha256:68f7ec04caa8cdab575590a5f603559a
 -- run/kotlin/android --
 pass sha256:9d3f872ae0c3167a1f4c3bd6cc1c1220
 -- run/none/html --

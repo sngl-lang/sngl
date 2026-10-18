@@ -1011,16 +1011,6 @@ func (m *Model) at__string(xs []string) string {
 }
 
 func Count__int(xs []int, want int) int {
-	var c__r0 int = 0
-	for _, x := range xs {
-		if x == want {
-			c__r0 += 1
-		}
-	}
-	return c__r0
-}
-
-func Count__string(xs []string, want string) int {
 	var c__r1 int = 0
 	for _, x := range xs {
 		if x == want {
@@ -1030,14 +1020,24 @@ func Count__string(xs []string, want string) int {
 	return c__r1
 }
 
+func Count__string(xs []string, want string) int {
+	var c__r2 int = 0
+	for _, x := range xs {
+		if x == want {
+			c__r2 += 1
+		}
+	}
+	return c__r2
+}
+
 func (m *Model) both__int(xs []int, want int) int {
-	var c__r2 int = Count__int(xs, want)
-	return (c__r2 + Count__int([]int{m.at__int(xs)}, want))
+	var c__r3 int = Count__int(xs, want)
+	return (c__r3 + Count__int([]int{m.at__int(xs)}, want))
 }
 
 func (m *Model) both__string(xs []string, want string) int {
-	var c__r3 int = Count__string(xs, want)
-	return (c__r3 + Count__string([]string{m.at__string(xs)}, want))
+	var c__r4 int = Count__string(xs, want)
+	return (c__r4 + Count__string([]string{m.at__string(xs)}, want))
 }
 
 func Last__func_int_string(xs []func(int) string) func(int) string {
@@ -1051,8 +1051,8 @@ func Last__func_int_string_1(xs []func(int, string)) func(int, string) {
 }
 
 func (m *Model) pad__int(xs []int, extra []int) int {
-	var c__r4 int = (len(xs) + len(extra))
-	return (c__r4 + m.n)
+	var c__r5 int = (len(xs) + len(extra))
+	return (c__r5 + m.n)
 }
 
 func (m *Model) nth__int__inst0(xs []int) int {
@@ -1451,7 +1451,7 @@ pass sha256:f4e5b13631117669ac8adb318f5ef465
 -- run/go/fyne --
 pass sha256:458dfd31eac28086e61da353c6432c33
 -- run/go/gtk4 --
-pass sha256:ac628daf4c4bcf70d19d494710abe217
+pass sha256:1896fad38838b705b39be2c283a93130
 -- run/kotlin/android --
 pass sha256:30e2f5324b0f34c466be00ae88511840
 -- run/none/html --

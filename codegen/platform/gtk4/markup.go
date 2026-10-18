@@ -58,12 +58,10 @@ type markupSpan struct {
 // markupTrees is every flow in the package and the spans under it.
 type markupTrees struct {
 	spans map[string]*markupSpan
-	// flows maps a flow's node id to its own style, and roots to the spans
-	// written directly in it.
-	flows map[string]map[string]ir.Expr
+	// roots maps a flow's node id to the spans written directly in it.
 	roots map[string][]string
-	// flowGuards and flowLoops are how many `if`s and `for`s enclose a flow,
-	// which a span under it is measured against.
+	// flowGuards and flowLoops are how many `if`s and `for`s enclose each flow
+	// (and which ids are flows), which a span under it is measured against.
 	flowGuards map[string]int
 	flowLoops  map[string]int
 	// ownerOf is the flow a span belongs to, however deep. It is what lets a
@@ -74,7 +72,6 @@ type markupTrees struct {
 func newMarkupTrees() *markupTrees {
 	return &markupTrees{
 		spans:      map[string]*markupSpan{},
-		flows:      map[string]map[string]ir.Expr{},
 		roots:      map[string][]string{},
 		flowGuards: map[string]int{},
 		flowLoops:  map[string]int{},
@@ -107,13 +104,11 @@ func collectMarkup(pkg *ir.Package) *markupTrees {
 			switch n := s.(type) {
 			case *ir.LocalVar:
 				if tag, ok := createNodeTag(n); ok && (tag == flowTag || tag == spanTag) {
-					props := harvestNodeProps(n.Name, stmts[i+1:])
 					if tag == flowTag {
-						mt.flows[n.Name] = props
 						mt.flowGuards[n.Name] = len(guards)
 						mt.flowLoops[n.Name] = loops
 					} else {
-						mt.spans[n.Name] = &markupSpan{props: props, guards: slices.Clone(guards), loops: loops}
+						mt.spans[n.Name] = &markupSpan{props: harvestNodeProps(n.Name, stmts[i+1:]), guards: slices.Clone(guards), loops: loops}
 					}
 				}
 			case *ir.CallStmt:
@@ -152,7 +147,7 @@ func collectMarkup(pkg *ir.Package) *markupTrees {
 		if _, ok := mt.spans[child]; !ok {
 			continue
 		}
-		if _, ok := mt.flows[parent]; ok {
+		if _, ok := mt.flowGuards[parent]; ok {
 			mt.roots[parent] = append(mt.roots[parent], child)
 			continue
 		}
@@ -275,13 +270,11 @@ func (t *gtk4Translator) emitFlowMarkup(flow string) []ir.Stmt {
 
 // markupExpr is the Pango markup one flow renders, as a Go string expression.
 func (t *gtk4Translator) markupExpr(flow string) ir.Expr {
-	open, close := flowTags(t.markupTrees().flows[flow])
-	parts := []ir.Expr{strLit(open)}
+	var parts []ir.Expr
 	mt := t.markupTrees()
 	for _, root := range mt.roots[flow] {
 		parts = append(parts, t.spanParts(root, mt.flowGuards[flow], mt.flowLoops[flow])...)
 	}
-	parts = append(parts, strLit(close))
 	return concat(parts)
 }
 
@@ -339,50 +332,6 @@ func escapePango(s string) string {
 		"'", "&apos;",
 	)
 	return r.Replace(s)
-}
-
-// flowTags is the span element a flow's own typography becomes.
-//
-// A flow's `style` is a `ui.Style` and this platform answers none of it
-// otherwise -- gtk4 has no per-widget styling and `OnPropAssign` drops the
-// prop outright -- so the five typography fields are answered here, where
-// Pango has them, and the rest is still dropped. That is also what seeds the
-// cascade: everything inside inherits from this element, which is the host
-// doing the work every other target had to do itself.
-func flowTags(style map[string]ir.Expr) (open, close string) {
-	sl, ok := style[stylePropName].(*ir.StructLit)
-	if !ok {
-		return "", ""
-	}
-	var attrs []string
-	for _, f := range sl.Fields {
-		switch f.Name {
-		case "color":
-			if c := colorFromExpr(f.Value); c != nil && c.A > 0 {
-				attrs = append(attrs, fmt.Sprintf(`foreground="%s"`, hexColor(c)))
-			}
-		case "fontSize":
-			if px, ok := codegen.MeasurementPx(f.Value, emPx); ok && px > 0 {
-				attrs = append(attrs, pangoSize(px))
-			}
-		case "fontFamily":
-			if s, ok := codegen.IRLiteralString(f.Value); ok && s != "" {
-				attrs = append(attrs, fmt.Sprintf(`font_family="%s"`, escapePango(s)))
-			}
-		case "fontWeight":
-			if enumOrStringOf(f.Value) == "bold" {
-				attrs = append(attrs, `weight="bold"`)
-			}
-		case "fontStyle":
-			if enumOrStringOf(f.Value) == "italic" {
-				attrs = append(attrs, `style="italic"`)
-			}
-		}
-	}
-	if len(attrs) == 0 {
-		return "", ""
-	}
-	return "<span " + strings.Join(attrs, " ") + ">", "</span>"
 }
 
 // spanTags is what one run says about its own words, as Pango elements.

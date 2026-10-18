@@ -229,7 +229,9 @@ static void sngl_emit_pressed(void* gesture) {
 import "C"
 
 import (
+	"duckfam.us/sngl/pkg/go/gtk4rt"
 	"duckfam.us/sngl/pkg/go/snglcolor"
+	"fmt"
 	"unsafe"
 )
 
@@ -264,6 +266,61 @@ type Measurement struct {
 }
 
 type Style struct {
+	Padding        Measurement
+	PaddingTop     Measurement
+	PaddingRight   Measurement
+	PaddingBottom  Measurement
+	PaddingLeft    Measurement
+	PaddingX       Measurement
+	PaddingY       Measurement
+	Margin         Measurement
+	MarginTop      Measurement
+	MarginRight    Measurement
+	MarginBottom   Measurement
+	MarginLeft     Measurement
+	MarginX        Measurement
+	MarginY        Measurement
+	Gap            Measurement
+	Width          Measurement
+	MinWidth       Measurement
+	Height         Measurement
+	MaxWidth       Measurement
+	MaxHeight      Measurement
+	Flex           float64
+	FlexDirection  string
+	AlignItems     string
+	JustifyContent string
+	Position       string
+	Top            Measurement
+	Bottom         Measurement
+	Left           Measurement
+	Right          Measurement
+	ZIndex         int
+	Color          snglcolor.Color
+	FontSize       Measurement
+	FontFamily     string
+	FontWeight     string
+	FontStyle      string
+	TextAlign      string
+	MaxLines       int
+	WhiteSpace     string
+	Background     snglcolor.Color
+	BorderRadius   Measurement
+	BorderColor    snglcolor.Color
+	BorderWidth    Measurement
+	Border         string
+	BorderBottom   string
+	BorderLeft     string
+	BorderCollapse string
+	BorderStyle    string
+	Opacity        float64
+	Cursor         string
+	Display        string
+	Overflow       string
+	ListStyleType  string
+}
+
+type Style__draw struct {
 	Fill        snglcolor.Color
 	Stroke      snglcolor.Color
 	StrokeWidth float64
@@ -294,7 +351,12 @@ func New() *Model {
 	return m
 }
 
-func Paint(ctx *C.cairo_t, style Style) {
+func LookOf(s Style) gtk4rt.Look {
+	look := LookHidden(s, (s.Display == "none"))
+	return look
+}
+
+func Paint(ctx *C.cairo_t, style Style__draw) {
 	if style.Fill.A > 0 {
 		Source(ctx, style.Fill)
 		if style.Stroke.A > 0 {
@@ -310,6 +372,11 @@ func Paint(ctx *C.cairo_t, style Style) {
 		Source(ctx, style.Stroke)
 		C.cairo_stroke(ctx)
 	}
+}
+
+func LookHidden(s Style, hidden bool) gtk4rt.Look {
+	look := gtk4rt.Look{Css: CssOf(s), Width: max((s.Width.Px + (11.0 * (s.Width.Em + s.Width.Rem))), 0.0), Height: max((s.Height.Px + (11.0 * (s.Height.Em + s.Height.Rem))), 0.0), Grow: s.Flex, Cross: CrossOf(s.AlignItems), TextAlign: TextAlignOf(s.TextAlign), Lines: s.MaxLines, Wrap: WrapOf(s.WhiteSpace), Clip: ClipOf(s.Overflow), Hidden: hidden, Cursor: s.Cursor}
+	return look
 }
 
 func Source(ctx *C.cairo_t, c__r0 snglcolor.Color) {
@@ -336,6 +403,215 @@ func LineJoin(join string) C.cairo_line_join_t {
 	return C.cairo_line_join_t(C.int(0))
 }
 
+func CssOf(s Style) string {
+	var __lt1 string
+	if s.Opacity == 0.0 {
+		__lt1 = ""
+	} else {
+		__lt1 = fmt.Sprint(s.Opacity)
+	}
+	css := ((((((((((((((((((((((Decl("margin-top", Side(s.Margin, s.MarginY, s.MarginTop)) + Decl("margin-right", Side(s.Margin, s.MarginX, s.MarginRight))) + Decl("margin-bottom", Side(s.Margin, s.MarginY, s.MarginBottom))) + Decl("margin-left", Side(s.Margin, s.MarginX, s.MarginLeft))) + Decl("padding-top", Side(s.Padding, s.PaddingY, s.PaddingTop))) + Decl("padding-right", Side(s.Padding, s.PaddingX, s.PaddingRight))) + Decl("padding-bottom", Side(s.Padding, s.PaddingY, s.PaddingBottom))) + Decl("padding-left", Side(s.Padding, s.PaddingX, s.PaddingLeft))) + Decl("min-width", Length(max((s.MinWidth.Px+(11.0*(s.MinWidth.Em+s.MinWidth.Rem))), 0.0)))) + Decl("color", CssColor(s.Color))) + Decl("font-size", Points(max((s.FontSize.Px+(11.0*(s.FontSize.Em+s.FontSize.Rem))), 0.0)))) + Decl("font-family", s.FontFamily)) + Decl("font-weight", WeightOf(s.FontWeight))) + Decl("font-style", SlantOf(s.FontStyle))) + Decl("background", CssColor(s.Background))) + Decl("border-radius", Length(max((s.BorderRadius.Px+(11.0*(s.BorderRadius.Em+s.BorderRadius.Rem))), 0.0)))) + Decl("border-color", CssColor(s.BorderColor))) + Decl("border-width", Length(max((s.BorderWidth.Px+(11.0*(s.BorderWidth.Em+s.BorderWidth.Rem))), 0.0)))) + Decl("border-style", LineOf(s))) + Decl("border", s.Border)) + Decl("border-bottom", s.BorderBottom)) + Decl("border-left", s.BorderLeft)) + Decl("opacity", __lt1))
+	return css
+}
+
+func CrossOf(a string) int {
+	var __lt4 int
+	if a == "center" {
+		__lt4 = 2
+	} else {
+		var __lt3 int
+		if a == "end" {
+			__lt3 = 3
+		} else {
+			var __lt2 int
+			if a == "baseline" {
+				__lt2 = 4
+			} else {
+				__lt2 = 0
+			}
+			__lt3 = __lt2
+		}
+		__lt4 = __lt3
+	}
+	return __lt4
+}
+
+func TextAlignOf(a string) int {
+	var __lt7 int
+	if a == "center" {
+		__lt7 = 1
+	} else {
+		var __lt6 int
+		if a == "right" {
+			__lt6 = 2
+		} else {
+			var __lt5 int
+			if a == "justify" {
+				__lt5 = 3
+			} else {
+				__lt5 = 0
+			}
+			__lt6 = __lt5
+		}
+		__lt7 = __lt6
+	}
+	return __lt7
+}
+
+func WrapOf(w string) int {
+	var __lt9 int
+	if (w == "pre") || (w == "nowrap") {
+		__lt9 = 1
+	} else {
+		var __lt8 int
+		if (w == "preWrap") || (w == "preLine") {
+			__lt8 = 2
+		} else {
+			__lt8 = 0
+		}
+		__lt9 = __lt8
+	}
+	return __lt9
+}
+
+func ClipOf(o string) bool {
+	var __lt10 bool
+	if ((o == "hidden") || (o == "scroll")) || (o == "auto") {
+		__lt10 = true
+	} else {
+		__lt10 = false
+	}
+	return __lt10
+}
+
+func Decl(name string, value string) string {
+	var __lt11 string
+	if value == "" {
+		__lt11 = ""
+	} else {
+		__lt11 = (((name + ": ") + value) + "; ")
+	}
+	return __lt11
+}
+
+func Side(all Measurement, axis Measurement, own Measurement) string {
+	var __lt13 Measurement
+	if (own != Measurement{Px: 0}) {
+		__lt13 = own
+	} else {
+		var __lt12 Measurement
+		if (axis != Measurement{Px: 0}) {
+			__lt12 = axis
+		} else {
+			__lt12 = all
+		}
+		__lt13 = __lt12
+	}
+	return Length(max((__lt13.Px + (11.0 * (__lt13.Em + __lt13.Rem))), 0.0))
+}
+
+func Length(v float64) string {
+	var __lt14 string
+	if v == 0.0 {
+		__lt14 = ""
+	} else {
+		__lt14 = (fmt.Sprint(v) + "px")
+	}
+	return __lt14
+}
+
+func CssColor(c__r1 snglcolor.Color) string {
+	var __lt15 string
+	if (c__r1.A == 0) || (c__r1 == snglcolor.Color{R: 0, G: 0, B: 0, A: 255}) {
+		__lt15 = ""
+	} else {
+		__lt15 = c__r1.Hex()
+	}
+	return __lt15
+}
+
+func Points(v float64) string {
+	var __lt16 string
+	if v == 0.0 {
+		__lt16 = ""
+	} else {
+		__lt16 = (fmt.Sprint(v) + "pt")
+	}
+	return __lt16
+}
+
+func WeightOf(w string) string {
+	var __lt19 string
+	if w == "bold" {
+		__lt19 = "bold"
+	} else {
+		var __lt18 string
+		if w == "bolder" {
+			__lt18 = "bolder"
+		} else {
+			var __lt17 string
+			if w == "lighter" {
+				__lt17 = "lighter"
+			} else {
+				__lt17 = ""
+			}
+			__lt18 = __lt17
+		}
+		__lt19 = __lt18
+	}
+	return __lt19
+}
+
+func SlantOf(s string) string {
+	var __lt21 string
+	if s == "italic" {
+		__lt21 = "italic"
+	} else {
+		var __lt20 string
+		if s == "oblique" {
+			__lt20 = "oblique"
+		} else {
+			__lt20 = ""
+		}
+		__lt21 = __lt20
+	}
+	return __lt21
+}
+
+func LineOf(s Style) string {
+	var __lt26 string
+	if s.BorderStyle == "solid" {
+		__lt26 = "solid"
+	} else {
+		var __lt25 string
+		if s.BorderStyle == "dashed" {
+			__lt25 = "dashed"
+		} else {
+			var __lt24 string
+			if s.BorderStyle == "dotted" {
+				__lt24 = "dotted"
+			} else {
+				var __lt23 string
+				if s.BorderStyle == "double" {
+					__lt23 = "double"
+				} else {
+					var __lt22 string
+					if (s.BorderWidth != Measurement{Px: 0}) {
+						__lt22 = "solid"
+					} else {
+						__lt22 = ""
+					}
+					__lt23 = __lt22
+				}
+				__lt24 = __lt23
+			}
+			__lt25 = __lt24
+		}
+		__lt26 = __lt25
+	}
+	return __lt26
+}
+
 func (m *Model) __n0_closed_handler() {
 }
 
@@ -345,13 +621,14 @@ func (m *Model) __n0_visible_handler(__visible bool) {
 
 func (m *Model) __n1_clicked_handler() {
 	m.tone = snglcolor.Color{R: 153, G: 51, B: 102, A: 255}
+	gtk4rt.SetLook(gtk4rt.Handle(unsafe.Pointer(m.__n1)), LookOf(Style{Color: m.tone, Flex: 1.0}))
 }
 
 func (m *Model) _canvasDraw0(ctx *C.cairo_t) {
 	C.cairo_save(ctx)
 	C.cairo_new_sub_path(ctx)
 	C.cairo_arc(ctx, C.double(20.0), C.double(20.0), C.double(10.0), C.double(0.0), C.double(6.283185307179586))
-	Paint(ctx, Style{Fill: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, Stroke: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, StrokeWidth: 1.0, LineCap: "butt", LineJoin: "miter", FontSize: 16.0, FontFamily: "sans-serif"})
+	Paint(ctx, Style__draw{Fill: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, Stroke: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, StrokeWidth: 1.0, LineCap: "butt", LineJoin: "miter", FontSize: 16.0, FontFamily: "sans-serif"})
 	C.cairo_restore(ctx)
 }
 
@@ -379,12 +656,15 @@ func (m *Model) buildWidgetTree() {
 	m.__n0 = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GTK_ORIENTATION_VERTICAL, 6)))
 	m.__n2 = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(0, C.int(0))))
 	C.gtk_orientable_set_orientation((*C.GtkOrientable)(unsafe.Pointer(m.__n2)), C.GTK_ORIENTATION_VERTICAL)
-	C.gtk_box_set_spacing((*C.GtkBox)(unsafe.Pointer(m.__n2)), C.int(6))
+	C.gtk_box_set_spacing((*C.GtkBox)(unsafe.Pointer(m.__n2)), C.int(12))
+	gtk4rt.SetLook(gtk4rt.Handle(unsafe.Pointer(m.__n2)), gtk4rt.Look{Cross: 3})
 	m.__n3 = (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
 	C.gtk_label_set_label((*C.GtkLabel)(unsafe.Pointer(m.__n3)), C.CString("literal"))
+	gtk4rt.SetLook(gtk4rt.Handle(unsafe.Pointer(m.__n3)), gtk4rt.Look{Css: "padding-top: 4px; padding-right: 4px; padding-bottom: 4px; padding-left: 4px; color: #336699; background: #eeeeee; "})
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n2)), (*C.GtkWidget)(unsafe.Pointer(m.__n3)))
 	m.__n1 = (*C.GtkButton)(unsafe.Pointer(C.gtk_button_new()))
 	C.gtk_button_set_label((*C.GtkButton)(unsafe.Pointer(m.__n1)), C.CString("recolor"))
+	gtk4rt.SetLook(gtk4rt.Handle(unsafe.Pointer(m.__n1)), LookOf(Style{Color: m.tone, Flex: 1.0}))
 	snglCallbacks = append(snglCallbacks, m.__n1_clicked_handler)
 	C.sngl_connect(unsafe.Pointer(m.__n1), C.CString("clicked"), C.int((len(snglCallbacks) - 1)))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n2)), (*C.GtkWidget)(unsafe.Pointer(m.__n1)))
@@ -411,4 +691,4 @@ func (m *Model) BuildUI(app *C.GtkApplication) *C.GtkWidget {
 	return win
 }
 -- run/go/gtk4 --
-pass sha256:0a8646881685d82f8a3d8b916854dedc
+pass sha256:9af70adc5ff78db872133d7a41f23f26

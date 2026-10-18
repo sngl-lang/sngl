@@ -1050,12 +1050,12 @@ func TangentArc(from Point, corner Point, to Point, r float64) Arc {
 	t1 := Point{X: (corner.X + (reach * math.Cos(a1))), Y: (corner.Y + (reach * math.Sin(a1)))}
 	t2 := Point{X: (corner.X + (reach * math.Cos(a2))), Y: (corner.Y + (reach * math.Sin(a2)))}
 	var __cse0 float64 = math.Sin(half)
-	c__r1 := Point{X: (corner.X + ((r / __cse0) * math.Cos((a1 + (turn / 2.0))))), Y: (corner.Y + ((r / __cse0) * math.Sin((a1 + (turn / 2.0)))))}
+	c__r2 := Point{X: (corner.X + ((r / __cse0) * math.Cos((a1 + (turn / 2.0))))), Y: (corner.Y + ((r / __cse0) * math.Sin((a1 + (turn / 2.0)))))}
 	var sweep float64 = (3.141592653589793 - math.Abs(turn))
 	if turn > 0.0 {
 		sweep = -sweep
 	}
-	return Arc{Tangent1: t1, Tangent2: t2, Center: c__r1, Start: math.Atan2((t1.Y - c__r1.Y), (t1.X - c__r1.X)), Sweep: sweep, Degenerate: false}
+	return Arc{Tangent1: t1, Tangent2: t2, Center: c__r2, Start: math.Atan2((t1.Y - c__r2.Y), (t1.X - c__r2.X)), Sweep: sweep, Degenerate: false}
 }
 
 func Source(ctx *C.cairo_t, c__r0 snglcolor.Color) {
@@ -1097,37 +1097,37 @@ func (m *Model) __n2_clicked_handler() {
 func (m *Model) _canvasDraw0(ctx *C.cairo_t) {
 	at := Point{X: 0.0, Y: 0.0}
 	C.cairo_save(ctx)
-	var __lt0 []_step__record
+	var __lt26 []_step__record
 	if m.closed__inst0 {
-		__lt0 = []_step__record{_step__record{Op: "close", X: 0.0, Y: 0.0, Cx1: 0.0, Cy1: 0.0, Cx2: 0.0, Cy2: 0.0, R: 0.0}}
+		__lt26 = []_step__record{_step__record{Op: "close", X: 0.0, Y: 0.0, Cx1: 0.0, Cy1: 0.0, Cx2: 0.0, Cy2: 0.0, R: 0.0}}
 	} else {
-		__lt0 = []_step__record{}
+		__lt26 = []_step__record{}
 	}
-	for _, c__r2 := range slices.Concat([]_step__record{_step__record{Op: "moveTo", X: 4.0, Y: 12.0, Cx1: 0.0, Cy1: 0.0, Cx2: 0.0, Cy2: 0.0, R: 0.0}}, func() []_step__record {
+	for _, c__r3 := range slices.Concat([]_step__record{_step__record{Op: "moveTo", X: 4.0, Y: 12.0, Cx1: 0.0, Cy1: 0.0, Cx2: 0.0, Cy2: 0.0, R: 0.0}}, func() []_step__record {
 		__out := make([]_step__record, len(m.corners__inst0))
 		for __i, __item := range m.corners__inst0 {
-			__out[__i] = func(c__r3 Point) _step__record {
-				return _step__record{Op: "lineTo", X: c__r3.X, Y: c__r3.Y, Cx1: 0.0, Cy1: 0.0, Cx2: 0.0, Cy2: 0.0, R: 0.0}
+			__out[__i] = func(c__r4 Point) _step__record {
+				return _step__record{Op: "lineTo", X: c__r4.X, Y: c__r4.Y, Cx1: 0.0, Cy1: 0.0, Cx2: 0.0, Cy2: 0.0, R: 0.0}
 			}(__item)
 		}
 		return __out
-	}(), []_step__record{_step__record{Op: "bezierTo", X: 56.0, Y: 36.0, Cx1: 34.0, Cy1: 12.0, Cx2: 44.0, Cy2: 12.0, R: 0.0}, _step__record{Op: "arcTo", X: 40.0, Y: 12.0, Cx1: 56.0, Cy1: 12.0, Cx2: 0.0, Cy2: 0.0, R: 4.0}}, __lt0) {
-		if c__r2.Op == "moveTo" {
-			C.cairo_move_to(ctx, C.double(c__r2.X), C.double(c__r2.Y))
-			at = Point{X: c__r2.X, Y: c__r2.Y}
+	}(), []_step__record{_step__record{Op: "bezierTo", X: 56.0, Y: 36.0, Cx1: 34.0, Cy1: 12.0, Cx2: 44.0, Cy2: 12.0, R: 0.0}, _step__record{Op: "arcTo", X: 40.0, Y: 12.0, Cx1: 56.0, Cy1: 12.0, Cx2: 0.0, Cy2: 0.0, R: 4.0}}, __lt26) {
+		if c__r3.Op == "moveTo" {
+			C.cairo_move_to(ctx, C.double(c__r3.X), C.double(c__r3.Y))
+			at = Point{X: c__r3.X, Y: c__r3.Y}
 		}
-		if c__r2.Op == "lineTo" {
-			C.cairo_line_to(ctx, C.double(c__r2.X), C.double(c__r2.Y))
-			at = Point{X: c__r2.X, Y: c__r2.Y}
+		if c__r3.Op == "lineTo" {
+			C.cairo_line_to(ctx, C.double(c__r3.X), C.double(c__r3.Y))
+			at = Point{X: c__r3.X, Y: c__r3.Y}
 		}
-		if c__r2.Op == "bezierTo" {
-			C.cairo_curve_to(ctx, C.double(c__r2.Cx1), C.double(c__r2.Cy1), C.double(c__r2.Cx2), C.double(c__r2.Cy2), C.double(c__r2.X), C.double(c__r2.Y))
-			at = Point{X: c__r2.X, Y: c__r2.Y}
+		if c__r3.Op == "bezierTo" {
+			C.cairo_curve_to(ctx, C.double(c__r3.Cx1), C.double(c__r3.Cy1), C.double(c__r3.Cx2), C.double(c__r3.Cy2), C.double(c__r3.X), C.double(c__r3.Y))
+			at = Point{X: c__r3.X, Y: c__r3.Y}
 		}
-		if c__r2.Op == "arcTo" {
-			at = ArcTo(ctx, at, Point{X: c__r2.Cx1, Y: c__r2.Cy1}, Point{X: c__r2.X, Y: c__r2.Y}, c__r2.R)
+		if c__r3.Op == "arcTo" {
+			at = ArcTo(ctx, at, Point{X: c__r3.Cx1, Y: c__r3.Cy1}, Point{X: c__r3.X, Y: c__r3.Y}, c__r3.R)
 		}
-		if c__r2.Op == "close" {
+		if c__r3.Op == "close" {
 			C.cairo_close_path(ctx)
 		}
 	}
@@ -1595,7 +1595,7 @@ pass sha256:0307b401cb7d00ce2c6af5a2f3e61f0e
 -- run/go/fyne --
 pass sha256:7f8ebc182546f371ad0782279fdabe87
 -- run/go/gtk4 --
-pass sha256:c3ef81237339070d737a7aa246c2235e
+pass sha256:2fa4bf4cd73044130e4de734e6792a70
 -- run/kotlin/android --
 pass sha256:8a8875935bea145d4558b1f8c0d95f79
 -- run/none/html --

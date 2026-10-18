@@ -323,7 +323,70 @@ package main
 
 import (
 	"duckfam.us/sngl/pkg/go/gtk4rt"
+	"duckfam.us/sngl/pkg/go/snglcolor"
+	"fmt"
 )
+
+type Measurement struct {
+	Px  float64
+	Em  float64
+	Rem float64
+}
+
+type Style struct {
+	Padding        Measurement
+	PaddingTop     Measurement
+	PaddingRight   Measurement
+	PaddingBottom  Measurement
+	PaddingLeft    Measurement
+	PaddingX       Measurement
+	PaddingY       Measurement
+	Margin         Measurement
+	MarginTop      Measurement
+	MarginRight    Measurement
+	MarginBottom   Measurement
+	MarginLeft     Measurement
+	MarginX        Measurement
+	MarginY        Measurement
+	Gap            Measurement
+	Width          Measurement
+	MinWidth       Measurement
+	Height         Measurement
+	MaxWidth       Measurement
+	MaxHeight      Measurement
+	Flex           float64
+	FlexDirection  string
+	AlignItems     string
+	JustifyContent string
+	Position       string
+	Top            Measurement
+	Bottom         Measurement
+	Left           Measurement
+	Right          Measurement
+	ZIndex         int
+	Color          snglcolor.Color
+	FontSize       Measurement
+	FontFamily     string
+	FontWeight     string
+	FontStyle      string
+	TextAlign      string
+	MaxLines       int
+	WhiteSpace     string
+	Background     snglcolor.Color
+	BorderRadius   Measurement
+	BorderColor    snglcolor.Color
+	BorderWidth    Measurement
+	Border         string
+	BorderBottom   string
+	BorderLeft     string
+	BorderCollapse string
+	BorderStyle    string
+	Opacity        float64
+	Cursor         string
+	Display        string
+	Overflow       string
+	ListStyleType  string
+}
 
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
@@ -343,6 +406,225 @@ func New() *Model {
 	return m
 }
 
+func LookOf(s Style) gtk4rt.Look {
+	look := LookHidden(s, (s.Display == "none"))
+	return look
+}
+
+func LookHidden(s Style, hidden bool) gtk4rt.Look {
+	look := gtk4rt.Look{Css: CssOf(s), Width: max((s.Width.Px + (11.0 * (s.Width.Em + s.Width.Rem))), 0.0), Height: max((s.Height.Px + (11.0 * (s.Height.Em + s.Height.Rem))), 0.0), Grow: s.Flex, Cross: CrossOf(s.AlignItems), TextAlign: TextAlignOf(s.TextAlign), Lines: s.MaxLines, Wrap: WrapOf(s.WhiteSpace), Clip: ClipOf(s.Overflow), Hidden: hidden, Cursor: s.Cursor}
+	return look
+}
+
+func CssOf(s Style) string {
+	var __lt0 string
+	if s.Opacity == 0.0 {
+		__lt0 = ""
+	} else {
+		__lt0 = fmt.Sprint(s.Opacity)
+	}
+	css := ((((((((((((((((((((((Decl("margin-top", Side(s.Margin, s.MarginY, s.MarginTop)) + Decl("margin-right", Side(s.Margin, s.MarginX, s.MarginRight))) + Decl("margin-bottom", Side(s.Margin, s.MarginY, s.MarginBottom))) + Decl("margin-left", Side(s.Margin, s.MarginX, s.MarginLeft))) + Decl("padding-top", Side(s.Padding, s.PaddingY, s.PaddingTop))) + Decl("padding-right", Side(s.Padding, s.PaddingX, s.PaddingRight))) + Decl("padding-bottom", Side(s.Padding, s.PaddingY, s.PaddingBottom))) + Decl("padding-left", Side(s.Padding, s.PaddingX, s.PaddingLeft))) + Decl("min-width", Length(max((s.MinWidth.Px+(11.0*(s.MinWidth.Em+s.MinWidth.Rem))), 0.0)))) + Decl("color", CssColor(s.Color))) + Decl("font-size", Points(max((s.FontSize.Px+(11.0*(s.FontSize.Em+s.FontSize.Rem))), 0.0)))) + Decl("font-family", s.FontFamily)) + Decl("font-weight", WeightOf(s.FontWeight))) + Decl("font-style", SlantOf(s.FontStyle))) + Decl("background", CssColor(s.Background))) + Decl("border-radius", Length(max((s.BorderRadius.Px+(11.0*(s.BorderRadius.Em+s.BorderRadius.Rem))), 0.0)))) + Decl("border-color", CssColor(s.BorderColor))) + Decl("border-width", Length(max((s.BorderWidth.Px+(11.0*(s.BorderWidth.Em+s.BorderWidth.Rem))), 0.0)))) + Decl("border-style", LineOf(s))) + Decl("border", s.Border)) + Decl("border-bottom", s.BorderBottom)) + Decl("border-left", s.BorderLeft)) + Decl("opacity", __lt0))
+	return css
+}
+
+func CrossOf(a string) int {
+	var __lt3 int
+	if a == "center" {
+		__lt3 = 2
+	} else {
+		var __lt2 int
+		if a == "end" {
+			__lt2 = 3
+		} else {
+			var __lt1 int
+			if a == "baseline" {
+				__lt1 = 4
+			} else {
+				__lt1 = 0
+			}
+			__lt2 = __lt1
+		}
+		__lt3 = __lt2
+	}
+	return __lt3
+}
+
+func TextAlignOf(a string) int {
+	var __lt6 int
+	if a == "center" {
+		__lt6 = 1
+	} else {
+		var __lt5 int
+		if a == "right" {
+			__lt5 = 2
+		} else {
+			var __lt4 int
+			if a == "justify" {
+				__lt4 = 3
+			} else {
+				__lt4 = 0
+			}
+			__lt5 = __lt4
+		}
+		__lt6 = __lt5
+	}
+	return __lt6
+}
+
+func WrapOf(w string) int {
+	var __lt8 int
+	if (w == "pre") || (w == "nowrap") {
+		__lt8 = 1
+	} else {
+		var __lt7 int
+		if (w == "preWrap") || (w == "preLine") {
+			__lt7 = 2
+		} else {
+			__lt7 = 0
+		}
+		__lt8 = __lt7
+	}
+	return __lt8
+}
+
+func ClipOf(o string) bool {
+	var __lt9 bool
+	if ((o == "hidden") || (o == "scroll")) || (o == "auto") {
+		__lt9 = true
+	} else {
+		__lt9 = false
+	}
+	return __lt9
+}
+
+func Decl(name string, value string) string {
+	var __lt10 string
+	if value == "" {
+		__lt10 = ""
+	} else {
+		__lt10 = (((name + ": ") + value) + "; ")
+	}
+	return __lt10
+}
+
+func Side(all Measurement, axis Measurement, own Measurement) string {
+	var __lt12 Measurement
+	if (own != Measurement{Px: 0}) {
+		__lt12 = own
+	} else {
+		var __lt11 Measurement
+		if (axis != Measurement{Px: 0}) {
+			__lt11 = axis
+		} else {
+			__lt11 = all
+		}
+		__lt12 = __lt11
+	}
+	return Length(max((__lt12.Px + (11.0 * (__lt12.Em + __lt12.Rem))), 0.0))
+}
+
+func Length(v float64) string {
+	var __lt13 string
+	if v == 0.0 {
+		__lt13 = ""
+	} else {
+		__lt13 = (fmt.Sprint(v) + "px")
+	}
+	return __lt13
+}
+
+func CssColor(c__r0 snglcolor.Color) string {
+	var __lt14 string
+	if (c__r0.A == 0) || (c__r0 == snglcolor.Color{R: 0, G: 0, B: 0, A: 255}) {
+		__lt14 = ""
+	} else {
+		__lt14 = c__r0.Hex()
+	}
+	return __lt14
+}
+
+func Points(v float64) string {
+	var __lt15 string
+	if v == 0.0 {
+		__lt15 = ""
+	} else {
+		__lt15 = (fmt.Sprint(v) + "pt")
+	}
+	return __lt15
+}
+
+func WeightOf(w string) string {
+	var __lt18 string
+	if w == "bold" {
+		__lt18 = "bold"
+	} else {
+		var __lt17 string
+		if w == "bolder" {
+			__lt17 = "bolder"
+		} else {
+			var __lt16 string
+			if w == "lighter" {
+				__lt16 = "lighter"
+			} else {
+				__lt16 = ""
+			}
+			__lt17 = __lt16
+		}
+		__lt18 = __lt17
+	}
+	return __lt18
+}
+
+func SlantOf(s string) string {
+	var __lt20 string
+	if s == "italic" {
+		__lt20 = "italic"
+	} else {
+		var __lt19 string
+		if s == "oblique" {
+			__lt19 = "oblique"
+		} else {
+			__lt19 = ""
+		}
+		__lt20 = __lt19
+	}
+	return __lt20
+}
+
+func LineOf(s Style) string {
+	var __lt25 string
+	if s.BorderStyle == "solid" {
+		__lt25 = "solid"
+	} else {
+		var __lt24 string
+		if s.BorderStyle == "dashed" {
+			__lt24 = "dashed"
+		} else {
+			var __lt23 string
+			if s.BorderStyle == "dotted" {
+				__lt23 = "dotted"
+			} else {
+				var __lt22 string
+				if s.BorderStyle == "double" {
+					__lt22 = "double"
+				} else {
+					var __lt21 string
+					if (s.BorderWidth != Measurement{Px: 0}) {
+						__lt21 = "solid"
+					} else {
+						__lt21 = ""
+					}
+					__lt22 = __lt21
+				}
+				__lt23 = __lt22
+			}
+			__lt24 = __lt23
+		}
+		__lt25 = __lt24
+	}
+	return __lt25
+}
+
 func (m *Model) __n0_closed_handler() {
 }
 
@@ -353,13 +635,13 @@ func (m *Model) __n0_visible_handler(__visible bool) {
 
 func (m *Model) __n1_clicked_handler() {
 	m.on = !m.on
-	var __lt1 string
+	var __lt27 string
 	if m.on {
-		__lt1 = "bold"
+		__lt27 = "bold"
 	} else {
-		__lt1 = "normal"
+		__lt27 = "normal"
 	}
-	_ = __lt1
+	gtk4rt.SetLook(m.__n1, LookOf(Style{FontWeight: __lt27}))
 }
 
 func (m *Model) On() bool {
@@ -387,15 +669,15 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelSetVisible(m.__n0, m.visible__inst0)
 	gtk4rt.ToplevelOnClosed(m.__n0, m.__n0_closed_handler)
 	gtk4rt.ToplevelOnVisible(m.__n0, m.__n0_visible_handler)
-	var __lt0 string
+	var __lt26 string
 	if m.on {
-		__lt0 = "bold"
+		__lt26 = "bold"
 	} else {
-		__lt0 = "normal"
+		__lt26 = "normal"
 	}
 	m.__n1 = gtk4rt.ButtonNew()
 	gtk4rt.ButtonSetLabel(m.__n1, "x")
-	_ = __lt0
+	gtk4rt.SetLook(m.__n1, LookOf(Style{FontWeight: __lt26}))
 	gtk4rt.Connect(m.__n1, "clicked", m.__n1_clicked_handler)
 	gtk4rt.BoxAppend(m.__n0, m.__n1)
 	gtk4rt.AppAttach(m.__n0)
@@ -410,4 +692,4 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 -- run/go/fyne --
 pass sha256:c3af5c120aafe0d1e6c1ba95f7fe8585
 -- run/go/gtk4 --
-pass sha256:4ce60298927023dbf610068087c4d880
+pass sha256:608d339b158d085f7659235d9f7b86bf

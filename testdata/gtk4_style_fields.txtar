@@ -58,167 +58,8 @@ package main
 import (
 	"duckfam.us/sngl/pkg/go/gtk4rt"
 	"duckfam.us/sngl/pkg/go/snglcolor"
+	"fmt"
 )
-
-func __merge_Style(base, ov Style) Style {
-	if ov.Padding != (Measurement{}) {
-		base.Padding = ov.Padding
-	}
-	if ov.PaddingTop != (Measurement{}) {
-		base.PaddingTop = ov.PaddingTop
-	}
-	if ov.PaddingRight != (Measurement{}) {
-		base.PaddingRight = ov.PaddingRight
-	}
-	if ov.PaddingBottom != (Measurement{}) {
-		base.PaddingBottom = ov.PaddingBottom
-	}
-	if ov.PaddingLeft != (Measurement{}) {
-		base.PaddingLeft = ov.PaddingLeft
-	}
-	if ov.PaddingX != (Measurement{}) {
-		base.PaddingX = ov.PaddingX
-	}
-	if ov.PaddingY != (Measurement{}) {
-		base.PaddingY = ov.PaddingY
-	}
-	if ov.Margin != (Measurement{}) {
-		base.Margin = ov.Margin
-	}
-	if ov.MarginTop != (Measurement{}) {
-		base.MarginTop = ov.MarginTop
-	}
-	if ov.MarginRight != (Measurement{}) {
-		base.MarginRight = ov.MarginRight
-	}
-	if ov.MarginBottom != (Measurement{}) {
-		base.MarginBottom = ov.MarginBottom
-	}
-	if ov.MarginLeft != (Measurement{}) {
-		base.MarginLeft = ov.MarginLeft
-	}
-	if ov.MarginX != (Measurement{}) {
-		base.MarginX = ov.MarginX
-	}
-	if ov.MarginY != (Measurement{}) {
-		base.MarginY = ov.MarginY
-	}
-	if ov.Gap != (Measurement{}) {
-		base.Gap = ov.Gap
-	}
-	if ov.Width != (Measurement{}) {
-		base.Width = ov.Width
-	}
-	if ov.MinWidth != (Measurement{}) {
-		base.MinWidth = ov.MinWidth
-	}
-	if ov.Height != (Measurement{}) {
-		base.Height = ov.Height
-	}
-	if ov.MaxWidth != (Measurement{}) {
-		base.MaxWidth = ov.MaxWidth
-	}
-	if ov.MaxHeight != (Measurement{}) {
-		base.MaxHeight = ov.MaxHeight
-	}
-	if ov.Flex != 0 {
-		base.Flex = ov.Flex
-	}
-	if ov.FlexDirection != "" {
-		base.FlexDirection = ov.FlexDirection
-	}
-	if ov.AlignItems != "" {
-		base.AlignItems = ov.AlignItems
-	}
-	if ov.JustifyContent != "" {
-		base.JustifyContent = ov.JustifyContent
-	}
-	if ov.Position != "" {
-		base.Position = ov.Position
-	}
-	if ov.Top != (Measurement{}) {
-		base.Top = ov.Top
-	}
-	if ov.Bottom != (Measurement{}) {
-		base.Bottom = ov.Bottom
-	}
-	if ov.Left != (Measurement{}) {
-		base.Left = ov.Left
-	}
-	if ov.Right != (Measurement{}) {
-		base.Right = ov.Right
-	}
-	if ov.ZIndex != 0 {
-		base.ZIndex = ov.ZIndex
-	}
-	if ov.Color != (snglcolor.Color{}) {
-		base.Color = ov.Color
-	}
-	if ov.FontSize != (Measurement{}) {
-		base.FontSize = ov.FontSize
-	}
-	if ov.FontFamily != "" {
-		base.FontFamily = ov.FontFamily
-	}
-	if ov.FontWeight != "" {
-		base.FontWeight = ov.FontWeight
-	}
-	if ov.FontStyle != "" {
-		base.FontStyle = ov.FontStyle
-	}
-	if ov.TextAlign != "" {
-		base.TextAlign = ov.TextAlign
-	}
-	if ov.MaxLines != 0 {
-		base.MaxLines = ov.MaxLines
-	}
-	if ov.WhiteSpace != "" {
-		base.WhiteSpace = ov.WhiteSpace
-	}
-	if ov.Background != (snglcolor.Color{}) {
-		base.Background = ov.Background
-	}
-	if ov.BorderRadius != (Measurement{}) {
-		base.BorderRadius = ov.BorderRadius
-	}
-	if ov.BorderColor != (snglcolor.Color{}) {
-		base.BorderColor = ov.BorderColor
-	}
-	if ov.BorderWidth != (Measurement{}) {
-		base.BorderWidth = ov.BorderWidth
-	}
-	if ov.Border != "" {
-		base.Border = ov.Border
-	}
-	if ov.BorderBottom != "" {
-		base.BorderBottom = ov.BorderBottom
-	}
-	if ov.BorderLeft != "" {
-		base.BorderLeft = ov.BorderLeft
-	}
-	if ov.BorderCollapse != "" {
-		base.BorderCollapse = ov.BorderCollapse
-	}
-	if ov.BorderStyle != "" {
-		base.BorderStyle = ov.BorderStyle
-	}
-	if ov.Opacity != 0 {
-		base.Opacity = ov.Opacity
-	}
-	if ov.Cursor != "" {
-		base.Cursor = ov.Cursor
-	}
-	if ov.Display != "" {
-		base.Display = ov.Display
-	}
-	if ov.Overflow != "" {
-		base.Overflow = ov.Overflow
-	}
-	if ov.ListStyleType != "" {
-		base.ListStyleType = ov.ListStyleType
-	}
-	return base
-}
 
 type Measurement struct {
 	Px  float64
@@ -313,6 +154,225 @@ func New() *Model {
 	return m
 }
 
+func LookOf(s Style) gtk4rt.Look {
+	look := LookHidden(s, (s.Display == "none"))
+	return look
+}
+
+func LookHidden(s Style, hidden bool) gtk4rt.Look {
+	look := gtk4rt.Look{Css: CssOf(s), Width: max((s.Width.Px + (11.0 * (s.Width.Em + s.Width.Rem))), 0.0), Height: max((s.Height.Px + (11.0 * (s.Height.Em + s.Height.Rem))), 0.0), Grow: s.Flex, Cross: CrossOf(s.AlignItems), TextAlign: TextAlignOf(s.TextAlign), Lines: s.MaxLines, Wrap: WrapOf(s.WhiteSpace), Clip: ClipOf(s.Overflow), Hidden: hidden, Cursor: s.Cursor}
+	return look
+}
+
+func CssOf(s Style) string {
+	var __lt1 string
+	if s.Opacity == 0.0 {
+		__lt1 = ""
+	} else {
+		__lt1 = fmt.Sprint(s.Opacity)
+	}
+	css := ((((((((((((((((((((((Decl("margin-top", Side(s.Margin, s.MarginY, s.MarginTop)) + Decl("margin-right", Side(s.Margin, s.MarginX, s.MarginRight))) + Decl("margin-bottom", Side(s.Margin, s.MarginY, s.MarginBottom))) + Decl("margin-left", Side(s.Margin, s.MarginX, s.MarginLeft))) + Decl("padding-top", Side(s.Padding, s.PaddingY, s.PaddingTop))) + Decl("padding-right", Side(s.Padding, s.PaddingX, s.PaddingRight))) + Decl("padding-bottom", Side(s.Padding, s.PaddingY, s.PaddingBottom))) + Decl("padding-left", Side(s.Padding, s.PaddingX, s.PaddingLeft))) + Decl("min-width", Length(max((s.MinWidth.Px+(11.0*(s.MinWidth.Em+s.MinWidth.Rem))), 0.0)))) + Decl("color", CssColor(s.Color))) + Decl("font-size", Points(max((s.FontSize.Px+(11.0*(s.FontSize.Em+s.FontSize.Rem))), 0.0)))) + Decl("font-family", s.FontFamily)) + Decl("font-weight", WeightOf(s.FontWeight))) + Decl("font-style", SlantOf(s.FontStyle))) + Decl("background", CssColor(s.Background))) + Decl("border-radius", Length(max((s.BorderRadius.Px+(11.0*(s.BorderRadius.Em+s.BorderRadius.Rem))), 0.0)))) + Decl("border-color", CssColor(s.BorderColor))) + Decl("border-width", Length(max((s.BorderWidth.Px+(11.0*(s.BorderWidth.Em+s.BorderWidth.Rem))), 0.0)))) + Decl("border-style", LineOf(s))) + Decl("border", s.Border)) + Decl("border-bottom", s.BorderBottom)) + Decl("border-left", s.BorderLeft)) + Decl("opacity", __lt1))
+	return css
+}
+
+func CrossOf(a string) int {
+	var __lt4 int
+	if a == "center" {
+		__lt4 = 2
+	} else {
+		var __lt3 int
+		if a == "end" {
+			__lt3 = 3
+		} else {
+			var __lt2 int
+			if a == "baseline" {
+				__lt2 = 4
+			} else {
+				__lt2 = 0
+			}
+			__lt3 = __lt2
+		}
+		__lt4 = __lt3
+	}
+	return __lt4
+}
+
+func TextAlignOf(a string) int {
+	var __lt7 int
+	if a == "center" {
+		__lt7 = 1
+	} else {
+		var __lt6 int
+		if a == "right" {
+			__lt6 = 2
+		} else {
+			var __lt5 int
+			if a == "justify" {
+				__lt5 = 3
+			} else {
+				__lt5 = 0
+			}
+			__lt6 = __lt5
+		}
+		__lt7 = __lt6
+	}
+	return __lt7
+}
+
+func WrapOf(w string) int {
+	var __lt9 int
+	if (w == "pre") || (w == "nowrap") {
+		__lt9 = 1
+	} else {
+		var __lt8 int
+		if (w == "preWrap") || (w == "preLine") {
+			__lt8 = 2
+		} else {
+			__lt8 = 0
+		}
+		__lt9 = __lt8
+	}
+	return __lt9
+}
+
+func ClipOf(o string) bool {
+	var __lt10 bool
+	if ((o == "hidden") || (o == "scroll")) || (o == "auto") {
+		__lt10 = true
+	} else {
+		__lt10 = false
+	}
+	return __lt10
+}
+
+func Decl(name string, value string) string {
+	var __lt11 string
+	if value == "" {
+		__lt11 = ""
+	} else {
+		__lt11 = (((name + ": ") + value) + "; ")
+	}
+	return __lt11
+}
+
+func Side(all Measurement, axis Measurement, own Measurement) string {
+	var __lt13 Measurement
+	if (own != Measurement{Px: 0}) {
+		__lt13 = own
+	} else {
+		var __lt12 Measurement
+		if (axis != Measurement{Px: 0}) {
+			__lt12 = axis
+		} else {
+			__lt12 = all
+		}
+		__lt13 = __lt12
+	}
+	return Length(max((__lt13.Px + (11.0 * (__lt13.Em + __lt13.Rem))), 0.0))
+}
+
+func Length(v float64) string {
+	var __lt14 string
+	if v == 0.0 {
+		__lt14 = ""
+	} else {
+		__lt14 = (fmt.Sprint(v) + "px")
+	}
+	return __lt14
+}
+
+func CssColor(c__r0 snglcolor.Color) string {
+	var __lt15 string
+	if (c__r0.A == 0) || (c__r0 == snglcolor.Color{R: 0, G: 0, B: 0, A: 255}) {
+		__lt15 = ""
+	} else {
+		__lt15 = c__r0.Hex()
+	}
+	return __lt15
+}
+
+func Points(v float64) string {
+	var __lt16 string
+	if v == 0.0 {
+		__lt16 = ""
+	} else {
+		__lt16 = (fmt.Sprint(v) + "pt")
+	}
+	return __lt16
+}
+
+func WeightOf(w string) string {
+	var __lt19 string
+	if w == "bold" {
+		__lt19 = "bold"
+	} else {
+		var __lt18 string
+		if w == "bolder" {
+			__lt18 = "bolder"
+		} else {
+			var __lt17 string
+			if w == "lighter" {
+				__lt17 = "lighter"
+			} else {
+				__lt17 = ""
+			}
+			__lt18 = __lt17
+		}
+		__lt19 = __lt18
+	}
+	return __lt19
+}
+
+func SlantOf(s string) string {
+	var __lt21 string
+	if s == "italic" {
+		__lt21 = "italic"
+	} else {
+		var __lt20 string
+		if s == "oblique" {
+			__lt20 = "oblique"
+		} else {
+			__lt20 = ""
+		}
+		__lt21 = __lt20
+	}
+	return __lt21
+}
+
+func LineOf(s Style) string {
+	var __lt26 string
+	if s.BorderStyle == "solid" {
+		__lt26 = "solid"
+	} else {
+		var __lt25 string
+		if s.BorderStyle == "dashed" {
+			__lt25 = "dashed"
+		} else {
+			var __lt24 string
+			if s.BorderStyle == "dotted" {
+				__lt24 = "dotted"
+			} else {
+				var __lt23 string
+				if s.BorderStyle == "double" {
+					__lt23 = "double"
+				} else {
+					var __lt22 string
+					if (s.BorderWidth != Measurement{Px: 0}) {
+						__lt22 = "solid"
+					} else {
+						__lt22 = ""
+					}
+					__lt23 = __lt22
+				}
+				__lt24 = __lt23
+			}
+			__lt25 = __lt24
+		}
+		__lt26 = __lt25
+	}
+	return __lt26
+}
+
 func (m *Model) __n0_closed_handler() {
 }
 
@@ -323,6 +383,7 @@ func (m *Model) __n0_visible_handler(__visible bool) {
 
 func (m *Model) __n6_clicked_handler() {
 	m.tone = snglcolor.Color{R: 153, G: 51, B: 102, A: 255}
+	gtk4rt.SetLook(m.__n3, LookOf(Style{Color: m.tone}))
 }
 
 func (m *Model) __n9_clicked_handler() {
@@ -367,35 +428,44 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelOnVisible(m.__n0, m.__n0_visible_handler)
 	m.__n4 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
 	gtk4rt.OrientableSetOrientation(m.__n4, gtk4rt.OrientationVertical)
-	gtk4rt.BoxSetSpacing(m.__n4, 6)
+	gtk4rt.BoxSetSpacing(m.__n4, 12)
+	gtk4rt.SetLook(m.__n4, gtk4rt.Look{Css: "padding-top: 11px; padding-right: 11px; padding-bottom: 11px; padding-left: 11px; ", Cross: 2})
 	m.__n5 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetLabel(m.__n5, "literal")
+	gtk4rt.SetLook(m.__n5, gtk4rt.Look{Css: "padding-right: 8px; padding-left: 8px; color: #336699; font-size: 11pt; background: #eeeeee; "})
 	gtk4rt.BoxAppend(m.__n4, m.__n5)
 	m.__n1 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetLabel(m.__n1, "var")
+	gtk4rt.SetLook(m.__n1, LookOf(m.held))
 	gtk4rt.BoxAppend(m.__n4, m.__n1)
 	m.__n2 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetLabel(m.__n2, "prop")
+	gtk4rt.SetLook(m.__n2, LookOf(m.held))
 	gtk4rt.BoxAppend(m.__n4, m.__n2)
 	m.__n3 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetLabel(m.__n3, "reactive")
+	gtk4rt.SetLook(m.__n3, LookOf(Style{Color: m.tone}))
 	gtk4rt.BoxAppend(m.__n4, m.__n3)
 	m.__n6 = gtk4rt.ButtonNew()
 	gtk4rt.ButtonSetLabel(m.__n6, "recolor")
+	gtk4rt.SetLook(m.__n6, gtk4rt.Look{Css: "min-width: 200px; border-radius: 4px; border-color: #ff0000; border-width: 2px; border-style: dashed; ", Height: 22.0})
 	gtk4rt.Connect(m.__n6, "clicked", m.__n6_clicked_handler)
 	gtk4rt.BoxAppend(m.__n4, m.__n6)
 	m.__n7 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetLabel(m.__n7, "type")
+	gtk4rt.SetLook(m.__n7, gtk4rt.Look{Css: "font-family: monospace; font-weight: bold; font-style: italic; opacity: 0.5; ", TextAlign: 1, Lines: 2})
 	gtk4rt.BoxAppend(m.__n4, m.__n7)
 	m.__n8 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
 	gtk4rt.OrientableSetOrientation(m.__n8, gtk4rt.OrientationHorizontal)
 	gtk4rt.BoxSetSpacing(m.__n8, 6)
 	m.__n9 = gtk4rt.ButtonNew()
 	gtk4rt.ButtonSetLabel(m.__n9, "one")
+	gtk4rt.SetLook(m.__n9, gtk4rt.Look{Css: "margin-top: 4px; margin-right: 4px; margin-bottom: 4px; margin-left: 4px; ", Grow: 1.0})
 	gtk4rt.Connect(m.__n9, "clicked", m.__n9_clicked_handler)
 	gtk4rt.BoxAppend(m.__n8, m.__n9)
 	m.__n10 = gtk4rt.ButtonNew()
 	gtk4rt.ButtonSetLabel(m.__n10, "two")
+	gtk4rt.SetLook(m.__n10, gtk4rt.Look{Css: "margin-left: 11px; ", Grow: 2.0})
 	gtk4rt.Connect(m.__n10, "clicked", m.__n10_clicked_handler)
 	gtk4rt.BoxAppend(m.__n8, m.__n10)
 	gtk4rt.BoxAppend(m.__n4, m.__n8)
@@ -404,9 +474,11 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.BoxSetSpacing(m.__n11, 6)
 	m.__n12 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetLabel(m.__n12, "kept apart")
+	gtk4rt.SetLook(m.__n12, gtk4rt.Look{Css: "margin-top: 8px; margin-right: 8px; margin-bottom: 8px; margin-left: 8px; "})
 	gtk4rt.BoxAppend(m.__n11, m.__n12)
 	m.__n13 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetLabel(m.__n13, "beside")
+	gtk4rt.SetLook(m.__n13, gtk4rt.Look{Hidden: true})
 	gtk4rt.BoxAppend(m.__n11, m.__n13)
 	gtk4rt.BoxAppend(m.__n4, m.__n11)
 	gtk4rt.BoxAppend(m.__n0, m.__n4)
@@ -420,4 +492,4 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return gtk4rt.ToplevelWindow(app, m.__n0)
 }
 -- run/go/gtk4 --
-pass sha256:8228ea892edbec938133ddcd7975f078
+pass sha256:98f587fd04543ce44e77b256f3e44b49

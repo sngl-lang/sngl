@@ -1157,14 +1157,14 @@ func new__child0Instance(__model *Model, __a___p0 _page__value, __a___p1 int) *_
 	c.__slot2 = nil
 	c.__slot3 = nil
 	c.__slot4 = nil
-	var __lt2 string
+	var __lt29 string
 	if (c.__prop___p0.Id == 0) && ((len(c.__prop___p0.Copy) == 1) && (c.__prop___p0.Copy[0] == c.__prop___p1)) {
-		__lt2 = "showing"
+		__lt29 = "showing"
 	} else {
-		__lt2 = "hidden"
+		__lt29 = "hidden"
 	}
 	c.__n0 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetLabel(c.__n0, __lt2)
+	gtk4rt.LabelSetLabel(c.__n0, __lt29)
 	c.Root = c.__n0
 	gtk4rt.Retain(c.Root)
 	return c
@@ -1172,24 +1172,24 @@ func new__child0Instance(__model *Model, __a___p0 _page__value, __a___p1 int) *_
 
 func (c *__child0Instance) Set__p0(__v _page__value) {
 	c.__prop___p0 = __v
-	var __lt0 string
+	var __lt27 string
 	if (c.__prop___p0.Id == 0) && ((len(c.__prop___p0.Copy) == 1) && (c.__prop___p0.Copy[0] == c.__prop___p1)) {
-		__lt0 = "showing"
+		__lt27 = "showing"
 	} else {
-		__lt0 = "hidden"
+		__lt27 = "hidden"
 	}
-	gtk4rt.LabelSetLabel(c.__n0, __lt0)
+	gtk4rt.LabelSetLabel(c.__n0, __lt27)
 }
 
 func (c *__child0Instance) Set__p1(__v int) {
 	c.__prop___p1 = __v
-	var __lt1 string
+	var __lt28 string
 	if (c.__prop___p0.Id == 0) && ((len(c.__prop___p0.Copy) == 1) && (c.__prop___p0.Copy[0] == c.__prop___p1)) {
-		__lt1 = "showing"
+		__lt28 = "showing"
 	} else {
-		__lt1 = "hidden"
+		__lt28 = "hidden"
 	}
-	gtk4rt.LabelSetLabel(c.__n0, __lt1)
+	gtk4rt.LabelSetLabel(c.__n0, __lt28)
 }
 
 func (c *__child0Instance) Destroy() {
@@ -1675,7 +1675,7 @@ pass sha256:2157fb9960f3c43b11c08cadfc5623fe
 -- run/go/fyne --
 pass sha256:32adccd1434580b9ffd0bac1b47c83c4
 -- run/go/gtk4 --
-pass sha256:a09810f5f861ba6939e52051a3044da6
+pass sha256:9ff1ec7829348664bcba23a201fad76a
 -- run/kotlin/android --
 pass sha256:212324a6d8f7bd59c859efff09d0ef57
 -- run/none/html --

@@ -687,9 +687,9 @@ func New() *Model {
 }
 
 func ColorOf(p Palette, fallback Palette, kind string) snglcolor.Color {
-	c__r0 := TokenColor(p, kind)
-	if c__r0.A != 0 {
-		return c__r0
+	c__r1 := TokenColor(p, kind)
+	if c__r1.A != 0 {
+		return c__r1
 	}
 	return TokenColor(fallback, kind)
 }
@@ -1041,7 +1041,7 @@ pass sha256:f7fb02255c66a9093387b85480b9e203
 -- run/go/fyne --
 pass sha256:d0f51dfb50da5bf0936e52154accdbf8
 -- run/go/gtk4 --
-pass sha256:8e620453337bb528f77b60a22d9f8771
+pass sha256:5ac2a16c5ab08d829c9ea73ffb5b51ad
 -- run/kotlin/android --
 pass sha256:35e8f7643dc99638ab12209ca8dd11bf
 -- run/none/html --

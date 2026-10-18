@@ -895,7 +895,8 @@ func (m *Model) buildWidgetTree() {
 	m.__n1 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetWrap(m.__n1, true)
 	gtk4rt.LabelSetXAlign(m.__n1, 0.0)
-	gtk4rt.LabelSetMarkup(m.__n1, "<span size=\"32768\" weight=\"bold\">Title</span>")
+	gtk4rt.LabelSetMarkup(m.__n1, "Title")
+	gtk4rt.SetLook(m.__n1, gtk4rt.Look{Css: "font-size: 32pt; font-weight: bold; "})
 	gtk4rt.BoxAppend(m.__n0, m.__n1)
 	m.__n3 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetWrap(m.__n3, true)
@@ -911,6 +912,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.LabelSetWrap(m.__n12, true)
 	gtk4rt.LabelSetXAlign(m.__n12, 0.0)
 	gtk4rt.LabelSetMarkup(m.__n12, "<tt><span foreground=\"#CF222E\">func</span> <span foreground=\"#8250DF\">main</span></tt>")
+	gtk4rt.SetLook(m.__n12, gtk4rt.Look{Css: "padding-top: 12px; padding-right: 12px; padding-bottom: 12px; padding-left: 12px; background: #f5f5f5; border-radius: 4px; "})
 	gtk4rt.BoxAppend(m.__n0, m.__n12)
 	m.__n19 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetWrap(m.__n19, true)
@@ -930,12 +932,14 @@ func (m *Model) buildWidgetTree() {
 	m.__n31 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetWrap(m.__n31, true)
 	gtk4rt.LabelSetXAlign(m.__n31, 0.0)
-	gtk4rt.LabelSetMarkup(m.__n31, "<span style=\"italic\">quoted</span>")
+	gtk4rt.LabelSetMarkup(m.__n31, "quoted")
+	gtk4rt.SetLook(m.__n31, gtk4rt.Look{Css: "padding-left: 12px; font-style: italic; border-left: 3px solid #CCCCCC; "})
 	gtk4rt.BoxAppend(m.__n0, m.__n31)
 	m.__n33 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetWrap(m.__n33, true)
 	gtk4rt.LabelSetXAlign(m.__n33, 0.0)
-	gtk4rt.LabelSetMarkup(m.__n33, "<span size=\"13312\" foreground=\"#666666\">a caption</span>")
+	gtk4rt.LabelSetMarkup(m.__n33, "a caption")
+	gtk4rt.SetLook(m.__n33, gtk4rt.Look{Css: "color: #666666; font-size: 13pt; "})
 	gtk4rt.BoxAppend(m.__n0, m.__n33)
 	gtk4rt.BoxAppend(m.home, m.__n0)
 	gtk4rt.AppAttach(m.home)
@@ -1388,7 +1392,7 @@ pass sha256:c5f1066313ab3e18974fbe883a8aa041
 -- run/go/fyne --
 pass sha256:6a987ac968e79ca19d189eb5b90f44a7
 -- run/go/gtk4 --
-pass sha256:4ab1fa4ac449e1c1cd975f287c00cfdd
+pass sha256:6df75fe7699c8c50d44c6fb7de9e2ed3
 -- run/go/html --
 pass sha256:35c4da7dfef7d2efbd6a502c302ce557
 -- run/kotlin/android --

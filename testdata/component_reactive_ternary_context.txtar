@@ -565,20 +565,20 @@ func New() *Model {
 
 func (m *Model) __n3_clicked_handler() {
 	m.dark = !m.dark
-	var __lt0 string
+	var __lt27 string
 	if m.dark {
-		__lt0 = "dark"
+		__lt27 = "dark"
 	} else {
-		__lt0 = "light"
+		__lt27 = "light"
 	}
-	gtk4rt.LabelSetLabel(m.__n0, ("outer: " + __lt0))
-	var __lt1 string
+	gtk4rt.LabelSetLabel(m.__n0, ("outer: " + __lt27))
+	var __lt28 string
 	if m.dark {
-		__lt1 = "dark"
+		__lt28 = "dark"
 	} else {
-		__lt1 = "light"
+		__lt28 = "light"
 	}
-	gtk4rt.LabelSetLabel(m.__n1, ("sibling: " + __lt1))
+	gtk4rt.LabelSetLabel(m.__n1, ("sibling: " + __lt28))
 }
 
 func (m *Model) Dark() bool {
@@ -601,23 +601,23 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ButtonSetLabel(__n3, "toggle")
 	gtk4rt.Connect(__n3, "clicked", m.__n3_clicked_handler)
 	gtk4rt.BoxAppend(__n2, __n3)
-	var __lt2 string
+	var __lt29 string
 	if m.dark {
-		__lt2 = "dark"
+		__lt29 = "dark"
 	} else {
-		__lt2 = "light"
+		__lt29 = "light"
 	}
 	m.__n0 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetLabel(m.__n0, ("outer: " + __lt2))
+	gtk4rt.LabelSetLabel(m.__n0, ("outer: " + __lt29))
 	gtk4rt.BoxAppend(__n2, m.__n0)
-	var __lt3 string
+	var __lt30 string
 	if m.dark {
-		__lt3 = "dark"
+		__lt30 = "dark"
 	} else {
-		__lt3 = "light"
+		__lt30 = "light"
 	}
 	m.__n1 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetLabel(m.__n1, ("sibling: " + __lt3))
+	gtk4rt.LabelSetLabel(m.__n1, ("sibling: " + __lt30))
 	gtk4rt.BoxAppend(__n2, m.__n1)
 	gtk4rt.BoxAppend(m.__root, __n2)
 }
@@ -778,7 +778,7 @@ pass sha256:6318673801298530effa056ecf4090c6
 -- run/go/fyne --
 pass sha256:93c239c5f12e6263a07f3f7fb4a77134
 -- run/go/gtk4 --
-pass sha256:67d131cb2309463a513790589e13a59d
+pass sha256:278a499ac3839790f1f38852ee34a392
 -- run/kotlin/android --
 pass sha256:002dbf4d551491f57d3716aae97aff99
 -- run/none/html --

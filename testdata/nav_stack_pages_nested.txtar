@@ -1215,19 +1215,19 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 	__inst1_next := []*__child1Instance{}
 	var __inst1_i int = 0
 	for __copy, r := range m.rows {
-		for __copy1, c__r0 := range r.Cols {
+		for __copy1, c__r1 := range r.Cols {
 			if (m.pages__current__inst0.Id == 0) && (((len(m.pages__current__inst0.Copy) == 2) && (m.pages__current__inst0.Copy[0] == __copy)) && (m.pages__current__inst0.Copy[1] == __copy1)) {
 				var __n2 *__child0Instance
 				if len(m.__inst0_live) > __inst0_i {
 					__n2 = m.__inst0_live[__inst0_i]
 					__n2.Set__p0(r)
-					__n2.Set__p1(c__r0)
+					__n2.Set__p1(c__r1)
 					__n2.Set__p2(m.cell__params__inst0)
 				} else {
 					if len(m.__inst0_live) > __inst0_i {
 						m.__inst0_live[__inst0_i].Destroy()
 					}
-					__n2__new := new__child0Instance(m, r, c__r0, m.cell__params__inst0)
+					__n2__new := new__child0Instance(m, r, c__r1, m.cell__params__inst0)
 					__n2 = __n2__new
 				}
 				__inst0_next = append(__inst0_next, __n2)
@@ -1261,13 +1261,13 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 					for __inst0_live_ui, _ := range m.__inst0_live {
 						m.__inst0_live[__inst0_live_ui].Set__p2(m.cell__params__inst0)
 					}
-					var __lt3 string
-					if c__r0 == "3" {
-						__lt3 = "/"
+					var __lt29 string
+					if c__r1 == "3" {
+						__lt29 = "/"
 					} else {
-						__lt3 = ((("/" + r.Name) + "/") + c__r0)
+						__lt29 = ((("/" + r.Name) + "/") + c__r1)
 					}
-					m.pages__current__inst0 = _page__value{Id: 0, Href: __lt3, Title: (r.Name + c__r0), Meta: __anon_e3b0c4{}, Copy: []int{__copy, __copy1}}
+					m.pages__current__inst0 = _page__value{Id: 0, Href: __lt29, Title: (r.Name + c__r1), Meta: __anon_e3b0c4{}, Copy: []int{__copy, __copy1}}
 					m.__renderSlot0(m.__n1)
 					m.__renderSlot1(m.__n1)
 				})
@@ -1421,14 +1421,14 @@ func new__child1Instance(__model *Model, __a___p0 _page__value, __a___p1 int, __
 	c.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
 	c.__slot0 = nil
 	c.__slot1 = nil
-	var __lt7 string
+	var __lt33 string
 	if (c.__prop___p0.Id == 0) && (((len(c.__prop___p0.Copy) == 2) && (c.__prop___p0.Copy[0] == c.__prop___p1)) && (c.__prop___p0.Copy[1] == c.__prop___p2)) {
-		__lt7 = "showing"
+		__lt33 = "showing"
 	} else {
-		__lt7 = "hidden"
+		__lt33 = "hidden"
 	}
 	c.__n0 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetLabel(c.__n0, __lt7)
+	gtk4rt.LabelSetLabel(c.__n0, __lt33)
 	c.Root = c.__n0
 	gtk4rt.Retain(c.Root)
 	return c
@@ -1436,35 +1436,35 @@ func new__child1Instance(__model *Model, __a___p0 _page__value, __a___p1 int, __
 
 func (c *__child1Instance) Set__p0(__v _page__value) {
 	c.__prop___p0 = __v
-	var __lt4 string
+	var __lt30 string
 	if (c.__prop___p0.Id == 0) && (((len(c.__prop___p0.Copy) == 2) && (c.__prop___p0.Copy[0] == c.__prop___p1)) && (c.__prop___p0.Copy[1] == c.__prop___p2)) {
-		__lt4 = "showing"
+		__lt30 = "showing"
 	} else {
-		__lt4 = "hidden"
+		__lt30 = "hidden"
 	}
-	gtk4rt.LabelSetLabel(c.__n0, __lt4)
+	gtk4rt.LabelSetLabel(c.__n0, __lt30)
 }
 
 func (c *__child1Instance) Set__p1(__v int) {
 	c.__prop___p1 = __v
-	var __lt5 string
+	var __lt31 string
 	if (c.__prop___p0.Id == 0) && (((len(c.__prop___p0.Copy) == 2) && (c.__prop___p0.Copy[0] == c.__prop___p1)) && (c.__prop___p0.Copy[1] == c.__prop___p2)) {
-		__lt5 = "showing"
+		__lt31 = "showing"
 	} else {
-		__lt5 = "hidden"
+		__lt31 = "hidden"
 	}
-	gtk4rt.LabelSetLabel(c.__n0, __lt5)
+	gtk4rt.LabelSetLabel(c.__n0, __lt31)
 }
 
 func (c *__child1Instance) Set__p2(__v int) {
 	c.__prop___p2 = __v
-	var __lt6 string
+	var __lt32 string
 	if (c.__prop___p0.Id == 0) && (((len(c.__prop___p0.Copy) == 2) && (c.__prop___p0.Copy[0] == c.__prop___p1)) && (c.__prop___p0.Copy[1] == c.__prop___p2)) {
-		__lt6 = "showing"
+		__lt32 = "showing"
 	} else {
-		__lt6 = "hidden"
+		__lt32 = "hidden"
 	}
-	gtk4rt.LabelSetLabel(c.__n0, __lt6)
+	gtk4rt.LabelSetLabel(c.__n0, __lt32)
 }
 
 func (c *__child1Instance) Destroy() {
@@ -1733,6 +1733,6 @@ pass sha256:741562fdf89460fd980733a885ba7673
 -- run/go/fyne --
 pass sha256:8dd8d6443f23170c3855d57d3dbd9da6
 -- run/go/gtk4 --
-pass sha256:54e3fcec3365ec36389a62a8b8befddf
+pass sha256:452ba4c68647ce13063beb8614d61153
 -- run/kotlin/android --
 pass sha256:f460eed17d6ea5f99cae8ffd6214ec8c

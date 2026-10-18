@@ -1409,6 +1409,7 @@ func (m *Model) __renderSlot1(parent *C.GtkBox) {
 	if m.failed__inst0 || !m.hasPhoto__inst0 {
 		__n4 := (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
 		C.gtk_label_set_label((*C.GtkLabel)(unsafe.Pointer(__n4)), C.CString("JD"))
+		gtk4rt.SetLook(gtk4rt.Handle(unsafe.Pointer(__n4)), gtk4rt.Look{Css: "background: #cccccc; border-radius: 20px; ", Width: 40.0, Height: 40.0, Cross: 2, TextAlign: 1})
 		C.sngl_insert_before((*C.GtkBox)(unsafe.Pointer(parent)), m.__slot1_at, (*C.GtkWidget)(unsafe.Pointer(__n4)))
 		m.__slot1 = append(m.__slot1, (*C.GtkWidget)(unsafe.Pointer(__n4)))
 	} else {
@@ -1417,7 +1418,7 @@ func (m *Model) __renderSlot1(parent *C.GtkBox) {
 			__n5 = m.__inst0_live[__inst0_i]
 			__n5.Set__p0(m.hasPhoto__inst0)
 			__n5.Set__p1(m.url__inst0)
-			__n5.Set__on0(func(m__r0 string) {
+			__n5.Set__on0(func(m__r2 string) {
 				m.failed__inst0 = true
 				m.__renderSlot1(m.__n6)
 			})
@@ -1425,7 +1426,7 @@ func (m *Model) __renderSlot1(parent *C.GtkBox) {
 			if len(m.__inst0_live) > __inst0_i {
 				m.__inst0_live[__inst0_i].Destroy()
 			}
-			__n5__new := new__child0Instance(m, m.hasPhoto__inst0, m.url__inst0, func(m__r0 string) {
+			__n5__new := new__child0Instance(m, m.hasPhoto__inst0, m.url__inst0, func(m__r2 string) {
 				m.failed__inst0 = true
 				m.__renderSlot1(m.__n6)
 			})
@@ -1459,7 +1460,7 @@ func (m *Model) __n7_click_handler() {
 func (m *Model) __n7_load_handler() {
 }
 
-func (m *Model) __n7_failed_handler(m__r0 string) {
+func (m *Model) __n7_failed_handler(m__r2 string) {
 }
 
 func (m *Model) __n9_click_handler() {
@@ -1468,7 +1469,7 @@ func (m *Model) __n9_click_handler() {
 func (m *Model) __n9_load_handler() {
 }
 
-func (m *Model) __n9_failed_handler(m__r0 string) {
+func (m *Model) __n9_failed_handler(m__r2 string) {
 }
 
 func (m *Model) __n10_click_handler() {
@@ -1477,7 +1478,7 @@ func (m *Model) __n10_click_handler() {
 func (m *Model) __n10_load_handler() {
 }
 
-func (m *Model) __n10_failed_handler(m__r0 string) {
+func (m *Model) __n10_failed_handler(m__r2 string) {
 }
 
 func (m *Model) __n16_clicked_handler() {
@@ -1545,6 +1546,7 @@ func new__child0Instance(__model *Model, __a___p0 bool, __a___p1 string, __a___o
 	c.__slot1 = nil
 	c.__n3 = (*C.GtkBox)(unsafe.Pointer(gtk4rt.ImageFrameNew()))
 	gtk4rt.ImageFrameSetFit(gtk4rt.Handle(unsafe.Pointer(c.__n3)), "cover")
+	gtk4rt.SetLook(gtk4rt.Handle(unsafe.Pointer(c.__n3)), gtk4rt.Look{Css: "border-radius: 20px; ", Width: 40.0, Height: 40.0})
 	gtk4rt.ImageFrameOnClick(gtk4rt.Handle(unsafe.Pointer(c.__n3)), func() {
 	})
 	gtk4rt.ImageFrameOnLoad(gtk4rt.Handle(unsafe.Pointer(c.__n3)), func() {
@@ -2463,7 +2465,7 @@ pass sha256:0b2838c2b9187cbe846913ab66135039
 -- run/go/fyne --
 pass sha256:41e8b9a4f83136a056ea66dcad2bdb11
 -- run/go/gtk4 --
-pass sha256:0c4073786463174d92b4d438bc32bea4
+pass sha256:042a7ea6e8d782aa8765b86be93cee35
 -- run/kotlin/android --
 pass sha256:0421e342c0d503dbc2d9813f9f1fc9c8
 -- run/none/html --

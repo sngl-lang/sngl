@@ -862,7 +862,7 @@ func (t *fyneTranslator) OnPropAssign(ctx context.Context, node ir.Expr, prop st
 		if !sp.Boxed {
 			return codegen.KeepLocalsRead(value)
 		}
-		return []ir.Stmt{&ir.CallStmt{Call: methodCall(t.boxRef(bareID), "SetLook", []ir.Expr{written(value)}, ir.TypVoid)}}
+		return []ir.Stmt{&ir.CallStmt{Call: methodCall(t.boxRef(bareID), "SetLook", []ir.Expr{codegen.IRWrittenFields(value)}, ir.TypVoid)}}
 	}
 	if prop == ir.CopyProp {
 		return []ir.Stmt{t.listCopy(bareID, value)}

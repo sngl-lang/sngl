@@ -266,12 +266,6 @@ import (
 	"duckfam.us/sngl/pkg/go/gtk4rt"
 )
 
-type Measurement struct {
-	Px  float64
-	Em  float64
-	Rem float64
-}
-
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
 	__ctx_listDepth int
@@ -327,7 +321,7 @@ func (m *Model) __renderSlot1(parent gtk4rt.Handle) {
 	for _, it := range m.items {
 		__n3 := gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
 		gtk4rt.OrientableSetOrientation(__n3, gtk4rt.OrientationHorizontal)
-		gtk4rt.BoxSetSpacing(__n3, 6)
+		gtk4rt.BoxSetSpacing(__n3, 8)
 		__n4 := new__checkbox_state0Instance(m, true, true)
 		__n4__el := __n4.Root
 		gtk4rt.BoxAppend(__n3, __n4__el)
@@ -425,7 +419,8 @@ func (m *Model) buildWidgetTree() {
 	m.__renderSlot0(m.__n7)
 	m.__n8 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
 	gtk4rt.OrientableSetOrientation(m.__n8, gtk4rt.OrientationVertical)
-	gtk4rt.BoxSetSpacing(m.__n8, 6)
+	gtk4rt.BoxSetSpacing(m.__n8, 4)
+	gtk4rt.SetLook(m.__n8, gtk4rt.Look{Css: "padding-left: 20px; "})
 	m.__renderSlot1(m.__n8)
 	gtk4rt.BoxAppend(m.__n7, m.__n8)
 	m.more = gtk4rt.ButtonNew()
@@ -451,4 +446,4 @@ func (m *Model) moreClick() {
 -- run/go/fyne --
 pass sha256:206154438b7941999fb4335ee9924e6b
 -- run/go/gtk4 --
-pass sha256:c9229a63f01f62939f4a30f5440faedc
+pass sha256:01fafc69b1806802383b76b263d253f9

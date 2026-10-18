@@ -990,45 +990,45 @@ func (m *Model) __n7_clicked_handler() {
 	__match1 := m.roll__inst0()
 	if __match1 == "active" {
 		m.status__inst0 = "inactive"
-		var __lt6 string
+		var __lt32 string
 		if m.status__inst0 == "active" {
-			__lt6 = "on"
+			__lt32 = "on"
 		} else {
-			__lt6 = "not on"
+			__lt32 = "not on"
 		}
-		gtk4rt.LabelSetLabel(m.__n1, __lt6)
+		gtk4rt.LabelSetLabel(m.__n1, __lt32)
 		m.__renderSlot0(m.__n0)
 	} else {
 		if __match1 == "inactive" {
 			m.status__inst0 = "pending"
-			var __lt7 string
+			var __lt33 string
 			if m.status__inst0 == "active" {
-				__lt7 = "on"
+				__lt33 = "on"
 			} else {
-				__lt7 = "not on"
+				__lt33 = "not on"
 			}
-			gtk4rt.LabelSetLabel(m.__n1, __lt7)
+			gtk4rt.LabelSetLabel(m.__n1, __lt33)
 			m.__renderSlot0(m.__n0)
 		} else {
 			m.status__inst0 = "active"
-			var __lt8 string
+			var __lt34 string
 			if m.status__inst0 == "active" {
-				__lt8 = "on"
+				__lt34 = "on"
 			} else {
-				__lt8 = "not on"
+				__lt34 = "not on"
 			}
-			gtk4rt.LabelSetLabel(m.__n1, __lt8)
+			gtk4rt.LabelSetLabel(m.__n1, __lt34)
 			m.__renderSlot0(m.__n0)
 		}
 	}
 	__match2 := m.roll__inst0()
-	var __lt9 string
+	var __lt35 string
 	if __match2 == "active" {
-		__lt9 = m.label(m.status__inst0)
+		__lt35 = m.label(m.status__inst0)
 	} else {
-		__lt9 = "rolled"
+		__lt35 = "rolled"
 	}
-	m.last__inst0 = __lt9
+	m.last__inst0 = __lt35
 	gtk4rt.LabelSetLabel(m.__n3, m.last__inst0)
 }
 
@@ -1082,29 +1082,29 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelOnClosed(m.__n0, m.__n0_closed_handler)
 	gtk4rt.ToplevelOnVisible(m.__n0, m.__n0_visible_handler)
 	m.__renderSlot0(m.__n0)
-	var __lt3 string
+	var __lt29 string
 	if m.status__inst0 == "active" {
-		__lt3 = "on"
+		__lt29 = "on"
 	} else {
-		__lt3 = "not on"
+		__lt29 = "not on"
 	}
 	m.__n1 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetLabel(m.__n1, __lt3)
+	gtk4rt.LabelSetLabel(m.__n1, __lt29)
 	gtk4rt.BoxAppend(m.__n0, m.__n1)
-	var __lt5 string
+	var __lt31 string
 	if m.rolls__inst0 > 10 {
-		__lt5 = "many"
+		__lt31 = "many"
 	} else {
-		var __lt4 string
+		var __lt30 string
 		if m.rolls__inst0 > 0 {
-			__lt4 = Describe(m.rolls__inst0)
+			__lt30 = Describe(m.rolls__inst0)
 		} else {
-			__lt4 = "none"
+			__lt30 = "none"
 		}
-		__lt5 = __lt4
+		__lt31 = __lt30
 	}
 	m.__n2 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetLabel(m.__n2, __lt5)
+	gtk4rt.LabelSetLabel(m.__n2, __lt31)
 	gtk4rt.BoxAppend(m.__n0, m.__n2)
 	m.__n7 = gtk4rt.ButtonNew()
 	gtk4rt.ButtonSetLabel(m.__n7, "Roll")
@@ -1400,7 +1400,7 @@ pass sha256:b9d6b6151441e7dfd9a993dea4a102cb
 -- run/go/fyne --
 pass sha256:f621d5ea4fe17eab83eafabf1c4f0df8
 -- run/go/gtk4 --
-pass sha256:308cf4b395b15fa0eeb4fb9606dfb84b
+pass sha256:582736d0e76b6e07fcd5c001e87317d1
 -- run/kotlin/android --
 pass sha256:53358e3ef5f8eb5eca24755f8bfb6af9
 -- run/none/html --

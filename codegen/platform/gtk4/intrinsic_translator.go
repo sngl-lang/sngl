@@ -1073,12 +1073,8 @@ func (t *gtk4Translator) OnPropAssign(ctx context.Context, node ir.Expr, prop st
 	if t.isSkipped(node) {
 		return nil
 	}
-	// style is the platform's own prop, forwarded onto the widget root by the
-	// override bodies, and no GTK property is behind it. Two GTK classes
-	// (GtkTextTag, GtkCellRendererText) do have a property of that name; the
-	// declaration reserves the name for style, so it is not theirs.
-	if prop == stylePropName {
-		return codegen.KeepLocalsRead(value)
+	if prop == lookPropName {
+		return t.setLook(node, value)
 	}
 	bare := codegen.IdentBareName(node)
 	if prop == ir.CopyProp {
@@ -1661,4 +1657,12 @@ func (t *gtk4Translator) copiesType(id string) *ir.Type {
 		return ir.NativeGoNamed(widgetFieldGoType(copyMapType(cType), t.wrapped))
 	}
 	return ir.NativeGoNamed(widgetFieldGoType(copyMapType("GtkWidget"), t.wrapped))
+}
+
+// setLook gives a widget what style.sngl's lookOf built from its Style.
+func (t *gtk4Translator) setLook(node, value ir.Expr) []ir.Stmt {
+	if codegen.IRIsZeroLiteral(value) {
+		return nil
+	}
+	return []ir.Stmt{&ir.CallStmt{Call: rtCall("SetLook", ir.TypVoid, t.rtHandle(t.qualifyNodeExpr(node)), codegen.IRWrittenFields(value))}}
 }

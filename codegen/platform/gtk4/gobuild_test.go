@@ -14,10 +14,9 @@ import (
 )
 
 // generateGTK4ModelBuilt is the pipeline internal/build runs, which is what
-// `sngl generate` is: optimize, lower, and optimize AGAIN. generateGTK4Model
-// skips the optimizer entirely, which is fine for a claim about one emitted
-// statement and not fine for one about whether the file compiles -- an
-// unoptimized emission still carries `null` where no Go declares one.
+// `sngl generate` is: optimize, lower, and optimize AGAIN. Without the
+// optimizer an emission carries `null` where no Go declares one, and names
+// library structs and consts only the optimizer declares.
 func generateGTK4ModelBuilt(t *testing.T, src string) string {
 	t.Helper()
 	doc, err := parser.Parse("t.sngl", []byte(src))

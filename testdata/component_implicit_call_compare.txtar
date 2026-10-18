@@ -491,14 +491,14 @@ func (m *Model) buildWidgetTree() {
 		return
 	}
 	m.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
-	var __lt0 string
+	var __lt26 string
 	if m.count() > 0 {
-		__lt0 = "some"
+		__lt26 = "some"
 	} else {
-		__lt0 = "none"
+		__lt26 = "none"
 	}
 	__n0 := gtk4rt.LabelNew("")
-	gtk4rt.LabelSetLabel(__n0, __lt0)
+	gtk4rt.LabelSetLabel(__n0, __lt26)
 	gtk4rt.BoxAppend(m.__root, __n0)
 }
 
@@ -634,7 +634,7 @@ pass sha256:48b5bca9b1522fdba3cb606979f1f860
 -- run/go/fyne --
 pass sha256:2c4f89d754d20137f6f6d7e039c4b3dc
 -- run/go/gtk4 --
-pass sha256:2b7e260ef1cddbaa4410927fc890dbb4
+pass sha256:dfd0058dd828993057d87443c899bb93
 -- run/kotlin/android --
 pass sha256:a135b066b2eff0af106ba981c0cefd86
 -- run/none/html --

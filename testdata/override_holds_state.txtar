@@ -1879,6 +1879,1677 @@ func New() *Model {
 	return m
 }
 
+func LookOf(s Style) gtk4rt.Look {
+	look := LookHidden(s, (s.Display == "none"))
+	return look
+}
+
+func LookHidden(s Style, hidden bool) gtk4rt.Look {
+	var __lt3 int
+	if s.AlignItems == "center" {
+		__lt3 = 2
+	} else {
+		var __lt2 int
+		if s.AlignItems == "end" {
+			__lt2 = 3
+		} else {
+			var __lt1 int
+			if s.AlignItems == "baseline" {
+				__lt1 = 4
+			} else {
+				__lt1 = 0
+			}
+			__lt2 = __lt1
+		}
+		__lt3 = __lt2
+	}
+	var __lt6 int
+	if s.TextAlign == "center" {
+		__lt6 = 1
+	} else {
+		var __lt5 int
+		if s.TextAlign == "right" {
+			__lt5 = 2
+		} else {
+			var __lt4 int
+			if s.TextAlign == "justify" {
+				__lt4 = 3
+			} else {
+				__lt4 = 0
+			}
+			__lt5 = __lt4
+		}
+		__lt6 = __lt5
+	}
+	var __lt8 int
+	if (s.WhiteSpace == "pre") || (s.WhiteSpace == "nowrap") {
+		__lt8 = 1
+	} else {
+		var __lt7 int
+		if (s.WhiteSpace == "preWrap") || (s.WhiteSpace == "preLine") {
+			__lt7 = 2
+		} else {
+			__lt7 = 0
+		}
+		__lt8 = __lt7
+	}
+	var __lt9 bool
+	if ((s.Overflow == "hidden") || (s.Overflow == "scroll")) || (s.Overflow == "auto") {
+		__lt9 = true
+	} else {
+		__lt9 = false
+	}
+	look := gtk4rt.Look{Css: CssOf(s), Width: max((s.Width.Px + (11.0 * (s.Width.Em + s.Width.Rem))), 0.0), Height: max((s.Height.Px + (11.0 * (s.Height.Em + s.Height.Rem))), 0.0), Grow: s.Flex, Cross: __lt3, TextAlign: __lt6, Lines: s.MaxLines, Wrap: __lt8, Clip: __lt9, Hidden: hidden, Cursor: s.Cursor}
+	return look
+}
+
+func CssOf(s Style) string {
+	var __lt11 Measurement
+	if (s.MarginTop != Measurement{Px: 0}) {
+		__lt11 = s.MarginTop
+	} else {
+		var __lt10 Measurement
+		if (s.MarginY != Measurement{Px: 0}) {
+			__lt10 = s.MarginY
+		} else {
+			__lt10 = s.Margin
+		}
+		__lt11 = __lt10
+	}
+	var __lt13 Measurement
+	if (s.MarginTop != Measurement{Px: 0}) {
+		__lt13 = s.MarginTop
+	} else {
+		var __lt12 Measurement
+		if (s.MarginY != Measurement{Px: 0}) {
+			__lt12 = s.MarginY
+		} else {
+			__lt12 = s.Margin
+		}
+		__lt13 = __lt12
+	}
+	var __lt15 Measurement
+	if (s.MarginTop != Measurement{Px: 0}) {
+		__lt15 = s.MarginTop
+	} else {
+		var __lt14 Measurement
+		if (s.MarginY != Measurement{Px: 0}) {
+			__lt14 = s.MarginY
+		} else {
+			__lt14 = s.Margin
+		}
+		__lt15 = __lt14
+	}
+	var __lt22 string
+	if max((__lt11.Px+(11.0*(__lt13.Em+__lt15.Rem))), 0.0) == 0.0 {
+		__lt22 = ""
+	} else {
+		var __lt17 Measurement
+		if (s.MarginTop != Measurement{Px: 0}) {
+			__lt17 = s.MarginTop
+		} else {
+			var __lt16 Measurement
+			if (s.MarginY != Measurement{Px: 0}) {
+				__lt16 = s.MarginY
+			} else {
+				__lt16 = s.Margin
+			}
+			__lt17 = __lt16
+		}
+		var __lt19 Measurement
+		if (s.MarginTop != Measurement{Px: 0}) {
+			__lt19 = s.MarginTop
+		} else {
+			var __lt18 Measurement
+			if (s.MarginY != Measurement{Px: 0}) {
+				__lt18 = s.MarginY
+			} else {
+				__lt18 = s.Margin
+			}
+			__lt19 = __lt18
+		}
+		var __lt21 Measurement
+		if (s.MarginTop != Measurement{Px: 0}) {
+			__lt21 = s.MarginTop
+		} else {
+			var __lt20 Measurement
+			if (s.MarginY != Measurement{Px: 0}) {
+				__lt20 = s.MarginY
+			} else {
+				__lt20 = s.Margin
+			}
+			__lt21 = __lt20
+		}
+		__lt22 = (fmt.Sprint(max((__lt17.Px+(11.0*(__lt19.Em+__lt21.Rem))), 0.0)) + "px")
+	}
+	var __lt36 string
+	if __lt22 == "" {
+		__lt36 = ""
+	} else {
+		var __lt24 Measurement
+		if (s.MarginTop != Measurement{Px: 0}) {
+			__lt24 = s.MarginTop
+		} else {
+			var __lt23 Measurement
+			if (s.MarginY != Measurement{Px: 0}) {
+				__lt23 = s.MarginY
+			} else {
+				__lt23 = s.Margin
+			}
+			__lt24 = __lt23
+		}
+		var __lt26 Measurement
+		if (s.MarginTop != Measurement{Px: 0}) {
+			__lt26 = s.MarginTop
+		} else {
+			var __lt25 Measurement
+			if (s.MarginY != Measurement{Px: 0}) {
+				__lt25 = s.MarginY
+			} else {
+				__lt25 = s.Margin
+			}
+			__lt26 = __lt25
+		}
+		var __lt28 Measurement
+		if (s.MarginTop != Measurement{Px: 0}) {
+			__lt28 = s.MarginTop
+		} else {
+			var __lt27 Measurement
+			if (s.MarginY != Measurement{Px: 0}) {
+				__lt27 = s.MarginY
+			} else {
+				__lt27 = s.Margin
+			}
+			__lt28 = __lt27
+		}
+		var __lt35 string
+		if max((__lt24.Px+(11.0*(__lt26.Em+__lt28.Rem))), 0.0) == 0.0 {
+			__lt35 = ""
+		} else {
+			var __lt30 Measurement
+			if (s.MarginTop != Measurement{Px: 0}) {
+				__lt30 = s.MarginTop
+			} else {
+				var __lt29 Measurement
+				if (s.MarginY != Measurement{Px: 0}) {
+					__lt29 = s.MarginY
+				} else {
+					__lt29 = s.Margin
+				}
+				__lt30 = __lt29
+			}
+			var __lt32 Measurement
+			if (s.MarginTop != Measurement{Px: 0}) {
+				__lt32 = s.MarginTop
+			} else {
+				var __lt31 Measurement
+				if (s.MarginY != Measurement{Px: 0}) {
+					__lt31 = s.MarginY
+				} else {
+					__lt31 = s.Margin
+				}
+				__lt32 = __lt31
+			}
+			var __lt34 Measurement
+			if (s.MarginTop != Measurement{Px: 0}) {
+				__lt34 = s.MarginTop
+			} else {
+				var __lt33 Measurement
+				if (s.MarginY != Measurement{Px: 0}) {
+					__lt33 = s.MarginY
+				} else {
+					__lt33 = s.Margin
+				}
+				__lt34 = __lt33
+			}
+			__lt35 = (fmt.Sprint(max((__lt30.Px+(11.0*(__lt32.Em+__lt34.Rem))), 0.0)) + "px")
+		}
+		__lt36 = (("margin-top: " + __lt35) + "; ")
+	}
+	var __lt38 Measurement
+	if (s.MarginRight != Measurement{Px: 0}) {
+		__lt38 = s.MarginRight
+	} else {
+		var __lt37 Measurement
+		if (s.MarginX != Measurement{Px: 0}) {
+			__lt37 = s.MarginX
+		} else {
+			__lt37 = s.Margin
+		}
+		__lt38 = __lt37
+	}
+	var __lt40 Measurement
+	if (s.MarginRight != Measurement{Px: 0}) {
+		__lt40 = s.MarginRight
+	} else {
+		var __lt39 Measurement
+		if (s.MarginX != Measurement{Px: 0}) {
+			__lt39 = s.MarginX
+		} else {
+			__lt39 = s.Margin
+		}
+		__lt40 = __lt39
+	}
+	var __lt42 Measurement
+	if (s.MarginRight != Measurement{Px: 0}) {
+		__lt42 = s.MarginRight
+	} else {
+		var __lt41 Measurement
+		if (s.MarginX != Measurement{Px: 0}) {
+			__lt41 = s.MarginX
+		} else {
+			__lt41 = s.Margin
+		}
+		__lt42 = __lt41
+	}
+	var __lt49 string
+	if max((__lt38.Px+(11.0*(__lt40.Em+__lt42.Rem))), 0.0) == 0.0 {
+		__lt49 = ""
+	} else {
+		var __lt44 Measurement
+		if (s.MarginRight != Measurement{Px: 0}) {
+			__lt44 = s.MarginRight
+		} else {
+			var __lt43 Measurement
+			if (s.MarginX != Measurement{Px: 0}) {
+				__lt43 = s.MarginX
+			} else {
+				__lt43 = s.Margin
+			}
+			__lt44 = __lt43
+		}
+		var __lt46 Measurement
+		if (s.MarginRight != Measurement{Px: 0}) {
+			__lt46 = s.MarginRight
+		} else {
+			var __lt45 Measurement
+			if (s.MarginX != Measurement{Px: 0}) {
+				__lt45 = s.MarginX
+			} else {
+				__lt45 = s.Margin
+			}
+			__lt46 = __lt45
+		}
+		var __lt48 Measurement
+		if (s.MarginRight != Measurement{Px: 0}) {
+			__lt48 = s.MarginRight
+		} else {
+			var __lt47 Measurement
+			if (s.MarginX != Measurement{Px: 0}) {
+				__lt47 = s.MarginX
+			} else {
+				__lt47 = s.Margin
+			}
+			__lt48 = __lt47
+		}
+		__lt49 = (fmt.Sprint(max((__lt44.Px+(11.0*(__lt46.Em+__lt48.Rem))), 0.0)) + "px")
+	}
+	var __lt63 string
+	if __lt49 == "" {
+		__lt63 = ""
+	} else {
+		var __lt51 Measurement
+		if (s.MarginRight != Measurement{Px: 0}) {
+			__lt51 = s.MarginRight
+		} else {
+			var __lt50 Measurement
+			if (s.MarginX != Measurement{Px: 0}) {
+				__lt50 = s.MarginX
+			} else {
+				__lt50 = s.Margin
+			}
+			__lt51 = __lt50
+		}
+		var __lt53 Measurement
+		if (s.MarginRight != Measurement{Px: 0}) {
+			__lt53 = s.MarginRight
+		} else {
+			var __lt52 Measurement
+			if (s.MarginX != Measurement{Px: 0}) {
+				__lt52 = s.MarginX
+			} else {
+				__lt52 = s.Margin
+			}
+			__lt53 = __lt52
+		}
+		var __lt55 Measurement
+		if (s.MarginRight != Measurement{Px: 0}) {
+			__lt55 = s.MarginRight
+		} else {
+			var __lt54 Measurement
+			if (s.MarginX != Measurement{Px: 0}) {
+				__lt54 = s.MarginX
+			} else {
+				__lt54 = s.Margin
+			}
+			__lt55 = __lt54
+		}
+		var __lt62 string
+		if max((__lt51.Px+(11.0*(__lt53.Em+__lt55.Rem))), 0.0) == 0.0 {
+			__lt62 = ""
+		} else {
+			var __lt57 Measurement
+			if (s.MarginRight != Measurement{Px: 0}) {
+				__lt57 = s.MarginRight
+			} else {
+				var __lt56 Measurement
+				if (s.MarginX != Measurement{Px: 0}) {
+					__lt56 = s.MarginX
+				} else {
+					__lt56 = s.Margin
+				}
+				__lt57 = __lt56
+			}
+			var __lt59 Measurement
+			if (s.MarginRight != Measurement{Px: 0}) {
+				__lt59 = s.MarginRight
+			} else {
+				var __lt58 Measurement
+				if (s.MarginX != Measurement{Px: 0}) {
+					__lt58 = s.MarginX
+				} else {
+					__lt58 = s.Margin
+				}
+				__lt59 = __lt58
+			}
+			var __lt61 Measurement
+			if (s.MarginRight != Measurement{Px: 0}) {
+				__lt61 = s.MarginRight
+			} else {
+				var __lt60 Measurement
+				if (s.MarginX != Measurement{Px: 0}) {
+					__lt60 = s.MarginX
+				} else {
+					__lt60 = s.Margin
+				}
+				__lt61 = __lt60
+			}
+			__lt62 = (fmt.Sprint(max((__lt57.Px+(11.0*(__lt59.Em+__lt61.Rem))), 0.0)) + "px")
+		}
+		__lt63 = (("margin-right: " + __lt62) + "; ")
+	}
+	var __lt65 Measurement
+	if (s.MarginBottom != Measurement{Px: 0}) {
+		__lt65 = s.MarginBottom
+	} else {
+		var __lt64 Measurement
+		if (s.MarginY != Measurement{Px: 0}) {
+			__lt64 = s.MarginY
+		} else {
+			__lt64 = s.Margin
+		}
+		__lt65 = __lt64
+	}
+	var __lt67 Measurement
+	if (s.MarginBottom != Measurement{Px: 0}) {
+		__lt67 = s.MarginBottom
+	} else {
+		var __lt66 Measurement
+		if (s.MarginY != Measurement{Px: 0}) {
+			__lt66 = s.MarginY
+		} else {
+			__lt66 = s.Margin
+		}
+		__lt67 = __lt66
+	}
+	var __lt69 Measurement
+	if (s.MarginBottom != Measurement{Px: 0}) {
+		__lt69 = s.MarginBottom
+	} else {
+		var __lt68 Measurement
+		if (s.MarginY != Measurement{Px: 0}) {
+			__lt68 = s.MarginY
+		} else {
+			__lt68 = s.Margin
+		}
+		__lt69 = __lt68
+	}
+	var __lt76 string
+	if max((__lt65.Px+(11.0*(__lt67.Em+__lt69.Rem))), 0.0) == 0.0 {
+		__lt76 = ""
+	} else {
+		var __lt71 Measurement
+		if (s.MarginBottom != Measurement{Px: 0}) {
+			__lt71 = s.MarginBottom
+		} else {
+			var __lt70 Measurement
+			if (s.MarginY != Measurement{Px: 0}) {
+				__lt70 = s.MarginY
+			} else {
+				__lt70 = s.Margin
+			}
+			__lt71 = __lt70
+		}
+		var __lt73 Measurement
+		if (s.MarginBottom != Measurement{Px: 0}) {
+			__lt73 = s.MarginBottom
+		} else {
+			var __lt72 Measurement
+			if (s.MarginY != Measurement{Px: 0}) {
+				__lt72 = s.MarginY
+			} else {
+				__lt72 = s.Margin
+			}
+			__lt73 = __lt72
+		}
+		var __lt75 Measurement
+		if (s.MarginBottom != Measurement{Px: 0}) {
+			__lt75 = s.MarginBottom
+		} else {
+			var __lt74 Measurement
+			if (s.MarginY != Measurement{Px: 0}) {
+				__lt74 = s.MarginY
+			} else {
+				__lt74 = s.Margin
+			}
+			__lt75 = __lt74
+		}
+		__lt76 = (fmt.Sprint(max((__lt71.Px+(11.0*(__lt73.Em+__lt75.Rem))), 0.0)) + "px")
+	}
+	var __lt90 string
+	if __lt76 == "" {
+		__lt90 = ""
+	} else {
+		var __lt78 Measurement
+		if (s.MarginBottom != Measurement{Px: 0}) {
+			__lt78 = s.MarginBottom
+		} else {
+			var __lt77 Measurement
+			if (s.MarginY != Measurement{Px: 0}) {
+				__lt77 = s.MarginY
+			} else {
+				__lt77 = s.Margin
+			}
+			__lt78 = __lt77
+		}
+		var __lt80 Measurement
+		if (s.MarginBottom != Measurement{Px: 0}) {
+			__lt80 = s.MarginBottom
+		} else {
+			var __lt79 Measurement
+			if (s.MarginY != Measurement{Px: 0}) {
+				__lt79 = s.MarginY
+			} else {
+				__lt79 = s.Margin
+			}
+			__lt80 = __lt79
+		}
+		var __lt82 Measurement
+		if (s.MarginBottom != Measurement{Px: 0}) {
+			__lt82 = s.MarginBottom
+		} else {
+			var __lt81 Measurement
+			if (s.MarginY != Measurement{Px: 0}) {
+				__lt81 = s.MarginY
+			} else {
+				__lt81 = s.Margin
+			}
+			__lt82 = __lt81
+		}
+		var __lt89 string
+		if max((__lt78.Px+(11.0*(__lt80.Em+__lt82.Rem))), 0.0) == 0.0 {
+			__lt89 = ""
+		} else {
+			var __lt84 Measurement
+			if (s.MarginBottom != Measurement{Px: 0}) {
+				__lt84 = s.MarginBottom
+			} else {
+				var __lt83 Measurement
+				if (s.MarginY != Measurement{Px: 0}) {
+					__lt83 = s.MarginY
+				} else {
+					__lt83 = s.Margin
+				}
+				__lt84 = __lt83
+			}
+			var __lt86 Measurement
+			if (s.MarginBottom != Measurement{Px: 0}) {
+				__lt86 = s.MarginBottom
+			} else {
+				var __lt85 Measurement
+				if (s.MarginY != Measurement{Px: 0}) {
+					__lt85 = s.MarginY
+				} else {
+					__lt85 = s.Margin
+				}
+				__lt86 = __lt85
+			}
+			var __lt88 Measurement
+			if (s.MarginBottom != Measurement{Px: 0}) {
+				__lt88 = s.MarginBottom
+			} else {
+				var __lt87 Measurement
+				if (s.MarginY != Measurement{Px: 0}) {
+					__lt87 = s.MarginY
+				} else {
+					__lt87 = s.Margin
+				}
+				__lt88 = __lt87
+			}
+			__lt89 = (fmt.Sprint(max((__lt84.Px+(11.0*(__lt86.Em+__lt88.Rem))), 0.0)) + "px")
+		}
+		__lt90 = (("margin-bottom: " + __lt89) + "; ")
+	}
+	var __lt92 Measurement
+	if (s.MarginLeft != Measurement{Px: 0}) {
+		__lt92 = s.MarginLeft
+	} else {
+		var __lt91 Measurement
+		if (s.MarginX != Measurement{Px: 0}) {
+			__lt91 = s.MarginX
+		} else {
+			__lt91 = s.Margin
+		}
+		__lt92 = __lt91
+	}
+	var __lt94 Measurement
+	if (s.MarginLeft != Measurement{Px: 0}) {
+		__lt94 = s.MarginLeft
+	} else {
+		var __lt93 Measurement
+		if (s.MarginX != Measurement{Px: 0}) {
+			__lt93 = s.MarginX
+		} else {
+			__lt93 = s.Margin
+		}
+		__lt94 = __lt93
+	}
+	var __lt96 Measurement
+	if (s.MarginLeft != Measurement{Px: 0}) {
+		__lt96 = s.MarginLeft
+	} else {
+		var __lt95 Measurement
+		if (s.MarginX != Measurement{Px: 0}) {
+			__lt95 = s.MarginX
+		} else {
+			__lt95 = s.Margin
+		}
+		__lt96 = __lt95
+	}
+	var __lt103 string
+	if max((__lt92.Px+(11.0*(__lt94.Em+__lt96.Rem))), 0.0) == 0.0 {
+		__lt103 = ""
+	} else {
+		var __lt98 Measurement
+		if (s.MarginLeft != Measurement{Px: 0}) {
+			__lt98 = s.MarginLeft
+		} else {
+			var __lt97 Measurement
+			if (s.MarginX != Measurement{Px: 0}) {
+				__lt97 = s.MarginX
+			} else {
+				__lt97 = s.Margin
+			}
+			__lt98 = __lt97
+		}
+		var __lt100 Measurement
+		if (s.MarginLeft != Measurement{Px: 0}) {
+			__lt100 = s.MarginLeft
+		} else {
+			var __lt99 Measurement
+			if (s.MarginX != Measurement{Px: 0}) {
+				__lt99 = s.MarginX
+			} else {
+				__lt99 = s.Margin
+			}
+			__lt100 = __lt99
+		}
+		var __lt102 Measurement
+		if (s.MarginLeft != Measurement{Px: 0}) {
+			__lt102 = s.MarginLeft
+		} else {
+			var __lt101 Measurement
+			if (s.MarginX != Measurement{Px: 0}) {
+				__lt101 = s.MarginX
+			} else {
+				__lt101 = s.Margin
+			}
+			__lt102 = __lt101
+		}
+		__lt103 = (fmt.Sprint(max((__lt98.Px+(11.0*(__lt100.Em+__lt102.Rem))), 0.0)) + "px")
+	}
+	var __lt117 string
+	if __lt103 == "" {
+		__lt117 = ""
+	} else {
+		var __lt105 Measurement
+		if (s.MarginLeft != Measurement{Px: 0}) {
+			__lt105 = s.MarginLeft
+		} else {
+			var __lt104 Measurement
+			if (s.MarginX != Measurement{Px: 0}) {
+				__lt104 = s.MarginX
+			} else {
+				__lt104 = s.Margin
+			}
+			__lt105 = __lt104
+		}
+		var __lt107 Measurement
+		if (s.MarginLeft != Measurement{Px: 0}) {
+			__lt107 = s.MarginLeft
+		} else {
+			var __lt106 Measurement
+			if (s.MarginX != Measurement{Px: 0}) {
+				__lt106 = s.MarginX
+			} else {
+				__lt106 = s.Margin
+			}
+			__lt107 = __lt106
+		}
+		var __lt109 Measurement
+		if (s.MarginLeft != Measurement{Px: 0}) {
+			__lt109 = s.MarginLeft
+		} else {
+			var __lt108 Measurement
+			if (s.MarginX != Measurement{Px: 0}) {
+				__lt108 = s.MarginX
+			} else {
+				__lt108 = s.Margin
+			}
+			__lt109 = __lt108
+		}
+		var __lt116 string
+		if max((__lt105.Px+(11.0*(__lt107.Em+__lt109.Rem))), 0.0) == 0.0 {
+			__lt116 = ""
+		} else {
+			var __lt111 Measurement
+			if (s.MarginLeft != Measurement{Px: 0}) {
+				__lt111 = s.MarginLeft
+			} else {
+				var __lt110 Measurement
+				if (s.MarginX != Measurement{Px: 0}) {
+					__lt110 = s.MarginX
+				} else {
+					__lt110 = s.Margin
+				}
+				__lt111 = __lt110
+			}
+			var __lt113 Measurement
+			if (s.MarginLeft != Measurement{Px: 0}) {
+				__lt113 = s.MarginLeft
+			} else {
+				var __lt112 Measurement
+				if (s.MarginX != Measurement{Px: 0}) {
+					__lt112 = s.MarginX
+				} else {
+					__lt112 = s.Margin
+				}
+				__lt113 = __lt112
+			}
+			var __lt115 Measurement
+			if (s.MarginLeft != Measurement{Px: 0}) {
+				__lt115 = s.MarginLeft
+			} else {
+				var __lt114 Measurement
+				if (s.MarginX != Measurement{Px: 0}) {
+					__lt114 = s.MarginX
+				} else {
+					__lt114 = s.Margin
+				}
+				__lt115 = __lt114
+			}
+			__lt116 = (fmt.Sprint(max((__lt111.Px+(11.0*(__lt113.Em+__lt115.Rem))), 0.0)) + "px")
+		}
+		__lt117 = (("margin-left: " + __lt116) + "; ")
+	}
+	var __lt119 Measurement
+	if (s.PaddingTop != Measurement{Px: 0}) {
+		__lt119 = s.PaddingTop
+	} else {
+		var __lt118 Measurement
+		if (s.PaddingY != Measurement{Px: 0}) {
+			__lt118 = s.PaddingY
+		} else {
+			__lt118 = s.Padding
+		}
+		__lt119 = __lt118
+	}
+	var __lt121 Measurement
+	if (s.PaddingTop != Measurement{Px: 0}) {
+		__lt121 = s.PaddingTop
+	} else {
+		var __lt120 Measurement
+		if (s.PaddingY != Measurement{Px: 0}) {
+			__lt120 = s.PaddingY
+		} else {
+			__lt120 = s.Padding
+		}
+		__lt121 = __lt120
+	}
+	var __lt123 Measurement
+	if (s.PaddingTop != Measurement{Px: 0}) {
+		__lt123 = s.PaddingTop
+	} else {
+		var __lt122 Measurement
+		if (s.PaddingY != Measurement{Px: 0}) {
+			__lt122 = s.PaddingY
+		} else {
+			__lt122 = s.Padding
+		}
+		__lt123 = __lt122
+	}
+	var __lt130 string
+	if max((__lt119.Px+(11.0*(__lt121.Em+__lt123.Rem))), 0.0) == 0.0 {
+		__lt130 = ""
+	} else {
+		var __lt125 Measurement
+		if (s.PaddingTop != Measurement{Px: 0}) {
+			__lt125 = s.PaddingTop
+		} else {
+			var __lt124 Measurement
+			if (s.PaddingY != Measurement{Px: 0}) {
+				__lt124 = s.PaddingY
+			} else {
+				__lt124 = s.Padding
+			}
+			__lt125 = __lt124
+		}
+		var __lt127 Measurement
+		if (s.PaddingTop != Measurement{Px: 0}) {
+			__lt127 = s.PaddingTop
+		} else {
+			var __lt126 Measurement
+			if (s.PaddingY != Measurement{Px: 0}) {
+				__lt126 = s.PaddingY
+			} else {
+				__lt126 = s.Padding
+			}
+			__lt127 = __lt126
+		}
+		var __lt129 Measurement
+		if (s.PaddingTop != Measurement{Px: 0}) {
+			__lt129 = s.PaddingTop
+		} else {
+			var __lt128 Measurement
+			if (s.PaddingY != Measurement{Px: 0}) {
+				__lt128 = s.PaddingY
+			} else {
+				__lt128 = s.Padding
+			}
+			__lt129 = __lt128
+		}
+		__lt130 = (fmt.Sprint(max((__lt125.Px+(11.0*(__lt127.Em+__lt129.Rem))), 0.0)) + "px")
+	}
+	var __lt144 string
+	if __lt130 == "" {
+		__lt144 = ""
+	} else {
+		var __lt132 Measurement
+		if (s.PaddingTop != Measurement{Px: 0}) {
+			__lt132 = s.PaddingTop
+		} else {
+			var __lt131 Measurement
+			if (s.PaddingY != Measurement{Px: 0}) {
+				__lt131 = s.PaddingY
+			} else {
+				__lt131 = s.Padding
+			}
+			__lt132 = __lt131
+		}
+		var __lt134 Measurement
+		if (s.PaddingTop != Measurement{Px: 0}) {
+			__lt134 = s.PaddingTop
+		} else {
+			var __lt133 Measurement
+			if (s.PaddingY != Measurement{Px: 0}) {
+				__lt133 = s.PaddingY
+			} else {
+				__lt133 = s.Padding
+			}
+			__lt134 = __lt133
+		}
+		var __lt136 Measurement
+		if (s.PaddingTop != Measurement{Px: 0}) {
+			__lt136 = s.PaddingTop
+		} else {
+			var __lt135 Measurement
+			if (s.PaddingY != Measurement{Px: 0}) {
+				__lt135 = s.PaddingY
+			} else {
+				__lt135 = s.Padding
+			}
+			__lt136 = __lt135
+		}
+		var __lt143 string
+		if max((__lt132.Px+(11.0*(__lt134.Em+__lt136.Rem))), 0.0) == 0.0 {
+			__lt143 = ""
+		} else {
+			var __lt138 Measurement
+			if (s.PaddingTop != Measurement{Px: 0}) {
+				__lt138 = s.PaddingTop
+			} else {
+				var __lt137 Measurement
+				if (s.PaddingY != Measurement{Px: 0}) {
+					__lt137 = s.PaddingY
+				} else {
+					__lt137 = s.Padding
+				}
+				__lt138 = __lt137
+			}
+			var __lt140 Measurement
+			if (s.PaddingTop != Measurement{Px: 0}) {
+				__lt140 = s.PaddingTop
+			} else {
+				var __lt139 Measurement
+				if (s.PaddingY != Measurement{Px: 0}) {
+					__lt139 = s.PaddingY
+				} else {
+					__lt139 = s.Padding
+				}
+				__lt140 = __lt139
+			}
+			var __lt142 Measurement
+			if (s.PaddingTop != Measurement{Px: 0}) {
+				__lt142 = s.PaddingTop
+			} else {
+				var __lt141 Measurement
+				if (s.PaddingY != Measurement{Px: 0}) {
+					__lt141 = s.PaddingY
+				} else {
+					__lt141 = s.Padding
+				}
+				__lt142 = __lt141
+			}
+			__lt143 = (fmt.Sprint(max((__lt138.Px+(11.0*(__lt140.Em+__lt142.Rem))), 0.0)) + "px")
+		}
+		__lt144 = (("padding-top: " + __lt143) + "; ")
+	}
+	var __lt146 Measurement
+	if (s.PaddingRight != Measurement{Px: 0}) {
+		__lt146 = s.PaddingRight
+	} else {
+		var __lt145 Measurement
+		if (s.PaddingX != Measurement{Px: 0}) {
+			__lt145 = s.PaddingX
+		} else {
+			__lt145 = s.Padding
+		}
+		__lt146 = __lt145
+	}
+	var __lt148 Measurement
+	if (s.PaddingRight != Measurement{Px: 0}) {
+		__lt148 = s.PaddingRight
+	} else {
+		var __lt147 Measurement
+		if (s.PaddingX != Measurement{Px: 0}) {
+			__lt147 = s.PaddingX
+		} else {
+			__lt147 = s.Padding
+		}
+		__lt148 = __lt147
+	}
+	var __lt150 Measurement
+	if (s.PaddingRight != Measurement{Px: 0}) {
+		__lt150 = s.PaddingRight
+	} else {
+		var __lt149 Measurement
+		if (s.PaddingX != Measurement{Px: 0}) {
+			__lt149 = s.PaddingX
+		} else {
+			__lt149 = s.Padding
+		}
+		__lt150 = __lt149
+	}
+	var __lt157 string
+	if max((__lt146.Px+(11.0*(__lt148.Em+__lt150.Rem))), 0.0) == 0.0 {
+		__lt157 = ""
+	} else {
+		var __lt152 Measurement
+		if (s.PaddingRight != Measurement{Px: 0}) {
+			__lt152 = s.PaddingRight
+		} else {
+			var __lt151 Measurement
+			if (s.PaddingX != Measurement{Px: 0}) {
+				__lt151 = s.PaddingX
+			} else {
+				__lt151 = s.Padding
+			}
+			__lt152 = __lt151
+		}
+		var __lt154 Measurement
+		if (s.PaddingRight != Measurement{Px: 0}) {
+			__lt154 = s.PaddingRight
+		} else {
+			var __lt153 Measurement
+			if (s.PaddingX != Measurement{Px: 0}) {
+				__lt153 = s.PaddingX
+			} else {
+				__lt153 = s.Padding
+			}
+			__lt154 = __lt153
+		}
+		var __lt156 Measurement
+		if (s.PaddingRight != Measurement{Px: 0}) {
+			__lt156 = s.PaddingRight
+		} else {
+			var __lt155 Measurement
+			if (s.PaddingX != Measurement{Px: 0}) {
+				__lt155 = s.PaddingX
+			} else {
+				__lt155 = s.Padding
+			}
+			__lt156 = __lt155
+		}
+		__lt157 = (fmt.Sprint(max((__lt152.Px+(11.0*(__lt154.Em+__lt156.Rem))), 0.0)) + "px")
+	}
+	var __lt171 string
+	if __lt157 == "" {
+		__lt171 = ""
+	} else {
+		var __lt159 Measurement
+		if (s.PaddingRight != Measurement{Px: 0}) {
+			__lt159 = s.PaddingRight
+		} else {
+			var __lt158 Measurement
+			if (s.PaddingX != Measurement{Px: 0}) {
+				__lt158 = s.PaddingX
+			} else {
+				__lt158 = s.Padding
+			}
+			__lt159 = __lt158
+		}
+		var __lt161 Measurement
+		if (s.PaddingRight != Measurement{Px: 0}) {
+			__lt161 = s.PaddingRight
+		} else {
+			var __lt160 Measurement
+			if (s.PaddingX != Measurement{Px: 0}) {
+				__lt160 = s.PaddingX
+			} else {
+				__lt160 = s.Padding
+			}
+			__lt161 = __lt160
+		}
+		var __lt163 Measurement
+		if (s.PaddingRight != Measurement{Px: 0}) {
+			__lt163 = s.PaddingRight
+		} else {
+			var __lt162 Measurement
+			if (s.PaddingX != Measurement{Px: 0}) {
+				__lt162 = s.PaddingX
+			} else {
+				__lt162 = s.Padding
+			}
+			__lt163 = __lt162
+		}
+		var __lt170 string
+		if max((__lt159.Px+(11.0*(__lt161.Em+__lt163.Rem))), 0.0) == 0.0 {
+			__lt170 = ""
+		} else {
+			var __lt165 Measurement
+			if (s.PaddingRight != Measurement{Px: 0}) {
+				__lt165 = s.PaddingRight
+			} else {
+				var __lt164 Measurement
+				if (s.PaddingX != Measurement{Px: 0}) {
+					__lt164 = s.PaddingX
+				} else {
+					__lt164 = s.Padding
+				}
+				__lt165 = __lt164
+			}
+			var __lt167 Measurement
+			if (s.PaddingRight != Measurement{Px: 0}) {
+				__lt167 = s.PaddingRight
+			} else {
+				var __lt166 Measurement
+				if (s.PaddingX != Measurement{Px: 0}) {
+					__lt166 = s.PaddingX
+				} else {
+					__lt166 = s.Padding
+				}
+				__lt167 = __lt166
+			}
+			var __lt169 Measurement
+			if (s.PaddingRight != Measurement{Px: 0}) {
+				__lt169 = s.PaddingRight
+			} else {
+				var __lt168 Measurement
+				if (s.PaddingX != Measurement{Px: 0}) {
+					__lt168 = s.PaddingX
+				} else {
+					__lt168 = s.Padding
+				}
+				__lt169 = __lt168
+			}
+			__lt170 = (fmt.Sprint(max((__lt165.Px+(11.0*(__lt167.Em+__lt169.Rem))), 0.0)) + "px")
+		}
+		__lt171 = (("padding-right: " + __lt170) + "; ")
+	}
+	var __lt173 Measurement
+	if (s.PaddingBottom != Measurement{Px: 0}) {
+		__lt173 = s.PaddingBottom
+	} else {
+		var __lt172 Measurement
+		if (s.PaddingY != Measurement{Px: 0}) {
+			__lt172 = s.PaddingY
+		} else {
+			__lt172 = s.Padding
+		}
+		__lt173 = __lt172
+	}
+	var __lt175 Measurement
+	if (s.PaddingBottom != Measurement{Px: 0}) {
+		__lt175 = s.PaddingBottom
+	} else {
+		var __lt174 Measurement
+		if (s.PaddingY != Measurement{Px: 0}) {
+			__lt174 = s.PaddingY
+		} else {
+			__lt174 = s.Padding
+		}
+		__lt175 = __lt174
+	}
+	var __lt177 Measurement
+	if (s.PaddingBottom != Measurement{Px: 0}) {
+		__lt177 = s.PaddingBottom
+	} else {
+		var __lt176 Measurement
+		if (s.PaddingY != Measurement{Px: 0}) {
+			__lt176 = s.PaddingY
+		} else {
+			__lt176 = s.Padding
+		}
+		__lt177 = __lt176
+	}
+	var __lt184 string
+	if max((__lt173.Px+(11.0*(__lt175.Em+__lt177.Rem))), 0.0) == 0.0 {
+		__lt184 = ""
+	} else {
+		var __lt179 Measurement
+		if (s.PaddingBottom != Measurement{Px: 0}) {
+			__lt179 = s.PaddingBottom
+		} else {
+			var __lt178 Measurement
+			if (s.PaddingY != Measurement{Px: 0}) {
+				__lt178 = s.PaddingY
+			} else {
+				__lt178 = s.Padding
+			}
+			__lt179 = __lt178
+		}
+		var __lt181 Measurement
+		if (s.PaddingBottom != Measurement{Px: 0}) {
+			__lt181 = s.PaddingBottom
+		} else {
+			var __lt180 Measurement
+			if (s.PaddingY != Measurement{Px: 0}) {
+				__lt180 = s.PaddingY
+			} else {
+				__lt180 = s.Padding
+			}
+			__lt181 = __lt180
+		}
+		var __lt183 Measurement
+		if (s.PaddingBottom != Measurement{Px: 0}) {
+			__lt183 = s.PaddingBottom
+		} else {
+			var __lt182 Measurement
+			if (s.PaddingY != Measurement{Px: 0}) {
+				__lt182 = s.PaddingY
+			} else {
+				__lt182 = s.Padding
+			}
+			__lt183 = __lt182
+		}
+		__lt184 = (fmt.Sprint(max((__lt179.Px+(11.0*(__lt181.Em+__lt183.Rem))), 0.0)) + "px")
+	}
+	var __lt198 string
+	if __lt184 == "" {
+		__lt198 = ""
+	} else {
+		var __lt186 Measurement
+		if (s.PaddingBottom != Measurement{Px: 0}) {
+			__lt186 = s.PaddingBottom
+		} else {
+			var __lt185 Measurement
+			if (s.PaddingY != Measurement{Px: 0}) {
+				__lt185 = s.PaddingY
+			} else {
+				__lt185 = s.Padding
+			}
+			__lt186 = __lt185
+		}
+		var __lt188 Measurement
+		if (s.PaddingBottom != Measurement{Px: 0}) {
+			__lt188 = s.PaddingBottom
+		} else {
+			var __lt187 Measurement
+			if (s.PaddingY != Measurement{Px: 0}) {
+				__lt187 = s.PaddingY
+			} else {
+				__lt187 = s.Padding
+			}
+			__lt188 = __lt187
+		}
+		var __lt190 Measurement
+		if (s.PaddingBottom != Measurement{Px: 0}) {
+			__lt190 = s.PaddingBottom
+		} else {
+			var __lt189 Measurement
+			if (s.PaddingY != Measurement{Px: 0}) {
+				__lt189 = s.PaddingY
+			} else {
+				__lt189 = s.Padding
+			}
+			__lt190 = __lt189
+		}
+		var __lt197 string
+		if max((__lt186.Px+(11.0*(__lt188.Em+__lt190.Rem))), 0.0) == 0.0 {
+			__lt197 = ""
+		} else {
+			var __lt192 Measurement
+			if (s.PaddingBottom != Measurement{Px: 0}) {
+				__lt192 = s.PaddingBottom
+			} else {
+				var __lt191 Measurement
+				if (s.PaddingY != Measurement{Px: 0}) {
+					__lt191 = s.PaddingY
+				} else {
+					__lt191 = s.Padding
+				}
+				__lt192 = __lt191
+			}
+			var __lt194 Measurement
+			if (s.PaddingBottom != Measurement{Px: 0}) {
+				__lt194 = s.PaddingBottom
+			} else {
+				var __lt193 Measurement
+				if (s.PaddingY != Measurement{Px: 0}) {
+					__lt193 = s.PaddingY
+				} else {
+					__lt193 = s.Padding
+				}
+				__lt194 = __lt193
+			}
+			var __lt196 Measurement
+			if (s.PaddingBottom != Measurement{Px: 0}) {
+				__lt196 = s.PaddingBottom
+			} else {
+				var __lt195 Measurement
+				if (s.PaddingY != Measurement{Px: 0}) {
+					__lt195 = s.PaddingY
+				} else {
+					__lt195 = s.Padding
+				}
+				__lt196 = __lt195
+			}
+			__lt197 = (fmt.Sprint(max((__lt192.Px+(11.0*(__lt194.Em+__lt196.Rem))), 0.0)) + "px")
+		}
+		__lt198 = (("padding-bottom: " + __lt197) + "; ")
+	}
+	var __lt200 Measurement
+	if (s.PaddingLeft != Measurement{Px: 0}) {
+		__lt200 = s.PaddingLeft
+	} else {
+		var __lt199 Measurement
+		if (s.PaddingX != Measurement{Px: 0}) {
+			__lt199 = s.PaddingX
+		} else {
+			__lt199 = s.Padding
+		}
+		__lt200 = __lt199
+	}
+	var __lt202 Measurement
+	if (s.PaddingLeft != Measurement{Px: 0}) {
+		__lt202 = s.PaddingLeft
+	} else {
+		var __lt201 Measurement
+		if (s.PaddingX != Measurement{Px: 0}) {
+			__lt201 = s.PaddingX
+		} else {
+			__lt201 = s.Padding
+		}
+		__lt202 = __lt201
+	}
+	var __lt204 Measurement
+	if (s.PaddingLeft != Measurement{Px: 0}) {
+		__lt204 = s.PaddingLeft
+	} else {
+		var __lt203 Measurement
+		if (s.PaddingX != Measurement{Px: 0}) {
+			__lt203 = s.PaddingX
+		} else {
+			__lt203 = s.Padding
+		}
+		__lt204 = __lt203
+	}
+	var __lt211 string
+	if max((__lt200.Px+(11.0*(__lt202.Em+__lt204.Rem))), 0.0) == 0.0 {
+		__lt211 = ""
+	} else {
+		var __lt206 Measurement
+		if (s.PaddingLeft != Measurement{Px: 0}) {
+			__lt206 = s.PaddingLeft
+		} else {
+			var __lt205 Measurement
+			if (s.PaddingX != Measurement{Px: 0}) {
+				__lt205 = s.PaddingX
+			} else {
+				__lt205 = s.Padding
+			}
+			__lt206 = __lt205
+		}
+		var __lt208 Measurement
+		if (s.PaddingLeft != Measurement{Px: 0}) {
+			__lt208 = s.PaddingLeft
+		} else {
+			var __lt207 Measurement
+			if (s.PaddingX != Measurement{Px: 0}) {
+				__lt207 = s.PaddingX
+			} else {
+				__lt207 = s.Padding
+			}
+			__lt208 = __lt207
+		}
+		var __lt210 Measurement
+		if (s.PaddingLeft != Measurement{Px: 0}) {
+			__lt210 = s.PaddingLeft
+		} else {
+			var __lt209 Measurement
+			if (s.PaddingX != Measurement{Px: 0}) {
+				__lt209 = s.PaddingX
+			} else {
+				__lt209 = s.Padding
+			}
+			__lt210 = __lt209
+		}
+		__lt211 = (fmt.Sprint(max((__lt206.Px+(11.0*(__lt208.Em+__lt210.Rem))), 0.0)) + "px")
+	}
+	var __lt225 string
+	if __lt211 == "" {
+		__lt225 = ""
+	} else {
+		var __lt213 Measurement
+		if (s.PaddingLeft != Measurement{Px: 0}) {
+			__lt213 = s.PaddingLeft
+		} else {
+			var __lt212 Measurement
+			if (s.PaddingX != Measurement{Px: 0}) {
+				__lt212 = s.PaddingX
+			} else {
+				__lt212 = s.Padding
+			}
+			__lt213 = __lt212
+		}
+		var __lt215 Measurement
+		if (s.PaddingLeft != Measurement{Px: 0}) {
+			__lt215 = s.PaddingLeft
+		} else {
+			var __lt214 Measurement
+			if (s.PaddingX != Measurement{Px: 0}) {
+				__lt214 = s.PaddingX
+			} else {
+				__lt214 = s.Padding
+			}
+			__lt215 = __lt214
+		}
+		var __lt217 Measurement
+		if (s.PaddingLeft != Measurement{Px: 0}) {
+			__lt217 = s.PaddingLeft
+		} else {
+			var __lt216 Measurement
+			if (s.PaddingX != Measurement{Px: 0}) {
+				__lt216 = s.PaddingX
+			} else {
+				__lt216 = s.Padding
+			}
+			__lt217 = __lt216
+		}
+		var __lt224 string
+		if max((__lt213.Px+(11.0*(__lt215.Em+__lt217.Rem))), 0.0) == 0.0 {
+			__lt224 = ""
+		} else {
+			var __lt219 Measurement
+			if (s.PaddingLeft != Measurement{Px: 0}) {
+				__lt219 = s.PaddingLeft
+			} else {
+				var __lt218 Measurement
+				if (s.PaddingX != Measurement{Px: 0}) {
+					__lt218 = s.PaddingX
+				} else {
+					__lt218 = s.Padding
+				}
+				__lt219 = __lt218
+			}
+			var __lt221 Measurement
+			if (s.PaddingLeft != Measurement{Px: 0}) {
+				__lt221 = s.PaddingLeft
+			} else {
+				var __lt220 Measurement
+				if (s.PaddingX != Measurement{Px: 0}) {
+					__lt220 = s.PaddingX
+				} else {
+					__lt220 = s.Padding
+				}
+				__lt221 = __lt220
+			}
+			var __lt223 Measurement
+			if (s.PaddingLeft != Measurement{Px: 0}) {
+				__lt223 = s.PaddingLeft
+			} else {
+				var __lt222 Measurement
+				if (s.PaddingX != Measurement{Px: 0}) {
+					__lt222 = s.PaddingX
+				} else {
+					__lt222 = s.Padding
+				}
+				__lt223 = __lt222
+			}
+			__lt224 = (fmt.Sprint(max((__lt219.Px+(11.0*(__lt221.Em+__lt223.Rem))), 0.0)) + "px")
+		}
+		__lt225 = (("padding-left: " + __lt224) + "; ")
+	}
+	var __lt226 string
+	if max((s.MinWidth.Px+(11.0*(s.MinWidth.Em+s.MinWidth.Rem))), 0.0) == 0.0 {
+		__lt226 = ""
+	} else {
+		__lt226 = (fmt.Sprint(max((s.MinWidth.Px+(11.0*(s.MinWidth.Em+s.MinWidth.Rem))), 0.0)) + "px")
+	}
+	var __lt228 string
+	if __lt226 == "" {
+		__lt228 = ""
+	} else {
+		var __lt227 string
+		if max((s.MinWidth.Px+(11.0*(s.MinWidth.Em+s.MinWidth.Rem))), 0.0) == 0.0 {
+			__lt227 = ""
+		} else {
+			__lt227 = (fmt.Sprint(max((s.MinWidth.Px+(11.0*(s.MinWidth.Em+s.MinWidth.Rem))), 0.0)) + "px")
+		}
+		__lt228 = (("min-width: " + __lt227) + "; ")
+	}
+	var __lt229 string
+	if (s.Color.A == 0) || (s.Color == snglcolor.Color{R: 0, G: 0, B: 0, A: 255}) {
+		__lt229 = ""
+	} else {
+		__lt229 = s.Color.Hex()
+	}
+	var __lt231 string
+	if __lt229 == "" {
+		__lt231 = ""
+	} else {
+		var __lt230 string
+		if (s.Color.A == 0) || (s.Color == snglcolor.Color{R: 0, G: 0, B: 0, A: 255}) {
+			__lt230 = ""
+		} else {
+			__lt230 = s.Color.Hex()
+		}
+		__lt231 = (("color: " + __lt230) + "; ")
+	}
+	var __lt232 string
+	if max((s.FontSize.Px+(11.0*(s.FontSize.Em+s.FontSize.Rem))), 0.0) == 0.0 {
+		__lt232 = ""
+	} else {
+		__lt232 = (fmt.Sprint(max((s.FontSize.Px+(11.0*(s.FontSize.Em+s.FontSize.Rem))), 0.0)) + "pt")
+	}
+	var __lt234 string
+	if __lt232 == "" {
+		__lt234 = ""
+	} else {
+		var __lt233 string
+		if max((s.FontSize.Px+(11.0*(s.FontSize.Em+s.FontSize.Rem))), 0.0) == 0.0 {
+			__lt233 = ""
+		} else {
+			__lt233 = (fmt.Sprint(max((s.FontSize.Px+(11.0*(s.FontSize.Em+s.FontSize.Rem))), 0.0)) + "pt")
+		}
+		__lt234 = (("font-size: " + __lt233) + "; ")
+	}
+	var __lt235 string
+	if s.FontFamily == "" {
+		__lt235 = ""
+	} else {
+		__lt235 = (("font-family: " + s.FontFamily) + "; ")
+	}
+	var __lt238 string
+	if s.FontWeight == "bold" {
+		__lt238 = "bold"
+	} else {
+		var __lt237 string
+		if s.FontWeight == "bolder" {
+			__lt237 = "bolder"
+		} else {
+			var __lt236 string
+			if s.FontWeight == "lighter" {
+				__lt236 = "lighter"
+			} else {
+				__lt236 = ""
+			}
+			__lt237 = __lt236
+		}
+		__lt238 = __lt237
+	}
+	var __lt242 string
+	if __lt238 == "" {
+		__lt242 = ""
+	} else {
+		var __lt241 string
+		if s.FontWeight == "bold" {
+			__lt241 = "bold"
+		} else {
+			var __lt240 string
+			if s.FontWeight == "bolder" {
+				__lt240 = "bolder"
+			} else {
+				var __lt239 string
+				if s.FontWeight == "lighter" {
+					__lt239 = "lighter"
+				} else {
+					__lt239 = ""
+				}
+				__lt240 = __lt239
+			}
+			__lt241 = __lt240
+		}
+		__lt242 = (("font-weight: " + __lt241) + "; ")
+	}
+	var __lt244 string
+	if s.FontStyle == "italic" {
+		__lt244 = "italic"
+	} else {
+		var __lt243 string
+		if s.FontStyle == "oblique" {
+			__lt243 = "oblique"
+		} else {
+			__lt243 = ""
+		}
+		__lt244 = __lt243
+	}
+	var __lt247 string
+	if __lt244 == "" {
+		__lt247 = ""
+	} else {
+		var __lt246 string
+		if s.FontStyle == "italic" {
+			__lt246 = "italic"
+		} else {
+			var __lt245 string
+			if s.FontStyle == "oblique" {
+				__lt245 = "oblique"
+			} else {
+				__lt245 = ""
+			}
+			__lt246 = __lt245
+		}
+		__lt247 = (("font-style: " + __lt246) + "; ")
+	}
+	var __lt248 string
+	if (s.Background.A == 0) || (s.Background == snglcolor.Color{R: 0, G: 0, B: 0, A: 255}) {
+		__lt248 = ""
+	} else {
+		__lt248 = s.Background.Hex()
+	}
+	var __lt250 string
+	if __lt248 == "" {
+		__lt250 = ""
+	} else {
+		var __lt249 string
+		if (s.Background.A == 0) || (s.Background == snglcolor.Color{R: 0, G: 0, B: 0, A: 255}) {
+			__lt249 = ""
+		} else {
+			__lt249 = s.Background.Hex()
+		}
+		__lt250 = (("background: " + __lt249) + "; ")
+	}
+	var __lt251 string
+	if max((s.BorderRadius.Px+(11.0*(s.BorderRadius.Em+s.BorderRadius.Rem))), 0.0) == 0.0 {
+		__lt251 = ""
+	} else {
+		__lt251 = (fmt.Sprint(max((s.BorderRadius.Px+(11.0*(s.BorderRadius.Em+s.BorderRadius.Rem))), 0.0)) + "px")
+	}
+	var __lt253 string
+	if __lt251 == "" {
+		__lt253 = ""
+	} else {
+		var __lt252 string
+		if max((s.BorderRadius.Px+(11.0*(s.BorderRadius.Em+s.BorderRadius.Rem))), 0.0) == 0.0 {
+			__lt252 = ""
+		} else {
+			__lt252 = (fmt.Sprint(max((s.BorderRadius.Px+(11.0*(s.BorderRadius.Em+s.BorderRadius.Rem))), 0.0)) + "px")
+		}
+		__lt253 = (("border-radius: " + __lt252) + "; ")
+	}
+	var __lt254 string
+	if (s.BorderColor.A == 0) || (s.BorderColor == snglcolor.Color{R: 0, G: 0, B: 0, A: 255}) {
+		__lt254 = ""
+	} else {
+		__lt254 = s.BorderColor.Hex()
+	}
+	var __lt256 string
+	if __lt254 == "" {
+		__lt256 = ""
+	} else {
+		var __lt255 string
+		if (s.BorderColor.A == 0) || (s.BorderColor == snglcolor.Color{R: 0, G: 0, B: 0, A: 255}) {
+			__lt255 = ""
+		} else {
+			__lt255 = s.BorderColor.Hex()
+		}
+		__lt256 = (("border-color: " + __lt255) + "; ")
+	}
+	var __lt257 string
+	if max((s.BorderWidth.Px+(11.0*(s.BorderWidth.Em+s.BorderWidth.Rem))), 0.0) == 0.0 {
+		__lt257 = ""
+	} else {
+		__lt257 = (fmt.Sprint(max((s.BorderWidth.Px+(11.0*(s.BorderWidth.Em+s.BorderWidth.Rem))), 0.0)) + "px")
+	}
+	var __lt259 string
+	if __lt257 == "" {
+		__lt259 = ""
+	} else {
+		var __lt258 string
+		if max((s.BorderWidth.Px+(11.0*(s.BorderWidth.Em+s.BorderWidth.Rem))), 0.0) == 0.0 {
+			__lt258 = ""
+		} else {
+			__lt258 = (fmt.Sprint(max((s.BorderWidth.Px+(11.0*(s.BorderWidth.Em+s.BorderWidth.Rem))), 0.0)) + "px")
+		}
+		__lt259 = (("border-width: " + __lt258) + "; ")
+	}
+	var __lt264 string
+	if s.BorderStyle == "solid" {
+		__lt264 = "solid"
+	} else {
+		var __lt263 string
+		if s.BorderStyle == "dashed" {
+			__lt263 = "dashed"
+		} else {
+			var __lt262 string
+			if s.BorderStyle == "dotted" {
+				__lt262 = "dotted"
+			} else {
+				var __lt261 string
+				if s.BorderStyle == "double" {
+					__lt261 = "double"
+				} else {
+					var __lt260 string
+					if (s.BorderWidth != Measurement{Px: 0}) {
+						__lt260 = "solid"
+					} else {
+						__lt260 = ""
+					}
+					__lt261 = __lt260
+				}
+				__lt262 = __lt261
+			}
+			__lt263 = __lt262
+		}
+		__lt264 = __lt263
+	}
+	var __lt270 string
+	if __lt264 == "" {
+		__lt270 = ""
+	} else {
+		var __lt269 string
+		if s.BorderStyle == "solid" {
+			__lt269 = "solid"
+		} else {
+			var __lt268 string
+			if s.BorderStyle == "dashed" {
+				__lt268 = "dashed"
+			} else {
+				var __lt267 string
+				if s.BorderStyle == "dotted" {
+					__lt267 = "dotted"
+				} else {
+					var __lt266 string
+					if s.BorderStyle == "double" {
+						__lt266 = "double"
+					} else {
+						var __lt265 string
+						if (s.BorderWidth != Measurement{Px: 0}) {
+							__lt265 = "solid"
+						} else {
+							__lt265 = ""
+						}
+						__lt266 = __lt265
+					}
+					__lt267 = __lt266
+				}
+				__lt268 = __lt267
+			}
+			__lt269 = __lt268
+		}
+		__lt270 = (("border-style: " + __lt269) + "; ")
+	}
+	var __lt271 string
+	if s.Border == "" {
+		__lt271 = ""
+	} else {
+		__lt271 = (("border: " + s.Border) + "; ")
+	}
+	var __lt272 string
+	if s.BorderBottom == "" {
+		__lt272 = ""
+	} else {
+		__lt272 = (("border-bottom: " + s.BorderBottom) + "; ")
+	}
+	var __lt273 string
+	if s.BorderLeft == "" {
+		__lt273 = ""
+	} else {
+		__lt273 = (("border-left: " + s.BorderLeft) + "; ")
+	}
+	var __lt274 string
+	if s.Opacity == 0.0 {
+		__lt274 = ""
+	} else {
+		__lt274 = fmt.Sprint(s.Opacity)
+	}
+	var __lt276 string
+	if __lt274 == "" {
+		__lt276 = ""
+	} else {
+		var __lt275 string
+		if s.Opacity == 0.0 {
+			__lt275 = ""
+		} else {
+			__lt275 = fmt.Sprint(s.Opacity)
+		}
+		__lt276 = (("opacity: " + __lt275) + "; ")
+	}
+	css := ((((((((((((((((((((((__lt36 + __lt63) + __lt90) + __lt117) + __lt144) + __lt171) + __lt198) + __lt225) + __lt228) + __lt231) + __lt234) + __lt235) + __lt242) + __lt247) + __lt250) + __lt253) + __lt256) + __lt259) + __lt270) + __lt271) + __lt272) + __lt273) + __lt276)
+	return css
+}
+
 func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 	for _, __entry := range m.__slot0 {
 		gtk4rt.BoxRemove(parent, __entry)
@@ -2016,6 +3687,7 @@ func newAvatarInstance(__model *Model, __a_initials string, __a_size string, __a
 	c.__slot1 = nil
 	c.__n0 = gtk4rt.ButtonNew()
 	gtk4rt.ButtonSetLabel(c.__n0, ((c.__prop_initials + " ") + fmt.Sprint(c.hits)))
+	gtk4rt.SetLook(c.__n0, LookOf(__merge_Style(Style{}, c.__prop_style)))
 	gtk4rt.Connect(c.__n0, "clicked", func() {
 		c.hits = (c.hits + 1)
 		gtk4rt.ButtonSetLabel(c.__n0, ((c.__prop_initials + " ") + fmt.Sprint(c.hits)))
@@ -2044,6 +3716,7 @@ func (c *AvatarInstance) SetAlt(__v string) {
 
 func (c *AvatarInstance) SetStyle(__v Style) {
 	c.__prop_style = __v
+	gtk4rt.SetLook(c.__n0, LookOf(__merge_Style(Style{}, c.__prop_style)))
 }
 
 func (c *AvatarInstance) SetClick(__v func()) {
@@ -2903,7 +4576,7 @@ pass sha256:a7d4d2b5006fd2b1445fe6a16ccf5770
 -- run/go/fyne --
 pass sha256:3cb60290ac8d82a53f802f8a4594f1ea
 -- run/go/gtk4 --
-pass sha256:4a5ff383fb472aef9f4f6149e0e0ab1b
+pass sha256:070b5922fe9ae106663b8bb860bbbcd0
 -- run/kotlin/android --
 pass sha256:dbd0a3e4cf8f9fc04a25ad1b6e9e0690
 -- run/none/html --

@@ -62,7 +62,7 @@ func TestAnEffectCompiles(t *testing.T) {
 		"inAnInstance": effectInstanceSrc,
 	} {
 		t.Run(name, func(t *testing.T) {
-			buildGTK4Model(t, "gtk4-effect-", generateGTK4Model(t, src))
+			buildGTK4Model(t, "gtk4-effect-", generateGTK4ModelBuilt(t, src))
 		})
 	}
 }

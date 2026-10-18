@@ -1,8 +1,6 @@
 package fyne
 
 import (
-	"strconv"
-
 	"duckfam.us/sngl/ast"
 	"duckfam.us/sngl/codegen"
 	"duckfam.us/sngl/ir"
@@ -22,26 +20,7 @@ const fyneLayoutImportPath = "duckfam.us/sngl/pkg/go/fynelayout"
 // something to set.
 func boxedLook(props map[string]ir.Expr) bool {
 	v, ok := props[lookPropName]
-	return ok && !zeroLiteral(v)
-}
-
-func zeroLiteral(e ir.Expr) bool {
-	switch x := e.(type) {
-	case *ir.StructLit:
-		for _, f := range x.Fields {
-			if f.Value != nil && !zeroLiteral(f.Value) {
-				return false
-			}
-		}
-		return true
-	case *ir.Literal:
-		if x.Value == "false" || x.Value == "" {
-			return true
-		}
-		n, err := strconv.ParseFloat(x.Value, 64)
-		return err == nil && n == 0
-	}
-	return false
+	return ok && !codegen.IRIsZeroLiteral(v)
 }
 
 func boxField(id string) string { return id + "__box" }
@@ -74,21 +53,4 @@ func (t *fyneTranslator) shown(child ir.Expr, sp *fyneSpec, id string) ir.Expr {
 		return t.boxRef(id)
 	}
 	return child
-}
-
-// written is a folded look with only the fields it sets, which is what the
-// literal says once the build has filled the rest with their zeros.
-func written(v ir.Expr) ir.Expr {
-	lit, ok := v.(*ir.StructLit)
-	if !ok {
-		return v
-	}
-	out := *lit
-	out.Fields = nil
-	for _, f := range lit.Fields {
-		if f.Value != nil && !zeroLiteral(f.Value) {
-			out.Fields = append(out.Fields, f)
-		}
-	}
-	return &out
 }

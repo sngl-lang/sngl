@@ -22,19 +22,19 @@ copies disagree:
 
 What each platform answers today:
 
-| Platform  | Fields it maps (of 52)                                     |
-|-----------|------------------------------------------------------------|
-| html      | all, to the CSS property of the same name                  |
-| android   | done in SNGL (style.sngl); `unstyled` lists the rest       |
-| bubbletea | done in SNGL (style.sngl); `unstyled` lists the rest       |
-| fyne      | done in SNGL (style.sngl); `unstyled` lists the rest       |
-| gtk4      | none; only a markup flow reads color, size, family, weight |
+| Platform  | Fields it maps (of 52)                               |
+|-----------|------------------------------------------------------|
+| html      | all, to the CSS property of the same name            |
+| android   | done in SNGL (style.sngl); `unstyled` lists the rest |
+| bubbletea | done in SNGL (style.sngl); `unstyled` lists the rest |
+| fyne      | done in SNGL (style.sngl); `unstyled` lists the rest |
+| gtk4      | done in SNGL (style.sngl); `unstyled` lists the rest |
 
 The places to read first: `codegen/iterate.go` (`NodeStyleFieldsOf`, which
 decides literal vs held), `codegen/measurement.go`, android's finished
 `lib/platform/android/style.sngl` and bubbletea's as the pattern, fyne's
 `spec.go`, `layout.go`, `theme.go` and `pkg/go/fynetheme`, gtk4's
-`intrinsic_translator.go` (`stylePropName`) and `markup.go` (`flowTags`),
+`lib/platform/gtk4/style.sngl` and `pkg/go/gtk4rt/look.go`,
 and `internal/htmlutil/style.go`.
 
 ### The design
@@ -108,7 +108,18 @@ Each is a commit series on the branch; one MR, so CI runs once.
    `flex` is read by the parent off the child: every vbox and hbox is
    fynelayout's `Weighted` layout, which takes each child's share from its
    Box, and a margin is the child's own Box's.
-4. **gtk4**, with the gtk4rt CSS setter.
+4. **gtk4**, with the gtk4rt CSS setter. Done: `lib/platform/gtk4/style.sngl`'s
+   `lookOf` builds a `Look`, a `#[go.native]` record that is `gtk4rt.Look`,
+   declared in the `gir:` package beside the widgets and carried by each as
+   a `look` prop; the CSS text is plain SNGL, so a literal Style folds to a
+   constant. `gtk4rt.SetLook` answers it in both modes: a CssProvider per
+   styled widget, owned by the widget, so no effect; the size request, a
+   label's alignment and lines, overflow, visibility and cursor; and what an
+   earlier Look took, given back when a later one leaves it unset. `flex` is
+   expand along the axis of the box the widget sits in, read off the parent
+   when the widget lands there, and GTK splits the free space evenly: a
+   weighted share is a layout of gtk4rt's own. A box's `alignItems` is put
+   on each child it holds, later ones included.
 5. **html**, last, since it already maps every field.
 6. The coverage test across all six, and CLAUDE.md's platform sections.
 
@@ -154,6 +165,17 @@ Each is a commit series on the branch; one MR, so CI runs once.
 - On fyne an explicit `#000000` is unset, as the color zero is, and so are
   `alignItems=start` (stretches) and `textAlign=left` (a button stays
   centered): each is its type's zero.
+- On gtk4 `flex` shares the free space evenly whatever the weights, and
+  `justifyContent` is listed as not answered yet. A `fontSize` is written in
+  points, as Pango reads a span's, so 1em is GTK's default text, while every
+  other length is pixels. A Look's CSS is at application priority on the
+  widget's own node, so a button given a `background` loses the theme's hover
+  and press feedback, and a card's border is drawn beside the one Adwaita draws
+  on the frame's border node; a popover's `background` paints its body and
+  not its arrow.
+- The shake keeps a library body reachable through a node handle's component
+  type, so a program holding `#d` on a datepicker keeps `LookOf` and its
+  helpers on gtk4 though nothing calls them.
 
 ## `match`, later
 
