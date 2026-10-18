@@ -75,9 +75,72 @@ package main
 import (
 	"charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"duckfam.us/sngl/pkg/go/snglcolor"
+	"duckfam.us/sngl/pkg/go/tui"
 	"fmt"
 	"os"
 )
+
+type Measurement struct {
+	Px  float64
+	Em  float64
+	Rem float64
+}
+
+type Style struct {
+	Padding        Measurement
+	PaddingTop     Measurement
+	PaddingRight   Measurement
+	PaddingBottom  Measurement
+	PaddingLeft    Measurement
+	PaddingX       Measurement
+	PaddingY       Measurement
+	Margin         Measurement
+	MarginTop      Measurement
+	MarginRight    Measurement
+	MarginBottom   Measurement
+	MarginLeft     Measurement
+	MarginX        Measurement
+	MarginY        Measurement
+	Gap            Measurement
+	Width          Measurement
+	MinWidth       Measurement
+	Height         Measurement
+	MaxWidth       Measurement
+	MaxHeight      Measurement
+	Flex           float64
+	FlexDirection  string
+	AlignItems     string
+	JustifyContent string
+	Position       string
+	Top            Measurement
+	Bottom         Measurement
+	Left           Measurement
+	Right          Measurement
+	ZIndex         int
+	Color          snglcolor.Color
+	FontSize       Measurement
+	FontFamily     string
+	FontWeight     string
+	FontStyle      string
+	TextAlign      string
+	MaxLines       int
+	WhiteSpace     string
+	Background     snglcolor.Color
+	BorderRadius   Measurement
+	BorderColor    snglcolor.Color
+	BorderWidth    Measurement
+	Border         string
+	BorderBottom   string
+	BorderLeft     string
+	BorderCollapse string
+	BorderStyle    string
+	Opacity        float64
+	Cursor         string
+	Display        string
+	Overflow       string
+	ListStyleType  string
+}
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
@@ -116,6 +179,145 @@ func New() Model {
 func (m *Model) SetTerminalSize(w, h int) {
 	m.width = w
 	m.height = h
+}
+
+func Cells(m__r0 Measurement) int {
+	var px float64 = (m__r0.Px + (16.0 * (m__r0.Em + m__r0.Rem)))
+	var __lt2 int
+	if px <= 0.0 {
+		__lt2 = 0
+	} else {
+		__lt2 = max(1, (int(px) / 8))
+	}
+	return __lt2
+}
+
+func BoxLook(s Style, words bool) lipgloss.Style {
+	if (s == Style{}) {
+		return lipgloss.NewStyle()
+	}
+	l := lipgloss.NewStyle()
+	if words && (s.Color != snglcolor.Color{}) {
+		l = l.Foreground(lipgloss.Color(s.Color.Hex()))
+	}
+	if (s.Background != snglcolor.Color{}) {
+		l = l.Background(lipgloss.Color(s.Background.Hex()))
+	}
+	if words && ((s.FontWeight == "bold") || (s.FontWeight == "bolder")) {
+		l = l.Bold(true)
+	}
+	if (words && (s.FontWeight == "lighter")) || ((s.Opacity != 0.0) && (s.Opacity < 1.0)) {
+		l = l.Faint(true)
+	}
+	if words && ((s.FontStyle == "italic") || (s.FontStyle == "oblique")) {
+		l = l.Italic(true)
+	}
+	if (s.TextAlign == "center") || (s.TextAlign == "right") {
+		l = l.AlignHorizontal(AlignOf(s.TextAlign))
+	}
+	if (s.BorderWidth != Measurement{Px: 0}) || ((((s.BorderStyle == "solid") || (s.BorderStyle == "dashed")) || (s.BorderStyle == "dotted")) || (s.BorderStyle == "double")) {
+		l = l.Border(BorderOf(s))
+		if (s.BorderColor != snglcolor.Color{}) {
+			l = l.BorderForeground(lipgloss.Color(s.BorderColor.Hex()))
+		}
+	}
+	l = l.MarginTop(Side(s.Margin, s.MarginY, s.MarginTop))
+	l = l.MarginRight(Side(s.Margin, s.MarginX, s.MarginRight))
+	l = l.MarginBottom(Side(s.Margin, s.MarginY, s.MarginBottom))
+	l = l.MarginLeft(Side(s.Margin, s.MarginX, s.MarginLeft))
+	l = l.PaddingTop(Side(s.Padding, s.PaddingY, s.PaddingTop))
+	l = l.PaddingRight(Side(s.Padding, s.PaddingX, s.PaddingRight))
+	l = l.PaddingBottom(Side(s.Padding, s.PaddingY, s.PaddingBottom))
+	l = l.PaddingLeft(Side(s.Padding, s.PaddingX, s.PaddingLeft))
+	if (s.Width != Measurement{Px: 0}) {
+		l = l.Width(Cells(s.Width))
+	}
+	if (s.Height != Measurement{Px: 0}) {
+		l = l.Height(Cells(s.Height))
+	}
+	if (s.MaxWidth != Measurement{Px: 0}) {
+		l = l.MaxWidth(Cells(s.MaxWidth))
+	}
+	if (s.MaxHeight != Measurement{Px: 0}) || (s.MaxLines != 0) {
+		var __lt3 int
+		if s.MaxLines == 0 {
+			__lt3 = 0
+		} else {
+			__lt3 = (s.MaxLines + l.GetVerticalFrameSize())
+		}
+		l = l.MaxHeight(LineCap(Cells(s.MaxHeight), __lt3))
+	}
+	return l
+}
+
+func AlignOf(a string) lipgloss.Position {
+	var __lt5 lipgloss.Position
+	if a == "center" {
+		__lt5 = lipgloss.Center
+	} else {
+		var __lt4 lipgloss.Position
+		if a == "right" {
+			__lt4 = lipgloss.Right
+		} else {
+			__lt4 = lipgloss.Left
+		}
+		__lt5 = __lt4
+	}
+	return __lt5
+}
+
+func BorderOf(s Style) lipgloss.Border {
+	var __lt8 lipgloss.Border
+	if s.BorderStyle == "double" {
+		__lt8 = lipgloss.DoubleBorder()
+	} else {
+		var __lt7 lipgloss.Border
+		if (s.BorderStyle == "dashed") || (s.BorderStyle == "dotted") {
+			__lt7 = tui.DashedBorder()
+		} else {
+			var __lt6 lipgloss.Border
+			if (s.BorderRadius != Measurement{Px: 0}) {
+				__lt6 = lipgloss.RoundedBorder()
+			} else {
+				__lt6 = lipgloss.NormalBorder()
+			}
+			__lt7 = __lt6
+		}
+		__lt8 = __lt7
+	}
+	return __lt8
+}
+
+func Side(all Measurement, axis Measurement, own Measurement) int {
+	var __lt10 Measurement
+	if (own != Measurement{Px: 0}) {
+		__lt10 = own
+	} else {
+		var __lt9 Measurement
+		if (axis != Measurement{Px: 0}) {
+			__lt9 = axis
+		} else {
+			__lt9 = all
+		}
+		__lt10 = __lt9
+	}
+	return Cells(__lt10)
+}
+
+func LineCap(height__r0 int, lines int) int {
+	var __lt12 int
+	if height__r0 == 0 {
+		__lt12 = lines
+	} else {
+		var __lt11 int
+		if lines == 0 {
+			__lt11 = height__r0
+		} else {
+			__lt11 = min(height__r0, lines)
+		}
+		__lt12 = __lt11
+	}
+	return __lt12
 }
 
 func (m *Model) __focusNext() {
@@ -286,108 +488,111 @@ func (m Model) View() tea.View {
 	var content string
 	if m.visible__inst0 {
 		var contentParts []string
-		__lt0 := "empty"
+		__lt13 := "empty"
 		var contentPart_1 string
-		contentPart_1 = lipgloss.NewStyle().Render(fmt.Sprint(__lt0))
+		contentPart_1 = BoxLook(Style{}, true).Render(fmt.Sprint(__lt13))
 		contentParts = append(contentParts, contentPart_1)
-		var __lt1 string
+		var __lt14 string
 		if m.started__inst0 {
-			__lt1 = "started empty"
+			__lt14 = "started empty"
 		} else {
-			__lt1 = "started with content"
+			__lt14 = "started with content"
 		}
 		var contentPart_4 string
-		contentPart_4 = lipgloss.NewStyle().Render(fmt.Sprint(__lt1))
+		contentPart_4 = BoxLook(Style{}, true).Render(fmt.Sprint(__lt14))
 		contentParts = append(contentParts, contentPart_4)
 		var contentPart_5 string
-		contentPart_5 = lipgloss.NewStyle().Render(fmt.Sprint("nothing"))
+		contentPart_5 = BoxLook(Style{}, true).Render(fmt.Sprint("nothing"))
 		contentParts = append(contentParts, contentPart_5)
-		__lt2 := "has content"
+		__lt15 := "has content"
 		var contentPart_7 string
-		contentPart_7 = lipgloss.NewStyle().Render(fmt.Sprint(__lt2))
+		contentPart_7 = BoxLook(Style{}, true).Render(fmt.Sprint(__lt15))
 		contentParts = append(contentParts, contentPart_7)
-		var __lt3 string
+		var __lt16 string
 		if m.started__inst1 {
-			__lt3 = "started empty"
+			__lt16 = "started empty"
 		} else {
-			__lt3 = "started with content"
+			__lt16 = "started with content"
 		}
 		var contentPart_10 string
-		contentPart_10 = lipgloss.NewStyle().Render(fmt.Sprint(__lt3))
+		contentPart_10 = BoxLook(Style{}, true).Render(fmt.Sprint(__lt16))
 		contentParts = append(contentParts, contentPart_10)
 		var contentPart_11 string
 		var contentPart_11Children []string
 		var contentPart_11_0 string
-		contentPart_11_0 = lipgloss.NewStyle().Render(fmt.Sprint("a"))
+		contentPart_11_0 = BoxLook(Style{}, true).Render(fmt.Sprint("a"))
 		contentPart_11Children = append(contentPart_11Children, contentPart_11_0)
 		contentPart_11 = lipgloss.JoinVertical(lipgloss.Left, contentPart_11Children...)
+		contentPart_11 = BoxLook(Style{}, true).Render(contentPart_11)
 		contentParts = append(contentParts, contentPart_11)
-		var __lt4 string
+		var __lt17 string
 		if !m.shown__inst0 {
-			__lt4 = "empty"
+			__lt17 = "empty"
 		} else {
-			__lt4 = "has content"
+			__lt17 = "has content"
 		}
 		var contentPart_14 string
-		contentPart_14 = lipgloss.NewStyle().Render(fmt.Sprint(__lt4))
+		contentPart_14 = BoxLook(Style{}, true).Render(fmt.Sprint(__lt17))
 		contentParts = append(contentParts, contentPart_14)
-		var __lt5 string
+		var __lt18 string
 		if m.started__inst2 {
-			__lt5 = "started empty"
+			__lt18 = "started empty"
 		} else {
-			__lt5 = "started with content"
+			__lt18 = "started with content"
 		}
 		var contentPart_17 string
-		contentPart_17 = lipgloss.NewStyle().Render(fmt.Sprint(__lt5))
+		contentPart_17 = BoxLook(Style{}, true).Render(fmt.Sprint(__lt18))
 		contentParts = append(contentParts, contentPart_17)
 		var contentPart_18 string
 		if !m.shown__inst0 {
-			contentPart_18 = lipgloss.NewStyle().Render(fmt.Sprint("nothing"))
+			contentPart_18 = BoxLook(Style{}, true).Render(fmt.Sprint("nothing"))
 		} else {
 			var contentPart_18Children []string
 			var contentPart_18_0 string
 			if m.shown__inst0 {
-				contentPart_18_0 = lipgloss.NewStyle().Render(fmt.Sprint("shown"))
+				contentPart_18_0 = BoxLook(Style{}, true).Render(fmt.Sprint("shown"))
 			}
 			if contentPart_18_0 != "" {
 				contentPart_18Children = append(contentPart_18Children, contentPart_18_0)
 			}
 			contentPart_18 = lipgloss.JoinVertical(lipgloss.Left, contentPart_18Children...)
+			contentPart_18 = BoxLook(Style{}, true).Render(contentPart_18)
 		}
 		if contentPart_18 != "" {
 			contentParts = append(contentParts, contentPart_18)
 		}
-		var __lt6 string
+		var __lt19 string
 		if !(len(m.xs__inst0) == 0) {
-			__lt6 = "empty"
+			__lt19 = "empty"
 		} else {
-			__lt6 = "has content"
+			__lt19 = "has content"
 		}
 		var contentPart_21 string
-		contentPart_21 = lipgloss.NewStyle().Render(fmt.Sprint(__lt6))
+		contentPart_21 = BoxLook(Style{}, true).Render(fmt.Sprint(__lt19))
 		contentParts = append(contentParts, contentPart_21)
-		var __lt7 string
+		var __lt20 string
 		if m.started__inst3 {
-			__lt7 = "started empty"
+			__lt20 = "started empty"
 		} else {
-			__lt7 = "started with content"
+			__lt20 = "started with content"
 		}
 		var contentPart_24 string
-		contentPart_24 = lipgloss.NewStyle().Render(fmt.Sprint(__lt7))
+		contentPart_24 = BoxLook(Style{}, true).Render(fmt.Sprint(__lt20))
 		contentParts = append(contentParts, contentPart_24)
 		var contentPart_25 string
 		if !(len(m.xs__inst0) == 0) {
-			contentPart_25 = lipgloss.NewStyle().Render(fmt.Sprint("nothing"))
+			contentPart_25 = BoxLook(Style{}, true).Render(fmt.Sprint("nothing"))
 		} else {
 			var contentPart_25Children []string
 			var contentPart_25_0 string
 			if len(m.xs__inst0) == 0 {
-				contentPart_25_0 = lipgloss.NewStyle().Render(fmt.Sprint("no items"))
+				contentPart_25_0 = BoxLook(Style{}, true).Render(fmt.Sprint("no items"))
 			}
 			if contentPart_25_0 != "" {
 				contentPart_25Children = append(contentPart_25Children, contentPart_25_0)
 			}
 			contentPart_25 = lipgloss.JoinVertical(lipgloss.Left, contentPart_25Children...)
+			contentPart_25 = BoxLook(Style{}, true).Render(contentPart_25)
 		}
 		if contentPart_25 != "" {
 			contentParts = append(contentParts, contentPart_25)
@@ -398,7 +603,7 @@ func (m Model) View() tea.View {
 		if contentPart_26Focused {
 			contentPart_26Prefix = ">"
 		}
-		contentPart_26 = lipgloss.NewStyle().Render(contentPart_26Prefix + " " + fmt.Sprint("show"))
+		contentPart_26 = BoxLook(Style{}, true).Render(contentPart_26Prefix + " " + fmt.Sprint("show"))
 		contentParts = append(contentParts, contentPart_26)
 		content = lipgloss.JoinVertical(lipgloss.Left, contentParts...)
 	}
@@ -1222,7 +1427,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:92908dfae67ea67d3df93c8a4a558edc
+pass sha256:06c3f40f6a042488306ab631fc93d341
 -- run/go/fyne --
 pass sha256:7a7b2f6892da717ab69b54a94be097d1
 -- run/kotlin/android --

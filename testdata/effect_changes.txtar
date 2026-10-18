@@ -140,10 +140,18 @@ package main
 import (
 	"charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"duckfam.us/sngl/pkg/go/snglcolor"
+	"duckfam.us/sngl/pkg/go/tui"
 	"fmt"
 	"os"
 	"strings"
 )
+
+type Measurement struct {
+	Px  float64
+	Em  float64
+	Rem float64
+}
 
 type Todo struct {
 	Title string
@@ -153,6 +161,61 @@ type Todo struct {
 type Holder struct {
 	Items []int
 	Other int
+}
+
+type Style struct {
+	Padding        Measurement
+	PaddingTop     Measurement
+	PaddingRight   Measurement
+	PaddingBottom  Measurement
+	PaddingLeft    Measurement
+	PaddingX       Measurement
+	PaddingY       Measurement
+	Margin         Measurement
+	MarginTop      Measurement
+	MarginRight    Measurement
+	MarginBottom   Measurement
+	MarginLeft     Measurement
+	MarginX        Measurement
+	MarginY        Measurement
+	Gap            Measurement
+	Width          Measurement
+	MinWidth       Measurement
+	Height         Measurement
+	MaxWidth       Measurement
+	MaxHeight      Measurement
+	Flex           float64
+	FlexDirection  string
+	AlignItems     string
+	JustifyContent string
+	Position       string
+	Top            Measurement
+	Bottom         Measurement
+	Left           Measurement
+	Right          Measurement
+	ZIndex         int
+	Color          snglcolor.Color
+	FontSize       Measurement
+	FontFamily     string
+	FontWeight     string
+	FontStyle      string
+	TextAlign      string
+	MaxLines       int
+	WhiteSpace     string
+	Background     snglcolor.Color
+	BorderRadius   Measurement
+	BorderColor    snglcolor.Color
+	BorderWidth    Measurement
+	Border         string
+	BorderBottom   string
+	BorderLeft     string
+	BorderCollapse string
+	BorderStyle    string
+	Opacity        float64
+	Cursor         string
+	Display        string
+	Overflow       string
+	ListStyleType  string
 }
 
 type ErrorEvent struct {
@@ -258,6 +321,145 @@ func (m *Model) reset__inst0() {
 	m.todos__inst0 = m.todos__inst0[:0]
 	m.__effect0_dirty = true
 	m.__effects0_settle()
+}
+
+func BoxLook(s Style, words bool) lipgloss.Style {
+	if (s == Style{}) {
+		return lipgloss.NewStyle()
+	}
+	l := lipgloss.NewStyle()
+	if words && (s.Color != snglcolor.Color{}) {
+		l = l.Foreground(lipgloss.Color(s.Color.Hex()))
+	}
+	if (s.Background != snglcolor.Color{}) {
+		l = l.Background(lipgloss.Color(s.Background.Hex()))
+	}
+	if words && ((s.FontWeight == "bold") || (s.FontWeight == "bolder")) {
+		l = l.Bold(true)
+	}
+	if (words && (s.FontWeight == "lighter")) || ((s.Opacity != 0.0) && (s.Opacity < 1.0)) {
+		l = l.Faint(true)
+	}
+	if words && ((s.FontStyle == "italic") || (s.FontStyle == "oblique")) {
+		l = l.Italic(true)
+	}
+	if (s.TextAlign == "center") || (s.TextAlign == "right") {
+		l = l.AlignHorizontal(AlignOf(s.TextAlign))
+	}
+	if (s.BorderWidth != Measurement{Px: 0}) || ((((s.BorderStyle == "solid") || (s.BorderStyle == "dashed")) || (s.BorderStyle == "dotted")) || (s.BorderStyle == "double")) {
+		l = l.Border(BorderOf(s))
+		if (s.BorderColor != snglcolor.Color{}) {
+			l = l.BorderForeground(lipgloss.Color(s.BorderColor.Hex()))
+		}
+	}
+	l = l.MarginTop(Side(s.Margin, s.MarginY, s.MarginTop))
+	l = l.MarginRight(Side(s.Margin, s.MarginX, s.MarginRight))
+	l = l.MarginBottom(Side(s.Margin, s.MarginY, s.MarginBottom))
+	l = l.MarginLeft(Side(s.Margin, s.MarginX, s.MarginLeft))
+	l = l.PaddingTop(Side(s.Padding, s.PaddingY, s.PaddingTop))
+	l = l.PaddingRight(Side(s.Padding, s.PaddingX, s.PaddingRight))
+	l = l.PaddingBottom(Side(s.Padding, s.PaddingY, s.PaddingBottom))
+	l = l.PaddingLeft(Side(s.Padding, s.PaddingX, s.PaddingLeft))
+	if (s.Width != Measurement{Px: 0}) {
+		l = l.Width(Cells(s.Width))
+	}
+	if (s.Height != Measurement{Px: 0}) {
+		l = l.Height(Cells(s.Height))
+	}
+	if (s.MaxWidth != Measurement{Px: 0}) {
+		l = l.MaxWidth(Cells(s.MaxWidth))
+	}
+	if (s.MaxHeight != Measurement{Px: 0}) || (s.MaxLines != 0) {
+		var __lt0 int
+		if s.MaxLines == 0 {
+			__lt0 = 0
+		} else {
+			__lt0 = (s.MaxLines + l.GetVerticalFrameSize())
+		}
+		l = l.MaxHeight(LineCap(Cells(s.MaxHeight), __lt0))
+	}
+	return l
+}
+
+func AlignOf(a string) lipgloss.Position {
+	var __lt2 lipgloss.Position
+	if a == "center" {
+		__lt2 = lipgloss.Center
+	} else {
+		var __lt1 lipgloss.Position
+		if a == "right" {
+			__lt1 = lipgloss.Right
+		} else {
+			__lt1 = lipgloss.Left
+		}
+		__lt2 = __lt1
+	}
+	return __lt2
+}
+
+func BorderOf(s Style) lipgloss.Border {
+	var __lt5 lipgloss.Border
+	if s.BorderStyle == "double" {
+		__lt5 = lipgloss.DoubleBorder()
+	} else {
+		var __lt4 lipgloss.Border
+		if (s.BorderStyle == "dashed") || (s.BorderStyle == "dotted") {
+			__lt4 = tui.DashedBorder()
+		} else {
+			var __lt3 lipgloss.Border
+			if (s.BorderRadius != Measurement{Px: 0}) {
+				__lt3 = lipgloss.RoundedBorder()
+			} else {
+				__lt3 = lipgloss.NormalBorder()
+			}
+			__lt4 = __lt3
+		}
+		__lt5 = __lt4
+	}
+	return __lt5
+}
+
+func Side(all Measurement, axis Measurement, own Measurement) int {
+	var __lt7 Measurement
+	if (own != Measurement{Px: 0}) {
+		__lt7 = own
+	} else {
+		var __lt6 Measurement
+		if (axis != Measurement{Px: 0}) {
+			__lt6 = axis
+		} else {
+			__lt6 = all
+		}
+		__lt7 = __lt6
+	}
+	return Cells(__lt7)
+}
+
+func Cells(m__r0 Measurement) int {
+	var px float64 = (m__r0.Px + (16.0 * (m__r0.Em + m__r0.Rem)))
+	var __lt8 int
+	if px <= 0.0 {
+		__lt8 = 0
+	} else {
+		__lt8 = max(1, (int(px) / 8))
+	}
+	return __lt8
+}
+
+func LineCap(height__r0 int, lines int) int {
+	var __lt10 int
+	if height__r0 == 0 {
+		__lt10 = lines
+	} else {
+		var __lt9 int
+		if lines == 0 {
+			__lt9 = height__r0
+		} else {
+			__lt9 = min(height__r0, lines)
+		}
+		__lt10 = __lt9
+	}
+	return __lt10
 }
 
 func (m *Model) __effect0_update() {
@@ -571,7 +773,7 @@ func (m Model) View() tea.View {
 		if contentPart_0Focused {
 			contentPart_0Prefix = ">"
 		}
-		contentPart_0 = lipgloss.NewStyle().Render(contentPart_0Prefix + " " + fmt.Sprint("add"))
+		contentPart_0 = BoxLook(Style{}, true).Render(contentPart_0Prefix + " " + fmt.Sprint("add"))
 		contentParts = append(contentParts, contentPart_0)
 		var contentPart_1 string
 		contentPart_1Focused := (m.__focusID == 1)
@@ -579,7 +781,7 @@ func (m Model) View() tea.View {
 		if contentPart_1Focused {
 			contentPart_1Prefix = ">"
 		}
-		contentPart_1 = lipgloss.NewStyle().Render(contentPart_1Prefix + " " + fmt.Sprint("toggle"))
+		contentPart_1 = BoxLook(Style{}, true).Render(contentPart_1Prefix + " " + fmt.Sprint("toggle"))
 		contentParts = append(contentParts, contentPart_1)
 		var contentPart_2 string
 		contentPart_2Focused := (m.__focusID == 2)
@@ -587,7 +789,7 @@ func (m Model) View() tea.View {
 		if contentPart_2Focused {
 			contentPart_2Prefix = ">"
 		}
-		contentPart_2 = lipgloss.NewStyle().Render(contentPart_2Prefix + " " + fmt.Sprint("drop"))
+		contentPart_2 = BoxLook(Style{}, true).Render(contentPart_2Prefix + " " + fmt.Sprint("drop"))
 		contentParts = append(contentParts, contentPart_2)
 		var contentPart_3 string
 		contentPart_3Focused := (m.__focusID == 3)
@@ -595,10 +797,10 @@ func (m Model) View() tea.View {
 		if contentPart_3Focused {
 			contentPart_3Prefix = ">"
 		}
-		contentPart_3 = lipgloss.NewStyle().Render(contentPart_3Prefix + " " + fmt.Sprint("reset"))
+		contentPart_3 = BoxLook(Style{}, true).Render(contentPart_3Prefix + " " + fmt.Sprint("reset"))
 		contentParts = append(contentParts, contentPart_3)
 		var contentPart_4 string
-		contentPart_4 = lipgloss.NewStyle().Render(fmt.Sprint(strings.Join(m.saved__inst0, ",")))
+		contentPart_4 = BoxLook(Style{}, true).Render(fmt.Sprint(strings.Join(m.saved__inst0, ",")))
 		contentParts = append(contentParts, contentPart_4)
 		var contentPart_5 string
 		contentPart_5Focused := (m.__focusID == 4)
@@ -606,7 +808,7 @@ func (m Model) View() tea.View {
 		if contentPart_5Focused {
 			contentPart_5Prefix = ">"
 		}
-		contentPart_5 = lipgloss.NewStyle().Render(contentPart_5Prefix + " " + fmt.Sprint("push"))
+		contentPart_5 = BoxLook(Style{}, true).Render(contentPart_5Prefix + " " + fmt.Sprint("push"))
 		contentParts = append(contentParts, contentPart_5)
 		var contentPart_6 string
 		contentPart_6Focused := (m.__focusID == 5)
@@ -614,7 +816,7 @@ func (m Model) View() tea.View {
 		if contentPart_6Focused {
 			contentPart_6Prefix = ">"
 		}
-		contentPart_6 = lipgloss.NewStyle().Render(contentPart_6Prefix + " " + fmt.Sprint("sibling"))
+		contentPart_6 = BoxLook(Style{}, true).Render(contentPart_6Prefix + " " + fmt.Sprint("sibling"))
 		contentParts = append(contentParts, contentPart_6)
 		var contentPart_7 string
 		contentPart_7Focused := (m.__focusID == 6)
@@ -622,10 +824,10 @@ func (m Model) View() tea.View {
 		if contentPart_7Focused {
 			contentPart_7Prefix = ">"
 		}
-		contentPart_7 = lipgloss.NewStyle().Render(contentPart_7Prefix + " " + fmt.Sprint("swap"))
+		contentPart_7 = BoxLook(Style{}, true).Render(contentPart_7Prefix + " " + fmt.Sprint("swap"))
 		contentParts = append(contentParts, contentPart_7)
 		var contentPart_8 string
-		contentPart_8 = lipgloss.NewStyle().Render(fmt.Sprint(fmt.Sprint(m.n__inst0)))
+		contentPart_8 = BoxLook(Style{}, true).Render(fmt.Sprint(fmt.Sprint(m.n__inst0)))
 		contentParts = append(contentParts, contentPart_8)
 		content = lipgloss.JoinVertical(lipgloss.Left, contentParts...)
 	}
@@ -1916,7 +2118,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:c60b666a9f97ceeaa8c38e1a577af5c8
+pass sha256:35b28d53fe617d72a1968ba372391622
 -- run/go/fyne --
 pass sha256:ae3a6e0d1b90fad975fe80d48ffb1dd4
 -- run/go/gtk4 --

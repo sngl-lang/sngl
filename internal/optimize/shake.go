@@ -3,7 +3,10 @@ package optimize
 import (
 	"fmt"
 	"log/slog"
+	"path"
 	"slices"
+	"strings"
+	"unicode"
 
 	"duckfam.us/sngl/ir"
 )
@@ -197,15 +200,25 @@ func promoteForeignStructs(pkg *ir.Package) error {
 	// Promotion is keyed by declaration and every backend emits by name, so a
 	// promoted library struct whose name the program also declares would be a
 	// second `type Point struct` in one file -- Go refuses it, and JS takes
-	// whichever came last. Renaming is the fix this wants, and it is not a
-	// rename this pass can make: the declaration is shared with the memoized
-	// library package, so writing to it would reach every other build in the
-	// process, and the types that point at it are shared too.
+	// whichever came last. Two library structs are renamed on the build's copy,
+	// the later package's taking its last segment (draw.Style is Style__draw
+	// beside ui.Style), so the pair is the same whichever was promoted first.
 	//
-	// So it is reported. A build that stops naming both declarations is worth
-	// more than emitted code that does not compile, or silently uses the wrong
-	// type.
+	// A program's own is reported rather than renamed: it is the author's name,
+	// and the one a test or a host reads it by.
 	for _, sd := range added {
+		if other, clash := byName[sd.Name]; clash && other.PkgPath() != "" && !other.Frozen && !sd.Frozen {
+			later := sd
+			if other.PkgPath() > sd.PkgPath() {
+				later, byName[sd.Name] = other, sd
+			}
+			_, rest, _ := strings.Cut(later.PkgPath(), ":")
+			later.Name += "__" + strings.Map(identRune, path.Base(rest))
+			if _, taken := byName[later.Name]; !taken {
+				byName[later.Name] = later
+				continue
+			}
+		}
 		if other, clash := byName[sd.Name]; clash {
 			return fmt.Errorf("%s declares struct %q and so does %s, which this build has to declare; "+
 				"every target emits a struct by its name, so the two cannot both be declared -- rename the local one",
@@ -742,4 +755,11 @@ func walkNodeRefs(n *ir.NodeInst, walk func(ir.Symbol)) {
 	if n.Params != nil {
 		walkType(n.Params.Type, nil, walk)
 	}
+}
+
+func identRune(r rune) rune {
+	if r == '_' || unicode.IsLetter(r) || unicode.IsDigit(r) {
+		return r
+	}
+	return '_'
 }

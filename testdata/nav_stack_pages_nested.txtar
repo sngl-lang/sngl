@@ -73,10 +73,18 @@ package main
 import (
 	"charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"duckfam.us/sngl/pkg/go/snglcolor"
+	"duckfam.us/sngl/pkg/go/tui"
 	"fmt"
 	"os"
 	"strings"
 )
+
+type Measurement struct {
+	Px  float64
+	Em  float64
+	Rem float64
+}
 
 type Row struct {
 	Name string
@@ -101,6 +109,61 @@ type _page__value struct {
 type Pages__entry struct {
 	Page _page__value
 	Cell Sel
+}
+
+type Style struct {
+	Padding        Measurement
+	PaddingTop     Measurement
+	PaddingRight   Measurement
+	PaddingBottom  Measurement
+	PaddingLeft    Measurement
+	PaddingX       Measurement
+	PaddingY       Measurement
+	Margin         Measurement
+	MarginTop      Measurement
+	MarginRight    Measurement
+	MarginBottom   Measurement
+	MarginLeft     Measurement
+	MarginX        Measurement
+	MarginY        Measurement
+	Gap            Measurement
+	Width          Measurement
+	MinWidth       Measurement
+	Height         Measurement
+	MaxWidth       Measurement
+	MaxHeight      Measurement
+	Flex           float64
+	FlexDirection  string
+	AlignItems     string
+	JustifyContent string
+	Position       string
+	Top            Measurement
+	Bottom         Measurement
+	Left           Measurement
+	Right          Measurement
+	ZIndex         int
+	Color          snglcolor.Color
+	FontSize       Measurement
+	FontFamily     string
+	FontWeight     string
+	FontStyle      string
+	TextAlign      string
+	MaxLines       int
+	WhiteSpace     string
+	Background     snglcolor.Color
+	BorderRadius   Measurement
+	BorderColor    snglcolor.Color
+	BorderWidth    Measurement
+	Border         string
+	BorderBottom   string
+	BorderLeft     string
+	BorderCollapse string
+	BorderStyle    string
+	Opacity        float64
+	Cursor         string
+	Display        string
+	Overflow       string
+	ListStyleType  string
 }
 
 var rows []Row = []Row{Row{Name: "a", Cols: []string{"1", "2"}}, Row{Name: "b", Cols: []string{"3"}}}
@@ -140,6 +203,145 @@ func New() Model {
 func (m *Model) SetTerminalSize(w, h int) {
 	m.width = w
 	m.height = h
+}
+
+func BoxLook(s Style, words bool) lipgloss.Style {
+	if (s == Style{}) {
+		return lipgloss.NewStyle()
+	}
+	l := lipgloss.NewStyle()
+	if words && (s.Color != snglcolor.Color{}) {
+		l = l.Foreground(lipgloss.Color(s.Color.Hex()))
+	}
+	if (s.Background != snglcolor.Color{}) {
+		l = l.Background(lipgloss.Color(s.Background.Hex()))
+	}
+	if words && ((s.FontWeight == "bold") || (s.FontWeight == "bolder")) {
+		l = l.Bold(true)
+	}
+	if (words && (s.FontWeight == "lighter")) || ((s.Opacity != 0.0) && (s.Opacity < 1.0)) {
+		l = l.Faint(true)
+	}
+	if words && ((s.FontStyle == "italic") || (s.FontStyle == "oblique")) {
+		l = l.Italic(true)
+	}
+	if (s.TextAlign == "center") || (s.TextAlign == "right") {
+		l = l.AlignHorizontal(AlignOf(s.TextAlign))
+	}
+	if (s.BorderWidth != Measurement{Px: 0}) || ((((s.BorderStyle == "solid") || (s.BorderStyle == "dashed")) || (s.BorderStyle == "dotted")) || (s.BorderStyle == "double")) {
+		l = l.Border(BorderOf(s))
+		if (s.BorderColor != snglcolor.Color{}) {
+			l = l.BorderForeground(lipgloss.Color(s.BorderColor.Hex()))
+		}
+	}
+	l = l.MarginTop(Side(s.Margin, s.MarginY, s.MarginTop))
+	l = l.MarginRight(Side(s.Margin, s.MarginX, s.MarginRight))
+	l = l.MarginBottom(Side(s.Margin, s.MarginY, s.MarginBottom))
+	l = l.MarginLeft(Side(s.Margin, s.MarginX, s.MarginLeft))
+	l = l.PaddingTop(Side(s.Padding, s.PaddingY, s.PaddingTop))
+	l = l.PaddingRight(Side(s.Padding, s.PaddingX, s.PaddingRight))
+	l = l.PaddingBottom(Side(s.Padding, s.PaddingY, s.PaddingBottom))
+	l = l.PaddingLeft(Side(s.Padding, s.PaddingX, s.PaddingLeft))
+	if (s.Width != Measurement{Px: 0}) {
+		l = l.Width(Cells(s.Width))
+	}
+	if (s.Height != Measurement{Px: 0}) {
+		l = l.Height(Cells(s.Height))
+	}
+	if (s.MaxWidth != Measurement{Px: 0}) {
+		l = l.MaxWidth(Cells(s.MaxWidth))
+	}
+	if (s.MaxHeight != Measurement{Px: 0}) || (s.MaxLines != 0) {
+		var __lt3 int
+		if s.MaxLines == 0 {
+			__lt3 = 0
+		} else {
+			__lt3 = (s.MaxLines + l.GetVerticalFrameSize())
+		}
+		l = l.MaxHeight(LineCap(Cells(s.MaxHeight), __lt3))
+	}
+	return l
+}
+
+func AlignOf(a string) lipgloss.Position {
+	var __lt5 lipgloss.Position
+	if a == "center" {
+		__lt5 = lipgloss.Center
+	} else {
+		var __lt4 lipgloss.Position
+		if a == "right" {
+			__lt4 = lipgloss.Right
+		} else {
+			__lt4 = lipgloss.Left
+		}
+		__lt5 = __lt4
+	}
+	return __lt5
+}
+
+func BorderOf(s Style) lipgloss.Border {
+	var __lt8 lipgloss.Border
+	if s.BorderStyle == "double" {
+		__lt8 = lipgloss.DoubleBorder()
+	} else {
+		var __lt7 lipgloss.Border
+		if (s.BorderStyle == "dashed") || (s.BorderStyle == "dotted") {
+			__lt7 = tui.DashedBorder()
+		} else {
+			var __lt6 lipgloss.Border
+			if (s.BorderRadius != Measurement{Px: 0}) {
+				__lt6 = lipgloss.RoundedBorder()
+			} else {
+				__lt6 = lipgloss.NormalBorder()
+			}
+			__lt7 = __lt6
+		}
+		__lt8 = __lt7
+	}
+	return __lt8
+}
+
+func Side(all Measurement, axis Measurement, own Measurement) int {
+	var __lt10 Measurement
+	if (own != Measurement{Px: 0}) {
+		__lt10 = own
+	} else {
+		var __lt9 Measurement
+		if (axis != Measurement{Px: 0}) {
+			__lt9 = axis
+		} else {
+			__lt9 = all
+		}
+		__lt10 = __lt9
+	}
+	return Cells(__lt10)
+}
+
+func Cells(m__r0 Measurement) int {
+	var px float64 = (m__r0.Px + (16.0 * (m__r0.Em + m__r0.Rem)))
+	var __lt11 int
+	if px <= 0.0 {
+		__lt11 = 0
+	} else {
+		__lt11 = max(1, (int(px) / 8))
+	}
+	return __lt11
+}
+
+func LineCap(height__r0 int, lines int) int {
+	var __lt13 int
+	if height__r0 == 0 {
+		__lt13 = lines
+	} else {
+		var __lt12 int
+		if lines == 0 {
+			__lt12 = height__r0
+		} else {
+			__lt12 = min(height__r0, lines)
+		}
+		__lt13 = __lt12
+	}
+	return __lt13
 }
 
 func (m *Model) __focusLoop0_len() int {
@@ -298,23 +500,23 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						_ = __copy1
 						_ = c
 						if (m.pages__current__inst0.Id == 0) && (((len(m.pages__current__inst0.Copy) == 2) && (m.pages__current__inst0.Copy[0] == __copy)) && (m.pages__current__inst0.Copy[1] == __copy1)) {
-							var __lt3 string
-							_ = __lt3
+							var __lt14 string
+							_ = __lt14
 							if (m.pages__current__inst0.Id == 0) && (((len(m.pages__current__inst0.Copy) == 2) && (m.pages__current__inst0.Copy[0] == __copy)) && (m.pages__current__inst0.Copy[1] == __copy1)) {
-								__lt3 = "showing"
+								__lt14 = "showing"
 							} else {
-								__lt3 = "hidden"
+								__lt14 = "hidden"
 							}
 							if m.__focusLoop0_cursor == __focusPos0 {
 								m.pages__history__inst0 = append(m.pages__history__inst0, Pages__entry{Page: m.pages__current__inst0, Cell: m.cell__params__inst0})
 								m.cell__params__inst0 = Sel{Pick: "x"}
-								var __lt4 string
+								var __lt15 string
 								if c == "3" {
-									__lt4 = "/"
+									__lt15 = "/"
 								} else {
-									__lt4 = ((("/" + r.Name) + "/") + c)
+									__lt15 = ((("/" + r.Name) + "/") + c)
 								}
-								m.pages__current__inst0 = _page__value{Id: 0, Href: __lt4, Title: (r.Name + c), Meta: __anon_e3b0c4{}, Copy: []int{__copy, __copy1}}
+								m.pages__current__inst0 = _page__value{Id: 0, Href: __lt15, Title: (r.Name + c), Meta: __anon_e3b0c4{}, Copy: []int{__copy, __copy1}}
 								return
 							}
 							__focusPos0++
@@ -356,12 +558,12 @@ func (m *Model) pickClick() {
 				_ = __copy1
 				_ = c
 				if (m.pages__current__inst0.Id == 0) && (((len(m.pages__current__inst0.Copy) == 2) && (m.pages__current__inst0.Copy[0] == __copy)) && (m.pages__current__inst0.Copy[1] == __copy1)) {
-					var __lt3 string
-					_ = __lt3
+					var __lt14 string
+					_ = __lt14
 					if (m.pages__current__inst0.Id == 0) && (((len(m.pages__current__inst0.Copy) == 2) && (m.pages__current__inst0.Copy[0] == __copy)) && (m.pages__current__inst0.Copy[1] == __copy1)) {
-						__lt3 = "showing"
+						__lt14 = "showing"
 					} else {
-						__lt3 = "hidden"
+						__lt14 = "hidden"
 					}
 					__at = append(__at, struct {
 						key string
@@ -425,16 +627,16 @@ func (m Model) View() tea.View {
 				if (m.pages__current__inst0.Id == 0) && (((len(m.pages__current__inst0.Copy) == 2) && (m.pages__current__inst0.Copy[0] == __copy)) && (m.pages__current__inst0.Copy[1] == __copy1)) {
 					var contentPart_0ItemItemParts []string
 					var contentPart_0ItemItemPart_0 string
-					contentPart_0ItemItemPart_0 = lipgloss.NewStyle().Render(fmt.Sprint(((((r.Name + " ") + c) + " picked ") + m.cell__params__inst0.Pick)))
+					contentPart_0ItemItemPart_0 = BoxLook(Style{}, true).Render(fmt.Sprint(((((r.Name + " ") + c) + " picked ") + m.cell__params__inst0.Pick)))
 					contentPart_0ItemItemParts = append(contentPart_0ItemItemParts, contentPart_0ItemItemPart_0)
-					var __lt3 string
+					var __lt14 string
 					if (m.pages__current__inst0.Id == 0) && (((len(m.pages__current__inst0.Copy) == 2) && (m.pages__current__inst0.Copy[0] == __copy)) && (m.pages__current__inst0.Copy[1] == __copy1)) {
-						__lt3 = "showing"
+						__lt14 = "showing"
 					} else {
-						__lt3 = "hidden"
+						__lt14 = "hidden"
 					}
 					var contentPart_0ItemItemPart_3 string
-					contentPart_0ItemItemPart_3 = lipgloss.NewStyle().Render(fmt.Sprint(__lt3))
+					contentPart_0ItemItemPart_3 = BoxLook(Style{}, true).Render(fmt.Sprint(__lt14))
 					contentPart_0ItemItemParts = append(contentPart_0ItemItemParts, contentPart_0ItemItemPart_3)
 					var contentPart_0ItemItemPart_4 string
 					contentPart_0ItemItemPart_4Focused := ((m.__focusID == 0) && (m.__focusLoop0_cursor == __focusPos0))
@@ -442,7 +644,7 @@ func (m Model) View() tea.View {
 					if contentPart_0ItemItemPart_4Focused {
 						contentPart_0ItemItemPart_4Prefix = ">"
 					}
-					contentPart_0ItemItemPart_4 = lipgloss.NewStyle().Render(contentPart_0ItemItemPart_4Prefix + " " + fmt.Sprint("pick"))
+					contentPart_0ItemItemPart_4 = BoxLook(Style{}, true).Render(contentPart_0ItemItemPart_4Prefix + " " + fmt.Sprint("pick"))
 					__focusPos0++
 					contentPart_0ItemItemParts = append(contentPart_0ItemItemParts, contentPart_0ItemItemPart_4)
 					contentPart_0ItemItem = lipgloss.JoinVertical(lipgloss.Left, contentPart_0ItemItemParts...)
@@ -458,13 +660,13 @@ func (m Model) View() tea.View {
 		}
 		var contentPart_1 string
 		if m.pages__current__inst0.Id == 1 {
-			contentPart_1 = lipgloss.NewStyle().Render(fmt.Sprint("about"))
+			contentPart_1 = BoxLook(Style{}, true).Render(fmt.Sprint("about"))
 		}
 		if contentPart_1 != "" {
 			contentParts = append(contentParts, contentPart_1)
 		}
 		var contentPart_2 string
-		contentPart_2 = lipgloss.NewStyle().Render(fmt.Sprint(m.pages__current__inst0.Title))
+		contentPart_2 = BoxLook(Style{}, true).Render(fmt.Sprint(m.pages__current__inst0.Title))
 		contentParts = append(contentParts, contentPart_2)
 		var contentPart_3 string
 		contentPart_3Focused := (m.__focusID == 1)
@@ -472,7 +674,7 @@ func (m Model) View() tea.View {
 		if contentPart_3Focused {
 			contentPart_3Prefix = ">"
 		}
-		contentPart_3 = lipgloss.NewStyle().Render(contentPart_3Prefix + " " + fmt.Sprint("About"))
+		contentPart_3 = BoxLook(Style{}, true).Render(contentPart_3Prefix + " " + fmt.Sprint("About"))
 		contentParts = append(contentParts, contentPart_3)
 		var contentPart_4 string
 		contentPart_4Focused := (m.__focusID == 2)
@@ -480,7 +682,7 @@ func (m Model) View() tea.View {
 		if contentPart_4Focused {
 			contentPart_4Prefix = ">"
 		}
-		contentPart_4 = lipgloss.NewStyle().Render(contentPart_4Prefix + " " + fmt.Sprint("Back"))
+		contentPart_4 = BoxLook(Style{}, true).Render(contentPart_4Prefix + " " + fmt.Sprint("Back"))
 		contentParts = append(contentParts, contentPart_4)
 		content = lipgloss.JoinVertical(lipgloss.Left, contentParts...)
 	}
@@ -1527,7 +1729,7 @@ fun MainScreen() {
     }
 }
 -- run/go/bubbletea --
-pass sha256:24821bdab5f17c2f9de9f8598925ab16
+pass sha256:741562fdf89460fd980733a885ba7673
 -- run/go/fyne --
 pass sha256:40bfc012a6f372829050151f6aa7812d
 -- run/go/gtk4 --

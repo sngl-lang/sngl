@@ -175,8 +175,9 @@ func evalExpr(e ir.Expr, ctx *evalCtx) (any, bool) {
 		}
 		if ls, ok := left.(*interp.Struct); ok {
 			if rs, ok := right.(*interp.Struct); ok {
-				fillOmittedFields(ls, ls.Def, ctx)
-				fillOmittedFields(rs, rs.Def, ctx)
+				if !fillOmittedFields(ls, ls.Def, ctx) || !fillOmittedFields(rs, rs.Def, ctx) {
+					return nil, false
+				}
 			}
 		}
 		return evalBinaryOp(x.Op, left, right, numKindOf(x.Type))
@@ -1476,16 +1477,15 @@ func evalListLambda(id string, args []any, ctx *evalCtx) (any, bool) {
 	return out, true
 }
 
-// fillOmittedFields gives each field a literal left out the value the
-// declaration means by omitting it, as the interpreter's literal does, so a
-// read of one folds and two literals compare. Done where one is read or
-// compared rather than for every literal: a Style has fifty fields. Marked omitted, irFromValue
-// writes the literal back as it was written. A field whose value does not
-// evaluate stays absent, and a read of it does not fold.
-func fillOmittedFields(s *interp.Struct, def *ir.StructDef, ctx *evalCtx) {
+// fillOmittedFields gives each field a literal left out what the declaration
+// means by omitting it, so a read of one folds and two literals compare; marked
+// omitted, irFromValue writes the literal back as it was written. It reports
+// whether every field now has a value.
+func fillOmittedFields(s *interp.Struct, def *ir.StructDef, ctx *evalCtx) bool {
 	if def == nil {
-		return
+		return true
 	}
+	complete := true
 	for _, f := range def.Fields {
 		if _, ok := s.Get(f.Name); ok {
 			continue
@@ -1495,12 +1495,29 @@ func fillOmittedFields(s *interp.Struct, def *ir.StructDef, ctx *evalCtx) {
 			init = ir.ZeroExpr(f.Type)
 		}
 		if init == nil {
+			complete = false
 			continue
 		}
 		v, ok := evalExpr(init, ctx)
 		if !ok {
+			complete = false
 			continue
 		}
 		s.Fields = append(s.Fields, interp.Field{Name: f.Name, Value: v, Omitted: true, Filled: interp.DeepCopy(v)})
+	}
+	return complete
+}
+
+// completeStruct fills s's omitted fields, and those of every struct it
+// holds, for the interpreter, which reads a field a literal left out as nil.
+func completeStruct(s *interp.Struct, def *ir.StructDef, ctx *evalCtx) {
+	if s.Def != nil {
+		def = s.Def
+	}
+	fillOmittedFields(s, def, ctx)
+	for _, f := range s.Fields {
+		if inner, ok := f.Value.(*interp.Struct); ok {
+			completeStruct(inner, expectedStructDef(structFieldType(def, f.Name)), ctx)
+		}
 	}
 }

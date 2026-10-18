@@ -159,6 +159,11 @@ func interpretFunc(fn *ir.Func, args []any, ctx *evalCtx, depth int) (any, bool)
 	if len(args) != len(fn.Params) {
 		return nil, false
 	}
+	for i, a := range args {
+		if s, ok := a.(*interp.Struct); ok {
+			completeStruct(s, expectedStructDef(fn.Params[i].Type), ctx)
+		}
+	}
 	// A body that reads the host is a producer: stored, gated, recorded.
 	if ctx != nil && ctx.host != nil && reachesHost(fn, ctx.hostMemo) {
 		return ctx.produce(fn, args)
@@ -200,6 +205,7 @@ func interpretFunc(fn *ir.Func, args []any, ctx *evalCtx, depth int) (any, bool)
 // stdlib wrappers, and the evalCall purity gate rejects them on that.
 func bodyUsesNativeCall(fn *ir.Func) bool {
 	var hasNative bool
+	seen := map[*ir.Func]bool{fn: true}
 	var walkExpr func(e ir.Expr)
 	var walkStmt func(s ir.Stmt)
 	walkExpr = func(e ir.Expr) {
@@ -220,6 +226,12 @@ func bodyUsesNativeCall(fn *ir.Func) bool {
 			if x.Func == nil || x.Func.Foreign.Path != "" || isUnfoldableNative(x.Func) {
 				hasNative = true
 				return
+			}
+			if !seen[x.Func] && hasWrittenBody(x.Func) {
+				seen[x.Func] = true
+				for _, s := range x.Func.Block {
+					walkStmt(s)
+				}
 			}
 			if x.Receiver != nil {
 				walkExpr(x.Receiver)

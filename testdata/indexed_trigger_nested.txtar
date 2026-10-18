@@ -119,11 +119,74 @@ package main
 import (
 	"charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"duckfam.us/sngl/pkg/go/snglcolor"
+	"duckfam.us/sngl/pkg/go/tui"
 	"fmt"
 	"os"
 	"slices"
 	"strings"
 )
+
+type Measurement struct {
+	Px  float64
+	Em  float64
+	Rem float64
+}
+
+type Style struct {
+	Padding        Measurement
+	PaddingTop     Measurement
+	PaddingRight   Measurement
+	PaddingBottom  Measurement
+	PaddingLeft    Measurement
+	PaddingX       Measurement
+	PaddingY       Measurement
+	Margin         Measurement
+	MarginTop      Measurement
+	MarginRight    Measurement
+	MarginBottom   Measurement
+	MarginLeft     Measurement
+	MarginX        Measurement
+	MarginY        Measurement
+	Gap            Measurement
+	Width          Measurement
+	MinWidth       Measurement
+	Height         Measurement
+	MaxWidth       Measurement
+	MaxHeight      Measurement
+	Flex           float64
+	FlexDirection  string
+	AlignItems     string
+	JustifyContent string
+	Position       string
+	Top            Measurement
+	Bottom         Measurement
+	Left           Measurement
+	Right          Measurement
+	ZIndex         int
+	Color          snglcolor.Color
+	FontSize       Measurement
+	FontFamily     string
+	FontWeight     string
+	FontStyle      string
+	TextAlign      string
+	MaxLines       int
+	WhiteSpace     string
+	Background     snglcolor.Color
+	BorderRadius   Measurement
+	BorderColor    snglcolor.Color
+	BorderWidth    Measurement
+	Border         string
+	BorderBottom   string
+	BorderLeft     string
+	BorderCollapse string
+	BorderStyle    string
+	Opacity        float64
+	Cursor         string
+	Display        string
+	Overflow       string
+	ListStyleType  string
+}
 
 var grid [][]string = [][]string{[]string{"p", "q"}, []string{"r"}}
 
@@ -172,6 +235,145 @@ func New() Model {
 func (m *Model) SetTerminalSize(w, h int) {
 	m.width = w
 	m.height = h
+}
+
+func Cells(m__r0 Measurement) int {
+	var px float64 = (m__r0.Px + (16.0 * (m__r0.Em + m__r0.Rem)))
+	var __lt2 int
+	if px <= 0.0 {
+		__lt2 = 0
+	} else {
+		__lt2 = max(1, (int(px) / 8))
+	}
+	return __lt2
+}
+
+func BoxLook(s Style, words bool) lipgloss.Style {
+	if (s == Style{}) {
+		return lipgloss.NewStyle()
+	}
+	l := lipgloss.NewStyle()
+	if words && (s.Color != snglcolor.Color{}) {
+		l = l.Foreground(lipgloss.Color(s.Color.Hex()))
+	}
+	if (s.Background != snglcolor.Color{}) {
+		l = l.Background(lipgloss.Color(s.Background.Hex()))
+	}
+	if words && ((s.FontWeight == "bold") || (s.FontWeight == "bolder")) {
+		l = l.Bold(true)
+	}
+	if (words && (s.FontWeight == "lighter")) || ((s.Opacity != 0.0) && (s.Opacity < 1.0)) {
+		l = l.Faint(true)
+	}
+	if words && ((s.FontStyle == "italic") || (s.FontStyle == "oblique")) {
+		l = l.Italic(true)
+	}
+	if (s.TextAlign == "center") || (s.TextAlign == "right") {
+		l = l.AlignHorizontal(AlignOf(s.TextAlign))
+	}
+	if (s.BorderWidth != Measurement{Px: 0}) || ((((s.BorderStyle == "solid") || (s.BorderStyle == "dashed")) || (s.BorderStyle == "dotted")) || (s.BorderStyle == "double")) {
+		l = l.Border(BorderOf(s))
+		if (s.BorderColor != snglcolor.Color{}) {
+			l = l.BorderForeground(lipgloss.Color(s.BorderColor.Hex()))
+		}
+	}
+	l = l.MarginTop(Side(s.Margin, s.MarginY, s.MarginTop))
+	l = l.MarginRight(Side(s.Margin, s.MarginX, s.MarginRight))
+	l = l.MarginBottom(Side(s.Margin, s.MarginY, s.MarginBottom))
+	l = l.MarginLeft(Side(s.Margin, s.MarginX, s.MarginLeft))
+	l = l.PaddingTop(Side(s.Padding, s.PaddingY, s.PaddingTop))
+	l = l.PaddingRight(Side(s.Padding, s.PaddingX, s.PaddingRight))
+	l = l.PaddingBottom(Side(s.Padding, s.PaddingY, s.PaddingBottom))
+	l = l.PaddingLeft(Side(s.Padding, s.PaddingX, s.PaddingLeft))
+	if (s.Width != Measurement{Px: 0}) {
+		l = l.Width(Cells(s.Width))
+	}
+	if (s.Height != Measurement{Px: 0}) {
+		l = l.Height(Cells(s.Height))
+	}
+	if (s.MaxWidth != Measurement{Px: 0}) {
+		l = l.MaxWidth(Cells(s.MaxWidth))
+	}
+	if (s.MaxHeight != Measurement{Px: 0}) || (s.MaxLines != 0) {
+		var __lt3 int
+		if s.MaxLines == 0 {
+			__lt3 = 0
+		} else {
+			__lt3 = (s.MaxLines + l.GetVerticalFrameSize())
+		}
+		l = l.MaxHeight(LineCap(Cells(s.MaxHeight), __lt3))
+	}
+	return l
+}
+
+func AlignOf(a string) lipgloss.Position {
+	var __lt5 lipgloss.Position
+	if a == "center" {
+		__lt5 = lipgloss.Center
+	} else {
+		var __lt4 lipgloss.Position
+		if a == "right" {
+			__lt4 = lipgloss.Right
+		} else {
+			__lt4 = lipgloss.Left
+		}
+		__lt5 = __lt4
+	}
+	return __lt5
+}
+
+func BorderOf(s Style) lipgloss.Border {
+	var __lt8 lipgloss.Border
+	if s.BorderStyle == "double" {
+		__lt8 = lipgloss.DoubleBorder()
+	} else {
+		var __lt7 lipgloss.Border
+		if (s.BorderStyle == "dashed") || (s.BorderStyle == "dotted") {
+			__lt7 = tui.DashedBorder()
+		} else {
+			var __lt6 lipgloss.Border
+			if (s.BorderRadius != Measurement{Px: 0}) {
+				__lt6 = lipgloss.RoundedBorder()
+			} else {
+				__lt6 = lipgloss.NormalBorder()
+			}
+			__lt7 = __lt6
+		}
+		__lt8 = __lt7
+	}
+	return __lt8
+}
+
+func Side(all Measurement, axis Measurement, own Measurement) int {
+	var __lt10 Measurement
+	if (own != Measurement{Px: 0}) {
+		__lt10 = own
+	} else {
+		var __lt9 Measurement
+		if (axis != Measurement{Px: 0}) {
+			__lt9 = axis
+		} else {
+			__lt9 = all
+		}
+		__lt10 = __lt9
+	}
+	return Cells(__lt10)
+}
+
+func LineCap(height__r0 int, lines int) int {
+	var __lt12 int
+	if height__r0 == 0 {
+		__lt12 = lines
+	} else {
+		var __lt11 int
+		if lines == 0 {
+			__lt11 = height__r0
+		} else {
+			__lt11 = min(height__r0, lines)
+		}
+		__lt12 = __lt11
+	}
+	return __lt12
 }
 
 func (m *Model) __focusLoop1_len() int {
@@ -1065,7 +1267,7 @@ func (m Model) View() tea.View {
 	if content_0Focused {
 		content_0Prefix = ">"
 	}
-	content_0 = lipgloss.NewStyle().Render(content_0Prefix + " " + fmt.Sprint("swap"))
+	content_0 = BoxLook(Style{}, true).Render(content_0Prefix + " " + fmt.Sprint("swap"))
 	contentChildren = append(contentChildren, content_0)
 	var content_1 string
 	__focusPos1 := 0
@@ -1087,7 +1289,7 @@ func (m Model) View() tea.View {
 			if content_1Item_0Item_0Focused {
 				content_1Item_0Item_0Prefix = ">"
 			}
-			content_1Item_0Item_0 = lipgloss.NewStyle().Render(content_1Item_0Item_0Prefix + " " + fmt.Sprint(it))
+			content_1Item_0Item_0 = BoxLook(Style{}, true).Render(content_1Item_0Item_0Prefix + " " + fmt.Sprint(it))
 			__focusPos1++
 			content_1Item_0Items = append(content_1Item_0Items, content_1Item_0Item_0)
 			var content_1Item_0Item_1 string
@@ -1096,7 +1298,7 @@ func (m Model) View() tea.View {
 			if content_1Item_0Item_1Focused {
 				content_1Item_0Item_1Prefix = ">"
 			}
-			content_1Item_0Item_1 = lipgloss.NewStyle().Render(content_1Item_0Item_1Prefix + " " + fmt.Sprint(it))
+			content_1Item_0Item_1 = BoxLook(Style{}, true).Render(content_1Item_0Item_1Prefix + " " + fmt.Sprint(it))
 			__focusPos1++
 			content_1Item_0Items = append(content_1Item_0Items, content_1Item_0Item_1)
 		}
@@ -1105,6 +1307,7 @@ func (m Model) View() tea.View {
 			content_1ItemChildren = append(content_1ItemChildren, content_1Item_0)
 		}
 		content_1Item = lipgloss.JoinHorizontal(lipgloss.Top, content_1ItemChildren...)
+		content_1Item = BoxLook(Style{}, true).Render(content_1Item)
 		content_1Items = append(content_1Items, content_1Item)
 	}
 	content_1 = strings.Join(content_1Items, "\n")
@@ -1131,7 +1334,7 @@ func (m Model) View() tea.View {
 			if content_2Item_0ItemFocused {
 				content_2Item_0ItemPrefix = ">"
 			}
-			content_2Item_0Item = lipgloss.NewStyle().Render(content_2Item_0ItemPrefix + " " + fmt.Sprint(it))
+			content_2Item_0Item = BoxLook(Style{}, true).Render(content_2Item_0ItemPrefix + " " + fmt.Sprint(it))
 			__focusPos2++
 			content_2Item_0Items = append(content_2Item_0Items, content_2Item_0Item)
 		}
@@ -1140,6 +1343,7 @@ func (m Model) View() tea.View {
 			content_2ItemChildren = append(content_2ItemChildren, content_2Item_0)
 		}
 		content_2Item = lipgloss.JoinHorizontal(lipgloss.Top, content_2ItemChildren...)
+		content_2Item = BoxLook(Style{}, true).Render(content_2Item)
 		content_2Items = append(content_2Items, content_2Item)
 	}
 	content_2 = strings.Join(content_2Items, "\n")
@@ -1166,7 +1370,7 @@ func (m Model) View() tea.View {
 			if content_3Item_0ItemFocused {
 				content_3Item_0ItemPrefix = ">"
 			}
-			content_3Item_0Item = lipgloss.NewStyle().Render(content_3Item_0ItemPrefix + " " + fmt.Sprint((fmt.Sprint(r) + fmt.Sprint(k))))
+			content_3Item_0Item = BoxLook(Style{}, true).Render(content_3Item_0ItemPrefix + " " + fmt.Sprint((fmt.Sprint(r) + fmt.Sprint(k))))
 			__focusPos3++
 			content_3Item_0Items = append(content_3Item_0Items, content_3Item_0Item)
 		}
@@ -1175,6 +1379,7 @@ func (m Model) View() tea.View {
 			content_3ItemChildren = append(content_3ItemChildren, content_3Item_0)
 		}
 		content_3Item = lipgloss.JoinHorizontal(lipgloss.Top, content_3ItemChildren...)
+		content_3Item = BoxLook(Style{}, true).Render(content_3Item)
 		content_3Items = append(content_3Items, content_3Item)
 	}
 	content_3 = strings.Join(content_3Items, "\n")
@@ -1197,7 +1402,7 @@ func (m Model) View() tea.View {
 		if content_4_1ItemFocused {
 			content_4_1ItemPrefix = ">"
 		}
-		content_4_1Item = lipgloss.NewStyle().Render(content_4_1ItemPrefix + " " + fmt.Sprint(fmt.Sprint(e)))
+		content_4_1Item = BoxLook(Style{}, true).Render(content_4_1ItemPrefix + " " + fmt.Sprint(fmt.Sprint(e)))
 		__focusPos4++
 		content_4_1Items = append(content_4_1Items, content_4_1Item)
 	}
@@ -1218,7 +1423,7 @@ func (m Model) View() tea.View {
 		if content_4_2ItemFocused {
 			content_4_2ItemPrefix = ">"
 		}
-		content_4_2Item = lipgloss.NewStyle().Render(content_4_2ItemPrefix + " " + fmt.Sprint("."))
+		content_4_2Item = BoxLook(Style{}, true).Render(content_4_2ItemPrefix + " " + fmt.Sprint("."))
 		__focusPos5++
 		content_4_2Items = append(content_4_2Items, content_4_2Item)
 	}
@@ -1227,11 +1432,13 @@ func (m Model) View() tea.View {
 		content_4Children = append(content_4Children, content_4_2)
 	}
 	content_4 = lipgloss.JoinHorizontal(lipgloss.Top, content_4Children...)
+	content_4 = BoxLook(Style{}, true).Render(content_4)
 	contentChildren = append(contentChildren, content_4)
 	var content_5 string
-	content_5 = lipgloss.NewStyle().Render(fmt.Sprint(m.log))
+	content_5 = BoxLook(Style{}, true).Render(fmt.Sprint(m.log))
 	contentChildren = append(contentChildren, content_5)
 	content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
+	content = BoxLook(Style{}, true).Render(content)
 	v := tea.NewView(content)
 	v.AltScreen = true
 	return v
@@ -2992,7 +3199,7 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:0d38313e476a3a4aee2ea101acb8d965
+pass sha256:1fc4f0e30b63693139fa5ec6a98c912f
 -- run/go/fyne --
 pass sha256:646543c74b52cfa275b1efd0b339a7a8
 -- run/go/gtk4 --

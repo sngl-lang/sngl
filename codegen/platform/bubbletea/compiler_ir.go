@@ -14,9 +14,8 @@ import (
 
 // Config controls code generation. Field names mirror bubbletea.sngl options.
 type Config struct {
-	Package     string // Go package name (default: "ui")
-	ScaleFactor int    // pixels per terminal cell (default: 8); not source-exposed
-	Main        bool   // emit a main() function for standalone apps
+	Package string // Go package name (default: "ui")
+	Main    bool   // emit a main() function for standalone apps
 
 	// Stdlib globals (lib/options.sngl).
 	Name        string
@@ -39,9 +38,6 @@ func (c Config) withDefaults() Config {
 		} else {
 			c.Package = "ui"
 		}
-	}
-	if c.ScaleFactor == 0 {
-		c.ScaleFactor = 8
 	}
 	return c
 }
@@ -468,12 +464,6 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 			fmt.Fprintf(&b, "\t%s %s\n", golang.ExportName(f.Name), goType)
 		}
 		b.WriteString("}\n\n")
-	}
-
-	if usesStyleValue(ctx.Pkg) {
-		gc.RequireImport("charm.land/lipgloss/v2")
-		gc.RequireImport("duckfam.us/sngl/pkg/go/snglcolor")
-		b.WriteString(styleValueDecl(cfg.ScaleFactor))
 	}
 
 	// The canvas stdlib structs are read by the synthesized draw funcs but are

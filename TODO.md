@@ -26,14 +26,13 @@ What each platform answers today:
 |-----------|------------------------------------------------------------|
 | html      | all, to the CSS property of the same name                  |
 | android   | done in SNGL (style.sngl); `unstyled` lists the rest       |
-| bubbletea | ~25; a `Widget` drops its style whole                      |
+| bubbletea | done in SNGL (style.sngl); `unstyled` lists the rest       |
 | fyne      | ~9, through theme overrides and the flex layout            |
 | gtk4      | none; only a markup flow reads color, size, family, weight |
 
 The places to read first: `codegen/iterate.go` (`NodeStyleFieldsOf`, which
 decides literal vs held), `codegen/measurement.go`, android's finished
-`lib/platform/android/style.sngl` as the pattern, bubbletea's `view_ir.go`
-(`irStyleCall`) and `style_value.go`, fyne's
+`lib/platform/android/style.sngl` and bubbletea's as the pattern, fyne's
 `spec.go`, `layout.go`, `theme.go` and `pkg/go/fynetheme`, gtk4's
 `intrinsic_translator.go` (`stylePropName`) and `markup.go` (`flowTags`),
 and `internal/htmlutil/style.go`.
@@ -88,6 +87,14 @@ Each is a commit series on the branch; one MR, so CI runs once.
    splits a function into statements no splice takes, so the theme's text
    style and a button's default colors are read in the overrides.
 2. **bubbletea**, the lipgloss chain; a `Widget`'s style answered or listed.
+   Done: `lib/platform/bubbletea/style.sngl` over `#[go.native]` lipgloss
+   declarations, and a Widget renders inside its look. `flex` is read by the
+   Layout off its child: the override hands each primitive `grow`, and a
+   Layout with a growing child renders that child in a closure once the fixed
+   ones have said what they leave of its extent -- its look's width, else
+   its parent's, else the terminal's (`tui.Join`). A context was no use here:
+   a share depends on the siblings' rendered sizes, which only the Layout
+   sees.
 3. **fyne**, with the fynelayout change for flex and margin.
 4. **gtk4**, with the gtk4rt CSS setter.
 5. **html**, last, since it already maps every field.
@@ -107,6 +114,21 @@ Each is a commit series on the branch; one MR, so CI runs once.
   inherits the Row's closure. Both took a Column weight before.
 - A side written `0px` beside a non-zero whole (`{padding=16px, paddingTop=0px}`) reads as unset, so it is 16 on android and 0 on html: zero
   is unset in every Style.
+- A Go struct literal leaves an omitted enum field `""`, not the first
+  member: `S{n=1}` then fails `s.t == Tone.calm` on every Go target, where
+  the interpreter passes. bubbletea's style.sngl never compares against a
+  first member for that reason. Writing the member in every literal would
+  put twelve fields in each Go Style; spelling the first member `""` would
+  change what `"{e}"` prints.
+- The interpreter, and the fold, print a color as `{r = 51, g = 102, b = 153, a = 255}`; every compiled target prints `#336699`.
+- A struct spread in a library function is not lowered on a target withholding
+  `structSpread`: LibFuncs brings the function into the package after
+  NoStructSpread has run.
+- On bubbletea a `flex` child is joined at its own size under an `if` or a
+  `for`, being part of what that statement renders, and where it holds a
+  loop's focus stop or canvas, whose count would come after its later
+  siblings'. `justifyContent`, `overflow`, `whiteSpace` and `display` are
+  listed as not answered yet.
 - On clean main, `ui.select` does not compile on bubbletea under a `for`
   (`too many arguments in call to m.widget0Copy`), nor on fyne or gtk4 under
   a reactive `if` (`undefined: o`; a missing `c.__n1`).
