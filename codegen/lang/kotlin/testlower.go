@@ -614,8 +614,18 @@ func LowerTestFile(pkg string, fns []*ir.Func, suffixes []string, surf TestSurfa
 				fmt.Fprintf(&b, "    val %s = %s\n", recv, testInstanceVar)
 			}
 			block, isurf := spellInstanceReads(codegen.LowerInstanceReads(fn.Block, surf.Pkg), surf.forInstance(testInstanceVar, fn), compRecvs)
+			// A test that waits waits where it calls, in a coroutine of its
+			// own the harness's thread blocks on.
+			indent := "    "
+			if fn.IsAsync {
+				b.WriteString("    kotlinx.coroutines.runBlocking {\n")
+				indent = "        "
+			}
 			for _, line := range lowerTestBody(block, isurf, compRecvs, ctxCounts, TestEmitAgent) {
-				fmt.Fprintf(&b, "    %s\n", line)
+				fmt.Fprintf(&b, "%s%s\n", indent, line)
+			}
+			if fn.IsAsync {
+				b.WriteString("    }\n")
 			}
 			b.WriteString("}\n\n")
 		}

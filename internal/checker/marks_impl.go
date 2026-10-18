@@ -37,6 +37,49 @@ var markImpls = map[markKey]markImpl{
 	{"x/gen", "name"}:             markGenName,
 	{"x/gen", "native"}:           markGenNative,
 	{"ui/markup/md", "order"}:     markMdOrder,
+	{"json", "identifier"}:        markJSONIdentifier,
+	{"http", "identifier"}:        markHTTPIdentifier,
+}
+
+// markJSONIdentifier implements #[json.identifier("name")]: the name a struct
+// field or an enum member is written under in JSON. A fact about the format
+// rather than the field, so the field keeps its own name everywhere else and
+// only an encoder reads this one.
+func markJSONIdentifier(m *mark) error {
+	name := m.args.String("name")
+	if name == "" {
+		return fmt.Errorf("#[json.identifier] requires a non-empty name")
+	}
+	switch d := m.sym.(type) {
+	case *ir.StructField:
+		if n := markedNames(m.decl); n > 1 {
+			return fmt.Errorf("#[json.identifier(%q)] marks %d fields at once; one key cannot name several fields", name, n)
+		}
+		d.JSON = name
+	case *ir.EnumMember:
+		d.JSON = name
+	default:
+		return fmt.Errorf("#[json.identifier] cannot mark %s; only a struct field or an enum member has a name in JSON", ast.DeclFormName(m.decl))
+	}
+	return nil
+}
+
+// markHTTPIdentifier implements #[http.identifier("name")]: the key a field of
+// a request's query struct is sent under, where it is no SNGL identifier.
+func markHTTPIdentifier(m *mark) error {
+	name := m.args.String("name")
+	if name == "" {
+		return fmt.Errorf("#[http.identifier] requires a non-empty name")
+	}
+	d, ok := m.sym.(*ir.StructField)
+	if !ok {
+		return fmt.Errorf("#[http.identifier] cannot mark %s; only a struct field is a query parameter", ast.DeclFormName(m.decl))
+	}
+	if n := markedNames(m.decl); n > 1 {
+		return fmt.Errorf("#[http.identifier(%q)] marks %d fields at once; one key cannot name several fields", name, n)
+	}
+	d.HTTP = name
+	return nil
 }
 
 // markMdOrder implements #[md.order]. The md: importer reads it from source
@@ -419,6 +462,7 @@ func markIntrinsic(m *mark) error {
 	fn.Intrinsic = id
 	fn.MutatesReceiver = slices.Contains(flags, flagMutatesReceiver)
 	fn.BuildOnly = slices.Contains(flags, flagBuild)
+	fn.IsAsync = slices.Contains(flags, flagAsync)
 	switch {
 	case slices.Contains(flags, flagMutates):
 		fn.Purity = ir.PurityMutates

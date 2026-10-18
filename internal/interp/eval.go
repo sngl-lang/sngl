@@ -1906,6 +1906,10 @@ func (env *Env) evalCallSite(call *ir.Call) (any, error) {
 		}
 	}
 
+	if result, handled, err := env.evalCodecCall(call); handled {
+		return result, err
+	}
+
 	// Namespace call (ns.foo / html.div) — receiver preserved.
 	if call.Receiver != nil {
 		return env.evalNamespaceCall(call)

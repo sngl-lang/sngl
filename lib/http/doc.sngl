@@ -1,0 +1,30 @@
+// Making a request while the program runs, and the vocabulary of the URL it is
+// made to.
+//
+//	match var r = http.get(url="{server}/api/v2/pokemon/", query={limit=20, offset=offset}) {
+//	    ok { … r.status, r.body … }
+//	    failed { … }   // r.kind is transport or timeout
+//	}
+//
+// `send` answers an `async.Result`, and a failure only where no response
+// arrived -- `transport` or `timeout`. A 404 is a response: its status is read
+// off it, and `Response.checked` turns a status that is no success into the
+// failure it says, so a caller that wants only a 2xx writes
+// `http.get(…)` then `r.checked()`.
+//
+// **A query is a struct**, a field per parameter, as a translation's arguments
+// are: an absent option is left off the URL, a list repeats its key, and
+// anything else is written as `string(v)` writes it. The key is the field's
+// name, or `#[http.identifier("page-size")]` where the parameter's name is no
+// SNGL identifier -- a struct declared for the purpose, since an anonymous
+// literal has no field to carry the mark. A field holding a struct, a map or
+// anything without a string form has no place in a URL, and is refused at the
+// call.
+//
+// A call waits, as any async function does: Go makes it off the thread the
+// target draws on, JavaScript awaits a `fetch` and Kotlin suspends on a
+// coroutine. bubbletea answers no `async.do` yet, so a request there is refused
+// at the call that waits.
+//
+// Not yet: a header or cookie parameter beyond the `headers` map, a body
+// beyond a string, streaming, a timeout setting and credentials.

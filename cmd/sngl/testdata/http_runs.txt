@@ -1,0 +1,491 @@
+# sngl:http against the local server the script harness runs at
+# 127.0.0.1:47819 (cmd/sngl/httpserver_test.go), decoded with sngl:json, on
+# every target that can wait for a request. bubbletea answers no async.do
+# yet (#272), so a request there is refused at the call that waits.
+
+sngl test --platform=none app.sngl
+stdout '10 tests, 0 failures'
+
+sngl test --platform=fyne --language=go app.sngl
+stdout '10 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go app.sngl
+stdout '10 tests, 0 failures'
+
+sngl test --platform=html app.sngl
+stdout '10 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin app.sngl
+stdout '10 tests, 0 failures'
+
+! sngl test --platform=bubbletea --language=go app.sngl
+stderr 'app.sngl:56:27: this call blocks and bubbletea has no way to run anything back'
+
+-- app.sngl --
+// Requests to a local server, decoded into declared types: a path segment
+// escaped, a query written from a struct, a status read off the response and
+// checked, headers both ways, and a request that reaches no one.
+
+import async "sngl:async"
+import http "sngl:http"
+import json "sngl:json"
+import . "sngl:test"
+import . "sngl:ui"
+
+const server = "http://127.0.0.1:47819"
+
+struct Resource {
+    name string
+    url  string
+}
+
+struct Slot {
+    slot int
+    #[json.identifier("type")]
+    kind Resource
+}
+
+struct Sprites {
+    #[json.identifier("front_default")]
+    frontDefault option[string]
+    #[json.identifier("front_shiny")]
+    frontShiny   option[string]
+}
+
+struct Pokemon {
+    id             int
+    name           string
+    #[json.identifier("base_experience")]
+    baseExperience option[int]
+    sprites        Sprites
+    types          list[Slot]
+}
+
+struct Echo {
+    method string
+    query  string
+    body   string
+    header string
+}
+
+struct Page {
+    limit option[int]
+    #[http.identifier("page-size")]
+    size  option[int]
+    tags  list[string]
+    q     string
+}
+
+func fetchPokemon(name string) async.Result[Pokemon] {
+    match var r = http.get(url="{server}/pokemon/{http.pathEscape(name)}") {
+        failed { return {failed=r} }
+        ok {
+            match var checked = r.checked() {
+                failed { return {failed=checked} }
+                ok { return json.decode[Pokemon](checked.body) }
+            }
+        }
+    }
+}
+
+func echoOf(r async.Result[http.Response]) Echo {
+    match var resp = r {
+        ok {
+            match var e = json.decode[Echo](resp.body) {
+                ok { return e }
+                failed { return {method="", query="", body=e.message, header=""} }
+            }
+        }
+        failed { return {method="", query="", body=resp.message, header=""} }
+    }
+}
+
+func testGetDecodes(t Test) {
+    match var p = fetchPokemon("bulbasaur") {
+        ok {
+            t.assert(p.id == 1)
+            t.assert(p.baseExperience == 64)
+            t.assert(p.types.length() == 2)
+            t.assert(p.types[1].kind.name == "poison")
+            t.assert(p.sprites.frontDefault == "https://example.com/1.png")
+            t.assert(p.sprites.frontShiny == null)
+        }
+        failed { t.assert(p.message == "") }
+    }
+}
+
+func testPathEscape(t Test) {
+    t.assert(http.pathEscape("mr mime/2") == "mr%20mime%2F2")
+    match var p = fetchPokemon("mr mime") {
+        ok {
+            t.assert(p.name == "mr-mime")
+            t.assert(p.baseExperience == null)
+        }
+        failed { t.assert(p.message == "") }
+    }
+}
+
+func testNotFound(t Test) {
+    match var f = fetchPokemon("missingno") {
+        ok { t.assert(false) }
+        failed {
+            t.assert(f.kind == async.FailureKind.request)
+            t.assert(f.code == "404")
+            t.assert(f.message == "HTTP 404")
+        }
+    }
+}
+
+func testStatus(t Test) {
+    match var r = http.get(url="{server}/status/503") {
+        ok {
+            t.assert(r.status == 503)
+            t.assert(r.body == "status 503")
+            match var f = r.checked() {
+                ok { t.assert(false) }
+                failed { t.assert(f.kind == async.FailureKind.server) }
+            }
+        }
+        failed { t.assert(false) }
+    }
+    match var r = http.get(url="{server}/status/401") {
+        ok {
+            match var f = r.checked() {
+                ok { t.assert(false) }
+                failed { t.assert(f.kind == async.FailureKind.auth) }
+            }
+        }
+        failed { t.assert(false) }
+    }
+}
+
+func testQuery(t Test) {
+    var e = echoOf(http.get(url="{server}/echo", query=Page{limit=20, size=null, tags=["a", "b c"], q="x&y"}))
+    t.assert(e.method == "GET")
+    t.assert(e.query == "limit=20&tags=a&tags=b%20c&q=x%26y")
+    var sized = echoOf(http.get(url="{server}/echo?first=1", query={n=2, on=true}))
+    t.assert(sized.query == "first=1&n=2&on=true")
+}
+
+func testSend(t Test) {
+    var r = http.send(
+        method=http.Method.post,
+        url="{server}/echo",
+        headers={"X-Sngl" = "hello"},
+        body=json.encode(Resource{name="a", url="b"}),
+    )
+    match var resp = r {
+        ok {
+            t.assert(resp.status == 200)
+            t.assert(resp.headers.get("x-sngl-echo", "") == "yes")
+        }
+        failed { t.assert(false) }
+    }
+    var e = echoOf(r)
+    t.assert(e.method == "POST")
+    t.assert(e.header == "hello")
+    t.assert(e.body == `{"name":"a","url":"b"}`)
+}
+
+func testTransport(t Test) {
+    match var f = http.get(url="http://127.0.0.1:1/") {
+        ok { t.assert(false) }
+        failed { t.assert(f.kind == async.FailureKind.transport) }
+    }
+}
+
+// A handler that waits, and a query whose answer is a request's: each
+// writes after the answer arrives, which a test waits for.
+func lookup(k string) async.Result[Echo] {
+    match var r = http.get(url="{server}/echo", query={k=k}) {
+        ok { return json.decode[Echo](r.body) }
+        failed { return {failed=r} }
+    }
+}
+
+component panel node {
+    var shown = "-"
+    var key = "a"
+    var answer option[Echo] = null
+    text #result(value=shown)
+    button #ask(text="Ask", @click {
+        match var r = http.get(url="{server}/echo", query={q="hi"}) {
+            ok { shown = r.body }
+            failed { shown = r.message }
+        }
+    })
+    async.query(on=key, fetch=lookup, :value=answer)
+    text #q(value=answer != null ? answer.query : "")
+}
+
+func testHandlerWaits(t Test, c panel) {
+    c.ask.click()
+    t.wait(func() => c.result.value != "-", 5000)
+    t.assert(c.result.value == `{"body":"","header":"","method":"GET","query":"q=hi"}`)
+}
+
+func testQueryAsks(t Test, c panel) {
+    t.wait(func() => c.q.value == "k=a", 5000)
+    t.assert(c.q.value == "k=a")
+    c.key = "b c"
+    t.wait(func() => c.q.value == "k=b%20c", 5000)
+    t.assert(c.q.value == "k=b%20c")
+}
+
+// An adapter's shape: the query keyed on a struct of its parameters, and a
+// function literal spreading the key back out into the call that waits.
+func echoKeyed(k string, n int) async.Result[Echo] {
+    match var r = http.get(url="{server}/echo", query={k=k, n=n}) {
+        ok { return json.decode[Echo](r.body) }
+        failed { return {failed=r} }
+    }
+}
+
+component adapter node {
+    var key = "a"
+    var answer option[Echo] = null
+    async.query(on={k=key, n=2}, fetch=func(k struct { k string; n int }) => echoKeyed(k.k, k.n), :value=answer)
+    text #q(value=answer != null ? answer.query : "")
+}
+
+func testAdapterSpreadsItsKey(t Test, c adapter) {
+    t.wait(func() => c.q.value == "k=a&n=2", 5000)
+    t.assert(c.q.value == "k=a&n=2")
+}
+
+window {
+    panel
+    adapter
+}
+-- testrun/android/kotlin/app.sngl/_/1 --
+sha256:6f0a5b03947d33da2edac2a0cbfb1ac3
+{
+  "results": [
+    {
+      "Desc": "GetDecodes",
+      "Passed": true
+    },
+    {
+      "Desc": "NotFound",
+      "Passed": true
+    },
+    {
+      "Desc": "PathEscape",
+      "Passed": true
+    },
+    {
+      "Desc": "Query",
+      "Passed": true
+    },
+    {
+      "Desc": "Send",
+      "Passed": true
+    },
+    {
+      "Desc": "Status",
+      "Passed": true
+    },
+    {
+      "Desc": "Transport",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/android/kotlin/app.sngl/adapter/1 --
+sha256:4f2a3a0df695138498917abbd1937b42
+{
+  "results": [
+    {
+      "Desc": "AdapterSpreadsItsKey",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/android/kotlin/app.sngl/panel/1 --
+sha256:00d6317f3145ac4e67a29c606d871442
+{
+  "results": [
+    {
+      "Desc": "HandlerWaits",
+      "Passed": true
+    },
+    {
+      "Desc": "QueryAsks",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/_/1 --
+sha256:63e0c3bc6db67f0f4b286269a1630c85
+{
+  "results": [
+    {
+      "Desc": "GetDecodes",
+      "Passed": true
+    },
+    {
+      "Desc": "NotFound",
+      "Passed": true
+    },
+    {
+      "Desc": "PathEscape",
+      "Passed": true
+    },
+    {
+      "Desc": "Query",
+      "Passed": true
+    },
+    {
+      "Desc": "Send",
+      "Passed": true
+    },
+    {
+      "Desc": "Status",
+      "Passed": true
+    },
+    {
+      "Desc": "Transport",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/adapter/1 --
+sha256:c679a0126ba61684f4a1a2844033bc19
+{
+  "results": [
+    {
+      "Desc": "AdapterSpreadsItsKey",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/panel/1 --
+sha256:791d3df63b97bd04ea3c9bd72c8c3133
+{
+  "results": [
+    {
+      "Desc": "HandlerWaits",
+      "Passed": true
+    },
+    {
+      "Desc": "QueryAsks",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/_/1 --
+sha256:5f1cc0bdc4ff3935902bf5d8197e9f27
+{
+  "results": [
+    {
+      "Desc": "GetDecodes",
+      "Passed": true
+    },
+    {
+      "Desc": "NotFound",
+      "Passed": true
+    },
+    {
+      "Desc": "PathEscape",
+      "Passed": true
+    },
+    {
+      "Desc": "Query",
+      "Passed": true
+    },
+    {
+      "Desc": "Send",
+      "Passed": true
+    },
+    {
+      "Desc": "Status",
+      "Passed": true
+    },
+    {
+      "Desc": "Transport",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/adapter/1 --
+sha256:c413444f6e83712d10e22be5b5072825
+{
+  "results": [
+    {
+      "Desc": "AdapterSpreadsItsKey",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/panel/1 --
+sha256:4a8821c6fff21197517282bc15e474d2
+{
+  "results": [
+    {
+      "Desc": "HandlerWaits",
+      "Passed": true
+    },
+    {
+      "Desc": "QueryAsks",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/_/1 --
+sha256:5d34799fcb9789d055a4d7927e09a1ab
+{
+  "results": [
+    {
+      "Desc": "GetDecodes",
+      "Passed": true
+    },
+    {
+      "Desc": "NotFound",
+      "Passed": true
+    },
+    {
+      "Desc": "PathEscape",
+      "Passed": true
+    },
+    {
+      "Desc": "Query",
+      "Passed": true
+    },
+    {
+      "Desc": "Send",
+      "Passed": true
+    },
+    {
+      "Desc": "Status",
+      "Passed": true
+    },
+    {
+      "Desc": "Transport",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/adapter/1 --
+sha256:3bbbd1528b7c5a28ca0c5e345e3f583f
+{
+  "results": [
+    {
+      "Desc": "AdapterSpreadsItsKey",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/panel/1 --
+sha256:e12b9b217af968fb564db675f3728ccc
+{
+  "results": [
+    {
+      "Desc": "HandlerWaits",
+      "Passed": true
+    },
+    {
+      "Desc": "QueryAsks",
+      "Passed": true
+    }
+  ]
+}

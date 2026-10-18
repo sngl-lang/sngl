@@ -36,6 +36,7 @@ func TestScript(t *testing.T) {
 		}
 	}
 	goEnvFile = hostGoEnvFile()
+	startTestHTTP(t)
 	conds := scripttest.DefaultConds()
 	// `gtk4` is true when the gtk4 development libraries are installed, so the
 	// generated cgo can be compiled.

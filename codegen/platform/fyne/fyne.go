@@ -82,7 +82,7 @@ func (g *Generator) Generate(req *codegen.Request, sink codegen.Sink) error {
 		testFns, suffixes, methodFields := codegen.CollectTestFuncs(req.Pkg)
 		if len(testFns) > 0 {
 			if agentMode {
-				src := golang.LowerTestFile(c.cfg.Package, req.Pkg, testFns, suffixes, methodFields, golang.TestEmitAgent)
+				src := golang.LowerTestFile(c.cfg.Package, "fyne", req.Pkg, testFns, suffixes, methodFields, golang.TestEmitAgent)
 				if err := writeRawFile(sink, "testagent_main.go", []byte(src)); err != nil {
 					return err
 				}
@@ -138,7 +138,7 @@ func init() {
 					return err
 				}
 			} else {
-				src := golang.LowerTestFile(c.cfg.Package, req.Pkg, testFns, suffixes, methodFields, golang.TestEmitNative)
+				src := golang.LowerTestFile(c.cfg.Package, "fyne", req.Pkg, testFns, suffixes, methodFields, golang.TestEmitNative)
 				if err := writeRawFile(sink, "model_test.go", []byte(src)); err != nil {
 					return err
 				}

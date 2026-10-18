@@ -205,6 +205,9 @@ func (c *compilation) emitKotlin(req *codegen.Request, sink codegen.Sink) error 
 		if err := emitDateFieldFile(req, sink, "MainScreen.kt", cfg.Package); err != nil {
 			return err
 		}
+		if err := emitCodecFile(req, sink, "MainScreen.kt", cfg.Package); err != nil {
+			return err
+		}
 		if err := emitAssetsFile(req, sink, "MainScreen.kt", cfg.Package, ""); err != nil {
 			return err
 		}
@@ -214,6 +217,9 @@ func (c *compilation) emitKotlin(req *codegen.Request, sink codegen.Sink) error 
 			return err
 		}
 		if err := emitDateFieldFile(req, sink, "app/src/main/java/"+pkgPath+"/MainScreen.kt", cfg.Package); err != nil {
+			return err
+		}
+		if err := emitCodecFile(req, sink, "app/src/main/java/"+pkgPath+"/MainScreen.kt", cfg.Package); err != nil {
 			return err
 		}
 		if err := emitAssetsFile(req, sink, "app/src/main/java/"+pkgPath+"/MainScreen.kt", cfg.Package, "app/src/main/assets"); err != nil {
@@ -260,6 +266,9 @@ func (c *compilation) emitKotlin(req *codegen.Request, sink codegen.Sink) error 
 			return err
 		}
 		if err := emitDateFieldFile(req, sink, "MainScreen.kt", cfg.Package); err != nil {
+			return err
+		}
+		if err := emitCodecFile(req, sink, "MainScreen.kt", cfg.Package); err != nil {
 			return err
 		}
 		if err := emitAssetsFile(req, sink, "MainScreen.kt", cfg.Package, ""); err != nil {
@@ -418,7 +427,7 @@ fun newTestComponent(): MainScreenState = MainScreenState()
 		// kotlin/<pkg>/ regardless of where the rest of the sources go
 		// (AGP scans only that sourceset for unit tests).
 		testPrefix := "app/src/test/kotlin/" + pkgToPath(cfg.Package) + "/"
-		if err := writeAndroidSourceFile(sink, testPrefix+"MainScreenAgentTest.kt", req.Lang, ktOpts, robolectricAgentTestKotlin(cfg.Package)); err != nil {
+		if err := writeAndroidSourceFile(sink, testPrefix+"MainScreenAgentTest.kt", req.Lang, ktOpts, robolectricAgentTestKotlin(cfg.Package, kotlin.UsesCodec(req.Pkg))); err != nil {
 			return err
 		}
 	case "device":
@@ -447,7 +456,26 @@ fun newTestComponent(): MainScreenState = MainScreenState()
 // Runs under AGP's :app:testDebugUnitTest, which Robolectric instruments
 // with a fake Android runtime — so android.graphics.Bitmap, compose UI
 // test infra, etc. all resolve to real implementations on the JVM.
-func robolectricAgentTestKotlin(pkg string) []byte {
+//
+// A program that waits on a request has a test's wait for idle wait for the
+// bodies SnglCodec.start began as well, so a test reads what an effect's
+// answer wrote rather than what was there before it arrived.
+func robolectricAgentTestKotlin(pkg string, codec bool) []byte {
+	rule, waiter := "composeRule", "composeRule"
+	if codec {
+		waiter = "composeTestRule"
+		rule = `object : androidx.compose.ui.test.junit4.ComposeContentTestRule by composeRule {
+            override fun waitForIdle() {
+                composeRule.waitForIdle()
+                val deadline = System.currentTimeMillis() + 10_000
+                while (SnglCodec.active.get() > 0 && System.currentTimeMillis() < deadline) {
+                    shadowOf(Looper.getMainLooper()).idle()
+                    Thread.sleep(1)
+                    if (SnglCodec.active.get() == 0) composeRule.waitForIdle()
+                }
+            }
+        }`
+	}
 	return []byte("package " + pkg + `
 
 import android.graphics.Bitmap
@@ -476,7 +504,7 @@ class MainScreenAgentTest {
         // lateinit var that TestAgentRunner.kt's package-level test
         // functions reference. Must happen before SnglTestRegistration
         // (or any registered test body) executes.
-        composeTestRule = composeRule
+        composeTestRule = ` + rule + `
 
         // Force-load SnglTestRegistration so its init {} block wires
         // every test function into the testagent Registry before the
@@ -488,7 +516,7 @@ class MainScreenAgentTest {
         composeRule.setContent { CurrentTestScreen() }
         onTestModelSet = {
             shadowOf(Looper.getMainLooper()).idle()
-            composeRule.waitForIdle()
+            ` + waiter + `.waitForIdle()
         }
 
         Snapshots.register("robolectric/") {

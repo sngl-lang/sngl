@@ -1,0 +1,315 @@
+# sngl:json on every target: a declared type read from text and written back,
+# its marks naming fields and members on the wire, and the failures, worded
+# alike everywhere, that say where text did not match.
+
+sngl test --platform=none app.sngl
+stdout '5 tests, 0 failures'
+
+sngl test --platform=html app.sngl
+stdout '5 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout '5 tests, 0 failures'
+
+sngl test --platform=fyne --language=go app.sngl
+stdout '5 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go app.sngl
+stdout '5 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin app.sngl
+stdout '5 tests, 0 failures'
+
+-- app.sngl --
+// sngl:json reads text as a declared type and writes a value back: a field
+// named on the wire by its mark, an option a key that may be missing or null,
+// an enum by its member's name, dates as RFC 3339 text, a map of any keys, a
+// type that holds itself -- and a failure naming where the text did not match.
+
+import async "sngl:async"
+import json "sngl:json"
+import time "sngl:time"
+import . "sngl:test"
+import . "sngl:ui"
+
+enum Kind {
+    #[json.identifier("fire-type")]
+    fire
+    water
+}
+
+struct Stat {
+    #[json.identifier("base_stat")]
+    baseStat int
+    name     string
+}
+
+struct Mon {
+    id     int
+    name   string
+    #[json.identifier("base_experience")]
+    exp    option[int]
+    kind   Kind
+    stats  list[Stat]
+    weight float
+    tags   map[string, float]
+    caught option[time.date]
+    seen   time.datetime
+}
+
+struct Tree {
+    label    string
+    children list[Tree]
+}
+
+const sample = `{"id": 1, "name": "bulba", "kind": "fire-type", "extra": [1, 2],
+    "stats": [{"base_stat": 45, "name": "hp"}, {"base_stat": 49, "name": "attack"}],
+    "weight": 6.9, "tags": {"b": 2, "a": 0.5}, "caught": null, "seen": "2024-03-01T12:00:00Z"}`
+
+func failure[T any](r async.Result[T]) => match var f = r {
+    ok => ""
+    failed => "{f.kind}: {f.message}"
+}
+
+func testDecode(t Test) {
+    match var m = json.decode[Mon](sample) {
+        ok {
+            t.assert(m.id == 1)
+            t.assert(m.name == "bulba")
+            t.assert(m.exp == null)
+            t.assert(m.kind == Kind.fire)
+            t.assert(m.stats.length() == 2)
+            t.assert(m.stats[1].baseStat == 49)
+            t.assert(m.weight == 6.9)
+            t.assert(m.tags.get("a", 0.0) == 0.5)
+            t.assert(m.caught == null)
+        }
+        failed { t.assert(m.message == "") }
+    }
+}
+
+// Built in program code, where a date written as text is parsed.
+func squirtle() Mon {
+    return Mon{
+        id = 7,
+        name = "squirtle \"blue\"",
+        exp = 63,
+        kind = Kind.water,
+        stats = [Stat{baseStat=44, name="hp"}],
+        weight = 9.0,
+        tags = {"z" = 1.5, "a" = 2.0},
+        caught = time.date("2024-03-01"),
+        seen = "2024-03-01T12:00:00Z",
+    }
+}
+
+func testEncode(t Test) {
+    var m = squirtle()
+    t.assert(json.encode(m) == `{"id":7,"name":"squirtle \"blue\"","base_experience":63,"kind":"water","stats":[{"base_stat":44,"name":"hp"}],"weight":9,"tags":{"a":2,"z":1.5},"caught":"2024-03-01","seen":"2024-03-01T12:00:00Z"}`)
+    t.assert(json.encode([1.5, 0.25, 100.0]) == "[1.5,0.25,100]")
+    t.assert(json.encode("tab\tline\n") == `"tab\tline\n"`)
+}
+
+func testRoundTrip(t Test) {
+    var tree = Tree{label="root", children=[Tree{label="a", children=[]}, Tree{label="b", children=[Tree{label="c", children=[]}]}]}
+    var out = json.encode(tree)
+    t.assert(out == `{"label":"root","children":[{"label":"a","children":[]},{"label":"b","children":[{"label":"c","children":[]}]}]}`)
+    match var back = json.decode[Tree](out) {
+        ok {
+            t.assert(back.children[1].children[0].label == "c")
+            t.assert(json.encode(back) == out)
+        }
+        failed { t.assert(back.message == "") }
+    }
+}
+
+func testFailures(t Test) {
+    t.assert(failure(json.decode[Mon](`{"id": 1.5}`)) == "decode: $.id: want an integer")
+    t.assert(failure(json.decode[Mon](`{"id": 1}`)) == "decode: $.name: missing")
+    t.assert(failure(json.decode[list[Stat]](`[{"base_stat": 1, "name": 2}]`)) == "decode: $[0].name: want a string")
+    t.assert(failure(json.decode[Kind](`"grass"`)) == "decode: $: want one of fire-type, water")
+    t.assert(failure(json.decode[int](`[1`)) == "decode: not JSON")
+    t.assert(failure(json.decode[map[string, int]](`{"b": 1, "a": "x"}`)) == "decode: $.a: want an integer")
+    t.assert(failure(json.decode[time.date](`"2024-02-30"`)) == "decode: $: want a date")
+    t.assert(failure(json.decode[option[int]](`null`)) == "")
+}
+
+component panel node {
+    var shown = "-"
+    text #result(value=shown)
+    button #run(text="Decode", @click {
+        match var s = json.decode[Stat](`{"base_stat": 3, "name": "speed"}`) {
+            ok { shown = "{s.name} {s.baseStat}" }
+            failed { shown = s.message }
+        }
+    })
+}
+
+func testInAHandler(t Test, c panel) {
+    c.run.click()
+    t.assert(c.result.value == "speed 3")
+}
+
+window {
+    panel
+}
+-- testrun/android/kotlin/app.sngl/_/1 --
+sha256:aa651966b4b60c471f19e955a04021e6
+{
+  "results": [
+    {
+      "Desc": "Decode",
+      "Passed": true
+    },
+    {
+      "Desc": "Encode",
+      "Passed": true
+    },
+    {
+      "Desc": "Failures",
+      "Passed": true
+    },
+    {
+      "Desc": "RoundTrip",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/android/kotlin/app.sngl/panel/1 --
+sha256:8f79b59bec93e7a54e8ecd021a2c3e15
+{
+  "results": [
+    {
+      "Desc": "InAHandler",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/_/1 --
+sha256:f74f27d836497132f0254397e6a78be3
+{
+  "results": [
+    {
+      "Desc": "Decode",
+      "Passed": true
+    },
+    {
+      "Desc": "Encode",
+      "Passed": true
+    },
+    {
+      "Desc": "Failures",
+      "Passed": true
+    },
+    {
+      "Desc": "RoundTrip",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/panel/1 --
+sha256:1c0eee5e8503ba78f66661f401028ed6
+{
+  "results": [
+    {
+      "Desc": "InAHandler",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/_/1 --
+sha256:83cbe8d0069551a350ef95782b3b816c
+{
+  "results": [
+    {
+      "Desc": "Decode",
+      "Passed": true
+    },
+    {
+      "Desc": "Encode",
+      "Passed": true
+    },
+    {
+      "Desc": "Failures",
+      "Passed": true
+    },
+    {
+      "Desc": "RoundTrip",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/panel/1 --
+sha256:8d85f5cf29167a99460e90c545231db7
+{
+  "results": [
+    {
+      "Desc": "InAHandler",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/_/1 --
+sha256:e4083e6d6fe16b33bd18ffbe72f83cf0
+{
+  "results": [
+    {
+      "Desc": "Decode",
+      "Passed": true
+    },
+    {
+      "Desc": "Encode",
+      "Passed": true
+    },
+    {
+      "Desc": "Failures",
+      "Passed": true
+    },
+    {
+      "Desc": "RoundTrip",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/panel/1 --
+sha256:b219b17e2881dd4659a177f940c7ddec
+{
+  "results": [
+    {
+      "Desc": "InAHandler",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/_/1 --
+sha256:876af0afb50916377b5a4844a14d6dd7
+{
+  "results": [
+    {
+      "Desc": "Decode",
+      "Passed": true
+    },
+    {
+      "Desc": "Encode",
+      "Passed": true
+    },
+    {
+      "Desc": "Failures",
+      "Passed": true
+    },
+    {
+      "Desc": "RoundTrip",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/panel/1 --
+sha256:f11eee25cb52a650ca6406ebddeeabb8
+{
+  "results": [
+    {
+      "Desc": "InAHandler",
+      "Passed": true
+    }
+  ]
+}

@@ -276,6 +276,18 @@ func markLine(s ast.Stmt) int {
 	return attrs[len(attrs)-1].EndPos.Line
 }
 
+// markTrailer is the trailing comment c written after a struct or enum body
+// item, or nil where c was written on the item's mark's line: that one is
+// held for the mark, as a declaration's is, since a diagnostic about the mark
+// lands there.
+func (f *formatter) markTrailer(item any, c *ast.Comment) *ast.Comment {
+	if s, ok := item.(ast.Stmt); ok && markLine(s) == c.Pos.Line {
+		f.attrTrailer = c
+		return nil
+	}
+	return c
+}
+
 // trailingComment returns the comment written after stmts[i] on its line.
 func trailingComment(stmts []ast.Stmt, i int) (*ast.Comment, bool) {
 	if i+1 >= len(stmts) {
@@ -383,13 +395,16 @@ func (f *formatter) writeStructDef(s *ast.StructDef) {
 		if f.writeBodyComment(body[i]) {
 			continue
 		}
-		f.writeStructBodyItemPadded(body[i], widths[i])
+		item, width := body[i], widths[i]
+		var trailer *ast.Comment
 		if i+1 < len(body) {
 			if c, ok := body[i+1].(*ast.Comment); ok && c.Inline {
-				f.writeTrailing(c)
+				trailer = f.markTrailer(item, c)
 				i++
 			}
 		}
+		f.writeStructBodyItemPadded(item, width)
+		f.writeTrailing(trailer)
 		f.newline()
 	}
 	f.indent--
@@ -523,10 +538,15 @@ func (f *formatter) writeEnumDef(e *ast.EnumDef) {
 		f.write(" ")
 	}
 	f.write("{")
-	// Funcs in the body force multiline form regardless of IsMultiline.
+	// Funcs in the body force multiline form regardless of IsMultiline, and
+	// so does a mark, which takes a line of its own.
 	hasFuncs := false
 	for _, it := range e.Body {
 		if _, ok := it.(*ast.FuncDef); ok {
+			hasFuncs = true
+			break
+		}
+		if m, ok := it.(*ast.EnumMember); ok && len(m.Attrs) > 0 {
 			hasFuncs = true
 			break
 		}
@@ -542,19 +562,24 @@ func (f *formatter) writeEnumDef(e *ast.EnumDef) {
 			if f.writeBodyComment(body[i]) {
 				continue
 			}
-			item := body[i]
-			switch it := item.(type) {
-			case *ast.EnumMember:
-				f.writeEnumMember(it, widths[i])
-			case *ast.FuncDef:
-				f.writeFuncDef(it)
-			}
+			item, width := body[i], widths[i]
+			var trailer *ast.Comment
 			if i+1 < len(body) {
 				if c, ok := body[i+1].(*ast.Comment); ok && c.Inline {
-					f.writeTrailing(c)
+					trailer = f.markTrailer(item, c)
 					i++
 				}
 			}
+			if a, ok := item.(ast.Attributed); ok {
+				f.writeAttrs(a.MacroAttrs())
+			}
+			switch it := item.(type) {
+			case *ast.EnumMember:
+				f.writeEnumMember(it, width)
+			case *ast.FuncDef:
+				f.writeFuncDef(it)
+			}
+			f.writeTrailing(trailer)
 			f.newline()
 		}
 		f.indent--

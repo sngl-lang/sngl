@@ -34,9 +34,14 @@ func lowerLibFuncs(pkg *ir.Package, _ Features, _ Options) error {
 	// is left is a plain helper another package declared, which a program's own
 	// func list would never mention -- a program's declarations carry an empty
 	// Pkg, so a non-empty one is exactly the library case.
+	//
+	// A method of a library struct travels with nothing: the struct is
+	// promoted by the shake as a declaration of the program's, and its
+	// methods are declared beside the program's own -- `http.Response`'s
+	// `checked`.
 	wanted := func(fn *ir.Func) bool {
 		return fn != nil && !have[fn] && len(fn.Block) > 0 &&
-			!fn.IsMethod() && fn.Intrinsic == "" && fn.Foreign.Name == "" &&
+			(!fn.IsMethod() || libStructMethod(fn)) && fn.Intrinsic == "" && fn.Foreign.Name == "" &&
 			fn.PkgPath() != ""
 	}
 	// The package, rather than a list of roots assembled here: that list named
@@ -61,6 +66,13 @@ func lowerLibFuncs(pkg *ir.Package, _ Features, _ Options) error {
 	// instead: only there is it known which of them survive, and a struct
 	// belonging to one that does not is a declaration nothing writes.
 	return nil
+}
+
+// libStructMethod reports whether fn is a method a library declares on a
+// struct of its own, rather than on a builtin type or a component.
+func libStructMethod(fn *ir.Func) bool {
+	sd, ok := fn.RecvDecl().(*ir.StructDef)
+	return ok && sd.Builtin == "" && sd.Intrinsic == "" && fn.Lowered.HostReceiver == ""
 }
 
 func promoteFuncs(roots *[]any, push func(any), wanted func(*ir.Func) bool, have map[*ir.Func]bool, added *[]*ir.Func) {

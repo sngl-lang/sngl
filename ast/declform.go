@@ -13,6 +13,8 @@ func DeclFormName(decl any) string {
 		return "a struct field"
 	case *EnumDef:
 		return "an enum"
+	case *EnumMember:
+		return "an enum member"
 	case *UnitDef:
 		return "a unit"
 	case *ComponentDecl:

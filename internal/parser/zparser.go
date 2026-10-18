@@ -121,90 +121,91 @@ const (
 	StructField       = Symbol(99)  // StructField
 	EnumDecl          = Symbol(100) // EnumDecl
 	EnumBodyItem      = Symbol(101) // EnumBodyItem
-	EnumMember        = Symbol(102) // EnumMember
-	UnitDecl          = Symbol(103) // UnitDecl
-	ConstDecl         = Symbol(104) // ConstDecl
-	ConstSpec         = Symbol(105) // ConstSpec
-	IdentList         = Symbol(106) // IdentList
-	VarDecl           = Symbol(107) // VarDecl
-	VarSpec           = Symbol(108) // VarSpec
-	VarHandler        = Symbol(109) // VarHandler
-	FuncDecl          = Symbol(110) // FuncDecl
-	TargetIndex       = Symbol(111) // TargetIndex
-	FuncTail          = Symbol(112) // FuncTail
-	FuncBodyTail      = Symbol(113) // FuncBodyTail
-	FuncName          = Symbol(114) // FuncName
-	FuncNameBracket   = Symbol(115) // FuncNameBracket
-	TypeParamRest     = Symbol(116) // TypeParamRest
-	NameBracket       = Symbol(117) // NameBracket
-	TypeParamList     = Symbol(118) // TypeParamList
-	TypeParam         = Symbol(119) // TypeParam
-	ParamList         = Symbol(120) // ParamList
-	Param             = Symbol(121) // Param
-	KeywordType       = Symbol(122) // KeywordType
-	EventParams       = Symbol(123) // EventParams
-	ComponentDecl     = Symbol(124) // ComponentDecl
-	VisualOrStmt      = Symbol(125) // VisualOrStmt
-	IncDecOp          = Symbol(126) // IncDecOp
-	StatementPrimary  = Symbol(127) // StatementPrimary
-	IfNode            = Symbol(128) // IfNode
-	ForNode           = Symbol(129) // ForNode
-	Match             = Symbol(130) // Match
-	MatchArm          = Symbol(131) // MatchArm
-	AssignOp          = Symbol(132) // AssignOp
-	Expr              = Symbol(133) // Expr
-	TernaryExpr       = Symbol(134) // TernaryExpr
-	OrExpr            = Symbol(135) // OrExpr
-	AndExpr           = Symbol(136) // AndExpr
-	EqExpr            = Symbol(137) // EqExpr
-	CmpExpr           = Symbol(138) // CmpExpr
-	AddExpr           = Symbol(139) // AddExpr
-	MulExpr           = Symbol(140) // MulExpr
-	EqOp              = Symbol(141) // EqOp
-	CmpOp             = Symbol(142) // CmpOp
-	AddOp             = Symbol(143) // AddOp
-	MulOp             = Symbol(144) // MulOp
-	UnaryExpr         = Symbol(145) // UnaryExpr
-	PostfixExpr       = Symbol(146) // PostfixExpr
-	CondExpr          = Symbol(147) // CondExpr
-	CondOrExpr        = Symbol(148) // CondOrExpr
-	CondAndExpr       = Symbol(149) // CondAndExpr
-	CondEqExpr        = Symbol(150) // CondEqExpr
-	CondCmpExpr       = Symbol(151) // CondCmpExpr
-	CondAddExpr       = Symbol(152) // CondAddExpr
-	CondMulExpr       = Symbol(153) // CondMulExpr
-	CondUnaryExpr     = Symbol(154) // CondUnaryExpr
-	CondPostfixExpr   = Symbol(155) // CondPostfixExpr
-	CondPrimary       = Symbol(156) // CondPrimary
-	CondPostfixOp     = Symbol(157) // CondPostfixOp
-	ExprPostfixOp     = Symbol(158) // ExprPostfixOp
-	StmtPostfixOp     = Symbol(159) // StmtPostfixOp
-	IndexList         = Symbol(160) // IndexList
-	IndexElem         = Symbol(161) // IndexElem
-	PrimaryExpr       = Symbol(162) // PrimaryExpr
-	ImportExpr        = Symbol(163) // ImportExpr
-	ListBody          = Symbol(164) // ListBody
-	ListElem          = Symbol(165) // ListElem
-	StructLitBody     = Symbol(166) // StructLitBody
-	AnonStructLit     = Symbol(167) // AnonStructLit
-	AnonField         = Symbol(168) // AnonField
-	FuncLit           = Symbol(169) // FuncLit
-	ArgList           = Symbol(170) // ArgList
-	Arg               = Symbol(171) // Arg
-	EventArg          = Symbol(172) // EventArg
-	IdentArgCont      = Symbol(173) // IdentArgCont
-	ArgExprCont       = Symbol(174) // ArgExprCont
-	NonIdentPrimary   = Symbol(175) // NonIdentPrimary
-	Type              = Symbol(176) // Type
-	TypeArgs          = Symbol(177) // TypeArgs
-	TypeList          = Symbol(178) // TypeList
-	FuncTypeParamList = Symbol(179) // FuncTypeParamList
-	FuncTypeParam     = Symbol(180) // FuncTypeParam
+	EnumBodyDecl      = Symbol(102) // EnumBodyDecl
+	EnumMember        = Symbol(103) // EnumMember
+	UnitDecl          = Symbol(104) // UnitDecl
+	ConstDecl         = Symbol(105) // ConstDecl
+	ConstSpec         = Symbol(106) // ConstSpec
+	IdentList         = Symbol(107) // IdentList
+	VarDecl           = Symbol(108) // VarDecl
+	VarSpec           = Symbol(109) // VarSpec
+	VarHandler        = Symbol(110) // VarHandler
+	FuncDecl          = Symbol(111) // FuncDecl
+	TargetIndex       = Symbol(112) // TargetIndex
+	FuncTail          = Symbol(113) // FuncTail
+	FuncBodyTail      = Symbol(114) // FuncBodyTail
+	FuncName          = Symbol(115) // FuncName
+	FuncNameBracket   = Symbol(116) // FuncNameBracket
+	TypeParamRest     = Symbol(117) // TypeParamRest
+	NameBracket       = Symbol(118) // NameBracket
+	TypeParamList     = Symbol(119) // TypeParamList
+	TypeParam         = Symbol(120) // TypeParam
+	ParamList         = Symbol(121) // ParamList
+	Param             = Symbol(122) // Param
+	KeywordType       = Symbol(123) // KeywordType
+	EventParams       = Symbol(124) // EventParams
+	ComponentDecl     = Symbol(125) // ComponentDecl
+	VisualOrStmt      = Symbol(126) // VisualOrStmt
+	IncDecOp          = Symbol(127) // IncDecOp
+	StatementPrimary  = Symbol(128) // StatementPrimary
+	IfNode            = Symbol(129) // IfNode
+	ForNode           = Symbol(130) // ForNode
+	Match             = Symbol(131) // Match
+	MatchArm          = Symbol(132) // MatchArm
+	AssignOp          = Symbol(133) // AssignOp
+	Expr              = Symbol(134) // Expr
+	TernaryExpr       = Symbol(135) // TernaryExpr
+	OrExpr            = Symbol(136) // OrExpr
+	AndExpr           = Symbol(137) // AndExpr
+	EqExpr            = Symbol(138) // EqExpr
+	CmpExpr           = Symbol(139) // CmpExpr
+	AddExpr           = Symbol(140) // AddExpr
+	MulExpr           = Symbol(141) // MulExpr
+	EqOp              = Symbol(142) // EqOp
+	CmpOp             = Symbol(143) // CmpOp
+	AddOp             = Symbol(144) // AddOp
+	MulOp             = Symbol(145) // MulOp
+	UnaryExpr         = Symbol(146) // UnaryExpr
+	PostfixExpr       = Symbol(147) // PostfixExpr
+	CondExpr          = Symbol(148) // CondExpr
+	CondOrExpr        = Symbol(149) // CondOrExpr
+	CondAndExpr       = Symbol(150) // CondAndExpr
+	CondEqExpr        = Symbol(151) // CondEqExpr
+	CondCmpExpr       = Symbol(152) // CondCmpExpr
+	CondAddExpr       = Symbol(153) // CondAddExpr
+	CondMulExpr       = Symbol(154) // CondMulExpr
+	CondUnaryExpr     = Symbol(155) // CondUnaryExpr
+	CondPostfixExpr   = Symbol(156) // CondPostfixExpr
+	CondPrimary       = Symbol(157) // CondPrimary
+	CondPostfixOp     = Symbol(158) // CondPostfixOp
+	ExprPostfixOp     = Symbol(159) // ExprPostfixOp
+	StmtPostfixOp     = Symbol(160) // StmtPostfixOp
+	IndexList         = Symbol(161) // IndexList
+	IndexElem         = Symbol(162) // IndexElem
+	PrimaryExpr       = Symbol(163) // PrimaryExpr
+	ImportExpr        = Symbol(164) // ImportExpr
+	ListBody          = Symbol(165) // ListBody
+	ListElem          = Symbol(166) // ListElem
+	StructLitBody     = Symbol(167) // StructLitBody
+	AnonStructLit     = Symbol(168) // AnonStructLit
+	AnonField         = Symbol(169) // AnonField
+	FuncLit           = Symbol(170) // FuncLit
+	ArgList           = Symbol(171) // ArgList
+	Arg               = Symbol(172) // Arg
+	EventArg          = Symbol(173) // EventArg
+	IdentArgCont      = Symbol(174) // IdentArgCont
+	ArgExprCont       = Symbol(175) // ArgExprCont
+	NonIdentPrimary   = Symbol(176) // NonIdentPrimary
+	Type              = Symbol(177) // Type
+	TypeArgs          = Symbol(178) // TypeArgs
+	TypeList          = Symbol(179) // TypeList
+	FuncTypeParamList = Symbol(180) // FuncTypeParamList
+	FuncTypeParam     = Symbol(181) // FuncTypeParam
 )
 
-const SymbolNames = "EOFampassignatattr_openbangbangbangcoloncommadotellipsiseqfat_arrowfloat_litgtgtehashi18n_case_endi18n_case_fulli18n_case_starti18n_str_endi18n_str_fulli18n_str_resumei18n_str_starti18n_triple_endi18n_triple_fulli18n_triple_startidentint_litkw_breakkw_componentkw_constkw_continuekw_elsekw_enumkw_forkw_funckw_ifkw_importkw_matchkw_returnkw_structkw_unitkw_varlandlbracelbracketlorlparenltlteminusminus_assignminus_minusnative_valueneqpct_assignpercentplusplus_assignplus_plusquestionraw_strrbracerbracketrparensemislashslash_assignslashdashstarstar_assignstr_endstr_fullstr_resumestr_starttriple_endtriple_fulltriple_startunit_litwhite_spaceInterpStrTripleInterpI18nInterpStrI18nTripleI18nPlaceholderI18nThirdArgMsgBodyTailMsgCaseSelectorMsgBodyMacroAttrDocumentStmtStmtBlockImportDeclStructDeclStructBodyItemStructBodyDeclStructFieldEnumDeclEnumBodyItemEnumMemberUnitDeclConstDeclConstSpecIdentListVarDeclVarSpecVarHandlerFuncDeclTargetIndexFuncTailFuncBodyTailFuncNameFuncNameBracketTypeParamRestNameBracketTypeParamListTypeParamParamListParamKeywordTypeEventParamsComponentDeclVisualOrStmtIncDecOpStatementPrimaryIfNodeForNodeMatchMatchArmAssignOpExprTernaryExprOrExprAndExprEqExprCmpExprAddExprMulExprEqOpCmpOpAddOpMulOpUnaryExprPostfixExprCondExprCondOrExprCondAndExprCondEqExprCondCmpExprCondAddExprCondMulExprCondUnaryExprCondPostfixExprCondPrimaryCondPostfixOpExprPostfixOpStmtPostfixOpIndexListIndexElemPrimaryExprImportExprListBodyListElemStructLitBodyAnonStructLitAnonFieldFuncLitArgListArgEventArgIdentArgContArgExprContNonIdentPrimaryTypeTypeArgsTypeListFuncTypeParamListFuncTypeParam"
+const SymbolNames = "EOFampassignatattr_openbangbangbangcoloncommadotellipsiseqfat_arrowfloat_litgtgtehashi18n_case_endi18n_case_fulli18n_case_starti18n_str_endi18n_str_fulli18n_str_resumei18n_str_starti18n_triple_endi18n_triple_fulli18n_triple_startidentint_litkw_breakkw_componentkw_constkw_continuekw_elsekw_enumkw_forkw_funckw_ifkw_importkw_matchkw_returnkw_structkw_unitkw_varlandlbracelbracketlorlparenltlteminusminus_assignminus_minusnative_valueneqpct_assignpercentplusplus_assignplus_plusquestionraw_strrbracerbracketrparensemislashslash_assignslashdashstarstar_assignstr_endstr_fullstr_resumestr_starttriple_endtriple_fulltriple_startunit_litwhite_spaceInterpStrTripleInterpI18nInterpStrI18nTripleI18nPlaceholderI18nThirdArgMsgBodyTailMsgCaseSelectorMsgBodyMacroAttrDocumentStmtStmtBlockImportDeclStructDeclStructBodyItemStructBodyDeclStructFieldEnumDeclEnumBodyItemEnumBodyDeclEnumMemberUnitDeclConstDeclConstSpecIdentListVarDeclVarSpecVarHandlerFuncDeclTargetIndexFuncTailFuncBodyTailFuncNameFuncNameBracketTypeParamRestNameBracketTypeParamListTypeParamParamListParamKeywordTypeEventParamsComponentDeclVisualOrStmtIncDecOpStatementPrimaryIfNodeForNodeMatchMatchArmAssignOpExprTernaryExprOrExprAndExprEqExprCmpExprAddExprMulExprEqOpCmpOpAddOpMulOpUnaryExprPostfixExprCondExprCondOrExprCondAndExprCondEqExprCondCmpExprCondAddExprCondMulExprCondUnaryExprCondPostfixExprCondPrimaryCondPostfixOpExprPostfixOpStmtPostfixOpIndexListIndexElemPrimaryExprImportExprListBodyListElemStructLitBodyAnonStructLitAnonFieldFuncLitArgListArgEventArgIdentArgContArgExprContNonIdentPrimaryTypeTypeArgsTypeListFuncTypeParamListFuncTypeParam"
 
-var SymbolIndex = [...]uint16{0, 3, 6, 12, 14, 23, 27, 35, 40, 45, 48, 56, 58, 67, 76, 78, 81, 85, 98, 112, 127, 139, 152, 167, 181, 196, 212, 229, 234, 241, 249, 261, 269, 280, 287, 294, 300, 307, 312, 321, 329, 338, 347, 354, 360, 364, 370, 378, 381, 387, 389, 392, 397, 409, 420, 432, 435, 445, 452, 456, 467, 476, 484, 491, 497, 505, 511, 515, 520, 532, 541, 545, 556, 563, 571, 581, 590, 600, 611, 623, 631, 642, 651, 663, 676, 686, 701, 713, 724, 731, 739, 746, 755, 763, 767, 776, 786, 796, 810, 824, 835, 843, 855, 865, 873, 882, 891, 900, 907, 914, 924, 932, 943, 951, 963, 971, 986, 999, 1010, 1023, 1032, 1041, 1046, 1057, 1068, 1081, 1093, 1101, 1117, 1123, 1130, 1135, 1143, 1151, 1155, 1166, 1172, 1179, 1185, 1192, 1199, 1206, 1210, 1215, 1220, 1225, 1234, 1245, 1253, 1263, 1274, 1284, 1295, 1306, 1317, 1330, 1345, 1356, 1369, 1382, 1395, 1404, 1413, 1424, 1434, 1442, 1450, 1463, 1476, 1485, 1492, 1499, 1502, 1510, 1522, 1533, 1548, 1552, 1560, 1568, 1585, 1598}
+var SymbolIndex = [...]uint16{0, 3, 6, 12, 14, 23, 27, 35, 40, 45, 48, 56, 58, 67, 76, 78, 81, 85, 98, 112, 127, 139, 152, 167, 181, 196, 212, 229, 234, 241, 249, 261, 269, 280, 287, 294, 300, 307, 312, 321, 329, 338, 347, 354, 360, 364, 370, 378, 381, 387, 389, 392, 397, 409, 420, 432, 435, 445, 452, 456, 467, 476, 484, 491, 497, 505, 511, 515, 520, 532, 541, 545, 556, 563, 571, 581, 590, 600, 611, 623, 631, 642, 651, 663, 676, 686, 701, 713, 724, 731, 739, 746, 755, 763, 767, 776, 786, 796, 810, 824, 835, 843, 855, 867, 877, 885, 894, 903, 912, 919, 926, 936, 944, 955, 963, 975, 983, 998, 1011, 1022, 1035, 1044, 1053, 1058, 1069, 1080, 1093, 1105, 1113, 1129, 1135, 1142, 1147, 1155, 1163, 1167, 1178, 1184, 1191, 1197, 1204, 1211, 1218, 1222, 1227, 1232, 1237, 1246, 1257, 1265, 1275, 1286, 1296, 1307, 1318, 1329, 1342, 1357, 1368, 1381, 1394, 1407, 1416, 1425, 1436, 1446, 1454, 1462, 1475, 1488, 1497, 1504, 1511, 1514, 1522, 1534, 1545, 1560, 1564, 1572, 1580, 1597, 1610}
 
 func (s Symbol) String() string {
 	idx := int(s) - 0
@@ -305,7 +306,6 @@ var errorSets = [...][]Symbol{
 	{i18n_triple_start},
 	{IdentList, lparen, kw_func, kw_component, ident},
 	{IdentList, kw_func, kw_const, ident},
-	{FuncDecl, EnumMember, rbrace, kw_func, kw_const, ident},
 	{kw_func, kw_const, ident},
 	{lbracket, lbrace, ident},
 	{lbrace, ident},
@@ -334,7 +334,9 @@ var errorSets = [...][]Symbol{
 	{AnonStructLit, Match, ForNode, IfNode, StatementPrimary, VisualOrStmt, ComponentDecl, FuncDecl, VarDecl, ConstDecl, UnitDecl, EnumDecl, StructDecl, ImportDecl, I18nTriple, I18nInterpStr, TripleInterp, InterpStr, unit_lit, triple_start, triple_full, str_start, str_full, star, slashdash, semi, raw_str, lparen, lbracket, lbrace, kw_var, kw_unit, kw_struct, kw_return, kw_match, kw_import, kw_if, kw_func, kw_for, kw_enum, kw_continue, kw_const, kw_component, kw_break, int_lit, ident, i18n_triple_start, i18n_triple_full, i18n_str_start, i18n_str_full, hash, float_lit, attr_open},
 	{AnonStructLit, Match, ForNode, IfNode, StatementPrimary, VisualOrStmt, ComponentDecl, FuncDecl, VarDecl, ConstDecl, UnitDecl, EnumDecl, StructDecl, ImportDecl, I18nTriple, I18nInterpStr, TripleInterp, InterpStr, unit_lit, triple_start, triple_full, str_start, str_full, star, slashdash, raw_str, lparen, lbracket, lbrace, kw_var, kw_unit, kw_struct, kw_return, kw_match, kw_import, kw_if, kw_func, kw_for, kw_enum, kw_continue, kw_const, kw_component, kw_break, int_lit, ident, i18n_triple_start, i18n_triple_full, i18n_str_start, i18n_str_full, hash, float_lit, attr_open},
 	{AnonStructLit, Match, ForNode, IfNode, StatementPrimary, VisualOrStmt, ComponentDecl, FuncDecl, VarDecl, ConstDecl, UnitDecl, EnumDecl, StructDecl, ImportDecl, I18nTriple, I18nInterpStr, TripleInterp, InterpStr, unit_lit, triple_start, triple_full, str_start, str_full, star, raw_str, lparen, lbracket, lbrace, kw_var, kw_unit, kw_struct, kw_return, kw_match, kw_import, kw_if, kw_func, kw_for, kw_enum, kw_continue, kw_const, kw_component, kw_break, int_lit, ident, i18n_triple_start, i18n_triple_full, i18n_str_start, i18n_str_full, hash, float_lit, attr_open},
+	{FuncDecl, EnumMember, kw_func, kw_const, ident, attr_open},
 	{FuncDecl, IdentList, StructField, StructBodyDecl, MacroAttr, semi, rbrace, kw_func, kw_const, ident, attr_open},
+	{FuncDecl, EnumMember, EnumBodyDecl, MacroAttr, rbrace, kw_func, kw_const, ident, attr_open},
 	{FuncDecl, IdentList, StructField, StructBodyDecl, MacroAttr, rbrace, kw_func, kw_const, ident, attr_open},
 	{FuncDecl, IdentList, StructField, kw_func, kw_const, ident, attr_open},
 	{kw_struct},
@@ -1074,7 +1076,7 @@ state0:
 	}
 	return p.stop(start, accept, errorSet)
 state1:
-	accept, errorSet = true, 136
+	accept, errorSet = true, 137
 	switch Symbol(p.tok.Ch) {
 	case minus, plus:
 		p.AddOp()
@@ -1098,7 +1100,7 @@ func (p *Parser) AddOp() []int32 {
 	accept, errorSet := false, 0
 	start := p.open(-int32(AddOp))
 	// state0:
-	accept, errorSet = false, 136
+	accept, errorSet = false, 137
 	switch Symbol(p.tok.Ch) {
 	case minus, plus:
 		p.push(p.shift())
@@ -1135,7 +1137,7 @@ state0:
 	}
 	return p.stop(start, accept, errorSet)
 state1:
-	accept, errorSet = true, 126
+	accept, errorSet = true, 127
 	switch Symbol(p.tok.Ch) {
 	case land:
 		p.push(p.shift())
@@ -1196,7 +1198,7 @@ state2:
 	accept, errorSet = true, 0
 	return p.stop(start, accept, errorSet)
 state3:
-	accept, errorSet = true, 98
+	accept, errorSet = true, 97
 	switch Symbol(p.tok.Ch) {
 	case assign:
 		p.push(p.shift())
@@ -1231,7 +1233,7 @@ func (p *Parser) AnonStructLit() []int32 {
 	accept, errorSet := false, 0
 	start := p.open(-int32(AnonStructLit))
 	// state0:
-	accept, errorSet = false, 129
+	accept, errorSet = false, 130
 	switch Symbol(p.tok.Ch) {
 	case lbrace:
 		p.push(p.shift())
@@ -1253,7 +1255,7 @@ state2:
 	accept, errorSet = true, 0
 	return p.stop(start, accept, errorSet)
 state3:
-	accept, errorSet = false, 153
+	accept, errorSet = false, 154
 	switch Symbol(p.tok.Ch) {
 	case comma, semi:
 		p.push(p.shift())
@@ -1376,7 +1378,7 @@ state3:
 	accept, errorSet = true, 0
 	return p.stop(start, accept, errorSet)
 state4:
-	accept, errorSet = false, 96
+	accept, errorSet = false, 95
 	switch Symbol(p.tok.Ch) {
 	case ident:
 		p.push(p.shift())
@@ -1403,7 +1405,7 @@ state6:
 	}
 	return p.stop(start, accept, errorSet)
 state7:
-	accept, errorSet = true, 98
+	accept, errorSet = true, 97
 	switch Symbol(p.tok.Ch) {
 	case assign:
 		p.push(p.shift())
@@ -1419,7 +1421,7 @@ state8:
 	}
 	return p.stop(start, accept, errorSet)
 state9:
-	accept, errorSet = true, 162
+	accept, errorSet = true, 163
 	switch Symbol(p.tok.Ch) {
 	case dot, hash, lbrace, lbracket, lparen:
 		p.StmtPostfixOp()
@@ -1596,7 +1598,7 @@ state1:
 	}
 	return p.stop(start, accept, errorSet)
 state2:
-	accept, errorSet = true, 125
+	accept, errorSet = true, 126
 	switch Symbol(p.tok.Ch) {
 	case land:
 		p.push(p.shift())
@@ -1618,7 +1620,7 @@ state3:
 	}
 	return p.stop(start, accept, errorSet)
 state4:
-	accept, errorSet = true, 131
+	accept, errorSet = true, 132
 	switch Symbol(p.tok.Ch) {
 	case lor:
 		p.push(p.shift())
@@ -1637,7 +1639,7 @@ state5:
 	}
 	return p.stop(start, accept, errorSet)
 state6:
-	accept, errorSet = false, 150
+	accept, errorSet = false, 151
 	switch Symbol(p.tok.Ch) {
 	case colon:
 		p.push(p.shift())
@@ -1814,7 +1816,7 @@ func (p *Parser) ArgList() []int32 {
 	}
 	return p.stop(start, accept, errorSet)
 state1:
-	accept, errorSet = true, 155
+	accept, errorSet = true, 156
 	switch Symbol(p.tok.Ch) {
 	case comma, semi:
 		p.push(p.shift())
@@ -1992,7 +1994,7 @@ func (p *Parser) ComponentDecl() []int32 {
 	accept, errorSet := false, 0
 	start := p.open(-int32(ComponentDecl))
 	// state0:
-	accept, errorSet = false, 102
+	accept, errorSet = false, 101
 	switch Symbol(p.tok.Ch) {
 	case kw_component:
 		p.push(p.shift())
@@ -2000,7 +2002,7 @@ func (p *Parser) ComponentDecl() []int32 {
 	}
 	return p.stop(start, accept, errorSet)
 state1:
-	accept, errorSet = false, 96
+	accept, errorSet = false, 95
 	switch Symbol(p.tok.Ch) {
 	case ident:
 		p.push(p.shift())
@@ -2008,7 +2010,7 @@ state1:
 	}
 	return p.stop(start, accept, errorSet)
 state2:
-	accept, errorSet = true, 159
+	accept, errorSet = true, 160
 	switch Symbol(p.tok.Ch) {
 	case dot:
 		p.push(p.shift())
@@ -2028,7 +2030,7 @@ state2:
 	}
 	return p.stop(start, accept, errorSet)
 state3:
-	accept, errorSet = false, 96
+	accept, errorSet = false, 95
 	switch Symbol(p.tok.Ch) {
 	case ident:
 		p.push(p.shift())
@@ -2053,7 +2055,7 @@ state4:
 	}
 	return p.stop(start, accept, errorSet)
 state5:
-	accept, errorSet = false, 99
+	accept, errorSet = false, 98
 	switch Symbol(p.tok.Ch) {
 	case rparen:
 		p.push(p.shift())
@@ -2078,7 +2080,7 @@ state7:
 	accept, errorSet = true, 0
 	return p.stop(start, accept, errorSet)
 state8:
-	accept, errorSet = true, 129
+	accept, errorSet = true, 130
 	switch Symbol(p.tok.Ch) {
 	case lbrace:
 		p.StmtBlock()
@@ -2086,7 +2088,7 @@ state8:
 	}
 	return p.stop(start, accept, errorSet)
 state9:
-	accept, errorSet = false, 143
+	accept, errorSet = false, 144
 	switch Symbol(p.tok.Ch) {
 	case rparen:
 		p.push(p.shift())
@@ -2134,7 +2136,7 @@ state0:
 	}
 	return p.stop(start, accept, errorSet)
 state1:
-	accept, errorSet = true, 136
+	accept, errorSet = true, 137
 	switch Symbol(p.tok.Ch) {
 	case minus, plus:
 		p.AddOp()
@@ -2168,7 +2170,7 @@ state0:
 	}
 	return p.stop(start, accept, errorSet)
 state1:
-	accept, errorSet = true, 126
+	accept, errorSet = true, 127
 	switch Symbol(p.tok.Ch) {
 	case land:
 		p.push(p.shift())
@@ -2287,7 +2289,7 @@ func (p *Parser) CondExpr() []int32 {
 	}
 	return p.stop(start, accept, errorSet)
 state1:
-	accept, errorSet = true, 139
+	accept, errorSet = true, 140
 	switch Symbol(p.tok.Ch) {
 	case question:
 		p.push(p.shift())
@@ -2303,7 +2305,7 @@ state2:
 	}
 	return p.stop(start, accept, errorSet)
 state3:
-	accept, errorSet = false, 150
+	accept, errorSet = false, 151
 	switch Symbol(p.tok.Ch) {
 	case colon:
 		p.push(p.shift())
@@ -2348,7 +2350,7 @@ state0:
 	}
 	return p.stop(start, accept, errorSet)
 state1:
-	accept, errorSet = true, 138
+	accept, errorSet = true, 139
 	switch Symbol(p.tok.Ch) {
 	case percent, slash, star:
 		p.MulOp()
@@ -2382,7 +2384,7 @@ state0:
 	}
 	return p.stop(start, accept, errorSet)
 state1:
-	accept, errorSet = true, 132
+	accept, errorSet = true, 133
 	switch Symbol(p.tok.Ch) {
 	case lor:
 		p.push(p.shift())
@@ -2416,7 +2418,7 @@ func (p *Parser) CondPostfixExpr() []int32 {
 	}
 	return p.stop(start, accept, errorSet)
 state1:
-	accept, errorSet = true, 166
+	accept, errorSet = true, 167
 	switch Symbol(p.tok.Ch) {
 	case dot, lbracket, lparen:
 		p.CondPostfixOp()
@@ -2467,7 +2469,7 @@ func (p *Parser) CondPostfixOp() []int32 {
 	accept, errorSet := false, 0
 	start := p.open(-int32(CondPostfixOp))
 	// state0:
-	accept, errorSet = false, 166
+	accept, errorSet = false, 167
 	switch Symbol(p.tok.Ch) {
 	case dot:
 		p.push(p.shift())
@@ -2481,7 +2483,7 @@ func (p *Parser) CondPostfixOp() []int32 {
 	}
 	return p.stop(start, accept, errorSet)
 state1:
-	accept, errorSet = false, 96
+	accept, errorSet = false, 95
 	switch Symbol(p.tok.Ch) {
 	case ident:
 		p.push(p.shift())
@@ -2500,7 +2502,7 @@ state3:
 	}
 	return p.stop(start, accept, errorSet)
 state4:
-	accept, errorSet = false, 142
+	accept, errorSet = false, 143
 	switch Symbol(p.tok.Ch) {
 	case rbracket:
 		p.push(p.shift())
@@ -2519,7 +2521,7 @@ state5:
 	}
 	return p.stop(start, accept, errorSet)
 state6:
-	accept, errorSet = false, 143
+	accept, errorSet = false, 144
 	switch Symbol(p.tok.Ch) {
 	case rparen:
 		p.push(p.shift())
@@ -2631,7 +2633,7 @@ state2:
 	}
 	return p.stop(start, accept, errorSet)
 state3:
-	accept, errorSet = false, 142
+	accept, errorSet = false, 143
 	switch Symbol(p.tok.Ch) {
 	case rbracket:
 		p.push(p.shift())
@@ -2647,7 +2649,7 @@ state4:
 	}
 	return p.stop(start, accept, errorSet)
 state5:
-	accept, errorSet = false, 143
+	accept, errorSet = false, 144
 	switch Symbol(p.tok.Ch) {
 	case rparen:
 		p.push(p.shift())
@@ -2747,7 +2749,7 @@ func (p *Parser) ConstDecl() []int32 {
 	accept, errorSet := false, 0
 	start := p.open(-int32(ConstDecl))
 	// state0:
-	accept, errorSet = false, 103
+	accept, errorSet = false, 102
 	switch Symbol(p.tok.Ch) {
 	case kw_const:
 		p.push(p.shift())
@@ -2772,7 +2774,7 @@ state1:
 	}
 	return p.stop(start, accept, errorSet)
 state2:
-	accept, errorSet = false, 95
+	accept, errorSet = false, 94
 	switch Symbol(p.tok.Ch) {
 	case rparen:
 		p.push(p.shift())
@@ -2786,7 +2788,7 @@ state3:
 	accept, errorSet = true, 0
 	return p.stop(start, accept, errorSet)
 state4:
-	accept, errorSet = false, 152
+	accept, errorSet = false, 153
 	switch Symbol(p.tok.Ch) {
 	case comma, semi:
 		p.push(p.shift())
@@ -2829,7 +2831,7 @@ func (p *Parser) ConstSpec() []int32 {
 	accept, errorSet := false, 0
 	start := p.open(-int32(ConstSpec))
 	// state0:
-	accept, errorSet = false, 96
+	accept, errorSet = false, 95
 	switch Symbol(p.tok.Ch) {
 	case ident:
 		p.IdentList()
@@ -2859,7 +2861,7 @@ state3:
 	accept, errorSet = true, 0
 	return p.stop(start, accept, errorSet)
 state4:
-	accept, errorSet = true, 98
+	accept, errorSet = true, 97
 	switch Symbol(p.tok.Ch) {
 	case assign:
 		p.push(p.shift())
@@ -2923,7 +2925,7 @@ func (p *Parser) Document() []int32 {
 	accept, errorSet := false, 0
 	start := p.open(-int32(Document))
 	// state0:
-	accept, errorSet = true, 113
+	accept, errorSet = true, 112
 	switch Symbol(p.tok.Ch) {
 	case native_value:
 		p.push(p.shift())
@@ -2948,7 +2950,7 @@ state1:
 	}
 	goto stop
 state2:
-	accept, errorSet = true, 144
+	accept, errorSet = true, 145
 	switch Symbol(p.tok.Ch) {
 	case semi:
 		p.push(p.shift())
@@ -2959,7 +2961,7 @@ state3:
 	accept, errorSet = true, 0
 	goto stop
 state4:
-	accept, errorSet = false, 118
+	accept, errorSet = false, 117
 	switch Symbol(p.tok.Ch) {
 	case attr_open:
 		p.MacroAttr()
@@ -2970,7 +2972,7 @@ state4:
 	}
 	goto stop
 state5:
-	accept, errorSet = true, 116
+	accept, errorSet = true, 115
 	switch Symbol(p.tok.Ch) {
 	case slashdash:
 		p.push(p.shift())
@@ -2987,7 +2989,7 @@ state5:
 	}
 	goto stop
 state6:
-	accept, errorSet = true, 117
+	accept, errorSet = true, 116
 	switch Symbol(p.tok.Ch) {
 	case slashdash:
 		p.push(p.shift())
@@ -3020,9 +3022,9 @@ stop:
 	return p.buf[start:len(p.buf):len(p.buf)]
 }
 
-// EnumBodyItem grammar:
+// EnumBodyDecl grammar:
 //
-//	EnumBodyItem = FuncDecl | kw_const FuncDecl | EnumMember .
+//	EnumBodyDecl = FuncDecl | kw_const FuncDecl | EnumMember .
 //
 //	State 0
 //		on  kw_const
@@ -3037,12 +3039,12 @@ stop:
 //	State 2
 //		Accept
 //
-// EnumBodyItem is used internally from Parse.
-func (p *Parser) EnumBodyItem() []int32 {
+// EnumBodyDecl is used internally from Parse.
+func (p *Parser) EnumBodyDecl() []int32 {
 	accept, errorSet := false, 0
-	start := p.open(-int32(EnumBodyItem))
+	start := p.open(-int32(EnumBodyDecl))
 	// state0:
-	accept, errorSet = false, 91
+	accept, errorSet = false, 90
 	switch Symbol(p.tok.Ch) {
 	case kw_const:
 		p.push(p.shift())
@@ -3056,11 +3058,59 @@ func (p *Parser) EnumBodyItem() []int32 {
 	}
 	return p.stop(start, accept, errorSet)
 state1:
-	accept, errorSet = false, 107
+	accept, errorSet = false, 106
 	switch Symbol(p.tok.Ch) {
 	case kw_func:
 		p.FuncDecl()
 		goto state2
+	}
+	return p.stop(start, accept, errorSet)
+state2:
+	accept, errorSet = true, 0
+	return p.stop(start, accept, errorSet)
+}
+
+// EnumBodyItem grammar:
+//
+//	EnumBodyItem = { MacroAttr } EnumBodyDecl .
+//
+//	State 0
+//		on  ident, kw_const, kw_func
+//			call EnumBodyDecl and goto state 2
+//		on  attr_open
+//			call MacroAttr and goto state 1
+//	State 1
+//		on  ident, kw_const, kw_func
+//			call EnumBodyDecl and goto state 2
+//		on  attr_open
+//			call MacroAttr and goto state 1
+//	State 2
+//		Accept
+//
+// EnumBodyItem is used internally from Parse.
+func (p *Parser) EnumBodyItem() []int32 {
+	accept, errorSet := false, 0
+	start := p.open(-int32(EnumBodyItem))
+	// state0:
+	accept, errorSet = false, 118
+	switch Symbol(p.tok.Ch) {
+	case ident, kw_const, kw_func:
+		p.EnumBodyDecl()
+		goto state2
+	case attr_open:
+		p.MacroAttr()
+		goto state1
+	}
+	return p.stop(start, accept, errorSet)
+state1:
+	accept, errorSet = false, 118
+	switch Symbol(p.tok.Ch) {
+	case ident, kw_const, kw_func:
+		p.EnumBodyDecl()
+		goto state2
+	case attr_open:
+		p.MacroAttr()
+		goto state1
 	}
 	return p.stop(start, accept, errorSet)
 state2:
@@ -3091,7 +3141,7 @@ state2:
 //	State 3
 //		on  rbrace
 //			shift and goto state 4
-//		on  ident, kw_const, kw_func
+//		on  attr_open, ident, kw_const, kw_func
 //			call EnumBodyItem and goto state 5
 //	State 4
 //		Accept
@@ -3109,7 +3159,7 @@ func (p *Parser) EnumDecl() []int32 {
 	accept, errorSet := false, 0
 	start := p.open(-int32(EnumDecl))
 	// state0:
-	accept, errorSet = false, 105
+	accept, errorSet = false, 104
 	switch Symbol(p.tok.Ch) {
 	case kw_enum:
 		p.push(p.shift())
@@ -3117,7 +3167,7 @@ func (p *Parser) EnumDecl() []int32 {
 	}
 	return p.stop(start, accept, errorSet)
 state1:
-	accept, errorSet = false, 92
+	accept, errorSet = false, 91
 	switch Symbol(p.tok.Ch) {
 	case ident:
 		p.push(p.shift())
@@ -3131,7 +3181,7 @@ state1:
 	}
 	return p.stop(start, accept, errorSet)
 state2:
-	accept, errorSet = false, 127
+	accept, errorSet = false, 128
 	switch Symbol(p.tok.Ch) {
 	case lbrace:
 		p.push(p.shift())
@@ -3142,12 +3192,12 @@ state2:
 	}
 	return p.stop(start, accept, errorSet)
 state3:
-	accept, errorSet = false, 90
+	accept, errorSet = false, 120
 	switch Symbol(p.tok.Ch) {
 	case rbrace:
 		p.push(p.shift())
 		goto state4
-	case ident, kw_const, kw_func:
+	case attr_open, ident, kw_const, kw_func:
 		p.EnumBodyItem()
 		goto state5
 	}
@@ -3156,7 +3206,7 @@ state4:
 	accept, errorSet = true, 0
 	return p.stop(start, accept, errorSet)
 state5:
-	accept, errorSet = false, 153
+	accept, errorSet = false, 154
 	switch Symbol(p.tok.Ch) {
 	case comma, semi:
 		p.push(p.shift())
@@ -3167,7 +3217,7 @@ state5:
 	}
 	return p.stop(start, accept, errorSet)
 state6:
-	accept, errorSet = false, 129
+	accept, errorSet = false, 130
 	switch Symbol(p.tok.Ch) {
 	case lbrace:
 		p.push(p.shift())
@@ -3205,7 +3255,7 @@ func (p *Parser) EnumMember() []int32 {
 	accept, errorSet := false, 0
 	start := p.open(-int32(EnumMember))
 	// state0:
-	accept, errorSet = false, 96
+	accept, errorSet = false, 95
 	switch Symbol(p.tok.Ch) {
 	case ident:
 		p.push(p.shift())
@@ -3235,7 +3285,7 @@ state3:
 	accept, errorSet = true, 0
 	return p.stop(start, accept, errorSet)
 state4:
-	accept, errorSet = true, 98
+	accept, errorSet = true, 97
 	switch Symbol(p.tok.Ch) {
 	case assign:
 		p.push(p.shift())
@@ -3343,7 +3393,7 @@ func (p *Parser) EventArg() []int32 {
 	accept, errorSet := false, 0
 	start := p.open(-int32(EventArg))
 	// state0:
-	accept, errorSet = false, 112
+	accept, errorSet = false, 111
 	switch Symbol(p.tok.Ch) {
 	case at:
 		p.push(p.shift())
@@ -3351,7 +3401,7 @@ func (p *Parser) EventArg() []int32 {
 	}
 	return p.stop(start, accept, errorSet)
 state1:
-	accept, errorSet = false, 96
+	accept, errorSet = false, 95
 	switch Symbol(p.tok.Ch) {
 	case ident:
 		p.push(p.shift())
@@ -3359,7 +3409,7 @@ state1:
 	}
 	return p.stop(start, accept, errorSet)
 state2:
-	accept, errorSet = false, 128
+	accept, errorSet = false, 129
 	switch Symbol(p.tok.Ch) {
 	case lparen:
 		p.push(p.shift())
@@ -3370,7 +3420,7 @@ state2:
 	}
 	return p.stop(start, accept, errorSet)
 state3:
-	accept, errorSet = false, 99
+	accept, errorSet = false, 98
 	switch Symbol(p.tok.Ch) {
 	case rparen:
 		p.push(p.shift())
@@ -3381,7 +3431,7 @@ state3:
 	}
 	return p.stop(start, accept, errorSet)
 state4:
-	accept, errorSet = false, 129
+	accept, errorSet = false, 130
 	switch Symbol(p.tok.Ch) {
 	case lbrace:
 		p.StmtBlock()
@@ -3392,7 +3442,7 @@ state5:
 	accept, errorSet = true, 0
 	return p.stop(start, accept, errorSet)
 state6:
-	accept, errorSet = false, 143
+	accept, errorSet = false, 144
 	switch Symbol(p.tok.Ch) {
 	case rparen:
 		p.push(p.shift())
@@ -3424,7 +3474,7 @@ func (p *Parser) EventParams() []int32 {
 	accept, errorSet := false, 0
 	start := p.open(-int32(EventParams))
 	// state0:
-	accept, errorSet = false, 134
+	accept, errorSet = false, 135
 	switch Symbol(p.tok.Ch) {
 	case lparen:
 		p.push(p.shift())
@@ -3432,7 +3482,7 @@ func (p *Parser) EventParams() []int32 {
 	}
 	return p.stop(start, accept, errorSet)
 state1:
-	accept, errorSet = false, 99
+	accept, errorSet = false, 98
 	switch Symbol(p.tok.Ch) {
 	case rparen:
 		p.push(p.shift())
@@ -3446,7 +3496,7 @@ state2:
 	accept, errorSet = true, 0
 	return p.stop(start, accept, errorSet)
 state3:
-	accept, errorSet = false, 143
+	accept, errorSet = false, 144
 	switch Symbol(p.tok.Ch) {
 	case rparen:
 		p.push(p.shift())
@@ -3531,7 +3581,7 @@ func (p *Parser) ExprPostfixOp() []int32 {
 	accept, errorSet := false, 0
 	start := p.open(-int32(ExprPostfixOp))
 	// state0:
-	accept, errorSet = false, 166
+	accept, errorSet = false, 167
 	switch Symbol(p.tok.Ch) {
 	case dot:
 		p.push(p.shift())
@@ -3545,7 +3595,7 @@ func (p *Parser) ExprPostfixOp() []int32 {
 	}
 	return p.stop(start, accept, errorSet)
 state1:
-	accept, errorSet = false, 96
+	accept, errorSet = false, 95
 	switch Symbol(p.tok.Ch) {
 	case ident:
 		p.push(p.shift())
@@ -3553,7 +3603,7 @@ state1:
 	}
 	return p.stop(start, accept, errorSet)
 state2:
-	accept, errorSet = true, 129
+	accept, errorSet = true, 130
 	switch Symbol(p.tok.Ch) {
 	case lbrace:
 		p.StructLitBody()
@@ -3572,7 +3622,7 @@ state4:
 	}
 	return p.stop(start, accept, errorSet)
 state5:
-	accept, errorSet = false, 142
+	accept, errorSet = false, 143
 	switch Symbol(p.tok.Ch) {
 	case rbracket:
 		p.push(p.shift())
@@ -3591,7 +3641,7 @@ state6:
 	}
 	return p.stop(start, accept, errorSet)
 state7:
-	accept, errorSet = false, 143
+	accept, errorSet = false, 144
 	switch Symbol(p.tok.Ch) {
 	case rparen:
 		p.push(p.shift())
@@ -3664,7 +3714,7 @@ func (p *Parser) ForNode() []int32 {
 	accept, errorSet := false, 0
 	start := p.open(-int32(ForNode))
 	// state0:
-	accept, errorSet = false, 106
+	accept, errorSet = false, 105
 	switch Symbol(p.tok.Ch) {
 	case kw_for:
 		p.push(p.shift())
@@ -3697,7 +3747,7 @@ state2:
 	}
 	return p.stop(start, accept, errorSet)
 state3:
-	accept, errorSet = false, 96
+	accept, errorSet = false, 95
 	switch Symbol(p.tok.Ch) {
 	case ident:
 		p.push(p.shift())
@@ -3724,7 +3774,7 @@ state5:
 	}
 	return p.stop(start, accept, errorSet)
 state6:
-	accept, errorSet = false, 129
+	accept, errorSet = false, 130
 	switch Symbol(p.tok.Ch) {
 	case lbrace:
 		p.StmtBlock()
@@ -3732,7 +3782,7 @@ state6:
 	}
 	return p.stop(start, accept, errorSet)
 state7:
-	accept, errorSet = true, 104
+	accept, errorSet = true, 103
 	switch Symbol(p.tok.Ch) {
 	case kw_else:
 		p.push(p.shift())
@@ -3740,7 +3790,7 @@ state7:
 	}
 	return p.stop(start, accept, errorSet)
 state8:
-	accept, errorSet = false, 129
+	accept, errorSet = false, 130
 	switch Symbol(p.tok.Ch) {
 	case lbrace:
 		p.StmtBlock()
@@ -3762,7 +3812,7 @@ state10:
 	}
 	return p.stop(start, accept, errorSet)
 state11:
-	accept, errorSet = false, 96
+	accept, errorSet = false, 95
 	switch Symbol(p.tok.Ch) {
 	case ident:
 		p.push(p.shift())
@@ -3770,7 +3820,7 @@ state11:
 	}
 	return p.stop(start, accept, errorSet)
 state12:
-	accept, errorSet = false, 98
+	accept, errorSet = false, 97
 	switch Symbol(p.tok.Ch) {
 	case assign:
 		p.push(p.shift())
@@ -3839,7 +3889,7 @@ state2:
 	accept, errorSet = true, 0
 	return p.stop(start, accept, errorSet)
 state3:
-	accept, errorSet = true, 129
+	accept, errorSet = true, 130
 	switch Symbol(p.tok.Ch) {
 	case lbrace:
 		p.StmtBlock()
@@ -3878,7 +3928,7 @@ func (p *Parser) FuncDecl() []int32 {
 	accept, errorSet := false, 0
 	start := p.open(-int32(FuncDecl))
 	// state0:
-	accept, errorSet = false, 107
+	accept, errorSet = false, 106
 	switch Symbol(p.tok.Ch) {
 	case kw_func:
 		p.push(p.shift())
@@ -3886,7 +3936,7 @@ func (p *Parser) FuncDecl() []int32 {
 	}
 	return p.stop(start, accept, errorSet)
 state1:
-	accept, errorSet = false, 96
+	accept, errorSet = false, 95
 	switch Symbol(p.tok.Ch) {
 	case ident:
 		p.FuncName()
@@ -3940,7 +3990,7 @@ func (p *Parser) FuncLit() []int32 {
 	accept, errorSet := false, 0
 	start := p.open(-int32(FuncLit))
 	// state0:
-	accept, errorSet = false, 107
+	accept, errorSet = false, 106
 	switch Symbol(p.tok.Ch) {
 	case kw_func:
 		p.push(p.shift())
@@ -3959,7 +4009,7 @@ state1:
 	}
 	return p.stop(start, accept, errorSet)
 state2:
-	accept, errorSet = false, 99
+	accept, errorSet = false, 98
 	switch Symbol(p.tok.Ch) {
 	case rparen:
 		p.push(p.shift())
@@ -3981,7 +4031,7 @@ state4:
 	accept, errorSet = true, 0
 	return p.stop(start, accept, errorSet)
 state5:
-	accept, errorSet = false, 143
+	accept, errorSet = false, 144
 	switch Symbol(p.tok.Ch) {
 	case rparen:
 		p.push(p.shift())
@@ -4044,7 +4094,7 @@ func (p *Parser) FuncName() []int32 {
 	accept, errorSet := false, 0
 	start := p.open(-int32(FuncName))
 	// state0:
-	accept, errorSet = false, 96
+	accept, errorSet = false, 95
 	switch Symbol(p.tok.Ch) {
 	case ident:
 		p.push(p.shift())
@@ -4052,7 +4102,7 @@ func (p *Parser) FuncName() []int32 {
 	}
 	return p.stop(start, accept, errorSet)
 state1:
-	accept, errorSet = true, 167
+	accept, errorSet = true, 168
 	switch Symbol(p.tok.Ch) {
 	case dot:
 		p.push(p.shift())
@@ -4063,7 +4113,7 @@ state1:
 	}
 	return p.stop(start, accept, errorSet)
 state2:
-	accept, errorSet = false, 96
+	accept, errorSet = false, 95
 	switch Symbol(p.tok.Ch) {
 	case ident:
 		p.push(p.shift())
@@ -4071,7 +4121,7 @@ state2:
 	}
 	return p.stop(start, accept, errorSet)
 state3:
-	accept, errorSet = true, 130
+	accept, errorSet = true, 131
 	switch Symbol(p.tok.Ch) {
 	case lbracket:
 		p.NameBracket()
@@ -4082,7 +4132,7 @@ state4:
 	accept, errorSet = true, 0
 	return p.stop(start, accept, errorSet)
 state5:
-	accept, errorSet = false, 96
+	accept, errorSet = false, 95
 	switch Symbol(p.tok.Ch) {
 	case ident:
 		p.push(p.shift())
@@ -4090,7 +4140,7 @@ state5:
 	}
 	return p.stop(start, accept, errorSet)
 state6:
-	accept, errorSet = false, 156
+	accept, errorSet = false, 157
 	switch Symbol(p.tok.Ch) {
 	case comma, dot, ellipsis, ident, kw_component, kw_enum, kw_func, kw_struct, kw_unit, rbracket:
 		p.FuncNameBracket()
@@ -4157,7 +4207,7 @@ func (p *Parser) FuncNameBracket() []int32 {
 	accept, errorSet := false, 0
 	start := p.open(-int32(FuncNameBracket))
 	// state0:
-	accept, errorSet = false, 157
+	accept, errorSet = false, 158
 	switch Symbol(p.tok.Ch) {
 	case comma:
 		p.push(p.shift())
@@ -4174,7 +4224,7 @@ func (p *Parser) FuncNameBracket() []int32 {
 	}
 	return p.stop(start, accept, errorSet)
 state1:
-	accept, errorSet = false, 96
+	accept, errorSet = false, 95
 	switch Symbol(p.tok.Ch) {
 	case ident:
 		p.push(p.shift())
@@ -4182,7 +4232,7 @@ state1:
 	}
 	return p.stop(start, accept, errorSet)
 state2:
-	accept, errorSet = false, 154
+	accept, errorSet = false, 155
 	switch Symbol(p.tok.Ch) {
 	case comma:
 		p.push(p.shift())
@@ -4193,7 +4243,7 @@ state2:
 	}
 	return p.stop(start, accept, errorSet)
 state3:
-	accept, errorSet = false, 170
+	accept, errorSet = false, 171
 	switch Symbol(p.tok.Ch) {
 	case dot:
 		p.push(p.shift())
@@ -4201,7 +4251,7 @@ state3:
 	}
 	return p.stop(start, accept, errorSet)
 state4:
-	accept, errorSet = false, 96
+	accept, errorSet = false, 95
 	switch Symbol(p.tok.Ch) {
 	case ident:
 		p.push(p.shift())
@@ -4209,7 +4259,7 @@ state4:
 	}
 	return p.stop(start, accept, errorSet)
 state5:
-	accept, errorSet = true, 130
+	accept, errorSet = true, 131
 	switch Symbol(p.tok.Ch) {
 	case lbracket:
 		p.NameBracket()
@@ -4220,7 +4270,7 @@ state6:
 	accept, errorSet = true, 0
 	return p.stop(start, accept, errorSet)
 state7:
-	accept, errorSet = false, 96
+	accept, errorSet = false, 95
 	switch Symbol(p.tok.Ch) {
 	case ident:
 		p.push(p.shift())
@@ -4228,7 +4278,7 @@ state7:
 	}
 	return p.stop(start, accept, errorSet)
 state8:
-	accept, errorSet = false, 142
+	accept, errorSet = false, 143
 	switch Symbol(p.tok.Ch) {
 	case rbracket:
 		p.push(p.shift())
@@ -4236,7 +4286,7 @@ state8:
 	}
 	return p.stop(start, accept, errorSet)
 state9:
-	accept, errorSet = true, 170
+	accept, errorSet = true, 171
 	switch Symbol(p.tok.Ch) {
 	case dot:
 		p.push(p.shift())
@@ -4244,7 +4294,7 @@ state9:
 	}
 	return p.stop(start, accept, errorSet)
 state10:
-	accept, errorSet = true, 130
+	accept, errorSet = true, 131
 	switch Symbol(p.tok.Ch) {
 	case lbracket:
 		p.TargetIndex()
@@ -4297,7 +4347,7 @@ func (p *Parser) FuncTail() []int32 {
 	}
 	return p.stop(start, accept, errorSet)
 state1:
-	accept, errorSet = false, 99
+	accept, errorSet = false, 98
 	switch Symbol(p.tok.Ch) {
 	case rparen:
 		p.push(p.shift())
@@ -4319,7 +4369,7 @@ state3:
 	accept, errorSet = true, 0
 	return p.stop(start, accept, errorSet)
 state4:
-	accept, errorSet = false, 143
+	accept, errorSet = false, 144
 	switch Symbol(p.tok.Ch) {
 	case rparen:
 		p.push(p.shift())
@@ -4431,7 +4481,7 @@ state2:
 	accept, errorSet = true, 0
 	return p.stop(start, accept, errorSet)
 state3:
-	accept, errorSet = true, 160
+	accept, errorSet = true, 161
 	switch Symbol(p.tok.Ch) {
 	case dot:
 		p.push(p.shift())
@@ -4445,7 +4495,7 @@ state3:
 	}
 	return p.stop(start, accept, errorSet)
 state4:
-	accept, errorSet = false, 96
+	accept, errorSet = false, 95
 	switch Symbol(p.tok.Ch) {
 	case ident:
 		p.push(p.shift())
@@ -4453,7 +4503,7 @@ state4:
 	}
 	return p.stop(start, accept, errorSet)
 state5:
-	accept, errorSet = true, 130
+	accept, errorSet = true, 131
 	switch Symbol(p.tok.Ch) {
 	case lbracket:
 		p.TypeArgs()
@@ -4491,7 +4541,7 @@ state8:
 	}
 	return p.stop(start, accept, errorSet)
 state9:
-	accept, errorSet = false, 143
+	accept, errorSet = false, 144
 	switch Symbol(p.tok.Ch) {
 	case rparen:
 		p.push(p.shift())
@@ -4525,7 +4575,7 @@ state0:
 	}
 	return p.stop(start, accept, errorSet)
 state1:
-	accept, errorSet = true, 158
+	accept, errorSet = true, 159
 	switch Symbol(p.tok.Ch) {
 	case comma:
 		p.push(p.shift())
@@ -4628,7 +4678,7 @@ func (p *Parser) I18nPlaceholder() []int32 {
 	}
 	return p.stop(start, accept, errorSet)
 state1:
-	accept, errorSet = true, 158
+	accept, errorSet = true, 159
 	switch Symbol(p.tok.Ch) {
 	case comma:
 		p.push(p.shift())
@@ -4636,7 +4686,7 @@ state1:
 	}
 	return p.stop(start, accept, errorSet)
 state2:
-	accept, errorSet = false, 96
+	accept, errorSet = false, 95
 	switch Symbol(p.tok.Ch) {
 	case ident:
 		p.push(p.shift())
@@ -4644,7 +4694,7 @@ state2:
 	}
 	return p.stop(start, accept, errorSet)
 state3:
-	accept, errorSet = true, 158
+	accept, errorSet = true, 159
 	switch Symbol(p.tok.Ch) {
 	case comma:
 		p.push(p.shift())
@@ -4712,7 +4762,7 @@ func (p *Parser) I18nThirdArg() []int32 {
 	}
 	return p.stop(start, accept, errorSet)
 state1:
-	accept, errorSet = false, 97
+	accept, errorSet = false, 96
 	switch Symbol(p.tok.Ch) {
 	case int_lit:
 		p.push(p.shift())
@@ -4869,7 +4919,7 @@ state2:
 	accept, errorSet = true, 0
 	return p.stop(start, accept, errorSet)
 state3:
-	accept, errorSet = true, 163
+	accept, errorSet = true, 164
 	switch Symbol(p.tok.Ch) {
 	case dot, lbracket, lparen:
 		p.ExprPostfixOp()
@@ -4898,7 +4948,7 @@ func (p *Parser) IdentList() []int32 {
 	accept, errorSet := false, 0
 	start := p.open(-int32(IdentList))
 state0:
-	accept, errorSet = false, 96
+	accept, errorSet = false, 95
 	switch Symbol(p.tok.Ch) {
 	case ident:
 		p.push(p.shift())
@@ -4906,7 +4956,7 @@ state0:
 	}
 	return p.stop(start, accept, errorSet)
 state1:
-	accept, errorSet = true, 158
+	accept, errorSet = true, 159
 	switch Symbol(p.tok.Ch) {
 	case comma:
 		p.push(p.shift())
@@ -4953,7 +5003,7 @@ func (p *Parser) IfNode() []int32 {
 	accept, errorSet := false, 0
 	start := p.open(-int32(IfNode))
 	// state0:
-	accept, errorSet = false, 109
+	accept, errorSet = false, 108
 	switch Symbol(p.tok.Ch) {
 	case kw_if:
 		p.push(p.shift())
@@ -4969,7 +5019,7 @@ state1:
 	}
 	return p.stop(start, accept, errorSet)
 state2:
-	accept, errorSet = false, 129
+	accept, errorSet = false, 130
 	switch Symbol(p.tok.Ch) {
 	case lbrace:
 		p.StmtBlock()
@@ -4977,7 +5027,7 @@ state2:
 	}
 	return p.stop(start, accept, errorSet)
 state3:
-	accept, errorSet = true, 104
+	accept, errorSet = true, 103
 	switch Symbol(p.tok.Ch) {
 	case kw_else:
 		p.push(p.shift())
@@ -4985,7 +5035,7 @@ state3:
 	}
 	return p.stop(start, accept, errorSet)
 state4:
-	accept, errorSet = false, 108
+	accept, errorSet = false, 107
 	switch Symbol(p.tok.Ch) {
 	case kw_if:
 		p.IfNode()
@@ -5032,7 +5082,7 @@ func (p *Parser) ImportDecl() []int32 {
 	accept, errorSet := false, 0
 	start := p.open(-int32(ImportDecl))
 	// state0:
-	accept, errorSet = false, 110
+	accept, errorSet = false, 109
 	switch Symbol(p.tok.Ch) {
 	case kw_import:
 		p.push(p.shift())
@@ -5040,7 +5090,7 @@ func (p *Parser) ImportDecl() []int32 {
 	}
 	return p.stop(start, accept, errorSet)
 state1:
-	accept, errorSet = false, 165
+	accept, errorSet = false, 166
 	switch Symbol(p.tok.Ch) {
 	case dot, ident:
 		p.push(p.shift())
@@ -5051,7 +5101,7 @@ state1:
 	}
 	return p.stop(start, accept, errorSet)
 state2:
-	accept, errorSet = false, 146
+	accept, errorSet = false, 147
 	switch Symbol(p.tok.Ch) {
 	case str_full:
 		p.push(p.shift())
@@ -5067,7 +5117,7 @@ state3:
 	}
 	return p.stop(start, accept, errorSet)
 state4:
-	accept, errorSet = false, 146
+	accept, errorSet = false, 147
 	switch Symbol(p.tok.Ch) {
 	case str_full:
 		p.push(p.shift())
@@ -5112,7 +5162,7 @@ func (p *Parser) ImportExpr() []int32 {
 	accept, errorSet := false, 0
 	start := p.open(-int32(ImportExpr))
 	// state0:
-	accept, errorSet = false, 110
+	accept, errorSet = false, 109
 	switch Symbol(p.tok.Ch) {
 	case kw_import:
 		p.push(p.shift())
@@ -5120,7 +5170,7 @@ func (p *Parser) ImportExpr() []int32 {
 	}
 	return p.stop(start, accept, errorSet)
 state1:
-	accept, errorSet = false, 134
+	accept, errorSet = false, 135
 	switch Symbol(p.tok.Ch) {
 	case lparen:
 		p.push(p.shift())
@@ -5128,7 +5178,7 @@ state1:
 	}
 	return p.stop(start, accept, errorSet)
 state2:
-	accept, errorSet = false, 146
+	accept, errorSet = false, 147
 	switch Symbol(p.tok.Ch) {
 	case str_full:
 		p.push(p.shift())
@@ -5136,7 +5186,7 @@ state2:
 	}
 	return p.stop(start, accept, errorSet)
 state3:
-	accept, errorSet = false, 143
+	accept, errorSet = false, 144
 	switch Symbol(p.tok.Ch) {
 	case rparen:
 		p.push(p.shift())
@@ -5144,7 +5194,7 @@ state3:
 	}
 	return p.stop(start, accept, errorSet)
 state4:
-	accept, errorSet = false, 170
+	accept, errorSet = false, 171
 	switch Symbol(p.tok.Ch) {
 	case dot:
 		p.push(p.shift())
@@ -5152,7 +5202,7 @@ state4:
 	}
 	return p.stop(start, accept, errorSet)
 state5:
-	accept, errorSet = false, 96
+	accept, errorSet = false, 95
 	switch Symbol(p.tok.Ch) {
 	case ident:
 		p.push(p.shift())
@@ -5179,7 +5229,7 @@ func (p *Parser) IncDecOp() []int32 {
 	accept, errorSet := false, 0
 	start := p.open(-int32(IncDecOp))
 	// state0:
-	accept, errorSet = false, 137
+	accept, errorSet = false, 138
 	switch Symbol(p.tok.Ch) {
 	case minus_minus, plus_plus:
 		p.push(p.shift())
@@ -5306,7 +5356,7 @@ state5:
 	}
 	return p.stop(start, accept, errorSet)
 state6:
-	accept, errorSet = false, 143
+	accept, errorSet = false, 144
 	switch Symbol(p.tok.Ch) {
 	case rparen:
 		p.push(p.shift())
@@ -5345,7 +5395,7 @@ state0:
 	}
 	return p.stop(start, accept, errorSet)
 state1:
-	accept, errorSet = true, 158
+	accept, errorSet = true, 159
 	switch Symbol(p.tok.Ch) {
 	case comma:
 		p.push(p.shift())
@@ -5379,7 +5429,7 @@ func (p *Parser) InterpStr() []int32 {
 	accept, errorSet := false, 0
 	start := p.open(-int32(InterpStr))
 	// state0:
-	accept, errorSet = false, 148
+	accept, errorSet = false, 149
 	switch Symbol(p.tok.Ch) {
 	case str_start:
 		p.push(p.shift())
@@ -5395,7 +5445,7 @@ state1:
 	}
 	return p.stop(start, accept, errorSet)
 state2:
-	accept, errorSet = false, 145
+	accept, errorSet = false, 146
 	switch Symbol(p.tok.Ch) {
 	case str_resume:
 		p.push(p.shift())
@@ -5528,7 +5578,7 @@ state5:
 	}
 	return p.stop(start, accept, errorSet)
 state6:
-	accept, errorSet = false, 143
+	accept, errorSet = false, 144
 	switch Symbol(p.tok.Ch) {
 	case rparen:
 		p.push(p.shift())
@@ -5567,7 +5617,7 @@ func (p *Parser) ListBody() []int32 {
 	}
 	return p.stop(start, accept, errorSet)
 state1:
-	accept, errorSet = true, 158
+	accept, errorSet = true, 159
 	switch Symbol(p.tok.Ch) {
 	case comma:
 		p.push(p.shift())
@@ -5676,7 +5726,7 @@ func (p *Parser) MacroAttr() []int32 {
 	accept, errorSet := false, 0
 	start := p.open(-int32(MacroAttr))
 	// state0:
-	accept, errorSet = false, 135
+	accept, errorSet = false, 136
 	switch Symbol(p.tok.Ch) {
 	case attr_open:
 		p.push(p.shift())
@@ -5684,7 +5734,7 @@ func (p *Parser) MacroAttr() []int32 {
 	}
 	return p.stop(start, accept, errorSet)
 state1:
-	accept, errorSet = false, 96
+	accept, errorSet = false, 95
 	switch Symbol(p.tok.Ch) {
 	case ident:
 		p.push(p.shift())
@@ -5692,7 +5742,7 @@ state1:
 	}
 	return p.stop(start, accept, errorSet)
 state2:
-	accept, errorSet = false, 168
+	accept, errorSet = false, 169
 	switch Symbol(p.tok.Ch) {
 	case dot:
 		p.push(p.shift())
@@ -5706,7 +5756,7 @@ state2:
 	}
 	return p.stop(start, accept, errorSet)
 state3:
-	accept, errorSet = false, 96
+	accept, errorSet = false, 95
 	switch Symbol(p.tok.Ch) {
 	case ident:
 		p.push(p.shift())
@@ -5714,7 +5764,7 @@ state3:
 	}
 	return p.stop(start, accept, errorSet)
 state4:
-	accept, errorSet = false, 133
+	accept, errorSet = false, 134
 	switch Symbol(p.tok.Ch) {
 	case lparen:
 		p.push(p.shift())
@@ -5736,7 +5786,7 @@ state5:
 	}
 	return p.stop(start, accept, errorSet)
 state6:
-	accept, errorSet = false, 142
+	accept, errorSet = false, 143
 	switch Symbol(p.tok.Ch) {
 	case rbracket:
 		p.push(p.shift())
@@ -5747,7 +5797,7 @@ state7:
 	accept, errorSet = true, 0
 	return p.stop(start, accept, errorSet)
 state8:
-	accept, errorSet = false, 143
+	accept, errorSet = false, 144
 	switch Symbol(p.tok.Ch) {
 	case rparen:
 		p.push(p.shift())
@@ -5824,7 +5874,7 @@ func (p *Parser) Match() []int32 {
 	accept, errorSet := false, 0
 	start := p.open(-int32(Match))
 	// state0:
-	accept, errorSet = false, 111
+	accept, errorSet = false, 110
 	switch Symbol(p.tok.Ch) {
 	case kw_match:
 		p.push(p.shift())
@@ -5846,7 +5896,7 @@ state1:
 	}
 	return p.stop(start, accept, errorSet)
 state2:
-	accept, errorSet = false, 96
+	accept, errorSet = false, 95
 	switch Symbol(p.tok.Ch) {
 	case ident:
 		p.push(p.shift())
@@ -5854,7 +5904,7 @@ state2:
 	}
 	return p.stop(start, accept, errorSet)
 state3:
-	accept, errorSet = false, 98
+	accept, errorSet = false, 97
 	switch Symbol(p.tok.Ch) {
 	case assign:
 		p.push(p.shift())
@@ -5870,7 +5920,7 @@ state4:
 	}
 	return p.stop(start, accept, errorSet)
 state5:
-	accept, errorSet = false, 129
+	accept, errorSet = false, 130
 	switch Symbol(p.tok.Ch) {
 	case lbrace:
 		p.push(p.shift())
@@ -5906,7 +5956,7 @@ state8:
 	}
 	return p.stop(start, accept, errorSet)
 state9:
-	accept, errorSet = false, 140
+	accept, errorSet = false, 141
 	switch Symbol(p.tok.Ch) {
 	case semi:
 		p.push(p.shift())
@@ -6000,7 +6050,7 @@ state3:
 	accept, errorSet = true, 0
 	return p.stop(start, accept, errorSet)
 state4:
-	accept, errorSet = false, 151
+	accept, errorSet = false, 152
 	switch Symbol(p.tok.Ch) {
 	case fat_arrow:
 		p.push(p.shift())
@@ -6182,7 +6232,7 @@ state0:
 	}
 	return p.stop(start, accept, errorSet)
 state1:
-	accept, errorSet = true, 138
+	accept, errorSet = true, 139
 	switch Symbol(p.tok.Ch) {
 	case percent, slash, star:
 		p.MulOp()
@@ -6206,7 +6256,7 @@ func (p *Parser) MulOp() []int32 {
 	accept, errorSet := false, 0
 	start := p.open(-int32(MulOp))
 	// state0:
-	accept, errorSet = false, 138
+	accept, errorSet = false, 139
 	switch Symbol(p.tok.Ch) {
 	case percent, slash, star:
 		p.push(p.shift())
@@ -6257,7 +6307,7 @@ func (p *Parser) NameBracket() []int32 {
 	accept, errorSet := false, 0
 	start := p.open(-int32(NameBracket))
 	// state0:
-	accept, errorSet = false, 130
+	accept, errorSet = false, 131
 	switch Symbol(p.tok.Ch) {
 	case lbracket:
 		p.push(p.shift())
@@ -6265,7 +6315,7 @@ func (p *Parser) NameBracket() []int32 {
 	}
 	return p.stop(start, accept, errorSet)
 state1:
-	accept, errorSet = false, 96
+	accept, errorSet = false, 95
 	switch Symbol(p.tok.Ch) {
 	case ident:
 		p.push(p.shift())
@@ -6273,7 +6323,7 @@ state1:
 	}
 	return p.stop(start, accept, errorSet)
 state2:
-	accept, errorSet = false, 161
+	accept, errorSet = false, 162
 	switch Symbol(p.tok.Ch) {
 	case dot:
 		p.push(p.shift())
@@ -6287,7 +6337,7 @@ state2:
 	}
 	return p.stop(start, accept, errorSet)
 state3:
-	accept, errorSet = false, 96
+	accept, errorSet = false, 95
 	switch Symbol(p.tok.Ch) {
 	case ident:
 		p.push(p.shift())
@@ -6295,7 +6345,7 @@ state3:
 	}
 	return p.stop(start, accept, errorSet)
 state4:
-	accept, errorSet = false, 142
+	accept, errorSet = false, 143
 	switch Symbol(p.tok.Ch) {
 	case rbracket:
 		p.push(p.shift())
@@ -6306,7 +6356,7 @@ state5:
 	accept, errorSet = true, 0
 	return p.stop(start, accept, errorSet)
 state6:
-	accept, errorSet = true, 130
+	accept, errorSet = true, 131
 	switch Symbol(p.tok.Ch) {
 	case lbracket:
 		p.TargetIndex()
@@ -6425,7 +6475,7 @@ state2:
 	}
 	return p.stop(start, accept, errorSet)
 state3:
-	accept, errorSet = false, 142
+	accept, errorSet = false, 143
 	switch Symbol(p.tok.Ch) {
 	case rbracket:
 		p.push(p.shift())
@@ -6441,7 +6491,7 @@ state4:
 	}
 	return p.stop(start, accept, errorSet)
 state5:
-	accept, errorSet = false, 143
+	accept, errorSet = false, 144
 	switch Symbol(p.tok.Ch) {
 	case rparen:
 		p.push(p.shift())
@@ -6475,7 +6525,7 @@ state0:
 	}
 	return p.stop(start, accept, errorSet)
 state1:
-	accept, errorSet = true, 132
+	accept, errorSet = true, 133
 	switch Symbol(p.tok.Ch) {
 	case lor:
 		p.push(p.shift())
@@ -6585,7 +6635,7 @@ func (p *Parser) Param() []int32 {
 	accept, errorSet := false, 0
 	start := p.open(-int32(Param))
 	// state0:
-	accept, errorSet = false, 101
+	accept, errorSet = false, 100
 	switch Symbol(p.tok.Ch) {
 	case at:
 		p.push(p.shift())
@@ -6605,7 +6655,7 @@ func (p *Parser) Param() []int32 {
 	}
 	return p.stop(start, accept, errorSet)
 state1:
-	accept, errorSet = false, 96
+	accept, errorSet = false, 95
 	switch Symbol(p.tok.Ch) {
 	case ident:
 		p.push(p.shift())
@@ -6638,7 +6688,7 @@ state4:
 	accept, errorSet = true, 0
 	return p.stop(start, accept, errorSet)
 state5:
-	accept, errorSet = true, 98
+	accept, errorSet = true, 97
 	switch Symbol(p.tok.Ch) {
 	case assign:
 		p.push(p.shift())
@@ -6646,7 +6696,7 @@ state5:
 	}
 	return p.stop(start, accept, errorSet)
 state6:
-	accept, errorSet = false, 96
+	accept, errorSet = false, 95
 	switch Symbol(p.tok.Ch) {
 	case ident:
 		p.push(p.shift())
@@ -6682,7 +6732,7 @@ state8:
 	}
 	return p.stop(start, accept, errorSet)
 state9:
-	accept, errorSet = false, 96
+	accept, errorSet = false, 95
 	switch Symbol(p.tok.Ch) {
 	case ident:
 		p.push(p.shift())
@@ -6701,7 +6751,7 @@ state10:
 	}
 	return p.stop(start, accept, errorSet)
 state11:
-	accept, errorSet = false, 101
+	accept, errorSet = false, 100
 	switch Symbol(p.tok.Ch) {
 	case at:
 		p.push(p.shift())
@@ -6743,7 +6793,7 @@ func (p *Parser) ParamList() []int32 {
 	accept, errorSet := false, 0
 	start := p.open(-int32(ParamList))
 	// state0:
-	accept, errorSet = false, 100
+	accept, errorSet = false, 99
 	switch Symbol(p.tok.Ch) {
 	case at, attr_open, colon, ellipsis, ident, kw_component, kw_const, kw_enum, kw_func, kw_struct, kw_unit:
 		p.Param()
@@ -6751,7 +6801,7 @@ func (p *Parser) ParamList() []int32 {
 	}
 	return p.stop(start, accept, errorSet)
 state1:
-	accept, errorSet = true, 158
+	accept, errorSet = true, 159
 	switch Symbol(p.tok.Ch) {
 	case comma:
 		p.push(p.shift())
@@ -6759,7 +6809,7 @@ state1:
 	}
 	return p.stop(start, accept, errorSet)
 state2:
-	accept, errorSet = true, 100
+	accept, errorSet = true, 99
 	switch Symbol(p.tok.Ch) {
 	case at, attr_open, colon, ellipsis, ident, kw_component, kw_const, kw_enum, kw_func, kw_struct, kw_unit:
 		p.Param()
@@ -6793,7 +6843,7 @@ func (p *Parser) PostfixExpr() []int32 {
 	}
 	return p.stop(start, accept, errorSet)
 state1:
-	accept, errorSet = true, 166
+	accept, errorSet = true, 167
 	switch Symbol(p.tok.Ch) {
 	case dot, lbracket, lparen:
 		p.ExprPostfixOp()
@@ -6931,7 +6981,7 @@ state1:
 	accept, errorSet = true, 0
 	return p.stop(start, accept, errorSet)
 state2:
-	accept, errorSet = true, 129
+	accept, errorSet = true, 130
 	switch Symbol(p.tok.Ch) {
 	case lbrace:
 		p.StructLitBody()
@@ -6950,7 +7000,7 @@ state3:
 	}
 	return p.stop(start, accept, errorSet)
 state4:
-	accept, errorSet = false, 142
+	accept, errorSet = false, 143
 	switch Symbol(p.tok.Ch) {
 	case rbracket:
 		p.push(p.shift())
@@ -6966,7 +7016,7 @@ state5:
 	}
 	return p.stop(start, accept, errorSet)
 state6:
-	accept, errorSet = false, 143
+	accept, errorSet = false, 144
 	switch Symbol(p.tok.Ch) {
 	case rparen:
 		p.push(p.shift())
@@ -6974,7 +7024,7 @@ state6:
 	}
 	return p.stop(start, accept, errorSet)
 state7:
-	accept, errorSet = false, 129
+	accept, errorSet = false, 130
 	switch Symbol(p.tok.Ch) {
 	case lbrace:
 		p.StructLitBody()
@@ -7014,7 +7064,7 @@ func (p *Parser) Selector() []int32 {
 	}
 	return p.stop(start, accept, errorSet)
 state1:
-	accept, errorSet = false, 97
+	accept, errorSet = false, 96
 	switch Symbol(p.tok.Ch) {
 	case int_lit:
 		p.push(p.shift())
@@ -7139,7 +7189,7 @@ state2:
 	}
 	return p.stop(start, accept, errorSet)
 state3:
-	accept, errorSet = false, 142
+	accept, errorSet = false, 143
 	switch Symbol(p.tok.Ch) {
 	case rbracket:
 		p.push(p.shift())
@@ -7155,7 +7205,7 @@ state4:
 	}
 	return p.stop(start, accept, errorSet)
 state5:
-	accept, errorSet = false, 143
+	accept, errorSet = false, 144
 	switch Symbol(p.tok.Ch) {
 	case rparen:
 		p.push(p.shift())
@@ -7355,7 +7405,7 @@ func (p *Parser) StmtBlock() []int32 {
 	accept, errorSet := false, 0
 	start := p.open(-int32(StmtBlock))
 	// state0:
-	accept, errorSet = false, 129
+	accept, errorSet = false, 130
 	switch Symbol(p.tok.Ch) {
 	case lbrace:
 		p.push(p.shift())
@@ -7363,7 +7413,7 @@ func (p *Parser) StmtBlock() []int32 {
 	}
 	return p.stop(start, accept, errorSet)
 state1:
-	accept, errorSet = false, 115
+	accept, errorSet = false, 114
 	switch Symbol(p.tok.Ch) {
 	case rbrace:
 		p.push(p.shift())
@@ -7383,7 +7433,7 @@ state2:
 	accept, errorSet = true, 0
 	return p.stop(start, accept, errorSet)
 state3:
-	accept, errorSet = false, 118
+	accept, errorSet = false, 117
 	switch Symbol(p.tok.Ch) {
 	case attr_open:
 		p.MacroAttr()
@@ -7394,7 +7444,7 @@ state3:
 	}
 	return p.stop(start, accept, errorSet)
 state4:
-	accept, errorSet = false, 114
+	accept, errorSet = false, 113
 	switch Symbol(p.tok.Ch) {
 	case semi:
 		p.push(p.shift())
@@ -7468,7 +7518,7 @@ func (p *Parser) StmtPostfixOp() []int32 {
 	accept, errorSet := false, 0
 	start := p.open(-int32(StmtPostfixOp))
 	// state0:
-	accept, errorSet = false, 164
+	accept, errorSet = false, 165
 	switch Symbol(p.tok.Ch) {
 	case dot:
 		p.push(p.shift())
@@ -7488,7 +7538,7 @@ func (p *Parser) StmtPostfixOp() []int32 {
 	}
 	return p.stop(start, accept, errorSet)
 state1:
-	accept, errorSet = false, 96
+	accept, errorSet = false, 95
 	switch Symbol(p.tok.Ch) {
 	case ident:
 		p.push(p.shift())
@@ -7507,7 +7557,7 @@ state3:
 	}
 	return p.stop(start, accept, errorSet)
 state4:
-	accept, errorSet = false, 142
+	accept, errorSet = false, 143
 	switch Symbol(p.tok.Ch) {
 	case rbracket:
 		p.push(p.shift())
@@ -7526,7 +7576,7 @@ state5:
 	}
 	return p.stop(start, accept, errorSet)
 state6:
-	accept, errorSet = true, 129
+	accept, errorSet = true, 130
 	switch Symbol(p.tok.Ch) {
 	case lbrace:
 		p.StmtBlock()
@@ -7534,7 +7584,7 @@ state6:
 	}
 	return p.stop(start, accept, errorSet)
 state7:
-	accept, errorSet = false, 143
+	accept, errorSet = false, 144
 	switch Symbol(p.tok.Ch) {
 	case rparen:
 		p.push(p.shift())
@@ -7581,7 +7631,7 @@ func (p *Parser) StructBodyDecl() []int32 {
 	}
 	return p.stop(start, accept, errorSet)
 state1:
-	accept, errorSet = false, 107
+	accept, errorSet = false, 106
 	switch Symbol(p.tok.Ch) {
 	case kw_func:
 		p.FuncDecl()
@@ -7615,7 +7665,7 @@ func (p *Parser) StructBodyItem() []int32 {
 	accept, errorSet := false, 0
 	start := p.open(-int32(StructBodyItem))
 	// state0:
-	accept, errorSet = false, 121
+	accept, errorSet = false, 122
 	switch Symbol(p.tok.Ch) {
 	case attr_open:
 		p.MacroAttr()
@@ -7626,7 +7676,7 @@ func (p *Parser) StructBodyItem() []int32 {
 	}
 	return p.stop(start, accept, errorSet)
 state1:
-	accept, errorSet = false, 121
+	accept, errorSet = false, 122
 	switch Symbol(p.tok.Ch) {
 	case attr_open:
 		p.MacroAttr()
@@ -7685,7 +7735,7 @@ func (p *Parser) StructDecl() []int32 {
 	accept, errorSet := false, 0
 	start := p.open(-int32(StructDecl))
 	// state0:
-	accept, errorSet = false, 122
+	accept, errorSet = false, 123
 	switch Symbol(p.tok.Ch) {
 	case kw_struct:
 		p.push(p.shift())
@@ -7693,7 +7743,7 @@ func (p *Parser) StructDecl() []int32 {
 	}
 	return p.stop(start, accept, errorSet)
 state1:
-	accept, errorSet = false, 92
+	accept, errorSet = false, 91
 	switch Symbol(p.tok.Ch) {
 	case ident:
 		p.push(p.shift())
@@ -7707,7 +7757,7 @@ state1:
 	}
 	return p.stop(start, accept, errorSet)
 state2:
-	accept, errorSet = false, 127
+	accept, errorSet = false, 128
 	switch Symbol(p.tok.Ch) {
 	case lbrace:
 		p.push(p.shift())
@@ -7718,7 +7768,7 @@ state2:
 	}
 	return p.stop(start, accept, errorSet)
 state3:
-	accept, errorSet = false, 120
+	accept, errorSet = false, 121
 	switch Symbol(p.tok.Ch) {
 	case rbrace:
 		p.push(p.shift())
@@ -7746,7 +7796,7 @@ state5:
 	}
 	return p.stop(start, accept, errorSet)
 state6:
-	accept, errorSet = false, 129
+	accept, errorSet = false, 130
 	switch Symbol(p.tok.Ch) {
 	case lbrace:
 		p.push(p.shift())
@@ -7780,7 +7830,7 @@ func (p *Parser) StructField() []int32 {
 	accept, errorSet := false, 0
 	start := p.open(-int32(StructField))
 	// state0:
-	accept, errorSet = false, 96
+	accept, errorSet = false, 95
 	switch Symbol(p.tok.Ch) {
 	case ident:
 		p.IdentList()
@@ -7796,7 +7846,7 @@ state1:
 	}
 	return p.stop(start, accept, errorSet)
 state2:
-	accept, errorSet = true, 98
+	accept, errorSet = true, 97
 	switch Symbol(p.tok.Ch) {
 	case assign:
 		p.push(p.shift())
@@ -7843,7 +7893,7 @@ func (p *Parser) StructLitBody() []int32 {
 	accept, errorSet := false, 0
 	start := p.open(-int32(StructLitBody))
 	// state0:
-	accept, errorSet = false, 129
+	accept, errorSet = false, 130
 	switch Symbol(p.tok.Ch) {
 	case lbrace:
 		p.push(p.shift())
@@ -7865,7 +7915,7 @@ state2:
 	accept, errorSet = true, 0
 	return p.stop(start, accept, errorSet)
 state3:
-	accept, errorSet = false, 153
+	accept, errorSet = false, 154
 	switch Symbol(p.tok.Ch) {
 	case comma, semi:
 		p.push(p.shift())
@@ -7910,7 +7960,7 @@ func (p *Parser) TargetIndex() []int32 {
 	accept, errorSet := false, 0
 	start := p.open(-int32(TargetIndex))
 	// state0:
-	accept, errorSet = false, 130
+	accept, errorSet = false, 131
 	switch Symbol(p.tok.Ch) {
 	case lbracket:
 		p.push(p.shift())
@@ -7918,7 +7968,7 @@ func (p *Parser) TargetIndex() []int32 {
 	}
 	return p.stop(start, accept, errorSet)
 state1:
-	accept, errorSet = false, 96
+	accept, errorSet = false, 95
 	switch Symbol(p.tok.Ch) {
 	case ident:
 		p.push(p.shift())
@@ -7926,7 +7976,7 @@ state1:
 	}
 	return p.stop(start, accept, errorSet)
 state2:
-	accept, errorSet = false, 169
+	accept, errorSet = false, 170
 	switch Symbol(p.tok.Ch) {
 	case dot:
 		p.push(p.shift())
@@ -7937,7 +7987,7 @@ state2:
 	}
 	return p.stop(start, accept, errorSet)
 state3:
-	accept, errorSet = false, 96
+	accept, errorSet = false, 95
 	switch Symbol(p.tok.Ch) {
 	case ident:
 		p.push(p.shift())
@@ -7945,7 +7995,7 @@ state3:
 	}
 	return p.stop(start, accept, errorSet)
 state4:
-	accept, errorSet = false, 142
+	accept, errorSet = false, 143
 	switch Symbol(p.tok.Ch) {
 	case rbracket:
 		p.push(p.shift())
@@ -7993,7 +8043,7 @@ func (p *Parser) TernaryExpr() []int32 {
 	}
 	return p.stop(start, accept, errorSet)
 state1:
-	accept, errorSet = true, 139
+	accept, errorSet = true, 140
 	switch Symbol(p.tok.Ch) {
 	case question:
 		p.push(p.shift())
@@ -8009,7 +8059,7 @@ state2:
 	}
 	return p.stop(start, accept, errorSet)
 state3:
-	accept, errorSet = false, 150
+	accept, errorSet = false, 151
 	switch Symbol(p.tok.Ch) {
 	case colon:
 		p.push(p.shift())
@@ -8052,7 +8102,7 @@ func (p *Parser) TripleInterp() []int32 {
 	accept, errorSet := false, 0
 	start := p.open(-int32(TripleInterp))
 	// state0:
-	accept, errorSet = false, 149
+	accept, errorSet = false, 150
 	switch Symbol(p.tok.Ch) {
 	case triple_start:
 		p.push(p.shift())
@@ -8068,7 +8118,7 @@ state1:
 	}
 	return p.stop(start, accept, errorSet)
 state2:
-	accept, errorSet = false, 147
+	accept, errorSet = false, 148
 	switch Symbol(p.tok.Ch) {
 	case str_resume:
 		p.push(p.shift())
@@ -8198,7 +8248,7 @@ state2:
 	accept, errorSet = true, 0
 	return p.stop(start, accept, errorSet)
 state3:
-	accept, errorSet = true, 167
+	accept, errorSet = true, 168
 	switch Symbol(p.tok.Ch) {
 	case dot:
 		p.push(p.shift())
@@ -8209,7 +8259,7 @@ state3:
 	}
 	return p.stop(start, accept, errorSet)
 state4:
-	accept, errorSet = false, 96
+	accept, errorSet = false, 95
 	switch Symbol(p.tok.Ch) {
 	case ident:
 		p.push(p.shift())
@@ -8217,7 +8267,7 @@ state4:
 	}
 	return p.stop(start, accept, errorSet)
 state5:
-	accept, errorSet = true, 130
+	accept, errorSet = true, 131
 	switch Symbol(p.tok.Ch) {
 	case lbracket:
 		p.TypeArgs()
@@ -8255,7 +8305,7 @@ state8:
 	}
 	return p.stop(start, accept, errorSet)
 state9:
-	accept, errorSet = false, 143
+	accept, errorSet = false, 144
 	switch Symbol(p.tok.Ch) {
 	case rparen:
 		p.push(p.shift())
@@ -8285,7 +8335,7 @@ func (p *Parser) TypeArgs() []int32 {
 	accept, errorSet := false, 0
 	start := p.open(-int32(TypeArgs))
 	// state0:
-	accept, errorSet = false, 130
+	accept, errorSet = false, 131
 	switch Symbol(p.tok.Ch) {
 	case lbracket:
 		p.push(p.shift())
@@ -8301,7 +8351,7 @@ state1:
 	}
 	return p.stop(start, accept, errorSet)
 state2:
-	accept, errorSet = false, 142
+	accept, errorSet = false, 143
 	switch Symbol(p.tok.Ch) {
 	case rbracket:
 		p.push(p.shift())
@@ -8338,7 +8388,7 @@ state0:
 	}
 	return p.stop(start, accept, errorSet)
 state1:
-	accept, errorSet = true, 158
+	accept, errorSet = true, 159
 	switch Symbol(p.tok.Ch) {
 	case comma:
 		p.push(p.shift())
@@ -8376,7 +8426,7 @@ func (p *Parser) TypeParam() []int32 {
 	accept, errorSet := false, 0
 	start := p.open(-int32(TypeParam))
 	// state0:
-	accept, errorSet = false, 96
+	accept, errorSet = false, 95
 	switch Symbol(p.tok.Ch) {
 	case ident:
 		p.push(p.shift())
@@ -8392,7 +8442,7 @@ state1:
 	}
 	return p.stop(start, accept, errorSet)
 state2:
-	accept, errorSet = true, 98
+	accept, errorSet = true, 97
 	switch Symbol(p.tok.Ch) {
 	case assign:
 		p.push(p.shift())
@@ -8435,7 +8485,7 @@ func (p *Parser) TypeParamList() []int32 {
 	accept, errorSet := false, 0
 	start := p.open(-int32(TypeParamList))
 	// state0:
-	accept, errorSet = false, 130
+	accept, errorSet = false, 131
 	switch Symbol(p.tok.Ch) {
 	case lbracket:
 		p.push(p.shift())
@@ -8443,7 +8493,7 @@ func (p *Parser) TypeParamList() []int32 {
 	}
 	return p.stop(start, accept, errorSet)
 state1:
-	accept, errorSet = false, 96
+	accept, errorSet = false, 95
 	switch Symbol(p.tok.Ch) {
 	case ident:
 		p.TypeParam()
@@ -8451,7 +8501,7 @@ state1:
 	}
 	return p.stop(start, accept, errorSet)
 state2:
-	accept, errorSet = false, 154
+	accept, errorSet = false, 155
 	switch Symbol(p.tok.Ch) {
 	case comma:
 		p.push(p.shift())
@@ -8530,7 +8580,7 @@ state2:
 	}
 	return p.stop(start, accept, errorSet)
 state3:
-	accept, errorSet = false, 154
+	accept, errorSet = false, 155
 	switch Symbol(p.tok.Ch) {
 	case comma:
 		p.push(p.shift())
@@ -8541,7 +8591,7 @@ state3:
 	}
 	return p.stop(start, accept, errorSet)
 state4:
-	accept, errorSet = false, 96
+	accept, errorSet = false, 95
 	switch Symbol(p.tok.Ch) {
 	case ident:
 		p.TypeParam()
@@ -8635,7 +8685,7 @@ func (p *Parser) UnitDecl() []int32 {
 	accept, errorSet := false, 0
 	start := p.open(-int32(UnitDecl))
 	// state0:
-	accept, errorSet = false, 123
+	accept, errorSet = false, 124
 	switch Symbol(p.tok.Ch) {
 	case kw_unit:
 		p.push(p.shift())
@@ -8643,7 +8693,7 @@ func (p *Parser) UnitDecl() []int32 {
 	}
 	return p.stop(start, accept, errorSet)
 state1:
-	accept, errorSet = false, 93
+	accept, errorSet = false, 92
 	switch Symbol(p.tok.Ch) {
 	case ident:
 		p.push(p.shift())
@@ -8654,7 +8704,7 @@ state1:
 	}
 	return p.stop(start, accept, errorSet)
 state2:
-	accept, errorSet = false, 129
+	accept, errorSet = false, 130
 	switch Symbol(p.tok.Ch) {
 	case lbrace:
 		p.push(p.shift())
@@ -8676,7 +8726,7 @@ state4:
 	accept, errorSet = true, 0
 	return p.stop(start, accept, errorSet)
 state5:
-	accept, errorSet = false, 141
+	accept, errorSet = false, 142
 	switch Symbol(p.tok.Ch) {
 	case rbrace:
 		p.push(p.shift())
@@ -8722,7 +8772,7 @@ func (p *Parser) VarDecl() []int32 {
 	accept, errorSet := false, 0
 	start := p.open(-int32(VarDecl))
 	// state0:
-	accept, errorSet = false, 124
+	accept, errorSet = false, 125
 	switch Symbol(p.tok.Ch) {
 	case kw_var:
 		p.push(p.shift())
@@ -8730,7 +8780,7 @@ func (p *Parser) VarDecl() []int32 {
 	}
 	return p.stop(start, accept, errorSet)
 state1:
-	accept, errorSet = false, 94
+	accept, errorSet = false, 93
 	switch Symbol(p.tok.Ch) {
 	case lparen:
 		p.push(p.shift())
@@ -8741,7 +8791,7 @@ state1:
 	}
 	return p.stop(start, accept, errorSet)
 state2:
-	accept, errorSet = false, 95
+	accept, errorSet = false, 94
 	switch Symbol(p.tok.Ch) {
 	case rparen:
 		p.push(p.shift())
@@ -8755,7 +8805,7 @@ state3:
 	accept, errorSet = true, 0
 	return p.stop(start, accept, errorSet)
 state4:
-	accept, errorSet = false, 152
+	accept, errorSet = false, 153
 	switch Symbol(p.tok.Ch) {
 	case comma, semi:
 		p.push(p.shift())
@@ -8810,7 +8860,7 @@ func (p *Parser) VarHandler() []int32 {
 	accept, errorSet := false, 0
 	start := p.open(-int32(VarHandler))
 	// state0:
-	accept, errorSet = false, 112
+	accept, errorSet = false, 111
 	switch Symbol(p.tok.Ch) {
 	case at:
 		p.push(p.shift())
@@ -8818,7 +8868,7 @@ func (p *Parser) VarHandler() []int32 {
 	}
 	return p.stop(start, accept, errorSet)
 state1:
-	accept, errorSet = false, 96
+	accept, errorSet = false, 95
 	switch Symbol(p.tok.Ch) {
 	case ident:
 		p.push(p.shift())
@@ -8826,7 +8876,7 @@ state1:
 	}
 	return p.stop(start, accept, errorSet)
 state2:
-	accept, errorSet = false, 128
+	accept, errorSet = false, 129
 	switch Symbol(p.tok.Ch) {
 	case lparen:
 		p.push(p.shift())
@@ -8837,7 +8887,7 @@ state2:
 	}
 	return p.stop(start, accept, errorSet)
 state3:
-	accept, errorSet = false, 99
+	accept, errorSet = false, 98
 	switch Symbol(p.tok.Ch) {
 	case rparen:
 		p.push(p.shift())
@@ -8848,7 +8898,7 @@ state3:
 	}
 	return p.stop(start, accept, errorSet)
 state4:
-	accept, errorSet = false, 129
+	accept, errorSet = false, 130
 	switch Symbol(p.tok.Ch) {
 	case lbrace:
 		p.StmtBlock()
@@ -8859,7 +8909,7 @@ state5:
 	accept, errorSet = true, 0
 	return p.stop(start, accept, errorSet)
 state6:
-	accept, errorSet = false, 143
+	accept, errorSet = false, 144
 	switch Symbol(p.tok.Ch) {
 	case rparen:
 		p.push(p.shift())
@@ -8902,7 +8952,7 @@ func (p *Parser) VarSpec() []int32 {
 	accept, errorSet := false, 0
 	start := p.open(-int32(VarSpec))
 	// state0:
-	accept, errorSet = false, 96
+	accept, errorSet = false, 95
 	switch Symbol(p.tok.Ch) {
 	case ident:
 		p.IdentList()
@@ -8932,7 +8982,7 @@ state2:
 	}
 	return p.stop(start, accept, errorSet)
 state3:
-	accept, errorSet = true, 112
+	accept, errorSet = true, 111
 	switch Symbol(p.tok.Ch) {
 	case at:
 		p.VarHandler()

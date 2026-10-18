@@ -19,6 +19,11 @@ func monomorphizeEnums(pkg *ir.Package, names map[string]bool) {
 		names[ed.Name] = true
 	}
 	me := &monoEnums{pkg: pkg, names: names, copies: map[*ir.EnumDef][]enumInstance{}}
+	for _, ed := range pkg.Enums {
+		if ed.InstanceOf != nil {
+			me.copies[ed.InstanceOf] = append(me.copies[ed.InstanceOf], enumInstance{ed.InstanceArgs, ed})
+		}
+	}
 	ir.RewriteTypes(pkg, me.rewrite)
 }
 
@@ -64,6 +69,7 @@ func (me *monoEnums) instance(ed *ir.EnumDef, args []*ir.Type) *ir.EnumDef {
 	cp.Name = freshName(me.names, ed.Name+"__"+strings.Join(key, "_"))
 	cp.Members = make([]*ir.EnumMember, len(ed.Members))
 	cp.Methods = nil
+	cp.InstanceOf, cp.InstanceArgs = ed, args
 	in := &cp
 	me.copies[ed] = append(me.copies[ed], enumInstance{args, in})
 	for i, m := range ed.Members {
@@ -80,4 +86,29 @@ func (me *monoEnums) instance(ed *ir.EnumDef, args []*ir.Type) *ir.EnumDef {
 		me.pkg.Enums = slices.Insert(me.pkg.Enums, i+len(me.copies[ed]), in)
 	}
 	return in
+}
+
+// passMonomorphizeEnums copies each generic enum per instantiation once more,
+// after the inliners: a library component's body spliced at the types its
+// call site bound -- async.query's `var r = fetch(k)`, a `Result[T]` -- names
+// instantiations no type held when Monomorphize ran, which a target spelling
+// a type at a declaration (Kotlin's `var r: …`, a sealed class's variant) has
+// no declaration for. A copy the first run made is found, not made again.
+var passMonomorphizeEnums = pass{
+	name:    "MonomorphizeEnums",
+	enabled: func(c Features) bool { return !c.GenericFuncs },
+	apply: func(pkg *ir.Package, _ Features, _ Options) error {
+		if pkg == nil {
+			return nil
+		}
+		names := map[string]bool{}
+		for _, fn := range pkg.Funcs {
+			names[fn.Name] = true
+		}
+		for _, sd := range pkg.Structs {
+			names[sd.Name] = true
+		}
+		monomorphizeEnums(pkg, names)
+		return nil
+	},
 }

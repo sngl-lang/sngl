@@ -208,7 +208,7 @@ var soleGate = map[string][]string{
 	"InlineComponents": {"NoInlineComponents"},
 	"ImplicitRecv":     {"NoImplicitRecv"},
 	"StructSpread":     {"NoStructSpread"},
-	"GenericFuncs":     {"Monomorphize"},
+	"GenericFuncs":     {"Monomorphize", "MonomorphizeEnums"},
 	"FocusOrder":       {"FocusOrder"},
 	"Canvas":           {"Canvas"},
 

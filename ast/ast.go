@@ -115,8 +115,9 @@ func (d *Document) BlankBefore(line int) bool {
 type EnumMember struct {
 	Pos     Pos
 	Name    string
-	Payload TypeExpr `json:",omitempty"`
-	Value   Expr     // nil for bare members
+	Payload TypeExpr    `json:",omitempty"`
+	Value   Expr        // nil for bare members
+	Attrs   []MacroAttr `json:",omitempty"`
 }
 
 // EnumBodyItem is one element inside an enum body — a member or a nested func.
@@ -604,6 +605,7 @@ func (s *StructDef) StmtPos() *Pos { return &s.Pos }
 
 // A field is a Stmt only so it can carry marks; nothing executes it.
 func (f *StructField) StmtPos() *Pos { return &f.Pos }
+func (m *EnumMember) StmtPos() *Pos  { return &m.Pos }
 
 func (e *EnumDef) StmtPos() *Pos       { return &e.Pos }
 func (u *UnitDef) StmtPos() *Pos       { return &u.Pos }
