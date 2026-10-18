@@ -1182,6 +1182,13 @@ func (st *reactivityState) gatherDeps(e ir.Expr, out map[*ir.Var]bool) {
 		}
 		for _, a := range x.Args {
 			st.gatherDeps(a.Value, out)
+			// A const callee cannot keep a function it is handed for later,
+			// so one it takes runs inside the call -- `xs.filter(f)` is
+			// read whole where it stands -- and what that body reads is the
+			// call's.
+			if x.Func != nil && x.Func.Const {
+				st.gatherLambdaReads(a.Value, out)
+			}
 		}
 		// A call to a derived/computed func transitively reads that func's
 		// dep set: a reactive `if isLong` where `isLong() => name.length > 3`
@@ -1224,6 +1231,32 @@ func (st *reactivityState) gatherDeps(e ir.Expr, out map[*ir.Var]bool) {
 	default:
 		panic(fmt.Sprintf("gatherDeps: unhandled %T", x))
 	}
+}
+
+// gatherLambdaReads adds what the body of the function e writes reads, when e
+// is one written in place.
+func (st *reactivityState) gatherLambdaReads(e ir.Expr, out map[*ir.Var]bool) {
+	var fn *ir.Func
+	switch x := e.(type) {
+	case *ir.Lambda:
+		fn = x.Func
+	case *ir.Closure:
+		fn = x.Func
+	}
+	if fn == nil {
+		return
+	}
+	_ = ir.Walk(fn.Block, func(n ir.Node) error {
+		switch x := n.(type) {
+		case *ir.Ident:
+			if v, ok := x.Sym.(*ir.Var); ok && st.reactiveVars[v] {
+				out[v] = true
+			}
+		case *ir.Call:
+			st.gatherFuncReads(x.Func, out, nil)
+		}
+		return nil
+	})
 }
 
 // handlerBodiesIn reports the callback bodies one statement holds in its own
