@@ -318,18 +318,9 @@ func (cc *irComposeContext) testModifiers(n *ir.NodeInst) []string {
 	return parts
 }
 
-// styleValue is a run's style field as the Compose argument reading it wants it.
-//
-// A measurement is the one kind that cannot go through EvalExpr: `8px` is a
-// unit value, which Kotlin spells as the `Measurement` data class this target
-// emits, and the caller appends `.sp` to it.
-// `Measurement(px = 8.0).dp` names no extension Compose declares, so a padding
-// or a font size written with its unit failed to compile while the same number
-// written bare worked -- which is why no fixture had caught it.
-//
-// Reduced to one number of dp here rather than given a `.dp` of its own in
-// Kotlin: an em is emDp of them (codegen.MeasurementPx), and every caller
-// already appends the unit its Compose argument takes.
+// styleValue is a run's style field as a Compose argument: a measurement is
+// one number of dp, an em being emDp of them (codegen.MeasurementPx), to which
+// the caller appends the unit its argument takes.
 func (cc *irComposeContext) styleValue(e ir.Expr) string {
 	if e != nil && ir.UnitDeclOf(e.ExprType()) != nil {
 		if px, ok := codegen.MeasurementPx(e, emDp); ok {

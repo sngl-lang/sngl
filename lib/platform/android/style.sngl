@@ -3,10 +3,9 @@ import ui "sngl:ui"
 // What a ui.Style becomes on Compose: a Modifier, a TextStyle, a Material
 // button's colors and its shape, each routed by the override to its argument.
 //
-// None of these reads a composable: under `--lang go` a ternary splits a
-// function into statements the optimizer cannot splice, so each may stay a
-// function of its own, and what only a composable may read -- the theme's text
-// style, a button's default colors -- is read in the override.
+// None of these reads a composable, since under `--lang go` each may stay a
+// function of its own; the theme's text style and a button's default colors
+// are read in the overrides.
 
 // What a child's `flex` is a share of. A vbox or an hbox provides a closure
 // written in its Column's or Row's content, where `weight` is in scope, so it
